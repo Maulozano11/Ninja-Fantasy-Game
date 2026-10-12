@@ -94,7 +94,7 @@ export function renderSprite(
   for (const depth of DEPTHS) {
     const L = layers.get(depth);
     if (!L || !L.used) continue;
-    if (depth === 'hairFront' || depth === 'hairBack') frayHair(L, rig.head, rig.bp.headScale, depth === 'hairFront' ? 11 : 23);
+    if ((depth === 'hairFront' || depth === 'hairBack') && !L.noFray) frayHair(L, rig.head, rig.bp.headScale, depth === 'hairFront' ? 11 : 23);
     L.applyOutline();
     if (L.outline) applyTexture(L, mats, frames);
     for (let i = 0; i < GRID * GRID; i++) {

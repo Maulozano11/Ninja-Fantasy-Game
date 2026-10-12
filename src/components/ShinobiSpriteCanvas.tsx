@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { ShinobiCharacter } from '../types/shinobi';
 import { renderSpriteCached } from '../sprite/compose';
+import { CHAKRA_LOOP, ChakraMode, renderChakra } from '../sprite/chakra';
 import { dojutsuToEye, getAppearance } from '../sprite/legacy';
 import { frameCount, GROUND, POSE_FPS } from '../sprite/rig';
-import { GRID } from '../sprite/raster';
+import { GRID, RES } from '../sprite/raster';
 import { subscribeTick, TICK_FPS } from '../sprite/ticker';
 import type { SpriteAppearance, SpritePose } from '../sprite/types';
 
@@ -12,7 +13,7 @@ export interface ShinobiSpriteCanvasProps {
   /** Draw this appearance instead of the character's own (live preview in the creator). */
   appearance?: SpriteAppearance;
   stance?: SpritePose;
-  /** Display size in CSS pixels (the sprite itself is always 64x64). */
+  /** Display size in CSS pixels (the sprite itself is always 128x128). */
   size?: number;
   isEnhanced?: boolean;
   className?: string;
@@ -42,13 +43,15 @@ export function blendOver(dst: Uint8ClampedArray, src: Uint8ClampedArray): void 
   }
 }
 
+/** Soft pixel ellipse under the feet; `cx` in fine pixels. */
 function drawShadow(dst: Uint8ClampedArray, cx: number): void {
-  const cy = GROUND - 0.5;
-  for (let y = GROUND - 3; y <= GROUND + 2; y++) {
-    for (let x = Math.floor(cx - 13); x <= Math.ceil(cx + 13); x++) {
+  const g = GROUND * RES;
+  const cy = g - 1;
+  for (let y = g - 5; y <= g + 4; y++) {
+    for (let x = Math.floor(cx - 26); x <= Math.ceil(cx + 26); x++) {
       if (x < 0 || x >= GRID || y < 0 || y >= GRID) continue;
-      const dx = (x + 0.5 - cx) / 12;
-      const dy = (y + 0.5 - cy) / 2.4;
+      const dx = (x + 0.5 - cx) / 24;
+      const dy = (y + 0.5 - cy) / 4.5;
       const d = dx * dx + dy * dy;
       if (d > 1) continue;
       const i = (y * GRID + x) * 4;
@@ -79,17 +82,31 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     const img = ctx.createImageData(GRID, GRID);
+    // Which chakra effect plays: the burst for charge/cast/victory (if the
+    // player enabled it), otherwise the subtle aura while empowered.
+    const c = look.chakra;
+    let mode: ChakraMode | null = null;
+    if (showAura) {
+      if (stance === 'charge' && c.onCharge) mode = 'charge';
+      else if (stance === 'cast' && c.onCast) mode = 'cast';
+      else if (stance === 'victory' && c.onVictory) mode = 'victory';
+      else if (isEnhanced) mode = 'aura';
+    }
     let lastKey = '';
     return subscribeTick((tick) => {
       const frame = Math.floor((tick * POSE_FPS[stance]) / TICK_FPS) % frameCount(stance);
-      const key = `${frame}`;
+      const fxTick = tick % CHAKRA_LOOP;
+      const key = mode ? `${frame}|${fxTick}` : `${frame}`;
       if (key === lastKey) return;
       lastKey = key;
       const spr = renderSpriteCached(look, stance, frame, eye);
       const out = img.data;
       out.fill(0);
-      if (showShadow) drawShadow(out, spr.rig.pelvis.x + 1);
+      if (showShadow) drawShadow(out, spr.rig.pelvis.x * RES + 1);
+      const fx = mode ? renderChakra(c.color, mode, fxTick, spr.rgba, spr.rig) : null;
+      if (fx) blendOver(out, fx.back);
       blendOver(out, spr.rgba);
+      if (fx) blendOver(out, fx.front);
       ctx.putImageData(img, 0, 0);
     });
   }, [look, stance, eye, isEnhanced, showAura, showShadow]);

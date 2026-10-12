@@ -82,7 +82,7 @@ export const FEET_ITEMS: ItemDef[] = [
         crease(L, along(a, b, 0.78, -0.6), along(a, b, 0.92, 1.2));
         // ankle strap with a small brass buckle
         limb(g, L, 'leg', s, 1.8, 1.87, 0.75, bootPen(g, sole, s, 'shin'));
-        button(L, along(legPoint(g, s, 1.8), legPoint(g, s, 1.87), 0.5, 0.6), g.m('#c9a65a', 'metal'), `shin${s}` as Pen['part'], 3 + sb(s));
+        button(L, along(legPoint(g, s, 1.8), legPoint(g, s, 1.87), 0.5, 0.6), g.m('#b8955a', 'metal'), `shin${s}` as Pen['part'], 2 + sb(s));
         shoeDetail(g, L, s, 0.5);
       }
     },
@@ -149,6 +149,7 @@ export const FEET_ITEMS: ItemDef[] = [
           v(a.x - 2.4, G - 1.2),
         ], foot);
         const heel = bootPen(g, '#2a1a12', s, 'foot');
+        poly(L, [v(a.x - 0.6, G - 1.4), v(a.x + fl * 0.5, G - 1.0), v(a.x + fl * 0.5, G), v(a.x - 0.6, G)], heel, 1);
         poly(L, [v(a.x - 2.4, G - 1.4), v(a.x - 0.2, G - 1.4), v(a.x - 0.6, G), v(a.x - 2.2, G)], heel, 2);
         poly(L, [v(a.x + fl * 0.4, G - 1.0), v(a.x + fl + 2.0, G - 1.0), v(a.x + fl + 1.6, G - 0.5), v(a.x + fl * 0.4, G - 0.5)], heel, 2);
         // decorative stitching on the shaft and toe
@@ -156,18 +157,17 @@ export const FEET_ITEMS: ItemDef[] = [
         const p0 = legPoint(g, s, 1.42);
         const p1 = legPoint(g, s, 1.86);
         const r = limbR(g, 'leg', 1.6);
-        stitch(L, along(p0, p1, 0, -r * 0.2), along(p0, p1, 0.55, r * 0.5), stp, 4, 1);
-        stitch(L, along(p0, p1, 0.55, r * 0.5), along(p0, p1, 1, -r * 0.1), stp, 4, 1);
-        stitch(L, along(p0, p1, 0.1, r * 0.6), along(p0, p1, 0.45, -r * 0.3), stp, 3, 1);
-        stitch(L, v(a.x + fl * 0.45, G - 2.6), v(a.x + fl + 1.2, G - 1.6), { ...stp, part: `foot${s}` as Pen['part'] }, 4, 1);
+        stitch(L, along(p0, p1, 0, -r * 0.1), along(p0, p1, 0.5, r * 0.45), stp, 3, 0);
+        stitch(L, along(p0, p1, 0.5, r * 0.45), along(p0, p1, 1, 0), stp, 3, 0);
+        stitch(L, v(a.x + fl * 0.5, G - 2.5), v(a.x + fl + 1.0, G - 1.7), { ...stp, part: `foot${s}` as Pen['part'] }, 3, 0);
         seam(L, along(p0, p1, 0, -r * 0.7), along(p0, p1, 1, -r * 0.6), 1);
         // spur: strap, shank and a glinting rowel behind the heel
         const A = g.L(legDepth(s, 'armor'));
         const spm: Pen = { mat: g.m(sp, 'metal'), part: `foot${s}` as Pen['part'], bias: sb(s) };
         tube(L, v(a.x - 2.4, G - 2.6), v(a.x + 1.2, a.y + 0.2), 0.4, 0.4, bootPen(g, '#2a1a12', s, 'foot'), 2);
-        tube(A, v(a.x - 2.4, G - 2.2), v(a.x - 3.6, G - 2.4), 0.35, 0.35, spm, 3);
-        ellipse(A, a.x - 4.0, G - 2.5, 0.75, 0.75, spm, 4);
-        fpx(A, v(a.x - 4.2, G - 2.8), spm.mat, `foot${s}` as Pen['part'], 5 + sb(s));
+        tube(A, v(a.x - 1.4, G - 2.3), v(a.x - 2.8, G - 2.5), 0.5, 0.5, spm, 3);
+        ellipse(A, a.x - 3.0, G - 2.6, 0.8, 0.8, spm, 4);
+        fpx(A, v(a.x - 3.2, G - 2.9), spm.mat, `foot${s}` as Pen['part'], 5 + sb(s));
       }
     },
   },

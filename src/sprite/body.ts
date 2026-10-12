@@ -5,7 +5,7 @@
 // Geometry is in design units (64 space); face details are placed as single
 // fine pixels (RES per design unit) for 128x128 detail.
 
-import { makeRamp } from './color';
+import { makeRamp, mixHex } from './color';
 import { armPoint, armSpan, DrawCtx, fillTorso, footPoly, handDraw, legSpan, Side } from './ctx';
 import { capsule, ellipse, F_NO_OUTLINE, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 
@@ -41,7 +41,7 @@ export function drawBody(g: DrawCtx): void {
   // Torso + neck
   const torso = g.L('torso.body');
   fillTorso(g, torso, 0, skin('torso'));
-  const neckTop = v(r.head.x + 0.4 * b.headScale, r.head.y + 4.5 * b.headScale);
+  const neckTop = v(r.head.x + 0.4 * b.headScale, r.head.y + 4 * b.headScale);
   capsule(torso, r.neck, neckTop, b.neckW, b.neckW * 0.95, skin('torso'), (x) => (x < r.neck.x - 0.6 ? 3 : 2));
 
   // Simple form shading only (no muscle lines): a soft chest shadow and collarbone light.
@@ -90,26 +90,25 @@ function drawHead(g: DrawCtx): void {
   const hy = g.rig.head.y;
 
   const shadeHead = (x: number, y: number): number => {
-    const dx = (x + 0.5 - (hx - 0.4)) / 6.3;
+    const dx = (x + 0.5 - (hx - 0.7)) / 6.0;
     const dy = (y + 0.5 - (hy - 1.3)) / 6.6;
     const lt = dx * -0.72 + dy * -0.69;
-    if (y + 0.5 > hy + 5.2 && x + 0.5 < hx + 1.2) return 2; // under the jaw
-    if (x + 0.5 > hx + 5.6) return 2; // far cheek turning away
+    if (y + 0.5 > hy + 5.6 && x + 0.5 < hx + 0.4) return 2; // under the jaw
+    if (x + 0.5 > hx + 4.5) return 2; // far cheek turning away
     return lt > 0.55 ? 4 : 3;
   };
-  ellipse(L, hx - 0.4, hy - 1.3, 6.3, 6.6, pen, shadeHead);
+  ellipse(L, hx - 0.7, hy - 1.3, 6.0, 6.6, pen, shadeHead);
   poly(
     L,
     [
-      H(-6.2, -0.5),
-      H(6.4, -1.5),
-      H(6.6, 2.2),
-      H(6.1 + heavy * 0.3, 4),
-      H(4.7 - fem * 0.5 + heavy * 0.6, 5.0),
-      H(3.0 - fem * 0.4 + heavy * 0.6, 6.2),
-      H(1.2, 6.5 - fem * 0.3),
-      H(-0.8 - heavy * 0.6, 6.0),
-      H(-3.6 - heavy * 0.6, 4.6),
+      H(-6.0, -0.5),
+      H(5.0, -1.5),
+      H(5.2, 2.0),
+      H(4.7 + heavy * 0.4, 3.4),
+      H(3.4 - fem * 0.3 + heavy * 0.6, 5.5),
+      H(1.0 + heavy * 0.4, 6.8 - fem * 0.3),
+      H(-1.6 - heavy * 0.6, 6.1),
+      H(-4.0 - heavy * 0.6, 4.0),
       H(-5.7, 3),
     ],
     pen,
@@ -131,18 +130,29 @@ function drawHead(g: DrawCtx): void {
 // L lash · w sclera · d iris dark · I iris base · i iris light · p pupil
 // c catchlight · s lid shadow (skin)
 
+// Matched to the reference sprite: heavy lash bar, 2x2 iris with one light
+// pixel on the near eye, a slim far eye.
 const EYE_NEAR: Record<string, string[]> = {
-  standard: ['LLLLL', 'LwcdL', '.wIp.', '..iI.'],
-  sharp: ['..LLL', 'LLLcd', '.wIpL', '..iI.'],
-  round: ['.LLL.', 'LwcdL', 'LwIpL', '.wiI.', '..ii.'],
-  calm: ['.....', 'LLLLL', 'LwIpL', '..iI.'],
+  standard: ['LLLLL', '.wdIL', '..iI.'],
+  sharp: ['..LLL', 'LLdIL', '..iI.'],
+  round: ['.LLL.', 'LwdIL', '.wiI.', '..i..'],
+  calm: ['.....', 'LLLLL', '.wiI.'],
 };
 const EYE_FAR: Record<string, string[]> = {
-  standard: ['LLLL', 'cdwL', 'Ipw.', 'iI..'],
-  sharp: ['LLL.', 'cdLL', 'Ip..', 'iI..'],
-  round: ['LLL.', 'cdwL', 'Ipw.', 'iIw.', '.i..'],
-  calm: ['....', 'LLLL', 'Ipw.', 'iI..'],
+  standard: ['LLL', 'dLL', 'i..'],
+  sharp: ['LL.', 'dLL', 'i..'],
+  round: ['LLL', 'dIL', 'iI.', '.i.'],
+  calm: ['...', 'LLL', 'iL.'],
 };
+
+/** Fine-pixel anchors of the face: near-eye top-left and far-eye top-left. */
+export function faceAnchor(g: DrawCtx): { nx: number; ny: number; fx: number; fy: number } {
+  const k = g.bp.headScale;
+  const female = g.rig.body === 'female';
+  const nx = Math.floor((g.rig.head.x - 1.9 * k) * RES);
+  const ny = Math.floor((g.rig.head.y + (female ? 0.4 : 1.0) * k) * RES);
+  return { nx, ny, fx: nx + 9, fy: ny };
+}
 
 function stamp(L: Layer, fx: number, fy: number, rows: string[], pens: Record<string, Pen>): void {
   rows.forEach((row, r) => {
@@ -187,21 +197,20 @@ function drawFace(g: DrawCtx): void {
   const far = [...(EYE_FAR[shape] || EYE_FAR.standard)];
   if (female) {
     near.unshift('L....');
-    far.unshift('...L');
+    far.unshift('..L');
   }
-  const [nx, ny] = F(-2.2, female ? 0 : 0.6);
-  const [fx, fy] = F(2.5, female ? 0 : 0.6);
+  const { nx, ny, fx, fy } = faceAnchor(g);
   stamp(L, nx, ny, near, pens);
   stamp(L, fx, fy, far, pens);
 
   const set = (x: number, y: number, hex: string) => L.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
 
   // Special patterns on top of the iris
-  const irisRow = ny + (female ? 3 : 2);
+  const irisRow = ny + (female ? 2 : 1);
   if (sp === 'tomoe3' || sp === 'tomoe1' || sp === 'pinwheel') {
     set(nx + 2, irisRow, '#14040a');
-    set(fx + 1, fy + 1, '#14040a');
-    if (sp !== 'tomoe1') set(nx + 3, irisRow + 1, '#14040a');
+    set(fx + 1, fy + (female ? 2 : 1), '#14040a');
+    if (sp !== 'tomoe1') set(nx + 2, irisRow + 1, '#14040a');
     if (sp === 'pinwheel') set(nx + 1, irisRow + 1, '#14040a');
   }
   if (sp === 'paleVeins') {
@@ -217,8 +226,8 @@ function drawFace(g: DrawCtx): void {
   if (sp === 'sage') {
     for (let x = -1; x <= 4; x++) set(nx + x, ny - 1, '#c2410c');
     for (let x = 0; x <= 3; x++) set(fx + x, fy - 1, '#c2410c');
+    set(nx + 1, irisRow, '#120c18');
     set(nx + 2, irisRow, '#120c18');
-    set(nx + 3, irisRow, '#120c18');
   }
 
   // Brows (hair-colored)
@@ -226,11 +235,17 @@ function drawFace(g: DrawCtx): void {
   const br = makeRamp(hairChoice?.colors[0] || '#2a2230', 'hair');
   const browTop = ny - 2;
   const sharp = shape === 'sharp';
-  for (let x = -1; x <= 3; x++) set(nx + x, browTop + (sharp ? (x >= 2 ? 1 : 0) : x <= -1 ? 1 : 0), br[1]);
+  for (let x = 0; x <= 3; x++) set(nx + x, browTop + (sharp ? (x >= 2 ? 1 : 0) : x === 0 ? 1 : 0), br[1]);
   for (let x = 0; x <= 2; x++) set(fx + x, browTop + (sharp && x === 0 ? 1 : 0), br[1]);
+  // Warm cheek tones like a hand-shaded face: shadow by the hair, blush under the far eye
+  const [cx, cy] = F(-3.2, 2.6);
+  set(cx, cy, sk[2]);
+  set(cx, cy + 1, sk[2]);
+  set(fx + 1, fy + (female ? 4 : 3), mixHex(sk[2], '#d9606f', 0.22));
 
   // Mouth (no drawn nose: at this size the face reads cleaner without it)
-  const [mx, my] = F(2.0, female ? 3.9 : 4.2);
+  const mx = nx + 5;
+  const my = ny + (female ? 6 : 6);
   set(mx, my, female ? '#b9506a' : sk[1]);
   set(mx + 1, my, female ? '#d06a80' : sk[2]);
 }

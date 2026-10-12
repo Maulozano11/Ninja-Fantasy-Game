@@ -3,7 +3,7 @@
 // T(), head-local hd()) so it works on every body type and pose.
 
 import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
-import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
+import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import type { RampKind } from '../color';
 import { hd } from './hairkit';
 
@@ -1039,9 +1039,10 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
     slot: 'accessory',
     name: 'Neck Scarf',
     desc: 'A thick scarf bunched in folds around the neck and shoulders.',
-    colors: [col('main', 'Scarf', '#26252e')],
+    colors: [col('main', 'Scarf', '#34333f')],
     draw: (g, [c]) => {
-      // Drawn in front of the torso and any cloak collar (capeFront), tucked under the chin.
+      // Drawn in front of the torso and any cloak collar (capeFront), tucked under
+      // the chin, and on top of a cloak's shoulder drape (see the end).
       const L = g.L('capeFront');
       const b = g.bp;
       const sh = b.shoulderHalf;
@@ -1050,18 +1051,22 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
       const pen: Pen = { mat: g.m(c, 'cloth'), part: 'torso' };
       const w = g.rig.pose === 'attack' || g.rig.pose === 'hurt' ? -1.2 : g.rig.frame % 4 >= 2 ? -0.4 : 0;
       // Hanging end over the near shoulder blade (behind the main wrap).
-      poly(L, [top(-sh * 0.55, Lt - 0.5), top(-sh * 0.2, Lt - 1.6), add(top(-sh * 0.5, Lt - 6.2), v(w, 0)), add(top(-sh * 0.85, Lt - 5.4), v(w * 1.4, 0))], pen, 2);
-      seam(L, top(-sh * 0.42, Lt - 1.4), add(top(-sh * 0.62, Lt - 5.6), v(w, 0)), -1);
+      poly(L, [top(-sh * 0.55, Lt - 0.5), top(-sh * 0.2, Lt - 1.6), add(top(-sh * 0.45, Lt - 6.2), v(w, 0)), add(top(-sh * 0.8, Lt - 5.4), v(w * 1.4, 0))], pen, 2);
+      seam(L, top(-sh * 0.42, Lt - 1.4), add(top(-sh * 0.6, Lt - 5.6), v(w, 0)), -1);
       // Lower roll draping over both shoulders.
-      const lowC = top(-sh * 0.08, Lt - 1.9);
-      const lowRx = sh * 0.84 + 0.8;
-      ellipse(L, lowC.x, lowC.y, lowRx, 2.7, pen, (_x, y) => (y + 0.5 < lowC.y - 0.9 ? 4 : y + 0.5 > lowC.y + 1.3 ? 2 : 3));
+      const lowC = top(-sh * 0.1, Lt - 1.7);
+      const lowRx = sh * 0.84 + 0.9;
+      const rollShade = (cy: number, ry: number) => (_x: number, y: number) => {
+        const t = (y + 0.5 - (cy - ry)) / (2 * ry); // 0 top .. 1 bottom
+        return t < 0.38 ? 4 : t > 0.78 ? 2 : 3;
+      };
+      ellipse(L, lowC.x, lowC.y, lowRx, 2.8, pen, rollShade(lowC.y, 2.8));
       // Upper roll bunched under the chin.
-      const upC = top(0.6, Lt + 0.5);
-      const upRx = sh * 0.66 + 1;
-      ellipse(L, upC.x, upC.y, upRx, 2.7, pen, (_x, y) => (y + 0.5 < upC.y - 0.9 ? 4 : y + 0.5 > upC.y + 1.3 ? 2 : 3));
+      const upC = top(0.6, Lt + 0.6);
+      const upRx = sh * 0.66 + 1.1;
+      ellipse(L, upC.x, upC.y, upRx, 2.8, pen, rollShade(upC.y, 2.8));
       // Folds: curved creases between the rolls plus a couple of pinches.
-      const crease = (ax: number, ay: number, bx: number, by: number, d: number) => {
+      const crease = (ax: number, ay: number, bx: number, by: number, dd: number) => {
         const p0 = top(ax, ay);
         const p1 = top(bx, by);
         const steps = Math.ceil(len(sub(p1, p0)) * RES * 1.4);
@@ -1071,16 +1076,43 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
           const yy = q.y + Math.sin(t * Math.PI) * 0.6;
           const fx = fine(q.x);
           const fy = fine(yy);
-          if (L.has(fx, fy) && L.mat[fy * GRID + fx] === pen.mat && L.getShade(fx, fy) > 0) L.reshade(fx, fy, Math.max(1, Math.min(5, L.getShade(fx, fy) + d)));
+          if (L.has(fx, fy) && L.mat[fy * GRID + fx] === pen.mat && L.getShade(fx, fy) > 0) L.reshade(fx, fy, Math.max(1, Math.min(5, L.getShade(fx, fy) + dd)));
         }
       };
-      crease(-upRx + 1.4, Lt - 1.1, upRx - 0.2, Lt - 0.9, -1);
-      crease(-upRx + 1.4, Lt - 0.6, upRx - 0.4, Lt - 0.4, 1);
-      crease(-lowRx + 0.8, Lt - 3.2, lowRx - 1.2, Lt - 2.9, -1);
-      crease(-lowRx + 1.2, Lt - 2.7, lowRx - 1.6, Lt - 2.4, 1);
+      crease(-upRx + 1.4, Lt - 1, upRx - 0.2, Lt - 0.8, -2);
+      crease(-lowRx + 0.8, Lt - 3.1, lowRx - 1.2, Lt - 2.8, -2);
+      crease(-lowRx + 1.2, Lt - 2.6, lowRx - 1.6, Lt - 2.3, 1);
       crease(-sh * 0.3, Lt + 2, -sh * 0.15, Lt - 0.4, -1);
       crease(sh * 0.25, Lt + 1.8, sh * 0.35, Lt - 0.5, -1);
       tuckUnderChin(g, L);
+      // Sit on top of whatever shares the layer (a cloak's collar) and of a
+      // cloak's shoulder drape: dark edge where the scarf meets other pixels,
+      // and drape cloth cleared from under the scarf.
+      const O = g.L('nearArm.over');
+      const arm = (['nearArm.body', 'nearArm.cloth', 'nearArm.armor'] as const).map((d) => g.L(d));
+      const edge: number[] = [];
+      for (let i = 0; i < GRID * GRID; i++) {
+        if (L.mat[i] !== pen.mat) continue;
+        const x = i % GRID;
+        const y = (i / GRID) | 0;
+        const om = O.mat[i];
+        // Only where the scarf would really show (the near arm is not in front of it).
+        const armHere = arm.some((l) => l.mat[i] >= 0);
+        if (!armHere && om >= 0 && g.mats.kinds[om] === 'cloth' && (O.part[i] === partIndex('upperArmN') || O.part[i] === partIndex('torso'))) O.clear(x, y);
+        for (const [dx, dy] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ]) {
+          const j = (y + dy) * GRID + x + dx;
+          if (j >= 0 && j < GRID * GRID && L.mat[j] >= 0 && L.mat[j] !== pen.mat) {
+            edge.push(i);
+            break;
+          }
+        }
+      }
+      for (const i of edge) L.shade[i] = 0;
     },
   },
   {

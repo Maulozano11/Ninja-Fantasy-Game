@@ -723,7 +723,7 @@ export const BOTTOM_ITEMS: ItemDef[] = [
     slot: 'bottom',
     name: 'Baggy Cargo Pants',
     desc: 'Roomy work trousers bloused at the ankle, with a strapped thigh pouch.',
-    colors: [col('main', 'Pants', '#55603f'), col('pouch', 'Pouch', '#3e3428', 'leather')],
+    colors: [col('main', 'Pants', '#55603f'), col('pouch', 'Pouch', '#6e5a3c', 'leather')],
     draw: (g, [c, p]) => {
       trousers(g, c, 1.86, 1.05, 3.2);
       waistband(g, 3.2, clothPen(g, c, 'torso'));
@@ -737,18 +737,20 @@ export const BOTTOM_ITEMS: ItemDef[] = [
         crease(L, legPoint(g, s, 0.84), legPoint(g, s, 1.12));
         crease(L, along(legPoint(g, s, 1.3), legPoint(g, s, 1.75), 0, -1.2), along(legPoint(g, s, 1.3), legPoint(g, s, 1.75), 1, 0.4));
         crease(L, along(legPoint(g, s, 1.45), legPoint(g, s, 1.8), 0, 1.2), along(legPoint(g, s, 1.45), legPoint(g, s, 1.8), 1, -0.6));
-        // Thigh pouch with a buttoned flap and a strap around the leg
-        const a = legPoint(g, s, 0.42);
-        const bb = legPoint(g, s, 0.8);
-        const off = -(R[0] * 0.35);
-        const w = 1.9;
+        if (s === 'F') continue;
+        // Thigh pouch (own layer so it gets its own outline) with a buttoned flap and a leg strap
+        const P = g.L(legDepth(s, 'armor'));
+        const a = legPoint(g, s, 0.36);
+        const bb = legPoint(g, s, 0.78);
+        const off = -(R[0] * 0.3);
+        const w = 1.8;
         const pp = clothPen(g, p, prt('thigh', s), sb(s), 'leather');
-        poly(L, [along(a, bb, 0, off - w), along(a, bb, 0, off + w), along(a, bb, 1, off + w * 0.9), along(a, bb, 1, off - w * 0.9)], pp);
-        poly(L, [along(a, bb, -0.04, off - w - 0.2), along(a, bb, -0.04, off + w + 0.2), along(a, bb, 0.34, off + w), along(a, bb, 0.34, off - w)], pp, 4);
-        seam(L, along(a, bb, 0.36, off - w), along(a, bb, 0.36, off + w), -1);
-        button(L, along(a, bb, 0.28, off), g.m(p, 'leather'), prt('thigh', s), 4);
-        stitch(L, along(a, bb, 0.45, off - w + 0.5), along(a, bb, 0.95, off - w + 0.5), clothPen(g, p, prt('thigh', s), sb(s), 'leather'), 4, 1);
-        limb(g, L, 'leg', s, 0.64, 0.7, 1.15, pp, { shade: 2 });
+        limb(g, P, 'leg', s, 0.18, 0.26, 1.15, pp, { shade: 2 });
+        poly(P, [along(a, bb, 0, off - w), along(a, bb, 0, off + w), along(a, bb, 1, off + w * 0.9), along(a, bb, 1, off - w * 0.9)], pp);
+        poly(P, [along(a, bb, -0.04, off - w - 0.2), along(a, bb, -0.04, off + w + 0.2), along(a, bb, 0.36, off + w + 0.1), along(a, bb, 0.36, off - w - 0.1)], pp, 4);
+        seam(P, along(a, bb, 0.38, off - w), along(a, bb, 0.38, off + w), -1);
+        fpx(P, along(a, bb, 0.26, off), g.m('#b9c0c8', 'metal'), prt('thigh', s), 4);
+        stitch(P, along(a, bb, 0.5, off - w + 0.5), along(a, bb, 0.92, off - w + 0.5), pp, 4, 1);
       }
     },
   },
@@ -862,27 +864,31 @@ export const WAIST_ITEMS: ItemDef[] = [
       const sw = Math.sin(g.rig.frame * 1.4) * 0.35;
       const kF = legPoint(g, 'F', 0.9);
       const lr = b.legR[1];
-      const p0 = TB(g, -1.2, 1.0);
+      const p0 = TB(g, CX + 0.2, 1.0);
       const p1 = TB(g, frontX(g, 1.5) + 1.5, 2.4);
-      const p2 = v(Math.max(kF.x + lr + 1.4, p1.x + 0.4) + sw, kF.y + 0.4);
-      const p3 = v(Math.max(kF.x - lr * 0.5, p0.x + 4.5) + sw, kF.y + 1.9);
-      const m = add(lerp(p0, p3, 0.5), v(-0.7, 0.5));
+      const p2 = v(Math.max(kF.x + lr + 2.0, p1.x + 0.6) + sw, kF.y + 0.4);
+      const p3 = v(Math.max(kF.x - lr * 0.7, p0.x + 3.5) + sw, kF.y + 1.9);
+      const m = add(lerp(p0, p3, 0.5), v(-0.9, 0.3));
+      // shading in bands parallel to the diagonal left edge: two bright folds, dark far edge
+      let nA = perp(norm(sub(p3, p0)));
+      if (nA.x < 0) nA = scale(nA, -1);
+      const W = Math.max(1, (p2.x - p0.x) * nA.x + (p2.y - p0.y) * nA.y);
+      const U = (x: number, y: number) => ((x - p0.x) * nA.x + (y - p0.y) * nA.y) / W;
       poly(L, [p0, p1, p2, p3, m], pen, (x, y) => {
-        // lit toward the upper left, darker toward the knee and the far edge
-        const t = ((x - p0.x) * 0.6 + (y - p0.y) * 0.6) / Math.max(1, (p2.x - p0.x) * 0.6 + (p2.y - p0.y) * 0.6);
-        return t < 0.12 ? 4 : t < 0.86 ? 3 : 2;
+        const u = U(x + 0.5, y + 0.5);
+        return u < 0.12 ? 3 : u < 0.3 ? 4 : u < 0.5 ? 3 : u < 0.64 ? 4 : u < 0.86 ? 3 : 2;
       });
-      // hem in the edge colour, bright diagonal folds with shadow beside them
       tube(L, p3, p2, 0.5, 0.5, ep, 2);
-      for (const [k, hi] of [[0.32, 2], [0.66, 1]]) {
-        const a0 = lerp(p0, p1, k);
-        const a1 = lerp(p3, p2, k);
-        seam(L, a0, a1, -1);
-        seam(L, add(a0, v(-0.5, 0)), add(a1, v(-0.5, 0)), hi);
-      }
-      seam(L, add(lerp(p0, m, 0.5), v(0.6, 0)), add(lerp(m, p3, 0.6), v(0.6, -0.3)), 2);
+      const fold = (u: number, d: number) => {
+        const o = scale(nA, W * u);
+        seam(L, add(lerp(p0, m, 0.15), o), add(p3, add(o, v(0, 1))), d);
+      };
+      fold(0.21, 1);
+      fold(0.57, 1);
+      fold(0.36, -1);
+      fold(0.74, -1);
       // the knot where the panel leaves the wrap
-      const k = TB(g, -0.8, 2.6);
+      const k = TB(g, CX + 0.6, 2.6);
       ellipse(L, k.x, k.y, 1.7, 1.5, pen);
       crease(L, v(k.x - 1.1, k.y - 0.7), v(k.x + 0.9, k.y + 0.7));
     },
@@ -944,8 +950,8 @@ export const WAIST_ITEMS: ItemDef[] = [
       const sw = Math.sin(f * 1.3) * 0.6;
       const tp = clothPen(g, ts, 'torso');
       const ends: [Vec[], Pen][] = [
-        [tailPts(add(knot, v(-0.8, 1)), 6.5, -1.6 + sw, f, 3), pen],
-        [tailPts(add(knot, v(0.3, 1)), 5.0, -0.4 + sw, f + 1, 3), clothPen(g, c, 'torso', -1)],
+        [tailPts(add(knot, v(-1.6, 1)), 6.5, -3.0 + sw, f, 3), pen],
+        [tailPts(add(knot, v(-0.6, 1)), 5.0, -1.8 + sw, f + 1, 3), clothPen(g, c, 'torso', -1)],
       ];
       for (const [pts, p] of ends) {
         for (let i = 0; i < pts.length - 1; i++) tube(B, pts[i], pts[i + 1], 1.0, 1.0, p, twist);
@@ -962,7 +968,7 @@ export const WAIST_ITEMS: ItemDef[] = [
     slot: 'waist',
     name: 'Pouch Belt',
     desc: 'Utility belt carrying three buttoned tool pouches around the hips.',
-    colors: [col('main', 'Belt', '#3a2c22', 'leather'), col('pouch', 'Pouches', '#6b5a43', 'leather'), col('buckle', 'Buckle', '#b9c0c8', 'metal')],
+    colors: [col('main', 'Belt', '#3a2c22', 'leather'), col('pouch', 'Pouches', '#86704f', 'leather'), col('buckle', 'Buckle', '#b9c0c8', 'metal')],
     draw: (g, [c, p, bk]) => {
       const L = g.L('waist');
       const b = g.bp;
@@ -977,12 +983,13 @@ export const WAIST_ITEMS: ItemDef[] = [
         tpoly(g, L, [[x0 - 0.2, y1 + 0.2], [x1 + 0.2, y1 + 0.2], [x1 + 0.1, y1 - 1.7], [(x0 + x1) / 2, y1 - 2.3], [x0 - 0.1, y1 - 1.7]], pp, 4);
         tseam(g, L, x0, y1 - 1.8, (x0 + x1) / 2, y1 - 2.4, -1);
         tseam(g, L, (x0 + x1) / 2, y1 - 2.4, x1, y1 - 1.8, -1);
-        button(L, TB(g, (x0 + x1) / 2, y1 - 1.5), bm, 'torso', 4);
+        fpx(L, TB(g, (x0 + x1) / 2, y1 - 1.6), bm, 'torso', 4);
         tstitch(g, L, x0 + 0.4, y0 + 0.5, x1 - 0.4, y0 + 0.5, pp, 4, 1);
+        tseam(g, L, x0 + 0.3, y1 - 0.1, x0 + 0.3, y0 + 0.6, 1);
       };
-      pouch(-b.hipHalf * 0.86 - 1.6, -b.hipHalf * 0.86 + 1.4, -1.4, 4.0, -1);
-      pouch(-2.4, 0.8, -2.2, 4.2, 0);
-      pouch(b.hipHalf * 0.62 - 1.4, b.hipHalf * 0.62 + 1.4, -0.8, 4.0, 0);
+      pouch(-b.hipHalf * 0.86 - 1.6, -b.hipHalf * 0.86 + 1.2, -1.2, 4.0, -1);
+      pouch(-3.0, -0.2, -2.0, 4.2, 0);
+      pouch(b.hipHalf * 0.62 - 1.0, b.hipHalf * 0.62 + 1.4, -0.6, 4.0, 0);
       tpoly(g, L, [[CX - 0.6, 3.9], [CX + 0.8, 3.9], [CX + 0.8, 0.6], [CX - 0.6, 0.6]], { mat: bm, part: 'torso' }, 3);
       tseam(g, L, CX - 0.3, 3.6, CX - 0.3, 0.9, 1);
     },

@@ -6,7 +6,8 @@
 // Use `hd(g, dx, dy)` to place points.
 
 import type { DrawCtx } from '../ctx';
-import { fwd, GRID, Layer, Pen, poly, px, RES, sub, v, Vec } from '../raster';
+import { F_NO_OUTLINE, fwd, GRID, Layer, Pen, poly, px, RES, sub, v, Vec } from '../raster';
+import { faceAnchor } from '../body';
 
 export const hd = (g: DrawCtx, dx: number, dy: number): Vec => v(g.rig.head.x + dx, g.rig.head.y + dy);
 
@@ -369,4 +370,26 @@ export function hdots(g: DrawCtx, L: Layer, pts: [number, number][], pen: Pen, s
     if (onlyOver && !L.has(fx, fy)) continue;
     px(L, p.x, p.y, { ...pen, bias: 0 }, shade);
   }
+}
+
+
+/**
+ * Draws a hand-made hair template (fine pixels) anchored to the face so it
+ * frames the eyes exactly. Characters: '.' empty, '0'-'5' hair ramp shades
+ * (0 = outline). The template is drawn at final size (not head-scaled), skips
+ * the automatic fray/texture passes and recolors with the hair ramp.
+ * (ax, ay) is the template cell that lands on the near eye's first iris pixel.
+ */
+export function hairTemplate(g: DrawCtx, L: Layer, rows: string[], ax: number, ay: number, mat: number): void {
+  const { nx, ny } = faceAnchor(g);
+  const ox = nx + 2 - ax;
+  const oy = ny + 1 - ay;
+  L.noFray = true;
+  rows.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) {
+      const ch = row.charCodeAt(c) - 48;
+      if (ch < 0 || ch > 5) continue;
+      L.set(ox + c, oy + r, mat, ch, 'head', F_NO_OUTLINE);
+    }
+  });
 }

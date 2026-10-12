@@ -235,47 +235,57 @@ function shoulderDrape(g: DrawCtx, pen: Pen, o: { chest: number; drop: number; o
   return pts;
 }
 
-/** Cloth cap over the top of the near upper arm, so a cloak reads as worn over the shoulder. */
-function shoulderCap(g: DrawCtx, hex: string, len = 0.42, grow = 1.3, folds = 2): void {
+/**
+ * Low cloth cap over the near shoulder (nearArm.over): its top follows the
+ * shoulder slope, its outer side falls straight down past the arm. Returns a
+ * point on its front face (for clasps) and one on its back edge.
+ */
+function shoulderCap(g: DrawCtx, hex: string, len = 0.5, grow = 1.4, folds = 2): { front: Vec; back: Vec } {
   const r = g.rig;
+  const b = g.bp;
+  const sh = b.shoulderHalf;
+  const Lt = b.torsoLen;
+  const top = topPt(g);
   const L = g.L('nearArm.over');
   const pen: Pen = { mat: g.m(hex, 'cloth'), part: 'upperArmN' };
+  // Cloth falls mostly downward even when the arm swings or rises.
   const d = norm(sub(r.elbowN, r.shoulderN));
-  let n = perp(d);
-  if (n.x > 0) n = scale(n, -1); // n points to the back (screen-left when the arm hangs)
-  const R = g.bp.armR[0] + grow;
-  const s = r.shoulderN;
-  const at = (u: number, w: number) => add(add(s, scale(d, u)), scale(n, w));
-  const hemU = g.bp.upperArm * len;
+  const fall = norm(add(d, v(0, 1.4)));
+  let back = perp(fall);
+  if (back.x > 0) back = scale(back, -1); // toward the back (screen-left)
+  const R = b.armR[0] + grow;
+  const drop = b.upperArm * len;
   const w = capeWind(g);
   const flut = w.dx < -2 ? 0.8 : 0;
-  // Rounded cap over the shoulder: an arc from the chest side, over the top, to the back.
-  const pts: Vec[] = [];
-  const cu = 0.6;
-  for (let i = 0; i <= 10; i++) {
-    const a = Math.PI * (i / 10); // 0 = front (-n), PI/2 = up (-d), PI = back (+n)
-    pts.push(at(cu - Math.sin(a) * (R * 0.85 + 0.6), -Math.cos(a) * R));
-  }
-  // Down the back side, a scalloped hem, and back up the front side.
-  pts.push(at(hemU * 0.55, R + 0.5 + flut * 0.5));
-  pts.push(at(hemU + 0.6 + flut, R * 0.85 + flut));
-  pts.push(at(hemU - 0.2, R * 0.35));
-  pts.push(at(hemU + 0.9, -R * 0.15));
-  pts.push(at(hemU - 0.4, -R * 0.75));
-  pts.push(at(hemU * 0.45, -R - 0.1));
+  // Top edge follows the shoulder slope in torso space and never rises above it.
+  const A = top(-sh * 0.25, Lt + 0.1);
+  const B = top(-sh * 0.7, Lt - 0.1);
+  const C = top(-sh - R * 0.45, Lt - 1.1);
+  const C2 = top(-sh - R * 0.7, Lt - 2.4);
+  // Outer side falls straight down, then a scalloped hem runs back toward the chest.
+  const D = add(add(C2, scale(fall, drop * 0.55)), scale(back, 0.25 + flut * 0.4));
+  const E = add(add(C2, scale(fall, drop)), scale(back, 0.5 + flut));
+  const W = R * 2 + 0.6;
+  const H = (k: number, du: number) => add(add(E, scale(back, -W * k)), scale(fall, du));
+  const F = add(A, scale(fall, drop * 0.55));
+  const pts = [A, B, C, C2, D, E, H(0.28, -0.7), H(0.5, 0.3), H(0.75, -0.6), H(1, 0.1), F];
+  const s0 = r.shoulderN;
   poly(L, pts, pen, (x, y) => {
-    const p = sub(v(x + 0.5, y + 0.5), s);
-    const across = p.x * n.x + p.y * n.y; // + toward the back
-    const alongA = p.x * d.x + p.y * d.y;
-    if (alongA < cu - R * 0.55 && across > -R * 0.5) return 4; // top of the shoulder catches the light
-    return across > R * 0.45 ? 3 : across < -R * 0.55 ? 2 : 3;
+    const p = sub(v(x + 0.5, y + 0.5), s0);
+    const across = p.x * back.x + p.y * back.y; // + toward the back
+    const down = p.x * fall.x + p.y * fall.y;
+    if (down < -R * 0.35 && across > -R * 0.6) return 4; // the shoulder top catches the light
+    return across > R * 0.55 ? 4 : across < -R * 0.45 ? 2 : 3;
   });
-  // Folds running down from the shoulder to the hem points.
+  // Folds falling from the shoulder to the hem.
   for (let k = 0; k < folds; k++) {
-    const off = -R * 0.5 + (k * R * 1.05) / Math.max(1, folds - 1);
-    curveFold(L, pen.mat, at(cu - 0.4, off * 0.5), at(hemU * 0.5, off * 0.85), at(hemU + 0.5, off), -1, 1, 0);
-    curveFold(L, pen.mat, at(cu, off * 0.5 + 0.6), at(hemU * 0.5, off * 0.85 + 0.6), at(hemU, off + 0.6), 1, 2, 0.5);
+    const t = folds === 1 ? 0.5 : 0.2 + (k * 0.6) / (folds - 1);
+    const top0 = lerp(C2, F, t);
+    const hemP = H(t, 0);
+    curveFold(L, pen.mat, add(top0, scale(fall, 0.8)), lerp(top0, hemP, 0.5), hemP, -1, 1, 0);
+    curveFold(L, pen.mat, add(add(top0, scale(fall, 1.2)), scale(back, 0.5)), add(lerp(top0, hemP, 0.5), scale(back, 0.5)), add(hemP, scale(back, 0.5)), 1, 2, 0.5);
   }
+  return { front: lerp(F, H(1, 0), 0.25), back: D };
 }
 
 /** Clears pixels of a front layer that cover the head above `belowY` (head-local), so collars sit under the chin. */
@@ -351,16 +361,12 @@ export const CAPE_ITEMS: ItemDef[] = [
       fold(F, fpen.mat, add(nk, v(-3.2, 1.4)), add(nk, v(2.6, 1.0)), -1, 0);
       fold(F, fpen.mat, add(nk, v(-1.4, -1.2)), add(nk, v(-0.4, 1.6)), -1, 1, 2);
       tuckUnderChin(g, F);
-      shoulderCap(g, c, 0.62, 2.1, 3);
-      // Gold clasps: one at the collar, one where the cloak folds over the shoulder.
-      // Gold clasps at both shoulder tips (over scarves and collars), plus one at the collar.
+      const cap = shoulderCap(g, c, 0.62, 2.2, 3);
+      // Gold clasps on the front of the drape and of the far shoulder, plus one at the collar.
       const gp: Pen = { mat: g.m(gold, 'metal'), part: 'torso' };
       clasp(F, top(2.2, Lt - 1.6), gp, 1.1);
-      const O = g.L('nearArm.over');
-      const r = g.rig;
-      const d = norm(sub(r.elbowN, r.shoulderN));
-      clasp(O, add(r.shoulderN, scale(d, 0.4)), { ...gp, part: 'upperArmN' }, 1.2);
-      clasp(O, top(b.shoulderHalf * 0.62 + 1, Lt - 1.4), gp, 1.1);
+      clasp(F, top(b.shoulderHalf * 0.5, Lt - 3.6), gp, 1.1);
+      clasp(g.L('nearArm.over'), cap.front, { ...gp, part: 'upperArmN' }, 1.2);
     },
   },
   {

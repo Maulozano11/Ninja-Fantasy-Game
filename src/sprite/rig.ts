@@ -130,7 +130,8 @@ const arm = (x: number, y: number): HandTarget => ({ from: 'shoulder', x, y, uni
 const chest = (x: number, y: number): HandTarget => ({ from: 'chest', x, y, units: 'px' });
 
 const IDLE: PoseFrame = {
-  lean: 4,
+  // Upright, chest slightly out, head over the shoulders (no hunch).
+  lean: -2,
   handN: arm(-0.16, 0.9),
   handF: arm(0.3, 0.82),
   footN: v(-0.22, 0.97),
@@ -142,9 +143,9 @@ const IDLE: PoseFrame = {
 export const POSES: Record<SpritePose, PoseFrame[]> = {
   idle: [IDLE, IDLE, { ...IDLE, chestDy: 1 }, { ...IDLE, chestDy: 1 }],
   handsigns: [
-    { ...IDLE, lean: 5, handN: chest(1, -1), handF: chest(2, -1), shapeN: 'sign', shapeF: 'sign' },
-    { ...IDLE, lean: 5, handN: chest(1, -2), handF: chest(2, -2), shapeN: 'sign', shapeF: 'sign', chestDy: 0 },
-    { ...IDLE, lean: 6, handN: chest(1, 0), handF: chest(2, 0), shapeN: 'sign', shapeF: 'sign' },
+    { ...IDLE, lean: 0, handN: chest(1, -1), handF: chest(2, -1), shapeN: 'sign', shapeF: 'sign' },
+    { ...IDLE, lean: 0, handN: chest(1, -2), handF: chest(2, -2), shapeN: 'sign', shapeF: 'sign', chestDy: 0 },
+    { ...IDLE, lean: 1, handN: chest(1, 0), handF: chest(2, 0), shapeN: 'sign', shapeF: 'sign' },
   ],
   attack: [
     {
@@ -364,8 +365,8 @@ export function buildRig(body: BodyType, pose: SpritePose, frame: number): Rig {
   const aN = solveArm(shoulderN, f.handN);
   const aF = solveArm(shoulderF, f.handF);
 
-  const headY = neck.y - 6.1 * bp.headScale + (f.headDy || 0);
-  const head = v(Math.round(neck.x + 0.4 + (f.headDx || 0)), Math.round(headY));
+  const headY = neck.y - 5.9 * bp.headScale + (f.headDy || 0);
+  const head = v(Math.round(neck.x - 0.4 + (f.headDx || 0)), Math.round(headY));
 
   return {
     body,

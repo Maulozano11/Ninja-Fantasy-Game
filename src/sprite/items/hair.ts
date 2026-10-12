@@ -12,6 +12,7 @@
 import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, Layer, Pen, RES, v, Vec } from '../raster';
 import { cap, hd, hdots, hlock, hpoly, hseam, lock, LockOpts, shine, unxf } from './hairkit';
+import { hairTemplate } from './hairkit';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -123,6 +124,34 @@ function spikesAlong(g: DrawCtx, L: Layer, pen: Pen, a: Vec, b: Vec, at: number[
 // ---------------------------------------------------------------------------
 // Styles
 // ---------------------------------------------------------------------------
+
+// Hand-drawn from the reference sprite (fine pixels, hair shades 0-5).
+const MIDNIGHT_TEMPLATE = [
+  '........1...10..............',
+  '.......0201012110...........',
+  '......10202210100100........',
+  '......1021320133311101......',
+  '...00012211124232233220.....',
+  '....00221221122135521120....',
+  '...102222332211311153121....',
+  '.001222443333323341133230...',
+  '...02443452233333323224110..',
+  '..022323533231333513541130..',
+  '..1222243244315355423512221.',
+  '.00411431445115354422542010.',
+  '.022223244422.33442221422001',
+  '111233123421..221421.22310..',
+  '.11222113322..131321.12310..',
+  '.1012212331.21.12312111310..',
+  '00022.4233............1220..',
+  '...11.4232............2210..',
+  '...02..132............10101.',
+  '...112.12............210....',
+  '....11012............110....',
+  '...110112............00.....',
+  '...012012............1......',
+  '.00011430............01.....',
+];
 
 export const HAIR_ITEMS: ItemDef[] = [
   {
@@ -479,33 +508,7 @@ export const HAIR_ITEMS: ItemDef[] = [
     desc: 'A dark, messy mop with short jagged tufts and bangs that frame the eyes.',
     colors: hairColor('#1c2233'),
     draw: (g, [c]) => {
-      const P = pens(g, c);
-      // Compact rounded mass close to the skull; the compositor frays the
-      // silhouette, so the base shapes stay calm.
-      locks(g, g.L('hairBack'), [
-        [[-3, -6, -7, -6.5, -8.5, -3], 4.5, { tipW: 2 }],
-        [[-4, -1, -8, 0, -8.5, 3.5], 4.5, { tipW: 1.8 }],
-        [[-4, 2, -6.5, 4.5, -6.8, 6.5], 3.6, { tipW: 1.4 }],
-        [[-5, -4, -8, -5.5, -9.5, -5], 2.8],
-        [[-5, 0.5, -8, 1.5, -9.4, 3], 2.8],
-      ], P.b);
-      const F = g.L('hairFront');
-      cap(g, F, P.f, { grow: 1, top: 0.4, browY: -3, backY: 4.5, sideY: 0.5, earY: 0.5 });
-      locks(g, F, [
-        [[-3, -3, -6.5, -2.5, -8, 0], 3.6, { tipW: 1.5 }],
-        [[-2, -7, -4.5, -8.8, -6.8, -8.6], 3.6, { tipW: 1.4 }],
-        [[0.5, -7.5, 0, -9.3, -0.8, -10.2], 3.2],
-        [[2.5, -7, 3.8, -8.8, 5.5, -8.8], 3.2],
-        [[3.5, -6, 6, -6, 7.5, -3.8], 3.2],
-        // side locks past the cheeks to the jaw
-        [[-2.4, -4.5, -3.7, 0.5, -3.3, 6], 3, { hold: 0.6, tipW: 1 }],
-        [[5, -5, 7.2, -0.5, 6.8, 5.5], 3, { hold: 0.6, tipW: 1 }],
-        // bangs framing the eyes
-        [[-0.8, -6, -0.6, -3, -1.1, -0.4], 3.6, { hold: 0.5 }],
-        [[1.6, -6, 2, -2.5, 2.1, 1.4], 3, { hold: 0.45, tipW: 0.9 }],
-        [[3.8, -6, 4.3, -3, 4.3, -0.5], 3.2, { hold: 0.5 }],
-      ], P.f);
-      shine(g, F, P.f, -7, -4.5, -0.5);
+      hairTemplate(g, g.L('hairFront'), MIDNIGHT_TEMPLATE, 12, 17, g.m(c, 'hair'));
     },
   },
 

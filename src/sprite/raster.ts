@@ -114,6 +114,8 @@ export interface Xf {
 export class Layer {
   /** Optional shrink/grow transform (used to scale the whole head group). */
   xf: Xf | null = null;
+  /** Skip the automatic hair fray pass (hand-drawn templates are already jagged). */
+  noFray = false;
   mat = new Int16Array(N).fill(-1);
   shade = new Uint8Array(N);
   part = new Uint8Array(N);

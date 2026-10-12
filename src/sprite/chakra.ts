@@ -234,6 +234,8 @@ interface Src {
   /** Indices of the pixels at distance 1. */
   rim: number[];
   point: boolean;
+  /** Which hand a point source sits on. */
+  hand?: 'N' | 'F';
   anchor: P;
   dir: P;
   r: number;
@@ -318,7 +320,9 @@ function handSrc(rig: Rig, which: 'N' | 'F', r: number, push: number): Src {
   const dy = hand.y - wrist.y;
   const l = Math.hypot(dx, dy) || 1;
   const dir = { x: dx / l, y: dy / l };
-  return pointSrc({ x: hand.x + dir.x * push, y: hand.y + dir.y * push }, dir, r);
+  const s = pointSrc({ x: hand.x + dir.x * push, y: hand.y + dir.y * push }, dir, r);
+  s.hand = which;
+  return s;
 }
 
 /** Half width of the source around its center at a row (nearest filled row if empty). */
@@ -423,12 +427,14 @@ interface Ctx {
 function rimGlow(c: Ctx, s: Src, level: number): void {
   const p = pulse(c.t);
   const a = Math.round(clamp(140 + 60 * level + 60 * p, 0, 255));
-  const tn = p > 0.7 ? 4 : 3;
+  // red's bright tones lean orange, so its rim sits one tone lower to stay red
+  const base = c.seed === SEEDS.red ? 2 : 3;
+  const tn = p > 0.7 ? base + 1 : base;
   for (const i of s.rim) c.fx.put(0, i % N, Math.floor(i / N), c.pal[tn], a);
   const outer = level >= 0.6 || p > 0.45;
   for (let i = 0; i < N * N; i++) {
     const d = s.dist[i];
-    if (d === 2 && outer) c.fx.put(0, i % N, Math.floor(i / N), c.pal[2], Math.round(120 + 60 * level));
+    if (d === 2 && outer) c.fx.put(0, i % N, Math.floor(i / N), c.pal[base - 1], Math.round(120 + 60 * level));
     else if (d === 3 && level >= 0.9 && p > 0.5) c.fx.put(0, i % N, Math.floor(i / N), c.pal[1], 120);
   }
 }
@@ -1274,7 +1280,7 @@ function violetBurst(c: Ctx, s: Src, L: number): void {
     const G = { x: Math.max(14.5 * g, Math.min((rig.head.x - 11) * S, hairL - 4 * g)), y: Math.max(13 * g + 1, (rig.head.y - 1) * S) + bob };
     guardian(c, G, g, 0.55 + 0.45 * L);
     rimGlow(c, s, L);
-  } else {
+  } else if (s.hand === 'F') {
     // a spectral arm reaching past the casting arm
     const region = new Uint8Array(N * N);
     const segs: [P, P][] = [

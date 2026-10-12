@@ -155,6 +155,11 @@ interface CloakOpts {
   shoulder?: number;
   /** Zig-zag depth of the hem. */
   zig?: number;
+  /**
+   * 'dark': near-black cloth that sits mostly in shades 1-2, with thin crest
+   * highlights (for black cloaks). 'normal': lit side at 4, mid 3, shadow 2.
+   */
+  tone?: 'normal' | 'dark';
 }
 
 interface CloakShape {
@@ -192,21 +197,31 @@ function cloakBack(g: DrawCtx, pen: Pen, o: CloakOpts): CloakShape {
   const pts = [TL, TR, RR, ...hem, B2, B1, SL];
   const minX = Math.min(...pts.map((p) => p.x));
   const maxX = Math.max(...pts.map((p) => p.x));
-  poly(L, pts, pen, bandShade(minX, maxX, 0.14, 0.55));
-  // Big folds fan out from the shoulders: lit ridges end at the low points of
-  // the hem, dark creases at the notches between them.
+  const dark = o.tone === 'dark';
+  poly(L, pts, pen, dark ? (x: number) => ((x + 0.5 - minX) / Math.max(1, maxX - minX) < 0.12 ? 3 : 2) : bandShade(minX, maxX, 0.1, 0.55));
+  // Long folds fall from the shoulders: crests end at the low points of the
+  // hem, creases at the notches between them.
   const sag = v(w.dx * 0.25, 0);
+  const quad = (a: Vec, c: Vec, e: Vec, t: number) => lerp(lerp(a, c, t), lerp(c, e, t), t);
   for (let i = 1; i < n; i++) {
     const t = i / n;
     const h = lerp(hemL, hemR, 1 - t);
     const a = lerp(SL, TR, 0.15 + (1 - t) * 0.6);
-    const start = lerp(a, h, 0.18);
-    const ctrl = add(lerp(start, h, 0.5), sag);
-    if (i % 2 === 1) curveFold(L, pen.mat, start, ctrl, v(h.x, h.y + zig), -1, 2, 0);
-    else curveFold(L, pen.mat, lerp(start, h, 0.12), ctrl, v(h.x, h.y + zig), 1, 3, 1);
+    const start = lerp(a, h, 0.12);
+    const end = v(h.x, h.y + zig);
+    const ctrl = add(lerp(start, end, 0.5), sag);
+    if (i % 2 === 1) {
+      curveFold(L, pen.mat, start, ctrl, end, -1, dark ? 1 : 2, 0);
+    } else {
+      curveFold(L, pen.mat, lerp(start, end, 0.08), ctrl, end, 1, 2, 0.6);
+      // A short brighter glint on the upper part of the crest.
+      const g0 = quad(start, ctrl, end, 0.15);
+      const g1 = quad(start, ctrl, end, 0.7);
+      curveFold(L, pen.mat, g0, lerp(g0, g1, 0.5), g1, 1, 1, 0);
+    }
   }
-  // Rim light down the outer (left) edge.
-  curveFold(L, pen.mat, add(SL, v(0.6, 1)), add(B1, v(0.6, 0)), add(hemL, v(1, -1)), 1, 2, 0);
+  // Thin rim light down the outer (left) edge.
+  curveFold(L, pen.mat, add(SL, v(0.6, 1)), add(B1, v(0.6, 0)), add(hemL, v(1, -1)), 1, 1, 0);
   return { hemL, hemR, SL, TR };
 }
 
@@ -240,7 +255,7 @@ function shoulderDrape(g: DrawCtx, pen: Pen, o: { chest: number; drop: number; o
  * shoulder slope, its outer side falls straight down past the arm. Returns a
  * point on its front face (for clasps) and one on its back edge.
  */
-function shoulderCap(g: DrawCtx, hex: string, len = 0.5, grow = 1.4, folds = 2): { front: Vec; back: Vec } {
+function shoulderCap(g: DrawCtx, hex: string, len = 0.5, grow = 1.4, folds = 2, tone: 'normal' | 'dark' = 'normal'): { front: Vec; back: Vec; top: Vec } {
   const r = g.rig;
   const b = g.bp;
   const sh = b.shoulderHalf;
@@ -274,7 +289,9 @@ function shoulderCap(g: DrawCtx, hex: string, len = 0.5, grow = 1.4, folds = 2):
     const p = sub(v(x + 0.5, y + 0.5), s0);
     const across = p.x * back.x + p.y * back.y; // + toward the back
     const down = p.x * fall.x + p.y * fall.y;
-    if (down < -R * 0.35 && across > -R * 0.6) return 4; // the shoulder top catches the light
+    const lit = down < -R * 0.35 && across > -R * 0.6; // the shoulder top catches the light
+    if (tone === 'dark') return lit ? 3 : 2;
+    if (lit) return 4;
     return across > R * 0.55 ? 4 : across < -R * 0.45 ? 2 : 3;
   });
   // Folds falling from the shoulder to the hem.
@@ -283,9 +300,9 @@ function shoulderCap(g: DrawCtx, hex: string, len = 0.5, grow = 1.4, folds = 2):
     const top0 = lerp(C2, F, t);
     const hemP = H(t, 0);
     curveFold(L, pen.mat, add(top0, scale(fall, 0.8)), lerp(top0, hemP, 0.5), hemP, -1, 1, 0);
-    curveFold(L, pen.mat, add(add(top0, scale(fall, 1.2)), scale(back, 0.5)), add(lerp(top0, hemP, 0.5), scale(back, 0.5)), add(hemP, scale(back, 0.5)), 1, 2, 0.5);
+    curveFold(L, pen.mat, add(add(top0, scale(fall, 1.2)), scale(back, 0.5)), add(lerp(top0, hemP, 0.5), scale(back, 0.5)), add(hemP, scale(back, 0.5)), 1, tone === 'dark' ? 1 : 2, 0.5);
   }
-  return { front: lerp(F, H(1, 0), 0.25), back: D };
+  return { front: lerp(F, H(1, 0), 0.25), back: D, top: lerp(lerp(B, C, 0.5), lerp(H(0.5, 0), F, 0.3), 0.45) };
 }
 
 /** Clears pixels of a front layer that cover the head above `belowY` (head-local), so collars sit under the chin. */
@@ -306,7 +323,7 @@ function tuckUnderChin(g: DrawCtx, L: Layer, belowY = 99): void {
  * A long front panel of an open coat: hangs from the near shoulder down the
  * near side of the body, in front of the legs (capeFront).
  */
-function frontPanel(g: DrawCtx, pen: Pen, o: { x0: number; x1: number; hemY: number; flare?: number }): Vec[] {
+function frontPanel(g: DrawCtx, pen: Pen, o: { x0: number; x1: number; hemY: number; flare?: number; tone?: 'normal' | 'dark' }): Vec[] {
   const r = g.rig;
   const b = g.bp;
   const Lt = b.torsoLen;
@@ -323,7 +340,7 @@ function frontPanel(g: DrawCtx, pen: Pen, o: { x0: number; x1: number; hemY: num
   const pts = [a, c, m1, h1, h0, m0];
   const minX = Math.min(...pts.map((p) => p.x));
   const maxX = Math.max(...pts.map((p) => p.x));
-  poly(L, pts, pen, bandShade(minX, maxX, 0.3, 0.7));
+  poly(L, pts, pen, o.tone === 'dark' ? (x: number) => ((x + 0.5 - minX) / Math.max(1, maxX - minX) < 0.25 ? 3 : 2) : bandShade(minX, maxX, 0.3, 0.7));
   return pts;
 }
 
@@ -345,28 +362,30 @@ export const CAPE_ITEMS: ItemDef[] = [
     slot: 'cape',
     name: 'Shadow Half-Cloak',
     desc: 'A black cloak thrown over one shoulder, pinned with gold clasps, falling in heavy folds to the calves.',
-    colors: [col('main', 'Cloak', '#2e2d35'), col('clasp', 'Clasps', '#d9a93a', 'metal')],
+    colors: [col('main', 'Cloak', '#1c1b22'), col('clasp', 'Clasps', '#d9a93a', 'metal')],
     draw: (g, [c, gold]) => {
       const b = g.bp;
       const Lt = b.torsoLen;
       const top = topPt(g);
       const pen: Pen = { mat: g.m(c, 'cloth'), part: 'back' };
-      cloakBack(g, pen, { len: 0.6, flare: 12, bulge: 7, slant: 4, topR: 0.5, hemR: -2, folds: 3, shoulder: 1.6, zig: 1.4 });
+      // Hangs behind the near arm on the left, to about mid-shin, with a pointed hem.
+      cloakBack(g, pen, { len: 0.47, flare: 9, bulge: 4.2, slant: 2.2, topR: 0.5, hemR: -b.hipHalf * 0.55, folds: 2, shoulder: 0.5, zig: 2.2, tone: 'dark' });
       const fpen: Pen = { mat: pen.mat, part: 'torso' };
       const F = g.L('capeFront');
-      shoulderDrape(g, fpen, { chest: 2.6, drop: 6.5, outer: 2 });
-      // Rolled collar around the neck base.
+      // Rolled collar around the neck base (mostly hidden under a scarf).
       const nk = top(0.4, Lt + 0.2);
-      capsule(F, add(nk, v(-3.6, 0.5)), add(nk, v(2.9, -0.1)), 1.9, 1.6, fpen);
+      capsule(F, add(nk, v(-3.6, 0.5)), add(nk, v(2.9, -0.1)), 1.9, 1.6, fpen, 2);
       fold(F, fpen.mat, add(nk, v(-3.2, 1.4)), add(nk, v(2.6, 1.0)), -1, 0);
-      fold(F, fpen.mat, add(nk, v(-1.4, -1.2)), add(nk, v(-0.4, 1.6)), -1, 1, 2);
+      fold(F, fpen.mat, add(nk, v(-1.4, -1.2)), add(nk, v(-0.4, 1.6)), 1, 0);
       tuckUnderChin(g, F);
-      const cap = shoulderCap(g, c, 0.62, 2.2, 3);
-      // Gold clasps on the front of the drape and of the far shoulder, plus one at the collar.
+      // Small flat cap over the top of the near shoulder only.
+      const cap = shoulderCap(g, c, 0.24, 1.1, 1, 'dark');
+      // Gold clasps at both shoulders (over a scarf), plus one at the collar.
       const gp: Pen = { mat: g.m(gold, 'metal'), part: 'torso' };
       clasp(F, top(2.2, Lt - 1.6), gp, 1.1);
-      clasp(F, top(b.shoulderHalf * 0.5, Lt - 3.6), gp, 1.1);
-      clasp(g.L('nearArm.over'), cap.front, { ...gp, part: 'upperArmN' }, 1.2);
+      const O = g.L('nearArm.over');
+      clasp(O, cap.top, { ...gp, part: 'upperArmN' }, 1.1);
+      clasp(O, top(b.shoulderHalf * 0.62 + 0.6, Lt - 1.1), gp, 1.05);
     },
   },
   {
@@ -395,7 +414,7 @@ export const CAPE_ITEMS: ItemDef[] = [
       const top = topPt(g);
       const Lt = b.torsoLen;
       poly(F, [top(-b.shoulderHalf * 0.15 - 1.4, Lt + 0.6), top(-b.shoulderHalf * 0.15 + 0.2, Lt + 0.6), r.T(-b.shoulderHalf * 0.15 - 0.3, 2), r.T(-b.shoulderHalf * 0.15 - 1.6, 2)], lp, 2);
-      shoulderCap(g, c, 0.55, 1.5);
+      shoulderCap(g, c, 0.26, 1.1, 1);
     },
   },
   {
@@ -413,7 +432,7 @@ export const CAPE_ITEMS: ItemDef[] = [
       const F = g.L('capeFront');
       const fpen: Pen = { mat: pen.mat, part: 'torso' };
       shoulderDrape(g, fpen, { chest: -1.8, drop: 3.2, outer: 1.4 });
-      shoulderCap(g, c, 0.3, 1.2);
+      shoulderCap(g, c, 0.24, 1.0, 1);
       const gp: Pen = { mat: g.m(gold, 'metal'), part: 'torso' };
       clasp(F, top(-b.shoulderHalf * 0.3, Lt - 1.2), gp, 1.4);
       // Gold chain across the collar to the far clasp.
@@ -441,15 +460,15 @@ export const CAPE_ITEMS: ItemDef[] = [
       const Lt = b.torsoLen;
       const top = topPt(g);
       const pen: Pen = { mat: g.m(c, 'cloth'), part: 'back' };
-      const shape = cloakBack(g, pen, { len: 0.82, flare: 5, bulge: 2, slant: 2, topR: b.shoulderHalf * 0.55 + 2, hemR: b.hipHalf + 2, folds: 2, shoulder: 1.2, zig: 1.4 });
+      const shape = cloakBack(g, pen, { len: 0.82, flare: 5, bulge: 2, slant: 2, topR: b.shoulderHalf * 0.55 + 2, hemR: b.hipHalf + 2, folds: 2, shoulder: 1.2, zig: 1.4, tone: 'dark' });
       const tp: Pen = { mat: g.m(trim, 'cloth'), part: 'back' };
       const L = g.L('capeBack');
       hemBand(L, pen.mat, tp, flameHeight(g, 1, 4, 5), (_x, d) => (d === 0 ? 2 : d > 2 ? 4 : 3));
       const fpen: Pen = { mat: pen.mat, part: 'torso' };
       const F = g.L('capeFront');
-      frontPanel(g, fpen, { x0: -b.shoulderHalf - 1.4, x1: -b.shoulderHalf * 0.35, hemY: shape.hemR.y - 0.5, flare: 2.5 });
+      frontPanel(g, fpen, { x0: -b.shoulderHalf - 1.4, x1: -b.shoulderHalf * 0.35, hemY: shape.hemR.y - 0.5, flare: 2.5, tone: 'dark' });
       hemBand(F, fpen.mat, { ...tp, part: 'torso' }, flameHeight(g, 1, 4, 5), (_x, d) => (d === 0 ? 2 : d > 2 ? 4 : 3));
-      shoulderCap(g, c, 0.5, 1.5);
+      shoulderCap(g, c, 0.26, 1.1, 1, 'dark');
       // High collar: rises behind the head, and wraps up to the jaw in front.
       const nk = top(0.5, Lt + 0.4);
       poly(L, [add(nk, v(-7, 2)), add(nk, v(-7.5, -5)), add(nk, v(-4.5, -8.5)), add(nk, v(-1, -6)), add(nk, v(0.5, 1))], pen, 2);
@@ -482,7 +501,7 @@ export const CAPE_ITEMS: ItemDef[] = [
       const fpen: Pen = { mat: pen.mat, part: 'torso' };
       const F = g.L('capeFront');
       shoulderDrape(g, fpen, { chest: 1.6, drop: 6.5, outer: 1.8 });
-      shoulderCap(g, c, 0.5, 1.4);
+      shoulderCap(g, c, 0.36, 1.2, 1);
       // Ragged hem notches on the drape.
       const hp: Pen = { mat: g.m(hood, 'cloth'), part: 'torso' };
       const nk = top(0.2, Lt + 0.6);

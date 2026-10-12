@@ -60,6 +60,7 @@ export const partIndex = (p: PartId): number => PARTS.indexOf(p);
 // Pixel flags
 export const F_NO_OUTLINE = 1; // never turned into an outline pixel
 export const F_NO_EDGE = 2; // doesn't count as "empty" for neighbours' outlines either
+export const F_NO_TEXTURE = 4; // keeps its hand-placed shading (templates)
 
 /** Every outline is pulled toward this near-black so silhouettes read like hand-drawn sprites. */
 const INK = '#07060b';

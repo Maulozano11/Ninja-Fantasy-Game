@@ -5,7 +5,7 @@
 import { DrawCtx, footPoly, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
 import { add, along, ellipse, fine, Layer, Pen, poly, RES, seam, ShadeFn, v } from '../raster';
 import { GROUND } from '../rig';
-import { across, button, crease, fpx, limb, limbR, stamp, stitch, tube, wrapStripes } from './clothes';
+import { across, crease, fpx, limb, limbR, stamp, stitch, stud, tube, wrapStripes } from './clothes';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'leather') => ({ key, label, default: def, kind });
@@ -82,7 +82,7 @@ export const FEET_ITEMS: ItemDef[] = [
         crease(L, along(a, b, 0.78, -0.6), along(a, b, 0.92, 1.2));
         // ankle strap with a small brass buckle
         limb(g, L, 'leg', s, 1.8, 1.87, 0.75, bootPen(g, sole, s, 'shin'));
-        button(L, along(legPoint(g, s, 1.8), legPoint(g, s, 1.87), 0.5, 0.6), g.m('#b8955a', 'metal'), `shin${s}` as Pen['part'], 2 + sb(s));
+        stud(L, along(legPoint(g, s, 1.8), legPoint(g, s, 1.87), 0.5, 0.6), g.m('#b8913a', 'metal'), `shin${s}` as Pen['part'], s === 'N');
         shoeDetail(g, L, s, 0.5);
       }
     },
@@ -221,8 +221,8 @@ export const FEET_ITEMS: ItemDef[] = [
         seam(L, along(a, b, 0.04, R[2] * 0.6), along(a, b, 1, R[3] * 0.6), -1);
         // leather strap with a buckle, rivets top and bottom
         limb(g, L, 'leg', s, 1.5, 1.57, 1.1, bootPen(g, bt, s, 'shin'));
-        button(L, along(legPoint(g, s, 1.5), legPoint(g, s, 1.57), 0.5, -0.3), mp.mat, `shin${s}` as Pen['part'], 4 + sb(s));
-        for (const t of [1.16, 1.78]) button(L, along(legPoint(g, s, t), legPoint(g, s, t + 0.02), 0, -R[2] * 0.15), mp.mat, `shin${s}` as Pen['part'], 3 + sb(s));
+        stud(L, along(legPoint(g, s, 1.5), legPoint(g, s, 1.57), 0.5, -0.3), mp.mat, `shin${s}` as Pen['part'], s === 'N');
+        for (const t of [1.16, 1.78]) stud(L, along(legPoint(g, s, t), legPoint(g, s, t + 0.02), 0, -R[2] * 0.15), mp.mat, `shin${s}` as Pen['part'], false, true);
         // knee guard
         const k = legJoints(g.rig, s).knee;
         const kp = { ...mp, part: `thigh${s}` as Pen['part'] };

@@ -6,6 +6,7 @@ import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import type { RampKind } from '../color';
 import { hd } from './hairkit';
+import { CRYSTAL_SWORD, drawWeapon, KATANA, KUNAI } from './weapons';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -63,7 +64,8 @@ function swordAngle(g: DrawCtx): number {
     case 'charge':
       return 34;
     default:
-      return 50;
+      // Matches the reference: blade hangs steeply across the legs.
+      return 68;
   }
 }
 
@@ -147,105 +149,6 @@ function katanaBlade(L: Layer, base: Vec, gp: Grip, length: number, width: numbe
     paintOver(L, at(t0, -width * 0.32), at(t1, -width * 0.32), pen, 5);
   }
   paintOver(L, at(0.92, -width * 0.1), tip, pen, 5);
-}
-
-function drawKatana(g: DrawCtx, gp: Grip, colors: { blade: string; hilt: string; guard: string }, depth: 'nearArm.held' | 'farArm.held' = 'nearArm.held'): void {
-  const L = g.L(depth);
-  const part = gp.side === 'N' ? 'held' : 'handF';
-  const blade: Pen = { mat: g.m(colors.blade, 'metal'), part };
-  const hilt: Pen = { mat: g.m(colors.hilt, 'leather'), part };
-  const guard: Pen = { mat: g.m(colors.guard, 'metal'), part };
-  const { hand, dir, n } = gp;
-  const h0 = add(hand, scale(dir, -2.8));
-  const h1 = add(hand, scale(dir, 2.2));
-  wrappedHandle(L, h0, h1, 0.85, hilt, { ...hilt, mat: g.m('#d9d2c0', 'cloth') });
-  // Pommel cap
-  capsule(L, add(h0, scale(dir, -0.5)), h0, 0.75, 0.75, guard);
-  // Guard (tsuba) seen edge-on: a short bar across the blade.
-  const gc = add(hand, scale(dir, 2.5));
-  capsule(L, add(gc, scale(n, 1.5)), add(gc, scale(n, -1.5)), 0.65, 0.65, guard);
-  katanaBlade(L, add(hand, scale(dir, 2.9)), gp, Math.max(8, Math.min(16, gp.room - 3.5)), 2.6, blade);
-}
-
-/** Jagged crystal greatsword with faceted shading. */
-function drawCrystalSword(g: DrawCtx, gp: Grip, c: { blade: string; hilt: string; guard: string }): void {
-  const L = g.L('nearArm.held');
-  const part = 'held';
-  const blade: Pen = { mat: g.m(c.blade, 'glow'), part };
-  const hilt: Pen = { mat: g.m(c.hilt, 'leather'), part };
-  const guard: Pen = { mat: g.m(c.guard, 'glow'), part };
-  const { hand, dir, n } = gp;
-  const h0 = add(hand, scale(dir, -4.2));
-  const h1 = add(hand, scale(dir, 2.4));
-  wrappedHandle(L, h0, h1, 0.75, hilt, { ...hilt, mat: g.m('#7a8aa6', 'cloth') });
-  // Crystal pommel
-  const pm = add(h0, scale(dir, -0.9));
-  poly(L, [add(pm, scale(dir, -1.4)), add(pm, scale(n, 0.9)), add(pm, scale(dir, 0.8)), add(pm, scale(n, -0.9))], guard, 4);
-  // Crossguard: crystal spikes swept toward the blade.
-  const gc = add(hand, scale(dir, 2.8));
-  for (const s of [1, -1]) {
-    const tipP = add(add(gc, scale(n, 3.4 * s)), scale(dir, 1.4));
-    poly(L, [add(gc, scale(dir, -0.9)), add(gc, scale(n, 1.4 * s)), tipP, add(add(gc, scale(n, 1.8 * s)), scale(dir, 0.9)), add(gc, scale(dir, 0.9))], guard, s > 0 ? 4 : 3);
-  }
-  // Blade: wide, slightly tapering, with a sawtooth of crystal shards on both edges.
-  const base = add(hand, scale(dir, 3.4));
-  const length = Math.max(10, Math.min(22, gp.room - 4));
-  const W = 1.75;
-  const K = 9;
-  const at = (t: number, off: number) => add(add(base, scale(dir, length * t)), scale(n, off));
-  const back: Vec[] = [];
-  const edge: Vec[] = [];
-  for (let i = 0; i <= K; i++) {
-    const t = (i / K) * 0.88;
-    const w = W * (1 - t * 0.3);
-    const jag = i % 2 === 0 && i > 0 ? 0.8 : 0;
-    const jag2 = i % 2 === 1 ? 0.8 : 0;
-    back.push(at(t + (jag ? 0.015 : 0), w + jag));
-    edge.push(at(t + (jag2 ? 0.015 : 0), -w - jag2));
-  }
-  const tip = at(1, 0);
-  poly(L, [...back, tip, ...edge.reverse()], blade, (x, y) => {
-    // Facets: across-blade coordinate decides the plane; diagonal bands add shards.
-    const p = sub(v(x + 0.5, y + 0.5), base);
-    const across = p.x * n.x + p.y * n.y;
-    const alongB = p.x * dir.x + p.y * dir.y;
-    const band = Math.floor((alongB * 0.6 + Math.abs(across) * 1.1 + 40) / 2.6) % 2;
-    if (Math.abs(across) < 0.3) return 5;
-    if (across > 0) return band ? 4 : 3;
-    return band ? 3 : 2;
-  });
-  // Inner sparkle glints.
-  const glint: Pen = { ...blade, flags: F_NO_OUTLINE };
-  for (const t of [0.25, 0.55, 0.8]) {
-    const p = at(t, 0.6);
-    px(L, p.x, p.y, glint, 5);
-    px(L, p.x + 0.5, p.y, glint, 5);
-    px(L, p.x, p.y + 0.5, glint, 5);
-  }
-}
-
-function drawKunai(g: DrawCtx, gp: Grip, c: { blade: string; wrap: string }): void {
-  const L = g.L('nearArm.held');
-  const part = 'held';
-  const blade: Pen = { mat: g.m(c.blade, 'metal'), part };
-  const wrap: Pen = { mat: g.m(c.wrap, 'cloth'), part };
-  const { hand, dir, n } = gp;
-  const h0 = add(hand, scale(dir, -2.4));
-  const h1 = add(hand, scale(dir, 1.6));
-  wrappedHandle(L, h0, h1, 0.7, wrap, { ...wrap, mat: g.m('#e7e1d1', 'cloth') });
-  // Ring pommel
-  const rc = add(h0, scale(dir, -1.3));
-  ellipse(L, rc.x, rc.y, 1.3, 1.3, blade, 3);
-  ellipse(L, rc.x, rc.y, 0.55, 0.55, { ...blade, flags: 0 }, 0);
-  // Leaf blade with a raised spine
-  const b0 = add(hand, scale(dir, 1.6));
-  const mid = add(b0, scale(dir, 2.2));
-  const tip = add(b0, scale(dir, 7));
-  poly(L, [b0, add(mid, scale(n, 1.5)), tip, add(mid, scale(n, -1.5))], blade, (x, y) => {
-    const p = sub(v(x + 0.5, y + 0.5), b0);
-    return p.x * n.x + p.y * n.y > 0 ? 4 : 2;
-  });
-  paintOver(L, add(b0, scale(dir, 0.6)), add(b0, scale(dir, 6)), blade, 5);
 }
 
 function drawNaginata(g: DrawCtx, gp: Grip, c: { blade: string; shaft: string; fittings: string }): void {
@@ -402,15 +305,17 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Katana',
     desc: 'A curved single-edged blade with a wrapped grip.',
     colors: [col('blade', 'Blade', '#d4dbe4', 'metal'), col('hilt', 'Grip', '#2b2233', 'leather'), col('guard', 'Guard', '#c9a227', 'metal')],
-    draw: (g, [blade, hilt, guard]) => drawKatana(g, gripOf(g, swordAngle(g)), { blade, hilt, guard }),
+    draw: (g, [blade, hilt, guard]) =>
+      drawWeapon(g, 'nearArm.held', KATANA, armJoints(g.rig, 'N').hand, swordAngle(g), { blade, grip: hilt, guard, collar: guard }),
   },
   {
     id: 'held_crystal',
     slot: 'held',
     name: 'Crystal Greatsword',
     desc: 'A huge blade of pale-blue crystal that glitters with every swing.',
-    colors: [col('blade', 'Crystal', '#9fdcf5', 'glow'), col('hilt', 'Grip', '#2a3348', 'leather'), col('guard', 'Guard', '#6fb8e8', 'glow')],
-    draw: (g, [blade, hilt, guard]) => drawCrystalSword(g, gripOf(g, swordAngle(g)), { blade, hilt, guard }),
+    colors: [col('blade', 'Crystal', '#9fd8f0', 'metal'), col('hilt', 'Grip', '#2a3348', 'leather'), col('guard', 'Guard', '#7fa9cf', 'metal')],
+    draw: (g, [blade, hilt, guard]) =>
+      drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, armJoints(g.rig, 'N').hand, swordAngle(g), { blade, grip: hilt, guard, wrap: '#8a9bb8' }),
   },
   {
     id: 'held_kunai',
@@ -418,7 +323,8 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Kunai',
     desc: 'A throwing knife with a ring pommel and wrapped grip.',
     colors: [col('blade', 'Blade', '#aab4c2', 'metal'), col('wrap', 'Wrap', '#3a3346')],
-    draw: (g, [blade, wrap]) => drawKunai(g, gripOf(g, swordAngle(g)), { blade, wrap }),
+    draw: (g, [blade, wrap]) =>
+      drawWeapon(g, 'nearArm.held', KUNAI, armJoints(g.rig, 'N').hand, swordAngle(g), { blade, grip: wrap, guard: blade, wrap: '#e2dccb' }),
   },
   {
     id: 'held_naginata',

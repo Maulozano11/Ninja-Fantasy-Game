@@ -2,7 +2,7 @@
 // Both are deterministic and keyed to body-part space, so the texture moves
 // with the limb instead of swimming across it between frames.
 
-import { F_NO_OUTLINE, GRID, Layer, MaterialTable, RES, Vec } from './raster';
+import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, MaterialTable, RES, Vec } from './raster';
 import type { RampKind } from './color';
 
 function hash2(x: number, y: number, seed: number): number {
@@ -72,7 +72,7 @@ export function applyTexture(L: Layer, mats: MaterialTable, frames: PartFrameLit
   const seeds = new Map<number, number>();
   for (let i = 0; i < GRID * GRID; i++) {
     const m = L.mat[i];
-    if (m < 0 || L.flags[i] & F_NO_OUTLINE) continue;
+    if (m < 0 || L.flags[i] & (F_NO_OUTLINE | F_NO_TEXTURE)) continue;
     const s = L.shade[i];
     if (s < 2 || s > 4) continue;
     const kind = mats.kinds[m];

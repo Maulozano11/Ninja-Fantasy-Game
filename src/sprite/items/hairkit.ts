@@ -127,6 +127,14 @@ export interface LockOpts {
    * its lower-right, so many locks still read as one form.
    */
   form?: Vec;
+  /**
+   * Split the lock into strand clumps about this many fine px wide, each with
+   * a lit side toward the light and a dark gap on its far side, like the
+   * reference hair (instead of one lit edge and one shadow edge).
+   */
+  clumps?: number;
+  /** Seed for the clump wobble, so neighbouring locks don't line up. */
+  seed?: number;
 }
 
 /** Quadratic bezier point. */
@@ -201,8 +209,23 @@ export function lock(L: Layer, root: Vec, ctrl: Vec, tip: Vec, w: number, pen: P
     // -1 = lit edge, +1 = shadow edge
     const side = (across * litDir * (opts.flip ? -1 : 1)) / Math.max(0.5, hw);
     let s = 3;
-    if (side < -0.3 && t < 0.85) s = 4;
-    if (side > 0.4) s = 2;
+    if (opts.clumps) {
+      // Strand clumps across the lock: lit side, body, dark gap. The clump
+      // lines wander a little along the length so they read as hair, not stripes.
+      const k = L.xf ? L.xf.k : 1;
+      const wpx = 2 * hw * RES * k;
+      const seed = opts.seed ?? 0;
+      const u = ((side + 1) / 2) * wpx + Math.sin(t * 7.3 + seed * 1.7) * 0.9 + Math.sin(t * 17.1 + seed) * 0.4;
+      const cw = opts.clumps;
+      const ci = Math.floor(u / cw);
+      const f = u / cw - ci;
+      s = f < 0.4 ? 3 : f > 0.74 ? 1 : 2;
+      if (ci === 0 && f < 0.4 && t < 0.8) s = 4;
+      if (side > 0.8) s = 1;
+    } else {
+      if (side < -0.3 && t < 0.85) s = 4;
+      if (side > 0.4) s = 2;
+    }
     if (crevice && side > 0.72 && hw >= 1.4) s = 1;
     if (opts.form) {
       const ox = cx - opts.form.x;

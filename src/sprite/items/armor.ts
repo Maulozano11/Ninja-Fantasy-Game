@@ -460,14 +460,22 @@ function collar(g: DrawCtx, pen: Pen, height: number, width: number, rimPen?: Pe
   });
 }
 
-/** Darkens / re-shades pixels of the neck layer along a fold line y = y0 + slope * (x - neck.x). */
+/**
+ * A fold across the neck layer: re-shades the trough along the line
+ * y = y0 + slope * (x - neck.x) to `s`, with a lit crest just above it on the
+ * side toward the light.
+ */
 function neckFold(g: DrawCtx, y0: number, slope: number, s: number): void {
   const r = g.rig;
   const N = g.L('neck');
+  const crest: [number, number][] = [];
   scan(r.neck.x - 6, r.neck.y - 5, r.neck.x + 6, r.neck.y + 1, (fx, fy, x, y) => {
     if (!N.has(fx, fy) || N.getShade(fx, fy) === 0) return;
-    if (Math.abs(y - (y0 + (x - r.neck.x) * slope)) < FP * 0.5) N.reshade(fx, fy, s);
+    const d = y - (y0 + (x - r.neck.x) * slope);
+    if (Math.abs(d) < FP * 0.5) N.reshade(fx, fy, s);
+    else if (d < -FP * 0.5 && d > -FP * 1.5 && x < r.neck.x + 0.6 && N.has(fx, fy - 1)) crest.push([fx, fy]);
   });
+  for (const [fx, fy] of crest) N.reshade(fx, fy, Math.min(4, N.getShade(fx, fy) + 1));
 }
 
 // --- skirts -----------------------------------------------------------------
@@ -1054,29 +1062,43 @@ export const ARMOR_ITEMS: ItemDef[] = [
       const beltTop = 4.0;
       const plateBot = beltTop + 0.5;
       const pecY = top - 6.4;
+      const front = b.chestHalf * 0.62 + 2.0 + b.bust * 0.4;
+      /** Light on a molded pectoral dome (local x toward the front, y up); null outside it. */
+      const pec = (lx: number, ly: number, px: number, rx: number): number | null => {
+        const nx = (lx - px) / rx;
+        const ny = (ly - (pecY + 1.5)) / (1.7 + b.bust * 0.3);
+        if (nx * nx + ny * ny > 1) return null;
+        return -0.75 * nx + 0.65 * ny;
+      };
       tfill(
         g,
         L,
         1.2,
         lea,
         (lx, ly, t) => {
-          const lt = litT(t);
+          const u = clamp((lx - cx) / (front - cx), 0, 1);
           if (ly < beltTop) {
-            // wide belt: lit top rim, one stitched line
-            if (beltTop - ly < FP) return rim(lt);
+            // wide belt: a worn lit top edge, a stitched line, a darker lower half
+            if (beltTop - ly < FP) return t < 0.6 ? 4 : 3;
             if (ly < 1.0 + FP) return 1;
-            if (Math.abs(ly - (beltTop - 0.7)) < FP * 0.5 && mod(Math.floor(lx * RES), 3) !== 0) return 3;
-            return 2;
+            if (Math.abs(ly - (beltTop - 0.7)) < FP * 0.5) return mod(Math.floor(lx * RES), 3) !== 0 ? (t < 0.6 ? 4 : 3) : 1;
+            if (u > 0.8) return 1;
+            return ly < 2.2 ? (t < 0.6 ? 2 : 1) : t < 0.6 ? 3 : 2;
           }
           if (ly < plateBot) return 1; // gap under the cuirass
-          if (ly - plateBot < FP) return rim(lt);
+          if (ly - plateBot < FP) return t < 0.55 ? 4 : 3; // worn lower edge
           if (Math.abs(lx - cx) < FP * 0.5) return 1; // front lacing seam
-          if (lx < cx - FP * 0.5 && lx > cx - FP * 1.5 && ly > pecY) return 3;
-          if (ly > top - 0.2 - FP) return rim(lt);
-          // molded chest: a crest along the top of the pecs, a dark under-pec line
-          if (Math.abs(ly - (pecY + 2.6)) < FP * 0.5 && lx > cx - 3.6 && lx < cx - 1) return 4;
-          if (Math.abs(ly - pecY) < FP * 0.5 && lx > -b.chestHalf * 0.6) return 1;
-          return ly < pecY ? 2 : base(lt);
+          if (lx < cx - FP * 0.5 && lx > cx - FP * 1.5 && ly > pecY - 1) return 4; // worn crest beside it
+          if (ly > top - 0.2 - FP) return t < 0.55 ? 4 : 3; // worn top edge
+          // molded chest: two pectoral domes with dark undercurves
+          const near = pec(lx, ly, cx - 2.2, 2.5);
+          if (near !== null) return near > 0.55 ? 4 : near > -0.25 ? 3 : near > -0.6 ? 2 : 1;
+          const far = pec(lx, ly, cx + 2.1, 2.0);
+          if (far !== null) return far > 0.6 ? 3 : far > -0.2 ? 2 : 1;
+          if (ly < pecY + 1.5 && (pec(lx, ly + FP * 1.5, cx - 2.2, 2.5) !== null || pec(lx, ly + FP * 1.5, cx + 2.1, 2.0) !== null)) return 1;
+          if (u > 0.8) return 1; // front edge turning away
+          if (ly < pecY) return lx < cx ? (ly < pecY - 1.6 ? 3 : 2) : u < 0.4 ? 2 : 1; // abdomen
+          return lx < cx ? 3 : 2;
         },
         { top: top - 0.2, bottom: 0.8 },
       );
@@ -1122,7 +1144,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     slot: 'armor',
     name: 'Desert Wrap Vest',
     desc: 'Sand-colored wrapped cloth vest with a diagonal leather strap (+2 AC).',
-    colors: [col('wrap', 'Wraps', '#c9a874'), col('strap', 'Strap', '#6b4a2b', 'leather')],
+    colors: [col('wrap', 'Wraps', '#bfa57c'), col('strap', 'Strap', '#6b4a2b', 'leather')],
     statsArmor: 'Sand Wind Guard',
     draw: (g, [wc, sc]) => {
       const b = g.bp;
@@ -1137,14 +1159,19 @@ export const ARMOR_ITEMS: ItemDef[] = [
         1.0,
         wrap,
         (lx, ly, t) => {
-          // overlapping wraps: a trough under each wrap edge, a short lit crest above it
-          const lt = litT(t);
-          const d = mod(ly + lx * 0.42, 2.9);
+          // overlapping wraps, each a soft roll: a lit crest on its upper edge,
+          // the body, a shadowed lower part and a dark trough where it tucks
+          // under the next wrap; the torso turns from the light toward the front
+          const W = 2.9;
+          const d = mod(ly + lx * 0.42, W);
+          const side = t < 0.42 ? 2 : t < 0.78 ? 1 : 0;
           if (d < FP) return 1;
-          if (d < 1.2) return 2;
-          if (d > 2.9 - FP && t < 0.4) return 4;
-          if (ly < 1.2 + FP) return 2;
-          return base(lt);
+          if (d > W - FP) return side === 2 ? 4 : side === 1 ? (t < 0.62 ? 4 : 3) : 3;
+          if (ly < 1.2 + FP * 2) return side === 0 ? 1 : 2; // hem
+          if (side === 0) return t > 0.9 || d < W * 0.4 ? 1 : 2;
+          if (d < FP * 2) return 2;
+          if (side === 2) return d > W - FP * 2 ? 4 : 3;
+          return d < W * 0.45 ? 2 : 3;
         },
         { top: top - 0.3, bottom: 1.2 },
       );
@@ -1153,15 +1180,18 @@ export const ARMOR_ITEMS: ItemDef[] = [
       const p0: [number, number] = [b.shoulderHalf * 0.5, top + 0.2];
       const p1: [number, number] = [-b.hipHalf * 0.8, 1.4];
       const sw = 1.0;
-      tband(g, S, p0, p1, sw, strap, (_al, ac) => (ac > sw - FP ? 4 : ac < -sw + FP * 1.5 ? 1 : ac > 0 ? 3 : 2));
+      // the strap runs down to the left, so its upper-left edge (negative ac) faces the light
+      tband(g, S, p0, p1, sw, strap, (al, ac, dl) => (-ac > sw - FP ? (al < dl * 0.75 ? 4 : 3) : -ac < -sw + FP * 1.5 ? 1 : -ac > 0 ? 3 : 2));
       const m = lerp(v(p0[0], p0[1]), v(p1[0], p1[1]), 0.55);
       tpoly(g, S, [[m.x - 1.5, m.y + 1.2], [m.x + 1.5, m.y + 1.2], [m.x + 1.5, m.y - 1.8], [m.x - 1.5, m.y - 1.8]], strap, (lx, ly) => {
-        if (m.y + 1.2 - ly < FP) return 4;
+        if (m.y + 1.2 - ly < FP) return lx < m.x + 0.6 ? 4 : 3; // worn flap edge
         if (Math.abs(ly - (m.y + 0.1)) < FP * 0.5) return 1; // flap edge
-        if (lx > m.x + 1.5 - FP) return 1;
-        return ly > m.y ? 3 : 2;
+        if (lx > m.x + 1.5 - FP || ly < m.y - 1.8 + FP) return 1;
+        if (ly > m.y) return lx < m.x + 0.6 ? 3 : 2; // flap
+        if (ly > m.y - FP * 1.5) return 1; // shadow under the flap
+        return lx < m.x - 1.5 + FP ? 3 : 2;
       });
-      tstud(g, S, m.x, m.y + 0.5, buckle, 4);
+      tstud(g, S, m.x, m.y + 0.5, buckle, 5);
       });
       // loose cowl with folds
       collar(g, wrap, 2.1, 1.9);
@@ -1192,46 +1222,68 @@ export const ARMOR_ITEMS: ItemDef[] = [
         1.6,
         pen,
         (lx, ly, t) => {
-          const lt = litT(t);
           if (Math.abs(ly - yoke) < FP * 0.5) return 1; // yoke seam
-          if (ly > yoke) return ly > top - 0.2 - FP ? rim(lt) : ly < yoke + FP * 1.5 ? rim(lt) : base(lt);
-          // vertical quilted channels: trough, then a crest on the lit side of each tube
+          if (ly > yoke) {
+            // smooth yoke: lit top rim, a padded lower edge that catches the light
+            if (ly > top - 0.2 - FP) return t < 0.6 ? 4 : 3;
+            if (ly < yoke + FP * 1.5) return t < 0.45 ? 4 : t < 0.75 ? 3 : 2;
+            return t < 0.5 ? 3 : t < 0.85 ? 2 : 1;
+          }
+          if (yoke - ly < FP * 1.5) return t < 0.5 ? 2 : 1; // shadow under the yoke
+          if (ly < 2.7 && ly > 2.7 - FP) return t < 0.6 ? 2 : 1; // shadow under the waist strap
+          // vertical quilted tubes: a trough, a lit crest on the tube's left
+          // side, its body, and its right side turning into shadow
           const q = mod(lx + 0.4, 2.3);
           if (q < FP) return 1;
-          if (q < FP * 2 && lt) return 3;
-          if (q > 2.3 - FP * 2) return 2;
+          if (q < FP * 2) return t < 0.45 ? 4 : t < 0.78 ? 3 : 2;
+          if (q > 2.3 - FP * 2) return t < 0.86 ? 2 : 1;
           if (ly < 1.8) return 2;
-          return lt ? 3 : 2;
+          return t < 0.7 ? 3 : 2;
         },
         { top: top - 0.2, bottom: 0.8 },
       );
-      // belly pouches
+      // belly pouches: a lit flap, its edge shadowing the pouch, a darker body
       const fr = b.waistHalf * 0.64 + 1.6;
       for (const [x0, x1] of [
         [cx + 0.5, fr],
         [cx - 3.0, cx - 0.5],
       ] as const) {
+        const lit = x1 < cx;
         tpoly(g, L, [[x0, 7.2], [x1, 7.2], [x1, 4.2], [x0, 4.2]], pen, (lx, ly) => {
-          if (7.2 - ly < FP) return rim(lx < (x0 + x1) / 2);
-          if (Math.abs(ly - 6.1) < FP * 0.5) return 1;
-          if (lx > x1 - FP) return 1;
-          return ly > 6.1 ? 3 : 2;
+          if (7.2 - ly < FP) return lit || lx < (x0 + x1) / 2 ? 4 : 3;
+          if (Math.abs(ly - 6.1) < FP * 0.5 || lx > x1 - FP || ly < 4.2 + FP) return 1;
+          if (ly > 6.1) return lit ? 3 : 2;
+          if (ly > 6.1 - FP * 1.5) return lit ? 2 : 1;
+          return lx < x0 + FP ? 3 : 2;
         });
-        tpx(g, L, (x0 + x1) / 2, 6.6, trim, 4);
+        tpx(g, L, (x0 + x1) / 2, 6.6, trim, lit ? 5 : 4);
       }
-      // waist strap with buckle
-      tfill(g, L, 1.7, trim, (_lx, ly, t) => (3.6 - ly < FP ? rim(litT(t)) : ly < 2.7 + FP ? 1 : 2), { top: 3.6, bottom: 2.7 });
-      tpoly(g, L, [[cx - 0.5, 3.9], [cx + 1.0, 3.9], [cx + 1.0, 2.4], [cx - 0.5, 2.4]], trim, (lx, ly) => (lx < cx && ly > 3.4 ? 5 : lx < cx + 0.2 ? 3 : 2));
+      // waist strap with buckle: a lit top edge, a darker lower half
+      const strapEnd = b.waistHalf * 0.64 + 1.4;
+      tfill(
+        g,
+        L,
+        1.7,
+        trim,
+        (lx, ly, t) => {
+          if (3.6 - ly < FP) return Math.abs(lx - (cx - 3.2)) < FP * 0.5 ? 5 : t < 0.55 ? 4 : 3;
+          if (ly < 2.7 + FP) return 1;
+          return lx > strapEnd ? 1 : ly > 3.15 ? (t < 0.7 ? 3 : 2) : 2;
+        },
+        { top: 3.6, bottom: 2.7 },
+      );
+      tpoly(g, L, [[cx - 0.5, 3.9], [cx + 1.0, 3.9], [cx + 1.0, 2.4], [cx - 0.5, 2.4]], trim, (lx, ly) => (lx < cx && ly > 3.4 ? 5 : lx > cx + 0.6 || ly < 2.4 + FP ? 1 : lx < cx + 0.2 ? 3 : 2));
       // tall throat guard with ribs
       const r = g.rig;
       const N = g.L('neck');
       const topP = v(r.head.x - 0.6, r.head.y + 4.4);
-      capsule(N, r.neck, topP, b.neckW + 2.0, b.neckW + 1.6, pen, (x) => (x + 0.5 < r.neck.x - 0.4 ? 3 : 2));
+      capsule(N, r.neck, topP, b.neckW + 2.0, b.neckW + 1.6, pen, (x) => (x + 0.5 < r.neck.x - 0.4 ? 3 : x + 0.5 < r.neck.x + 1.6 ? 2 : 1));
+      // rolled ribs: a trough under each roll, a crest on its top, lit toward the left
       scan(r.neck.x - 6, topP.y - 4, r.neck.x + 6, r.neck.y + 2, (fx, fy, x, y) => {
         if (!N.has(fx, fy) || N.getShade(fx, fy) === 0) return;
         const d = mod(r.neck.y - y + (x - r.neck.x) * 0.1, 1.5);
-        if (d < FP) N.reshade(fx, fy, 1);
-        else if (d < FP * 2 && x < r.neck.x) N.reshade(fx, fy, 4);
+        if (d < FP) N.reshade(fx, fy, x < r.neck.x - 0.4 ? 2 : 1);
+        else if (d < FP * 2) N.reshade(fx, fy, x < r.neck.x ? 4 : x < r.neck.x + 1.6 ? 3 : 2);
       });
       // quilted shoulder pads
       for (const s of SIDES) pauldron(g, s, pen, { top: 2.4, capEnd: 1.2, step: 1.6, n: 1, half: b.armR[0] + 1.1, flare: 0.2, curve: 0.6 });
@@ -1261,7 +1313,10 @@ export const ARMOR_ITEMS: ItemDef[] = [
         [cx + 2.0, pecY + 1.5, 1.8, 1.7, 1.0 + b.bust * 0.3],
       ];
       const rowH = (pecY - 0.4 - (lipY + 0.6)) / 3;
-      for (let rr = 0; rr < 3; rr++) for (const c of [cx - 1.2, cx + 1.0]) bumps.push([c, lipY + 0.6 + (rr + 0.5) * rowH, 1.0, rowH * 0.48, 0.55]);
+      for (let rr = 0; rr < 3; rr++) for (const c of [cx - 1.2, cx + 1.0]) bumps.push([c, lipY + 0.6 + (rr + 0.5) * rowH, 1.0, rowH * 0.48, 0.38]);
+      /** Polished bronze: a soft falloff into shadow, glints only on the strongest light. */
+      const q = (d: number) => (d > 0.9 ? 5 : d > 0.64 ? 4 : d > 0.36 ? 3 : d > -0.14 ? 2 : 1);
+      const front = b.chestHalf * 0.62 + 1.9 + b.bust * 0.4;
       const h = (x: number, y: number) => {
         let s = 0;
         for (const [bx, by, rx, ry, a] of bumps) s += a * Math.exp(-(((x - bx) / rx) ** 2 + ((y - by) / ry) ** 2) * 1.6);
@@ -1281,7 +1336,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
             return 2;
           }
           if (Math.abs(lx - seamX) < FP * 0.5) return 1; // side seam (front/back halves)
-          const th = (t - 0.36) * 2.5;
+          const th = (t - 0.36) * 2.0;
           let nx = Math.sin(th);
           let ny = 0;
           const nz = Math.cos(th) + 0.1;
@@ -1291,8 +1346,10 @@ export const ARMOR_ITEMS: ItemDef[] = [
             nx -= ((h(lx + e, ly) - h(lx - e, ly)) / (2 * e)) * 2.4;
             ny += ((h(lx, ly + e) - h(lx, ly - e)) / (2 * e)) * 2.4;
           }
-          let s = lit3(nx, ny, nz);
+          let s = q((nx * LIGHT3[0] + ny * LIGHT3[1] + nz * LIGHT3[2]) / (Math.hypot(nx, ny, nz) || 1));
           if (ly - lipY < FP) s = Math.max(1, s - 1);
+          // reflected light just inside the shadowed front edge
+          if (s === 1 && lx > front - FP * 2.5 && lx < front - FP * 1.5) s = 2;
           // crisp sculpt lines: pectoral undercurves and the center line
           for (const [px0, rr] of [
             [cx - 2.3, 2.5],
@@ -1315,10 +1372,13 @@ export const ARMOR_ITEMS: ItemDef[] = [
         const R = b.armR[0] + 0.9;
         lfill(A, f, p, 5, (a, bb) => {
           if (a < -1.9 || a > 2.0 || Math.abs(bb) > R) return null;
-          const lt = limbLit(f, bb, R, -0.6);
+          // a leather flap over the shoulder: worn lit top edge, rounded
+          // across the arm, its lower edge turning under
+          const d = limbDot(f, bb, R, -0.9 + 0.5 * (a + 1.9));
           if (a > 2.0 - FP) return 1;
-          if (a < -1.9 + FP) return rim(lt);
-          return base(lt);
+          if (a < -1.9 + FP) return d > 0.2 ? 4 : 3;
+          if (a > 2.0 - FP * 2) return d > 0.5 ? 2 : 1;
+          return Math.min(3, dotShade(d));
         });
         stud(A, add(f.o, add(scale(f.u, 0.1), scale(f.w, 0.6))), onLimb(br, s, 'upperArm'), 4);
       }
@@ -1362,18 +1422,25 @@ export const ARMOR_ITEMS: ItemDef[] = [
       };
       const hemD = (x: number, y: number) => Math.min(segD(x, y, hem[0], hem[1]), segD(x, y, hem[1], hem[2]), segD(x, y, hem[2], hem[3]));
       tpoly(g, L, P, mantle, (lx, ly) => {
-        const lt = lx < 0.8;
+        // lit over the shoulder, turning away from the light toward the front point
+        const tone = lx < -0.4 ? 2 : lx < 2.6 ? 1 : 0;
         if (ly > top - FP * 1.5 && lx < 2) return 4; // lit fold over the shoulder
-        // folds falling from the near shoulder toward the front point
+        if (ly > top - FP * 2.5 && lx < 2) return 3;
+        // folds falling from the near shoulder toward the front point: a dark
+        // trough that widens toward the hem, with a lit crest above it
         if (ly < top - 1.0) {
-          const fold = mod(lx * 0.95 + ly, 3.0);
-          if (fold < FP) return 1;
-          if (fold < 0.9) return 2;
-          if (fold > 3.0 - FP && lt) return 4;
+          const W = 3.0;
+          const f0 = mod(lx * 0.95 + ly, W);
+          const s = f0 < W / 2 ? f0 : f0 - W;
+          const tw = FP * (0.5 + 0.6 * clamp((top - 2 - ly) / 7, 0, 1));
+          if (Math.abs(s) < tw) return 1;
+          if (s >= tw && s < tw + FP) return tone === 0 ? 3 : 4;
+          if (s <= -tw && s > -tw - FP) return tone === 2 ? 3 : 2; // the trough's softer lower side
         }
-        return base(lt);
+        if (hemD(lx, ly) < FP * 3.5) return tone === 2 ? 2 : 1; // shadow above the trim
+        return tone === 2 ? 3 : tone === 1 ? (lx < 1.2 ? 3 : 2) : 2;
       });
-      tpoly(g, L, P, trim, (lx, ly) => (hemD(lx, ly) < FP * 2.2 ? (lx < 0 ? 3 : 2) : null));
+      tpoly(g, L, P, trim, (lx, ly) => (hemD(lx, ly) < FP * 2.2 ? (hemD(lx, ly) > FP * 1.2 ? (lx < 0 ? 3 : 2) : 1) : null));
       // back hang (behind the body)
       const B = g.L('capeBack');
       const sh = -b.shoulderHalf * 0.9;
@@ -1408,14 +1475,17 @@ export const ARMOR_ITEMS: ItemDef[] = [
         if (!inCape(a, bb)) return null;
         if (hemA(bb) - a < FP * 2.2) return null;
         const hw = half + clamp(a, 0, 6) * 0.22;
-        const lt = limbLit(f, bb, hw, a < 0 ? -0.8 : -0.3);
+        // rounded over the shoulder, hanging below it: lit on the outer side,
+        // shadowed toward the body; folds deepen toward the hem
+        const d = limbDot(f, bb, hw, a < 0 ? -0.3 - 1.1 * clamp(-a / capH, 0, 1) : 0.15);
+        const tw = FP * (0.55 + 0.5 * clamp(a / (b.upperArm * 0.62), 0, 1));
         for (const f0b of [-1.3, 0.5, 2.1]) {
           const fb = f0b + a * 0.12 * Math.sign(f0b + 0.1);
-          if (a > 0.4 && Math.abs(bb - fb) < FP * 0.6) return 1;
-          if (a > 0.6 && bb - fb > FP * 0.6 && bb - fb < FP * 1.6 && lt) return 4;
+          if (a > 0.4 && Math.abs(bb - fb) < tw) return d > 0.55 ? 2 : 1;
+          if (a > 0.6 && bb - fb >= tw && bb - fb < tw + FP) return d > 0.2 ? 4 : 3; // crest beside the trough, toward the light
         }
         if (a < -capH + FP * 1.5) return 4;
-        return base(lt);
+        return Math.min(3, dotShade(d));
       });
       lfill(A, f, tp, half + 4, (a, bb) => (inCape(a, bb) && hemA(bb) - a < FP * 2.2 ? (limbLit(f, bb, half) ? 3 : 2) : null));
       // knotted cord clasp with a short tassel

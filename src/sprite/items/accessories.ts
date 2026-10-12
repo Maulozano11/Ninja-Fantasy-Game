@@ -7,6 +7,7 @@ import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line
 import type { RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawWeapon, KATANA, KUNAI } from './weapons';
+import { gripPoint, poleAngle, swordAngle } from '../grip';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -42,59 +43,6 @@ function paintOver(L: Layer, a: Vec, b: Vec, pen: Pen, shade: number, mat?: numb
 // ---------------------------------------------------------------------------
 // Held items
 // ---------------------------------------------------------------------------
-
-/**
- * Screen angle of a hand-held blade per pose/frame (degrees, 0 = facing
- * right, + = clockwise/down). Hanging poses angle the blade down-forward
- * across the body; attacks swing it.
- */
-function swordAngle(g: DrawCtx): number {
-  const f = g.rig.frame;
-  switch (g.rig.pose) {
-    case 'handsigns':
-      return -45;
-    case 'attack':
-      return [-130, -10, 42][f % 3];
-    case 'cast':
-      return -42;
-    case 'hurt':
-      return f % 2 ? 50 : 58;
-    case 'victory':
-      return -62;
-    case 'charge':
-      return 34;
-    default:
-      // Matches the reference: blade hangs across the legs at about 50 degrees.
-      return 52;
-  }
-}
-
-/** Middle of the near fist (a little past the hand point), where a long grip passes through. */
-function fistCenter(g: DrawCtx): Vec {
-  const j = armJoints(g.rig, 'N');
-  return add(j.hand, scale(norm(sub(j.hand, j.wrist)), 0.9));
-}
-
-/** Polearm angle: upright at rest, thrust forward in attacks. */
-function poleAngle(g: DrawCtx): number {
-  const f = g.rig.frame;
-  switch (g.rig.pose) {
-    case 'handsigns':
-      return -50;
-    case 'attack':
-      return [-130, -8, 30][f % 3];
-    case 'cast':
-      return -45;
-    case 'hurt':
-      return -110;
-    case 'victory':
-      return -82;
-    case 'charge':
-      return -18;
-    default:
-      return -84;
-  }
-}
 
 interface Grip {
   hand: Vec;
@@ -312,7 +260,7 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A curved single-edged blade with a wrapped grip.',
     colors: [col('blade', 'Blade', '#d4dbe4', 'metal'), col('hilt', 'Grip', '#2b2233', 'leather'), col('guard', 'Guard', '#c9a227', 'metal')],
     draw: (g, [blade, hilt, guard]) =>
-      drawWeapon(g, 'nearArm.held', KATANA, armJoints(g.rig, 'N').hand, swordAngle(g), { blade, grip: hilt, guard, collar: guard }),
+      drawWeapon(g, 'nearArm.held', KATANA, gripPoint(g), swordAngle(g), { blade, grip: hilt, guard, collar: guard }),
   },
   {
     id: 'held_crystal',
@@ -321,7 +269,7 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A huge blade of pale-blue crystal that glitters with every swing.',
     colors: [col('blade', 'Crystal', '#8ccbe8', 'metal'), col('hilt', 'Grip', '#2a3348', 'leather'), col('guard', 'Guard', '#6f97c0', 'metal')],
     draw: (g, [blade, hilt, guard]) =>
-      drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, fistCenter(g), swordAngle(g), { blade, grip: hilt, guard, wrap: '#8a9bb8' }),
+      drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, gripPoint(g), swordAngle(g), { blade, grip: hilt, guard, wrap: '#8a9bb8' }),
   },
   {
     id: 'held_kunai',
@@ -330,7 +278,7 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A throwing knife with a ring pommel and wrapped grip.',
     colors: [col('blade', 'Blade', '#aab4c2', 'metal'), col('wrap', 'Wrap', '#3a3346')],
     draw: (g, [blade, wrap]) =>
-      drawWeapon(g, 'nearArm.held', KUNAI, armJoints(g.rig, 'N').hand, swordAngle(g), { blade, grip: wrap, guard: blade, wrap: '#e2dccb' }),
+      drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), { blade, grip: wrap, guard: blade, wrap: '#e2dccb' }),
   },
   {
     id: 'held_naginata',
@@ -338,7 +286,7 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Naginata',
     desc: 'A long polearm topped with a curved blade.',
     colors: [col('blade', 'Blade', '#d4dbe4', 'metal'), col('shaft', 'Shaft', '#5a3622', 'leather'), col('fit', 'Fittings', '#c9a227', 'metal')],
-    draw: (g, [blade, shaft, fittings]) => drawNaginata(g, gripOf(g, poleAngle(g)), { blade, shaft, fittings }),
+    draw: (g, [blade, shaft, fittings]) => drawNaginata(g, { ...gripOf(g, poleAngle(g)), hand: gripPoint(g) }, { blade, shaft, fittings }),
   },
   {
     id: 'held_spiral',

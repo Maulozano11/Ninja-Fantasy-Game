@@ -25,6 +25,7 @@ import {
   Vec,
 } from './raster';
 import { BodyParams, Rig } from './rig';
+import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import type { EyeSpecial, SlotId, SpriteAppearance } from './types';
 
@@ -181,6 +182,8 @@ const profileR = (P: Profile, R: number[]) => (t: number): number => {
   }
   return P[P.length - 1][1](R);
 };
+/** Radius of the bare arm at t (0 shoulder, 1 elbow, 2 wrist), following the natural taper. */
+export const armRadius = (g: DrawCtx, t: number): number => profileR(ARM_PROFILE, g.bp.armR)(t);
 /** Control points of the profiles, used as extra capsule cuts so the outline follows the curve. */
 const ARM_CUTS = [0.45, 1, 1.3];
 const LEG_CUTS = [0.5, 1, 1.32];
@@ -290,16 +293,21 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
 // mirrored so the thumb faces forward. Compact, like the reference: a fist is
 // about 8 px across, fingers are 1 px wide with a dark crease between them.
 // o outline · D dark · x crease (near-black) · s shadow · b base · l light
-/** Fist wrapped around a weapon handle: knuckles, a thumb over the grip, curled fingertips. */
+/**
+ * Fist wrapped around a weapon handle that passes through it (the pommel
+ * shows above-left, the guard below-right): knuckles, a thumb over the grip
+ * split off by a crease, three 1px fingers wrapping the handle with dark
+ * creases between them, and rounded fingertips.
+ */
 const HAND_GRIP: PixelTemplate = {
   pivot: [4, 0],
   rows: [
     '..obbbo..',
     '.osbbbbo.',
-    'osbbbbbDo',
+    'osbbbbbso',
     'olbbbbxlo',
-    'osbbbbxbo',
-    'oxsxsxsDo',
+    'oDbbbbxbo',
+    'oxbxbxbDo',
     'osbsbsbDo',
     '.oDoDoDo.',
   ],
@@ -351,38 +359,15 @@ const HAND_RELAXED: PixelTemplate = {
   ],
 };
 
-/** Held items that the near hand wraps around. */
-const GRIPPED = ['held_katana', 'held_crystal', 'held_kunai', 'held_naginata'];
-
 /**
  * Draws a hand from a pixel template matched to the reference sprite. The
  * pen's material recolors it (skin, gloves); `grow` is accepted for gloves
- * but the silhouette stays the same.
+ * but the silhouette stays the same. A near hand holding a weapon grips it at
+ * gripPoint (grip.ts), the middle of the fist.
  */
 export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): void {
   void grow;
   const j = armJoints(g.rig, s);
-  const dir = norm(sub(j.hand, j.wrist));
-  const theta = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
-  const rot = theta - 90;
-  // Keep the thumb on the facing side (+x), or on top when the arm is level.
-  const tr = (rot * Math.PI) / 180;
-  const tx = Math.cos(tr);
-  const ty = Math.sin(tr);
-  const flipX = tx < -0.25 || (Math.abs(tx) <= 0.25 && ty > 0);
-  const holding = s === 'N' && GRIPPED.some((id) => g.has('held', id));
-  const t =
-    j.shape === 'open'
-      ? HAND_OPEN
-      : j.shape === 'relaxed' || j.shape === 'sign'
-        ? HAND_RELAXED
-        : j.shape === 'hold'
-          ? holding
-            ? HAND_GRIP
-            : HAND_RELAXED
-          : holding
-            ? HAND_GRIP
-            : HAND_FIST;
   const b = pen.bias || 0;
   const pal: TemplatePalette = {
     o: [pen.mat, 0],
@@ -392,7 +377,27 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     b: [pen.mat, 3 + b],
     l: [pen.mat, 4 + b],
   };
-  stampTemplate(L, t, j.wrist, rot, pal, pen.part, { flipX, flags: F_NO_OUTLINE | F_NO_TEXTURE });
+  const flags = F_NO_OUTLINE | F_NO_TEXTURE;
+  const holding = s === 'N' && gripAngle(g) !== null;
+  const dir = norm(sub(j.hand, j.wrist));
+  const theta = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+  const rot = theta - 90;
+  // Keep the thumb on the facing side (+x), or on top when the arm is level.
+  const tr = (rot * Math.PI) / 180;
+  const tx = Math.cos(tr);
+  const ty = Math.sin(tr);
+  const flipX = tx < -0.25 || (Math.abs(tx) <= 0.25 && ty > 0);
+  const t =
+    j.shape === 'open'
+      ? HAND_OPEN
+      : j.shape === 'relaxed' || j.shape === 'sign'
+        ? HAND_RELAXED
+        : holding
+          ? HAND_GRIP
+          : j.shape === 'hold'
+            ? HAND_RELAXED
+            : HAND_FIST;
+  stampTemplate(L, t, j.wrist, rot, pal, pen.part, { flipX, flags });
 }
 
 // ---------------------------------------------------------------------------

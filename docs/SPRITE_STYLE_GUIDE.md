@@ -22,6 +22,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 | Poses | idle, handsigns, attack (3 frames), cast, hurt, victory, charge. Every item must work in all of them. |
 | Posture | Upright: chest slightly out, head over the shoulders. Never hunched. In idle the legs are straight under the hips and the arms hang relaxed and nearly straight, fists at hip height. |
 | Depth | 3/4 front ground plane: the near foot stands lower on screen, the far hip and foot sit higher (`ANKLE_N`, `FAR_LIFT` in `rig.ts`). |
+| Hips and legs | Waist, hips and pelvis line up straight under the torso: the hip sides follow the thighs' outer edges (`torsoPoly`), never wider, so there is no bell. A narrow crotch splits the legs, which read as two separate tapered columns down to the feet. |
 
 ## 2. Outline
 
@@ -47,8 +48,9 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 
 - **Skin ramp** (`makeRamp` kind `skin`): the chosen skin color is the broad lit tone. Shadows turn rose and muted (never bright orange); there are no near-white highlights.
 - **Limbs** use cylinder bands (`cylShade` in `raster.ts`): a darker rim on the lit edge, a wide base core, a shadow band, and a dark far edge, with jittered band edges so the shading breaks into clusters.
+- **Arms are slim and tapered** (`ARM_PROFILE` in `ctx.ts`): full through the deltoid and biceps, pinched at the elbow, a slight forearm swell just below it, then a slim wrist (about 5 px with its outline on the male body). Never straight, even-width tubes. Legs follow `LEG_PROFILE` (full thigh, narrower knee, calf swell, slim ankle).
 - **Contact shadows:** skin is one shade darker for two rows under any sleeve, hem, collar or chin drawn over it (`castShadows` in `compose.ts`).
-- **Hands** are pixel templates (`HAND_*` in `ctx.ts`) rotated with RotSprite: lit knuckle pixels, shadow on the side away from the light, and near-black finger creases.
+- **Hands** are compact pixel templates (`HAND_*` in `ctx.ts`, about 8 px across) rotated with RotSprite: lit knuckle pixels, shadow on the side away from the light, and near-black finger creases. A weapon hand wraps the grip with distinct 1 px fingers and a thumb crease, with the pommel and guard showing on either side of the fist. A free hand is small and relaxed (`hold` and `relaxed` shapes).
 - **Feet** are pixel templates in 3/4 front view (`FootArt`, `footDraw` in `ctx.ts`). The near foot faces the viewer with the toes at the bottom; the far foot points right and is authored a shade darker. Each footwear item supplies its own `FootArt` (legend: `0-5` main, `a-f` sole/straps, `p-u` skin, `v-z` metal or stitching); shafts stay procedural.
 
 ## 6. Hair
@@ -75,6 +77,9 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - **Trims:** buttons, studs and gold piping are small and muted: 1-2 px each with a single brighter pixel, set in sparse rows. No grids of big bright squares.
 - Hems are flat or cut, not round blobs.
 - Sleeves, cuffs and boot tops follow the limb (`sleeves`, `trousers`, `boot` in `clothes.ts` and `feet.ts`).
+- **Pants** never flare at the hips. They show a dark inseam where the legs split, and each leg is shaded and outlined as its own tapered column (near leg lighter, far leg darker, inner-thigh shadow), never one block across both legs.
+- **Skirts, robes and coat tails** hang straight from the waist (hem about as wide as the hips, no bell) and let the leg split read below or through them.
+- **Depth target:** the main color of a garment spreads over all five values, like the reference coat: roughly 30% shade 1, 20% shade 2, 25% shade 3, 15% shade 4, 2-4% shade 5 (`shadedist.ts`). Use form shading (the side away from the light and the lower parts darker), occlusion under collars, belts and straps, and folds as a lit crest next to a dark trough.
 
 ## 9. Armor
 
@@ -90,6 +95,7 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - Over the shoulder, a cape uses only a low, flat cap that never rises above the shoulder line.
 - Dark capes stay near-black, with thin highlight lines on fold crests only.
 - Hems are cut or pointed, with long vertical folds.
+- The visible part of a cloak has a lit outer rim and darkens as it curves in behind the body, with one or two lit fold streaks running down it.
 
 ## 11. Names
 

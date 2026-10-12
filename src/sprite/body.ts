@@ -6,7 +6,7 @@
 // fine pixels (RES per design unit) for 128x128 detail.
 
 import { makeRamp, mixHex } from './color';
-import { armPoint, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side } from './ctx';
+import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side } from './ctx';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 
 const SCLERA = '#f4f1ee';
@@ -68,6 +68,42 @@ function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
   armSpan(g, L, s, 1, 2, 0, fore, 'skin');
   const sh = armPoint(g, s, 0.06);
   ellipse(L, sh.x, sh.y, R[0] + 0.3, R[0] + 0.2, upper, ballShade(sh.x, sh.y, R[0] + 0.3, R[0] + 0.2));
+  // Muscle definition: a lit crest along the biceps and along the forearm
+  // muscle just below the elbow, on the side facing the light; a shadow line
+  // under the forearm crest and at the inner elbow.
+  muscleLine(g, L, s, upper.mat, 0.22, 0.72, 0.42, 1);
+  muscleLine(g, L, s, fore.mat, 1.06, 1.58, 0.4, 1);
+  muscleLine(g, L, s, fore.mat, 1.12, 1.5, -0.05, -1);
+  muscleLine(g, L, s, upper.mat, 0.86, 0.98, -0.45, -1);
+}
+
+/**
+ * Re-shades skin along an arm from t0 to t1, `off` radii toward the light
+ * (negative = away from it), by `d` shades. Only touches pixels of `mat`
+ * that are not outline, so it never widens the arm.
+ */
+function muscleLine(g: DrawCtx, L: Layer, s: Side, mat: number, t0: number, t1: number, off: number, d: number): void {
+  const steps = 24;
+  let last = -1;
+  for (let k = 0; k <= steps; k++) {
+    const t = t0 + ((t1 - t0) * k) / steps;
+    const p = armPoint(g, s, t);
+    const q = armPoint(g, s, Math.min(2, t + 0.02));
+    let n = v(-(q.y - p.y), q.x - p.x);
+    const ln = Math.hypot(n.x, n.y) || 1;
+    n = v(n.x / ln, n.y / ln);
+    if (n.x * -0.72 + n.y * -0.69 < 0) n = v(-n.x, -n.y); // toward the light
+    const r = armRadius(g, t);
+    const fx = Math.floor((p.x + n.x * r * off) * RES);
+    const fy = Math.floor((p.y + n.y * r * off) * RES);
+    const i = fy * GRID + fx;
+    if (i === last || fx < 0 || fy < 0 || fx >= GRID || fy >= GRID) continue;
+    last = i;
+    if (!L.has(fx, fy) || L.mat[i] !== mat) continue;
+    const sh0 = L.getShade(fx, fy);
+    if (sh0 <= 0) continue;
+    L.reshade(fx, fy, Math.max(1, Math.min(4, sh0 + d)));
+  }
 }
 
 /** Head center helper: offsets in design units from the integer head center. */

@@ -1146,62 +1146,6 @@ export const TOP_ITEMS: ItemDef[] = [
     },
   },
 ];
-      const yN = hemN.y + 0.5;
-      const yF = hemF.y;
-      const cN = onLine(split, yN);
-      const cF = onLine(split, yF);
-      // how far each panel may reach toward the centre: less as the stance widens
-      const reach = Math.max(1.2, 6 - Math.max(0, hemF.x - hemN.x - 15) * 0.9);
-      const nL = v(Math.min(hemN.x - lr - 2.6, back.x - 1.6), yN);
-      const nR = v(Math.max(hemN.x + lr + 1.2, Math.min(cN.x + 1.0, hemN.x + lr + reach)), yN);
-      const fL = v(Math.min(hemF.x - lr - 0.8, Math.max(cF.x - 1.2, hemF.x - lr - reach)), yF);
-      const fR = v(Math.max(hemF.x + lr + 2.2, front.x + 1.4), yF - 0.5);
-      const fTop = T(split + 0.2, top);
-      const nTop = T(split, top);
-      // Far panel (behind at the closure): lit along its opening edge, dark toward the far side
-      poly(O, [fTop, front, fR, fL], clothPen(g, c, 'torso', -1), (x, y) => {
-        const t = (x + 0.5 - lerp(fTop, fL, (y + 0.5 - fTop.y) / Math.max(1, fL.y - fTop.y)).x) / Math.max(1, fR.x - fL.x);
-        return t < 0.12 ? 5 : t < 0.7 ? 4 : 3;
-      });
-      crease(O, lerp(fTop, front, 0.55), lerp(fL, fR, 0.62));
-      // Near panel: dark navy, lighter fold crests, lit opening edge
-      poly(O, [back, nTop, nR, nL], pen, (x, y) => {
-        const e = lerp(nTop, nR, (y + 0.5 - nTop.y) / Math.max(1, nR.y - nTop.y)).x;
-        const d = e - (x + 0.5);
-        return d < 0.6 ? 4 : d > (e - lerp(back, nL, (y + 0.5 - back.y) / Math.max(1, nL.y - back.y)).x) * 0.82 ? 2 : 3;
-      });
-      // fold crests (2px light) with troughs beside them
-      for (const k of [0.3, 0.6]) {
-        const a0 = lerp(back, nTop, k);
-        const a1 = lerp(nL, nR, k - 0.08);
-        seam(O, a0, a1, 1);
-        seam(O, add(a0, v(0.5, 0)), add(a1, v(0.5, 0)), 1);
-        seam(O, add(a0, v(1.0, 0)), add(a1, v(1.0, 0)), -1);
-      }
-      // centre opening: 1px dark seam between the lit panel edges
-      seam(O, add(nTop, v(0.25, 0)), add(nR, v(0.25, 0)), -3);
-      // lit hem
-      seam(O, add(nL, v(0.6, -0.6)), add(nR, v(-0.4, -0.6)), 1);
-      seam(O, add(fL, v(0.4, -0.6)), add(fR, v(-0.6, -0.6)), 1);
-      // Two rows of small studs down the lower panel, every 4 fine px
-      const len = nR.y - nTop.y;
-      for (let y = 2.4; y < len - 1.2; y += 2) {
-        const p = lerp(nTop, nR, y / len);
-        stud(O, add(p, v(-1.4, 0)), bm, 'torso');
-        stud(O, add(p, v(-3.4, 0)), bm, 'torso');
-      }
-      // Short sleeves ending above the elbow, with a turned-up cuff
-      sleeves(g, c, 0.8, 0.7);
-      for (const s of SIDES) {
-        const La = g.L(armDepth(s, 'cloth'));
-        limb(g, La, 'arm', s, 0.64, 0.82, 0.9, clothPen(g, tr, prt('upperArm', s), sb(s)));
-        across(g, La, 'arm', s, 0.65, 0.9, 1);
-        crease(La, along(armPoint(g, s, 0.1), armPoint(g, s, 0.55), 0, 0.5), along(armPoint(g, s, 0.1), armPoint(g, s, 0.55), 1, 0.9));
-      }
-      highCollar(g, c, 4.5, 1.2);
-    },
-  },
-];
 
 // ---------------------------------------------------------------------------
 // Bottoms

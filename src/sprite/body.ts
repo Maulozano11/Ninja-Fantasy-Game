@@ -201,8 +201,10 @@ function drawFace(g: DrawCtx): void {
     L: flat(EYELINE),
     w: flat(SCLERA),
     h: flat(mixHex(SCLERA, ir[2], 0.32)),
+    // Iris after the reference: a dark top row over a mid-tone row, never the
+    // brightest tone, so the gaze stays focused instead of glaring.
     d: flat(pale ? ir[3] : ir[1]),
-    i: flat(pale ? ir[4] : ir[3]),
+    i: flat(pale ? ir[4] : ir[2]),
     m: flat(female ? '#c4566c' : mixHex(sk[1], '#b8505a', 0.3)),
     M: flat(female ? '#9c3b52' : mixHex(sk[0], sk[1], 0.45)),
   };

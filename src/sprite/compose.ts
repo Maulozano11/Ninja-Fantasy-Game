@@ -125,9 +125,12 @@ export function renderSprite(
     return c;
   };
   const frames = PARTS.map((p) => partFrame(rig, p));
-  for (const depth of DEPTHS) {
+  // Per pixel: which depth drew it last and whether it is an outline pixel.
+  const top = new Int16Array(GRID * GRID).fill(-1);
+  const isLine = new Uint8Array(GRID * GRID);
+  DEPTHS.forEach((depth, d) => {
     const L = layers.get(depth);
-    if (!L || !L.used) continue;
+    if (!L || !L.used) return;
     if ((depth === 'hairFront' || depth === 'hairBack') && !L.noFray) frayHair(L, rig.head, rig.bp.headScale, depth === 'hairFront' ? 11 : 23);
     L.applyOutline();
     if (L.outline) applyTexture(L, mats, frames);
@@ -140,11 +143,42 @@ export function renderSprite(
       rgba[i * 4 + 2] = b;
       rgba[i * 4 + 3] = 255;
       part[i] = L.part[i];
+      top[i] = d;
+      isLine[i] = L.shade[i] === 0 ? 1 : 0;
     }
-  }
+  });
+  thinDoubleOutlines(rgba, top, isLine);
 
   if (!opts.skipEdits && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);
   return { rgba, part, rig };
+}
+
+/**
+ * Keeps outlines 1px. Where a layer's outline runs right next to the outline
+ * of a layer drawn in front of it, the back one is replaced by the back
+ * layer's own fill, so the two never stack into a 2px dark line. Silhouette
+ * outlines (next to transparency) are always kept.
+ */
+function thinDoubleOutlines(rgba: Uint8ClampedArray, top: Int16Array, isLine: Uint8Array): void {
+  const N = GRID * GRID;
+  const fixes: [number, number][] = [];
+  const dirs = [1, -1, GRID, -GRID];
+  for (let i = 0; i < N; i++) {
+    if (!isLine[i]) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    if (x === 0 || y === 0 || x === GRID - 1 || y === GRID - 1) continue;
+    if (dirs.some((dd) => top[i + dd] < 0)) continue;
+    for (const dd of dirs) {
+      const j = i + dd;
+      const k = i - dd;
+      if (isLine[j] && top[j] > top[i] && !isLine[k] && top[k] === top[i]) {
+        fixes.push([i, k]);
+        break;
+      }
+    }
+  }
+  for (const [i, k] of fixes) for (let c = 0; c < 3; c++) rgba[i * 4 + c] = rgba[k * 4 + c];
 }
 
 function resolveColors(def: ItemDef, colors: string[] | undefined): string[] {

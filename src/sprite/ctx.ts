@@ -251,18 +251,18 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
 // rotated to the forearm angle with RotSprite and mirrored so the thumb faces
 // forward. o outline · D dark · x finger crease · s shadow · b base · l light
 const HAND_GRIP: PixelTemplate = {
-  pivot: [6, 0],
+  pivot: [5, 0],
   rows: [
-    '...obbbso...',
-    '..osbbbbso..',
-    '.osbbbbbsDo.',
-    'osblbbbbssDo',
-    'osbblbbbbsDo',
-    'osbbbblbssDo',
-    'oDxbxbxbxsDo',
-    '.oDsDsDsxDo.',
-    '..oDxoDxoo..',
-    '...oo.oo....',
+    '..obbbso..',
+    '.osbbbbso.',
+    'osbbbbbsDo',
+    'oslbbbbsDo',
+    'osblbbbsDo',
+    'osbbblbsDo',
+    'oDxbxbxsDo',
+    '.oDsDsxDo.',
+    '..oDxoDo..',
+    '...oo.o...',
   ],
 };
 const HAND_FIST_FRONT: PixelTemplate = {

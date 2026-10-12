@@ -602,7 +602,7 @@ const LAM_ROW = 2.5;
 function lamRow(d: number, rh: number): 'rim' | 'plate' | 'lace' {
   const m = mod(d, rh);
   if (m > rh - FP) return 'rim';
-  if (m < FP * 2) return 'lace';
+  if (m < FP) return 'lace'; // a single dark lace row keeps the bands calm
   return 'plate';
 }
 /** Lace stitches every 3 fine pixels across. */
@@ -754,7 +754,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     slot: 'armor',
     name: 'Legion Shinobi Plate',
     desc: 'Banded steel plate in the old legion style, layered shoulder segments and a cloth sash across the chest (+4 AC).',
-    colors: [col('steel', 'Steel', '#aeb7c2', 'metal'), col('sash', 'Sash', '#b3202a'), col('trim', 'Trim', '#d4a531', 'metal')],
+    colors: [col('steel', 'Steel', '#8e98a6', 'metal'), col('sash', 'Sash', '#b3202a'), col('trim', 'Trim', '#c49a3a', 'metal')],
     statsArmor: 'Roman Legionary Segmentata',
     draw: (g, [stc, sac, trc]) => {
       const b = g.bp;
@@ -767,7 +767,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
       const cx = 1.2;
       const bandTop = top - 5.0;
       const bandBot = 0.8;
-      const nb = Math.max(3, Math.round((bandTop - bandBot) / 1.9));
+      // Few, broad hoops keep the plate calm instead of striped.
+      const nb = Math.max(2, Math.round((bandTop - bandBot) / 2.7));
       const bh = (bandTop - bandBot) / nb;
       const hw = b.chestHalf;
       const glintX = -hw * 0.38;
@@ -1415,26 +1416,25 @@ export const SKIRT_ITEMS: ItemDef[] = [
           if (fromBot < FP) return 1;
           return folds(c.u, c.down, width, [0.18, 0.4, 0.62, 0.84], c.u < 0.5 ? 3 : 2);
         });
-        // two tiers of leather strips (the upper tier offset by half a strip)
-        const n = Math.max(4, Math.round(width / 2.1));
+        // one tier of broad leather strips that touch, split by 1px seams
+        // (no outlined gaps), so the skirt reads as calm segmented leather
+        const n = Math.max(3, Math.round(width / 3.2));
         const lower = spread(x0 + 0.1, x1 - 0.1, n);
-        const upperX = spread(x0 - 0.4, x1 + 0.2, n + 1).map((x, i) => (i === 0 || i === n + 1 ? x : x - width / n / 2));
         const stripShade = (c: Cell): S => {
           const fromL = c.across * c.cw;
           const fromR = (1 - c.across) * c.cw;
           const fromBot = (1 - c.down) * c.ch;
-          if (fromR < FP) return null; // gap: the tunic shows through
-          if (fromBot < 0.5 && (fromL < FP * 1.2 || fromR < FP * 2.2)) return null; // rounded ends
+          if (fromBot < 0.5 && (fromL < FP * 1.2 || fromR < FP * 1.2)) return null; // rounded ends
           const lt = c.u < 0.5;
-          if (fromR < FP * 2) return 1; // shadowed right edge
+          if (fromR < FP) return 1; // seam to the next strip
           if (fromL < FP) return lt ? 4 : 3; // lit left edge
           if (fromBot < FP) return 1;
-          return c.down < 0.12 ? 2 : base(lt);
+          if (fromR < FP * 2) return 2;
+          return c.down < 0.14 ? 2 : base(lt);
         };
         skirtCols(g, L, strip, lower, ytop, 0.66, stripShade, 0.8, 0.14);
-        skirtCols(g, L, strip, upperX, ytop, 0.36, stripShade, 0.6, 0.1);
-        // small gold studs near the ends of the lower strips
-        for (let i = 0; i < n; i++) {
+        // small gold studs near the ends of every other strip
+        for (let i = 0; i < n; i += 2) {
           const lx = (lower[i] + lower[i + 1]) / 2 - 0.2;
           const h = hang(g, lx, ytop, 0.66, 0.8, 0.14);
           stud(L, lerp(h.top, h.bot, 0.84), studPen(h.w), i < n / 2 ? 4 : 3);

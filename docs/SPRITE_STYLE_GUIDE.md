@@ -28,17 +28,20 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 - 1 px outline, pulled toward near-black (`#07060b`), around every layer. It is added automatically by the layer outline pass.
 - Where one layer overlaps another (arm over the chest, hair over the face), its outline shows as an inner line. That separation is part of the look.
 - Templates that already carry their own outline set `F_NO_OUTLINE`.
+- Outlines never stack into 2 px lines: where a layer's outline runs right next to the outline of a layer in front of it, the back one is dropped (`thinDoubleOutlines` in `compose.ts`).
 
 ## 3. Light and values
 
 - Light comes from the upper left.
 - Each material uses a 6-step hue-shifted ramp: 0 outline, 1 dark, 2 shadow, 3 base, 4 light, 5 highlight. Shadows drift cool and highlights warm.
 - **Value budget:** most of an item sits in shades 1-3. Shades 4-5 are short crest lines, lit rims and single glints, never large flat light areas.
-- Shading is clustered (2-4 px groups placed like brush strokes), not smooth bands. The compositor adds this automatically (`texture.ts`). Hand-made templates set `F_NO_TEXTURE` and carry their own clusters.
+- Shading is clustered (2-4 px groups placed like brush strokes), not smooth bands. The compositor adds this automatically (`texture.ts`), kept subtle so there is little contrast scatter. Hand-made templates set `F_NO_TEXTURE` and carry their own clusters.
+- Dark materials stay readable: black cloth and dark hair keep their fill well above the outline, with lit folds and soft highlights (no near-black fills, no glaring strands).
+- Patterns stay calm: broad bands (about 5 px) with one dark seam row, never high-frequency stripes.
 
 ## 4. Face (fixed)
 
-The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris with one light pixel, a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. It recolors by skin tone and eye color, and has female and bulky variants and four eye shapes. Don't change it without comparing at 10x against the reference.
+The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris (a dark top row over a mid-tone row, never the brightest tone, so the gaze stays focused), a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. It recolors by skin tone and eye color, and has female and bulky variants and four eye shapes. Don't change it without comparing at 10x against the reference.
 
 ## 5. Skin, arms, hands and feet
 
@@ -62,7 +65,8 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - **Anatomy, readable at 1x:** pommel, wrapped grip, guard, then the blade with a lit top edge, a center ridge or fuller, a darker lower half, and facet or hamon detail.
 - The crossguard shows just below the fist. Blades use `metal` materials so they get a dark outline.
 - Glow materials are only for energy techniques (spiral orb, lightning, palm glow), never for steel or crystal.
-- In idle the blade hangs steeply (about 70° below horizontal) across the legs, like the reference.
+- In idle the blade hangs across the legs about 50° below horizontal, like the reference.
+- Blades stay slim (about 5 px plus outline) and taper to the tip; shading is a lit bevel, a centre ridge and a darker lower half, with only sparse facet lines.
 
 ## 8. Clothes
 

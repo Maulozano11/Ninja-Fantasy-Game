@@ -48,11 +48,11 @@ export function hashString(s: string): number {
 
 /** How strongly each material kind gets clustered texture (0 = clean). */
 const AMP: Record<RampKind, number> = {
-  hair: 0.3,
-  cloth: 0.22,
-  leather: 0.24,
-  metal: 0.1,
-  skin: 0.05,
+  hair: 0.2,
+  cloth: 0.13,
+  leather: 0.15,
+  metal: 0.05,
+  skin: 0.04,
   glow: 0,
   flat: 0,
 };

@@ -64,9 +64,15 @@ function swordAngle(g: DrawCtx): number {
     case 'charge':
       return 34;
     default:
-      // Matches the reference: blade hangs steeply across the legs.
-      return 68;
+      // Matches the reference: blade hangs across the legs at about 50 degrees.
+      return 52;
   }
+}
+
+/** Middle of the near fist (a little past the hand point), where a long grip passes through. */
+function fistCenter(g: DrawCtx): Vec {
+  const j = armJoints(g.rig, 'N');
+  return add(j.hand, scale(norm(sub(j.hand, j.wrist)), 0.9));
 }
 
 /** Polearm angle: upright at rest, thrust forward in attacks. */
@@ -315,7 +321,7 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A huge blade of pale-blue crystal that glitters with every swing.',
     colors: [col('blade', 'Crystal', '#8ccbe8', 'metal'), col('hilt', 'Grip', '#2a3348', 'leather'), col('guard', 'Guard', '#6f97c0', 'metal')],
     draw: (g, [blade, hilt, guard]) =>
-      drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, armJoints(g.rig, 'N').hand, swordAngle(g), { blade, grip: hilt, guard, wrap: '#8a9bb8' }),
+      drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, fistCenter(g), swordAngle(g), { blade, grip: hilt, guard, wrap: '#8a9bb8' }),
   },
   {
     id: 'held_kunai',
@@ -962,16 +968,17 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
       // Lower roll draping over both shoulders.
       const lowC = top(-sh * 0.1, Lt - 1.7);
       const lowRx = sh * 0.84 + 0.9;
-      const rollShade = (cy: number, ry: number) => (_x: number, y: number) => {
+      const rollShade = (cx: number, cy: number, rx: number, ry: number) => (x: number, y: number) => {
         const t = (y + 0.5 - (cy - ry)) / (2 * ry); // 0 top .. 1 bottom
-        // Mostly dark with a thin lit crest, like the reference's bunched scarf.
-        return t < 0.2 ? 3 : t > 0.62 ? 1 : 2;
+        // Mostly dark with a lit crest on the light side, like the reference's bunched scarf.
+        if (t < 0.13 && x + 0.5 < cx + rx * 0.35) return 4;
+        return t < 0.26 ? 3 : t > 0.64 ? 1 : 2;
       };
-      ellipse(L, lowC.x, lowC.y, lowRx, 3.2, pen, rollShade(lowC.y, 3.2));
+      ellipse(L, lowC.x, lowC.y, lowRx, 3.2, pen, rollShade(lowC.x, lowC.y, lowRx, 3.2));
       // Upper roll bunched under the chin.
       const upC = top(0.6, Lt + 0.6);
       const upRx = sh * 0.66 + 1.1;
-      ellipse(L, upC.x, upC.y, upRx, 3.2, pen, rollShade(upC.y, 3.2));
+      ellipse(L, upC.x, upC.y, upRx, 3.2, pen, rollShade(upC.x, upC.y, upRx, 3.2));
       // Folds: curved creases between the rolls plus a couple of pinches.
       const crease = (ax: number, ay: number, bx: number, by: number, dd: number) => {
         const p0 = top(ax, ay);

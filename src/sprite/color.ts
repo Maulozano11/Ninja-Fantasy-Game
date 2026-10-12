@@ -91,7 +91,9 @@ export function makeRamp(hex: string, kind: RampKind = 'cloth'): Ramp {
     const warmAmt = kind === 'skin' ? 6 : 8;
     // Near-black and near-white colors need a compressed ramp so the shadows
     // and highlights stay readable.
-    const base = Math.min(0.9, Math.max(l, kind === 'hair' ? 0.14 : 0.12));
+    // Black cloth stays readable like the reference's cape: its fill sits well
+    // above the outline, with lit folds.
+    const base = Math.min(0.9, Math.max(l, kind === 'hair' ? 0.14 : kind === 'cloth' || kind === 'leather' ? 0.16 : 0.12));
     const span = kind === 'metal' ? 1.25 : kind === 'skin' ? 0.8 : 1;
     const dl = (v: number) => v * span;
     const lights = [
@@ -140,6 +142,13 @@ export function makeRamp(hex: string, kind: RampKind = 'cloth'): Ramp {
       sats[5] = Math.max(sats[5], 0.3);
       lights[4] = base + 0.12;
       lights[5] = base + 0.28;
+    }
+    if (kind === 'hair') {
+      // Smooth, low-contrast hair like the reference: the dark fill stays well
+      // above the outline and the brightest strands stay soft.
+      lights[1] = Math.max(lights[1], base * 0.48);
+      lights[2] = Math.max(lights[2], base * 0.72);
+      lights[5] = Math.min(lights[5], base + 0.2);
     }
     if (kind === 'skin') {
       // After the reference sprite: a wide value range, with shadows that

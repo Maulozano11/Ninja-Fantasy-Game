@@ -890,7 +890,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
           hair: it('hair_midnight', '#2f3c54'),
           top: it('top_royalcoat', '#1f2a4a', '#e2b04a', '#131a30'),
           bottom: it('bottom_shinobi', '#1f2a4a', '#1f2a4a'),
-          armor: it('armor_legion', '#aeb7c2', '#b3202a', '#d4a531'),
+          armor: it('armor_legion', '#8e98a6', '#a51f29', '#c49a3a'),
           skirt: it('skirt_imperial', '#b3202a', '#6b4226', '#d4a531'),
           feet: it('feet_sandals', '#1f1e26', '#c9a46c'),
           cape: it('cape_shadow', '#2e2d35', '#d9a93a'),

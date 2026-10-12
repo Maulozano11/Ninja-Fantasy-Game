@@ -143,6 +143,12 @@ export function makeRamp(hex: string, kind: RampKind = 'cloth'): Ramp {
       lights[4] = base + 0.12;
       lights[5] = base + 0.28;
     }
+    if (base > 0.6 && (kind === 'cloth' || kind === 'hair' || kind === 'leather')) {
+      // Light colors (white, cream, blonde, pastel) need deep, cool shadows
+      // or they read as flat blobs.
+      lights[1] = Math.min(lights[1], base - 0.3);
+      lights[2] = Math.min(lights[2], base - 0.15);
+    }
     if (kind === 'hair') {
       // Smooth, low-contrast hair like the reference: the dark fill stays well
       // above the outline and the brightest strands stay soft.

@@ -5,7 +5,7 @@ import { getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS } from './ctx';
 import { drawHeadband } from './items/headband';
-import { add, GRID, Layer, MaterialTable, norm, PartId, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
+import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PartId, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { buildRig, Rig } from './rig';
 import { applyTexture, frayHair } from './texture';
 import type { EyeSpecial, PixelEdit, SlotId, SpriteAppearance, SpritePose } from './types';
@@ -23,36 +23,48 @@ const HEAD_GROUP = new Set<Depth>(['hairBack', 'head.body', 'head.face', 'head.m
 // Slots are drawn in this order; within a depth, later items cover earlier ones.
 const SLOT_ORDER: SlotId[] = ['cape', 'hair', 'face', 'bottom', 'feet', 'top', 'skirt', 'armor', 'waist', 'hands', 'held'];
 
-// Layers whose hems cast a contact shadow on the skin layer under them.
-const TORSO_COVERS: Depth[] = ['torso.under', 'torso.bottom', 'torso.top', 'skirt', 'torso.armor', 'torso.over', 'waist'];
-const SHADOW_CASTERS: [Depth, Depth[]][] = [
-  ['nearArm.body', ['nearArm.cloth', 'nearArm.armor', 'nearArm.over']],
-  ['farArm.body', ['farArm.cloth', 'farArm.armor']],
-  ['nearLeg.body', ['nearLeg.cloth', 'nearLeg.armor', ...TORSO_COVERS]],
-  ['farLeg.body', ['farLeg.cloth', 'farLeg.armor', ...TORSO_COVERS]],
-  ['torso.body', ['neck', 'head.body', 'torso.top', 'torso.armor', 'torso.over', 'waist']],
+// Depths that never cast drop shadows (held weapons, effects drawn on top).
+const NO_CAST = new Set<Depth>(['nearArm.held', 'farArm.held', 'top']);
+// Light comes from the upper left, so a part shadows the pixels just below
+// and to the right of it: offsets from a pixel to the occluders it checks.
+const SHADOW_FROM: [number, number][] = [
+  [0, -1],
+  [-1, -1],
+  [-1, 0],
+  [0, -2],
+  [-1, -2],
 ];
 
 /**
- * Darkens skin by one shade for the two rows under the outline of a sleeve,
- * hem, collar or chin drawn over it, like the reference's cast shadows.
+ * Drop shadows between overlapping parts, like the reference: wherever a part
+ * is drawn over another (arm over the chest, belt over the shirt, scarf over
+ * the armor, torso over the far arm, near leg over the far leg), the back part
+ * is one shade darker for a pixel to the right and two rows below the front
+ * part's outline. Skips outlines, flat and glowing colors, and the face.
  */
-function castShadows(layers: Map<Depth, Layer>, skin: number): void {
-  for (const [depth, covers] of SHADOW_CASTERS) {
-    const L = layers.get(depth);
-    if (!L?.used) continue;
-    const cs = covers.map((c) => layers.get(c)).filter((c): c is Layer => !!c?.used);
-    if (!cs.length) continue;
-    const marks: number[] = [];
-    for (let y = 2; y < GRID; y++) {
-      for (let x = 0; x < GRID; x++) {
-        const i = y * GRID + x;
-        if (L.mat[i] !== skin || cs.some((c) => c.has(x, y))) continue;
-        if (cs.some((c) => c.has(x, y - 2) || (y >= 3 && c.has(x, y - 3)))) marks.push(i);
+function dropShadows(top: Int16Array, mat: Int16Array, shade: Uint8Array, flags: Uint8Array, mats: MaterialTable): void {
+  const noCast = DEPTHS.map((d) => NO_CAST.has(d));
+  const headBody = DEPTHS.indexOf('head.body');
+  const headFace = DEPTHS.indexOf('head.face');
+  const marks: number[] = [];
+  for (let y = 2; y < GRID; y++) {
+    for (let x = 1; x < GRID; x++) {
+      const i = y * GRID + x;
+      const d = top[i];
+      if (d < 0 || shade[i] < 2 || d === headFace) continue;
+      if (d === headBody && flags[i] & F_NO_OUTLINE) continue; // the face template
+      const kind = mats.kinds[mat[i]];
+      if (kind === 'flat' || kind === 'glow') continue;
+      for (const [dx, dy] of SHADOW_FROM) {
+        const j = i + dy * GRID + dx;
+        if (top[j] > d && !noCast[top[j]] && mats.kinds[mat[j]] !== 'glow') {
+          marks.push(i);
+          break;
+        }
       }
     }
-    for (const i of marks) L.shade[i] = Math.max(1, L.shade[i] - 1);
   }
+  for (const i of marks) shade[i] -= 1;
 }
 
 export function renderSprite(
@@ -110,8 +122,6 @@ export function renderSprite(
   }
   drawHeadband(g);
 
-  castShadows(layers, g.skin);
-
   // Outline and flatten
   const rgba = new Uint8ClampedArray(GRID * GRID * 4);
   const part = new Uint8Array(GRID * GRID);
@@ -125,28 +135,38 @@ export function renderSprite(
     return c;
   };
   const frames = PARTS.map((p) => partFrame(rig, p));
-  // Per pixel: which depth drew it last and whether it is an outline pixel.
-  const top = new Int16Array(GRID * GRID).fill(-1);
-  const isLine = new Uint8Array(GRID * GRID);
+  // Per pixel: the depth, material, shade and flags of the part drawn last.
+  const N = GRID * GRID;
+  const top = new Int16Array(N).fill(-1);
+  const topMat = new Int16Array(N).fill(-1);
+  const topShade = new Uint8Array(N);
+  const topFlags = new Uint8Array(N);
   DEPTHS.forEach((depth, d) => {
     const L = layers.get(depth);
     if (!L || !L.used) return;
     if ((depth === 'hairFront' || depth === 'hairBack') && !L.noFray) frayHair(L, rig.head, rig.bp.headScale, depth === 'hairFront' ? 11 : 23);
     L.applyOutline();
     if (L.outline) applyTexture(L, mats, frames);
-    for (let i = 0; i < GRID * GRID; i++) {
-      const m = L.mat[i];
-      if (m < 0) continue;
-      const [r, gg, b] = rgb(mats.ramps[m][L.shade[i]]);
-      rgba[i * 4] = r;
-      rgba[i * 4 + 1] = gg;
-      rgba[i * 4 + 2] = b;
-      rgba[i * 4 + 3] = 255;
-      part[i] = L.part[i];
+    for (let i = 0; i < N; i++) {
+      if (L.mat[i] < 0) continue;
       top[i] = d;
-      isLine[i] = L.shade[i] === 0 ? 1 : 0;
+      topMat[i] = L.mat[i];
+      topShade[i] = L.shade[i];
+      topFlags[i] = L.flags[i];
+      part[i] = L.part[i];
     }
   });
+  dropShadows(top, topMat, topShade, topFlags, mats);
+  const isLine = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    if (topMat[i] < 0) continue;
+    const [r, gg, b] = rgb(mats.ramps[topMat[i]][topShade[i]]);
+    rgba[i * 4] = r;
+    rgba[i * 4 + 1] = gg;
+    rgba[i * 4 + 2] = b;
+    rgba[i * 4 + 3] = 255;
+    isLine[i] = topShade[i] === 0 ? 1 : 0;
+  }
   thinDoubleOutlines(rgba, top, isLine);
 
   if (!opts.skipEdits && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);

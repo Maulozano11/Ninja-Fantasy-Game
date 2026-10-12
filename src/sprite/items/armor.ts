@@ -487,12 +487,16 @@ interface Hang {
   w: number;
 }
 
+/** How much a hanging panel follows its thigh (0 = straight down). Kept low so skirts never bell out. */
+const HANG_FOLLOW = 0.22;
+
 /**
- * Where a hanging panel attached at waist-local x `lx` ends up: it follows a
- * blend of the two thigh directions, `k` thigh-lengths below the hips, so
- * the hem spreads when the legs do.
+ * Where a hanging panel attached at waist-local x `lx` ends up, `k`
+ * thigh-lengths below the hips. Panels hang nearly straight down (they only
+ * lean a little with their thigh), so the hem stays about as wide as the
+ * hips and the legs come out from under it.
  */
-function hang(g: DrawCtx, lx: number, ytop: number, k: number, droop = 0.8, flare = 0.12): Hang {
+function hang(g: DrawCtx, lx: number, ytop: number, k: number, droop = 0.8, flare = 0): Hang {
   const r = g.rig;
   const b = g.bp;
   const xN = -b.hipHalf * 0.55;
@@ -500,17 +504,31 @@ function hang(g: DrawCtx, lx: number, ytop: number, k: number, droop = 0.8, flar
   const w = clamp((lx - xN) / (xF - xN), 0, 1);
   const N = legJoints(r, 'N');
   const F = legJoints(r, 'F');
-  const dir = lerp(sub(N.knee, N.hip), sub(F.knee, F.hip), w);
+  const thigh = lerp(sub(N.knee, N.hip), sub(F.knee, F.hip), w);
+  const dir = lerp(v(0, Math.hypot(thigh.x, thigh.y)), thigh, HANG_FOLLOW);
   const c = -0.6;
   const dr = droop * (1 - clamp(((lx - c) / b.hipHalf) ** 2, 0, 1));
   const bot = add(add(r.T(lx * (1 + flare), 0.5), scale(dir, k)), v(0, dr));
   return { top: r.T(lx, ytop), bot, w };
 }
 
-/** Waist-local x range of the hips (back edge .. front edge). */
+/** Waist-local x range of the hips (back edge .. front edge): the thighs' outer edges, as in torsoPoly. */
 function hipRange(g: DrawCtx, grow = 0): [number, number] {
   const b = g.bp;
-  return [-b.hipHalf * 0.86 - 0.6 - grow, b.hipHalf * 0.62 + 0.6 + grow];
+  return [-(b.hipHalf * 0.5 + b.legR[0] * 0.96) - 0.3 - grow * 0.5, b.hipHalf * 0.42 + b.legR[0] * 0.9 + 0.3 + grow * 0.5];
+}
+
+/** Waist-local x of the split between the legs (the crotch). */
+const SPLIT_X = -0.15;
+
+/** A slim band around the hips (torso-local y from `yb` to `yt`): lit top edge, darker lower edge, turning away toward the front. */
+function waistband(g: DrawCtx, L: Layer, pen: Pen, x0: number, x1: number, yt: number, yb: number): void {
+  tpoly(g, L, [[x0, yt], [x1, yt], [x1, yb], [x0, yb]], pen, (lx, ly) => {
+    const u = (lx - x0) / (x1 - x0);
+    if (yt - ly < FP * 1.5) return u < 0.5 ? 4 : u < 0.8 ? 3 : 2;
+    if (ly - yb < FP) return u < 0.6 ? 2 : 1;
+    return u < 0.55 ? 3 : u < 0.85 ? 2 : 1;
+  });
 }
 
 /** Position inside one skirt column. */
@@ -539,7 +557,7 @@ function skirtCols(
   k: number | ((lx: number) => number),
   fn: (c: Cell) => S,
   droop = 0.8,
-  flare = 0.12,
+  flare = 0,
 ): void {
   const kk = (lx: number) => (typeof k === 'number' ? k : k(lx));
   const n = xs.length - 1;
@@ -1477,15 +1495,17 @@ export const ARMOR_ITEMS: ItemDef[] = [
         const hw = half + clamp(a, 0, 6) * 0.22;
         // rounded over the shoulder, hanging below it: lit on the outer side,
         // shadowed toward the body; folds deepen toward the hem
-        const d = limbDot(f, bb, hw, a < 0 ? -0.3 - 1.1 * clamp(-a / capH, 0, 1) : 0.15);
-        const tw = FP * (0.55 + 0.5 * clamp(a / (b.upperArm * 0.62), 0, 1));
+        const down = clamp(a / (b.upperArm * 0.62), 0, 1);
+        const d = limbDot(f, bb, hw, a < 0 ? -0.3 - 1.1 * clamp(-a / capH, 0, 1) : 0.15 + 0.5 * down);
+        const tw = FP * (0.55 + 0.5 * down);
         for (const f0b of [-1.3, 0.5, 2.1]) {
           const fb = f0b + a * 0.12 * Math.sign(f0b + 0.1);
           if (a > 0.4 && Math.abs(bb - fb) < tw) return d > 0.55 ? 2 : 1;
           if (a > 0.6 && bb - fb >= tw && bb - fb < tw + FP) return d > 0.2 ? 4 : 3; // crest beside the trough, toward the light
+          if (a > 0.6 && fb - bb >= tw && fb - bb < tw + FP) return d > 0.3 ? 2 : 1; // the fold's shadowed side
         }
         if (a < -capH + FP * 1.5) return 4;
-        return Math.min(3, dotShade(d));
+        return Math.min(a < 0.3 && d > 0.72 ? 4 : 3, dotShade(d));
       });
       lfill(A, f, tp, half + 4, (a, bb) => (inCape(a, bb) && hemA(bb) - a < FP * 2.2 ? (limbLit(f, bb, half) ? 3 : 2) : null));
       // knotted cord clasp with a short tassel
@@ -1503,7 +1523,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     slot: 'armor',
     name: 'Dread Plate',
     desc: 'Blackened full plate with tiered pauldrons, gold rivets, a tall gorget and thigh guards (+5 AC).',
-    colors: [col('plate', 'Plate', '#444757', 'metal'), col('trim', 'Gold', '#d0a12e', 'metal')],
+    colors: [col('plate', 'Plate', '#565a6b', 'metal'), col('trim', 'Gold', '#d0a12e', 'metal')],
     statsArmor: 'Dark Knight Plate',
     draw: (g, [pc, tc]) => {
       const b = g.bp;
@@ -1513,21 +1533,42 @@ export const ARMOR_ITEMS: ItemDef[] = [
       const top = chestTop(g);
       const cx = 1.2;
       const breastBot = top - 7.2;
+      const front = b.chestHalf * 0.62 + 2.1 + b.bust * 0.4;
+      const back0 = -b.chestHalf * 0.86 - 1.3;
       tfill(
         g,
         L,
         1.3,
         pl,
         (lx, ly, t) => {
-          const lt = litT(t);
-          if (ly < breastBot) return plate(mod(ly - 0.6, 2.2), 2.2, lt); // plackart lames
+          if (ly < breastBot) {
+            // plackart lames: lit rim (a glint at its lit end), darker lower
+            // half, seam; the breastplate's rim shadows the first lame
+            const h = 2.2;
+            const d = mod(ly - 0.6, h);
+            if (breastBot - ly < FP * 1.5) return t < 0.5 ? 2 : 1;
+            if (d < FP) return 1;
+            if (d > h - FP) return Math.abs(lx - (cx - 2.6)) < FP * 0.5 ? 5 : t < 0.5 ? 4 : t < 0.78 ? 3 : 2;
+            const lower = d < h * 0.5;
+            if (t > 0.8) return lower ? 1 : 2;
+            if (t > 0.56) return 2;
+            return lower ? 2 : 3;
+          }
           const dy = ly - breastBot;
           if (dy < FP) return null; // gold rim drawn below
-          // breastplate with a central ridge: lit crest, dark facet beside it
+          if (ly > top - 0.2 - FP) return t < 0.55 ? 4 : 3; // top rim
+          // breastplate: a lit plane and a shadowed front plane meeting at a ridge
           if (Math.abs(lx - cx) < FP * 0.5) return dy > 2.5 && dy < 2.5 + FP ? 5 : 4;
-          if (lx > cx && lx < cx + 1.4) return 1;
-          if (ly > top - 0.2 - FP) return rim(lt);
-          return dy < (top - breastBot) * 0.4 ? (lt ? 2 : 1) : base(lt);
+          const vv = clamp((top - ly) / (top - breastBot), 0, 1);
+          if (lx > cx) {
+            const u = (lx - cx) / (front - cx);
+            if (u < 0.16) return 1; // the ridge's shadowed side
+            return vv > 0.68 && u < 0.84 ? 1 : 2;
+          }
+          const u = clamp((lx - back0) / (cx - back0), 0, 1);
+          if (vv > 0.8) return 2; // underside
+          if (Math.abs(u * 0.6 + vv - 0.72) < 0.08) return 4; // sheen
+          return u > 0.8 && vv > 0.45 ? 2 : 3;
         },
         { top: top - 0.2, bottom: 0.6 },
       );
@@ -1540,7 +1581,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
       tstud(g, L, -b.chestHalf * 0.62, top - 2.2, gold, 4);
       // tiered pauldrons with gold rims
       for (const s of SIDES) {
-        pauldron(g, s, pl, { top: 3.4, capEnd: 0.8, step: 1.5, n: 3, half: b.armR[0] + 1.9, flare: 0.45, curve: 1.0, out: 0.9, edge: gold, edgeAll: true });
+        pauldron(g, s, pl, { top: 3.4, capEnd: 0.8, step: 1.5, n: 3, half: b.armR[0] + 1.9, flare: 0.45, curve: 1.0, out: 0.9, edge: gold });
         const f = hangFrame(g, s, 0.55);
         stud(g.L(armDepth(s, 'armor')), add(f.o, add(scale(f.u, -1.0), scale(f.w, 0.9))), onLimb(gold, s, 'upperArm'), 4);
       }
@@ -1556,11 +1597,13 @@ export const ARMOR_ITEMS: ItemDef[] = [
         const end = f.len * 0.55;
         lfill(A, f, p, R + 2, (a, bb) => {
           if (a < -0.5 || a > end || Math.abs(bb) > R) return null;
+          // overlapping bands down the thigh: lit top rim, rounded across the
+          // leg, the lower part of each band turning under
           const d = mod(a + 0.5, 2.2);
-          const lt = limbLit(f, bb, R, -0.3);
+          const ld = limbDot(f, bb, R, -0.7 + 1.5 * (d / 2.2));
           if (d > 2.2 - FP) return 1;
-          if (d < FP) return rim(lt);
-          return d < 1.1 ? base(lt) : lt ? 2 : 1;
+          if (d < FP) return ld > 0.3 ? 4 : ld > 0 ? 3 : 2;
+          return Math.min(3, dotShade(ld));
         });
         lfill(A, f, gp, R + 2, (a, bb) => (a > end - FP && a <= end && Math.abs(bb) <= R ? (limbLit(f, bb, R) ? 3 : 2) : null));
         stud(A, add(f.o, add(scale(f.u, end * 0.45), scale(f.w, R * 0.35))), gp, 4);
@@ -1588,35 +1631,46 @@ export const SKIRT_ITEMS: ItemDef[] = [
         const tunic = (w: number) => armorPen(g, tc, 'cloth', thighPart(w));
         const strip = (w: number) => armorPen(g, lc, 'leather', thighPart(w));
         const studPen = (w: number) => armorPen(g, sc, 'metal', thighPart(w));
-        // tunic: a few deep folds, darker toward the front, a dark hem line
+        // tunic: hangs straight, in shadow under the strips; below them a few
+        // folds, a deep crease where the legs split, and a hem turning under
         const xs = spread(x0, x1, 8);
         const width = x1 - x0;
+        const us = (SPLIT_X - x0) / width;
         skirtCols(g, L, tunic, xs, ytop, 0.8, (c) => {
           const fromBot = (1 - c.down) * c.ch;
           if (fromBot < FP) return 1;
+          if (fromBot < FP * 2) return c.u < 0.5 ? 2 : 1;
+          if (Math.abs(c.u - us) * width < FP * (0.5 + c.down * 0.6) && c.down > 0.3) return 1; // split between the legs
+          if (c.down < 0.72) return c.down < 0.3 ? 1 : c.u < 0.55 ? 3 : 2; // under the strips, showing between them
           return folds(c.u, c.down, width, [0.18, 0.4, 0.62, 0.84], c.u < 0.5 ? 3 : 2);
         });
-        // one tier of broad leather strips that touch, split by 1px seams
-        // (no outlined gaps), so the skirt reads as calm segmented leather
+        // one tier of broad leather strips split by 1px seams; toward their
+        // ends they part a little so the red tunic shows between them, more
+        // at the split between the legs
         const n = Math.max(3, Math.round(width / 3.2));
         const lower = spread(x0 + 0.1, x1 - 0.1, n);
+        let splitI = 1;
+        for (let i = 1; i < n; i++) if (Math.abs(lower[i] - SPLIT_X) < Math.abs(lower[splitI] - SPLIT_X)) splitI = i;
         const stripShade = (c: Cell): S => {
-          const fromL = c.across * c.cw;
-          const fromR = (1 - c.across) * c.cw;
+          const open = clamp((c.down - 0.4) / 0.6, 0, 1);
+          const fromL = c.across * c.cw - (c.i === splitI ? FP * 1.6 * open : 0);
+          const fromR = (1 - c.across) * c.cw - FP * open * (c.i + 1 === splitI ? 1.6 : 0.9);
           const fromBot = (1 - c.down) * c.ch;
+          if (fromL < 0 || fromR < 0) return null;
           if (fromBot < 0.5 && (fromL < FP * 1.2 || fromR < FP * 1.2)) return null; // rounded ends
           const lt = c.u < 0.5;
-          if (fromR < FP) return 1; // seam to the next strip
-          if (fromL < FP) return lt ? 4 : 3; // lit left edge
+          if (fromR < FP) return 1; // seam / edge toward the next strip
+          if (fromL < FP || (lt && fromL < FP * 2 && c.down > 0.18 && c.down < 0.55)) return lt ? 4 : 3; // worn lit left edge
           if (fromBot < FP) return 1;
           if (fromR < FP * 2) return 2;
-          return c.down < 0.14 ? 2 : base(lt);
+          if (c.down < 0.14) return lt ? 2 : 1; // shadow under the belt line
+          return c.down > 0.78 && !lt ? 2 : base(lt);
         };
-        skirtCols(g, L, strip, lower, ytop, 0.66, stripShade, 0.8, 0.14);
+        skirtCols(g, L, strip, lower, ytop, 0.66, stripShade, 0.8);
         // small gold studs near the ends of every other strip
         for (let i = 0; i < n; i += 2) {
           const lx = (lower[i] + lower[i + 1]) / 2 - 0.2;
-          const h = hang(g, lx, ytop, 0.66, 0.8, 0.14);
+          const h = hang(g, lx, ytop, 0.66, 0.8);
           stud(L, lerp(h.top, h.bot, 0.84), studPen(h.w), i < n / 2 ? 4 : 3);
         }
       });
@@ -1641,23 +1695,54 @@ export const SKIRT_ITEMS: ItemDef[] = [
           const fromBot = (1 - c.down) * c.ch;
           return fromBot < FP * 2.5 || (c.i === 0 && c.across * c.cw < FP * 2) || (c.i === last && (1 - c.across) * c.cw < FP * 2);
         };
-        // front panel (over the front of the legs)
-        const fx = spread(-0.6, x1, 3);
-        const fw = x1 + 0.6;
-        skirtCols(g, L, cloth, fx, top(3), k, (c) => folds(c.u, c.down, fw, [0.35, 0.7], c.u < 0.45 ? 3 : 2, 0.6), 1.2, 0.05);
-        skirtCols(g, L, trimP, fx, top(3), k, (c) => (border(c, 2) ? ((1 - c.down) * c.ch < FP ? 1 : c.u < 0.4 ? 3 : 2) : null), 1.2, 0.05);
+        // front panel (over the front of the far leg), hanging straight from
+        // the split between the legs: lit toward the back, turning into
+        // shadow toward the front, soft folds, shadowed under the wrap band
+        const fx = spread(SPLIT_X - 0.45, x1, 3);
+        const fw = x1 - SPLIT_X + 0.45;
+        skirtCols(
+          g,
+          L,
+          cloth,
+          fx,
+          top(3),
+          k,
+          (c) => {
+            if (c.down < 0.07) return c.u < 0.5 ? 2 : 1;
+            const tone = c.u < 0.4 ? 3 : c.u < 0.8 ? 2 : 1;
+            return folds(c.u, c.down, fw, [0.3, 0.58, 0.82], tone, 0.62);
+          },
+          1.2,
+        );
+        skirtCols(
+          g,
+          L,
+          trimP,
+          fx,
+          top(3),
+          k,
+          (c) => {
+            if (!border(c, 2)) return null;
+            const fromBot = (1 - c.down) * c.ch;
+            if (fromBot < FP) return 1;
+            if (fromBot < FP * 2.5 && fromBot >= FP * 1.5) return c.u < 0.4 ? 4 : c.u < 0.8 ? 3 : 2; // lit top of the hem border
+            return c.u < 0.4 ? 3 : 2;
+          },
+          1.2,
+        );
         // back panel (behind the near leg)
         const B = g.L('farLeg.armor');
-        const bx = spread(x0 - 0.4, -b.hipHalf * 0.2, 3);
-        const bw = -b.hipHalf * 0.2 - x0 + 0.4;
-        skirtCols(g, B, (w) => armorPen(g, cc, 'cloth', thighPart(w), -1), bx, 3, k, (c) => folds(c.u, c.down, bw, [0.45], c.u < 0.5 ? 3 : 2, 0.6), 0.4, 0.05);
-        skirtCols(g, B, (w) => armorPen(g, bc, 'cloth', thighPart(w), -1), bx, 3, k, (c) => (border(c, 2) ? 3 : null), 0.4, 0.05);
-        // wrap band with a knot at the front hip
+        const bx = spread(x0 - 0.2, SPLIT_X - 0.6, 3);
+        const bw = SPLIT_X - 0.4 - x0;
+        skirtCols(g, B, (w) => armorPen(g, cc, 'cloth', thighPart(w), -1), bx, 3, k, (c) => (c.down < 0.07 ? 2 : folds(c.u, c.down, bw, [0.45], c.u < 0.5 ? 3 : 2, 0.6)), 0.4);
+        skirtCols(g, B, (w) => armorPen(g, bc, 'cloth', thighPart(w), -1), bx, 3, k, (c) => (border(c, 2) ? ((1 - c.down) * c.ch < FP ? 1 : 3) : null), 0.4);
+        // slim wrap band with a knot at the front hip
         const band = armorPen(g, bc);
-        skirtCols(g, L, band, spread(x0, x1, 6), top(3.4), 0.13, (c) => (c.down < 0.25 ? rim(c.u < 0.5) : c.down > 0.75 ? 1 : base(c.u < 0.5)), 0, 0.05);
-        const kp = g.rig.T(x1 - 1.0, top(3.4) - 1.4);
-        capsule(L, kp, add(kp, v(0.8, 3.6)), 0.8, 1.05, band, (x) => (x + 0.5 < kp.x + 0.4 ? 3 : 2));
-        capsule(L, kp, add(kp, v(-0.6, 3.0)), 0.7, 0.9, band, 2);
+        const wy = top(3.4);
+        waistband(g, L, band, x0, x1, wy, wy - 1.3);
+        const kp = g.rig.T(x1 - 1.0, wy - 1.4);
+        capsule(L, kp, add(kp, v(0.8, 3.6)), 0.8, 1.05, band, (x, y) => (y + 0.5 > kp.y + 3.0 ? 1 : x + 0.5 < kp.x + 0.4 ? 3 : 2));
+        capsule(L, kp, add(kp, v(-0.6, 3.0)), 0.7, 0.9, band, (x) => (x + 0.5 < kp.x - 0.5 ? 2 : 1));
         ellipse(L, kp.x, kp.y, 1.25, 1.15, band, (x, y) => clamp(lit(x + 0.5 - kp.x, y + 0.5 - kp.y), 1, 3));
         put(L, fine(kp.x - 0.4), fine(kp.y - 0.4), band, 4);
       });
@@ -1672,41 +1757,44 @@ export const SKIRT_ITEMS: ItemDef[] = [
     colors: [col('plate', 'Lacquer', '#b0242c'), col('lace', 'Laces', '#1d1c26')],
     draw: (g, [pc, lc]) => {
       skirt(g, (L, top) => {
-        const [x0, x1] = hipRange(g, 0.6);
-        const n = 4;
-        const xs = spread(x0, x1, n);
+        const [x0, x1] = hipRange(g, 0.5);
         const pl = (w: number) => armorPen(g, pc, 'cloth', thighPart(w));
         const lace = (w: number) => armorPen(g, lc, 'cloth', thighPart(w));
         const k = 0.78;
-        /** Row type for a skirt cell, or null in the gap between panels. */
-        const kind = (c: Cell) => {
-          const fromR = (1 - c.across) * c.cw;
-          if (fromR < FP * 1.5 && c.down > 0.06) return null;
-          const fromBot = (1 - c.down) * c.ch;
-          if (fromBot < FP) return 'bottom';
-          return lamRow(fromBot - FP, LAM_ROW);
-        };
-        const lt = (c: Cell) => c.u < 0.5 && c.across < 0.75;
-        skirtCols(
-          g,
-          L,
-          pl,
-          xs,
-          top(3.0),
-          k,
-          (c) => {
-            const r = kind(c);
-            if (!r) return null;
-            if (r === 'lace') return laceCol(c.across * c.cw) ? null : 1;
-            if (r === 'bottom') return 1;
-            return r === 'rim' ? rim(lt(c)) : base(lt(c));
-          },
-          1.0,
-          0.2,
-        );
-        skirtCols(g, L, lace, xs, top(3.0), k, (c) => (kind(c) === 'lace' && laceCol(c.across * c.cw) ? base(lt(c)) : null), 1.0, 0.2);
-        // cord band tying the panels to the waist
-        skirtCols(g, L, lace, spread(x0, x1, 6), top(3.4), 0.1, (c) => (c.down < 0.3 ? rim(c.u < 0.5) : base(c.u < 0.5)), 0, 0.05);
+        const rh = LAM_ROW;
+        // one panel over each thigh, split between the legs
+        const groups = [spread(x0, SPLIT_X - 0.35, 1), spread(SPLIT_X + 0.35, x1, 1)];
+        /** Height above the panel's bottom edge, or null outside the plates. */
+        const rowOf = (c: Cell) => (1 - c.down) * c.ch - FP;
+        groups.forEach((xs, gi) => {
+          // the near leg's panels face the light, the far leg's turn away
+          const tone = (c: Cell) => (gi === 0 ? (c.across < 0.75 ? 1 : 0.4) : c.across < 0.45 ? 0.4 : 0);
+          skirtCols(
+            g,
+            L,
+            pl,
+            xs,
+            top(3.0),
+            k,
+            (c) => {
+              const d = rowOf(c);
+              if (d < 0) return 1; // bottom edge
+              const m = mod(d, rh);
+              const t = tone(c);
+              if (m < FP) return laceCol(c.across * c.cw) ? null : 1; // lace row
+              if (c.down < 0.08) return t > 0.5 ? 2 : 1; // shadow under the cord band
+              if (m > rh - FP) return t > 0.2 ? 4 : 2; // lit rim of each row
+              const lower = m < rh * 0.42;
+              if (t > 0.2) return lower ? 2 : 3;
+              return lower ? 1 : 2;
+            },
+            1.0,
+          );
+          skirtCols(g, L, lace, xs, top(3.0), k, (c) => (rowOf(c) >= 0 && mod(rowOf(c), rh) < FP && laceCol(c.across * c.cw) ? (tone(c) > 0.5 ? 3 : 2) : null), 1.0);
+        });
+        // slim cord band tying the panels to the waist
+        const wy = top(3.4);
+        waistband(g, L, armorPen(g, lc, 'cloth'), x0, x1, wy, wy - 1.2);
       });
     },
   },
@@ -1720,8 +1808,11 @@ export const SKIRT_ITEMS: ItemDef[] = [
     draw: (g, [cc, bc]) => {
       skirt(g, (L, top) => {
         const [x0, x1] = hipRange(g, 0.4);
-        const n = 8;
+        // a few broad knife pleats (not thin stripes), hanging straight
+        const n = Math.max(5, Math.round((x1 - x0) / 2.2));
         const xs = spread(x0, x1, n);
+        let splitI = 1;
+        for (let i = 1; i < n; i++) if (Math.abs(xs[i] - SPLIT_X) < Math.abs(xs[splitI] - SPLIT_X)) splitI = i;
         const cloth = (w: number) => armorPen(g, cc, 'cloth', thighPart(w));
         skirtCols(
           g,
@@ -1731,20 +1822,24 @@ export const SKIRT_ITEMS: ItemDef[] = [
           top(3.0),
           0.72,
           (c) => {
-            // knife pleats: a lit fold edge, the pleat face, a shadowed underfold and a crease
-            const lt = c.u < 0.5;
+            // each pleat: a lit fold edge, the pleat face, a shadowed underfold
+            // and a crease; the crease between the legs opens toward the hem
+            const tone = c.u < 0.4 ? 2 : c.u < 0.75 ? 1 : 0;
             const fromL = c.across * c.cw;
             const fromR = (1 - c.across) * c.cw;
-            if ((1 - c.down) * c.ch < FP) return 1;
-            if (fromR < FP) return 1;
-            if (fromL < FP && c.down > 0.15) return lt ? 4 : 3;
-            return c.across > 0.6 ? base(lt) - 1 : base(lt);
+            const fromBot = (1 - c.down) * c.ch;
+            if (fromBot < FP) return 1;
+            if (fromR < FP * (c.i + 1 === splitI && c.down > 0.4 ? 1 + (c.down - 0.4) * 2.5 : 1)) return 1;
+            if (c.down < 0.08) return tone === 0 ? 1 : 2; // shadow under the band
+            if (fromL < FP) return tone === 0 ? 3 : 4;
+            if (fromR < FP * 2.5) return tone === 0 ? 1 : 2;
+            if (fromBot < FP * 2) return tone === 2 ? 2 : 1; // hem turning under
+            return tone === 0 ? 2 : 3;
           },
           1.0,
-          0.22,
         );
-        const band = armorPen(g, bc, 'leather');
-        skirtCols(g, L, band, spread(x0, x1, 5), top(3.3), 0.1, (c) => (c.down < 0.25 ? rim(c.u < 0.5) : base(c.u < 0.5)), 0, 0.05);
+        const wy = top(3.3);
+        waistband(g, L, armorPen(g, bc, 'leather'), x0, x1, wy, wy - 1.2);
       });
     },
   },

@@ -4,6 +4,7 @@
 // parameters); primitives rasterize at the fine 128x128 resolution, so seams,
 // stitching and buttons can be a single fine pixel.
 
+import { hexToRgb } from '../color';
 import { armDepth, armJoints, armPoint, DrawCtx, fillTorso, handDraw, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, GRID, Layer, lerp, norm, PartId, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 
@@ -43,7 +44,35 @@ function wob(s: number, seed = 0): number {
  * surface faces the light, a wide base, then shadow and a broad dark far side.
  */
 function tone(lt: number): number {
-  return lt > 0.74 ? 4 : lt > 0.4 ? 3 : lt > 0.08 ? 2 : 1;
+  const l = lt + LIFT;
+  return l > 0.74 ? 4 : l > 0.4 ? 3 : l > 0.08 ? 2 : 1;
+}
+
+/**
+ * Extra light for dark colors. Their ramp squeezes shades 1-3 into a narrow
+ * value range, so without it a navy or black garment reads as one near-black
+ * mass; with it the form sits on the base and light tones like the
+ * reference coat, which keeps its fill well above the outline.
+ */
+let LIFT = 0;
+function liftOf(hex: string): number {
+  const [r, g, b] = hexToRgb(hex);
+  const l = (Math.max(r, g, b) + Math.min(r, g, b)) / 510;
+  return clamp((0.3 - l) * 1.2, 0, 0.16);
+}
+/** Draws every item with the tones lifted for its main color (parts in other colors set their own). */
+function liftMain(items: ItemDef[]): ItemDef[] {
+  return items.map((d) => ({ ...d, draw: (g: DrawCtx, c: string[]) => lifted(c[0], () => d.draw(g, c)) }));
+}
+/** Runs `fn` with the cloth tones lifted for `hex` (see liftOf). */
+function lifted<T>(hex: string, fn: () => T): T {
+  const prev = LIFT;
+  LIFT = liftOf(hex);
+  try {
+    return fn();
+  } finally {
+    LIFT = prev;
+  }
 }
 
 /** Light on a cylinder of axis direction n-perpendicular: `o` runs -1..1 across it along `n`. */
@@ -430,12 +459,12 @@ function thighCol(g: DrawCtx, s: Side, inflate: (t: number) => number): (p: Vec)
  * runs on into the legs with no outline and no cast shadow, so the trousers
  * read as two tapered columns, never one block across both legs.
  */
-function seat(g: DrawCtx, hex: string, inflate: (t: number) => number, top: number): void {
+function seat(g: DrawCtx, hex: string, inflate: (t: number) => number, top: number, depth = 0.42): void {
   const L = g.L('torso.bottom');
   const cN = thighCol(g, 'N', inflate);
   const cF = thighCol(g, 'F', inflate);
-  const lN = legLight('N');
-  const lF = legLight('F');
+  const lN = legLight('N', depth);
+  const lF = legLight('F', depth);
   const inside = (c: { t: number; o: number }) => Math.abs(c.o) <= 1 && c.t > -0.7;
   fillT(g, L, Math.min(0.5, inflate(0) * 0.6), clothPen(g, hex, 'torso'), { top }, undefined, (x, y) => {
     const p = v(x + 0.5, y + 0.5);
@@ -491,18 +520,21 @@ function legXAt(g: DrawCtx, s: Side, y: number): { x: number; t: number } {
  * other, so the legs and the split between them read through it. The far leg
  * sits darker and the cloth between the legs sinks into a dark trough.
  */
+/** Light across cloth rounding over a leg, u = -1 on its left edge to 1 on its right edge. */
+function hangLight(u: number): number {
+  const th = Math.asin(clamp(u, -1, 1)) + 0.12; // the front of the leg turns a little toward the facing side
+  return Math.sin(th) * L3.x + Math.cos(th) * L3.z * 0.92 - 0.1 * L3.y;
+}
+
 function drapeLight(g: DrawCtx, slack: number): (x: number, y: number) => number {
-  const leg = (u: number) => {
-    const th = Math.asin(clamp(u, -1, 1)) + 0.25; // the front of the leg turns a little toward the facing side
-    return Math.sin(th) * L3.x + Math.cos(th) * L3.z * 0.92 - 0.1 * L3.y;
-  };
+  const leg = hangLight;
   return (x, y) => {
     const n = legXAt(g, 'N', y);
     const f = legXAt(g, 'F', y);
     const uN = (x - n.x) / (limbR(g, 'leg', n.t) + slack);
     const uF = (x - f.x) / (limbR(g, 'leg', f.t) + slack);
     if (Math.abs(uN) <= 1 || x < n.x) return leg(Math.max(-1, uN));
-    if (Math.abs(uF) <= 1 || x > f.x) return leg(Math.min(1, uF)) - 0.22;
+    if (Math.abs(uF) <= 1 || x > f.x) return leg(Math.min(1, uF)) - 0.12;
     return -0.2; // between the legs
   };
 }
@@ -803,7 +835,7 @@ function crewNeck(g: DrawCtx, L: Layer): void {
   }
 }
 
-export const TOP_ITEMS: ItemDef[] = [
+export const TOP_ITEMS: ItemDef[] = liftMain([
   {
     id: 'top_tee',
     slot: 'top',
@@ -851,11 +883,11 @@ export const TOP_ITEMS: ItemDef[] = [
       tfold(g, L, -3.1, Lt - 6.6, -1.4, Lt - 9.0);
       tfold(g, L, 3.8, Lt - 7.6, 3.0, 2.2, 2);
       tfold(g, L, -1.2, 3.4, 1.6, 2.6);
-      hemBand(g, L, -0.6, 1.4, 0.55, tp);
+      lifted(t, () => hemBand(g, L, -0.6, 1.4, 0.55, tp));
       sleeves(g, c, 0.6, 0.8);
       for (const s of SIDES) {
         const La = g.L(armDepth(s, 'cloth'));
-        cuff(g, La, 'arm', s, 0.48, 0.6, 0.85, clothPen(g, t, prt('upperArm', s), sb(s)), 0.8);
+        lifted(t, () => cuff(g, La, 'arm', s, 0.48, 0.6, 0.85, clothPen(g, t, prt('upperArm', s), sb(s)), 0.8));
         fold(La, armPoint(g, s, 0.1), along(armPoint(g, s, 0.1), armPoint(g, s, 0.44), 1, 0.9));
       }
       highCollar(g, c, 4, 1.1);
@@ -880,14 +912,14 @@ export const TOP_ITEMS: ItemDef[] = [
       tfold(g, L, 4.0, Lt - 7.4, 3.3, 0.2, 2);
       tfold(g, L, -2.6, 3.0, -1.6, -0.4);
       tfold(g, L, 0.6, 3.2, 2.2, 0.0);
-      hemBand(g, L, -2.4, -0.9, 0.6, tp);
+      lifted(t, () => hemBand(g, L, -2.4, -0.9, 0.6, tp));
       sleeves(g, c, 1.92, 0.6);
       for (const s of SIDES) {
         const La = g.L(armDepth(s, 'cloth'));
         jointFolds(g, La, 'arm', s, 0.6);
         // cloth gathering above the cuff
         fold(La, along(armPoint(g, s, 1.5), armPoint(g, s, 1.7), 0, 0.9), along(armPoint(g, s, 1.5), armPoint(g, s, 1.7), 0.6, -0.6));
-        cuff(g, La, 'arm', s, 1.72, 1.94, 0.85, clothPen(g, t, prt('forearm', s), sb(s)), 0.6);
+        lifted(t, () => cuff(g, La, 'arm', s, 1.72, 1.94, 0.85, clothPen(g, t, prt('forearm', s), sb(s)), 0.6));
       }
     },
   },
@@ -903,14 +935,14 @@ export const TOP_ITEMS: ItemDef[] = [
       const pen: Pen = { mat, part: 'torso' };
       shirtBody(g, L, pen, 0.6, { inflate: 0.3 });
       meshify(L, mat);
-      hemBand(g, L, 0.6, 1.8, 0.35, clothPen(g, bnd, 'torso'), { lift: 0.1 });
+      lifted(bnd, () => hemBand(g, L, 0.6, 1.8, 0.35, clothPen(g, bnd, 'torso')));
       sleeves(g, c, 1.4, 0.3);
       for (const s of SIDES) {
         const La = g.L(armDepth(s, 'cloth'));
         meshify(La, mat);
-        cuff(g, La, 'arm', s, 1.24, 1.42, 0.5, clothPen(g, bnd, prt('forearm', s), sb(s)), 0);
+        lifted(bnd, () => cuff(g, La, 'arm', s, 1.24, 1.42, 0.5, clothPen(g, bnd, prt('forearm', s), sb(s)), 0));
       }
-      highCollar(g, bnd, 2, 0.4);
+      lifted(bnd, () => highCollar(g, bnd, 2, 0.4));
     },
   },
   {
@@ -939,8 +971,10 @@ export const TOP_ITEMS: ItemDef[] = [
       // Yoke across the shoulders (dipping toward the front), with its seam shading the panel below
       const yoke = (lx: number, ly: number) => ly > Lt - 3.4 + Math.max(0, lx - 1) * 0.35 - (lx < -3 ? (lx + 3) * 0.3 : 0);
       fillT(g, L, 0.75, pen, {}, (lx, ly) => !yoke(lx, ly) && yoke(lx, ly + 0.55), () => 1);
-      fillT(g, L, 0.75, ap, {}, yoke, torsoShade(g, 0.1));
-      hemBand(g, L, -0.8, 0.8, 0.75, ap, { lift: 0.1 });
+      lifted(a, () => {
+        fillT(g, L, 0.75, ap, {}, yoke, torsoShade(g));
+        hemBand(g, L, -0.8, 0.8, 0.75, ap);
+      });
       // Zip: dark gap down the centre front with dashed metal teeth, pull tab at the top
       tseam(g, L, CX + 0.3, Lt + 0.4, CX + 0.3, -0.8, -2);
       tstitch(g, L, CX, Lt + 0.2, CX, -0.6, { mat: zm, part: 'torso' }, 3, 2);
@@ -953,11 +987,13 @@ export const TOP_ITEMS: ItemDef[] = [
         jointFolds(g, La, 'arm', s, 0.75);
         fold(La, along(armPoint(g, s, 1.5), armPoint(g, s, 1.72), 0, 1.0), along(armPoint(g, s, 1.5), armPoint(g, s, 1.72), 0.6, -0.7));
         across(g, La, 'arm', s, 0.58, 0.8, -1);
-        limb(g, La, 'arm', s, 0, 0.55, 0.8, clothPen(g, a, prt('upperArm', s), sb(s)), { round0: true });
-        cuff(g, La, 'arm', s, 1.74, 1.94, 0.9, clothPen(g, a, prt('forearm', s), sb(s)), 0.75);
+        lifted(a, () => {
+          limb(g, La, 'arm', s, 0, 0.55, 0.8, clothPen(g, a, prt('upperArm', s), sb(s)), { round0: true });
+          cuff(g, La, 'arm', s, 1.74, 1.94, 0.9, clothPen(g, a, prt('forearm', s), sb(s)), 0.75);
+        });
         across(g, La, 'arm', s, 1.86, 0.9, -1);
       }
-      highCollar(g, a, 3, 0.9);
+      lifted(a, () => highCollar(g, a, 3, 0.9));
     },
   },
   {
@@ -971,14 +1007,14 @@ export const TOP_ITEMS: ItemDef[] = [
       const Lt = g.bp.torsoLen;
       const pen = clothPen(g, c, 'torso');
       const kp = clothPen(g, k, 'torso');
-      // Body with the V opening of the crossed collar
+      // Body with the V opening of the crossed collar; the hem hangs straight (no flare)
       const tip = Lt - 7.0;
       fillT(
         g,
         L,
         0.8,
         pen,
-        { bottom: -2.6, flare: 1 },
+        { bottom: -2.6 },
         (lx, ly) => {
           if (ly < tip) return true;
           const t = (Lt + 1 - ly) / (Lt + 1 - tip);
@@ -986,13 +1022,21 @@ export const TOP_ITEMS: ItemDef[] = [
         },
         torsoShade(g),
       );
-      // Lapels: the near lapel crosses over and continues down the front edge
+      // Wrap folds running diagonally down from the near shoulder, parallel to the crossing panel
+      tfold(g, L, -3.4, Lt - 4.6, -0.6, Lt - 9.0, 1);
+      tfold(g, L, -3.2, Lt - 8.2, -0.2, 2.6, 1);
+      tfold(g, L, -1.6, 3.0, 1.6, -1.4, 1);
+      // The overlapping front edge, from the collar tip down to the hem, shades the panel under it
+      tfold(g, L, 2.9, tip - 1.6, 3.4, -2.2, 2);
+      // hem: a lit fold above the bottom edge
+      tmark(g, L, -g.bp.hipHalf - 1.5, -1.6, g.bp.hipHalf + 1.5, -1.6, (s) => Math.min(4, s + 1));
+      // Lapels: the near lapel crosses over (lit along its top, casting a shadow on the panel below it)
+      tmark(g, L, -2.4, Lt + 0.2, 1.2, tip - 1.2, (s) => s - 1);
+      tmark(g, L, 1.2, tip - 1.2, 3.0, tip - 2.6, (s) => s - 1);
       tpoly(g, L, [[-2.2, Lt + 0.9], [-0.5, Lt + 0.9], [2.7, tip - 0.2], [2.9, tip - 2.0], [1.3, tip - 0.6]], kp, 3);
+      tmark(g, L, -1.7, Lt + 0.5, 1.6, tip - 0.6, (s) => s + 1);
       tpoly(g, L, [[3.3, Lt + 0.9], [4.6, Lt + 0.4], [3.0, tip], [2.2, tip + 0.6]], kp, 2);
       tseam(g, L, -0.6, Lt + 0.4, 2.2, tip, 1);
-      tcrease(g, L, 2.9, tip - 1.8, 3.4, -2.4);
-      tcrease(g, L, -3.2, Lt - 6, -2.4, -2);
-      tcrease(g, L, 0.4, 3.0, 1.0, -2.2);
       // Wide sleeves: a bell that widens to an open cuff just past the elbow
       for (const s of SIDES) {
         const La = g.L(armDepth(s, 'cloth'));
@@ -1004,19 +1048,23 @@ export const TOP_ITEMS: ItemDef[] = [
         let n = perp(dir);
         if (n.y < -0.2 || (Math.abs(n.y) <= 0.2 && n.x > 0)) n = scale(n, -1);
         const rEnd = R[1] + 2.3;
+        const len0 = Math.hypot(end.x - j.shoulder.x, end.y - j.shoulder.y) || 1;
+        const sh = tubeShade(j.shoulder, dir, perp(dir), len0, R[0] + 0.8, rEnd);
         // hanging lower corner of the sleeve
         const D = 3.4;
         const rimF = add(end, scale(n, -rEnd));
         const rimB = add(end, scale(n, rEnd));
         const mid = add(lerp(j.shoulder, end, 0.4), scale(n, R[0] + 1.2));
-        tube(La, j.shoulder, end, R[0] + 0.8, rEnd, p);
-        poly(La, [rimF, add(rimF, v(0, D * 0.55)), add(lerp(rimF, rimB, 0.75), v(0, D + 0.4)), add(rimB, v(0, D - 0.6)), mid], p);
-        ellipse(La, j.shoulder.x, j.shoulder.y, R[0] + 0.8, R[0] + 0.8, p);
+        tube(La, j.shoulder, end, R[0] + 0.8, rEnd, p, sh);
+        poly(La, [rimF, add(rimF, v(0, D * 0.55)), add(lerp(rimF, rimB, 0.75), v(0, D + 0.4)), add(rimB, v(0, D - 0.6)), mid], p, (x, y) => sh(x, y) - (y + 0.5 > end.y + 1.2 ? 1 : 0));
+        ellipse(La, j.shoulder.x, j.shoulder.y, R[0] + 0.8, R[0] + 0.8, p, capShade(j.shoulder, R[0] + 0.8));
         // dark inside of the open cuff
         const inner = clothPen(g, c, prt('forearm', s), sb(s) - 1);
         tube(La, add(end, scale(dir, -0.7)), end, rEnd - 0.9, rEnd - 0.7, inner, 1);
-        crease(La, add(lerp(j.shoulder, end, 0.35), scale(n, R[0] * 0.4)), add(lerp(j.shoulder, end, 0.92), scale(n, rEnd * 0.6)));
-        crease(La, add(lerp(j.shoulder, end, 0.55), scale(n, -R[0] * 0.5)), add(lerp(j.shoulder, end, 0.9), scale(n, -rEnd * 0.5)));
+        // long folds down the sleeve and into the hanging corner
+        fold(La, add(lerp(j.shoulder, end, 0.35), scale(n, R[0] * 0.4)), add(lerp(j.shoulder, end, 0.92), scale(n, rEnd * 0.6)), 2);
+        fold(La, add(lerp(j.shoulder, end, 0.55), scale(n, -R[0] * 0.5)), add(lerp(j.shoulder, end, 0.9), scale(n, -rEnd * 0.5)), 1);
+        fold(La, add(end, scale(n, rEnd * 0.2)), add(add(lerp(rimF, rimB, 0.6), v(0, D - 0.4)), scale(n, 0)), 1);
       }
     },
   },
@@ -1039,7 +1087,7 @@ export const TOP_ITEMS: ItemDef[] = [
       tfold(g, L, -2.2, 2.8, -1.4, -0.6);
       tfold(g, L, 0.8, 3.0, 2.0, -0.4);
       vTrim(g, L, 4.6, 1.8, 0.6, tp);
-      hemBand(g, L, -2.2, -1.0, 0.55, tp);
+      lifted(t, () => hemBand(g, L, -2.2, -1.0, 0.55, tp));
       // Cross lacing over the V: lit where each lace crosses over, dark where it dips under
       const lp: Pen = { mat: g.m(t, 'cloth'), part: 'torso' };
       for (let i = 0; i < 2; i++) {
@@ -1108,7 +1156,7 @@ export const TOP_ITEMS: ItemDef[] = [
         const l = toT(g, x, y);
         const k = clamp((top - l.y) / 3, 0, 1);
         const lt = torsoLight(g, l.x, l.y) * (1 - k) + drape(x + 0.5, y + 0.5) * k;
-        return tone(lt + lift + wob(x * 1.7, 23) * 0.12 - clamp((y + 0.5 - dy) / 12, 0, 0.2));
+        return tone(lt + lift + wob(x * 1.7, 23) * 0.12 - clamp((y + 0.5 - dy) / 16, 0, 0.1));
       };
       // Far panel (behind at the closure): a shade darker
       poly(O, [fTop, front, fR, fL], clothPen(g, c, 'torso', -1), tails(fTop.y, 0.22));
@@ -1140,35 +1188,55 @@ export const TOP_ITEMS: ItemDef[] = [
       for (const s of SIDES) {
         const La = g.L(armDepth(s, 'cloth'));
         fold(La, along(armPoint(g, s, 0.1), armPoint(g, s, 0.55), 0, 0.5), along(armPoint(g, s, 0.1), armPoint(g, s, 0.55), 1, 0.9));
-        cuff(g, La, 'arm', s, 0.64, 0.82, 0.9, clothPen(g, tr, prt('upperArm', s), sb(s)), 0.7);
+        lifted(tr, () => cuff(g, La, 'arm', s, 0.64, 0.82, 0.9, clothPen(g, tr, prt('upperArm', s), sb(s)), 0.7));
       }
       highCollar(g, c, 4.5, 1.2);
     },
   },
-];
+]);
 
 // ---------------------------------------------------------------------------
 // Bottoms
 // ---------------------------------------------------------------------------
 
-/** Wide panel per leg from hip to hem (hakama): horizontal hem, straight-falling fabric. */
-function widePanel(g: DrawCtx, L: Layer, s: Side, wHip: number, wHem: number, hemT: number, pen: Pen): Vec[] {
+/**
+ * Wide panel per leg from hip to hem (hakama): it starts as wide as the hip and
+ * falls nearly straight to a horizontal hem, shaded as cloth rounding over the
+ * leg (lit toward the light, dark on the far side).
+ */
+function widePanel(g: DrawCtx, L: Layer, s: Side, wHip: number, wHem: number, hemT: number, pen: Pen, lift = 0): Vec[] {
   const hip = legJoints(g.rig, s).hip;
   const hem = legPoint(g, s, hemT);
   const pts = [v(hip.x - wHip, hip.y - 1), v(hip.x + wHip, hip.y - 1), v(hem.x + wHem + 0.6, hem.y), v(hem.x - wHem, hem.y)];
-  poly(L, pts, pen);
+  poly(L, pts, pen, (x, y) => {
+    const f = clamp((y + 0.5 - pts[0].y) / Math.max(1, pts[3].y - pts[0].y), 0, 1);
+    const xl = pts[0].x + (pts[3].x - pts[0].x) * f;
+    const xr = pts[1].x + (pts[2].x - pts[1].x) * f;
+    const u = (2 * (x + 0.5 - xl)) / Math.max(1, xr - xl) - 1;
+    return tone(hangLight(u) + lift + wob(y * 1.4, 29) * 0.12);
+  });
   return pts;
 }
 
-/** Drawstring / waistband stitching on the seat of a pair of trousers. */
-function waistband(g: DrawCtx, top: number, pen: Pen): void {
+/** Waistband on the seat of a pair of trousers: a lit band edge over a dark seam. */
+function waistband(g: DrawCtx, top: number): void {
   const L = g.L('torso.bottom');
-  const hh = g.bp.hipHalf;
-  tseam(g, L, -hh - 1, top - 1.1, hh + 1, top - 1.1, -1);
-  tstitch(g, L, -hh - 1, top - 0.6, hh + 1, top - 0.6, pen, 4, 2);
+  const hh = g.bp.hipHalf + 1.5;
+  tmark(g, L, -hh, top - 1.2, hh, top - 1.2, (s) => s - 1);
+  tmark(g, L, -hh, top - 0.6, hh, top - 0.6, (s) => Math.min(4, s + 1));
 }
 
-export const BOTTOM_ITEMS: ItemDef[] = [
+/** Folds at the knee and the cloth bunching at the ankle (or above a cuff) on one trouser leg. */
+function legFolds(g: DrawCtx, L: Layer, s: Side, inflate: number, ankle = 1.62): void {
+  jointFolds(g, L, 'leg', s, inflate);
+  const a = legPoint(g, s, ankle - 0.22);
+  const b = legPoint(g, s, ankle);
+  const r = limbR(g, 'leg', ankle) + inflate;
+  fold(L, along(a, b, 0.2, r * 0.9), along(a, b, 0.55, -r * 0.5));
+  fold(L, along(a, b, 0.75, -r * 0.9), along(a, b, 1.0, r * 0.3));
+}
+
+export const BOTTOM_ITEMS: ItemDef[] = liftMain([
   {
     id: 'bottom_shinobi',
     slot: 'bottom',
@@ -1177,15 +1245,19 @@ export const BOTTOM_ITEMS: ItemDef[] = [
     colors: [col('main', 'Pants', '#2b3346'), col('wrap', 'Wraps', '#e7e1d1')],
     draw: (g, [c, w]) => {
       trousers(g, c, 1.8, 0.55);
-      waistband(g, 3, clothPen(g, c, 'torso'));
+      waistband(g, 3);
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'cloth'));
-        crease(L, legPoint(g, s, 0.82), legPoint(g, s, 1.08));
-        crease(L, along(legPoint(g, s, 0.1), legPoint(g, s, 0.7), 0.3, 1.2), along(legPoint(g, s, 0.1), legPoint(g, s, 0.7), 1, 1.6));
-        crease(L, along(legPoint(g, s, 1.15), legPoint(g, s, 1.55), 0, -0.6), along(legPoint(g, s, 1.15), legPoint(g, s, 1.55), 1, 0.4));
-        const wp = clothPen(g, w, prt('shin', s), sb(s));
-        limb(g, L, 'leg', s, 1.56, 1.97, [0.5, 0.35], wp);
-        wrapStripes(L, legPoint(g, s, 1.56), legPoint(g, s, 1.97), g.bp.legR[3] + 1, 1.0, -1, 0.7);
+        legFolds(g, L, s, 0.5, 1.5);
+        // a long crease down the front of the thigh
+        fold(L, along(legPoint(g, s, 0.15), legPoint(g, s, 0.7), 0.2, 0.9), along(legPoint(g, s, 0.15), legPoint(g, s, 0.7), 1, 1.3));
+        // ankle wraps: a cylinder band, lit at the top, wound in diagonal turns
+        lifted(w, () => {
+          const wp = clothPen(g, w, prt('shin', s), sb(s));
+          across(g, L, 'leg', s, 1.53, 0.6, -1);
+          limb(g, L, 'leg', s, 1.56, 1.97, [0.5, 0.35], wp, { light: bandLight(g, 'leg', s, 1.56, 1.97) });
+          wrapStripes(L, legPoint(g, s, 1.6), legPoint(g, s, 1.95), limbR(g, 'leg', 1.6) + 1, 1.1, -1, 0.7);
+        });
       }
     },
   },
@@ -1196,16 +1268,18 @@ export const BOTTOM_ITEMS: ItemDef[] = [
     desc: 'Loose knee-length shorts with a drawstring waist and contrasting rolled hem.',
     colors: [col('main', 'Shorts', '#3b4a6b'), col('hem', 'Hem', '#28324a')],
     draw: (g, [c, h]) => {
-      fillTorso(g, g.L('torso.bottom'), 0.5, clothPen(g, c, 'torso'), { top: 3 });
-      waistband(g, 3, clothPen(g, h, 'torso'));
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'cloth'));
-        limb(g, L, 'leg', s, 0, 0.74, [0.6, 1.2], clothPen(g, c, prt('thigh', s), sb(s)), { round0: true });
-        limb(g, L, 'leg', s, 0.62, 0.76, 1.35, clothPen(g, h, prt('thigh', s), sb(s)));
-        across(g, L, 'leg', s, 0.69, 1.35, 1);
-        crease(L, along(legPoint(g, s, 0.1), legPoint(g, s, 0.6), 0, 1.2), along(legPoint(g, s, 0.1), legPoint(g, s, 0.6), 1, 0.4));
-        crease(L, along(legPoint(g, s, 0.3), legPoint(g, s, 0.62), 0, -1.6), along(legPoint(g, s, 0.3), legPoint(g, s, 0.62), 1, -2.2));
+        limb(g, L, 'leg', s, 0, 0.74, [0.6, 1.2], clothPen(g, c, prt('thigh', s), sb(s)), { round0: true, light: legLight(s, 0.15) });
+        // loose cloth pulling from the crotch toward the outer hem
+        const a = legPoint(g, s, 0.12);
+        const b = legPoint(g, s, 0.62);
+        fold(L, along(a, b, 0.1, -limbR(g, 'leg', 0.15) * 0.5), along(a, b, 1, limbR(g, 'leg', 0.6) * 0.5), 1);
+        fold(L, along(a, b, 0.45, -limbR(g, 'leg', 0.4) - 0.6), along(a, b, 0.95, -limbR(g, 'leg', 0.6) * 0.2), 1);
+        lifted(h, () => cuff(g, L, 'leg', s, 0.62, 0.76, 1.35, clothPen(g, h, prt('thigh', s), sb(s)), 1.2));
       }
+      seat(g, c, (t) => 0.6 + (0.6 * t) / 0.74, 3, 0.15);
+      waistband(g, 3);
     },
   },
   {
@@ -1216,18 +1290,21 @@ export const BOTTOM_ITEMS: ItemDef[] = [
     colors: [col('main', 'Hakama', '#2c3043'), col('ties', 'Ties', '#cfc8b6')],
     draw: (g, [c, t]) => {
       const b = g.bp;
-      const TL = g.L('torso.bottom');
-      fillTorso(g, TL, 0.9, clothPen(g, c, 'torso'), { top: 4.8, flare: 1.4 });
-      fillTorso(g, TL, 0.9, clothPen(g, t, 'torso'), { top: 4.8, bottom: 3.6 });
-      tseam(g, TL, -b.hipHalf - 1, 4.2, b.hipHalf + 1, 4.2, 1);
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'cloth'));
         const pen = clothPen(g, c, prt('thigh', s), sb(s));
-        limb(g, L, 'leg', s, 0, 1.9, 1.2, pen, { round0: true });
-        const pts = widePanel(g, L, s, b.legR[0] + 1.2, b.legR[0] + 2.6, 1.95, pen);
-        // Knife pleats: shadow line with a lit fold beside it
-        for (const k of [0.3, 0.66]) crease(L, lerp(pts[0], pts[1], k), lerp(pts[3], pts[2], k - 0.04));
+        limb(g, L, 'leg', s, 0, 1.9, 1.2, pen, { round0: true, light: legLight(s) });
+        // each leg is its own wide panel, falling nearly straight from the hip, with deep knife pleats
+        const pts = widePanel(g, L, s, b.legR[0] + 0.4, b.legR[0] + 1.5, 1.95, pen, s === 'F' ? 0.14 : 0.04);
+        for (const k of [0.22, 0.5, 0.78]) fold(L, lerp(pts[0], pts[1], k), lerp(pts[3], pts[2], k - 0.03), 2, 4);
+        // the hem: a lit turn above the bottom edge
+        mark(L, add(pts[3], v(0.6, -1.0)), add(pts[2], v(-0.6, -1.0)), (s2) => Math.min(4, s2 + 1));
       }
+      // seat with the split between the legs, tied high at the waist
+      seat(g, c, () => 1.2, 4.8);
+      const TL = g.L('torso.bottom');
+      lifted(t, () => hemBand(g, TL, 3.6, 4.8, 0.9, clothPen(g, t, 'torso'), { tuck: false }));
+      tmark(g, TL, -b.hipHalf - 1, 3.4, b.hipHalf + 1, 3.4, (s) => s - 1);
     },
   },
   {
@@ -1238,30 +1315,39 @@ export const BOTTOM_ITEMS: ItemDef[] = [
     colors: [col('main', 'Pants', '#55603f'), col('pouch', 'Pouch', '#6e5a3c', 'leather')],
     draw: (g, [c, p]) => {
       trousers(g, c, 1.86, 1.05, 3.2);
-      waistband(g, 3.2, clothPen(g, c, 'torso'));
+      waistband(g, 3.2);
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'cloth'));
         const R = g.bp.legR;
         const pen = clothPen(g, c, prt('shin', s), sb(s));
-        // bloused cuff gathered into a band
-        limb(g, L, 'leg', s, 1.58, 1.8, [1.0, 1.2], pen);
-        limb(g, L, 'leg', s, 1.8, 1.97, 0.5, pen, { shade: 2 });
-        crease(L, legPoint(g, s, 0.84), legPoint(g, s, 1.12));
-        crease(L, along(legPoint(g, s, 1.3), legPoint(g, s, 1.75), 0, -1.2), along(legPoint(g, s, 1.3), legPoint(g, s, 1.75), 1, 0.4));
-        crease(L, along(legPoint(g, s, 1.45), legPoint(g, s, 1.8), 0, 1.2), along(legPoint(g, s, 1.45), legPoint(g, s, 1.8), 1, -0.6));
+        // bloused cuff: the cloth balloons over a gathered band
+        limb(g, L, 'leg', s, 1.58, 1.8, [1.0, 1.2], pen, { light: legLight(s) });
+        legFolds(g, L, s, 1.05, 1.74);
+        cuff(g, L, 'leg', s, 1.8, 1.97, 0.5, pen, 1.2);
+        fold(L, along(legPoint(g, s, 0.2), legPoint(g, s, 0.8), 0.1, 1.4), along(legPoint(g, s, 0.2), legPoint(g, s, 0.8), 0.9, 1.9));
         if (s === 'F') continue;
         // Thigh pouch (own layer so it gets its own outline) with a buttoned flap and a leg strap
-        const P = g.L(legDepth(s, 'armor'));
-        const a = legPoint(g, s, 0.36);
-        const bb = legPoint(g, s, 0.78);
-        const off = -(R[0] * 0.3);
-        const w = 1.8;
-        const pp = clothPen(g, p, prt('thigh', s), sb(s), 'leather');
-        limb(g, P, 'leg', s, 0.18, 0.26, 1.15, pp, { shade: 2 });
-        poly(P, [along(a, bb, 0, off - w), along(a, bb, 0, off + w), along(a, bb, 1, off + w * 0.9), along(a, bb, 1, off - w * 0.9)], pp);
-        poly(P, [along(a, bb, -0.04, off - w - 0.2), along(a, bb, -0.04, off + w + 0.2), along(a, bb, 0.36, off + w + 0.1), along(a, bb, 0.36, off - w - 0.1)], pp, 4);
-        seam(P, along(a, bb, 0.38, off - w), along(a, bb, 0.38, off + w), -1);
-        fpx(P, along(a, bb, 0.26, off), g.m('#b9c0c8', 'metal'), prt('thigh', s), 4);
+        lifted(p, () => {
+          const P = g.L(legDepth(s, 'armor'));
+          const a = legPoint(g, s, 0.36);
+          const bb = legPoint(g, s, 0.78);
+          const d = norm(sub(bb, a));
+          const off = -(R[0] * 0.3);
+          const w = 1.8;
+          const pp = clothPen(g, p, prt('thigh', s), sb(s), 'leather');
+          limb(g, P, 'leg', s, 0.18, 0.26, 1.15, pp, { light: bandLight(g, 'leg', s, 0.18, 0.26) });
+          poly(P, [along(a, bb, 0, off - w), along(a, bb, 0, off + w), along(a, bb, 1, off + w * 0.9), along(a, bb, 1, off - w * 0.9)], pp, (x, y) => {
+            const o = ((x + 0.5 - a.x) * -d.y + (y + 0.5 - a.y) * d.x - off) / w;
+            return tone(cylLight(clamp(o, -1, 1), perp(d)) - 0.1);
+          });
+          // flap: lit top edge, dark shadow under it
+          poly(P, [along(a, bb, -0.04, off - w - 0.2), along(a, bb, -0.04, off + w + 0.2), along(a, bb, 0.36, off + w + 0.1), along(a, bb, 0.36, off - w - 0.1)], pp, (x, y) => {
+            const o = ((x + 0.5 - a.x) * -d.y + (y + 0.5 - a.y) * d.x - off) / w;
+            return tone(cylLight(clamp(o, -1, 1), perp(d)) + 0.25);
+          });
+          seam(P, along(a, bb, 0.39, off - w), along(a, bb, 0.39, off + w), -2);
+          fpx(P, along(a, bb, 0.26, off), g.m('#b9c0c8', 'metal'), prt('thigh', s), 4);
+        });
       }
     },
   },
@@ -1273,22 +1359,25 @@ export const BOTTOM_ITEMS: ItemDef[] = [
     colors: [col('main', 'Leggings', '#2a2433'), col('seam', 'Side Seam', '#7a68a0')],
     draw: (g, [c, sc]) => {
       trousers(g, c, 1.96, 0.18, 3.4);
-      waistband(g, 3.4, clothPen(g, c, 'torso'));
+      waistband(g, 3.4);
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'cloth'));
         const sp = clothPen(g, sc, prt('thigh', s), sb(s));
         const hip = legPoint(g, s, 0.06);
         const knee = legPoint(g, s, 1);
         const ank = legPoint(g, s, 1.94);
+        // stretch cloth only creases softly behind the knee
+        const side = bendSide(g, 'leg', s, 1);
+        const r = limbR(g, 'leg', 1) + 0.18;
+        fold(L, along(hip, knee, 0.86, side * r * 0.9), along(knee, ank, 0.04, side * r * 0.1));
         // side seam: two fine lines along the outer side of the leg
         stitch(L, along(hip, knee, 0, -g.bp.legR[0] * 0.25), along(hip, knee, 1, -g.bp.legR[1] * 0.35), sp, 3, 0);
         stitch(L, along(knee, ank, 0, -g.bp.legR[1] * 0.35), along(knee, ank, 1, -g.bp.legR[3] * 0.3), { ...sp, part: prt('shin', s) }, 3, 0);
-        crease(L, legPoint(g, s, 0.88), legPoint(g, s, 1.06));
         across(g, L, 'leg', s, 1.9, 0.2, -1);
       }
     },
   },
-];
+]);
 
 // ---------------------------------------------------------------------------
 // Waist
@@ -1356,7 +1445,7 @@ function fan(K: Vec, axis: Vec, crests: number[], spread: number, extra?: (x: nu
   };
 }
 
-export const WAIST_ITEMS: ItemDef[] = [
+export const WAIST_ITEMS: ItemDef[] = liftMain([
   {
     id: 'waist_belt',
     slot: 'waist',
@@ -1521,7 +1610,7 @@ export const WAIST_ITEMS: ItemDef[] = [
       tseam(g, L, CX - 0.3, 3.6, CX - 0.3, 0.9, 1);
     },
   },
-];
+]);
 
 // ---------------------------------------------------------------------------
 // Hands
@@ -1553,7 +1642,7 @@ function glove(g: DrawCtx, s: Side, pen: Pen, grow: number, cut: boolean): void 
   });
 }
 
-export const HAND_ITEMS: ItemDef[] = [
+export const HAND_ITEMS: ItemDef[] = liftMain([
   {
     id: 'hands_fingerless',
     slot: 'hands',
@@ -1655,4 +1744,4 @@ export const HAND_ITEMS: ItemDef[] = [
       }
     },
   },
-];
+]);

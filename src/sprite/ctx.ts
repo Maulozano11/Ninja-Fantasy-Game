@@ -345,7 +345,7 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
   const pal: TemplatePalette = {
     o: [pen.mat, 0],
     D: [pen.mat, 1 + b],
-    x: [pen.mat, Math.max(1, 1 + b)],
+    x: [pen.mat, 0], // finger creases are near-black, like the reference
     s: [pen.mat, 2 + b],
     b: [pen.mat, 3 + b],
     l: [pen.mat, 4 + b],

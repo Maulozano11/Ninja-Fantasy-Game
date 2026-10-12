@@ -53,9 +53,11 @@ export function drawBody(g: DrawCtx): void {
   // Undergarments
   const under = g.L('torso.under');
   const cloth: Pen = { mat: g.m('#3b3a46', 'cloth'), part: 'torso' };
-  fillTorso(g, under, 0.2, cloth, { top: 1.4 });
-  legSpan(g, g.L('nearLeg.cloth'), 'N', 0, 0.28, 0.25, { ...cloth, part: 'thighN' });
-  legSpan(g, g.L('farLeg.cloth'), 'F', 0, 0.28, 0.25, { ...cloth, part: 'thighF', bias: -1 });
+  // Fitted shorts: seat on the pelvis plus short legs, with a waistband seam.
+  fillTorso(g, under, 0.1, cloth, { top: 2.2 });
+  seam(under, T(-b.waistHalf, 1.5), T(b.waistHalf * 0.7, 1.5), -1);
+  legSpan(g, g.L('nearLeg.cloth'), 'N', 0, 0.22, 0.1, { ...cloth, part: 'thighN' });
+  legSpan(g, g.L('farLeg.cloth'), 'F', 0, 0.22, 0.1, { ...cloth, part: 'thighF', bias: -1 });
   if (b.bust > 0) fillTorso(g, under, 0.3, cloth, { top: L0 - 3.4, bottom: L0 - 7.6 });
 
   drawHead(g);

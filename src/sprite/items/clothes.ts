@@ -319,17 +319,42 @@ function meshify(L: Layer, mat: number): void {
 /** Centre-front line of the torso (zips, plackets, buttons). */
 const CX = 1.6;
 
+/**
+ * Value structure shared by tops: a lit chest plane, base mid-tones, darker
+ * flanks turning away from the light, and a lit lower-front panel.
+ */
+function torsoShade(g: DrawCtx): ShadeFn {
+  const Lt = g.bp.torsoLen;
+  const wh = g.bp.waistHalf;
+  return (x, y) => {
+    const l = toT(g, x, y);
+    if (l.x > frontX(g, l.y) - 1.1) return 2;
+    if (l.x < -wh * 0.75) return 2;
+    if (l.y > Lt - 7.6 && l.y < Lt - 1.4 && l.x > -2.2 && l.x < CX + 1.6) return 4;
+    if (l.y < 3.4 && l.x > -1.6 && l.x < CX + 0.4) return 4;
+    return 3;
+  };
+}
+
 /** Shirt body clipped at `bottom`, with an optional V opening at the neck that lets skin show. */
 function shirtBody(g: DrawCtx, L: Layer, pen: Pen, bottom: number, opts: { inflate?: number; flare?: number; vDepth?: number; vHalf?: number } = {}): void {
   const Lt = g.bp.torsoLen;
   const vd = opts.vDepth ?? 0;
   const vh = opts.vHalf ?? 2;
-  fillT(g, L, opts.inflate ?? 0.5, pen, { bottom, flare: opts.flare }, (lx, ly) => {
-    if (vd <= 0) return true;
-    const t = (Lt + 0.6 - ly) / vd; // 0 at the neck, 1 at the tip
-    if (t < 0 || t > 1) return true;
-    return Math.abs(lx - CX) > (1 - t) * vh;
-  });
+  fillT(
+    g,
+    L,
+    opts.inflate ?? 0.5,
+    pen,
+    { bottom, flare: opts.flare },
+    (lx, ly) => {
+      if (vd <= 0) return true;
+      const t = (Lt + 0.6 - ly) / vd; // 0 at the neck, 1 at the tip
+      if (t < 0 || t > 1) return true;
+      return Math.abs(lx - CX) > (1 - t) * vh;
+    },
+    torsoShade(g),
+  );
 }
 
 /** Trim strips along both edges of a V neck opening. */
@@ -499,11 +524,19 @@ export const TOP_ITEMS: ItemDef[] = [
       const kp = clothPen(g, k, 'torso');
       // Body with the V opening of the crossed collar
       const tip = Lt - 7.0;
-      fillT(g, L, 0.8, pen, { bottom: -2.6, flare: 1 }, (lx, ly) => {
-        if (ly < tip) return true;
-        const t = (Lt + 1 - ly) / (Lt + 1 - tip);
-        return lx < -0.6 + 2.8 * t || lx > 3.4 - 1.2 * t;
-      });
+      fillT(
+        g,
+        L,
+        0.8,
+        pen,
+        { bottom: -2.6, flare: 1 },
+        (lx, ly) => {
+          if (ly < tip) return true;
+          const t = (Lt + 1 - ly) / (Lt + 1 - tip);
+          return lx < -0.6 + 2.8 * t || lx > 3.4 - 1.2 * t;
+        },
+        torsoShade(g),
+      );
       // Lapels: the near lapel crosses over and continues down the front edge
       tpoly(g, L, [[-2.2, Lt + 0.9], [-0.5, Lt + 0.9], [2.7, tip - 0.2], [2.9, tip - 2.0], [1.3, tip - 0.6]], kp, 3);
       tpoly(g, L, [[3.3, Lt + 0.9], [4.6, Lt + 0.4], [3.0, tip], [2.2, tip + 0.6]], kp, 2);
@@ -577,14 +610,7 @@ export const TOP_ITEMS: ItemDef[] = [
       const pen = clothPen(g, c, 'torso');
       const bm = g.m(bt, 'metal');
       // Body: dark navy with a lit chest plane and darker flanks
-      fillT(g, L, 0.7, pen, { bottom: -2.6, flare: 0.6 }, undefined, (x, y) => {
-        const l = toT(g, x, y);
-        if (l.x > frontX(g, l.y) - 1.1) return 2;
-        if (l.x < -b.waistHalf * 0.75) return 2;
-        if (l.y > Lt - 7.6 && l.y < Lt - 1.4 && l.x > -2.2 && l.x < CX + 1.6) return 4;
-        if (l.y < 3.4 && l.x > -1.6 && l.x < CX + 0.4) return 4;
-        return 3;
-      });
+      fillT(g, L, 0.7, pen, { bottom: -2.6, flare: 0.6 }, undefined, torsoShade(g));
       // 1px dark seams between the panels: closure, waist, princess seams
       tseam(g, L, CX + 2.2, Lt + 0.4, CX + 2.0, -2.4, -1);
       tseam(g, L, CX + 1.8, Lt - 1.0, CX + 1.7, -2.0, 1);
@@ -742,7 +768,7 @@ export const BOTTOM_ITEMS: ItemDef[] = [
         limb(g, L, 'leg', s, 0, 1.9, 1.2, pen, { round0: true });
         const pts = widePanel(g, L, s, b.legR[0] + 1.2, b.legR[0] + 2.6, 1.95, pen);
         // Knife pleats: shadow line with a lit fold beside it
-        for (const k of [0.22, 0.48, 0.74]) crease(L, lerp(pts[0], pts[1], k), lerp(pts[3], pts[2], k - 0.04));
+        for (const k of [0.3, 0.66]) crease(L, lerp(pts[0], pts[1], k), lerp(pts[3], pts[2], k - 0.04));
       }
     },
   },

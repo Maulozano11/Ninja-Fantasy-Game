@@ -6,6 +6,8 @@ import {
   add,
   capsule,
   ellipse,
+  F_NO_OUTLINE,
+  F_NO_TEXTURE,
   Layer,
   lerp,
   MaterialTable,
@@ -21,6 +23,7 @@ import {
   Vec,
 } from './raster';
 import { BodyParams, GROUND, Rig } from './rig';
+import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import type { EyeSpecial, SlotId, SpriteAppearance } from './types';
 
 /**
@@ -196,8 +199,12 @@ export function torsoPoly(g: DrawCtx, inflate = 0, opts: { top?: number; bottom?
   const dy = g.rig.neck.y - T(0.6, Lt).y; // breathing offset
   const sh = (p: Vec, k: number): Vec => add(p, v(0, dy * k));
   const top = opts.top ?? Lt + 0.2;
-  const bottom = opts.bottom ?? -2.6;
+  const crotch = opts.bottom ?? -3.4;
   const flare = opts.flare ?? 0;
+  // Lower points never go below a hem the caller asked for.
+  const lo = (y: number) => Math.max(y, crotch);
+  const wa = b.waistHalf;
+  const hp = b.hipHalf;
   const pts: Vec[] = [
     sh(T(-b.shoulderHalf * 0.86 - i, Math.min(top, Lt - 1.2) + i * 0.5), 1),
     sh(T(-1.6, Math.min(top, Lt + 0.2) + i), 1),
@@ -205,12 +212,16 @@ export function torsoPoly(g: DrawCtx, inflate = 0, opts: { top?: number; bottom?
     sh(T(b.shoulderHalf * 0.58 + 0.6 + i, Math.min(top, Lt - 1.4) + i * 0.5), 1),
     sh(T(b.chestHalf * 0.62 + 0.8 + i + b.bust * 0.4, Lt - 4.4), 0.8),
     sh(T(b.chestHalf * 0.62 + 0.6 + i + b.bust, Lt - 6.2), 0.6),
-    T(b.waistHalf * 0.64 + 0.7 + i, 5),
-    T(b.hipHalf * 0.62 + 0.6 + i + flare * 0.6, Math.max(bottom, 0.5)),
-    T(b.hipHalf * 0.3 + i * 0.5 + flare * 0.6, bottom - i * 0.3),
-    T(-b.hipHalf * 0.45 - i * 0.5 - flare, bottom - i * 0.3),
-    T(-b.hipHalf * 0.86 - 0.3 - i - flare, Math.max(bottom, 0)),
-    T(-b.waistHalf * 0.86 - i, 5),
+    // Waist, then hips as wide as both thighs, then the legs' tops and a low crotch,
+    // so the legs come out from under the pelvis (as in the reference).
+    T(wa * 0.64 + 0.7 + i, lo(5.4)),
+    T(hp * 0.75 + 0.6 + i + flare * 0.6, lo(1.6)),
+    T(hp * 0.66 + 0.5 + i + flare * 0.6, lo(-0.8)),
+    T(1.0 + i * 0.3 + flare * 0.3, crotch - i * 0.3),
+    T(-1.4 - i * 0.3 - flare * 0.3, crotch - i * 0.3),
+    T(-hp * 0.9 - 0.4 - i - flare, lo(-0.8)),
+    T(-hp * 0.98 - 0.6 - i - flare, lo(1.6)),
+    T(-wa * 0.86 - i, lo(5.4)),
     sh(T(-b.chestHalf * 0.86 - i, Lt - 5), 0.8),
   ];
   return pts;
@@ -242,63 +253,102 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
   );
 }
 
+// Hand templates (fine pixels), drawn hanging down with the wrist at the top
+// and the thumb on the right, after the reference sprite's fists. They are
+// rotated to the forearm angle with RotSprite and mirrored so the thumb faces
+// forward. o outline · D dark · x finger crease · s shadow · b base · l light
+const HAND_GRIP: PixelTemplate = {
+  pivot: [6, 0],
+  rows: [
+    '...obbbbo...',
+    '..obbbbbso..',
+    '.osbbbbbbDo.',
+    'olbbbbbbbbbo',
+    'olbbbbbbbbbo',
+    'osbbbbbbssbo',
+    'oDsbbsbsooDo',
+    '.oDbsDsDo.o.',
+    '..oDsoDo....',
+    '...oo.o.....',
+  ],
+};
+const HAND_FIST_FRONT: PixelTemplate = {
+  pivot: [5, 0],
+  rows: [
+    '..obbbbo..',
+    '.obbbbbbo.',
+    'oDsbbbbbso',
+    'oDxDbxbbso',
+    'olbbxsbbbo',
+    'olbxxsbbbo',
+    'oDbxbbsbDo',
+    '.oDbxbDoo.',
+    '..ooooo...',
+  ],
+};
+const HAND_OPEN: PixelTemplate = {
+  pivot: [5, 0],
+  rows: [
+    '..obbbbo...',
+    '.obbbbbbo..',
+    'obbbbbbbsoo',
+    'oblbbbbbsbo',
+    'oblbbbbbsbo',
+    'obbbbbbsobo',
+    'obxbxbxbo..',
+    'obxbxbxbo..',
+    'obxbxbxbo..',
+    '.oDoDoDo...',
+    '..o.o.o....',
+  ],
+};
+const HAND_RELAXED: PixelTemplate = {
+  pivot: [5, 0],
+  rows: [
+    '..obbbbo...',
+    '.obbbbbbo..',
+    'obbbbbbbso.',
+    'oblbbbbbsbo',
+    'oblbbbbbsbo',
+    'osbxbxbsoo.',
+    'oDbxbxbDo..',
+    '.oDbDbDo...',
+    '..ooooo....',
+  ],
+};
+
 /**
- * Hand with readable finger shapes. The thumb sits on the facing side (+x).
- * `grow` enlarges it (gloves, gauntlets).
+ * Draws a hand from a pixel template matched to the reference sprite. The
+ * pen's material recolors it (skin, gloves); `grow` is accepted for gloves
+ * but the silhouette stays the same.
  */
 export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): void {
+  void grow;
   const j = armJoints(g.rig, s);
   const dir = norm(sub(j.hand, j.wrist));
-  let n = perp(dir);
-  if (n.x < 0 || (Math.abs(n.x) < 0.2 && n.y > 0)) n = scale(n, -1);
-  const R = g.bp.handR + grow;
-  const at = (k: number, m: number): Vec => add(j.hand, add(scale(dir, k * R), scale(n, m * R)));
-  const lines = (pairs: [number, number, number, number][], d = -1) => {
-    for (const [k0, m0, k1, m1] of pairs) seam(L, at(k0, m0), at(k1, m1), d);
+  const theta = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+  const rot = theta - 90;
+  // Keep the thumb on the facing side (+x), or on top when the arm is level.
+  const tr = (rot * Math.PI) / 180;
+  const tx = Math.cos(tr);
+  const ty = Math.sin(tr);
+  const flipX = tx < -0.25 || (Math.abs(tx) <= 0.25 && ty > 0);
+  const t =
+    j.shape === 'open'
+      ? HAND_OPEN
+      : j.shape === 'relaxed' || j.shape === 'sign'
+        ? HAND_RELAXED
+        : s === 'N'
+          ? HAND_GRIP
+          : HAND_FIST_FRONT;
+  const b = pen.bias || 0;
+  const pal: TemplatePalette = {
+    o: [pen.mat, 0],
+    D: [pen.mat, 1 + b],
+    x: [pen.mat, Math.max(1, 1 + b)],
+    s: [pen.mat, 2 + b],
+    b: [pen.mat, 3 + b],
+    l: [pen.mat, 4 + b],
   };
-  switch (j.shape) {
-    case 'fist':
-    case 'grip': {
-      capsule(L, j.wrist, at(0, 0), R * 0.8, R * 1.05, pen);
-      ellipse(L, j.hand.x + dir.x * 0.2, j.hand.y + dir.y * 0.2, R * 1.1, R * 1.1, pen);
-      // finger rows and knuckles
-      lines([
-        [0.15, -0.35, 0.95, -0.35],
-        [0.15, 0.15, 0.95, 0.15],
-      ]);
-      seam(L, at(0.9, -0.7), at(0.9, 0.6), 1);
-      // thumb wrapped over the fingers
-      const t = at(0.05, 0.75);
-      ellipse(L, t.x, t.y, R * 0.45, R * 0.5, pen, 4);
-      break;
-    }
-    case 'open': {
-      capsule(L, j.wrist, at(0, 0), R * 0.8, R * 0.95, pen);
-      capsule(L, at(0, 0), at(1.35, 0), R * 0.9, R * 0.7, pen);
-      lines([
-        [0.5, -0.3, 1.4, -0.3],
-        [0.5, 0.2, 1.4, 0.2],
-      ]);
-      capsule(L, at(-0.3, 0.6), at(0.5, 1.25), R * 0.42, R * 0.36, pen, 4);
-      break;
-    }
-    case 'sign': {
-      ellipse(L, j.hand.x, j.hand.y, R * 1.0, R * 1.2, pen);
-      lines([
-        [-0.6, -0.25, 0.7, -0.25],
-        [-0.6, 0.25, 0.7, 0.25],
-      ]);
-      break;
-    }
-    default: {
-      capsule(L, j.wrist, at(0.1, 0), R * 0.8, R * 0.95, pen);
-      ellipse(L, at(0.65, -0.1).x, at(0.65, -0.1).y, R * 0.85, R * 0.85, pen);
-      lines([
-        [0.35, -0.45, 1.2, -0.45],
-        [0.35, 0.05, 1.25, 0.05],
-      ]);
-      const t = at(0.15, 0.85);
-      ellipse(L, t.x, t.y, R * 0.42, R * 0.5, pen, 4);
-    }
-  }
+  stampTemplate(L, t, j.wrist, rot, pal, pen.part, { flipX, flags: F_NO_OUTLINE | F_NO_TEXTURE });
 }

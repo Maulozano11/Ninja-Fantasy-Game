@@ -362,7 +362,7 @@ export const CAPE_ITEMS: ItemDef[] = [
     slot: 'cape',
     name: 'Shadow Half-Cloak',
     desc: 'A black cloak thrown over one shoulder, pinned with gold clasps, falling in heavy folds to the calves.',
-    colors: [col('main', 'Cloak', '#1c1b22'), col('clasp', 'Clasps', '#d9a93a', 'metal')],
+    colors: [col('main', 'Cloak', '#1c1b22'), col('clasp', 'Clasps', '#b8913a', 'metal')],
     draw: (g, [c, gold]) => {
       const b = g.bp;
       const Lt = b.torsoLen;
@@ -382,10 +382,10 @@ export const CAPE_ITEMS: ItemDef[] = [
       const cap = shoulderCap(g, c, 0.24, 1.1, 1, 'dark');
       // Gold clasps at both shoulders (over a scarf), plus one at the collar.
       const gp: Pen = { mat: g.m(gold, 'metal'), part: 'torso' };
-      clasp(F, top(2.2, Lt - 1.6), gp, 1.1);
+      clasp(F, top(2.2, Lt - 1.6), gp, 0.7);
       const O = g.L('nearArm.over');
-      clasp(O, cap.top, { ...gp, part: 'upperArmN' }, 1.1);
-      clasp(O, top(b.shoulderHalf * 0.62 + 0.6, Lt - 1.1), gp, 1.05);
+      clasp(O, cap.top, { ...gp, part: 'upperArmN' }, 0.7);
+      clasp(O, top(b.shoulderHalf * 0.62 + 0.6, Lt - 1.1), gp, 0.7);
     },
   },
   {

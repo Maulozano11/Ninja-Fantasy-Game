@@ -125,14 +125,20 @@ export function stampTemplate(
   deg: number,
   palette: TemplatePalette,
   part: PartId,
-  opts: { flipY?: boolean } = {},
+  opts: { flipY?: boolean; flipX?: boolean; flags?: number } = {},
 ): void {
   const ax = Math.floor(anchor.x * RES);
   const ay = Math.floor(anchor.y * RES);
-  const tt = opts.flipY ? { rows: [...t.rows].reverse(), pivot: [t.pivot[0], t.rows.length - 1 - t.pivot[1]] as [number, number] } : t;
+  let tt = t;
+  if (opts.flipY) tt = { rows: [...tt.rows].reverse(), pivot: [tt.pivot[0], tt.rows.length - 1 - tt.pivot[1]] };
+  if (opts.flipX) {
+    const w = Math.max(...tt.rows.map((r) => r.length));
+    tt = { rows: tt.rows.map((r) => r.padEnd(w, '.').split('').reverse().join('')), pivot: [w - 1 - tt.pivot[0], tt.pivot[1]] };
+  }
+  const flags = opts.flags ?? F_NO_TEXTURE;
   for (const p of rotateTemplate(tt, deg)) {
     const pal = palette[p.ch];
     if (!pal) continue;
-    L.set(ax + p.dx, ay + p.dy, pal[0], pal[1], part, F_NO_TEXTURE);
+    L.set(ax + p.dx, ay + p.dy, pal[0], Math.max(0, Math.min(5, pal[1])), part, flags);
   }
 }

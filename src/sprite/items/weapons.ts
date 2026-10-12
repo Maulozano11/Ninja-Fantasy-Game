@@ -9,7 +9,7 @@ import { Vec } from '../raster';
 import { PixelTemplate, stampTemplate, TemplatePalette } from '../rotsprite';
 
 export const CRYSTAL_SWORD: PixelTemplate = {
-  pivot: [5, 6],
+  pivot: [3, 6],
   rows: [
     '.............cd.....................................',
     '............cb......................................',

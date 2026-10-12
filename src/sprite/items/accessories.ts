@@ -313,7 +313,7 @@ export const HELD_ITEMS: ItemDef[] = [
     slot: 'held',
     name: 'Crystal Greatsword',
     desc: 'A huge blade of pale-blue crystal that glitters with every swing.',
-    colors: [col('blade', 'Crystal', '#9fd8f0', 'metal'), col('hilt', 'Grip', '#2a3348', 'leather'), col('guard', 'Guard', '#7fa9cf', 'metal')],
+    colors: [col('blade', 'Crystal', '#8ccbe8', 'metal'), col('hilt', 'Grip', '#2a3348', 'leather'), col('guard', 'Guard', '#6f97c0', 'metal')],
     draw: (g, [blade, hilt, guard]) =>
       drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, armJoints(g.rig, 'N').hand, swordAngle(g), { blade, grip: hilt, guard, wrap: '#8a9bb8' }),
   },
@@ -945,7 +945,7 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
     slot: 'accessory',
     name: 'Neck Scarf',
     desc: 'A thick scarf bunched in folds around the neck and shoulders.',
-    colors: [col('main', 'Scarf', '#34333f')],
+    colors: [col('main', 'Scarf', '#2c2b35')],
     draw: (g, [c]) => {
       // Drawn in front of the torso and any cloak collar (capeFront), tucked under
       // the chin, and on top of a cloak's shoulder drape (see the end).
@@ -964,13 +964,14 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
       const lowRx = sh * 0.84 + 0.9;
       const rollShade = (cy: number, ry: number) => (_x: number, y: number) => {
         const t = (y + 0.5 - (cy - ry)) / (2 * ry); // 0 top .. 1 bottom
-        return t < 0.38 ? 4 : t > 0.78 ? 2 : 3;
+        // Mostly dark with a thin lit crest, like the reference's bunched scarf.
+        return t < 0.2 ? 3 : t > 0.62 ? 1 : 2;
       };
-      ellipse(L, lowC.x, lowC.y, lowRx, 2.8, pen, rollShade(lowC.y, 2.8));
+      ellipse(L, lowC.x, lowC.y, lowRx, 3.2, pen, rollShade(lowC.y, 3.2));
       // Upper roll bunched under the chin.
       const upC = top(0.6, Lt + 0.6);
       const upRx = sh * 0.66 + 1.1;
-      ellipse(L, upC.x, upC.y, upRx, 2.8, pen, rollShade(upC.y, 2.8));
+      ellipse(L, upC.x, upC.y, upRx, 3.2, pen, rollShade(upC.y, 3.2));
       // Folds: curved creases between the rolls plus a couple of pinches.
       const crease = (ax: number, ay: number, bx: number, by: number, dd: number) => {
         const p0 = top(ax, ay);

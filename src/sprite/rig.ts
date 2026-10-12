@@ -40,14 +40,14 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     torsoLen: 14.6,
     shoulderHalf: 7.4,
     chestHalf: 6.8,
-    waistHalf: 5.1,
-    hipHalf: 5.7,
+    waistHalf: 5.5,
+    hipHalf: 5.4,
     upperArm: 6.3,
     forearm: 5.5,
     thigh: 8.1,
     shin: 7.7,
     armR: [1.95, 1.65, 1.75, 1.3],
-    legR: [2.8, 2.05, 2.05, 1.4],
+    legR: [2.65, 2.0, 2.0, 1.4],
     headRx: 6,
     headRy: 7,
     neckW: 1.6,
@@ -60,14 +60,14 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     torsoLen: 13.8,
     shoulderHalf: 6.3,
     chestHalf: 6.1,
-    waistHalf: 4.3,
-    hipHalf: 6.1,
+    waistHalf: 3.9,
+    hipHalf: 7.1,
     upperArm: 6.0,
     forearm: 5.2,
     thigh: 8.0,
     shin: 7.5,
     armR: [1.7, 1.45, 1.5, 1.1],
-    legR: [2.9, 1.95, 1.85, 1.2],
+    legR: [3.2, 2.05, 1.9, 1.2],
     headRx: 6,
     headRy: 7,
     neckW: 1.35,
@@ -80,7 +80,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     torsoLen: 15.2,
     shoulderHalf: 9.6,
     chestHalf: 8.8,
-    waistHalf: 7.1,
+    waistHalf: 7.5,
     hipHalf: 6.9,
     upperArm: 6.5,
     forearm: 5.7,
@@ -133,7 +133,7 @@ const IDLE: PoseFrame = {
   // Upright, chest slightly out, head over the shoulders (no hunch).
   lean: -2,
   handN: arm(-0.16, 0.9),
-  handF: arm(0.3, 0.82),
+  handF: arm(0.3, 0.88),
   footN: v(-0.22, 0.97),
   footF: v(0.27, 0.965),
   shapeN: 'fist',
@@ -337,8 +337,8 @@ export function buildRig(body: BodyType, pose: SpritePose, frame: number): Rig {
 
   const T = (x: number, y: number): Vec => add(pelvis, add(scale(right, x), scale(up, y)));
 
-  const hipN = T(-bp.hipHalf * 0.55, 0.5);
-  const hipF = T(bp.hipHalf * 0.45, 0.5);
+  const hipN = T(-bp.hipHalf * 0.5, 0.3);
+  const hipF = T(bp.hipHalf * 0.42, 0.3);
   const legN = solve2(hipN, add(hipN, scale(f.footN, legLen)), bp.thigh, bp.shin, -1);
   const legF = solve2(hipF, add(hipF, scale(f.footF, legLen)), bp.thigh, bp.shin, -1);
 

@@ -52,7 +52,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
   // Weather
   const [weather, setWeather] = useState<WeatherType>(campaignEncounter?.weather || 'Clear');
   const [muted, setMuted] = useState<boolean>(soundManager.getMuted());
-  const [combatSpriteEngine, setCombatSpriteEngine] = useState<'jrpg_16bit' | 'pixel' | 'hd'>('jrpg_16bit');
+  const [combatSpriteEngine, setCombatSpriteEngine] = useState<'jrpg_16bit' | 'pixel'>('jrpg_16bit');
 
   // Grid Battlefield State - synchronously initialize with player combatant
   const [grid, setGrid] = useState<BattlefieldTile[][]>([]);
@@ -1004,17 +1004,6 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
               }`}
             >
               Classic Retro
-            </button>
-            <button
-              type="button"
-              onClick={() => setCombatSpriteEngine('hd')}
-              className={`px-2 py-1 rounded font-medium transition ${
-                combatSpriteEngine === 'hd'
-                  ? 'bg-cyan-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              HD Vector
             </button>
           </div>
 

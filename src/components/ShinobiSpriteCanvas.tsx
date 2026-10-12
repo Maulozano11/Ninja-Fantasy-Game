@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from 'react';
 import { ShinobiCharacter } from '../types/shinobi';
-import { ShinobiSpriteHD } from './ShinobiSpriteHD';
 import { ShinobiSprite16BitJRPG } from './ShinobiSprite16BitJRPG';
 
 export interface ShinobiSpriteCanvasProps {
@@ -11,7 +10,7 @@ export interface ShinobiSpriteCanvasProps {
   className?: string;
   showAura?: boolean;
   showShadow?: boolean;
-  renderEngine?: 'hd' | 'pixel' | 'jrpg_16bit';
+  renderEngine?: 'pixel' | 'jrpg_16bit';
   pixelScaleMode?: 'jrpg_64' | 'classic_128';
 }
 
@@ -2802,19 +2801,6 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
   renderEngine = 'pixel',
   pixelScaleMode = 'jrpg_64',
 }) => {
-  if (renderEngine === 'hd') {
-    return (
-      <ShinobiSpriteHD
-        character={character}
-        stance={stance}
-        size={size}
-        className={className}
-        showShadow={showShadow}
-        isEnhanced={isEnhanced}
-      />
-    );
-  }
-
   // 16-Bit JRPG Mode (Authentic 64x64 canvas, 4.5-5 head proportions, Selout, Clump Volumes & Hue-Shifting)
   const is16BitJRPG =
     renderEngine === 'jrpg_16bit' ||
@@ -2850,4 +2836,4 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
   );
 };
 
-export { ShinobiSpriteHD, ShinobiSprite16BitJRPG };
+export { ShinobiSprite16BitJRPG };

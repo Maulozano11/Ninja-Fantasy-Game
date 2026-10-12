@@ -43,7 +43,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const [activeTab, setActiveTab] = useState<'identity' | 'appearance' | 'stats' | 'jutsus'>('identity');
   const [previewStance, setPreviewStance] = useState<'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory'>('idle');
   const [previewZoom, setPreviewZoom] = useState<number>(256);
-  const [renderEngine, setRenderEngine] = useState<'hd' | 'pixel' | 'jrpg_16bit'>('jrpg_16bit');
+  const [renderEngine, setRenderEngine] = useState<'pixel' | 'jrpg_16bit'>('jrpg_16bit');
   const [previewEnhanced, setPreviewEnhanced] = useState<boolean>(false);
   const [importExportModal, setImportExportModal] = useState<boolean>(false);
   const [importJsonText, setImportJsonText] = useState<string>('');
@@ -352,17 +352,6 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                 >
                   Classic Retro (128px)
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setRenderEngine('hd')}
-                  className={`text-xs px-2.5 py-1 rounded-md font-medium transition ${
-                    renderEngine === 'hd'
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md ring-1 ring-cyan-400/50'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                  }`}
-                >
-                  HD Vector
-                </button>
               </div>
 
               <div className="flex items-center gap-2">
@@ -412,9 +401,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                 <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-900/80 text-cyan-400 border border-slate-800">
                   {renderEngine === 'jrpg_16bit'
                     ? 'Proportion: 16-Bit JRPG Pro (4.5–5 Head)'
-                    : renderEngine === 'pixel'
-                    ? 'Proportion: 2.5–3 Head Chibi'
-                    : 'Proportion: Full HD Vector'}
+                    : 'Proportion: 2.5–3 Head Chibi'}
                 </span>
               </div>
 

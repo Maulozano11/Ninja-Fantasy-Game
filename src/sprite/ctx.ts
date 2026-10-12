@@ -5,6 +5,7 @@ import { RampKind } from './color';
 import {
   add,
   capsule,
+  cylShade,
   ellipse,
   F_NO_OUTLINE,
   F_NO_TEXTURE,
@@ -16,13 +17,14 @@ import {
   Pen,
   perp,
   poly,
+  RES,
   scale,
   seam,
   sub,
   v,
   Vec,
 } from './raster';
-import { BodyParams, GROUND, Rig } from './rig';
+import { BodyParams, Rig } from './rig';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import type { EyeSpecial, SlotId, SpriteAppearance } from './types';
 
@@ -139,27 +141,33 @@ export const sideBias = (s: Side): number => (s === 'F' ? -1 : 0);
  * Draws part of an arm as a tapered capsule. `from`/`to` run along the whole
  * arm: 0 = shoulder, 1 = elbow, 2 = wrist.
  */
-export function armSpan(g: DrawCtx, L: Layer, s: Side, from: number, to: number, inflate: number, pen: Pen, shade?: number): void {
+export function armSpan(g: DrawCtx, L: Layer, s: Side, from: number, to: number, inflate: number, pen: Pen, shade?: number | 'skin'): void {
   const j = armJoints(g.rig, s);
   const R = g.bp.armR;
   const at = (t: number) => (t <= 1 ? lerp(j.shoulder, j.elbow, t) : lerp(j.elbow, j.wrist, t - 1));
   const rad = (t: number) => (t <= 1 ? R[0] + (R[1] - R[0]) * t : R[2] + (R[3] - R[2]) * (t - 1));
+  spans(L, at, rad, from, to, inflate, pen, shade);
+}
+
+/** Capsules along a limb, split at the joint; 'skin' uses the reference cylinder shading. */
+function spans(L: Layer, at: (t: number) => Vec, rad: (t: number) => number, from: number, to: number, inflate: number, pen: Pen, shade?: number | 'skin'): void {
   const cuts = [from, ...[1].filter((c) => c > from && c < to), to];
   for (let i = 0; i < cuts.length - 1; i++) {
-    capsule(L, at(cuts[i]), at(cuts[i + 1]), rad(cuts[i]) + inflate, rad(cuts[i + 1]) + inflate, pen, shade);
+    const a = at(cuts[i]);
+    const b = at(cuts[i + 1]);
+    const ra = rad(cuts[i]) + inflate;
+    const rb = rad(cuts[i + 1]) + inflate;
+    capsule(L, a, b, ra, rb, pen, shade === 'skin' ? cylShade(a, b, ra, rb) : shade);
   }
 }
 
 /** Same as armSpan for legs: 0 = hip, 1 = knee, 2 = ankle. */
-export function legSpan(g: DrawCtx, L: Layer, s: Side, from: number, to: number, inflate: number, pen: Pen, shade?: number): void {
+export function legSpan(g: DrawCtx, L: Layer, s: Side, from: number, to: number, inflate: number, pen: Pen, shade?: number | 'skin'): void {
   const j = legJoints(g.rig, s);
   const R = g.bp.legR;
   const at = (t: number) => (t <= 1 ? lerp(j.hip, j.knee, t) : lerp(j.knee, j.ankle, t - 1));
   const rad = (t: number) => (t <= 1 ? R[0] + (R[1] - R[0]) * t : R[2] + (R[3] - R[2]) * (t - 1));
-  const cuts = [from, ...[1].filter((c) => c > from && c < to), to];
-  for (let i = 0; i < cuts.length - 1; i++) {
-    capsule(L, at(cuts[i]), at(cuts[i + 1]), rad(cuts[i]) + inflate, rad(cuts[i + 1]) + inflate, pen, shade);
-  }
+  spans(L, at, rad, from, to, inflate, pen, shade);
 }
 
 export function armPoint(g: DrawCtx, s: Side, t: number): Vec {
@@ -170,21 +178,6 @@ export function armPoint(g: DrawCtx, s: Side, t: number): Vec {
 export function legPoint(g: DrawCtx, s: Side, t: number): Vec {
   const j = legJoints(g.rig, s);
   return t <= 1 ? lerp(j.hip, j.knee, t) : lerp(j.knee, j.ankle, t - 1);
-}
-
-/** Foot outline for a side, optionally enlarged for shoes. */
-export function footPoly(g: DrawCtx, s: Side, grow = 0, toeExtra = 0): Vec[] {
-  const a = legJoints(g.rig, s).ankle;
-  const fl = g.bp.footLen * (s === 'F' ? 0.85 : 1) + toeExtra;
-  const sole = GROUND;
-  return [
-    v(a.x - 1.6 - grow, a.y - 0.8 - grow),
-    v(a.x + 1.2 + grow * 0.5, a.y - 0.8 - grow),
-    v(a.x + fl * 0.75 + grow, sole - 2.6 - grow * 0.6),
-    v(a.x + fl + grow, sole - 1.6 - grow * 0.3),
-    v(a.x + fl + 0.4 + grow, sole),
-    v(a.x - 1.8 - grow, sole),
-  ];
 }
 
 /**
@@ -260,44 +253,44 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
 const HAND_GRIP: PixelTemplate = {
   pivot: [6, 0],
   rows: [
-    '...obbbbo...',
-    '..obbbbbso..',
-    '.osbbbbbbDo.',
-    'olbbbbbbbbbo',
-    'olbbbbbbbbbo',
-    'osbbbbbbssbo',
-    'oDsbbsbsooDo',
-    '.oDbsDsDo.o.',
-    '..oDsoDo....',
-    '...oo.o.....',
+    '...obbbso...',
+    '..osbbbbso..',
+    '.osbbbbbsDo.',
+    'osblbbbbssDo',
+    'osbblbbbbsDo',
+    'osbbbblbssDo',
+    'oDxbxbxbxsDo',
+    '.oDsDsDsxDo.',
+    '..oDxoDxoo..',
+    '...oo.oo....',
   ],
 };
 const HAND_FIST_FRONT: PixelTemplate = {
-  pivot: [5, 0],
+  pivot: [4, 0],
   rows: [
-    '..obbbbo..',
-    '.obbbbbbo.',
-    'oDsbbbbbso',
-    'oDxDbxbbso',
-    'olbbxsbbbo',
-    'olbxxsbbbo',
-    'oDbxbbsbDo',
-    '.oDbxbDoo.',
-    '..ooooo...',
+    '..obbbo..',
+    '.osbbbbo.',
+    'oDbblbbso',
+    'oDblbbbso',
+    'oxDbbxDso',
+    'osbxDbbDo',
+    'oDsbxDsso',
+    '.oDxsxDo.',
+    '..ooooo..',
   ],
 };
 const HAND_OPEN: PixelTemplate = {
   pivot: [5, 0],
   rows: [
-    '..obbbbo...',
-    '.obbbbbbo..',
-    'obbbbbbbsoo',
-    'oblbbbbbsbo',
-    'oblbbbbbsbo',
-    'obbbbbbsobo',
-    'obxbxbxbo..',
-    'obxbxbxbo..',
-    'obxbxbxbo..',
+    '..obbbso...',
+    '.osbbbbso..',
+    'osbbbbbbsoo',
+    'oslbbbbsDso',
+    'oblbbbbsDbo',
+    'osbbbbsDobo',
+    'osxbxbxso..',
+    'obxbxsxDo..',
+    'osxbxsxDo..',
     '.oDoDoDo...',
     '..o.o.o....',
   ],
@@ -305,14 +298,14 @@ const HAND_OPEN: PixelTemplate = {
 const HAND_RELAXED: PixelTemplate = {
   pivot: [5, 0],
   rows: [
-    '..obbbbo...',
-    '.obbbbbbo..',
-    'obbbbbbbso.',
-    'oblbbbbbsbo',
-    'oblbbbbbsbo',
+    '..obbbso...',
+    '.osbbbbso..',
+    'osbbbbbbso.',
+    'oslbbbbsDso',
+    'oblbbbbsDbo',
     'osbxbxbsoo.',
-    'oDbxbxbDo..',
-    '.oDbDbDo...',
+    'oDbxbxsDo..',
+    '.oDsDsDo...',
     '..ooooo....',
   ],
 };
@@ -351,4 +344,95 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     l: [pen.mat, 4 + b],
   };
   stampTemplate(L, t, j.wrist, rot, pal, pen.part, { flipX, flags: F_NO_OUTLINE | F_NO_TEXTURE });
+}
+
+// ---------------------------------------------------------------------------
+// Feet: pixel templates in 3/4 front view, after the reference sprite. The
+// near foot is seen from the front (toes toward the viewer, so it reaches
+// lower on screen); the far foot points right and is authored a shade darker.
+// The layer outline pass adds the outer outline, so templates hold only the
+// inside. The pivot is the ankle.
+//
+// Legend: 0-5 main material shade · a-f second material shade 0-5 ·
+// p-u skin shade 0-5 · v-z third material shade 1-5.
+// ---------------------------------------------------------------------------
+
+export interface FootArt {
+  N: PixelTemplate;
+  F: PixelTemplate;
+}
+
+/** Bare feet: ankle bone, lit instep, toes split by dark gaps, big toe on the inside. */
+export const FOOT_BARE: FootArt = {
+  N: {
+    pivot: [5, 0],
+    rows: [
+      '...rstsrq',
+      '...rstsrq',
+      '...rsttrq',
+      '..qrsttrq',
+      '..rssttrq',
+      '.qrssstsr',
+      '.rsttttsq',
+      'rstttttsq',
+      'rsttttrtq',
+      'rsrsrsqts',
+      'qrqrqrqrr',
+      'pqqqqqpqq',
+    ],
+  },
+  F: {
+    pivot: [3, 0],
+    rows: [
+      'qrsrq........',
+      'qrssrq.......',
+      'qrssrrq......',
+      'qrsssrrq.....',
+      'qrssssrrqq...',
+      'qrrsssssrrq..',
+      'qqrrsssssrsr.',
+      'pqqrrrrrqrqrq',
+      '.pqqqqqqqqqq.',
+    ],
+  },
+};
+
+/** Variant for slimmer (female) or broader (bulky) feet: drops or doubles one column. */
+function footWidth(t: PixelTemplate, body: string): PixelTemplate {
+  const col = t.pivot[0] + 1;
+  if (body === 'female') return { pivot: t.pivot, rows: t.rows.map((r) => r.slice(0, col) + r.slice(col + 1)) };
+  if (body === 'bulky') return { pivot: t.pivot, rows: t.rows.map((r) => r.slice(0, col + 1) + r.slice(col)) };
+  return t;
+}
+
+/**
+ * Stamps a foot template under the ankle. `mats` gives the material for each
+ * legend range (main, second, third); skin always uses the body's skin.
+ */
+export function footDraw(
+  g: DrawCtx,
+  L: Layer,
+  s: Side,
+  art: FootArt,
+  mats: { main?: number; second?: number; third?: number } = {},
+  flags = F_NO_TEXTURE,
+): void {
+  const t = footWidth(art[s], g.rig.body);
+  const a = legJoints(g.rig, s).ankle;
+  const ax = Math.floor(a.x * RES) - t.pivot[0];
+  const ay = Math.floor(a.y * RES) - t.pivot[1];
+  const part: PartId = s === 'N' ? 'footN' : 'footF';
+  t.rows.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      const ch = row[x];
+      let mat: number | undefined;
+      let shade = 0;
+      if (ch >= '0' && ch <= '5') [mat, shade] = [mats.main, +ch];
+      else if (ch >= 'a' && ch <= 'f') [mat, shade] = [mats.second, ch.charCodeAt(0) - 97];
+      else if (ch >= 'p' && ch <= 'u') [mat, shade] = [g.skin, ch.charCodeAt(0) - 112];
+      else if (ch >= 'v' && ch <= 'z') [mat, shade] = [mats.third, ch.charCodeAt(0) - 117];
+      if (mat === undefined) continue;
+      L.set(ax + x, ay + y, mat, shade, part, flags);
+    }
+  });
 }

@@ -23,6 +23,38 @@ const HEAD_GROUP = new Set<Depth>(['hairBack', 'head.body', 'head.face', 'head.m
 // Slots are drawn in this order; within a depth, later items cover earlier ones.
 const SLOT_ORDER: SlotId[] = ['cape', 'hair', 'face', 'bottom', 'feet', 'top', 'skirt', 'armor', 'waist', 'hands', 'held'];
 
+// Layers whose hems cast a contact shadow on the skin layer under them.
+const TORSO_COVERS: Depth[] = ['torso.under', 'torso.bottom', 'torso.top', 'skirt', 'torso.armor', 'torso.over', 'waist'];
+const SHADOW_CASTERS: [Depth, Depth[]][] = [
+  ['nearArm.body', ['nearArm.cloth', 'nearArm.armor', 'nearArm.over']],
+  ['farArm.body', ['farArm.cloth', 'farArm.armor']],
+  ['nearLeg.body', ['nearLeg.cloth', 'nearLeg.armor', ...TORSO_COVERS]],
+  ['farLeg.body', ['farLeg.cloth', 'farLeg.armor', ...TORSO_COVERS]],
+  ['torso.body', ['neck', 'head.body', 'torso.top', 'torso.armor', 'torso.over', 'waist']],
+];
+
+/**
+ * Darkens skin by one shade for the two rows under the outline of a sleeve,
+ * hem, collar or chin drawn over it, like the reference's cast shadows.
+ */
+function castShadows(layers: Map<Depth, Layer>, skin: number): void {
+  for (const [depth, covers] of SHADOW_CASTERS) {
+    const L = layers.get(depth);
+    if (!L?.used) continue;
+    const cs = covers.map((c) => layers.get(c)).filter((c): c is Layer => !!c?.used);
+    if (!cs.length) continue;
+    const marks: number[] = [];
+    for (let y = 2; y < GRID; y++) {
+      for (let x = 0; x < GRID; x++) {
+        const i = y * GRID + x;
+        if (L.mat[i] !== skin || cs.some((c) => c.has(x, y))) continue;
+        if (cs.some((c) => c.has(x, y - 2) || (y >= 3 && c.has(x, y - 3)))) marks.push(i);
+      }
+    }
+    for (const i of marks) L.shade[i] = Math.max(1, L.shade[i] - 1);
+  }
+}
+
 export function renderSprite(
   look: SpriteAppearance,
   pose: SpritePose,
@@ -77,6 +109,8 @@ export function renderSprite(
     if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors));
   }
   drawHeadband(g);
+
+  castShadows(layers, g.skin);
 
   // Outline and flatten
   const rgba = new Uint8ClampedArray(GRID * GRID * 4);

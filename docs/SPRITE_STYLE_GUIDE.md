@@ -20,7 +20,8 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 | Head | Shrunk by `headScale` (about 0.78). The face from the lash row down is a fixed pixel template. |
 | Bodies | Male, female, bulky. Every item must work on all three. |
 | Poses | idle, handsigns, attack (3 frames), cast, hurt, victory, charge. Every item must work in all of them. |
-| Posture | Upright: chest slightly out, head over the shoulders. Never hunched. |
+| Posture | Upright: chest slightly out, head over the shoulders. Never hunched. In idle the legs are straight under the hips and the arms hang relaxed and nearly straight, fists at hip height. |
+| Depth | 3/4 front ground plane: the near foot stands lower on screen, the far hip and foot sit higher (`ANKLE_N`, `FAR_LIFT` in `rig.ts`). |
 
 ## 2. Outline
 
@@ -39,7 +40,15 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 
 The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris with one light pixel, a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. It recolors by skin tone and eye color, and has female and bulky variants and four eye shapes. Don't change it without comparing at 10x against the reference.
 
-## 5. Hair
+## 5. Skin, arms, hands and feet
+
+- **Skin ramp** (`makeRamp` kind `skin`): the chosen skin color is the broad lit tone. Shadows turn rose and muted (never bright orange); there are no near-white highlights.
+- **Limbs** use cylinder bands (`cylShade` in `raster.ts`): a darker rim on the lit edge, a wide base core, a shadow band, and a dark far edge, with jittered band edges so the shading breaks into clusters.
+- **Contact shadows:** skin is one shade darker for two rows under any sleeve, hem, collar or chin drawn over it (`castShadows` in `compose.ts`).
+- **Hands** are pixel templates (`HAND_*` in `ctx.ts`) rotated with RotSprite: lit knuckle pixels, shadow on the side away from the light, and near-black finger creases.
+- **Feet** are pixel templates in 3/4 front view (`FootArt`, `footDraw` in `ctx.ts`). The near foot faces the viewer with the toes at the bottom; the far foot points right and is authored a shade darker. Each footwear item supplies its own `FootArt` (legend: `0-5` main, `a-f` sole/straps, `p-u` skin, `v-z` metal or stitching); shafts stay procedural.
+
+## 6. Hair
 
 - Hair is a pixel template anchored on the face (`hairTemplate` in `hairkit.ts`). The near-eye iris is at `(nx + 2, ny + 1)` from `faceAnchor`.
 - Style: a dark 0 outline with a lit 1 rim, irregular 1-2 px tufts on the silhouette, mostly shades 1-2 with clusters of 3-4 and a few 5 glints.
@@ -47,7 +56,7 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - Both irises stay visible. The only exception is a style designed to cover one eye.
 - Parts that follow the body (long hair down the back, ponytails) are drawn procedurally in `hairBack` with the same outline and clusters.
 
-## 6. Weapons
+## 7. Weapons
 
 - Rigid weapons are templates drawn once, pointing right, with the pivot on the grip (`items/weapons.ts`). They are rotated per pose with RotSprite (`rotsprite.ts`), so edges stay crisp.
 - **Anatomy, readable at 1x:** pommel, wrapped grip, guard, then the blade with a lit top edge, a center ridge or fuller, a darker lower half, and facet or hamon detail.
@@ -55,7 +64,7 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - Glow materials are only for energy techniques (spiral orb, lightning, palm glow), never for steel or crystal.
 - In idle the blade hangs steeply (about 70° below horizontal) across the legs, like the reference.
 
-## 7. Clothes
+## 8. Clothes
 
 - Panels are separated by 1 px dark seams.
 - Folds are crest and trough lines that follow how the cloth hangs (diagonal on wraps and sashes, vertical on coats and capes). No stripe patterns unless the garment is striped.
@@ -63,7 +72,7 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - Hems are flat or cut, not round blobs.
 - Sleeves, cuffs and boot tops follow the limb (`sleeves`, `trousers`, `boot` in `clothes.ts` and `feet.ts`).
 
-## 8. Armor
+## 9. Armor
 
 - Each plate has a 1 px lit top rim, a darker lower half and a 1 px dark seam to the next plate.
 - Rivets and studs are single pixels with one glint.
@@ -71,14 +80,14 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - Shoulder guards follow the upper arm only partway, so they never smear across the chest in attack poses.
 - Every armor maps to a legacy armor style for AC (`statsArmor`).
 
-## 9. Capes
+## 10. Capes
 
 - A cape hangs behind the near arm. The near forearm and fist always stay visible in idle.
 - Over the shoulder, a cape uses only a low, flat cap that never rises above the shoulder line.
 - Dark capes stay near-black, with thin highlight lines on fold crests only.
 - Hems are cut or pointed, with long vertical folds.
 
-## 10. Names
+## 11. Names
 
 All item and preset names are original. Never use names, symbols or logos from existing franchises.
 

@@ -142,10 +142,13 @@ export function makeRamp(hex: string, kind: RampKind = 'cloth'): Ramp {
       lights[5] = base + 0.28;
     }
     if (kind === 'skin') {
-      for (let i = 1; i < 6; i++) sats[i] = Math.min(sats[i], sat * (i === 5 ? 0.75 : 0.95));
-      sats[0] = Math.min(0.6, sats[0]);
-      lights[0] = Math.max(0.16, lights[0]);
-      lights[1] = Math.max(lights[1], 0.22);
+      // After the reference sprite: a wide value range, with shadows that
+      // turn rose and muted instead of bright orange, and no white highlights.
+      const up = Math.min(1 - base, 0.4);
+      const sk = [Math.max(0.16, lights[0]), base * 0.58, base * 0.8, base, base + up * 0.22, base + up * 0.42];
+      const ss = [Math.min(0.6, sats[0]), sat * 0.48, sat * 0.72, sat, sat * 0.95, sat * 0.8];
+      const sh = [shiftHue(h, 345, 30), shiftHue(h, 345, 24), shiftHue(h, 345, 12), h, shiftHue(h, 40, 3), shiftHue(h, 40, 6)];
+      for (let i = 0; i < 6; i++) [lights[i], sats[i], hues[i]] = [sk[i], ss[i], sh[i]];
     }
     const out = lights.map((li, i) => hslToHex(hues[i], sats[i], li)) as Ramp;
     if (Math.abs(l - base) < 0.001) out[3] = hex;

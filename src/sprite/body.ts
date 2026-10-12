@@ -6,8 +6,8 @@
 // fine pixels (RES per design unit) for 128x128 detail.
 
 import { makeRamp, mixHex } from './color';
-import { armPoint, armSpan, DrawCtx, fillTorso, footPoly, handDraw, legSpan, Side } from './ctx';
-import { capsule, ellipse, F_NO_OUTLINE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
+import { armPoint, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side } from './ctx';
+import { ballShade, capsule, ellipse, F_NO_OUTLINE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 
 const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';
@@ -27,15 +27,9 @@ export function drawBody(g: DrawCtx): void {
     const bias = s === 'F' ? -1 : 0;
     const thigh = skin(s === 'N' ? 'thighN' : 'thighF', bias);
     const shin = skin(s === 'N' ? 'shinN' : 'shinF', bias);
-    legSpan(g, L, s, 0, 1, 0, thigh);
-    legSpan(g, L, s, 1, 2, 0, shin);
-    const foot = footPoly(g, s);
-    poly(L, foot, skin(s === 'N' ? 'footN' : 'footF', bias), 3);
-    // toes
-    for (let t = 0; t < 3; t++) {
-      const tx = foot[3].x - 0.4 - t * 0.9;
-      seam(L, v(tx, foot[4].y - 1.2), v(tx, foot[4].y - 0.2), -1);
-    }
+    legSpan(g, L, s, 0, 1, 0, thigh, 'skin');
+    legSpan(g, L, s, 1, 2, 0, shin, 'skin');
+    footDraw(g, L, s, FOOT_BARE);
   }
 
   // Torso + neck
@@ -70,10 +64,10 @@ export function drawBody(g: DrawCtx): void {
 /** Arm: rounded shoulder + tapered upper arm and forearm. */
 function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
   const R = g.bp.armR;
-  armSpan(g, L, s, 0, 1, 0, upper);
-  armSpan(g, L, s, 1, 2, 0, fore);
+  armSpan(g, L, s, 0, 1, 0, upper, 'skin');
+  armSpan(g, L, s, 1, 2, 0, fore, 'skin');
   const sh = armPoint(g, s, 0.06);
-  ellipse(L, sh.x, sh.y, R[0] + 0.3, R[0] + 0.2, upper);
+  ellipse(L, sh.x, sh.y, R[0] + 0.3, R[0] + 0.2, upper, ballShade(sh.x, sh.y, R[0] + 0.3, R[0] + 0.2));
 }
 
 /** Head center helper: offsets in design units from the integer head center. */

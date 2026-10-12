@@ -9,7 +9,11 @@
 import { add, len, norm, scale, sub, v, Vec } from './raster';
 import type { BodyType, SpritePose } from './types';
 
-export const GROUND = 60; // first empty row under the soles
+export const GROUND = 60; // ground line under the body (shadow centre)
+/** Ankle heights, 3/4 front view: the near foot stands lower on screen, the far foot higher. */
+export const ANKLE_N = GROUND - 4;
+export const FAR_LIFT = 2;
+const FAR_HIP_LIFT = 1.5;
 
 export interface BodyParams {
   torsoLen: number;
@@ -46,7 +50,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     forearm: 5.5,
     thigh: 8.1,
     shin: 7.7,
-    armR: [1.95, 1.65, 1.75, 1.3],
+    armR: [2.3, 1.9, 2.1, 1.5],
     legR: [2.65, 2.0, 2.0, 1.4],
     headRx: 6,
     headRy: 7,
@@ -66,7 +70,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     forearm: 5.2,
     thigh: 8.0,
     shin: 7.5,
-    armR: [1.7, 1.45, 1.5, 1.1],
+    armR: [1.9, 1.6, 1.7, 1.25],
     legR: [3.2, 2.05, 1.9, 1.2],
     headRx: 6,
     headRy: 7,
@@ -86,7 +90,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     forearm: 5.7,
     thigh: 7.9,
     shin: 7.4,
-    armR: [2.7, 2.3, 2.45, 1.8],
+    armR: [2.9, 2.45, 2.6, 1.9],
     legR: [3.4, 2.6, 2.5, 1.75],
     headRx: 6.2,
     headRy: 7,
@@ -132,10 +136,10 @@ const chest = (x: number, y: number): HandTarget => ({ from: 'chest', x, y, unit
 const IDLE: PoseFrame = {
   // Upright, chest slightly out, head over the shoulders (no hunch).
   lean: -2,
-  handN: arm(-0.16, 0.9),
-  handF: arm(0.3, 0.88),
-  footN: v(-0.22, 0.97),
-  footF: v(0.27, 0.965),
+  handN: arm(-0.06, 0.95),
+  handF: arm(0.15, 0.95),
+  footN: v(-0.1, 0.985),
+  footF: v(0.14, 0.98),
   shapeN: 'fist',
   shapeF: 'fist',
 };
@@ -333,14 +337,16 @@ export function buildRig(body: BodyType, pose: SpritePose, frame: number): Rig {
   // Pelvis height is solved so the lowest ankle sits on the ground.
   const footDrop = Math.max(f.footN.y, f.footF.y) * legLen;
   const jitter = f.jitter ? (frame % 2 === 0 ? -f.jitter : f.jitter) * 0.5 : 0;
-  const pelvis = v(31.5 + (f.pelvisDx || 0) + jitter, GROUND - 2.2 - footDrop);
+  const pelvis = v(31.5 + (f.pelvisDx || 0) + jitter, ANKLE_N - footDrop);
 
   const T = (x: number, y: number): Vec => add(pelvis, add(scale(right, x), scale(up, y)));
 
   const hipN = T(-bp.hipHalf * 0.5, 0.3);
-  const hipF = T(bp.hipHalf * 0.42, 0.3);
+  // The far side sits further back, so it is drawn higher on screen: the hip
+  // a little, the foot by FAR_LIFT. Its leg stays about as straight as the near one.
+  const hipF = sub(T(bp.hipHalf * 0.42, 0.3), v(0, FAR_HIP_LIFT));
   const legN = solve2(hipN, add(hipN, scale(f.footN, legLen)), bp.thigh, bp.shin, -1);
-  const legF = solve2(hipF, add(hipF, scale(f.footF, legLen)), bp.thigh, bp.shin, -1);
+  const legF = solve2(hipF, add(hipF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), bp.thigh, bp.shin, -1);
 
   const chestDy = f.chestDy || 0;
   const neck = add(T(0.6, bp.torsoLen), v(0, chestDy));

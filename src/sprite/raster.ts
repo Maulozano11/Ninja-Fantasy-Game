@@ -268,6 +268,45 @@ export function capsule(L: Layer, a: Vec, b: Vec, ra: number, rb: number, pen: P
   });
 }
 
+/** Small deterministic per-pixel jitter (-0.5..0.5) so shade bands break into clusters. */
+function jitter(x: number, y: number): number {
+  let h = (Math.floor(x * RES) * 374761393 + Math.floor(y * RES) * 668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) & 1023) / 1023 - 0.5;
+}
+
+/**
+ * Skin shading for a limb segment, after the reference sprite: a darker rim on
+ * the lit edge (the surface turning away), a wide base-tone core, then a
+ * shadow band and a dark far edge. Band edges are jittered into clusters.
+ */
+export function cylShade(a: Vec, b: Vec, ra: number, rb: number): ShadeFn {
+  const ab = sub(b, a);
+  const l2 = ab.x * ab.x + ab.y * ab.y || 1;
+  return (x0, y0) => {
+    const x = x0 + 0.5;
+    const y = y0 + 0.5;
+    const t = Math.max(0, Math.min(1, ((x - a.x) * ab.x + (y - a.y) * ab.y) / l2));
+    const r = ra + (rb - ra) * t || 1;
+    return skinBand(-((x - a.x - ab.x * t) * LIGHT.x + (y - a.y - ab.y * t) * LIGHT.y) / r, x, y);
+  };
+}
+
+/** Same bands for a round shape (shoulder caps, knees). */
+export function ballShade(cx: number, cy: number, rx: number, ry: number): ShadeFn {
+  return (x0, y0) => {
+    const x = x0 + 0.5;
+    const y = y0 + 0.5;
+    return skinBand(-(((x - cx) / rx) * LIGHT.x + ((y - cy) / ry) * LIGHT.y), x, y);
+  };
+}
+
+/** u: -1 on the lit edge, +1 on the far edge. */
+function skinBand(u: number, x: number, y: number): number {
+  const w = u + jitter(x, y) * 0.2;
+  return w < -0.84 ? 2 : w < 0.18 ? 3 : w < 0.62 ? 2 : 1;
+}
+
 export function ellipse(L: Layer, cx: number, cy: number, rx: number, ry: number, pen: Pen, shade?: ShadeFn | number): void {
   forFine(L, cx - rx, cy - ry, cx + rx, cy + ry, (fx, fy, x, y) => {
     const dx = (x - cx) / rx;

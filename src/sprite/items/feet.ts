@@ -1,11 +1,11 @@
 // Footwear. Boots cover the lower shin and the whole foot; sandals and wraps
-// leave skin showing through. Geometry is in design units (64 space); the
-// fine 128 grid is used for soles, stitching and highlights.
+// leave skin showing through. Shafts follow the shin procedurally; the feet
+// are pixel templates in 3/4 front view (see FootArt in ctx.ts): the near foot
+// faces the viewer, the far foot points right and is authored a shade darker.
 
-import { DrawCtx, footPoly, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
-import { add, along, ellipse, fine, Layer, Pen, poly, RES, seam, ShadeFn, v } from '../raster';
-import { GROUND } from '../rig';
-import { across, crease, fpx, limb, limbR, stamp, stitch, stud, tube, wrapStripes } from './clothes';
+import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
+import { add, along, ellipse, Pen, seam, v } from '../raster';
+import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'leather') => ({ key, label, default: def, kind });
@@ -16,45 +16,235 @@ export function bootPen(g: DrawCtx, hex: string, s: Side, part: 'shin' | 'foot',
   return { mat: g.m(hex, kind), part: `${part}${s}` as Pen['part'], bias: sb(s) };
 }
 
-const footLen = (g: DrawCtx, s: Side) => g.bp.footLen * (s === 'F' ? 0.85 : 1);
+// Legend: 0-5 main · a-f second (sole/straps) · p-u skin · v-z third (metal).
 
-/**
- * Sole on the bottom fine rows of a foot, from x0 to x1 (design units relative
- * to the ankle). `onlyOver` restricts it to pixels already drawn. The top row is lit.
- */
-function soleRow(g: DrawCtx, L: Layer, s: Side, hex: string, x0: number, x1: number, rows = 2, shade = 2, onlyOver = false, kind: Kind = 'leather'): void {
-  const a = legJoints(g.rig, s).ankle;
-  const sp = bootPen(g, hex, s, 'foot', kind);
-  const fy1 = GROUND * RES - 1;
-  for (let fy = fy1 - rows + 1; fy <= fy1; fy++) {
-    for (let fx = fine(a.x + x0); fx <= fine(a.x + x1); fx++) {
-      if (onlyOver && !L.has(fx, fy)) continue;
-      L.set(fx, fy, sp.mat, (fy === fy1 - rows + 1 ? shade + 1 : shade) + (sp.bias || 0), sp.part);
-    }
-  }
-}
+/** Closed boot: lit toe cap, instep crease, welt and a two-row sole. */
+const BOOT: FootArt = {
+  N: {
+    pivot: [6, 0],
+    rows: [
+      '...1234321..',
+      '...1234321..',
+      '...1234321..',
+      '...1233221..',
+      '..123443321.',
+      '.12344443321',
+      '.12344444321',
+      '123445544321',
+      '123455554321',
+      '123444444321',
+      '012222222210',
+      'bcdddddddddb',
+      'abbbbbbbbbba',
+    ],
+  },
+  F: {
+    pivot: [4, 0],
+    rows: [
+      '.12321........',
+      '.123221.......',
+      '.1233221......',
+      '.12333211.....',
+      '.123332221....',
+      '1122333332211.',
+      '11223333343321',
+      '01122222233221',
+      'abcccccccccccb',
+      '.aaaa.....aaa.',
+    ],
+  },
+};
 
-/** Shaft from `from` (1 = knee, 2 = ankle) to the ankle plus a full shoe. */
-export function boot(g: DrawCtx, hex: string, from: number, opts: { grow?: number; toe?: number; kind?: Kind; sole?: string } = {}): void {
+/** Riding boot: pointed toe, stitched vamp (third material), raised heel. */
+const COWBOY: FootArt = {
+  N: {
+    pivot: [6, 0],
+    rows: [
+      '...1234321..',
+      '...1234321..',
+      '...1234321..',
+      '..12344321..',
+      '..1234w4321.',
+      '.1234w44321.',
+      '.123w444321.',
+      '.1234w4431..',
+      '..12345431..',
+      '...124531...',
+      '....1221....',
+      '....bccb....',
+    ],
+  },
+  F: {
+    pivot: [4, 0],
+    rows: [
+      '.12321..........',
+      '.123221.........',
+      '.1233221........',
+      '.12333211.......',
+      '.1233322211.....',
+      '11233w33322211..',
+      '112233ww33343321',
+      '0112222223333221',
+      'abbcb...bccccccb',
+      'abbcb...........',
+    ],
+  },
+};
+
+/** Boot with a riveted steel toe cap (third material). */
+const GREAVE_BOOT: FootArt = {
+  N: {
+    pivot: [6, 0],
+    rows: [
+      '...1234321..',
+      '...1234321..',
+      '...1234321..',
+      '...1233221..',
+      '..123443321.',
+      '.12344443321',
+      '.1vwwwwwwv21',
+      'vwxyyxxxwwwv',
+      'vxyzzyxxxwwv',
+      'vwxyyxxxwwwv',
+      '0vwwwwwwwwv0',
+      'bcdddddddddb',
+      'abbbbbbbbbba',
+    ],
+  },
+  F: {
+    pivot: [4, 0],
+    rows: [
+      '.12321........',
+      '.123221.......',
+      '.1233221......',
+      '.12333211.....',
+      '.12333vww.....',
+      '112233vwxwww..',
+      '1122333vwxyxwv',
+      '0112222vwwxwwv',
+      'abcccccccccccb',
+      '.aaaa.....aaa.',
+    ],
+  },
+};
+
+/** Open-toed shinobi boot: heel and instep covered, bare toes. */
+const SHINOBI: FootArt = {
+  N: {
+    pivot: [5, 0],
+    rows: [
+      '..1234321',
+      '..1234321',
+      '..1234321',
+      '..1233221',
+      '.12344321',
+      '.12344321',
+      '123444321',
+      '012222210',
+      'rsttttrtq',
+      'rsrsrsqts',
+      'qrqrqrqrr',
+      'bcdddddcb',
+    ],
+  },
+  F: {
+    pivot: [3, 0],
+    rows: [
+      '12321........',
+      '123221.......',
+      '1233221......',
+      '12333221.....',
+      '123333221....',
+      '1223333320r..',
+      '11223332qrsr.',
+      '0112222qrqrq.',
+      'abcccccccccb.',
+    ],
+  },
+};
+
+/** Straw sandals after the reference: ankle wrap, lit instep strap, bare toes, sole. */
+const SANDAL: FootArt = {
+  N: {
+    pivot: [5, 0],
+    rows: [
+      '...rstsrq',
+      '...2stsrq',
+      '...232332',
+      '..q12sr20',
+      '..rs22230',
+      '.q000002r',
+      '.02344321',
+      '111111132',
+      '1rssssr11',
+      'rsrsrsqss',
+      'qrrrrrqrr',
+      'cdeeeeedc',
+    ],
+  },
+  F: {
+    pivot: [3, 0],
+    rows: [
+      'qrsrq........',
+      '222222.......',
+      '2222r22......',
+      '2rrr134......',
+      '12r131rr.....',
+      'r2221rs132...',
+      '2r11rr131qrsr',
+      '21111r11rssqr',
+      '..bbcdddddddc',
+    ],
+  },
+};
+
+/** Bandage over the arch and ankle; toes and heel stay bare. */
+const WRAPS: FootArt = {
+  N: {
+    pivot: [5, 0],
+    rows: [
+      '...23432',
+      '...12221',
+      '...23432',
+      '..q12221',
+      '..234432',
+      '.q122221',
+      '.2344432r',
+      'r1222221q',
+      'rsttttrtq',
+      'rsrsrsqts',
+      'qrqrqrqrr',
+      'pqqqqqpqq',
+    ],
+  },
+  F: {
+    pivot: [3, 0],
+    rows: [
+      '23432........',
+      '12221q.......',
+      '234432q......',
+      '1222221q.....',
+      '23443321q....',
+      'q12222221rq..',
+      'qr23443321sr.',
+      'pqr122221rqrq',
+      '.pqqqqqqqqqq.',
+    ],
+  },
+};
+
+/** Shaft from `from` (1 = knee, 2 = ankle) down to the ankle, plus the foot template. */
+export function boot(g: DrawCtx, hex: string, from: number, art: FootArt, opts: { grow?: number; kind?: Kind; sole?: string; third?: string; thirdKind?: Kind } = {}): void {
   const grow = opts.grow ?? 0.6;
   for (const s of SIDES) {
     const L = g.L(legDepth(s, 'feet'));
     limb(g, L, 'leg', s, from, 2, grow, bootPen(g, hex, s, 'shin', opts.kind), { round1: true });
-    const f = footPoly(g, s, grow * 0.8, opts.toe ?? 0.4);
-    poly(L, f, bootPen(g, hex, s, 'foot', opts.kind));
-    if (opts.sole) {
-      const a = legJoints(g.rig, s).ankle;
-      soleRow(g, L, s, opts.sole, f[5].x - a.x - 0.5, f[4].x - a.x + 0.5, 3, 2, true);
-    }
+    footDraw(g, L, s, art, {
+      main: g.m(hex, opts.kind ?? 'leather'),
+      second: g.m(opts.sole ?? '#2a1a12', 'leather'),
+      third: opts.third ? g.m(opts.third, opts.thirdKind ?? 'metal') : undefined,
+    });
   }
-}
-
-/** Lit toe cap and a crease over the instep of a closed shoe. */
-function shoeDetail(g: DrawCtx, L: Layer, s: Side, grow = 0.5): void {
-  const a = legJoints(g.rig, s).ankle;
-  const fl = footLen(g, s);
-  seam(L, v(a.x + fl * 0.55, GROUND - 2.5 - grow * 0.4), v(a.x + fl * 0.85, GROUND - 2.0 - grow * 0.3), 1);
-  crease(L, v(a.x + 0.6, a.y + 0.3), v(a.x + 2.0, a.y + 1.4));
 }
 
 export const FEET_ITEMS: ItemDef[] = [
@@ -65,7 +255,7 @@ export const FEET_ITEMS: ItemDef[] = [
     desc: 'Knee-high brown leather boots with a folded cuff and a strapped ankle.',
     colors: [col('main', 'Leather', '#6b4226'), col('sole', 'Sole', '#2a1a12')],
     draw: (g, [c, sole]) => {
-      boot(g, c, 1.24, { sole, grow: 0.6 });
+      boot(g, c, 1.24, BOOT, { sole, grow: 0.6 });
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'feet'));
         const sp = bootPen(g, c, s, 'shin');
@@ -83,7 +273,6 @@ export const FEET_ITEMS: ItemDef[] = [
         // ankle strap with a small brass buckle
         limb(g, L, 'leg', s, 1.8, 1.87, 0.75, bootPen(g, sole, s, 'shin'));
         stud(L, along(legPoint(g, s, 1.8), legPoint(g, s, 1.87), 0.5, 0.6), g.m('#b8913a', 'metal'), `shin${s}` as Pen['part'], s === 'N');
-        shoeDetail(g, L, s, 0.5);
       }
     },
   },
@@ -96,26 +285,17 @@ export const FEET_ITEMS: ItemDef[] = [
     draw: (g, [c, sole]) => {
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'feet'));
-        const a = legJoints(g.rig, s).ankle;
-        const fl = footLen(g, s);
         const sp = bootPen(g, c, s, 'shin', 'cloth');
         limb(g, L, 'leg', s, 1.45, 2, [0.55, 0.5], sp, { round1: true });
         // rolled top band
         limb(g, L, 'leg', s, 1.45, 1.54, 0.72, sp);
         across(g, L, 'leg', s, 1.54, 0.72, -1);
-        // foot: heel and instep covered, toes open
-        const tmp = new Layer();
-        poly(tmp, footPoly(g, s, 0.5, 0.3), bootPen(g, c, s, 'foot', 'cloth'));
-        const cut = a.x + fl * 0.48;
-        stamp(L, tmp, (x, y) => x < cut || y < GROUND - 3.2 - (x - cut) * 0.9);
-        soleRow(g, L, s, sole, -2.2, fl + 0.5, 2, 2);
+        footDraw(g, L, s, SHINOBI, { main: g.m(c, 'cloth'), second: g.m(sole, 'leather') });
         // centre seam down the front of the shaft and the opening's lit edge
         const p0 = legPoint(g, s, 1.56);
         const p1 = legPoint(g, s, 1.96);
         seam(L, along(p0, p1, 0, limbR(g, 'leg', 1.56) * 0.35), along(p0, p1, 1, limbR(g, 'leg', 1.96) * 0.4), -1);
         seam(L, along(p0, p1, 0, -limbR(g, 'leg', 1.56) * 0.5), along(p0, p1, 1, -limbR(g, 'leg', 1.96) * 0.5), 1);
-        seam(L, v(cut - 0.2, a.y + 0.2), v(cut + 0.8, GROUND - 1.4), 1);
-        crease(L, v(a.x - 0.4, a.y + 0.4), v(a.x + 1.4, a.y + 1.4));
       }
     },
   },
@@ -126,48 +306,29 @@ export const FEET_ITEMS: ItemDef[] = [
     desc: 'Stitched riding boots with a pointed toe, a raised heel and a spur.',
     colors: [col('main', 'Leather', '#8b5a2f'), col('stitch', 'Stitching', '#e2bf7a'), col('spur', 'Spur', '#c8ced6', 'metal')],
     draw: (g, [c, st, sp]) => {
+      boot(g, c, 1.3, COWBOY, { grow: 0.7, sole: '#2a1a12', third: st, thirdKind: 'cloth' });
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'feet'));
         const a = legJoints(g.rig, s).ankle;
-        const fl = footLen(g, s);
         const shin = bootPen(g, c, s, 'shin');
-        const foot = bootPen(g, c, s, 'foot');
-        const G = GROUND;
-        limb(g, L, 'leg', s, 1.3, 2, [0.85, 0.7], shin, { round1: true });
         // pull loop at the top of the shaft
         const top = legPoint(g, s, 1.3);
         tube(L, add(top, v(-0.6, 0)), add(top, v(-0.8, -1.3)), 0.55, 0.55, shin, 3);
-        // pointed toe, foot and an underslung heel
-        poly(L, [
-          v(a.x - 2.3, a.y - 1),
-          v(a.x + 1.6, a.y - 1),
-          v(a.x + fl * 0.7, G - 3.0),
-          v(a.x + fl + 2.0, G - 1.3),
-          v(a.x + fl + 2.0, G - 0.7),
-          v(a.x + fl * 0.45, G - 0.8),
-          v(a.x + 0.3, G - 1.2),
-          v(a.x - 2.4, G - 1.2),
-        ], foot);
-        const heel = bootPen(g, '#2a1a12', s, 'foot');
-        poly(L, [v(a.x - 0.6, G - 1.4), v(a.x + fl * 0.5, G - 1.0), v(a.x + fl * 0.5, G), v(a.x - 0.6, G)], heel, 1);
-        poly(L, [v(a.x - 2.4, G - 1.4), v(a.x - 0.2, G - 1.4), v(a.x - 0.6, G), v(a.x - 2.2, G)], heel, 2);
-        poly(L, [v(a.x + fl * 0.4, G - 1.0), v(a.x + fl + 2.0, G - 1.0), v(a.x + fl + 1.6, G - 0.5), v(a.x + fl * 0.4, G - 0.5)], heel, 2);
-        // decorative stitching on the shaft and toe
+        // decorative stitching on the shaft
         const stp: Pen = { mat: g.m(st, 'cloth'), part: `shin${s}` as Pen['part'], bias: sb(s) };
         const p0 = legPoint(g, s, 1.42);
         const p1 = legPoint(g, s, 1.86);
         const r = limbR(g, 'leg', 1.6);
         stitch(L, along(p0, p1, 0, -r * 0.1), along(p0, p1, 0.5, r * 0.45), stp, 3, 0);
         stitch(L, along(p0, p1, 0.5, r * 0.45), along(p0, p1, 1, 0), stp, 3, 0);
-        stitch(L, v(a.x + fl * 0.5, G - 2.5), v(a.x + fl + 1.0, G - 1.7), { ...stp, part: `foot${s}` as Pen['part'] }, 3, 0);
         seam(L, along(p0, p1, 0, -r * 0.7), along(p0, p1, 1, -r * 0.6), 1);
-        // spur: strap, shank and a glinting rowel behind the heel
+        // spur: shank and a glinting rowel behind the heel
         const A = g.L(legDepth(s, 'armor'));
         const spm: Pen = { mat: g.m(sp, 'metal'), part: `foot${s}` as Pen['part'], bias: sb(s) };
-        tube(L, v(a.x - 2.4, G - 2.6), v(a.x + 1.2, a.y + 0.2), 0.4, 0.4, bootPen(g, '#2a1a12', s, 'foot'), 2);
-        tube(A, v(a.x - 1.4, G - 2.3), v(a.x - 2.8, G - 2.5), 0.5, 0.5, spm, 3);
-        ellipse(A, a.x - 3.0, G - 2.6, 0.8, 0.8, spm, 4);
-        fpx(A, v(a.x - 3.2, G - 2.9), spm.mat, `foot${s}` as Pen['part'], 5 + sb(s));
+        const heel = s === 'F' ? v(a.x - 2.0, a.y + 3.0) : v(a.x - 2.4, a.y + 2.2);
+        tube(A, heel, add(heel, v(-1.2, -0.2)), 0.45, 0.45, spm, 3);
+        ellipse(A, heel.x - 1.6, heel.y - 0.2, 0.8, 0.8, spm, 4);
+        fpx(A, v(heel.x - 1.8, heel.y - 0.5), spm.mat, `foot${s}` as Pen['part'], 5 + sb(s));
       }
     },
   },
@@ -180,24 +341,10 @@ export const FEET_ITEMS: ItemDef[] = [
     draw: (g, [c, sole]) => {
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'feet'));
-        const a = legJoints(g.rig, s).ankle;
-        const fl = footLen(g, s);
-        const sp = bootPen(g, c, s, 'shin', 'cloth');
-        const fp = bootPen(g, c, s, 'foot', 'cloth');
         // dark wrap around the ankle (tabi style), with lit wrap lines
-        limb(g, L, 'leg', s, 1.72, 1.97, [0.5, 0.45], sp);
-        wrapStripes(L, legPoint(g, s, 1.72), legPoint(g, s, 1.97), limbR(g, 'leg', 1.72) + 1, 0.8, 1, 0.6);
-        // straps over the instep: thong from between the toes and a cross strap
-        tube(L, v(a.x + 0.9, a.y + 0.5), v(a.x + fl * 0.74, GROUND - 2.0), 0.55, 0.45, fp);
-        tube(L, v(a.x + 0.6, a.y + 1.0), v(a.x + 0.2, GROUND - 1.0), 0.5, 0.45, fp);
-        tube(L, v(a.x + fl * 0.42, GROUND - 2.9), v(a.x + fl * 0.5, GROUND - 1.0), 0.45, 0.45, fp);
-        // woven straw sole, a little longer than the foot
-        const weave: ShadeFn = (x, y) => {
-          const fx = Math.floor((x + 0.5) * RES);
-          const top = y + 0.5 < GROUND - 0.5;
-          return top ? (fx % 3 === 0 ? 3 : 4) : 2;
-        };
-        poly(L, [v(a.x - 2.3, GROUND - 1.1), v(a.x + fl + 0.9, GROUND - 1.1), v(a.x + fl + 0.7, GROUND), v(a.x - 2.1, GROUND)], bootPen(g, sole, s, 'foot', 'leather'), weave);
+        limb(g, L, 'leg', s, 1.8, 1.97, [0.5, 0.45], bootPen(g, c, s, 'shin', 'cloth'));
+        wrapStripes(L, legPoint(g, s, 1.8), legPoint(g, s, 1.97), limbR(g, 'leg', 1.8) + 1, 0.8, 1, 0.6);
+        footDraw(g, L, s, SANDAL, { main: g.m(c, 'cloth'), second: g.m(sole, 'leather') });
       }
     },
   },
@@ -208,7 +355,7 @@ export const FEET_ITEMS: ItemDef[] = [
     desc: 'Riveted steel shin plates, knee guards and toe caps strapped over sturdy boots.',
     colors: [col('main', 'Steel', '#a7b0bb', 'metal'), col('boot', 'Boots', '#3a2d27')],
     draw: (g, [c, bt]) => {
-      boot(g, bt, 1.5, { grow: 0.65, sole: '#1a1412' });
+      boot(g, bt, 1.5, GREAVE_BOOT, { grow: 0.65, sole: '#1a1412', third: c });
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'feet'));
         const mp = bootPen(g, c, s, 'shin', 'metal');
@@ -229,14 +376,6 @@ export const FEET_ITEMS: ItemDef[] = [
         ellipse(L, k.x + 0.5, k.y + 0.2, R[1] + 1.2, R[1] + 1.0, kp);
         seam(L, v(k.x - R[1] + 0.2, k.y + 0.8), v(k.x + R[1] + 1.0, k.y + 0.8), -1);
         fpx(L, v(k.x - 0.6, k.y - 0.8), kp.mat, `thigh${s}` as Pen['part'], 5 + sb(s));
-        // steel toe cap
-        const an = legJoints(g.rig, s).ankle;
-        const fl = footLen(g, s);
-        const tmp = new Layer();
-        poly(tmp, footPoly(g, s, 0.6, 0.5), bootPen(g, c, s, 'foot', 'metal'));
-        stamp(L, tmp, (x, y) => x > an.x + fl * 0.5 && y < GROUND - 0.9);
-        seam(L, v(an.x + fl * 0.5, an.y + 0.8), v(an.x + fl * 0.5, GROUND - 1), -1);
-        seam(L, v(an.x + fl * 0.6, GROUND - 2.8), v(an.x + fl * 0.9, GROUND - 2.2), 2);
       }
     },
   },
@@ -249,15 +388,10 @@ export const FEET_ITEMS: ItemDef[] = [
     draw: (g, [c]) => {
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'feet'));
-        const a = legJoints(g.rig, s).ankle;
-        const fl = footLen(g, s);
         const wp = bootPen(g, c, s, 'shin', 'cloth');
         limb(g, L, 'leg', s, 1.6, 1.98, [0.45, 0.35], wp);
         wrapStripes(L, legPoint(g, s, 1.6), legPoint(g, s, 1.98), limbR(g, 'leg', 1.6) + 1, 0.9, -1, 0.7);
-        const tmp = new Layer();
-        poly(tmp, footPoly(g, s, 0.25, 0), bootPen(g, c, s, 'foot', 'cloth'));
-        stamp(L, tmp, (x) => x > a.x - 0.6 && x < a.x + fl * 0.62);
-        for (const dx of [-0.2, 1.0, 2.2]) seam(L, v(a.x + dx - 0.4, a.y + 0.4), v(a.x + dx + 1.0, GROUND - 0.4), -1);
+        footDraw(g, L, s, WRAPS, { main: g.m(c, 'cloth') });
         // loose tail of the bandage
         tube(L, legPoint(g, s, 1.62), add(legPoint(g, s, 1.62), v(-1.6, 1.2)), 0.45, 0.35, wp);
       }

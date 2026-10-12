@@ -256,6 +256,22 @@ function limbLit(f: LimbFrame, b: number, half: number, tilt = 0): boolean {
   return lit(n.x, n.y) >= 3;
 }
 
+/**
+ * Light (-1..1) on a rounded limb surface: across-offset b on a cylinder of
+ * half-width `half` (its middle faces the viewer), tilted along the limb
+ * (negative tilt faces up). Light comes from the upper left and the front.
+ */
+function limbDot(f: LimbFrame, b: number, half: number, tilt = 0): number {
+  const c = clamp(b / half, -1, 1);
+  const nx = f.w.x * c + f.u.x * tilt;
+  const ny = f.w.y * c + f.u.y * tilt;
+  const nz = Math.sqrt(1 - c * c);
+  return (nx * LIGHT3[0] + ny * LIGHT3[1] + nz * LIGHT3[2]) / (Math.hypot(nx, ny, nz) || 1);
+}
+
+/** Shade 1..4 for a light value from limbDot (5 is kept for placed glints). */
+const dotShade = (d: number) => (d > 0.66 ? 4 : d > 0.3 ? 3 : d > -0.08 ? 2 : 1);
+
 interface PauldronOpts {
   /** Height of the domed cap above the shoulder joint. */
   top: number;
@@ -304,25 +320,28 @@ function pauldron(g: DrawCtx, s: Side, pen: Pen, o: PauldronOpts): void {
     if (a < 0 && (a / o.top) ** 2 + (b / o.half) ** 2 > 1) return null;
     if (a > bound(o.n, b)) return null;
     if (a < bound(0, b)) {
-      // cap: a dome, mostly mid values, with one glint
+      // cap: a dome lit on its upper outer side, with one glint; its rolled
+      // lower edge turns down into shadow above the first lame
       const pt = add(f.o, add(scale(f.u, a), scale(f.w, b)));
+      if (fine(pt.x) === fine(gl.x) && fine(pt.y) === fine(gl.y)) return 5;
       const dg = Math.hypot(pt.x - gl.x, pt.y - gl.y);
-      if (dg < FP * 0.8) return 5;
-      const n = add(scale(f.w, b / o.half), scale(f.u, clamp(a / o.top, -1, 0.3) - 0.35));
-      const l = lit(n.x, n.y);
-      if (dg < FP * 2.2 && l >= 3) return 4;
-      if (bound(0, b) - a < FP) return 1; // seam above the first lame
-      return clamp(l, 1, 3);
+      const toSeam = bound(0, b) - a;
+      if (toSeam < FP) return 1; // seam above the first lame
+      const tilt = a < 0 ? -1.6 * Math.sqrt(clamp(-a / o.top, 0, 1)) : toSeam < FP * 2 ? 0.9 : 0;
+      const d = limbDot(f, b, o.half, tilt);
+      return Math.min(dotShade(d), dg < FP * 2.2 || d > 0.9 ? 4 : 3);
     }
     let k = 0;
     while (k < o.n - 1 && a >= bound(k + 1, b)) k++;
     const d0 = a - bound(k, b);
     const d1 = bound(k + 1, b) - a;
-    const lt = limbLit(f, b, h, -0.6);
     if (edge && (o.edgeAll || k === o.n - 1) && d1 < FP * 1.1) return null; // rim drawn with the edge pen
     if (d1 < FP && k < o.n - 1) return 1; // seam
-    if (d0 < FP) return rim(lt); // lit top rim
-    return d0 < o.step * 0.5 ? base(lt) : lt ? 2 : 1;
+    // each lame is a shallow band: its top faces up, its lower half turns down
+    const fr = clamp(d0 / o.step, 0, 1);
+    const d = limbDot(f, b, h, -0.8 + 2.0 * fr);
+    if (d0 < FP) return d > 0.45 ? 4 : d > 0.1 ? 3 : 2; // top rim, lit toward the light
+    return Math.min(3, dotShade(d));
   });
   if (edge)
     lfill(L, f, edge, pad, (a, b) => {
@@ -366,17 +385,22 @@ function bracer(g: DrawCtx, pen: Pen, o: BracerOpts = {}): void {
     const p = onLimb(pen, s, 'forearm');
     const rad = (t: number) => R[2] + (R[3] - R[2]) * t + grow;
     const at = (a: number) => a / Math.max(0.01, f.len);
+    /** Which side of the forearm (+1 outer, -1 inner) faces the light. */
+    const ls = limbDot(f, 1, 2) > limbDot(f, -1, 2) ? 1 : -1;
     lfill(L, f, p, R[2] + grow + 1, (a, b) => {
       const t = at(a);
       if (t < from || t > to) return null;
       const rr = rad(t);
       if (Math.abs(b) > rr) return null;
-      const lt = limbLit(f, b, rr, -0.1);
+      // a rounded guard: lit crest on the side toward the light, shadow on
+      // the far side with a little reflected light just inside its edge
+      const d = limbDot(f, b, rr, -0.15);
       if (o.lines?.some((l) => Math.abs(t - l) * f.len < FP * 0.5)) return 1;
-      if (o.lines?.some((l) => (t - l) * f.len > FP * 0.5 && (t - l) * f.len < FP * 1.5)) return rim(lt);
-      // a crest along the lit side of the forearm
-      if (lt && Math.abs(b - rr * 0.45) < FP * 0.5) return 4;
-      return base(lt);
+      if (o.lines?.some((l) => (t - l) * f.len > FP * 0.5 && (t - l) * f.len < FP * 1.5)) return d > 0.3 ? 4 : d > -0.05 ? 3 : 2;
+      if (d > 0.3 && Math.abs(b - ls * rr * 0.45) < FP * 0.5) return 4;
+      const edge = rr - Math.abs(b);
+      if (d < -0.08 && edge >= FP && edge < FP * 2) return 2;
+      return Math.min(3, dotShade(d));
     });
     if (o.rim) {
       const rp = onLimb(o.rim, s, 'forearm');
@@ -426,10 +450,13 @@ function collar(g: DrawCtx, pen: Pen, height: number, width: number, rimPen?: Pe
     const nx = (x - top.x) / R0;
     const lt = nx < 0.1;
     if (!inside(x, y - FP * 2)) {
+      // lit top edge of the roll
       if (rimPen) return put(L, fx, fy, rimPen, rim(lt));
-      return put(L, fx, fy, pen, nx < -0.3 ? 4 : 3);
+      return put(L, fx, fy, pen, nx < -0.3 ? 4 : nx < 0.4 ? 3 : 2);
     }
-    put(L, fx, fy, pen, nx > 0.55 ? 1 : base(lt));
+    // the roll turns down into shadow toward its lower edge and the front
+    const low = !inside(x, y + FP * 2);
+    put(L, fx, fy, pen, nx > 0.55 ? 1 : nx > 0.15 ? (low ? 1 : 2) : low ? 2 : 3);
   });
 }
 
@@ -638,34 +665,47 @@ export const ARMOR_ITEMS: ItemDef[] = [
       const pouch = armorPen(g, pc);
       const top = chestTop(g);
       const cx = 1.2;
+      const side = cx - 2.2;
+      const front = b.chestHalf * 0.62 + 2.1 + b.bust * 0.4;
       tfill(
         g,
         L,
         1.3,
         pen,
         (lx, ly, t) => {
-          const lt = litT(t);
-          // quilted ribs on the back panel: trough, darker lower half, crest at the top
-          if (lx < cx - 2.2 && ly < top - 2.4 && ly > 1.6) {
-            const q = mod(ly - 1.6, 2.2);
+          // quilted ribs on the side panel, which faces the light: a trough,
+          // a shadowed underside, the puff, and a lit crest at its top
+          if (lx < side && ly < top - 2.4 && ly > 2.6) {
+            const q = mod(ly - 2.6, 2.2);
             if (q < FP) return 1;
-            if (q > 2.2 - FP) return rim(t < 0.3);
-            return q < 1.0 ? 2 : base(lt);
+            if (q > 2.2 - FP) return t < 0.45 ? 4 : 3;
+            return q < FP * 2 ? 2 : 3;
           }
-          if (Math.abs(lx - (cx - 2.2)) < FP * 0.5) return 1; // side seam
+          if (Math.abs(lx - side) < FP * 0.5) return 1; // side seam
           if (Math.abs(lx - cx) < FP * 0.5) return 1; // front closure
-          if (lx < cx - FP * 0.5 && lx > cx - FP * 1.5 && ly > 3) return 3; // closure crest
-          if (ly < 1.0 + FP * 2) return 2; // hem
-          if (ly > top - 0.2 - FP) return rim(lt);
-          return base(lt);
+          if (lx < cx - FP * 0.5 && lx > cx - FP * 1.5 && ly > 3) return 4; // closure crest
+          const u = (lx - cx) / (front - cx);
+          // hem: a padded roll (lit top, shadowed underside) under a seam
+          if (ly < 1.0 + FP * 2) return u > 0.6 ? 1 : 2;
+          if (ly < 1.0 + FP * 3) return lx < side ? 4 : u < 0 ? 3 : u < 0.6 ? 2 : 1;
+          if (ly < 1.0 + FP * 4) return 1;
+          if (ly > top - 0.2 - FP) return rim(lx < cx);
+          if (lx > cx) {
+            // front panel turning away from the light: a lit swell beside the
+            // closure, shadow, then deep shadow at the edge
+            if (u > 0.74) return 1;
+            return u < 0.3 ? 3 : 2;
+          }
+          return lx > cx - 1.0 && ly < top - 3.4 ? 2 : 3;
         },
         { top: top - 0.2, bottom: 1.0 },
       );
-      // padded shoulder yoke
+      // padded shoulder yoke: a lit top, a puffed body and a seam that shadows the panel below
       tpoly(g, L, [[-b.shoulderHalf * 0.92, top - 0.3], [-1.2, top + 0.3], [-1.0, top - 2.0], [-b.shoulderHalf * 0.92, top - 2.6]], pen, (lx, ly) => {
         const bot = top - 2.0 - (lx + 1.0) * -0.06;
         if (ly - bot < FP && ly < top - 1.8) return 1;
-        if (ly > top - FP * 1.2) return 4;
+        if (ly > top - FP * 1.2) return lx < -2.0 ? 4 : 3;
+        if (ly - bot < FP * 2) return 2;
         return lx < -3.2 ? 3 : 2;
       });
       // scroll pouches on each side of the closure
@@ -676,18 +716,22 @@ export const ARMOR_ITEMS: ItemDef[] = [
         [cx + 0.8, fr],
         [cx - 3.4, cx - 0.7],
       ];
-      for (const [x0, x1] of pouches) {
+      pouches.forEach(([x0, x1], n) => {
         tpoly(g, L, [[x0, py], [x1, py], [x1, py - ph], [x0, py - ph]], pouch, (lx, ly) => {
           const fromTop = py - ly;
-          const lt = lx < (x0 + x1) / 2;
-          if (fromTop < FP) return rim(lt); // flap rim
-          if (fromTop < 1.1) return lx > x1 - FP ? 1 : 3; // flap
-          if (fromTop < 1.1 + FP) return 1; // flap shadow
-          if (lx > x1 - FP) return 1;
-          return 2;
+          const fromBot = ly - (py - ph);
+          // the near pouch faces the light; the one on the front turns away
+          const lit = n === 1;
+          if (fromTop < FP) return lx < x0 + (x1 - x0) * 0.6 ? (lit ? 4 : 3) : lit ? 3 : 2; // flap rim
+          if (fromTop < 1.1) return lx > x1 - FP ? 1 : lit || lx < (x0 + x1) / 2 ? 3 : 2; // flap
+          if (fromTop < 1.1 + FP) return 1; // flap edge
+          if (fromTop < 1.1 + FP * 2) return lit ? 2 : 1; // shadow under the flap
+          if (lx > x1 - FP || fromBot < FP) return 1;
+          if (lx < x0 + FP) return 3;
+          return lit ? 3 : 2;
         });
-        tpx(g, L, (x0 + x1) / 2, py - 0.6, pouch, 4); // snap
-      }
+        tpx(g, L, (x0 + x1) / 2, py - 0.6, pouch, 5); // snap
+      });
       // rolled collar with the roll seam
       collar(g, pen, 2.2, 2.0);
       neckFold(g, g.rig.neck.y - 1.1, 0.12, 1);
@@ -699,47 +743,84 @@ export const ARMOR_ITEMS: ItemDef[] = [
     id: 'armor_shadowops',
     slot: 'armor',
     name: 'Shadow Ops Chestguard',
-    desc: 'Segmented pale ceramic plates over a dark under-suit, one shoulder guard and forearm guards (+3 AC).',
-    colors: [col('plate', 'Plates', '#d9dde4'), col('suit', 'Under-suit', '#262833')],
+    desc: 'Segmented grey steel plates over a dark under-suit, one shoulder guard and forearm guards (+3 AC).',
+    colors: [col('plate', 'Plates', '#8c94a1', 'metal'), col('suit', 'Under-suit', '#262833')],
     statsArmor: 'ANBU Spec-Ops',
     draw: (g, [pc, sc]) => {
       const b = g.bp;
       const L = g.L('torso.armor');
-      const pl = armorPen(g, pc);
+      const pl = armorPen(g, pc, 'metal');
       const suit = armorPen(g, sc);
       const top = chestTop(g);
       const cx = 1.2;
-      tfill(g, L, 0.6, suit, (_lx, _ly, t) => base(litT(t)), { top: top + 0.2, bottom: 0.8 });
-      // chest plate (front two-thirds) with a sternum groove
       const backX = -b.chestHalf * 0.55;
       const pTop = top - 0.6;
       const pBot = top - 6.8;
+      const front = b.chestHalf * 0.62 + 1.9 + b.bust * 0.4;
+      // under-suit: lit at the back, darker toward the front and under the chest plate
+      tfill(g, L, 0.6, suit, (_lx, ly, t) => (Math.abs(ly - pBot + 0.3) < FP ? 1 : t < 0.3 ? 3 : t < 0.75 ? 2 : 1), { top: top + 0.2, bottom: 0.8 });
+      // chest plate (front two-thirds): a lit back plane and a shadowed front
+      // plane meeting at a sternum ridge
       tfill(
         g,
         L,
         1.1,
         pl,
-        (lx, ly, t) => {
+        (lx, ly) => {
           const back = backX + (pTop - ly) * 0.15;
           if (lx < back) return null;
           if (ly > pTop - 1.2 && lx < -1.2) return null; // neck opening
-          const lt = litT(t);
-          if (pTop - ly < FP) return lx < cx - 1.6 && lx > cx - 2.2 ? 5 : rim(lt); // top rim + glint
-          if (lx - back < FP) return 4; // lit back edge
+          const vv = clamp((pTop - ly) / (pTop - pBot), 0, 1);
           if (ly - pBot < FP) return 1; // lower seam
-          if (Math.abs(lx - cx) < FP * 0.5) return 1; // groove
-          if (lx < cx && lx > cx - FP * 1.5 && ly > pBot + 1.5) return 4; // crest beside it
-          return ly < (pTop + pBot) / 2 ? (lt ? 2 : 1) + 1 : base(lt);
+          if (lx <= cx) {
+            // lit plane: rolled rims, a diagonal sheen, a darker underside
+            const u = clamp((lx - back) / (cx - back), 0, 1);
+            if (pTop - ly < FP) return Math.abs(lx - (cx - 1.9)) < FP * 0.5 ? 5 : 4;
+            if (lx - back < FP) return vv < 0.6 ? 4 : 3;
+            if (cx - lx < FP) return vv < 0.72 ? 4 : 3; // ridge crest
+            if (vv > 0.86) return 1;
+            if (vv > 0.7) return 2;
+            if (Math.abs(u * 0.7 + vv - 0.62) < 0.09) return 4;
+            return u > 0.62 && vv > 0.5 ? 2 : 3;
+          }
+          // front plane turning away: shadow, deep shadow below, reflected light at the edge
+          const u = clamp((lx - cx) / (front - cx), 0, 1);
+          if (pTop - ly < FP) return u < 0.45 ? 3 : 2;
+          if (vv > 0.66) return u > 0.84 && vv < 0.86 ? 2 : 1;
+          if (u > 0.84) return 2;
+          return u < 0.5 ? 2 : 1;
         },
         { top: pTop, bottom: pBot },
       );
-      // segmented abdomen plates
-      for (let i = 0; i < 3; i++) {
-        const y1 = pBot - 0.6 - i * 1.9;
-        const y0 = y1 - 1.4;
-        if (y0 < 0.9) break;
-        tfill(g, L, 0.9 - i * 0.15, pl, (lx, ly, t) => (lx < -b.waistHalf * 0.55 ? null : plate(ly - y0 + FP, 1.4 + FP, litT(t))), { top: y1, bottom: y0 });
-      }
+      // segmented abdomen bands, bowed with the body; each has a lit top rim,
+      // a darker lower half and a seam, and the chest plate shadows the first
+      const aTop = pBot - 0.5;
+      const aBot = 1.0;
+      const na = Math.max(2, Math.round((aTop - aBot) / 2.2));
+      const ah = (aTop - aBot) / na;
+      const aBack = -b.waistHalf * 0.55;
+      const aFront = b.waistHalf * 0.64 + 1.6;
+      tfill(
+        g,
+        L,
+        0.9,
+        pl,
+        (lx, ly) => {
+          if (lx < aBack) return null;
+          const u = clamp((lx - aBack) / (aFront - aBack), 0, 1);
+          const yy = ly + 0.4 * (1 - (u * 2 - 1) ** 2) - aBot;
+          const k = Math.floor(yy / ah);
+          const d = yy - k * ah;
+          if (d < FP) return 1;
+          if (aTop - ly < FP * 1.5) return u < 0.5 ? 2 : 1; // shadow under the chest plate
+          if (d > ah - FP) return Math.abs(lx - (aBack + 1.2)) < FP * 0.5 ? 5 : u < 0.32 ? 4 : u < 0.7 ? 3 : 2;
+          if (lx - aBack < FP) return 3;
+          const lower = d < ah * 0.5;
+          if (u > 0.5) return lower ? 1 : 2;
+          return lower ? 2 : 3;
+        },
+        { top: aTop, bottom: aBot },
+      );
       // one shoulder guard (near side) and forearm guards
       pauldron(g, 'N', pl, { top: 2.4, capEnd: 1.0, step: 1.7, n: 2, half: b.armR[0] + 1.1, flare: 0.2, curve: 0.6 });
       bracer(g, pl, { from: 0.18, to: 0.88, grow: 0.5, lines: [0.52] });
@@ -864,24 +945,49 @@ export const ARMOR_ITEMS: ItemDef[] = [
       const rows0 = 0.8;
       const rowsTop = top - 4.2;
       const rh = LAM_ROW;
-      const rowShade = (k: 'rim' | 'plate' | 'lace', lt: boolean) => (k === 'rim' ? rim(lt) : base(lt));
-      // laced plate rows
+      /**
+       * One laced row as a shallow convex band: `m` the height above the
+       * row's lace line, `tone` 1 facing the light .. 0 turned away.
+       */
+      const rowShade = (m: number, tone: number, glint = false) => {
+        if (m > rh - FP) return glint ? 5 : tone > 0.3 ? 4 : tone > 0.12 ? 3 : 2; // lit top rim
+        const lower = m < rh * 0.42;
+        if (tone > 0.22) return lower ? 2 : 3;
+        return lower ? 1 : 2;
+      };
+      const front = b.chestHalf * 0.62 + 2.0 + b.bust * 0.4;
+      const glintX = -0.4;
+      // laced plate rows; the board above shadows the first row
       tfill(
         g,
         L,
         1.2,
         pl,
         (lx, ly, t) => {
-          const k = lamRow(ly - rows0, rh);
-          if (k === 'lace') return laceCol(lx) ? null : 1;
-          return rowShade(k, litT(t));
+          const m = mod(ly - rows0, rh);
+          if (m < FP) return laceCol(lx) ? null : 1;
+          if (rowsTop - ly < FP) return t < 0.5 ? 2 : 1;
+          const row = Math.floor((ly - rows0) / rh);
+          const tone = lx > front - 1.0 ? 0 : 1 - t * 1.15;
+          return rowShade(m, tone, row % 2 === 1 && Math.abs(lx - glintX) < FP * 0.5);
         },
         { top: rowsTop, bottom: rows0 },
       );
-      tfill(g, L, 1.2, lace, (lx, ly, t) => (lamRow(ly - rows0, rh) === 'lace' && laceCol(lx) ? (litT(t) ? 3 : 2) : null), { top: rowsTop, bottom: rows0 });
+      tfill(g, L, 1.2, lace, (lx, ly, t) => (lamRow(ly - rows0, rh) === 'lace' && laceCol(lx) ? (t < 0.5 ? 3 : 2) : null), { top: rowsTop, bottom: rows0 });
       // breast plate (muna-ita): dark board with a gold rim and corner fittings
-      tfill(g, L, 1.2, lace, (_lx, ly, t) => (ly > top - 0.2 - FP ? rim(litT(t)) : base(litT(t))), { top: top - 0.2, bottom: rowsTop + FP * 2 });
-      tfill(g, L, 1.2, trim, (_lx, ly, t) => (ly - rowsTop < FP ? 2 : litT(t) ? 3 : 2), { top: rowsTop + FP * 2, bottom: rowsTop });
+      tfill(
+        g,
+        L,
+        1.2,
+        lace,
+        (lx, ly, t) => {
+          if (ly > top - 0.2 - FP) return t < 0.5 ? 4 : 3;
+          if (ly - rowsTop < FP * 3) return t < 0.4 ? 2 : 1;
+          return lx > front - 1.0 ? 1 : t < 0.55 ? 3 : 2;
+        },
+        { top: top - 0.2, bottom: rowsTop + FP * 2 },
+      );
+      tfill(g, L, 1.2, trim, (lx, ly, t) => (ly - rowsTop < FP ? (t < 0.5 ? 2 : 1) : Math.abs(lx - glintX) < FP * 0.5 ? 5 : t < 0.45 ? 4 : t < 0.75 ? 3 : 2), { top: rowsTop + FP * 2, bottom: rowsTop });
       tstud(g, L, -b.chestHalf * 0.5, rowsTop + 1.4, trim, 4);
       tstud(g, L, b.chestHalf * 0.4, rowsTop + 1.4, trim, 3);
       // big rectangular shoulder plates (sode), hanging from the shoulder
@@ -901,12 +1007,16 @@ export const ARMOR_ITEMS: ItemDef[] = [
           const aa = a + bb * 0.12 - a0;
           return aa >= 0 && aa <= a1 - a0 && bb >= bIn && bb <= bOut ? aa : -1;
         };
+        const bMid = (bIn + bOut) / 2;
+        const bHalf = (bOut - bIn) / 2;
         lfill(A, f, p, R + 6, (a, bb) => {
           const aa = rect(a, bb);
           if (aa < board) return null;
-          const k = lamRow(a1 - a0 - aa, rh);
-          if (k === 'lace') return laceCol(bb) ? null : 1;
-          return rowShade(k, limbLit(f, bb, bOut, -0.4));
+          const m = mod(a1 - a0 - aa, rh);
+          if (m < FP) return laceCol(bb) ? null : 1;
+          if (aa < board + FP) return 1; // shadow under the top board
+          const d = limbDot(f, bb - bMid, bHalf * 1.25, -0.3);
+          return rowShade(m, d > 0.55 ? 1 : d > 0.25 ? 0.4 : 0);
         });
         lfill(A, f, lp, R + 6, (a, bb) => {
           const aa = rect(a, bb);

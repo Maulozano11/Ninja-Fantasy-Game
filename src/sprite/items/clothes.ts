@@ -5,7 +5,7 @@
 // stitching and buttons can be a single fine pixel.
 
 import { armDepth, armJoints, armPoint, DrawCtx, fillTorso, handDraw, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
-import { add, along, ellipse, F_NO_OUTLINE, GRID, Layer, lerp, norm, PartId, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
+import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, GRID, Layer, lerp, norm, PartId, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -22,36 +22,91 @@ export function clothPen(g: DrawCtx, hex: string, part: Pen['part'], bias = 0, k
 // ---------------------------------------------------------------------------
 
 const LIGHT = norm(v(-0.72, -0.69));
-function cylShade(nx: number, ny: number): number {
-  const lt = nx * LIGHT.x + ny * LIGHT.y;
-  return lt > 0.5 ? 4 : lt > -0.28 ? 3 : lt > -0.68 ? 2 : 1;
+/** The same light in 3D (screen x, screen y, toward the viewer): from the upper left and a little in front. */
+const L3 = { x: -0.62, y: -0.6, z: 0.5 };
+const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
+
+/** Smooth 1D value noise in [-0.5, 0.5]; shifts band edges in 2-4 px clusters instead of per-pixel speckle. */
+function wob(s: number, seed = 0): number {
+  const i = Math.floor(s);
+  const f = s - i;
+  const h = (k: number) => {
+    let x = Math.imul(k + seed * 7919, 374761393) | 0;
+    x = Math.imul(x ^ (x >>> 13), 1274126177);
+    return ((x ^ (x >>> 16)) & 1023) / 1023 - 0.5;
+  };
+  return h(i) + (h(i + 1) - h(i)) * f * f * (3 - 2 * f);
 }
+
+/**
+ * Cloth tone for a light intensity (about -1..1): a lit plane (4) only where the
+ * surface faces the light, a wide base, then shadow and a broad dark far side.
+ */
+function tone(lt: number): number {
+  return lt > 0.76 ? 4 : lt > 0.44 ? 3 : lt > 0.14 ? 2 : 1;
+}
+
+/** Light on a cylinder of axis direction n-perpendicular: `o` runs -1..1 across it along `n`. */
+function cylLight(o: number, n: Vec): number {
+  const c = clamp(o, -1, 1);
+  return c * (n.x * L3.x + n.y * L3.y) + Math.sqrt(1 - c * c) * L3.z;
+}
+
+/**
+ * Default cloth cylinder shading for tube/limb, comparable to the skin limbs: a
+ * lit band on the side facing the light (its very edge turning away), a base
+ * core, a shadow band and a broad dark far side. Band edges wobble along the
+ * limb so the shading breaks into clusters that move with it.
+ */
+function tubeShade(a: Vec, d: Vec, n: Vec, l: number, ra: number, rb: number, light?: LimbLight, t0 = 0, t1 = 1): ShadeFn {
+  return (x, y) => {
+    const qx = x + 0.5 - a.x;
+    const qy = y + 0.5 - a.y;
+    const s = qx * d.x + qy * d.y;
+    const t = clamp(s / l, 0, 1);
+    const r = ra + (rb - ra) * t || 1;
+    const o = clamp((qx * n.x + qy * n.y) / r, -1, 1);
+    const lt = light ? light(t0 + (t1 - t0) * t, o, n) : cylLight(o, n);
+    return tone(lt + wob(s * 1.6, 3) * 0.16);
+  };
+}
+
+/** Light on a limb at parameter t (0 root, 1 joint, 2 end) and across-position o (-1..1 along n). */
+export type LimbLight = (t: number, o: number, n: Vec) => number;
 
 /** Tapered segment with FLAT ends (unlike capsule), shaded as a cylinder. Good for cuffs, hems and bands. */
 export function tube(L: Layer, a: Vec, b: Vec, ra: number, rb: number, pen: Pen, shade?: number | ShadeFn): void {
   const ab = sub(b, a);
   const l = Math.hypot(ab.x, ab.y);
   if (l < 0.05) {
-    ellipse(L, a.x, a.y, Math.max(ra, rb), Math.max(ra, rb), pen, shade);
+    ellipse(L, a.x, a.y, Math.max(ra, rb), Math.max(ra, rb), pen, shade ?? capShade(a, Math.max(ra, rb)));
     return;
   }
   const d = scale(ab, 1 / l);
   const n = perp(d);
   const pts = [add(a, scale(n, ra)), add(b, scale(n, rb)), add(b, scale(n, -rb)), add(a, scale(n, -ra))];
-  poly(
-    L,
-    pts,
-    pen,
-    shade ??
-      ((x, y) => {
-        const qx = x + 0.5 - a.x;
-        const qy = y + 0.5 - a.y;
-        const t = Math.max(0, Math.min(1, (qx * d.x + qy * d.y) / l));
-        const r = ra + (rb - ra) * t || 1;
-        const o = (qx * n.x + qy * n.y) / r;
-        return cylShade(n.x * o, n.y * o);
-      }),
-  );
+  poly(L, pts, pen, shade ?? tubeShade(a, d, n, l, ra, rb));
+}
+
+/** A rounded cap (shoulder, knee) shaded as part of a sphere, matching tubeShade's bands. */
+function capShade(c: Vec, r: number): ShadeFn {
+  return (x, y) => {
+    const dx = clamp((x + 0.5 - c.x) / r, -1, 1);
+    const dy = clamp((y + 0.5 - c.y) / r, -1, 1);
+    const dz = Math.sqrt(Math.max(0, 1 - dx * dx - dy * dy));
+    return tone(dx * L3.x + dy * L3.y + dz * L3.z + wob((x + y) * 1.6, 5) * 0.16);
+  };
+}
+
+/** A joint disc shaded like a cylinder running along `d` (blends the two limb segments it joins). */
+function jointShade(c: Vec, d: Vec, r: number, light?: (o: number, n: Vec) => number): ShadeFn {
+  const n = perp(d);
+  return (x, y) => {
+    const qx = x + 0.5 - c.x;
+    const qy = y + 0.5 - c.y;
+    const o = clamp((qx * n.x + qy * n.y) / r, -1, 1);
+    return tone((light ? light(o, n) : cylLight(o, n)) + wob((qx * d.x + qy * d.y) * 1.6, 3) * 0.16);
+  };
 }
 
 export type LimbKind = 'arm' | 'leg';
@@ -59,8 +114,41 @@ export const limbPt = (g: DrawCtx, k: LimbKind, s: Side, t: number): Vec => (k =
 /** Body radius of a limb at t (0 root, 1 middle joint, 2 end). */
 export function limbR(g: DrawCtx, k: LimbKind, t: number): number {
   const R = k === 'arm' ? g.bp.armR : g.bp.legR;
-  return t <= 1 ? R[0] + (R[1] - R[0]) * t : R[2] + (R[3] - R[2]) * (t - 1);
+  const P = k === 'arm' ? ARM_PROFILE : LEG_PROFILE;
+  for (let i = 1; i < P.length; i++) {
+    if (t <= P[i][0]) {
+      const [t0, w0] = P[i - 1];
+      const [t1, w1] = P[i];
+      const f = t1 > t0 ? clamp((t - t0) / (t1 - t0), 0, 1) : 1;
+      return w0(R) + (w1(R) - w0(R)) * f;
+    }
+  }
+  return P[P.length - 1][1](R);
 }
+
+/**
+ * Limb taper as control points [t, radius from R0..R3], matching the skin limbs
+ * (ctx.ts): full deltoid/thigh, narrower elbow/knee, a forearm/calf swell just
+ * past the joint and a slim wrist/ankle, so fitted cloth follows the body.
+ */
+type Profile = [number, (R: number[]) => number][];
+const ARM_PROFILE: Profile = [
+  [0, (R) => R[0]],
+  [0.45, (R) => R[0] * 0.62 + R[1] * 0.38],
+  [1, (R) => R[1]],
+  [1.0001, (R) => R[2] * 0.88],
+  [1.3, (R) => R[2]],
+  [2, (R) => R[3]],
+];
+const LEG_PROFILE: Profile = [
+  [0, (R) => R[0]],
+  [0.5, (R) => R[0] * 0.55 + R[1] * 0.45],
+  [1, (R) => R[1]],
+  [1.0001, (R) => R[2] * 0.94],
+  [1.32, (R) => R[2] * 1.04],
+  [2, (R) => R[3]],
+];
+const PROFILE_CUTS: Record<LimbKind, number[]> = { arm: [0.45, 1, 1.3], leg: [0.5, 1, 1.32] };
 const limbPart = (k: LimbKind, s: Side, t: number): PartId =>
   `${k === 'arm' ? (t <= 1 ? 'upperArm' : 'forearm') : t <= 1 ? 'thigh' : 'shin'}${s}` as PartId;
 
@@ -77,25 +165,31 @@ export function limb(
   to: number,
   inflate: number | [number, number],
   pen: Pen,
-  opts: { shade?: number; round0?: boolean; round1?: boolean } = {},
+  opts: { shade?: number; round0?: boolean; round1?: boolean; light?: LimbLight } = {},
 ): void {
   const inf = (t: number) => (typeof inflate === 'number' ? inflate : inflate[0] + (inflate[1] - inflate[0]) * ((t - from) / (to - from || 1)));
-  const cuts = [from];
-  if (from < 1 && to > 1) cuts.push(1);
-  cuts.push(to);
+  const cuts = [from, ...PROFILE_CUTS[k].filter((c) => c > from && c < to), to];
   for (let i = 0; i < cuts.length - 1; i++) {
     const t0 = cuts[i];
     const t1 = cuts[i + 1];
     const r0 = (t0 === 1 ? limbR(g, k, 1.0001) : limbR(g, k, t0)) + inf(t0);
     const r1 = limbR(g, k, t1) + inf(t1);
-    tube(L, limbPt(g, k, s, t0), limbPt(g, k, s, t1), r0, r1, { ...pen, part: limbPart(k, s, (t0 + t1) / 2) }, opts.shade);
+    const a = limbPt(g, k, s, t0);
+    const b = limbPt(g, k, s, t1);
+    const l = Math.hypot(b.x - a.x, b.y - a.y);
+    const d = l > 0.05 ? scale(sub(b, a), 1 / l) : v(0, 1);
+    const sh = opts.shade ?? (opts.light && l > 0.05 ? tubeShade(a, d, perp(d), l, r0, r1, opts.light, t0, t1) : undefined);
+    tube(L, a, b, r0, r1, { ...pen, part: limbPart(k, s, (t0 + t1) / 2) }, sh);
   }
   const disc = (t: number) => {
     const p = limbPt(g, k, s, t);
     const r = Math.max(limbR(g, k, t), t === 1 ? limbR(g, k, 1.0001) : 0) + inf(t);
-    ellipse(L, p.x, p.y, r, r, { ...pen, part: limbPart(k, s, t) }, opts.shade);
+    // shoulder and hip caps are round; the knee/elbow and the far end blend the segments they join
+    const dir = norm(sub(limbPt(g, k, s, Math.min(2, t + 0.25)), limbPt(g, k, s, Math.max(0, t - 0.25))));
+    const sh = opts.shade ?? (t === 0 ? capShade(p, r) : jointShade(p, dir, r, opts.light && ((o, n) => opts.light!(t, o, n))));
+    ellipse(L, p.x, p.y, r, r, { ...pen, part: limbPart(k, s, t) }, sh);
   };
-  if (cuts.length === 3) disc(1);
+  if (from < 1 && to > 1) disc(1);
   if (opts.round0) disc(from);
   if (opts.round1) disc(to);
 }
@@ -111,12 +205,53 @@ export function across(g: DrawCtx, L: Layer, k: LimbKind, s: Side, t: number, in
   seam(L, add(p, scale(n, -r)), add(p, scale(n, r)), d);
 }
 
-/** Dark fold line with a lit fine line on its upper-left side: reads as a crease/ridge. */
+/** Fine pixels along a 1 px line between design points (8-connected, no repeats). */
+function linePx(a: Vec, b: Vec): number[] {
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) * RES));
+  const out: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const p = lerp(a, b, i / steps);
+    const x = Math.floor(p.x * RES);
+    const y = Math.floor(p.y * RES);
+    if (x < 0 || y < 0 || x >= GRID || y >= GRID) continue;
+    const id = y * GRID + x;
+    if (out[out.length - 1] !== id) out.push(id);
+  }
+  return out;
+}
+
+/** Re-shades the pixels a layer already has along a 1 px line; returns the pixels it touched. */
+function mark(L: Layer, a: Vec, b: Vec, f: (s: number) => number, skip?: Set<number>): number[] {
+  const hit: number[] = [];
+  for (const i of linePx(a, b)) {
+    if (L.mat[i] < 0 || L.shade[i] === 0 || skip?.has(i)) continue;
+    L.shade[i] = clamp(f(L.shade[i]), 1, 5);
+    hit.push(i);
+  }
+  return hit;
+}
+
+/**
+ * Dark fold line with a lit fine line on its upper-left side: reads as a
+ * crease/ridge. Relative to the shading under it, so a fold in the shadow
+ * stays dark; the crest never goes past the light tone (4).
+ */
 export function crease(L: Layer, a: Vec, b: Vec, d = -1): void {
   let n = perp(norm(sub(b, a)));
   if (n.x * LIGHT.x + n.y * LIGHT.y < 0) n = scale(n, -1);
-  seam(L, a, b, d);
-  seam(L, add(a, scale(n, 0.5)), add(b, scale(n, 0.5)), 1);
+  const trough = new Set(mark(L, a, b, (s) => s + d));
+  mark(L, add(a, scale(n, 0.5)), add(b, scale(n, 0.5)), (s) => (s >= 4 ? s : s + 1), trough);
+}
+
+/**
+ * A fold as a crest/trough pair: a 1 px lit crest next to a dark trough of
+ * `w` px (1-2) on its shadow side. `crest` caps how bright the crest may get.
+ */
+function fold(L: Layer, a: Vec, b: Vec, w = 1, crest = 4, depth = 1): void {
+  let n = perp(norm(sub(b, a)));
+  if (n.x * LIGHT.x + n.y * LIGHT.y < 0) n = scale(n, -1);
+  const lit = new Set(mark(L, a, b, (s) => (s >= crest ? s : Math.min(crest, s + 1))));
+  for (let k = 1; k <= w; k++) mark(L, add(a, scale(n, -0.5 * k)), add(b, scale(n, -0.5 * k)), (s) => s - depth, lit);
 }
 
 /** A 1-fine-px line in a color, painted only over existing pixels (stitching, piping, laces). */
@@ -187,6 +322,56 @@ export function stamp(dst: Layer, src: Layer, keep?: (x: number, y: number) => b
   }
 }
 
+/**
+ * Sign of the `along()` offset that points to the inside of a limb's bend
+ * (elbow pit, back of the knee); `straight` when the limb is nearly straight.
+ */
+function bendSide(g: DrawCtx, k: LimbKind, s: Side, straight: number): number {
+  const a = limbPt(g, k, s, 0);
+  const m = limbPt(g, k, s, 1);
+  const e = limbPt(g, k, s, 2);
+  const bend = add(sub(a, m), sub(e, m));
+  const n = norm(perp(sub(m, a)));
+  const d = bend.x * n.x + bend.y * n.y;
+  return Math.abs(d) < 1.2 ? straight : Math.sign(d);
+}
+
+/**
+ * Folds where a sleeve or trouser leg bends: short crest/trough diagonals that
+ * fan from the inside of the elbow/knee, plus one across the outside of the
+ * joint. Fewer and softer when the limb is straight.
+ */
+function jointFolds(g: DrawCtx, L: Layer, k: LimbKind, s: Side, inflate: number): void {
+  const a = limbPt(g, k, s, 0);
+  const m = limbPt(g, k, s, 1);
+  const e = limbPt(g, k, s, 2);
+  // a hanging arm bends forward (screen-right), a standing leg backward (screen-left)
+  const side = bendSide(g, k, s, k === 'arm' ? -1 : 1);
+  const r1 = limbR(g, k, 0.85) + inflate;
+  const r2 = limbR(g, k, 1.15) + inflate;
+  fold(L, along(a, m, 0.7, side * r1 * 0.95), along(a, m, 0.9, -side * r1 * 0.1));
+  fold(L, along(m, e, 0.2, side * r2 * 0.95), along(m, e, 0.06, -side * r2 * 0.05));
+  if (k === 'leg') fold(L, along(a, m, 0.93, -side * r1 * 0.9), along(m, e, 0.06, -side * r2 * 0.15));
+}
+
+/** Light for a cuff or hem band from t0 (top edge) to t1 on a limb: lit rim on top, darker toward its lower edge. */
+function bandLight(t0: number, t1: number, lift = 0): LimbLight {
+  return (t, o, n) => {
+    const f = (t - t0) / (t1 - t0 || 1);
+    return cylLight(o, n) + lift + (f < 0.25 ? 0.34 : f > 0.62 ? -0.26 : 0);
+  };
+}
+
+/**
+ * A cuff band on a limb from t0 (nearer the root) to t1, drawn over the cloth
+ * it closes: lit along its top edge, darker toward the lower edge, and the
+ * cloth above it tucks in under a 1 px dark band.
+ */
+function cuff(g: DrawCtx, L: Layer, k: LimbKind, s: Side, t0: number, t1: number, inflate: number, pen: Pen, under = 0.4): void {
+  if (under > 0) across(g, L, k, s, t0 - 0.03 * Math.sign(t1 - t0), under, -1);
+  limb(g, L, k, s, Math.min(t0, t1), Math.max(t0, t1), inflate, pen, { light: t1 > t0 ? bandLight(t0, t1) : bandLight(t1, t0) });
+}
+
 /** Sleeves on both arms from 0 (shoulder) to `to` (2 = wrist), with a flat hem. */
 export function sleeves(g: DrawCtx, hex: string, to: number, inflate = 0.5, kind: Kind = 'cloth'): void {
   for (const s of SIDES) {
@@ -197,12 +382,98 @@ export function sleeves(g: DrawCtx, hex: string, to: number, inflate = 0.5, kind
 
 /** Trousers on both legs from 0 (hip) to `to` (2 = ankle), plus the seat on the torso. */
 export function trousers(g: DrawCtx, hex: string, to: number, inflate = 0.4, waistTop = 3): void {
-  fillTorso(g, g.L('torso.bottom'), 0.4, clothPen(g, hex, 'torso'), { top: waistTop });
+  const inf: [number, number] = [inflate, inflate * 0.8];
   for (const s of SIDES) {
     const L = g.L(legDepth(s, 'cloth'));
-    limb(g, L, 'leg', s, 0, to, [inflate, inflate * 0.8], clothPen(g, hex, prt('thigh', s), sb(s)), { round0: true });
+    limb(g, L, 'leg', s, 0, to, inf, clothPen(g, hex, prt('thigh', s), sb(s)), { round0: true, light: legLight(s) });
+  }
+  seat(g, hex, (t) => inflate + (inf[1] - inf[0]) * (t / to), waistTop);
+}
+
+/** Light on a trouser leg: a cylinder, shaded on the inner thigh by the crotch where the other leg blocks the light. */
+export function legLight(s: Side, depth = 0.55): LimbLight {
+  return (t, o, n) => {
+    const inner = s === 'N' ? -o : o; // + toward the other leg
+    return cylLight(o, n) - Math.max(0, inner) * depth * clamp(1.2 - t * 1.5, 0, 1);
+  };
+}
+
+/** Projects a design point onto one thigh (hip to knee): t along it, o across it (-1..1 over the cloth radius). */
+function thighCol(g: DrawCtx, s: Side, inflate: (t: number) => number): (p: Vec) => { t: number; o: number; n: Vec } {
+  const j = legJoints(g.rig, s);
+  const ab = sub(j.knee, j.hip);
+  const len = Math.hypot(ab.x, ab.y) || 1;
+  const d = scale(ab, 1 / len);
+  const n = perp(d);
+  return (p) => {
+    const qx = p.x - j.hip.x;
+    const qy = p.y - j.hip.y;
+    const t = (qx * d.x + qy * d.y) / len;
+    const tc = clamp(t, 0, 1);
+    return { t, o: (qx * n.x + qy * n.y) / (limbR(g, 'leg', tc) + inflate(tc)), n };
+  };
+}
+
+/**
+ * Seat of a pair of trousers on the pelvis (drawn in torso.bottom, over both
+ * leg tops): shaded as the lower torso near the waist, turning into the two
+ * leg columns toward the crotch, each shaded like its leg (the far one a shade
+ * darker), with a dark inseam down the near leg's inner edge. Its lower edge
+ * runs on into the legs with no outline and no cast shadow, so the trousers
+ * read as two tapered columns, never one block across both legs.
+ */
+function seat(g: DrawCtx, hex: string, inflate: (t: number) => number, top: number): void {
+  const L = g.L('torso.bottom');
+  const cN = thighCol(g, 'N', inflate);
+  const cF = thighCol(g, 'F', inflate);
+  const lN = legLight('N');
+  const lF = legLight('F');
+  const inside = (c: { t: number; o: number }) => Math.abs(c.o) <= 1 && c.t > -0.7;
+  fillT(g, L, Math.min(0.5, inflate(0) * 0.6), clothPen(g, hex, 'torso'), { top }, undefined, (x, y) => {
+    const p = v(x + 0.5, y + 0.5);
+    const l = toT(g, x, y);
+    const a = cN(p);
+    const b = cF(p);
+    // the near leg is in front: where the columns overlap the point belongs to it
+    let leg: number | null = null;
+    if (inside(a)) {
+      // inseam: the near leg's inner (right) edge, where the far leg starts
+      if (l.y < -0.4 && !inside(cN(v(p.x + 0.5, p.y)))) return l.y < -1.6 ? 0 : 1;
+      leg = lN(a.t, a.o, a.n);
+    } else if (inside(b)) leg = lF(b.t, b.o, b.n) - 0.34;
+    const k = clamp((2.4 - l.y) / 3, 0, 1);
+    const tl = torsoLight(g, l.x, l.y);
+    const lt = leg === null ? tl - 0.3 * k : tl * (1 - k) + leg * k;
+    return tone(lt + wob2(l.x * 1.3, l.y * 0.9, 13) * 0.14);
+  });
+  // No outline or cast shadow where the seat runs on into its own legs.
+  const legs = SIDES.map((s) => g.L(legDepth(s, 'cloth')));
+  const covered = (i: number) => legs.some((Lg) => Lg.mat[i] >= 0);
+  const legEdge = (i: number) => {
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    return legs.every((Lg) => !Lg.has(x - 1, y) || !Lg.has(x + 1, y) || !Lg.has(x, y - 1) || !Lg.has(x, y + 1));
+  };
+  for (let i = 2 * GRID; i < GRID * (GRID - 1); i++) {
+    if (L.mat[i] >= 0 || !covered(i)) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    if (x < 1 || x >= GRID - 1) continue;
+    if ((L.has(x, y - 1) || L.has(x - 1, y) || L.has(x + 1, y) || L.has(x, y + 1)) && !legEdge(i)) L.flags[i] |= F_NO_EDGE;
+    // the drop-shadow pass would darken this leg pixel under the seat's edge: lift it to compensate
+    if (SHADOW_FROM.some(([dx, dy]) => L.has(x + dx, y + dy)))
+      for (const Lg of legs) if (Lg.mat[i] >= 0 && Lg.shade[i] >= 2 && Lg.shade[i] < 5) Lg.shade[i] += 1;
   }
 }
+
+/** Offsets the compositor's drop-shadow pass looks at for an occluder (compose.ts). */
+const SHADOW_FROM: [number, number][] = [
+  [0, -1],
+  [-1, -1],
+  [-1, 0],
+  [0, -2],
+  [-1, -2],
+];
 
 /** Collar that wraps the neck (drawn in the neck depth, over the torso). */
 export function highCollar(g: DrawCtx, hex: string, height = 3, width = 0.8): void {
@@ -272,6 +543,70 @@ function frontX(g: DrawCtx, y: number): number {
   return pts[pts.length - 1][1];
 }
 
+/** Piecewise-linear lookup in [y, x] pairs sorted by y. */
+function interp(pts: [number, number][], y: number): number {
+  if (y <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) {
+    if (y <= pts[i][0]) return pts[i - 1][1] + ((pts[i][1] - pts[i - 1][1]) * (y - pts[i - 1][0])) / (pts[i][0] - pts[i - 1][0]);
+  }
+  return pts[pts.length - 1][1];
+}
+
+/** Back edge (local x, negative) of the bare torso at local height y. */
+function backX(g: DrawCtx, y: number): number {
+  const b = g.bp;
+  return interp(
+    [
+      [-0.8, -b.hipHalf * 0.9 - 0.4],
+      [1.6, -b.hipHalf * 0.98 - 0.6],
+      [5.4, -b.waistHalf * 0.86],
+      [b.torsoLen - 5, -b.chestHalf * 0.86],
+      [b.torsoLen - 1.2, -b.shoulderHalf * 0.86],
+    ],
+    y,
+  );
+}
+
+/** Smooth 2D value noise in [-0.5, 0.5] (cells of about one design unit). */
+function wob2(x: number, y: number, seed = 0): number {
+  const yi = Math.floor(y);
+  const f = y - yi;
+  const t = f * f * (3 - 2 * f);
+  return wob(x, seed + yi * 31) * (1 - t) + wob(x, seed + yi * 31 + 31) * t;
+}
+
+/**
+ * Light on the torso as a rounded volume seen in 3/4 (torso-local lx, ly): the
+ * flank under the near arm faces left into the light, the centre-front line
+ * faces a little right and the front edge turns fully away; the shoulders face
+ * up, the upper chest a little up, the belly forward and the lower belly down.
+ */
+function torsoLight(g: DrawCtx, lx: number, ly: number): number {
+  const b = g.bp;
+  const Lt = b.torsoLen;
+  const xb = backX(g, ly);
+  const xf = frontX(g, ly);
+  const u = clamp((lx - xb) / Math.max(1, CX - xb), 0, 1);
+  const w = clamp((lx - CX) / Math.max(1, xf - CX), 0, 1.2);
+  const th = ((lx < CX ? -90 + 112 * u : 22 + 68 * w) * Math.PI) / 180;
+  const tilt = interp(
+    [
+      [-1.5, 32],
+      [1.5, 22],
+      [4, 10],
+      [Lt - 8.4, 2],
+      [Lt - 7.2, 6 + b.bust * 14],
+      [Lt - 6.2, -12 - b.bust * 6],
+      [Lt - 3, -16],
+      [Lt - 1.4, -40],
+      [Lt + 0.6, -60],
+    ],
+    ly,
+  );
+  const ps = (tilt * Math.PI) / 180;
+  return Math.sin(th) * Math.cos(ps) * L3.x + Math.sin(ps) * L3.y + Math.cos(th) * Math.cos(ps) * L3.z;
+}
+
 /** Like fillTorso, with an extra keep test in torso-local coordinates. */
 function fillT(
   g: DrawCtx,
@@ -285,18 +620,11 @@ function fillT(
   const pts = torsoPoly(g, inflate, opts);
   const top = opts.top ?? 99;
   const bottom = opts.bottom ?? -99;
-  const minX = Math.min(...pts.map((p) => p.x));
-  const maxX = Math.max(...pts.map((p) => p.x));
-  const w = Math.max(1, maxX - minX);
   poly(
     L,
     pts,
     pen,
-    shade ??
-      ((x) => {
-        const t = (x + 0.5 - minX) / w;
-        return t < 0.2 ? 4 : t < 0.8 ? 3 : 2;
-      }),
+    shade ?? torsoShade(g),
     (x, y) => {
       const l = toT(g, x, y);
       if (l.y > top + 0.01 || l.y < bottom - 0.01) return false;
@@ -320,19 +648,15 @@ function meshify(L: Layer, mat: number): void {
 const CX = 1.6;
 
 /**
- * Value structure shared by tops: a lit chest plane, base mid-tones, darker
- * flanks turning away from the light, and a lit lower-front panel.
+ * Value structure shared by tops, after the reference coat: a small lit plane
+ * on the upper chest and shoulder by the near arm, base in the middle, and the
+ * front turning away from the light (and the lower belly) in broad shadow and
+ * dark areas. `lift` brightens (+) or darkens (-) the whole garment a little.
  */
-function torsoShade(g: DrawCtx): ShadeFn {
-  const Lt = g.bp.torsoLen;
-  const wh = g.bp.waistHalf;
+function torsoShade(g: DrawCtx, lift = 0): ShadeFn {
   return (x, y) => {
     const l = toT(g, x, y);
-    if (l.x > frontX(g, l.y) - 1.1) return 2;
-    if (l.x < -wh * 0.75) return 2;
-    if (l.y > Lt - 7.6 && l.y < Lt - 1.4 && l.x > -2.2 && l.x < CX + 1.6) return 4;
-    if (l.y < 3.4 && l.x > -1.6 && l.x < CX + 0.4) return 4;
-    return 3;
+    return tone(torsoLight(g, l.x, l.y) + lift + wob2(l.x * 1.3, l.y * 0.9, 11) * 0.14);
   };
 }
 

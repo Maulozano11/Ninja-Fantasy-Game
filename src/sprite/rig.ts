@@ -50,7 +50,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     forearm: 5.5,
     thigh: 8.1,
     shin: 7.7,
-    armR: [2.3, 1.9, 2.1, 1.5],
+    armR: [1.95, 1.5, 1.8, 1.15],
     legR: [2.65, 2.0, 2.0, 1.4],
     headRx: 6,
     headRy: 7,
@@ -70,7 +70,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     forearm: 5.2,
     thigh: 8.0,
     shin: 7.5,
-    armR: [1.9, 1.6, 1.7, 1.25],
+    armR: [1.65, 1.28, 1.52, 0.98],
     legR: [3.2, 2.05, 1.9, 1.2],
     headRx: 6,
     headRy: 7,
@@ -90,7 +90,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     forearm: 5.7,
     thigh: 7.9,
     shin: 7.4,
-    armR: [2.9, 2.45, 2.6, 1.9],
+    armR: [2.55, 2.0, 2.3, 1.5],
     legR: [3.4, 2.6, 2.5, 1.75],
     headRx: 6.2,
     headRy: 7,
@@ -102,7 +102,11 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
   },
 };
 
-export type HandShape = 'relaxed' | 'fist' | 'open' | 'sign' | 'grip';
+/**
+ * fist: closed fist · grip: around a weapon handle, or a fist when empty-handed ·
+ * hold: around a weapon handle, or relaxed when empty-handed · relaxed · open · sign.
+ */
+export type HandShape = 'relaxed' | 'fist' | 'open' | 'sign' | 'grip' | 'hold';
 
 /** Hand targets: relative to a landmark, in arm-length units ('arm') or pixels ('px'). */
 interface HandTarget {
@@ -137,11 +141,12 @@ const IDLE: PoseFrame = {
   // Upright, chest slightly out, head over the shoulders (no hunch).
   lean: -2,
   handN: arm(-0.06, 0.95),
-  handF: arm(0.15, 0.95),
+  // The free hand hangs relaxed just off the hip, like the reference.
+  handF: arm(0.22, 0.93),
   footN: v(-0.1, 0.985),
   footF: v(0.14, 0.98),
-  shapeN: 'fist',
-  shapeF: 'fist',
+  shapeN: 'hold',
+  shapeF: 'relaxed',
 };
 
 export const POSES: Record<SpritePose, PoseFrame[]> = {

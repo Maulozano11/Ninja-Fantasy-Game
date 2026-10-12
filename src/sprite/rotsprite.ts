@@ -95,9 +95,11 @@ export function rotateTemplate(t: PixelTemplate, deg: number): RotatedPixel[] {
   const out: RotatedPixel[] = [];
   for (let oy = minY; oy <= maxY; oy++) {
     for (let ox = minX; ox <= maxX; ox++) {
-      // Sample the centre of the output pixel in the upscaled source (inverse rotation).
-      const rx = (ox + 0.5) * S;
-      const ry = (oy + 0.5) * S;
+      // Sample the source at the output pixel's centre (inverse rotation). The
+      // pivot cell's centre maps to output (0, 0), so at 0° every pixel is
+      // copied exactly instead of picking Scale2x corner sub-pixels.
+      const rx = ox * S;
+      const ry = oy * S;
       const sx = Math.floor(rx * cos + ry * sin + px0);
       const sy = Math.floor(-rx * sin + ry * cos + py0);
       if (sx < 0 || sy < 0 || sx >= w || sy >= h) continue;

@@ -143,19 +143,56 @@ export const sideBias = (s: Side): number => (s === 'F' ? -1 : 0);
  */
 export function armSpan(g: DrawCtx, L: Layer, s: Side, from: number, to: number, inflate: number, pen: Pen, shade?: number | 'skin'): void {
   const j = armJoints(g.rig, s);
-  const R = g.bp.armR;
   const at = (t: number) => (t <= 1 ? lerp(j.shoulder, j.elbow, t) : lerp(j.elbow, j.wrist, t - 1));
-  const rad = (t: number) => (t <= 1 ? R[0] + (R[1] - R[0]) * t : R[2] + (R[3] - R[2]) * (t - 1));
-  spans(L, at, rad, from, to, inflate, pen, shade);
+  spans(L, at, profileR(ARM_PROFILE, g.bp.armR), from, to, inflate, pen, shade);
 }
 
-/** Capsules along a limb, split at the joint; 'skin' uses the reference cylinder shading. */
-function spans(L: Layer, at: (t: number) => Vec, rad: (t: number) => number, from: number, to: number, inflate: number, pen: Pen, shade?: number | 'skin'): void {
-  const cuts = [from, ...[1].filter((c) => c > from && c < to), to];
+/**
+ * Natural limb tapering as control points [t, weights over R0..R3]: arms stay
+ * full through the deltoid and biceps, pinch at the elbow, swell just below
+ * it (forearm muscle) and taper to a slim wrist; legs keep a full thigh, a
+ * narrower knee, a calf swell and a slim ankle.
+ */
+type Profile = [number, (R: number[]) => number][];
+const ARM_PROFILE: Profile = [
+  [0, (R) => R[0]],
+  [0.45, (R) => R[0] * 0.62 + R[1] * 0.38],
+  [1, (R) => R[1]],
+  [1.0001, (R) => R[2] * 0.88],
+  [1.3, (R) => R[2]],
+  [2, (R) => R[3]],
+];
+const LEG_PROFILE: Profile = [
+  [0, (R) => R[0]],
+  [0.5, (R) => R[0] * 0.55 + R[1] * 0.45],
+  [1, (R) => R[1]],
+  [1.0001, (R) => R[2] * 0.94],
+  [1.32, (R) => R[2] * 1.04],
+  [2, (R) => R[3]],
+];
+const profileR = (P: Profile, R: number[]) => (t: number): number => {
+  for (let i = 1; i < P.length; i++) {
+    if (t <= P[i][0]) {
+      const [t0, f0] = P[i - 1];
+      const [t1, f1] = P[i];
+      const k = t1 > t0 ? (t - t0) / (t1 - t0) : 1;
+      return f0(R) + (f1(R) - f0(R)) * Math.max(0, Math.min(1, k));
+    }
+  }
+  return P[P.length - 1][1](R);
+};
+/** Control points of the profiles, used as extra capsule cuts so the outline follows the curve. */
+const ARM_CUTS = [0.45, 1, 1.3];
+const LEG_CUTS = [0.5, 1, 1.32];
+
+/** Capsules along a limb, split at the joint and profile points; 'skin' uses the reference cylinder shading. */
+function spans(L: Layer, at: (t: number) => Vec, rad: (t: number) => number, from: number, to: number, inflate: number, pen: Pen, shade?: number | 'skin', cutsAt: number[] = ARM_CUTS): void {
+  const cuts = [from, ...cutsAt.filter((c) => c > from && c < to), to];
   for (let i = 0; i < cuts.length - 1; i++) {
     const a = at(cuts[i]);
     const b = at(cuts[i + 1]);
-    const ra = rad(cuts[i]) + inflate;
+    // Just past the elbow/knee the second bone's radius applies.
+    const ra = rad(cuts[i] === 1 ? 1.0001 : cuts[i]) + inflate;
     const rb = rad(cuts[i + 1]) + inflate;
     capsule(L, a, b, ra, rb, pen, shade === 'skin' ? cylShade(a, b, ra, rb) : shade);
   }
@@ -164,10 +201,8 @@ function spans(L: Layer, at: (t: number) => Vec, rad: (t: number) => number, fro
 /** Same as armSpan for legs: 0 = hip, 1 = knee, 2 = ankle. */
 export function legSpan(g: DrawCtx, L: Layer, s: Side, from: number, to: number, inflate: number, pen: Pen, shade?: number | 'skin'): void {
   const j = legJoints(g.rig, s);
-  const R = g.bp.legR;
   const at = (t: number) => (t <= 1 ? lerp(j.hip, j.knee, t) : lerp(j.knee, j.ankle, t - 1));
-  const rad = (t: number) => (t <= 1 ? R[0] + (R[1] - R[0]) * t : R[2] + (R[3] - R[2]) * (t - 1));
-  spans(L, at, rad, from, to, inflate, pen, shade);
+  spans(L, at, profileR(LEG_PROFILE, g.bp.legR), from, to, inflate, pen, shade, LEG_CUTS);
 }
 
 export function armPoint(g: DrawCtx, s: Side, t: number): Vec {
@@ -198,6 +233,9 @@ export function torsoPoly(g: DrawCtx, inflate = 0, opts: { top?: number; bottom?
   const lo = (y: number) => Math.max(y, crotch);
   const wa = b.waistHalf;
   const hp = b.hipHalf;
+  // Outer edges of the thighs at the hip joints (see buildRig: hipN, hipF).
+  const nO = -(hp * 0.5 + b.legR[0] * 0.96);
+  const fO = hp * 0.42 + b.legR[0] * 0.9;
   const pts: Vec[] = [
     sh(T(-b.shoulderHalf * 0.86 - i, Math.min(top, Lt - 1.2) + i * 0.5), 1),
     sh(T(-1.6, Math.min(top, Lt + 0.2) + i), 1),
@@ -205,15 +243,16 @@ export function torsoPoly(g: DrawCtx, inflate = 0, opts: { top?: number; bottom?
     sh(T(b.shoulderHalf * 0.58 + 0.6 + i, Math.min(top, Lt - 1.4) + i * 0.5), 1),
     sh(T(b.chestHalf * 0.62 + 0.8 + i + b.bust * 0.4, Lt - 4.4), 0.8),
     sh(T(b.chestHalf * 0.62 + 0.6 + i + b.bust, Lt - 6.2), 0.6),
-    // Waist, then hips as wide as both thighs, then the legs' tops and a low crotch,
-    // so the legs come out from under the pelvis (as in the reference).
+    // Waist, then hips exactly as wide as the two thighs (their outer edges,
+    // never wider: no bell), then a narrow crotch so the legs separate right
+    // under the pelvis.
     T(wa * 0.64 + 0.7 + i, lo(5.4)),
-    T(hp * 0.75 + 0.6 + i + flare * 0.6, lo(1.6)),
-    T(hp * 0.66 + 0.5 + i + flare * 0.6, lo(-0.8)),
-    T(1.0 + i * 0.3 + flare * 0.3, crotch - i * 0.3),
-    T(-1.4 - i * 0.3 - flare * 0.3, crotch - i * 0.3),
-    T(-hp * 0.9 - 0.4 - i - flare, lo(-0.8)),
-    T(-hp * 0.98 - 0.6 - i - flare, lo(1.6)),
+    T(fO + i + flare * 0.6, lo(1.6)),
+    T(fO - 0.2 + i + flare * 0.6, lo(-0.8)),
+    T(0.5 + i * 0.3 + flare * 0.3, crotch - i * 0.3),
+    T(-0.8 - i * 0.3 - flare * 0.3, crotch - i * 0.3),
+    T(nO - 0.1 - i - flare, lo(-0.8)),
+    T(nO - i - flare, lo(1.6)),
     T(-wa * 0.86 - i, lo(5.4)),
     sh(T(-b.chestHalf * 0.86 - i, Lt - 5), 0.8),
   ];
@@ -247,68 +286,73 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
 }
 
 // Hand templates (fine pixels), drawn hanging down with the wrist at the top
-// and the thumb on the right, after the reference sprite's fists. They are
-// rotated to the forearm angle with RotSprite and mirrored so the thumb faces
-// forward. o outline · D dark · x finger crease · s shadow · b base · l light
+// and the thumb on the right; rotated to the forearm angle with RotSprite and
+// mirrored so the thumb faces forward. Compact, like the reference: a fist is
+// about 8 px across, fingers are 1 px wide with a dark crease between them.
+// o outline · D dark · x crease (near-black) · s shadow · b base · l light
+/** Fist wrapped around a weapon handle: knuckles, a thumb over the grip, curled fingertips. */
 const HAND_GRIP: PixelTemplate = {
-  pivot: [5, 0],
-  rows: [
-    '..obbbso..',
-    '.osbbbbso.',
-    'osbbbbbsDo',
-    'oslbbbbsDo',
-    'osblbbbsDo',
-    'osbbblbsDo',
-    'oDxbxbxsDo',
-    '.oDsDsxDo.',
-    '..oDxoDo..',
-    '...oo.o...',
-  ],
-};
-const HAND_FIST_FRONT: PixelTemplate = {
   pivot: [4, 0],
   rows: [
     '..obbbo..',
     '.osbbbbo.',
-    'oDbblbbso',
-    'oDblbbbso',
-    'oxDbbxDso',
-    'osbxDbbDo',
-    'oDsbxDsso',
-    '.oDxsxDo.',
-    '..ooooo..',
+    'osbbbbbDo',
+    'olbbbbxlo',
+    'osbbbbxbo',
+    'oxsxsxsDo',
+    'osbsbsbDo',
+    '.oDoDoDo.',
   ],
 };
+/** Small closed fist with a rounded bottom. */
+const HAND_FIST: PixelTemplate = {
+  pivot: [4, 0],
+  rows: [
+    '..obbo..',
+    '.osbbbo.',
+    'osbblbso',
+    'olbbbbDo',
+    'oxbxbxDo',
+    'oDsDsDso',
+    '.oDoDoo.',
+    '..ooo...',
+  ],
+};
+/** Open palm, fingers spread (casting). */
 const HAND_OPEN: PixelTemplate = {
-  pivot: [5, 0],
+  pivot: [4, 0],
   rows: [
-    '..obbbso...',
-    '.osbbbbso..',
-    'osbbbbbbsoo',
-    'oslbbbbsDso',
-    'oblbbbbsDbo',
-    'osbbbbsDobo',
-    'osxbxbxso..',
-    'obxbxsxDo..',
-    'osxbxsxDo..',
-    '.oDoDoDo...',
-    '..o.o.o....',
+    '..obbo....',
+    '.osbbbo...',
+    'osbbbbso..',
+    'olbbbbbsoo',
+    'olbbbbsDbo',
+    'osbbbsDobo',
+    'osDbDbDo..',
+    'obDbDbDo..',
+    'osDbDsDo..',
+    '.obobobo..',
+    '..o.o.o...',
   ],
 };
+/** Small relaxed hand, fingers loosely curled. */
 const HAND_RELAXED: PixelTemplate = {
-  pivot: [5, 0],
+  pivot: [3, 0],
   rows: [
-    '..obbbso...',
-    '.osbbbbso..',
-    'osbbbbbbso.',
-    'oslbbbbsDso',
-    'oblbbbbsDbo',
-    'osbxbxbsoo.',
-    'oDbxbxsDo..',
-    '.oDsDsDo...',
-    '..ooooo....',
+    '.obbo..',
+    'osbbbo.',
+    'osbbbso',
+    'olbbbbo',
+    'osbbbDo',
+    'obDbDDo',
+    'osbsbo.',
+    '.oDsDo.',
+    '..oo...',
   ],
 };
+
+/** Held items that the near hand wraps around. */
+const GRIPPED = ['held_katana', 'held_crystal', 'held_kunai', 'held_naginata'];
 
 /**
  * Draws a hand from a pixel template matched to the reference sprite. The
@@ -326,14 +370,19 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
   const tx = Math.cos(tr);
   const ty = Math.sin(tr);
   const flipX = tx < -0.25 || (Math.abs(tx) <= 0.25 && ty > 0);
+  const holding = s === 'N' && GRIPPED.some((id) => g.has('held', id));
   const t =
     j.shape === 'open'
       ? HAND_OPEN
       : j.shape === 'relaxed' || j.shape === 'sign'
         ? HAND_RELAXED
-        : s === 'N'
-          ? HAND_GRIP
-          : HAND_FIST_FRONT;
+        : j.shape === 'hold'
+          ? holding
+            ? HAND_GRIP
+            : HAND_RELAXED
+          : holding
+            ? HAND_GRIP
+            : HAND_FIST;
   const b = pen.bias || 0;
   const pal: TemplatePalette = {
     o: [pen.mat, 0],

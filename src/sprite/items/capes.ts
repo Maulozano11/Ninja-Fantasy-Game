@@ -5,7 +5,7 @@
 // that depends on the pose, so capes trail behind in attacks and sway in idle.
 
 import type { DrawCtx, ItemDef } from '../ctx';
-import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, len, lerp, Layer, norm, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
+import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, fine, GRID, len, lerp, Layer, norm, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import { GROUND } from '../rig';
 
 const col = (key: string, label: string, def: string, kind: 'cloth' | 'leather' | 'metal' = 'cloth') => ({ key, label, default: def, kind });
@@ -47,9 +47,9 @@ function topPt(g: DrawCtx) {
   return (x: number, y: number) => add(T(x, y), v(0, dy));
 }
 
-const bandShade = (minX: number, maxX: number, lit = 0.18, mid = 0.62) => (x: number) => {
+const bandShade = (minX: number, maxX: number, lit = 0.18, mid = 0.62, deep = 2) => (x: number) => {
   const t = (x + 0.5 - minX) / Math.max(1, maxX - minX);
-  return t < lit ? 4 : t < mid ? 3 : 2;
+  return t < lit ? 4 : t < mid ? 3 : t < deep ? 2 : 1;
 };
 
 /** True if fine pixel (x, y) of the layer holds material `mat`. */
@@ -198,7 +198,21 @@ function cloakBack(g: DrawCtx, pen: Pen, o: CloakOpts): CloakShape {
   const minX = Math.min(...pts.map((p) => p.x));
   const maxX = Math.max(...pts.map((p) => p.x));
   const dark = o.tone === 'dark';
-  poly(L, pts, pen, dark ? (x: number) => ((x + 0.5 - minX) / Math.max(1, maxX - minX) < 0.12 ? 3 : 2) : bandShade(minX, maxX, 0.1, 0.55));
+  // Value by position across the visible part, like the reference cloak: a
+  // lit outer rim, the body of the cloth, then darker as it curves in behind
+  // the body (where the body also casts its shadow), deepest behind the far side.
+  const bodyX = r.pelvis.x - b.hipHalf * 0.6;
+  const outerX = (y: number) => {
+    const k = Math.max(0, Math.min(1, (y - SL.y) / Math.max(1, hemL.y - SL.y)));
+    return Math.min(SL.x, lerp(SL, hemL, k).x - o.bulge * Math.sin(k * Math.PI) * 0.5);
+  };
+  poly(L, pts, pen, (x: number, y: number) => {
+    const X = x + 0.5;
+    if (X > r.pelvis.x + b.hipHalf * 0.4) return dark ? 1 : 2; // behind the far side
+    const u = (X - outerX(y + 0.5)) / Math.max(1, bodyX - outerX(y + 0.5));
+    if (dark) return u < 0.1 ? 3 : u < 0.78 ? 2 : 1;
+    return u < 0.08 ? 4 : u < 0.42 ? 3 : u < 0.8 ? 2 : 1;
+  });
   // Long folds fall from the shoulders: crests end at the low points of the
   // hem, creases at the notches between them.
   const sag = v(w.dx * 0.25, 0);
@@ -221,7 +235,21 @@ function cloakBack(g: DrawCtx, pen: Pen, o: CloakOpts): CloakShape {
     }
   }
   // Thin rim light down the outer (left) edge.
-  curveFold(L, pen.mat, add(SL, v(0.6, 1)), add(B1, v(0.6, 0)), add(hemL, v(1, -1)), 1, 1, 0);
+  curveFold(L, pen.mat, add(SL, v(0.6, 1)), add(B1, v(0.6, 0)), add(hemL, v(1, -1)), 1, dark ? 2 : 1, 0);
+  // Two long folds in the visible outer part (the reference's lit streaks):
+  // a lit crest with a brighter upper half, and a dark trough beside it.
+  const across = (k: number, t: number) => {
+    const y = lerp(SL, hemL, t).y;
+    return v(outerX(y) + k * (bodyX - outerX(y)), y);
+  };
+  for (const k of [0.3, 0.62]) {
+    const a = across(k, 0.12);
+    const c = across(k + 0.04, 0.55);
+    const e = across(k + 0.08, 0.97);
+    curveFold(L, pen.mat, a, c, e, 1, 1, 0);
+    curveFold(L, pen.mat, a, lerp(a, c, 0.6), c, 1, 1, 0);
+    curveFold(L, pen.mat, add(a, v(0.6, 0.6)), add(c, v(0.6, 0)), add(e, v(0.6, 0)), -1, 1, 0);
+  }
   return { hemL, hemR, SL, TR };
 }
 
@@ -246,7 +274,7 @@ function shoulderDrape(g: DrawCtx, pen: Pen, o: { chest: number; drop: number; o
   ];
   const minX = Math.min(...pts.map((p) => p.x));
   const maxX = Math.max(...pts.map((p) => p.x));
-  poly(L, pts, pen, bandShade(minX, maxX, 0.35, 0.8));
+  poly(L, pts, pen, bandShade(minX, maxX, 0.18, 0.62, 0.9));
   return pts;
 }
 
@@ -340,7 +368,7 @@ function frontPanel(g: DrawCtx, pen: Pen, o: { x0: number; x1: number; hemY: num
   const pts = [a, c, m1, h1, h0, m0];
   const minX = Math.min(...pts.map((p) => p.x));
   const maxX = Math.max(...pts.map((p) => p.x));
-  poly(L, pts, pen, o.tone === 'dark' ? (x: number) => ((x + 0.5 - minX) / Math.max(1, maxX - minX) < 0.25 ? 3 : 2) : bandShade(minX, maxX, 0.3, 0.7));
+  poly(L, pts, pen, o.tone === 'dark' ? (x: number) => ((x + 0.5 - minX) / Math.max(1, maxX - minX) < 0.2 ? 3 : 2) : bandShade(minX, maxX, 0.12, 0.5, 0.84));
   return pts;
 }
 
@@ -542,7 +570,13 @@ export const CAPE_ITEMS: ItemDef[] = [
         const t = i / n;
         const ripple = Math.sin(t * 6 + r.frame * 1.9) * (0.8 + t);
         const p = add(start, v(-t * reach + ripple * 0.4, t * drop + ripple * 0.6));
-        capsule(B, prev, p, 1.9 - t * 0.35, 1.9 - (t + 1 / n) * 0.35, bp, i % 3 === 0 ? 2 : 3);
+        // Rounded ribbon: lit top edge, shadowed underside; every third segment
+        // twists away from the light.
+        const ra = 1.9 - t * 0.35;
+        const rb = 1.9 - (t + 1 / n) * 0.35;
+        const tw = i % 3 === 0 ? -1 : 0;
+        const sh = cylShade(prev, p, ra, rb);
+        capsule(B, prev, p, ra, rb, bp, (x, y) => Math.max(1, sh(x, y) + tw));
         prev = p;
       }
       // Frayed end: two little tassels.

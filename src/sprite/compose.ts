@@ -1,12 +1,13 @@
-// Composites the base body and every equipped item into one 64x64 frame.
+// Composites the base body and every equipped item into one 128x128 frame.
 
 import { drawBody } from './body';
 import { getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS } from './ctx';
 import { drawHeadband } from './items/headband';
-import { add, GRID, Layer, MaterialTable, norm, PartId, PARTS, perp, scale, sub, v, Vec } from './raster';
+import { add, GRID, Layer, MaterialTable, norm, PartId, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { buildRig, Rig } from './rig';
+import { applyTexture, frayHair } from './texture';
 import type { EyeSpecial, PixelEdit, SlotId, SpriteAppearance, SpritePose } from './types';
 
 export interface SpriteFrame {
@@ -15,6 +16,9 @@ export interface SpriteFrame {
   part: Uint8Array;
   rig: Rig;
 }
+
+/** Depths drawn in head-local units and shrunk around the head center by `headScale`. */
+const HEAD_GROUP = new Set<Depth>(['hairBack', 'head.body', 'head.face', 'head.mask', 'hairFront', 'head.gear']);
 
 // Slots are drawn in this order; within a depth, later items cover earlier ones.
 const SLOT_ORDER: SlotId[] = ['cape', 'hair', 'face', 'bottom', 'feet', 'top', 'skirt', 'armor', 'waist', 'hands', 'held'];
@@ -47,6 +51,7 @@ export function renderSprite(
       let l = layers.get(depth);
       if (!l) {
         l = new Layer(!NO_OUTLINE_DEPTHS.has(depth));
+        if (HEAD_GROUP.has(depth)) l.xf = { cx: rig.head.x, cy: rig.head.y, k: rig.bp.headScale };
         layers.set(depth, l);
       }
       return l;
@@ -85,10 +90,13 @@ export function renderSprite(
     }
     return c;
   };
+  const frames = PARTS.map((p) => partFrame(rig, p));
   for (const depth of DEPTHS) {
     const L = layers.get(depth);
     if (!L || !L.used) continue;
+    if (depth === 'hairFront' || depth === 'hairBack') frayHair(L, rig.head, rig.bp.headScale, depth === 'hairFront' ? 11 : 23);
     L.applyOutline();
+    if (L.outline) applyTexture(L, mats, frames);
     for (let i = 0; i < GRID * GRID; i++) {
       const m = L.mat[i];
       if (m < 0) continue;
@@ -162,21 +170,23 @@ export function partFrame(rig: Rig, p: PartId): Frame {
   }
 }
 
+/** Fine pixel (x, y) → coordinates in the part's local frame (design units). */
 export function toLocal(rig: Rig, p: PartId, x: number, y: number): { a: number; b: number } {
   const f = partFrame(rig, p);
-  const d = sub(v(x + 0.5, y + 0.5), f.o);
+  const d = sub(v((x + 0.5) / RES, (y + 0.5) / RES), f.o);
   return { a: d.x * f.u.x + d.y * f.u.y, b: d.x * f.w.x + d.y * f.w.y };
 }
 
+/** Part-local coordinates → fine pixel. */
 export function toWorld(rig: Rig, p: PartId, a: number, b: number): { x: number; y: number } {
   const f = partFrame(rig, p);
   const w = add(f.o, add(scale(f.u, a), scale(f.w, b)));
-  return { x: Math.floor(w.x), y: Math.floor(w.y) };
+  return { x: Math.floor(w.x * RES), y: Math.floor(w.y * RES) };
 }
 
-/** The body part closest to a pixel (used when painting on empty space). */
+/** The body part closest to a fine pixel (used when painting on empty space). */
 export function nearestPart(rig: Rig, x: number, y: number): PartId {
-  const p = v(x + 0.5, y + 0.5);
+  const p = v((x + 0.5) / RES, (y + 0.5) / RES);
   const segs: [PartId, Vec, Vec][] = [
     ['head', v(rig.head.x, rig.head.y - 3), v(rig.head.x, rig.head.y + 3)],
     ['torso', rig.pelvis, rig.neck],

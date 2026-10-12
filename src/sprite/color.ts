@@ -102,7 +102,11 @@ export function makeRamp(hex: string, kind: RampKind = 'cloth'): Ramp {
       Math.min(0.95, base + dl(base > 0.8 ? 0.05 : 0.11)),
       Math.min(0.98, base + dl(base > 0.8 ? 0.1 : 0.24)),
     ];
-    const sat = s < 0.04 ? s : s;
+    const sat = s;
+    if (base < 0.3 && (kind === 'cloth' || kind === 'leather')) {
+      lights[4] = Math.min(0.95, base + 0.13);
+      lights[5] = Math.min(0.98, base + 0.27);
+    }
     const sats = [
       Math.min(1, sat * 0.9 + 0.12),
       Math.min(1, sat + 0.08),

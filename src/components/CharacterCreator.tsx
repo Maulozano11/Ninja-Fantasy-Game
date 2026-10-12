@@ -1,30 +1,21 @@
-import React, { useState } from 'react';
-import {
-  ShinobiCharacter,
-  ClanType,
-  DojutsuType,
-  HairstyleType,
-  ArmorStyleType,
-  HeadbandPositionType,
-  WeaponStyleType,
-  CapeStyleType,
-  ShinobiClassType,
-  AbilityScores,
-} from '../types/shinobi';
+import React, { useMemo, useState } from 'react';
+import { ShinobiCharacter, ClanType, ArmorStyleType, ShinobiClassType, AbilityScores } from '../types/shinobi';
 import {
   CLANS_DATA,
   SHINOBI_CLASSES,
   SHINOBI_FEATS,
   JUTSUS_DATA,
-  HAIRSTYLES,
   ARMOR_STYLES,
-  COLOR_PALETTES,
-  WEAPON_STYLES,
-  CAPE_STYLES,
   LEGENDARY_PRESETS,
   DEFAULT_CHARACTER,
 } from '../data/shinobiData';
 import { ShinobiSpriteCanvas } from './ShinobiSpriteCanvas';
+import { AppearanceEditor } from './creator/AppearanceEditor';
+import { getItem } from '../sprite/catalog';
+import { CHAKRA_CHOICES } from '../sprite/chakraInfo';
+import { dojutsuToEye, getAppearance } from '../sprite/legacy';
+import { randomAppearance } from '../sprite/random';
+import { SPRITE_POSES, SpriteAppearance, SpritePose } from '../sprite/types';
 import { soundManager } from '../utils/audio';
 import { Sparkles, Dice5, Download, Upload, Shield, Zap, Eye, Swords, BookOpen, UserCheck } from 'lucide-react';
 
@@ -41,12 +32,18 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
 }) => {
   const [character, setCharacter] = useState<ShinobiCharacter>(initialCharacter);
   const [activeTab, setActiveTab] = useState<'identity' | 'appearance' | 'stats' | 'jutsus'>('identity');
-  const [previewStance, setPreviewStance] = useState<'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory'>('idle');
-  const [previewZoom, setPreviewZoom] = useState<number>(256);
-  const [renderEngine, setRenderEngine] = useState<'pixel' | 'jrpg_16bit'>('jrpg_16bit');
+  const [previewStance, setPreviewStance] = useState<SpritePose>('idle');
+  const [previewZoom, setPreviewZoom] = useState<number>(384);
   const [previewEnhanced, setPreviewEnhanced] = useState<boolean>(false);
   const [importExportModal, setImportExportModal] = useState<boolean>(false);
   const [importJsonText, setImportJsonText] = useState<string>('');
+
+  const look = useMemo(() => getAppearance(character), [character]);
+  const eye = dojutsuToEye(character.dojutsu);
+
+  /** Armor equipped on the sprite decides the armor style used for AC. */
+  const armorStyleFor = (l: SpriteAppearance): ArmorStyleType =>
+    ((l.slots.armor && getItem(l.slots.armor.id)?.statsArmor) || 'Ronin Wanderer Cloak') as ArmorStyleType;
 
   // Recompute derived stats whenever stats, clan, class or armor change
   const calculateDerived = (
@@ -91,6 +88,22 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       jutsuSaveDC,
       jutsuAttackBonus,
     };
+  };
+
+  const updateLook = (next: SpriteAppearance) => {
+    const armorStyle = armorStyleFor(next);
+    const chakraHex = CHAKRA_CHOICES.find((c) => c.id === next.chakra.color)?.hex ?? character.palette.chakraAuraColor;
+    const derived =
+      armorStyle !== character.armorStyle
+        ? calculateDerived(character.stats, character.clan, character.shinobiClass, armorStyle, character.selectedFeats)
+        : {};
+    setCharacter({
+      ...character,
+      appearance: next,
+      armorStyle,
+      palette: { ...character.palette, chakraAuraColor: chakraHex },
+      ...derived,
+    });
   };
 
   const handleClanChange = (newClan: ClanType) => {
@@ -194,13 +207,9 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       Math.floor(Math.random() * Object.keys(SHINOBI_CLASSES).length)
     ];
 
-    const randomHair = HAIRSTYLES[Math.floor(Math.random() * HAIRSTYLES.length)];
-    const randomArmor = ARMOR_STYLES[Math.floor(Math.random() * ARMOR_STYLES.length)].id;
     const randomDojutsu = clanInfo.availableDojutsu[Math.floor(Math.random() * clanInfo.availableDojutsu.length)];
-
-    const randomSkin = COLOR_PALETTES.skinTones[Math.floor(Math.random() * COLOR_PALETTES.skinTones.length)].value;
-    const randomHairColor = COLOR_PALETTES.hairColors[Math.floor(Math.random() * COLOR_PALETTES.hairColors.length)].value;
-    const randomArmorCol = COLOR_PALETTES.armorColors[Math.floor(Math.random() * COLOR_PALETTES.armorColors.length)].value;
+    const randomLook = randomAppearance();
+    const randomArmor = armorStyleFor(randomLook);
 
     const randomizedStats: AbilityScores = {
       str: 10 + Math.floor(Math.random() * 6),
@@ -224,16 +233,13 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       name: ['Kaito', 'Ren', 'Sasori', 'Ayame', 'Shino', 'Hana', 'Raijin', 'Kuro'][Math.floor(Math.random() * 8)],
       clan: randomClan,
       shinobiClass: randomClass,
-      hairstyle: randomHair,
       armorStyle: randomArmor,
       dojutsu: randomDojutsu,
       stats: randomizedStats,
+      appearance: randomLook,
       palette: {
         ...character.palette,
-        skinTone: randomSkin,
-        hairColor: randomHairColor,
-        armorPrimary: randomArmorCol,
-        chakraAuraColor: clanInfo.recommendedChakraColor,
+        chakraAuraColor: CHAKRA_CHOICES.find((c) => c.id === randomLook.chakra.color)?.hex ?? clanInfo.recommendedChakraColor,
       },
       ...derived,
     });
@@ -327,33 +333,6 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
 
             {/* Header controls: Engine selector, Zoom buttons, Chakra Burst */}
             <div className="w-full flex flex-wrap items-center justify-between mb-3 gap-2">
-              {/* Style Engine Selector */}
-              <div className="flex items-center gap-1 bg-slate-950/90 rounded-lg p-1 border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setRenderEngine('jrpg_16bit')}
-                  className={`text-xs px-2.5 py-1 rounded-md font-bold transition flex items-center gap-1.5 ${
-                    renderEngine === 'jrpg_16bit'
-                      ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md shadow-blue-950/50 ring-1 ring-cyan-400/50'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                  }`}
-                >
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                  16-Bit JRPG Pro (64px)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRenderEngine('pixel')}
-                  className={`text-xs px-2.5 py-1 rounded-md font-medium transition ${
-                    renderEngine === 'pixel'
-                      ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md ring-1 ring-emerald-400/50'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                  }`}
-                >
-                  Classic Retro (128px)
-                </button>
-              </div>
-
               <div className="flex items-center gap-2">
                 {/* Zoom buttons */}
                 <div className="flex items-center bg-slate-800/80 rounded-md p-0.5 border border-slate-700 text-[10px] font-mono">
@@ -386,32 +365,20 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                       : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:text-slate-200'
                   }`}
                 >
-                  Chakra: {previewEnhanced ? 'BURST' : 'OFF'}
+                  Chakra Aura: {previewEnhanced ? 'ON' : 'OFF'}
                 </button>
               </div>
             </div>
 
             {/* Interactive 2D Sprite Showcase with dynamic crisp scaling */}
             <div className="relative my-2 p-3 rounded-2xl bg-slate-950/90 border border-slate-800 shadow-2xl flex items-center justify-center min-h-[300px]">
-              {/* Isometric Perspective Indicator */}
-              <div className="absolute top-3 left-3 flex items-center gap-2">
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-700/50">
-                  Angle: South-East (26.5° 3/4)
-                </span>
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-900/80 text-cyan-400 border border-slate-800">
-                  {renderEngine === 'jrpg_16bit'
-                    ? 'Proportion: 16-Bit JRPG Pro (4.5–5 Head)'
-                    : 'Proportion: 2.5–3 Head Chibi'}
-                </span>
-              </div>
-
               <ShinobiSpriteCanvas
                 character={character}
+                appearance={look}
                 stance={previewStance}
                 size={previewZoom}
                 isEnhanced={previewEnhanced}
                 showAura={true}
-                renderEngine={renderEngine}
               />
             </div>
 
@@ -420,8 +387,8 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
               <div className="text-[11px] uppercase tracking-wider text-slate-400 text-center mb-1.5 font-medium">
                 Sprite Animation Stances
               </div>
-              <div className="grid grid-cols-6 gap-1 p-1 bg-slate-900/90 rounded-lg border border-slate-800">
-                {(['idle', 'handsigns', 'attack', 'cast', 'hurt', 'victory'] as const).map((stance) => (
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-1 p-1 bg-slate-900/90 rounded-lg border border-slate-800">
+                {SPRITE_POSES.map((stance) => (
                   <button
                     key={stance}
                     type="button"
@@ -530,7 +497,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
           <div className="flex border-b border-slate-800 bg-slate-950/50 p-1.5 gap-1">
             {[
               { id: 'identity', label: '1. Clan & Identity', icon: Eye },
-              { id: 'appearance', label: '2. Sprite & Colors', icon: Shield },
+              { id: 'appearance', label: '2. Appearance', icon: Shield },
               { id: 'stats', label: '3. Stats & Class', icon: Swords },
               { id: 'jutsus', label: '4. Jutsu Loadout (5 Slots)', icon: Zap },
             ].map((tab) => {
@@ -643,284 +610,18 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                   </div>
                 </div>
 
-                {/* Headband Placement */}
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
-                    Forehead Protector Placement
-                  </label>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                    {(['Forehead', 'Neck', 'Arm', 'Waist', 'Rogue Scratched'] as HeadbandPositionType[]).map((pos) => (
-                      <button
-                        key={pos}
-                        type="button"
-                        onClick={() => {
-                          soundManager.playSelect();
-                          setCharacter({ ...character, headbandPosition: pos });
-                        }}
-                        className={`py-2 px-2 text-xs text-center rounded-lg border transition ${
-                          character.headbandPosition === pos
-                            ? 'bg-cyan-600 text-white font-semibold border-cyan-500'
-                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {pos}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
             )}
 
-            {/* TAB 2: APPEARANCE & PALETTE */}
+            {/* TAB 2: LAYERED SPRITE APPEARANCE */}
             {activeTab === 'appearance' && (
-              <div className="space-y-6">
-                {/* Hairstyle Selection */}
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
-                    Hairstyle (Naruto & Final Fantasy Inspirations)
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {HAIRSTYLES.map((hair) => (
-                      <button
-                        key={hair}
-                        type="button"
-                        onClick={() => {
-                          soundManager.playSelect();
-                          setCharacter({ ...character, hairstyle: hair });
-                        }}
-                        className={`p-2 text-xs text-left rounded-lg border transition truncate ${
-                          character.hairstyle === hair
-                            ? 'bg-cyan-600 text-white font-semibold border-cyan-500'
-                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {hair}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Armor Styles */}
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
-                    Shinobi Armor & Ancient Warrior Plate
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {ARMOR_STYLES.map((arm) => (
-                      <button
-                        key={arm.id}
-                        type="button"
-                        onClick={() => {
-                          soundManager.playSelect();
-                          const derived = calculateDerived(
-                            character.stats,
-                            character.clan,
-                            character.shinobiClass,
-                            arm.id,
-                            character.selectedFeats
-                          );
-                          setCharacter({
-                            ...character,
-                            armorStyle: arm.id,
-                            ...derived,
-                          });
-                        }}
-                        className={`p-3 text-left rounded-xl border transition ${
-                          character.armorStyle === arm.id
-                            ? 'bg-cyan-950/40 border-cyan-500 ring-1 ring-cyan-500/50'
-                            : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="font-semibold text-white text-xs mb-0.5">{arm.label}</div>
-                        <div className="text-[11px] text-slate-400">{arm.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Hand-Held Technique / Weapon (Rasengan, Chidori, Katana, Kunai) */}
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
-                    Active Hand-Held Technique & Combat Weapon
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {WEAPON_STYLES.map((wep) => (
-                      <button
-                        key={wep.id}
-                        type="button"
-                        onClick={() => {
-                          soundManager.playSelect();
-                          setCharacter({ ...character, weaponStyle: wep.id });
-                        }}
-                        className={`p-3 text-left rounded-xl border transition ${
-                          character.weaponStyle === wep.id
-                            ? 'bg-cyan-950/40 border-cyan-500 ring-1 ring-cyan-500/50'
-                            : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="font-semibold text-white text-xs mb-0.5">{wep.label}</div>
-                        <div className="text-[11px] text-slate-400">{wep.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Cape / Mantle / Shimenawa Rope Belt */}
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
-                    Mantle, Cape & Shimenawa Rope Belt
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {CAPE_STYLES.map((cape) => (
-                      <button
-                        key={cape.id}
-                        type="button"
-                        onClick={() => {
-                          soundManager.playSelect();
-                          setCharacter({ ...character, capeStyle: cape.id });
-                        }}
-                        className={`p-3 text-left rounded-xl border transition ${
-                          character.capeStyle === cape.id
-                            ? 'bg-purple-950/40 border-purple-500 ring-1 ring-purple-500/50'
-                            : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="font-semibold text-white text-xs mb-0.5">{cape.label}</div>
-                        <div className="text-[11px] text-slate-400">{cape.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Color Palettes Grid */}
-                <div className="space-y-4 pt-2 border-t border-slate-800">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400">Color Customization</h3>
-
-                  {/* Skin Tone */}
-                  <div>
-                    <div className="text-xs text-slate-300 mb-1.5">Skin Tone</div>
-                    <div className="flex flex-wrap gap-2">
-                      {COLOR_PALETTES.skinTones.map((skin) => (
-                        <button
-                          key={skin.value}
-                          type="button"
-                          onClick={() => setCharacter({ ...character, palette: { ...character.palette, skinTone: skin.value } })}
-                          className={`w-7 h-7 rounded-full border-2 transition ${
-                            character.palette.skinTone === skin.value ? 'scale-110 border-white' : 'border-transparent'
-                          }`}
-                          style={{ backgroundColor: skin.value }}
-                          title={skin.label}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Hair Color */}
-                  <div>
-                    <div className="text-xs text-slate-300 mb-1.5">Hair Color</div>
-                    <div className="flex flex-wrap gap-2">
-                      {COLOR_PALETTES.hairColors.map((col) => (
-                        <button
-                          key={col.value}
-                          type="button"
-                          onClick={() => setCharacter({ ...character, palette: { ...character.palette, hairColor: col.value } })}
-                          className={`w-7 h-7 rounded-full border-2 transition ${
-                            character.palette.hairColor === col.value ? 'scale-110 border-white' : 'border-transparent'
-                          }`}
-                          style={{ backgroundColor: col.value }}
-                          title={col.label}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Chakra Aura Color */}
-                  <div>
-                    <div className="text-xs text-slate-300 mb-1.5">Chakra Flame Aura</div>
-                    <div className="flex flex-wrap gap-2">
-                      {COLOR_PALETTES.chakraColors.map((aura) => (
-                        <button
-                          key={aura.value}
-                          type="button"
-                          onClick={() => setCharacter({ ...character, palette: { ...character.palette, chakraAuraColor: aura.value } })}
-                          className={`w-7 h-7 rounded-full border-2 transition ${
-                            character.palette.chakraAuraColor === aura.value ? 'scale-110 border-white shadow-lg' : 'border-transparent'
-                          }`}
-                          style={{ backgroundColor: aura.value }}
-                          title={aura.label}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Armor Primary Color */}
-                  <div>
-                    <div className="text-xs text-slate-300 mb-1.5">Armor Primary Color</div>
-                    <div className="flex flex-wrap gap-2">
-                      {COLOR_PALETTES.armorColors.map((col) => (
-                        <button
-                          key={col.value}
-                          type="button"
-                          onClick={() => setCharacter({ ...character, palette: { ...character.palette, armorPrimary: col.value } })}
-                          className={`w-7 h-7 rounded-full border-2 transition ${
-                            character.palette.armorPrimary === col.value ? 'scale-110 border-white' : 'border-transparent'
-                          }`}
-                          style={{ backgroundColor: col.value }}
-                          title={col.label}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Pants / Cloth Color */}
-                  <div>
-                    <div className="text-xs text-slate-300 mb-1.5">Cloth & Under-Tunic Color</div>
-                    <div className="flex flex-wrap gap-2">
-                      {COLOR_PALETTES.clothingColors.map((col) => (
-                        <button
-                          key={col.value}
-                          type="button"
-                          onClick={() => setCharacter({ ...character, palette: { ...character.palette, clothColor: col.value } })}
-                          className={`w-7 h-7 rounded-full border-2 transition ${
-                            character.palette.clothColor === col.value ? 'scale-110 border-white' : 'border-transparent'
-                          }`}
-                          style={{ backgroundColor: col.value }}
-                          title={col.label}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Cape / Mantle Color (Like the Crimson Cape in reference!) */}
-                  <div>
-                    <div className="text-xs text-slate-300 mb-1.5">Cape & Mantle Color</div>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { label: 'Deep Crimson (From Image)', value: '#881337' },
-                        { label: 'Blood Red', value: '#dc2626' },
-                        { label: 'Royal Midnight Navy', value: '#1e1b4b' },
-                        { label: 'Obsidian Black', value: '#09090b' },
-                        { label: 'Imperial Gold', value: '#b45309' },
-                        { label: 'Emerald Forest', value: '#065f46' },
-                        { label: 'Storm Slate', value: '#475569' },
-                        { label: 'Snow White', value: '#f8fafc' },
-                        { label: 'Royal Purple', value: '#581c87' },
-                      ].map((capeCol) => (
-                        <button
-                          key={capeCol.value}
-                          type="button"
-                          onClick={() => setCharacter({ ...character, palette: { ...character.palette, capeColor: capeCol.value } })}
-                          className={`w-7 h-7 rounded-full border-2 transition ${
-                            (character.palette.capeColor || '#881337') === capeCol.value ? 'scale-110 border-white shadow-md' : 'border-transparent'
-                          }`}
-                          style={{ backgroundColor: capeCol.value }}
-                          title={capeCol.label}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <AppearanceEditor
+                look={look}
+                eye={eye}
+                character={character}
+                onChange={updateLook}
+                onPreviewStance={setPreviewStance}
+              />
             )}
 
             {/* TAB 3: STATS & CLASS & FEATS */}

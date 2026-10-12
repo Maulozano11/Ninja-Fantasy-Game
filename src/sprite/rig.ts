@@ -2,7 +2,7 @@
 // Every item is drawn against the rig, so one hairstyle or armor works on
 // all body types and in every pose without being redrawn.
 //
-// Screen conventions: 64x64 grid, y grows downward, the character stands in
+// Screen conventions: 64x64 design grid (rendered at 128x128), y grows downward, the character stands in
 // a 3/4 view facing RIGHT. "Near" limbs are the character's right arm/leg
 // (screen-left, drawn in front); "far" limbs are on screen-right, behind.
 
@@ -31,65 +31,70 @@ export interface BodyParams {
   handR: number;
   footLen: number;
   bust: number;
+  /** The head group (head, face, hair, masks, forehead gear) is drawn in head-local units and shrunk by this factor. */
+  headScale: number;
 }
 
 export const BODY_PARAMS: Record<BodyType, BodyParams> = {
   male: {
-    torsoLen: 13,
-    shoulderHalf: 7.8,
-    chestHalf: 7.2,
-    waistHalf: 5.3,
-    hipHalf: 5.9,
-    upperArm: 6.8,
-    forearm: 5.8,
-    thigh: 10,
-    shin: 9.6,
-    armR: [2.2, 1.8, 1.9, 1.4],
-    legR: [3.0, 2.2, 2.2, 1.5],
-    headRx: 6,
-    headRy: 7,
-    neckW: 2,
-    handR: 1.8,
-    footLen: 4.6,
-    bust: 0,
-  },
-  female: {
-    torsoLen: 12.4,
-    shoulderHalf: 6.6,
-    chestHalf: 6.6,
-    waistHalf: 4.4,
-    hipHalf: 6.5,
-    upperArm: 6.4,
-    forearm: 5.4,
-    thigh: 9.8,
-    shin: 9.3,
-    armR: [1.9, 1.5, 1.6, 1.2],
-    legR: [3.1, 2.1, 2.0, 1.3],
+    torsoLen: 14.6,
+    shoulderHalf: 7.4,
+    chestHalf: 6.8,
+    waistHalf: 5.1,
+    hipHalf: 5.7,
+    upperArm: 6.3,
+    forearm: 5.5,
+    thigh: 8.1,
+    shin: 7.7,
+    armR: [1.95, 1.65, 1.75, 1.3],
+    legR: [2.8, 2.05, 2.05, 1.4],
     headRx: 6,
     headRy: 7,
     neckW: 1.6,
-    handR: 1.6,
-    footLen: 4,
-    bust: 1.8,
+    handR: 2.0,
+    footLen: 4.4,
+    bust: 0,
+    headScale: 0.78,
+  },
+  female: {
+    torsoLen: 13.8,
+    shoulderHalf: 6.3,
+    chestHalf: 6.1,
+    waistHalf: 4.3,
+    hipHalf: 6.1,
+    upperArm: 6.0,
+    forearm: 5.2,
+    thigh: 8.0,
+    shin: 7.5,
+    armR: [1.7, 1.45, 1.5, 1.1],
+    legR: [2.9, 1.95, 1.85, 1.2],
+    headRx: 6,
+    headRy: 7,
+    neckW: 1.35,
+    handR: 1.75,
+    footLen: 3.9,
+    bust: 1.5,
+    headScale: 0.76,
   },
   bulky: {
-    torsoLen: 13.6,
-    shoulderHalf: 10,
-    chestHalf: 9.2,
-    waistHalf: 7.4,
-    hipHalf: 7.2,
-    upperArm: 7,
-    forearm: 6,
-    thigh: 9.6,
-    shin: 9.2,
-    armR: [3.0, 2.5, 2.6, 1.9],
-    legR: [3.7, 2.9, 2.8, 1.9],
+    torsoLen: 15.2,
+    shoulderHalf: 9.6,
+    chestHalf: 8.8,
+    waistHalf: 7.1,
+    hipHalf: 6.9,
+    upperArm: 6.5,
+    forearm: 5.7,
+    thigh: 7.9,
+    shin: 7.4,
+    armR: [2.7, 2.3, 2.45, 1.8],
+    legR: [3.4, 2.6, 2.5, 1.75],
     headRx: 6.2,
     headRy: 7,
-    neckW: 2.7,
-    handR: 2.2,
-    footLen: 5,
+    neckW: 2.3,
+    handR: 2.4,
+    footLen: 4.8,
     bust: 0,
+    headScale: 0.8,
   },
 };
 
@@ -125,13 +130,13 @@ const arm = (x: number, y: number): HandTarget => ({ from: 'shoulder', x, y, uni
 const chest = (x: number, y: number): HandTarget => ({ from: 'chest', x, y, units: 'px' });
 
 const IDLE: PoseFrame = {
-  lean: 3,
-  handN: arm(-0.14, 0.95),
-  handF: arm(0.2, 0.94),
-  footN: v(-0.17, 0.985),
-  footF: v(0.21, 0.975),
-  shapeN: 'relaxed',
-  shapeF: 'relaxed',
+  lean: 4,
+  handN: arm(-0.16, 0.9),
+  handF: arm(0.3, 0.82),
+  footN: v(-0.22, 0.97),
+  footF: v(0.27, 0.965),
+  shapeN: 'fist',
+  shapeF: 'fist',
 };
 
 export const POSES: Record<SpritePose, PoseFrame[]> = {
@@ -359,7 +364,7 @@ export function buildRig(body: BodyType, pose: SpritePose, frame: number): Rig {
   const aN = solveArm(shoulderN, f.handN);
   const aF = solveArm(shoulderF, f.handF);
 
-  const headY = neck.y - bp.headRy - 1.4 + (f.headDy || 0);
+  const headY = neck.y - 6.1 * bp.headScale + (f.headDy || 0);
   const head = v(Math.round(neck.x + 0.4 + (f.headDx || 0)), Math.round(headY));
 
   return {

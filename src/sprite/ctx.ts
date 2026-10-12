@@ -15,6 +15,7 @@ import {
   perp,
   poly,
   scale,
+  seam,
   sub,
   v,
   Vec,
@@ -241,27 +242,63 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
   );
 }
 
+/**
+ * Hand with readable finger shapes. The thumb sits on the facing side (+x).
+ * `grow` enlarges it (gloves, gauntlets).
+ */
 export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): void {
   const j = armJoints(g.rig, s);
   const dir = norm(sub(j.hand, j.wrist));
+  let n = perp(dir);
+  if (n.x < 0 || (Math.abs(n.x) < 0.2 && n.y > 0)) n = scale(n, -1);
   const R = g.bp.handR + grow;
+  const at = (k: number, m: number): Vec => add(j.hand, add(scale(dir, k * R), scale(n, m * R)));
+  const lines = (pairs: [number, number, number, number][], d = -1) => {
+    for (const [k0, m0, k1, m1] of pairs) seam(L, at(k0, m0), at(k1, m1), d);
+  };
   switch (j.shape) {
     case 'fist':
-    case 'grip':
-      ellipse(L, j.hand.x, j.hand.y, R * 1.05, R * 1.05, pen);
-      break;
-    case 'open': {
-      capsule(L, j.wrist, add(j.hand, scale(dir, R * 0.8)), R * 0.9, R * 0.75, pen);
+    case 'grip': {
+      capsule(L, j.wrist, at(0, 0), R * 0.8, R * 1.05, pen);
+      ellipse(L, j.hand.x + dir.x * 0.2, j.hand.y + dir.y * 0.2, R * 1.1, R * 1.1, pen);
+      // finger rows and knuckles
+      lines([
+        [0.15, -0.35, 0.95, -0.35],
+        [0.15, 0.15, 0.95, 0.15],
+      ]);
+      seam(L, at(0.9, -0.7), at(0.9, 0.6), 1);
+      // thumb wrapped over the fingers
+      const t = at(0.05, 0.75);
+      ellipse(L, t.x, t.y, R * 0.45, R * 0.5, pen, 4);
       break;
     }
-    case 'sign':
-      ellipse(L, j.hand.x, j.hand.y, R * 0.95, R * 1.1, pen);
+    case 'open': {
+      capsule(L, j.wrist, at(0, 0), R * 0.8, R * 0.95, pen);
+      capsule(L, at(0, 0), at(1.35, 0), R * 0.9, R * 0.7, pen);
+      lines([
+        [0.5, -0.3, 1.4, -0.3],
+        [0.5, 0.2, 1.4, 0.2],
+      ]);
+      capsule(L, at(-0.3, 0.6), at(0.5, 1.25), R * 0.42, R * 0.36, pen, 4);
       break;
+    }
+    case 'sign': {
+      ellipse(L, j.hand.x, j.hand.y, R * 1.0, R * 1.2, pen);
+      lines([
+        [-0.6, -0.25, 0.7, -0.25],
+        [-0.6, 0.25, 0.7, 0.25],
+      ]);
+      break;
+    }
     default: {
-      capsule(L, j.wrist, add(j.hand, scale(dir, R * 0.35)), R * 0.85, R * 0.95, pen);
-      // thumb
-      const th = add(j.hand, scale(perp(dir), s === 'N' ? R * 0.9 : -R * 0.9));
-      ellipse(L, th.x, th.y, 0.7, 0.7, pen, 3);
+      capsule(L, j.wrist, at(0.1, 0), R * 0.8, R * 0.95, pen);
+      ellipse(L, at(0.65, -0.1).x, at(0.65, -0.1).y, R * 0.85, R * 0.85, pen);
+      lines([
+        [0.35, -0.45, 1.2, -0.45],
+        [0.35, 0.05, 1.25, 0.05],
+      ]);
+      const t = at(0.15, 0.85);
+      ellipse(L, t.x, t.y, R * 0.42, R * 0.5, pen, 4);
     }
   }
 }

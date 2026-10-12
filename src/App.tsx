@@ -10,11 +10,11 @@ import { Swords, User, BookOpen, Compass, Shield, Flame } from 'lucide-react';
 
 type AppView = 'creator' | 'campaign' | 'combat' | 'arena';
 
-const noctisPreset = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_noctis')?.character;
+const founderPreset = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')?.character;
 
 export default function App() {
   const [activeView, setActiveView] = useState<AppView>('combat');
-  const [character, setCharacter] = useState<ShinobiCharacter>(noctisPreset || LEGENDARY_PRESETS[0].character);
+  const [character, setCharacter] = useState<ShinobiCharacter>(founderPreset || LEGENDARY_PRESETS[0].character);
   const [activeEncounter, setActiveEncounter] = useState<{
     title: string;
     description: string;

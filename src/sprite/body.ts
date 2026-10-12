@@ -1,18 +1,13 @@
 // Base human: skin body, head, face and eyes. Clothing is layered on top by
 // the item catalog; the base keeps simple undergarments so the mannequin is
 // always presentable.
+//
+// Geometry is in design units (64 space); face details are placed as single
+// fine pixels (RES per design unit) for 128x128 detail.
 
 import { makeRamp } from './color';
-import {
-  armSpan,
-  DrawCtx,
-  fillTorso,
-  footPoly,
-  handDraw,
-  legSpan,
-  Side,
-} from './ctx';
-import { capsule, ellipse, F_NO_OUTLINE, PartId, Pen, poly, px, seam, v, Vec } from './raster';
+import { armPoint, armSpan, DrawCtx, fillTorso, footPoly, handDraw, legSpan, Side } from './ctx';
+import { capsule, ellipse, F_NO_OUTLINE, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 
 const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';
@@ -23,37 +18,37 @@ export function drawBody(g: DrawCtx): void {
   const skin = (part: PartId, bias = 0): Pen => ({ mat: g.skin, part, bias });
 
   // Far arm (behind the torso, one shade darker)
-  const farArm = g.L('farArm.body');
-  armSpan(g, farArm, 'F', 0, 1, 0, skin('upperArmF', -1));
-  armSpan(g, farArm, 'F', 1, 2, 0, skin('forearmF', -1));
-  handDraw(g, farArm, 'F', skin('handF', -1));
+  drawArm(g, g.L('farArm.body'), 'F', skin('upperArmF', -1), skin('forearmF', -1));
+  handDraw(g, g.L('farArm.body'), 'F', skin('handF', -1));
 
   // Legs
   for (const s of ['F', 'N'] as Side[]) {
     const L = g.L(s === 'N' ? 'nearLeg.body' : 'farLeg.body');
     const bias = s === 'F' ? -1 : 0;
-    legSpan(g, L, s, 0, 1, 0, skin(s === 'N' ? 'thighN' : 'thighF', bias));
-    legSpan(g, L, s, 1, 2, 0, skin(s === 'N' ? 'shinN' : 'shinF', bias));
-    poly(L, footPoly(g, s), skin(s === 'N' ? 'footN' : 'footF', bias), 3 + 0);
-    // Toe line
-    const f = footPoly(g, s);
-    seam(L, v(f[3].x - 1, f[3].y + 0.5), v(f[4].x - 0.5, f[4].y - 0.5), -1);
+    const thigh = skin(s === 'N' ? 'thighN' : 'thighF', bias);
+    const shin = skin(s === 'N' ? 'shinN' : 'shinF', bias);
+    legSpan(g, L, s, 0, 1, 0, thigh);
+    legSpan(g, L, s, 1, 2, 0, shin);
+    const foot = footPoly(g, s);
+    poly(L, foot, skin(s === 'N' ? 'footN' : 'footF', bias), 3);
+    // toes
+    for (let t = 0; t < 3; t++) {
+      const tx = foot[3].x - 0.4 - t * 0.9;
+      seam(L, v(tx, foot[4].y - 1.2), v(tx, foot[4].y - 0.2), -1);
+    }
   }
 
   // Torso + neck
   const torso = g.L('torso.body');
   fillTorso(g, torso, 0, skin('torso'));
-  const neckTop = v(r.head.x - 0.2, r.head.y + 4);
-  capsule(torso, r.neck, neckTop, b.neckW, b.neckW, skin('torso'), (x) => (x < r.neck.x - 0.5 ? 3 : 2));
+  const neckTop = v(r.head.x + 0.4 * b.headScale, r.head.y + 4.5 * b.headScale);
+  capsule(torso, r.neck, neckTop, b.neckW, b.neckW * 0.95, skin('torso'), (x) => (x < r.neck.x - 0.6 ? 3 : 2));
 
-  // Light anatomy hints, only visible when the torso is bare.
+  // Simple form shading only (no muscle lines): a soft chest shadow and collarbone light.
   const T = r.T;
   const L0 = b.torsoLen;
-  if (b.bust === 0) {
-    seam(torso, T(0.2, L0 - 6.4), T(b.chestHalf * 0.62, L0 - 6.6), -1);
-    seam(torso, T(1.4, L0 - 7.4), T(1.4, 3.6), -1);
-    px(torso, T(1.6, 4.8).x, T(1.6, 4.8).y, skin('torso'), 2);
-  }
+  seam(torso, T(-b.shoulderHalf * 0.45, L0 - 1.6), T(b.shoulderHalf * 0.35, L0 - 1.8), 1);
+  if (b.bust > 0) seam(torso, T(-b.chestHalf * 0.3, L0 - 7.2), T(b.chestHalf * 0.6, L0 - 7.0), -1);
 
   // Undergarments
   const under = g.L('torso.under');
@@ -61,156 +56,181 @@ export function drawBody(g: DrawCtx): void {
   fillTorso(g, under, 0.2, cloth, { top: 1.4 });
   legSpan(g, g.L('nearLeg.cloth'), 'N', 0, 0.28, 0.25, { ...cloth, part: 'thighN' });
   legSpan(g, g.L('farLeg.cloth'), 'F', 0, 0.28, 0.25, { ...cloth, part: 'thighF', bias: -1 });
-  if (b.bust > 0) fillTorso(g, under, 0.3, cloth, { top: L0 - 3.6, bottom: L0 - 7.4 });
+  if (b.bust > 0) fillTorso(g, under, 0.3, cloth, { top: L0 - 3.4, bottom: L0 - 7.6 });
 
-  // Head
   drawHead(g);
 
   // Near arm (in front of everything on the torso)
-  const nearArm = g.L('nearArm.body');
-  armSpan(g, nearArm, 'N', 0, 1, 0, skin('upperArmN'));
-  armSpan(g, nearArm, 'N', 1, 2, 0, skin('forearmN'));
-  handDraw(g, nearArm, 'N', skin('handN'));
+  drawArm(g, g.L('nearArm.body'), 'N', skin('upperArmN'), skin('forearmN'));
+  handDraw(g, g.L('nearArm.body'), 'N', skin('handN'));
 }
 
-/** Head center helper: offsets in pixels from the integer head center. */
+/** Arm: rounded shoulder + tapered upper arm and forearm. */
+function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
+  const R = g.bp.armR;
+  armSpan(g, L, s, 0, 1, 0, upper);
+  armSpan(g, L, s, 1, 2, 0, fore);
+  const sh = armPoint(g, s, 0.06);
+  ellipse(L, sh.x, sh.y, R[0] + 0.3, R[0] + 0.2, upper);
+}
+
+/** Head center helper: offsets in design units from the integer head center. */
 export function headAt(g: DrawCtx, dx: number, dy: number): Vec {
   return v(g.rig.head.x + dx, g.rig.head.y + dy);
 }
 
-// Hand-drawn head silhouettes (13x15), 3/4 view facing right.
-// o outline · d dark · s shadow · b base · l light · h highlight
-// Template pixel (6, 7) sits on the head center.
-const HEAD_TOP = [
-  '....ooooo....',
-  '..oollllbbo..',
-  '.olllllllbbo.',
-  '.ollllbbbbbbo',
-  'olllbbbbbbbbo',
-  'ollbbbbbbbbbo',
-  'olbbbbbbbbbbo',
-  'osbbbbbbbbbbo',
-  'osbbbbbbbbbbo',
-  'osdsbbbbbbbbo',
-  'osssbbbbbbbbo',
-];
-const HEAD_JAW: Record<string, string[]> = {
-  male: ['.osbbbbbbbbo.', '..osbbbbbbbo.', '...ossbbbbo..', '....oooooo...'],
-  female: ['.osbbbbbbbbo.', '..osbbbbbbo..', '...osbbbbo...', '....ooooo....'],
-  bulky: ['osbbbbbbbbbbo', '.osbbbbbbbbo.', '..ossbbbbbo..', '...ooooooo...'],
-};
-const SHADE: Record<string, number> = { o: 0, d: 1, s: 2, b: 3, l: 4, h: 5 };
-export const HEAD_OX = 6;
-export const HEAD_OY = 7;
-
 function drawHead(g: DrawCtx): void {
   const L = g.L('head.body');
+  const H = (dx: number, dy: number) => headAt(g, dx, dy);
   const pen: Pen = { mat: g.skin, part: 'head' };
+  const body = g.rig.body;
+  const fem = body === 'female' ? 1 : 0;
+  const heavy = body === 'bulky' ? 1 : 0;
   const hx = g.rig.head.x;
   const hy = g.rig.head.y;
-  const rows = [...HEAD_TOP, ...(HEAD_JAW[g.rig.body] || HEAD_JAW.male)];
+
+  const shadeHead = (x: number, y: number): number => {
+    const dx = (x + 0.5 - (hx - 0.4)) / 6.3;
+    const dy = (y + 0.5 - (hy - 1.3)) / 6.6;
+    const lt = dx * -0.72 + dy * -0.69;
+    if (y + 0.5 > hy + 5.2 && x + 0.5 < hx + 1.2) return 2; // under the jaw
+    if (x + 0.5 > hx + 5.6) return 2; // far cheek turning away
+    return lt > 0.55 ? 4 : 3;
+  };
+  ellipse(L, hx - 0.4, hy - 1.3, 6.3, 6.6, pen, shadeHead);
+  poly(
+    L,
+    [
+      H(-6.2, -0.5),
+      H(6.4, -1.5),
+      H(6.6, 2.2),
+      H(6.1 + heavy * 0.3, 4),
+      H(4.7 - fem * 0.5 + heavy * 0.6, 5.0),
+      H(3.0 - fem * 0.4 + heavy * 0.6, 6.2),
+      H(1.2, 6.5 - fem * 0.3),
+      H(-0.8 - heavy * 0.6, 6.0),
+      H(-3.6 - heavy * 0.6, 4.6),
+      H(-5.7, 3),
+    ],
+    pen,
+    shadeHead,
+  );
+  // Ear (near side)
+  const ear = H(-3.4, 1.8);
+  ellipse(L, ear.x, ear.y, 1.2, 1.7, pen, (x) => (x + 0.5 < ear.x - 0.4 ? 4 : 3));
+  seam(L, H(-3.2, 1.0), H(-3.0, 2.6), -1);
+  seam(L, H(-2.2, 0.6), H(-2.0, 3.2), -1);
+  // Cheekbone / jaw line on the face side
+
+  drawFace(g);
+}
+
+// ---------------------------------------------------------------------------
+// Face (fine-pixel templates)
+// ---------------------------------------------------------------------------
+// L lash · w sclera · d iris dark · I iris base · i iris light · p pupil
+// c catchlight · s lid shadow (skin)
+
+const EYE_NEAR: Record<string, string[]> = {
+  standard: ['LLLLL', 'LwcdL', '.wIp.', '..iI.'],
+  sharp: ['..LLL', 'LLLcd', '.wIpL', '..iI.'],
+  round: ['.LLL.', 'LwcdL', 'LwIpL', '.wiI.', '..ii.'],
+  calm: ['.....', 'LLLLL', 'LwIpL', '..iI.'],
+};
+const EYE_FAR: Record<string, string[]> = {
+  standard: ['LLLL', 'cdwL', 'Ipw.', 'iI..'],
+  sharp: ['LLL.', 'cdLL', 'Ip..', 'iI..'],
+  round: ['LLL.', 'cdwL', 'Ipw.', 'iIw.', '.i..'],
+  calm: ['....', 'LLLL', 'Ipw.', 'iI..'],
+};
+
+function stamp(L: Layer, fx: number, fy: number, rows: string[], pens: Record<string, Pen>): void {
   rows.forEach((row, r) => {
     for (let c = 0; c < row.length; c++) {
-      const ch = row[c];
-      if (ch === '.') continue;
-      px(L, hx + c - HEAD_OX, hy + r - HEAD_OY, pen, SHADE[ch]);
+      const pen = pens[row[c]];
+      if (!pen) continue;
+      L.set(fx + c, fy + r, pen.mat, 3, pen.part, pen.flags || 0);
     }
   });
-  drawFace(g);
 }
 
 function drawFace(g: DrawCtx): void {
   const L = g.L('head.face');
   const hx = g.rig.head.x;
   const hy = g.rig.head.y;
+  const k = g.bp.headScale;
+  const F = (dx: number, dy: number) => [Math.floor((hx + dx * k) * RES), Math.floor((hy + dy * k) * RES)] as const;
   const flat = (hex: string): Pen => ({ mat: g.m(hex, 'flat'), part: 'head', flags: F_NO_OUTLINE });
-  const skinPen: Pen = { mat: g.skin, part: 'head', flags: F_NO_OUTLINE };
+  const sk = makeRamp(g.look.skin, 'skin');
   const sp = g.eyeSpecial;
-  const female = g.bp.bust > 0;
+  const female = g.rig.body === 'female';
 
-  // Iris colors (special eyes override the chosen color)
   let iris = g.look.eyeColor || '#3b82f6';
   if (sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') iris = '#d81b2a';
-  if (sp === 'pale' || sp === 'paleVeins') iris = '#ddd6fe';
-  if (sp === 'sage') iris = '#f59e0b';
+  if (sp === 'pale' || sp === 'paleVeins') iris = '#e4defc';
+  if (sp === 'sage') iris = '#f5a524';
   const ir = makeRamp(iris, 'cloth');
-  const I = (shade: number): Pen => flat(ir[shade]);
-  const line1 = flat(EYELINE);
-  const white = flat(SCLERA);
+  const pale = sp === 'pale' || sp === 'paleVeins';
+  const pens: Record<string, Pen> = {
+    L: flat(EYELINE),
+    w: flat(SCLERA),
+    d: flat(ir[pale ? 3 : 2]),
+    I: flat(ir[3]),
+    i: flat(ir[4]),
+    p: flat(pale ? ir[4] : sp === 'none' || sp === 'sage' ? '#120c18' : '#14040a'),
+    c: flat(pale ? ir[5] : '#ffffff'),
+    s: flat(sk[2]),
+  };
 
-  const shape = g.look.eyeShape;
-  const ey = hy + 1; // top row of the iris
-  const nx = hx - 1; // near-eye left column (sclera)
-  const fx = hx + 3; // far-eye left column
-
-  // Lashes / upper lid
-  const lashY = shape === 'calm' ? ey : ey - 1;
-  for (let x = nx - 1; x <= nx + 2; x++) px(L, x, lashY, line1);
-  if (female) px(L, nx - 2, lashY - 1, line1);
-  px(L, fx, lashY, line1);
-  px(L, fx + 1, lashY, line1);
-  px(L, fx + 2, lashY, line1);
-  if (shape === 'sharp') {
-    px(L, nx + 2, lashY + 1, line1);
-    px(L, fx + 1, lashY + 1, line1);
+  const shape = g.look.eyeShape || 'standard';
+  const near = [...(EYE_NEAR[shape] || EYE_NEAR.standard)];
+  const far = [...(EYE_FAR[shape] || EYE_FAR.standard)];
+  if (female) {
+    near.unshift('L....');
+    far.unshift('...L');
   }
+  const [nx, ny] = F(-2.2, female ? 0 : 0.6);
+  const [fx, fy] = F(2.5, female ? 0 : 0.6);
+  stamp(L, nx, ny, near, pens);
+  stamp(L, fx, fy, far, pens);
 
-  // Near eye: sclera on the back side, iris looking forward (right)
-  const rows = shape === 'round' ? 3 : shape === 'calm' ? 1 : 2;
-  for (let k = 0; k < rows; k++) {
-    const y = (shape === 'calm' ? ey + 1 : ey) + k;
-    if (shape !== 'sharp' || k === 0) px(L, nx, y, k === 0 ? white : skinPen, k === 0 ? 3 : 3);
-    px(L, nx + 1, y, I(k === 0 ? 4 : 3));
-    px(L, nx + 2, y, I(k === 0 ? 2 : 1));
-  }
-  // Catchlight
-  if (sp !== 'pale' && sp !== 'paleVeins') px(L, nx + 1, shape === 'calm' ? ey + 1 : ey, flat('#ffffff'));
+  const set = (x: number, y: number, hex: string) => L.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
 
-  // Far eye (slightly foreshortened)
-  for (let k = 0; k < rows; k++) {
-    const y = (shape === 'calm' ? ey + 1 : ey) + k;
-    px(L, fx, y, I(k === 0 ? 4 : 3));
-    px(L, fx + 1, y, I(k === 0 ? 2 : 1));
+  // Special patterns on top of the iris
+  const irisRow = ny + (female ? 3 : 2);
+  if (sp === 'tomoe3' || sp === 'tomoe1' || sp === 'pinwheel') {
+    set(nx + 2, irisRow, '#14040a');
+    set(fx + 1, fy + 1, '#14040a');
+    if (sp !== 'tomoe1') set(nx + 3, irisRow + 1, '#14040a');
+    if (sp === 'pinwheel') set(nx + 1, irisRow + 1, '#14040a');
   }
-  if (sp !== 'pale' && sp !== 'paleVeins') px(L, fx, shape === 'calm' ? ey + 1 : ey, flat('#ffffff'));
-
-  // Special patterns
-  if (sp === 'tomoe3' || sp === 'pinwheel') {
-    px(L, nx + 2, ey + (rows > 1 ? 1 : 0), flat('#120308'));
-    px(L, fx + 1, ey + (rows > 1 ? 1 : 0), flat('#120308'));
-  }
-  if (sp === 'pinwheel') px(L, nx + 1, ey + 1, flat('#120308'));
-  if (sp === 'tomoe1') px(L, nx + 2, ey, flat('#3b0509'));
   if (sp === 'paleVeins') {
-    px(L, nx - 1, ey, flat(makeRamp(g.look.skin, 'skin')[1]));
-    px(L, nx - 1, ey - 2, flat(makeRamp(g.look.skin, 'skin')[1]));
-    px(L, fx + 2, ey - 1, flat(makeRamp(g.look.skin, 'skin')[1]));
+    for (const [dx, dy] of [
+      [-1, 1],
+      [-2, 0],
+      [-1, -1],
+      [5, 0],
+    ])
+      set(nx + dx, ny + dy, sk[1]);
+    set(fx + 4, fy, sk[1]);
   }
   if (sp === 'sage') {
-    px(L, nx + 1, ey + (rows > 1 ? 1 : 0), flat('#1b1420'));
-    px(L, nx + 2, ey + (rows > 1 ? 1 : 0), flat('#1b1420'));
-    for (let x = nx - 1; x <= nx + 2; x++) px(L, x, lashY - 1, flat('#c2410c'));
+    for (let x = -1; x <= 4; x++) set(nx + x, ny - 1, '#c2410c');
+    for (let x = 0; x <= 3; x++) set(fx + x, fy - 1, '#c2410c');
+    set(nx + 2, irisRow, '#120c18');
+    set(nx + 3, irisRow, '#120c18');
   }
 
   // Brows (hair-colored)
   const hairChoice = g.look.slots.hair;
-  const browHex = hairChoice?.colors[0] || '#2a2230';
-  const br = makeRamp(browHex, 'hair');
-  const brow = flat(br[1]);
-  const browY = lashY - 2;
-  if (shape === 'sharp') {
-    px(L, nx, browY, brow);
-    px(L, nx + 1, browY + 1, brow);
-    px(L, nx + 2, browY + 1, brow);
-  } else {
-    for (let x = nx; x <= nx + 2; x++) px(L, x, browY, brow);
-  }
-  px(L, fx, browY, brow);
-  px(L, fx + 1, browY, brow);
+  const br = makeRamp(hairChoice?.colors[0] || '#2a2230', 'hair');
+  const browTop = ny - 2;
+  const sharp = shape === 'sharp';
+  for (let x = -1; x <= 3; x++) set(nx + x, browTop + (sharp ? (x >= 2 ? 1 : 0) : x <= -1 ? 1 : 0), br[1]);
+  for (let x = 0; x <= 2; x++) set(fx + x, browTop + (sharp && x === 0 ? 1 : 0), br[1]);
 
-  // Nose & mouth
-  px(L, hx + 3, hy + 3, skinPen, 2);
-  const mouth = flat(female ? '#c2566b' : makeRamp(g.look.skin, 'skin')[1]);
-  px(L, hx + 2, hy + 5, mouth);
-  px(L, hx + 3, hy + 5, mouth);
+  // Mouth (no drawn nose: at this size the face reads cleaner without it)
+  const [mx, my] = F(2.0, female ? 3.9 : 4.2);
+  set(mx, my, female ? '#b9506a' : sk[1]);
+  set(mx + 1, my, female ? '#d06a80' : sk[2]);
 }

@@ -10,6 +10,69 @@ import {
 } from '../types/shinobi';
 import { JUTSUS_DATA } from '../data/shinobiData';
 import { ShinobiSpriteCanvas } from './ShinobiSpriteCanvas';
+import { defaultAppearance } from '../sprite/legacy';
+import type { ItemChoice, SpriteAppearance } from '../sprite/types';
+
+const it = (id: string, ...colors: string[]): ItemChoice => ({ id, colors });
+/** Enemy outfits, so foes never wear the player's appearance. */
+const enemyLook = (o: Partial<SpriteAppearance>): SpriteAppearance => ({ ...defaultAppearance(), headband: { ...defaultAppearance().headband, position: 'none' }, ...o });
+const ENEMY_LOOKS: Record<string, SpriteAppearance> = {
+  titan_boss_char: enemyLook({
+    body: 'bulky',
+    skin: '#c98c5f',
+    eyeShape: 'sharp',
+    eyeColor: '#f59e0b',
+    slots: {
+      hair: it('hair_storm', '#ff7b2e'),
+      top: it('top_mesh'),
+      bottom: it('bottom_hakama', '#3a1f1a', '#cfc8b6'),
+      hands: it('hands_gauntlets'),
+      feet: it('feet_wraps'),
+      face: it('face_warpaint', '#c81e2a'),
+    },
+    chakra: { color: 'orange', onCharge: true, onCast: true, onVictory: true },
+  }),
+  hydra_char: enemyLook({
+    body: 'bulky',
+    skin: '#9fbf8f',
+    eyeShape: 'sharp',
+    eyeColor: '#f59e0b',
+    slots: {
+      hair: it('hair_warlord', '#2e6b45'),
+      armor: it('armor_bronze', '#5f7a3a', '#2d3a1c'),
+      bottom: it('bottom_cargo', '#2d3a1c', '#3e3428'),
+      feet: it('feet_greaves', '#7c8a6a', '#2d2a1e'),
+      held: it('held_naginata'),
+    },
+    chakra: { color: 'green', onCharge: true, onCast: true, onVictory: true },
+  }),
+  kagero_char: enemyLook({
+    eyeShape: 'sharp',
+    slots: {
+      hair: it('hair_lowtail', '#141218'),
+      top: it('top_highcollar', '#1d1b26', '#3b3449'),
+      bottom: it('bottom_shinobi', '#1d1b26', '#e7e1d1'),
+      feet: it('feet_shinobi', '#2a2733', '#141218'),
+      cape: it('cape_rogue'),
+      held: it('held_kunai'),
+    },
+    headband: { position: 'forehead', slashed: true, tails: false, emblem: 'crescent', cloth: '#1d1b26', plate: '#9ca3af' },
+    chakra: { color: 'violet', onCharge: true, onCast: true, onVictory: false },
+  }),
+  scout_char: enemyLook({
+    slots: {
+      hair: it('hair_crop', '#4b5563'),
+      face: it('face_catmask'),
+      top: it('top_longsleeve', '#2b3346', '#1b2130'),
+      armor: it('armor_storm'),
+      bottom: it('bottom_shinobi', '#2b3346', '#e7e1d1'),
+      feet: it('feet_shinobi', '#2b3346', '#141821'),
+      held: it('held_kunai'),
+    },
+    accessories: [it('acc_kunai_leg')],
+    chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
+  }),
+};
 import { DiceRollModal } from './DiceRollModal';
 import { soundManager } from '../utils/audio';
 import {
@@ -52,7 +115,6 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
   // Weather
   const [weather, setWeather] = useState<WeatherType>(campaignEncounter?.weather || 'Clear');
   const [muted, setMuted] = useState<boolean>(soundManager.getMuted());
-  const [combatSpriteEngine, setCombatSpriteEngine] = useState<'jrpg_16bit' | 'pixel'>('jrpg_16bit');
 
   // Grid Battlefield State - synchronously initialize with player combatant
   const [grid, setGrid] = useState<BattlefieldTile[][]>([]);
@@ -234,6 +296,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
         character: {
           ...playerCharacter,
           id: 'titan_boss_char',
+          appearance: ENEMY_LOOKS.titan_boss_char,
           name: 'Kurama Avatar',
           clan: 'Uzumaki',
           shinobiClass: 'Ninjutsu Specialist',
@@ -274,6 +337,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
         character: {
           ...playerCharacter,
           id: 'hydra_char',
+          appearance: ENEMY_LOOKS.hydra_char,
           name: 'Orochi Hydra',
           clan: 'Senju',
           shinobiClass: 'Taijutsu Master',
@@ -312,6 +376,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
         character: {
           ...playerCharacter,
           id: 'kagero_char',
+          appearance: ENEMY_LOOKS.kagero_char,
           name: 'Rogue Jonin Kagero',
           clan: 'Uchiha',
           shinobiClass: 'Genjutsu Adept',
@@ -350,6 +415,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
         character: {
           ...playerCharacter,
           id: 'scout_char',
+          appearance: ENEMY_LOOKS.scout_char,
           name: 'Mist Hunter-nin',
           clan: 'Senju',
           shinobiClass: 'Bukijutsu Master',
@@ -676,7 +742,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
 
     if (isWarp) {
       soundManager.playChakraSurge();
-      addLog(`ROYAL WARP STRIKE! Noctis flickered instantly across space to (${targetX}, ${targetY})!`, 'crit');
+      addLog(`WARP STRIKE! ${player.name} flickered instantly across space to (${targetX}, ${targetY})!`, 'crit');
     }
 
     // D&D 5e ROLL RESOLUTION:
@@ -979,33 +1045,6 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
             <option value="Scorching Drought">Scorching Heat (Buffs Fire)</option>
             <option value="Sandstorm">Sandstorm (Vision Hazard)</option>
           </select>
-
-          {/* Sprite Style Mode */}
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
-            <button
-              type="button"
-              onClick={() => setCombatSpriteEngine('jrpg_16bit')}
-              className={`px-2 py-1 rounded font-bold transition flex items-center gap-1 ${
-                combatSpriteEngine === 'jrpg_16bit'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm ring-1 ring-cyan-400/50'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-              16-Bit JRPG
-            </button>
-            <button
-              type="button"
-              onClick={() => setCombatSpriteEngine('pixel')}
-              className={`px-2 py-1 rounded font-medium transition ${
-                combatSpriteEngine === 'pixel'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Classic Retro
-            </button>
-          </div>
 
           {/* Sound Toggle */}
           <button

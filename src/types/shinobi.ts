@@ -1,3 +1,5 @@
+import type { SpriteAppearance } from '../sprite/types';
+
 export type ClanType = 'Uchiha' | 'Senju' | 'Uzumaki' | 'Hyuga';
 
 export type DojutsuType =
@@ -159,6 +161,8 @@ export interface ShinobiCharacter {
   jutsuSaveDC: number;
   jutsuAttackBonus: number;
   isEnhancedMode?: boolean;
+  /** Layered sprite appearance. Older characters without it are converted on the fly. */
+  appearance?: SpriteAppearance;
 }
 
 export type TileTerrain =
@@ -205,7 +209,7 @@ export interface CombatEntity {
   bonusActionUsed: boolean;
   reactionUsed: boolean;
   movementRemaining: number;
-  spriteState: 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory';
+  spriteState: 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge';
 }
 
 export interface DiceRollResult {

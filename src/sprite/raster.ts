@@ -1,11 +1,24 @@
-// Low-level pixel buffers and shaded primitives for the 64x64 sprite engine.
+// Low-level pixel buffers and shaded primitives for the sprite engine.
 // Shapes never write colors directly: they write (material, shade) pairs so a
 // layer can be outlined and recolored after it is drawn.
+//
+// Two coordinate spaces:
+//  - DESIGN units: a 64x64 space that the rig, body params and every item use.
+//  - FINE pixels: the real 128x128 canvas (RES fine pixels per design unit).
+// Primitives take design coordinates and rasterize at fine resolution, so
+// silhouettes, outlines and details are crisp 1px at 128x128.
+// `px` paints ONE fine pixel at a design coordinate (use .5 steps for detail);
+// `dot` paints a whole design pixel (RES x RES block). Layer methods
+// (set/has/clear/reshade/getShade) take FINE integer coordinates.
 
-import { makeRamp, Ramp, RampKind } from './color';
+import { makeRamp, mixHex, Ramp, RampKind } from './color';
 
-export const GRID = 64;
+export const UNITS = 64;
+export const RES = 2;
+export const GRID = UNITS * RES;
 const N = GRID * GRID;
+/** Converts a design coordinate to the fine pixel that contains it. */
+export const fine = (d: number): number => Math.floor(d * RES);
 
 export type Vec = { x: number; y: number };
 export const v = (x: number, y: number): Vec => ({ x, y });
@@ -48,8 +61,12 @@ export const partIndex = (p: PartId): number => PARTS.indexOf(p);
 export const F_NO_OUTLINE = 1; // never turned into an outline pixel
 export const F_NO_EDGE = 2; // doesn't count as "empty" for neighbours' outlines either
 
+/** Every outline is pulled toward this near-black so silhouettes read like hand-drawn sprites. */
+const INK = '#07060b';
+
 export class MaterialTable {
   ramps: Ramp[] = [];
+  kinds: RampKind[] = [];
   private index = new Map<string, number>();
 
   get(hex: string, kind: RampKind = 'cloth'): number {
@@ -57,7 +74,10 @@ export class MaterialTable {
     let i = this.index.get(key);
     if (i === undefined) {
       i = this.ramps.length;
-      this.ramps.push(makeRamp(hex, kind));
+      const ramp = [...makeRamp(hex, kind)] as Ramp;
+      if (kind !== 'flat' && kind !== 'glow') ramp[0] = mixHex(ramp[0], INK, 0.7);
+      this.ramps.push(ramp);
+      this.kinds.push(kind);
       this.index.set(key, i);
     }
     return i;
@@ -84,7 +104,16 @@ function shadeFromNormal(nx: number, ny: number, bias = 0): number {
   return Math.max(1, Math.min(5, s));
 }
 
+/** Uniform scale about a design-space point, applied by every primitive drawn on a layer. */
+export interface Xf {
+  cx: number;
+  cy: number;
+  k: number;
+}
+
 export class Layer {
+  /** Optional shrink/grow transform (used to scale the whole head group). */
+  xf: Xf | null = null;
   mat = new Int16Array(N).fill(-1);
   shade = new Uint8Array(N);
   part = new Uint8Array(N);
@@ -158,50 +187,95 @@ export class Layer {
 // Primitives
 // ---------------------------------------------------------------------------
 
-export function px(L: Layer, x: number, y: number, pen: Pen, shade = 3): void {
-  L.set(x, y, pen.mat, shade + (pen.bias || 0), pen.part, pen.flags || 0);
+/** Maps a design point through the layer transform (if any). */
+export function fwd(L: Layer, p: Vec): Vec {
+  const t = L.xf;
+  return t ? v(t.cx + (p.x - t.cx) * t.k, t.cy + (p.y - t.cy) * t.k) : p;
 }
+
+/** One fine pixel at a design coordinate. */
+export function px(L: Layer, x: number, y: number, pen: Pen, shade = 3): void {
+  const p = fwd(L, v(x, y));
+  L.set(fine(p.x), fine(p.y), pen.mat, shade + (pen.bias || 0), pen.part, pen.flags || 0);
+}
+
+/** A whole design pixel (RES x RES fine pixels) whose top-left is at floor(x), floor(y). */
+export function dot(L: Layer, x: number, y: number, pen: Pen, shade = 3): void {
+  const p = fwd(L, v(Math.floor(x), Math.floor(y)));
+  const fx = fine(p.x);
+  const fy = fine(p.y);
+  for (let j = 0; j < RES; j++)
+    for (let i = 0; i < RES; i++) L.set(fx + i, fy + j, pen.mat, shade + (pen.bias || 0), pen.part, pen.flags || 0);
+}
+
+/**
+ * Iterates fine pixels covering a design-space box. Geometry is evaluated in
+ * the layer's ORIGINAL design space: with a transform, pixels are sampled in
+ * transformed space and mapped back before the inside/shade tests.
+ */
+function forFine(
+  L: Layer,
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number,
+  fn: (fx: number, fy: number, x: number, y: number) => void,
+): void {
+  const t = L.xf;
+  const a = fwd(L, v(minX, minY));
+  const b = fwd(L, v(maxX, maxY));
+  const fx0 = Math.max(0, Math.floor(Math.min(a.x, b.x) * RES) - 1);
+  const fy0 = Math.max(0, Math.floor(Math.min(a.y, b.y) * RES) - 1);
+  const fx1 = Math.min(GRID - 1, Math.ceil(Math.max(a.x, b.x) * RES) + 1);
+  const fy1 = Math.min(GRID - 1, Math.ceil(Math.max(a.y, b.y) * RES) + 1);
+  for (let fy = fy0; fy <= fy1; fy++) {
+    for (let fx = fx0; fx <= fx1; fx++) {
+      let x = (fx + 0.5) / RES;
+      let y = (fy + 0.5) / RES;
+      if (t) {
+        x = t.cx + (x - t.cx) / t.k;
+        y = t.cy + (y - t.cy) / t.k;
+      }
+      fn(fx, fy, x, y);
+    }
+  }
+}
+
+/** Shade functions receive (x, y) such that x + 0.5, y + 0.5 is the sample point in design units. */
+const sx = (x: number) => x - 0.5;
 
 /** Tapered capsule from a (radius ra) to b (radius rb), shaded as a cylinder. */
 export function capsule(L: Layer, a: Vec, b: Vec, ra: number, rb: number, pen: Pen, shade?: ShadeFn | number): void {
-  const minX = Math.floor(Math.min(a.x - ra, b.x - rb)) - 1;
-  const maxX = Math.ceil(Math.max(a.x + ra, b.x + rb)) + 1;
-  const minY = Math.floor(Math.min(a.y - ra, b.y - rb)) - 1;
-  const maxY = Math.ceil(Math.max(a.y + ra, b.y + rb)) + 1;
   const ab = sub(b, a);
   const l2 = ab.x * ab.x + ab.y * ab.y || 1;
-  for (let y = minY; y <= maxY; y++) {
-    for (let x = minX; x <= maxX; x++) {
-      const p = v(x + 0.5, y + 0.5);
-      let t = ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / l2;
-      t = Math.max(0, Math.min(1, t));
-      const c = lerp(a, b, t);
-      const r = ra + (rb - ra) * t;
-      const d = sub(p, c);
-      const dist = len(d);
-      if (dist > r) continue;
-      let s: number;
-      if (typeof shade === 'number') s = shade;
-      else if (shade) s = shade(x, y);
-      else s = shadeFromNormal(d.x / (r || 1), d.y / (r || 1), 0);
-      L.set(x, y, pen.mat, s + (pen.bias || 0), pen.part, pen.flags || 0);
-    }
-  }
+  forFine(L, Math.min(a.x - ra, b.x - rb), Math.min(a.y - ra, b.y - rb), Math.max(a.x + ra, b.x + rb), Math.max(a.y + ra, b.y + rb), (fx, fy, x, y) => {
+    let t = ((x - a.x) * ab.x + (y - a.y) * ab.y) / l2;
+    t = Math.max(0, Math.min(1, t));
+    const cx = a.x + ab.x * t;
+    const cy = a.y + ab.y * t;
+    const r = ra + (rb - ra) * t;
+    const dx = x - cx;
+    const dy = y - cy;
+    if (dx * dx + dy * dy > r * r) return;
+    let s: number;
+    if (typeof shade === 'number') s = shade;
+    else if (shade) s = shade(sx(x), sx(y));
+    else s = shadeFromNormal(dx / (r || 1), dy / (r || 1), 0);
+    L.set(fx, fy, pen.mat, s + (pen.bias || 0), pen.part, pen.flags || 0);
+  });
 }
 
 export function ellipse(L: Layer, cx: number, cy: number, rx: number, ry: number, pen: Pen, shade?: ShadeFn | number): void {
-  for (let y = Math.floor(cy - ry) - 1; y <= Math.ceil(cy + ry) + 1; y++) {
-    for (let x = Math.floor(cx - rx) - 1; x <= Math.ceil(cx + rx) + 1; x++) {
-      const dx = (x + 0.5 - cx) / rx;
-      const dy = (y + 0.5 - cy) / ry;
-      if (dx * dx + dy * dy > 1) continue;
-      let s: number;
-      if (typeof shade === 'number') s = shade;
-      else if (shade) s = shade(x, y);
-      else s = shadeFromNormal(dx, dy, 0);
-      L.set(x, y, pen.mat, s + (pen.bias || 0), pen.part, pen.flags || 0);
-    }
-  }
+  forFine(L, cx - rx, cy - ry, cx + rx, cy + ry, (fx, fy, x, y) => {
+    const dx = (x - cx) / rx;
+    const dy = (y - cy) / ry;
+    if (dx * dx + dy * dy > 1) return;
+    let s: number;
+    if (typeof shade === 'number') s = shade;
+    else if (shade) s = shade(sx(x), sx(y));
+    else s = shadeFromNormal(dx, dy, 0);
+    L.set(fx, fy, pen.mat, s + (pen.bias || 0), pen.part, pen.flags || 0);
+  });
 }
 
 function inside(pts: Vec[], x: number, y: number): boolean {
@@ -214,7 +288,7 @@ function inside(pts: Vec[], x: number, y: number): boolean {
   return c;
 }
 
-/** Filled polygon. Default shading: lit on the left third, shadowed on the right. */
+/** Filled polygon. Default shading: lit on the left, shadowed on the right. */
 export function poly(
   L: Layer,
   pts: Vec[],
@@ -234,60 +308,67 @@ export function poly(
     maxY = Math.max(maxY, p.y);
   }
   const w = Math.max(1, maxX - minX);
-  for (let y = Math.floor(minY); y <= Math.ceil(maxY); y++) {
-    for (let x = Math.floor(minX); x <= Math.ceil(maxX); x++) {
-      if (!inside(pts, x + 0.5, y + 0.5)) continue;
-      if (keep && !keep(x, y)) continue;
-      let s: number;
-      if (typeof shade === 'number') s = shade;
-      else if (shade) s = shade(x, y);
-      else {
-        const t = (x + 0.5 - minX) / w;
-        s = t < 0.22 ? 4 : t < 0.72 ? 3 : 2;
-      }
-      L.set(x, y, pen.mat, s + (pen.bias || 0), pen.part, pen.flags || 0);
+  forFine(L, minX, minY, maxX, maxY, (fx, fy, x, y) => {
+    if (!inside(pts, x, y)) return;
+    if (keep && !keep(sx(x), sx(y))) return;
+    let s: number;
+    if (typeof shade === 'number') s = shade;
+    else if (shade) s = shade(sx(x), sx(y));
+    else {
+      const t = (x - minX) / w;
+      s = t < 0.22 ? 4 : t < 0.72 ? 3 : 2;
     }
-  }
+    L.set(fx, fy, pen.mat, s + (pen.bias || 0), pen.part, pen.flags || 0);
+  });
 }
 
-/** 1px Bresenham line. */
-export function line(L: Layer, a: Vec, b: Vec, pen: Pen, shade = 3): void {
-  let x0 = Math.floor(a.x);
-  let y0 = Math.floor(a.y);
-  const x1 = Math.floor(b.x);
-  const y1 = Math.floor(b.y);
+/** 1 fine-pixel Bresenham line between design points. */
+export function line(L: Layer, a0: Vec, b0: Vec, pen: Pen, shade = 3): void {
+  const a = fwd(L, a0);
+  const b = fwd(L, b0);
+  let x0 = fine(a.x);
+  let y0 = fine(a.y);
+  const x1 = fine(b.x);
+  const y1 = fine(b.y);
   const dx = Math.abs(x1 - x0);
   const dy = -Math.abs(y1 - y0);
-  const sx = x0 < x1 ? 1 : -1;
-  const sy = y0 < y1 ? 1 : -1;
+  const stx = x0 < x1 ? 1 : -1;
+  const sty = y0 < y1 ? 1 : -1;
   let err = dx + dy;
-  for (let guard = 0; guard < 200; guard++) {
+  for (let guard = 0; guard < 400; guard++) {
     L.set(x0, y0, pen.mat, shade + (pen.bias || 0), pen.part, pen.flags || 0);
     if (x0 === x1 && y0 === y1) break;
     const e2 = 2 * err;
     if (e2 >= dy) {
       err += dy;
-      x0 += sx;
+      x0 += stx;
     }
     if (e2 <= dx) {
       err += dx;
-      y0 += sy;
+      y0 += sty;
     }
   }
 }
 
 /** Darkens (or lightens) pixels already present in a layer along a line — for seams and folds. */
-export function seam(L: Layer, a: Vec, b: Vec, delta = -1): void {
-  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y))));
+export function seam(L: Layer, a0: Vec, b0: Vec, delta = -1): void {
+  const a = fwd(L, a0);
+  const b = fwd(L, b0);
+  const steps = Math.max(1, Math.ceil(Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) * RES));
+  let lx = -1;
+  let ly = -1;
   for (let i = 0; i <= steps; i++) {
     const p = lerp(a, b, i / steps);
-    const x = Math.floor(p.x);
-    const y = Math.floor(p.y);
+    const x = fine(p.x);
+    const y = fine(p.y);
+    if (x === lx && y === ly) continue;
+    lx = x;
+    ly = y;
     if (L.has(x, y)) L.reshade(x, y, Math.max(1, L.getShade(x, y) + delta));
   }
 }
 
-/** Point at parameter t along a polyline-free segment, offset perpendicular by `off` pixels. */
+/** Point at parameter t along a segment, offset perpendicular by `off` design units. */
 export function along(a: Vec, b: Vec, t: number, off = 0): Vec {
   const p = lerp(a, b, t);
   if (!off) return p;

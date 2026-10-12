@@ -326,6 +326,24 @@ const HAND_FIST: PixelTemplate = {
     '..ooooo..',
   ],
 };
+/**
+ * The far hand's fist, after the reference's: small and round, knuckles
+ * toward the viewer, one curled-finger crease. Drawn without the far-side
+ * darkening, which would turn its creases into a black blob.
+ */
+const HAND_FIST_FAR: PixelTemplate = {
+  pivot: [3, 0],
+  rows: [
+    '.osbbo..',
+    'osbbbbo.',
+    'olbbbbso',
+    'osbxbbso',
+    'obbbxsso',
+    'osDxDsso',
+    '.osDsso.',
+    '..oooo..',
+  ],
+};
 /** Open palm, fingers spread (casting). */
 const HAND_OPEN: PixelTemplate = {
   pivot: [5, 0],
@@ -381,7 +399,10 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
   const holding = s === 'N' && gripAngle(g) !== null;
   const dir = norm(sub(j.hand, j.wrist));
   const theta = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
-  const rot = theta - 90;
+  // A hand hanging within 30 degrees of straight down is stamped unrotated,
+  // so every pixel stays exactly as drawn (the wrist bends a little instead).
+  const raw = ((theta - 90 + 540) % 360) - 180;
+  const rot = Math.abs(raw) <= 30 ? 0 : raw;
   // Keep the thumb on the facing side (+x), or on top when the arm is level.
   const tr = (rot * Math.PI) / 180;
   const tx = Math.cos(tr);
@@ -397,6 +418,12 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
           : j.shape === 'hold'
             ? HAND_RELAXED
             : HAND_FIST;
+  if (s === 'F' && t === HAND_FIST) {
+    // Far fist: authored in far-side values (no lit knuckles), so no extra bias.
+    const far: TemplatePalette = { ...pal, D: [pen.mat, 1], s: [pen.mat, 2], b: [pen.mat, 3], l: [pen.mat, 3] };
+    stampTemplate(L, HAND_FIST_FAR, j.wrist, rot, far, pen.part, { flipX, flags });
+    return;
+  }
   stampTemplate(L, t, j.wrist, rot, pal, pen.part, { flipX, flags });
 }
 

@@ -142,12 +142,12 @@ const IDLE: PoseFrame = {
   lean: -2,
   // Near arm leans out a little from shoulder to fist, like the reference.
   handN: arm(-0.27, 0.96),
-  // The free hand hangs relaxed just off the hip, like the reference.
-  handF: arm(0.22, 0.93),
+  // The free hand hangs clear of the body as a fist beside the hip, like the reference.
+  handF: arm(0.34, 0.9),
   footN: v(-0.1, 0.985),
   footF: v(0.14, 0.98),
   shapeN: 'hold',
-  shapeF: 'relaxed',
+  shapeF: 'fist',
 };
 
 export const POSES: Record<SpritePose, PoseFrame[]> = {

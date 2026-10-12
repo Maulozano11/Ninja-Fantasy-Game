@@ -7,7 +7,7 @@
 
 import { makeRamp, mixHex } from './color';
 import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side } from './ctx';
-import { ballShade, capsule, ellipse, F_NO_OUTLINE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
+import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 
 const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';
@@ -73,8 +73,31 @@ function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
   // under the forearm crest and at the inner elbow.
   muscleLine(g, L, s, upper.mat, 0.22, 0.72, 0.42, 1);
   muscleLine(g, L, s, fore.mat, 1.06, 1.58, 0.4, 1);
-  muscleLine(g, L, s, fore.mat, 1.12, 1.5, -0.05, -1);
-  muscleLine(g, L, s, upper.mat, 0.86, 0.98, -0.45, -1);
+  despeckle(L, upper.mat);
+}
+
+/**
+ * Smooths skin shading: a pixel whose four neighbours are all the same
+ * material but none share its shade takes the most common neighbour shade,
+ * so no stray single pixels are left. Hand templates (F_NO_TEXTURE) are kept.
+ */
+function despeckle(L: Layer, mat: number): void {
+  const fixes: [number, number][] = [];
+  for (let y = 1; y < GRID - 1; y++) {
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      if (L.mat[i] !== mat || L.flags[i] & F_NO_TEXTURE || L.shade[i] === 0) continue;
+      const nb = [i - 1, i + 1, i - GRID, i + GRID];
+      if (nb.some((j) => L.mat[j] !== mat)) continue;
+      const own = L.shade[i];
+      const shades = nb.map((j) => L.shade[j]).filter((v) => v > 0);
+      if (shades.length < 4 || shades.includes(own)) continue;
+      const count = new Map<number, number>();
+      for (const v of shades) count.set(v, (count.get(v) || 0) + 1);
+      fixes.push([i, [...count].sort((a, b) => b[1] - a[1])[0][0]]);
+    }
+  }
+  for (const [i, v] of fixes) L.shade[i] = v;
 }
 
 /**

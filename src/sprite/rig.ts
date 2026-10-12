@@ -140,7 +140,8 @@ const chest = (x: number, y: number): HandTarget => ({ from: 'chest', x, y, unit
 const IDLE: PoseFrame = {
   // Upright, chest slightly out, head over the shoulders (no hunch).
   lean: -2,
-  handN: arm(-0.06, 0.95),
+  // Near arm leans out a little from shoulder to fist, like the reference.
+  handN: arm(-0.27, 0.96),
   // The free hand hangs relaxed just off the hip, like the reference.
   handF: arm(0.22, 0.93),
   footN: v(-0.1, 0.985),

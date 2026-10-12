@@ -303,8 +303,9 @@ export function ballShade(cx: number, cy: number, rx: number, ry: number): Shade
 
 /** u: -1 on the lit edge, +1 on the far edge. */
 function skinBand(u: number, x: number, y: number): number {
-  const w = u + jitter(x, y) * 0.2;
-  return w < -0.84 ? 2 : w < 0.18 ? 3 : w < 0.62 ? 2 : 1;
+  // Clean bands, no jitter: skin stays smooth like the reference.
+  void jitter;
+  return u < -0.84 ? 2 : u < 0.18 ? 3 : u < 0.62 ? 2 : 1;
 }
 
 export function ellipse(L: Layer, cx: number, cy: number, rx: number, ry: number, pen: Pen, shade?: ShadeFn | number): void {

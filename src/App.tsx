@@ -13,7 +13,10 @@ type AppView = 'creator' | 'campaign' | 'combat' | 'arena';
 const founderPreset = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')?.character;
 
 export default function App() {
-  const [activeView, setActiveView] = useState<AppView>('combat');
+  // A #creator link opens straight onto the character creator.
+  const [activeView, setActiveView] = useState<AppView>(() =>
+    typeof window !== 'undefined' && window.location.hash === '#creator' ? 'creator' : 'combat',
+  );
   const [character, setCharacter] = useState<ShinobiCharacter>(founderPreset || LEGENDARY_PRESETS[0].character);
   const [activeEncounter, setActiveEncounter] = useState<{
     title: string;

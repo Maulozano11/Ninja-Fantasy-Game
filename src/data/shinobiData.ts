@@ -887,7 +887,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
         eyeShape: 'sharp',
         eyeColor: '#d81b2a',
         slots: {
-          hair: it('hair_midnight', '#232a3d'),
+          hair: it('hair_midnight', '#2f3c54'),
           top: it('top_royalcoat', '#1f2a4a', '#e2b04a', '#131a30'),
           bottom: it('bottom_shinobi', '#1f2a4a', '#1f2a4a'),
           armor: it('armor_legion', '#aeb7c2', '#b3202a', '#d4a531'),
@@ -1312,7 +1312,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       appearance: spriteLook({
         eyeColor: '#38bdf8',
         slots: {
-          hair: it('hair_midnight', '#1c2233'),
+          hair: it('hair_midnight', '#2a3448'),
           top: it('top_royalcoat', '#17181f', '#9aa3b2', '#0d0e14'),
           bottom: it('bottom_shinobi', '#17181f', '#17181f'),
           feet: it('feet_leather', '#1b1b22', '#0d0d12'),

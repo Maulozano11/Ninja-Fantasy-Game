@@ -7,7 +7,7 @@
 
 import { makeRamp, mixHex } from './color';
 import { armPoint, armSpan, DrawCtx, fillTorso, footPoly, handDraw, legSpan, Side } from './ctx';
-import { capsule, ellipse, F_NO_OUTLINE, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
+import { capsule, ellipse, F_NO_OUTLINE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 
 const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';
@@ -92,10 +92,9 @@ function drawHead(g: DrawCtx): void {
   const shadeHead = (x: number, y: number): number => {
     const dx = (x + 0.5 - (hx - 0.7)) / 6.0;
     const dy = (y + 0.5 - (hy - 1.3)) / 6.6;
-    const lt = dx * -0.72 + dy * -0.69;
-    if (y + 0.5 > hy + 5.6 && x + 0.5 < hx + 0.4) return 2; // under the jaw
-    if (x + 0.5 > hx + 4.5) return 2; // far cheek turning away
-    return lt > 0.55 ? 4 : 3;
+    if (dx < -0.78 || dx > 0.8) return 2; // edges turning away
+    if (dx > -0.35 && dx < 0.35 && dy < -0.45) return 4; // forehead light
+    return 3;
   };
   ellipse(L, hx - 0.7, hy - 1.3, 6.0, 6.6, pen, shadeHead);
   poly(
@@ -114,138 +113,159 @@ function drawHead(g: DrawCtx): void {
     pen,
     shadeHead,
   );
-  // Ear (near side)
-  const ear = H(-3.4, 1.8);
-  ellipse(L, ear.x, ear.y, 1.2, 1.7, pen, (x) => (x + 0.5 < ear.x - 0.4 ? 4 : 3));
-  seam(L, H(-3.2, 1.0), H(-3.0, 2.6), -1);
-  seam(L, H(-2.2, 0.6), H(-2.0, 3.2), -1);
-  // Cheekbone / jaw line on the face side
-
+  // Everything from the eye line down is the hand-drawn face template.
+  const { nx, ny } = faceAnchor(g);
+  for (let i = ny * GRID; i < GRID * GRID; i++) L.mat[i] = -1;
   drawFace(g);
 }
 
 // ---------------------------------------------------------------------------
-// Face (fine-pixel templates)
+// Face template (fine pixels), copied pixel by pixel from the reference sprite.
+// Columns 0..11 start at the near eye's lash; rows 0..9 start at the lash row.
+// Skin: o outline · D dark · s shadow · b base · l light
+// Eyes: L lash · h sclera (shaded) · w sclera · d iris dark · i iris bright
+// Mouth: m lip · M mouth crease.  '.' = transparent.
 // ---------------------------------------------------------------------------
-// L lash · w sclera · d iris dark · I iris base · i iris light · p pupil
-// c catchlight · s lid shadow (skin)
 
-// Matched to the reference sprite: heavy lash bar, 2x2 iris with one light
-// pixel on the near eye, a slim far eye.
-const EYE_NEAR: Record<string, string[]> = {
-  standard: ['LLLLL', '.wdIL', '..iI.'],
-  sharp: ['..LLL', 'LLdIL', '..iI.'],
-  round: ['.LLL.', 'LwdIL', '.wiI.', '..i..'],
-  calm: ['.....', 'LLLLL', '.wiI.'],
-};
-const EYE_FAR: Record<string, string[]> = {
-  standard: ['LLL', 'dLL', 'i..'],
-  sharp: ['LL.', 'dLL', 'i..'],
-  round: ['LLL', 'dIL', 'iI.', '.i.'],
-  calm: ['...', 'LLL', 'iL.'],
+/** Near side of the head (jaw + ear), columns -7..-1. */
+const FACE_LEFT = ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'];
+
+const FACE_MAIN: Record<string, string[]> = {
+  male: [
+    'LLLLbbbbbLLL',
+    'LhddDbbbbdLL',
+    'swiilbbbsiLo',
+    'sbbbbbblsso.',
+    'sbbbbbbDsso.',
+    'ssbbbbbssDo.',
+    'sbbbmMmsso..',
+    'oDbbbbbsDo..',
+    '.oDsbbsDo...',
+    '..oDoooo....',
+  ],
+  female: [
+    'LLLLbbbbbLLL',
+    'LhddDbbbbdLL',
+    'swiilbbbsiLo',
+    'sbbbbbblsso.',
+    'sbbbbbbDso..',
+    'ssbbbbbsDo..',
+    'sbbbmMsso...',
+    'oDbbbbsDo...',
+    '.oDsbsDo....',
+    '..oDooo.....',
+  ],
+  bulky: [
+    'LLLLbbbbbLLL',
+    'LhddDbbbbdLL',
+    'swiilbbbsiLo',
+    'sbbbbbblssso',
+    'sbbbbbbDssso',
+    'ssbbbbbsssDo',
+    'sbbbmMmsssDo',
+    'oDbbbbbbssDo',
+    '.oDsbbbbsDo.',
+    '..oDDoooooo.',
+  ],
 };
 
-/** Fine-pixel anchors of the face: near-eye top-left and far-eye top-left. */
+/** Eye-shape variants replace the first rows of the near (cols 0-4) and far (cols 9-11) eye. */
+const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
+  standard: { near: ['LLLLb', 'LhddD', 'swiil'], far: ['LLL', 'dLL', 'iLo'] },
+  sharp: { near: ['bLLLL', 'LLddD', 'swiil'], far: ['LLL', 'dLL', 'iLo'] },
+  round: { near: ['LLLLb', 'LhddD', 'wiiil'], far: ['LLL', 'dLL', 'iio'] },
+  calm: { near: ['bbbbb', 'LLLLL', 'swiil'], far: ['bbb', 'LLL', 'iLo'] },
+};
+
+/** Fine-pixel anchors of the face: near-eye lash start and far-eye lash start. */
 export function faceAnchor(g: DrawCtx): { nx: number; ny: number; fx: number; fy: number } {
   const k = g.bp.headScale;
-  const female = g.rig.body === 'female';
   const nx = Math.floor((g.rig.head.x - 1.9 * k) * RES);
-  const ny = Math.floor((g.rig.head.y + (female ? 0.4 : 1.0) * k) * RES);
+  const ny = Math.floor((g.rig.head.y + 1.0 * k) * RES);
   return { nx, ny, fx: nx + 9, fy: ny };
 }
 
-function stamp(L: Layer, fx: number, fy: number, rows: string[], pens: Record<string, Pen>): void {
-  rows.forEach((row, r) => {
-    for (let c = 0; c < row.length; c++) {
-      const pen = pens[row[c]];
-      if (!pen) continue;
-      L.set(fx + c, fy + r, pen.mat, 3, pen.part, pen.flags || 0);
-    }
-  });
-}
-
 function drawFace(g: DrawCtx): void {
-  const L = g.L('head.face');
-  const hx = g.rig.head.x;
-  const hy = g.rig.head.y;
-  const k = g.bp.headScale;
-  const F = (dx: number, dy: number) => [Math.floor((hx + dx * k) * RES), Math.floor((hy + dy * k) * RES)] as const;
-  const flat = (hex: string): Pen => ({ mat: g.m(hex, 'flat'), part: 'head', flags: F_NO_OUTLINE });
-  const sk = makeRamp(g.look.skin, 'skin');
+  const L = g.L('head.body');
+  const F = g.L('head.face');
+  const { nx, ny } = faceAnchor(g);
+  const sk = g.mats.ramps[g.skin];
   const sp = g.eyeSpecial;
   const female = g.rig.body === 'female';
 
   let iris = g.look.eyeColor || '#3b82f6';
   if (sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') iris = '#d81b2a';
-  if (sp === 'pale' || sp === 'paleVeins') iris = '#e4defc';
+  if (sp === 'pale' || sp === 'paleVeins') iris = '#ddd6f3';
   if (sp === 'sage') iris = '#f5a524';
   const ir = makeRamp(iris, 'cloth');
   const pale = sp === 'pale' || sp === 'paleVeins';
-  const pens: Record<string, Pen> = {
+
+  const flat = (hex: string) => g.m(hex, 'flat');
+  const colors: Record<string, number> = {
     L: flat(EYELINE),
     w: flat(SCLERA),
-    d: flat(ir[pale ? 3 : 2]),
-    I: flat(ir[3]),
-    i: flat(ir[4]),
-    p: flat(pale ? ir[4] : sp === 'none' || sp === 'sage' ? '#120c18' : '#14040a'),
-    c: flat(pale ? ir[5] : '#ffffff'),
-    s: flat(sk[2]),
+    h: flat(mixHex(SCLERA, ir[2], 0.32)),
+    d: flat(pale ? ir[3] : ir[1]),
+    i: flat(pale ? ir[4] : ir[3]),
+    m: flat(female ? '#c4566c' : mixHex(sk[1], '#b8505a', 0.3)),
+    M: flat(female ? '#9c3b52' : mixHex(sk[0], sk[1], 0.45)),
   };
+  const skinShade: Record<string, number> = { o: 0, D: 1, s: 2, b: 3, l: 4 };
 
   const shape = g.look.eyeShape || 'standard';
-  const near = [...(EYE_NEAR[shape] || EYE_NEAR.standard)];
-  const far = [...(EYE_FAR[shape] || EYE_FAR.standard)];
+  const eyes = EYE_ROWS[shape] || EYE_ROWS.standard;
+  const main = (FACE_MAIN[g.rig.body] || FACE_MAIN.male).map((row, r) => {
+    if (r > 2) return row;
+    return eyes.near[r] + row.slice(5, 9) + eyes.far[r];
+  });
+
+  const put = (x: number, y: number, ch: string) => {
+    if (ch === '.') return;
+    if (ch in skinShade) L.set(x, y, g.skin, skinShade[ch], 'head', F_NO_OUTLINE);
+    else L.set(x, y, colors[ch], 3, 'head', F_NO_OUTLINE);
+  };
+  FACE_LEFT.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) put(nx - 7 + c, ny + r, row[c]);
+  });
+  main.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) put(nx + c, ny + r, row[c]);
+  });
+
+  // Overlays drawn on the face layer (no outline, above the skin).
+  const set = (x: number, y: number, hex: string) => F.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
   if (female) {
-    near.unshift('L....');
-    far.unshift('..L');
+    // longer lashes at the outer corners
+    set(nx - 1, ny - 1, EYELINE);
+    set(nx - 1, ny, EYELINE);
+    set(nx + 12, ny, EYELINE);
   }
-  const { nx, ny, fx, fy } = faceAnchor(g);
-  stamp(L, nx, ny, near, pens);
-  stamp(L, fx, fy, far, pens);
-
-  const set = (x: number, y: number, hex: string) => L.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
-
-  // Special patterns on top of the iris
-  const irisRow = ny + (female ? 2 : 1);
-  if (sp === 'tomoe3' || sp === 'tomoe1' || sp === 'pinwheel') {
-    set(nx + 2, irisRow, '#14040a');
-    set(fx + 1, fy + (female ? 2 : 1), '#14040a');
-    if (sp !== 'tomoe1') set(nx + 2, irisRow + 1, '#14040a');
-    if (sp === 'pinwheel') set(nx + 1, irisRow + 1, '#14040a');
+  // Special eye patterns (pupil marks on the red iris, veins, sage pigment)
+  if (sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') {
+    set(nx + 2, ny + 1, '#14040a');
+    if (sp !== 'tomoe1') set(nx + 3, ny + 2, '#14040a');
+    if (sp === 'pinwheel') set(nx + 3, ny + 1, '#14040a');
+    set(nx + 9, ny + 1, '#14040a');
   }
   if (sp === 'paleVeins') {
     for (const [dx, dy] of [
       [-1, 1],
       [-2, 0],
-      [-1, -1],
       [5, 0],
+      [8, 1],
     ])
       set(nx + dx, ny + dy, sk[1]);
-    set(fx + 4, fy, sk[1]);
   }
   if (sp === 'sage') {
     for (let x = -1; x <= 4; x++) set(nx + x, ny - 1, '#c2410c');
-    for (let x = 0; x <= 3; x++) set(fx + x, fy - 1, '#c2410c');
-    set(nx + 1, irisRow, '#120c18');
-    set(nx + 2, irisRow, '#120c18');
+    for (let x = 9; x <= 12; x++) set(nx + x, ny - 1, '#c2410c');
+    set(nx + 2, ny + 2, '#120c18');
+    set(nx + 3, ny + 2, '#120c18');
   }
 
-  // Brows (hair-colored)
+  // Brows (hair-colored), two rows above the lash; most bangs cover them.
   const hairChoice = g.look.slots.hair;
   const br = makeRamp(hairChoice?.colors[0] || '#2a2230', 'hair');
-  const browTop = ny - 2;
   const sharp = shape === 'sharp';
-  for (let x = 0; x <= 3; x++) set(nx + x, browTop + (sharp ? (x >= 2 ? 1 : 0) : x === 0 ? 1 : 0), br[1]);
-  for (let x = 0; x <= 2; x++) set(fx + x, browTop + (sharp && x === 0 ? 1 : 0), br[1]);
-  // Warm cheek tones like a hand-shaded face: shadow by the hair, blush under the far eye
-  const [cx, cy] = F(-3.2, 2.6);
-  set(cx, cy, sk[2]);
-  set(cx, cy + 1, sk[2]);
-  set(fx + 1, fy + (female ? 4 : 3), mixHex(sk[2], '#d9606f', 0.22));
-
-  // Mouth (no drawn nose: at this size the face reads cleaner without it)
-  const mx = nx + 5;
-  const my = ny + (female ? 6 : 6);
-  set(mx, my, female ? '#b9506a' : sk[1]);
-  set(mx + 1, my, female ? '#d06a80' : sk[2]);
+  for (let x = 0; x <= 3; x++) set(nx + x, ny - 2 + (sharp && x >= 2 ? 1 : 0), br[1]);
+  for (let x = 9; x <= 11; x++) set(nx + x, ny - 2 + (sharp && x === 9 ? 1 : 0), br[1]);
 }

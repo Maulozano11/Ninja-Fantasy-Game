@@ -290,8 +290,8 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
 
 // Hand templates (fine pixels), drawn hanging down with the wrist at the top
 // and the thumb on the right; rotated to the forearm angle with RotSprite and
-// mirrored so the thumb faces forward. Compact, like the reference: a fist is
-// about 8 px across, fingers are 1 px wide with a dark crease between them.
+// mirrored so the thumb faces forward. Sized like the reference: a fist is
+// about 9-10 px across, fingers are 1 px wide with a dark crease between them.
 // o outline · D dark · x crease (near-black) · s shadow · b base · l light
 /**
  * Fist wrapped around a weapon handle that passes through it (the pommel
@@ -300,62 +300,62 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
  * creases between them, and rounded fingertips.
  */
 const HAND_GRIP: PixelTemplate = {
-  pivot: [4, 0],
+  pivot: [5, 0],
   rows: [
-    '..obbbo..',
-    '.osbbbbo.',
-    'osbbbbbso',
-    'olbbbbxlo',
-    'oDbbbbxbo',
-    'oxbxbxbDo',
-    'osbsbsbDo',
-    '.oDoDoDo.',
+    '..obbbbo..',
+    '.osbbbbbo.',
+    'osbbbbbbso',
+    'olbbbbbxlo',
+    'oDbbbbbxbo',
+    'obxbxbxbDo',
+    'osDsDsDsDo',
+    '.oDoDoDoo.',
   ],
 };
 /** Small closed fist with a rounded bottom. */
 const HAND_FIST: PixelTemplate = {
   pivot: [4, 0],
   rows: [
-    '..obbo..',
-    '.osbbbo.',
-    'osbblbso',
-    'olbbbbDo',
-    'oxbxbxDo',
-    'oDsDsDso',
-    '.oDoDoo.',
-    '..ooo...',
+    '..obbbo..',
+    '.osbbbbo.',
+    'osbbblbso',
+    'olbbbbbDo',
+    'obxbxbxDo',
+    'oDsDsDsso',
+    '.oDoDoDo.',
+    '..ooooo..',
   ],
 };
 /** Open palm, fingers spread (casting). */
 const HAND_OPEN: PixelTemplate = {
-  pivot: [4, 0],
+  pivot: [5, 0],
   rows: [
-    '..obbo....',
-    '.osbbbo...',
-    'osbbbbso..',
-    'olbbbbbsoo',
-    'olbbbbsDbo',
-    'osbbbsDobo',
-    'osDbDbDo..',
-    'obDbDbDo..',
-    'osDbDsDo..',
-    '.obobobo..',
-    '..o.o.o...',
+    '..obbbbo...',
+    '.osbbbbbo..',
+    'osbbbbbbso.',
+    'olbbbbbbbsoo',
+    'olbbbbbbsDbo',
+    'osbbbbbsDobo',
+    'osDbDbDbo...',
+    'obDbDbDbo...',
+    'osDbDbDso...',
+    '.obobobo....',
+    '..o.o.o.....',
   ],
 };
 /** Small relaxed hand, fingers loosely curled. */
 const HAND_RELAXED: PixelTemplate = {
-  pivot: [3, 0],
+  pivot: [4, 0],
   rows: [
-    '.obbo..',
-    'osbbbo.',
-    'osbbbso',
-    'olbbbbo',
-    'osbbbDo',
-    'obDbDDo',
-    'osbsbo.',
-    '.oDsDo.',
-    '..oo...',
+    '.obbbbo..',
+    'osbbbbbo.',
+    'osbbbbbso',
+    'olbbbbbbo',
+    'osbbbbbDo',
+    'obDbDbDDo',
+    'osbsbsbo.',
+    '.oDsDsDo.',
+    '..oo.oo..',
   ],
 };
 

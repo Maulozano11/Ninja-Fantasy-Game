@@ -1056,10 +1056,11 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
         const rimB = add(end, scale(n, rEnd));
         const mid = add(lerp(j.shoulder, end, 0.4), scale(n, R[0] + 1.2));
         tube(La, j.shoulder, end, R[0] + 0.8, rEnd, p, sh);
-        poly(La, [rimF, add(rimF, v(0, D * 0.55)), add(lerp(rimF, rimB, 0.75), v(0, D + 0.4)), add(rimB, v(0, D - 0.6)), mid], p, (x, y) => sh(x, y) - (y + 0.5 > end.y + 1.2 ? 1 : 0));
+        // (never below shade 2 before the side bias, so the far sleeve's underside stays cloth, not a black blob)
+        poly(La, [rimF, add(rimF, v(0, D * 0.55)), add(lerp(rimF, rimB, 0.75), v(0, D + 0.4)), add(rimB, v(0, D - 0.6)), mid], p, (x, y) => Math.max(2, sh(x, y) - (y + 0.5 > end.y + 1.2 ? 1 : 0)));
         ellipse(La, j.shoulder.x, j.shoulder.y, R[0] + 0.8, R[0] + 0.8, p, capShade(j.shoulder, R[0] + 0.8));
         // dark inside of the open cuff
-        const inner = clothPen(g, c, prt('forearm', s), sb(s) - 1);
+        const inner = clothPen(g, c, prt('forearm', s), 0);
         tube(La, add(end, scale(dir, -0.7)), end, rEnd - 0.9, rEnd - 0.7, inner, 1);
         // long folds down the sleeve and into the hanging corner
         fold(La, add(lerp(j.shoulder, end, 0.35), scale(n, R[0] * 0.4)), add(lerp(j.shoulder, end, 0.92), scale(n, rEnd * 0.6)), 2);
@@ -1295,7 +1296,8 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
         const pen = clothPen(g, c, prt('thigh', s), sb(s));
         limb(g, L, 'leg', s, 0, 1.9, 1.2, pen, { round0: true, light: legLight(s) });
         // each leg is its own wide panel, falling nearly straight from the hip, with deep knife pleats
-        const pts = widePanel(g, L, s, b.legR[0] + 0.4, b.legR[0] + 1.5, 1.95, pen, s === 'F' ? 0.14 : 0.04);
+        // (hem only a little wider than the hip, so the two legs read as separate columns)
+        const pts = widePanel(g, L, s, b.legR[0] + 0.3, b.legR[0] + 0.8, 1.95, pen, s === 'F' ? 0.14 : 0.04);
         for (const k of [0.22, 0.5, 0.78]) fold(L, lerp(pts[0], pts[1], k), lerp(pts[3], pts[2], k - 0.03), 2, 4);
         // the hem: a lit turn above the bottom edge
         mark(L, add(pts[3], v(0.6, -1.0)), add(pts[2], v(-0.6, -1.0)), (s2) => Math.min(4, s2 + 1));
@@ -1698,21 +1700,22 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
     slot: 'hands',
     name: 'Steel Gauntlets',
     desc: 'Plated steel gauntlets with flared cuffs, strap and articulated knuckles.',
-    colors: [col('main', 'Steel', '#a9b3bf', 'metal'), col('under', 'Strap', '#3b2a22', 'leather')],
+    colors: [col('main', 'Steel', '#8e98a6', 'metal'), col('under', 'Strap', '#3b2a22', 'leather')],
     draw: (g, [c, u]) => {
       for (const s of SIDES) {
         const L = g.L(armDepth(s, 'armor'));
         const mp = clothPen(g, c, prt('forearm', s), sb(s), 'metal');
         // flared cuff at the elbow end, then lames down to the wrist
-        limb(g, L, 'arm', s, 1.12, 1.4, [1.6, 1.0], mp);
-        limb(g, L, 'arm', s, 1.4, 1.97, [0.9, 0.85], mp);
-        across(g, L, 'arm', s, 1.4, 1.0, -1);
-        across(g, L, 'arm', s, 1.68, 0.9, -1);
+        // (hugs the forearm: the arm itself is already full, like the reference)
+        limb(g, L, 'arm', s, 1.12, 1.4, [0.95, 0.6], mp);
+        limb(g, L, 'arm', s, 1.4, 1.97, [0.5, 0.42], mp);
+        across(g, L, 'arm', s, 1.4, 0.6, -1);
+        across(g, L, 'arm', s, 1.68, 0.5, -1);
         const a = armPoint(g, s, 1.18);
         const bb = armPoint(g, s, 1.92);
         seam(L, along(a, bb, 0, -limbR(g, 'arm', 1.2) * 0.4), along(a, bb, 1, -limbR(g, 'arm', 1.9) * 0.4), 2);
         // leather strap
-        limb(g, L, 'arm', s, 1.52, 1.6, 1.0, clothPen(g, u, prt('forearm', s), sb(s), 'leather'));
+        limb(g, L, 'arm', s, 1.52, 1.6, 0.6, clothPen(g, u, prt('forearm', s), sb(s), 'leather'));
         stud(L, along(armPoint(g, s, 1.52), armPoint(g, s, 1.6), 0.5, -0.2), mp.mat, prt('forearm', s), s === 'N');
         // plated hand with knuckle ridge
         glove(g, s, clothPen(g, c, prt('hand', s), sb(s), 'metal'), 0.25, false);

@@ -5,7 +5,8 @@
 import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit } from '../../battle/types';
 import type { SpritePose } from '../../sprite/types';
 import { JUTSU } from '../../battle/jutsu';
-import type { VfxElement } from '../../battle/jutsu';
+import type { VfxElement, VfxRole } from '../../battle/jutsu';
+import { signatureMs } from './vfxSprites';
 import { dist } from '../../battle/map';
 
 export interface UnitView {
@@ -32,6 +33,8 @@ export interface UnitView {
   fade?: { t0: number; dur: number };
   hurtUntil: number;
   severed?: boolean;
+  /** A creature's own animation (the hydra's bite, spit, roar, hurt, sever, regrow, death). */
+  creature?: { anim: string; t0: number };
 }
 
 export interface Floater {
@@ -58,6 +61,8 @@ export interface Fx {
   radius?: number;
   enhanced?: boolean;
   sig?: string;
+  /** The effect sheet to use (bolt, beast, sphere, slash…). */
+  role?: VfxRole;
   /** Height above the ground (px) at the start and end (casting hands, a head). */
   lift?: [number, number];
 }
@@ -124,6 +129,7 @@ export class Playback {
         crouched: !!u.cond.crouched,
         hurtUntil: 0,
         severed: !!u.head?.severed,
+        creature: v?.creature,
         fade: u.down === 'fled' ? v?.fade ?? { t0: now - 1000, dur: 1 } : undefined,
       };
       this.views.set(u.id, next);
@@ -288,6 +294,12 @@ export class Playback {
         if (!a) return 0;
         const from = this.posOf(ev.unit, now);
         if (Math.abs(to.x - from.x) > 0.05) a.facing = to.x > from.x ? 1 : -1;
+        if (state.units[ev.unit]?.kind === 'hydra_head') {
+          a.creature = { anim: 'bite', t0: now };
+          if (!ev.roll.success) this.float(label ?? 'Miss', '#cbd5e1', to, now + 300);
+          h.sound(ev.roll.success ? 'hit' : 'miss');
+          return 520;
+        }
         const jutsu = JUTSU[ev.what];
         if (jutsu) {
           // A jutsu that needs an attack roll: the effect is played by the jutsu event.
@@ -319,13 +331,17 @@ export class Playback {
         const caster = state.units[ev.unit];
         const head = caster?.kind === 'hydra_head';
         if (!head) this.setPose(a, spec?.melee ? 'attack' : 'cast', now, 900);
+        else {
+          a.creature = { anim: ev.jutsu === 'hydra_roar' ? 'roar' : 'spit', t0: now };
+          if (ev.jutsu === 'hydra_roar') h.sound('roar');
+        }
         const el: VfxElement = spec?.element ?? 'chakra';
         const castDelay = head ? 150 : 420;
         const fly = Math.max(180, dist(from, ev.at) * 45);
         h.sound('jutsu', el);
         if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
         const t1 = now + castDelay / this.speed;
-        const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig };
+        const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig, role: spec?.vfx };
         switch (spec?.special) {
           case 'heal':
             this.fx.push({ ...base, kind: 'heal', from: ev.at, to: ev.at, dur: 900 });
@@ -343,8 +359,11 @@ export class Playback {
             return castDelay + 600;
         }
         if (ev.shape?.kind === 'cone') {
-          this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, dur: 900, lift: [head ? 120 : 70, 30] });
-          return castDelay + 650;
+          // A signature cone (the Great Fire Annihilation) plays its whole surge, burn and fade.
+          const long = signatureMs(el, spec?.sig, ev.enhanced);
+          this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, dur: long ?? 900, lift: [head ? 120 : 70, 30] });
+          if (long) h.shake(ev.enhanced ? 7 : 5);
+          return castDelay + (long ? long * 0.75 : 650);
         }
         if (ev.shape?.kind === 'line') {
           this.fx.push({ ...base, kind: 'line', from, to: ev.at, area: ev.shape, dur: 750, lift: [head ? 120 : 70, 50] });
@@ -356,7 +375,7 @@ export class Playback {
         }
         this.fx.push({ ...base, kind: 'projectile', from, to: ev.at, dur: fly, lift: [head ? 120 : 70, ev.shape ? 30 : 60] });
         if (ev.shape?.kind === 'circle') {
-          this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: 800 });
+          this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: spec?.sig ? 1000 : 800 });
           h.shake(ev.enhanced ? 5 : 3);
         } else this.fx.push({ ...base, kind: 'burst', from: ev.at, to: ev.at, t0: t1 + fly / this.speed, dur: 500, lift: [60, 60] });
         return castDelay + fly + 250;
@@ -376,6 +395,8 @@ export class Playback {
         v.hp = ev.hp;
         v.hurtUntil = now + 260 / this.speed;
         if (!v.walk && !v.down) this.setPose(v, 'hurt', now, 300);
+        const hit = state.units[ev.unit];
+        if (hit && (hit.kind === 'hydra_head' || hit.kind === 'hydra_body') && !v.severed && ev.hp > 0) v.creature = { anim: 'hurt', t0: now };
         const at = this.posOf(ev.unit, now);
         this.float(`${ev.amount}`, ev.crit ? '#fde047' : '#f87171', at, now, { big: ev.crit, dur: 1200 });
         h.sound(ev.crit ? 'crit' : 'hit');
@@ -406,7 +427,16 @@ export class Playback {
         if (!v) return 0;
         v.down = ev.state;
         const u = state.units[ev.unit];
-        if (u?.kind === 'hydra_head' || u?.kind === 'hydra_body') return 300;
+        if (u?.kind === 'hydra_body') {
+          v.creature = { anim: 'death', t0: now };
+          h.sound('roar');
+          h.shake(6);
+          return 900;
+        }
+        if (u?.kind === 'hydra_head') {
+          if (!v.severed) v.creature = { anim: 'sever', t0: now };
+          return 120;
+        }
         if (ev.state === 'stable') return 0;
         this.setPose(v, 'downed', now);
         v.walk = undefined;
@@ -502,7 +532,10 @@ export class Playback {
         return 250;
       case 'sever': {
         const v = this.view(ev.unit);
-        if (v) v.severed = true;
+        if (v) {
+          v.severed = true;
+          v.creature = { anim: 'sever', t0: now };
+        }
         if (label) this.float(label, '#fca5a5', this.posOf(ev.unit, now), now, { rise: 150, big: true });
         h.sound('roar');
         h.shake(4);
@@ -519,6 +552,7 @@ export class Playback {
         if (v) {
           v.severed = false;
           v.hp = state.units[ev.unit]?.maxHp ?? v.hp;
+          v.creature = { anim: 'regrow', t0: now };
         }
         if (label) this.float(label, '#4ade80', this.posOf(ev.unit, now), now, { rise: 150, big: true });
         h.sound('roar');

@@ -10,6 +10,7 @@ import { worldSprite } from '../world/WorldSpriteView';
 import type { MapArt } from './mapArt';
 import type { Fx, Playback } from './playback';
 import { FEET, fpsOf, framesOf, lookOf, STRIDE, unitFrame } from './unitArt';
+import { drawVfxSprite } from './vfxSprites';
 
 export interface Camera {
   /** World pixel at the screen's top-left. */
@@ -123,7 +124,7 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   items.sort((a, b) => a.z - b.z);
   for (const it of items) it.draw();
 
-  for (const fx of sc.pb.fx) drawFx(ctx, sc, fx);
+  for (const fx of sc.pb.fx) if (!drawVfxSprite(ctx, sc, fx)) drawFx(ctx, sc, fx);
 
   if (state.time === 'night') drawNight(ctx, sc, all);
   if (state.weather === 'Downpour') drawRain(ctx, sc);
@@ -463,8 +464,117 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   }
 }
 
-/** The hydra until its sprites are approved: a body in the water and seven necks with heads. */
+// --- the hydra ------------------------------------------------------------------------------
+
+interface HydraRig {
+  body: string;
+  stump: string;
+  heads: { sprite: string; attach: [number, number]; layer: 'back' | 'front'; head: [number, number]; mouth: [number, number] }[];
+  /** How far the neck roots move with each body frame, per body animation. */
+  follow?: Record<string, [number, number][]>;
+}
+
+const HYDRA_RIG = Object.values(import.meta.glob('../../assets/world/creatures/hydra.json', { eager: true, import: 'default' }) as Record<string, HydraRig>)[0];
+
+/** One-shot creature animations end; the rest loop. */
+function creatureFrame(s: NonNullable<ReturnType<typeof worldSprite>>, anim: string, ms: number, phase = 0): { frame: number; done: boolean } {
+  const a = s.spec.anims[anim];
+  if (!a) return { frame: 0, done: true };
+  const n = Math.floor((ms / 1000) * a.fps) + phase;
+  if (a.loop) return { frame: ((n % a.frames) + a.frames) % a.frames, done: false };
+  return { frame: Math.min(n, a.frames - 1), done: n >= a.frames };
+}
+
+function blitSprite(ctx: CanvasRenderingContext2D, s: NonNullable<ReturnType<typeof worldSprite>>, anim: string, frame: number, x: number, y: number, mirror: boolean): void {
+  const a = s.spec.anims[anim];
+  if (!a) return;
+  const [ax, ay] = s.spec.anchor;
+  ctx.save();
+  if (mirror) {
+    ctx.translate(Math.round(x), 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(s.img, frame * s.spec.frameW, a.row * s.spec.frameH, s.spec.frameW, s.spec.frameH, -ax, Math.round(y - ay), s.spec.frameW, s.spec.frameH);
+  } else ctx.drawImage(s.img, frame * s.spec.frameW, a.row * s.spec.frameH, s.spec.frameW, s.spec.frameH, Math.round(x - ax), Math.round(y - ay), s.spec.frameW, s.spec.frameH);
+  ctx.restore();
+}
+
+/** Where a hydra's head is drawn (map pixels), for its health bar and for picking. */
+export function hydraHeadPx(sc: { state: BattleState; map: MapDef }, head: Unit): { X: number; Y: number } | null {
+  if (!HYDRA_RIG || !head.head) return null;
+  const body = sc.state.units[head.head.body];
+  const r = HYDRA_RIG.heads[head.head.index];
+  if (!body || !r) return null;
+  const b = project(sc.map, body.pos, 0);
+  const sx = body.facing < 0 ? -1 : 1;
+  return { X: b.X + sx * (r.attach[0] + r.head[0]), Y: b.Y + r.attach[1] + r.head[1] };
+}
+
+/** The hydra from its sprites: back necks, the body, front necks, stumps under cut necks. */
+function drawHydraSprites(ctx: CanvasRenderingContext2D, sc: Scene, body: Unit): boolean {
+  const rig = HYDRA_RIG;
+  if (!rig) return false;
+  const bodyS = worldSprite('creatures', rig.body);
+  const stumpS = worldSprite('creatures', rig.stump);
+  if (!bodyS || !stumpS || !bodyS.img.complete || !bodyS.img.naturalWidth) return false;
+  const { now, state, map } = sc;
+  const b = project(map, body.pos, 0);
+  const mirror = body.facing < 0;
+  const sx = mirror ? -1 : 1;
+  const bv = sc.pb.views.get(body.id);
+  let bodyAnim = 'idle';
+  let bodyMs = now;
+  if (bv?.creature && (bv.creature.anim === 'death' || now - bv.creature.t0 < 600)) {
+    bodyAnim = bv.creature.anim;
+    bodyMs = now - bv.creature.t0;
+  }
+  if (body.down === 'dead' && bodyAnim !== 'death') {
+    bodyAnim = 'death';
+    bodyMs = 1e6;
+  }
+  const bf = creatureFrame(bodyS, bodyAnim, bodyMs);
+  if (bf.done && bodyAnim === 'hurt') bodyAnim = 'idle';
+  const follow = rig.follow?.[bodyAnim]?.[bf.frame] ?? [0, 0];
+  const heads = Object.values(state.units)
+    .filter((u) => u.head?.body === body.id)
+    .sort((a, c) => a.head!.index - c.head!.index);
+  const drawNeck = (h: Unit) => {
+    const r = rig.heads[h.head!.index];
+    const s = r && worldSprite('creatures', r.sprite);
+    if (!r || !s || !s.img.complete) return;
+    const v = sc.pb.views.get(h.id);
+    const x = b.X + sx * (r.attach[0] + follow[0]);
+    const y = b.Y + r.attach[1] + follow[1];
+    const severed = v?.severed ?? h.head!.severed;
+    const c = v?.creature;
+    const ms = c ? (now - c.t0) * sc.pb.speed : 0;
+    let anim: string | null = severed ? null : 'idle';
+    let frame = 0;
+    if (c) {
+      const f = creatureFrame(s, c.anim, ms, c.anim === 'sever' && body.down === 'dead' ? 1 : 0);
+      if (!f.done) {
+        anim = c.anim;
+        frame = f.frame;
+      }
+    }
+    // A cut neck shows its stump (raw, or burnt once sealed); regrowing grows out of it.
+    if (severed || anim === 'sever' || anim === 'regrow') {
+      const st = creatureFrame(stumpS, h.head!.sealed ? 'burnt' : 'raw', now);
+      blitSprite(ctx, stumpS, h.head!.sealed ? 'burnt' : 'raw', st.frame, x, y, mirror);
+    }
+    if (body.down === 'dead' && anim === 'idle') anim = null;
+    if (!anim) return;
+    if (anim === 'idle') frame = creatureFrame(s, 'idle', now, h.head!.index * 3).frame;
+    blitSprite(ctx, s, anim, frame, x, y, mirror);
+  };
+  for (const h of heads) if (rig.heads[h.head!.index]?.layer === 'back') drawNeck(h);
+  blitSprite(ctx, bodyS, bodyAnim, bf.frame, b.X, b.Y, mirror);
+  for (const h of heads) if (rig.heads[h.head!.index]?.layer === 'front') drawNeck(h);
+  return true;
+}
+
+/** The hydra until its sprites are in the game: a body in the water and seven necks with heads. */
 function drawHydra(ctx: CanvasRenderingContext2D, sc: Scene, body: Unit): void {
+  if (drawHydraSprites(ctx, sc, body)) return;
   const { map, now, state } = sc;
   const b = project(map, body.pos, 0);
   const dead = body.down === 'dead';
@@ -893,8 +1003,9 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
     let top: { X: number; Y: number };
     if (u.kind === 'hydra_head') {
       if (v.severed) continue;
+      const px = hydraHeadPx(sc, u);
       const hp = project(map, pos, 0);
-      top = { X: hp.X, Y: hp.Y - 180 };
+      top = px ? { X: px.X, Y: px.Y - 34 } : { X: hp.X, Y: hp.Y - 180 };
     } else if (u.kind === 'hydra_body') {
       const hp = project(map, pos, 0);
       top = { X: hp.X, Y: hp.Y - 110 };
@@ -999,9 +1110,11 @@ export function pickUnit(sc: { state: BattleState; pb: Playback; map: MapDef; no
     let hit: boolean;
     if (u.kind === 'hydra_head') {
       if (v.severed && u.head?.sealed) continue;
+      const px = hydraHeadPx(sc, u);
       const p = project(sc.map, pos, 0);
-      const hy = v.severed ? p.Y - 80 : p.Y - 150;
-      hit = Math.abs(X - p.X) < 26 && Math.abs(Y - hy) < 24;
+      const hx = px ? px.X : p.X;
+      const hy = px ? (v.severed ? px.Y + 60 : px.Y) : v.severed ? p.Y - 80 : p.Y - 150;
+      hit = Math.abs(X - hx) < 28 && Math.abs(Y - hy) < 26;
     } else {
       const p = project(sc.map, pos);
       const downed = v.pose === 'downed';

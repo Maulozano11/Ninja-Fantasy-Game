@@ -72,26 +72,27 @@ function runes(g: DrawCtx, hex: string): void {
  * bottom of the spine, where the fingers hold it.
  */
 const GRIMOIRE: PixelTemplate = {
-  pivot: [10, 17],
+  pivot: [12, 17],
   rows: [
-    '.qp........PPPPPPPPPPPPP.',
-    '.ppqp......PPPPPPPPPPppq.',
-    '..qppqp...PPPPPPPPpppqqq.',
-    '..okqppqp.PPPPPpppPPoooo.',
-    '...kkkqppqPPpppPPooocccC.',
-    '...okkkpqoPpPooooccccccC.',
-    '....kkkkkooooccccccccccC.',
-    '....kkkkkocccccccccccccC.',
-    '....okkkkocccccccccccccC.',
-    '.....kkkkocccccccccccccC.',
-    '.....kkkkokccccccccccccC.',
-    '.....okkkokccccccccccccC.',
-    '......kkkkoccccccccccccC.',
-    '......kkkkoccccccccccccC.',
-    '......okkkoccccccccccccC.',
-    '.......kkkocccccccckkkkk.',
-    '.......ookockkkkkkkk.....',
-    '.........ookk............',
+    '.p............PPPPPPPPPPPPPpp..',
+    '.ppq..........PPPPPPPPPPPPPppp.',
+    '..ppqp.......PPPPPPPPPPPPPPqqq.',
+    '..qppqpp.....PPPPPPPPPPppppppp.',
+    '...kppqppq..PPPPPPPppppPPPPooo.',
+    '...okmpqppqpPPPppppPPPPoooodgg.',
+    '....kmkkqppqpppPPPPoooodddddGg.',
+    '....kmkkkkppPPPoooooCdddbbbbdC.',
+    '....okmkkkkkooooCdddddbbbccbdC.',
+    '.....kmkkkkkoCddddbbbbbccccbdC.',
+    '.....okmkkkkoCdbbbbccccccccbdC.',
+    '......kmkkkkoCdbcccccccccccbdC.',
+    '......okmkkkobdbcccccccccccbdC.',
+    '.......kmkkkoCdbcccccccccccbdC.',
+    '.......kmkkkoCdbcccccbbbbbbbdg.',
+    '.......okmkkobdbbbbbbbddddddGg.',
+    '........kmkkoCddddddddooooooog.',
+    '........ooko.oddoooooo.........',
+    '...........o.oooo..............',
   ],
 };
 
@@ -120,14 +121,20 @@ function grimoire(g: DrawCtx, hex: string): void {
   const cover = g.m(mixHex(hex, '#141018', 0.72), 'leather');
   const paper = g.m(mixHex('#f4ecd4', hex, 0.15), 'cloth');
   const glow = g.m(hex, 'glow');
+  const metal = g.m('#d4a531', 'metal');
   const pal: TemplatePalette = {
     o: [cover, 0],
     k: [cover, 1],
+    d: [cover, 1],
+    m: [cover, 2],
     c: [cover, 2],
     C: [cover, 3],
+    b: [cover, 4],
     q: [paper, 3],
     p: [paper, 4],
     P: [paper, 5],
+    g: [metal, 4],
+    G: [metal, 2],
   };
   // the fingers curl over the bottom of the spine
   const at = add(j.wrist, v(-0.5, -2));
@@ -136,24 +143,41 @@ function grimoire(g: DrawCtx, hex: string): void {
   const oy = fine(at.y) - GRIMOIRE.pivot[1];
   const nature = CHAKRA_CHOICES.find((c) => c.id === g.look.chakra.color)?.nature ?? 'Water';
   (EMBLEMS[nature] ?? EMBLEMS.Water).forEach((row, r) =>
-    [...row].forEach((ch, c) => ch !== '.' && L.set(ox + 14 + c, oy + 6 + r, glow, ch === 'E' ? 5 : 3, 'held', F_NO_OUTLINE)),
+    [...row].forEach((ch, c) => ch !== '.' && L.set(ox + 18 + c, oy + 8 + r, glow, ch === 'E' ? 5 : 3, 'held', F_NO_OUTLINE)),
   );
-  // a glowing rim instead of the dark outline
+  // a glowing rim instead of the dark outline, and a softer halo around it
   const H = GRIMOIRE.rows.length;
   const W = GRIMOIRE.rows[0].length;
-  const ring: [number, number][] = [];
-  for (let y = oy - 1; y <= oy + H; y++) {
-    for (let x = ox - 1; x <= ox + W; x++) {
-      if (L.has(x, y)) continue;
-      if (L.has(x + 1, y) || L.has(x - 1, y) || L.has(x, y + 1) || L.has(x, y - 1)) ring.push([x, y]);
+  const ring = (inside: (x: number, y: number) => boolean) => {
+    const out: [number, number][] = [];
+    for (let y = oy - 2; y <= oy + H + 1; y++) {
+      for (let x = ox - 2; x <= ox + W + 1; x++) {
+        if (inside(x, y)) continue;
+        if (inside(x + 1, y) || inside(x - 1, y) || inside(x, y + 1) || inside(x, y - 1)) out.push([x, y]);
+      }
     }
-  }
-  for (const [x, y] of ring) L.set(x, y, glow, y < oy + 3 ? 4 : 3, 'held', F_NO_OUTLINE);
-  // sparks rising off the pages
+    return out;
+  };
+  const rim = ring((x, y) => L.has(x, y));
+  for (const [x, y] of rim) L.set(x, y, glow, y < oy + 4 ? 4 : 3, 'held', F_NO_OUTLINE);
   const T = g.L('top');
   const f = g.rig.frame % 2;
-  const sparks = f ? [[3, -3], [11, -5], [19, -3], [7, -7], [22, -6]] : [[5, -4], [14, -3], [21, -5], [9, -6], [1, -2]];
-  for (const [dx, dy] of sparks) T.set(ox + dx, oy + dy, glow, (dx + dy) % 2 ? 5 : 4, 'held', F_NO_OUTLINE);
+  for (const [x, y] of ring((x, y) => L.has(x, y))) if (!T.has(x, y)) T.set(x, y, glow, 1, 'held', F_NO_OUTLINE);
+  // a ribbon marker hanging from the foot of the spine
+  for (let k = 0; k < 6; k++) {
+    const x = ox + 14 + Math.round(k * 0.35) + (k > 3 ? f : 0);
+    const y = oy + 18 + k;
+    L.set(x, y, glow, k < 2 ? 2 : 3, 'held', 0);
+    L.set(x + 1, y, glow, k < 2 ? 1 : 2, 'held', 0);
+  }
+  // sparks rising off the pages: small crosses and single motes
+  const sparks = f
+    ? [[3, -3, 1], [11, -6, 0], [19, -3, 1], [7, -9, 0], [24, -7, 0], [15, -11, 1], [28, -2, 0]]
+    : [[5, -5, 0], [14, -3, 1], [22, -5, 0], [9, -8, 1], [26, -9, 0], [17, -12, 0], [1, -2, 0]];
+  for (const [dx, dy, big] of sparks) {
+    T.set(ox + dx, oy + dy, glow, 5, 'held', F_NO_OUTLINE);
+    if (big) for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) T.set(ox + dx + ax, oy + dy + ay, glow, 3, 'held', F_NO_OUTLINE);
+  }
   liftHand(g, L);
 }
 
@@ -229,47 +253,9 @@ function fxPainter(g: DrawCtx, hex: string, part: PartId = 'handF'): (x: number,
   };
 }
 
-/** Wind: the whirl around the fingertip, turning half a turn each frame. */
-function windWhirl(g: DrawCtx, hex: string): void {
-  const { tip } = fingertip(g);
-  const put = fxPainter(g, hex);
-  const flip = g.rig.frame % 2 === 1;
-  const tx = fine(tip.x);
-  const ty = fine(tip.y);
-  WHIRL.rows.forEach((row, r) => {
-    for (let c = 0; c < row.length; c++) {
-      if (row[c] === '.') continue;
-      let dx = c - WHIRL.pivot[0];
-      let dy = r - WHIRL.pivot[1];
-      if (flip) [dx, dy] = [-dx, -dy];
-      put(tx + dx, ty + dy, row[c] === 'E' ? 4 : 3);
-    }
-  });
-}
-
-/** Fire: a flame rising off the fingertip, swaying each frame, with loose tongues above it. */
-function fireOrb(g: DrawCtx, hex: string): void {
-  const { tip, dir } = fingertip(g);
-  const put = fxPainter(g, hex);
-  const f = g.rig.frame % 2;
-  const cx = fine(tip.x + dir.x * 3);
-  const cy = fine(tip.y + dir.y * 3);
-  const R = 6;
-  for (let y = cy - R * 3; y <= cy + R; y++) {
-    for (let x = cx - R - 2; x <= cx + R + 2; x++) {
-      const up = cy - y;
-      const w = up <= 0 ? Math.sqrt(Math.max(0, R * R - up * up)) : R * Math.max(0, 1 - up / (R * 3)) ** 0.8;
-      const sway = Math.sin(up * 0.55 + f * 2.2) * 1.2 * Math.min(1, Math.max(0, up) / R);
-      const dx = x + 0.5 - cx - sway;
-      if (Math.abs(dx) > w) continue;
-      const k = Math.hypot(dx / Math.max(1, w), (y + 0.5 - (cy + R * 0.25)) / (R * 1.8));
-      put(x, y, k < 0.4 ? 5 : k < 0.75 ? 4 : 3);
-    }
-  }
-  for (const [dx, dy] of f ? [[-3, -R * 3 - 2], [2, -R * 3 - 4]] : [[2, -R * 3 - 2], [-2, -R * 3 - 5]]) {
-    put(cx + dx, cy + dy, 4);
-    put(cx + dx, cy + dy - 1, 3);
-  }
+/** Hue-shifted glow materials for an effect: a hot (pale, warm) core, the color itself, a deep shade. */
+function fxMats(g: DrawCtx, hex: string, hot = '#fff6c8'): { glow: number; hot: number; deep: number } {
+  return { glow: g.m(hex, 'glow'), hot: g.m(mixHex(hex, hot, 0.72), 'glow'), deep: g.m(mixHex(hex, '#08060c', 0.5), 'glow') };
 }
 
 /** Integer line in fine pixels. */
@@ -278,10 +264,89 @@ function finePath(x0: number, y0: number, x1: number, y1: number, fn: (x: number
   for (let i = 0; i <= n; i++) fn(Math.round(x0 + ((x1 - x0) * i) / n), Math.round(y0 + ((y1 - y0) * i) / n));
 }
 
-/** Lightning: a bright spark at the fingertip and many jagged bolts crackling out all around the hand. */
+/** A lit sphere in fine pixels (light from the upper left and the front); `ramp` maps light -1..1 to a call. */
+function sphere(cx: number, cy: number, R: number, paint: (x: number, y: number, d: number, nx: number, ny: number) => void): void {
+  for (let y = Math.floor(cy - R); y <= Math.ceil(cy + R); y++)
+    for (let x = Math.floor(cx - R); x <= Math.ceil(cx + R); x++) {
+      const nx = (x + 0.5 - cx) / R;
+      const ny = (y + 0.5 - cy) / R;
+      const r2 = nx * nx + ny * ny;
+      if (r2 > 1) continue;
+      paint(x, y, -0.5 * nx - 0.6 * ny + 0.62 * Math.sqrt(1 - r2), nx, ny);
+    }
+}
+
+/** Wind: the whirl around the fingertip turning half a turn each frame, a bright eye at its center and leaves caught in it. */
+function windWhirl(g: DrawCtx, hex: string): void {
+  const { tip } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const m = fxMats(g, hex, '#f4ffe0');
+  const leaf = g.m(mixHex(hex, '#d8ffb0', 0.45), 'cloth');
+  const f = g.rig.frame % 2;
+  const flip = f === 1;
+  const tx = fine(tip.x);
+  const ty = fine(tip.y);
+  WHIRL.rows.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) {
+      if (row[c] === '.') continue;
+      let dx = c - WHIRL.pivot[0];
+      let dy = r - WHIRL.pivot[1];
+      if (flip) [dx, dy] = [-dx, -dy];
+      // the arcs fade from bright on their inner edge to the color outside
+      const d = Math.hypot(dx, dy);
+      put(tx + dx, ty + dy, row[c] === 'E' ? (d < 6 ? 5 : 4) : 3, row[c] === 'E' && d < 6 ? m.hot : m.glow);
+    }
+  });
+  sphere(tx + 3.5, ty, 2.2, (x, y, d) => put(x, y, d > 0.5 ? 5 : 4, m.hot));
+  // three leaves riding the whirl: a pointed oval with a dark vein
+  const leaves = f ? [[-9, -9, 1], [10, -6, 0], [6, 11, 1]] : [[9, -10, 0], [-8, 8, 1], [12, 5, 1]];
+  for (const [dx, dy, tilt] of leaves) {
+    const cells = tilt ? [[0, 0], [1, 0], [1, -1], [2, -1], [0, 1]] : [[0, 0], [1, 0], [-1, 0], [0, -1], [1, 1]];
+    cells.forEach(([ax, ay], i) => put(tx + dx + ax, ty + dy + ay, i === 0 ? 2 : 4, leaf));
+  }
+}
+
+/** Fire: a three-tone flame (white-gold heart, orange body, the color at its edges) with side tongues and rising embers. */
+function fireOrb(g: DrawCtx, hex: string): void {
+  const { tip, dir } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const m = fxMats(g, hex, '#ffe9a0');
+  const mid = g.m(mixHex(hex, '#ff9a20', 0.5), 'glow');
+  const f = g.rig.frame % 2;
+  const cx = fine(tip.x + dir.x * 3);
+  const cy = fine(tip.y + dir.y * 3);
+  const flame = (bx: number, by: number, R: number, tall: number, phase: number, layer: number) => {
+    for (let y = by - Math.ceil(R * tall); y <= by + R; y++) {
+      for (let x = bx - R - 2; x <= bx + R + 2; x++) {
+        const up = by - y;
+        const w = up <= 0 ? Math.sqrt(Math.max(0, R * R - up * up)) : R * Math.max(0, 1 - up / (R * tall)) ** 0.8;
+        const sway = Math.sin(up * 0.55 + phase) * 1.2 * Math.min(1, Math.max(0, up) / R);
+        const dx = x + 0.5 - bx - sway;
+        if (Math.abs(dx) > w) continue;
+        const k = Math.hypot(dx / Math.max(1, w), (y + 0.5 - (by + R * 0.25)) / (R * 1.9));
+        if (layer === 0) put(x, y, dx > w - 1.2 ? 2 : 3, m.glow); // side tongues stay in the outer color
+        else if (k < 0.3) put(x, y, 5, m.hot);
+        else if (k < 0.52) put(x, y, 4, m.hot);
+        else if (k < 0.74) put(x, y, 4, mid);
+        else put(x, y, dx > 0 && k > 0.88 ? 2 : 3, m.glow);
+      }
+    }
+  };
+  flame(cx - 4, cy + 2, 3, 2.4, 1 + f * 2.4, 0);
+  flame(cx + 4, cy + 2, 3, 2.1, 2 + f * 1.8, 0);
+  flame(cx, cy, 6, 3, f * 2.2, 1);
+  const embers = f ? [[-3, -21, 5], [3, -24, 4], [6, -17, 4], [-6, -15, 3]] : [[2, -21, 5], [-2, -25, 4], [-6, -18, 4], [7, -14, 3]];
+  for (const [dx, dy, sh] of embers) {
+    put(cx + dx, cy + dy, sh, m.hot);
+    put(cx + dx, cy + dy + 1, 2, m.glow);
+  }
+}
+
+/** Lightning: a bright core at the fingertip and many forked bolts crackling out all around the hand, sparks at their ends. */
 function boltOrb(g: DrawCtx, hex: string): void {
   const { tip, dir } = fingertip(g);
   const put = fxPainter(g, hex);
+  const m = fxMats(g, hex, '#ffffff');
   const f = g.rig.frame % 2;
   const cx = fine(tip.x);
   const cy = fine(tip.y);
@@ -291,174 +356,227 @@ function boltOrb(g: DrawCtx, hex: string): void {
     seed = (seed * 9301 + 49297) % 233280;
     return seed / 233280;
   };
-  for (let k = 0; k < 9; k++) {
-    const a = (k / 9) * Math.PI * 2 + f * 0.35;
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * Math.PI * 2 + f * 0.31;
     const off = Math.abs(((a - back + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
     if (off < 0.55) continue; // not back along the arm
-    const len = 8 + rnd() * 6;
-    let px0 = cx + Math.round(Math.cos(a) * 3);
-    let py0 = cy + Math.round(Math.sin(a) * 3);
-    const steps = 3;
-    for (let s = 1; s <= steps; s++) {
-      const r = 3 + (len * s) / steps;
+    const len = 9 + rnd() * 7;
+    let x0 = cx + Math.round(Math.cos(a) * 3);
+    let y0 = cy + Math.round(Math.sin(a) * 3);
+    const steps = 4;
+    for (let st = 1; st <= steps; st++) {
+      const r = 3 + (len * st) / steps;
       const j = (rnd() - 0.5) * 5;
       const x1 = Math.round(cx + Math.cos(a) * r - Math.sin(a) * j);
       const y1 = Math.round(cy + Math.sin(a) * r + Math.cos(a) * j);
-      finePath(px0, py0, x1, y1, (x, y) => put(x, y, s === steps ? 4 : 5));
-      if (s === 2 && rnd() > 0.5) {
-        const bx = Math.round(x1 + Math.cos(a + 0.9) * 3);
-        const by = Math.round(y1 + Math.sin(a + 0.9) * 3);
-        finePath(x1, y1, bx, by, (x, y) => put(x, y, 3));
+      // thick and white near the core, thinning into the color
+      finePath(x0, y0, x1, y1, (x, y) => {
+        put(x, y, st < 3 ? 5 : 4, st < 3 ? m.hot : m.glow);
+        if (st === 1) put(x + (Math.abs(Math.sin(a)) > 0.7 ? 1 : 0), y + (Math.abs(Math.sin(a)) > 0.7 ? 0 : 1), 4, m.glow);
+      });
+      if (st === 2 && rnd() > 0.45) {
+        const s2 = rnd() > 0.5 ? 1 : -1;
+        const bx = Math.round(x1 + Math.cos(a + 0.9 * s2) * 4);
+        const by = Math.round(y1 + Math.sin(a + 0.9 * s2) * 4);
+        finePath(x1, y1, bx, by, (x, y) => put(x, y, 3, m.glow));
       }
-      px0 = x1;
-      py0 = y1;
+      x0 = x1;
+      y0 = y1;
     }
+    put(x0, y0, 5, m.hot);
   }
-  for (let y = cy - 3; y <= cy + 3; y++)
-    for (let x = cx - 3; x <= cx + 3; x++) {
-      const d = Math.hypot(x - cx, y - cy);
-      if (d <= 3.2) put(x, y, d < 1.6 ? 5 : 4);
-    }
+  sphere(cx, cy, 3.6, (x, y, d) => put(x, y, d > 0.6 ? 5 : d > 0.1 ? 4 : 3, d > 0.1 ? m.hot : m.glow));
 }
 
-/** A lit sphere in fine pixels: light from the upper left and the front. */
-function sphere(put: (x: number, y: number, s: number) => void, cx: number, cy: number, R: number, ramp: (d: number) => number): void {
-  for (let y = cy - R; y <= cy + R; y++)
-    for (let x = cx - R; x <= cx + R; x++) {
-      const nx = (x + 0.5 - cx) / R;
-      const ny = (y + 0.5 - cy) / R;
-      const r2 = nx * nx + ny * ny;
-      if (r2 > 1) continue;
-      const nz = Math.sqrt(1 - r2);
-      put(x, y, ramp(-0.5 * nx - 0.6 * ny + 0.62 * nz));
-    }
-}
-
-/** Water: a sphere of water with a swirl inside, a glint and droplets circling it. */
+/** Water: a sphere of water: deep shadow, a refracted rim, a crescent glint, a current and a bubble inside, droplets around. */
 function waterOrb(g: DrawCtx, hex: string): void {
   const { tip, dir } = fingertip(g);
   const put = fxPainter(g, hex);
+  const m = fxMats(g, hex, '#f0fbff');
   const f = g.rig.frame % 2;
-  const R = 6;
-  const cx = fine(tip.x + dir.x * 3.6);
-  const cy = fine(tip.y + dir.y * 3.6);
-  sphere(put, cx, cy, R, (d) => (d > 0.86 ? 5 : d > 0.5 ? 4 : d > 0.05 ? 3 : 2));
-  // the swirl inside, turning
-  for (let t = 0; t < 2.2; t += 0.12) {
+  const R = 6.5;
+  const cx = fine(tip.x + dir.x * 3.8) + 0.5;
+  const cy = fine(tip.y + dir.y * 3.8) + 0.5;
+  sphere(cx, cy, R, (x, y, d, nx, ny) => {
+    const r = Math.hypot(nx, ny);
+    if (r > 0.86 && nx < 0.2 && ny > 0) return put(x, y, 4, m.glow); // light refracted through the lower rim
+    if (r > 0.86) return put(x, y, d > 0.3 ? 4 : 2, d > 0.3 ? m.glow : m.deep);
+    put(x, y, d > 0.86 ? 5 : d > 0.55 ? 4 : d > 0.15 ? 3 : d > -0.25 ? 2 : 1, d > -0.25 ? m.glow : m.deep);
+  });
+  // a crescent glint up and to the left
+  for (const [dx, dy] of [[-3, -4], [-2, -5], [-4, -3], [-1, -5]]) put(Math.round(cx) + dx, Math.round(cy) + dy, 5, m.hot);
+  // the current turning inside
+  for (let t = 0; t < 2.4; t += 0.1) {
     const a = t + f * 1.6;
-    put(Math.round(cx + Math.cos(a) * R * 0.55), Math.round(cy + Math.sin(a) * R * 0.45), 4);
+    put(Math.round(cx + Math.cos(a) * R * 0.52), Math.round(cy + Math.sin(a) * R * 0.38 + 1), t < 1.2 ? 4 : 3, m.glow);
   }
-  put(cx - 3, cy - 3, 5);
-  put(cx - 2, cy - 4, 5);
-  for (let k = 0; k < 3; k++) {
-    const a = (k / 3) * Math.PI * 2 + f * 1.1;
-    const x = Math.round(cx + Math.cos(a) * (R + 3));
-    const y = Math.round(cy + Math.sin(a) * (R + 2));
-    put(x, y, 4);
-    put(x, y - 1, 3);
+  // a small bubble
+  const bx = Math.round(cx + (f ? 2 : -1));
+  const by = Math.round(cy + (f ? 1 : 3));
+  for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) put(bx + dx, by + dy, 4, m.glow);
+  put(bx - 1, by - 1, 5, m.hot);
+  // droplets circling it, each with a glint
+  for (let k = 0; k < 4; k++) {
+    const a = (k / 4) * Math.PI * 2 + f * 0.9;
+    const x = Math.round(cx + Math.cos(a) * (R + 3.5));
+    const y = Math.round(cy + Math.sin(a) * (R + 2.5));
+    put(x, y, 3, m.glow);
+    put(x, y - 1, 5, m.hot);
+    put(x + 1, y, 2, m.deep);
   }
 }
 
-/** Embers: a glowing coal of a ball throwing sparks, a few of them rising. */
+/** Embers: a molten coal of a ball, dark crust plates split by glowing cracks, throwing sparks with short trails. */
 function emberOrb(g: DrawCtx, hex: string): void {
   const { tip, dir } = fingertip(g);
   const put = fxPainter(g, hex);
+  const glow = g.m(hex, 'glow');
+  const hot = g.m(mixHex(hex, '#ffc030', 0.5), 'glow');
+  const crust = g.m(mixHex(hex, '#2a0c06', 0.7), 'cloth');
   const f = g.rig.frame % 2;
-  const R = 5;
-  const cx = fine(tip.x + dir.x * 3.2);
-  const cy = fine(tip.y + dir.y * 3.2);
-  sphere(put, cx, cy, R, (d) => (d > 0.7 ? 5 : d > 0.25 ? 4 : 3));
-  const sparks = f
-    ? [[8, -2], [-2, -9], [6, 7], [10, 3], [-7, 5], [2, -13], [7, -8], [-5, -6], [3, 10]]
-    : [[7, 3], [-4, -8], [9, -5], [3, 8], [-7, -2], [-1, -14], [8, -10], [-6, 6], [10, 7]];
-  sparks.forEach(([dx, dy], k) => put(cx + dx, cy + dy, k % 2 ? 4 : 5));
-}
-
-/** Shadow: a dark core with smoke curling off it. */
-function shadowOrb(g: DrawCtx, hex: string): void {
-  const { tip, dir } = fingertip(g);
-  const put = fxPainter(g, hex);
-  const f = g.rig.frame % 2;
-  const R = 5;
-  const cx = fine(tip.x + dir.x * 3.2);
-  const cy = fine(tip.y + dir.y * 3.2);
-  sphere(put, cx, cy, R, (d) => (d > 0.8 ? 3 : d > 0.2 ? 1 : 0));
-  for (let k = 0; k < 4; k++) {
-    const a0 = (k / 4) * Math.PI * 2 + f * 0.8;
-    for (let t = 0; t < 1; t += 0.06) {
-      const a = a0 + t * 2.2;
-      const r = R + 1 + t * 6;
-      put(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r * 0.8 - t * 4), t < 0.5 ? 2 : 3);
-    }
+  const R = 5.5;
+  const cx = fine(tip.x + dir.x * 3.4) + 0.5;
+  const cy = fine(tip.y + dir.y * 3.4) + 0.5;
+  // crust plates: cells of a coarse grid, the seams between them glowing
+  const plateAt = (x: number, y: number) => {
+    const u = (x - cx) * 0.3 + Math.sin(y * 0.7) * 0.5 + 0.5;
+    const w = (y - cy) * 0.3 + Math.sin(x * 0.6 + 1) * 0.5 + 0.3;
+    const fu = u - Math.floor(u);
+    const fw = w - Math.floor(w);
+    return Math.min(fu, 1 - fu, fw, 1 - fw);
+  };
+  sphere(cx, cy, R, (x, y, d) => {
+    const e = plateAt(x + 0.5, y + 0.5);
+    if (e < 0.1) return put(x, y, d > 0.3 ? 4 : 3, hot); // glowing seam
+    if (e < 0.17) return put(x, y, 3, glow);
+    put(x, y, d > 0.55 ? 3 : d > 0.05 ? 2 : 1, crust); // crust plates, lit toward the upper left
+  });
+  for (let k = 0; k < 9; k++) {
+    const a = (k / 9) * Math.PI * 2 + f * 0.4 + k * 0.3;
+    const r = R + 3 + ((k * 5 + f * 3) % 5);
+    const x = Math.round(cx + Math.cos(a) * r);
+    const y = Math.round(cy + Math.sin(a) * r);
+    put(x, y, 5, hot);
+    put(x - Math.round(Math.cos(a)), y - Math.round(Math.sin(a)), 3, glow);
   }
 }
 
-/** Spirit: a wisp with a trailing tail and two hollow eyes. */
+/** Shadow: a dark core with a cold rim light and a slow inner swirl, smoke ribbons curling off it. */
+function shadowOrb(g: DrawCtx, hex: string): void {
+  const { tip, dir } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const m = fxMats(g, hex, '#e8e0ff');
+  const f = g.rig.frame % 2;
+  const R = 5.5;
+  const cx = fine(tip.x + dir.x * 3.4) + 0.5;
+  const cy = fine(tip.y + dir.y * 3.4) + 0.5;
+  for (let k = 0; k < 4; k++) {
+    const a0 = (k / 4) * Math.PI * 2 + f * 0.8;
+    for (let t = 0; t < 1; t += 0.05) {
+      const a = a0 + t * 2.4;
+      const r = R + 1 + t * 7;
+      const x = Math.round(cx + Math.cos(a) * r);
+      const y = Math.round(cy + Math.sin(a) * r * 0.8 - t * 5);
+      put(x, y, t < 0.4 ? 2 : 3, m.glow);
+      if (t < 0.5) put(x, y + 1, 1, m.deep);
+    }
+  }
+  sphere(cx, cy, R, (x, y, d, nx, ny) => {
+    const r = Math.hypot(nx, ny);
+    if (r > 0.82 && d > 0.05) return put(x, y, 4, m.glow); // rim light
+    const sw = Math.sin(Math.atan2(ny, nx) * 2 + r * 6 + f * 1.5);
+    put(x, y, sw > 0.7 && r < 0.75 ? 3 : r < 0.45 ? 0 : 1, sw > 0.7 && r < 0.75 ? m.glow : m.deep);
+  });
+}
+
+/** Spirit: a wisp with a face, its tail streaming up and back in two tones, motes drifting around it. */
 function spiritOrb(g: DrawCtx, hex: string): void {
   const { tip, dir } = fingertip(g);
   const put = fxPainter(g, hex);
+  const m = fxMats(g, hex, '#ffffff');
   const f = g.rig.frame % 2;
   const R = 5;
-  const cx = fine(tip.x + dir.x * 3.4);
-  const cy = fine(tip.y + dir.y * 3.4);
-  // the tail streams up and back, waving
+  const cx = fine(tip.x + dir.x * 3.4) + 0.5;
+  const cy = fine(tip.y + dir.y * 3.4) + 0.5;
   for (let t = 0; t < 1; t += 0.03) {
     const w = (1 - t) * 4;
     const x = cx - t * 11 + Math.sin(t * 7 + f * 2) * 1.8;
     const y = cy - t * 13;
-    for (let dx = -w; dx <= w; dx += 1) put(Math.round(x + dx), Math.round(y), t < 0.4 ? 4 : 3);
+    for (let dx = -w; dx <= w; dx += 1) put(Math.round(x + dx), Math.round(y), Math.abs(dx) < w * 0.45 ? 4 : t < 0.5 ? 3 : 2, m.glow);
   }
-  sphere(put, cx, cy, R, (d) => (d > 0.6 ? 5 : d > 0.1 ? 4 : 3));
-  put(cx - 1, cy - 1, 1);
-  put(cx + 2, cy - 1, 1);
+  sphere(cx, cy, R, (x, y, d) => put(x, y, d > 0.6 ? 5 : d > 0.15 ? 4 : 3, d > 0.6 ? m.hot : m.glow));
+  const ex = Math.round(cx);
+  const ey = Math.round(cy);
+  for (const [dx, dy] of [[-2, -1], [-2, 0], [1, -1], [1, 0]]) put(ex + dx, ey + dy, 1, m.deep);
+  put(ex - 1, ey + 2, 2, m.deep);
+  put(ex, ey + 2, 2, m.deep);
+  for (const [dx, dy] of f ? [[7, -6], [-6, 6], [9, 4]] : [[8, -3], [-7, 3], [5, 8]]) put(ex + dx, ey + dy, 4, m.glow);
 }
 
-/** Light: a small sun, its rays turning a little each frame. */
+/** Light: a small sun: a white-gold core, a broken halo, long and short rays and a lens flare cross. */
 function lightOrb(g: DrawCtx, hex: string): void {
   const { tip, dir } = fingertip(g);
   const put = fxPainter(g, hex);
+  const m = fxMats(g, hex, '#fff3c0');
   const f = g.rig.frame % 2;
-  const R = 3;
-  const cx = fine(tip.x + dir.x * 3.4);
-  const cy = fine(tip.y + dir.y * 3.4);
+  const R = 4;
+  const cx = fine(tip.x + dir.x * 3.6);
+  const cy = fine(tip.y + dir.y * 3.6);
+  for (let t = 0; t < Math.PI * 2; t += 0.12) {
+    if (Math.sin(t * 3 + f * 2) < -0.3) continue;
+    put(Math.round(cx + Math.cos(t) * (R + 3)), Math.round(cy + Math.sin(t) * (R + 3)), 3, m.glow);
+  }
   for (let k = 0; k < 8; k++) {
     const a = (k / 8) * Math.PI * 2 + f * (Math.PI / 8);
-    const len = k % 2 ? 4 : 7;
-    for (let r = R + 1; r <= R + len; r++) put(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), r < R + len * 0.6 ? 4 : 3);
+    const len = k % 2 ? 4 : 8;
+    for (let r = R + 1; r <= R + len; r++) put(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), r < R + len * 0.5 ? 5 : r < R + len * 0.8 ? 4 : 3, r < R + len * 0.5 ? m.hot : m.glow);
   }
-  sphere(put, cx, cy, R + 1, (d) => (d > 0.2 ? 5 : 4));
+  for (let r = R + 1; r <= R + 12; r++) {
+    put(cx + r, cy, r < R + 6 ? 4 : 3, m.glow);
+    put(cx - r, cy, r < R + 6 ? 4 : 3, m.glow);
+  }
+  sphere(cx, cy, R + 0.5, (x, y, d) => put(x, y, d > 0.1 ? 5 : 4, d > 0.1 ? m.hot : m.glow));
 }
 
-/** Void: a black orb inside a bright rim, a tilted ring around it. */
+/** Void: a black orb in a thin bright ring, an accretion disk hot in front and dim behind, motes falling in. */
 function voidOrb(g: DrawCtx, hex: string): void {
   const { tip, dir } = fingertip(g);
   const put = fxPainter(g, hex);
   const f = g.rig.frame % 2;
   const [r, gg, b] = hexToRgb(hex);
   const dark = (0.299 * r + 0.587 * gg + 0.114 * b) / 255 < 0.18;
-  const rim = g.m(dark ? '#d02a48' : mixHex(hex, '#ffffff', 0.45), 'glow');
-  const core = g.m('#0b0710', 'flat');
+  const acc = dark ? '#d02a48' : mixHex(hex, '#ffffff', 0.35);
+  const rim = g.m(acc, 'glow');
+  const hot = g.m(mixHex(acc, '#ffe0e0', 0.6), 'glow');
+  const core = g.m('#08050b', 'flat');
   const R = 5;
-  const cx = fine(tip.x + dir.x * 3.6);
-  const cy = fine(tip.y + dir.y * 3.6);
-  const ring = (front: boolean) => {
-    for (let t = 0; t < Math.PI * 2; t += 0.05) {
-      const y = cy + Math.round(Math.sin(t) * 2.4 - Math.cos(t) * 1.2);
-      if (Math.sin(t) > 0 !== front) continue;
-      put(Math.round(cx + Math.cos(t) * (R + 4)), y, 4, rim);
+  const cx = fine(tip.x + dir.x * 3.8);
+  const cy = fine(tip.y + dir.y * 3.8);
+  const disk = (front: boolean) => {
+    for (let t = 0; t < Math.PI * 2; t += 0.04) {
+      const s = Math.sin(t);
+      if (s > 0 !== front) continue;
+      for (const w of [0, 1]) {
+        const rx = R + 3.5 + w * 1.5;
+        const x = Math.round(cx + Math.cos(t) * rx);
+        const y = Math.round(cy + s * (2.2 + w * 0.6) - Math.cos(t) * 1.1);
+        put(x, y, front ? (w ? 3 : 4) : w ? 1 : 2, front && !w ? hot : rim);
+      }
     }
   };
-  ring(false);
-  sphere(put, cx, cy, R, (d) => (d > 0.9 ? 3 : 1));
-  for (let y = cy - R; y <= cy + R; y++)
-    for (let x = cx - R; x <= cx + R; x++) {
+  disk(false);
+  for (let y = cy - R - 1; y <= cy + R + 1; y++)
+    for (let x = cx - R - 1; x <= cx + R + 1; x++) {
       const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
-      if (d <= R - 1) put(x, y, 3, core);
-      else if (d <= R + 0.3) put(x, y, 4, rim);
+      if (d <= R - 0.8) put(x, y, 3, core);
+      else if (d <= R + 0.3) put(x, y, x < cx && y < cy ? 4 : 3, x < cx && y < cy ? hot : rim);
     }
-  ring(true);
-  put(cx + (f ? 8 : -8), cy - 4, 5, rim);
-  put(cx + (f ? -7 : 6), cy + 5, 4, rim);
+  disk(true);
+  for (let k = 0; k < 4; k++) {
+    const a = (k / 4) * Math.PI * 2 + f * 0.7;
+    const rr = R + 7 - ((k + f) % 3) * 1.5;
+    put(Math.round(cx + Math.cos(a) * rr), Math.round(cy + Math.sin(a) * rr * 0.7), 4, rim);
+  }
 }
 
 /** Grimoire I: the orb of the chakra's nature gathered before the pointing finger. */

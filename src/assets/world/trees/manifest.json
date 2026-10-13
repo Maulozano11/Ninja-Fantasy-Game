@@ -1,0 +1,47 @@
+{
+ "group": "trees",
+ "pxPerMeter": 57,
+ "sprites": {
+  "oak": {
+   "label": "Broadleaf Tree",
+   "file": "oak.png",
+   "frameW": 434,
+   "frameH": 497,
+   "anchor": [
+    217,
+    495
+   ],
+   "meters": [
+    5.5,
+    7.5
+   ],
+   "tags": [
+    "cover-half",
+    "blocks-sight",
+    "flammable",
+    "destructible",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 5,
+     "loop": true
+    },
+    "burning": {
+     "row": 1,
+     "frames": 8,
+     "fps": 11,
+     "loop": true
+    },
+    "burnt": {
+     "row": 2,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  }
+ }
+}

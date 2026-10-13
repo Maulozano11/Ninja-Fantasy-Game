@@ -27,7 +27,7 @@ import {
 import { BodyParams, Rig } from './rig';
 import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
-import { isFemaleBody, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
+import { isFemaleBody, type BodyType, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
 
 /**
  * Back-to-front draw order. Each item writes into whichever depths it needs
@@ -116,6 +116,8 @@ export interface ItemDef {
   statsArmor?: string;
   /** Hides the hair layers (full helmets). */
   hidesHair?: boolean;
+  /** Body types that can wear it (all when missing): fitted pieces made for one figure. */
+  bodies?: BodyType[];
 }
 
 // ---------------------------------------------------------------------------

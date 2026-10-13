@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { itemsForSlot, getItem } from '../../sprite/catalog';
+import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
 import type { ItemDef } from '../../sprite/ctx';
 import { EMBLEMS } from '../../sprite/items/headband';
 import { CHAKRA_CHOICES, chakraHex } from '../../sprite/chakraInfo';
@@ -614,7 +614,7 @@ const SlotPicker: React.FC<{
   crop: 'full' | 'head';
   setSlot: (s: SlotId, c: ItemChoice | null) => void;
 }> = ({ slot, look, eye, crop, setSlot }) => {
-  const items = useMemo(() => itemsForSlot(slot).filter((d) => !d.id.endsWith('_none')), [slot]);
+  const items = useMemo(() => itemsForSlot(slot).filter((d) => !d.id.endsWith('_none') && fitsBody(d, look.body)), [slot, look.body]);
   const current = look.slots[slot];
   const currentDef = current ? getItem(current.id) : undefined;
   const options: (ItemDef | null)[] = [null, ...items];

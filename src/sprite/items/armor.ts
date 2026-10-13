@@ -1611,6 +1611,303 @@ export const ARMOR_ITEMS: ItemDef[] = [
       collar(g, pl, 2.6, 1.6, gold);
     },
   },
+
+  // -------------------------------------------------------------------------
+  // Fitted armors for women (female and slender bodies only)
+  {
+    id: 'armor_oath',
+    slot: 'armor',
+    name: 'Crimson Oath Raiment',
+    desc: 'A fitted white battle dress with red trim, a silver breastplate shaped to the figure and a pleated skirt (+3 AC). Women only.',
+    colors: [col('cloth', 'Dress', '#eeebe6'), col('trim', 'Trim', '#c8202c'), col('plate', 'Plate', '#c3c8d4', 'metal')],
+    statsArmor: 'ANBU Spec-Ops',
+    bodies: ['female', 'slender'],
+    draw: (g, [cc, tc, pc]) => {
+      const b = g.bp;
+      const L = g.L('torso.armor');
+      const cloth = armorPen(g, cc, 'cloth');
+      const trim = armorPen(g, tc, 'cloth');
+      const plate = armorPen(g, pc, 'metal');
+      const top = chestTop(g);
+      const cx = 1.2;
+      const plateTop = top - 1.5;
+      const plateBot = top - 6.4 - b.bust * 0.45;
+      const beltTop = 2.9;
+      const beltBot = 1.8;
+      // fitted bodice to the hips: lit toward the back, the front turning into
+      // shadow, a soft fold under the breastplate, a red stripe down the front
+      tfill(
+        g,
+        L,
+        0.7,
+        cloth,
+        (lx, ly, t) => {
+          if (ly < beltBot) return null;
+          if (ly < beltTop) return null; // the belt is drawn in red below
+          if (Math.abs(lx - (cx + 0.3)) < 0.55) return null; // front stripe
+          if (plateBot - ly < FP * 1.2 && plateBot - ly > 0) return t < 0.6 ? 2 : 1; // shadow under the plate
+          if (t > 0.86) return 2;
+          return litT(t) ? 3 : 2;
+        },
+        { top: top - 0.2, bottom: beltBot },
+      );
+      tfill(g, L, 0.7, trim, (lx, ly, t) => (ly < beltTop && ly >= beltBot ? (beltTop - ly < FP ? (litT(t) ? 4 : 3) : litT(t) ? 3 : 2) : Math.abs(lx - (cx + 0.3)) < 0.55 && ly < plateBot ? (litT(t) ? 3 : 2) : null), {
+        top: plateBot,
+        bottom: beltBot,
+      });
+      // silver breastplate shaped to the bust: two rounded forms, a soft
+      // center valley, a lit top rim and a dark lower edge
+      const bumps: [number, number, number, number, number][] = [
+        [cx - 2.4, plateBot + 2.0, 2.6, 2.2, 1.0 + b.bust * 0.35],
+        [cx + 2.2, plateBot + 2.0, 2.0, 2.1, 0.9 + b.bust * 0.35],
+      ];
+      const h = (x: number, y: number) => {
+        let sum = 0;
+        for (const [bx, by, rx, ry, a] of bumps) sum += a * Math.exp(-(((x - bx) / rx) ** 2 + ((y - by) / ry) ** 2) * 1.5);
+        return sum;
+      };
+      const q = (d: number) => (d > 0.9 ? 5 : d > 0.62 ? 4 : d > 0.32 ? 3 : d > -0.12 ? 2 : 1);
+      tfill(
+        g,
+        L,
+        0.9,
+        plate,
+        (lx, ly, t) => {
+          if (ly > plateTop || ly < plateBot) return null;
+          if (ly - plateBot < FP * 1.5) return null; // red trim
+          if (ly - plateBot < FP * 2.5) return 1;
+          if (plateTop - ly < FP) return t < 0.55 ? 4 : 3;
+          const th = (t - 0.36) * 2.0;
+          const e = 0.2;
+          const nx = Math.sin(th) - ((h(lx + e, ly) - h(lx - e, ly)) / (2 * e)) * 2.2;
+          const ny = ((h(lx, ly + e) - h(lx, ly - e)) / (2 * e)) * 2.2;
+          const nz = Math.cos(th) + 0.1;
+          return q((nx * LIGHT3[0] + ny * LIGHT3[1] + nz * LIGHT3[2]) / (Math.hypot(nx, ny, nz) || 1));
+        },
+        { top: plateTop, bottom: plateBot },
+      );
+      // red trim along the plate's lower edge
+      tfill(g, L, 0.9, trim, (_lx, ly, t) => (ly >= plateBot && ly - plateBot < FP * 1.5 ? (litT(t) ? 3 : 2) : null), { top: plateBot + FP * 1.5, bottom: plateBot });
+      collar(g, cloth, 1.7, 0.9, trim);
+      // long white sleeves with red cuffs
+      for (const s of SIDES) {
+        const A = g.L(armDepth(s, 'armor'));
+        for (const seg of [0, 1] as const) {
+          const f = armFrame(g, s, seg);
+          const R = g.bp.armR;
+          const p = onLimb(cloth, s, seg ? 'forearm' : 'upperArm');
+          const tp = onLimb(trim, s, seg ? 'forearm' : 'upperArm');
+          const rad = (a: number) => {
+            const t = clamp(a / Math.max(0.01, f.len), 0, 1);
+            return (seg ? R[2] + (R[3] - R[2]) * t : R[0] + (R[1] - R[0]) * t) + 0.45;
+          };
+          lfill(A, f, p, R[0] + 1.5, (a, bb) => {
+            if (a < (seg ? -0.6 : -1.2) || a > f.len + (seg ? -0.2 : 0.6)) return null;
+            const rr = rad(a);
+            if (Math.abs(bb) > rr) return null;
+            if (seg && a > f.len - 1.4) return null; // cuff
+            const d = limbDot(f, bb, rr, -0.2);
+            return Math.min(3, dotShade(d));
+          });
+          if (seg)
+            lfill(A, f, tp, R[2] + 1.5, (a, bb) => {
+              if (a < f.len - 1.4 || a > f.len - 0.2) return null;
+              const rr = rad(a) + 0.15;
+              if (Math.abs(bb) > rr) return null;
+              if (a - (f.len - 1.4) < FP) return limbLit(f, bb, rr) ? 4 : 3;
+              return limbLit(f, bb, rr) ? 3 : 2;
+            });
+        }
+      }
+      // pleated white skirt to mid-thigh with a red hem
+      skirt(g, (SL, stop) => {
+        const [x0, x1] = hipRange(g, 0.7);
+        const n = Math.max(6, Math.round((x1 - x0) / 1.9));
+        const xs = spread(x0, x1, n);
+        const cl = (w: number) => armorPen(g, cc, 'cloth', thighPart(w));
+        const tr = (w: number) => armorPen(g, tc, 'cloth', thighPart(w));
+        const k = 0.62;
+        skirtCols(
+          g,
+          SL,
+          cl,
+          xs,
+          stop(3.0),
+          k,
+          (c) => {
+            const fromR = (1 - c.across) * c.cw;
+            const fromL = c.across * c.cw;
+            const fromBot = (1 - c.down) * c.ch;
+            if (fromBot < FP * 3.2) return null; // red hem
+            const tone = c.u < 0.4 ? 2 : c.u < 0.75 ? 1 : 0;
+            if (fromR < FP) return 1;
+            if (c.down < 0.08) return tone === 0 ? 1 : 2;
+            if (fromL < FP) return tone === 0 ? 3 : 4;
+            if (fromR < FP * 2.2) return tone === 0 ? 1 : 2;
+            return tone === 0 ? 2 : 3;
+          },
+          1.0,
+          0.12,
+        );
+        skirtCols(
+          g,
+          SL,
+          tr,
+          xs,
+          stop(3.0),
+          k,
+          (c) => {
+            const fromBot = (1 - c.down) * c.ch;
+            if (fromBot >= FP * 3.2) return null;
+            if (fromBot < FP) return 1;
+            if (fromBot > FP * 2.2) return c.u < 0.55 ? 4 : 3; // lit upper edge of the band
+            return c.u < 0.55 ? 3 : 2;
+          },
+          1.0,
+          0.12,
+        );
+      });
+    },
+  },
+
+  {
+    id: 'armor_lionheart',
+    slot: 'armor',
+    name: 'Lionheart Battle Dress',
+    desc: 'A royal blue battle dress under silver plate with gold trim: shaped breastplate, plated faulds, gauntlets and greaves (+4 AC). Women only.',
+    colors: [col('dress', 'Dress', '#2a4aa6'), col('plate', 'Plate', '#c9cdd8', 'metal'), col('trim', 'Gold', '#d4a531', 'metal')],
+    statsArmor: 'Greek Hoplite Cuirass',
+    bodies: ['female', 'slender'],
+    draw: (g, [dc, pc, gc]) => {
+      const b = g.bp;
+      const L = g.L('torso.armor');
+      const dress = armorPen(g, dc, 'cloth');
+      const plate = armorPen(g, pc, 'metal');
+      const gold = armorPen(g, gc, 'metal');
+      const top = chestTop(g);
+      const cx = 1.2;
+      const plateTop = top - 2.4;
+      const plateBot = 2.4;
+      // blue bodice (shows at the shoulders and around the plate)
+      tfill(g, L, 0.7, dress, (_lx, ly, t) => (ly < plateBot ? null : t > 0.86 ? 2 : litT(t) ? 3 : 2), { top: top - 0.2, bottom: plateBot });
+      // silver cuirass shaped to the bust and waist, with gold edges and a
+      // gold line down the middle
+      const bumps: [number, number, number, number, number][] = [
+        [cx - 2.4, top - 5.0 - b.bust * 0.3, 2.6, 2.2, 1.0 + b.bust * 0.35],
+        [cx + 2.2, top - 5.0 - b.bust * 0.3, 2.0, 2.1, 0.9 + b.bust * 0.35],
+      ];
+      const h = (x: number, y: number) => {
+        let sum = 0;
+        for (const [bx, by, rx, ry, a] of bumps) sum += a * Math.exp(-(((x - bx) / rx) ** 2 + ((y - by) / ry) ** 2) * 1.5);
+        return sum;
+      };
+      const q = (d: number) => (d > 0.9 ? 5 : d > 0.62 ? 4 : d > 0.32 ? 3 : d > -0.12 ? 2 : 1);
+      const goldAt = (lx: number, ly: number) =>
+        plateTop - ly < FP * 1.5 || ly - plateBot < FP * 1.5 || (Math.abs(lx - cx) < FP * 0.6 && ly < plateTop - 1.2);
+      tfill(
+        g,
+        L,
+        0.95,
+        plate,
+        (lx, ly, t) => {
+          if (ly > plateTop || ly < plateBot) return null;
+          if (goldAt(lx, ly)) return null;
+          const th = (t - 0.36) * 2.0;
+          const e = 0.2;
+          const nx = Math.sin(th) - ((h(lx + e, ly) - h(lx - e, ly)) / (2 * e)) * 2.2;
+          const ny = ((h(lx, ly + e) - h(lx, ly - e)) / (2 * e)) * 2.2 - (ly < 5 ? (5 - ly) * 0.25 : 0);
+          const nz = Math.cos(th) + 0.1;
+          return q((nx * LIGHT3[0] + ny * LIGHT3[1] + nz * LIGHT3[2]) / (Math.hypot(nx, ny, nz) || 1));
+        },
+        { top: plateTop, bottom: plateBot },
+      );
+      tfill(g, L, 0.95, gold, (lx, ly, t) => (ly <= plateTop && ly >= plateBot && goldAt(lx, ly) ? (plateTop - ly < FP * 0.8 ? (litT(t) ? 4 : 3) : litT(t) ? 3 : 2) : null), {
+        top: plateTop,
+        bottom: plateBot,
+      });
+      collar(g, dress, 2.0, 1.1, gold);
+      // small rounded shoulder caps, blue puffed sleeves, gauntlets
+      for (const s of SIDES) pauldron(g, s, plate, { top: 2.0, capEnd: 0.6, step: 1.1, n: 1, half: b.armR[0] + 1.0, flare: 0.2, curve: 0.6, out: 0.5, edge: gold });
+      for (const s of SIDES) {
+        const A = g.L(armDepth(s, 'cloth'));
+        const f = armFrame(g, s, 0);
+        const p = onLimb(dress, s, 'upperArm');
+        const R = b.armR[0] + 0.7;
+        lfill(A, f, p, R + 1, (a, bb) => {
+          if (a < 0 || a > f.len + 0.4 || Math.abs(bb) > R) return null;
+          return Math.min(3, dotShade(limbDot(f, bb, R, -0.3)));
+        });
+      }
+      bracer(g, plate, { from: 0.06, to: 0.97, grow: 0.65, rim: gold, lines: [0.42] });
+      // greaves below the dress
+      for (const s of SIDES) {
+        const A = g.L(legDepth(s, 'armor'));
+        const f = legFrame(g, s, 1);
+        const p = onLimb(plate, s, 'shin');
+        const gp = onLimb(gold, s, 'shin');
+        const R = b.legR[2] + 0.6;
+        lfill(A, f, p, R + 2, (a, bb) => {
+          if (a < -0.3 || a > f.len * 0.92 || Math.abs(bb) > R) return null;
+          if (a < 0.6) return null; // gold knee rim
+          const d = limbDot(f, bb, R, -0.1);
+          if (d > 0.3 && Math.abs(bb + R * 0.35) < FP * 0.5) return 4;
+          return Math.min(3, dotShade(d));
+        });
+        lfill(A, f, gp, R + 2, (a, bb) => (a >= -0.3 && a < 0.6 && Math.abs(bb) <= R + 0.2 ? (limbLit(f, bb, R) ? 4 : 2) : null));
+      }
+      // long dress to mid-shin, then plated faulds over the hips
+      skirt(g, (SL, stop) => {
+        const [x0, x1] = hipRange(g, 0.5);
+        const xs = spread(x0, x1, 10);
+        const width = x1 - x0;
+        const dr = (w: number) => armorPen(g, dc, 'cloth', thighPart(w));
+        skirtCols(
+          g,
+          SL,
+          dr,
+          xs,
+          stop(3.0),
+          1.55,
+          (c) => {
+            const fromBot = (1 - c.down) * c.ch;
+            if (fromBot < FP) return 1;
+            if (fromBot < FP * 2) return c.u < 0.5 ? 2 : 1;
+            return folds(c.u, c.down, width, [0.2, 0.42, 0.63, 0.82], c.u < 0.5 ? 3 : 2);
+          },
+          0.9,
+          0.1,
+        );
+        const fp = (w: number) => armorPen(g, pc, 'metal', thighPart(w));
+        const gpn = (w: number) => armorPen(g, gc, 'metal', thighPart(w));
+        const fx = spread(x0 + 0.2, x1 - 0.2, 4);
+        for (const [k, edge] of [
+          [0.34, true],
+          [0.2, true],
+        ] as const) {
+          skirtCols(
+            g,
+            SL,
+            fp,
+            fx,
+            stop(3.0),
+            k,
+            (c) => {
+              const fromBot = (1 - c.down) * c.ch;
+              const fromR = (1 - c.across) * c.cw;
+              if (edge && fromBot < FP * 1.5) return null;
+              if (fromR < FP) return 1;
+              const lt = c.u < 0.5;
+              if (c.across * c.cw < FP) return lt ? 4 : 3;
+              return c.down < 0.25 ? (lt ? 3 : 2) : lt ? 3 : 2;
+            },
+            0.6,
+            0.1,
+          );
+          skirtCols(g, SL, gpn, fx, stop(3.0), k, (c) => ((1 - c.down) * c.ch < FP * 1.5 ? (c.u < 0.5 ? 4 : 3) : null), 0.6, 0.1);
+        }
+      });
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------

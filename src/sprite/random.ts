@@ -1,6 +1,6 @@
 // Random appearance for the creator's Randomize button.
 
-import { itemsForSlot } from './catalog';
+import { fitsBody, itemsForSlot } from './catalog';
 import { CHAKRA_CHOICES } from './chakraInfo';
 import type { ItemDef } from './ctx';
 import { EMBLEMS } from './items/headband';
@@ -20,16 +20,17 @@ function randomChoice(def: ItemDef): ItemChoice {
   };
 }
 
-function slotItem(slot: SlotId): ItemChoice | undefined {
-  const items = itemsForSlot(slot).filter((d) => !d.id.endsWith('_none'));
+function slotItem(slot: SlotId, body: BodyType): ItemChoice | undefined {
+  const items = itemsForSlot(slot).filter((d) => !d.id.endsWith('_none') && fitsBody(d, body));
   return items.length ? randomChoice(pick(items)) : undefined;
 }
 
 export function randomAppearance(): SpriteAppearance {
+  const body = pick<BodyType>(['male', 'female', 'bulky', 'slender']);
   const slots: SpriteAppearance['slots'] = {};
   const put = (slot: SlotId, p: number) => {
     if (!chance(p)) return;
-    const c = slotItem(slot);
+    const c = slotItem(slot, body);
     if (c) slots[slot] = c;
   };
   put('hair', 0.97);
@@ -50,7 +51,7 @@ export function randomAppearance(): SpriteAppearance {
   const positions: HeadbandPosition[] = ['none', 'forehead', 'forehead', 'neck', 'arm', 'waist'];
   return {
     version: 1,
-    body: pick<BodyType>(['male', 'female', 'bulky', 'slender']),
+    body,
     skin: pick(SKIN_TONES.slice(0, 9)),
     eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing']),
     faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square']),

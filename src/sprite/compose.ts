@@ -1,7 +1,7 @@
 // Composites the base body and every equipped item into one 128x128 frame.
 
 import { drawBody, faceCells } from './body';
-import { getItem } from './catalog';
+import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS } from './ctx';
 import { drawHeadband } from './items/headband';
@@ -135,7 +135,7 @@ export function renderSprite(
   for (const slot of SLOT_ORDER) {
     const c = look.slots[slot];
     const def = c && getItem(c.id);
-    if (def && def.slot === slot) equipped.set(slot, def);
+    if (def && def.slot === slot && fitsBody(def, look.body)) equipped.set(slot, def);
   }
   const hideHair = [...equipped.values()].some((d) => d.hidesHair);
 

@@ -15,7 +15,8 @@ import { getItem } from '../sprite/catalog';
 import { chakraHex } from '../sprite/chakraInfo';
 import { dojutsuToEye, getAppearance } from '../sprite/legacy';
 import { randomAppearance } from '../sprite/random';
-import { SPRITE_POSES, SpriteAppearance, SpritePose } from '../sprite/types';
+import { CAST_STYLES, CastStyle, SPRITE_POSES, SpriteAppearance, SpritePose } from '../sprite/types';
+import { CAST_STYLE_INFO, defaultCastStyle } from '../sprite/castInfo';
 import { soundManager } from '../utils/audio';
 import { Sparkles, Dice5, Download, Upload, Shield, Zap, Eye, Swords, BookOpen, UserCheck } from 'lucide-react';
 
@@ -33,6 +34,8 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const [character, setCharacter] = useState<ShinobiCharacter>(initialCharacter);
   const [activeTab, setActiveTab] = useState<'identity' | 'appearance' | 'stats' | 'jutsus'>('identity');
   const [previewStance, setPreviewStance] = useState<SpritePose>('idle');
+  /** A jutsu's own cast style being previewed (null = the default style). */
+  const [previewCast, setPreviewCast] = useState<CastStyle | null>(null);
   const [previewZoom, setPreviewZoom] = useState<number>(384);
   const [previewEnhanced, setPreviewEnhanced] = useState<boolean>(false);
   const [importExportModal, setImportExportModal] = useState<boolean>(false);
@@ -88,6 +91,17 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       jutsuSaveDC,
       jutsuAttackBonus,
     };
+  };
+
+  /** Sets (or clears, with '') the cast style of one jutsu and previews it. */
+  const setJutsuCast = (jutsuId: string, style: CastStyle | '') => {
+    const cast = look.cast ?? { style: defaultCastStyle(look) };
+    const jutsu = { ...(cast.jutsu ?? {}) };
+    if (style) jutsu[jutsuId] = style;
+    else delete jutsu[jutsuId];
+    updateLook({ ...look, cast: { ...cast, jutsu } });
+    setPreviewCast(style || null);
+    setPreviewStance('cast');
   };
 
   const updateLook = (next: SpriteAppearance) => {
@@ -376,6 +390,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                 character={character}
                 appearance={look}
                 stance={previewStance}
+                castStyle={previewStance === 'cast' ? previewCast ?? undefined : undefined}
                 size={previewZoom}
                 isEnhanced={previewEnhanced}
                 showAura={true}
@@ -395,6 +410,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                     onClick={() => {
                       soundManager.playSelect();
                       setPreviewStance(stance);
+                      setPreviewCast(null);
                     }}
                     className={`py-1 text-[10px] font-medium rounded-md capitalize transition ${
                       previewStance === stance
@@ -907,6 +923,40 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                           <div className="text-[10px] font-mono text-amber-300 bg-slate-900 p-1.5 rounded-md border border-slate-800">
                             Dice: {jutsu.damageDice} · {jutsu.damageType}
                           </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* CASTING STYLE PER JUTSU */}
+                <div className="space-y-2 pt-3 border-t border-slate-800">
+                  <div className="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center justify-between">
+                    <span>Casting Style per Jutsu</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Default: {CAST_STYLE_INFO[defaultCastStyle(look)].label}</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {[...new Set(Object.values(character.selectedJutsus))].map((id) => {
+                      const j = JUTSUS_DATA.find((x) => x.id === id);
+                      if (!j) return null;
+                      return (
+                        <div key={id} className="flex items-center gap-2 p-2 rounded-lg bg-slate-950/60 border border-slate-800">
+                          <span className="flex-1 min-w-0 text-xs text-white truncate">{j.name}</span>
+                          <select
+                            value={look.cast?.jutsu?.[id] ?? ''}
+                            onChange={(e) => {
+                              soundManager.playSelect();
+                              setJutsuCast(id, e.target.value as CastStyle | '');
+                            }}
+                            className="bg-slate-950 border border-slate-700 rounded-md p-1.5 text-[11px] text-white"
+                          >
+                            <option value="">Default ({CAST_STYLE_INFO[defaultCastStyle(look)].label})</option>
+                            {CAST_STYLES.map((s) => (
+                              <option key={s} value={s}>
+                                {CAST_STYLE_INFO[s].label}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       );
                     })}

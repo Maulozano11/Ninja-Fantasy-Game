@@ -10,7 +10,8 @@ import {
 } from '../types/shinobi';
 import { JUTSUS_DATA } from '../data/shinobiData';
 import { ShinobiSpriteCanvas } from './ShinobiSpriteCanvas';
-import { defaultAppearance } from '../sprite/legacy';
+import { defaultAppearance, getAppearance } from '../sprite/legacy';
+import { castStyleFor } from '../sprite/castInfo';
 import type { ItemChoice, SpriteAppearance } from '../sprite/types';
 
 const it = (id: string, ...colors: string[]): ItemChoice => ({ id, colors });
@@ -731,6 +732,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
               y: isWarp ? targetY : e.y,
               actionUsed: true,
               spriteState: isWarp ? 'attack' : 'cast',
+              castStyle: castStyleFor(getAppearance(e.character), jutsu.id),
               character: {
                 ...e.character,
                 currentChakra: e.character.currentChakra - totalCost,
@@ -1201,6 +1203,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
                           <ShinobiSpriteCanvas
                             character={entityHere.character}
                             stance={entityHere.spriteState}
+                            castStyle={entityHere.castStyle}
                             size={entityHere.isBossTitan ? 84 : 52}
                             isEnhanced={entityHere.conditions.includes('ChakraSurge')}
                             showAura={true}
@@ -1367,6 +1370,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
               <ShinobiSpriteCanvas
                 character={currentEntity.character}
                 stance={currentEntity.spriteState}
+                castStyle={currentEntity.castStyle}
                 size={112}
                 isEnhanced={currentEntity.conditions.includes('ChakraSurge')}
                 showAura={true}

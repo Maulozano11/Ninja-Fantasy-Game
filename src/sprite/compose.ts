@@ -6,7 +6,8 @@ import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS } from './ctx';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PartId, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
-import { buildRig, Rig } from './rig';
+import { buildRig, Rig, rigPoseFor } from './rig';
+import { drawCastFx } from './castfx';
 import { applyTexture, frayHair } from './texture';
 import type { EyeSpecial, PixelEdit, SlotId, SpriteAppearance, SpritePose } from './types';
 
@@ -105,7 +106,7 @@ export function renderSprite(
   eyeSpecial: EyeSpecial = 'none',
   opts: { skipEdits?: boolean } = {},
 ): SpriteFrame {
-  const rig = buildRig(look.body, pose, frame);
+  const rig = buildRig(look.body, rigPoseFor(pose, look.cast?.style), frame);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();
@@ -152,6 +153,7 @@ export function renderSprite(
     if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors));
   }
   drawHeadband(g);
+  drawCastFx(g);
   guardFace(g, layers);
 
   // Outline and flatten

@@ -1,4 +1,4 @@
-import type { SpriteAppearance } from '../sprite/types';
+import type { CastStyle, SpriteAppearance } from '../sprite/types';
 
 export type ClanType = 'Uchiha' | 'Senju' | 'Uzumaki' | 'Hyuga';
 
@@ -210,6 +210,8 @@ export interface CombatEntity {
   reactionUsed: boolean;
   movementRemaining: number;
   spriteState: 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge';
+  /** Cast style of the jutsu being cast (shown while spriteState is 'cast'). */
+  castStyle?: CastStyle;
 }
 
 export interface DiceRollResult {

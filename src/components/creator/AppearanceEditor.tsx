@@ -4,6 +4,8 @@ import { itemsForSlot, getItem } from '../../sprite/catalog';
 import type { ItemDef } from '../../sprite/ctx';
 import { EMBLEMS } from '../../sprite/items/headband';
 import { CHAKRA_CHOICES, chakraHex } from '../../sprite/chakraInfo';
+import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
+import { CAST_STYLES } from '../../sprite/types';
 import { CLOTH_COLORS, CLOTH_FAMILIES, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from '../../sprite/palettes';
 import type {
   BodyType,
@@ -510,6 +512,27 @@ export const AppearanceEditor: React.FC<{
               </label>
             </div>
             <p className="text-[11px] text-slate-500 mt-1.5">Any nature takes any color: red water, black or blue lightning, green fire…</p>
+          </div>
+          <div>
+            <SectionLabel>Casting Style</SectionLabel>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {CAST_STYLES.map((s) => (
+                <OptionCard
+                  key={s}
+                  selected={defaultCastStyle(look) === s}
+                  label={CAST_STYLE_INFO[s].label}
+                  sub={CAST_STYLE_INFO[s].desc}
+                  onClick={() => {
+                    soundManager.playChakraSurge();
+                    onChange({ ...look, cast: { ...(look.cast ?? { style: s }), style: s } });
+                    onPreviewStance('cast');
+                  }}
+                >
+                  <SpriteThumb look={{ ...look, cast: { ...(look.cast ?? { style: s }), style: s } }} eye={eye} pose="cast" />
+                </OptionCard>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1.5">The default for every jutsu. Each jutsu can use its own style in Jutsu Loadout.</p>
           </div>
           <div>
             <SectionLabel>Show the burst when…</SectionLabel>

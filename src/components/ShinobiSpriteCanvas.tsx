@@ -3,16 +3,18 @@ import { ShinobiCharacter } from '../types/shinobi';
 import { renderSpriteCached } from '../sprite/compose';
 import { CHAKRA_LOOP, ChakraMode, renderChakra } from '../sprite/chakra';
 import { dojutsuToEye, getAppearance } from '../sprite/legacy';
-import { frameCount, GROUND, POSE_FPS } from '../sprite/rig';
+import { frameCount, GROUND, POSE_FPS, rigPoseFor } from '../sprite/rig';
 import { GRID, RES } from '../sprite/raster';
 import { subscribeTick, TICK_FPS } from '../sprite/ticker';
-import type { SpriteAppearance, SpritePose } from '../sprite/types';
+import type { CastStyle, SpriteAppearance, SpritePose } from '../sprite/types';
 
 export interface ShinobiSpriteCanvasProps {
   character: ShinobiCharacter;
   /** Draw this appearance instead of the character's own (live preview in the creator). */
   appearance?: SpriteAppearance;
   stance?: SpritePose;
+  /** Cast style to show for the 'cast' stance (a jutsu's own style); defaults to the look's. */
+  castStyle?: CastStyle;
   /** Display size in CSS pixels (the sprite itself is always 128x128). */
   size?: number;
   isEnhanced?: boolean;
@@ -67,6 +69,7 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
   character,
   appearance,
   stance = 'idle',
+  castStyle,
   size = 256,
   isEnhanced = false,
   className = '',
@@ -74,7 +77,10 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
   showShadow = true,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const look = useMemo(() => appearance ?? getAppearance(character), [appearance, character]);
+  const look = useMemo(() => {
+    const base = appearance ?? getAppearance(character);
+    return castStyle ? { ...base, cast: { ...(base.cast ?? { style: castStyle }), style: castStyle } } : base;
+  }, [appearance, character, castStyle]);
   const eye = dojutsuToEye(character.dojutsu);
 
   useEffect(() => {
@@ -94,7 +100,7 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
     }
     let lastKey = '';
     return subscribeTick((tick) => {
-      const frame = Math.floor((tick * POSE_FPS[stance]) / TICK_FPS) % frameCount(stance);
+      const frame = Math.floor((tick * POSE_FPS[stance]) / TICK_FPS) % frameCount(rigPoseFor(stance, look.cast?.style));
       const fxTick = tick % CHAKRA_LOOP;
       const key = mode ? `${frame}|${fxTick}` : `${frame}`;
       if (key === lastKey) return;

@@ -7,7 +7,7 @@ import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line
 import type { RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawWeapon, KATANA, KUNAI } from './weapons';
-import { gripPoint, isSigning, poleAngle, swordAngle } from '../grip';
+import { gripPoint, handsBusy, poleAngle, swordAngle } from '../grip';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -141,7 +141,7 @@ function palmPoint(g: DrawCtx, s: Side, out = 1.4): Vec {
 }
 
 /** Swirling sphere of chakra with spiral arms that rotate per frame. */
-function drawSpiralOrb(g: DrawCtx, c: { core: string; swirl: string }): void {
+export function drawSpiralOrb(g: DrawCtx, c: { core: string; swirl: string }): void {
   const s = techniqueSide(g);
   const part = s === 'N' ? 'held' : 'handF';
   const R = 3.8;
@@ -198,7 +198,7 @@ function bolt(L: Layer, from: Vec, dirDeg: number, length: number, rnd: () => nu
   return p;
 }
 
-function drawLightning(g: DrawCtx, c: { spark: string; core: string }): void {
+export function drawLightning(g: DrawCtx, c: { spark: string; core: string }): void {
   const s: Side = g.rig.shapeF === 'open' && g.rig.pose === 'cast' ? 'F' : 'N';
   const j = armJoints(g.rig, s);
   const part = s === 'N' ? 'held' : 'handF';
@@ -244,8 +244,9 @@ function drawPalmGlow(g: DrawCtx, c: { glow: string }): void {
   }
 }
 
-// While forming hand signs the hands are empty: each weapon is stowed by its
-// size (small ones at the belt, big ones on the back) and techniques fade.
+// While the hands are busy (hand signs, a grimoire, a charged cast) each weapon
+// is stowed by its size (small ones at the belt, big ones on the back) and
+// held techniques fade.
 
 /** A point on the torso in local units, following the breathing of the chest. */
 const stowAt = (g: DrawCtx, x: number, y: number): Vec => topPt(g)(x, y);
@@ -279,7 +280,7 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A curved single-edged blade with a wrapped grip.',
     colors: [col('blade', 'Blade', '#d4dbe4', 'metal'), col('hilt', 'Grip', '#2b2233', 'leather'), col('guard', 'Guard', '#c9a227', 'metal')],
     draw: (g, [blade, hilt, guard]) =>
-      isSigning(g)
+      handsBusy(g)
         ? stowKatanaAtHip(g, hilt, guard)
         : drawWeapon(g, 'nearArm.held', KATANA, gripPoint(g), swordAngle(g), { blade, grip: hilt, guard, collar: guard }),
   },
@@ -290,7 +291,7 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A huge blade of pale-blue crystal that glitters with every swing.',
     colors: [col('blade', 'Crystal', '#8ccbe8', 'metal'), col('hilt', 'Grip', '#2a3348', 'leather'), col('guard', 'Guard', '#6f97c0', 'metal')],
     draw: (g, [blade, hilt, guard]) =>
-      isSigning(g)
+      handsBusy(g)
         ? drawWeapon(g, 'backGear', CRYSTAL_SWORD, backGrip(g, 48), 48, { blade, grip: hilt, guard, wrap: '#8a9bb8' })
         : drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, gripPoint(g), swordAngle(g), { blade, grip: hilt, guard, wrap: '#8a9bb8' }),
   },
@@ -301,7 +302,7 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A throwing knife with a ring pommel and wrapped grip.',
     colors: [col('blade', 'Blade', '#aab4c2', 'metal'), col('wrap', 'Wrap', '#3a3346')],
     draw: (g, [blade, wrap]) =>
-      isSigning(g)
+      handsBusy(g)
         ? drawWeapon(g, 'waist', KUNAI, g.rig.T(-g.bp.hipHalf * 0.55, 3.6), 100, { blade, grip: wrap, guard: blade, wrap: '#e2dccb' })
         : drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), { blade, grip: wrap, guard: blade, wrap: '#e2dccb' }),
   },
@@ -312,7 +313,7 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A long polearm topped with a curved blade.',
     colors: [col('blade', 'Blade', '#d4dbe4', 'metal'), col('shaft', 'Shaft', '#5a3622', 'leather'), col('fit', 'Fittings', '#c9a227', 'metal')],
     draw: (g, [blade, shaft, fittings]) =>
-      isSigning(g)
+      handsBusy(g)
         ? drawNaginata(g, { ...gripOf(g, -62), hand: backGrip(g, -62), room: 99 }, { blade, shaft, fittings }, 'backGear')
         : drawNaginata(g, { ...gripOf(g, poleAngle(g)), hand: gripPoint(g) }, { blade, shaft, fittings }),
   },
@@ -322,7 +323,7 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Spiral Orb',
     desc: 'A swirling sphere of compressed chakra held in the palm.',
     colors: [col('core', 'Core', '#4aa8ff', 'glow'), col('swirl', 'Swirl', '#d8f1ff', 'glow')],
-    draw: (g, [core, swirl]) => !isSigning(g) && drawSpiralOrb(g, { core, swirl }),
+    draw: (g, [core, swirl]) => !handsBusy(g) && drawSpiralOrb(g, { core, swirl }),
   },
   {
     id: 'held_lightning',
@@ -330,7 +331,7 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Lightning Hand',
     desc: 'Crackling white-blue sparks dance around the hand.',
     colors: [col('spark', 'Sparks', '#d6f0ff', 'glow'), col('core', 'Glow', '#5cb8ff', 'glow')],
-    draw: (g, [spark, core]) => !isSigning(g) && drawLightning(g, { spark, core }),
+    draw: (g, [spark, core]) => !handsBusy(g) && drawLightning(g, { spark, core }),
   },
   {
     id: 'held_palm',
@@ -338,7 +339,7 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Palm Glow',
     desc: 'A calm pale-cyan glow gathered in the palm.',
     colors: [col('glow', 'Glow', '#8ff0ea', 'glow')],
-    draw: (g, [glow]) => !isSigning(g) && drawPalmGlow(g, { glow }),
+    draw: (g, [glow]) => !handsBusy(g) && drawPalmGlow(g, { glow }),
   },
 ];
 

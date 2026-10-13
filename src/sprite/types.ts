@@ -12,6 +12,22 @@ export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'vi
 
 export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'cast', 'hurt', 'victory', 'charge'];
 
+/**
+ * How a character casts: hand signs, runes floating before an open palm, a
+ * grimoire in hand, or energy charged in the hands (a spinning sphere,
+ * crackling lightning, a two-handed wave charged at the hip, or a flash
+ * charged with both arms forward).
+ */
+export type CastStyle = 'signs' | 'runes' | 'book' | 'sphere' | 'lightning' | 'wave' | 'flash';
+
+export const CAST_STYLES: CastStyle[] = ['signs', 'runes', 'book', 'sphere', 'lightning', 'wave', 'flash'];
+
+/** Default cast style, with optional overrides per jutsu id. */
+export interface CastChoice {
+  style: CastStyle;
+  jutsu?: Record<string, CastStyle>;
+}
+
 export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing';
 
 /** Back of the neck behind the jaw: slender (default) or thick. */
@@ -92,6 +108,8 @@ export interface SpriteAppearance {
   neck?: NeckType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
+  /** How jutsus are cast. Missing on older saves; treated as 'runes'. */
+  cast?: CastChoice;
   slots: Partial<Record<SlotId, ItemChoice>>;
   accessories: ItemChoice[];
   headband: HeadbandChoice;

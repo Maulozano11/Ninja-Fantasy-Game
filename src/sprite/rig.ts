@@ -7,7 +7,7 @@
 // (screen-left, drawn in front); "far" limbs are on screen-right, behind.
 
 import { add, len, norm, scale, sub, v, Vec } from './raster';
-import type { BodyType, SpritePose } from './types';
+import type { BodyType, CastStyle, SpritePose } from './types';
 
 export const GROUND = 60; // ground line under the body (shadow centre)
 /** Ankle heights, 3/4 front view: the near foot stands lower on screen, the far foot higher. */
@@ -182,7 +182,25 @@ const IDLE: PoseFrame = {
   shapeF: 'fist',
 };
 
-export const POSES: Record<SpritePose, PoseFrame[]> = {
+/** Rig poses: the sprite poses plus one cast pose per cast style ('cast' itself is the runes pose). */
+export type RigPose = SpritePose | 'castBook' | 'castSphere' | 'castLightning' | 'castWave' | 'castFlash';
+
+const CAST_POSES: Record<CastStyle, RigPose> = {
+  signs: 'handsigns',
+  runes: 'cast',
+  book: 'castBook',
+  sphere: 'castSphere',
+  lightning: 'castLightning',
+  wave: 'castWave',
+  flash: 'castFlash',
+};
+
+/** The rig pose that plays for a sprite pose: 'cast' turns into the chosen cast style's pose. */
+export function rigPoseFor(pose: SpritePose, style: CastStyle = 'runes'): RigPose {
+  return pose === 'cast' ? CAST_POSES[style] ?? 'cast' : pose;
+}
+
+export const POSES: Record<RigPose, PoseFrame[]> = {
   idle: [IDLE, IDLE, { ...IDLE, chestDy: 1 }, { ...IDLE, chestDy: 1 }],
   handsigns: [
     { ...IDLE, lean: 0, handN: chest(1, -1), handF: chest(2, -1), shapeN: 'sign', shapeF: 'sign' },
@@ -286,6 +304,31 @@ export const POSES: Record<SpritePose, PoseFrame[]> = {
       shapeF: 'fist',
     },
   ],
+  // A grimoire held open before the chest, the free hand raised to cast.
+  castBook: [
+    { lean: 2, handN: chest(3, 3), handF: arm(0.82, -0.32), footN: v(-0.2, 0.97), footF: v(0.24, 0.97), shapeN: 'open', shapeF: 'open' },
+    { lean: 2, chestDy: 1, handN: chest(3, 3.6), handF: arm(0.84, -0.38), footN: v(-0.2, 0.97), footF: v(0.24, 0.97), shapeN: 'open', shapeF: 'open' },
+  ],
+  // A spinning sphere held out in the near palm.
+  castSphere: [
+    { lean: 6, handN: arm(0.62, 0.22), handF: arm(0.26, 0.8), footN: v(-0.3, 0.95), footF: v(0.32, 0.95), shapeN: 'open', shapeF: 'fist' },
+    { lean: 7, pelvisDx: 1, handN: arm(0.66, 0.2), handF: arm(0.27, 0.79), footN: v(-0.32, 0.94), footF: v(0.32, 0.95), shapeN: 'open', shapeF: 'fist' },
+  ],
+  // Crouched, the crackling hand held low and forward, the other gripping its wrist.
+  castLightning: [
+    { lean: 10, handN: arm(0.46, 0.72), handF: arm(0.2, 0.86), footN: v(-0.36, 0.9), footF: v(0.4, 0.92), shapeN: 'open', shapeF: 'fist' },
+    { lean: 11, jitter: 1, handN: arm(0.48, 0.71), handF: arm(0.21, 0.85), footN: v(-0.36, 0.9), footF: v(0.4, 0.92), shapeN: 'open', shapeF: 'fist' },
+  ],
+  // Both palms cupped together at the back hip, charging a ball of energy.
+  castWave: [
+    { lean: -8, handN: chest(-10, 8), handF: chest(-8, 7), footN: v(-0.38, 0.92), footF: v(0.42, 0.94), shapeN: 'open', shapeF: 'open' },
+    { lean: -8, chestDy: 1, jitter: 1, handN: chest(-10.3, 8.4), handF: chest(-8.3, 7.4), footN: v(-0.38, 0.92), footF: v(0.42, 0.94), shapeN: 'open', shapeF: 'open' },
+  ],
+  // Both arms thrust forward, palms open, charging a blinding flash.
+  castFlash: [
+    { lean: 4, handN: arm(0.96, -0.02), handF: arm(0.95, -0.06), footN: v(-0.32, 0.95), footF: v(0.34, 0.95), shapeN: 'open', shapeF: 'open' },
+    { lean: 5, jitter: 1, handN: arm(0.97, 0), handF: arm(0.96, -0.04), footN: v(-0.33, 0.95), footF: v(0.34, 0.95), shapeN: 'open', shapeF: 'open' },
+  ],
   charge: [
     {
       lean: 6,
@@ -322,7 +365,7 @@ export const POSE_FPS: Record<SpritePose, number> = {
 export interface Rig {
   body: BodyType;
   bp: BodyParams;
-  pose: SpritePose;
+  pose: RigPose;
   frame: number;
   lean: number;
   pelvis: Vec;
@@ -362,7 +405,7 @@ function solve2(root: Vec, target: Vec, l1: number, l2: number, bend: 1 | -1): {
   return { mid, end };
 }
 
-export function buildRig(body: BodyType, pose: SpritePose, frame: number): Rig {
+export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
   const bp = BODY_PARAMS[body];
   const frames = POSES[pose] || POSES.idle;
   const f = frames[((frame % frames.length) + frames.length) % frames.length];
@@ -443,6 +486,6 @@ export function buildRig(body: BodyType, pose: SpritePose, frame: number): Rig {
   };
 }
 
-export function frameCount(pose: SpritePose): number {
+export function frameCount(pose: RigPose): number {
   return (POSES[pose] || POSES.idle).length;
 }

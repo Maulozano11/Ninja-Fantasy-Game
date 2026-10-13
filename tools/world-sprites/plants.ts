@@ -424,8 +424,9 @@ function lobeLight(L: Lobe, o: MassOpts, lx: number, ly: number): number {
 }
 /** Value thresholds between the seven greens (steps 1..7). */
 const MASS_TH = [0.24, 0.34, 0.44, 0.54, 0.65, 0.77];
-const MASS_K = Number(process.env.MASS_K ?? 0.62);
-const MASS_LIFT = Number(process.env.MASS_LIFT ?? 0.06);
+/** How much of the form light survives into the value (the rest of the contrast comes from the dabs). */
+const MASS_K = 0.62;
+const MASS_LIFT = 0.06;
 const massStep = (v: number): number => 1 + MASS_TH.filter((t) => v > t).length;
 
 /** True if lobe-local (lx, ly) is inside the lobe's ragged, leafy edge. */

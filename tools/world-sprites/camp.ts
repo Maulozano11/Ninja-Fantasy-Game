@@ -872,7 +872,9 @@ function smokeColumn(): WorldSprite {
     });
     frames.push(c);
   }
-  return assemble('smoke', 'Smoke Column', [0.6, 2], ['ambient'], { idle: { frames, fps: 8 } }, gx, gy - 1);
+  // Anchor on the lowest smoke row (the bottom puff), so the column starts at the ground point.
+  const low = Math.max(...frames.map((c) => c.bounds()?.[3] ?? 0));
+  return assemble('smoke', 'Smoke Column', [0.6, 2], ['ambient'], { idle: { frames, fps: 8 } }, gx, low);
 }
 
 // ============================================================================================

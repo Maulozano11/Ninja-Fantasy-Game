@@ -386,6 +386,28 @@ function dab(x: number, y: number, sp: number, seed: number): number {
   return id * 2 - 1;
 }
 
+/**
+ * Small leaf clusters inside a lobe: Voronoi cells about `sp` px across, each lit on its upper-left
+ * side and sinking on its lower-right, plus its own small value offset. Returns a value offset.
+ */
+function clusterTerm(x: number, y: number, sp: number, seed: number): number {
+  const gx = Math.floor(x / sp), gy = Math.floor(y / sp);
+  let best = Infinity, dx = 0, dy = 0, id = 0;
+  for (let j = -1; j <= 1; j++)
+    for (let i = -1; i <= 1; i++) {
+      const cx = gx + i, cy = gy + j;
+      const fx = (cx + 0.2 + hash(cx, cy, seed) * 0.6) * sp, fy = (cy + 0.2 + hash(cx, cy, seed + 1) * 0.6) * sp;
+      const d = (x - fx) ** 2 + (y - fy) ** 2;
+      if (d < best) {
+        best = d;
+        dx = x - fx;
+        dy = y - fy;
+        id = hash(cx, cy, seed + 2);
+      }
+    }
+  return clamp(-(dx * 0.6 + dy * 0.8) / (sp * 0.45), -1, 1) * 0.11 + (id - 0.5) * 0.12;
+}
+
 /** Light at a point of a lobe (lobe-local px from its center), before the mottling. */
 function lobeLight(L: Lobe, o: MassOpts, lx: number, ly: number): number {
   const u = lx / L.r, v = ly / L.ry;
@@ -396,12 +418,13 @@ function lobeLight(L: Lobe, o: MassOpts, lx: number, ly: number): number {
   const [fx, fy, frx, fry] = o.form;
   const U = clamp((L.x + lx - fx) / frx, -1, 1), V = clamp((L.y + ly - fy) / fry, -1, 1);
   const global = lambert(U * 0.75, V * 0.75, Math.sqrt(Math.max(0.05, 1 - (U * U + V * V) * 0.56)));
-  const rim = smooth(0.72, 1.05, d) * 0.16;
-  const ao = smooth(o.ground - fry * 0.95, o.ground, L.y + ly) * 0.24;
-  return local * 0.55 + global * 0.55 - rim - ao + (o.bias ?? 0) - 0.06;
+  const rim = smooth(0.62, 1.05, d) * 0.24;
+  const ao = smooth(o.ground - fry * 0.7, o.ground, L.y + ly) * 0.14;
+  return local * 0.55 + global * 0.55 - rim - ao + (o.bias ?? 0) + 0.02;
 }
 /** Value thresholds between the seven greens (steps 1..7). */
 const MASS_TH = [0.24, 0.34, 0.44, 0.54, 0.65, 0.77];
+const MASS_K = Number(process.env.MASS_K ?? 0.62);
 const massStep = (v: number): number => 1 + MASS_TH.filter((t) => v > t).length;
 
 /** True if lobe-local (lx, ly) is inside the lobe's ragged, leafy edge. */
@@ -411,11 +434,13 @@ function inLobe(L: Lobe, lx: number, ly: number, seed: number): boolean {
   if (d < 0.72) return true;
   const th = Math.atan2(ly, lx);
   const R = 1 / Math.hypot(Math.cos(th) / L.r, Math.sin(th) / L.ry);
-  // Leafy bumps 2-3 px wide along the rim; the underside stays fuller so the base sits on the ground.
-  const bin = Math.floor(((th + Math.PI) * R) / 2.5);
+  // Leafy bumps 1-3 px wide along the rim over a slower swell; the underside stays fuller so the
+  // base sits on the ground.
+  const arc = (th + Math.PI) * R;
+  const bin = Math.floor(arc / 1.8);
   const under = smooth(0.2, 0.8, Math.sin(th));
-  const jag = (hash(bin, 0, seed) * 3.2 + noise((th + Math.PI) * R, 0, 6, seed + 3) * 2.4) * (1 - under * 0.7);
-  return (d - 1) * R < 1.6 - jag;
+  const jag = (Math.floor(hash(bin, 0, seed) * 3.6) + noise(arc, 0, 5, seed + 3) * 3) * (1 - under * 0.75);
+  return (d - 1) * R < 2 - jag;
 }
 
 /**
@@ -437,24 +462,28 @@ function drawMass(b: Buf, lobes: Lobe[], o: MassOpts, offs: [number, number][] =
       });
       if (owner < 0) continue;
       const L = lobes[owner], sd = o.seed * 31 + owner * 17;
-      const v = lobeLight({ ...L, x: Math.round(L.x), y: Math.round(L.y) }, o, lx, ly) + dab(lx, ly, 2.7, sd) * 0.11 + dab(lx + 37, ly + 11, 4.8, sd + 5) * 0.08;
+      // Dabs: most cells nudge the value a little; some are dark pockets between leaf clusters, some lit crests.
+      // The form light sets the broad value (compressed, as in the reference), the dabs carry the contrast.
+      const form = lobeLight({ ...L, x: Math.round(L.x), y: Math.round(L.y) }, o, lx, ly);
+      const pick = dab(lx + 17, ly + 5, 3.4, sd + 9) * 0.5 + 0.5;
+      const pocket = pick < 0.2 ? -0.13 : pick > 0.84 ? 0.09 : 0;
+      const v = 0.5 + (form - 0.55) * MASS_K + clusterTerm(lx, ly, 5.2, sd + 13) * 0.7 + dab(lx, ly, 2.3, sd) * 0.085 + pocket;
       b.put(x, y, BUSH, massStep(v), owner, L.z);
     }
   // The shaded underside: between the lobes that reach the ground, dark leaves fill down to it, so
   // the bush sits on a broad base.
   let xl = Infinity, xr = -Infinity;
   for (let x = 0; x < b.w; x++)
-    for (let y = o.ground - 3; y <= o.ground; y++)
-      if (b.has(x, y)) {
-        xl = Math.min(xl, x);
-        xr = Math.max(xr, x);
-      }
-  for (let x = xl; x <= xr; x++) {
+    if (b.has(x, o.ground)) {
+      xl = Math.min(xl, x);
+      xr = Math.max(xr, x);
+    }
+  for (let x = xl + 1; x < xr; x++) {
     let y = o.ground;
     while (y > o.ground - 14 && !b.has(x, y)) y--;
     if (!b.has(x, y)) continue;
     const i = y * b.w + x;
-    for (let yy = y + 1; yy <= o.ground; yy++) b.put(x, yy, BUSH, 1 + (hash(x, yy, o.seed) < 0.3 ? 1 : 0), b.part[i], b.depth[i]);
+    for (let yy = y + 1; yy <= o.ground; yy++) b.put(x, yy, BUSH, dab(x, yy, 3, o.seed) > 0.4 ? 2 : 1, b.part[i], b.depth[i]);
   }
 }
 
@@ -576,9 +605,9 @@ function roundBush(): BushSpec {
   // One round mass: a crown lobe behind, two front lobes that meet low in the middle.
   const lobes = lobesFrom(
     [
-      [-1, 37, 27, 24],
-      [-12, 17, 23, 19],
-      [14, 16, 22, 18],
+      [0, 34, 32, 27],
+      [-14, 15, 22, 16],
+      [15, 14, 21, 15],
     ],
     gx,
     ground,

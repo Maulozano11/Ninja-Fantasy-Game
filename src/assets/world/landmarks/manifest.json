@@ -35,6 +35,31 @@
     }
    }
   },
+  "signpost": {
+   "label": "Signpost",
+   "file": "signpost.png",
+   "frameW": 57,
+   "frameH": 113,
+   "anchor": [
+    29,
+    111
+   ],
+   "meters": [
+    0.95,
+    1.9
+   ],
+   "tags": [
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 8,
+     "loop": true
+    }
+   }
+  },
   "boulder": {
    "label": "Mossy Boulder",
    "file": "boulder.png",

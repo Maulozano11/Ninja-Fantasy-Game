@@ -471,12 +471,15 @@ covers both.
   dinner, the moon and its breakdown, the night roll, the raid, the morning); falls,
   death saves in Legend and game over; difficulty and the no-randomness mode;
   autosave in one slot; mission log.
-- **Stand-ins until the new battle engine:** the current battle screen fights one
-  ninja at a time. The others hold the flanks off-screen and come back with 10–35 %
-  of max HP and chakra lost (never below 1 HP), a chance of Bleeding, and Poisoned
-  from a venomous beast. When the fighter falls, another ninja steps in. Soldier
-  pills are taken before the battle. Surprise and perimeter traps don't play in
-  battle yet. A battle can't be saved halfway: reloading starts it over.
+- **Party battles** (`src/battle`, screen in `src/components/battle`): the whole
+  party fights each node's battle on the river forest map (`src/battle/encounters.ts`
+  names which). The player controls all four and can hand any ninja to the AI.
+  Soldier pills, bandages, antidotes and explosive tags are used in battle and
+  spent from the supplies. The night raid reads the camp: bells mean nobody starts
+  surprised, otherwise whoever wasn't on watch loses the first turn; perimeter tags
+  and wires wait on the raiders' paths (a wire trips whoever walks into it). A
+  retreat by the map edge gives up the node (or the mission, at the objective). A
+  battle can't be saved halfway: reloading starts it over.
 - **Small rules filled in while building** (change them here if they're wrong):
   - If anyone is still standing after a battle, the fallen are stabilized and wake
     up with 1 HP.

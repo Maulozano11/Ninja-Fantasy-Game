@@ -5,9 +5,8 @@
 import type { ShinobiCharacter } from '../types/shinobi';
 import type { Difficulty, PartyState, RuleEvent } from '../types/mission';
 import { MISSIONS, MissionBattle, MissionDef, nextPos, nodeAt, RoadPos } from '../data/missions';
-import { applyBattleResult, BattleMemberResult, BattleResult, enterNextZone, flankWear, isStanding, newMission, travelLeg } from '../rules/mission';
+import { applyBattleResult, enterNextZone, newMission, travelLeg } from '../rules/mission';
 import { CampState, morning, Outcome, StopState } from '../rules/rest';
-import { hasEffect } from '../rules/effects';
 import { returnToVillage, sanitizeMissionFields } from '../rules/ninja';
 import { pick, strings } from '../i18n';
 import { both, describeEvent, LogLine, LogText } from './eventText';
@@ -40,16 +39,10 @@ export interface BattleRun {
   battle: MissionBattle;
   ambush: boolean;
   objective: boolean;
-  /** Choosing who fights, fighting, or choosing who steps in after a fall. */
-  phase: 'prep' | 'fighting' | 'fell';
-  fighterId: string;
+  /** Getting ready, or fighting on the battle map. */
+  phase: 'prep' | 'fighting';
+  /** Tries at this battle (a lost battle repeats in Story and Normal). */
   attempt: number;
-  /** Fighters who fell earlier in this battle. */
-  fallen: BattleMemberResult[];
-  /** Soldier pills taken for this battle, per ninja. */
-  pills: Record<string, number>;
-  /** The battle screen's report, kept until the player presses Continue. */
-  report?: BattleResult;
 }
 
 export interface MissionRun {
@@ -97,15 +90,8 @@ export function applyOutcome<S>(run: MissionRun, o: Extract<Outcome<S>, { ok: tr
   return patch(narrate({ ...run, party: o.party }, o.events, title), o.state);
 }
 
-/** Who fights by default: for an ambush whoever kept watch, else the leader, else anyone standing. */
-export function defaultFighter(party: PartyState, ambush: boolean, exclude: string[] = []): string {
-  const ok = party.members.filter((m) => isStanding(m) && !exclude.includes(m.id));
-  const guard = ambush ? ok.find((m) => hasEffect(m.effects, 'watchful')) : undefined;
-  return (guard ?? ok.find((m) => m.id === party.leaderId) ?? ok[0])?.id ?? '';
-}
-
-export function newBattle(id: string, battle: MissionBattle, party: PartyState, opts: { ambush?: boolean; objective?: boolean } = {}): BattleRun {
-  return { id, battle, ambush: !!opts.ambush, objective: !!opts.objective, phase: 'prep', fighterId: defaultFighter(party, !!opts.ambush), attempt: 0, fallen: [], pills: {} };
+export function newBattle(id: string, battle: MissionBattle, _party: PartyState, opts: { ambush?: boolean; objective?: boolean } = {}): BattleRun {
+  return { id, battle, ambush: !!opts.ambush, objective: !!opts.objective, phase: 'prep', attempt: 0 };
 }
 
 /** The party walks to a road node; a battle node opens its battle. */
@@ -175,50 +161,6 @@ function morningAfterRaid(run: MissionRun): MissionRun {
   return narrate({ ...run, party: m.party, camp: m.state }, m.events, both(T, 'interruptedMorning'));
 }
 
-/** Continue after the battle screen: folds the result in, or sends the next ninja in after a fall. */
-export function resolveBattle(run: MissionRun): MissionRun {
-  const b = run.battle;
-  if (!b?.report) return run;
-  const fighter = run.party.members.find((m) => m.id === b.fighterId);
-  const mine: BattleMemberResult = { ...b.report.members[0], id: b.fighterId, pillsTaken: b.pills[b.fighterId] ?? 0 };
-  const title = { title: b.battle.title };
-  const titleEs = { title: es(b.battle.title, b.battle.titleEs) };
-
-  if (b.report.victory) {
-    const fighters = [...b.fallen.map((f) => f.id), b.fighterId];
-    const wear = flankWear(run.party, b.id, fighters, { threat: b.battle.threat, venom: b.battle.venom });
-    const res = applyBattleResult(run.party, { victory: true, members: [...b.fallen, mine, ...wear] }, b.id, { ambush: b.ambush });
-    let r = narrate({ ...run, party: res.party, battle: null }, res.events, both(T, 'victory', title, titleEs));
-    r = { ...r, stats: { ...r.stats, battlesWon: r.stats.battlesWon + 1, falls: r.stats.falls + b.fallen.length } };
-    return b.ambush ? morningAfterRaid(r) : { ...r, nodeDone: true };
-  }
-
-  // The fighter fell: they stay down while the battle goes on.
-  const fallen = [...b.fallen, { ...mine, hp: 0, fell: true }];
-  const party: PartyState = {
-    ...run.party,
-    members: run.party.members.map((m) => (m.id === b.fighterId ? { ...m, currentHp: 0, currentChakra: Math.max(0, Math.min(m.maxChakra, mine.chakra)) } : m)),
-  };
-  const next = defaultFighter(party, b.ambush, fallen.map((f) => f.id));
-  if (next) {
-    const r = narrate({ ...run, party }, [], both(T, 'falls', { name: fighter?.name ?? T('theFighter', undefined, 'en') }, { name: fighter?.name ?? T('theFighter', undefined, 'es') }));
-    return { ...r, battle: { ...b, phase: 'fell', fallen, fighterId: next, report: undefined } };
-  }
-
-  // Nobody is left standing.
-  if (run.party.progress.difficulty !== 'legend' && !b.ambush) {
-    const r = narrate({ ...run, party: run.entry }, [], both(T, 'wholePartyFell', title, titleEs));
-    return { ...r, battle: newBattle(b.id, b.battle, run.entry, { objective: b.objective }), stats: { ...r.stats, retries: r.stats.retries + 1 } };
-  }
-  const res = applyBattleResult(party, { victory: false, members: fallen }, b.id, { ambush: b.ambush });
-  let r = narrate({ ...run, party: res.party, battle: null }, res.events, both(T, 'defeat', title, titleEs));
-  r = { ...r, stats: { ...r.stats, falls: r.stats.falls + fallen.length } };
-  if (res.gameOver) return { ...r, outcome: 'gameOver' };
-  if (b.ambush) return morningAfterRaid(r);
-  if (b.objective) return { ...narrate(r, [], both(T, 'objectiveLost')), outcome: 'failed' };
-  return narrate({ ...r, nodeDone: true }, [], both(T, 'leftForDead'));
-}
-
 /**
  * After a party battle (the whole party fights on the battle map): HP, chakra, effects, falls,
  * criticals, soldier pills and Tension come back through the mission rules, and the supplies used
@@ -267,8 +209,8 @@ export function loadRun(): MissionRun | null {
     if (!raw) return null;
     const r = JSON.parse(raw) as MissionRun;
     if (r?.version !== 1 || !MISSIONS.some((m) => m.id === r.missionId) || !r.party?.members) return null;
-    // A battle can't be saved halfway: it starts again from choosing who fights.
-    if (r.battle?.phase === 'fighting') r.battle = { ...r.battle, phase: r.battle.fallen.length ? 'fell' : 'prep', report: undefined };
+    // A battle can't be saved halfway: it starts again from getting ready (older saves too).
+    if (r.battle && r.battle.phase !== 'prep') r.battle = { id: r.battle.id, battle: r.battle.battle, ambush: r.battle.ambush, objective: r.battle.objective, phase: 'prep', attempt: r.battle.attempt ?? 0 };
     return r;
   } catch {
     return null;

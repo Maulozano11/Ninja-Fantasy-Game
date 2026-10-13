@@ -10,20 +10,12 @@ import { deriveStats } from '../rules/derived';
 import { LEGENDARY_PRESETS } from './shinobiData';
 import type { EncounterId } from '../battle/encounters';
 
-/** Enemy groups the current battle screen knows. */
-export type LegacyEnemyType = 'skirmish' | 'rogue_squad' | 'giant_beast' | 'titanic_threat';
-
 export interface MissionBattle {
   title: string;
   titleEs?: string;
   description: string;
   descriptionEs?: string;
-  enemyType: LegacyEnemyType;
   weather: WeatherType;
-  /** How hard the fight is on the ninjas holding the flanks off-screen (prototype; 1 = a squad). */
-  threat: number;
-  /** A venomous enemy: the flanks may come back Poisoned. */
-  venom?: boolean;
   /** The party battle on the map (src/battle/encounters.ts). */
   encounter: EncounterId;
 }
@@ -97,9 +89,7 @@ export const RIVER_FOREST_PATROL: MissionDef = {
             titleEs: 'Renegados en el camino de los cedros',
             description: 'Drive them off before they call for more.',
             descriptionEs: 'Ahuyéntenlos antes de que llamen a más.',
-            enemyType: 'rogue_squad',
             weather: 'Clear',
-            threat: 1,
             encounter: 'cedar_rogues',
           },
         },
@@ -125,9 +115,7 @@ export const RIVER_FOREST_PATROL: MissionDef = {
             titleEs: 'Escaramuza en el vado del valle',
             description: 'Break through to the far bank.',
             descriptionEs: 'Ábranse paso hasta la otra orilla.',
-            enemyType: 'skirmish',
             weather: 'Downpour',
-            threat: 1.1,
             encounter: 'river_patrol',
           },
         },
@@ -155,10 +143,7 @@ export const RIVER_FOREST_PATROL: MissionDef = {
             titleEs: 'La hidra del vado',
             description: 'Kill the hydra and the river is safe again. Its bite is venomous.',
             descriptionEs: 'Maten a la hidra y el río volverá a ser seguro. Su mordida es venenosa.',
-            enemyType: 'giant_beast',
             weather: 'Clear',
-            threat: 1.3,
-            venom: true,
             encounter: 'hydra',
           },
         },
@@ -170,9 +155,7 @@ export const RIVER_FOREST_PATROL: MissionDef = {
     titleEs: 'Asalto nocturno al campamento',
     description: 'Raiders come out of the dark from the edges of the clearing. Hold the camp.',
     descriptionEs: 'Los asaltantes salen de la oscuridad desde los bordes del claro. Defiendan el campamento.',
-    enemyType: 'rogue_squad',
     weather: 'Clear',
-    threat: 1,
     encounter: 'night_raid',
   },
 };

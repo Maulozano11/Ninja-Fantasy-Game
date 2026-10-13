@@ -669,7 +669,7 @@ function rabbit(): WorldSprite {
     armF: [[3.6, -5.0], [5.4, -1.0]],
     tail: [-9.4, -6.2],
   });
-  const Gdown = rp(G, { head: { c: [7.4, -4.0], a: 1.15 }, nose: 1 });
+  const Gdown = rp(G, { head: { c: [7.4, -4.6], a: 1.18 }, nose: 1 });
   const Gear = rp(G, { earN: [[5.8, -7.6], [1.0, -13.6]] });
   const graze = [G, Gdown, G, Gdown, Gear, G].map(rabbitFrame);
 
@@ -1146,7 +1146,7 @@ function deer(): WorldSprite {
 
   // Alert: head high, ears forward, tail up and the white rump flared.
   const alert = [deerFrame({ ...S, neck: [22, -73], headA: rad(22), earN: rad(-14), earF: rad(-14), tail: 1, flare: 1 })];
-  return assemble('deer', 'Sika Deer', [1.4, 1.5], ['animal', 'ambient'], { idle: { frames: idle, fps: 5 }, graze: { frames: graze, fps: 5 }, walk: { frames: walk, fps: 8 }, alert: { frames: alert, fps: 0 } }, DEER_OX + 1, DEER_GY);
+  return assemble('deer', 'Sika Deer', [1.4, 1.5], ['animal', 'ambient'], { idle: { frames: idle, fps: 5 }, graze: { frames: graze, fps: 5 }, walk: { frames: walk, fps: 8 }, alert: { frames: alert, fps: 0 } }, DEER_OX + 1, DEER_GY + 1);
 }
 
 // =============================================================================================

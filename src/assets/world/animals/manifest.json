@@ -6,7 +6,7 @@
    "label": "Wild Rabbit",
    "file": "rabbit.png",
    "frameW": 31,
-   "frameH": 26,
+   "frameH": 25,
    "anchor": [
     16,
     23
@@ -47,7 +47,7 @@
    "frameH": 94,
    "anchor": [
     38,
-    91
+    92
    ],
    "meters": [
     1.4,

@@ -640,7 +640,32 @@ function windCrane(): WorldSprite {
     };
     // Far wing, behind everything, raised a little ahead of the near one.
     const farW: CraneWing = { arm: wg.arm + (wg.arm < 0 ? 10 : -10), hand: wg.hand + (wg.hand < 0 ? 12 : -12), spread: wg.spread };
-    const farTips = craneWing(f, [cx + 6, cy - 6 + by], farW, 0.86, t + 0.08, true);
+    const farTips = craneWing(f, [cx + 6, cy - 6 + by], farW, 1.08, t + 0.08, true);
+    // Wind ribbons streaming from the tail, waving, each ending in a curl.
+    for (let r = 0; r < 3; r++) {
+      const pts: P2[] = [];
+      const n = 30;
+      const len = 54 + r * 8;
+      for (let q = 0; q <= n; q++) {
+        const u = q / n;
+        const x = cx - 18 - u * len;
+        const y = cy + 3 + by + (r - 1) * 7 * u + Math.sin(TAU * (u * 1.2 - t) + r * 1.8) * 4 * u;
+        pts.push([x, y]);
+      }
+      // The curl at the end: a spiral turning back over the ribbon.
+      const [ex0, ey0] = pts[n];
+      for (let q = 1; q <= 10; q++) {
+        const a = Math.PI / 2 + q * 0.5 + r;
+        const rr = 4.5 - q * 0.3;
+        pts.push([ex0 - 2 + Math.cos(a) * rr * 1.2, ey0 + (r === 1 ? 0 : r === 0 ? -2 : 2) + Math.sin(a) * rr]);
+      }
+      f.part_([tube(pts, (u) => (u < 0.75 ? lerp(3.4, 1.4, u / 0.75) : lerp(1.4, 0.7, (u - 0.75) / 0.25)))], (h) => {
+        const L = lit(h);
+        const st = fract(h.u * 6 - t * 3 + r * 0.3) < 0.2 ? 1 : 0;
+        const sx = stepOf(L, h.u * h.len, h.v * 3, [0.24, 0.46, 0.7, 0.86], 0.05, 101 + r) + st;
+        return wa(WIND.ramp[clamp(sx, 2, 5)], lerp(245, 170, h.u));
+      }, { outline: WIND.outline, line: WIND.line, solid: 160 });
+    }
     // Legs trailing behind the tail, dark and thin, with the toes curled.
     const legs: Prim[] = [];
     for (const [dy, dx] of [[0, 0], [2, -3]]) {
@@ -660,21 +685,18 @@ function windCrane(): WorldSprite {
       tail.push(lens(r, [r[0] + d[0] * 16, r[1] + d[1] * 16], 3.2, { peak: 0.4, tip: 1.2, base: 0.6 }));
     }
     f.part_(tail, featherShade(t, { seed: 95 }), style);
-    // Body: a long torso, the breast full.
-    f.part_([blob(cx - 2, cy + 1 + by, 19, 8.2, -0.08), blob(cx + 9, cy + by, 9, 7.5, -0.2)], body, style);
-    // Neck: stretched forward with a gentle S, the head held level.
+    // Body, neck and head as one form: a long torso with a full breast, the neck stretched
+    // forward in a gentle S, the head held level.
     const neck: P2[] = [];
     for (let j = 0; j <= 14; j++) {
       const u = j / 14;
-      neck.push([cx + 12 + u * 34, cy - 2 + by - Math.sin(u * Math.PI) * 4 - u * 5 + Math.sin(TAU * t + u * 2) * 0.8 * u]);
+      neck.push([cx + 10 + u * 36, cy - 2 + by - Math.sin(u * Math.PI) * 4 - u * 5 + Math.sin(TAU * t + u * 2) * 0.8 * u]);
     }
-    f.part_([tube(neck, (u) => lerp(4.4, 2.8, u))], body, style);
     const hd = neck[neck.length - 1];
-    // Head and the dagger beak.
-    f.part_([blob(hd[0] + 3, hd[1], 5.2, 4.2, -0.1)], body, style);
+    f.part_([blob(cx - 2, cy + 1 + by, 19, 8.2, -0.08), blob(cx + 9, cy + by, 9.5, 7.8, -0.2), tube(neck, (u) => lerp(5, 2.9, u)), blob(hd[0] + 3, hd[1], 5.4, 4.3, -0.1)], body, style);
     f.part_([lens([hd[0] + 6, hd[1] - 0.5], [hd[0] + 22, hd[1] + 2.2], 2.1, { peak: 0.12, tip: 0.9, base: 1 })], (h) => WIND.tip[clamp(stepOf(lit(h), h.x, h.y) + (h.v < 0 ? 1 : 0), 2, 5)], style);
     // Near wing in front.
-    const tips = craneWing(f, [cx + 2, cy - 4 + by], wg, 1, t, false);
+    const tips = craneWing(f, [cx + 2, cy - 4 + by], wg, 1.25, t, false);
     const fc = f.finish();
     // Eye and a pale crown.
     const ex = Math.round(hd[0] + 4), ey = Math.round(hd[1] - 1);
@@ -690,9 +712,7 @@ function windCrane(): WorldSprite {
         if ((q + Math.floor(t * 12) + seed) % 9 < 7) fc.plot(x, y, wa(WIND.streak, alpha));
       }
     };
-    [...tips, ...farTips].forEach(([x, y], j) => streak(x - 1, y, 14 + (j % 3) * 5, j < tips.length ? 200 : 120, j));
-    streak(cx - 34, cy + 2 + by, 26, 170, 7);
-    streak(cx - 30, cy - 4 + by, 18, 130, 3);
+    [...tips, ...farTips].forEach(([x, y], j) => streak(x - 1, y, 16 + (j % 3) * 6, j < tips.length ? 235 : 150, j));
     // Eddies: little spirals spun off behind, drifting back over the loop.
     for (let e = 0; e < 3; e++) {
       const p = fract(t + e / 3);
@@ -701,7 +721,7 @@ function windCrane(): WorldSprite {
       for (let q = 0; q < 26; q++) {
         const a = q * 0.42 + e * 2 + p * 4;
         const rr = r0 * (1 - q / 34);
-        fc.plot(Math.round(ex2 + Math.cos(a) * rr * 1.4), Math.round(ey2 + Math.sin(a) * rr), wa(WIND.streak, 210 * (1 - p) * (1 - q / 30)));
+        fc.plot(Math.round(ex2 + Math.cos(a) * rr * 1.4), Math.round(ey2 + Math.sin(a) * rr), wa(WIND.streak, 245 * (1 - p * 0.7) * (1 - q / 30)));
       }
     }
     frames.push(fc);

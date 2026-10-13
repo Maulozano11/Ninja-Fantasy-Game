@@ -1150,7 +1150,7 @@ function aTent(o: TentSpec): WorldSprite {
       const ax = c.u1 - c.u0, ay = c.v1 - c.v0, l2 = ax * ax + ay * ay;
       const t = clamp(((U - c.u0) * ax + (V - c.v0) * ay) / l2, 0, 1);
       const dist = Math.hypot(U - (c.u0 + ax * t), V - (c.v0 + ay * t));
-      d += c.a * Math.exp(-((dist / c.w) ** 2)) * (1 - t * 0.85);
+      d += c.a * 1.5 * Math.exp(-((dist / c.w) ** 2)) * (1 - t * 0.85);
     }
     return d;
   };
@@ -1166,7 +1166,7 @@ function aTent(o: TentSpec): WorldSprite {
     const x = -L / 2 + u * L;
     const p = lerp3([x, ridgeH(u), 0], [x, pegLift(u), side * B], v);
     const n = unit([0, B, side * HR]);
-    const sag = (3.4 + 2 * Math.sin(Math.PI * u)) * Math.pow(Math.sin(Math.PI * v), 1.2) * (1 + sway * 0.06);
+    const sag = (4.2 + 2.6 * Math.sin(Math.PI * u)) * Math.pow(Math.sin(Math.PI * v), 1.2) * (1 + sway * 0.06);
     const fold = side < 0 ? foldAt(u * L, v * SL) : 0;
     return add(p, mul(n, fold - sag));
   };
@@ -1185,30 +1185,32 @@ function aTent(o: TentSpec): WorldSprite {
     const sc = new Scene();
     const sway = [0, 1, 0, -1][t % 4];
     const nearN = rotYp(unit([0, B, -HR]), YAW);
-    const near = sc.add(Y(sheet(grid(NU, NV, (u, v) => slopePt(u, v, -1, sway)))), canvasOpts(o.seed + 1, { ao: 3, bias: -0.24, jitter: 0.05, bump: { base: nearN, gain: 3 } }));
+    const near = sc.add(Y(sheet(grid(NU, NV, (u, v) => slopePt(u, v, -1, sway)))), canvasOpts(o.seed + 1, { ao: 3, bias: -0.3, jitter: 0.05, bump: { base: nearN, gain: 3.4 } }));
     const far = sc.add(Y(sheet(grid(24, 16, (u, v) => slopePt(u, v, 1)))), canvasOpts(o.seed + 2, { pal: INSIDE, steps: [0, 1, 1, 2], castShadow: false }));
     const A: V3 = [L / 2, ridgeH(1), 0], S: V3 = [L / 2, 0, 0], Fb: V3 = [L / 2, 0, B], Bn: V3 = [L / 2, 0, -B];
     const A0: V3 = [-L / 2, ridgeH(0), 0];
     // The back gable seen from inside, and the floor (a ground sheet).
     sc.add(Y(sheet(grid(6, 8, (u, v) => lerp3(lerp3(A0, [-L / 2, 0, B], v), lerp3(A0, [-L / 2, 0, -B], v), u)), { flip: true })), canvasOpts(o.seed + 3, { pal: INSIDE, steps: [0, 0, 1, 1] }));
     const floor = sc.add(Y(sheet(grid(4, 4, (u, v) => [-L / 2 + u * L, 0.3, B - v * 2 * B]))), { pal: INSIDE, seed: o.seed + 4, steps: [0, 1, 1, 2], crest: false, castShadow: false });
-    // Door flaps: each half of the front gable hinged on its slope edge and thrown open; they droop
-    // under their weight and billow a little. The far one is folded right back.
-    const flap = (hingeEnd: V3, phiDeg: number, dir: 1 | -1, seed: number, droop: number) => {
-      const phi = phiDeg * (Math.PI / 180);
-      const hingeAx = unit(sub(hingeEnd, A));
+    // Door flaps: each half of the front gable pulled aside and tied back at waist height, so it
+    // hangs as a gathered curtain along the edge of the opening (narrow at the tie, flared below).
+    const gable: V3 = [1, 0, 0];
+    const flap = (hingeEnd: V3, side: 1 | -1, seed: number) => {
+      const tieV = 0.58;
       const pt = (u: number, v: number): V3 => {
-        const p0 = lerp3(lerp3(A, hingeEnd, v), lerp3(A, S, v), u);
-        let p = rotAxisP(p0, hingeAx, dir * phi, A);
-        p = add(p, [0, -u * v * droop, 0]);
-        p = add(p, mul([1, 0, 0], Math.sin(Math.PI * u) * Math.sin(Math.PI * v) * (2.4 + sway * 0.6)));
+        const wv = v < tieV ? 0.18 + 0.32 * ((tieV - v) / tieV) ** 1.4 : 0.16 + 0.5 * ((v - tieV) / (1 - tieV)) ** 1.3;
+        const uu = u * wv;
+        let p = lerp3(lerp3(A, hingeEnd, v), lerp3(A, S, v), uu);
+        // Gathered folds stand out of the gable plane; the whole curtain bellies out a little.
+        const folds = Math.sin(u * Math.PI * 3.2 + side) * 1.5 * (0.4 + Math.abs(v - tieV));
+        p = add(p, mul(gable, 1.6 + folds + Math.sin(Math.PI * u) * (1.5 + sway * 0.4)));
         if (p[1] < 0.6) p = [p[0], 0.6, p[2]];
         return p;
       };
-      return sc.add(Y(sheet(grid(10, 18, pt))), canvasOpts(seed, { twoSided: true, steps: [1, 2, 3, 3] }));
+      return sc.add(Y(sheet(grid(8, 20, pt), { flip: side < 0 })), canvasOpts(seed, { twoSided: true, steps: [1, 2, 3, 4], bias: -0.18 }));
     };
-    const flapN = flap(Bn, o.flap + sway * 6, -1, o.seed + 5, 12 + sway * 1.5);
-    const flapF = flap(Fb, 150, 1, o.seed + 6, 8);
+    const flapN = flap(Bn, -1, o.seed + 5);
+    const flapF = flap(Fb, 1, o.seed + 6);
     // Crossed poles at both ends (their tops cross over the ridge and stick out) and the ridge pole
     // resting in the crotches.
     const poleOpts = (seed: number): MeshOpts => ({ pal: WOOD_DK, seed, contrast: 1.12, facetVar: 0, steps: [1, 2, 3, 4] });
@@ -1244,11 +1246,13 @@ function aTent(o: TentSpec): WorldSprite {
       const U = u * L, V = v * SL;
       let s = f.step[i];
       const p = f.world(i);
-      // Weave: broken thread rows across the slope and fainter ones down it, only on lit cloth.
-      if (s >= 3 && (V % 3) < 1 && noise(U * 0.7, V, 1.3, o.seed + 60) > 0.56) s -= 1;
-      else if (s >= 2 && s <= 3 && (U % 4) < 1 && noise(U, V * 0.5, 1.3, o.seed + 61) > 0.68) s += 1;
-      // Rain stains: soft streaks running down from the ridge.
-      if (noise(U / 3, V / 22, 1, o.seed + 62) > 0.78 && s > 1 && V > 8) s -= 1;
+      // Weave: a sparse diagonal twill in the lit cloth, a darker thread here and there in the shade.
+      const tw = (Math.floor(U) + Math.floor(V)) % 4;
+      if (s >= 4 && tw === 0 && noise(U * 0.5, V * 0.5, 1.4, o.seed + 60) > 0.45) s -= 1;
+      else if (s === 3 && tw === 0 && noise(U * 0.5, V * 0.5, 1.4, o.seed + 61) > 0.72) s += 1;
+      else if (s === 2 && tw === 2 && noise(U * 0.5, V * 0.5, 1.4, o.seed + 61) > 0.8) s -= 1;
+      // Rain stains: a few soft streaks running down from the ridge.
+      if (noise(U / 3.5, V / 26, 1, o.seed + 62) > 0.84 && s > 2 && V > 10) s -= 1;
       // Ridge: a lit crest and the seam of the doubled band just below it.
       if (V < 1.2) s = Math.max(s, 4);
       else if (Math.abs(V - 5) < 0.6) s = Math.min(s, 2);
@@ -1339,11 +1343,11 @@ function tentLarge(): WorldSprite {
     name: 'tent_large',
     label: 'Large Canvas Tent',
     meters: [3.4, 2.3],
-    L: 156, B: 64, HR: 120, YAW: -0.62, seed: 3100, ext: 0.13,
+    L: 156, B: 64, HR: 120, YAW: -0.82, seed: 3100, ext: 0.13,
     seams: [0.25, 0.5, 0.75],
     pegs: [0, 0.25, 0.5, 0.75, 1],
     patches: [{ u0: 0.6, v0: 0.62, u1: 0.68, v1: 0.78 }],
-    flap: 152,
+    flap: 0,
     W: 340, H: 250, ox: 170, oy: 196,
   });
 }
@@ -1353,11 +1357,11 @@ function tentSmall(): WorldSprite {
     name: 'tent_small',
     label: 'Small Canvas Tent',
     meters: [2.4, 1.6],
-    L: 104, B: 44, HR: 82, YAW: -0.58, seed: 3200, ext: 0.15,
+    L: 104, B: 44, HR: 82, YAW: -0.8, seed: 3200, ext: 0.15,
     seams: [0.5],
     pegs: [0, 0.5, 1],
     patches: [{ u0: 0.18, v0: 0.5, u1: 0.28, v1: 0.66 }],
-    flap: 128,
+    flap: 0,
     W: 250, H: 190, ox: 125, oy: 150,
   });
 }

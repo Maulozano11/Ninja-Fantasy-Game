@@ -1449,6 +1449,61 @@ const TPL: Record<string, HairTpl> = {
       '...000...0...................',
     ],
   },
+  hair_crown: {
+    fa: [16, 23],
+    f: [
+      '.................10..........',
+      '...............11000.........',
+      '..............130............',
+      '..............10.............',
+      '..............10.............',
+      '..............10.............',
+      '.............1321110.........',
+      '...........113323334110......',
+      '...110...1133332322222200....',
+      '.114231114444444442332220....',
+      '.124224414444554442232330....',
+      '12244444115545244222323320...',
+      '124431141144242444221221220..',
+      '1111333344422422432212212220.',
+      '0441133143322422432212212220.',
+      '.013223143322422422212212220.',
+      '..00011143222432422212212220.',
+      '.....011432214324222122122220',
+      '......01422214323322122122220',
+      '......01422210223322022002220',
+      '......0242220.020320.00..0220',
+      '......013220...0.020.....0220',
+      '......003220.....00......0220',
+      '........0220......0......0220',
+      '........0220.............0220',
+      '........02220.............020',
+      '.........0220.............00.',
+      '.........020..............00.',
+      '..........00..............00.',
+      '..........00.................',
+      '...........0.................',
+    ],
+  },
+  hair_crown_ribbon: {
+    fa: [11, 15],
+    f: [
+      '..10..',
+      '.0430.',
+      '..130.',
+      '..130.',
+      '..130.',
+      '..120.',
+      '..120.',
+      '..110.',
+      '.1110.',
+      '.0110.',
+      '12120.',
+      '110320',
+      '00.00.',
+      '0...0.',
+    ],
+  },
 };
 // </generated-templates>
 
@@ -1558,6 +1613,22 @@ export const HAIR_ITEMS: ItemDef[] = [
   hairStyle('hair_ascended', 'Ascended Spikes', 'Golden spikes swept up and back, with one lone lock over the brow.', '#e6c020'),
   hairStyle('hair_storm2', 'Storm Ascension', 'Taller, sharper golden spikes crackling upward, with a lock over the brow.', '#e6c020'),
   hairStyle('hair_gale', 'Gale Prodigy', 'Short, messy black spikes with a tall cowlick and ragged bangs falling between the eyes.', '#23232f'),
+  {
+    id: 'hair_crown',
+    slot: 'hair',
+    name: 'Crowned Braid',
+    desc: 'Golden hair pulled back into a braided bun with a ribbon, soft bangs, long locks framing the face and one stubborn strand standing up.',
+    colors: [
+      { key: 'hair', label: 'Hair', default: '#e3c25a', kind: 'hair' },
+      { key: 'ribbon', label: 'Ribbon', default: '#2a4aa6', kind: 'cloth' },
+    ],
+    draw: (g, [c, ribbon]) => {
+      tpl(g, TPL.hair_crown, g.m(c, 'hair'));
+      // the ribbon tied around the bun
+      const R = TPL.hair_crown_ribbon;
+      hairTemplate(g, g.L('hairFront'), R.f!, R.fa![0], R.fa![1], g.m(ribbon, 'cloth'));
+    },
+  },
   {
     id: 'hair_ribbon',
     slot: 'hair',

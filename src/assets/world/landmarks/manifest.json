@@ -1,0 +1,39 @@
+{
+ "group": "landmarks",
+ "pxPerMeter": 57,
+ "sprites": {
+  "stone_lantern": {
+   "label": "Stone Lantern",
+   "file": "stone_lantern.png",
+   "frameW": 48,
+   "frameH": 99,
+   "anchor": [
+    24,
+    97
+   ],
+   "meters": [
+    0.7,
+    1.7
+   ],
+   "tags": [
+    "light-source",
+    "cover-half",
+    "interactable"
+   ],
+   "anims": {
+    "lit": {
+     "row": 0,
+     "frames": 6,
+     "fps": 8,
+     "loop": true
+    },
+    "unlit": {
+     "row": 1,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  }
+ }
+}

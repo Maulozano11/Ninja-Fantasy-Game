@@ -1,0 +1,32 @@
+{
+ "group": "animals",
+ "pxPerMeter": 57,
+ "sprites": {
+  "rabbit": {
+   "label": "Wild Rabbit",
+   "file": "rabbit.png",
+   "frameW": 25,
+   "frameH": 25,
+   "anchor": [
+    13,
+    23
+   ],
+   "meters": [
+    0.35,
+    0.3
+   ],
+   "tags": [
+    "animal",
+    "ambient"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 6,
+     "loop": true
+    }
+   }
+  }
+ }
+}

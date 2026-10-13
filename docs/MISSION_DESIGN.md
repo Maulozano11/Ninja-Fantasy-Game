@@ -457,3 +457,32 @@ and the minimum cinematics (stage with bars, walk pose, priority-1 poses and
 expressions, portraits with Auto/Skip/backlog, cards with % and d20, marks,
 Chronicle as a list, saves around decisions, solo and local secret vote). Then the
 ambush, the traps and the local vote.
+
+## Prototype status
+
+Playable in the app under **Missions**: the *River Forest Patrol* (rank C), two
+zones, three battles, a short stop between the zones and a camp at the Shrine
+Clearing with a night raid. Rules in `src/rules`, the mission flow in
+`src/game/missionRun.ts`, the screens in `src/components/mission`; `npm test`
+covers both.
+
+- **Done:** party state carried between battles; status effects with durations;
+  the short stop; the whole camp (fire, incense sticks and activities with their %,
+  dinner, the moon and its breakdown, the night roll, the raid, the morning); falls,
+  death saves in Legend and game over; difficulty and the no-randomness mode;
+  autosave in one slot; mission log.
+- **Stand-ins until the new battle engine:** the current battle screen fights one
+  ninja at a time. The others hold the flanks off-screen and come back with 10–35 %
+  of max HP and chakra lost (never below 1 HP), a chance of Bleeding, and Poisoned
+  from a venomous beast. When the fighter falls, another ninja steps in. Soldier
+  pills are taken before the battle. Surprise and perimeter traps don't play in
+  battle yet. A battle can't be saved halfway: reloading starts it over.
+- **Small rules filled in while building** (change them here if they're wrong):
+  - If anyone is still standing after a battle, the fallen are stabilized and wake
+    up with 1 HP.
+  - Bleeding on the road never drops a ninja below 1 HP.
+  - A lost ambush in Story or Normal loses half of each supply, rounded down.
+  - In Legend, a lost battle with survivors passes the node (the enemy left them
+    for dead); losing the objective battle fails the mission.
+- **Not yet:** branching road, traps and curios, votes, cinematics and decisions,
+  the AI picking activities, local and online play.

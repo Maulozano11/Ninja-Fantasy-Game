@@ -76,6 +76,8 @@ const ENEMY_LOOKS: Record<string, SpriteAppearance> = {
 };
 import { DiceRollModal } from './DiceRollModal';
 import { soundManager } from '../utils/audio';
+import type { BattleResult } from '../rules/mission';
+import { effectiveMaxHp } from '../rules/derived';
 import {
   Shield,
   Zap,
@@ -100,7 +102,12 @@ interface TacticalCombatProps {
     enemyType: 'skirmish' | 'rogue_squad' | 'giant_beast' | 'titanic_threat';
     weather: WeatherType;
   };
-  onBattleEnd?: (victory: boolean, expGained: number) => void;
+  /** Mission battle: start from the character's current HP and chakra, which carry over between battles. */
+  carryOver?: boolean;
+  /** Called once when the battle ends, on a victory and on a defeat. */
+  onBattleEnd?: (result: BattleResult) => void;
+  /** Mission battle: the end screen offers Continue instead of fighting again. */
+  onContinue?: () => void;
   onBackToCreator?: () => void;
 }
 
@@ -110,9 +117,46 @@ const GRID_HEIGHT = 8;
 export const TacticalCombat: React.FC<TacticalCombatProps> = ({
   playerCharacter,
   campaignEncounter,
+  carryOver = false,
   onBattleEnd,
+  onContinue,
   onBackToCreator,
 }) => {
+  /** The player's character as the battle starts: full in free play, as they are in a mission. */
+  const startingCharacter = (): ShinobiCharacter =>
+    carryOver
+      ? {
+          ...playerCharacter,
+          currentHp: Math.max(1, Math.min(effectiveMaxHp(playerCharacter), playerCharacter.currentHp)),
+          currentChakra: Math.max(0, Math.min(playerCharacter.maxChakra, playerCharacter.currentChakra)),
+        }
+      : { ...playerCharacter, currentHp: playerCharacter.maxHp, currentChakra: playerCharacter.maxChakra };
+  // What the mission needs to know about this battle, reported once at the end.
+  const critsTakenRef = useRef(0);
+  const critsLandedRef = useRef(0);
+  const reportedRef = useRef(false);
+  const reportResult = (victory: boolean, hp: number, chakra: number, fellToCrit = false) => {
+    if (reportedRef.current || !onBattleEnd) return;
+    reportedRef.current = true;
+    const result: BattleResult = {
+      victory,
+      xp: victory ? 1200 : 0,
+      members: [
+        {
+          id: playerCharacter.id,
+          hp,
+          chakra,
+          critsTaken: critsTakenRef.current,
+          critsLanded: critsLandedRef.current,
+          fell: hp <= 0,
+          fellToCrit,
+        },
+      ],
+    };
+    // Reported after the state update it may be called from, so the parent can update itself.
+    const report = onBattleEnd;
+    setTimeout(() => report(result), 0);
+  };
   // Weather
   const [weather, setWeather] = useState<WeatherType>(campaignEncounter?.weather || 'Clear');
   const [muted, setMuted] = useState<boolean>(soundManager.getMuted());
@@ -128,7 +172,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
       x: 1,
       y: 3,
       size: 1,
-      character: { ...playerCharacter, currentHp: playerCharacter.maxHp, currentChakra: playerCharacter.maxChakra },
+      character: startingCharacter(),
       conditions: [],
       actionUsed: false,
       bonusActionUsed: false,
@@ -272,7 +316,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
       x: 1,
       y: 3,
       size: 1,
-      character: { ...playerCharacter, currentHp: playerCharacter.maxHp, currentChakra: playerCharacter.maxChakra },
+      character: startingCharacter(),
       conditions: [],
       actionUsed: false,
       bonusActionUsed: false,
@@ -453,6 +497,9 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
     setTurnIndex(0);
     setRoundNumber(1);
     setBattleState('ongoing');
+    critsTakenRef.current = 0;
+    critsLandedRef.current = 0;
+    reportedRef.current = false;
 
     addLog(
       `Battle commenced! Weather: ${weather}. Battlefield contains destructible houses, lakes, and foliage.`,
@@ -513,14 +560,16 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
     const nextEntity = entities.find((e) => e.id === nextEntityId);
     if (nextEntity && !nextEntity.isPlayer) {
       setTimeout(() => {
-        executeEnemyAITurn(nextEntity);
+        latest.current.executeEnemyAITurn(nextEntityId);
       }, 700);
     }
   };
 
-  // AI Turn Execution
-  const executeEnemyAITurn = (enemy: CombatEntity) => {
-    if (battleState !== 'ongoing' || enemy.character.currentHp <= 0) {
+  // AI Turn Execution (by id: the timers call the newest functions, which see the newest state)
+  const executeEnemyAITurn = (enemyId: string) => {
+    if (battleState !== 'ongoing') return;
+    const enemy = entities.find((e) => e.id === enemyId);
+    if (!enemy || enemy.character.currentHp <= 0) {
       handleEndTurn();
       return;
     }
@@ -545,11 +594,16 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
 
     // Attack action
     setTimeout(() => {
-      executeEnemyAttack(enemy, player);
+      latest.current.executeEnemyAttack(enemyId, player.id);
     }, 500);
   };
 
-  const executeEnemyAttack = (enemy: CombatEntity, target: CombatEntity) => {
+  const executeEnemyAttack = (enemyId: string, targetId: string) => {
+    if (battleState !== 'ongoing') return;
+    const enemy = entities.find((e) => e.id === enemyId);
+    const target = entities.find((e) => e.id === targetId);
+    if (!enemy || !target) return;
+
     // Enemy rolls d20 attack
     const d20 = Math.floor(Math.random() * 20) + 1;
     const isCrit = d20 === 20;
@@ -567,6 +621,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
         : Math.floor(Math.random() * 10) + 6; // Jonin strike
 
       if (isCrit) damage *= 2;
+      if (isCrit && target.isPlayer) critsTakenRef.current += 1;
 
       soundManager.playHit();
       addLog(
@@ -594,6 +649,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
         soundManager.playDestruction();
         setBattleState('defeat');
         addLog(`${target.name} has fallen in battle!`, 'defeat', 'System');
+        if (target.isPlayer) reportResult(false, 0, target.character.currentChakra, isCrit);
         return;
       }
     } else {
@@ -605,9 +661,14 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
     }
 
     setTimeout(() => {
-      handleEndTurn();
+      latest.current.handleEndTurn();
     }, 700);
   };
+
+  // Turns hand off through timers; a timer must call the functions of the newest render, or it
+  // acts on old state (the same enemy attacking forever, a fall that never ends the battle).
+  const latest = useRef({ handleEndTurn, executeEnemyAITurn, executeEnemyAttack });
+  latest.current = { handleEndTurn, executeEnemyAITurn, executeEnemyAttack };
 
   // Move Player Shinobi on Grid Click
   const handleTileClick = (tx: number, ty: number) => {
@@ -916,6 +977,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
 
     if (hitEnemies.length > 0) {
       soundManager.playHit();
+      if (isCrit) critsLandedRef.current += 1;
 
       setEntities((prev) =>
         prev.map((e) => {
@@ -991,7 +1053,8 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
           soundManager.playCriticalHit();
           setBattleState('victory');
           addLog('VICTORY! All hostile combatants and titanic beasts vanquished!', 'crit', 'Victory');
-          if (onBattleEnd) onBattleEnd(true, 1200);
+          const me = latestEntities.find((e) => e.isPlayer);
+          reportResult(true, me?.character.currentHp ?? 0, me?.character.currentChakra ?? 0);
         }
         return latestEntities;
       });
@@ -1036,17 +1099,19 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Weather Selector */}
-          <select
-            value={weather}
-            onChange={(e) => handleWeatherChange(e.target.value as WeatherType)}
-            className="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 text-slate-200"
-          >
-            <option value="Clear">Clear Sky</option>
-            <option value="Downpour">Downpour Rain (Buffs Water/Lightning)</option>
-            <option value="Scorching Drought">Scorching Heat (Buffs Fire)</option>
-            <option value="Sandstorm">Sandstorm (Vision Hazard)</option>
-          </select>
+          {/* Weather Selector (a mission battle keeps its own weather) */}
+          {!carryOver && (
+            <select
+              value={weather}
+              onChange={(e) => handleWeatherChange(e.target.value as WeatherType)}
+              className="bg-slate-800 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 text-slate-200"
+            >
+              <option value="Clear">Clear Sky</option>
+              <option value="Downpour">Downpour Rain (Buffs Water/Lightning)</option>
+              <option value="Scorching Drought">Scorching Heat (Buffs Fire)</option>
+              <option value="Sandstorm">Sandstorm (Vision Hazard)</option>
+            </select>
+          )}
 
           {/* Sound Toggle */}
           <button
@@ -1062,15 +1127,17 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
             {muted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-emerald-400" />}
           </button>
 
-          {/* Restart Battle */}
-          <button
-            type="button"
-            onClick={initBattlefield}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Reset Map
-          </button>
+          {/* Restart Battle (not in a mission: HP and chakra carry over) */}
+          {!carryOver && (
+            <button
+              type="button"
+              onClick={initBattlefield}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 border border-slate-700"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset Map
+            </button>
+          )}
 
           {onBackToCreator && (
             <button
@@ -1230,10 +1297,10 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
                     </p>
                     <button
                       type="button"
-                      onClick={initBattlefield}
+                      onClick={onContinue ?? initBattlefield}
                       className="px-6 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-900 transition hover:scale-105"
                     >
-                      Battle Again
+                      {onContinue ? 'Continue the mission' : 'Battle Again'}
                     </button>
                   </>
                 ) : (
@@ -1245,10 +1312,10 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
                     </p>
                     <button
                       type="button"
-                      onClick={initBattlefield}
+                      onClick={onContinue ?? initBattlefield}
                       className="px-6 py-2.5 rounded-xl font-bold text-sm bg-slate-800 hover:bg-slate-700 text-white border border-slate-700"
                     >
-                      Retry Encounter
+                      {onContinue ? 'Continue' : 'Retry Encounter'}
                     </button>
                   </>
                 )}

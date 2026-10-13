@@ -5,18 +5,20 @@ import { CharacterCreator } from './components/CharacterCreator';
 import { TacticalCombat } from './components/TacticalCombat';
 import { CampaignMode } from './components/CampaignMode';
 import { ArenaSandbox } from './components/ArenaSandbox';
+import { MissionMode } from './components/mission/MissionMode';
 import { soundManager } from './utils/audio';
 import { Swords, User, BookOpen, Compass, Shield, Flame } from 'lucide-react';
 
-type AppView = 'creator' | 'campaign' | 'combat' | 'arena';
+type AppView = 'creator' | 'campaign' | 'mission' | 'combat' | 'arena';
 
 const founderPreset = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')?.character;
 
 export default function App() {
-  // A #creator link opens straight onto the character creator.
-  const [activeView, setActiveView] = useState<AppView>(() =>
-    typeof window !== 'undefined' && window.location.hash === '#creator' ? 'creator' : 'combat',
-  );
+  // A #creator or #missions link opens straight onto that screen.
+  const [activeView, setActiveView] = useState<AppView>(() => {
+    const hash = typeof window !== 'undefined' ? window.location.hash : '';
+    return hash === '#creator' ? 'creator' : hash === '#missions' ? 'mission' : 'combat';
+  });
   const [character, setCharacter] = useState<ShinobiCharacter>(founderPreset || LEGENDARY_PRESETS[0].character);
   const [activeEncounter, setActiveEncounter] = useState<{
     title: string;
@@ -44,7 +46,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
       {/* Top Bar Contract: Zone 1 (Wordmark) - Zone 2 (Nav Links) - Zone 3 (Primary Action) */}
-      <header className="flex items-center justify-between gap-8 px-6 py-3.5 border-b border-slate-800 bg-slate-950/95 sticky top-0 z-40 backdrop-blur-md">
+      <header className="flex items-center justify-between gap-4 md:gap-8 px-4 md:px-6 py-3.5 border-b border-slate-800 bg-slate-950/95 sticky top-0 z-40 backdrop-blur-md">
         {/* Zone 1: Single text element wordmark */}
         <button
           type="button"
@@ -58,7 +60,7 @@ export default function App() {
           <span>Shinobi 5e Chronicles</span>
         </button>
 
-        {/* Zone 2: 4 single-line text navigation links */}
+        {/* Zone 2: single-line text navigation links */}
         <nav className="hidden md:flex items-center gap-7 text-xs font-semibold text-slate-400">
           <button
             type="button"
@@ -87,6 +89,21 @@ export default function App() {
             }`}
           >
             Campaign Arcs
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              soundManager.playSelect();
+              setActiveView('mission');
+            }}
+            className={`transition whitespace-nowrap shrink-0 pb-0.5 flex items-center gap-1.5 ${
+              activeView === 'mission'
+                ? 'text-cyan-400 border-b-2 border-cyan-400'
+                : 'hover:text-slate-200'
+            }`}
+          >
+            Missions
+            <span className="rounded bg-amber-400 px-1 text-[9px] font-black uppercase leading-4 text-slate-950">New</span>
           </button>
           <button
             type="button"
@@ -156,14 +173,19 @@ export default function App() {
           />
         )}
 
+        {activeView === 'mission' && (
+          <MissionMode
+            hero={character}
+            // Only what a mission leaves for good comes home; edits made in the creator meanwhile stay.
+            onHeroReturn={(back) => back && setCharacter((c) => (c.id === back.id ? { ...c, scars: back.scars, traits: back.traits } : c))}
+          />
+        )}
+
         {activeView === 'combat' && (
           <TacticalCombat
             playerCharacter={character}
             campaignEncounter={activeEncounter}
             onBackToCreator={() => setActiveView('creator')}
-            onBattleEnd={(victory) => {
-              // Battle completed
-            }}
           />
         )}
 

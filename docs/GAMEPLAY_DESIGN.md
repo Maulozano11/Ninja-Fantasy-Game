@@ -98,6 +98,29 @@ elements.
 
 - Mouse and touch.
 
+## Multiplayer
+
+Online, each player on their own device, decided on 2026-10-13.
+
+- **The server decides.** Players send only what they want to do ("move
+  here", "cast this jutsu at that point"). The server checks it against the
+  rules, rolls the dice (so nobody can cheat) and sends everyone the events
+  that happened; each screen animates them.
+- **Turn-based**, so a fraction of a second of lag does not matter and there is
+  no real-time sync.
+- **Now: an online-ready battle engine.** The rules live in plain TypeScript,
+  apart from the UI, and the same code runs on the server and in the client
+  (the client uses it to preview reach and hit chances). Everything is an
+  action or an event, the dice use a seed, and the whole battle state can be
+  saved and sent. The current `TacticalCombat.tsx` mixes rules and screen and
+  gets rebuilt this way for the new maps.
+- **Phase 2: the network.** Rooms with an invite code over WebSockets (Cloud
+  Run or Firebase/Supabase), accounts and a database for characters,
+  inventory and campaign progress. If a player drops, the AI plays their
+  character until they come back. Group decisions use a vote or a leader.
+- Until then, battles are played locally with AI allies, so the design can be
+  tested quickly.
+
 ## First map
 
 - A forest with a river, a bridge, hills, bushes and a clearing.
@@ -125,5 +148,4 @@ gameplay tags.
 
 ## Open questions
 
-- Multiplayer: online (each player on their own device) or local (one screen,
-  passing turns)?
+- None for now.

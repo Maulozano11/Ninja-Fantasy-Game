@@ -212,6 +212,9 @@ const GRIMOIRE_POSE: PoseFrame[] = [
   { lean: 0, chestDy: 1, handN: arm(-0.55, 0.78), bendN: -1, handF: arm(1.0, -0.04), footN: v(-0.34, 0.96), footF: v(0.36, 0.96), shapeN: 'cradle', shapeF: 'point' },
 ];
 
+/** Grimoire II holds the same stance for its 8-frame writing animation. */
+const SCRIPT_POSE: PoseFrame[] = [0, 0, 1, 1, 0, 0, 1, 1].map((i) => GRIMOIRE_POSE[i]);
+
 export const POSES: Record<RigPose, PoseFrame[]> = {
   idle: [IDLE, IDLE, { ...IDLE, chestDy: 1 }, { ...IDLE, chestDy: 1 }],
   handsigns: [
@@ -318,7 +321,7 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
   ],
   // A grimoire held open before the chest, the free hand raised to cast.
   castBook: GRIMOIRE_POSE,
-  castScript: GRIMOIRE_POSE,
+  castScript: SCRIPT_POSE,
   // A spinning sphere held out in the near palm.
   castSphere: [
     { lean: 6, handN: arm(0.62, 0.22), handF: arm(0.26, 0.8), footN: v(-0.3, 0.95), footF: v(0.32, 0.95), shapeN: 'open', shapeF: 'fist' },

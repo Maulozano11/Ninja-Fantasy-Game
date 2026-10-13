@@ -644,13 +644,29 @@ const SCRIPT: Letter[] = [
   },
 ];
 
+interface GlyphOpts {
+  /** Box the strokes are drawn in (units), centered on the point given. */
+  box?: [number, number];
+  /** Fraction of the strokes' length written so far (right to left, stroke order); dots come with the last bit. */
+  reveal?: number;
+  /** Fraction of the ink already crumbled away. */
+  dissolve?: number;
+  /** Halo shade (3 normal, 4 when it flares). */
+  haloShade?: number;
+}
+
 /**
- * One letter, `s` fine pixels per box unit, centered on `c`: strokes in
- * `ink` (darkest where they are thick) inside a thin ring of `halo`.
+ * Draws script glyphs (a letter or a whole word), `s` fine pixels per box
+ * unit, centered on `c`: strokes in `ink` (darkest where they are thick)
+ * inside a thin ring of `halo`. Returns where the pen is (the end of the
+ * written part) while it is still writing.
  */
-function scriptLetter(L: Layer, letter: Letter, c: Vec, s: number, ink: number, halo: number, part: PartId, thick = 1): void {
-  const ox = fine(c.x) - 9 * s;
-  const oy = fine(c.y) - 9 * s;
+function scriptLetter(L: Layer, letter: Letter, c: Vec, s: number, ink: number, halo: number, part: PartId, thick = 1, o: GlyphOpts = {}): [number, number] | null {
+  const [bw, bh] = o.box ?? [18, 18];
+  const ox = fine(c.x) - (bw / 2) * s;
+  const oy = fine(c.y) - (bh / 2) * s;
+  const reveal = o.reveal ?? 1;
+  const dissolve = o.dissolve ?? 0;
   const core = new Set<number>();
   const disk = (x: number, y: number, r: number) => {
     for (let yy = Math.floor(y - r - 1); yy <= Math.ceil(y + r + 1); yy++) {
@@ -660,29 +676,50 @@ function scriptLetter(L: Layer, letter: Letter, c: Vec, s: number, ink: number, 
       }
     }
   };
+  // total length, so the reveal runs at an even speed along the strokes
+  let total = 0;
+  for (const st of letter.strokes) for (let i = 0; i < st.pts.length - 1; i++) total += Math.hypot(st.pts[i + 1][0] - st.pts[i][0], st.pts[i + 1][1] - st.pts[i][1]);
+  const limit = total * reveal;
+  let run = 0;
+  let pen: [number, number] | null = null;
   for (const st of letter.strokes) {
     const n = st.pts.length;
     for (let i = 0; i < n - 1; i++) {
       const [x0, y0] = st.pts[i];
       const [x1, y1] = st.pts[i + 1];
+      const seg = Math.hypot(x1 - x0, y1 - y0);
       for (let k = 0; k < 6; k++) {
         const t = k / 6;
+        if (run + seg * t > limit) break;
         const w = st.w[0] + ((st.w[1] - st.w[0]) * (i + t)) / (n - 1);
-        disk(ox + (x0 + (x1 - x0) * t) * s, oy + (y0 + (y1 - y0) * t) * s, (w * s * thick) / 2);
+        const px0 = ox + (x0 + (x1 - x0) * t) * s;
+        const py0 = oy + (y0 + (y1 - y0) * t) * s;
+        disk(px0, py0, (w * s * thick) / 2);
+        pen = [px0, py0];
       }
+      run += seg;
     }
   }
-  for (const [x, y] of letter.dots) disk(ox + x * s, oy + y * s, 1.1 * s * thick);
+  if (reveal >= 1) {
+    pen = null;
+    for (const [x, y] of letter.dots) disk(ox + x * s, oy + y * s, 1.1 * s * thick);
+  }
+  if (dissolve > 0)
+    for (const i of [...core]) {
+      const h = Math.sin((i % GRID) * 12.9898 + ((i / GRID) | 0) * 78.233) * 43758.5453;
+      if (h - Math.floor(h) < dissolve) core.delete(i);
+    }
   const inCore = (i: number) => core.has(i);
   for (const i of core) {
     for (const j of [i - 1, i + 1, i - GRID, i + GRID]) {
-      if (!inCore(j)) L.set(j % GRID, (j / GRID) | 0, halo, 3, part, F_NO_OUTLINE);
+      if (!inCore(j)) L.set(j % GRID, (j / GRID) | 0, halo, o.haloShade ?? 3, part, F_NO_OUTLINE);
     }
   }
   for (const i of core) {
     const deep = [i - 1, i + 1, i - GRID, i + GRID].every(inCore);
     L.set(i % GRID, (i / GRID) | 0, ink, deep ? 1 : 2, part, F_NO_OUTLINE);
   }
+  return pen;
 }
 
 /**
@@ -690,27 +727,142 @@ function scriptLetter(L: Layer, letter: Letter, c: Vec, s: number, ink: number, 
  * caster, the nearest ones in front, one behind; they change each frame.
  */
 
+const circlePts = (cx: number, cy: number, r: number): [number, number][] => arcPts(cx, cy, r, r, 90, 450);
+
 /**
- * Grimoire II: great black letters of the spell's script appear before the
- * caster, around the pointing hand, ringed in the chakra's glow; they change
- * each frame.
+ * The word each nature's incantation writes, joined script in a 32 x 18 box
+ * (baseline at y 11), strokes listed right to left in writing order: nar
+ * (fire), jamr (embers), barq (lightning), rih (wind), ma' (water), zill
+ * (shadow), ruh (spirit), nur (light), 'adam (void).
+ */
+const WORDS: Record<string, Letter> = {
+  Fire: {
+    strokes: [
+      { pts: [[27, 8], [27, 11], [21, 11]], w: [1.6, 1.6] },
+      { pts: [[20.4, 2], [20.6, 7], [20.8, 11]], w: [1.4, 2] },
+      { pts: [[15.6, 8.4], [15.4, 11], [14.2, 13.4], [11.4, 15]], w: [2.2, 0.8] },
+    ],
+    dots: [[27, 5.2]],
+  },
+  Embers: {
+    strokes: [
+      { pts: [[27.4, 7.4], [24.2, 7.8], [25.4, 9.6], [27, 11], [22.4, 11]], w: [1.5, 1.5] },
+      { pts: circlePts(21, 10, 1.4), w: [1.3, 1.3] },
+      { pts: [[19.6, 11], [17, 11], [16.4, 13], [13.8, 14.8]], w: [1.6, 0.8] },
+    ],
+    dots: [[25.4, 13.6]],
+  },
+  Lightning: {
+    strokes: [
+      { pts: [[27, 8], [27, 11], [22.4, 11], [21.6, 12.8], [19.2, 14.8]], w: [1.6, 0.9] },
+      { pts: circlePts(13.8, 8.4, 1.8), w: [1.4, 1.4] },
+      { pts: arcPts(11.6, 10.4, 4, 4.6, 0, 185), w: [2.4, 1] },
+    ],
+    dots: [[27, 13.8], [12.8, 5], [14.9, 5]],
+  },
+  Wind: {
+    strokes: [
+      { pts: [[27.6, 8.4], [27.4, 11], [26.2, 13.4], [23.6, 15]], w: [2.2, 0.8] },
+      { pts: [[21.6, 8], [21.6, 11], [17.4, 11]], w: [1.5, 1.5] },
+      { pts: [[17.4, 11], [16.4, 8.6], [12.6, 8.2]], w: [1.5, 1.5] },
+      { pts: arcPts(13.8, 12.4, 3.2, 3.4, 250, 25), w: [2.4, 1] },
+    ],
+    dots: [[20.8, 13.6], [22.8, 13.6]],
+  },
+  Water: {
+    strokes: [
+      { pts: circlePts(26.2, 9.6, 1.6), w: [1.4, 1.4] },
+      { pts: [[25, 11], [20.8, 11]], w: [1.6, 1.6] },
+      { pts: [[20.2, 2], [20.4, 7], [20.6, 11]], w: [1.4, 2] },
+      { pts: [[16.8, 8], [15.2, 8], [14.6, 9.4], [15.8, 10.2], [14.2, 11.2], [17.4, 10.8]], w: [1.3, 1.3] },
+    ],
+    dots: [],
+  },
+  Shadow: {
+    strokes: [
+      { pts: [[23.6, 2], [23.8, 10.8]], w: [1.4, 1.8] },
+      { pts: arcPts(25.8, 9.6, 2.2, 1.5, 180, 540), w: [1.4, 1.4] },
+      { pts: [[24, 11], [18.8, 11]], w: [1.6, 1.6] },
+      { pts: [[18.4, 2], [18.6, 11]], w: [1.4, 1.8] },
+      { pts: arcPts(15.6, 11, 3, 2.8, 0, 175), w: [2.2, 1] },
+    ],
+    dots: [[26.2, 5.6]],
+  },
+  Spirit: {
+    strokes: [
+      { pts: [[28, 8.4], [27.8, 11], [26.8, 13.2], [24.4, 14.8]], w: [2.2, 0.8] },
+      { pts: circlePts(21.4, 9.2, 1.8), w: [1.4, 1.4] },
+      { pts: [[20, 10.4], [19.6, 13], [17.2, 14.8]], w: [2.2, 0.8] },
+      { pts: [[14.4, 7.2], [10.4, 7.8]], w: [1.4, 1.4] },
+      { pts: arcPts(12.2, 12, 3.4, 3.6, 255, 25), w: [2.4, 1] },
+    ],
+    dots: [],
+  },
+  Light: {
+    strokes: [
+      { pts: [[27, 8], [27, 11], [21.8, 11]], w: [1.5, 1.5] },
+      { pts: circlePts(20.2, 9.4, 1.7), w: [1.4, 1.4] },
+      { pts: [[18.8, 10.4], [18.4, 12.8], [15.6, 14.8]], w: [2.2, 0.8] },
+      { pts: [[12.8, 8.4], [12.6, 11], [11.6, 13.2], [9, 14.8]], w: [2.2, 0.8] },
+    ],
+    dots: [[27, 5.4]],
+  },
+  Void: {
+    strokes: [
+      { pts: arcPts(26.8, 8.8, 1.9, 1.7, -60, -270), w: [1.3, 1.6] },
+      { pts: [[26.6, 10.8], [26.6, 11], [21.4, 11]], w: [1.6, 1.6] },
+      { pts: [[21.2, 7.6], [19.6, 9.6], [19.4, 10.8], [21.6, 11]], w: [1.6, 1.6] },
+      { pts: circlePts(14.6, 9.2, 1.7), w: [1.4, 1.4] },
+      { pts: [[13, 10.2], [12.6, 13], [12.8, 16]], w: [2.2, 0.8] },
+    ],
+    dots: [],
+  },
+};
+
+/** Grimoire II, 8 frames: how much of the word is written, how much has crumbled, and the halo, per frame. */
+const WRITE = [0.22, 0.48, 0.74, 1, 1, 1, 1, 1];
+const CRUMBLE = [0, 0, 0, 0, 0, 0, 0.4, 0.8];
+
+/**
+ * Grimoire II: the incantation is written in the air before the caster, a
+ * great black word of the nature's name in joined script, stroke by stroke
+ * from right to left with a spark at the pen, then it flares, holds and
+ * crumbles into motes; a new word begins.
  */
 function scriptLetters(g: DrawCtx, hex: string): void {
   const { tip } = fingertip(g);
-  const f = g.rig.frame % 2;
+  const f = ((g.rig.frame % 8) + 8) % 8;
   const T = g.L('top');
   const ink = g.m('#1d1724', 'cloth');
-  const halo = g.m(hex, 'glow');
-  const pick = (k: number) => SCRIPT[(k + f * 3) % SCRIPT.length];
-  const inside = (c: Vec, s: number) => {
-    const m = (9 * s + 1) / RES;
-    return v(Math.min(GRID / RES - m, Math.max(m, c.x)), Math.min(GRID / RES - m, Math.max(m, c.y)));
-  };
-  // bold ink strokes, so the letters read black, in a 1px ring of glow
-  const letter = (k: number, c: Vec, s: number) => scriptLetter(T, pick(k), inside(c, s), s, ink, halo, 'held', 1.6);
-  letter(2, add(tip, v(-3, -12 + f * 0.5)), 1.45);
-  letter(4, add(tip, v(-2, 11 - f * 0.5)), 1.25);
-  letter(6, add(tip, v(6, 0)), 1.0);
+  const m = fxMats(g, hex, '#ffffff');
+  const nature = CHAKRA_CHOICES.find((c) => c.id === g.look.chakra.color)?.nature ?? 'Water';
+  const word = WORDS[nature] ?? WORDS.Water;
+  const s = 1.45;
+  const half = (16 * s + 1) / RES;
+  const c = add(tip, v(-6, -12 - (f >= 4 ? 0.5 : 0)));
+  const at = v(Math.min(GRID / RES - half, Math.max(half, c.x)), Math.max((9 * s + 1) / RES, c.y));
+  const pen = scriptLetter(T, word, at, s, ink, m.glow, 'held', 1.75, {
+    box: [32, 18],
+    reveal: WRITE[f],
+    dissolve: CRUMBLE[f],
+    haloShade: f === 3 || f === 4 ? 4 : 3,
+  });
+  if (pen) {
+    // the spark of the pen writing it
+    const [px0, py0] = pen.map(Math.round);
+    T.set(px0, py0, m.hot, 5, 'held', F_NO_OUTLINE);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) T.set(px0 + dx, py0 + dy, m.glow, 4, 'held', F_NO_OUTLINE);
+  }
+  if (f >= 6) {
+    // motes rising off the crumbling word
+    const cx = fine(at.x);
+    const cy = fine(at.y);
+    for (let k = 0; k < 9; k++) {
+      const x = cx - 16 + ((k * 13 + f * 5) % 32);
+      const y = cy - 4 - ((k * 7) % 9) - (f - 5) * 4;
+      T.set(x, y, k % 3 ? ink : m.glow, k % 3 ? 2 : 4, 'held', F_NO_OUTLINE);
+    }
+  }
 }
 
 /** A ball of energy with a bright core, a pulsing rim and a few sparks. */

@@ -11,6 +11,12 @@ export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'cast'
 
 export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm';
 
+/** Back of the neck behind the jaw: slender (default) or thick. */
+export type NeckType = 'slim' | 'strong';
+
+/** Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw. */
+export type FaceShape = 'tapered' | 'soft' | 'square';
+
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =
   | 'hair'
@@ -73,6 +79,10 @@ export interface SpriteAppearance {
   skin: string;
   eyeShape: EyeShape;
   eyeColor: string;
+  /** Missing on older saves; treated as 'slim'. */
+  neck?: NeckType;
+  /** Missing on older saves; treated as 'tapered'. */
+  faceShape?: FaceShape;
   slots: Partial<Record<SlotId, ItemChoice>>;
   accessories: ItemChoice[];
   headband: HeadbandChoice;

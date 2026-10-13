@@ -9,8 +9,10 @@ import type {
   BodyType,
   EyeShape,
   EyeSpecial,
+  FaceShape,
   HeadbandPosition,
   ItemChoice,
+  NeckType,
   SlotId,
   SpriteAppearance,
   SpritePose,
@@ -22,8 +24,6 @@ import { SpriteThumb } from './SpriteThumb';
 
 type Category =
   | 'body'
-  | 'eyes'
-  | 'hair'
   | 'face'
   | 'top'
   | 'bottom'
@@ -41,8 +41,6 @@ type Category =
 
 const CATEGORIES: { id: Category; label: string }[] = [
   { id: 'body', label: 'Body' },
-  { id: 'eyes', label: 'Eyes' },
-  { id: 'hair', label: 'Hair' },
   { id: 'face', label: 'Face' },
   { id: 'top', label: 'Tops' },
   { id: 'bottom', label: 'Pants' },
@@ -60,8 +58,6 @@ const CATEGORIES: { id: Category; label: string }[] = [
 ];
 
 const SLOT_CATEGORIES: Partial<Record<Category, SlotId>> = {
-  hair: 'hair',
-  face: 'face',
   top: 'top',
   bottom: 'bottom',
   armor: 'armor',
@@ -73,12 +69,32 @@ const SLOT_CATEGORIES: Partial<Record<Category, SlotId>> = {
   held: 'held',
 };
 
-const HEAD_CROP = new Set<Category>(['hair', 'face', 'eyes', 'headband']);
+/** Sub-sections of the Face category. */
+type FaceTab = 'shape' | 'eyes' | 'hair' | 'neck' | 'marks';
+
+const FACE_TABS: { id: FaceTab; label: string }[] = [
+  { id: 'shape', label: 'Shape' },
+  { id: 'eyes', label: 'Eyes' },
+  { id: 'hair', label: 'Hair' },
+  { id: 'neck', label: 'Neck' },
+  { id: 'marks', label: 'Face Marks' },
+];
 
 const BODIES: { id: BodyType; label: string }[] = [
   { id: 'male', label: 'Male' },
   { id: 'female', label: 'Female' },
   { id: 'bulky', label: 'Bulky' },
+];
+
+const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
+  { id: 'tapered', label: 'Tapered', sub: 'V-line jaw' },
+  { id: 'soft', label: 'Soft', sub: 'Fuller cheeks' },
+  { id: 'square', label: 'Square', sub: 'Strong jaw' },
+];
+
+const NECKS: { id: NeckType; label: string; sub: string }[] = [
+  { id: 'slim', label: 'Slim', sub: 'Slender' },
+  { id: 'strong', label: 'Strong', sub: 'Thick, muscular' },
 ];
 
 const EYE_SHAPES: { id: EyeShape; label: string }[] = [
@@ -148,6 +164,7 @@ export const AppearanceEditor: React.FC<{
   onPreviewStance: (stance: SpritePose) => void;
 }> = ({ look, eye, character, onChange, onPreviewStance }) => {
   const [cat, setCat] = useState<Category>('body');
+  const [faceTab, setFaceTab] = useState<FaceTab>('shape');
   const slot = SLOT_CATEGORIES[cat];
 
   const setSlot = (s: SlotId, choice: ItemChoice | null) => {
@@ -205,7 +222,51 @@ export const AppearanceEditor: React.FC<{
         </div>
       )}
 
-      {cat === 'eyes' && (
+      {cat === 'face' && (
+        <div className="flex flex-wrap gap-1.5">
+          {FACE_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => {
+                soundManager.playSelect();
+                setFaceTab(t.id);
+              }}
+              className={`px-2.5 py-1 text-xs rounded-lg border transition ${
+                faceTab === t.id
+                  ? 'bg-slate-700 border-slate-500 text-white font-semibold'
+                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {cat === 'face' && faceTab === 'shape' && (
+        <div>
+          <SectionLabel>Face Shape</SectionLabel>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {FACE_SHAPES.map((f) => (
+              <OptionCard
+                key={f.id}
+                selected={(look.faceShape || 'tapered') === f.id}
+                label={f.label}
+                sub={f.sub}
+                onClick={() => {
+                  soundManager.playSelect();
+                  onChange({ ...look, faceShape: f.id });
+                }}
+              >
+                <SpriteThumb look={{ ...look, faceShape: f.id }} eye={eye} crop="head" />
+              </OptionCard>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {cat === 'face' && faceTab === 'eyes' && (
         <div className="space-y-5">
           <div>
             <SectionLabel>Eye Shape</SectionLabel>
@@ -234,7 +295,33 @@ export const AppearanceEditor: React.FC<{
         </div>
       )}
 
-      {slot && <SlotPicker slot={slot} look={look} eye={eye} crop={HEAD_CROP.has(cat) ? 'head' : 'full'} setSlot={setSlot} />}
+      {cat === 'face' && faceTab === 'hair' && <SlotPicker slot="hair" look={look} eye={eye} crop="head" setSlot={setSlot} />}
+
+      {cat === 'face' && faceTab === 'neck' && (
+        <div>
+          <SectionLabel>Neck</SectionLabel>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {NECKS.map((n) => (
+              <OptionCard
+                key={n.id}
+                selected={(look.neck || 'slim') === n.id}
+                label={n.label}
+                sub={n.sub}
+                onClick={() => {
+                  soundManager.playSelect();
+                  onChange({ ...look, neck: n.id });
+                }}
+              >
+                <SpriteThumb look={{ ...look, neck: n.id }} eye={eye} crop="head" />
+              </OptionCard>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {cat === 'face' && faceTab === 'marks' && <SlotPicker slot="face" look={look} eye={eye} crop="head" setSlot={setSlot} />}
+
+      {slot && <SlotPicker slot={slot} look={look} eye={eye} crop="full" setSlot={setSlot} />}
 
       {cat === 'gear' && <AccessoryPicker look={look} eye={eye} onChange={onChange} />}
 

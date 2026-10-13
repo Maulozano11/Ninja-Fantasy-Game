@@ -8,6 +8,7 @@
 import { makeRamp, mixHex } from './color';
 import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side } from './ctx';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
+import type { FaceShape } from './types';
 
 const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';
@@ -37,16 +38,19 @@ export function drawBody(g: DrawCtx): void {
   fillTorso(g, torso, 0, skin('torso'));
   const neckTop = v(r.head.x + 0.4 * b.headScale, r.head.y + 4 * b.headScale);
   capsule(torso, r.neck, neckTop, b.neckW, b.neckW * 0.95, skin('torso'), (x) => (x < r.neck.x - 0.6 ? 3 : 2));
-  // Nape: the back of the neck, from under the skull (just inside its back
-  // edge) down to the shoulders. It fills the gap behind the tapered jaw when
-  // the hair doesn't hang there; hair drawn over the head still covers it.
+  // Nape: the back of the neck, from under the skull down to the shoulders.
+  // It fills the gap behind the tapered jaw when the hair doesn't hang there;
+  // hair drawn over the head still covers it. 'slim' (default) starts well
+  // inside the skull's back edge and stays in shadow; 'strong' is a thick
+  // neck flush with the back of the skull, with a lit nape.
   const fa = faceAnchor(g);
-  const napeX = (fa.nx - 5.5) / RES;
+  const strong = g.look.neck === 'strong';
+  const napeX = (fa.nx - (strong ? 5.5 : 3.5)) / RES;
   poly(
     torso,
     [v(napeX, (fa.ny + 1) / RES), v(napeX, r.neck.y + 0.2), v(napeX - 0.8, r.neck.y + 1.2), v(r.neck.x, r.neck.y + 1.2), v(neckTop.x, (fa.ny + 1) / RES)],
     skin('torso'),
-    (x) => (x < napeX + 1 ? 3 : 2),
+    strong ? (x) => (x < napeX + 1 ? 3 : 2) : 2,
   );
 
   // Simple form shading only (no muscle lines): a soft chest shadow and collarbone light.
@@ -194,15 +198,19 @@ function drawHead(g: DrawCtx): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Near side of the face (cheek + jaw), columns -7..-1. The cheek drops
- * straight for two rows below the eye, then the jaw tapers to the chin so the
- * lower face stays small (a heavier jaw reads as a box from the front).
+ * Near side of the face (cheek + jaw), columns -7..-1, one per face shape.
+ * tapered (default): the cheek drops straight for two rows below the eye,
+ *   then the jaw tapers to the chin so the lower face stays small.
+ * soft: a fuller cheek, three rows straight before a gentle taper.
+ * square: the reference's original strong jaw, with a flat jaw line.
  */
-const FACE_LEFT: Record<string, string[]> = {
-  male: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
-  female: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
-  bulky: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
+const FACE_LEFT: Record<FaceShape, string[]> = {
+  tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
+  soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
+  square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
 };
+
+const faceLeft = (g: DrawCtx): string[] => FACE_LEFT[g.look.faceShape || 'tapered'] || FACE_LEFT.tapered;
 
 const FACE_MAIN: Record<string, string[]> = {
   male: [
@@ -267,7 +275,7 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
   const add = (x: number, y: number) => {
     if (x >= 0 && y >= 0 && x < GRID && y < GRID) out.add(y * GRID + x);
   };
-  (FACE_LEFT[g.rig.body] || FACE_LEFT.male).forEach((row, r) => {
+  faceLeft(g).forEach((row, r) => {
     for (let c = skipBack; c < row.length; c++) if (row[c] !== '.') add(nx - 7 + c, ny + r);
   });
   main.forEach((row, r) => {
@@ -325,7 +333,7 @@ function drawFace(g: DrawCtx): void {
     if (ch in skinShade) L.set(x, y, g.skin, skinShade[ch], 'head', F_NO_OUTLINE);
     else L.set(x, y, colors[ch], 3, 'head', F_NO_OUTLINE);
   };
-  (FACE_LEFT[g.rig.body] || FACE_LEFT.male).forEach((row, r) => {
+  faceLeft(g).forEach((row, r) => {
     for (let c = 0; c < row.length; c++) put(nx - 7 + c, ny + r, row[c]);
   });
   main.forEach((row, r) => {

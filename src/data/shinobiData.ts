@@ -26,10 +26,10 @@ export const CLANS_DATA: Record<
     signatureJutsuId: string;
   }
 > = {
-  Uchiha: {
-    name: 'Uchiha',
-    japaneseName: 'うちは一族',
-    description: 'Descendants of Indra Otsutsuki, renowned for potent Fire nature and the mystical Sharingan visual prowess.',
+  Mirai: {
+    name: 'Mirai',
+    japaneseName: 'ミライ一族',
+    description: 'An ancient bloodline renowned for potent Fire nature and the mystical Sharingan visual prowess.',
     lineageTraits: 'Eyes of Insight: Gain +2 DEX, +1 INT. Advantage on saving throws against Genjutsu illusions. Unlocks Sharingan stages.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
@@ -45,9 +45,9 @@ export const CLANS_DATA: Record<
     recommendedChakraColor: '#ef4444', // Crimson / Red
     signatureJutsuId: 'dragon_fire_bomb',
   },
-  Senju: {
-    name: 'Senju',
-    japaneseName: '千手一族',
+  Uddo: {
+    name: 'Uddo',
+    japaneseName: 'ウッド一族',
     description: 'The clan of a thousand skills, possessing boundless physical vitality, Wood Release secrets, and rapid cellular regeneration.',
     lineageTraits: 'Boundless Life Force: Gain +2 CON, +1 WIS. Maximum HP increased by +6. Regenerate 2 Chakra each round.',
     statBonuses: [
@@ -58,9 +58,9 @@ export const CLANS_DATA: Record<
     recommendedChakraColor: '#10b981', // Emerald Wood
     signatureJutsuId: 'wood_dragon_jutsu',
   },
-  Uzumaki: {
-    name: 'Uzumaki',
-    japaneseName: 'うずまき一族',
+  Akkai: {
+    name: 'Akkai',
+    japaneseName: 'アッカイ一族',
     description: 'Famed for immense vitality, longevity, crimson red locks, and secret Fuinjutsu adamantine sealing chains.',
     lineageTraits: 'Sealing Vitality: Gain +2 CON, +1 CHA. Maximum Chakra pool increased by +25%. Resistance to necrotic damage.',
     statBonuses: [
@@ -71,9 +71,9 @@ export const CLANS_DATA: Record<
     recommendedChakraColor: '#f97316', // Fiery Vermillion
     signatureJutsuId: 'adamantine_sealing_chains',
   },
-  Hyuga: {
-    name: 'Hyuga',
-    japaneseName: '日向一族',
+  Taki: {
+    name: 'Taki',
+    japaneseName: 'タキ一族',
     description: 'Possessors of the all-seeing Byakugan, masters of the Gentle Fist (Juken) capable of disabling enemy chakra pathways.',
     lineageTraits: 'All-Seeing Sight: Gain +2 WIS, +1 DEX. 360-degree vision (cannot be flanked or surprised). Critical hits seal chakra.',
     statBonuses: [
@@ -82,7 +82,7 @@ export const CLANS_DATA: Record<
     ],
     availableDojutsu: ['Byakugan (Pure)', 'Byakugan (Active Veined)'],
     recommendedChakraColor: '#06b6d4', // Pale Cyan / Pearl
-    signatureJutsuId: 'hyuga_sixtyfour_palms',
+    signatureJutsuId: 'taki_sixtyfour_palms',
   },
 };
 
@@ -512,12 +512,12 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   // --- SLOT 4: CLAN SIGNATURE JUTSUS ---
   {
     id: 'dragon_fire_bomb',
-    name: 'Uchiha Secret: Dragon Flame Annihilation',
+    name: 'Mirai Secret: Dragon Flame Annihilation',
     japaneseName: '火遁・龍火の極意 (Ryuuka no Gokui)',
     rank: 'A',
     category: 'Clan',
     nature: 'Fire',
-    requiredClan: 'Uchiha',
+    requiredClan: 'Mirai',
     chakraCost: 5,
     castTime: 'Action',
     range: 7,
@@ -529,16 +529,16 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
     environmentalEffect: 'Ignites Wood',
     enhancementChakraCost: 3,
     enhancementEffect: 'Flames turn black Amaterasu: 8d8 Fire/Necrotic damage that ignores resistance and incinerates cover.',
-    description: 'Channels Uchiha fire mastery into an infernal blast that engulfs a wide cone in front of the caster, setting structures and terrain aflame.',
+    description: 'Channels Mirai fire mastery into an infernal blast that engulfs a wide cone in front of the caster, setting structures and terrain aflame.',
   },
   {
     id: 'wood_dragon_jutsu',
-    name: 'Senju Secret: Wood Dragon Technique',
+    name: 'Uddo Secret: Wood Dragon Technique',
     japaneseName: '木遁・木龍の術 (Mokuton: Mokuryuu)',
     rank: 'A',
     category: 'Clan',
     nature: 'Earth',
-    requiredClan: 'Senju',
+    requiredClan: 'Uddo',
     chakraCost: 5,
     castTime: 'Action',
     range: 6,
@@ -553,12 +553,12 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'adamantine_sealing_chains',
-    name: 'Uzumaki Secret: Adamantine Sealing Chains',
+    name: 'Akkai Secret: Adamantine Sealing Chains',
     japaneseName: '金剛封鎖 (Kongou Fuusa)',
     rank: 'A',
     category: 'Clan',
     nature: 'Water',
-    requiredClan: 'Uzumaki',
+    requiredClan: 'Akkai',
     chakraCost: 5,
     castTime: 'Action',
     range: 6,
@@ -572,13 +572,13 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
     description: 'Manifests unbreakable glowing chakra chains from the torso that ensnare and suppress beasts, titans, and shinobi alike.',
   },
   {
-    id: 'hyuga_sixtyfour_palms',
-    name: 'Hyuga Secret: Eight Trigrams 64 Palms',
+    id: 'taki_sixtyfour_palms',
+    name: 'Taki Secret: Eight Trigrams 64 Palms',
     japaneseName: '八卦六十四掌 (Hakke Rokujuuyon Shou)',
     rank: 'A',
     category: 'Clan',
     nature: 'Taijutsu',
-    requiredClan: 'Hyuga',
+    requiredClan: 'Taki',
     chakraCost: 5,
     castTime: 'Action',
     range: 1,
@@ -756,7 +756,7 @@ export const COLOR_PALETTES = {
   hairColors: [
     { label: 'Raven Black', value: '#171717' },
     { label: 'Golden Sun (Naruto Blond)', value: '#facc15' },
-    { label: 'Crimson Red (Uzumaki)', value: '#dc2626' },
+    { label: 'Crimson Red (Akkai)', value: '#dc2626' },
     { label: 'Silver White (Hatake/Cloud)', value: '#e2e8f0' },
     { label: 'Midnight Blue (Sasuke)', value: '#1e3a8a' },
     { label: 'Fiery Auburn', value: '#ea580c' },
@@ -767,7 +767,7 @@ export const COLOR_PALETTES = {
   chakraColors: [
     { label: 'Azure Blue (Standard)', value: '#38bdf8' },
     { label: 'Vermillion (Nine-Tails Flame)', value: '#f97316' },
-    { label: 'Emerald Jade (Senju Life)', value: '#10b981' },
+    { label: 'Emerald Jade (Uddo Life)', value: '#10b981' },
     { label: 'Amethyst Purple (Susanoo)', value: '#a855f7' },
     { label: 'Golden Sun (Six Paths)', value: '#eab308' },
     { label: 'Crimson Blood (Eight Gates)', value: '#ef4444' },
@@ -806,7 +806,7 @@ export const WEAPON_STYLES: { id: WeaponStyleType; label: string; desc: string }
 
 export const CAPE_STYLES: { id: CapeStyleType; label: string; desc: string }[] = [
   { id: 'None', label: 'Standard Gear (No Mantle)', desc: 'Streamlined athletic combat uniform.' },
-  { id: 'Sasuke Shimenawa Rope', label: 'Uchiha Shimenawa Rope & Apron', desc: 'Iconic braided purple rope belt with navy pleated hakama wrap.' },
+  { id: 'Sasuke Shimenawa Rope', label: 'Mirai Shimenawa Rope & Apron', desc: 'Iconic braided purple rope belt with navy pleated hakama wrap.' },
   { id: 'Hokage White Haori', label: 'Hokage White Haori Mantle', desc: 'Noble white battle mantle emblazoned with crimson flame hems.' },
   { id: 'Akatsuki Black Cloak', label: 'Rogue Akatsuki Black Cloak', desc: 'Dark hooded cloak adorned with vivid red clouds.' },
   { id: 'Ronin Traveler Cape', label: 'Ronin Traveler Battle Mantle', desc: 'Weather-beaten tactical battle cloak for wandering wanderers.' },
@@ -844,7 +844,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       name: 'Solen Valcaire',
       title: 'The Founder King',
       level: 6,
-      clan: 'Senju',
+      clan: 'Uddo',
       shinobiClass: 'Bukijutsu Master',
       stats: { str: 18, dex: 14, con: 18, int: 14, wis: 16, cha: 16 },
       palette: {
@@ -909,7 +909,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       name: 'Akira',
       title: 'The Ember Ronin',
       level: 4,
-      clan: 'Uchiha',
+      clan: 'Mirai',
       shinobiClass: 'Bukijutsu Master',
       stats: { str: 14, dex: 18, con: 14, int: 14, wis: 12, cha: 12 },
       palette: {
@@ -970,7 +970,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       name: 'Aiden',
       title: 'The Crimson Knight',
       level: 5,
-      clan: 'Uchiha',
+      clan: 'Mirai',
       shinobiClass: 'Bukijutsu Master',
       stats: { str: 16, dex: 16, con: 16, int: 14, wis: 14, cha: 12 },
       palette: {
@@ -1031,7 +1031,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       name: 'Kaien',
       title: 'The Storm Avenger',
       level: 4,
-      clan: 'Uchiha',
+      clan: 'Mirai',
       shinobiClass: 'Ninjutsu Specialist',
       stats: { str: 12, dex: 18, con: 14, int: 16, wis: 12, cha: 12 },
       palette: {
@@ -1090,7 +1090,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       name: 'Hiro',
       title: 'The Sunburst Hero',
       level: 4,
-      clan: 'Uzumaki',
+      clan: 'Akkai',
       shinobiClass: 'Taijutsu Master',
       stats: { str: 14, dex: 16, con: 18, int: 10, wis: 14, cha: 14 },
       palette: {
@@ -1152,7 +1152,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       name: 'Raiga',
       title: 'The Warlord of Ash',
       level: 5,
-      clan: 'Uchiha',
+      clan: 'Mirai',
       shinobiClass: 'Ninjutsu Specialist',
       stats: { str: 16, dex: 16, con: 16, int: 18, wis: 14, cha: 16 },
       palette: {
@@ -1212,7 +1212,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       name: 'Shiori',
       title: 'The Gentle Fist',
       level: 4,
-      clan: 'Hyuga',
+      clan: 'Taki',
       shinobiClass: 'Taijutsu Master',
       stats: { str: 14, dex: 18, con: 14, int: 14, wis: 16, cha: 10 },
       palette: {
@@ -1237,7 +1237,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
         slot1Utility: 'body_flicker',
         slot2Elemental: 'water_shield_suijinheki',
         slot3Elemental: 'leaf_hurricane_senpuu',
-        slot4Clan: 'hyuga_sixtyfour_palms',
+        slot4Clan: 'taki_sixtyfour_palms',
         slot5Ultimate: 'night_guy_dragon',
       },
       maxHp: 38,
@@ -1273,7 +1273,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       name: 'Ren Kuroba',
       title: 'The Night Prince',
       level: 5,
-      clan: 'Uchiha',
+      clan: 'Mirai',
       shinobiClass: 'Bukijutsu Master',
       stats: { str: 16, dex: 18, con: 14, int: 14, wis: 12, cha: 16 },
       palette: {

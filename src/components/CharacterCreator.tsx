@@ -30,6 +30,10 @@ function mergeKind(base: Record<string, unknown>, v: Record<string, unknown>): R
   return out;
 }
 
+/** Earlier sheets used other clan names; they load as the clan that replaced each one. */
+const RENAMED_CLANS: Record<string, ClanType> = { Uchiha: 'Mirai', Senju: 'Uddo', Uzumaki: 'Akkai', Hyuga: 'Taki' };
+const RENAMED_JUTSUS: Record<string, string> = { hyuga_sixtyfour_palms: 'taki_sixtyfour_palms' };
+
 /**
  * A complete character from pasted JSON: anything missing or of the wrong kind
  * falls back to the default character, so a partial or older sheet can't
@@ -38,7 +42,16 @@ function mergeKind(base: Record<string, unknown>, v: Record<string, unknown>): R
 function characterFromImport(raw: unknown): ShinobiCharacter | null {
   if (!isObj(raw) || typeof raw.clan !== 'string' || !isObj(raw.stats)) return null;
   const out = mergeKind(DEFAULT_CHARACTER as unknown as Record<string, unknown>, raw);
+  const clan = RENAMED_CLANS[out.clan as string] ?? (out.clan as string);
+  out.clan = clan in CLANS_DATA ? clan : DEFAULT_CHARACTER.clan;
   if (Array.isArray(out.selectedFeats)) out.selectedFeats = out.selectedFeats.filter((f) => typeof f === 'string');
+  // every jutsu slot must name a jutsu that exists
+  const slots = out.selectedJutsus as Record<string, unknown>;
+  const defSlots = DEFAULT_CHARACTER.selectedJutsus as unknown as Record<string, string>;
+  for (const k of Object.keys(defSlots)) {
+    const id = RENAMED_JUTSUS[slots[k] as string] ?? slots[k];
+    slots[k] = JUTSUS_DATA.some((j) => j.id === id) ? id : defSlots[k];
+  }
   if ('appearance' in out) {
     if (isObj(out.appearance)) out.appearance = mergeKind(defaultAppearance() as unknown as Record<string, unknown>, out.appearance);
     else delete out.appearance;
@@ -97,12 +110,12 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
 
     // HP calculation
     let maxHp = classInfo.hitDie + conMod + (character.level - 1) * (Math.floor(classInfo.hitDie / 2) + 1 + conMod);
-    if (clan === 'Senju') maxHp += 6;
+    if (clan === 'Uddo') maxHp += 6;
 
     // Chakra calculation
     const hasChakraProdigy = feats.includes('chakra_prodigy');
     let maxChakra = character.level * (Math.floor(classInfo.chakraDie / 2) + 2) + Math.max(1, conMod);
-    if (clan === 'Uzumaki') maxChakra = Math.floor(maxChakra * 1.25);
+    if (clan === 'Akkai') maxChakra = Math.floor(maxChakra * 1.25);
     if (hasChakraProdigy) maxChakra += 4;
 
     const jutsuSaveDC = 8 + profBonus + castStatMod;
@@ -240,7 +253,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
 
   const handleRandomize = () => {
     soundManager.playSelect();
-    const clans: ClanType[] = ['Uchiha', 'Senju', 'Uzumaki', 'Hyuga'];
+    const clans: ClanType[] = ['Mirai', 'Uddo', 'Akkai', 'Taki'];
     const randomClan = clans[Math.floor(Math.random() * clans.length)];
     const clanInfo = CLANS_DATA[randomClan];
 

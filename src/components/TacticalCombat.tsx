@@ -299,7 +299,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
           id: 'titan_boss_char',
           appearance: ENEMY_LOOKS.titan_boss_char,
           name: 'Kurama Avatar',
-          clan: 'Uzumaki',
+          clan: 'Akkai',
           shinobiClass: 'Ninjutsu Specialist',
           maxHp: 160,
           currentHp: 160,
@@ -340,7 +340,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
           id: 'hydra_char',
           appearance: ENEMY_LOOKS.hydra_char,
           name: 'Orochi Hydra',
-          clan: 'Senju',
+          clan: 'Uddo',
           shinobiClass: 'Taijutsu Master',
           maxHp: 95,
           currentHp: 95,
@@ -379,7 +379,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
           id: 'kagero_char',
           appearance: ENEMY_LOOKS.kagero_char,
           name: 'Rogue Jonin Kagero',
-          clan: 'Uchiha',
+          clan: 'Mirai',
           shinobiClass: 'Genjutsu Adept',
           maxHp: 42,
           currentHp: 42,
@@ -418,7 +418,7 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
           id: 'scout_char',
           appearance: ENEMY_LOOKS.scout_char,
           name: 'Mist Hunter-nin',
-          clan: 'Senju',
+          clan: 'Uddo',
           shinobiClass: 'Bukijutsu Master',
           maxHp: 28,
           currentHp: 28,
@@ -482,13 +482,13 @@ export const TacticalCombat: React.FC<TacticalCombatProps> = ({
       addLog(`--- Round ${roundNumber + 1} Begins ---`, 'action');
     }
 
-    // Refresh active entity action points and trigger Senju regeneration
+    // Refresh active entity action points and trigger Uddo regeneration
     const nextEntityId = turnOrder[nextIdx];
     setEntities((prev) =>
       prev.map((ent) => {
         if (ent.id === nextEntityId) {
           let chakraRegen = 0;
-          if (ent.character.clan === 'Senju') chakraRegen += 2;
+          if (ent.character.clan === 'Uddo') chakraRegen += 2;
           return {
             ...ent,
             actionUsed: false,

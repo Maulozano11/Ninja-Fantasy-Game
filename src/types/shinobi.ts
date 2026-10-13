@@ -1,6 +1,6 @@
 import type { CastStyle, SpriteAppearance } from '../sprite/types';
 
-export type ClanType = 'Uchiha' | 'Senju' | 'Uzumaki' | 'Hyuga';
+export type ClanType = 'Mirai' | 'Uddo' | 'Akkai' | 'Taki';
 
 export type DojutsuType =
   | 'None'

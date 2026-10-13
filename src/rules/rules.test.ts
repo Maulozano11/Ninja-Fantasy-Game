@@ -9,7 +9,7 @@ import { proficiencyBonus, rollCheck, saveModifier, skillModifier, successChance
 import { deriveStats } from './derived';
 import { formatDice, parseDice, rollDice } from './dice';
 import { addEffect, effectMods, endBattle, morningAfter, tickRound, treat } from './effects';
-import { applyBattleResult, enterNextZone, newMission, travelLeg } from './mission';
+import { applyBattleResult, enterNextZone, flankWear, newMission, rollDeathSaves, takeSoldierPill, travelLeg } from './mission';
 import { changeExhaustion, changeTension, hitDiceLeft, returnToVillage, sanitizeMissionFields } from './ninja';
 import { ambushChance, chooseFire, doActivity, morning, rollNight, serveFood, spendHitDie, startCamp, startShortStop, stopActivity } from './rest';
 import { hashString, mulberry32, rngFor } from './rng';
@@ -308,7 +308,8 @@ describe('battle results and the village', () => {
       'river',
     );
     const [ra, rb] = r.party.members;
-    assert.equal(ra.currentHp, 0);
+    assert.equal(ra.currentHp, 1, 'stabilized by the party: someone is still standing');
+    assert.equal(r.wholePartyFell, false);
     assert.ok(ra.effects?.some((e) => e.id === 'fall_aftermath'));
     assert.ok(ra.effects?.some((e) => e.id === 'grave_wound'));
     assert.equal(ra.tension, 2 + 1 - 1);
@@ -316,6 +317,83 @@ describe('battle results and the village', () => {
     assert.equal(rb.tension, 2 + 1 - 1, 'an ally fell, but they won');
     assert.ok(rb.effects?.some((e) => e.id === 'crash'));
     assert.equal(rb.exhaustion, 1, 'two pills: one too many');
+  });
+
+  it('rolls death saves to the end', () => {
+    const seq = (...v: number[]) => {
+      let i = 0;
+      return () => v[i++];
+    };
+    // rollDie(rng, 20) = 1 + floor(r * 20): 0.45 → 10, 0.3 → 7, 0 → 1, 0.97 → 20.
+    assert.deepEqual(rollDeathSaves({ rng: seq(0.45, 0.3, 0.45, 0.45) }), { result: 'stable', rolls: [10, 7, 10, 10] });
+    assert.deepEqual(rollDeathSaves({ rng: seq(0, 0.3) }), { result: 'dead', rolls: [1, 7] }, 'a natural 1 counts twice');
+    assert.deepEqual(rollDeathSaves({ rng: seq(0.3, 0.97) }), { result: 'revived', rolls: [7, 20] });
+    assert.deepEqual(rollDeathSaves({ rng: seq(0.97, 0.3, 0.45, 0.45, 0.45, 0.45, 0.97, 0.45) }, true), { result: 'stable', rolls: [7, 10, 10, 10] }, 'disadvantage keeps the lower die');
+    assert.equal(rollDeathSaves({ rng: seq(), noRandomness: true }).result, 'stable');
+  });
+
+  it('Legend: when the whole party falls, death saves decide; the dead leave and the leader passes on', () => {
+    const a = ninja({ id: 'a', name: 'Ren' });
+    const b = ninja({ id: 'b', name: 'Saber' });
+    let leaderDied = false;
+    let allDied = false;
+    for (let seed = 1; seed < 400 && !(leaderDied && allDied); seed++) {
+      const p = newMission([a, b], { seed, difficulty: 'legend' });
+      const r = applyBattleResult(p, { victory: false, members: [{ id: 'a', hp: 0, chakra: 0, fell: true }, { id: 'b', hp: 0, chakra: 0, fell: true }] }, 'gorge');
+      assert.equal(r.wholePartyFell, true);
+      assert.equal(r.events.filter((e) => e.type === 'death_saves').length, 2);
+      assert.equal(r.party.members.length + r.party.dead.length, 2);
+      for (const m of r.party.members) {
+        assert.equal(m.currentHp, 1, 'survivors wake up with 1 HP');
+        assert.ok(m.effects?.some((e) => e.id === 'fall_aftermath'));
+      }
+      assert.equal(r.gameOver, r.party.members.length === 0);
+      if (r.party.dead.some((d) => d.id === 'a') && r.party.members.length === 1) {
+        leaderDied = true;
+        assert.equal(r.party.leaderId, 'b');
+      }
+      if (r.gameOver) allDied = true;
+    }
+    assert.ok(leaderDied && allDied, 'some seed kills the leader only, another the whole party');
+  });
+
+  it('Story and Normal: a lost ambush wakes everyone up and costs half of the supplies', () => {
+    const p = newMission([ninja({ id: 'a' }), ninja({ id: 'b' })], { seed: 8, supplies: { rations: 5, bandages: 1 } });
+    const r = applyBattleResult(p, { victory: false, members: [{ id: 'a', hp: 0, chakra: 0, fell: true }, { id: 'b', hp: 0, chakra: 4, fell: true }] }, 'night', { ambush: true });
+    assert.equal(r.gameOver, false);
+    assert.deepEqual(r.party.members.map((m) => m.currentHp), [1, 1]);
+    assert.equal(r.party.supplies.rations, 3);
+    assert.equal(r.party.supplies.bandages, 1, 'half of 1, rounded down, is nothing');
+    assert.equal(r.party.dead.length, 0);
+  });
+
+  it('battle-reported effects replace the old ones; companions on the flank never drop below 1 HP', () => {
+    const a = ninja({ id: 'a', name: 'Ren', effects: addEffect([], 'poisoned').effects });
+    const b = ninja({ id: 'b', name: 'Saber', currentHp: 3 });
+    const p = newMission([a, b], { seed: 21 });
+    const wear = flankWear(p, 'ford', ['a'], { threat: 1.5, venom: true });
+    assert.deepEqual(wear, flankWear(p, 'ford', ['a'], { threat: 1.5, venom: true }), 'seeded');
+    assert.deepEqual(wear.map((w) => w.id), ['b']);
+    assert.ok(wear[0].hp >= 1 && wear[0].hp <= 3);
+    const r = applyBattleResult(p, { victory: true, members: [{ id: 'a', hp: 20, chakra: 5, effects: addEffect([], 'bleeding', { source: 'Kunai' }).effects }, ...wear] }, 'ford');
+    const ra = r.party.members[0];
+    assert.deepEqual(ra.effects?.map((e) => e.id), ['bleeding']);
+    assert.ok(r.events.some((e) => e.type === 'effect' && e.who === 'a' && e.effect === 'bleeding' && e.change === 'added' && e.reason === 'Kunai'));
+    assert.ok(r.events.some((e) => e.type === 'effect' && e.who === 'a' && e.effect === 'poisoned' && e.change === 'removed'));
+  });
+
+  it('a soldier pill gives 2d6 chakra and leaves Crash after the battle', () => {
+    const a = ninja({ id: 'a', name: 'Ren', currentChakra: 0 });
+    const p = newMission([a], { seed: 2, supplies: { soldierPills: 1 } });
+    const r = ok(takeSoldierPill(p, 'a', 'b1'));
+    const gained = r.party.members[0].currentChakra;
+    assert.ok(gained >= 2 && gained <= 12);
+    assert.equal(r.party.supplies.soldierPills, 0);
+    assert.equal(takeSoldierPill(r.party, 'a', 'b1', 1).ok, false, 'none left');
+    assert.equal(takeSoldierPill(newMission([ninja({ id: 'f' })], { seed: 2 }), 'f', 'b1').ok, false, 'full chakra');
+    const after = applyBattleResult(r.party, { victory: true, members: [{ id: 'a', hp: 30, chakra: 3, pillsTaken: 1 }] }, 'b1');
+    assert.ok(after.party.members[0].effects?.some((e) => e.id === 'crash'));
+    assert.equal(after.party.members[0].exhaustion ?? 0, 0, 'one pill is fine');
   });
 
   it('the village restores everything and turns a Breakdown into a trait', () => {

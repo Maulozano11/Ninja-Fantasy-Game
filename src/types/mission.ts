@@ -114,6 +114,8 @@ export interface MissionProgress {
 /** A party on a mission: its ninjas, the shared backpack, the bonds between them and the progress. */
 export interface PartyState {
   members: ShinobiCharacter[];
+  /** Ninjas who died in this mission (only in Legend), for the Chronicle. */
+  dead: ShinobiCharacter[];
   supplies: Supplies;
   /** Bond for each pair of ninjas, keyed by their sorted ids joined with '|'. */
   bonds: Record<string, number>;
@@ -147,6 +149,8 @@ export type RuleEvent =
   | { type: 'breakdown'; who: string; kind: BreakdownKind }
   | { type: 'awakening'; who: string }
   | { type: 'unconscious'; who: string }
+  | { type: 'death_saves'; who: string; rolls: number[]; result: 'stable' | 'revived' | 'dead' }
+  | { type: 'died'; who: string }
   | { type: 'dice'; who: string; kind: 'hit' | 'chakra'; delta: number; left: number; reason: string }
   | { type: 'supplies'; item: SupplyId; delta: number; left: number; reason: string }
   | { type: 'ambush'; chance: number; happened: boolean }

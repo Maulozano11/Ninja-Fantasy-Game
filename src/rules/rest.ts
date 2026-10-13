@@ -392,17 +392,34 @@ export function doActivity(
   };
 }
 
+/** One part of the night danger, for the moon's breakdown: a % added, or the guard's half or zero. */
+export interface AmbushPart {
+  label: string;
+  add?: number;
+  halve?: boolean;
+  zero?: boolean;
+}
+
+/** The parts of the night danger in order: zone, fire, activities and hours, then the guards. */
+export function ambushParts(party: PartyState, camp: CampState): AmbushPart[] {
+  const parts: AmbushPart[] = [{ label: 'Zone danger', add: camp.site.zoneDanger }];
+  if (camp.fire === 'none') parts.push({ label: 'No fire', add: -10 });
+  if (camp.fire === 'bonfire') parts.push({ label: 'Bonfire', add: 10 });
+  const done = [...new Set(camp.done.map((d) => d.activity))];
+  for (const id of done) if (ACTIVITY[id].ambush?.add) parts.push({ label: ACTIVITY[id].name, add: ACTIVITY[id].ambush!.add });
+  const hours = party.progress.hoursSinceCamp;
+  if (party.progress.deadlineHours === undefined && hours >= 4) parts.push({ label: `${hours} h on the road`, add: 5 * Math.floor(hours / 4) });
+  for (const id of done) if (ACTIVITY[id].ambush?.halve) parts.push({ label: ACTIVITY[id].name, halve: true });
+  for (const id of done) if (ACTIVITY[id].ambush?.zero) parts.push({ label: ACTIVITY[id].name, zero: true });
+  return parts;
+}
+
 /** Night danger in %, as the moon shows it (docs/MISSION_DESIGN.md, Night ambush). */
 export function ambushChance(party: PartyState, camp: CampState): number {
-  let pct = camp.site.zoneDanger;
-  if (camp.fire === 'none') pct -= 10;
-  if (camp.fire === 'bonfire') pct += 10;
-  const done = new Set(camp.done.map((d) => d.activity));
-  for (const id of done) pct += ACTIVITY[id].ambush?.add ?? 0;
-  if (party.progress.deadlineHours === undefined) pct += 5 * Math.floor(party.progress.hoursSinceCamp / 4);
-  pct = Math.max(0, Math.min(100, pct));
-  if ([...done].some((id) => ACTIVITY[id].ambush?.halve)) pct = Math.floor(pct / 2);
-  if ([...done].some((id) => ACTIVITY[id].ambush?.zero)) pct = 0;
+  const parts = ambushParts(party, camp);
+  let pct = Math.max(0, Math.min(100, parts.reduce((sum, x) => sum + (x.add ?? 0), 0)));
+  if (parts.some((x) => x.halve)) pct = Math.floor(pct / 2);
+  if (parts.some((x) => x.zero)) pct = 0;
   return pct;
 }
 

@@ -1,4 +1,5 @@
 import type { CastStyle, SpriteAppearance } from '../sprite/types';
+import type { ConvictionValue, SkillId, StatusEffect } from './mission';
 
 export type ClanType = 'Mirai' | 'Uddo' | 'Akkai' | 'Taki';
 
@@ -163,6 +164,25 @@ export interface ShinobiCharacter {
   isEnhancedMode?: boolean;
   /** Layered sprite appearance. Older characters without it are converted on the fly. */
   appearance?: SpriteAppearance;
+
+  // Mission state carried between battles (docs/MISSION_DESIGN.md). Missing on older sheets: fresh.
+  hitDiceSpent?: number;
+  chakraDiceSpent?: number;
+  /** Stress, 0–10. */
+  tension?: number;
+  /** Exhaustion level, 0–6. */
+  exhaustion?: number;
+  effects?: StatusEffect[];
+  /** Soldier pills taken since the last camp. */
+  pillsSinceCamp?: number;
+  /** Permanent scars. */
+  scars?: string[];
+  /** Small traits left by a Breakdown or an Awakening. */
+  traits?: string[];
+  /** 1 or 2 values; the first is the main one. */
+  conviction?: ConvictionValue[];
+  /** Skills the ninja is proficient in; older sheets use their class's defaults. */
+  skillProficiencies?: SkillId[];
 }
 
 export type TileTerrain =

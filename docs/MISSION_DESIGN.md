@@ -112,7 +112,7 @@ Everyone:
 
 | Activity | Sticks | Effect |
 |---|---|---|
-| Hunt or fish | 2 | Survival (WIS) check; success allows the feast |
+| Hunt or fish | 2 | Survival (WIS) check, DC 12; success allows the feast |
 | Bandage | 1 + 1 bandage | Heals 1d8 + WIS, removes Bleeding |
 | Heal with jutsu | 1 + its chakra | Casts a healing jutsu out of battle |
 | Meditate | 2 | +25 % of max chakra |
@@ -133,14 +133,14 @@ Clan and class only:
 | Mirai | Sharingan reading | 1 | Reveals genjutsu traps and disguised NPCs |
 | Mirai | Katon fire | 1 | Makes the bonfire without a kit (committed when the fire is voted) |
 | Uddo | Wood shelter | 2 | −15 % ambush, shelter from the weather |
-| Uddo | Shared vitality | 1 | Gives own HP or chakra to an ally (the chakra part is new) |
+| Uddo | Shared vitality | 1 | Gives up to 10 of own HP (keeping 1) or chakra to an ally (the chakra part is new) |
 | Uddo | Wood skin | 1 | Buff Wood skin on an ally |
 | Akkai | Seal barrier | 1 + a quarter of max chakra | −20 % ambush |
 | Akkai | Seal poison | 1 | Removes Poisoned or a curse |
 | Akkai | Warding seal | 1 | Buff Warding seal on an ally |
 | Taki | Byakugan watch | 3 | Ambush 0 % |
 | Taki | Close tenketsu | 1 | Removes Bleeding |
-| Medical | Field surgery | 2 | WIS check: removes Grave wound and cures Fever; on a failure, a scar |
+| Medical | Field surgery | 2 | Medicine (WIS) check, DC 13: removes Grave wound and cures Fever; on a failure the wound becomes a scar |
 | Medical | Make pills | 2 | 1 soldier pill or 1 antidote |
 | Taijutsu | Stretching | 1 | −1 Exhaustion |
 | Genjutsu | Peaceful sleep | 2 | −3 Tension |
@@ -180,7 +180,8 @@ From 5, the pair has Comrades' bond in every mission.
 
 - 0–10 per ninja, always visible.
 - **+1:** taking a critical hit, an ally falling, an unseen trap, a night with no
-  fire, a decision against the ninja's conviction. **+2:** no food.
+  fire, a decision against the ninja's conviction. **+2:** no food. Criticals taken
+  and landed in one battle move Tension by at most ±2 together.
 - **−1:** hot meal, feast (another −1), bonfire, a fireside talk received, a
   victory, a critical hit of one's own, disarming a trap. **−2:** praying at a
   shrine. **−3:** Peaceful sleep. The village clears it.

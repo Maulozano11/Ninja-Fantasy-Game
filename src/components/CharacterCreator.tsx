@@ -5,7 +5,6 @@ import {
   SHINOBI_CLASSES,
   SHINOBI_FEATS,
   JUTSUS_DATA,
-  ARMOR_STYLES,
   LEGENDARY_PRESETS,
   DEFAULT_CHARACTER,
 } from '../data/shinobiData';
@@ -18,6 +17,8 @@ import { randomAppearance } from '../sprite/random';
 import { CAST_STYLES, CastStyle, SPRITE_POSES, SpriteAppearance, SpritePose } from '../sprite/types';
 import { CAST_STYLE_INFO, defaultCastStyle } from '../sprite/castInfo';
 import { soundManager } from '../utils/audio';
+import { deriveStats } from '../rules/derived';
+import { sanitizeMissionFields } from '../rules/ninja';
 import { Sparkles, Dice5, Download, Upload, Shield, Zap, Eye, Swords, BookOpen, UserCheck } from 'lucide-react';
 
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
@@ -56,7 +57,7 @@ function characterFromImport(raw: unknown): ShinobiCharacter | null {
     if (isObj(out.appearance)) out.appearance = mergeKind(defaultAppearance() as unknown as Record<string, unknown>, out.appearance);
     else delete out.appearance;
   }
-  return out as unknown as ShinobiCharacter;
+  return sanitizeMissionFields(out as unknown as ShinobiCharacter);
 }
 
 interface CharacterCreatorProps {
@@ -88,7 +89,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const armorStyleFor = (l: SpriteAppearance): ArmorStyleType =>
     ((l.slots.armor && getItem(l.slots.armor.id)?.statsArmor) || 'Ronin Wanderer Cloak') as ArmorStyleType;
 
-  // Recompute derived stats whenever stats, clan, class or armor change
+  // Recompute derived stats whenever stats, clan, class or armor change; an edited character starts fresh.
   const calculateDerived = (
     stats: AbilityScores,
     clan: ClanType,
@@ -96,41 +97,8 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
     armor: ArmorStyleType,
     feats: string[]
   ) => {
-    const classInfo = SHINOBI_CLASSES[cls];
-    const castStatMod = Math.floor((stats[classInfo.castingStat] - 10) / 2);
-    const conMod = Math.floor((stats.con - 10) / 2);
-    const dexMod = Math.floor((stats.dex - 10) / 2);
-    const profBonus = 2; // Level 3 standard proficiency
-
-    // Armor AC
-    const selectedArmor = ARMOR_STYLES.find((a) => a.id === armor);
-    const armorAC = selectedArmor ? selectedArmor.acBonus : 2;
-    const ironSkinBonus = feats.includes('iron_skin') ? 1 : 0;
-    const baseAC = 10 + dexMod + armorAC + ironSkinBonus;
-
-    // HP calculation
-    let maxHp = classInfo.hitDie + conMod + (character.level - 1) * (Math.floor(classInfo.hitDie / 2) + 1 + conMod);
-    if (clan === 'Uddo') maxHp += 6;
-
-    // Chakra calculation
-    const hasChakraProdigy = feats.includes('chakra_prodigy');
-    let maxChakra = character.level * (Math.floor(classInfo.chakraDie / 2) + 2) + Math.max(1, conMod);
-    if (clan === 'Akkai') maxChakra = Math.floor(maxChakra * 1.25);
-    if (hasChakraProdigy) maxChakra += 4;
-
-    const jutsuSaveDC = 8 + profBonus + castStatMod;
-    const jutsuAttackBonus = profBonus + castStatMod;
-
-    return {
-      maxHp: Math.max(15, maxHp),
-      currentHp: Math.max(15, maxHp),
-      maxChakra: Math.max(12, maxChakra),
-      currentChakra: Math.max(12, maxChakra),
-      armorClass: Math.max(10, baseAC),
-      speed: armor === 'Ronin Wanderer Cloak' ? 7 : 6,
-      jutsuSaveDC,
-      jutsuAttackBonus,
-    };
+    const d = deriveStats({ level: character.level, stats, clan, shinobiClass: cls, armor, feats });
+    return { ...d, currentHp: d.maxHp, currentChakra: d.maxChakra };
   };
 
   /** Sets (or clears, with '') the cast style of one jutsu and previews it. */

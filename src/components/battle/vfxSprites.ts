@@ -67,7 +67,9 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
   const sig = f.sig === 'fireball' ? (f.enhanced ? 'fireball_great' : 'fireball') : f.sig === 'annihilation' ? (f.enhanced ? 'annihilation_enh' : 'annihilation') : undefined;
   switch (f.kind) {
     case 'projectile': {
-      const s = sheet(el, sig ?? f.role ?? 'bolt') ?? sheet(el, 'bolt');
+      // Summoned beasts come from their own sheet (vfx_beasts/<element>) when it's in the game.
+      const beast = f.role === 'beast' && !sig ? worldSprite('vfx_beasts', el) : undefined;
+      const s = (beast && ready(beast) ? beast : undefined) ?? sheet(el, sig ?? f.role ?? 'bolt') ?? sheet(el, 'bolt');
       if (!s) return false;
       const p = flight(sc, f, t);
       blit(ctx, s, 'fly', frameAt(s, 'fly', ms), p.x, p.y, left);

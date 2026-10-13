@@ -101,6 +101,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
   const [muted, setMuted] = useState(soundManager.getMuted());
   const [more, setMore] = useState(false);
   const [tip, setTip] = useState<TipKey | null>(null);
+  const [speed, setSpeed] = useState<1 | 2 | 3>(() => {
+    try {
+      const v = Number(localStorage.getItem('shinobi.battleSpeed'));
+      return v === 2 || v === 3 ? v : 1;
+    } catch {
+      return 1;
+    }
+  });
   const langRef = useRef(lang);
   langRef.current = lang;
 
@@ -138,6 +146,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     pbRef.current.push(initial.events, performance.now());
   }
   const pb = pbRef.current;
+  pb.speed = speed;
 
   // --- camera -----------------------------------------------------------------------------
 
@@ -281,7 +290,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       setState(done.state);
       pbRef.current!.push(done.events, performance.now());
       setUi((n) => n + 1);
-    }, 260);
+    }, 260 / (pbRef.current?.speed ?? 1));
   });
   useEffect(() => () => {
     if (aiTimer.current) clearTimeout(aiTimer.current);
@@ -967,6 +976,22 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
             {state.weather === 'Downpour' ? <CloudRain size={12} /> : state.time === 'night' ? <Moon size={12} /> : <Sun size={12} />}
             {T(state.time === 'night' ? 'night' : 'day')}
           </span>
+          <button
+            type="button"
+            onClick={() => {
+              const next = speed === 1 ? 2 : speed === 2 ? 3 : 1;
+              setSpeed(next);
+              try {
+                localStorage.setItem('shinobi.battleSpeed', String(next));
+              } catch {
+                // not remembered
+              }
+            }}
+            title={T('skipAnim')}
+            className="bg-slate-950/80 border border-slate-600/50 rounded-full px-2 py-1 text-[11px] font-bold text-slate-200 tabular-nums"
+          >
+            {speed}×
+          </button>
           <LangToggle />
           <button
             type="button"

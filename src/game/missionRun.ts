@@ -11,6 +11,8 @@ import { hasEffect } from '../rules/effects';
 import { returnToVillage, sanitizeMissionFields } from '../rules/ninja';
 import { pick, strings } from '../i18n';
 import { both, describeEvent, LogLine, LogText } from './eventText';
+import type { PartyBattleResult } from '../battle/result';
+import type { SupplyId } from '../types/mission';
 
 /** Log headings written by the mission flow. */
 const T = strings({
@@ -26,6 +28,8 @@ const T = strings({
   defeat: { en: 'Defeat: {title}', es: 'Derrota: {title}' },
   objectiveLost: { en: 'The objective is lost. The survivors limp home.', es: 'El objetivo se perdió. Los sobrevivientes vuelven cojeando a casa.' },
   leftForDead: { en: 'The enemy left the party for dead. The survivors get up and go on.', es: 'El enemigo dio al grupo por muerto. Los sobrevivientes se levantan y siguen adelante.' },
+  retreat: { en: 'Retreat: {title}', es: 'Retirada: {title}' },
+  usedInBattle: { en: 'Used in battle', es: 'Usado en la batalla' },
 });
 
 const es = (en: string, esText?: string) => pick(en, esText, 'es');
@@ -213,6 +217,44 @@ export function resolveBattle(run: MissionRun): MissionRun {
   if (b.ambush) return morningAfterRaid(r);
   if (b.objective) return { ...narrate(r, [], both(T, 'objectiveLost')), outcome: 'failed' };
   return narrate({ ...r, nodeDone: true }, [], both(T, 'leftForDead'));
+}
+
+/**
+ * After a party battle (the whole party fights on the battle map): HP, chakra, effects, falls,
+ * criticals, soldier pills and Tension come back through the mission rules, and the supplies used
+ * in battle are spent. A lost battle in Story and Normal repeats from the node's entry; a retreat
+ * gives up the node (or the mission, if it was the objective).
+ */
+export function resolvePartyBattle(run: MissionRun, result: PartyBattleResult): MissionRun {
+  const b = run.battle;
+  if (!b) return run;
+  const title = { title: b.battle.title };
+  const titleEs = { title: es(b.battle.title, b.battle.titleEs) };
+  const fell = result.members.filter((m) => m.fell).length;
+
+  if (result.outcome === 'defeat' && run.party.progress.difficulty !== 'legend' && !b.ambush) {
+    const r = narrate({ ...run, party: run.entry }, [], both(T, 'wholePartyFell', title, titleEs));
+    return { ...r, battle: newBattle(b.id, b.battle, run.entry, { objective: b.objective }), stats: { ...r.stats, retries: r.stats.retries + 1, falls: r.stats.falls + fell } };
+  }
+
+  // Supplies spent in battle.
+  const events: RuleEvent[] = [];
+  const supplies = { ...run.party.supplies };
+  for (const item of ['soldierPills', 'bandages', 'antidotes', 'explosiveTags'] as SupplyId[]) {
+    const left = result.supplies[item as keyof PartyBattleResult['supplies']];
+    if (left === undefined || left === supplies[item]) continue;
+    events.push({ type: 'supplies', item, delta: left - supplies[item], left, reason: T('usedInBattle', undefined, 'en') });
+    supplies[item] = left;
+  }
+  const res = applyBattleResult({ ...run.party, supplies }, { victory: result.victory, members: result.members }, b.id, { ambush: b.ambush });
+  const heading = result.outcome === 'victory' ? 'victory' : result.outcome === 'fled' ? 'retreat' : 'defeat';
+  let r = narrate({ ...run, party: res.party, battle: null }, [...events, ...res.events], both(T, heading, title, titleEs));
+  r = { ...r, stats: { ...r.stats, battlesWon: r.stats.battlesWon + (result.victory ? 1 : 0), falls: r.stats.falls + fell } };
+  if (res.gameOver) return { ...r, outcome: 'gameOver' };
+  if (b.ambush) return morningAfterRaid(r);
+  if (result.victory) return { ...r, nodeDone: true };
+  if (b.objective) return { ...narrate(r, [], both(T, 'objectiveLost')), outcome: 'failed' };
+  return result.outcome === 'fled' ? { ...r, nodeDone: true } : narrate({ ...r, nodeDone: true }, [], both(T, 'leftForDead'));
 }
 
 // --- the save slot ---------------------------------------------------------------------------

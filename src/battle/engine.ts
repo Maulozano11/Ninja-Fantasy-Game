@@ -301,6 +301,11 @@ function stepHazards(s: BattleState, u: Unit, p: Pt, ev: BattleEvent[]): boolean
   const trap = trapAt(s, u, p);
   if (!trap) return false;
   const hits = springTrap(s, trap, ev);
+  if (trap.kind === 'wire' && !u.cond.prone) {
+    // A wire across the path: whoever walks into it goes down.
+    u.cond.prone = true;
+    ev.push({ t: 'condition', unit: u.id, cond: 'prone', on: true });
+  }
   applyHits(s, hits, s.phase === 'stealth' ? { alarmAt: trap.pos } : {}, ev);
   return true;
 }
@@ -525,7 +530,7 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   }
   if (t.down || t.head?.severed || t.kind === 'hydra_body') return;
   if (h.effect && !(h.effect === 'burning' && waterAtPt(s, t.pos) > 0)) {
-    t.effects = addEffect(t.effects, h.effect, { source: h.what }).effects;
+    t.effects = addEffect(t.effects, h.effect, { source: JUTSU[h.what]?.name ?? h.what }).effects;
     ev.push({ t: 'effect', unit: t.id, effect: h.effect, on: true });
   }
   if (h.tension && t.team === 'party') {

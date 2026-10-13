@@ -70,24 +70,15 @@ export const T = strings({
   skipCamp: { en: 'Push on without camping', es: 'Seguir sin acampar' },
 
   // battle prep
-  chooseFighter: { en: 'Choose who fights', es: 'Elige quién pelea' },
-  noPills: { en: 'No soldier pills left', es: 'No quedan píldoras de soldado' },
-  fullChakra: { en: 'Already at full chakra', es: 'Ya tiene el chakra al máximo' },
   nightRaid: { en: 'Night raid', es: 'Asalto nocturno' },
   objectiveBattle: { en: 'Objective battle', es: 'Batalla del objetivo' },
-  fellOne: { en: '{names} fell. Who steps in?', es: '{names} cayó. ¿Quién toma su lugar?' },
-  fellMany: { en: '{names} fell. Who steps in?', es: '{names} cayeron. ¿Quién toma su lugar?' },
-  whoFights: { en: 'Who fights on the battle screen?', es: '¿Quién pelea en la pantalla de batalla?' },
-  pillTitle: {
-    en: '+2d6 chakra now; Crash (−2 to all rolls) after the battle; more than one pill between camps adds Exhaustion',
-    es: '+2d6 de chakra ahora; Bajón (−2 a todas las tiradas) después de la batalla; más de una píldora entre campamentos suma Agotamiento',
+  partyFights: { en: 'The party fights together', es: 'El grupo pelea unido' },
+  partyHelp: {
+    en: 'You control all four on the battle map; any of them can be handed to the AI with an order (Aggressive, Defensive, Support). Soldier pills, bandages, antidotes and explosive tags are used in battle.',
+    es: 'Controlas a los cuatro en el mapa de batalla; puedes pasar cualquiera a la IA con una orden (Agresivo, Defensivo, Apoyo). Las píldoras, vendas, antídotos y sellos explosivos se usan en la batalla.',
   },
-  pill: { en: 'Soldier pill ({n} left)', es: 'Píldora de soldado (quedan {n})' },
-  pillsTaken: { en: '{name} took {n}: Crash after this battle.', es: '{name} tomó {n}: Bajón después de esta batalla.' },
-  prepPrototype: {
-    en: 'Prototype: the current battle screen fights one ninja at a time. The others hold the flanks off-screen and come back with some HP and chakra lost, sometimes Bleeding. If the fighter falls, another one can step in. Party battles come with the new battle engine.',
-    es: 'Prototipo: la pantalla de batalla actual pelea con un ninja a la vez. Los demás cubren los flancos fuera de pantalla y vuelven con algo menos de PV y chakra, a veces Sangrando. Si el combatiente cae, otro puede tomar su lugar. Las batallas en grupo llegan con el nuevo motor de batalla.',
-  },
+  raidBells: { en: 'The bells on the perimeter woke everyone: nobody starts surprised. Traps set at camp wait on the raiders’ paths.', es: 'Las campanas del perímetro despertaron a todos: nadie empieza sorprendido. Las trampas del campamento esperan en el camino de los asaltantes.' },
+  raidNoBells: { en: 'No bells on the perimeter: whoever wasn’t on watch is caught asleep and loses the first turn. Traps set at camp wait on the raiders’ paths.', es: 'Sin campanas en el perímetro: quien no hacía guardia despierta tarde y pierde el primer turno. Las trampas del campamento esperan en el camino de los asaltantes.' },
   fight: { en: 'Fight', es: 'Pelear' },
 
   // log and end

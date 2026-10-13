@@ -99,7 +99,6 @@ export class Playback {
   queue: BattleEvent[] = [];
   busyUntil = 0;
   speed = 1;
-  private units: Record<string, Unit> = {};
 
   constructor(state: BattleState, private hooks: PlaybackHooks) {
     this.sync(state, 0);
@@ -107,7 +106,6 @@ export class Playback {
 
   /** Snaps every unit to the state (when nothing is playing). */
   sync(state: BattleState, now: number): void {
-    this.units = state.units;
     for (const u of Object.values(state.units)) {
       const v = this.views.get(u.id);
       const pose = restPose(u);
@@ -219,13 +217,6 @@ export class Playback {
     // Numbers on the same spot stack upward.
     const stack = this.floaters.filter((f) => dist(f.at, at) < 0.6 && now - f.t0 < 500).length;
     this.floaters.push({ text, color, at: { ...at }, rise: 96 + stack * 16, t0: now, dur: 1100 / this.speed, ...o });
-  }
-
-  private elementOf(unit: string | undefined): VfxElement {
-    const u = unit ? this.units[unit] : undefined;
-    const nat = u?.character?.palette?.chakraAuraColor;
-    void nat;
-    return 'chakra';
   }
 
   /** Applies one event to the view; returns how long (ms) to wait before the next. */

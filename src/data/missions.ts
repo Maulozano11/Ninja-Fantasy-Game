@@ -8,6 +8,7 @@ import type { SpriteAppearance } from '../sprite/types';
 import { getItem } from '../sprite/catalog';
 import { deriveStats } from '../rules/derived';
 import { LEGENDARY_PRESETS } from './shinobiData';
+import type { EncounterId } from '../battle/encounters';
 
 /** Enemy groups the current battle screen knows. */
 export type LegacyEnemyType = 'skirmish' | 'rogue_squad' | 'giant_beast' | 'titanic_threat';
@@ -23,6 +24,8 @@ export interface MissionBattle {
   threat: number;
   /** A venomous enemy: the flanks may come back Poisoned. */
   venom?: boolean;
+  /** The party battle on the map (src/battle/encounters.ts). */
+  encounter: EncounterId;
 }
 
 interface NodeBase {
@@ -97,6 +100,7 @@ export const RIVER_FOREST_PATROL: MissionDef = {
             enemyType: 'rogue_squad',
             weather: 'Clear',
             threat: 1,
+            encounter: 'cedar_rogues',
           },
         },
       ],
@@ -124,6 +128,7 @@ export const RIVER_FOREST_PATROL: MissionDef = {
             enemyType: 'skirmish',
             weather: 'Downpour',
             threat: 1.1,
+            encounter: 'river_patrol',
           },
         },
         {
@@ -154,6 +159,7 @@ export const RIVER_FOREST_PATROL: MissionDef = {
             weather: 'Clear',
             threat: 1.3,
             venom: true,
+            encounter: 'hydra',
           },
         },
       ],
@@ -167,6 +173,7 @@ export const RIVER_FOREST_PATROL: MissionDef = {
     enemyType: 'rogue_squad',
     weather: 'Clear',
     threat: 1,
+    encounter: 'night_raid',
   },
 };
 

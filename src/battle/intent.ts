@@ -60,7 +60,8 @@ function areaValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit): number {
     if (!standingUnit(o) || o.kind === 'hydra_body') continue;
     if (o.id === u.id && (j.shape === 'selfCircle' || j.shape === 'cone' || j.shape === 'line')) continue;
     if (!inArea(area, o.pos)) continue;
-    v += o.team === u.team ? -1.5 : 1;
+    // Friends caught in the blast weigh more than foes: the AI only risks it for a crowd.
+    v += o.team === u.team ? -2.5 : 1;
   }
   return v;
 }

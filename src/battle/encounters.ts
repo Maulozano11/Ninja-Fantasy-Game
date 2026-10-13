@@ -98,6 +98,25 @@ export interface EncounterParty {
   aiOrder?: AiOrder;
 }
 
+/** Perimeter traps set at camp (explosive tags, bell wires), placed on the raiders' paths. */
+export function campTraps(kinds: ('tag' | 'wire')[]): Trap[] {
+  const spots: Pt[] = [
+    { x: 38, z: 12.5 },
+    { x: 52, z: 9.5 },
+    { x: 38.5, z: 15 },
+    { x: 51.5, z: 12 },
+  ];
+  return kinds.map((kind, i) => ({
+    id: `camp_${kind}_${i}`,
+    kind,
+    pos: spots[i % spots.length],
+    owner: 'party' as const,
+    dc: 13,
+    dice: kind === 'tag' ? '3d6' : '0',
+    radius: kind === 'tag' ? 1.5 : 0.75,
+  }));
+}
+
 /** A battle setup for an encounter with this party. */
 export function encounterSetup(
   id: EncounterId,

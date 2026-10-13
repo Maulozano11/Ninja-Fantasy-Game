@@ -48,6 +48,8 @@ type Mode =
 export interface BattleScreenProps {
   initial: { state: BattleState; events: BattleEvent[] };
   title?: string;
+  /** CSS height of the screen (it fills the page under the app header by default). */
+  height?: string;
   onEnd: (result: PartyBattleResult, state: BattleState) => void;
 }
 
@@ -69,7 +71,7 @@ function markTip(k: string): void {
   }
 }
 
-export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEnd }) => {
+export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, height, onEnd }) => {
   const lang = useLang();
   const [state, setState] = useState<BattleState>(initial.state);
   const stateRef = useRef(state);
@@ -864,7 +866,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   const nowMs = performance.now();
 
   return (
-    <div className="relative w-full h-[calc(100vh-64px)] min-h-[520px] overflow-hidden bg-[#0b1513] select-none" ref={wrapRef}>
+    <div className="relative w-full min-h-[520px] overflow-hidden bg-[#0b1513] select-none" style={{ height: height ?? 'calc(100vh - 64px)' }} ref={wrapRef}>
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full"

@@ -6,10 +6,8 @@ import {
   Flag,
   Flame,
   Map as MapIcon,
-  Pill,
   RotateCcw,
   ScrollText,
-  Skull,
   Swords,
   Tent,
   TriangleAlert,
@@ -19,7 +17,7 @@ import type { ShinobiCharacter } from '../../types/shinobi';
 import type { Difficulty, PartyState } from '../../types/mission';
 import { COMPANIONS, MISSIONS, MissionDef, nextPos, nodeAt, RoadNode } from '../../data/missions';
 import type { ActivityId } from '../../data/campActivities';
-import { BattleResult, DEFAULT_SUPPLIES, endMissionAtVillage, isStanding, takeSoldierPill } from '../../rules/mission';
+import { DEFAULT_SUPPLIES, endMissionAtVillage, isStanding } from '../../rules/mission';
 import {
   chooseFire,
   doActivity,
@@ -37,6 +35,7 @@ import {
 } from '../../rules/rest';
 import { effectiveMaxHp } from '../../rules/derived';
 import { both, LogLine } from '../../game/eventText';
+import type { PartyBattleResult } from '../../battle/result';
 import { ruleText } from '../../game/ruleText';
 import { Entry, pick, useLang } from '../../i18n';
 import { LangToggle } from '../../i18n/LangToggle';
@@ -50,13 +49,16 @@ import {
   MissionRun,
   narrate,
   newBattle,
-  resolveBattle,
+  resolvePartyBattle,
   saveRun,
   startRun,
 } from '../../game/missionRun';
 import { soundManager } from '../../utils/audio';
 import { ShinobiSpriteCanvas } from '../ShinobiSpriteCanvas';
-import { TacticalCombat } from '../TacticalCombat';
+import { BattleScreen as PartyBattleScreen } from '../battle/BattleScreen';
+import { createBattle } from '../../battle/engine';
+import { campTraps, encounterSetup } from '../../battle/encounters';
+import { hashString } from '../../rules/rng';
 import { Bar, className, classShort, LogLines, PartyPanel, RecentEvents, SuppliesBar } from './PartyPanel';
 import { RestCamp } from './RestCamp';
 import { ShortStop } from './ShortStop';
@@ -140,18 +142,16 @@ export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
 
   // --- the battle screen --------------------------------------------------------------------
   if (b && b.phase === 'fighting') {
-    const fighter = run.party.members.find((m) => m.id === b.fighterId)!;
     return (
       <div className="flex flex-col">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-amber-900/50 bg-amber-950/30 px-6 py-2 text-xs text-amber-100">
-          <span className="font-bold uppercase tracking-widest text-amber-300">{mission.name}</span>
-          <span>{b.ambush ? 'Night raid' : node.name}</span>
-          <span>
-            Fighting: <b>{fighter.name}</b> ({fighter.currentHp}/{effectiveMaxHp(fighter)} HP, {fighter.currentChakra} chakra)
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-amber-900/50 bg-amber-950/30 px-6 py-1.5 text-xs text-amber-100">
+          <span className="font-bold uppercase tracking-widest text-amber-300">{nameOf(mission)}</span>
+          <span>{b.ambush ? T('nightRaid') : nameOf(node)}</span>
+          <span className="ml-auto">
+            <LangToggle />
           </span>
-          {run.party.members.length > 1 && <span className="text-amber-200/70">The others hold the flanks off-screen.</span>}
         </div>
-        <BattleScreen run={run} fighter={fighter} onReport={(rep) => setRun((r) => (r?.battle ? { ...r, battle: { ...r.battle, report: rep } } : r))} onContinue={() => setRun((r) => (r ? resolveBattle(r) : r))} />
+        <PartyBattle run={run} onEnd={(res) => setRun((r) => (r ? resolvePartyBattle(r, res) : r))} />
       </div>
     );
   }
@@ -211,11 +211,6 @@ export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
                 run={run}
                 battle={b}
                 intro={b.ambush ? undefined : pick(node.text, node.textEs)}
-                onFighter={(id) => setRun((r) => (r?.battle ? { ...r, battle: { ...r.battle, fighterId: id } } : r))}
-                onPill={() => {
-                  const n = b.pills[b.fighterId] ?? 0;
-                  act(takeSoldierPill(run.party, b.fighterId, b.id, n), (r) => (r.battle ? { ...r, battle: { ...r.battle, pills: { ...r.battle.pills, [b.fighterId]: n + 1 } } } : r));
-                }}
                 onFight={() => {
                   soundManager.playSelect();
                   setRun((r) => (r?.battle ? { ...r, battle: { ...r.battle, phase: 'fighting', attempt: r.battle.attempt + 1, report: undefined } } : r));
@@ -283,14 +278,35 @@ export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
 
 // ---------------------------------------------------------------------------------------------
 
-function BattleScreen({ run, fighter, onReport, onContinue }: { run: MissionRun; fighter: ShinobiCharacter; onReport: (r: BattleResult) => void; onContinue: () => void }) {
+/** The whole party fights the node's battle on the battle map. */
+function PartyBattle({ run, onEnd }: { run: MissionRun; onEnd: (r: PartyBattleResult) => void }) {
   const b = run.battle!;
-  // The battle screen restarts whenever its encounter object changes, so keep it stable.
-  const encounter = useMemo(
-    () => ({ title: b.battle.title, description: b.battle.description, enemyType: b.battle.enemyType, weather: b.battle.weather }),
-    [b.battle, b.id, b.attempt],
-  );
-  return <TacticalCombat key={`${b.id}:${b.attempt}`} playerCharacter={fighter} campaignEncounter={encounter} carryOver onBattleEnd={onReport} onContinue={onContinue} />;
+  const initial = useMemo(() => {
+    const fighters = run.party.members.filter(isStanding).slice(0, 4);
+    return createBattle(
+      encounterSetup(
+        b.battle.encounter,
+        fighters.map((c) => ({ character: c })),
+        {
+          seed: hashString(`${run.party.progress.seed}:${b.id}:${b.attempt}`),
+          difficulty: run.party.progress.difficulty,
+          weather: b.battle.weather,
+          supplies: {
+            soldierPills: run.party.supplies.soldierPills,
+            bandages: run.party.supplies.bandages,
+            antidotes: run.party.supplies.antidotes,
+            explosiveTags: run.party.supplies.explosiveTags,
+          },
+          // Bells on the perimeter: nobody is caught asleep. The perimeter traps wait on the raiders' paths.
+          partySurprised: b.ambush && !run.camp?.bells,
+          traps: b.ambush ? campTraps(run.camp?.traps ?? []) : [],
+        },
+      ),
+    );
+    // A battle starts once per attempt.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [b.id, b.attempt]);
+  return <PartyBattleScreen key={`${b.id}:${b.attempt}`} initial={initial} title={pick(b.battle.title, b.battle.titleEs)} height="calc(100vh - 96px)" onEnd={(res) => onEnd(res)} />;
 }
 
 function MissionHeader({ run, mission, onAbandon }: { run: MissionRun; mission: MissionDef; onAbandon: () => void }) {
@@ -436,27 +452,9 @@ function NodePanel({
   );
 }
 
-function BattlePrep({
-  run,
-  battle: b,
-  intro,
-  onFighter,
-  onPill,
-  onFight,
-}: {
-  run: MissionRun;
-  battle: BattleRun;
-  intro?: string;
-  onFighter: (id: string) => void;
-  onPill: () => void;
-  onFight: () => void;
-}) {
+function BattlePrep({ run, battle: b, intro, onFight }: { run: MissionRun; battle: BattleRun; intro?: string; onFight: () => void }) {
   useLang();
-  const fallenIds = b.fallen.map((f) => f.id);
-  const able = run.party.members.filter((m) => isStanding(m) && !fallenIds.includes(m.id));
-  const fighter = run.party.members.find((m) => m.id === b.fighterId);
-  const pillsTaken = b.pills[b.fighterId] ?? 0;
-  const pillBlock = !fighter ? T('chooseFighter') : run.party.supplies.soldierPills < 1 ? T('noPills') : fighter.currentChakra >= fighter.maxChakra ? T('fullChakra') : null;
+  const fighters = run.party.members.filter(isStanding).slice(0, 4);
   return (
     <div className={`rounded-2xl border p-5 space-y-4 ${b.ambush ? 'border-rose-800/70 bg-gradient-to-b from-rose-950/40 to-slate-950' : 'border-slate-800 bg-slate-900/70'}`}>
       <div>
@@ -468,25 +466,13 @@ function BattlePrep({
         <p className="text-sm text-slate-400 max-w-[65ch] mt-1">{pick(b.battle.description, b.battle.descriptionEs)}</p>
       </div>
 
-      {b.phase === 'fell' && (
-        <div className="flex items-center gap-2 rounded-lg border border-rose-800 bg-rose-950/50 px-3 py-2 text-sm text-rose-200">
-          <Skull className="w-4 h-4" />{' '}
-          {T(b.fallen.length > 1 ? 'fellMany' : 'fellOne', { names: b.fallen.map((f) => run.party.members.find((m) => m.id === f.id)?.name).join(', ') })}
-        </div>
-      )}
-
       <div>
         <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 mb-2">
-          <Users className="w-4 h-4" /> {T('whoFights')}
+          <Users className="w-4 h-4" /> {T('partyFights')}
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          {able.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => onFighter(m.id)}
-              className={`flex items-center gap-2 rounded-xl border p-2 text-left ${m.id === b.fighterId ? 'border-cyan-400 bg-cyan-950/30' : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'}`}
-            >
+          {fighters.map((m) => (
+            <div key={m.id} className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/60 p-2">
               <ShinobiSpriteCanvas character={m} size={52} showAura={false} />
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center gap-1.5 text-sm font-bold text-white">
@@ -499,21 +485,14 @@ function BattlePrep({
                 <Bar value={m.currentHp} max={effectiveMaxHp(m)} tone="hp" />
                 <Bar value={m.currentChakra} max={m.maxChakra} tone="chakra" />
               </div>
-            </button>
+            </div>
           ))}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className={btnQuiet} disabled={!!pillBlock} onClick={onPill} title={pillBlock ?? T('pillTitle')}>
-          <Pill className="w-4 h-4" /> {T('pill', { n: run.party.supplies.soldierPills })}
-        </button>
-        {pillsTaken > 0 && <span className="text-xs text-amber-300">{T('pillsTaken', { name: fighter?.name ?? '', n: pillsTaken })}</span>}
-      </div>
+      <p className="text-[11px] text-slate-400 max-w-[70ch]">{T(b.ambush ? (run.camp?.bells ? 'raidBells' : 'raidNoBells') : 'partyHelp')}</p>
 
-      <p className="text-[11px] text-slate-500 max-w-[70ch]">{T('prepPrototype')}</p>
-
-      <button type="button" className={btnMain} disabled={!fighter || !isStanding(fighter)} onClick={onFight}>
+      <button type="button" className={btnMain} disabled={!fighters.length} onClick={onFight}>
         <Swords className="w-4 h-4" /> {T('fight')}
       </button>
     </div>

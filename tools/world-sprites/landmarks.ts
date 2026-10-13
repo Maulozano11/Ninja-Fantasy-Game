@@ -14,7 +14,7 @@
 // small outlined layers, and the kit adds the outer outline.
 
 import { join } from 'node:path';
-import { Anim, Canvas, Color, MATERIALS, OUTLINE, WorldSprite, band, fbm, hash, hex, lambert, m, mix, noise, preview, previewDir, ramp, toHex, writeGroup } from './kit';
+import { Anim, Canvas, Color, MATERIALS, WorldSprite, band, fbm, hash, hex, lambert, m, mix, noise, preview, previewDir, ramp, toHex, writeGroup } from './kit';
 
 // --- camera ---------------------------------------------------------------------------------
 
@@ -717,7 +717,6 @@ function finish(name: string, label: string, meters: [number, number], tags: str
 // STONE LANTERN (toro)
 // ================================================================================================
 
-// @section lantern
 /** A ring on a hexagon of circumradius r (flat face to the viewer), 24 points; corners lift and reach out. */
 function kasaRing(h: number, r: number, lift: number, out = 0): V3[] {
   const pts: V3[] = [];
@@ -881,9 +880,7 @@ function stoneLantern(): WorldSprite {
   const unlit = frame(false, 0);
   return finish('stone_lantern', 'Stone Lantern', [0.7, 1.7], ['light-source', 'cover-half', 'interactable'], { lit: { frames: litFrames, fps: 8 }, unlit: { frames: [unlit], fps: 0 } }, ox);
 }
-// @end lantern
 
-// @section stones
 /**
  * A faceted stone: jittered rings stacked by `profile` ([height fraction, radius fraction]),
  * leaning toward `lean` px at the top, closed by a low pyramid so the top breaks into facets.
@@ -968,9 +965,7 @@ function pebbles(): WorldSprite {
   c.outline();
   return finish('rocks_small', 'Pebbles', [0.6, 0.25], ['ambient'], { idle: { frames: [c], fps: 0 } }, ox);
 }
-// @end stones
 
-// @section river
 /** Wet stone: a little darker and cooler than dry stone, with a cool glint at the top step. */
 const STONE_WET = pal([STONE_RAMP[0], mix(STONE_RAMP[1], R.water[1], 0.25), mix(STONE_RAMP[2], R.water[2], 0.2), mix(STONE_RAMP[3], R.water[2], 0.14), mix(STONE_RAMP[4], R.water[4], 0.15), mix(R.paper[4], R.water[5], 0.3)]);
 /** Stone seen through the water. */
@@ -1110,9 +1105,7 @@ function riverStones(): WorldSprite {
   const [, gy] = f.proj([front.cx, 0, front.cd - front.rd]);
   return finish('river_stones', 'Stepping Stones', [1.4, 0.15], ['water', 'climbable'], { idle: { frames, fps: 5 } }, ox, Math.round(gy) + 1);
 }
-// @end river
 
-// @section hokora
 const ROOF = pal(ramp(MATERIALS.barkCedar));
 
 /** Extrudes a convex polygon given in the X-H plane along depth from d0 to d1 (closed both ends). */
@@ -1312,9 +1305,7 @@ function hokora(): WorldSprite {
   c0.outline();
   return finish('hokora', 'Roadside Shrine', [0.65, 1.3], ['interactable'], { idle: { frames: [c0], fps: 0 } }, ox);
 }
-// @end hokora
 
-// @section signpost
 const IRON = pal(R.iron);
 
 /** Abstract brush marks (no real script): 4x6 cells, '#' full ink, '+' dry brush. */
@@ -1474,9 +1465,7 @@ function signpost(): WorldSprite {
   const frames = [0, 1, 2, 3, 4, 5].map(frame);
   return finish('signpost', 'Signpost', [0.95, 1.9], ['interactable'], { idle: { frames, fps: 8 } }, ox);
 }
-// @end signpost
 
-// @section fence
 /** A tube along a polyline (rings perpendicular to the path), smooth shaded; r may vary per point. */
 function tube(path: V3[], r: number | number[], n = 8, o: { caps?: boolean; seed?: number; wob?: number } = {}): Tri[] {
   const rings: V3[][] = [];
@@ -1664,9 +1653,7 @@ function fence(): WorldSprite {
   const broken = build(true);
   return finish('fence', 'Wooden Fence', [2, 1], ['cover-half', 'destructible'], { idle: { frames: [idle], fps: 0 }, broken: { frames: [broken], fps: 0 } }, ox);
 }
-// @end fence
 
-// @section bamboo
 /** Dried bamboo: the rope straw tone with a touch of young-leaf green. */
 const BAMBOO = pal(R.rope.map((c, i) => mix(c, R.leafLight[i], 0.18)));
 /** Older, darker culms for the posts. */
@@ -1807,9 +1794,7 @@ function fenceBamboo(): WorldSprite {
   for (const px of [-FENCE_SPAN, FENCE_SPAN]) comp.draw(bp.c, ox + px - bp.ox, oy - bp.oy);
   return finish('fence_bamboo', 'Bamboo Fence', [2, 1.2], ['cover-half', 'blocks-sight', 'destructible'], { idle: { frames: [comp], fps: 0 } }, ox);
 }
-// @end bamboo
 
-// @main
 // ================================================================================================
 // main
 // ================================================================================================
@@ -1840,4 +1825,3 @@ for (const s of sprites) {
   const bb = first.bounds();
   console.log(`${s.name.padEnd(14)} frame ${first.w}x${first.h} anchor ${s.anchor} opaque h ${bb ? bb[3] - bb[1] + 1 : 0} w ${bb ? bb[2] - bb[0] + 1 : 0} target ${m(s.meters[0])}x${m(s.meters[1])}`);
 }
-void OUTLINE;

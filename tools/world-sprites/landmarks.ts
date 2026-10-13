@@ -1133,45 +1133,79 @@ function slab(x0: number, x1: number, h0: number, h1: number, d0: number, d1: nu
   return loft([rect(h0, 0), rect(h1 - ch, 0), rect(h1, ch)], { capEnd: true });
 }
 
+/**
+ * A ring around a rectangle (x0..x1, d0..d1) at height h with `per` points per side; points near the
+ * corners lift by `lift` and reach out by `out` (upturned eaves).
+ */
+function rectRing(x0: number, x1: number, d0: number, d1: number, h: number, per: number, lift = 0, out = 0): V3[] {
+  const pts: V3[] = [];
+  const corners: [number, number][] = [[x0, d0], [x1, d0], [x1, d1], [x0, d1]];
+  const cx = (x0 + x1) / 2, cd = (d0 + d1) / 2;
+  for (let s = 0; s < 4; s++) {
+    const [ax, ad] = corners[s], [bx, bd] = corners[(s + 1) % 4];
+    for (let k = 0; k < per; k++) {
+      const t = k / per;
+      const x = ax + (bx - ax) * t, d = ad + (bd - ad) * t;
+      const cf = Math.max(0, 1 - Math.min(t, 1 - t) * per * 0.9) ** 1.5; // 1 at the corner point
+      const ux = x - cx, ud = d - cd, ul = Math.hypot(ux, ud) || 1;
+      pts.push([x + (ux / ul) * out * cf, h + lift * cf, d + (ud / ul) * out * cf]);
+    }
+  }
+  return pts;
+}
+
 function hokora(): WorldSprite {
   const W = 90, H = 100, ox = 45, oy = 80;
   GROUP = 1;
   const sc = new Scene();
   const st = (seed: number): MeshOpts => ({ pal: STONE, seed, tex: 0.04, texCell: 8, contrast: 1.1, ao: 2 });
   // Stone base: a footing slab, a pedestal block and a top slab.
-  const foot = sc.add(slab(-18, 18, 0, 7, -14, 14, 1.5), st(81));
-  const ped = sc.add(slab(-11.5, 11.5, 7, 19, -9, 9, 1), st(82));
-  const top = sc.add(slab(-15, 15, 19, 23.5, -12, 12, 1.2), st(83));
-  // Wooden shrine body on a darker sill.
+  const foot = sc.add(slab(-18, 18, 0, 7.5, -14, 14, 1.5), st(81));
+  const ped = sc.add(slab(-11.5, 11.5, 7.5, 21.5, -9, 9, 1), st(82));
+  const top = sc.add(slab(-15, 15, 21.5, 26, -12, 12, 1.2), st(83));
+  // Wooden shrine body on a darker sill, with corner posts.
   const wood = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: WOOD_OLD, seed, contrast: 1.05, facetVar: 0.02, ...extra });
-  const body = sc.add(slab(-10, 10, 25, 47, -7.5, 7.5, 0), wood(84));
-  const sill = sc.add(slab(-12, 12, 23.5, 25.5, -9.5, 9.5, 0.6), wood(85, { pal: WOOD_DK }));
-  // Corner posts, slightly proud of the walls.
-  const posts = [-10, 10].map((x, k) => sc.add(slab(x - 1.4, x + 1.4, 25, 47, -8.3, -5.5, 0), wood(90 + k, { pal: WOOD_DK })));
-  // Roof: cedar bark on two slopes with the ridge parallel to the front; ridge beam and katsuogi logs.
-  const roofF = sc.add(extrudeDH([[0.5, 57], [-15.5, 45], [-15.5, 42.5], [0.5, 54.5]], -17, 17), { pal: ROOF, seed: 86, contrast: 1.15, facetVar: 0 });
-  const roofB = sc.add(extrudeDH([[-0.5, 57], [-0.5, 54.5], [11.5, 45.5], [11.5, 48]], -17, 17), { pal: ROOF, seed: 87, contrast: 1.15, facetVar: 0 });
-  const ridge = sc.add(pole([-17.5, 57.2, 0], [17.5, 57.2, 0], 1.8, 8), { pal: WOOD_DK, seed: 88 });
-  const katsuo = [-9, 0, 9].map((x) => sc.add(pole([x, 58.6, -3.4], [x, 58.6, 3.4], 1.35, 8), { pal: WOOD_OLD, seed: 89 + x }));
+  const body = sc.add(slab(-10, 10, 27.5, 50, -7.5, 7.5, 0), wood(84));
+  const sill = sc.add(slab(-12, 12, 26, 28, -9.5, 9.5, 0.6), wood(85, { pal: WOOD_DK }));
+  const posts = [-10, 10].map((x, k) => sc.add(slab(x - 1.4, x + 1.4, 27.5, 50, -8.3, -5.5, 0), wood(90 + k, { pal: WOOD_DK })));
+  // Hipped cedar-bark roof with upturned corners, a ridge beam and two katsuogi logs.
+  const per = 6;
+  const roof = sc.add(
+    loft(
+      [
+        rectRing(-17.5, 17.5, -13.5, 10.5, 44, per, 2.4, 1.2),
+        rectRing(-17.5, 17.5, -13.5, 10.5, 46.5, per, 2.6, 1.2),
+        rectRing(-12, 12, -8.5, 6, 51.5, per, 0.6, 0),
+        rectRing(-6.5, 6.5, -1.2, 0.4, 58, per, 0, 0),
+      ],
+      { capStart: true, capEnd: true },
+    ),
+    { pal: ROOF, seed: 86, contrast: 1.15, facetVar: 0.03 },
+  );
+  const ridge = sc.add(pole([-8.5, 58.4, -0.4], [8.5, 58.4, -0.4], 1.9, 8), { pal: WOOD_DK, seed: 88 });
+  const ends = [-1, 1].map((sd) => sc.add(slab(sd * 9.8 - 1.6, sd * 9.8 + 1.6, 56.5, 61.5, -2.2, 1.4, 0.8), { pal: WOOD_DK, seed: 92 + sd }));
+  const katsuo = [-4, 4].map((x) => sc.add(pole([x, 60.3, -3.2], [x, 60.3, 2.4], 1.3, 8), { pal: WOOD_OLD, seed: 89 + x }));
+  void ends;
   void ridge;
   void katsuo;
   void posts;
+  void sill;
   const f = render(sc, W, H, ox, oy);
-  // Cedar-bark courses on the roof: seams parallel to the eave; the thick front edge shows strata.
+  // Cedar-bark courses on the roof: seams at constant height (parallel to the eaves) on every
+  // plane; the thick eave edge shows layered strata.
   for (let i = 0; i < W * H; i++) {
-    const mi = f.mesh[i];
-    if (mi !== roofF.id && mi !== roofB.id) continue;
+    if (f.mesh[i] !== roof.id) continue;
     const p = f.world(i), n = f.normal(i);
     const x = i % W, y = Math.floor(i / W);
     if (n[1] > 0.3) {
-      const along = Math.abs(p[2]); // distance from the ridge
-      if ((along + 0.6) % 3.4 < 0.75 && along > 1.5) f.step[i] = Math.max(1, f.step[i] - 1);
-      else if ((along + 0.6) % 3.4 > 2.9 && f.lightv[i] > 0.6 && noise(x, y, 3, 88) > 0.45) f.step[i] = Math.min(4, f.step[i] + 1);
-    } else if (n[2] < -0.5) {
-      f.step[i] = clamp(y % 2 === 0 ? 3 : 2, 1, 4);
+      const hh = p[1] - 46.5;
+      if (hh > 1 && hh % 2.6 < 0.9) f.step[i] = Math.max(1, f.step[i] - 1);
+      else if (hh % 2.6 > 2.0 && f.lightv[i] > 0.55 && noise(x, y, 3, 88) > 0.5) f.step[i] = Math.min(4, f.step[i] + 1);
+    } else {
+      f.step[i] = clamp(y % 2 === 0 ? f.step[i] + 1 : f.step[i], 1, 4);
     }
   }
-  paintMoss(f, { meshes: [roofF.id], amount: 0.2, seed: 811, cell: 6, drip: 1, minUp: 0.3, bumps: true });
+  paintMoss(f, { meshes: [roof.id], amount: 0.2, seed: 811, cell: 6, drip: 1, minUp: 0.3, bumps: true });
   paintMoss(f, { meshes: [foot.id], amount: 0.3, seed: 812, cell: 6, drip: 2 });
   paintLichen(f, { meshes: [foot.id, ped.id, top.id], seed: 813, density: 0.3, minLight: 0.35 });
   // Vertical plank seams on the front wall either side of the doors.
@@ -1183,8 +1217,8 @@ function hokora(): WorldSprite {
   const fr = (x: number, h: number, d: number) => f.proj([x, h, d]).map(Math.round) as [number, number];
   const c0 = f.compose();
   // Doors: a dark frame, two leaves with a fox lattice over the dark inside.
-  const [dx0, dy1] = fr(-7, 26, -7.5);
-  const [dx1, dy0] = fr(7, 40, -7.5);
+  const [dx0, dy1] = fr(-7, 29, -7.5);
+  const [dx1, dy0] = fr(7, 43, -7.5);
   const midX = Math.floor((dx0 + dx1) / 2);
   for (let y = dy0; y < dy1; y++)
     for (let x = dx0; x < dx1; x++) {
@@ -1200,7 +1234,7 @@ function hokora(): WorldSprite {
     }
   // Little offering cups on the top slab, left and right of the doors.
   for (const cx of [-13, 12]) {
-    const [x, y] = fr(cx, 23.5, -10);
+    const [x, y] = fr(cx, 26, -10);
     c0.set(x, y - 1, C(PAPER, 4));
     c0.set(x + 1, y - 1, C(PAPER, 3));
     c0.set(x, y, C(PAPER, 2));
@@ -1208,9 +1242,9 @@ function hokora(): WorldSprite {
   }
   // Red cloth draped over the top slab's front edge, with broad folds and a scalloped hem.
   const cloth = layer(W, H, (c) => {
-    const [cx0, cyTop] = fr(-9, 23.5, -10);
-    const [cx1] = fr(9, 23.5, -10);
-    const [, cyEdge] = fr(0, 23.5, -12);
+    const [cx0, cyTop] = fr(-9, 26, -10);
+    const [cx1] = fr(9, 26, -10);
+    const [, cyEdge] = fr(0, 26, -12);
     for (let x = cx0; x <= cx1; x++) {
       const u = x - cx0;
       const hem = cyEdge + 9 + [0, 1, 1, 1, 0, 0][u % 6] - (u === 0 || x === cx1 ? 1 : 0);
@@ -1227,8 +1261,8 @@ function hokora(): WorldSprite {
   });
   c0.draw(cloth, 0, 0);
   // Shimenawa: a twisted straw rope sagging across the front over the doors, with paper shide.
-  const [rx0, ry0] = fr(-11.5, 41.5, -9);
-  const [rx1] = fr(11.5, 41.5, -9);
+  const [rx0, ry0] = fr(-11.5, 45, -9);
+  const [rx1] = fr(11.5, 45, -9);
   const ropeY = (x: number) => ry0 + Math.round(2.4 * (1 - (2 * ((x - rx0) / (rx1 - rx0)) - 1) ** 2));
   const rope = layer(W, H, (c) => {
     for (let x = rx0; x <= rx1; x++) {
@@ -1243,8 +1277,8 @@ function hokora(): WorldSprite {
   });
   c0.draw(rope, 0, 0);
   // Shide: zigzag paper streamers (each its own outlined layer so they read as folded paper).
-  for (const sx of [-6, 0, 6]) {
-    const [x] = fr(sx, 41.5, -9);
+  for (const sx of [-5.5, 5.5]) {
+    const [x] = fr(sx, 45, -9);
     const y = ropeY(x) + 2;
     const sh = layer(W, H, (c) => {
       const zig: [number, number, number][] = [[0, 0, 4], [1, 0, 5], [1, 1, 4], [2, 1, 3], [0, 2, 4], [1, 2, 4], [1, 3, 4], [2, 3, 3], [0, 4, 4], [1, 4, 3], [1, 5, 3], [2, 5, 2]];
@@ -1252,17 +1286,6 @@ function hokora(): WorldSprite {
     });
     c0.draw(sh, 0, 0);
   }
-  // Chigi: forked boards crossing above both ends of the ridge.
-  const chigi = layer(W, H, (c) => {
-    for (const side of [-1, 1]) {
-      const [ex, ey] = fr(side * 16.5, 57.5, 0);
-      for (let k = 0; k < 6; k++) {
-        c.set(ex + side * Math.floor(k / 2), ey - k, C(WOOD_OLD, k < 2 ? 3 : 4));
-        c.set(ex - side * Math.floor(k / 2) - side, ey - k, C(WOOD_OLD, 2));
-      }
-    }
-  });
-  c0.draw(chigi, 0, 0);
   c0.outline();
   return finish('hokora', 'Roadside Shrine', [0.65, 1.3], ['interactable'], { idle: { frames: [c0], fps: 0 } }, ox);
 }

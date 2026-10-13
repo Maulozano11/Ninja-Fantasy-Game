@@ -786,7 +786,7 @@ function oak(): WorldSprite {
     const gl = clamp(-(dx / 150) * 0.5 - (dy / 135) * 0.6, -1, 1);
     return lobeItem({
       x: CX + dx, y, rx, ry, seed: 100 + i * 31, bump: 0.13, K: 2.4, S: 22,
-      pal: P.oak, layer, bias: 0.06 * gl + (layer === 0 ? -0.03 : 0), amp: 1 + 2 * hf, phase: -1.1 * hf + (hash(i, 9, 3) - 0.5) * 0.6,
+      pal: P.oak, layer, bias: 0.06 * gl + (layer === 0 ? -0.13 : -0.1), amp: 1 + 2 * hf, phase: -1.1 * hf + (hash(i, 9, 3) - 0.5) * 0.6,
     });
   });
 
@@ -1047,7 +1047,7 @@ function maple(): WorldSprite {
     const gl = clamp(-(dx / 130) * 0.5 - ((dy + 190) / 70) * 0.6, -1, 1);
     return lobeItem({
       x: gx + dx, y, rx, ry, seed: 500 + i * 23, bump: 0.16, K: 2.8, S: 16, flat: 0.6, dab: [3, 3],
-      pal: P.maple, layer, bias: 0.05 * gl + (layer === 0 ? -0.04 : 0), amp: 1 + 2 * hf, phase: -1.1 * hf + (hash(i, 2, 2) - 0.5) * 0.6,
+      pal: P.maple, layer, bias: 0.05 * gl + (layer === 0 ? -0.14 : -0.1), amp: 1 + 2 * hf, phase: -1.1 * hf + (hash(i, 2, 2) - 0.5) * 0.6,
     });
   });
   const dim = (_x: number, y: number) => (y < gy - 150 ? 0.7 : 1);

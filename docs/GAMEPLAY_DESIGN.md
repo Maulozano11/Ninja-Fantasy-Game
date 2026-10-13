@@ -47,6 +47,11 @@ elements.
 
 - Half cover (+2 AC) and three-quarters cover (+5 AC), judged from the
   attacker's line of sight.
+- What gives cover:
+  - **Half:** big tree trunks, stumps, fallen logs, bushes, barrels, crates,
+    rocks, fences and stone lanterns.
+  - **Three-quarters:** boulders, stacked crates and tents.
+  - Each world sprite's manifest lists its cover in its tags.
 - Cover can be destroyed: trees burn, earth walls break.
 - Crouching behind cover helps you hide; it costs a Bonus Action.
 

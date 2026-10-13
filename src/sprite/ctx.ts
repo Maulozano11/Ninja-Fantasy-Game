@@ -59,6 +59,8 @@ export const DEPTHS = [
   'torso.over',
   'waist',
   'torso.acc',
+  // the far hand when it works in front of the body (see PoseFrame.farHandFront)
+  'farHand.front',
   'neck',
   'head.body',
   'head.face',

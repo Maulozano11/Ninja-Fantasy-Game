@@ -5,7 +5,7 @@ import { getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS } from './ctx';
 import { drawHeadband } from './items/headband';
-import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PartId, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
+import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { buildRig, Rig, rigPoseFor } from './rig';
 import { drawCastFx } from './castfx';
 import { applyTexture, frayHair } from './texture';
@@ -63,6 +63,28 @@ function guardFace(g: DrawCtx, layers: Map<Depth, Layer>): void {
     for (const j of [i - 1, i + 1, i - GRID, i + GRID]) {
       if (j < 0 || j >= GRID * GRID || face.has(j) || L.mat[j] < 0) continue;
       L.reshade(j % GRID, (j / GRID) | 0, 0);
+    }
+  }
+}
+
+/**
+ * Moves the far hand (and the glove or gauntlet on it) from behind the torso
+ * to a layer over it, for poses where that hand works in front of the body.
+ */
+function farHandToFront(layers: Map<Depth, Layer>, g: DrawCtx): void {
+  const hand = partIndex('handF');
+  const front = g.L('farHand.front');
+  for (const d of ['farArm.body', 'farArm.cloth', 'farArm.armor'] as const) {
+    const L = layers.get(d);
+    if (!L?.used) continue;
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (L.mat[i] < 0 || L.part[i] !== hand) continue;
+      front.mat[i] = L.mat[i];
+      front.shade[i] = L.shade[i];
+      front.part[i] = L.part[i];
+      front.flags[i] = L.flags[i];
+      front.used = true;
+      L.mat[i] = -1;
     }
   }
 }
@@ -154,6 +176,7 @@ export function renderSprite(
   }
   drawHeadband(g);
   drawCastFx(g);
+  if (rig.farHandFront) farHandToFront(layers, g);
   guardFace(g, layers);
 
   // Outline and flatten

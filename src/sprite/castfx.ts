@@ -93,8 +93,8 @@ function grimoire(g: DrawCtx, hex: string): void {
 }
 
 /** A ball of energy with a bright core, a pulsing rim and a few sparks. */
-function energyBall(g: DrawCtx, c: Vec, R: number, hex: string, rays: number): void {
-  const L = g.L('nearArm.over');
+function energyBall(g: DrawCtx, c: Vec, R: number, hex: string, rays: number, depth: 'nearArm.held' | 'nearArm.over' = 'nearArm.over'): void {
+  const L = g.L(depth);
   const T = g.L('top');
   const pen: Pen = { mat: g.m(hex, 'glow'), part: 'held' };
   const r = R + (g.rig.frame % 2) * 0.5;
@@ -130,13 +130,16 @@ export function drawCastFx(g: DrawCtx): void {
       drawLightning(g, { spark: light, core: hex });
       break;
     case 'castWave': {
+      // between the palms, the near hand below it and the far hand above it
       const r = g.rig;
-      energyBall(g, add(scale(add(r.handN, r.handF), 0.5), v(-0.6, 0.2)), 3.1, hex, 6);
+      energyBall(g, add(scale(add(r.handN, r.handF), 0.5), v(0.4, 0)), 2.9, hex, 6);
       break;
     }
     case 'castFlash': {
+      // in front of both palms, clear of the fingers
       const r = g.rig;
-      energyBall(g, add(scale(add(r.handN, r.handF), 0.5), v(3.4, 0)), 4.2, hex, 10);
+      const R = 4.2;
+      energyBall(g, v(Math.max(r.handN.x, r.handF.x) + R + 1.2, (r.handN.y + r.handF.y) / 2), R, hex, 10);
       break;
     }
     default:

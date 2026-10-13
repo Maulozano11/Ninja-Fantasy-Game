@@ -164,6 +164,8 @@ interface PoseFrame {
   shapeF: HandShape;
   /** Optional whole-sprite shake (charging). */
   jitter?: number;
+  /** The far hand works in front of the body (hand signs, a two-handed charge): draw it over the torso. */
+  farHandFront?: boolean;
 }
 
 const arm = (x: number, y: number): HandTarget => ({ from: 'shoulder', x, y, units: 'arm' });
@@ -203,9 +205,9 @@ export function rigPoseFor(pose: SpritePose, style: CastStyle = 'runes'): RigPos
 export const POSES: Record<RigPose, PoseFrame[]> = {
   idle: [IDLE, IDLE, { ...IDLE, chestDy: 1 }, { ...IDLE, chestDy: 1 }],
   handsigns: [
-    { ...IDLE, lean: 0, handN: chest(1, -1), handF: chest(2, -1), shapeN: 'sign', shapeF: 'sign' },
-    { ...IDLE, lean: 0, handN: chest(1, -2), handF: chest(2, -2), shapeN: 'sign', shapeF: 'sign', chestDy: 0 },
-    { ...IDLE, lean: 1, handN: chest(1, 0), handF: chest(2, 0), shapeN: 'sign', shapeF: 'sign' },
+    { ...IDLE, lean: 0, handN: chest(1, -1), handF: chest(2, -1), shapeN: 'sign', shapeF: 'sign', farHandFront: true },
+    { ...IDLE, lean: 0, handN: chest(1, -2), handF: chest(2, -2), shapeN: 'sign', shapeF: 'sign', chestDy: 0, farHandFront: true },
+    { ...IDLE, lean: 1, handN: chest(1, 0), handF: chest(2, 0), shapeN: 'sign', shapeF: 'sign', farHandFront: true },
   ],
   attack: [
     {
@@ -316,18 +318,18 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
   ],
   // Crouched, the crackling hand held low and forward, the other gripping its wrist.
   castLightning: [
-    { lean: 10, handN: arm(0.46, 0.72), handF: arm(0.2, 0.86), footN: v(-0.36, 0.9), footF: v(0.4, 0.92), shapeN: 'open', shapeF: 'fist' },
-    { lean: 11, jitter: 1, handN: arm(0.48, 0.71), handF: arm(0.21, 0.85), footN: v(-0.36, 0.9), footF: v(0.4, 0.92), shapeN: 'open', shapeF: 'fist' },
+    { lean: 10, handN: arm(0.46, 0.72), handF: arm(0.2, 0.86), footN: v(-0.36, 0.9), footF: v(0.4, 0.92), shapeN: 'open', shapeF: 'fist', farHandFront: true },
+    { lean: 11, jitter: 1, handN: arm(0.48, 0.71), handF: arm(0.21, 0.85), footN: v(-0.36, 0.9), footF: v(0.4, 0.92), shapeN: 'open', shapeF: 'fist', farHandFront: true },
   ],
-  // Both palms cupped together at the back hip, charging a ball of energy.
+  // Leaning back, palms cupped at the hip, one below and one above a ball of energy.
   castWave: [
-    { lean: -8, handN: chest(-10, 8), handF: chest(-8, 7), footN: v(-0.38, 0.92), footF: v(0.42, 0.94), shapeN: 'open', shapeF: 'open' },
-    { lean: -8, chestDy: 1, jitter: 1, handN: chest(-10.3, 8.4), handF: chest(-8.3, 7.4), footN: v(-0.38, 0.92), footF: v(0.42, 0.94), shapeN: 'open', shapeF: 'open' },
+    { lean: -6, handN: chest(-4, 11), handF: chest(-3, 3.4), footN: v(-0.38, 0.92), footF: v(0.42, 0.94), shapeN: 'open', shapeF: 'open', farHandFront: true },
+    { lean: -6, chestDy: 1, jitter: 1, handN: chest(-4.2, 11.4), handF: chest(-3.2, 3.6), footN: v(-0.38, 0.92), footF: v(0.42, 0.94), shapeN: 'open', shapeF: 'open', farHandFront: true },
   ],
-  // Both arms thrust forward, palms open, charging a blinding flash.
+  // Both arms thrust forward, the far palm just above the near one, charging a blinding flash.
   castFlash: [
-    { lean: 4, handN: arm(0.96, -0.02), handF: arm(0.95, -0.06), footN: v(-0.32, 0.95), footF: v(0.34, 0.95), shapeN: 'open', shapeF: 'open' },
-    { lean: 5, jitter: 1, handN: arm(0.97, 0), handF: arm(0.96, -0.04), footN: v(-0.33, 0.95), footF: v(0.34, 0.95), shapeN: 'open', shapeF: 'open' },
+    { lean: 4, handN: arm(0.96, 0.04), handF: arm(0.8, -0.2), footN: v(-0.32, 0.95), footF: v(0.34, 0.95), shapeN: 'open', shapeF: 'open' },
+    { lean: 5, jitter: 1, handN: arm(0.97, 0.06), handF: arm(0.81, -0.18), footN: v(-0.33, 0.95), footF: v(0.34, 0.95), shapeN: 'open', shapeF: 'open' },
   ],
   charge: [
     {
@@ -389,6 +391,8 @@ export interface Rig {
   ankleF: Vec;
   shapeN: HandShape;
   shapeF: HandShape;
+  /** See PoseFrame.farHandFront. */
+  farHandFront: boolean;
   /** Torso-local point: x along the shoulder line (+ toward facing side), y up from the pelvis. */
   T: (x: number, y: number) => Vec;
 }
@@ -482,6 +486,7 @@ export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
     ankleF: legF.end,
     shapeN: f.shapeN,
     shapeF: f.shapeF,
+    farHandFront: !!f.farHandFront,
     T,
   };
 }

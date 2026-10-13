@@ -941,8 +941,8 @@ function tierArt(t: Tier): Art {
       // Branch line: rises from the trunk, droops toward the tip.
       const yc = droop * Math.pow(tn, 1.7) - 2 * (1 - tn);
       const topT = t.top * Math.pow(Math.max(0, 1 - tn), 0.8) + 2.5;
-      const tipCut = tn > 0.86 ? Math.pow((tn - 0.86) / 0.18, 1.4) : 0;
-      const skirt = t.skirt * (0.42 + 0.58 * Math.pow(1 - tn, 0.7)) + sp.drop * Math.sqrt(Math.max(0, 1 - lu * lu));
+      const tipCut = tn > 0.86 ? Math.min(1, Math.pow((tn - 0.86) / 0.18, 1.4)) : 0;
+      const skirt = t.skirt * (0.42 + 0.58 * Math.pow(Math.max(0, 1 - tn), 0.7)) + sp.drop * Math.sqrt(Math.max(0, 1 - lu * lu));
       // Needle tips: columns hang in 2 px groups of uneven length.
       const ncol = Math.floor((x + 400) / 2);
       const needle = Math.floor(hash(ncol, 0, t.seed + 7) * 4) - (Math.abs(lu) > 0.82 ? 3 : 0);

@@ -141,10 +141,10 @@
    "label": "Roadside Shrine",
    "file": "hokora.png",
    "frameW": 40,
-   "frameH": 76,
+   "frameH": 74,
    "anchor": [
     20,
-    74
+    72
    ],
    "meters": [
     0.65,

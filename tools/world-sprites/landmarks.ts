@@ -1173,18 +1173,18 @@ function hokora(): WorldSprite {
   const roof = sc.add(
     loft(
       [
-        rectRing(-17.5, 17.5, -13.5, 10.5, 44, per, 2.4, 1.2),
-        rectRing(-17.5, 17.5, -13.5, 10.5, 46.5, per, 2.6, 1.2),
-        rectRing(-12, 12, -8.5, 6, 51.5, per, 0.6, 0),
-        rectRing(-6.5, 6.5, -1.2, 0.4, 58, per, 0, 0),
+        rectRing(-15, 15, -12, 9, 44.5, per, 3.2, 1.6),
+        rectRing(-15, 15, -12, 9, 46.8, per, 3.4, 1.6),
+        rectRing(-10.5, 10.5, -7.5, 5, 51.5, per, 0.8, 0),
+        rectRing(-5.5, 5.5, -1.2, 0.4, 57, per, 0, 0),
       ],
       { capStart: true, capEnd: true },
     ),
     { pal: ROOF, seed: 86, contrast: 1.15, facetVar: 0.03 },
   );
-  const ridge = sc.add(pole([-8.5, 58.4, -0.4], [8.5, 58.4, -0.4], 1.9, 8), { pal: WOOD_DK, seed: 88 });
-  const ends = [-1, 1].map((sd) => sc.add(slab(sd * 9.8 - 1.6, sd * 9.8 + 1.6, 56.5, 61.5, -2.2, 1.4, 0.8), { pal: WOOD_DK, seed: 92 + sd }));
-  const katsuo = [-4, 4].map((x) => sc.add(pole([x, 60.3, -3.2], [x, 60.3, 2.4], 1.3, 8), { pal: WOOD_OLD, seed: 89 + x }));
+  const ridge = sc.add(pole([-7.5, 57.4, -0.4], [7.5, 57.4, -0.4], 1.8, 8), { pal: WOOD_DK, seed: 88 });
+  const ends = [-1, 1].map((sd) => sc.add(slab(sd * 8 - 1.3, sd * 8 + 1.3, 56, 60.5, -2, 1.2, 0.9), { pal: WOOD_DK, seed: 92 + sd }));
+  const katsuo: Mesh[] = [];
   void ends;
   void ridge;
   void katsuo;
@@ -1198,7 +1198,7 @@ function hokora(): WorldSprite {
     const p = f.world(i), n = f.normal(i);
     const x = i % W, y = Math.floor(i / W);
     if (n[1] > 0.3) {
-      const hh = p[1] - 46.5;
+      const hh = p[1] - 46.8;
       if (hh > 1 && hh % 2.6 < 0.9) f.step[i] = Math.max(1, f.step[i] - 1);
       else if (hh % 2.6 > 2.0 && f.lightv[i] > 0.55 && noise(x, y, 3, 88) > 0.5) f.step[i] = Math.min(4, f.step[i] + 1);
     } else {
@@ -1245,18 +1245,26 @@ function hokora(): WorldSprite {
     const [cx0, cyTop] = fr(-9, 26, -10);
     const [cx1] = fr(9, 26, -10);
     const [, cyEdge] = fr(0, 26, -12);
-    for (let x = cx0; x <= cx1; x++) {
-      const u = x - cx0;
-      const hem = cyEdge + 9 + [0, 1, 1, 1, 0, 0][u % 6] - (u === 0 || x === cx1 ? 1 : 0);
-      const fold = [4, 3, 3, 3, 2, 2][u % 6];
-      for (let y = cyTop; y <= hem; y++) {
-        const onTop = y < cyEdge;
-        let s = onTop ? (u < 4 ? 4 : 3) : fold;
-        if (y === cyEdge) s = Math.min(5, s + 1); // the cloth rolls over the edge
-        if (!onTop && y > cyEdge + 6) s = Math.max(1, s - 1);
-        if (y === hem) s = Math.max(1, s - 1);
-        c.set(x, y, C(RED, s));
+    // Folds of uneven width: a lit first column, two mid, a shadowed last one.
+    const widths = [5, 4, 5, 4, 5];
+    let fx = cx0, fi = 0;
+    while (fx <= cx1) {
+      const wdt = widths[fi % widths.length];
+      for (let u = 0; u < wdt && fx + u <= cx1; u++) {
+        const x = fx + u;
+        const fold = u === 0 ? 4 : u === wdt - 1 ? 2 : 3;
+        const hem = cyEdge + 9 + (u === 1 || u === 2 ? 1 : 0) - (x === cx0 || x === cx1 ? 1 : 0);
+        for (let y = cyTop; y <= hem; y++) {
+          const onTop = y < cyEdge;
+          let st = onTop ? (x - cx0 < 4 ? 4 : 3) : fold;
+          if (y === cyEdge) st = Math.min(5, st + 1); // the cloth rolls over the edge
+          if (!onTop && y > cyEdge + 6) st = Math.max(1, st - 1);
+          if (y === hem) st = Math.max(1, st - 1);
+          c.set(x, y, C(RED, st));
+        }
       }
+      fx += wdt;
+      fi++;
     }
   });
   c0.draw(cloth, 0, 0);

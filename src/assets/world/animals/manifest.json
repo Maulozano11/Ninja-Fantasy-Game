@@ -83,6 +83,38 @@
      "loop": true
     }
    }
+  },
+  "crow": {
+   "label": "Crow",
+   "file": "crow.png",
+   "frameW": 40,
+   "frameH": 60,
+   "anchor": [
+    22,
+    47
+   ],
+   "meters": [
+    0.45,
+    0.35
+   ],
+   "tags": [
+    "animal",
+    "ambient"
+   ],
+   "anims": {
+    "perch": {
+     "row": 0,
+     "frames": 12,
+     "fps": 6,
+     "loop": true
+    },
+    "fly": {
+     "row": 1,
+     "frames": 6,
+     "fps": 10,
+     "loop": true
+    }
+   }
   }
  }
 }

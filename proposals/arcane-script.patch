@@ -1,0 +1,220 @@
+diff --git a/src/sprite/castInfo.ts b/src/sprite/castInfo.ts
+index ac6f6b9..882737b 100644
+--- a/src/sprite/castInfo.ts
++++ b/src/sprite/castInfo.ts
+@@ -11,6 +11,7 @@ export const CAST_STYLE_INFO: Record<CastStyle, { label: string; desc: string }>
+   lightning: { label: 'Lightning Hand', desc: 'Crackling lightning gathered in one hand, held low.' },
+   wave: { label: 'Twin-Palm Wave', desc: 'Both palms cupped at the hip, charging a blast.' },
+   flash: { label: 'Flash Charge', desc: 'Both arms thrust forward, charging a blinding flash.' },
++  script: { label: 'Arcane Script', desc: 'Chants the spell aloud as gigantic glowing letters of an ancient script whirl around the caster.' },
+ };
+ 
+ /** The character's default cast style ('runes' for older saves). */
+diff --git a/src/sprite/castfx.ts b/src/sprite/castfx.ts
+index 91befa4..aecea12 100644
+--- a/src/sprite/castfx.ts
++++ b/src/sprite/castfx.ts
+@@ -6,7 +6,7 @@
+ import { chakraHex } from './chakraInfo';
+ import { mixHex } from './color';
+ import type { DrawCtx } from './ctx';
+-import { add, ellipse, F_NO_OUTLINE, fine, Layer, line, norm, Pen, poly, px, scale, sub, v, Vec } from './raster';
++import { add, ellipse, F_NO_OUTLINE, fine, GRID, Layer, line, norm, PartId, Pen, poly, px, RES, scale, sub, v, Vec } from './raster';
+ import { armJoints } from './ctx';
+ import { drawLightning, drawSpiralOrb } from './items/accessories';
+ 
+@@ -111,6 +111,122 @@ function energyBall(g: DrawCtx, c: Vec, R: number, hex: string, rays: number, de
+   }
+ }
+ 
++type Stroke = { pts: [number, number][]; w: [number, number] };
++type Letter = { strokes: Stroke[]; dots: [number, number][] };
++
++const arcPts = (cx: number, cy: number, rx: number, ry: number, a0: number, a1: number, n = 24): [number, number][] =>
++  Array.from({ length: n + 1 }, (_, i) => {
++    const a = ((a0 + ((a1 - a0) * i) / n) * Math.PI) / 180;
++    return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)];
++  });
++
++/**
++ * Letters of an Arabic-style script, isolated forms (nun, ba, ayn, mim, qaf,
++ * hha, waw), as calligraphic pen strokes in an 18 x 18 box: each stroke
++ * swells or thins from its start width to its end width.
++ */
++const SCRIPT: Letter[] = [
++  { strokes: [{ pts: arcPts(8, 7, 6, 6.5, 0, 185), w: [1, 2.6] }], dots: [[8, 1.5]] },
++  { strokes: [{ pts: [[1, 6.5], ...arcPts(8.5, 6, 7.5, 4, 160, 20).slice(1)], w: [1, 2.2] }], dots: [[8.5, 13]] },
++  {
++    strokes: [
++      { pts: arcPts(8.4, 4.4, 3, 2.6, -40, -250), w: [1, 2] },
++      { pts: [[6, 6.6], [5, 8.6], ...arcPts(9, 12, 4.4, 4.6, 200, 20).slice(1)], w: [2.4, 1] },
++    ],
++    dots: [],
++  },
++  {
++    strokes: [
++      { pts: arcPts(10.2, 5.2, 2.6, 2.6, 0, 360), w: [1.6, 1.6] },
++      { pts: [[7.8, 6.4], [6.6, 10], [6.2, 16.5]], w: [2.4, 1] },
++    ],
++    dots: [],
++  },
++  {
++    strokes: [
++      { pts: arcPts(11.2, 5, 2.2, 2.2, 0, 360), w: [1.6, 1.6] },
++      { pts: arcPts(8, 8.6, 6, 6, -15, 190), w: [2.6, 1] },
++    ],
++    dots: [[9.6, 0.6], [13, 0.6]],
++  },
++  { strokes: [{ pts: [[2.2, 3], [11.8, 3.6], [7, 7], ...arcPts(9, 11.2, 5.4, 5, 220, 70).slice(1)], w: [1.4, 2.4] }], dots: [] },
++  {
++    strokes: [
++      { pts: arcPts(9.6, 4.6, 2.6, 2.6, 160, 520), w: [1.6, 1.6] },
++      { pts: arcPts(4.6, 6, 5.6, 9, -5, 115), w: [2.4, 1] },
++    ],
++    dots: [],
++  },
++];
++
++/**
++ * One glowing letter, `s` fine pixels per box unit, centered on `c`: bright
++ * strokes (brightest where they are thick) inside a ring of glow.
++ */
++function scriptLetter(L: Layer, letter: Letter, c: Vec, s: number, mat: number, part: PartId): void {
++  const ox = fine(c.x) - 9 * s;
++  const oy = fine(c.y) - 9 * s;
++  const core = new Set<number>();
++  const disk = (x: number, y: number, r: number) => {
++    for (let yy = Math.floor(y - r - 1); yy <= Math.ceil(y + r + 1); yy++) {
++      for (let xx = Math.floor(x - r - 1); xx <= Math.ceil(x + r + 1); xx++) {
++        if (xx < 0 || yy < 0 || xx >= GRID || yy >= GRID) continue;
++        if ((xx + 0.5 - x) ** 2 + (yy + 0.5 - y) ** 2 <= r * r + 0.2) core.add(yy * GRID + xx);
++      }
++    }
++  };
++  for (const st of letter.strokes) {
++    const n = st.pts.length;
++    for (let i = 0; i < n - 1; i++) {
++      const [x0, y0] = st.pts[i];
++      const [x1, y1] = st.pts[i + 1];
++      for (let k = 0; k < 6; k++) {
++        const t = k / 6;
++        const w = st.w[0] + ((st.w[1] - st.w[0]) * (i + t)) / (n - 1);
++        disk(ox + (x0 + (x1 - x0) * t) * s, oy + (y0 + (y1 - y0) * t) * s, (w * s) / 2);
++      }
++    }
++  }
++  for (const [x, y] of letter.dots) disk(ox + x * s, oy + y * s, 1.1 * s);
++  const inCore = (i: number) => core.has(i);
++  for (const i of core) {
++    for (const j of [i - 1, i + 1, i - GRID, i + GRID]) {
++      if (!inCore(j)) L.set(j % GRID, (j / GRID) | 0, mat, 3, part, F_NO_OUTLINE);
++    }
++  }
++  for (const i of core) {
++    const deep = [i - 1, i + 1, i - GRID, i + GRID].every(inCore);
++    L.set(i % GRID, (i / GRID) | 0, mat, deep ? 5 : 4, part, F_NO_OUTLINE);
++  }
++}
++
++/**
++ * Arcane Script: gigantic letters of the spell's script whirl around the
++ * caster, the nearest ones in front, one behind; they change each frame.
++ */
++function arcaneScript(g: DrawCtx, hex: string): void {
++  const r = g.rig;
++  const glow = g.m(hex, 'glow');
++  const f = r.frame % 2;
++  const F = g.L('top');
++  const B = g.L('backGear');
++  const pick = (k: number) => SCRIPT[(k + f * 3) % SCRIPT.length];
++  // keep each letter whole inside the canvas
++  const inside = (c: Vec, s: number) => {
++    const m = (9 * s + 1) / RES;
++    return v(Math.min(GRID / RES - m, Math.max(m, c.x)), Math.min(GRID / RES - m, Math.max(m, c.y)));
++  };
++  const letter = (L: Layer, k: number, c: Vec, s: number, part: PartId) => scriptLetter(L, pick(k), inside(c, s), s, glow, part);
++  // behind the caster, past the shoulders: the biggest
++  letter(B, 0, add(r.head, v(-12, 6 - f)), 1.8, 'back');
++  // behind the head, rising over the hair
++  letter(B, 4, add(r.head, v(5, -11 + f)), 1.2, 'back');
++  // before the open palm
++  letter(F, 2, add(r.handN, v(9, -1 - f)), 1.7, 'held');
++  // low in front
++  letter(F, 6, add(r.handN, v(4, 15 + f)), 1.25, 'held');
++}
++
+ /** Draws what the hands hold for the current cast pose, if any. */
+ export function drawCastFx(g: DrawCtx): void {
+   const pose = g.rig.pose;
+@@ -135,6 +251,9 @@ export function drawCastFx(g: DrawCtx): void {
+       energyBall(g, add(scale(add(r.handN, r.handF), 0.5), v(0.4, 0)), 2.9, hex, 6);
+       break;
+     }
++    case 'castScript':
++      arcaneScript(g, hex);
++      break;
+     case 'castFlash': {
+       // in front of both palms, clear of the fingers
+       const r = g.rig;
+diff --git a/src/sprite/grip.ts b/src/sprite/grip.ts
+index 87a55aa..e950c06 100644
+--- a/src/sprite/grip.ts
++++ b/src/sprite/grip.ts
+@@ -52,7 +52,7 @@ export function poleAngle(g: DrawCtx): number {
+  * Hand signs, the grimoire and the charged casts need both hands: held weapons
+  * are stowed meanwhile (see items/accessories.ts). The runes cast keeps them.
+  */
+-const BUSY = new Set(['handsigns', 'castBook', 'castSphere', 'castLightning', 'castWave', 'castFlash']);
++const BUSY = new Set(['handsigns', 'castBook', 'castSphere', 'castLightning', 'castWave', 'castFlash', 'castScript']);
+ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose);
+ 
+ /** Angle of the handle the near hand wraps, or null when it holds nothing with a handle. */
+diff --git a/src/sprite/rig.ts b/src/sprite/rig.ts
+index c8523bc..e75329d 100644
+--- a/src/sprite/rig.ts
++++ b/src/sprite/rig.ts
+@@ -185,7 +185,7 @@ const IDLE: PoseFrame = {
+ };
+ 
+ /** Rig poses: the sprite poses plus one cast pose per cast style ('cast' itself is the runes pose). */
+-export type RigPose = SpritePose | 'castBook' | 'castSphere' | 'castLightning' | 'castWave' | 'castFlash';
++export type RigPose = SpritePose | 'castBook' | 'castSphere' | 'castLightning' | 'castWave' | 'castFlash' | 'castScript';
+ 
+ const CAST_POSES: Record<CastStyle, RigPose> = {
+   signs: 'handsigns',
+@@ -195,6 +195,7 @@ const CAST_POSES: Record<CastStyle, RigPose> = {
+   lightning: 'castLightning',
+   wave: 'castWave',
+   flash: 'castFlash',
++  script: 'castScript',
+ };
+ 
+ /** The rig pose that plays for a sprite pose: 'cast' turns into the chosen cast style's pose. */
+@@ -331,6 +332,11 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
+     { lean: 4, handN: arm(0.96, 0.04), handF: arm(0.8, -0.2), footN: v(-0.32, 0.95), footF: v(0.34, 0.95), shapeN: 'open', shapeF: 'open' },
+     { lean: 5, jitter: 1, handN: arm(0.97, 0.06), handF: arm(0.81, -0.18), footN: v(-0.33, 0.95), footF: v(0.34, 0.95), shapeN: 'open', shapeF: 'open' },
+   ],
++  // Invoking: the near palm open toward the target, the far hand raised high, the script of the spell around them.
++  castScript: [
++    { lean: -4, handN: arm(0.86, 0.02), handF: arm(0.42, -0.86), footN: v(-0.26, 0.97), footF: v(0.3, 0.97), shapeN: 'open', shapeF: 'open' },
++    { lean: -4, chestDy: 1, handN: arm(0.87, 0.04), handF: arm(0.44, -0.84), footN: v(-0.26, 0.97), footF: v(0.3, 0.97), shapeN: 'open', shapeF: 'open' },
++  ],
+   charge: [
+     {
+       lean: 6,
+diff --git a/src/sprite/types.ts b/src/sprite/types.ts
+index 81aa481..417e2ff 100644
+--- a/src/sprite/types.ts
++++ b/src/sprite/types.ts
+@@ -18,9 +18,9 @@ export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'cast'
+  * crackling lightning, a two-handed wave charged at the hip, or a flash
+  * charged with both arms forward).
+  */
+-export type CastStyle = 'signs' | 'runes' | 'book' | 'sphere' | 'lightning' | 'wave' | 'flash';
++export type CastStyle = 'signs' | 'runes' | 'book' | 'sphere' | 'lightning' | 'wave' | 'flash' | 'script';
+ 
+-export const CAST_STYLES: CastStyle[] = ['signs', 'runes', 'book', 'sphere', 'lightning', 'wave', 'flash'];
++export const CAST_STYLES: CastStyle[] = ['signs', 'runes', 'book', 'sphere', 'lightning', 'wave', 'flash', 'script'];
+ 
+ /** Default cast style, with optional overrides per jutsu id. */
+ export interface CastChoice {

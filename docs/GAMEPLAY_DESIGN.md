@@ -168,9 +168,11 @@ elements.
 
 - **The Hydra** (boss of the first mission), designed from the owner's
   reference: seven heads, each a separate target with its own HP and attack
-  (bite, venom spit, roar). A severed head grows back in 2 rounds unless its
-  stump is burned with fire. The hydra dies when every head is down or its body
-  falls.
+  (bite, venom spit, roar). A head at 0 HP is cut off; then its stump must be
+  burned (fire), electrified (lightning) or blown up (explosive tag or barrel),
+  or the head grows back after 2 of the hydra's turns. Cutting a head with fire
+  is not enough: the stump needs its own hit. The hydra dies when every head is
+  cut at once or its body falls.
 
 ## Controls
 
@@ -225,6 +227,9 @@ friends online plus AI allies).
 ## First map
 
 - A forest with a river, a bridge, hills, bushes and a clearing.
+- The bridge is a world sprite (`tools/world-sprites/bridge.ts`, approved): a
+  plank deck with rope-lashed rails, drawn in two parts so ninjas walk between
+  the back rail and the front one. Other maps will have more elaborate bridges.
 
 ## Mockups
 
@@ -264,9 +269,9 @@ gameplay tags.
 
 The owner approves new art before it goes into the game: the hydra, the
 movement poses (walk, run, crouch, sneak, downed), the camp props rebuilt in
-the landmarks style, and the missing animals (butterflies, dragonfly, frog,
-koi, fireflies). Generators write them to a staging folder (`WORLD_OUT`) until
-then.
+the landmarks style, the missing animals (butterflies, dragonfly, frog,
+koi, fireflies) and the jutsu effects. Generators write them to a staging
+folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
 ## Open questions
 

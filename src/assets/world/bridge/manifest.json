@@ -1,0 +1,58 @@
+{
+ "group": "bridge",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bridge": {
+   "label": "Wooden Bridge",
+   "file": "bridge.png",
+   "frameW": 422,
+   "frameH": 187,
+   "anchor": [
+    4,
+    150
+   ],
+   "meters": [
+    7.27,
+    1.5
+   ],
+   "tags": [
+    "walkable",
+    "flammable",
+    "destructible"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 4,
+     "loop": true
+    }
+   }
+  },
+  "bridge_rail_front": {
+   "label": "Bridge Front Railing",
+   "file": "bridge_rail_front.png",
+   "frameW": 422,
+   "frameH": 187,
+   "anchor": [
+    4,
+    150
+   ],
+   "meters": [
+    7.27,
+    1.05
+   ],
+   "tags": [
+    "cover-half"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  }
+ }
+}

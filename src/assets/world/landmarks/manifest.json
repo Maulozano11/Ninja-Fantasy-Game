@@ -136,6 +136,31 @@
      "loop": true
     }
    }
+  },
+  "hokora": {
+   "label": "Roadside Shrine",
+   "file": "hokora.png",
+   "frameW": 40,
+   "frameH": 80,
+   "anchor": [
+    20,
+    78
+   ],
+   "meters": [
+    0.65,
+    1.3
+   ],
+   "tags": [
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
   }
  }
 }

@@ -1,554 +1,62 @@
-// Trees for the battle maps: broadleaf oak, cedar pine, red maple, bamboo grove and a stump.
-// They are the largest world sprites (real height, 1 m = 57 px), act as cover, block sight,
-// burn and can be climbed.
+// Trees for the battle maps: an ancient broadleaf oak, a cloud-pruned black pine, a red maple
+// (momiji), a bamboo clump and a stump. They are the largest world sprites (real height,
+// 1 m = 57 px), act as cover, block sight, burn and can be climbed.
 //
 //   npx tsx tools/world-sprites/trees.ts [previewDir]
+//   TREES_ONLY=oak,pine npx tsx tools/world-sprites/trees.ts [previewDir]   (previews only, no write)
 //
-// Look (owner reference, REF-tree-owner / REF-bush-owner): a canopy is a few BIG lobes, each lit
-// like a soft sphere from the upper left, with a mottled texture of painted dabs (2-6 px cells in
-// neighbouring greens). Lobes separate by value (a dark occlusion zone where a front lobe covers
-// a back one), never by lines; only the outer silhouette gets a 1 px outline, in the darkest
-// green of the palette, ragged where whole dabs fall off or poke out. Few colours: 7 foliage
-// tones and 3-4 trunk tones per tree, taken from the reference palettes.
+// Look (owner reference, Oct 13: an old Japanese forest in painterly pixel art; see foliage.ts):
+// big gnarled trunks with deep bark furrows, knots and moss, exposed roots spreading over the
+// ground, limbs that twist, and canopies built from many small clusters of individual leaves,
+// lit on their top-left edges with a lighter, warmer green and sinking into cool blue-green
+// inside. Hanging leaves and a few vines under the oak. Daytime light from the upper left.
 //
-// Everything is drawn into an indexed buffer (palette + step per pixel) and turned into colors
-// at the end. Foliage items are cached as local light rasters and composited per frame at
-// whole-pixel sway offsets, so the dabs travel with their lobe instead of shimmering.
+// Everything is drawn into a step buffer (palette + ramp step per pixel) and turned into colours
+// at the end; clusters are cached in their own coordinates and composited per frame at
+// whole-pixel sway offsets, so leaves travel with their cluster instead of shimmering.
 
 import { join } from 'node:path';
 import { Canvas, Color, MATERIALS, WorldSprite, hash, hex, lambert, m, mix, noise, preview, previewDir, ramp, writeGroup } from './kit';
+import {
+  Buf, Cluster, Leaf, Mass, PAL, Pt, Tube, TAU, barkStep, canopy, clamp, composite, despeckle, drawTube, frac, grow, lerp, needleTufts,
+  outlineBuf, ovalLeaves, paintLeaf, pal, putField, rasterCluster, rnd, shade, spline, starLeaves, vine,
+} from './foliage';
 
-const TAU = Math.PI * 2;
-const clamp = (v: number, a: number, b: number): number => (v < a ? a : v > b ? b : v);
-const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
-const frac = (v: number): number => v - Math.floor(v);
-type Pt = [number, number];
-/** 2D direction toward the light on screen (upper left). */
-const LX = -0.62, LY = -0.79;
+const K = 38 / 57; // ground depth foreshortening of the battle camera
 
 // --- palettes -----------------------------------------------------------------------------
 
-const PALS: Color[][] = [];
-function addPal(r: Color[]): number {
-  PALS.push(r);
-  return PALS.length - 1;
-}
-const pal = (hexes: string[]): number => addPal(hexes.map((h) => hex(h)));
-
 const R_FIRE = ramp(MATERIALS.fire);
-/** Flames: dark ember red, red tips, orange body, amber, pale yellow core (kit fire colors). */
+/** Flames: dark ember red, red tips, orange body, amber, pale yellow core (kit fire colours). */
 const FIRE_RAMP: Color[] = [R_FIRE[0], mix(R_FIRE[1], hex('#ef4444'), 0.3), hex('#ef4444'), hex(MATERIALS.fire), R_FIRE[4], hex('#fde68a')];
 
-/** Foliage palettes have 7 steps: 0 is the silhouette outline and the deepest shadow, 6 the pale highlight. */
-const P = {
-  oak: pal(['#172e14', '#354e11', '#4e6911', '#6e802f', '#91a53a', '#a5b547', '#e0d880']),
-  pine: pal(['#172621', '#21362f', '#224c3a', '#295b42', '#326747', '#417848', '#4d854b']),
-  bambooLeaf: pal(['#172621', '#224c3a', '#295b42', '#326747', '#417848', '#4d854b', '#60954f']),
-  maple: pal(['#2a0c15', '#4e1420', '#7a1c22', '#a8321f', '#c95424', '#e07d2e', '#f2b45a']),
-  scorch: pal(['#1c1a10', '#352d14', '#51431c', '#6e5a28', '#8a7234', '#a08a44', '#c4b06a']),
-  charLeaf: pal(['#09080a', '#131012', '#1d181a', '#292325', '#383032', '#483e3f', '#5a4f4e']),
-  // Trunks: outline + 3-4 tones (dark streak, shadow side, lit side, pale streak).
-  bark: pal(['#2a1620', '#311c26', '#5b4029', '#8f6949', '#8f6949', '#c3a66f']),
-  cedar: pal(['#2c1419', '#3a1c20', '#68362a', '#9a5a3e', '#9a5a3e', '#c88c62']),
-  barkGrey: pal(['#261c22', '#3a2c30', '#5f5048', '#8d7d6a', '#8d7d6a', '#b8a888']),
-  charred: addPal(ramp(MATERIALS.charred, { spread: 0.62 })),
-  woodCut: pal(['#311c26', '#5b4029', '#8f6949', '#b08a5e', '#c3a66f', '#dcc48e']),
-  fire: addPal(FIRE_RAMP),
-  ash: addPal(ramp(MATERIALS.stone, { spread: 0.8 })),
-  sheath: pal(['#2a1620', '#4a3424', '#6e5634', '#8f7448', '#b09460', '#c3a66f']),
-  culm: pal(['#172e14', '#354e11', '#4e6911', '#6e802f', '#91a53a', '#a5b547']),
-  culmOld: pal(['#26280f', '#4d5418', '#6e802f', '#91a53a', '#a5b547', '#c9c46a']),
-};
-const isFoliage = (p: number): boolean => p === P.oak || p === P.pine || p === P.bambooLeaf || p === P.maple || p === P.scorch || p === P.charLeaf;
+/** Leaves: 0 outline, 1-7 from cool blue-green shade to warm yellow-green light. */
+const LEAF_OAK = pal(['#0a1719', '#112629', '#173835', '#1f4b3a', '#2c613b', '#427a39', '#68983c', '#a2bf55']);
+const LEAF_PINE = pal(['#08161a', '#0f2427', '#14332f', '#1b4436', '#265739', '#376c3b', '#55863f', '#87a64e']);
+const LEAF_BAMBOO = pal(['#0a181a', '#11292a', '#173c33', '#205139', '#2e683d', '#45803e', '#6b9d45', '#a3c05e']);
+const LEAF_MAPLE = pal(['#1e0619', '#370a20', '#5a1223', '#821d22', '#ab3220', '#d05522', '#e98330', '#f7c260']);
+const LEAF_CHAR = pal(['#09080a', '#121012', '#1b1719', '#252022', '#302a2b', '#3e3636', '#4f4644', '#665a55']);
+const LEAF_SCORCH = pal(['#181208', '#2a200f', '#3e3014', '#56421b', '#715822', '#8c6e2c', '#a8873b', '#c9a85a']);
+/** Bark: 0 outline, 1 furrow, 2-5 shadow to light, 6 pale highlight. Shadows drift violet. */
+const BARK_OAK = pal(['#130d12', '#22171e', '#35272a', '#4c3a31', '#67513c', '#856d4e', '#a8926c']);
+const BARK_PINE = pal(['#120d12', '#25161b', '#35272b', '#4b3c3b', '#64544e', '#817262', '#a3967f']);
+const BARK_MAPLE = pal(['#15111a', '#271f29', '#3b3238', '#554a4b', '#71655f', '#918372', '#b6a68c']);
+const CHAR = pal(['#09080a', '#141113', '#1f1a1c', '#2b2527', '#3a3234', '#4a4142', '#5e5452']);
+const MOSS = pal(['#0f180e', '#1a2a14', '#283e19', '#3a5520', '#526e27', '#708b31', '#98aa46']);
+const WOOD_CUT = pal(['#2a1a16', '#4a3122', '#6c4c32', '#8c6a45', '#a98656', '#c4a26c', '#dcc28d']);
+const CULM = pal(['#0d1a14', '#1c3324', '#284a2b', '#376431', '#4c7e37', '#6a9a42', '#97b85c']);
+const CULM_OLD = pal(['#1a1c0e', '#333717', '#4c5320', '#68702a', '#848c35', '#a3a847', '#c6c56a']);
+const SHEATH = pal(['#1f130f', '#3b2619', '#5a3d24', '#7a5a33', '#9a7a48', '#b99a62', '#d4bb84']);
+const FIRE = pal(FIRE_RAMP);
+const ASH = pal(ramp(MATERIALS.stone, { spread: 0.8 }));
+const FUNGUS = pal(['#1e1210', '#3c231a', '#64392a', '#8f5a3a', '#b88050', '#d6a66c', '#ecd09a']);
 
-// --- indexed drawing buffer ---------------------------------------------------------------
+const FOLIAGE = new Set([LEAF_OAK, LEAF_PINE, LEAF_BAMBOO, LEAF_MAPLE, LEAF_CHAR, LEAF_SCORCH]);
+/** Outline priority: leaves first, then bark. */
+const prio = (p: number): number => (FOLIAGE.has(p) ? 2 : p === FIRE ? -1 : 1);
 
-/** Palette id + step per pixel (-1 = empty). */
-class Ix {
-  readonly p: Int16Array;
-  readonly s: Int8Array;
-  constructor(readonly w: number, readonly h: number) {
-    this.p = new Int16Array(w * h).fill(-1);
-    this.s = new Int8Array(w * h);
-  }
-  inside(x: number, y: number): boolean {
-    return x >= 0 && y >= 0 && x < this.w && y < this.h;
-  }
-  has(x: number, y: number): boolean {
-    return this.inside(x, y) && this.p[y * this.w + x] >= 0;
-  }
-  put(x: number, y: number, pal: number, step: number): void {
-    if (!this.inside(x, y)) return;
-    const i = y * this.w + x;
-    this.p[i] = pal;
-    this.s[i] = step;
-  }
-  pal(x: number, y: number): number {
-    return this.inside(x, y) ? this.p[y * this.w + x] : -1;
-  }
-  step(x: number, y: number): number {
-    return this.has(x, y) ? this.s[y * this.w + x] : -1;
-  }
-  toCanvas(): Canvas {
-    const c = new Canvas(this.w, this.h);
-    for (let i = 0; i < this.w * this.h; i++) {
-      if (this.p[i] < 0) continue;
-      const col = PALS[this.p[i]][this.s[i]];
-      c.px.set([col[0], col[1], col[2], 255], i * 4);
-    }
-    return c;
-  }
-  /** Share of pixels per step for foliage and for everything else (value-budget check). */
-  histogram(): string {
-    const f = [0, 0, 0, 0, 0, 0, 0], o = [0, 0, 0, 0, 0, 0, 0];
-    let nf = 0, no = 0;
-    for (let i = 0; i < this.w * this.h; i++) {
-      const p = this.p[i];
-      if (p < 0 || p === P.fire) continue;
-      if (isFoliage(p)) {
-        f[this.s[i]]++;
-        nf++;
-      } else {
-        o[this.s[i]]++;
-        no++;
-      }
-    }
-    const pc = (a: number[], n: number) => a.map((v) => Math.round((v / Math.max(1, n)) * 100)).join('/');
-    return `foliage ${pc(f, nf)}  other ${pc(o.slice(0, 6), no)}`;
-  }
-}
-
-/** A set of pixels in a bounding box. */
-class Mask {
-  readonly a: Uint8Array;
-  constructor(readonly x0: number, readonly y0: number, readonly w: number, readonly h: number) {
-    this.a = new Uint8Array(Math.max(0, w * h));
-  }
-  has(x: number, y: number): boolean {
-    const i = x - this.x0, j = y - this.y0;
-    return i >= 0 && j >= 0 && i < this.w && j < this.h && this.a[j * this.w + i] === 1;
-  }
-  add(x: number, y: number): void {
-    const i = x - this.x0, j = y - this.y0;
-    if (i >= 0 && j >= 0 && i < this.w && j < this.h) this.a[j * this.w + i] = 1;
-  }
-  each(fn: (x: number, y: number) => void): void {
-    for (let j = 0; j < this.h; j++) for (let i = 0; i < this.w; i++) if (this.a[j * this.w + i]) fn(i + this.x0, j + this.y0);
-  }
-}
-
-const N4: Pt[] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-
-interface StampOpts {
-  /** Draws a 1 px dark line (step 0 of `linePal`) on existing pixels bordering the shape, where this returns true. */
-  line?: (x: number, y: number, qx: number, qy: number) => boolean;
-  linePal?: number;
-}
-/** Paints a shape over the buffer: inner line first, then the shape itself. */
-function stamp(L: Ix, M: Mask, paint: (x: number, y: number) => [number, number] | null, o: StampOpts = {}): void {
-  if (o.line) {
-    const lp = o.linePal ?? 0;
-    M.each((x, y) => {
-      for (const [dx, dy] of N4) {
-        const qx = x + dx, qy = y + dy;
-        if (!M.has(qx, qy) && L.has(qx, qy) && L.pal(qx, qy) !== P.fire && o.line!(x, y, qx, qy)) L.put(qx, qy, lp, 0);
-      }
-    });
-  }
-  M.each((x, y) => {
-    const r = paint(x, y);
-    if (r) L.put(x, y, r[0], r[1]);
-  });
-}
-
-/** Light value to step 1..5 through thresholds, edges broken into small clusters. */
-function quant(Lv: number, x: number, y: number, seed: number, th: number[], jit = 0.06, cell = 2.5): number {
-  const t = Lv + (noise(x, y, cell, seed) - 0.5) * 2 * jit;
-  let s = 1;
-  for (const k of th) if (t >= k) s++;
-  return s;
-}
-
-/** Nearest jittered-grid feature: offset from it and the gap to the second nearest (cell edges). */
-function worley(x: number, y: number, S: number, seed: number): { dx: number; dy: number; f: number } {
-  const ci = Math.floor(x / S), cj = Math.floor(y / S);
-  let d1 = 1e9, d2 = 1e9, bx = 0, by = 0;
-  for (let j = cj - 1; j <= cj + 1; j++)
-    for (let i = ci - 1; i <= ci + 1; i++) {
-      const fx = (i + 0.15 + 0.7 * hash(i, j, seed)) * S, fy = (j + 0.15 + 0.7 * hash(i, j, seed + 1)) * S;
-      const d = (x - fx) ** 2 + (y - fy) ** 2;
-      if (d < d1) {
-        d2 = d1;
-        d1 = d;
-        bx = x - fx;
-        by = y - fy;
-      } else if (d < d2) d2 = d;
-    }
-  return { dx: bx, dy: by, f: Math.sqrt(d2) - Math.sqrt(d1) };
-}
-
-/** Value (0..1) of the dab cell around (x, y): irregular cells about sx by sy px. */
-function dabCell(x: number, y: number, sx: number, sy: number, seed: number): number {
-  const fx = x / sx, fy = y / sy;
-  const ci = Math.floor(fx), cj = Math.floor(fy);
-  let d1 = 1e9, best = 0;
-  for (let j = cj - 1; j <= cj + 1; j++)
-    for (let i = ci - 1; i <= ci + 1; i++) {
-      const px = i + 0.1 + 0.8 * hash(i, j, seed), py = j + 0.1 + 0.8 * hash(i, j, seed + 1);
-      const d = (fx - px) ** 2 + (fy - py) ** 2;
-      if (d < d1) {
-        d1 = d;
-        best = hash(i, j, seed + 2);
-      }
-    }
-  return best;
-}
-
-/** Catmull-Rom through the control points, sampled about every `step` px. */
-function spline(ctrl: Pt[], step = 2): Pt[] {
-  if (ctrl.length < 2) return ctrl.slice();
-  const out: Pt[] = [];
-  for (let i = 0; i < ctrl.length - 1; i++) {
-    const p0 = ctrl[Math.max(0, i - 1)], p1 = ctrl[i], p2 = ctrl[i + 1], p3 = ctrl[Math.min(ctrl.length - 1, i + 2)];
-    const n = Math.max(1, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / step));
-    for (let k = 0; k < n; k++) {
-      const t = k / n, t2 = t * t, t3 = t2 * t;
-      const f = (a: number, b: number, c: number, d: number) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
-      out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
-    }
-  }
-  out.push(ctrl[ctrl.length - 1]);
-  return out;
-}
-
-// --- foliage: big lobes, mottled dabs, value separation -----------------------------------
-
-/** Light (0..1) of a foliage point and its signed distance to the item's edge in px (+ inside). */
-interface Shape {
-  L: number;
-  e: number;
-}
-
-interface FolItem {
-  x: number;
-  y: number;
-  x0: number;
-  y0: number;
-  w: number;
-  h: number;
-  /** Local light per pixel (NaN outside) and the dab cell value. */
-  light: Float32Array;
-  cell: Float32Array;
-  pal: number;
-  /** 0: behind the limbs, 1: in front of them. */
-  layer: number;
-  bias: number;
-  amp: number;
-  phase: number;
-}
-
-function makeItem(o: {
-  x: number; y: number; x0: number; y0: number; x1: number; y1: number; shape: (lx: number, ly: number) => Shape | null;
-  dab: Pt; seed: number; pal: number; layer: number; bias: number; amp: number; phase: number;
-}): FolItem {
-  const w = o.x1 - o.x0 + 1, h = o.y1 - o.y0 + 1;
-  const light = new Float32Array(w * h).fill(NaN), cell = new Float32Array(w * h);
-  for (let j = 0; j < h; j++)
-    for (let i = 0; i < w; i++) {
-      const lx = o.x0 + i + 0.5, ly = o.y0 + j + 0.5;
-      const sh = o.shape(lx, ly);
-      if (!sh) continue;
-      const ch = dabCell(lx, ly, o.dab[0], o.dab[1], o.seed + 50);
-      // Ragged edge made of whole dabs: some fall off just inside, a few poke out.
-      const inside = sh.e > 0 ? !(sh.e < 1.7 && ch < 0.26) : sh.e > -1.7 && ch > 0.9;
-      if (!inside) continue;
-      light[j * w + i] = sh.L;
-      cell[j * w + i] = ch;
-    }
-  return { x: Math.round(o.x), y: Math.round(o.y), x0: o.x0, y0: o.y0, w, h, light, cell, pal: o.pal, layer: o.layer, bias: o.bias, amp: o.amp, phase: o.phase };
-}
-
-interface LobeDef {
-  x: number;
-  y: number;
-  rx: number;
-  ry: number;
-  seed: number;
-  /** Silhouette bumps: amplitude (fraction of the radius) and frequency. */
-  bump?: number;
-  K?: number;
-  /** Scale of the highlight blotches (px). */
-  S?: number;
-  /** Underside flattening (<1 flattens). */
-  flat?: number;
-}
-
-/** A soft lit sphere with lumpy edges; the light breaks into a few blotches. */
-function lobeShape(o: LobeDef): (lx: number, ly: number) => Shape | null {
-  const bump = o.bump ?? 0.12, K = o.K ?? 2.4, S = o.S ?? 20;
-  return (lx, ly) => {
-    const u = lx / o.rx;
-    let v = ly / o.ry;
-    if (o.flat && v > 0) v /= o.flat;
-    const th = Math.atan2(v, u);
-    const rg = 1 + bump * (noise(Math.cos(th) * K + 20, Math.sin(th) * K + 20, 1, o.seed) - 0.5) * 2;
-    const r = Math.hypot(u, v);
-    const e = (rg - r) * Math.min(o.rx, o.ry * (o.flat && v > 0 ? o.flat : 1));
-    if (e < -2) return null;
-    const uu = u / rg, vv = v / rg;
-    const bu = (noise(lx, ly, S, o.seed + 1) - 0.5) * 0.9, bv = (noise(lx, ly, S, o.seed + 2) - 0.5) * 0.9;
-    const nu = clamp(uu * 0.85 + bu, -1, 1), nv = clamp(vv * 0.85 + bv, -1, 1);
-    const d = Math.min(0.97, nu * nu + nv * nv);
-    let L = clamp(-0.42 * nu - 0.55 * nv + 0.72 * Math.sqrt(1 - d), 0, 1);
-    // The rim turns away, most at the lower right.
-    L -= 0.3 * clamp((Math.hypot(uu, vv) - 0.72) / 0.28, 0, 1) * (0.45 + 0.55 * clamp((uu + vv) * 0.7 + 0.3, 0, 1));
-    return { L, e };
-  };
-}
-
-function lobeItem(d: LobeDef & { pal: number; layer: number; bias: number; amp: number; phase: number; dab?: Pt }): FolItem {
-  const pad = 4;
-  return makeItem({
-    x: d.x, y: d.y, x0: -Math.ceil(d.rx * 1.25) - pad, y0: -Math.ceil(d.ry * 1.25) - pad, x1: Math.ceil(d.rx * 1.25) + pad, y1: Math.ceil(d.ry * 1.25) + pad,
-    shape: lobeShape(d), dab: d.dab ?? [3.4, 3.4], seed: d.seed, pal: d.pal, layer: d.layer, bias: d.bias, amp: d.amp, phase: d.phase,
-  });
-}
-
-interface FolOut {
-  W: number;
-  H: number;
-  own: Int16Array;
-  lv: Float32Array;
-  cell: Float32Array;
-}
-
-/**
- * Composites the items (later = in front) at whole-pixel offsets, then darkens each pixel near
- * a lobe in front of it (strongest where that lobe sits toward the light): the occlusion zone
- * that separates lobes by value instead of by lines.
- */
-function compositeFol(W: number, H: number, items: FolItem[], offs: Pt[], D = 9, k = 0.42): FolOut {
-  const own = new Int16Array(W * H).fill(-1);
-  const lv = new Float32Array(W * H), cell = new Float32Array(W * H);
-  items.forEach((it, idx) => {
-    const [ox, oy] = offs[idx];
-    for (let j = 0; j < it.h; j++)
-      for (let i = 0; i < it.w; i++) {
-        const v = it.light[j * it.w + i];
-        if (Number.isNaN(v)) continue;
-        const X = it.x + ox + it.x0 + i, Y = it.y + oy + it.y0 + j;
-        if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
-        const p = Y * W + X;
-        own[p] = idx;
-        lv[p] = v + it.bias;
-        cell[p] = it.cell[j * it.w + i];
-      }
-  });
-  // Max owner index within D (separable), to skip pixels with nothing in front nearby.
-  const rowMax = new Int16Array(W * H), mx = new Int16Array(W * H);
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      let b = -1;
-      for (let q = Math.max(0, x - D); q <= Math.min(W - 1, x + D); q++) b = Math.max(b, own[y * W + q]);
-      rowMax[y * W + x] = b;
-    }
-  for (let x = 0; x < W; x++)
-    for (let y = 0; y < H; y++) {
-      let b = -1;
-      for (let q = Math.max(0, y - D); q <= Math.min(H - 1, y + D); q++) b = Math.max(b, rowMax[q * W + x]);
-      mx[y * W + x] = b;
-    }
-  const ao = new Float32Array(W * H);
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      const p = y * W + x, a = own[p];
-      if (a < 0 || mx[p] <= a) continue;
-      let best = 0;
-      for (let dy = -D; dy <= D; dy++) {
-        const yy = y + dy;
-        if (yy < 0 || yy >= H) continue;
-        for (let dx = -D; dx <= D; dx++) {
-          const xx = x + dx;
-          if (xx < 0 || xx >= W || own[yy * W + xx] <= a) continue;
-          const d = Math.hypot(dx, dy);
-          if (d > D) continue;
-          const f = 0.5 + 0.5 * Math.max(0, (dx * LX + dy * LY) / d);
-          best = Math.max(best, (1 - d / (D + 1)) * f);
-        }
-      }
-      ao[p] = best;
-    }
-  for (let p = 0; p < W * H; p++) if (own[p] >= 0) lv[p] -= k * Math.pow(ao[p], 1.3);
-  return { W, H, own, lv, cell };
-}
-
-/** Light + dab to a foliage step 0..6. */
-const TH_FOL = [0.12, 0.25, 0.39, 0.54, 0.69, 0.83];
-function folStep(v: number, cell: number, dab = 0.26): number {
-  const t = v + (cell - 0.5) * dab;
-  let s = 0;
-  for (const k of TH_FOL) if (t >= k) s++;
-  return s;
-}
-
-/** Writes composited foliage of the chosen layers into the buffer. */
-function putFol(L: Ix, F: FolOut, items: FolItem[], layers: (layer: number) => boolean, paint?: (x: number, y: number, it: FolItem, v: number, cell: number) => [number, number]): void {
-  for (let y = 0; y < F.H; y++)
-    for (let x = 0; x < F.W; x++) {
-      const p = y * F.W + x, o = F.own[p];
-      if (o < 0 || !layers(items[o].layer)) continue;
-      const r = paint ? paint(x, y, items[o], F.lv[p], F.cell[p]) : [items[o].pal, folStep(F.lv[p], F.cell[p])];
-      L.put(x, y, r[0], r[1]);
-    }
-}
-
-// --- bark tubes (trunks, limbs, branches, roots) ------------------------------------------
-
-type Tex = 'streak' | 'cedar' | 'smooth' | 'charred';
-interface Tube {
-  pts: Pt[];
-  r0: number;
-  r1: number;
-  flare?: number;
-  flareLen?: number;
-  pal: number;
-  tex: Tex;
-  seed: number;
-  bias?: number;
-  /** Inner lines against the same material start after this arc length (keeps forks seamless). */
-  lineFrom?: number;
-  /** Nothing below this row (the ground). */
-  clipY?: number;
-  /** Light multiplier (shadow under the canopy). */
-  dim?: (x: number, y: number) => number;
-  /** A broken, splintered tip this many px long. */
-  point?: number;
-  /** Chance of glowing cracks (charred). */
-  ember?: number;
-  /** 9 trunk and limbs (between the foliage layers), lower for twigs hidden behind it. */
-  depth?: number;
-}
-
-/** Bark: lit side, shadow side and vertical streaks (dark everywhere, pale on the lit side). */
-function barkStep(t: Tube, Lv: number, a: number, s: number, r: number): [number, number] {
-  if (t.tex === 'charred') {
-    let st = quant(Lv, Math.round(a * 1.5), Math.round(s), t.seed, [0.3, 0.46, 0.64, 0.84], 0.05, 2);
-    const w = worley(a * 1.2, s * 0.55, 4, t.seed);
-    if (w.f < 0.7) {
-      if (t.ember && hash(Math.floor((a * 1.2) / 4 + w.dx), Math.floor((s * 0.55) / 4), t.seed + 2) < t.ember && Lv < 0.7)
-        return [P.fire, hash(Math.round(a), Math.round(s), t.seed) < 0.35 ? 4 : 2];
-      st = 1;
-    } else if (w.dx + w.dy < -0.8 && Lv > 0.4) st += 1;
-    return [P.charred, clamp(st, 1, 4)];
-  }
-  let st = Lv > 0.6 ? 3 : Lv > 0.3 ? 2 : 1;
-  if (r < 2.4) return [t.pal, st];
-  const twist = t.tex === 'cedar' ? s * 0.06 : 0;
-  const col = Math.floor(a + twist + 300);
-  const segLen = 5 + hash(col, 0, t.seed) * (t.tex === 'cedar' ? 22 : 15);
-  const seg = Math.floor((s + hash(col, 1, t.seed) * 30) / segLen);
-  const hh = hash(col, seg, t.seed + 2);
-  const dark = t.tex === 'cedar' ? 0.3 : t.tex === 'smooth' ? 0.1 : 0.2;
-  if (hh < dark) st = Math.max(1, st - 1);
-  else if (hh > 0.88 && Lv > 0.66) st = 5;
-  return [t.pal, st];
-}
-
-function drawTube(L: Ix, t: Tube): void {
-  const P0 = t.pts;
-  const segs: { ax: number; ay: number; bx: number; by: number; len: number; s0: number }[] = [];
-  let S = 0;
-  for (let i = 0; i + 1 < P0.length; i++) {
-    const [ax, ay] = P0[i], [bx, by] = P0[i + 1];
-    const len = Math.hypot(bx - ax, by - ay);
-    if (len < 1e-6) continue;
-    segs.push({ ax, ay, bx, by, len, s0: S });
-    S += len;
-  }
-  if (!segs.length) return;
-  const rAt = (s: number): number => {
-    let r = lerp(t.r0, t.r1, s / S) + (t.flare ?? 0) * Math.exp(-s / (t.flareLen ?? 10));
-    if (t.point && s > S - t.point) r *= Math.max(0.1, (S - s) / t.point);
-    return r;
-  };
-  const rmax = Math.max(t.r0, t.r1) + (t.flare ?? 0) + 1;
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const [x, y] of P0) {
-    x0 = Math.min(x0, x);
-    y0 = Math.min(y0, y);
-    x1 = Math.max(x1, x);
-    y1 = Math.max(y1, y);
-  }
-  x0 = Math.floor(x0 - rmax);
-  y0 = Math.floor(y0 - rmax);
-  const M = new Mask(x0, y0, Math.ceil(x1 + rmax) - x0 + 1, Math.ceil(y1 + rmax) - y0 + 1);
-  const info = new Float32Array(M.w * M.h * 6);
-  for (let y = y0; y < y0 + M.h; y++) {
-    if (t.clipY !== undefined && y > t.clipY) continue;
-    for (let x = x0; x < x0 + M.w; x++) {
-      const px = x + 0.5, py = y + 0.5;
-      let best = 1e9, bs = 0, bcx = 0, bcy = 0, bux = 0, buy = 0, br = 1;
-      for (const g of segs) {
-        if (px < Math.min(g.ax, g.bx) - rmax || px > Math.max(g.ax, g.bx) + rmax || py < Math.min(g.ay, g.by) - rmax || py > Math.max(g.ay, g.by) + rmax) continue;
-        const ux = (g.bx - g.ax) / g.len, uy = (g.by - g.ay) / g.len;
-        const tt = clamp((px - g.ax) * ux + (py - g.ay) * uy, 0, g.len);
-        const cx = g.ax + ux * tt, cy = g.ay + uy * tt;
-        const d = Math.hypot(px - cx, py - cy);
-        const r = rAt(g.s0 + tt);
-        if (d - r < best) {
-          best = d - r;
-          bs = g.s0 + tt;
-          bcx = cx;
-          bcy = cy;
-          bux = ux;
-          buy = uy;
-          br = r;
-        }
-      }
-      if (best > 0) continue;
-      M.add(x, y);
-      const nx = (px - bcx) / br, ny = (py - bcy) / br;
-      const off = (px - bcx) * -buy + (py - bcy) * bux;
-      const k = ((y - y0) * M.w + (x - x0)) * 6;
-      info[k] = bs;
-      info[k + 1] = clamp(off / br, -1, 1);
-      info[k + 2] = nx;
-      info[k + 3] = ny;
-      info[k + 4] = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
-      info[k + 5] = br;
-    }
-  }
-  const at = (x: number, y: number) => ((y - y0) * M.w + (x - x0)) * 6;
-  stamp(
-    L,
-    M,
-    (x, y) => {
-      const k = at(x, y);
-      const s = info[k], u = info[k + 1], r = info[k + 5];
-      const Lv = lambert(info[k + 2], info[k + 3], info[k + 4]) * (t.dim ? t.dim(x, y) : 1) + (t.bias ?? 0);
-      return barkStep(t, Lv, Math.asin(u) * r, s, r);
-    },
-    {
-      line: (x, y, qx, qy) => L.pal(qx, qy) !== t.pal || info[at(x, y)] > (t.lineFrom ?? 0),
-      linePal: t.tex === 'charred' ? P.charred : t.pal,
-    },
-  );
-}
-
-/** Recursive branching: each branch forks into two thinner ones that lean outward and up. */
-function grow(out: Tube[], p: Pt, ang: number, len: number, r: number, depth: number, seed: number, base: Partial<Tube> & { pal: number; tex: Tex }): void {
-  const bend = (hash(seed, 1, 7) - 0.5) * 0.6;
-  const mid: Pt = [p[0] + Math.cos(ang + bend * 0.4) * len * 0.5, p[1] + Math.sin(ang + bend * 0.4) * len * 0.5];
-  const end: Pt = [p[0] + Math.cos(ang + bend) * len, p[1] + Math.sin(ang + bend) * len];
-  out.push({ ...base, pts: spline([p, mid, end]), r0: r, r1: Math.max(0.7, r * 0.62), seed, lineFrom: r * 2.2, depth });
-  if (depth <= 0) return;
-  for (let k = 0; k < 2; k++) {
-    const side = k === 0 ? -1 : 1;
-    let a2 = ang + bend + side * (0.32 + 0.35 * hash(seed, k, 11));
-    a2 = lerp(a2, -Math.PI / 2, 0.15);
-    grow(out, end, a2, len * (0.6 + 0.18 * hash(seed, k, 12)), r * 0.64, depth - 1, seed * 3 + k + 1, base);
-  }
-}
+/** Value thresholds between the 7 leaf tones. */
+const TH = [0.2, 0.3, 0.4, 0.5, 0.61, 0.73];
 
 // --- fire ---------------------------------------------------------------------------------
 
@@ -566,11 +74,10 @@ interface Flame {
 }
 
 /** One flame: a burning bed with a few wavy tongues, a hot core, red tips and rising wisps. */
-function flameInto(F: Ix, f: Flame, t: number): void {
+function flameInto(F: Buf, f: Flame, t: number): void {
   const put = (x: number, y: number, s: number) => {
-    if (F.step(x, y) < s) F.put(x, y, P.fire, s);
+    if (F.stepAt(x, y) < s) F.put(x, y, FIRE, s);
   };
-  // The bed: a low rounded mound of fire with a ragged underside, so no flame starts on a flat cut.
   const brx = f.w * 0.55, bry = Math.max(2.5, f.w * 0.22);
   for (let y = Math.floor(f.y - bry); y <= f.y + bry + 2; y++)
     for (let x = Math.floor(f.x - brx - 1); x <= f.x + brx + 1; x++) {
@@ -598,12 +105,10 @@ function flameInto(F: Ix, f: Flame, t: number): void {
       for (let x = Math.floor(cx - hw); x <= Math.ceil(cx + hw); x++) {
         const e = Math.abs(x + 0.5 - cx) / Math.max(0.5, hw);
         if (e > 1) continue;
-        const s = tt > 0.74 || e > 0.8 ? 2 : e < 0.3 && tt < 0.26 ? 5 : e < 0.55 && tt < 0.5 ? 4 : 3;
-        put(x, y, s);
+        put(x, y, tt > 0.74 || e > 0.8 ? 2 : e < 0.3 && tt < 0.26 ? 5 : e < 0.55 && tt < 0.5 ? 4 : 3);
       }
     }
-    // A wisp breaks off the tip and rises while shrinking.
-    const wq = frac(q * 1.0 + 0.5);
+    const wq = frac(q + 0.5);
     const wr = (1 - wq) * ww * 0.2;
     if (wr >= 0.8) {
       const wy = f.y - hh - 2 - wq * f.h * 0.5, wx = bx + Math.sin(TAU * wq + f.seed) * 2 + (f.lean ?? 0);
@@ -630,68 +135,46 @@ function sparksOnto(C: Canvas, x0: number, y0: number, spread: number, rise: num
 }
 
 /** Fire overlay: drawn after the tree's outline, with its own dark red rim. */
-function overlayFire(C: Canvas, F: Ix): void {
+function overlayFire(C: Canvas, F: Buf): void {
   const fc = F.toCanvas();
   fc.outline({ toward: '#2a0806', amount: 0.55 });
   C.draw(fc, 0, 0);
 }
 
 /** A low mound of ash with charcoal bits and a few live embers. */
-function ashPile(L: Ix, gx: number, gy: number, rx: number, ry: number, seed: number): void {
-  for (let y = gy - ry * 2; y <= gy; y++)
+function ashPile(L: Buf, gx: number, gy: number, rx: number, ry: number, seed: number): void {
+  for (let y = gy - ry * 2; y <= gy + ry; y++)
     for (let x = gx - rx; x <= gx + rx; x++) {
       const u = (x + 0.5 - gx) / rx;
+      if (Math.abs(u) > 1) continue;
       const top = gy - ry * (1 - u * u) * (0.7 + 0.6 * noise(x, 0, 5, seed)) - 1;
-      if (y < top || L.has(x, y)) continue;
+      const bot = gy + ry * 0.6 * Math.sqrt(1 - u * u);
+      if (y < top || y > bot || L.has(x, y)) continue;
       const lit = u < -0.2 ? 1 : 0;
-      let s = y < top + 1.5 ? 3 + lit : 2;
-      const lump = noise(x, y, 2.2, seed + 4);
-      if (lump < 0.22) {
-        L.put(x, y, P.charred, y < top + 1.5 ? 3 : 2);
+      if (noise(x, y, 2.2, seed + 4) < 0.22) {
+        L.put(x, y, CHAR, y < top + 1.5 ? 4 : 2);
         continue;
       }
       if (hash(Math.floor(x / 2), Math.floor(y / 2), seed + 1) < 0.05 && y > top + 1) {
-        L.put(x, y, P.fire, 3);
+        L.put(x, y, FIRE, 3);
         continue;
       }
+      let s = y < top + 1.5 ? 3 + lit : 2;
       s = clamp(s - (noise(x, y, 2, seed) < 0.35 ? 1 : 0), 1, 4);
-      L.put(x, y, P.ash, s);
+      L.put(x, y, ASH, s);
     }
 }
 
-// --- frames, outline, cropping ------------------------------------------------------------
-
-/**
- * The silhouette outline: each empty pixel next to the shape takes step 0 of a neighbouring
- * material, foliage first (very dark green around leaves, dark brown around bark).
- */
-function outlineIx(L: Ix): void {
-  const add: [number, number, number][] = [];
-  for (let y = 0; y < L.h; y++)
-    for (let x = 0; x < L.w; x++) {
-      if (L.has(x, y)) continue;
-      let best = -1, bl = Infinity;
-      for (const [dx, dy] of N4) {
-        const p = L.pal(x + dx, y + dy);
-        if (p < 0) continue;
-        const c = PALS[p][0];
-        const l = c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11 + (isFoliage(p) ? -1000 : 0);
-        if (l < bl) {
-          bl = l;
-          best = p;
-        }
-      }
-      if (best >= 0) add.push([x, y, best]);
-    }
-  for (const [x, y, p] of add) L.put(x, y, p, 0);
-}
+// --- frames, cropping ---------------------------------------------------------------------
 
 interface Built {
   anims: Record<string, { frames: Canvas[]; fps: number; loop?: boolean }>;
+  /** Trunk base on the work canvas: centre x and the ground row. */
   gx: number;
+  gy: number;
 }
 
-/** Crops every frame of every animation to their common bounds (+1 px) and sets the anchor. */
+/** Crops every frame of every animation to their common bounds (+1 px); the anchor is the trunk base. */
 function finish(name: string, label: string, meters: [number, number], tags: string[], b: Built): WorldSprite {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const a of Object.values(b.anims))
@@ -720,21 +203,15 @@ function finish(name: string, label: string, meters: [number, number], tags: str
       }),
     };
   }
-  // Ground contact: the lowest opaque row of the default frame.
-  const bb = Object.values(b.anims)[0].frames[0].bounds()!;
-  return { name, label, meters, anchor: [b.gx - x0, bb[3] - y0], tags, anims };
+  return { name, label, meters, anchor: [b.gx - x0, b.gy - y0], tags, anims };
 }
 
-function toFrame(L: Ix, fire?: Ix): Canvas {
-  outlineIx(L);
+function toFrame(L: Buf, fire?: Buf): Canvas {
+  despeckle(L);
+  outlineBuf(L, prio);
   const c = L.toCanvas();
   if (fire) overlayFire(c, fire);
   return c;
-}
-
-const STATS: string[] = [];
-function stat(name: string, L: Ix): void {
-  STATS.push(`${name}: ${L.histogram()}`);
 }
 
 /** Horizontal sway of a point at height `hf` (0 base .. 1 top) in frame f of n. */
@@ -743,284 +220,297 @@ function swayAt(hf: number, f: number, n: number, amp: number, lag = 1.1): numbe
   return Math.round(amp * hf * Math.sin((TAU * f) / n - lag * hf));
 }
 
-/** Sway offsets of the foliage items for frame f (whole lobes, slightly out of phase). */
-const itemOffs = (items: FolItem[], f: number, n: number, still = false): Pt[] =>
-  items.map((it) => [still ? 0 : Math.round(it.amp * Math.sin((TAU * f) / n + it.phase)), 0] as Pt);
+/** A canopy ready to composite: clusters (back to front) and their cached rasters. */
+interface Canopy {
+  cl: Cluster[];
+  ras: ReturnType<typeof rasterCluster>[];
+}
+function makeCanopy(cl: Cluster[], o: { sphere?: number; fold?: number } = {}): Canopy {
+  return { cl, ras: cl.map((c) => rasterCluster(c, o)) };
+}
 
 /** Burning foliage: charred above a ragged burn line, a glowing front, scorched below, green lowest. */
 function burnPaint(burnY: number, scorchY: number, seed: number) {
-  return (x: number, y: number, it: FolItem, v: number, cell: number): [number, number] => {
-    const nz = (noise(x, y, 12, seed) - 0.5) * 34 + (cell - 0.5) * 6;
-    const s = folStep(v, cell);
+  return (x: number, y: number, c: Cluster, v: number, line: boolean): [number, number] => {
+    const nz = (noise(x, y, 12, seed) - 0.5) * 34 + (hash(c.seed, 0, 3) - 0.5) * 10;
+    const s = line ? 1 : clamp(1 + TH.filter((t) => v >= t).length, 1, 7);
     if (y + nz < burnY) {
-      // Charred leaves, with glowing dabs on the lit side.
-      if (cell < 0.1 && v > 0.42) return [P.fire, v > 0.6 ? 3 : 2];
-      if (cell > 0.97) return [P.fire, 2];
-      return [P.charLeaf, clamp(s, 1, 6)];
+      if (!line && v > 0.55 && hash(x >> 1, y >> 1, seed) < 0.06) return [FIRE, v > 0.7 ? 3 : 2];
+      return [LEAF_CHAR, s];
     }
-    if (y + nz < burnY + 4) return [P.fire, cell < 0.5 ? 2 : 3];
-    if (y + nz < scorchY) return [P.scorch, s];
-    return [it.pal, s];
+    if (y + nz < burnY + 4) return [FIRE, hash(x, y, seed) < 0.5 ? 2 : 3];
+    if (y + nz < scorchY) return [LEAF_SCORCH, s];
+    return [c.pal, s];
   };
+}
+
+/**
+ * A root: it leaves the trunk's flare well above the ground, bends down along it and runs over the
+ * ground toward ground-plane angle `deg` (0 right, 90 toward the viewer), tapering into the soil.
+ */
+function rootTube(gx: number, gy: number, rT: number, deg: number, len: number, r0: number, seed: number, base: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'>): Tube {
+  const a = (deg * Math.PI) / 180;
+  const ca = Math.cos(a), sa = Math.sin(a) * K;
+  const h0 = r0 * 1.5 + 8;
+  const wig = (hash(seed, 1, 2) - 0.5) * 10, wig2 = (hash(seed, 3, 2) - 0.5) * 8;
+  // Across the ground direction, for the root's sideways wander.
+  const px = -Math.sin(a), py = Math.cos(a) * K;
+  const at = (d: number, w: number, up: number): Pt => [gx + ca * (rT + d) + px * w, gy + sa * d + py * w - up];
+  const pts: Pt[] = [
+    [gx + ca * rT * 0.5, gy - h0],
+    [gx + ca * (rT * 0.85 + 2), gy - r0 * 0.8 + sa * 3],
+    at(len * 0.3, wig * 0.6, r0 * 0.35),
+    at(len * 0.62, wig2, r0 * 0.12),
+    at(len, wig * 0.3, -1),
+  ];
+  return { ...base, pts: spline(pts, 2), r0, r1: 2.2, flare: r0 * 0.35, flareLen: 10, point: 6, seed, lineFrom: h0 + rT * 0.4 + 4, spacing: 4.5, twist: 0, wob: 0.14 };
 }
 
 // --- oak ----------------------------------------------------------------------------------
 
 function oak(): WorldSprite {
-  const W = 520, H = 600, gx = 260, gy = 560;
-  // Canopy: about 5.5 m wide, from about 3 m to 7.5 m: a few big lobes.
-  const CX = gx + 2, CY = gy - 292;
-  const hfOf = (y: number) => clamp((gy - 150 - y) / 280, 0, 1);
-  const lobes: [number, number, number, number, number][] = [
-    [-60, -66, 92, 72, 0],
-    [66, -60, 86, 70, 0],
-    [-106, 20, 54, 60, 0],
-    [108, 26, 52, 58, 0],
-    [-40, 56, 76, 56, 1],
-    [52, 62, 72, 52, 1],
-    [-90, 114, 30, 20, 1],
+  const W = 600, H = 600, gx = 300, gy = 560;
+  const n = 8;
+  // Canopy: about 6 m wide and 7.3 m tall: cloud masses at the ends of the twisting limbs, the
+  // lower ones hanging out to the sides like an arch.
+  const hfOf = (y: number) => clamp((gy - 130 - y) / 280, 0, 1);
+  const masses: Mass[] = [
+    { x: gx - 126, y: gy - 244, rx: 60, ry: 42, z: 0, rz: 30, flat: 0.72 },
+    { x: gx - 66, y: gy - 322, rx: 80, ry: 56, z: 6, rz: 44 },
+    { x: gx + 8, y: gy - 372, rx: 72, ry: 46, z: -6, rz: 40 },
+    { x: gx + 76, y: gy - 316, rx: 82, ry: 56, z: 4, rz: 44 },
+    { x: gx + 128, y: gy - 240, rx: 58, ry: 40, z: -2, rz: 30, flat: 0.72 },
+    { x: gx - 4, y: gy - 272, rx: 64, ry: 34, z: 26, rz: 26, flat: 0.7 },
+    { x: gx - 84, y: gy - 254, rx: 40, ry: 26, z: 12, rz: 20, flat: 0.7 },
+    { x: gx + 84, y: gy - 250, rx: 40, ry: 26, z: 10, rz: 20, flat: 0.7 },
+    { x: gx - 168, y: gy - 212, rx: 22, ry: 16, z: 4, rz: 12, flat: 0.8 },
+    { x: gx + 168, y: gy - 208, rx: 20, ry: 15, z: 0, rz: 12, flat: 0.8 },
   ];
-  const items = lobes.map(([dx, dy, rx, ry, layer], i) => {
-    const y = CY + dy;
-    const hf = hfOf(y);
-    const gl = clamp(-(dx / 150) * 0.5 - (dy / 135) * 0.6, -1, 1);
-    return lobeItem({
-      x: CX + dx, y, rx, ry, seed: 100 + i * 31, bump: 0.13, K: 2.4, S: 22,
-      pal: P.oak, layer, bias: 0.06 * gl + (layer === 0 ? -0.13 : -0.1), amp: 1 + 2 * hf, phase: -1.1 * hf + (hash(i, 9, 3) - 0.5) * 0.6,
-    });
+  const cl = canopy({
+    masses, form: [gx, gy - 300, 178, 112], r: 8.5, spacing: 9.6, pal: LEAF_OAK, seed: 11, formMix: 0.5,
+    leaves: (sd, r, nu, nv) => ovalLeaves(sd, r, { len: 6.6, wid: 3.8, droop: nv > 0.5 ? 1.2 : 0.1, nu, nv }),
   });
+  for (const c of cl) {
+    c.hf = hfOf(c.y);
+    // Clusters on the front of a mass go in front of the limbs; deep and underside ones behind.
+    c.tag = c.z > (masses[c.group].z ?? 0) + (masses[c.group].rz ?? 30) * 0.45 ? 1 : 0;
+    // The lower interior sits in the canopy's own shade; deep clusters are darker still.
+    c.bias = -0.08 * clamp((c.y - (gy - 310)) / 80, 0, 1) - (c.tag === 0 ? 0.05 : 0);
+  }
+  const C = makeCanopy(cl);
 
-  const F: Pt = [gx - 1, gy - 138];
-  const underCanopy = (_x: number, y: number) => (y < gy - 175 ? 0.55 : y < gy - 140 ? 0.8 : 1);
-  const bark = (tex: Tex, pal: number): Partial<Tube> & { pal: number; tex: Tex } => ({ pal, tex, dim: underCanopy });
-
+  const F: Pt = [gx - 2, gy - 124];
+  const dim = (x: number, y: number) => {
+    if (y > gy - 100) return 1;
+    const k = clamp((gy - 100 - y) / 34, 0, 1);
+    const dap = noise(x * 0.8, y * 0.55, 6, 99) > 0.7;
+    return 1 - k * (dap ? 0.08 : 0.42);
+  };
   const skeleton = (burnt: boolean): Tube[] => {
-    const pal = burnt ? P.charred : P.bark, tex: Tex = burnt ? 'charred' : 'streak';
-    const ts: Tube[] = [];
-    ts.push({ ...bark(tex, pal), pts: spline([[gx, gy + 4], [gx - 1, gy - 50], [gx + 2, gy - 100], F]), r0: 17, r1: 13, flare: 10, flareLen: 11, seed: 11, clipY: gy, ember: burnt ? 0.08 : 0, depth: 9 });
-    // Surface roots.
-    ts.push({ ...bark(tex, pal), pts: spline([[gx - 14, gy - 12], [gx - 31, gy - 3], [gx - 46, gy]]), r0: 6.5, r1: 1.6, seed: 21, clipY: gy, lineFrom: 99, depth: 9 });
-    ts.push({ ...bark(tex, pal), pts: spline([[gx + 13, gy - 11], [gx + 27, gy - 3], [gx + 41, gy]]), r0: 6, r1: 1.6, seed: 22, clipY: gy, lineFrom: 99, depth: 9 });
-    ts.push({ ...bark(tex, pal), pts: spline([[gx - 5, gy - 4], [gx - 13, gy], [gx - 22, gy + 2]]), r0: 3.5, r1: 1.2, seed: 23, clipY: gy + 2, lineFrom: 99, depth: 9 });
-    ts.push({ ...bark(tex, pal), pts: spline([[gx + 6, gy - 3], [gx + 11, gy + 1], [gx + 17, gy + 3]]), r0: 3, r1: 1.1, seed: 24, clipY: gy + 3, lineFrom: 99, depth: 9 });
-    // Limbs forking into the canopy; their twigs stay behind the foliage.
-    const limbs: { pts: Pt[]; r0: number; r1: number; kids: [number, number][] }[] = [
-      { pts: [F, [gx - 26, gy - 170], [gx - 62, gy - 200], [gx - 96, gy - 236]], r0: 10, r1: 6, kids: [[-2.2, 30], [-1.6, 36]] },
-      { pts: [F, [gx + 6, gy - 186], [gx + 2, gy - 236], [gx - 12, gy - 300]], r0: 11, r1: 6.5, kids: [[-2.0, 46], [-1.2, 48]] },
-      { pts: [F, [gx + 30, gy - 168], [gx + 66, gy - 194], [gx + 100, gy - 226]], r0: 9, r1: 5.5, kids: [[-1.3, 34], [-0.75, 28]] },
+    const palB = burnt ? CHAR : BARK_OAK;
+    const tex = burnt ? 'charred' : 'furrow';
+    const bark: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'> = { pal: palB, tex, dim, moss: burnt ? undefined : MOSS, mossAmt: 0.5, ember: burnt ? 0.1 : 0, firePal: FIRE };
+    const back: Tube[] = [], front: Tube[] = [], limbs: Tube[] = [];
+    const rT = 30;
+    // Buttress roots: two behind the trunk, the rest spreading to the sides and toward the viewer.
+    const roots: [number, number, number, boolean][] = [
+      [-162, 36, 10, true], [-20, 34, 9, true], [-120, 22, 8, true], [180, 64, 13, false], [-2, 58, 12, false], [150, 46, 11, false], [28, 40, 10, false], [96, 20, 9, false],
     ];
-    limbs.forEach((l, i) => {
-      const pts = burnt && i === 1 ? l.pts.slice(0, 3) : l.pts;
-      ts.push({ ...bark(tex, pal), pts: spline(pts), r0: l.r0, r1: l.r1, seed: 31 + i, lineFrom: 22, ember: burnt ? 0.1 : 0, point: burnt && i === 1 ? 14 : 0, depth: 9 });
+    roots.forEach(([deg, len, r0, behind], i) => {
+      const t = rootTube(gx, gy, rT, deg, len, r0, 200 + i, { ...bark, mossAmt: 0.8 });
+      (behind ? back : front).push(t);
+    });
+    const trunk: Tube = {
+      ...bark, pts: spline([[gx + 1, gy + 2], [gx - 5, gy - 40], [gx + 6, gy - 84], F], 2), r0: rT, r1: 21, flare: 14, flareLen: 16, wob: 0.08,
+      seed: 11, clipY: gy + 1, spacing: 7.5, twist: 0.14, mossAmt: 0.4,
+      knots: [{ s: 58, a: -10, r: 7 }, { s: 100, a: 13, r: 4.5 }],
+    };
+    // Limbs forking into the masses, twisting as they go.
+    const L: { pts: Pt[]; r0: number; r1: number; kids: [number, number][] }[] = [
+      { pts: [F, [gx - 32, gy - 142], [gx - 62, gy - 150], [gx - 96, gy - 176], [gx - 126, gy - 204]], r0: 15, r1: 7, kids: [[-2.6, 24], [-1.9, 26]] },
+      { pts: [F, [gx - 14, gy - 166], [gx - 38, gy - 200], [gx - 42, gy - 244], [gx - 64, gy - 286]], r0: 16, r1: 7.5, kids: [[-2.0, 30], [-1.4, 30]] },
+      { pts: [F, [gx + 16, gy - 162], [gx + 22, gy - 210], [gx + 46, gy - 250], [gx + 56, gy - 300]], r0: 15, r1: 7, kids: [[-1.7, 30], [-1.0, 28]] },
+      { pts: [F, [gx + 34, gy - 140], [gx + 70, gy - 152], [gx + 102, gy - 180], [gx + 130, gy - 202]], r0: 14, r1: 6.5, kids: [[-1.2, 24], [-0.5, 22]] },
+    ];
+    L.forEach((l, i) => {
+      const pts = burnt && i === 2 ? l.pts.slice(0, 4) : l.pts;
+      limbs.push({ ...bark, pts: spline(pts), r0: l.r0, r1: l.r1, seed: 31 + i, lineFrom: 30, spacing: 5.5, twist: 0.22 * (i % 2 ? 1 : -1), point: burnt && i === 2 ? 16 : 0, wob: 0.14, mossAmt: 0.6 });
       const end = pts[pts.length - 1];
       l.kids.forEach(([ang, len], k) => {
         const out: Tube[] = [];
-        grow(out, end, ang, burnt ? len * 0.9 : len, l.r1 * 0.75, burnt ? 1 : 2, 50 + i * 10 + k, bark(tex, pal));
+        grow(out, end, ang, burnt ? len * 0.9 : len, l.r1 * 0.75, 1, 50 + i * 10 + k, { ...bark, mossAmt: 0 });
         for (const tb of out) {
-          if (burnt) {
-            if ((tb.depth ?? 0) < 1 && hash(i, k, tb.seed) < 0.6) continue;
-            tb.point = Math.min(8, tb.r0 * 3);
-            tb.ember = 0.06;
-          }
-          ts.push(tb);
+          if (burnt) tb.point = Math.min(8, tb.r0 * 3);
+          limbs.push(tb);
         }
       });
     });
-    // A low branch on the left carrying its own small tuft.
-    ts.push({ ...bark(tex, pal), pts: spline([[gx - 10, gy - 118], [gx - 34, gy - 140], [gx - 60, gy - 152], [gx - 84, gy - 176]]), r0: 4.5, r1: 2.4, seed: 77, lineFrom: 8, point: burnt ? 8 : 0, ember: burnt ? 0.06 : 0, depth: 9 });
-    return ts;
+    return [...back.map((t) => ({ ...t, z: -1 })), { ...trunk, z: 0 }, ...front.map((t) => ({ ...t, z: 1 })), ...limbs.map((t) => ({ ...t, z: 2 }))];
   };
 
   const render = (f: number, mode: 'idle' | 'burning' | 'burnt'): Canvas => {
-    const L = new Ix(W, H);
-    const n = 8;
-    const tubes = skeleton(mode === 'burnt');
-    const sway = (y: number) => (mode === 'idle' ? swayAt(hfOf(y), f, n, 3) * clamp((gy - 150 - y) / 40, 0, 1) : 0);
-    const moved = tubes.map((t) => ({ ...t, pts: t.pts.map(([x, y]) => [x + sway(y), y] as Pt) }));
+    const B = new Buf(W, H);
+    const sway = (y: number) => (mode === 'idle' ? swayAt(hfOf(y), f, n, 3) * clamp((gy - 130 - y) / 40, 0, 1) : 0);
+    const tubes = skeleton(mode === 'burnt').map((t) => ({ ...t, pts: t.pts.map(([x, y]) => [x + sway(y), y] as Pt) }));
     if (mode === 'burnt') {
-      for (const t of moved) drawTube(L, t);
-      ashPile(L, gx, gy + 2, 44, 5, 5);
-      stat('oak burnt', L);
-      return toFrame(L);
+      for (const t of tubes) drawTube(B, t);
+      ashPile(B, gx, gy + 6, 50, 5, 5);
+      return toFrame(B);
     }
-    const Fo = compositeFol(W, H, items, itemOffs(items, f, n, mode !== 'idle'), 10, 0.45);
-    const paint = mode === 'burning' ? burnPaint(CY - 20, CY + 60, 77) : undefined;
-    for (const t of moved) if ((t.depth ?? 0) < 9) drawTube(L, t);
-    putFol(L, Fo, items, (l) => l === 0, paint);
-    for (const t of moved) if ((t.depth ?? 0) === 9) drawTube(L, t);
-    putFol(L, Fo, items, (l) => l > 0, paint);
+    const offs = C.cl.map((c) => [sway(c.y), 0] as Pt);
+    const Fo = composite(W, H, C.cl, C.ras, offs, 0.55);
+    shade(Fo, C.cl, { cast: 0.42, castD: 5, rim: 0.16, away: 0.1, lineGap: 14, leafSep: 0.07 });
+    const paint = mode === 'burning' ? burnPaint(gy - 330, gy - 250, 77) : undefined;
+    // Order: roots and trunk, back foliage, limbs, front foliage, then vines.
+    for (const t of tubes) if ((t.z ?? 0) < 2) drawTube(B, t);
+    putField(B, Fo, C.cl, { th: TH, filter: (c) => c.tag === 0, paint });
+    for (const t of tubes) if ((t.z ?? 0) >= 2) drawTube(B, t);
+    putField(B, Fo, C.cl, { th: TH, filter: (c) => c.tag === 1, paint });
     if (mode === 'idle') {
-      if (f === 0) stat('oak idle', L);
-      return toFrame(L);
+      // Vines hang from the underside of the canopy (the lowest leaf pixel in their column).
+      const vines: [number, number][] = [[-152, 44], [-104, 62], [-46, 30], [58, 38], [108, 54], [156, 34]];
+      vines.forEach(([dx, len], i) => {
+        const x0 = gx + dx;
+        let y0 = -1;
+        for (let y = gy - 120; y > gy - 330; y--)
+          if (B.palAt(x0, y) === LEAF_OAK) {
+            y0 = y;
+            break;
+          }
+        if (y0 < 0) return;
+        vine(B, x0, y0 - 2, len, { sway: Math.round(Math.sin((TAU * f) / n + i) * 1.4), seed: 90 + i, stemPal: LEAF_OAK, leafPal: LEAF_OAK, z: 50 });
+      });
+      return toFrame(B);
     }
     // Burning: flames along the charred crown, at the fork and from a wound on the trunk.
-    const fire = new Ix(W, H);
+    const fire = new Buf(W, H);
     const t = f / n;
     const topAt = (x: number): number => {
       for (let y = 0; y < H; y++) if (Fo.own[y * W + x] >= 0) return y;
       return -1;
     };
     for (let k = 0; k < 9; k++) {
-      const x = Math.round(CX - 128 + k * 32 + (hash(k, 1, 8) - 0.5) * 10);
+      const x = Math.round(gx - 132 + k * 33 + (hash(k, 1, 8) - 0.5) * 10);
       const ty = topAt(x);
-      if (ty < 0 || ty > CY + 10) continue;
+      if (ty < 0 || ty > gy - 270) continue;
       const big = 1 - Math.abs(k - 4) / 5;
       flameInto(fire, { x, y: ty + 12, w: 26 + big * 18, h: 40 + big * 56, ph: hash(k, 3, 5), seed: k, n: 3, lean: 6 }, t);
     }
-    for (const [fx, fy, fw, fh, k] of [[-70, -40, 24, 40, 11], [34, -36, 26, 44, 12], [-118, 6, 18, 30, 13], [124, 12, 18, 28, 14]] as [number, number, number, number, number][])
-      flameInto(fire, { x: CX + fx, y: CY + fy, w: fw, h: fh, ph: hash(k, 3, 5), seed: k, n: 2, lean: 4 }, t);
-    flameInto(fire, { x: gx - 4, y: gy - 136, w: 16, h: 34, ph: 0.1, seed: 6, n: 2, lean: 3 }, t);
-    flameInto(fire, { x: gx + 9, y: gy - 66, w: 9, h: 20, ph: 0.6, seed: 4, n: 1, lean: 2 }, t);
-    if (f === 0) stat('oak burning', L);
-    const c = toFrame(L, fire);
-    sparksOnto(c, CX + 10, CY - 150, 240, 90, 26, t, 9);
+    for (const [fx, fy, fw, fh, k] of [[-70, -330, 24, 40, 11], [40, -326, 26, 44, 12], [-122, -262, 18, 30, 13], [126, -256, 18, 28, 14]] as [number, number, number, number, number][])
+      flameInto(fire, { x: gx + fx, y: gy + fy, w: fw, h: fh, ph: hash(k, 3, 5), seed: k, n: 2, lean: 4 }, t);
+    flameInto(fire, { x: gx - 4, y: gy - 120, w: 16, h: 34, ph: 0.1, seed: 6, n: 2, lean: 3 }, t);
+    flameInto(fire, { x: gx + 12, y: gy - 60, w: 9, h: 20, ph: 0.6, seed: 4, n: 1, lean: 2 }, t);
+    const c = toFrame(B, fire);
+    sparksOnto(c, gx + 10, gy - 440, 240, 90, 26, t, 9);
     return c;
   };
 
-  const idle = Array.from({ length: 8 }, (_, f) => render(f, 'idle'));
-  const burning = Array.from({ length: 8 }, (_, f) => render(f, 'burning'));
+  const idle = Array.from({ length: n }, (_, f) => render(f, 'idle'));
+  const burning = Array.from({ length: n }, (_, f) => render(f, 'burning'));
   const burnt = [render(0, 'burnt')];
-  return finish('oak', 'Broadleaf Tree', [5.5, 7.5], ['cover-half', 'blocks-sight', 'flammable', 'destructible', 'climbable'], {
-    gx,
+  return finish('oak', 'Broadleaf Tree', [6, 7.4], ['cover-half', 'blocks-sight', 'flammable', 'destructible', 'climbable'], {
+    gx, gy,
     anims: { idle: { frames: idle, fps: 5 }, burning: { frames: burning, fps: 11 }, burnt: { frames: burnt, fps: 0 } },
   });
 }
 
-// --- cedar pine ---------------------------------------------------------------------------
-
-interface Tier {
-  /** Attachment height on the trunk (row) and trunk x there. */
-  y: number;
-  x: number;
-  hwL: number;
-  hwR: number;
-  droopL: number;
-  droopR: number;
-  /** Thickness of the lit top band above the branch line, and of the hanging skirt below it. */
-  top: number;
-  skirt: number;
-  seed: number;
-  amp: number;
-  phase: number;
-}
-
-/** A needle tier: two drooping wings of hanging sprays with ragged needle tips. */
-function tierShape(t: Tier): (lx: number, ly: number) => Shape | null {
-  const sprays: { side: number; t0: number; t1: number; drop: number }[] = [];
-  for (const side of [-1, 1]) {
-    const w = side < 0 ? t.hwL : t.hwR;
-    const nS = Math.max(2, Math.round(w / 14));
-    let acc = 0;
-    const cuts = [0];
-    for (let k = 0; k < nS; k++) cuts.push((acc += 0.6 + hash(k, side, t.seed) * 0.8));
-    for (let k = 0; k < nS; k++) sprays.push({ side, t0: cuts[k] / acc, t1: cuts[k + 1] / acc, drop: 3 + hash(k, side + 5, t.seed) * 8 });
-  }
-  return (lx, ly) => {
-    const side = lx < 0 ? -1 : 1;
-    const w = side < 0 ? t.hwL : t.hwR, droop = side < 0 ? t.droopL : t.droopR;
-    const tn = Math.abs(lx) / w;
-    if (tn > 1.08) return null;
-    const own = sprays.filter((s) => s.side === side);
-    const sp = own.find((s) => tn >= s.t0 && tn <= s.t1) ?? own[own.length - 1];
-    const lu = clamp(((tn - sp.t0) / (sp.t1 - sp.t0)) * 2 - 1, -1, 1);
-    // Branch line: rises from the trunk, droops toward the tip.
-    const yc = droop * Math.pow(Math.min(1, tn), 1.7) - 2 * Math.max(0, 1 - tn);
-    const topT = t.top * Math.pow(Math.max(0, 1 - tn), 0.8) + 2.5;
-    const tipCut = tn > 0.84 ? Math.min(1, Math.pow((tn - 0.84) / 0.2, 1.3)) : 0;
-    const skirt = t.skirt * (0.42 + 0.58 * Math.pow(Math.max(0, 1 - tn), 0.7)) + sp.drop * Math.sqrt(Math.max(0, 1 - lu * lu));
-    // Needle tips: columns hang in 2 px groups of uneven length.
-    const ncol = Math.floor((lx + 400) / 2);
-    const needle = Math.floor(hash(ncol, 0, t.seed + 7) * 5) - (Math.abs(lu) > 0.8 ? 4 : 0);
-    const yTop = yc - topT * (1 - tipCut);
-    const yBot = yc + (skirt + needle) * (1 - tipCut * 0.85);
-    const e = Math.min(ly - yTop, yBot - ly, (1.02 - tn) * w);
-    if (e < -2) return null;
-    const dv = clamp((ly - yc) / Math.max(1, yBot - yc), 0, 1);
-    // Light: the upper surface faces the sky, the skirt turns away; left wing lit, right in shade.
-    let L = ly < yc + 2 ? 0.8 - 0.12 * (1 - tn) : 0.62 - 0.5 * dv;
-    L += side < 0 ? 0.08 * tn : -0.16 * tn;
-    L += -lu * 0.08 * side;
-    // A dark notch between sprays.
-    if (Math.abs(lu) > 0.85 && dv > 0.35 && tn > 0.12) L -= 0.25;
-    return { L, e };
-  };
-}
+// --- black pine ---------------------------------------------------------------------------
 
 function pine(): WorldSprite {
-  const W = 300, H = 600, gx = 150, gy = 560;
-  const TOP = gy - m(9);
-  const crownBot = gy - 104;
-  const hfOf = (y: number) => clamp((crownBot - y) / (crownBot - TOP), 0, 1);
-  const tiers: Tier[] = [];
-  const NT = 11;
-  for (let i = 0; i < NT; i++) {
-    const k = i / (NT - 1); // 0 bottom .. 1 top
-    const y = Math.round(lerp(gy - 150, TOP + 36, Math.pow(k, 0.92)));
-    const hw = lerp(84, 13, Math.pow(k, 0.9));
-    const hf = hfOf(y);
-    tiers.push({
-      y, x: gx + Math.round(Math.sin(k * 2.2) * 2),
-      hwL: hw * (0.82 + hash(i, 1, 3) * 0.34), hwR: hw * (0.82 + hash(i, 2, 3) * 0.34),
-      droopL: lerp(26, 5, k) * (0.6 + hash(i, 3, 3) * 0.8), droopR: lerp(26, 5, k) * (0.6 + hash(i, 4, 3) * 0.8),
-      top: lerp(16, 8, k), skirt: lerp(30, 14, k), seed: 300 + i * 13,
-      amp: 3 * Math.pow(hf, 1.2), phase: -1.1 * hf,
-    });
-  }
-  const items: FolItem[] = tiers.map((t) => {
-    const hw = Math.max(t.hwL, t.hwR);
-    return makeItem({
-      x: t.x, y: t.y, x0: -Math.ceil(hw * 1.1) - 3, y0: -Math.ceil(t.top) - 6, x1: Math.ceil(hw * 1.1) + 3, y1: Math.ceil(t.skirt + Math.max(t.droopL, t.droopR) + 16),
-      shape: tierShape(t), dab: [2.3, 4.6], seed: t.seed, pal: P.pine, layer: 1, bias: 0, amp: t.amp, phase: t.phase,
-    });
+  const W = 380, H = 620, gx = 190, gy = 580;
+  const n = 8;
+  const TOP = gy - m(8.4);
+  const hfOf = (y: number) => clamp((gy - 150 - y) / (gy - 150 - TOP), 0, 1);
+  // The trunk leans and zigzags up; long elbowed branches carry flat cloud pads of needles.
+  const spine: Pt[] = [[gx + 1, gy + 2], [gx + 6, gy - 60], [gx - 6, gy - 140], [gx - 18, gy - 214], [gx - 6, gy - 290], [gx + 12, gy - 360], [gx + 6, gy - 420], [gx - 2, TOP + 22]];
+  const trunkPts = spline(spine, 2);
+  const xAt = (y: number): number => {
+    let best = trunkPts[0];
+    for (const p of trunkPts) if (Math.abs(p[1] - y) < Math.abs(best[1] - y)) best = p;
+    return best[0];
+  };
+  // Pads: branch start height, pad centre, pad radii, side.
+  const pads: { y0: number; px: number; py: number; rx: number; ry: number; side: number }[] = [
+    { y0: gy - 150, px: gx - 78, py: gy - 178, rx: 50, ry: 18, side: -1 },
+    { y0: gy - 196, px: gx + 76, py: gy - 224, rx: 52, ry: 19, side: 1 },
+    { y0: gy - 262, px: gx - 72, py: gy - 292, rx: 48, ry: 18, side: -1 },
+    { y0: gy - 318, px: gx + 66, py: gy - 346, rx: 46, ry: 18, side: 1 },
+    { y0: gy - 372, px: gx - 54, py: gy - 398, rx: 40, ry: 16, side: -1 },
+    { y0: gy - 408, px: gx + 46, py: gy - 430, rx: 34, ry: 15, side: 1 },
+    { y0: gy - 236, px: gx - 6, py: gy - 250, rx: 32, ry: 14, side: 0 },
+    { y0: gy - 350, px: gx + 8, py: gy - 368, rx: 28, ry: 13, side: 0 },
+    { y0: gy - 440, px: gx + 2, py: TOP + 28, rx: 40, ry: 20, side: 0 },
+  ];
+  const masses: Mass[] = [];
+  pads.forEach((p, i) => {
+    const z = p.side === 0 && i < 8 ? 12 : 0;
+    masses.push({ x: p.px, y: p.py, rx: p.rx, ry: p.ry, z, rz: 10, flat: 0.5, top: 1, rag: 0.16, tag: i });
+    // Cloud bumps on top of each pad.
+    masses.push({ x: p.px - p.rx * 0.4, y: p.py - p.ry * 0.55, rx: p.rx * 0.46, ry: p.ry * 0.72, z: z - 2, rz: 8, flat: 0.6, rag: 0.18, tag: i });
+    masses.push({ x: p.px + p.rx * 0.34, y: p.py - p.ry * 0.5, rx: p.rx * 0.44, ry: p.ry * 0.66, z: z - 3, rz: 8, flat: 0.6, rag: 0.18, tag: i });
   });
-  // The leader: a thin needle spike above the last tier.
-  items.push(makeItem({
-    x: gx + 1, y: TOP, x0: -5, y0: -1, x1: 5, y1: 30,
-    shape: (lx, ly) => {
-      const hw = 0.8 + Math.max(0, ly) * 0.11;
-      const e = Math.min(hw - Math.abs(lx), ly + 0.5);
-      return e < -2 ? null : { L: 0.62 - (lx / hw) * 0.2, e };
-    },
-    dab: [2, 4], seed: 399, pal: P.pine, layer: 1, bias: 0, amp: 3.2, phase: -1.1,
-  }));
-  const trunk = (burnt: boolean): Tube[] => {
-    const pal = burnt ? P.charred : P.cedar, tex: Tex = burnt ? 'charred' : 'cedar';
-    const dim = (_x: number, y: number) => (y < crownBot ? 0.6 : y < crownBot + 20 ? 0.8 : 1);
-    const ts: Tube[] = [];
-    const topY = burnt ? gy - 340 : TOP + 10;
-    ts.push({ pal, tex, dim, pts: spline([[gx, gy + 4], [gx + 1, gy - 120], [gx - 1, gy - 260], [gx + 1, topY]], 3), r0: 13, r1: burnt ? 5 : 1.5, flare: 7, flareLen: 10, seed: 41, clipY: gy, depth: 9, point: burnt ? 22 : 0, ember: burnt ? 0.07 : 0 });
-    ts.push({ pal, tex, dim, pts: spline([[gx - 10, gy - 10], [gx - 22, gy - 3], [gx - 34, gy]]), r0: 5, r1: 1.4, seed: 42, clipY: gy, lineFrom: 99, depth: 9 });
-    ts.push({ pal, tex, dim, pts: spline([[gx + 9, gy - 9], [gx + 20, gy - 2], [gx + 30, gy + 1]]), r0: 4.5, r1: 1.3, seed: 43, clipY: gy + 1, lineFrom: 99, depth: 9 });
-    ts.push({ pal, tex, dim, pts: spline([[gx + 2, gy - 3], [gx + 5, gy + 1], [gx + 9, gy + 3]]), r0: 3, r1: 1, seed: 44, clipY: gy + 3, lineFrom: 99, depth: 9 });
-    if (burnt) {
-      // Broken branch stubs angled down and out.
-      const stubs: [number, number, number][] = [[-1, 150, 26], [1, 176, 30], [-1, 214, 24], [1, 246, 22], [-1, 270, 18], [1, 300, 16], [-1, 322, 12]];
-      stubs.forEach(([side, h, len], i) => {
-        const y = gy - h;
-        ts.push({ pal, tex, pts: spline([[gx, y], [gx + side * len * 0.5, y + 2], [gx + side * len, y + 5 + hash(i, 1, 5) * 4]]), r0: 3.2, r1: 1.2, point: 6, seed: 60 + i, lineFrom: 5, ember: 0.05, depth: 9 });
-      });
-    }
-    return ts;
+  const cl = canopy({
+    masses, form: [gx, gy - 310, 140, 190], r: 6.2, spacing: 6.4, pal: LEAF_PINE, seed: 21, formMix: 0.25,
+    leaves: (sd, r) => needleTufts(sd, r, { len: 7.5, needles: 11 }),
+  });
+  for (const c of cl) {
+    c.hf = hfOf(c.y);
+    c.tag = 1;
+  }
+  const C = makeCanopy(cl, { sphere: 0.75, fold: 0.06 });
+  const dim = (_x: number, y: number) => {
+    for (const p of pads) if (y > p.py && y < p.py + 26 && Math.abs(_x - p.px) < p.rx) return 0.62;
+    return 1;
+  };
+  const skeleton = (burnt: boolean): Tube[] => {
+    const palB = burnt ? CHAR : BARK_PINE;
+    const tex = burnt ? 'charred' : 'plates';
+    const bark: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'> = { pal: palB, tex, dim, moss: burnt ? undefined : MOSS, mossAmt: 0.35, ember: burnt ? 0.08 : 0, firePal: FIRE };
+    const out: Tube[] = [];
+    const rT = 13;
+    const roots: [number, number, number, boolean][] = [[-150, 30, 6, true], [-28, 28, 6, true], [174, 44, 8, false], [6, 42, 8, false], [140, 32, 7, false], [52, 26, 6, false]];
+    const back: Tube[] = [], front: Tube[] = [];
+    roots.forEach(([deg, len, r0, behind], i) => (behind ? back : front).push(rootTube(gx, gy, rT, deg, len, r0, 400 + i, { ...bark, mossAmt: 0.6 })));
+    const top = burnt ? spline(spine.slice(0, 6), 2) : trunkPts;
+    out.push(...back.map((t) => ({ ...t, z: -1 })));
+    out.push({ ...bark, pts: top, r0: rT, r1: burnt ? 5 : 3, flare: 8, flareLen: 11, wob: 0.1, seed: 41, clipY: gy + 1, spacing: 6.5, twist: 0.05, point: burnt ? 24 : 0, knots: [{ s: 70, a: 6, r: 3.5 }, { s: 150, a: -5, r: 3 }], z: 0 });
+    out.push(...front.map((t) => ({ ...t, z: 1 })));
+    // Elbowed branches out to the pads.
+    pads.forEach((p, i) => {
+      if (i === pads.length - 1) return;
+      const x0 = xAt(p.y0);
+      const ex = p.px - p.side * p.rx * 0.2, ey = p.py + p.ry * 0.5;
+      const elbow: Pt = [lerp(x0, ex, 0.45) + p.side * 4, p.y0 - 4 - hash(i, 1, 9) * 10];
+      const pts = burnt ? [[x0, p.y0], elbow] as Pt[] : ([[x0, p.y0], elbow, [lerp(elbow[0], ex, 0.6), lerp(elbow[1], ey, 0.4) + 4], [ex, ey]] as Pt[]);
+      out.push({ ...bark, pts: spline(pts), r0: 5.5 - i * 0.35, r1: burnt ? 3 : 2.4, seed: 60 + i, lineFrom: 10, spacing: 4, point: burnt ? 7 : 0, mossAmt: 0.45, z: 2 });
+      if (!burnt)
+        for (let k = 0; k < 3; k++) {
+          const sx = ex + p.side * (k - 1) * p.rx * 0.4 - p.side * 6, sy = ey - 2;
+          out.push({ ...bark, tex: 'plain', pts: spline([[ex, ey], [lerp(ex, sx, 0.5), ey + 3], [sx, sy - 6]]), r0: 2, r1: 1, seed: 80 + i * 3 + k, lineFrom: 3, mossAmt: 0, z: 2 });
+        }
+    });
+    return out;
   };
   const render = (f: number, mode: 'idle' | 'burnt'): Canvas => {
-    const L = new Ix(W, H);
-    const n = 8;
-    const sway = (y: number) => (mode === 'idle' ? swayAt(hfOf(y), f, n, 3.2) : 0);
-    for (const t of trunk(mode === 'burnt')) drawTube(L, { ...t, pts: t.pts.map(([x, y]) => [x + sway(y), y] as Pt) });
+    const B = new Buf(W, H);
+    const sway = (y: number) => (mode === 'idle' ? swayAt(hfOf(y), f, n, 3) : 0);
+    const tubes = skeleton(mode === 'burnt').map((t) => ({ ...t, pts: t.pts.map(([x, y]) => [x + sway(y), y] as Pt) }));
+    for (const t of tubes) drawTube(B, t);
     if (mode === 'burnt') {
-      ashPile(L, gx, gy + 2, 36, 4, 8);
-      stat('pine burnt', L);
-      return toFrame(L);
+      ashPile(B, gx, gy + 5, 40, 4, 8);
+      return toFrame(B);
     }
-    const Fo = compositeFol(W, H, items, itemOffs(items, f, n), 7, 0.5);
-    putFol(L, Fo, items, () => true);
-    if (f === 0) stat('pine idle', L);
-    return toFrame(L);
+    const Fo = composite(W, H, C.cl, C.ras, C.cl.map((c) => [sway(c.y), 0] as Pt), 0.62);
+    shade(Fo, C.cl, { cast: 0.3, castD: 4, rim: 0.16, away: 0.1, lineGap: 9, leafSep: 0.05 });
+    putField(B, Fo, C.cl, { th: TH });
+    return toFrame(B);
   };
-  const idle = Array.from({ length: 8 }, (_, f) => render(f, 'idle'));
+  // Tag clusters with their pad index for the underside shade.
+  cl.forEach((c) => (c.tag = masses[c.group].tag ?? 0));
+  const idle = Array.from({ length: n }, (_, f) => render(f, 'idle'));
   const burnt = [render(0, 'burnt')];
-  return finish('pine', 'Cedar Pine', [3, 9], ['cover-half', 'blocks-sight', 'flammable', 'destructible', 'climbable'], {
-    gx,
+  return finish('pine', 'Black Pine', [4.5, 8.4], ['cover-half', 'blocks-sight', 'flammable', 'destructible', 'climbable'], {
+    gx, gy,
     anims: { idle: { frames: idle, fps: 5 }, burnt: { frames: burnt, fps: 0 } },
   });
 }
@@ -1028,89 +518,98 @@ function pine(): WorldSprite {
 // --- red maple ----------------------------------------------------------------------------
 
 function maple(): WorldSprite {
-  const W = 360, H = 360, gx = 180, gy = 330;
+  const W = 420, H = 400, gx = 210, gy = 360;
+  const n = 8;
   const TOP = gy - m(5);
-  const hfOf = (y: number) => clamp((gy - 110 - y) / (gy - 110 - TOP), 0, 1);
-  // Layered foliage pads: [dx, dy, rx, ry, layer].
-  const defs: [number, number, number, number, number][] = [
-    [-50, -228, 82, 44, 0],
-    [64, -234, 74, 40, 0],
-    [-104, -166, 56, 28, 0],
-    [110, -174, 56, 28, 0],
-    [-4, -178, 78, 34, 1],
-    [-76, -122, 52, 24, 1],
-    [88, -120, 54, 24, 1],
+  const hfOf = (y: number) => clamp((gy - 100 - y) / (gy - 100 - TOP), 0, 1);
+  // Layered tiers of foliage, flat underneath, like a momiji in a temple garden.
+  const masses: Mass[] = [
+    { x: gx - 104, y: gy - 138, rx: 60, ry: 24, z: 4, rz: 18, flat: 0.55, top: 0.9 },
+    { x: gx + 100, y: gy - 148, rx: 62, ry: 24, z: 2, rz: 18, flat: 0.55, top: 0.9 },
+    { x: gx - 54, y: gy - 192, rx: 74, ry: 30, z: 0, rz: 22, flat: 0.55 },
+    { x: gx + 58, y: gy - 198, rx: 70, ry: 30, z: -2, rz: 22, flat: 0.55 },
+    { x: gx + 2, y: gy - 240, rx: 72, ry: 30, z: -4, rz: 22, flat: 0.6 },
+    { x: gx - 8, y: gy - 266, rx: 40, ry: 18, z: -8, rz: 14, flat: 0.7 },
+    { x: gx + 4, y: gy - 158, rx: 44, ry: 20, z: 10, rz: 14, flat: 0.55 },
   ];
-  const items = defs.map(([dx, dy, rx, ry, layer], i) => {
-    const y = gy + dy;
-    const hf = hfOf(y);
-    const gl = clamp(-(dx / 130) * 0.5 - ((dy + 190) / 70) * 0.6, -1, 1);
-    return lobeItem({
-      x: gx + dx, y, rx, ry, seed: 500 + i * 23, bump: 0.16, K: 2.8, S: 16, flat: 0.6, dab: [3, 3],
-      pal: P.maple, layer, bias: 0.05 * gl + (layer === 0 ? -0.14 : -0.1), amp: 1 + 2 * hf, phase: -1.1 * hf + (hash(i, 2, 2) - 0.5) * 0.6,
-    });
+  const cl = canopy({
+    masses, form: [gx, gy - 200, 165, 90], r: 8, spacing: 8, pal: LEAF_MAPLE, seed: 31, formMix: 0.5,
+    leaves: (sd, r) => starLeaves(sd, r, { size: 8.6, tone: 0.06, n: 4 + Math.floor(rnd(sd, 9) * 2) }),
   });
-  const dim = (_x: number, y: number) => (y < gy - 150 ? 0.7 : 1);
+  for (const c of cl) {
+    c.hf = hfOf(c.y);
+    c.tag = c.z > (masses[c.group].z ?? 0) + (masses[c.group].rz ?? 20) * 0.4 ? 1 : 0;
+    c.bias = c.tag === 0 ? -0.06 : 0;
+  }
+  const C = makeCanopy(cl, { sphere: 0.8, fold: 0.1 });
+  const dim = (x: number, y: number) => (y < gy - 110 ? (noise(x * 0.8, y * 0.6, 6, 7) > 0.7 ? 0.95 : 0.66) : 1);
   const skeleton = (burnt: boolean): Tube[] => {
-    const pal = burnt ? P.charred : P.barkGrey, tex: Tex = burnt ? 'charred' : 'smooth';
-    const base = { pal, tex, dim };
-    const ts: Tube[] = [];
-    const Fk: Pt = [gx + 2, gy - 92];
-    ts.push({ ...base, pts: spline([[gx, gy + 3], [gx - 7, gy - 32], [gx + 6, gy - 64], Fk]), r0: 8, r1: 6, flare: 6, flareLen: 8, seed: 71, clipY: gy, depth: 9, ember: burnt ? 0.08 : 0 });
-    ts.push({ ...base, pts: spline([[gx - 6, gy - 6], [gx - 16, gy - 1], [gx - 26, gy + 1]]), r0: 3.5, r1: 1.2, seed: 72, clipY: gy + 1, lineFrom: 99, depth: 9 });
-    ts.push({ ...base, pts: spline([[gx + 6, gy - 5], [gx + 14, gy - 1], [gx + 22, gy + 1]]), r0: 3, r1: 1.1, seed: 73, clipY: gy + 1, lineFrom: 99, depth: 9 });
+    const palB = burnt ? CHAR : BARK_MAPLE;
+    const tex = burnt ? 'charred' : 'smooth';
+    const bark: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'> = { pal: palB, tex, dim, moss: burnt ? undefined : MOSS, mossAmt: 0.25, ember: burnt ? 0.08 : 0, firePal: FIRE };
+    const out: Tube[] = [];
+    const rT = 13;
+    const roots: [number, number, number, boolean][] = [[-150, 26, 6, true], [-24, 24, 6, true], [174, 40, 8, false], [6, 38, 8, false], [136, 28, 6, false], [56, 24, 6, false]];
+    const back: Tube[] = [], front: Tube[] = [];
+    roots.forEach(([deg, len, r0, behind], i) => (behind ? back : front).push(rootTube(gx, gy, rT, deg, len, r0, 600 + i, { ...bark, mossAmt: 0.5 })));
+    out.push(...back.map((t) => ({ ...t, z: -1 })));
+    const Fk: Pt = [gx + 3, gy - 76];
+    out.push({ ...bark, pts: spline([[gx, gy + 2], [gx - 9, gy - 26], [gx + 7, gy - 54], Fk]), r0: rT, r1: 9.5, flare: 7, flareLen: 9, wob: 0.12, seed: 71, clipY: gy + 1, knots: [{ s: 36, a: 4, r: 3.6 }], z: 0 });
+    out.push(...front.map((t) => ({ ...t, z: 1 })));
     const limbs: { pts: Pt[]; r0: number; r1: number; kids: [number, number][] }[] = [
-      { pts: [Fk, [gx - 18, gy - 116], [gx - 30, gy - 148], [gx - 62, gy - 174], [gx - 88, gy - 188]], r0: 5, r1: 2.8, kids: [[-2.4, 20], [-1.9, 22]] },
-      { pts: [Fk, [gx + 20, gy - 118], [gx + 22, gy - 158], [gx + 50, gy - 186], [gx + 72, gy - 210]], r0: 5, r1: 2.8, kids: [[-1.2, 22], [-0.6, 20]] },
-      { pts: [Fk, [gx + 1, gy - 132], [gx - 8, gy - 178], [gx - 2, gy - 222]], r0: 4, r1: 2.4, kids: [[-1.9, 18], [-1.3, 18]] },
-      { pts: [[gx + 4, gy - 76], [gx + 30, gy - 92], [gx + 62, gy - 106], [gx + 90, gy - 116]], r0: 3.2, r1: 1.8, kids: [[-0.6, 22]] },
-      { pts: [[gx - 1, gy - 84], [gx - 26, gy - 100], [gx - 50, gy - 118]], r0: 3, r1: 1.8, kids: [[-2.4, 20]] },
+      { pts: [Fk, [gx - 20, gy - 100], [gx - 30, gy - 132], [gx - 62, gy - 154], [gx - 92, gy - 160]], r0: 8, r1: 3.4, kids: [[-2.4, 16], [-1.9, 18]] },
+      { pts: [Fk, [gx + 22, gy - 104], [gx + 26, gy - 144], [gx + 58, gy - 170], [gx + 94, gy - 180]], r0: 8, r1: 3.4, kids: [[-1.0, 22], [-0.5, 20]] },
+      { pts: [Fk, [gx + 2, gy - 120], [gx - 12, gy - 170], [gx - 4, gy - 214], [gx + 6, gy - 246]], r0: 7, r1: 3, kids: [[-1.9, 18], [-1.2, 18]] },
+      { pts: [[gx + 5, gy - 62], [gx + 32, gy - 84], [gx + 66, gy - 104], [gx + 100, gy - 128]], r0: 5, r1: 2.4, kids: [[-0.5, 20]] },
+      { pts: [[gx - 2, gy - 70], [gx - 30, gy - 92], [gx - 62, gy - 106], [gx - 96, gy - 122]], r0: 4.6, r1: 2.2, kids: [[-2.6, 20]] },
     ];
     limbs.forEach((l, i) => {
-      ts.push({ ...base, pts: spline(l.pts), r0: l.r0, r1: l.r1, seed: 80 + i, lineFrom: 12, depth: 9, ember: burnt ? 0.08 : 0, point: burnt && i === 2 ? 10 : 0 });
+      out.push({ ...bark, pts: spline(l.pts), r0: l.r0, r1: l.r1, seed: 80 + i, lineFrom: 12, wob: 0.1, point: burnt && i === 2 ? 10 : 0, z: 2 });
       const end = l.pts[l.pts.length - 1];
       l.kids.forEach(([ang, len], k) => {
-        const out: Tube[] = [];
-        grow(out, end, ang, len, l.r1 * 0.7, 1, 90 + i * 7 + k, base);
-        for (const tb of out) {
-          if (burnt) {
-            tb.point = Math.min(6, tb.r0 * 3);
-            tb.ember = 0.05;
-          }
-          ts.push(tb);
+        const kids: Tube[] = [];
+        grow(kids, end, ang, len, l.r1 * 0.7, 1, 90 + i * 7 + k, { ...bark, mossAmt: 0 });
+        for (const tb of kids) {
+          if (burnt) tb.point = Math.min(6, tb.r0 * 3);
+          out.push({ ...tb, z: 2 });
         }
       });
     });
-    return ts;
+    return out;
   };
   const render = (f: number, mode: 'idle' | 'burnt'): Canvas => {
-    const L = new Ix(W, H);
-    const n = 8;
+    const B = new Buf(W, H);
     const sway = (y: number) => (mode === 'idle' ? swayAt(hfOf(y), f, n, 3) * clamp((gy - 100 - y) / 30, 0, 1) : 0);
     const tubes = skeleton(mode === 'burnt').map((t) => ({ ...t, pts: t.pts.map(([x, y]) => [x + sway(y), y] as Pt) }));
     if (mode === 'burnt') {
-      for (const t of tubes) drawTube(L, t);
-      ashPile(L, gx, gy + 2, 30, 4, 11);
-      stat('maple burnt', L);
-      return toFrame(L);
+      for (const t of tubes) drawTube(B, t);
+      ashPile(B, gx, gy + 5, 34, 4, 11);
+      return toFrame(B);
     }
-    const Fo = compositeFol(W, H, items, itemOffs(items, f, n), 9, 0.48);
-    for (const t of tubes) if ((t.depth ?? 0) < 9) drawTube(L, t);
-    putFol(L, Fo, items, (l) => l === 0);
-    for (const t of tubes) if ((t.depth ?? 0) === 9) drawTube(L, t);
-    putFol(L, Fo, items, (l) => l > 0);
-    if (f === 0) stat('maple idle', L);
-    return toFrame(L);
+    const Fo = composite(W, H, C.cl, C.ras, C.cl.map((c) => [sway(c.y), 0] as Pt), 0.58);
+    shade(Fo, C.cl, { cast: 0.4, castD: 5, rim: 0.15, away: 0.1, lineGap: 10, leafSep: 0.07 });
+    for (const t of tubes) if ((t.z ?? 0) < 2) drawTube(B, t);
+    putField(B, Fo, C.cl, { th: TH, filter: (c) => c.tag === 0 });
+    for (const t of tubes) if ((t.z ?? 0) >= 2) drawTube(B, t);
+    putField(B, Fo, C.cl, { th: TH, filter: (c) => c.tag === 1 });
+    // A few fallen leaves on the ground.
+    for (let k = 0; k < 9; k++) {
+      const a = rnd(5, k) * TAU, d = 20 + rnd(5, k, 1) * 70;
+      const lf: Leaf = { x: gx + Math.cos(a) * d + 0.5, y: gy + 3 + Math.sin(a) * d * K * 0.35 + 0.5, ang: rnd(5, k, 2) * TAU, len: 5, wid: 5, kind: 'star', n: 5, tone: 0 };
+      if (B.has(Math.round(lf.x), Math.round(lf.y))) continue;
+      paintLeaf(B, lf, LEAF_MAPLE, [3, 4, 6]);
+    }
+    return toFrame(B);
   };
-  const idle = Array.from({ length: 8 }, (_, f) => render(f, 'idle'));
+  const idle = Array.from({ length: n }, (_, f) => render(f, 'idle'));
   const burnt = [render(0, 'burnt')];
-  return finish('maple', 'Red Maple', [4.4, 5], ['cover-half', 'blocks-sight', 'flammable', 'destructible', 'climbable'], {
-    gx,
+  return finish('maple', 'Red Maple', [5.8, 5], ['cover-half', 'blocks-sight', 'flammable', 'destructible', 'climbable'], {
+    gx, gy,
     anims: { idle: { frames: idle, fps: 5 }, burnt: { frames: burnt, fps: 0 } },
   });
 }
 
-// --- bamboo grove -------------------------------------------------------------------------
+// --- bamboo clump -------------------------------------------------------------------------
 
 interface Culm {
   bx: number;
@@ -1123,23 +622,24 @@ interface Culm {
   seed: number;
   phase: number;
   amp: number;
-  bias: number;
-  /** Behind the others (darker leaves). */
+  /** Behind the others (darker). */
   back: boolean;
 }
 
 function bamboo(): WorldSprite {
-  const W = 260, H = 420, gx = 130, gy = 392;
+  const W = 300, H = 460, gx = 150, gy = 420;
+  const n = 8;
   const culms: Culm[] = [
-    { bx: -20, by: -9, h: 300, r: 3.2, lean: -0.05, curve: -0.05, pal: P.culmOld, seed: 1, phase: 0.6, amp: 3, bias: -0.08, back: true },
-    { bx: 14, by: -10, h: 318, r: 3.4, lean: 0.03, curve: 0.04, pal: P.culm, seed: 2, phase: 2.1, amp: 3, bias: -0.08, back: true },
-    { bx: 34, by: -6, h: 268, r: 3, lean: 0.07, curve: 0.08, pal: P.culm, seed: 3, phase: 1.2, amp: 3, bias: -0.05, back: true },
-    { bx: -36, by: -4, h: 262, r: 3, lean: -0.09, curve: -0.08, pal: P.culm, seed: 4, phase: 2.8, amp: 3, bias: -0.04, back: true },
-    { bx: -6, by: -2, h: 342, r: 3.8, lean: -0.01, curve: -0.02, pal: P.culm, seed: 5, phase: 0, amp: 4, bias: 0, back: false },
-    { bx: 22, by: 0, h: 296, r: 3.6, lean: 0.04, curve: 0.05, pal: P.culmOld, seed: 6, phase: 1.7, amp: 3, bias: 0, back: false },
-    { bx: -24, by: 1, h: 230, r: 3.3, lean: -0.06, curve: -0.05, pal: P.culm, seed: 7, phase: 3.6, amp: 2, bias: 0.02, back: false },
+    { bx: -24, by: -10, h: 312, r: 3.4, lean: -0.06, curve: -0.05, pal: CULM_OLD, seed: 1, phase: 0.6, amp: 3, back: true },
+    { bx: 14, by: -11, h: 330, r: 3.6, lean: 0.03, curve: 0.04, pal: CULM, seed: 2, phase: 2.1, amp: 3, back: true },
+    { bx: 38, by: -7, h: 276, r: 3.1, lean: 0.08, curve: 0.08, pal: CULM, seed: 3, phase: 1.2, amp: 3, back: true },
+    { bx: -42, by: -5, h: 268, r: 3.1, lean: -0.1, curve: -0.08, pal: CULM, seed: 4, phase: 2.8, amp: 3, back: true },
+    { bx: -4, by: -3, h: 350, r: 4.4, lean: -0.01, curve: -0.02, pal: CULM, seed: 5, phase: 0, amp: 4, back: false },
+    { bx: 24, by: 0, h: 300, r: 4, lean: 0.05, curve: 0.05, pal: CULM_OLD, seed: 6, phase: 1.7, amp: 3, back: false },
+    { bx: -26, by: 1, h: 236, r: 3.7, lean: -0.07, curve: -0.05, pal: CULM, seed: 7, phase: 3.6, amp: 2, back: false },
+    { bx: 6, by: 3, h: 190, r: 3.3, lean: 0.02, curve: 0.1, pal: CULM, seed: 8, phase: 4.2, amp: 2, back: false },
   ];
-  const at = (c: Culm, t: number, f: number, n: number): Pt => {
+  const at = (c: Culm, t: number, f: number): Pt => {
     const sw = c.amp * t * t * Math.sin((TAU * f) / n + c.phase - t * 0.6);
     return [gx + c.bx + c.lean * t * c.h + c.curve * t * t * c.h + sw, gy + c.by - t * c.h];
   };
@@ -1147,244 +647,256 @@ function bamboo(): WorldSprite {
     const out: number[] = [];
     let y = 0, k = 0;
     while (y < c.h - 14) {
-      const len = lerp(13, 24, Math.min(1, k / 6)) * (0.92 + hash(k, 0, c.seed) * 0.16) * (k > 9 ? 0.85 : 1);
-      y += len;
+      y += lerp(12, 26, Math.min(1, k / 6)) * (0.92 + hash(k, 0, c.seed) * 0.16) * (k > 9 ? 0.85 : 1);
       if (y < c.h - 10) out.push(y);
       k++;
     }
     return out;
   };
-  const drawCulm = (L: Ix, c: Culm, f: number, n: number) => {
+  // A culm: a lit cylinder; at each node a dark ring, a lit ridge above it and a pale powdery band below.
+  const drawCulm = (B: Buf, c: Culm, f: number, part: number) => {
     const nodes = nodesOf(c);
-    const M = new Mask(0, 0, W, H);
-    const info = new Map<number, [number, number]>();
-    const rows = Math.ceil(c.h);
-    for (let k = 0; k <= rows; k++) {
+    const px: [number, number, number, number][] = [];
+    for (let k = 0; k <= Math.ceil(c.h); k++) {
       const t = k / c.h;
-      const [cx, cy] = at(c, t, f, n);
+      const [cx, cy] = at(c, t, f);
       const y = Math.round(cy);
       const nd = nodes.some((v) => Math.abs(v - k) < 0.5);
       const hw = c.r * (1 - 0.45 * t) + (nd ? 0.6 : 0);
       for (let x = Math.floor(cx - hw); x <= Math.ceil(cx + hw - 1); x++) {
         const u = (x + 0.5 - cx) / hw;
-        if (Math.abs(u) > 1) continue;
-        M.add(x, y);
-        info.set(y * W + x, [u, k]);
+        if (Math.abs(u) <= 1) px.push([x, y, u, k]);
       }
     }
-    stamp(
-      L,
-      M,
-      (x, y) => {
-        const [u, k] = info.get(y * W + x)!;
-        const Lv = lambert(u, 0, Math.sqrt(Math.max(0, 1 - u * u))) + c.bias - (c.back ? 0.06 : 0);
-        let s = Lv > 0.86 ? 4 : Lv > 0.62 ? 3 : Lv > 0.4 ? 2 : 1;
-        // Nodes: a dark ring with a lit ridge just above it on the lit side.
-        const dn = nodes.reduce((b, v) => (Math.abs(v - k) < Math.abs(b) ? v - k : b), 99);
-        if (Math.abs(dn) < 0.5) s = Math.max(1, s - 2);
-        else if (dn > -1.5 && dn < -0.5 && u < 0.3) s = Math.min(5, s + 1);
-        else if (dn > 0.5 && dn < 2.5 && u < -0.2 && hash(Math.round(dn), 0, c.seed) < 0.9) s = Math.min(5, s + (dn < 1.5 ? 1 : 0));
-        return [c.pal, clamp(s, 1, 5)];
-      },
-      { line: () => true, linePal: c.pal },
-    );
-    // A papery sheath on the lowest node of some culms: a tapered sleeve with a pointed top.
+    // Inner line on what lies behind.
+    const mine = new Set(px.map(([x, y]) => y * W + x));
+    for (const [x, y] of px)
+      for (const [dx, dy] of [[1, 0], [-1, 0]] as Pt[]) {
+        const q = (y + dy) * W + x + dx;
+        if (!mine.has(q) && B.has(x + dx, y + dy) && B.partAt(x + dx, y + dy) !== part) B.setStep(x + dx, y + dy, 1);
+      }
+    for (const [x, y, u, k] of px) {
+      const Lv = lambert(u, 0, Math.sqrt(Math.max(0, 1 - u * u))) - (c.back ? 0.1 : 0) - (k > c.h * 0.55 ? 0.08 : 0);
+      let s = Lv > 0.86 ? 5 : Lv > 0.64 ? 4 : Lv > 0.44 ? 3 : Lv > 0.28 ? 2 : 1;
+      const dn = nodes.reduce((b, v) => (Math.abs(v - k) < Math.abs(b) ? v - k : b), 99);
+      if (Math.abs(dn) < 0.5) s = Math.max(1, s - 2);
+      else if (dn > -1.5 && dn < -0.5) s = Math.min(6, s + 1);
+      else if (dn > 0.5 && dn < 3.5 && u < 0.5) s = Math.min(6, s + (dn < 2 ? 2 : 1));
+      // Faint vertical streaks on old culms.
+      if (c.pal === CULM_OLD && hash(Math.round(u * 3), Math.floor(k / 7), c.seed) < 0.12) s = Math.max(1, s - 1);
+      B.put(x, y, c.pal, clamp(s, 1, 6), part, c.back ? 0 : 10);
+    }
+    // A papery sheath on the lowest node.
     const v = nodes[0];
     if (c.seed % 3 !== 0 && v < 40) {
-      const len = 10 + hash(1, 2, c.seed) * 4;
-      const SM = new Mask(0, 0, W, H);
-      const sinfo = new Map<number, number>();
-      for (let k = Math.round(v - 2); k <= v + len; k++) {
-        const [cx, cy] = at(c, k / c.h, f, n);
-        const tt = (k - v + 2) / (len + 2);
-        const lo = cx - c.r - 0.6, hi = cx + c.r + 0.6 - tt * (c.r * 2 + 1.2);
+      const len = 12 + hash(1, 2, c.seed) * 5;
+      for (let k = Math.round(v - 3); k <= v + len; k++) {
+        const [cx, cy] = at(c, k / c.h, f);
+        const tt = (k - v + 3) / (len + 3);
+        const lo = cx - c.r - 0.8, hi = cx + c.r + 0.8 - tt * tt * (c.r * 2 + 1.6);
         for (let x = Math.floor(lo); x <= Math.ceil(hi - 1); x++) {
-          SM.add(x, Math.round(cy));
-          sinfo.set(Math.round(cy) * W + x, (x + 0.5 - cx) / (c.r + 0.6));
+          const u = (x + 0.5 - cx) / (c.r + 0.8);
+          const st = u < -0.55 ? 5 : u < 0.1 ? 4 : u < 0.6 ? 3 : 2;
+          B.put(x, Math.round(cy), SHEATH, (k + Math.round(u * 2)) % 5 === 0 ? st - 1 : st, part + 500, 11);
         }
       }
-      stamp(L, SM, (x, y) => {
-        const u = sinfo.get(y * W + x) ?? 0;
-        return [P.sheath, u < -0.6 ? 3 : u < 0.2 ? 2 : 1];
-      }, { line: () => true, linePal: P.sheath });
     }
   };
-  // Leaves: narrow lances hanging from the twigs. No lines between them: the lit upper edge and
-  // the dark lower edge keep overlapping leaves apart.
-  const leafInto = (L: Ix, x: number, y: number, ang: number, len: number, pal: number, bias: number) => {
-    const R2 = Math.ceil(len) + 4;
-    const M = new Mask(Math.floor(x - R2), Math.floor(y - R2), R2 * 2 + 1, R2 * 2 + 1);
-    const ux = Math.cos(ang), uy = Math.sin(ang);
-    const px = -uy, py = ux;
-    const toLight = Math.sign(px * LX + py * LY || 1);
-    const side = new Map<number, number>();
-    const n2 = Math.ceil(len * 2);
-    for (let k = 0; k <= n2; k++) {
-      const t = k / n2;
-      const w = 1.75 * Math.sin(Math.PI * Math.pow(t, 0.55)) + 0.15;
-      const cx = x + ux * t * len, cy = y + uy * t * len + 0.22 * t * t * len * Math.abs(ux);
-      for (let o = -w; o <= w + 1e-6; o += 0.5) {
-        const qx = Math.round(cx + px * o - 0.5), qy = Math.round(cy + py * o - 0.5);
-        const key = qy * 10000 + qx;
-        const sv = (o / Math.max(0.6, w)) * toLight;
-        if (!M.has(qx, qy) || Math.abs(sv) < Math.abs(side.get(key) ?? 9)) side.set(key, sv);
-        M.add(qx, qy);
+  // Leaf sprays: fans of drooping lance leaves at the ends of thin twigs, as clusters.
+  interface Spray { culm: number; t: number; ang: number; tl: number; seed: number }
+  const sprays: Spray[] = [];
+  culms.forEach((c, ci) => {
+    const nodes = nodesOf(c).filter((v) => v > c.h * 0.44);
+    nodes.forEach((v, k) => {
+      const t = v / c.h;
+      const one = (k + c.seed) % 2 === 0 ? -1 : 1;
+      const sides = hash(k, 7, c.seed) < (t > 0.6 ? 0.75 : 0.3) ? [one, -one] : [one];
+      sides.forEach((side, q) =>
+        sprays.push({ culm: ci, t, ang: -Math.PI / 2 + side * (0.65 + hash(k, 9 + q, c.seed) * 0.5), tl: (10 + hash(k, 8 + q, c.seed) * 18) * (1 - t * 0.35), seed: c.seed * 100 + k * 3 + q }),
+      );
+    });
+    sprays.push({ culm: ci, t: 1, ang: -Math.PI / 2, tl: 2, seed: c.seed * 100 + 99 });
+  });
+  const sprayLeaves = (s: Spray): Leaf[] => {
+    const crown = s.tl < 4;
+    const nL = crown ? 3 : 4 + Math.floor(hash(s.seed, 1, 3) * 3);
+    const out: Leaf[] = [];
+    const side = Math.cos(s.ang) >= 0 ? 1 : -1;
+    const ux = Math.cos(s.ang), uy = Math.sin(s.ang);
+    for (let i = 0; i < nL; i++) {
+      const q = nL === 1 ? 0.5 : i / (nL - 1);
+      // A fan of fingers held out from the twig, from a little above level to hanging; the
+      // middle ones longest. Leaves start at points along the end of the twig.
+      const a = crown ? -Math.PI / 2 + (q - 0.5) * 2.6 : side > 0 ? lerp(-0.6, 0.95, q) : Math.PI - lerp(-0.6, 0.95, q);
+      const len = (13 + hash(s.seed, i, 5) * 7) * (1 - 0.32 * Math.abs(q - 0.4));
+      const back = crown ? 0 : (nL - 1 - i) * 1.6;
+      out.push({ x: -ux * back, y: -uy * back, ang: a + (hash(s.seed, i, 4) - 0.5) * 0.25, len, wid: 2.9, kind: 'lance', bend: crown ? 0.4 : 0.12 + 0.16 * hash(s.seed, i, 6), tone: (hash(s.seed, i, 7) - 0.5) * 0.08 });
+    }
+    return out;
+  };
+  const sprayCl: Cluster[] = sprays.map((s, i) => {
+    const c = culms[s.culm];
+    const [nx, ny] = at(c, s.t, 0);
+    const ex = nx + Math.cos(s.ang) * s.tl, ey = ny + Math.sin(s.ang) * s.tl;
+    const hf = (gy - ey) / 340;
+    const form = clamp(0.55 + 0.3 * hf - (c.back ? 0.12 : 0) + (ex < gx ? 0.06 : -0.04), 0, 1);
+    return { x: ex, y: ey, r: 9, z: (c.back ? 0 : 20) + i * 0.01, form, pal: LEAF_BAMBOO, seed: s.seed, leaves: sprayLeaves(s), group: s.culm, hf: s.t, bias: 0, tag: c.back ? 0 : 1 };
+  });
+  const order = sprayCl.map((_, i) => i).sort((a, b) => sprayCl[a].z - sprayCl[b].z);
+  const cl = order.map((i) => sprayCl[i]);
+  const spr = order.map((i) => sprays[i]);
+  const C = makeCanopy(cl, { sphere: 0.55, fold: 0.13 });
+  const render = (f: number): Canvas => {
+    const B = new Buf(W, H);
+    // Culms back to front with their twigs; sprays of the back culms behind the front culms.
+    const offs: Pt[] = cl.map((c, i) => {
+      const s = spr[i];
+      const cu = culms[s.culm];
+      const [nx0] = at(cu, s.t, 0), [nx1] = at(cu, s.t, f);
+      return [Math.round(nx1 - nx0), 0];
+    });
+    const Fo = composite(W, H, C.cl, C.ras, offs, 0.55);
+    shade(Fo, C.cl, { cast: 0.22, castD: 4, rim: 0.15, away: 0.06, lineGap: 10, leafSep: 0.1 });
+    const twigs = (back: boolean) =>
+      spr.forEach((s) => {
+        const c = culms[s.culm];
+        if (c.back !== back || s.tl < 4) return;
+        const [nx, ny] = at(c, s.t, f);
+        const ex = nx + Math.cos(s.ang) * s.tl, ey = ny + Math.sin(s.ang) * s.tl;
+        const steps = Math.ceil(s.tl);
+        for (let q = 0; q <= steps; q++) B.put(Math.round(lerp(nx, ex, q / steps)), Math.round(lerp(ny, ey, q / steps)), c.pal, 2, 900, 0);
+      });
+    culms.forEach((c, i) => {
+      if (c.back) drawCulm(B, c, f, i);
+    });
+    twigs(true);
+    putField(B, Fo, C.cl, { th: TH, filter: (c) => c.tag === 0, z: () => 1 });
+    culms.forEach((c, i) => {
+      if (!c.back) drawCulm(B, c, f, i);
+    });
+    twigs(false);
+    putField(B, Fo, C.cl, { th: TH, filter: (c) => c.tag === 1 });
+    // A young shoot (takenoko) wrapped in scale-like sheaths, and fallen leaves.
+    const sx0 = gx + 50;
+    for (let y = gy - 20; y <= gy + 1; y++) {
+      const k = (gy + 1 - y) / 21;
+      const hw = 5 * Math.pow(1 - k, 0.8) + 0.4;
+      for (let x = Math.floor(sx0 - hw); x <= sx0 + hw - 1; x++) {
+        const u = (x + 0.5 - sx0) / hw;
+        const scale = frac((gy - y + (u + 1) * 1.5) / 5);
+        B.put(x, y, SHEATH, scale < 0.22 ? 1 : u < -0.35 ? 5 : u < 0.3 ? 4 : 3, 950, 12);
       }
     }
-    const hang = clamp(uy, 0, 1) * 0.12;
-    stamp(L, M, (qx, qy) => {
-      const sv = side.get(qy * 10000 + qx) ?? 0;
-      const Lv = 0.52 + 0.3 * sv + bias - hang;
-      return [pal, Lv > 0.76 ? 5 : Lv > 0.6 ? 4 : Lv > 0.44 ? 3 : Lv > 0.3 ? 2 : 1];
-    });
+    for (const [lx, ly, a] of [[-22, 2, 0.15], [14, 3, -0.2], [34, 1, 0.1], [-44, 0, -0.1]] as Pt3[]) paintLeaf(B, { x: gx + lx, y: gy + ly, ang: a, len: 10, wid: 2.6, kind: 'lance', tone: 0 }, SHEATH, [2, 3, 5], 960, 12);
+    return toFrame(B);
   };
-  const render = (f: number): Canvas => {
-    const L = new Ix(W, H);
-    const n = 8;
-    const order = culms.slice().sort((a, b) => Number(b.back) - Number(a.back) || a.by - b.by);
-    for (const c of order) {
-      drawCulm(L, c, f, n);
-      const lb = c.back ? -0.1 : 0.02;
-      // Twigs on the upper nodes, alternating sides, each carrying hanging leaves.
-      const nodes = nodesOf(c).filter((v) => v > c.h * 0.42);
-      nodes.forEach((v, k) => {
-        const side = (k + c.seed) % 2 === 0 ? -1 : 1;
-        const t = v / c.h;
-        const [nx, ny] = at(c, t, f, n);
-        const tl = 12 + hash(k, 8, c.seed) * 14 * (1 - t * 0.5);
-        const ta = -Math.PI / 2 + side * (0.8 + hash(k, 9, c.seed) * 0.4);
-        const dl = Math.round(Math.sin((TAU * f) / n + c.phase + 1.4 + k) * 1);
-        const ex = nx + Math.cos(ta) * tl + dl, ey = ny + Math.sin(ta) * tl;
-        const TM = new Mask(0, 0, W, H);
-        const steps = Math.ceil(tl);
-        for (let q = 0; q <= steps; q++) TM.add(Math.round(lerp(nx, ex, q / steps)), Math.round(lerp(ny, ey, q / steps)));
-        stamp(L, TM, () => [c.pal, 2]);
-        // Leaves along the twig and a fan at its end, hanging down and outward.
-        const spots = [0.45, 0.75, 1];
-        spots.forEach((sp, si) => {
-          const lx = lerp(nx, ex, sp), ly = lerp(ny, ey, sp);
-          const nl = si === 2 ? 3 : 2;
-          for (let q = 0; q < nl; q++) {
-            const hs = hash(q + si * 5, k, c.seed + 20);
-            const out = side * (si === 2 ? 1 : q === 0 ? 1 : -1);
-            const down = si === 2 ? -0.25 + q * 0.5 + hs * 0.25 : 0.35 + hs * 0.55;
-            const la = out > 0 ? down : Math.PI - down;
-            leafInto(L, lx, ly, la, 13 + hash(q, k + 3 + si, c.seed) * 7, P.bambooLeaf, lb);
-          }
-        });
-      });
-      // A tuft at the tip.
-      const [tx, ty] = at(c, 1, f, n);
-      for (let q = 0; q < 3; q++) leafInto(L, tx, ty + 3, q === 1 ? -1.25 : q === 0 ? Math.PI - 0.5 : 0.5, 12 + q * 2, P.bambooLeaf, lb);
-    }
-    // A young shoot (takenoko) wrapped in scale-like sheaths, and a few fallen leaves.
-    const SM = new Mask(0, 0, W, H);
-    const sx0 = gx + 46;
-    for (let y = gy - 17; y <= gy; y++) {
-      const k = (gy - y) / 17;
-      const hw = 4.2 * Math.pow(1 - k, 0.8) + 0.4;
-      for (let x = Math.floor(sx0 - hw); x <= sx0 + hw - 1; x++) SM.add(x, y);
-    }
-    stamp(L, SM, (x, y) => {
-      const k = (gy - y) / 17;
-      const hw = 4.2 * Math.pow(1 - k, 0.8) + 0.4;
-      const u = (x + 0.5 - sx0) / hw;
-      const scale = frac((gy - y + (u + 1) * 1.5) / 5);
-      return [P.sheath, scale < 0.2 ? 1 : u < -0.35 ? 4 : u < 0.3 ? 3 : 2];
-    }, { line: () => true, linePal: P.sheath });
-    for (const [lx, ly, a] of [[-18, 0, 0.15], [12, 1, -0.2], [32, 0, 0.1]] as [number, number, number][]) leafInto(L, gx + lx, gy + ly, a, 8, P.sheath, -0.08);
-    if (f === 0) stat('bamboo idle', L);
-    return toFrame(L);
-  };
-  const idle = Array.from({ length: 8 }, (_, f) => render(f));
-  return finish('bamboo', 'Bamboo Grove', [2.2, 6], ['cover-half', 'blocks-sight', 'hide-spot', 'flammable', 'destructible'], {
-    gx,
+  const idle = Array.from({ length: n }, (_, f) => render(f));
+  return finish('bamboo', 'Bamboo Grove', [2.4, 6.2], ['cover-half', 'blocks-sight', 'hide-spot', 'flammable', 'destructible'], {
+    gx, gy,
     anims: { idle: { frames: idle, fps: 5 } },
   });
 }
+type Pt3 = [number, number, number];
 
 // --- stump --------------------------------------------------------------------------------
 
 function stump(): WorldSprite {
-  const W = 90, H = 80, gx = 45, gy = 66;
-  // 0.75 m wide; the cut top is an ellipse about 2/3 as deep as wide above a 0.46 m front wall.
-  const Rr = 21, ryT = 13, ryB = 12, hgt = m(0.46);
-  const cyb = gy - ryB; // base ellipse center
-  const cyt = cyb - hgt; // top ellipse center
-  const L = new Ix(W, H);
-  const roots: Tube[] = [
-    { pal: P.bark, tex: 'streak', pts: spline([[gx - 14, cyb + 4], [gx - 24, cyb + 9], [gx - 32, cyb + 11]]), r0: 4.5, r1: 1.3, seed: 3, lineFrom: 99 },
-    { pal: P.bark, tex: 'streak', pts: spline([[gx + 10, cyb + 8], [gx + 17, cyb + 12], [gx + 24, cyb + 13]]), r0: 4, r1: 1.2, seed: 4, lineFrom: 99 },
-  ];
-  // Wall: a bark cylinder.
-  const wallM = new Mask(0, 0, W, H);
-  const wInfo = new Map<number, [number, number]>();
+  const W = 140, H = 110, gx = 70, gy = 88;
+  // About 0.8 m across; the cut top is an ellipse 2/3 as deep as wide above a 0.42 m wall.
+  const Rr = 23, ryT = 15, ryB = 14, hgt = m(0.42);
+  const cyb = gy - ryB * 0.55; // base ellipse centre
+  const cyt = cyb - hgt; // top ellipse centre
+  const B = new Buf(W, H);
+  const bark: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'> = { pal: BARK_OAK, tex: 'furrow', moss: MOSS, mossAmt: 0.7, spacing: 4.5 };
+  const roots: [number, number, number, boolean][] = [[-150, 26, 6, true], [-30, 24, 6, true], [174, 36, 8, false], [8, 34, 8, false], [128, 30, 7, false], [60, 28, 7, false]];
+  for (const [deg, len, r0, behind] of roots) if (behind) drawTube(B, rootTube(gx, gy - 4, Rr - 4, deg, len, r0, 700 + deg, bark));
+  // Wall: a bark cylinder with a slightly irregular rim.
+  const rimJ = (u: number) => (noise(u * 6 + 3, 0, 1, 31) - 0.5) * 3;
+  const tb: Tube = { ...bark, pts: [], r0: Rr, r1: Rr, seed: 9, knots: [{ s: 12, a: 8, r: 3.5 }] };
   for (let x = gx - Rr; x <= gx + Rr; x++) {
     const u = clamp((x + 0.5 - gx) / Rr, -1, 1);
-    const yt = cyt + ryT * Math.sqrt(1 - u * u);
+    const yt = cyt + ryT * Math.sqrt(1 - u * u) + rimJ(u);
     const yb = cyb + ryB * Math.sqrt(Math.max(0, 1 - u * u));
-    for (let y = Math.floor(yt); y <= Math.ceil(yb); y++) {
-      wallM.add(x, y);
-      wInfo.set(y * W + x, [u, y - cyt]);
+    for (let y = Math.floor(yt - 1); y <= Math.ceil(yb); y++) {
+      const s = yb - y;
+      const Lv = lambert(u, 0.1, Math.sqrt(Math.max(0, 1 - u * u))) - (s > hgt ? 0.1 : 0);
+      const a = Math.asin(u) * Rr;
+      // Moss creeping up the shaded side and the base.
+      const mv = clamp((u - 0.1) * 1.6, 0, 1) * 0.7 + clamp(1 - s / 12, 0, 1) * 0.45 + (noise(a * 0.3, s * 0.25, 1, 12) - 0.5) * 0.7;
+      if (mv > 0.62) {
+        B.put(x, y, MOSS, clamp((Lv > 0.6 ? 4 : Lv > 0.38 ? 3 : 2) + (noise(a * 0.5, s * 0.5, 1, 13) > 0.6 ? 1 : 0), 1, 6), 1, 0);
+        continue;
+      }
+      const [p, st] = barkStep(tb, Lv, a, s, Rr, 0, u);
+      B.put(x, y, p, st, 1, 0);
     }
   }
-  // Moss on the shaded side, climbing from the base in mottled dabs.
-  const mossAt = (x: number, y: number, u: number, s: number): number | null => {
-    const reach = (0.5 + 0.5 * noise(x, 0, 5, 12)) * (hgt + ryB) * clamp((u - 0.15) * 1.9, 0, 1);
-    const cell = dabCell(x + 0.5, y + 0.5, 3, 3, 13);
-    return s > hgt + ryB - reach + (cell - 0.5) * 6 ? cell : null;
-  };
-  stamp(L, wallM, (x, y) => {
-    const [u, s] = wInfo.get(y * W + x)!;
-    const Lv = lambert(u, 0.1, Math.sqrt(Math.max(0, 1 - u * u))) - (s > hgt ? 0.1 : 0);
-    const mc = mossAt(x, y, u, s);
-    if (mc !== null) return [P.oak, clamp(folStep(Lv + 0.05, mc), 1, 4)];
-    return barkStep({ pal: P.bark, tex: 'streak', pts: [], r0: Rr, r1: Rr, seed: 9 }, Lv, Math.asin(u) * Rr, s, Rr);
-  });
-  for (const r of roots) drawTube(L, r);
-  // The cut face: growth rings, a crack, the pith, a lit sapwood rim and a bark lip.
-  const top = new Mask(0, 0, W, H);
-  for (let y = Math.floor(cyt - ryT) - 1; y <= cyt + ryT + 1; y++)
+  for (const [deg, len, r0, behind] of roots) if (!behind) drawTube(B, { ...rootTube(gx, gy - 4, Rr - 4, deg, len, r0, 700 + deg, bark), part: 2 });
+  // The cut face: growth rings, radial cracks, a dark heart, a lit sapwood rim and a bark lip.
+  for (let y = Math.floor(cyt - ryT) - 2; y <= cyt + ryT + 2; y++)
     for (let x = gx - Rr - 1; x <= gx + Rr + 1; x++) {
       const u = (x + 0.5 - gx) / Rr, v = (y + 0.5 - cyt) / ryT;
-      if (u * u + v * v <= 1) top.add(x, y);
+      const d0 = Math.sqrt(u * u + v * v);
+      const jag = rimJ(u) / ryT;
+      if (d0 > 1 + (v > 0 ? jag : 0)) continue;
+      const d = d0 + (noise(x, y, 3, 21) - 0.5) * 0.06;
+      const lit = u + v * 1.2;
+      if (d > 0.9) {
+        B.put(x, y, BARK_OAK, lit < -0.7 ? 5 : lit < 0.3 ? 4 : lit < 0.9 ? 3 : 2, 3, 1);
+        continue;
+      }
+      if (d > 0.8) {
+        B.put(x, y, WOOD_CUT, lit < -0.3 ? 6 : lit < 0.5 ? 5 : 4, 3, 1);
+        continue;
+      }
+      const ring = frac(d * 7.5 + noise(x, y, 6, 22) * 0.4);
+      let s = lit < -0.5 ? 5 : lit > 0.6 ? 3 : 4;
+      if (d < 0.45) s -= 1; // darker heartwood
+      if (ring < 0.2) s -= 1;
+      const ang = Math.atan2(v, u);
+      for (const ca of [0.7, 2.6, -1.9]) if (Math.abs(ang - ca) < 0.06 / Math.max(0.12, d) && d > 0.15 && d < 0.85) s = 1;
+      if (d < 0.07) s = 1;
+      B.put(x, y, WOOD_CUT, clamp(s, 1, 6), 3, 1);
     }
-  stamp(L, top, (x, y) => {
-    const u = (x + 0.5 - gx) / Rr, v = (y + 0.5 - cyt) / ryT;
-    const d = Math.sqrt(u * u + v * v);
-    const lit = u + v;
-    if (d > 0.88) return [P.bark, lit < -0.6 ? 5 : lit < 0.4 ? 3 : 2];
-    if (d > 0.79) return [P.woodCut, lit < -0.3 ? 5 : lit < 0.5 ? 4 : 3];
-    const dd = d + (noise(x, y, 3, 21) - 0.5) * 0.07;
-    const ring = frac(dd * 5.5);
-    let s = lit < -0.45 ? 4 : lit > 0.55 ? 2 : 3;
-    if (ring < 0.17) s -= 1;
-    const ang = Math.atan2(v, u);
-    if (Math.abs(ang - 0.7) < 0.05 / Math.max(0.15, d) && d > 0.12) s = 1;
-    if (d < 0.09) s = 1;
-    return [P.woodCut, clamp(s, 1, 5)];
-  });
-  // A moss cushion creeping over the shaded back rim.
-  const tuft = new Mask(0, 0, W, H);
-  for (let y = Math.floor(cyt - ryT) - 4; y <= cyt; y++)
-    for (let x = gx + 4; x <= gx + Rr + 2; x++) {
-      const u = (x + 0.5 - gx - 14) / 9, v = (y + 0.5 - cyt + ryT * 0.7) / 4.6;
-      const cell = dabCell(x + 0.5, y + 0.5, 3, 3, 33);
-      if (u * u + v * v <= 1 - (cell < 0.25 ? 0.3 : 0)) tuft.add(x, y);
+  // A moss cushion creeping over the shaded back rim, and two small shelf fungi on the wall.
+  for (let y = Math.floor(cyt - ryT) - 5; y <= cyt; y++)
+    for (let x = gx + 2; x <= gx + Rr + 3; x++) {
+      const u = (x + 0.5 - gx - 14) / 10, v = (y + 0.5 - cyt + ryT * 0.7) / 5;
+      const cell = noise(x, y, 2, 33);
+      if (u * u + v * v > 1 - (cell < 0.3 ? 0.35 : 0)) continue;
+      B.put(x, y, MOSS, clamp(Math.round(4.6 - (u + v) * 1.3 + (cell - 0.5) * 2), 1, 6), 4, 2);
     }
-  stamp(L, tuft, (x, y) => {
-    const u = (x + 0.5 - gx - 14) / 9, v = (y + 0.5 - cyt + ryT * 0.7) / 4.6;
-    return [P.oak, folStep(0.62 - (u + v) * 0.22, dabCell(x + 0.5, y + 0.5, 3, 3, 33))];
-  });
-  stat('stump', L);
-  const frame = toFrame(L);
-  return finish('stump', 'Tree Stump', [0.75, 0.5], ['cover-half', 'climbable'], { gx, anims: { idle: { frames: [frame], fps: 0 } } });
+  shelfFungus(B, gx + 13, cyb - 14, 7, 3, 5);
+  shelfFungus(B, gx + 18, cyb - 8, 5, 2.4, 6);
+  const frame = toFrame(B);
+  return finish('stump', 'Tree Stump', [0.8, 0.5], ['cover-half', 'climbable'], { gx, gy, anims: { idle: { frames: [frame], fps: 0 } } });
+}
+
+/** A bracket fungus: a half-disc shelf lit on top, with concentric growth bands and a dark underside. */
+function shelfFungus(B: Buf, x0: number, y0: number, rx: number, ry: number, part: number): void {
+  for (let y = Math.floor(y0 - ry - 1); y <= y0 + 2; y++)
+    for (let x = Math.floor(x0 - rx - 1); x <= x0 + rx + 1; x++) {
+      const u = (x + 0.5 - x0) / rx, v = (y + 0.5 - y0) / ry;
+      if (v > 0) {
+        if (y <= y0 + 1 && Math.abs(u) < 0.9 && v < 1.6) B.put(x, y, FUNGUS, 1, part, 3);
+        continue;
+      }
+      const d = Math.hypot(u, v);
+      if (d > 1) continue;
+      const band = frac(d * 3);
+      let s = u < -0.3 ? 5 : u < 0.4 ? 4 : 3;
+      if (band < 0.3) s -= 1;
+      if (d > 0.82) s = u < 0 ? 6 : 4;
+      B.put(x, y, FUNGUS, clamp(s, 1, 6), part, 3);
+    }
 }
 
 // --- group --------------------------------------------------------------------------------
 
-const sprites: WorldSprite[] = [oak(), pine(), maple(), bamboo(), stump()];
-writeGroup('trees', sprites);
+const ONLY = process.env.TREES_ONLY?.split(',');
+const all: [string, () => WorldSprite][] = [['oak', oak], ['pine', pine], ['maple', maple], ['bamboo', bamboo], ['stump', stump]];
+const sprites: WorldSprite[] = all.filter(([k]) => !ONLY || ONLY.includes(k)).map(([, f]) => f());
+if (!ONLY) writeGroup('trees', sprites);
 const dir = previewDir();
 preview(sprites, join(dir, 'trees.png'), { scale: 1 });
 for (const s of sprites) {
@@ -1398,4 +910,4 @@ for (const s of sprites) {
     strip.save(join(dir, `trees-${s.name}-${k}.png`));
   }
 }
-console.log(STATS.join('\n'));
+void PAL;

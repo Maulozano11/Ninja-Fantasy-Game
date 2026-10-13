@@ -35,6 +35,15 @@ export function capeWind(g: DrawCtx): Wind {
       return { dx: -1, lift: 0, wave: f % 2 };
     case 'victory':
       return { dx: -3, lift: 2, wave: f % 2 ? 1 : 0 };
+    // Moving: the cloth trails behind, flapping with the steps.
+    case 'walk':
+      return { dx: -2, lift: 0.5, wave: [0, 1, 1, 0, 0, -1, -1, 0][f % 8] };
+    case 'run':
+      return { dx: -8, lift: 5, wave: [1, 0, -1, 1, 0, -1][f % 6] };
+    case 'sneak':
+      return { dx: -1.5, lift: 0, wave: [0, 1, 0, 0, -1, 0][f % 6] };
+    case 'crouch':
+      return { dx: -1, lift: 0, wave: 0 };
     default:
       return { dx: 0, lift: 0, wave: [0, 0, -1, -1][f % 4] };
   }
@@ -170,8 +179,12 @@ interface CloakShape {
 }
 
 /** Big back panel of a cloak, hanging from the shoulders (capeBack). */
-function cloakBack(g: DrawCtx, pen: Pen, o: CloakOpts): CloakShape {
+function cloakBack(g: DrawCtx, pen: Pen, o0: CloakOpts): CloakShape {
   const r = g.rig;
+  // Knocked out (drawn upright, then laid on the ground): the cloak hugs the
+  // back and legs instead of flaring, so it lies flat along the body, and
+  // never reaches past the front (the ground, once laid down).
+  const o = r.pose === 'downed' ? { ...o0, flare: -1.5, bulge: 0.4, hemR: Math.min(o0.hemR, 1) } : o0;
   const b = g.bp;
   const Lt = b.torsoLen;
   const w = capeWind(g);
@@ -563,8 +576,10 @@ export const CAPE_ITEMS: ItemDef[] = [
       // Tail: a ribbon streaming left and down, rippling by frame.
       const n = 8;
       const start = add(nk, v(-3.5, 0.5));
-      const reach = 9 + Math.abs(w.dx) * 1.3;
-      const drop = 15 - w.lift * 1.6;
+      // Knocked out, the tail lies along the back (drawn upright, then laid down).
+      const limp = r.pose === 'downed';
+      const reach = limp ? 2.5 : 9 + Math.abs(w.dx) * 1.3;
+      const drop = limp ? 17 : 15 - w.lift * 1.6;
       let prev = start;
       for (let i = 1; i <= n; i++) {
         const t = i / n;

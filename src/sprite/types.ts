@@ -8,9 +8,15 @@ export type BodyType = 'male' | 'female' | 'bulky' | 'slender';
 /** Bodies drawn with the female face, lashes, lips and slimmer feet. */
 export const isFemaleBody = (b: BodyType | string): boolean => b === 'female' || b === 'slender';
 
-export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge';
+export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge' | MovePose;
 
+/** Poses for moving around the battle map: walking, running, crouching, sneaking and lying downed. */
+export type MovePose = 'walk' | 'run' | 'crouch' | 'sneak' | 'downed';
+
+/** The poses the character creator previews. */
 export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'cast', 'hurt', 'victory', 'charge'];
+
+export const MOVE_POSES: MovePose[] = ['walk', 'run', 'crouch', 'sneak', 'downed'];
 
 /**
  * How a character casts: hand signs, runes floating before an open palm, a

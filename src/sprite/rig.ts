@@ -6,7 +6,7 @@
 // a 3/4 view facing RIGHT. "Near" limbs are the character's right arm/leg
 // (screen-left, drawn in front); "far" limbs are on screen-right, behind.
 
-import { add, len, norm, scale, sub, v, Vec } from './raster';
+import { add, len, norm, RES, scale, sub, v, Vec } from './raster';
 import type { BodyType, CastStyle, SpritePose } from './types';
 
 export const GROUND = 60; // ground line under the body (shadow centre)
@@ -168,6 +168,37 @@ interface PoseFrame {
   farHandFront?: boolean;
   /** -1 bends the near elbow down instead of out (an arm carrying something at the side). */
   bendN?: 1 | -1;
+  /**
+   * Pelvis height above the ankle line, in leg lengths. When set it replaces
+   * the ground solve and the feet hang from level hips (the lean no longer
+   * tips one foot up and the other down), so a step cycle places every foot
+   * exactly: planted feet at `hip` (plus the ground's depth slope), raised
+   * ones above it.
+   */
+  hip?: number;
+  /**
+   * Raises the whole body this many design units above the ground, so both
+   * feet leave it (the flight phase of a run).
+   */
+  lift?: number;
+  /**
+   * Lowers the pelvis this many design units while the feet stay where the
+   * pose puts them (the knees bend to take it): the "down" of a step.
+   */
+  sink?: number;
+  /**
+   * Keeps the body on the fine pixel grid: the pelvis drops onto the nearest
+   * fine pixel row (the planted feet still reach the ground) and the head sits
+   * on half design units, so a looping cycle moves in clean 1 px steps
+   * instead of shimmering.
+   */
+  snap?: boolean;
+  /**
+   * The figure is drawn upright and then laid on the ground for display: the
+   * finished sprite is transposed (head toward the back, light still from
+   * the upper left) and set on the ground line. See Rig.lay.
+   */
+  lie?: boolean;
 }
 
 const arm = (x: number, y: number): HandTarget => ({ from: 'shoulder', x, y, units: 'arm' });
@@ -214,6 +245,167 @@ const GRIMOIRE_POSE: PoseFrame[] = [
 
 /** Grimoire II holds the same stance for its 8-frame writing animation. */
 const SCRIPT_POSE: PoseFrame[] = [0, 0, 1, 1, 0, 0, 1, 1].map((i) => GRIMOIRE_POSE[i]);
+
+// ---------------------------------------------------------------------------
+// Battle-map movement: walk, run, crouch, sneak, downed
+// ---------------------------------------------------------------------------
+
+/** A foot in a step cycle: [forward of its hip, raised off the ground], in leg lengths. */
+type Foot = [number, number];
+
+/**
+ * 3/4 ground plane: a foot set down further forward is also nearer the
+ * viewer, so it stands this much lower on screen (leg lengths per leg length
+ * forward). It keeps the near foot reading in front when it crosses the far one.
+ */
+const DEPTH = 0.12;
+
+/** Planted foot height under a level hip (leg lengths) at `x` forward, on the sloped ground. */
+const groundY = (h: number, x: number) => h + DEPTH * x;
+/** Lowest a foot `x` forward of its hip can reach. */
+const reachY = (x: number) => Math.sqrt(Math.max(0, 0.992 * 0.992 - x * x));
+
+/**
+ * A step cycle: one leg's feet per frame, the other leg the same `half` a
+ * cycle later. Planted feet (raise 0) stand on the ground plane, raised ones
+ * hang that much above it. The hips are carried at one height for the whole
+ * cycle, so the body only moves where a frame asks for it (sink, lift): as
+ * high as every planted leg can reach, counting the `sunk` leg lengths a
+ * frame's sink brings the hips down by.
+ */
+function stepCycle(hip: number, leg: Foot[], half: number, sunk: (i: number) => number = () => 0): { hip: number; footN: Vec; footF: Vec }[] {
+  const n = leg.length;
+  let h = hip;
+  leg.forEach((_, i) => {
+    for (const [x, up] of [leg[i], leg[(i + half) % n]]) if (!up) h = Math.min(h, reachY(x) - DEPTH * x + sunk(i));
+  });
+  const at = ([x, up]: Foot, i: number) => v(x, Math.min(groundY(h, x) - up, reachY(x) + sunk(i)));
+  return leg.map((f, i) => ({ hip: h, footN: at(f, i), footF: at(leg[(i + half) % n], i) }));
+}
+
+/** A hand `x` arm lengths in front of (+) or behind (-) its shoulder, `reach` arm lengths away (1 = straight arm). */
+const swing = (x: number, reach: number): HandTarget => arm(x, Math.sqrt(Math.max(0.02, reach * reach - x * x)));
+
+/**
+ * Walk, 8 frames: contact, down, passing and up for each leg. The legs swap
+ * every 4 frames, the arms swing against them, and the body is 1 px lower on
+ * contact and down than on passing and up. Upright and light.
+ */
+const WALK_LEG: Foot[] = [
+  [0.2, 0], // contact: the heel lands in front
+  [0.1, 0], // down: the weight comes on, the knee gives
+  [0.0, 0], // passing: under the hip
+  [-0.1, 0], // up: pushing off
+  [-0.2, 0], // the other foot lands: the toes leave the ground behind
+  [-0.13, 0.07], // the foot comes up behind, the knee bending
+  [0.02, 0.085], // passing: knee forward, the foot under the body
+  [0.14, 0.04], // reaching forward to land
+];
+// The 1 px sink on contact and down lets the spread legs stay nearly straight.
+const WALK_STEPS = stepCycle(0.975, WALK_LEG, 4, (i) => (i % 4 < 2 ? 0.03 : 0));
+const WALK: PoseFrame[] = WALK_STEPS.map((legs, i) => {
+  const c = Math.cos((i / 8) * Math.PI * 2); // +1 when the near leg is forward
+  return {
+    lean: 1.5,
+    snap: true,
+    sink: i % 4 < 2 ? 0.5 : 0,
+    ...legs,
+    // The arms swing against the legs; the near (weapon) arm a little less.
+    handN: swing(-0.12 - 0.15 * c, 0.94),
+    handF: swing(0.2 + 0.2 * c, 0.93 - 0.05 * Math.max(0, c)),
+    shapeN: 'hold',
+    shapeF: 'relaxed',
+  };
+});
+
+/**
+ * Run, 6 frames: contact, down and a flight (both feet off the ground) for
+ * each leg, leaning into it. The free arm pumps with the elbow bent; the near
+ * arm swings low and back, so a weapon is carried trailing behind.
+ */
+const RUN_LEG: Foot[] = [
+  [0.18, 0], // contact under the body
+  [-0.05, 0], // down: the knee takes the weight
+  [-0.34, 0], // push-off: the toes leave the ground (flight)
+  [-0.3, 0.34], // the heel kicks up behind
+  [0.12, 0.4], // the knee drives through, high
+  [0.33, 0.13], // reaching forward to land (flight)
+];
+const RUN_STEPS = stepCycle(0.9, RUN_LEG, 3);
+const RUN: PoseFrame[] = RUN_STEPS.map((legs, i) => {
+  const a = (i / 6) * Math.PI * 2;
+  const c = Math.cos(a); // +1 when the near leg is forward
+  const s = Math.sin(a);
+  return {
+    lean: 10,
+    snap: true,
+    sink: i % 3 === 1 ? 1 : 0,
+    lift: i % 3 === 2 ? 1.5 : 0,
+    ...legs,
+    handN: arm(-0.18 - 0.27 * c + 0.05 * s, 0.6 - 0.08 * c),
+    handF: arm(0.22 + 0.36 * c - 0.05 * s, 0.46 - 0.16 * c),
+    shapeN: 'grip',
+    shapeF: 'fist',
+  };
+});
+
+/**
+ * Sneak, 6 frames: a crouched walk on the balls of the feet, knees lifted,
+ * the weapon hand low and ready, the free hand forward for balance.
+ */
+const SNEAK_LEG: Foot[] = [
+  [0.15, 0], // the foot set down in front
+  [0.03, 0], // the weight comes over it
+  [-0.09, 0], // rolling off behind
+  [-0.15, 0.04], // the other foot is down: this one peels off
+  [-0.02, 0.14], // passing, knee high
+  [0.1, 0.08], // feeling forward
+];
+const SNEAK_STEPS = stepCycle(0.78, SNEAK_LEG, 3);
+const SNEAK: PoseFrame[] = SNEAK_STEPS.map((legs, i) => {
+  const c = Math.cos((i / 6) * Math.PI * 2);
+  return {
+    lean: 15,
+    snap: true,
+    sink: i % 3 === 1 ? 0.5 : 0,
+    ...legs,
+    handN: arm(0.26 - 0.05 * c, 0.78),
+    handF: arm(0.55 + 0.05 * c, 0.42),
+    shapeN: 'grip',
+    shapeF: 'relaxed',
+  };
+});
+
+/** Crouch, 2 frames: low behind cover, knees bent, leaning in, the weapon ready and the free palm out against the cover; breathing. */
+const CROUCH_BASE: PoseFrame = {
+  lean: 30,
+  snap: true,
+  hip: 0.42,
+  footN: v(0.2, groundY(0.42, 0.2)),
+  footF: v(-0.06, groundY(0.42, -0.06)),
+  handN: arm(0.42, 0.62),
+  handF: arm(0.6, 0.5),
+  shapeN: 'grip',
+  shapeF: 'open',
+};
+const CROUCH: PoseFrame[] = [CROUCH_BASE, { ...CROUCH_BASE, chestDy: 0.5, handN: arm(0.42, 0.63), handF: arm(0.6, 0.51) }];
+
+/**
+ * Downed, 2 frames: knocked out. Drawn upright as a limp figure, then laid
+ * on the ground (see PoseFrame.lie): the near arm flops down in front of the
+ * body, the far one lies along it, the near knee is drawn up. Very slow breathing.
+ */
+const DOWNED_BASE: PoseFrame = {
+  lie: true,
+  lean: -5,
+  footN: v(0.24, 0.9),
+  footF: v(-0.04, 0.985),
+  handN: arm(0.62, 0.68),
+  handF: arm(0.14, 0.95),
+  shapeN: 'relaxed',
+  shapeF: 'relaxed',
+};
+const DOWNED: PoseFrame[] = [DOWNED_BASE, { ...DOWNED_BASE, lean: -6.5 }];
 
 export const POSES: Record<RigPose, PoseFrame[]> = {
   idle: [IDLE, IDLE, { ...IDLE, chestDy: 1 }, { ...IDLE, chestDy: 1 }],
@@ -368,6 +560,12 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
       shapeF: 'fist',
     },
   ],
+  // Battle-map movement poses.
+  walk: WALK,
+  run: RUN,
+  crouch: CROUCH,
+  sneak: SNEAK,
+  downed: DOWNED,
 };
 
 export const POSE_FPS: Record<SpritePose, number> = {
@@ -378,6 +576,11 @@ export const POSE_FPS: Record<SpritePose, number> = {
   hurt: 4,
   victory: 3,
   charge: 10,
+  walk: 10,
+  run: 12,
+  crouch: 3,
+  sneak: 8,
+  downed: 2,
 };
 
 export interface Rig {
@@ -390,7 +593,7 @@ export interface Rig {
   neck: Vec;
   up: Vec;
   right: Vec;
-  head: Vec; // integer head center
+  head: Vec; // head center: whole design units (half units on snapped poses)
   shoulderN: Vec;
   shoulderF: Vec;
   elbowN: Vec;
@@ -411,7 +614,30 @@ export interface Rig {
   farHandFront: boolean;
   /** Torso-local point: x along the shoulder line (+ toward facing side), y up from the pelvis. */
   T: (x: number, y: number) => Vec;
+  /** Set for poses laid on the ground for display ('downed', see PoseFrame.lie). */
+  lay?: Lay;
 }
+
+/**
+ * How a figure drawn upright is laid on the ground: the finished sprite is
+ * transposed, so a drawn fine pixel (x, y) lands on (y + dx, x + dy). The
+ * head goes to the left (the back), the front of the body faces the ground
+ * and the near limbs lie on top; the light stays in the upper left.
+ */
+export interface Lay {
+  dx: number;
+  dy: number;
+  /** Middle of the lying body (design x): where its ground shadow goes. */
+  cx: number;
+  /** Design x, in the UPRIGHT drawing, that lands on the ground line (for things dropped on the ground). */
+  groundX: number;
+}
+
+/** Design x of the middle of the frame. */
+const FRAME_MID = 32;
+
+/** Moves a design y down onto the next fine pixel row (when `snap`). */
+const snapDown = (y: number, snap: boolean): number => (snap ? Math.ceil(y * RES - 1e-6) / RES : y);
 
 function solve2(root: Vec, target: Vec, l1: number, l2: number, bend: 1 | -1): { mid: Vec; end: Vec } {
   const d0 = sub(target, root);
@@ -425,20 +651,91 @@ function solve2(root: Vec, target: Vec, l1: number, l2: number, bend: 1 | -1): {
   return { mid, end };
 }
 
+/**
+ * The rig as the sprite shows it. For most poses this is the rig the figure is
+ * drawn with; a pose laid on the ground ('downed') returns its joints where
+ * they land in the lying sprite (see Lay), so anchors such as the head or the
+ * pelvis match the pixels.
+ */
 export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
-  const bp = BODY_PARAMS[body];
+  const r = drawRig(body, pose, frame);
+  return r.lay ? layRig(r) : r;
+}
+
+/** The upright rig every layer is drawn with (compose.ts lays a 'downed' figure down afterwards). */
+export function drawRig(body: BodyType, pose: RigPose, frame: number): Rig {
   const frames = POSES[pose] || POSES.idle;
   const f = frames[((frame % frames.length) + frames.length) % frames.length];
+  const r = solveRig(body, pose, frame, f);
+  if (f.lie) r.lay = layFor(solveRig(body, pose, 0, frames[0]));
+  return r;
+}
+
+/**
+ * Where a lying figure goes: its front (the chest, toward +x in the upright
+ * drawing) rests on the ground line, and the body from the hair to the soles
+ * is centred in the frame. Taken from the pose's first frame, so breathing
+ * never shifts the body.
+ */
+function layFor(r: Rig): Lay {
+  const b = r.bp;
+  const groundX = r.pelvis.x + b.chestHalf * 0.62 + b.bust * 0.4 + 2.2;
+  const top = r.head.y - b.headRy * b.headScale - 2.4;
+  const bottom = ANKLE_N + 6;
+  const mid = (top + bottom) / 2;
+  const dx = Math.round(FRAME_MID * RES - mid * RES);
+  const dy = Math.round(GROUND * RES - 1 - groundX * RES);
+  return { dx, dy, cx: (mid * RES + dx) / RES, groundX };
+}
+
+/** The rig's joints moved to where the transpose of Lay puts them. */
+export function layRig(r: Rig): Rig {
+  const lay = r.lay;
+  if (!lay) return r;
+  const P = (p: Vec): Vec => v(p.y + lay.dx / RES, p.x + lay.dy / RES);
+  const D = (d: Vec): Vec => v(d.y, d.x);
+  return {
+    ...r,
+    pelvis: P(r.pelvis),
+    neck: P(r.neck),
+    up: D(r.up),
+    right: D(r.right),
+    head: P(r.head),
+    shoulderN: P(r.shoulderN),
+    shoulderF: P(r.shoulderF),
+    elbowN: P(r.elbowN),
+    elbowF: P(r.elbowF),
+    wristN: P(r.wristN),
+    wristF: P(r.wristF),
+    handN: P(r.handN),
+    handF: P(r.handF),
+    hipN: P(r.hipN),
+    hipF: P(r.hipF),
+    kneeN: P(r.kneeN),
+    kneeF: P(r.kneeF),
+    ankleN: P(r.ankleN),
+    ankleF: P(r.ankleF),
+    T: (x: number, y: number) => P(r.T(x, y)),
+  };
+}
+
+function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): Rig {
+  const bp = BODY_PARAMS[body];
 
   const leanRad = (f.lean * Math.PI) / 180;
   const up = v(Math.sin(leanRad), -Math.cos(leanRad));
   const right = v(Math.cos(leanRad), Math.sin(leanRad));
   const legLen = bp.thigh + bp.shin;
 
-  // Pelvis height is solved so the lowest ankle sits on the ground.
-  const footDrop = Math.max(f.footN.y, f.footF.y) * legLen;
+  // Pelvis height is solved so the lowest ankle sits on the ground (or given
+  // by `hip`); `lift` raises the whole body off it.
+  const footDrop = (f.hip ?? Math.max(f.footN.y, f.footF.y)) * legLen;
   const jitter = f.jitter ? (frame % 2 === 0 ? -f.jitter : f.jitter) * 0.5 : 0;
-  const pelvis = v(31.5 + (f.pelvisDx || 0) + jitter, ANKLE_N - footDrop);
+  const stand = v(31.5 + (f.pelvisDx || 0) + jitter, ANKLE_N - footDrop - (f.lift || 0));
+  // `sink` and `snap` lower the pelvis while the feet stay where the pose puts
+  // them (the knees take it up), `snap` onto the fine pixel grid.
+  const moved = !!(f.sink || f.snap);
+  const pelvis = moved ? v(stand.x, snapDown(stand.y + (f.sink || 0), !!f.snap)) : stand;
 
   const T = (x: number, y: number): Vec => add(pelvis, add(scale(right, x), scale(up, y)));
 
@@ -446,8 +743,20 @@ export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
   // The far side sits further back, so it is drawn higher on screen: the hip
   // a little, the foot by FAR_LIFT. Its leg stays about as straight as the near one.
   const hipF = sub(T(bp.hipHalf * 0.42, 0.3), v(0, FAR_HIP_LIFT));
-  const legN = solve2(hipN, add(hipN, scale(f.footN, legLen)), bp.thigh, bp.shin, -1);
-  const legF = solve2(hipF, add(hipF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), bp.thigh, bp.shin, -1);
+  // Foot targets hang from where the hips stood before sinking or snapping
+  // (level hips when the pose gives its hip height).
+  let fromN = hipN;
+  let fromF = hipF;
+  if (f.hip !== undefined) {
+    fromN = v(hipN.x, stand.y - 0.3);
+    fromF = v(hipF.x, stand.y - 0.3 - FAR_HIP_LIFT);
+  } else if (moved) {
+    const back = sub(stand, pelvis);
+    fromN = add(hipN, back);
+    fromF = add(hipF, back);
+  }
+  const legN = solve2(hipN, add(fromN, scale(f.footN, legLen)), bp.thigh, bp.shin, -1);
+  const legF = solve2(hipF, add(fromF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), bp.thigh, bp.shin, -1);
 
   const chestDy = f.chestDy || 0;
   const neck = add(T(0.6, bp.torsoLen), v(0, chestDy));
@@ -473,7 +782,9 @@ export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
   const aF = solveArm(shoulderF, f.handF);
 
   const headY = neck.y - 5.9 * bp.headScale + (f.headDy || 0);
-  const head = v(Math.round(neck.x - 0.4 + (f.headDx || 0)), Math.round(headY));
+  const headX = neck.x - 0.4 + (f.headDx || 0);
+  // Whole design units, or half units (whole fine pixels) on snapped poses.
+  const head = f.snap ? v(Math.round(headX * RES) / RES, Math.round(headY * RES) / RES) : v(Math.round(headX), Math.round(headY));
 
   return {
     body,

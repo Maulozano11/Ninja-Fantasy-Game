@@ -15,6 +15,7 @@
 
 import { armDepth, armJoints, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
 import { add, capsule, ellipse, fine, GRID, Layer, lerp, norm, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
+import { GROUND } from '../rig';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -487,6 +488,9 @@ interface Hang {
   w: number;
 }
 
+/** Lowest a hanging hem goes (design y): the near sole's row, so a gown never sinks into the ground. */
+const HEM_FLOOR = GROUND + 1.5;
+
 /** How much a hanging panel follows its thigh (0 = straight down). Kept low so skirts never bell out. */
 const HANG_FOLLOW = 0.22;
 
@@ -509,6 +513,8 @@ function hang(g: DrawCtx, lx: number, ytop: number, k: number, droop = 0.8, flar
   const c = -0.6;
   const dr = droop * (1 - clamp(((lx - c) / b.hipHalf) ** 2, 0, 1));
   const bot = add(add(r.T(lx * (1 + flare), 0.5), scale(dir, k)), v(0, dr));
+  // A long hem never hangs below the soles: in a deep crouch it rests on the ground.
+  if (bot.y > HEM_FLOOR) bot.y = HEM_FLOOR;
   return { top: r.T(lx, ytop), bot, w };
 }
 

@@ -55,7 +55,8 @@ function plate(g: DrawCtx, L: Layer, x: number, y: number, w: number, h: number,
 
 function tails(g: DrawCtx, L: Layer, knot: Vec, pen: Pen, long: boolean): void {
   const sway = [0, 1, 1, 0][g.rig.frame % 4];
-  const trail = g.rig.pose === 'attack' || g.rig.pose === 'hurt' || g.rig.pose === 'charge' ? 3 : 0;
+  const pose = g.rig.pose;
+  const trail = pose === 'attack' || pose === 'hurt' || pose === 'charge' || pose === 'run' ? 3 : pose === 'walk' || pose === 'sneak' ? 1 : 0;
   const n = long ? 12 : 7;
   for (const [dy, len] of [
     [0, n],

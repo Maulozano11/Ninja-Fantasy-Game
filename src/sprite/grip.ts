@@ -21,6 +21,16 @@ export function swordAngle(g: DrawCtx): number {
       return -62;
     case 'charge':
       return 34;
+    // Moving: carried low at the side, the blade angled back (trailing when
+    // running), then held forward and ready when sneaking or crouched.
+    case 'walk':
+      return 134 + 3 * Math.cos((f / 8) * Math.PI * 2);
+    case 'run':
+      return 150 - 10 * Math.cos((f / 6) * Math.PI * 2);
+    case 'sneak':
+      return 22;
+    case 'crouch':
+      return -12;
     default:
       // Matches the reference: blade hangs across the legs at about 50 degrees.
       return 52;
@@ -43,10 +53,21 @@ export function poleAngle(g: DrawCtx): number {
       return -82;
     case 'charge':
       return -18;
+    case 'walk':
+      return -102;
+    case 'run':
+      return -30;
+    case 'sneak':
+      return -18;
+    case 'crouch':
+      return -28;
     default:
       return -84;
   }
 }
+
+/** Knocked out: the hands are limp, a weapon lies dropped beside the body and held techniques fade. */
+export const handsLimp = (g: DrawCtx): boolean => g.rig.pose === 'downed';
 
 /**
  * Hand signs, the grimoire and the charged casts need both hands: held weapons
@@ -57,7 +78,7 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose);
 
 /** Angle of the handle the near hand wraps, or null when it holds nothing with a handle. */
 export function gripAngle(g: DrawCtx): number | null {
-  if (handsBusy(g)) return null;
+  if (handsBusy(g) || handsLimp(g)) return null;
   if (g.has('held', 'held_naginata')) return poleAngle(g);
   if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;

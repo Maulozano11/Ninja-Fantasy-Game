@@ -387,6 +387,9 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   piercing: { near: ['LLLLb', 'LhdhD', 'swiwl'], far: ['LLL', 'dhL', 'iLo'] },
 };
 
+/** Closed eyes (knocked out): each eye a dark lid line across its middle row. */
+const CLOSED_EYES = { near: ['bbbbb', 'LLLLb', 'sbbbl'], far: ['bbo', 'LLL', 'bbo'] };
+
 /** A face row with the eye shape's rows swapped in (near eye cols 0-4, far eye cols 9-11). */
 function eyeRow(row: string, r: number, eyes: { near: string[]; far: string[] }): string {
   const n = eyes.near[r];
@@ -471,7 +474,8 @@ function drawFace(g: DrawCtx): void {
   const skinShade: Record<string, number> = { o: 0, D: 1, s: 2, b: 3, l: 4 };
 
   const shape = g.look.eyeShape || 'standard';
-  const eyes = EYE_ROWS[shape] || EYE_ROWS.standard;
+  const closed = g.rig.pose === 'downed';
+  const eyes = closed ? CLOSED_EYES : EYE_ROWS[shape] || EYE_ROWS.standard;
   const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
   const put = (x: number, y: number, ch: string) => {
@@ -488,20 +492,26 @@ function drawFace(g: DrawCtx): void {
 
   // Overlays drawn on the face layer (no outline, above the skin).
   const set = (x: number, y: number, hex: string) => F.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
-  if (female) {
+  if (female && closed) {
+    // the lashes of the closed lids
+    set(nx - 1, ny + 1, EYELINE);
+    set(nx - 1, ny + 2, EYELINE);
+  } else if (female) {
     // longer lashes at the outer corners
     set(nx - 1, ny - 1, EYELINE);
     set(nx - 1, ny, EYELINE);
     set(nx + 12, ny, EYELINE);
   }
-  // Special eye patterns (pupil marks on the red iris, veins, sage pigment)
-  if (sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') {
+  // Special eye patterns (pupil marks on the red iris, veins, sage pigment); closed eyes show none.
+  if (closed) {
+    // nothing to see under the lids
+  } else if (sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') {
     set(nx + 2, ny + 1, '#14040a');
     if (sp !== 'tomoe1') set(nx + 3, ny + 2, '#14040a');
     if (sp === 'pinwheel') set(nx + 3, ny + 1, '#14040a');
     set(nx + 9, ny + 1, '#14040a');
   }
-  if (sp === 'paleVeins') {
+  if (sp === 'paleVeins' && !closed) {
     for (const [dx, dy] of [
       [-1, 1],
       [-2, 0],
@@ -513,8 +523,10 @@ function drawFace(g: DrawCtx): void {
   if (sp === 'sage') {
     for (let x = -1; x <= 4; x++) set(nx + x, ny - 1, '#c2410c');
     for (let x = 9; x <= 12; x++) set(nx + x, ny - 1, '#c2410c');
-    set(nx + 2, ny + 2, '#120c18');
-    set(nx + 3, ny + 2, '#120c18');
+    if (!closed) {
+      set(nx + 2, ny + 2, '#120c18');
+      set(nx + 3, ny + 2, '#120c18');
+    }
   }
 
   // Brows (hair-colored), two rows above the lash; most bangs cover them.

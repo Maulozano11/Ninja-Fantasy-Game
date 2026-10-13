@@ -425,6 +425,7 @@ function lobeLight(L: Lobe, o: MassOpts, lx: number, ly: number): number {
 /** Value thresholds between the seven greens (steps 1..7). */
 const MASS_TH = [0.24, 0.34, 0.44, 0.54, 0.65, 0.77];
 const MASS_K = Number(process.env.MASS_K ?? 0.62);
+const MASS_LIFT = Number(process.env.MASS_LIFT ?? 0.05);
 const massStep = (v: number): number => 1 + MASS_TH.filter((t) => v > t).length;
 
 /** True if lobe-local (lx, ly) is inside the lobe's ragged, leafy edge. */
@@ -467,7 +468,7 @@ function drawMass(b: Buf, lobes: Lobe[], o: MassOpts, offs: [number, number][] =
       const form = lobeLight({ ...L, x: Math.round(L.x), y: Math.round(L.y) }, o, lx, ly);
       const pick = dab(lx + 17, ly + 5, 3.4, sd + 9) * 0.5 + 0.5;
       const pocket = pick < 0.2 ? -0.13 : pick > 0.84 ? 0.09 : 0;
-      const v = 0.5 + (form - 0.55) * MASS_K + clusterTerm(lx, ly, 5.2, sd + 13) * 0.7 + dab(lx, ly, 2.3, sd) * 0.085 + pocket;
+      const v = 0.5 + MASS_LIFT + (form - 0.55) * MASS_K + clusterTerm(lx, ly, 5.2, sd + 13) * 0.7 + dab(lx, ly, 2.3, sd) * 0.085 + pocket;
       b.put(x, y, BUSH, massStep(v), owner, L.z);
     }
   // The shaded underside: between the lobes that reach the ground, dark leaves fill down to it, so

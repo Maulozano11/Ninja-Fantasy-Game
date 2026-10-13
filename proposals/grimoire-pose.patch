@@ -1,0 +1,354 @@
+diff --git a/src/sprite/castInfo.ts b/src/sprite/castInfo.ts
+index ac6f6b9..33f9477 100644
+--- a/src/sprite/castInfo.ts
++++ b/src/sprite/castInfo.ts
+@@ -6,7 +6,7 @@ import type { CastStyle, SpriteAppearance } from './types';
+ export const CAST_STYLE_INFO: Record<CastStyle, { label: string; desc: string }> = {
+   signs: { label: 'Hand Signs', desc: 'Weaves hand seals before the technique.' },
+   runes: { label: 'Rune Palm', desc: 'An open palm with glowing runes turning before it.' },
+-  book: { label: 'Grimoire', desc: 'Reads the spell from an open book, its runes rising off the page.' },
++  book: { label: 'Grimoire', desc: 'Carries the open grimoire at the side, its emblem glowing, and points the spell at the target.' },
+   sphere: { label: 'Spiral Sphere', desc: 'A spinning sphere of chakra held out in one palm.' },
+   lightning: { label: 'Lightning Hand', desc: 'Crackling lightning gathered in one hand, held low.' },
+   wave: { label: 'Twin-Palm Wave', desc: 'Both palms cupped at the hip, charging a blast.' },
+diff --git a/src/sprite/castfx.ts b/src/sprite/castfx.ts
+index 91befa4..c81bbbb 100644
+--- a/src/sprite/castfx.ts
++++ b/src/sprite/castfx.ts
+@@ -3,10 +3,11 @@
+ // palm, a grimoire held open, or energy charged in the hands. Energy and runes
+ // take the character's chakra color.
+ 
+-import { chakraHex } from './chakraInfo';
++import { CHAKRA_CHOICES, chakraHex } from './chakraInfo';
+ import { mixHex } from './color';
+ import type { DrawCtx } from './ctx';
+-import { add, ellipse, F_NO_OUTLINE, fine, Layer, line, norm, Pen, poly, px, scale, sub, v, Vec } from './raster';
++import { add, ellipse, F_NO_OUTLINE, fine, GRID, Layer, line, norm, partIndex, Pen, px, scale, sub, v, Vec } from './raster';
++import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
+ import { armJoints } from './ctx';
+ import { drawLightning, drawSpiralOrb } from './items/accessories';
+ 
+@@ -63,33 +64,173 @@ function runes(g: DrawCtx, hex: string): void {
+   ellipse(T, c.x - 1.6, c.y, 0.8, 0.8, { ...pen, flags: F_NO_OUTLINE }, 5);
+ }
+ 
+-/** An open book held before the chest, its pages glowing, with runes rising from them. */
++/**
++ * The grimoire, opened toward the caster, so the viewer sees it from outside:
++ * the left cover turned away, the right one almost facing front (it carries
++ * the nature's emblem), and the page tops between them. The pivot is the
++ * bottom of the spine, where the fingers hold it.
++ */
++const GRIMOIRE: PixelTemplate = {
++  pivot: [10, 17],
++  rows: [
++    '.qp........PPPPPPPPPPPPP.',
++    '.ppqp......PPPPPPPPPPppq.',
++    '..qppqp...PPPPPPPPpppqqq.',
++    '..okqppqp.PPPPPpppPPoooo.',
++    '...kkkqppqPPpppPPooocccC.',
++    '...okkkpqoPpPooooccccccC.',
++    '....kkkkkooooccccccccccC.',
++    '....kkkkkocccccccccccccC.',
++    '....okkkkocccccccccccccC.',
++    '.....kkkkocccccccccccccC.',
++    '.....kkkkokccccccccccccC.',
++    '.....okkkokccccccccccccC.',
++    '......kkkkoccccccccccccC.',
++    '......kkkkoccccccccccccC.',
++    '......okkkoccccccccccccC.',
++    '.......kkkocccccccckkkkk.',
++    '.......ookockkkkkkkk.....',
++    '.........ookk............',
++  ],
++};
++
++/** The cover emblem for each chakra nature (7 x 7, 'E' bright, 'e' glow). */
++const EMBLEMS: Record<string, string[]> = {
++  Fire: ['...E...', '..EE...', '..EEE..', '.EEeEE.', '.EeeeE.', '.EeeeE.', '..EEE..'],
++  Embers: ['...E...', '.E.E.E.', '..EEE..', 'EEEeEEE', '..EEE..', '.E.E.E.', '...E...'],
++  Lightning: ['....EE.', '...EE..', '..EE...', '.EEEEE.', '...EE..', '..EE...', '.EE....'],
++  Wind: ['.EE.EE.', 'EeeEeeE', 'EeeEeeE', '.EEEEE.', 'EeeEeeE', 'EeeEeeE', '.EE.EE.'],
++  Water: ['...E...', '..EEE..', '..EeE..', '.EeeeE.', '.EeeeE.', '.EeeeE.', '..EEE..'],
++  Shadow: ['..EEE..', '.EE....', 'EE.....', 'EE.....', 'EE.....', '.EE....', '..EEE..'],
++  Spirit: ['..EEE..', '.EeeeE.', '.E.e.E.', '.EeeeE.', '.EeeeE.', '.EeEeE.', '.E.E.E.'],
++  Light: ['E..E..E', '.E.E.E.', '..EEE..', 'EEEeEEE', '..EEE..', '.E.E.E.', 'E..E..E'],
++  Void: ['..EEE..', '.E...E.', 'E..E..E', 'E.EEE.E', 'E..E..E', '.E...E.', '..EEE..'],
++};
++
++/**
++ * The open grimoire carried at the side on the near hand, after the user's
++ * example: covers tinted after the chakra, the emblem of its nature glowing
++ * on the front, a glowing rim in place of the outline, and sparks rising.
++ */
+ function grimoire(g: DrawCtx, hex: string): void {
+-  const L = g.L('nearArm.held');
+-  const h = g.rig.handN;
+-  const cover: Pen = { mat: g.m('#6b3a22', 'leather'), part: 'held' };
+-  const paper: Pen = { mat: g.m('#efe6cc', 'cloth'), part: 'held' };
+-  const ink: Pen = { mat: g.m('#5a4a3a', 'flat'), part: 'held', flags: F_NO_OUTLINE };
+-  const c = add(h, v(1.2, -2.4));
+-  // cover: a little wider than the pages, tipped toward the viewer
+-  poly(L, [add(c, v(-4.8, -2.6)), add(c, v(4.6, -3.0)), add(c, v(4.9, 2.4)), add(c, v(-4.6, 2.8))], cover, 2);
+-  // two pages and the gutter between them
+-  poly(L, [add(c, v(-4.2, -2.4)), add(c, v(-0.2, -2.0)), add(c, v(-0.2, 2.0)), add(c, v(-4.0, 2.4))], paper, 4);
+-  poly(L, [add(c, v(0.2, -2.0)), add(c, v(4.0, -2.8)), add(c, v(4.3, 1.9)), add(c, v(0.2, 2.0))], paper, 3);
+-  line(L, add(c, v(0, -2.0)), add(c, v(0, 2.0)), { ...cover, flags: F_NO_OUTLINE }, 1);
+-  // lines of script
+-  for (let k = 0; k < 3; k++) {
+-    const y = -1.2 + k * 1.1;
+-    line(L, add(c, v(-3.6, y - 0.1)), add(c, v(-0.9, y + 0.1)), ink, 3);
+-    line(L, add(c, v(0.9, y - 0.2)), add(c, v(3.5, y - 0.5)), ink, 3);
++  // over the arm, like the example; only the fingers come over it (liftHand below)
++  const L = g.L('nearArm.over');
++  const j = armJoints(g.rig, 'N');
++  const cover = g.m(mixHex(hex, '#141018', 0.72), 'leather');
++  const paper = g.m(mixHex('#f4ecd4', hex, 0.15), 'cloth');
++  const glow = g.m(hex, 'glow');
++  const pal: TemplatePalette = {
++    o: [cover, 0],
++    k: [cover, 1],
++    c: [cover, 2],
++    C: [cover, 3],
++    q: [paper, 3],
++    p: [paper, 4],
++    P: [paper, 5],
++  };
++  // the fingers curl over the bottom of the spine
++  const at = add(j.wrist, v(-0.5, -2));
++  stampTemplate(L, GRIMOIRE, at, 0, pal, 'held');
++  const ox = fine(at.x) - GRIMOIRE.pivot[0];
++  const oy = fine(at.y) - GRIMOIRE.pivot[1];
++  const nature = CHAKRA_CHOICES.find((c) => c.id === g.look.chakra.color)?.nature ?? 'Water';
++  (EMBLEMS[nature] ?? EMBLEMS.Water).forEach((row, r) =>
++    [...row].forEach((ch, c) => ch !== '.' && L.set(ox + 14 + c, oy + 6 + r, glow, ch === 'E' ? 5 : 3, 'held', F_NO_OUTLINE)),
++  );
++  // a glowing rim instead of the dark outline
++  const H = GRIMOIRE.rows.length;
++  const W = GRIMOIRE.rows[0].length;
++  const ring: [number, number][] = [];
++  for (let y = oy - 1; y <= oy + H; y++) {
++    for (let x = ox - 1; x <= ox + W; x++) {
++      if (L.has(x, y)) continue;
++      if (L.has(x + 1, y) || L.has(x - 1, y) || L.has(x, y + 1) || L.has(x, y - 1)) ring.push([x, y]);
++    }
+   }
+-  // runes lifting off the pages
++  for (const [x, y] of ring) L.set(x, y, glow, y < oy + 3 ? 4 : 3, 'held', F_NO_OUTLINE);
++  // sparks rising off the pages
+   const T = g.L('top');
+-  const glow: Pen = { mat: g.m(hex, 'glow'), part: 'held' };
+-  const rise = (g.rig.frame % 2) * 1.2;
+-  glyph(T, add(c, v(-2.2, -5.2 - rise)), 1 + g.rig.frame, glow);
+-  glyph(T, add(c, v(1.8, -7.0 - rise)), 4 + g.rig.frame, glow);
+-  glyph(T, add(c, v(-0.2, -9.4 - rise)), 2 + g.rig.frame, glow);
++  const f = g.rig.frame % 2;
++  const sparks = f ? [[3, -3], [11, -5], [19, -3], [7, -7], [22, -6]] : [[5, -4], [14, -3], [21, -5], [9, -6], [1, -2]];
++  for (const [dx, dy] of sparks) T.set(ox + dx, oy + dy, glow, (dx + dy) % 2 ? 5 : 4, 'held', F_NO_OUTLINE);
++  liftHand(g, L);
++}
++
++/** Moves the near hand (skin and any glove on it) onto `dest`, over what was drawn there. */
++function liftHand(g: DrawCtx, dest: Layer): void {
++  const hand = partIndex('handN');
++  for (const d of ['nearArm.body', 'nearArm.cloth', 'nearArm.armor'] as const) {
++    const L = g.L(d);
++    for (let i = 0; i < GRID * GRID; i++) {
++      if (L.mat[i] < 0 || L.part[i] !== hand) continue;
++      dest.mat[i] = L.mat[i];
++      dest.shade[i] = L.shade[i];
++      dest.part[i] = L.part[i];
++      dest.flags[i] = L.flags[i];
++      dest.used = true;
++      L.mat[i] = -1;
++    }
++  }
++}
++
++/**
++ * The whirl around the pointing fingertip, copied from the example at our
++ * scale ('E' bright arcs, 'e' the glow at the fingertip). The pivot is the
++ * fingertip.
++ */
++const WHIRL: PixelTemplate = {
++  pivot: [14, 11],
++  rows: [
++    '........EEE..............',
++    '......EEEeEE....EEEEE....',
++    '......EE....EE...EEEEE...',
++    '.....EE...EEEEEE....EEE..',
++    '.....E...EEEEEEEE...EEE..',
++    '........EE...EEEEE...EE..',
++    '........EE......EE..EEE..',
++    '........EEE..eEeeE..EEE..',
++    '.............e.eeE.EEE...',
++    '...............eEeeEEE...',
++    '..............EEeeEEE....',
++    '............eeeeeEEe...E.',
++    '.............eeeE..EEE..E',
++    '.....................EE.E',
++    '.....................EE..',
++    '..............EEEE...EE..',
++    '....................EEE..',
++    '.............EEEEEEEEE...',
++    '...............EEEEEE....',
++    '.....E.........E....E....',
++    '.....EE........EEEEEE....',
++    '......EEEEEE.............',
++    '.......EEEE..............',
++  ],
++};
++
++/** Energy whirling around the pointing fingertip (turning half a turn each frame); the finger stays clear. */
++function fingerSwirl(g: DrawCtx, hex: string): void {
++  const j = armJoints(g.rig, 'F');
++  const dir = norm(sub(j.hand, j.wrist));
++  const tip = add(j.wrist, scale(dir, 5.2));
++  const T = g.L('top');
++  const hand = partIndex('handF');
++  const arm = [g.L('farArm.body'), g.L('farArm.cloth'), g.L('farArm.armor')];
++  const glow = g.m(hex, 'glow');
++  const flip = g.rig.frame % 2 === 1;
++  const tx = fine(tip.x);
++  const ty = fine(tip.y);
++  WHIRL.rows.forEach((row, r) => {
++    for (let c = 0; c < row.length; c++) {
++      const ch = row[c];
++      if (ch === '.') continue;
++      let dx = c - WHIRL.pivot[0];
++      let dy = r - WHIRL.pivot[1];
++      if (flip) [dx, dy] = [-dx, -dy];
++      const i = (ty + dy) * GRID + tx + dx;
++      if (arm.some((L) => L.mat[i] >= 0 && L.part[i] === hand)) continue;
++      T.set(tx + dx, ty + dy, glow, ch === 'E' ? 4 : 3, 'handF', F_NO_OUTLINE);
++    }
++  });
+ }
+ 
+ /** A ball of energy with a bright core, a pulsing rim and a few sparks. */
+@@ -122,6 +263,7 @@ export function drawCastFx(g: DrawCtx): void {
+       break;
+     case 'castBook':
+       grimoire(g, hex);
++      fingerSwirl(g, hex);
+       break;
+     case 'castSphere':
+       drawSpiralOrb(g, { core: hex, swirl: light });
+diff --git a/src/sprite/ctx.ts b/src/sprite/ctx.ts
+index e280f8d..366a463 100644
+--- a/src/sprite/ctx.ts
++++ b/src/sprite/ctx.ts
+@@ -363,6 +363,42 @@ const HAND_OPEN: PixelTemplate = {
+     '..o.o.o.....',
+   ],
+ };
++/** Fist with the index finger out (pointing), the finger on the thumb side. */
++const HAND_POINT: PixelTemplate = {
++  pivot: [4, 0],
++  rows: [
++    '..obbbo...',
++    '.osbbbbo..',
++    'osbbblbso.',
++    'olbbbbbDo.',
++    'obxbxbbbo.',
++    'oDsDsbbso.',
++    '.oDoDbbso.',
++    '..ooobbo..',
++    '....obbo..',
++    '....olbo..',
++    '.....oo...',
++  ],
++};
++/**
++ * A hand under something it carries, fingers up and curled over its lower
++ * edge (a book held open at the side). Stamped upright, the wrist at the
++ * bottom, whatever the forearm angle.
++ */
++const HAND_CRADLE: PixelTemplate = {
++  pivot: [4, 8],
++  rows: [
++    '.o.o.o.o.',
++    'obobobobo',
++    'obDbDbDbo',
++    'osDsDsDso',
++    'olbbbbbso',
++    'osbbbbbso',
++    '.osbbbso.',
++    '..osbso..',
++    '..obbbo..',
++  ],
++};
+ /** Small relaxed hand, fingers loosely curled. */
+ const HAND_RELAXED: PixelTemplate = {
+   pivot: [4, 0],
+@@ -410,9 +446,15 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
+   const tx = Math.cos(tr);
+   const ty = Math.sin(tr);
+   const flipX = tx < -0.25 || (Math.abs(tx) <= 0.25 && ty > 0);
++  if (j.shape === 'cradle') {
++    stampTemplate(L, HAND_CRADLE, j.wrist, 0, pal, pen.part, { flags });
++    return;
++  }
+   const t =
+     j.shape === 'open'
+       ? HAND_OPEN
++      : j.shape === 'point'
++        ? HAND_POINT
+       : j.shape === 'relaxed' || j.shape === 'sign'
+         ? HAND_RELAXED
+         : holding
+diff --git a/src/sprite/rig.ts b/src/sprite/rig.ts
+index c8523bc..ed5eec3 100644
+--- a/src/sprite/rig.ts
++++ b/src/sprite/rig.ts
+@@ -138,7 +138,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
+  * fist: closed fist · grip: around a weapon handle, or a fist when empty-handed ·
+  * hold: around a weapon handle, or relaxed when empty-handed · relaxed · open · sign.
+  */
+-export type HandShape = 'relaxed' | 'fist' | 'open' | 'sign' | 'grip' | 'hold';
++export type HandShape = 'relaxed' | 'fist' | 'open' | 'sign' | 'grip' | 'hold' | 'point' | 'cradle';
+ 
+ /** Hand targets: relative to a landmark, in arm-length units ('arm') or pixels ('px'). */
+ interface HandTarget {
+@@ -166,6 +166,8 @@ interface PoseFrame {
+   jitter?: number;
+   /** The far hand works in front of the body (hand signs, a two-handed charge): draw it over the torso. */
+   farHandFront?: boolean;
++  /** -1 bends the near elbow down instead of out (an arm carrying something at the side). */
++  bendN?: 1 | -1;
+ }
+ 
+ const arm = (x: number, y: number): HandTarget => ({ from: 'shoulder', x, y, units: 'arm' });
+@@ -308,8 +310,9 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
+   ],
+   // A grimoire held open before the chest, the free hand raised to cast.
+   castBook: [
+-    { lean: 2, handN: chest(3, 3), handF: arm(0.82, -0.32), footN: v(-0.2, 0.97), footF: v(0.24, 0.97), shapeN: 'open', shapeF: 'open' },
+-    { lean: 2, chestDy: 1, handN: chest(3, 3.6), handF: arm(0.84, -0.38), footN: v(-0.2, 0.97), footF: v(0.24, 0.97), shapeN: 'open', shapeF: 'open' },
++    // The open grimoire carried at the side on the near hand (elbow down), the far arm straight out pointing.
++    { lean: 0, handN: arm(-0.55, 0.76), bendN: -1, handF: arm(1.0, -0.06), footN: v(-0.34, 0.96), footF: v(0.36, 0.96), shapeN: 'cradle', shapeF: 'point' },
++    { lean: 0, chestDy: 1, handN: arm(-0.55, 0.78), bendN: -1, handF: arm(1.0, -0.04), footN: v(-0.34, 0.96), footF: v(0.36, 0.96), shapeN: 'cradle', shapeF: 'point' },
+   ],
+   // A spinning sphere held out in the near palm.
+   castSphere: [
+@@ -444,16 +447,16 @@ export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
+     if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
+     return add(shoulder, scale(v(t.x, t.y), armLen));
+   };
+-  const solveArm = (shoulder: Vec, t: HandTarget) => {
++  const solveArm = (shoulder: Vec, t: HandTarget, bend: 1 | -1 = 1) => {
+     const target = resolve(t, shoulder);
+     // Aim the wrist a little short of the target so the hand lands on it.
+     const toT = sub(target, shoulder);
+     const wristTarget = sub(target, scale(norm(toT), bp.handR * 0.8));
+-    const r = solve2(shoulder, wristTarget, bp.upperArm, bp.forearm, 1);
++    const r = solve2(shoulder, wristTarget, bp.upperArm, bp.forearm, bend);
+     const dir = norm(sub(r.end, r.mid));
+     return { elbow: r.mid, wrist: r.end, hand: add(r.end, scale(dir, bp.handR * 0.9)) };
+   };
+-  const aN = solveArm(shoulderN, f.handN);
++  const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1);
+   const aF = solveArm(shoulderF, f.handF);
+ 
+   const headY = neck.y - 5.9 * bp.headScale + (f.headDy || 0);

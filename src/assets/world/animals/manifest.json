@@ -119,10 +119,10 @@
   "sparrow": {
    "label": "Sparrow",
    "file": "sparrow.png",
-   "frameW": 27,
+   "frameW": 20,
    "frameH": 27,
    "anchor": [
-    18,
+    11,
     22
    ],
    "meters": [

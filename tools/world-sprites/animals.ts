@@ -1194,6 +1194,10 @@ interface BirdStyle {
   wingBias?: number;
   tailFeathers?: number;
   tailBias?: number;
+  /** Inner line the beak leaves on the face (null for tiny birds, where it would smear the face). */
+  beakLine?: number | null;
+  /** Draw the far leg (hidden on tiny birds). */
+  farLeg?: boolean;
   eyeDots: (b: Buf, x: number, y: number, blink: boolean) => void;
   /** Glossy rim light color step on the crest (crow sheen). */
   sheen?: boolean;
@@ -1275,11 +1279,13 @@ function drawWing(b: Buf, st: BirdStyle, root: P2, len: number, chord: number, w
   const le = (s: number): number => (s < 0.84 ? 0.3 + 0.06 * Math.sin((Math.PI * s) / 0.84) : 0.3 - 0.3 * ((s - 0.84) / 0.16) ** 2);
   const te = (s: number): number => (s < 0.5 ? -0.72 : -0.72 + st.wingTaper * ((s - 0.5) / 0.5) ** 1.2);
   const xA = wingDx(wf.arm, near) * len * wf.span, xH = wingDx(wf.hand, near) * len * wf.span;
-  const sweep = (s: number): number => ((wf.sweep * Math.max(0, s - sw)) / (1 - sw)) * 1.4 - (s < sw ? xA * s : xA * sw + xH * (s - sw));
+  // Sweep is given for a crow-sized wing (31 px) and scales with the wing.
+  const swp = (wf.sweep * len) / 31;
+  const sweep = (s: number): number => ((swp * Math.max(0, s - sw)) / (1 - sw)) * 1.4 - (s < sw ? xA * s : xA * sw + xH * (s - sw));
   const yW = root[1] + kA * sw;
   const ys = [root[1], yW, yW + kH * (1 - sw)];
   const y0 = Math.floor(Math.min(...ys)) - 1, y1 = Math.ceil(Math.max(...ys)) + 1;
-  const x0 = Math.floor(root[0] - chord * 1.2 - wf.sweep * 1.5 - Math.abs(xA) - Math.abs(xH)) - 1, x1 = Math.ceil(root[0] + chord * 0.6 + Math.abs(xA) + Math.abs(xH)) + 1;
+  const x0 = Math.floor(root[0] - chord * 1.2 - swp * 1.5 - Math.abs(xA) - Math.abs(xH)) - 1, x1 = Math.ceil(root[0] + chord * 0.6 + Math.abs(xA) + Math.abs(xH)) + 1;
   const fingerStart = 0.58;
   for (let y = y0; y <= y1; y++)
     for (let x = x0; x <= x1; x++) {
@@ -1363,8 +1369,10 @@ function birdFrame(st: BirdStyle, pose: BirdPose, fl?: BirdFlight): Canvas {
       for (let i = 0; i <= n; i++) put(ox + lerp(a[0], c[0], i / n), gy + lerp(a[1], c[1], i / n), s);
     };
     // Far leg two pixels back, darker.
-    line([hip[0] - 2.2, hip[1]], [foot[0] - 2.4, foot[1]], 2);
-    line([foot[0] - 2.4, foot[1]], [foot[0] - 2.4 + toe * 0.8, foot[1] + 0.4], 2);
+    if (st.farLeg !== false) {
+      line([hip[0] - 2.2, hip[1]], [foot[0] - 2.4, foot[1]], 2);
+      line([foot[0] - 2.4, foot[1]], [foot[0] - 2.4 + toe * 0.8, foot[1] + 0.4], 2);
+    }
     line(hip, foot, 3);
     line(foot, [foot[0] + toe, foot[1] + 0.5], 3);
     line(foot, [foot[0] - toe * 0.45, foot[1] + 0.5], 2);
@@ -1437,7 +1445,7 @@ function birdFrame(st: BirdStyle, pose: BirdPose, fl?: BirdFlight): Canvas {
     const up = a - open * 0.35, lo = a + open * 0.85;
     const U0 = at([bb[0], bb[1] - r * 0.35], 0.6), U1 = at([bb[0] + Math.cos(up) * len, bb[1] - r * 0.35 + Math.sin(up) * len], 0.6);
     const L0 = at([bb[0] - 0.2, bb[1] + r * 0.45], 0.6), L1 = at([bb[0] - 0.2 + Math.cos(lo) * len * 0.88, bb[1] + r * 0.45 + Math.sin(lo) * len * 0.88], 0.6);
-    const beakOpts = { ...base, pal: st.beak, cuts: [0.2, 0.42, 0.7, 0.86], line: 0, noLine: [] as number[] };
+    const beakOpts = { ...base, pal: st.beak, cuts: [0.2, 0.42, 0.7, 0.86], line: st.beakLine === undefined ? 0 : st.beakLine, noLine: [] as number[] };
     if (open > 0.05) {
       solid(b, cone(L0, L1, r * 0.75, 0.3), beakOpts);
       // Open mouth: a dark wedge between the mandibles.
@@ -1575,6 +1583,8 @@ const SPARROW_STYLE: BirdStyle = {
   wingTaper: 0.3,
   tailFeathers: 2,
   tailBias: -0.08,
+  beakLine: null,
+  farLeg: false,
   eyeDots: (b, x, y, blink) => {
     if (blink) b.dot(x, y, P.cap, 1);
     else b.dot(x, y, P.beak, 1);
@@ -1597,9 +1607,9 @@ const SPARROW_STYLE: BirdStyle = {
     return null;
   },
   paintWing: (t, ac, h) => {
-    // White wing bar across the coverts, dark feather centers behind it.
-    if (t > 0.26 && t < 0.38) return [P.white, clamp(h.step, 2, 3)];
-    if (t > 0.42 && ac > -0.4 && ac < 0.9) return [P.beak, clamp(h.step, 2, 3)];
+    // Pale wing bar across the coverts, dark feather centers behind it.
+    if (t > 0.3 && t < 0.37 && ac < 0.8) return [P.sparBelly, 4];
+    if (t > 0.45 && ac > -0.3 && ac < 0.7) return Math.max(1, h.step - 1);
     return null;
   },
 };

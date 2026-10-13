@@ -5,10 +5,10 @@
   "oak": {
    "label": "Broadleaf Tree",
    "file": "oak.png",
-   "frameW": 307,
+   "frameW": 333,
    "frameH": 547,
    "anchor": [
-    151,
+    160,
     545
    ],
    "meters": [
@@ -46,10 +46,10 @@
   "pine": {
    "label": "Cedar Pine",
    "file": "pine.png",
-   "frameW": 174,
+   "frameW": 172,
    "frameH": 521,
    "anchor": [
-    93,
+    92,
     519
    ],
    "meters": [
@@ -81,11 +81,11 @@
   "maple": {
    "label": "Red Maple",
    "file": "maple.png",
-   "frameW": 315,
-   "frameH": 282,
+   "frameW": 340,
+   "frameH": 284,
    "anchor": [
-    154,
-    279
+    165,
+    281
    ],
    "meters": [
     4.4,
@@ -116,11 +116,11 @@
   "bamboo": {
    "label": "Bamboo Grove",
    "file": "bamboo.png",
-   "frameW": 212,
-   "frameH": 363,
+   "frameW": 207,
+   "frameH": 361,
    "anchor": [
-    112,
-    361
+    107,
+    359
    ],
    "meters": [
     2.2,
@@ -146,10 +146,10 @@
    "label": "Tree Stump",
    "file": "stump.png",
    "frameW": 62,
-   "frameH": 61,
+   "frameH": 59,
    "anchor": [
     35,
-    59
+    57
    ],
    "meters": [
     0.75,

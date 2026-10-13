@@ -6,7 +6,7 @@
 // fine pixels (RES per design unit) for 128x128 detail.
 
 import { makeRamp, mixHex } from './color';
-import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side } from './ctx';
+import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { isFemaleBody, type FaceShape } from './types';
 
@@ -36,6 +36,7 @@ export function drawBody(g: DrawCtx): void {
   // Torso + neck
   const torso = g.L('torso.body');
   fillTorso(g, torso, 0, skin('torso'));
+  if (b.bust > 0) sculptTorso(g, torso, g.skin, 'skin');
   const neckTop = v(r.head.x + 0.4 * b.headScale, r.head.y + 4 * b.headScale);
   capsule(torso, r.neck, neckTop, b.neckW, b.neckW * 0.95, skin('torso'), (x) => (x < r.neck.x - 0.6 ? 3 : 2));
   // Nape: the back of the neck, from under the skull down to the shoulders.
@@ -67,13 +68,134 @@ export function drawBody(g: DrawCtx): void {
   seam(under, T(-b.waistHalf, 1.5), T(b.waistHalf * 0.7, 1.5), -1);
   legSpan(g, g.L('nearLeg.cloth'), 'N', 0, 0.22, 0.1, { ...cloth, part: 'thighN' });
   legSpan(g, g.L('farLeg.cloth'), 'F', 0, 0.22, 0.1, { ...cloth, part: 'thighF', bias: -1 });
-  if (b.bust > 0) fillTorso(g, under, 0.3, cloth, { top: L0 - 3.4, bottom: L0 - 7.6 });
+  if (b.bust > 0) {
+    // a bandeau wrapping the bust: a soft dip between the forms at the top,
+    // its lower edge following the curve under the bust
+    const { by } = bustForms(g);
+    const cx = 1.2;
+    poly(under, torsoPoly(g, 0.3), cloth, 3, (x, y) => {
+      const [lx, ly] = torsoLocal(g, x + 0.5 / RES, y + 0.5 / RES);
+      const top = by + 2.0 - 0.7 * Math.exp(-(((lx - (cx - 0.1)) / 0.9) ** 2));
+      const bot = by - 2.3 + 0.35 * ((lx - cx) / 3.5) ** 2;
+      return ly <= top && ly >= bot;
+    });
+    sculptTorso(g, under, cloth.mat, 'cloth');
+  }
 
   drawHead(g);
 
   // Near arm (in front of everything on the torso)
   drawArm(g, g.L('nearArm.body'), 'N', skin('upperArmN'), skin('forearmN'));
   handDraw(g, g.L('nearArm.body'), 'N', skin('handN'));
+}
+
+/** Torso-local coordinates of a design point: x along the shoulders (toward the face), y up from the pelvis. */
+function torsoLocal(g: DrawCtx, x: number, y: number): [number, number] {
+  const r = g.rig;
+  const dx = x - r.pelvis.x;
+  const dy = y - r.pelvis.y;
+  return [dx * r.right.x + dy * r.right.y, dx * r.up.x + dy * r.up.y];
+}
+
+/** The bust of the female bodies as two rounded forms in torso-local units: [x, y, rx, ry, height]. */
+function bustForms(g: DrawCtx): { by: number; forms: [number, number, number, number, number][] } {
+  const b = g.bp;
+  const top = torsoLocal(g, g.rig.neck.x, g.rig.neck.y)[1];
+  const cx = 1.2;
+  const by = top - 4.7 - b.bust * 0.3;
+  return {
+    by,
+    forms: [
+      [cx - 2.2, by, 2.3, 2.0, 0.9 + b.bust * 0.45],
+      [cx + 2.0, by, 1.8, 1.9, 0.8 + b.bust * 0.45],
+    ],
+  };
+}
+
+/** Light for sculpted forms: from the upper left and the front. */
+const SCULPT_LIGHT = (() => {
+  const l = Math.hypot(-0.6, -0.6, 0.55);
+  return [-0.6 / l, -0.6 / l, 0.55 / l];
+})();
+
+/**
+ * Sculpts a female torso layer: every pixel of `mat` is re-shaded from a
+ * surface normal (the body rounding away at both sides, the bust's two
+ * forms), with a soft crease under the bust and, on skin, a navel.
+ */
+function sculptTorso(g: DrawCtx, L: Layer, mat: number, kind: 'skin' | 'cloth'): void {
+  const b = g.bp;
+  const { forms } = bustForms(g);
+  const hgt = (x: number, y: number) => {
+    let sum = 0;
+    for (const [fx, fy, rx, ry, a] of forms) sum += a * Math.exp(-(((x - fx) / rx) ** 2 + ((y - fy) / ry) ** 2) * 1.6);
+    return sum;
+  };
+  const x0 = -b.chestHalf * 0.86 - 0.6;
+  const x1 = b.chestHalf * 0.62 + b.bust + 1.0;
+  const crease = (lx: number, ly: number) =>
+    forms.some(([fx, fy, rx, ry]) => {
+      const u = (lx - fx) / rx;
+      return Math.abs(u) < 0.9 && Math.abs(ly - (fy - ry * 0.95 + 0.9 * u * u)) < 0.3;
+    });
+  for (let fy = 0; fy < GRID; fy++) {
+    for (let fx = 0; fx < GRID; fx++) {
+      const i = fy * GRID + fx;
+      if (L.mat[i] !== mat || L.shade[i] === 0) continue;
+      const [lx, ly] = torsoLocal(g, (fx + 0.5) / RES, (fy + 0.5) / RES);
+      if (ly < 1.4) continue; // below the waistband: leave the hips to their own shading
+      const t = Math.max(0, Math.min(1, (lx - x0) / (x1 - x0)));
+      const th = (t - 0.36) * 2.1;
+      const e = 0.2;
+      const nx = Math.sin(th) - ((hgt(lx + e, ly) - hgt(lx - e, ly)) / (2 * e)) * 2.2;
+      const ny = ((hgt(lx, ly + e) - hgt(lx, ly - e)) / (2 * e)) * 2.2;
+      const nz = Math.cos(th) + 0.15;
+      const d = (nx * SCULPT_LIGHT[0] + ny * SCULPT_LIGHT[1] + nz * SCULPT_LIGHT[2]) / (Math.hypot(nx, ny, nz) || 1);
+      let sh = d > 0.8 ? 4 : d > 0.4 ? 3 : d > -0.02 ? 2 : 1;
+      if (kind === 'skin' && sh === 1) sh = 2;
+      if (crease(lx, ly)) sh = kind === 'skin' ? 2 : 1;
+      L.reshade(fx, fy, sh);
+    }
+  }
+  if (kind === 'skin') {
+    const n = g.rig.T(1.5, 4.6);
+    const fx = Math.floor(n.x * RES);
+    const fy = Math.floor(n.y * RES);
+    if (L.has(fx, fy) && L.mat[fy * GRID + fx] === mat) L.reshade(fx, fy, 1);
+  }
+}
+
+/**
+ * Gives clothes worn over a female torso the bust's volume without repainting
+ * them: over each form the upper, lit part gains a shade and the underside
+ * loses one, with a soft crease beneath; seams, outlines and trims keep their
+ * own values relative to the cloth around them.
+ */
+export function sculptClothes(g: DrawCtx, L: Layer): void {
+  if (!(g.bp.bust > 0) || !L.used) return;
+  const { forms } = bustForms(g);
+  for (let fy = 0; fy < GRID; fy++) {
+    for (let fx = 0; fx < GRID; fx++) {
+      const i = fy * GRID + fx;
+      if (L.mat[i] < 0 || L.shade[i] === 0) continue;
+      const [lx, ly] = torsoLocal(g, (fx + 0.5) / RES, (fy + 0.5) / RES);
+      let delta = 0;
+      for (const [cx, cy, rx, ry] of forms) {
+        const u = (lx - cx) / (rx * 1.05);
+        const w = (ly - cy) / (ry * 1.05);
+        const r2 = u * u + w * w;
+        if (r2 > 1) {
+          // the crease just under the form
+          if (Math.abs(u) < 0.85 && w < -0.95 && w > -1.35) delta = Math.min(delta, -1);
+          continue;
+        }
+        // lit cap toward the upper left, turning into shade underneath
+        if (w > 0.25 && u < 0.35 && r2 < 0.75) delta = Math.max(delta, 1);
+        else if (w < -0.45) delta = Math.min(delta, -1);
+      }
+      if (delta) L.reshade(fx, fy, Math.max(1, Math.min(4, L.shade[i] + delta)));
+    }
+  }
 }
 
 /** Arm: rounded shoulder + tapered upper arm and forearm. */

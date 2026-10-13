@@ -1,6 +1,6 @@
 // Composites the base body and every equipped item into one 128x128 frame.
 
-import { drawBody, faceCells } from './body';
+import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS } from './ctx';
@@ -175,6 +175,11 @@ export function renderSprite(
     if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors));
   }
   drawHeadband(g);
+  // clothes over a female torso follow the bust (fitted armors shape their own plates)
+  for (const d of ['torso.top', 'torso.over'] as const) {
+    const L = layers.get(d);
+    if (L) sculptClothes(g, L);
+  }
   drawCastFx(g);
   if (rig.farHandFront) farHandToFront(layers, g);
   guardFace(g, layers);

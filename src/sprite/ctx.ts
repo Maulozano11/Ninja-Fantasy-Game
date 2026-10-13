@@ -250,6 +250,8 @@ export function torsoPoly(g: DrawCtx, inflate = 0, opts: { top?: number; bottom?
     sh(T(b.shoulderHalf * 0.58 + 0.6 + i, Math.min(top, Lt - 1.4) + i * 0.5), 1),
     sh(T(b.chestHalf * 0.62 + 0.8 + i + b.bust * 0.4, Lt - 4.4), 0.8),
     sh(T(b.chestHalf * 0.62 + 0.6 + i + b.bust, Lt - 6.2), 0.6),
+    // under the bust the front curves back in toward the waist
+    ...(b.bust > 0 ? [sh(T(b.chestHalf * 0.62 + 0.3 + i + b.bust * 0.55, Lt - 7.6), 0.5)] : []),
     // Waist, then hips exactly as wide as the two thighs (their outer edges,
     // never wider: no bell), then a narrow crotch so the legs separate right
     // under the pelvis.

@@ -591,4 +591,34 @@ export const CAPE_ITEMS: ItemDef[] = [
       tuckUnderChin(g, F);
     },
   },
+  {
+    id: 'cape_rose',
+    slot: 'cape',
+    name: 'Blue Rose Captain Cape',
+    desc: 'A long royal blue cape over both shoulders with a high flared collar, fastened at the throat by a gold brooch.',
+    colors: [col('main', 'Cape', '#2f62b8'), col('lining', 'Lining', '#1b2f66'), col('clasp', 'Brooch', '#d9a93a', 'metal')],
+    draw: (g, [c, lining, gold]) => {
+      const b = g.bp;
+      const Lt = b.torsoLen;
+      const top = topPt(g);
+      const pen: Pen = { mat: g.m(c, 'cloth'), part: 'back' };
+      cloakBack(g, pen, { len: 0.86, flare: 6, bulge: 2.2, slant: 0.6, topR: b.shoulderHalf * 0.55 + 1.6, hemR: b.hipHalf + 1.6, folds: 3, shoulder: 0.9, zig: 0.8 });
+      const L = g.L('capeBack');
+      const F = g.L('capeFront');
+      const fpen: Pen = { mat: pen.mat, part: 'torso' };
+      // capelet over both shoulders, down to the upper chest
+      shoulderDrape(g, fpen, { chest: -0.6, drop: 4.4, outer: 1.8 });
+      shoulderCap(g, c, 0.42, 1.3, 2);
+      // high collar flaring up behind the head, its dark lining showing inside
+      const nk = top(0.5, Lt + 0.4);
+      poly(L, [add(nk, v(-6.5, 2)), add(nk, v(-7.4, -4)), add(nk, v(-5.2, -7.6)), add(nk, v(-2.2, -5.4)), add(nk, v(0.4, 1))], pen, 3);
+      const lp: Pen = { mat: g.m(lining, 'cloth'), part: 'back' };
+      poly(L, [add(nk, v(-5.0, 1.2)), add(nk, v(-5.6, -3.6)), add(nk, v(-4.4, -6.2)), add(nk, v(-2.6, -4.4)), add(nk, v(-1.2, 0.8))], lp, 2);
+      poly(F, [add(nk, v(-4.6, 2)), add(nk, v(-4.8, -2.4)), add(nk, v(-1.5, -1.6)), add(nk, v(3.2, -2.8)), add(nk, v(4.6, 1.8))], fpen, 3);
+      fold(F, fpen.mat, add(nk, v(-4.2, -1.6)), add(nk, v(3.0, -2.2)), 1, 0);
+      tuckUnderChin(g, F, 6.1);
+      // gold brooch at the throat
+      clasp(F, top(0.4, Lt - 0.4), { mat: g.m(gold, 'metal'), part: 'torso' }, 1.3);
+    },
+  },
 ];

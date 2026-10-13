@@ -12,8 +12,15 @@ elements.
 - **Side-view 2.5D**: a wide stage seen from the side, with depth. Characters
   face left or right (sprites are mirrored). Elevation is shown as terraces and
   platforms whose cliff faces turn toward the camera.
-- **Maps are 2–3 screens wide**; the camera follows the active character and
-  pans to targets and effects.
+- **Real proportions**: 1 m = 57 px across (a character is about 1.75 m =
+  100 px), so barrels, tents, lanterns and trees have their real size.
+- **Steep camera with lots of depth** (more than *A King's Tale*): 1 m of depth
+  is 38 px on screen, so the ground fills most of the screen and there is room
+  to flank, hide and spread out.
+- **Big maps**: the first map is 60 m wide and 20 m deep. Two zoom levels: the
+  normal view (2×) follows the active character and pans to targets and
+  effects; the tactical view (1×) shows half the map at once. A minimap shows
+  the whole map, the units and the camera.
 - **No visible grid.** Movement is free and measured in meters, like
   *Baldur's Gate 3*. While a turn is planned, the reachable ground is softly
   highlighted and the path shows its cost.
@@ -110,6 +117,11 @@ Art direction from the owner: high-quality painted backgrounds behind the
 battlefield; everything destructible or interactable (trees, bushes, rocks,
 barrels, crates, campfire, tent, lanterns, signposts, fences) is a 16-bit
 sprite, plus ambient life (birds, butterflies, fireflies, smoke, lily pads).
+
+World sprites (trees, plants, camp props, landmarks, animals) are generated
+at real scale by `tools/world-sprites/` into `src/assets/world/<group>/`, one
+sheet per object plus a manifest with frame size, anchor, animations and
+gameplay tags.
 
 ## Open questions
 

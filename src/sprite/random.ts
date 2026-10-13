@@ -4,7 +4,7 @@ import { itemsForSlot } from './catalog';
 import { CHAKRA_CHOICES } from './chakraInfo';
 import type { ItemDef } from './ctx';
 import { EMBLEMS } from './items/headband';
-import { CLOTH_COLORS, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from './palettes';
+import { CLOTH_PALETTE, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from './palettes';
 import type { BodyType, EyeShape, FaceShape, HeadbandPosition, ItemChoice, NeckType, SlotId, SpriteAppearance } from './types';
 
 const pick = <T,>(list: T[]): T => list[Math.floor(Math.random() * list.length)];
@@ -15,7 +15,7 @@ function randomChoice(def: ItemDef): ItemChoice {
   return {
     id: def.id,
     colors: def.colors.map((c) =>
-      c.kind === 'hair' ? pick(HAIR_COLORS) : c.kind === 'metal' || c.kind === 'glow' ? c.default : chance(0.6) ? pick(CLOTH_COLORS) : c.default,
+      c.kind === 'hair' ? pick(HAIR_COLORS) : c.kind === 'metal' || c.kind === 'glow' ? c.default : chance(0.6) ? pick(CLOTH_PALETTE) : c.default,
     ),
   };
 }
@@ -63,7 +63,7 @@ export function randomAppearance(): SpriteAppearance {
       slashed: chance(0.15),
       tails: chance(0.4),
       emblem: pick(EMBLEMS).id,
-      cloth: pick(CLOTH_COLORS),
+      cloth: pick(CLOTH_PALETTE),
       plate: '#cbd5e1',
     },
     chakra: { color: pick(CHAKRA_CHOICES).id, onCharge: true, onCast: true, onVictory: chance(0.5) },

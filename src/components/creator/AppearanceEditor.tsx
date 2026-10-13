@@ -4,7 +4,7 @@ import { itemsForSlot, getItem } from '../../sprite/catalog';
 import type { ItemDef } from '../../sprite/ctx';
 import { EMBLEMS } from '../../sprite/items/headband';
 import { CHAKRA_CHOICES } from '../../sprite/chakraInfo';
-import { CLOTH_COLORS, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from '../../sprite/palettes';
+import { CLOTH_COLORS, CLOTH_FAMILIES, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from '../../sprite/palettes';
 import type {
   BodyType,
   EyeShape,
@@ -123,35 +123,69 @@ export const ColorRow: React.FC<{
   label: string;
   value: string;
   swatches: string[];
+  /** Optional color families (dark to light), shown as chip strips instead of `swatches`. */
+  families?: { name: string; colors: string[] }[];
   onChange: (hex: string) => void;
-}> = ({ label, value, swatches, onChange }) => (
-  <div>
-    <div className="text-xs text-slate-300 mb-1.5">{label}</div>
-    <div className="flex flex-wrap items-center gap-1.5">
-      {swatches.map((c) => (
-        <button
-          key={c}
-          type="button"
-          onClick={() => onChange(c)}
-          className={`w-6 h-6 rounded-full border-2 transition ${
-            value.toLowerCase() === c.toLowerCase() ? 'border-white scale-110' : 'border-slate-800'
-          }`}
-          style={{ backgroundColor: c }}
-          title={c}
-        />
-      ))}
-      <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title="Custom color">
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="absolute inset-0 opacity-0 cursor-pointer"
-        />
-        <span className="absolute inset-1 rounded-full" style={{ backgroundColor: value }} />
-      </label>
+}> = ({ label, value, swatches, families, onChange }) => {
+  const picker = (
+    <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title="Custom color">
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 opacity-0 cursor-pointer"
+      />
+      <span className="absolute inset-1 rounded-full" style={{ backgroundColor: value }} />
+    </label>
+  );
+  const selected = (c: string) => value.toLowerCase() === c.toLowerCase();
+  return (
+    <div>
+      <div className="text-xs text-slate-300 mb-1.5">{label}</div>
+      {families ? (
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          {families.map((f) => (
+            <div key={f.name} className="flex" title={f.name}>
+              {f.colors.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => onChange(c)}
+                  className={`w-5 h-5 border transition first:rounded-l-md last:rounded-r-md ${
+                    selected(c) ? 'border-white scale-125 z-10 rounded-sm' : 'border-slate-900/60'
+                  }`}
+                  style={{ backgroundColor: c }}
+                  title={c}
+                />
+              ))}
+            </div>
+          ))}
+          {picker}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {swatches.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => onChange(c)}
+              className={`w-6 h-6 rounded-full border-2 transition ${selected(c) ? 'border-white scale-110' : 'border-slate-800'}`}
+              style={{ backgroundColor: c }}
+              title={c}
+            />
+          ))}
+          {picker}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
+
+/** Cloth and leather slots get the big color families; metal and glow keep their short list. */
+function familiesFor(def: ItemDef, i: number): typeof CLOTH_FAMILIES | undefined {
+  const kind = def.colors[i]?.kind;
+  return !kind || kind === 'cloth' || kind === 'leather' ? CLOTH_FAMILIES : undefined;
+}
 
 function swatchesFor(def: ItemDef, i: number): string[] {
   const kind = def.colors[i]?.kind;
@@ -383,6 +417,7 @@ export const AppearanceEditor: React.FC<{
             label="Cloth"
             value={look.headband.cloth}
             swatches={CLOTH_COLORS}
+            families={CLOTH_FAMILIES}
             onChange={(cloth) => onChange({ ...look, headband: { ...look.headband, cloth } })}
           />
           <ColorRow
@@ -550,6 +585,7 @@ const SlotPicker: React.FC<{
               label={c.label}
               value={current!.colors[i] || c.default}
               swatches={swatchesFor(currentDef, i)}
+              families={familiesFor(currentDef, i)}
               onChange={(hex) => {
                 const colors = currentDef.colors.map((cc, j) => current!.colors[j] || cc.default);
                 colors[i] = hex;
@@ -617,6 +653,7 @@ const AccessoryPicker: React.FC<{
                 label={c.label}
                 value={a.colors[i] || c.default}
                 swatches={swatchesFor(def, i)}
+                families={familiesFor(def, i)}
                 onChange={(hex) => {
                   const colors = def.colors.map((cc, j) => a.colors[j] || cc.default);
                   colors[i] = hex;

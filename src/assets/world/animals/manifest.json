@@ -43,11 +43,11 @@
   "deer": {
    "label": "Sika Deer",
    "file": "deer.png",
-   "frameW": 87,
-   "frameH": 92,
+   "frameW": 88,
+   "frameH": 94,
    "anchor": [
     38,
-    89
+    91
    ],
    "meters": [
     1.4,

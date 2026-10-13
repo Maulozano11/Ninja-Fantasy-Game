@@ -235,6 +235,25 @@ function seg(a: P3, b: P3, w: number, t: number): Prim {
   return ell(c, [Math.max(len, w), w, t], Math.atan2(b[1] - a[1], b[0] - a[0]));
 }
 
+/** A lens-shaped leaf from a to b (pointed ends), `w` half-width, `t` half-thickness: ears, fins, wings. */
+function leaf(a: P3, b: P3, w: number, t: number): Prim {
+  const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L;
+  const R = ((L / 2) ** 2 + w * w) / (2 * w);
+  const kz = Math.min(1, t / w);
+  const zc = (a[2] + b[2]) / 2;
+  return {
+    sd: (x, y, z) => {
+      const vx = x - a[0], vy = y - a[1];
+      const al = vx * ux + vy * uy - L / 2, ac = -vx * uy + vy * ux, zz = (z - zc) / kz;
+      const d1 = Math.hypot(al, ac + (R - w), zz) - R;
+      const d2 = Math.hypot(al, ac - (R - w), zz) - R;
+      return Math.max(d1, d2) * kz;
+    },
+    box: [Math.min(a[0], b[0]) - w, Math.min(a[1], b[1]) - w, zc - t, Math.max(a[0], b[0]) + w, Math.max(a[1], b[1]) + w, zc + t],
+  };
+}
+
 /** Tapered capsule from a (radius r1) to b (radius r2). */
 function cone(a: P3, b: P3, r1: number, r2: number): Prim {
   const ba: P3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
@@ -928,13 +947,13 @@ function deerFrame(pose: DeerPose): Canvas {
   const hp = (u: number, v: number): P2 => [H0[0] + hdir[0] * u + hperp[0] * v, H0[1] + hdir[1] * u + hperp[1] * v];
   const earBase = hp(-3.0, -3.6);
   const earDir = (back: number): P2 => {
-    const a = ha - rad(150) - back;
+    const a = ha - rad(166) - back;
     return [Math.cos(a), Math.sin(a)];
   };
   {
-    const d = earDir(pose.earF + rad(-22));
+    const d = earDir(pose.earF + rad(-30));
     const e0 = [earBase[0] + 1.2, earBase[1] - 0.4] as P2;
-    solid(b, seg(at(e0, -2.6), at([e0[0] + d[0] * 9.5, e0[1] + d[1] * 9.5], -2.6), 2.6, 1.0), { ...base, far: 1, line: 0 });
+    solid(b, leaf(at(e0, -2.6), at([e0[0] + d[0] * 11.5, e0[1] + d[1] * 11.5], -2.6), 2.3, 1.2), { ...base, far: 1, line: 0 });
   }
   // Tail: hangs over the rump patch, or lifts and fans out the white.
   const tailBase: P2 = [-26.5, -45.5];
@@ -1016,9 +1035,9 @@ function deerFrame(pose: DeerPose): Canvas {
   {
     const d = earDir(pose.earN);
     const e0: P2 = [earBase[0] - 0.4, earBase[1] + 0.4];
-    const e1: P2 = [e0[0] + d[0] * 10, e0[1] + d[1] * 10];
+    const e1: P2 = [e0[0] + d[0] * 12, e0[1] + d[1] * 12];
     const A = at(e0, 2.4), B = at(e1, 2.4);
-    solid(b, seg(A, B, 2.7, 1.0), {
+    solid(b, leaf(A, B, 2.5, 1.3), {
       ...base,
       line: 1,
       paint: (h) => {
@@ -1129,6 +1148,17 @@ function debugSaves(sprites: WorldSprite[], dir: string): void {
   }
 }
 
+/** Frames of an animation in a grid (for close inspection), saved as animals-<name>-<anim>-grid.png. */
+function grid(s: WorldSprite, anim: string, dir: string, scale: number, cols: number, from = 0, count = 99): void {
+  const fr = s.anims[anim].frames.slice(from, from + count);
+  const fw = fr[0].w, fh = fr[0].h;
+  const rows = Math.ceil(fr.length / cols);
+  const out = new Canvas((fw + 2) * Math.min(cols, fr.length), (fh + 2) * rows);
+  out.fillRect(0, 0, out.w, out.h, hex('#5d6b57'));
+  fr.forEach((f, i) => out.draw(f, (i % cols) * (fw + 2), Math.floor(i / cols) * (fh + 2)));
+  out.scaled(scale).save(join(dir, `animals-${s.name}-${anim}-grid${from ? '-' + from : ''}.png`));
+}
+
 /** All first frames on one ground line next to the character, at the in-game 2x and at 4x. */
 function lineup(sprites: WorldSprite[], path: string): void {
   const ref = characterRef();
@@ -1152,6 +1182,12 @@ writeGroup('animals', sprites);
 preview(sprites, join(previewDir(), 'animals.png'), { scale: 4, maxWidth: 480 });
 debugSaves(sprites, previewDir());
 lineup(sprites, join(previewDir(), 'animals-lineup.png'));
+const GRID = process.env.GRID;
+if (GRID) {
+  const [nm, an, sc, co, fr, ct] = GRID.split(':');
+  const sp = sprites.find((x) => x.name === nm);
+  if (sp) grid(sp, an, previewDir(), +(sc || 5), +(co || 4), +(fr || 0), +(ct || 99));
+}
 for (const s of sprites) {
   const f = Object.values(s.anims)[0].frames[0];
   const bb = f.bounds();

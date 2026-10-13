@@ -5,6 +5,8 @@ import { STICKS_PER_CAMP } from '../../data/campActivities';
 import { isUnconscious } from '../../rules/ninja';
 import { ShinobiSpriteCanvas } from '../ShinobiSpriteCanvas';
 import { WorldSpriteView, worldSpriteSpec } from '../world/WorldSpriteView';
+import { useLang } from '../../i18n';
+import { T } from './campText';
 
 // The camp at night, drawn at the world scale (1 m = 57 px) and scaled to the panel's width.
 const W = 720;
@@ -50,8 +52,9 @@ const MAX_HEIGHT = 380;
 const MIN_SCALE = 0.8;
 
 export function IncenseSticks({ used, compact }: { used: number; compact?: boolean }) {
+  useLang();
   return (
-    <span className="inline-flex items-end gap-[3px]" title={`${STICKS_PER_CAMP - used} of ${STICKS_PER_CAMP} incense sticks left`}>
+    <span className="inline-flex items-end gap-[3px]" title={T('sticksLeft', { left: STICKS_PER_CAMP - used, total: STICKS_PER_CAMP })}>
       {Array.from({ length: STICKS_PER_CAMP }, (_, i) => {
         const lit = i < STICKS_PER_CAMP - used;
         return (
@@ -85,6 +88,7 @@ export interface CampSceneProps {
 }
 
 export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, dangerLabel, selected, onSelect, sticksUsed, poses }: CampSceneProps) {
+  useLang();
   const ref = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
   const [width, setWidth] = useState(W);
@@ -196,7 +200,7 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
                   onClick={() => onSelect(m.id)}
                   className="absolute pointer-events-auto cursor-pointer rounded-md hover:bg-cyan-300/10"
                   style={{ left: 40, top: 22, width: 48, height: 100 }}
-                  aria-label={`Select ${m.name}`}
+                  aria-label={T('select', { name: m.name })}
                 />
               )}
               <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 whitespace-nowrap" style={{ top: 124 }}>
@@ -211,13 +215,13 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
       {/* the moon shows the night danger */}
       <div className="absolute right-3 top-3 flex items-center gap-2.5" style={{ zIndex: 600 }}>
         <div className="text-right leading-tight">
-          <div className="text-[9px] uppercase tracking-[0.18em] text-slate-400">Night danger</div>
+          <div className="text-[9px] uppercase tracking-[0.18em] text-slate-400">{T('nightDanger')}</div>
           {dangerLabel && <div className="text-[10px] text-slate-300">{dangerLabel}</div>}
         </div>
         <div
           className={`grid place-items-center w-14 h-14 rounded-full ring-4 ${moonRing} text-slate-900 font-black text-base tabular-nums`}
           style={{ background: 'radial-gradient(circle at 35% 30%, #f8fafc, #cbd5e1 60%, #94a3b8)', boxShadow: '0 0 28px rgba(226,232,240,0.45)' }}
-          title="Chance of an ambush tonight"
+          title={T('moonTitle')}
         >
           {danger}%
         </div>

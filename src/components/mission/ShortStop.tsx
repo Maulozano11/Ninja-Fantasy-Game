@@ -10,7 +10,10 @@ import { chakraDiceLeft, hitDiceLeft } from '../../rules/ninja';
 import { abilityMod } from '../../rules/checks';
 import { effectMods } from '../../rules/effects';
 import { ShinobiSpriteCanvas } from '../ShinobiSpriteCanvas';
+import { ruleText } from '../../game/ruleText';
+import { pick, useLang } from '../../i18n';
 import { Bar } from './PartyPanel';
+import { T } from './stopText';
 
 const STOP_ACTIVITIES: ActivityId[] = ['bandage', 'heal_jutsu'];
 
@@ -30,6 +33,7 @@ export function ShortStop({
   onActivity: (who: string, activity: ActivityId, target: string) => void;
   onLeave: () => void;
 }) {
+  useLang();
   // The most wounded ninja is the default patient.
   const mostHurt = [...party.members].sort((a, b) => a.currentHp / effectiveMaxHp(a) - b.currentHp / effectiveMaxHp(b))[0]?.id ?? '';
   const [targets, setTargets] = useState<Record<string, string>>({});
@@ -39,19 +43,16 @@ export function ShortStop({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-amber-300 text-xs font-bold uppercase tracking-widest">
-            <Coffee className="w-4 h-4" /> Short stop · 1 hour
+            <Coffee className="w-4 h-4" /> {T('header')}
           </div>
-          <p className="text-sm text-slate-300 mt-1 max-w-[65ch]">
-            Each ninja can spend Hit Dice (HP) and Chakra Dice, and do one healing activity that spends something. Nothing here restores Tension or Exhaustion,
-            and there is no ambush.
-          </p>
+          <p className="text-sm text-slate-300 mt-1 max-w-[65ch]">{T('intro')}</p>
         </div>
         <button
           type="button"
           onClick={onLeave}
           className="px-4 py-2 rounded-lg text-sm font-bold bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:from-cyan-400 hover:to-blue-500"
         >
-          Back on the road
+          {T('backOnRoad')}
         </button>
       </div>
 
@@ -60,8 +61,8 @@ export function ShortStop({
           const cls = SHINOBI_CLASSES[c.shinobiClass];
           const max = effectiveMaxHp(c);
           const fever = effectMods(c.effects).noRestHp;
-          const hitBlock = hitDiceLeft(c) < 1 ? 'No Hit Dice left' : fever ? 'Fever: no HP back from rests' : c.currentHp >= max ? 'Already at full HP' : null;
-          const chakraBlock = chakraDiceLeft(c) < 1 ? 'No Chakra Dice left' : c.currentChakra >= c.maxChakra ? 'Already at full chakra' : null;
+          const hitBlock = hitDiceLeft(c) < 1 ? T('noHitDice') : fever ? T('fever') : c.currentHp >= max ? T('fullHp') : null;
+          const chakraBlock = chakraDiceLeft(c) < 1 ? T('noChakraDice') : c.currentChakra >= c.maxChakra ? T('fullChakra') : null;
           const acted = stop.acted.includes(c.id);
           const target = targets[c.id] ?? mostHurt;
           const jutsu = healingJutsuOf(c);
@@ -80,24 +81,24 @@ export function ShortStop({
                 <button
                   type="button"
                   disabled={!!hitBlock}
-                  title={hitBlock ?? `Heals d${cls.hitDie} ${con >= 0 ? '+' : '−'} ${Math.abs(con)} (CON)`}
+                  title={hitBlock ?? T('hitTitle', { die: cls.hitDie, sign: con >= 0 ? '+' : '−', con: Math.abs(con) })}
                   onClick={() => onHitDie(c.id)}
                   className="flex items-center justify-center gap-1.5 rounded-lg border border-rose-800/70 bg-rose-950/40 px-2 py-1.5 text-xs text-rose-200 hover:bg-rose-900/50 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <Dices className="w-3.5 h-3.5" /> Hit Die d{cls.hitDie} · {hitDiceLeft(c)} left
+                  <Dices className="w-3.5 h-3.5" /> {T('hitDie', { die: cls.hitDie, n: hitDiceLeft(c) })}
                 </button>
                 <button
                   type="button"
                   disabled={!!chakraBlock}
-                  title={chakraBlock ?? `Restores d${cls.chakraDie} chakra`}
+                  title={chakraBlock ?? T('chakraTitle', { die: cls.chakraDie })}
                   onClick={() => onChakraDie(c.id)}
                   className="flex items-center justify-center gap-1.5 rounded-lg border border-cyan-800/70 bg-cyan-950/40 px-2 py-1.5 text-xs text-cyan-200 hover:bg-cyan-900/50 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> Chakra Die d{cls.chakraDie} · {chakraDiceLeft(c)} left
+                  <Sparkles className="w-3.5 h-3.5" /> {T('chakraDie', { die: cls.chakraDie, n: chakraDiceLeft(c) })}
                 </button>
               </div>
               {acted ? (
-                <div className="text-[11px] text-emerald-300">Healing activity done at this stop.</div>
+                <div className="text-[11px] text-emerald-300">{T('acted')}</div>
               ) : (
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <HeartPulse className="w-3.5 h-3.5 text-slate-400" />
@@ -105,29 +106,30 @@ export function ShortStop({
                     value={target}
                     onChange={(e) => setTargets({ ...targets, [c.id]: e.target.value })}
                     className="bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-xs text-slate-200"
-                    aria-label={`Who ${c.name} treats`}
+                    aria-label={T('whoTreats', { name: c.name })}
                   >
                     {party.members.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.id === c.id ? `${m.name} (self)` : m.name} · {m.currentHp}/{effectiveMaxHp(m)} HP
+                        {T('patient', { name: m.id === c.id ? T('self', { name: m.name }) : m.name, hp: m.currentHp, max: effectiveMaxHp(m) })}
                       </option>
                     ))}
                   </select>
                   {STOP_ACTIVITIES.map((id) => {
                     const act = ACTIVITY[id];
-                    const block = activityBlocker(party, null, c.id, act, { target });
+                    const blocker = activityBlocker(party, null, c.id, act, { target });
+                    const block = blocker && ruleText(blocker);
                     if (id === 'heal_jutsu' && !jutsu) return null;
-                    const cost = id === 'bandage' ? '1 bandage' : `${jutsu?.chakraCost ?? 0} chakra`;
+                    const cost = id === 'bandage' ? T('costBandage') : T('costChakra', { n: jutsu?.chakraCost ?? 0 });
                     return (
                       <button
                         key={id}
                         type="button"
                         disabled={!!block}
-                        title={block ?? `${act.description} Costs ${cost}.`}
+                        title={block ?? T('costs', { description: pick(act.description, act.descriptionEs), cost })}
                         onClick={() => onActivity(c.id, id, target)}
                         className="rounded-lg border border-emerald-800/70 bg-emerald-950/40 px-2 py-1 text-emerald-200 hover:bg-emerald-900/50 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        {id === 'heal_jutsu' ? jutsu?.name ?? act.name : act.name} <span className="opacity-70">({cost})</span>
+                        {id === 'heal_jutsu' ? jutsu?.name ?? pick(act.name, act.nameEs) : pick(act.name, act.nameEs)} <span className="opacity-70">({cost})</span>
                       </button>
                     );
                   })}

@@ -24,7 +24,7 @@ const SHEETS = import.meta.glob('../../assets/world/*/*.png', { eager: true, que
 const MANIFESTS = import.meta.glob('../../assets/world/*/manifest.json', { eager: true, import: 'default' }) as Record<string, WorldManifest>;
 
 const images = new Map<string, HTMLImageElement>();
-function sheetImage(url: string): HTMLImageElement {
+export function sheetImage(url: string): HTMLImageElement {
   let img = images.get(url);
   if (!img) {
     img = new Image();
@@ -36,6 +36,13 @@ function sheetImage(url: string): HTMLImageElement {
 
 export function worldSpriteSpec(group: string, name: string) {
   return MANIFESTS[`../../assets/world/${group}/manifest.json`]?.sprites[name];
+}
+
+/** A world sprite's spec and its sheet image (loading starts on the first call). */
+export function worldSprite(group: string, name: string) {
+  const spec = worldSpriteSpec(group, name);
+  const url = spec ? SHEETS[`../../assets/world/${group}/${spec.file}`] : undefined;
+  return spec && url ? { spec, img: sheetImage(url) } : undefined;
 }
 
 export interface WorldSpriteViewProps {

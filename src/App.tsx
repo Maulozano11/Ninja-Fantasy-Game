@@ -6,6 +6,7 @@ import { TacticalCombat } from './components/TacticalCombat';
 import { CampaignMode } from './components/CampaignMode';
 import { ArenaSandbox } from './components/ArenaSandbox';
 import { MissionMode } from './components/mission/MissionMode';
+import { LangToggle } from './i18n/LangToggle';
 import { soundManager } from './utils/audio';
 import { Swords, User, BookOpen, Compass, Shield, Flame } from 'lucide-react';
 
@@ -137,6 +138,7 @@ export default function App() {
 
         {/* Zone 3: 1 primary action */}
         <div className="flex items-center gap-3 shrink-0">
+          <LangToggle />
           <button
             type="button"
             onClick={() => handleLaunchCombat()}

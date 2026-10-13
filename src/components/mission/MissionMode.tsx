@@ -36,7 +36,10 @@ import {
   stopActivity,
 } from '../../rules/rest';
 import { effectiveMaxHp } from '../../rules/derived';
-import type { LogLine } from '../../game/eventText';
+import { both, LogLine } from '../../game/eventText';
+import { ruleText } from '../../game/ruleText';
+import { Entry, pick, useLang } from '../../i18n';
+import { LangToggle } from '../../i18n/LangToggle';
 import {
   applyOutcome,
   BattleRun,
@@ -54,17 +57,24 @@ import {
 import { soundManager } from '../../utils/audio';
 import { ShinobiSpriteCanvas } from '../ShinobiSpriteCanvas';
 import { TacticalCombat } from '../TacticalCombat';
-import { Bar, classShort, LogLines, PartyPanel, RecentEvents, SuppliesBar } from './PartyPanel';
+import { Bar, className, classShort, LogLines, PartyPanel, RecentEvents, SuppliesBar } from './PartyPanel';
 import { RestCamp } from './RestCamp';
 import { ShortStop } from './ShortStop';
+import { T, WEATHER_ES } from './missionText';
 
 // ---------------------------------------------------------------------------------------------
 
-const DIFFICULTIES: { id: Difficulty; name: string; text: string }[] = [
-  { id: 'story', name: 'Story', text: 'To enjoy the story: lighter battles once the new battle engine arrives. A lost battle starts over; nobody dies.' },
-  { id: 'normal', name: 'Normal', text: 'The intended challenge. A lost battle starts over from the road; nobody dies.' },
-  { id: 'legend', name: 'Legend', text: 'Death is permanent and there is one save. If the whole party dies, the campaign starts over.' },
+type Key = Parameters<typeof T>[0];
+
+const DIFFICULTIES: { id: Difficulty; name: Key; text: Key; chip: Key }[] = [
+  { id: 'story', name: 'diffStory', text: 'diffStoryText', chip: 'chipStory' },
+  { id: 'normal', name: 'diffNormal', text: 'diffNormalText', chip: 'chipNormal' },
+  { id: 'legend', name: 'diffLegend', text: 'diffLegendText', chip: 'chipLegend' },
 ];
+
+/** Data names in the current language (Spanish fields fall back to English). */
+const nameOf = (x: { name: string; nameEs?: string }): string => pick(x.name, x.nameEs);
+const esName = (x: { name: string; nameEs?: string }): string => pick(x.name, x.nameEs, 'es');
 
 const btnMain = 'inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-sm font-bold text-white hover:from-cyan-400 hover:to-blue-500 disabled:opacity-40 disabled:cursor-not-allowed';
 const btnQuiet = 'inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-slate-500 disabled:opacity-40 disabled:cursor-not-allowed';
@@ -77,6 +87,7 @@ export interface MissionModeProps {
 }
 
 export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
+  useLang();
   // A mission in progress picks up where it was left, even after leaving this screen.
   const [run, setRun] = useState<MissionRun | null>(() => loadRun());
   const [notice, setNotice] = useState<string | null>(null);
@@ -92,7 +103,7 @@ export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
   }, [notice]);
 
   /** Applies a rule outcome to the run, or shows why it couldn't be done. */
-  const act = <S,>(o: Outcome<S>, patch: (r: MissionRun, state: S) => MissionRun, title?: string) => {
+  const act = <S,>(o: Outcome<S>, patch: (r: MissionRun, state: S) => MissionRun, title?: Entry) => {
     if (!o.ok) {
       setNotice(o.reason);
       return;
@@ -167,7 +178,7 @@ export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
 
       {notice && (
         <div className="flex items-center gap-2 rounded-lg border border-rose-800 bg-rose-950/60 px-3 py-2 text-sm text-rose-200">
-          <TriangleAlert className="w-4 h-4" /> {notice}
+          <TriangleAlert className="w-4 h-4" /> {ruleText(notice)}
         </div>
       )}
 
@@ -175,22 +186,22 @@ export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
         <RestCamp
           party={run.party}
           camp={run.camp}
-          zoneName={zone.name}
-          nodeName={node.name}
+          zoneName={nameOf(zone)}
+          nodeName={nameOf(node)}
           recent={recent}
           onFire={(fire: FireLevel, katonBy?: string) => act(chooseFire(run.party, run.camp!, fire, katonBy), (r, camp) => ({ ...r, camp }))}
           onActivity={(who: string, activity: ActivityId, opts) => act(doActivity(run.party, run.camp!, who, activity, opts), (r, camp) => ({ ...r, camp }))}
-          onFood={(food: FoodLevel) => act(serveFood(run.party, run.camp!, food), (r, camp) => ({ ...r, camp }), 'Dinner')}
+          onFood={(food: FoodLevel) => act(serveFood(run.party, run.camp!, food), (r, camp) => ({ ...r, camp }), both(T, 'logDinner'))}
           onSleep={() =>
             act(
               rollNight(run.party, run.camp!),
               (r, camp) => ({ ...r, camp, stats: { ...r.stats, ambushes: r.stats.ambushes + (camp.night?.ambush ? 1 : 0) } }),
-              'Night',
+              both(T, 'logNight'),
             )
           }
-          onWake={() => act(morning(run.party, run.camp!), (r, camp) => ({ ...r, camp }), 'Morning')}
+          onWake={() => act(morning(run.party, run.camp!), (r, camp) => ({ ...r, camp }), both(T, 'logMorning'))}
           onAmbush={() => setRun((r) => (r ? { ...r, battle: newBattle(`${node.id}:ambush`, mission.ambush, r.party, { ambush: true }) } : r))}
-          onBreakCamp={() => setRun((r) => (r ? narrate({ ...r, camp: null, nodeDone: true }, [], 'Camp broken') : r))}
+          onBreakCamp={() => setRun((r) => (r ? narrate({ ...r, camp: null, nodeDone: true }, [], both(T, 'logCampBroken')) : r))}
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -199,7 +210,7 @@ export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
               <BattlePrep
                 run={run}
                 battle={b}
-                intro={b.ambush ? undefined : node.text}
+                intro={b.ambush ? undefined : pick(node.text, node.textEs)}
                 onFighter={(id) => setRun((r) => (r?.battle ? { ...r, battle: { ...r.battle, fighterId: id } } : r))}
                 onPill={() => {
                   const n = b.pills[b.fighterId] ?? 0;
@@ -221,37 +232,40 @@ export function MissionMode({ hero, onHeroReturn }: MissionModeProps) {
               />
             ) : run.zoneEnd ? (
               <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
-                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-cyan-400">End of {zone.name}</div>
-                <h2 className="text-xl font-bold text-white">Before {nextZone?.name}</h2>
-                <p className="text-sm text-slate-300 max-w-[65ch]">
-                  You can take a short stop here: an hour to spend Hit Dice and Chakra Dice and patch each other up. Only one per zone, and every hour on the road
-                  makes the next camp more dangerous.
-                </p>
+                <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-cyan-400">{T('endOf', { zone: nameOf(zone) })}</div>
+                <h2 className="text-xl font-bold text-white">{T('before', { zone: nextZone ? nameOf(nextZone) : '' })}</h2>
+                <p className="text-sm text-slate-300 max-w-[65ch]">{T('stopOffer')}</p>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" className={btnMain} onClick={() => act(startShortStop(run.party), (r, stop) => ({ ...r, stop }), 'Short stop')}>
-                    <Coffee className="w-4 h-4" /> Take a short stop (1 h)
+                  <button type="button" className={btnMain} onClick={() => act(startShortStop(run.party), (r, stop) => ({ ...r, stop }), both(T, 'logShortStop'))}>
+                    <Coffee className="w-4 h-4" /> {T('takeStop')}
                   </button>
                   <button type="button" className={btnQuiet} onClick={() => setRun((r) => (r ? intoNextZone(r) : r))}>
-                    Push on <ChevronRight className="w-4 h-4" />
+                    {T('pushOn')} <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             ) : (
               <NodePanel
                 node={node}
-                zoneName={zone.name}
+                zoneName={nameOf(zone)}
                 done={run.nodeDone}
                 party={run.party}
-                nextLabel={nextNode ? `${nextZone && next && next.zone !== run.pos.zone ? 'Leave ' + zone.name : 'Go on to ' + nextNode.name} (${nextNode.hours} h)` : 'Finish the mission'}
+                nextLabel={
+                  nextNode
+                    ? nextZone && next && next.zone !== run.pos.zone
+                      ? T('leaveZone', { zone: nameOf(zone), hours: nextNode.hours })
+                      : T('goOnTo', { node: nameOf(nextNode), hours: nextNode.hours })
+                    : T('finish')
+                }
                 onCamp={() =>
                   node.kind === 'camp' &&
                   act(
                     startCamp(run.party, { nodeId: node.id, zoneDanger: zone.danger, ...node.site }),
                     (r, camp) => ({ ...r, camp, stats: { ...r.stats, camps: r.stats.camps + 1 } }),
-                    `Camp at ${node.name}`,
+                    both(T, 'logCampAt', { node: node.name }, { node: esName(node) }),
                   )
                 }
-                onSkipCamp={() => setRun((r) => (r ? narrate({ ...r, nodeDone: true }, [], 'The party pushes on without camping.') : r))}
+                onSkipCamp={() => setRun((r) => (r ? narrate({ ...r, nodeDone: true }, [], both(T, 'logPushOn')) : r))}
                 onContinue={onContinueRoad}
               />
             )}
@@ -280,36 +294,39 @@ function BattleScreen({ run, fighter, onReport, onContinue }: { run: MissionRun;
 }
 
 function MissionHeader({ run, mission, onAbandon }: { run: MissionRun; mission: MissionDef; onAbandon: () => void }) {
+  useLang();
   const [confirm, setConfirm] = useState(false);
   const p = run.party.progress;
+  const diff = DIFFICULTIES.find((d) => d.id === p.difficulty);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono uppercase tracking-[0.2em] text-cyan-400">
-          <span>Rank {mission.rank} mission</span>
-          <span className={`rounded px-1.5 py-0.5 ${p.difficulty === 'legend' ? 'bg-rose-900 text-rose-100' : 'bg-slate-800 text-slate-300'}`}>{p.difficulty}</span>
-          {p.noRandomness && <span className="rounded bg-slate-800 px-1.5 py-0.5 text-amber-300">no randomness</span>}
-          <span className="text-slate-400">
-            {p.hoursSpent} h spent · {p.hoursSinceCamp} h since camp
-          </span>
+          <span>{T('rankMission', { rank: mission.rank })}</span>
+          <span className={`rounded px-1.5 py-0.5 ${p.difficulty === 'legend' ? 'bg-rose-900 text-rose-100' : 'bg-slate-800 text-slate-300'}`}>{diff ? T(diff.chip) : p.difficulty}</span>
+          {p.noRandomness && <span className="rounded bg-slate-800 px-1.5 py-0.5 text-amber-300">{T('noRandomness')}</span>}
+          <span className="text-slate-400">{T('hours', { spent: p.hoursSpent, since: p.hoursSinceCamp })}</span>
         </div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-white">{mission.name}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-white">{nameOf(mission)}</h1>
       </div>
       <div className="flex flex-col items-end gap-2">
-        <SuppliesBar party={run.party} />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <SuppliesBar party={run.party} />
+          <LangToggle />
+        </div>
         {confirm ? (
           <span className="flex items-center gap-2 text-xs text-slate-300">
-            Abandon the mission? Progress is lost.
+            {T('abandonAsk')}
             <button type="button" onClick={onAbandon} className="rounded bg-rose-700 px-2 py-1 font-bold text-white">
-              Abandon
+              {T('abandon')}
             </button>
             <button type="button" onClick={() => setConfirm(false)} className="rounded bg-slate-800 px-2 py-1">
-              Keep going
+              {T('keepGoing')}
             </button>
           </span>
         ) : (
           <button type="button" onClick={() => setConfirm(true)} className="text-[11px] text-slate-500 hover:text-slate-300 underline underline-offset-2">
-            Abandon mission
+            {T('abandonMission')}
           </button>
         )}
       </div>
@@ -325,22 +342,23 @@ function nodeIcon(n: RoadNode) {
 
 /** The road: zones with their nodes, the short stop between zones, and where the party is. */
 function RoadMap({ mission, run }: { mission: MissionDef; run: MissionRun }) {
+  useLang();
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900/80 to-slate-900 p-4">
       <div className="flex min-w-max items-stretch gap-3">
         {mission.zones.map((z, zi) => (
           <React.Fragment key={z.name}>
             {zi > 0 && (
-              <div className="flex flex-col items-center justify-center px-1" title="Short stop between zones (one per zone)">
+              <div className="flex flex-col items-center justify-center px-1" title={T('stopTitle')}>
                 <Coffee className={`w-4 h-4 ${run.party.progress.stopsTaken.includes(zi - 1) ? 'text-amber-300' : 'text-slate-600'}`} />
-                <span className="text-[9px] text-slate-500 mt-0.5">stop</span>
+                <span className="text-[9px] text-slate-500 mt-0.5">{T('stop')}</span>
               </div>
             )}
             <div className={`rounded-xl border px-3 py-2 ${zi === run.pos.zone ? 'border-cyan-800 bg-cyan-950/20' : 'border-slate-800 bg-slate-950/40'}`}>
               <div className="flex items-baseline justify-between gap-4">
-                <span className="text-xs font-bold text-white">{z.name}</span>
-                <span className="text-[10px] text-slate-400" title="Base night danger in this zone">
-                  {z.terrain} · moon {z.danger}%
+                <span className="text-xs font-bold text-white">{nameOf(z)}</span>
+                <span className="text-[10px] text-slate-400" title={T('dangerTitle')}>
+                  {T('zoneLine', { terrain: pick(z.terrain, z.terrainEs), danger: z.danger })}
                 </span>
               </div>
               <div className="mt-2 flex items-center">
@@ -359,7 +377,7 @@ function RoadMap({ mission, run }: { mission: MissionDef; run: MissionRun }) {
                         >
                           {nodeIcon(n)}
                         </div>
-                        <span className={`mt-1 text-center text-[10px] leading-tight ${here ? 'text-white font-semibold' : 'text-slate-400'}`}>{n.name}</span>
+                        <span className={`mt-1 text-center text-[10px] leading-tight ${here ? 'text-white font-semibold' : 'text-slate-400'}`}>{nameOf(n)}</span>
                       </div>
                     </React.Fragment>
                   );
@@ -392,13 +410,14 @@ function NodePanel({
   onSkipCamp: () => void;
   onContinue: () => void;
 }) {
+  useLang();
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
       <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-cyan-400">
-        {zoneName} · {node.kind === 'camp' ? 'Campsite' : node.kind === 'battle' && node.objective ? 'Objective' : 'Battle'}
+        {zoneName} · {node.kind === 'camp' ? T('campsite') : node.kind === 'battle' && node.objective ? T('objective') : T('battle')}
       </div>
-      <h2 className="text-xl font-bold text-white">{node.name}</h2>
-      <p className="text-sm text-slate-300 max-w-[65ch]">{node.text}</p>
+      <h2 className="text-xl font-bold text-white">{nameOf(node)}</h2>
+      <p className="text-sm text-slate-300 max-w-[65ch]">{pick(node.text, node.textEs)}</p>
       {done ? (
         <button type="button" className={btnMain} onClick={onContinue}>
           {nextLabel} <ChevronRight className="w-4 h-4" />
@@ -406,10 +425,10 @@ function NodePanel({
       ) : node.kind === 'camp' ? (
         <div className="flex flex-wrap gap-2">
           <button type="button" className={btnMain} disabled={party.supplies.campKits < 1} onClick={onCamp}>
-            <Flame className="w-4 h-4" /> Make camp (1 camp kit · {party.supplies.campKits} left)
+            <Flame className="w-4 h-4" /> {T('makeCamp', { n: party.supplies.campKits })}
           </button>
           <button type="button" className={btnQuiet} onClick={onSkipCamp}>
-            Push on without camping
+            {T('skipCamp')}
           </button>
         </div>
       ) : null}
@@ -432,31 +451,33 @@ function BattlePrep({
   onPill: () => void;
   onFight: () => void;
 }) {
+  useLang();
   const fallenIds = b.fallen.map((f) => f.id);
   const able = run.party.members.filter((m) => isStanding(m) && !fallenIds.includes(m.id));
   const fighter = run.party.members.find((m) => m.id === b.fighterId);
   const pillsTaken = b.pills[b.fighterId] ?? 0;
-  const pillBlock = !fighter ? 'Choose who fights' : run.party.supplies.soldierPills < 1 ? 'No soldier pills left' : fighter.currentChakra >= fighter.maxChakra ? 'Already at full chakra' : null;
+  const pillBlock = !fighter ? T('chooseFighter') : run.party.supplies.soldierPills < 1 ? T('noPills') : fighter.currentChakra >= fighter.maxChakra ? T('fullChakra') : null;
   return (
     <div className={`rounded-2xl border p-5 space-y-4 ${b.ambush ? 'border-rose-800/70 bg-gradient-to-b from-rose-950/40 to-slate-950' : 'border-slate-800 bg-slate-900/70'}`}>
       <div>
         <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-rose-300">
-          {b.ambush ? 'Night raid' : b.objective ? 'Objective battle' : 'Battle'} · {b.battle.weather}
+          {b.ambush ? T('nightRaid') : b.objective ? T('objectiveBattle') : T('battle')} · {pick(b.battle.weather, WEATHER_ES[b.battle.weather])}
         </div>
-        <h2 className="text-xl font-bold text-white">{b.battle.title}</h2>
+        <h2 className="text-xl font-bold text-white">{pick(b.battle.title, b.battle.titleEs)}</h2>
         {intro && <p className="text-sm text-slate-300 max-w-[65ch] mt-1">{intro}</p>}
-        <p className="text-sm text-slate-400 max-w-[65ch] mt-1">{b.battle.description}</p>
+        <p className="text-sm text-slate-400 max-w-[65ch] mt-1">{pick(b.battle.description, b.battle.descriptionEs)}</p>
       </div>
 
       {b.phase === 'fell' && (
         <div className="flex items-center gap-2 rounded-lg border border-rose-800 bg-rose-950/50 px-3 py-2 text-sm text-rose-200">
-          <Skull className="w-4 h-4" /> {b.fallen.map((f) => run.party.members.find((m) => m.id === f.id)?.name).join(', ')} fell. Who steps in?
+          <Skull className="w-4 h-4" />{' '}
+          {T(b.fallen.length > 1 ? 'fellMany' : 'fellOne', { names: b.fallen.map((f) => run.party.members.find((m) => m.id === f.id)?.name).join(', ') })}
         </div>
       )}
 
       <div>
         <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 mb-2">
-          <Users className="w-4 h-4" /> Who fights on the battle screen?
+          <Users className="w-4 h-4" /> {T('whoFights')}
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
           {able.map((m) => (
@@ -484,31 +505,29 @@ function BattlePrep({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className={btnQuiet} disabled={!!pillBlock} onClick={onPill} title={pillBlock ?? '+2d6 chakra now; Crash (−2 to all rolls) after the battle; more than one pill between camps adds Exhaustion'}>
-          <Pill className="w-4 h-4" /> Soldier pill ({run.party.supplies.soldierPills} left)
+        <button type="button" className={btnQuiet} disabled={!!pillBlock} onClick={onPill} title={pillBlock ?? T('pillTitle')}>
+          <Pill className="w-4 h-4" /> {T('pill', { n: run.party.supplies.soldierPills })}
         </button>
-        {pillsTaken > 0 && <span className="text-xs text-amber-300">{fighter?.name} took {pillsTaken}: Crash after this battle.</span>}
+        {pillsTaken > 0 && <span className="text-xs text-amber-300">{T('pillsTaken', { name: fighter?.name ?? '', n: pillsTaken })}</span>}
       </div>
 
-      <p className="text-[11px] text-slate-500 max-w-[70ch]">
-        Prototype: the current battle screen fights one ninja at a time. The others hold the flanks off-screen and come back with some HP and chakra lost,
-        sometimes Bleeding. If the fighter falls, another one can step in. Party battles come with the new battle engine.
-      </p>
+      <p className="text-[11px] text-slate-500 max-w-[70ch]">{T('prepPrototype')}</p>
 
       <button type="button" className={btnMain} disabled={!fighter || !isStanding(fighter)} onClick={onFight}>
-        <Swords className="w-4 h-4" /> Fight
+        <Swords className="w-4 h-4" /> {T('fight')}
       </button>
     </div>
   );
 }
 
 function MissionLog({ log }: { log: LogLine[] }) {
+  useLang();
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-950/70">
       <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center justify-between px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-slate-400 hover:text-slate-200">
         <span className="flex items-center gap-1.5">
-          <ScrollText className="w-3.5 h-3.5" /> Mission log ({log.length})
+          <ScrollText className="w-3.5 h-3.5" /> {T('missionLog', { n: log.length })}
         </span>
         <ChevronRight className={`w-3.5 h-3.5 transition ${open ? 'rotate-90' : ''}`} />
       </button>
@@ -518,29 +537,26 @@ function MissionLog({ log }: { log: LogLine[] }) {
 }
 
 function MissionEnd({ run, mission, onHome }: { run: MissionRun; mission: MissionDef; onHome: () => void }) {
+  useLang();
   const s = run.stats;
-  const title = run.outcome === 'complete' ? 'Mission complete' : run.outcome === 'failed' ? 'Mission failed' : 'The whole party has died';
-  const text =
-    run.outcome === 'complete'
-      ? 'The hydra is dead and the ford is safe again. Back at the village everyone is restored; scars stay, and every Breakdown or Awakening leaves a small trait.'
-      : run.outcome === 'failed'
-        ? 'The objective is lost. The survivors return to the village.'
-        : 'In Legend, death is permanent. If the whole party dies, the campaign starts over.';
+  const title = run.outcome === 'complete' ? T('complete') : run.outcome === 'failed' ? T('failed') : T('gameOver');
+  const text = run.outcome === 'complete' ? T('completeText') : run.outcome === 'failed' ? T('failedText') : T('gameOverText');
   return (
     <div className="mx-auto w-full max-w-4xl px-4 md:px-6 py-10 space-y-5">
       <div className={`rounded-2xl border p-6 space-y-3 ${run.outcome === 'complete' ? 'border-emerald-800 bg-emerald-950/30' : 'border-rose-800 bg-rose-950/30'}`}>
-        <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-slate-400">
-          {mission.name} · Rank {mission.rank}
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-slate-400">{T('endRank', { mission: nameOf(mission), rank: mission.rank })}</div>
+          <LangToggle />
         </div>
         <h1 className="text-3xl font-extrabold text-white">{title}</h1>
         <p className="text-sm text-slate-300 max-w-[65ch]">{text}</p>
         <dl className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 text-center">
           {[
-            ['Hours', run.party.progress.hoursSpent],
-            ['Battles won', s.battlesWon],
-            ['Falls', s.falls],
-            ['Camps', s.camps],
-            ['Ambushes', s.ambushes],
+            [T('statHours'), run.party.progress.hoursSpent],
+            [T('statWon'), s.battlesWon],
+            [T('statFalls'), s.falls],
+            [T('statCamps'), s.camps],
+            [T('statAmbushes'), s.ambushes],
           ].map(([k, v]) => (
             <div key={k} className="rounded-lg bg-slate-950/60 py-2">
               <dt className="text-[10px] uppercase tracking-widest text-slate-500">{k}</dt>
@@ -551,11 +567,11 @@ function MissionEnd({ run, mission, onHome }: { run: MissionRun; mission: Missio
         <button type="button" className={btnMain} onClick={onHome}>
           {run.outcome === 'gameOver' ? (
             <>
-              <RotateCcw className="w-4 h-4" /> Start over
+              <RotateCcw className="w-4 h-4" /> {T('startOver')}
             </>
           ) : (
             <>
-              Return to the village <ChevronRight className="w-4 h-4" />
+              {T('returnHome')} <ChevronRight className="w-4 h-4" />
             </>
           )}
         </button>
@@ -563,7 +579,7 @@ function MissionEnd({ run, mission, onHome }: { run: MissionRun; mission: Missio
       <div className="grid gap-4 md:grid-cols-2">
         <PartyPanel party={run.party} />
         <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-1.5">Chronicle</div>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-1.5">{T('chronicle')}</div>
           <LogLines lines={run.log} className="max-h-[28rem] overflow-y-auto" />
         </div>
       </div>
@@ -580,6 +596,7 @@ function Village({
   hero: ShinobiCharacter;
   onStart: (members: ShinobiCharacter[], leaderId: string, difficulty: Difficulty, noRandomness: boolean) => void;
 }) {
+  useLang();
   const mission = MISSIONS[0];
   const roster = COMPANIONS.filter((c) => c.id !== hero.id);
   const [picked, setPicked] = useState<string[]>(roster.slice(0, 2).map((c) => c.id));
@@ -593,22 +610,23 @@ function Village({
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 md:px-6 py-6 space-y-5">
-      <div>
-        <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-cyan-400 flex items-center gap-1.5">
-          <MapIcon className="w-3.5 h-3.5" /> Village · mission board
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-cyan-400 flex items-center gap-1.5">
+            <MapIcon className="w-3.5 h-3.5" /> {T('board')}
+          </div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-white">{T('missions')}</h1>
+          <p className="text-sm text-slate-400 max-w-[70ch] mt-1">{T('villageIntro')}</p>
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-white">Missions</h1>
-        <p className="text-sm text-slate-400 max-w-[70ch] mt-1">
-          HP, chakra and effects now carry over from battle to battle. Rest on the road with short stops and camps, and get home before the party breaks.
-        </p>
+        <LangToggle />
       </div>
 
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-5">
           <section className="space-y-2">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Your party</h2>
-            <p className="text-xs text-slate-500">Your ninja goes, plus up to 3 companions. The mission leader breaks ties when the party votes.</p>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">{T('yourParty')}</h2>
+            <p className="text-xs text-slate-500">{T('partyRules')}</p>
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               {[hero, ...roster].map((c) => {
                 const isHero = c.id === hero.id;
@@ -623,14 +641,10 @@ function Village({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 text-sm font-bold text-white truncate">
                         {c.name}
-                        {isHero && <span className="rounded bg-cyan-500 px-1 text-[9px] font-black uppercase text-slate-950">You</span>}
+                        {isHero && <span className="rounded bg-cyan-500 px-1 text-[9px] font-black uppercase text-slate-950">{T('you')}</span>}
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate">
-                        Lv {c.level} · {c.clan} · {c.shinobiClass}
-                      </div>
-                      <div className="text-[10px] font-mono text-slate-500">
-                        {c.maxHp} HP · {c.maxChakra} chakra · AC {c.armorClass}
-                      </div>
+                      <div className="text-[10px] text-slate-400 truncate">{T('levelLine', { level: c.level, clan: c.clan, cls: className(c) })}</div>
+                      <div className="text-[10px] font-mono text-slate-500">{T('statsLine', { hp: c.maxHp, chakra: c.maxChakra, ac: c.armorClass })}</div>
                       <div className="mt-1 flex items-center gap-2">
                         {!isHero && (
                           <button
@@ -639,13 +653,13 @@ function Village({
                             onClick={() => toggle(c.id)}
                             className={`rounded px-2 py-0.5 text-[11px] font-bold ${on ? 'bg-slate-700 text-white' : 'bg-cyan-600 text-white'} disabled:cursor-not-allowed`}
                           >
-                            {on ? 'Leave behind' : 'Bring'}
+                            {on ? T('leaveBehind') : T('bring')}
                           </button>
                         )}
                         {on && (
                           <label className="flex items-center gap-1 text-[11px] text-slate-300 cursor-pointer">
                             <input type="radio" name="leader" checked={leader === c.id} onChange={() => setLeaderId(c.id)} className="accent-amber-400" />
-                            Leader
+                            {T('leader')}
                           </label>
                         )}
                       </div>
@@ -657,7 +671,7 @@ function Village({
           </section>
 
           <section className="space-y-2">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Difficulty</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">{T('difficulty')}</h2>
             <div className="grid gap-2 sm:grid-cols-3">
               {DIFFICULTIES.map((d) => (
                 <button
@@ -666,16 +680,16 @@ function Village({
                   onClick={() => setDifficulty(d.id)}
                   className={`rounded-xl border p-3 text-left ${difficulty === d.id ? (d.id === 'legend' ? 'border-rose-500 bg-rose-950/30' : 'border-cyan-500 bg-cyan-950/25') : 'border-slate-800 bg-slate-900/60 hover:border-slate-600'}`}
                 >
-                  <div className="font-bold text-white">{d.name}</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">{d.text}</div>
+                  <div className="font-bold text-white">{T(d.name)}</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">{T(d.text)}</div>
                 </button>
               ))}
             </div>
             <label className="flex items-start gap-2 text-xs text-slate-300 cursor-pointer max-w-[70ch]">
               <input type="checkbox" checked={noRandomness} onChange={(e) => setNoRandomness(e.target.checked)} className="mt-0.5 accent-cyan-400" />
               <span>
-                <b className="text-white">No-randomness mode</b> (outside battle): checks count the d20 as 10, and the ambush comes when the camps&apos; % add up to
-                100.
+                <b className="text-white">{T('noRandomnessMode')}</b>
+                {T('noRandomnessText')}
               </span>
             </label>
           </section>
@@ -684,21 +698,21 @@ function Village({
         <aside className="space-y-3">
           <div className="rounded-2xl border border-amber-900/60 bg-gradient-to-b from-amber-950/30 to-slate-900/80 p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-amber-300">Rank {mission.rank} mission</span>
-              <span className="text-[10px] text-slate-400">{mission.zones.reduce((n, z) => n + z.nodes.length, 0)} stops on the road</span>
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-amber-300">{T('rankMission', { rank: mission.rank })}</span>
+              <span className="text-[10px] text-slate-400">{T('stopsOnRoad', { n: mission.zones.reduce((n, z) => n + z.nodes.length, 0) })}</span>
             </div>
-            <h2 className="text-xl font-bold text-white">{mission.name}</h2>
-            <p className="text-sm text-slate-300">{mission.brief}</p>
+            <h2 className="text-xl font-bold text-white">{nameOf(mission)}</h2>
+            <p className="text-sm text-slate-300">{pick(mission.brief, mission.briefEs)}</p>
             <ol className="space-y-1.5 text-xs">
               {mission.zones.map((z) => (
                 <li key={z.name}>
                   <div className="font-semibold text-slate-200">
-                    {z.name} <span className="font-normal text-slate-500">· {z.terrain} · moon {z.danger}%</span>
+                    {nameOf(z)} <span className="font-normal text-slate-500">· {T('zoneLine', { terrain: pick(z.terrain, z.terrainEs), danger: z.danger })}</span>
                   </div>
                   <div className="flex flex-wrap gap-1 mt-0.5">
                     {z.nodes.map((n) => (
                       <span key={n.id} className="inline-flex items-center gap-1 rounded bg-slate-950/70 px-1.5 py-0.5 text-slate-300">
-                        {nodeIcon(n)} {n.name}
+                        {nodeIcon(n)} {nameOf(n)}
                       </span>
                     ))}
                   </div>
@@ -706,17 +720,24 @@ function Village({
               ))}
             </ol>
             <div className="text-[11px] text-slate-400">
-              Backpack: {DEFAULT_SUPPLIES.rations} rations, {DEFAULT_SUPPLIES.campKits} camp kits, {DEFAULT_SUPPLIES.bandages} bandages, {DEFAULT_SUPPLIES.antidotes}{' '}
-              antidote, {DEFAULT_SUPPLIES.soldierPills} soldier pills, {DEFAULT_SUPPLIES.explosiveTags} explosive tags, {DEFAULT_SUPPLIES.wireRolls} wire roll.
+              {T('backpack', {
+                rations: DEFAULT_SUPPLIES.rations,
+                kits: DEFAULT_SUPPLIES.campKits,
+                bandages: DEFAULT_SUPPLIES.bandages,
+                antidotes: DEFAULT_SUPPLIES.antidotes,
+                pills: DEFAULT_SUPPLIES.soldierPills,
+                tags: DEFAULT_SUPPLIES.explosiveTags,
+                wire: DEFAULT_SUPPLIES.wireRolls,
+              })}
             </div>
             <button type="button" className={`${btnMain} w-full justify-center`} onClick={() => onStart(members, leader, difficulty, noRandomness)}>
-              Set out with {members.length} {members.length === 1 ? 'ninja' : 'ninjas'} <ChevronRight className="w-4 h-4" />
+              {T(members.length === 1 ? 'setOutOne' : 'setOutMany', { n: members.length })} <ChevronRight className="w-4 h-4" />
             </button>
           </div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-[11px] text-slate-400 space-y-1">
-            <div className="font-semibold text-slate-300">Prototype notes</div>
-            <p>Solo play: you choose for every ninja. Local and online votes come later.</p>
-            <p>The current battle screen fights one ninja at a time; the rest of the party holds the flanks off-screen.</p>
+            <div className="font-semibold text-slate-300">{T('notes')}</div>
+            <p>{T('notesSolo')}</p>
+            <p>{T('notesBattle')}</p>
           </div>
         </aside>
       </div>

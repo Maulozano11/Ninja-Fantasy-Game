@@ -14,7 +14,9 @@ export type LegacyEnemyType = 'skirmish' | 'rogue_squad' | 'giant_beast' | 'tita
 
 export interface MissionBattle {
   title: string;
+  titleEs?: string;
   description: string;
+  descriptionEs?: string;
   enemyType: LegacyEnemyType;
   weather: WeatherType;
   /** How hard the fight is on the ninjas holding the flanks off-screen (prototype; 1 = a squad). */
@@ -26,10 +28,12 @@ export interface MissionBattle {
 interface NodeBase {
   id: string;
   name: string;
+  nameEs?: string;
   /** Hours the leg to this node takes. */
   hours: number;
   /** What the party finds, shown when it arrives. */
   text: string;
+  textEs?: string;
 }
 
 export type RoadNode =
@@ -38,7 +42,9 @@ export type RoadNode =
 
 export interface MissionZone {
   name: string;
+  nameEs?: string;
   terrain: string;
+  terrainEs?: string;
   /** Base night danger in %, shown as the moon. */
   danger: number;
   nodes: RoadNode[];
@@ -47,8 +53,10 @@ export interface MissionZone {
 export interface MissionDef {
   id: string;
   name: string;
+  nameEs?: string;
   rank: 'D' | 'C' | 'B' | 'A' | 'S';
   brief: string;
+  briefEs?: string;
   zones: MissionZone[];
   /** The night ambush on this mission's camps. */
   ambush: MissionBattle;
@@ -59,24 +67,33 @@ export interface MissionDef {
 export const RIVER_FOREST_PATROL: MissionDef = {
   id: 'river_forest_patrol',
   name: 'River Forest Patrol',
+  nameEs: 'Patrulla del bosque del río',
   rank: 'C',
   brief:
     'Boats keep vanishing at the river ford and the villagers have stopped crossing. Walk the cedar road to the ford, clear whatever waits there and find out what is taking the boats.',
+  briefEs:
+    'Las barcas siguen desapareciendo en el vado del río y los aldeanos ya no se atreven a cruzar. Recorran el camino de los cedros hasta el vado, despejen lo que los espere allí y descubran qué se está llevando las barcas.',
   zones: [
     {
       name: 'Cedar Road',
+      nameEs: 'Camino de los cedros',
       terrain: 'Forest',
+      terrainEs: 'Bosque',
       danger: 25,
       nodes: [
         {
           id: 'cedar_rogues',
           kind: 'battle',
           name: 'Rogues on the Cedar Road',
+          nameEs: 'Renegados en el camino de los cedros',
           hours: 3,
           text: 'Two rogue ninja drop from the cedars and block the road. They have been robbing travellers for weeks.',
+          textEs: 'Dos ninjas renegados saltan de los cedros y cierran el paso. Llevan semanas asaltando a los viajeros.',
           battle: {
             title: 'Rogues on the Cedar Road',
+            titleEs: 'Renegados en el camino de los cedros',
             description: 'Drive them off before they call for more.',
+            descriptionEs: 'Ahuyéntenlos antes de que llamen a más.',
             enemyType: 'rogue_squad',
             weather: 'Clear',
             threat: 1,
@@ -86,18 +103,24 @@ export const RIVER_FOREST_PATROL: MissionDef = {
     },
     {
       name: 'River Ford',
+      nameEs: 'Vado del río',
       terrain: 'River',
+      terrainEs: 'Río',
       danger: 30,
       nodes: [
         {
           id: 'ford_skirmish',
           kind: 'battle',
           name: 'Fight at the Ford',
+          nameEs: 'Pelea en el vado',
           hours: 2,
           text: 'Rain hammers the gorge. A hunter-nin and his partner guard the stepping stones, and they are not fishermen.',
+          textEs: 'La lluvia azota el desfiladero. Un ninja cazador y su compañero vigilan las piedras del paso, y no son pescadores.',
           battle: {
             title: 'Valley Ford Skirmish',
+            titleEs: 'Escaramuza en el vado del valle',
             description: 'Break through to the far bank.',
+            descriptionEs: 'Ábranse paso hasta la otra orilla.',
             enemyType: 'skirmish',
             weather: 'Downpour',
             threat: 1.1,
@@ -107,20 +130,26 @@ export const RIVER_FOREST_PATROL: MissionDef = {
           id: 'shrine_clearing',
           kind: 'camp',
           name: 'Shrine Clearing',
+          nameEs: 'Claro del santuario',
           hours: 2,
           text: 'A quiet clearing above the river with a small roadside shrine and an old stone lantern. Something big moves in the water below.',
+          textEs: 'Un claro tranquilo sobre el río, con un pequeño santuario junto al camino y una vieja linterna de piedra. Algo grande se mueve en el agua, allá abajo.',
           site: { shrine: true },
         },
         {
           id: 'hydra_den',
           kind: 'battle',
           name: 'The Hydra of the Ford',
+          nameEs: 'La hidra del vado',
           hours: 2,
           objective: true,
           text: 'The boats lie smashed in a cave by the water. Their wood is crushed by teeth. The hydra wakes.',
+          textEs: 'Las barcas yacen destrozadas en una cueva junto al agua, con la madera triturada a dentelladas. La hidra despierta.',
           battle: {
             title: 'The Hydra of the Ford',
+            titleEs: 'La hidra del vado',
             description: 'Kill the hydra and the river is safe again. Its bite is venomous.',
+            descriptionEs: 'Maten a la hidra y el río volverá a ser seguro. Su mordida es venenosa.',
             enemyType: 'giant_beast',
             weather: 'Clear',
             threat: 1.3,
@@ -132,7 +161,9 @@ export const RIVER_FOREST_PATROL: MissionDef = {
   ],
   ambush: {
     title: 'Night Raid on the Camp',
+    titleEs: 'Asalto nocturno al campamento',
     description: 'Raiders come out of the dark from the edges of the clearing. Hold the camp.',
+    descriptionEs: 'Los asaltantes salen de la oscuridad desde los bordes del claro. Defiendan el campamento.',
     enemyType: 'rogue_squad',
     weather: 'Clear',
     threat: 1,

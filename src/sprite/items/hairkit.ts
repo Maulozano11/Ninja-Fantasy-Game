@@ -6,7 +6,7 @@
 // Use `hd(g, dx, dy)` to place points.
 
 import type { DrawCtx } from '../ctx';
-import { F_NO_OUTLINE, fwd, GRID, Layer, Pen, poly, px, RES, sub, v, Vec } from '../raster';
+import { F_NO_OUTLINE, F_NO_TEXTURE, fwd, GRID, Layer, Pen, poly, px, RES, sub, v, Vec } from '../raster';
 import { faceAnchor } from '../body';
 
 export const hd = (g: DrawCtx, dx: number, dy: number): Vec => v(g.rig.head.x + dx, g.rig.head.y + dy);
@@ -429,6 +429,45 @@ export function hairTemplate(g: DrawCtx, L: Layer, rows: string[], ax: number, a
       const ch = row.charCodeAt(c) - 48;
       if (ch < 0 || ch > 5) continue;
       L.set(ox + c, oy + r, mat, ch, 'head', F_NO_OUTLINE);
+    }
+  });
+}
+
+/** Hand-pixeled braid art: rows of '.' and '0'-'5' hair shades, all one width and centered alike. */
+export interface BraidArt {
+  /** Where the hair gathers into the braid. */
+  top: string[];
+  /** One plait pair with its own outline; repeated as often as the length allows. */
+  tile: string[];
+  /** Taper, tie and loose tuft. */
+  end: string[];
+}
+
+/**
+ * A hand-pixeled braid of `pairs` plait pairs hanging along a head-local
+ * quadratic bezier [rootX, rootY, ctrlX, ctrlY, tipX, tipY]: the art is drawn
+ * at final size row by row from the root down, each row shifted sideways onto
+ * the curve, so every plait stays crisp and identical in every pose.
+ */
+export function braid(g: DrawCtx, L: Layer, c: number[], art: BraidArt, pairs: number, pen: Pen): void {
+  const [a, k, b] = [0, 2, 4].map((i) => fwd(L, hd(g, c[i], c[i + 1])));
+  const N = 32;
+  const pts: Vec[] = [];
+  for (let i = 0; i <= N; i++) pts.push(qb(a, k, b, i / N));
+  const y0 = Math.floor(a.y * RES);
+  const rows = [...art.top, ...Array.from({ length: pairs }, () => art.tile).flat(), ...art.end];
+  let i = 0;
+  rows.forEach((row, r) => {
+    // the curve's x at this row (extended straight past its ends)
+    const y = (y0 + r + 0.5) / RES;
+    while (i < N - 1 && pts[i + 1].y < y) i++;
+    const p = pts[i];
+    const q = pts[i + 1];
+    const x = p.x + ((q.x - p.x) * (y - p.y)) / (q.y - p.y || 1);
+    const x0 = Math.round(x * RES - row.length / 2);
+    for (let j = 0; j < row.length; j++) {
+      const s = row.charCodeAt(j) - 48;
+      if (s >= 0 && s <= 5) L.set(x0 + j, y0 + r, pen.mat, s, pen.part, F_NO_OUTLINE | F_NO_TEXTURE);
     }
   });
 }

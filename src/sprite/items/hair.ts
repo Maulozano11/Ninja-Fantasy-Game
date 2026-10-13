@@ -15,7 +15,7 @@
 
 import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, Layer, Pen, poly, v, Vec } from '../raster';
-import { hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -1551,7 +1551,42 @@ const TPL: Record<string, HairTpl> = {
 };
 // </generated-templates>
 
-const hairStyle = (id: string, name: string, desc: string, def: string, body?: (g: DrawCtx, P: HairPens) => void): ItemDef => ({
+// Charlotte's braid, hand-pixeled (see braid in hairkit.ts).
+const CHARLOTTE_BRAID: BraidArt = {
+  top: [
+    '.0320.',
+    '.03210',
+  ],
+  tile: [
+    '05310.',
+    '043210',
+    '032210',
+    '.01100',
+    '.00340',
+    '.03430',
+    '024210',
+    '01100.',
+  ],
+  end: [
+    '.0430.',
+    '.03210',
+    '..0110',
+    '.0340.',
+    '.0220.',
+    '000000',
+    '023210',
+    '000000',
+    '.0330.',
+    '034320',
+    '033210',
+    '.02210',
+    '.0210.',
+    '..00..',
+  ],
+};
+
+/** `body` is drawn under the template, `over` on top of it. */
+const hairStyle = (id: string, name: string, desc: string, def: string, body?: (g: DrawCtx, P: HairPens) => void, over?: (g: DrawCtx, P: HairPens) => void): ItemDef => ({
   id,
   slot: 'hair',
   name,
@@ -1561,6 +1596,7 @@ const hairStyle = (id: string, name: string, desc: string, def: string, body?: (
     const P = pens(g, c);
     body?.(g, P);
     tpl(g, TPL[id], P.f.mat);
+    over?.(g, P);
   },
 });
 
@@ -1673,17 +1709,23 @@ export const HAIR_ITEMS: ItemDef[] = [
       hairTemplate(g, g.L('hairFront'), R.f!, R.fa![0], R.fa![1], g.m(ribbon, 'cloth'));
     },
   },
-  hairStyle('hair_charlotte', 'Briar Queen Waves', 'Waist-length golden hair in big soft waves, side-swept bangs and wavy locks framing the face.', '#f2cb52', (g, P) => {
-    curtain(g, g.L('hairBack'), P.t, { ty: 2, out: 2.2, spread: 4.2, n: 6, w: 6.2, tipW: 1.6, jag: 1.6, bulge: 2.2, hold: 0.6, gloss: [0.3, 0.42], wave: [1.0, 2.4] });
-    // wavy locks falling in front of the shoulders
-    const F = g.L('hairFront');
-    const nearTip = toHead(g, g.rig.T(-g.bp.shoulderHalf * 0.55, g.bp.torsoLen - 8));
-    const farTip = toHead(g, g.rig.T(g.bp.chestHalf * 0.4, g.bp.torsoLen - 7));
-    const pen: Pen = { ...P.f, part: 'back' };
-    const form = hd(g, -1, -3);
-    hlock(g, F, [-3.8, 1, -4.4, 5, nearTip[0], nearTip[1]], 3.6, pen, { hold: 0.7, tipW: 1.4, form, clumps: 3.2, seed: 2, sheen: [0.32, 0.44], wave: [0.9, 1.8, 0] });
-    hlock(g, F, [6.6, 1, 7.2, 5, farTip[0], farTip[1]], 3.2, pen, { hold: 0.7, tipW: 1.2, form, clumps: 3.2, seed: 7, sheen: [0.36, 0.46], wave: [0.9, 1.8, 1.5] });
-  }),
+  hairStyle(
+    'hair_charlotte',
+    'Briar Queen Waves',
+    'Waist-length golden hair in big soft waves, side-swept bangs, a braid falling from the temple and a wavy lock framing the face.',
+    '#f2cb52',
+    (g, P) => {
+      curtain(g, g.L('hairBack'), P.t, { ty: 2, out: 2.2, spread: 4.2, n: 6, w: 6.2, tipW: 1.6, jag: 1.6, bulge: 2.2, hold: 0.6, gloss: [0.3, 0.42], wave: [1.0, 2.4] });
+      // a wavy lock falling in front of the far shoulder
+      const farTip = toHead(g, g.rig.T(g.bp.chestHalf * 0.4, g.bp.torsoLen - 7));
+      hlock(g, g.L('hairFront'), [6.6, 1, 7.2, 5, farTip[0], farTip[1]], 3.2, { ...P.f, part: 'back' }, { hold: 0.7, tipW: 1.2, form: hd(g, -1, -3), clumps: 3.2, seed: 7, sheen: [0.36, 0.46], wave: [0.9, 1.8, 1.5] });
+    },
+    (g, P) => {
+      // the braid from the near temple, down in front of the shoulder
+      const tip = toHead(g, g.rig.T(-g.bp.shoulderHalf * 0.2, g.bp.torsoLen - 10.5));
+      braid(g, g.L('hairFront'), [-3.5, -1, -4.6, 4, tip[0], tip[1]], CHARLOTTE_BRAID, 2, { ...P.f, part: 'back' });
+    },
+  ),
   {
     id: 'hair_ribbon',
     slot: 'hair',

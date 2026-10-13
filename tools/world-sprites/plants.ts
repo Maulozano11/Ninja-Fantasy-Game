@@ -325,12 +325,13 @@ function assemble(name: string, label: string, meters: [number, number], tags: s
 }
 
 /** Standard finishing: tidy, inner lines, cast shadows, colors, outline. */
-function finish(b: Buf, o: { spurs?: boolean; inner?: number; gap?: number; bigGap?: number; shadow?: number } = {}): Canvas {
+function finish(b: Buf, o: { spurs?: boolean; inner?: number; gap?: number; bigGap?: number; shadow?: number; leafy?: boolean } = {}): Canvas {
   tidy(b, o.spurs ?? true);
   if (o.inner !== -1) innerLines(b, o.inner ?? 1, o.gap ?? 0.5, o.bigGap ?? -Infinity);
   if (o.shadow !== 0) castShadow(b, o.shadow ?? 2, o.gap ?? 0.5);
   const c = b.toCanvas();
-  c.outline();
+  // Leafy plants share the bushes' very dark green outline; everything else is tinted by its material.
+  c.outline(o.leafy ? { toward: LEAF_OUTLINE, amount: 0.9 } : {});
   return c;
 }
 
@@ -341,15 +342,6 @@ function blit(dst: Canvas, src: Canvas, dx: number, dy: number, alpha = 1): void
       const c = src.get(x, y);
       if (c[3]) dst.plot(dx + x, dy + y, withAlpha(c, c[3] * alpha));
     }
-}
-
-/** A small loose leaf (or petal) with its own outline, for rustle effects. `ang` turns it as it tumbles. */
-function looseLeaf(mat: number, ang: number, len = 5, wid = 3): Canvas {
-  const b = new Buf(12, 12);
-  leafShape(6 - Math.cos(ang) * len * 0.5, 6 - Math.sin(ang) * len * 0.5, ang, len, wid, (px, py, t, s) => b.put(px, py, mat, s < -0.2 && t > 0.3 && t < 0.8 ? 4 : s > 0.3 || t > 0.8 ? 2 : 3));
-  const c = b.toCanvas();
-  c.outline();
-  return c;
 }
 
 // --- foliage masses (bushes) ----------------------------------------------------------------
@@ -794,7 +786,7 @@ function tallGrass(): WorldSprite {
   const frame = (bend: (bl: Blade) => number, bits?: (c: Canvas) => void): Canvas => {
     const b = new Buf(W, H);
     drawBlades(b, blades, ground, bend, seed);
-    const c = finish(b, { spurs: false, inner: 1, gap: 0.6, shadow: 0 });
+    const c = finish(b, { spurs: false, inner: 1, gap: 0.6, shadow: 0, leafy: true });
     bits?.(c);
     return c;
   };
@@ -813,7 +805,7 @@ function tallGrass(): WorldSprite {
         if (f < 1 || f > 4) return;
         const t = f - 1;
         paths.forEach((p, k) => {
-          const leaf = looseLeaf(GRASS, 0.3 + k * 2.1 + t * 1.5 * (k ? 1 : -1), 5, 2.2);
+          const leaf = looseBit([GRASS, 4, 3, 2], 0.3 + k * 2.1 + t * 1.5 * (k ? 1 : -1), 5, 2.2);
           blit(c, leaf, Math.round(cx + p[t][0] - 6), Math.round(ground - height + p[t][1] - 6), f === 4 ? 0.6 : 1);
         });
       },
@@ -965,7 +957,7 @@ function fern(): WorldSprite {
     strokeQuad(b, cx, ground - 1, cx + 1, ground - 10, fx, fy + 3, () => 1, () => [FERN, 2], 40, 1.5);
     const curl: [number, number, number][] = [[0, 2, 3], [0, 1, 3], [0, 0, 4], [1, -1, 4], [2, -1, 3], [3, 0, 3], [3, 1, 2], [2, 2, 2], [1, 1, 2]];
     for (const [dx, dy, st] of curl) b.put(fx + dx, fy + dy, FERN, st, 40, 1.5);
-    return finish(b, { spurs: false, inner: 1, gap: 0.5, shadow: 0 });
+    return finish(b, { spurs: false, inner: 1, gap: 0.5, shadow: 0, leafy: true });
   };
   const idle = Array.from({ length: 4 }, (_, f) => frame(f));
   return assemble('fern', 'Fern', [0.9, 0.6], ['ambient'], { idle: { frames: idle, fps: 5 } }, cx, ground);

@@ -5,11 +5,11 @@
   "bush_round": {
    "label": "Round Bush",
    "file": "bush_round.png",
-   "frameW": 81,
+   "frameW": 80,
    "frameH": 83,
    "anchor": [
     41,
-    81
+    79
    ],
    "meters": [
     1.3,
@@ -39,7 +39,7 @@
   "bush_wide": {
    "label": "Wide Shrub",
    "file": "bush_wide.png",
-   "frameW": 121,
+   "frameW": 119,
    "frameH": 71,
    "anchor": [
     62,

@@ -100,7 +100,19 @@ elements.
 
 ## Multiplayer
 
-Online, each player on their own device, decided on 2026-10-13.
+Three ways to play, decided on 2026-10-13:
+
+- **Solo**: one player controls every playable character in the party.
+- **Local, passing control**: several people share one device. When a
+  character's turn comes, the screen asks for its owner ("Turn of Saber:
+  pass the device to Player 2"). Secret choices (camp activities, votes) are
+  made one person at a time behind a cover screen.
+- **Online**: each player on their own device.
+
+Every character has a controller: the local player, another local player,
+a remote player or the AI. The battle engine only sees actions, so all three
+modes share the same rules and the same code; a party can also mix them (two
+friends online plus AI allies).
 
 - **The server decides.** Players send only what they want to do ("move
   here", "cast this jutsu at that point"). The server checks it against the

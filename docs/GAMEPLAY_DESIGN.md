@@ -153,6 +153,19 @@ when the owner signs it off:
   without a grid, path in meters, cone preview with hit chances and cover,
   last roll, action bar, ability tooltip).
 
+Second round, at real scale with the steep camera and the generated world
+sprites (60 × 20 m map):
+
+- `mockups/battle-map-panorama.png`: the whole map at 1×: the forest edge with
+  a shrine, the clearing, the river with its bridge and stepping stones, the
+  hill camp (level 2) and the lookout (level 3).
+- `mockups/battle-map-tactical.png`: the tactical view (1×, half the map) with
+  the compact HUD: active unit card, initiative, minimap with the camera
+  frame, zoom toggle, party frames with who controls each ally, action bar
+  with hotkeys and chakra costs, the ability tooltip above its button, last
+  roll.
+- `mockups/battle-map-close.png`: the same moment in the normal view (2×).
+
 Art direction from the owner: high-quality painted backgrounds behind the
 battlefield; everything destructible or interactable (trees, bushes, rocks,
 barrels, crates, campfire, tent, lanterns, signposts, fences) is a 16-bit

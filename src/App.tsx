@@ -147,7 +147,7 @@ export default function App() {
             className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg hover:from-cyan-400 hover:to-blue-500 shadow-md shadow-cyan-950 transition whitespace-nowrap shrink-0 active:scale-98 cursor-pointer flex items-center gap-1.5"
           >
             <Swords className="w-3.5 h-3.5" />
-            <span>Launch Battle</span>
+            <span className="hidden sm:inline">Launch Battle</span>
           </button>
         </div>
       </header>

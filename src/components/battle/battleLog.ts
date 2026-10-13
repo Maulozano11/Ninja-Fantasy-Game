@@ -1,0 +1,163 @@
+// Words for the battle's events: full lines for the log and short labels that float over the
+// units, in the current language.
+
+import type { BattleEvent, BattleState } from '../../battle/types';
+import { JUTSU } from '../../battle/jutsu';
+import { EFFECTS } from '../../rules/effects';
+import { pick } from '../../i18n';
+import type { Lang } from '../../i18n';
+import { DMG_ES, T } from './battleText';
+import type { TKey } from './battleText';
+
+const nameOf = (s: BattleState, id: string): string => s.units[id]?.name ?? id;
+const jutsuName = (id: string): string => JUTSU[id]?.name ?? id;
+const effectName = (id: string, lang: Lang): string => {
+  const e = EFFECTS[id as keyof typeof EFFECTS];
+  return e ? pick(e.name, e.nameEs, lang) : id.replace(/_/g, ' ');
+};
+const rollText = (r: { d20: number; total: number }) => `${r.d20}→${r.total}`;
+
+export interface LogLine {
+  text: string;
+  tone?: string;
+}
+
+/** A log line for an event, or null for events the log skips. */
+export function logLine(ev: BattleEvent, s: BattleState, lang: Lang): LogLine | null {
+  const t = (k: TKey, p?: Record<string, string | number>) => T(k, p, lang);
+  switch (ev.t) {
+    case 'turn':
+      return { text: t('l_turn', { name: nameOf(s, ev.unit) }), tone: 'text-slate-500' };
+    case 'round':
+      return { text: `— ${t('l_round', { n: ev.round })} —`, tone: 'text-slate-400 font-semibold' };
+    case 'attack': {
+      if (JUTSU[ev.what] && ev.roll.success) return null;
+      const target = ev.target.startsWith('prop:') ? '🛢' : nameOf(s, ev.target);
+      const p = { a: nameOf(s, ev.unit), t: target, roll: rollText(ev.roll), ac: ev.roll.dc };
+      if (!ev.roll.success) return { text: t('l_attackMiss', p), tone: 'text-slate-400' };
+      return ev.roll.crit ? { text: t('l_attackCrit', p), tone: 'text-yellow-300' } : { text: t('l_attackHit', p) };
+    }
+    case 'damage':
+      return { text: t('l_damage', { t: nameOf(s, ev.unit), n: ev.amount, type: lang === 'es' ? DMG_ES[ev.dmgType] ?? ev.dmgType : ev.dmgType.toLowerCase() }), tone: 'text-rose-300' };
+    case 'heal':
+      return { text: t('l_heal', { t: nameOf(s, ev.unit), n: ev.amount }), tone: 'text-emerald-300' };
+    case 'save':
+      return { text: t(ev.roll.success ? 'l_saveOk' : 'l_saveFail', { t: nameOf(s, ev.unit), roll: rollText(ev.roll), dc: ev.roll.dc }), tone: 'text-indigo-300' };
+    case 'jutsu':
+      return { text: t(ev.enhanced ? 'l_jutsuEnh' : 'l_jutsu', { a: nameOf(s, ev.unit), j: jutsuName(ev.jutsu) }), tone: 'text-orange-300' };
+    case 'down': {
+      const k: TKey = ev.state === 'dead' ? 'l_dead' : ev.state === 'ko' ? 'l_ko' : ev.state === 'stable' ? 'l_stable' : ev.state === 'fled' ? 'l_fled' : 'l_down';
+      return { text: t(k, { t: nameOf(s, ev.unit) }), tone: 'text-amber-300' };
+    }
+    case 'deathSave':
+      return { text: t('l_deathSave', { t: nameOf(s, ev.unit), ok: ev.ok, bad: ev.bad }), tone: 'text-amber-200' };
+    case 'kawarimi':
+      return { text: t('l_kawarimi', { t: nameOf(s, ev.unit) }), tone: 'text-amber-200' };
+    case 'clone':
+      return ev.on ? null : { text: t('l_clone') };
+    case 'sever':
+      return { text: t('l_sever'), tone: 'text-rose-300 font-semibold' };
+    case 'seal':
+      return { text: t(`l_seal_${ev.how}` as TKey), tone: 'text-orange-300' };
+    case 'regrow':
+      return { text: t('l_regrow'), tone: 'text-emerald-300 font-semibold' };
+    case 'combatStart': {
+      const names = ev.surprised.map((id) => nameOf(s, id)).join(', ');
+      return { text: t('l_combatStart') + (names ? ` ${t('l_surprised', { names })}` : ''), tone: 'text-red-300 font-semibold' };
+    }
+    case 'alert':
+      return { text: t('l_alert', { g: nameOf(s, ev.guard) }), tone: 'text-red-300' };
+    case 'investigate':
+      return { text: t('l_investigate', { g: nameOf(s, ev.guard) }), tone: 'text-yellow-200' };
+    case 'noise':
+      return ev.source === 'bells' ? { text: '🔔 ' + t('l_noise'), tone: 'text-yellow-200' } : null;
+    case 'body':
+      return { text: t(ev.hidden ? 'l_bodyHidden' : 'l_body'), tone: 'text-slate-400' };
+    case 'explode':
+      return { text: t('l_explode'), tone: 'text-orange-300' };
+    case 'electrified':
+      return { text: t('l_electrified'), tone: 'text-sky-300' };
+    case 'trap':
+      return ev.on ? { text: t('l_trapSet') } : { text: t('l_trap'), tone: 'text-orange-300' };
+    case 'wall':
+      return ev.on ? { text: t('l_wall') } : null;
+    case 'fled':
+      return { text: t('l_fled', { t: nameOf(s, ev.unit) }) };
+    case 'effect':
+      return { text: t(ev.on ? 'l_effect' : 'l_effectOff', { t: nameOf(s, ev.unit), e: effectName(ev.effect, lang) }), tone: 'text-fuchsia-300' };
+    case 'weapon':
+      return { text: t(ev.armed ? 'l_weaponOn' : 'l_weaponOff', { t: nameOf(s, ev.unit) }), tone: 'text-slate-400' };
+    case 'pushed':
+      return { text: t('l_pushed', { t: nameOf(s, ev.unit) }) };
+    case 'end':
+      return { text: t(`l_end_${ev.outcome}` as TKey), tone: ev.outcome === 'victory' ? 'text-emerald-300 font-bold' : 'text-rose-300 font-bold' };
+    case 'prop':
+      return ev.state === 'exploded' ? { text: t('l_prop_exploded'), tone: 'text-orange-300' } : ev.state === 'burnt' ? { text: t('l_prop_burnt'), tone: 'text-orange-300' } : null;
+    case 'note': {
+      const k = `n_${ev.key}` as TKey;
+      return T.has(k) ? { text: t(k, ev.params), tone: 'text-slate-300' } : null;
+    }
+    case 'check':
+      return null;
+    default:
+      return null;
+  }
+}
+
+const COND_LABEL: Partial<Record<string, TKey>> = {
+  dodging: 'act_dodge',
+  disengaged: 'act_disengage',
+  focusing: 'act_focus',
+  crouched: 'crouched',
+  hidden: 'hidden',
+  ninjaJump: 'act_jump',
+  foresight: 'act_foresight',
+};
+
+/** A short word floating over a unit, or null. */
+export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string | null {
+  const t = (k: TKey, p?: Record<string, string | number>) => T(k, p, lang);
+  switch (ev.t) {
+    case 'attack':
+      return ev.roll.success ? null : lang === 'es' ? 'Falla' : 'Miss';
+    case 'save':
+      return ev.roll.success ? (lang === 'es' ? 'Resiste' : 'Saved') : null;
+    case 'down':
+      return ev.state === 'dead' ? t('dead') : ev.state === 'ko' ? t('ko') : ev.state === 'downed' ? t('downed') : null;
+    case 'condition': {
+      if (!ev.on) return null;
+      const k = COND_LABEL[ev.cond];
+      return k ? t(k) : null;
+    }
+    case 'effect':
+      return ev.on ? effectName(ev.effect, lang) : null;
+    case 'deathSave':
+      return ev.roll.success ? '✓' : '✗';
+    case 'kawarimi':
+      return 'Kawarimi!';
+    case 'clone':
+      return ev.on ? null : lang === 'es' ? '¡Clon!' : 'Clone!';
+    case 'sever':
+      return t('severed');
+    case 'seal':
+      return t('sealed');
+    case 'regrow':
+      return lang === 'es' ? '¡Crece!' : 'Grows back!';
+    case 'round':
+      return t('l_round', { n: ev.round });
+    case 'combatStart':
+      return t('l_combatStart');
+    case 'end':
+      return ev.outcome === 'victory' ? t('victory') : ev.outcome === 'fled' ? t('retreat') : t('defeat');
+    case 'jutsu':
+      return jutsuName(ev.jutsu);
+    case 'note': {
+      const k = `n_${ev.key}` as TKey;
+      return T.has(k) ? t(k, ev.params) : null;
+    }
+    case 'act':
+      return ev.act === 'item' || ev.act === 'stone' ? null : ev.act === 'stand' ? t('act_stand') : t(`act_${ev.act}` as TKey);
+    default:
+      return null;
+  }
+}

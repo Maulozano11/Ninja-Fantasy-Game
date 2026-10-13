@@ -1,0 +1,590 @@
+// Turns the engine's events into what the screen shows over time: units walking their paths,
+// striking and casting, damage numbers, effects, banners and sounds. The engine has already
+// decided everything; this only paces it so it can be watched.
+
+import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit } from '../../battle/types';
+import type { SpritePose } from '../../sprite/types';
+import { JUTSU } from '../../battle/jutsu';
+import type { VfxElement } from '../../battle/jutsu';
+import { dist } from '../../battle/map';
+
+export interface UnitView {
+  pos: Pt;
+  facing: 1 | -1;
+  pose: SpritePose;
+  /** When the current pose started (ms), for its frames. */
+  poseT0: number;
+  /** Pose to return to after a one-shot pose ends. */
+  poseUntil?: number;
+  walk?: { path: Pt[]; t0: number; speed: number; pose: SpritePose; lengths: number[]; total: number };
+  /** Gait distance (px) for planted feet. */
+  stride: number;
+  /** Lunge offset toward a target (px) and when it ends. */
+  lunge?: { dx: number; dy: number; t0: number; dur: number };
+  hp: number;
+  tempHp: number;
+  chakra: number;
+  down?: Down;
+  armed: boolean;
+  hidden: boolean;
+  crouched: boolean;
+  /** Fading out (fled), 0..1. */
+  fade?: { t0: number; dur: number };
+  hurtUntil: number;
+  severed?: boolean;
+}
+
+export interface Floater {
+  text: string;
+  color: string;
+  at: Pt;
+  /** Extra pixels up (over a head). */
+  rise: number;
+  t0: number;
+  dur: number;
+  big?: boolean;
+}
+
+export type FxKind = 'projectile' | 'kunai' | 'area' | 'cone' | 'line' | 'burst' | 'explosion' | 'electric' | 'smoke' | 'heal' | 'aura' | 'noise' | 'slash' | 'wall' | 'seal' | 'fire';
+
+export interface Fx {
+  kind: FxKind;
+  element: VfxElement;
+  from: Pt;
+  to: Pt;
+  area?: AreaShape | null;
+  t0: number;
+  dur: number;
+  radius?: number;
+  enhanced?: boolean;
+  sig?: string;
+  /** Height above the ground (px) at the start and end (casting hands, a head). */
+  lift?: [number, number];
+}
+
+export interface Banner {
+  text: string;
+  sub?: string;
+  t0: number;
+  dur: number;
+  tone: 'neutral' | 'good' | 'bad' | 'alarm';
+}
+
+/** Hooks the screen gives the player: sounds, the log, the roll toast, the camera. */
+export interface PlaybackHooks {
+  sound(name: SoundName, detail?: string): void;
+  log(ev: BattleEvent): void;
+  roll(ev: BattleEvent): void;
+  focus(unit: string): void;
+  shake(power: number): void;
+  label(ev: BattleEvent): string | null;
+}
+
+export type SoundName = 'step' | 'swing' | 'hit' | 'crit' | 'miss' | 'jutsu' | 'explosion' | 'heal' | 'down' | 'alarm' | 'kawarimi' | 'turn' | 'victory' | 'defeat' | 'roar' | 'splash' | 'bells' | 'stone' | 'draw';
+
+const RUN = 5.5;
+const WALK = 3.2;
+const SNEAK = 2.4;
+
+export class Playback {
+  views = new Map<string, UnitView>();
+  floaters: Floater[] = [];
+  fx: Fx[] = [];
+  banners: Banner[] = [];
+  /** Animals that took off (prop index → when). */
+  fled = new Map<number, number>();
+  /** Whose turn the screen shows (it trails the engine while events play). */
+  turnUnit: string | undefined;
+  round = 0;
+  queue: BattleEvent[] = [];
+  busyUntil = 0;
+  speed = 1;
+  private units: Record<string, Unit> = {};
+
+  constructor(state: BattleState, private hooks: PlaybackHooks) {
+    this.sync(state, 0);
+  }
+
+  /** Snaps every unit to the state (when nothing is playing). */
+  sync(state: BattleState, now: number): void {
+    this.units = state.units;
+    for (const u of Object.values(state.units)) {
+      const v = this.views.get(u.id);
+      const pose = restPose(u);
+      const next: UnitView = {
+        pos: { ...u.pos },
+        facing: u.facing,
+        pose: v && !v.walk && v.pose === pose ? v.pose : pose,
+        poseT0: v && v.pose === pose ? v.poseT0 : now,
+        stride: v?.stride ?? 0,
+        hp: u.hp,
+        tempHp: u.tempHp,
+        chakra: u.chakra,
+        down: u.down,
+        armed: u.armed,
+        hidden: u.cond.hidden !== undefined,
+        crouched: !!u.cond.crouched,
+        hurtUntil: 0,
+        severed: !!u.head?.severed,
+        fade: u.down === 'fled' ? v?.fade ?? { t0: now - 1000, dur: 1 } : undefined,
+      };
+      this.views.set(u.id, next);
+    }
+    if (state.phase === 'combat') {
+      this.turnUnit = state.order[state.turn];
+      this.round = state.round;
+    }
+  }
+
+  get busy(): boolean {
+    return this.queue.length > 0;
+  }
+
+  push(events: BattleEvent[], now: number): void {
+    if (!this.queue.length) this.busyUntil = Math.max(this.busyUntil, now);
+    this.queue.push(...events);
+  }
+
+  /** Runs the queue up to `now`. Returns true when it just emptied. */
+  step(now: number, state: BattleState): boolean {
+    let emptied = false;
+    while (this.queue.length && now >= this.busyUntil) {
+      const ev = this.queue.shift()!;
+      const d = this.apply(ev, now, state);
+      this.busyUntil = now + d / this.speed;
+      if (!this.queue.length) emptied = true;
+    }
+    // One-shot poses fall back to rest.
+    for (const [id, v] of this.views) {
+      if (v.poseUntil && now >= v.poseUntil) {
+        const u = state.units[id];
+        v.poseUntil = undefined;
+        v.pose = u ? restPoseView(u, v) : 'idle';
+        v.poseT0 = now;
+      }
+      if (v.walk && now >= v.walk.t0 + (v.walk.total / v.walk.speed) * 1000 / this.speed) {
+        v.pos = { ...v.walk.path[v.walk.path.length - 1] };
+        v.walk = undefined;
+        const u = state.units[id];
+        v.pose = u ? restPoseView(u, v) : 'idle';
+        v.poseT0 = now;
+      }
+    }
+    this.floaters = this.floaters.filter((f) => now < f.t0 + f.dur);
+    this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
+    this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
+    return emptied && now >= this.busyUntil;
+  }
+
+  /** Where a unit is drawn right now (meters), following its walk. */
+  posOf(id: string, now: number): Pt {
+    const v = this.views.get(id);
+    if (!v) return { x: 0, z: 0 };
+    const w = v.walk;
+    if (!w) return v.pos;
+    const travelled = Math.min(w.total, (((now - w.t0) * this.speed) / 1000) * w.speed);
+    let acc = 0;
+    let prev = v.pos;
+    for (let i = 0; i < w.path.length; i++) {
+      const seg = w.lengths[i];
+      const p = w.path[i];
+      if (acc + seg >= travelled) {
+        const t = seg > 0 ? (travelled - acc) / seg : 1;
+        return { x: prev.x + (p.x - prev.x) * t, z: prev.z + (p.z - prev.z) * t };
+      }
+      acc += seg;
+      prev = p;
+    }
+    return w.path[w.path.length - 1];
+  }
+
+  /** Metres walked so far (for the gait frame). */
+  walked(id: string, now: number): number {
+    const w = this.views.get(id)?.walk;
+    if (!w) return 0;
+    return Math.min(w.total, (((now - w.t0) * this.speed) / 1000) * w.speed);
+  }
+
+  private view(id: string): UnitView | undefined {
+    return this.views.get(id);
+  }
+
+  private setPose(v: UnitView, pose: SpritePose, now: number, dur?: number): void {
+    v.pose = pose;
+    v.poseT0 = now;
+    v.poseUntil = dur ? now + dur / this.speed : undefined;
+  }
+
+  private float(text: string, color: string, at: Pt, now: number, o: Partial<Floater> = {}): void {
+    // Numbers on the same spot stack upward.
+    const stack = this.floaters.filter((f) => dist(f.at, at) < 0.6 && now - f.t0 < 500).length;
+    this.floaters.push({ text, color, at: { ...at }, rise: 96 + stack * 16, t0: now, dur: 1100 / this.speed, ...o });
+  }
+
+  private elementOf(unit: string | undefined): VfxElement {
+    const u = unit ? this.units[unit] : undefined;
+    const nat = u?.character?.palette?.chakraAuraColor;
+    void nat;
+    return 'chakra';
+  }
+
+  /** Applies one event to the view; returns how long (ms) to wait before the next. */
+  private apply(ev: BattleEvent, now: number, state: BattleState): number {
+    const h = this.hooks;
+    h.log(ev);
+    const label = h.label(ev);
+    switch (ev.t) {
+      case 'move': {
+        const v = this.view(ev.unit);
+        if (!v || !ev.path.length) return 0;
+        const u = state.units[ev.unit];
+        const start = this.posOf(ev.unit, now);
+        v.pos = start;
+        const lengths: number[] = [];
+        let prev = start;
+        for (const p of ev.path) {
+          lengths.push(dist(prev, p));
+          prev = p;
+        }
+        const total = lengths.reduce((a, b) => a + b, 0);
+        const sneaking = state.phase === 'stealth' && !ev.run;
+        const pose: SpritePose = ev.run ? 'run' : sneaking && u?.cond.crouched ? 'sneak' : total > 3 ? 'run' : 'walk';
+        const speed = pose === 'run' ? RUN : pose === 'sneak' ? SNEAK : WALK;
+        const last = ev.path[ev.path.length - 1];
+        if (Math.abs(last.x - start.x) > 0.05) v.facing = last.x > start.x ? 1 : -1;
+        v.walk = { path: ev.path.map((p) => ({ ...p })), t0: now, speed, pose, lengths, total };
+        v.pose = pose;
+        v.poseT0 = now;
+        h.sound('step');
+        if (ev.unit === this.turnUnit || state.phase === 'stealth') h.focus(ev.unit);
+        return (total / speed) * 1000;
+      }
+      case 'teleport': {
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        this.fx.push({ kind: 'smoke', element: 'chakra', from: ev.from, to: ev.from, t0: now, dur: 500 });
+        this.fx.push({ kind: 'smoke', element: 'chakra', from: ev.to, to: ev.to, t0: now + 120, dur: 500 });
+        v.pos = { ...ev.to };
+        v.walk = undefined;
+        return 320;
+      }
+      case 'kawarimi': {
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        this.fx.push({ kind: 'smoke', element: 'chakra', from: ev.from, to: ev.from, t0: now, dur: 700 });
+        this.fx.push({ kind: 'seal', element: 'earth', from: ev.from, to: ev.from, t0: now, dur: 1100, sig: 'log' });
+        this.fx.push({ kind: 'smoke', element: 'chakra', from: ev.to, to: ev.to, t0: now + 200, dur: 500 });
+        v.pos = { ...ev.to };
+        v.walk = undefined;
+        if (label) this.float(label, '#e9d8a6', ev.from, now);
+        h.sound('kawarimi');
+        return 650;
+      }
+      case 'pushed': {
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        v.walk = { path: [{ ...ev.to }], t0: now, speed: 6, pose: 'hurt', lengths: [dist(ev.from, ev.to)], total: dist(ev.from, ev.to) };
+        v.pos = { ...ev.from };
+        this.setPose(v, 'hurt', now, 300);
+        if (ev.fall) h.shake(3);
+        return 280;
+      }
+      case 'attack': {
+        const a = this.view(ev.unit);
+        const target = ev.target.startsWith('prop:') ? undefined : state.units[ev.target];
+        const to = target ? this.posOf(target.id, now) : propPos(state, ev.target);
+        h.roll(ev);
+        if (!a) return 0;
+        const from = this.posOf(ev.unit, now);
+        if (Math.abs(to.x - from.x) > 0.05) a.facing = to.x > from.x ? 1 : -1;
+        const jutsu = JUTSU[ev.what];
+        if (jutsu) {
+          // A jutsu that needs an attack roll: the effect is played by the jutsu event.
+          if (!ev.roll.success) this.float(label ?? 'Miss', '#cbd5e1', to, now + 350);
+          return 120;
+        }
+        this.setPose(a, 'attack', now, 520);
+        if (ev.ranged) {
+          this.fx.push({ kind: 'kunai', element: 'chakra', from, to, t0: now + 120 / this.speed, dur: 260, lift: [70, 60] });
+          h.sound('swing');
+        } else {
+          const d = Math.max(0.01, dist(from, to));
+          a.lunge = { dx: ((to.x - from.x) / d) * 14, dy: ((to.z - from.z) / d) * 6, t0: now, dur: 420 };
+          this.fx.push({ kind: 'slash', element: 'wind', from, to, t0: now + 150 / this.speed, dur: 260, lift: [60, 60] });
+          h.sound('swing');
+        }
+        if (!ev.roll.success) {
+          this.float(label ?? 'Miss', '#cbd5e1', to, now + 260);
+          h.sound('miss');
+        }
+        return ev.ranged ? 420 : 380;
+      }
+      case 'jutsu': {
+        const a = this.view(ev.unit);
+        if (!a) return 0;
+        const spec = JUTSU[ev.jutsu];
+        const from = this.posOf(ev.unit, now);
+        if (Math.abs(ev.at.x - from.x) > 0.05) a.facing = ev.at.x > from.x ? 1 : -1;
+        const caster = state.units[ev.unit];
+        const head = caster?.kind === 'hydra_head';
+        if (!head) this.setPose(a, spec?.melee ? 'attack' : 'cast', now, 900);
+        const el: VfxElement = spec?.element ?? 'chakra';
+        const castDelay = head ? 150 : 420;
+        const fly = Math.max(180, dist(from, ev.at) * 45);
+        h.sound('jutsu', el);
+        if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+        const t1 = now + castDelay / this.speed;
+        const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig };
+        switch (spec?.special) {
+          case 'heal':
+            this.fx.push({ ...base, kind: 'heal', from: ev.at, to: ev.at, dur: 900 });
+            return castDelay + 500;
+          case 'clone':
+          case 'flicker':
+            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 700 });
+            return castDelay + 200;
+          case 'trap':
+            this.fx.push({ ...base, kind: 'seal', from: ev.at, to: ev.at, dur: 700, sig: 'tag' });
+            return castDelay + 300;
+          case 'earthWall':
+          case 'waterWall':
+            this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 800 });
+            return castDelay + 600;
+        }
+        if (ev.shape?.kind === 'cone') {
+          this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, dur: 900, lift: [head ? 120 : 70, 30] });
+          return castDelay + 650;
+        }
+        if (ev.shape?.kind === 'line') {
+          this.fx.push({ ...base, kind: 'line', from, to: ev.at, area: ev.shape, dur: 750, lift: [head ? 120 : 70, 50] });
+          return castDelay + 550;
+        }
+        if (spec?.melee) {
+          this.fx.push({ ...base, kind: 'burst', from: ev.at, to: ev.at, dur: 600, lift: [60, 60] });
+          return castDelay + 400;
+        }
+        this.fx.push({ ...base, kind: 'projectile', from, to: ev.at, dur: fly, lift: [head ? 120 : 70, ev.shape ? 30 : 60] });
+        if (ev.shape?.kind === 'circle') {
+          this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: 800 });
+          h.shake(ev.enhanced ? 5 : 3);
+        } else this.fx.push({ ...base, kind: 'burst', from: ev.at, to: ev.at, t0: t1 + fly / this.speed, dur: 500, lift: [60, 60] });
+        return castDelay + fly + 250;
+      }
+      case 'save': {
+        h.roll(ev);
+        const u = state.units[ev.unit];
+        if (u && ev.roll.success) this.float(label ?? 'Save', '#a5b4fc', this.posOf(u.id, now), now, { rise: 110 });
+        return 0;
+      }
+      case 'check':
+        h.roll(ev);
+        return 0;
+      case 'damage': {
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        v.hp = ev.hp;
+        v.hurtUntil = now + 260 / this.speed;
+        if (!v.walk && !v.down) this.setPose(v, 'hurt', now, 300);
+        const at = this.posOf(ev.unit, now);
+        this.float(`${ev.amount}`, ev.crit ? '#fde047' : '#f87171', at, now, { big: ev.crit, dur: 1200 });
+        h.sound(ev.crit ? 'crit' : 'hit');
+        if (ev.crit) h.shake(4);
+        return 110;
+      }
+      case 'heal': {
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        v.hp = ev.hp;
+        if (v.down === 'downed' || v.down === 'stable') {
+          v.down = undefined;
+          this.setPose(v, 'idle', now);
+        }
+        this.float(`+${ev.amount}`, '#4ade80', this.posOf(ev.unit, now), now);
+        h.sound('heal');
+        return 200;
+      }
+      case 'chakra': {
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        v.chakra = ev.chakra;
+        if (ev.delta > 0) this.float(`+${ev.delta}`, '#60a5fa', this.posOf(ev.unit, now), now, { rise: 112 });
+        return 0;
+      }
+      case 'down': {
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        v.down = ev.state;
+        const u = state.units[ev.unit];
+        if (u?.kind === 'hydra_head' || u?.kind === 'hydra_body') return 300;
+        if (ev.state === 'stable') return 0;
+        this.setPose(v, 'downed', now);
+        v.walk = undefined;
+        h.sound('down');
+        if (label) this.float(label, ev.state === 'dead' ? '#fca5a5' : '#fcd34d', this.posOf(ev.unit, now), now, { rise: 70 });
+        return 450;
+      }
+      case 'condition': {
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        if (ev.cond === 'hidden') v.hidden = ev.on;
+        if (ev.cond === 'crouched') {
+          v.crouched = ev.on;
+          if (!v.walk && !v.poseUntil && !v.down) this.setPose(v, ev.on ? 'crouch' : 'idle', now);
+        }
+        if (ev.cond === 'prone' && ev.on) this.setPose(v, 'downed', now, 500);
+        if (label) this.float(label, '#c4b5fd', this.posOf(ev.unit, now), now, { rise: 120 });
+        if (ev.cond === 'foresight') this.fx.push({ kind: 'aura', element: 'fire', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 700, sig: 'eyes' });
+        return label ? 200 : 0;
+      }
+      case 'effect': {
+        if (label) this.float(label, ev.on ? '#e879f9' : '#a1a1aa', this.posOf(ev.unit, now), now, { rise: 124 });
+        return 0;
+      }
+      case 'deathSave': {
+        h.roll(ev);
+        if (label) this.float(label, ev.roll.success ? '#86efac' : '#fca5a5', this.posOf(ev.unit, now), now, { rise: 60 });
+        return 600;
+      }
+      case 'turn': {
+        this.turnUnit = ev.unit;
+        h.focus(ev.unit);
+        h.sound('turn');
+        return 260;
+      }
+      case 'round': {
+        this.round = ev.round;
+        this.banners.push({ text: label ?? `Round ${ev.round}`, t0: now, dur: 900, tone: 'neutral' });
+        return 350;
+      }
+      case 'combatStart': {
+        this.banners.push({ text: label ?? 'Fight!', t0: now, dur: 1500, tone: 'alarm' });
+        h.sound('alarm');
+        return 900;
+      }
+      case 'initiative':
+        return 0;
+      case 'suspicion': {
+        const g = state.units[ev.guard];
+        if (g && ev.value >= 40) this.float(ev.value >= 100 ? '!' : '?', ev.value >= 70 ? '#f97316' : '#facc15', this.posOf(g.id, now), now, { rise: 118, big: true, dur: 800 });
+        return 0;
+      }
+      case 'alert': {
+        const g = state.units[ev.guard];
+        if (g) this.float('!', '#ef4444', this.posOf(g.id, now), now, { rise: 118, big: true, dur: 1300 });
+        h.sound('alarm');
+        return 450;
+      }
+      case 'noise': {
+        this.fx.push({ kind: 'noise', element: 'wind', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 900 });
+        h.sound(ev.source === 'bells' ? 'bells' : ev.source === 'stone' ? 'stone' : 'step');
+        return 200;
+      }
+      case 'investigate':
+        return 0;
+      case 'animalFlees':
+        this.fled.set(ev.prop, now);
+        return 0;
+      case 'body':
+        return 0;
+      case 'wall':
+        return 0;
+      case 'prop': {
+        const at = propPos(state, `prop:${ev.prop}`);
+        if (ev.state === 'burnt') this.fx.push({ kind: 'fire', element: 'fire', from: at, to: at, t0: now, dur: 1400 });
+        if (ev.state === 'exploded') this.fx.push({ kind: 'explosion', element: 'fire', from: at, to: at, radius: 1.5, t0: now, dur: 800 });
+        return ev.state === 'exploded' ? 250 : 0;
+      }
+      case 'electrified':
+        this.fx.push({ kind: 'electric', element: 'lightning', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 800 });
+        return 300;
+      case 'trap':
+        return 0;
+      case 'explode':
+        this.fx.push({ kind: 'explosion', element: 'fire', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 800 });
+        h.sound('explosion');
+        h.shake(6);
+        return 380;
+      case 'clone':
+        if (ev.on) this.fx.push({ kind: 'aura', element: 'chakra', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 600 });
+        else this.fx.push({ kind: 'smoke', element: 'chakra', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 500 });
+        if (!ev.on && label) this.float(label, '#e9d8a6', this.posOf(ev.unit, now), now);
+        return 250;
+      case 'sever': {
+        const v = this.view(ev.unit);
+        if (v) v.severed = true;
+        if (label) this.float(label, '#fca5a5', this.posOf(ev.unit, now), now, { rise: 150, big: true });
+        h.sound('roar');
+        h.shake(4);
+        return 500;
+      }
+      case 'seal': {
+        const at = this.posOf(ev.unit, now);
+        this.fx.push({ kind: ev.how === 'lightning' ? 'electric' : 'fire', element: ev.how === 'lightning' ? 'lightning' : 'fire', from: at, to: at, radius: 0.8, t0: now, dur: 900, lift: [140, 140] });
+        if (label) this.float(label, '#fdba74', at, now, { rise: 160 });
+        return 400;
+      }
+      case 'regrow': {
+        const v = this.view(ev.unit);
+        if (v) {
+          v.severed = false;
+          v.hp = state.units[ev.unit]?.maxHp ?? v.hp;
+        }
+        if (label) this.float(label, '#4ade80', this.posOf(ev.unit, now), now, { rise: 150, big: true });
+        h.sound('roar');
+        return 600;
+      }
+      case 'reactionAsk':
+        return 0;
+      case 'fled': {
+        const v = this.view(ev.unit);
+        if (v) v.fade = { t0: now, dur: 600 };
+        return 400;
+      }
+      case 'end':
+        this.banners.push({ text: label ?? ev.outcome, t0: now, dur: 2600, tone: ev.outcome === 'victory' ? 'good' : 'bad' });
+        h.sound(ev.outcome === 'victory' ? 'victory' : 'defeat');
+        return 600;
+      case 'note': {
+        const u = Object.values(state.units).find((x) => x.name === ev.params?.name);
+        if (u && label) this.float(label, '#e5e7eb', this.posOf(u.id, now), now, { rise: 130, dur: 1500 });
+        return label ? 250 : 0;
+      }
+      case 'weapon': {
+        const v = this.view(ev.unit);
+        if (v) v.armed = ev.armed;
+        h.sound('draw');
+        return 120;
+      }
+      case 'act': {
+        if (label) this.float(label, '#e2e8f0', this.posOf(ev.unit, now), now, { rise: 124 });
+        if (ev.act === 'foresight') this.fx.push({ kind: 'aura', element: 'fire', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 700, sig: 'eyes' });
+        return 180;
+      }
+      case 'intent':
+        return 0;
+    }
+    return 0;
+  }
+}
+
+/** The pose a unit rests in. */
+export function restPose(u: Unit): SpritePose {
+  if (u.down === 'downed' || u.down === 'stable' || u.down === 'dead' || u.down === 'ko' || u.cond.prone) return 'downed';
+  if (u.cond.crouched) return 'crouch';
+  return 'idle';
+}
+
+function restPoseView(u: Unit, v: UnitView): SpritePose {
+  if (v.down && v.down !== 'fled') return 'downed';
+  if (v.crouched) return 'crouch';
+  if (u.cond.prone) return 'downed';
+  return 'idle';
+}
+
+function propPos(state: BattleState, id: string): Pt {
+  const i = Number(id.replace('prop:', ''));
+  const p = state.props[i]?.def;
+  return p ? { x: p.x, z: p.z } : { x: 0, z: 0 };
+}
+
+export type { AreaShape };

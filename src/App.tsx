@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { ShinobiCharacter, WeatherType } from './types/shinobi';
 import { LEGENDARY_PRESETS } from './data/shinobiData';
 import { CharacterCreator } from './components/CharacterCreator';
-import { TacticalCombat } from './components/TacticalCombat';
+import { BattleDemo } from './components/battle/BattleDemo';
+import type { EncounterId } from './battle/encounters';
 import { CampaignMode } from './components/CampaignMode';
 import { ArenaSandbox } from './components/ArenaSandbox';
 import { MissionMode } from './components/mission/MissionMode';
@@ -13,6 +14,12 @@ import { Swords, User, BookOpen, Compass, Shield, Flame } from 'lucide-react';
 type AppView = 'creator' | 'campaign' | 'mission' | 'combat' | 'arena';
 
 const founderPreset = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')?.character;
+
+/** The new party battle that matches an old encounter type (the arena and campaign still use them). */
+function encounterFor(type?: 'skirmish' | 'rogue_squad' | 'giant_beast' | 'titanic_threat'): EncounterId | undefined {
+  if (!type) return undefined;
+  return type === 'skirmish' ? 'cedar_rogues' : type === 'rogue_squad' ? 'river_patrol' : type === 'giant_beast' ? 'hydra' : 'night_raid';
+}
 
 export default function App() {
   // A #creator or #missions link opens straight onto that screen.
@@ -26,12 +33,7 @@ export default function App() {
     description: string;
     enemyType: 'skirmish' | 'rogue_squad' | 'giant_beast' | 'titanic_threat';
     weather: WeatherType;
-  } | undefined>({
-    title: 'Valley of the End Skirmish',
-    description: 'Rogue shinobi have infiltrated the historic river gorge beneath the monumental stone statues. Eliminate the rogue squad before they breach the border.',
-    enemyType: 'skirmish',
-    weather: 'Downpour',
-  });
+  } | undefined>(undefined);
 
   const handleLaunchCombat = (encounter?: {
     title: string;
@@ -157,12 +159,7 @@ export default function App() {
             initialCharacter={character}
             onSave={(updatedChar) => {
               setCharacter(updatedChar);
-              handleLaunchCombat({
-                title: 'Tactical Shinobi Battlefield: Village Ruins',
-                description: 'Test your custom build against rival shinobi and giant beasts with destructible terrain!',
-                enemyType: 'giant_beast',
-                weather: 'Clear',
-              });
+              handleLaunchCombat();
             }}
           />
         )}
@@ -183,13 +180,7 @@ export default function App() {
           />
         )}
 
-        {activeView === 'combat' && (
-          <TacticalCombat
-            playerCharacter={character}
-            campaignEncounter={activeEncounter}
-            onBackToCreator={() => setActiveView('creator')}
-          />
-        )}
+        {activeView === 'combat' && <BattleDemo key={activeEncounter?.title ?? 'practice'} character={character} start={encounterFor(activeEncounter?.enemyType)} />}
 
         {activeView === 'arena' && (
           <ArenaSandbox

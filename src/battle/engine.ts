@@ -122,6 +122,7 @@ export function createBattle(setup: BattleSetup): { state: BattleState; events: 
     supplies: { ...setup.supplies },
     tick: 0,
   };
+  placeUnits(s);
   const ev: BattleEvent[] = [];
   if (setup.stealth) {
     for (const u of Object.values(units)) if (u.team === 'party') freshBudget(u);
@@ -130,6 +131,32 @@ export function createBattle(setup: BattleSetup): { state: BattleState; events: 
     startCombat(s, ev, undefined, setup.partySurprised ? party.map((u) => u.id) : []);
   }
   return { state: s, events: ev };
+}
+
+/** Every ninja starts on a free, dry, open cell: the nearest one to where the setup put it. */
+function placeUnits(s: BattleState): void {
+  const g = gridFor(s.mapId);
+  const taken = new Set<number>();
+  for (const u of Object.values(s.units)) {
+    if (u.kind !== 'ninja') continue;
+    const c0 = cellOf(u.pos);
+    let best: Cell | undefined;
+    for (let r = 0; r <= 12 && !best; r++) {
+      for (let dr = -r; dr <= r && !best; dr++) {
+        for (let dc = -r; dc <= r; dc++) {
+          if (Math.max(Math.abs(dr), Math.abs(dc)) !== r) continue;
+          const c = { c: c0.c + dc, r: c0.r + dr };
+          if (!inGrid(g, c) || cellBlocked(s, c) || g.water[idx(g, c)] === 2 || taken.has(idx(g, c))) continue;
+          best = c;
+          break;
+        }
+      }
+    }
+    if (!best) continue;
+    taken.add(idx(g, best));
+    u.pos = cellCenter(best);
+    if (u.guard && u.guard.route.length) u.guard.route[0] = { ...u.pos };
+  }
 }
 
 const freshBudget = (u: Unit): void => {

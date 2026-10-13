@@ -39,7 +39,7 @@ const R = {
   woodDark: ramp(MATERIALS.woodDark),
   pink: ramp('#b88a80', { shift: 8 }),
   // Sika spots: the coat lifted toward paper.
-  spot: ramp(blend(blend(MATERIALS.fur, MATERIALS.wood, 0.55), MATERIALS.paper, 0.62), { shift: 10 }),
+  spot: ramp(blend(blend(MATERIALS.fur, MATERIALS.wood, 0.55), MATERIALS.paper, 0.5), { shift: 10 }),
 };
 const P = {
   rabbit: pal(R.rabbit),
@@ -827,9 +827,9 @@ function standLegs(body: P2, o: { fn?: number; ff?: number; hn?: number; hf?: nu
   const hp: P2 = [HIP[0] + body[0], HIP[1] + body[1]];
   return {
     fn: deerLeg('front', sp, [17 + (o.fn ?? 0), 0], 0, 0),
-    ff: deerLeg('front', [sp[0] - 1, sp[1]], [19 + (o.ff ?? 0), 0], 0, 0),
-    hn: deerLeg('hind', hp, [-15 + (o.hn ?? 0), 0], 0, 0),
-    hf: deerLeg('hind', [hp[0] + 1, hp[1]], [-18 + (o.hf ?? 0), 0], 0, 0),
+    ff: deerLeg('front', [sp[0] - 2, sp[1]], [12 + (o.ff ?? 0), 0], 0, 0),
+    hn: deerLeg('hind', hp, [-16 + (o.hn ?? 0), 0], 0, 0),
+    hf: deerLeg('hind', [hp[0] + 2, hp[1]], [-10 + (o.hf ?? 0), 0], 0, 0),
   };
 }
 
@@ -845,14 +845,17 @@ const DEER_STAND: DeerPose = {
   legs: standLegs([0, 0]),
 };
 
-// Spots in torso space (summer coat): two neat rows beside the dorsal stripe, looser ones below.
-const DEER_SPOTS: P2[] = (() => {
-  const out: P2[] = [];
+// Spots in torso space (summer coat): two rows beside the spine, looser ones down the flank.
+// Each is [x, y, r^2]; most are single pixels, a few are 2 px.
+const DEER_SPOTS: [number, number, number][] = (() => {
+  const out: [number, number, number][] = [];
   const top = (x: number): number => -48.2 + 0.0035 * (x + 4) ** 2;
-  for (let x = -21; x <= 7; x += 4.3) out.push([x, top(x) + 3.2]);
-  for (let x = -19; x <= 3; x += 4.6) out.push([x + 0.6, top(x) + 6.6]);
-  for (let x = -16; x <= -1; x += 5.2) out.push([x + 1.4 + hash(x | 0, 3, 41) * 1.2, top(x) + 10.4]);
-  out.push([-11.5, top(-11.5) + 13.8], [-6, top(-6) + 14.2]);
+  const j = (i: number, k: number): number => hash(i, k, 41) - 0.5;
+  let i = 0;
+  for (let x = -21; x <= 6; x += 3.6, i++) out.push([x + j(i, 1), top(x) + 3.0 + j(i, 2) * 0.8, i % 3 === 1 ? 0.75 : 0.32]);
+  for (let x = -19.5; x <= 2; x += 4.1, i++) out.push([x + j(i, 1) * 1.4, top(x) + 6.6 + j(i, 2), i % 2 ? 0.7 : 0.32]);
+  for (let x = -17; x <= -1; x += 4.6, i++) out.push([x + j(i, 1) * 2, top(x) + 10.2 + j(i, 2) * 1.6, 0.32]);
+  out.push([-12.5, top(-12.5) + 13.6, 0.32], [-6.5, top(-6) + 14.4, 0.32]);
   return out;
 })();
 
@@ -868,31 +871,45 @@ function deerFrame(pose: DeerPose): Canvas {
   const base = { pal: coat, origin: org, jitter: 0.06, cell: 3, cuts };
 
   // --- legs ---------------------------------------------------------------------------------
-  const drawLeg = (L: LegJoints, kind: 'front' | 'hind', z: number, far: number): void => {
-    const lo = { ...base, far, origin: [ox + L.H[0], gy] as P2, line: far ? 0 : 1, lineSide: 'shadow' as const };
+  // Upper leg (shoulder and arm, or thigh) is muscle inside the body outline; the lower leg is a
+  // part of its own. Near legs merge their upper part into the torso; far legs are one part.
+  const legUpper = (L: LegJoints, kind: 'front' | 'hind', z: number): Prim[] => {
+    if (kind === 'front') {
+      const E = lerp2(L.P, L.J, 0.5);
+      return [cone(at(L.P, z - 1), at(E, z), 5.2, 3.6)];
+    }
+    return [cone(at(L.P, z - 1), at(L.S!, z), 7.0, 4.8)];
+  };
+  const legLower = (L: LegJoints, kind: 'front' | 'hind', z: number): Prim[] => {
     const parts: Prim[] = [];
     if (kind === 'front') {
-      parts.push(cone(at(L.P, z), at(L.J, z), 4.6, 2.0));
-      parts.push(ell(at(L.J, z + 0.2), [2.1, 2.2, 2.0]));
+      const E = lerp2(L.P, L.J, 0.5);
+      parts.push(cone(at(E, z), at(L.J, z), 3.4, 2.0));
     } else {
-      parts.push(cone(at(L.P, z - 0.5), at(L.S!, z), 6.5, 4.6));
-      parts.push(cone(at(L.S!, z), at(L.J, z), 4.4, 2.0));
-      parts.push(ell(at(L.J, z + 0.2), [2.0, 2.3, 2.0]));
+      parts.push(cone(at(L.S!, z), at(L.J, z), 4.2, 2.0));
     }
+    parts.push(ell(at(L.J, z + 0.2), [2.0, 2.2, 2.0]));
     parts.push(cone(at(L.J, z), at(L.F, z), 1.65, 1.45));
     parts.push(ell(at(L.F, z + 0.1), [1.75, 1.75, 1.7]));
     parts.push(cone(at(L.F, z), at(L.H, z), 1.45, 1.25));
+    return parts;
+  };
+  const drawLeg = (L: LegJoints, kind: 'front' | 'hind', z: number, far: number): void => {
+    const parts = far ? [...legUpper(L, kind, z), ...legLower(L, kind, z)] : legLower(L, kind, z);
     const leg = uni(1.4, ...parts);
-    const hoofT = 0.55;
     solid(b, leg, {
-      ...lo,
+      ...base,
+      far,
+      origin: [ox + L.H[0], gy],
+      line: far ? 0 : 1,
+      lineSide: 'shadow',
       paint: (h) => {
-        // Hoof: the last stretch of the pastern, dark keratin.
+        // Hoof: the end of the pastern, dark keratin.
         const vx = h.x + 0.5 - (ox + L.F[0]), vy = h.y + 0.5 - (gy + L.F[1]);
         const ex = L.H[0] - L.F[0], ey = L.H[1] - L.F[1];
         const t = (vx * ex + vy * ey) / (ex * ex + ey * ey);
         const dh = Math.hypot(h.x + 0.5 - (ox + L.H[0]), h.y + 0.5 - (gy + L.H[1]));
-        if (t > hoofT && dh < 3.2) return [P.dark, clamp(h.step + 1 - far, 2, 4)];
+        if (t > 0.55 && dh < 3.2) return [P.dark, clamp(h.step + 1 - far, 2, 4)];
         // Lower leg a little paler and grayer.
         if (h.y + 0.5 > gy + L.J[1] + 1) return [P.fur, clamp(h.step, 1, 4)];
         return null;
@@ -948,7 +965,7 @@ function deerFrame(pose: DeerPose): Canvas {
     ell(atB([7, -45], 0), [9, 4.5, 6.5], -0.1),
   );
   const neck = cone(at(neckBase, 0), at(nk, 0.4), 7.2, 4.0);
-  const body = uni(5, torso, neck);
+  const body = uni(5, torso, neck, ...legUpper(pose.legs.hn, 'hind', 5.5), ...legUpper(pose.legs.fn, 'front', 5.5));
   const spotPal = P.spot;
   solid(b, body, {
     ...base,
@@ -963,12 +980,10 @@ function deerFrame(pose: DeerPose): Canvas {
       }
       // Pale belly and inner thigh.
       if (h.ny > 0.78 && ly > -32) return [P.pale, clamp(h.step, 1, 3)];
-      // Dark dorsal stripe along the spine.
-      if (h.ny < -0.8 && lx > -22 && lx < 10) return [P.woodDark, clamp(h.step, 2, 4)];
       // Spots follow the coat's light.
-      for (const [sx, sy] of DEER_SPOTS) {
+      for (const [sx, sy, sr] of DEER_SPOTS) {
         const dx = lx - sx, dy = ly - sy;
-        if (dx * dx + dy * dy < 0.62) return [spotPal, clamp(h.step, 2, 4)];
+        if (dx * dx + dy * dy < sr) return [spotPal, clamp(h.step, 2, 4)];
       }
       // Throat a little paler.
       return null;

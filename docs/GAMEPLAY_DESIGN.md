@@ -33,7 +33,22 @@ elements.
   shoving, jumping and climbing are actions too.
 - **Dice**: every roll shows as a quick d20 over the acting character, with a
   button to speed it up. The big dice window is kept for criticals and
-  important checks.
+  important checks. Checks and attacks show their % before rolling.
+- **Chakra in battle** does not come back by itself (Uddo keeps +2 per round):
+  - **Focus chakra** (action): recover 1d6 + casting modifier; attacks against
+    you have advantage until your next turn.
+  - **Soldier pill** (bonus action): +2d6 chakra; after the battle it leaves
+    Crash (−2 to all rolls until the next camp). More than one pill between two
+    camps gives +1 Exhaustion per extra pill.
+- **Surprised** (5e 2014 rule, on purpose): a surprised character can't act or
+  react on its first turn. Taki can never be surprised (360° vision), nor can a
+  character with Watchful.
+- **Status effects** have a duration: rounds, battles, the zone, until the next
+  camp, until treated, the mission, or permanent. The catalog is in
+  `MISSION_DESIGN.md`; durations tick at the start and end of each turn and at
+  the end of each battle.
+- HP, chakra and effects carry over from battle to battle during a mission (see
+  `MISSION_DESIGN.md`).
 
 ## Elevation (at most 3 levels)
 
@@ -60,6 +75,8 @@ elements.
 - Battles open with a **stealth phase**: enemies patrol with visible vision
   cones and the party moves hidden. When someone is spotted, initiative is
   rolled and the turns begin.
+- Some battles start **without a stealth phase**: a night ambush at camp, an
+  alarm bell, or a trap set off from afar with a kunai (the zone is alerted).
 - Bushes, tall grass, smoke and shadow let a character hide: a Stealth roll
   against the enemies' passive Perception.
 - Attacking from hiding gives advantage and extra surprise damage.
@@ -97,7 +114,14 @@ elements.
 - Objectives: defeat everyone, stealth assassination, escape, protect someone,
   survive N turns.
 - At 0 HP a character is **downed** and makes death saving throws; allies can
-  revive them.
+  revive them. Back on their feet they carry **Fall aftermath** (−2 AC, death
+  saves with disadvantage) until the mission ends; dropped by a critical hit,
+  also a **Grave wound** (−10 % max HP).
+- **Tension** (stress, 0–10): +1 for taking a critical hit or an ally falling,
+  −1 for a critical of one's own or a victory. At 10, a WIS save: Breakdown or
+  Awakening. Details in `MISSION_DESIGN.md`.
+- **Death:** only in Legend mode is it permanent; if the whole party dies in
+  Legend, the campaign is over.
 
 ## Controls
 

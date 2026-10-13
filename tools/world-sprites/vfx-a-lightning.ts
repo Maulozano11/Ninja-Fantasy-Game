@@ -588,7 +588,7 @@ function aura(): WorldSprite {
     // A ring of static at the feet.
     const a0 = rr(sd + 13, 0, 0, TAU);
     stroke(ring, jag([cx - 26, gy], [cx + 26, gy], sd + 14, 4, 0.12).map(([x, y]) => [x, y + 6 * Math.sin(((x - cx + 26) / 52) * Math.PI) * (Math.cos(a0) > 0 ? 1 : 0.6)] as Pt), 1.2, 0.85);
-    const c = stack(W, H, render(sheath, BOLT, { th: TH, lo: 2, hi: 3, outline: false, alpha: [0, 0, 80, 110, 0, 0, 0] }), boltR(ring), boltR(f));
+    const c = stack(W, H, render(sheath, BOLT, { th: TH, lo: 2, hi: 3, outline: false, alpha: [0, 0, 45, 65, 0, 0, 0] }), boltR(ring), boltR(f));
     const sp: { x: number; y: number; s: number }[] = [];
     for (let k = 0; k < 8; k++) {
       const y = rr(sd + 15, k, 10, gy - 4), side = k % 2 ? 1 : -1;

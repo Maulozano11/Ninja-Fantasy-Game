@@ -528,11 +528,196 @@ function waterDragon(): WorldSprite {
 }
 
 // =============================================================================================
+// WIND CRANE
+// =============================================================================================
+//
+// A great crane made of wind, flying right: the long neck stretched out, a dagger beak, the legs
+// trailing behind the tail, and wide wings beating through a 6-frame flap. Every feather is its own
+// blade (secondaries along the arm, primaries fanned from the hand, coverts over the roots) in pale
+// mint and white, with vanes streaked along their length; the primaries' tips stream off into wind
+// lines, and curling eddies spin off the wingtips and tail.
+
+const WIND = (() => ({
+  ramp: ramp(blend('#9fe0c8', MATERIALS.paper, 0.35), { shift: 14, spread: 0.85 }),
+  tip: ramp(blend('#5fb8a8', '#2f7f86', 0.3), { shift: 12 }),
+  outline: hex('#17423f'),
+  line: hex('#3f8c84'),
+  white: hex('#f6fffb'),
+  streak: hex('#dcfff2'),
+  eye: hex('#0f2a2a'),
+  crown: hex('#e4f8a8'),
+}))();
+
+interface CraneWing {
+  /** Arm and hand directions (degrees on screen: -90 up, 180 back) and how spread the hand is (0..1). */
+  arm: number;
+  hand: number;
+  spread: number;
+}
+// up, coming down, level, down, rising (folded), rising
+const CRANE_FLAP: (CraneWing & { bob: number })[] = [
+  { arm: -105, hand: -118, spread: 1, bob: 1 },
+  { arm: -150, hand: -160, spread: 1, bob: 0 },
+  { arm: 172, hand: 160, spread: 1, bob: -1 },
+  { arm: 135, hand: 120, spread: 0.92, bob: -2 },
+  { arm: -165, hand: -178, spread: 0.7, bob: -1 },
+  { arm: -128, hand: -140, spread: 0.85, bob: 0 },
+];
+const D2R = Math.PI / 180;
+const dirOf = (deg: number): P2 => [Math.cos(deg * D2R), Math.sin(deg * D2R)];
+
+/** Feather shader: mint vanes streaked along the blade, darker toward the tip of the flight feathers. */
+function featherShade(t: number, o: { far?: boolean; tipDark?: boolean; seed: number }) {
+  return (h: Hit): Color => {
+    const L = lit(h) - (o.far ? 0.12 : 0);
+    // Vane streaks: thin lines along the blade.
+    const vane = noise(h.u * h.len * 0.25 - t * 8, h.v * 3.2, 1.6, o.seed);
+    let s = stepOf(L + (vane - 0.5) * 0.25, h.u * h.len, h.v * 4, [0.22, 0.44, 0.7, 0.86], 0.05, o.seed);
+    if (Math.abs(h.v) < 0.12 && h.u > 0.1) s = Math.max(1, s - 1); // the rachis
+    if (o.tipDark && h.u > 0.72) return WIND.tip[clamp(s, 1, 4)];
+    return WIND.ramp[clamp(s - (o.far ? 1 : 0), 1, 5)];
+  };
+}
+
+/** One crane wing as parts, back to front; returns the primary tips (for the wind lines). */
+function craneWing(f: Frame, S: P2, wg: CraneWing, k: number, t: number, far: boolean): P2[] {
+  const style = { outline: WIND.outline, line: WIND.line, solid: 150 };
+  const fa = 17 * k, ha = 15 * k * (0.7 + 0.3 * wg.spread);
+  const Wr: P2 = [S[0] + dirOf(wg.arm)[0] * fa, S[1] + dirOf(wg.arm)[1] * fa];
+  const T: P2 = [Wr[0] + dirOf(wg.hand)[0] * ha, Wr[1] + dirOf(wg.hand)[1] * ha];
+  const flick = (j: number): number => Math.sin(TAU * t + j * 1.3);
+  // Feathers point back from the bone and slightly away from the body.
+  const back = (a: number, d: number): number => 180 + (a > 0 ? d : -d) * 0.35 + (a > 90 || a < -90 ? 0 : 0);
+  // Secondaries along the forearm.
+  const secs: Prim[] = [];
+  for (let j = 0; j < 6; j++) {
+    const u = 0.12 + j * 0.16;
+    const root: P2 = [lerp(S[0], Wr[0], u), lerp(S[1], Wr[1], u)];
+    const a = back(wg.arm, 30) + (wg.arm < 0 ? 18 : -18) * u;
+    const len = (20 + flick(j) * 0.8) * k;
+    const d = dirOf(a);
+    secs.push(lens(root, [root[0] + d[0] * len, root[1] + d[1] * len], 4.2 * k, { bend: wg.arm < 0 ? 1 : -1, peak: 0.35, tip: 0.8, base: 0.7 }));
+  }
+  f.part_(secs, featherShade(t, { far, tipDark: true, seed: 61 }), style);
+  // Primaries fanned from the hand, inner first so the outer ones lie on top.
+  const tips: P2[] = [];
+  for (let j = 5; j >= 0; j--) {
+    const u = j / 5; // 0 outermost
+    const root: P2 = [lerp(Wr[0], T[0], 1 - u * 0.75), lerp(Wr[1], T[1], 1 - u * 0.75)];
+    const a = wg.hand + lerp(0, wg.hand < 0 ? -62 : 62, u) * wg.spread + (wg.hand < 0 ? -8 : 8);
+    const len = lerp(28, 20, u) * k * (0.8 + 0.2 * wg.spread) + flick(j + 3);
+    const d = dirOf(a);
+    const tip: P2 = [root[0] + d[0] * len, root[1] + d[1] * len];
+    tips.push(tip);
+    f.part_([lens(root, tip, lerp(3.6, 3.2, u) * k, { bend: wg.hand < 0 ? 1.2 : -1.2, peak: 0.3, tip: 1.2, base: 0.6 })], featherShade(t, { far, tipDark: true, seed: 71 + j }), style);
+  }
+  // Coverts and the leading edge: a bright band of short feathers over the roots.
+  const cov: Prim[] = [tube([S, Wr, T], (u) => lerp(4.2, 2.4, u) * k)];
+  for (let j = 0; j < 5; j++) {
+    const u = j / 4;
+    const root: P2 = u < 0.6 ? [lerp(S[0], Wr[0], u / 0.6), lerp(S[1], Wr[1], u / 0.6)] : [lerp(Wr[0], T[0], (u - 0.6) / 0.4), lerp(Wr[1], T[1], (u - 0.6) / 0.4)];
+    const a = back(wg.arm, 20) + (wg.arm < 0 ? 12 : -12) * u;
+    const d = dirOf(a);
+    const len = lerp(11, 8, u) * k;
+    cov.push(lens(root, [root[0] + d[0] * len, root[1] + d[1] * len], 3.8 * k, { peak: 0.3, tip: 0.9, base: 0.8 }));
+  }
+  f.part_(cov, featherShade(t, { far, seed: 81 }), style);
+  return tips;
+}
+
+function windCrane(): WorldSprite {
+  const W = 190, H = 150, cx = 92, cy = 76;
+  const frames: Canvas[] = [];
+  CRANE_FLAP.forEach((wg, i) => {
+    const t = i / CRANE_FLAP.length;
+    const f = new Frame(W, H);
+    const by = wg.bob;
+    const style = { outline: WIND.outline, line: WIND.line, solid: 150 };
+    const body = (h: Hit): Color => {
+      const L = lit(h);
+      const s = stepOf(L + (noise(h.x * 0.5 - t * 20, h.y, 2, 91) - 0.5) * 0.12, h.x, h.y, [0.22, 0.44, 0.7, 0.86], 0.05, 91);
+      return WIND.ramp[clamp(s, 1, 5)];
+    };
+    // Far wing, behind everything, raised a little ahead of the near one.
+    const farW: CraneWing = { arm: wg.arm + (wg.arm < 0 ? 10 : -10), hand: wg.hand + (wg.hand < 0 ? 12 : -12), spread: wg.spread };
+    const farTips = craneWing(f, [cx + 6, cy - 6 + by], farW, 0.86, t + 0.08, true);
+    // Legs trailing behind the tail, dark and thin, with the toes curled.
+    const legs: Prim[] = [];
+    for (const [dy, dx] of [[0, 0], [2, -3]]) {
+      const hip: P2 = [cx - 10, cy + 5 + by];
+      const knee: P2 = [cx - 26 + dx, cy + 8 + by + dy];
+      const foot: P2 = [cx - 52 + dx, cy + 10 + by + dy + Math.sin(TAU * t) * 0.6];
+      legs.push(tube([hip, knee, foot], (u) => lerp(1.6, 1.0, u)));
+      legs.push(lens(foot, [foot[0] - 5, foot[1] + 1.5], 1.0, { tip: 1 }));
+    }
+    f.part_(legs, (h) => WIND.tip[clamp(stepOf(lit(h), h.x, h.y) - 1, 1, 3)], style);
+    // Tail: a short fan of feathers.
+    const tail: Prim[] = [];
+    for (let j = 0; j < 5; j++) {
+      const a = 180 + (j - 2) * 9 + Math.sin(TAU * t + j) * 2;
+      const r: P2 = [cx - 16, cy + 2 + by];
+      const d = dirOf(a);
+      tail.push(lens(r, [r[0] + d[0] * 16, r[1] + d[1] * 16], 3.2, { peak: 0.4, tip: 1.2, base: 0.6 }));
+    }
+    f.part_(tail, featherShade(t, { seed: 95 }), style);
+    // Body: a long torso, the breast full.
+    f.part_([blob(cx - 2, cy + 1 + by, 19, 8.2, -0.08), blob(cx + 9, cy + by, 9, 7.5, -0.2)], body, style);
+    // Neck: stretched forward with a gentle S, the head held level.
+    const neck: P2[] = [];
+    for (let j = 0; j <= 14; j++) {
+      const u = j / 14;
+      neck.push([cx + 12 + u * 34, cy - 2 + by - Math.sin(u * Math.PI) * 4 - u * 5 + Math.sin(TAU * t + u * 2) * 0.8 * u]);
+    }
+    f.part_([tube(neck, (u) => lerp(4.4, 2.8, u))], body, style);
+    const hd = neck[neck.length - 1];
+    // Head and the dagger beak.
+    f.part_([blob(hd[0] + 3, hd[1], 5.2, 4.2, -0.1)], body, style);
+    f.part_([lens([hd[0] + 6, hd[1] - 0.5], [hd[0] + 22, hd[1] + 2.2], 2.1, { peak: 0.12, tip: 0.9, base: 1 })], (h) => WIND.tip[clamp(stepOf(lit(h), h.x, h.y) + (h.v < 0 ? 1 : 0), 2, 5)], style);
+    // Near wing in front.
+    const tips = craneWing(f, [cx + 2, cy - 4 + by], wg, 1, t, false);
+    const fc = f.finish();
+    // Eye and a pale crown.
+    const ex = Math.round(hd[0] + 4), ey = Math.round(hd[1] - 1);
+    fc.set(ex, ey, WIND.eye);
+    fc.set(ex + 1, ey, WIND.eye);
+    fc.set(ex, ey - 1, WIND.white);
+    for (const [dx, dy] of [[-1, -4], [0, -4], [1, -4], [2, -4]]) fc.set(ex + dx, ey + dy, WIND.crown);
+    // Wind lines streaming off the primary tips and the tail, curling eddies behind.
+    const streak = (x0: number, y0: number, len: number, a: number, seed: number): void => {
+      for (let q = 0; q < len; q++) {
+        const x = x0 - q, y = y0 + Math.sin(q * 0.25 + seed) * 0.8;
+        const alpha = a * (1 - q / len);
+        if ((q + Math.floor(t * 12) + seed) % 9 < 7) fc.plot(x, y, wa(WIND.streak, alpha));
+      }
+    };
+    [...tips, ...farTips].forEach(([x, y], j) => streak(x - 1, y, 14 + (j % 3) * 5, j < tips.length ? 200 : 120, j));
+    streak(cx - 34, cy + 2 + by, 26, 170, 7);
+    streak(cx - 30, cy - 4 + by, 18, 130, 3);
+    // Eddies: little spirals spun off behind, drifting back over the loop.
+    for (let e = 0; e < 3; e++) {
+      const p = fract(t + e / 3);
+      const ex2 = cx - 40 - p * 46, ey2 = cy - 18 + e * 18 + Math.sin(e * 2.1) * 6;
+      const r0 = 2 + p * 3.5;
+      for (let q = 0; q < 26; q++) {
+        const a = q * 0.42 + e * 2 + p * 4;
+        const rr = r0 * (1 - q / 34);
+        fc.plot(Math.round(ex2 + Math.cos(a) * rr * 1.4), Math.round(ey2 + Math.sin(a) * rr), wa(WIND.streak, 210 * (1 - p) * (1 - q / 30)));
+      }
+    }
+    frames.push(fc);
+  });
+  return flySprite('wind', 'Wind crane', [2.6, 2.0], frames, cx, cy);
+}
+
+// =============================================================================================
 // BUILD
 // =============================================================================================
 
 const FOCUS = process.env.FOCUS?.split(',');
-const BUILDERS: [string, () => WorldSprite][] = [['water', waterDragon]];
+const BUILDERS: [string, () => WorldSprite][] = [
+  ['water', waterDragon],
+  ['wind', windCrane],
+];
 
 /** Frames side by side at a fixed scale, cropped to their union, on a background. */
 function strip(path: string, frames: Canvas[], k: number, bg = '#5d6b57'): void {

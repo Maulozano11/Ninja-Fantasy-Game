@@ -1361,3 +1361,199 @@ function tentSmall(): WorldSprite {
     W: 250, H: 190, ox: 125, oy: 150,
   });
 }
+
+// ================================================================================================
+// main
+// ================================================================================================
+
+const OUT = previewDir();
+const ONLY = (process.env.CAMPSITE_ONLY ?? '').split(',').filter(Boolean);
+
+/** Zoomed crop of the first frame (anchor marked) and a strip per animation, for review. */
+function debugDump(s: WorldSprite): void {
+  const bg = hex('#5d6b57');
+  const first = Object.values(s.anims)[0].frames[0];
+  const z = new Canvas(first.w + 8, first.h + 8);
+  z.fillRect(0, 0, z.w, z.h, bg);
+  z.draw(first, 4, 4);
+  z.set(4 + s.anchor[0], 4 + s.anchor[1] + 1, hex('#ff00ff'));
+  z.scaled(first.w > 200 || first.h > 200 ? 3 : first.h > 70 ? 4 : 6).save(join(OUT, `campsite-${s.name}-zoom.png`));
+  for (const [k, a] of Object.entries(s.anims)) {
+    if (a.frames.length < 2 && Object.keys(s.anims).length < 2) continue;
+    const fw = a.frames[0].w, fh = a.frames[0].h;
+    const st = new Canvas((fw + 3) * a.frames.length + 3, fh + 6);
+    st.fillRect(0, 0, st.w, st.h, bg);
+    a.frames.forEach((fr, i) => st.draw(fr, 3 + i * (fw + 3), 3));
+    st.scaled(fw > 150 ? 2 : 3).save(join(OUT, `campsite-${s.name}-${k}.png`));
+  }
+}
+
+// --- review sheets for the owner ------------------------------------------------------------
+
+/** Reads a PNG written by the kit (8-bit RGBA, any filter) into a Canvas. */
+function readPng(path: string): Canvas {
+  const b = readFileSync(path);
+  let o = 8, w = 0, h = 0;
+  const idat: Buffer[] = [];
+  while (o < b.length) {
+    const n = b.readUInt32BE(o), t = b.toString('ascii', o + 4, o + 8);
+    if (t === 'IHDR') {
+      w = b.readUInt32BE(o + 8);
+      h = b.readUInt32BE(o + 12);
+    }
+    if (t === 'IDAT') idat.push(b.subarray(o + 8, o + 8 + n));
+    o += 12 + n;
+  }
+  const raw = inflateSync(Buffer.concat(idat));
+  const px = new Uint8Array(w * h * 4);
+  const bpr = w * 4;
+  for (let y = 0; y < h; y++) {
+    const ft = raw[y * (bpr + 1)];
+    for (let x = 0; x < bpr; x++) {
+      const r = raw[y * (bpr + 1) + 1 + x];
+      const a = x >= 4 ? px[y * bpr + x - 4] : 0, up = y ? px[(y - 1) * bpr + x] : 0, ul = x >= 4 && y ? px[(y - 1) * bpr + x - 4] : 0;
+      let v = r;
+      if (ft === 1) v = r + a;
+      else if (ft === 2) v = r + up;
+      else if (ft === 3) v = r + ((a + up) >> 1);
+      else if (ft === 4) {
+        const pp = a + up - ul, pa = Math.abs(pp - a), pb = Math.abs(pp - up), pc = Math.abs(pp - ul);
+        v = r + (pa <= pb && pa <= pc ? a : pb <= pc ? up : ul);
+      }
+      px[y * bpr + x] = v & 255;
+    }
+  }
+  return new Canvas(w, h, px);
+}
+
+/** First frame and anchor of an approved landmarks sprite (read from its sheet), for comparison. */
+function landmark(name: string): { c: Canvas; ax: number; ay: number } | null {
+  const dir = join(import.meta.dirname, '../../src/assets/world/landmarks');
+  const mf = join(dir, 'manifest.json');
+  if (!existsSync(mf)) return null;
+  const spec = JSON.parse(readFileSync(mf, 'utf8')).sprites?.[name];
+  if (!spec) return null;
+  const sheet = readPng(join(dir, spec.file));
+  const c = new Canvas(spec.frameW, spec.frameH);
+  c.draw(sheet, 0, 0);
+  return { c, ax: spec.anchor[0], ay: spec.anchor[1] };
+}
+
+/** A 3x5 pixel font for the sheet labels. */
+const FONT: Record<string, string> = {
+  a: '010101111101101', b: '110101110101110', c: '011100100100011', d: '110101101101110', e: '111100110100111', f: '111100110100100', g: '011100101101011', h: '101101111101101',
+  i: '111010010010111', j: '001001001101010', k: '101101110101101', l: '100100100100111', m: '101111111101101', n: '110101101101101', o: '010101101101010', p: '110101110100100',
+  q: '010101101011001', r: '110101110101101', s: '011100010001110', t: '111010010010010', u: '101101101101111', v: '101101101101010', w: '101101111111101', x: '101101010101101',
+  y: '101101010010010', z: '111001010100111', '0': '111101101101111', '1': '010110010010111', '2': '110001010100111', '3': '110001010001110', '4': '101101111001001', '5': '111100110001110',
+  '6': '011100110101010', '7': '111001010010010', '8': '010101010101010', '9': '010101011001110', '_': '000000000000111', '-': '000000111000000', '.': '000000000000010', ':': '000010000010000', ' ': '000000000000000', '@': '010101111100011',
+};
+function text(c: Canvas, x: number, y: number, s: string, col: Color): void {
+  [...s.toLowerCase()].forEach((ch, k) => {
+    const g = FONT[ch] ?? FONT[' '];
+    for (let i = 0; i < 15; i++) if (g[i] === '1') c.set(x + k * 4 + (i % 3), y + Math.floor(i / 3), col);
+  });
+}
+
+/** The painted-forest stage: a misty green that darkens toward the ground, with soft painted blotches. */
+function stage(c: Canvas, groundY: number): void {
+  for (let y = 0; y < c.h; y++)
+    for (let x = 0; x < c.w; x++) {
+      const t = y / Math.max(1, groundY);
+      const m1 = fbm(x * 0.5, y * 0.5, 40, 3, 7);
+      let col = y < groundY ? mix(hex('#6f7f68'), hex('#56664f'), clamp(t, 0, 1)) : mix(hex('#4c5c3e'), hex('#3f4f34'), clamp((y - groundY) / 40, 0, 1));
+      col = mix(col, y < groundY ? hex('#7d8c74') : hex('#55663f'), clamp((m1 - 0.5) * 0.9, 0, 0.35));
+      c.set(x, y, col);
+    }
+}
+
+/** camp-lineup.png: every camp sprite's first frame on one ground line, with landmarks and the character at the ends. */
+function lineup(sprites: WorldSprite[], path: string, k = 3): void {
+  const items: { c: Canvas; ax: number; ay: number }[] = [];
+  const crop = (c: Canvas, ax: number, ay: number) => {
+    const b = c.bounds();
+    if (!b) return { c, ax, ay };
+    const out = new Canvas(b[2] - b[0] + 1, b[3] - b[1] + 1);
+    out.draw(c, -b[0], -b[1]);
+    return { c: out, ax: ax - b[0], ay: ay - b[1] };
+  };
+  const ch = characterRef();
+  items.push(crop(ch, CHARACTER_FEET[0], CHARACTER_FEET[1]));
+  const lan = landmark('stone_lantern');
+  if (lan) items.push(crop(lan.c, lan.ax, lan.ay));
+  for (const s of sprites) items.push(crop(Object.values(s.anims)[0].frames[0], s.anchor[0], s.anchor[1]));
+  const bou = landmark('boulder');
+  if (bou) items.push(crop(bou.c, bou.ax, bou.ay));
+  items.push(crop(ch, CHARACTER_FEET[0], CHARACTER_FEET[1]));
+  const pad = 14;
+  const above = Math.max(...items.map((it) => it.ay)) + 16;
+  const below = Math.max(...items.map((it) => it.c.h - it.ay)) + 16;
+  const W = items.reduce((t, it) => t + it.c.w + pad, pad);
+  const out = new Canvas(W, above + below);
+  stage(out, above);
+  let x = pad;
+  for (const it of items) {
+    out.draw(it.c, x, above - it.ay);
+    x += it.c.w + pad;
+  }
+  out.scaled(k).save(path);
+}
+
+/** camp-anims.png: every animation as a labelled strip of frames (cropped to the animation's bounds). */
+function animsSheet(sprites: WorldSprite[], path: string, k = 3): void {
+  const rows: { label: string; frames: Canvas[] }[] = [];
+  for (const s of sprites)
+    for (const [key, a] of Object.entries(s.anims)) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const fr of a.frames) {
+        const b = fr.bounds();
+        if (!b) continue;
+        x0 = Math.min(x0, b[0]);
+        y0 = Math.min(y0, b[1]);
+        x1 = Math.max(x1, b[2]);
+        y1 = Math.max(y1, b[3]);
+      }
+      const frames = a.frames.map((fr) => {
+        const c = new Canvas(x1 - x0 + 1, y1 - y0 + 1);
+        c.draw(fr, -x0, -y0);
+        return c;
+      });
+      rows.push({ label: `${s.name} ${key} ${a.frames.length}f ${a.fps}fps${a.loop === false ? ' once' : a.fps ? ' loop' : ''}`, frames });
+    }
+  const pad = 6;
+  const W = Math.max(...rows.map((r) => r.frames.reduce((t, f) => t + f.w + pad, pad)), 200);
+  const H = rows.reduce((t, r) => t + r.frames[0].h + pad + 9, pad);
+  const out = new Canvas(W, H);
+  out.fillRect(0, 0, W, H, hex('#5d6b57'));
+  let y = pad;
+  for (const r of rows) {
+    text(out, pad, y, r.label, hex('#e8e4d4'));
+    y += 8;
+    let x = pad;
+    for (const f of r.frames) {
+      out.fillRect(x, y, f.w, f.h, hex('#56664f'));
+      out.draw(f, x, y);
+      x += f.w + pad;
+    }
+    y += r.frames[0].h + pad + 1;
+  }
+  out.scaled(k).save(path);
+}
+
+
+const BUILDERS: [string, () => WorldSprite[]][] = [
+  ['tent_large', () => [tentLarge()]],
+  ['tent_small', () => [tentSmall()]],
+];
+const sprites: WorldSprite[] = BUILDERS.filter(([k]) => !ONLY.length || ONLY.includes(k)).flatMap(([, b]) => b());
+if (!ONLY.length) {
+  writeGroup('campsite', sprites);
+  lineup(sprites, join(OUT, 'campsite-lineup.png'), 3);
+  animsSheet(sprites, join(OUT, 'campsite-anims.png'), 3);
+}
+for (const s of sprites) {
+  debugDump(s);
+  const f0 = Object.values(s.anims)[0].frames[0];
+  const bb = f0.bounds()!;
+  const anims = Object.entries(s.anims).map(([k, a]) => `${k}:${a.frames.length}@${a.fps}${a.loop === false ? '' : 'L'}`).join(' ');
+  console.log(`${s.name.padEnd(16)} frame ${f0.w}x${f0.h} anchor ${s.anchor} opaque ${bb[2] - bb[0] + 1}x${bb[3] - bb[1] + 1}px (target ${s.meters.map((v) => m(v)).join('x')}) ${anims}`);
+}

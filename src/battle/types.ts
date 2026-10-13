@@ -34,6 +34,10 @@ export interface Weapon {
   reach: number;
   /** Uses the better of STR and DEX. */
   finesse: boolean;
+  /** Held in the hand (a blade, a polearm); palm techniques and fists keep the hands free. */
+  held: boolean;
+  /** Needs both hands (greatsword, naginata). */
+  twoHanded?: boolean;
 }
 
 /** What a unit is. */
@@ -85,6 +89,8 @@ export interface TurnBudget {
   /** Meters moved this turn (running in the stealth phase is noisy). */
   moved: number;
   dashed?: boolean;
+  /** The free object interaction of the turn (drawing or stowing the weapon) was used. */
+  interacted?: boolean;
 }
 
 /** A guard's state in the stealth phase. */
@@ -137,6 +143,8 @@ export interface Unit {
   /** Casting ability modifier (Focus chakra). */
   castMod: number;
   weapon: Weapon;
+  /** The weapon is in hand (hand seals need free hands: stow it, or have One-Handed Seals). */
+  armed: boolean;
   /** Jutsu ids it can cast. */
   jutsus: string[];
   /** Mission status effects (carried over between battles). */
@@ -318,7 +326,7 @@ export type Action =
   | { type: 'move'; unit: string; to: Cell; sneak?: boolean }
   | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
   | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean }
-  | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'foresight'; unit: string }
+  | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'foresight' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
   | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag'; target?: string; at?: Pt }
   | { type: 'stabilize'; unit: string; target: string }
@@ -350,6 +358,7 @@ export type BattleEvent =
   | { t: 'move'; unit: string; path: Pt[]; run: boolean }
   | { t: 'teleport'; unit: string; from: Pt; to: Pt; log?: boolean }
   | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number }
+  | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'foresight' | 'item' | 'stone' }
   | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean }
   | { t: 'save'; unit: string; what: string; roll: RollInfo }

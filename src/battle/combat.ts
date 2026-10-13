@@ -10,7 +10,7 @@ import { Rng, rngFor, rollDie } from '../rules/rng';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from './types';
 import { coverBetween, dist, levelAtPt } from './map';
-import { KUNAI, KUNAI_LONG } from './units';
+import { KUNAI, KUNAI_LONG, wielded } from './units';
 
 /** The next dice stream of the battle. */
 export function nextRng(s: BattleState): Rng {
@@ -92,7 +92,7 @@ export interface AttackPreview {
 function flanked(s: BattleState, attacker: Unit, target: Unit): boolean {
   for (const ally of Object.values(s.units)) {
     if (ally.id === attacker.id || ally.team !== attacker.team || !standing(ally)) continue;
-    if (dist(ally.pos, target.pos) > ally.weapon.reach + 0.1) continue;
+    if (dist(ally.pos, target.pos) > wielded(ally).reach + 0.1) continue;
     const a1 = Math.atan2(attacker.pos.z - target.pos.z, attacker.pos.x - target.pos.x);
     const a2 = Math.atan2(ally.pos.z - target.pos.z, ally.pos.x - target.pos.x);
     let d = Math.abs(a1 - a2);
@@ -119,10 +119,10 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     mod = a.jutsuAttack + am.allRolls - 2 * (a.character?.exhaustion ?? 0);
     inRange = d <= (opts.jutsuRange ?? 9) + 0.1;
   } else {
-    const w = kind === 'ranged' ? KUNAI : a.weapon;
+    const w = kind === 'ranged' ? KUNAI : wielded(a);
     const ab = kind === 'ranged' ? abilityMod(a.stats.dex) : w.finesse ? Math.max(abilityMod(a.stats.str), abilityMod(a.stats.dex)) : abilityMod(a.stats.str);
     mod = a.prof + ab + am.allRolls - 2 * (a.character?.exhaustion ?? 0) + (kind === 'ranged' ? am.dexRolls : 0);
-    inRange = kind === 'ranged' ? d <= KUNAI_LONG + 0.1 : d <= a.weapon.reach + 0.1 + (t.kind === 'hydra_head' ? 2.5 : 0);
+    inRange = kind === 'ranged' ? d <= KUNAI_LONG + 0.1 : d <= w.reach + 0.1 + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
     if (kind === 'ranged' && d > KUNAI.reach + 0.1) {
       advs.push('disadvantage');
       reasons.push('longRange');

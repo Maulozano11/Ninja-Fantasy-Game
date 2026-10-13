@@ -74,7 +74,7 @@ export const handsLimp = (g: DrawCtx): boolean => g.rig.pose === 'downed';
  * are stowed meanwhile (see items/accessories.ts). The runes cast keeps them.
  */
 const BUSY = new Set(['handsigns', 'castBook', 'castSphere', 'castLightning', 'castWave', 'castFlash', 'castEye', 'castScript']);
-export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose);
+export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.look.stowed;
 
 /** Angle of the handle the near hand wraps, or null when it holds nothing with a handle. */
 export function gripAngle(g: DrawCtx): number | null {

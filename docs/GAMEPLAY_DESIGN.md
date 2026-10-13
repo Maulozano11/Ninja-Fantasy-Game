@@ -38,6 +38,15 @@ elements.
   pill, bandage, antidote).
 - **Kunai and shuriken for everyone**: besides their weapon, any ninja can throw
   (1d4, up to 9 m).
+- **Hands for seals**: ninjutsu and genjutsu are woven with hand seals and need
+  both hands free (the sprite stows the blade at the belt or on the back while
+  casting). Drawing or stowing the weapon is free once a turn; a second time
+  takes the Bonus Action. With the weapon stowed, blows are struck with the
+  fists (opportunity attacks too); with it drawn, Kawarimi can't be cast.
+  Taijutsu and sword arts need no seals. The feat **One-Handed Seals** lets a
+  ninja cast with a one-handed weapon drawn (two-handed weapons must still be
+  stowed). Palm techniques (gentle fist, lightning and spiral palms) keep the
+  hands free.
 - **Movement can't be undone** once made.
 - **Reactions** (opportunity attacks and reaction jutsu) always ask the player
   who controls the character; AI characters decide by themselves.

@@ -31,7 +31,7 @@ import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, passivePerception, rollDiceExpr, skillMod } from './combat';
 import { JUTSU, areaOf, enhanced } from './jutsu';
 import type { JutsuSpec } from './jutsu';
-import { KUNAI, enemyUnit, unitFrom } from './units';
+import { KUNAI, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
@@ -205,6 +205,8 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return doJump(u, ev);
     case 'foresight':
       return doForesight(u, ev);
+    case 'draw':
+      return doDraw(u, ev);
     case 'shove':
       return doShove(s, u, a.target, a.mode, ev);
     case 'item':
@@ -283,7 +285,7 @@ function provoker(s: BattleState, u: Unit, next: Pt, skip: string[]): Unit | und
     if (!r.turn.reaction || r.cond.surprised) continue;
     // A hidden mover it can't see slips past.
     if (u.cond.hidden !== undefined && passivePerception(r) < u.cond.hidden) continue;
-    const reach = r.weapon.reach + 0.1;
+    const reach = wielded(r).reach + 0.1;
     if (dist(r.pos, u.pos) <= reach && dist(r.pos, next) > reach) return r;
   }
   return undefined;
@@ -351,6 +353,12 @@ function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, kn
   const t = s.units[targetId];
   if (!t || !targetable(t)) return 'badTarget';
   if (t.team === u.team) return 'ally';
+  // A blade in its sheath is drawn for free (once a turn); a kunai needs a free hand.
+  if (!ranged && u.weapon.held && !u.armed && !u.turn.interacted) setArmed(u, true, 'free', ev);
+  if (ranged && u.armed && u.weapon.twoHanded) {
+    if (u.turn.interacted) return 'handsBusy';
+    setArmed(u, false, 'free', ev);
+  }
   const pv = attackPreview(s, u, t, ranged ? 'ranged' : 'melee');
   if (!pv.inRange) return 'outOfRange';
   if (ranged && !lineOfSight(s, u.pos, t.pos)) return 'noSight';
@@ -378,7 +386,7 @@ function weaponAttack(
   after: AfterHits,
   ev: BattleEvent[],
 ): boolean {
-  const w = ranged ? KUNAI : a.weapon;
+  const w = ranged ? KUNAI : wielded(a);
   const adv = o.takedown ? combineAdvantage(pv.adv, 'advantage') : pv.adv;
   const roll = check(s, 'attack', pv.mod, pv.ac, adv, true);
   if (t.pos.x !== a.pos.x) a.facing = t.pos.x > a.pos.x ? 1 : -1;
@@ -418,10 +426,10 @@ function attackProp(s: BattleState, u: Unit, i: number, ranged: boolean, ev: Bat
   if (!p || !st || st.destroyed || st.hp === undefined) return 'badTarget';
   const d = dist(u.pos, p);
   const rules = propRules(p);
-  if (ranged ? d > KUNAI.reach * 2 : d > u.weapon.reach + rules.radius + 0.1) return 'outOfRange';
+  if (ranged ? d > KUNAI.reach * 2 : d > wielded(u).reach + rules.radius + 0.1) return 'outOfRange';
   if (ranged && !lineOfSight(s, u.pos, p)) return 'noSight';
   u.turn.action = false;
-  const w = ranged ? KUNAI : u.weapon;
+  const w = ranged ? KUNAI : wielded(u);
   const roll = check(s, 'attack', u.prof + abilityMod(ranged ? u.stats.dex : u.stats.str), 10, d > KUNAI.reach ? 'disadvantage' : 'none', true);
   ev.push({ t: 'attack', unit: u.id, target: `prop:${i}`, what: w.name, roll, ranged });
   if (!roll.success) return null;
@@ -446,7 +454,7 @@ const KAWARIMI = 'substitution_kawarimi';
 function canKawarimi(s: BattleState, t: Unit): boolean {
   if (t.kind !== 'ninja' || t.down || !t.turn.reaction || t.cond.surprised) return false;
   if (s.phase === 'stealth' && t.team === 'enemy') return false;
-  if (!t.jutsus.includes(KAWARIMI) || effectMods(t.effects).noJutsu) return false;
+  if (!t.jutsus.includes(KAWARIMI) || effectMods(t.effects).noJutsu || !handsFree(t)) return false;
   return t.chakra >= JUTSU[KAWARIMI].cost;
 }
 
@@ -598,6 +606,9 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   const cost = jutsuCost(u, base, enh);
   if (u.chakra < cost) return 'noChakra';
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return 'noAction';
+  // Hand seals need both hands: the weapon is stowed for free (once a turn), or the jutsu waits.
+  const seals = needsSeals(u, base);
+  if (seals && !handsFree(u) && u.turn.interacted) return 'handsBusy';
   const target = targetId ? s.units[targetId] : undefined;
   let at: Pt = target ? { ...target.pos } : { ...atIn };
   if (spec.shape === 'self' || spec.shape === 'selfCircle') at = { ...u.pos };
@@ -628,6 +639,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     if (cellBlocked(s, c) || waterAtPt(s, at) === 2 || !canStop(s, u, c)) return 'blocked';
     at = cellCenter(c);
   }
+  if (seals && !handsFree(u)) setArmed(u, false, 'free', ev);
   // Pay, and spend the action.
   u.chakra -= cost;
   if (cost) ev.push({ t: 'chakra', unit: u.id, delta: -cost, chakra: u.chakra, reason: id });
@@ -732,6 +744,28 @@ function raiseWall(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleE
   };
   s.walls.push(wall);
   ev.push({ t: 'wall', wall, on: true });
+}
+
+/** Ninjutsu and genjutsu are woven with hand seals; taijutsu and sword arts are not. */
+export const needsSeals = (u: Unit, spec: JutsuSpec): boolean => u.kind === 'ninja' && !spec.melee;
+
+function setArmed(u: Unit, armed: boolean, cost: 'free' | 'bonus', ev: BattleEvent[]): void {
+  u.armed = armed;
+  if (cost === 'free') u.turn.interacted = true;
+  else u.turn.bonus = false;
+  ev.push({ t: 'weapon', unit: u.id, armed, cost });
+}
+
+/**
+ * Draw or stow the weapon: free once a turn (an object interaction), then it takes the bonus action.
+ * Stowed, hands are free for seals and Kawarimi, but blows are struck with the fists.
+ */
+function doDraw(u: Unit, ev: BattleEvent[]): string | null {
+  if (!u.weapon.held) return 'noWeapon';
+  if (!u.turn.interacted) setArmed(u, !u.armed, 'free', ev);
+  else if (u.turn.bonus) setArmed(u, !u.armed, 'bonus', ev);
+  else return 'noBonus';
+  return null;
 }
 
 // --- the other actions ---------------------------------------------------------------------

@@ -12,20 +12,24 @@ import { effectMods } from '../rules/effects';
 import type { AiOrder, Pt, Team, Unit, Weapon } from './types';
 import { JUTSU } from './jutsu';
 
-const W = (name: string, dice: string, type: Weapon['type'], reach = 1.5, finesse = true): Weapon => ({ name, dice, type, reach, finesse });
+const W = (name: string, dice: string, type: Weapon['type'], reach = 1.5, finesse = true, held = false, twoHanded = false): Weapon =>
+  twoHanded ? { name, dice, type, reach, finesse, held, twoHanded } : { name, dice, type, reach, finesse, held };
+
+/** The feat that lets a ninja weave seals with one hand, a one-handed weapon in the other. */
+export const ONE_HANDED_SEALS = 'one_handed_seals';
 
 /** The weapon a character fights with: what the sprite holds, or the old weapon style. */
 export function weaponOf(c: ShinobiCharacter): Weapon {
   const held = c.appearance?.slots.held?.id;
   switch (held) {
     case 'held_katana':
-      return W('Katana', '1d8', 'Slashing');
+      return W('Katana', '1d8', 'Slashing', 1.5, true, true);
     case 'held_crystal':
-      return W('Crystal blade', '1d10', 'Slashing', 1.5, false);
+      return W('Crystal blade', '1d10', 'Slashing', 1.5, false, true, true);
     case 'held_naginata':
-      return W('Naginata', '1d10', 'Slashing', 3, false);
+      return W('Naginata', '1d10', 'Slashing', 3, false, true, true);
     case 'held_kunai':
-      return W('Kunai', '1d6', 'Piercing');
+      return W('Kunai', '1d6', 'Piercing', 1.5, true, true);
     case 'held_palm':
       return W('Gentle fist', '1d8', 'Force');
     case 'held_lightning':
@@ -35,9 +39,9 @@ export function weaponOf(c: ShinobiCharacter): Weapon {
   }
   switch (c.weaponStyle) {
     case 'Katana Blade':
-      return W('Katana', '1d8', 'Slashing');
+      return W('Katana', '1d8', 'Slashing', 1.5, true, true);
     case 'Kunai & Tag':
-      return W('Kunai', '1d6', 'Piercing');
+      return W('Kunai', '1d6', 'Piercing', 1.5, true, true);
     case 'Gentle Fist Palm':
       return W('Gentle fist', '1d8', 'Force');
     case 'Chidori Lightning':
@@ -48,6 +52,17 @@ export function weaponOf(c: ShinobiCharacter): Weapon {
       return c.shinobiClass === 'Taijutsu Master' ? W('Fists', '1d8', 'Bludgeoning', 1.5, false) : W('Fists', '1d4', 'Bludgeoning', 1.5, false);
   }
 }
+
+/** Fighting with the weapon stowed: bare hands (a Taijutsu Master's fists are weapons). */
+export const fistsOf = (c?: ShinobiCharacter): Weapon =>
+  c?.shinobiClass === 'Taijutsu Master' ? W('Fists', '1d8', 'Bludgeoning', 1.5, false) : W('Fists', '1d4', 'Bludgeoning', 1.5, false);
+
+/** What a unit strikes with right now: its weapon if in hand (or not a held one), else its fists. */
+export const wielded = (u: Unit): Weapon => (u.armed || !u.weapon.held ? u.weapon : fistsOf(u.character));
+
+/** Hand seals need free hands: no weapon in hand, or One-Handed Seals with a one-handed weapon. */
+export const handsFree = (u: Unit): boolean =>
+  !u.armed || !u.weapon.held || (!u.weapon.twoHanded && !!u.character?.selectedFeats?.includes(ONE_HANDED_SEALS));
 
 /** Thrown kunai and shuriken: everyone carries them. */
 export const KUNAI: Weapon = W('Kunai', '1d4', 'Piercing', 9, true);
@@ -94,6 +109,7 @@ export function unitFrom(c: ShinobiCharacter, o: UnitOptions): Unit {
     jutsuAttack: c.jutsuAttackBonus,
     castMod: abilityMod(c.stats[cls?.castingStat ?? 'int']),
     weapon: weaponOf(c),
+    armed: weaponOf(c).held,
     jutsus: Object.values(c.selectedJutsus).filter((id) => JUTSU[id]),
     effects: [...(c.effects ?? [])],
     cond: {},

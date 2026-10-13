@@ -122,6 +122,8 @@ export interface SpriteAppearance {
   headband: HeadbandChoice;
   chakra: ChakraChoice;
   pixelEdits: PixelEdit[];
+  /** In battle: the held weapon is put away (at the belt or on the back) to keep the hands free. */
+  stowed?: boolean;
 }
 
 /** Special eye patterns, derived from the character's dojutsu. */

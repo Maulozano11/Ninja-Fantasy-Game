@@ -10,7 +10,7 @@ import { dist, lineOfSight } from './map';
 import { JUTSU, areaOf, inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { passivePerception } from './combat';
-import { KUNAI, KUNAI_LONG } from './units';
+import { KUNAI, KUNAI_LONG, wielded } from './units';
 
 /** How far a Mirai's eyes read an enemy's next move. */
 export const FORESIGHT_RANGE = 18;
@@ -104,7 +104,7 @@ export function ninjaOptions(s: BattleState, u: Unit): Option[] {
     }
   }
   // Hurt and in reach of a foe: dodge.
-  const threatened = foes.some((f) => dist(u.pos, f.pos) <= f.weapon.reach + 0.5);
+  const threatened = foes.some((f) => dist(u.pos, f.pos) <= wielded(f).reach + 0.5);
   if (threatened && u.hp < u.maxHp * 0.3) out.push({ intent: { kind: 'defend', what: 'dodge' }, value: u.aiOrder === 'defensive' ? 9 : 4 });
   return out.sort((a, b) => b.value - a.value);
 }

@@ -6,7 +6,7 @@ import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from '.
 import { cellCenter, cellOf, coverBetween, dist, gridFor, levelAtPt, lineOfSight } from './map';
 import { canStop, occupancy, reachable } from './nav';
 import { JUTSU } from './jutsu';
-import { KUNAI, KUNAI_LONG } from './units';
+import { KUNAI, KUNAI_LONG, handsFree, wielded } from './units';
 import { applyAction } from './engine';
 import { current } from './turns';
 import { headOptions, ninjaOptions, planIntent, reachTo, standingUnit } from './intent';
@@ -89,6 +89,7 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
     case 'jutsu': {
       const j = JUTSU[i.what];
       if (!t || !j) return null;
+      if (!j.melee && !handsFree(u) && u.turn.interacted) return null;
       const reach = j.range + (t.bulk ?? 0) + (j.shape === 'single' && t.kind === 'hydra_head' ? 2.5 : 0);
       const ok = (p: Pt) => dist(p, t.pos) <= reach && (j.melee || lineOfSight(s, p, t.pos));
       if (ok(u.pos)) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined };

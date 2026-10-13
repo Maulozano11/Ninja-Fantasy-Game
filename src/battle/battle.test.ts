@@ -390,6 +390,47 @@ describe('the AI', () => {
   });
 });
 
+describe('hands for seals', () => {
+  it('casting stows the blade for free once a turn; then it takes the bonus action to draw it again', () => {
+    const s = turnOf(createBattle(setup()).state, 'a');
+    assert.equal(s.units.a.armed, true);
+    const cast = ok(applyAction(s, { type: 'jutsu', unit: 'a', jutsu: 'body_flicker', at: { x: 10, z: 12 } }));
+    assert.equal(cast.state.units.a.armed, false);
+    assert.ok(cast.events.some((e) => e.t === 'weapon' && !e.armed && e.cost === 'free'));
+    // The free interaction is spent: drawing again costs the bonus action (already used by the flicker).
+    assert.equal(applyAction(cast.state, { type: 'draw', unit: 'a' }).reason, 'noBonus');
+  });
+
+  it('with the blade drawn and the interaction spent, seals wait; One-Handed Seals casts anyway', () => {
+    const s = turnOf(createBattle(setup()).state, 'a');
+    const drawn = ok(applyAction(ok(applyAction(s, { type: 'draw', unit: 'a' })).state, { type: 'draw', unit: 'a' })).state;
+    assert.equal(drawn.units.a.armed, true);
+    assert.equal(drawn.units.a.turn.bonus, false);
+    assert.equal(applyAction(drawn, { type: 'jutsu', unit: 'a', jutsu: 'fireball_goukakyu', at: { x: 14, z: 10 } }).reason, 'handsBusy');
+    const katana = { ...DEFAULT_CHARACTER.appearance!, slots: { ...DEFAULT_CHARACTER.appearance!.slots, held: { id: 'held_katana', colors: [] } } };
+    const feat = turnOf(createBattle(setup({ party: [{ character: hero({ id: 'a', selectedFeats: ['one_handed_seals'], appearance: katana }), pos: { x: 8, z: 10 } }] })).state, 'a');
+    feat.units.a.turn.interacted = true;
+    const out = ok(applyAction(feat, { type: 'jutsu', unit: 'a', jutsu: 'fireball_goukakyu', at: { x: 14, z: 10 } }));
+    assert.equal(out.state.units.a.armed, true);
+  });
+
+  it('Kawarimi needs free hands; a stowed blade strikes with the fists in a reaction', () => {
+    const { state } = createBattle(setup({ party: [{ character: { ...KENJI, effects: [], appearance: { ...KENJI.appearance!, slots: { ...KENJI.appearance!.slots, held: { id: 'held_katana', colors: [] } } } }, pos: { x: 8, z: 10 } }] }));
+    const k = state.units[KENJI.id];
+    assert.equal(k.armed, true);
+    const s = turnOf(state, 'rogue_0');
+    place(s, 'rogue_0', { x: 9.5, z: 10 });
+    let asked = false;
+    for (let seed = 1; seed < 40 && !asked; seed++) {
+      const t = structuredClone(s);
+      t.seed = seed;
+      const out = ok(applyAction(t, { type: 'attack', unit: 'rogue_0', target: KENJI.id }));
+      if (out.state.pending) asked = true;
+    }
+    assert.equal(asked, false);
+  });
+});
+
 describe('items and other actions', () => {
   it('soldier pill, bandage, explosive tag and fleeing by the edge', () => {
     let s = turnOf(createBattle(setup({ party: [

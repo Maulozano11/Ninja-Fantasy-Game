@@ -184,6 +184,11 @@ export const SHINOBI_FEATS: ShinobiFeat[] = [
     description: 'Can set 2 explosive tags simultaneously. Explosive tags deal +1d6 extra fire damage.',
   },
   {
+    id: 'one_handed_seals',
+    name: 'One-Handed Seals',
+    description: 'Weave hand seals with one hand: cast ninjutsu and genjutsu (and Kawarimi) with a one-handed weapon drawn. Two-handed weapons still have to be stowed.',
+  },
+  {
     id: 'tenketsu_lockout',
     name: 'Tenketsu Lockout Strike',
     description: 'When rolling a Critical Hit with Taijutsu or Clan jutsu, the target cannot cast jutsus for 1 turn.',

@@ -903,18 +903,32 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         }}
       />
 
-      {/* Top left: the acting ninja. */}
-      <div className="absolute top-3 left-3 flex flex-col gap-2 pointer-events-none">
+      {/* The top row: the acting ninja and the party on the left, the turn order in the middle and the
+          map with the switches on the right, side by side so they never cover one another. */}
+      <div className="absolute top-3 inset-x-3 flex flex-wrap md:flex-nowrap items-start justify-between gap-3 pointer-events-none">
+      <div className="flex flex-col gap-2 shrink-0">
         {cardUnit && cardUnit.kind === 'ninja' && (
           <div className="pointer-events-auto">
             <UnitCard u={cardUnit} hp={cardView?.hp ?? cardUnit.hp} chakra={cardView?.chakra ?? cardUnit.chakra} lang={lang} />
           </div>
         )}
         {title && <div className="text-[11px] text-slate-300/80 pl-1">{title}</div>}
+        <div className="hidden sm:block pointer-events-auto">
+          <PartyFrames
+            party={party}
+            views={pb.views}
+            selected={actor?.id}
+            lang={lang}
+            onSelect={(id) => {
+              if (state.phase === 'stealth' && stealthParty.some((u) => u.id === id)) setSelected(id);
+              centerOn(state.units[id].pos);
+            }}
+            onController={(id, controller, order?: AiOrder) => act({ type: 'setController', unit: id, controller, order })}
+          />
+        </div>
       </div>
 
-      {/* Top centre: the turn order, or the stealth phase. */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2">
+      <div className="flex-1 min-w-0 flex flex-col items-center gap-2 pointer-events-auto">
         {state.phase === 'stealth' ? (
           <div className="bg-slate-950/80 border border-amber-500/40 rounded-xl px-4 py-2 flex items-center gap-3 shadow-lg">
             <span className="text-amber-200 text-sm font-bold">{T('stealthPhase', { n: state.stealthTurn + 1 })}</span>
@@ -945,14 +959,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         )}
       </div>
 
-      {/* Top right: map, zoom, time, language, sound. */}
-      <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+      <div className="flex flex-col items-end gap-2 shrink-0 ml-auto pointer-events-auto">
         <div className="bg-slate-950/80 border border-slate-600/50 rounded-xl p-1.5 hidden md:block">
           <canvas
             ref={miniRef}
             width={260}
             height={Math.round((260 * map.px.height) / map.px.width)}
-            className="block rounded cursor-pointer"
+            className="block rounded cursor-pointer w-[220px] xl:w-[260px] h-auto"
             onClick={(e) => {
               const r = (e.target as HTMLCanvasElement).getBoundingClientRect();
               const X = ((e.clientX - r.left) / r.width) * map.px.width;
@@ -964,7 +977,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
             }}
           />
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap justify-end items-center gap-1.5 max-w-[236px] xl:max-w-none">
           <div className="bg-slate-950/80 border border-slate-600/50 rounded-full p-0.5 flex">
             {([1, 2] as const).map((z) => (
               <button key={z} type="button" onClick={() => setZoom(z)} className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${zoom === z ? 'bg-slate-100 text-slate-900' : 'text-slate-300'}`}>
@@ -1009,39 +1022,22 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
             <MapIcon size={14} />
           </button>
         </div>
-        <div className="text-[10px] text-slate-300/90 bg-slate-950/60 rounded px-2 py-0.5">
+        <div className="text-[10px] text-slate-300/90 bg-slate-950/60 rounded px-2 py-0.5 text-right">
           {T('supplies', { p: state.supplies.soldierPills, b: state.supplies.bandages, a: state.supplies.antidotes, t: state.supplies.explosiveTags })}
         </div>
+        {/* The last roll and the log, under the switches and clear of the action bar. */}
+        {toast && <RollToast text={toast.text} sub={toast.sub} ok={toast.ok} />}
+        {showLog && <LogPanel lines={log} onClose={() => setShowLog(false)} lang={lang} />}
       </div>
-
-      {/* Bottom left: the party. */}
-      <div className="absolute bottom-3 left-3 hidden sm:block">
-        <PartyFrames
-          party={party}
-          views={pb.views}
-          selected={actor?.id}
-          lang={lang}
-          onSelect={(id) => {
-            if (state.phase === 'stealth' && stealthParty.some((u) => u.id === id)) setSelected(id);
-            centerOn(state.units[id].pos);
-          }}
-          onController={(id, controller, order?: AiOrder) => act({ type: 'setController', unit: id, controller, order })}
-        />
       </div>
 
       {/* Bottom centre: aiming help and the action bar. */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 max-w-[calc(100vw-32px)]">
+      <div className="absolute bottom-3 inset-x-3 flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto">
         {error && <div className="px-3 py-1.5 rounded-lg bg-rose-950/90 border border-rose-700/60 text-rose-100 text-xs">{error}</div>}
         {helpLine && actor && <div className="px-3 py-1.5 rounded-lg bg-slate-950/85 border border-slate-600/50 text-slate-100 text-xs max-w-[560px] text-center">{helpLine}</div>}
         {actor && <ActionBar u={actor} move={actor.turn.move} buttons={buttons} lang={lang} onPress={press} onHover={setHoverBtn} />}
         {!actor && !ended && state.phase === 'combat' && <div className="px-3 py-1.5 rounded-lg bg-slate-950/70 text-slate-300 text-xs">{T('waiting')}</div>}
         <div className="hidden lg:block text-[10px] text-slate-400/80">{T('keysHelp')}</div>
-      </div>
-
-      {/* Bottom right: the last roll and the log. */}
-      <div className="absolute bottom-3 right-3 flex flex-col items-end gap-2">
-        {showLog && <LogPanel lines={log} onClose={() => setShowLog(false)} lang={lang} />}
-        {toast && <RollToast text={toast.text} sub={toast.sub} ok={toast.ok} />}
       </div>
 
       {/* Aim label next to the cursor. */}

@@ -121,7 +121,7 @@ export function UnitCard({ u, hp, chakra, lang }: { u: Unit; hp: number; chakra:
   const c = u.character;
   const status = statusOf(u, lang);
   return (
-    <div className={`${panel} p-3 flex gap-3 items-center w-[min(340px,calc(100vw-32px))]`}>
+    <div className={`${panel} p-3 flex gap-3 items-center w-[min(280px,calc(100vw-24px))] xl:w-[340px]`}>
       <Portrait u={u} size={56} ring={u.team === 'party' ? '#38bdf8' : '#f87171'} />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
@@ -172,7 +172,7 @@ export function InitiativeBar({ state, turnUnit, round, lang, onPick }: { state:
   const rotated = [...order.slice(at), ...order.slice(0, at)].slice(0, 10);
   const cur = turnUnit ? state.units[turnUnit] : undefined;
   return (
-    <div className={`${panel} px-3 py-2 flex items-center gap-3 max-w-[calc(100vw-32px)] overflow-x-auto`}>
+    <div className={`${panel} px-3 py-2 flex items-center gap-3 max-w-full overflow-x-auto`}>
       <div className="text-center shrink-0">
         <div className="text-[9px] uppercase tracking-widest text-slate-400">{T('round', undefined, lang)}</div>
         <div className="text-xl font-black text-white tabular-nums leading-none">{round}</div>
@@ -191,7 +191,7 @@ export function InitiativeBar({ state, turnUnit, round, lang, onPick }: { state:
         })}
       </div>
       {cur && (
-        <div className="text-[10px] font-bold uppercase tracking-wider shrink-0" style={{ color: cur.team === 'party' ? (cur.controller === 'player' ? '#facc15' : '#7dd3fc') : '#fca5a5' }}>
+        <div className="text-[10px] font-bold uppercase tracking-wider shrink-0 max-w-[5.5rem] xl:max-w-none leading-tight text-center" style={{ color: cur.team === 'party' ? (cur.controller === 'player' ? '#facc15' : '#7dd3fc') : '#fca5a5' }}>
           {cur.team === 'enemy' ? T('enemyTurn', undefined, lang) : cur.controller === 'player' ? T('yourTurn', undefined, lang) : T('aiTurn', undefined, lang)}
         </div>
       )}
@@ -218,7 +218,7 @@ export function PartyFrames({
   onController: (id: string, controller: 'player' | 'ai', order?: AiOrder) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5 w-[min(260px,calc(100vw-32px))]">
+    <div className="flex flex-col gap-1.5 w-[220px] xl:w-[260px]">
       {party.map((u) => {
         const v = views.get(u.id);
         const hp = v?.hp ?? u.hp;
@@ -242,7 +242,7 @@ export function PartyFrames({
                   className={`ml-auto shrink-0 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border ${u.controller === 'ai' ? 'border-sky-500/60 text-sky-200 bg-sky-950/60' : 'border-slate-600 text-slate-300'}`}
                 >
                   {u.controller === 'ai' ? <Bot size={11} /> : <User size={11} />}
-                  {u.controller === 'ai' ? T('ai', undefined, lang) : T('player', undefined, lang)}
+                  <span className="hidden xl:inline">{u.controller === 'ai' ? T('ai', undefined, lang) : T('player', undefined, lang)}</span>
                 </button>
               </div>
               <div className="mt-1">
@@ -303,6 +303,22 @@ export function ActionBar({
   onPress: (id: string) => void;
   onHover: (b: ActionButton | null) => void;
 }) {
+  // One row when it fits; otherwise two even rows (then it scrolls), so End turn is never hidden.
+  const bar = React.useRef<HTMLDivElement | null>(null);
+  const side = React.useRef<HTMLDivElement | null>(null);
+  const [room, setRoom] = React.useState(0);
+  React.useLayoutEffect(() => {
+    const el = bar.current?.parentElement;
+    if (!el) return;
+    const fit = () => setRoom(el.clientWidth - (side.current?.offsetWidth ?? 0) - 44);
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const fits = Math.max(1, Math.floor((room + 6) / 62));
+  const rows = room > 0 && buttons.length > fits ? 2 : 1;
+  const cols = Math.ceil(buttons.length / rows);
   const dot = (on: boolean, color: string, label: string) => (
     <div className="flex flex-col items-center gap-0.5 w-12">
       <span className="w-3.5 h-3.5 rounded-full border-2" style={{ borderColor: color, background: on ? color : 'transparent' }} />
@@ -310,8 +326,8 @@ export function ActionBar({
     </div>
   );
   return (
-    <div className={`${panel} px-3 py-2 flex items-center gap-3 max-w-[calc(100vw-32px)]`}>
-      <div className="hidden sm:flex flex-col gap-1 shrink-0">
+    <div ref={bar} className={`${panel} px-3 py-2 flex items-center gap-3 max-w-full`}>
+      <div ref={side} className="hidden sm:flex flex-col gap-1 shrink-0">
         <div className="flex">
           {dot(u.turn.action, '#22c55e', T('action', undefined, lang))}
           {dot(u.turn.bonus, '#f59e0b', T('bonus', undefined, lang))}
@@ -327,7 +343,7 @@ export function ActionBar({
           </span>
         </div>
       </div>
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+      <div className="grid gap-1.5 overflow-x-auto pb-0.5 min-w-0" style={{ gridTemplateColumns: `repeat(${cols}, 3.5rem)` }}>
         {buttons.map((b) => {
           const Icon = b.icon;
           return (
@@ -358,7 +374,7 @@ export function ActionBar({
 
 export function RollToast({ text, sub, ok }: { text: string; sub?: string; ok?: boolean }) {
   return (
-    <div className={`${panel} px-3 py-2 flex items-center gap-3 w-[min(320px,calc(100vw-32px))]`}>
+    <div className={`${panel} px-3 py-2 flex items-center gap-3 w-[min(236px,calc(100vw-24px))] xl:w-[320px]`}>
       <div className={`w-9 h-9 shrink-0 flex items-center justify-center rounded-md font-black text-sm ${ok ? 'bg-emerald-900/70 text-emerald-200' : 'bg-rose-950/70 text-rose-200'}`} style={{ clipPath: 'polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%)' }}>
         {text.match(/\d+/)?.[0] ?? '·'}
       </div>
@@ -376,7 +392,7 @@ export function LogPanel({ lines, onClose, lang }: { lines: { text: string; tone
     ref.current?.scrollTo({ top: ref.current.scrollHeight });
   }, [lines.length]);
   return (
-    <div className={`${panel} w-[min(340px,calc(100vw-32px))] max-h-[40vh] flex flex-col`}>
+    <div className={`${panel} w-[min(236px,calc(100vw-24px))] xl:w-[340px] max-h-[40vh] flex flex-col`}>
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-slate-700/60">
         <ScrollText size={14} className="text-slate-400" />
         <span className="text-xs font-semibold text-slate-200">{T('log', undefined, lang)}</span>

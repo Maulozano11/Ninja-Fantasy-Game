@@ -67,7 +67,7 @@ export const EFFECTS: Record<EffectId, EffectDef> = {
   bleeding: def({ id: 'bleeding', name: 'Bleeding', nameEs: 'Sangrando', kind: 'debuff', duration: 'untilTreated', curedBy: ['bandage', 'close_tenketsu'], description: '1d4 damage per round in battle and per road leg.' }),
   burning: def({ id: 'burning', name: 'Burning', nameEs: 'Quemado', kind: 'debuff', duration: 'rounds', count: 2, description: '1d6 per round; water or an action puts it out.' }),
   chakra_sealed: def({ id: 'chakra_sealed', name: 'Chakra sealed', nameEs: 'Chakra sellado', kind: 'debuff', duration: 'rounds', count: 2, description: 'Cannot cast jutsu.', mods: { noJutsu: true } }),
-  confused: def({ id: 'confused', name: 'Confused', nameEs: 'Confundido', kind: 'debuff', duration: 'rounds', count: 2, description: '25 % chance to attack a random target.' }),
+  confused: def({ id: 'confused', name: 'Confused', nameEs: 'Confundido', kind: 'debuff', duration: 'rounds', count: 2, description: 'Each turn, a 1 in 4 chance to lose the action to the illusion.' }),
   marked: def({ id: 'marked', name: 'Marked', nameEs: 'Marcado', kind: 'debuff', duration: 'rounds', count: 3, description: 'Visible even when hidden.' }),
   poisoned: def({ id: 'poisoned', name: 'Poisoned', nameEs: 'Envenenado', kind: 'debuff', duration: 'untilCamp', curedBy: ['antidote', 'seal_poison'], description: 'Disadvantage on attacks and checks.', mods: { disadvAttacks: true, disadvChecks: true } }),
   wounded_leg: def({ id: 'wounded_leg', name: 'Wounded leg', nameEs: 'Pierna herida', kind: 'debuff', duration: 'untilCamp', description: '−3 m speed.', mods: { speedM: -3 } }),

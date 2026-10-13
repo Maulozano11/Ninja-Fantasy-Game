@@ -137,7 +137,25 @@ elements.
   knock it out instead of killing it (it matters later for the story:
   interrogate, spare or hand over).
 - **Animated attacks**: the attacker runs in and strikes, with damage numbers,
-  screen shake and the jutsu effects from the sprite system.
+  screen shake and the jutsu effects from the sprite system. Some jutsu have a
+  signature effect of their own, with a clearly bigger enhanced version (the
+  Great Fireball, the Great Fire Annihilation).
+
+## Clan abilities in battle
+
+- **Mirai — Future Foresight.** Enemies commit to their next move at the end
+  of each of their turns. A Mirai sees that move (what attack, against whom)
+  for every enemy within 18 m in sight; the enemy carries it out if it still
+  makes sense, so moving the target away or getting ready pays off. As a bonus
+  action (2 chakra), until the Mirai's next turn: **parry** (+1 AC; +2 with
+  2 tomoe; +3 with 3 tomoe or Mangekyo) and **dodge** (advantage on DEX saves,
+  and attackers get no advantage from hiding or flanking).
+- **Taki — All-Seeing Sight.** Can't be flanked or surprised; their critical
+  hits seal chakra.
+- **Uddo — Boundless Life Force.** +2 chakra at the start of each of their
+  turns.
+- **Akkai — Sealing Vitality.** A bigger chakra pool; the adamantine chains
+  seal chakra on a failed save.
 
 ## Party, missions and defeat
 

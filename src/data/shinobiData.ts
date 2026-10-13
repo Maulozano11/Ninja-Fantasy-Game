@@ -30,7 +30,7 @@ export const CLANS_DATA: Record<
     name: 'Mirai',
     japaneseName: 'ミライ一族',
     description: 'An ancient bloodline renowned for potent Fire nature and the mystical Sharingan visual prowess.',
-    lineageTraits: 'Eyes of Insight: Gain +2 DEX, +1 INT. Advantage on saving throws against Genjutsu illusions. Unlocks Sharingan stages.',
+    lineageTraits: 'Eyes of Insight: Gain +2 DEX, +1 INT. Advantage on saving throws against Genjutsu illusions. Unlocks Sharingan stages. Future Foresight: sees the next attack of every enemy in sight; as a bonus action (2 chakra) parries (+1 AC, +2 with 2 tomoe, +3 with 3 tomoe or Mangekyo) and dodges (advantage on DEX saves, no edge for attackers from hiding or flanking) until their next turn.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
       { stat: 'int', bonus: 1 },

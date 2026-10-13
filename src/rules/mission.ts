@@ -112,6 +112,8 @@ export interface BattleMemberResult {
   died?: boolean;
   /** Effects as the battle ended, for battles that track them; they replace the ninja's own. */
   effects?: StatusEffect[];
+  /** Tension gained in the battle itself (failed saves against fear, such as the hydra's roar). */
+  tension?: number;
 }
 
 export interface BattleResult {
@@ -184,7 +186,7 @@ function effectDiff(who: string, before: readonly StatusEffect[] = [], after: re
 
 /**
  * After a battle: HP and chakra as they ended, Tension (+1 per critical taken and per fallen ally,
- * −1 per critical landed, at most ±2 from criticals, −1 for a victory), Fall aftermath and Grave
+ * −1 per critical landed, at most ±2 from criticals, plus what the battle added, −1 for a victory), Fall aftermath and Grave
  * wounds, Crash and Exhaustion from soldier pills, and battle-counted effects tick down.
  *
  * Then the fallen: if anyone is still standing, they are stabilized and wake up with 1 HP. If
@@ -221,7 +223,7 @@ export function applyBattleResult(party: PartyState, result: BattleResult, battl
 
       const fromCrits = Math.max(-2, Math.min(2, (r.critsTaken ?? 0) - (r.critsLanded ?? 0)));
       const alliesFell = fallen.filter((id) => id !== c.id).length;
-      const tension = fromCrits + alliesFell - (result.victory ? 1 : 0);
+      const tension = fromCrits + alliesFell + (r.tension ?? 0) - (result.victory ? 1 : 0);
       if (tension) step(changeTension(ch, tension, result.victory ? 'Battle won' : 'Battle lost', dice, campNo));
 
       const pills = r.pillsTaken ?? 0;

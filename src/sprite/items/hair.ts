@@ -14,7 +14,7 @@
 //   hairFront — over the head (cap, bangs, side locks)
 
 import type { DrawCtx, ItemDef } from '../ctx';
-import { Layer, Pen, v, Vec } from '../raster';
+import { ellipse, Layer, Pen, poly, v, Vec } from '../raster';
 import { hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
@@ -1513,4 +1513,38 @@ export const HAIR_ITEMS: ItemDef[] = [
   hairStyle('hair_youth', 'Wild Youth', 'Short, messy black spikes that fall over the forehead.', '#33333d'),
   hairStyle('hair_ascended', 'Ascended Spikes', 'Golden spikes swept up and back, with one lone lock over the brow.', '#e6c020'),
   hairStyle('hair_storm2', 'Storm Ascension', 'Taller, sharper golden spikes crackling upward, with a lock over the brow.', '#e6c020'),
+  {
+    id: 'hair_ribbon',
+    slot: 'hair',
+    name: 'Ribbon Cascade',
+    desc: 'Waist-length straight hair with face-framing locks, a thin braid and a ribbon tied at the back.',
+    colors: [
+      { key: 'hair', label: 'Hair', default: '#c87642', kind: 'hair' },
+      { key: 'ribbon', label: 'Ribbon', default: '#c8202c', kind: 'cloth' },
+    ],
+    draw: (g, [c, ribbon]) => {
+      const mat = g.m(c, 'hair');
+      const F = g.L('hairFront');
+      // waist-length straight hair down the back
+      curtain(g, g.L('hairBack'), { mat, part: 'back', bias: -1 }, { ty: 3, out: 1.3, spread: 2.6, n: 5, w: 5.5, tipW: 1.4, jag: 1.4, bulge: 1, hold: 0.72 });
+      // long locks framing the face, falling in front of the shoulders
+      const nearTip = toHead(g, g.rig.T(-g.bp.shoulderHalf * 0.55, g.bp.torsoLen - 6.5));
+      const farTip = toHead(g, g.rig.T(g.bp.chestHalf * 0.45, g.bp.torsoLen - 5.5));
+      const lp: Pen = { mat, part: 'back' };
+      hlock(g, F, [-3.4, 0, -3.8, 4, nearTip[0], nearTip[1]], 3, lp, { hold: 0.7, tipW: 1.2, form: hd(g, -1, -3), clumps: 3.2, seed: 2 });
+      hlock(g, F, [6.2, 0, 6.8, 4, farTip[0], farTip[1]], 2.6, lp, { hold: 0.7, tipW: 1.1, form: hd(g, -1, -3), clumps: 3.2, seed: 7 });
+      // the head: parted bangs that frame the face
+      tpl(g, TPL.hair_drifter, mat);
+      // a thin braid from the temple back to the tie
+      lock(F, hd(g, -2.2, -3.6), hd(g, -4.6, -3.4), hd(g, -6.2, -1.6), 1.4, { mat, part: 'head' }, { hold: 1, tipW: 1.2, clumps: 1.2, seed: 4 });
+      // the ribbon bow at the back of the head, with two tails down the hair
+      const rp: Pen = { mat: g.m(ribbon, 'cloth'), part: 'head' };
+      const K = hd(g, -6.6, -1.4);
+      poly(F, [K, hd(g, -8.8, -4.0), hd(g, -7.6, -4.6), hd(g, -6.4, -2.4)], rp, 4);
+      poly(F, [K, hd(g, -9.0, 0.8), hd(g, -7.8, 1.6), hd(g, -6.2, -0.6)], rp, 3);
+      hlock(g, F, [-6.8, -0.8, -7.8, 2, -8.0, 5.2], 1.2, rp, { hold: 0.9, tipW: 1.0 });
+      hlock(g, F, [-6.2, -0.6, -6.6, 2.6, -6.4, 6.2], 1.1, rp, { hold: 0.9, tipW: 0.9 });
+      ellipse(F, K.x, K.y, 0.9, 0.9, rp, 2);
+    },
+  },
 ];

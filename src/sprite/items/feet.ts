@@ -397,4 +397,40 @@ export const FEET_ITEMS: ItemDef[] = [
       }
     },
   },
+  {
+    id: 'feet_strapboots',
+    slot: 'feet',
+    name: 'Strapped Boots',
+    desc: 'Mid-shin boots with a turned cuff and two straps round the shaft.',
+    colors: [col('main', 'Boot', '#f0c419'), col('strap', 'Straps', '#9a7a36'), col('sole', 'Sole', '#5a4220')],
+    draw: (g, [c, st, sole]) => {
+      boot(g, c, 1.3, BOOT, { sole, grow: 0.75 });
+      for (const s of SIDES) {
+        const L = g.L(legDepth(s, 'feet'));
+        // turned cuff at the top of the shaft
+        limb(g, L, 'leg', s, 1.24, 1.38, 1.05, bootPen(g, c, s, 'shin'));
+        across(g, L, 'leg', s, 1.38, 1.05, -1);
+        // two straps round the shaft
+        for (const [t0, t1] of [
+          [1.5, 1.58],
+          [1.7, 1.78],
+        ]) {
+          limb(g, L, 'leg', s, t0, t1, 0.9, bootPen(g, st, s, 'shin'));
+          across(g, L, 'leg', s, t1, 0.9, -1);
+        }
+        // shaft highlight
+        const a = legPoint(g, s, 1.4);
+        const b = legPoint(g, s, 1.9);
+        seam(L, along(a, b, 0, -limbR(g, 'leg', 1.4) * 0.45), along(a, b, 1, -limbR(g, 'leg', 1.9) * 0.4), 1);
+      }
+    },
+  },
+  {
+    id: 'feet_kungfu',
+    slot: 'feet',
+    name: 'Kung-fu Shoes',
+    desc: 'Soft, flat cloth shoes that cover the foot to the ankle.',
+    colors: [col('main', 'Shoe', '#b85a2a', 'cloth'), col('sole', 'Sole', '#3a2418')],
+    draw: (g, [c, sole]) => boot(g, c, 1.88, BOOT, { sole, grow: 0.45, kind: 'cloth' }),
+  },
 ];

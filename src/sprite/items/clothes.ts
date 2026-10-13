@@ -1194,6 +1194,74 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       highCollar(g, c, 4.5, 1.2);
     },
   },
+  {
+    id: 'top_bomber',
+    slot: 'top',
+    name: 'Open Bomber Jacket',
+    desc: 'Cropped jacket with a popped collar and long sleeves, worn open over a dark tank top.',
+    colors: [col('main', 'Jacket', '#1f4f8f'), col('under', 'Tank Top', '#2b2a33')],
+    draw: (g, [c, u]) => {
+      const L = g.L('torso.top');
+      const Lt = g.bp.torsoLen;
+      const pen = clothPen(g, c, 'torso');
+      const up = clothPen(g, u, 'torso');
+      // Tank top under the open front, tucked into the trousers
+      lifted(u, () => {
+        shirtBody(g, L, up, -0.8, { crew: true, inflate: 0.45 });
+        crewNeck(g, L);
+      });
+      // The jacket: cropped at the waist, open down the front, the gap widening toward the collar
+      const gap = (ly: number) => 0.7 + 1.3 * clamp(ly / Lt, 0, 1);
+      const wide = g.bp.shoulderHalf + 3;
+      fillT(g, L, 0.85, pen, { bottom: 0.4 }, (lx, ly) => Math.abs(lx - CX) > gap(ly), torsoShade(g));
+      // Edges of the opening: the near panel catches the light, the far one turns away,
+      // and the shirt is shaded where the panels lie on it
+      tmark(g, L, CX - gap(Lt) - 0.45, Lt, CX - gap(0.6) - 0.45, 0.6, (s) => Math.min(4, s + 1));
+      tmark(g, L, CX + gap(Lt) + 0.45, Lt, CX + gap(0.6) + 0.45, 0.6, (s) => s - 1);
+      tmark(g, L, CX - gap(Lt) + 0.35, Lt, CX - gap(0.6) + 0.35, 0.6, (s) => s - 1);
+      // Ribbed hem: lit top edge over a dark lower line
+      tmark(g, L, -wide, 1.5, CX - gap(1.5) - 0.2, 1.5, (s) => s - 1);
+      tmark(g, L, CX + gap(1.5) + 0.2, 1.5, wide, 1.5, (s) => s - 1);
+      tmark(g, L, -wide, 1.0, CX - gap(1) - 0.2, 1.0, (s) => Math.min(4, s + 1));
+      // Pull folds from the armpit and the jacket blousing over its hem
+      tfold(g, L, -3.4, Lt - 4.8, -0.9, Lt - 8.0);
+      tfold(g, L, -3.0, Lt - 7.4, -1.3, Lt - 9.8);
+      tfold(g, L, 4.0, Lt - 7.0, 3.4, 2.2, 2);
+      tfold(g, L, -2.6, 2.8, -1.0, 1.6);
+      // Long sleeves with folds at the elbow and bunching above the cuff
+      sleeves(g, c, 1.92, 0.8);
+      for (const s of SIDES) {
+        const La = g.L(armDepth(s, 'cloth'));
+        jointFolds(g, La, 'arm', s, 0.8);
+        fold(La, along(armPoint(g, s, 1.45), armPoint(g, s, 1.72), 0, 1.0), along(armPoint(g, s, 1.45), armPoint(g, s, 1.72), 0.6, -0.7));
+        fold(La, along(armPoint(g, s, 0.15), armPoint(g, s, 0.6), 0, 0.6), along(armPoint(g, s, 0.15), armPoint(g, s, 0.6), 1, 1.0));
+        cuff(g, La, 'arm', s, 1.78, 1.94, 0.9, clothPen(g, c, prt('forearm', s), sb(s)), 0.75);
+      }
+      highCollar(g, c, 4, 1.2);
+    },
+  },
+  {
+    id: 'top_gi',
+    slot: 'top',
+    name: 'Sleeveless Gi',
+    desc: 'Loose sleeveless training gi with a deep wrapped V neck.',
+    colors: [col('main', 'Gi', '#8a2aa8')],
+    draw: (g, [c]) => {
+      const L = g.L('torso.top');
+      const Lt = g.bp.torsoLen;
+      const pen = clothPen(g, c, 'torso');
+      shirtBody(g, L, pen, -1.8, { vDepth: 6.4, vHalf: 2.6, inflate: 0.85 });
+      // The wrapped collar: a band of the same cloth along both edges of the V
+      vTrim(g, L, 6.4, 2.6, 0.75, pen);
+      // Loose folds from the armholes and the chest, and the cloth bloused over the sash
+      tfold(g, L, -3.6, Lt - 3.8, -1.2, Lt - 7.6);
+      tfold(g, L, -3.2, Lt - 6.4, -1.6, Lt - 9.8);
+      tfold(g, L, 4.0, Lt - 6.6, 3.2, 1.6, 2);
+      tfold(g, L, -2.6, 2.4, -0.8, 0.2);
+      tfold(g, L, 0.6, 2.6, 1.8, 0.4);
+      tfold(g, L, 2.8, 2.2, 3.8, 0.6);
+    },
+  },
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1235,6 +1303,25 @@ function legFolds(g: DrawCtx, L: Layer, s: Side, inflate: number, ankle = 1.62):
   const r = limbR(g, 'leg', ankle) + inflate;
   fold(L, along(a, b, 0.2, r * 0.9), along(a, b, 0.55, -r * 0.5));
   fold(L, along(a, b, 0.75, -r * 0.9), along(a, b, 1.0, r * 0.3));
+}
+
+/** Loose trousers that balloon over a gathered ankle, with long folds down the thigh and shin. */
+function baggyTrousers(g: DrawCtx, c: string, inflate: number, gather: number): void {
+  trousers(g, c, 1.86, inflate, 3.2);
+  waistband(g, 3.2);
+  for (const s of SIDES) {
+    const L = g.L(legDepth(s, 'cloth'));
+    const pen = clothPen(g, c, prt('shin', s), sb(s));
+    limb(g, L, 'leg', s, 1.56, 1.8, [inflate * 0.95, inflate * 1.15], pen, { light: legLight(s) });
+    legFolds(g, L, s, inflate, 1.74);
+    cuff(g, L, 'leg', s, 1.8, 1.97, gather, pen, 1.2);
+    const hip = legPoint(g, s, 0.2);
+    const knee = legPoint(g, s, 0.8);
+    fold(L, along(hip, knee, 0.1, 1.4), along(hip, knee, 0.9, 1.9));
+    const k2 = legPoint(g, s, 1.05);
+    const a2 = legPoint(g, s, 1.5);
+    fold(L, along(k2, a2, 0.1, -1.2), along(k2, a2, 0.9, -0.6));
+  }
 }
 
 export const BOTTOM_ITEMS: ItemDef[] = liftMain([
@@ -1378,6 +1465,22 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
         across(g, L, 'leg', s, 1.9, 0.2, -1);
       }
     },
+  },
+  {
+    id: 'bottom_baggy',
+    slot: 'bottom',
+    name: 'Baggy Trousers',
+    desc: 'Wide, heavy trousers with long folds, gathered at the ankle.',
+    colors: [col('main', 'Trousers', '#8a929c')],
+    draw: (g, [c]) => baggyTrousers(g, c, 1.15, 0.5),
+  },
+  {
+    id: 'bottom_gi',
+    slot: 'bottom',
+    name: 'Gi Trousers',
+    desc: 'Very loose training trousers that balloon down the leg and gather tight at the ankle.',
+    colors: [col('main', 'Gi', '#8a2aa8')],
+    draw: (g, [c]) => baggyTrousers(g, c, 1.35, 0.45),
   },
 ]);
 
@@ -1612,6 +1715,22 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
       tseam(g, L, CX - 0.3, 3.6, CX - 0.3, 0.9, 1);
     },
   },
+  {
+    id: 'waist_obi',
+    slot: 'waist',
+    name: 'Gi Sash',
+    desc: 'A narrow cloth sash wound twice round the waist.',
+    colors: [col('main', 'Sash', '#1e88d0')],
+    draw: (g, [c]) => {
+      const L = g.L('waist');
+      const hh = g.bp.hipHalf;
+      const pen = clothPen(g, c, 'torso');
+      band(g, L, 1.0, 3.4, 1.0, pen);
+      // the two turns: a dark line between them and a lit top edge
+      tmark(g, L, -hh - 1.5, 2.2, hh + 1.5, 2.2, (s) => s - 1);
+      tmark(g, L, -hh - 1.5, 3.1, hh + 1.5, 3.1, (s) => Math.min(4, s + 1));
+    },
+  },
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1744,6 +1863,19 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
         // loose end
         const e = armPoint(g, s, 1.42);
         fpx(L, add(e, v(-0.2, 0.4)), pen.mat, prt('forearm', s), 4 + sb(s));
+      }
+    },
+  },
+  {
+    id: 'hands_wristbands',
+    slot: 'hands',
+    name: 'Wristbands',
+    desc: 'Snug cloth bands round the wrists.',
+    colors: [col('main', 'Bands', '#1e88d0')],
+    draw: (g, [c]) => {
+      for (const s of SIDES) {
+        const L = g.L(armDepth(s, 'armor'));
+        cuff(g, L, 'arm', s, 1.72, 1.96, 0.6, clothPen(g, c, prt('forearm', s), sb(s)), 0.4);
       }
     },
   },

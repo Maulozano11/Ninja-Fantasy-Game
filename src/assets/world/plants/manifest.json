@@ -107,10 +107,10 @@
   "tall_grass": {
    "label": "Tall Grass",
    "file": "tall_grass.png",
-   "frameW": 59,
+   "frameW": 69,
    "frameH": 64,
    "anchor": [
-    32,
+    37,
     62
    ],
    "meters": [
@@ -166,11 +166,11 @@
   "fern": {
    "label": "Fern",
    "file": "fern.png",
-   "frameW": 61,
-   "frameH": 38,
+   "frameW": 56,
+   "frameH": 36,
    "anchor": [
-    29,
-    36
+    27,
+    34
    ],
    "meters": [
     0.9,

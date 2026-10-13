@@ -60,6 +60,65 @@
     }
    }
   },
+  "fence": {
+   "label": "Wooden Fence",
+   "file": "fence.png",
+   "frameW": 129,
+   "frameH": 61,
+   "anchor": [
+    64,
+    59
+   ],
+   "meters": [
+    2,
+    1
+   ],
+   "tags": [
+    "cover-half",
+    "destructible"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "broken": {
+     "row": 1,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "fence_bamboo": {
+   "label": "Bamboo Fence",
+   "file": "fence_bamboo.png",
+   "frameW": 127,
+   "frameH": 71,
+   "anchor": [
+    63,
+    69
+   ],
+   "meters": [
+    2,
+    1.2
+   ],
+   "tags": [
+    "cover-half",
+    "blocks-sight",
+    "destructible"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
   "boulder": {
    "label": "Mossy Boulder",
    "file": "boulder.png",

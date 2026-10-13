@@ -38,14 +38,11 @@ const R = {
   dark: ramp(MATERIALS.charred, { shift: 8 }),
   woodDark: ramp(MATERIALS.woodDark),
   pink: ramp('#b88a80', { shift: 8 }),
-  // Crow: charred black pulled toward blue-violet, with a blue-violet sheen on the lit crests.
-  crow: (() => {
-    const r = ramp(blend(MATERIALS.charred, '#2a2d4f', 0.55), { shift: 6, spread: 0.85 });
-    r[4] = mix(r[4], hex('#4b5794'), 0.65);
-    r[5] = mix(r[5], hex('#7f8cc4'), 0.6);
-    return r;
-  })(),
-  beak: ramp(blend(MATERIALS.charred, MATERIALS.iron, 0.4), { shift: 6 }),
+  // Crow: charred black pulled toward blue-violet. The ramp is set by hand so even the darkest
+  // fill stays well above the outline (dark materials stay readable), with a blue-violet sheen
+  // on the lit crests.
+  crow: ['#08070c', '#1a1925', '#272636', '#363548', '#4a5384', '#7480ba'].map((c) => hex(c)),
+  beak: ['#08080a', '#1d1c21', '#2c2b31', '#403f47', '#57555f', '#706d78'].map((c) => hex(c)),
   // Sika spots: the coat lifted toward paper.
   spot: ramp(blend(blend(MATERIALS.fur, MATERIALS.wood, 0.55), MATERIALS.paper, 0.5), { shift: 10 }),
 };
@@ -1186,6 +1183,8 @@ interface BirdStyle {
   fingers: number;
   wingTaper: number;
   wingBias?: number;
+  tailFeathers?: number;
+  tailBias?: number;
   eyeDots: (b: Buf, x: number, y: number, blink: boolean) => void;
   /** Glossy rim light color step on the crest (crow sheen). */
   sheen?: boolean;
@@ -1214,7 +1213,7 @@ interface WingFrame {
 }
 
 /** Camera elevation used for the flight wings (a lower angle than the ground plane reads better). */
-const WING_ELEV = rad(30);
+const WING_ELEV = rad(33);
 /** The flying bird turns its head this much toward the viewer, so the wings separate: far one ahead, near one behind. */
 const WING_YAW = rad(18);
 
@@ -1228,30 +1227,31 @@ function wingDir(th: number, near: boolean): number {
   return -Math.sin(th) * Math.cos(WING_ELEV) + (near ? 1 : -1) * Math.cos(th) * Math.sin(WING_ELEV);
 }
 
-/** Light on a flat wing panel raised `th`, seen from the camera (top or underside). */
-function wingLight(th: number, near: boolean): number {
+/** Light on a flat wing panel raised `th`, seen from the camera, and whether we see its underside. */
+function wingLight(th: number, near: boolean): { light: number; under: boolean } {
   const sgn = near ? 1 : -1;
   // World (Y up, Z toward the viewer): the panel's top normal.
   const nY = Math.cos(th), nZ = -sgn * Math.sin(th);
   // To screen space (y down, z toward the viewer) through the tilted camera.
   let sy = -nY * Math.cos(WING_ELEV) + nZ * Math.sin(WING_ELEV);
   let sz = nY * Math.sin(WING_ELEV) + nZ * Math.cos(WING_ELEV);
-  // Underside: flight feathers seen from below are a touch paler (light through the vanes).
-  let under = 0;
-  if (sz < 0) {
+  const under = sz < 0;
+  if (under) {
     sy = -sy;
     sz = -sz;
-    under = 0.1;
   }
-  return wrapLight(0, sy, sz, 0.45) + under;
+  return { light: wrapLight(0, sy, sz, 0.45), under };
 }
 
 /**
  * A flight wing, rasterized from its planform: span s (0 shoulder .. 1 tip) by chord c (+ toward
  * the leading edge, in chords). The arm (s < 0.45) and hand rotate separately; the span projects
  * through the camera onto screen y, the chord runs along screen x with the tip swept back. Each
- * pixel center is mapped back to (s, c), so the slotted primaries, the covert band and the
- * feather seams land on whole pixels.
+ * pixel center is mapped back to (s, c), so the feathers land on whole pixels:
+ *  - top side: a lit sheen rim on the leading edge, a lighter covert band, darker flight feathers
+ *    with seams between the secondaries;
+ *  - underside: one or two steps darker, a faint rim;
+ *  - the hand splits into `fingers` tapered primaries that fan apart toward their tips.
  */
 function drawWing(b: Buf, st: BirdStyle, root: P2, len: number, chord: number, wf: WingFrame, near: boolean, layer?: number): void {
   const sw = 0.45;
@@ -1259,28 +1259,26 @@ function drawWing(b: Buf, st: BirdStyle, root: P2, len: number, chord: number, w
   // Edge-on panels keep a sliver of thickness.
   if (Math.abs(kA * sw) < 1.6) kA = (kA >= 0 ? 1.6 : -1.6) / sw;
   if (Math.abs(kH * (1 - sw)) < 1.6) kH = (kH >= 0 ? 1.6 : -1.6) / (1 - sw);
-  const la = wingLight(wf.arm, near) + (st.wingBias ?? 0), lh = wingLight(wf.hand, near) + (st.wingBias ?? 0);
+  const A = wingLight(wf.arm, near), Hh = wingLight(wf.hand, near);
   const far = near ? 0 : 1;
   const part = b.newPart({ line: 0, layer });
   const n = st.fingers;
-  const tipS = 1;
-  // Planform: leading edge straight to the wrist, then rounding back to the tip; the trailing edge
-  // (secondaries) straight, then rising into the primaries.
-  const le = (s: number): number => (s < 0.78 ? 0.3 + 0.06 * Math.sin((Math.PI * s) / 0.78) : 0.3 - 0.55 * ((s - 0.78) / 0.22) ** 2);
-  const te = (s: number): number => (s < 0.5 ? -0.72 : -0.72 + st.wingTaper * ((s - 0.5) / 0.5) ** 1.3);
+  const le = (s: number): number => (s < 0.84 ? 0.3 + 0.06 * Math.sin((Math.PI * s) / 0.84) : 0.3 - 0.3 * ((s - 0.84) / 0.16) ** 2);
+  const te = (s: number): number => (s < 0.5 ? -0.72 : -0.72 + st.wingTaper * ((s - 0.5) / 0.5) ** 1.2);
   const xA = wingDx(wf.arm, near) * len * wf.span, xH = wingDx(wf.hand, near) * len * wf.span;
-  const sweep = (s: number): number => (wf.sweep * Math.max(0, s - sw)) / (1 - sw) * 1.4 - (s < sw ? xA * s : xA * sw + xH * (s - sw));
+  const sweep = (s: number): number => ((wf.sweep * Math.max(0, s - sw)) / (1 - sw)) * 1.4 - (s < sw ? xA * s : xA * sw + xH * (s - sw));
   const yW = root[1] + kA * sw;
   const ys = [root[1], yW, yW + kH * (1 - sw)];
   const y0 = Math.floor(Math.min(...ys)) - 1, y1 = Math.ceil(Math.max(...ys)) + 1;
   const x0 = Math.floor(root[0] - chord * 1.2 - wf.sweep * 1.5 - Math.abs(xA) - Math.abs(xH)) - 1, x1 = Math.ceil(root[0] + chord * 0.6 + Math.abs(xA) + Math.abs(xH)) + 1;
+  const fingerStart = 0.58;
   for (let y = y0; y <= y1; y++)
     for (let x = x0; x <= x1; x++) {
       const py = y + 0.5, px = x + 0.5;
-      // Hand first (it is the outer, overlapping panel), then arm.
+      // Hand first (the outer, overlapping panel), then arm.
       let s = -1, hand = false;
       const sh = sw + (py - yW) / kH;
-      if (sh >= sw && sh <= tipS) {
+      if (sh >= sw && sh <= 1) {
         s = sh;
         hand = true;
       } else {
@@ -1292,21 +1290,37 @@ function drawWing(b: Buf, st: BirdStyle, root: P2, len: number, chord: number, w
       const c0 = te(s), c1 = le(s);
       if (c < c0 || c > c1) continue;
       const u = (c - c0) / Math.max(1e-3, c1 - c0); // 0 trailing .. 1 leading
-      // Slotted primaries: the outer hand splits into `n` fingers with gaps between their tips,
-      // inner fingers a little shorter.
-      if (hand && n > 1 && s > 0.66) {
+      const side = hand ? Hh : A;
+      // Primaries: `n` feathers side by side, each narrowing toward its own tip so they fan apart.
+      let seam = false;
+      if (hand && n > 1 && s > fingerStart) {
         const fi = Math.min(n - 1, Math.floor(u * n));
         const fr = u * n - fi;
-        if (s > 1 - 0.06 * (n - 1 - fi)) continue;
-        if (fi < n - 1 && fr > 0.64 && s > 0.7) continue;
+        const tipS = 1 - 0.08 * (n - 1 - fi);
+        if (s > tipS) continue;
+        const k = (s - fingerStart) / (tipS - fingerStart);
+        const wFrac = 1 - 0.62 * k * k; // the feather's share of its slot
+        if (fr > wFrac) continue;
+        seam = fr > wFrac - 0.22 && fi < n - 1;
+      } else if (hand && n > 1) {
+        const fr = (u * n) % 1;
+        seam = fr > 0.8 && u < (n - 1) / n;
       }
-      let light = hand ? lh : la;
-      if (u > 0.72 && s < 0.85) light += 0.06; // coverts along the leading edge
-      if (u > 0.88) light += 0.14; // lit leading edge
-      let step = clamp(quant(light, x - root[0], y - root[1], st.cuts, st.jitter, 3, 5) - far, 1, 5);
-      if (!hand && Math.abs(u - 0.55) < 0.08) step = Math.max(1, step - 1); // covert seam
-      if (!hand && u < 0.5 && Math.abs((s * len * 0.5) % 2.2 - 1.1) < 0.35) step = Math.max(1, step - 1); // secondary seams
-      b.put(x, y, st.wing, step, part);
+      let step: number;
+      if (!side.under) {
+        step = quant(side.light + (st.wingBias ?? 0), x - root[0], y - root[1], st.cuts, st.jitter, 3, 5);
+        if (u > 0.86 && s < 0.9) step = Math.max(step, 4); // sheen along the leading edge
+        else if (u > 0.5 && s < fingerStart) step = Math.min(4, step + 1); // coverts
+        else step = Math.min(step, 3); // flight feathers
+        if (!hand && Math.abs(u - 0.5) < 0.07) step = Math.max(1, step - 1); // covert seam
+        if (!hand && u < 0.5 && Math.abs(((s * len * 0.5) % 2.4) - 1.2) < 0.3) step = Math.max(1, step - 1); // secondary seams
+      } else {
+        step = u > 0.86 && s < 0.9 ? 3 : quant(side.light - 0.15, x - root[0], y - root[1], st.cuts, st.jitter, 3, 5) >= 3 ? 2 : 1;
+        if (!hand && u < 0.5 && Math.abs(((s * len * 0.5) % 2.4) - 1.2) < 0.3) step = 1;
+      }
+      if (seam) step = Math.max(1, step - 1);
+      // Far wing one shade darker, but its sheen rim still catches the light.
+      b.put(x, y, st.wing, clamp(step >= 4 ? step : step - far, 1, 5), part);
     }
 }
 
@@ -1346,18 +1360,34 @@ function birdFrame(st: BirdStyle, pose: BirdPose, fl?: BirdFlight): Canvas {
     line(foot, [foot[0] + toe, foot[1] + 0.5], 3);
     line(foot, [foot[0] - toe * 0.45, foot[1] + 0.5], 2);
   }
-  // Tail: stacked feathers, flat, behind the body.
+  // Tail: a flat fan of feathers behind the body, lit along its upper edge, seams converging on
+  // the base.
   {
     const { base: tb, tip: tt, w } = pose.tail;
-    const A = at(tb, -0.5), B = at(tt, -0.5);
-    const tail = flatZ(cone(A, B, w * 0.75, w), 0.45, -0.5);
-    solid(b, tail, {
-      ...base,
+    const A: P2 = [ox + tb[0], gy + tb[1]], B: P2 = [ox + tt[0], gy + tt[1]];
+    const L = Math.hypot(B[0] - A[0], B[1] - A[1]);
+    const ux = (B[0] - A[0]) / L, uy = (B[1] - A[1]) / L;
+    const nx = -uy, ny = ux; // across (screen-down side when the tail points left)
+    const pt = (t: number, a: number): P2 => [A[0] + ux * L * t + nx * a, A[1] + uy * L * t + ny * a];
+    const poly: P2[] = [pt(0, -w * 0.55), pt(0.86, -w), pt(0.97, -w * 0.62), pt(1, 0), pt(0.97, w * 0.62), pt(0.86, w), pt(0, w * 0.55)];
+    const feathers = st.tailFeathers ?? 4;
+    flat(b, poly, {
       pal: st.wing,
       line: 0,
-      paint: (h) => {
-        const [t, ac] = along(h.x + 0.5, h.y + 0.5, [A[0], A[1]], [B[0], B[1]]);
-        return st.paintTail ? st.paintTail(t, ac, h) : null;
+      step: (x, y) => {
+        const vx = x + 0.5 - A[0], vy = y + 0.5 - A[1];
+        const t = (vx * ux + vy * uy) / L, a = vx * nx + vy * ny;
+        const half = w * (0.55 + 0.45 * Math.min(1, t / 0.86));
+        const v = clamp(a / half, -1, 1); // -1 .. 1 across the fan
+        // Which edge faces up: the one with the smaller screen y.
+        const upSide = ny > 0 ? -1 : 1;
+        const lit = 0.5 + 0.28 * v * upSide;
+        let stp = quant(lit + (st.tailBias ?? 0), x - A[0], y - A[1], st.cuts, st.jitter, 3, 5);
+        const f = ((v + 1) / 2) * feathers;
+        if (t > 0.25 && Math.abs(f - Math.round(f)) < 0.16 && Math.round(f) > 0 && Math.round(f) < feathers) stp = Math.max(1, stp - 1);
+        const r = st.paintTail ? st.paintTail(t, v, { x, y, z: 0, nx: 0, ny: 0, nz: 1, light: lit, step: stp }) : null;
+        if (Array.isArray(r)) return r;
+        return r ?? stp;
       },
     });
   }
@@ -1420,12 +1450,12 @@ function birdFrame(st: BirdStyle, pose: BirdPose, fl?: BirdFlight): Canvas {
 }
 
 /** Flap cycle: arm angle, the hand lagging behind, folding and sweeping back on the upstroke. */
-function flap(t: number, top = 62, bottom = -42): WingFrame {
+function flap(t: number, top = 56, bottom = -42): WingFrame {
   const mid = (top + bottom) / 2, amp = (top - bottom) / 2;
   const arm = rad(mid + amp * Math.cos(2 * Math.PI * t));
-  const hand = rad(mid + (amp + 8) * Math.cos(2 * Math.PI * (t - 0.08)));
+  const hand = rad(mid + (amp + 6) * Math.cos(2 * Math.PI * (t - 0.05)));
   const up = Math.max(0, -Math.sin(2 * Math.PI * t));
-  return { arm, hand, span: 1 - 0.22 * up, sweep: 5 * up };
+  return { arm, hand, span: 1 - 0.24 * up, sweep: 8 * up };
 }
 
 // --- crow ------------------------------------------------------------------------------------
@@ -1441,9 +1471,9 @@ const CROW_STYLE: BirdStyle = {
   leg: P.beak,
   cuts: [0.26, 0.5, 0.84, 0.95],
   jitter: 0.05,
-  fingers: 3,
-  wingTaper: 0.35,
-  wingBias: -0.06,
+  fingers: 4,
+  wingTaper: 0.3,
+  wingBias: -0.04,
   eyeDots: (b, x, y, blink) => {
     if (blink) {
       b.dot(x, y + 1, P.crow, 1);
@@ -1462,7 +1492,6 @@ const CROW_STYLE: BirdStyle = {
     if (t < 0.45 && Math.abs(ac + 0.6) < 0.4) return Math.max(1, h.step - 1);
     return null;
   },
-  paintTail: (t, ac, h) => (t > 0.3 && Math.abs(ac) < 0.35 ? Math.max(1, h.step - 1) : null),
 };
 
 const CROW_PERCH: BirdPose = {
@@ -1507,10 +1536,10 @@ function crow(): WorldSprite {
       body: { c: [0, -12 + bob], r: [7.6, 4.3, 4.6], a: -0.06 },
       head: { c: [8.6, -13.8 + bob], r: [3.6, 3.2] },
       beak: { base: [11.2, -13.8 + bob], a: 0.12, len: 5.6, r: 1.5, open: 0 },
-      tail: { base: [-6, -11.6 + bob], tip: [-16.5, -10.6 + bob], w: 3.2 },
+      tail: { base: [-5, -11.8 + bob], tip: [-16.5, -11.2 + bob], w: 3.0 },
       eye: [9.4, -14.8 + bob],
     };
-    fly.push(birdFrame(CROW_STYLE, P0, { wf, root: [1.5, -13.5 + bob], len: 31, chord: 10 }));
+    fly.push(birdFrame(CROW_STYLE, P0, { wf, root: [1.5, -13.5 + bob], len: 31, chord: 11 }));
   }
   return assemble('crow', 'Crow', [0.45, 0.35], ['animal', 'ambient'], { perch: { frames: perch, fps: 6 }, fly: { frames: fly, fps: 10 } }, CROW_STYLE.ox + 1, CROW_STYLE.gy);
 }

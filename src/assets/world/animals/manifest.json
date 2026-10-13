@@ -87,10 +87,10 @@
   "crow": {
    "label": "Crow",
    "file": "crow.png",
-   "frameW": 41,
+   "frameW": 37,
    "frameH": 60,
    "anchor": [
-    23,
+    19,
     47
    ],
    "meters": [

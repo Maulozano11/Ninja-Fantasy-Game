@@ -51,7 +51,7 @@ const LEAF_OUTLINE = '#172621';
 const BUSH = pal(FOLIAGE);
 const FERN = pal([FOLIAGE[0], FOLIAGE[1], FOLIAGE[3], FOLIAGE[5], FOLIAGE[6], FOLIAGE[7]]);
 const FERN_BACK = pal([FOLIAGE[0], FOLIAGE[1], FOLIAGE[2], FOLIAGE[3], FOLIAGE[4], FOLIAGE[5]]);
-const GRASS = pal([FOLIAGE[0], FOLIAGE[2], FOLIAGE[4], FOLIAGE[5], FOLIAGE[6], FOLIAGE[7]]);
+const GRASS = pal([FOLIAGE[0], FOLIAGE[3], FOLIAGE[4], FOLIAGE[5], FOLIAGE[6], FOLIAGE[7]]);
 const GRASS_BACK = pal([FOLIAGE[0], FOLIAGE[1], FOLIAGE[2], FOLIAGE[3], FOLIAGE[4], FOLIAGE[5]]);
 const REED = pal([R.moss[0], R.leaf[1], R.moss[2], R.moss[3], R.moss[4], R.moss[5]]);
 const REED_BACK = pal([R.leafDeep[0], R.leaf[1], R.leafDeep[2], R.moss[2], R.moss[3], R.moss[4]]);
@@ -425,14 +425,14 @@ function lobeLight(L: Lobe, o: MassOpts, lx: number, ly: number): number {
 /** Value thresholds between the seven greens (steps 1..7). */
 const MASS_TH = [0.24, 0.34, 0.44, 0.54, 0.65, 0.77];
 const MASS_K = Number(process.env.MASS_K ?? 0.62);
-const MASS_LIFT = Number(process.env.MASS_LIFT ?? 0.05);
+const MASS_LIFT = Number(process.env.MASS_LIFT ?? 0.06);
 const massStep = (v: number): number => 1 + MASS_TH.filter((t) => v > t).length;
 
 /** True if lobe-local (lx, ly) is inside the lobe's ragged, leafy edge. */
 function inLobe(L: Lobe, lx: number, ly: number, seed: number): boolean {
   const d = Math.hypot(lx / L.r, ly / L.ry);
-  if (d > 1.25) return false;
-  if (d < 0.72) return true;
+  if (d > 1.3) return false;
+  if (d < 0.7) return true;
   const th = Math.atan2(ly, lx);
   const R = 1 / Math.hypot(Math.cos(th) / L.r, Math.sin(th) / L.ry);
   // Leafy bumps 1-3 px wide along the rim over a slower swell; the underside stays fuller so the
@@ -440,8 +440,22 @@ function inLobe(L: Lobe, lx: number, ly: number, seed: number): boolean {
   const arc = (th + Math.PI) * R;
   const bin = Math.floor(arc / 1.8);
   const under = smooth(0.2, 0.8, Math.sin(th));
-  const jag = (Math.floor(hash(bin, 0, seed) * 3.6) + noise(arc, 0, 5, seed + 3) * 3) * (1 - under * 0.75);
-  return (d - 1) * R < 2 - jag;
+  const jag = (Math.floor(hash(bin, 0, seed) * 3.6) + noise(arc, 0, 5, seed + 3) * 2.6 + noise(arc, 0, 11, seed + 5) * 3.4) * (1 - under * 0.75);
+  return (d - 1) * R < 3 - jag;
+}
+
+/** The lobe that owns pixel (x, y) (the front-most one whose edge contains it), with lobe-local coordinates. */
+function ownerAt(lobes: Lobe[], cen: number[][], seed: number, x: number, y: number): [number, number, number] {
+  let owner = -1, lx = 0, ly = 0;
+  lobes.forEach((L, i) => {
+    const px = x + 0.5 - cen[i][0], py = y + 0.5 - cen[i][1];
+    if ((owner < 0 || L.z > lobes[owner].z) && inLobe(L, px, py, seed * 7 + i)) {
+      owner = i;
+      lx = px;
+      ly = py;
+    }
+  });
+  return [owner, lx, ly];
 }
 
 /**
@@ -452,23 +466,15 @@ function drawMass(b: Buf, lobes: Lobe[], o: MassOpts, offs: [number, number][] =
   const cen = lobes.map((L, i) => [Math.round(L.x) + (offs[i]?.[0] ?? 0), Math.round(L.y) + (offs[i]?.[1] ?? 0)]);
   for (let y = 0; y <= Math.min(o.ground, b.h - 1); y++)
     for (let x = 0; x < b.w; x++) {
-      let owner = -1, lx = 0, ly = 0;
-      lobes.forEach((L, i) => {
-        const px = x + 0.5 - cen[i][0], py = y + 0.5 - cen[i][1];
-        if ((owner < 0 || L.z > lobes[owner].z) && inLobe(L, px, py, o.seed * 7 + i)) {
-          owner = i;
-          lx = px;
-          ly = py;
-        }
-      });
+      const [owner, lx, ly] = ownerAt(lobes, cen, o.seed, x, y);
       if (owner < 0) continue;
       const L = lobes[owner], sd = o.seed * 31 + owner * 17;
       // Dabs: most cells nudge the value a little; some are dark pockets between leaf clusters, some lit crests.
       // The form light sets the broad value (compressed, as in the reference), the dabs carry the contrast.
       const form = lobeLight({ ...L, x: Math.round(L.x), y: Math.round(L.y) }, o, lx, ly);
-      const pick = dab(lx + 17, ly + 5, 3.4, sd + 9) * 0.5 + 0.5;
-      const pocket = pick < 0.2 ? -0.13 : pick > 0.84 ? 0.09 : 0;
-      const v = 0.5 + MASS_LIFT + (form - 0.55) * MASS_K + clusterTerm(lx, ly, 5.2, sd + 13) * 0.7 + dab(lx, ly, 2.3, sd) * 0.085 + pocket;
+      const pick = dab(lx + 17, ly + 5, 4, sd + 9) * 0.5 + 0.5;
+      const pocket = pick < 0.2 ? -0.14 : pick > 0.82 ? 0.11 : 0;
+      const v = 0.5 + MASS_LIFT + (form - 0.55) * MASS_K + clusterTerm(lx, ly, 6.5, sd + 13) * 0.7 + dab(lx, ly, 3.3, sd) * 0.08 + pocket;
       b.put(x, y, BUSH, massStep(v), owner, L.z);
     }
   // The shaded underside: between the lobes that reach the ground, dark leaves fill down to it, so
@@ -510,7 +516,7 @@ function massOutline(b: Buf, cen: (part: number) => [number, number] | null, see
     if (y > ground - 3 || b.has(x + dx, y + dy)) continue;
     const c = cen(part);
     const lx = c ? x - c[0] : x, ly = c ? y - c[1] : y;
-    if (hash(lx, ly, seed) < 0.14) b.put(x + dx, y + dy, BUSH, 0, part, depth);
+    if (hash(lx, ly, seed) < 0.2) b.put(x + dx, y + dy, BUSH, 0, part, depth);
   }
 }
 
@@ -592,9 +598,9 @@ function bushSprite(s: BushSpec): WorldSprite {
   return assemble(s.name, s.label, s.meters, ['hide-spot', 'cover-half', 'flammable', 'destructible'], { idle: { frames: idle, fps: 4 }, rustle: { frames: rustle, fps: 12, loop: false } }, s.gx, s.opts.ground);
 }
 
-/** Lobes from [x, height of the center above the ground, rx, ry]: lower lobes are nearer. */
-function lobesFrom(L: [number, number, number, number][], gx: number, ground: number): Lobe[] {
-  return L.map(([x, h, r, ry]) => ({ x: gx + x, y: ground - h, r, ry, z: 100 - h }));
+/** Lobes from [x, height of the center above the ground, rx, ry, z?]: by default lower lobes are nearer. */
+function lobesFrom(L: [number, number, number, number, number?][], gx: number, ground: number): Lobe[] {
+  return L.map(([x, h, r, ry, z]) => ({ x: gx + x, y: ground - h, r, ry, z: z ?? 100 - h }));
 }
 
 const LEAF_BIT: [number, number, number, number] = [BUSH, 6, 5, 3];
@@ -603,12 +609,12 @@ function roundBush(): BushSpec {
   const W = 140, H = 120, gx = 70, ground = 104;
   const hgt = m(1.1), wid = m(1.3);
   const top = ground - hgt;
-  // One round mass: a crown lobe behind, two front lobes that meet low in the middle.
+  // One round mass with two softer lobes swelling out of it: one high on the right, one low in front.
   const lobes = lobesFrom(
     [
-      [0, 34, 32, 27],
-      [-14, 15, 22, 16],
-      [15, 14, 21, 15],
+      [0, 32, 35, 31],
+      [11, 44, 19, 16, 80],
+      [-5, 13, 25, 13, 90],
     ],
     gx,
     ground,
@@ -660,9 +666,9 @@ function azaleaBush(): BushSpec {
   const top = ground - hgt;
   const lobes = lobesFrom(
     [
-      [-1, 35, 27, 20],
-      [-14, 15, 24, 17],
-      [16, 14, 23, 16],
+      [-1, 28, 38, 28],
+      [-12, 37, 20, 16, 80],
+      [7, 12, 27, 12, 90],
     ],
     gx,
     ground,
@@ -670,25 +676,29 @@ function azaleaBush(): BushSpec {
   const seed = 37;
   const form: [number, number, number, number] = [gx - 2, top + hgt * 0.5, wid / 2, hgt / 2];
   const opts: MassOpts = { seed, ground, form, bias: -0.03 };
-  // Blossom trusses: a few round trumpet flowers each, scattered over the upper, outer faces of the lobes.
+  // Blossom trusses: 3-5 round trumpet flowers each, on a jittered grid over the mass (denser where
+  // the light falls), never right at the silhouette. Each truss rides on the lobe under its center.
   const layouts: [number, number][][] = [
-    [[-1, 0], [1, 1]],
     [[0, -1], [-2, 1], [2, 1]],
     [[-1, -2], [2, -1], [-2, 1], [1, 1]],
     [[0, -2], [-2, 0], [2, -1], [-1, 2], [2, 2]],
   ];
+  const rest = lobes.map((L) => [Math.round(L.x), Math.round(L.y)]);
   const trusses: { li: number; x: number; y: number; white: boolean; flowers: [number, number][] }[] = [];
-  lobes.forEach((L, li) => {
-    const n = li === 0 ? 9 : 7;
-    for (let k = 0; k < n; k++) {
-      // Spread evenly around the lobe's visible face with a little jitter, more on its upper half.
-      const a = -Math.PI / 2 + ((k + 0.5) / n - 0.5) * (li === 0 ? 3.6 : 4.4) + (rnd(seed, li, k) - 0.5) * 0.5;
-      const rr = (k % 2 ? 0.45 : 0.72) + (rnd(seed, li, k + 9) - 0.5) * 0.18;
-      const size = Math.floor(rnd(seed, li, k + 40) * 4);
-      const lay = layouts[size].slice().sort((p, q) => p[1] - q[1] || p[0] - q[0]);
-      trusses.push({ li, x: Math.round(Math.cos(a) * L.r * rr), y: Math.round(Math.sin(a) * L.ry * rr), white: rnd(seed, li, k + 20) < 0.27, flowers: lay });
+  let k = 0;
+  for (let y = top + 6; y < ground - 6; y += 8)
+    for (let x = gx - wid / 2 + 4 + ((y / 8) & 1 ? 5 : 0); x < gx + wid / 2 - 3; x += 10, k++) {
+      const px = Math.round(x + (rnd(seed, k, 1) - 0.5) * 6), py = Math.round(y + (rnd(seed, k, 2) - 0.5) * 4);
+      const [li, lx, ly] = ownerAt(lobes, rest, seed, px, py);
+      if (li < 0) continue;
+      let inside = true;
+      for (const [dx, dy] of [[-4, 0], [4, 0], [0, -4], [0, 4], [-3, -3], [3, 3]]) if (ownerAt(lobes, rest, seed, px + dx, py + dy)[0] < 0) inside = false;
+      if (!inside) continue;
+      const lit = lobeLight({ ...lobes[li], x: rest[li][0], y: rest[li][1] }, opts, lx, ly);
+      if (rnd(seed, k, 3) > 0.35 + lit * 0.6) continue;
+      const lay = layouts[Math.floor(rnd(seed, k, 4) * 3)].slice().sort((p, q) => p[1] - q[1] || p[0] - q[0]);
+      trusses.push({ li, x: px - rest[li][0], y: py - rest[li][1], white: hash(px, py, seed + 77) < 0.3, flowers: lay });
     }
-  });
   // One flower: a tiny sphere lit from the upper left (deltas from the truss step), corners rounded off.
   const FLOWER: [number, number, number][] = [[-1, -1, 1], [0, -1, 1], [-1, 0, 1], [0, 0, 0], [1, 0, -1], [0, 1, -1], [1, 1, -1]];
   const extra = (b: Buf, offs: [number, number][]): void => {
@@ -698,7 +708,6 @@ function azaleaBush(): BushSpec {
       const [ox, oy] = offs[tr.li] ?? [0, 0];
       const cx = Math.round(L.x), cy = Math.round(L.y);
       const tx = cx + ox + tr.x, ty = cy + oy + tr.y;
-      if (b.partAt(tx, ty) !== tr.li) return;
       const lit = lobeLight({ ...L, x: cx, y: cy }, opts, tr.x, tr.y);
       const base = lit > 0.62 ? 3 : 2;
       const mat = tr.white ? WHITE : PINK;
@@ -753,8 +762,8 @@ function grassBlades(seed: number, cx: number, ground: number, height: number): 
   const blades: Blade[] = [];
   const layers = [
     { n: 12, spread: 10, hMin: 0.74, hMax: 1.02, lean: 0.8, w: 2 },
-    { n: 11, spread: 12, hMin: 0.5, hMax: 0.84, lean: 1.25, w: 3 },
-    { n: 8, spread: 9, hMin: 0.3, hMax: 0.52, lean: 1.5, w: 2 },
+    { n: 11, spread: 14, hMin: 0.5, hMax: 0.84, lean: 1.55, w: 3 },
+    { n: 6, spread: 9, hMin: 0.22, hMax: 0.56, lean: 1.6, w: 2 },
   ];
   let k = 0;
   layers.forEach((L, li) => {
@@ -940,14 +949,14 @@ function fern(): WorldSprite {
   const seed = 71;
   // Fronds: [start angle, end angle (deg from vertical, + = right), length, layer 0 back / 1 side / 2 front].
   const F: [number, number, number, number][] = [
-    [-3, -78, 40, 0],
-    [6, 82, 39, 0],
-    [-24, -118, 34, 1],
-    [27, 122, 35, 1],
-    [-50, -150, 27, 1],
-    [52, 152, 27, 1],
-    [-14, -158, 18, 2],
-    [17, 160, 17, 2],
+    [-3, -78, 38, 0],
+    [6, 82, 37, 0],
+    [-24, -118, 31, 1],
+    [27, 122, 32, 1],
+    [-50, -150, 25, 1],
+    [52, 152, 25, 1],
+    [-14, -158, 17, 2],
+    [17, 160, 16, 2],
   ];
   const deg = Math.PI / 180;
   const frame = (f: number): Canvas => {

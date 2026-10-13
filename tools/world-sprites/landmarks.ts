@@ -1476,6 +1476,339 @@ function signpost(): WorldSprite {
 }
 // @end signpost
 
+// @section fence
+/** A tube along a polyline (rings perpendicular to the path), smooth shaded; r may vary per point. */
+function tube(path: V3[], r: number | number[], n = 8, o: { caps?: boolean; seed?: number; wob?: number } = {}): Tri[] {
+  const rings: V3[][] = [];
+  for (let i = 0; i < path.length; i++) {
+    const a = path[Math.max(0, i - 1)], b = path[Math.min(path.length - 1, i + 1)];
+    const t = unit(sub(b, a));
+    const ref: V3 = Math.abs(t[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+    const u = unit(cross(t, ref)), w = unit(cross(t, u));
+    const rr = typeof r === 'number' ? r : r[i];
+    const pts: V3[] = [];
+    for (let j = 0; j < n; j++) {
+      const ang = (j * TAU) / n;
+      const wob = o.wob ? 1 + (rnd(o.seed ?? 5, j, i) - 0.5) * o.wob : 1;
+      pts.push(add(path[i], add(mul(u, Math.cos(ang) * rr * wob), mul(w, Math.sin(ang) * rr * wob))));
+    }
+    rings.push(pts);
+  }
+  return loft(rings, { capStart: o.caps ?? true, capEnd: o.caps ?? true, smooth: true });
+}
+/** Points along a sagging span from a to b (sag px at the middle), with a little wander. */
+function span(a: V3, b: V3, sag: number, n: number, seed: number): V3[] {
+  const pts: V3[] = [];
+  for (let k = 0; k <= n; k++) {
+    const t = k / n;
+    const p = add(a, mul(sub(b, a), t));
+    pts.push([p[0], p[1] - sag * 4 * t * (1 - t) + (k > 0 && k < n ? (rnd(seed, k) - 0.5) * 0.8 : 0), p[2]]);
+  }
+  return pts;
+}
+
+/** Bark streaks on a round post: dark vertical fissures that follow the trunk, in clusters. */
+function barkShade(cx: number, cd: number, seed: number) {
+  return (px: PixelInfo, s: number): number => {
+    const ang = Math.atan2(px.p[2] - cd, px.p[0] - cx);
+    const v = noise(ang * 5 + 10, px.p[1] / 7, 1, seed);
+    if (px.n[1] > 0.8) return s;
+    if (v > 0.68) return Math.max(1, s - 1);
+    if (v < 0.12 && px.light > 0.5) return Math.min(4, s + 1);
+    return s;
+  };
+}
+
+const FENCE_SPAN = m(1); // posts every meter; the segment is 2 m, end posts sit on the tile seam
+const RAIL_H = [19, 40];
+
+/**
+ * One rustic fence post, rendered alone and outlined so it can be stamped at both ends of a
+ * segment (identical pixels on the seam when segments tile 2 m apart). Rope lashings wrap it at
+ * both rail heights.
+ */
+function fencePost(lean = 0, broken = false): { c: Canvas; ox: number; oy: number } {
+  const W = 40, H = 80, ox = 20, oy = 70;
+  GROUP = 1;
+  const sc = new Scene();
+  const postT = tube(
+    [[0, 0, 0], [0.3, 18, 0], [-0.2, 36, 0], [0.2, 53, 0]].map((p) => p as V3),
+    [3.8, 3.6, 3.5, 3.3],
+    10,
+    { seed: 151, wob: 0.12, caps: true },
+  );
+  const post = sc.add(lean ? rotZ(postT, lean, 0, 0) : postT, { pal: BARK, seed: 151, contrast: 1.1, shade: barkShade(0, 0, 152), ao: 3 });
+  const f = render(sc, W, H, ox, oy);
+  // Cut top: lighter end grain with a ring and a darker heart.
+  for (let i = 0; i < W * H; i++) {
+    if (f.mesh[i] !== post.id) continue;
+    const n = f.normal(i);
+    if (n[1] < 0.85) continue;
+    const p = f.world(i);
+    const top: V3 = lean ? [Math.sin(lean) * 53, 53, 0] : [0.2, 53, 0];
+    const d = Math.hypot(p[0] - top[0], (p[2] - top[2]) * 1.0);
+    f.pal[i] = WOOD;
+    f.step[i] = d < 1 ? 2 : d < 2.2 ? 4 : d < 2.9 ? 3 : 2;
+  }
+  const c = f.compose();
+  // Rope lashings: three wraps around the post at each rail height, following the round post.
+  const lash = layer(W, H, (cv) => {
+    RAIL_H.forEach((rh, k) => {
+      if (broken && k === 1) return;
+      for (let w = 0; w < 2; w++) {
+        const hh = rh + 2 - w * 3.2;
+        for (let a = 0; a <= 16; a++) {
+          const th = Math.PI + (a / 16) * Math.PI; // front half of the ring
+          const r = 3.7;
+          let p: V3 = [Math.cos(th) * r, hh + (a / 16 - 0.5) * 1.4, Math.sin(th) * r];
+          if (lean) p = [p[0] * Math.cos(lean) + p[1] * Math.sin(lean), -p[0] * Math.sin(lean) + p[1] * Math.cos(lean), p[2]];
+          const [x, y] = f.proj(p).map(Math.round);
+          const lit = Math.cos(th) < 0.3;
+          cv.set(x, y, C(ROPE, lit ? 4 : 2));
+          cv.set(x, y + 1, C(ROPE, lit ? 2 : 1));
+        }
+      }
+    });
+  });
+  c.draw(lash, 0, 0);
+  c.outline();
+  return { c, ox, oy };
+}
+
+function fence(): WorldSprite {
+  const W = 170, H = 90, ox = 85, oy = 74;
+  const build = (broken: boolean): Canvas => {
+    GROUP = 1;
+    const sc = new Scene();
+    const lean = broken ? 0.18 : 0; // the middle post leans right when broken
+    const tilt = (p: V3): V3 => (lean ? [p[0] * Math.cos(lean) + p[1] * Math.sin(lean), -p[0] * Math.sin(lean) + p[1] * Math.cos(lean), p[2]] : p);
+    const railD = 4.6;
+    const rail = (a: V3, b: V3, r0: number, seed: number, sag = 1.2, capped = true) =>
+      sc.add(tube(span(a, b, sag, 6, seed), r0, 8, { seed, wob: 0.15, caps: capped }), { pal: WOOD_OLD, seed, contrast: 1.1, facetVar: 0.02, shade: (px, s) => (noise(px.p[0] / 5, px.p[1] * 1.5 + px.p[2], 1.2, seed) > 0.74 ? Math.max(1, s - 1) : s) });
+    const L = -FENCE_SPAN, M = 0, Rr = FENCE_SPAN;
+    const mid = (h: number): V3 => {
+      const p = tilt([0, h, 0]);
+      return [p[0], p[1], railD];
+    };
+    // Left span: both rails run from the left post to the middle post.
+    rail([L - 1, RAIL_H[0], railD], mid(RAIL_H[0]), 2.5, 161);
+    rail([L - 1, RAIL_H[1], railD], mid(RAIL_H[1]), 2.3, 162);
+    // Right span.
+    rail(mid(RAIL_H[0]), [Rr + 1, RAIL_H[0], railD], 2.5, 163);
+    if (!broken) rail(mid(RAIL_H[1]), [Rr + 1, RAIL_H[1], railD], 2.3, 164);
+    else {
+      // The upper rail snapped: one piece hangs from the middle post, the other from the right post.
+      const m1 = mid(RAIL_H[1]);
+      rail(m1, [27, 28, railD - 2], 2.3, 165, 0.3, true);
+      rail([Rr + 1, RAIL_H[1], railD], [33, 21, railD - 3], 2.3, 166, 0.3, true);
+    }
+    // The middle post is part of this scene (it can lean); end posts are stamped after.
+    const midPost = sc.add(
+      rotZ(tube([[0, 0, 0], [-0.3, 18, 0], [0.2, 36, 0], [-0.1, 51, 0]].map((p) => p as V3), [3.7, 3.5, 3.4, 3.2], 10, { seed: 171, wob: 0.12 }), lean, 0, 0),
+      { pal: BARK, seed: 171, contrast: 1.1, shade: barkShade(0, 0, 172), ao: 3 },
+    );
+    const f = render(sc, W, H, ox, oy);
+    for (let i = 0; i < W * H; i++) {
+      if (f.mesh[i] !== midPost.id || f.normal(i)[1] < 0.85) continue;
+      const p = f.world(i);
+      const top = tilt([-0.1, 51, 0]);
+      const d = Math.hypot(p[0] - top[0], p[2] - top[2]);
+      f.pal[i] = WOOD;
+      f.step[i] = d < 1 ? 2 : d < 2.2 ? 4 : d < 2.9 ? 3 : 2;
+    }
+    const c = f.compose();
+    if (broken) {
+      // Splintered ends: pale fresh wood spikes at the break.
+      const spl = layer(W, H, (cv) => {
+        for (const [bx, bh, bd, dir] of [
+          [27, 28, railD - 2, 1],
+          [33, 21, railD - 3, -1],
+        ] as [number, number, number, number][]) {
+          const [x, y] = f.proj([bx, bh, bd]).map(Math.round);
+          const spikes: [number, number, number][] = [[0, -1, 5], [1, -2, 4], [0, 0, 4], [1, 1, 3], [2, 0, 4], [0, 1, 3]];
+          for (const [dx, dy, s] of spikes) cv.set(x + dx * dir, y + dy, C(WOOD, s));
+        }
+      });
+      c.draw(spl, 0, 0);
+    }
+    // Lashings on the middle post.
+    const lash = layer(W, H, (cv) => {
+      RAIL_H.forEach((rh, k) => {
+        for (let w = 0; w < 2; w++) {
+          if (broken && k === 1 && w === 1) continue;
+          const hh = rh + 2 - w * 3.2;
+          for (let a = 0; a <= 16; a++) {
+            const th = Math.PI + (a / 16) * Math.PI;
+            const p = tilt([Math.cos(th) * 3.6, hh + (a / 16 - 0.5) * 1.4, Math.sin(th) * 3.6]);
+            const [x, y] = f.proj(p).map(Math.round);
+            const lit = Math.cos(th) < 0.3;
+            cv.set(x, y, C(ROPE, lit ? 4 : 2));
+            cv.set(x, y + 1, C(ROPE, lit ? 2 : 1));
+          }
+        }
+      });
+      if (broken) {
+        // A loose rope end dangling from the leaning post.
+        const [x, y] = f.proj(tilt([3.5, RAIL_H[1] - 2, -3])).map(Math.round);
+        for (let k = 0; k < 7; k++) cv.set(x + (k > 3 ? 1 : 0) + (k > 5 ? 1 : 0), y + k, C(ROPE, k % 2 ? 2 : 3));
+      }
+    });
+    c.draw(lash, 0, 0);
+    c.outline();
+    // End posts: one pre-rendered post stamped on both tile seams.
+    const ep = fencePost(0, false);
+    for (const px of [L, Rr]) c.draw(ep.c, ox + px - ep.ox, oy - ep.oy);
+    return c;
+  };
+  const idle = build(false);
+  const broken = build(true);
+  return finish('fence', 'Wooden Fence', [2, 1], ['cover-half', 'destructible'], { idle: { frames: [idle], fps: 0 }, broken: { frames: [broken], fps: 0 } }, ox);
+}
+// @end fence
+
+// @section bamboo
+/** Dried bamboo: the rope straw tone with a touch of young-leaf green. */
+const BAMBOO = pal(R.rope.map((c, i) => mix(c, R.leafLight[i], 0.18)));
+/** Older, darker culms for the posts. */
+const BAMBOO_DK = pal(R.rope.map((c, i) => mix(c, R.woodDark[i], 0.35)));
+const BF_H = 60; // panel height (px); the posts stand a little taller
+
+/** One thick bamboo post with nodes and a hollow cut top, rendered alone (stamped on both seams). */
+function bambooPost(): { c: Canvas; ox: number; oy: number } {
+  const W = 30, H = 90, ox = 15, oy = 80;
+  GROUP = 1;
+  const sc = new Scene();
+  const nodes = [12, 28, 44, 58];
+  const post = sc.add(pole([0, 0, -3], [0, BF_H + 3, -3], 3.6, 12, { caps: true }), {
+    pal: BAMBOO_DK,
+    seed: 181,
+    contrast: 1.1,
+    ao: 3,
+    shade: (px, s) => {
+      const d = nodes.map((nh) => px.p[1] - nh).find((v) => v > -1.6 && v < 1.6);
+      if (d === undefined) return s;
+      return d < -0.5 ? Math.min(4, s + 1) : d < 0.5 ? Math.max(1, s - 2) : s;
+    },
+  });
+  const f = render(sc, W, H, ox, oy);
+  // Hollow cut top: a light rim around a dark hole.
+  for (let i = 0; i < W * H; i++) {
+    if (f.mesh[i] !== post.id || f.normal(i)[1] < 0.85) continue;
+    const p = f.world(i);
+    const d = Math.hypot(p[0], p[2] + 3);
+    f.pal[i] = BAMBOO;
+    if (d < 2.3) f.over[i] = d < 1.4 ? C(BAMBOO_DK, 0) : C(BAMBOO_DK, 1);
+    else f.step[i] = p[0] < 0.5 ? 4 : 3;
+  }
+  const c = f.compose();
+  // Black rope tie holding the panel's top cap and middle batten.
+  const ties = layer(W, H, (cv) => {
+    for (const hh of [BF_H - 2, 31]) {
+      const [x, y] = f.proj([0, hh, -3]).map(Math.round);
+      for (let dx = -3; dx <= 3; dx++) {
+        const yy = y + Math.round(Math.sqrt(Math.max(0, 1 - (dx / 3.8) ** 2)) * 2.2);
+        cv.set(x + dx, yy, C(INK, dx < 0 ? 4 : 3));
+        cv.set(x + dx, yy + 1, C(INK, 2));
+      }
+    }
+  });
+  c.draw(ties, 0, 0);
+  c.outline();
+  return { c, ox, oy };
+}
+
+function fenceBamboo(): WorldSprite {
+  const W = 170, H = 100, ox = 85, oy = 84;
+  GROUP = 1;
+  const sc = new Scene();
+  // Top cap (tamabuchi): a bundle of thin bamboo laid along the top, slightly in front of the panel.
+  const cap = sc.add(tube([[-FENCE_SPAN, BF_H - 2.5, -1.2], [FENCE_SPAN, BF_H - 2.5, -1.2]], 3, 10, { caps: true }), { pal: BAMBOO, seed: 191, contrast: 1.1 });
+  const f = render(sc, W, H, ox, oy);
+  // Panel: vertical split-bamboo slats (4 px + 1 px seam), staggered nodes, three battens.
+  const x0 = ox - FENCE_SPAN + 3, x1 = ox + FENCE_SPAN - 3;
+  const yTop = oy - (BF_H - 4), yBot = oy;
+  const battens = [10, 30, 48]; // heights of the batten tops
+  const battenRows = new Map<number, number>(); // screen y -> row in batten (0 top .. 3 bottom)
+  for (const bh of battens) for (let k = 0; k < 4; k++) battenRows.set(oy - bh + k, k);
+  const panel = new Canvas(W, H);
+  for (let x = x0; x <= x1; x++) {
+    const u = (x - x0) % 5, slat = Math.floor((x - x0) / 5);
+    const nodeOff = slat % 2 ? 7 : 16;
+    const tone = hash(slat, 3, 197) < 0.25 ? -1 : 0;
+    for (let y = yTop; y <= yBot; y++) {
+      const hh = oy - y;
+      let s: number;
+      if (u === 4) s = 1; // seam
+      else s = [3, 3, 3, 2][u] + (u === 1 || u === 2 ? tone : 0);
+      // A lit edge in clusters on the left of each slat.
+      if (u === 0 && noise(slat, hh / 3, 1, 198) > 0.55) s = 4;
+      // Staggered nodes: a dark groove with a light ridge above.
+      const nd = (hh - nodeOff + 40) % 20;
+      if (u < 4 && nd === 0) s = Math.max(1, s - 1);
+      if (u < 2 && nd === 1) s = Math.min(4, s + 1);
+      // The cap's shadow along the top and the ground contact.
+      if (y < yTop + 2 && u < 4) s = Math.max(1, s - 1);
+      if (hh < 2 && u < 4) s = Math.max(1, s - 1);
+      panel.set(x, y, C(BAMBOO, s));
+    }
+  }
+  // Battens: split bamboo laid across the slats, each casting a short shadow below-right.
+  for (const bh of battens) {
+    const yb = oy - bh;
+    for (let x = x0 - 1; x <= x1 + 1; x++) {
+      const nodeAt = (x - x0 + 6) % 23 === 0;
+      for (let k = 0; k < 4; k++) {
+        let s = [4, 3, 3, 2][k];
+        if (k === 0 && noise(x / 3, bh, 1, 199) < 0.35) s = 3;
+        if (nodeAt) s = k === 0 ? 3 : 1;
+        panel.set(x, yb + k, C(BAMBOO, s));
+      }
+      for (let k = 4; k < 6; k++) {
+        const c = panel.get(x + 1, yb + k);
+        if (c[3]) panel.set(x + 1, yb + k, k === 4 ? C(BAMBOO, 1) : mix(c, C(BAMBOO, 1), 0.5));
+      }
+    }
+  }
+  // The left post's shadow falls on the slats to its right.
+  for (let y = yTop; y <= yBot; y++)
+    for (let x = x0; x < x0 + 3; x++) {
+      const c = panel.get(x, y);
+      if (c[3] && !battenRows.has(y)) panel.set(x, y, mix(c, C(BAMBOO, 1), 0.55));
+    }
+  panel.outline();
+  const c = f.compose();
+  const comp = new Canvas(W, H);
+  comp.draw(panel, 0, 0);
+  // Black rope knots on the battens (every two slats) and around the cap.
+  const knots = new Canvas(W, H);
+  for (const bh of battens) {
+    const yb = oy - bh;
+    for (let x = x0 + 7; x < x1 - 3; x += 10) {
+      // A vertical wrap over the batten, a nub and two short tails.
+      const kn: [number, number, number][] = [[0, -1, 1], [1, -1, 1], [0, 0, 4], [1, 0, 2], [0, 1, 3], [1, 1, 1], [0, 2, 3], [1, 2, 1], [0, 3, 2], [1, 3, 1], [0, 4, 1], [1, 4, 0], [-1, 5, 1], [2, 5, 1]];
+      for (const [dx, dy, st] of kn) knots.set(x + dx, yb + dy, C(INK, st));
+    }
+  }
+  comp.draw(knots, 0, 0);
+  comp.draw(c, 0, 0);
+  const capTies = layer(W, H, (cv) => {
+    for (let x = x0 + 7; x < x1 - 3; x += 20) {
+      const [, y] = f.proj([0, BF_H - 2.5, -1.2]).map(Math.round);
+      for (let dy = -3; dy <= 3; dy++) {
+        cv.set(x, y + dy, C(INK, dy < 0 ? 4 : 2));
+        cv.set(x + 1, y + dy, C(INK, dy < 0 ? 3 : 1));
+      }
+    }
+  });
+  comp.draw(capTies, 0, 0);
+  comp.outline();
+  void cap;
+  const bp = bambooPost();
+  for (const px of [-FENCE_SPAN, FENCE_SPAN]) comp.draw(bp.c, ox + px - bp.ox, oy - bp.oy);
+  return finish('fence_bamboo', 'Bamboo Fence', [2, 1.2], ['cover-half', 'blocks-sight', 'destructible'], { idle: { frames: [comp], fps: 0 } }, ox);
+}
+// @end bamboo
+
 // @main
 // ================================================================================================
 // main
@@ -1498,7 +1831,7 @@ function debugDump(s: WorldSprite): void {
   z.scaled(first.h > 80 ? 6 : 8).save(join(SCRATCH, `landmarks-${s.name}-zoom.png`));
 }
 
-const sprites: WorldSprite[] = [stoneLantern(), signpost(), boulder(), rock(), pebbles(), riverStones(), hokora()];
+const sprites: WorldSprite[] = [stoneLantern(), signpost(), fence(), fenceBamboo(), boulder(), rock(), pebbles(), riverStones(), hokora()];
 writeGroup('landmarks', sprites);
 preview(sprites, join(SCRATCH, 'landmarks.png'), { scale: 3 });
 for (const s of sprites) {

@@ -5,10 +5,10 @@
   "stone_lantern": {
    "label": "Stone Lantern",
    "file": "stone_lantern.png",
-   "frameW": 48,
+   "frameW": 44,
    "frameH": 99,
    "anchor": [
-    24,
+    22,
     97
    ],
    "meters": [
@@ -29,6 +29,82 @@
     },
     "unlit": {
      "row": 1,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "boulder": {
+   "label": "Mossy Boulder",
+   "file": "boulder.png",
+   "frameW": 99,
+   "frameH": 77,
+   "anchor": [
+    46,
+    75
+   ],
+   "meters": [
+    1.6,
+    1.3
+   ],
+   "tags": [
+    "cover-3q",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "rock": {
+   "label": "Rock",
+   "file": "rock.png",
+   "frameW": 51,
+   "frameH": 35,
+   "anchor": [
+    25,
+    33
+   ],
+   "meters": [
+    0.9,
+    0.6
+   ],
+   "tags": [
+    "cover-half"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "rocks_small": {
+   "label": "Pebbles",
+   "file": "rocks_small.png",
+   "frameW": 37,
+   "frameH": 22,
+   "anchor": [
+    19,
+    20
+   ],
+   "meters": [
+    0.6,
+    0.25
+   ],
+   "tags": [
+    "ambient"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
      "frames": 1,
      "fps": 0,
      "loop": true

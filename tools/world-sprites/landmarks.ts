@@ -327,15 +327,21 @@ class Frame {
         const wv = this.warm[i];
         if (wv > 0.02) {
           // Two warm levels, picked per pixel with a little cluster noise so the spill reads as strokes.
-          const q = wv + (noise(x, y, 2, 91) - 0.5) * 0.25;
-          if (q > 0.62) col = mix(col, R.fire[4], 0.55);
-          else if (q > 0.36) col = mix(col, R.fire[3], 0.4);
-          else if (q > 0.14) col = mix(col, R.fire[2], 0.28);
+          // Additive (the stone is lit, not painted orange), three levels.
+          const q = wv + (noise(x, y, 2, 91) - 0.5) * 0.2;
+          if (q > 0.66) col = glow(col, R.fire[4], 0.62);
+          else if (q > 0.4) col = glow(col, R.fire[3], 0.42);
+          else if (q > 0.16) col = glow(col, R.fire[3], 0.22);
         }
         c.set(x, y, col);
       }
     return c;
   }
+}
+
+/** Adds light of color `l` (strength k) to `c`. */
+function glow(c: Color, l: Color, k: number): Color {
+  return [Math.min(255, c[0] + l[0] * k), Math.min(255, c[1] + l[1] * k * 0.92), Math.min(255, c[2] + l[2] * k * 0.6), c[3]].map(Math.round) as Color;
 }
 
 function rayTri(o: V3, d: V3, t: Tri): number {
@@ -677,6 +683,33 @@ function finish(name: string, label: string, meters: [number, number], tags: str
 // STONE LANTERN (toro)
 // ================================================================================================
 
+// @section lantern
+/** A ring on a hexagon of circumradius r (flat face to the viewer), 24 points; corners lift and reach out. */
+function kasaRing(h: number, r: number, lift: number, out = 0): V3[] {
+  const pts: V3[] = [];
+  const N = 24, seg = Math.PI / 3;
+  for (let j = 0; j < N; j++) {
+    const a = Math.PI / 3 + (j * TAU) / N;
+    const rel = (((a - Math.PI / 3) % seg) + seg) % seg;
+    const dc = Math.min(rel, seg - rel);
+    const polyR = (r * Math.cos(Math.PI / 6)) / Math.cos(Math.PI / 6 - dc);
+    const cf = Math.max(0, 1 - dc / (seg * 0.4)) ** 1.5;
+    pts.push([Math.cos(a) * (polyR + out * cf), h + lift * cf, Math.sin(a) * (polyR + out * cf)]);
+  }
+  return pts;
+}
+
+/** Flame bitmaps, bottom row last: r tip, o orange, y yellow, w white-hot core. */
+const LANTERN_FLAMES = [
+  ['.r.', '.o.', '.o.', 'oyo', 'ywy', 'ywy', 'oyo'],
+  ['..r', '.ro', '.o.', 'oyo', 'ywy', 'ywy', 'oyo'],
+  ['.r.', '.o.', '.oy', 'oyo', 'oyy', 'ywy', 'ywy', 'oyo'],
+  ['r..', 'or.', '.o.', 'oyo', 'ywy', 'ywy', 'oyo'],
+  ['.r.', '.o.', 'oyo', 'ywy', 'ywy', 'oyo'],
+  ['.r.', '.r.', '.o.', 'oyo', 'yyo', 'ywy', 'oyo'],
+];
+const FLAME_COL: Record<string, Color> = { r: hex('#ef4444'), o: R.fire[3], y: R.fire[4], w: hex('#fde68a') };
+
 function stoneLantern(): WorldSprite {
   const W = 90, H = 130, ox = 45, oy = 112;
   const build = () => {
@@ -684,137 +717,226 @@ function stoneLantern(): WorldSprite {
     const sc = new Scene();
     const st = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.07, texCell: 6, ...extra });
     // Base: a wide hexagonal slab and a chamfered second tier.
-    const base = sc.add(loft([hexRing(0, 0, 0, 17), hexRing(0, 5, 0, 17), hexRing(0, 7, 0, 15.5)], { capEnd: true }), st(11));
-    const base2 = sc.add(loft([hexRing(0, 7, 0, 12.5), hexRing(0, 9.5, 0, 12.5), hexRing(0, 11.5, 0, 9)], { capEnd: true }), st(12));
-    // Pillar (sao) with a raised band (fushi) halfway.
+    const base = sc.add(loft([hexRing(0, 0, 0, 16), hexRing(0, 4.5, 0, 16), hexRing(0, 6.5, 0, 14.5)], { capEnd: true }), st(11));
+    const base2 = sc.add(loft([hexRing(0, 6.5, 0, 11.5), hexRing(0, 9, 0, 11.5), hexRing(0, 10.5, 0, 8.5)], { capEnd: true }), st(12));
+    // Pillar (sao) with a raised band (fushi) a little below the middle.
     const pillarRings: V3[][] = [];
-    const prof: [number, number][] = [[11, 5.6], [24, 5.3], [24, 6.4], [26.5, 6.4], [26.5, 5.3], [38, 5.0]];
+    const prof: [number, number][] = [[10.5, 5.4], [20, 5.2], [20, 6.3], [22.5, 6.3], [22.5, 5.1], [36, 4.8]];
     for (const [hh, r] of prof) pillarRings.push(ring(0, hh, 0, r, r, 14));
-    const pillar = sc.add(loft(pillarRings, { smooth: true }), st(13, { steps: [1, 2, 3, 3, 4], bias: -0.06 }));
+    const pillar = sc.add(loft(pillarRings, { smooth: true }), st(13, { steps: [1, 2, 3, 3, 4], bias: -0.04 }));
     // Middle platform (chudai): lotus flare then a hexagonal slab.
-    const chudai = sc.add(loft([hexRing(0, 37.5, 0, 7), hexRing(0, 40.5, 0, 11.5), hexRing(0, 41.5, 0, 13), hexRing(0, 45.5, 0, 13)], { capEnd: true }), st(14));
+    const chudai = sc.add(loft([hexRing(0, 35.5, 0, 6.5), hexRing(0, 38.5, 0, 10.8), hexRing(0, 39.5, 0, 12), hexRing(0, 43, 0, 12)], { capEnd: true }), st(14));
     // Firebox (hibukuro).
-    const fire = sc.add(loft([hexRing(0, 45.5, 0, 10.5), hexRing(0, 62, 0, 10.5)], { capEnd: true }), st(15));
-    // Roof (kasa): eave fascia, sloped top with upturned corners, then the finial seat.
-    const roofRings: V3[][] = [];
-    const eave = (h: number, r: number, lift: number): V3[] => {
-      const pts: V3[] = [];
-      for (let j = 0; j < 12; j++) {
-        const a = Math.PI / 3 + (j * TAU) / 12;
-        const corner = j % 2 === 0;
-        const rr = corner ? r * 1.06 : r * Math.cos(Math.PI / 6);
-        pts.push([Math.cos(a) * rr, h + (corner ? lift : 0), Math.sin(a) * rr]);
-      }
-      return pts;
-    };
-    roofRings.push(eave(61, 19, 0.5), eave(64, 21, 3), eave(65.5, 20.5, 3.2), eave(69.5, 13, 0.8), eave(72.5, 6.5, 0), eave(73.5, 4.5, 0));
-    const roof = sc.add(loft(roofRings, { capStart: true, capEnd: true }), st(16, { bias: -0.08 }));
+    const fire = sc.add(loft([hexRing(0, 43, 0, 9.5), hexRing(0, 62, 0, 9.5)], { capEnd: true }), st(15, { bias: -0.06 }));
+    // Roof (kasa): eave fascia, a concave sloped top with upturned corners, the finial seat.
+    const roof = sc.add(
+      loft([kasaRing(61.5, 17, 1, 0), kasaRing(61.5, 18.5, 3.5, 1.5), kasaRing(64, 18.5, 4.2, 1.5), kasaRing(66.5, 15, 1.4, 0.4), kasaRing(70, 10.5, 0.4), kasaRing(74, 6.2, 0), kasaRing(75.5, 4.2, 0)], { capStart: true, capEnd: true }),
+      st(16, { bias: -0.08 }),
+    );
     // Finial: lotus cup and the jewel (hoju).
-    const cup = sc.add(loft([ring(0, 73.5, 0, 2.6, 2.6, 8), ring(0, 75.5, 0, 4, 4, 8), ring(0, 76.5, 0, 3.2, 3.2, 8)], { capEnd: true, smooth: true }), st(17, { steps: [1, 2, 3, 4] }));
+    const cup = sc.add(loft([ring(0, 75.5, 0, 2.6, 2.6, 8), ring(0, 77.2, 0, 3.8, 3.8, 8), ring(0, 78, 0, 3, 3, 8)], { capEnd: true, smooth: true }), st(17, { steps: [1, 2, 3, 4] }));
     const jewelR: V3[][] = [];
-    for (const [hh, r] of [[76.5, 2.2], [77.5, 3.4], [79.5, 3.9], [81.5, 3.2], [83, 1.8]] as [number, number][]) jewelR.push(ring(0, hh, 0, r, r, 10));
-    const jewel = sc.add(loft(jewelR, { capStart: true, capEnd: [0, 85.5, 0], smooth: true }), st(18, { steps: [1, 2, 3, 4, 5], bias: -0.05 }));
+    for (const [hh, r] of [[78, 2.2], [79, 3.3], [81, 3.7], [83, 3], [84.5, 1.6]] as [number, number][]) jewelR.push(ring(0, hh, 0, r, r, 10));
+    const jewel = sc.add(loft(jewelR, { capStart: true, capEnd: [0, 86.5, 0], smooth: true }), st(18, { steps: [1, 2, 3, 4, 5], bias: -0.05 }));
     return { sc, base, base2, pillar, chudai, fire, roof, cup, jewel };
   };
 
-  const frames = (lit: boolean, t: number): Canvas => {
+  const frame = (lit: boolean, t: number): Canvas => {
     const parts = build();
     const f = render(parts.sc, W, H, ox, oy);
     const id = (mm: Mesh) => mm.id;
-    // Moss on the roof, the platform and the base; lichen on the faces.
-    paintMoss(f, { meshes: [id(parts.roof)], amount: 0.42, seed: 301, cell: 8, drip: 3, bumps: true });
-    paintMoss(f, { meshes: [id(parts.chudai), id(parts.base2)], amount: 0.38, seed: 302, cell: 7, drip: 2 });
-    paintMoss(f, { meshes: [id(parts.base)], amount: 0.5, seed: 303, cell: 8, drip: 2 });
-    paintLichen(f, { meshes: [id(parts.base), id(parts.fire), id(parts.chudai), id(parts.pillar), id(parts.roof)], seed: 310, density: 0.35 });
-    // Chips knocked out of edges.
-    const [ex, ey] = f.proj([19.5, 64, -3]);
-    chip(f, Math.round(ex), Math.round(ey), [[0, 0], [0, -1], [-1, -1]], [[-1, 0], [-2, -1]]);
-    const [bx, by] = f.proj([-8.5, 5, -14.7]);
+    // Moss in the roof's hollow and on the ledges; lichen on the faces.
+    paintMoss(f, { meshes: [id(parts.roof)], amount: 0.3, seed: 301, cell: 7, drip: 2, bumps: true });
+    paintMoss(f, { meshes: [id(parts.chudai), id(parts.base2)], amount: 0.26, seed: 302, cell: 6, drip: 2 });
+    paintMoss(f, { meshes: [id(parts.base)], amount: 0.34, seed: 303, cell: 7, drip: 2, bumps: true });
+    paintLichen(f, { meshes: [id(parts.base), id(parts.fire), id(parts.chudai), id(parts.pillar), id(parts.roof)], seed: 310, density: 0.2, minLight: 0.4 });
+    // Chips knocked out of edges, a crack in the base and the pillar.
+    const [ex, ey] = f.proj([9.3, 63, -16]);
+    chip(f, Math.round(ex), Math.round(ey), [[0, 1], [1, 1], [1, 0]], [[0, 0], [-1, 1]]);
+    const [bx, by] = f.proj([-8, 4.5, -13.9]);
     chip(f, Math.round(bx), Math.round(by), [[0, 0], [1, 0], [0, 1]], [[1, 1], [2, 0]]);
-    paintCrack(f, [[ox - 11, oy - 3], [ox - 10, oy - 1], [ox - 10, oy + 2]], [id(parts.base)]);
-    paintCrack(f, [[ox + 3, oy - 34], [ox + 2, oy - 31], [ox + 3, oy - 29]], [id(parts.pillar)]);
+    paintCrack(f, [[ox - 12, oy - 3], [ox - 11, oy - 1], [ox - 11, oy + 1], [ox - 12, oy + 3]], [id(parts.base)]);
+    paintCrack(f, [[ox + 3, oy - 31], [ox + 2, oy - 28], [ox + 3, oy - 26]], [id(parts.pillar)]);
     // Firebox windows: the front opening, a sun on the left face and a moon on the right.
-    const frontD = -10.5 * Math.cos(Math.PI / 6);
-    const win = { x0: -3, x1: 3, h0: 48.5, h1: 59 };
-    const [wx0, wy1] = f.proj([win.x0, win.h0, frontD]);
-    const [wx1, wy0] = f.proj([win.x1, win.h1, frontD]);
-    const flick = [0, 1, 2, 1, 0, -1][t % 6];
-    for (let y = Math.round(wy0); y < Math.round(wy1); y++)
-      for (let x = Math.round(wx0); x < Math.round(wx1); x++) {
+    const frontD = -9.5 * Math.cos(Math.PI / 6);
+    const [wx0, wy1] = f.proj([-3, 45.5, frontD]).map(Math.round);
+    const [wx1, wy0] = f.proj([3, 56, frontD]).map(Math.round);
+    const flick = [0, 1, 1, 0, -1, -1][t % 6];
+    const warmSet = (x: number, y: number, v: number) => {
+      const i = f.idx(x, y);
+      if (i >= 0) f.warm[i] = Math.max(f.warm[i], v);
+    };
+    for (let y = wy0; y < wy1; y++)
+      for (let x = wx0; x < wx1; x++) {
         const i = f.idx(x, y);
-        const fromBottom = Math.round(wy1) - 1 - y;
+        const fromBottom = wy1 - 1 - y;
         if (fromBottom < 2) {
           // The sill: the bottom inside face, seen from above.
           f.set(x, y, STONE, fromBottom === 0 ? 2 : 3);
-          if (lit) f.warm[i] = 0.75 + flick * 0.05;
+          if (lit) warmSet(x, y, fromBottom === 1 ? 0.9 : 0.7);
           continue;
         }
-        f.over[i] = lit ? (fromBottom < 4 || x === Math.round(wx1) - 1 ? R.fire[1] : mix(R.fire[1], R.fire[0], 0.5)) : (y === Math.round(wy0) ? C(STONE, 0) : mix(C(STONE, 0), C(STONE, 1), 0.4));
+        if (!lit) {
+          f.over[i] = y === wy0 || x === wx0 ? C(STONE, 0) : mix(C(STONE, 0), C(STONE, 1), 0.45);
+          continue;
+        }
+        // Lit inside: the back wall glows, brightest low and around the flame.
+        const dx = Math.abs(x + 0.5 - (wx0 + wx1) / 2), up = fromBottom - 2;
+        const v = 1 - up / 9 - dx / 5;
+        f.over[i] = y === wy0 ? mix(R.fire[0], R.fire[1], 0.4) : v > 0.55 ? R.fire[2] : v > 0.25 ? mix(R.fire[1], R.fire[2], 0.5) : R.fire[1];
       }
     // Side windows (left: round sun, right: crescent moon).
     const sideHole = (cxW: number, cdW: number, moon: boolean) => {
-      const [sx, sy] = f.proj([cxW, 55, cdW]);
-      const pts: [number, number][] = moon ? [[0, -1], [1, 0], [1, 1], [0, 2]] : [[0, 0], [1, 0], [0, 1], [1, 1], [0, -1], [1, -1]];
+      const [sx, sy] = f.proj([cxW, 51.5, cdW]).map(Math.round);
+      const pts: [number, number][] = moon ? [[1, -1], [0, 0], [0, 1], [1, 2]] : [[0, -1], [1, -1], [0, 0], [1, 0], [0, 1], [1, 1]];
       for (const [dx, dy] of pts) {
-        const i = f.idx(Math.round(sx) + dx, Math.round(sy) + dy);
+        const i = f.idx(sx + dx, sy + dy);
         if (i < 0) continue;
-        f.over[i] = lit ? (dy === 1 || dy === 2 ? R.fire[3] : R.fire[2]) : C(STONE, 0);
+        f.over[i] = lit ? (dy >= 1 ? R.fire[4] : R.fire[3]) : dy === -1 ? C(STONE, 0) : mix(C(STONE, 0), C(STONE, 1), 0.5);
+        if (lit) for (const [ax, ay] of [[-1, 0], [2, 0], [0, 2], [1, 2], [-1, 1]]) warmSet(sx + dx + ax, sy + dy + ay, 0.3);
       }
     };
-    sideHole(-7.6, -2.5, false);
-    sideHole(7.2, -2.5, true);
+    sideHole(-7.2, -2.6, false);
+    sideHole(6.8, -2.6, true);
     if (lit) {
-      // Light spill: the window rim, the platform below and the stone around the opening.
-      const cx = (wx0 + wx1) / 2, cy = wy1 - 3;
-      const rad = 9 + flick;
+      // Light spill: the platform in front of the window and a rim of the stone around the opening.
+      const cx = (wx0 + wx1) / 2, cy = wy1 - 1;
+      const rad = 8.5 + flick * 0.8;
       for (let y = 0; y < f.h; y++)
         for (let x = 0; x < f.w; x++) {
           const i = f.idx(x, y);
-          if (f.pal[i] < 0 || f.over[i] || f.warm[i] > 0) continue;
-          const dx = (x + 0.5 - cx) / rad, dy = (y + 0.5 - cy) / (rad * 0.85);
+          if (f.pal[i] < 0 || f.over[i]) continue;
+          const n = f.normal(i);
+          const mi = f.mesh[i];
+          if (mi !== id(parts.fire) && mi !== id(parts.chudai)) continue;
+          const isTop = n[1] > 0.5;
+          const dx = (x + 0.5 - cx) / rad, dy = (y + 0.5 - cy) / (isTop ? rad * 0.45 : rad * 0.75);
           const d = Math.hypot(dx, dy);
           if (d > 1) continue;
-          const n = f.normal(i);
-          const facing = n[1] > 0.5 ? 1 : 0.65; // tops in front of the window catch more of it
-          f.warm[i] = Math.max(f.warm[i], (1 - d) * facing * (0.95 + flick * 0.05));
+          // Tops in front of the window catch the light; the box face only near the opening edge.
+          const v = isTop ? (1 - d) * 1.1 : y >= wy0 - 1 && y < wy1 ? (1 - d) * 0.7 : (1 - d) * 0.35;
+          warmSet(x, y, v * (1 + flick * 0.08));
         }
     }
-    let c = f.compose();
+    const c = f.compose();
     if (lit) {
-      // Flame: a teardrop on a small wick, flickering (6 frames).
-      const shapes = [
-        { h: 7, lean: 0, w: 2 },
-        { h: 8, lean: 0, w: 2 },
-        { h: 9, lean: 1, w: 2 },
-        { h: 8, lean: 1, w: 2 },
-        { h: 7, lean: 0, w: 2 },
-        { h: 6, lean: -1, w: 2 },
-      ][t % 6];
-      const fx = Math.round((wx0 + wx1) / 2) - 1, fb = Math.round(wy1) - 3;
-      const fl = new Canvas(W, H);
-      for (let k = 0; k < shapes.h; k++) {
-        const tt = k / (shapes.h - 1); // 0 bottom, 1 tip
-        const half = tt < 0.35 ? shapes.w : tt < 0.7 ? shapes.w - 0.5 : 0.5;
-        const lx = fx + Math.round(shapes.lean * tt * tt);
-        for (let dx = -Math.ceil(half); dx <= Math.ceil(half) - (half % 1 ? 0 : 1) + 0; dx++) {
-          const xx = lx + dx + 1;
-          const edge = dx === -Math.ceil(half) || dx === Math.ceil(half) - (half % 1 ? 0 : 1);
-          const col = tt > 0.8 ? R.fire[2] : edge ? R.fire[3] : tt < 0.5 ? hex('#fde68a') : R.fire[4];
-          fl.set(xx, fb - k, col);
+      const bm = LANTERN_FLAMES[t % 6];
+      const fx = Math.round((wx0 + wx1) / 2) - 2, fb = wy1 - 2;
+      bm.forEach((row, k) => {
+        for (let dx = 0; dx < row.length; dx++) {
+          const ch = row[dx];
+          if (ch !== '.') c.set(fx + dx, fb - (bm.length - k), FLAME_COL[ch]);
         }
-      }
-      fl.set(fx + 1, fb + 1, R.charred[2]);
-      c.draw(fl, 0, 0);
+      });
+      // The wick sits in a little oil dish on the sill.
+      c.set(fx + 1, fb, R.charred[3]);
+      c.set(fx, fb, mix(R.fire[1], R.charred[3], 0.5));
+      c.set(fx + 2, fb, mix(R.fire[1], R.charred[3], 0.5));
+    } else {
+      // An unlit candle stub on the sill.
+      const fx = Math.round((wx0 + wx1) / 2) - 1, fb = wy1 - 2;
+      c.set(fx, fb - 1, C(PAPER, 2));
+      c.set(fx, fb - 2, C(PAPER, 3));
+      c.set(fx, fb - 3, R.charred[2]);
     }
     c.outline();
     return c;
   };
 
-  const litFrames = [0, 1, 2, 3, 4, 5].map((t) => frames(true, t));
-  const unlit = frames(false, 0);
+  const litFrames = [0, 1, 2, 3, 4, 5].map((t) => frame(true, t));
+  const unlit = frame(false, 0);
   return finish('stone_lantern', 'Stone Lantern', [0.7, 1.7], ['light-source', 'cover-half', 'interactable'], { lit: { frames: litFrames, fps: 8 }, unlit: { frames: [unlit], fps: 0 } }, ox);
 }
+// @end lantern
 
+// @section stones
+/**
+ * A faceted stone: jittered rings stacked by `profile` ([height fraction, radius fraction]),
+ * leaning toward `lean` px at the top, closed by a low pyramid so the top breaks into facets.
+ */
+function rockMesh(o: { cx: number; cd: number; rx: number; rd: number; h: number; n?: number; seed: number; lean?: number; leanD?: number; profile?: [number, number][]; rot?: number; jit?: number; hJit?: number; h0?: number; apexUp?: number }): Tri[] {
+  const prof = o.profile ?? [[0, 0.9], [0.32, 1], [0.72, 0.82], [0.94, 0.45]];
+  const n = o.n ?? 8;
+  const h0 = o.h0 ?? 0;
+  const rings = prof.map(([hf, rf], k) =>
+    ring(o.cx + (o.lean ?? 0) * hf, h0 + hf * o.h, o.cd + (o.leanD ?? 0) * hf, o.rx * rf, o.rd * rf, n, {
+      rot: (o.rot ?? 0.3) + (k % 2) * (Math.PI / n) * 0.35,
+      jit: o.jit ?? 0.12,
+      hJit: k > 0 ? o.h * (o.hJit ?? 0.05) : 0,
+      seed: o.seed + k * 7,
+    }),
+  );
+  const apex: V3 = [o.cx + (o.lean ?? 0) * 1.05 + (rnd(o.seed, 9) - 0.5) * o.rx * 0.3, h0 + o.h * (1 + (o.apexUp ?? 0.03)), o.cd + (o.leanD ?? 0) + (rnd(o.seed, 10) - 0.5) * o.rd * 0.3];
+  return loft(rings, { capEnd: apex });
+}
+
+function boulder(): WorldSprite {
+  const W = 130, H = 110, ox = 62, oy = 90;
+  GROUP = 1;
+  const sc = new Scene();
+  const st = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.08, texCell: 7, seam: true, ...extra });
+  const main = sc.add(rockMesh({ cx: -3, cd: 0, rx: 39, rd: 22, h: 52, n: 9, seed: 21, lean: -7, leanD: 2, profile: [[0, 0.9], [0.3, 1], [0.66, 0.86], [0.9, 0.52]], rot: 0.25, jit: 0.1, hJit: 0.06 }), st(21));
+  const lump = sc.add(rockMesh({ cx: 25, cd: -7, rx: 18, rd: 13, h: 24, n: 7, seed: 22, lean: -2, profile: [[0, 0.95], [0.4, 1], [0.8, 0.7]], rot: 0.6, jit: 0.15 }), st(22));
+  const feet: Mesh[] = [];
+  const foot = (cx: number, cd: number, rx: number, h: number, seed: number, warm = false) =>
+    feet.push(sc.add(rockMesh({ cx, cd, rx, rd: rx * 0.75, h, n: 6, seed, profile: [[0, 0.95], [0.5, 1], [0.9, 0.6]], jit: 0.18 }), { pal: warm ? STONE_W : STONE, seed, crest: true, bias: -0.02 }));
+  foot(40, -16, 5.5, 5, 31);
+  foot(48, -10, 3.5, 3.5, 32, true);
+  foot(-38, -16, 4.5, 4, 33, true);
+  foot(-30, -21, 3, 2.5, 34);
+  foot(33, -21, 2.5, 2.5, 35);
+  const f = render(sc, W, H, ox, oy);
+  paintMoss(f, { meshes: [main.id], amount: 0.5, seed: 401, cell: 10, drip: 3, minUp: 0.4, bumps: true });
+  paintMoss(f, { meshes: [lump.id], amount: 0.3, seed: 402, cell: 7, drip: 2, minUp: 0.4 });
+  paintLichen(f, { meshes: [main.id, lump.id], seed: 410, density: 0.28, minLight: 0.35 });
+  paintCrack(f, [[ox - 9, oy - 30], [ox - 7, oy - 26], [ox - 8, oy - 22], [ox - 5, oy - 17], [ox - 5, oy - 13]], [main.id]);
+  paintCrack(f, [[ox + 15, oy - 40], [ox + 17, oy - 36], [ox + 16, oy - 33]], [main.id]);
+  paintCrack(f, [[ox - 26, oy - 13], [ox - 24, oy - 10], [ox - 25, oy - 7]], [main.id]);
+  const c = f.compose();
+  c.outline();
+  return finish('boulder', 'Mossy Boulder', [1.6, 1.3], ['cover-3q', 'climbable'], { idle: { frames: [c], fps: 0 } }, ox);
+}
+
+function rock(): WorldSprite {
+  const W = 80, H = 60, ox = 38, oy = 46;
+  GROUP = 1;
+  const sc = new Scene();
+  const main = sc.add(rockMesh({ cx: 0, cd: 0, rx: 23, rd: 13, h: 21, n: 8, seed: 51, lean: -4, profile: [[0, 0.92], [0.35, 1], [0.75, 0.8], [0.95, 0.45]], rot: 0.5, jit: 0.12 }), { pal: STONE, seed: 51, tex: 0.08, texCell: 6, seam: true });
+  const side = sc.add(rockMesh({ cx: 17, cd: -6, rx: 7, rd: 5, h: 6, n: 6, seed: 52, profile: [[0, 0.95], [0.5, 1], [0.9, 0.6]], jit: 0.15 }), { pal: STONE_W, seed: 52, bias: -0.02 });
+  const f = render(sc, W, H, ox, oy);
+  paintMoss(f, { meshes: [main.id], amount: 0.3, seed: 451, cell: 6, drip: 2, minUp: 0.45 });
+  paintLichen(f, { meshes: [main.id], seed: 452, density: 0.3, minLight: 0.35 });
+  paintCrack(f, [[ox + 4, oy - 17], [ox + 6, oy - 13], [ox + 5, oy - 9]], [main.id]);
+  void side;
+  const c = f.compose();
+  c.outline();
+  return finish('rock', 'Rock', [0.9, 0.6], ['cover-half'], { idle: { frames: [c], fps: 0 } }, ox);
+}
+
+function pebbles(): WorldSprite {
+  const W = 50, H = 30, ox = 24, oy = 22;
+  GROUP = 1;
+  const sc = new Scene();
+  const list: [number, number, number, number, number, boolean][] = [
+    // cx, cd, rx, h, seed, warm
+    [-6, 2, 7, 6, 61, false],
+    [5, -1, 6, 5, 62, true],
+    [-13, -4, 4, 3.5, 63, true],
+    [12, -6, 4, 3, 64, false],
+    [0, -8, 3.5, 3, 65, false],
+    [-2, 9, 4.5, 4, 66, true],
+    [13, 5, 3, 2.5, 67, false],
+  ];
+  for (const [cx, cd, rx, h, seed, warm] of list)
+    sc.add(rockMesh({ cx, cd, rx, rd: rx * 0.75, h, n: 7, seed, profile: [[0, 0.9], [0.45, 1], [0.85, 0.65]], jit: 0.12, apexUp: 0.05 }), { pal: warm ? STONE_W : STONE, seed, crest: true, bias: -0.04 });
+  const f = render(sc, W, H, ox, oy);
+  const c = f.compose();
+  c.outline();
+  return finish('rocks_small', 'Pebbles', [0.6, 0.25], ['ambient'], { idle: { frames: [c], fps: 0 } }, ox);
+}
+// @end stones
+
+// @main
 // ================================================================================================
 // main
 // ================================================================================================
@@ -836,7 +958,7 @@ function debugDump(s: WorldSprite): void {
   z.scaled(first.h > 80 ? 6 : 8).save(join(SCRATCH, `landmarks-${s.name}-zoom.png`));
 }
 
-const sprites: WorldSprite[] = [stoneLantern()];
+const sprites: WorldSprite[] = [stoneLantern(), boulder(), rock(), pebbles()];
 writeGroup('landmarks', sprites);
 preview(sprites, join(SCRATCH, 'landmarks.png'), { scale: 3 });
 for (const s of sprites) {

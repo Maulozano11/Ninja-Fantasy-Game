@@ -5,10 +5,10 @@
   "rabbit": {
    "label": "Wild Rabbit",
    "file": "rabbit.png",
-   "frameW": 25,
-   "frameH": 25,
+   "frameW": 31,
+   "frameH": 26,
    "anchor": [
-    13,
+    16,
     23
    ],
    "meters": [
@@ -22,8 +22,20 @@
    "anims": {
     "idle": {
      "row": 0,
-     "frames": 1,
+     "frames": 8,
      "fps": 6,
+     "loop": true
+    },
+    "graze": {
+     "row": 1,
+     "frames": 6,
+     "fps": 6,
+     "loop": true
+    },
+    "hop": {
+     "row": 2,
+     "frames": 6,
+     "fps": 12,
      "loop": true
     }
    }

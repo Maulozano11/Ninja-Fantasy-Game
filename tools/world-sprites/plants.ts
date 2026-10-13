@@ -713,3 +713,619 @@ function azaleaBush(): BushSpec {
     bits: [FOL_AZ, PINK, FOL_AZ],
   };
 }
+
+// --- tall grass ------------------------------------------------------------------------------
+
+interface Blade {
+  bx: number;
+  h: number;
+  tipX: number;
+  tipY: number;
+  cx: number;
+  cy: number;
+  w: number;
+  /** 0 back (tall, deep green), 1 middle, 2 front (short, leaning out). */
+  layer: number;
+  z: number;
+}
+
+function grassBlades(seed: number, cx: number, ground: number, height: number): Blade[] {
+  const blades: Blade[] = [];
+  const layers = [
+    { n: 12, spread: 11, hMin: 0.74, hMax: 1.02, lean: 0.75, w: 2 },
+    { n: 11, spread: 14, hMin: 0.5, hMax: 0.84, lean: 1.35, w: 3 },
+    { n: 8, spread: 10, hMin: 0.3, hMax: 0.52, lean: 1.9, w: 3 },
+  ];
+  let k = 0;
+  layers.forEach((L, li) => {
+    for (let i = 0; i < L.n; i++, k++) {
+      const fan = ((i + 0.5) / L.n) * 2 - 1;
+      const bx = cx + fan * L.spread + (rnd(seed, k, 1) - 0.5) * 3;
+      const h = height * (L.hMin + (L.hMax - L.hMin) * rnd(seed, k, 2)) * (1 - Math.abs(fan) * 0.28);
+      const lean = fan * 10 * L.lean + (rnd(seed, k, 3) - 0.5) * 6;
+      const arch = li > 0 && Math.abs(fan) > 0.55 && rnd(seed, k, 4) < 0.7;
+      blades.push({
+        bx,
+        h,
+        tipX: bx + lean * (arch ? 1.6 : 1),
+        tipY: ground - h * (arch ? 0.62 : 1),
+        cx: bx + lean * (arch ? 0.55 : 0.2),
+        cy: ground - h * (arch ? 1.05 : 0.6),
+        w: L.w,
+        layer: li,
+        z: rnd(seed, k, 5),
+      });
+    }
+  });
+  return blades.sort((a, b) => a.layer - b.layer || a.z - b.z);
+}
+
+/** Draws blades; `bend(bl)` adds a tip displacement in px for the frame. */
+function drawBlades(b: Buf, blades: Blade[], ground: number, bend: (bl: Blade) => number, seed: number): void {
+  blades.forEach((bl, i) => {
+    const d = bend(bl);
+    const back = bl.layer === 0;
+    const mat = back ? GRASS_BACK : GRASS;
+    const tipLit = !back && rnd(seed, i, 11) < 0.7;
+    strokeQuad(
+      b,
+      bl.bx,
+      ground,
+      bl.cx + d * 0.4,
+      bl.cy,
+      bl.tipX + d,
+      bl.tipY + Math.abs(d) * 0.15,
+      (t) => (t < 0.4 ? bl.w : t < 0.74 ? Math.min(2, bl.w) : 1),
+      (t, side) => {
+        let st = t < 0.16 ? 1 : t < 0.42 ? 2 : t < 0.8 ? 3 : 4;
+        if (back && t < 0.6) st = Math.max(1, st - 1);
+        if (side > 0.6 && st > 1) st -= 1;
+        if (t > 0.9 && tipLit) st = 5;
+        return [mat, st];
+      },
+      i,
+      bl.layer * 10 + bl.z,
+    );
+  });
+}
+
+function tallGrass(): WorldSprite {
+  const W = 110, H = 90, cx = 55, ground = 78, height = m(0.8);
+  const seed = 51;
+  const blades = grassBlades(seed, cx, ground, height);
+  const frame = (bend: (bl: Blade) => number, bits?: (c: Canvas) => void): Canvas => {
+    const b = new Buf(W, H);
+    drawBlades(b, blades, ground, bend, seed);
+    const c = finish(b, { spurs: false, inner: 1, gap: 0.6, shadow: 0 });
+    bits?.(c);
+    return c;
+  };
+  // Idle: a wind wave crossing from left to right; tips move up to 2 px, the base stays put.
+  const idle = Array.from({ length: 6 }, (_, f) => frame((bl) => Math.round((0.3 + 1.9 * (bl.h / height)) * Math.sin(((f + 0.5) / 6) * Math.PI * 2 - (bl.bx - cx) * 0.06))));
+  // Rustle: blades squeeze in, part to both sides as someone pushes through, overshoot and settle.
+  const part = [-1, 6, 4, -2, 1, 0];
+  const paths: [number, number][][] = [
+    [[-6, -2], [-11, -9], [-15, -8], [-19, -2]],
+    [[5, -3], [10, -11], [14, -10], [18, -4]],
+  ];
+  const rustle = part.map((a, f) =>
+    frame(
+      (bl) => Math.round(a * Math.sign(bl.bx - cx + 0.5) * (0.4 + 0.6 * (bl.h / height))),
+      (c) => {
+        if (f < 1 || f > 4) return;
+        const t = f - 1;
+        paths.forEach((p, k) => {
+          const leaf = looseLeaf(GRASS, 0.3 + k * 2.1 + t * 1.5 * (k ? 1 : -1), 5, 2.2);
+          blit(c, leaf, Math.round(cx + p[t][0] - 6), Math.round(ground - height + p[t][1] - 6), f === 4 ? 0.6 : 1);
+        });
+      },
+    ),
+  );
+  return assemble('tall_grass', 'Tall Grass', [1, 0.8], ['hide-spot', 'flammable'], { idle: { frames: idle, fps: 5 }, rustle: { frames: rustle, fps: 12, loop: false } }, cx, ground);
+}
+
+// --- reeds -----------------------------------------------------------------------------------
+
+function cattails(): WorldSprite {
+  const W = 90, H = 130, cx = 45, ground = 116, height = m(1.5), halfW = m(0.8) / 2;
+  const seed = 63;
+  // Strap leaves fan from a tight clump; a few fold over and hang.
+  const leaves = Array.from({ length: 12 }, (_, i) => {
+    const fan = (i / 11 - 0.5) * 2;
+    const h = height * (0.42 + rnd(seed, i, 1) * 0.36) * (1 - Math.abs(fan) * 0.3);
+    const fold = rnd(seed, i, 2) < 0.34 ? 0.6 + rnd(seed, i, 5) * 0.15 : 0;
+    const lean = fan * halfW * 0.8 + (rnd(seed, i, 3) - 0.5) * 6;
+    return { bx: cx + fan * 4, h, lean, fold, back: i % 3 === 1, z: rnd(seed, i, 4) };
+  });
+  // Stems with their brown heads: [x offset, height, lean, head length].
+  const stems: [number, number, number, number][] = [
+    [-2, height, -5, 13],
+    [2, height * 0.91, 5, 12],
+    [5, height * 0.79, 12, 11],
+    [-5, height * 0.69, -12, 10],
+  ];
+  const frame = (f: number): Canvas => {
+    const b = new Buf(W, H);
+    const sway = (h: number, x: number): number => Math.round(Math.sin(((f + 0.5) / 6) * Math.PI * 2 - (x - cx) * 0.06) * (0.3 + 2.2 * (h / height)));
+    leaves
+      .slice()
+      .sort((a, b2) => (a.back === b2.back ? a.z - b2.z : a.back ? -1 : 1))
+      .forEach((l, i) => {
+        const d = sway(l.h, l.bx);
+        const mat = l.back ? REED_BACK : REED;
+        const dep = l.back ? l.z : 1 + l.z;
+        const paint = (t0: number, t1: number) => (t: number, side: number): [number, number] => {
+          const tt = t0 + (t1 - t0) * t;
+          let st = tt < 0.18 ? 1 : tt < 0.45 ? 2 : 3;
+          if (side > 0.6) st = Math.max(1, st - 1);
+          if (side < 0.4 && tt > 0.3 && tt < 0.85 && !l.back && st === 3) st = 4;
+          return [mat, st];
+        };
+        if (!l.fold) {
+          strokeQuad(b, l.bx, ground, l.bx + l.lean * 0.2 + d * 0.3, ground - l.h * 0.6, l.bx + l.lean + d, ground - l.h, (t) => (t < 0.35 ? 3 : t < 0.75 ? 2 : 1), paint(0, 1), i, dep);
+        } else {
+          // Up to the fold, then the rest hangs outward and down.
+          const fx = l.bx + l.lean * 0.55 + d, fy = ground - l.h * l.fold;
+          strokeQuad(b, l.bx, ground, l.bx + l.lean * 0.15 + d * 0.3, ground - l.h * l.fold * 0.6, fx, fy, (t) => (t < 0.5 ? 3 : 2), paint(0, l.fold), i, dep);
+          const rest = l.h * (1 - l.fold) * 1.1, dir = Math.sign(l.lean) || 1;
+          strokeQuad(b, fx, fy, fx + dir * rest * 0.45, fy - 2, fx + dir * rest * 0.8, fy + rest * 0.55, (t) => (t < 0.5 ? 2 : 1), (t, side) => paint(l.fold, 1)(t, side), i, dep);
+        }
+      });
+    stems.forEach(([ox, h, lean, head], i) => {
+      const bx = cx + ox;
+      const d = sway(h, bx);
+      const x1 = bx + lean + d, y1 = ground - h;
+      const c1x = bx + lean * 0.3 + d * 0.3, c1y = ground - h * 0.55;
+      const part = 50 + i, dep = 3 + i * 0.1;
+      strokeQuad(b, bx, ground, c1x, c1y, x1, y1, (t) => (t < 0.55 ? 2 : 1), (t, side) => [REED, side > 0.6 ? 2 : t > 0.5 ? 3 : 2], part, dep);
+      // Head: a rounded brown cylinder along the stem (lit on the left), then a thin spike.
+      const t0 = 1 - (head + 6) / h, t1 = 1 - 6 / h;
+      for (let t = t0; t <= t1; t += 0.25 / h) {
+        const [x, y] = quad(bx, ground, c1x, c1y, x1, y1, t);
+        const e = (t - t0) / (t1 - t0);
+        const r = 2.4 * Math.min(1, Math.sin(Math.PI * e) * 2.2);
+        for (let ox2 = -3; ox2 <= 3; ox2++) {
+          const u = (ox2 + 0.5) / Math.max(0.9, r);
+          if (Math.abs(u) > 1) continue;
+          let st = u < -0.45 ? 4 : u < 0.25 ? 3 : 2;
+          if (e < 0.1 || e > 0.92) st = Math.max(2, st - 1);
+          if (st === 4 && e > 0.15 && e < 0.4) st = 5;
+          if (st === 3 && e > 0.55 && e < 0.62) st = 2; // a faint seam where the head ripens
+          b.put(Math.floor(x) + ox2, Math.floor(y), CATTAIL, st, part, dep + 0.05);
+        }
+      }
+      const [sx, sy] = quad(bx, ground, c1x, c1y, x1, y1, t1);
+      strokeQuad(b, sx, sy, x1 + 0.2, y1 - 2, x1 + 0.4, y1 - 5, () => 1, (t) => [REED, t > 0.6 ? 4 : 3], part, dep);
+    });
+    return finish(b, { spurs: false, inner: 1, gap: 0.35, shadow: 0 });
+  };
+  const idle = Array.from({ length: 6 }, (_, f) => frame(f));
+  return assemble('reeds', 'Cattail Reeds', [0.8, 1.5], ['hide-spot', 'water', 'flammable'], { idle: { frames: idle, fps: 5 } }, cx, ground);
+}
+
+// --- fern ------------------------------------------------------------------------------------
+
+/** Points along an arching frond every 0.5 px: [x, y, direction (rad from vertical, + = right)]. */
+function frondPath(x0: number, y0: number, a0: number, a1: number, len: number, bend = 1.4): [number, number, number][] {
+  const pts: [number, number, number][] = [];
+  let x = x0, y = y0;
+  const n = Math.ceil(len * 2);
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * Math.pow(i / n, bend);
+    pts.push([x, y, a]);
+    x += Math.sin(a) * 0.5;
+    y -= Math.cos(a) * 0.5;
+  }
+  return pts;
+}
+
+function fern(): WorldSprite {
+  const W = 100, H = 60, cx = 50, ground = 50;
+  const seed = 71;
+  // Fronds: [start angle, end angle (deg from vertical, + = right), length, layer 0 back / 1 side / 2 front].
+  const F: [number, number, number, number][] = [
+    [-6, -62, 37, 0],
+    [9, 66, 36, 0],
+    [-28, -108, 33, 1],
+    [30, 112, 34, 1],
+    [-52, -140, 27, 1],
+    [54, 142, 27, 1],
+    [-18, -150, 19, 2],
+    [22, 152, 18, 2],
+  ];
+  const deg = Math.PI / 180;
+  const frame = (f: number): Canvas => {
+    const b = new Buf(W, H);
+    F.forEach(([a0, a1, L, layer], i) => {
+      const side = Math.sign(a1);
+      const pts = frondPath(cx + side * 0.5, ground - 1, a0 * deg, a1 * deg, L);
+      // Sway: the outer part shifts by whole pixels (rigid, so nothing shimmers); the base stays put.
+      const sw = [0, 1, 0, -1][(f + i) % 4] * (layer === 2 ? 0 : 1);
+      const off = (k: number): number => (k / (pts.length - 1) > 0.55 ? sw : 0);
+      const mat = layer === 0 ? FOL_BACK : FOL;
+      const part = i, dep = layer * 2 + i * 0.1;
+      pts.forEach(([x, y], k) => b.put(x + off(k), y, mat, k / pts.length < 0.25 ? 1 : 2, part, dep));
+      // Pinnae: pairs pointing forward along the rachis, longest a third of the way out, tiny at the tip.
+      const pmax = layer === 2 ? 4.6 : 6.4;
+      for (let s = 2.5, j = 0; s < L - 0.5; s += 3.3, j++) {
+        const k = Math.min(pts.length - 1, Math.round(s * 2));
+        const [px, py, a] = pts[k];
+        const u = s / L;
+        const pl = Math.max(1, pmax * Math.pow(Math.sin(Math.PI * clamp(u * 0.9 + 0.1, 0, 1)), 0.6) * (1 - 0.55 * u));
+        for (const sgn of [-1, 1]) {
+          const pa = a + sgn * 0.95;
+          const ang = Math.atan2(-Math.cos(pa), Math.sin(pa));
+          const up = -Math.cos(pa) < -0.1;
+          let st = up ? 3 : 2;
+          if (u < 0.22) st -= 1;
+          if (layer === 2) st = up ? 3 : 2;
+          const crest = up && layer !== 0 && j % 2 === 0 && u > 0.2 && u < 0.85;
+          leafShape(px + off(k), py, ang, pl, 1.7, (qx, qy, t) => {
+            b.put(qx, qy, mat, crest && t > 0.4 && t < 0.9 ? 4 : st, part, dep);
+          });
+        }
+      }
+    });
+    // A young fiddlehead curling up in the middle.
+    const fx = cx, fy = ground - 19;
+    strokeQuad(b, cx, ground - 1, cx + 1, ground - 10, fx, fy + 3, () => 1, () => [FOL, 2], 40, 1.5);
+    const curl: [number, number, number][] = [[0, 2, 3], [0, 1, 3], [0, 0, 4], [1, -1, 4], [2, -1, 3], [3, 0, 3], [3, 1, 2], [2, 2, 2], [1, 1, 2]];
+    for (const [dx, dy, st] of curl) b.put(fx + dx, fy + dy, FOL, st, 40, 1.5);
+    return finish(b, { spurs: false, inner: 1, gap: 0.5, shadow: 0 });
+  };
+  const idle = Array.from({ length: 4 }, (_, f) => frame(f));
+  return assemble('fern', 'Fern', [0.9, 0.6], ['ambient'], { idle: { frames: idle, fps: 5 } }, cx, ground);
+}
+
+// --- wildflowers -----------------------------------------------------------------------------
+
+function wildflowers(): WorldSprite {
+  const W = 70, H = 36, cx = 35, ground = 28, height = m(0.3), halfW = m(0.8) / 2;
+  const seed = 83;
+  type Kind = 'daisy' | 'butter' | 'violet';
+  const kinds: Kind[] = ['daisy', 'violet', 'butter', 'daisy', 'violet', 'butter', 'daisy', 'violet', 'daisy', 'butter'];
+  const heads = kinds.map((kind, i) => {
+    const x = cx - halfW + 4 + (i / (kinds.length - 1)) * (halfW * 2 - 8) + (rnd(seed, i, 1) - 0.5) * 3;
+    const h = height * (0.6 + rnd(seed, i, 2) * 0.4) * (1 - Math.abs(x - cx) / (halfW * 2.4)) - (kind === 'violet' ? 2 : 0);
+    return { x, h, kind, lean: (rnd(seed, i, 3) - 0.5) * 4 };
+  });
+  // The leafy base: short blades in two layers, separated so the outline reads between them.
+  const blades = Array.from({ length: 18 }, (_, i) => {
+    const fan = ((i + 0.5) / 18) * 2 - 1;
+    const x = cx + fan * (halfW - 3) + (rnd(seed, i, 5) - 0.5) * 2;
+    const h = 4 + rnd(seed, i, 6) * 5 * (1 - Math.abs(fan) * 0.45);
+    return { x, h, lean: fan * 3 + (rnd(seed, i, 7) - 0.5) * 4, back: i % 2 === 0 };
+  });
+  const frame = (f: number): Canvas => {
+    const b = new Buf(W, H);
+    blades.forEach((bl, i) => {
+      const mat = bl.back ? GRASS_BACK : GRASS;
+      strokeQuad(b, bl.x, ground, bl.x + bl.lean * 0.3, ground - bl.h * 0.6, bl.x + bl.lean, ground - bl.h, (t) => (t < 0.45 ? 2 : 1), (t, side) => [mat, t < 0.35 ? 1 : side > 0.6 ? 2 : t > 0.75 && !bl.back ? 4 : 3], i, bl.back ? 0 : 1);
+    });
+    heads.forEach((hd, i) => {
+      const sway = [0, 1, 0, -1][(f + i) % 4];
+      const hx = Math.round(hd.x + hd.lean + sway), hy = Math.round(ground - hd.h);
+      const part = 20 + i, dep = 2 + i * 0.05;
+      strokeQuad(b, hd.x, ground, hd.x + hd.lean * 0.2, ground - hd.h * 0.5, hx, hy + 1, () => 1, (t) => [GRASS, t < 0.4 ? 1 : 2], part, dep);
+      let px: [number, number, number, number][];
+      if (hd.kind === 'daisy') {
+        px = [[-1, -1, WHITE, 4], [0, -1, WHITE, 4], [1, -1, WHITE, 3], [-2, 0, WHITE, 4], [-1, 0, WHITE, 3], [0, 0, YELLOW, 4], [1, 0, WHITE, 3], [2, 0, WHITE, 2], [-1, 1, WHITE, 3], [0, 1, WHITE, 2], [1, 1, WHITE, 2]];
+      } else if (hd.kind === 'butter') {
+        px = [[-1, -1, YELLOW, 5], [1, -1, YELLOW, 3], [-1, 0, YELLOW, 4], [0, 0, YELLOW, 3], [1, 0, YELLOW, 2], [0, 1, YELLOW, 2]];
+      } else {
+        px = [[0, -3, VIOLET, 4], [-1, -2, VIOLET, 4], [0, -2, VIOLET, 3], [1, -2, VIOLET, 2], [-1, -1, VIOLET, 3], [0, -1, VIOLET, 3], [1, -1, VIOLET, 2], [-1, 0, VIOLET, 3], [0, 0, VIOLET, 2], [1, 0, VIOLET, 1], [0, 1, VIOLET, 2]];
+      }
+      for (const [dx, dy, mt, st] of px) b.put(hx + dx, hy + dy, mt, st, part, dep);
+    });
+    return finish(b, { spurs: false, inner: 1, gap: 0.5, shadow: 0 });
+  };
+  const idle = Array.from({ length: 4 }, (_, f) => frame(f));
+  return assemble('flowers', 'Wildflowers', [0.8, 0.3], ['ambient'], { idle: { frames: idle, fps: 5 } }, cx, ground);
+}
+
+// --- lily pads -------------------------------------------------------------------------------
+
+function lilyPads(): WorldSprite {
+  const W = 120, H = 80, cx = 60, wy = 46;
+  // The steep battle camera shows ground (and water) planes at 38/57 of their width.
+  const FLAT = 38 / 57;
+  // Pads: [x, y, rx, notch angle, bob phase], back to front.
+  const pads: [number, number, number, number, number][] = [
+    [11, -10, 11, 2.3, 2],
+    [-19, -7, 12, 0.9, 0],
+    [-2, -1, 15, 0.35, 4],
+    [22, 3, 12, 1.2, 3],
+    [-27, 6, 9, 2.7, 1],
+    [6, 10, 9, 2.9, 5],
+  ];
+  const bob = (ph: number, f: number): number => ([0, 0, 1, 1, 1, 0][(f + ph) % 6]);
+  const frame = (f: number): Canvas => {
+    const b = new Buf(W, H);
+    pads.forEach(([x, y, rx, na, ph], i) => {
+      const ry = rx * FLAT;
+      const pcx = cx + x, pcy = wy + y + bob(ph, f);
+      const dep = i;
+      const inNotch = (u: number, v: number): boolean => {
+        const th = Math.atan2(v, u);
+        return Math.abs(((th - na + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.24 && u * u + v * v > 0.03;
+      };
+      // The pad's thickness: a dark rim one pixel below the top surface, so it floats instead of lying flat as paper.
+      for (let py = Math.floor(pcy - ry); py <= pcy + ry + 2; py++)
+        for (let px = Math.floor(pcx - rx - 1); px <= pcx + rx + 1; px++) {
+          const u = (px + 0.5 - pcx) / rx, v = (py + 0.5 - pcy - 1.5) / ry;
+          if (u * u + v * v > 1 || inNotch(u, (py + 0.5 - pcy) / ry)) continue;
+          b.put(px, py, LILY, 1, i, dep);
+        }
+      for (let py = Math.floor(pcy - ry - 1); py <= pcy + ry + 1; py++)
+        for (let px = Math.floor(pcx - rx - 1); px <= pcx + rx + 1; px++) {
+          const u = (px + 0.5 - pcx) / rx, v = (py + 0.5 - pcy) / ry;
+          const r2 = u * u + v * v;
+          if (r2 > 1 || inNotch(u, v)) continue;
+          let st = 3;
+          // Upturned rim: the far upper-left edge catches the light, the near right side sits in its own shade.
+          if (r2 > 0.6 && -0.6 * u - 0.8 * v > 0.35) st = 4;
+          if (r2 > 0.72 && u < -0.25 && u > -0.75 && v < -0.45 && rnd(90, px - Math.round(pcx), 1) < 0.6) st = 5;
+          if (0.55 * u + 0.8 * v > 0.45 && noise(px - pcx, py - pcy, 3, 40 + i) > 0.35) st = 2;
+          // Veins from the center.
+          const th = Math.atan2(v, u);
+          for (const va of [na + 2.1, na - 2.1, na + Math.PI])
+            if (rx > 10 && r2 > 0.06 && r2 < 0.75 && Math.abs(((th - va + Math.PI * 3) % (Math.PI * 2)) - Math.PI) < 0.07) st = Math.min(st, 2);
+          b.put(px, py, LILY, st, i, dep);
+        }
+    });
+    // A lotus on the big pad: back petals rise inside the cup, side and front petals open over them.
+    const [lx, ly, , , lph] = pads[2];
+    const fx = cx + lx + 2, fy = wy + ly - 1 + bob(lph, f);
+    const petals: [number, number, number][] = [
+      [-90, 8.5, 3.6],
+      [-118, 8, 3.6],
+      [-62, 8, 3.6],
+      [-150, 6.5, 3.4],
+      [-30, 6.5, 3.4],
+      [-106, 6, 3.8],
+      [-74, 6, 3.8],
+    ];
+    petals.forEach(([dg, len, wd], k) => {
+      const a = (dg * Math.PI) / 180;
+      const left = dg < -90;
+      const inner = k < 3;
+      leafShape(fx, fy, a, len, wd, (px, py, t, s) => {
+        let st = left ? 4 : dg === -90 ? 3 : 2;
+        if (inner) st -= 1;
+        if (t < 0.3) st = Math.max(1, st - 1);
+        if (s > 0.45) st = Math.max(1, st - 1);
+        if (left && !inner && t > 0.55 && t < 0.85 && s < -0.2) st = 5;
+        b.put(px, py, LOTUS, st, 20 + k, 10 + k);
+      });
+    });
+    b.put(fx, fy - 4, YELLOW, 4, 30, 9);
+    b.put(fx - 1, fy - 4, YELLOW, 5, 30, 9);
+    b.put(fx + 1, fy - 4, YELLOW, 3, 30, 9);
+    // A closed bud on the right pad.
+    const [bx2, by2, , , bph] = pads[3];
+    const ux = cx + bx2 - 3, uy = wy + by2 - 1 + bob(bph, f);
+    const bud: [number, number, number, number][] = [
+      [0, -7, LOTUS, 4], [0, -6, LOTUS, 4], [1, -6, LOTUS, 3], [-1, -5, LOTUS, 4], [0, -5, LOTUS, 3], [1, -5, LOTUS, 2],
+      [-1, -4, LOTUS, 3], [0, -4, LOTUS, 3], [1, -4, LOTUS, 2], [-1, -3, LILY, 3], [0, -3, LILY, 3], [1, -3, LILY, 2], [0, -2, LILY, 2], [0, -1, LILY, 2],
+    ];
+    for (const [dx, dy, mt, st] of bud) b.put(ux + dx, uy + dy, mt, st, 31, 9);
+    const c = finish(b, { spurs: false, inner: 1, gap: 0.5, shadow: 0 });
+    // Ripples: two broken rings that grow and fade, half a cycle apart.
+    const ring = (rx: number, alpha: number, seedR: number): void => {
+      if (alpha <= 8) return;
+      const ry = rx * FLAT;
+      const n = Math.ceil(rx * 5);
+      for (let i = 0; i < n; i++) {
+        const th = (i / n) * Math.PI * 2;
+        if (rnd(seedR, Math.floor((i / n) * 16), 1) < 0.4) continue;
+        const px = Math.round(cx - 1 + Math.cos(th) * rx), py = Math.round(wy + 1 + Math.sin(th) * ry);
+        if (c.alpha(px, py) > 0) continue;
+        c.set(px, py, withAlpha(R.water[5], alpha));
+      }
+    };
+    for (const ph of [0, 3]) {
+      const p = ((f + ph) % 6) / 6;
+      ring(36 + p * 9, 150 * (1 - p), 90 + ph);
+    }
+    return c;
+  };
+  const idle = Array.from({ length: 6 }, (_, f) => frame(f));
+  return assemble('lily_pads', 'Lily Pads', [1.2, 0.15], ['water', 'ambient'], { idle: { frames: idle, fps: 4 } }, cx, wy + 16);
+}
+
+// --- mossy log -------------------------------------------------------------------------------
+
+function mushroomLog(): WorldSprite {
+  const W = 150, H = 80, ground = 66, len = m(2), rad = 14;
+  const x0 = Math.round((W - len) / 2), x1 = x0 + len - 1;
+  const xa = x0 + 7, xb = x1 - 1;
+  const cy = ground - rad;
+  const seed = 97;
+  const topAt = (x: number): number => cy - rad + (noise(x, 0, 13, seed) > 0.62 ? 0 : 1);
+  // Moss mounds along the top: [start, end, height above the bark].
+  const mounds: [number, number, number][] = [];
+  for (let x = xa + 2, k = 0; x < xb - 10; k++) {
+    const w = 6 + Math.floor(rnd(seed, k, 1) * 7);
+    if (rnd(seed, k, 2) < 0.18) {
+      x += 3 + Math.floor(rnd(seed, k, 3) * 4);
+      continue;
+    }
+    mounds.push([x, Math.min(x + w, xb - 10), 1 + Math.floor(rnd(seed, k, 4) * 2.6)]);
+    x += w - 1;
+  }
+  const frame = (f: number): Canvas => {
+    const b = new Buf(W, H);
+    // Body: a horizontal cylinder lit from the upper left, bark plates running along it.
+    for (let x = xa; x <= xb; x++) {
+      const yt = topAt(x);
+      const end = xb - x; // splinters at the broken right end
+      const jt = end < 4 ? [3, 6, 2, 8][end] : 0, jb = end < 4 ? [2, 5, 1, 7][end] : 0;
+      for (let y = yt + jt; y <= ground - jb; y++) {
+        const v = clamp((y + 0.5 - cy) / rad, -0.999, 0.999);
+        const L = lambert(-0.2, v, Math.sqrt(1 - v * v));
+        let st = L > 0.82 ? 4 : L > 0.5 ? 3 : L > 0.25 ? 2 : 1;
+        // Furrows evenly spaced around the cylinder, so they crowd together toward the top and bottom.
+        const arc = Math.asin(v) * rad + noise(x, 0, 10, seed + 1) * 2.5;
+        const pr = Math.floor(arc / 4.4), pos = arc - pr * 4.4;
+        const cut = (x + pr * 5) % 12 === 0 && rnd(seed, pr + 20, Math.floor((x + pr * 5) / 12)) < 0.65;
+        if (pos < 1 || cut) st = Math.max(1, st - 1);
+        else if (pos < 2 && st >= 3 && rnd(seed, pr + 40, Math.floor((x + pr * 5) / 12)) < 0.55) st = Math.min(4, st + 1);
+        if (y >= ground - 1) st = 1;
+        if (end < 7) st = Math.max(1, st - 1);
+        b.put(x, y, BARK, st, 1, 1);
+      }
+      // Pale splintered wood inside the break.
+      if (end < 4 && end > 0)
+        for (let y = cy - 7 + jt; y <= cy + 6 - jb; y++) if (b.has(x, y)) b.put(x, y, WOOD, end === 1 ? (y < cy ? 3 : 2) : y < cy - 2 ? 2 : 1, 1, 1);
+    }
+    // A broken branch stub, angled up and back, with a pale cut tip.
+    const sx = xa + 30, sy = topAt(sx);
+    for (let k = 0; k < 6; k++)
+      for (let w = -2; w <= 1; w++) b.put(sx + k + w, sy - k + 1, BARK, w < -1 ? 4 : w < 1 ? 3 : 2, 3, 0.5);
+    for (const [dx, dy, st] of [[4, -5, 4], [5, -6, 4], [6, -6, 3], [6, -5, 3], [7, -6, 2]] as [number, number, number][]) b.put(sx + dx, sy + dy, WOOD, st, 3, 0.6);
+    // Moss mounds along the top, lit from the upper left, with a few drips down the side.
+    mounds.forEach(([ms, me, mh], k) => {
+      for (let x = ms; x <= me; x++) {
+        const u = (x - ms) / Math.max(1, me - ms);
+        const yt = topAt(x);
+        const top = yt - Math.round(mh * Math.pow(Math.sin(Math.PI * u), 0.7));
+        const drip = rnd(seed, x, 60) < 0.16 ? 2 + Math.floor(rnd(seed, x, 61) * 3) : 0;
+        const bottom = yt + 2 + Math.round(Math.sin(Math.PI * u) * 2) + drip;
+        for (let y = top; y <= bottom; y++) {
+          const e = y - top;
+          let st = e === 0 ? (u < 0.62 ? 4 : 3) : e === 1 ? (u < 0.35 ? 4 : 3) : y > bottom - 2 ? 2 : 3;
+          if (u > 0.8 && e <= 2) st = Math.max(2, st - 1);
+          if (e === 0 && u > 0.22 && u < 0.42 && rnd(seed, k, 62) < 0.6) st = 5;
+          b.put(x, y, MOSS, st, 2, 1.5);
+        }
+      }
+    });
+    // Cut face (left): concentric rings, a bark rim and a radial crack.
+    const rx = 7, ry = rad + 0.5;
+    for (let y = Math.floor(cy - ry); y <= cy + ry; y++)
+      for (let x = Math.floor(xa - rx); x <= xa + rx; x++) {
+        const u = (x + 0.5 - xa) / rx, v = (y + 0.5 - cy) / ry;
+        const r = Math.sqrt(u * u + v * v);
+        if (r > 1) continue;
+        if (r > 0.84) {
+          b.put(x, y, BARK, v > 0.55 ? 1 : u < 0.1 && v < 0 ? 3 : 2, 4, 2);
+          continue;
+        }
+        const wob = r + (noise(x, y, 4, seed + 10) - 0.5) * 0.08;
+        const ring = Math.floor(wob * 5.5) !== Math.floor((wob + 0.07) * 5.5);
+        let st = 3;
+        if (-0.6 * u - 0.8 * v > 0.25 && r > 0.35) st = 4;
+        if (u * 0.6 + v * 0.8 > 0.45) st = 2;
+        if (ring) st -= 1;
+        if (r < 0.13) st = 2;
+        if (Math.abs(v - u * 1.3) < 0.1 && r > 0.18 && u > 0) st = 1;
+        b.put(x, y, WOOD, clamp(st, 1, 4), 4, 2);
+      }
+    for (let x = xa - 4; x <= xa + 5; x++) b.put(x, Math.floor(cy - ry) + (x < xa - 2 || x > xa + 3 ? 1 : 0), MOSS, x < xa ? 4 : 3, 4, 2.1);
+    // Mushrooms. Caps breathe: frames 2-5 raise every cap by 1 px.
+    const breath = f >= 2 && f <= 5 ? 1 : 0;
+    const shroom = (mx: number, baseY: number, capW: number, capH: number, stemH: number, mat: number, part: number, dep: number): void => {
+      const top = baseY - stemH - capH - breath;
+      for (let y = top + capH; y <= baseY; y++)
+        for (let x = mx - 1; x <= mx; x++) b.put(x, y, STALK, y === top + capH ? 1 : x < mx ? 2 : 1, part, dep);
+      const hwMax = capW / 2;
+      for (let j = 0; j < capH; j++) {
+        const frac = (j + 1) / capH;
+        const hw = hwMax * Math.sqrt(1 - (1 - frac) * (1 - frac) * 0.85);
+        for (let x = Math.round(mx - 0.5 - hw); x <= Math.round(mx - 0.5 + hw); x++) {
+          const u = (x + 0.5 - (mx - 0.5)) / hwMax;
+          let st = u < -0.2 && j < capH - 1 ? 4 : u > 0.4 ? 2 : 3;
+          if (j === capH - 1) st = Math.max(2, st - 1);
+          if (u > -0.65 && u < -0.15 && j === 0 && capW > 4) st = 5;
+          b.put(x, top + j, mat, st, part, dep);
+        }
+      }
+      // Gills: the dark underside just below the rim.
+      for (let x = Math.round(mx - hwMax + 0.5); x <= Math.round(mx + hwMax - 1.5); x++) if (x < mx - 1 || x > mx) b.put(x, top + capH, mat, 1, part, dep);
+    };
+    const mbx = xb - 30;
+    shroom(mbx - 7, topAt(mbx - 7) + 3, 6, 3, 2, CAP, 12, 3.4);
+    shroom(mbx, topAt(mbx) + 2, 10, 4, 4, CAP, 10, 3);
+    shroom(mbx + 8, topAt(mbx + 8) + 3, 7, 3, 3, CAP, 11, 3.2);
+    // Faintly glowing teal caps at the foot of the log.
+    const teal: [number, number, number, number, number][] = [
+      [xb - 15, 5, 2, 3, 13],
+      [xb - 9, 4, 2, 2, 14],
+      [xb - 20, 3, 2, 1, 15],
+    ];
+    for (const [tx, w, h, sh, part] of teal) shroom(tx, ground, w, h, sh, TEAL, part, 4);
+    // The glow lights the bark around the teal caps.
+    for (const [tx, , h, sh] of teal)
+      for (let y = ground - h - sh - 6; y <= ground; y++)
+        for (let x = tx - 6; x <= tx + 6; x++) if (b.matAt(x, y) === BARK && Math.hypot(x + 0.5 - tx, (y - (ground - sh - h)) * 1.2) < 4.5) b.shade(x, y, 1);
+    const c = finish(b, { spurs: false, inner: 1, gap: 0.4, shadow: 1 });
+    // A soft, stepped halo around the teal caps, a little brighter while they breathe in.
+    for (const [tx, , h, sh] of teal) {
+      const gy = ground - sh - h - breath;
+      for (let y = gy - 7; y <= ground; y++)
+        for (let x = tx - 8; x <= tx + 8; x++) {
+          if (c.alpha(x, y) > 0) continue;
+          const d = Math.hypot(x + 0.5 - tx, (y + 0.5 - gy) * 1.15);
+          const a = d < 3.2 ? 72 : d < 5.6 ? 34 : 0;
+          if (a) c.plot(x, y, withAlpha(R.teal[5], a * (breath ? 1.3 : 1)));
+        }
+    }
+    // Spores drift up and fade; each lives for the whole 8-frame cycle.
+    for (let k = 0; k < 5; k++) {
+      const life = ((f + k * 3) % 8) / 8;
+      const tanSpore = k >= 3;
+      const ox = tanSpore ? mbx + (k === 3 ? -3 : 4) : teal[k][0];
+      const oy = tanSpore ? topAt(mbx) - 7 : ground - teal[k][2] - teal[k][3] - 1;
+      const x = Math.round(ox + Math.sin(life * 5 + k) * 1.5 + (k - 2) * 0.6);
+      const y = Math.round(oy - 1 - life * 18);
+      const a = life < 0.15 ? life / 0.15 : 1 - (life - 0.15) / 0.85;
+      if (a > 0.1) c.plot(x, y, withAlpha(tanSpore ? R.rope[5] : R.teal[5], 235 * a));
+    }
+    return c;
+  };
+  const idle = Array.from({ length: 8 }, (_, f) => frame(f));
+  return assemble('mushroom_log', 'Mossy Log with Mushrooms', [2, 0.6], ['cover-half', 'climbable', 'flammable'], { idle: { frames: idle, fps: 5 } }, Math.round((x0 + x1) / 2), ground);
+}
+
+// --- main ------------------------------------------------------------------------------------
+
+const sprites: WorldSprite[] = [
+  bushSprite(roundBush()),
+  bushSprite(wideBush()),
+  bushSprite(azaleaBush()),
+  tallGrass(),
+  cattails(),
+  fern(),
+  wildflowers(),
+  lilyPads(),
+  mushroomLog(),
+];
+
+writeGroup('plants', sprites);
+const dir = previewDir();
+preview(sprites, join(dir, 'plants.png'), { scale: 3 });
+
+// Review crops: every animation as a strip of frames, and the first frame zoomed so single pixels can be judged.
+const BG: Color = [93, 107, 87, 255];
+for (const s of sprites) {
+  for (const [key, a] of Object.entries(s.anims)) {
+    const fw = a.frames[0].w, fh = a.frames[0].h;
+    const strip = new Canvas((fw + 2) * a.frames.length, fh);
+    strip.fillRect(0, 0, strip.w, strip.h, BG);
+    a.frames.forEach((fr, i) => strip.draw(fr, i * (fw + 2), 0));
+    strip.scaled(fw > 100 ? 3 : 4).save(join(dir, `plants-${s.name}-${key}.png`));
+  }
+  const first = Object.values(s.anims)[0].frames[0];
+  const z = new Canvas(first.w, first.h);
+  z.fillRect(0, 0, z.w, z.h, BG);
+  z.draw(first, 0, 0);
+  z.set(s.anchor[0], s.anchor[1], [255, 0, 255, 255]);
+  z.scaled(6).save(join(dir, `plants-${s.name}-zoom.png`));
+  const bb = first.bounds(200);
+  const h = bb ? bb[3] - bb[1] + 1 : 0, w = bb ? bb[2] - bb[0] + 1 : 0;
+  console.log(
+    `${s.name.padEnd(13)} frame ${first.w}x${first.h} anchor ${s.anchor} opaque ${w}x${h} (target ${m(s.meters[0])}x${m(s.meters[1])}) anims ${Object.entries(s.anims)
+      .map(([k, a]) => `${k}:${a.frames.length}@${a.fps}${a.loop === false ? '(once)' : ''}`)
+      .join(' ')}`,
+  );
+}

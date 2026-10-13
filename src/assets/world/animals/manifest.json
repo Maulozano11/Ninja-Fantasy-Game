@@ -39,6 +39,50 @@
      "loop": true
     }
    }
+  },
+  "deer": {
+   "label": "Sika Deer",
+   "file": "deer.png",
+   "frameW": 87,
+   "frameH": 92,
+   "anchor": [
+    38,
+    89
+   ],
+   "meters": [
+    1.4,
+    1.5
+   ],
+   "tags": [
+    "animal",
+    "ambient"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 5,
+     "loop": true
+    },
+    "graze": {
+     "row": 1,
+     "frames": 6,
+     "fps": 5,
+     "loop": true
+    },
+    "walk": {
+     "row": 2,
+     "frames": 8,
+     "fps": 8,
+     "loop": true
+    },
+    "alert": {
+     "row": 3,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
   }
  }
 }

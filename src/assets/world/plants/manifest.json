@@ -6,10 +6,10 @@
    "label": "Round Bush",
    "file": "bush_round.png",
    "frameW": 81,
-   "frameH": 82,
+   "frameH": 83,
    "anchor": [
     41,
-    79
+    81
    ],
    "meters": [
     1.3,
@@ -39,11 +39,11 @@
   "bush_wide": {
    "label": "Wide Shrub",
    "file": "bush_wide.png",
-   "frameW": 122,
+   "frameW": 121,
    "frameH": 71,
    "anchor": [
     62,
-    66
+    69
    ],
    "meters": [
     2,
@@ -74,10 +74,10 @@
    "label": "Azalea Bush",
    "file": "bush_flower.png",
    "frameW": 86,
-   "frameH": 76,
+   "frameH": 77,
    "anchor": [
     44,
-    73
+    75
    ],
    "meters": [
     1.4,
@@ -107,10 +107,10 @@
   "tall_grass": {
    "label": "Tall Grass",
    "file": "tall_grass.png",
-   "frameW": 85,
+   "frameW": 59,
    "frameH": 64,
    "anchor": [
-    40,
+    32,
     62
    ],
    "meters": [
@@ -140,10 +140,10 @@
    "label": "Cattail Reeds",
    "file": "reeds.png",
    "frameW": 54,
-   "frameH": 96,
+   "frameH": 90,
    "anchor": [
-    27,
-    94
+    26,
+    88
    ],
    "meters": [
     0.8,
@@ -166,11 +166,11 @@
   "fern": {
    "label": "Fern",
    "file": "fern.png",
-   "frameW": 62,
-   "frameH": 37,
+   "frameW": 61,
+   "frameH": 38,
    "anchor": [
-    30,
-    35
+    29,
+    36
    ],
    "meters": [
     0.9,

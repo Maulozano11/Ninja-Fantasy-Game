@@ -5,10 +5,10 @@
   "oak": {
    "label": "Broadleaf Tree",
    "file": "oak.png",
-   "frameW": 364,
+   "frameW": 307,
    "frameH": 547,
    "anchor": [
-    179,
+    151,
     545
    ],
    "meters": [
@@ -46,7 +46,7 @@
   "pine": {
    "label": "Cedar Pine",
    "file": "pine.png",
-   "frameW": 175,
+   "frameW": 174,
    "frameH": 521,
    "anchor": [
     93,
@@ -81,11 +81,11 @@
   "maple": {
    "label": "Red Maple",
    "file": "maple.png",
-   "frameW": 307,
-   "frameH": 280,
+   "frameW": 315,
+   "frameH": 282,
    "anchor": [
-    146,
-    277
+    154,
+    279
    ],
    "meters": [
     4.4,

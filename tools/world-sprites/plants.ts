@@ -136,22 +136,25 @@ class Buf {
   }
 }
 
-/** Dark 1 px line on a back part wherever a part in front of it touches it. */
-function innerLines(b: Buf, lineStep = 1, minGap = 0.5): void {
-  const out: [number, number][] = [];
+/**
+ * Dark 1 px line on a back part wherever a part in front of it touches it: `lineStep` where the
+ * front part is far in front (more than `bigGap`), one step lighter between near neighbors.
+ */
+function innerLines(b: Buf, lineStep = 1, minGap = 0.5, bigGap = Infinity): void {
+  const out: [number, number, number][] = [];
   for (let y = 0; y < b.h; y++)
     for (let x = 0; x < b.w; x++) {
       if (!b.has(x, y)) continue;
       const p = b.partAt(x, y), d = b.depthAt(x, y);
+      let best = Infinity;
       for (const [ox, oy] of N4) {
         const q = b.partAt(x + ox, y + oy);
-        if (q >= 0 && q !== p && b.depthAt(x + ox, y + oy) > d + minGap) {
-          out.push([x, y]);
-          break;
-        }
+        const g = b.depthAt(x + ox, y + oy) - d;
+        if (q >= 0 && q !== p && g > minGap) best = Math.min(best, g > bigGap ? lineStep : lineStep + 1);
       }
+      if (best < Infinity) out.push([x, y, best]);
     }
-  for (const [x, y] of out) b.setStep(x, y, Math.min(b.stepAt(x, y), lineStep));
+  for (const [x, y, st] of out) b.setStep(x, y, Math.min(b.stepAt(x, y), st));
 }
 
 /** Darkens a back part by one step just below-right of a part in front (light from the upper left). */
@@ -204,12 +207,14 @@ function tidy(b: Buf, spurs = true): void {
     for (let x = 0; x < b.w; x++) {
       const i = y * b.w + x;
       if (b.mat[i] >= 0 || ext[i]) continue;
+      // A hole shows what is furthest back around it.
+      let j = -1;
       for (const [ox, oy] of N4)
         if (b.has(x + ox, y + oy)) {
-          const j = (y + oy) * b.w + x + ox;
-          b.put(x, y, b.mat[j], 1, b.part[j], b.depth[j]);
-          break;
+          const k = (y + oy) * b.w + x + ox;
+          if (j < 0 || b.depth[k] < b.depth[j]) j = k;
         }
+      if (j >= 0) b.put(x, y, b.mat[j], 1, b.part[j], b.depth[j]);
     }
 }
 
@@ -316,9 +321,9 @@ function assemble(name: string, label: string, meters: [number, number], tags: s
 }
 
 /** Standard finishing: tidy, inner lines, cast shadows, colors, outline. */
-function finish(b: Buf, o: { spurs?: boolean; inner?: number; gap?: number; shadow?: number } = {}): Canvas {
+function finish(b: Buf, o: { spurs?: boolean; inner?: number; gap?: number; bigGap?: number; shadow?: number } = {}): Canvas {
   tidy(b, o.spurs ?? true);
-  if (o.inner !== -1) innerLines(b, o.inner ?? 1, o.gap ?? 0.5);
+  if (o.inner !== -1) innerLines(b, o.inner ?? 1, o.gap ?? 0.5, o.bigGap ?? -Infinity);
   if (o.shadow !== 0) castShadow(b, o.shadow ?? 2, o.gap ?? 0.5);
   const c = b.toCanvas();
   c.outline();
@@ -381,10 +386,10 @@ function clumpLight(c: Clump, o: FoliageOpts, x: number, y: number): number {
   const [fx, fy, frx, fry] = o.form;
   const U = clamp((c.x + x - fx) / frx, -1, 1), V = clamp((c.y + y - fy) / fry, -1, 1);
   const global = lambert(U * 0.8, V * 0.8, Math.sqrt(Math.max(0.05, 1 - (U * U + V * V) * 0.64)));
-  const ao = smooth(o.ground - fry * 0.75, o.ground, c.y + y) * 0.22;
+  const ao = smooth(o.ground - fry * 0.75, o.ground, c.y + y) * 0.18;
   return local * 0.58 + global * 0.47 - ao + (o.bias ?? 0) + (c.back ? -0.07 : 0) - 0.05;
 }
-const TH = [0.36, 0.53, 0.76];
+const TH = [0.36, 0.53, 0.735];
 const lightStep = (l: number): number => (l < TH[0] ? 1 : l < TH[1] ? 2 : l < TH[2] ? 3 : 4);
 
 /**
@@ -485,6 +490,21 @@ function drawFoliage(b: Buf, clumps: Clump[], o: FoliageOpts, offs: [number, num
         b.put(x, y, mat, v, ci, c.z);
       }
   }
+  // The shaded underside: between the clumps that reach the ground, dark foliage fills down to it,
+  // so the bush sits on a broad base instead of standing on separate lumps.
+  let xl = Infinity, xr = -Infinity;
+  for (let x = 0; x < b.w; x++)
+    if (b.has(x, o.ground)) {
+      xl = Math.min(xl, x);
+      xr = Math.max(xr, x);
+    }
+  for (let x = xl + 1; x < xr; x++) {
+    let y = o.ground;
+    while (y > o.ground - 14 && !b.has(x, y)) y--;
+    if (!b.has(x, y)) continue;
+    const i = y * b.w + x;
+    for (let yy = y + 1; yy <= o.ground; yy++) b.put(x, yy, b.mat[i], 1, b.part[i], b.depth[i]);
+  }
 }
 
 // --- bushes ----------------------------------------------------------------------------------
@@ -509,7 +529,7 @@ function bushFrame(s: BushSpec, offs: [number, number][]): Canvas {
   const b = new Buf(s.W, s.H);
   drawFoliage(b, s.clumps, s.opts, offs, s.mat);
   s.extra?.(b, offs);
-  return finish(b, { inner: 0, gap: 0.5, shadow: 2 });
+  return finish(b, { inner: 0, gap: 0.5, bigGap: 8, shadow: 2 });
 }
 
 /** Sway weight of a clump: 0 at the ground, 1 at the top of the bush. */
@@ -563,18 +583,20 @@ function roundBush(): BushSpec {
   const W = 140, H = 120, gx = 70, ground = 104;
   const hgt = m(1.1), wid = m(1.3);
   const top = ground - hgt;
+  // A dome: two crown clumps with a deep one peeking between them, a wide shoulder row and two big
+  // front clumps that narrow the base, so the mass reads as a ball rather than a grid.
   const clumps = clumpsFrom(
     [
-      [-25, 33, 11, 11, true],
-      [26, 31, 11, 11, true],
-      [-9, 50, 13, 12],
-      [11, 49, 13, 12],
-      [-24, 33, 12, 12],
-      [-3, 35, 15, 13],
-      [19, 32, 13, 12],
-      [-22, 14, 13, 13],
-      [-1, 15, 15, 14],
-      [21, 14, 13, 13],
+      [-24, 30, 10, 10, true],
+      [25, 36, 10, 10, true],
+      [4, 53, 9, 8, true],
+      [-10, 48, 13, 12],
+      [12, 45, 12, 11],
+      [-22, 30, 11, 11],
+      [-1, 34, 14, 12],
+      [20, 28, 12, 12],
+      [-13, 11, 15, 14],
+      [14, 10, 14, 13],
     ],
     gx,
     ground,
@@ -596,22 +618,22 @@ function wideBush(): BushSpec {
   const W = 170, H = 100, gx = 85, ground = 86;
   const hgt = m(0.9), wid = m(2);
   const top = ground - hgt;
+  // A low, long mound: an uneven crown left of center, a shoulder row and a front row of mixed sizes.
   const clumps = clumpsFrom(
     [
-      [-45, 24, 10, 9, true],
-      [47, 23, 10, 9, true],
-      [-25, 38, 13, 11],
-      [-3, 40, 14, 11],
-      [20, 37, 13, 11],
-      [-42, 22, 12, 11],
-      [-20, 24, 14, 12],
-      [4, 25, 14, 12],
-      [27, 23, 13, 11],
-      [45, 19, 10, 10],
-      [-34, 11, 12, 11],
-      [-11, 12, 14, 12],
-      [13, 11, 13, 11],
-      [35, 10, 12, 10],
+      [-45, 20, 10, 9, true],
+      [46, 23, 10, 9, true],
+      [-6, 40, 10, 8, true],
+      [-24, 35, 13, 11],
+      [5, 36, 12, 10],
+      [25, 32, 12, 10],
+      [-39, 20, 12, 11],
+      [-14, 24, 14, 12],
+      [12, 23, 13, 11],
+      [36, 20, 12, 11],
+      [-27, 9, 14, 11],
+      [-1, 9, 15, 12],
+      [24, 8, 13, 10],
     ],
     gx,
     ground,
@@ -635,16 +657,17 @@ function azaleaBush(): BushSpec {
   const top = ground - hgt;
   const clumps = clumpsFrom(
     [
-      [-27, 31, 10, 10, true],
-      [29, 30, 10, 10, true],
-      [-10, 44, 13, 11],
-      [12, 43, 13, 11],
-      [-26, 29, 12, 11],
-      [-4, 30, 14, 12],
-      [19, 29, 13, 11],
-      [-22, 12, 13, 12],
-      [1, 13, 14, 12],
-      [24, 12, 12, 11],
+      [-27, 30, 10, 10, true],
+      [28, 34, 10, 9, true],
+      [-9, 44, 12, 11],
+      [12, 42, 12, 11],
+      [-25, 28, 11, 11],
+      [0, 31, 13, 11],
+      [21, 27, 12, 11],
+      [-13, 9, 14, 12],
+      [15, 9, 14, 12],
+      [-29, 5, 7, 7],
+      [30, 5, 7, 7],
     ],
     gx,
     ground,
@@ -652,22 +675,27 @@ function azaleaBush(): BushSpec {
   const seed = 37;
   const form: [number, number, number, number] = [gx - 2, top + hgt * 0.5, wid / 2, hgt / 2];
   const opts: FoliageOpts = { seed, leafLen: 5.5, leafWid: 3.6, form, ground, bias: 0.02 };
-  // Blossom trusses sit on the upper, outward face of each clump: 3-4 small trumpet flowers each.
+  // Blossom trusses: a few round trumpet flowers each, scattered unevenly over the upper, outer faces.
   const layouts: [number, number][][] = [
-    [[0, -2], [-2, 0], [2, 0], [0, 2]],
-    [[-1, -1], [2, -1], [0, 1]],
-    [[1, -2], [-1, 0], [2, 1], [-1, 2]],
+    [[0, 0]],
+    [[-1, 0], [1, 1]],
+    [[0, -1], [-2, 1], [2, 1]],
+    [[-1, -2], [2, -1], [-2, 1], [1, 1]],
+    [[0, -2], [-2, 0], [2, -1], [-1, 2], [2, 2]],
   ];
   const trusses: { ci: number; x: number; y: number; white: boolean; flowers: [number, number][] }[] = [];
   clumps.forEach((c, ci) => {
-    const n = c.back ? 1 : 2;
+    const n = c.back ? 1 : c.r < 9 ? 1 : 2 + (c.r >= 12 && rnd(seed, ci, 32) < 0.6 ? 1 : 0);
     for (let k = 0; k < n; k++) {
-      const a = -Math.PI / 2 + (k === 0 ? -0.7 : 0.8) + (rnd(seed, ci, k) - 0.5) * 0.9;
-      const rr = 0.42 + rnd(seed, ci, k + 9) * 0.3;
-      const lay = layouts[(ci + k * 2) % layouts.length].slice().sort((p, q) => p[1] - q[1] || p[0] - q[0]);
-      trusses.push({ ci, x: Math.round(Math.cos(a) * c.r * rr), y: Math.round(Math.sin(a) * (c.ry ?? c.r) * rr), white: rnd(seed, ci, k + 20) < 0.28, flowers: lay });
+      const a = -Math.PI / 2 + ((k / Math.max(1, n - 1)) - 0.5) * 2.2 * (n > 1 ? 1 : 0) + (rnd(seed, ci, k) - 0.5) * 0.8;
+      const rr = 0.3 + rnd(seed, ci, k + 9) * 0.4;
+      const size = c.r < 9 || c.back ? 2 + Math.floor(rnd(seed, ci, k + 40) * 2) : 3 + Math.floor(rnd(seed, ci, k + 40) * 2);
+      const lay = layouts[size].slice().sort((p, q) => p[1] - q[1] || p[0] - q[0]);
+      trusses.push({ ci, x: Math.round(Math.cos(a) * c.r * rr), y: Math.round(Math.sin(a) * (c.ry ?? c.r) * rr), white: rnd(seed, ci, k + 20) < 0.26, flowers: lay });
     }
   });
+  // One flower: a tiny sphere lit from the upper left (deltas from the truss step), corners rounded off.
+  const FLOWER: [number, number, number][] = [[-1, -1, 1], [0, -1, 1], [-1, 0, 1], [0, 0, 0], [1, 0, -1], [0, 1, -1], [1, 1, -1]];
   const extra = (b: Buf, offs: [number, number][]): void => {
     const marks: [number, number][] = [];
     trusses.forEach((tr, k) => {
@@ -676,20 +704,16 @@ function azaleaBush(): BushSpec {
       const cc: Clump = { ...c, x: Math.round(c.x), y: Math.round(c.y) };
       const tx = cc.x + ox + tr.x, ty = cc.y + oy + tr.y;
       const lit = clumpLight(cc, opts, tr.x, tr.y);
+      const base = lit > 0.62 ? 3 : 2;
       const mat = tr.white ? WHITE : PINK;
       const dep = c.z + 0.3;
       tr.flowers.forEach(([fx, fy], fi) => {
-        for (const [dx, dy] of [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]] as [number, number][]) {
+        for (const [dx, dy, dl] of FLOWER) {
           const x = tx + fx + dx, y = ty + fy + dy;
           if (b.depthAt(x, y) > dep + 0.5) continue;
-          const u = (fx + dx) / 3.4, v = (fy + dy) / 3;
-          const lt = lambert(u * 0.9, v * 0.9, Math.sqrt(Math.max(0.1, 1 - (u * u + v * v) * 0.81)));
-          const comb = lt * 0.5 + lit * 0.55;
-          let s = comb > 0.72 ? 4 : comb > 0.48 ? 3 : 2;
-          if (dx === 0 && dy === 0) s = 2; // the throat
-          else if (dx + dy > 0) s = Math.max(2, s - 1); // the lower-right petals turn away from the light
-          if (fi === 0 && dx === -1 && comb > 0.6) s = 5;
-          b.put(x, y, mat, s, 100 + k, dep);
+          let s = base + dl;
+          if (fi === 0 && dx === -1 && dy === -1 && lit > 0.7) s = 5;
+          b.put(x, y, mat, clamp(s, 1, 5), 100 + k, dep);
           marks.push([x, y]);
         }
       });
@@ -732,9 +756,9 @@ interface Blade {
 function grassBlades(seed: number, cx: number, ground: number, height: number): Blade[] {
   const blades: Blade[] = [];
   const layers = [
-    { n: 12, spread: 11, hMin: 0.74, hMax: 1.02, lean: 0.75, w: 2 },
-    { n: 11, spread: 14, hMin: 0.5, hMax: 0.84, lean: 1.35, w: 3 },
-    { n: 8, spread: 10, hMin: 0.3, hMax: 0.52, lean: 1.9, w: 3 },
+    { n: 12, spread: 10, hMin: 0.74, hMax: 1.02, lean: 0.8, w: 2 },
+    { n: 11, spread: 12, hMin: 0.5, hMax: 0.84, lean: 1.25, w: 3 },
+    { n: 8, spread: 9, hMin: 0.3, hMax: 0.52, lean: 1.5, w: 2 },
   ];
   let k = 0;
   layers.forEach((L, li) => {
@@ -742,15 +766,16 @@ function grassBlades(seed: number, cx: number, ground: number, height: number): 
       const fan = ((i + 0.5) / L.n) * 2 - 1;
       const bx = cx + fan * L.spread + (rnd(seed, k, 1) - 0.5) * 3;
       const h = height * (L.hMin + (L.hMax - L.hMin) * rnd(seed, k, 2)) * (1 - Math.abs(fan) * 0.28);
-      const lean = fan * 10 * L.lean + (rnd(seed, k, 3) - 0.5) * 6;
-      const arch = li > 0 && Math.abs(fan) > 0.55 && rnd(seed, k, 4) < 0.7;
+      const lean = fan * 8 * L.lean + (rnd(seed, k, 3) - 0.5) * 5;
+      // The outer middle blades arch over and droop; the rest stand up.
+      const arch = li === 1 && Math.abs(fan) > 0.6 && rnd(seed, k, 4) < 0.8;
       blades.push({
         bx,
         h,
-        tipX: bx + lean * (arch ? 1.6 : 1),
-        tipY: ground - h * (arch ? 0.62 : 1),
-        cx: bx + lean * (arch ? 0.55 : 0.2),
-        cy: ground - h * (arch ? 1.05 : 0.6),
+        tipX: bx + lean * (arch ? 1.4 : 1),
+        tipY: ground - h * (arch ? 0.72 : 1),
+        cx: bx + lean * (arch ? 0.6 : 0.2),
+        cy: ground - h * (arch ? 1.08 : 0.6),
         w: L.w,
         layer: li,
         z: rnd(seed, k, 5),
@@ -766,7 +791,7 @@ function drawBlades(b: Buf, blades: Blade[], ground: number, bend: (bl: Blade) =
     const d = bend(bl);
     const back = bl.layer === 0;
     const mat = back ? GRASS_BACK : GRASS;
-    const tipLit = !back && rnd(seed, i, 11) < 0.7;
+    const tipLit = !back && rnd(seed, i, 11) < 0.55;
     strokeQuad(
       b,
       bl.bx,
@@ -775,12 +800,14 @@ function drawBlades(b: Buf, blades: Blade[], ground: number, bend: (bl: Blade) =
       bl.cy,
       bl.tipX + d,
       bl.tipY + Math.abs(d) * 0.15,
-      (t) => (t < 0.4 ? bl.w : t < 0.74 ? Math.min(2, bl.w) : 1),
+      (t) => (t < 0.3 ? bl.w : t < 0.6 ? Math.min(2, bl.w) : 1),
       (t, side) => {
-        let st = t < 0.16 ? 1 : t < 0.42 ? 2 : t < 0.8 ? 3 : 4;
+        // The dark base ends at a different height on every blade, so the clump has no hard collar.
+        const foot = 0.1 + rnd(seed, i, 12) * 0.16;
+        let st = t < foot ? 1 : t < 0.45 ? 2 : t < 0.86 ? 3 : 4;
         if (back && t < 0.6) st = Math.max(1, st - 1);
         if (side > 0.6 && st > 1) st -= 1;
-        if (t > 0.9 && tipLit) st = 5;
+        if (t > 0.93 && tipLit) st = 5;
         return [mat, st];
       },
       i,
@@ -829,20 +856,20 @@ function tallGrass(): WorldSprite {
 function cattails(): WorldSprite {
   const W = 90, H = 130, cx = 45, ground = 116, height = m(1.5), halfW = m(0.8) / 2;
   const seed = 63;
-  // Strap leaves fan from a tight clump; a few fold over and hang.
+  // Strap leaves fan from a tight clump; a few arch over and hang their tips.
   const leaves = Array.from({ length: 12 }, (_, i) => {
     const fan = (i / 11 - 0.5) * 2;
     const h = height * (0.42 + rnd(seed, i, 1) * 0.36) * (1 - Math.abs(fan) * 0.3);
-    const fold = rnd(seed, i, 2) < 0.34 ? 0.6 + rnd(seed, i, 5) * 0.15 : 0;
-    const lean = fan * halfW * 0.8 + (rnd(seed, i, 3) - 0.5) * 6;
-    return { bx: cx + fan * 4, h, lean, fold, back: i % 3 === 1, z: rnd(seed, i, 4) };
+    const arch = Math.abs(fan) > 0.3 && rnd(seed, i, 2) < 0.45;
+    const lean = fan * halfW * 0.7 + (rnd(seed, i, 3) - 0.5) * 6;
+    return { bx: cx + fan * 3.5, h, lean, arch, back: i % 3 === 1, z: rnd(seed, i, 4) };
   });
   // Stems with their brown heads: [x offset, height, lean, head length].
   const stems: [number, number, number, number][] = [
-    [-2, height, -5, 13],
-    [2, height * 0.91, 5, 12],
-    [5, height * 0.79, 12, 11],
-    [-5, height * 0.69, -12, 10],
+    [-2, height * 0.93, -5, 13],
+    [2, height * 0.85, 5, 12],
+    [5, height * 0.74, 12, 11],
+    [-5, height * 0.65, -12, 10],
   ];
   const frame = (f: number): Canvas => {
     const b = new Buf(W, H);
@@ -861,15 +888,8 @@ function cattails(): WorldSprite {
           if (side < 0.4 && tt > 0.3 && tt < 0.85 && !l.back && st === 3) st = 4;
           return [mat, st];
         };
-        if (!l.fold) {
-          strokeQuad(b, l.bx, ground, l.bx + l.lean * 0.2 + d * 0.3, ground - l.h * 0.6, l.bx + l.lean + d, ground - l.h, (t) => (t < 0.35 ? 3 : t < 0.75 ? 2 : 1), paint(0, 1), i, dep);
-        } else {
-          // Up to the fold, then the rest hangs outward and down.
-          const fx = l.bx + l.lean * 0.55 + d, fy = ground - l.h * l.fold;
-          strokeQuad(b, l.bx, ground, l.bx + l.lean * 0.15 + d * 0.3, ground - l.h * l.fold * 0.6, fx, fy, (t) => (t < 0.5 ? 3 : 2), paint(0, l.fold), i, dep);
-          const rest = l.h * (1 - l.fold) * 1.1, dir = Math.sign(l.lean) || 1;
-          strokeQuad(b, fx, fy, fx + dir * rest * 0.45, fy - 2, fx + dir * rest * 0.8, fy + rest * 0.55, (t) => (t < 0.5 ? 2 : 1), (t, side) => paint(l.fold, 1)(t, side), i, dep);
-        }
+        if (!l.arch) strokeQuad(b, l.bx, ground, l.bx + l.lean * 0.2 + d * 0.3, ground - l.h * 0.6, l.bx + l.lean + d, ground - l.h, (t) => (t < 0.25 ? 3 : t < 0.6 ? 2 : 1), paint(0, 1), i, dep);
+        else strokeQuad(b, l.bx, ground, l.bx + l.lean * 0.45 + d * 0.5, ground - l.h * 1.08, l.bx + l.lean * 1.45 + d, ground - l.h * 0.66, (t) => (t < 0.25 ? 3 : t < 0.6 ? 2 : 1), paint(0, 1), i, dep);
       });
     stems.forEach(([ox, h, lean, head], i) => {
       const bx = cx + ox;
@@ -924,47 +944,50 @@ function fern(): WorldSprite {
   const seed = 71;
   // Fronds: [start angle, end angle (deg from vertical, + = right), length, layer 0 back / 1 side / 2 front].
   const F: [number, number, number, number][] = [
-    [-6, -62, 37, 0],
-    [9, 66, 36, 0],
-    [-28, -108, 33, 1],
-    [30, 112, 34, 1],
-    [-52, -140, 27, 1],
-    [54, 142, 27, 1],
-    [-18, -150, 19, 2],
-    [22, 152, 18, 2],
+    [-3, -78, 40, 0],
+    [6, 82, 39, 0],
+    [-24, -118, 34, 1],
+    [27, 122, 35, 1],
+    [-50, -150, 27, 1],
+    [52, 152, 27, 1],
+    [-14, -158, 18, 2],
+    [17, 160, 17, 2],
   ];
   const deg = Math.PI / 180;
   const frame = (f: number): Canvas => {
     const b = new Buf(W, H);
     F.forEach(([a0, a1, L, layer], i) => {
       const side = Math.sign(a1);
-      const pts = frondPath(cx + side * 0.5, ground - 1, a0 * deg, a1 * deg, L);
+      const pts = frondPath(cx + side * 0.5, ground - 1, a0 * deg, a1 * deg, L, 1.7);
       // Sway: the outer part shifts by whole pixels (rigid, so nothing shimmers); the base stays put.
       const sw = [0, 1, 0, -1][(f + i) % 4] * (layer === 2 ? 0 : 1);
-      const off = (k: number): number => (k / (pts.length - 1) > 0.55 ? sw : 0);
+      const off = (k: number): number => (k / (pts.length - 1) > 0.5 ? sw : 0);
       const mat = layer === 0 ? FOL_BACK : FOL;
       const part = i, dep = layer * 2 + i * 0.1;
-      pts.forEach(([x, y], k) => b.put(x + off(k), y, mat, k / pts.length < 0.25 ? 1 : 2, part, dep));
-      // Pinnae: pairs pointing forward along the rachis, longest a third of the way out, tiny at the tip.
-      const pmax = layer === 2 ? 4.6 : 6.4;
-      for (let s = 2.5, j = 0; s < L - 0.5; s += 3.3, j++) {
+      // Pinnae: thin leaflets in pairs pointing forward along the rachis, longest a third of the way
+      // out and tiny at the tip; the gaps between them read as the frond's comb.
+      const pmax = layer === 2 ? 4.5 : 6.5;
+      for (let s = 2.5, j = 0; s < L - 0.5; s += 2.6, j++) {
         const k = Math.min(pts.length - 1, Math.round(s * 2));
         const [px, py, a] = pts[k];
         const u = s / L;
         const pl = Math.max(1, pmax * Math.pow(Math.sin(Math.PI * clamp(u * 0.9 + 0.1, 0, 1)), 0.6) * (1 - 0.55 * u));
         for (const sgn of [-1, 1]) {
-          const pa = a + sgn * 0.95;
-          const ang = Math.atan2(-Math.cos(pa), Math.sin(pa));
-          const up = -Math.cos(pa) < -0.1;
+          const pa = a + sgn * 1.0;
+          const dx = Math.sin(pa), dy = -Math.cos(pa);
+          const up = dy < -0.1;
           let st = up ? 3 : 2;
-          if (u < 0.22) st -= 1;
-          if (layer === 2) st = up ? 3 : 2;
-          const crest = up && layer !== 0 && j % 2 === 0 && u > 0.2 && u < 0.85;
-          leafShape(px + off(k), py, ang, pl, 1.7, (qx, qy, t) => {
-            b.put(qx, qy, mat, crest && t > 0.4 && t < 0.9 ? 4 : st, part, dep);
-          });
+          if (u < 0.2) st -= 1;
+          const crest = up && layer !== 0 && j % 2 === 0 && u > 0.15 && u < 0.8;
+          const n = Math.max(1, Math.round(pl));
+          for (let q = 1; q <= n; q++) {
+            const t = q / n;
+            const s2 = crest && t > 0.35 && t < 0.9 ? 4 : st;
+            b.put(Math.round(px + dx * q * 0.95) + off(k), Math.round(py + dy * q * 0.95), mat, s2, part, dep);
+          }
         }
       }
+      pts.forEach(([x, y], k) => b.put(Math.round(x) + off(k), Math.round(y), mat, k / pts.length < 0.3 ? 1 : 2, part, dep));
     });
     // A young fiddlehead curling up in the middle.
     const fx = cx, fy = ground - 19;

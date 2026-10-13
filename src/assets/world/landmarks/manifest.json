@@ -110,6 +110,32 @@
      "loop": true
     }
    }
+  },
+  "river_stones": {
+   "label": "Stepping Stones",
+   "file": "river_stones.png",
+   "frameW": 93,
+   "frameH": 39,
+   "anchor": [
+    47,
+    33
+   ],
+   "meters": [
+    1.4,
+    0.15
+   ],
+   "tags": [
+    "water",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 5,
+     "loop": true
+    }
+   }
   }
  }
 }

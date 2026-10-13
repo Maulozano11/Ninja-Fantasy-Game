@@ -14,7 +14,7 @@
 // small outlined layers, and the kit adds the outer outline.
 
 import { join } from 'node:path';
-import { Anim, Canvas, Color, MATERIALS, OUTLINE, WorldSprite, band, fbm, hash, hex, lambert, m, mix, noise, preview, previewDir, ramp, writeGroup } from './kit';
+import { Anim, Canvas, Color, MATERIALS, OUTLINE, WorldSprite, band, fbm, hash, hex, lambert, m, mix, noise, preview, previewDir, ramp, toHex, writeGroup } from './kit';
 
 // --- camera ---------------------------------------------------------------------------------
 
@@ -117,6 +117,8 @@ interface MeshOpts {
   facetVar?: number;
   /** Light contrast around 0.5 (default 1). */
   contrast?: number;
+  /** Blends facet normals with an ellipsoid around the mesh (0..1) so the whole mass shades as one form. */
+  form?: number;
   /** Darkens the lowest `ao` px above the ground by one step (contact shade). */
   ao?: number;
   /** Custom step picker; gets the default step. */
@@ -422,14 +424,22 @@ function render(scene: Scene, w: number, h: number, ox: number, oy: number): Fra
       const mi = f.mesh[i];
       if (mi < 0) continue;
       const mesh = scene.meshes[mi];
-      const n = f.normal(i), p = f.world(i);
+      const n0 = f.normal(i), p = f.world(i);
+      let n = n0;
+      if (mesh.form) {
+        const [lo, hi] = mesh.box;
+        const c: V3 = [(lo[0] + hi[0]) / 2, lo[1] + (hi[1] - lo[1]) * 0.3, (lo[2] + hi[2]) / 2];
+        const r: V3 = [(hi[0] - lo[0]) / 2, (hi[1] - lo[1]) * 0.7, (hi[2] - lo[2]) / 2];
+        const ne = unit([(p[0] - c[0]) / (r[0] * r[0]), (p[1] - c[1]) / (r[1] * r[1]), (p[2] - c[2]) / (r[2] * r[2])]);
+        n = unit(add(mul(n0, 1 - mesh.form), mul(ne, mesh.form)));
+      }
       let light = lightOf(n);
       light = 0.5 + (light - 0.5) * (mesh.contrast ?? 1);
       light += (hash(f.group[i], 17, (mesh.seed ?? 0) + 3) - 0.5) * 2 * (mesh.facetVar ?? 0.05);
       if (mesh.tex) light += (fbm(p[0] + 31, p[1] * 0.8 + p[2] * 0.5, mesh.texCell ?? 7, 2, (mesh.seed ?? 0) + 5) - 0.5) * 2 * mesh.tex;
       let lit = true;
-      if (mesh.receiveShadow !== false && lightOf(n) > 0.2) {
-        const o = add(add(p, mul(n, 0.7)), mul(LW, 0.4));
+      if (mesh.receiveShadow !== false && lightOf(n0) > 0.2) {
+        const o = add(add(p, mul(n0, 0.7)), mul(LW, 0.4));
         outer: for (const c of casters) {
           if (c === mesh) continue;
           if (!rayBox(o, LW, c.box)) continue;
@@ -444,7 +454,7 @@ function render(scene: Scene, w: number, h: number, ox: number, oy: number): Fra
       f.lightv[i] = light;
       let s = band(light, x, y, { steps: mesh.steps ?? [1, 2, 3, 4], bias: mesh.bias ?? -0.1, jitter: mesh.jitter ?? 0.08, seed: mesh.seed ?? 7, cell: mesh.cell ?? 3 });
       if (mesh.ao && p[1] < mesh.ao) s = Math.max(1, s - 1);
-      if (mesh.shade) s = mesh.shade({ x, y, n, p, light, lit, mesh }, s);
+      if (mesh.shade) s = mesh.shade({ x, y, n: n0, p, light, lit, mesh }, s);
       f.pal[i] = mesh.pal;
       f.step[i] = s;
     }
@@ -524,73 +534,87 @@ function layer(w: number, h: number, draw: (c: Canvas) => void, outline = true):
 }
 
 /**
- * Moss on upward-facing pixels: a world-anchored mask grown into clumps, each clump lit from the
- * upper left (light top-left rim, dark under-edge), hanging a little over front edges.
+ * Moss on upward-facing pixels: a world-anchored mask filled with small cushions (2-4 px ellipses)
+ * drawn top to bottom, each lit from the upper left, so the moss reads as clumps with dark
+ * under-edges; it hangs a little over front edges and pokes above the silhouette.
  */
-function paintMoss(f: Frame, o: { meshes: number[]; amount: number; seed: number; cell?: number; minUp?: number; drip?: number; bumps?: boolean }): void {
-  const inMask = new Uint8Array(f.w * f.h);
+function paintMoss(f: Frame, o: { meshes: number[]; amount: number; seed: number; cell?: number; minUp?: number; drip?: number; bumps?: boolean; size?: number }): void {
+  const mask = new Uint8Array(f.w * f.h);
   for (let y = 0; y < f.h; y++)
     for (let x = 0; x < f.w; x++) {
       const i = y * f.w + x;
-      if (!o.meshes.includes(f.mesh[i])) continue;
+      if (!o.meshes.includes(f.mesh[i]) || f.over[i]) continue;
       const n = f.normal(i), p = f.world(i);
       if (n[1] < (o.minUp ?? 0.45)) continue;
       const v = fbm(p[0] + 50, p[2] * 1.4 + 50, o.cell ?? 9, 3, o.seed);
-      if (v + (n[1] - 0.7) * 0.25 > 1 - o.amount) inMask[i] = 1;
+      if (v + (n[1] - 0.7) * 0.25 > 1 - o.amount) mask[i] = 1;
     }
-  // Hang over front edges: extend down by a few px where the moss reaches the lower edge of its face.
+  // Hang over front edges.
   const drip = o.drip ?? 2;
-  const add: number[] = [];
-  for (let y = 0; y < f.h; y++)
+  for (let y = f.h - 2; y >= 0; y--)
     for (let x = 0; x < f.w; x++) {
       const i = y * f.w + x;
-      if (!inMask[i]) continue;
+      if (mask[i] !== 1) continue;
       const below = f.idx(x, y + 1);
-      if (below < 0 || inMask[below] || f.pal[below] < 0 || !o.meshes.includes(f.mesh[below])) continue;
-      const nb = f.normal(below);
-      if (nb[1] > 0.45) continue;
-      const len2 = Math.floor(hash(x, 3, o.seed + 9) * (drip + 1));
-      for (let k = 1; k <= len2; k++) {
+      if (below < 0 || mask[below] || f.pal[below] < 0 || !o.meshes.includes(f.mesh[below]) || f.normal(below)[1] > 0.45) continue;
+      const n = Math.floor(hash(x, 3, o.seed + 9) * (drip + 1));
+      for (let k = 1; k <= n; k++) {
         const j = f.idx(x, y + k);
-        if (j >= 0 && f.pal[j] >= 0 && o.meshes.includes(f.mesh[j])) add.push(j);
+        if (j >= 0 && f.pal[j] >= 0 && o.meshes.includes(f.mesh[j]) && !f.over[j]) mask[j] = 2;
       }
     }
-  for (const j of add) inMask[j] = 2;
-  // Shade: a clumpy height field from noise, lit from the upper left.
-  const hgt = (x: number, y: number) => noise(x, y, 2.2, o.seed + 3) * 0.6 + noise(x, y, 4.5, o.seed + 4) * 0.4;
-  for (let y = 0; y < f.h; y++)
-    for (let x = 0; x < f.w; x++) {
-      const i = y * f.w + x;
-      if (!inMask[i]) continue;
-      const gx = hgt(x + 1, y) - hgt(x - 1, y), gy = hgt(x, y + 1) - hgt(x, y - 1);
-      const l = lambert(-gx * 3, -gy * 3 - 0.2, 1) * (f.lightv[i] > 0.3 ? 1 : 0.55);
-      const edgeBelow = (() => {
-        const j = f.idx(x, y + 1);
-        return j < 0 || !inMask[j];
-      })();
-      let s = band(l, x, y, { steps: [1, 2, 3, 3, 4], bias: 0.02, jitter: 0.1, seed: o.seed + 11, cell: 2 });
-      if (inMask[i] === 2) s = Math.min(s, 2);
-      if (edgeBelow) s = Math.min(s, inMask[i] === 2 ? 1 : 2);
-      f.pal[i] = MOSS;
-      f.step[i] = s;
-      f.over[i] = null;
-    }
-  // Clump bumps poking above the silhouette on top edges.
+  // Bumps: the top edge of the moss pokes one pixel above the stone's silhouette here and there.
   if (o.bumps)
     for (let y = 1; y < f.h; y++)
       for (let x = 0; x < f.w; x++) {
         const i = y * f.w + x;
-        if (inMask[i] !== 1) continue;
         const up = f.idx(x, y - 1);
-        if (up < 0 || f.pal[up] >= 0 || f.over[up]) continue;
-        if (hash(x, y, o.seed + 21) < 0.45) {
-          f.pal[up] = MOSS;
-          f.step[up] = f.lightv[i] > 0.4 ? 3 : 2;
-        }
+        if (mask[i] !== 1 || up < 0 || f.pal[up] >= 0 || f.over[up]) continue;
+        if (noise(x, 0, 2, o.seed + 21) > 0.5) mask[up] = 3;
       }
+  const M = (x: number, y: number): number => {
+    const j = f.idx(x, y);
+    return j < 0 ? 0 : mask[j];
+  };
+  // Cushions: centers on a jittered grid; each lights its upper-left crescent and darkens a
+  // pocket at its lower right, so the patch reads as round clumps lit from the upper left.
+  const sz = o.size ?? 1;
+  const delta = new Int8Array(f.w * f.h);
+  const g = 4;
+  for (let gy = 0; gy < f.h; gy += g)
+    for (let gx = 0; gx < f.w; gx += g) {
+      const cx = gx + Math.floor(hash(gx, gy, o.seed + 1) * g), cy = gy + Math.floor(hash(gx, gy, o.seed + 2) * g);
+      if (M(cx, cy) !== 1) continue;
+      const rx = (1.8 + hash(gx, gy, o.seed + 3) * 1.4) * sz, ry = rx * 0.75;
+      for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++)
+        for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++) {
+          const j = f.idx(x, y);
+          if (j < 0 || !mask[j]) continue;
+          const u = (x - cx) / rx, v = (y - cy) / ry;
+          const d = u * u + v * v;
+          if (d > 1.3) continue;
+          if (d <= 1 && u + v < -0.55) delta[j] = Math.max(delta[j], 1);
+          else if (d > 0.75 && u + v > 0.75 && delta[j] === 0) delta[j] = -1;
+        }
+    }
+  for (let y = 0; y < f.h; y++)
+    for (let x = 0; x < f.w; x++) {
+      const i = y * f.w + x;
+      if (!mask[i]) continue;
+      const lit = f.mesh[i] < 0 || f.lightv[i] > 0.32;
+      let s = mask[i] === 2 ? (hash(x, y, o.seed + 5) < 0.6 ? 1 : 2) : lit ? 3 : 2;
+      if (mask[i] !== 2) s += delta[i];
+      const edgeBelow = !M(x, y + 1), edgeAbove = !M(x, y - 1) || !M(x - 1, y);
+      if (edgeBelow) s = Math.min(s, mask[i] === 2 ? 1 : 2);
+      else if (edgeAbove && lit && mask[i] !== 2) s = Math.max(s, 3);
+      f.pal[i] = MOSS;
+      f.step[i] = clamp(s, 1, 4);
+      f.over[i] = null;
+      if (f.mesh[i] < 0) f.lightv[i] = 0.5;
+    }
 }
 
-/** Lichen: small pale rosettes (2-4 px) on lit vertical faces of stone. */
+/** Lichen: small pale blots (3-6 px) on stone faces; dimmer on faces in shadow. */
 function paintLichen(f: Frame, o: { meshes: number[]; seed: number; density: number; minLight?: number }): void {
   const g = 7;
   for (let gy = 0; gy < f.h; gy += g)
@@ -600,16 +624,16 @@ function paintLichen(f: Frame, o: { meshes: number[]; seed: number; density: num
       const i = f.idx(cx, cy);
       if (i < 0 || !o.meshes.includes(f.mesh[i]) || f.pal[i] !== f.scene.meshes[f.mesh[i]].pal || f.over[i]) continue;
       if (f.lightv[i] < (o.minLight ?? 0.3)) continue;
-      const big = hash(gx, gy, o.seed + 3) > 0.5;
+      const big = hash(gx, gy, o.seed + 3) > 0.45;
       const mi = f.mesh[i], pi = f.pal[i];
       const shape: [number, number, number][] = big
-        ? [[0, 0, 3], [1, 0, 2], [0, 1, 2], [1, 1, 1], [-1, 1, 2], [2, 1, 1]]
-        : [[0, 0, 3], [1, 0, 2], [0, 1, 1]];
+        ? [[0, 0, 3], [1, 0, 2], [-1, 0, 2], [0, 1, 2], [1, 1, 2], [-1, 1, 1], [2, 1, 1], [0, -1, 2]]
+        : [[0, 0, 3], [1, 0, 2], [0, 1, 2], [1, 1, 1]];
       for (const [dx, dy, s] of shape) {
         const j = f.idx(cx + dx, cy + dy);
         if (j < 0 || f.mesh[j] !== mi || f.pal[j] !== pi || f.over[j]) continue;
         f.pal[j] = LICHEN;
-        f.step[j] = f.lightv[j] > 0.55 ? s + 1 : s;
+        f.step[j] = f.lightv[j] > 0.6 ? s : Math.max(1, s - 1);
       }
     }
 }
@@ -662,7 +686,7 @@ function chip(f: Frame, cx: number, cy: number, pts: [number, number][], freshPt
  * share one size and one anchor. (gx, gy) is the ground point on the work canvas; the anchor y is
  * the lowest opaque row of the first frame.
  */
-function finish(name: string, label: string, meters: [number, number], tags: string[], anims: Record<string, { frames: Canvas[]; fps: number; loop?: boolean }>, gx: number): WorldSprite {
+function finish(name: string, label: string, meters: [number, number], tags: string[], anims: Record<string, { frames: Canvas[]; fps: number; loop?: boolean }>, gx: number, gy?: number): WorldSprite {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const a of Object.values(anims))
     for (const fr of a.frames) {
@@ -686,7 +710,7 @@ function finish(name: string, label: string, meters: [number, number], tags: str
   const fb = first.bounds()!;
   const out: Record<string, Anim> = {};
   for (const [k, a] of Object.entries(anims)) out[k] = { frames: a.frames.map(crop), fps: a.fps, loop: a.loop };
-  return { name, label, meters, anchor: [gx - x0, fb[3] - y0], tags, anims: out };
+  return { name, label, meters, anchor: [gx - x0, (gy ?? fb[3]) - y0], tags, anims: out };
 }
 
 // ================================================================================================
@@ -884,7 +908,7 @@ function boulder(): WorldSprite {
   const W = 130, H = 110, ox = 62, oy = 90;
   GROUP = 1;
   const sc = new Scene();
-  const st = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.035, texCell: 10, contrast: 1.25, facetVar: 0.07, ao: 3, ...extra });
+  const st = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.035, texCell: 10, contrast: 1.2, facetVar: 0.07, ao: 3, form: 0.35, ...extra });
   const main = sc.add(rockMesh({ cx: -3, cd: 0, rx: 39, rd: 22, h: 52, n: 8, seed: 21, lean: -7, leanD: 2, profile: [[0, 0.86], [0.22, 1], [0.6, 0.9], [0.88, 0.55]], rot: 0.25, jit: 0.12, hJit: 0.07 }), st(21));
   const lump = sc.add(rockMesh({ cx: 25, cd: -7, rx: 18, rd: 13, h: 24, n: 7, seed: 22, lean: -2, profile: [[0, 0.95], [0.4, 1], [0.8, 0.7]], rot: 0.6, jit: 0.15 }), st(22));
   const feet: Mesh[] = [];
@@ -911,7 +935,7 @@ function rock(): WorldSprite {
   const W = 80, H = 60, ox = 38, oy = 46;
   GROUP = 1;
   const sc = new Scene();
-  const main = sc.add(rockMesh({ cx: 0, cd: 0, rx: 23, rd: 13, h: 21, n: 8, seed: 51, lean: -4, profile: [[0, 0.92], [0.35, 1], [0.75, 0.8], [0.95, 0.45]], rot: 0.5, jit: 0.12 }), { pal: STONE, seed: 51, tex: 0.035, texCell: 9, contrast: 1.25, facetVar: 0.07, ao: 2 });
+  const main = sc.add(rockMesh({ cx: 0, cd: 0, rx: 23, rd: 13, h: 21, n: 8, seed: 51, lean: -4, profile: [[0, 0.92], [0.35, 1], [0.75, 0.8], [0.95, 0.45]], rot: 0.5, jit: 0.12 }), { pal: STONE, seed: 51, tex: 0.035, texCell: 9, contrast: 1.2, facetVar: 0.07, ao: 2, form: 0.35 });
   const side = sc.add(rockMesh({ cx: 17, cd: -6, rx: 7, rd: 5, h: 6, n: 6, seed: 52, profile: [[0, 0.95], [0.5, 1], [0.9, 0.6]], jit: 0.15 }), { pal: STONE_W, seed: 52, bias: -0.02 });
   const f = render(sc, W, H, ox, oy);
   paintMoss(f, { meshes: [main.id], amount: 0.3, seed: 451, cell: 6, drip: 2, minUp: 0.45 });
@@ -946,6 +970,148 @@ function pebbles(): WorldSprite {
 }
 // @end stones
 
+// @section river
+/** Wet stone: a little darker and cooler than dry stone, with a cool glint at the top step. */
+const STONE_WET = pal([STONE_RAMP[0], mix(STONE_RAMP[1], R.water[1], 0.25), mix(STONE_RAMP[2], R.water[2], 0.2), mix(STONE_RAMP[3], R.water[2], 0.14), mix(STONE_RAMP[4], R.water[4], 0.15), mix(R.paper[4], R.water[5], 0.3)]);
+/** Stone seen through the water. */
+const STONE_SUB = pal([R.water[0], R.water[1], mix(R.water[1], STONE_RAMP[2], 0.35), mix(R.water[2], STONE_RAMP[3], 0.35), mix(R.water[3], STONE_RAMP[4], 0.3), R.water[4]]);
+
+/** Pixels of a 1 px ellipse ring (no doubled corners), as [x, y, angle] with angle 0 at the right, PI/2 at the front. */
+function ellipseRing(cx: number, cy: number, rx: number, ry: number): [number, number, number][] {
+  const seen = new Map<string, [number, number, number]>();
+  const n = Math.ceil((rx + ry) * 8);
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * TAU;
+    const x = Math.floor(cx + Math.cos(a) * rx), y = Math.floor(cy + Math.sin(a) * ry);
+    const key = `${x},${y}`;
+    if (!seen.has(key)) seen.set(key, [x, y, a]);
+  }
+  const pts = [...seen.values()];
+  // Pixel-perfect: drop the corner pixel of every L so the ring stays 1 px thin.
+  const out: [number, number, number][] = [];
+  for (let k = 0; k < pts.length; k++) {
+    const prev = out[out.length - 1], next = pts[(k + 1) % pts.length], c = pts[k];
+    if (prev && Math.abs(prev[0] - next[0]) === 1 && Math.abs(prev[1] - next[1]) === 1 && Math.abs(prev[0] - c[0]) + Math.abs(prev[1] - c[1]) === 1 && Math.abs(next[0] - c[0]) + Math.abs(next[1] - c[1]) === 1) continue;
+    out.push(c);
+  }
+  return out;
+}
+
+function riverStones(): WorldSprite {
+  const W = 110, H = 64, ox = 54, oy = 38;
+  const stones = [
+    { cx: -25, cd: -9, rx: 13.5, rd: 9.5, h: 5, seed: 71 },
+    { cx: 2, cd: 2, rx: 12, rd: 8.5, h: 6, seed: 72 },
+    { cx: 27, cd: 13, rx: 10.5, rd: 7.5, h: 4.5, seed: 73 },
+  ];
+  GROUP = 1;
+  const sc = new Scene();
+  const meshes = stones.map((s) =>
+    sc.add(rockMesh({ cx: s.cx, cd: s.cd, rx: s.rx, rd: s.rd, h: s.h + 3, h0: -3, n: 8, seed: s.seed, profile: [[0, 1.03], [0.4, 1], [0.74, 0.88], [1, 0.56]], apexUp: 0.09, jit: 0.11, hJit: 0.04 }), {
+      pal: STONE_WET,
+      seed: s.seed,
+      contrast: 1.15,
+      facetVar: 0.05,
+      tex: 0.03,
+      texCell: 8,
+      form: 0.25,
+      steps: [1, 2, 3, 3, 4],
+    }),
+  );
+  const f = render(sc, W, H, ox, oy);
+  const sub = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    if (f.mesh[i] < 0) continue;
+    const p = f.world(i);
+    if (p[1] < -0.3) {
+      f.pal[i] = STONE_SUB;
+      f.over[i] = null;
+      sub[i] = 1;
+    } else if (p[1] < 1.6) {
+      // The wet band just above the water.
+      f.step[i] = Math.max(1, f.step[i] - 1);
+    }
+  }
+  // Glints on the wet tops (upper-left part of each top) and a moss tuft on the big stone.
+  stones.forEach((s, k) => {
+    const [gx, gy] = f.proj([s.cx - s.rx * 0.35, s.h + 0.5, s.cd - s.rd * 0.1]).map(Math.round);
+    const streak: [number, number, number][] = k === 1 ? [[0, 0, 5], [1, 0, 5], [2, 0, 4], [-1, 1, 4], [4, 2, 4]] : [[0, 0, 5], [1, 0, 4], [-1, 1, 4], [3, -1, 4]];
+    for (const [dx, dy, st] of streak) {
+      const i = f.idx(gx + dx, gy + dy);
+      if (i >= 0 && f.mesh[i] === meshes[k].id && !sub[i] && f.normal(i)[1] > 0.6) f.step[i] = Math.max(f.step[i], st);
+    }
+    void meshes;
+  });
+  const base = f.compose();
+  base.outline({ toward: toHex(R.water[0]), amount: 0.55 });
+  // Soften the outline under water: outline pixels touching submerged stone take a water tone.
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (f.pal[i] >= 0 || f.over[i] || base.alpha(x, y) === 0) continue;
+      const nearSub = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+        const j = f.idx(x + dx, y + dy);
+        return j >= 0 && sub[j] === 1;
+      });
+      if (nearSub) base.set(x, y, R.water[1]);
+    }
+  // Waterline: a light lip where each stone meets the water (front half), broken on the shadow side.
+  stones.forEach((s, k) => {
+    const [cx, cy] = f.proj([s.cx, 0, s.cd]);
+    for (const [x, y, a] of ellipseRing(cx, cy, s.rx * 1.0 + 0.6, (s.rd * 1.0 + 0.6) * K)) {
+      if (a <= 0.15 || a >= Math.PI - 0.15) continue;
+      const i = f.idx(x, y);
+      if (i < 0 || f.mesh[i] !== meshes[k].id) continue;
+      const lit = Math.cos(a) < 0.35;
+      if (!lit && hash(x, y, 77) < 0.5) continue;
+      base.set(x, y, lit ? mix(R.water[5], R.paper[4], 0.35) : R.water[4]);
+    }
+  });
+
+  const frames: Canvas[] = [];
+  for (let t = 0; t < 6; t++) {
+    const c = base.clone();
+    const canDraw = (x: number, y: number) => {
+      const i = f.idx(x, y);
+      return i >= 0 && (c.alpha(x, y) === 0 || sub[i] === 1 || (f.pal[i] < 0 && !f.over[i]));
+    };
+    stones.forEach((s, k) => {
+      const [cx, cy] = f.proj([s.cx, 0, s.cd]);
+      for (let r = 0; r < 2; r++) {
+        const age = ((t + 3 * r + k * 2) % 6) / 6; // 0 new .. 5/6 old
+        const d = 1.5 + age * 7;
+        const col = age < 0.3 ? R.water[5] : age < 0.6 ? R.water[4] : R.water[3];
+        for (const [x, y, a] of ellipseRing(cx, cy, s.rx + d, (s.rd + d) * K)) {
+          // Three arcs per ring that shorten as the ring spreads and fades.
+          if (Math.cos(a * 3 + k * 1.7 + r * 2.1) < -0.75 + age * 1.3) continue;
+          if (!canDraw(x, y)) continue;
+          c.set(x, y, col);
+        }
+      }
+    });
+    // Little sun glints on the water that come and go.
+    const glints: [number, number, number][] = [
+      [-40, -2, 0],
+      [-8, 6, 2],
+      [14, -12, 4],
+      [38, 2, 1],
+      [-30, 9, 3],
+    ];
+    for (const [gx, gy, ph] of glints) {
+      const on = (t + ph) % 6;
+      if (on > 2) continue;
+      const x = ox + gx, y = oy + gy;
+      const len2 = on === 1 ? 3 : 2;
+      for (let k = 0; k < len2; k++) if (canDraw(x + k, y)) c.set(x + k, y, on === 1 ? mix(R.water[5], R.paper[4], 0.5) : R.water[5]);
+    }
+    frames.push(c);
+  }
+  const front = stones[0];
+  const [, gy] = f.proj([front.cx, 0, front.cd - front.rd]);
+  return finish('river_stones', 'Stepping Stones', [1.4, 0.15], ['water', 'climbable'], { idle: { frames, fps: 5 } }, ox, Math.round(gy) + 1);
+}
+// @end river
+
 // @main
 // ================================================================================================
 // main
@@ -968,7 +1134,7 @@ function debugDump(s: WorldSprite): void {
   z.scaled(first.h > 80 ? 6 : 8).save(join(SCRATCH, `landmarks-${s.name}-zoom.png`));
 }
 
-const sprites: WorldSprite[] = [stoneLantern(), boulder(), rock(), pebbles()];
+const sprites: WorldSprite[] = [stoneLantern(), boulder(), rock(), pebbles(), riverStones()];
 writeGroup('landmarks', sprites);
 preview(sprites, join(SCRATCH, 'landmarks.png'), { scale: 3 });
 for (const s of sprites) {

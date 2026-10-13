@@ -795,8 +795,7 @@ function drawBlades(b: Buf, blades: Blade[], ground: number, bend: (bl: Blade) =
   blades.forEach((bl, i) => {
     const d = bend(bl);
     const back = bl.layer === 0;
-    const mat = back ? GRASS_BACK : GRASS;
-    const tipLit = !back && rnd(seed, i, 11) < 0.55;
+    const tipLit = rnd(seed, i, 11) < (back ? 0.35 : 0.6);
     strokeQuad(
       b,
       bl.bx,
@@ -808,12 +807,13 @@ function drawBlades(b: Buf, blades: Blade[], ground: number, bend: (bl: Blade) =
       (t) => (t < 0.3 ? bl.w : t < 0.6 ? Math.min(2, bl.w) : 1),
       (t, side) => {
         // The dark base ends at a different height on every blade, so the clump has no hard collar.
-        const foot = 0.1 + rnd(seed, i, 12) * 0.16;
-        let st = t < foot ? 1 : t < 0.45 ? 2 : t < 0.86 ? 3 : 4;
-        if (back && t < 0.6) st = Math.max(1, st - 1);
+        const foot = 0.14 + rnd(seed, i, 12) * 0.18;
+        let st = t < foot ? 1 : t < 0.5 ? 2 : t < 0.85 ? 3 : 4;
+        // Blades further back sit in the clump's shade except near their tips.
+        if (back && t < 0.75) st = Math.max(1, st - 1);
         if (side > 0.6 && st > 1) st -= 1;
-        if (t > 0.93 && tipLit) st = 5;
-        return [mat, st];
+        if (t > 0.92 && tipLit) st = 5;
+        return [back && st <= 2 ? GRASS_BACK : GRASS, st];
       },
       i,
       bl.layer * 10 + bl.z,

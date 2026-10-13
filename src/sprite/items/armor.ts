@@ -1287,7 +1287,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     id: 'armor_leather',
     slot: 'armor',
     name: 'Ember Leather Armor',
-    desc: 'Studded dark leather cuirass with layered shoulder guards, a wide belt, bracers and a flame engraving (+3 AC).',
+    desc: 'Studded dark leather cuirass with layered shoulder guards, a wide belt, bracers and a flame engraving (+4 AC).',
     colors: [col('leather', 'Leather', '#4d3528', 'leather'), col('studs', 'Studs', '#a2a7ae', 'metal'), col('engrave', 'Engraving', '#c0502c')],
     statsArmor: 'Samurai O-Yoroi',
     draw: (g, [lc, sc, ec]) => {
@@ -1534,7 +1534,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     id: 'armor_bronze',
     slot: 'armor',
     name: 'Bronze Cuirass',
-    desc: 'Sculpted bronze muscle cuirass with leather shoulder straps (+3 AC).',
+    desc: 'Sculpted bronze muscle cuirass with leather shoulder straps (+4 AC).',
     colors: [col('bronze', 'Bronze', '#b8833a', 'metal'), col('strap', 'Straps', '#5a3a24', 'leather')],
     statsArmor: 'Greek Hoplite Cuirass',
     draw: (g, [bc, sc]) => {

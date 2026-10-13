@@ -13,12 +13,38 @@ import { ShinobiSpriteCanvas } from './ShinobiSpriteCanvas';
 import { AppearanceEditor } from './creator/AppearanceEditor';
 import { getItem } from '../sprite/catalog';
 import { chakraHex } from '../sprite/chakraInfo';
-import { dojutsuToEye, getAppearance } from '../sprite/legacy';
+import { defaultAppearance, dojutsuToEye, getAppearance } from '../sprite/legacy';
 import { randomAppearance } from '../sprite/random';
 import { CAST_STYLES, CastStyle, SPRITE_POSES, SpriteAppearance, SpritePose } from '../sprite/types';
 import { CAST_STYLE_INFO, defaultCastStyle } from '../sprite/castInfo';
 import { soundManager } from '../utils/audio';
 import { Sparkles, Dice5, Download, Upload, Shield, Zap, Eye, Swords, BookOpen, UserCheck } from 'lucide-react';
+
+const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
+const sameKind = (d: unknown, v: unknown) => (Array.isArray(d) ? Array.isArray(v) : isObj(d) ? isObj(v) : typeof d === typeof v);
+
+/** `base` with the entries of `v` that have the same kind of value (unknown keys are kept as they are). */
+function mergeKind(base: Record<string, unknown>, v: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...base };
+  for (const [k, x] of Object.entries(v)) if (!(k in base) || sameKind(base[k], x)) out[k] = isObj(base[k]) && isObj(x) ? mergeKind(base[k], x) : x;
+  return out;
+}
+
+/**
+ * A complete character from pasted JSON: anything missing or of the wrong kind
+ * falls back to the default character, so a partial or older sheet can't
+ * break the page. Null when the JSON isn't a character sheet at all.
+ */
+function characterFromImport(raw: unknown): ShinobiCharacter | null {
+  if (!isObj(raw) || typeof raw.clan !== 'string' || !isObj(raw.stats)) return null;
+  const out = mergeKind(DEFAULT_CHARACTER as unknown as Record<string, unknown>, raw);
+  if (Array.isArray(out.selectedFeats)) out.selectedFeats = out.selectedFeats.filter((f) => typeof f === 'string');
+  if ('appearance' in out) {
+    if (isObj(out.appearance)) out.appearance = mergeKind(defaultAppearance() as unknown as Record<string, unknown>, out.appearance);
+    else delete out.appearance;
+  }
+  return out as unknown as ShinobiCharacter;
+}
 
 interface CharacterCreatorProps {
   initialCharacter?: ShinobiCharacter;
@@ -40,6 +66,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const [previewEnhanced, setPreviewEnhanced] = useState<boolean>(false);
   const [importExportModal, setImportExportModal] = useState<boolean>(false);
   const [importJsonText, setImportJsonText] = useState<string>('');
+  const [importError, setImportError] = useState<string>('');
 
   const look = useMemo(() => getAppearance(character), [character]);
   const eye = dojutsuToEye(character.dojutsu);
@@ -262,20 +289,27 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const handleExport = () => {
     const jsonStr = JSON.stringify(character, null, 2);
     setImportJsonText(jsonStr);
+    setImportError('');
     setImportExportModal(true);
   };
 
   const handleImportApply = () => {
+    let parsed: unknown;
     try {
-      const parsed = JSON.parse(importJsonText);
-      if (parsed.clan && parsed.stats) {
-        setCharacter(parsed);
-        setImportExportModal(false);
-        soundManager.playSelect();
-      }
+      parsed = JSON.parse(importJsonText);
     } catch {
-      // ignore parse error
+      setImportError('This text is not valid JSON. Paste the whole sheet exported from the creator.');
+      return;
     }
+    const imported = characterFromImport(parsed);
+    if (!imported) {
+      setImportError('This JSON is not a character sheet: it needs at least a clan and ability scores.');
+      return;
+    }
+    setImportError('');
+    setCharacter(imported);
+    setImportExportModal(false);
+    soundManager.playSelect();
   };
 
   // Filtered Jutsus
@@ -982,6 +1016,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
               onChange={(e) => setImportJsonText(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-cyan-300 focus:outline-hidden"
             />
+            {importError && <p className="text-xs text-red-400">{importError}</p>}
             <div className="flex items-center justify-end gap-3">
               <button
                 type="button"

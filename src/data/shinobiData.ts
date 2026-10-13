@@ -732,7 +732,7 @@ export const HAIRSTYLES: HairstyleType[] = [
 ];
 
 export const ARMOR_STYLES: { id: ArmorStyleType; label: string; desc: string; acBonus: number }[] = [
-  { id: 'Dark Knight Plate', label: 'Dark Knight Dreadnought Plate (From Image)', desc: 'Full articulated steel plate armor with tiered pauldrons, golden rivets, and neck cowl (+5 AC).', acBonus: 5 },
+  { id: 'Dark Knight Plate', label: 'Dark Knight Dreadnought Plate', desc: 'Full articulated steel plate armor with tiered pauldrons, golden rivets, and neck cowl (+5 AC).', acBonus: 5 },
   { id: 'Leaf Chunin Flak', label: 'Leaf Chunin Flak Jacket', desc: 'Tactical ribbed vest with scroll pouches and high collar (+2 AC).', acBonus: 2 },
   { id: 'Sand Wind Guard', label: 'Sand Wind Guard Vest', desc: 'Desert beige protective wrap with sand gourd strap (+2 AC).', acBonus: 2 },
   { id: 'Mist Storm Vest', label: 'Mist Storm Heavy Flak', desc: 'Dark storm plate with reinforced throat guard (+3 AC).', acBonus: 3 },
@@ -810,7 +810,7 @@ export const CAPE_STYLES: { id: CapeStyleType; label: string; desc: string }[] =
   { id: 'Hokage White Haori', label: 'Hokage White Haori Mantle', desc: 'Noble white battle mantle emblazoned with crimson flame hems.' },
   { id: 'Akatsuki Black Cloak', label: 'Rogue Akatsuki Black Cloak', desc: 'Dark hooded cloak adorned with vivid red clouds.' },
   { id: 'Ronin Traveler Cape', label: 'Ronin Traveler Battle Mantle', desc: 'Weather-beaten tactical battle cloak for wandering wanderers.' },
-  { id: 'Crimson Billowing Knight Cape', label: 'Crimson Billowing Knight Cape (From Image)', desc: 'Magnificent heavy crimson mantle draping from the pauldrons down to the floor in dramatic wide folds.' },
+  { id: 'Crimson Billowing Knight Cape', label: 'Crimson Billowing Knight Cape', desc: 'Magnificent heavy crimson mantle draping from the pauldrons down to the floor in dramatic wide folds.' },
 ];
 
 // ---------------------------------------------------------------------------

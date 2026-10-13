@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { ShinobiCharacter, WeatherType } from '../types/shinobi';
 import { soundManager } from '../utils/audio';
 import { Compass, Shield, Flame, BookOpen, Skull, ChevronRight, Swords, Sparkles } from 'lucide-react';
+import forestBackdrop from '../assets/images/shinobi_campaign_forest_backdrop_1791702689788.jpg';
+import titanBackdrop from '../assets/images/shinobi_titanic_beast_backdrop_1791702699652.jpg';
+import creatorBackdrop from '../assets/images/shinobi_character_creator_backdrop_1791702680560.jpg';
 
 interface CampaignModeProps {
   playerCharacter: ShinobiCharacter;
@@ -150,9 +153,9 @@ export const CampaignMode: React.FC<CampaignModeProps> = ({
 
   // Image assets based on selection
   const imageMap = {
-    forest: '/src/assets/images/shinobi_campaign_forest_backdrop_1791702689788.jpg',
-    titan: '/src/assets/images/shinobi_titanic_beast_backdrop_1791702699652.jpg',
-    creator: '/src/assets/images/shinobi_character_creator_backdrop_1791702680560.jpg',
+    forest: forestBackdrop,
+    titan: titanBackdrop,
+    creator: creatorBackdrop,
   };
 
   const handleSelectChoice = (idx: number) => {

@@ -48,8 +48,12 @@ export function poleAngle(g: DrawCtx): number {
   }
 }
 
+/** Hand signs are made with empty hands: held weapons are stowed (see items/accessories.ts). */
+export const isSigning = (g: DrawCtx): boolean => g.rig.pose === 'handsigns';
+
 /** Angle of the handle the near hand wraps, or null when it holds nothing with a handle. */
 export function gripAngle(g: DrawCtx): number | null {
+  if (isSigning(g)) return null;
   if (g.has('held', 'held_naginata')) return poleAngle(g);
   if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;

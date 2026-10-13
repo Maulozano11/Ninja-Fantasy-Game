@@ -4,7 +4,7 @@
 // 'k'/'K' grip shades 1/2 · 'w' grip wrap · 'g'/'G' collar (habaki) shades 4/3.
 
 import { mixHex } from '../color';
-import type { DrawCtx } from '../ctx';
+import type { Depth, DrawCtx } from '../ctx';
 import { Vec } from '../raster';
 import { PixelTemplate, stampTemplate, TemplatePalette } from '../rotsprite';
 
@@ -93,7 +93,7 @@ export function weaponPalette(g: DrawCtx, c: WeaponColors): TemplatePalette {
  * 0 = right, + = clockwise). Blades pointing left are mirrored so the lit edge
  * stays on top.
  */
-export function drawWeapon(g: DrawCtx, depth: 'nearArm.held' | 'farArm.held', t: PixelTemplate, hand: Vec, deg: number, c: WeaponColors): void {
+export function drawWeapon(g: DrawCtx, depth: Depth, t: PixelTemplate, hand: Vec, deg: number, c: WeaponColors): void {
   const a = ((deg % 360) + 540) % 360 - 180;
   stampTemplate(g.L(depth), t, hand, a, weaponPalette(g, c), 'held', { flipY: Math.abs(a) > 90 });
 }

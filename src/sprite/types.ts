@@ -18,9 +18,10 @@ export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'cast'
  * crackling lightning, a two-handed wave charged at the hip, or a flash
  * charged with both arms forward).
  */
-export type CastStyle = 'signs' | 'runes' | 'book' | 'sphere' | 'lightning' | 'wave' | 'flash';
+export type CastStyle = 'signs' | 'runes' | 'book' | 'script' | 'sphere' | 'lightning' | 'wave' | 'flash' | 'eye';
 
-export const CAST_STYLES: CastStyle[] = ['signs', 'runes', 'book', 'sphere', 'lightning', 'wave', 'flash'];
+/** The styles offered in the creator ('eye', Ocular Surge, is kept in the game but not offered). */
+export const CAST_STYLES: CastStyle[] = ['signs', 'runes', 'book', 'script', 'sphere', 'lightning', 'wave', 'flash'];
 
 /** Default cast style, with optional overrides per jutsu id. */
 export interface CastChoice {

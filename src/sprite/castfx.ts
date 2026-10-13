@@ -3,11 +3,13 @@
 // palm, a grimoire held open, or energy charged in the hands. Energy and runes
 // take the character's chakra color.
 
-import { chakraHex } from './chakraInfo';
-import { mixHex } from './color';
+import { CHAKRA_CHOICES, chakraHex } from './chakraInfo';
+import { hexToRgb, mixHex } from './color';
 import type { DrawCtx } from './ctx';
-import { add, ellipse, F_NO_OUTLINE, fine, Layer, line, norm, Pen, poly, px, scale, sub, v, Vec } from './raster';
+import { add, ellipse, F_NO_OUTLINE, fine, GRID, Layer, line, norm, PartId, partIndex, Pen, px, RES, scale, sub, v, Vec } from './raster';
+import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import { armJoints } from './ctx';
+import { eyeCells, faceAnchor } from './body';
 import { drawLightning, drawSpiralOrb } from './items/accessories';
 
 /** Tiny rune glyphs (3 x 5 fine pixels). */
@@ -63,33 +65,534 @@ function runes(g: DrawCtx, hex: string): void {
   ellipse(T, c.x - 1.6, c.y, 0.8, 0.8, { ...pen, flags: F_NO_OUTLINE }, 5);
 }
 
-/** An open book held before the chest, its pages glowing, with runes rising from them. */
+/**
+ * The grimoire, opened toward the caster, so the viewer sees it from outside:
+ * the left cover turned away, the right one almost facing front (it carries
+ * the nature's emblem), and the page tops between them. The pivot is the
+ * bottom of the spine, where the fingers hold it.
+ */
+const GRIMOIRE: PixelTemplate = {
+  pivot: [10, 17],
+  rows: [
+    '.qp........PPPPPPPPPPPPP.',
+    '.ppqp......PPPPPPPPPPppq.',
+    '..qppqp...PPPPPPPPpppqqq.',
+    '..okqppqp.PPPPPpppPPoooo.',
+    '...kkkqppqPPpppPPooocccC.',
+    '...okkkpqoPpPooooccccccC.',
+    '....kkkkkooooccccccccccC.',
+    '....kkkkkocccccccccccccC.',
+    '....okkkkocccccccccccccC.',
+    '.....kkkkocccccccccccccC.',
+    '.....kkkkokccccccccccccC.',
+    '.....okkkokccccccccccccC.',
+    '......kkkkoccccccccccccC.',
+    '......kkkkoccccccccccccC.',
+    '......okkkoccccccccccccC.',
+    '.......kkkocccccccckkkkk.',
+    '.......ookockkkkkkkk.....',
+    '.........ookk............',
+  ],
+};
+
+/** The cover emblem for each chakra nature (7 x 7, 'E' bright, 'e' glow). */
+const EMBLEMS: Record<string, string[]> = {
+  Fire: ['...E...', '..EE...', '..EEE..', '.EEeEE.', '.EeeeE.', '.EeeeE.', '..EEE..'],
+  Embers: ['...E...', '.E.E.E.', '..EEE..', 'EEEeEEE', '..EEE..', '.E.E.E.', '...E...'],
+  Lightning: ['....EE.', '...EE..', '..EE...', '.EEEEE.', '...EE..', '..EE...', '.EE....'],
+  Wind: ['.EE.EE.', 'EeeEeeE', 'EeeEeeE', '.EEEEE.', 'EeeEeeE', 'EeeEeeE', '.EE.EE.'],
+  Water: ['...E...', '..EEE..', '..EeE..', '.EeeeE.', '.EeeeE.', '.EeeeE.', '..EEE..'],
+  Shadow: ['..EEE..', '.EE....', 'EE.....', 'EE.....', 'EE.....', '.EE....', '..EEE..'],
+  Spirit: ['..EEE..', '.EeeeE.', '.E.e.E.', '.EeeeE.', '.EeeeE.', '.EeEeE.', '.E.E.E.'],
+  Light: ['E..E..E', '.E.E.E.', '..EEE..', 'EEEeEEE', '..EEE..', '.E.E.E.', 'E..E..E'],
+  Void: ['..EEE..', '.E...E.', 'E..E..E', 'E.EEE.E', 'E..E..E', '.E...E.', '..EEE..'],
+};
+
+/**
+ * The open grimoire carried at the side on the near hand, after the user's
+ * example: covers tinted after the chakra, the emblem of its nature glowing
+ * on the front, a glowing rim in place of the outline, and sparks rising.
+ */
 function grimoire(g: DrawCtx, hex: string): void {
-  const L = g.L('nearArm.held');
-  const h = g.rig.handN;
-  const cover: Pen = { mat: g.m('#6b3a22', 'leather'), part: 'held' };
-  const paper: Pen = { mat: g.m('#efe6cc', 'cloth'), part: 'held' };
-  const ink: Pen = { mat: g.m('#5a4a3a', 'flat'), part: 'held', flags: F_NO_OUTLINE };
-  const c = add(h, v(1.2, -2.4));
-  // cover: a little wider than the pages, tipped toward the viewer
-  poly(L, [add(c, v(-4.8, -2.6)), add(c, v(4.6, -3.0)), add(c, v(4.9, 2.4)), add(c, v(-4.6, 2.8))], cover, 2);
-  // two pages and the gutter between them
-  poly(L, [add(c, v(-4.2, -2.4)), add(c, v(-0.2, -2.0)), add(c, v(-0.2, 2.0)), add(c, v(-4.0, 2.4))], paper, 4);
-  poly(L, [add(c, v(0.2, -2.0)), add(c, v(4.0, -2.8)), add(c, v(4.3, 1.9)), add(c, v(0.2, 2.0))], paper, 3);
-  line(L, add(c, v(0, -2.0)), add(c, v(0, 2.0)), { ...cover, flags: F_NO_OUTLINE }, 1);
-  // lines of script
-  for (let k = 0; k < 3; k++) {
-    const y = -1.2 + k * 1.1;
-    line(L, add(c, v(-3.6, y - 0.1)), add(c, v(-0.9, y + 0.1)), ink, 3);
-    line(L, add(c, v(0.9, y - 0.2)), add(c, v(3.5, y - 0.5)), ink, 3);
+  // over the arm, like the example; only the fingers come over it (liftHand below)
+  const L = g.L('nearArm.over');
+  const j = armJoints(g.rig, 'N');
+  const cover = g.m(mixHex(hex, '#141018', 0.72), 'leather');
+  const paper = g.m(mixHex('#f4ecd4', hex, 0.15), 'cloth');
+  const glow = g.m(hex, 'glow');
+  const pal: TemplatePalette = {
+    o: [cover, 0],
+    k: [cover, 1],
+    c: [cover, 2],
+    C: [cover, 3],
+    q: [paper, 3],
+    p: [paper, 4],
+    P: [paper, 5],
+  };
+  // the fingers curl over the bottom of the spine
+  const at = add(j.wrist, v(-0.5, -2));
+  stampTemplate(L, GRIMOIRE, at, 0, pal, 'held');
+  const ox = fine(at.x) - GRIMOIRE.pivot[0];
+  const oy = fine(at.y) - GRIMOIRE.pivot[1];
+  const nature = CHAKRA_CHOICES.find((c) => c.id === g.look.chakra.color)?.nature ?? 'Water';
+  (EMBLEMS[nature] ?? EMBLEMS.Water).forEach((row, r) =>
+    [...row].forEach((ch, c) => ch !== '.' && L.set(ox + 14 + c, oy + 6 + r, glow, ch === 'E' ? 5 : 3, 'held', F_NO_OUTLINE)),
+  );
+  // a glowing rim instead of the dark outline
+  const H = GRIMOIRE.rows.length;
+  const W = GRIMOIRE.rows[0].length;
+  const ring: [number, number][] = [];
+  for (let y = oy - 1; y <= oy + H; y++) {
+    for (let x = ox - 1; x <= ox + W; x++) {
+      if (L.has(x, y)) continue;
+      if (L.has(x + 1, y) || L.has(x - 1, y) || L.has(x, y + 1) || L.has(x, y - 1)) ring.push([x, y]);
+    }
   }
-  // runes lifting off the pages
+  for (const [x, y] of ring) L.set(x, y, glow, y < oy + 3 ? 4 : 3, 'held', F_NO_OUTLINE);
+  // sparks rising off the pages
   const T = g.L('top');
-  const glow: Pen = { mat: g.m(hex, 'glow'), part: 'held' };
-  const rise = (g.rig.frame % 2) * 1.2;
-  glyph(T, add(c, v(-2.2, -5.2 - rise)), 1 + g.rig.frame, glow);
-  glyph(T, add(c, v(1.8, -7.0 - rise)), 4 + g.rig.frame, glow);
-  glyph(T, add(c, v(-0.2, -9.4 - rise)), 2 + g.rig.frame, glow);
+  const f = g.rig.frame % 2;
+  const sparks = f ? [[3, -3], [11, -5], [19, -3], [7, -7], [22, -6]] : [[5, -4], [14, -3], [21, -5], [9, -6], [1, -2]];
+  for (const [dx, dy] of sparks) T.set(ox + dx, oy + dy, glow, (dx + dy) % 2 ? 5 : 4, 'held', F_NO_OUTLINE);
+  liftHand(g, L);
+}
+
+/** Moves the near hand (skin and any glove on it) onto `dest`, over what was drawn there. */
+function liftHand(g: DrawCtx, dest: Layer): void {
+  const hand = partIndex('handN');
+  for (const d of ['nearArm.body', 'nearArm.cloth', 'nearArm.armor'] as const) {
+    const L = g.L(d);
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (L.mat[i] < 0 || L.part[i] !== hand) continue;
+      dest.mat[i] = L.mat[i];
+      dest.shade[i] = L.shade[i];
+      dest.part[i] = L.part[i];
+      dest.flags[i] = L.flags[i];
+      dest.used = true;
+      L.mat[i] = -1;
+    }
+  }
+}
+
+/**
+ * The whirl around the pointing fingertip, copied from the example at our
+ * scale ('E' bright arcs, 'e' the glow at the fingertip). The pivot is the
+ * fingertip.
+ */
+const WHIRL: PixelTemplate = {
+  pivot: [14, 11],
+  rows: [
+    '........EEE..............',
+    '......EEEeEE....EEEEE....',
+    '......EE....EE...EEEEE...',
+    '.....EE...EEEEEE....EEE..',
+    '.....E...EEEEEEEE...EEE..',
+    '........EE...EEEEE...EE..',
+    '........EE......EE..EEE..',
+    '........EEE..eEeeE..EEE..',
+    '.............e.eeE.EEE...',
+    '...............eEeeEEE...',
+    '..............EEeeEEE....',
+    '............eeeeeEEe...E.',
+    '.............eeeE..EEE..E',
+    '.....................EE.E',
+    '.....................EE..',
+    '..............EEEE...EE..',
+    '....................EEE..',
+    '.............EEEEEEEEE...',
+    '...............EEEEEE....',
+    '.....E.........E....E....',
+    '.....EE........EEEEEE....',
+    '......EEEEEE.............',
+    '.......EEEE..............',
+  ],
+};
+
+/** The pointing fingertip of the grimoire pose, and the direction it points. */
+function fingertip(g: DrawCtx): { tip: Vec; dir: Vec } {
+  const j = armJoints(g.rig, 'F');
+  const dir = norm(sub(j.hand, j.wrist));
+  return { tip: add(j.wrist, scale(dir, 5.2)), dir };
+}
+
+/** Paints glow pixels (fine coords) on the top layer, leaving the pointing hand itself clear. */
+function fxPainter(g: DrawCtx, hex: string, part: PartId = 'handF'): (x: number, y: number, s: number, mat?: number) => void {
+  const T = g.L('top');
+  const glow = g.m(hex, 'glow');
+  const hand = partIndex('handF');
+  const arm = [g.L('farArm.body'), g.L('farArm.cloth'), g.L('farArm.armor')];
+  return (x, y, s, mat = glow) => {
+    if (x < 0 || y < 0 || x >= GRID || y >= GRID) return;
+    const i = y * GRID + x;
+    if (arm.some((L) => L.mat[i] >= 0 && L.part[i] === hand)) return;
+    T.set(x, y, mat, s, part, F_NO_OUTLINE);
+  };
+}
+
+/** Wind: the whirl around the fingertip, turning half a turn each frame. */
+function windWhirl(g: DrawCtx, hex: string): void {
+  const { tip } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const flip = g.rig.frame % 2 === 1;
+  const tx = fine(tip.x);
+  const ty = fine(tip.y);
+  WHIRL.rows.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) {
+      if (row[c] === '.') continue;
+      let dx = c - WHIRL.pivot[0];
+      let dy = r - WHIRL.pivot[1];
+      if (flip) [dx, dy] = [-dx, -dy];
+      put(tx + dx, ty + dy, row[c] === 'E' ? 4 : 3);
+    }
+  });
+}
+
+/** Fire: a flame rising off the fingertip, swaying each frame, with loose tongues above it. */
+function fireOrb(g: DrawCtx, hex: string): void {
+  const { tip, dir } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const f = g.rig.frame % 2;
+  const cx = fine(tip.x + dir.x * 3);
+  const cy = fine(tip.y + dir.y * 3);
+  const R = 6;
+  for (let y = cy - R * 3; y <= cy + R; y++) {
+    for (let x = cx - R - 2; x <= cx + R + 2; x++) {
+      const up = cy - y;
+      const w = up <= 0 ? Math.sqrt(Math.max(0, R * R - up * up)) : R * Math.max(0, 1 - up / (R * 3)) ** 0.8;
+      const sway = Math.sin(up * 0.55 + f * 2.2) * 1.2 * Math.min(1, Math.max(0, up) / R);
+      const dx = x + 0.5 - cx - sway;
+      if (Math.abs(dx) > w) continue;
+      const k = Math.hypot(dx / Math.max(1, w), (y + 0.5 - (cy + R * 0.25)) / (R * 1.8));
+      put(x, y, k < 0.4 ? 5 : k < 0.75 ? 4 : 3);
+    }
+  }
+  for (const [dx, dy] of f ? [[-3, -R * 3 - 2], [2, -R * 3 - 4]] : [[2, -R * 3 - 2], [-2, -R * 3 - 5]]) {
+    put(cx + dx, cy + dy, 4);
+    put(cx + dx, cy + dy - 1, 3);
+  }
+}
+
+/** Integer line in fine pixels. */
+function finePath(x0: number, y0: number, x1: number, y1: number, fn: (x: number, y: number) => void): void {
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+  for (let i = 0; i <= n; i++) fn(Math.round(x0 + ((x1 - x0) * i) / n), Math.round(y0 + ((y1 - y0) * i) / n));
+}
+
+/** Lightning: a bright spark at the fingertip and many jagged bolts crackling out all around the hand. */
+function boltOrb(g: DrawCtx, hex: string): void {
+  const { tip, dir } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const f = g.rig.frame % 2;
+  const cx = fine(tip.x);
+  const cy = fine(tip.y);
+  const back = Math.atan2(-dir.y, -dir.x);
+  let seed = 7 + f * 31;
+  const rnd = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+  for (let k = 0; k < 9; k++) {
+    const a = (k / 9) * Math.PI * 2 + f * 0.35;
+    const off = Math.abs(((a - back + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+    if (off < 0.55) continue; // not back along the arm
+    const len = 8 + rnd() * 6;
+    let px0 = cx + Math.round(Math.cos(a) * 3);
+    let py0 = cy + Math.round(Math.sin(a) * 3);
+    const steps = 3;
+    for (let s = 1; s <= steps; s++) {
+      const r = 3 + (len * s) / steps;
+      const j = (rnd() - 0.5) * 5;
+      const x1 = Math.round(cx + Math.cos(a) * r - Math.sin(a) * j);
+      const y1 = Math.round(cy + Math.sin(a) * r + Math.cos(a) * j);
+      finePath(px0, py0, x1, y1, (x, y) => put(x, y, s === steps ? 4 : 5));
+      if (s === 2 && rnd() > 0.5) {
+        const bx = Math.round(x1 + Math.cos(a + 0.9) * 3);
+        const by = Math.round(y1 + Math.sin(a + 0.9) * 3);
+        finePath(x1, y1, bx, by, (x, y) => put(x, y, 3));
+      }
+      px0 = x1;
+      py0 = y1;
+    }
+  }
+  for (let y = cy - 3; y <= cy + 3; y++)
+    for (let x = cx - 3; x <= cx + 3; x++) {
+      const d = Math.hypot(x - cx, y - cy);
+      if (d <= 3.2) put(x, y, d < 1.6 ? 5 : 4);
+    }
+}
+
+/** A lit sphere in fine pixels: light from the upper left and the front. */
+function sphere(put: (x: number, y: number, s: number) => void, cx: number, cy: number, R: number, ramp: (d: number) => number): void {
+  for (let y = cy - R; y <= cy + R; y++)
+    for (let x = cx - R; x <= cx + R; x++) {
+      const nx = (x + 0.5 - cx) / R;
+      const ny = (y + 0.5 - cy) / R;
+      const r2 = nx * nx + ny * ny;
+      if (r2 > 1) continue;
+      const nz = Math.sqrt(1 - r2);
+      put(x, y, ramp(-0.5 * nx - 0.6 * ny + 0.62 * nz));
+    }
+}
+
+/** Water: a sphere of water with a swirl inside, a glint and droplets circling it. */
+function waterOrb(g: DrawCtx, hex: string): void {
+  const { tip, dir } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const f = g.rig.frame % 2;
+  const R = 6;
+  const cx = fine(tip.x + dir.x * 3.6);
+  const cy = fine(tip.y + dir.y * 3.6);
+  sphere(put, cx, cy, R, (d) => (d > 0.86 ? 5 : d > 0.5 ? 4 : d > 0.05 ? 3 : 2));
+  // the swirl inside, turning
+  for (let t = 0; t < 2.2; t += 0.12) {
+    const a = t + f * 1.6;
+    put(Math.round(cx + Math.cos(a) * R * 0.55), Math.round(cy + Math.sin(a) * R * 0.45), 4);
+  }
+  put(cx - 3, cy - 3, 5);
+  put(cx - 2, cy - 4, 5);
+  for (let k = 0; k < 3; k++) {
+    const a = (k / 3) * Math.PI * 2 + f * 1.1;
+    const x = Math.round(cx + Math.cos(a) * (R + 3));
+    const y = Math.round(cy + Math.sin(a) * (R + 2));
+    put(x, y, 4);
+    put(x, y - 1, 3);
+  }
+}
+
+/** Embers: a glowing coal of a ball throwing sparks, a few of them rising. */
+function emberOrb(g: DrawCtx, hex: string): void {
+  const { tip, dir } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const f = g.rig.frame % 2;
+  const R = 5;
+  const cx = fine(tip.x + dir.x * 3.2);
+  const cy = fine(tip.y + dir.y * 3.2);
+  sphere(put, cx, cy, R, (d) => (d > 0.7 ? 5 : d > 0.25 ? 4 : 3));
+  const sparks = f
+    ? [[8, -2], [-2, -9], [6, 7], [10, 3], [-7, 5], [2, -13], [7, -8], [-5, -6], [3, 10]]
+    : [[7, 3], [-4, -8], [9, -5], [3, 8], [-7, -2], [-1, -14], [8, -10], [-6, 6], [10, 7]];
+  sparks.forEach(([dx, dy], k) => put(cx + dx, cy + dy, k % 2 ? 4 : 5));
+}
+
+/** Shadow: a dark core with smoke curling off it. */
+function shadowOrb(g: DrawCtx, hex: string): void {
+  const { tip, dir } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const f = g.rig.frame % 2;
+  const R = 5;
+  const cx = fine(tip.x + dir.x * 3.2);
+  const cy = fine(tip.y + dir.y * 3.2);
+  sphere(put, cx, cy, R, (d) => (d > 0.8 ? 3 : d > 0.2 ? 1 : 0));
+  for (let k = 0; k < 4; k++) {
+    const a0 = (k / 4) * Math.PI * 2 + f * 0.8;
+    for (let t = 0; t < 1; t += 0.06) {
+      const a = a0 + t * 2.2;
+      const r = R + 1 + t * 6;
+      put(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r * 0.8 - t * 4), t < 0.5 ? 2 : 3);
+    }
+  }
+}
+
+/** Spirit: a wisp with a trailing tail and two hollow eyes. */
+function spiritOrb(g: DrawCtx, hex: string): void {
+  const { tip, dir } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const f = g.rig.frame % 2;
+  const R = 5;
+  const cx = fine(tip.x + dir.x * 3.4);
+  const cy = fine(tip.y + dir.y * 3.4);
+  // the tail streams up and back, waving
+  for (let t = 0; t < 1; t += 0.03) {
+    const w = (1 - t) * 4;
+    const x = cx - t * 11 + Math.sin(t * 7 + f * 2) * 1.8;
+    const y = cy - t * 13;
+    for (let dx = -w; dx <= w; dx += 1) put(Math.round(x + dx), Math.round(y), t < 0.4 ? 4 : 3);
+  }
+  sphere(put, cx, cy, R, (d) => (d > 0.6 ? 5 : d > 0.1 ? 4 : 3));
+  put(cx - 1, cy - 1, 1);
+  put(cx + 2, cy - 1, 1);
+}
+
+/** Light: a small sun, its rays turning a little each frame. */
+function lightOrb(g: DrawCtx, hex: string): void {
+  const { tip, dir } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const f = g.rig.frame % 2;
+  const R = 3;
+  const cx = fine(tip.x + dir.x * 3.4);
+  const cy = fine(tip.y + dir.y * 3.4);
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + f * (Math.PI / 8);
+    const len = k % 2 ? 4 : 7;
+    for (let r = R + 1; r <= R + len; r++) put(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), r < R + len * 0.6 ? 4 : 3);
+  }
+  sphere(put, cx, cy, R + 1, (d) => (d > 0.2 ? 5 : 4));
+}
+
+/** Void: a black orb inside a bright rim, a tilted ring around it. */
+function voidOrb(g: DrawCtx, hex: string): void {
+  const { tip, dir } = fingertip(g);
+  const put = fxPainter(g, hex);
+  const f = g.rig.frame % 2;
+  const [r, gg, b] = hexToRgb(hex);
+  const dark = (0.299 * r + 0.587 * gg + 0.114 * b) / 255 < 0.18;
+  const rim = g.m(dark ? '#d02a48' : mixHex(hex, '#ffffff', 0.45), 'glow');
+  const core = g.m('#0b0710', 'flat');
+  const R = 5;
+  const cx = fine(tip.x + dir.x * 3.6);
+  const cy = fine(tip.y + dir.y * 3.6);
+  const ring = (front: boolean) => {
+    for (let t = 0; t < Math.PI * 2; t += 0.05) {
+      const y = cy + Math.round(Math.sin(t) * 2.4 - Math.cos(t) * 1.2);
+      if (Math.sin(t) > 0 !== front) continue;
+      put(Math.round(cx + Math.cos(t) * (R + 4)), y, 4, rim);
+    }
+  };
+  ring(false);
+  sphere(put, cx, cy, R, (d) => (d > 0.9 ? 3 : 1));
+  for (let y = cy - R; y <= cy + R; y++)
+    for (let x = cx - R; x <= cx + R; x++) {
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+      if (d <= R - 1) put(x, y, 3, core);
+      else if (d <= R + 0.3) put(x, y, 4, rim);
+    }
+  ring(true);
+  put(cx + (f ? 8 : -8), cy - 4, 5, rim);
+  put(cx + (f ? -7 : 6), cy + 5, 4, rim);
+}
+
+/** Grimoire I: the orb of the chakra's nature gathered before the pointing finger. */
+function natureOrb(g: DrawCtx, hex: string): void {
+  const nature = CHAKRA_CHOICES.find((c) => c.id === g.look.chakra.color)?.nature ?? 'Water';
+  const draw: Record<string, (g: DrawCtx, hex: string) => void> = {
+    Wind: windWhirl,
+    Fire: fireOrb,
+    Lightning: boltOrb,
+    Water: waterOrb,
+    Embers: emberOrb,
+    Shadow: shadowOrb,
+    Spirit: spiritOrb,
+    Light: lightOrb,
+    Void: voidOrb,
+  };
+  (draw[nature] ?? waterOrb)(g, hex);
+}
+
+type Stroke = { pts: [number, number][]; w: [number, number] };
+type Letter = { strokes: Stroke[]; dots: [number, number][] };
+
+const arcPts = (cx: number, cy: number, rx: number, ry: number, a0: number, a1: number, n = 24): [number, number][] =>
+  Array.from({ length: n + 1 }, (_, i) => {
+    const a = ((a0 + ((a1 - a0) * i) / n) * Math.PI) / 180;
+    return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)];
+  });
+
+/**
+ * Letters of an Arabic-style script, isolated forms (nun, ba, ayn, mim, qaf,
+ * hha, waw), as calligraphic pen strokes in an 18 x 18 box: each stroke
+ * swells or thins from its start width to its end width.
+ */
+const SCRIPT: Letter[] = [
+  { strokes: [{ pts: arcPts(8, 7, 6, 6.5, 0, 185), w: [1, 2.6] }], dots: [[8, 1.5]] },
+  { strokes: [{ pts: [[1, 6.5], ...arcPts(8.5, 6, 7.5, 4, 160, 20).slice(1)], w: [1, 2.2] }], dots: [[8.5, 13]] },
+  {
+    strokes: [
+      { pts: arcPts(8.4, 4.4, 3, 2.6, -40, -250), w: [1, 2] },
+      { pts: [[6, 6.6], [5, 8.6], ...arcPts(9, 12, 4.4, 4.6, 200, 20).slice(1)], w: [2.4, 1] },
+    ],
+    dots: [],
+  },
+  {
+    strokes: [
+      { pts: arcPts(10.2, 5.2, 2.6, 2.6, 0, 360), w: [1.6, 1.6] },
+      { pts: [[7.8, 6.4], [6.6, 10], [6.2, 16.5]], w: [2.4, 1] },
+    ],
+    dots: [],
+  },
+  {
+    strokes: [
+      { pts: arcPts(11.2, 5, 2.2, 2.2, 0, 360), w: [1.6, 1.6] },
+      { pts: arcPts(8, 8.6, 6, 6, -15, 190), w: [2.6, 1] },
+    ],
+    dots: [[9.6, 0.6], [13, 0.6]],
+  },
+  { strokes: [{ pts: [[2.2, 3], [11.8, 3.6], [7, 7], ...arcPts(9, 11.2, 5.4, 5, 220, 70).slice(1)], w: [1.4, 2.4] }], dots: [] },
+  {
+    strokes: [
+      { pts: arcPts(9.6, 4.6, 2.6, 2.6, 160, 520), w: [1.6, 1.6] },
+      { pts: arcPts(4.6, 6, 5.6, 9, -5, 115), w: [2.4, 1] },
+    ],
+    dots: [],
+  },
+];
+
+/**
+ * One letter, `s` fine pixels per box unit, centered on `c`: strokes in
+ * `ink` (darkest where they are thick) inside a thin ring of `halo`.
+ */
+function scriptLetter(L: Layer, letter: Letter, c: Vec, s: number, ink: number, halo: number, part: PartId, thick = 1): void {
+  const ox = fine(c.x) - 9 * s;
+  const oy = fine(c.y) - 9 * s;
+  const core = new Set<number>();
+  const disk = (x: number, y: number, r: number) => {
+    for (let yy = Math.floor(y - r - 1); yy <= Math.ceil(y + r + 1); yy++) {
+      for (let xx = Math.floor(x - r - 1); xx <= Math.ceil(x + r + 1); xx++) {
+        if (xx < 0 || yy < 0 || xx >= GRID || yy >= GRID) continue;
+        if ((xx + 0.5 - x) ** 2 + (yy + 0.5 - y) ** 2 <= r * r + 0.2) core.add(yy * GRID + xx);
+      }
+    }
+  };
+  for (const st of letter.strokes) {
+    const n = st.pts.length;
+    for (let i = 0; i < n - 1; i++) {
+      const [x0, y0] = st.pts[i];
+      const [x1, y1] = st.pts[i + 1];
+      for (let k = 0; k < 6; k++) {
+        const t = k / 6;
+        const w = st.w[0] + ((st.w[1] - st.w[0]) * (i + t)) / (n - 1);
+        disk(ox + (x0 + (x1 - x0) * t) * s, oy + (y0 + (y1 - y0) * t) * s, (w * s * thick) / 2);
+      }
+    }
+  }
+  for (const [x, y] of letter.dots) disk(ox + x * s, oy + y * s, 1.1 * s * thick);
+  const inCore = (i: number) => core.has(i);
+  for (const i of core) {
+    for (const j of [i - 1, i + 1, i - GRID, i + GRID]) {
+      if (!inCore(j)) L.set(j % GRID, (j / GRID) | 0, halo, 3, part, F_NO_OUTLINE);
+    }
+  }
+  for (const i of core) {
+    const deep = [i - 1, i + 1, i - GRID, i + GRID].every(inCore);
+    L.set(i % GRID, (i / GRID) | 0, ink, deep ? 1 : 2, part, F_NO_OUTLINE);
+  }
+}
+
+/**
+ * Arcane Script: gigantic letters of the spell's script whirl around the
+ * caster, the nearest ones in front, one behind; they change each frame.
+ */
+
+/**
+ * Grimoire II: great black letters of the spell's script appear before the
+ * caster, around the pointing hand, ringed in the chakra's glow; they change
+ * each frame.
+ */
+function scriptLetters(g: DrawCtx, hex: string): void {
+  const { tip } = fingertip(g);
+  const f = g.rig.frame % 2;
+  const T = g.L('top');
+  const ink = g.m('#1d1724', 'cloth');
+  const halo = g.m(hex, 'glow');
+  const pick = (k: number) => SCRIPT[(k + f * 3) % SCRIPT.length];
+  const inside = (c: Vec, s: number) => {
+    const m = (9 * s + 1) / RES;
+    return v(Math.min(GRID / RES - m, Math.max(m, c.x)), Math.min(GRID / RES - m, Math.max(m, c.y)));
+  };
+  // bold ink strokes, so the letters read black, in a 1px ring of glow
+  const letter = (k: number, c: Vec, s: number) => scriptLetter(T, pick(k), inside(c, s), s, ink, halo, 'held', 1.6);
+  letter(2, add(tip, v(-3, -12 + f * 0.5)), 1.45);
+  letter(4, add(tip, v(-2, 11 - f * 0.5)), 1.25);
+  letter(6, add(tip, v(6, 0)), 1.0);
 }
 
 /** A ball of energy with a bright core, a pulsing rim and a few sparks. */
@@ -111,6 +614,54 @@ function energyBall(g: DrawCtx, c: Vec, R: number, hex: string, rays: number, de
   }
 }
 
+/**
+ * Ocular cast: the eyes blaze in the chakra color, a streak of light trails
+ * back from the near eye, and energy surges up off the head like flame.
+ */
+function eyeSurge(g: DrawCtx, hex: string): void {
+  const M = g.L('head.mask');
+  const T = g.L('top');
+  const glow = g.m(hex, 'glow');
+  const f = g.rig.frame % 2;
+  // blazing eyes: the whites and the iris turn to light, the lash line stays dark
+  for (const c of eyeCells(g)) {
+    if (c.ch === 'd' || c.ch === 'i') M.set(c.x, c.y, glow, c.ch === 'd' ? 3 : 4, 'head', F_NO_OUTLINE);
+    else if (c.ch === 'w' || c.ch === 'h') M.set(c.x, c.y, glow, 5, 'head', F_NO_OUTLINE);
+  }
+  // flame surging up from each eye: the near one sweeps up and back, the far one rises off the cheek edge
+  const { nx, ny } = faceAnchor(g);
+  const flame = (x0: number, y0: number, len: number, back: number) => {
+    for (let k = 0; k < len; k++) {
+      const t = k / len;
+      const x = Math.round(x0 - back * (t * t * len * 0.7 + (k % 2) * 0.4 * f));
+      const y = y0 - k;
+      const sh = t < 0.3 ? 5 : t < 0.65 ? 4 : 3;
+      T.set(x, y, glow, sh, 'head', F_NO_OUTLINE);
+      if (t < 0.5) T.set(x - Math.sign(back || 1), y, glow, sh - 1, 'head', F_NO_OUTLINE);
+    }
+  };
+  flame(nx - 1, ny + 1, 10 + f * 2, 1.7);
+  flame(nx + 12, ny, 6 + f, -0.5);
+  // energy surging up all around the head, behind it
+  const B = g.L('hairBack');
+  const pen: Pen = { mat: glow, part: 'back', flags: F_NO_OUTLINE };
+  const h = g.rig.head;
+  for (let n = 0; n < 11; n++) {
+    const a = Math.PI * (0.95 + (n / 10) * 1.1);
+    const base = add(h, v(Math.cos(a) * 9.5, Math.sin(a) * 10 - 1.5));
+    const tall = 3 + ((n * 7 + f * 3) % 5) * 0.8;
+    for (let t = 0; t <= 1; t += 0.06) {
+      const w = (1 - t) * 1.2;
+      const p = add(base, v(-t * tall * 0.35 + Math.sin(t * 6 + n * 1.7 + f * 2) * 0.5, -t * tall));
+      for (let dx = -w; dx <= w; dx += 0.5) px(B, p.x + dx, p.y, pen, t < 0.3 ? 4 : t < 0.65 ? 3 : 2);
+    }
+  }
+  // sparks rising off it
+  for (const [dx, dy] of f ? [[-7, -17], [4, -19], [-1, -22]] : [[-5, -19], [6, -16], [0, -21]]) {
+    px(T, h.x + dx, h.y + dy, { ...pen, part: 'head' }, 5);
+  }
+}
+
 /** Draws what the hands hold for the current cast pose, if any. */
 export function drawCastFx(g: DrawCtx): void {
   const pose = g.rig.pose;
@@ -122,6 +673,11 @@ export function drawCastFx(g: DrawCtx): void {
       break;
     case 'castBook':
       grimoire(g, hex);
+      natureOrb(g, hex);
+      break;
+    case 'castScript':
+      grimoire(g, hex);
+      scriptLetters(g, hex);
       break;
     case 'castSphere':
       drawSpiralOrb(g, { core: hex, swirl: light });
@@ -135,6 +691,9 @@ export function drawCastFx(g: DrawCtx): void {
       energyBall(g, add(scale(add(r.handN, r.handF), 0.5), v(0.4, 0)), 2.9, hex, 6);
       break;
     }
+    case 'castEye':
+      eyeSurge(g, hex);
+      break;
     case 'castFlash': {
       // in front of both palms, clear of the fingers
       const r = g.rig;

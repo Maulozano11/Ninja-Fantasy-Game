@@ -365,6 +365,42 @@ const HAND_OPEN: PixelTemplate = {
     '..o.o.o.....',
   ],
 };
+/** Fist with the index finger out (pointing), the finger on the thumb side. */
+const HAND_POINT: PixelTemplate = {
+  pivot: [4, 0],
+  rows: [
+    '..obbbo...',
+    '.osbbbbo..',
+    'osbbblbso.',
+    'olbbbbbDo.',
+    'obxbxbbbo.',
+    'oDsDsbbso.',
+    '.oDoDbbso.',
+    '..ooobbo..',
+    '....obbo..',
+    '....olbo..',
+    '.....oo...',
+  ],
+};
+/**
+ * A hand under something it carries, fingers up and curled over its lower
+ * edge (a book held open at the side). Stamped upright, the wrist at the
+ * bottom, whatever the forearm angle.
+ */
+const HAND_CRADLE: PixelTemplate = {
+  pivot: [4, 8],
+  rows: [
+    '.o.o.o.o.',
+    'obobobobo',
+    'obDbDbDbo',
+    'osDsDsDso',
+    'olbbbbbso',
+    'osbbbbbso',
+    '.osbbbso.',
+    '..osbso..',
+    '..obbbo..',
+  ],
+};
 /** Small relaxed hand, fingers loosely curled. */
 const HAND_RELAXED: PixelTemplate = {
   pivot: [4, 0],
@@ -412,9 +448,15 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
   const tx = Math.cos(tr);
   const ty = Math.sin(tr);
   const flipX = tx < -0.25 || (Math.abs(tx) <= 0.25 && ty > 0);
+  if (j.shape === 'cradle') {
+    stampTemplate(L, HAND_CRADLE, j.wrist, 0, pal, pen.part, { flags });
+    return;
+  }
   const t =
     j.shape === 'open'
       ? HAND_OPEN
+      : j.shape === 'point'
+        ? HAND_POINT
       : j.shape === 'relaxed' || j.shape === 'sign'
         ? HAND_RELAXED
         : holding

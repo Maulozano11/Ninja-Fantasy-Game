@@ -274,6 +274,19 @@ function eyeRow(row: string, r: number, eyes: { near: string[]; far: string[] })
 }
 
 /**
+ * The eye pixels for the character's eye shape, in fine pixels: each with its
+ * template letter ('L' lash, 'w'/'h' white, 'd'/'i' iris) and which eye.
+ */
+export function eyeCells(g: DrawCtx): { x: number; y: number; ch: string; near: boolean }[] {
+  const { nx, ny } = faceAnchor(g);
+  const eyes = EYE_ROWS[g.look.eyeShape || 'standard'] || EYE_ROWS.standard;
+  const out: { x: number; y: number; ch: string; near: boolean }[] = [];
+  eyes.near.forEach((row, r) => [...row].forEach((ch, c) => out.push({ x: nx + c, y: ny + r, ch, near: true })));
+  eyes.far.forEach((row, r) => [...row].forEach((ch, c) => out.push({ x: nx + 9 + c, y: ny + r, ch, near: false })));
+  return out;
+}
+
+/**
  * Fine-pixel indices covered by the face templates (from the lash row down:
  * eyes, cheeks, nose, mouth, jaw). Used to keep certain hairstyles' front
  * hair off the face (see compose.ts). The first `skipBack` columns of the

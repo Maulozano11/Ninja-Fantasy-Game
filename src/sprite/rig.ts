@@ -138,7 +138,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
  * fist: closed fist · grip: around a weapon handle, or a fist when empty-handed ·
  * hold: around a weapon handle, or relaxed when empty-handed · relaxed · open · sign.
  */
-export type HandShape = 'relaxed' | 'fist' | 'open' | 'sign' | 'grip' | 'hold';
+export type HandShape = 'relaxed' | 'fist' | 'open' | 'sign' | 'grip' | 'hold' | 'point' | 'cradle';
 
 /** Hand targets: relative to a landmark, in arm-length units ('arm') or pixels ('px'). */
 interface HandTarget {
@@ -166,6 +166,8 @@ interface PoseFrame {
   jitter?: number;
   /** The far hand works in front of the body (hand signs, a two-handed charge): draw it over the torso. */
   farHandFront?: boolean;
+  /** -1 bends the near elbow down instead of out (an arm carrying something at the side). */
+  bendN?: 1 | -1;
 }
 
 const arm = (x: number, y: number): HandTarget => ({ from: 'shoulder', x, y, units: 'arm' });
@@ -185,7 +187,7 @@ const IDLE: PoseFrame = {
 };
 
 /** Rig poses: the sprite poses plus one cast pose per cast style ('cast' itself is the runes pose). */
-export type RigPose = SpritePose | 'castBook' | 'castSphere' | 'castLightning' | 'castWave' | 'castFlash';
+export type RigPose = SpritePose | 'castBook' | 'castSphere' | 'castLightning' | 'castWave' | 'castFlash' | 'castEye' | 'castScript';
 
 const CAST_POSES: Record<CastStyle, RigPose> = {
   signs: 'handsigns',
@@ -195,12 +197,20 @@ const CAST_POSES: Record<CastStyle, RigPose> = {
   lightning: 'castLightning',
   wave: 'castWave',
   flash: 'castFlash',
+  eye: 'castEye',
+  script: 'castScript',
 };
 
 /** The rig pose that plays for a sprite pose: 'cast' turns into the chosen cast style's pose. */
 export function rigPoseFor(pose: SpritePose, style: CastStyle = 'runes'): RigPose {
   return pose === 'cast' ? CAST_POSES[style] ?? 'cast' : pose;
 }
+
+/** Both grimoire styles: the open book carried at the side (elbow down), the far arm straight out pointing. */
+const GRIMOIRE_POSE: PoseFrame[] = [
+  { lean: 0, handN: arm(-0.55, 0.76), bendN: -1, handF: arm(1.0, -0.06), footN: v(-0.34, 0.96), footF: v(0.36, 0.96), shapeN: 'cradle', shapeF: 'point' },
+  { lean: 0, chestDy: 1, handN: arm(-0.55, 0.78), bendN: -1, handF: arm(1.0, -0.04), footN: v(-0.34, 0.96), footF: v(0.36, 0.96), shapeN: 'cradle', shapeF: 'point' },
+];
 
 export const POSES: Record<RigPose, PoseFrame[]> = {
   idle: [IDLE, IDLE, { ...IDLE, chestDy: 1 }, { ...IDLE, chestDy: 1 }],
@@ -307,10 +317,8 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
     },
   ],
   // A grimoire held open before the chest, the free hand raised to cast.
-  castBook: [
-    { lean: 2, handN: chest(3, 3), handF: arm(0.82, -0.32), footN: v(-0.2, 0.97), footF: v(0.24, 0.97), shapeN: 'open', shapeF: 'open' },
-    { lean: 2, chestDy: 1, handN: chest(3, 3.6), handF: arm(0.84, -0.38), footN: v(-0.2, 0.97), footF: v(0.24, 0.97), shapeN: 'open', shapeF: 'open' },
-  ],
+  castBook: GRIMOIRE_POSE,
+  castScript: GRIMOIRE_POSE,
   // A spinning sphere held out in the near palm.
   castSphere: [
     { lean: 6, handN: arm(0.62, 0.22), handF: arm(0.26, 0.8), footN: v(-0.3, 0.95), footF: v(0.32, 0.95), shapeN: 'open', shapeF: 'fist' },
@@ -330,6 +338,11 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
   castFlash: [
     { lean: 4, handN: arm(0.96, 0.04), handF: arm(0.8, -0.2), footN: v(-0.32, 0.95), footF: v(0.34, 0.95), shapeN: 'open', shapeF: 'open' },
     { lean: 5, jitter: 1, handN: arm(0.97, 0.06), handF: arm(0.81, -0.18), footN: v(-0.33, 0.95), footF: v(0.34, 0.95), shapeN: 'open', shapeF: 'open' },
+  ],
+  // Standing tall, chin up, a one-handed seal before the chest while the eyes blaze.
+  castEye: [
+    { lean: -3, handN: chest(2, 1), handF: arm(0.3, 0.88), footN: v(-0.22, 0.97), footF: v(0.26, 0.97), shapeN: 'sign', shapeF: 'fist' },
+    { lean: -3, chestDy: 1, jitter: 1, handN: chest(2, 1.4), handF: arm(0.3, 0.89), footN: v(-0.22, 0.97), footF: v(0.26, 0.97), shapeN: 'sign', shapeF: 'fist' },
   ],
   charge: [
     {
@@ -444,16 +457,16 @@ export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
     if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
     return add(shoulder, scale(v(t.x, t.y), armLen));
   };
-  const solveArm = (shoulder: Vec, t: HandTarget) => {
+  const solveArm = (shoulder: Vec, t: HandTarget, bend: 1 | -1 = 1) => {
     const target = resolve(t, shoulder);
     // Aim the wrist a little short of the target so the hand lands on it.
     const toT = sub(target, shoulder);
     const wristTarget = sub(target, scale(norm(toT), bp.handR * 0.8));
-    const r = solve2(shoulder, wristTarget, bp.upperArm, bp.forearm, 1);
+    const r = solve2(shoulder, wristTarget, bp.upperArm, bp.forearm, bend);
     const dir = norm(sub(r.end, r.mid));
     return { elbow: r.mid, wrist: r.end, hand: add(r.end, scale(dir, bp.handR * 0.9)) };
   };
-  const aN = solveArm(shoulderN, f.handN);
+  const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1);
   const aF = solveArm(shoulderF, f.handF);
 
   const headY = neck.y - 5.9 * bp.headScale + (f.headDy || 0);

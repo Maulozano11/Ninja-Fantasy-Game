@@ -52,7 +52,7 @@ export function poleAngle(g: DrawCtx): number {
  * Hand signs, the grimoire and the charged casts need both hands: held weapons
  * are stowed meanwhile (see items/accessories.ts). The runes cast keeps them.
  */
-const BUSY = new Set(['handsigns', 'castBook', 'castSphere', 'castLightning', 'castWave', 'castFlash']);
+const BUSY = new Set(['handsigns', 'castBook', 'castSphere', 'castLightning', 'castWave', 'castFlash', 'castEye', 'castScript']);
 export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose);
 
 /** Angle of the handle the near hand wraps, or null when it holds nothing with a handle. */

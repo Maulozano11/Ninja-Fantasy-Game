@@ -95,6 +95,22 @@ elements.
 
 - A forest with a river, a bridge, hills, bushes and a clearing.
 
+## Mockups
+
+First map (forest, river, bridge, hill camp), approved as the visual direction
+when the owner signs it off:
+
+- `mockups/battle-stealth.png`: stealth phase (party hidden in bushes, vision
+  cones, suspicion meter, interactable tags).
+- `mockups/battle-combat.png`: a combat turn (initiative bar, reachable area
+  without a grid, path in meters, cone preview with hit chances and cover,
+  last roll, action bar, ability tooltip).
+
+Art direction from the owner: high-quality painted backgrounds behind the
+battlefield; everything destructible or interactable (trees, bushes, rocks,
+barrels, crates, campfire, tent, lanterns, signposts, fences) is a 16-bit
+sprite, plus ambient life (birds, butterflies, fireflies, smoke, lily pads).
+
 ## Open questions
 
 - Multiplayer: online (each player on their own device) or local (one screen,

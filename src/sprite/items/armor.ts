@@ -2152,18 +2152,18 @@ export const ARMOR_ITEMS: ItemDef[] = [
       tfill(g, L, 0.6, cloth, (_lx, ly, t) => (ly < 1.6 ? null : t > 0.86 ? 2 : litT(t) ? 3 : 2), { top: top - 0.2, bottom: 1.6 });
       sleeves(g, cloth);
       // the breastplate, red enamel along its neckline and its lower edge
-      fittedPlate(g, L, pl, { top: top - 1.0, bot: breastBot, inflate: 0.8, rimTop: red, rimBot: red });
-      // two slim plackart lames following the waist
-      waistLames(g, L, pl, breastBot - FP * 0.5, 2.0, 2, undefined, 0.6);
-      tstud(g, L, 1.1, breastBot - 1.0, pl, 4);
+      fittedPlate(g, L, pl, { top: top - 1.0, bot: breastBot, inflate: 0.7, rimTop: red, rimBot: red });
+      // the waist shows between plate and faulds: the white doublet cinched by a slim red sash
+      tfill(g, L, 0.35, red, (_lx, ly, t) => (ly > 3.9 || ly < 2.4 ? null : 3.9 - ly < FP ? (litT(t) ? 4 : 3) : ly - 2.4 < FP ? 1 : litT(t) ? 3 : 2), { top: 3.9, bottom: 2.4 });
+      tstud(g, L, 1.3, 3.15, pl, 4);
       collar(g, pl, 1.3, 0.75, red);
       for (const s of SIDES) {
-        pauldron(g, s, pl, { top: 2.1, capEnd: 0.6, step: 1.15, n: 2, half: b.armR[0] + 0.85, flare: 0.2, curve: 0.7, out: 0.45, edge: red });
+        pauldron(g, s, pl, { top: 1.8, capEnd: 0.5, step: 1.0, n: 2, half: b.armR[0] + 0.7, flare: 0.15, curve: 0.6, out: 0.35, edge: red });
         const f = hangFrame(g, s, 0.55);
         stud(g.L(armDepth(s, 'armor')), add(f.o, add(scale(f.u, -0.8), scale(f.w, 0.6))), onLimb(pl, s, 'upperArm'), 4);
       }
-      bracer(g, pl, { from: 0.12, to: 0.95, grow: 0.45, rim: red, lines: [0.55], cop: true });
-      greaves(g, pl, { from: 0.18, to: 0.94, grow: 0.5, rim: red });
+      bracer(g, pl, { from: 0.16, to: 0.95, grow: 0.35, rim: red, lines: [0.58], cop: true });
+      greaves(g, pl, { from: 0.18, to: 0.94, grow: 0.35, rim: red });
       // pleated white skirt with a red hem, two rows of short faulds over it
       skirt(g, (SL, stop) => {
         const [x0, x1] = hipRange(g, 0.35);
@@ -2217,17 +2217,17 @@ export const ARMOR_ITEMS: ItemDef[] = [
       tfill(g, L, 0.6, gown, (_lx, ly, t) => (ly < 1.6 ? null : t > 0.86 ? 2 : litT(t) ? 3 : 2), { top: top - 0.2, bottom: 1.6 });
       sleeves(g, gown, 0.55);
       // a full cuirass to the waist, gilded at its edges, down the middle and under the bust
-      fittedPlate(g, L, pl, { top: top - 1.6, bot: 3.4, inflate: 0.95, rimTop: gold, center: gold, under: gold });
+      fittedPlate(g, L, pl, { top: top - 1.6, bot: 3.0, inflate: 0.75, rimTop: gold, center: gold, under: gold });
       tstud(g, L, -b.chestHalf * 0.55, top - 2.8, gold, 4);
       tstud(g, L, 1.1 + 2.6, 4.4, gold, 3);
       // faulds: two lames over the hips, each with a gold edge
-      waistLames(g, L, pl, 3.4, 1.0, 2, undefined, 0.8);
+      waistLames(g, L, pl, 3.0, 1.2, 2, undefined, 0.55);
       collar(g, pl, 2.2, 1.25, gold);
       for (const s of SIDES) {
-        pauldron(g, s, pl, { top: 2.8, capEnd: 0.7, step: 1.3, n: 3, half: b.armR[0] + 1.3, flare: 0.3, curve: 0.9, out: 0.6, edge: gold, rivet: gold });
+        pauldron(g, s, pl, { top: 2.3, capEnd: 0.6, step: 1.15, n: 2, half: b.armR[0] + 1.0, flare: 0.22, curve: 0.75, out: 0.45, edge: gold, rivet: gold });
       }
-      bracer(g, pl, { from: 0.06, to: 0.97, grow: 0.65, rim: gold, lines: [0.48], cop: true });
-      greaves(g, pl, { from: 0.14, to: 0.96, grow: 0.6, rim: gold });
+      bracer(g, pl, { from: 0.08, to: 0.97, grow: 0.5, rim: gold, lines: [0.48], cop: true });
+      greaves(g, pl, { from: 0.14, to: 0.96, grow: 0.45, rim: gold });
       // the blue gown to mid-shin, three rows of tassets over it
       skirt(g, (SL, stop) => {
         const [x0, x1] = hipRange(g, 0.35);
@@ -2250,7 +2250,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
           0.9,
           0.06,
         );
-        plateRows(g, SL, pc, gc, x0 + 0.2, x1 - 0.1, stop(3.0), [0.5, 0.3], 4);
+        plateRows(g, SL, pc, gc, x0 + 0.6, x1 - 0.4, stop(3.0), [0.46, 0.28], 4);
       });
     },
   },

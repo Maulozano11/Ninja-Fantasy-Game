@@ -42,7 +42,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 
 ## 4. Face (fixed)
 
-The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris (a dark top row over a mid-tone row, never the brightest tone, so the gaze stays focused), a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. On the near side the cheek drops straight for only two rows below the eye, then the jaw tapers diagonally into the chin, so the lower face stays small (a long, flat jaw line reads as a heavy, boxy jaw). It recolors by skin tone and eye color, and has female and bulky variants and four eye shapes. Don't change it without comparing at 10x against the reference.
+The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris (a dark top row over a mid-tone row, never the brightest tone, so the gaze stays focused), a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. On the near side the cheek drops straight for only two rows below the eye, then the jaw tapers diagonally into the chin, so the lower face stays small (a long, flat jaw line reads as a heavy, boxy jaw). Behind the jaw the nape (back of the neck) runs from just inside the skull's back edge down to the shoulders, so short or swept-back hair never leaves a gap there. It recolors by skin tone and eye color, and has female and bulky variants and four eye shapes. Don't change it without comparing at 10x against the reference.
 
 ## 5. Skin, arms, hands and feet
 

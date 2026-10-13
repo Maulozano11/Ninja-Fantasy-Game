@@ -37,6 +37,17 @@ export function drawBody(g: DrawCtx): void {
   fillTorso(g, torso, 0, skin('torso'));
   const neckTop = v(r.head.x + 0.4 * b.headScale, r.head.y + 4 * b.headScale);
   capsule(torso, r.neck, neckTop, b.neckW, b.neckW * 0.95, skin('torso'), (x) => (x < r.neck.x - 0.6 ? 3 : 2));
+  // Nape: the back of the neck, from under the skull (just inside its back
+  // edge) down to the shoulders. It fills the gap behind the tapered jaw when
+  // the hair doesn't hang there; hair drawn over the head still covers it.
+  const fa = faceAnchor(g);
+  const napeX = (fa.nx - 5.5) / RES;
+  poly(
+    torso,
+    [v(napeX, (fa.ny + 1) / RES), v(napeX, r.neck.y + 0.2), v(napeX - 0.8, r.neck.y + 1.2), v(r.neck.x, r.neck.y + 1.2), v(neckTop.x, (fa.ny + 1) / RES)],
+    skin('torso'),
+    (x) => (x < napeX + 1 ? 3 : 2),
+  );
 
   // Simple form shading only (no muscle lines): a soft chest shadow and collarbone light.
   const T = r.T;

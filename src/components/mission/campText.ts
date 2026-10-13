@@ -32,6 +32,7 @@ export const T = strings({
 
   // header and scene
   campHeader: { en: 'Camp {n} · {zone}', es: 'Campamento {n} · {zone}' },
+  campSteps: { en: 'Camp steps', es: 'Pasos del campamento' },
   dangerAmbush: { en: 'Ambush!', es: '¡Emboscada!' },
   dangerQuiet: { en: 'A quiet night', es: 'Una noche tranquila' },
   dangerZone: { en: '{n} % in this zone', es: '{n} % en esta zona' },

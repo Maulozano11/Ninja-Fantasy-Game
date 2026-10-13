@@ -6,6 +6,7 @@ import { isUnconscious } from '../../rules/ninja';
 import { ShinobiSpriteCanvas } from '../ShinobiSpriteCanvas';
 import { WorldSpriteView, worldSpriteSpec } from '../world/WorldSpriteView';
 import { useLang } from '../../i18n';
+import { Gauge } from '../ui/Ornate';
 import { T } from './campText';
 
 // The camp at night, drawn at the world scale (1 m = 57 px) and scaled to the panel's width.
@@ -114,10 +115,11 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
   const fireAnim = !lit ? 'out' : asleep ? 'smoldering' : 'burning';
   const warm = dawn ? 0.95 : !lit ? 0.62 : asleep ? 0.7 : fire === 'bonfire' ? 1 : 0.9;
   const shade = dawn ? 0.6 : 1;
-  const moonRing = danger >= 40 ? 'ring-rose-500/70' : danger >= 20 ? 'ring-amber-400/60' : 'ring-slate-300/40';
+  const gaugeSize = width < 560 ? 56 : width < 900 ? 68 : 80;
 
+  // The bronze frame around the scene is drawn by the screen that shows it (an OrnateFrame).
   return (
-    <div ref={ref} className="relative w-full overflow-hidden rounded-2xl border border-slate-800 bg-[#070b1a]" style={{ height }}>
+    <div ref={ref} className="relative w-full overflow-hidden rounded-[3px] bg-[#070b1a]" style={{ height }}>
       <div className="absolute origin-top-left" style={{ left, top: height - H * scale, width: W, height: H, transform: `scale(${scale})` }}>
         {/* sky and stars */}
         <div
@@ -204,7 +206,13 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
                 />
               )}
               <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 whitespace-nowrap" style={{ top: 124 }}>
-                <span className={`rounded px-1 text-[9px] font-bold leading-3 ${selected === m.id ? 'bg-cyan-400 text-slate-950' : 'bg-slate-950/80 text-slate-200'}`}>{m.name}</span>
+                <span
+                  className={`rounded-[3px] border px-1 text-[9px] font-bold leading-3 ${
+                    selected === m.id ? 'border-[#f0cd78] bg-[#1b2a52]/95 text-[#ffe9b0] shadow-[0_0_6px_rgba(240,205,120,0.6)]' : 'border-[#a17d46]/70 bg-[#0a1226]/85 text-slate-100'
+                  }`}
+                >
+                  {m.name}
+                </span>
                 {sticksUsed && <IncenseSticks used={sticksUsed[m.id] ?? 0} compact />}
               </div>
             </div>
@@ -212,20 +220,17 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
         })}
       </div>
 
-      {/* the moon shows the night danger */}
-      <div className="absolute right-3 top-3 flex items-center gap-2.5" style={{ zIndex: 600 }}>
-        <div className="text-right leading-tight">
-          <div className="text-[9px] uppercase tracking-[0.18em] text-slate-400">{T('nightDanger')}</div>
-          {dangerLabel && <div className="text-[10px] text-slate-300">{dangerLabel}</div>}
-        </div>
-        <div
-          className={`grid place-items-center w-14 h-14 rounded-full ring-4 ${moonRing} text-slate-900 font-black text-base tabular-nums`}
-          style={{ background: 'radial-gradient(circle at 35% 30%, #f8fafc, #cbd5e1 60%, #94a3b8)', boxShadow: '0 0 28px rgba(226,232,240,0.45)' }}
-          title={T('moonTitle')}
-        >
-          {danger}%
-        </div>
-      </div>
+      {/* the night danger, on a bronze dial */}
+      <Gauge
+        className="absolute right-2 top-2 sm:right-4 sm:top-3"
+        style={{ zIndex: 600 }}
+        value={danger}
+        label={T('nightDanger')}
+        sub={dangerLabel}
+        title={T('moonTitle')}
+        size={gaugeSize}
+        tone={danger >= 40 ? 'alarm' : 'calm'}
+      />
     </div>
   );
 }

@@ -661,6 +661,227 @@ function lamRow(d: number, rh: number): 'rim' | 'plate' | 'lace' {
 /** Lace stitches every 3 fine pixels across. */
 const laceCol = (x: number) => mod(Math.floor(x * RES), 3) === 0;
 
+// --- fitted plate for the female bodies --------------------------------------
+
+interface FittedOpts {
+  /** Local y of the plate's top and lower edges. */
+  top: number;
+  bot: number;
+  inflate: number;
+  /** Trim along the top edge, the lower edge, down the middle and under the bust (else plain metal). */
+  rimTop?: Pen;
+  rimBot?: Pen;
+  center?: Pen;
+  under?: Pen;
+}
+
+/**
+ * A breastplate shaped to the bust: two rounded forms with crisp undercurves
+ * and a valley between them, a soft ridge down to the waist, polished metal
+ * lit from the upper left. Optional trims on its edges.
+ */
+function fittedPlate(g: DrawCtx, L: Layer, pen: Pen, o: FittedOpts): void {
+  const b = g.bp;
+  const ct = chestTop(g);
+  const cx = 1.2;
+  const by = ct - 4.4 - b.bust * 0.3;
+  const forms: [number, number, number, number, number][] = [
+    [cx - 2.3, by, 2.5, 2.1, 1.1 + b.bust * 0.4],
+    [cx + 2.1, by, 1.9, 2.0, 0.95 + b.bust * 0.4],
+  ];
+  const h = (x: number, y: number) => {
+    let sum = 0;
+    for (const [fx, fy, rx, ry, a] of forms) sum += a * Math.exp(-(((x - fx) / rx) ** 2 + ((y - fy) / ry) ** 2) * 1.6);
+    return sum;
+  };
+  const q = (d: number) => (d > 0.9 ? 5 : d > 0.64 ? 4 : d > 0.36 ? 3 : d > -0.14 ? 2 : 1);
+  /** The crease under each form (local y up: lowest under its middle). */
+  const under = (lx: number, ly: number) =>
+    forms.some(([fx, fy, rx, ry]) => {
+      const u = (lx - fx) / rx;
+      return Math.abs(u) < 0.95 && Math.abs(ly - (fy - ry * 0.95 + 1.0 * u * u)) < FP * 0.55;
+    });
+  const isTrim = (lx: number, ly: number) =>
+    (o.rimTop && o.top - ly < FP * 1.5) ||
+    (o.rimBot && ly - o.bot < FP * 1.5) ||
+    (o.center && Math.abs(lx - (cx - 0.1)) < FP * 0.6 && ly < by - 1.2) ||
+    (o.under && under(lx, ly));
+  tfill(
+    g,
+    L,
+    o.inflate,
+    pen,
+    (lx, ly, t) => {
+      if (ly > o.top || ly < o.bot) return null;
+      if (isTrim(lx, ly)) return null;
+      if (!o.rimBot && ly - o.bot < FP) return 1;
+      if (!o.rimTop && o.top - ly < FP) return litT(t) ? 4 : 3;
+      if (!o.under && under(lx, ly)) return 1;
+      // the valley between the forms, then a soft ridge down to the waist
+      if (Math.abs(lx - (cx - 0.1)) < FP * 0.5) return ly > by - 1.2 ? 1 : litT(t) ? 4 : 3;
+      const th = (t - 0.36) * 2.0;
+      const e = 0.2;
+      const nx = Math.sin(th) - ((h(lx + e, ly) - h(lx - e, ly)) / (2 * e)) * 2.4;
+      const ny = ((h(lx, ly + e) - h(lx, ly - e)) / (2 * e)) * 2.4 - (ly < 4 ? (4 - ly) * 0.2 : 0);
+      const nz = Math.cos(th) + 0.1;
+      return q((nx * LIGHT3[0] + ny * LIGHT3[1] + nz * LIGHT3[2]) / (Math.hypot(nx, ny, nz) || 1));
+    },
+    { top: o.top, bottom: o.bot },
+  );
+  for (const tp of [o.rimTop, o.rimBot, o.center, o.under]) {
+    if (!tp) continue;
+    tfill(
+      g,
+      L,
+      o.inflate,
+      tp,
+      (lx, ly, t) => {
+        if (ly > o.top || ly < o.bot) return null;
+        const hit =
+          (tp === o.rimTop && o.top - ly < FP * 1.5) ||
+          (tp === o.rimBot && ly - o.bot < FP * 1.5) ||
+          (tp === o.center && Math.abs(lx - (cx - 0.1)) < FP * 0.6 && ly < by - 1.2) ||
+          (tp === o.under && under(lx, ly));
+        if (!hit) return null;
+        return litT(t) ? (tp === o.rimTop && o.top - ly < FP * 0.8 ? 4 : 3) : 2;
+      },
+      { top: o.top, bottom: o.bot },
+    );
+  }
+}
+
+/** Overlapping lames around the waist (plackart, faulds), each with a rim at its lower edge if `rimPen`. */
+function waistLames(g: DrawCtx, L: Layer, pen: Pen, top: number, bot: number, n: number, rimPen?: Pen, inflate = 1.0): void {
+  const h = (top - bot) / n;
+  tfill(
+    g,
+    L,
+    inflate,
+    pen,
+    (_lx, ly, t) => {
+      if (ly > top || ly < bot) return null;
+      const d = mod(ly - bot, h);
+      if (rimPen && d < FP * 1.2) return null;
+      return plate(d, h, litT(t));
+    },
+    { top, bottom: bot },
+  );
+  if (rimPen)
+    tfill(g, L, inflate, rimPen, (_lx, ly, t) => (ly >= bot && ly <= top && mod(ly - bot, h) < FP * 1.2 ? (litT(t) ? 3 : 2) : null), { top, bottom: bot });
+}
+
+/** Sleeves under the armor (arm cloth depth), the whole arm down to the wrist. */
+function sleeves(g: DrawCtx, pen: Pen, grow = 0.45): void {
+  const R = g.bp.armR;
+  for (const s of SIDES) {
+    const A = g.L(armDepth(s, 'cloth'));
+    for (const seg of [0, 1] as const) {
+      const f = armFrame(g, s, seg);
+      const p = onLimb(pen, s, seg ? 'forearm' : 'upperArm');
+      const rad = (a: number) => {
+        const t = clamp(a / Math.max(0.01, f.len), 0, 1);
+        return (seg ? R[2] + (R[3] - R[2]) * t : R[0] + (R[1] - R[0]) * t) + grow;
+      };
+      lfill(A, f, p, R[0] + 1.5, (a, bb) => {
+        if (a < (seg ? -0.6 : -1.2) || a > f.len + (seg ? -0.3 : 0.6)) return null;
+        const rr = rad(a);
+        if (Math.abs(bb) > rr) return null;
+        return Math.min(3, dotShade(limbDot(f, bb, rr, -0.2)));
+      });
+    }
+  }
+}
+
+interface GreaveOpts {
+  /** Range down the shin, 0 = knee, 1 = ankle. */
+  from: number;
+  to: number;
+  grow: number;
+  rim?: Pen;
+}
+
+/** Shin plates with a crest down the front and a domed knee cop, rims on both ends. */
+function greaves(g: DrawCtx, pen: Pen, o: GreaveOpts): void {
+  const b = g.bp;
+  for (const s of SIDES) {
+    const A = g.L(legDepth(s, 'armor'));
+    const f = legFrame(g, s, 1);
+    const p = onLimb(pen, s, 'shin');
+    const rp = o.rim ? onLimb(o.rim, s, 'shin') : null;
+    const rad = (t: number) => (b.legR[2] + (b.legR[3] - b.legR[2]) * t) * 0.92 + o.grow;
+    const crest = limbDot(f, 1, 2) > limbDot(f, -1, 2) ? 1 : -1;
+    lfill(A, f, p, b.legR[2] + o.grow + 2, (a, bb) => {
+      const t = a / Math.max(0.01, f.len);
+      if (t < o.from || t > o.to) return null;
+      const rr = rad(t);
+      if (Math.abs(bb) > rr) return null;
+      if (rp && ((t - o.from) * f.len < FP * 1.5 || (o.to - t) * f.len < FP * 1.5)) return null;
+      const d = limbDot(f, bb, rr, -0.1);
+      if (Math.abs(bb - crest * rr * 0.3) < FP * 0.5) return d > 0.2 ? 4 : 3; // crest
+      const edge = rr - Math.abs(bb);
+      if (d < -0.08 && edge >= FP && edge < FP * 2) return 2; // reflected light
+      return Math.min(3, dotShade(d));
+    });
+    if (rp)
+      lfill(A, f, rp, b.legR[2] + o.grow + 2, (a, bb) => {
+        const t = a / Math.max(0.01, f.len);
+        if (t < o.from || t > o.to) return null;
+        const rr = rad(t) + 0.1;
+        if (Math.abs(bb) > rr) return null;
+        if ((t - o.from) * f.len < FP * 1.5 || (o.to - t) * f.len < FP * 1.5) return limbLit(f, bb, rr) ? 4 : 2;
+        return null;
+      });
+    // knee cop: a small dome with a lit crown and a dark lower rim
+    const c = add(f.o, scale(f.w, 0.25));
+    const rr = b.legR[1] + o.grow * 0.5 + 0.1;
+    ellipse(A, c.x, c.y, rr, rr * 0.92, p, (x, y) => {
+      const dx = (x + 0.5 - c.x) / rr;
+      const dy = (y + 0.5 - c.y) / (rr * 0.92);
+      const r2 = dx * dx + dy * dy;
+      if (r2 > 0.72 && dy > 0.2) return 1;
+      return lit3(dx, dy, Math.sqrt(Math.max(0, 1 - r2)));
+    });
+  }
+}
+
+/**
+ * Rows of plates hanging from the waist over a skirt (faulds and tassets):
+ * each row a band of plates split into columns, lit top rim, darker lower
+ * half, its lower edge in `rimPen`. Rows are given longest first.
+ */
+function plateRows(g: DrawCtx, SL: Layer, plateHex: string, rimHex: string, x0: number, x1: number, ytop: number, rows: number[], cols: number): void {
+  const xs = spread(x0, x1, cols);
+  const pp = (w: number) => armorPen(g, plateHex, 'metal', thighPart(w));
+  // only the lowest row gets the trim; the upper rows end in a plain dark edge
+  const rp = (w: number, k: number) => armorPen(g, k === rows[0] ? rimHex : plateHex, 'metal', thighPart(w));
+  for (const k of rows) {
+    skirtCols(
+      g,
+      SL,
+      pp,
+      xs,
+      ytop,
+      k,
+      (c) => {
+        const fromBot = (1 - c.down) * c.ch;
+        const fromR = (1 - c.across) * c.cw;
+        const fromL = c.across * c.cw;
+        if (fromBot < FP * 1.4) return null; // rim
+        const lt = c.u < 0.5;
+        if (fromR < FP) return 1; // seam to the next plate
+        if (fromL < FP) return lt ? 4 : 3; // its lit edge
+        const band = c.down * c.ch;
+        if (band < FP * 1.2) return lt ? 4 : 3; // top rim
+        return c.down > 0.55 ? (lt ? 2 : 1) : base(lt);
+      },
+      0.6,
+      0.06,
+    );
+    const trim = k === rows[0];
+    skirtCols(g, SL, (w) => rp(w, k), xs, ytop, k, (c) => ((1 - c.down) * c.ch < FP * 1.4 ? (trim ? (c.u < 0.5 ? 4 : 3) : 1) : null), 0.6, 0.06);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Armor
 // ---------------------------------------------------------------------------
@@ -1905,6 +2126,131 @@ export const ARMOR_ITEMS: ItemDef[] = [
           );
           skirtCols(g, SL, gpn, fx, stop(3.0), k, (c) => ((1 - c.down) * c.ch < FP * 1.5 ? (c.u < 0.5 ? 4 : 3) : null), 0.6, 0.1);
         }
+      });
+    },
+  },
+  // -------------------------------------------------------------------------
+  // Plate armors for women, at the standard of the men's plate (female and
+  // slender bodies only)
+  {
+    id: 'armor_seraph',
+    slot: 'armor',
+    name: 'Seraph Paladin Plate',
+    desc: 'Light paladin plate in white steel and red enamel: a breastplate shaped to the figure, slender pauldrons and vambraces, short faulds over a pleated skirt, and greaves (+4 AC). Women only.',
+    colors: [col('plate', 'Plate', '#cdd3de', 'metal'), col('trim', 'Enamel', '#c8202c'), col('cloth', 'Cloth', '#f3efe6')],
+    statsArmor: 'Greek Hoplite Cuirass',
+    bodies: ['female', 'slender'],
+    draw: (g, [pc, tc, cc]) => {
+      const b = g.bp;
+      const L = g.L('torso.armor');
+      const pl = armorPen(g, pc, 'metal');
+      const red = armorPen(g, tc, 'cloth');
+      const cloth = armorPen(g, cc, 'cloth');
+      const top = chestTop(g);
+      const breastBot = top - 6.6 - b.bust * 0.4;
+      // white padded doublet showing at the shoulders and the arms
+      tfill(g, L, 0.6, cloth, (_lx, ly, t) => (ly < 1.6 ? null : t > 0.86 ? 2 : litT(t) ? 3 : 2), { top: top - 0.2, bottom: 1.6 });
+      sleeves(g, cloth);
+      // the breastplate, red enamel along its neckline and its lower edge
+      fittedPlate(g, L, pl, { top: top - 1.0, bot: breastBot, inflate: 0.8, rimTop: red, rimBot: red });
+      // two slim plackart lames following the waist
+      waistLames(g, L, pl, breastBot - FP * 0.5, 2.0, 2, undefined, 0.6);
+      tstud(g, L, 1.1, breastBot - 1.0, pl, 4);
+      collar(g, pl, 1.3, 0.75, red);
+      for (const s of SIDES) {
+        pauldron(g, s, pl, { top: 2.1, capEnd: 0.6, step: 1.15, n: 2, half: b.armR[0] + 0.85, flare: 0.2, curve: 0.7, out: 0.45, edge: red });
+        const f = hangFrame(g, s, 0.55);
+        stud(g.L(armDepth(s, 'armor')), add(f.o, add(scale(f.u, -0.8), scale(f.w, 0.6))), onLimb(pl, s, 'upperArm'), 4);
+      }
+      bracer(g, pl, { from: 0.12, to: 0.95, grow: 0.45, rim: red, lines: [0.55], cop: true });
+      greaves(g, pl, { from: 0.18, to: 0.94, grow: 0.5, rim: red });
+      // pleated white skirt with a red hem, two rows of short faulds over it
+      skirt(g, (SL, stop) => {
+        const [x0, x1] = hipRange(g, 0.35);
+        const n = Math.max(6, Math.round((x1 - x0) / 1.9));
+        const xs = spread(x0, x1, n);
+        const cl = (w: number) => armorPen(g, cc, 'cloth', thighPart(w));
+        const rd = (w: number) => armorPen(g, tc, 'cloth', thighPart(w));
+        const k = 0.6;
+        skirtCols(
+          g,
+          SL,
+          cl,
+          xs,
+          stop(3.0),
+          k,
+          (c) => {
+            const fromR = (1 - c.across) * c.cw;
+            const fromBot = (1 - c.down) * c.ch;
+            if (fromBot < FP * 2.4) return null;
+            const tone = c.u < 0.4 ? 2 : c.u < 0.75 ? 1 : 0;
+            if (fromR < FP) return 1;
+            if (c.across * c.cw < FP) return tone === 0 ? 3 : 4;
+            if (fromR < FP * 2.2) return tone === 0 ? 1 : 2;
+            return tone === 0 ? 2 : 3;
+          },
+          1.0,
+          0.06,
+        );
+        skirtCols(g, SL, rd, xs, stop(3.0), k, (c) => ((1 - c.down) * c.ch < FP * 2.4 ? ((1 - c.down) * c.ch < FP ? 1 : c.u < 0.55 ? 3 : 2) : null), 1.0, 0.06);
+        plateRows(g, SL, pc, pc, x0 + 0.3, x1 - 0.2, stop(3.0), [0.27], 4);
+      });
+    },
+  },
+
+  {
+    id: 'armor_lioness',
+    slot: 'armor',
+    name: 'Lioness Knight Plate',
+    desc: 'Knightly full plate over a royal blue gown: a sculpted gilded cuirass, tiered pauldrons, vambraces with couters, plated tassets and greaves (+5 AC). Women only.',
+    colors: [col('plate', 'Plate', '#c9cdd8', 'metal'), col('gold', 'Gold', '#d4a531', 'metal'), col('gown', 'Gown', '#2a4aa6')],
+    statsArmor: 'Dark Knight Plate',
+    bodies: ['female', 'slender'],
+    draw: (g, [pc, gc, dc]) => {
+      const b = g.bp;
+      const L = g.L('torso.armor');
+      const pl = armorPen(g, pc, 'metal');
+      const gold = armorPen(g, gc, 'metal');
+      const gown = armorPen(g, dc, 'cloth');
+      const top = chestTop(g);
+      // the gown's bodice and sleeves under the plate
+      tfill(g, L, 0.6, gown, (_lx, ly, t) => (ly < 1.6 ? null : t > 0.86 ? 2 : litT(t) ? 3 : 2), { top: top - 0.2, bottom: 1.6 });
+      sleeves(g, gown, 0.55);
+      // a full cuirass to the waist, gilded at its edges, down the middle and under the bust
+      fittedPlate(g, L, pl, { top: top - 1.6, bot: 3.4, inflate: 0.95, rimTop: gold, center: gold, under: gold });
+      tstud(g, L, -b.chestHalf * 0.55, top - 2.8, gold, 4);
+      tstud(g, L, 1.1 + 2.6, 4.4, gold, 3);
+      // faulds: two lames over the hips, each with a gold edge
+      waistLames(g, L, pl, 3.4, 1.0, 2, undefined, 0.8);
+      collar(g, pl, 2.2, 1.25, gold);
+      for (const s of SIDES) {
+        pauldron(g, s, pl, { top: 2.8, capEnd: 0.7, step: 1.3, n: 3, half: b.armR[0] + 1.3, flare: 0.3, curve: 0.9, out: 0.6, edge: gold, rivet: gold });
+      }
+      bracer(g, pl, { from: 0.06, to: 0.97, grow: 0.65, rim: gold, lines: [0.48], cop: true });
+      greaves(g, pl, { from: 0.14, to: 0.96, grow: 0.6, rim: gold });
+      // the blue gown to mid-shin, three rows of tassets over it
+      skirt(g, (SL, stop) => {
+        const [x0, x1] = hipRange(g, 0.35);
+        const xs = spread(x0, x1, 10);
+        const width = x1 - x0;
+        const gw = (w: number) => armorPen(g, dc, 'cloth', thighPart(w));
+        skirtCols(
+          g,
+          SL,
+          gw,
+          xs,
+          stop(3.0),
+          1.5,
+          (c) => {
+            const fromBot = (1 - c.down) * c.ch;
+            if (fromBot < FP) return 1;
+            if (fromBot < FP * 2) return c.u < 0.5 ? 2 : 1;
+            return folds(c.u, c.down, width, [0.2, 0.42, 0.63, 0.82], c.u < 0.5 ? 3 : 2);
+          },
+          0.9,
+          0.06,
+        );
+        plateRows(g, SL, pc, gc, x0 + 0.2, x1 - 0.1, stop(3.0), [0.5, 0.3], 4);
       });
     },
   },

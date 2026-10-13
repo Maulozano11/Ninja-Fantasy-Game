@@ -38,10 +38,10 @@
   "boulder": {
    "label": "Mossy Boulder",
    "file": "boulder.png",
-   "frameW": 99,
+   "frameW": 100,
    "frameH": 77,
    "anchor": [
-    46,
+    47,
     75
    ],
    "meters": [

@@ -300,102 +300,106 @@ interface Bunch {
 
 const TH_LEAF = [0.36, 0.52, 0.7, 0.88];
 
-function rosette(dx: number, dy: number, b: Bunch, depth: number, sharp: number): number {
-  const d = Math.hypot(dx, dy);
-  if (d < b.r * (1 - depth)) return d / b.r;
-  const w = frac((b.k * Math.atan2(dy, dx) + b.ph) / TAU);
-  const tri = 1 - Math.abs(w * 2 - 1);
-  const prof = sharp > 0 ? Math.pow(tri, 0.5 + sharp) : Math.sqrt(tri);
-  return d / (b.r * (1 - depth + depth * prof));
+/** 2D direction toward the light on screen (upper left). */
+const LX = -0.62, LY = -0.79;
+
+/** Is (dx, dy) inside a leaf of half-length `len` and half-width `wid` along angle `a`? Returns the side (-1..1) or null. */
+function leafHit(dx: number, dy: number, a: number, len: number, wid: number, star: boolean): number | null {
+  if (star) {
+    // Palmate maple leaf: five pointed lobes.
+    const d = Math.hypot(dx, dy);
+    const w = frac((5 * (Math.atan2(dy, dx) - a)) / TAU + 0.5);
+    const tri = 1 - Math.abs(w * 2 - 1);
+    if (d > len * (0.5 + 0.5 * Math.pow(tri, 1.6))) return null;
+    return clamp((dx * -LY + dy * LX) / len, -1, 1) * 0 + clamp(-(dx * LX + dy * LY) / len, -1, 1);
+  }
+  const ca = Math.cos(a), sa = Math.sin(a);
+  const al = dx * ca + dy * sa, pe = -dx * sa + dy * ca;
+  if (Math.abs(al) / len + (pe / wid) ** 2 > 1) return null;
+  // Side of the midrib facing the light is +.
+  const facing = -(-sa * LX + ca * LY);
+  return clamp((pe / wid) * Math.sign(facing || 1), -1, 1);
 }
 
 function clumpArt(c: Clump): Art {
   const B = c.bunch;
-  const sx = B * 1.18, sy = B * 0.92;
-  const depth = c.sharp ? 0.3 : 0.22;
-  const sharp = c.sharp ?? 0;
+  const sx = B * 1.25, sy = B * 1.0;
   const wob = c.wobble ?? 0.1;
+  const star = !!c.sharp;
   const radial = (th: number): number => 1 + wob * (noise(Math.cos(th) * 2 + 5, Math.sin(th) * 2 + 5, 1.1, c.seed + 3) - 0.5) * 2;
   const bunches: Bunch[] = [];
   const nj = Math.ceil(c.ry / sy) + 1, ni = Math.ceil(c.rx / sx) + 1;
   for (let j = -nj; j <= nj; j++)
     for (let i = -ni; i <= ni; i++) {
-      const bx = (i + (j & 1 ? 0.5 : 0)) * sx + (hash(i, j, c.seed) - 0.5) * B * 0.55;
-      const by = j * sy + (hash(i, j, c.seed + 1) - 0.5) * B * 0.45;
+      const bx = (i + (j & 1 ? 0.5 : 0)) * sx + (hash(i, j, c.seed) - 0.5) * B * 0.7;
+      const by = j * sy + (hash(i, j, c.seed + 1) - 0.5) * B * 0.6;
       const rad = radial(Math.atan2(by / c.ry, bx / c.rx));
-      const ex = Math.max(1, c.rx * rad - B * 0.75), ey = Math.max(1, c.ry * rad - B * 0.75);
+      const ex = Math.max(1, c.rx * rad - B * 0.7), ey = Math.max(1, c.ry * rad - B * 0.7);
       let e = (bx / ex) ** 2 + (by / ey) ** 2;
-      if (c.pad && by < 0) e = (bx / ex) ** 2 + (by / (ey * 0.8)) ** 2;
+      if (c.pad && by > 0) e = (bx / ex) ** 2 + (by / (ey * 0.75)) ** 2;
       if (e > 1) continue;
-      bunches.push({ x: bx, y: by, r: B * (0.92 + 0.28 * hash(i, j, c.seed + 2)), k: c.lobes ?? 4, ph: hash(i, j, c.seed + 4) * TAU });
+      bunches.push({ x: bx, y: by, r: B * (0.8 + 0.45 * hash(i, j, c.seed + 2)), k: 0, ph: 0 });
     }
-  bunches.sort((a, b) => a.y + a.x * 0.12 - (b.y + b.x * 0.12));
-  const pad = Math.ceil(B * 1.4) + 2;
+  bunches.sort((a, b) => a.y + a.x * 0.15 - (b.y + b.x * 0.15));
+  const pad = Math.ceil(B * 1.6) + 4;
   const x0 = Math.floor(-c.rx - pad), y0 = Math.floor(-c.ry - pad);
   const W = Math.ceil(c.rx * 2 + pad * 2), H = Math.ceil(c.ry * 2 + pad * 2);
-  const own = new Int16Array(W * H).fill(-1);
-  for (let j = 0; j < H; j++)
-    for (let i = 0; i < W; i++) {
-      const px = i + x0 + 0.5, py = j + y0 + 0.5;
-      let o = -1;
-      for (let k = bunches.length - 1; k >= 0; k--) {
-        const b = bunches[k];
-        if (Math.abs(px - b.x) > b.r + 0.5 || Math.abs(py - b.y) > b.r + 0.5) continue;
-        if (rosette(px - b.x, py - b.y, b, depth, sharp) <= 1) {
-          o = k;
-          break;
-        }
-      }
-      if (o < 0 && (px / (c.rx * 0.8)) ** 2 + (py / (c.ry * 0.8)) ** 2 <= 1) {
-        let bd = 1e9;
-        bunches.forEach((b, k) => {
-          const d = (px - b.x) ** 2 + (py - b.y) ** 2;
-          if (d < bd) {
-            bd = d;
-            o = k;
-          }
-        });
-      }
-      own[j * W + i] = o;
-    }
-  const ownAt = (i: number, j: number): number => (i < 0 || j < 0 || i >= W || j >= H ? -1 : own[j * W + i]);
   const art = new Art(x0, y0, W, H);
+  const lightAt = (lx: number, ly: number): number => {
+    const u = lx / c.rx, v = ly / c.ry;
+    const r2 = Math.min(0.94, u * u + v * v);
+    let Lc = lambert(u, v, Math.sqrt(1 - r2));
+    if (c.pad) Lc = ly < -c.ry * 0.15 ? Math.max(Lc, 0.66 - u * 0.22) : ly < c.ry * 0.3 ? Lc : Lc * 0.75;
+    return Lc;
+  };
+  const put = (x: number, y: number, Lv: number, side: number, rim: boolean) => {
+    let s = quant(Lv, x, y, c.seed, TH_LEAF, 0.035, 3);
+    if (side < -0.25 && s >= 3) s -= 1;
+    if (s === 5 && !rim) s = 4;
+    if (c.char === 2) {
+      if (rim && Lv > 0.5) return art.set(x, y, P.fire, Lv > 0.7 ? 4 : 3);
+      return art.set(x, y, P.charred, clamp(s - 1, 1, 3));
+    }
+    art.set(x, y, c.char === 1 ? P.scorch : c.pal, clamp(s, 1, 5));
+  };
+  // Deep interior: whatever shows between the leaves is one step darker.
   for (let j = 0; j < H; j++)
     for (let i = 0; i < W; i++) {
-      const o = own[j * W + i];
-      if (o < 0) continue;
-      const b = bunches[o];
       const lx = i + x0 + 0.5, ly = j + y0 + 0.5;
-      const u = lx / c.rx, v = ly / c.ry;
-      const r2 = Math.min(0.94, u * u + v * v);
-      let Lc = lambert(u, v, Math.sqrt(1 - r2));
-      if (c.pad) Lc = ly < 0 ? Math.max(Lc, 0.62 - u * 0.2) : Lc * 0.85;
-      const du = (lx - b.x) / b.r, dv = (ly - b.y) / b.r, d2 = Math.min(0.94, du * du + dv * dv);
-      const Lb = lambert(du, dv, Math.sqrt(1 - d2));
-      const Lv = 0.62 * Lc + 0.38 * Lb + c.bias;
-      let s = quant(Lv, i + x0, j + y0, c.seed, TH_LEAF, 0.05, 2.5);
-      // A dark seam on this bunch where a bunch in front of it begins.
-      let seam = false;
-      for (const [dx, dy] of N4) {
-        const q = ownAt(i + dx, j + dy);
-        if (q > o) seam = true;
-      }
-      const up = ownAt(i, j - 1), left = ownAt(i - 1, j), ul = ownAt(i - 1, j - 1);
-      const edge = up !== o || left !== o || ul !== o;
-      const outer = up < 0 || left < 0 || ul < 0;
-      if (seam) s = Math.max(1, s - 2);
-      else if (edge && Lv > 0.5) s += 1;
-      s = clamp(s, 1, 5);
-      if (s === 5 && !(outer && Lv > 0.74)) s = 4;
-      if (c.char === 2) {
-        // Charred: dark leaves, glowing rims and seams.
-        if (edge && !seam && Lv > 0.5) art.set(i + x0, j + y0, P.fire, Lv > 0.68 ? 4 : 3);
-        else if (seam && hash(i, j, c.seed + 9) < 0.3) art.set(i + x0, j + y0, P.fire, 2);
-        else art.set(i + x0, j + y0, P.charred, clamp(s, 1, 4));
-        continue;
-      }
-      art.set(i + x0, j + y0, c.char === 1 ? P.scorch : c.pal, s);
+      const rad = radial(Math.atan2(ly / c.ry, lx / c.rx));
+      if ((lx / (c.rx * rad * 0.84)) ** 2 + (ly / (c.ry * rad * (c.pad && ly > 0 ? 0.62 : 0.84))) ** 2 > 1) continue;
+      put(i + x0, j + y0, lightAt(lx, ly) + c.bias - 0.2, 0, false);
     }
+  // Leaves, bunch by bunch, each leaf one ramp step (its shaded half one lower).
+  const len = star ? B * 0.62 : B * 0.56, wid = B * 0.24;
+  bunches.forEach((b, bi) => {
+    const nL = Math.round(((b.r * b.r) / (len * wid * 1.6)) * 1.5);
+    const leaves: { x: number; y: number; a: number; l: number }[] = [];
+    for (let k = 0; k < nL; k++) {
+      const rr = b.r * Math.sqrt(hash(bi, k, c.seed + 11)) * 0.85;
+      const th = hash(bi, k, c.seed + 12) * TAU;
+      const x = b.x + Math.cos(th) * rr, y = b.y + Math.sin(th) * rr;
+      // Leaves fan out from the bunch center and droop a little.
+      const out = Math.atan2(y - b.y + 0.01, x - b.x);
+      const a = out + (hash(bi, k, c.seed + 13) - 0.5) * 1.2;
+      leaves.push({ x, y, a: Math.atan2(Math.sin(a) + 0.35, Math.cos(a)), l: len * (0.8 + 0.4 * hash(bi, k, c.seed + 14)) });
+    }
+    leaves.sort((p, q) => p.y - q.y);
+    for (const lf of leaves) {
+      const du = (lf.x - b.x) / b.r, dv = (lf.y - b.y) / b.r, d2 = Math.min(0.94, du * du + dv * dv);
+      const Lb = lambert(du, dv, Math.sqrt(1 - d2));
+      const Lv = 0.6 * lightAt(lf.x, lf.y) + 0.4 * Lb + c.bias + (hash(Math.round(lf.x), Math.round(lf.y), c.seed + 15) - 0.5) * 0.06;
+      const ex = (lf.x / c.rx) ** 2 + (lf.y / c.ry) ** 2;
+      const rim = ex > 0.55 && lf.x / c.rx + lf.y / c.ry < -0.5;
+      const R2 = Math.ceil(lf.l) + 1;
+      for (let y = Math.floor(lf.y - R2); y <= lf.y + R2; y++)
+        for (let x = Math.floor(lf.x - R2); x <= lf.x + R2; x++) {
+          const side = leafHit(x + 0.5 - lf.x, y + 0.5 - lf.y, lf.a, lf.l, wid, star);
+          if (side === null) continue;
+          put(x, y, Lv, side, rim);
+        }
+    }
+  });
   return art;
 }
 

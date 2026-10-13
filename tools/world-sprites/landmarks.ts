@@ -113,6 +113,12 @@ interface MeshOpts {
   seam?: boolean;
   castShadow?: boolean;
   receiveShadow?: boolean;
+  /** Random light offset per facet so neighbouring planes separate (default 0.05). */
+  facetVar?: number;
+  /** Light contrast around 0.5 (default 1). */
+  contrast?: number;
+  /** Darkens the lowest `ao` px above the ground by one step (contact shade). */
+  ao?: number;
   /** Custom step picker; gets the default step. */
   shade?: (p: PixelInfo, step: number) => number;
 }
@@ -418,6 +424,8 @@ function render(scene: Scene, w: number, h: number, ox: number, oy: number): Fra
       const mesh = scene.meshes[mi];
       const n = f.normal(i), p = f.world(i);
       let light = lightOf(n);
+      light = 0.5 + (light - 0.5) * (mesh.contrast ?? 1);
+      light += (hash(f.group[i], 17, (mesh.seed ?? 0) + 3) - 0.5) * 2 * (mesh.facetVar ?? 0.05);
       if (mesh.tex) light += (fbm(p[0] + 31, p[1] * 0.8 + p[2] * 0.5, mesh.texCell ?? 7, 2, (mesh.seed ?? 0) + 5) - 0.5) * 2 * mesh.tex;
       let lit = true;
       if (mesh.receiveShadow !== false && lightOf(n) > 0.2) {
@@ -435,6 +443,7 @@ function render(scene: Scene, w: number, h: number, ox: number, oy: number): Fra
       if (!lit) light = Math.min(light, 0.2 + light * 0.25);
       f.lightv[i] = light;
       let s = band(light, x, y, { steps: mesh.steps ?? [1, 2, 3, 4], bias: mesh.bias ?? -0.1, jitter: mesh.jitter ?? 0.08, seed: mesh.seed ?? 7, cell: mesh.cell ?? 3 });
+      if (mesh.ao && p[1] < mesh.ao) s = Math.max(1, s - 1);
       if (mesh.shade) s = mesh.shade({ x, y, n, p, light, lit, mesh }, s);
       f.pal[i] = mesh.pal;
       f.step[i] = s;
@@ -454,7 +463,7 @@ function render(scene: Scene, w: number, h: number, ox: number, oy: number): Fra
         const ang = Math.acos(clamp(dot(f.normal(i), f.normal(j)), -1, 1));
         if (ang < 0.35) continue;
         const li = f.lightv[i], lj = f.lightv[j];
-        if (mesh.crest !== false && li > lj + 0.1 && li > 0.5) bump[i] = 1;
+        if (mesh.crest !== false && li > lj + 0.14 && li > 0.66) bump[i] = 1;
         if (mesh.seam && lj > li + 0.15 && li < 0.45) bump[i] = -1;
       }
     }
@@ -592,12 +601,13 @@ function paintLichen(f: Frame, o: { meshes: number[]; seed: number; density: num
       if (i < 0 || !o.meshes.includes(f.mesh[i]) || f.pal[i] !== f.scene.meshes[f.mesh[i]].pal || f.over[i]) continue;
       if (f.lightv[i] < (o.minLight ?? 0.3)) continue;
       const big = hash(gx, gy, o.seed + 3) > 0.5;
+      const mi = f.mesh[i], pi = f.pal[i];
       const shape: [number, number, number][] = big
         ? [[0, 0, 3], [1, 0, 2], [0, 1, 2], [1, 1, 1], [-1, 1, 2], [2, 1, 1]]
         : [[0, 0, 3], [1, 0, 2], [0, 1, 1]];
       for (const [dx, dy, s] of shape) {
         const j = f.idx(cx + dx, cy + dy);
-        if (j < 0 || f.mesh[j] !== f.mesh[i] || f.pal[j] !== f.pal[i] || f.over[j]) continue;
+        if (j < 0 || f.mesh[j] !== mi || f.pal[j] !== pi || f.over[j]) continue;
         f.pal[j] = LICHEN;
         f.step[j] = f.lightv[j] > 0.55 ? s + 1 : s;
       }
@@ -874,8 +884,8 @@ function boulder(): WorldSprite {
   const W = 130, H = 110, ox = 62, oy = 90;
   GROUP = 1;
   const sc = new Scene();
-  const st = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.08, texCell: 7, seam: true, ...extra });
-  const main = sc.add(rockMesh({ cx: -3, cd: 0, rx: 39, rd: 22, h: 52, n: 9, seed: 21, lean: -7, leanD: 2, profile: [[0, 0.9], [0.3, 1], [0.66, 0.86], [0.9, 0.52]], rot: 0.25, jit: 0.1, hJit: 0.06 }), st(21));
+  const st = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.035, texCell: 10, contrast: 1.25, facetVar: 0.07, ao: 3, ...extra });
+  const main = sc.add(rockMesh({ cx: -3, cd: 0, rx: 39, rd: 22, h: 52, n: 8, seed: 21, lean: -7, leanD: 2, profile: [[0, 0.86], [0.22, 1], [0.6, 0.9], [0.88, 0.55]], rot: 0.25, jit: 0.12, hJit: 0.07 }), st(21));
   const lump = sc.add(rockMesh({ cx: 25, cd: -7, rx: 18, rd: 13, h: 24, n: 7, seed: 22, lean: -2, profile: [[0, 0.95], [0.4, 1], [0.8, 0.7]], rot: 0.6, jit: 0.15 }), st(22));
   const feet: Mesh[] = [];
   const foot = (cx: number, cd: number, rx: number, h: number, seed: number, warm = false) =>
@@ -901,7 +911,7 @@ function rock(): WorldSprite {
   const W = 80, H = 60, ox = 38, oy = 46;
   GROUP = 1;
   const sc = new Scene();
-  const main = sc.add(rockMesh({ cx: 0, cd: 0, rx: 23, rd: 13, h: 21, n: 8, seed: 51, lean: -4, profile: [[0, 0.92], [0.35, 1], [0.75, 0.8], [0.95, 0.45]], rot: 0.5, jit: 0.12 }), { pal: STONE, seed: 51, tex: 0.08, texCell: 6, seam: true });
+  const main = sc.add(rockMesh({ cx: 0, cd: 0, rx: 23, rd: 13, h: 21, n: 8, seed: 51, lean: -4, profile: [[0, 0.92], [0.35, 1], [0.75, 0.8], [0.95, 0.45]], rot: 0.5, jit: 0.12 }), { pal: STONE, seed: 51, tex: 0.035, texCell: 9, contrast: 1.25, facetVar: 0.07, ao: 2 });
   const side = sc.add(rockMesh({ cx: 17, cd: -6, rx: 7, rd: 5, h: 6, n: 6, seed: 52, profile: [[0, 0.95], [0.5, 1], [0.9, 0.6]], jit: 0.15 }), { pal: STONE_W, seed: 52, bias: -0.02 });
   const f = render(sc, W, H, ox, oy);
   paintMoss(f, { meshes: [main.id], amount: 0.3, seed: 451, cell: 6, drip: 2, minUp: 0.45 });

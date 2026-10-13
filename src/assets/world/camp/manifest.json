@@ -5,11 +5,11 @@
   "campfire": {
    "label": "Campfire",
    "file": "campfire.png",
-   "frameW": 64,
-   "frameH": 80,
+   "frameW": 58,
+   "frameH": 82,
    "anchor": [
-    33,
-    78
+    30,
+    80
    ],
    "meters": [
     1,
@@ -43,11 +43,11 @@
   "smoke": {
    "label": "Smoke Column",
    "file": "smoke.png",
-   "frameW": 32,
-   "frameH": 111,
+   "frameW": 37,
+   "frameH": 114,
    "anchor": [
     7,
-    109
+    112
    ],
    "meters": [
     0.6,
@@ -68,11 +68,11 @@
   "tent": {
    "label": "Canvas Tent",
    "file": "tent.png",
-   "frameW": 201,
-   "frameH": 185,
+   "frameW": 206,
+   "frameH": 183,
    "anchor": [
-    100,
-    183
+    103,
+    181
    ],
    "meters": [
     3,
@@ -103,11 +103,11 @@
   "barrel": {
    "label": "Barrel",
    "file": "barrel.png",
-   "frameW": 105,
-   "frameH": 90,
+   "frameW": 90,
+   "frameH": 101,
    "anchor": [
-    51,
-    81
+    49,
+    82
    ],
    "meters": [
     0.6,
@@ -141,11 +141,11 @@
   "barrel_explosive": {
    "label": "Explosive Barrel",
    "file": "barrel_explosive.png",
-   "frameW": 222,
-   "frameH": 211,
+   "frameW": 203,
+   "frameH": 196,
    "anchor": [
-    111,
-    191
+    102,
+    164
    ],
    "meters": [
     0.6,
@@ -180,11 +180,11 @@
   "crate": {
    "label": "Wooden Crate",
    "file": "crate.png",
-   "frameW": 108,
-   "frameH": 108,
+   "frameW": 110,
+   "frameH": 95,
    "anchor": [
-    51,
-    102
+    54,
+    88
    ],
    "meters": [
     0.8,
@@ -213,11 +213,11 @@
   "crate_stack": {
    "label": "Stacked Crates",
    "file": "crate_stack.png",
-   "frameW": 111,
-   "frameH": 135,
+   "frameW": 112,
+   "frameH": 136,
    "anchor": [
-    55,
-    133
+    56,
+    134
    ],
    "meters": [
     1.75,
@@ -241,11 +241,11 @@
   "sacks": {
    "label": "Rice Sacks",
    "file": "sacks.png",
-   "frameW": 87,
-   "frameH": 42,
+   "frameW": 73,
+   "frameH": 48,
    "anchor": [
-    43,
-    40
+    36,
+    46
    ],
    "meters": [
     1.2,
@@ -266,11 +266,11 @@
   "weapon_rack": {
    "label": "Weapon Rack",
    "file": "weapon_rack.png",
-   "frameW": 78,
-   "frameH": 108,
+   "frameW": 80,
+   "frameH": 103,
    "anchor": [
-    39,
-    106
+    41,
+    101
    ],
    "meters": [
     1.3,

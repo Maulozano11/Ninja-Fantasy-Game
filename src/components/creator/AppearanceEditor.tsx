@@ -102,6 +102,9 @@ const EYE_SHAPES: { id: EyeShape; label: string }[] = [
   { id: 'sharp', label: 'Sharp' },
   { id: 'round', label: 'Round' },
   { id: 'calm', label: 'Calm' },
+  { id: 'fierce', label: 'Fierce' },
+  { id: 'bright', label: 'Bright' },
+  { id: 'piercing', label: 'Piercing' },
 ];
 
 const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [

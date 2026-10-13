@@ -9,7 +9,7 @@ export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'vi
 
 export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'cast', 'hurt', 'victory', 'charge'];
 
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm';
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing';
 
 /** Back of the neck behind the jaw: slender (default) or thick. */
 export type NeckType = 'slim' | 'strong';

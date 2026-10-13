@@ -257,7 +257,21 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   sharp: { near: ['bLLLL', 'LLddD', 'swiil'], far: ['LLL', 'dLL', 'iLo'] },
   round: { near: ['LLLLb', 'LhddD', 'wiiil'], far: ['LLL', 'dLL', 'iio'] },
   calm: { near: ['bbbbb', 'LLLLL', 'swiil'], far: ['bbb', 'LLL', 'iLo'] },
+  // Lid slanting down toward the nose over the iris (scowl).
+  fierce: { near: ['LLLbb', 'LhdLL', 'swiiD'], far: ['bLL', 'LLL', 'iLo'] },
+  // Big anime eye: thick lash, a white glint in the iris and a soft lower lid.
+  bright: { near: ['LLLLL', 'LhwdL', 'swiil', 'sbiib'], far: ['LLL', 'wLL', 'iio'] },
+  // Small iris with white on both sides: an intense stare.
+  piercing: { near: ['LLLLb', 'LhdhD', 'swiwl'], far: ['LLL', 'dhL', 'iLo'] },
 };
+
+/** A face row with the eye shape's rows swapped in (near eye cols 0-4, far eye cols 9-11). */
+function eyeRow(row: string, r: number, eyes: { near: string[]; far: string[] }): string {
+  const n = eyes.near[r];
+  const f = eyes.far[r];
+  if (!n && !f) return row;
+  return (n ?? row.slice(0, 5)) + row.slice(5, 9) + (f ?? row.slice(9, 12));
+}
 
 /**
  * Fine-pixel indices covered by the face templates (from the lash row down:
@@ -270,7 +284,7 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
   const { nx, ny } = faceAnchor(g);
   const shape = g.look.eyeShape || 'standard';
   const eyes = EYE_ROWS[shape] || EYE_ROWS.standard;
-  const main = (FACE_MAIN[g.rig.body] || FACE_MAIN.male).map((row, r) => (r > 2 ? row : eyes.near[r] + row.slice(5, 9) + eyes.far[r]));
+  const main = (FACE_MAIN[g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
   const out = new Set<number>();
   const add = (x: number, y: number) => {
     if (x >= 0 && y >= 0 && x < GRID && y < GRID) out.add(y * GRID + x);
@@ -323,10 +337,7 @@ function drawFace(g: DrawCtx): void {
 
   const shape = g.look.eyeShape || 'standard';
   const eyes = EYE_ROWS[shape] || EYE_ROWS.standard;
-  const main = (FACE_MAIN[g.rig.body] || FACE_MAIN.male).map((row, r) => {
-    if (r > 2) return row;
-    return eyes.near[r] + row.slice(5, 9) + eyes.far[r];
-  });
+  const main = (FACE_MAIN[g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
   const put = (x: number, y: number, ch: string) => {
     if (ch === '.') return;
@@ -374,7 +385,8 @@ function drawFace(g: DrawCtx): void {
   // Brows (hair-colored), two rows above the lash; most bangs cover them.
   const hairChoice = g.look.slots.hair;
   const br = makeRamp(hairChoice?.colors[0] || '#2a2230', 'hair');
-  const sharp = shape === 'sharp';
+  // Sharp and fierce eyes get brows angled down toward the nose.
+  const sharp = shape === 'sharp' || shape === 'fierce';
   for (let x = 0; x <= 3; x++) set(nx + x, ny - 2 + (sharp && x >= 2 ? 1 : 0), br[1]);
   for (let x = 9; x <= 11; x++) set(nx + x, ny - 2 + (sharp && x === 9 ? 1 : 0), br[1]);
 }

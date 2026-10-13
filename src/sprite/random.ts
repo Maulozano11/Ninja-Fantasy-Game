@@ -52,7 +52,7 @@ export function randomAppearance(): SpriteAppearance {
     version: 1,
     body: pick<BodyType>(['male', 'female', 'bulky']),
     skin: pick(SKIN_TONES.slice(0, 9)),
-    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm']),
+    eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing']),
     faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square']),
     neck: pick<NeckType>(['slim', 'slim', 'strong']),
     eyeColor: pick(EYE_COLORS),

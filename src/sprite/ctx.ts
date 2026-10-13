@@ -27,7 +27,7 @@ import {
 import { BodyParams, Rig } from './rig';
 import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
-import type { EyeSpecial, SlotId, SpriteAppearance } from './types';
+import { isFemaleBody, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
 
 /**
  * Back-to-front draw order. Each item writes into whichever depths it needs
@@ -230,7 +230,7 @@ export function torsoPoly(g: DrawCtx, inflate = 0, opts: { top?: number; bottom?
   const dy = g.rig.neck.y - T(0.6, Lt).y; // breathing offset
   const sh = (p: Vec, k: number): Vec => add(p, v(0, dy * k));
   const top = opts.top ?? Lt + 0.2;
-  const crotch = opts.bottom ?? -3.4;
+  const crotch = opts.bottom ?? b.crotch;
   const flare = opts.flare ?? 0;
   // Lower points never go below a hem the caller asked for.
   const lo = (y: number) => Math.max(y, crotch);
@@ -481,7 +481,7 @@ export const FOOT_BARE: FootArt = {
 /** Variant for slimmer (female) or broader (bulky) feet: drops or doubles one column. */
 function footWidth(t: PixelTemplate, body: string): PixelTemplate {
   const col = t.pivot[0] + 1;
-  if (body === 'female') return { pivot: t.pivot, rows: t.rows.map((r) => r.slice(0, col) + r.slice(col + 1)) };
+  if (isFemaleBody(body)) return { pivot: t.pivot, rows: t.rows.map((r) => r.slice(0, col) + r.slice(col + 1)) };
   if (body === 'bulky') return { pivot: t.pivot, rows: t.rows.map((r) => r.slice(0, col + 1) + r.slice(col)) };
   return t;
 }

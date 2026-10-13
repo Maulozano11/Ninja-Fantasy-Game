@@ -35,6 +35,12 @@ export interface BodyParams {
   handR: number;
   footLen: number;
   bust: number;
+  /**
+   * How far the crotch of the torso shape (and of trousers and shorts) drops
+   * below the hips, in torso-local units. Wide-hipped bodies keep it high so
+   * no cloth webs across the gap between the thighs.
+   */
+  crotch: number;
   /** The head group (head, face, hair, masks, forehead gear) is drawn in head-local units and shrunk by this factor. */
   headScale: number;
 }
@@ -58,6 +64,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     handR: 2.0,
     footLen: 4.4,
     bust: 0,
+    crotch: -3.4,
     headScale: 0.78,
   },
   female: {
@@ -78,6 +85,30 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     handR: 1.75,
     footLen: 3.9,
     bust: 1.5,
+    crotch: -1.9,
+    headScale: 0.76,
+  },
+  // Slimmer and curvier than 'female': narrow shoulders and waist, fuller bust
+  // and hips, slender arms and long legs with a full thigh and fine ankles.
+  slender: {
+    torsoLen: 13.8,
+    shoulderHalf: 5.6,
+    chestHalf: 5.6,
+    waistHalf: 2.9,
+    hipHalf: 7.0,
+    upperArm: 6.0,
+    forearm: 5.2,
+    thigh: 8.3,
+    shin: 7.8,
+    armR: [1.7, 1.4, 1.6, 1.05],
+    legR: [3.2, 1.75, 1.7, 1.0],
+    headRx: 6,
+    headRy: 7,
+    neckW: 1.15,
+    handR: 1.55,
+    footLen: 3.6,
+    bust: 2.2,
+    crotch: -1.7,
     headScale: 0.76,
   },
   bulky: {
@@ -98,6 +129,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     handR: 2.4,
     footLen: 4.8,
     bust: 0,
+    crotch: -3.4,
     headScale: 0.8,
   },
 };

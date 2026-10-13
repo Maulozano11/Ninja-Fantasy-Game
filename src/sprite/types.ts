@@ -3,7 +3,10 @@
 
 import type { PartId } from './raster';
 
-export type BodyType = 'male' | 'female' | 'bulky';
+export type BodyType = 'male' | 'female' | 'bulky' | 'slender';
+
+/** Bodies drawn with the female face, lashes, lips and slimmer feet. */
+export const isFemaleBody = (b: BodyType | string): boolean => b === 'female' || b === 'slender';
 
 export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge';
 

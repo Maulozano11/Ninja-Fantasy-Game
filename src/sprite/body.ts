@@ -8,7 +8,7 @@
 import { makeRamp, mixHex } from './color';
 import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side } from './ctx';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
-import type { FaceShape } from './types';
+import { isFemaleBody, type FaceShape } from './types';
 
 const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';
@@ -154,7 +154,7 @@ function drawHead(g: DrawCtx): void {
   const H = (dx: number, dy: number) => headAt(g, dx, dy);
   const pen: Pen = { mat: g.skin, part: 'head' };
   const body = g.rig.body;
-  const fem = body === 'female' ? 1 : 0;
+  const fem = isFemaleBody(body) ? 1 : 0;
   const heavy = body === 'bulky' ? 1 : 0;
   const hx = g.rig.head.x;
   const hy = g.rig.head.y;
@@ -284,7 +284,7 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
   const { nx, ny } = faceAnchor(g);
   const shape = g.look.eyeShape || 'standard';
   const eyes = EYE_ROWS[shape] || EYE_ROWS.standard;
-  const main = (FACE_MAIN[g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
+  const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
   const out = new Set<number>();
   const add = (x: number, y: number) => {
     if (x >= 0 && y >= 0 && x < GRID && y < GRID) out.add(y * GRID + x);
@@ -312,7 +312,7 @@ function drawFace(g: DrawCtx): void {
   const { nx, ny } = faceAnchor(g);
   const sk = g.mats.ramps[g.skin];
   const sp = g.eyeSpecial;
-  const female = g.rig.body === 'female';
+  const female = isFemaleBody(g.rig.body);
 
   let iris = g.look.eyeColor || '#3b82f6';
   if (sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') iris = '#d81b2a';
@@ -337,7 +337,7 @@ function drawFace(g: DrawCtx): void {
 
   const shape = g.look.eyeShape || 'standard';
   const eyes = EYE_ROWS[shape] || EYE_ROWS.standard;
-  const main = (FACE_MAIN[g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
+  const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
   const put = (x: number, y: number, ch: string) => {
     if (ch === '.') return;

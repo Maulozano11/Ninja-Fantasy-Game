@@ -83,6 +83,7 @@ const FACE_TABS: { id: FaceTab; label: string }[] = [
 const BODIES: { id: BodyType; label: string }[] = [
   { id: 'male', label: 'Male' },
   { id: 'female', label: 'Female' },
+  { id: 'slender', label: 'Slender' },
   { id: 'bulky', label: 'Bulky' },
 ];
 
@@ -239,7 +240,7 @@ export const AppearanceEditor: React.FC<{
         <div className="space-y-5">
           <div>
             <SectionLabel>Body Type</SectionLabel>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {BODIES.map((b) => (
                 <OptionCard
                   key={b.id}

@@ -147,6 +147,194 @@
      "loop": true
     }
    }
+  },
+  "frog": {
+   "label": "Frog",
+   "file": "frog.png",
+   "frameW": 42,
+   "frameH": 19,
+   "anchor": [
+    7,
+    17
+   ],
+   "meters": [
+    0.1,
+    0.06
+   ],
+   "tags": [
+    "animal",
+    "ambient",
+    "water"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 6,
+     "loop": true
+    },
+    "jump": {
+     "row": 1,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "koi": {
+   "label": "Koi",
+   "file": "koi.png",
+   "frameW": 52,
+   "frameH": 43,
+   "anchor": [
+    14,
+    32
+   ],
+   "meters": [
+    0.4,
+    0.12
+   ],
+   "tags": [
+    "animal",
+    "ambient",
+    "water"
+   ],
+   "anims": {
+    "swim": {
+     "row": 0,
+     "frames": 8,
+     "fps": 8,
+     "loop": true
+    },
+    "jump": {
+     "row": 1,
+     "frames": 10,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "butterfly_blue": {
+   "label": "Blue Swallowtail",
+   "file": "butterfly_blue.png",
+   "frameW": 13,
+   "frameH": 13,
+   "anchor": [
+    6,
+    6
+   ],
+   "meters": [
+    0.08,
+    0.06
+   ],
+   "tags": [
+    "animal",
+    "ambient"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "rest": {
+     "row": 1,
+     "frames": 4,
+     "fps": 4,
+     "loop": true
+    }
+   }
+  },
+  "butterfly_yellow": {
+   "label": "Yellow Butterfly",
+   "file": "butterfly_yellow.png",
+   "frameW": 13,
+   "frameH": 13,
+   "anchor": [
+    6,
+    6
+   ],
+   "meters": [
+    0.08,
+    0.06
+   ],
+   "tags": [
+    "animal",
+    "ambient"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "rest": {
+     "row": 1,
+     "frames": 4,
+     "fps": 4,
+     "loop": true
+    }
+   }
+  },
+  "dragonfly": {
+   "label": "Dragonfly",
+   "file": "dragonfly.png",
+   "frameW": 36,
+   "frameH": 16,
+   "anchor": [
+    10,
+    7
+   ],
+   "meters": [
+    0.1,
+    0.06
+   ],
+   "tags": [
+    "animal",
+    "ambient"
+   ],
+   "anims": {
+    "hover": {
+     "row": 0,
+     "frames": 4,
+     "fps": 14,
+     "loop": true
+    },
+    "dart": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "fireflies": {
+   "label": "Fireflies",
+   "file": "fireflies.png",
+   "frameW": 66,
+   "frameH": 53,
+   "anchor": [
+    32,
+    28
+   ],
+   "meters": [
+    1.2,
+    1
+   ],
+   "tags": [
+    "ambient",
+    "light-source"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 12,
+     "fps": 8,
+     "loop": true
+    }
+   }
   }
  }
 }

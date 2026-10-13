@@ -1,6 +1,10 @@
-// Small animals for the battle maps: ambient life that flees when combat starts.
+// Small animals for the battle maps: ambient life that flees when combat starts. Rabbit, deer,
+// crow and sparrow on the ground and in the air; butterflies, a dragonfly, a frog, a koi in the
+// river and a drift of fireflies.
 //
 //   npx tsx tools/world-sprites/animals.ts [previewDir]
+//   WORLD_OUT=<dir> ... writes the sheets for approval instead of into src/assets/world.
+//   FOCUS=frog,koi ... builds only those (inspection images only, no sheets).
 //
 // The bodies are modelled, not painted: every part (torso, haunch, head, ear, leg) is a small
 // signed-distance shape (ellipsoids and tapered capsules, smoothly merged where flesh flows into
@@ -9,6 +13,8 @@
 // a painter would: a part in front leaves a dark 1 px inner line on the part behind it, far limbs
 // sit one shade darker, and the kit adds the material-tinted outline. Eyes, noses, spots and
 // feather marks are placed by hand on top. Tiny critters (insects, the frog) are pixel templates.
+// The koi is modelled in world space and ray-marched through the battle camera (x across, height
+// up, depth away at 38/57), like the landmarks, because it is seen from above in the river.
 //
 // Animations are key poses of the same rig, so nothing jitters between frames: the band noise is
 // anchored to each part, rooted feet stay on the ground row and loops end where they begin.
@@ -50,6 +56,19 @@ const R = {
   legPink: ramp('#a07c6c', { shift: 8 }),
   // Sika spots: the coat lifted toward paper.
   spot: ramp(blend(blend(MATERIALS.fur, MATERIALS.wood, 0.55), MATERIALS.paper, 0.5), { shift: 10 }),
+  // Pond frog: the shared grass green lifted toward young leaf, a little more saturated.
+  frog: ramp(blend(MATERIALS.grass, MATERIALS.leafLight, 0.45), { shift: 16 }),
+  // Frog eye: a gold iris (fire pulled toward rope).
+  gold: ramp(blend(MATERIALS.fire, MATERIALS.rope, 0.45), { shift: 12 }),
+  // Butterflies: a swallowtail's electric blue (the river water lifted toward sky), a sulphur yellow
+  // (fire toward paper), the dull brown-black of a swallowtail's underside, lacquer red for its spots.
+  bfBlue: ramp(blend(MATERIALS.water, '#46b4f0', 0.7), { shift: 10 }),
+  bfYellow: ramp(blend(MATERIALS.fire, '#f0e05a', 0.82), { shift: 4 }),
+  under: ramp(blend(MATERIALS.charred, MATERIALS.woodDark, 0.5), { shift: 8 }),
+  red: ramp(MATERIALS.red),
+  // Red dragonfly (aka-tombo): lacquer red warmed toward fire; a red-brown thorax.
+  dfly: ramp(blend(MATERIALS.red, MATERIALS.fire, 0.32), { shift: 10 }),
+  dflyThorax: ramp(blend(MATERIALS.red, MATERIALS.woodDark, 0.45), { shift: 10 }),
 };
 const P = {
   rabbit: pal(R.rabbit),
@@ -68,6 +87,14 @@ const P = {
   legPink: pal(R.legPink),
   beak: pal(R.beak),
   fur: pal(R.fur),
+  frog: pal(R.frog),
+  gold: pal(R.gold),
+  bfBlue: pal(R.bfBlue),
+  bfYellow: pal(R.bfYellow),
+  under: pal(R.under),
+  red: pal(R.red),
+  dfly: pal(R.dfly),
+  dflyThorax: pal(R.dflyThorax),
 };
 
 // --- small helpers ---------------------------------------------------------------------------
@@ -583,7 +610,18 @@ function rabbitFrame(pose: RabbitPose): Canvas {
   solid(b, ell(at(pose.tail, 0), [2.1, 2.0, 2]), { pal: P.white, origin: org, minStep: 2, maxStep: 4, line: null });
   // Torso: body and chest merged, pale belly.
   const torso = uni(2.5, ell(at(pose.body.c, 0), [pose.body.r[0], pose.body.r[1], 4.2], pose.body.a), ell(at(pose.chest.c, 0.4), [pose.chest.r[0], pose.chest.r[1], 3.6], pose.chest.a));
-  solid(b, torso, { ...base, line: 1, paint: (h) => (h.ny > 0.84 && h.x < ox + pose.chest.c[0] - 1 ? [P.pale, clamp(h.step, 2, 3)] : null) });
+  // Pale belly. Sitting and grazing it is the downward-facing fur; in the hop (the body rolls
+  // through big angles) it is a band along the bottom of the body ellipse, so it stays one steady
+  // stripe from frame to frame instead of flickering on and off.
+  const bca = Math.cos(pose.body.a), bsa = Math.sin(pose.body.a);
+  const belly = (h: Hit): boolean => {
+    if (h.x >= ox + pose.chest.c[0] - 1) return false;
+    if (!pose.farFoot) return h.ny > 0.84;
+    const dx = h.x + 0.5 - (ox + pose.body.c[0]), dy = h.y + 0.5 - (gy + pose.body.c[1]);
+    const lu = dx * bca + dy * bsa, lv = -dx * bsa + dy * bca;
+    return lv / pose.body.r[1] > 0.74 && Math.abs(lu) < pose.body.r[0] * 0.75 && h.ny > 0.2;
+  };
+  solid(b, torso, { ...base, line: 1, paint: (h) => (belly(h) ? [P.pale, pose.farFoot ? 2 : clamp(h.step, 2, 3)] : null) });
   // Hind leg: shin under the haunch, then the long foot.
   const leg = uni(1, cone(at(pose.shin[0], 1.5), at(pose.shin[1], 1.8), 1.6, 1.15), cone(at(pose.foot[0], 2.0), at(pose.foot[1], 2.2), 1.25, 0.95));
   solid(b, leg, { ...base, bias: 0.04, line: 1, lineSide: 'shadow' });
@@ -885,16 +923,16 @@ const DEER_STAND: DeerPose = {
 };
 
 // Spots in torso space (summer coat): two rows beside the spine, looser ones down the flank.
-// Each is [x, y, r^2]; most are single pixels, a few are 2 px.
-const DEER_SPOTS: [number, number, number][] = (() => {
-  const out: [number, number, number][] = [];
+// Each is [x, y, rx, ry]: small dabs of 2-4 px stretched along the body, like brush touches.
+const DEER_SPOTS: [number, number, number, number][] = (() => {
+  const out: [number, number, number, number][] = [];
   const top = (x: number): number => -48.2 + 0.0035 * (x + 4) ** 2;
   const j = (i: number, k: number): number => hash(i, k, 41) - 0.5;
   let i = 0;
-  for (let x = -21; x <= 6; x += 3.6, i++) out.push([x + j(i, 1), top(x) + 3.0 + j(i, 2) * 0.8, i % 3 === 1 ? 0.75 : 0.32]);
-  for (let x = -19.5; x <= 2; x += 4.1, i++) out.push([x + j(i, 1) * 1.4, top(x) + 6.6 + j(i, 2), i % 2 ? 0.7 : 0.32]);
-  for (let x = -17; x <= -1; x += 4.6, i++) out.push([x + j(i, 1) * 2, top(x) + 10.2 + j(i, 2) * 1.6, 0.32]);
-  out.push([-12.5, top(-12.5) + 13.6, 0.32], [-6.5, top(-6) + 14.4, 0.32]);
+  for (let x = -21; x <= 6; x += 4.3, i++) out.push([Math.round(x + j(i, 1)), Math.round(top(x) + 3.1 + j(i, 2) * 0.6), i % 2 ? 1.5 : 1.2, 1.05]);
+  for (let x = -19; x <= 2; x += 4.8, i++) out.push([Math.round(x + j(i, 1) * 1.2), Math.round(top(x) + 7.0 + j(i, 2) * 0.8), i % 2 ? 1.4 : 1.15, 1.0]);
+  for (let x = -16.5; x <= -1; x += 5.4, i++) out.push([Math.round(x + j(i, 1) * 1.6), Math.round(top(x) + 10.8 + j(i, 2) * 1.2), 1.1, 0.95]);
+  out.push([-12, Math.round(top(-12.5) + 14), 1.05, 0.9]);
   return out;
 })();
 
@@ -1019,10 +1057,12 @@ function deerFrame(pose: DeerPose): Canvas {
       }
       // Pale belly and inner thigh.
       if (h.ny > 0.78 && ly > -32) return [P.pale, clamp(h.step, 1, 3)];
-      // Spots follow the coat's light.
-      for (const [sx, sy, sr] of DEER_SPOTS) {
-        const dx = lx - sx, dy = ly - sy;
-        if (dx * dx + dy * dy < sr) return [spotPal, clamp(h.step, 2, 4)];
+      // Spots follow the coat's light: a lit upper half, the lower edge a step softer. They are
+      // placed on whole pixels of the body so the walk's half-pixel bob doesn't reshape them.
+      const sx0 = h.x + 0.5 - Math.round(org[0]), sy0 = h.y + 0.5 - Math.round(org[1]);
+      for (const [sx, sy, rx, ry] of DEER_SPOTS) {
+        const dx = (sx0 - sx) / rx, dy = (sy0 - sy) / ry;
+        if (dx * dx + dy * dy < 1) return [spotPal, clamp(h.step + (dy < 0 ? 0 : -1), 2, 4)];
       }
       // Throat a little paler.
       return null;
@@ -1586,8 +1626,24 @@ const SPARROW_STYLE: BirdStyle = {
   beakLine: null,
   farLeg: false,
   eyeDots: (b, x, y, blink) => {
-    if (blink) b.dot(x, y, P.cap, 1);
-    else b.dot(x, y, P.beak, 1);
+    // The tree sparrow's face, placed around the eye so it reads at 1x: chestnut crown, a black
+    // eye kept off the beak by a chestnut lore, the white cheek wrapped behind and under the eye
+    // (its black spot is too small to survive at this size), a small black bib under the beak.
+    const put = (dx: number, dy: number, p: number, st: number): void => b.dot(x + dx, y + dy, p, st);
+    put(-1, -2, P.cap, 4);
+    put(-1, -1, P.cap, 4);
+    put(0, -1, P.cap, 4);
+    put(1, -1, P.cap, 3);
+    put(-2, 0, P.cap, 2);
+    put(-1, 0, P.white, 4);
+    put(1, 0, P.cap, 2);
+    put(-2, 1, P.white, 3);
+    put(-1, 1, P.white, 4);
+    put(0, 1, P.white, 5);
+    put(1, 1, P.beak, 1);
+    put(0, 2, P.beak, 2);
+    put(1, 2, P.beak, 2);
+    put(0, 0, blink ? P.cap : P.beak, blink ? 1 : 0);
   },
   paintBody: (lx, ly, h) => {
     // Pale breast and belly; streaked brown back.
@@ -1597,8 +1653,8 @@ const SPARROW_STYLE: BirdStyle = {
     return null;
   },
   paintHead: (dx, dy, h) => {
-    // Bib under the beak, cheek with its black spot, chestnut cap.
-    if (dy > 0.9 && dx > -0.6) return [P.beak, 2];
+    // Bib under the beak, cheek with its black spot, chestnut cap (the eye hook sharpens the face).
+    if (dy > 1.5 && dx > 0) return [P.beak, 2];
     if (dy > -0.6 && dx > -2.0 && dx < 0.9 && dy < 1.6) {
       if (dx > -1.4 && dx < -0.4 && dy > 0.1 && dy < 1.1) return [P.beak, 2];
       return [P.white, clamp(h.step, 2, 4)];
@@ -1674,6 +1730,1015 @@ function sparrow(): WorldSprite {
 }
 
 // =============================================================================================
+// PIXEL TEMPLATES (tiny critters)
+// =============================================================================================
+//
+// Below about 12 px a modelled form turns to mush, so the frog and the insects are drawn by hand:
+// each row is a string, each character a [palette, step] from a legend (space and '.' are empty).
+// The shading is placed like the modelled animals (lit top-left edges, steps 1-3 for the mass,
+// 4-5 only on crests and glints), and finish() adds the material-tinted outline.
+
+type Legend = Record<string, [number, number]>;
+
+/**
+ * Paints templates into a fresh buffer and returns the outlined canvas. `outline` sets one color
+ * for the whole outline (a small critter with a pale throat or wing band would otherwise get gray
+ * outline pixels that read as holes).
+ */
+function tplCanvas(w: number, h: number, layers: { rows: string[]; x: number; y: number; legend: Legend; flipX?: boolean }[], o: { outline?: Color | false } = {}): Canvas {
+  const b = new Buf(w, h);
+  for (const l of layers) stamp(b, l.rows, l.x, l.y, l.legend, { line: null, flipX: l.flipX });
+  const c = finish(b, { outline: o.outline !== false });
+  if (o.outline)
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (c.alpha(x, y) && !b.has(x, y)) c.set(x, y, o.outline);
+  return c;
+}
+
+/** Sets template pixels straight onto a finished canvas (antennae, legs: 1 px lines that take no outline). */
+function overlay(c: Canvas, rows: string[], ox: number, oy: number, legend: Legend): void {
+  rows.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      const L = legend[row[x]];
+      if (L) c.set(ox + x, oy + y, PAL[L[0]][L[1]]);
+    }
+  });
+}
+
+/** Replaces characters of a template at [row, col] positions (for small per-frame changes). */
+function patch(rows: string[], edits: [number, number, string][]): string[] {
+  const out = rows.map((r) => r.split(''));
+  for (const [r, c, ch] of edits) {
+    while (out[r].length <= c) out[r].push('.');
+    out[r][c] = ch;
+  }
+  return out.map((r) => r.join(''));
+}
+
+// =============================================================================================
+// FROG
+// =============================================================================================
+//
+// A pond frog sitting by the water, facing right, at about 1.6x so the eyes and throat read
+// (10 x 8 px). At this size a modelled body turns to a blob, so every pose is a hand-placed
+// template. The jump is a one-shot: crouch, push off, stretched in the air with both hind legs
+// trailing, reaching down, the landing squash, and sitting again 27 px (0.47 m) to the right.
+
+const FROG_LEG: Legend = {
+  '1': [P.frog, 1], '2': [P.frog, 2], '3': [P.frog, 3], '4': [P.frog, 4], '5': [P.frog, 5],
+  a: [P.pale, 2], b: [P.pale, 3], c: [P.pale, 4],
+  Y: [P.gold, 4], Z: [P.gold, 5],
+  k: [P.dark, 1],
+};
+
+// The steep battle camera sees the frog from above the side, so both eye bumps show: the far eye
+// up and behind the near one. Mostly steps 2-3 with a lit back crest, a few dark spots in clusters,
+// the pale throat under the mouth line, the near thigh as a lit band. The bottom row is the ground.
+const FROG_SIT = [
+  '....43....',
+  '..44Yk43..',
+  '.4433Zk33.',
+  '4322333333',
+  '3322331112',
+  '3344412bb.',
+  '2333312ba.',
+  '.122221.2.',
+];
+// Throat pulse (half and full) and a blink.
+const FROG_THROAT1 = patch(FROG_SIT, [[5, 8, 'c'], [5, 9, 'b'], [6, 8, 'b'], [6, 9, 'a']]);
+const FROG_THROAT2 = patch(FROG_SIT, [[5, 6, '1'], [5, 7, 'b'], [5, 8, 'c'], [5, 9, 'c'], [6, 6, '1'], [6, 7, 'b'], [6, 8, 'b'], [6, 9, 'b'], [7, 5, '2'], [7, 7, '2'], [7, 8, 'a']]);
+const FROG_BLINK = patch(FROG_SIT, [[1, 4, '3'], [1, 5, '1'], [2, 5, '3'], [2, 6, '1']]);
+// Jump: crouch, push off, stretched in the air, reaching down, landing squash (then the sit pose).
+const FROG_CROUCH = [
+  '.....43....',
+  '...44Yk43..',
+  '.44433Zk33.',
+  '43223333332',
+  '3344431111.',
+  '233332bba..',
+  '.1222212...',
+];
+const FROG_LAUNCH = [
+  '........43...',
+  '......44Yk43.',
+  '.....4433Zk3.',
+  '....43223333.',
+  '...43322331112',
+  '..433322bbb1.',
+  '.3331.1.a1...',
+  '231..........',
+  '21...........',
+];
+const FROG_AIR = [
+  '...........43...',
+  '.........44Yk43.',
+  '1.....4444433Zk3',
+  '2333.43322233332',
+  '....433333331112',
+  '21222.22222bb1..',
+  '1..........1.1..',
+];
+const FROG_DESCEND = [
+  '1..2..........',
+  '2..2..........',
+  '.3..3...43....',
+  '..3..34.4Yk43..',
+  '...3.44443Zk3..',
+  '....4322333333',
+  '.....33333112.',
+  '......222bb1..',
+  '........1..1..',
+  '.......21..21.',
+];
+const FROG_LAND = [
+  '.....43....',
+  '...44Yk43..',
+  '.44433Zk33.',
+  '43223333332',
+  '3344411111.',
+  '2333312bb1.',
+  '11222.21.12',
+];
+
+const FROG_W = 64, FROG_H = 34, FROG_OX = 16, FROG_GY = 28;
+
+/** A frog template: column 0 at anchor + x, its bottom row `lift` px above the ground row. */
+function frogFrame(rows: string[], x = -4, lift = 0): Canvas {
+  return tplCanvas(FROG_W, FROG_H, [{ rows, x: FROG_OX + x, y: FROG_GY - rows.length - lift, legend: FROG_LEG }], { outline: R.frog[0] });
+}
+
+function frog(): WorldSprite {
+  const S = frogFrame(FROG_SIT);
+  const idle = [S, S, frogFrame(FROG_THROAT1), frogFrame(FROG_THROAT2), frogFrame(FROG_THROAT1), S, frogFrame(FROG_BLINK), S];
+  // Leaps 27 px (about 0.47 m) to the right, about 0.2 m high; the last frame sits at the landing spot.
+  const jump = [frogFrame(FROG_CROUCH, -4), frogFrame(FROG_LAUNCH, -5, 0), frogFrame(FROG_AIR, 4, 8), frogFrame(FROG_DESCEND, 14, 3), frogFrame(FROG_LAND, 22), frogFrame(FROG_SIT, 23)];
+  return assemble('frog', 'Frog', [0.1, 0.06], ['animal', 'ambient', 'water'], { idle: { frames: idle, fps: 6 }, jump: { frames: jump, fps: 12, loop: false } }, FROG_OX, FROG_GY);
+}
+
+// =============================================================================================
+// BUTTERFLIES
+// =============================================================================================
+//
+// Drawn at 2x real size (an 8 cm wingspan becomes 9 px) as the classic flutter seen from above
+// and behind, so the wing pattern faces the camera: open, half raised, edge-on, back to half. The
+// blue is a swallowtail with brilliant blue fields, black margins and tails, and a dull underside
+// with red spots that shows when the wings close; the yellow is a sulphur with black forewing tips.
+// The left wing, tilted toward the light, carries the glints. Antennae are 1 px and take no outline.
+
+const BF_W = 24, BF_H = 22, BF_OX = 12, BF_OY = 11;
+
+interface BflySet {
+  legend: Legend;
+  outline: Color;
+  open: string[];
+  half: string[];
+  edge: string[];
+  closed: string[];
+  bask: string[];
+}
+
+/** Antennae from the head (col 4, row 1 of a 9-wide template) up and out; spread wider when perched. */
+const BF_ANT = ['..a...a..', '...a.a...'];
+const BF_ANT_SPREAD = ['.a.....a.', '..a...a..', '...a.a...'];
+
+const BLUE_SET: BflySet = {
+  legend: {
+    k: [P.crow, 2], j: [P.crow, 3], x: [P.crow, 1], h: [P.crow, 3],
+    n: [P.bfBlue, 2], b: [P.bfBlue, 3], B: [P.bfBlue, 4], C: [P.bfBlue, 5],
+    u: [P.under, 2], U: [P.under, 3], V: [P.under, 4], r: [P.red, 3], a: [P.crow, 1],
+  },
+  outline: R.crow[0],
+  open: [
+    'jk.....kk',
+    'kCk.h.kbk',
+    'kBbbxbbnk',
+    '.kbbxbnk.',
+    '..kbxbk..',
+    '.kbbxbnk.',
+    '.kbk.knk.',
+    '..k...k..',
+  ],
+  half: [
+    '.k.....k.',
+    '.jk.h.kk.',
+    '.kCbxbnk.',
+    '..kbxnk..',
+    '..kbxbk..',
+    '..kbxnk..',
+    '..kk.kk..',
+    '...k.k...',
+  ],
+  edge: [
+    '.........',
+    '....h....',
+    '...jxk...',
+    '...Bxn...',
+    '...jxk...',
+    '...kxk...',
+    '...k.k...',
+  ],
+  closed: [
+    '.........',
+    '....h....',
+    '...VxU...',
+    '...UxU...',
+    '...UxU...',
+    '...uxu...',
+    '...rxr...',
+    '...u.u...',
+  ],
+  bask: [
+    'jk.....kk',
+    'kCk.h.kbk',
+    'kBbbxbbnk',
+    '.kbbxbnk.',
+    '..kbxbk..',
+    '.kbbxbnk.',
+    '.krk.krk.',
+    '..k...k..',
+  ],
+};
+
+const YELLOW_SET: BflySet = {
+  legend: {
+    k: [P.crow, 2], x: [P.crow, 1], h: [P.crow, 3],
+    q: [P.bfYellow, 2], y: [P.bfYellow, 3], Y: [P.bfYellow, 4], Z: [P.bfYellow, 5],
+    e: [P.pale, 3], E: [P.pale, 4], a: [P.crow, 1],
+  },
+  outline: R.bfYellow[0],
+  open: [
+    'kk.....kk',
+    'kZq.h.qqk',
+    'qYyyxyyqq',
+    '.qyyxyqq.',
+    '..qyxyq..',
+    '.qyyxyyq.',
+    '.qqq.qqq.',
+  ],
+  half: [
+    '.k.....k.',
+    '.kq.h.qk.',
+    '.qZyxyqq.',
+    '..qyxyq..',
+    '..qyxyq..',
+    '..qyxyq..',
+    '..qq.qq..',
+  ],
+  edge: [
+    '.........',
+    '....h....',
+    '...qxq...',
+    '...Yxy...',
+    '...yxq...',
+    '...qxq...',
+    '...q.q...',
+  ],
+  closed: [
+    '.........',
+    '....h....',
+    '...ExE...',
+    '...ZxY...',
+    '...YxY...',
+    '...yxy...',
+    '...q.q...',
+  ],
+  bask: [
+    'kk.....kk',
+    'kZq.h.qqk',
+    'qYyyxyyqq',
+    '.qyyxyqq.',
+    '..qyxyq..',
+    '.qyyxyyq.',
+    '.qqq.qqq.',
+  ],
+};
+
+/** One butterfly frame: the template centered on the anchor (the thorax), raised by `lift` px. */
+function bflyFrame(set: BflySet, rows: string[], lift = 0, spread = false): Canvas {
+  const x0 = BF_OX - 4, y0 = BF_OY - 3 - lift;
+  const c = tplCanvas(BF_W, BF_H, [{ rows, x: x0, y: y0, legend: set.legend }], { outline: set.outline });
+  const ant = spread ? BF_ANT_SPREAD : BF_ANT;
+  overlay(c, ant, x0, y0 + 1 - ant.length, set.legend);
+  return c;
+}
+
+function butterfly(name: string, label: string, set: BflySet): WorldSprite {
+  // Flight: the body dips a pixel as the wings come up, so the flutter bobs.
+  const fly = [bflyFrame(set, set.open), bflyFrame(set, set.half), bflyFrame(set, set.edge, -1), bflyFrame(set, set.half)];
+  // Perched: wings held closed, part, open flat to bask, part again; antennae spread, body still.
+  const rest = [bflyFrame(set, set.closed, 0, true), bflyFrame(set, set.half, 0, true), bflyFrame(set, set.bask, 0, true), bflyFrame(set, set.half, 0, true)];
+  return assemble(name, label, [0.08, 0.06], ['animal', 'ambient'], { fly: { frames: fly, fps: 12 }, rest: { frames: rest, fps: 4 } }, BF_OX, BF_OY);
+}
+
+// =============================================================================================
+// DRAGONFLY
+// =============================================================================================
+//
+// A red dragonfly (aka-tombo) at 2x real size, side view facing right: a hand-placed body (big
+// eyes, a stout thorax, the long abdomen with darker segment rings). The four wings are flat
+// planes beating about the body axis and projected through the battle camera, so the far pair
+// shows above the body and the near pair below, each going edge-on in turn; hind wings lead the
+// fore wings by a quarter beat. Wings are translucent with a dark leading edge, a pterostigma near
+// the tip and a white glint on whichever wing faces the light.
+
+const DF_W = 64, DF_H = 30, DF_OX = 16, DF_OY = 15;
+
+const DF_LEG: Legend = {
+  '1': [P.dfly, 1], '2': [P.dfly, 2], '3': [P.dfly, 3], '4': [P.dfly, 4], '5': [P.dfly, 5],
+  t: [P.dflyThorax, 2], T: [P.dflyThorax, 3], U: [P.dflyThorax, 4],
+  e: [P.dfly, 2], E: [P.dfly, 4], W: [P.white, 5], k: [P.dark, 1],
+};
+// Body: abdomen cols 0-5 (tip at 0), thorax cols 6-8, head (all eye) cols 9-10. Row 1 is the body axis.
+const DF_BODY = [
+  '......TU.WE',
+  '233343TTTE4',
+  '......tt.ee',
+];
+
+interface DfWing {
+  /** Root on screen relative to the thorax center, length (px), sweep (radians, + forward), chord (px). */
+  root: P2;
+  len: number;
+  sweep: number;
+  chord: number;
+  /** +1 far side, -1 near side. */
+  side: number;
+}
+
+const DF_WINGS: DfWing[] = [
+  { root: [0.6, 0], len: 6.6, sweep: 0.42, chord: 2.4, side: 1 }, // far fore
+  { root: [-0.8, 0], len: 6.2, sweep: -0.38, chord: 2.8, side: 1 }, // far hind
+  { root: [0.6, 0.6], len: 6.6, sweep: 0.42, chord: 2.4, side: -1 }, // near fore
+  { root: [-0.8, 0.6], len: 6.2, sweep: -0.38, chord: 2.8, side: -1 }, // near hind
+];
+
+/**
+ * Paints one wing raised `phi` (radians): the span runs out across the body (depth), swept toward
+ * the head or tail, tilted up by phi and projected as (X, -H - K D); the chord stays along the
+ * body. Coverage is 4x4 supersampled. The wing reads as glass: a pale film, a rim where it ends,
+ * a darker leading edge, the pterostigma near the tip, and a white glint when `glint`.
+ */
+function dfWing(c: Canvas, cx: number, cy: number, w: DfWing, phi: number, glint: boolean, alphaK = 1): void {
+  const K = 38 / 57;
+  const cs = Math.cos(w.sweep);
+  const sx = Math.sin(w.sweep) * w.len, sy = -(cs * Math.sin(phi) + w.side * K * cs * Math.cos(phi)) * w.len;
+  const rx = cx + w.root[0], ry = cy + w.root[1];
+  const SS = 4;
+  const syy = Math.abs(sy) < 1.2 ? (sy >= 0 ? 1.2 : -1.2) : sy;
+  const x0 = Math.floor(Math.min(rx, rx + sx) - w.chord - 1), x1 = Math.ceil(Math.max(rx, rx + sx) + w.chord + 1);
+  const y0 = Math.floor(Math.min(ry, ry + syy) - 2), y1 = Math.ceil(Math.max(ry, ry + syy) + 2);
+  const cells = new Map<number, { a: number; lead: number; tip: number; u: number }>();
+  for (let y = y0; y <= y1; y++)
+    for (let x = x0; x <= x1; x++) {
+      let a = 0, lead = 0, tip = 0, us = 0;
+      for (let j = 0; j < SS; j++)
+        for (let i = 0; i < SS; i++) {
+          const px = x + (i + 0.5) / SS - rx, py = y + (j + 0.5) / SS - ry;
+          const u = py / syy;
+          if (u < 0 || u > 1) continue;
+          const v = px - sx * u; // along the chord, + toward the head
+          // Planform: narrow at the root, full by a third, rounded tip.
+          const half = (w.chord / 2) * Math.min(1, 0.45 + u * 2) * (u > 0.82 ? Math.sqrt(Math.max(0, (1 - u) / 0.18)) : 1);
+          const mid = w.sweep > 0 ? 0.2 : -0.25;
+          if (Math.abs(v - mid) > half) continue;
+          a++;
+          us += u;
+          if (v - mid > half - 0.6) lead++;
+          if (u > 0.7 && u < 0.88 && v - mid > half - 1.1) tip++;
+        }
+      if (a) cells.set(y * 1000 + x, { a: a / (SS * SS), lead: lead / a, tip: tip / a, u: us / a });
+    }
+  // Glass: a pale film the stage shows through, edges catching a little more light, a cooler
+  // leading edge, and the dark pterostigma only when the wing shows its length.
+  const film = mix(R.white[5], KOI_PAL.water[5], 0.35);
+  const lead = mix(KOI_PAL.water[4], R.crow[4], 0.3);
+  const long = Math.abs(sy) > 3;
+  const on = (k: number): boolean => (cells.get(k)?.a ?? 0) >= 0.3;
+  let stig = false;
+  for (const [k, v] of [...cells].sort((p, q) => q[1].tip - p[1].tip)) {
+    if (v.a < 0.3) continue;
+    const x = k % 1000, y = Math.floor(k / 1000);
+    const edge = !on(k - 1) || !on(k + 1) || !on(k - 1000) || !on(k + 1000);
+    let col: Color;
+    if (long && !stig && v.tip > 0.4) {
+      col = withAlpha(R.dflyThorax[2], 220 * alphaK);
+      stig = true;
+    } else if (edge && v.lead > 0.5) col = withAlpha(lead, 190 * alphaK);
+    else if (edge) col = withAlpha(film, 165 * alphaK);
+    else col = withAlpha(film, 110 * alphaK);
+    c.plot(x, y, col);
+  }
+  if (glint) {
+    const gx = Math.round(rx + sx * 0.45), gy = Math.round(ry + syy * 0.45);
+    c.set(gx, gy, withAlpha(hex('#ffffff'), 240 * alphaK));
+    c.plot(gx + 1, gy, withAlpha(film, 180 * alphaK));
+  }
+}
+
+/** Wing angles for beat phase t (0..1): fore and hind pairs a quarter beat apart. */
+function dfPhis(t: number, amp = 0.55): [number, number] {
+  return [amp * Math.sin(2 * Math.PI * t), amp * Math.sin(2 * Math.PI * (t + 0.25))];
+}
+
+/** One dragonfly frame: body at (dx, dy) from the anchor, wings at beat phase t; `under` draws wings behind first. */
+function dflyFrame(t: number, dx = 0, dy = 0, o: { amp?: number; wingAlpha?: number; tilt?: number } = {}): Canvas {
+  const bx = DF_OX - 7 + dx, by = DF_OY - 1 + dy;
+  const body = tplCanvas(DF_W, DF_H, [{ rows: DF_BODY, x: bx, y: by, legend: DF_LEG }], { outline: R.dfly[0] });
+  const c = new Canvas(DF_W, DF_H);
+  const [pf, ph] = dfPhis(t, o.amp);
+  const cx = DF_OX + dx + 0.5, cy = DF_OY + dy + 0.5;
+  // The wing facing the light this frame carries the glint (the far fore wing on the upstroke).
+  const glintFar = pf > 0.2, glintNear = pf < -0.2;
+  dfWing(c, cx, cy, DF_WINGS[1], ph, false, o.wingAlpha);
+  dfWing(c, cx, cy, DF_WINGS[0], pf, glintFar, o.wingAlpha);
+  c.draw(body, 0, 0);
+  dfWing(c, cx, cy, DF_WINGS[3], ph, false, o.wingAlpha);
+  dfWing(c, cx, cy, DF_WINGS[2], pf, glintNear, o.wingAlpha);
+  return c;
+}
+
+/** Motion smear: the body's rows streaked back from `from` to the body, fading toward the start. */
+function dfSmear(c: Canvas, from: number, to: number, dy: number, strength: number): void {
+  const rows: [number, Color][] = [[-1, R.dflyThorax[3]], [0, R.dfly[3]], [1, R.dfly[2]]];
+  for (const [ry, col] of rows)
+    for (let x = Math.round(from); x < Math.round(to); x++) {
+      const k = (x - from) / Math.max(1, to - from);
+      if (ry !== 0 && k < 0.45) continue;
+      c.plot(DF_OX + x - 7, DF_OY + dy + ry, withAlpha(mix(col, R.white[5], 0.25), (30 + 120 * k * k) * strength));
+    }
+}
+
+function dragonfly(): WorldSprite {
+  const hover = [0, 0.25, 0.5, 0.75].map((t) => dflyFrame(t));
+  // Dart: a quick pull back with the wings high, the dash (a smear back to the start), the end of
+  // the dash with a short smear, then hovering at the new spot 20 px (0.35 m) ahead.
+  const d0 = dflyFrame(0.25, -1, 0, { amp: 0.7 });
+  const d1 = dflyFrame(0.6, 11, -1, { amp: 0.3, wingAlpha: 0.55 });
+  dfSmear(d1, -1, 11 + 2, -1, 1);
+  const d2 = dflyFrame(0.9, 19, 0, { amp: 0.4, wingAlpha: 0.75 });
+  dfSmear(d2, 10, 19 + 2, 0, 0.7);
+  const d3 = dflyFrame(0.0, 20, 0);
+  return assemble('dragonfly', 'Dragonfly', [0.1, 0.06], ['animal', 'ambient'], { hover: { frames: hover, fps: 14 }, dart: { frames: [d0, d1, d2, d3], fps: 12, loop: false } }, DF_OX, DF_OY);
+}
+
+// =============================================================================================
+// FIREFLIES
+// =============================================================================================
+//
+// Seven glowing dots drifting in a 1.2 x 1 m box, each on its own small closed path (so the 12
+// frame loop is seamless) and blinking on its own schedule: a warm yellow-green core with a 1 px
+// soft glow, no outline. At least four are lit in every frame so the group always reads.
+
+const FF_W = 72, FF_H = 61, FF_OX = 36, FF_OY = 30;
+
+function fireflies(): WorldSprite {
+  // Warm yellow-green: the fire glow pulled toward young leaf; the hottest core almost white.
+  const core = mix(hex('#fde68a'), R.frog[5], 0.4), hot = mix(core, hex('#ffffff'), 0.6), glow = mix(R.frog[5], hex('#fde68a'), 0.35);
+  // [x, y] in the box (px from the center), path radii, path harmonics, blink offset.
+  const flies: [number, number, number, number, number, number, number][] = [
+    [-28, -17, 3, 2, 1, 1, 0],
+    [-9, -24, 2, 2, 1, 2, 5],
+    [13, -18, 4, 2, 1, 1, 9],
+    [29, -3, 2, 3, 2, 1, 3],
+    [-24, 10, 3, 3, 1, 2, 7],
+    [2, 3, 4, 3, 1, 1, 1],
+    [20, 21, 3, 2, 2, 1, 10],
+  ];
+  // Brightness over the 12 frames for offset 0: fade in, glow, fade out, dark.
+  const blink = [0.35, 0.75, 1, 1, 0.8, 0.5, 0.25, 0, 0, 0, 0.1, 0.2];
+  const frames: Canvas[] = [];
+  for (let f = 0; f < 12; f++) {
+    const c = new Canvas(FF_W, FF_H);
+    flies.forEach(([x, y, ax, ay, kx, ky, off], i) => {
+      const t = f / 12;
+      const px = Math.round(FF_OX + x + ax * Math.sin(2 * Math.PI * kx * t + i * 1.7));
+      const py = Math.round(FF_OY + y + ay * Math.sin(2 * Math.PI * ky * t + i * 2.3 + 0.8));
+      const b = blink[(f + off) % 12];
+      if (b <= 0) return;
+      // Glow first (soft), then the core over it.
+      if (b >= 0.7) {
+        for (const [dx, dy2] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) c.plot(px + dx, py + dy2, withAlpha(glow, 205 * b));
+        for (const [dx, dy2] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) c.plot(px + dx, py + dy2, withAlpha(glow, 95 * b));
+        c.set(px, py, b >= 0.95 ? hot : core);
+      } else if (b >= 0.4) {
+        for (const [dx, dy2] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) c.plot(px + dx, py + dy2, withAlpha(glow, 120 * b));
+        c.set(px, py, core);
+      } else c.set(px, py, withAlpha(glow, 150 + 250 * b));
+    });
+    frames.push(c);
+  }
+  return assemble('fireflies', 'Fireflies', [1.2, 1.0], ['ambient', 'light-source'], { idle: { frames, fps: 8 } }, FF_OX, FF_OY);
+}
+
+// =============================================================================================
+// KOI
+// =============================================================================================
+//
+// An orange and white koi (kohaku pattern), 0.4 m nose to tail, modelled in world space and
+// rendered through the battle camera like the landmarks: x across, height up and depth away
+// project to the screen as (X, -H - 38/57 D), so the koi swimming right in the river shows its
+// back foreshortened above its near flank, both pectoral fins, and the tail fan side-on.
+//
+// The body is a chain of ellipsoids along a spine that undulates sideways (a wave running back
+// toward the tail); fins are thin extruded outlines. Every pixel is ray-marched along the camera
+// ray, lit from the upper left by its normal and quantized with cluster noise anchored to the
+// fish. The patches live in body coordinates (along the spine, around the body) so they ride
+// the undulation. Under the surface the colors sink into the water in three depth bands and the
+// outline turns deep teal; out of the water (the jump) the fish is drawn fully saturated.
+
+type W3 = [number, number, number]; // X right, H up, D away from the viewer (px)
+const KOI_K = 38 / 57;
+
+interface WPrim {
+  sd: (p: W3) => number;
+  /** World bounds: [X0, H0, D0, X1, H1, D1]. */
+  box: [number, number, number, number, number, number];
+}
+
+/** Signed distance to a 2D polygon (negative inside). */
+function sdPoly2(x: number, y: number, pts: P2[]): number {
+  let d = Infinity, inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [ax, ay] = pts[j], [bx, by] = pts[i];
+    const ex = bx - ax, ey = by - ay;
+    const t = clamp(((x - ax) * ex + (y - ay) * ey) / (ex * ex + ey * ey || 1), 0, 1);
+    d = Math.min(d, Math.hypot(x - ax - ex * t, y - ay - ey * t));
+    if (ay > y !== by > y && x < ((bx - ax) * (y - ay)) / (by - ay) + ax) inside = !inside;
+  }
+  return inside ? -d : d;
+}
+
+/** Ellipsoid at c with radii (along, up, across), turned `yaw` about the vertical (positive turns +X toward +D). */
+function wEll(c: W3, r: W3, yaw = 0): WPrim {
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const R0 = Math.max(r[0], r[2]);
+  return {
+    sd: (p) => {
+      const dx = p[0] - c[0], dh = p[1] - c[1], dd = p[2] - c[2];
+      const lx = dx * cy + dd * sy, ld = -dx * sy + dd * cy;
+      const k0 = Math.hypot(lx / r[0], dh / r[1], ld / r[2]);
+      const k1 = Math.hypot(lx / (r[0] * r[0]), dh / (r[1] * r[1]), ld / (r[2] * r[2]));
+      return k1 < 1e-9 ? -Math.min(...r) : (k0 * (k0 - 1)) / k1;
+    },
+    box: [c[0] - R0, c[1] - r[1], c[2] - R0, c[0] + R0, c[1] + r[1], c[2] + R0],
+  };
+}
+
+/** A thin plate: a 2D outline in a plane through `o` spanned by unit axes u and v, `t` half-thick. */
+function wPlate(o: W3, u0: W3, v0: W3, pts: P2[], t: number): WPrim {
+  // Orthonormal axes: u as given, v made perpendicular to it within the plate's plane.
+  const ul = Math.hypot(...u0);
+  const u: W3 = [u0[0] / ul, u0[1] / ul, u0[2] / ul];
+  const vd = v0[0] * u[0] + v0[1] * u[1] + v0[2] * u[2];
+  const vr: W3 = [v0[0] - u[0] * vd, v0[1] - u[1] * vd, v0[2] - u[2] * vd];
+  const vl = Math.hypot(...vr);
+  const v: W3 = [vr[0] / vl, vr[1] / vl, vr[2] / vl];
+  const n: W3 = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+  let x0 = Infinity, x1 = -Infinity, h0 = Infinity, h1 = -Infinity, d0 = Infinity, d1 = -Infinity;
+  for (const [a, b2] of pts) {
+    const q: W3 = [o[0] + u[0] * a + v[0] * b2, o[1] + u[1] * a + v[1] * b2, o[2] + u[2] * a + v[2] * b2];
+    x0 = Math.min(x0, q[0]);
+    x1 = Math.max(x1, q[0]);
+    h0 = Math.min(h0, q[1]);
+    h1 = Math.max(h1, q[1]);
+    d0 = Math.min(d0, q[2]);
+    d1 = Math.max(d1, q[2]);
+  }
+  return {
+    sd: (p) => {
+      const w: W3 = [p[0] - o[0], p[1] - o[1], p[2] - o[2]];
+      const a = w[0] * u[0] + w[1] * u[1] + w[2] * u[2], b2 = w[0] * v[0] + w[1] * v[1] + w[2] * v[2], c = w[0] * n[0] + w[1] * n[1] + w[2] * n[2];
+      const d2 = sdPoly2(a, b2, pts);
+      const dz = Math.abs(c) - t;
+      return d2 > 0 && dz > 0 ? Math.hypot(d2, dz) : Math.max(d2, dz);
+    },
+    box: [x0 - t, h0 - t, d0 - t, x1 + t, h1 + t, d1 + t],
+  };
+}
+
+function wUni(k: number, ...ps: WPrim[]): WPrim {
+  const box = ps[0].box.slice() as WPrim['box'];
+  for (const p of ps)
+    for (let i = 0; i < 3; i++) {
+      box[i] = Math.min(box[i], p.box[i] - k * 0.25);
+      box[i + 3] = Math.max(box[i + 3], p.box[i + 3] + k * 0.25);
+    }
+  return {
+    sd: (p) => {
+      let d = ps[0].sd(p);
+      for (let i = 1; i < ps.length; i++) d = smin(d, ps[i].sd(p), k);
+      return d;
+    },
+    box,
+  };
+}
+
+interface CamHit {
+  x: number;
+  y: number;
+  p: W3;
+  n: W3;
+  light: number;
+}
+
+/**
+ * Ray-marches a world-space shape through the battle camera into the buffer. The camera ray for a
+ * pixel runs away from the viewer and down: (0, -K, 1). `paint` returns [palette, step] or null to
+ * leave the pixel. The world origin projects to (ox, oy).
+ */
+function solidCam(b: Buf, prim: WPrim, ox: number, oy: number, part: number, paint: (h: CamHit) => [number, number] | null): void {
+  const [X0, H0, D0, X1, H1, D1] = prim.box;
+  const sy0 = oy - H1 - KOI_K * D1, sy1 = oy - H0 - KOI_K * D0;
+  const rl = Math.hypot(1, KOI_K);
+  for (let y = Math.max(0, Math.floor(sy0) - 1); y <= Math.min(b.h - 1, Math.ceil(sy1) + 1); y++)
+    for (let x = Math.max(0, Math.floor(ox + X0) - 1); x <= Math.min(b.w - 1, Math.ceil(ox + X1) + 1); x++) {
+      const X = x + 0.5 - ox, c = oy - (y + 0.5);
+      // Start where the ray enters the box's depth range.
+      let D = Math.max(D0 - 1, (c - H1 - 1) / KOI_K);
+      const Dend = Math.min(D1 + 1, (c - H0 + 1) / KOI_K);
+      let hit = false;
+      for (let i = 0; i < 80 && D <= Dend; i++) {
+        const d = prim.sd([X, c - KOI_K * D, D]);
+        if (d < 0.02) {
+          hit = true;
+          break;
+        }
+        D += Math.max(d * 0.85, 0.03) / rl;
+      }
+      if (!hit) continue;
+      const p: W3 = [X, c - KOI_K * D, D];
+      const e = 0.25;
+      let nx = prim.sd([p[0] + e, p[1], p[2]]) - prim.sd([p[0] - e, p[1], p[2]]);
+      let nh = prim.sd([p[0], p[1] + e, p[2]]) - prim.sd([p[0], p[1] - e, p[2]]);
+      let nd = prim.sd([p[0], p[1], p[2] + e]) - prim.sd([p[0], p[1], p[2] - e]);
+      const nl = Math.hypot(nx, nh, nd) || 1;
+      nx /= nl;
+      nh /= nl;
+      nd /= nl;
+      // Same light as the landmarks: screen x, screen down = -H, toward the viewer = -D.
+      const light = wrapLight(nx, -nh, -nd, 0.4);
+      const r = paint({ x, y, p, n: [nx, nh, nd], light });
+      if (r) b.put(x, y, r[0], r[1], part);
+    }
+}
+
+// --- the fish -------------------------------------------------------------------------------
+
+/** Body half-width (across) and half-height along the spine, s = 0 nose .. 1 tail root. */
+function koiGirth(s: number): [number, number] {
+  const k = s < 0.3 ? 0.5 + 0.5 * Math.sin((s / 0.3) * (Math.PI / 2)) : 1 - 0.8 * ((s - 0.3) / 0.7) ** 1.15;
+  return [2.75 * k, 2.5 * k];
+}
+
+interface KoiPose {
+  /** Body center in world px (relative to the anchor on the water line). */
+  c: W3;
+  /** Pitch (radians, nose up positive) and roll of nothing: koi stay upright. */
+  pitch: number;
+  /** Lateral wave: phase (0..1) and amplitude scale. */
+  phase: number;
+  amp: number;
+  /** Extra sideways curl of the whole body (radians over its length), for the leap. */
+  curl?: number;
+  /** Pectoral fin beat (-1..1). */
+  fin: number;
+}
+
+const KOI_LEN = 16; // nose to tail root (px); with the head and the tail fan the koi is 0.4 m (23 px)
+
+interface KoiBody {
+  /** Far pectoral fin, body (with the dorsal fin), tail fan, near pectoral fin. */
+  parts: WPrim[];
+  /** Spine samples in fish space (x along, d across), nose first. */
+  spine: [number, number][];
+  toFish: (p: W3) => W3;
+  toWorld: (q: W3) => W3;
+}
+
+function koiBody(pose: KoiPose): KoiBody {
+  const N = 12;
+  const spine: [number, number][] = [];
+  for (let i = 0; i <= N; i++) {
+    const s = i / N;
+    const x = KOI_LEN * (0.62 - s);
+    // The wave runs from the head to the tail; its amplitude grows toward the tail.
+    const A = (0.25 + 1.5 * s * s) * pose.amp;
+    const d = A * Math.sin(2 * Math.PI * (pose.phase - s * 0.85)) + (pose.curl ?? 0) * KOI_LEN * s * s * 0.5;
+    spine.push([x, d]);
+  }
+  const parts: WPrim[] = [];
+  for (let i = 0; i < N; i++) {
+    const s = (i + 0.5) / N;
+    const [ax, ad] = spine[i], [bx, bd] = spine[i + 1];
+    const yaw = Math.atan2(bd - ad, bx - ax) - Math.PI;
+    const [ww, hh] = koiGirth(s);
+    const seg = Math.hypot(bx - ax, bd - ad);
+    parts.push(wEll([(ax + bx) / 2, 0, (ad + bd) / 2], [seg * 0.95, hh, ww], -yaw));
+  }
+  // Head: a rounder nose.
+  const [nx0, nd0] = spine[0];
+  parts.push(wEll([nx0 - 0.6, -0.15, nd0], [1.9, 1.5, 1.45]));
+  const body = wUni(1.6, ...parts);
+  // Tail fan: a forked outline in the vertical plane through the tail root, turned with the tail.
+  const [tx, td] = spine[N], [px2, pd2] = spine[N - 1];
+  const tyaw = Math.atan2(td - pd2, tx - px2);
+  const tu: W3 = [Math.cos(tyaw), 0, Math.sin(tyaw)];
+  const fan: P2[] = [[-0.8, 0.7], [1.6, 1.5], [4.4, 3.2], [5.9, 3.7], [6.3, 3.0], [5.3, 1.2], [4.9, 0], [5.3, -1.2], [6.3, -3.0], [5.9, -3.7], [4.4, -3.2], [1.6, -1.5], [-0.8, -0.7]];
+  const tail = wPlate([tx, 0, td], tu, [0, 1, 0], fan, 0.3);
+  // Dorsal fin along the back, low and long.
+  const [dx0, dd0] = spine[4], [dx1, dd1] = spine[8];
+  const dorsal = wPlate([dx0, koiGirth(0.33)[1] - 0.5, dd0], [(dx1 - dx0) / Math.hypot(dx1 - dx0, dd1 - dd0), 0, (dd1 - dd0) / Math.hypot(dx1 - dx0, dd1 - dd0)], [0, 1, 0], [[0.4, 0], [1.4, 1.2], [3.4, 1.1], [7.2, 0.2], [7.2, -0.6], [0, -0.6]], 0.3);
+  // Pectoral fins: paddles out to each side behind the head, swept back and a little down.
+  const [qx, qd] = spine[3];
+  const [qw, qh] = koiGirth(0.25);
+  const fins: WPrim[] = [];
+  for (const side of [-1, 1]) {
+    const sweep = 0.95 + pose.fin * 0.18 * side;
+    const u: W3 = [-Math.sin(sweep), -0.22, side * Math.cos(sweep)];
+    const ul = Math.hypot(...u);
+    const uu: W3 = [u[0] / ul, u[1] / ul, u[2] / ul];
+    fins.push(wPlate([qx + 0.3, -qh * 0.35, qd + side * qw * 0.8], uu, [1, 0, 0], [[0, -0.6], [1.3, -1.0], [2.7, -0.6], [3.1, 0.2], [2.4, 0.9], [0.6, 0.8]], 0.28));
+  }
+  const trunk = wUni(0.5, body, dorsal);
+  // Fish space to world: pitch about the body center (nose up positive), then move.
+  const cp = Math.cos(pose.pitch), sp = Math.sin(pose.pitch);
+  const toFish = (p: W3): W3 => {
+    const x = p[0] - pose.c[0], h = p[1] - pose.c[1];
+    return [x * cp + h * sp, -x * sp + h * cp, p[2] - pose.c[2]];
+  };
+  const toWorld = (q: W3): W3 => [pose.c[0] + q[0] * cp - q[1] * sp, pose.c[1] + q[0] * sp + q[1] * cp, pose.c[2] + q[2]];
+  const place = (w: WPrim): WPrim => {
+    const fb = w.box;
+    const corners: W3[] = [];
+    for (const a of [fb[0], fb[3]]) for (const h of [fb[1], fb[4]]) for (const d of [fb[2], fb[5]]) corners.push(toWorld([a, h, d]));
+    const box: WPrim['box'] = [
+      Math.min(...corners.map((q) => q[0])), Math.min(...corners.map((q) => q[1])), Math.min(...corners.map((q) => q[2])),
+      Math.max(...corners.map((q) => q[0])), Math.max(...corners.map((q) => q[1])), Math.max(...corners.map((q) => q[2])),
+    ];
+    return { sd: (p) => w.sd(toFish(p)), box };
+  };
+  // fins[1] points away from the viewer (+D): it is the far fin.
+  return { parts: [place(fins[1]), place(trunk), place(tail), place(fins[0])], spine, toFish, toWorld };
+}
+
+/** Where a fish-space point sits along the body: s (0 nose .. 1 tail root), and its angle around (0 near flank, PI/2 back). */
+function koiCoords(spine: [number, number][], q: W3): { s: number; around: number; fin: boolean } {
+  let best = Infinity, bs = 0, bd = 0;
+  const N = spine.length - 1;
+  for (let i = 0; i < N; i++) {
+    const [ax, ad] = spine[i], [bx, bd2] = spine[i + 1];
+    const ex = bx - ax, ed = bd2 - ad;
+    const t = clamp(((q[0] - ax) * ex + (q[2] - ad) * ed) / (ex * ex + ed * ed), 0, 1);
+    const dd = Math.hypot(q[0] - ax - ex * t, q[2] - ad - ed * t);
+    if (dd < best) {
+      best = dd;
+      bs = (i + t) / N;
+      bd = q[2] - (ad + ed * t);
+    }
+  }
+  const [ww, hh] = koiGirth(clamp(bs, 0, 1));
+  const tailX = spine[N][0];
+  const fin = q[0] < tailX - 0.3 || Math.hypot(q[1] / hh, bd / ww) > 1.25;
+  return { s: bs, around: Math.atan2(q[1] / hh, -bd / ww), fin };
+}
+
+/** Kohaku patches: a head cap, a large saddle and a small spot before the tail (body coordinates). */
+function koiPatch(s: number, around: number): boolean {
+  const edge = (noise(s * 14, around * 1.6, 1, 61) - 0.5) * 0.06;
+  const top = around + edge * 5;
+  if (s > 0.07 + edge && s < 0.23 + edge && top > 0.2) return true;
+  if (s > 0.31 + edge && s < 0.6 - edge && top > -0.35 + 1.4 * Math.max(0, (s - 0.5) / 0.1)) return true;
+  if (s > 0.69 + edge && s < 0.84 + edge && top > 0.25) return true;
+  return false;
+}
+
+/** Palettes sinking into the water: depth band 0 (just under the surface) to 2 (deeper). */
+const KOI_PAL = (() => {
+  const water = ramp(MATERIALS.water);
+  const white = ramp(blend(MATERIALS.paper, '#ffffff', 0.15), { shift: 12, spread: 1.15 });
+  // Hi (the red-orange of a kohaku): fire pulled toward lacquer red, highlights kept from going lemon.
+  const orange = ramp(blend(MATERIALS.fire, MATERIALS.red, 0.4), { shift: 6 });
+  const sink = (r: Color[], t: number): number => pal(r.map((c, i) => (i === 0 ? c : mix(c, water[Math.min(5, i + 1)], t))));
+  return {
+    white: [pal(white), sink(white, 0.12), sink(white, 0.26), sink(white, 0.45)],
+    orange: [pal(orange), sink(orange, 0.1), sink(orange, 0.22), sink(orange, 0.4)],
+    water,
+  };
+})();
+
+const KOI_W = 96, KOI_H = 80, KOI_OX = 30, KOI_OY = 58;
+
+/** Renders the koi; `wet` (default true) sinks the parts below the water line into the river. */
+function koiFrame(pose: KoiPose, o: { wet?: boolean; cut?: number } = {}): { c: Canvas; sub: Uint8Array; body: KoiBody } {
+  const b = new Buf(KOI_W, KOI_H);
+  const body = koiBody(pose);
+  const sub = new Uint8Array(KOI_W * KOI_H);
+  const org = body.toWorld([0, 0, 0]);
+  const tailX = body.spine[body.spine.length - 1][0];
+  body.parts.forEach((prim, k) => {
+    const isFin = k !== 1;
+    // Far fin behind, then body, tail fan (the body's end overlaps its root), near fin in front.
+    const part = b.newPart({ line: k === 3 ? 1 : k === 1 ? 1 : null, layer: [0, 2, 1, 3][k], lineSide: 'all' });
+    solidCam(b, prim, KOI_OX, KOI_OY, part, (h) => {
+      const q = body.toFish(h.p);
+      const kc = koiCoords(body.spine, q);
+      // Depth bands under the surface (world height < 0).
+      const depth = -h.p[1];
+      // Leaping: what is deeper than `cut` is lost in the churned water.
+      if (o.cut !== undefined && depth > o.cut) return null;
+      const band = depth < 0 ? 0 : depth < 1.8 ? 1 : depth < 3.8 ? 2 : 3;
+      if (o.wet || depth > -0.8) sub[h.y * KOI_W + h.x] = 1;
+      let step = quant(h.light, h.x - KOI_OX - org[0], h.y - KOI_OY + org[1], [0.2, 0.44, 0.8, 0.94], 0.06, 2.5, 13);
+      if (isFin) {
+        // Fins: thin and translucent, a band deeper into the water, with soft rays.
+        const fb = Math.min(3, band + 1);
+        if (k === 2) {
+          const ray = Math.floor((Math.atan2(q[1], tailX - q[0] + 1.5) + 2) / 0.32);
+          step = clamp(step, 2, 4) - (ray % 2 === 0 ? 1 : 0);
+          // An orange blush at the root of the tail.
+          if (q[0] > tailX - 1.6 && Math.abs(q[1]) < 1.6) return [KOI_PAL.orange[fb], clamp(step, 2, 3)];
+        } else step = clamp(step, 2, 4);
+        return [KOI_PAL.white[fb], Math.max(1, step)];
+      }
+      const orange = koiPatch(kc.s, kc.around);
+      // Orange keeps its light step for the crest only.
+      if (orange && step === 4 && h.light < 0.88) step = 3;
+      return [(orange ? KOI_PAL.orange : KOI_PAL.white)[band], step];
+    });
+  });
+  // Eye on the near side of the head.
+  const e = body.toWorld([KOI_LEN * 0.62 - 1.3, 0.55, -1.2]);
+  const ex = Math.floor(KOI_OX + e[0]), ey = Math.floor(KOI_OY - e[1] - KOI_K * e[2]);
+  b.dot(ex, ey, P.dark, 1);
+  const c = finish(b, { outline: false });
+  // Outline: deep teal where the fish is under water, the usual near-black above it.
+  const add: [number, number, Color][] = [];
+  for (let y = 0; y < KOI_H; y++)
+    for (let x = 0; x < KOI_W; x++) {
+      if (c.alpha(x, y)) continue;
+      let wet = false, dry = false;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (!b.has(x + dx, y + dy)) continue;
+        if (sub[(y + dy) * KOI_W + x + dx]) wet = true;
+        else dry = true;
+      }
+      if (dry) add.push([x, y, mix(hex('#3a1e10'), hex(OUTLINE_INK), 0.55)]);
+      else if (wet) add.push([x, y, mix(KOI_PAL.water[0], KOI_PAL.water[1], 0.35)]);
+    }
+  for (const [x, y, col] of add) c.set(x, y, col);
+  return { c, sub, body };
+}
+const OUTLINE_INK = '#07060b';
+
+// --- water effects --------------------------------------------------------------------------
+
+/** Pixels of a ring on the water (an ellipse 2/3 as tall as wide), broken into arcs; angle 0 right, PI/2 front. */
+function waterRing(c: Canvas, cx: number, cy: number, rx: number, alpha: number, seed: number, gaps = 0.35, color: Color = KOI_PAL.water[5], behind = false): void {
+  if (alpha < 10 || rx < 1) return;
+  const ry = rx * KOI_K;
+  const n = Math.ceil(rx * 7);
+  const seen = new Set<number>();
+  for (let i = 0; i < n; i++) {
+    const th = (i / n) * Math.PI * 2;
+    if (hash(Math.floor((i / n) * 14), seed, 5) < gaps) continue;
+    const x = Math.round(cx + Math.cos(th) * rx - 0.5), y = Math.round(cy + Math.sin(th) * ry - 0.5);
+    if (seen.has(y * c.w + x)) continue;
+    seen.add(y * c.w + x);
+    // The near (front) half of the ring is brighter than the far half.
+    const a = Math.sin(th) > 0 ? alpha : alpha * 0.65;
+    if (behind && c.alpha(x, y)) continue;
+    c.plot(x, y, withAlpha(color, a));
+  }
+}
+
+/** Plots a pixel only where the canvas is empty (water effects stay behind the fish). */
+function plotEmpty(c: Canvas, x: number, y: number, col: Color): void {
+  if (c.alpha(Math.floor(x), Math.floor(y)) === 0) c.plot(x, y, col);
+}
+
+interface Drop {
+  /** Launch frame, start (X, H), velocity (px per frame), size. */
+  f0: number;
+  x: number;
+  h: number;
+  vx: number;
+  vh: number;
+  big?: boolean;
+}
+
+/** Droplets in flight at frame f (gravity 1.5 px/frame^2); each drawn with a 1 px streak behind it. */
+function drawDrops(c: Canvas, drops: Drop[], f: number): void {
+  const g = 1.5;
+  for (const d of drops) {
+    const t = f - d.f0;
+    if (t < 0) continue;
+    const x = d.x + d.vx * t, h = d.h + d.vh * t - 0.5 * g * t * t;
+    if (h < -0.5) continue;
+    const sx = KOI_OX + x, sy = KOI_OY - h;
+    const white = mix(KOI_PAL.water[5], hex('#ffffff'), 0.45);
+    c.plot(sx, sy, white);
+    if (d.big) c.plot(sx + 1, sy, KOI_PAL.water[5]);
+    // Streak toward where it came from.
+    const vh = d.vh - g * t;
+    c.plot(sx - Math.sign(d.vx) * (Math.abs(d.vx) > 0.6 ? 1 : 0), sy + (vh > 0 ? 1 : -1), withAlpha(KOI_PAL.water[4], 150));
+  }
+}
+
+/** A splash crown at a water entry: short upright jets around a ring, `k` 0..1 (rising, then falling). */
+function crown(c: Canvas, cx: number, cy: number, rx: number, k: number): void {
+  const jets: [number, number][] = [[-1, 0.2], [-0.6, -0.7], [-0.25, 0.85], [0.2, -0.9], [0.55, 0.75], [0.95, -0.2]];
+  const white = mix(KOI_PAL.water[5], hex('#ffffff'), 0.55);
+  // Foam where the water is thrown up: a broken rim of the crown on the surface.
+  for (let u = -1; u <= 1.001; u += 0.25) {
+    const x = Math.round(cx + u * rx), y = Math.round(cy + Math.sqrt(Math.max(0, 1 - u * u)) * rx * KOI_K * 0.8);
+    c.plot(x, y, withAlpha(white, 220));
+  }
+  jets.forEach(([u, v], i) => {
+    const x = Math.round(cx + u * rx), y0 = Math.round(cy + v * Math.sqrt(Math.max(0, 1 - u * u)) * rx * KOI_K);
+    const hgt = Math.max(1, Math.round((v > 0 ? 3 : 4 + (i % 2)) * k));
+    for (let j = 0; j < hgt; j++) c.plot(x + (j === hgt - 1 && u !== 0 ? Math.sign(u) * (k > 0.7 ? 1 : 0) : 0), y0 - j, j >= hgt - 2 ? white : withAlpha(KOI_PAL.water[5], 220));
+  });
+}
+
+function koi(): WorldSprite {
+  const swim: Canvas[] = [];
+  for (let i = 0; i < 8; i++) {
+    const t = i / 8;
+    const { c } = koiFrame({ c: [0, -2.6, 0], pitch: 0, phase: t, amp: 1, fin: Math.sin(2 * Math.PI * t) }, { wet: true });
+    // A faint V of ripples on the surface from the nose, dashes drifting back one pixel a frame.
+    // The surface lies over the fish, so the near arm crosses it (fainter there).
+    for (const side of [-1, 1])
+      for (let u = 0; u < 16; u++) {
+        const k = (u + i) % 8;
+        // Dashes of three pixels; a dash cut short at either end of the arm is left out.
+        if (k >= 3 || u - k < 0 || u - k + 2 > 15) continue;
+        const X = 11.5 - u, D = side * (1.4 + u * 0.55);
+        const a = 205 * (1 - u / 19);
+        const x = KOI_OX + X, y = KOI_OY - KOI_K * D;
+        c.plot(x, y, withAlpha(KOI_PAL.water[5], c.alpha(Math.floor(x), Math.floor(y)) ? a * 0.55 : a));
+      }
+    // The bow ripple just ahead of the nose.
+    plotEmpty(c, KOI_OX + 13, KOI_OY + 1, withAlpha(KOI_PAL.water[5], 110));
+    plotEmpty(c, KOI_OX + 13, KOI_OY + 2, withAlpha(KOI_PAL.water[5], 80));
+    swim.push(c);
+  }
+
+  // Leap: the fish noses up, breaks the surface, arcs about 0.4 m up and one body length
+  // forward, and dives back in. Rings spread from the takeoff and entry points; droplets fly.
+  const path: { c: W3; pitch: number; phase: number; amp: number; curl?: number }[] = [
+    { c: [1, -2.4, 0], pitch: 0.3, phase: 0.25, amp: 1.5 },
+    { c: [4, 2.5, 0], pitch: 1.05, phase: 0.5, amp: 0.8 },
+    { c: [8, 12, 0], pitch: 0.85, phase: 0.75, amp: 0.6 },
+    { c: [12, 19.5, 0], pitch: 0.4, phase: 0.9, amp: 0.5, curl: 0.08 },
+    { c: [16, 22, 0], pitch: -0.2, phase: 0.05, amp: 0.5, curl: 0.1 },
+    { c: [20, 16, 0], pitch: -0.85, phase: 0.2, amp: 0.6 },
+    { c: [23, 4, 0], pitch: -1.15, phase: 0.35, amp: 0.7 },
+    { c: [24.5, -4, 0], pitch: -1.25, phase: 0.5, amp: 0.8 },
+  ];
+  // Where the body crosses the water line on the breach and on the entry (from the path's pitch).
+  const cross = (p: { c: W3; pitch: number }): number => p.c[0] - p.c[1] / Math.tan(p.pitch);
+  const takeoffX = Math.round(cross(path[1])), entryX = Math.round(cross(path[6]));
+  const drops: Drop[] = [
+    { f0: 1, x: 3, h: 1, vx: -0.8, vh: 3.2 },
+    { f0: 1, x: 7, h: 1, vx: 0.9, vh: 3.6, big: true },
+    { f0: 1, x: 5, h: 2, vx: 0.1, vh: 4.4 },
+    { f0: 2, x: 4, h: 6, vx: -0.4, vh: 1.5 },
+    { f0: 2, x: 6, h: 3, vx: 0.6, vh: 2.2 },
+    { f0: 6, x: 22, h: 1, vx: -1.2, vh: 3.4, big: true },
+    { f0: 6, x: 28, h: 1, vx: 1.3, vh: 3.0 },
+    { f0: 7, x: 23, h: 1, vx: -0.9, vh: 4.6 },
+    { f0: 7, x: 27, h: 1, vx: 0.8, vh: 5.0, big: true },
+    { f0: 7, x: 25, h: 2, vx: 0.2, vh: 5.6 },
+    { f0: 7, x: 21, h: 0, vx: -1.6, vh: 2.6 },
+    { f0: 7, x: 29, h: 0, vx: 1.7, vh: 2.4 },
+  ];
+  const jump: Canvas[] = [];
+  for (let f = 0; f < 10; f++) {
+    let c: Canvas;
+    if (f < path.length) {
+      const p = path[f];
+      c = koiFrame({ ...p, fin: f % 2 ? 1 : -1 }, { wet: f === 0, cut: f === 0 ? undefined : 4.5 }).c;
+    } else c = new Canvas(KOI_W, KOI_H);
+    const ty = KOI_OY;
+    // Takeoff: a bulge before the breach, then a ring spreading and fading.
+    // Anticipation: the nose lifts the surface into a low bulge, a ring of light around the head.
+    if (f === 0) waterRing(c, KOI_OX + 10, ty + 1, 4.5, 190, 3, 0.15, KOI_PAL.water[5], true);
+    if (f >= 2 && f <= 6) waterRing(c, KOI_OX + takeoffX, ty, 4 + (f - 2) * 2.6, 230 - (f - 2) * 48, 11 + f, 0.22);
+    if (f >= 3 && f <= 6) waterRing(c, KOI_OX + takeoffX, ty, 2 + (f - 3) * 2.2, 170 - (f - 3) * 50, 41 + f, 0.4);
+    if (f === 1) crown(c, KOI_OX + takeoffX - 1, ty, 3.5, 1);
+    if (f === 2) crown(c, KOI_OX + takeoffX, ty, 4.5, 0.55);
+    // Entry: crown, then two rings spreading.
+    if (f === 6) crown(c, KOI_OX + entryX - 1, ty, 3, 0.7);
+    if (f === 7) crown(c, KOI_OX + entryX, ty, 4, 1.1);
+    if (f === 8) crown(c, KOI_OX + entryX, ty, 5.5, 0.6);
+    if (f >= 7) waterRing(c, KOI_OX + entryX, ty, 5 + (f - 7) * 3.2, 240 - (f - 7) * 55, 21 + f, 0.2);
+    if (f >= 8) waterRing(c, KOI_OX + entryX, ty, 2.5 + (f - 8) * 2.6, 200 - (f - 8) * 60, 31 + f, 0.35);
+    drawDrops(c, drops, f);
+    jump.push(c);
+  }
+  return assemble('koi', 'Koi', [0.4, 0.12], ['animal', 'ambient', 'water'], { swim: { frames: swim, fps: 8 }, jump: { frames: jump, fps: 12, loop: false } }, KOI_OX, KOI_OY);
+}
+
+// =============================================================================================
 // BUILD
 // =============================================================================================
 
@@ -1692,6 +2757,35 @@ function debugSaves(sprites: WorldSprite[], dir: string): void {
   }
 }
 
+/** Frames side by side at a fixed scale, cropped to their common opaque bounds (+2 px), with a faint pixel grid. */
+function inspect(path: string, frames: Canvas[], k = 12, bg = '#5d6b57'): void {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const f of frames) {
+    const bb = f.bounds();
+    if (!bb) continue;
+    x0 = Math.min(x0, bb[0]);
+    y0 = Math.min(y0, bb[1]);
+    x1 = Math.max(x1, bb[2]);
+    y1 = Math.max(y1, bb[3]);
+  }
+  if (x1 < 0) return;
+  x0 -= 2;
+  y0 -= 2;
+  x1 += 2;
+  y1 += 2;
+  const fw = x1 - x0 + 1, fh = y1 - y0 + 1;
+  const row = new Canvas((fw + 1) * frames.length, fh);
+  row.fillRect(0, 0, row.w, row.h, hex('#3a4438'));
+  frames.forEach((f, i) => {
+    row.fillRect(i * (fw + 1), 0, fw, fh, hex(bg));
+    row.draw(f, i * (fw + 1) - x0, -y0);
+  });
+  const big = row.scaled(k);
+  for (let y = 0; y < big.h; y++)
+    for (let x = 0; x < big.w; x++) if (x % k === 0 || y % k === 0) big.plot(x, y, [0, 0, 0, 22]);
+  big.save(path);
+}
+
 /** Frames of an animation in a grid (for close inspection), saved as animals-<name>-<anim>-grid.png. */
 function grid(s: WorldSprite, anim: string, dir: string, scale: number, cols: number, from = 0, count = 99): void {
   const fr = s.anims[anim].frames.slice(from, from + count);
@@ -1703,29 +2797,109 @@ function grid(s: WorldSprite, anim: string, dir: string, scale: number, cols: nu
   out.scaled(scale).save(join(dir, `animals-${s.name}-${anim}-grid${from ? '-' + from : ''}.png`));
 }
 
-/** All first frames on one ground line next to the character, at the in-game 2x and at 4x. */
-function lineup(sprites: WorldSprite[], path: string): void {
+/** Where each animal shows in the owner's lineup: flyers float at a typical height, the koi sits in a strip of river. */
+const LINEUP_LIFT: Record<string, number> = { butterfly_blue: m(0.9), butterfly_yellow: m(0.7), dragonfly: m(0.55), fireflies: m(0.95) };
+
+/** All animals' first frames side by side next to the character (ground line, river strip under the koi), scaled `k`. */
+function lineup(sprites: WorldSprite[], path: string, k = 4): void {
   const ref = characterRef();
-  const items: { c: Canvas; ax: number; ay: number }[] = [{ c: ref, ax: CHARACTER_FEET[0], ay: CHARACTER_FEET[1] }];
-  for (const s of sprites) items.push({ c: Object.values(s.anims)[0].frames[0], ax: s.anchor[0], ay: s.anchor[1] });
-  const above = Math.max(...items.map((i) => i.ay)), below = Math.max(...items.map((i) => i.c.h - i.ay));
-  const W = items.reduce((t, i) => t + i.c.w + 6, 6), H = above + below + 8;
+  const items: { c: Canvas; ax: number; ay: number; lift: number; water: boolean }[] = [{ c: ref, ax: CHARACTER_FEET[0], ay: CHARACTER_FEET[1], lift: 0, water: false }];
+  for (const s of sprites) {
+    const f = Object.values(s.anims)[0].frames[0];
+    const bb = f.bounds()!;
+    // Trim each canvas to its first frame's opaque bounds (+2) so wide jump canvases don't pad the row.
+    const t = new Canvas(bb[2] - bb[0] + 5, bb[3] - bb[1] + 5);
+    t.draw(f, -bb[0] + 2, -bb[1] + 2);
+    items.push({ c: t, ax: s.anchor[0] - bb[0] + 2, ay: s.anchor[1] - bb[1] + 2, lift: LINEUP_LIFT[s.name] ?? 0, water: s.name === 'koi' });
+  }
+  const gap = 10;
+  const above = Math.max(...items.map((i) => i.ay + i.lift)) + 6, below = Math.max(...items.map((i) => i.c.h - i.ay - i.lift), 8) + 8;
+  const W = items.reduce((t, i) => t + i.c.w + gap, gap), H = above + below;
   const out = new Canvas(W, H);
   out.fillRect(0, 0, W, H, hex('#5d6b57'));
-  out.fillRect(0, above + 4, W, below + 4, hex('#4a5a3c'));
-  let x = 6;
+  out.fillRect(0, above, W, below, hex('#4a5a3c'));
+  let x = gap;
   for (const i of items) {
-    out.draw(i.c, x, above + 4 - i.ay);
-    x += i.c.w + 6;
+    if (i.water) {
+      // A pool of the river under the koi (an ellipse 2/3 as tall as wide, like the camera sees it).
+      const water = ramp(MATERIALS.water);
+      const cx = x + i.ax, cy = above + 3, rx = i.c.w / 2 + 6, ry = rx * (38 / 57) * 0.5;
+      out.fillEllipse(cx, cy, rx + 1, ry + 1, mix(water[1], hex('#4a5a3c'), 0.4));
+      out.fillEllipse(cx, cy, rx, ry, mix(water[2], hex('#4a5a3c'), 0.25));
+      out.fillEllipse(cx - 2, cy + 1, rx - 3, ry - 2, mix(water[3], hex('#4a5a3c'), 0.2));
+    }
+    if (i.lift) {
+      // A faint shadow on the ground under a flyer.
+      for (let dx = -2; dx <= 2; dx++) out.plot(x + i.ax + dx, above + 1, [20, 28, 18, Math.abs(dx) === 2 ? 50 : 90]);
+    }
+    out.draw(i.c, x, above - i.ay - i.lift);
+    x += i.c.w + gap;
   }
-  out.scaled(2).save(path.replace('.png', '-2x.png'));
+  out.scaled(k).save(path);
 }
 
-const sprites: WorldSprite[] = [rabbit(), deer(), crow(), sparrow()];
-writeGroup('animals', sprites);
-preview(sprites, join(previewDir(), 'animals.png'), { scale: 4, maxWidth: 480 });
+/** Every animation as a strip of frames (one row per animation, grouped by animal), scaled `k`. */
+function animSheet(sprites: WorldSprite[], path: string, k = 4): void {
+  const rows: { s: WorldSprite; key: string; frames: Canvas[]; bb: [number, number, number, number] }[] = [];
+  for (const s of sprites)
+    for (const [key, a] of Object.entries(s.anims)) {
+      if (a.frames.length < 2) continue;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const f of a.frames) {
+        const b = f.bounds();
+        if (!b) continue;
+        x0 = Math.min(x0, b[0]);
+        y0 = Math.min(y0, b[1]);
+        x1 = Math.max(x1, b[2]);
+        y1 = Math.max(y1, b[3]);
+      }
+      rows.push({ s, key, frames: a.frames, bb: [x0 - 2, y0 - 2, x1 + 2, y1 + 2] });
+    }
+  const gap = 4, pad = 6;
+  const W = Math.max(...rows.map((r) => pad * 2 + r.frames.length * (r.bb[2] - r.bb[0] + 1 + gap)));
+  const H = rows.reduce((t, r) => t + r.bb[3] - r.bb[1] + 1 + pad, pad);
+  const out = new Canvas(W, H);
+  out.fillRect(0, 0, W, H, hex('#45513f'));
+  let y = pad;
+  let last: WorldSprite | null = null;
+  for (const r of rows) {
+    const fw = r.bb[2] - r.bb[0] + 1, fh = r.bb[3] - r.bb[1] + 1;
+    if (last && last !== r.s) out.fillRect(0, y - Math.ceil(pad / 2) - 1, W, 1, hex('#2c3429'));
+    last = r.s;
+    r.frames.forEach((f, i) => {
+      const x = pad + i * (fw + gap);
+      out.fillRect(x, y, fw, fh, hex('#5d6b57'));
+      out.draw(f, x - r.bb[0], y - r.bb[1]);
+    });
+    // Anchor mark on the first frame (a dark tick under/over the anchor point).
+    y += fh + pad;
+  }
+  out.scaled(k).save(path);
+}
+
+// FOCUS=frog,koi builds only those sprites and saves their inspection images (nothing else is written).
+const FOCUS = process.env.FOCUS?.split(',');
+const BUILDERS: [string, () => WorldSprite][] = [
+  ['rabbit', rabbit],
+  ['deer', deer],
+  ['crow', crow],
+  ['sparrow', sparrow],
+  ['frog', frog],
+  ['koi', koi],
+  ['butterfly_blue', () => butterfly('butterfly_blue', 'Blue Swallowtail', BLUE_SET)],
+  ['butterfly_yellow', () => butterfly('butterfly_yellow', 'Yellow Butterfly', YELLOW_SET)],
+  ['dragonfly', dragonfly],
+  ['fireflies', fireflies],
+];
+const sprites: WorldSprite[] = BUILDERS.filter(([n]) => !FOCUS || FOCUS.includes(n)).map(([, f]) => f());
+if (!FOCUS) {
+  writeGroup('animals', sprites);
+  preview(sprites, join(previewDir(), 'animals.png'), { scale: 4, maxWidth: 480 });
+  lineup(sprites, join(previewDir(), 'animals-lineup.png'), 4);
+  animSheet(sprites, join(previewDir(), 'animals-anims.png'), 4);
+}
 debugSaves(sprites, previewDir());
-lineup(sprites, join(previewDir(), 'animals-lineup.png'));
+for (const s of sprites) for (const [k, a] of Object.entries(s.anims)) inspect(join(previewDir(), `animals-${s.name}-${k}-x.png`), a.frames, Math.max(6, Math.min(16, Math.floor(1500 / ((a.frames[0].w + 1) * a.frames.length)))));
 const GRID = process.env.GRID;
 if (GRID) {
   const [nm, an, sc, co, fr, ct] = GRID.split(':');

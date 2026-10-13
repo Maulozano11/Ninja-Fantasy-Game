@@ -1,6 +1,6 @@
 // Composites the base body and every equipped item into one 128x128 frame.
 
-import { drawBody } from './body';
+import { drawBody, faceCells } from './body';
 import { getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS } from './ctx';
@@ -34,6 +34,37 @@ const SHADOW_FROM: [number, number][] = [
   [0, -2],
   [-1, -2],
 ];
+
+// Hairstyles whose front hair must stay off the face (the others frame the
+// face on purpose and are left as drawn). Their side locks may still cover
+// the jaw edge in front of the ear, like the reference, which keeps the face
+// from reading too wide.
+const FACE_CLEAR_HAIR = new Set(['hair_scholar', 'hair_long', 'hair_crest']);
+
+/**
+ * For FACE_CLEAR_HAIR styles: from the lash row down (eyes, cheeks, jaw) no
+ * front hair covers the face, except a side lock over the jaw edge; above it
+ * the fringe may still cross the forehead. Hair left next to a trimmed spot
+ * gets a dark 1px edge.
+ */
+function guardFace(g: DrawCtx, layers: Map<Depth, Layer>): void {
+  const L = layers.get('hairFront');
+  const id = g.look.slots.hair?.id;
+  if (!L?.used || !id || !FACE_CLEAR_HAIR.has(id)) return;
+  const face = faceCells(g, 3);
+  const cut: number[] = [];
+  for (const i of face) {
+    if (L.mat[i] < 0) continue;
+    L.clear(i % GRID, (i / GRID) | 0);
+    cut.push(i);
+  }
+  for (const i of cut) {
+    for (const j of [i - 1, i + 1, i - GRID, i + GRID]) {
+      if (j < 0 || j >= GRID * GRID || face.has(j) || L.mat[j] < 0) continue;
+      L.reshade(j % GRID, (j / GRID) | 0, 0);
+    }
+  }
+}
 
 /**
  * Drop shadows between overlapping parts, like the reference: wherever a part
@@ -121,6 +152,7 @@ export function renderSprite(
     if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors));
   }
   drawHeadband(g);
+  guardFace(g, layers);
 
   // Outline and flatten
   const rgba = new Uint8ClampedArray(GRID * GRID * 4);

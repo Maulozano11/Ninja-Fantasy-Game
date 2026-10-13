@@ -182,8 +182,16 @@ function drawHead(g: DrawCtx): void {
 // Mouth: m lip · M mouth crease.  '.' = transparent.
 // ---------------------------------------------------------------------------
 
-/** Near side of the head (jaw + ear), columns -7..-1. */
-const FACE_LEFT = ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'];
+/**
+ * Near side of the face (cheek + jaw), columns -7..-1. The cheek drops
+ * straight for two rows below the eye, then the jaw tapers to the chin so the
+ * lower face stays small (a heavier jaw reads as a box from the front).
+ */
+const FACE_LEFT: Record<string, string[]> = {
+  male: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
+  female: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
+  bulky: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
+};
 
 const FACE_MAIN: Record<string, string[]> = {
   male: [
@@ -231,6 +239,31 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   round: { near: ['LLLLb', 'LhddD', 'wiiil'], far: ['LLL', 'dLL', 'iio'] },
   calm: { near: ['bbbbb', 'LLLLL', 'swiil'], far: ['bbb', 'LLL', 'iLo'] },
 };
+
+/**
+ * Fine-pixel indices covered by the face templates (from the lash row down:
+ * eyes, cheeks, nose, mouth, jaw). Used to keep certain hairstyles' front
+ * hair off the face (see compose.ts). The first `skipBack` columns of the
+ * near side (jaw edge, in front of the ear) are left out, so side locks can
+ * still frame the face there.
+ */
+export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
+  const { nx, ny } = faceAnchor(g);
+  const shape = g.look.eyeShape || 'standard';
+  const eyes = EYE_ROWS[shape] || EYE_ROWS.standard;
+  const main = (FACE_MAIN[g.rig.body] || FACE_MAIN.male).map((row, r) => (r > 2 ? row : eyes.near[r] + row.slice(5, 9) + eyes.far[r]));
+  const out = new Set<number>();
+  const add = (x: number, y: number) => {
+    if (x >= 0 && y >= 0 && x < GRID && y < GRID) out.add(y * GRID + x);
+  };
+  (FACE_LEFT[g.rig.body] || FACE_LEFT.male).forEach((row, r) => {
+    for (let c = skipBack; c < row.length; c++) if (row[c] !== '.') add(nx - 7 + c, ny + r);
+  });
+  main.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) if (row[c] !== '.') add(nx + c, ny + r);
+  });
+  return out;
+}
 
 /** Fine-pixel anchors of the face: near-eye lash start and far-eye lash start. */
 export function faceAnchor(g: DrawCtx): { nx: number; ny: number; fx: number; fy: number } {
@@ -281,7 +314,7 @@ function drawFace(g: DrawCtx): void {
     if (ch in skinShade) L.set(x, y, g.skin, skinShade[ch], 'head', F_NO_OUTLINE);
     else L.set(x, y, colors[ch], 3, 'head', F_NO_OUTLINE);
   };
-  FACE_LEFT.forEach((row, r) => {
+  (FACE_LEFT[g.rig.body] || FACE_LEFT.male).forEach((row, r) => {
     for (let c = 0; c < row.length; c++) put(nx - 7 + c, ny + r, row[c]);
   });
   main.forEach((row, r) => {

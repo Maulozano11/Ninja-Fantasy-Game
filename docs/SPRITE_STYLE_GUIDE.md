@@ -42,7 +42,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 
 ## 4. Face (fixed)
 
-The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris (a dark top row over a mid-tone row, never the brightest tone, so the gaze stays focused), a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. It recolors by skin tone and eye color, and has female and bulky variants and four eye shapes. Don't change it without comparing at 10x against the reference.
+The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and `FACE_LEFT` in `body.ts`). It has a 4 px lash bar, a 2x2 iris (a dark top row over a mid-tone row, never the brightest tone, so the gaze stays focused), a 1 px far eye, a single nose pixel, a 3 px mouth and a tapered 1 px chin. On the near side the cheek drops straight for only two rows below the eye, then the jaw tapers diagonally into the chin, so the lower face stays small (a long, flat jaw line reads as a heavy, boxy jaw). It recolors by skin tone and eye color, and has female and bulky variants and four eye shapes. Don't change it without comparing at 10x against the reference.
 
 ## 5. Skin, arms, hands and feet
 
@@ -59,6 +59,7 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - Style: a dark 0 outline with a lit 1 rim, irregular 1-2 px tufts on the silhouette, mostly shades 1-2 with clusters of 3-4 and a few 5 glints.
 - Bangs end at the lash row. A few 1-2 px strands may cross the face beside or between the eyes.
 - Both irises stay visible. The only exception is a style designed to cover one eye.
+- Head width: the hair silhouette stays within about 28 px (the midnight standard), with at most 3-4 px of hair behind the skull and 3-5 px above it. A style whose fringe stays off the face (`FACE_CLEAR_HAIR` in `compose.ts`) frames it with a short side lock over the jaw edge, in front of the ear, so the face doesn't read too wide.
 - Parts that follow the body (long hair down the back, ponytails) are drawn procedurally in `hairBack` with the same outline and clusters.
 
 ## 7. Weapons

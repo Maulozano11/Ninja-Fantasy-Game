@@ -135,6 +135,8 @@ export interface LockOpts {
   clumps?: number;
   /** Seed for the clump wobble, so neighbouring locks don't line up. */
   seed?: number;
+  /** Waves: the lock swings side to side [amplitude (design units), periods along the lock, phase]; the root stays put. */
+  wave?: [number, number, number?];
 }
 
 /** Quadratic bezier point. */
@@ -157,6 +159,20 @@ export function lock(L: Layer, root: Vec, ctrl: Vec, tip: Vec, w: number, pen: P
     const d = v(2 * (1 - t) * (ctrl.x - root.x) + 2 * t * (tip.x - ctrl.x), 2 * (1 - t) * (ctrl.y - root.y) + 2 * t * (tip.y - ctrl.y));
     const l = Math.hypot(d.x, d.y) || 1;
     tan.push(v(d.x / l, d.y / l));
+  }
+  if (opts.wave) {
+    const [amp, per, ph = 0] = opts.wave;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      const s = amp * Math.min(1, t / 0.3) * Math.sin(2 * Math.PI * per * t + ph);
+      pts[i] = v(pts[i].x - tan[i].y * s, pts[i].y + tan[i].x * s);
+    }
+    for (let i = 0; i <= N; i++) {
+      const a = pts[Math.max(0, i - 1)];
+      const b = pts[Math.min(N, i + 1)];
+      const l = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      tan[i] = v((b.x - a.x) / l, (b.y - a.y) / l);
+    }
   }
   const hold = opts.hold ?? 0.35;
   const tipW = opts.tipW ?? 1.1;

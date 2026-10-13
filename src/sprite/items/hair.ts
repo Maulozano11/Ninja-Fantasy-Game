@@ -100,6 +100,8 @@ function curtain(
     hold?: number;
     /** Gloss band [t0, t1] down the lit side of the locks, with the outermost lock pushed back a shade (depth). */
     gloss?: [number, number];
+    /** Waves [amplitude, periods] down every lock, each lock a little out of step with the next. */
+    wave?: [number, number];
   },
 ): [Vec, Vec] {
   const n = o.n ?? 4;
@@ -126,7 +128,15 @@ function curtain(
     const end = hd(g, tx + sw, ty);
     if (i === 0) edge = [root, end];
     const lp = o.gloss && i === 0 && n > 2 ? { ...pen, bias: (pen.bias || 0) - 1 } : pen;
-    lock(L, root, ctrl, end, w, lp, { hold: o.hold ?? 0.65, tipW: o.tipW ?? 1.5, form, clumps: 3.4, seed: i * 3 + 1, sheen: o.gloss && i > 0 ? o.gloss : false });
+    lock(L, root, ctrl, end, w, lp, {
+      hold: o.hold ?? 0.65,
+      tipW: o.tipW ?? 1.5,
+      form,
+      clumps: 3.4,
+      seed: i * 3 + 1,
+      sheen: o.gloss && i > 0 ? o.gloss : false,
+      wave: o.wave ? [o.wave[0], o.wave[1], i * 1.3] : undefined,
+    });
   }
   return edge;
 }
@@ -1504,6 +1514,40 @@ const TPL: Record<string, HairTpl> = {
       '0...0.',
     ],
   },
+  hair_charlotte: {
+    fa: [15, 19],
+    f: [
+      '...........1111110...........',
+      '........10.1444444110........',
+      '......1133034444441110.......',
+      '.....144332333444441440......',
+      '....14444443444444441440.....',
+      '....144414422445511551440....',
+      '....1443144255422212221140...',
+      '...14443144244422221222110...',
+      '...144344322142222212223220..',
+      '..1144343322124221212223230..',
+      '..1442343322124221221223220..',
+      '..14422432221242212212222220.',
+      '..132224322113422122122222220',
+      '..132214322113132212112212220',
+      '.1111114422213232212122212220',
+      '.1111111422210232212000012220',
+      '.111111242220.002200....0220.',
+      '.01111124220....00......0220.',
+      '.01111123220....0.......020..',
+      '022111133220....0......0220..',
+      '.0211113220.............0220.',
+      '.0211113220.............0220.',
+      '.0111133220.............0220.',
+      '..011112220..............0220',
+      '..011112220...............020',
+      '...011112220..............020',
+      '...000000020...............0.',
+      '..........00..............00.',
+      '...........0.................',
+    ],
+  },
 };
 // </generated-templates>
 
@@ -1629,6 +1673,17 @@ export const HAIR_ITEMS: ItemDef[] = [
       hairTemplate(g, g.L('hairFront'), R.f!, R.fa![0], R.fa![1], g.m(ribbon, 'cloth'));
     },
   },
+  hairStyle('hair_charlotte', 'Briar Queen Waves', 'Waist-length golden hair in big soft waves, side-swept bangs and wavy locks framing the face.', '#f2cb52', (g, P) => {
+    curtain(g, g.L('hairBack'), P.t, { ty: 2, out: 2.2, spread: 4.2, n: 6, w: 6.2, tipW: 1.6, jag: 1.6, bulge: 2.2, hold: 0.6, gloss: [0.3, 0.42], wave: [1.0, 2.4] });
+    // wavy locks falling in front of the shoulders
+    const F = g.L('hairFront');
+    const nearTip = toHead(g, g.rig.T(-g.bp.shoulderHalf * 0.55, g.bp.torsoLen - 8));
+    const farTip = toHead(g, g.rig.T(g.bp.chestHalf * 0.4, g.bp.torsoLen - 7));
+    const pen: Pen = { ...P.f, part: 'back' };
+    const form = hd(g, -1, -3);
+    hlock(g, F, [-3.8, 1, -4.4, 5, nearTip[0], nearTip[1]], 3.6, pen, { hold: 0.7, tipW: 1.4, form, clumps: 3.2, seed: 2, sheen: [0.32, 0.44], wave: [0.9, 1.8, 0] });
+    hlock(g, F, [6.6, 1, 7.2, 5, farTip[0], farTip[1]], 3.2, pen, { hold: 0.7, tipW: 1.2, form, clumps: 3.2, seed: 7, sheen: [0.36, 0.46], wave: [0.9, 1.8, 1.5] });
+  }),
   {
     id: 'hair_ribbon',
     slot: 'hair',

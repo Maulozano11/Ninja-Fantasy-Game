@@ -7,4 +7,3 @@ its files here are removed.
 
 | Proposal | Preview | What it changes |
 | --- | --- | --- |
-| `hairstyle-charlotte` | `hairstyle-charlotte.png` | **Briar Queen Waves** (Charlotte Roselei-style, Black Clover): waist-length golden hair in big soft waves, side-swept bangs with a lock between the eyes, wavy locks framing the face and falling in front of the shoulders. Adds an opt-in `wave` option to the procedural hair locks. |

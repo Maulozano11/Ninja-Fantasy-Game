@@ -1405,6 +1405,34 @@ const TPL: Record<string, HairTpl> = {
       '.........000..................',
     ],
   },
+  hair_gale: {
+    fa: [14, 21],
+    f: [
+      '...................0.........',
+      '..................00.........',
+      '............00....00.........',
+      '..........000...0030.........',
+      '..........00..003340.........',
+      '..........0100333440.........',
+      '.....0000031133344310000.....',
+      '.....0033133333343114410.....',
+      '.......0133333333333330......',
+      '.....00333333333333333400....',
+      '....01333333333334333334400..',
+      '...01334333333333343333310...',
+      '..03313343334334333434330....',
+      '...01333333433334344334350...',
+      '...03333334333344444334350...',
+      '...0333333333334344433353300.',
+      '..033333333330034343323313000',
+      '0033133333330..04333223450...',
+      '..01133133130..03133103350...',
+      '...033133320..0.02330.0330...',
+      '...03100030....00300...000...',
+      '...010...0.......0.......0...',
+      '...000...0...................',
+    ],
+  },
 };
 // </generated-templates>
 
@@ -1513,6 +1541,7 @@ export const HAIR_ITEMS: ItemDef[] = [
   hairStyle('hair_youth', 'Wild Youth', 'Short, messy black spikes that fall over the forehead.', '#33333d'),
   hairStyle('hair_ascended', 'Ascended Spikes', 'Golden spikes swept up and back, with one lone lock over the brow.', '#e6c020'),
   hairStyle('hair_storm2', 'Storm Ascension', 'Taller, sharper golden spikes crackling upward, with a lock over the brow.', '#e6c020'),
+  hairStyle('hair_gale', 'Gale Prodigy', 'Short, messy black spikes with a tall cowlick and ragged bangs falling between the eyes.', '#23232f'),
   {
     id: 'hair_ribbon',
     slot: 'hair',

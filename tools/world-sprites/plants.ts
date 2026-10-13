@@ -11,7 +11,7 @@
 // shadow wherever a clump in front of it overlaps.
 
 import { join } from 'node:path';
-import { Anim, Canvas, Color, MATERIALS, WorldSprite, hash, lambert, m, noise, preview, previewDir, ramp, withAlpha, writeGroup } from './kit';
+import { Anim, Canvas, Color, MATERIALS, WorldSprite, hash, hex, lambert, m, noise, preview, previewDir, ramp, withAlpha, writeGroup } from './kit';
 
 // --- palettes --------------------------------------------------------------------------------
 
@@ -41,14 +41,18 @@ const R = {
   yellow: ramp('#e3b832', { shift: 8 }),
   teal: ramp('#38b3a0', { shift: 10 }),
 };
-/** Foliage: front clumps on the leaf ramp, young lit tips from leafLight. */
-const FOL = pal([R.leaf[0], R.leaf[1], R.leaf[2], R.leaf[3], R.leaf[4], R.leafLight[4]]);
-/** Clumps that peek out from behind: the deeper leaf ramp. */
-const FOL_BACK = pal([R.leafDeep[0], R.leaf[1], R.leafDeep[2], R.leafDeep[3], R.leaf[3], R.leaf[4]]);
-/** Azalea: darker, glossier leaves so the blossoms carry the color. */
-const FOL_AZ = pal([R.leafDeep[0], R.leaf[1], R.leafDeep[2], R.leafDeep[3], R.leaf[4], R.leafLight[4]]);
-const GRASS = pal([R.grass[0], R.grass[1], R.grass[2], R.grass[3], R.leafLight[4], R.leafLight[5]]);
-const GRASS_BACK = pal([R.leafDeep[0], R.leaf[1], R.leafDeep[2], R.grass[2], R.grass[3], R.leafLight[4]]);
+/**
+ * Foliage greens sampled from the owner's reference bush, dark to light: a very dark green outline,
+ * deep blue-green shade, then mid and light leaf greens. Bushes use all eight as one ramp (0 outline,
+ * 1-7 dark to light); ferns and grass take six of them as ordinary ramps.
+ */
+const FOLIAGE: Color[] = ['#172621', '#21362f', '#224c3a', '#295b42', '#326747', '#417848', '#4d854b', '#60954f'].map((h) => hex(h));
+const LEAF_OUTLINE = '#172621';
+const BUSH = pal(FOLIAGE);
+const FERN = pal([FOLIAGE[0], FOLIAGE[1], FOLIAGE[3], FOLIAGE[5], FOLIAGE[6], FOLIAGE[7]]);
+const FERN_BACK = pal([FOLIAGE[0], FOLIAGE[1], FOLIAGE[2], FOLIAGE[3], FOLIAGE[4], FOLIAGE[5]]);
+const GRASS = pal([FOLIAGE[0], FOLIAGE[2], FOLIAGE[4], FOLIAGE[5], FOLIAGE[6], FOLIAGE[7]]);
+const GRASS_BACK = pal([FOLIAGE[0], FOLIAGE[1], FOLIAGE[2], FOLIAGE[3], FOLIAGE[4], FOLIAGE[5]]);
 const REED = pal([R.moss[0], R.leaf[1], R.moss[2], R.moss[3], R.moss[4], R.moss[5]]);
 const REED_BACK = pal([R.leafDeep[0], R.leaf[1], R.leafDeep[2], R.moss[2], R.moss[3], R.moss[4]]);
 const CATTAIL = pal(R.woodDark);
@@ -113,24 +117,24 @@ class Buf {
     if (!this.in(x, y)) return;
     const i = y * this.w + x;
     this.mat[i] = mat;
-    this.step[i] = clamp(Math.round(step), 0, 5);
+    this.step[i] = clamp(Math.round(step), 0, 7);
     this.part[i] = part;
     this.depth[i] = depth;
   }
   setStep(x: number, y: number, s: number): void {
-    if (this.has(x, y)) this.step[y * this.w + x] = clamp(Math.round(s), 0, 5);
+    if (this.has(x, y)) this.step[y * this.w + x] = clamp(Math.round(s), 0, 7);
   }
   shade(x: number, y: number, d: number, min = 1): void {
     if (!this.has(x, y)) return;
     const i = y * this.w + x;
-    this.step[i] = clamp(this.step[i] + d, Math.min(min, this.step[i]), 5);
+    this.step[i] = clamp(this.step[i] + d, Math.min(min, this.step[i]), PAL[this.mat[i]].length - 1);
   }
   toCanvas(): Canvas {
     const c = new Canvas(this.w, this.h);
     for (let y = 0; y < this.h; y++)
       for (let x = 0; x < this.w; x++) {
         const i = y * this.w + x;
-        if (this.mat[i] >= 0) c.set(x, y, PAL[this.mat[i]][this.step[i]]);
+        if (this.mat[i] >= 0) c.set(x, y, PAL[this.mat[i]][Math.min(this.step[i], PAL[this.mat[i]].length - 1)]);
       }
     return c;
   }
@@ -348,150 +352,102 @@ function looseLeaf(mat: number, ang: number, len = 5, wid = 3): Canvas {
   return c;
 }
 
-// --- foliage clumps --------------------------------------------------------------------------
+// --- foliage masses (bushes) ----------------------------------------------------------------
 
-interface Clump {
+/**
+ * A bush is one mass of a few large, soft lobes. Each lobe is shaded as a sphere lit from the upper
+ * left (plus the whole bush's form light and the ground's occlusion) and mottled with painted dabs:
+ * Voronoi cells 2-6 px across, each nudging the value up or down a step. There are no lines inside
+ * the mass; only the ragged silhouette gets the dark green outline, with single leaf pixels poking out.
+ */
+interface Lobe {
   x: number;
   y: number;
   r: number;
-  ry?: number;
-  /** Back clumps use the deeper leaf ramp. */
-  back?: boolean;
+  ry: number;
   /** Draw order (higher = in front). */
   z: number;
 }
-interface FoliageOpts {
+interface MassOpts {
   seed: number;
-  leafLen: number;
-  leafWid: number;
+  ground: number;
   /** Whole-bush ellipse for the shared form light: center x, center y, rx, ry. */
   form: [number, number, number, number];
-  ground: number;
-  /** Lean rim leaves toward the ground (0..1). */
-  droop?: number;
   /** Light offset (makes everything a bit lighter or darker). */
   bias?: number;
 }
 
-/** Light at (x, y) relative to a clump's center: its own sphere, the whole bush's form and the ground's occlusion. */
-function clumpLight(c: Clump, o: FoliageOpts, x: number, y: number): number {
-  const ry = c.ry ?? c.r;
-  let u = x / c.r, v = y / ry;
-  const d = Math.hypot(u, v);
-  if (d > 0.92) {
-    u *= 0.92 / d;
-    v *= 0.92 / d;
-  }
-  const local = lambert(u, v, Math.sqrt(Math.max(0, 1 - u * u - v * v)));
-  const [fx, fy, frx, fry] = o.form;
-  const U = clamp((c.x + x - fx) / frx, -1, 1), V = clamp((c.y + y - fy) / fry, -1, 1);
-  const global = lambert(U * 0.8, V * 0.8, Math.sqrt(Math.max(0.05, 1 - (U * U + V * V) * 0.64)));
-  const ao = smooth(o.ground - fry * 0.75, o.ground, c.y + y) * 0.18;
-  return local * 0.58 + global * 0.47 - ao + (o.bias ?? 0) + (c.back ? -0.07 : 0) - 0.05;
+/** A value in [-1, 1] that is constant over Voronoi cells about `sp` px across: the dabs of the mottling. */
+function dab(x: number, y: number, sp: number, seed: number): number {
+  const gx = Math.floor(x / sp), gy = Math.floor(y / sp);
+  let best = Infinity, id = 0;
+  for (let j = -1; j <= 1; j++)
+    for (let i = -1; i <= 1; i++) {
+      const cx = gx + i, cy = gy + j;
+      const fx = (cx + 0.15 + hash(cx, cy, seed) * 0.7) * sp, fy = (cy + 0.15 + hash(cx, cy, seed + 1) * 0.7) * sp;
+      const d = (x - fx) ** 2 + (y - fy) ** 2;
+      if (d < best) {
+        best = d;
+        id = hash(cx, cy, seed + 2);
+      }
+    }
+  return id * 2 - 1;
 }
-const TH = [0.36, 0.53, 0.735];
-const lightStep = (l: number): number => (l < TH[0] ? 1 : l < TH[1] ? 2 : l < TH[2] ? 3 : 4);
+
+/** Light at a point of a lobe (lobe-local px from its center), before the mottling. */
+function lobeLight(L: Lobe, o: MassOpts, lx: number, ly: number): number {
+  const u = lx / L.r, v = ly / L.ry;
+  const d = Math.hypot(u, v);
+  const k = d > 0.9 ? 0.9 / d : 1;
+  const uu = u * k, vv = v * k;
+  const local = lambert(uu, vv, Math.sqrt(Math.max(0, 1 - uu * uu - vv * vv)));
+  const [fx, fy, frx, fry] = o.form;
+  const U = clamp((L.x + lx - fx) / frx, -1, 1), V = clamp((L.y + ly - fy) / fry, -1, 1);
+  const global = lambert(U * 0.75, V * 0.75, Math.sqrt(Math.max(0.05, 1 - (U * U + V * V) * 0.56)));
+  const rim = smooth(0.72, 1.05, d) * 0.16;
+  const ao = smooth(o.ground - fry * 0.95, o.ground, L.y + ly) * 0.3;
+  return local * 0.55 + global * 0.55 - rim - ao + (o.bias ?? 0) - 0.06;
+}
+/** Value thresholds between the seven greens (steps 1..7). */
+const MASS_TH = [0.24, 0.34, 0.44, 0.54, 0.65, 0.77];
+const massStep = (v: number): number => 1 + MASS_TH.filter((t) => v > t).length;
+
+/** True if lobe-local (lx, ly) is inside the lobe's ragged, leafy edge. */
+function inLobe(L: Lobe, lx: number, ly: number, seed: number): boolean {
+  const d = Math.hypot(lx / L.r, ly / L.ry);
+  if (d > 1.2) return false;
+  if (d < 0.8) return true;
+  const th = Math.atan2(ly, lx);
+  const R = 1 / Math.hypot(Math.cos(th) / L.r, Math.sin(th) / L.ry);
+  const bin = Math.floor(((th + Math.PI) * R) / 2.4);
+  const jag = hash(bin, 0, seed) * 2.4 + noise((th + Math.PI) * R, 0, 7, seed + 3) * 1.6;
+  return (d - 1) * R < 1.4 - jag;
+}
 
 /**
- * Draws foliage clumps (each offset by `offs[i]`, whole pixels) into the buffer; parts are clump
- * indices. Shading and texture use clump-local coordinates, so an offset moves a clump rigidly.
+ * Draws the lobes (each offset by `offs[i]`, whole pixels) into the buffer; the part is the lobe index.
+ * Light and dabs use lobe-local coordinates, so an offset moves a lobe rigidly and nothing shimmers.
  */
-function drawFoliage(b: Buf, clumps: Clump[], o: FoliageOpts, offs: [number, number][] = [], front = FOL): void {
-  const order = clumps.map((_, i) => i).sort((a, b2) => clumps[a].z - clumps[b2].z);
-  const droop = o.droop ?? 0.3;
-  for (const ci of order) {
-    const c = clumps[ci];
-    const ry = c.ry ?? c.r;
-    const [ox, oy] = offs[ci] ?? [0, 0];
-    const bx = Math.round(c.x), by = Math.round(c.y);
-    const cc: Clump = { ...c, x: bx, y: by };
-    const mat = c.back ? FOL_BACK : front;
-    const seed = o.seed * 31 + ci;
-    const R0 = Math.ceil(Math.max(c.r, ry) + o.leafLen);
-    const S = 2 * R0 + 1;
-    const st = new Int8Array(S * S).fill(-1);
-    const id = (lx: number, ly: number): number => (Math.abs(lx) <= R0 && Math.abs(ly) <= R0 ? (ly + R0) * S + lx + R0 : -1);
-    const bandAt = (lx: number, ly: number): number => lightStep(clumpLight(cc, o, lx + 0.5, ly + 0.5) + (noise(lx, ly, 2.8, seed) - 0.5) * 0.16);
-    // Rim leaves: even steps around the clump, pointing outward, so the silhouette is a scallop of tips.
-    const per = Math.PI * (1.5 * (c.r + ry) - Math.sqrt(c.r * ry));
-    const n = Math.max(7, Math.round(per / (o.leafWid * 1.3)));
-    for (let i = 0; i < n; i++) {
-      const th = ((i + rnd(seed, i, 1) * 0.45) / n) * Math.PI * 2;
-      const ex = Math.cos(th) * c.r, ey = Math.sin(th) * ry;
-      let ang = th + (rnd(seed, i, 3) - 0.5) * 0.4;
-      ang = Math.atan2(Math.sin(ang) * (1 - droop) + droop * 0.7, Math.cos(ang));
-      const reach = Math.hypot(ex, ey);
-      const len = Math.max(o.leafLen, reach * 0.42) * (0.9 + rnd(seed, i, 6) * 0.2);
-      const sx = ex * 0.62, sy = ey * 0.62;
-      const wid = o.leafWid * (0.85 + rnd(seed, i, 7) * 0.2);
-      const nx = -Math.sin(ang), ny = Math.cos(ang);
-      const darkSide = nx * 0.6 + ny * 0.8 > 0 ? 1 : -1;
-      leafShape(sx, sy, ang, len, wid, (px, py, t, s) => {
-        const k = id(px, py);
-        if (k < 0) return;
-        let v = bandAt(px, py);
-        if (s * darkSide > 0.5) v = Math.max(1, v - 1);
-        else if (v >= 3 && s * darkSide < -0.45 && t > 0.3 && t < 0.85) v = Math.min(4, v + 1);
-        st[k] = v;
+function drawMass(b: Buf, lobes: Lobe[], o: MassOpts, offs: [number, number][] = []): void {
+  const cen = lobes.map((L, i) => [Math.round(L.x) + (offs[i]?.[0] ?? 0), Math.round(L.y) + (offs[i]?.[1] ?? 0)]);
+  for (let y = 0; y <= Math.min(o.ground, b.h - 1); y++)
+    for (let x = 0; x < b.w; x++) {
+      let owner = -1, lx = 0, ly = 0;
+      lobes.forEach((L, i) => {
+        const px = x + 0.5 - cen[i][0], py = y + 0.5 - cen[i][1];
+        if ((owner < 0 || L.z > lobes[owner].z) && inLobe(L, px, py, o.seed * 7 + i)) {
+          owner = i;
+          lx = px;
+          ly = py;
+        }
       });
+      if (owner < 0) continue;
+      const L = lobes[owner], sd = o.seed * 31 + owner * 17;
+      const v = lobeLight({ ...L, x: Math.round(L.x), y: Math.round(L.y) }, o, lx, ly) + dab(lx, ly, 3.1, sd) * 0.075 + dab(lx + 37, ly + 11, 5.4, sd + 5) * 0.065;
+      b.put(x, y, BUSH, massStep(v), owner, L.z);
     }
-    // Core.
-    for (let ly = -R0; ly <= R0; ly++)
-      for (let lx = -R0; lx <= R0; lx++) {
-        const u = (lx + 0.5) / (c.r * 0.8), v = (ly + 0.5) / (ry * 0.8);
-        if (u * u + v * v <= 1) st[id(lx, ly)] = bandAt(lx, ly);
-      }
-    // Interior leaves hanging toward the viewer: crests in the light, dark gaps in the shade.
-    const sp = o.leafLen * 0.8;
-    const leaves: { x: number; y: number; ang: number; k: number }[] = [];
-    let k = 0;
-    for (let gy = -ry; gy <= ry; gy += sp * 0.62)
-      for (let gx = -c.r; gx <= c.r; gx += sp) {
-        k++;
-        const row = Math.round((gy + ry) / (sp * 0.62));
-        const lx = gx + (row & 1 ? sp / 2 : 0) + (rnd(seed, k, 11) - 0.5) * sp * 0.5;
-        const ly = gy + (rnd(seed, k, 12) - 0.5) * sp * 0.4;
-        const u = lx / c.r, v = ly / ry;
-        if (u * u + v * v > 0.6) continue;
-        const out = Math.atan2(v, u);
-        let ang = u * u + v * v < 0.06 ? Math.PI / 2 : out;
-        ang = Math.atan2(Math.sin(ang) * 0.5 + 0.8, Math.cos(ang)) + (rnd(seed, k, 13) - 0.5) * 0.8;
-        leaves.push({ x: lx, y: ly, ang, k });
-      }
-    leaves.sort((a, b2) => a.y - b2.y);
-    for (const lf of leaves) {
-      const sc = lightStep(clumpLight(cc, o, lf.x, lf.y));
-      const r = rnd(seed, lf.k, 14);
-      if (sc === 1 && r > 0.4) continue;
-      const len = o.leafLen * (0.85 + rnd(seed, lf.k, 15) * 0.25), wid = o.leafWid * (0.9 + rnd(seed, lf.k, 16) * 0.2);
-      const nx = -Math.sin(lf.ang), ny = Math.cos(lf.ang);
-      const darkSide = nx * 0.6 + ny * 0.8 > 0 ? 1 : -1;
-      const glint = sc === 4 && r < 0.3;
-      const sx = lf.x - Math.cos(lf.ang) * len * 0.35, sy = lf.y - Math.sin(lf.ang) * len * 0.35;
-      leafShape(sx, sy, lf.ang, len, wid, (px, py, t, s) => {
-        const i = id(px, py);
-        if (i < 0 || st[i] < 0) return;
-        const edge = s * darkSide > 0.5;
-        let v: number;
-        if (sc >= 3) v = edge ? sc - 1 : sc;
-        else if (sc === 2) v = edge && r < 0.75 ? 1 : 2;
-        else v = edge ? 1 : 2;
-        if (glint && t > 0.45 && t < 0.8 && Math.abs(s) < 0.4) v = 5;
-        st[i] = v;
-      });
-    }
-    // Into the buffer (the ground clips the bottom).
-    for (let ly = -R0; ly <= R0; ly++)
-      for (let lx = -R0; lx <= R0; lx++) {
-        const v = st[id(lx, ly)];
-        if (v < 0) continue;
-        const x = bx + ox + lx, y = by + oy + ly;
-        if (y > o.ground) continue;
-        b.put(x, y, mat, v, ci, c.z);
-      }
-  }
-  // The shaded underside: between the clumps that reach the ground, dark foliage fills down to it,
-  // so the bush sits on a broad base instead of standing on separate lumps.
+  // The shaded underside: between the lobes that reach the ground, dark leaves fill down to it, so
+  // the bush sits on a broad base.
   let xl = Infinity, xr = -Infinity;
   for (let x = 0; x < b.w; x++)
     if (b.has(x, o.ground)) {
@@ -503,7 +459,33 @@ function drawFoliage(b: Buf, clumps: Clump[], o: FoliageOpts, offs: [number, num
     while (y > o.ground - 14 && !b.has(x, y)) y--;
     if (!b.has(x, y)) continue;
     const i = y * b.w + x;
-    for (let yy = y + 1; yy <= o.ground; yy++) b.put(x, yy, b.mat[i], 1, b.part[i], b.depth[i]);
+    for (let yy = y + 1; yy <= o.ground; yy++) b.put(x, yy, BUSH, 1, b.part[i], b.depth[i]);
+  }
+}
+
+/**
+ * The bush outline: a 1 px very dark green line around the silhouette (step 0 of the bush palette),
+ * plus single leaf pixels poking out of it. Pokes are picked in the owning lobe's local coordinates,
+ * so they travel with a swaying lobe instead of flickering.
+ */
+function massOutline(b: Buf, cen: (part: number) => [number, number] | null, seed: number, ground: number): void {
+  const add: [number, number, number, number, number, number][] = [];
+  for (let y = 0; y < b.h; y++)
+    for (let x = 0; x < b.w; x++) {
+      if (b.has(x, y)) continue;
+      for (const [ox, oy] of N4)
+        if (b.has(x + ox, y + oy)) {
+          const j = (y + oy) * b.w + x + ox;
+          add.push([x, y, b.part[j], b.depth[j], -ox, -oy]);
+          break;
+        }
+    }
+  for (const [x, y, part, depth] of add) b.put(x, y, BUSH, 0, part, depth);
+  for (const [x, y, part, depth, dx, dy] of add) {
+    if (y > ground - 3 || b.has(x + dx, y + dy)) continue;
+    const c = cen(part);
+    const lx = c ? x - c[0] : x, ly = c ? y - c[1] : y;
+    if (hash(lx, ly, seed) < 0.14) b.put(x + dx, y + dy, BUSH, 0, part, depth);
   }
 }
 
@@ -513,35 +495,46 @@ interface BushSpec {
   name: string;
   label: string;
   meters: [number, number];
-  clumps: Clump[];
-  opts: FoliageOpts;
-  mat?: number;
+  lobes: Lobe[];
+  opts: MassOpts;
   W: number;
   H: number;
   gx: number;
   /** Extra layer drawn over the foliage (blossoms). */
   extra?: (b: Buf, offs: [number, number][]) => void;
-  /** Palettes of the loose bits that fly off in the rustle (leaves, petals). */
-  bits: number[];
+  /** Loose bits that fly off in the rustle: [palette, light step, mid step, dark step]. */
+  bits: [number, number, number, number][];
 }
 
 function bushFrame(s: BushSpec, offs: [number, number][]): Canvas {
   const b = new Buf(s.W, s.H);
-  drawFoliage(b, s.clumps, s.opts, offs, s.mat);
+  drawMass(b, s.lobes, s.opts, offs);
   s.extra?.(b, offs);
-  return finish(b, { inner: 0, gap: 0.5, bigGap: 8, shadow: 2 });
+  tidy(b, true);
+  massOutline(b, (part) => (part >= 0 && part < s.lobes.length ? [Math.round(s.lobes[part].x) + (offs[part]?.[0] ?? 0), Math.round(s.lobes[part].y) + (offs[part]?.[1] ?? 0)] : null), s.opts.seed + 3, s.opts.ground);
+  return b.toCanvas();
 }
 
-/** Sway weight of a clump: 0 at the ground, 1 at the top of the bush. */
-function swayW(s: BushSpec, c: Clump): number {
+/** Sway weight of a lobe: 0 at the ground, 1 at the top of the bush. */
+function swayW(s: BushSpec, L: Lobe): number {
   const top = s.opts.form[1] - s.opts.form[3];
-  return clamp((s.opts.ground - c.y) / (s.opts.ground - top), 0, 1);
+  return clamp((s.opts.ground - L.y) / (s.opts.ground - top), 0, 1);
+}
+
+/** A small loose leaf (or petal) with a dark green outline, for rustle effects. `ang` turns it as it tumbles. */
+function looseBit(bit: [number, number, number, number], ang: number, len = 5, wid = 3): Canvas {
+  const [mat, hi, mid, lo] = bit;
+  const b = new Buf(12, 12);
+  leafShape(6 - Math.cos(ang) * len * 0.5, 6 - Math.sin(ang) * len * 0.5, ang, len, wid, (px, py, t, s) => b.put(px, py, mat, s < -0.2 && t > 0.3 && t < 0.8 ? hi : s > 0.3 || t > 0.8 ? lo : mid));
+  const c = b.toCanvas();
+  c.outline({ toward: LEAF_OUTLINE, amount: 1 });
+  return c;
 }
 
 function bushSprite(s: BushSpec): WorldSprite {
-  // Idle: the upper clumps drift 1 px right, back, 1 px left, back (the base never moves).
-  const idle = [0, 1, 0, -1].map((p) => bushFrame(s, s.clumps.map((c) => [swayW(s, c) > 0.55 ? p : 0, 0] as [number, number])));
-  // Rustle: squash back (anticipation), a hard shake that alternates between clumps, smaller swings, rest.
+  // Idle: the upper lobes drift 1 px right, back, 1 px left, back (the base never moves).
+  const idle = [0, 1, 0, -1].map((p) => bushFrame(s, s.lobes.map((L) => [swayW(s, L) > 0.5 ? p : 0, 0] as [number, number])));
+  // Rustle: squash back (anticipation), a hard shake that alternates between lobes, smaller swings, rest.
   const shake: [number, number][] = [[-1, 1], [2, -1], [-2, 0], [1, 0], [-1, 0], [0, 0]];
   const [fx] = s.opts.form;
   const top = s.opts.form[1] - s.opts.form[3];
@@ -555,17 +548,17 @@ function bushSprite(s: BushSpec): WorldSprite {
   const rustle = shake.map(([dx, dy], f) => {
     const frame = bushFrame(
       s,
-      s.clumps.map((c, i) => {
-        const w = swayW(s, c);
+      s.lobes.map((L, i) => {
+        const w = swayW(s, L);
         const alt = f >= 1 && f <= 2 && i % 2 ? 0.5 : 1;
-        return [Math.round(dx * w * alt), w > 0.5 ? dy : 0] as [number, number];
+        return [Math.round(dx * Math.max(0.35, w) * alt), w > 0.5 ? dy : 0] as [number, number];
       }),
     );
     if (f >= 1 && f <= 4) {
       const t = f - 1;
       paths.forEach((p, k) => {
         const [px, py] = p[t];
-        const leaf = looseLeaf(s.bits[k % s.bits.length], 0.6 + k * 1.7 + t * 1.3 * (k % 2 ? 1 : -1));
+        const leaf = looseBit(s.bits[k % s.bits.length], 0.6 + k * 1.7 + t * 1.3 * (k % 2 ? 1 : -1));
         blit(frame, leaf, Math.round(fx + px * half - 6), Math.round(top + py - 6), f === 4 ? 0.6 : 1);
       });
     }
@@ -574,29 +567,23 @@ function bushSprite(s: BushSpec): WorldSprite {
   return assemble(s.name, s.label, s.meters, ['hide-spot', 'cover-half', 'flammable', 'destructible'], { idle: { frames: idle, fps: 4 }, rustle: { frames: rustle, fps: 12, loop: false } }, s.gx, s.opts.ground);
 }
 
-/** Clumps from [x, height of the center above the ground, r, ry, back?]: lower clumps are nearer. */
-function clumpsFrom(L: [number, number, number, number, boolean?][], gx: number, ground: number): Clump[] {
-  return L.map(([x, h, r, ry, back]) => ({ x: gx + x, y: ground - h, r, ry, back, z: back ? -1 : 100 - h }));
+/** Lobes from [x, height of the center above the ground, rx, ry]: lower lobes are nearer. */
+function lobesFrom(L: [number, number, number, number][], gx: number, ground: number): Lobe[] {
+  return L.map(([x, h, r, ry]) => ({ x: gx + x, y: ground - h, r, ry, z: 100 - h }));
 }
+
+const LEAF_BIT: [number, number, number, number] = [BUSH, 6, 5, 3];
 
 function roundBush(): BushSpec {
   const W = 140, H = 120, gx = 70, ground = 104;
   const hgt = m(1.1), wid = m(1.3);
   const top = ground - hgt;
-  // A dome: two crown clumps with a deep one peeking between them, a wide shoulder row and two big
-  // front clumps that narrow the base, so the mass reads as a ball rather than a grid.
-  const clumps = clumpsFrom(
+  // One round mass: a crown lobe behind, two front lobes that meet low in the middle.
+  const lobes = lobesFrom(
     [
-      [-24, 30, 10, 10, true],
-      [25, 36, 10, 10, true],
-      [4, 53, 9, 8, true],
-      [-10, 48, 13, 12],
-      [12, 45, 12, 11],
-      [-22, 30, 11, 11],
-      [-1, 34, 14, 12],
-      [20, 28, 12, 12],
-      [-13, 11, 15, 14],
-      [14, 10, 14, 13],
+      [-2, 40, 25, 22],
+      [-13, 19, 22, 20],
+      [14, 18, 22, 19],
     ],
     gx,
     ground,
@@ -605,12 +592,12 @@ function roundBush(): BushSpec {
     name: 'bush_round',
     label: 'Round Bush',
     meters: [1.3, 1.1],
-    clumps,
-    opts: { seed: 11, leafLen: 7, leafWid: 4.4, form: [gx - 2, top + hgt * 0.5, wid / 2, hgt / 2], ground },
+    lobes,
+    opts: { seed: 11, ground, form: [gx - 2, top + hgt * 0.5, wid / 2, hgt / 2] },
     W,
     H,
     gx,
-    bits: [FOL, FOL, FOL],
+    bits: [LEAF_BIT, LEAF_BIT, LEAF_BIT],
   };
 }
 
@@ -618,22 +605,13 @@ function wideBush(): BushSpec {
   const W = 170, H = 100, gx = 85, ground = 86;
   const hgt = m(0.9), wid = m(2);
   const top = ground - hgt;
-  // A low, long mound: an uneven crown left of center, a shoulder row and a front row of mixed sizes.
-  const clumps = clumpsFrom(
+  // A long, low mound: a high crown left of center, a lower one to the right, two front lobes.
+  const lobes = lobesFrom(
     [
-      [-45, 20, 10, 9, true],
-      [46, 23, 10, 9, true],
-      [-6, 40, 10, 8, true],
-      [-24, 35, 13, 11],
-      [5, 36, 12, 10],
-      [25, 32, 12, 10],
-      [-39, 20, 12, 11],
-      [-14, 24, 14, 12],
-      [12, 23, 13, 11],
-      [36, 20, 12, 11],
-      [-27, 9, 14, 11],
-      [-1, 9, 15, 12],
-      [24, 8, 13, 10],
+      [-20, 29, 29, 20],
+      [26, 25, 27, 18],
+      [-31, 14, 24, 16],
+      [16, 13, 30, 15],
     ],
     gx,
     ground,
@@ -642,12 +620,12 @@ function wideBush(): BushSpec {
     name: 'bush_wide',
     label: 'Wide Shrub',
     meters: [2, 0.9],
-    clumps,
-    opts: { seed: 23, leafLen: 6.5, leafWid: 4, form: [gx - 4, top + hgt * 0.5, wid / 2, hgt / 2], ground },
+    lobes,
+    opts: { seed: 23, ground, form: [gx - 4, top + hgt * 0.5, wid / 2, hgt / 2] },
     W,
     H,
     gx,
-    bits: [FOL, FOL, FOL],
+    bits: [LEAF_BIT, LEAF_BIT, LEAF_BIT],
   };
 }
 
@@ -655,43 +633,35 @@ function azaleaBush(): BushSpec {
   const W = 140, H = 110, gx = 70, ground = 96;
   const hgt = m(1), wid = m(1.4);
   const top = ground - hgt;
-  const clumps = clumpsFrom(
+  const lobes = lobesFrom(
     [
-      [-27, 30, 10, 10, true],
-      [28, 34, 10, 9, true],
-      [-9, 44, 12, 11],
-      [12, 42, 12, 11],
-      [-25, 28, 11, 11],
-      [0, 31, 13, 11],
-      [21, 27, 12, 11],
-      [-13, 9, 14, 12],
-      [15, 9, 14, 12],
-      [-29, 5, 7, 7],
-      [30, 5, 7, 7],
+      [-1, 37, 26, 19],
+      [-15, 17, 23, 18],
+      [16, 16, 23, 17],
     ],
     gx,
     ground,
   );
   const seed = 37;
   const form: [number, number, number, number] = [gx - 2, top + hgt * 0.5, wid / 2, hgt / 2];
-  const opts: FoliageOpts = { seed, leafLen: 5.5, leafWid: 3.6, form, ground, bias: 0.02 };
-  // Blossom trusses: a few round trumpet flowers each, scattered unevenly over the upper, outer faces.
+  const opts: MassOpts = { seed, ground, form, bias: -0.03 };
+  // Blossom trusses: a few round trumpet flowers each, scattered over the upper, outer faces of the lobes.
   const layouts: [number, number][][] = [
-    [[0, 0]],
     [[-1, 0], [1, 1]],
     [[0, -1], [-2, 1], [2, 1]],
     [[-1, -2], [2, -1], [-2, 1], [1, 1]],
     [[0, -2], [-2, 0], [2, -1], [-1, 2], [2, 2]],
   ];
-  const trusses: { ci: number; x: number; y: number; white: boolean; flowers: [number, number][] }[] = [];
-  clumps.forEach((c, ci) => {
-    const n = c.back ? 1 : c.r < 9 ? 1 : 2 + (c.r >= 12 && rnd(seed, ci, 32) < 0.6 ? 1 : 0);
+  const trusses: { li: number; x: number; y: number; white: boolean; flowers: [number, number][] }[] = [];
+  lobes.forEach((L, li) => {
+    const n = li === 0 ? 9 : 7;
     for (let k = 0; k < n; k++) {
-      const a = -Math.PI / 2 + ((k / Math.max(1, n - 1)) - 0.5) * 2.2 * (n > 1 ? 1 : 0) + (rnd(seed, ci, k) - 0.5) * 0.8;
-      const rr = 0.3 + rnd(seed, ci, k + 9) * 0.4;
-      const size = c.r < 9 || c.back ? 2 + Math.floor(rnd(seed, ci, k + 40) * 2) : 3 + Math.floor(rnd(seed, ci, k + 40) * 2);
+      // Spread evenly around the lobe's visible face with a little jitter, more on its upper half.
+      const a = -Math.PI / 2 + ((k + 0.5) / n - 0.5) * (li === 0 ? 3.6 : 4.4) + (rnd(seed, li, k) - 0.5) * 0.5;
+      const rr = (k % 2 ? 0.45 : 0.72) + (rnd(seed, li, k + 9) - 0.5) * 0.18;
+      const size = Math.floor(rnd(seed, li, k + 40) * 4);
       const lay = layouts[size].slice().sort((p, q) => p[1] - q[1] || p[0] - q[0]);
-      trusses.push({ ci, x: Math.round(Math.cos(a) * c.r * rr), y: Math.round(Math.sin(a) * (c.ry ?? c.r) * rr), white: rnd(seed, ci, k + 20) < 0.26, flowers: lay });
+      trusses.push({ li, x: Math.round(Math.cos(a) * L.r * rr), y: Math.round(Math.sin(a) * L.ry * rr), white: rnd(seed, li, k + 20) < 0.27, flowers: lay });
     }
   });
   // One flower: a tiny sphere lit from the upper left (deltas from the truss step), corners rounded off.
@@ -699,42 +669,43 @@ function azaleaBush(): BushSpec {
   const extra = (b: Buf, offs: [number, number][]): void => {
     const marks: [number, number][] = [];
     trusses.forEach((tr, k) => {
-      const c = clumps[tr.ci];
-      const [ox, oy] = offs[tr.ci] ?? [0, 0];
-      const cc: Clump = { ...c, x: Math.round(c.x), y: Math.round(c.y) };
-      const tx = cc.x + ox + tr.x, ty = cc.y + oy + tr.y;
-      const lit = clumpLight(cc, opts, tr.x, tr.y);
+      const L = lobes[tr.li];
+      const [ox, oy] = offs[tr.li] ?? [0, 0];
+      const cx = Math.round(L.x), cy = Math.round(L.y);
+      const tx = cx + ox + tr.x, ty = cy + oy + tr.y;
+      const lit = lobeLight({ ...L, x: cx, y: cy }, opts, tr.x, tr.y);
       const base = lit > 0.62 ? 3 : 2;
       const mat = tr.white ? WHITE : PINK;
-      const dep = c.z + 0.3;
       tr.flowers.forEach(([fx, fy], fi) => {
         for (const [dx, dy, dl] of FLOWER) {
           const x = tx + fx + dx, y = ty + fy + dy;
-          if (b.depthAt(x, y) > dep + 0.5) continue;
-          let s = base + dl;
-          if (fi === 0 && dx === -1 && dy === -1 && lit > 0.7) s = 5;
-          b.put(x, y, mat, clamp(s, 1, 5), 100 + k, dep);
+          // Only on this lobe's own visible face (never over a lobe in front).
+          if (b.partAt(x, y) !== tr.li && b.partAt(x, y) < 100) continue;
+          let st = base + dl;
+          if (fi === 0 && dx === -1 && dy === -1 && lit > 0.66) st = 5;
+          b.put(x, y, mat, clamp(st, 1, 5), 100 + k, L.z + 0.3);
           marks.push([x, y]);
         }
       });
     });
     // Leaves just below-right of a blossom sit in its shadow.
     for (const [x, y] of marks)
-      for (const [dx, dy] of [[1, 0], [0, 1], [1, 1]] as [number, number][])
-        if (b.partAt(x + dx, y + dy) >= 0 && b.partAt(x + dx, y + dy) < 100) b.setStep(x + dx, y + dy, 1);
+      for (const [dx, dy] of [[1, 0], [0, 1], [1, 1]] as [number, number][]) {
+        const p = b.partAt(x + dx, y + dy);
+        if (p >= 0 && p < 100) b.setStep(x + dx, y + dy, Math.max(1, b.stepAt(x + dx, y + dy) - 2));
+      }
   };
   return {
     name: 'bush_flower',
     label: 'Azalea Bush',
     meters: [1.4, 1],
-    clumps,
+    lobes,
     opts,
-    mat: FOL_AZ,
     W,
     H,
     gx,
     extra,
-    bits: [FOL_AZ, PINK, FOL_AZ],
+    bits: [LEAF_BIT, [PINK, 4, 3, 2], LEAF_BIT],
   };
 }
 
@@ -962,7 +933,7 @@ function fern(): WorldSprite {
       // Sway: the outer part shifts by whole pixels (rigid, so nothing shimmers); the base stays put.
       const sw = [0, 1, 0, -1][(f + i) % 4] * (layer === 2 ? 0 : 1);
       const off = (k: number): number => (k / (pts.length - 1) > 0.5 ? sw : 0);
-      const mat = layer === 0 ? FOL_BACK : FOL;
+      const mat = layer === 0 ? FERN_BACK : FERN;
       const part = i, dep = layer * 2 + i * 0.1;
       // Pinnae: thin leaflets in pairs pointing forward along the rachis, longest a third of the way
       // out and tiny at the tip; the gaps between them read as the frond's comb.
@@ -991,9 +962,9 @@ function fern(): WorldSprite {
     });
     // A young fiddlehead curling up in the middle.
     const fx = cx, fy = ground - 19;
-    strokeQuad(b, cx, ground - 1, cx + 1, ground - 10, fx, fy + 3, () => 1, () => [FOL, 2], 40, 1.5);
+    strokeQuad(b, cx, ground - 1, cx + 1, ground - 10, fx, fy + 3, () => 1, () => [FERN, 2], 40, 1.5);
     const curl: [number, number, number][] = [[0, 2, 3], [0, 1, 3], [0, 0, 4], [1, -1, 4], [2, -1, 3], [3, 0, 3], [3, 1, 2], [2, 2, 2], [1, 1, 2]];
-    for (const [dx, dy, st] of curl) b.put(fx + dx, fy + dy, FOL, st, 40, 1.5);
+    for (const [dx, dy, st] of curl) b.put(fx + dx, fy + dy, FERN, st, 40, 1.5);
     return finish(b, { spurs: false, inner: 1, gap: 0.5, shadow: 0 });
   };
   const idle = Array.from({ length: 4 }, (_, f) => frame(f));

@@ -1121,6 +1121,12 @@ function extrudeXH(poly: [number, number][], d0: number, d1: number): Tri[] {
   const r1: V3[] = poly.map(([x, h]) => [x, h, d1]);
   return loft([r0, r1], { capStart: true, capEnd: true });
 }
+/** Extrudes a convex polygon given in the D-H plane along X from x0 to x1 (closed both ends). */
+function extrudeDH(poly: [number, number][], x0: number, x1: number): Tri[] {
+  const r0: V3[] = poly.map(([d, h]) => [x0, h, d]);
+  const r1: V3[] = poly.map(([d, h]) => [x1, h, d]);
+  return loft([r0, r1], { capStart: true, capEnd: true });
+}
 /** A box with a chamfered top edge. */
 function slab(x0: number, x1: number, h0: number, h1: number, d0: number, d1: number, ch = 1): Tri[] {
   const rect = (h: number, i: number): V3[] => [[x0 + i, h, d0 + i], [x1 - i, h, d0 + i], [x1 - i, h, d1 - i], [x0 + i, h, d1 - i]];
@@ -1136,87 +1142,82 @@ function hokora(): WorldSprite {
   const foot = sc.add(slab(-18, 18, 0, 7, -14, 14, 1.5), st(81));
   const ped = sc.add(slab(-11.5, 11.5, 7, 19, -9, 9, 1), st(82));
   const top = sc.add(slab(-15, 15, 19, 23.5, -12, 12, 1.2), st(83));
-  // Wooden shrine: a house-shaped body extruded along depth, its gable facing the viewer.
+  // Wooden shrine body on a darker sill.
   const wood = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: WOOD_OLD, seed, contrast: 1.05, facetVar: 0.02, ...extra });
-  const body = sc.add(extrudeXH([[-10, 23.5], [10, 23.5], [10, 41], [0, 48], [-10, 41]], -8, 8), wood(84));
-  const sill = sc.add(slab(-12, 12, 23.5, 25.5, -10, 10, 0.6), wood(85, { pal: WOOD_DK }));
-  // Roof: two cedar-bark slabs meeting at the ridge, a ridge log, katsuogi and chigi.
-  const roofL = sc.add(extrudeXH([[0.6, 51.5], [-18, 38.5], [-18, 36], [0.6, 49]], -13.5, 12), { pal: ROOF, seed: 86, contrast: 1.15, facetVar: 0 });
-  const roofR = sc.add(extrudeXH([[-0.6, 51.5], [-0.6, 49], [18, 36], [18, 38.5]], -13.5, 12), { pal: ROOF, seed: 87, contrast: 1.15, facetVar: 0 });
-  const ridge = sc.add(pole([0, 51.8, -14], [0, 51.8, 12.5], 1.7, 8), { pal: WOOD_DK, seed: 88 });
-  const katsuo = [-6, 4].map((d) => sc.add(pole([-3.2, 53.3, d], [3.2, 53.3, d], 1.3, 8), { pal: WOOD_OLD, seed: 89 + d }));
-  const chigi = [
-    sc.add(pole([-3.5, 49.5, -13.8], [3.2, 58, -13.8], 0.9, 6), { pal: WOOD_OLD, seed: 95 }),
-    sc.add(pole([3.5, 49.5, -14.3], [-3.2, 58, -14.3], 0.9, 6), { pal: WOOD_OLD, seed: 96 }),
-    sc.add(pole([-3.5, 49.5, 12.3], [3.2, 58, 12.3], 0.9, 6), { pal: WOOD_OLD, seed: 97 }),
-    sc.add(pole([3.5, 49.5, 12.8], [-3.2, 58, 12.8], 0.9, 6), { pal: WOOD_OLD, seed: 98 }),
-  ];
+  const body = sc.add(slab(-10, 10, 25, 47, -7.5, 7.5, 0), wood(84));
+  const sill = sc.add(slab(-12, 12, 23.5, 25.5, -9.5, 9.5, 0.6), wood(85, { pal: WOOD_DK }));
+  // Corner posts, slightly proud of the walls.
+  const posts = [-10, 10].map((x, k) => sc.add(slab(x - 1.4, x + 1.4, 25, 47, -8.3, -5.5, 0), wood(90 + k, { pal: WOOD_DK })));
+  // Roof: cedar bark on two slopes with the ridge parallel to the front; ridge beam and katsuogi logs.
+  const roofF = sc.add(extrudeDH([[0.5, 57], [-15.5, 45], [-15.5, 42.5], [0.5, 54.5]], -17, 17), { pal: ROOF, seed: 86, contrast: 1.15, facetVar: 0 });
+  const roofB = sc.add(extrudeDH([[-0.5, 57], [-0.5, 54.5], [11.5, 45.5], [11.5, 48]], -17, 17), { pal: ROOF, seed: 87, contrast: 1.15, facetVar: 0 });
+  const ridge = sc.add(pole([-17.5, 57.2, 0], [17.5, 57.2, 0], 1.8, 8), { pal: WOOD_DK, seed: 88 });
+  const katsuo = [-9, 0, 9].map((x) => sc.add(pole([x, 58.6, -3.4], [x, 58.6, 3.4], 1.35, 8), { pal: WOOD_OLD, seed: 89 + x }));
   void ridge;
   void katsuo;
-  void chigi;
+  void posts;
   const f = render(sc, W, H, ox, oy);
-  // Cedar-bark shingle courses on the roof slopes: seams parallel to the eave every 3 px.
+  // Cedar-bark courses on the roof: seams parallel to the eave; the thick front edge shows strata.
   for (let i = 0; i < W * H; i++) {
     const mi = f.mesh[i];
-    if (mi !== roofL.id && mi !== roofR.id) continue;
+    if (mi !== roofF.id && mi !== roofB.id) continue;
     const p = f.world(i), n = f.normal(i);
+    const x = i % W, y = Math.floor(i / W);
     if (n[1] > 0.3) {
-      const along = Math.abs(p[0]); // distance from the ridge
-      const course = along / 3.2;
-      if (course % 1 < 0.3 && along > 1.5) f.step[i] = Math.max(1, f.step[i] - 1);
+      const along = Math.abs(p[2]); // distance from the ridge
+      if ((along + 0.6) % 3.4 < 0.75 && along > 1.5) f.step[i] = Math.max(1, f.step[i] - 1);
+      else if ((along + 0.6) % 3.4 > 2.9 && f.lightv[i] > 0.6 && noise(x, y, 3, 88) > 0.45) f.step[i] = Math.min(4, f.step[i] + 1);
     } else if (n[2] < -0.5) {
-      // Thick layered edge seen from the front: strata.
-      const x = i % W, y = Math.floor(i / W);
-      f.step[i] = clamp(f.step[i] + ((y + (x > ox ? 1 : 0)) % 2 === 0 ? 1 : 0), 1, 4);
+      f.step[i] = clamp(y % 2 === 0 ? 3 : 2, 1, 4);
     }
   }
-  paintMoss(f, { meshes: [roofL.id, roofR.id], amount: 0.22, seed: 811, cell: 6, drip: 1, minUp: 0.3, bumps: true });
+  paintMoss(f, { meshes: [roofF.id], amount: 0.2, seed: 811, cell: 6, drip: 1, minUp: 0.3, bumps: true });
   paintMoss(f, { meshes: [foot.id], amount: 0.3, seed: 812, cell: 6, drip: 2 });
   paintLichen(f, { meshes: [foot.id, ped.id, top.id], seed: 813, density: 0.3, minLight: 0.35 });
-  // Plank seams on the body sides and gable.
-  const fr = (x: number, h: number, d: number) => f.proj([x, h, d]).map(Math.round) as [number, number];
+  // Vertical plank seams on the front wall either side of the doors.
   for (let i = 0; i < W * H; i++) {
     if (f.mesh[i] !== body.id) continue;
     const p = f.world(i), n = f.normal(i);
-    if (n[2] < -0.9 && p[1] > 40.5 && p[1] < 41.6) f.step[i] = 1; // beam line under the gable
-    if (n[2] < -0.9 && p[1] > 41.6 && Math.abs(p[0]) < 0.6) f.step[i] = 2; // king post in the gable
+    if (n[2] < -0.9 && Math.abs(Math.abs(p[0]) - 8.6) < 0.5) f.step[i] = Math.max(1, f.step[i] - 1);
   }
+  const fr = (x: number, h: number, d: number) => f.proj([x, h, d]).map(Math.round) as [number, number];
   const c0 = f.compose();
   // Doors: a dark frame, two leaves with a fox lattice over the dark inside.
-  const [dx0, dy1] = fr(-7, 25.5, -8);
-  const [dx1, dy0] = fr(7, 39.5, -8);
+  const [dx0, dy1] = fr(-7, 26, -7.5);
+  const [dx1, dy0] = fr(7, 40, -7.5);
+  const midX = Math.floor((dx0 + dx1) / 2);
   for (let y = dy0; y < dy1; y++)
     for (let x = dx0; x < dx1; x++) {
       const u = x - dx0, v = y - dy0;
-      const edge = u === 0 || u === dx1 - dx0 - 1 || v === 0 || v === dy1 - dy0 - 1;
-      const mid = u === Math.floor((dx1 - dx0) / 2) || u === Math.floor((dx1 - dx0) / 2) - 1;
+      const edge = u === 0 || x === dx1 - 1 || v === 0 || y === dy1 - 1;
       let col: Color;
       if (edge) col = C(WOOD_DK, v === 0 ? 1 : u === 0 ? 3 : 2);
-      else if (mid) col = C(WOOD_DK, u === Math.floor((dx1 - dx0) / 2) - 1 ? 3 : 1);
-      else if (u % 3 === 0 || v % 3 === 0) col = C(WOOD_OLD, v < 3 ? 2 : u % 3 === 0 && v % 3 === 0 ? 4 : 3);
+      else if (x === midX - 1) col = C(WOOD_DK, 3);
+      else if (x === midX) col = C(WOOD_DK, 1);
+      else if ((x - dx0) % 3 === 0 || v % 3 === 0) col = C(WOOD_OLD, v < 3 ? 2 : (x - dx0) % 3 === 0 && v % 3 === 0 ? 4 : 3);
       else col = v < 4 ? C(WOOD_DK, 0) : mix(C(WOOD_DK, 0), C(WOOD_DK, 1), 0.6);
       c0.set(x, y, col);
     }
   // Little offering cups on the top slab, left and right of the doors.
-  for (const cx of [-12.5, 12.5]) {
+  for (const cx of [-13, 12]) {
     const [x, y] = fr(cx, 23.5, -10);
     c0.set(x, y - 1, C(PAPER, 4));
     c0.set(x + 1, y - 1, C(PAPER, 3));
     c0.set(x, y, C(PAPER, 2));
     c0.set(x + 1, y, C(PAPER, 2));
   }
-  // Red cloth draped over the top slab's front edge, with folds and a scalloped hem.
+  // Red cloth draped over the top slab's front edge, with broad folds and a scalloped hem.
   const cloth = layer(W, H, (c) => {
-    const [cx0, cyTop] = fr(-9, 23.5, -9.5);
-    const [cx1] = fr(9, 23.5, -9.5);
+    const [cx0, cyTop] = fr(-9, 23.5, -10);
+    const [cx1] = fr(9, 23.5, -10);
     const [, cyEdge] = fr(0, 23.5, -12);
     for (let x = cx0; x <= cx1; x++) {
       const u = x - cx0;
-      const hem = cyEdge + 9 + ([0, 1, 1, 0][u % 4] === 1 ? 1 : 0) - (u === 0 || x === cx1 ? 1 : 0);
+      const hem = cyEdge + 9 + [0, 1, 1, 1, 0, 0][u % 6] - (u === 0 || x === cx1 ? 1 : 0);
+      const fold = [4, 3, 3, 3, 2, 2][u % 6];
       for (let y = cyTop; y <= hem; y++) {
         const onTop = y < cyEdge;
-        const fold = [4, 3, 3, 2][(u + 1) % 4];
-        let s = onTop ? (u < 3 ? 4 : 3) : fold;
+        let s = onTop ? (u < 4 ? 4 : 3) : fold;
         if (y === cyEdge) s = Math.min(5, s + 1); // the cloth rolls over the edge
         if (!onTop && y > cyEdge + 6) s = Math.max(1, s - 1);
         if (y === hem) s = Math.max(1, s - 1);
@@ -1225,28 +1226,43 @@ function hokora(): WorldSprite {
     }
   });
   c0.draw(cloth, 0, 0);
-  // Shimenawa: a twisted straw rope sagging across the front under the gable, with paper shide.
+  // Shimenawa: a twisted straw rope sagging across the front over the doors, with paper shide.
+  const [rx0, ry0] = fr(-11.5, 41.5, -9);
+  const [rx1] = fr(11.5, 41.5, -9);
+  const ropeY = (x: number) => ry0 + Math.round(2.4 * (1 - (2 * ((x - rx0) / (rx1 - rx0)) - 1) ** 2));
   const rope = layer(W, H, (c) => {
-    const [rx0, ry0] = fr(-11, 40, -8.6);
-    const [rx1] = fr(11, 40, -8.6);
     for (let x = rx0; x <= rx1; x++) {
       const u = (x - rx0) / (rx1 - rx0);
-      const yc = ry0 + Math.round(2.2 * (1 - (2 * u - 1) ** 2));
-      const thick = u < 0.12 || u > 0.88 ? 2 : 3;
+      const yc = ropeY(x);
+      const thick = u < 0.1 || u > 0.9 ? 2 : 3;
       for (let k = 0; k < thick; k++) {
         const tw = (x + k) % 3 === 0;
-        c.set(x, yc + k - 1, C(ROPE, k === 0 ? (tw ? 3 : 5) : tw ? 2 : k === thick - 1 ? 3 : 4));
+        c.set(x, yc + k - 1, C(ROPE, k === 0 ? (tw ? 3 : 4) : tw ? 2 : k === thick - 1 ? 2 : 3));
       }
-    }
-    // Shide: zigzag paper streamers.
-    for (const sx of [-5.5, 0.5, 6.5]) {
-      const [x, y] = fr(sx, 40, -8.6);
-      const yc = y + Math.round(2.2 * (1 - (2 * ((x - rx0) / (rx1 - rx0)) - 1) ** 2)) + 2;
-      const zig: [number, number, number][] = [[0, 0, 5], [1, 0, 4], [1, 1, 4], [2, 1, 3], [0, 2, 5], [1, 2, 4], [1, 3, 4], [2, 3, 3], [0, 4, 4], [1, 4, 3], [1, 5, 3], [2, 5, 2]];
-      for (const [zx, zy, s] of zig) c.set(x - 1 + zx, yc + zy, C(PAPER, s));
     }
   });
   c0.draw(rope, 0, 0);
+  // Shide: zigzag paper streamers (each its own outlined layer so they read as folded paper).
+  for (const sx of [-6, 0, 6]) {
+    const [x] = fr(sx, 41.5, -9);
+    const y = ropeY(x) + 2;
+    const sh = layer(W, H, (c) => {
+      const zig: [number, number, number][] = [[0, 0, 4], [1, 0, 5], [1, 1, 4], [2, 1, 3], [0, 2, 4], [1, 2, 4], [1, 3, 4], [2, 3, 3], [0, 4, 4], [1, 4, 3], [1, 5, 3], [2, 5, 2]];
+      for (const [zx, zy, s] of zig) c.set(x - 1 + zx, y + zy, C(PAPER, s));
+    });
+    c0.draw(sh, 0, 0);
+  }
+  // Chigi: forked boards crossing above both ends of the ridge.
+  const chigi = layer(W, H, (c) => {
+    for (const side of [-1, 1]) {
+      const [ex, ey] = fr(side * 16.5, 57.5, 0);
+      for (let k = 0; k < 6; k++) {
+        c.set(ex + side * Math.floor(k / 2), ey - k, C(WOOD_OLD, k < 2 ? 3 : 4));
+        c.set(ex - side * Math.floor(k / 2) - side, ey - k, C(WOOD_OLD, 2));
+      }
+    }
+  });
+  c0.draw(chigi, 0, 0);
   c0.outline();
   return finish('hokora', 'Roadside Shrine', [0.65, 1.3], ['interactable'], { idle: { frames: [c0], fps: 0 } }, ox);
 }

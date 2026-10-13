@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { itemsForSlot, getItem } from '../../sprite/catalog';
 import type { ItemDef } from '../../sprite/ctx';
 import { EMBLEMS } from '../../sprite/items/headband';
-import { CHAKRA_CHOICES } from '../../sprite/chakraInfo';
+import { CHAKRA_CHOICES, chakraHex } from '../../sprite/chakraInfo';
 import { CLOTH_COLORS, CLOTH_FAMILIES, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from '../../sprite/palettes';
 import type {
   BodyType,
@@ -432,7 +432,7 @@ export const AppearanceEditor: React.FC<{
       {cat === 'chakra' && (
         <div className="space-y-5">
           <div>
-            <SectionLabel>Chakra Color & Burst</SectionLabel>
+            <SectionLabel>Chakra Nature & Burst</SectionLabel>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {CHAKRA_CHOICES.map((c) => (
                 <button
@@ -450,14 +450,65 @@ export const AppearanceEditor: React.FC<{
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-full border border-white/30" style={{ backgroundColor: c.hex }} />
-                    <span className="text-xs font-semibold text-white">{c.name}</span>
+                    <span
+                      className="w-4 h-4 rounded-full border border-white/30"
+                      style={{ backgroundColor: look.chakra.tint ? chakraHex({ color: c.id, tint: look.chakra.tint }) : c.hex }}
+                    />
+                    <span className="text-xs font-semibold text-white">{c.nature}</span>
                   </div>
                   <div className="text-[11px] text-cyan-300 mt-1">{c.burst}</div>
                   <div className="text-[10px] text-slate-500">{c.desc}</div>
                 </button>
               ))}
             </div>
+          </div>
+          <div>
+            <SectionLabel>Chakra Color</SectionLabel>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playChakraSurge();
+                  onChange({ ...look, chakra: { ...look.chakra, tint: undefined } });
+                  onPreviewStance('charge');
+                }}
+                className={`px-2.5 h-7 text-xs rounded-full border transition ${
+                  !look.chakra.tint ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-slate-950/60 border-slate-700 text-slate-300 hover:text-white'
+                }`}
+                title="The burst's own color"
+              >
+                Natural
+              </button>
+              {CHAKRA_CHOICES.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    soundManager.playChakraSurge();
+                    onChange({ ...look, chakra: { ...look.chakra, tint: c.id } });
+                    onPreviewStance('charge');
+                  }}
+                  className={`w-7 h-7 rounded-full border-2 transition ${
+                    look.chakra.tint === c.id ? 'border-white scale-110' : 'border-slate-800'
+                  }`}
+                  style={{ backgroundColor: c.hex }}
+                  title={c.name}
+                />
+              ))}
+              <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title="Custom color">
+                <input
+                  type="color"
+                  value={/^#[0-9a-f]{6}$/i.test(look.chakra.tint ?? '') ? look.chakra.tint : chakraHex(look.chakra)}
+                  onChange={(e) => {
+                    onChange({ ...look, chakra: { ...look.chakra, tint: e.target.value } });
+                    onPreviewStance('charge');
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+                <span className="absolute inset-1 rounded-full" style={{ backgroundColor: chakraHex(look.chakra) }} />
+              </label>
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1.5">Any nature takes any color: red water, black or blue lightning, green fire…</p>
           </div>
           <div>
             <SectionLabel>Show the burst when…</SectionLabel>

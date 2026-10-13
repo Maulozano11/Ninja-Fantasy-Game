@@ -12,7 +12,7 @@ import {
 import { ShinobiSpriteCanvas } from './ShinobiSpriteCanvas';
 import { AppearanceEditor } from './creator/AppearanceEditor';
 import { getItem } from '../sprite/catalog';
-import { CHAKRA_CHOICES } from '../sprite/chakraInfo';
+import { chakraHex } from '../sprite/chakraInfo';
 import { dojutsuToEye, getAppearance } from '../sprite/legacy';
 import { randomAppearance } from '../sprite/random';
 import { SPRITE_POSES, SpriteAppearance, SpritePose } from '../sprite/types';
@@ -92,7 +92,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
 
   const updateLook = (next: SpriteAppearance) => {
     const armorStyle = armorStyleFor(next);
-    const chakraHex = CHAKRA_CHOICES.find((c) => c.id === next.chakra.color)?.hex ?? character.palette.chakraAuraColor;
+    const auraHex = chakraHex(next.chakra);
     const derived =
       armorStyle !== character.armorStyle
         ? calculateDerived(character.stats, character.clan, character.shinobiClass, armorStyle, character.selectedFeats)
@@ -101,7 +101,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       ...character,
       appearance: next,
       armorStyle,
-      palette: { ...character.palette, chakraAuraColor: chakraHex },
+      palette: { ...character.palette, chakraAuraColor: auraHex },
       ...derived,
     });
   };
@@ -239,7 +239,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       appearance: randomLook,
       palette: {
         ...character.palette,
-        chakraAuraColor: CHAKRA_CHOICES.find((c) => c.id === randomLook.chakra.color)?.hex ?? clanInfo.recommendedChakraColor,
+        chakraAuraColor: chakraHex(randomLook.chakra),
       },
       ...derived,
     });

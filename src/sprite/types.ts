@@ -55,7 +55,13 @@ export interface HeadbandChoice {
 export type ChakraColorId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet' | 'white' | 'black';
 
 export interface ChakraChoice {
+  /** The burst: its element and shape (fire, water, lightning...) and natural color. */
   color: ChakraColorId;
+  /**
+   * Optional recolor of the burst: another chakra color id (its palette) or any
+   * '#rrggbb'. Missing = the burst's natural color.
+   */
+  tint?: string;
   onCharge: boolean;
   onCast: boolean;
   onVictory: boolean;

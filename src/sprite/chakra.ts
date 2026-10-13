@@ -12,7 +12,7 @@
 // the resolution changes, while 1-fine-pixel details (sparks, bolt cores,
 // rims) use the extra resolution.
 
-import { hexToRgb } from './color';
+import { hexToRgb, hslToHex, rgbToHsl } from './color';
 import { GRID, RES } from './raster';
 import type { Rig } from './rig';
 import type { ChakraColorId } from './types';
@@ -24,19 +24,21 @@ export interface ChakraInfo {
   name: string;
   hex: string;
   burst: string;
+  /** The element the burst shows (fire, water...). Any color can be applied to it. */
+  nature: string;
   desc: string;
 }
 
 export const CHAKRA_COLORS: ChakraInfo[] = [
-  { id: 'red', name: 'Crimson', hex: '#e8321e', burst: 'Pyre Crown', desc: 'Tongues of flame lick upward from the whole body.' },
-  { id: 'orange', name: 'Ember', hex: '#f27c18', burst: 'Cinder Nova', desc: 'Embers explode outward as a shockwave rolls out from the feet.' },
-  { id: 'yellow', name: 'Thunder', hex: '#f0c818', burst: 'Storm Lash', desc: 'Jagged bolts crackle and arc around the body.' },
-  { id: 'green', name: 'Gale', hex: '#3dbc48', burst: 'Leafwind Spiral', desc: 'A rising whirlwind of wind and leaves wraps the body.' },
-  { id: 'blue', name: 'Tide', hex: '#36a0f0', burst: 'Rising Tide', desc: 'Rings of water climb the body, shedding droplets.' },
-  { id: 'indigo', name: 'Dusk', hex: '#4a3eb0', burst: 'Nightveil Mist', desc: 'Shadow smoke streams backward in curling tendrils.' },
-  { id: 'violet', name: 'Phantom', hex: '#a54ce0', burst: 'Spectral Guardian', desc: 'A towering ghost warrior looms behind the user.' },
-  { id: 'white', name: 'Radiant', hex: '#f4f1e4', burst: 'Heaven Pillar', desc: 'A pillar of light falls while rays fan out from the heart.' },
-  { id: 'black', name: 'Void', hex: '#1a0b22', burst: 'Abyss Orbit', desc: 'Black orbs orbit the body as space cracks open around it.' },
+  { id: 'red', name: 'Crimson', hex: '#e8321e', burst: 'Pyre Crown', nature: 'Fire', desc: 'Tongues of flame lick upward from the whole body.' },
+  { id: 'orange', name: 'Ember', hex: '#f27c18', burst: 'Cinder Nova', nature: 'Embers', desc: 'Embers explode outward as a shockwave rolls out from the feet.' },
+  { id: 'yellow', name: 'Thunder', hex: '#f0c818', burst: 'Storm Lash', nature: 'Lightning', desc: 'Jagged bolts crackle and arc around the body.' },
+  { id: 'green', name: 'Gale', hex: '#3dbc48', burst: 'Leafwind Spiral', nature: 'Wind', desc: 'A rising whirlwind of wind and leaves wraps the body.' },
+  { id: 'blue', name: 'Tide', hex: '#36a0f0', burst: 'Rising Tide', nature: 'Water', desc: 'Rings of water climb the body, shedding droplets.' },
+  { id: 'indigo', name: 'Dusk', hex: '#4a3eb0', burst: 'Nightveil Mist', nature: 'Shadow', desc: 'Shadow smoke streams backward in curling tendrils.' },
+  { id: 'violet', name: 'Phantom', hex: '#a54ce0', burst: 'Spectral Guardian', nature: 'Spirit', desc: 'A towering ghost warrior looms behind the user.' },
+  { id: 'white', name: 'Radiant', hex: '#f4f1e4', burst: 'Heaven Pillar', nature: 'Light', desc: 'A pillar of light falls while rays fan out from the heart.' },
+  { id: 'black', name: 'Void', hex: '#1a0b22', burst: 'Abyss Orbit', nature: 'Void', desc: 'Black orbs orbit the body as space cracks open around it.' },
 ];
 
 /** Number of ticks in one animation loop (the caller advances tick at ~12 fps). */
@@ -69,6 +71,32 @@ const PALS: Record<ChakraColorId, Pal> = {
   white: pal('#6e5a26', '#c4a24c', '#efe2b4', '#fffbe8', '#ffffff'),
   black: pal('#000000', '#0e0614', '#4a1470', '#a238f0', '#ff2c50'),
 };
+
+/**
+ * The 5-tone palette for a tint: one of the chakra colors (hand-tuned
+ * palette) or any '#rrggbb' (generated: dark edge, dark, the color itself,
+ * bright, near-white core).
+ */
+function tintPal(tint: string): Pal {
+  if (Object.prototype.hasOwnProperty.call(PALS, tint)) return PALS[tint as ChakraColorId];
+  const [r, g, b] = hexToRgb(tint);
+  const [h, s, l] = rgbToHsl(r, g, b);
+  if (l < 0.22) {
+    // black-ish: a dark core that still reads, with a cold grey glint
+    return pal(hslToHex(h, s, 0.02), hslToHex(h, s, l * 0.5 + 0.03), tint, hslToHex(h, s * 0.8, l + 0.2), hslToHex(h, s * 0.5, l + 0.45));
+  }
+  if (l > 0.8) {
+    // white-ish: warm-grey edges so the light still has a shape
+    return pal(hslToHex(h, s * 0.6, l - 0.55), hslToHex(h, s * 0.7, l - 0.3), tint, hslToHex(h, s * 0.5, (l + 1) / 2), '#ffffff');
+  }
+  return pal(
+    hslToHex(h, Math.min(1, s + 0.1), l * 0.3),
+    hslToHex(h, Math.min(1, s + 0.05), l * 0.62),
+    tint,
+    hslToHex(h, s * 0.95, Math.min(0.86, l + 0.2)),
+    hslToHex(h, s * 0.6, Math.min(0.97, l + 0.42)),
+  );
+}
 
 const SEEDS: Record<ChakraColorId, number> = {
   red: 101,
@@ -421,14 +449,18 @@ interface Ctx {
   seed: number;
   rig: Rig;
   sprite: Uint8ClampedArray;
+  /** Tone of the glow rim (red sits one tone lower: its bright tones lean orange). */
+  rimBase: number;
+  /** Accent sparks of the void burst: red for the void palette, the core tone otherwise. */
+  accent: RGB;
+  accentDark: RGB;
 }
 
 /** Pulsing glow rim hugging the silhouette (1 design px that swells to 2 on the beat). */
 function rimGlow(c: Ctx, s: Src, level: number): void {
   const p = pulse(c.t);
   const a = Math.round(clamp(140 + 60 * level + 60 * p, 0, 255));
-  // red's bright tones lean orange, so its rim sits one tone lower to stay red
-  const base = c.seed === SEEDS.red ? 2 : 3;
+  const base = c.rimBase;
   const tn = p > 0.7 ? base + 1 : base;
   for (const i of s.rim) c.fx.put(0, i % N, Math.floor(i / N), c.pal[tn], a);
   const outer = level >= 0.6 || p > 0.45;
@@ -1448,8 +1480,8 @@ function orb(c: Ctx, layer: Lay, x: number, y: number, r: number): void {
       if (d > r + 1.5) continue;
       if (d > r + 0.5) {
         if (r >= 3) fx.put(layer, cx + ox, cy + oy, pal[2], 190);
-      } else if (d > r - 0.5) fx.put(layer, cx + ox, cy + oy, lightSide ? pal[3] : VOID_RED);
-      else if (d > r - 1.5 && r >= 3) fx.put(layer, cx + ox, cy + oy, lightSide ? pal[2] : VOID_DARKRED);
+      } else if (d > r - 0.5) fx.put(layer, cx + ox, cy + oy, lightSide ? pal[3] : c.accent);
+      else if (d > r - 1.5 && r >= 3) fx.put(layer, cx + ox, cy + oy, lightSide ? pal[2] : c.accentDark);
       else fx.put(layer, cx + ox, cy + oy, pal[1]);
     }
   const gl = Math.max(1, Math.round(r * 0.45));
@@ -1474,7 +1506,7 @@ function crack(c: Ctx, layer: Lay, pts: P[], grow: number): void {
   for (const i of core) {
     const x = i % N;
     const y = (i - x) / N;
-    for (const [ox, oy] of N4) if (!core.has((y + oy) * N + x + ox)) fx.put(layer, x + ox, y + oy, oy < 0 || ox < 0 ? VOID_RED : pal[3], 255);
+    for (const [ox, oy] of N4) if (!core.has((y + oy) * N + x + ox)) fx.put(layer, x + ox, y + oy, oy < 0 || ox < 0 ? c.accent : pal[3], 255);
   }
   for (const i of core) fx.put(layer, i % N, Math.floor(i / N), pal[0]);
 }
@@ -1489,7 +1521,7 @@ function blackBurst(c: Ctx, s: Src, L: number): void {
     [0.85, 2, 255],
     [1, 3, 255],
   ]);
-  for (const i of s.rim) if (hash(i, Math.floor(t / 2), c.seed) > 0.9) fx.put(s.layer, i % N, Math.floor(i / N), VOID_RED);
+  for (const i of s.rim) if (hash(i, Math.floor(t / 2), c.seed) > 0.9) fx.put(s.layer, i % N, Math.floor(i / N), c.accent);
 
   const ax = pt ? s.anchor.x : s.cx;
   const ay = pt ? s.anchor.y : s.cy;
@@ -1499,7 +1531,7 @@ function blackBurst(c: Ctx, s: Src, L: number): void {
     const rx = s.r + (4 + 2 * L) * S;
     ellipsePx(ax, ay, rx, rx * 0.35, (x, y, ang) => {
       const g = mod(ang / TAU - t / 12, 1);
-      if (g < 0.5) fx.put(Math.sin(ang) > 0 ? 1 : 0, x, y, g < 0.15 ? VOID_RED : pal[3]);
+      if (g < 0.5) fx.put(Math.sin(ang) > 0 ? 1 : 0, x, y, g < 0.15 ? c.accent : pal[3]);
     });
   }
   // cracks in space (re-seeded every 12 ticks; they grow then hold)
@@ -1619,7 +1651,7 @@ function auraRim(c: Ctx, id: ChakraColorId, s: Src, level: number): void {
     else if (d === 2) c.fx.put(0, i % N, Math.floor(i / N), c.pal[p > 0.6 ? 3 : 2], 255);
     else if (d === 3 && (p > 0.5 || level > 0.5)) c.fx.put(0, i % N, Math.floor(i / N), c.pal[2], 170);
   }
-  for (const i of s.rim) if (hash(i, Math.floor(c.t / 3), c.seed) > 0.93) c.fx.put(0, i % N, Math.floor(i / N), VOID_RED);
+  for (const i of s.rim) if (hash(i, Math.floor(c.t / 3), c.seed) > 0.93) c.fx.put(0, i % N, Math.floor(i / N), c.accent);
 }
 
 // ---------------------------------------------------------------------------
@@ -1644,6 +1676,8 @@ const BURSTS: Record<ChakraColorId, BurstFn> = {
  * Returns two GRIDxGRID RGBA buffers: `back` is drawn behind the sprite, `front` on top of it.
  * `sprite` is the sprite's own GRIDxGRID RGBA (alpha>0 = body pixels) so effects can hug the
  * silhouette. Deterministic for a given tick; loops every CHAKRA_LOOP ticks.
+ * `color` picks the burst (its element and shape); `tint`, when set, recolors it with another
+ * chakra color's palette or any '#rrggbb' (red water, black lightning, green fire...).
  */
 export function renderChakra(
   color: ChakraColorId,
@@ -1651,12 +1685,26 @@ export function renderChakra(
   tick: number,
   sprite: Uint8ClampedArray,
   rig: Rig,
+  tint?: string,
 ): { back: Uint8ClampedArray; front: Uint8ClampedArray } {
   const fx = new Fx();
   const id: ChakraColorId = PALS[color] ? color : 'blue';
   const t = mod(Math.floor(tick), CHAKRA_LOOP);
   const body = bodySrc(sprite, rig);
-  const c: Ctx = { fx, t, pal: PALS[id], seed: SEEDS[id], rig, sprite };
+  const tone = tint && (Object.prototype.hasOwnProperty.call(PALS, tint) || /^#[0-9a-f]{6}$/i.test(tint)) ? tint : id;
+  const p = tintPal(tone);
+  const voidPal = tone === 'black';
+  const c: Ctx = {
+    fx,
+    t,
+    pal: p,
+    seed: SEEDS[id],
+    rig,
+    sprite,
+    rimBase: tone === 'red' ? 2 : 3,
+    accent: voidPal ? VOID_RED : p[4],
+    accentDark: voidPal ? VOID_DARKRED : p[1],
+  };
   const burst = BURSTS[id];
   switch (mode) {
     case 'aura':

@@ -66,7 +66,7 @@ export function randomAppearance(): SpriteAppearance {
       cloth: pick(CLOTH_PALETTE),
       plate: '#cbd5e1',
     },
-    chakra: { color: pick(CHAKRA_CHOICES).id, onCharge: true, onCast: true, onVictory: chance(0.5) },
+    chakra: { color: pick(CHAKRA_CHOICES).id, tint: chance(0.25) ? pick(CHAKRA_CHOICES).id : undefined, onCharge: true, onCast: true, onVictory: chance(0.5) },
     pixelEdits: [],
   };
 }

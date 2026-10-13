@@ -6,6 +6,8 @@
 //   src/assets/world/<group>/<name>.png   one row per animation, frames left to right
 //   src/assets/world/<group>/manifest.json
 //
+// WORLD_OUT=<dir> writes the group under <dir>/<group>/ instead (art waiting for approval).
+//
 // The art follows the character standard (docs/SPRITE_STYLE_GUIDE.md) so props and characters
 // read as one world: real proportions (1 m = 57 px, a character is about 1.75 m = 100 px),
 // light from the upper left, 6-step hue-shifted ramps, clustered shading and a dark outline
@@ -463,7 +465,7 @@ export interface WorldSprite {
  * Writes one sheet per sprite (each animation is a row; every frame has the same size) and
  * the group's manifest.json, which the game reads to slice frames and place them by anchor.
  */
-export function writeGroup(group: string, sprites: WorldSprite[], root = join(import.meta.dirname, '../../src/assets/world')): void {
+export function writeGroup(group: string, sprites: WorldSprite[], root = process.env.WORLD_OUT ?? join(import.meta.dirname, '../../src/assets/world')): void {
   const manifest: Record<string, unknown> = {};
   for (const s of sprites) {
     const anims = Object.entries(s.anims);

@@ -31,6 +31,19 @@ elements.
   order.
 - **Each turn**: Action, Bonus Action, Movement and Reaction (D&D 5e). Hiding,
   shoving, jumping and climbing are actions too.
+- **Basic actions** (besides attacks and jutsu): Dash (double movement),
+  Disengage (move without opportunity attacks), Dodge (attacks against you have
+  disadvantage until your next turn), Shove (knock prone or push 1.5 m, for
+  example off a ledge or into the river), Hide, Focus chakra, items (soldier
+  pill, bandage, antidote).
+- **Kunai and shuriken for everyone**: besides their weapon, any ninja can throw
+  (1d4, up to 9 m).
+- **Movement can't be undone** once made.
+- **Reactions** (opportunity attacks and reaction jutsu) always ask the player
+  who controls the character; AI characters decide by themselves.
+- **Kawarimi** (Body Replacement) is a reaction: when a hit lands, pay its
+  chakra and your reaction, the blow strikes a log and you reappear a few meters
+  away.
 - **Dice**: every roll shows as a quick d20 over the acting character, with a
   button to speed it up. The big dice window is kept for criticals and
   important checks. Checks and attacks show their % before rolling.
@@ -72,19 +85,33 @@ elements.
 
 ## Stealth
 
-- Battles open with a **stealth phase**: enemies patrol with visible vision
-  cones and the party moves hidden. When someone is spotted, initiative is
-  rolled and the turns begin.
+- Battles open with a **stealth phase played by turns** (like *XCOM*): the
+  player moves each ninja in short turns, then every enemy walks its patrol.
+  Each enemy shows only its **vision cone** (not its route). A ninja inside a
+  cone with line of sight raises that enemy's **suspicion** (faster when close,
+  slower when crouched or hidden); when it fills, the enemy raises the alarm,
+  initiative is rolled and the turns begin.
 - Some battles start **without a stealth phase**: a night ambush at camp, an
   alarm bell, or a trap set off from afar with a kunai (the zone is alerted).
 - Bushes, tall grass, smoke and shadow let a character hide: a Stealth roll
   against the enemies' passive Perception.
 - Attacking from hiding gives advantage and extra surprise damage.
+- **Silent takedowns**: an enemy nobody else can see can be attacked from
+  hiding. If it drops from that attack, nobody notices; if it survives, it
+  shouts and the battle begins.
+- **Bodies**: a guard who sees a body raises the alarm. Bodies can be dragged
+  into a bush or tall grass, spending movement.
+- **Throwing a stone** makes a noise at a point; guards who hear it turn and go
+  to look.
+- **Running is noisy**: animals near a running ninja flee (birds take off, the
+  deer bolts), and that raises the suspicion of the guards nearby. Moving
+  slowly doesn't startle them. In battle, animals flee from the noise.
 
 ## Water and elements
 
 - **Shallow water** doubles the movement cost, puts out fire and conducts
-  lightning. **Deep water** must be swum, or walked on by spending chakra.
+  lightning. **Deep water** is swum at half speed, or walked on for 2 chakra a
+  turn.
 - Interactions:
   - fire burns grass and trees and spreads with the wind;
   - lightning on water electrocutes the whole area;
@@ -103,13 +130,22 @@ elements.
 - **Melee**: move next to the target and attack. Leaving an enemy's reach
   provokes an opportunity attack; flanking gives advantage; characters can
   shove and knock prone.
+- **Enhanced jutsu**: when casting, the player can pay extra chakra for the
+  jutsu's enhanced version (more damage or a bigger area).
+- **Ultimate (rank S) jutsu** have no use limit: only their chakra cost.
+- **Mercy**: a character who drops an enemy to 0 HP with a melee attack can
+  knock it out instead of killing it (it matters later for the story:
+  interrogate, spare or hand over).
 - **Animated attacks**: the attacker runs in and strikes, with damage numbers,
   screen shake and the jutsu effects from the sprite system.
 
 ## Party, missions and defeat
 
 - A party of up to 4. Each ally is played by a person or by the AI, depending
-  on how many players are in the session.
+  on how many players are in the session. In solo play the player controls all
+  four and can switch any ally to the AI, with a general order: **Aggressive**
+  (goes for the weakest enemy), **Defensive** (protects the party and seeks
+  cover) or **Support** (heals and helps).
 - Usually 3–6 enemies; missions can use more or fewer.
 - Objectives: defeat everyone, stealth assassination, escape, protect someone,
   survive N turns.
@@ -122,10 +158,34 @@ elements.
   Awakening. Details in `MISSION_DESIGN.md`.
 - **Death:** only in Legend mode is it permanent; if the whole party dies in
   Legend, the campaign is over.
+- **Fleeing**: if every ninja still standing leaves by a map edge, the battle
+  ends in a retreat: the party loses that road node (or the mission, if it was
+  the objective) and the fallen are rescued.
+- **Story difficulty**: enemies have 25 % less HP and deal 25 % less damage.
+  In Story and Normal a lost battle repeats and nobody dies.
+
+## Bosses
+
+- **The Hydra** (boss of the first mission), designed from the owner's
+  reference: seven heads, each a separate target with its own HP and attack
+  (bite, venom spit, roar). A severed head grows back in 2 rounds unless its
+  stump is burned with fire. The hydra dies when every head is down or its body
+  falls.
 
 ## Controls
 
-- Mouse and touch.
+- Mouse and touch. Computer and tablet first; a layout for small phone screens
+  comes later.
+
+## Language, sound and tips
+
+- Battle, missions and camp in **Spanish and English** with a toggle; the game
+  starts in the browser's language and remembers the choice. The character
+  creator and the older screens follow later.
+- **Sound**: forest ambience (river, birds, crickets at night), footsteps, the
+  guard's alert, hits and jutsu, generated in the game (no audio files).
+- **Tips**: short tutorial tips the first time each thing appears (moving,
+  cover, stealth, the %…), which can be turned off.
 
 ## Multiplayer
 
@@ -199,6 +259,14 @@ World sprites (trees, plants, camp props, landmarks, animals) are generated
 at real scale by `tools/world-sprites/` into `src/assets/world/<group>/`, one
 sheet per object plus a manifest with frame size, anchor, animations and
 gameplay tags.
+
+## Art waiting for approval
+
+The owner approves new art before it goes into the game: the hydra, the
+movement poses (walk, run, crouch, sneak, downed), the camp props rebuilt in
+the landmarks style, and the missing animals (butterflies, dragonfly, frog,
+koi, fireflies). Generators write them to a staging folder (`WORLD_OUT`) until
+then.
 
 ## Open questions
 

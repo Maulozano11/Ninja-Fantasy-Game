@@ -1457,7 +1457,7 @@ function crow(): WorldSprite {
     head: { c: [7.0, -15.6], r: [3.8, 3.4] },
     beak: { ...S.beak, base: [9.6, -15.6], a: 0.1 },
     tail: { ...S.tail, tip: [-15.4, -5.0] },
-    wing: { ...S.wing, base: [4.2, -12.8], tip: [-11.6, -6.4] },
+    wing: { w: 3.4, base: [4.2, -12.8], tip: [-11.6, -6.4] },
     eye: [7.8, -16.6],
   };
   const caw: BirdPose = {

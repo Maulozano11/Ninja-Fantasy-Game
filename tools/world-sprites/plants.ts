@@ -397,7 +397,7 @@ function lobeLight(L: Lobe, o: MassOpts, lx: number, ly: number): number {
   const U = clamp((L.x + lx - fx) / frx, -1, 1), V = clamp((L.y + ly - fy) / fry, -1, 1);
   const global = lambert(U * 0.75, V * 0.75, Math.sqrt(Math.max(0.05, 1 - (U * U + V * V) * 0.56)));
   const rim = smooth(0.72, 1.05, d) * 0.16;
-  const ao = smooth(o.ground - fry * 0.95, o.ground, L.y + ly) * 0.3;
+  const ao = smooth(o.ground - fry * 0.95, o.ground, L.y + ly) * 0.24;
   return local * 0.55 + global * 0.55 - rim - ao + (o.bias ?? 0) - 0.06;
 }
 /** Value thresholds between the seven greens (steps 1..7). */
@@ -407,13 +407,15 @@ const massStep = (v: number): number => 1 + MASS_TH.filter((t) => v > t).length;
 /** True if lobe-local (lx, ly) is inside the lobe's ragged, leafy edge. */
 function inLobe(L: Lobe, lx: number, ly: number, seed: number): boolean {
   const d = Math.hypot(lx / L.r, ly / L.ry);
-  if (d > 1.2) return false;
-  if (d < 0.8) return true;
+  if (d > 1.25) return false;
+  if (d < 0.72) return true;
   const th = Math.atan2(ly, lx);
   const R = 1 / Math.hypot(Math.cos(th) / L.r, Math.sin(th) / L.ry);
-  const bin = Math.floor(((th + Math.PI) * R) / 2.4);
-  const jag = hash(bin, 0, seed) * 2.4 + noise((th + Math.PI) * R, 0, 7, seed + 3) * 1.6;
-  return (d - 1) * R < 1.4 - jag;
+  // Leafy bumps 2-3 px wide along the rim; the underside stays fuller so the base sits on the ground.
+  const bin = Math.floor(((th + Math.PI) * R) / 2.5);
+  const under = smooth(0.2, 0.8, Math.sin(th));
+  const jag = (hash(bin, 0, seed) * 3.2 + noise((th + Math.PI) * R, 0, 6, seed + 3) * 2.4) * (1 - under * 0.7);
+  return (d - 1) * R < 1.6 - jag;
 }
 
 /**
@@ -435,23 +437,24 @@ function drawMass(b: Buf, lobes: Lobe[], o: MassOpts, offs: [number, number][] =
       });
       if (owner < 0) continue;
       const L = lobes[owner], sd = o.seed * 31 + owner * 17;
-      const v = lobeLight({ ...L, x: Math.round(L.x), y: Math.round(L.y) }, o, lx, ly) + dab(lx, ly, 3.1, sd) * 0.075 + dab(lx + 37, ly + 11, 5.4, sd + 5) * 0.065;
+      const v = lobeLight({ ...L, x: Math.round(L.x), y: Math.round(L.y) }, o, lx, ly) + dab(lx, ly, 2.7, sd) * 0.11 + dab(lx + 37, ly + 11, 4.8, sd + 5) * 0.08;
       b.put(x, y, BUSH, massStep(v), owner, L.z);
     }
   // The shaded underside: between the lobes that reach the ground, dark leaves fill down to it, so
   // the bush sits on a broad base.
   let xl = Infinity, xr = -Infinity;
   for (let x = 0; x < b.w; x++)
-    if (b.has(x, o.ground)) {
-      xl = Math.min(xl, x);
-      xr = Math.max(xr, x);
-    }
-  for (let x = xl + 1; x < xr; x++) {
+    for (let y = o.ground - 3; y <= o.ground; y++)
+      if (b.has(x, y)) {
+        xl = Math.min(xl, x);
+        xr = Math.max(xr, x);
+      }
+  for (let x = xl; x <= xr; x++) {
     let y = o.ground;
     while (y > o.ground - 14 && !b.has(x, y)) y--;
     if (!b.has(x, y)) continue;
     const i = y * b.w + x;
-    for (let yy = y + 1; yy <= o.ground; yy++) b.put(x, yy, BUSH, 1, b.part[i], b.depth[i]);
+    for (let yy = y + 1; yy <= o.ground; yy++) b.put(x, yy, BUSH, 1 + (hash(x, yy, o.seed) < 0.3 ? 1 : 0), b.part[i], b.depth[i]);
   }
 }
 
@@ -573,9 +576,9 @@ function roundBush(): BushSpec {
   // One round mass: a crown lobe behind, two front lobes that meet low in the middle.
   const lobes = lobesFrom(
     [
-      [-2, 40, 25, 22],
-      [-13, 19, 22, 20],
-      [14, 18, 22, 19],
+      [-1, 37, 27, 24],
+      [-12, 17, 23, 19],
+      [14, 16, 22, 18],
     ],
     gx,
     ground,
@@ -600,10 +603,10 @@ function wideBush(): BushSpec {
   // A long, low mound: a high crown left of center, a lower one to the right, two front lobes.
   const lobes = lobesFrom(
     [
-      [-20, 29, 29, 20],
-      [26, 25, 27, 18],
-      [-31, 14, 24, 16],
-      [16, 13, 30, 15],
+      [-18, 28, 31, 21],
+      [26, 24, 28, 18],
+      [-31, 12, 24, 14],
+      [16, 11, 31, 13],
     ],
     gx,
     ground,
@@ -627,9 +630,9 @@ function azaleaBush(): BushSpec {
   const top = ground - hgt;
   const lobes = lobesFrom(
     [
-      [-1, 37, 26, 19],
-      [-15, 17, 23, 18],
-      [16, 16, 23, 17],
+      [-1, 35, 27, 20],
+      [-14, 15, 24, 17],
+      [16, 14, 23, 16],
     ],
     gx,
     ground,
@@ -665,14 +668,14 @@ function azaleaBush(): BushSpec {
       const [ox, oy] = offs[tr.li] ?? [0, 0];
       const cx = Math.round(L.x), cy = Math.round(L.y);
       const tx = cx + ox + tr.x, ty = cy + oy + tr.y;
+      if (b.partAt(tx, ty) !== tr.li) return;
       const lit = lobeLight({ ...L, x: cx, y: cy }, opts, tr.x, tr.y);
       const base = lit > 0.62 ? 3 : 2;
       const mat = tr.white ? WHITE : PINK;
       tr.flowers.forEach(([fx, fy], fi) => {
         for (const [dx, dy, dl] of FLOWER) {
           const x = tx + fx + dx, y = ty + fy + dy;
-          // Only on this lobe's own visible face (never over a lobe in front).
-          if (b.partAt(x, y) !== tr.li && b.partAt(x, y) < 100) continue;
+          if (!b.has(x, y)) continue;
           let st = base + dl;
           if (fi === 0 && dx === -1 && dy === -1 && lit > 0.66) st = 5;
           b.put(x, y, mat, clamp(st, 1, 5), 100 + k, L.z + 0.3);

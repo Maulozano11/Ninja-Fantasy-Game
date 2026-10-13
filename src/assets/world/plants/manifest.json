@@ -9,7 +9,7 @@
    "frameH": 83,
    "anchor": [
     41,
-    79
+    81
    ],
    "meters": [
     1.3,
@@ -73,7 +73,7 @@
   "bush_flower": {
    "label": "Azalea Bush",
    "file": "bush_flower.png",
-   "frameW": 86,
+   "frameW": 87,
    "frameH": 77,
    "anchor": [
     44,

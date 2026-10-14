@@ -697,8 +697,8 @@ function wall(): WorldSprite {
 
 // --- the mist curtain in 3/4 and depth -----------------------------------------------------
 
-/** Half thickness of the curtain (px): a dense core and a soft skin, pooling wider at the ground. */
-const MIST_HALF = 17;
+/** Half thickness of the curtain at its base (px): a dense core and a soft skin. */
+const MIST_HALF = 15;
 
 /**
  * The curtain as a gas volume in wall-local space (u along, s across, v up), seen through: every
@@ -715,11 +715,12 @@ function mist3d(o: Orient, hk: number, t: number): Canvas {
   }
   const D = (u: number, s: number, v: number): number => {
     if (u < -20 || u > LEN + 20 || v < -2) return 0;
-    const half = MIST_HALF + 8 * (1 - smooth(0, 14, v));
-    const as = Math.abs(s);
-    if (as > half) return 0;
     const k = v / hu[Math.round(u) + 20];
     if (k > 1.08) return 0;
+    // Thick and pooling at the ground, thinning to a crest of tongues at the top.
+    const half = (MIST_HALF + 5 * (1 - smooth(0, 12, v))) * (1 - 0.55 * smooth(0.25, 1, k));
+    const as = Math.abs(s);
+    if (as > half) return 0;
     const ends = smooth(-4, 16, u) * (1 - smooth(LEN - 16, LEN + 4, u));
     return ends * (1 - smooth(half * 0.55, half, as)) * (1 - smooth(0.62, 1.08, k)) * (0.85 + 0.25 * (1 - smooth(0, 0.25, k)));
   };

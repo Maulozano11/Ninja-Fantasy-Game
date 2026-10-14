@@ -18,11 +18,11 @@ const BOOK: PixelTemplate = {
   rows: [
     '...ppppppp.ppppppp...',
     '..pPPPPPPPmPPPPPPPp..',
-    '..pPqqq.qPmPqqqq.Pp..',
+    '..pPqqqPqPmPqqqqPPp..',
     '..pPPPPPPPmPPPPPPPp..',
-    '..pPqq.qqPmPqq.qqPp..',
+    '..pPqqPqqPmPqqPqqPp..',
     '..pPPPPPPPmPPPPPPPp..',
-    '..pPqqqq.PmPqqq.qPp..',
+    '..pPqqqqPPmPqqqPqPp..',
     '.Cpeeeeeeemeeeeeeepk.',
     '.CCcccccccmccccccckk.',
     '..ckkkkkkkkkkkkkkkk..',
@@ -37,7 +37,7 @@ const BOOK: PixelTemplate = {
  */
 const PAGE_TURN: PixelTemplate[] = [
   {
-    pivot: [10, 10],
+    pivot: [10, 13],
     rows: [
       '................PPPP.',
       '..............PPPPPq.',
@@ -51,7 +51,7 @@ const PAGE_TURN: PixelTemplate[] = [
     ],
   },
   {
-    pivot: [10, 10],
+    pivot: [10, 13],
     rows: [
       '.........PP..........',
       '.........PPq.........',
@@ -65,7 +65,7 @@ const PAGE_TURN: PixelTemplate[] = [
     ],
   },
   {
-    pivot: [10, 10],
+    pivot: [10, 13],
     rows: [
       '.PPPP................',
       '.pPPPPP..............',

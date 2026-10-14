@@ -835,14 +835,14 @@ interface Pounce {
 }
 // coil, spring, launch, stretch, strike, fold, tuck, gather
 const POUNCE: Pounce[] = [
-  { pitch: 0.12, span: 9, arch: -8, head: [18, -5], ha: 0.3, jaw: 0.3, fN: [15, 21], fF: [11, 21], hN: [0, 21], hF: [-4, 21], reach: 0 },
-  { pitch: -0.2, span: 12, arch: -3, head: [20, -9], ha: -0.05, jaw: 0.5, fN: [30, 9], fF: [26, 12], hN: [-30, 19], hF: [-26, 21], reach: 0.3 },
-  { pitch: -0.1, span: 15, arch: 0, head: [21, -8], ha: -0.08, jaw: 0.75, fN: [41, 2], fF: [37, 5], hN: [-44, 11], hF: [-40, 14], reach: 0.75 },
-  { pitch: -0.02, span: 16, arch: 2, head: [22, -6], ha: 0.02, jaw: 0.95, fN: [44, 5], fF: [40, 8], hN: [-48, 5], hF: [-44, 8], reach: 1 },
-  { pitch: 0.1, span: 15, arch: 1, head: [22, -4], ha: 0.16, jaw: 1, fN: [41, 14], fF: [37, 16], hN: [-46, -1], hF: [-42, 2], reach: 0.9 },
-  { pitch: 0.1, span: 12, arch: -4, head: [20, -5], ha: 0.22, jaw: 0.6, fN: [27, 19], fF: [23, 20], hN: [-24, 11], hF: [-28, 9], reach: 0.4 },
-  { pitch: 0.06, span: 10, arch: -8, head: [19, -6], ha: 0.26, jaw: 0.4, fN: [16, 19], fF: [12, 20], hN: [-6, 17], hF: [-10, 16], reach: 0.1 },
-  { pitch: 0.1, span: 9, arch: -9, head: [18, -5], ha: 0.3, jaw: 0.3, fN: [14, 21], fF: [10, 21], hN: [-2, 20], hF: [-6, 20], reach: 0 },
+  { pitch: 0.12, span: 9, arch: -8, head: [18, -9], ha: 0.3, jaw: 0.35, fN: [15, 21], fF: [11, 21], hN: [0, 21], hF: [-4, 21], reach: 0 },
+  { pitch: -0.2, span: 12, arch: -3, head: [19, -12], ha: -0.05, jaw: 0.55, fN: [31, 9], fF: [27, 12], hN: [-30, 19], hF: [-26, 21], reach: 0.3 },
+  { pitch: -0.1, span: 15, arch: 0, head: [20, -11], ha: 0, jaw: 0.8, fN: [40, 8], fF: [36, 11], hN: [-44, 11], hF: [-40, 14], reach: 0.75 },
+  { pitch: -0.02, span: 16, arch: 2, head: [21, -10], ha: 0.06, jaw: 1, fN: [42, 13], fF: [38, 15], hN: [-48, 5], hF: [-44, 8], reach: 1 },
+  { pitch: 0.1, span: 15, arch: 1, head: [21, -8], ha: 0.18, jaw: 0.9, fN: [39, 19], fF: [35, 20], hN: [-46, -1], hF: [-42, 2], reach: 0.9 },
+  { pitch: 0.1, span: 12, arch: -4, head: [19, -9], ha: 0.24, jaw: 0.6, fN: [27, 20], fF: [23, 21], hN: [-24, 11], hF: [-28, 9], reach: 0.4 },
+  { pitch: 0.06, span: 10, arch: -8, head: [18, -10], ha: 0.28, jaw: 0.4, fN: [16, 19], fF: [12, 20], hN: [-6, 17], hF: [-10, 16], reach: 0.1 },
+  { pitch: 0.1, span: 9, arch: -9, head: [18, -9], ha: 0.3, jaw: 0.35, fN: [14, 21], fF: [10, 21], hN: [-2, 20], hF: [-6, 20], reach: 0 },
 ];
 
 /** The point `len` from s toward t, or t itself when it is closer. */
@@ -874,7 +874,7 @@ function bolt(root: P2, ang: number, len: number, w: number, amp: number, kinks:
     pts.push([root[0] + d[0] * len * u + n[0] * off, root[1] + d[1] * len * u + n[1] * off]);
   }
   pts.push([root[0] + d[0] * len, root[1] + d[1] * len]);
-  return tube(pts, (u) => lerp(w, tipW, u));
+  return tube(pts, (u) => tipW + (w - tipW) * Math.pow(1 - u, 0.7));
 }
 
 function raiju(): WorldSprite {
@@ -894,7 +894,7 @@ function raiju(): WorldSprite {
     const comb = (x: number, y: number, seed: number): number => fract((x + y * 0.5) / 4 + noise(x, y, 6, seed) * 1.2) - 0.5;
     /** Lit electric flesh: light planes on top, amber shadow underneath, a white-hot core, fur clumps. */
     const flesh = (seed: number, dk = 0, bias = 0) => (h: Hit): Color => {
-      const v = 0.86 * lit(h, 0.3) + 0.16 * Math.pow(h.nz, 1.5) - 0.04 + bias + comb(h.x, h.y, seed) * 0.1;
+      const v = 0.86 * lit(h, 0.3) + 0.16 * Math.pow(h.nz, 1.5) - 0.04 + bias + comb(h.x, h.y, seed) * 0.08;
       return RAI.ramp[clamp(stepOf(v, h.x, h.y, [0.3, 0.46, 0.63, 0.82], 0.035, seed, 2.4) - dk, 0, 5)];
     };
     /** Fur tufts: darker at the root (under the tuft above), lit toward the tip. */
@@ -967,10 +967,10 @@ function raiju(): WorldSprite {
     const ca = Math.cos(hA), sa = Math.sin(hA);
     const HZ = (x: number, y: number): P2 => [Hd[0] + (x * ca - y * sa) * HS, Hd[1] + (x * sa + y * ca) * HS];
     const bodyId = f.part_([
-      blob(C[0], C[1], 12 * Z, 11 * Z, g.pitch - 0.2),
-      tube([C, B(0, g.arch * 0.5), Hp], (u) => lerp(9, 7, Math.sin(u * Math.PI)) * Z),
+      blob(C[0], C[1] + 0.5 * Z, 12 * Z, 12.5 * Z, g.pitch - 0.2),
+      tube([C, B(0, g.arch * 0.5 - 1), Hp], (u) => lerp(9, 6.2, Math.sin(u * Math.PI)) * Z),
       blob(Hp[0], Hp[1], 10.5 * Z, 10 * Z, g.pitch + 0.1),
-      tube([B(g.span + 5, -5), HZ(-4, 1)], (u) => lerp(7.5, 6.2, u) * Z),
+      tube([B(g.span + 5, -6), HZ(-4, 1.5)], (u) => lerp(7.5, 5.8, u) * Z),
     ], flesh(23), style);
     // --- layered fur: belly fringe, haunch, shoulder, two rows on the back, chest ruff ---------
     type Tuft = [P2, number, number, number];
@@ -984,8 +984,8 @@ function raiju(): WorldSprite {
     f.part_(tufts([[B(g.span + 10, 1), 112, 7.5, 1.9], [B(g.span + 8, 5), 122, 7.5, 1.8], [B(g.span + 5, 9), 136, 6, 1.6]], 41), tuft(41, 0, -0.02), style);
     // --- mane: zig-zag bolts fanning back off the neck, each its own piece ----------------------
     for (const [j, u] of [1, 0.86, 0.72, 0.58, 0.44, 0.3, 0.15, 0].entries()) {
-      const ang = -104 - u * 84 + pd + Math.sin(TAU * t + j * 1.3) * 6;
-      f.part_([bolt(maneRoot(u), ang, (18 - u * 6 + rnd(960 + fi, j) * 2.5) * Z, 1.9 * Z, 2.3 * Z, 2, 970 + fi * 7 + j)], boltShade(), style);
+      const ang = lerp(-124, -148, g.reach) - u * lerp(64, 36, g.reach) + pd + Math.sin(TAU * t + j * 1.3) * 6;
+      f.part_([bolt(maneRoot(u), ang, (18 - u * 5 + rnd(960 + fi, j) * 2.5) * Z, 2.6 * Z, 1.8 * Z, 2, 970 + fi * 7 + j, 0.4)], boltShade(), style);
     }
     // --- head: a wolf's long muzzle, snarling ----------------------------------------------------
     f.part_([lens(HZ(-1, -5), HZ(-12, -11), 2.6 * HS, { peak: 0.3, tip: 1.4, bend: -1 })], flesh(43, 1), style);

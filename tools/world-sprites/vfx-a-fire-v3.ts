@@ -1,0 +1,400 @@
+// Fire set, third pass: the sprites redone to the owner's paint-over of the fire sheet
+// (REF-fire-set-owner.jpg). Richer gradients, warm dark smoke used generously, a glowing
+// scorched ground under everything that touches the ground, crisp dark-red outlines and
+// white-hot cores.
+
+import { Canvas, Color, WorldSprite, withAlpha } from './kit';
+import { Billow, FIRE, ROCK, SMOKE, TH, billows, embers, erode, flow, tongue } from './vfx-a-fire-kit';
+import {
+  Field, Pt, TAU, WallKind, WallLine, bez, clamp, flySprite, frames, fract, lerp, pfbm, pnoise, render, rr, seamStack, smooth, stack, tubeShade, vfxSprite, wallGround, wallLine, wp,
+} from './vfx-a-lib';
+
+const D = Math.PI / 180;
+
+/** A glowing scorched ground patch: an ellipse of dark char with a hot glowing middle and cracks (alpha). */
+function scorch(c: Canvas, cx: number, cy: number, rx: number, ry: number, glowK: number, seed: number): void {
+  for (let y = Math.floor(cy - ry - 1); y <= Math.ceil(cy + ry + 1); y++)
+    for (let x = Math.floor(cx - rx - 1); x <= Math.ceil(cx + rx + 1); x++) {
+      const d = Math.hypot((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry);
+      const ragged = 1 + 0.08 * (pnoise(x, y, 7, 0, 0, seed) - 0.5) * 2;
+      if (d > ragged) continue;
+      const n = pfbm(x * 0.8, y * 1.4, 12, 2, 0, 0, seed + 1);
+      const crack = Math.abs(pnoise(x * 0.6, y * 1.3, 10, 0, 0, seed + 2) - 0.5) < 0.04;
+      const hot = glowK * (1 - d * 0.75) + (crack ? 0.18 * glowK : 0) + (n - 0.5) * 0.16;
+      const col: Color = hot > 0.62 ? FIRE[3] : hot > 0.42 ? FIRE[2] : hot > 0.22 ? FIRE[1] : SMOKE[1];
+      const a = d > 0.85 ? 110 : hot > 0.42 ? 210 : 170;
+      c.plot(x, y, withAlpha(col, Math.round(a * clamp(0.35 + glowK, 0, 1))));
+    }
+}
+
+// --- blast: a mushroom-cloud explosion 3 m across ---------------------------------------------
+
+/** A ring of fire standing on the ground ellipse at scale k: a glowing ember line with flames of uneven height; back or front half. */
+function fireRing(f: Field, cx: number, gy: number, rx: number, ry: number, hgt: number, heat: number, half: 'back' | 'front', t: number, seed: number): void {
+  // The glowing line on the ground.
+  f.region(cx - rx - 4, gy - ry - 4, cx + rx + 4, gy + ry + 4, (x, y) => {
+    if ((half === 'back') !== y < gy) return 0;
+    const d = Math.abs(Math.hypot((x - cx) / rx, (y - gy) / ry) - 1) * ry;
+    return d < 2.6 ? heat * (1 - d / 3.2) : 0;
+  });
+  const n = Math.round(30 + rx * 0.25);
+  for (let j = 0; j < n; j++) {
+    const a = (j / n) * TAU + rr(seed, j, -0.06, 0.06);
+    if ((half === 'back') !== Math.sin(a) < 0) continue;
+    const x = cx + Math.cos(a) * rx, y = gy + Math.sin(a) * ry;
+    const h = hgt * rr(seed + 1, j, 0.45, 1.25) * (1 + 0.15 * Math.sin(t * TAU + j * 1.7)) * (half === 'back' ? 0.85 : 1);
+    if (h < 2.5) continue;
+    tongue(f, [x, y + 1], -Math.PI / 2 + Math.cos(a) * 0.35 + rr(seed + 2, j, -0.1, 0.1), h, Math.min(4.6, 2 + h * 0.18), heat, 0.18, t * TAU + j * 1.3, Math.cos(a) * 0.1);
+  }
+}
+
+export function blast(): WorldSprite {
+  const W = 196, H = 220, cx = 98, gy = 150, RX = 82, RY = 54, seed = 3100;
+  const fr = frames(8, (_, i) => {
+    const t = i / 8, ph = t * TAU;
+    const ringK = [0.18, 0.4, 0.62, 0.82, 0.96, 1, 1, 1][i];
+    const ringH = [7, 15, 21, 25, 23, 17, 10, 4][i];
+    const ringHeat = [1, 0.95, 0.92, 0.88, 0.82, 0.66, 0.42, 0.26][i];
+    const glowK = [0.5, 0.7, 0.8, 0.8, 0.75, 0.6, 0.42, 0.26][i];
+    const stemH = [0, 36, 60, 72, 76, 76, 75, 74][i];
+    const stemW = [0, 9, 9.5, 9, 8.5, 7.5, 6, 4.5][i];
+    const stemHeat = [0, 1, 1, 0.96, 0.9, 0.75, 0.55, 0.35][i];
+    const capR = [0, 17, 30, 40, 45, 47, 49, 52][i];
+    const capHeat = [0, 1, 1, 0.96, 0.88, 0.66, 0.4, 0.16][i];
+    const ground = new Canvas(W, H);
+    scorch(ground, cx, gy, RX * ringK * 1.04, RY * ringK * 1.04, glowK, seed);
+    const rb = new Field(W, H), rf = new Field(W, H), stem = new Field(W, H), skirt = new Field(W, H);
+    fireRing(rb, cx, gy, RX * ringK, RY * ringK, ringH, ringHeat, 'back', t, seed + 10);
+    fireRing(rf, cx, gy, RX * ringK, RY * ringK, ringH, ringHeat, 'front', t, seed + 10);
+    // The flash: a white-hot ball half sunk in the ground.
+    if (i === 0) {
+      stem.disc(cx, gy - 8, 22, 1.08, 1.6);
+      stem.ell(cx, gy, 30, 9, 0, 1, 1.4);
+    }
+    // The stem: a white-hot column with a flaring, flaming skirt at its foot.
+    const capY = gy - stemH;
+    if (stemH > 0) {
+      const pts: Pt[] = [];
+      for (let k = 0; k <= 16; k++) {
+        const u = k / 16;
+        pts.push([cx + Math.sin(u * 5 + i) * 1.2 * (1 - u), lerp(gy + 2, capY + capR * 0.25, u)]);
+      }
+      tubeShade(stem, pts, (u) => stemW * (1 + 0.7 * smooth(0.18, 0, u)) * (1 + 0.35 * smooth(0.6, 1, u)), (u, sd) => {
+        // Hot core rising up the middle, with flow lines streaming up it.
+        const streak = (pnoise(sd * 4 + 7, u * 14 - t * 24, 1.2, 0, 24, seed + 20) - 0.5) * 0.34;
+        return stemHeat * (1.02 - 0.62 * Math.pow(Math.abs(sd), 1.3)) + streak * (0.4 + Math.abs(sd));
+      });
+      for (let k = 0; k < 7; k++) {
+        const a = (k / 6) * Math.PI;
+        tongue(skirt, [cx + Math.cos(a) * stemW * 1.6, gy + 2 + Math.sin(a) * 3], -Math.PI / 2 + Math.cos(a) * 0.5, (12 + rr(seed + 21, k + i, 0, 10)) * stemHeat, 4, stemHeat * 0.9, 0.2, ph + k, 0);
+      }
+    }
+    // The cap: big billows of fire in a dome over a rolling underside. It cools from the top
+    // down into smoke, the lowest billows glowing longest.
+    const bl: Billow[] = [];
+    if (capR > 0) {
+      const cy = capY - capR * 0.22;
+      const hotAt = (base: number, rel: number) => {
+        // rel: -1 at the dome's top, +1 at the underside.
+        const h = base * capHeat * (1 + 0.35 * rel * (1 - capHeat));
+        return h < 0.3 ? 0 : h;
+      };
+      const glow = capHeat < 0.8 ? 0.7 : 0;
+      for (let k = 0; k < 6; k++) {
+        const a = (14 + k * 30.4) * D;
+        bl.push({ x: cx + Math.cos(a) * capR * 0.84, y: cy + capR * 0.32 + Math.sin(a) * capR * 0.16, r: capR * 0.32, heat: hotAt(0.62, 1), glow, back: true, bumps: 0 });
+      }
+      for (let k = 0; k < 6; k++) {
+        const a = (196 + k * 29.6) * D;
+        const r = capR * rr(seed + 30, k, 0.42, 0.5);
+        bl.push({ x: cx + Math.cos(a) * capR * 0.66, y: cy + Math.sin(a) * capR * 0.44 + capR * 0.1, r, heat: hotAt(Math.abs(Math.cos(a)) > 0.8 ? 0.74 : 0.88, Math.sin(a)), glow, bumps: 1 });
+      }
+      for (let k = 0; k < 3; k++) bl.push({ x: cx + (k - 1) * capR * 0.42, y: cy - capR * 0.04 + Math.abs(k - 1) * capR * 0.1, r: capR * 0.4, heat: hotAt(k === 1 ? 1.08 : 0.98, 0), glow, bumps: 1 });
+      // Smoke climbing off the cooling cap.
+      if (capHeat < 0.7) {
+        const sk = (0.7 - capHeat) / 0.55;
+        for (let k = 0; k < 5; k++) {
+          const a = (210 + k * 30) * D;
+          const r = capR * (0.26 + sk * 0.16) * rr(seed + 32, k, 0.85, 1.15);
+          bl.push({ x: cx + Math.cos(a) * capR * 0.55 + rr(seed + 31, k, -4, 4), y: Math.max(r * 1.6 + 6, cy - capR * 0.5 - sk * 16 + Math.sin(a) * capR * 0.2), r, heat: 0, glow: 0.4, bumps: 2 });
+        }
+      }
+    }
+    // Debris and embers flung out of the blast.
+    const deb = new Field(W, H);
+    const em: { x: number; y: number; s: number }[] = [];
+    if (i >= 1 && i <= 6) {
+      const tt = (i - 0.4) / 6;
+      for (let k = 0; k < 10; k++) {
+        const vx = rr(seed + 40, k, -1, 1) * 90, vy = -rr(seed + 41, k, 100, 170);
+        const x = cx + vx * tt, y = gy - 6 + vy * tt + 210 * tt * tt;
+        if (y > gy + RY * 0.8 || y < 4 || x < 4 || x > W - 5) continue;
+        deb.disc(x, y, k % 3 === 0 ? 3.2 : 2.3, 0.8, 1);
+      }
+      for (let k = 0; k < 18; k++) {
+        const a = rr(seed + 42, k, Math.PI * 1.05, Math.PI * 1.95), sp = rr(seed + 43, k, 50, 120);
+        em.push({ x: cx + Math.cos(a) * sp * tt * 1.2, y: gy - 20 + Math.sin(a) * sp * tt + 70 * tt * tt, s: k % 4 === 0 && i < 5 ? 2 : 1 });
+      }
+    }
+    for (let k = 0; k < 10; k++) {
+      const p = fract(k / 10 + t * 2);
+      const a = rr(seed + 44, k, 0, TAU);
+      em.push({ x: cx + Math.cos(a) * RX * ringK + Math.sin(p * 6 + k) * 2, y: gy + Math.sin(a) * RY * ringK - 6 - p * 26, s: 1 });
+    }
+    erode(rb, 0.5, (x, y) => pfbm(x, y + t * 90, 6, 2, 0, 90, seed + 50));
+    erode(rf, 0.5, (x, y) => pfbm(x, y + t * 90, 6, 2, 0, 90, seed + 50));
+    const layers: (Canvas | null)[] = [
+      ground,
+      rb.any() ? render(rb, FIRE, { th: TH, rim: [1] }) : null,
+      deb.any() ? render(deb, ROCK, { th: [0, 0.3, 0.55, 0.75], hi: 4 }) : null,
+      skirt.any() ? render(skirt, FIRE, { th: TH, rim: [1] }) : null,
+      stem.any() ? render(stem, FIRE, { th: TH, rim: [1] }) : null,
+      bl.length ? billows(W, H, bl, seed + 60, t) : null,
+      rf.any() ? render(rf, FIRE, { th: TH, rim: [1] }) : null,
+    ];
+    const body = stack(W, H, ...layers);
+    return stack(W, H, body, embers(W, H, em.filter((e) => e.x > 3 && e.x < W - 4 && e.y > 3 && e.y < H - 4), body));
+  });
+  return vfxSprite('blast', 'Fire blast (mushroom-cloud explosion, 3 m)', [cx, gy], { blast: { frames: fr, fps: 12, loop: false } });
+}
+
+// --- aura: the character engulfed in flame -------------------------------------------------
+
+/**
+ * Two layers, frame-synchronized, same size and anchor (the character's feet):
+ * - `aura_back` goes BEHIND the character: a full body of flame rising from the ground all
+ *   round and up past the head, the hot part hidden by the figure.
+ * - `aura` goes OVER the character: flames in front of the legs and licking up the sides, a
+ *   warm glow that lights the figure orange, and embers; its middle stays open so the figure
+ *   reads. Drawn alone it still works as an aura.
+ */
+export function aura(): WorldSprite[] {
+  // Wider and taller than the old aura so the fire stands clear of the figure on both sides and
+  // rises well past the head.
+  const W = 120, H = 148, cx = 60, gy = 136, top = 8, seed = 3300;
+  const backFr: Canvas[] = [], frontFr: Canvas[] = [];
+  for (let i = 0; i < 6; i++) {
+    const t = i / 6, ph = t * TAU, sc = t * 120;
+    const back = new Field(W, H), front = new Field(W, H), ringB = new Field(W, H), ringF = new Field(W, H);
+    // Behind: a teardrop of flame from the feet to above the head, its edges rippling upward.
+    back.fill((x, y) => {
+      if (y > gy + 1 || y < top + 20) return 0;
+      const v = clamp((gy - y) / (gy - top - 20), 0, 1);
+      const wO = 42 * Math.pow(1 - Math.pow(v, 2), 0.55) * (0.84 + 0.3 * pnoise(x, y + sc, 7, 0, 120, seed));
+      const dx = Math.abs(x - cx);
+      if (dx > wO) return 0;
+      return lerp(0.7, 0.36, Math.pow(dx / Math.max(1, wO), 1.2)) * lerp(1, 0.7, v);
+    });
+    // Tall separate flames rising from the ground all round, tallest behind the head.
+    for (let k = 0; k < 10; k++) {
+      const u = (k + 0.5) / 10;
+      const x = cx + (u - 0.5) * 2 * 38 + rr(seed + 6, k, -3, 3);
+      const mid = 1 - Math.abs(u - 0.5) * 2;
+      const len = (46 + 80 * Math.pow(mid, 0.8)) * (1 + 0.12 * Math.sin(ph + k * 2.3)) * rr(seed + 7, k, 0.85, 1.12);
+      tongue(back, [x, gy - 2], -Math.PI / 2 + (u - 0.5) * 0.5, Math.min(len, gy - top - 2), 7 + 2 * mid, 0.86, 0.12, ph + k * 1.6, (0.5 - u) * 0.2);
+    }
+    // Tall tongues rising off it, past the head, and flicking outward at the sides.
+    for (let k = 0; k < 13; k++) {
+      const u = (k + 0.5) / 13, side = u < 0.5 ? -1 : 1;
+      const v = 0.3 + 0.7 * (1 - Math.abs(u - 0.5) * 2);
+      const y = gy - v * (gy - top) * 0.9;
+      const wO = 46 * Math.pow(1 - Math.pow(v * 0.9, 2.2), 0.55);
+      const x = cx + (u - 0.5) * 2 * wO * 0.9;
+      const len = (20 + 20 * (1 - Math.abs(u - 0.5) * 2)) * (1 + 0.22 * Math.sin(ph + k * 1.9)) * rr(seed + 1, k, 0.8, 1.2);
+      tongue(back, [x, y + 8], -Math.PI / 2 + side * Math.abs(u - 0.5) * 0.9, len, 6.5, 0.8, 0.22, ph + k * 1.4, -side * 0.15);
+    }
+    // The glowing ring of fire at the feet: back half behind, front half in front.
+    for (const [f, isBack] of [[ringB, true], [ringF, false]] as [Field, boolean][])
+      f.region(cx - 42, gy - 12, cx + 42, gy + 11, (x, y) => {
+        if (isBack !== y < gy) return 0;
+        const d = Math.hypot((x - cx) / 38, (y - gy) / 8);
+        return d < 1.05 ? lerp(0.85, 0.35, Math.abs(d - 0.7) * 2.5) : 0;
+      });
+    // In front: flames rising from the front of the ring around the legs, and licks up the sides.
+    for (let k = 0; k < 8; k++) {
+      const a = (8 + k * 23.4) * D;
+      const x = cx + Math.cos(a) * 36, y = gy + Math.sin(a) * 8;
+      const sideK = Math.abs(Math.cos(a));
+      const len = (16 + 34 * sideK) * (1 + 0.25 * Math.sin(ph * 1.3 + k * 2.1)) * rr(seed + 2, k, 0.8, 1.15);
+      tongue(front, [x, y], -Math.PI / 2 + Math.cos(a) * 0.25, len, 5 + sideK * 1.5, 0.85, 0.2, ph + k * 1.7, -Math.cos(a) * 0.12);
+    }
+    for (const side of [-1, 1])
+      for (let k = 0; k < 3; k++) {
+        const q = fract(k / 3 + t + (side > 0 ? 1 / 6 : 0));
+        const y = gy - 16 - q * 70;
+        const v = (gy - y) / (gy - top);
+        const x = cx + side * 36 * Math.pow(1 - Math.pow(v, 2.2), 0.55);
+        tongue(front, [x, y], -Math.PI / 2 + side * 0.35, (16 + 10 * Math.sin(q * Math.PI)) * 1.1, 4 - q, 0.74 - q * 0.15, 0.22, ph + k * 2 + side, -side * 0.2);
+      }
+    const er = (x: number, y: number) => pfbm(x, y + t * 120, 6, 2, 0, 120, seed + 3);
+    erode(back, 0.45, er);
+    erode(front, 0.45, er);
+    const backC = stack(W, H, render(ringB, FIRE, { th: TH, rim: [1] }), render(back, FIRE, { th: TH, rim: [1], jitter: (x, y) => (pnoise(x, (y + t * 120) * 0.3, 2, 0, 36, seed + 4) - 0.5) * 0.16 }));
+    // A warm glow over the figure so it reads lit by the fire.
+    const glowC = new Canvas(W, H);
+    for (let y = 30; y < gy; y++)
+      for (let x = cx - 26; x <= cx + 26; x++) {
+        const d = Math.hypot((x - cx) / 26, (y - (gy - 46)) / 52);
+        if (d < 1) glowC.set(x, y, withAlpha(FIRE[4], Math.round(58 * (1 - d * d))));
+      }
+    const frontC = stack(W, H, glowC, render(ringF, FIRE, { th: TH, rim: [1] }), render(front, FIRE, { th: TH, rim: [1] }));
+    const em: { x: number; y: number; s: number }[] = [];
+    for (let k = 0; k < 12; k++) {
+      const p = fract(k / 12 + t);
+      const side = k % 2 ? 1 : -1;
+      em.push({ x: cx + side * rr(seed + 5, k, 18, 50) + Math.sin(p * 6 + k) * 2, y: gy - 10 - p * 120, s: p < 0.3 ? 2 : 1 });
+    }
+    backFr.push(backC);
+    frontFr.push(stack(W, H, frontC, embers(W, H, em.filter((e) => e.y > 3 && e.x > 2 && e.x < W - 3), frontC)));
+  }
+  return [
+    vfxSprite('aura', 'Fire aura, front layer (draw OVER the character)', [cx, gy], { idle: { frames: frontFr, fps: 12, loop: true } }),
+    vfxSprite('aura_back', 'Fire aura, back layer (draw BEHIND the character)', [cx, gy], { idle: { frames: backFr, fps: 12, loop: true } }),
+  ];
+}
+
+// --- walls: horizontal, 3/4 and end-on ------------------------------------------------------
+
+/**
+ * A wall of fire along any ground line: tall pointed tongues of varied height in two rows,
+ * grey-brown smoke rising behind them, a glowing ember line at their roots and a strip of
+ * scorched, glowing ground under it all. Far parts are drawn first. End-on, smoke curls off the
+ * top of the column.
+ */
+function fireWall(t: number, grow: (s: number) => number, L: WallLine, seed: number): Canvas {
+  const { W, H } = L;
+  const ph = t * TAU;
+  const depthOf = (tt: number, q: number) => L.u[1] * tt + L.v[1] * q;
+  const zs = [depthOf(-L.len / 2, 0), depthOf(L.len / 2, 0)];
+  const zMin = Math.min(...zs) - 12, zMax = Math.max(...zs) + 12;
+  const nL = L.kind === 'wall' ? 2 : L.kind === 'wall_depth' ? 7 : 5;
+  const layerOf = (z: number, q: number) => (L.kind === 'wall' ? (q < 0 ? 0 : 1) : clamp(Math.floor(((z - zMin) / (zMax - zMin)) * nL), 0, nL - 1));
+  const fields = Array.from({ length: nL }, () => new Field(W, H));
+  const half = L.len / 2;
+  // The scorched glowing ground: the footprint and a strip spreading toward the viewer.
+  const groundC = new Canvas(W, H);
+  {
+    const reachQ = L.kind === 'wall_depth' ? 22 : 30;
+    const corners = [wp(L, -half - 10, -12), wp(L, half + 10, -12), wp(L, -half - 10, reachQ), wp(L, half + 10, reachQ)];
+    const x0 = Math.floor(Math.min(...corners.map((c) => c[0]))), x1 = Math.ceil(Math.max(...corners.map((c) => c[0])));
+    const y0 = Math.floor(Math.min(...corners.map((c) => c[1]))), y1 = Math.ceil(Math.max(...corners.map((c) => c[1])));
+    for (let y = y0; y <= y1; y++)
+      for (let x = x0; x <= x1; x++) {
+        const [tt, q] = wallGround(L, x + 0.5, y + 0.5);
+        const sAt = tt / L.len + 0.5;
+        const g = grow(clamp(sAt, 0, 1));
+        if (g <= 0.02 || sAt < -0.03 || sAt > 1.03) continue;
+        const qn = q < 0 ? -q / 12 : q / reachQ;
+        const ragged = 1 + 0.25 * (pnoise(x, y, 8, 0, 0, seed + 1) - 0.5) * 2;
+        if (qn > ragged) continue;
+        const endFade = smooth(-0.03, 0.03, sAt) * smooth(1.03, 0.97, sAt);
+        const hot = (1 - qn) * Math.min(1, g * 1.5) * endFade + (pnoise(x * 0.7, y * 1.4, 10, 0, 0, seed + 2) - 0.5) * 0.3;
+        const col: Color = hot > 0.7 ? FIRE[3] : hot > 0.48 ? FIRE[2] : hot > 0.24 ? FIRE[1] : SMOKE[1];
+        groundC.set(x, y, withAlpha(col, hot > 0.24 ? 200 : 130));
+      }
+  }
+  // Tongues: a back row of tall ones and a front row of shorter ones, pointed and uneven.
+  const rows = [
+    { n: 15, h: 104, w: 9, heat: 0.82, q: L.kind === 'wall' ? -2 : -3, off: 0.5, s: seed + 10 },
+    { n: 17, h: 64, w: 8.5, heat: 0.94, q: L.kind === 'wall' ? 2 : 3, off: 0, s: seed + 20 },
+  ];
+  const tops: Pt[] = [];
+  for (const r of rows)
+    for (let k = 0; k < r.n; k++) {
+      const sAt = (k + r.off + rr(r.s, k, -0.3, 0.3)) / r.n;
+      const g = grow(sAt);
+      if (g <= 0.02) continue;
+      const env = Math.pow(Math.sin(clamp(sAt * 0.94 + 0.03, 0, 1) * Math.PI), 0.35);
+      const tt = (sAt - 0.5) * L.len;
+      const hgt = r.h * env * rr(r.s + 1, k, 0.5, 1.22) * g * (1 + 0.1 * Math.sin(ph + k * 1.3));
+      const [bx, by] = wp(L, tt, r.q);
+      tongue(fields[layerOf(depthOf(tt, r.q), r.q)], [bx, by + 2], -Math.PI / 2 + rr(r.s + 2, k, -0.08, 0.08), hgt, r.w * Math.min(1, 0.5 + g * 0.6), r.heat, 0.12, ph + k * 1.7, rr(r.s + 3, k, -0.14, 0.14));
+      if (r.q < 0) tops.push([bx, by - hgt]);
+    }
+  // The glowing ember line at the roots.
+  {
+    const [ax, ay] = wp(L, -half + 4), [bx2, by2] = wp(L, half - 4);
+    const len = Math.hypot(bx2 - ax, by2 - ay), dx = (bx2 - ax) / len, dy = (by2 - ay) / len;
+    const target = fields[nL - 1];
+    target.region(Math.min(ax, bx2) - 4, Math.min(ay, by2) - 4, Math.max(ax, bx2) + 4, Math.max(ay, by2) + 4, (x, y) => {
+      const u = clamp(((x - ax) * dx + (y - ay) * dy) / len, 0, 1);
+      if (grow(u) <= 0.05) return 0;
+      const px = ax + (bx2 - ax) * u, py = ay + (by2 - ay) * u;
+      const d = L.kind === 'wall_depth' ? Math.abs(x - px) / 3 : Math.abs(y - py) / 2.4;
+      return d < 1 ? (1 - d * 0.6) * 0.9 * (0.85 + 0.25 * pnoise(u * len + t * 30, 0, 5, 0, 0, seed + 4)) : 0;
+    });
+  }
+  const er = (x: number, y: number) => pfbm(x, y + t * 120, 7, 2, 0, 120, seed + 5);
+  const flames = fields.map((f) => {
+    if (!f.any()) return null;
+    erode(f, 0.5, er);
+    return render(f, FIRE, { th: TH, rim: [1], jitter: (x, y) => (pnoise(x, (y + t * 120) * 0.25, 2, 0, 30, seed + 6) - 0.5) * 0.2 });
+  });
+  // Smoke rising behind the flames (end-on, curling off the top of the column).
+  const bl: Billow[] = [];
+  const gAll = grow(0.5);
+  if (gAll > 0.3) {
+    const n = L.kind === 'wall_depth' ? 7 : 12;
+    for (let k = 0; k < n; k++) {
+      const sAt = L.kind === 'wall_depth' ? 0.55 + k * 0.06 : (k + 0.5) / n;
+      if (grow(sAt) < 0.4) continue;
+      const tt = (sAt - 0.5) * L.len;
+      const rise = fract(rr(seed + 30, k, 0, 1) + t);
+      const [bx, by] = wp(L, tt, -6, 54 + rise * 40 + rr(seed + 31, k, 0, 22));
+      const r = (8 + rise * 7) * rr(seed + 32, k, 0.8, 1.2) * Math.min(1, (gAll - 0.3) * 2);
+      bl.push({ x: bx + Math.sin(ph + k) * 2, y: Math.max(r * 1.6 + 4, by), r, heat: 0, glow: 0.5, back: k % 3 === 0, bumps: 2 });
+    }
+  }
+  let smoke = bl.length ? billows(W, H, bl, seed + 33, t) : null;
+  if (smoke) {
+    for (let i = 3; i < smoke.px.length; i += 4) smoke.px[i] = Math.round(smoke.px[i] * 0.78);
+  }
+  // End-on: wisps of smoke curling up off the top of the column.
+  let curls: Canvas | null = null;
+  if (L.kind === 'wall_depth' && gAll > 0.5) {
+    const cf = new Field(W, H);
+    const [tx, ty] = wp(L, half * 0.8, 0, L.rise * 0.92);
+    for (let k = 0; k < 3; k++) {
+      const pts: Pt[] = [];
+      for (let j = 0; j <= 24; j++) {
+        const u = j / 24;
+        const a = u * 4.2 + ph + k * 2.1;
+        pts.push([tx + Math.sin(a) * (6 + u * 12) + (k - 1) * 4, ty - u * (60 + k * 8)]);
+      }
+      cf.path(pts.filter(([, y]) => y > 6), (u) => lerp(3.2, 1.6, u) * Math.min(1, (gAll - 0.5) * 3), (u) => lerp(0.5, 0.3, u), 1);
+    }
+    curls = render(cf, SMOKE, { th: [0, 0.2, 0.32, 0.44, 0.56], lo: 2, hi: 5, rim: [1] });
+  }
+  const em: { x: number; y: number; s: number }[] = [];
+  tops.forEach(([x, y], k) => {
+    if (k % 2) return;
+    const p = fract(k * 0.37 + t);
+    em.push({ x: x + Math.sin(p * 6 + k) * 3, y: y - 6 - p * 30, s: p < 0.3 ? 2 : 1 });
+  });
+  const body = stack(W, H, groundC, smoke, curls, ...flames);
+  return stack(W, H, body, embers(W, H, em.filter((e) => e.y > 3 && e.x > 3 && e.x < W - 4), body));
+}
+const fireGrow = (i: number) => (sAt: number) => {
+  const reach = [0.2, 0.45, 0.7, 0.92, 1.2, 1.2][i];
+  const height = [0.12, 0.3, 0.52, 0.78, 1.08, 1][i];
+  const d = Math.abs(sAt - 0.5) * 2;
+  return d > reach ? 0 : height * lerp(1, 0.45, smooth(reach - 0.35, reach, d));
+};
+export function walls(): WorldSprite[] {
+  const make = (kind: WallKind, label: string, pad: { l: number; t: number; r: number; b: number }) => {
+    const L = wallLine(kind, 124, 6, pad);
+    const seed = 3500 + (kind === 'wall' ? 0 : kind === 'wall_diag' ? 100 : 200);
+    return vfxSprite(kind, label, L.anchor, {
+      rise: { frames: frames(6, (_, i) => fireWall(i / 6, fireGrow(i), L, seed)), fps: 12, loop: false },
+      idle: { frames: frames(4, (t) => fireWall(t, () => 1, L, seed)), fps: 12, loop: true },
+    });
+  };
+  return [
+    make('wall', 'Fire wall (4.5 m x 1.8 m)', { l: 10, t: 34, r: 10, b: 24 }),
+    make('wall_diag', 'Fire wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)', { l: 18, t: 34, r: 22, b: 28 }),
+    make('wall_depth', 'Fire wall, end-on (4.5 m x 1.8 m, running into the screen)', { l: 34, t: 80, r: 34, b: 24 }),
+  ];
+}
+
+void bez; void flow; void flySprite; void lerp; void seamStack; void wallGround; void wallLine; void wp;
+export type { WallKind, WallLine };

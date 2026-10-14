@@ -2,7 +2,7 @@
 // edge erosion, embers and flow streaks.
 
 import { Canvas, Color } from './kit';
-import { Field, Pt, lerp, outlineIn, palette, pnoise, spark } from './vfx-a-lib';
+import { Field, Pt, clamp, lerp, outlineIn, palette, pnoise, rr, spark } from './vfx-a-lib';
 
 export const FIRE = palette('#3d0a12', '#8a1a1c', '#d2341f', '#f2731c', '#fbac2c', '#ffe253', '#fff9dc');
 /** Smoke lit from below by the fire. */
@@ -50,3 +50,81 @@ export function embers(w: number, h: number, list: { x: number; y: number; s: nu
 /** Flow streaks inside flames: band edges stretched along x (periodic over `per` px). */
 export const flow = (s: number, amp = 0.12, per = 64, seed = 5) => (x: number, y: number) => (pnoise((x - s) * 0.25, y, 2, per / 4, 0, seed) - 0.5) * 2 * amp;
 
+
+/**
+ * A billow: a round puff of fire or smoke. heat 0 is pure smoke, 1 white-hot fire; `glow` lights
+ * a smoke puff's underside from the fire below; `back` puffs are a step darker.
+ */
+export interface Billow { x: number; y: number; r: number; heat: number; glow?: number; back?: boolean; bumps?: number }
+/**
+ * Paints billows back to front (later ones overwrite earlier ones), each lit from the upper left
+ * with a dark crease where it overlaps the one behind it and cauliflower bumps on its top, then
+ * renders them: fire in the fire ramp (hotter toward each billow's lit side), smoke in the warm
+ * smoke ramp, with dark outlines. Volumes of fire cooling into smoke, smoke trails, mushroom caps.
+ */
+export function billows(w: number, h: number, list: Billow[], seed: number, t = 0): Canvas {
+  const val = new Float32Array(w * h), heat = new Float32Array(w * h), glow = new Float32Array(w * h);
+  const on = new Uint8Array(w * h);
+  const ball = (b: Billow, px: number, py: number, pr: number) => {
+    const x0 = Math.max(0, Math.floor(px - pr * 1.1)), x1 = Math.min(w - 1, Math.ceil(px + pr * 1.1));
+    const y0 = Math.max(0, Math.floor(py - pr * 1.1)), y1 = Math.min(h - 1, Math.ceil(py + pr * 1.1));
+    for (let y = y0; y <= y1; y++)
+      for (let x = x0; x <= x1; x++) {
+        const dx = (x + 0.5 - px) / pr, dy = (y + 0.5 - py) / pr;
+        const d = Math.hypot(dx, dy);
+        if (d > 1 + 0.08 * (pnoise(x, y - t * 40, Math.max(3, pr * 0.35), 0, 40, seed) - 0.5) * 2) continue;
+        const i = y * w + x;
+        let v = 0.5 - 0.34 * dy - 0.12 * dx - 0.2 * Math.pow(d, 4) + 0.07 * (pnoise(x, y, 4, 0, 0, seed + 1) - 0.5);
+        if (dy < -0.4 && dx < 0.35 && d > 0.55) v += 0.1;
+        if (b.back) v -= 0.12;
+        if (on[i] && d > 0.86 && dy > -0.3) v = 0.06;
+        val[i] = clamp(v, 0.02, 0.98);
+        heat[i] = b.heat;
+        glow[i] = (b.glow ?? 0) * Math.max(0, dy);
+        on[i] = 1;
+      }
+  };
+  for (const b of list) {
+    ball(b, b.x, b.y, b.r);
+    const nb = b.bumps ?? 3;
+    for (let k = 0; k < nb; k++) {
+      const a = -Math.PI / 2 + (k - (nb - 1) / 2) * 0.95 + rr(seed + 2, Math.round(b.x * 3 + b.y) + k, -0.2, 0.2);
+      const br = b.r * rr(seed + 3, Math.round(b.x + b.y * 3) + k, 0.42, 0.6);
+      ball(b, b.x + Math.cos(a) * b.r * 0.72, b.y + Math.sin(a) * b.r * 0.72, br);
+    }
+  }
+  const c = new Canvas(w, h);
+  const sth = [0, 0.12, 0.26, 0.42, 0.58, 0.76];
+  for (let i = 0; i < w * h; i++) {
+    if (!on[i]) continue;
+    let col: Color;
+    if (heat[i] >= 0.1) {
+      const f = heat[i] * (0.45 + 0.75 * val[i]);
+      let idx = 1;
+      for (let k = 1; k < TH.length; k++) if (f >= TH[k]) idx = k + 1;
+      col = FIRE[Math.min(6, val[i] < 0.08 ? Math.min(idx, 2) : idx)];
+    } else {
+      const v = val[i] + glow[i] * 0.35;
+      let idx = 1;
+      for (let k = 1; k < sth.length; k++) if (v >= sth[k]) idx = k + 1;
+      col = SMOKE[Math.min(6, idx)];
+      // A smoke underside lit by the fire turns warm orange at the brightest step.
+      if (glow[i] > 0.35 && idx >= 4) col = FIRE[idx >= 6 ? 3 : 2];
+    }
+    c.set(i % w, (i / w) | 0, col);
+  }
+  const ol: number[] = [];
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      if (on[y * w + x]) continue;
+      let hot = -1;
+      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const xx = x + ox, yy = y + oy;
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h || !on[yy * w + xx]) continue;
+        hot = Math.max(hot, heat[yy * w + xx]);
+      }
+      if (hot >= 0) ol.push(x, y, hot >= 0.1 ? 1 : 0);
+    }
+  for (let i = 0; i < ol.length; i += 3) c.set(ol[i], ol[i + 1], ol[i + 2] ? FIRE[0] : SMOKE[0]);
+  return c;
+}

@@ -430,6 +430,9 @@ def median_cut(cols, n):
     pal = np.array(q.getpalette()[:n * 3], np.float64).reshape(-1, 3)
     return pal[np.unique(np.asarray(q).ravel())]
 
+for k_, st_ in stage.items():
+    for key_ in ('img', 'glow'):
+        if key_ in st_ and np.isnan(st_[key_]).any(): print('NaN in', k_, key_, np.isnan(st_[key_]).sum())
 all_imgs = [st['img'] for k, st in stage.items() if k != 'stream'] + [tile_img, head_img]
 opq = np.concatenate([im_[im_[..., 3] >= 1][:, :3] for im_ in all_imgs])
 trn = np.concatenate([im_[(im_[..., 3] > 0) & (im_[..., 3] < 1)] for im_ in all_imgs]

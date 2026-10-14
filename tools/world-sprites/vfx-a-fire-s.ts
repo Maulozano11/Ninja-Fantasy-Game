@@ -17,6 +17,7 @@ import { Canvas, WorldSprite } from './kit';
 import { FIRE, SMOKE, TH, embers, erode, tongue } from './vfx-a-fire-kit';
 import { spline } from './vfx-a-fire-dragon';
 import { displace, flicker, raggedCut, refPiece } from './vfx-a-ref';
+void smokeLayer;
 import { Field, Pt, TAU, bez, clamp, dissolve, fract, lerp, palette, pfbm, pnoise, render, rr, smooth, stack, vfxSprite } from './vfx-a-lib';
 
 /** His smoke: warm brown-grey throughout (sampled from his picture), fire-lit low down. */
@@ -208,6 +209,56 @@ function smokeLayer(st: SState): Canvas | null {
   return c;
 }
 
+/** His smoke, cut from his picture (with its edges at the frame's top and right roughened). */
+let hisSmokeBase: Canvas | null = null;
+function hisSmoke(): Canvas {
+  if (hisSmokeBase) return hisSmokeBase;
+  const pc = refPiece('s_smoke');
+  const c = new Canvas(W, H);
+  c.draw(pc.c, pc.x, pc.y);
+  const cut = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (!c.alpha(x, y)) continue;
+      const e = Math.min(y - 4, W - 5 - x) / 40;
+      if (e < 1 && pnoise(x, y, 9, 0, 0, SEED + 66) > e) {
+        c.set(x, y, [0, 0, 0, 0]);
+        cut[y * W + x] = 1;
+      }
+    }
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (!c.alpha(x, y)) continue;
+      const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => x + dx >= 0 && y + dy >= 0 && x + dx < W && y + dy < H && cut[(y + dy) * W + x + dx]);
+      if (nb) c.set(x, y, pc.pal[0]);
+    }
+  hisSmokeBase = c;
+  return c;
+}
+/** His smoke, churning in the loop, rolling up from the caster's end in the surge, thinning away in the fade. */
+function hisSmokeLayer(st: SState): Canvas | null {
+  if (st.smoke <= 0.01) return null;
+  const ph = st.t * TAU;
+  let c = displace(hisSmoke(), (x, y) => {
+    const n1 = pnoise(x, y, 40, 0, 0, SEED + 67), n2 = pnoise(x, y, 40, 0, 0, SEED + 68);
+    return [1.8 * Math.sin(ph + n1 * TAU), 1.4 * Math.cos(ph + n2 * TAU)];
+  });
+  // Distance along the smoke's diagonal, from the caster's end (0) to the upper right (1).
+  const along = (x: number, y: number) => clamp(((x - 150) * 0.75 + (780 - y) * 0.66) / 1100, 0, 1);
+  if (st.phase === 'surge' && st.smoke < 1) {
+    const out = new Canvas(W, H);
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const p = c.get(x, y);
+        if (p[3] && along(x, y) + 0.12 * pnoise(x, y, 20, 0, 0, SEED + 69) < st.smoke * 1.12) out.set(x, y, p);
+      }
+    c = out;
+  } else if (st.phase === 'fade') {
+    c = dissolve(c, st.smoke / 0.85, (x, y) => clamp(pnoise(x, y, 22, 0, 0, SEED + 70) * 0.7 + (1 - along(x, y)) * 0.3, 0, 1), [], SMOKE_HIS[0]).c;
+  }
+  return c;
+}
+
 // --- the scorched, glowing ground ------------------------------------------------------------
 
 function groundLayer(st: SState): Canvas {
@@ -269,7 +320,7 @@ function wallLayers(st: SState): Rows {
         const hFull = heightAt(Math.min(x, crestX), row);
         if (hFull <= 0) return 0;
         const front = Math.sqrt(clamp((crestX + (surging ? 6 : 0) - x + 6 * (pnoise(y, row, 5, 0, 0, SEED + 83) - 0.5)) / (surging ? 22 : 30), 0, 1));
-        const hb = hFull * 0.62 * bodyK * (0.82 + 0.3 * pnoise(x - t * 90, row * 40, 22, 90, 0, SEED + 84 + row)) * front;
+        const hb = hFull * 0.62 * bodyK * (0.72 + 0.5 * pnoise(x - t * 90, row * 40, 14, 90, 0, SEED + 84 + row)) * front;
         if (hb < 10) return 0;
         const u = (yg - y) / hb;
         if (u >= 1 || u < 0) return 0;
@@ -427,7 +478,7 @@ function breathJet(st: SState, mouth: Pt): { c: Canvas; sparks: { x: number; y: 
 
 export function sFrame(st: SState): Canvas {
   const t = st.t, ph = t * TAU;
-  const smoke = st.smoke > 0 ? smokeLayer(st) : null;
+  const smoke = hisSmokeLayer(st);
   const ground = groundLayer(st);
   const wall = wallLayers(st);
   const dr = st.dragon > 0.01 ? dragonLayers(st) : null;

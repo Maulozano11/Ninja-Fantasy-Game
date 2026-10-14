@@ -1,25 +1,29 @@
 // Summoned jutsu beasts: the creatures a jutsu sends flying or running from the caster to the
 // target. One sprite per element in the group vfx_beasts (the battle renderer prefers these over
-// the per-element 'beast' sheets): water dragon, wind crane, thunder hound, stone dragon, illusion
+// the per-element 'beast' sheets): phoenix, water dragon, wind crane, raiju, stone dragon, illusion
 // crow, chakra fox and venom cobra. Each has a 'fly' loop facing right (the game mirrors it), with
-// the anchor at the body centre. The fire phoenix (vfx_fire/beast) is the bar for size and detail.
+// the anchor at the body centre; the phoenix also has 'dive' and 'attack'.
 //
 //   npx tsx tools/world-sprites/vfx-beasts.ts [previewDir]
 //   WORLD_OUT=<dir> ... writes the sheets for approval instead of into src/assets/world.
 //   FOCUS=water,wind ... builds only those (inspection images only, no sheets).
 //
-// Every creature is built from parts painted back to front: tubes along a path (serpent bodies,
-// necks, tails, legs) whose cross-section gives a true normal, ellipsoids (heads, chests, haunches)
-// and lens shapes (horns, feathers, fins, flame tongues, petals). Each part has a material shader
-// that turns its normal and surface coordinates into a ramp step, lit from the upper left and
-// broken into clusters by noise anchored to the surface (so the texture rides the motion). A part
-// in front leaves a dark inner line on the part behind it, and every part carries a 1 px outline
-// tinted by its material. Particles (spray, sparks, pebbles, feathers, petals, drips) go on top.
+// The phoenix and the raiju are copied from the owner's own reference sheets (see the section below
+// and art2/beasts-from-ref.py). Every other creature is built from parts painted back to front:
+// tubes along a path (serpent bodies, necks, tails, legs) whose cross-section gives a true normal,
+// ellipsoids (heads, chests, haunches) and lens shapes (horns, feathers, fins, flame tongues,
+// petals). Each part has a material shader that turns its normal and surface coordinates into a
+// ramp step, lit from the upper left and broken into clusters by noise anchored to the surface (so
+// the texture rides the motion). A part in front leaves a dark inner line on the part behind it, and
+// every part carries a 1 px outline tinted by its material. Particles (spray, sparks, pebbles,
+// feathers, petals, drips) go on top.
 
 import { existsSync, readFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { CHARACTER_FEET, Canvas, Color, LIGHT, MATERIALS, WorldSprite, characterRef, hash, hex, mix, noise, previewDir, ramp, toHex, withAlpha, writeGroup } from './kit';
+import * as REF_FIRE from './vfx-beasts-ref-fire';
+import * as REF_LIGHTNING from './vfx-beasts-ref-lightning';
 
 type P2 = [number, number];
 const TAU = Math.PI * 2;
@@ -347,329 +351,45 @@ function drop(c: Canvas, x: number, y: number, big: boolean, hi: Color, mid: Col
 }
 
 // =============================================================================================
-// PHOENIX (fire)
+// THE OWNER'S PHOENIX (fire) AND RAIJU (lightning)
 // =============================================================================================
 //
-// The owner's phoenix (his reference sheet): a majestic bird of prey, chest up and head high, both
-// wings raised in a V in the key pose. Every wing is built feather by feather, so each one reads on
-// its own: long primaries fanned at the tips, the secondaries along the arm, a row of greater coverts
-// over their roots and small marginal coverts on the leading edge. The feathers are orange and gold
-// with yellow edges, crimson at the roots and on the far wing, and end in flickering flame tips. The
-// body is deep red with an orange breast of scalloped feathers; the head is an eagle in profile with
-// a hooked yellow-orange beak, a fierce eye under a heavy brow and a crest of flame feathers. The
-// legs hang with the talons spread, and a long tail of four flame plumes with yellow cores streams
-// down and back and curls up at the tips. Embers drift off the wings and the tail.
-//
-// Three animations share one frame: 'fly' (8 frames: the V, the down-sweep with the wingtips curling
-// in, a glide with the wings level and back, rising again, a dark smoky trail starting behind the
-// tail), 'dive' (a steep glide with the wings swept back, looping) and 'attack' (once: wings up, the
-// head rears and spits a fireball forward).
+// These two are copied from the owner's own reference sheets, as he asked ("copy them as exactly as
+// possible, that is the quality I want"): art2/beasts-from-ref.py crops his numbered panels, removes
+// the background, scales them to his scale row next to our character, area-averages them, snaps them
+// to a palette sampled from his pixels and cleans the outline, then writes the frames as data modules
+// (vfx-beasts-ref-fire.ts, vfx-beasts-ref-lightning.ts) that are decoded here. The phoenix carries
+// three animations: 'fly' (his eight-frame loop), 'dive' (a loop around his dive frame) and 'attack'
+// (once, around his attack frame: the fireball grows out of the beak and flies off).
 
-const PHX = (() => ({
-  ramp: ['#3a0610', '#640c16', '#921420', '#be2218', '#e44818', '#f6801e', '#ffb232', '#ffdc66', '#fff4be'].map((c) => hex(c)) as Color[],
-  outline: hex('#4a0810'),
-  line: hex('#6a0c16'),
-  beak: ['#7a3008', '#b86010', '#ec9a1e', '#ffcc4a', '#fff0a0'].map((c) => hex(c)) as Color[],
-  talon: [hex('#3a0a08'), hex('#6a2410')] as Color[],
-  eye: [hex('#3a0608'), hex('#ffcc3a'), hex('#fff6c8')] as Color[],
-  smoke: [hex('#3c302c'), hex('#5a4a42'), hex('#7a665a')] as Color[],
-}))();
-
-interface PhxPose {
-  /** Body rotation (radians, negative lifts the chest) and bob (px, negative rises). */
-  pitch: number;
-  bob: number;
-  /** Near and far wing: arm and hand directions (degrees on screen: -90 up, 180 back), spread 0..1. */
-  arm: number;
-  hand: number;
-  spread: number;
-  farArm: number;
-  farHand: number;
-  farSpread: number;
-  /** Extra head tilt (radians, positive looks down) and how wide the beak is open (0..1). */
-  head: number;
-  beak: number;
-  /** Tail: turn of the plumes (degrees, negative streams them higher). */
-  tail: number;
-  /** Smoky trail behind the tail (0..1), and a fireball ahead of the beak: [distance px, radius px]. */
-  smoke: number;
-  fire?: [number, number];
-}
-const PHX_BASE = { pitch: -0.38, bob: 0, spread: 1, farSpread: 1, head: 0, beak: 0.15, tail: 0, smoke: 0 };
-// The owner's loop: the V (0), sweeping forward and down with the wingtips curling in (1-2), a glide
-// with the wings level and back (3-4), rising again (5-6), the smoke trail starting (6-7).
-const PHX_FLY: PhxPose[] = [
-  { ...PHX_BASE, arm: -112, hand: -132, farArm: -62, farHand: -80, bob: 1 },
-  { ...PHX_BASE, arm: -132, hand: 160, spread: 0.85, farArm: 18, farHand: 52, farSpread: 0.8, bob: -1, pitch: -0.32 },
-  { ...PHX_BASE, arm: -158, hand: 132, spread: 0.8, farArm: 34, farHand: 68, farSpread: 0.75, bob: -2, pitch: -0.28, tail: 6 },
-  { ...PHX_BASE, arm: 176, hand: 172, spread: 0.9, farArm: 22, farHand: 34, farSpread: 0.85, bob: -1, pitch: -0.18, tail: -8 },
-  { ...PHX_BASE, arm: -164, hand: -172, spread: 1, farArm: -14, farHand: -6, farSpread: 0.9, bob: 0, pitch: -0.2, tail: -4 },
-  { ...PHX_BASE, arm: -134, hand: -150, farArm: -42, farHand: -58, bob: 1, pitch: -0.3 },
-  { ...PHX_BASE, arm: -114, hand: -134, farArm: -66, farHand: -84, bob: 2, smoke: 0.6 },
-  { ...PHX_BASE, arm: -146, hand: -158, spread: 0.95, farArm: -118, farHand: -132, farSpread: 0.85, bob: 0, pitch: -0.06, head: 0.05, tail: 40, smoke: 1 },
-];
-// A steep dive: nose down, wings swept back, the tail streaming above.
-const PHX_DIVE: PhxPose[] = [0, 1, 2, 3, 4].map((k) => {
-  const w = Math.sin((k / 5) * TAU);
-  return { ...PHX_BASE, pitch: 0.6, bob: 0, arm: -142 + w * 5, hand: -156 + w * 7, spread: 0.6, farArm: -128 + w * 4, farHand: -142 + w * 6, farSpread: 0.55, head: -0.2, beak: 0.1, tail: 62 + w * 5, smoke: 0 };
-});
-// Attack (once): wings up, the head rears back, lunges and spits a fireball, then settles.
-const PHX_ATTACK: PhxPose[] = [
-  { ...PHX_BASE, arm: -112, hand: -132, farArm: -66, farHand: -84, head: -0.2, beak: 0.2 },
-  { ...PHX_BASE, arm: -100, hand: -118, farArm: -58, farHand: -74, head: -0.42, beak: 0.6, bob: 1, fire: [4, 2.5] },
-  { ...PHX_BASE, arm: -104, hand: -122, farArm: -60, farHand: -78, head: 0.18, beak: 1, bob: 0, fire: [9, 4.5] },
-  { ...PHX_BASE, arm: -110, hand: -130, farArm: -64, farHand: -82, head: 0.12, beak: 0.8, fire: [34, 8] },
-  { ...PHX_BASE, arm: -128, hand: -148, farArm: -46, farHand: -62, head: 0.05, beak: 0.4, fire: [54, 7] },
-  { ...PHX_BASE, arm: -112, hand: -132, farArm: -64, farHand: -82, head: 0, beak: 0.15 },
-];
-
-/** Heat (0 crimson shadow .. 1 white-yellow) to the phoenix ramp. */
-const phxHeat = (heat: number, x: number, y: number, seed: number): Color => {
-  const v = heat + (noise(x, y, 2.2, seed) - 0.5) * 0.05;
-  let s = 0;
-  for (const c of [0.1, 0.2, 0.31, 0.43, 0.55, 0.67, 0.79, 0.91]) if (v >= c) s++;
-  return PHX.ramp[s];
-};
-
-/** A flight feather: crimson at the root, orange and gold toward the edges and the flame tip, a dark shaft. */
-function phxFeather(seed: number, far: boolean, hot = 0) {
-  return (h: Hit): Color => {
-    const L = lit(h, 0.4);
-    let heat = 0.49 + h.u * 0.1 + smooth(0.45, 1, Math.abs(h.v)) * 0.22 + (L - 0.5) * 0.34 + hot - (far ? 0.22 : 0);
-    if (h.u > 0.82) heat += (h.u - 0.82) * 1.2;
-    if (Math.abs(h.v) < 0.13 && h.u > 0.05 && h.u < 0.8) heat -= 0.12;
-    return phxHeat(heat, h.x, h.y, seed);
-  };
+interface RefSheet {
+  SIZE: [number, number];
+  ANCHOR: [number, number];
+  ALPHABET: string;
+  PALETTE: string[];
+  FRAMES: Record<string, string[][]>;
 }
 
-/** Fire: a yellow core, orange, red at the rim; brighter toward the tip. */
-function phxFlame(seed: number, far = false) {
-  return (h: Hit): Color => phxHeat(0.42 + (1 - Math.abs(h.v)) * 0.5 + h.u * 0.08 - (far ? 0.14 : 0), h.x, h.y, seed);
-}
-
-/** The side of a wing bone its trailing feathers grow toward: the perpendicular nearest straight back. */
-function trailSide(arm: number): number {
-  // How far an angle is from straight back; a wing held level lets its feathers hang down.
-  const back = (a: number): number => Math.abs(((((a - 180) % 360) + 540) % 360) - 180) - (Math.sin(a * D2R) > 0.5 ? 30 : 0);
-  return back(arm + 90) <= back(arm - 90) ? 1 : -1;
-}
-
-/**
- * One phoenix wing as parts, back to front: primaries (each with a flickering flame tip), then the
- * secondaries, greater coverts and marginal coverts. Returns the feather tips (embers start there).
- */
-function phxWing(f: Frame, S: P2, arm: number, hand: number, spread: number, k: number, fi: number, far: boolean): P2[] {
-  const style = { outline: PHX.outline, line: PHX.line, solid: 150 };
-  const sg = trailSide(arm);
-  const tr = arm + sg * 90;
-  const fa = 20 * k, ha = 13 * k * (0.75 + 0.25 * spread);
-  const Wr: P2 = [S[0] + dirOf(arm)[0] * fa, S[1] + dirOf(arm)[1] * fa];
-  const T: P2 = [Wr[0] + dirOf(hand)[0] * ha, Wr[1] + dirOf(hand)[1] * ha];
-  const tips: P2[] = [];
-  const flick = (j: number): number => noise(j * 3.1, fi * 1.7, 1, 4400 + (far ? 50 : 0));
-  // Primaries: long and separate, fanned apart at the tips; the outermost lies along the hand.
-  for (let j = 6; j >= 0; j--) {
-    const u = j / 6;
-    const root: P2 = [lerp(Wr[0], T[0], 1 - u * 0.8), lerp(Wr[1], T[1], 1 - u * 0.8)];
-    const a = hand + sg * (4 + lerp(0, 76, u) * spread);
-    const len = lerp(36, 23, u) * k * (0.82 + 0.18 * spread);
-    const d = dirOf(a);
-    const tip: P2 = [root[0] + d[0] * len, root[1] + d[1] * len];
-    f.part_([lens(root, tip, lerp(4.6, 4, u) * k, { bend: -sg * 1.2 * k, peak: 0.45, tip: 1.1, base: 0.7 })], phxFeather(5000 + j, far), style);
-    // The flame tip, flickering.
-    const fl = (1 + flick(j) * 3.5) * k;
-    const fd = dirOf(a - sg * (6 + flick(j + 9) * 10));
-    const f0: P2 = [tip[0] - d[0] * 3 * k, tip[1] - d[1] * 3 * k];
-    const fe: P2 = [f0[0] + fd[0] * (fl + 3 * k), f0[1] + fd[1] * (fl + 3 * k)];
-    f.part_([lens(f0, fe, 1.6 * k, { peak: 0.3, tip: 1.6, base: 0.8, bend: sg * 0.7 })], phxFlame(5100 + j, far), style);
-    tips.push(fe);
-  }
-  // Secondaries along the arm, trailing back, turning toward the hand near the wrist.
-  for (let j = 0; j < 6; j++) {
-    const u = 0.1 + j * 0.16;
-    const root: P2 = [lerp(S[0], Wr[0], u), lerp(S[1], Wr[1], u)];
-    const a = tr - sg * 26 * u;
-    const len = (18 + (j % 2) * 2) * k * (0.85 + 0.15 * spread);
-    const d = dirOf(a);
-    const tip: P2 = [root[0] + d[0] * len, root[1] + d[1] * len];
-    f.part_([lens(root, tip, 4.6 * k, { bend: -sg * 0.9, peak: 0.45, tip: 1.1, base: 0.75 })], phxFeather(5200 + j, far, 0), style);
-    if (j % 2 === 0) tips.push(tip);
-  }
-  // Greater coverts over the roots of the secondaries and the inner primaries.
-  for (let j = 0; j < 7; j++) {
-    const u = j / 6;
-    const root: P2 = u < 0.7 ? [lerp(S[0], Wr[0], 0.1 + (u / 0.7) * 0.9), lerp(S[1], Wr[1], 0.1 + (u / 0.7) * 0.9)] : [lerp(Wr[0], T[0], ((u - 0.7) / 0.3) * 0.6), lerp(Wr[1], T[1], ((u - 0.7) / 0.3) * 0.6)];
-    const a = u < 0.7 ? tr - sg * 20 * u : hand + sg * 42;
-    const d = dirOf(a);
-    const len = lerp(10.5, 8.5, u) * k;
-    f.part_([lens(root, [root[0] + d[0] * len, root[1] + d[1] * len], 3 * k, { peak: 0.35, tip: 1, base: 0.8, bend: -sg * 0.5 })], phxFeather(5300 + j, far, 0.1), style);
-  }
-  // Marginal coverts and the leading edge: small scalloped feathers, the edge lit gold.
-  const marg: Prim[] = [tube([S, Wr, T], (u) => lerp(4.2, 2.1, u) * k)];
-  for (let j = 0; j < 6; j++) {
-    const u = j / 5;
-    const root: P2 = u < 0.7 ? [lerp(S[0], Wr[0], u / 0.7), lerp(S[1], Wr[1], u / 0.7)] : [lerp(Wr[0], T[0], (u - 0.7) / 0.3), lerp(Wr[1], T[1], (u - 0.7) / 0.3)];
-    const a = u < 0.7 ? tr - sg * (8 + 14 * u) : hand + sg * 62;
-    const d = dirOf(a);
-    marg.push(lens(root, [root[0] + d[0] * 6 * k, root[1] + d[1] * 6 * k], 2.8 * k, { peak: 0.3, tip: 0.9, base: 0.9 }));
-  }
-  f.part_(marg, (h) => {
-    const L = lit(h, 0.4);
-    // The bone's leading edge catches the light gold; the small coverts behind it are orange.
-    const edge = h.k === 0 ? smooth(0.1, 0.9, -h.v * sg) * 0.24 : 0;
-    return phxHeat(0.54 + (L - 0.5) * 0.46 + edge - (far ? 0.22 : 0), h.x, h.y, 5400);
-  }, style);
-  return tips;
-}
-
-/** One phoenix frame on a W x H canvas, the body centre at (cx, cy). */
-function phxFrame(g: PhxPose, fi: number, t: number, W: number, H: number, cx: number, cy: number): Canvas {
-  const K = 1.06; // wing scale
-  const f = new Frame(W, H);
-  const style = { outline: PHX.outline, line: PHX.line, solid: 150 };
-  const cp = Math.cos(g.pitch), sp = Math.sin(g.pitch);
-  const P = (x: number, y: number): P2 => [cx + x * cp - y * sp, cy + g.bob + x * sp + y * cp];
-  // --- far wing, behind everything ----------------------------------------------------------
-  const farTips = phxWing(f, P(6, -8), g.farArm, g.farHand, g.farSpread, K * 0.92, fi, true);
-  // --- tail: four flame plumes streaming down and back, curling up at the tips -------------
-  const plumeTips: P2[] = [];
-  for (let i = 3; i >= 0; i--) {
-    const root = P(-13, 3 + i * 0.7);
-    const len = [58, 74, 67, 52][i];
-    const a0 = [110, 124, 140, 156][i] + g.tail - (g.pitch / D2R) * 0.6;
-    const curl = [48, 66, 26, -30][i];
-    const pts: P2[] = [root];
-    let [x, y] = root;
-    const n = 12;
-    for (let s = 1; s <= n; s++) {
-      const u = s / n;
-      const a = a0 + smooth(0, 0.45, u) * (40 - i * 10) + smooth(0.6, 1, u) * curl + Math.sin(TAU * t - u * 5 + i * 1.3) * (6 + u * 14);
-      x += Math.cos(a * D2R) * (len / n);
-      y += Math.sin(a * D2R) * (len / n);
-      pts.push([x, y]);
-    }
-    plumeTips.push([x, y]);
-    const seed = 6000 + i * 13;
-    f.part_([tube(pts, (u) => (u < 0.62 ? lerp(1.8, 3.8, smooth(0, 0.62, u)) : lerp(3.8, 0.5, smooth(0.62, 1, u))))], (h) => {
-      // The end breaks up into flame: ragged, flickering edges.
-      if (h.u > 0.6 && Math.abs(h.v) > 0.4 && noise(h.x * 0.9 - fi * 3, h.y * 0.9, 1.6, seed) < (h.u - 0.6) * 1.5) return null;
-      const core = 1 - Math.abs(h.v);
-      return phxHeat(0.3 + core * 0.46 + h.u * 0.22 + (lit(h, 0.4) - 0.5) * 0.14 - (i === 3 ? 0.08 : 0), h.x, h.y, seed);
-    }, style);
-  }
-  // --- legs hanging, talons spread ------------------------------------------------------------
-  const leg = (hip: P2, far: boolean): void => {
-    const knee = P(hip[0] + 2, hip[1] + 5);
-    const foot = P(hip[0] + 6, hip[1] + 13);
-    f.part_([blob(...P(hip[0], hip[1] + 1), 5, 5, g.pitch + 0.5)], (h) => phxHeat(0.4 + (lit(h) - 0.5) * 0.4 - (far ? 0.16 : 0), h.x, h.y, 6100), style);
-    f.part_([tube([knee, foot], () => 1.5)], (h) => PHX.beak[clamp(stepOf(lit(h), h.x, h.y) - (far ? 2 : 1), 0, 3)], style);
-    const toes: Prim[] = [], claws: Prim[] = [];
-    for (const [a, l] of [[16, 5], [52, 5.4], [90, 4.6], [205, 3.2]] as P2[]) {
-      const d = dirOf(a + (g.pitch / D2R) * 0.5);
-      const e: P2 = [foot[0] + d[0] * l, foot[1] + d[1] * l];
-      toes.push(tube([foot, e], () => 1));
-      const c = dirOf(a + 62);
-      claws.push(lens(e, [e[0] + c[0] * 3, e[1] + c[1] * 3], 0.95, { tip: 1.2, base: 1, bend: 0.7 }));
-    }
-    f.part_(toes, (h) => PHX.beak[clamp(stepOf(lit(h), h.x, h.y) - (far ? 2 : 1), 0, 3)], style);
-    f.part_(claws, (h) => PHX.talon[h.v < 0 ? 1 : 0], style);
-  };
-  leg([-3, 6], true);
-  // --- body, neck and head as one smooth volume ---------------------------------------------------
-  const HD = P(17, -13);
-  const ht = g.pitch * 0.45 + g.head + 0.08;
-  const hc = Math.cos(ht), hs = Math.sin(ht);
-  const HZ = (x: number, y: number): P2 => [HD[0] + x * hc - y * hs, HD[1] + x * hs + y * hc];
-  f.part_([fused([
-    blob(...P(-1, 0), 16, 11, g.pitch),
-    blob(...P(7, -1), 11, 10.6, g.pitch - 0.3),
-    blob(...P(-10, 2), 8, 7, g.pitch),
-    tube([P(8, -5), P(13, -10), HZ(-1, 1)], (u) => lerp(6.8, 5.4, u)),
-    blob(HD[0], HD[1], 6.8, 6.2, ht),
-  ], 3)], (h) => {
-    const L = lit(h, 0.4);
-    // Orange breast of scalloped feathers in front and below; the back deep red.
-    const lx = (h.x - cx) * cp + (h.y - cy - g.bob) * sp, ly = -(h.x - cx) * sp + (h.y - cy - g.bob) * cp;
-    const breast = smooth(-1, 9, lx) * smooth(-7, 3, ly) * (1 - smooth(14, 20, lx));
-    const row = Math.floor((ly + 40) / 3);
-    const sc = fract((lx + 40 + (row % 2) * 2) / 4), sy = fract((ly + 40) / 3);
-    const scallop = sy > 0.6 + Math.abs(sc - 0.5) * 0.6 ? -0.1 : 0;
-    return phxHeat(0.42 + (L - 0.5) * 0.5 + breast * 0.24 + scallop * (0.4 + breast), h.x, h.y, 6300);
-  }, style);
-  // Crest: flame feathers off the back of the head.
-  const ruffle = (j: number): number => noise(j * 2.3, fi * 1.9, 1, 6200);
-  for (let j = 0; j < 5; j++) {
-    const r = HZ(-1 - j * 1.4, -4 + j * 1);
-    const a = -112 - j * 14 + (ruffle(j) - 0.5) * 14 + ht / D2R;
-    const l = (12 - j * 1.6) * (0.85 + ruffle(j + 5) * 0.3);
-    const d = dirOf(a);
-    f.part_([lens(r, [r[0] + d[0] * l, r[1] + d[1] * l], 2.1, { peak: 0.3, tip: 1.6, bend: 0.9 })], phxFlame(6400 + j), style);
-  }
-  // Beak: the lower mandible (it drops as the beak opens), the mouth, then the hooked upper mandible.
-  const lowA = 0.32 + g.beak * 0.5;
-  const lowEnd: P2 = [HZ(2.6, 1.6)[0] + Math.cos(ht + lowA) * 7, HZ(2.6, 1.6)[1] + Math.sin(ht + lowA) * 7];
-  if (g.beak > 0.3) f.part_([poly([HZ(3, 0.8), HZ(9.5, 2.6), lowEnd, HZ(3, 2.4)])], () => PHX.ramp[1], { outline: null, line: null });
-  f.part_([lens(HZ(2.6, 1.6), lowEnd, 1.4, { peak: 0.2, tip: 0.8, base: 1 })], (h) => PHX.beak[clamp(stepOf(lit(h), h.x, h.y) - 1, 0, 3)], style);
-  f.part_([lens(HZ(2.4, -1.6), HZ(10.5, 3.6), 2.7, { peak: 0.2, tip: 1, base: 1, bend: -1.5 })], (h) => PHX.beak[clamp(stepOf(lit(h), h.x, h.y) + (h.v < -0.3 ? 1 : 0), 1, 4)], style);
-  // A heavy brow over the eye.
-  f.part_([lens(HZ(-1.5, -3.8), HZ(5, -2.2), 1.6, { peak: 0.5, tip: 0.8, base: 0.8, bend: -0.5 })], (h) => phxHeat(0.46 + (lit(h) - 0.5) * 0.4, h.x, h.y, 6500), style);
-  // --- near leg and the near wing in front ------------------------------------------------------
-  leg([1, 6], false);
-  const tips = phxWing(f, P(2, -7), g.arm, g.hand, g.spread, K, fi, false);
-  const fc = f.finish();
-  // The fierce eye: gold iris, a dark pupil, a glint, under the brow's shadow.
-  const [ex, ey] = HZ(1.8, -1.2).map(Math.round);
-  for (const [dx, dy, c] of [[-1, -1, PHX.outline], [0, -1, PHX.outline], [1, -1, PHX.outline], [2, -1, PHX.line], [-1, 0, PHX.eye[1]], [0, 0, PHX.eye[2]], [1, 0, PHX.eye[0]], [2, 0, PHX.eye[1]], [0, 1, PHX.eye[1]], [1, 1, PHX.eye[1]]] as [number, number, Color][]) fc.set(ex + dx, ey + dy, c);
-  // A smoky trail behind the tail, under the bird.
-  if (g.smoke > 0) {
-    for (let k = 0; k < 9; k++) {
-      const p = (k + 0.5) / 9;
-      const s = plumeTips[k % plumeTips.length];
-      const x0 = s[0] - 4 - p * 30 + Math.sin(k * 2.1 + fi) * 3, y0 = s[1] - 2 + Math.sin(k * 1.3 + fi * 0.7) * 4 - p * 4;
-      const r = (2.2 + p * 3.5) * g.smoke;
-      for (let y = Math.floor(y0 - r); y <= y0 + r; y++)
-        for (let x = Math.floor(x0 - r * 2.4); x <= x0 + r * 2.4; x++) {
-          const d = ((x - x0) / 2.4) ** 2 + (y - y0) ** 2;
-          if (d > r * r || fc.alpha(x, y) > 0) continue;
-          const n = noise(x * 0.5 + fi * 2, y * 1.1, 2.4, 6600 + k);
-          if (n < 0.3 + (d / (r * r)) * 0.35) continue;
-          fc.plot(x, y, wa(PHX.smoke[n > 0.72 ? 1 : 0], (210 - p * 110) * g.smoke * (1 - (d / (r * r)) * 0.4)));
+/** Decodes a frame set copied from a reference sheet: run-length rows of palette symbols. */
+function refFrames(ref: RefSheet): Record<string, Canvas[]> {
+  const pal = ref.PALETTE.map((c) => hex(c.slice(0, 7), parseInt(c.slice(7, 9), 16)));
+  const out: Record<string, Canvas[]> = {};
+  for (const [anim, list] of Object.entries(ref.FRAMES)) {
+    out[anim] = list.map((rows) => {
+      const c = new Canvas(ref.SIZE[0], ref.SIZE[1]);
+      rows.forEach((row, y) => {
+        let x = 0;
+        for (const m of row.matchAll(/(\D)(\d*)/g)) {
+          const i = ref.ALPHABET.indexOf(m[1]);
+          const n = m[2] ? Number(m[2]) : 1;
+          if (i > 0) for (let k = 0; k < n; k++) c.set(x + k, y, pal[i]);
+          x += n;
         }
-    }
+      });
+      return c;
+    });
   }
-  // Embers drifting back and up off the wing tips and the tail.
-  const src = [...tips, ...farTips, ...plumeTips];
-  for (let k = 0; k < 24; k++) {
-    const p = fract(k / 24 + t + rnd(71, k) * 0.3);
-    const s = src[(k * 5) % src.length];
-    const X = Math.round(s[0] - 3 - p * 18 + (rnd(72, k) - 0.5) * 8), Y = Math.round(s[1] - p * 9 + (rnd(73, k) - 0.5) * 8);
-    if (X < 1 || Y < 1 || X >= W - 1 || Y >= H - 1 || fc.alpha(X, Y) > 200) continue;
-    const col = p < 0.35 ? PHX.ramp[8] : p < 0.7 ? PHX.ramp[6] : PHX.ramp[4];
-    fc.plot(X, Y, wa(col, 255 * (1 - p * 0.55)));
-    if (k % 3 === 0 && p < 0.5 && !fc.alpha(X + 1, Y)) fc.plot(X + 1, Y, wa(PHX.ramp[5], 180));
-  }
-  // The fireball spat from the beak: a white-yellow core, orange, a red rim, a short flame trail.
-  if (g.fire) {
-    const [dist, r] = g.fire;
-    const m = HZ(10, 3);
-    const fx = m[0] + dist, fy = m[1] + dist * 0.12;
-    for (let y = Math.floor(fy - r - 2); y <= fy + r + 2; y++)
-      for (let x = Math.floor(fx - r - 9); x <= fx + r + 2; x++) {
-        const dx = x + 0.5 - fx, dy = y + 0.5 - fy;
-        // An egg: round in front, drawn out into a trail behind.
-        const e = dx >= 0 ? Math.hypot(dx, dy) / r : Math.hypot(dx / (1 + Math.min(2.2, dist / 12)), dy) / (r * (1 + dx / (r * 6)));
-        if (e > 1.15) continue;
-        const flick = (noise(x * 1.2 - fi * 5, y * 1.2, 1.4, 6700) - 0.5) * 0.3;
-        const heat = 1.02 - e * 0.62 + flick;
-        if (e > 1 && heat < 0.42) continue;
-        fc.set(x, y, e > 1 ? PHX.outline : phxHeat(heat, x, y, 6710));
-      }
-    for (let k = 0; k < 5; k++) {
-      const X = Math.round(fx - r - 3 - rnd(6720 + fi, k) * 10), Y = Math.round(fy + (rnd(6730 + fi, k) - 0.5) * r * 2.4);
-      if (!fc.alpha(X, Y)) fc.set(X, Y, k % 2 ? PHX.ramp[7] : PHX.ramp[5]);
-    }
-  }
-  return fc;
+  return out;
 }
 
 /** A beast with several animations sharing one frame: crops all of them to their union. */
@@ -699,9 +419,13 @@ function beastSprite(name: string, label: string, meters: [number, number], anim
 }
 
 function phoenix(): WorldSprite {
-  const W = 260, H = 220, cx = 120, cy = 110;
-  const render = (poses: PhxPose[]): Canvas[] => poses.map((g, i) => phxFrame(g, i, i / poses.length, W, H, cx, cy));
-  return beastSprite('fire', 'Phoenix (fire)', [2, 1.9], [['fly', render(PHX_FLY), 12, true], ['dive', render(PHX_DIVE), 12, true], ['attack', render(PHX_ATTACK), 12, false]], cx, cy);
+  const f = refFrames(REF_FIRE);
+  return beastSprite('fire', 'Phoenix (fire)', [2.2, 2.0], [['fly', f.fly, 12, true], ['dive', f.dive, 12, true], ['attack', f.attack, 12, false]], ...REF_FIRE.ANCHOR);
+}
+
+function raiju(): WorldSprite {
+  const f = refFrames(REF_LIGHTNING);
+  return beastSprite('lightning', 'Raiju (lightning)', [3, 1.5], [['fly', f.fly, 12, true]], ...REF_LIGHTNING.ANCHOR);
 }
 
 // =============================================================================================
@@ -1097,498 +821,6 @@ function windCrane(): WorldSprite {
 }
 
 // =============================================================================================
-// RAIJU (lightning)
-// =============================================================================================
-//
-// The thunder beast of the old stories, painted to the owner's design: a natural, slim, long-legged
-// golden wolf in a pouncing cycle that holds its body centre on the anchor. It coils, springs,
-// stretches out with the forelegs reaching, strikes with the jaw wide, then tucks its legs back in.
-// The volumes are smooth: chest, tucked waist, haunch and neck are fused into one height field, so
-// they flow into each other and shade like soft fur (cream on top and on the back of the neck, warm
-// gold, amber, brown-orange under the belly and on the far legs, a dark brown outline). A ruff of
-// pointed fur tufts covers the neck and shoulders; the head is a wolf in profile, ears up, snarling,
-// with bared teeth and a glowing white eye. Thin white-yellow lightning veins run over the body like
-// glowing cracks and flicker every frame; small arcs jump above the back, sparks spit around the
-// feet, the tail is a bright zigzag bolt with a forked tip, and the stretch trails pale streaks.
-
-const RAI = (() => ({
-  ramp: ['#4a1e06', '#7a3a0a', '#a85a10', '#d08418', '#eaa828', '#f8c840', '#ffe27a', '#fff4c8'].map((c) => hex(c)) as Color[],
-  outline: hex('#4a2008'),
-  line: hex('#7a3a0a'),
-  soft: hex('#b8680e'),
-  mouth: [hex('#3a1206'), hex('#6a2208'), hex('#a8401a')] as Color[],
-  tooth: [hex('#fffaea'), hex('#e8cf96')] as Color[],
-  arc: hex('#fffef0'),
-  glow: hex('#ffe27a'),
-  cool: hex('#c8f2ff'),
-}))();
-
-// The gallop the chakra fox runs with (the raiju pounces instead).
-interface Gait {
-  /** Leg angles in degrees from straight down (positive swings forward): upper and lower segments. */
-  fN: [number, number];
-  fF: [number, number];
-  hN: [number, number];
-  hF: [number, number];
-  /** Body pitch (radians, nose up positive), bob (px) and how stretched the spine is (0..1). */
-  pitch: number;
-  bob: number;
-  stretch: number;
-}
-// Rotary gallop: extended flight, front lands, front pushes, gathered flight, hind lands, hind pushes.
-const GALLOP: Gait[] = [
-  { fN: [58, 78], fF: [48, 66], hN: [-58, -74], hF: [-48, -62], pitch: 0.02, bob: -2, stretch: 1 },
-  { fN: [24, 12], fF: [40, 52], hN: [-34, -48], hF: [-52, -70], pitch: -0.05, bob: 0, stretch: 0.8 },
-  { fN: [-16, -30], fF: [6, -4], hN: [4, -26], hF: [-20, -40], pitch: -0.06, bob: 1, stretch: 0.55 },
-  { fN: [-38, -112], fF: [-28, -100], hN: [44, 20], hF: [34, 8], pitch: 0.04, bob: 0, stretch: 0.2 },
-  { fN: [14, 46], fF: [-6, -60], hN: [22, -10], hF: [36, 14], pitch: 0.08, bob: 1, stretch: 0.45 },
-  { fN: [44, 66], fF: [26, 40], hN: [-24, -44], hF: [6, -22], pitch: 0.05, bob: -1, stretch: 0.75 },
-];
-
-/**
- * A jagged lightning line from a to b (midpoint displacement, bulging by `bulge` px to one side):
- * a white 1 px core with a cyan glow beside it.
- */
-function lightningLine(c: Canvas, a: P2, b: P2, bulge: number, rough: number, seed: number, core: Color, glow: Color, skip?: (x: number, y: number) => boolean, glowA = 120): void {
-  let pts: P2[] = [a, b];
-  const dx = b[0] - a[0], dy = b[1] - a[1], dl = Math.hypot(dx, dy) || 1;
-  const nx = -dy / dl, ny = dx / dl;
-  // Bow the line out first, then break it up.
-  pts = [a, [(a[0] + b[0]) / 2 + nx * bulge, (a[1] + b[1]) / 2 + ny * bulge], b];
-  for (let level = 0; level < 3; level++) {
-    const next: P2[] = [pts[0]];
-    for (let i = 0; i + 1 < pts.length; i++) {
-      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
-      const l = Math.hypot(x1 - x0, y1 - y0);
-      const off = (rnd(seed, level * 31 + i, 1) - 0.5) * rough * l * 0.5;
-      next.push([(x0 + x1) / 2 + (-(y1 - y0) / (l || 1)) * off, (y0 + y1) / 2 + ((x1 - x0) / (l || 1)) * off], pts[i + 1]);
-    }
-    pts = next;
-  }
-  const cells: P2[] = [];
-  for (let i = 0; i + 1 < pts.length; i++) {
-    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
-    const n = Math.max(1, Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))));
-    for (let q = 0; q <= n; q++) cells.push([Math.round(x0 + ((x1 - x0) * q) / n), Math.round(y0 + ((y1 - y0) * q) / n)]);
-  }
-  for (const [x, y] of cells) for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!(skip && skip(x + ox, y + oy)) && c.alpha(x + ox, y + oy) < glowA) c.plot(x + ox, y + oy, wa(glow, glowA));
-  for (const [x, y] of cells) if (!(skip && skip(x, y))) c.set(x, y, core);
-}
-
-interface Pounce {
-  /** Body pitch (radians, positive dips the nose), half the chest-to-hip distance, back arch (negative humps up). */
-  pitch: number;
-  span: number;
-  arch: number;
-  /** Head centre from the chest centre (body units, before pitch), tilt (radians, positive looks down), jaw (0..1). */
-  head: P2;
-  ha: number;
-  jaw: number;
-  /** Paw targets from the anchor (body units): front near/far, hind near/far. */
-  fN: P2;
-  fF: P2;
-  hN: P2;
-  hF: P2;
-  /** 0 gathered .. 1 fully stretched (claws spread, tail streams, after-images). */
-  reach: number;
-}
-// coil, spring, launch, stretch, strike, fold, tuck, gather
-const POUNCE: Pounce[] = [
-  { pitch: 0.12, span: 9, arch: -8, head: [18, -9], ha: 0.3, jaw: 0.35, fN: [15, 21], fF: [11, 21], hN: [0, 21], hF: [-4, 21], reach: 0 },
-  { pitch: -0.2, span: 12, arch: -3, head: [19, -12], ha: -0.05, jaw: 0.55, fN: [31, 9], fF: [27, 12], hN: [-30, 19], hF: [-26, 21], reach: 0.3 },
-  { pitch: -0.1, span: 15, arch: 0, head: [20, -11], ha: 0, jaw: 0.8, fN: [40, 7], fF: [35, 14], hN: [-44, 10], hF: [-38, 17], reach: 0.75 },
-  { pitch: -0.02, span: 16, arch: 2, head: [21, -10], ha: 0.06, jaw: 1, fN: [42, 12], fF: [36, 19], hN: [-48, 5], hF: [-43, 13], reach: 1 },
-  { pitch: 0.1, span: 15, arch: 1, head: [21, -8], ha: 0.18, jaw: 0.9, fN: [40, 16], fF: [34, 22], hN: [-46, -1], hF: [-42, 7], reach: 0.9 },
-  { pitch: 0.1, span: 12, arch: -4, head: [19, -9], ha: 0.24, jaw: 0.6, fN: [27, 20], fF: [23, 21], hN: [-24, 11], hF: [-28, 9], reach: 0.4 },
-  { pitch: 0.06, span: 10, arch: -8, head: [18, -10], ha: 0.28, jaw: 0.4, fN: [16, 19], fF: [12, 20], hN: [-6, 17], hF: [-10, 16], reach: 0.1 },
-  { pitch: 0.1, span: 9, arch: -9, head: [18, -9], ha: 0.3, jaw: 0.35, fN: [14, 21], fF: [10, 21], hN: [-2, 20], hF: [-6, 20], reach: 0 },
-];
-
-/** The point `len` from s toward t, or t itself when it is closer. */
-function reachTo(s: P2, t: P2, len: number): P2 {
-  const dx = t[0] - s[0], dy = t[1] - s[1], d = Math.hypot(dx, dy);
-  return d <= len ? t : [s[0] + (dx / d) * len, s[1] + (dy / d) * len];
-}
-
-/** The middle joint of a two-bone limb from a to b, bent to the clockwise side of a->b when `cw`. */
-function knee(a: P2, b: P2, l1: number, l2: number, cw: boolean): P2 {
-  const dx = b[0] - a[0], dy = b[1] - a[1];
-  const dl = Math.hypot(dx, dy) || 1;
-  const d = Math.min(dl, l1 + l2 - 0.01);
-  const ux = dx / dl, uy = dy / dl;
-  const along = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
-  const h = Math.sqrt(Math.max(0, l1 * l1 - along * along));
-  // Screen y points down, so (-uy, ux) is a clockwise quarter turn.
-  const px = cw ? -uy : uy, py = cw ? ux : -ux;
-  return [a[0] + ux * along + px * h, a[1] + uy * along + py * h];
-}
-
-/**
- * A sharp-cornered band along a polyline (a lightning bolt): its edges are the spine offset by the
- * half-width with mitred corners, so every kink stays a crisp point. Surface coordinates come from
- * the nearest spine segment, so it shades like a blade with a bright ridge down the middle.
- */
-function zig(spine: P2[], hw: (u: number) => number): Prim {
-  const n = spine.length;
-  const cum: number[] = [0];
-  for (let i = 1; i < n; i++) cum.push(cum[i - 1] + Math.hypot(spine[i][0] - spine[i - 1][0], spine[i][1] - spine[i - 1][1]));
-  const total = cum[n - 1] || 1;
-  const segN = (i: number): P2 => {
-    const [ax, ay] = spine[i], [bx, by] = spine[i + 1];
-    const l = Math.hypot(bx - ax, by - ay) || 1;
-    return [-(by - ay) / l, (bx - ax) / l];
-  };
-  const left: P2[] = [], right: P2[] = [];
-  for (let i = 0; i < n; i++) {
-    const w = hw(cum[i] / total);
-    let mx: number, my: number, k = 1;
-    if (i === 0) [mx, my] = segN(0);
-    else if (i === n - 1) [mx, my] = segN(n - 2);
-    else {
-      const a = segN(i - 1), b = segN(i);
-      const sx = a[0] + b[0], sy = a[1] + b[1], sl = Math.hypot(sx, sy) || 1;
-      mx = sx / sl;
-      my = sy / sl;
-      k = Math.min(2.4, 1 / Math.max(0.2, mx * a[0] + my * a[1]));
-    }
-    left.push([spine[i][0] + mx * w * k, spine[i][1] + my * w * k]);
-    right.push([spine[i][0] - mx * w * k, spine[i][1] - my * w * k]);
-  }
-  const shape = poly([...left, ...right.reverse()]);
-  return {
-    box: shape.box,
-    at(px, py) {
-      if (!shape.at(px, py)) return null;
-      let best = Infinity, bu = 0, bs = 0, bnx = 0, bny = 0;
-      for (let i = 0; i + 1 < n; i++) {
-        const [ax, ay] = spine[i], [bx, by] = spine[i + 1];
-        const ex = bx - ax, ey = by - ay, l2 = ex * ex + ey * ey || 1e-9;
-        const t = clamp(((px - ax) * ex + (py - ay) * ey) / l2, 0, 1);
-        const qx = ax + ex * t, qy = ay + ey * t, d = Math.hypot(px - qx, py - qy);
-        if (d < best) {
-          best = d;
-          bu = (cum[i] + Math.sqrt(l2) * t) / total;
-          const [nx, ny] = segN(i);
-          bs = (px - qx) * nx + (py - qy) * ny;
-          bnx = nx;
-          bny = ny;
-        }
-      }
-      const v = clamp(bs / Math.max(0.5, hw(bu)), -1, 1);
-      const tx = bnx * v * 0.7, ty = bny * v * 0.7, nz = Math.sqrt(Math.max(0.05, 1 - (v * 0.7) ** 2));
-      const l = Math.hypot(tx, ty, nz);
-      return { x: px, y: py, nx: tx / l, ny: ty / l, nz: nz / l, z: hw(bu) * nz, u: bu, v, len: total, k: 0 };
-    },
-  };
-}
-
-/** A zigzag bolt from `root` along `ang` (degrees): a sharp band whose spine kinks left and right. */
-function bolt(root: P2, ang: number, len: number, w: number, amp: number, kinks: number, seed: number, tipW = 0.3): Prim {
-  const d = dirOf(ang), n: P2 = [-d[1], d[0]];
-  const pts: P2[] = [root];
-  for (let k = 1; k <= kinks; k++) {
-    const u = (k - 0.2 + rnd(seed, k) * 0.4) / (kinks + 1);
-    const off = (k % 2 ? 1 : -1) * amp * (0.75 + rnd(seed, k, 1) * 0.5);
-    pts.push([root[0] + d[0] * len * u + n[0] * off, root[1] + d[1] * len * u + n[1] * off]);
-  }
-  pts.push([root[0] + d[0] * len, root[1] + d[1] * len]);
-  return zig(pts, (u) => tipW + (w - tipW) * Math.pow(1 - u, 0.8));
-}
-
-/**
- * Several primitives fused into one smooth volume: the height toward the viewer is a smooth max of
- * theirs (blended over `k` px), so chest, waist, haunch and neck flow into each other without
- * creases, and the normal is the slope of that height field.
- */
-function fused(prims: Prim[], k = 3, relief = 1.7): Prim {
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const p of prims) {
-    x0 = Math.min(x0, p.box[0]);
-    y0 = Math.min(y0, p.box[1]);
-    x1 = Math.max(x1, p.box[2]);
-    y1 = Math.max(y1, p.box[3]);
-  }
-  const height = (px: number, py: number): [number, Hit | null] => {
-    let h = 0, top: Hit | null = null;
-    for (const p of prims) {
-      if (px < p.box[0] || px > p.box[2] + 1 || py < p.box[1] || py > p.box[3] + 1) continue;
-      const hh = p.at(px, py);
-      if (!hh) continue;
-      const z = Math.max(0, hh.z);
-      if (!top) h = z;
-      else {
-        const d = Math.max(k - Math.abs(h - z), 0) / k;
-        h = Math.max(h, z) + d * d * k * 0.25;
-      }
-      if (!top || hh.z > top.z) top = hh;
-    }
-    return [h, top];
-  };
-  return {
-    box: [x0, y0, x1, y1],
-    at(px, py) {
-      const [h, top] = height(px, py);
-      if (!top) return null;
-      const e = 0.75;
-      const gx = ((height(px + e, py)[0] - height(px - e, py)[0]) / (2 * e)) * relief;
-      const gy = ((height(px, py + e)[0] - height(px, py - e)[0]) / (2 * e)) * relief;
-      const l = Math.hypot(gx, gy, 1);
-      return { ...top, x: px, y: py, nx: -gx / l, ny: -gy / l, nz: 1 / l, z: h };
-    },
-  };
-}
-
-function raiju(): WorldSprite {
-  const W = 300, H = 200, cx = 150, cy = 100;
-  const Z = 1.6; // the pose table is in body units; the beast is drawn 1.6x
-  const frames: Canvas[] = [];
-  POUNCE.forEach((g, fi) => {
-    const t = fi / POUNCE.length;
-    const f = new Frame(W, H);
-    const style = { outline: RAI.outline, line: RAI.line, solid: 150 };
-    const soft = { outline: RAI.outline, line: RAI.soft, solid: 150 };
-    const bare = { outline: RAI.outline, line: null, solid: 150 };
-    const cp = Math.cos(g.pitch), sp = Math.sin(g.pitch), pd = g.pitch / D2R;
-    /** Body space (pitched about the anchor) to the canvas, and unpitched targets to the canvas. */
-    const B = (x: number, y: number): P2 => [cx + (x * cp - y * sp) * Z, cy + (x * sp + y * cp) * Z];
-    const A = (p: P2): P2 => [cx + p[0] * Z, cy + p[1] * Z];
-    const C = B(g.span, 0), Hp = B(-g.span, 0);
-    /** Soft golden fur: cream on top, warm gold, amber, brown-orange underneath; band edges notched like fur. */
-    const fur = (seed: number, dk = 0, bias = 0, lo = 1) => (h: Hit): Color => {
-      const L = 0.06 + 0.94 * lit(h, 0.3) - h.ny * 0.12;
-      const comb = fract((h.x + h.y * 0.45) / 3.4 + noise(h.x, h.y, 5, seed) * 1.4) - 0.5;
-      const v = L + bias + comb * 0.06 + (noise(h.x, h.y, 2.4, seed + 1) - 0.5) * 0.04;
-      let s = 0;
-      for (const c of [0.14, 0.25, 0.36, 0.48, 0.6, 0.73, 0.87]) if (v >= c) s++;
-      return RAI.ramp[clamp(s - dk, lo, 7)];
-    };
-    /** A fur tuft: shaded like the coat it grows from, a little brighter toward the tip. */
-    const tuft = (seed: number, dk = 0, bias = 0) => (h: Hit): Color => fur(seed, dk, bias + (h.u - 0.4) * 0.16)(h);
-    const tufts = (defs: [P2, number, number, number][], tip = 2): Prim[] =>
-      defs.map(([r, a, l, w], j) => {
-        const d = dirOf(a + pd + Math.sin(TAU * t + j * 1.7) * 4);
-        return lens(r, [r[0] + d[0] * l * Z, r[1] + d[1] * l * Z], w * Z, { tip, peak: 0.25, base: 0.5, bend: (j % 2 ? 0.5 : -0.5) * Z });
-      });
-    type Tuft = [P2, number, number, number];
-    /** Bolt (the tail): a white-hot spine, pale yellow, gold edges. */
-    const boltShade = (h: Hit): Color => RAI.ramp[clamp(Math.round(4 + (1 - Math.abs(h.v)) * 3.4 + (lit(h, 0.3) - 0.5) * 1.2 - 0.2), 4, 7)];
-    // --- legs: slim and long, a small paw and three claws -----------------------------------
-    const frontLeg = (target: P2, far: boolean) => {
-      const S = B(g.span + (far ? 1 : 3), 5);
-      const P = reachTo(S, A(target), 24.5 * Z);
-      const E = knee(S, P, 12.5 * Z, 12.5 * Z, true);
-      const ang = Math.atan2(P[1] - E[1], P[0] - E[0]);
-      const pa = ang * 0.55;
-      const pc: P2 = [P[0] + Math.cos(pa) * 1.1 * Z, P[1] + Math.sin(pa) * 1.1 * Z];
-      return { prim: fused([blob(S[0], S[1], 4 * Z, 4.4 * Z, 0), lens(S, E, (far ? 3.4 : 3.8) * Z, { peak: 0.25, tip: 0.55, base: 0.7 }), tube([E, P], (u) => lerp(2, 1.55, u) * Z), blob(pc[0], pc[1], 2.5 * Z, 1.7 * Z, pa)], 1.5 * Z), P: pc, E, pa };
-    };
-    const hindLeg = (target: P2, far: boolean) => {
-      const Hj = B(-g.span - 1, 4);
-      const P = reachTo(Hj, A(target), 31 * Z);
-      const toHip = Math.atan2(Hj[1] - P[1], Hj[0] - P[0]) - 0.55;
-      const K: P2 = [P[0] + Math.cos(toHip) * 9 * Z, P[1] + Math.sin(toHip) * 9 * Z];
-      const N = knee(Hj, K, 12 * Z, 12 * Z, false);
-      const ang = Math.atan2(P[1] - K[1], P[0] - K[0]);
-      const pa = ang * 0.8;
-      const pc: P2 = [P[0] + Math.cos(pa) * 1.1 * Z, P[1] + Math.sin(pa) * 1.1 * Z];
-      const thighA = Math.atan2(N[1] - Hj[1], N[0] - Hj[0]);
-      return { prim: fused([blob(Hj[0] + Math.cos(thighA) * 2 * Z, Hj[1] + Math.sin(thighA) * 2 * Z, (far ? 5.2 : 5.8) * Z, (far ? 4.6 : 5.2) * Z, thighA), lens(Hj, N, (far ? 4.6 : 5.2) * Z, { peak: 0.3, tip: 0.5, base: 0.6 }), tube([N, K], (u) => lerp(2.4, 1.7, u) * Z), tube([K, P], () => 1.5 * Z), blob(pc[0], pc[1], 2.4 * Z, 1.7 * Z, pa)], 1.5 * Z), P: pc, E: N, pa };
-    };
-    const claws = (P: P2, pa: number): Prim[] => {
-      const spread = 0.3 + g.reach * 0.25;
-      return [-1, 0, 1].map((k) => {
-        const r: P2 = [P[0] + Math.cos(pa) * 2 * Z, P[1] + Math.sin(pa) * 2 * Z];
-        const a = pa + 0.55 + k * spread;
-        const l = (1.8 + g.reach * 1) * Z;
-        return lens(r, [r[0] + Math.cos(a) * l, r[1] + Math.sin(a) * l], 0.6 * Z, { tip: 1.2, peak: 0.2, base: 1, bend: 0.4 * Z });
-      });
-    };
-    const clawShade = (h: Hit): Color => (h.u > 0.4 ? RAI.tooth[0] : RAI.tooth[1]);
-    // --- tail: a lightning bolt, zig-zag-zig, forked at the end ------------------------------
-    const tRoot = B(-g.span - 7, -4);
-    const tAng = lerp(-148, -172, g.reach) + pd + Math.sin(TAU * t) * 5;
-    const td = dirOf(tAng), tn: P2 = [-td[1], td[0]];
-    const TL = (a: number, c: number): P2 => [tRoot[0] + (td[0] * a + tn[0] * c) * Z, tRoot[1] + (td[1] * a + tn[1] * c) * Z];
-    const tPts = [TL(0, 0), TL(10, -3.5), TL(8.5, 3), TL(19, 0), TL(17.5, 5), TL(25, 2.5)];
-    const tTip = tPts[tPts.length - 1];
-    const tailPrims: Prim[] = [zig(tPts, (u) => lerp(2.6, 1.4, u) * Z)];
-    for (const [da, len] of [[-30, 9], [26, 7]] as P2[]) tailPrims.push(bolt(tTip, tAng + da, len * Z, 1.3 * Z, 1.4 * Z, 1, 930 + fi * 3 + da));
-    f.part_(tailPrims, boltShade, style);
-    f.part_(tufts([[B(-g.span - 6, -5), 196, 6, 2], [B(-g.span - 7, -3), 172, 6.5, 2]]), tuft(29, 0, -0.04), bare);
-    // --- far legs, a step darker behind --------------------------------------------------------
-    const hF = hindLeg(g.hF, true), fF = frontLeg(g.fF, true);
-    f.part_([hF.prim], fur(11, 2, -0.02, 0), style);
-    f.part_(claws(hF.P, hF.pa), clawShade, style);
-    f.part_([fF.prim], fur(13, 2, -0.02, 0), style);
-    f.part_(claws(fF.P, fF.pa), clawShade, style);
-    // --- body: deep chest, tucked waist, haunch and neck in one smooth volume ------------------
-    const Hd = B(g.span + g.head[0], g.head[1]);
-    const hA = g.ha + g.pitch, HS = 1.0 * Z;
-    const ca = Math.cos(hA), sa = Math.sin(hA);
-    const HZ = (x: number, y: number): P2 => [Hd[0] + (x * ca - y * sa) * HS, Hd[1] + (x * sa + y * ca) * HS];
-    const bodyId = f.part_([fused([
-      blob(C[0] + 0.5 * Z, C[1] + 1 * Z, 11 * Z, 12 * Z, g.pitch - 0.25),
-      tube([B(g.span - 2, -2.5), B(0, g.arch * 0.5 - 3.5), B(-g.span + 2, -2)], (u) => lerp(7.5, 5.6, Math.sin(u * Math.PI)) * Z),
-      blob(Hp[0], Hp[1] - 0.5 * Z, 9.5 * Z, 9 * Z, g.pitch + 0.1),
-      tube([B(g.span + 4, -5), HZ(-3, 1.5)], (u) => lerp(6.5, 4.8, u) * Z),
-    ], 4 * Z)], fur(23, 0, -0.04), style);
-    // Fur fringes: the back, the belly, the back of the haunch (no inner lines: they are the coat).
-    const backAt = (u: number, dy = 0): P2 => B(lerp(g.span - 1, -g.span - 6, u), lerp(-10.5, -9, u) + g.arch * Math.sin(u * Math.PI) * 0.6 + dy);
-    f.part_(tufts([0.3, 0.45, 0.6, 0.75, 0.9].map((u, j): Tuft => [backAt(u, 1.2), -174 + j, 5.5 + (j % 2), 1.4])), tuft(31, 0, 0.02), bare);
-    f.part_(tufts([0.15, 0.32, 0.5, 0.68].map((u, j): Tuft => [B(lerp(g.span + 2, -g.span + 4, u), lerp(10, 2.5, u) + g.arch * 0.25 * Math.sin(u * Math.PI)), 158 + j * 4, 5.5 + (j % 2), 1.4])), tuft(33, 0, -0.04), bare);
-    f.part_(tufts([[B(-g.span - 8, 2), 176, 5.5, 1.6], [B(-g.span - 6, 6), 160, 5, 1.4]]), tuft(35, 0, -0.04), bare);
-    // --- ruff: pointed fur tufts over the neck and shoulders, in two layers ---------------------
-    const neckTop = (u: number): P2 => {
-      const a = HZ(-6, -3.5), b = B(g.span - 4, -9.5);
-      return [lerp(a[0], b[0], u), lerp(a[1], b[1], u) - Math.sin(u * Math.PI) * 1.5 * Z];
-    };
-    const neckSide = (u: number): P2 => {
-      const a = HZ(-5, 1), b = B(g.span + 1, -3);
-      return [lerp(a[0], b[0], u), lerp(a[1], b[1], u)];
-    };
-    f.part_(tufts([0, 0.14, 0.28, 0.42, 0.56, 0.7, 0.84, 1].map((u, j): Tuft => [neckTop(u), -146 - u * 28, 10 - u * 2.5 + (j % 2) * 1.8, 2])), tuft(41, 1, 0.04), soft);
-    f.part_(tufts([0.05, 0.25, 0.45, 0.65, 0.85].map((u, j): Tuft => [neckSide(u), -168 + u * 8, 9 - u * 2 + (j % 2) * 1.5, 2])), tuft(43, 0, 0.02), soft);
-    f.part_(tufts([[B(g.span + 7, 1), 150, 8.5, 2.4], [B(g.span + 6, 5), 138, 8, 2.3], [B(g.span + 4, 9), 126, 6.5, 2]]), tuft(45, 0, -0.02), soft);
-    // --- head: a wolf in profile, ears up, snarling ---------------------------------------------
-    f.part_([fused([lens(HZ(0.5, -4.5), HZ(-1.5, -15), 2.8 * HS, { peak: 0.3, tip: 1.5, bend: -0.8 })])], fur(47, 2), style);
-    const jawEnd = HZ(14.5, 3.5 + 7 * g.jaw);
-    f.part_([lens(HZ(0, 3.5), jawEnd, 2.2 * HS, { peak: 0.25, tip: 0.8, base: 1 })], fur(49, 0, -0.1), style);
-    const jy = (x: number): P2 => {
-      const a = HZ(0, 3.5), u = x / 14.5;
-      return [lerp(a[0], jawEnd[0], u), lerp(a[1], jawEnd[1], u) - 1.6 * HS];
-    };
-    f.part_([poly([HZ(1.5, 1.5), HZ(16, 2), jy(14.5), jy(6), HZ(2, 4.5)])], (h) => (h.v > 0.45 ? RAI.mouth[2] : h.v > -0.2 ? RAI.mouth[0] : RAI.mouth[1]), { outline: null, line: null });
-    const up = (x: number, w: number, l: number): Prim => poly([HZ(x - w / 2, 2), HZ(x + w / 2, 2), HZ(x + 0.15, 2 + l)]);
-    const dn = (x: number, w: number, l: number): Prim => {
-      const p = jy(x);
-      return poly([[p[0] - ((ca * w) / 2) * HS, p[1] - ((sa * w) / 2) * HS], [p[0] + ((ca * w) / 2) * HS, p[1] + ((sa * w) / 2) * HS], [p[0] + sa * l * HS, p[1] - ca * l * HS]]);
-    };
-    f.part_([up(13, 1.6, 4.6), up(15, 0.9, 2), up(10, 1.1, 2.4), up(7.5, 1, 2), dn(11.5, 1.5, 3.4), dn(13.6, 0.9, 1.6), dn(8, 1, 1.8)], (h) => RAI.tooth[h.v > 0.3 ? 1 : 0], { outline: RAI.outline, line: null });
-    f.part_([fused([
-      blob(Hd[0], Hd[1], 7.2 * HS, 6.2 * HS, hA),
-      tube([HZ(2, -1.2), HZ(16.3, 0.6)], (u) => lerp(4.2, 2.5, u) * HS),
-      blob(...HZ(1.5, 2.8), 5.2 * HS, 3.6 * HS, hA + 0.15),
-      blob(...HZ(4, -3.4), 4.6 * HS, 2.1 * HS, hA + 0.3),
-    ], 2.5 * Z)], fur(51, 0, 0.02), style);
-    f.part_([fused([lens(HZ(-2.5, -4.6), HZ(-5, -15.5), 3.2 * HS, { peak: 0.3, tip: 1.5, bend: -1 })])], fur(53, 0, 0.04), style);
-    f.part_([lens(HZ(-2.9, -6.4), HZ(-4.8, -13.5), 1.4 * HS, { peak: 0.35, tip: 1.3, bend: -0.6 })], (h) => RAI.ramp[h.v < 0 ? 2 : 1], { outline: null, line: null });
-    f.part_(tufts([[HZ(-3, 3), 172 + (hA / D2R) * 0.5, 8, 2], [HZ(-2, 5.5), 150, 7.5, 1.9], [HZ(0, 7.2), 128, 6, 1.6]]), tuft(55, 0, -0.02), soft);
-    // --- near legs in front ------------------------------------------------------------------
-    const hN = hindLeg(g.hN, false), fN = frontLeg(g.fN, false);
-    f.part_([hN.prim], fur(37, 0, 0.03), soft);
-    f.part_(claws(hN.P, hN.pa), clawShade, style);
-    f.part_([fN.prim], fur(39, 0, 0.03), soft);
-    f.part_(claws(fN.P, fN.pa), clawShade, style);
-    const fc = f.finish();
-    // Snarl wrinkles on the muzzle, the nose, and a glowing white eye in a dark rim.
-    for (const x of [8.2, 10.2, 12.2]) {
-      for (const [ox, oy] of [[0, -3], [0.6, -2.1]] as P2[]) {
-        const [X, Y] = HZ(x + ox, oy).map(Math.round);
-        if (fc.alpha(X, Y) > 200) fc.set(X, Y, RAI.line);
-      }
-    }
-    const [nX, nY] = HZ(16.6, -0.4).map(Math.round);
-    for (const [dx, dy] of [[0, 0], [-1, 0], [0, 1], [-1, 1], [1, 0], [1, 1]]) fc.set(nX + dx, nY + dy, RAI.outline);
-    fc.set(nX - 1, nY, RAI.mouth[1]);
-    const [ex, ey] = HZ(4.6, -1.5).map(Math.round);
-    // Rows from the brow down; slanted down toward the nose. 0 skip, 1 rim, 2 pale glow, 3 white.
-    const EYE = ['0111110', '1233321', '0123332', '0011111'];
-    const eyeCol: Record<string, Color> = { '1': RAI.outline, '2': RAI.glow, '3': RAI.arc };
-    EYE.forEach((row, dy) => [...row].forEach((ch, dx) => {
-      if (ch !== '0' && fc.alpha(ex - 3 + dx, ey - 2 + dy) > 200) fc.set(ex - 3 + dx, ey - 2 + dy, eyeCol[ch]);
-    }));
-    // Lightning veins: thin white-hot cracks over the coat, anchored to the body, re-struck every frame.
-    const coat = new Set(RAI.ramp.slice(1).map((c) => toHex(c)));
-    const onCoat = (x: number, y: number): boolean => fc.alpha(x, y) >= 250 && coat.has(toHex(fc.get(x, y)));
-    const VEINS: P2[] = [[g.span + 4, -4], [g.span + 3, 6], [0, -2], [-g.span, -3], [-g.span + 2, 5]];
-    const core: P2[] = [];
-    const walk = (p: P2, ang: number, steps: number, seed: number, depth: number): void => {
-      let [x, y] = p;
-      for (let s = 0; s < steps; s++) {
-        ang += (rnd(seed, s) - 0.5) * 1.1;
-        const len = (2 + rnd(seed, s, 1) * 1.5) * Z;
-        const nx = x + Math.cos(ang) * len, ny = y + Math.sin(ang) * len;
-        const n = Math.ceil(Math.max(Math.abs(nx - x), Math.abs(ny - y)));
-        for (let q = 1; q <= n; q++) core.push([Math.round(x + ((nx - x) * q) / n), Math.round(y + ((ny - y) * q) / n)]);
-        x = nx;
-        y = ny;
-        if (depth === 0 && s === 2 && rnd(seed, 99) < 0.7) walk([x, y], ang + (rnd(seed, 98) < 0.5 ? 0.8 : -0.8), 2, seed + 17, 1);
-      }
-    };
-    VEINS.forEach(([vx, vy], k) => {
-      const seed = 2100 + fi * 37 + k * 5;
-      const p = B(vx + (rnd(seed, 1) - 0.5) * 3, vy + (rnd(seed, 2) - 0.5) * 3);
-      walk(p, g.pitch + (rnd(seed, 3) - 0.5) * 1.2 + (rnd(seed, 4) < 0.5 ? 0 : Math.PI), 5 + Math.floor(rnd(seed, 5) * 2), seed, 0);
-    });
-    // And down the near upper legs, from the shoulder and the hip.
-    for (const [k, [a, b]] of ([[B(g.span + 3, 5), fN.E], [B(-g.span - 1, 4), hN.E]] as [P2, P2][]).entries()) {
-      const seed = 2300 + fi * 41 + k * 7;
-      walk([lerp(a[0], b[0], 0.2), lerp(a[1], b[1], 0.2)], Math.atan2(b[1] - a[1], b[0] - a[0]), 2, seed, 1);
-    }
-    const coreSet = new Set(core.filter(([x, y]) => onCoat(x, y)).map(([x, y]) => y * W + x));
-    for (const key of coreSet) {
-      const x = key % W, y = Math.floor(key / W);
-      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const X = x + ox, Y = y + oy;
-        if (coreSet.has(Y * W + X) || !onCoat(X, Y)) continue;
-        const idx = RAI.ramp.findIndex((c) => toHex(c) === toHex(fc.get(X, Y)));
-        if (idx < 6) fc.set(X, Y, RAI.ramp[6]);
-      }
-    }
-    for (const key of coreSet) fc.set(key % W, Math.floor(key / W), RAI.arc);
-    // Pale speed streaks trailing behind in the stretch.
-    if (g.reach > 0.5) {
-      const snap = fc.clone();
-      const k = (g.reach - 0.4) / 0.6;
-      for (let y = 0; y < H; y++) {
-        if (noise(3, y, 2.2, 1500 + fi) < 0.45) continue;
-        for (let x = 1; x < W; x++) {
-          if (snap.alpha(x, y) < 220 || snap.alpha(x - 1, y) >= 120) continue;
-          const len = Math.round((6 + rnd(1600 + fi, y, x) * 16) * k);
-          for (let q = 1; q <= len; q++) {
-            if (snap.alpha(x - q, y) >= 120) break;
-            fc.plot(x - q, y, wa(RAI.ramp[7], 150 * (1 - q / (len + 1))));
-          }
-        }
-      }
-    }
-    // Small arcs jumping above the back.
-    const solidAt = (x: number, y: number): boolean => fc.alpha(x, y) >= 220;
-    const top: P2[] = [];
-    for (let x = Math.round(Hp[0] - 6 * Z); x <= Math.round(C[0] + 4 * Z); x++)
-      for (let y = 1; y < H - 1; y++)
-        if (solidAt(x, y)) {
-          top.push([x, y]);
-          break;
-        }
-    for (let a = 0; a < 2 && top.length > 12; a++) {
-      const i0 = Math.floor(rnd(500 + fi, a) * (top.length - 12));
-      const i1 = Math.min(top.length - 1, i0 + 8 + Math.floor(rnd(510 + fi, a) * 8));
-      lightningLine(fc, top[i0], top[i1], -(3 + rnd(520 + fi, a) * 3), 0.9, 800 + fi * 10 + a, RAI.arc, RAI.glow, solidAt, 170);
-    }
-    // Sparks spitting around the feet, a few drifting off the body; one or two cool ones.
-    const paws = [fN.P, hN.P, fF.P, hF.P];
-    for (let k = 0; k < 14; k++) {
-      const src = paws[k % 4];
-      const ang = rnd(1900 + fi, k) * TAU, r = (2.5 + rnd(1910 + fi, k) * 5) * Z * 0.8;
-      const X = Math.round(src[0] + Math.cos(ang) * r - 2), Y = Math.round(src[1] + Math.sin(ang) * r * 0.7);
-      if (fc.alpha(X, Y)) continue;
-      fc.set(X, Y, k === 5 && fi % 2 === 0 ? RAI.cool : k % 3 ? RAI.arc : RAI.glow);
-      if (k % 4 === 0 && !fc.alpha(X - 1, Y)) fc.plot(X - 1, Y, wa(RAI.glow, 160));
-    }
-    for (let k = 0; k < 8; k++) {
-      const p = fract(k / 8 + t);
-      const ang = rnd(911, k) * TAU, rr = 0.6 + rnd(912, k) * 0.4;
-      const X = Math.round(cx + Math.cos(ang) * 62 * rr - p * 20), Y = Math.round(cy + Math.sin(ang) * 34 * rr);
-      if (fc.alpha(X, Y)) continue;
-      fc.set(X, Y, p < 0.5 ? RAI.arc : RAI.glow);
-    }
-    frames.push(fc);
-  });
-  return flySprite('lightning', 'Raiju (lightning)', [3, 1.6], frames, cx, cy);
-}
-
-// =============================================================================================
 // STONE DRAGON (earth)
 // =============================================================================================
 //
@@ -1965,6 +1197,28 @@ const CHAKRA = (() => ({
   eye: hex('#ffffff'),
   ember: hex('#bff0ff'),
 }))();
+
+// The gallop the fox runs with.
+interface Gait {
+  /** Leg angles in degrees from straight down (positive swings forward): upper and lower segments. */
+  fN: [number, number];
+  fF: [number, number];
+  hN: [number, number];
+  hF: [number, number];
+  /** Body pitch (radians, nose up positive), bob (px) and how stretched the spine is (0..1). */
+  pitch: number;
+  bob: number;
+  stretch: number;
+}
+// Rotary gallop: extended flight, front lands, front pushes, gathered flight, hind lands, hind pushes.
+const GALLOP: Gait[] = [
+  { fN: [58, 78], fF: [48, 66], hN: [-58, -74], hF: [-48, -62], pitch: 0.02, bob: -2, stretch: 1 },
+  { fN: [24, 12], fF: [40, 52], hN: [-34, -48], hF: [-52, -70], pitch: -0.05, bob: 0, stretch: 0.8 },
+  { fN: [-16, -30], fF: [6, -4], hN: [4, -26], hF: [-20, -40], pitch: -0.06, bob: 1, stretch: 0.55 },
+  { fN: [-38, -112], fF: [-28, -100], hN: [44, 20], hF: [34, 8], pitch: 0.04, bob: 0, stretch: 0.2 },
+  { fN: [14, 46], fF: [-6, -60], hN: [22, -10], hF: [36, 14], pitch: 0.08, bob: 1, stretch: 0.45 },
+  { fN: [44, 66], fF: [26, 40], hN: [-24, -44], hF: [6, -22], pitch: 0.05, bob: -1, stretch: 0.75 },
+];
 
 function chakraFox(): WorldSprite {
   const W = 200, H = 150, cx = 104, cy = 76;
@@ -2355,7 +1609,7 @@ function beastsLineup(sprites: WorldSprite[], dir: string, stage: string, k = 3)
   const ref = characterRef();
   const phoenix = stagedBeast(stage, 'vfx_fire', 'beast');
   const items: { c: Canvas; ax: number; ay: number }[] = [];
-  if (phoenix) items.push({ c: phoenix.frames[0], ax: phoenix.anchor[0], ay: phoenix.anchor[1] });
+  if (phoenix && !sprites.some((s) => s.name === 'fire')) items.push({ c: phoenix.frames[0], ax: phoenix.anchor[0], ay: phoenix.anchor[1] });
   for (const s of sprites) items.push({ c: s.anims.fly.frames[0], ax: s.anchor[0], ay: s.anchor[1] });
   const rowsOf: (typeof items)[] = [items.slice(0, 4), items.slice(4)];
   const lift = 64; // the renderer flies beasts about 60 px above the ground
@@ -2437,101 +1691,6 @@ function beastsCompare(sprites: WorldSprite[], dir: string, stage: string, k = 3
   saveWhole(out.scaled(k), join(dir, 'beasts-compare.png'));
 }
 
-/** A 3x5 pixel font for sheet labels. */
-const FONT3: Record<string, string> = {
-  A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111',
-  F: '111100110100100', G: '011100101101011', H: '101101111101101', I: '111010010010111', J: '001001001101010',
-  K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '110101101101101', O: '010101101101010',
-  P: '110101110100100', Q: '010101101110011', R: '110101110101101', S: '011100010001110', T: '111010010010010',
-  U: '101101101101111', V: '101101101101010', W: '101101111111101', X: '101101010101101', Y: '101101010010010',
-  Z: '111001010100111', '0': '111101101101111', '1': '010110010010111', '2': '110001010100111', '3': '110001010001110',
-  '4': '101101111001001', '5': '111100110001110', '6': '011100110101010', '7': '111001010010010', '8': '111101111101111',
-  '9': '010101011001110', '-': '000000111000000', '/': '001001010100100', '.': '000000000000010', ':': '000010000010000',
-  ' ': '000000000000000',
-};
-function label(c: Canvas, x: number, y: number, text: string, col = hex('#e8e0c0')): void {
-  [...text.toUpperCase()].forEach((ch, i) => {
-    const g = FONT3[ch] ?? FONT3[' '];
-    for (let k = 0; k < 15; k++) if (g[k] === '1') c.set(x + i * 4 + (k % 3), y + Math.floor(k / 3), col);
-  });
-}
-
-/**
- * The lightning review sheet: the old thunder hound against the new raiju (frames 0 and 3), the
- * whole new fly loop with the anchor ticked on every frame, and the raiju at flight height next
- * to the approved phoenix and the character for scale. Scaled `k`.
- */
-function lightningSheet(s: WorldSprite, dir: string, stage: string, k = 3): void {
-  const pad = 6, gap = 4, bg = hex('#5d6b57'), sheet = hex('#3a4438'), tick = hex('#9fe0ff');
-  const neu = s.anims.fly.frames;
-  // The old sheet as the owner last saw it.
-  let old: Canvas[] = [];
-  const oldMeta = join(dir, 'beasts-lightning-prev.json');
-  const oldImg = readPng(join(dir, 'beasts-lightning-prev.png'));
-  if (oldImg && existsSync(oldMeta)) {
-    const meta = JSON.parse(readFileSync(oldMeta, 'utf8'));
-    old = [0, 3].map((i) => {
-      const c = new Canvas(meta.frameW, meta.frameH);
-      c.draw(oldImg, -i * meta.frameW, 0);
-      return c;
-    });
-  }
-  const cmp = [...old.map((c, i) => ({ c, t: `old frame ${i ? 3 : 0}` })), { c: neu[0], t: 'new frame 0' }, { c: neu[3], t: 'new frame 3' }];
-  const rowW = (cs: { c: Canvas }[]) => cs.reduce((t, i) => t + i.c.w + gap, -gap);
-  const cmpW = rowW(cmp) + (old.length ? 10 : 0);
-  const cmpH = Math.max(...cmp.map((i) => i.c.h));
-  const cols = 4, loopW = cols * (neu[0].w + gap) - gap, loopRows = Math.ceil(neu.length / cols);
-  const ref = characterRef();
-  const phoenix = stagedBeast(stage, 'vfx_fire', 'beast');
-  const lift = 64, scaleH = CHARACTER_FEET[1] + 10;
-  const scaleW = 128 + gap + (phoenix ? phoenix.frames[0].w + gap * 3 : 0) + neu[3].w;
-  const W = pad * 2 + Math.max(cmpW, loopW, scaleW);
-  let y = pad;
-  const H = pad + 8 + cmpH + 10 + 8 + loopRows * (neu[0].h + gap) + 6 + 8 + scaleH + pad;
-  const out = new Canvas(W, H);
-  out.fillRect(0, 0, W, H, sheet);
-  // 1. old vs new
-  label(out, pad, y, 'Lightning beast - old thunder hound vs new raiju - yellow - pounce');
-  y += 8;
-  let x = pad;
-  cmp.forEach((it, i) => {
-    if (old.length && i === old.length) {
-      out.fillRect(x + 2, y, 2, cmpH, hex('#c8c0a0'));
-      x += 10;
-    }
-    out.fillRect(x, y, it.c.w, cmpH, bg);
-    out.draw(it.c, x, y + Math.round((cmpH - it.c.h) / 2));
-    label(out, x + 2, y + 2, it.t, hex('#f4f0dc'));
-    x += it.c.w + gap;
-  });
-  y += cmpH + 10;
-  // 2. the full loop, anchor ticked on the panel edges
-  label(out, pad, y, `New fly loop - ${neu.length} frames at ${s.anims.fly.fps} fps - ticks mark the anchor`);
-  y += 8;
-  neu.forEach((f, i) => {
-    const X = pad + (i % cols) * (f.w + gap), Y = y + Math.floor(i / cols) * (f.h + gap);
-    out.fillRect(X, Y, f.w, f.h, bg);
-    out.draw(f, X, Y);
-    for (const [tx, ty] of [[X, Y + s.anchor[1]], [X + 1, Y + s.anchor[1]], [X + s.anchor[0], Y], [X + s.anchor[0], Y + 1]] as P2[]) out.set(tx, ty, tick);
-    label(out, X + 2, Y + f.h - 7, String(i), hex('#f4f0dc'));
-  });
-  y += loopRows * (neu[0].h + gap) + 6;
-  // 3. scale: character on the ground, the phoenix and the raiju at flight height
-  label(out, pad, y, 'Scale - character - approved fire phoenix - new raiju at flight height');
-  y += 8;
-  const gy = y + scaleH - 6;
-  out.fillRect(pad, y, W - pad * 2, scaleH, bg);
-  out.fillRect(pad, gy, W - pad * 2, 6, hex('#4a5a3c'));
-  out.draw(ref, pad + 64 - CHARACTER_FEET[0], gy - CHARACTER_FEET[1]);
-  x = pad + 128 + gap;
-  if (phoenix) {
-    out.draw(phoenix.frames[0], x, gy - lift - phoenix.anchor[1]);
-    x += phoenix.frames[0].w + gap * 3;
-  }
-  out.draw(neu[3], x, gy - lift - s.anchor[1]);
-  saveWhole(out.scaled(k), join(dir, 'beasts-lightning.png'));
-}
-
 const sprites: WorldSprite[] = BUILDERS.filter(([n]) => !FOCUS || FOCUS.includes(n)).map(([, f]) => f());
 const dir = previewDir();
 const stage = process.env.WORLD_OUT ?? join(dir, 'staging');
@@ -2543,7 +1702,6 @@ if (!FOCUS) {
   saveWhole(characterRef(), join(dir, 'beasts-character.png'));
 }
 for (const s of sprites) {
-  if (s.name === 'lightning') lightningSheet(s, dir, stage);
   strip(join(dir, `beasts-${s.name}-x.png`), s.anims.fly.frames, 4);
   for (const [key, a] of Object.entries(s.anims)) if (key !== 'fly') strip(join(dir, `beasts-${s.name}-${key}-x.png`), a.frames, 4);
   const f = s.anims.fly.frames[0];

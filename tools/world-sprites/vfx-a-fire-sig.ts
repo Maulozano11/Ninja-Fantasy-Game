@@ -542,11 +542,14 @@ function annihilation(great: boolean): WorldSprite {
   });
 }
 
+/** The approved fireballs as they were (fire v3 keeps their burst and replaces their fly). */
+export const fireballOld = (great: boolean): WorldSprite => fireball(great);
+
 export function fireSignature(): WorldSprite[] {
   // VFX_SIG=fireball,annihilation limits the build while iterating (the full set is the default).
   const want = process.env.VFX_SIG ? process.env.VFX_SIG.split(',') : ['fireball', 'annihilation'];
   return [
-    ...(want.includes('fireball') ? [fireball(false), fireball(true)] : []),
+    // (fire v3 builds the fireballs itself, keeping their burst from fireballOld)
     ...(want.includes('annihilation') ? [annihilation(false), annihilation(true)] : []),
   ];
 }

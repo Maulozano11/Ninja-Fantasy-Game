@@ -1,7 +1,8 @@
-"""Turns the owner's reference sheets into game frames for vfx_beasts (the phoenix and the raiju).
+"""Turns the owner's reference sheets into game frames for vfx_beasts (the phoenix, the raiju, the crane).
 
     python3 -I beasts-from-ref.py phoenix REF-phoenix-owner.jpg REF-raiju-owner.jpg <out.ts> [debugDir]
     python3 -I beasts-from-ref.py raiju   REF-raiju-owner.jpg   REF-raiju-owner.jpg <out.ts> [debugDir]
+    python3 -I beasts-from-ref.py crane   REF-wind-set-owner.jpg REF-wind-set-owner.jpg <out.ts> [debugDir]
 
 The owner asked for his sheets to be copied as exactly as possible, so his panels ARE the frames:
 each numbered fly-loop panel is cropped, its olive background, frame number and anchor ticks
@@ -169,14 +170,15 @@ def bbox_main(img, x0, y0, x1, y1, kind):
     return min(xs), min(ys), max(xs), max(ys)
 
 
-# His scale row (bottom of the raiju sheet): the ninja, the phoenix, the raiju at flight height.
-cx0, cy0, cx1, cy1 = bbox_main(sref, 40, 1040, 520, 1460, 'char')
-REF_CHAR_H = cy1 - cy0 + 1
-px0, py0, px1, py1 = bbox_main(sref, 520, 1040, 1000, 1460, 'warm')
-REF_PHX_H = py1 - py0 + 1
-rx0, ry0, rx1, ry1 = bbox_main(sref, 1100, 1040, 1900, 1460, 'yellow')
-REF_RAI_H = ry1 - ry0 + 1
-print('scale row: character', REF_CHAR_H, 'phoenix', REF_PHX_H, 'raiju', REF_RAI_H)
+if MODE in ('phoenix', 'raiju'):
+    # His scale row (bottom of the raiju sheet): the ninja, the phoenix, the raiju at flight height.
+    cx0, cy0, cx1, cy1 = bbox_main(sref, 40, 1040, 520, 1460, 'char')
+    REF_CHAR_H = cy1 - cy0 + 1
+    px0, py0, px1, py1 = bbox_main(sref, 520, 1040, 1000, 1460, 'warm')
+    REF_PHX_H = py1 - py0 + 1
+    rx0, ry0, rx1, ry1 = bbox_main(sref, 1100, 1040, 1900, 1460, 'yellow')
+    REF_RAI_H = ry1 - ry0 + 1
+    print('scale row: character', REF_CHAR_H, 'phoenix', REF_PHX_H, 'raiju', REF_RAI_H)
 
 ALPH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-./:;<=>?@[]^_{|}'
 
@@ -239,7 +241,9 @@ def write_module(frames, size, anchor, note):
 def sidecar(tag, info):
     """Where each frame came from (for the review sheets): scale, panel boxes and anchors in his sheet."""
     import json
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f'beasts-ref-{tag}.json')
+    if not DEBUG:
+        return
+    path = os.path.join(DEBUG, f'beasts-ref-{tag}.json')
     tmp = path + '.part'
     with open(tmp, 'w') as fh:
         json.dump(info, fh, indent=1)
@@ -568,4 +572,179 @@ def raiju():
     debug(frames, size, 'rai')
 
 
-{'phoenix': phoenix, 'raiju': raiju}[MODE]()
+# =========================================================================================================
+# CRANE (wind)
+# =========================================================================================================
+
+def crane():
+    """His WIND CRANE (NEWER) panel: two frames, his paint-over of our frames 0 and 3 of the 6-frame flap.
+
+    His two frames are our keys 0 and 3. The in-betweens keep his body from frame 0 and swing his raised
+    wings (and the wind lines shed off them) back about the shoulder: 1 and 2 on the way down, 4 and 5 on
+    the way back up, with a small bob toward his frame 3; the loose wisps, rings and leaves drift back.
+    """
+    PANEL = (337, 723, 703, 866)
+    # Where our anchor lands in his two frames: found by laying our frames 0 and 3 (which he painted
+    # over) onto his, at the game scale.
+    KEY_ANCHORS = {0: (440.1, 798.4), 3: (618.1, 799.5)}
+    WAX, WAY, CW, CH = 100, 80, 190, 140  # working canvas (his pixels) around each key's anchor
+    # Our character's height against his, measured on his WALL panel: that sets the scale.
+    c = ref[380:505, 340:405]
+    bgc = np.median(np.concatenate([c[:3].reshape(-1, 3), c[-3:].reshape(-1, 3)]), 0)
+    cr, cg, cb = c[..., 0], c[..., 1], c[..., 2]
+    cm = (np.abs(c - bgc).sum(2) > 60) & ~((cg > cr + 15) & (cg >= cb - 5))
+    rows = [y for y in range(cm.shape[0]) if cm[y].sum() >= 2]
+    his_char_h = max(rows) - min(rows) + 1
+    S = CHAR_H / his_char_h
+    print('crane: his character', his_char_h, 'px tall, scale', round(S, 4))
+
+    def key(k):
+        """His frame k on the working canvas (anchor at WAX, WAY): colour, body coverage, effect coverage."""
+        ax, ay = KEY_ANCHORS[k]
+        ox, oy = int(np.floor(ax - WAX)), int(np.floor(ay - WAY))
+        crop = ref[oy:oy + CH, ox:ox + CW].copy()
+        x0, y0, x1, y1 = PANEL
+        inside = np.zeros(crop.shape[:2], bool)
+        ys, xs = np.mgrid[0:CH, 0:CW]
+        inside = (xs + ox >= x0 + 3) & (xs + ox < x1 - 3) & (ys + oy >= y0 + 3) & (ys + oy < y1 - 3)
+        # Keep each key to its own half of the panel.
+        mid = 516
+        inside &= (xs + ox < mid) if k == 0 else (xs + ox >= mid)
+        bg = np.array([32, 32, 42], np.float32)
+        diff = np.abs(crop - bg).sum(2)
+        r, g, b = crop[..., 0], crop[..., 1], crop[..., 2]
+        teal = (g > r + 25) & (diff > 70) & inside
+        body = np.zeros(teal.shape, bool)
+        for pts in components(teal):
+            if len(pts) >= 150:
+                yy = np.array([p[0] for p in pts])
+                xx = np.array([p[1] for p in pts])
+                body[yy, xx] = True
+        body = body | (~dilate(~dilate(body, 2), 2) & (diff > 70) & inside)
+        fx = (diff > 45) & inside & ~dilate(body, 1)
+        return crop, body.astype(np.float32), fx.astype(np.float32), (ax - ox, ay - oy)
+
+    keys = {k: key(k) for k in (0, 3)}
+    samples = np.concatenate([keys[k][0][keys[k][1] > 0] for k in keys])
+    PAL = median_palette(samples, 36)
+    teal = PAL[(PAL[:, 1] > PAL[:, 0] + 10)]
+    OUTLINE = teal[np.argmin(teal.sum(1))]
+    fxs = np.concatenate([keys[k][0][keys[k][2] > 0] for k in keys])
+    FXPAL = median_palette(fxs, 10)
+    print('crane outline', OUTLINE.astype(int).tolist())
+
+    # Frame 0's wings are everything above this line (working coords); the rest is the body.
+    CUT0 = [(0, 74), (60, 76), (76, 77), (97, 76), (104, 73), (112, 69), (122, 66), (190, 64)]
+    SHOULDER0 = (100.0, 73.0)
+    yy, xx = np.mgrid[0:CH, 0:CW].astype(np.float32)
+    cut = np.interp(xx[0], [p[0] for p in CUT0], [p[1] for p in CUT0])[None, :].repeat(CH, 0)
+    above = yy < cut
+
+    def rot(arr, deg, pivot, dy=0.0):
+        """arr swung by deg (screen degrees, negative swings raised wings back) about pivot, then moved dy.
+        The swing eases in over the first few pixels from the pivot, so the wing bends at the root
+        instead of shearing off the body."""
+        px, py = pivot
+        rx, ry = xx - px, yy - py - dy
+        r = np.hypot(rx, ry)
+        a = np.deg2rad(deg) * np.clip(r / 9.0, 0, 1) ** 2 * (3 - 2 * np.clip(r / 9.0, 0, 1))
+        sx = px + rx * np.cos(a) + ry * np.sin(a)
+        sy = py - rx * np.sin(a) + ry * np.cos(a)
+        return warp(arr, xx - sx, yy - sy)
+
+    def shift(arr, dx, dy):
+        return warp(arr, np.full(arr.shape[:2], dx, np.float32), np.full(arr.shape[:2], dy, np.float32))
+
+    size, oanchor = canvas_for([(WAX, WAY)], CW, CH, S)
+    OW, OH = size
+
+    def render(rgb, body, fx_rgb, fx, wing=None, anchor=(WAX, WAY)):
+        A, C = shrink(rgb, body, anchor, S, size, oanchor)
+        Af, Cf = shrink(fx_rgb, fx, anchor, S, size, oanchor)
+        out = np.zeros((OH, OW, 4), np.uint8)
+        g = Af > 0.3
+        out[g, :3] = snap(Cf, FXPAL)[g]
+        out[g, 3] = np.where(Af[g] > 0.6, 255, 170).astype(np.uint8)
+        op, edge = outline_clean(A >= 0.5)
+        out[op, :3] = snap(C, PAL)[op]
+        out[op, 3] = 255
+        out[edge, :3] = OUTLINE
+        out[edge, 3] = 255
+        if wing is not None:
+            # The swung wing lies in front of the body: its own edge stays drawn where it crosses it,
+            # away from the root (where it grows out of the back).
+            Aw, _ = shrink(rgb, wing, anchor, S, size, oanchor)
+            wm = (Aw >= 0.5) & op
+            wedge = np.zeros_like(wm)
+            for oy, ox in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                wedge |= wm & ~np.roll(np.roll(wm, oy, 0), ox, 1)
+            gy, gx = np.mgrid[0:OH, 0:OW]
+            sx_, sy_ = oanchor[0] + (SHOULDER0[0] - WAX) * S, oanchor[1] + (SHOULDER0[1] - WAY) * S
+            wedge &= np.hypot(gx - sx_, gy - sy_) > 12
+            out[wedge, :3] = OUTLINE
+        return out
+
+    def key_frame(k):
+        crop, body, fx, (ax, ay) = keys[k]
+        return render(crop, body, crop, fx, anchor=(ax, ay))
+
+    crop0, body0, fx0, a0 = keys[0]
+    crop3, _, fx3, a3 = keys[3]
+    # Frame 0 on the shared grid (its anchor fraction folded in), split into the body and the raised wings.
+    dx0, dy0 = WAX - a0[0], WAY - a0[1]
+    rgb0 = shift(crop0, dx0, dy0)
+    b0 = shift(body0, dx0, dy0)
+    f0 = shift(fx0, dx0, dy0)
+    wing0 = b0 * above
+    band0 = b0 * ~above
+    wake0 = f0 * above  # the wind lines shed off the raised wings swing with them
+    loose0 = f0 * ~above
+    dx3, dy3 = WAX - a3[0], WAY - a3[1]
+    rgb3 = shift(crop3, dx3, dy3)
+    # His frame 3's loose wisps, without the wind lines under its lowered wing (that wing is not drawn here).
+    loose3 = shift(fx3, dx3, dy3) * (yy >= 60) * ~((xx > 18) & (xx < 125) & (yy > 88))
+
+    def between(deg, bob, loose, loose_rgb, drift, wake=True):
+        w = rot(wing0, deg, SHOULDER0, bob)
+        wr = rot(rgb0 * wing0[..., None], deg, SHOULDER0, bob)
+        bd = shift(band0, 0, bob)
+        br = shift(rgb0 * band0[..., None], 0, bob)
+        cov = np.clip(w + bd * (1 - w), 0, 1)
+        col = (wr + br * (1 - w)[..., None]) / np.maximum(cov, 1e-4)[..., None]
+        # The wind lines shed off the wings stay level: they follow the wing without turning.
+        cy_, cx_ = [float(v) for v in np.argwhere(wake0 > 0).mean(0)] if wake0.any() else (0.0, 0.0)
+        a = np.deg2rad(deg)
+        rx, ry = cx_ - SHOULDER0[0], cy_ - SHOULDER0[1]
+        mx = SHOULDER0[0] + rx * np.cos(a) - ry * np.sin(a) - cx_
+        my = SHOULDER0[1] + rx * np.sin(a) + ry * np.cos(a) - cy_ + bob
+        wk = shift(wake0, mx - 6, my) * (1.0 if wake else 0.0)
+        wkr = shift(rgb0 * wake0[..., None], mx - 6, my) * (1.0 if wake else 0.0)
+        ls = shift(loose, drift, bob * 0.5)
+        lsr = shift(loose_rgb * loose[..., None], drift, bob * 0.5)
+        fcov = np.clip(wk + ls, 0, 1)
+        fcol = (wkr + lsr) / np.maximum(wk + ls, 1e-4)[..., None]
+        return render(col, cov, fcol, fcov, wing=w)
+
+    frames = {'fly': [
+        key_frame(0),
+        between(-40, -1.5, loose0, rgb0, -5),
+        between(-80, -3.5, loose0, rgb0, -10, wake=False),
+        key_frame(3),
+        between(-68, -3.5, loose3, rgb3, -5, wake=False),
+        between(-28, -1.5, loose3, rgb3, -10),
+    ]}
+    note = [
+        "The wind crane (vfx_beasts/wind), copied from his wind sheet's BEAST (WIND CRANE, NEWER) panel:",
+        "his two frames are frames 0 and 3; 1, 2, 4 and 5 swing his frame-0 wings back about the shoulder",
+        f"and drift the wisps. Scale: his character is {his_char_h} px tall in that sheet, ours {CHAR_H:.0f}.",
+    ]
+    write_module(frames, size, oanchor, note)
+
+    def src(k):
+        ax, ay = KEY_ANCHORS[k]
+        return {'box': [PANEL[0], PANEL[1], PANEL[2], PANEL[3]], 'anchor': [ax, ay]}
+    sidecar('wind', {'ref': os.path.basename(REF), 'scale': S, 'keys': {'0': src(0), '3': src(3)}, 'panel': list(PANEL)})
+    debug(frames, size, 'crane')
+
+
+{'phoenix': phoenix, 'raiju': raiju, 'crane': crane}[MODE]()

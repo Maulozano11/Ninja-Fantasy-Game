@@ -104,7 +104,7 @@ function elementSheet(el: string, sprites: WorldSprite[], path: string): void {
   const cards: Card[] = [];
   const by = Object.fromEntries(sprites.map((s) => [s.name, s]));
   for (const s of sprites) {
-    if (s.name === 'stream_head') continue;
+    if (s.name === 'stream_head' || s.name === 'aura_back') continue;
     const { key, i } = keyFrame(s);
     const f = s.anims[key].frames[i];
     const label = s.name === 'stream' ? 'STREAM x3 + STREAM_HEAD' : s.name.toUpperCase();
@@ -134,7 +134,9 @@ function elementSheet(el: string, sprites: WorldSprite[], path: string): void {
         text(c, x, y + 7, info, INK_DIM);
         panel(c, x, y + 14, w, f.h);
         if (s.name === 'aura') {
-          // The character standing in the aura, feet on the anchor.
+          // The character standing in the aura, feet on the anchor (its back layer behind him).
+          const back = by.aura_back;
+          if (back) c.draw(back.anims.idle.frames[0], x + s.anchor[0] - back.anchor[0], y + 14 + s.anchor[1] - back.anchor[1]);
           c.draw(ref, x + s.anchor[0] - CHARACTER_FEET[0], y + 14 + s.anchor[1] - CHARACTER_FEET[1]);
         }
         if (s.anims.burn) {

@@ -4,6 +4,7 @@
 import { Canvas, WorldSprite } from './kit';
 import { FIRE, ROCK, SMOKE, TH, embers, erode, flow, tongue } from './vfx-a-fire-kit';
 import { fireSignature } from './vfx-a-fire-sig';
+import * as V3 from './vfx-a-fire-v3';
 
 export { FIRE };
 import {
@@ -774,13 +775,21 @@ function aura(): WorldSprite {
   return vfxSprite('aura', 'Fire aura (charge / buff)', [cx, gy], { idle: { frames: fr, fps: 12, loop: true } });
 }
 
+/**
+ * The fire set. Every role except the phoenix is now the owner's own paint-over, cut from his
+ * sheet (vfx-a-fire-v3.ts); the earlier procedural versions above stay in this file for
+ * reference but are no longer built. The fireballs keep their approved burst; the
+ * annihilations are unchanged here.
+ */
 export function fireSprites(): WorldSprite[] {
+  const want = process.env.VFX_SIG ? process.env.VFX_SIG.split(',') : ['fireball', 'annihilation'];
+  const sig = fireSignature().filter((s) => !s.name.startsWith('fireball'));
   return [
-    bolt(), beast(), ...stream(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(),
-    wallTurned('wall_diag', 'Fire wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)'),
-    wallTurned('wall_depth', 'Fire wall, end-on (4.5 m x 1.8 m, running into the screen)'),
-    aura(), ...fireSignature(),
+    V3.bolt(), beast(), ...V3.stream(), V3.breath(), V3.sphere(), V3.slash(), V3.multi(), V3.hit(), V3.blast(), ...V3.walls(),
+    ...V3.aura(), ...(want.includes('fireball') ? V3.fireballs() : []), ...sig,
   ];
 }
+// The earlier procedural versions, kept for reference.
+export const FIRE_V2 = { bolt, stream, breath, sphere, slash, multi, hit, blast, wall, wallTurned, aura };
 
 void clamp;

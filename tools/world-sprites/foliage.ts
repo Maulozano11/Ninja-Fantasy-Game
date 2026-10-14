@@ -667,6 +667,11 @@ export interface Tube {
   /** Charred: share of furrows glowing with embers, and the fire palette. */
   ember?: number;
   firePal?: number;
+  /** Loop time (0..1): embers pulse smoothly with it instead of switching on and off. */
+  emberT?: number;
+  /** Partly charred bark: where this field (screen space) is high, the bark turns to `charPal`. */
+  charAt?: (x: number, y: number) => number;
+  charPal?: number;
   bias?: number;
   part?: number;
   /** Draw depth (for the step buffer's z). */
@@ -735,7 +740,11 @@ export function barkStep(t: Tube, Lv: number, a: number, s: number, r: number, n
   // Furrows widen and narrow along their length, so ridges split and merge like old oak bark.
   const fw = (plates ? 0.2 : 0.14) + (plates ? 0.16 : 0.3) * noise(k * 3.7, s * 0.07, 1, sd + 2);
   if (fr < fw) {
-    if (t.ember && t.firePal !== undefined && hash(k, pi, sd + 9) < t.ember && Lv < 0.8) return [t.firePal, hash(Math.round(a), Math.round(s), sd) < 0.3 ? 4 : 2];
+    if (t.ember && t.firePal !== undefined && hash(k, pi, sd + 9) < t.ember && Lv < 0.8) {
+      const g = 0.5 + 0.5 * Math.sin(TAU * ((t.emberT ?? 0) + hash(k, pi, sd + 10)));
+      const hot = hash(Math.round(a), Math.round(s), sd) < 0.3 ? 1 : 0;
+      return [t.firePal, clamp((g > 0.7 ? 3 : g > 0.35 ? 2 : 1) + hot, 1, 4)];
+    }
     return [t.pal, fr > fw * 0.7 && Lv > 0.7 ? 2 : 1];
   }
   // Cross cracks between plates (slanted a little).
@@ -843,6 +852,7 @@ export function drawTube(b: Buf, t: Tube): void {
     }
   // Moss: cushions in tube-local coordinates on the upper and shaded sides.
   const mossOn = t.moss !== undefined && (t.mossAmt ?? 0) > 0;
+  const charT: Tube | null = t.charAt && t.charPal !== undefined ? { ...t, pal: t.charPal, tex: 'charred', moss: undefined, ember: t.ember || 0.14 } : null;
   for (let y = y0; y < y0 + MH; y++)
     for (let x = x0; x < x0 + MW; x++) {
       if (!has(x, y)) continue;
@@ -850,6 +860,11 @@ export function drawTube(b: Buf, t: Tube): void {
       const s = info[k], u = info[k + 1], nx = info[k + 2], ny = info[k + 3], nz = info[k + 4], r = info[k + 5];
       let Lv = lambert(nx, ny, nz) * (t.dim ? t.dim(x, y) : 1) + (t.bias ?? 0);
       const a = Math.asin(u) * r;
+      if (charT && t.charAt!(x, y) + (noise(a * 0.25 + 50, s * 0.12, 1, t.seed + 3) - 0.5) * 0.6 > 0.5) {
+        const [p, st] = barkStep(charT, Lv, a, s, r, ny, nx);
+        b.put(x, y, p, st, part, t.z ?? 0);
+        continue;
+      }
       if (mossOn) {
         const up = clamp(-ny * 1.3, 0, 1), side = clamp(nx * 1.1, 0, 1);
         const cell = mossCell(a, s, t.seed);

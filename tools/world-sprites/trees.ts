@@ -17,6 +17,7 @@
 
 import { join } from 'node:path';
 import { Canvas, Color, MATERIALS, WorldSprite, hash, hex, lambert, m, mix, noise, preview, previewDir, ramp, writeGroup } from './kit';
+import { FIRE7, FireSource, Plume, drawFire, flames, glowField, smoke, sparks } from './treefire';
 import {
   Buf, Cluster, Leaf, Mass, Pt, Tube, TAU, barkStep, canopy, clamp, composite, despeckle, drawTube, frac, grow, lerp, needleTufts,
   outlineBuf, ovalLeaves, paintLeaf, pal, putField, rasterCluster, rnd, shade, spline, starLeaves, vine,
@@ -26,9 +27,6 @@ const K = 38 / 57; // ground depth foreshortening of the battle camera
 
 // --- palettes -----------------------------------------------------------------------------
 
-const R_FIRE = ramp(MATERIALS.fire);
-/** Flames: dark ember red, red tips, orange body, amber, pale yellow core (kit fire colours). */
-const FIRE_RAMP: Color[] = [R_FIRE[0], mix(R_FIRE[1], hex('#ef4444'), 0.3), hex('#ef4444'), hex(MATERIALS.fire), R_FIRE[4], hex('#fde68a')];
 
 /** Leaves: 0 outline, 1-7 from cool blue-green shade to warm yellow-green light. */
 const LEAF_OAK = pal(['#0a1719', '#112629', '#173835', '#1f4b3a', '#2c613b', '#427a39', '#68983c', '#a2bf55']);
@@ -47,11 +45,20 @@ const WOOD_CUT = pal(['#2a1a16', '#4a3122', '#6c4c32', '#8c6a45', '#a98656', '#c
 const CULM = pal(['#0d1a14', '#1c3324', '#284a2b', '#376431', '#4c7e37', '#6a9a42', '#97b85c']);
 const CULM_OLD = pal(['#1a1c0e', '#333717', '#4c5320', '#68702a', '#848c35', '#a3a847', '#c6c56a']);
 const SHEATH = pal(['#1f130f', '#3b2619', '#5a3d24', '#7a5a33', '#9a7a48', '#b99a62', '#d4bb84']);
-const FIRE = pal(FIRE_RAMP);
+/** Fire: the approved VFX ramp (rim, dark red, red, orange, amber, yellow, white-hot). */
+const FIRE = pal(FIRE7);
 const ASH = pal(ramp(MATERIALS.stone, { spread: 0.8 }));
+/** Fire-lit versions (heat glow from below): same values, pulled to warm orange-red. */
+const GLOW_OAK = pal(['#141408', '#24220c', '#3a3410', '#564816', '#76601e', '#987a28', '#ba9634', '#dcb64a']);
+const GLOW_SCORCH = pal(['#200c06', '#3c1608', '#5e260c', '#823a12', '#a6521a', '#c86e24', '#e48e32', '#f6b448']);
+const GLOW_CHARLEAF = pal(['#160606', '#2c0c0a', '#4a160e', '#6a2412', '#8e3816', '#b4521c', '#d87426', '#f29a36']);
+const GLOW_BARK = pal(['#1a0a0c', '#321410', '#4e2216', '#6c321c', '#8e4624', '#b0602e', '#d0803c']);
+const GLOW_CHAR = pal(['#160808', '#2c0e0c', '#461610', '#622014', '#80301a', '#a0441e', '#c45c26']);
 const FUNGUS = pal(['#1e1210', '#3c231a', '#64392a', '#8f5a3a', '#b88050', '#d6a66c', '#ecd09a']);
 
-const FOLIAGE = new Set([LEAF_OAK, LEAF_PINE, LEAF_BAMBOO, LEAF_MAPLE, LEAF_CHAR, LEAF_SCORCH]);
+const FOLIAGE = new Set([LEAF_OAK, LEAF_PINE, LEAF_BAMBOO, LEAF_MAPLE, LEAF_CHAR, LEAF_SCORCH, GLOW_OAK, GLOW_SCORCH, GLOW_CHARLEAF]);
+/** Which palette a pixel takes when the fire lights it. */
+const GLOW = new Map<number, number>([[LEAF_OAK, GLOW_OAK], [LEAF_SCORCH, GLOW_SCORCH], [LEAF_CHAR, GLOW_CHARLEAF], [BARK_OAK, GLOW_BARK], [CHAR, GLOW_CHAR], [MOSS, GLOW_OAK]]);
 /** Outline priority: leaves first, then bark. */
 const prio = (p: number): number => (FOLIAGE.has(p) ? 2 : p === FIRE ? -1 : 1);
 
@@ -59,87 +66,6 @@ const prio = (p: number): number => (FOLIAGE.has(p) ? 2 : p === FIRE ? -1 : 1);
 const TH = [0.2, 0.3, 0.4, 0.5, 0.61, 0.73];
 
 // --- fire ---------------------------------------------------------------------------------
-
-interface Flame {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  ph: number;
-  seed: number;
-  /** Number of tongues (default 3). */
-  n?: number;
-  /** Horizontal drift of the tips (wind), px over the full height. */
-  lean?: number;
-}
-
-/** One flame: a burning bed with a few wavy tongues, a hot core, red tips and rising wisps. */
-function flameInto(F: Buf, f: Flame, t: number): void {
-  const put = (x: number, y: number, s: number) => {
-    if (F.stepAt(x, y) < s) F.put(x, y, FIRE, s);
-  };
-  const brx = f.w * 0.55, bry = Math.max(2.5, f.w * 0.22);
-  for (let y = Math.floor(f.y - bry); y <= f.y + bry + 2; y++)
-    for (let x = Math.floor(f.x - brx - 1); x <= f.x + brx + 1; x++) {
-      const u = (x + 0.5 - f.x) / brx, v = (y + 0.5 - f.y) / bry;
-      const rag = y > f.y ? (noise(x, Math.floor(t * 8), 1.5, f.seed + 40) - 0.5) * 0.7 : 0;
-      const e = Math.sqrt(u * u + v * v) + rag;
-      if (e > 1) continue;
-      put(x, y, e > 0.72 || v > 0.55 ? 2 : e > 0.4 ? 3 : 4);
-    }
-  const n = f.n ?? 3;
-  const mid = Math.floor(n / 2);
-  for (let i = 0; i < n; i++) {
-    const ox = n === 1 ? 0 : (i / (n - 1) - 0.5) * 0.75;
-    const hk = i === mid ? 1 : 0.5 + 0.3 * hash(i, 0, f.seed);
-    const q = t + f.ph + hash(i, 1, f.seed);
-    const hh = f.h * hk * (0.8 + 0.12 * Math.sin(TAU * q) + 0.08 * Math.sin(TAU * 2 * q + 1.3));
-    const bx = f.x + ox * f.w;
-    const ww = f.w * (i === mid ? 0.7 : 0.46);
-    for (let k = 0; k <= hh; k++) {
-      const tt = k / hh;
-      const prof = Math.pow(1 - tt, 0.9) * Math.min(1, 0.8 + tt * 2);
-      const hw = (ww / 2) * prof;
-      const cx = bx + Math.sin(TAU * q - tt * 3.6 + f.seed) * ww * 0.3 * tt + (f.lean ?? 0) * tt * tt;
-      const y = Math.round(f.y - k);
-      for (let x = Math.floor(cx - hw); x <= Math.ceil(cx + hw); x++) {
-        const e = Math.abs(x + 0.5 - cx) / Math.max(0.5, hw);
-        if (e > 1) continue;
-        put(x, y, tt > 0.74 || e > 0.8 ? 2 : e < 0.3 && tt < 0.26 ? 5 : e < 0.55 && tt < 0.5 ? 4 : 3);
-      }
-    }
-    const wq = frac(q + 0.5);
-    const wr = (1 - wq) * ww * 0.2;
-    if (wr >= 0.8) {
-      const wy = f.y - hh - 2 - wq * f.h * 0.5, wx = bx + Math.sin(TAU * wq + f.seed) * 2 + (f.lean ?? 0);
-      for (let y = Math.floor(wy - wr * 1.6); y <= wy + wr * 1.6; y++)
-        for (let x = Math.floor(wx - wr); x <= wx + wr; x++) {
-          const e = ((x + 0.5 - wx) / wr) ** 2 + ((y + 0.5 - wy) / (wr * 1.6)) ** 2;
-          if (e <= 1) put(x, y, e < 0.3 && wr > 1.6 ? 4 : wq > 0.55 ? 2 : 3);
-        }
-    }
-  }
-}
-
-/** Rising embers, drawn straight onto the frame after the outline (they glow, no dark rim). */
-function sparksOnto(C: Canvas, x0: number, y0: number, spread: number, rise: number, n: number, t: number, seed: number): void {
-  for (let k = 0; k < n; k++) {
-    const q = frac(t + hash(k, 0, seed));
-    if (q > 0.92) continue;
-    const x = Math.round(x0 + (hash(k, 1, seed) - 0.5) * spread + Math.sin(TAU * q + k) * 4 + q * 10);
-    const y = Math.round(y0 - q * rise - hash(k, 3, seed) * 20);
-    const s = q < 0.3 ? 5 : q < 0.65 ? 4 : 3;
-    C.set(x, y, FIRE_RAMP[s]);
-    if (q < 0.5 && hash(k, 2, seed) < 0.6) C.set(x, y + 1, FIRE_RAMP[Math.max(3, s - 1)]);
-  }
-}
-
-/** Fire overlay: drawn after the tree's outline, with its own dark red rim. */
-function overlayFire(C: Canvas, F: Buf): void {
-  const fc = F.toCanvas();
-  fc.outline({ toward: '#2a0806', amount: 0.55 });
-  C.draw(fc, 0, 0);
-}
 
 /** A low mound of ash with charcoal bits and a few live embers. */
 function ashPile(L: Buf, gx: number, gy: number, rx: number, ry: number, seed: number): void {
@@ -206,12 +132,19 @@ function finish(name: string, label: string, meters: [number, number], tags: str
   return { name, label, meters, anchor: [b.gx - x0, b.gy - y0], tags, anims };
 }
 
-function toFrame(L: Buf, fire?: Buf): Canvas {
+function toFrame(L: Buf): Canvas {
   despeckle(L);
   outlineBuf(L, prio);
-  const c = L.toCanvas();
-  if (fire) overlayFire(c, fire);
-  return c;
+  return L.toCanvas();
+}
+
+/** Alpha-blends a layer (smoke) over a frame. */
+function overlay(c: Canvas, layer: Canvas, alpha: number): void {
+  for (let y = 0; y < layer.h; y++)
+    for (let x = 0; x < layer.w; x++) {
+      const p = layer.get(x, y);
+      if (p[3]) c.plot(x, y, [p[0], p[1], p[2], Math.round(p[3] * alpha)]);
+    }
 }
 
 /** Horizontal sway of a point at height `hf` (0 base .. 1 top) in frame f of n. */
@@ -227,29 +160,6 @@ interface Canopy {
 }
 function makeCanopy(cl: Cluster[], o: { sphere?: number; fold?: number } = {}): Canopy {
   return { cl, ras: cl.map((c) => rasterCluster(c, o)) };
-}
-
-/** The wavy burn front of a burning crown: rows above it are charred, a glowing band, then scorched. */
-const burnEdge = (x: number, burnY: number, seed: number): number => burnY + (noise(x, 0, 48, seed) - 0.5) * 80 + (noise(x, 0, 15, seed + 1) - 0.5) * 26;
-
-/**
- * Burning foliage, decided per cluster (so the burn eats whole clumps, not a straight line):
- * charred above the wavy front with embers on the lit leaf edges, a glowing band of clusters at
- * the front, scorched brown below it, still green lowest.
- */
-function burnPaint(burnY: number, scorch: number, seed: number) {
-  return (x: number, y: number, c: Cluster, v: number, line: boolean): [number, number] => {
-    const cy = c.y + (hash(c.seed, 0, 3) - 0.5) * 18;
-    const e = burnEdge(c.x, burnY, seed);
-    const s = line ? 1 : clamp(1 + TH.filter((t) => v >= t).length, 1, 7);
-    if (cy < e) {
-      if (!line && v > 0.6 && hash(x >> 1, y >> 1, seed) < 0.1) return [FIRE, v > 0.72 ? 3 : 2];
-      return [LEAF_CHAR, s];
-    }
-    if (cy < e + 12) return line || v < 0.42 ? [LEAF_CHAR, 2] : [FIRE, v > 0.62 ? 4 : v > 0.52 ? 3 : 2];
-    if (cy < e + 12 + scorch + (hash(c.seed, 1, 3) - 0.5) * 20) return [LEAF_SCORCH, s];
-    return [c.pal, s];
-  };
 }
 
 /**
@@ -313,10 +223,25 @@ function oak(): WorldSprite {
     const dap = noise(x * 0.8, y * 0.55, 6, 99) > 0.7;
     return 1 - k * (dap ? 0.08 : 0.42);
   };
-  const skeleton = (burnt: boolean): Tube[] => {
+  // The burn: it spread from two points in the upper crown, faster upward than down, and whole
+  // masses run ahead or lag behind, so the front is a patchwork of clumps, not a line.
+  const ign: Pt[] = [[gx - 64, gy - 338], [gx + 26, gy - 394]];
+  const burnD = (x: number, y: number): number =>
+    Math.min(...ign.map(([ix, iy]) => Math.hypot(x - ix, (y - iy) * (y < iy ? 0.55 : 1.45)))) + (noise(x, y, 34, 5) - 0.5) * 56;
+  const RF = 120;
+  const massLag = [30, -14, -26, 16, 74, 10, 8, 36, 52, 96];
+  /** Burn state of a cluster: > 22 charred, > 0 burning, > -26 scorched, else still green. */
+  const burnOf = (c: Cluster): number => RF - burnD(c.x, c.y) - massLag[c.group] - (hash(c.seed, 0, 3) - 0.5) * 24;
+  /** Bark charring follows the same front (limbs inside the burnt crown are charred and glowing). */
+  const charAt = (x: number, y: number): number => clamp((RF + 12 - burnD(x, y)) / 26, 0, 1);
+  const skeleton = (mode: 'idle' | 'burning' | 'burnt', t = 0): Tube[] => {
+    const burnt = mode === 'burnt';
     const palB = burnt ? CHAR : BARK_OAK;
     const tex = burnt ? 'charred' : 'furrow';
-    const bark: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'> = { pal: palB, tex, dim, moss: burnt ? undefined : MOSS, mossAmt: 0.5, ember: burnt ? 0.1 : 0, firePal: FIRE };
+    const bark: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'> = {
+      pal: palB, tex, dim, moss: burnt ? undefined : MOSS, mossAmt: 0.5, ember: burnt ? 0.12 : 0, firePal: FIRE, emberT: t,
+      ...(mode === 'burning' ? { charAt, charPal: CHAR, ember: 0 } : {}),
+    };
     const back: Tube[] = [], front: Tube[] = [], limbs: Tube[] = [];
     const rT = 30;
     // Buttress roots: two behind the trunk, the rest spreading to the sides and toward the viewer.
@@ -355,24 +280,72 @@ function oak(): WorldSprite {
     return [...back.map((t) => ({ ...t, z: -1 })), { ...trunk, z: 0 }, ...front.map((t) => ({ ...t, z: 1 })), ...limbs.map((t) => ({ ...t, z: 2 }))];
   };
 
+  // Fire sources: whole clumps catching. Each burning clump (and a few just burnt out) holds a
+  // flame; clumps on the top of the crown carry the tallest ones; back clumps burn darker.
+  const zs = C.cl.map((c) => c.z);
+  const zMin = Math.min(...zs), zMax = Math.max(...zs);
+  const sources: FireSource[] = [];
+  const cand = C.cl
+    .map((c) => ({ c, b: burnOf(c) }))
+    .filter(({ b }) => b > 0 && b < 34)
+    .sort((a, b2) => a.c.y - b2.c.y || hash(a.c.seed, 5, 1) - hash(b2.c.seed, 5, 1));
+  for (const { c, b } of cand) {
+    if (sources.some((s) => Math.hypot(s.x - c.x, (s.y - c.y) * 1.4) < 15)) continue;
+    const open = !C.cl.some((o) => o !== c && Math.abs(o.x - c.x) < 9 && o.y < c.y - 4 && o.y > c.y - 22);
+    const top = clamp((gy - 250 - c.y) / 170, 0, 1);
+    const dying = b > 22 ? 0.6 : 1;
+    const h = (14 + 30 * top + 12 * hash(c.seed, 6, 1)) * (open ? 1.35 : 0.9) * dying;
+    sources.push({ x: c.x, y: c.y - c.r * 0.3, h, w: h * 0.42 + 4, z: c.z + 1, k: (0.62 + 0.38 * (c.z - zMin) / (zMax - zMin)) * (dying < 1 ? 0.85 : 1), seed: c.seed % 100000, n: h > 22 ? 3 : 2 });
+  }
+  // The highest flames feed the smoke: two or three plumes drifting with the draft.
+  const plumes: Plume[] = [];
+  for (const s of sources.slice().sort((a, b) => a.y - b.y)) {
+    if (plumes.length >= 3) break;
+    if (plumes.some((p) => Math.abs(p.x - s.x) < 60)) continue;
+    plumes.push({ x: s.x + 6, y: s.y - s.h * 0.7, rise: 150 - plumes.length * 25, drift: 64, size: 15 - plumes.length * 2, seed: plumes.length * 3 + 1 });
+  }
+
   const render = (f: number, mode: 'idle' | 'burning' | 'burnt'): Canvas => {
     const B = new Buf(W, H);
+    const t = f / n;
     const sway = (y: number) => (mode === 'idle' ? swayAt(hfOf(y), f, n, 3) * clamp((gy - 130 - y) / 40, 0, 1) : 0);
-    const tubes = skeleton(mode === 'burnt').map((t) => ({ ...t, pts: t.pts.map(([x, y]) => [x + sway(y), y] as Pt) }));
+    const tubes = skeleton(mode, t).map((tb) => ({ ...tb, pts: tb.pts.map(([x, y]) => [x + sway(y), y] as Pt) }));
     if (mode === 'burnt') {
-      for (const t of tubes) drawTube(B, t);
+      for (const tb of tubes) drawTube(B, tb);
       ashPile(B, gx, gy + 6, 50, 5, 5);
-      return toFrame(B);
+      const c = toFrame(B);
+      // The last smoke still curls up from the broken limb and the ash.
+      const sm = smoke(W, H, [{ x: gx + 46, y: gy - 236, rise: 70, drift: 26, size: 6, seed: 5 }, { x: gx - 8, y: gy - 4, rise: 46, drift: 18, size: 5, seed: 9 }], 0.3);
+      overlay(c, sm, 0.7);
+      return c;
     }
     const offs = C.cl.map((c) => [sway(c.y), 0] as Pt);
     const Fo = composite(W, H, C.cl, C.ras, offs, 0.55);
     shade(Fo, C.cl, { cast: 0.42, castD: 5, rim: 0.16, away: 0.1, lineGap: 14, leafSep: 0.07 });
-    const burnY = gy - 320;
-    const paint = mode === 'burning' ? burnPaint(burnY, 46, 77) : undefined;
+    // Burning crown, clump by clump: charred clumps keep a few glowing leaf edges, burning clumps
+    // glow on every lit leaf edge with dark char between, scorched ones are dry brown.
+    const paint = mode === 'burning'
+      ? (x: number, y: number, c: Cluster, v: number, line: boolean): [number, number] => {
+          const b = burnOf(c);
+          const st = line ? 1 : clamp(1 + TH.filter((th) => v >= th).length, 1, 7);
+          const flick = 0.5 + 0.5 * Math.sin(TAU * (t + hash(c.seed, 2, 3)));
+          if (b > 22) {
+            if (!line && v > 0.6 && hash(x >> 1, y >> 1, 41) < 0.08 + 0.1 * flick) return [FIRE, v > 0.72 ? 3 : 2];
+            return [LEAF_CHAR, st];
+          }
+          if (b > 0) {
+            const g = v + (flick - 0.5) * 0.1;
+            if (line || g < 0.36) return [LEAF_CHAR, 2];
+            return [FIRE, g > 0.66 ? 4 : g > 0.5 ? 3 : 2];
+          }
+          if (b > -26) return [LEAF_SCORCH, st];
+          return [c.pal, st];
+        }
+      : undefined;
     // Order: roots and trunk, back foliage, limbs, front foliage, then vines.
-    for (const t of tubes) if ((t.z ?? 0) < 2) drawTube(B, t);
+    for (const tb of tubes) if ((tb.z ?? 0) < 2) drawTube(B, tb);
     putField(B, Fo, C.cl, { th: TH, filter: (c) => c.tag === 0, paint });
-    for (const t of tubes) if ((t.z ?? 0) >= 2) drawTube(B, t);
+    for (const tb of tubes) if ((tb.z ?? 0) >= 2) drawTube(B, tb);
     putField(B, Fo, C.cl, { th: TH, filter: (c) => c.tag === 1, paint });
     if (mode === 'idle') {
       // Vines hang from the underside of the canopy (the lowest leaf pixel in their column).
@@ -390,30 +363,25 @@ function oak(): WorldSprite {
       });
       return toFrame(B);
     }
-    // Burning: flames rise from clumps along the burn front and from the charred crown, at
-    // different sizes and heights; small ones at the fork and from a wound in the trunk.
-    const fire = new Buf(W, H);
-    const t = f / n;
-    const picks: Cluster[] = [];
-    const cand = C.cl.filter((c) => {
-      const e = burnEdge(c.x, burnY, 77);
-      const cy = c.y + (hash(c.seed, 0, 3) - 0.5) * 18;
-      return cy < e + 10 && c.tag === 1;
-    });
-    cand.sort((a, b) => hash(a.seed, 5, 1) - hash(b.seed, 5, 1));
-    for (const c of cand) {
-      if (picks.length >= 11) break;
-      if (picks.some((p) => Math.abs(p.x - c.x) < 30 && Math.abs(p.y - c.y) < 40)) continue;
-      picks.push(c);
-    }
-    picks.forEach((c, k) => {
-      const big = hash(c.seed, 6, 1);
-      flameInto(fire, { x: Math.round(c.x), y: Math.round(c.y + 4), w: 18 + big * 26, h: 30 + big * 64, ph: hash(c.seed, 7, 1), seed: k + 3, n: big > 0.5 ? 3 : 2, lean: 5 }, t);
-    });
-    flameInto(fire, { x: gx - 4, y: gy - 126, w: 16, h: 34, ph: 0.1, seed: 6, n: 2, lean: 3 }, t);
-    flameInto(fire, { x: gx + 12, y: gy - 64, w: 9, h: 20, ph: 0.6, seed: 4, n: 1, lean: 2 }, t);
-    const c = toFrame(B, fire);
-    sparksOnto(c, gx + 10, gy - 440, 240, 90, 26, t, 9);
+    // Burning: the flames of this frame, then their heat lights the leaves and bark from below.
+    const FL = flames(W, H, sources, t, { lean: 0.3, seed: 77 });
+    const G = glowField(FL, 7, 5, 2.8);
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const pl = B.palAt(x, y);
+        const gp = GLOW.get(pl);
+        if (gp === undefined) continue;
+        const g = G[y * W + x] + (noise(x, y, 2.5, 13) - 0.5) * 0.16;
+        if (g > 0.62) B.put(x, y, gp, B.stepAt(x, y) + 1, B.partAt(x, y), B.zAt(x, y));
+        else if (g > 0.3) B.put(x, y, gp, B.stepAt(x, y), B.partAt(x, y), B.zAt(x, y));
+      }
+    const c = toFrame(B);
+    // Smoke behind the flames, then the flames (hidden where a nearer clump stands in front),
+    // then sparks riding the draft up and embers falling from the crown.
+    overlay(c, smoke(W, H, plumes, t), 1);
+    drawFire(c, FL, (x, y, z) => B.has(x, y) && B.zAt(x, y) > z + 3);
+    sparks(c, { x0: gx + 4, y0: gy - 380, spread: 230, rise: 120, drift: 40, n: 30, t, seed: 9 });
+    sparks(c, { x0: gx - 10, y0: gy - 300, spread: 220, rise: 150, drift: 20, n: 12, t, seed: 21, fall: true });
     return c;
   };
 

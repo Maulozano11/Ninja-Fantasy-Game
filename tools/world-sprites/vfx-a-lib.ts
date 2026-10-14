@@ -535,3 +535,75 @@ export function seamStack(w: number, h: number, layers: (Canvas | null)[], seam:
   outlineIn(out, outline, { alpha: outlineAlpha });
   return out;
 }
+
+/**
+ * A shaded tube along a polyline. shade(u, s) gets the position along the path (0..1) and the
+ * signed offset across it (-1..1, positive on the path's left-hand normal: down for a path
+ * running right, right for a path running up).
+ */
+export function tubeShade(f: Field, pts: Pt[], r: (u: number) => number, shade: (u: number, s: number) => number): void {
+  // Each pixel takes its shade from the nearest segment (not the brightest), so dark details
+  // like plate seams survive where segments overlap.
+  const L = [0];
+  for (let i = 1; i < pts.length; i++) L.push(L[i - 1] + dist(pts[i - 1], pts[i]));
+  const total = L[L.length - 1] || 1;
+  const best = new Float32Array(f.w * f.h).fill(Infinity);
+  const val = new Float32Array(f.w * f.h);
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+    const dx = x1 - x0, dy = y1 - y0, L2 = dx * dx + dy * dy, len = Math.sqrt(L2) || 1;
+    const R = Math.max(r(L[i] / total), r(L[i + 1] / total)) + 1;
+    const xa = Math.max(0, Math.floor(Math.min(x0, x1) - R)), xb = Math.min(f.w - 1, Math.ceil(Math.max(x0, x1) + R));
+    const ya = Math.max(0, Math.floor(Math.min(y0, y1) - R)), yb = Math.min(f.h - 1, Math.ceil(Math.max(y0, y1) + R));
+    for (let py = ya; py <= yb; py++)
+      for (let px = xa; px <= xb; px++) {
+        const x = px + 0.5, y = py + 0.5;
+        const t = L2 ? clamp(((x - x0) * dx + (y - y0) * dy) / L2, 0, 1) : 0;
+        const u = (L[i] + (L[i + 1] - L[i]) * t) / total;
+        const rr_ = r(u);
+        if (rr_ <= 0) continue;
+        const ox = x - (x0 + dx * t), oy = y - (y0 + dy * t);
+        const d = Math.hypot(ox, oy);
+        if (d >= rr_) continue;
+        const k = py * f.w + px;
+        const dn = d / rr_;
+        if (dn >= best[k]) continue;
+        best[k] = dn;
+        val[k] = Math.max(0.03, shade(u, clamp((ox * -dy + oy * dx) / len / rr_, -1, 1)));
+      }
+  }
+  for (let k = 0; k < val.length; k++) if (val[k] > 0 && val[k] > f.v[k]) f.v[k] = val[k];
+}
+
+/**
+ * Dissolves a canvas: pixels whose threshold `key(x, y)` (0..1) is above `vis` vanish, the ones
+ * right at the edge turn into bright burning pixels, and the holes get a dark outline. Returns the
+ * kept canvas and the edge pixels (for embers).
+ */
+export function dissolve(c: Canvas, vis: number, key: (x: number, y: number) => number, burn: Color[], outline: Color): { c: Canvas; edge: Pt[] } {
+  const out = new Canvas(c.w, c.h);
+  const edge: Pt[] = [];
+  if (vis <= 0) return { c: out, edge };
+  for (let y = 0; y < c.h; y++)
+    for (let x = 0; x < c.w; x++) {
+      const p = c.get(x, y);
+      if (!p[3]) continue;
+      const k = key(x, y);
+      if (k > vis) continue;
+      if (vis < 1 && k > vis - 0.06) {
+        out.set(x, y, k > vis - 0.03 ? burn[1] : burn[0]);
+        if ((x * 7 + y * 13) % 11 === 0) edge.push([x, y]);
+      } else out.set(x, y, p);
+    }
+  // Only the outer silhouette gets the dark line back; holes stay burning, not black-rimmed.
+  if (vis < 1) {
+    const ol: number[] = [];
+    for (let y = 0; y < c.h; y++)
+      for (let x = 0; x < c.w; x++) {
+        if (out.alpha(x, y) || c.alpha(x, y)) continue;
+        if (out.alpha(x + 1, y) || out.alpha(x - 1, y) || out.alpha(x, y + 1) || out.alpha(x, y - 1)) ol.push(x, y);
+      }
+    for (let i = 0; i < ol.length; i += 2) out.set(ol[i], ol[i + 1], outline);
+  }
+  return { c: out, edge };
+}

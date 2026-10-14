@@ -435,9 +435,11 @@ function hit(): WorldSprite {
 
 function blast(): WorldSprite {
   const k = key('blast');
-  const bolt = piece(k, 'bolt'), ground = piece(k, 'main'), stain = piece(k, 'stain'), sp = piece(k, 'sparks');
-  const bb = bounds(bolt);
-  const top = bb ? bb[1] : 0;
+  const M = piece(k, 'main'), stain = piece(k, 'stain'), sp = piece(k, 'sparks');
+  const top = bounds(M)![1];
+  // 0 on the ground, rising to 1 for the bolt high above it: the bolt and the ground crackle are
+  // one picture, told apart smoothly so no seam shows between them.
+  const above = (y: number) => smooth(k.ay - 8, k.ay - 70, y);
   // The ground is seen at a slant: distances on it are squashed 2.2 times vertically.
   const d = (x: number, y: number) => Math.hypot(x - k.ax, (y - k.ay) * 2.2);
   // Sparks thrown up and out from the impact as the strike ends.
@@ -446,32 +448,25 @@ function blast(): WorldSprite {
       const r = Math.hypot(x - k.ax, y - k.ay) || 1;
       return [((x - k.ax) / r) * 10 * t, ((y - k.ay) / r) * 6 * t - 8 * t + 10 * t * t];
     });
-  const ground2 = (ix: Ix, s: number) => scaleAbout(ix, k.ax, k.ay, s);
   const fr: Canvas[] = [];
   // 0: the leader feels its way down from the sky: his bolt down to a ragged front 45% of the way,
   //    blue, with a white-hot tip.
   const front = (x: number) => top + (k.ay - top) * 0.45 + snoise(x, 0, 6, 901) * 5;
-  fr.push(render(k.w, k.h, [[level(keep(bolt, (x, y) => y < front(x)), (x, y) => (y > front(x) - 6 ? 2 : -2))]], k.fade));
-  // 1: the bolt reaches the ground, white-hot; the flash and the crackle burst out at the impact.
-  fr.push(render(k.w, k.h, [[ground2(stain, 0.55), 0.6], [level(ground2(ground, 0.4), 2)], [level(bolt, 1)]], k.fade));
+  fr.push(render(k.w, k.h, [[level(keep(M, (x, y) => y < front(x)), (x, y) => (y > front(x) - 6 ? 2 : -2))]], k.fade));
+  // 1: the bolt reaches the ground, white-hot; the crackle races out of the impact: bright near
+  //    it, still faint further out (it steps down the ladder with distance, so it has no rim).
+  const burst = dim(M, (x, y) => Math.round(clamp((d(x, y) - 18) / 70, 0, 1) * 16 * (1 - above(y))));
+  fr.push(render(k.w, k.h, [[scaleAbout(stain, k.ax, k.ay, 0.55), 0.6], [level(burst, 1, ['stroke'])]], k.fade));
   // 2: his picture.
-  fr.push(render(k.w, k.h, [[stain], [ground], [bolt], [sp]], k.fade));
-  // 3: the return stroke: the bolt re-routes and flashes, the crackle runs on along the ground.
-  fr.push(
-    render(k.w, k.h, [
-      [stain],
-      [level(crackle(ground, 1.4, 9, 913, (x, y) => smooth(6, 24, d(x, y))), 1, ['glow'])],
-      [level(crackle(bolt, 1.6, 10, 914, (x, y) => smooth(4, 20, Math.hypot(x - k.ax, y - k.ay)) * 0.7 + 0.3), 1)],
-      [fly(sp, 0.25)],
-    ], k.fade),
-  );
-  // 4: the bolt dies away (white, blue, glow); the ground crackle re-routes and cools.
-  fr.push(render(k.w, k.h, [[stain], [dim(crackle(ground, 1.6, 9, 915, (x, y) => smooth(6, 24, d(x, y))), 2)], [dim(bolt, 9)], [fly(sp, 0.5)]], k.fade));
-  // 5-6: the bolt is gone; the crackle on the ground dies away.
-  fr.push(render(k.w, k.h, [[stain], [dim(crackle(ground, 1.8, 9, 917), 6)], [dim(bolt, 17)], [twinkle(fly(sp, 0.75), 5, 0.3, 919)]], k.fade));
-  fr.push(render(k.w, k.h, [[stain], [dim(crackle(ground, 1.8, 9, 920), 11)], [twinkle(fly(sp, 1), 6, 0.6, 921), 0.7]], k.fade));
+  fr.push(render(k.w, k.h, [[stain], [M], [sp]], k.fade));
+  // 3: the return stroke: everything re-routes (the impact holds) and flashes.
+  fr.push(render(k.w, k.h, [[stain], [level(crackle(M, 1.6, 10, 913, (x, y) => smooth(4, 22, Math.hypot(x - k.ax, y - k.ay))), 1)], [fly(sp, 0.25)]], k.fade));
+  // 4-6: the light dies away (white, blue, glow, gone), the bolt high up first.
+  fr.push(render(k.w, k.h, [[stain], [dim(crackle(M, 1.6, 9, 915, (x, y) => smooth(4, 22, Math.hypot(x - k.ax, y - k.ay))), (_x, y) => Math.round(2 + 8 * above(y)))], [fly(sp, 0.5)]], k.fade));
+  fr.push(render(k.w, k.h, [[stain], [dim(crackle(M, 1.8, 9, 917), (_x, y) => Math.round(6 + 13 * above(y)))], [twinkle(fly(sp, 0.75), 5, 0.3, 919)]], k.fade));
+  fr.push(render(k.w, k.h, [[stain], [dim(crackle(M, 1.8, 9, 920), (_x, y) => Math.round(11 + 9 * above(y)))], [twinkle(fly(sp, 1), 6, 0.6, 921), 0.7]], k.fade));
   // 7: the scorch is left.
-  fr.push(render(k.w, k.h, [[level(stain, -1), 0.8], [dim(ground, 16)]], k.fade));
+  fr.push(render(k.w, k.h, [[level(stain, -1), 0.8], [dim(M, (_x, y) => Math.round(16 + 6 * above(y)))]], k.fade));
   return sprite(k, 'Lightning blast (thunder strike from the sky)', { blast: { frames: fr, fps: 12, loop: false } });
 }
 

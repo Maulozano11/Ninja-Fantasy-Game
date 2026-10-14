@@ -145,10 +145,13 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       return true;
     }
     case 'burst': {
-      const s = sheet(el, 'hit');
+      // Rock bullets and the like can have their own impact, which sprays away from the caster.
+      const own = f.role === 'multi' ? sheet(el, 'multi_hit') : undefined;
+      const s = own ?? sheet(el, 'hit');
       if (!s) return false;
       const p = project(sc.map, f.to);
-      blit(ctx, s, Object.keys(s.spec.anims)[0], frameAt(s, Object.keys(s.spec.anims)[0], ms), p.X, p.Y - (f.lift?.[1] ?? 50), false);
+      const anim = Object.keys(s.spec.anims)[0];
+      blit(ctx, s, anim, frameAt(s, anim, ms), p.X, p.Y - (f.lift?.[1] ?? 50), !!own && left);
       return true;
     }
     case 'aura': {

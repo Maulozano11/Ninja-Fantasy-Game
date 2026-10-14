@@ -389,7 +389,7 @@ export class Playback {
         if (ev.shape?.kind === 'circle') {
           this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: spec?.sig ? 1000 : 800 });
           h.shake(ev.enhanced ? 5 : 3);
-        } else this.fx.push({ ...base, kind: 'burst', from: ev.at, to: ev.at, t0: t1 + fly / this.speed, dur: 500, lift: [60, 60] });
+        } else this.fx.push({ ...base, kind: 'burst', from, to: ev.at, t0: t1 + fly / this.speed, dur: 500, lift: [60, 60] });
         return castDelay + fly + 250;
       }
       case 'save': {

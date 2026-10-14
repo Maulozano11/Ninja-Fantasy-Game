@@ -180,6 +180,9 @@ def flatten():
 
 FLAT = flatten()
 SMOOTH = gauss(FLAT, 0.5)
+# Colours are read from a lightly sharpened copy: the JPEG (and the resampling) soften his crisp
+# pixel edges and wash out his saturated cyans; this puts back about what they took.
+SHARP = np.clip(FLAT + 0.6 * (FLAT - gauss(FLAT, 0.9)), 0, 255)
 
 
 # --- the sprites ------------------------------------------------------------------------------
@@ -196,17 +199,19 @@ SPRITES = {
     'breath': dict(anchor=(536, 77), area=[rect(533, 42, 641, 112)], drops=24, breath=True),
     'sphere': dict(anchor=(689.5, 77.5), area=[rect(652, 42, 724, 112)], drops=24),
     'slash': dict(anchor=(46, 198.5), area=[rect(9, 160, 79, 235)], drops=12),
-    'multi': dict(anchor=(164.5, 195), area=[rect(125, 160, 199, 230)], drops=6),
-    'hit': dict(anchor=(281, 200), area=[rect(241, 160, 318, 239)], drops=30),
+    'multi': dict(anchor=(164.5, 195), area=[rect(125, 160, 199, 230)], drops=6, glow=True,
+                  mist=[rect(125, 160, 162, 230)]),
+    'hit': dict(anchor=(281, 200), area=[rect(241, 160, 318, 239)], drops=30, glow=True),
     'blast': dict(anchor=(456, 293), area=[rect(356, 160, 560, 325)], drops=30,
-                  drop=[[(540, 190), (622, 190), (622, 325), (540, 325)]]),
+                  drop=[[(548, 190), (622, 190), (622, 325), (548, 325)]], teal=[rect(480, 200, 622, 325)]),
     'wall': dict(anchor=(161, 486.8), area=[rect(9, 355, 312, 496)], drops=30,
                  drop=[[(305, 380), (375, 380), (375, 496), (305, 496)]]),
     'wall_diag': dict(anchor=(505.9, 564.6), area=[rect(387, 355, 640, 647)], drops=30,
-                      drop=[rect(628, 450, 689, 647)]),
+                      drop=[rect(628, 450, 689, 647)], teal=[rect(560, 420, 689, 647)]),
     'wall_depth': dict(anchor=(34, 906.2), area=[rect(9, 677, 80, 1011)], drops=30,
-                       drop=[rect(68, 800, 125, 920)]),
-    'aura': dict(anchor=(262.3, 800.5), area=[rect(205, 678, 320, 817)], drops=30, aura=True,
+                       drop=[[(70, 800), (125, 800), (125, 925), (62, 925), (62, 872), (66, 858), (70, 840)]],
+                       teal=[rect(40, 820, 125, 940)]),
+    'aura': dict(anchor=(262.3, 800.5), area=[rect(205, 678, 320, 817)], drops=30, aura=True, glow=True,
                  halo=[rect(200, 670, 330, 830)]),
 }
 MARGIN = 4
@@ -231,12 +236,30 @@ def classify_his(cfg):
     keep = poly_mask(H0, W0, 0, 0, cfg['area'])
     if cfg.get('drop'):
         keep &= ~poly_mask(H0, W0, 0, 0, cfg['drop'])
+    if cfg.get('teal'):
+        # The teal light round his character: greener than any of his water (whose blue always
+        # leads its green), so it goes; the effect's own glow is re-made by the generator.
+        tz = poly_mask(H0, W0, 0, 0, cfg['teal'])
+        keep &= ~(tz & (c[..., 2] - c[..., 1] < 16) & (lum(c) < 150))
     L = lum(c)
     dist = np.sqrt(((c - BG) ** 2).sum(-1))
-    body = keep & ((L >= 95) | ((dist >= 26) & (L >= 34)))
-    outline = keep & ~body & (dist >= 20) & (L < 34)
-    a, F = c2a(c)
-    glow = keep & ~body & ~outline & (a >= 0.035) & (L > lum(BG))
+    art = keep & ((L >= 95) | (dist >= 22))
+    # His rims and dark strokes: deep navy, darker than the water. Read on the unsmoothed sheet,
+    # where his 1 px rims are still dark (the smoothing would mix them into the bright core).
+    Lr = lum(FLAT)
+    dr = np.sqrt(((FLAT - BG) ** 2).sum(-1))
+    outline = keep & (((Lr < 26) & (dr >= 14)) | ((Lr < 44) & (FLAT[..., 0] < 40) & (dr >= 22)) | (art & (L < 44) & (c[..., 0] < 40)))
+    art |= outline
+    body = art & ~outline
+    a, F = c2a(np.maximum(c, BG))
+    glow = keep & ~art & (a >= 0.035) & (L > lum(BG)) if cfg.get('glow') else np.zeros_like(art)
+    if cfg.get('mist'):
+        # Pale grey streaks (the multi's trails): see-through, not water.
+        mz = poly_mask(H0, W0, 0, 0, cfg['mist'])
+        grey = mz & art & ((c.max(-1) - c.min(-1)) < 60) & (L < 150)
+        art &= ~grey
+        outline &= ~grey
+        glow |= grey
     if cfg.get('halo'):
         # Inside the halo, mid-dark blue that is not shut in by his outline is haze, not water.
         halo = keep & poly_mask(H0, W0, 0, 0, cfg['halo'])
@@ -252,7 +275,7 @@ def classify_his(cfg):
         hz = out_full & body & (L < 100)
         body &= ~hz
         glow |= hz
-    return dict(body=body, outline=outline, glow=glow, a=np.where(glow, a, 0), F=F, c=c)
+    return dict(body=body, outline=outline, glow=glow, a=np.where(glow, a, 0), F=F, c=SHARP)
 
 
 def to_game(cfg, cls, W, H, ax, ay):
@@ -278,20 +301,23 @@ def bounds_game(cfg, cls):
 # --- decisions at game scale ------------------------------------------------------------------
 
 def decide(g, wrap=False):
-    """Solid body, outline ring and glow at game scale."""
+    """Body, outline and glow at game scale.
+
+    A pixel is drawn where his art covers at least half of it. It is outline where his navy
+    rim dominates it, and a clear pixel just outside the body becomes outline too where his rim
+    reaches into it, so the silhouette gets one clean 1 px rim wherever his art has one."""
     B, O, A = g['B'], g['O'], g['A']
-    solid = B >= 0.5
-    # Pinholes: a clear pixel shut in by body on 3 sides is body.
-    nb = sum(shift(solid, dy, dx, wrap).astype(int) for dy, dx in N4)
-    solid |= (~solid) & (nb >= 3) & (B >= 0.2)
-    # The outline: a 1 px ring round the body where his art has a dark rim (or the body's own
-    # edge is soft and mostly rim).
-    ring = dilate(solid, wrap=wrap) & ~solid
-    rim = ring & ((O + B) >= 0.22)
-    # A body pixel that is mostly his rim and lies on the silhouette is the outline itself.
-    edge = solid & ~(shift(solid, 1, 0, wrap) & shift(solid, -1, 0, wrap) & shift(solid, 0, 1, wrap) & shift(solid, 0, -1, wrap))
-    glow = (~solid) & (~rim) & (A >= 0.05)
-    return solid, rim, edge, glow
+    S = B + O
+    drawn = S >= 0.5
+    # Pinholes: a clear pixel shut in on 3 sides is filled.
+    nb = sum(shift(drawn, dy, dx, wrap).astype(int) for dy, dx in N4)
+    drawn |= (~drawn) & (nb >= 3) & (S >= 0.2)
+    dark = drawn & (O > B)
+    solid = drawn & ~dark
+    ring = dilate(solid, wrap=wrap) & ~drawn & (O >= 0.12)
+    rim = dark | ring
+    glow = (~drawn) & (~ring) & (A >= 0.05)
+    return solid, rim, glow
 
 
 # --- palette ------------------------------------------------------------------------------------
@@ -345,15 +371,16 @@ for name, cfg in SPRITES.items():
     cls = classify_his(cfg)
     W, H, ax, ay = frame_for(name, cfg, cls)
     g = to_game(cfg, cls, W, H, ax, ay)
-    solid, rim, edge, glow = decide(g)
-    built[name] = dict(cfg=cfg, cls=cls, g=g, W=W, H=H, ax=ax, ay=ay, solid=solid, rim=rim, edge=edge, glow=glow)
+    solid, rim, glow = decide(g)
+    built[name] = dict(cfg=cfg, cls=cls, g=g, W=W, H=H, ax=ax, ay=ay, solid=solid, rim=rim, glow=glow)
     print('%-11s %3dx%-3d anchor %3d,%-3d' % (name, W, H, ax, ay))
 
-# One palette for the set: his body colours (median cut), his rim colour, his haze colours.
-body_cols = np.concatenate([b['g']['col'][b['solid']] for b in built.values()])
-BODY = median_cut(body_cols, 22)
+# One palette for the set: his body colours (median cut over his own pixels inside the water,
+# away from its edges), his rim colour, his haze colours.
+inner = [b['cls']['body'] & ~dilate(~b['cls']['body']) for b in built.values()]
+body_cols = np.concatenate([SHARP[m] for m in inner])
+BODY = median_cut(body_cols, 24)
 BODY = BODY[np.argsort(lum(BODY))]
-rim_cols = np.concatenate([b['g']['col'][b['rim'] & (b['g']['B'] > 0.3)] for b in built.values()] + [SMOOTH[built['wall']['cls']['outline']]])
 OUTLINE = np.median(SMOOTH[np.concatenate([b['cls']['outline'][None] for b in built.values()]).any(0)], 0)
 print('his rim median', OUTLINE.round())
 glow_cols = np.concatenate([b['g']['gcol'][b['glow']] for b in built.values()])

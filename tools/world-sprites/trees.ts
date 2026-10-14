@@ -819,7 +819,7 @@ function stump(): WorldSprite {
   const cyt = cyb - hgt; // top ellipse centre
   const B = new Buf(W, H);
   const bark: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'> = { pal: BARK_OAK, tex: 'furrow', moss: MOSS, mossAmt: 0.7, spacing: 4.5 };
-  const roots: [number, number, number, boolean][] = [[-150, 14, 6, true], [-30, 13, 6, true], [176, 20, 7, false], [6, 19, 7, false], [130, 15, 6, false], [58, 13, 6, false]];
+  const roots: [number, number, number, boolean][] = [[-150, 14, 6, true], [-30, 13, 6, true], [178, 20, 7, false], [2, 18, 7, false], [154, 13, 6, false], [28, 11, 5, false]];
   for (const [deg, len, r0, behind] of roots) if (behind) drawTube(B, rootTube(gx, gy - 4, Rr - 4, deg, len, r0, 700 + deg, bark, 9));
   // Wall: a bark cylinder with a slightly irregular rim.
   const rimJ = (u: number) => (noise(u * 6 + 3, 0, 1, 31) - 0.5) * 3;

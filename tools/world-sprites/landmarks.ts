@@ -22,7 +22,7 @@
 // Outlines are 1 px and tinted by the material (landmarks-paint.ts outlineTinted).
 
 import { join } from 'node:path';
-import { Anim, Canvas, Color, WorldSprite, band, fbm, hash, hex, lambert, m, mix, noise, preview, previewDir } from './kit';
+import { Anim, Canvas, Color, WorldSprite, band, fbm, hash, hex, lambert, m, mix, noise, preview, previewDir, writeGroup } from './kit';
 import {
   BAMBOO_DK_R,
   BAMBOO_G_R,
@@ -61,7 +61,6 @@ import {
   outlineTinted,
   rampOf,
 } from './landmarks-paint';
-import { writeGroup } from './kit';
 
 // --- camera ---------------------------------------------------------------------------------
 
@@ -323,6 +322,8 @@ class Frame {
   /** Warm light added on top (0..1), quantised when composed. */
   readonly warm: Float32Array;
   readonly over: (Color | null)[];
+  /** Pixels drawn after the outline (thin sprigs that must not get one): [x, y, color]. */
+  readonly post: [number, number, Color][] = [];
   constructor(readonly w: number, readonly h: number, readonly ox: number, readonly oy: number, readonly scene: Scene) {
     const N = w * h;
     this.mesh = new Int16Array(N).fill(-1);
@@ -351,7 +352,7 @@ class Frame {
     const i = this.idx(Math.floor(x), Math.floor(y));
     if (i < 0) return;
     this.pal[i] = p;
-    this.step[i] = clamp(s, 0, 5);
+    this.step[i] = clamp(s, 0, 6);
     this.over[i] = null;
   }
   normal(i: number): V3 {
@@ -371,15 +372,15 @@ class Frame {
           continue;
         }
         if (this.pal[i] < 0) continue;
-        let col = PAL[this.pal[i]][this.step[i]];
+        let col = PAL[this.pal[i]][clamp(this.step[i], 0, PAL[this.pal[i]].length - 1)];
         const wv = this.warm[i];
         if (wv > 0.02) {
           // Two warm levels, picked per pixel with a little cluster noise so the spill reads as strokes.
           // Additive (the stone is lit, not painted orange), three levels.
           const q = wv + (noise(x, y, 2, 91) - 0.5) * 0.2;
-          if (q > 0.66) col = glow(col, R.fire[4], 0.62);
-          else if (q > 0.4) col = glow(col, R.fire[3], 0.42);
-          else if (q > 0.16) col = glow(col, R.fire[3], 0.22);
+          if (q > 0.66) col = glow(col, EMBER_R[5], 0.62);
+          else if (q > 0.4) col = glow(col, EMBER_R[4], 0.42);
+          else if (q > 0.16) col = glow(col, EMBER_R[4], 0.22);
         }
         c.set(x, y, col);
       }
@@ -518,7 +519,7 @@ function render(scene: Scene, w: number, h: number, ox: number, oy: number): Fra
       }
     }
   bump.forEach((b, i) => {
-    if (b) f.step[i] = clamp(f.step[i] + b, 1, 5);
+    if (b) f.step[i] = clamp(f.step[i] + b, 1, 6);
   });
   despeckle(f);
   innerLines(f);

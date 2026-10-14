@@ -836,9 +836,11 @@ def main():
         r = job()
         save(r.image(), os.path.join(out, name + '.png'))
         print('wrote', name)
-    with open(os.path.join(out, 'scene.json'), 'w') as f:
+    tmp = os.path.join(out, 'scene.json.tmp')
+    with open(tmp, 'w') as f:
         json.dump(scene_json(), f, indent=1)
         f.write('\n')
+    os.replace(tmp, os.path.join(out, 'scene.json'))
 
 
 if __name__ == '__main__':

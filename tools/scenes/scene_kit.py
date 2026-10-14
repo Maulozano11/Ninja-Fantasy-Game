@@ -552,6 +552,9 @@ def clump(layer, cx, cy, rx, ry, mat, seed, obj, n=None, leaf_len=(4.0, 7.0), le
 
 
 def save(img, path):
+    """Writes the PNG whole: to a temporary name first, then renamed over the target."""
     import os
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    img.save(path, optimize=True)
+    tmp = path + '.tmp'
+    img.save(tmp, format='PNG', optimize=True)
+    os.replace(tmp, path)

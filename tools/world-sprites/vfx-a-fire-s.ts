@@ -518,7 +518,7 @@ function hisWallLayer(st: SState): Canvas | null {
   if (st.phase === 'fade' && st.dead > 0) {
     // Dying back from the caster outward along a front that is ragged along its height only (no
     // holes punched into the burning mass).
-    c = dissolve(c, 1 - st.dead * 0.97, (x, y) => clamp(1 - (x - X0) / (LEN + 40) + (pnoise(0, y, 16, 0, 0, SEED + 94) - 0.5) * 0.12, 0, 1), burn, FIRE[0], 0.012).c;
+    c = dissolve(c, 1 - st.dead * 0.97, (x, y) => clamp(1 - (x - X0) / (LEN + 40) + (pnoise(0, y, 16, 0, 0, SEED + 94) - 0.5) * 0.12, 0, 1), burn, FIRE[0], 0.004).c;
   }
   return c;
 }

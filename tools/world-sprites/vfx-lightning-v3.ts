@@ -157,7 +157,7 @@ const scaleAbout = (ix: Ix, cx: number, cy: number, s: number, sy = s): Ix =>
   displace(ix, (x, y) => [(x - cx) * (1 - 1 / s), (y - cy) * (1 - 1 / sy)]);
 
 /** Keeps the pixels within `r` px (Chebyshev) of any pixel of `of`: a halo following a shape. */
-function near(ix: Ix, of: Ix, r: number): Ix {
+function near_(ix: Ix, of: Ix, r: number): Ix {
   const m = blank(ix.w, ix.h);
   for (let y = 0; y < of.h; y++)
     for (let x = 0; x < of.w; x++)
@@ -418,18 +418,16 @@ function hit(): WorldSprite {
       return r ? [((x - k.ax) / r) * s, ((y - k.ay) / r) * s] : [0, 0];
     });
   const fr: Canvas[] = [];
-  // 0: the flash at the core.
-  fr.push(render(k.w, k.h, [[level(keep(m, (x, y) => d(x, y) <= 8), 2)]]));
-  // 1: the burst grows (his picture up to 60% of its reach), still white-hot.
-  fr.push(render(k.w, k.h, [[level(keep(m, (x, y) => d(x, y) <= 22), 1)]]));
+  // 0-1: the burst grows out of a white flash: his picture, small and white-hot, then larger.
+  fr.push(render(k.w, k.h, [[level(scaleAbout(m, k.ax, k.ay, 0.3), 3)]]));
+  fr.push(render(k.w, k.h, [[level(scaleAbout(m, k.ax, k.ay, 0.68), 1)], [scaleAbout(sp, k.ax, k.ay, 0.68)]]));
   // 2: his picture.
   fr.push(render(k.w, k.h, [[m], [sp]]));
   // 3: the spikes fly out and re-route, the core cools a step.
   fr.push(render(k.w, k.h, [[level(crackle(outward(m, 2), 1.4, 8, 813), (x, y) => (d(x, y) < 12 ? -1 : 0))], [outward(sp, 3)]]));
-  // 4: breaking up.
-  fr.push(render(k.w, k.h, [[level(dissolve(outward(m, 4), 0.45, 814), -2), 0.85], [outward(sp, 6)]]));
-  // 5: the last forks and sparks.
-  fr.push(render(k.w, k.h, [[level(dissolve(keep(outward(m, 6), (x, y) => d(x, y) > 16), 0.7, 815), -3), 0.6], [twinkle(outward(sp, 9), 5, 0.4, 816)]]));
+  // 4-5: the light dies away (white, blue, glow, gone) as the spikes fly on.
+  fr.push(render(k.w, k.h, [[dim(crackle(outward(m, 4), 1.4, 8, 814), 6)], [outward(sp, 6)]]));
+  fr.push(render(k.w, k.h, [[dim(crackle(outward(m, 7), 1.4, 8, 815), 12)], [twinkle(outward(sp, 9), 5, 0.4, 816), 0.75]]));
   return sprite(k, 'Lightning hit (spark burst)', { hit: { frames: fr, fps: 12, loop: false } });
 }
 
@@ -440,25 +438,22 @@ function blast(): WorldSprite {
   const bolt = piece(k, 'bolt'), ground = piece(k, 'main'), stain = piece(k, 'stain'), sp = piece(k, 'sparks');
   const bb = bounds(bolt);
   const top = bb ? bb[1] : 0;
+  // The ground is seen at a slant: distances on it are squashed 2.2 times vertically.
   const d = (x: number, y: number) => Math.hypot(x - k.ax, (y - k.ay) * 2.2);
-  const R = 150;
   // Sparks thrown up and out from the impact as the strike ends.
   const fly = (ix: Ix, t: number) =>
     displace(ix, (x, y) => {
       const r = Math.hypot(x - k.ax, y - k.ay) || 1;
       return [((x - k.ax) / r) * 10 * t, ((y - k.ay) / r) * 6 * t - 8 * t + 10 * t * t];
     });
+  const ground2 = (ix: Ix, s: number) => scaleAbout(ix, k.ax, k.ay, s);
   const fr: Canvas[] = [];
-  // 0: the leader feels its way down from the sky (the top 45% of his bolt, dim and blue).
-  fr.push(render(k.w, k.h, [[level(keep(bolt, (_x, y) => y < top + (k.ay - top) * 0.45), -2)]], k.fade));
-  // 1: the bolt reaches the ground, white-hot; the flash and the stain start at the impact.
-  fr.push(
-    render(k.w, k.h, [
-      [stain, 0.5],
-      [level(keep(ground, (x, y) => d(x, y) < R * 0.22), 1)],
-      [level(bolt, 1)],
-    ], k.fade),
-  );
+  // 0: the leader feels its way down from the sky: his bolt down to a ragged front 45% of the way,
+  //    blue, with a white-hot tip.
+  const front = (x: number) => top + (k.ay - top) * 0.45 + snoise(x, 0, 6, 901) * 5;
+  fr.push(render(k.w, k.h, [[level(keep(bolt, (x, y) => y < front(x)), (x, y) => (y > front(x) - 6 ? 2 : -2))]], k.fade));
+  // 1: the bolt reaches the ground, white-hot; the flash and the crackle burst out at the impact.
+  fr.push(render(k.w, k.h, [[ground2(stain, 0.55), 0.6], [level(ground2(ground, 0.4), 2)], [level(bolt, 1)]], k.fade));
   // 2: his picture.
   fr.push(render(k.w, k.h, [[stain], [ground], [bolt], [sp]], k.fade));
   // 3: the return stroke: the bolt re-routes and flashes, the crackle runs on along the ground.
@@ -470,21 +465,13 @@ function blast(): WorldSprite {
       [fly(sp, 0.25)],
     ], k.fade),
   );
-  // 4: the bolt flickers out; the ground crackle dims.
-  fr.push(
-    render(k.w, k.h, [
-      [stain],
-      [level(crackle(ground, 1.6, 9, 915, (x, y) => smooth(6, 24, d(x, y))), -1)],
-      [level(dissolve(bolt, 0.55, 916, 4), -3), 0.6],
-      [fly(sp, 0.5)],
-    ], k.fade),
-  );
-  // 5: the bolt is gone; the crackle breaks up.
-  fr.push(render(k.w, k.h, [[stain], [level(dissolve(crackle(ground, 1.8, 9, 917), 0.45, 918), -2), 0.85], [twinkle(fly(sp, 0.75), 5, 0.3, 919)]], k.fade));
-  // 6: last forks on the scorch.
-  fr.push(render(k.w, k.h, [[stain, 0.9], [level(dissolve(ground, 0.78, 920), -3), 0.6], [twinkle(fly(sp, 1), 6, 0.6, 921)]], k.fade));
+  // 4: the bolt dies away (white, blue, glow); the ground crackle re-routes and cools.
+  fr.push(render(k.w, k.h, [[stain], [dim(crackle(ground, 1.6, 9, 915, (x, y) => smooth(6, 24, d(x, y))), 2)], [dim(bolt, 9)], [fly(sp, 0.5)]], k.fade));
+  // 5-6: the bolt is gone; the crackle on the ground dies away.
+  fr.push(render(k.w, k.h, [[stain], [dim(crackle(ground, 1.8, 9, 917), 6)], [dim(bolt, 17)], [twinkle(fly(sp, 0.75), 5, 0.3, 919)]], k.fade));
+  fr.push(render(k.w, k.h, [[stain], [dim(crackle(ground, 1.8, 9, 920), 11)], [twinkle(fly(sp, 1), 6, 0.6, 921), 0.7]], k.fade));
   // 7: the scorch is left.
-  fr.push(render(k.w, k.h, [[level(stain, -1), 0.75], [level(dissolve(ground, 0.93, 922), -4), 0.4]], k.fade));
+  fr.push(render(k.w, k.h, [[level(stain, -1), 0.8], [dim(ground, 16)]], k.fade));
   return sprite(k, 'Lightning blast (thunder strike from the sky)', { blast: { frames: fr, fps: 12, loop: false } });
 }
 
@@ -555,22 +542,26 @@ function fence(name: 'wall' | 'wall_diag', label: string, seed: number): WorldSp
   const spacing = (ps[n - 1].x - ps[0].x) / (n - 1);
   const rise: Canvas[] = [];
   const postK = [0.18, 0.5, 0.85, 1, 1, 1];
-  const arcK = [0, 0, 0.22, 0.6, 1, 1];
+  const arcK = [0, 0, 0.25, 0.62, 1, 1];
   const stainK = [0.25, 0.5, 0.75, 1, 1, 1];
+  const glowOnly = (ix: Ix) => keep(ix, (x, y) => KIND[ix.d[y * ix.w + x] - 1] === 'glow');
   for (let r = 0; r < 6; r++) {
     const ph = postK[r] * postH;
-    // The posts, with a white-hot growing tip.
+    // The posts grow out of the ground with a white-hot tip, their glow following them.
     const grown = level(keep(P, (x, y) => height(x, y) <= ph + 2), (x, y) => (r < 3 && height(x, y) > ph - 5 ? 2 : 0));
-    // The arcs: out from the posts, and only up to the posts' height; the charged feet glow from the start.
+    // The arcs crawl out from the posts, each row its own length, with a bright front; the
+    // charged feet glow from the start.
+    const reach = (x: number, y: number) => arcK[r] * spacing * 0.5 * (0.75 + 0.5 * noise(0, y, 4, seed + 31));
     let arcs = keep(M, (x, y) => {
       const h = height(x, y), dn = near(x);
       if (h <= 9 && dn <= 12) return true;
-      return h <= ph + 3 && (dn <= arcK[r] * spacing * 0.5 || arcK[r] >= 1);
+      return h <= ph + 3 && (arcK[r] >= 1 || dn <= reach(x, y));
     });
-    if (r === 2 || r === 3) arcs = level(crackle(arcs, 1.2, 8, seed + r), -1);
+    if (r === 2 || r === 3) arcs = level(crackle(arcs, 1.2, 8, seed + r), (x, y) => (near(x) > reach(x, y) - 5 ? 2 : -1));
     if (r === 4) arcs = level(arcs, -1, ['glow']);
+    const halo = r < 4 ? near_(glowOnly(M), grown, 3) : none(k);
     const sparks = r >= 3 ? twinkle(SP, r, r === 3 ? 0.5 : 0.2, seed + 3) : none(k);
-    let c = render(k.w, k.h, [[ST, stainK[r], stFade], [arcs], [grown], [sparks]], k.fade);
+    let c = render(k.w, k.h, [[ST, stainK[r], stFade], [halo], [arcs], [grown], [sparks]], k.fade);
     if (r === 5) c = render(k.w, k.h, [[ST, 1, stFade], [level(M, 1, ['stroke'])], [level(P, 1)], [SP]], k.fade);
     rise.push(c);
   }
@@ -590,18 +581,18 @@ function fence(name: 'wall' | 'wall_diag', label: string, seed: number): WorldSp
   return sprite(k, label, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
 }
 
-/** The fence end-on: tall columns of lightning. rise grows them from the near end up; idle crackles. */
+/** The fence end-on: tall columns of lightning. rise shoots them up from the ground; idle crackles. */
 function wallDepth(): WorldSprite {
   const k = key('wall_depth');
   const M = piece(k, 'main'), SP = piece(k, 'sparks');
   const b = bounds(M)!;
-  const top = b[1], bottom = b[3], H = bottom - top;
+  const bottom = b[3];
   const rise: Canvas[] = [];
-  const riseK = [0.2, 0.45, 0.7, 0.9, 1, 1];
+  const riseK = [0.18, 0.42, 0.68, 0.9, 1, 1];
   for (let r = 0; r < 6; r++) {
-    const front = bottom - riseK[r] * H;
-    let m = keep(M, (_x, y) => y >= front - 1);
-    if (r < 4) m = level(m, (_x, y) => (y < front + 6 ? 2 : 0));
+    // His columns stretched up from their base, white-hot while they shoot up.
+    let m = riseK[r] < 1 ? scaleAbout(M, k.ax, bottom, 1, riseK[r]) : M;
+    if (r < 4) m = level(m, [2, 2, 1, 1][r], ['stroke']);
     if (r === 2 || r === 3) m = crackle(m, 1.2, 8, 1100 + r);
     if (r === 4) m = level(m, -1, ['glow']);
     if (r === 5) m = level(M, 1, ['stroke']);

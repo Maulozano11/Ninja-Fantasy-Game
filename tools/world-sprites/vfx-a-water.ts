@@ -782,7 +782,7 @@ function wallFrameTurned(t: number, g: number, L: WallLine): Canvas {
   return stack(W, H, foB.any() ? foamR(foB) : null, body, foamR(fo), render(dr, WATER, { th: TH }));
 }
 function wallTurned(kind: WallKind, label: string): WorldSprite {
-  const L = wallLine(kind, 103, 26, { l: 12, t: 22, r: 12, b: 10 });
+  const L = wallLine(kind, 103, 22, { l: 12, t: 22, r: 12, b: 10 });
   const idle = frames(4, (t) => wallFrameTurned(t, 1, L));
   const rise = frames(6, (_, i) => wallFrameTurned(i / 6, [0.08, 0.28, 0.55, 0.84, 1.07, 1][i], L));
   return vfxSprite(kind, label, L.anchor, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });

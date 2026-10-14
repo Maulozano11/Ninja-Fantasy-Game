@@ -439,7 +439,7 @@ export function waveFrame(w: Wave, st: WaveState): Canvas {
   if (lipF.any()) {
     // On the great wave the lip burns away into the dragon forming out of it.
     const lipC = render(lipF, FIRE, { th: TH, rim: [1], jitter: streaks });
-    layers.push(great && st.dragon > 0 ? dissolve(lipC, 1 - st.dragon * 1.7, (x, y) => pnoise(x, y, 12, 0, 0, seed + 64), [FIRE[4], FIRE[6]], FIRE[0]).c : lipC);
+    layers.push(great && st.dragon > 0 ? dissolve(lipC, 1 - st.dragon * 1.7, (x, y) => pnoise(x, y, 12, 0, 0, seed + 64), [FIRE[2], FIRE[3], FIRE[5]], FIRE[0]).c : lipC);
   }
   const em: { x: number; y: number; s: number }[] = [];
   if (great && st.dragon > 0.01) {
@@ -448,8 +448,9 @@ export function waveFrame(w: Wave, st: WaveState): Canvas {
     const cx = Math.min(crestX, x0 + len);
     const chF = shapeAt(cx - 10, 0) || hMax;
     const yg = gy - halfDepth(cx - x0);
-    const snoutAt: Pt = [Math.min(crestX + 46, W - 10), yg - chF * 0.95 + 4];
-    const neckBase: Pt = [crestX - 120, yg - chF * 0.42];
+    // The head lunges forward and down into the cone; the neck rises from further back in an S.
+    const snoutAt: Pt = [Math.min(crestX + 46, W - 10), yg - chF * 0.95 + 38];
+    const neckBase: Pt = [crestX - 168, yg - chF * 0.38];
     const dr = drawDragon(W, H, snoutAt, neckBase, 1.6, t, st.dragon, st.phase === 'fade', st.phase === 'burn' ? 3 * Math.sin(ph) : 0, seed + 80);
     layers.push(dr.c);
     // Flames wrapping the root of the neck so it rises out of the wave.

@@ -715,7 +715,7 @@ const fireGrow = (i: number) => (sAt: number) => {
   return d > reach ? 0 : height * lerp(1, 0.45, smooth(reach - 0.35, reach, d));
 };
 function wallTurned(kind: WallKind, label: string): WorldSprite {
-  const L = wallLine(kind, 120, 10, { l: 16, t: 10, r: 16, b: 14 });
+  const L = wallLine(kind, 120, 10, { l: 24, t: 10, r: 24, b: 14 });
   const idle = frames(4, (t) => wallFrameTurned(t, () => 1, L));
   const rise = frames(6, (_, i) => wallFrameTurned(i / 6, fireGrow(i), L));
   return vfxSprite(kind, label, L.anchor, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });

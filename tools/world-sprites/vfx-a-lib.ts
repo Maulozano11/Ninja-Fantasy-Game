@@ -576,11 +576,13 @@ export function tubeShade(f: Field, pts: Pt[], r: (u: number) => number, shade: 
 }
 
 /**
- * Dissolves a canvas: pixels whose threshold `key(x, y)` (0..1) is above `vis` vanish, the ones
- * right at the edge turn into bright burning pixels, and the holes get a dark outline. Returns the
- * kept canvas and the edge pixels (for embers).
+ * Dissolves a canvas: pixels whose threshold `key(x, y)` (0..1) is above `vis` vanish; the ones
+ * near the vanishing edge burn in `burn` colours, listed from the edge inward (e.g. red, orange,
+ * yellow: a hot core behind a red rim), `band` key units each. Loose crumbs of `minPiece` px or
+ * less are dropped, and the outer silhouette gets the dark outline back (holes stay burning).
+ * Returns the kept canvas and some edge pixels (for embers).
  */
-export function dissolve(c: Canvas, vis: number, key: (x: number, y: number) => number, burn: Color[], outline: Color): { c: Canvas; edge: Pt[] } {
+export function dissolve(c: Canvas, vis: number, key: (x: number, y: number) => number, burn: Color[], outline: Color, band = 0.022, minPiece = 6): { c: Canvas; edge: Pt[] } {
   const out = new Canvas(c.w, c.h);
   const edge: Pt[] = [];
   if (vis <= 0) return { c: out, edge };
@@ -590,13 +592,37 @@ export function dissolve(c: Canvas, vis: number, key: (x: number, y: number) => 
       if (!p[3]) continue;
       const k = key(x, y);
       if (k > vis) continue;
-      if (vis < 1 && k > vis - 0.06) {
-        out.set(x, y, k > vis - 0.03 ? burn[1] : burn[0]);
-        if ((x * 7 + y * 13) % 11 === 0) edge.push([x, y]);
+      const i = Math.floor((vis - k) / band);
+      if (vis < 1 && i < burn.length) {
+        out.set(x, y, burn[i]);
+        if (i === 0 && (x * 7 + y * 13) % 11 === 0) edge.push([x, y]);
       } else out.set(x, y, p);
     }
-  // Only the outer silhouette gets the dark line back; holes stay burning, not black-rimmed.
   if (vis < 1) {
+    // Crumbs: tiny pieces left floating read as specks, not as the dragon burning.
+    const seen = new Uint8Array(c.w * c.h);
+    for (let y0 = 0; y0 < c.h; y0++)
+      for (let x0 = 0; x0 < c.w; x0++) {
+        if (seen[y0 * c.w + x0] || !out.alpha(x0, y0)) continue;
+        const piece: number[] = [], todo = [y0 * c.w + x0];
+        seen[y0 * c.w + x0] = 1;
+        while (todo.length) {
+          const i = todo.pop()!;
+          piece.push(i);
+          const px = i % c.w, py = (i / c.w) | 0;
+          for (let oy = -1; oy <= 1; oy++)
+            for (let ox = -1; ox <= 1; ox++) {
+              const nx = px + ox, ny = py + oy;
+              if (nx < 0 || ny < 0 || nx >= c.w || ny >= c.h) continue;
+              const j = ny * c.w + nx;
+              if (seen[j] || !out.alpha(nx, ny)) continue;
+              seen[j] = 1;
+              todo.push(j);
+            }
+        }
+        if (piece.length <= minPiece) for (const i of piece) out.set(i % c.w, (i / c.w) | 0, [0, 0, 0, 0]);
+      }
+    // Only the outer silhouette gets the dark line back; holes stay burning, not black-rimmed.
     const ol: number[] = [];
     for (let y = 0; y < c.h; y++)
       for (let x = 0; x < c.w; x++) {

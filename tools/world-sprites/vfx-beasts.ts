@@ -981,8 +981,8 @@ function fused(prims: Prim[], k = 3, relief = 1.7): Prim {
 }
 
 function raiju(): WorldSprite {
-  const W = 280, H = 190, cx = 140, cy = 95;
-  const Z = 1.5; // the pose table is in body units; the beast is drawn 1.5x
+  const W = 300, H = 200, cx = 150, cy = 100;
+  const Z = 1.6; // the pose table is in body units; the beast is drawn 1.6x
   const frames: Canvas[] = [];
   POUNCE.forEach((g, fi) => {
     const t = fi / POUNCE.length;
@@ -1087,8 +1087,8 @@ function raiju(): WorldSprite {
       const a = HZ(-5, 1), b = B(g.span + 1, -3);
       return [lerp(a[0], b[0], u), lerp(a[1], b[1], u)];
     };
-    f.part_(tufts([0, 0.22, 0.44, 0.66, 0.88, 1.05].map((u, j): Tuft => [neckTop(u), -148 - u * 26, 11 - u * 2.5 + (j % 2) * 1.5, 2.6])), tuft(41, 1, 0.04), soft);
-    f.part_(tufts([0.1, 0.35, 0.6, 0.85].map((u, j): Tuft => [neckSide(u), -170 + u * 8, 10 - u * 2 + (j % 2), 2.6])), tuft(43, 0, 0.02), soft);
+    f.part_(tufts([0, 0.14, 0.28, 0.42, 0.56, 0.7, 0.84, 1].map((u, j): Tuft => [neckTop(u), -146 - u * 28, 10 - u * 2.5 + (j % 2) * 1.8, 2])), tuft(41, 1, 0.04), soft);
+    f.part_(tufts([0.05, 0.25, 0.45, 0.65, 0.85].map((u, j): Tuft => [neckSide(u), -168 + u * 8, 9 - u * 2 + (j % 2) * 1.5, 2])), tuft(43, 0, 0.02), soft);
     f.part_(tufts([[B(g.span + 7, 1), 150, 8.5, 2.4], [B(g.span + 6, 5), 138, 8, 2.3], [B(g.span + 4, 9), 126, 6.5, 2]]), tuft(45, 0, -0.02), soft);
     // --- head: a wolf in profile, ears up, snarling ---------------------------------------------
     f.part_([fused([lens(HZ(0.5, -4.5), HZ(-1.5, -15), 2.8 * HS, { peak: 0.3, tip: 1.5, bend: -0.8 })])], fur(47, 2), style);
@@ -1161,6 +1161,11 @@ function raiju(): WorldSprite {
       const p = B(vx + (rnd(seed, 1) - 0.5) * 3, vy + (rnd(seed, 2) - 0.5) * 3);
       walk(p, g.pitch + (rnd(seed, 3) - 0.5) * 1.2 + (rnd(seed, 4) < 0.5 ? 0 : Math.PI), 5 + Math.floor(rnd(seed, 5) * 2), seed, 0);
     });
+    // And down the near upper legs, from the shoulder and the hip.
+    for (const [k, [a, b]] of ([[B(g.span + 3, 5), fN.E], [B(-g.span - 1, 4), hN.E]] as [P2, P2][]).entries()) {
+      const seed = 2300 + fi * 41 + k * 7;
+      walk([lerp(a[0], b[0], 0.2), lerp(a[1], b[1], 0.2)], Math.atan2(b[1] - a[1], b[0] - a[0]), 2, seed, 1);
+    }
     const coreSet = new Set(core.filter(([x, y]) => onCoat(x, y)).map(([x, y]) => y * W + x));
     for (const key of coreSet) {
       const x = key % W, y = Math.floor(key / W);

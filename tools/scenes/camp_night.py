@@ -360,7 +360,14 @@ def paint_forest_mid():
     for y, x, k in clumps:
         o = L.new_obj(True)
         rx = 22 + rnd(84, k) * 22
-        clump(L, x, y, rx, rx * 0.6, MID_LEAF, 900 + k, o, leaf_len=(3.0, 5.0), leaf_w=(1.8, 2.6), base=0.0, gain=0.74, droop=0.7)
+        ld = unit([MOON[0] - x, (MOON[1] - y) - 80, 160])
+
+        def light(nx, ny, nz, px, py, ld=ld):
+            # Mostly in shadow; the edges turned to the moon catch it.
+            l = max(0.0, nx * ld[0] + ny * ld[1] + nz * ld[2] * 0.5)
+            return 0.12 + 0.88 * l ** 1.5
+        clump(L, x, y, rx, rx * 0.6, MID_LEAF, 900 + k, o, leaf_len=(3.0, 5.0), leaf_w=(1.8, 2.6), base=0.0, gain=0.72, droop=0.7, light=light,
+              fill_val=0.04)
     # Underbrush along the far edge of the clearing.
     for k in range(34):
         x = -10 + k * 30 + (rnd(85, k) - 0.5) * 18

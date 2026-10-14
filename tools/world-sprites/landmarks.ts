@@ -1076,11 +1076,9 @@ function stoneLantern(): WorldSprite {
       if (arc < 0.7) f.step[i] = Math.min(6, f.step[i] + (p[0] < 2 ? 2 : 1));
       else if (arc < 1.6 && a < seg / 2) f.step[i] = Math.max(1, f.step[i] - 1);
     }
-    // An inscription down the pillar's front, above and below the band.
-    const [px, py] = f.proj([0, 30.5, -4.9]).map(Math.round);
-    carve(f, px - 1, py, ['###', '.#.', '###', '#.#', '...', '.#.', '###', '#.#'], [id(parts.pillar)]);
-    const [qx, qy] = f.proj([0, 18, -5.2]).map(Math.round);
-    carve(f, qx - 1, qy, ['#.#', '###', '.#.', '##.'], [id(parts.pillar)]);
+    // An inscription carved in one column down the pillar's front, between the band and the collar.
+    const [px, py] = f.proj([0, 31.2, -4.9]).map(Math.round);
+    carve(f, px - 1, py, ['.#.', '###', '.#.', '.##', '...', '##.', '.#.', '###'], [id(parts.pillar)]);
     // --- growth and weather
     paintMoss(f, { meshes: [id(parts.roof)], amount: 0.42, seed: 301, cell: 7, drip: 3, bumps: true, tufts: 0.22 });
     paintMoss(f, { meshes: [id(parts.chudai), id(parts.base2)], amount: 0.3, seed: 302, cell: 6, drip: 2, tufts: 0.15 });
@@ -1205,7 +1203,7 @@ function rockMesh(o: { cx: number; cd: number; rx: number; rd: number; h: number
   return loft(rings, { capEnd: apex });
 }
 
-const stoneOpts = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.035, texCell: 10, contrast: 1.2, facetVar: 0.07, ao: 3, form: 0.35, steps: [1, 2, 3, 4, 5], bias: -0.06, ...extra });
+const stoneOpts = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.035, texCell: 10, contrast: 1.2, facetVar: 0.07, ao: 3, form: 0.35, steps: [1, 2, 3, 4, 5], bias: -0.16, ...extra });
 
 function boulder(): WorldSprite {
   const W = 130, H = 110, ox = 62, oy = 90;
@@ -1927,6 +1925,20 @@ function endGrain(f: Frame, mesh: number, top: V3): void {
   }
 }
 
+/**
+ * Grain along a round rail: lines of constant normal height run the length of the rail (they
+ * wander a little and break up), and the top that hands rub and rain wear is a step paler.
+ */
+function railGrain(seed: number) {
+  return (px: PixelInfo, s: number): number => {
+    const v = px.n[1] * 3.2 + (noise(px.p[0] / 9, seed, 1, 174) - 0.5) * 0.9;
+    const fr = v - Math.floor(v);
+    if (fr < 0.2 && noise(px.p[0] / 3.5, v * 2, 1, seed + 5) > 0.3) return Math.max(1, s - 1);
+    if (px.n[1] > 0.78 && px.light > 0.5) return Math.min(5, s + 1);
+    return s;
+  };
+}
+
 const FENCE_SPAN = m(1); // posts every meter; the segment is 2 m, end posts sit on the tile seam
 const RAIL_H = [19, 40];
 
@@ -1953,7 +1965,7 @@ function fencePost(lean = 0, broken = false): { c: Canvas; ox: number; oy: numbe
   const post = sc.add(lean ? rotZ(postT, lean, 0, 0) : postT, { pal: BARK, seed: 151, contrast: 1.1, shade: barkShade(0, 0, 152), ao: 4, steps: [1, 2, 3, 4, 5] });
   const f = render(sc, W, H, ox, oy);
   endGrain(f, post.id, lean ? [Math.sin(lean) * 53, 53, 0] : [0.2, 53, 0]);
-  paintLichen(f, { meshes: [post.id], seed: 153, density: 0.25, minLight: 0.45, orange: 0.3 });
+  paintLichen(f, { meshes: [post.id], seed: 153, density: 0.25, minLight: 0.45, orange: 0 });
   const c = f.compose();
   const tilt = (p: V3): V3 => (lean ? [p[0] * Math.cos(lean) + p[1] * Math.sin(lean), -p[0] * Math.sin(lean) + p[1] * Math.cos(lean), p[2]] : p);
   const lash = new Canvas(W, H);
@@ -1976,7 +1988,7 @@ function fence(): WorldSprite {
     const railD = 4.6;
     const rails: Mesh[] = [];
     const rail = (a: V3, b: V3, r0: number, seed: number, sag = 1.2, capped = true) =>
-      rails.push(sc.add(tube(span(a, b, sag, 6, seed), r0, 8, { seed, wob: 0.15, caps: capped }), { pal: WOOD_OLD, seed, contrast: 1.1, facetVar: 0.02, steps: [1, 2, 3, 4, 5], shade: (px, s) => (noise(px.p[0] / 5, px.p[1] * 1.5 + px.p[2], 1.2, seed) > 0.72 ? Math.max(1, s - 1) : noise(px.p[0] / 4, px.p[1] * 2, 1.2, seed + 3) < 0.14 && px.light > 0.5 ? Math.min(5, s + 1) : s) }));
+      rails.push(sc.add(tube(span(a, b, sag, 6, seed), r0, 8, { seed, wob: 0.15, caps: capped }), { pal: WOOD_OLD, seed, contrast: 1.1, facetVar: 0.02, steps: [1, 2, 3, 4, 5], shade: railGrain(seed) }));
     const L = -FENCE_SPAN, Rr = FENCE_SPAN;
     const mid = (h: number): V3 => {
       const p = tilt([0, h, 0]);
@@ -2016,7 +2028,7 @@ function fence(): WorldSprite {
       const [kx, ky] = f.proj([x, h + 0.4, railD - 2.2]).map(Math.round);
       knot(f, kx, ky - 1, railIds);
     }
-    paintLichen(f, { meshes: [midPost.id, ...railIds], seed: 168, density: 0.18, minLight: 0.5, orange: 0.35 });
+    paintLichen(f, { meshes: [midPost.id], seed: 168, density: 0.2, minLight: 0.45, orange: 0 });
     autoChips(f, { meshes: railIds, seed: 169, density: 0.04, fresh: WOOD, gap: 12 });
     const c = f.compose();
     if (broken) {
@@ -2145,7 +2157,7 @@ function fenceBamboo(): WorldSprite {
   while (sx <= x1) {
     const wdt = 3 + Math.floor(hash(slat, 1, 193) * 2.6);
     const r = hash(slat, 2, 193);
-    const P = r < 0.18 ? BAMBOO_G : r > 0.8 ? BAMBOO_GREY : BAMBOO;
+    const P = r < 0.12 ? BAMBOO_G : r > 0.86 ? BAMBOO_GREY : BAMBOO;
     const nodeOff = 4 + Math.floor(hash(slat, 3, 193) * 16);
     const nodeGap = 18 + Math.floor(hash(slat, 4, 193) * 5);
     const stainH = 5 + Math.floor(hash(slat, 9, 193) * 4);

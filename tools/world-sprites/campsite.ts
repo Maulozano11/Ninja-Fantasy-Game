@@ -1394,7 +1394,9 @@ function shide(cv: Canvas, x: number, y: number, seg = 5, n = 4): void {
 
 function torii(): WorldSprite {
   const W = 220, H = 230, ox = 110, oy = 200;
-  const YAW = 0.09;
+  // Frontal (a slight turn tilts the long kasagi on screen); the cylinders and the beams' top faces
+  // still give it depth.
+  const YAW = 0;
   GROUP = 1;
   const sc = new Scene();
   const Y = (tris: Tri[]) => rotY(tris, YAW);
@@ -1447,7 +1449,7 @@ function torii(): WorldSprite {
     f.each(pl.m.id, (i, x, y) => {
       const p = rotYp(f.world(i), -YAW);
       if (p[1] < 34 && noise(x, y * 0.5, 1.6, 3320) > 0.62 - (34 - p[1]) * 0.006) f.step[i] = Math.max(1, f.step[i] - 1);
-      if (noise(x * 1.3, y * 0.4, 1.2, 3321) > 0.92) f.pal[i] = WOOD_DK;
+      if (p[1] < 40 && noise(x * 1.3, y * 0.4, 1.2, 3321) > 0.9) f.pal[i] = WOOD_DK;
       // Vertical grain under the lacquer, faint.
       if (f.step[i] === 3 && noise(x * 2, y * 0.15, 1, 3322) > 0.82) f.step[i] = 2;
     });
@@ -1510,13 +1512,11 @@ function torii(): WorldSprite {
         }
     // Straw tassels (three short tufts) and four shide.
     const at = (t: number): [number, number] => [Math.round(pa[0] + (pb[0] - pa[0]) * t), Math.round(pa[1] + (pb[1] - pa[1]) * t + sag * 4 * t * (1 - t) + 2.6 + 1.4 * Math.sin(Math.PI * t))];
-    for (const t of [0.3, 0.5, 0.7]) {
+    for (const t of [0.29, 0.5, 0.71]) {
       const [x, y] = at(t);
-      for (let k = 0; k < 6; k++) {
-        cv.set(x - 1, y + k, C(STRAW, k < 2 ? 3 : 2));
-        cv.set(x, y + k + (k > 3 ? 1 : 0), C(STRAW, k < 3 ? 4 : 3));
-        cv.set(x + 1, y + k, C(STRAW, 2));
-      }
+      // A thin fringe of straw ends: three strands of uneven length.
+      for (const [dx, n0] of [[-1, 4], [0, 6], [1, 3]] as [number, number][])
+        for (let k = 0; k < n0; k++) cv.set(x + dx, y + k, C(STRAW, k === 0 ? 2 : dx < 0 ? 4 : 3));
     }
     for (const t of [0.16, 0.4, 0.6, 0.84]) {
       const [x, y] = at(t);
@@ -2151,9 +2151,9 @@ function cookingTripod(): WorldSprite {
 // ================================================================================================
 
 function fernClump(): WorldSprite {
-  const W = 80, H = 50, ox = 40, oy = 42;
+  const W = 96, H = 56, ox = 48, oy = 48;
   const frames: Canvas[] = [];
-  const NF = 7;
+  const NF = 6;
   for (let t = 0; t < 4; t++) {
     const sway = [0, 1, 0, -1][t];
     const cv = new Canvas(W, H);
@@ -2162,9 +2162,9 @@ function fernClump(): WorldSprite {
     const order = Array.from({ length: NF }, (_, j) => j).sort((a, b) => Math.abs(a - (NF - 1) / 2) - Math.abs(b - (NF - 1) / 2));
     for (const j of order) {
       const side = (j - (NF - 1) / 2) / ((NF - 1) / 2);
-      const ang = -Math.PI / 2 + side * 1.2 + (rnd(3600, j) - 0.5) * 0.16;
-      const Lf = 25 + rnd(3600, j, 2) * 7 - Math.abs(side) * 3;
-      const curl = 0.42 + Math.abs(side) * 0.4;
+      const ang = -Math.PI / 2 + side * 1.32 + (rnd(3600, j) - 0.5) * 0.14;
+      const Lf = 30 + rnd(3600, j, 2) * 8 - Math.abs(side) * 2;
+      const curl = 0.36 + Math.abs(side) * 0.42;
       const back = Math.abs(side) < 0.4;
       const P = back ? LEAF_D : LEAF;
       const dx = Math.cos(ang), dy = Math.sin(ang);
@@ -2182,7 +2182,7 @@ function fernClump(): WorldSprite {
           const [ax, ay] = pts[i];
           const tx = pts[i + 1][0] - pts[i - 1][0], ty = pts[i + 1][1] - pts[i - 1][1];
           const tl = Math.hypot(tx, ty) || 1;
-          const ll = 1.4 + 4.2 * Math.sin(Math.PI * Math.min(1, u * 1.05 + 0.08)) ** 0.75 * (1 - 0.4 * u);
+          const ll = 1.2 + 3.8 * Math.sin(Math.PI * Math.min(1, u * 1.05 + 0.08)) ** 0.75 * (1 - 0.4 * u);
           for (const sgn of [-1, 1]) {
             const lx = (-ty / tl) * sgn + (tx / tl) * 0.55, ly = (tx / tl) * sgn + (ty / tl) * 0.55;
             const ln = Math.hypot(lx, ly);
@@ -2268,10 +2268,12 @@ function campfireLarge(): WorldSprite {
       { a: [-27 * k, 3.5, 12 * k], b: [26 * k, 4, -11 * k], r: 4.4, seed: 3720 },
       { a: [-24 * k, 4, -13 * k], b: [26 * k, state === 'out' ? 7 : 12, 13 * k], r: 4.2, seed: 3721 },
       { a: [-15 * k, 3, 20 * k], b: [14 * k, 5, 21 * k], r: 3.4, seed: 3722 },
-      ...(state === 'out' ? [] : [
-        { a: [-16, 4, -6], b: [-2, 20 * k, 1], r: 3, seed: 3723 },
-        { a: [15, 4, -7], b: [2, 19 * k, 2], r: 2.9, seed: 3724 },
-      ]),
+      ...(state === 'out'
+        ? []
+        : [
+            { a: [-16, 4, -6] as V3, b: [-2, 20 * k, 1] as V3, r: 3, seed: 3723 },
+            { a: [15, 4, -7] as V3, b: [2, 19 * k, 2] as V3, r: 2.9, seed: 3724 },
+          ]),
     ];
     const logs = specs.map((L) => {
       const path: V3[] = [L.a, add(lerp3(L.a, L.b, 0.33), [0, 0.4, 0]), add(lerp3(L.a, L.b, 0.66), [0, 0.3, 0]), L.b];

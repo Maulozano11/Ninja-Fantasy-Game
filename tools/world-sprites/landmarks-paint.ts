@@ -70,9 +70,9 @@ export const INK_R = rampOf(['#0c0a0e', '#16131a', '#221d25', '#2f2a2c', '#4a444
 // --- bamboo ---------------------------------------------------------------------------------
 
 /** Dried bamboo (straw yellow with a little green). */
-export const BAMBOO_R = rampOf(['#23200f', '#4b4626', '#6d6736', '#908749', '#b0a65d', '#cbc27a', '#e2dba2']);
+export const BAMBOO_R = rampOf(['#251f10', '#4f4526', '#73683a', '#998b4d', '#b9a962', '#d3c47f', '#e8dda6']);
 /** Fresher, greener slats. */
-export const BAMBOO_G_R = rampOf(['#18210f', '#334424', '#4e6337', '#6c8049', '#8b9d5c', '#adbd7a', '#d0dba4']);
+export const BAMBOO_G_R = rampOf(['#1c2210', '#3a4626', '#566338', '#76824b', '#959f5e', '#b6bd7c', '#d6dba6']);
 /** Weathered grey slats. */
 export const BAMBOO_GREY_R = rampOf(['#1e1d18', '#403d33', '#5f5b4c', '#7f7a65', '#9d977e', '#bab399', '#d6d0b8']);
 /** Aged posts (brown). */

@@ -1472,7 +1472,7 @@ function shell(xs: number[], hOf: (x: number) => number, d0: number, d1: number,
 
 /**
  * A small Kasuga-style shrine on a mossy stone plinth, in the torii's colours: vermilion posts
- * and beams, black lacquered bargeboards, ridge and chigi (gilt tips), a white gable,
+ * and beams, black lacquered bargeboards and chigi, a white gable with a gilt boss,
  * a dark hinoki-bark roof that sags into a curve and flicks up at the eaves, black doors with gilt
  * studs, a shimenawa with zigzag shide across the front, and an offering of kagami mochi between
  * two sakaki vases.
@@ -1515,9 +1515,9 @@ function hokora(): WorldSprite {
   const roof = sc.add(shell(xs, hOf, d0, d1, 2), { pal: HIWADA, seed: 94, contrast: 1.25, facetVar: 0.02, steps: [1, 2, 3, 4, 5] });
   const xsB = [-18.4, ...xs.slice(1, -1), 18.4];
   const barge = sc.add(shell(xsB, (x) => hOf(x) + 0.6, d0 - 0.8, d0 + 0.8, 2.5), lac(BLACK, 95));
-  sc.add(box(-0.9, 0.9, APEX - 0.7, APEX + 0.9, d0 + 0.8, d1 - 0.5), lac(BLACK, 96));
+  sc.add(box(-1.1, 1.1, APEX - 0.7, APEX + 0.9, d0 + 0.8, d1 - 0.5), { pal: HIWADA, seed: 96, contrast: 1.2, facetVar: 0.02, steps: [1, 2, 3, 4, 5] });
   // Chigi: the bargeboards cross at the apex and run on past it as a V.
-  const chigi = [0.66, -0.66].map((a, k) => sc.add(rotZ(box(-0.8, 0.8, APEX - 1, APEX + 6.2, d0 - 0.6, d0 + 0.6), a, 0, APEX), lac(BLACK, 97 + k)));
+  const chigi = [0.7, -0.7].map((a, k) => sc.add(rotZ(box(-0.6, 0.6, APEX - 1, APEX + 7.4, d0 - 0.6, d0 + 0.6), a, 0, APEX + 0.4), lac(BLACK, 97 + k)));
   const f = render(sc, W, H, ox, oy);
   const stone = [foot.id, ped.id, top.id];
   // Bark courses on the roof: a dark seam every 2.2 px of rise with a lit edge above it.
@@ -1528,16 +1528,13 @@ function hokora(): WorldSprite {
     if (r < 0.65) f.step[i] = Math.max(1, f.step[i] - 1);
     else if (r > 1.7 && f.lightv[i] > 0.5) f.step[i] = Math.min(6, f.step[i] + 1);
   }
-  // A lit edge along the top of the left bargeboard and gilt caps on the chigi tips.
+  // A lit edge along the top of the left bargeboard; the chigi catch the light at their tips.
   for (let i = 0; i < W * H; i++) {
     const mi = f.mesh[i];
     if (mi < 0) continue;
     const p = f.world(i);
     if (mi === barge.id && f.normal(i)[1] > 0.3 && p[0] < 0) f.step[i] = Math.min(6, f.step[i] + 1);
-    if (chigi.some((k) => k.id === mi) && p[1] > APEX + 3.4) {
-      f.pal[i] = GOLD;
-      f.step[i] = clamp(f.step[i] + 1, 2, 5);
-    }
+    if (chigi.some((k) => k.id === mi) && p[1] > APEX + 5) f.step[i] = Math.min(6, f.step[i] + 1);
   }
   paintMoss(f, { meshes: [roof.id], amount: 0.26, seed: 811, cell: 6, drip: 1, minUp: 0.3, bumps: true, tufts: 0.18 });
   paintMoss(f, { meshes: [foot.id], amount: 0.4, seed: 812, cell: 6, drip: 2, tufts: 0.18 });

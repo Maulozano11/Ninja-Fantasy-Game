@@ -266,9 +266,30 @@ function key(name: string, pad: { l: number; t: number; r: number; b: number } =
 const none = (k: Key): Ix => blank(k.w, k.h);
 const piece = (k: Key, n: string): Ix => k.p[n] ?? none(k);
 
-/** Sparks twinkle: in some frames some of them are out or dimmer. */
+/** Sparks twinkle: in frames after the first, a share of them (whole sparks) are out. */
 function twinkle(sp: Ix, frame: number, share: number, seed: number): Ix {
-  return keep(sp, (x, y) => hash(Math.floor(x / 5), Math.floor(y / 5), seed + frame * 31) >= share);
+  // Each spark (8-connected) is kept or dropped whole, by a hash of its first pixel.
+  const id = new Int32Array(sp.w * sp.h).fill(-1);
+  const out = blank(sp.w, sp.h);
+  for (let start = 0; start < sp.d.length; start++) {
+    if (!sp.d[start] || id[start] >= 0) continue;
+    const comp: number[] = [start];
+    id[start] = start;
+    for (let q = 0; q < comp.length; q++) {
+      const x = comp[q] % sp.w, y = Math.floor(comp[q] / sp.w);
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const X = x + dx, Y = y + dy, n = Y * sp.w + X;
+          if (X >= 0 && Y >= 0 && X < sp.w && Y < sp.h && sp.d[n] && id[n] < 0) {
+            id[n] = start;
+            comp.push(n);
+          }
+        }
+    }
+    if (hash(start % sp.w, Math.floor(start / sp.w), seed + frame * 31) < share) continue;
+    for (const n of comp) out.d[n] = sp.d[n];
+  }
+  return out;
 }
 
 // --- sprites --------------------------------------------------------------------------------------
@@ -288,9 +309,9 @@ function sprite(k: Key, label: string, anims: Record<string, { frames: Canvas[];
  * A projectile's fly loop: frame 0 is his picture. Frames 1-3 re-route the arcs (no move within
  * `core` px of the anchor, full move beyond core + 10) and flicker the strokes and glow.
  */
-function flyLoop(k: Key, opts: { amp?: number; cell?: number; core?: number; seed: number; still?: (x: number, y: number) => boolean }): Canvas[] {
+function flyLoop(k: Key, opts: { amp?: number; cell?: number; core?: number; seed: number; weight?: (x: number, y: number) => number }): Canvas[] {
   const amp = opts.amp ?? 1.6, cell = opts.cell ?? 9, core = opts.core ?? 6;
-  const weight = (x: number, y: number) => (opts.still?.(x, y) ? 0 : smooth(core, core + 10, Math.hypot(x - k.ax, y - k.ay)));
+  const weight = opts.weight ?? ((x: number, y: number) => smooth(core, core + 10, Math.hypot(x - k.ax, y - k.ay)));
   const glowK = [0, 1, 1, -1], strokeK = [0, 0, 1, -1];
   return [0, 1, 2, 3].map((i) => {
     let m = piece(k, 'main');
@@ -354,7 +375,9 @@ function slash(): WorldSprite {
 
 function multi(): WorldSprite {
   const k = key('multi');
-  return sprite(k, 'Lightning multi (thunder needles)', { fly: { frames: flyLoop(k, { seed: 500, amp: 1.4, core: 3 }), fps: 12, loop: true } });
+  // The three needles' heads hold their shape; their crackling trails behind them re-route.
+  const trails = (x: number) => smooth(k.ax + 12, k.ax - 2, x);
+  return sprite(k, 'Lightning multi (thunder needles)', { fly: { frames: flyLoop(k, { seed: 500, amp: 1.4, core: 0, weight: trails }), fps: 12, loop: true } });
 }
 
 // --- the stream: his 64 px tile, scrolled along the beam, and its head --------------------------------

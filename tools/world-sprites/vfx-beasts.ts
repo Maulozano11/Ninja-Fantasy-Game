@@ -790,7 +790,7 @@ const GALLOP: Gait[] = [
  * A jagged lightning line from a to b (midpoint displacement, bulging by `bulge` px to one side):
  * a white 1 px core with a cyan glow beside it.
  */
-function lightningLine(c: Canvas, a: P2, b: P2, bulge: number, rough: number, seed: number, core: Color, glow: Color, skip?: (x: number, y: number) => boolean): void {
+function lightningLine(c: Canvas, a: P2, b: P2, bulge: number, rough: number, seed: number, core: Color, glow: Color, skip?: (x: number, y: number) => boolean, glowA = 120): void {
   let pts: P2[] = [a, b];
   const dx = b[0] - a[0], dy = b[1] - a[1], dl = Math.hypot(dx, dy) || 1;
   const nx = -dy / dl, ny = dx / dl;
@@ -812,7 +812,7 @@ function lightningLine(c: Canvas, a: P2, b: P2, bulge: number, rough: number, se
     const n = Math.max(1, Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))));
     for (let q = 0; q <= n; q++) cells.push([Math.round(x0 + ((x1 - x0) * q) / n), Math.round(y0 + ((y1 - y0) * q) / n)]);
   }
-  for (const [x, y] of cells) for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!(skip && skip(x + ox, y + oy)) && c.alpha(x + ox, y + oy) < 120) c.plot(x + ox, y + oy, wa(glow, 120));
+  for (const [x, y] of cells) for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!(skip && skip(x + ox, y + oy)) && c.alpha(x + ox, y + oy) < glowA) c.plot(x + ox, y + oy, wa(glow, glowA));
   for (const [x, y] of cells) if (!(skip && skip(x, y))) c.set(x, y, core);
 }
 
@@ -837,9 +837,9 @@ interface Pounce {
 const POUNCE: Pounce[] = [
   { pitch: 0.12, span: 9, arch: -8, head: [18, -9], ha: 0.3, jaw: 0.35, fN: [15, 21], fF: [11, 21], hN: [0, 21], hF: [-4, 21], reach: 0 },
   { pitch: -0.2, span: 12, arch: -3, head: [19, -12], ha: -0.05, jaw: 0.55, fN: [31, 9], fF: [27, 12], hN: [-30, 19], hF: [-26, 21], reach: 0.3 },
-  { pitch: -0.1, span: 15, arch: 0, head: [20, -11], ha: 0, jaw: 0.8, fN: [40, 8], fF: [36, 11], hN: [-44, 11], hF: [-40, 14], reach: 0.75 },
-  { pitch: -0.02, span: 16, arch: 2, head: [21, -10], ha: 0.06, jaw: 1, fN: [42, 13], fF: [38, 15], hN: [-48, 5], hF: [-44, 8], reach: 1 },
-  { pitch: 0.1, span: 15, arch: 1, head: [21, -8], ha: 0.18, jaw: 0.9, fN: [39, 19], fF: [35, 20], hN: [-46, -1], hF: [-42, 2], reach: 0.9 },
+  { pitch: -0.1, span: 15, arch: 0, head: [20, -11], ha: 0, jaw: 0.8, fN: [40, 7], fF: [35, 14], hN: [-44, 10], hF: [-38, 17], reach: 0.75 },
+  { pitch: -0.02, span: 16, arch: 2, head: [21, -10], ha: 0.06, jaw: 1, fN: [42, 12], fF: [36, 19], hN: [-48, 5], hF: [-43, 13], reach: 1 },
+  { pitch: 0.1, span: 15, arch: 1, head: [21, -8], ha: 0.18, jaw: 0.9, fN: [40, 16], fF: [34, 22], hN: [-46, -1], hF: [-42, 7], reach: 0.9 },
   { pitch: 0.1, span: 12, arch: -4, head: [19, -9], ha: 0.24, jaw: 0.6, fN: [27, 20], fF: [23, 21], hN: [-24, 11], hF: [-28, 9], reach: 0.4 },
   { pitch: 0.06, span: 10, arch: -8, head: [18, -10], ha: 0.28, jaw: 0.4, fN: [16, 19], fF: [12, 20], hN: [-6, 17], hF: [-10, 16], reach: 0.1 },
   { pitch: 0.1, span: 9, arch: -9, head: [18, -9], ha: 0.3, jaw: 0.35, fN: [14, 21], fF: [10, 21], hN: [-2, 20], hF: [-6, 20], reach: 0 },
@@ -864,8 +864,67 @@ function knee(a: P2, b: P2, l1: number, l2: number, cw: boolean): P2 {
   return [a[0] + ux * along + px * h, a[1] + uy * along + py * h];
 }
 
-/** A zigzag bolt from `root` along `ang` (degrees): a tapering tube whose spine kinks left and right. */
-function bolt(root: P2, ang: number, len: number, w: number, amp: number, kinks: number, seed: number, tipW = 0.35): Prim {
+/**
+ * A sharp-cornered band along a polyline (a lightning bolt): its edges are the spine offset by the
+ * half-width with mitred corners, so every kink stays a crisp point. Surface coordinates come from
+ * the nearest spine segment, so it shades like a blade with a bright ridge down the middle.
+ */
+function zig(spine: P2[], hw: (u: number) => number): Prim {
+  const n = spine.length;
+  const cum: number[] = [0];
+  for (let i = 1; i < n; i++) cum.push(cum[i - 1] + Math.hypot(spine[i][0] - spine[i - 1][0], spine[i][1] - spine[i - 1][1]));
+  const total = cum[n - 1] || 1;
+  const segN = (i: number): P2 => {
+    const [ax, ay] = spine[i], [bx, by] = spine[i + 1];
+    const l = Math.hypot(bx - ax, by - ay) || 1;
+    return [-(by - ay) / l, (bx - ax) / l];
+  };
+  const left: P2[] = [], right: P2[] = [];
+  for (let i = 0; i < n; i++) {
+    const w = hw(cum[i] / total);
+    let mx: number, my: number, k = 1;
+    if (i === 0) [mx, my] = segN(0);
+    else if (i === n - 1) [mx, my] = segN(n - 2);
+    else {
+      const a = segN(i - 1), b = segN(i);
+      const sx = a[0] + b[0], sy = a[1] + b[1], sl = Math.hypot(sx, sy) || 1;
+      mx = sx / sl;
+      my = sy / sl;
+      k = Math.min(2.4, 1 / Math.max(0.2, mx * a[0] + my * a[1]));
+    }
+    left.push([spine[i][0] + mx * w * k, spine[i][1] + my * w * k]);
+    right.push([spine[i][0] - mx * w * k, spine[i][1] - my * w * k]);
+  }
+  const shape = poly([...left, ...right.reverse()]);
+  return {
+    box: shape.box,
+    at(px, py) {
+      if (!shape.at(px, py)) return null;
+      let best = Infinity, bu = 0, bs = 0, bnx = 0, bny = 0;
+      for (let i = 0; i + 1 < n; i++) {
+        const [ax, ay] = spine[i], [bx, by] = spine[i + 1];
+        const ex = bx - ax, ey = by - ay, l2 = ex * ex + ey * ey || 1e-9;
+        const t = clamp(((px - ax) * ex + (py - ay) * ey) / l2, 0, 1);
+        const qx = ax + ex * t, qy = ay + ey * t, d = Math.hypot(px - qx, py - qy);
+        if (d < best) {
+          best = d;
+          bu = (cum[i] + Math.sqrt(l2) * t) / total;
+          const [nx, ny] = segN(i);
+          bs = (px - qx) * nx + (py - qy) * ny;
+          bnx = nx;
+          bny = ny;
+        }
+      }
+      const v = clamp(bs / Math.max(0.5, hw(bu)), -1, 1);
+      const tx = bnx * v * 0.7, ty = bny * v * 0.7, nz = Math.sqrt(Math.max(0.05, 1 - (v * 0.7) ** 2));
+      const l = Math.hypot(tx, ty, nz);
+      return { x: px, y: py, nx: tx / l, ny: ty / l, nz: nz / l, z: hw(bu) * nz, u: bu, v, len: total, k: 0 };
+    },
+  };
+}
+
+/** A zigzag bolt from `root` along `ang` (degrees): a sharp band whose spine kinks left and right. */
+function bolt(root: P2, ang: number, len: number, w: number, amp: number, kinks: number, seed: number, tipW = 0.3): Prim {
   const d = dirOf(ang), n: P2 = [-d[1], d[0]];
   const pts: P2[] = [root];
   for (let k = 1; k <= kinks; k++) {
@@ -874,7 +933,7 @@ function bolt(root: P2, ang: number, len: number, w: number, amp: number, kinks:
     pts.push([root[0] + d[0] * len * u + n[0] * off, root[1] + d[1] * len * u + n[1] * off]);
   }
   pts.push([root[0] + d[0] * len, root[1] + d[1] * len]);
-  return tube(pts, (u) => tipW + (w - tipW) * Math.pow(1 - u, 0.7));
+  return zig(pts, (u) => tipW + (w - tipW) * Math.pow(1 - u, 0.8));
 }
 
 function raiju(): WorldSprite {
@@ -894,7 +953,7 @@ function raiju(): WorldSprite {
     const comb = (x: number, y: number, seed: number): number => fract((x + y * 0.5) / 4 + noise(x, y, 6, seed) * 1.2) - 0.5;
     /** Lit electric flesh: light planes on top, amber shadow underneath, a white-hot core, fur clumps. */
     const flesh = (seed: number, dk = 0, bias = 0) => (h: Hit): Color => {
-      const v = 0.86 * lit(h, 0.3) + 0.16 * Math.pow(h.nz, 1.5) - 0.04 + bias + comb(h.x, h.y, seed) * 0.08;
+      const v = 0.88 * lit(h, 0.3) + 0.14 * Math.pow(h.nz, 1.5) - 0.07 + bias + comb(h.x, h.y, seed) * 0.08;
       return RAI.ramp[clamp(stepOf(v, h.x, h.y, [0.3, 0.46, 0.63, 0.82], 0.035, seed, 2.4) - dk, 0, 5)];
     };
     /** Fur tufts: darker at the root (under the tuft above), lit toward the tip. */
@@ -947,7 +1006,7 @@ function raiju(): WorldSprite {
     const TL = (a: number, c: number): P2 => [tRoot[0] + (td[0] * a + tn[0] * c) * Z, tRoot[1] + (td[1] * a + tn[1] * c) * Z];
     const tPts = [TL(0, 0), TL(10, -3.5), TL(8.5, 3), TL(19, 0), TL(17.5, 5), TL(25, 2.5)];
     const tTip = tPts[tPts.length - 1];
-    const tailPrims: Prim[] = [tube(tPts, (u) => lerp(3, 1.7, u) * Z)];
+    const tailPrims: Prim[] = [zig(tPts, (u) => lerp(3, 1.6, u) * Z)];
     for (const [da, len] of [[-30, 9], [26, 7]] as P2[]) tailPrims.push(bolt(tTip, tAng + da, len * Z, 1.5 * Z, 1.4 * Z, 1, 930 + fi * 3 + da));
     f.part_(tailPrims, boltShade(), style);
     // Far mane (behind the neck), then the far legs: a step darker.
@@ -974,21 +1033,22 @@ function raiju(): WorldSprite {
     ], flesh(23), style);
     // --- layered fur: belly fringe, haunch, shoulder, two rows on the back, chest ruff ---------
     type Tuft = [P2, number, number, number];
+    const furStyle = { outline: RAI.outline, line: RAI.ramp[2], solid: 150 }; // soft lines: fur layers, not plates
     /** The back line in body units (u = 0 at the withers, 1 at the rump), humped by the arch. */
     const backAt = (u: number, dy = 0): P2 => B(lerp(g.span + 2, -g.span - 7, u), lerp(-10.5, -9, u) + g.arch * Math.sin(u * Math.PI) * 0.6 + dy);
-    f.part_(tufts([0.2, 0.4, 0.6, 0.8].map((u, j): Tuft => [B(lerp(g.span + 2, -g.span + 2, u), 8.5 + g.arch * 0.25 * Math.sin(u * Math.PI)), 156 + j * 4, 6.5 + (j % 2), 1.6]), 39), tuft(39, 1), style);
-    f.part_(tufts([[B(-g.span - 8, -4), 184, 7.5, 1.8], [B(-g.span - 9, 1), 174, 8, 1.8], [B(-g.span - 7, 6), 162, 7, 1.7]], 37), tuft(37, 0, -0.04), style);
-    f.part_(tufts([0.3, 0.45, 0.6, 0.75, 0.9, 1.02].map((u, j): Tuft => [backAt(u, 2.5), -176 + j, 7 + (j % 2) * 1.2, 1.5]), 33), tuft(33, 0, -0.1), style);
-    f.part_(tufts([[B(g.span + 1, -2), 160, 7, 1.8], [B(g.span - 1, 3), 152, 7, 1.8], [B(g.span + 2, 7), 140, 6, 1.6]], 35), tuft(35, 0, -0.02), style);
-    f.part_(tufts([0.36, 0.52, 0.68, 0.84, 0.98].map((u, j): Tuft => [backAt(u, 0.5), -170 + j * 1.5, 8.5 - (j % 2) * 1.5, 1.6]), 31), tuft(31, 0, 0.05), style);
-    f.part_(tufts([[B(g.span + 10, 1), 112, 7.5, 1.9], [B(g.span + 8, 5), 122, 7.5, 1.8], [B(g.span + 5, 9), 136, 6, 1.6]], 41), tuft(41, 0, -0.02), style);
+    f.part_(tufts([0.2, 0.4, 0.6, 0.8].map((u, j): Tuft => [B(lerp(g.span + 2, -g.span + 2, u), 8.5 + g.arch * 0.25 * Math.sin(u * Math.PI)), 156 + j * 4, 6.5 + (j % 2), 1.6]), 39), tuft(39, 1), furStyle);
+    f.part_(tufts([[B(-g.span - 8, -4), 184, 7.5, 1.8], [B(-g.span - 9, 1), 174, 8, 1.8], [B(-g.span - 7, 6), 162, 7, 1.7]], 37), tuft(37, 0, -0.04), furStyle);
+    f.part_(tufts([0.3, 0.45, 0.6, 0.75, 0.9, 1.02].map((u, j): Tuft => [backAt(u, 2.5), -176 + j, 7 + (j % 2) * 1.2, 1.5]), 33), tuft(33, 0, -0.1), furStyle);
+    f.part_(tufts([[B(g.span + 1, -2), 160, 7, 1.8], [B(g.span - 1, 3), 152, 7, 1.8], [B(g.span + 2, 7), 140, 6, 1.6]], 35), tuft(35, 0, -0.02), furStyle);
+    f.part_(tufts([0.36, 0.52, 0.68, 0.84, 0.98].map((u, j): Tuft => [backAt(u, 0.5), -170 + j * 1.5, 8.5 - (j % 2) * 1.5, 1.6]), 31), tuft(31, 0, 0.05), furStyle);
+    f.part_(tufts([[B(g.span + 10, 1), 112, 7.5, 1.9], [B(g.span + 8, 5), 122, 7.5, 1.8], [B(g.span + 5, 9), 136, 6, 1.6]], 41), tuft(41, 0, -0.02), furStyle);
     // --- mane: zig-zag bolts fanning back off the neck, each its own piece ----------------------
     for (const [j, u] of [1, 0.86, 0.72, 0.58, 0.44, 0.3, 0.15, 0].entries()) {
       const ang = lerp(-124, -148, g.reach) - u * lerp(64, 36, g.reach) + pd + Math.sin(TAU * t + j * 1.3) * 6;
-      f.part_([bolt(maneRoot(u), ang, (18 - u * 5 + rnd(960 + fi, j) * 2.5) * Z, 2.6 * Z, 1.8 * Z, 2, 970 + fi * 7 + j, 0.4)], boltShade(), style);
+      f.part_([bolt(maneRoot(u), ang, (17 - u * 4 + rnd(960 + fi, j) * 2.5) * Z, 3 * Z, 2.3 * Z, 2, 970 + fi * 7 + j)], boltShade(), style);
     }
     // --- head: a wolf's long muzzle, snarling ----------------------------------------------------
-    f.part_([lens(HZ(-1, -5), HZ(-12, -11), 2.6 * HS, { peak: 0.3, tip: 1.4, bend: -1 })], flesh(43, 1), style);
+    f.part_([lens(HZ(0.5, -5), HZ(-7, -14.5), 2.8 * HS, { peak: 0.3, tip: 1.4, bend: -1 })], flesh(43, 1), style);
     const jawEnd = HZ(15, 3.5 + 6.5 * g.jaw);
     f.part_([lens(HZ(0, 3.5), jawEnd, 2.4 * HS, { peak: 0.25, tip: 0.8, base: 1 })], flesh(45, 0, -0.08), style);
     f.part_([poly([HZ(2, 1), HZ(16.5, 1.5), HZ(14.5, 3.4 + 6.5 * g.jaw), HZ(3, 4.5)])], (h) => RAI.mouth[h.v < -0.1 ? 1 : 0], { outline: null, line: null });
@@ -1003,10 +1063,9 @@ function raiju(): WorldSprite {
       return poly([[p[0] - (ca * w) / 2 * HS, p[1] - (sa * w) / 2 * HS], [p[0] + (ca * w) / 2 * HS, p[1] + (sa * w) / 2 * HS], [p[0] - dx * l, p[1] - dy * l]]);
     };
     f.part_([up(13.4, 1.9, 5.2), up(10, 1.3, 2.8), up(7, 1.2, 2.4), dn(12, 1.7, 3.6), dn(8.6, 1.2, 2.2)], (h) => RAI.ramp[h.v < 0 ? 5 : 4], { outline: RAI.outline, line: null });
-    f.part_([blob(Hd[0], Hd[1], 7.2 * HS, 6.4 * HS, hA), lens(HZ(2, -1.5), HZ(17.5, 0.8), 3.8 * HS, { peak: 0.2, tip: 0.6, base: 1 })], flesh(47, 0, 0.02), style);
-    f.part_([blob(...HZ(4.5, -4), 4.6 * HS, 1.9 * HS, hA + 0.3)], flesh(49, 0, 0.06), style);
-    f.part_([lens(HZ(-1.5, -5.5), HZ(-13, -12.5), 2.9 * HS, { peak: 0.3, tip: 1.4, bend: -1.2 })], flesh(51), style);
-    f.part_([lens(HZ(-2.5, -6.2), HZ(-11, -11.4), 1.3 * HS, { peak: 0.35, tip: 1.3, bend: -0.8 })], (h) => RAI.ramp[h.v < 0 ? 2 : 1], { outline: null, line: null });
+    f.part_([blob(Hd[0], Hd[1], 7.6 * HS, 6.8 * HS, hA), lens(HZ(2, -1.8), HZ(17, 0.8), 4 * HS, { peak: 0.2, tip: 0.6, base: 1 }), blob(...HZ(4, -4.2), 4.8 * HS, 2 * HS, hA + 0.3)], flesh(47, 0, 0.02), style);
+    f.part_([lens(HZ(-1.5, -5), HZ(-10.5, -15.5), 3.2 * HS, { peak: 0.3, tip: 1.4, bend: -1.2 })], flesh(51, 0, 0.04), style);
+    f.part_([lens(HZ(-2.6, -6.4), HZ(-9.2, -13.4), 1.5 * HS, { peak: 0.35, tip: 1.3, bend: -0.8 })], (h) => RAI.ramp[h.v < 0 ? 2 : 1], { outline: null, line: null });
     f.part_([lens(HZ(-2, 2.5), HZ(-12, 4.5), 2.3 * HS, { tip: 1.8, peak: 0.25, bend: 0.8 }), lens(HZ(-1, 5), HZ(-10, 10), 2.1 * HS, { tip: 1.8, peak: 0.25, bend: -0.8 }), lens(HZ(1, 6.5), HZ(-5, 12.5), 1.8 * HS, { tip: 1.8, peak: 0.25 })], tuft(53, 0, 0.02), style);
     // --- near legs in front ------------------------------------------------------------------
     const hN = hindLeg(g.hN, false), fN = frontLeg(g.fN, false);
@@ -1017,16 +1076,23 @@ function raiju(): WorldSprite {
     f.part_(claws(fN.P, fN.pa), clawShade, style);
     f.part_(tufts([[fN.E, 168, 5.5, 2]], 57), tuft(57, 0, 0.02), style);
     const fc = f.finish();
-    // Snarl wrinkles on the muzzle, the nose, and a glowing eye under the brow.
-    for (const [x, y] of [[9, -2.4], [10, -2.6], [11.5, -2], [12.5, -2.2], [10.5, -0.8]] as P2[]) {
-      const [X, Y] = HZ(x, y).map(Math.round);
-      if (fc.alpha(X, Y) > 200) fc.set(X, Y, RAI.line);
+    // Snarl wrinkles on the muzzle, the nose, and a glowing eye in a dark socket under the brow.
+    for (const x of [8.5, 10.6, 12.7]) {
+      for (const [ox, oy] of [[0, -2.8], [0.7, -1.9]] as P2[]) {
+        const [X, Y] = HZ(x + ox, oy).map(Math.round);
+        if (fc.alpha(X, Y) > 200) fc.set(X, Y, RAI.line);
+      }
     }
     const [nX, nY] = HZ(17.4, -0.8).map(Math.round);
     for (const [dx, dy] of [[0, 0], [-1, 0], [0, 1], [-1, 1]]) fc.set(nX + dx, nY + dy, RAI.outline);
     fc.set(nX - 1, nY, RAI.line);
-    const [ex, ey] = HZ(5.5, -1.6).map(Math.round);
-    for (const [dx, dy, col] of [[-1, -1, RAI.outline], [0, -1, RAI.outline], [1, -1, RAI.outline], [2, -1, RAI.outline], [3, -1, RAI.line], [-1, 0, RAI.ramp[4]], [0, 0, RAI.arc], [1, 0, RAI.arc], [2, 0, RAI.arc], [3, 0, RAI.ramp[4]], [0, 1, RAI.glow], [1, 1, RAI.glow], [2, 1, RAI.ramp[3]]] as [number, number, Color][]) fc.set(ex + dx, ey + dy, col);
+    const [ex, ey] = HZ(4.4, -1.6).map(Math.round);
+    // Rows from the brow down; the slit slants down toward the nose. 0 skip, 1 rim, 2 glow, 3 pale, 4 white-hot.
+    const EYE = ['011111100', '134442110', '012444310', '001111100'];
+    const eyeCol: Record<string, Color> = { '1': RAI.outline, '2': RAI.glow, '3': RAI.ramp[4], '4': RAI.arc };
+    EYE.forEach((row, dy) => [...row].forEach((ch, dx) => {
+      if (ch !== '0' && fc.alpha(ex - 4 + dx, ey - 2 + dy) > 200) fc.set(ex - 4 + dx, ey - 2 + dy, eyeCol[ch]);
+    }));
     // Speed streaks in the stretch: the back edge of the silhouette smears into fading lines.
     if (g.reach > 0.5) {
       const snap = fc.clone();
@@ -1052,12 +1118,14 @@ function raiju(): WorldSprite {
         if (!solidAt(x, y)) continue;
         if (!solidAt(x + 1, y) || !solidAt(x - 1, y) || !solidAt(x, y + 1) || !solidAt(x, y - 1)) rim.push([x, y]);
       }
+    // (None off the muzzle: a loop hanging from the jaw reads as drool.)
+    const arcRim = rim.filter(([x, y]) => Math.hypot(x - HZ(9, 3)[0], y - HZ(9, 3)[1]) > 11 * HS);
     for (let a = 0; a < 3; a++) {
-      const p0 = rim[Math.floor(rnd(500 + fi, a) * rim.length)];
+      const p0 = arcRim[Math.floor(rnd(500 + fi, a) * arcRim.length)];
       const want = 9 + rnd(600 + fi, a) * 7;
       let p1 = p0;
       for (let q = 0; q < 60; q++) {
-        const c2 = rim[Math.floor(rnd(650 + fi, a, q) * rim.length)];
+        const c2 = arcRim[Math.floor(rnd(650 + fi, a, q) * arcRim.length)];
         if (Math.abs(Math.hypot(c2[0] - p0[0], c2[1] - p0[1]) - want) < 3) {
           p1 = c2;
           break;
@@ -1066,7 +1134,17 @@ function raiju(): WorldSprite {
       if (p1 === p0) continue;
       const mx = (p0[0] + p1[0]) / 2 - cx, my = (p0[1] + p1[1]) / 2 - cy;
       const side = Math.sign(-(p1[1] - p0[1]) * mx + (p1[0] - p0[0]) * my) || 1;
-      lightningLine(fc, p0, p1, side * (3 + rnd(700 + fi, a) * 3), 0.9, 800 + fi * 10 + a, RAI.arc, RAI.glow, solidAt);
+      lightningLine(fc, p0, p1, side * (3 + rnd(700 + fi, a) * 3), 0.9, 800 + fi * 10 + a, RAI.arc, RAI.glow, solidAt, 190);
+    }
+    // Discharges: two bolts leaping off the rim into the air, each ending in a spark.
+    const upper = rim.filter(([x, y]) => y < cy - 6 * Z || x < cx - 34 * Z);
+    for (let a = 0; a < 2 && upper.length; a++) {
+      const p0 = upper[Math.floor(rnd(1700 + fi, a) * upper.length)];
+      const dx = p0[0] - cx, dy = Math.min(-4, p0[1] - cy) * 1.6, dl = Math.hypot(dx, dy) || 1;
+      const len = 8 + rnd(1710 + fi, a) * 6;
+      const p1: P2 = [Math.round(p0[0] + (dx / dl) * len), Math.round(p0[1] + (dy / dl) * len)];
+      lightningLine(fc, p0, p1, (rnd(1720 + fi, a) - 0.5) * 6, 1, 1730 + fi * 10 + a, RAI.arc, RAI.glow, solidAt, 190);
+      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (!fc.alpha(p1[0] + ox, p1[1] + oy)) fc.plot(p1[0] + ox, p1[1] + oy, wa(RAI.ramp[4], 200));
     }
     // Sparks: gold and white, drifting back; a couple of cool ones.
     for (let k = 0; k < 16; k++) {
@@ -1076,6 +1154,15 @@ function raiju(): WorldSprite {
       if (fc.alpha(X, Y)) continue;
       fc.set(X, Y, k % 8 === 3 ? RAI.cool : p < 0.5 ? RAI.arc : RAI.glow);
       if (p < 0.3) fc.plot(X + 1, Y, wa(RAI.glow, 170));
+    }
+    // Crackle: little three-pixel zigzags flickering around the body.
+    for (let k = 0; k < 5; k++) {
+      const ang = rnd(1800 + fi, k) * TAU, rr = 0.7 + rnd(1810 + fi, k) * 0.35;
+      const X = Math.round(cx - 6 + Math.cos(ang) * 50 * rr), Y = Math.round(cy + Math.sin(ang) * 28 * rr);
+      const flip = rnd(1820 + fi, k) < 0.5 ? 1 : -1;
+      const cells: P2[] = [[0, 0], [1, -flip], [2, 0], [3, -flip]];
+      if (cells.some(([ox, oy]) => fc.alpha(X + ox, Y + oy))) continue;
+      cells.forEach(([ox, oy], q) => fc.set(X + ox, Y + oy, q % 2 ? RAI.ramp[4] : RAI.arc));
     }
     frames.push(fc);
   });
@@ -1930,6 +2017,101 @@ function beastsCompare(sprites: WorldSprite[], dir: string, stage: string, k = 3
   saveWhole(out.scaled(k), join(dir, 'beasts-compare.png'));
 }
 
+/** A 3x5 pixel font for sheet labels. */
+const FONT3: Record<string, string> = {
+  A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111',
+  F: '111100110100100', G: '011100101101011', H: '101101111101101', I: '111010010010111', J: '001001001101010',
+  K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '110101101101101', O: '010101101101010',
+  P: '110101110100100', Q: '010101101110011', R: '110101110101101', S: '011100010001110', T: '111010010010010',
+  U: '101101101101111', V: '101101101101010', W: '101101111111101', X: '101101010101101', Y: '101101010010010',
+  Z: '111001010100111', '0': '111101101101111', '1': '010110010010111', '2': '110001010100111', '3': '110001010001110',
+  '4': '101101111001001', '5': '111100110001110', '6': '011100110101010', '7': '111001010010010', '8': '111101111101111',
+  '9': '010101011001110', '-': '000000111000000', '/': '001001010100100', '.': '000000000000010', ':': '000010000010000',
+  ' ': '000000000000000',
+};
+function label(c: Canvas, x: number, y: number, text: string, col = hex('#e8e0c0')): void {
+  [...text.toUpperCase()].forEach((ch, i) => {
+    const g = FONT3[ch] ?? FONT3[' '];
+    for (let k = 0; k < 15; k++) if (g[k] === '1') c.set(x + i * 4 + (k % 3), y + Math.floor(k / 3), col);
+  });
+}
+
+/**
+ * The lightning review sheet: the old thunder hound against the new raiju (frames 0 and 3), the
+ * whole new fly loop with the anchor ticked on every frame, and the raiju at flight height next
+ * to the approved phoenix and the character for scale. Scaled `k`.
+ */
+function lightningSheet(s: WorldSprite, dir: string, stage: string, k = 3): void {
+  const pad = 6, gap = 4, bg = hex('#5d6b57'), sheet = hex('#3a4438'), tick = hex('#9fe0ff');
+  const neu = s.anims.fly.frames;
+  // The old sheet as the owner last saw it.
+  let old: Canvas[] = [];
+  const oldMeta = join(dir, 'beasts-lightning-prev.json');
+  const oldImg = readPng(join(dir, 'beasts-lightning-prev.png'));
+  if (oldImg && existsSync(oldMeta)) {
+    const meta = JSON.parse(readFileSync(oldMeta, 'utf8'));
+    old = [0, 3].map((i) => {
+      const c = new Canvas(meta.frameW, meta.frameH);
+      c.draw(oldImg, -i * meta.frameW, 0);
+      return c;
+    });
+  }
+  const cmp = [...old.map((c, i) => ({ c, t: `old frame ${i ? 3 : 0}` })), { c: neu[0], t: 'new frame 0' }, { c: neu[3], t: 'new frame 3' }];
+  const rowW = (cs: { c: Canvas }[]) => cs.reduce((t, i) => t + i.c.w + gap, -gap);
+  const cmpW = rowW(cmp) + (old.length ? 10 : 0);
+  const cmpH = Math.max(...cmp.map((i) => i.c.h));
+  const cols = 4, loopW = cols * (neu[0].w + gap) - gap, loopRows = Math.ceil(neu.length / cols);
+  const ref = characterRef();
+  const phoenix = stagedBeast(stage, 'vfx_fire', 'beast');
+  const lift = 64, scaleH = CHARACTER_FEET[1] + 10;
+  const scaleW = 128 + gap + (phoenix ? phoenix.frames[0].w + gap * 3 : 0) + neu[3].w;
+  const W = pad * 2 + Math.max(cmpW, loopW, scaleW);
+  let y = pad;
+  const H = pad + 8 + cmpH + 10 + 8 + loopRows * (neu[0].h + gap) + 6 + 8 + scaleH + pad;
+  const out = new Canvas(W, H);
+  out.fillRect(0, 0, W, H, sheet);
+  // 1. old vs new
+  label(out, pad, y, 'Lightning beast - old thunder hound vs new raiju - yellow - pounce');
+  y += 8;
+  let x = pad;
+  cmp.forEach((it, i) => {
+    if (old.length && i === old.length) {
+      out.fillRect(x + 2, y, 2, cmpH, hex('#c8c0a0'));
+      x += 10;
+    }
+    out.fillRect(x, y, it.c.w, cmpH, bg);
+    out.draw(it.c, x, y + Math.round((cmpH - it.c.h) / 2));
+    label(out, x + 2, y + 2, it.t, hex('#f4f0dc'));
+    x += it.c.w + gap;
+  });
+  y += cmpH + 10;
+  // 2. the full loop, anchor ticked on the panel edges
+  label(out, pad, y, `New fly loop - ${neu.length} frames at ${s.anims.fly.fps} fps - ticks mark the anchor`);
+  y += 8;
+  neu.forEach((f, i) => {
+    const X = pad + (i % cols) * (f.w + gap), Y = y + Math.floor(i / cols) * (f.h + gap);
+    out.fillRect(X, Y, f.w, f.h, bg);
+    out.draw(f, X, Y);
+    for (const [tx, ty] of [[X, Y + s.anchor[1]], [X + 1, Y + s.anchor[1]], [X + s.anchor[0], Y], [X + s.anchor[0], Y + 1]] as P2[]) out.set(tx, ty, tick);
+    label(out, X + 2, Y + f.h - 7, String(i), hex('#f4f0dc'));
+  });
+  y += loopRows * (neu[0].h + gap) + 6;
+  // 3. scale: character on the ground, the phoenix and the raiju at flight height
+  label(out, pad, y, 'Scale - character - approved fire phoenix - new raiju at flight height');
+  y += 8;
+  const gy = y + scaleH - 6;
+  out.fillRect(pad, y, W - pad * 2, scaleH, bg);
+  out.fillRect(pad, gy, W - pad * 2, 6, hex('#4a5a3c'));
+  out.draw(ref, pad + 64 - CHARACTER_FEET[0], gy - CHARACTER_FEET[1]);
+  x = pad + 128 + gap;
+  if (phoenix) {
+    out.draw(phoenix.frames[0], x, gy - lift - phoenix.anchor[1]);
+    x += phoenix.frames[0].w + gap * 3;
+  }
+  out.draw(neu[3], x, gy - lift - s.anchor[1]);
+  saveWhole(out.scaled(k), join(dir, 'beasts-lightning.png'));
+}
+
 const sprites: WorldSprite[] = BUILDERS.filter(([n]) => !FOCUS || FOCUS.includes(n)).map(([, f]) => f());
 const dir = previewDir();
 const stage = process.env.WORLD_OUT ?? join(dir, 'staging');
@@ -1940,6 +2122,7 @@ if (!FOCUS) {
   beastsCompare(sprites, dir, stage);
 }
 for (const s of sprites) {
+  if (s.name === 'lightning') lightningSheet(s, dir, stage);
   strip(join(dir, `beasts-${s.name}-x.png`), s.anims.fly.frames, 4);
   const f = s.anims.fly.frames[0];
   console.log(`${s.name.padEnd(10)} frame ${f.w}x${f.h} anchor ${s.anchor} frames ${s.anims.fly.frames.length}@${s.anims.fly.fps}`);

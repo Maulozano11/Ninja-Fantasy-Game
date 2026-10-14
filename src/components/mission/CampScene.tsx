@@ -19,6 +19,7 @@ import {
   GradedSprite,
   knownPose,
   layer,
+  LEAN_DX,
   lightKey,
   loadLayers,
   poseFrames,
@@ -26,6 +27,7 @@ import {
   SCENE_H,
   SCENE_W,
   ScenePropDef,
+  SEAT_DX,
   SPOTS,
 } from './campArt';
 
@@ -48,6 +50,26 @@ export type CampSeatPose = (typeof CAMP_IDLE_POSES)[number];
 export type CampScenePose = 'idle' | 'handsigns' | 'cast' | 'charge' | 'victory' | CampSeatPose;
 
 const poseOrIdle = (p: string): SpritePose => (knownPose(p) ? p : 'idle');
+const isSeatPose = (p: string | undefined): p is CampSeatPose => !!p && (CAMP_IDLE_POSES as readonly string[]).includes(p);
+/** The camp pose a seat shows when nobody asked for another (scene.json, else the list above). */
+const seatPose = (i: number): CampSeatPose => {
+  const p = SPOTS[i]?.pose;
+  return isSeatPose(p) ? p : CAMP_IDLE_POSES[i % CAMP_IDLE_POSES.length];
+};
+
+/**
+ * The prop a seat's pose rests on, placed from the pose rig: a seat under the hips (sit, read) or a
+ * rock behind the back (lean). It stays when another pose is asked for (a jutsu's hand signs).
+ */
+function supportOf(i: number): ScenePropDef | null {
+  const spot = SPOTS[i];
+  if (!spot?.support) return null;
+  const pose = seatPose(i);
+  const dx = pose === 'lean' ? LEAN_DX : pose === 'sit' || pose === 'read' ? SEAT_DX : null;
+  if (dx === null) return null;
+  const back = spot.flip ? 1 : -1;
+  return { group: 'campsite', name: spot.support, x: Math.round(spot.x + back * dx), y: spot.y, flip: spot.flip, z: -0.25 };
+}
 
 export function IncenseSticks({ used, compact }: { used: number; compact?: boolean }) {
   useLang();
@@ -149,7 +171,7 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
   const seats = members.slice(0, SPOTS.length);
   const seatPoses = seats.map((m, i) => {
     const down = m.currentHp <= 0 || isUnconscious(m);
-    return down ? ('hurt' as SpritePose) : poseOrIdle(poses?.[m.id] ?? CAMP_IDLE_POSES[i % CAMP_IDLE_POSES.length]);
+    return down ? ('hurt' as SpritePose) : poseOrIdle(poses?.[m.id] ?? seatPose(i));
   });
   const poseKey = seatPoses.join(',');
 
@@ -184,6 +206,10 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
       } else if (p.name === 'stone_lantern') prop(p, 'lit', { emissive: true });
       else prop(p, p.anim);
     }
+    seats.forEach((_, i) => {
+      const s = supportOf(i);
+      if (s) prop(s, undefined);
+    });
     seats.forEach((m, i) => {
       const spot = SPOTS[i];
       const pose = seatPoses[i];

@@ -17,6 +17,8 @@
 // particles and speed lines.
 
 import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
 import { CHARACTER_FEET, Canvas, Color, WorldSprite, characterRef, hex, previewDir, writeGroup } from './kit';
 import { text, textWidth } from './vfx-b-lib';
 import { borderTouches } from './vfx-b-wall3d';
@@ -156,7 +158,7 @@ function elementSheet(e: Element, sprites: WorldSprite[]): Canvas {
   return flow(cells, 900, `${e.title}  -  vfx_${e.el}  (2x)`, e.accent);
 }
 
-function animSheet(all: { e: Element; sprites: WorldSprite[] }[]): Canvas {
+function animSheet(all: { e: Element; sprites: WorldSprite[] }[], maxW = 1400, what = 'animation strips'): Canvas {
   const sections = all.map(({ e, sprites }) => {
     const cells: Cell[] = [];
     for (const s of sprites)
@@ -169,7 +171,7 @@ function animSheet(all: { e: Element; sprites: WorldSprite[] }[]): Canvas {
         });
         cells.push({ label: `${s.name} ${k}`, sub: `${a.frames.length}f ${a.fps}fps ${a.loop === false ? 'once' : 'loop'}`, c });
       }
-    return flow(cells, 1400, `${e.title}  -  vfx_${e.el}  animation strips`, e.accent);
+    return flow(cells, maxW, `${e.title}  -  vfx_${e.el}  ${what}`, e.accent);
   });
   const W = Math.max(...sections.map((s) => s.w)), H = sections.reduce((t, s) => t + s.h, 0);
   const out = new Canvas(W, H);
@@ -181,6 +183,139 @@ function animSheet(all: { e: Element; sprites: WorldSprite[] }[]): Canvas {
     y += s.h;
   }
   return out;
+}
+
+// --- wall orientations and before/after sheets ----------------------------------------------
+
+const WALL_KEYS = ['wall', 'wall_diag', 'wall_depth'];
+/** Where the scale character stands beside each wall, from the wall's anchor (same ground). */
+const CHAR_DX: Record<string, number> = { wall: 152, wall_diag: 134, wall_depth: 44 };
+
+/**
+ * Per element: the horizontal, 3/4 and depth walls (idle frame 0) side by side, every anchor on
+ * one ground line, a character standing on that ground beside each.
+ */
+function wallsSheet(all: { e: Element; sprites: WorldSprite[] }[]): Canvas {
+  const pad = 12, lab = 16;
+  const secs = all.map(({ e, sprites }) => {
+    const ws = WALL_KEYS.map((k) => sprites.find((s) => s.name === k)).filter((s): s is WorldSprite => !!s);
+    const fr = ws.map((s) => frameOf(s, 'idle', 0));
+    const above = Math.max(...ws.map((s) => s.anchor[1])), below = Math.max(...ws.map((s, i) => fr[i].h - s.anchor[1]));
+    const cw = ws.map((s, i) => Math.max(fr[i].w, s.anchor[0] + CHAR_DX[s.name] + 22, textWidth(`${s.name} ${fr[i].w}x${fr[i].h}`)));
+    const W = cw.reduce((a, b) => a + b + pad, pad), H = 22 + lab + above + below + pad;
+    const c = new Canvas(W, H);
+    c.fillRect(0, 0, W, H, BG);
+    text(c, `${e.title}  -  wall / wall_diag / wall_depth  (idle frame 0, anchors on one ground line)`, pad, 8, e.accent);
+    const G = 22 + lab + above;
+    c.fillRect(0, G, W, 1, PANEL2);
+    let x = pad;
+    ws.forEach((s, i) => {
+      const f = fr[i];
+      text(c, s.name, x, 22, INK);
+      text(c, `${f.w}x${f.h}  anchor ${s.anchor[0]},${s.anchor[1]}`, x + textWidth(s.name) + 4, 22, DIM);
+      c.fillRect(x, G - s.anchor[1], f.w, f.h, PANEL);
+      c.fillRect(x, G, f.w, 1, PANEL2);
+      c.draw(f, x, G - s.anchor[1]);
+      drawChar(c, x + s.anchor[0] + CHAR_DX[s.name], G);
+      x += cw[i] + pad;
+    });
+    return c;
+  });
+  const W = Math.max(...secs.map((s) => s.w)), H = secs.reduce((t, s) => t + s.h, 0);
+  const out = new Canvas(W, H);
+  out.fillRect(0, 0, W, H, BG);
+  let y = 0;
+  for (const s of secs) {
+    out.draw(s, 0, y);
+    out.fillRect(0, y, W, 1, PANEL2);
+    y += s.h;
+  }
+  return out;
+}
+
+/** Reads a PNG written by the kit (8-bit RGBA, every row filter 0), for the before/after sheets. */
+function readKitPng(path: string): Canvas | null {
+  if (!existsSync(path)) return null;
+  const buf = readFileSync(path);
+  const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20);
+  const idat: Buffer[] = [];
+  for (let p = 8; p < buf.length; ) {
+    const len = buf.readUInt32BE(p), type = buf.toString('ascii', p + 4, p + 8);
+    if (type === 'IDAT') idat.push(buf.subarray(p + 8, p + 8 + len));
+    p += 12 + len;
+  }
+  const raw = inflateSync(Buffer.concat(idat));
+  const rgba = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    if (raw[y * (w * 4 + 1)] !== 0) return null;
+    rgba.set(raw.subarray(y * (w * 4 + 1) + 1, (y + 1) * (w * 4 + 1)), y * w * 4);
+  }
+  return Canvas.fromRgba(w, h, rgba);
+}
+
+function crop(src: Canvas, x0: number, y0: number, w: number, h: number): Canvas {
+  const c = new Canvas(w, h);
+  c.draw(src, -x0, -y0);
+  return c;
+}
+
+/** Earth: the old stacked-rock wall next to the new stone wall, a character beside each. */
+function earthWallBeforeAfter(sprites: WorldSprite[], oldDir: string): Canvas | null {
+  const sheet = readKitPng(join(oldDir, 'earth-wall.png'));
+  if (!sheet) return null;
+  const man = JSON.parse(readFileSync(join(oldDir, 'earth-manifest.json'), 'utf8')).sprites.wall;
+  const oldF = crop(sheet, 0, man.anims.idle.row * man.frameH, man.frameW, man.frameH);
+  const s = sprites.find((q) => q.name === 'wall')!;
+  const newF = frameOf(s, 'idle', 0);
+  const items: [string, Canvas, [number, number]][] = [
+    [`BEFORE  ${man.frameW}x${man.frameH}`, oldF, man.anchor],
+    [`AFTER  ${newF.w}x${newF.h}`, newF, s.anchor],
+  ];
+  const pad = 12, lab = 16;
+  const above = Math.max(...items.map((it) => it[2][1])), below = Math.max(...items.map((it) => it[1].h - it[2][1]));
+  const cw = items.map((it) => Math.max(it[1].w, it[2][0] + 152 + 22));
+  const W = cw.reduce((a, b) => a + b + pad, pad), H = 22 + lab + above + below + pad;
+  const c = new Canvas(W, H);
+  c.fillRect(0, 0, W, H, BG);
+  text(c, 'EARTH WALL  -  old stacked rock vs new stone wall (idle frame 0, same ground line)', pad, 8, E[7]);
+  const G = 22 + lab + above;
+  let x = pad;
+  items.forEach(([label, f, a], i) => {
+    text(c, label, x, 22, INK);
+    c.fillRect(x, G - a[1], f.w, f.h, PANEL);
+    c.fillRect(x, G, cw[i], 1, PANEL2);
+    c.draw(f, x, G - a[1]);
+    drawChar(c, x + a[0] + 152, G);
+    x += cw[i] + pad;
+  });
+  return c;
+}
+
+/** Genjutsu: the old tomoe sphere loop over the new sigil sphere loop. */
+function genjutsuEyeBeforeAfter(sprites: WorldSprite[], oldDir: string): Canvas | null {
+  const sheet = readKitPng(join(oldDir, 'genjutsu-sphere.png'));
+  if (!sheet) return null;
+  const s = sprites.find((q) => q.name === 'sphere')!;
+  const a = s.anims.fly;
+  const fw = sheet.h, n = Math.round(sheet.w / fw);
+  const rows: [string, Canvas[]][] = [
+    ['BEFORE  three-tomoe eye', Array.from({ length: n }, (_, i) => crop(sheet, i * fw, 0, fw, fw))],
+    ['AFTER  sigil eye (ring, four outward triangles, pupil)', a.frames],
+  ];
+  const gap = 3, lab = 10;
+  const cols = Math.max(...rows.map((r) => r[1].length)), fwMax = Math.max(fw, a.frames[0].w), fh = Math.max(fw, a.frames[0].h);
+  const c = new Canvas(gap + cols * (fwMax + gap), 12 + rows.length * (lab + fh + gap));
+  c.fillRect(0, 0, c.w, c.h, BG);
+  text(c, 'GENJUTSU SPHERE  (4x)', gap, 3, G[7]);
+  rows.forEach(([label, frames], r) => {
+    const y = 12 + r * (lab + fh + gap);
+    text(c, label, gap, y, INK);
+    frames.forEach((f, i) => {
+      c.fillRect(gap + i * (fwMax + gap), y + lab, f.w, f.h, PANEL);
+      c.draw(f, gap + i * (fwMax + gap), y + lab);
+    });
+  });
+  return c;
 }
 
 /** Zoomed strips for reviewing one sprite. */
@@ -250,6 +385,18 @@ for (const e of ELEMENTS) {
   built.push({ e, sprites });
 }
 if (built.length) animSheet(built).scaled(2).save(join(OUT, 'vfx-vfx-b-anims.png'));
+if (built.length) {
+  // Walls in three orientations, and the before/after sheets for the redesigned earth wall and genjutsu eye.
+  wallsSheet(built).scaled(2).save(join(OUT, 'vfx-b-walls.png'));
+  const walls = built.map(({ e, sprites }) => ({ e, sprites: sprites.filter((s) => WALL_KEYS.includes(s.name)) }));
+  animSheet(walls, 3400, 'wall rise + idle strips (1x)').save(join(OUT, 'vfx-b-walls-anims.png'));
+  const oldDir = join(OUT, '..', 'vfxb-old');
+  for (const { e, sprites } of built) {
+    const ba = e.el === 'earth' ? earthWallBeforeAfter(sprites, oldDir) : e.el === 'genjutsu' ? genjutsuEyeBeforeAfter(sprites, oldDir) : undefined;
+    if (ba === null) console.log(`(no old ${e.el} sheet in ${oldDir}: before/after skipped)`);
+    else if (ba) ba.scaled(e.el === 'earth' ? 2 : 4).save(join(OUT, e.el === 'earth' ? 'vfx-b-earth-wall.png' : 'vfx-b-genjutsu-eye.png'));
+  }
+}
 {
   const checked = built.map(({ e, sprites }) => `${e.el}: ${sprites.filter((s) => s.name !== 'stream').reduce((n, s) => n + Object.values(s.anims).reduce((m, a) => m + a.frames.length, 0), 0)} frames`).join(', ');
   const report = [`Border check (opaque pixels on the frame border; stream tiles exempt): ${checked}`, ...(border.length ? border : ['no frame touches its border'])].join('\n') + '\n';

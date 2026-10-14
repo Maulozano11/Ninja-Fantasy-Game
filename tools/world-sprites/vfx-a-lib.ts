@@ -644,3 +644,91 @@ export function clearEdgeBits(c: Canvas, max = 64, sides = 'ltrb'): Canvas {
     }
   return out;
 }
+
+// --- walls in three orientations ------------------------------------------------------------
+//
+// A wall is laid out in ground space: X to the right and Z toward the viewer, both in px at the
+// horizontal scale (57 per metre), and heights in screen px. On screen x = X and y = Z * DZ - h
+// (the ground is foreshortened to 38 px per metre). A wall runs along the unit vector `u` (t from
+// -len/2 at its near or left end to +len/2), is `thick` px across along `v` (q > 0 is the near or
+// right side) and rises `rise` px.
+
+/** Ground depth foreshortening: 38 px per metre on screen for 57 px per metre across. */
+export const DZ = 38 / 57;
+/** The three orientations: along the screen (horizontal), turned 45 degrees (3/4) and end-on (depth). */
+export type WallKind = 'wall' | 'wall_diag' | 'wall_depth';
+export interface WallLine {
+  kind: WallKind;
+  W: number;
+  H: number;
+  /** The wall's centre on the ground, in the frame (the sprite's anchor). */
+  anchor: Pt;
+  u: Pt;
+  v: Pt;
+  len: number;
+  rise: number;
+  thick: number;
+}
+const S2 = Math.SQRT1_2;
+/** Along / across directions (X, Z) per orientation: 3/4 runs from near-left to far-right. */
+export const WALL_DIRS: Record<WallKind, { u: Pt; v: Pt }> = {
+  wall: { u: [1, 0], v: [0, 1] },
+  wall_diag: { u: [S2, -S2], v: [S2, S2] },
+  wall_depth: { u: [0, -1], v: [1, 0] },
+};
+/** A point on or above the wall: t along it (px), q across it, h px up. */
+export function wp(L: WallLine, t: number, q = 0, h = 0): Pt {
+  const X = L.u[0] * t + L.v[0] * q, Z = L.u[1] * t + L.v[1] * q;
+  return [L.anchor[0] + X, L.anchor[1] + Z * DZ - h];
+}
+/** Back from the screen to the ground plane (h = 0): returns [t, q]. */
+export function wallGround(L: WallLine, x: number, y: number): Pt {
+  const X = x - L.anchor[0], Z = (y - L.anchor[1]) / DZ;
+  return [X * L.u[0] + Z * L.u[1], X * L.v[0] + Z * L.v[1]];
+}
+/** Lays a wall out in a frame with `pad` px of room around its ground footprint and height. */
+export function wallLine(kind: WallKind, rise: number, thick: number, pad: { l: number; t: number; r: number; b: number }, len = 256): WallLine {
+  const { u, v } = WALL_DIRS[kind];
+  const L0: WallLine = { kind, W: 0, H: 0, anchor: [0, 0], u, v, len, rise, thick };
+  const pts: Pt[] = [];
+  for (const t of [-len / 2, len / 2]) for (const q of [-thick / 2, thick / 2]) for (const h of [0, rise]) pts.push(wp(L0, t, q, h));
+  const x0 = Math.min(...pts.map((p) => p[0])), x1 = Math.max(...pts.map((p) => p[0]));
+  const y0 = Math.min(...pts.map((p) => p[1])), y1 = Math.max(...pts.map((p) => p[1]));
+  return { ...L0, W: Math.round(x1 - x0 + pad.l + pad.r), H: Math.round(y1 - y0 + pad.t + pad.b), anchor: [Math.round(pad.l - x0), Math.round(pad.t - y0)] };
+}
+/** The surface hit on a wall slab: where (t, q, h) and which face the eye sees. */
+export type WallFace = 'front' | 'back' | 'top' | 'end';
+/**
+ * Fills `f` with a solid slab (|t| <= len/2, |q| <= thick/2, 0 <= h <= height(t, q)) as seen
+ * from the camera: each pixel gets shade(t, q, h, face) of the nearest surface point.
+ */
+export function wallCast(f: Field, L: WallLine, height: (t: number, q: number) => number, shade: (t: number, q: number, h: number, face: WallFace) => number, extra = 0): void {
+  const half = L.len / 2 + extra, hq = L.thick / 2, hmax = L.rise * 1.2 + 12;
+  let top = Infinity, bottom = -Infinity, left = Infinity, right = -Infinity;
+  for (const t of [-half, half]) for (const q of [-hq, hq]) for (const h of [0, hmax]) {
+    const [x, y] = wp(L, t, q, h);
+    top = Math.min(top, y); bottom = Math.max(bottom, y); left = Math.min(left, x); right = Math.max(right, x);
+  }
+  const inside = (t: number, q: number, h: number) => Math.abs(t) <= half && Math.abs(q) <= hq && h >= 0 && h <= height(t, q);
+  f.region(left - 1, top - 1, right + 1, bottom + 1, (x, y) => {
+    // March along the view ray from near to far (Z falling, the height falling with it).
+    const X = x - L.anchor[0];
+    let prev: [number, number, number] | null = null;
+    for (let Z = (y - L.anchor[1] + hmax) / DZ; Z >= (y - L.anchor[1]) / DZ - 0.5; Z -= 0.5) {
+      const h = L.anchor[1] + Z * DZ - y;
+      const t = X * L.u[0] + Z * L.u[1], q = X * L.v[0] + Z * L.v[1];
+      if (inside(t, q, h)) {
+        let face: WallFace = 'front';
+        if (prev) {
+          const [pt, pq, ph] = prev;
+          if (ph > height(pt, pq) && Math.abs(pq) <= hq && Math.abs(pt) <= half) face = 'top';
+          else if (Math.abs(pt) > half) face = 'end';
+          else face = pq > 0 ? 'front' : 'back';
+        } else face = h >= height(t, q) - 1 ? 'top' : 'front';
+        return shade(t, q, h, face);
+      }
+      prev = [t, q, h];
+    }
+    return 0;
+  });
+}

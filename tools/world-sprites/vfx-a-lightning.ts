@@ -6,7 +6,7 @@
 
 import { Canvas, Color, WorldSprite, withAlpha } from './kit';
 import {
-  Field, Pt, TAU, arc, bez, clamp, crop, dist, flySprite, frames, fract, jag, lerp, outlineIn, palette, pnoise, render, rr, seamStack, smooth, stack, vfxSprite,
+  Field, Pt, TAU, WallKind, WallLine, arc, bez, clamp, crop, dist, flySprite, frames, fract, jag, lerp, outlineIn, palette, pnoise, render, rr, seamStack, smooth, stack, vfxSprite, wallLine, wp,
 } from './vfx-a-lib';
 
 export const BOLT = palette('#170c45', '#2a2a9a', '#3b55e8', '#3fa2ff', '#93d6ff', '#dcf3ff', '#ffffff');
@@ -84,7 +84,8 @@ const sparkList = (seed: number, n: number, cx: number, cy: number, r0: number, 
 // --- bolt: a crackling spark ball -----------------------------------------------------------
 
 function bolt(): WorldSprite {
-  const W = 64, H = 64, cx = 38, cy = 32;
+  // Room on the left for the zigzag tail and on the right for the arcs (the anchor follows).
+  const o = 6, W = 64 + o + 4, H = 64, cx = 38 + o, cy = 32;
   const fr = frames(4, (t, i) => {
     const f = new Field(W, H);
     const sd = 400 + i * 37;
@@ -100,7 +101,7 @@ function bolt(): WorldSprite {
     const c = boltR(f);
     return stack(W, H, c, sparks(W, H, sparkList(sd + 9, 7, cx - 6, cy, 10, 22, W, H)));
   });
-  return flySprite('bolt', 'Lightning bolt (spark ball)', fr);
+  return flySprite('bolt', 'Lightning bolt (spark ball)', fr, 12, [32 + o, 32]);
 }
 
 // --- beast: a thunder hound -----------------------------------------------------------------
@@ -236,7 +237,8 @@ function beast(): WorldSprite {
 // --- stream: a tileable lightning beam + a discharge head -----------------------------------
 
 function stream(): WorldSprite[] {
-  const W = 64, H = 64, PAD = 32, cy = 32;
+  // The head gets HR px of room on the right for its forks (its anchor stays where the tile's is).
+  const W = 64, H = 64, PAD = 32, cy = 32, HR = 10;
   const beam = (f: Field, ox: number, sd: number) => {
     // A straight white-hot core with arcs coiling around it; the arcs repeat every 64 px.
     f.region(0, cy - 6, f.w - 1, cy + 6, (x, y) => {
@@ -265,7 +267,7 @@ function stream(): WorldSprite[] {
     return crop(stack(W + PAD * 2, H, c, sparks(W + PAD * 2, H, sp)), PAD, 0, W, H);
   });
   const head = frames(4, (_, i) => {
-    const f = new Field(W + PAD, H);
+    const f = new Field(W + PAD + HR, H);
     beam(f, PAD, 600 + i * 13);
     f.cut((x) => x > PAD + 34);
     const hx = PAD + 38;
@@ -277,15 +279,16 @@ function stream(): WorldSprite[] {
     }
     f.disc(hx, cy, 9, 1.05, 1.6);
     const c = boltR(f);
-    return crop(stack(W + PAD, H, c, sparks(W + PAD, H, sparkList(sd + 5, 7, hx + 4, cy, 14, 24, W + PAD, H))), PAD, 0, W, H);
+    return crop(stack(W + PAD + HR, H, c, sparks(W + PAD + HR, H, sparkList(sd + 5, 7, hx + 4, cy, 14, 24, W + PAD + HR, H))), PAD, 0, W + HR, H);
   });
-  return [flySprite('stream', 'Lightning stream (beam, tileable 64 px)', tile), flySprite('stream_head', 'Lightning stream head', head)];
+  return [flySprite('stream', 'Lightning stream (beam, tileable 64 px)', tile), flySprite('stream_head', 'Lightning stream head', head, 12, [32, 32])];
 }
 
 // --- breath: a cone of forked lightning -----------------------------------------------------
 
 function breath(): WorldSprite {
-  const W = 96, H = 64, oy = 32;
+  // Room above and below for the outer forks and left of the mouth (the anchor follows).
+  const o = 10, W = 96 + o, H = 112, oy = 56;
   const fr = frames(4, (_, i) => {
     const f = new Field(W, H);
     const sd = 700 + i * 29;
@@ -293,19 +296,20 @@ function breath(): WorldSprite {
     for (let k = 0; k < n; k++) {
       const a = -0.34 + (k / (n - 1)) * 0.68 + rr(sd, k, -0.05, 0.05);
       const L = rr(sd + 1, k, 66, 84);
-      forked(f, [2, oy], [L * Math.cos(a), oy + L * Math.sin(a)], sd + 3 + k * 11, k === 2 ? 2.4 : 1.9, 3, 1, 0.22);
+      forked(f, [2 + o, oy], [o + L * Math.cos(a), oy + L * Math.sin(a)], sd + 3 + k * 11, k === 2 ? 2.4 : 1.9, 3, 1, 0.22);
     }
-    f.disc(3, oy, 5, 1.05, 1.5);
+    f.disc(3 + o, oy, 5, 1.05, 1.5);
     const c = boltR(f);
-    return stack(W, H, c, sparks(W, H, sparkList(sd + 9, 12, 40, oy, 10, 46, W, H)));
+    return stack(W, H, c, sparks(W, H, sparkList(sd + 9, 12, 40 + o, oy, 10, 46, W, H)));
   });
-  return flySprite('breath', 'Lightning breath (forked cone, origin left middle)', fr);
+  return flySprite('breath', 'Lightning breath (forked cone, origin left middle)', fr, 12, [48 + o, oy]);
 }
 
 // --- sphere: a thunder sphere ---------------------------------------------------------------
 
 function sphere(): WorldSprite {
-  const W = 64, H = 64, cx = 33, cy = 32, R = 18;
+  // 6 px of room all round for the arcs jumping off the surface (the anchor follows).
+  const o = 6, W = 64 + o * 2, H = 64 + o * 2, cx = 33 + o, cy = 32 + o, R = 18;
   const fr = frames(4, (t, i) => {
     const shell = new Field(W, H), fil = new Field(W, H), out = new Field(W, H);
     const sd = 800 + i * 31;
@@ -330,17 +334,18 @@ function sphere(): WorldSprite {
     const c = stack(W, H, render(shell, BOLT, { th: TH, rim: [1], hi: 4, alpha: [255, 215, 225, 235, 255, 255, 255] }), render(fil, BOLT, { th: TH, outline: false }), boltR(out));
     return stack(W, H, c, sparks(W, H, sparkList(sd + 15, 8, cx, cy, R + 3, R + 12, W, H)));
   });
-  return flySprite('sphere', 'Lightning sphere (thunder sphere)', fr);
+  return flySprite('sphere', 'Lightning sphere (thunder sphere)', fr, 12, [32 + o, 32 + o]);
 }
 
 // --- slash: a crescent of lightning ---------------------------------------------------------
 
 function slash(): WorldSprite {
-  const W = 64, H = 64;
+  // 4 px of room above and below for the forks off the tips (the anchor follows).
+  const o = 4, W = 64, H = 64 + o * 2;
   const fr = frames(4, (_, i) => {
     const f = new Field(W, H), z = new Field(W, H);
     const sd = 900 + i * 23;
-    const C1: Pt = [16, 32], R1 = 31;
+    const C1: Pt = [16, 32 + o], R1 = 31;
     // An electric crescent with a jagged edge...
     f.region(0, 0, W - 1, H - 1, (x, y) => {
       const a = Math.atan2(y - C1[1], x - C1[0]);
@@ -353,7 +358,7 @@ function slash(): WorldSprite {
       return 0.3 + 0.62 * Math.pow((r - inner) / Math.max(1, R1 - inner), 1.2);
     });
     // A thinner after-image arc trailing behind it.
-    const C2: Pt = [8, 32], R2 = 28;
+    const C2: Pt = [8, 32 + o], R2 = 28;
     f.region(0, 0, W - 1, H - 1, (x, y) => {
       const a = Math.atan2(y - C2[1], x - C2[0]);
       if (Math.abs(a) > 0.95) return 0;
@@ -379,9 +384,9 @@ function slash(): WorldSprite {
       stroke(z, jag(p, [p[0] - 8, p[1] + sgn * 4], sd + (sgn > 0 ? 1 : 2), 2, 0.4), 1.2, 0.9);
     }
     const c = stack(W, H, boltR(f), render(z, BOLT, { th: TH, outline: false, lo: 4 }));
-    return stack(W, H, c, sparks(W, H, sparkList(sd + 5, 7, 18, 32, 18, 30, W, H).filter((p) => p.x < 40)));
+    return stack(W, H, c, sparks(W, H, sparkList(sd + 5, 7, 18, 32 + o, 18, 30, W, H).filter((p) => p.x < 40)));
   });
-  return flySprite('slash', 'Lightning slash (electric crescent)', fr);
+  return flySprite('slash', 'Lightning slash (electric crescent)', fr, 12, [32, 32 + o]);
 }
 
 // --- multi: three thunder birds in a staggered fan ------------------------------------------
@@ -399,7 +404,8 @@ function thunderBird(f: Field, x: number, y: number, s: number, flap: number, se
   stroke(f, [[x - 6 * s, y + 0.5 * s], [x - 12 * s, y + 3 * s]], 1.1 * s, 0.9);
 }
 function multi(): WorldSprite {
-  const W = 64, H = 64;
+  // 8 px of room on the right for the leading needle's tip (the anchor stays at 32, 32).
+  const W = 72, H = 64;
   // Thunder needles: four arrowheads of charge with crackling trails, fanned and staggered.
   const ns = [
     { a: -0.42, d: 44 },
@@ -419,13 +425,14 @@ function multi(): WorldSprite {
     const c = stack(W, H, boltR(tr), boltR(f));
     return stack(W, H, c, sparks(W, H, sparkList(970 + i, 7, 28, 32, 6, 26, W, H).filter((p) => p.x < 36)));
   });
-  return flySprite('multi', 'Lightning multi (thunder needles)', fr);
+  return flySprite('multi', 'Lightning multi (thunder needles)', fr, 12, [32, 32]);
 }
 
 // --- hit: a jagged spark burst --------------------------------------------------------------
 
 function hit(): WorldSprite {
-  const W = 64, H = 64, cx = 32, cy = 32;
+  // 6 px of room all round for the forks at full reach (the anchor follows).
+  const W = 76, H = 76, cx = 38, cy = 38;
   const fr = frames(6, (_, i) => {
     const f = new Field(W, H);
     const sd = 1000 + i * 19;
@@ -452,19 +459,31 @@ function hit(): WorldSprite {
     const p = i / 5;
     return stack(W, H, c, sparks(W, H, sparkList(sd + 9, i === 0 ? 3 : 12 - i, cx, cy + p * p * 6, 10 + p * 18, 16 + p * 14, W, H)));
   });
-  return vfxSprite('hit', 'Lightning hit (spark burst)', [32, 32], { hit: { frames: fr, fps: 12, loop: false } });
+  return vfxSprite('hit', 'Lightning hit (spark burst)', [cx, cy], { hit: { frames: fr, fps: 12, loop: false } });
 }
 
 // --- blast: a thunder strike 3 m across -----------------------------------------------------
 
 function blast(): WorldSprite {
-  const W = 176, H = 128, cx = 88, gy = 72, RX = 82, RY = 54;
+  // The strike comes down from 3.3 m up (room above), and the arcs over the ground ellipse get
+  // room at the sides and below (the anchor follows).
+  const ox = 12, oy = 146, W = 176 + ox * 2, H = 128 + oy + 12, cx = 88 + ox, gy = 72 + oy, RX = 82, RY = 54;
   const fr = frames(8, (_, i) => {
     const f = new Field(W, H), ground = new Field(W, H), groundF = new Field(W, H), flash = new Field(W, H), scorch = new Field(W, H);
     const sd = 1100 + i * 43;
-    // The strike from the sky to the ground center.
+    // The strike from the sky to the ground center: it opens out of a small crack of light high
+    // above (so its top is a burst, not a cut) and hits the middle of the circle.
     const r = [1.8, 5.5, 4.4, 3.2, 2, 0, 0, 0][i];
-    if (r) forked(f, [cx + rr(sd, 0, -10, 10), 0], [cx, gy], sd + 1, r, i <= 2 ? 4 : 2, 1, 0.16);
+    if (r) {
+      const sky: Pt = [cx + rr(sd, 0, -14, 14), 30];
+      forked(f, sky, [cx, gy], sd + 1, r, i <= 2 ? 5 : 3, 1, 0.12);
+      for (let k = 0; k < 3; k++) {
+        const a = -Math.PI / 2 + (k - 1) * 0.9 + rr(sd + 40, k, -0.2, 0.2);
+        const len = rr(sd + 41, k, 8, 13) * (i <= 2 ? 1 : 0.7);
+        stroke(f, jag(sky, [sky[0] + Math.cos(a) * len, sky[1] + Math.sin(a) * len], sd + 42 + k, 2, 0.4), Math.max(1, r * 0.45), 0.9);
+      }
+      f.disc(sky[0], sky[1], Math.max(2.5, r * 0.9), 1.05, 1.5);
+    }
     // A flash pool on the ground.
     const fk = [0, 0.5, 0.42, 0.3, 0.2, 0, 0, 0][i];
     if (fk) flash.ell(cx, gy, RX * fk, RY * fk, 0, 1, 1.4);
@@ -491,7 +510,7 @@ function blast(): WorldSprite {
       for (let k = 0; k < 8; k++) {
         const vx = rr(sd + 20, k, -1, 1) * 70, vy = -rr(sd + 21, k, 80, 130);
         const x = cx + rr(1200, k, -1, 1) * 0 + vx * tt, y = gy - 4 + vy * tt + 200 * tt * tt;
-        if (y > gy + RY * 0.7 || y < 2) continue;
+        if (y > gy + RY * 0.7 || y - oy < 2) continue;
         deb.disc(x, y, k % 3 === 0 ? 3.2 : 2.3, 0.8, 1);
       }
     }
@@ -510,37 +529,78 @@ function blast(): WorldSprite {
 
 // --- wall: a lightning fence 4.5 m long -----------------------------------------------------
 
-function wallFrame(i: number, g: number, arcsOn: number, W: number, H: number, gy: number): Canvas {
+/**
+ * The fence along any ground line (see WallLine): pylons standing on it, arcs jumping between
+ * neighbours at three heights, a charged line along the ground. The pylons keep their shape from
+ * frame to frame (only their crackle and the arcs re-roll), so they never jitter.
+ */
+function fenceFrame(i: number, g: number, arcsOn: number, L: WallLine, zig = 0): Canvas {
+  const { W, H } = L;
   const f = new Field(W, H), base = new Field(W, H);
   const sd = 1300 + i * 53;
-  const posts = [14, 72, 132, 192, 250];
-  const top = gy - 100 * g;
-  // Pylons: crackling vertical bolts with a ball of charge on top.
-  posts.forEach((x, k) => {
+  const postS = [0.039, 0.266, 0.5, 0.734, 0.961];
+  const hgt = L.rise * g;
+  const ga = wp(L, -L.len / 2), gb = wp(L, L.len / 2);
+  const len = Math.hypot(gb[0] - ga[0], gb[1] - ga[1]);
+  const dir: Pt = [(gb[0] - ga[0]) / len, (gb[1] - ga[1]) / len];
+  // Seen end-on the pylons step from side to side so the fence has body.
+  const foot = (k: number): Pt => wp(L, (postS[k] - 0.5) * L.len, zig * (k % 2 ? 1 : -1));
+  // Pylons: a steady bolt each, crackling forks and a ball of charge on top.
+  postS.forEach((_, k) => {
     if (g < 0.05) return;
-    forked(f, [x, gy], [x + rr(sd, k, -3, 3), top + 4], sd + 1 + k * 7, 2.2, 2, 1, 0.12);
-    f.disc(x, top + 2, 4.5, 1.05, 1.5);
+    const [x, y] = foot(k);
+    const main = jag([x, y], [x, y - hgt + 4], 1300 + k * 7, 4, 0.05);
+    stroke(f, main, 2.2, 1);
+    for (let q = 0; q < 2; q++) {
+      const p = main[Math.floor(rr(sd + 1 + k * 7, q, 0.2, 0.8) * (main.length - 1))];
+      const side = rr(sd + 2 + k * 7, q, 0, 1) < 0.5 ? -1 : 1;
+      const ang = -Math.PI / 2 + side * rr(sd + 3 + k * 7, q, 0.4, 0.9);
+      const l = hgt * rr(sd + 4 + k * 7, q, 0.12, 0.24);
+      stroke(f, jag(p, [p[0] + Math.cos(ang) * l, p[1] + Math.sin(ang) * l], sd + 10 + k * 7 + q, 3, 0.3), 1.4, 0.8);
+    }
+    f.disc(x, y - hgt + 2, 4.5, 1.05, 1.5);
   });
   // Arcs between neighbouring pylons at three heights.
   if (arcsOn > 0)
-    for (let k = 0; k + 1 < posts.length; k++)
+    for (let k = 0; k + 1 < postS.length; k++)
       for (let j = 0; j < 3; j++) {
         if (rr(sd + 2, k * 3 + j, 0, 1) > arcsOn) continue;
-        const y = top + 10 + j * (gy - top - 18) / 2.4 + rr(sd + 3, k * 3 + j, -6, 6);
-        stroke(f, jag([posts[k] + 3, y], [posts[k + 1] - 3, y + rr(sd + 4, k * 3 + j, -6, 6)], sd + 5 + k * 3 + j, 4, 0.14), j === 0 ? 1.8 : 1.4, j === 0 ? 1 : 0.85);
+        const d = 10 + (j * (hgt - 18)) / 2.4 + rr(sd + 3, k * 3 + j, -6, 6);
+        const p0 = foot(k), p1 = foot(k + 1);
+        const from: Pt = [p0[0] + dir[0] * 3, p0[1] + dir[1] * 3 - hgt + d];
+        const to: Pt = [p1[0] - dir[0] * 3, p1[1] - dir[1] * 3 - hgt + d + rr(sd + 4, k * 3 + j, -6, 6)];
+        stroke(f, jag(from, to, sd + 5 + k * 3 + j, 4, 0.14), j === 0 ? 1.8 : 1.4, j === 0 ? 1 : 0.85);
       }
   // A charged line along the ground.
-  base.region(4, gy - 3, W - 5, gy + 3, (x, y) => (Math.abs(y - gy) < 2.5 && g > 0.05 ? 0.55 + 0.25 * pnoise(x + i * 13, 0, 6, 0, 0, sd + 9) : 0));
+  if (g > 0.05) {
+    const [ax, ay] = ga, [bx, by] = gb;
+    base.region(Math.min(ax, bx) - 4, Math.min(ay, by) - 4, Math.max(ax, bx) + 4, Math.max(ay, by) + 4, (x, y) => {
+      const u = clamp(((x - ax) * dir[0] + (y - ay) * dir[1]) / len, 0, 1);
+      const px = ax + (bx - ax) * u, py = ay + (by - ay) * u;
+      return Math.hypot(x - px, (y - py) * (Math.abs(dir[1]) > 0.9 ? 0.45 : 1)) < 2.5 ? 0.55 + 0.25 * pnoise(u * len + i * 13, 0, 6, 0, 0, sd + 9) : 0;
+    });
+  }
   const c = stack(W, H, render(base, BOLT, { th: TH, rim: [1], hi: 5 }), boltR(f));
   const sp: { x: number; y: number; s: number }[] = [];
-  for (let k = 0; k < 14; k++) sp.push({ x: posts[k % 5] + rr(sd + 10, k, -10, 10), y: lerp(gy - 4, top, rr(sd + 11, k, 0, 1)), s: k % 4 === 0 ? 3 : k % 2 ? 1 : 2 });
-  return stack(W, H, c, sparks(W, H, g > 0.05 ? sp.filter((p) => p.y > 2) : []));
+  for (let k = 0; k < 14; k++) {
+    const [x, y] = foot(k % 5);
+    const o = rr(sd + 10, k, -10, 10);
+    sp.push({ x: x + dir[0] * o, y: y + dir[1] * o - lerp(4, hgt, rr(sd + 11, k, 0, 1)), s: k % 4 === 0 ? 3 : k % 2 ? 1 : 2 });
+  }
+  return stack(W, H, c, sparks(W, H, g > 0.05 ? sp.filter((p) => p.y > 2 && p.x > 2 && p.x < W - 3) : []));
+}
+const FENCE_RISE = [0.15, 0.45, 0.8, 1.04, 1, 1];
+const FENCE_ARCS = [0, 0, 0, 0.35, 0.6, 0.75];
+function fence(kind: WallKind, label: string): WorldSprite {
+  // The horizontal fence keeps its 100 px; the turned ones stand 103 px (1.8 m) as asked.
+  const zig = kind === 'wall_depth' ? 9 : kind === 'wall_diag' ? 3 : 0;
+  const L = wallLine(kind, kind === 'wall' ? 100 : 103, zig * 2, kind === 'wall_depth' ? { l: 24, t: 18, r: 24, b: 12 } : { l: 22, t: 18, r: 22, b: 10 });
+  const idle = frames(4, (_, i) => fenceFrame(i, 1, 0.75, L, zig));
+  const rise = frames(6, (_, i) => fenceFrame(10 + i, FENCE_RISE[i], FENCE_ARCS[i], L, zig));
+  return vfxSprite(kind, label, L.anchor, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
 }
 function wall(): WorldSprite {
-  const W = 264, H = 120, gy = 112;
-  const idle = frames(4, (_, i) => wallFrame(i, 1, 0.75, W, H, gy));
-  const rise = frames(6, (_, i) => wallFrame(10 + i, [0.15, 0.45, 0.8, 1.04, 1, 1][i], [0, 0, 0, 0.35, 0.6, 0.75][i], W, H, gy));
-  return vfxSprite('wall', 'Lightning wall (fence, 4.5 m x 1.8 m)', [W / 2, gy], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
+  return fence('wall', 'Lightning wall (fence, 4.5 m x 1.8 m)');
 }
 
 // --- aura: arcs crawling around the body ----------------------------------------------------
@@ -549,7 +609,8 @@ function wall(): WorldSprite {
 // crawling up both sides and arcing over the head, chirping bursts, sparks and a static ring.
 
 function aura(): WorldSprite {
-  const W = 80, H = 120, cx = 40, gy = 112, top = 6;
+  // Rows below the feet for the static ring (the anchor is unchanged).
+  const W = 80, H = 128, cx = 40, gy = 112, top = 6;
   const outerW = (y: number) => 29 * Math.pow(1 - Math.pow(clamp((gy - y) / (gy - top), 0, 1), 2.6), 0.5);
   const fr = frames(6, (t, i) => {
     const sheath = new Field(W, H), f = new Field(W, H), ring = new Field(W, H);

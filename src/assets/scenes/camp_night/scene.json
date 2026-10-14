@@ -33,48 +33,61 @@
  },
  "spots": [
   {
-   "x": 394,
-   "y": 354,
+   "x": 404,
+   "y": 356,
    "facing": "right",
+   "pose": "sit",
+   "support": "seat_log",
    "note": "left of the fire"
   },
   {
-   "x": 590,
-   "y": 352,
+   "x": 562,
+   "y": 358,
    "facing": "left",
+   "pose": "read",
+   "support": "seat_rock",
    "note": "right of the fire"
   },
   {
-   "x": 548,
-   "y": 304,
-   "facing": "left",
-   "note": "behind the fire, right"
+   "x": 448,
+   "y": 300,
+   "facing": "right",
+   "pose": "lean",
+   "support": "lean_rock",
+   "note": "behind the fire, left, against a rock"
   },
   {
-   "x": 436,
-   "y": 298,
-   "facing": "right",
-   "note": "behind the fire, left"
+   "x": 728,
+   "y": 394,
+   "facing": "left",
+   "pose": "train",
+   "note": "open ground, front right"
   }
  ],
  "partySpots": [
   {
-   "x": 394,
-   "y": 354,
+   "x": 404,
+   "y": 356,
    "facing": "right",
+   "pose": "sit",
+   "support": "seat_log",
    "note": "left of the fire"
   },
   {
-   "x": 590,
-   "y": 352,
+   "x": 562,
+   "y": 358,
    "facing": "left",
+   "pose": "read",
+   "support": "seat_rock",
    "note": "right of the fire"
   },
   {
-   "x": 548,
-   "y": 304,
-   "facing": "left",
-   "note": "behind the fire, right"
+   "x": 448,
+   "y": 300,
+   "facing": "right",
+   "pose": "lean",
+   "support": "lean_rock",
+   "note": "behind the fire, left, against a rock"
   }
  ],
  "props": [
@@ -141,8 +154,8 @@
   {
    "group": "campsite",
    "name": "log_seat",
-   "x": 604,
-   "y": 400
+   "x": 632,
+   "y": 410
   },
   {
    "group": "campsite",

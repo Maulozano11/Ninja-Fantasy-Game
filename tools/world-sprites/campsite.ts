@@ -2487,6 +2487,182 @@ function smokeTall(): WorldSprite {
 }
 
 // ================================================================================================
+// SEATS AND A LEANING ROCK (for the camp poses)
+// ================================================================================================
+//
+// The camp poses (src/sprite/rig.ts CAMP_PROPS) sit on a seat whose top is 26 px above the feet,
+// centred 17 px behind them, and lean on a face 26 px behind the feet. These are built to that:
+// the seats' top surfaces are flat at SEAT_H above their anchor (the ground under the seat's
+// centre); the leaning rock's anchor x is its front face, where the back rests.
+
+const SEAT_H = 26;
+
+/** A short sawn stump to sit on: root flares, bark furrows, a flat cut top with rings. */
+function seatStump(): WorldSprite {
+  const W = 70, H = 70, ox = 35, oy = 52;
+  GROUP = 1;
+  const sc = new Scene();
+  const R0 = 12.5;
+  const rings: V3[][] = [];
+  const N = 20;
+  for (const [h, rf, flare] of [[-1, 1.22, 0.8], [2, 1.12, 0.55], [6, 1.03, 0.25], [12, 0.99, 0.08], [SEAT_H - 1.2, 0.97, 0], [SEAT_H, 0.95, 0]] as [number, number, number][]) {
+    rings.push(Array.from({ length: N }, (_, j) => {
+      const a = (j / N) * TAU;
+      const lobe = 1 + flare * 0.24 * Math.max(0, Math.cos(a * 4 + 1.9)) ** 2 + (rnd(3800, j, 1) - 0.5) * 0.03;
+      return [Math.cos(a) * R0 * rf * lobe, h, Math.sin(a) * R0 * rf * lobe * 0.95] as V3;
+    }));
+  }
+  const stump = sc.add(loft(rings, { capEnd: true, smooth: false }), { pal: BARK, seed: 3801, contrast: 1.1, facetVar: 0.03, ao: 2, crest: false });
+  const f = render(sc, W, H, ox, oy);
+  barkVertical(f, stump, 0, 0, 3802);
+  ringsOn(f, stump, [0, SEAT_H, 0], [0, 1, 0], R0 * 0.95, 3803, (p) => p, 0.6);
+  // A worn, darker ring where people sit, and a little moss low on the shaded back.
+  f.each(stump.id, (i, x, y) => {
+    const q = f.world(i);
+    const n = f.normal(i);
+    if (n[1] > 0.6) {
+      const r = Math.hypot(q[0], q[2]) / (R0 * 0.95);
+      if (r < 0.62 && r > 0.2 && f.step[i] > 2 && hash(x, y, 3804) < 0.5) f.step[i] -= 1;
+      return;
+    }
+    if (f.pal[i] === BARK && n[0] > 0.2 && q[1] < 10 && fbm(x, y, 5, 2, 3805) > 0.6) {
+      f.pal[i] = MOSS;
+      f.step[i] = clamp(f.step[i] + (noise(x, y, 1.5, 3806) > 0.5 ? 1 : 0), 1, 4);
+    }
+  });
+  const c = f.compose();
+  c.outline();
+  return finish('seat_stump', 'Stump Seat', [0.5, 0.46], ['cover-half', 'interactable'], { idle: { frames: [c], fps: 0 } }, ox, oy);
+}
+
+/** A short log to sit on, lying across: its top at the seat height, cut ends with rings, moss. */
+function seatLog(): WorldSprite {
+  const W = 100, H = 60, ox = 50, oy = 44;
+  const YAW = -0.16;
+  GROUP = 1;
+  const sc = new Scene();
+  const Y = (tris: Tri[]) => rotY(tris, YAW);
+  const LL = 58, RAD = 12.5;
+  const path: V3[] = [];
+  const radii: number[] = [];
+  for (let k = 0; k <= 6; k++) {
+    const t = k / 6;
+    path.push([-LL / 2 + t * LL, SEAT_H - RAD, 0]);
+    radii.push(RAD * (1.03 - 0.06 * t) * (1 + (rnd(3850, k) - 0.5) * 0.04));
+  }
+  const log = sc.add(Y(tube(path, radii, 16, { caps: true, wob: 0.04, seed: 3851 })), { pal: BARK, seed: 3852, contrast: 1.15, facetVar: 0, ao: 2, crest: false });
+  const f = render(sc, W, H, ox, oy);
+  const toLocal = (p: V3) => rotYp(p, -YAW);
+  f.each(log.id, (i) => {
+    const q = toLocal(f.world(i));
+    const n = sub(toLocal(add(f.world(i), f.normal(i))), q);
+    if (Math.abs(n[0]) > 0.75) return;
+    const ang = Math.atan2(q[1] - (SEAT_H - RAD), q[2]);
+    const ph = ang * 5 + (noise(q[0] / 10, ang * 2, 1, 3853) - 0.5) * 2.4;
+    const c = ((ph % 1) + 1) % 1;
+    let st = f.step[i];
+    if (c < 0.24) st = Math.max(1, st - 2);
+    else if (c > 0.8) st = Math.min(5, st + 1);
+    if (((q[0] / 8 + hash(Math.floor(ph), 1, 3854)) % 1) < 0.1 && c > 0.24) st = Math.max(1, st - 1);
+    // The top is worn smooth where people sit.
+    if (n[1] > 0.7 && Math.abs(q[0]) < 16) {
+      f.pal[i] = WOOD_DK;
+      st = clamp(st, 2, 4);
+    }
+    f.step[i] = st;
+  });
+  ringsOn(f, log, [LL / 2, SEAT_H - RAD, 0], [1, 0, 0], radii[6], 3855, toLocal, 0.75);
+  ringsOn(f, log, [-LL / 2, SEAT_H - RAD, 0], [1, 0, 0], radii[0], 3856, toLocal, 0.75);
+  f.each(log.id, (i, x, y) => {
+    if (f.pal[i] !== BARK) return;
+    const q = toLocal(f.world(i));
+    if (q[1] > SEAT_H - RAD && fbm(x, y, 6, 2, 3857) > 0.66) {
+      f.pal[i] = MOSS;
+      f.step[i] = clamp(f.step[i] + (noise(x, y, 1.6, 3858) > 0.5 ? 1 : 0), 1, 4);
+    }
+  });
+  const c = f.compose();
+  c.outline();
+  return finish('seat_log', 'Log Seat (short)', [1.05, 0.46], ['cover-half', 'interactable'], { idle: { frames: [c], fps: 0 } }, ox, oy);
+}
+
+/** A flat-topped stone to sit on: faceted sides, a level worn top, lichen and a chip. */
+function seatRock(): WorldSprite {
+  const W = 80, H = 70, ox = 40, oy = 52;
+  GROUP = 1;
+  const sc = new Scene();
+  const n = 9;
+  const rings = ([[-1, 1.0], [6, 1.06], [16, 0.98], [SEAT_H - 2.5, 0.88], [SEAT_H, 0.74]] as [number, number][]).map(([h, rf], k) =>
+    ring(0, h, 0, 19 * rf, 14 * rf, n, { rot: 0.2 + (k % 2) * 0.12, jit: k === 4 ? 0.05 : 0.1, seed: 3810 + k }),
+  );
+  const rock = sc.add(loft(rings, { capEnd: true }), { pal: STONE_W, seed: 3815, contrast: 1.15, facetVar: 0.07, ao: 2, tex: 0.05, texCell: 5, form: 0.25 });
+  const f = render(sc, W, H, ox, oy);
+  // Lichen blots on the sides, the top worn smooth and a touch lighter.
+  f.each(rock.id, (i, x, y) => {
+    const nn = f.normal(i);
+    if (nn[1] > 0.8) {
+      if (f.step[i] < 4 && hash(x >> 1, y, 3816) < 0.25) f.step[i] += 1;
+      return;
+    }
+    if (nn[1] > 0.1 && fbm(x, y, 4, 2, 3817) > 0.66) {
+      f.pal[i] = MOSS;
+      f.step[i] = clamp(f.step[i], 2, 4);
+    }
+  });
+  const [cx, cy] = f.px([12, 12, -12]);
+  paintCrack(f, [[cx - 1, cy - 3], [cx, cy - 1], [cx - 1, cy + 1], [cx, cy + 3]], [rock.id]);
+  const c = f.compose();
+  c.outline();
+  return finish('seat_rock', 'Flat Rock Seat', [0.7, 0.46], ['cover-half', 'interactable'], { idle: { frames: [c], fps: 0 } }, ox, oy);
+}
+
+/**
+ * A tall boulder to lean on: rounded behind, a broad, nearly upright face toward +X (the anchor x
+ * is that face, at the ground), moss on its crown and shoulders. Mirrored for a ninja facing left.
+ */
+function leanRock(): WorldSprite {
+  const W = 110, H = 120, ox = 80, oy = 100;
+  GROUP = 1;
+  const sc = new Scene();
+  const n = 12;
+  // Rings of the boulder, flattened on the +X side so the back meets a face, not a bulge.
+  const prof: [number, number][] = [[-1, 1.0], [10, 1.04], [26, 1.0], [44, 0.92], [60, 0.78], [72, 0.55], [78, 0.25]];
+  const RX = 30, RD = 22, CX = -28;
+  const rings = prof.map(([h, rf], k) =>
+    Array.from({ length: n }, (_, j) => {
+      const a = (j / n) * TAU + 0.15;
+      const jit = 1 + (rnd(3820 + k, j) - 0.5) * 0.22;
+      let x = CX + Math.cos(a) * RX * rf * jit;
+      const d = Math.sin(a) * RD * rf * jit;
+      // The front face: nothing pokes past x = 0 (reclined a hair toward the top).
+      x = Math.min(x, -h * 0.04 + (h < 6 ? 2 : 0));
+      return [x, h + (k > 0 && k < prof.length - 1 ? (rnd(3830 + k, j) - 0.5) * 3 : 0), d] as V3;
+    }),
+  );
+  const rock = sc.add(loft(rings, { capEnd: [CX + 4, 80, 2] }), { pal: STONE, seed: 3840, contrast: 1.2, facetVar: 0.1, ao: 3, tex: 0.07, texCell: 5, form: 0.12, bias: -0.14 });
+  const f = render(sc, W, H, ox, oy);
+  // Moss on the crown and the upward shoulders, lichen blots on the faces.
+  f.each(rock.id, (i, x, y) => {
+    const nn = f.normal(i);
+    const q = f.world(i);
+    const up = nn[1] + (q[1] > 60 ? 0.3 : 0);
+    if (up > 0.45 && fbm(x, y, 6, 3, 3841) + up * 0.3 > 0.78) {
+      f.pal[i] = MOSS;
+      f.step[i] = clamp(f.step[i] + (noise(x, y, 1.6, 3842) > 0.5 ? 1 : 0), 1, 4);
+    } else if (fbm(x, y, 3, 2, 3843) > 0.74 && f.step[i] >= 2) {
+      f.pal[i] = STONE_W;
+    }
+  });
+  for (const [px, ph, pd] of [[-6, 40, -18], [-40, 20, -16]] as [number, number, number][]) {
+    const [cx, cy] = f.px([px, ph, pd]);
+    paintCrack(f, [[cx - 2, cy - 4], [cx - 1, cy - 1], [cx - 2, cy + 2], [cx, cy + 5]], [rock.id]);
+  }
+  const c = f.compose();
+  c.outline();
+  return finish('lean_rock', 'Leaning Rock', [1.1, 1.4], ['cover-3q', 'blocks-sight', 'climbable'], { idle: { frames: [c], fps: 0 } }, ox, oy);
+}
+
+// ================================================================================================
 // main
 // ================================================================================================
 
@@ -2679,6 +2855,10 @@ const BUILDERS: [string, () => WorldSprite[]][] = [
   ['fern_clump', () => [fernClump()]],
   ['campfire_large', () => [campfireLarge()]],
   ['smoke_tall', () => [smokeTall()]],
+  ['seat_stump', () => [seatStump()]],
+  ['seat_log', () => [seatLog()]],
+  ['seat_rock', () => [seatRock()]],
+  ['lean_rock', () => [leanRock()]],
 ];
 const sprites: WorldSprite[] = BUILDERS.filter(([k]) => !ONLY.length || ONLY.includes(k)).flatMap(([, b]) => b());
 // A partial run writes its sheets next to the review crops (never over the real group).

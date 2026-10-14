@@ -718,7 +718,7 @@ function mist3d(o: Orient, hk: number, t: number): Canvas {
     const k = v / hu[Math.round(u) + 20];
     if (k > 1.08) return 0;
     // Thick and pooling at the ground, thinning to a crest of tongues at the top.
-    const half = (MIST_HALF + 5 * (1 - smooth(0, 12, v))) * (1 - 0.55 * smooth(0.25, 1, k));
+    const half = (MIST_HALF + 5 * (1 - smooth(0, 12, v))) * (1 - 0.45 * smooth(0.25, 1, k));
     const as = Math.abs(s);
     if (as > half) return 0;
     const ends = smooth(-4, 16, u) * (1 - smooth(LEN - 16, LEN + 4, u));
@@ -759,7 +759,7 @@ function mist3d(o: Orient, hk: number, t: number): Canvas {
     const ph = fract(rnd(145, k) + t);
     const q = proj(o, 22 + k * 64 + Math.sin(ph * TAU) * 6, 0, 22 + (rnd(146, k) * 0.5 + ph * 0.4) * WALL_H * hk * 0.8);
     return { x: q[0], y: q[1], r: 6 * (1 - ph * 0.35) };
-  }), { purple: true, seed: 147, alpha: 165 });
+  }), { purple: true, seed: 147, alpha: 205 });
   return c;
 }
 

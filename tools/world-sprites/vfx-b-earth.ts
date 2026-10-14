@@ -1125,19 +1125,27 @@ function stoneWallFrame(o: Orient, w: StoneWall, f: number, mode: 'rise' | 'idle
   }
   sh.render(c, WST, { outline: null, alpha: 110 });
   // Dust churning along the foot: a band hugging the base line on each side.
-  const dustH = mode === 'rise' ? [17, 23, 25, 20, 14, 9][f] : 6;
+  const dustH = mode === 'rise' ? [17, 23, 25, 20, 14, 9][f] : 10;
   const band = (side: number) => {
     const a0 = P(4, side * (HALF_T + 4), 0), a1 = P(LEN - 4, side * (HALF_T + 4), 0);
     return (x: number, y: number): number => {
       const tt = clamp((x + 0.5 - a0[0]) / (a1[0] - a0[0] || 1), 0, 1);
       const ly = lerp(a0[1], a1[1], tt);
       if (o.key === 'wall_depth') {
-        // Along a vertical base line: billows to the side.
-        const dx = Math.abs(x + 0.5 - a0[0]);
-        const ty = clamp((y + 0.5 - a1[1]) / (a0[1] - a1[1] || 1), 0, 1);
-        const bump = 0.45 + 1.1 * pnoise(ty * 48 + side * 7, 0, 5, 48, 617 + f);
-        if (y + 0.5 < a1[1] - 4 || y + 0.5 > a0[1] + 4) return 0;
-        const along = (1 - smooth(0.4, 1, dx / (dustH * 0.42 * bump * (0.45 + 0.55 * ty)))) * smooth(0.25, 0.75, ty);
+        // Along a vertical base line a continuous band reads as a rail, so the dust rolls out
+        // as a row of separate billows down each side (biggest near the camera), only while
+        // the wall is coming up; at rest only the cloud at the near end stays.
+        if (y + 0.5 > a0[1] + 4) return 0;
+        let along = 0;
+        if (mode === 'rise' && f <= 4)
+          for (let k = 0; k < 24; k++) {
+            const cy = a0[1] - 3 - k * 7 + (rnd(619, k, f) - 0.5) * 3;
+            const ty = (cy - a1[1]) / (a0[1] - a1[1] || 1);
+            if (ty < 0.35) break;
+            const r = dustH * 0.62 * (0.7 + 0.6 * rnd(618, k, side + 2)) * (0.4 + 0.6 * ty);
+            const cx = a0[0] + side * (r * 0.45 + 1 + (rnd(617, k, side + 2) - 0.5) * 3);
+            along = Math.max(along, 1 - smooth(0.4, 1, Math.hypot((x + 0.5 - cx) / r, (y + 0.5 - cy) / r)));
+          }
         // A cloud rolling out in front of the near end.
         const nearEnd = 1 - smooth(0.4, 1.05, Math.hypot((x + 0.5 - o.ax) / (dustH * 1.1), (y + 0.5 - (a0[1] - dustH * 0.25)) / (dustH * 0.75)));
         return Math.max(along, nearEnd) * (y + 0.5 > a0[1] + 4 ? 0 : 1);
@@ -1145,7 +1153,13 @@ function stoneWallFrame(o: Orient, w: StoneWall, f: number, mode: 'rise' | 'idle
       const above = ly + 3 - (y + 0.5);
       if (above < 0) return 0;
       const ends = smooth(0, 0.08, tt) * (1 - smooth(0.92, 1, tt));
-      const bump = (0.35 + 1.25 * pnoise(tt * 64 + side * 9, 0, 5, 64, 617 + f)) * (0.3 + 0.7 * ends);
+      // Rising: a churning bank. At rest: separate low drifts with gaps (a thin unbroken band
+      // reads as a rail along the foot).
+      const bump =
+        mode === 'idle'
+          ? Math.max(0, 1.7 * pnoise(tt * 64 + side * 9, 0, 6, 64, 617) - 0.55) * (0.3 + 0.7 * ends)
+          : (0.35 + 1.25 * pnoise(tt * 64 + side * 9, 0, 5, 64, 617 + f)) * (0.3 + 0.7 * ends);
+      if (bump < 0.05) return 0;
       return (1 - smooth(0.35, 1, above / (dustH * bump))) * (x + 0.5 < a0[0] - 6 || x + 0.5 > a1[0] + 6 ? 0 : 1);
     };
   };

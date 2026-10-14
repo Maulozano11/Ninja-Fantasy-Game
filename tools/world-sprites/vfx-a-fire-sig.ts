@@ -332,7 +332,9 @@ export function waveFrame(w: Wave, st: WaveState): Canvas {
       // Dying flames scatter over the burning ground and vary more in height, so the three
       // depth rows never line up into neat bars.
       const scatter = smooth(0, 0.3, st.dead);
-      const yg = gy + rowSide[row] * halfDepth(d) + rr(seed + 90 + row, Math.round(jx), -0.45, 0.45) * halfDepth(d) * scatter;
+      // (scattered inward, so they stay on the cone's footprint)
+      const jit = row === 1 ? rr(seed + 90 + row, Math.round(jx), -0.45, 0.45) : -rowSide[row] * rr(seed + 90 + row, Math.round(jx), 0, 0.9);
+      const yg = gy + rowSide[row] * halfDepth(d) + jit * halfDepth(d) * scatter;
       const h = heightAt(jx, row) * rr(seed + 10 + row, Math.round(jx), 0.82, 1.12) * lerp(1, rr(seed + 91 + row, Math.round(jx), 0.4, 1.3), scatter) * (1 + 0.08 * Math.sin(ph + jx * 0.05));
       if (h < 5) continue;
       const lean = 0.42 * smooth(80, 0, crestX - jx) * (surging ? 1 : 0.35);
@@ -494,7 +496,7 @@ export function waveSpec(great: boolean): Wave {
   const topPad = great ? 56 : 16;
   const gy = Math.round(halfDepth(len) + hMax * 1.32 + 10 + topPad);
   const H = Math.ceil((gy + halfDepth(len) + 10) / 8) * 8;
-  const W = Math.ceil((x0 + len + 90) / 8) * 8;
+  const W = Math.ceil((x0 + len + 100) / 8) * 8;
   return { great, W, H, x0, gy, len, hMax, seed: great ? 900 : 800 };
 }
 

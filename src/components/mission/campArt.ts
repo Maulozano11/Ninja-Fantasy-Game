@@ -13,8 +13,8 @@ import frameBackUrl from '../../assets/scenes/camp_night/frame_back.png';
 import frameFrontUrl from '../../assets/scenes/camp_night/frame_front.png';
 import { renderSpriteCached } from '../../sprite/compose';
 import { dojutsuToEye, getAppearance } from '../../sprite/legacy';
-import { frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
-import { GRID } from '../../sprite/raster';
+import { CAMP_PROPS, frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
+import { GRID, RES } from '../../sprite/raster';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { ShinobiCharacter } from '../../types/shinobi';
 import { worldSprite } from '../world/WorldSpriteView';
@@ -22,8 +22,19 @@ import { worldSprite } from '../world/WorldSpriteView';
 export const SCENE_W = scene.size[0];
 export const SCENE_H = scene.size[1];
 export const FIRE = { x: scene.fire.x, y: scene.fire.y, flameY: scene.fire.flameY };
-/** Where the party stands round the fire (up to four), facing it. */
-export const SPOTS = scene.spots.map((s) => ({ x: s.x, y: s.y, flip: s.facing === 'left' }));
+/**
+ * Where the party stands round the fire (up to four), facing it: the camp pose each seat shows by
+ * default and the prop that pose rests on (a seat under the hips, a rock behind the back).
+ */
+export const SPOTS = scene.spots.map((s) => ({ x: s.x, y: s.y, flip: s.facing === 'left', pose: s.pose, support: (s as { support?: string }).support }));
+
+/**
+ * Where a pose's support goes, from the pose rig (design units from the feet at x 32): the seat's
+ * centre behind the feet for sit and read, the leaning face behind the feet for lean. In 1x world
+ * px (the sprite's fine pixels), measured on the frames: 17 and 26.
+ */
+export const SEAT_DX = (32 - CAMP_PROPS.SEAT_X) * RES;
+export const LEAN_DX = (32 - CAMP_PROPS.LEAN_X) * RES;
 
 export interface ScenePropDef {
   group: string;

@@ -770,12 +770,15 @@ def finish(L, seed, outline=False, inner=True, rim=True):
 
 
 def scene_json():
-    # Spots in the order the party fills them (the game seats up to four), each facing the fire.
+    # Spots in the order the party fills them (the game seats up to four), each facing the fire,
+    # with the camp pose it shows by default and what that pose rests on: a seat under the hips
+    # for sit and read (top 26 px above the feet, 17 px behind them), a rock behind the back for
+    # lean (its face 26 px behind the feet), open ground for train (src/sprite/rig.ts CAMP_PROPS).
     spots = [
-        {'x': 394, 'y': 354, 'facing': 'right', 'note': 'left of the fire'},
-        {'x': 590, 'y': 352, 'facing': 'left', 'note': 'right of the fire'},
-        {'x': 548, 'y': 304, 'facing': 'left', 'note': 'behind the fire, right'},
-        {'x': 436, 'y': 298, 'facing': 'right', 'note': 'behind the fire, left'},
+        {'x': 404, 'y': 356, 'facing': 'right', 'pose': 'sit', 'support': 'seat_log', 'note': 'left of the fire'},
+        {'x': 562, 'y': 358, 'facing': 'left', 'pose': 'read', 'support': 'seat_rock', 'note': 'right of the fire'},
+        {'x': 448, 'y': 300, 'facing': 'right', 'pose': 'lean', 'support': 'lean_rock', 'note': 'behind the fire, left, against a rock'},
+        {'x': 728, 'y': 394, 'facing': 'left', 'pose': 'train', 'note': 'open ground, front right'},
     ]
     # Props: x, y = where the sprite's anchor lands. z nudges the draw order among props at one y.
     props = [
@@ -788,7 +791,7 @@ def scene_json():
         {'group': 'campsite', 'name': 'campfire_large', 'x': FIRE[0], 'y': FIRE[1], 'anim': 'burning', 'note': 'anchor = centre of the ring'},
         {'group': 'campsite', 'name': 'smoke_tall', 'x': FIRE[0] + 2, 'y': FIRE[1] - 52, 'z': 52.5, 'note': 'foot at the flame tips'},
         {'group': 'campsite', 'name': 'cooking_tripod', 'x': FIRE[0], 'y': FIRE[1], 'z': 1, 'note': 'anchor = ground under the pot'},
-        {'group': 'campsite', 'name': 'log_seat', 'x': 604, 'y': 400},
+        {'group': 'campsite', 'name': 'log_seat', 'x': 632, 'y': 410},
         {'group': 'campsite', 'name': 'torii', 'x': 838, 'y': 304},
         {'group': 'campsite', 'name': 'tent_small', 'x': 694, 'y': 308, 'flip': True},
         {'group': 'campsite', 'name': 'swords_pair', 'x': 640, 'y': 338},

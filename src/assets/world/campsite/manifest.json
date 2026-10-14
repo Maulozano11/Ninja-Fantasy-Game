@@ -377,6 +377,111 @@
      "loop": true
     }
    }
+  },
+  "seat_stump": {
+   "label": "Stump Seat",
+   "file": "seat_stump.png",
+   "frameW": 36,
+   "frameH": 49,
+   "anchor": [
+    18,
+    36
+   ],
+   "meters": [
+    0.5,
+    0.46
+   ],
+   "tags": [
+    "cover-half",
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "seat_log": {
+   "label": "Log Seat (short)",
+   "file": "seat_log.png",
+   "frameW": 66,
+   "frameH": 40,
+   "anchor": [
+    33,
+    34
+   ],
+   "meters": [
+    1.05,
+    0.46
+   ],
+   "tags": [
+    "cover-half",
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "seat_rock": {
+   "label": "Flat Rock Seat",
+   "file": "seat_rock.png",
+   "frameW": 44,
+   "frameH": 47,
+   "anchor": [
+    22,
+    35
+   ],
+   "meters": [
+    0.7,
+    0.46
+   ],
+   "tags": [
+    "cover-half",
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "lean_rock": {
+   "label": "Leaning Rock",
+   "file": "lean_rock.png",
+   "frameW": 66,
+   "frameH": 102,
+   "anchor": [
+    62,
+    84
+   ],
+   "meters": [
+    1.1,
+    1.4
+   ],
+   "tags": [
+    "cover-3q",
+    "blocks-sight",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
   }
  }
 }

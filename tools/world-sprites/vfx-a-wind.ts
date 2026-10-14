@@ -412,8 +412,8 @@ function multi(): WorldSprite {
 // --- hit: crossing cuts and a pressure ring -------------------------------------------------
 
 function hit(): WorldSprite {
-  // 4 px of room all round for the last pressure ring and the leaves (the anchor follows).
-  const W = 72, H = 72, cx = 36, cy = 36;
+  // Room all round for the last pressure ring and the falling leaves (the anchor follows).
+  const W = 72, H = 78, cx = 36, cy = 36;
   const fr = frames(6, (_, i) => {
     const f = new Field(W, H), ring = new Field(W, H);
     const cut = (a: number, len: number, w: number, heat: number) => {
@@ -569,8 +569,8 @@ function wallFrame(t: number, g: number, W: number, H: number, gy: number, ox = 
   return stack(CW, H, c, lv);
 }
 function wall(): WorldSprite {
-  // 10 px of room at both ends for the dust skirt and the swirls (the anchor follows).
-  const W = 264, H = 120, gy = 112, ox = 10;
+  // 18 px of room at both ends for the dust skirt and the swirls (the anchor follows).
+  const W = 264, H = 120, gy = 112, ox = 18;
   const idle = frames(4, (t) => wallFrame(t, 1, W, H, gy, ox));
   const rise = frames(6, (_, i) => wallFrame(i / 6, [0.1, 0.3, 0.55, 0.82, 1.06, 1][i], W, H, gy, ox));
   return vfxSprite('wall', 'Wind wall (4.5 m x 1.8 m)', [W / 2 + ox, gy], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });

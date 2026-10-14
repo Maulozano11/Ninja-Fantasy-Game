@@ -178,7 +178,8 @@ interface PoseFrame {
   hip?: number;
   /**
    * Raises the whole body this many design units above the ground, so both
-   * feet leave it (the flight phase of a run).
+   * feet leave it (the flight phase of a run); negative lowers it (a pose that
+   * stands on the far foot alone puts that foot on the ground line).
    */
   lift?: number;
   /**
@@ -439,7 +440,7 @@ const DOWNED: PoseFrame[] = [DOWNED_BASE, { ...DOWNED_BASE, lean: -6.5 }];
  * - SEAT_X: the middle of the seat under the hips, behind the feet.
  * - LEAN_X: the front face of the trunk, rock or pole a 'lean' rests against.
  */
-export const CAMP_PROPS = { SEAT_TOP: GROUND - 13, SEAT_X: 32 - 8.5, LEAN_X: 32 - 13 };
+export const CAMP_PROPS = { SEAT_TOP: GROUND - 13, SEAT_X: 32 - 9, LEAN_X: 32 - 16 };
 
 /** Breathing for the resting poses: the chest rises 1 px on half the loop. */
 const breathe = (f: PoseFrame, n: number): PoseFrame[] => Array.from({ length: n }, (_, i) => (i < n / 2 ? f : { ...f, chestDy: 0.5 }));
@@ -452,8 +453,10 @@ const breathe = (f: PoseFrame, n: number): PoseFrame[] => Array.from({ length: n
 const LEAN_BASE: PoseFrame = {
   lean: -13,
   pelvisDx: -6,
+  // standing on the far foot alone: the body comes down so it is on the ground line
+  lift: -2.5,
   snap: true,
-  footN: v(-0.36, 0.5),
+  footN: v(-0.24, 0.52),
   footF: v(0.34, 0.94),
   // Arms crossed: the near forearm across the chest, the far hand tucked under its elbow.
   handN: chest(3, 1.5),
@@ -519,11 +522,11 @@ const STANCE = { footN: v(-0.32, 0.94), footF: v(0.36, 0.93) };
 const TRAIN_BLADE: PoseFrame[] = [
   { lean: 4, ...STANCE, handN: arm(0.6, 0.45), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
   { lean: -3, ...STANCE, handN: arm(0.12, -0.86), handF: chest(1, -1), shapeN: 'grip', shapeF: 'fist' },
-  { lean: 12, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.95, 0.12), handF: arm(-0.3, 0.75), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 12, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.8, 0.26), handF: arm(-0.3, 0.75), shapeN: 'grip', shapeF: 'fist' },
   { lean: 15, pelvisDx: 2, footN: v(-0.42, 0.9), footF: v(0.4, 0.92), handN: arm(0.62, 0.74), handF: arm(-0.32, 0.72), shapeN: 'grip', shapeF: 'fist' },
-  { lean: 2, ...STANCE, handN: arm(-0.42, 0.78), handF: chest(3, 0), shapeN: 'grip', shapeF: 'open' },
-  { lean: 10, pelvisDx: 1, footN: v(-0.38, 0.92), footF: v(0.38, 0.93), handN: arm(0.98, -0.05), handF: arm(-0.25, 0.8), shapeN: 'grip', shapeF: 'open' },
-  { lean: 5, ...STANCE, handN: arm(0.66, -0.6), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 2, ...STANCE, handN: arm(-0.3, 0.82), handF: chest(3, 0), shapeN: 'grip', shapeF: 'open' },
+  { lean: 10, pelvisDx: 1, footN: v(-0.38, 0.92), footF: v(0.38, 0.93), handN: arm(0.76, 0.12), handF: arm(-0.25, 0.8), shapeN: 'grip', shapeF: 'open' },
+  { lean: 5, ...STANCE, handN: arm(0.7, -0.5), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
   { lean: 4, ...STANCE, handN: arm(0.58, 0.5), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
 ];
 
@@ -533,7 +536,7 @@ const TRAIN_POLE: PoseFrame[] = [
   { lean: 11, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.96, 0.15), handF: arm(-0.25, 0.78), shapeN: 'grip', shapeF: 'fist' },
   { lean: 4, ...STANCE, handN: arm(0.3, 0.76), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
   { lean: -4, ...STANCE, handN: arm(0.18, -0.84), handF: chest(1, -1), shapeN: 'grip', shapeF: 'fist' },
-  { lean: 12, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.9, 0.25), handF: arm(-0.3, 0.75), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 12, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.7, 0.42), handF: arm(-0.3, 0.75), shapeN: 'grip', shapeF: 'fist' },
   { lean: 14, pelvisDx: 1, footN: v(-0.42, 0.88), footF: v(0.42, 0.88), handN: arm(0.6, 0.76), handF: arm(-0.3, 0.72), shapeN: 'grip', shapeF: 'open' },
   { lean: 2, ...STANCE, handN: arm(0.32, 0.28), handF: chest(2, 0), shapeN: 'grip', shapeF: 'open' },
   { lean: 4, ...STANCE, handN: arm(0.38, 0.72), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },

@@ -263,7 +263,7 @@ export function drawDragon(W: number, H: number, snoutAt: Pt, neckBase: Pt, s: n
   const key = (x: number, y: number) => {
     const n = pnoise(x, y, 14, 0, 0, seed + 3) * 0.55 + pnoise(x, y, 30, 0, 0, seed + 4) * 0.45;
     const hgt = clamp((bottom - y) / Math.max(1, bottom - top), 0, 1);
-    return fading ? clamp((1 - hgt) * 0.7 + (n - 0.5) * 0.5 + 0.15, 0, 1) : clamp(hgt * 0.65 + n * 0.35, 0, 1);
+    return fading ? clamp((1 - hgt) * 0.7 + (n - 0.5) * 0.34 + 0.15, 0, 1) : clamp(hgt * 0.65 + n * 0.35, 0, 1);
   };
   return dissolve(all, vis, key, [FIRE[4], FIRE[6]], FIRE[0]);
 }

@@ -2537,12 +2537,13 @@ function seatStump(): WorldSprite {
 
 /** A short log to sit on, lying across: its top at the seat height, cut ends with rings, moss. */
 function seatLog(): WorldSprite {
-  const W = 100, H = 60, ox = 50, oy = 44;
-  const YAW = -0.16;
+  const W = 130, H = 60, ox = 65, oy = 44;
+  const YAW = -0.12;
   GROUP = 1;
   const sc = new Scene();
   const Y = (tris: Tri[]) => rotY(tris, YAW);
-  const LL = 58, RAD = 12.5;
+  // Long enough that both ends show past a sitter's cape and feet.
+  const LL = 86, RAD = 12.5;
   const path: V3[] = [];
   const radii: number[] = [];
   for (let k = 0; k <= 6; k++) {
@@ -2565,7 +2566,7 @@ function seatLog(): WorldSprite {
     else if (c > 0.8) st = Math.min(5, st + 1);
     if (((q[0] / 8 + hash(Math.floor(ph), 1, 3854)) % 1) < 0.1 && c > 0.24) st = Math.max(1, st - 1);
     // The top is worn smooth where people sit.
-    if (n[1] > 0.7 && Math.abs(q[0]) < 16) {
+    if (n[1] > 0.7 && Math.abs(q[0]) < 22) {
       f.pal[i] = WOOD_DK;
       st = clamp(st, 2, 4);
     }
@@ -2583,7 +2584,7 @@ function seatLog(): WorldSprite {
   });
   const c = f.compose();
   c.outline();
-  return finish('seat_log', 'Log Seat (short)', [1.05, 0.46], ['cover-half', 'interactable'], { idle: { frames: [c], fps: 0 } }, ox, oy);
+  return finish('seat_log', 'Log Seat', [1.5, 0.46], ['cover-half', 'interactable'], { idle: { frames: [c], fps: 0 } }, ox, oy);
 }
 
 /** A flat-topped stone to sit on: faceted sides, a level worn top, lichen and a chip. */

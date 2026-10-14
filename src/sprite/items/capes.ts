@@ -19,6 +19,17 @@ export interface Wind {
   wave: number;
 }
 
+const TRAIN_WIND: Wind[] = [
+  { dx: -1, lift: 0, wave: 0 },
+  { dx: -2, lift: 1, wave: 1 },
+  { dx: -7, lift: 4, wave: 0 },
+  { dx: -6, lift: 4, wave: 1 },
+  { dx: -2, lift: 1, wave: 0 },
+  { dx: -6, lift: 3, wave: -1 },
+  { dx: -3, lift: 2, wave: 1 },
+  { dx: -1, lift: 0, wave: 0 },
+];
+
 /** Pose-dependent wind so capes trail in attacks and sway in idle. */
 export function capeWind(g: DrawCtx): Wind {
   const f = g.rig.frame;
@@ -44,6 +55,11 @@ export function capeWind(g: DrawCtx): Wind {
       return { dx: -1.5, lift: 0, wave: [0, 1, 0, 0, -1, 0][f % 6] };
     case 'crouch':
       return { dx: -1, lift: 0, wave: 0 };
+    // Training: the cloth flies back on the cuts, strikes and kicks, and settles in the guards.
+    case 'train':
+    case 'trainPole':
+    case 'trainFist':
+      return TRAIN_WIND[f % 8];
     default:
       return { dx: 0, lift: 0, wave: [0, 0, -1, -1][f % 4] };
   }

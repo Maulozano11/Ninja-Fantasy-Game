@@ -840,7 +840,7 @@ function barrier3d(o: Orient, hk: number, sh: number, f: number, t: number): Can
     return Math.abs(s) > BAR_HALF ? 1 : -1;
   };
   const hits = march(o, inside, { sMax: BAR_HALF + 3, vMax: HGT + 8 });
-  const fill = new L(o.w, o.h), edge = new L(o.w, o.h), gold = new L(o.w, o.h), energyMask = new L(o.w, o.h), crestL = new L(o.w, o.h);
+  const fill = new L(o.w, o.h), edge = new L(o.w, o.h), gold = new L(o.w, o.h), energyMask = new L(o.w, o.h), crestL = new L(o.w, o.h), glyph = new L(o.w, o.h);
   for (let i = 0; i < o.w * o.h; i++) {
     const fc = hits.face[i];
     if (fc < 0) continue;
@@ -848,9 +848,24 @@ function barrier3d(o: Orient, hk: number, sh: number, f: number, t: number): Can
     const u = hits.u[i], sv = hits.s[i], v = hits.v[i];
     const haze = o.key !== 'wall' && u > LEN * 0.66 ? 1 : 0;
     if (u < POST || u > LEN - POST) {
-      // Gold seal posts.
+      // Gold seal posts: bevelled, with collars, and a glyph slot down the outer end.
       const lu = u < POST ? u : LEN - u;
-      gold.set(x, y, fc === 0 ? 4 : lu < 1 || POST - lu < 1 ? 2 : v % 8 < 1 ? 4 : 3);
+      const as = Math.abs(sv);
+      if (fc === 0) {
+        gold.set(x, y, as > BAR_HALF + 1 || lu < 1 || POST - lu < 1 ? 5 : 4);
+        continue;
+      }
+      const cv = [3, 24, 54, 84].find((k) => v >= k && v < k + 4 && k + 4 < postTop - 2);
+      let st = cv !== undefined ? (v >= cv + 3 ? 5 : v < cv + 1 ? 2 : 4) : v > postTop - 2 ? 5 : 3;
+      if (fc === 3 || fc === 4) {
+        if (as > BAR_HALF + 1) st = sv < 0 ? Math.max(st, 4) : 2;
+        else if (cv === undefined && as < 4 && v > 9 && v < postTop - 6) {
+          st = as > 3 ? 2 : 1;
+          const k = Math.floor((postTop - 7 - v) / 7), gy = Math.round(postTop - 7 - v - k * 7 - 1);
+          if (as <= 3 && glyphBit(190 + k + (u > LEN / 2 ? 40 : 0), Math.round(sv + 2), gy)) glyph.set(x, y, fract(k / 5 - t) < 0.4 ? 8 : 6);
+        }
+      } else if (lu < 1 || POST - lu < 1) st = Math.min(st, 2);
+      gold.set(x, y, st);
       continue;
     }
     if (v < 7) {
@@ -915,6 +930,7 @@ function barrier3d(o: Orient, hk: number, sh: number, f: number, t: number): Can
     }
   tongues.render(c, C, { outline: C[3], alpha: 220, outlineAlpha: 160 });
   gold.render(c, GOLD);
+  glyph.render(c, C, { outline: null });
   tags.render(c, GOLD);
   return c;
 }
@@ -936,6 +952,12 @@ function barrierWall(key: 'wall_diag' | 'wall_depth'): WorldSprite {
     sparks(c, range(4).map((k) => {
       const q = proj(o, 16 + ((rnd(203, k) * 225 + (f / 4) * 225) % 225), BAR_HALF + 1, 20 + rnd(204, k) * 70);
       return [q[0], q[1], 1] as [number, number, number];
+    }));
+    // Sparks riding up off both sides of the crest (they read from above in the depth view).
+    sparks(c, range(8).map((k) => {
+      const ph = fract(rnd(205, k) + f / 4);
+      const q = proj(o, 14 + rnd(206, k) * (LEN - 28), (k % 2 ? 1 : -1) * (BAR_HALF + 2 + ph * 3), HGT - 4 + ph * 14);
+      return [q[0], q[1], ph < 0.5 ? 1 : 0] as [number, number, number];
     }));
     return c;
   });

@@ -419,10 +419,10 @@ export function gasField(x: number, y: number, t: number, seed: number): number 
 
 /**
  * A gas or dust volume as an index layer: a density profile (0..1) times churning noise,
- * banded into `steps` with lit tops (where the volume thins toward the upper left) and shaded
- * undersides. Render it with the element ramp.
+ * banded into `steps` with lit tops (where the volume thins toward the upper left, or straight
+ * up with `lx` 0) and shaded undersides. Render it with the element ramp.
  */
-export function gasLayer(w: number, h: number, density: (x: number, y: number) => number, t: number, o: { seed?: number; thr?: number; steps: number[]; base?: number; amp?: number; scale?: number }): L {
+export function gasLayer(w: number, h: number, density: (x: number, y: number) => number, t: number, o: { seed?: number; thr?: number; steps: number[]; base?: number; amp?: number; scale?: number; lx?: number }): L {
   const l = new L(w, h);
   const seed = o.seed ?? 1, thr = o.thr ?? 0.36, steps = o.steps;
   const val = (x: number, y: number): number => {
@@ -435,7 +435,7 @@ export function gasLayer(w: number, h: number, density: (x: number, y: number) =
       const v = val(x, y);
       if (v < thr) continue;
       let i = clamp(Math.floor(((v - thr) / 0.62) * (steps.length - 1)), 0, steps.length - 2);
-      const up = val(x - 2, y - 3), dn = val(x + 2, y + 3);
+      const lx = o.lx ?? 2, up = val(x - lx, y - 3), dn = val(x + lx, y + 3);
       if (up < v - 0.035) i = Math.min(steps.length - 1, i + 2);
       else if (dn < v - 0.04) i = Math.max(0, i - 1);
       l.set(x, y, steps[i]);

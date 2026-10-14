@@ -6,6 +6,7 @@
 
 import { Anim, Canvas, WorldSprite } from './kit';
 import { L, Pt, Puff, TAU, clamp, fract, gasLayer, lerp, pal, pnoise, polar, puffs, rnd, rot, smooth, fadeLeft } from './vfx-b-lib';
+import { DPM, HGT, LEN, Orient, PPM, orientations, proj } from './vfx-b-wall3d';
 
 /** 0 outline, 1 very dark green, 2 deep green, 3 forest, 4 green, 5 toxic green, 6 acid yellow-green, 7 pale lime, 8 white-lime. */
 export const P = pal('#0a1f0e', '#123e18', '#1b5e22', '#247e2a', '#36a42c', '#58c82a', '#9ee22c', '#d6f772', '#f6ffd4');
@@ -694,6 +695,104 @@ function wall(): WorldSprite {
   return sprite('wall', 'Poison wall: mist curtain', [WW / 2, WGY], { rise: once(rise, 12), idle: loop(idle, 8) });
 }
 
+// --- the mist curtain in 3/4 and depth -----------------------------------------------------
+
+/** Half thickness of the curtain (px): a dense core and a soft skin, pooling wider at the ground. */
+const MIST_HALF = 17;
+
+/**
+ * The curtain as a gas volume in wall-local space (u along, s across, v up), seen through: every
+ * pixel takes the densest point on its view ray (plus a little for how much gas it crosses), so
+ * the top, the near end and the soft skin all fall out of one density function. The height
+ * profile along u is the horizontal curtain's, so the three views share the same peaks.
+ */
+function mist3d(o: Orient, hk: number, t: number): Canvas {
+  const c = new Canvas(o.w, o.h);
+  const hu = new Float32Array(LEN + 41);
+  for (let i = 0; i < hu.length; i++) {
+    const x = i - 20 + (WW - WALL_W) / 2;
+    hu[i] = Math.max(1, WALL_H * hk * (0.68 + 0.24 * pnoise(x, 0, 20, WW, 141) + 0.1 * Math.abs(Math.sin((x / WW) * TAU * 7 + t * TAU))));
+  }
+  const D = (u: number, s: number, v: number): number => {
+    if (u < -20 || u > LEN + 20 || v < -2) return 0;
+    const half = MIST_HALF + 8 * (1 - smooth(0, 14, v));
+    const as = Math.abs(s);
+    if (as > half) return 0;
+    const k = v / hu[Math.round(u) + 20];
+    if (k > 1.08) return 0;
+    const ends = smooth(-4, 16, u) * (1 - smooth(LEN - 16, LEN + 4, u));
+    return ends * (1 - smooth(half * 0.55, half, as)) * (1 - smooth(0.62, 1.08, k)) * (0.85 + 0.25 * (1 - smooth(0, 0.25, k)));
+  };
+  const N2 = o.w * o.h;
+  const sd = new Float32Array(N2), ua = new Float32Array(N2).fill(-99);
+  const uB = (o.dz * PPM) / DPM, sB = (o.nz * PPM) / DPM, vMax = HGT * 1.12;
+  for (let py = 0; py < o.h; py++)
+    for (let px = 0; px < o.w; px++) {
+      const x = (px + 0.5 - o.ax) / PPM, Y = py + 0.5 - o.ay;
+      const u0 = ((x - o.ox) * o.dx + (Y / DPM - o.oz) * o.dz) * PPM;
+      const s0 = ((x - o.ox) * o.nx + (Y / DPM - o.oz) * o.nz) * PPM;
+      let mx = 0, acc = 0, um = -99;
+      for (let v = -2; v <= vMax; v += 1) {
+        const d = D(u0 + uB * v, s0 + sB * v, v);
+        acc += d;
+        if (d > mx) {
+          mx = d;
+          um = u0 + uB * v;
+        }
+      }
+      const i = py * o.w + px;
+      sd[i] = mx * (0.82 + 0.22 * (1 - Math.exp(-acc / 10)));
+      ua[i] = um;
+    }
+  const dens = (x: number, y: number): number => (x < 0 || y < 0 || x >= o.w || y >= o.h ? 0 : sd[y * o.w + x]);
+  // Top light (the renderer mirrors the 3/4 view), the far third a touch darker, the near end crisper.
+  const g = gasLayer(o.w, o.h, dens, t, { seed: 142, thr: 0.34, steps: [2, 3, 3, 4, 5, 6, 7], lx: 0 });
+  g.map((st, x, y) => {
+    const u = ua[y * o.w + x];
+    if (u > LEN * 0.66) return Math.max(2, st - 1);
+    if (u < LEN * 0.2 && st >= 6) return st + 1;
+    return st;
+  });
+  g.render(c, P, { alpha: 235, outlineAlpha: 235 });
+  fumes(c, range(4).map((k) => {
+    const ph = fract(rnd(145, k) + t);
+    const q = proj(o, 22 + k * 64 + Math.sin(ph * TAU) * 6, 0, 22 + (rnd(146, k) * 0.5 + ph * 0.4) * WALL_H * hk * 0.8);
+    return { x: q[0], y: q[1], r: 6 * (1 - ph * 0.35) };
+  }), { purple: true, seed: 147, alpha: 165 });
+  return c;
+}
+
+/** Mist curtain in 3/4 or depth: 'rise' (6, boiling up from the ground) then 'idle' (4, rolling). */
+function mistWall(key: 'wall_diag' | 'wall_depth'): WorldSprite {
+  const o = orientations()[key];
+  const hks = [0.2, 0.45, 0.7, 0.92, 1.02, 1];
+  const at = (u: number, s: number, v: number): Pt => proj(o, u, s, v);
+  const rise = range(6).map((f) => {
+    const c = mist3d(o, hks[f], f / 6);
+    drops(c, range(10).map((k) => {
+      const q = at(4 + rnd(141, k, f) * 248, MIST_HALF * 0.6, 10 + rnd(142, k, f) * 90 * Math.min(1, hks[f]));
+      return [q[0], q[1], 1.6, 2] as [number, number, number, number];
+    }));
+    return c;
+  });
+  const idle = range(4).map((f) => {
+    const t = f / 4;
+    const c = mist3d(o, 1, t);
+    drops(c, range(8).map((k) => {
+      const ph = fract(rnd(143, k) + t);
+      const q = at(8 + rnd(144, k) * 240, MIST_HALF * 0.6, 60 - ph * 56);
+      return [q[0], q[1], 1.6, 2 + ph * 2] as [number, number, number, number];
+    }));
+    bubbles(c, range(8).map((k) => {
+      const q = at(8 + rnd(145, k) * 240, (k % 2 ? 1 : -1) * (MIST_HALF + 2 + rnd(148, k) * 4), 3 + fract(rnd(146, k) + t) * 12);
+      return [q[0], q[1], (k + f) % 3 === 0 ? 2 : 1.2] as [number, number, number];
+    }));
+    return c;
+  });
+  const label = key === 'wall_diag' ? 'Poison wall (3/4): mist curtain' : 'Poison wall (depth): mist curtain';
+  return sprite(key, label, [o.ax, o.ay], { rise: once(rise, 12), idle: loop(idle, 8) });
+}
+
 /** Aura: toxic fume tongues rising at both sides, a bubbling puddle ring, drops and purple wisps. */
 function aura(): WorldSprite {
   const W = 80, H = 128, ax = 40, ay = 112;
@@ -736,5 +835,5 @@ function aura(): WorldSprite {
 }
 
 export function buildPoison(): WorldSprite[] {
-  return [bolt(), beast(), stream(), streamHead(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura()];
+  return [bolt(), beast(), stream(), streamHead(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura(), mistWall('wall_diag'), mistWall('wall_depth')];
 }

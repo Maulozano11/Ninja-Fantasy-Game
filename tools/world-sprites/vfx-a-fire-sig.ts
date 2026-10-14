@@ -38,6 +38,12 @@ interface Ball {
   RX: number;
   RY: number;
   seed: number;
+  /** Room added left and above the original frame (W0 x H0): everything is drawn shifted by it
+   * and noise is read at the unshifted spot, so the art is unchanged and only uncut. */
+  ox: number;
+  oy: number;
+  W0: number;
+  H0: number;
 }
 
 /** The churning surface: band edges follow noise that turns with the ball (loops over t). */
@@ -52,7 +58,7 @@ function churn(b: Ball, t: number) {
 }
 
 function ballFly(b: Ball, t: number): Canvas {
-  const { R, great, W, H, cx, cy } = b;
+  const { R, great, W, H, cx, cy, ox, oy, W0, H0 } = b;
   const ph = t * TAU;
   const fire = new Field(W, H), smoke = new Field(W, H);
   // A smoke tail, much heavier on the great fireball.
@@ -82,10 +88,10 @@ function ballFly(b: Ball, t: number): Canvas {
     tongue(fire, [cx + Math.cos(a) * R * 0.9, cy + Math.sin(a) * R * 0.9], Math.atan2(Math.sin(a), Math.cos(a) - 0.75 * back), len, R * 0.17, 0.8, 0.14, ph + k, 0);
   }
   fire.disc(cx, cy, R, 1, great ? 2.8 : 1.9);
-  erode(fire, 0.55, (x, y) => pfbm(x + t * W, y, R * 0.22, 2, W, 0, b.seed + 5), (x, y) => smooth(R * 0.95, R * 1.15, Math.hypot(x - cx, y - cy)));
-  const ch = churn(b, t), fl = flow(-t * W, 0.08, W);
-  const fireC = render(fire, FIRE, { th: TH, rim: [1], jitter: (x, y) => ch(x, y) + (Math.hypot(x - cx, y - cy) > R ? fl(x, y) : 0) });
-  const smokeC = render(smoke, SMOKE, { th: [0, 0.14, 0.3, 0.48, 0.66], hi: great ? 4 : 5, rim: [1], jitter: (x, y) => (pfbm(x + t * W, y, 6, 2, W, 0, b.seed + 7) - 0.5) * 0.4 });
+  erode(fire, 0.55, (x, y) => pfbm(x - ox + t * W0, y - oy, R * 0.22, 2, W0, 0, b.seed + 5), (x, y) => smooth(R * 0.95, R * 1.15, Math.hypot(x - cx, y - cy)));
+  const ch = churn(b, t), fl = flow(-t * W0, 0.08, W0);
+  const fireC = render(fire, FIRE, { th: TH, rim: [1], jitter: (x, y) => ch(x, y) + (Math.hypot(x - cx, y - cy) > R ? fl(x - ox, y - oy) : 0) });
+  const smokeC = render(smoke, SMOKE, { th: [0, 0.14, 0.3, 0.48, 0.66], hi: great ? 4 : 5, rim: [1], jitter: (x, y) => (pfbm(x - ox + t * W0, y - oy, 6, 2, W0, 0, b.seed + 7) - 0.5) * 0.4 });
   const layers: (Canvas | null)[] = [smokeC];
   if (great) {
     // A heat-shimmer ring: a pale, wavy, see-through halo around the ball.
@@ -112,11 +118,11 @@ function ballFly(b: Ball, t: number): Canvas {
     em.push({ x: cx - R * 0.8 - p * (great ? 120 : 70) + rr(b.seed + 9, k, -6, 6), y: cy + rr(b.seed + 10, k, -R * 1.3, R * 1.3) - p * 10, s: p < 0.4 ? 2 : 1 });
   }
   const body = stack(W, H, ...layers);
-  return stack(W, H, body, embers(W, H, em.filter((e) => e.x > 1 && e.y > 1 && e.y < H - 2), fireC));
+  return stack(W, H, body, embers(W, H, em.filter((e) => e.x - ox > 1 && e.y - oy > 1 && e.y - oy < H0 - 2), fireC));
 }
 
 function ballBurst(b: Ball, i: number, n: number): Canvas {
-  const { great, W, H, cx, cy: gy, RX, RY } = b;
+  const { great, W, H, cx, cy: gy, RX, RY, ox, oy, W0, H0 } = b;
   const p = i / (n - 1);
   const spread = great ? [0.3, 0.55, 0.78, 0.95, 1, 1, 1, 1, 1, 1][i] : [0.32, 0.62, 0.88, 1, 1, 1, 1, 1][i];
   const hf = great ? [0.45, 0.8, 1, 1.05, 1, 0.82, 0.62, 0.42, 0.22, 0.06][i] : [0.5, 0.88, 1, 0.95, 0.75, 0.52, 0.28, 0.08][i];
@@ -131,14 +137,14 @@ function ballBurst(b: Ball, i: number, n: number): Canvas {
     if (hf > 0.25) bed.region(cx - RX, gy - RY, cx + RX, gy + RY, (x, y) => {
       const r = Math.hypot((x - cx) / (RX * spread), (y - gy) / (RY * spread));
       if (r >= 1) return 0;
-      const n = pnoise(x, y, 9, 0, 0, b.seed + 21);
+      const n = pnoise(x - ox, y - oy, 9, 0, 0, b.seed + 21);
       if (n < 0.25 + p * 0.45) return 0;
       return (0.6 - 0.25 * r) * Math.min(1, hf * 1.6);
     });
     const step = great ? 17 : 13;
     for (let y = gy - RY; y <= gy + RY; y += step * 0.62)
       for (let x = cx - RX; x <= cx + RX; x += step) {
-        const key = Math.round(x * 7 + y * 13);
+        const key = Math.round((x - ox) * 7 + (y - oy) * 13);
         if (rr(b.seed + 29, key, 0, 1) < 0.18 + p * 0.5) continue;
         const jx = x + rr(b.seed + 22, key, -step * 0.35, step * 0.35) + ((Math.round((y - gy) / (step * 0.62)) & 1) ? step / 2 : 0);
         const r = Math.hypot((jx - cx) / (RX * spread), (y - gy) / (RY * spread));
@@ -147,7 +153,7 @@ function ballBurst(b: Ball, i: number, n: number): Canvas {
         const ring = spread < 1 ? 0.45 + 0.55 * Math.exp(-(((r - 0.82) / 0.28) ** 2)) : 1 - 0.45 * r;
         const len = Hmax * hf * ring * rr(b.seed + 23, key, 0.65, 1.15);
         if (len < 4) continue;
-        tongue(f, [jx, y + 1], -Math.PI / 2 + rr(b.seed + 24, key, -0.15, 0.15), len, (great ? 7 : 5.5) * (0.6 + 0.4 * hf), 0.95 - 0.3 * r, 0.16, t * TAU + jx * 0.1, 0);
+        tongue(f, [jx, y + 1], -Math.PI / 2 + rr(b.seed + 24, key, -0.15, 0.15), len, (great ? 7 : 5.5) * (0.6 + 0.4 * hf), 0.95 - 0.3 * r, 0.16, t * TAU + (jx - ox) * 0.1, 0);
       }
   }
   // The ball itself: a flash, then a rolling dome of fire that rises and cools.
@@ -162,7 +168,7 @@ function ballBurst(b: Ball, i: number, n: number): Canvas {
       dome.disc(cx + Math.cos(a) * rD * 0.8, gy - R * 0.4 - rise + Math.sin(a) * rD * 0.6, rD * 0.5, lerp(0.85, 0.6, p), 1.2);
     }
   }
-  erode(dome, 0.8, (x, y) => pfbm(x, y + i * 10, R * 0.25, 2, 0, 0, b.seed + 25));
+  erode(dome, 0.8, (x, y) => pfbm(x - ox, y - oy + i * 10, R * 0.25, 2, 0, 0, b.seed + 25));
   // Smoke climbing once the fire cools.
   if (p > 0.3) {
     const sk = (p - 0.3) / 0.7;
@@ -170,7 +176,7 @@ function ballBurst(b: Ball, i: number, n: number): Canvas {
     for (let k = 0; k < nS; k++) {
       const x = cx + (k - (nS - 1) / 2) * (great ? 22 : 18) * (0.7 + sk * 0.4) + rr(b.seed + 26, k, -5, 5);
       const y = gy - Hmax * 0.9 - sk * 30 + Math.abs(k - (nS - 1) / 2) * 6 + rr(b.seed + 27, k, -5, 5);
-      if (y < 4) continue;
+      if (y - oy < 4) continue;
       smoke.disc(x, y, (great ? 15 : 11) * (0.8 + sk * 0.5), lerp(0.8, 0.45, sk), 1.2);
     }
   }
@@ -192,7 +198,7 @@ function ballBurst(b: Ball, i: number, n: number): Canvas {
   }
   layers.push(bed.any() ? render(bed, FIRE, { th: TH, rim: [1], hi: 5 }) : null);
   layers.push(back.any() ? render(back, FIRE, { th: TH, rim: [1] }) : null);
-  layers.push(smoke.any() ? render(smoke, SMOKE, { th: [0, 0.12, 0.26, 0.42, 0.6], hi: great ? 5 : 6, rim: [1, 2], jitter: (x, y) => (pfbm(x, y - i * 4, 7, 2, 0, 0, b.seed + 28) - 0.5) * 0.4 }) : null);
+  layers.push(smoke.any() ? render(smoke, SMOKE, { th: [0, 0.12, 0.26, 0.42, 0.6], hi: great ? 5 : 6, rim: [1, 2], jitter: (x, y) => (pfbm(x - ox, y - oy - i * 4, 7, 2, 0, 0, b.seed + 28) - 0.5) * 0.4 }) : null);
   // Debris and embers flung out of the impact (the rocks fly behind the nearer flames).
   const deb = new Field(W, H);
   const em: { x: number; y: number; s: number }[] = [];
@@ -202,7 +208,7 @@ function ballBurst(b: Ball, i: number, n: number): Canvas {
     for (let k = 0; k < nD; k++) {
       const vx = rr(b.seed + 30, k, -1, 1) * RX * 1.4, vy = -rr(b.seed + 31, k, 110, 190) * (great ? 1.2 : 1);
       const x = cx + vx * tt, y = gy - 6 + vy * tt + 260 * tt * tt;
-      if (y > gy + RY * 0.8 || y < 2 || x < 2 || x > W - 3) continue;
+      if (y > gy + RY * 0.8 || y - oy < 2 || x - ox < 2 || x - ox > W0 - 3) continue;
       deb.disc(x, y, k % 3 === 0 ? 3.4 : 2.5, 0.8, 1);
     }
     const nE = great ? 26 : 14;
@@ -217,15 +223,15 @@ function ballBurst(b: Ball, i: number, n: number): Canvas {
   layers.push(dome.any() ? render(dome, FIRE, { th: TH, rim: [1] }) : null);
   layers.push(front.any() ? render(front, FIRE, { th: TH, rim: [1] }) : null);
   const body = stack(W, H, ...layers);
-  return stack(W, H, body, embers(W, H, em.filter((e) => e.x > 1 && e.x < W - 2 && e.y > 1 && e.y < H - 2), p < 0.9 ? body : null));
+  return stack(W, H, body, embers(W, H, em.filter((e) => e.x - ox > 1 && e.x - ox < W0 - 2 && e.y - oy > 1 && e.y - oy < H0 - 2), p < 0.9 ? body : null));
 }
 
 function fireball(great: boolean): WorldSprite {
   const r = great ? 2.25 : 1.5;
   const RX = Math.round(r * PX), RY = Math.round(r * DEPTH);
-  const b: Ball = great
-    ? { great, R: 44, W: 272, H: 224, cx: 136, cy: 124, RX, RY, seed: 700 }
-    : { great, R: 23, W: 176, H: 128, cx: 88, cy: 72, RX, RY, seed: 600 };
+  // The original frames plus room for the smoke tail, the rising dome and the burst's edges.
+  const [W0, H0, cx0, cy0, ox, oy, rx, by] = great ? [272, 224, 136, 124, 24, 36, 4, 4] : [176, 128, 88, 72, 8, 24, 8, 6];
+  const b: Ball = { great, R: great ? 44 : 23, W: W0 + ox + rx, H: H0 + oy + by, cx: cx0 + ox, cy: cy0 + oy, RX, RY, seed: great ? 700 : 600, ox, oy, W0, H0 };
   const fly = frames(6, (t) => ballFly(b, t));
   const nB = great ? 10 : 8;
   const burst = frames(nB, (_, i) => ballBurst(b, i, nB));

@@ -31,10 +31,10 @@ export function swordAngle(g: DrawCtx): number {
       return 22;
     case 'crouch':
       return -12;
-    // Sword kata: ready, raised back over the head, cut down, follow through,
+    // Sword kata: ready, raised with the blade laid back over the head, cut down, follow through,
     // side guard (blade back and low), level cut, rising guard, ready.
     case 'train':
-      return [-38, -128, 18, 64, 152, -4, -74, -42][f % 8];
+      return [-38, -165, 18, 64, 152, -4, -50, -42][f % 8];
     default:
       // Matches the reference: blade hangs across the legs at about 50 degrees.
       return 52;
@@ -67,7 +67,7 @@ export function poleAngle(g: DrawCtx): number {
       return -28;
     // Polearm drill: guard, thrust, recoil, raised back overhead, chop, low sweep, spun upright, guard.
     case 'trainPole':
-      return [-28, -8, -34, -128, 24, 48, -92, -30][f % 8];
+      return [-28, -8, -34, -150, 24, 48, -70, -30][f % 8];
     default:
       return -84;
   }

@@ -114,7 +114,8 @@ function speedLines(c: Canvas, list: [number, number, number][]): void {
 // --- bolt: a water bullet with a corkscrew wake ---------------------------------------------
 
 function bolt(): WorldSprite {
-  const W = 64, H = 64, cx = 38, cy = 32;
+  // 4 px of room on the left for the wake's bubbles (the anchor moves with it).
+  const o = 4, W = 64 + o, H = 64, cx = 38 + o, cy = 32;
   const fr = frames(4, (t) => {
     const wake = new Field(W, H), ring = new Field(W, H), head = new Field(W, H), dr = new Field(W, H);
     const tailPts = qbez([cx, cy], [cx - 16, cy + 2], [cx - 34, cy - 1], 16);
@@ -131,7 +132,7 @@ function bolt(): WorldSprite {
       const p = fract(k / 3 + t);
       drop(dr, cx - 16 - p * 26, cy + [-9, 8, 12][k] + p * p * 8, k === 1 ? 2.4 : 1.6, Math.PI - 0.25, 1.6);
     }
-    const wakeC = render(wake, WATER, { th: TH, rim: [1], jitter: flowW(-t * 64, 0.12) });
+    const wakeC = render(wake, WATER, { th: TH, rim: [1], jitter: flowW(-t * 64 + o, 0.12) });
     // A white twist line spiralling along the wake.
     for (let j = 0; j <= 60; j++) {
       const u = j / 60;
@@ -147,7 +148,7 @@ function bolt(): WorldSprite {
     speedLines(c, [[cx - 12, cy - 14, 9], [cx - 16, cy + 13, 7]]);
     return stack(W, H, c, bubbles(W, H, [{ x: cx - 30 - fract(t) * 6, y: cy - 6, r: 1.5 }]));
   });
-  return flySprite('bolt', 'Water bolt (water bullet)', fr);
+  return flySprite('bolt', 'Water bolt (water bullet)', fr, 12, [32 + o, 32]);
 }
 
 // --- beast: a serpentine water dragon -------------------------------------------------------
@@ -299,7 +300,8 @@ function torrentFoam(f: Field, s: number, ox: number, x0: number, x1: number): v
     }
 }
 function stream(): WorldSprite[] {
-  const W = 64, H = 64, PAD = 32;
+  // The head gets HR px of room on the right for its spray (its anchor stays where the tile's is).
+  const W = 64, H = 64, PAD = 32, HR = 8;
   const tile = frames(4, (t) => {
     const s = t * 64;
     const w = new Field(W + PAD * 2, H), fo = new Field(W + PAD * 2, H), dr = new Field(W + PAD * 2, H);
@@ -318,7 +320,7 @@ function stream(): WorldSprite[] {
   });
   const head = frames(4, (t) => {
     const s = t * 64;
-    const w = new Field(W + PAD, H), fo = new Field(W + PAD, H), dr = new Field(W + PAD, H);
+    const w = new Field(W + PAD + HR, H), fo = new Field(W + PAD + HR, H), dr = new Field(W + PAD + HR, H);
     torrent(w, s, 0, PAD + 26, PAD);
     // The torrent swells into a frothing front that bursts into spray.
     const hx = PAD + 32;
@@ -337,16 +339,17 @@ function stream(): WorldSprite[] {
       const d = 17 + p * 12;
       drop(dr, hx + 4 + Math.cos(a) * d, TOR_Y + Math.sin(a) * d * 1.05, lerp(2.6, 1.4, p), a, 1.8);
     }
-    const c = stack(W + PAD, H, render(w, WATER, { th: TH, rim: [1], jitter: (x, y) => flowW(s)(x - PAD, y) * (x < hx - 6 ? 1 : 0.3) }), foamR(fo), render(dr, WATER, { th: TH }));
-    return crop(c, PAD, 0, W, H);
+    const c = stack(W + PAD + HR, H, render(w, WATER, { th: TH, rim: [1], jitter: (x, y) => flowW(s)(x - PAD, y) * (x < hx - 6 ? 1 : 0.3) }), foamR(fo), render(dr, WATER, { th: TH }));
+    return crop(c, PAD, 0, W + HR, H);
   });
-  return [flySprite('stream', 'Water stream (torrent, tileable 64 px)', tile), flySprite('stream_head', 'Water stream head', head)];
+  return [flySprite('stream', 'Water stream (torrent, tileable 64 px)', tile), flySprite('stream_head', 'Water stream head', head, 12, [32, 32])];
 }
 
 // --- breath: a high-pressure spray cone -----------------------------------------------------
 
 function breath(): WorldSprite {
-  const W = 96, H = 64, oy = 32;
+  // 4 px of room left of the mouth (the anchor follows).
+  const o = 4, W = 96 + o, H = 64, oy = 32;
   const fr = frames(4, (t) => {
     const jets = new Field(W, H), dr = new Field(W, H), fo = new Field(W, H);
     const lanes = [-0.36, -0.24, -0.12, 0, 0.12, 0.24, 0.36];
@@ -355,7 +358,7 @@ function breath(): WorldSprite {
       const pts: Pt[] = [];
       for (let k = 0; k <= 12; k++) {
         const d = 2 + (solid * k) / 12;
-        pts.push([d * Math.cos(a), oy + d * Math.sin(a) + Math.sin(d * 0.2 + t * TAU + j) * 0.8]);
+        pts.push([o + d * Math.cos(a), oy + d * Math.sin(a) + Math.sin(d * 0.2 + t * TAU + j) * 0.8]);
       }
       tube(jets, pts, (u) => lerp(2.6, 4.2, u), liquid(0.5));
       // Foam where the jet breaks up, and long droplets flying on.
@@ -365,20 +368,20 @@ function breath(): WorldSprite {
         const p = fract(k / 3 + t + j * 0.13);
         const d = solid + 6 + p * 34;
         if (d > 90) continue;
-        drop(dr, d * Math.cos(a) + 2, oy + d * Math.sin(a) * 1.05, lerp(2.6, 1.5, p), a, 3.2);
+        drop(dr, o + d * Math.cos(a) + 2, oy + d * Math.sin(a) * 1.05, lerp(2.6, 1.5, p), a, 3.2);
       }
     });
     // The mouth: a white core of pressure.
-    jets.poly([[0, oy - 2.5], [14, oy - 6], [14, oy + 6], [0, oy + 2.5]], (x, y) => 0.98 - Math.abs(y - oy) * 0.06 - x * 0.01);
+    jets.poly([[o, oy - 2.5], [14 + o, oy - 6], [14 + o, oy + 6], [o, oy + 2.5]], (x, y) => 0.98 - Math.abs(y - oy) * 0.06 - (x - o) * 0.01);
     const c = stack(W, H, render(jets, WATER, { th: TH, rim: [1] }), foamR(fo), render(dr, WATER, { th: TH }));
     const bl: { x: number; y: number; r: number }[] = [];
     for (let k = 0; k < 2; k++) {
       const p = fract(k / 2 + t);
-      bl.push({ x: 26 + p * 40, y: oy + (k ? 9 : -10) * (0.6 + p), r: k ? 1.5 : 2.5 });
+      bl.push({ x: o + 26 + p * 40, y: oy + (k ? 9 : -10) * (0.6 + p), r: k ? 1.5 : 2.5 });
     }
     return stack(W, H, c, bubbles(W, H, bl));
   });
-  return flySprite('breath', 'Water breath (spray cone, origin left middle)', fr);
+  return flySprite('breath', 'Water breath (spray cone, origin left middle)', fr, 12, [48 + o, 32]);
 }
 
 // --- sphere: a water bomb with a whirlpool inside -------------------------------------------
@@ -424,11 +427,12 @@ function sphere(): WorldSprite {
 // --- slash: a curling crest wave ------------------------------------------------------------
 
 function slash(): WorldSprite {
-  const W = 64, H = 64;
+  // 4 px of room above for the foam on the lip (the anchor follows).
+  const o = 4, W = 64, H = 64 + o;
   const fr = frames(4, (t) => {
     const w = new Field(W, H), fo = new Field(W, H), dr = new Field(W, H);
     // The wave climbs from the bottom tip, bulges forward and curls over at the top.
-    const pts = bez([20, 60], [50, 48], [52, 18], [34, 8], 26).concat(bez([34, 8], [28, 5], [24, 9], [27, 14], 8).slice(1));
+    const pts = bez([20, 60], [50, 48], [52, 18], [34, 8], 26).concat(bez([34, 8], [28, 5], [24, 9], [27, 14], 8).slice(1)).map(([x, y]): Pt => [x, y + o]);
     const rad = (u: number) => (u < 0.55 ? lerp(1.5, 10, Math.sin((u / 0.55) * Math.PI * 0.5)) : lerp(10, 2, (u - 0.55) / 0.45));
     tube(w, pts, rad, (u, s) => 0.42 + 0.28 * s + (s > 0.45 && s < 0.75 ? 0.2 : 0) - 0.05 * (1 - u));
     // Foam riding the leading edge and the lip.
@@ -444,14 +448,14 @@ function slash(): WorldSprite {
     // Spray thrown forward off the lip and droplets shed behind.
     for (let k = 0; k < 7; k++) {
       const p = fract(k / 7 + t);
-      if (k < 4) drop(dr, 40 + p * 18, 8 + rr(241, k, -4, 8) + p * p * 10, lerp(2.4, 1.4, p), 0.4, 1.6);
-      else drop(dr, 28 - p * 18, 30 + rr(242, k, -14, 16), lerp(2, 1.2, p), Math.PI, 1.6);
+      if (k < 4) drop(dr, 40 + p * 18, o + 8 + rr(241, k, -4, 8) + p * p * 10, lerp(2.4, 1.4, p), 0.4, 1.6);
+      else drop(dr, 28 - p * 18, o + 30 + rr(242, k, -14, 16), lerp(2, 1.2, p), Math.PI, 1.6);
     }
-    const c = stack(W, H, render(w, WATER, { th: TH, rim: [1], jitter: (x, y) => (pnoise(x * 0.5 + y * 0.6, (y - x * 0.3) * 0.25 - t * 16, 1.6, 0, 0, 243) - 0.5) * 0.16 }), foamR(fo), render(dr, WATER, { th: TH }));
-    speedLines(c, [[16, 22, 10], [12, 40, 8], [18, 50, 6]]);
+    const c = stack(W, H, render(w, WATER, { th: TH, rim: [1], jitter: (x, y) => (pnoise(x * 0.5 + (y - o) * 0.6, (y - o - x * 0.3) * 0.25 - t * 16, 1.6, 0, 0, 243) - 0.5) * 0.16 }), foamR(fo), render(dr, WATER, { th: TH }));
+    speedLines(c, [[16, 22 + o, 10], [12, 40 + o, 8], [18, 50 + o, 6]]);
     return c;
   });
-  return flySprite('slash', 'Water slash (curling crest wave)', fr);
+  return flySprite('slash', 'Water slash (curling crest wave)', fr, 12, [32, 32 + o]);
 }
 
 // --- multi: ice shards in a staggered fan ---------------------------------------------------
@@ -472,7 +476,8 @@ function shard(c: Canvas, x: number, y: number, len: number, w: number, a: numbe
   c.draw(render(f, ICE, { th: [0, 0.22, 0.4, 0.6, 0.8, 0.92], rim: [2] }), 0, 0);
 }
 function multi(): WorldSprite {
-  const W = 64, H = 64;
+  // 4 px of room on the right for the leading shard's tip (the anchor stays at 32, 32).
+  const W = 68, H = 64;
   const shards = [
     { a: -0.38, d: 42, len: 22, w: 4.4 },
     { a: -0.12, d: 50, len: 26, w: 5 },
@@ -496,13 +501,14 @@ function multi(): WorldSprite {
     });
     return stack(W, H, trail, c, sp);
   });
-  return flySprite('multi', 'Water multi (ice shards)', fr);
+  return flySprite('multi', 'Water multi (ice shards)', fr, 12, [32, 32]);
 }
 
 // --- hit: a splash --------------------------------------------------------------------------
 
 function hit(): WorldSprite {
-  const W = 64, H = 64, cx = 32, cy = 32;
+  // 4 px of room all round for the flung droplets (the anchor follows).
+  const W = 72, H = 72, cx = 36, cy = 36;
   const fr = frames(6, (_, i) => {
     const w = new Field(W, H), fo = new Field(W, H), dr = new Field(W, H), ring = new Field(W, H);
     const N = 8;
@@ -557,7 +563,7 @@ function hit(): WorldSprite {
     if (i >= 4) for (let k = 0; k < 4; k++) bl.push({ x: cx + rr(257, k, -12, 12), y: cy + rr(258, k, -10, 10) - (i - 4) * 4, r: k % 2 ? 1.5 : 2.5 });
     return stack(W, H, ringC, render(w, WATER, { th: TH, rim: [1] }), foamR(fo), render(dr, WATER, { th: TH }), bubbles(W, H, bl));
   });
-  return vfxSprite('hit', 'Water hit (splash)', [32, 32], { hit: { frames: fr, fps: 12, loop: false } });
+  return vfxSprite('hit', 'Water hit (splash)', [cx, cy], { hit: { frames: fr, fps: 12, loop: false } });
 }
 
 // --- blast: a geyser erupting from the ground -----------------------------------------------
@@ -572,7 +578,8 @@ function ripple(back: Field, front: Field, cx: number, gy: number, rx: number, r
     });
 }
 function blast(): WorldSprite {
-  const W = 176, H = 128, cx = 88, gy = 72, RX = 82, RY = 54;
+  // Room above for the spray crown and below for the outer ripple (the anchor follows).
+  const oy = 16, W = 176, H = 128 + oy + 6, cx = 88, gy = 72 + oy, RX = 82, RY = 54;
   const fr = frames(8, (_, i) => {
     const back = new Field(W, H), front = new Field(W, H), col = new Field(W, H), fo = new Field(W, H), foF = new Field(W, H), dr = new Field(W, H), pud = new Field(W, H);
     // Ripples racing out over the ground ellipse.
@@ -589,14 +596,14 @@ function blast(): WorldSprite {
     }
     if (i >= 5) pud.ell(cx, gy, RX * 0.6, RY * 0.6, 0, 0.5, 4);
     // The column of water.
-    const top = [0, 36, 8, 4, 22, 48, 0, 0][i];
+    const top = [0, 36, 8, 4, 22, 48, 0, 0][i] + oy;
     const rC = [0, 7, 11, 13, 12, 10, 0, 0][i];
     if (i === 0) {
       ball(col, cx, gy - 2, 14, 0.42, false);
       col.cut((_x, y) => y > gy + 4);
       foF.ell(cx, gy + 2, 16, 4, 0, 0.8);
     }
-    if (top > 0) {
+    if (top > oy) {
       const pts: Pt[] = [];
       for (let k = 0; k <= 12; k++) {
         const y = lerp(gy + 4, top + rC * 0.6, k / 12);
@@ -621,8 +628,8 @@ function blast(): WorldSprite {
       const tt = (i - 1.5) / 5;
       for (let k = 0; k < 16; k++) {
         const vx = rr(261, k, -1, 1) * 80, vy = -rr(262, k, 20, 70);
-        const x = cx + vx * tt, y = 12 + vy * tt + 180 * tt * tt;
-        if (y > gy + RY * 0.7 || y < 1) continue;
+        const x = cx + vx * tt, y = oy + 12 + vy * tt + 180 * tt * tt;
+        if (y > gy + RY * 0.7 || y - oy < 1) continue;
         drop(dr, x, y, k % 3 ? 2 : 2.8, Math.atan2(vy + 360 * tt, vx), 1.8);
       }
     }
@@ -638,7 +645,7 @@ function blast(): WorldSprite {
     return stack(W, H,
       pud.any() ? render(pud, WATER, { th: [0, 0.3], lo: 2, hi: 3, outline: false, alpha: [0, 0, 60, 75, 0, 0, 0] }) : null,
       render(back, WATER, { th: TH, lo: 3, hi: 5 }),
-      col.any() ? render(col, WATER, { th: TH, rim: [1], jitter: (x, y) => (pnoise(x, (y + i * 9) * 0.25, 1.6, 0, 0, 267) - 0.5) * 0.16 }) : null,
+      col.any() ? render(col, WATER, { th: TH, rim: [1], jitter: (x, y) => (pnoise(x, (y - oy + i * 9) * 0.25, 1.6, 0, 0, 267) - 0.5) * 0.16 }) : null,
       fo.any() ? foamR(fo) : null,
       render(front, WATER, { th: TH, lo: 3, hi: 5 }),
       foF.any() ? foamR(foF) : null,
@@ -650,19 +657,23 @@ function blast(): WorldSprite {
 
 // --- wall: a standing sheet of water 4.5 m long ---------------------------------------------
 
-function wallFrame(t: number, g: number, W: number, H: number, gy: number): Canvas {
-  const w = new Field(W, H), fo = new Field(W, H), dr = new Field(W, H);
+function wallFrame(t: number, g: number, W: number, H: number, gy0: number, ox = 0, oy = 0): Canvas {
+  // Laid out on the original W x H frame, drawn shifted by (ox, oy) into a frame with room all
+  // round (noise is read at the unshifted spot, so only what used to be cut changes).
+  const CW = W + ox * 2, CH = H + oy, gy = gy0 + oy;
+  const w = new Field(CW, CH), fo = new Field(CW, CH), dr = new Field(CW, CH);
   const ph = t * TAU;
   const topAt = (x: number) => {
     const env = Math.pow(Math.sin(((x - 4) / (W - 8)) * Math.PI), 0.25);
     return gy - (96 * env + 4 * Math.sin(x * 0.07 - ph) + 3 * Math.sin(x * 0.15 + ph * 2)) * g;
   };
-  w.region(4, 0, W - 5, gy + 3, (x, y) => {
+  w.region(4 + ox, 0, W - 5 + ox, gy + 3, (xs, y) => {
+    const x = xs - ox;
     const tp = topAt(x);
     if (y < tp || y > gy + 3) return 0;
     const dTop = y - tp;
     // Streaks rising up the sheet; a lit band under the crest, darker toward the ground.
-    const streak = pnoise(x * 1, (y + t * 120) * 0.18, 2.2, 0, 120 * 0.18, 271);
+    const streak = pnoise(x * 1, (y - oy + t * 120) * 0.18, 2.2, 0, 120 * 0.18, 271);
     let h = 0.46 + 0.16 * (streak - 0.5) * 2 - 0.14 * smooth(30, 100, dTop);
     if (dTop < 7) h = 0.66;
     else if (dTop < 10) h = 0.82;
@@ -674,33 +685,34 @@ function wallFrame(t: number, g: number, W: number, H: number, gy: number): Canv
   for (let k = 0; k < 46; k++) {
     const x = 8 + ((k + fract(t * 2) * 2) / 46) * (W - 16);
     const tp = topAt(x);
-    fo.disc(x, tp + 1 + rr(272, k, -1.5, 1.5), rr(274, k, 2.6, 4.8) + Math.sin(ph + k * 1.7) * 0.6, 0.85, 1.6);
+    fo.disc(x + ox, tp + 1 + rr(272, k, -1.5, 1.5), rr(274, k, 2.6, 4.8) + Math.sin(ph + k * 1.7) * 0.6, 0.85, 1.6);
   }
   // Crest lips curling forward over the top.
   for (let k = 0; k < 6; k++) {
     const x = 30 + ((k + fract(t)) / 6) * (W - 60);
     const tp = topAt(x);
-    fo.path([[x - 8, tp + 2], [x - 2, tp - 4], [x + 5, tp - 3], [x + 8, tp + 2]], (u) => lerp(2.6, 1.4, u), 0.9);
+    fo.path([[x - 8 + ox, tp + 2], [x - 2 + ox, tp - 4], [x + 5 + ox, tp - 3], [x + 8 + ox, tp + 2]], (u) => lerp(2.6, 1.4, u), 0.9);
   }
   // Foam churning at the base.
   for (let k = 0; k < 40; k++) {
     const x = 6 + (k / 39) * (W - 12);
     if (g < 0.2 && Math.abs(x - W / 2) > W * 0.45 * (g / 0.2)) continue;
-    fo.ell(x, gy + rr(276, k, -1, 2), rr(277, k, 3.5, 7) + Math.sin(ph * 2 + k) * 1.2, rr(278, k, 2.2, 3.6), 0, 0.78, 1.5);
+    fo.ell(x + ox, gy + rr(276, k, -1, 2), rr(277, k, 3.5, 7) + Math.sin(ph * 2 + k) * 1.2, rr(278, k, 2.2, 3.6), 0, 0.78, 1.5);
   }
   for (let k = 0; k < 12; k++) {
     const p = fract(k / 12 * 2 + t);
     const x = rr(273, k, 14, W - 14);
-    drop(dr, x + p * 4, topAt(x) - 4 - p * 10 + p * p * 12, k % 3 ? 1.6 : 2.4, -1.2, 1.5);
+    drop(dr, x + p * 4 + ox, topAt(x) - 4 - p * 10 + p * p * 12, k % 3 ? 1.6 : 2.4, -1.2, 1.5);
   }
   const body = render(w, WATER, { th: TH, rim: [1], alpha: [255, 220, 220, 230, 255, 255, 255] });
-  return stack(W, H, body, foamR(fo), render(dr, WATER, { th: TH }));
+  return stack(CW, CH, body, foamR(fo), render(dr, WATER, { th: TH }));
 }
 function wall(): WorldSprite {
-  const W = 264, H = 120, gy = 112;
-  const idle = frames(4, (t) => wallFrame(t, 1, W, H, gy));
-  const rise = frames(6, (_, i) => wallFrame(i / 6, [0.08, 0.28, 0.55, 0.84, 1.07, 1][i], W, H, gy));
-  return vfxSprite('wall', 'Water wall (4.5 m x 1.8 m)', [W / 2, gy], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
+  // 8 px of room at the ends and above the crest (the anchor follows).
+  const W = 264, H = 120, gy = 112, ox = 8, oy = 8;
+  const idle = frames(4, (t) => wallFrame(t, 1, W, H, gy, ox, oy));
+  const rise = frames(6, (_, i) => wallFrame(i / 6, [0.08, 0.28, 0.55, 0.84, 1.07, 1][i], W, H, gy, ox, oy));
+  return vfxSprite('wall', 'Water wall (4.5 m x 1.8 m)', [W / 2 + ox, gy + oy], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
 }
 
 // --- aura: a sheath of water spiralling up around the body ----------------------------------
@@ -710,7 +722,8 @@ function wall(): WorldSprite {
 // outer edge throwing droplets, a spout over the head and a whirlpool at the feet.
 
 function aura(): WorldSprite {
-  const W = 80, H = 120, cx = 40, gy = 112, top = 5;
+  // Rows below the feet for the whirlpool (the anchor is unchanged).
+  const W = 80, H = 128, cx = 40, gy = 112, top = 5;
   const fr = frames(6, (t) => {
     const sheath = new Field(W, H), foam = new Field(W, H), pool = new Field(W, H), poolF = new Field(W, H), dr = new Field(W, H);
     const sc = t * 120;

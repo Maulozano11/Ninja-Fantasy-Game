@@ -66,7 +66,8 @@ function feather(c: Canvas, x: number, y: number, len: number, a: number): void 
 // --- bolt: a spinning vortex disc -----------------------------------------------------------
 
 function bolt(): WorldSprite {
-  const W = 64, H = 64, cx = 38, cy = 32;
+  // 4 px of room on the left for the trailing gusts and leaf (the anchor moves with it).
+  const o = 4, W = 64 + o, H = 64, cx = 38 + o, cy = 32;
   const fr = frames(4, (t) => {
     const f = new Field(W, H), ring = new Field(W, H);
     const rot = t * (TAU / 3);
@@ -102,7 +103,7 @@ function bolt(): WorldSprite {
     streaks(out, [[cx - 14, cy - 13, 12], [cx - 18, cy + 12, 10], [cx - 24, cy - 2, 8]]);
     return out;
   });
-  return flySprite('bolt', 'Wind bolt (vortex disc)', fr);
+  return flySprite('bolt', 'Wind bolt (vortex disc)', fr, 12, [32 + o, 32]);
 }
 
 // --- beast: a crane of wind -----------------------------------------------------------------
@@ -355,7 +356,8 @@ function blade(f: Field, cx: number, cy: number, R: number, thick: number, span:
   });
 }
 function slash(): WorldSprite {
-  const W = 64, H = 64;
+  // 4 px of room below for the big blade's lower tip (the anchor stays at 32, 32).
+  const W = 64, H = 68;
   const fr = frames(4, (t) => {
     const a = new Field(W, H), b = new Field(W, H);
     const wob = Math.sin(t * TAU) * 0.6;
@@ -372,13 +374,14 @@ function slash(): WorldSprite {
     streaks(c, list);
     return c;
   });
-  return flySprite('slash', 'Wind slash (twin crescent blades)', fr);
+  return flySprite('slash', 'Wind slash (twin crescent blades)', fr, 12, [32, 32]);
 }
 
 // --- multi: spinning leaf blades in a staggered fan -----------------------------------------
 
 function multi(): WorldSprite {
-  const W = 64, H = 64;
+  // 4 px of room on the right for the leading leaf (the anchor stays at 32, 32).
+  const W = 68, H = 64;
   const leaves = [
     { a: -0.38, d: 44 },
     { a: -0.12, d: 52 },
@@ -403,13 +406,14 @@ function multi(): WorldSprite {
     });
     return stack(W, H, air(tr, { hi: 5 }), lv);
   });
-  return flySprite('multi', 'Wind multi (leaf blades)', fr);
+  return flySprite('multi', 'Wind multi (leaf blades)', fr, 12, [32, 32]);
 }
 
 // --- hit: crossing cuts and a pressure ring -------------------------------------------------
 
 function hit(): WorldSprite {
-  const W = 64, H = 64, cx = 32, cy = 32;
+  // 4 px of room all round for the last pressure ring and the leaves (the anchor follows).
+  const W = 72, H = 72, cx = 36, cy = 36;
   const fr = frames(6, (_, i) => {
     const f = new Field(W, H), ring = new Field(W, H);
     const cut = (a: number, len: number, w: number, heat: number) => {
@@ -436,24 +440,25 @@ function hit(): WorldSprite {
     }
     return stack(W, H, c, lv);
   });
-  return vfxSprite('hit', 'Wind hit (cutting burst)', [32, 32], { hit: { frames: fr, fps: 12, loop: false } });
+  return vfxSprite('hit', 'Wind hit (cutting burst)', [cx, cy], { hit: { frames: fr, fps: 12, loop: false } });
 }
 
 // --- blast: a tornado 3 m across ------------------------------------------------------------
 
 function blast(): WorldSprite {
-  const W = 176, H = 128, cx = 88, gy = 72, RX = 82, RY = 54;
+  // 12 px of room above for the funnel's wide top (the anchor follows).
+  const oy = 12, W = 176, H = 128 + oy, cx = 88, gy = 72 + oy, RX = 82, RY = 54;
   const fr = frames(8, (_, i) => {
     const back = new Field(W, H), front = new Field(W, H), dust = new Field(W, H), dustF = new Field(W, H);
     const grow = [0.15, 0.4, 0.7, 0.92, 1, 1, 0.85, 0.4][i];
     const spin = i * 0.9;
-    const topY = lerp(gy - 10, 12, grow);
+    const topY = lerp(gy - 10, 12 + oy, grow);
     // The funnel: stacked rings of wind strokes, narrow at the ground, wide at the top.
     const nR = 13;
     for (let k = 0; k < nR; k++) {
       const u = k / (nR - 1);
       const y = lerp(gy - 2, topY, u);
-      if (y < 2) continue;
+      if (y - oy < 2) continue;
       const rx = lerp(7, 40, Math.pow(u, 1.5)) * (0.6 + 0.4 * grow) + Math.sin(u * 5 + i) * 2;
       const ry = rx * 0.22 + 1;
       const sway = Math.sin(u * 3 + i * 0.7) * 4 * u;
@@ -503,12 +508,18 @@ function blast(): WorldSprite {
 
 // --- wall: a curtain of rising wind 4.5 m long ----------------------------------------------
 
-function wallFrame(t: number, g: number, W: number, H: number, gy: number): Canvas {
-  const veil = new Field(W, H), sw = new Field(W, H), sl = new Field(W, H), dust = new Field(W, H);
+function wallFrame(t: number, g: number, W: number, H: number, gy: number, ox = 0): Canvas {
+  // Laid out on the original W wide frame, drawn shifted right by ox into a frame with room at
+  // both ends (so only what used to be cut changes).
+  const CW = W + ox * 2;
+  const veil = new Field(CW, H), sw = new Field(CW, H), sl = new Field(CW, H), dust = new Field(CW, H);
   const hgt = 100 * g;
   const topAt = (x: number) => gy - hgt * Math.pow(Math.sin(((x - 4) / (W - 8)) * Math.PI), 0.3) * (0.92 + 0.08 * Math.sin(x * 0.05 + t * TAU));
   // A faint veil of moving air so the wall reads as one body.
-  veil.region(4, 0, W - 5, gy, (x, y) => (y > topAt(x) && hgt > 6 ? 0.2 + 0.08 * Math.sin((y + t * 40) * 0.3 + x * 0.05) : 0));
+  veil.region(4 + ox, 0, W - 5 + ox, gy, (xs, y) => {
+    const x = xs - ox;
+    return y > topAt(x) && hgt > 6 ? 0.2 + 0.08 * Math.sin((y + t * 40) * 0.3 + x * 0.05) : 0;
+  });
   // Rows of swirling arcs climbing the wall: the air turns as it rises.
   const rows = 6;
   for (let r = 0; r < rows; r++) {
@@ -518,7 +529,7 @@ function wallFrame(t: number, g: number, W: number, H: number, gy: number): Canv
       const y = gy - 6 - q * (gy - topAt(x) - 4);
       if (y < topAt(x) + 2 || hgt < 14) continue;
       const a0 = t * TAU + k + r * 1.3;
-      gust(sw, arc(x, y, 18 + (k % 2) * 6, 5 + (r % 2), a0, a0 + 2.6, 16), lerp(1.8, 1.3, q), lerp(0.95, 0.7, q));
+      gust(sw, arc(x + ox, y, 18 + (k % 2) * 6, 5 + (r % 2), a0, a0 + 2.6, 16), lerp(1.8, 1.3, q), lerp(0.95, 0.7, q));
     }
   }
   // Slanting streaks racing up the wall.
@@ -528,40 +539,41 @@ function wallFrame(t: number, g: number, W: number, H: number, gy: number): Canv
     const yb = gy - p * hgt * 0.7;
     const len = 22 * g;
     if (len < 4 || yb - len * 0.9 < topAt(x0)) continue;
-    gust(sl, [[x0, yb], [x0 + len * 0.25, yb - len * 0.5], [x0 + len * 0.4, yb - len]], 1.2, 0.85, 0.8);
+    gust(sl, [[x0 + ox, yb], [x0 + ox + len * 0.25, yb - len * 0.5], [x0 + ox + len * 0.4, yb - len]], 1.2, 0.85, 0.8);
   }
   // Wisps curling off the top edge.
   for (let k = 0; k < 9; k++) {
     const x = 18 + ((k + fract(t * 2) * 0.5) / 9) * (W - 36);
     const y = topAt(x);
     if (hgt < 14) continue;
-    gust(sw, arc(x, y + 4, 5, 5, Math.PI * 0.9 + t * TAU, Math.PI * 2.4 + t * TAU, 12), 1.4, 0.9);
+    gust(sw, arc(x + ox, y + 4, 5, 5, Math.PI * 0.9 + t * TAU, Math.PI * 2.4 + t * TAU, 12), 1.4, 0.9);
   }
   // A skirt of dust at the base.
   for (let k = 0; k < 30; k++) {
     const x = 8 + (k / 29) * (W - 16);
     if (Math.abs(x - W / 2) > (W / 2) * Math.min(1, g * 1.5)) continue;
-    dust.ell(x + Math.sin(t * TAU + k) * 2, gy - 3 + rr(324, k, -2, 1), rr(325, k, 8, 13), rr(326, k, 3.5, 6), 0, 0.6, 2);
+    dust.ell(x + ox + Math.sin(t * TAU + k) * 2, gy - 3 + rr(324, k, -2, 1), rr(325, k, 8, 13), rr(326, k, 3.5, 6), 0, 0.6, 2);
   }
   const dustPal: Color[] = palette('#2a2418', '#5a4a34', '#7d6a4c', '#a08a68', '#c4b08c', '#e0d0b0', '#f4ead8');
-  const c = stack(W, H,
+  const c = stack(CW, H,
     render(veil, WIND, { th: TH, lo: 2, hi: 3, outline: false, alpha: [0, 0, 38, 50, 0, 0, 0] }),
     render(dust, dustPal, { th: TH, alpha: [110, 80, 100, 120, 140, 160, 180], rim: [1] }),
     air(sl, { hi: 5 }), air(sw));
-  const lv = new Canvas(W, H);
+  const lv = new Canvas(CW, H);
   for (let k = 0; k < 8; k++) {
     const p = fract(k / 8 + t);
     const x = rr(323, k, 20, W - 20);
     if (Math.abs(x - W / 2) > (W / 2) * Math.min(1, g * 1.5) || gy - 8 - p * hgt < topAt(x)) continue;
-    leaf(lv, x + Math.sin(p * 6 + k) * 6, gy - 8 - p * hgt, 8, p * 8 + k, p * TAU * 2 + k);
+    leaf(lv, x + ox + Math.sin(p * 6 + k) * 6, gy - 8 - p * hgt, 8, p * 8 + k, p * TAU * 2 + k);
   }
-  return stack(W, H, c, lv);
+  return stack(CW, H, c, lv);
 }
 function wall(): WorldSprite {
-  const W = 264, H = 120, gy = 112;
-  const idle = frames(4, (t) => wallFrame(t, 1, W, H, gy));
-  const rise = frames(6, (_, i) => wallFrame(i / 6, [0.1, 0.3, 0.55, 0.82, 1.06, 1][i], W, H, gy));
-  return vfxSprite('wall', 'Wind wall (4.5 m x 1.8 m)', [W / 2, gy], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
+  // 10 px of room at both ends for the dust skirt and the swirls (the anchor follows).
+  const W = 264, H = 120, gy = 112, ox = 10;
+  const idle = frames(4, (t) => wallFrame(t, 1, W, H, gy, ox));
+  const rise = frames(6, (_, i) => wallFrame(i / 6, [0.1, 0.3, 0.55, 0.82, 1.06, 1][i], W, H, gy, ox));
+  return vfxSprite('wall', 'Wind wall (4.5 m x 1.8 m)', [W / 2 + ox, gy], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
 }
 
 // --- aura: wind spiralling up around the body -----------------------------------------------
@@ -570,7 +582,8 @@ function wall(): WorldSprite {
 // climb and curl around the outline, leaves and white streaks ride them.
 
 function aura(): WorldSprite {
-  const W = 80, H = 120, cx = 40, gy = 112, top = 6;
+  // Rows below the feet for the gust rings (the anchor is unchanged).
+  const W = 80, H = 128, cx = 40, gy = 112, top = 6;
   const outerW = (y: number) => 30 * Math.pow(1 - Math.pow(clamp((gy - y) / (gy - top), 0, 1), 2.6), 0.5);
   const fr = frames(6, (t) => {
     const veil = new Field(W, H), back = new Field(W, H), front = new Field(W, H), ring = new Field(W, H), ringF = new Field(W, H);

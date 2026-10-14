@@ -450,11 +450,11 @@ const breathe = (f: PoseFrame, n: number): PoseFrame[] => Array.from({ length: n
  * flat against it, the far foot on the ground at the anchor. Slow breathing.
  */
 const LEAN_BASE: PoseFrame = {
-  lean: -9,
-  pelvisDx: -3.5,
+  lean: -13,
+  pelvisDx: -6,
   snap: true,
-  footN: v(-0.3, 0.55),
-  footF: v(0.24, 0.962),
+  footN: v(-0.36, 0.5),
+  footF: v(0.34, 0.94),
   // Arms crossed: the near forearm across the chest, the far hand tucked under its elbow.
   handN: chest(3, 1.5),
   handF: chest(-2.5, 2.5),
@@ -496,17 +496,16 @@ const READ_BASE: PoseFrame = {
   ...SIT_LEGS,
   headDx: 0.5,
   headDy: 0.5,
-  handN: chest(1.2, 4.6),
-  handF: chest(6.6, 4.2),
-  shapeN: 'hold',
-  shapeF: 'hold',
-  farHandFront: true,
+  handN: chest(0.6, 6.2),
+  handF: chest(7.4, 5.8),
+  shapeN: 'cradle',
+  shapeF: 'cradle',
 };
 const READ: PoseFrame[] = Array.from({ length: 12 }, (_, i) => {
   const breath = i % 6 >= 3 ? 0.5 : 0;
   // the far hand lifts the page corner as it turns
   const turn = i === 9 ? -1 : i === 10 ? -0.6 : 0;
-  return { ...READ_BASE, chestDy: breath, handF: chest(6.6, 4.2 + turn) };
+  return { ...READ_BASE, chestDy: breath, handF: chest(7.4, 5.8 + turn) };
 });
 
 /** Stance for the drills: feet apart, the near foot back. */
@@ -552,7 +551,7 @@ const TRAIN_FIST: PoseFrame[] = [
   { lean: 12, pelvisDx: 1.5, footN: v(-0.38, 0.93), footF: v(0.34, 0.94), handN: chest(3, -1.5), handF: arm(0.98, -0.08), shapeN: 'fist', shapeF: 'fist' },
   GUARD,
   { lean: -2, footN: v(0.3, 0.52), footF: v(0.12, 0.97), handN: chest(4, -2), handF: chest(2, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
-  { lean: -8, pelvisDx: -1, footN: v(0.9, 0.32), footF: v(0.1, 0.97), handN: arm(-0.4, 0.6), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  { lean: -12, pelvisDx: -1.5, footN: v(0.95, 0.12), footF: v(0.1, 0.97), handN: arm(-0.4, 0.6), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
   { lean: -2, footN: v(0.3, 0.55), footF: v(0.12, 0.97), handN: chest(4, -2), handF: chest(2, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
 ];
 

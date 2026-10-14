@@ -817,221 +817,233 @@ function lightningLine(c: Canvas, a: P2, b: P2, bulge: number, rough: number, se
 }
 
 interface Pounce {
-  /** Chest and hip centres (relative to the anchor), the back's arch (px, negative humps up). */
-  chest: P2;
-  hips: P2;
+  /** Body pitch (radians, positive dips the nose), half the chest-to-hip distance, back arch (negative humps up). */
+  pitch: number;
+  span: number;
   arch: number;
-  /** Head centre, its tilt (radians, positive looks down) and how far the jaw is open (0..1). */
+  /** Head centre from the chest centre (body units, before pitch), tilt (radians, positive looks down), jaw (0..1). */
   head: P2;
   ha: number;
   jaw: number;
-  /** Paw positions: front near/far, hind near/far. */
+  /** Paw targets from the anchor (body units): front near/far, hind near/far. */
   fN: P2;
   fF: P2;
   hN: P2;
   hF: P2;
-  /** 0 gathered .. 1 fully stretched (claws spread, tail streams). */
+  /** 0 gathered .. 1 fully stretched (claws spread, tail streams, after-images). */
   reach: number;
 }
-// coil, spring, launch, stretch, strike, tuck, tuck, gather
+// coil, spring, launch, stretch, strike, fold, tuck, gather
 const POUNCE: Pounce[] = [
-  { chest: [11, 1], hips: [-11, 2], arch: -9, head: [26, 1], ha: 0.25, jaw: 0.25, fN: [15, 15], fF: [11, 15], hN: [-4, 15], hF: [-8, 15], reach: 0 },
-  { chest: [14, -2], hips: [-14, 2], arch: -5, head: [30, -6], ha: -0.1, jaw: 0.4, fN: [25, 9], fF: [21, 11], hN: [-27, 14], hF: [-23, 15], reach: 0.3 },
-  { chest: [17, -4], hips: [-18, 1], arch: -2, head: [34, -9], ha: -0.15, jaw: 0.6, fN: [37, 0], fF: [33, 3], hN: [-39, 10], hF: [-35, 12], reach: 0.7 },
-  { chest: [19, -2], hips: [-20, 0], arch: 0, head: [36, -6], ha: -0.05, jaw: 0.85, fN: [45, 3], fF: [41, 6], hN: [-45, 6], hF: [-41, 9], reach: 1 },
-  { chest: [19, -1], hips: [-19, -1], arch: 1, head: [36, -3], ha: 0.12, jaw: 1, fN: [44, 9], fF: [39, 11], hN: [-43, 2], hF: [-39, 5], reach: 1 },
-  { chest: [16, 0], hips: [-16, -2], arch: -4, head: [32, -1], ha: 0.18, jaw: 0.6, fN: [29, 14], fF: [25, 15], hN: [-21, 10], hF: [-25, 8], reach: 0.5 },
-  { chest: [13, 1], hips: [-13, -1], arch: -8, head: [28, 0], ha: 0.22, jaw: 0.35, fN: [17, 15], fF: [13, 15], hN: [-7, 13], hF: [-11, 13], reach: 0.15 },
-  { chest: [12, 1], hips: [-12, 1], arch: -9, head: [27, 1], ha: 0.24, jaw: 0.28, fN: [16, 15], fF: [12, 15], hN: [-5, 14], hF: [-9, 14], reach: 0.05 },
+  { pitch: 0.12, span: 9, arch: -8, head: [18, -5], ha: 0.3, jaw: 0.3, fN: [15, 21], fF: [11, 21], hN: [0, 21], hF: [-4, 21], reach: 0 },
+  { pitch: -0.2, span: 12, arch: -3, head: [20, -9], ha: -0.05, jaw: 0.5, fN: [30, 9], fF: [26, 12], hN: [-30, 19], hF: [-26, 21], reach: 0.3 },
+  { pitch: -0.1, span: 15, arch: 0, head: [21, -8], ha: -0.08, jaw: 0.75, fN: [41, 2], fF: [37, 5], hN: [-44, 11], hF: [-40, 14], reach: 0.75 },
+  { pitch: -0.02, span: 16, arch: 2, head: [22, -6], ha: 0.02, jaw: 0.95, fN: [44, 5], fF: [40, 8], hN: [-48, 5], hF: [-44, 8], reach: 1 },
+  { pitch: 0.1, span: 15, arch: 1, head: [22, -4], ha: 0.16, jaw: 1, fN: [41, 14], fF: [37, 16], hN: [-46, -1], hF: [-42, 2], reach: 0.9 },
+  { pitch: 0.1, span: 12, arch: -4, head: [20, -5], ha: 0.22, jaw: 0.6, fN: [27, 19], fF: [23, 20], hN: [-24, 11], hF: [-28, 9], reach: 0.4 },
+  { pitch: 0.06, span: 10, arch: -8, head: [19, -6], ha: 0.26, jaw: 0.4, fN: [16, 19], fF: [12, 20], hN: [-6, 17], hF: [-10, 16], reach: 0.1 },
+  { pitch: 0.1, span: 9, arch: -9, head: [18, -5], ha: 0.3, jaw: 0.3, fN: [14, 21], fF: [10, 21], hN: [-2, 20], hF: [-6, 20], reach: 0 },
 ];
 
-/** Two-bone joint between a and b (bone lengths l1, l2), bent toward `side` (+1 forward, -1 back). */
-function joint(a: P2, b: P2, l1: number, l2: number, side: number): P2 {
+/** The point `len` from s toward t, or t itself when it is closer. */
+function reachTo(s: P2, t: P2, len: number): P2 {
+  const dx = t[0] - s[0], dy = t[1] - s[1], d = Math.hypot(dx, dy);
+  return d <= len ? t : [s[0] + (dx / d) * len, s[1] + (dy / d) * len];
+}
+
+/** The middle joint of a two-bone limb from a to b, bent to the clockwise side of a->b when `cw`. */
+function knee(a: P2, b: P2, l1: number, l2: number, cw: boolean): P2 {
   const dx = b[0] - a[0], dy = b[1] - a[1];
-  const d = Math.min(Math.hypot(dx, dy), l1 + l2 - 0.01);
   const dl = Math.hypot(dx, dy) || 1;
+  const d = Math.min(dl, l1 + l2 - 0.01);
   const ux = dx / dl, uy = dy / dl;
   const along = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
   const h = Math.sqrt(Math.max(0, l1 * l1 - along * along));
-  // Perpendicular that points forward (+x) for a leg hanging down.
-  let px = -uy, py = ux;
-  if (px < 0) {
-    px = -px;
-    py = -py;
-  }
-  return [a[0] + ux * along + px * h * side, a[1] + uy * along + py * h * side];
+  // Screen y points down, so (-uy, ux) is a clockwise quarter turn.
+  const px = cw ? -uy : uy, py = cw ? ux : -ux;
+  return [a[0] + ux * along + px * h, a[1] + uy * along + py * h];
 }
 
-/** A zigzag bolt shape from `root` along `ang` (degrees): a polygon whose spine kinks left and right. */
-function boltSpike(root: P2, ang: number, len: number, w: number, seed: number): Prim {
+/** A zigzag bolt from `root` along `ang` (degrees): a tapering tube whose spine kinks left and right. */
+function bolt(root: P2, ang: number, len: number, w: number, amp: number, kinks: number, seed: number, tipW = 0.35): Prim {
   const d = dirOf(ang), n: P2 = [-d[1], d[0]];
-  const kinks = 3;
-  const spine: P2[] = [root];
+  const pts: P2[] = [root];
   for (let k = 1; k <= kinks; k++) {
-    const u = k / (kinks + 1);
-    const off = (k % 2 ? 1 : -1) * w * (0.9 + rnd(seed, k) * 0.6);
-    spine.push([root[0] + d[0] * len * u + n[0] * off, root[1] + d[1] * len * u + n[1] * off]);
+    const u = (k - 0.2 + rnd(seed, k) * 0.4) / (kinks + 1);
+    const off = (k % 2 ? 1 : -1) * amp * (0.75 + rnd(seed, k, 1) * 0.5);
+    pts.push([root[0] + d[0] * len * u + n[0] * off, root[1] + d[1] * len * u + n[1] * off]);
   }
-  spine.push([root[0] + d[0] * len, root[1] + d[1] * len]);
-  const left: P2[] = [], right: P2[] = [];
-  spine.forEach(([x, y], i) => {
-    const hw = w * (1 - i / spine.length) + 0.3;
-    left.push([x + n[0] * hw, y + n[1] * hw]);
-    right.push([x - n[0] * hw, y - n[1] * hw]);
-  });
-  return poly([...left, ...right.reverse()], [-0.3, -0.5, 0.8]);
+  pts.push([root[0] + d[0] * len, root[1] + d[1] * len]);
+  return tube(pts, (u) => lerp(w, tipW, u));
 }
 
 function raiju(): WorldSprite {
-  const W = 220, H = 170, cx = 110, cy = 84;
-  const Z = 1.3; // the pose table is in body units; the beast is drawn 1.3x
+  const W = 220, H = 160, cx = 110, cy = 80;
+  const Z = 1.2; // the pose table is in body units; the beast is drawn 1.2x
   const frames: Canvas[] = [];
   POUNCE.forEach((g, fi) => {
     const t = fi / POUNCE.length;
     const f = new Frame(W, H);
-    const A = (p: P2): P2 => [cx + p[0] * Z, cy + p[1] * Z];
     const style = { outline: RAI.outline, line: RAI.line, solid: 150 };
-    /** Lit electric flesh: light and shadow planes (amber underneath), a white-hot core, fur streaks. */
-    const flesh = (seed: number, far = 0, bias = 0) => (h: Hit): Color => {
-      const L = lit(h);
-      const core = Math.pow(h.nz, 1.8);
-      const fur = noise(h.x * 0.3 + fi * 3.1, h.y * 1.5, 1.6, seed);
-      let st = stepOf(0.78 * L + 0.24 * core + bias + (fur - 0.5) * 0.3, h.x, h.y, [0.3, 0.5, 0.7, 0.88], 0.05, seed, 2.2);
-      if (h.nz < 0.32 && L > 0.62) st = Math.max(st, 4); // the lit rim
-      return RAI.ramp[clamp(st - far, 1, 5)];
+    const cp = Math.cos(g.pitch), sp = Math.sin(g.pitch), pd = g.pitch / D2R;
+    /** Body space (pitched about the anchor) to the canvas, and unpitched targets to the canvas. */
+    const B = (x: number, y: number): P2 => [cx + (x * cp - y * sp) * Z, cy + (x * sp + y * cp) * Z];
+    const A = (p: P2): P2 => [cx + p[0] * Z, cy + p[1] * Z];
+    const C = B(g.span, 0), Hp = B(-g.span, 0);
+    // Fur: light bands end in clumps that lean back (a ramp that rises along the fur and drops sharply).
+    const comb = (x: number, y: number, seed: number): number => fract((x + y * 0.5) / 4 + noise(x, y, 6, seed) * 1.2) - 0.5;
+    /** Lit electric flesh: light planes on top, amber shadow underneath, a white-hot core, fur clumps. */
+    const flesh = (seed: number, dk = 0, bias = 0) => (h: Hit): Color => {
+      const v = 0.86 * lit(h, 0.3) + 0.16 * Math.pow(h.nz, 1.5) - 0.04 + bias + comb(h.x, h.y, seed) * 0.1;
+      return RAI.ramp[clamp(stepOf(v, h.x, h.y, [0.3, 0.46, 0.63, 0.82], 0.035, seed, 2.4) - dk, 0, 5)];
     };
-    const tuft = (seed: number, far = 0) => (h: Hit): Color => {
-      const st = stepOf(lit(h) * 0.8 + h.u * 0.2 + (noise(h.x, h.y, 1.6, seed) - 0.5) * 0.2, h.x, h.y, [0.32, 0.52, 0.72, 0.88], 0.05, seed);
-      return RAI.ramp[clamp(st - far, 1, 5)];
+    /** Fur tufts: darker at the root (under the tuft above), lit toward the tip. */
+    const tuft = (seed: number, dk = 0, bias = 0) => (h: Hit): Color => {
+      const v = 0.7 * lit(h, 0.3) + 0.3 * h.u - 0.04 + bias + (noise(h.x, h.y, 2, seed) - 0.5) * 0.1;
+      return RAI.ramp[clamp(stepOf(v, h.x, h.y, [0.3, 0.46, 0.62, 0.8], 0.04, seed) - dk, 0, 5)];
     };
     const tufts = (defs: [P2, number, number, number][], seed: number): Prim[] =>
       defs.map(([r, a, l, w], j) => {
-        const d = dirOf(a + Math.sin(TAU * t + j * 1.9) * 5);
-        return lens(r, [r[0] + d[0] * l * Z, r[1] + d[1] * l * Z], w * Z, { tip: 1.8, peak: 0.25, bend: ((j % 2 ? 1 : -1) * 1.1 + rnd(seed, j) - 0.5) * Z });
+        const d = dirOf(a + pd + Math.sin(TAU * t + j * 1.7) * 4);
+        return lens(r, [r[0] + d[0] * l * Z, r[1] + d[1] * l * Z], w * Z, { tip: 2.2, peak: 0.22, base: 0.45, bend: (j % 2 ? 0.6 : -0.6) * Z });
       });
-    const C = A(g.chest), Hp = A(g.hips);
-    const mid: P2 = [(C[0] + Hp[0]) / 2, (C[1] + Hp[1]) / 2 + g.arch * 0.6 * Z];
-    // --- legs: long, jointed, a paw and three claws ------------------------------------------
-    const frontLeg = (paw: P2, far: boolean): { prims: Prim[]; P: P2; E: P2 } => {
-      const S: P2 = [C[0] + (far ? 0 : 2) * Z, C[1] + 3 * Z];
-      const P = A(paw);
-      const E = joint(S, P, 13 * Z, 13 * Z, -1);
+    /** Bolts (mane, tail): a white-hot spine, pale yellow, gold edges. */
+    const boltShade = (dk = 0) => (h: Hit): Color => RAI.ramp[clamp(stepOf(0.36 + (1 - Math.abs(h.v)) * 0.5 + lit(h, 0.3) * 0.2, h.x, h.y, [0.3, 0.5, 0.66, 0.82], 0.04, 61) - dk, 2, 5)];
+    // --- legs: long and jointed, a paw and three claws ---------------------------------------
+    const frontLeg = (target: P2, far: boolean) => {
+      const S = B(g.span + (far ? 1 : 3), 5);
+      const P = reachTo(S, A(target), 24.5 * Z);
+      const E = knee(S, P, 12.5 * Z, 12.5 * Z, true);
       const ang = Math.atan2(P[1] - E[1], P[0] - E[0]);
-      return { prims: [lens(S, E, (far ? 4.4 : 5.2) * Z, { peak: 0.3, tip: 0.6, base: 1 }), tube([E, P], (u) => lerp(3.1, 2.2, u) * Z), blob(P[0] + Math.cos(ang) * 1.6 * Z, P[1] + Math.sin(ang) * 1.6 * Z, 3.2 * Z, 2.3 * Z, ang)], P, E };
+      const pa = ang * 0.55;
+      const pc: P2 = [P[0] + Math.cos(pa) * 1.2 * Z, P[1] + Math.sin(pa) * 1.2 * Z];
+      return { prims: [lens(S, E, (far ? 4.2 : 4.8) * Z, { peak: 0.25, tip: 0.5, base: 1 }), tube([E, P], (u) => lerp(2.6, 2, u) * Z), blob(pc[0], pc[1], 3 * Z, 2.1 * Z, pa)], P: pc, E, pa };
     };
-    const hindLeg = (paw: P2, far: boolean): { prims: Prim[]; P: P2; E: P2 } => {
-      const Hj: P2 = [Hp[0] - 1 * Z, Hp[1] + 3 * Z];
-      const P = A(paw);
-      const toHip = Math.atan2(Hj[1] - P[1], Hj[0] - P[0]) + 0.55;
-      const K: P2 = [P[0] + Math.cos(toHip) * 8 * Z, P[1] + Math.sin(toHip) * 8 * Z];
-      const N = joint(Hj, K, 13 * Z, 12 * Z, 1);
+    const hindLeg = (target: P2, far: boolean) => {
+      const Hj = B(-g.span - 1, 4);
+      const P = reachTo(Hj, A(target), 31 * Z);
+      const toHip = Math.atan2(Hj[1] - P[1], Hj[0] - P[0]) - 0.55;
+      const K: P2 = [P[0] + Math.cos(toHip) * 9 * Z, P[1] + Math.sin(toHip) * 9 * Z];
+      const N = knee(Hj, K, 12 * Z, 12 * Z, false);
       const ang = Math.atan2(P[1] - K[1], P[0] - K[0]);
-      return { prims: [lens(Hj, N, (far ? 6 : 7) * Z, { peak: 0.35, tip: 0.5, base: 1 }), tube([N, K], (u) => lerp(3.4, 2.3, u) * Z), tube([K, P], () => 2.1 * Z), blob(P[0] + Math.cos(ang) * 1.3 * Z, P[1] + Math.sin(ang) * 1.3 * Z, 3 * Z, 2.2 * Z, ang)], P, E: K };
+      const pa = ang * 0.8;
+      const pc: P2 = [P[0] + Math.cos(pa) * 1.2 * Z, P[1] + Math.sin(pa) * 1.2 * Z];
+      return { prims: [lens(Hj, N, (far ? 6 : 7) * Z, { peak: 0.3, tip: 0.5, base: 1 }), tube([N, K], (u) => lerp(3, 2.2, u) * Z), tube([K, P], () => 1.9 * Z), blob(pc[0], pc[1], 2.9 * Z, 2 * Z, pa)], P: pc, E: N, pa };
     };
-    const claws = (P: P2, from: P2): Prim[] => {
-      const base = Math.atan2(P[1] - from[1], P[0] - from[0]);
-      const spread = 0.26 + g.reach * 0.3;
+    const claws = (P: P2, pa: number): Prim[] => {
+      const spread = 0.3 + g.reach * 0.25;
       return [-1, 0, 1].map((k) => {
-        const a = base + 0.45 + k * spread;
-        const r: P2 = [P[0] + Math.cos(base) * 3.4 * Z, P[1] + Math.sin(base) * 3.4 * Z];
-        const l = (2.6 + g.reach * 1.4) * Z;
-        return lens(r, [r[0] + Math.cos(a) * l, r[1] + Math.sin(a) * l], 0.75 * Z, { tip: 1, peak: 0.2, base: 1, bend: 0.5 * Z });
+        const r: P2 = [P[0] + Math.cos(pa) * 2.2 * Z, P[1] + Math.sin(pa) * 2.2 * Z];
+        const a = pa + 0.55 + k * spread;
+        const l = (2.4 + g.reach * 1.2) * Z;
+        return lens(r, [r[0] + Math.cos(a) * l, r[1] + Math.sin(a) * l], 0.8 * Z, { tip: 1.2, peak: 0.2, base: 1, bend: 0.5 * Z });
       });
     };
-    const clawShade = () => RAI.ramp[5];
-    // --- tail: a thin bolt with sharp kinks, forked at the end --------------------------------
-    const tailRoot: P2 = [Hp[0] - 8 * Z, Hp[1] - 5 * Z];
-    const tailDir = lerp(-148, -170, g.reach) + Math.sin(TAU * t) * 6;
-    const td = dirOf(tailDir), tn: P2 = [-td[1], td[0]];
-    const tpts: P2[] = [tailRoot];
-    for (let k = 1; k <= 5; k++) {
-      const off = (k % 2 ? 1 : -1) * (3.2 + rnd(901 + fi, k) * 1.4) * Z;
-      tpts.push([tailRoot[0] + td[0] * k * 7 * Z + tn[0] * off, tailRoot[1] + td[1] * k * 7 * Z + tn[1] * off]);
-    }
-    const tTip = tpts[tpts.length - 1];
-    const prongs: Prim[] = [-26, 22].map((da, k) => {
-      const d = dirOf(tailDir + da);
-      const kink: P2 = [tTip[0] + d[0] * 5 * Z + (k ? 1.5 : -1.5) * Z, tTip[1] + d[1] * 5 * Z];
-      return tube([tTip, kink, [tTip[0] + d[0] * 11 * Z, tTip[1] + d[1] * 11 * Z]], (u) => lerp(1.3, 0.45, u) * Z);
-    });
-    f.part_([tube(tpts, (u) => lerp(2.4, 1.3, u) * Z), ...prongs], (h) => RAI.ramp[clamp(stepOf(0.55 + Math.pow(h.nz, 2) * 0.45, h.x, h.y, [0.3, 0.5, 0.7, 0.86], 0.05, 17), 3, 5)], style);
-    // --- far legs -------------------------------------------------------------------------------
+    const clawShade = (h: Hit): Color => RAI.ramp[h.u > 0.45 ? 5 : 4];
+    // --- tail: a lightning bolt, zig-zag-zig, forked at the end ------------------------------
+    const tRoot = B(-g.span - 8, -5);
+    const tAng = lerp(-148, -172, g.reach) + pd + Math.sin(TAU * t) * 5;
+    const td = dirOf(tAng), tn: P2 = [-td[1], td[0]];
+    const TL = (a: number, c: number): P2 => [tRoot[0] + (td[0] * a + tn[0] * c) * Z, tRoot[1] + (td[1] * a + tn[1] * c) * Z];
+    const tPts = [TL(0, 0), TL(10, -3.5), TL(8.5, 3), TL(19, 0), TL(17.5, 5), TL(25, 2.5)];
+    const tTip = tPts[tPts.length - 1];
+    const tailPrims: Prim[] = [tube(tPts, (u) => lerp(3, 1.7, u) * Z)];
+    for (const [da, len] of [[-30, 9], [26, 7]] as P2[]) tailPrims.push(bolt(tTip, tAng + da, len * Z, 1.5 * Z, 1.4 * Z, 1, 930 + fi * 3 + da));
+    f.part_(tailPrims, boltShade(), style);
+    // Far mane (behind the neck), then the far legs: a step darker.
+    const maneRoot = (u: number): P2 => {
+      const a = B(g.span + g.head[0] - 5, g.head[1] - 4), b = B(g.span - 2, -10);
+      return [lerp(a[0], b[0], u), lerp(a[1], b[1], u) - Math.sin(u * Math.PI) * 2 * Z];
+    };
+    f.part_([0.2, 0.55, 0.85].map((u, j) => bolt(maneRoot(u), -128 - u * 50 + pd + Math.sin(TAU * t + j * 2) * 5, (13 - u * 3) * Z, 1.6 * Z, 1.5 * Z, 2, 950 + fi * 5 + j)), boltShade(1), style);
     const hF = hindLeg(g.hF, true), fF = frontLeg(g.fF, true);
-    f.part_(hF.prims, flesh(11, 1), style);
-    f.part_(claws(hF.P, hF.E), clawShade, style);
-    f.part_(fF.prims, flesh(13, 1), style);
-    f.part_(claws(fF.P, fF.E), clawShade, style);
+    f.part_(hF.prims, flesh(11, 1, -0.04), style);
+    f.part_(claws(hF.P, hF.pa), clawShade, style);
+    f.part_(fF.prims, flesh(13, 1, -0.04), style);
+    f.part_(claws(fF.P, fF.pa), clawShade, style);
     // --- body: deep chest, tucked waist, haunch, and the neck ---------------------------------
-    const Hd = A(g.head);
-    const nb: P2 = [C[0] + 7 * Z, C[1] - 6 * Z];
-    f.part_([
-      blob(C[0], C[1], 12 * Z, 11 * Z, -0.2),
-      tube([C, mid, Hp], (u) => lerp(9.5, 7.5, Math.sin(u * Math.PI)) * Z),
-      blob(Hp[0], Hp[1], 10 * Z, 9.5 * Z, 0.1),
-      tube([nb, [lerp(nb[0], Hd[0], 0.5), lerp(nb[1], Hd[1], 0.5) - 2 * Z], [Hd[0] - 4 * Z, Hd[1] + 1 * Z]], (u) => lerp(8.5, 7, u) * Z),
+    const Hd = B(g.span + g.head[0], g.head[1]);
+    const hA = g.ha + g.pitch, HS = 1.0 * Z;
+    const ca = Math.cos(hA), sa = Math.sin(hA);
+    const HZ = (x: number, y: number): P2 => [Hd[0] + (x * ca - y * sa) * HS, Hd[1] + (x * sa + y * ca) * HS];
+    const bodyId = f.part_([
+      blob(C[0], C[1], 12 * Z, 11 * Z, g.pitch - 0.2),
+      tube([C, B(0, g.arch * 0.5), Hp], (u) => lerp(9, 7, Math.sin(u * Math.PI)) * Z),
+      blob(Hp[0], Hp[1], 10.5 * Z, 10 * Z, g.pitch + 0.1),
+      tube([B(g.span + 5, -5), HZ(-4, 1)], (u) => lerp(7.5, 6.2, u) * Z),
     ], flesh(23), style);
     // --- layered fur: belly fringe, haunch, shoulder, two rows on the back, chest ruff ---------
-    const backAt = (u: number): P2 => [lerp(C[0] + 4 * Z, Hp[0] - 6 * Z, u), lerp(C[1] - 10 * Z, Hp[1] - 9 * Z, u) + g.arch * Math.sin(u * Math.PI) * 0.9 * Z];
-    f.part_(tufts([0.25, 0.5, 0.75].map((u, j) => [[lerp(C[0], Hp[0], u), lerp(C[1], Hp[1], u) + (7 + Math.sin(u * Math.PI) * 1.5) * Z] as P2, 150 + j * 6, 7, 2.3]), 39), tuft(39, 1), style);
-    f.part_(tufts([[[Hp[0] + 2 * Z, Hp[1] - 5 * Z], 176, 8, 2.8], [[Hp[0] + 3 * Z, Hp[1]], 170, 8, 2.8], [[Hp[0] + 1 * Z, Hp[1] + 5 * Z], 160, 6, 2.4]], 37), tuft(37), style);
-    f.part_(tufts([[[C[0] + 3 * Z, C[1] - 4 * Z], 158, 8, 2.8], [[C[0] + 1 * Z, C[1] + 1 * Z], 150, 8, 2.8], [[C[0] + 4 * Z, C[1] + 5 * Z], 140, 6, 2.4]], 35), tuft(35), style);
-    f.part_(tufts([0.2, 0.4, 0.6, 0.8].map((u, j) => [[backAt(u)[0], backAt(u)[1] + 3 * Z] as P2, -170 + j * 2, 7, 2.4]), 33), tuft(33), style);
-    f.part_(tufts([0.1, 0.3, 0.5, 0.7, 0.9].map((u, j) => [backAt(u), -162 + j * 3, 8 - j * 0.4, 2.6] as [P2, number, number, number]), 31), tuft(31), style);
-    f.part_(tufts([[[C[0] + 9 * Z, C[1] + 3 * Z], 115, 7, 2.6], [[C[0] + 7 * Z, C[1] + 7 * Z], 125, 7, 2.4], [[C[0] + 4 * Z, C[1] + 9 * Z], 135, 5, 2]], 41), tuft(41), style);
-    // --- mane: tall, thin zigzag bolts standing off the neck and shoulders ----------------------
-    const mane: Prim[] = [];
-    for (let j = 0; j < 6; j++) {
-      const u = j / 5;
-      const r: P2 = [lerp(Hd[0] - 5 * Z, C[0] - 2 * Z, u), lerp(Hd[1] - 6 * Z, C[1] - 11 * Z, u) - Math.sin(u * Math.PI) * 2 * Z];
-      mane.push(boltSpike(r, -138 - u * 24 + Math.sin(TAU * t + j) * 6, (lerp(15, 11, u) + rnd(960 + fi, j) * 3) * Z, 1.25 * Z, 970 + fi * 7 + j));
+    type Tuft = [P2, number, number, number];
+    /** The back line in body units (u = 0 at the withers, 1 at the rump), humped by the arch. */
+    const backAt = (u: number, dy = 0): P2 => B(lerp(g.span + 2, -g.span - 7, u), lerp(-10.5, -9, u) + g.arch * Math.sin(u * Math.PI) * 0.6 + dy);
+    f.part_(tufts([0.2, 0.4, 0.6, 0.8].map((u, j): Tuft => [B(lerp(g.span + 2, -g.span + 2, u), 8.5 + g.arch * 0.25 * Math.sin(u * Math.PI)), 156 + j * 4, 6.5 + (j % 2), 1.6]), 39), tuft(39, 1), style);
+    f.part_(tufts([[B(-g.span - 8, -4), 184, 7.5, 1.8], [B(-g.span - 9, 1), 174, 8, 1.8], [B(-g.span - 7, 6), 162, 7, 1.7]], 37), tuft(37, 0, -0.04), style);
+    f.part_(tufts([0.3, 0.45, 0.6, 0.75, 0.9, 1.02].map((u, j): Tuft => [backAt(u, 2.5), -176 + j, 7 + (j % 2) * 1.2, 1.5]), 33), tuft(33, 0, -0.1), style);
+    f.part_(tufts([[B(g.span + 1, -2), 160, 7, 1.8], [B(g.span - 1, 3), 152, 7, 1.8], [B(g.span + 2, 7), 140, 6, 1.6]], 35), tuft(35, 0, -0.02), style);
+    f.part_(tufts([0.36, 0.52, 0.68, 0.84, 0.98].map((u, j): Tuft => [backAt(u, 0.5), -170 + j * 1.5, 8.5 - (j % 2) * 1.5, 1.6]), 31), tuft(31, 0, 0.05), style);
+    f.part_(tufts([[B(g.span + 10, 1), 112, 7.5, 1.9], [B(g.span + 8, 5), 122, 7.5, 1.8], [B(g.span + 5, 9), 136, 6, 1.6]], 41), tuft(41, 0, -0.02), style);
+    // --- mane: zig-zag bolts fanning back off the neck, each its own piece ----------------------
+    for (const [j, u] of [1, 0.86, 0.72, 0.58, 0.44, 0.3, 0.15, 0].entries()) {
+      const ang = -104 - u * 84 + pd + Math.sin(TAU * t + j * 1.3) * 6;
+      f.part_([bolt(maneRoot(u), ang, (18 - u * 6 + rnd(960 + fi, j) * 2.5) * Z, 1.9 * Z, 2.3 * Z, 2, 970 + fi * 7 + j)], boltShade(), style);
     }
-    f.part_(mane, (h) => RAI.ramp[clamp(stepOf(0.45 + (1 - Math.abs(h.v)) * 0.5, h.x, h.y, [0.3, 0.52, 0.68, 0.84], 0.06, 61), 3, 5)], style);
     // --- head: a wolf's long muzzle, snarling ----------------------------------------------------
-    const HS = 1.25 * Z;
-    const ca = Math.cos(g.ha), sa = Math.sin(g.ha);
-    const HZ = (x: number, y: number): P2 => [Hd[0] + (x * ca - y * sa) * HS, Hd[1] + (x * sa + y * ca) * HS];
-    f.part_([lens(HZ(-3, -6), HZ(-13, -12), 2.6 * HS, { peak: 0.3, tip: 1.3, bend: -1 })], flesh(43, 1), style);
-    const jawEnd = HZ(16, 4 + 6.5 * g.jaw);
-    f.part_([lens(HZ(0, 4), jawEnd, 2.6 * HS, { peak: 0.25, tip: 0.8, base: 1 })], flesh(45, 0, -0.06), style);
-    f.part_([poly([HZ(1, 1.5), HZ(17, 2), jawEnd, HZ(3, 5)])], (h) => RAI.mouth[h.v < -0.2 ? 1 : 0], { outline: null, line: null });
-    const fangs: Prim[] = [poly([HZ(13.5, 2), HZ(15.2, 2), HZ(14.4, 6.6)]), poly([HZ(10, 2), HZ(11.2, 2), HZ(10.6, 4.2)]), poly([HZ(7, 2), HZ(8.1, 2), HZ(7.6, 3.8)])];
-    const ly = (x: number): P2 => {
-      const a: P2 = HZ(0, 4), b = jawEnd;
-      const u = x / 16;
-      return [lerp(a[0], b[0], u), lerp(a[1], b[1], u) - 1.2 * Z];
+    f.part_([lens(HZ(-1, -5), HZ(-12, -11), 2.6 * HS, { peak: 0.3, tip: 1.4, bend: -1 })], flesh(43, 1), style);
+    const jawEnd = HZ(15, 3.5 + 6.5 * g.jaw);
+    f.part_([lens(HZ(0, 3.5), jawEnd, 2.4 * HS, { peak: 0.25, tip: 0.8, base: 1 })], flesh(45, 0, -0.08), style);
+    f.part_([poly([HZ(2, 1), HZ(16.5, 1.5), HZ(14.5, 3.4 + 6.5 * g.jaw), HZ(3, 4.5)])], (h) => RAI.mouth[h.v < -0.1 ? 1 : 0], { outline: null, line: null });
+    const lj = (x: number): P2 => {
+      const a = HZ(0, 3.5), u = x / 15;
+      return [lerp(a[0], jawEnd[0], u), lerp(a[1], jawEnd[1], u) - 1.6 * HS];
     };
-    const lf1 = ly(13), lf2 = ly(9);
-    fangs.push(poly([[lf1[0] - 1.2, lf1[1]], [lf1[0] + 1.2, lf1[1]], [lf1[0] + 0.2, lf1[1] - 4.2]]), poly([[lf2[0] - 1, lf2[1]], [lf2[0] + 1, lf2[1]], [lf2[0], lf2[1] - 2.8]]));
-    f.part_(fangs, () => RAI.ramp[5], { outline: RAI.outline, line: null });
-    f.part_([
-      blob(Hd[0], Hd[1], 7.8 * HS, 7 * HS, g.ha),
-      blob(...HZ(4.5, -4.2), 5 * HS, 2.3 * HS, g.ha + 0.25),
-      lens(HZ(2, -1.5), HZ(18, 1), 4.2 * HS, { peak: 0.25, tip: 0.6, base: 1 }),
-      lens(HZ(-1, -6.5), HZ(-12, -15), 3 * HS, { peak: 0.3, tip: 1.3, bend: -1 }),
-      lens(HZ(-2, 4), HZ(-12, 8), 2.2 * HS, { tip: 1.8, peak: 0.25 }),
-      lens(HZ(0, 6), HZ(-9, 11.5), 2 * HS, { tip: 1.8, peak: 0.25 }),
-    ], flesh(47), style);
+    const up = (x: number, w: number, l: number): Prim => poly([HZ(x - w / 2, 1.5), HZ(x + w / 2, 1.5), HZ(x + 0.2, 1.5 + l)]);
+    const dn = (x: number, w: number, l: number): Prim => {
+      const p = lj(x);
+      const dx = -sa * HS, dy = ca * HS; // head "down" in canvas space
+      return poly([[p[0] - (ca * w) / 2 * HS, p[1] - (sa * w) / 2 * HS], [p[0] + (ca * w) / 2 * HS, p[1] + (sa * w) / 2 * HS], [p[0] - dx * l, p[1] - dy * l]]);
+    };
+    f.part_([up(13.4, 1.9, 5.2), up(10, 1.3, 2.8), up(7, 1.2, 2.4), dn(12, 1.7, 3.6), dn(8.6, 1.2, 2.2)], (h) => RAI.ramp[h.v < 0 ? 5 : 4], { outline: RAI.outline, line: null });
+    f.part_([blob(Hd[0], Hd[1], 7.2 * HS, 6.4 * HS, hA), lens(HZ(2, -1.5), HZ(17.5, 0.8), 3.8 * HS, { peak: 0.2, tip: 0.6, base: 1 })], flesh(47, 0, 0.02), style);
+    f.part_([blob(...HZ(4.5, -4), 4.6 * HS, 1.9 * HS, hA + 0.3)], flesh(49, 0, 0.06), style);
+    f.part_([lens(HZ(-1.5, -5.5), HZ(-13, -12.5), 2.9 * HS, { peak: 0.3, tip: 1.4, bend: -1.2 })], flesh(51), style);
+    f.part_([lens(HZ(-2.5, -6.2), HZ(-11, -11.4), 1.3 * HS, { peak: 0.35, tip: 1.3, bend: -0.8 })], (h) => RAI.ramp[h.v < 0 ? 2 : 1], { outline: null, line: null });
+    f.part_([lens(HZ(-2, 2.5), HZ(-12, 4.5), 2.3 * HS, { tip: 1.8, peak: 0.25, bend: 0.8 }), lens(HZ(-1, 5), HZ(-10, 10), 2.1 * HS, { tip: 1.8, peak: 0.25, bend: -0.8 }), lens(HZ(1, 6.5), HZ(-5, 12.5), 1.8 * HS, { tip: 1.8, peak: 0.25 })], tuft(53, 0, 0.02), style);
     // --- near legs in front ------------------------------------------------------------------
     const hN = hindLeg(g.hN, false), fN = frontLeg(g.fN, false);
-    f.part_(hN.prims, flesh(37, 0, 0.04), style);
-    f.part_(claws(hN.P, hN.E), clawShade, style);
-    f.part_(fN.prims, flesh(41, 0, 0.04), style);
-    f.part_(claws(fN.P, fN.E), clawShade, style);
+    f.part_(hN.prims, flesh(37, 0, 0.05), style);
+    f.part_(claws(hN.P, hN.pa), clawShade, style);
+    f.part_(tufts([[hN.E, -170, 6, 2.2]], 55), tuft(55, 0, 0.02), style);
+    f.part_(fN.prims, flesh(41, 0, 0.05), style);
+    f.part_(claws(fN.P, fN.pa), clawShade, style);
+    f.part_(tufts([[fN.E, 168, 5.5, 2]], 57), tuft(57, 0, 0.02), style);
     const fc = f.finish();
-    // Snarl wrinkles, the nose, and a glowing eye under the brow.
-    for (const [x, y] of [[9.5, -2.7], [10.5, -2.7], [12, -1.9], [13, -1.9]] as P2[]) {
+    // Snarl wrinkles on the muzzle, the nose, and a glowing eye under the brow.
+    for (const [x, y] of [[9, -2.4], [10, -2.6], [11.5, -2], [12.5, -2.2], [10.5, -0.8]] as P2[]) {
       const [X, Y] = HZ(x, y).map(Math.round);
-      fc.set(X, Y, RAI.line);
+      if (fc.alpha(X, Y) > 200) fc.set(X, Y, RAI.line);
     }
-    const [nX, nY] = HZ(17.8, -0.4).map(Math.round);
+    const [nX, nY] = HZ(17.4, -0.8).map(Math.round);
     for (const [dx, dy] of [[0, 0], [-1, 0], [0, 1], [-1, 1]]) fc.set(nX + dx, nY + dy, RAI.outline);
-    const [ex, ey] = HZ(5.5, -2.2).map(Math.round);
-    for (const [dx, dy] of [[-2, 0], [4, 0], [-1, 1], [3, 1], [0, 2], [1, 2], [2, 2]]) if (fc.alpha(ex + dx, ey + dy) > 200) fc.plot(ex + dx, ey + dy, wa(RAI.ramp[5], 130));
-    for (const [dx, dy, col] of [[-1, -1, RAI.outline], [0, -1, RAI.outline], [1, -1, RAI.outline], [2, -1, RAI.outline], [3, -1, RAI.outline], [-1, 0, RAI.ramp[4]], [0, 0, RAI.arc], [1, 0, RAI.arc], [2, 0, RAI.arc], [3, 0, RAI.ramp[4]], [0, 1, RAI.glow], [1, 1, RAI.glow], [2, 1, RAI.ramp[3]]] as [number, number, Color][]) fc.set(ex + dx, ey + dy, col);
-    // Current inside the body (only over the torso).
-    const inside = (x: number, y: number): boolean => fc.alpha(x, y) >= 220 && f.part[y * W + x] >= 0;
-    lightningLine(fc, [C[0] + 6 * Z, C[1] - 2 * Z], [Hp[0] - 4 * Z, Hp[1] - 2 * Z], (rnd(1100 + fi, 0) - 0.5) * 10, 0.8, 1200 + fi * 10, RAI.ramp[5], RAI.ramp[4], (x, y) => !inside(x, y));
-    lightningLine(fc, [C[0] - 2 * Z, C[1] + 5 * Z], [Hp[0] + 3 * Z, Hp[1] + 4 * Z], (rnd(1100 + fi, 1) - 0.5) * 8, 0.8, 1300 + fi * 10, RAI.ramp[5], RAI.ramp[4], (x, y) => !inside(x, y));
+    fc.set(nX - 1, nY, RAI.line);
+    const [ex, ey] = HZ(5.5, -1.6).map(Math.round);
+    for (const [dx, dy, col] of [[-1, -1, RAI.outline], [0, -1, RAI.outline], [1, -1, RAI.outline], [2, -1, RAI.outline], [3, -1, RAI.line], [-1, 0, RAI.ramp[4]], [0, 0, RAI.arc], [1, 0, RAI.arc], [2, 0, RAI.arc], [3, 0, RAI.ramp[4]], [0, 1, RAI.glow], [1, 1, RAI.glow], [2, 1, RAI.ramp[3]]] as [number, number, Color][]) fc.set(ex + dx, ey + dy, col);
+    // Speed streaks in the stretch: the back edge of the silhouette smears into fading lines.
+    if (g.reach > 0.5) {
+      const snap = fc.clone();
+      const k = (g.reach - 0.4) / 0.6;
+      for (let y = 0; y < H; y++) {
+        if (noise(3, y, 2.2, 1500 + fi) < 0.42) continue;
+        for (let x = 1; x < W; x++) {
+          if (snap.alpha(x, y) < 220 || snap.alpha(x - 1, y) >= 120) continue;
+          const len = Math.round((6 + rnd(1600 + fi, y, x) * 14) * k);
+          for (let q = 1; q <= len; q++) {
+            if (snap.alpha(x - q, y) >= 120) break;
+            const u = q / len;
+            fc.plot(x - q, y, wa(u < 0.35 ? RAI.ramp[5] : RAI.ramp[4], 200 * (1 - u * 0.85)));
+          }
+        }
+      }
+    }
     // Arcs: three short bolts jumping off the silhouette and landing back on it.
     const solidAt = (x: number, y: number): boolean => fc.alpha(x, y) >= 220;
     const rim: P2[] = [];
@@ -1042,9 +1054,9 @@ function raiju(): WorldSprite {
       }
     for (let a = 0; a < 3; a++) {
       const p0 = rim[Math.floor(rnd(500 + fi, a) * rim.length)];
-      const want = 10 + rnd(600 + fi, a) * 8;
+      const want = 9 + rnd(600 + fi, a) * 7;
       let p1 = p0;
-      for (let q = 0; q < 40; q++) {
+      for (let q = 0; q < 60; q++) {
         const c2 = rim[Math.floor(rnd(650 + fi, a, q) * rim.length)];
         if (Math.abs(Math.hypot(c2[0] - p0[0], c2[1] - p0[1]) - want) < 3) {
           p1 = c2;
@@ -1054,27 +1066,15 @@ function raiju(): WorldSprite {
       if (p1 === p0) continue;
       const mx = (p0[0] + p1[0]) / 2 - cx, my = (p0[1] + p1[1]) / 2 - cy;
       const side = Math.sign(-(p1[1] - p0[1]) * mx + (p1[0] - p0[0]) * my) || 1;
-      lightningLine(fc, p0, p1, side * (4 + rnd(700 + fi, a) * 3), 0.9, 800 + fi * 10 + a, RAI.arc, RAI.glow, solidAt);
+      lightningLine(fc, p0, p1, side * (3 + rnd(700 + fi, a) * 3), 0.9, 800 + fi * 10 + a, RAI.arc, RAI.glow, solidAt);
     }
-    // After-images in the stretch: the silhouette's back edge echoed behind it as pale streaks.
-    if (g.reach > 0.6) {
-      const snap = fc.clone();
-      for (const [dx, al] of [[-8, 150], [-16, 80]] as [number, number][])
-        for (let y = 0; y < H; y++)
-          for (let x = 1; x < W; x++) {
-            // Only the leading (right-hand) rim of the silhouette leaves an echo.
-            if (snap.alpha(x, y) < 220 || snap.alpha(x + 1, y) >= 220) continue;
-            const X = x + dx;
-            if (fc.alpha(X, y)) continue;
-            fc.plot(X, y, wa(RAI.ramp[4], al));
-          }
-    }
-    // Sparks: gold and white, a couple of cool ones.
+    // Sparks: gold and white, drifting back; a couple of cool ones.
     for (let k = 0; k < 16; k++) {
       const p = fract(k / 16 + t);
-      const X = Math.round(cx + 40 - rnd(911, k) * 110 - p * 26), Y = Math.round(cy - 40 + rnd(912, k) * 84 + (p - 0.5) * 6);
+      const ang = rnd(911, k) * TAU, rr = 0.55 + rnd(912, k) * 0.45;
+      const X = Math.round(cx + Math.cos(ang) * 52 * rr - p * 18), Y = Math.round(cy + Math.sin(ang) * 30 * rr);
       if (fc.alpha(X, Y)) continue;
-      fc.set(X, Y, k % 7 === 3 ? RAI.cool : p < 0.5 ? RAI.arc : RAI.glow);
+      fc.set(X, Y, k % 8 === 3 ? RAI.cool : p < 0.5 ? RAI.arc : RAI.glow);
       if (p < 0.3) fc.plot(X + 1, Y, wa(RAI.glow, 170));
     }
     frames.push(fc);

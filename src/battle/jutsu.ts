@@ -86,7 +86,7 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   wood_dragon_jutsu: { element: 'earth', vfx: 'beast' },
   adamantine_sealing_chains: { element: 'chakra', special: 'seal', vfx: 'stream', effect: 'chakra_sealed' },
   taki_sixtyfour_palms: { vfx: 'multi', melee: true },
-  kirin_thunder: { vfx: 'blast' },
+  kirin_thunder: { vfx: 'blast', sig: 'kirin' },
   rasenshuriken_wind: { vfx: 'sphere' },
   great_fire_annihilation: { vfx: 'breath', length: 12, effect: 'burning', sig: 'annihilation' },
   wood_golem_titan: { element: 'earth', vfx: 'blast' },

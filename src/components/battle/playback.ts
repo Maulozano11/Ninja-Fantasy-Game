@@ -6,7 +6,7 @@ import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit } from '../../
 import type { SpritePose } from '../../sprite/types';
 import { JUTSU } from '../../battle/jutsu';
 import type { VfxElement, VfxRole } from '../../battle/jutsu';
-import { signatureMs } from './vfxSprites';
+import { signatureMs, skySignature } from './vfxSprites';
 import { dist } from '../../battle/map';
 
 export interface UnitView {
@@ -377,6 +377,13 @@ export class Playback {
         if (spec?.melee) {
           this.fx.push({ ...base, kind: 'burst', from: ev.at, to: ev.at, dur: 600, lift: [60, 60] });
           return castDelay + 400;
+        }
+        // A signature from the sky (Kirin) needs no projectile: the storm gathers over the target.
+        const sky = ev.shape?.kind === 'circle' ? skySignature(el, spec?.sig, ev.enhanced) : null;
+        if (sky) {
+          this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, dur: sky.total });
+          h.shake(ev.enhanced ? 8 : 6);
+          return castDelay + sky.hit / this.speed;
         }
         this.fx.push({ ...base, kind: 'projectile', from, to: ev.at, dur: fly, lift: [head ? 120 : 70, ev.shape ? 30 : 60] });
         if (ev.shape?.kind === 'circle') {

@@ -65,7 +65,7 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
   const t = ms / f.dur;
   if (t < 0 || t > 1) return true;
   const left = f.to.x < f.from.x - 0.01;
-  const sig = f.sig === 'fireball' ? (f.enhanced ? 'fireball_great' : 'fireball') : f.sig === 'annihilation' ? (f.enhanced ? 'annihilation_enh' : 'annihilation') : undefined;
+  const sig = f.sig && f.sig !== 'eyes' && f.sig !== 'tag' && f.sig !== 'log' ? sigSheetName(el, f.sig, !!f.enhanced) : undefined;
   switch (f.kind) {
     case 'projectile': {
       // Summoned beasts come from their own sheet (vfx_beasts/<element>) when it's in the game.
@@ -81,6 +81,20 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       if (!s) return false;
       const c = f.area?.kind === 'circle' ? f.area.center : f.from;
       const p = project(sc.map, c);
+      // A signature from the sky (Kirin) plays its phases one after another on the target.
+      const phases = phasesOf(s);
+      if (phases.length) {
+        let at = ms;
+        for (const ph of phases) {
+          const d = animMs(s, ph);
+          if (at < d || ph === phases[phases.length - 1]) {
+            blit(ctx, s, ph, frameAt(s, ph, at), p.X, p.Y, false);
+            break;
+          }
+          at -= d;
+        }
+        return true;
+      }
       const anim = sig ? 'burst' : Object.keys(s.spec.anims)[0];
       blit(ctx, s, anim, frameAt(s, anim, ms), p.X, p.Y, false, t > 0.85 ? (1 - t) / 0.15 : 1);
       return true;
@@ -175,6 +189,32 @@ export function drawWallSprite(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall
   if (ms < rise) blit(ctx, s, 'rise', frameAt(s, 'rise', ms), p.X, p.Y, mirror);
   else blit(ctx, s, 'idle', frameAt(s, 'idle', Number.isFinite(ms) ? ms - rise : sc.now), p.X, p.Y, mirror);
   return true;
+}
+
+/** The phases a sky signature plays in order; empty for other sheets. */
+const PHASES = ['gather', 'strike', 'impact', 'fade'];
+const phasesOf = (s: Sheet): string[] => (s.spec.anims.strike ? PHASES.filter((p) => s.spec.anims[p]) : []);
+
+/** Which sheet a signature uses: its enhanced version when enhanced and drawn, else the base one. */
+function sigSheetName(element: string, sig: string, enhanced: boolean): string {
+  if (!enhanced) return sig;
+  const big = sig === 'fireball' ? 'fireball_great' : `${sig}_enh`;
+  return sheet(element, big) ? big : sig;
+}
+
+/**
+ * A signature that falls from the sky onto its target (Kirin): how long it plays and when it hits
+ * (the end of its strike), or null when it isn't one or its sheet isn't in the game.
+ */
+export function skySignature(element: string, sig: string | undefined, enhanced: boolean): { total: number; hit: number } | null {
+  if (!sig) return null;
+  const s = sheet(element, sigSheetName(element, sig, enhanced));
+  if (!s) return null;
+  const phases = phasesOf(s);
+  if (!phases.length) return null;
+  const total = phases.reduce((t, p) => t + animMs(s, p), 0);
+  const hit = phases.slice(0, phases.indexOf('strike') + 1).reduce((t, p) => t + animMs(s, p), 0);
+  return { total, hit };
 }
 
 /** How long a signature cone plays (its surge, a few burns and its fade), or null. */

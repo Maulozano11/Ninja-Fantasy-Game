@@ -52,6 +52,10 @@ export interface SState {
   jet: number;
   phase: 'surge' | 'burn' | 'fade';
   t: number;
+  /** In the surge: how far the tail, the hump and the neck with the head have risen out of the fire (0..1). */
+  rise?: [number, number, number];
+  /** In the surge: overall flame height while the wall builds up (0..1). */
+  grow?: number;
 }
 
 // --- the kanji 火 in strokes of flame ---------------------------------------------------------
@@ -115,6 +119,13 @@ export function kanjiFire(Wd: number, Hd: number, box: KanjiBox, prog: number[],
 /** The kanji's writing schedule over an 8-frame surge (strokes 1-4 written over frames 3-7). */
 export const kanjiSurge = (i: number): number[] =>
   [clamp((i - 2.5) / 1, 0, 1), clamp((i - 3.5) / 1, 0, 1), clamp((i - 4) / 1.5, 0, 1), clamp((i - 5) / 1.6, 0, 1)].map((p) => (p > 0 && p < 0.25 ? 0.25 : p));
+/** The surge's length in frames (it was 8; the owner wants it to build up gradually). */
+export const SURGE_N = 20;
+/** The kanji written stroke by stroke over the second half of the 20-frame surge. */
+export const kanjiSurge20 = (i: number): number[] => [0, 1, 2, 3].map((j) => {
+  const p = clamp((i - (9.5 + j * 2.3)) / 2.4, 0, 1);
+  return p > 0 && p < 0.2 ? 0.2 : p;
+});
 /** The kanji burning away over a 6-frame fade. */
 export const KANJI_FADE = [0.82, 0.58, 0.36, 0.17, 0.05, 0];
 
@@ -410,17 +421,36 @@ function dragonLayers(st: SState): DragonLayers {
     out.draw(c, pc.x + Math.round(bob[0]), pc.y + Math.round(bob[1]));
     return out;
   };
+  // In the surge each part rises up out of the fire (from below the wall's flame tops, which hide
+  // where it comes from): the tail tip and the hump first, then the neck with the head.
+  const rise = st.phase === 'surge' ? st.rise ?? [1, 1, 1] : [1, 1, 1];
+  const up = (r: number, dist: number) => Math.pow(1 - r, 2) * dist;
+  const below = GY - 112;
   const back = new Canvas(W, H);
-  back.draw(part('s_tail', [0, Math.sin(ph) * live], 0, { amp: 2, baseY: 110 }), 0, 0);
-  back.draw(part('s_hump', [0, Math.sin(ph + 1.8) * live], 0), 0, 0);
-  const headBob: Pt = [Math.sin(ph + 3) * live, 1.5 * Math.sin(ph + 3.4) * live];
-  back.draw(part('s_head', headBob, 0), 0, 0);
+  if (rise[0] > 0) back.draw(part('s_tail', [0, Math.sin(ph) * live + up(rise[0], 190)], rise[0] < 1 ? below : 0, { amp: 2, baseY: 110 }), 0, 0);
+  if (rise[1] > 0) back.draw(part('s_hump', [0, Math.sin(ph + 1.8) * live + up(rise[1], 210)], rise[1] < 1 ? below : 0), 0, 0);
+  const headBob: Pt = [Math.sin(ph + 3) * live, 1.5 * Math.sin(ph + 3.4) * live + up(rise[2], 330)];
+  if (rise[2] > 0) back.draw(part('s_head', headBob, rise[2] < 1 ? below : 0), 0, 0);
   const front = new Canvas(W, H);
-  front.draw(part('s_claw', [0, 0], 0), 0, 0);
+  if (rise[2] > 0.6) {
+    // The claw grows out of the flames from its core (no wipe), as the neck comes up.
+    const claw = part('s_claw', [0, 0], 0);
+    front.draw(rise[2] < 1 ? burnOut(claw, 1 - (rise[2] - 0.6) / 0.4, SMOKE_HIS, FIRE[0], SEED + 119) : claw, 0, 0);
+  }
   // Where the breath leaves the mouth (his mouth, mapped to our frame).
   const mouth: Pt = [914 + Math.round(headBob[0]), 456 + Math.round(headBob[1])];
   const mid = new Canvas(W, H);
-  if (st.dragon >= 1) return { back, mid, front, mouth, edge: [] };
+  if (st.dragon >= 1 || st.phase === 'surge') {
+    // Sparks where the rising parts break out of the flames.
+    const edge: Pt[] = [];
+    if (st.phase === 'surge')
+      rise.forEach((r, k) => {
+        if (r <= 0 || r >= 1) return;
+        const x0 = [190, 350, 690][k], x1 = [300, 680, 860][k];
+        for (let j = 0; j < 10; j++) edge.push([lerp(x0, x1, rr(SEED + 120 + k, j, 0, 1)), below - rr(SEED + 121 + k, j, 0, 30)]);
+      });
+    return { back, mid, front, mouth, edge };
+  }
   // Forming: it rises out of the fire from the bottom up. Fading: it burns away from the bottom
   // up, the head going last; the burning edge runs red, orange, yellow.
   const top = GY - 500, bottom = GY - 130;
@@ -524,6 +554,20 @@ function hisWallLayer(st: SState): Canvas | null {
     c = dim(c, lerp(0.35, 1, st.burn));
   }
   const burn = [FIRE[2], FIRE[3], FIRE[4], FIRE[5]];
+  if (st.phase === 'surge' && st.grow !== undefined) {
+    // It rolls out from the caster: columns light up as the front passes and keep growing taller
+    // behind it; at the front itself the flames are short and uneven (no straight edge).
+    const front = X0 - 20 + st.roll * (LEN + 140);
+    const g = st.grow;
+    c = sinkColumns(c, (x) => {
+      const behind = front - x;
+      if (behind <= 0) return 0;
+      const tongue = 0.55 + 0.9 * pnoise(x, 0, 7, 0, 0, SEED + 96) * pnoise(x, 3, 19, 0, 0, SEED + 97);
+      const ramp = Math.pow(smooth(0, 230, behind), 0.85);
+      return clamp(g * ramp * lerp(Math.min(1, tongue), 1, smooth(60, 260, behind)), 0, 1);
+    }, wallBottoms());
+    return c;
+  }
   if (st.phase === 'surge' && st.roll < 1) {
     const reach = X0 + st.roll * (LEN + 60);
     // (the front is ragged along its height only, so it never punches holes into the mass)
@@ -616,10 +660,16 @@ export function sStates(): Record<'surge' | 'burn' | 'fade', SState[]> {
   const n = (k: number) => Array.from({ length: k }, (_, i) => i);
   const ease = (u: number) => 1 - Math.pow(1 - clamp(u, 0, 1), 1.6);
   return {
-    surge: n(8).map((i) => ({
-      roll: ease((i + 1) / 6), burn: lerp(0.75, 1, i / 7), dead: 0, smoke: smooth(0.5, 7, i), dragon: smooth(1.6, 6.6, i),
-      kanji: kanjiSurge(i),
-      kanjiVis: 1, jet: clamp((i - 5.4) / 1.8, 0, 1), phase: 'surge' as const, t: i / 8,
+    // 20 frames (1.7 s): an ignition at the caster, the wall rolling out a little more each frame
+    // (full length by frame 15) and rising to full height by the last; the smoke billows up as it
+    // grows; the dragon rises out of it (tail and hump, then the neck and head) and breathes on
+    // the last frames; the kanji writes itself in the second half. The last frame flows into burn 0.
+    surge: n(SURGE_N).map((i) => ({
+      roll: ease((i + 0.6) / 15), burn: lerp(0.75, 1, i / (SURGE_N - 1)), dead: 0, smoke: lerp(0.05, 1, smooth(0, 17, i)), dragon: 1,
+      grow: lerp(0.5, 1, smooth(3, SURGE_N - 1, i)),
+      rise: [smooth(5, 10, i), smooth(6.5, 11.5, i), smooth(10, 16, i)] as [number, number, number],
+      kanji: kanjiSurge20(i),
+      kanjiVis: 1, jet: clamp((i - 16.4) / 2.6, 0, 1), phase: 'surge' as const, t: fract((i - SURGE_N) / 6),
     })),
     burn: n(6).map((i) => ({ roll: 1, burn: 1, dead: 0, smoke: 1, dragon: 1, kanji: [1, 1, 1, 1], kanjiVis: 1, jet: 1, phase: 'burn' as const, t: i / 6 })),
     fade: n(6).map((i) => ({

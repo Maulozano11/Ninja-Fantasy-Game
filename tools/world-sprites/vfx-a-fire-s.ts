@@ -15,16 +15,19 @@
 
 import { Canvas, WorldSprite } from './kit';
 import { FIRE, SMOKE, TH, embers, erode, tongue } from './vfx-a-fire-kit';
-import { DRAGON_TILT, arcU, dragonHead, dragonLeg, serpentBody, spline } from './vfx-a-fire-dragon';
+import { spline } from './vfx-a-fire-dragon';
+import { displace, flicker, raggedCut, refPiece } from './vfx-a-ref';
 import { Field, Pt, TAU, bez, clamp, dissolve, fract, lerp, palette, pfbm, pnoise, render, rr, smooth, stack, vfxSprite } from './vfx-a-lib';
 
-/** Cool smoke for the tops of the billows, away from the fire. */
-const SMOKE_COOL = palette('#121019', '#24212b', '#38333d', '#4f4851', '#675e66', '#82787e', '#a0969a');
+/** His smoke: warm brown-grey throughout (sampled from his picture), fire-lit low down. */
+const SMOKE_HIS = palette('#24141a', '#3a1f22', '#472625', '#553f3d', '#7c4838', '#8a5e4b', '#a07a64');
+const SMOKE_LIT = palette('#24141a', '#472625', '#7c4838', '#8a5e4b', '#c0804c', '#f0b560', '#f6cf8a');
 
 const PX = 57;
 const W = 1016, H = 968, X0 = 12, GY = 780;
 const LEN = Math.round(15 * PX);
-const HMAX = 270;
+/** Tallest flames (px): his wall is lower than the dragon, so the hump's arch and the neck stand clear of it. */
+const HMAX = 200;
 const SEED = 1900;
 /** Half the cone's depth on screen at d px from the apex: the enhanced cone is 80 degrees wide
  * (the normal one is 60), so its near and far edges spread about 1.45 times as far apart. */
@@ -191,7 +194,7 @@ function smokeLayer(st: SState): Canvas | null {
     if (!v[i]) continue;
     let idx = 1;
     for (let k = 1; k < th.length; k++) if (v[i] >= th[k]) idx = k + 1;
-    const pal = warm[i] > 0.45 + 0.2 * (pnoise(i % W, (i / W) | 0, 12, 0, 0, SEED + 62) - 0.5) ? SMOKE : SMOKE_COOL;
+    const pal = warm[i] > 0.6 + 0.2 * (pnoise(i % W, (i / W) | 0, 12, 0, 0, SEED + 62) - 0.5) && idx >= 5 ? SMOKE_LIT : SMOKE_HIS;
     c.set(i % W, (i / W) | 0, pal[Math.min(6, idx)]);
   }
   // Outline the silhouette in the darkest smoke.
@@ -201,7 +204,7 @@ function smokeLayer(st: SState): Canvas | null {
       if (c.alpha(x, y)) continue;
       if (c.alpha(x + 1, y) || c.alpha(x - 1, y) || c.alpha(x, y + 1) || c.alpha(x, y - 1)) ol.push(x, y);
     }
-  for (let i = 0; i < ol.length; i += 2) c.set(ol[i], ol[i + 1], SMOKE[0]);
+  for (let i = 0; i < ol.length; i += 2) c.set(ol[i], ol[i + 1], SMOKE_HIS[0]);
   return c;
 }
 
@@ -247,7 +250,7 @@ function wallLayers(st: SState): Rows {
   const heightAt = (x: number, row: number) => {
     const d = x - X0, u = d / LEN;
     if (x > crestX + 2 || d < 0) return 0;
-    let h = HMAX * lerp(0.42, 1, Math.pow(Math.min(1, u), 0.75)) * rowH[row];
+    let h = HMAX * lerp(0.52, 1, Math.pow(Math.min(1, u), 0.75)) * rowH[row];
     if (surging) h *= 1 + 0.25 * smooth(80, 10, crestX - x);
     h *= smooth(12, 60, d);
     const da = deadAt(x);
@@ -260,7 +263,8 @@ function wallLayers(st: SState): Rows {
     if (bodyK > 0)
       f.region(X0 + 10, 0, Math.min(W - 1, crestX + 8), H - 1, (x, y) => {
         const d = x - X0;
-        const yg = GY + rowSide[row] * halfDepth(d) + 2 - 3 * pnoise(x, row * 9, 5, 0, 0, SEED + 82);
+        // (the back and middle rows reach down behind the rows in front, so no base line shows)
+        const yg = GY + (row === 2 ? 1 : row === 1 ? 0.85 : 0) * halfDepth(d) + 2 - 3 * pnoise(x, row * 9, 5, 0, 0, SEED + 82);
         if (y > yg) return 0;
         const hFull = heightAt(Math.min(x, crestX), row);
         if (hFull <= 0) return 0;
@@ -318,121 +322,104 @@ function wallLayers(st: SState): Rows {
 
 // --- the dragon ------------------------------------------------------------------------------
 
-/** The body's path from the tail tip to the neck's end, undulating with the loop. */
-function bodyPath(st: SState): Pt[] {
-  const ph = st.t * TAU;
-  const wob = (k: number) => (st.phase === 'burn' ? 1 : 0.6) * Math.sin(ph + k * 0.9);
-  const P: Pt[] = [
-    [205, GY - 345], [236, GY - 300], [262, GY - 228], [292, GY - 120], [338, GY - 96],
-    [382, GY - 200], [444, GY - 300], [520, GY - 334], [590, GY - 300], [628, GY - 206],
-    [655, GY - 104], [694, GY - 160], [706, GY - 270], [714, GY - 352],
-  ];
-  return spline(P.map(([x, y], k) => [x + wob(k) * 3, y + wob(k + 2) * 6] as Pt), 8);
-}
-const radius = (u: number) => lerp(7, 23, Math.pow(smooth(0, 0.55, u), 0.8)) * (u > 0.9 ? lerp(1, 0.92, (u - 0.9) / 0.1) : 1);
-
 interface DragonLayers {
-  /** Behind the middle row of flames (the tail and the dive). */
+  /** Behind the middle row of flames: the tail, the hump and the neck with the head. */
   back: Canvas;
-  /** Between the middle and near rows (the arch). */
+  /** Between the middle and near rows (unused now: kept for the layer order). */
   mid: Canvas;
-  /** In front of everything (the neck, the legs, the head). */
+  /** In front of everything: the claw and the breath. */
   front: Canvas;
   mouth: Pt;
   edge: Pt[];
 }
+/**
+ * The dragon is the owner's own dragon, cut from his reference image (REF-s-tier-fire-annihilation.jpg)
+ * at game scale by art2/vfx-a-extract.py: the flame-tipped tail, the hump, the neck with the head,
+ * and the claw, each placed where his picture has it. They move a little (each part bobs on its
+ * own, the tail's flame flickers) and their bottoms sink raggedly into the flames.
+ */
 function dragonLayers(st: SState): DragonLayers {
   const t = st.t, ph = t * TAU;
-  const pts = bodyPath(st);
-  // The tail and the dive are behind the near flames, the arch between the rows, the neck in front.
-  // (sections by the control points: tail and dive up to P3, the arch and the dip to P10, the neck)
-  const us = arcU(pts);
-  const uA = us[8 * 3], uB = us[8 * 10];
-  const [back, mid, neck] = serpentBody(W, H, pts, radius, [[0, uA + 0.01], [uA, uB + 0.01], [uB, 1]], t, SEED + 100);
-  const head = dragonHead(2.3, t, 6 + (st.phase === 'burn' ? 2 * Math.sin(ph * 2) : 0), DRAGON_TILT * 0.4, true);
-  const joint = pts[pts.length - 1];
-  const dx = Math.round(joint[0] - head.joint[0]), dy = Math.round(joint[1] - head.joint[1]);
+  const live = st.phase === 'burn' ? 1 : 0.5;
+  const part = (name: string, bob: Pt, cutY: number, flick?: { amp: number; baseY: number }) => {
+    const pc = refPiece(name);
+    let c = pc.c;
+    if (flick) c = flicker(c, ph, flick.amp * live, flick.baseY, SEED + name.length);
+    if (cutY > 0) c = raggedCut(c, (x) => cutY - pc.y - 8 * pnoise(x + pc.x, 0, 7, 0, 0, SEED + 115) - 3 * Math.sin(ph + x * 0.2));
+    const out = new Canvas(W, H);
+    out.draw(c, pc.x + Math.round(bob[0]), pc.y + Math.round(bob[1]));
+    return out;
+  };
+  const back = new Canvas(W, H);
+  back.draw(part('s_tail', [0, 2 * Math.sin(ph) * live], GY - 136, { amp: 2, baseY: 110 }), 0, 0);
+  back.draw(part('s_hump', [0, 2 * Math.sin(ph + 1.8) * live], GY - 134), 0, 0);
+  const headBob: Pt = [Math.sin(ph + 3) * live, 1.5 * Math.sin(ph + 3.4) * live];
+  back.draw(part('s_head', headBob, GY - 146), 0, 0);
   const front = new Canvas(W, H);
-  // The hind leg grips out of the flames under the arch; the foreleg reaches down at the front.
-  const hind = dragonLeg(W, H, [396, GY - 210], [414, GY - 160], [448, GY - 150], 13, t, 3);
-  const fore = dragonLeg(W, H, [700, GY - 238], [750, GY - 212], [788, GY - 172], 15, t, 7);
-  const midC = new Canvas(W, H);
-  midC.draw(hind, 0, 0);
-  midC.draw(mid, 0, 0);
-  front.draw(head.back, dx, dy);
-  front.draw(neck, 0, 0);
-  front.draw(fore, 0, 0);
-  front.draw(head.front, dx, dy);
-  const mouth: Pt = [head.mouth[0] + dx, head.mouth[1] + dy];
-  if (st.dragon >= 1) return { back, mid: midC, front, mouth, edge: [] };
+  front.draw(part('s_claw', [Math.sin(ph + 0.6) * live, Math.sin(ph + 1) * live], 0), 0, 0);
+  // Where the breath leaves the mouth (his mouth, mapped to our frame).
+  const mouth: Pt = [914 + Math.round(headBob[0]), 456 + Math.round(headBob[1])];
+  const mid = new Canvas(W, H);
+  if (st.dragon >= 1) return { back, mid, front, mouth, edge: [] };
   // Forming: it rises out of the fire from the bottom up. Fading: it burns away from the bottom
   // up, the head going last; the burning edge runs red, orange, yellow.
-  const top = GY - 560, bottom = GY - 80;
+  const top = GY - 500, bottom = GY - 130;
+  const reach = X0 + st.roll * LEN + 40;
   const key = (x: number, y: number) => {
+    // Nothing forms ahead of the wall while it is still rolling out.
+    if (st.phase === 'surge' && x > reach) return 1;
     const n = pnoise(x, y, 16, 0, 0, SEED + 110) * 0.55 + pnoise(x, y, 34, 0, 0, SEED + 111) * 0.45;
     const hgt = clamp((bottom - y) / (bottom - top), 0, 1);
     return st.phase === 'fade' ? clamp((1 - hgt) * 0.7 + (n - 0.5) * 0.34 + 0.15, 0, 1) : clamp(hgt * 0.65 + n * 0.35, 0, 1);
   };
   const burn = [FIRE[2], FIRE[3], FIRE[4], FIRE[5]];
-  const parts = [back, midC, front].map((c) => dissolve(c, st.dragon, key, burn, FIRE[0]));
-  return { back: parts[0].c, mid: parts[1].c, front: parts[2].c, mouth, edge: parts.flatMap((p) => p.edge) };
+  const parts = [back, front].map((c) => dissolve(c, st.dragon, key, burn, FIRE[0]));
+  return { back: parts[0].c, mid, front: parts[1].c, mouth, edge: parts.flatMap((p) => p.edge) };
 }
 
-/** Flames wrapped round the body where it dives into and rises out of the fire (unused: the rows of flames do it). */
+/** Flames licking up in front of the dragon where its body dives into and rises out of the fire. */
 export function collars(st: SState): Canvas | null {
   const k = smooth(0.15, 0.6, st.dragon) * st.burn * (st.phase === 'fade' ? smooth(0.6, 0.85, st.dragon) : 1);
   if (k < 0.05) return null;
   const f = new Field(W, H);
   const ph = st.t * TAU;
-  const spots: [number, number, number][] = [[676, GY - 118, 5]];
-  spots.forEach(([x, y, n], s) => {
+  // x ranges of the tail's dive, the hump's two legs and the neck (from his picture).
+  const spans: [number, number][] = [[186, 256], [344, 418], [578, 672], [688, 852]];
+  spans.forEach(([x0, x1], s) => {
+    const n = Math.max(3, Math.round((x1 - x0) / 13));
     for (let j = 0; j < n; j++) {
-      const xx = x - 26 + j * 13 + rr(SEED + 120 + s, j, -5, 5);
-      tongue(f, [xx, y + 30 + rr(SEED + 125 + s, j, -14, 14)], -Math.PI / 2 + rr(SEED + 130 + s, j, -0.3, 0.3), (30 + rr(SEED + 135 + s, j, 0, 40)) * k, rr(SEED + 136 + s, j, 6, 10) * Math.min(1, 0.4 + k), 0.9, 0.16, ph + j * 1.7 + s, rr(SEED + 137 + s, j, -0.2, 0.2));
+      const xx = lerp(x0, x1, (j + 0.5) / n) + rr(SEED + 120 + s, j, -4, 4);
+      tongue(f, [xx, GY - 104 + rr(SEED + 125 + s, j, -8, 8)], -Math.PI / 2 + rr(SEED + 130 + s, j, -0.25, 0.25), (44 + rr(SEED + 135 + s, j, 0, 30)) * k, rr(SEED + 136 + s, j, 7, 11) * Math.min(1, 0.4 + k), 0.9, 0.16, ph + j * 1.7 + s, rr(SEED + 137 + s, j, -0.2, 0.2));
     }
   });
   erode(f, 0.45, (x, y) => pfbm(x, y + st.t * 180, 9, 2, 0, 180, SEED + 140));
   return render(f, FIRE, { th: TH, rim: [1] });
 }
 
-/** The jet of fire out of the dragon's mouth, roaring off the frame's leading edge. */
+/**
+ * The breath: his jet of fire, cut from his picture, roaring out of the mouth and off the frame's
+ * leading edge. It churns (pixels sway along and across it) and grows out of the mouth in the surge.
+ */
 function breathJet(st: SState, mouth: Pt): { c: Canvas; sparks: { x: number; y: number; s: number }[] } | null {
   if (st.jet <= 0.02) return null;
-  const f = new Field(W + 80, H);
   const ph = st.t * TAU;
-  const a = 0.1;
-  const L = (W + 60 - mouth[0]) * Math.min(1, st.jet * 1.2);
-  const ca = Math.cos(a), sa = Math.sin(a);
-  f.region(mouth[0] - 6, mouth[1] - 80, Math.min(W + 79, mouth[0] + L + 10), mouth[1] + 90, (x, y) => {
-    const dx = x - mouth[0], dy = y - mouth[1];
-    const along = dx * ca + dy * sa, across = -dx * sa + dy * ca;
-    if (along < -4 || along > L) return 0;
-    const u = along / Math.max(1, L);
-    const half = lerp(9, 58, Math.pow(u, 0.75)) * (1 + 0.28 * (pnoise(along - st.t * 240, across, 10, 240, 0, SEED + 150) - 0.5) * 2);
-    const q = Math.abs(across) / half;
-    if (q >= 1) return 0;
-    const flick = pnoise(along * 0.5 - st.t * 240, across * 1.5, 6, 120, 0, SEED + 151);
-    return (1.05 - 0.55 * Math.pow(q, 1.4) - 0.25 * u) * (0.85 + 0.25 * flick) * (u > 0.85 ? smooth(1, 0.85, u) * 0.5 + 0.5 : 1);
-  });
-  // Licks of flame tearing off its edges.
-  for (let k = 0; k < 10; k++) {
-    const u = fract(k / 10 + st.t);
-    const along = u * L, side = k % 2 ? 1 : -1;
-    const half = lerp(9, 58, Math.pow(u, 0.75));
-    const bx = mouth[0] + along * ca - side * half * 0.8 * sa, by = mouth[1] + along * sa + side * half * 0.8 * ca;
-    tongue(f, [bx, by], a + side * 0.9, 16 + 10 * u, 5, 0.66, 0.2, ph + k, side * 0.2);
-  }
-  erode(f, 0.6, (x, y) => pfbm(x - st.t * 240, y, 8, 2, 240, 0, SEED + 152));
-  const full = render(f, FIRE, { th: TH, rim: [1] });
+  const pc = refPiece('s_breath');
+  const reach = Math.min(1, st.jet * 1.2) * (pc.c.w + 20);
+  const moved = displace(pc.c, (x, y) => [Math.round(2 * Math.sin(y * 0.3 - ph * 2) + (x / pc.c.w) * 2 * Math.sin(ph + y * 0.1)), Math.round(2 * Math.sin(x * 0.2 - ph * 3) * (x / pc.c.w))]);
   const c = new Canvas(W, H);
-  c.draw(full, 0, 0);
+  const dx = mouth[0] - 914, dy = mouth[1] - 456;
+  for (let y = 0; y < pc.c.h; y++)
+    for (let x = 0; x < Math.min(pc.c.w, reach); x++) {
+      const p = moved.get(x, y);
+      if (p[3]) c.set(pc.x + x + dx, pc.y + y + dy, p);
+    }
   const sparks: { x: number; y: number; s: number }[] = [];
+  const L = (W - mouth[0]) * Math.min(1, st.jet * 1.2);
   for (let k = 0; k < 18; k++) {
     const u = fract(k / 18 + st.t * 2);
-    const along = 30 + u * L, across = rr(SEED + 155, k, -1, 1) * lerp(20, 70, u);
-    sparks.push({ x: mouth[0] + along * ca - across * sa, y: mouth[1] + along * sa + across * ca, s: u < 0.4 ? 2 : 1 });
+    const along = 30 + u * L, across = rr(SEED + 155, k, -1, 1) * lerp(16, 60, u);
+    sparks.push({ x: mouth[0] + along, y: mouth[1] + 6 + along * 0.18 + across, s: u < 0.4 ? 2 : 1 });
   }
-  void ph;
   return { c, sparks };
 }
 
@@ -449,7 +436,7 @@ export function sFrame(st: SState): Canvas {
   const kanjiC = kj.c, hot = kj.hot;
   const jet = dr ? breathJet(st, dr.mouth) : null;
   const layers: (Canvas | null)[] = [ground, smoke, wall.bed, wall.rows[0]];
-  if (dr) layers.push(dr.back);
+  if (dr) layers.push(dr.back, collars(st));
   layers.push(wall.rows[1]);
   if (dr) layers.push(dr.mid);
   layers.push(wall.rows[2]);
@@ -464,7 +451,7 @@ export function sFrame(st: SState): Canvas {
     const x = X0 + rr(SEED + 170, k, 0.05, 1) * Math.min(st.roll, 1) * LEN;
     const d = x - X0;
     if (st.dead > 0 && d < st.dead * LEN) continue;
-    const top = GY - halfDepth(d) - HMAX * lerp(0.42, 1, Math.pow(d / LEN, 0.75)) * 0.6 * st.burn;
+    const top = GY - halfDepth(d) - HMAX * lerp(0.52, 1, Math.pow(d / LEN, 0.75)) * 0.6 * st.burn;
     em.push({ x: x + Math.sin(p * 6 + k) * 4, y: top - p * 200, s: p < 0.3 ? 2 : 1 });
   }
   hot.forEach(([x, y], k) => {

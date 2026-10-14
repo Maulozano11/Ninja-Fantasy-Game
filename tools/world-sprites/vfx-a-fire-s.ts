@@ -16,7 +16,7 @@
 import { Canvas, WorldSprite } from './kit';
 import { FIRE, SMOKE, TH, embers, erode, tongue } from './vfx-a-fire-kit';
 import { spline } from './vfx-a-fire-dragon';
-import { displace, flicker, raggedCut, refPiece } from './vfx-a-ref';
+import { dim, displace, flicker, raggedCut, refPiece, roughen, scaled } from './vfx-a-ref';
 void smokeLayer;
 import { Field, Pt, TAU, bez, clamp, dissolve, fract, lerp, palette, pfbm, pnoise, render, rr, smooth, stack, vfxSprite } from './vfx-a-lib';
 
@@ -402,10 +402,10 @@ function dragonLayers(st: SState): DragonLayers {
     return out;
   };
   const back = new Canvas(W, H);
-  back.draw(part('s_tail', [0, 2 * Math.sin(ph) * live], GY - 136, { amp: 2, baseY: 110 }), 0, 0);
-  back.draw(part('s_hump', [0, 2 * Math.sin(ph + 1.8) * live], GY - 134), 0, 0);
+  back.draw(part('s_tail', [0, Math.sin(ph) * live], 0, { amp: 2, baseY: 110 }), 0, 0);
+  back.draw(part('s_hump', [0, Math.sin(ph + 1.8) * live], 0), 0, 0);
   const headBob: Pt = [Math.sin(ph + 3) * live, 1.5 * Math.sin(ph + 3.4) * live];
-  back.draw(part('s_head', headBob, GY - 146), 0, 0);
+  back.draw(part('s_head', headBob, 0), 0, 0);
   const front = new Canvas(W, H);
   front.draw(part('s_claw', [Math.sin(ph + 0.6) * live, Math.sin(ph + 1) * live], 0), 0, 0);
   // Where the breath leaves the mouth (his mouth, mapped to our frame).
@@ -476,21 +476,61 @@ function breathJet(st: SState, mouth: Pt): { c: Canvas; sparks: { x: number; y: 
 
 // --- one frame ---------------------------------------------------------------------------------
 
+/** His fire wall, cut as one opaque mass (only the night sky keyed out), its left end roughened at the frame edge. */
+let hisWallBase: Canvas | null = null;
+function hisWall(): Canvas {
+  if (hisWallBase) return hisWallBase;
+  const pc = refPiece('s_wall');
+  const c = new Canvas(W, H);
+  c.draw(pc.c, pc.x, pc.y);
+  hisWallBase = roughen(c, (x, y) => x < 6 + 8 * pnoise(0, y, 5, 0, 0, SEED + 90), pc.pal[0]);
+  return hisWallBase;
+}
+/**
+ * His fire wall in time. burn: his flames flicker upward (pixels sway more the higher above the
+ * ground they are; the mass itself never opens). surge: it rolls out from the caster with a
+ * burning front and grows to full height. fade: it sinks and darkens to embers, dying back from
+ * the caster outward along a ragged burning edge, until the last frame is almost empty.
+ */
+function hisWallLayer(st: SState): Canvas | null {
+  const ph = st.t * TAU;
+  let c = flicker(hisWall(), ph, 1.6, GY + 40, SEED + 91);
+  const sy = st.phase === 'fade' ? lerp(0.3, 1, st.burn) : lerp(0.72, 1, smooth(0.75, 1, st.burn));
+  if (sy < 0.999) c = scaled(c, 1, sy, 0, GY + 60);
+  if (st.phase === 'fade') c = dim(c, lerp(0.35, 1, st.burn));
+  const burn = [FIRE[2], FIRE[3], FIRE[4], FIRE[5]];
+  if (st.phase === 'surge' && st.roll < 1) {
+    const reach = X0 + st.roll * (LEN + 60);
+    c = dissolve(c, 1, (x, y) => (x > reach + 14 * (pnoise(x, y, 9, 0, 0, SEED + 92) - 0.5) * 2 ? 2 : 0), burn, FIRE[0]).c;
+    // A burning front where it is rolling out.
+    const front = new Canvas(W, H);
+    for (let y = 0; y < H; y++)
+      for (let x = Math.max(0, Math.floor(reach - 40)); x < Math.min(W, reach + 16); x++) {
+        const p = c.get(x, y);
+        if (p[3] && x > reach - 10 - 8 * pnoise(x, y, 6, 0, 0, SEED + 93)) front.set(x, y, burn[Math.min(3, Math.floor((reach - x + 10) / 6))] ?? burn[0]);
+      }
+    c = stack(W, H, c, front);
+  }
+  if (st.phase === 'fade' && st.dead > 0) {
+    c = dissolve(c, 1 - st.dead * 0.97, (x, y) => clamp(1 - (x - X0) / (LEN + 40) + (pnoise(x, y, 14, 0, 0, SEED + 94) - 0.5) * 0.3, 0, 1), burn, FIRE[0]).c;
+  }
+  return c;
+}
+
 export function sFrame(st: SState): Canvas {
   const t = st.t, ph = t * TAU;
   const smoke = hisSmokeLayer(st);
-  const ground = groundLayer(st);
-  const wall = wallLayers(st);
+  const hisWallC = hisWallLayer(st);
   const dr = st.dragon > 0.01 ? dragonLayers(st) : null;
   // The kanji, written stroke by stroke and burning away at the end.
   const kj = kanjiFire(W, H, SBOX, st.kanji, st.kanjiVis, t, SEED);
   const kanjiC = kj.c, hot = kj.hot;
   const jet = dr ? breathJet(st, dr.mouth) : null;
-  const layers: (Canvas | null)[] = [ground, smoke, wall.bed, wall.rows[0]];
-  if (dr) layers.push(dr.back, collars(st));
-  layers.push(wall.rows[1]);
-  if (dr) layers.push(dr.mid);
-  layers.push(wall.rows[2]);
+  // His picture's order: smoke, the dragon's tail, hump and neck rising out of the fire, his fire
+  // wall in front of their roots, the claw gripping over the wall, the kanji and the breath.
+  const layers: (Canvas | null)[] = [smoke];
+  if (dr) layers.push(dr.back, dr.mid);
+  layers.push(hisWallC);
   if (dr) layers.push(dr.front);
   layers.push(kanjiC, jet ? jet.c : null);
   const body = stack(W, H, ...layers);

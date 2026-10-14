@@ -118,14 +118,14 @@ function bolt(): WorldSprite {
   const fr = frames(4, (t) => {
     const wake = new Field(W, H), ring = new Field(W, H), head = new Field(W, H), dr = new Field(W, H);
     const tailPts = qbez([cx, cy], [cx - 16, cy + 2], [cx - 34, cy - 1], 16);
-    tube(wake, tailPts, (u) => lerp(7.8, 1.2, Math.pow(u, 0.7)), liquid(0.42));
+    tube(wake, tailPts, (u) => lerp(9.8, 1.4, Math.pow(u, 0.7)), liquid(0.42));
     // Crescents of spray shed by the bullet, drifting back and opening up.
     for (let k = 0; k < 2; k++) {
       const p = fract(k / 2 + t);
-      const x = cx - 10 - p * 22, h = 9 + p * 5;
+      const x = cx - 12 - p * 22, h = 11 + p * 5;
       tube(ring, arc(x + 6, cy, 6 + p * 2, h, Math.PI * 0.62, Math.PI * 1.38, 12), (u) => (2.6 - p * 0.9) * Math.sin(Math.PI * u) + 0.5, (_u, s) => 0.8 + 0.15 * s - p * 0.12);
     }
-    ball(head, cx, cy, 9, 0.44);
+    ball(head, cx, cy, 11.5, 0.44);
     // Droplets shed behind, falling.
     for (let k = 0; k < 3; k++) {
       const p = fract(k / 3 + t);
@@ -138,7 +138,7 @@ function bolt(): WorldSprite {
       const ph = u * 9 - t * TAU;
       if (Math.cos(ph) < 0.1) continue;
       const pt = tailPts[Math.round(u * 16)];
-      const r = lerp(7.8, 1.2, Math.pow(u, 0.7)) - 1.5;
+      const r = lerp(9.8, 1.4, Math.pow(u, 0.7)) - 1.8;
       if (r < 1) continue;
       const x = Math.round(cx - u * 34), y = Math.round(pt[1] + Math.sin(ph) * r);
       if (wakeC.alpha(x, y)) wakeC.set(x, y, WATER[u < 0.5 ? 6 : 5]);
@@ -348,14 +348,8 @@ function stream(): WorldSprite[] {
 function breath(): WorldSprite {
   const W = 96, H = 64, oy = 32;
   const fr = frames(4, (t) => {
-    const sheet = new Field(W, H), jets = new Field(W, H), dr = new Field(W, H), fo = new Field(W, H);
-    const lanes = [-0.34, -0.17, 0, 0.17, 0.34];
-    // A thin see-through sheet of water fanning out between the jets.
-    sheet.region(0, 0, 70, H - 1, (x, y) => {
-      const a = Math.atan2(y - oy, x + 2);
-      if (Math.abs(a) > 0.36 || x > 64 + 6 * Math.sin(a * 9 + t * TAU)) return 0;
-      return 0.66 + 0.14 * Math.cos(a * 18 + t * TAU) - x * 0.002;
-    });
+    const jets = new Field(W, H), dr = new Field(W, H), fo = new Field(W, H);
+    const lanes = [-0.36, -0.24, -0.12, 0, 0.12, 0.24, 0.36];
     lanes.forEach((a, j) => {
       const solid = 44 + rr(221, j, 0, 12) - Math.abs(a) * 26;
       const pts: Pt[] = [];
@@ -363,7 +357,7 @@ function breath(): WorldSprite {
         const d = 2 + (solid * k) / 12;
         pts.push([d * Math.cos(a), oy + d * Math.sin(a) + Math.sin(d * 0.2 + t * TAU + j) * 0.8]);
       }
-      tube(jets, pts, (u) => lerp(2.4, 3.8, u), liquid(0.5));
+      tube(jets, pts, (u) => lerp(2.6, 4.2, u), liquid(0.5));
       // Foam where the jet breaks up, and long droplets flying on.
       const end = pts[pts.length - 1];
       fo.disc(end[0] + 1, end[1], 2.4 + Math.sin(t * TAU + j * 2) * 0.5, 0.85);
@@ -376,7 +370,7 @@ function breath(): WorldSprite {
     });
     // The mouth: a white core of pressure.
     jets.poly([[0, oy - 2.5], [14, oy - 6], [14, oy + 6], [0, oy + 2.5]], (x, y) => 0.98 - Math.abs(y - oy) * 0.06 - x * 0.01);
-    const c = stack(W, H, render(sheet, WATER, { th: TH, rim: [1], lo: 4, hi: 5, alpha: [160, 120, 120, 130, 150, 175, 190] }), render(jets, WATER, { th: TH, rim: [1] }), foamR(fo), render(dr, WATER, { th: TH }));
+    const c = stack(W, H, render(jets, WATER, { th: TH, rim: [1] }), foamR(fo), render(dr, WATER, { th: TH }));
     const bl: { x: number; y: number; r: number }[] = [];
     for (let k = 0; k < 2; k++) {
       const p = fract(k / 2 + t);
@@ -435,7 +429,7 @@ function slash(): WorldSprite {
     const w = new Field(W, H), fo = new Field(W, H), dr = new Field(W, H);
     // The wave climbs from the bottom tip, bulges forward and curls over at the top.
     const pts = bez([20, 60], [50, 48], [52, 18], [34, 8], 26).concat(bez([34, 8], [28, 5], [24, 9], [27, 14], 8).slice(1));
-    const rad = (u: number) => (u < 0.55 ? lerp(1.5, 8, Math.sin((u / 0.55) * Math.PI * 0.5)) : lerp(8, 1.5, (u - 0.55) / 0.45));
+    const rad = (u: number) => (u < 0.55 ? lerp(1.5, 10, Math.sin((u / 0.55) * Math.PI * 0.5)) : lerp(10, 2, (u - 0.55) / 0.45));
     tube(w, pts, rad, (u, s) => 0.42 + 0.28 * s + (s > 0.45 && s < 0.75 ? 0.2 : 0) - 0.05 * (1 - u));
     // Foam riding the leading edge and the lip.
     for (let k = 0; k < 15; k++) {
@@ -531,7 +525,7 @@ function hit(): WorldSprite {
           const side = Math.sin(u * Math.PI * 0.5) * bend * u;
           pts.push([cx + Math.cos(a) * d - Math.sin(a) * side, cy + Math.sin(a) * d + Math.cos(a) * side + u * u * (i >= 3 ? 5 : 2)]);
         }
-        tube(w, pts, (u) => lerp(i <= 2 ? 4 : 2.6, i <= 2 ? 2.4 : 1.4, u), (u, sgn) => 0.5 + 0.2 * sgn + (u > 0.7 ? 0.15 : 0));
+        tube(w, pts, (u) => lerp(i <= 2 ? 5 : 3, i <= 2 ? 3 : 1.6, u), (u, sgn) => 0.5 + 0.2 * sgn + (u > 0.7 ? 0.15 : 0));
         const tip = pts[pts.length - 1];
         if (i <= 3) fo.disc(tip[0], tip[1], i <= 2 ? 2.8 : 2.2, 0.85);
       }

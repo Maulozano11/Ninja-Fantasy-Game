@@ -229,17 +229,25 @@ function makeCanopy(cl: Cluster[], o: { sphere?: number; fold?: number } = {}): 
   return { cl, ras: cl.map((c) => rasterCluster(c, o)) };
 }
 
-/** Burning foliage: charred above a ragged burn line, a glowing front, scorched below, green lowest. */
-function burnPaint(burnY: number, scorchY: number, seed: number) {
+/** The wavy burn front of a burning crown: rows above it are charred, a glowing band, then scorched. */
+const burnEdge = (x: number, burnY: number, seed: number): number => burnY + (noise(x, 0, 48, seed) - 0.5) * 80 + (noise(x, 0, 15, seed + 1) - 0.5) * 26;
+
+/**
+ * Burning foliage, decided per cluster (so the burn eats whole clumps, not a straight line):
+ * charred above the wavy front with embers on the lit leaf edges, a glowing band of clusters at
+ * the front, scorched brown below it, still green lowest.
+ */
+function burnPaint(burnY: number, scorch: number, seed: number) {
   return (x: number, y: number, c: Cluster, v: number, line: boolean): [number, number] => {
-    const nz = (noise(x, y, 12, seed) - 0.5) * 34 + (hash(c.seed, 0, 3) - 0.5) * 10;
+    const cy = c.y + (hash(c.seed, 0, 3) - 0.5) * 18;
+    const e = burnEdge(c.x, burnY, seed);
     const s = line ? 1 : clamp(1 + TH.filter((t) => v >= t).length, 1, 7);
-    if (y + nz < burnY) {
-      if (!line && v > 0.55 && hash(x >> 1, y >> 1, seed) < 0.06) return [FIRE, v > 0.7 ? 3 : 2];
+    if (cy < e) {
+      if (!line && v > 0.6 && hash(x >> 1, y >> 1, seed) < 0.1) return [FIRE, v > 0.72 ? 3 : 2];
       return [LEAF_CHAR, s];
     }
-    if (y + nz < burnY + 4) return [FIRE, hash(x, y, seed) < 0.5 ? 2 : 3];
-    if (y + nz < scorchY) return [LEAF_SCORCH, s];
+    if (cy < e + 12) return line || v < 0.42 ? [LEAF_CHAR, 2] : [FIRE, v > 0.62 ? 4 : v > 0.52 ? 3 : 2];
+    if (cy < e + 12 + scorch + (hash(c.seed, 1, 3) - 0.5) * 20) return [LEAF_SCORCH, s];
     return [c.pal, s];
   };
 }
@@ -360,7 +368,8 @@ function oak(): WorldSprite {
     const offs = C.cl.map((c) => [sway(c.y), 0] as Pt);
     const Fo = composite(W, H, C.cl, C.ras, offs, 0.55);
     shade(Fo, C.cl, { cast: 0.42, castD: 5, rim: 0.16, away: 0.1, lineGap: 14, leafSep: 0.07 });
-    const paint = mode === 'burning' ? burnPaint(gy - 330, gy - 250, 77) : undefined;
+    const burnY = gy - 320;
+    const paint = mode === 'burning' ? burnPaint(burnY, 46, 77) : undefined;
     // Order: roots and trunk, back foliage, limbs, front foliage, then vines.
     for (const t of tubes) if ((t.z ?? 0) < 2) drawTube(B, t);
     putField(B, Fo, C.cl, { th: TH, filter: (c) => c.tag === 0, paint });
@@ -382,24 +391,28 @@ function oak(): WorldSprite {
       });
       return toFrame(B);
     }
-    // Burning: flames along the charred crown, at the fork and from a wound on the trunk.
+    // Burning: flames rise from clumps along the burn front and from the charred crown, at
+    // different sizes and heights; small ones at the fork and from a wound in the trunk.
     const fire = new Buf(W, H);
     const t = f / n;
-    const topAt = (x: number): number => {
-      for (let y = 0; y < H; y++) if (Fo.own[y * W + x] >= 0) return y;
-      return -1;
-    };
-    for (let k = 0; k < 9; k++) {
-      const x = Math.round(gx - 132 + k * 33 + (hash(k, 1, 8) - 0.5) * 10);
-      const ty = topAt(x);
-      if (ty < 0 || ty > gy - 270) continue;
-      const big = 1 - Math.abs(k - 4) / 5;
-      flameInto(fire, { x, y: ty + 12, w: 26 + big * 18, h: 40 + big * 56, ph: hash(k, 3, 5), seed: k, n: 3, lean: 6 }, t);
+    const picks: Cluster[] = [];
+    const cand = C.cl.filter((c) => {
+      const e = burnEdge(c.x, burnY, 77);
+      const cy = c.y + (hash(c.seed, 0, 3) - 0.5) * 18;
+      return cy < e + 10 && c.tag === 1;
+    });
+    cand.sort((a, b) => hash(a.seed, 5, 1) - hash(b.seed, 5, 1));
+    for (const c of cand) {
+      if (picks.length >= 11) break;
+      if (picks.some((p) => Math.abs(p.x - c.x) < 30 && Math.abs(p.y - c.y) < 40)) continue;
+      picks.push(c);
     }
-    for (const [fx, fy, fw, fh, k] of [[-70, -330, 24, 40, 11], [40, -326, 26, 44, 12], [-122, -262, 18, 30, 13], [126, -256, 18, 28, 14]] as [number, number, number, number, number][])
-      flameInto(fire, { x: gx + fx, y: gy + fy, w: fw, h: fh, ph: hash(k, 3, 5), seed: k, n: 2, lean: 4 }, t);
-    flameInto(fire, { x: gx - 4, y: gy - 120, w: 16, h: 34, ph: 0.1, seed: 6, n: 2, lean: 3 }, t);
-    flameInto(fire, { x: gx + 12, y: gy - 60, w: 9, h: 20, ph: 0.6, seed: 4, n: 1, lean: 2 }, t);
+    picks.forEach((c, k) => {
+      const big = hash(c.seed, 6, 1);
+      flameInto(fire, { x: Math.round(c.x), y: Math.round(c.y + 4), w: 18 + big * 26, h: 30 + big * 64, ph: hash(c.seed, 7, 1), seed: k + 3, n: big > 0.5 ? 3 : 2, lean: 5 }, t);
+    });
+    flameInto(fire, { x: gx - 4, y: gy - 126, w: 16, h: 34, ph: 0.1, seed: 6, n: 2, lean: 3 }, t);
+    flameInto(fire, { x: gx + 12, y: gy - 64, w: 9, h: 20, ph: 0.6, seed: 4, n: 1, lean: 2 }, t);
     const c = toFrame(B, fire);
     sparksOnto(c, gx + 10, gy - 440, 240, 90, 26, t, 9);
     return c;
@@ -546,7 +559,7 @@ function maple(): WorldSprite {
   const skeleton = (burnt: boolean): Tube[] => {
     const palB = burnt ? CHAR : BARK_MAPLE;
     const tex = burnt ? 'charred' : 'smooth';
-    const bark: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'> = { pal: palB, tex, dim, moss: burnt ? undefined : MOSS, mossAmt: 0.25, ember: burnt ? 0.08 : 0, firePal: FIRE };
+    const bark: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'> = { pal: palB, tex, dim, moss: burnt ? undefined : MOSS, mossAmt: 0.5, ember: burnt ? 0.08 : 0, firePal: FIRE };
     const out: Tube[] = [];
     const rT = 13;
     const roots: [number, number, number, boolean][] = [[-150, 26, 6, true], [-24, 24, 6, true], [174, 40, 8, false], [6, 38, 8, false], [136, 28, 6, false], [56, 24, 6, false]];
@@ -560,8 +573,8 @@ function maple(): WorldSprite {
       { pts: [Fk, [gx - 20, gy - 100], [gx - 30, gy - 132], [gx - 62, gy - 154], [gx - 92, gy - 160]], r0: 8, r1: 3.4, kids: [[-2.4, 16], [-1.9, 18]] },
       { pts: [Fk, [gx + 22, gy - 104], [gx + 26, gy - 144], [gx + 58, gy - 170], [gx + 94, gy - 180]], r0: 8, r1: 3.4, kids: [[-1.0, 22], [-0.5, 20]] },
       { pts: [Fk, [gx + 2, gy - 120], [gx - 12, gy - 170], [gx - 4, gy - 214], [gx + 6, gy - 246]], r0: 7, r1: 3, kids: [[-1.9, 18], [-1.2, 18]] },
-      { pts: [[gx + 5, gy - 62], [gx + 32, gy - 84], [gx + 66, gy - 104], [gx + 100, gy - 128]], r0: 5, r1: 2.4, kids: [[-0.5, 20]] },
-      { pts: [[gx - 2, gy - 70], [gx - 30, gy - 92], [gx - 62, gy - 106], [gx - 96, gy - 122]], r0: 4.6, r1: 2.2, kids: [[-2.6, 20]] },
+      { pts: [[gx + 5, gy - 62], [gx + 32, gy - 86], [gx + 64, gy - 110], [gx + 92, gy - 140]], r0: 5, r1: 2.4, kids: [[-1.0, 14]] },
+      { pts: [[gx - 2, gy - 70], [gx - 30, gy - 94], [gx - 60, gy - 112], [gx - 90, gy - 134]], r0: 4.6, r1: 2.2, kids: [[-2.3, 14]] },
     ];
     limbs.forEach((l, i) => {
       out.push({ ...bark, pts: spline(l.pts), r0: l.r0, r1: l.r1, seed: 80 + i, lineFrom: 12, wob: 0.1, point: burnt && i === 2 ? 10 : 0, z: 2 });
@@ -662,7 +675,7 @@ function bamboo(): WorldSprite {
       const [cx, cy] = at(c, t, f);
       const y = Math.round(cy);
       const nd = nodes.some((v) => Math.abs(v - k) < 0.5);
-      const hw = c.r * (1 - 0.45 * t) + (nd ? 0.6 : 0);
+      const hw = c.r * (1 - 0.45 * t - 0.25 * Math.max(0, t - 0.85) / 0.15) + (nd ? 0.6 : 0);
       for (let x = Math.floor(cx - hw); x <= Math.ceil(cx + hw - 1); x++) {
         const u = (x + 0.5 - cx) / hw;
         if (Math.abs(u) <= 1) px.push([x, y, u, k]);
@@ -712,14 +725,13 @@ function bamboo(): WorldSprite {
       const one = (k + c.seed) % 2 === 0 ? -1 : 1;
       const sides = hash(k, 7, c.seed) < (t > 0.6 ? 0.75 : 0.3) ? [one, -one] : [one];
       sides.forEach((side, q) =>
-        sprays.push({ culm: ci, t, ang: -Math.PI / 2 + side * (0.65 + hash(k, 9 + q, c.seed) * 0.5), tl: (10 + hash(k, 8 + q, c.seed) * 18) * (1 - t * 0.35), seed: c.seed * 100 + k * 3 + q }),
+        sprays.push({ culm: ci, t, ang: -Math.PI / 2 + side * ((t > 0.85 ? 0.4 : 0.65) + hash(k, 9 + q, c.seed) * 0.5), tl: (10 + hash(k, 8 + q, c.seed) * 18) * (1 - t * 0.35), seed: c.seed * 100 + k * 3 + q }),
       );
     });
-    sprays.push({ culm: ci, t: 1, ang: -Math.PI / 2, tl: 2, seed: c.seed * 100 + 99 });
   });
   const sprayLeaves = (s: Spray): Leaf[] => {
     const crown = s.tl < 4;
-    const nL = crown ? 3 : 4 + Math.floor(hash(s.seed, 1, 3) * 3);
+    const nL = crown ? 3 : 5 + Math.floor(hash(s.seed, 1, 3) * 3);
     const out: Leaf[] = [];
     const side = Math.cos(s.ang) >= 0 ? 1 : -1;
     const ux = Math.cos(s.ang), uy = Math.sin(s.ang);
@@ -869,7 +881,8 @@ function stump(): WorldSprite {
   shelfFungus(B, gx + 13, cyb - 14, 7, 3, 5);
   shelfFungus(B, gx + 18, cyb - 8, 5, 2.4, 6);
   const frame = toFrame(B);
-  return finish('stump', 'Tree Stump', [0.8, 0.5], ['cover-half', 'climbable'], { gx, gy, anims: { idle: { frames: [frame], fps: 0 } } });
+  // Anchor: the front of the wall's base, where it meets the ground (as before).
+  return finish('stump', 'Tree Stump', [0.8, 0.5], ['cover-half', 'climbable'], { gx, gy: Math.round(cyb + ryB), anims: { idle: { frames: [frame], fps: 0 } } });
 }
 
 /** A bracket fungus: a half-disc shelf lit on top, with concentric growth bands and a dark underside. */

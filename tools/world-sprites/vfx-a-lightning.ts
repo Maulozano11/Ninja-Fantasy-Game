@@ -15,8 +15,13 @@ const TH = [0, 0.16, 0.32, 0.48, 0.64, 0.8];
 const ROCK = palette('#120c20', '#2e2638', '#4a4052', '#6a5e70', '#8c8090', '#aea2b0', '#d0c6d2');
 
 /** A lightning stroke: white core, blue edge (call with r 1.6-3). */
-function stroke(f: Field, pts: Pt[], r: number, heat = 1): void {
+/** The original thin stroke, kept for the hound so the beast stays exactly as handed over. */
+function strokeKeep(f: Field, pts: Pt[], r: number, heat = 1): void {
   f.path(pts, r, heat, 1.1);
+}
+function stroke(f: Field, pts: Pt[], r: number, heat = 1): void {
+  // Chunky strokes: a white core stepping out through every blue to the indigo edge.
+  f.path(pts, r * 1.35 + 0.2, heat * 1.04, 1.25);
 }
 /** A main bolt with forks: returns its points so other parts can attach to it. */
 function forked(f: Field, a: Pt, b: Pt, seed: number, r: number, forks: number, heat = 1, amp = 0.28): Pt[] {
@@ -89,9 +94,9 @@ function bolt(): WorldSprite {
     for (let k = 0; k < 7; k++) {
       const a = (k / 7) * TAU + rr(sd + 2, k, -0.3, 0.3);
       const len = rr(sd + 3, k, 7, 13);
-      stroke(f, jag([cx + Math.cos(a) * 4, cy + Math.sin(a) * 4], [cx + Math.cos(a) * (6 + len), cy + Math.sin(a) * (6 + len)], sd + 5 + k, 2, 0.35), 1.4, 0.85);
+      stroke(f, jag([cx + Math.cos(a) * 6, cy + Math.sin(a) * 6], [cx + Math.cos(a) * (8 + len), cy + Math.sin(a) * (8 + len)], sd + 5 + k, 2, 0.35), 1.05, 0.8);
     }
-    f.disc(cx, cy, 8, 1, 1.15);
+    f.disc(cx, cy, 10, 1.02, 1.3);
     const c = boltR(f);
     return stack(W, H, c, sparks(W, H, sparkList(sd + 9, 7, cx - 6, cy, 10, 22, W, H)));
   });
@@ -163,8 +168,8 @@ function beast(): WorldSprite {
     parts.push(render(fl, BOLT, look));
     // Tail: a bolt whipping back.
     const tl = new Field(W, H);
-    stroke(tl, jag([44 - g.stretch, 33 + by], [10, 22 + Math.sin(t * TAU) * 6], sd + 1, 4, 0.3), 2.6, 1);
-    stroke(tl, jag([28, 27], [6, 34 + Math.cos(t * TAU) * 5], sd + 2, 3, 0.35), 1.6, 0.8);
+    strokeKeep(tl, jag([44 - g.stretch, 33 + by], [10, 22 + Math.sin(t * TAU) * 6], sd + 1, 4, 0.3), 2.6, 1);
+    strokeKeep(tl, jag([28, 27], [6, 34 + Math.cos(t * TAU) * 5], sd + 2, 3, 0.35), 1.6, 0.8);
     parts.push(render(tl, BOLT, look));
     // Body: deep chest, slim waist, strong haunches, a jagged mane along the neck and back.
     const bd = new Field(W, H);
@@ -203,9 +208,9 @@ function beast(): WorldSprite {
     const all = seamStack(W, H, parts, BOLT[1], BOLT[0]);
     // White crackles running through the body, legs and head.
     const cr = new Field(W, H);
-    stroke(cr, jag([48 - g.stretch, 35 + by], [100, 29 + by], sd + 4, 4, 0.2), 1.1, 1.05);
-    stroke(cr, jag([62, 40 + by], [88, 44 + by], sd + 5, 3, 0.3), 0.9, 1);
-    stroke(cr, jag([102, 28 + by], [118, 27 + by], sd + 6, 2, 0.3), 0.8, 1);
+    strokeKeep(cr, jag([48 - g.stretch, 35 + by], [100, 29 + by], sd + 4, 4, 0.2), 1.1, 1.05);
+    strokeKeep(cr, jag([62, 40 + by], [88, 44 + by], sd + 5, 3, 0.3), 0.9, 1);
+    strokeKeep(cr, jag([102, 28 + by], [118, 27 + by], sd + 6, 2, 0.3), 0.8, 1);
     const crC = render(cr, BOLT, { th: TH, outline: false, lo: 5 });
     // Mouth, fangs and a glinting eye.
     for (let x = hx + 3; x <= hx + 15; x++) all.set(x, Math.round(hy + 3.5 + (x - hx - 3) * 0.15), BOLT[0]);
@@ -220,7 +225,7 @@ function beast(): WorldSprite {
     const arcs = new Field(W, H);
     for (let k = 0; k < 3; k++) {
       const x = rr(sd + 6, k, 48, 98), y = rr(sd + 7, k, 22, 30) + by;
-      stroke(arcs, jag([x, y], [x - rr(sd + 8, k, 6, 12), y - rr(sd + 9, k, 4, 9)], sd + 10 + k, 2, 0.4), 1.3, 1.05);
+      strokeKeep(arcs, jag([x, y], [x - rr(sd + 8, k, 6, 12), y - rr(sd + 9, k, 4, 9)], sd + 10 + k, 2, 0.4), 1.3, 1.05);
     }
     const sp = sparks(W, H, [...sparkList(sd + 11, 6, 70, 70, 0, 26, W, H).map((p) => ({ ...p, y: 68 + (p.y - 70) * 0.25 })), ...sparkList(sd + 12, 5, 30, 30, 8, 26, W, H)]);
     return stack(W, H, all, crC, boltR(arcs, false), sp);
@@ -286,8 +291,8 @@ function breath(): WorldSprite {
     const sd = 700 + i * 29;
     const n = 5;
     for (let k = 0; k < n; k++) {
-      const a = -0.4 + (k / (n - 1)) * 0.8 + rr(sd, k, -0.06, 0.06);
-      const L = rr(sd + 1, k, 70, 88);
+      const a = -0.34 + (k / (n - 1)) * 0.68 + rr(sd, k, -0.05, 0.05);
+      const L = rr(sd + 1, k, 66, 84);
       forked(f, [2, oy], [L * Math.cos(a), oy + L * Math.sin(a)], sd + 3 + k * 11, k === 2 ? 2.4 : 1.9, 3, 1, 0.22);
     }
     f.disc(3, oy, 5, 1.05, 1.5);
@@ -424,7 +429,7 @@ function hit(): WorldSprite {
   const fr = frames(6, (_, i) => {
     const f = new Field(W, H);
     const sd = 1000 + i * 19;
-    const R = [8, 16, 24, 26, 22, 0][i];
+    const R = [12, 18, 25, 26, 22, 0][i];
     if (i <= 2) {
       // A jagged star of light.
       const n = 9;
@@ -588,7 +593,7 @@ function aura(): WorldSprite {
     // A ring of static at the feet.
     const a0 = rr(sd + 13, 0, 0, TAU);
     stroke(ring, jag([cx - 26, gy], [cx + 26, gy], sd + 14, 4, 0.12).map(([x, y]) => [x, y + 6 * Math.sin(((x - cx + 26) / 52) * Math.PI) * (Math.cos(a0) > 0 ? 1 : 0.6)] as Pt), 1.2, 0.85);
-    const c = stack(W, H, render(sheath, BOLT, { th: TH, lo: 2, hi: 3, outline: false, alpha: [0, 0, 45, 65, 0, 0, 0] }), boltR(ring), boltR(f));
+    const c = stack(W, H, render(sheath, BOLT, { th: TH, lo: 3, hi: 4, outline: false, alpha: [0, 0, 0, 38, 55, 0, 0] }), boltR(ring), boltR(f));
     const sp: { x: number; y: number; s: number }[] = [];
     for (let k = 0; k < 8; k++) {
       const y = rr(sd + 15, k, 10, gy - 4), side = k % 2 ? 1 : -1;

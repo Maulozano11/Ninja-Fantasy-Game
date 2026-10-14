@@ -719,7 +719,7 @@ export function barkStep(t: Tube, Lv: number, a: number, s: number, r: number, n
     const c = a + push + (noise(a * 0.2 + 7, s * 0.03, 1, sd) - 0.5) * 2.6;
     const col = Math.floor(c / 2.4);
     const seg = Math.floor((s + hash(col, 1, sd) * 30) / (5 + hash(col, 2, sd) * 9));
-    if (frac(c / 2.4) < 0.4 && hash(col, seg, sd) < 0.42) st -= 1;
+    if (frac(c / 2.4) < 0.45 && hash(col, seg, sd) < 0.55) st -= 1;
     if (hash(Math.floor(a / 2.5 + 400), Math.floor(s / 1.4), sd + 3) < 0.02) st = Math.max(1, base - 2);
     else if (st === base && base >= 4 && hash(col, seg, sd + 5) < 0.18) st = base + 1;
     return [t.pal, clamp(st, 1, 6)];

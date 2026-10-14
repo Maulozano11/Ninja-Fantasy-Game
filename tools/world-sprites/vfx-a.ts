@@ -13,6 +13,7 @@
 // The effects are painted as heat fields quantized into hard palette bands (vfx-a-lib.ts); the
 // element files hold the designs: vfx-a-fire.ts, vfx-a-water.ts, vfx-a-wind.ts, vfx-a-lightning.ts.
 
+import { mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { CHARACTER_FEET, Canvas, Color, WorldSprite, characterRef, hex, previewDir, writeGroup } from './kit';
 import { animInfo, text, textWidth } from './vfx-a-lib';
@@ -27,6 +28,28 @@ const ELEMENTS: Record<string, { build: () => WorldSprite[]; accent: string }> =
   wind: { build: windSprites, accent: '#92d8b4' },
   lightning: { build: lightningSprites, accent: '#93d6ff' },
 };
+
+/**
+ * Writes are atomic: every file is written whole under a temp name and then renamed into place,
+ * so a job reading the staging folders or review images never sees a half-written file.
+ */
+function saveWhole(c: Canvas, path: string): void {
+  const tmp = `${path}.part`;
+  c.save(tmp);
+  renameSync(tmp, path);
+}
+/** writeGroup into a temp folder next to the previews, then move each file into the real group. */
+function writeGroupWhole(group: string, sprites: WorldSprite[], root: string, tmpRoot: string): void {
+  const tmpDir = join(tmpRoot, group);
+  rmSync(tmpDir, { recursive: true, force: true });
+  writeGroup(group, sprites, tmpRoot);
+  const dest = join(root, group);
+  mkdirSync(dest, { recursive: true });
+  // PNGs first, the manifest last, so the manifest never names a sheet that isn't there yet.
+  const files = readdirSync(tmpDir).sort((a, b) => Number(a === 'manifest.json') - Number(b === 'manifest.json'));
+  for (const f of files) renameSync(join(tmpDir, f), join(dest, f));
+  rmSync(tmpDir, { recursive: true, force: true });
+}
 
 const BG = hex('#15151d');
 const PANEL = hex('#20212b');
@@ -134,7 +157,7 @@ function elementSheet(el: string, sprites: WorldSprite[], path: string): void {
   out.fillRect(0, 0, out.w, out.h, BG);
   text(out, pad, pad, `${el.toUpperCase()}   GROUP VFX_${el.toUpperCase()}   ${sprites.length} SPRITES   (SHOWN 2X, KEY FRAME)`, INK);
   for (const p of lay.place) p.card.draw(out, pad + p.x, pad + 16 + p.y);
-  out.scaled(2).save(path);
+  saveWhole(out.scaled(2), path);
 }
 
 /** Nearest-neighbour half-size copy of a frame. */
@@ -186,7 +209,7 @@ function animSheet(all: [string, WorldSprite[]][], path: string): void {
     for (const p of s.lay.place) p.card.draw(out, pad + p.x, y + p.y);
     y += s.lay.h + 8;
   }
-  out.scaled(2).save(path);
+  saveWhole(out.scaled(2), path);
 }
 
 /** Zoomed strips for reviewing one sprite: every animation on a dark and a mid background. */
@@ -209,7 +232,7 @@ function workStrips(el: string, s: WorldSprite, dir: string): void {
       out.draw(f, 2 + i * (fw + 2), y);
     });
   });
-  out.scaled(k).save(join(dir, `vfx-${el}-${s.name}.png`));
+  saveWhole(out.scaled(k), join(dir, `vfx-${el}-${s.name}.png`));
 }
 
 /** One animation as a zoomed strip on the sheet background (for sending a single sprite). */
@@ -224,7 +247,7 @@ function zoomStrip(s: WorldSprite, key: string, path: string, k: number): void {
     panel(out, 4 + i * (fw + 4), 12, fw, fh);
     out.draw(f, 4 + i * (fw + 4), 12);
   });
-  out.scaled(k).save(path);
+  saveWhole(out.scaled(k), path);
 }
 
 interface CompareItem {
@@ -265,7 +288,7 @@ function compareSheet(title: string, rows: CompareItem[][], path: string, k: num
     }
     y += rh + 14 + pad;
   }
-  out.scaled(k).save(path);
+  saveWhole(out.scaled(k), path);
 }
 
 /** The fireball and annihilation comparisons the owner asked for (normal vs enhanced). */
@@ -295,11 +318,15 @@ function signatureCompares(sprites: WorldSprite[], dir: string): void {
 
 const only = process.env.VFX_ONLY ? process.env.VFX_ONLY.split(',') : null;
 const outDir = previewDir();
+// Staging only: refuse to run without WORLD_OUT, so nothing is ever written into src/assets.
+const worldOut = process.env.WORLD_OUT;
+if (!worldOut) throw new Error('vfx-a: set WORLD_OUT to the staging folder (this generator never writes into src/assets)');
+const tmpRoot = join(outDir, 'vfx-a-tmp');
 const built: [string, WorldSprite[]][] = [];
 for (const el of Object.keys(ELEMENTS)) {
   if (only && !only.includes(el)) continue;
   const sprites = ELEMENTS[el].build();
-  writeGroup(`vfx_${el}`, sprites);
+  writeGroupWhole(`vfx_${el}`, sprites, worldOut, tmpRoot);
   elementSheet(el, sprites, join(outDir, `vfx-${el}.png`));
   if (process.env.VFX_WORK) for (const s of sprites) workStrips(el, s, join(outDir, 'vfx-a-work'));
   built.push([el, sprites]);
@@ -314,3 +341,4 @@ for (const el of Object.keys(ELEMENTS)) {
   }
 }
 if (!only) animSheet(built, join(outDir, 'vfx-vfx-a-anims.png'));
+rmSync(tmpRoot, { recursive: true, force: true });

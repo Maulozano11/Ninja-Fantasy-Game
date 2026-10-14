@@ -278,7 +278,7 @@ function breath(): WorldSprite {
     for (let k = 0; k < 5; k++) {
       const p = fract(k / 5 + t);
       const r = 10 + p * 76;
-      const span = 0.42 - p * 0.04;
+      const span = 0.42 - p * 0.1;
       gust(f, arc(0, oy, r, r, -span, span, 24), lerp(3.2, 2, p), lerp(1, 0.6, p), 0.5);
     }
     // Streamlines fanning out.
@@ -325,7 +325,7 @@ function sphere(): WorldSprite {
       }
     });
     core.disc(cx, cy, 7.5, 1, 1.6);
-    const c = stack(W, H, air(shell, { lo: 2, hi: 4, alpha: [140, 70, 80, 110, 150, 200, 230] }), air(back, { hi: 4 }), air(core), air(front));
+    const c = stack(W, H, air(shell, { lo: 3, hi: 4, alpha: [140, 70, 80, 75, 150, 200, 230] }), air(back, { hi: 4 }), air(core), air(front));
     const lv = new Canvas(W, H);
     for (let k = 0; k < 3; k++) {
       const a = t * TAU + k * (TAU / 3);
@@ -416,13 +416,13 @@ function hit(): WorldSprite {
       const dx = Math.cos(a), dy = Math.sin(a);
       gust(f, [[cx - dx * len, cy - dy * len], [cx + dx * len * 0.1 - dy * 3, cy + dy * len * 0.1 + dx * 3], [cx + dx * len, cy + dy * len]], w, heat);
     };
-    const L = [10, 24, 28, 26, 18, 0][i], wC = [2, 3.4, 3, 2.2, 1.4, 0][i];
+    const L = [16, 24, 28, 26, 18, 0][i], wC = [2.6, 3.4, 3, 2.2, 1.4, 0][i];
     if (L) {
       cut(-0.7, L, wC, 1);
       if (i >= 1) cut(0.75, L * 0.92, wC * 0.9, 0.95);
       if (i >= 2 && i <= 3) cut(0.05, L * 0.7, wC * 0.6, 0.8);
     }
-    if (i === 0) f.disc(cx, cy, 5, 1, 1.5);
+    if (i === 0) f.disc(cx, cy, 8, 1, 1.5);
     const rk = [0, 8, 14, 20, 25, 29][i];
     if (rk) ring.region(0, 0, W - 1, H - 1, (x, y) => (Math.abs(Math.hypot(x - cx, y - cy) - rk) < 1.2 ? 0.75 - i * 0.08 : 0));
     const c = stack(W, H, air(ring, { lo: 3, hi: 5 }), air(f));

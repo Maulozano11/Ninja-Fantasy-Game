@@ -348,26 +348,26 @@ def paint_forest_mid():
             bark_trunk(L, [(x, by), ((x + ex) / 2, by - 6), (ex, by - 14)], [3.2, 2.2, 1.2], MID_BARK, 850 + k * 3 + j, o, ambient=0.1, gain=0.6,
                        furrow=0.1)
     # Foliage clumps catching the moon on their tops: heavy at the sides, open around the moon.
-    spots = []
+    clumps = []
     for k in range(70):
         x = rnd(83, k) * W
         cen = abs(x - 560)
         y = 10 + rnd(83, k, 2) * 140 + max(0, 210 - cen) * 0.45
         if math.hypot(x - MOON[0], y - MOON[1]) < 90 or (cen < 150 and y < 135):
             continue
-        spots.append((y, x, k))
-    spots.sort()
-    for y, x, k in spots:
+        clumps.append((y, x, k))
+    clumps.sort()
+    for y, x, k in clumps:
         o = L.new_obj(True)
         rx = 22 + rnd(84, k) * 22
-        clump(L, x, y, rx, rx * 0.62, MID_LEAF, 900 + k, o, leaf_len=(3.0, 5.0), leaf_w=(1.8, 2.6), base=0.0, gain=0.82, droop=0.7)
+        clump(L, x, y, rx, rx * 0.6, MID_LEAF, 900 + k, o, leaf_len=(3.0, 5.0), leaf_w=(1.8, 2.6), base=0.0, gain=0.74, droop=0.7)
     # Underbrush along the far edge of the clearing.
     for k in range(34):
         x = -10 + k * 30 + (rnd(85, k) - 0.5) * 18
         y = 222 + rnd(85, k, 2) * 14
         o = L.new_obj(True)
         rx = 17 + rnd(85, k, 3) * 12
-        clump(L, x, y, rx, rx * 0.58, MID_LEAF, 1000 + k, o, leaf_len=(2.6, 4.4), leaf_w=(1.7, 2.4), base=0.02, gain=0.75, droop=0.4)
+        clump(L, x, y, rx, rx * 0.58, MID_LEAF, 1000 + k, o, leaf_len=(2.6, 4.4), leaf_w=(1.7, 2.4), base=0.02, gain=0.7, droop=0.4)
     sl, X, Y = L.full()
     base = (Y > 238 + (noise(X, Y, 5, 86) - 0.5) * 6) & (Y < 262)
     L.put(sl, base, MID_LEAF, np.float32(0.08), L.new_obj(False))
@@ -768,25 +768,27 @@ def scene_json():
         {'x': 372, 'y': 352, 'facing': 'right', 'note': 'left of the fire'},
         {'x': 590, 'y': 352, 'facing': 'left', 'note': 'right of the fire'},
         {'x': 418, 'y': 306, 'facing': 'right', 'note': 'behind the fire, left'},
-        {'x': 546, 'y': 306, 'facing': 'left', 'note': 'behind the fire, right'},
+        {'x': 548, 'y': 304, 'facing': 'left', 'note': 'behind the fire, right'},
     ]
+    # Props: x, y = where the sprite's anchor lands. z nudges the draw order among props at one y.
     props = [
-        {'group': 'campsite', 'name': 'tent_large', 'x': 214, 'y': 300},
-        {'group': 'campsite', 'name': 'backpack', 'x': 318, 'y': 318},
-        {'group': 'campsite', 'name': 'bedroll', 'x': 290, 'y': 334},
-        {'group': 'campsite', 'name': 'sword_stuck', 'x': 112, 'y': 330},
-        {'group': 'campsite', 'name': 'stump_axe', 'x': 166, 'y': 368},
-        {'group': 'campsite', 'name': 'firewood', 'x': 352, 'y': 386},
-        {'group': 'campsite', 'name': 'campfire_large', 'x': FIRE[0], 'y': FIRE[1], 'anim': 'burning'},
-        {'group': 'campsite', 'name': 'cooking_tripod', 'x': FIRE[0], 'y': FIRE[1] + 1},
-        {'group': 'campsite', 'name': 'smoke_tall', 'x': FIRE[0] + 2, 'y': FIRE[1] - 46},
-        {'group': 'campsite', 'name': 'log_seat', 'x': 470, 'y': 398},
-        {'group': 'campsite', 'name': 'tent_small', 'x': 712, 'y': 298},
-        {'group': 'campsite', 'name': 'swords_pair', 'x': 638, 'y': 322},
-        {'group': 'campsite', 'name': 'torii', 'x': 868, 'y': 288},
-        {'group': 'landmarks', 'name': 'stone_lantern', 'x': 806, 'y': 336, 'anim': 'lit'},
-        {'group': 'campsite', 'name': 'fern_clump', 'x': 902, 'y': 300},
-        {'group': 'campsite', 'name': 'fern_clump', 'x': 768, 'y': 340, 'flip': True},
+        {'group': 'campsite', 'name': 'tent_large', 'x': 206, 'y': 314},
+        {'group': 'campsite', 'name': 'bedroll', 'x': 292, 'y': 330},
+        {'group': 'campsite', 'name': 'backpack', 'x': 326, 'y': 326},
+        {'group': 'campsite', 'name': 'sword_stuck', 'x': 346, 'y': 314},
+        {'group': 'campsite', 'name': 'stump_axe', 'x': 160, 'y': 374},
+        {'group': 'campsite', 'name': 'firewood', 'x': 268, 'y': 380},
+        {'group': 'campsite', 'name': 'campfire_large', 'x': FIRE[0], 'y': FIRE[1], 'anim': 'burning', 'note': 'anchor = centre of the ring'},
+        {'group': 'campsite', 'name': 'smoke_tall', 'x': FIRE[0] + 2, 'y': FIRE[1] - 52, 'z': 52.5, 'note': 'foot at the flame tips'},
+        {'group': 'campsite', 'name': 'cooking_tripod', 'x': FIRE[0], 'y': FIRE[1], 'z': 1, 'note': 'anchor = ground under the pot'},
+        {'group': 'campsite', 'name': 'log_seat', 'x': 600, 'y': 398},
+        {'group': 'campsite', 'name': 'tent_small', 'x': 716, 'y': 306, 'flip': True},
+        {'group': 'campsite', 'name': 'swords_pair', 'x': 640, 'y': 326},
+        {'group': 'campsite', 'name': 'torii', 'x': 870, 'y': 294},
+        {'group': 'landmarks', 'name': 'stone_lantern', 'x': 796, 'y': 344, 'anim': 'lit'},
+        {'group': 'campsite', 'name': 'fern_clump', 'x': 932, 'y': 330},
+        {'group': 'campsite', 'name': 'fern_clump', 'x': 770, 'y': 352, 'flip': True},
+        {'group': 'campsite', 'name': 'fern_clump', 'x': 118, 'y': 396},
     ]
     return {
         'name': 'camp_night',
@@ -802,13 +804,18 @@ def scene_json():
         'fire': {'x': FIRE[0], 'y': FIRE[1], 'flameY': FIRE_FLAME[1], 'lightRadiusM': 3.9},
         'moon': {'x': MOON[0], 'y': MOON[1], 'r': MOON_R},
         'spots': spots,
+        'partySpots': [spots[0], spots[1], spots[3]],
         'props': props,
         'grade': {
-            'note': 'Day-lit sprites in this scene: multiply by moon, then add firelight by distance (quantised to 4 levels) and a warm rim on edges facing the fire.',
-            'moon': [0.5, 0.6, 0.86],
-            'moonAdd': [6, 10, 22],
-            'fireTint': [2.25, 1.32, 0.62],
-            'fireLevels': [0, 0.3, 0.58, 0.9],
+            'note': 'How day-lit sprites are lit in this scene (tools/scenes/camp_preview.py grade()): multiply by the moon and add its ambient; '
+                    'firelight by distance from the flames (57 px/m across, 38 px/m deep), quantised to 4 levels through the warm tint; '
+                    'a warm rim on silhouette edges facing the fire, a faint cool rim on edges facing the upper right. Flames stay as they are.',
+            'moonMul': [0.4, 0.48, 0.68],
+            'moonAdd': [5, 9, 21],
+            'fireTint': [1.9, 1.4, 0.92],
+            'fireAdd': [58, 34, 14],
+            'fireLevels': [0, 0.32, 0.62, 0.95],
+            'fireFalloff': 'w = 1.3 / (1 + (d / 1.55)^2) - 0.1, d in metres',
         },
     }
 

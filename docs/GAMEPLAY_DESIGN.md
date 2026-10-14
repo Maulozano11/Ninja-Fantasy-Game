@@ -149,6 +149,20 @@ elements.
   screen shake and the jutsu effects from the sprite system. Some jutsu have a
   signature effect of their own, with a clearly bigger enhanced version (the
   Great Fireball, the Great Fire Annihilation).
+- **Art bar for ultimate (rank S) jutsu**: every rank S jutsu gets a signature
+  effect at the standard of the owner's reference
+  (`docs/reference/s-tier-jutsu-standard.jpg`, the enhanced Great Fire
+  Annihilation):
+  - massive on screen next to the 1.75 m caster;
+  - layered in depth, with parts passing in front of and behind each other;
+  - a creature or form woven through the element (the fire dragon);
+  - a giant kanji of the element written in that element (火 for fire, 雷 for
+    lightning);
+  - huge billowing smoke, cloud or dust volumes;
+  - a full colour ramp with tinted outlines.
+  It plays in phases (build-up, strike or loop, fade) and ends clean. Kirin
+  (lightning) is a dragon-headed thunderbolt in blue and purple falling from a
+  storm cloud onto the target.
 
 ## Clan abilities in battle
 

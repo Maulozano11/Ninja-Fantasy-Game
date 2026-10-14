@@ -5,7 +5,8 @@
 
 import { Canvas, Color, WorldSprite, withAlpha } from './kit';
 import { Billow, FIRE, GREY, ROCK, SMOKE, TH, billows, embers, erode, flow, tongue } from './vfx-a-fire-kit';
-import { cool, dim, flicker, placed, refPiece, scaled } from './vfx-a-ref';
+import { cool, dim, flicker, placed, refPiece, roughen, scaled } from './vfx-a-ref';
+import { REF_FRAMES } from './vfx-a-fire-refdata';
 import {
   Field, Pt, TAU, WallKind, WallLine, bez, clamp, crop, dissolve, flySprite, frames, fract, lerp, pfbm, pnoise, render, rr, seamStack, smooth, stack, tubeShade, vfxSprite, wallGround, wallLine, wp,
 } from './vfx-a-lib';
@@ -117,242 +118,75 @@ export function blast(): WorldSprite {
   return vfxSprite('blast', 'Fire blast (mushroom-cloud explosion, 3 m)', [cx, gy], { blast: { frames: fr, fps: 12, loop: false } });
 }
 
-// --- aura: the character engulfed in flame -------------------------------------------------
+// --- aura: the character engulfed in flame (his panel) -------------------------------------
 
 /**
- * Two layers, frame-synchronized, same size and anchor (the character's feet):
- * - `aura_back` goes BEHIND the character: a full body of flame rising from the ground all
- *   round and up past the head, the hot part hidden by the figure.
- * - `aura` goes OVER the character: flames in front of the legs and licking up the sides, a
- *   warm glow that lights the figure orange, and embers; its middle stays open so the figure
- *   reads. Drawn alone it still works as an aura.
+ * Two layers cut from his aura panel, frame-synchronized, same size and anchor (the feet):
+ * - `aura_back` goes BEHIND the character: all his fire round and above the figure.
+ * - `aura` goes OVER the character: his flames round the legs and a warm glow that lights the
+ *   figure; drawn alone it still reads as an aura.
+ * The loop flickers his flames upward (higher pixels sway more) and breathes them a little.
  */
 export function aura(): WorldSprite[] {
-  // Wider and taller than the old aura so the fire stands clear of the figure on both sides and
-  // rises well past the head.
-  const W = 120, H = 148, cx = 60, gy = 136, top = 8, seed = 3300;
+  const F = REF_FRAMES.aura, W = F.w, H = F.h, ax = F.ax, ay = F.ay, seed = 3300;
   const backFr: Canvas[] = [], frontFr: Canvas[] = [];
   for (let i = 0; i < 6; i++) {
-    const t = i / 6, ph = t * TAU, sc = t * 120;
-    const back = new Field(W, H), front = new Field(W, H), ringB = new Field(W, H), ringF = new Field(W, H);
-    // Behind: a teardrop of flame from the feet to above the head, its edges rippling upward.
-    back.fill((x, y) => {
-      if (y > gy + 1 || y < top + 20) return 0;
-      const v = clamp((gy - y) / (gy - top - 20), 0, 1);
-      const wO = 42 * Math.pow(1 - Math.pow(v, 2), 0.55) * (0.84 + 0.3 * pnoise(x, y + sc, 7, 0, 120, seed));
-      const dx = Math.abs(x - cx);
-      if (dx > wO) return 0;
-      return lerp(0.7, 0.36, Math.pow(dx / Math.max(1, wO), 1.2)) * lerp(1, 0.7, v);
-    });
-    // Tall separate flames rising from the ground all round, tallest behind the head.
-    for (let k = 0; k < 10; k++) {
-      const u = (k + 0.5) / 10;
-      const x = cx + (u - 0.5) * 2 * 38 + rr(seed + 6, k, -3, 3);
-      const mid = 1 - Math.abs(u - 0.5) * 2;
-      const len = (46 + 80 * Math.pow(mid, 0.8)) * (1 + 0.12 * Math.sin(ph + k * 2.3)) * rr(seed + 7, k, 0.85, 1.12);
-      tongue(back, [x, gy - 2], -Math.PI / 2 + (u - 0.5) * 0.5, Math.min(len, gy - top - 2), 7 + 2 * mid, 0.86, 0.12, ph + k * 1.6, (0.5 - u) * 0.2);
-    }
-    // Tall tongues rising off it, past the head, and flicking outward at the sides.
-    for (let k = 0; k < 13; k++) {
-      const u = (k + 0.5) / 13, side = u < 0.5 ? -1 : 1;
-      const v = 0.3 + 0.7 * (1 - Math.abs(u - 0.5) * 2);
-      const y = gy - v * (gy - top) * 0.9;
-      const wO = 46 * Math.pow(1 - Math.pow(v * 0.9, 2.2), 0.55);
-      const x = cx + (u - 0.5) * 2 * wO * 0.9;
-      const len = (20 + 20 * (1 - Math.abs(u - 0.5) * 2)) * (1 + 0.22 * Math.sin(ph + k * 1.9)) * rr(seed + 1, k, 0.8, 1.2);
-      tongue(back, [x, y + 8], -Math.PI / 2 + side * Math.abs(u - 0.5) * 0.9, len, 6.5, 0.8, 0.22, ph + k * 1.4, -side * 0.15);
-    }
-    // The glowing ring of fire at the feet: back half behind, front half in front.
-    for (const [f, isBack] of [[ringB, true], [ringF, false]] as [Field, boolean][])
-      f.region(cx - 42, gy - 12, cx + 42, gy + 11, (x, y) => {
-        if (isBack !== y < gy) return 0;
-        const d = Math.hypot((x - cx) / 38, (y - gy) / 8);
-        return d < 1.05 ? lerp(0.85, 0.35, Math.abs(d - 0.7) * 2.5) : 0;
-      });
-    // In front: flames rising from the front of the ring around the legs, and licks up the sides.
-    for (let k = 0; k < 8; k++) {
-      const a = (8 + k * 23.4) * D;
-      const x = cx + Math.cos(a) * 36, y = gy + Math.sin(a) * 8;
-      const sideK = Math.abs(Math.cos(a));
-      const len = (16 + 34 * sideK) * (1 + 0.25 * Math.sin(ph * 1.3 + k * 2.1)) * rr(seed + 2, k, 0.8, 1.15);
-      tongue(front, [x, y], -Math.PI / 2 + Math.cos(a) * 0.25, len, 5 + sideK * 1.5, 0.85, 0.2, ph + k * 1.7, -Math.cos(a) * 0.12);
-    }
-    for (const side of [-1, 1])
-      for (let k = 0; k < 3; k++) {
-        const q = fract(k / 3 + t + (side > 0 ? 1 / 6 : 0));
-        const y = gy - 16 - q * 70;
-        const v = (gy - y) / (gy - top);
-        const x = cx + side * 36 * Math.pow(1 - Math.pow(v, 2.2), 0.55);
-        tongue(front, [x, y], -Math.PI / 2 + side * 0.35, (16 + 10 * Math.sin(q * Math.PI)) * 1.1, 4 - q, 0.74 - q * 0.15, 0.22, ph + k * 2 + side, -side * 0.2);
-      }
-    const er = (x: number, y: number) => pfbm(x, y + t * 120, 6, 2, 0, 120, seed + 3);
-    erode(back, 0.45, er);
-    erode(front, 0.45, er);
-    const backC = stack(W, H, render(ringB, FIRE, { th: TH, rim: [1] }), render(back, FIRE, { th: TH, rim: [1], jitter: (x, y) => (pnoise(x, (y + t * 120) * 0.3, 2, 0, 36, seed + 4) - 0.5) * 0.16 }));
-    // A warm glow over the figure so it reads lit by the fire.
+    const t = i / 6, ph = t * TAU;
+    const breathe = (c: Canvas, k: number) => scaled(c, 1 + 0.02 * Math.sin(ph + k), 1 + 0.05 * Math.sin(ph + k), ax, ay);
+    const backC = breathe(flicker(placed('a_back', W, H), ph, 2.4, ay, seed), 0);
     const glowC = new Canvas(W, H);
-    for (let y = 30; y < gy; y++)
-      for (let x = cx - 26; x <= cx + 26; x++) {
-        const d = Math.hypot((x - cx) / 26, (y - (gy - 46)) / 52);
-        if (d < 1) glowC.set(x, y, withAlpha(FIRE[4], Math.round(58 * (1 - d * d))));
+    for (let y = ay - 100; y < ay; y++)
+      for (let x = ax - 26; x <= ax + 26; x++) {
+        const d = Math.hypot((x - ax) / 26, (y - (ay - 46)) / 52);
+        if (d < 1) glowC.set(x, y, withAlpha(FIRE[4], Math.round(52 * (1 - d * d))));
       }
-    const frontC = stack(W, H, glowC, render(ringF, FIRE, { th: TH, rim: [1] }), render(front, FIRE, { th: TH, rim: [1] }));
+    // (the flames round the legs move exactly with the back layer they were cut from)
+    const frontC = stack(W, H, glowC, breathe(flicker(placed('a_low', W, H), ph, 2.4, ay, seed), 0));
     const em: { x: number; y: number; s: number }[] = [];
     for (let k = 0; k < 12; k++) {
       const p = fract(k / 12 + t);
       const side = k % 2 ? 1 : -1;
-      em.push({ x: cx + side * rr(seed + 5, k, 18, 50) + Math.sin(p * 6 + k) * 2, y: gy - 10 - p * 120, s: p < 0.3 ? 2 : 1 });
+      em.push({ x: ax + side * rr(seed + 5, k, 16, 46) + Math.sin(p * 6 + k) * 2, y: ay - 10 - p * 120, s: p < 0.3 ? 2 : 1 });
     }
     backFr.push(backC);
-    frontFr.push(stack(W, H, frontC, embers(W, H, em.filter((e) => e.y > 3 && e.x > 2 && e.x < W - 3), frontC)));
+    frontFr.push(stack(W, H, frontC, embers(W, H, em.filter((e) => e.y > 3 && e.x > 2 && e.x < W - 3), stack(W, H, backC, frontC))));
   }
   return [
-    vfxSprite('aura', 'Fire aura, front layer (draw OVER the character)', [cx, gy], { idle: { frames: frontFr, fps: 12, loop: true } }),
-    vfxSprite('aura_back', 'Fire aura, back layer (draw BEHIND the character)', [cx, gy], { idle: { frames: backFr, fps: 12, loop: true } }),
+    vfxSprite('aura', 'Fire aura, front layer (draw OVER the character)', [ax, ay], { idle: { frames: frontFr, fps: 12, loop: true } }),
+    vfxSprite('aura_back', 'Fire aura, back layer (draw BEHIND the character)', [ax, ay], { idle: { frames: backFr, fps: 12, loop: true } }),
   ];
 }
 
-// --- walls: horizontal, 3/4 and end-on ------------------------------------------------------
+// --- walls: horizontal, 3/4 and end-on (his panels) -----------------------------------------
 
 /**
- * A wall of fire along any ground line: tall pointed tongues of varied height in two rows,
- * grey-brown smoke rising behind them, a glowing ember line at their roots and a strip of
- * scorched, glowing ground under it all. Far parts are drawn first. End-on, smoke curls off the
- * top of the column.
+ * A wall from his panel: `idle` flickers his flames; `rise` reveals his picture from the
+ * ground up and from the middle out (height above the ground line), with a burning edge, ending
+ * on his picture. Edges where his panel cut the flames are roughened.
  */
-function fireWall(t: number, grow: (s: number) => number, L: WallLine, seed: number): Canvas {
-  const { W, H } = L;
-  const ph = t * TAU;
-  const depthOf = (tt: number, q: number) => L.u[1] * tt + L.v[1] * q;
-  const zs = [depthOf(-L.len / 2, 0), depthOf(L.len / 2, 0)];
-  const zMin = Math.min(...zs) - 12, zMax = Math.max(...zs) + 12;
-  const nL = L.kind === 'wall' ? 2 : L.kind === 'wall_depth' ? 7 : 5;
-  const layerOf = (z: number, q: number) => (L.kind === 'wall' ? (q < 0 ? 0 : 1) : clamp(Math.floor(((z - zMin) / (zMax - zMin)) * nL), 0, nL - 1));
-  const fields = Array.from({ length: nL }, () => new Field(W, H));
-  const half = L.len / 2;
-  // The scorched glowing ground: the footprint and a strip spreading toward the viewer.
-  const groundC = new Canvas(W, H);
-  {
-    const reachQ = L.kind === 'wall_depth' ? 26 : L.kind === 'wall' ? 44 : 64;
-    const corners = [wp(L, -half - 10, -12), wp(L, half + 10, -12), wp(L, -half - 10, reachQ), wp(L, half + 10, reachQ)];
-    const x0 = Math.floor(Math.min(...corners.map((c) => c[0]))), x1 = Math.ceil(Math.max(...corners.map((c) => c[0])));
-    const y0 = Math.floor(Math.min(...corners.map((c) => c[1]))), y1 = Math.ceil(Math.max(...corners.map((c) => c[1])));
-    for (let y = y0; y <= y1; y++)
-      for (let x = x0; x <= x1; x++) {
-        const [tt, q] = wallGround(L, x + 0.5, y + 0.5);
-        const sAt = tt / L.len + 0.5;
-        const g = grow(clamp(sAt, 0, 1));
-        if (g <= 0.02 || sAt < -0.03 || sAt > 1.03) continue;
-        const qn = q < 0 ? -q / 12 : q / reachQ;
-        const ragged = 1 + 0.25 * (pnoise(x, y, 8, 0, 0, seed + 1) - 0.5) * 2;
-        if (qn > ragged) continue;
-        const endFade = smooth(-0.03, 0.03, sAt) * smooth(1.03, 0.97, sAt);
-        const hot = (1.15 - qn) * Math.min(1, g * 1.5) * endFade + (pnoise(x * 0.7, y * 1.4, 10, 0, 0, seed + 2) - 0.5) * 0.3;
-        const col: Color = hot > 0.92 ? FIRE[3] : hot > 0.68 ? FIRE[2] : hot > 0.38 ? FIRE[1] : SMOKE[1];
-        groundC.set(x, y, withAlpha(col, hot > 0.38 ? 215 : hot > 0.16 ? 170 : 110));
-      }
-  }
-  // Tongues: a back row of tall ones and a front row of shorter ones, pointed and uneven.
-  const rows = [
-    { n: 15, h: 104, w: 9, heat: 0.82, q: L.kind === 'wall' ? -2 : -3, off: 0.5, s: seed + 10 },
-    { n: 17, h: 64, w: 8.5, heat: 0.94, q: L.kind === 'wall' ? 2 : 3, off: 0, s: seed + 20 },
-  ];
-  const tops: Pt[] = [];
-  for (const r of rows)
-    for (let k = 0; k < r.n; k++) {
-      const sAt = (k + r.off + rr(r.s, k, -0.3, 0.3)) / r.n;
-      const g = grow(sAt);
-      if (g <= 0.02) continue;
-      const env = Math.pow(Math.sin(clamp(sAt * 0.94 + 0.03, 0, 1) * Math.PI), 0.35);
-      const tt = (sAt - 0.5) * L.len;
-      const hgt = r.h * env * rr(r.s + 1, k, 0.5, 1.22) * g * (1 + 0.1 * Math.sin(ph + k * 1.3));
-      const [bx, by] = wp(L, tt, r.q);
-      tongue(fields[layerOf(depthOf(tt, r.q), r.q)], [bx, by + 2], -Math.PI / 2 + rr(r.s + 2, k, -0.08, 0.08), hgt, r.w * Math.min(1, 0.5 + g * 0.6), r.heat, 0.12, ph + k * 1.7, rr(r.s + 3, k, -0.14, 0.14));
-      if (r.q < 0) tops.push([bx, by - hgt]);
-    }
-  // The glowing ember line at the roots (on the ground, under the flames).
-  const emberF = new Field(W, H);
-  {
-    const [ax, ay] = wp(L, -half + 4, 3), [bx2, by2] = wp(L, half - 4, 3);
-    const len = Math.hypot(bx2 - ax, by2 - ay), dx = (bx2 - ax) / len, dy = (by2 - ay) / len;
-    const target = emberF;
-    target.region(Math.min(ax, bx2) - 4, Math.min(ay, by2) - 4, Math.max(ax, bx2) + 4, Math.max(ay, by2) + 4, (x, y) => {
-      const uRaw = ((x - ax) * dx + (y - ay) * dy) / len;
-      if (uRaw < 0 || uRaw > 1) return 0;
-      const u = uRaw;
-      if (grow(u) <= 0.05) return 0;
-      const px = ax + (bx2 - ax) * u, py = ay + (by2 - ay) * u;
-      const d = L.kind === 'wall_depth' ? Math.abs(x - px) / 3 : Math.abs(y - py) / 2.4;
-      return d < 1 ? (1 - d * 0.6) * 0.9 * (0.85 + 0.25 * pnoise(u * len + t * 30, 0, 5, 0, 0, seed + 4)) : 0;
-    });
-  }
-  const er = (x: number, y: number) => pfbm(x, y + t * 120, 7, 2, 0, 120, seed + 5);
-  const flames = fields.map((f) => {
-    if (!f.any()) return null;
-    erode(f, 0.5, er);
-    return render(f, FIRE, { th: TH, rim: [1], jitter: (x, y) => (pnoise(x, (y + t * 120) * 0.25, 2, 0, 30, seed + 6) - 0.5) * 0.2 });
+function refWall(kind: WallKind, piece: string, label: string, ground: (x: number, y: number) => number, along: (x: number, y: number) => number, rough: (x: number, y: number) => boolean, seed: number): WorldSprite {
+  const F = REF_FRAMES[kind], W = F.w, H = F.h;
+  const base = roughen(placed(piece, W, H), rough, refPiece(piece).pal[0]);
+  const idle = frames(4, (t) => flicker(base, t * TAU, 1.6, F.ay, seed));
+  const vis = [0.16, 0.32, 0.5, 0.68, 0.86, 1.01];
+  const rise = frames(6, (_, i) => {
+    const c = flicker(base, (i / 6) * TAU, 1.6, F.ay, seed);
+    if (vis[i] > 1) return c;
+    return dissolve(c, vis[i], (x, y) => clamp(ground(x, y) * 0.6 + along(x, y) * 0.3 + pnoise(x, y, 8, 0, 0, seed + 1) * 0.1, 0, 1), [FIRE[2], FIRE[3], FIRE[5]], FIRE[0]).c;
   });
-  // Smoke rising behind the flames (end-on, curling off the top of the column).
-  const bl: Billow[] = [];
-  const gAll = grow(0.5);
-  if (gAll > 0.3) {
-    const n = L.kind === 'wall_depth' ? 9 : 18;
-    for (let k = 0; k < n; k++) {
-      const sAt = L.kind === 'wall_depth' ? 0.5 + k * 0.055 : (k + 0.5) / n;
-      if (grow(sAt) < 0.4) continue;
-      const tt = (sAt - 0.5) * L.len;
-      const rise = fract(rr(seed + 30, k, 0, 1) + t);
-      const [bx, by] = wp(L, tt, -6, 34 + rise * 52 + rr(seed + 31, k, 0, 22));
-      const r = (10 + rise * 8) * rr(seed + 32, k, 0.8, 1.2) * Math.min(1, (gAll - 0.3) * 2);
-      bl.push({ x: bx + Math.sin(ph + k) * 2, y: Math.max(r * 1.6 + 4, by), r, heat: 0, glow: 0.5, back: k % 3 === 0, bumps: 2 });
-    }
-  }
-  const smoke = bl.length ? billows(W, H, bl, seed + 33, t, GREY, 160) : null;
-  // End-on: wisps of smoke curling up off the top of the column.
-  let curls: Canvas | null = null;
-  if (L.kind === 'wall_depth' && gAll > 0.5) {
-    const cf = new Field(W, H);
-    const [tx, ty] = wp(L, half * 0.8, 0, L.rise * 0.92);
-    for (let k = 0; k < 3; k++) {
-      const pts: Pt[] = [];
-      for (let j = 0; j <= 24; j++) {
-        const u = j / 24;
-        const a = u * 4.2 + ph + k * 2.1;
-        pts.push([tx + Math.sin(a) * (6 + u * 12) + (k - 1) * 4, ty - u * (60 + k * 8)]);
-      }
-      cf.path(pts.filter(([, y]) => y > 6), (u) => lerp(5, 2.2, u) * Math.min(1, (gAll - 0.5) * 3), (u) => lerp(0.56, 0.32, u), 1);
-    }
-    curls = render(cf, GREY, { th: [0, 0.2, 0.32, 0.44, 0.56], lo: 2, hi: 5, rim: [1], alpha: [190, 190, 190, 190, 190, 190, 190] });
-  }
-  const em: { x: number; y: number; s: number }[] = [];
-  tops.forEach(([x, y], k) => {
-    if (k % 2) return;
-    const p = fract(k * 0.37 + t);
-    em.push({ x: x + Math.sin(p * 6 + k) * 3, y: y - 6 - p * 30, s: p < 0.3 ? 2 : 1 });
-  });
-  const emberC = emberF.any() ? render(emberF, FIRE, { th: TH, rim: [1] }) : null;
-  const body = stack(W, H, groundC, smoke, curls, emberC, ...flames);
-  return stack(W, H, body, embers(W, H, em.filter((e) => e.y > 3 && e.x > 3 && e.x < W - 4), body));
+  return vfxSprite(kind, label, [F.ax, F.ay], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
 }
-const fireGrow = (i: number) => (sAt: number) => {
-  const reach = [0.2, 0.45, 0.7, 0.92, 1.2, 1.2][i];
-  const height = [0.12, 0.3, 0.52, 0.78, 1.08, 1][i];
-  const d = Math.abs(sAt - 0.5) * 2;
-  return d > reach ? 0 : height * lerp(1, 0.45, smooth(reach - 0.35, reach, d));
-};
 export function walls(): WorldSprite[] {
-  const make = (kind: WallKind, label: string, pad: { l: number; t: number; r: number; b: number }) => {
-    const L = wallLine(kind, 124, 6, pad);
-    const seed = 3500 + (kind === 'wall' ? 0 : kind === 'wall_diag' ? 100 : 200);
-    return vfxSprite(kind, label, L.anchor, {
-      rise: { frames: frames(6, (_, i) => fireWall(i / 6, fireGrow(i), L, seed)), fps: 12, loop: false },
-      idle: { frames: frames(4, (t) => fireWall(t, () => 1, L, seed)), fps: 12, loop: true },
-    });
-  };
+  const fw = REF_FRAMES.wall, fd = REF_FRAMES.wall_diag;
+  // His 3/4 wall's ground line runs from (22, 176) to (270, 50) in its frame.
+  const diagG = (x: number) => lerp(176, 50, clamp((x - 22) / 248, 0, 1));
   return [
-    make('wall', 'Fire wall (4.5 m x 1.8 m)', { l: 10, t: 34, r: 10, b: 24 }),
-    make('wall_diag', 'Fire wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)', { l: 18, t: 34, r: 22, b: 28 }),
-    make('wall_depth', 'Fire wall, end-on (4.5 m x 1.8 m, running into the screen)', { l: 34, t: 80, r: 34, b: 24 }),
+    refWall('wall', 'w_wall', 'Fire wall (4.5 m x 1.8 m)', (_x, y) => clamp((fw.ay - y) / (fw.ay - 8), 0, 1), (x) => Math.abs(x - fw.ax) / (fw.w / 2),
+      (x, y) => y > fw.h - 9 - 6 * pnoise(x, 0, 5, 0, 0, 3501), 3500),
+    refWall('wall_diag', 'w_diag', 'Fire wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)', (x, y) => clamp((diagG(x) - y) / 150, 0, 1), (x) => Math.abs(x - fd.ax) / (fd.w / 2),
+      (x, y) => y < 10 + 16 * pnoise(x, 0, 6, 0, 0, 3601) || x > fd.w - 11 - 16 * pnoise(0, y, 6, 0, 0, 3602) || (y > 52 && x > 194 - 12 * pnoise(0, y, 5, 0, 0, 3603)), 3600),
+    refWall('wall_depth', 'w_depth', 'Fire wall, end-on (4.5 m x 1.8 m, running into the screen)', (_x, y) => clamp((240 - y) / 200, 0, 1), () => 0,
+      (x, y) => x < 10 + 6 * pnoise(0, y, 6, 0, 0, 3701) || x > REF_FRAMES.wall_depth.w - 12 - 14 * pnoise(0, y, 6, 0, 0, 3702) || y > REF_FRAMES.wall_depth.h - 12 - 10 * pnoise(x, 0, 6, 0, 0, 3703) || (y > 108 && x > 60 - 8 * pnoise(0, y, 5, 0, 0, 3704)), 3700),
   ];
 }
 

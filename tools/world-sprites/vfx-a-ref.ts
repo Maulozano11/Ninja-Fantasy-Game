@@ -110,3 +110,27 @@ export function placed(name: string, w: number, h: number, dx = 0, dy = 0): Canv
   out.draw(pc.c, pc.x + dx, pc.y + dy);
   return out;
 }
+
+/** Removes the pixels `del` picks (to roughen where his panel cut the art) and outlines the new edges. */
+export function roughen(c: Canvas, del: (x: number, y: number) => boolean, outline: Color): Canvas {
+  const out = c.clone();
+  const gone = new Uint8Array(c.w * c.h);
+  for (let y = 0; y < c.h; y++)
+    for (let x = 0; x < c.w; x++)
+      if (c.alpha(x, y) && del(x, y)) {
+        out.set(x, y, [0, 0, 0, 0]);
+        gone[y * c.w + x] = 1;
+      }
+  for (let y = 0; y < c.h; y++)
+    for (let x = 0; x < c.w; x++) {
+      if (!out.alpha(x, y)) continue;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const u = x + dx, v = y + dy;
+        if (u >= 0 && v >= 0 && u < c.w && v < c.h && gone[v * c.w + u]) {
+          out.set(x, y, outline);
+          break;
+        }
+      }
+    }
+  return out;
+}

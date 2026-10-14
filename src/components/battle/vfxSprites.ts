@@ -195,7 +195,8 @@ export function drawWallSprite(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall
 }
 
 /** The phases a sky signature plays in order; empty for other sheets. */
-const PHASES = ['gather', 'strike', 'impact', 'fade'];
+// 'sustain' holds the strike on the target a while (about a second) before it fades, for drama.
+const PHASES = ['gather', 'strike', 'impact', 'sustain', 'fade'];
 const phasesOf = (s: Sheet): string[] => (s.spec.anims.strike ? PHASES.filter((p) => s.spec.anims[p]) : []);
 
 /** Which sheet a signature uses: its enhanced version when enhanced and drawn, else the base one. */

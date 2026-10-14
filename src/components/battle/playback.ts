@@ -107,6 +107,8 @@ export class Playback {
   round = 0;
   queue: BattleEvent[] = [];
   busyUntil = 0;
+  /** A big signature still playing: the next turn waits for it to finish. */
+  lingerUntil = 0;
   speed = 1;
 
   constructor(state: BattleState, private hooks: PlaybackHooks) {
@@ -157,6 +159,8 @@ export class Playback {
   step(now: number, state: BattleState): boolean {
     let emptied = false;
     while (this.queue.length && now >= this.busyUntil) {
+      const next = this.queue[0].t;
+      if ((next === 'turn' || next === 'round' || next === 'end') && now < this.lingerUntil) break;
       const ev = this.queue.shift()!;
       const d = this.apply(ev, now, state);
       this.busyUntil = now + d / this.speed;
@@ -383,6 +387,7 @@ export class Playback {
         if (sky) {
           this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, dur: sky.total });
           h.shake(ev.enhanced ? 8 : 6);
+          this.lingerUntil = Math.max(this.lingerUntil, t1 + sky.total / this.speed);
           return castDelay + sky.hit / this.speed;
         }
         this.fx.push({ ...base, kind: 'projectile', from, to: ev.at, dur: fly, lift: [head ? 120 : 70, ev.shape ? 30 : 60] });

@@ -337,8 +337,9 @@ def synth_glow(spec, W, H, org):
     a = spec['a'] * np.clip(1 - r, 0, 1) ** 1.4
     out = np.zeros((H, W, 4))
     # Brighter green near the middle, deeper teal at the rim (his halo).
-    col = np.median(HALO_F[HALO_A > np.median(HALO_A)], 0)
-    rim = np.median(HALO_F[HALO_A <= np.median(HALO_A)], 0)
+    med = np.median(HALO_A)
+    col = np.median(HALO_F[HALO_A >= med], 0)
+    rim = np.median(HALO_F[HALO_A <= med], 0)
     k = np.clip(1 - r, 0, 1)[..., None]
     out[..., :3] = rim * (1 - k) + col * k
     out[..., 3] = a

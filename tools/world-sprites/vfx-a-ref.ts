@@ -83,7 +83,7 @@ export function cool(c: Canvas, amount: (x: number, y: number) => number, smoke:
     for (let x = 0; x < c.w; x++) {
       const p = c.get(x, y);
       if (!p[3]) continue;
-      if (amount(x, y) <= pnoise(x, y, 6, 0, 0, seed)) continue;
+      if (amount(x, y) <= 0.5) continue;
       const l = lumOf(p);
       const i = l < 45 ? 0 : Math.min(smoke.length - 1, 1 + Math.floor(((l - 45) / 210) * (smoke.length - 1)));
       out.set(x, y, smoke[i]);

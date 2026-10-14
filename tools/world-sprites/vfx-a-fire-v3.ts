@@ -93,9 +93,9 @@ export function blast(): WorldSprite {
       c = moved;
       if (coolK > 0) {
         const top = baseY - cap.c.h * sy, hgt = cap.c.h * sy;
-        c = cool(c, (x, y) => coolK * 1.5 - ((y - top) / hgt) * 0.9, SMOKE_WARM, seed + 3);
+        c = cool(c, (x, y) => coolK * 1.6 - ((y - top) / hgt) * 0.9 + (pnoise(x, y, 12, 0, 0, seed + 8) - 0.5) * 0.5, SMOKE_WARM, seed + 3);
       }
-      if (i === 7) c = dissolve(c, 0.55, (x, y) => pnoise(x, y, 7, 0, 0, seed + 4), [], SMOKE_WARM[0]).c;
+      if (i === 7) c = dissolve(c, 0.62, (x, y) => clamp(pnoise(x, y, 14, 0, 0, seed + 4) * 0.7 + ((y - (baseY - cap.c.h * sy)) / (cap.c.h * sy)) * 0.3, 0, 1), [], SMOKE_WARM[0]).c;
       layers.push(c);
     }
     // The near half of the ring, in front of the stem.

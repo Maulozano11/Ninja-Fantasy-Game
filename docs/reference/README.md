@@ -18,6 +18,7 @@ Every deliverable puts his crop and our frame side by side at the same scale.
 |---|---|
 | `s-tier-jutsu-standard.jpg` | The enhanced Great Fire Annihilation, and the bar for every rank S jutsu. |
 | `fire-set-owner-reference.jpg` | Every fire effect: bolt, phoenix, stream, breath, sphere, slash, multi, hit, mushroom blast, walls (3 orientations), engulfing aura, fireball, great fireball. |
+| `lightning-set-owner-reference.jpg` | Every lightning effect: bolt, stream, breath, sphere, slash, multi, hit, the sky-strike blast, walls (3 orientations), aura. |
 | `phoenix-owner-reference.jpg` | The fire phoenix: 8-frame flight loop, dive, attack, variant forms. |
 | `raiju-owner-reference.jpg` | The lightning beast (raijū): 8-frame pounce loop, plus the phoenix at scale. |
 | `kirin-owner-reference.jpg` | Kirin: the normal lightning bolt and the enhanced lightning dragon. |

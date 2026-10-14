@@ -5,7 +5,7 @@
 // with a sickly purple accent.
 
 import { Anim, Canvas, WorldSprite } from './kit';
-import { L, Pt, Puff, TAU, clamp, fract, gasLayer, lerp, pal, pnoise, polar, puffs, rnd, rot, smooth } from './vfx-b-lib';
+import { L, Pt, Puff, TAU, clamp, fract, gasLayer, lerp, pal, pnoise, polar, puffs, rnd, rot, smooth, fadeLeft } from './vfx-b-lib';
 
 /** 0 outline, 1 very dark green, 2 deep green, 3 forest, 4 green, 5 toxic green, 6 acid yellow-green, 7 pale lime, 8 white-lime. */
 export const P = pal('#0a1f0e', '#123e18', '#1b5e22', '#247e2a', '#36a42c', '#58c82a', '#9ee22c', '#d6f772', '#f6ffd4');
@@ -18,6 +18,8 @@ const N = 6;
 const loop = (frames: Canvas[], fps = 12): Anim => ({ frames, fps, loop: true });
 const once = (frames: Canvas[], fps = 12): Anim => ({ frames, fps, loop: false });
 const sprite = (name: string, label: string, anchor: [number, number], anims: Record<string, Anim>): WorldSprite => {
+  // Trails of projectiles flying right fade out at the left edge instead of being cut flat.
+  if (['bolt', 'sphere', 'slash', 'multi', 'beast'].includes(name)) for (const a of Object.values(anims)) a.frames.forEach((fr) => fadeLeft(fr));
   const f0 = Object.values(anims)[0].frames[0];
   return { name, label, meters: [+(f0.w / 57).toFixed(2), +(f0.h / 57).toFixed(2)], anchor, tags: ['vfx'], anims };
 };
@@ -125,10 +127,10 @@ function bolt(): WorldSprite {
     const c = new Canvas(64, 64), t = f / N, ph = t * TAU;
     fumes(c, range(4).map((i) => {
       const s = (3 - i) + t;
-      return { x: cx - 14 - s * 7, y: cy - 7 - s * 1.5, r: Math.max(0, 4 - s * 0.8), steps: s < 2 ? [2, 3, 4, 5] : [1, 2, 3] };
+      return { x: cx - 14 - s * 5.2, y: cy - 7 - s * 1.5, r: Math.max(0, 4 - s * 0.95), steps: s < 2 ? [2, 3, 4, 5] : [1, 2, 3] };
     }), { purple: true, seed: 3, alpha: 220 });
     streaks(c, [[0, 20, 10], [1, 44, 9], [2, 24, 7]].map(([k, yy, len]) => {
-      const x = cx - 14 - fract(t + k * 0.37) * 16;
+      const x = cx - 14 - fract(t + k * 0.37) * 11;
       return [x - len, x, yy] as [number, number, number];
     }));
     const l = new L(64, 64);
@@ -180,7 +182,7 @@ function multi(): WorldSprite {
       bubbles(c, [[x - 1, y + 1, 1.2]], { purple: true });
       drops(c, range(3).map((i) => {
         const p0 = fract(rnd(21 + k, i) + t);
-        const p = rot([x - 20 - p0 * 18, y + (i - 1) * 3 + p0 * 3], a, [x, y]);
+        const p = rot([x - 20 - p0 * 11, y + (i - 1) * 3 + p0 * 3], a, [x, y]);
         return [p[0], p[1], 1.2 * (1 - p0 * 0.5), 1.5] as [number, number, number, number];
       }));
     }
@@ -191,7 +193,7 @@ function multi(): WorldSprite {
 
 /** Beast: a venom cobra of living poison: flared hood, fangs dripping, purple markings, drops falling. */
 function beast(): WorldSprite {
-  const W = 128, H = 96;
+  const W = 136, H = 96;
   const frames = range(N).map((f) => {
     const c = new Canvas(W, H), t = f / N, ph = t * TAU;
     const spine = (s: number): Pt => {
@@ -201,12 +203,12 @@ function beast(): WorldSprite {
     const rad = (s: number): number => lerp(11.5, 2.2, clamp(s / 84, 0, 1) ** 0.85);
     fumes(c, range(3).map((i) => {
       const q = 2 - i + t;
-      const p = spine(80);
-      return { x: p[0] - 4 - q * 6, y: p[1] - 4 - q * 3, r: Math.max(0, 4.5 - q * 1.2) };
+      const p = spine(76);
+      return { x: p[0] - 1 - q * 2, y: p[1] - 5 - q * 3.5, r: Math.max(0, 4.2 - q * 1.2) };
     }), { seed: 7, alpha: 220 });
     // Body tube with liquid bands, a back highlight, belly scutes and purple diamonds.
     const S: { p: Pt; s: number; t: Pt }[] = [];
-    for (let s = 0; s <= 84; s += 0.5) {
+    for (let s = 0; s <= 78; s += 0.5) {
       const p = spine(s), q = spine(s - 0.5);
       const ln = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
       S.push({ p, s, t: [(q[0] - p[0]) / ln, (q[1] - p[1]) / ln] });
@@ -373,7 +375,7 @@ function streamHead(): WorldSprite {
     drops(c, range(6).map((i) => {
       const ph = fract(rnd(62, i) + t);
       const a = lerp(-1, 1, rnd(63, i));
-      const p = polar(34, 32, 22 + ph * 12, a);
+      const p = polar(34, 32, 18 + ph * 7, a);
       return [p[0], p[1] + ph * ph * 6, 1.6 - ph * 0.6, 1.5] as [number, number, number, number];
     }));
     fumes(c, [{ x: 24 + t * 4, y: 20 - t * 3, r: 3.5 }, { x: 40, y: 18 - ((t + 0.5) % 1) * 4, r: 3 }], { purple: true, seed: 64, alpha: 210 });
@@ -384,9 +386,9 @@ function streamHead(): WorldSprite {
 
 /** Breath: a cone of toxic gas churning out of the mouth, purple wisps and drops inside. */
 function breath(): WorldSprite {
-  const ox = 3, oy = 32;
+  const ox = 11, oy = 52, BW = 112, BH = 104;
   const frames = range(N).map((f) => {
-    const c = new Canvas(96, 64), t = f / N;
+    const c = new Canvas(BW, BH), t = f / N;
     gas(c, (x, y) => {
       const dx = x + 0.5 - ox, dy = y + 0.5 - oy;
       if (dx < 0) return 0;
@@ -405,13 +407,13 @@ function breath(): WorldSprite {
       const p = polar(ox, oy, s2, a);
       return [p[0], p[1], 1.6, 2] as [number, number, number, number];
     }));
-    const core = new L(96, 64);
+    const core = new L(BW, BH);
     core.disc(ox + 2, oy, 6, 1);
     core.bands([1, 2, 3], [5, 6, 7, 8]);
     core.render(c, P);
     return c;
   });
-  return sprite('breath', 'Poison breath: toxic cloud', [0, 32], { fly: loop(frames) });
+  return sprite('breath', 'Poison breath: toxic cloud', [8, 52], { fly: loop(frames) });
 }
 
 /** Sphere: an acid bubble: a membrane with poison sloshing inside, bubbles rising, drops trailing. */
@@ -421,7 +423,7 @@ function sphere(): WorldSprite {
     const c = new Canvas(64, 64), t = f / N, ph = t * TAU;
     fumes(c, range(4).map((i) => {
       const s = 3 - i + t;
-      return { x: cx - 19 - s * 7, y: cy - 2 + Math.sin(s * 1.6) * 4, r: Math.max(0, 3.6 - s * 0.8), steps: s < 2 ? [3, 4, 5, 6] : [2, 3, 4] };
+      return { x: cx - 19 - s * 3.4, y: cy - 2 + Math.sin(s * 1.6) * 4, r: Math.max(0, 3.6 - s * 0.95), steps: s < 2 ? [3, 4, 5, 6] : [2, 3, 4] };
     }), { seed: 81, alpha: 220 });
     // Interior: translucent, the liquid surface sloshing in the lower half.
     const inner = new L(64, 64);
@@ -543,8 +545,8 @@ function hit(): WorldSprite {
     if (f >= 1 && f <= 4)
       drops(c, range(9).map((k) => {
         const a = (k / 9) * TAU + rnd(105, k);
-        const p = polar(cx, cy, 12 + f * 5, a);
-        return [p[0], p[1] + f * f * 0.6, 1.6, 2] as [number, number, number, number];
+        const p = polar(cx, cy, 9 + f * 3, a);
+        return [p[0], p[1] + f * f * 0.3, 1.6, 2] as [number, number, number, number];
       }));
     if (f >= 2) {
       const fy = cy - 8 - (f - 2) * 5, fr = 7 + (f - 2) * 2;
@@ -691,7 +693,7 @@ function wall(): WorldSprite {
 
 /** Aura: toxic fume tongues rising at both sides, a bubbling puddle ring, drops and purple wisps. */
 function aura(): WorldSprite {
-  const W = 80, H = 120, ax = 40, ay = 112;
+  const W = 80, H = 128, ax = 40, ay = 112;
   const frames = range(6).map((f) => {
     const c = new Canvas(W, H), t = f / 6;
     const g = new L(W, H);

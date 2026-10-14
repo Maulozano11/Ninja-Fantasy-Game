@@ -1,10 +1,12 @@
-// Genjutsu effects: illusions. A tomoe comet, a murder of crows shedding feathers, twisting
-// smoke ribbons, a hypnotic spiral, an orb holding an eye, a crescent of mirror shards with
-// afterimages, Temple of Nirvana feathers, a mirror veil and a smoke-tongue aura.
+// Genjutsu effects: illusions. A sigil comet, a murder of crows shedding feathers, twisting
+// smoke ribbons, a hypnotic spiral, an orb holding a sigil eye, a crescent of mirror shards
+// with afterimages, Temple of Nirvana feathers, a mirror veil and a smoke-tongue aura.
+// The genjutsu sigil is original: an iris ring with four small triangles pointing outward at
+// the cardinal points, around a pupil (no tomoe, nothing Sharingan-like).
 // Palette: deep purple, violet, magenta, orchid, pink, pink-white; feathers white-violet.
 
 import { Anim, Canvas, WorldSprite } from './kit';
-import { L, Pt, Puff, TAU, clamp, fract, lerp, pal, polar, puffs, rnd, rot } from './vfx-b-lib';
+import { L, Pt, Puff, TAU, clamp, fract, lerp, pal, polar, puffs, rnd, rot, fadeLeft } from './vfx-b-lib';
 
 /** 0 outline, 1 deep purple, 2 purple, 3 violet, 4 violet-magenta, 5 magenta, 6 orchid, 7 pink, 8 pink-white. */
 export const G = pal('#1c0830', '#3a0f5e', '#561894', '#7424b8', '#9a28b8', '#bf34b8', '#e660d8', '#ffa2e2', '#ffecfa');
@@ -21,6 +23,8 @@ const N = 6;
 const loop = (frames: Canvas[], fps = 12): Anim => ({ frames, fps, loop: true });
 const once = (frames: Canvas[], fps = 12): Anim => ({ frames, fps, loop: false });
 const sprite = (name: string, label: string, anchor: [number, number], anims: Record<string, Anim>): WorldSprite => {
+  // Trails of projectiles flying right fade out at the left edge instead of being cut flat.
+  if (['bolt', 'sphere', 'slash', 'multi', 'beast'].includes(name)) for (const a of Object.values(anims)) a.frames.forEach((fr) => fadeLeft(fr));
   const f0 = Object.values(anims)[0].frames[0];
   return { name, label, meters: [+(f0.w / 57).toFixed(2), +(f0.h / 57).toFixed(2)], anchor, tags: ['vfx'], anims };
 };
@@ -65,29 +69,31 @@ function petal(c: Canvas, x: number, y: number, ang: number, s: number, alpha?: 
   l.render(c, PETAL, { alpha, outlineAlpha: alpha });
 }
 
-/** Small tomoe: a round head and a tail tube sweeping around (used by the aura). */
-function tomoeTube(l: L, cx: number, cy: number, r: number, ang: number, v: number, o: { reach?: number; sweep?: number } = {}): void {
-  l.disc(cx, cy, r, v);
-  const reach = o.reach ?? 1.4, sweep = o.sweep ?? 1.9;
-  const pts: Pt[] = [];
-  const rad: number[] = [];
-  for (let i = 0; i <= 24; i++) {
-    const s = i / 24;
-    pts.push(polar(cx, cy, r * (0.25 + reach * s), ang + s * sweep));
-    rad.push(r * 0.82 * Math.pow(1 - s, 0.85) + 0.3);
+/**
+ * The genjutsu sigil: a ring of radius r, four small triangles on it pointing outward at the
+ * cardinal points (turned by `spin`), and a pupil. Paints the ring, triangles and pupil steps.
+ */
+function sigil(l: L, cx: number, cy: number, r: number, spin: number, o: { ring: number; tri: number; pupil: number; pupilR?: number; width?: number; reach?: number }): void {
+  const w = o.width ?? 1.1;
+  l.fill((x, y) => {
+    const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+    return d <= r && d >= r - w;
+  }, o.ring);
+  for (let k = 0; k < 4; k++) {
+    const a = spin + (k * Math.PI) / 2;
+    const b1 = polar(cx, cy, r - w * 0.5, a - 0.38), b2 = polar(cx, cy, r - w * 0.5, a + 0.38), tip = polar(cx, cy, r + (o.reach ?? Math.max(1.8, r * 0.55)), a);
+    l.poly([b1, tip, b2], o.tri);
   }
-  l.tube(pts, rad, v);
+  l.disc(cx, cy, o.pupilR ?? Math.max(1, r * 0.34), o.pupil);
 }
 
-/** Magatama (one half of a yin-yang): head toward `ang`, the tail sweeping back to a point. */
-function magatama(l: L, cx: number, cy: number, R: number, ang: number, v: number): void {
-  l.fill((x, y) => {
-    const q = rot([x + 0.5 - cx, y + 0.5 - cy], -ang);
-    const u = q[0] / R, w = q[1] / R;
-    const head = (u - 0.5) ** 2 + w * w <= 0.25;
-    const body = w >= 0 && u * u + w * w <= 1 && (u + 0.5) ** 2 + w * w >= 0.25;
-    return head || body;
-  }, v);
+/** Sigil silhouette (a disc with the four triangles) as a mask, for energy banding. */
+function sigilMask(l: L, cx: number, cy: number, r: number, spin: number, reach: number): void {
+  l.disc(cx, cy, r, 1);
+  for (let k = 0; k < 4; k++) {
+    const a = spin + (k * Math.PI) / 2;
+    l.poly([polar(cx, cy, r - 1, a - 0.42), polar(cx, cy, r + reach, a), polar(cx, cy, r - 1, a + 0.42)], 1);
+  }
 }
 
 /** Old-ramp energy bands for the aura (kept as approved). */
@@ -243,50 +249,48 @@ function ribbonTube(c: Canvas, pts: Pt[], r: (s: number) => number, steps: numbe
 
 // --- roles ----------------------------------------------------------------------------------
 
-/** Bolt: a magatama comet, its tail sweeping back to a point, smoke ribbons and petals in its wake. */
+/** Bolt: a spinning sigil of light (ring, four cardinal points, pupil), smoke ribbons and petals in its wake. */
 function bolt(): WorldSprite {
-  const cx = 38, cy = 30, R = 13;
+  const cx = 40, cy = 32, R = 8;
   const frames = range(N).map((f) => {
-    const c = new Canvas(64, 64), t = f / N, ph = f * (TAU / N);
+    const c = new Canvas(64, 64), t = f / N, ph = f * (TAU / N), spin = t * (TAU / 4);
     for (const [k, amp] of [[0, 3.5], [1, -3]] as [number, number][]) {
       const pts: Pt[] = [];
       for (let i = 0; i <= 30; i++) {
-        const s = i / 30;
-        pts.push([cx - 10 - s * 30, cy + 5 + Math.sin(s * 5 - ph + k * 2) * amp * (0.3 + s) + (k ? 3 : -1)]);
+        const s2 = i / 30;
+        pts.push([cx - 7 - s2 * 27, cy + Math.sin(s2 * 5 - ph + k * 2) * amp * (0.3 + s2) + (k ? 2.5 : -2.5)]);
       }
-      ribbonTube(c, pts, (s) => 2.3 * (1 - s) + 0.4, k ? [1, 2, 3, 4] : [3, 4, 5, 6]);
+      ribbonTube(c, pts, (s2) => 2.3 * (1 - s2) + 0.4, k ? [1, 2, 3, 4] : [3, 4, 5, 6]);
     }
-    // Speed arcs following the curve of the tail.
+    // Speed arcs trailing the spin.
     const arcs = new L(64, 64);
     for (let j = 0; j < 2; j++) {
-      const rr = R + 3 + j * 3;
-      for (let a = 0.6; a < 2.7; a += 0.02) {
+      const rr = R + 5 + j * 3;
+      for (let a = 1.9; a < 4.4; a += 0.02) {
         if (fract(a * 1.3 - t + j * 0.5) > 0.6) continue;
-        const p = polar(cx, cy, rr, a + 0.15);
+        const p = polar(cx - 2 - j * 2, cy, rr, a);
         arcs.set(p[0], p[1], j ? 5 : 7);
       }
     }
     arcs.render(c, G, { outline: null });
     const l = new L(64, 64);
-    magatama(l, cx, cy, R, -0.12 + Math.sin(ph) * 0.04, 1);
-    energy(l, [1, 1.8, 2.8, 3.8, 4.8, 5.8], [2, 3, 4, 5, 6, 7, 8], (x, y, d) => d * (0.7 + 0.45 * clamp((x - (cx - 10)) / 20, 0, 1)));
+    sigilMask(l, cx, cy, R, spin, 5);
+    energy(l, [1, 1.8, 2.8, 3.8, 4.8], [2, 3, 4, 5, 6, 8]);
     l.render(c, G);
-    const hx = cx + R * 0.5 * Math.cos(-0.12), hy = cy + R * 0.5 * Math.sin(-0.12);
-    const dot = new L(64, 64);
-    dot.disc(hx, hy, 2.4, 2);
-    dot.disc(hx - 0.3, hy - 0.3, 1.2, 1);
-    dot.render(c, G);
+    const mk = new L(64, 64);
+    sigil(mk, cx, cy, 5.2, spin, { ring: 2, tri: 3, pupil: 1, pupilR: 1.7, reach: 1.6 });
+    mk.render(c, G, { outline: null });
     for (let i = 0; i < 3; i++) {
       const p0 = fract(rnd(11, i) + t);
-      petal(c, cx - 14 - p0 * 30, cy - 8 + rnd(12, i) * 22 + Math.sin(p0 * TAU + i) * 3, p0 * 5 + i, 2.6);
+      petal(c, cx - 14 - p0 * 28, cy - 9 + rnd(12, i) * 22 + Math.sin(p0 * TAU + i) * 3, p0 * 5 + i, 2.6);
     }
     const sp = new L(64, 64);
-    sparkle(sp, cx - 16 - fract(t + 0.3) * 18, cy - 10, 2);
-    sparkle(sp, cx - 24 - fract(t + 0.8) * 14, cy + 15, 1);
+    sparkle(sp, cx - 16 - fract(t + 0.3) * 18, cy - 11, 2);
+    sparkle(sp, cx - 24 - fract(t + 0.8) * 14, cy + 14, 1);
     sp.render(c, G, { outline: null });
     return c;
   });
-  return sprite('bolt', 'Genjutsu bolt: magatama comet', [32, 32], { fly: loop(frames) });
+  return sprite('bolt', 'Genjutsu bolt: sigil comet', [32, 32], { fly: loop(frames) });
 }
 
 /** Multi: three white-violet feathers flying in a staggered fan, pink glow streaks behind. */
@@ -319,8 +323,8 @@ function multi(): WorldSprite {
 function beast(): WorldSprite {
   const W = 128, H = 96;
   const crows: [number, number, number, number][] = [
-    [52, 22, 1.1, 0.33],
-    [50, 76, 1.15, 0.66],
+    [54, 31, 1.05, 0.33],
+    [52, 67, 1.1, 0.66],
     [90, 50, 1.6, 0],
   ];
   const frames = range(N).map((f) => {
@@ -329,18 +333,18 @@ function beast(): WorldSprite {
       const pts: Pt[] = [];
       for (let i = 0; i <= 18; i++) {
         const q = i / 18;
-        pts.push([x - 15 * s - q * 38 * s, y + 0.5 * s + Math.sin(q * 5 - t * TAU + k * 2) * 3 * q]);
+        pts.push([x - 15 * s - q * 30 * s, y + 0.5 * s + Math.sin(q * 5 - t * TAU + k * 2) * 3 * q]);
       }
       ribbonTube(c, pts, (q) => 3.6 * s * (1 - q * 0.9) + 0.4, [1, 2, 3, 4, 5, 6], [1, 2, 3, 4, 5], 215);
     }
     for (let i = 0; i < 10; i++) {
       const p0 = fract(rnd(21, i) + t);
       const [x, y, s] = crows[i % 3];
-      feather(c, x - 14 * s - p0 * 36, y + (rnd(22, i) - 0.5) * 18 + p0 * 8, p0 * 4 + i, 7 + rnd(23, i) * 4, { wid: 3.4, curl: 0.5, alpha: p0 > 0.75 ? 170 : 255 });
+      feather(c, Math.max(8, x - 14 * s - p0 * 26), y + (rnd(22, i) - 0.5) * 16 + p0 * 6, p0 * 4 + i, 7 + rnd(23, i) * 4, { wid: 3.4, curl: 0.5, alpha: p0 > 0.75 ? 170 : 255 });
     }
     for (let i = 0; i < 3; i++) {
       const p0 = fract(rnd(24, i) + t);
-      petal(c, 40 - p0 * 36, 30 + i * 18 + Math.sin(p0 * TAU + i) * 4, p0 * 6 + i, 2.6);
+      petal(c, 40 - p0 * 30, 30 + i * 18 + Math.sin(p0 * TAU + i) * 4, p0 * 6 + i, 2.6);
     }
     for (const [x, y, s, p0] of crows) {
       const wv = Math.sin((t + p0) * TAU);
@@ -429,9 +433,9 @@ function streamHead(): WorldSprite {
 
 /** Breath: hypnotic ripples spreading in a cone, mist, petals and feathers carried along. */
 function breath(): WorldSprite {
-  const ox = 2, oy = 32;
+  const ox = 10, oy = 52, BW = 112, BH = 104;
   const frames = range(N).map((f) => {
-    const c = new Canvas(96, 64), t = f / N;
+    const c = new Canvas(BW, BH), t = f / N;
     const list: Puff[] = [];
     for (let i = 0; i < 14; i++) {
       const s = 10 + fract(i / 14 + rnd(41, i) * 0.05 + t) * 84;
@@ -441,8 +445,8 @@ function breath(): WorldSprite {
     smoke(c, list, { seed: 43, alpha: 150 });
     for (let k = 0; k < 7; k++) {
       const r = 8 + (k + t) * 15;
-      if (r > 98) continue;
-      const l = new L(96, 64);
+      if (r > 90) continue;
+      const l = new L(BW, BH);
       const span = 0.52;
       const th = 1.5 + r * 0.035;
       for (let a = -span; a <= span; a += 0.4 / r) {
@@ -463,16 +467,16 @@ function breath(): WorldSprite {
       if (i % 2) petal(c, p[0], p[1], s * 0.1 + i, 2.8);
       else feather(c, p[0], p[1], a + s * 0.05, 8, { wid: 3.4, curl: 0.4 });
     }
-    const core = new L(96, 64);
+    const core = new L(BW, BH);
     core.disc(ox + 2, oy, 5.5, 1);
     energy(core, [1, 2, 3], [5, 6, 7, 8]);
     core.render(c, G);
     return c;
   });
-  return sprite('breath', 'Genjutsu breath: hypnotic ripples', [0, 32], { fly: loop(frames) });
+  return sprite('breath', 'Genjutsu breath: hypnotic ripples', [8, 52], { fly: loop(frames) });
 }
 
-/** Sphere: an illusion orb holding a great eye with turning tomoe, a smoke ring around it. */
+/** Sphere: an illusion orb holding a great eye with a turning sigil, a smoke ring around it. */
 function sphere(): WorldSprite {
   const cx = 36, cy = 32, R = 16;
   const frames = range(N).map((f) => {
@@ -480,7 +484,7 @@ function sphere(): WorldSprite {
     const list: Puff[] = [];
     for (let i = 4; i >= 0; i--) {
       const s = i + t;
-      list.push({ x: cx - 15 - s * 6, y: cy + Math.sin(s * 1.7) * 3, r: Math.max(0, 6.5 - s * 1.2), steps: s < 2 ? [2, 3, 4, 5, 6] : [1, 2, 3, 4] });
+      list.push({ x: cx - 14 - s * 4, y: cy + Math.sin(s * 1.7) * 3, r: Math.max(0, 6.5 - s * 1.3), steps: s < 2 ? [2, 3, 4, 5, 6] : [1, 2, 3, 4] });
     }
     smoke(c, list, { seed: 51 });
     const ringA = -0.3;
@@ -513,15 +517,9 @@ function sphere(): WorldSprite {
       return d > 5.2 ? 1 : d > 4.2 ? 4 : d > 3 ? 5 : 6;
     });
     iris.render(c, G, { outline: null });
+    // The sigil in the iris, turning: ring, four cardinal points, pupil.
     const tm = new L(64, 64);
-    tm.disc(cx, cy, 1.6, 0);
-    for (let k = 0; k < 3; k++) {
-      const a = (k / 3) * TAU + t * (TAU / 3) - 0.5;
-      const p = polar(cx, cy, 3.6, a);
-      tm.disc(p[0], p[1], 1.15, 0);
-      const q = polar(cx, cy, 3.9, a - 0.55);
-      tm.set(q[0], q[1], 0);
-    }
+    sigil(tm, cx, cy, 3.4, t * (TAU / 4), { ring: 0, tri: 0, pupil: 0, pupilR: 1.5, reach: 2.1, width: 1 });
     tm.render(c, G, { outline: null });
     const lid = new L(64, 64);
     for (let x = Math.ceil(cx - ew + 1); x < cx + ew - 1; x++) {
@@ -538,11 +536,11 @@ function sphere(): WorldSprite {
     ring(true);
     for (let i = 0; i < 2; i++) {
       const p0 = fract(rnd(52, i) + t);
-      petal(c, cx - 20 - p0 * 22, cy - 15 + i * 28 + p0 * 3, p0 * 6 + i, 2.6);
+      petal(c, cx - 20 - p0 * 12, cy - 15 + i * 28 + p0 * 3, p0 * 6 + i, 2.6);
     }
     return c;
   });
-  return sprite('sphere', 'Genjutsu sphere: eye orb', [32, 32], { fly: loop(frames) });
+  return sprite('sphere', 'Genjutsu sphere: sigil eye orb', [32, 32], { fly: loop(frames) });
 }
 
 /** Mirror shard crescent: long glass splinters along an arc, tips toward the horns, a diamond at the front. */
@@ -586,8 +584,8 @@ function slash(): WorldSprite {
   const oy = 32, R = 22, ox = 14;
   const frames = range(N).map((f) => {
     const c = new Canvas(64, 64), t = f / N;
-    shards(c, ox - 14, oy, R, f, { ghost: true, alpha: 100 });
-    shards(c, ox - 7, oy, R, f, { ghost: true, alpha: 180 });
+    shards(c, ox - 12, oy, R, f, { ghost: true, alpha: 100 });
+    shards(c, ox - 6, oy, R, f, { ghost: true, alpha: 180 });
     shards(c, ox, oy, R, f);
     const sp = new L(64, 64);
     const k = f % 3;
@@ -598,7 +596,7 @@ function slash(): WorldSprite {
     sp.render(c, G, { outline: null });
     for (let i = 0; i < 2; i++) {
       const p0 = fract(rnd(61, i) + t);
-      petal(c, 16 - p0 * 14, 12 + i * 40, p0 * 5 + i, 2.4, 220);
+      petal(c, 18 - p0 * 11, 12 + i * 40, p0 * 5 + i, 2.4, 220);
     }
     return c;
   });
@@ -635,10 +633,10 @@ function hit(): WorldSprite {
     if (f >= 1)
       for (let k = 0; k < 10; k++) {
         const a = (k / 10) * TAU + rnd(72, k) * 0.5;
-        const d = [0, 7, 14, 20, 24, 27][f] * (0.8 + rnd(73, k) * 0.35);
+        const d = [0, 7, 13, 18, 21, 22][f] * (0.8 + rnd(73, k) * 0.35);
         const p = polar(cx, cy, d, a);
         if (f === 5 && k % 3 === 0) continue;
-        feather(c, p[0], p[1] + (f >= 3 ? (f - 2) * (f - 2) * 0.8 : 0), a + f * 0.5 * (k % 2 ? 1 : -1), 9 - (f >= 4 ? 1 : 0), { wid: 3.6, curl: 0.5, alpha: f >= 5 ? 180 : 255 });
+        feather(c, p[0], p[1] + (f >= 3 ? (f - 2) * (f - 2) * 0.5 : 0), a + f * 0.5 * (k % 2 ? 1 : -1), 9 - (f >= 4 ? 1 : 0), { wid: 3.6, curl: 0.5, alpha: f >= 5 ? 180 : 255 });
       }
     if (f >= 2 && f <= 4)
       for (let k = 0; k < 3; k++) {
@@ -658,7 +656,7 @@ function hit(): WorldSprite {
 
 /** Blast: Temple of Nirvana: a spiral opens on the ground, a pillar of light bursts into feathers. */
 function blast(): WorldSprite {
-  const W = 176, H = 144, ax = 88, ay = 88, rx = 78, ry = 52;
+  const W = 176, H = 176, ax = 88, ay = 120, rx = 78, ry = 52;
   const NF = 30;
   const fe = range(NF).map((k) => ({
     a: rnd(801, k) * TAU,
@@ -798,7 +796,7 @@ function wall(): WorldSprite {
     const list: Puff[] = [];
     for (let i = 0; i < 16; i++) {
       const ph = fract(rnd(910, i) + t);
-      list.push({ x: 8 + i * 17 + ph * 8, y: WGY - 2 - ph * 4, r: (5 + rnd(911, i) * 3.5) * k * (1 - ph * 0.4), steps: [1, 2, 3, 4, 5] });
+      list.push({ x: 14 + i * 16 + ph * 6, y: WGY - 6 - ph * 4, r: (5 + rnd(911, i) * 3.5) * k * (1 - ph * 0.4), steps: [1, 2, 3, 4, 5] });
     }
     smoke(c, list, { seed: 912, alpha: 205 });
   };
@@ -828,9 +826,9 @@ function wall(): WorldSprite {
   return sprite('wall', 'Genjutsu wall: mirror veil', [WW / 2, WGY], { rise: once(rise, 12), idle: loop(idle, 8) });
 }
 
-/** Aura (the owner approved this look: keep it): smoke tongues at the sides, tomoe orbiting, petals and feathers. */
+/** Aura (the owner approved this look: keep it): smoke tongues at the sides, sigils orbiting, petals and feathers. */
 function aura(): WorldSprite {
-  const W = 80, H = 120, ax = 40, ay = 112;
+  const W = 80, H = 128, ax = 40, ay = 112;
   const S = AURA_STEP;
   const frames = range(6).map((f) => {
     const c = new Canvas(W, H), t = f / 6;
@@ -858,9 +856,12 @@ function aura(): WorldSprite {
       const x = ax + Math.cos(a) * 30, y = 58 + Math.sin(a) * 6 - k * 14;
       if (Math.abs(Math.cos(a)) < 0.45) continue;
       const l = new L(W, H);
-      tomoeTube(l, x, y, 3.2, a + t * TAU, 1, { reach: 1.3, sweep: 1.8 });
+      sigilMask(l, x, y, 3, t * (TAU / 4) + k, 2.4);
       energy(l, [1, 2], [S[3], S[5], S[6]]);
       l.render(c, G);
+      const mk = new L(W, H);
+      mk.disc(x, y, 1.1, S[1]);
+      mk.render(c, G, { outline: null });
     }
     for (let i = 0; i < 4; i++) {
       const ph = fract(rnd(951, i) + t);
@@ -870,7 +871,7 @@ function aura(): WorldSprite {
     }
     return c;
   });
-  return sprite('aura', 'Genjutsu aura: smoke tongues and tomoe', [ax, ay], { idle: loop(frames, 10) });
+  return sprite('aura', 'Genjutsu aura: smoke tongues and sigils', [ax, ay], { idle: loop(frames, 10) });
 }
 
 export function buildGenjutsu(): WorldSprite[] {

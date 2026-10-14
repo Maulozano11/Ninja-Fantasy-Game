@@ -791,7 +791,9 @@ def scene_json():
         {'group': 'campsite', 'name': 'torii', 'x': 838, 'y': 304},
         {'group': 'campsite', 'name': 'tent_small', 'x': 694, 'y': 308, 'flip': True},
         {'group': 'campsite', 'name': 'swords_pair', 'x': 640, 'y': 338},
-        {'group': 'landmarks', 'name': 'stone_lantern', 'x': 786, 'y': 352, 'anim': 'lit'},
+        # Only when the site has a shrine (CampScene's `shrine`): a hokora framed by the gate, a lit lantern.
+        {'group': 'landmarks', 'name': 'hokora', 'x': 846, 'y': 296, 'shrine': True},
+        {'group': 'landmarks', 'name': 'stone_lantern', 'x': 786, 'y': 352, 'anim': 'lit', 'shrine': True},
         {'group': 'campsite', 'name': 'fern_clump', 'x': 900, 'y': 318},
         {'group': 'campsite', 'name': 'fern_clump', 'x': 760, 'y': 356, 'flip': True},
         {'group': 'campsite', 'name': 'fern_clump', 'x': 128, 'y': 400},

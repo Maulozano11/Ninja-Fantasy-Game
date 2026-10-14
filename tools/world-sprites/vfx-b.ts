@@ -19,6 +19,8 @@
 import { join } from 'node:path';
 import { CHARACTER_FEET, Canvas, Color, WorldSprite, characterRef, hex, previewDir, writeGroup } from './kit';
 import { text, textWidth } from './vfx-b-lib';
+import { borderTouches } from './vfx-b-wall3d';
+import { writeFileSync } from 'node:fs';
 import { E, buildEarth } from './vfx-b-earth';
 import { G, buildGenjutsu } from './vfx-b-genjutsu';
 import { C, buildChakra } from './vfx-b-chakra';
@@ -214,13 +216,29 @@ function beastStrip(e: Element, s: WorldSprite): void {
   c.scaled(4).save(join(OUT, `vfx-b-beast-${e.el}-4x.png`));
 }
 
+/** Frames whose opaque pixels touch the frame border (stream tiles are exempt: they tile). */
+function borderReport(e: Element, sprites: WorldSprite[]): string[] {
+  const out: string[] = [];
+  for (const s of sprites) {
+    if (s.name === 'stream') continue;
+    for (const [k, a] of Object.entries(s.anims)) {
+      // The stream head joins the last tile at its left edge, so that side is the joint.
+      const bad = borderTouches(a.frames, s.name === 'stream_head' ? 'L' : '');
+      if (bad.length) out.push(`vfx_${e.el}/${s.name}/${k} frames ${bad.join(',')}`);
+    }
+  }
+  return out;
+}
+
 const built: { e: Element; sprites: WorldSprite[] }[] = [];
+const border: string[] = [];
 for (const e of ELEMENTS) {
   if (ONLY.length && !ONLY.includes(e.el)) continue;
   const sprites = e.build();
   writeGroup(`vfx_${e.el}`, sprites);
   elementSheet(e, sprites).scaled(2).save(join(OUT, `vfx-${e.el}.png`));
   beastStrip(e, sprites.find((s) => s.name === 'beast')!);
+  border.push(...borderReport(e, sprites));
   for (const s of sprites) {
     if (LOOK.includes('all') || LOOK.includes(s.name)) look(e, s);
     const f0 = Object.values(s.anims)[0].frames[0];
@@ -231,3 +249,9 @@ for (const e of ELEMENTS) {
   built.push({ e, sprites });
 }
 if (built.length) animSheet(built).scaled(2).save(join(OUT, 'vfx-vfx-b-anims.png'));
+{
+  const checked = built.map(({ e, sprites }) => `${e.el}: ${sprites.filter((s) => s.name !== 'stream').reduce((n, s) => n + Object.values(s.anims).reduce((m, a) => m + a.frames.length, 0), 0)} frames`).join(', ');
+  const report = [`Border check (opaque pixels on the frame border; stream tiles exempt): ${checked}`, ...(border.length ? border : ['no frame touches its border'])].join('\n') + '\n';
+  console.log(report);
+  if (!ONLY.length) writeFileSync(join(OUT, 'vfx-b-border-check.txt'), report);
+}

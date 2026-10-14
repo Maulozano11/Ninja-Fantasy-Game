@@ -257,13 +257,13 @@ export function drawDragon(W: number, H: number, snoutAt: Pt, neckBase: Pt, s: n
   all.draw(neck, 0, 0);
   all.draw(head.front, dx, dy);
   if (vis >= 1) return { c: all, edge: [] };
-  // Forming: the lower parts (nearest the wave) appear first. Fading: it burns away in patches,
-  // the horns and mane first.
+  // Forming: the lower parts (nearest the wave) appear first. Fading: it burns away from the
+  // neck's root upward as the wave under it dies, the head going last, in broad ragged patches.
   const top = snoutAt[1] - 60 * s, bottom = neckBase[1];
   const key = (x: number, y: number) => {
-    const n = pnoise(x, y, 9, 0, 0, seed + 3) * 0.55 + pnoise(x, y, 22, 0, 0, seed + 4) * 0.45;
+    const n = pnoise(x, y, 14, 0, 0, seed + 3) * 0.55 + pnoise(x, y, 30, 0, 0, seed + 4) * 0.45;
     const hgt = clamp((bottom - y) / Math.max(1, bottom - top), 0, 1);
-    return fading ? clamp(n * 0.75 + hgt * 0.25 + (x < snoutAt[0] - 120 * s ? 0.1 : 0), 0, 1) : clamp(hgt * 0.65 + n * 0.35, 0, 1);
+    return fading ? clamp((1 - hgt) * 0.7 + (n - 0.5) * 0.5 + 0.15, 0, 1) : clamp(hgt * 0.65 + n * 0.35, 0, 1);
   };
   return dissolve(all, vis, key, [FIRE[4], FIRE[6]], FIRE[0]);
 }

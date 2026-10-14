@@ -126,20 +126,30 @@ export function march(o: Orient, inside: Inside, bound: { sMax: number; uMin?: n
   return hits;
 }
 
-/** Frames whose opaque pixels touch the border (indices into `frames`). */
-export function borderTouches(frames: Canvas[]): number[] {
-  const bad: number[] = [];
+/** Sides of a frame touched by opaque pixels: 'L', 'R', 'T', 'B'. */
+export function touchedSides(c: Canvas): string {
+  let out = '';
+  const col = (x: number) => {
+    for (let y = 0; y < c.h; y++) if (c.alpha(x, y)) return true;
+    return false;
+  };
+  const row = (y: number) => {
+    for (let x = 0; x < c.w; x++) if (c.alpha(x, y)) return true;
+    return false;
+  };
+  if (col(0)) out += 'L';
+  if (col(c.w - 1)) out += 'R';
+  if (row(0)) out += 'T';
+  if (row(c.h - 1)) out += 'B';
+  return out;
+}
+
+/** Frames whose opaque pixels touch the border, as "index:sides" (sides in `ignore` don't count). */
+export function borderTouches(frames: Canvas[], ignore = ''): string[] {
+  const bad: string[] = [];
   frames.forEach((c, k) => {
-    for (let x = 0; x < c.w; x++)
-      if (c.alpha(x, 0) || c.alpha(x, c.h - 1)) {
-        bad.push(k);
-        return;
-      }
-    for (let y = 0; y < c.h; y++)
-      if (c.alpha(0, y) || c.alpha(c.w - 1, y)) {
-        bad.push(k);
-        return;
-      }
+    const sides = [...touchedSides(c)].filter((ch) => !ignore.includes(ch)).join('');
+    if (sides) bad.push(`${k}:${sides}`);
   });
   return bad;
 }

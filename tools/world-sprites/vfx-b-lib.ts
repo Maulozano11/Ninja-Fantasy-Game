@@ -531,6 +531,18 @@ export function tint(c: Canvas, col: Color, k: number): void {
   c.map((p) => mix(p, [col[0], col[1], col[2], p[3]], k));
 }
 
+/**
+ * Lets whatever reaches the left edge fade out in steps over the last few columns instead of
+ * being cut flat by the frame (trails of projectiles flying right).
+ */
+export function fadeLeft(c: Canvas, steps: number[] = [0, 0.3, 0.5, 0.7, 0.85, 0.95]): void {
+  for (let x = 0; x < steps.length && x < c.w; x++)
+    for (let y = 0; y < c.h; y++) {
+      const i = (y * c.w + x) * 4 + 3;
+      c.px[i] = Math.round(c.px[i] * steps[x]);
+    }
+}
+
 /** Multiplies a canvas's alpha by k. */
 export function fade(c: Canvas, k: number): void {
   for (let i = 3; i < c.px.length; i += 4) c.px[i] = Math.round(c.px[i] * k);

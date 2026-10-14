@@ -5,7 +5,7 @@
 
 import { Anim, Canvas, WorldSprite, fbm, hash, hex, lambert, mix } from './kit';
 import { MOSS_R, outlineTinted } from './landmarks-paint';
-import { L, Pt, Puff, TAU, chip, clamp, facetRock, fract, gasLayer, lerp, pal, pnoise, polar, puffs, rnd, rockPts, rot, segDist, smooth } from './vfx-b-lib';
+import { L, Pt, Puff, TAU, chip, clamp, facetRock, fract, gasLayer, lerp, pal, pnoise, polar, puffs, rnd, rockPts, rot, segDist, smooth, fadeLeft } from './vfx-b-lib';
 import { HGT, Hits, LEN, Orient, WallKey, march, orientations, proj } from './vfx-b-wall3d';
 
 /** 0 outline, 1 dark brown, 2 umber, 3 brown ochre, 4 ochre, 5 tan ochre, 6 tan, 7 sand, 8 pale sand. */
@@ -18,6 +18,8 @@ const N = 6;
 const loop = (frames: Canvas[], fps = 12): Anim => ({ frames, fps, loop: true });
 const once = (frames: Canvas[], fps = 12): Anim => ({ frames, fps, loop: false });
 const sprite = (name: string, label: string, anchor: [number, number], anims: Record<string, Anim>): WorldSprite => {
+  // Trails of projectiles flying right fade out at the left edge instead of being cut flat.
+  if (['bolt', 'sphere', 'slash', 'multi', 'beast'].includes(name)) for (const a of Object.values(anims)) a.frames.forEach((fr) => fadeLeft(fr));
   const f0 = Object.values(anims)[0].frames[0];
   return { name, label, meters: [+(f0.w / 57).toFixed(2), +(f0.h / 57).toFixed(2)], anchor, tags: ['vfx'], anims };
 };
@@ -174,16 +176,16 @@ function bolt(): WorldSprite {
     const list: Puff[] = [];
     for (let i = 5; i >= 0; i--) {
       const s = i + t;
-      list.push({ x: cx - 10 - s * 6.4, y: cy + 1 + Math.sin(s * 1.6 + 0.5) * 2.2 - s * 0.3, r: Math.max(0, 5.8 - s * 0.85), steps: dustAge(s / 6) });
+      list.push({ x: cx - 9 - s * 5.2, y: cy + 1 + Math.sin(s * 1.6 + 0.5) * 2.2 - s * 0.3, r: Math.max(0, 5.8 - s * 1.12), steps: dustAge(s / 6) });
     }
     dust(c, list, { seed: 5 });
     streaks(c, [[0, cy - 12, 13], [1, cy + 11, 11], [2, cy - 8, 7], [3, cy + 15, 6]].map(([k, yy, len]) => {
-      const x = cx - 13 - fract(t + k * 0.37) * 18;
+      const x = cx - 13 - fract(t + k * 0.37) * 10;
       return [x - len, x, yy] as [number, number, number];
     }));
     grit(c, range(7).map((i) => {
       const ph = fract(rnd(11, i) + t);
-      return [cx - 10 - ph * 34, cy - 9 + rnd(12, i) * 18 + ph * 3, rnd(13, i) < 0.45 ? 3 : 2];
+      return [cx - 10 - ph * 25, cy - 9 + rnd(12, i) * 18 + ph * 3, rnd(13, i) < 0.45 ? 3 : 2];
     }));
     stone(c, cx, cy, 11.5, 21, (f * TAU) / N, { n: 7, rough: 0.42, moss: 1, cracks: 1 });
     return c;
@@ -211,7 +213,7 @@ function multi(): WorldSprite {
       const sl: [number, number, number][] = [];
       for (const [j, dy] of [[0, -5], [1, 4]] as [number, number][]) {
         const ph = fract(t * 2 + k * 0.4 + j * 0.5);
-        const p0 = rot([x - 12 - ph * 12, y + dy * s], a, [x, y]);
+        const p0 = rot([x - 12 - ph * 9, y + dy * s], a, [x, y]);
         sl.push([p0[0] - 9, p0[0], Math.round(p0[1])]);
       }
       streaks(c, sl);
@@ -241,17 +243,17 @@ function sphere(): WorldSprite {
     const list: Puff[] = [];
     for (let i = 5; i >= 0; i--) {
       const s = i + t;
-      list.push({ x: cx - 16 - s * 5.4, y: cy + 5 + Math.sin(s * 1.5) * 2 - s * 0.7, r: Math.max(0, 8 - s * 1.2), steps: dustAge(s / 6) });
+      list.push({ x: cx - 15 - s * 3.9, y: cy + 5 + Math.sin(s * 1.5) * 2 - s * 0.7, r: Math.max(0, 8 - s * 1.5), steps: dustAge(s / 6) });
     }
     dust(c, list, { seed: 17 });
     streaks(c, [[0, cy - 15, 12], [1, cy + 16, 10], [2, cy - 10, 8]].map(([k, yy, len]) => {
-      const x = cx - 19 - fract(t + k * 0.41) * 14;
+      const x = cx - 17 - fract(t + k * 0.41) * 6;
       return [x - len, x, yy] as [number, number, number];
     }));
     stone(c, cx, cy, R, 207, spin, { n: 12, rough: 0.22, moss: 1.05, cracks: 3 });
     grit(c, range(7).map((i) => {
       const ph = fract(rnd(31, i) + t);
-      return [cx - 12 - ph * 30, cy + 9 + rnd(32, i) * 8 + ph * ph * 10, rnd(33, i) < 0.4 ? 3 : 2];
+      return [cx - 12 - ph * 20, cy + 9 + rnd(32, i) * 8 + ph * ph * 10, rnd(33, i) < 0.4 ? 3 : 2];
     }));
     return c;
   });
@@ -278,7 +280,7 @@ function slash(): WorldSprite {
       const list: Puff[] = [];
       for (let i = 2; i >= 0; i--) {
         const q = i + t;
-        const p = polar(ox - 4 - q * 5, oy, R - 1.5, sgn * (1.72 - q * 0.04));
+        const p = polar(ox - 3 - q * 3.4, oy, R - 1.5, sgn * (1.72 - q * 0.04));
         list.push({ x: p[0], y: p[1], r: Math.max(0, 2.8 - q * 0.8), steps: dustAge(0.4 + q / 4) });
       }
       dust(c, list, { seed: 40 + sgn });
@@ -329,7 +331,7 @@ function slash(): WorldSprite {
 
 /** Beast: a great stone serpent of armor plates, jaws agape, moss on its back, rubble falling away. */
 function beast(): WorldSprite {
-  const W = 128, H = 96;
+  const W = 136, H = 96;
   const frames = range(N).map((f) => {
     const c = new Canvas(W, H), t = f / N, ph = f * (TAU / N);
     const spine = (s: number): Pt => {
@@ -337,16 +339,16 @@ function beast(): WorldSprite {
       return [89 - s, 49 + amp * Math.sin(s * 0.1 - ph) - smooth(40, 86, s) * 3];
     };
     const rad = (s: number): number => (s < 6 ? 12 : lerp(12.5, 2.4, clamp((s - 6) / 80, 0, 1) ** 0.85));
-    const tail = spine(85);
+    const tail = spine(81);
     const list: Puff[] = [];
     for (let i = 3; i >= 0; i--) {
       const q = i + t;
-      list.push({ x: tail[0] - 3 - q * 5, y: tail[1] + 2 + q * 0.6, r: Math.max(0, 5.5 - q * 1.3), steps: dustAge(q / 4) });
+      list.push({ x: tail[0] - 1 - q * 1.6, y: tail[1] + 3 + q * 1.2, r: Math.max(0, 4.6 - q * 1.3), steps: dustAge(q / 4) });
     }
     dust(c, list, { seed: 61 });
     // Body: a tube shaded as overlapping armor plates with a scaled belly.
     const S: { p: Pt; s: number; t: Pt }[] = [];
-    for (let s = 0; s <= 86; s += 0.5) {
+    for (let s = 0; s <= 82; s += 0.5) {
       const p = spine(s), q = spine(s - 0.5);
       const ln = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
       S.push({ p, s, t: [(q[0] - p[0]) / ln, (q[1] - p[1]) / ln] });
@@ -483,9 +485,9 @@ function beast(): WorldSprite {
 
 /** Breath: a cone of grit, stones and dust blasting from the left middle. */
 function breath(): WorldSprite {
-  const ox = 3, oy = 32;
+  const ox = 11, oy = 52, BW = 112, BH = 104;
   const frames = range(N).map((f) => {
-    const c = new Canvas(96, 64), t = f / N;
+    const c = new Canvas(BW, BH), t = f / N;
     const list: (Puff & { s: number })[] = [];
     const NP = 32;
     for (let i = 0; i < NP; i++) {
@@ -514,14 +516,14 @@ function breath(): WorldSprite {
       if (r < 2.6) grit(c, [[p[0], p[1], 3]]);
       else stone(c, p[0], p[1], r, 90 + i, f * 1.1 + i, { n: 6 });
     }
-    const core = new L(96, 64);
+    const core = new L(BW, BH);
     core.ellipse(ox + 2, oy, 7, 6, 5);
     core.ellipse(ox + 2.5, oy, 5, 4, 7);
     core.ellipse(ox + 2, oy, 2.6, 2, 8);
     core.render(c, E, { outline: E[1] });
     return c;
   });
-  return sprite('breath', 'Earth breath: gravel blast', [0, 32], { fly: loop(frames) });
+  return sprite('breath', 'Earth breath: gravel blast', [8, 52], { fly: loop(frames) });
 }
 
 const GY = 42;
@@ -567,21 +569,21 @@ function streamHead(): WorldSprite {
     for (let i = 0; i < 7; i++) {
       const ph = fract(rnd(151, i) + t);
       const a = -Math.PI / 2 + (rnd(152, i) - 0.5) * 2;
-      const p = polar(34, GY - 16, 14 + ph * 20, a);
+      const p = polar(34, GY - 12, 11 + ph * 12, a);
       if (rnd(153, i) < 0.5) grit(c, [[p[0], p[1] + ph * ph * 10, 3]]);
       else stone(c, p[0], p[1] + ph * ph * 10, 2.8, 160 + i, f + i, { n: 5 });
     }
     spike(c, 5, GY, 13, 9, 2, 150);
     spike(c, 21 + shake, GY, 26, 12, -6, 170);
     spike(c, 48 - shake, GY, 24, 12, 7, 171);
-    spike(c, 34, GY, 40 + [0, 2, 1, 2, 0, 1][f], 16, 2, 172);
+    spike(c, 34, GY, 36 + [0, 2, 1, 2, 0, 1][f], 16, 2, 172);
     dust(c, [
       { x: 15, y: GY - 1, r: 5 + (f % 2) },
       { x: 53, y: GY - 1, r: 5 - (f % 2) },
       { x: 26, y: GY + 1, r: 4 },
       { x: 43, y: GY + 1, r: 4.5 },
     ], { seed: 180 + f });
-    rubble(c, 0, 64, GY, 141, { count: 9 });
+    rubble(c, 0, 58, GY, 141, { count: 8 });
     return c;
   });
   return sprite('stream_head', 'Earth stream head: spike eruption', [32, 32], { fly: loop(frames) });
@@ -622,7 +624,7 @@ function hit(): WorldSprite {
       const sl = new L(64, 64);
       for (let k = 0; k < 10; k++) {
         const a = (k / 10) * TAU + 0.15;
-        const p0 = polar(cx, cy, 12 + f * 6, a), p1 = polar(cx, cy, 17 + f * 7, a);
+        const p0 = polar(cx, cy, 11 + f * 5, a), p1 = polar(cx, cy, 15 + f * 5.5, a);
         sl.line(p0[0], p0[1], p1[0], p1[1], 7);
       }
       sl.render(c, E, { outline: null });
@@ -630,16 +632,17 @@ function hit(): WorldSprite {
     if (f >= 1)
       for (let k = 0; k < 7; k++) {
         const a = (k / 7) * TAU - 0.4 + rnd(206, k) * 0.5;
-        const d = [0, 11, 18, 23, 26, 28][f] * (0.85 + rnd(207, k) * 0.3);
+        const d = [0, 10, 15, 19, 21, 22][f] * (0.85 + rnd(207, k) * 0.3);
         const p = polar(cx, cy, d, a);
         if (f === 5 && k % 2) continue;
-        stone(c, p[0], p[1] + f * f * 0.45, 2.4 + rnd(208, k) * 1.8, 210 + k, f * 1.3 + k, { n: 6 });
+        const r = 2.4 + rnd(208, k) * 1.8;
+        stone(c, p[0], Math.min(p[1] + f * f * 0.28, 58 - r), r, 210 + k, f * 1.3 + k, { n: 6 });
       }
     if (f >= 2)
       grit(c, range(8).map((k) => {
         const a = (k / 8) * TAU + rnd(209, k);
-        const p = polar(cx, cy, 10 + f * 4.5, a);
-        return [p[0], p[1] + f * f * 0.5, 2];
+        const p = polar(cx, cy, 9 + f * 3, a);
+        return [p[0], Math.min(p[1] + f * f * 0.2, 59), 2];
       }));
     return c;
   });
@@ -1224,7 +1227,7 @@ const wall = (): WorldSprite => stoneWall('wall');
 
 /** Aura (the owner approved this look: keep it): dust whirlwind walls at the sides, levitating stones, a cracked ring. */
 function aura(): WorldSprite {
-  const W = 80, H = 120, ax = 40, ay = 112;
+  const W = 80, H = 128, ax = 40, ay = 112;
   const frames = range(6).map((f) => {
     const c = new Canvas(W, H), t = f / 6;
     const g = new L(W, H);

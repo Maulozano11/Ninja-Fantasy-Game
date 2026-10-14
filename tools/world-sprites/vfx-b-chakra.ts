@@ -5,7 +5,7 @@
 // Palette: deep blue, blue, sky cyan, light cyan, ice white, white, with gold for the seals.
 
 import { Anim, Canvas, WorldSprite } from './kit';
-import { L, Pt, TAU, clamp, fract, lerp, pal, pnoise, polar, rnd, rot, smooth } from './vfx-b-lib';
+import { L, Pt, TAU, clamp, fract, lerp, pal, pnoise, polar, rnd, rot, smooth, fadeLeft } from './vfx-b-lib';
 
 /** 0 outline, 1 deep blue, 2 royal, 3 blue, 4 azure, 5 sky cyan, 6 light cyan, 7 ice white, 8 white. */
 export const C = pal('#081040', '#12288c', '#1a46c8', '#2a6cf0', '#2fa0ff', '#3cc8ff', '#8ae8ff', '#d4f8ff', '#ffffff');
@@ -16,6 +16,8 @@ const N = 6;
 const loop = (frames: Canvas[], fps = 12): Anim => ({ frames, fps, loop: true });
 const once = (frames: Canvas[], fps = 12): Anim => ({ frames, fps, loop: false });
 const sprite = (name: string, label: string, anchor: [number, number], anims: Record<string, Anim>): WorldSprite => {
+  // Trails of projectiles flying right fade out at the left edge instead of being cut flat.
+  if (['bolt', 'sphere', 'slash', 'multi', 'beast'].includes(name)) for (const a of Object.values(anims)) a.frames.forEach((fr) => fadeLeft(fr));
   const f0 = Object.values(anims)[0].frames[0];
   return { name, label, meters: [+(f0.w / 57).toFixed(2), +(f0.h / 57).toFixed(2)], anchor, tags: ['vfx'], anims };
 };
@@ -163,7 +165,7 @@ function bolt(): WorldSprite {
     }
     wake.render(c, C, { outline: null });
     streaks(c, [[0, 18, 12], [1, 20, 10], [2, 47, 12]].map(([k, yy, len]) => {
-      const x = cx - 14 - fract(t + k * 0.37) * 16;
+      const x = cx - 14 - fract(t + k * 0.37) * 9;
       return [x - len, x, yy] as [number, number, number];
     }));
     const l = new L(64, 64);
@@ -175,7 +177,7 @@ function bolt(): WorldSprite {
     l.render(c, C);
     sparks(c, range(5).map((i) => {
       const ph = fract(rnd(11, i) + t);
-      return [cx - 10 - ph * 30, cy - 12 + rnd(12, i) * 24, ph < 0.5 ? 1 : 0];
+      return [cx - 10 - ph * 24, cy - 12 + rnd(12, i) * 24, ph < 0.5 ? 1 : 0];
     }));
     return c;
   });
@@ -231,9 +233,9 @@ function beast(): WorldSprite {
     };
     // Three bushy tails fanning back: up, straight, down.
     const tails: [number, number, number, number][] = [
-      [-34, 50, 0, 1],
-      [22, 50, 2.1, 1],
-      [-8, 52, 4.2, 0],
+      [-29, 44, 0, 1],
+      [22, 44, 2.1, 1],
+      [-8, 45, 4.2, 0],
     ];
     for (const [k, [dy, reach, p0, dim]] of tails.entries()) {
       const pts: Pt[] = [];
@@ -299,7 +301,7 @@ function beast(): WorldSprite {
     const wisps = new L(W, H);
     for (let i = 0; i < 10; i++) {
       const p0 = fract(rnd(31, i) + t);
-      const x = 80 - rnd(32, i) * 72 - p0 * 16, y = 22 + rnd(33, i) * 50 - p0 * 16;
+      const x = 80 - rnd(32, i) * 60 - p0 * 12, y = 24 + rnd(33, i) * 48 - p0 * 14;
       wisps.ellipse(x, y, 2.3 * (1 - p0 * 0.6), 1.7 * (1 - p0 * 0.6), 1);
     }
     wisps.erase((x, y) => body.get(x, y) >= 0);
@@ -307,7 +309,7 @@ function beast(): WorldSprite {
     wisps.render(c, C);
     sparks(c, range(7).map((i) => {
       const p0 = fract(rnd(34, i) + t);
-      return [96 - rnd(35, i) * 86 - p0 * 20, 14 + rnd(36, i) * 66, p0 < 0.4 ? 2 : 1];
+      return [96 - rnd(35, i) * 72 - p0 * 14, 14 + rnd(36, i) * 66, p0 < 0.4 ? 2 : 1];
     }));
     return c;
   });
@@ -387,7 +389,7 @@ function streamHead(): WorldSprite {
     tick.render(c, GOLD, { outline: null });
     sparks(c, range(4).map((i) => {
       const a = (i / 4) * TAU + t * TAU;
-      const p = polar(54, 32, 6 + (i % 2) * 3, a);
+      const p = polar(50, 32, 5 + (i % 2) * 2, a);
       return [p[0], p[1], i % 2];
     }));
     return c;
@@ -417,10 +419,10 @@ function palm(l: L, x: number, y: number, h: number, v: number): void {
 
 /** Breath: a gentle-fist palm wave: a cone of chakra pressure with a giant palm imprint at its front. */
 function breath(): WorldSprite {
-  const ox = 2, oy = 32;
+  const ox = 10, oy = 52, BW = 112, BH = 104;
   const frames = range(N).map((f) => {
-    const c = new Canvas(96, 64), t = f / N;
-    const cone = new L(96, 64);
+    const c = new Canvas(BW, BH), t = f / N;
+    const cone = new L(BW, BH);
     cone.fill((x, y) => {
       const dx = x + 0.5 - ox, dy = y + 0.5 - oy;
       if (dx < 0) return false;
@@ -433,7 +435,7 @@ function breath(): WorldSprite {
     for (let k = 0; k < 4; k++) {
       const r = 10 + (k + t) * 22;
       if (r > 90) continue;
-      const l = new L(96, 64);
+      const l = new L(BW, BH);
       for (let a = -0.42; a <= 0.42; a += 0.5 / r) for (let d = 0; d < 2; d += 0.5) {
         const p = polar(ox, oy, r + d, a);
         l.set(p[0], p[1], d < 1 ? 8 : 6);
@@ -441,13 +443,13 @@ function breath(): WorldSprite {
       l.render(c, C, { outline: C[3] });
     }
     // The palm imprint, pulsing.
-    const pl = new L(96, 64);
-    palm(pl, 74 + Math.sin(t * TAU) * 1, 30, 42, 1);
+    const pl = new L(BW, BH);
+    palm(pl, 82 + Math.sin(t * TAU) * 1, 50, 42, 1);
     energy(pl, { cuts: [1, 2, 3, 4.5], steps: [3, 5, 6, 7, 8] });
     pl.render(c, C);
-    const lines = new L(96, 64);
-    lines.line(68, 37, 80, 34, 3);
-    lines.line(67, 40, 78, 40, 3);
+    const lines = new L(BW, BH);
+    lines.line(76, 57, 88, 54, 3);
+    lines.line(75, 60, 86, 60, 3);
     lines.render(c, C, { outline: null });
     streaks(c, range(6).map((i) => {
       const a = (rnd(51, i) - 0.5) * 0.6;
@@ -455,13 +457,13 @@ function breath(): WorldSprite {
       const p = polar(ox, oy, s0, a);
       return [p[0], p[0] + 10, Math.round(p[1])] as [number, number, number];
     }));
-    const core = new L(96, 64);
+    const core = new L(BW, BH);
     core.disc(ox + 2, oy, 6, 1);
     energy(core, { cuts: [1, 2, 3], steps: [5, 6, 7, 8] });
     core.render(c, C);
     return c;
   });
-  return sprite('breath', 'Chakra breath: gentle-fist palm wave', [0, 32], { fly: loop(frames) });
+  return sprite('breath', 'Chakra breath: gentle-fist palm wave', [8, 52], { fly: loop(frames) });
 }
 
 /** Sphere: a spiral sphere: churning arms of chakra inside, a ring of wind tearing around it. */
@@ -470,7 +472,7 @@ function sphere(): WorldSprite {
   const frames = range(N).map((f) => {
     const c = new Canvas(64, 64), t = f / N, spin = t * (TAU / 3);
     streaks(c, [[0, 20, 10], [1, 44, 9], [2, 27, 7]].map(([k, yy, len]) => {
-      const x = cx - 20 - fract(t + k * 0.37) * 12;
+      const x = cx - 18 - fract(t + k * 0.37) * 6;
       return [x - len, x, yy] as [number, number, number];
     }));
     const ring = (front: boolean): void => {
@@ -565,26 +567,28 @@ function hit(): WorldSprite {
       energy(l, { cuts: [1, 1.8, 2.6, 3.6], steps: [4, 5, 6, 7, 8] });
       l.render(c, C);
     }
-    if (f >= 1 && f <= 4) {
-      const r = [0, 12, 16, 18, 19][f];
+    if (f >= 1) {
+      // The seal opens, then fades over the last two frames instead of vanishing.
+      const r = [0, 12, 16, 18, 19, 19.5][f];
+      const fadeA = [255, 255, 255, 255, 180, 100][f];
       const disc = new L(64, 64);
       disc.disc(cx, cy, r - 2, 1);
       disc.bands([1, 2.5], [3, 4, 5]);
-      disc.render(c, C, { alpha: f >= 3 ? 150 : 210, outlineAlpha: f >= 3 ? 150 : 210 });
+      disc.render(c, C, { alpha: f >= 3 ? Math.min(150, fadeA) : 210, outlineAlpha: f >= 3 ? Math.min(150, fadeA) : 210 });
       const hx = new L(64, 64);
       hexagram(hx, cx, cy, r - 3, f * 0.25, f >= 3 ? 6 : 8);
-      hx.render(c, C, { outline: null, alpha: f >= 4 ? 180 : 255 });
-      sealRing(c, cx, cy, r, 1, f * 0.3, { width: 2, glyphs: f >= 2 ? 6 : 0, alpha: f >= 4 ? 180 : 255 });
+      hx.render(c, C, { outline: null, alpha: fadeA });
+      sealRing(c, cx, cy, r, 1, f * 0.3, { width: 2, glyphs: f >= 2 ? 6 : 0, alpha: fadeA });
     }
     if (f >= 2) {
-      const rr = [0, 0, 22, 26, 29, 31][f];
+      const rr = [0, 0, 21, 24, 26, 27][f];
       const ring = new L(64, 64);
       ring.disc(cx, cy, rr, 1);
       ring.erase((x, y) => Math.hypot(x + 0.5 - cx, y + 0.5 - cy) < rr - (f < 4 ? 2 : 1.2));
       ring.map(() => (f < 4 ? 7 : 5));
       ring.render(c, C, { alpha: f >= 5 ? 160 : 255, outlineAlpha: f >= 5 ? 160 : 255 });
       sparks(c, range(10).map((k) => {
-        const p = polar(cx, cy, 8 + f * 5 + rnd(71, k) * 4, (k / 10) * TAU + rnd(72, k) * 0.4);
+        const p = polar(cx, cy, Math.min(26, 8 + f * 4 + rnd(71, k) * 3), (k / 10) * TAU + rnd(72, k) * 0.4);
         return [p[0], p[1], f < 4 ? 2 : f < 5 ? 1 : 0];
       }));
     }
@@ -595,7 +599,7 @@ function hit(): WorldSprite {
 
 /** Blast: a sealing circle draws itself on the ground, a pillar of chakra erupts and fades. */
 function blast(): WorldSprite {
-  const W = 176, H = 144, ax = 88, ay = 88, rx = 80, ry = 53;
+  const W = 176, H = 176, ax = 88, ay = 120, rx = 80, ry = 53;
   const frames = range(8).map((f) => {
     const c = new Canvas(W, H);
     const draw = [0.35, 0.75, 1, 1, 1, 1, 1, 1][f];
@@ -750,7 +754,7 @@ function barrier(c: Canvas, hk: number, sh: number, f: number, t: number): void 
   gl.render(c, GOLD, { outline: null });
   for (const px of [x0 + 7, x1 - 14]) {
     const tag = new L(WW, WH);
-    const ty = Math.max(lim + 6, WGY - 40);
+    const ty = Math.min(Math.max(lim + 6, WGY - 40), WGY - 24);
     tag.fill((x, y) => x >= px && x < px + 7 && y >= ty && y < ty + 16, (x, y) => (x === px || x === px + 6 ? 3 : 5));
     glyph(tag, px + 3.5, ty + 5, 170, 1);
     glyph(tag, px + 3.5, ty + 11, 171, 2);
@@ -777,7 +781,7 @@ function wall(): WorldSprite {
 
 /** Aura: chakra flame tongues licking up both sides, a gold seal ring turning at the feet, sparks. */
 function aura(): WorldSprite {
-  const W = 80, H = 120, ax = 40, ay = 112;
+  const W = 80, H = 128, ax = 40, ay = 112;
   const frames = range(6).map((f) => {
     const c = new Canvas(W, H), t = f / 6;
     sealRing(c, ax, ay, 33, 0.25, t * (TAU / 6), { width: 2.5, glyphs: 0 });

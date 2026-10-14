@@ -237,7 +237,7 @@ function fireball(great: boolean): WorldSprite {
 
 // --- annihilation: a towering wave of fire filling a 60 degree cone -------------------------
 
-interface Wave {
+export interface Wave {
   great: boolean;
   W: number;
   H: number;
@@ -249,7 +249,7 @@ interface Wave {
   hMax: number;
   seed: number;
 }
-interface WaveState {
+export interface WaveState {
   /** How far the crest has rolled (0..1 of the length). */
   crest: number;
   /** Overall flame height (0..1). */
@@ -267,7 +267,7 @@ interface WaveState {
 /** Half the cone's depth on screen at distance d px from the apex (the cone seen from the side). */
 const halfDepth = (d: number) => 5 + 0.1 * d;
 
-function waveFrame(w: Wave, st: WaveState): Canvas {
+export function waveFrame(w: Wave, st: WaveState): Canvas {
   const { W, H, x0, gy, len, hMax, great, seed } = w;
   const t = st.t, ph = t * TAU;
   const bed = new Field(W, H), smoke = new Field(W, H), lipF = new Field(W, H);
@@ -297,7 +297,7 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
     return shapeAt(x, row) * st.burn * (da < 0 ? 1 : smooth(da, da + 0.12, u));
   };
   const er = (x: number, y: number) => pfbm(x, y + t * 180, 9, 2, 0, 180, seed + 33);
-  const bodyK = smooth(0.5, 0.85, st.burn);
+  const bodyK = smooth(0.62, 0.85, st.burn);
   for (let row = 0; row < 3; row++) {
     const f = rows[row];
     // The wave's solid body: a wall of fire from the ground up to about 60% of the row height,
@@ -323,8 +323,11 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
       const d = jx - x0;
       if (d < 2 || jx > crestX + 2) continue;
       if (st.burn < 1 && rr(seed + 70 + row, Math.round(jx), 0, 1) > 0.3 + st.burn * 1.1) continue;
-      const yg = gy + rowSide[row] * halfDepth(d);
-      const h = heightAt(jx, row) * rr(seed + 10 + row, Math.round(jx), 0.82, 1.12) * (1 + 0.08 * Math.sin(ph + jx * 0.05));
+      // Dying flames scatter over the burning ground and vary more in height, so the three
+      // depth rows never line up into neat bars.
+      const scatter = smooth(0, 0.3, st.dead);
+      const yg = gy + rowSide[row] * halfDepth(d) + rr(seed + 90 + row, Math.round(jx), -0.45, 0.45) * halfDepth(d) * scatter;
+      const h = heightAt(jx, row) * rr(seed + 10 + row, Math.round(jx), 0.82, 1.12) * lerp(1, rr(seed + 91 + row, Math.round(jx), 0.4, 1.3), scatter) * (1 + 0.08 * Math.sin(ph + jx * 0.05));
       if (h < 5) continue;
       const lean = 0.42 * smooth(80, 0, crestX - jx) * (surging ? 1 : 0.35);
       const wdt = Math.min(great ? 17 : 15, 5 + h * 0.08);
@@ -333,21 +336,38 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
   }
   // The crest breaks like a wave: a lip of fire rolls forward and curls down over a hollow,
   // lit along its back, dark inside the curl, with spray streaming off it.
-  const lipOn = !(great && st.dragon > 0.3) && st.burn > 0.25 && st.dead < 0.55;
+  const lipOn = !(great && st.dragon > 0.3) && st.burn > 0.7;
   if (lipOn) {
     const ch = heightAt(crestX - 4, 0);
     if (ch > 30) {
       const yg = gy - halfDepth(crestX - x0);
       const top = yg - ch * 0.95;
-      const lip = bez([crestX - ch * 0.36, top + ch * 0.5], [crestX - ch * 0.2, top + ch * 0.0], [crestX + ch * 0.14, top - ch * 0.06], [crestX + ch * 0.23, top + ch * 0.22], 26)
-        .concat(bez([crestX + ch * 0.23, top + ch * 0.22], [crestX + ch * 0.24, top + ch * 0.34], [crestX + ch * 0.15, top + ch * 0.4], [crestX + ch * 0.1, top + ch * 0.33], 10).slice(1));
-      tubeShade(lipF, lip, (u) => ch * lerp(0.13, 0.02, Math.pow(u, 0.8)), (u, sd) => (sd > 0.35 ? 0.42 : sd > -0.45 ? 0.68 : 0.86) - u * 0.12);
-      // Spray streaming back off the top of the lip, and flames licking up its back.
-      for (let k = 0; k < 6; k++) {
-        const q = lip[Math.round((0.2 + k * 0.1) * (lip.length - 1))];
-        tongue(lipF, [q[0], q[1] - ch * 0.03], (-150 + k * 8) * (Math.PI / 180), ch * (0.2 - k * 0.022) + Math.sin(ph + k) * 3, ch * 0.03, 0.74, 0.16, ph + k * 1.3, 0.12);
+      // The lip's spine: up out of the flames, over the crest and thrown forward and down.
+      const sw = Math.sin(ph) * ch * 0.015;
+      const lip = bez([crestX - ch * 0.38, top + ch * 0.52], [crestX - ch * 0.22, top], [crestX + ch * 0.1, top - ch * 0.1 + sw], [crestX + ch * 0.25, top + ch * 0.17 + sw], 30);
+      const thick = (u: number) => ch * (u < 0.45 ? lerp(0.1, 0.14, u / 0.45) : lerp(0.14, 0.05, (u - 0.45) / 0.55));
+      // Lit along its back, dark in the hollow under it, with flow lines following the curl.
+      tubeShade(lipF, lip, thick, (u, sd) => {
+        const base = sd > 0.4 ? 0.38 : sd > -0.3 ? 0.66 : 0.84;
+        const line = fract(sd * 2.2 + 0.25 * Math.sin(u * 11 - ph) + 0.1) < 0.14 ? 0.12 : 0;
+        return (base - line) * lerp(0.82, 1, smooth(0, 0.3, u)) - u * 0.08;
+      });
+      // The thrown edge breaks into fingers of flame that fall forward and curl under.
+      for (let k = 0; k < 5; k++) {
+        const q = lip[lip.length - 1 - k * 2];
+        const a = (30 + k * 17) * (Math.PI / 180) + Math.sin(ph + k * 1.4) * 0.06;
+        tongue(lipF, [q[0], q[1] + thick(1 - k * 0.07) * 0.3], a, ch * (0.21 - k * 0.026) * rr(seed + 62, k, 0.85, 1.1), ch * (0.042 - k * 0.004), 0.78 - k * 0.05, 0.06, ph + k * 1.7, 0.5);
       }
-      erode(lipF, 0.5, er);
+      // Flames streaming up and back off the top of the lip, in uneven clumps.
+      [0.08, 0.2, 0.3, 0.47, 0.6, 0.74].forEach((uu, k) => {
+        const i = Math.round((uu + rr(seed + 63, k, -0.03, 0.03)) * (lip.length - 1));
+        const q = lip[i], n = lip[Math.min(lip.length - 1, i + 1)];
+        const ang = Math.atan2(n[1] - q[1], n[0] - q[0]) - Math.PI / 2;
+        const rad = thick(uu) * 0.65;
+        tongue(lipF, [q[0] + Math.cos(ang) * rad, q[1] + Math.sin(ang) * rad], lerp(-2.45, -2.05, k / 5) + Math.sin(ph + k) * 0.08, ch * (0.2 - k * 0.018) * rr(seed + 61, k, 0.55, 1.25), ch * 0.034, 0.7, 0.2, ph + k * 1.3, -0.18);
+      });
+      // As the fire dies the lip breaks up into loose flames before it goes.
+      erode(lipF, 0.5 + (st.phase === 'fade' ? (1 - st.burn) * 4 : 0), er);
     }
   }
   // Burning ground over the cone's footprint, with ragged edges; it breaks into glowing patches
@@ -384,7 +404,7 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
       const top = gy - halfDepth(x - x0) - hMax * lerp(0.26, 1, Math.pow(uu, 0.75)) * Math.max(0.55, st.burn);
       if (st.phase === 'fade' && rr(seed + 36, k, 0, 1) > st.smoke * 1.4) continue;
       const r = (great ? 22 : 16) * (0.6 + 0.6 * (st.phase === 'fade' ? 0.7 : st.smoke)) * rr(seed + 35, k, 0.6, 1.25) * lerp(0.55, 1, uu);
-      const y = Math.max(r + 3, top - st.smoke * 20 + rr(seed + 34, k, -r * 0.9, r * 0.3) - Math.sin(ph + k) * 1.5);
+      const y = Math.max(r + 3, top - st.smoke * 20 + rr(seed + 34, k, -r * 0.9, r * 0.3) - Math.sin(ph + k) * 1.5 - (st.phase === 'fade' ? (0.7 - st.smoke) * 40 : 0));
       if (great && st.dragon > 0.01 && x > crestX - 200) continue;
       smoke.disc(x + Math.sin(ph + k * 1.7) * 2, y, r, (great ? 0.85 : 0.7) * (st.phase === 'fade' ? 1 : sm), 2.4);
     }
@@ -401,6 +421,8 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
       }
     }
   }
+  // Fading smoke frays into wisps instead of shrinking to round beads.
+  if (st.phase === 'fade') erode(smoke, (1 - st.smoke / 0.7) * 1.8, (x, y) => pfbm(x, y - t * 60, 7, 2, 0, 0, seed + 37));
   const layers: (Canvas | null)[] = [];
   layers.push(smoke.any() ? render(smoke, SMOKE, { th: [0, 0.12, 0.26, 0.42, 0.6, 0.78], hi: great ? 4 : 5, rim: [1, 2], jitter: (x, y) => (pfbm(x - t * 120, y, 6, 2, 120, 0, seed + 36) - 0.5) * 0.3 }) : null);
   layers.push(bed.any() ? render(bed, FIRE, { th: TH, hi: 5, rim: [1] }) : null);
@@ -420,16 +442,18 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
     layers.push(dr.c);
     // Flames wrapping the root of the neck so it rises out of the wave.
     const roots = new Field(W, H);
-    const rootK = smooth(0.1, 0.6, st.dragon) * st.burn;
+    const rootK = (st.phase === 'fade' ? smooth(0.7, 0.95, st.dragon) : smooth(0.1, 0.6, st.dragon)) * st.burn;
     if (rootK > 0.05)
       for (let k = 0; k < 7; k++) {
         const x = neckBase[0] - 26 + k * 9 + rr(seed + 83, k, -3, 3);
         const hgt = (34 + rr(seed + 84, k, 0, 22)) * rootK;
-        tongue(roots, [x, neckBase[1] + 30], -Math.PI / 2 + rr(seed + 85, k, -0.15, 0.15), hgt, 8 * Math.min(1, 0.4 + rootK), 0.9, 0.14, ph + k * 1.7, 0);
+        tongue(roots, [x, neckBase[1] + 30 + rr(seed + 86, k, -8, 8)], -Math.PI / 2 + rr(seed + 85, k, -0.15, 0.15), hgt, 8 * Math.min(1, 0.4 + rootK), 0.9, 0.14, ph + k * 1.7, 0);
       }
     erode(roots, 0.45, er);
     layers.push(render(roots, FIRE, { th: TH, rim: [1], jitter: streaks }));
-    for (const [x, y] of dr.edge) em.push({ x: x + rr(seed + 81, Math.round(x + y), -6, 6), y: y - rr(seed + 82, Math.round(x * y), 4, 14), s: (x + y) % 3 ? 1 : 2 });
+    dr.edge.forEach(([x, y], k) => {
+      if (k % 2 === 0) em.push({ x: x + rr(seed + 81, Math.round(x + y), -6, 6), y: y - rr(seed + 82, Math.round(x * y), 4, 14), s: 1 });
+    });
   }
   layers.push(render(rows[1], FIRE, { th: TH, rim: [1], jitter: streaks }));
   layers.push(render(rows[2], FIRE, { th: TH, rim: [1], jitter: streaks }));
@@ -449,7 +473,8 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
   return stack(W, H, body, embers(W, H, em.filter((e) => e.y > 2 && e.y < H - 2 && e.x < W - 2)));
 }
 
-function annihilation(great: boolean): WorldSprite {
+/** The wave's frame layout (exported with `waveStates` and `waveFrame` for quick test renders). */
+export function waveSpec(great: boolean): Wave {
   const meters = great ? 15 : 12;
   const len = Math.round(meters * PX);
   const hMax = great ? 250 : 190;
@@ -460,15 +485,26 @@ function annihilation(great: boolean): WorldSprite {
   const gy = Math.round(halfDepth(len) + hMax * 1.32 + 10 + topPad);
   const H = Math.ceil((gy + halfDepth(len) + 10) / 8) * 8;
   const W = Math.ceil((x0 + len + 90) / 8) * 8;
-  const w: Wave = { great, W, H, x0, gy, len, hMax, seed: great ? 900 : 800 };
+  return { great, W, H, x0, gy, len, hMax, seed: great ? 900 : 800 };
+}
+
+/** The surge, burn and fade schedules (8, 6 and 6 frames). */
+export function waveStates(): Record<'surge' | 'burn' | 'fade', WaveState[]> {
   const ease = (u: number) => 1 - Math.pow(1 - u, 1.6);
-  const surge = frames(8, (_, i) => waveFrame(w, { crest: ease((i + 1) / 8), burn: lerp(0.75, 1, i / 7), dead: 0, smoke: Math.max(0, (i - 3) / 8), t: i / 8, dragon: smooth(1.5, 6.2, i), phase: 'surge' }));
-  const burn = frames(6, (t) => waveFrame(w, { crest: 1, burn: 1, dead: 0, smoke: 0.6, t, dragon: 1, phase: 'burn' }));
-  const fade = frames(6, (_, i) => waveFrame(w, { crest: 1, burn: [0.8, 0.58, 0.38, 0.2, 0.08, 0][i], dead: [0.1, 0.3, 0.5, 0.7, 0.88, 1][i], smoke: [0.7, 0.55, 0.4, 0.24, 0.1, 0][i], t: i / 6, dragon: [0.85, 0.62, 0.4, 0.2, 0.06, 0][i], phase: 'fade' }));
-  return vfxSprite(great ? 'annihilation_enh' : 'annihilation', great ? 'Great Fire Annihilation, enhanced (cone 15 m, 60 deg)' : 'Great Fire Annihilation (cone 12 m, 60 deg)', [x0, gy], {
-    surge: { frames: surge, fps: 12, loop: false },
-    burn: { frames: burn, fps: 12, loop: true },
-    fade: { frames: fade, fps: 12, loop: false },
+  const n = (k: number) => Array.from({ length: k }, (_, i) => i);
+  return {
+    surge: n(8).map((i) => ({ crest: ease((i + 1) / 8), burn: lerp(0.75, 1, i / 7), dead: 0, smoke: Math.max(0, (i - 3) / 8), t: i / 8, dragon: smooth(1.5, 6.2, i), phase: 'surge' as const })),
+    burn: n(6).map((i) => ({ crest: 1, burn: 1, dead: 0, smoke: 0.6, t: i / 6, dragon: 1, phase: 'burn' as const })),
+    fade: n(6).map((i) => ({ crest: 1, burn: [0.8, 0.58, 0.38, 0.2, 0.08, 0][i], dead: [0.1, 0.3, 0.5, 0.7, 0.88, 1][i], smoke: [0.7, 0.55, 0.4, 0.24, 0.1, 0][i], t: i / 6, dragon: [0.85, 0.62, 0.4, 0.2, 0.06, 0][i], phase: 'fade' as const })),
+  };
+}
+
+function annihilation(great: boolean): WorldSprite {
+  const w = waveSpec(great), st = waveStates();
+  return vfxSprite(great ? 'annihilation_enh' : 'annihilation', great ? 'Great Fire Annihilation, enhanced (cone 15 m, 60 deg)' : 'Great Fire Annihilation (cone 12 m, 60 deg)', [w.x0, w.gy], {
+    surge: { frames: st.surge.map((s) => waveFrame(w, s)), fps: 12, loop: false },
+    burn: { frames: st.burn.map((s) => waveFrame(w, s)), fps: 12, loop: true },
+    fade: { frames: st.fade.map((s) => waveFrame(w, s)), fps: 12, loop: false },
   });
 }
 

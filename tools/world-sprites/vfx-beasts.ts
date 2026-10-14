@@ -358,10 +358,10 @@ function drop(c: Canvas, x: number, y: number, big: boolean, hi: Color, mid: Col
 // along the lit ridge; droplets and spray trail off the crests and the tail.
 
 const WATER = (() => {
-  const base = ramp(blend(MATERIALS.water, '#4fb6e8', 0.45), { shift: 12 });
+  // The river's blue lifted to a vivid cyan, with deep blue in the core.
   return {
-    ramp: base,
-    deep: ramp(blend(MATERIALS.water, '#1d3f78', 0.5), { shift: 10 }),
+    ramp: [hex('#0c2c58'), hex('#1b5c9c'), hex('#2a8ccc'), hex('#55bdea'), hex('#a2e4fa'), hex('#eefcff')] as Color[],
+    deep: [hex('#06163a'), hex('#0f2e66'), hex('#17468e'), hex('#2460ac'), hex('#3c82c8'), hex('#6cb0e2')] as Color[],
     foam: [hex('#3c78a8'), hex('#78b8dc'), hex('#a8daf0'), hex('#d4f0fa'), hex('#f2fcff'), hex('#ffffff')] as Color[],
     belly: ramp(blend('#8fd4ec', MATERIALS.paper, 0.25), { shift: 10 }),
     outline: hex('#0f2a52'),
@@ -376,7 +376,7 @@ function waterSpine(t: number, cx: number, cy: number): P2[] {
   const N = 50;
   for (let i = 0; i <= N; i++) {
     const s = i / N; // 0 at the neck, 1 at the tail tip
-    const x = cx + 24 - s * 104;
+    const x = cx + 24 - s * 97;
     const amp = lerp(3, 19, smooth(0, 0.4, s)) * lerp(1, 0.75, smooth(0.8, 1, s));
     const y = cy + 6 + amp * Math.sin(TAU * (s * 1.1 - t) + 0.9) - 10 * (1 - smooth(0, 0.3, s));
     pts.push([x, y]);
@@ -519,7 +519,7 @@ function waterDragon(): WorldSprite {
       const p = fract(k / 22 + t + rnd(3, k) * 0.3);
       const fromTail = k < 9;
       const src = fromTail ? tail : spine[Math.round(lerp(0.15, 0.85, rnd(4, k)) * (spine.length - 1))];
-      const x = src[0] - p * (fromTail ? 22 : 18) - rnd(5, k) * 5;
+      const x = src[0] - p * (fromTail ? 13 : 16) - rnd(5, k) * 4;
       const y = src[1] + (fromTail ? (rnd(6, k) - 0.5) * 12 * (0.4 + p) : -8 + p * p * 20 + rnd(6, k) * 6);
       if (x < 1 || y < 1 || y > H - 2) continue;
       drop(fc, x, y, p < 0.35 && k % 3 === 0, WATER.foam[5], WATER.foam[2], WATER.ramp[2], -1, fromTail ? 0 : 1);
@@ -643,26 +643,27 @@ function windCrane(): WorldSprite {
     };
     // Far wing, behind everything, raised a little ahead of the near one.
     const farW: CraneWing = { arm: wg.arm + (wg.arm < 0 ? 10 : -10), hand: wg.hand + (wg.hand < 0 ? 12 : -12), spread: wg.spread };
-    const farTips = craneWing(f, [cx + 6, cy - 6 + by], farW, 1.08, t + 0.08, true);
+    const farTips = craneWing(f, [cx + 6, cy - 6 + by], farW, 1.02, t + 0.08, true);
     // Wind ribbons streaming from the tail, waving, each ending in a curl.
     for (let r = 0; r < 3; r++) {
       const pts: P2[] = [];
       const n = 30;
-      const len = 54 + r * 8;
+      const len = 46 + r * 7;
       for (let q = 0; q <= n; q++) {
         const u = q / n;
         const x = cx - 18 - u * len;
         const y = cy + 3 + by + (r - 1) * 7 * u + Math.sin(TAU * (u * 1.2 - t) + r * 1.8) * 4 * u;
         pts.push([x, y]);
       }
-      // The curl at the end: a spiral turning back over the ribbon.
+      // The end hooks over into an open curl (half a turn), tapering to a point.
       const [ex0, ey0] = pts[n];
-      for (let q = 1; q <= 10; q++) {
-        const a = Math.PI / 2 + q * 0.5 + r;
-        const rr = 4.5 - q * 0.3;
-        pts.push([ex0 - 2 + Math.cos(a) * rr * 1.2, ey0 + (r === 1 ? 0 : r === 0 ? -2 : 2) + Math.sin(a) * rr]);
+      const dirUp = r === 2 ? 1 : -1;
+      for (let q = 1; q <= 7; q++) {
+        const a = Math.PI - q * 0.42;
+        const rr = 4 - q * 0.25;
+        pts.push([ex0 + 4 + Math.cos(a) * rr * 1.2 - 0, ey0 + dirUp * (Math.sin(a) * rr)]);
       }
-      f.part_([tube(pts, (u) => (u < 0.75 ? lerp(3.4, 1.4, u / 0.75) : lerp(1.4, 0.7, (u - 0.75) / 0.25)))], (h) => {
+      f.part_([tube(pts, (u) => (u < 0.7 ? lerp(3.4, 1.6, u / 0.7) : lerp(1.6, 0.4, (u - 0.7) / 0.3)))], (h) => {
         const L = lit(h);
         const st = fract(h.u * 6 - t * 3 + r * 0.3) < 0.2 ? 1 : 0;
         const sx = stepOf(L, h.u * h.len, h.v * 3, [0.24, 0.46, 0.7, 0.86], 0.05, 101 + r) + st;
@@ -699,7 +700,7 @@ function windCrane(): WorldSprite {
     f.part_([blob(cx - 2, cy + 1 + by, 19, 8.2, -0.08), blob(cx + 9, cy + by, 9.5, 7.8, -0.2), tube(neck, (u) => lerp(5, 2.9, u)), blob(hd[0] + 3, hd[1], 5.4, 4.3, -0.1)], body, style);
     f.part_([lens([hd[0] + 6, hd[1] - 0.5], [hd[0] + 22, hd[1] + 2.2], 2.1, { peak: 0.12, tip: 0.9, base: 1 })], (h) => WIND.tip[clamp(stepOf(lit(h), h.x, h.y) + (h.v < 0 ? 1 : 0), 2, 5)], style);
     // Near wing in front.
-    const tips = craneWing(f, [cx + 2, cy - 4 + by], wg, 1.25, t, false);
+    const tips = craneWing(f, [cx + 2, cy - 4 + by], wg, 1.18, t, false);
     const fc = f.finish();
     // Eye and a pale crown.
     const ex = Math.round(hd[0] + 4), ey = Math.round(hd[1] - 1);
@@ -715,16 +716,21 @@ function windCrane(): WorldSprite {
         if ((q + Math.floor(t * 12) + seed) % 9 < 7) fc.plot(x, y, wa(WIND.streak, alpha));
       }
     };
-    [...tips, ...farTips].forEach(([x, y], j) => streak(x - 1, y, 16 + (j % 3) * 6, j < tips.length ? 235 : 150, j));
-    // Eddies: little spirals spun off behind, drifting back over the loop.
+    [...tips, ...farTips].forEach(([x, y], j) => streak(x - 1, y, 11 + (j % 3) * 4, j < tips.length ? 235 : 150, j));
+    // Eddies: spirals spun off behind, drifting back and opening up over the loop.
     for (let e = 0; e < 3; e++) {
       const p = fract(t + e / 3);
-      const ex2 = cx - 40 - p * 46, ey2 = cy - 18 + e * 18 + Math.sin(e * 2.1) * 6;
-      const r0 = 2 + p * 3.5;
-      for (let q = 0; q < 26; q++) {
-        const a = q * 0.42 + e * 2 + p * 4;
-        const rr = r0 * (1 - q / 34);
-        fc.plot(Math.round(ex2 + Math.cos(a) * rr * 1.4), Math.round(ey2 + Math.sin(a) * rr), wa(WIND.streak, 245 * (1 - p * 0.7) * (1 - q / 30)));
+      const ex2 = cx - 42 - p * 32, ey2 = cy - 20 + e * 20 + Math.sin(e * 2.1) * 6;
+      const r0 = 2.5 + p * 4;
+      let last: P2 | null = null;
+      for (let q = 0; q <= 60; q++) {
+        const a = q * 0.16 + e * 2 + p * 3;
+        const rr = r0 * (1 - q / 75);
+        const pt: P2 = [Math.round(ex2 + Math.cos(a) * rr * 1.5), Math.round(ey2 + Math.sin(a) * rr)];
+        if (last && pt[0] === last[0] && pt[1] === last[1]) continue;
+        last = pt;
+        if (fc.alpha(pt[0], pt[1]) > 200) continue;
+        fc.set(pt[0], pt[1], wa(q < 20 ? WIND.white : WIND.streak, 235 * (1 - p * 0.6) * (1 - q / 70)));
       }
     }
     frames.push(fc);
@@ -870,7 +876,7 @@ function thunderHound(): WorldSprite {
     // Electric fur: spikes off the belly and the back of the haunch, crackling outward.
     for (let j = 0; j < 6; j++) {
       const u = j / 5;
-      const r = B(lerp(8, -26, u) * sk, lerp(9, 6, u) + Math.sin(u * Math.PI) * 2);
+      const r = B(lerp(8, -26, u) * sk, lerp(6, 4, u) + Math.sin(u * Math.PI) * 2);
       const a = 120 + u * 25 + Math.sin(TAU * t + j * 2.1) * 8;
       const d = dirOf(a);
       const l = (6 + (j % 2) * 3) * Z;
@@ -1030,8 +1036,8 @@ function stoneDragon(): WorldSprite {
     const hw = (u: number): number => hwBase(u) * (1 + 0.07 * (1 - fract((u * totalLen) / PL)));
     const style = { outline: STONE.outline, line: STONE.line, solid: 150 };
     const bob = Math.sin(TAU * t) * 1;
-    const S = 1.25;
-    const hx = neck[0] + 2, hy = neck[1] - 5 + bob;
+    const S = 1.5;
+    const hx = neck[0] - 2, hy = neck[1] - 6 + bob;
     const ang = -0.04 + Math.sin(TAU * t + 0.8) * 0.03;
     const ca = Math.cos(ang), sa = Math.sin(ang);
     const H2 = (x: number, y: number): P2 => [hx + (x * ca - y * sa) * S, hy + (x * sa + y * ca) * S];
@@ -1100,18 +1106,23 @@ function stoneDragon(): WorldSprite {
     ];
     f.part_(skull, rock({ seed: 41, moss: 0.3 }), style);
     f.part_([poly([H2(20, 2.6), H2(22.4, 2.6), H2(21.3, 6.8)]), poly([H2(15, 2.8), H2(17, 2.8), H2(16, 6.4)]), poly([H2(9.5, 3), H2(11.4, 3), H2(10.4, 5.8)])], (h) => STONE.ramp[h.v < 0 ? 5 : 4], { outline: STONE.outline, line: null });
-    // Near horn: thick, swept back and curling up, with a ridge.
-    f.part_([lens(H2(5, -7), H2(-18, -19), 3.8 * S, { bend: -4.5, tip: 1.3, peak: 0.2, base: 0.9 }), lens(H2(-2, 0), H2(-12, 5), 2.4 * S, { tip: 1.5, peak: 0.25 })], rock({ seed: 51 }), style);
+    // Near horns: a thick main horn swept back and curling up, a shorter one below it, a row of
+    // spikes along the brow, and a cheek spur.
+    f.part_([
+      lens(H2(5, -7), H2(-17, -18), 3.4 * S, { bend: -4.5, tip: 1.3, peak: 0.2, base: 0.9 }),
+      lens(H2(1, -4), H2(-14, -7), 2.2 * S, { bend: -2, tip: 1.4, peak: 0.2, base: 0.9 }),
+      lens(H2(-2, 1), H2(-11, 6), 2 * S, { tip: 1.5, peak: 0.25 }),
+      lens(H2(12, -7), H2(8, -12), 1.5 * S, { tip: 1.4, peak: 0.2 }),
+      lens(H2(17, -5.5), H2(14, -10), 1.3 * S, { tip: 1.4, peak: 0.2 }),
+    ], rock({ seed: 51 }), style);
     const fc = f.finish();
     // Eyes: embers glowing under the brow, with a soft glow around.
-    const glowEye = (ex: number, ey: number, big: boolean): void => {
-      for (const [dx, dy] of [[-1, 0], [2, 0], [0, -1], [1, -1], [0, 1], [1, 1], [-1, 1]]) fc.plot(ex + dx, ey + dy, wa(STONE.glow[2], 120));
-      fc.set(ex, ey, STONE.glow[4]);
-      fc.set(ex + 1, ey, big ? STONE.glow[3] : STONE.glow[2]);
-      if (big) fc.set(ex + 2, ey, STONE.glow[2]);
+    const glowEye = (ex: number, ey: number): void => {
+      for (const [dx, dy] of [[-2, 0], [4, 0], [-1, -1], [0, -2], [1, -2], [2, -2], [3, -1], [-1, 1], [0, 2], [1, 2], [2, 2], [3, 1]]) fc.plot(ex + dx, ey + dy, wa(STONE.glow[2], 110));
+      for (const [dx, dy, c] of [[0, -1, STONE.glow[2]], [1, -1, STONE.glow[3]], [2, -1, STONE.glow[2]], [-1, 0, STONE.glow[2]], [0, 0, STONE.glow[4]], [1, 0, STONE.glow[4]], [2, 0, STONE.glow[3]], [3, 0, STONE.glow[1]], [0, 1, STONE.glow[1]], [1, 1, STONE.glow[2]], [2, 1, STONE.glow[1]]] as [number, number, Color][]) fc.set(ex + dx, ey + dy, c);
     };
     const [ex, ey] = H2(11, -3).map(Math.round);
-    glowEye(ex, ey, true);
+    glowEye(ex, ey);
     const [nx2, ny2] = H2(25.5, -2.5).map(Math.round);
     fc.set(nx2, ny2, STONE.glow[1]);
     fc.set(nx2 + 1, ny2, STONE.outline);
@@ -1375,10 +1386,10 @@ function chakraFox(): WorldSprite {
     // --- tails: four long plumes fanned behind, the far ones first ----------------------------
     const tailRoot = B(-24 * sk, -6);
     const tailDefs = [
-      { a: -38, len: 50, w: 6.5 },
-      { a: -14, len: 54, w: 7.5 },
-      { a: 10, len: 52, w: 7 },
-      { a: 32, len: 46, w: 6.5 },
+      { a: -38, len: 46, w: 6.5 },
+      { a: -14, len: 50, w: 7.5 },
+      { a: 10, len: 48, w: 7 },
+      { a: 32, len: 43, w: 6.5 },
     ];
     tailDefs.forEach((td, j) => {
       const pts: P2[] = [];
@@ -1427,27 +1438,34 @@ function chakraFox(): WorldSprite {
     ], flame(23), style);
     // --- head: slender neck, narrow snout, tall ears -------------------------------------------
     const nb = B(24 * sk, -7);
-    const hc: P2 = [nb[0] + 12, nb[1] - 11 + Math.sin(TAU * t) * 1.2];
-    const HZ = (x: number, y: number): P2 => [hc[0] + x * Z, hc[1] + y * Z];
-    const ears = [lens(HZ(-4, -4), HZ(-8, -21), 5, { peak: 0.12, tip: 0.9, base: 1, bend: -1 }), lens(HZ(1, -5), HZ(0, -20), 4.4, { peak: 0.12, tip: 0.9, base: 1, bend: -1.5 })];
+    const hc: P2 = [nb[0] + 13, nb[1] - 12 + Math.sin(TAU * t) * 1.2];
+    const HS = 1.3; // the head drawn a little larger so the fox's face reads
+    const HZ = (x: number, y: number): P2 => [hc[0] + x * HS, hc[1] + y * HS];
+    const ears = [lens(HZ(-4, -4), HZ(-8, -21), 4.4 * HS, { peak: 0.12, tip: 0.9, base: 1, bend: -1 }), lens(HZ(1, -5), HZ(0, -20), 3.8 * HS, { peak: 0.12, tip: 0.9, base: 1, bend: -1.5 })];
     const earTongues = tongues([[HZ(-8, -19), -125, 7]], 33);
     // A ruff of flame around the neck and cheeks, licking back.
     const cheek = tongues([[HZ(-4, 3), 165, 11], [HZ(-2, 6), 150, 10], [HZ(-8, 0), -170, 10], [B(28 * sk, -2), 160, 10], [B(26 * sk, 4), 150, 9]], 36);
-    f.part_([tube([nb, [nb[0] + 6, nb[1] - 6], HZ(-2, 1)], (u) => lerp(8.5, 6.5, u)), blob(hc[0], hc[1], 8, 6.6, 0.05), lens(HZ(2, -1.5), HZ(22, 3.5), 4.4, { peak: 0.15, tip: 0.9, base: 1 }), ...ears, ...earTongues, ...cheek], flame(31), style);
+    f.part_([tube([nb, [nb[0] + 6, nb[1] - 6], HZ(-2, 1)], (u) => lerp(8.5, 7.5, u)), blob(hc[0], hc[1], 8 * HS, 6.6 * HS, 0.05), lens(HZ(2, -1.5), HZ(21, 3.5), 4.2 * HS, { peak: 0.15, tip: 0.9, base: 1 }), ...ears, ...earTongues, ...cheek], flame(31), style);
+    // Inner ears: a darker hollow in each ear.
+    f.part_([lens(HZ(-4.5, -6), HZ(-7.5, -18), 2.2 * HS, { peak: 0.15, tip: 0.9, base: 1, bend: -1 }), lens(HZ(0.5, -6.5), HZ(0, -17.5), 1.8 * HS, { peak: 0.15, tip: 0.9, base: 1, bend: -1.5 })], (h) => CHAKRA.ramp[h.u > 0.7 ? 2 : 1], { outline: null, line: null });
     // --- near legs -----------------------------------------------------------------------------
     f.part_(leg(B(-18 * sk, 2), g.hN, 15, 17, 6.5), flame(37), style);
     f.part_(leg(B(18 * sk, 5), g.fN, 14, 16, 5), flame(41), style);
     const fc = f.finish();
     // Slit eye glowing white, a dark brow; nose.
-    const [ex, ey] = HZ(7, -2).map(Math.round);
-    for (const [dx, dy, c] of [[-1, -1, CHAKRA.outline], [0, -1, CHAKRA.outline], [1, -1, CHAKRA.outline], [2, -1, CHAKRA.outline], [3, -1, CHAKRA.outline], [-1, 0, CHAKRA.ramp[3]], [0, 0, CHAKRA.eye], [1, 0, CHAKRA.eye], [2, 0, CHAKRA.eye], [3, 0, CHAKRA.ramp[4]], [0, 1, CHAKRA.ramp[1]], [1, 1, CHAKRA.ramp[1]], [2, 1, CHAKRA.ramp[1]]] as [number, number, Color][]) fc.set(ex + dx, ey + dy, c);
-    const [nx2, ny2] = HZ(22, 2.6).map(Math.round);
+    // A fox's slanted eye: a dark lid line rising toward the back, a white-hot slit under it.
+    const [ex, ey] = HZ(6.5, -2).map(Math.round);
+    for (const [dx, dy, c] of [
+      [-2, -2, CHAKRA.outline], [-1, -2, CHAKRA.outline], [-1, -1, CHAKRA.outline], [0, -1, CHAKRA.outline], [1, -1, CHAKRA.outline], [2, -1, CHAKRA.outline], [3, 0, CHAKRA.outline],
+      [-1, 0, CHAKRA.ramp[4]], [0, 0, CHAKRA.eye], [1, 0, CHAKRA.eye], [2, 0, CHAKRA.ramp[4]], [0, 1, CHAKRA.ramp[1]], [1, 1, CHAKRA.ramp[1]],
+    ] as [number, number, Color][]) fc.set(ex + dx, ey + dy, c);
+    const [nx2, ny2] = HZ(21, 2.6).map(Math.round);
     fc.set(nx2, ny2, CHAKRA.outline);
     fc.set(nx2 - 1, ny2, CHAKRA.outline);
     // Embers of chakra rising off the back and the tails.
     for (let k = 0; k < 18; k++) {
       const p = fract(k / 18 + t);
-      const x = cx + 30 - rnd(51, k) * 110 - p * 16, y = cy - 6 - rnd(52, k) * 40 - p * 14 + rnd(53, k) * 30;
+      const x = cx + 30 - rnd(51, k) * 96 - p * 14, y = cy - 6 - rnd(52, k) * 40 - p * 14 + rnd(53, k) * 30;
       const X = Math.round(x), Y = Math.round(y);
       if (fc.alpha(X, Y)) continue;
       fc.set(X, Y, p < 0.5 ? CHAKRA.ember : CHAKRA.ramp[3]);
@@ -1535,24 +1553,24 @@ function venomCobra(): WorldSprite {
     f.part_([tube(neck, (u) => lerp(8, 6, u))], scales(25, { belly: 0.35 }), style);
     // --- hood: spread wide behind the head, its face turned to us: pale with dark crossbands,
     //     two eye-spots, a scaled dark rim -----------------------------------------------------
-    const hc: P2 = [hx - 9, hy + 9];
-    const tilt = 0.28 + Math.sin(TAU * t) * 0.03;
-    f.part_([blob(hc[0], hc[1], 12, 17, tilt), blob(hc[0] - 3, hc[1] + 10, 8, 9, tilt + 0.3)], (h) => {
+    const hc: P2 = [hx - 10, hy + 8];
+    const tilt = 0.3 + Math.sin(TAU * t) * 0.03;
+    f.part_([blob(hc[0], hc[1], 13.5, 19, tilt), blob(hc[0] - 3, hc[1] + 11, 8.5, 9.5, tilt + 0.3)], (h) => {
       const L = lit(h);
       const dx = h.x + 0.5 - hc[0], dy = h.y + 0.5 - hc[1];
       const bx = dx * Math.cos(tilt) + dy * Math.sin(tilt), by = -dx * Math.sin(tilt) + dy * Math.cos(tilt);
-      const rimK = Math.hypot(bx / 12, by / 17);
+      const rimK = Math.hypot(bx / 13.5, by / 19);
       let st = stepOf(L, h.x, h.y, [0.24, 0.46, 0.72, 0.9], 0.05, 33);
       if (rimK > 0.78) {
         // The rim: scaled dark skin.
         const sc = fract((Math.atan2(by, bx) * 17) / TAU) < 0.25;
         return VENOM.skin[clamp(st - (sc ? 1 : 0), 1, 4)];
       }
-      for (const [sx2, sy2] of [[-3.5, -5], [2.5, -5]]) {
-        const d = Math.hypot(bx - sx2, (by - sy2) * 0.8);
-        if (d < 1.3) return VENOM.outline;
-        if (d < 2.7) return VENOM.acid[4];
-        if (d < 3.5) return VENOM.skin[1];
+      for (const [sx2, sy2] of [[-4.5, -4], [3, -4]]) {
+        const d = Math.hypot(bx - sx2, (by - sy2) * 0.85);
+        if (d < 0.9) return VENOM.outline;
+        if (d < 2) return VENOM.acid[4];
+        if (d < 2.8) return VENOM.skin[1];
       }
       if (Math.abs(fract((by + 3) / 7) - 0.5) < 0.12 && by > 0) st = Math.max(1, st - 2);
       return VENOM.belly[clamp(st, 1, 5)];

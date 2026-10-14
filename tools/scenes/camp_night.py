@@ -331,7 +331,7 @@ def paint_forest_mid():
     L = Layer(W, H)
     trunks = [
         (118, 26, -0.04), (176, 15, 0.03), (236, 21, -0.02), (318, 13, 0.05), (388, 17, -0.03), (448, 9, 0.02),
-        (676, 11, -0.02), (722, 19, 0.03), (790, 14, -0.04), (842, 24, 0.02), (906, 16, -0.03), (575, 8, 0.0),
+        (684, 11, -0.02), (722, 19, 0.03), (790, 14, -0.04), (842, 24, 0.02), (906, 16, -0.03),
     ]
     for k, (x, w, lean) in enumerate(trunks):
         o = L.new_obj(True)
@@ -504,8 +504,8 @@ def paint_ground(fire=True):
         big = rnd(130, k, 4) > 0.55
         petal = ((np.abs(X2 - cx) < 1.5) & (np.abs(Y2 - cy) < 0.5)) | ((np.abs(Y2 - cy) < 1.0) & (np.abs(X2 - cx) < 0.5))
         if big:
-            L.put(s2, petal, mat, np.float32(0.5), o)
-        L.put(s2, (np.abs(X2 - cx) < 0.5) & (np.abs(Y2 - cy) < 0.5), mat, np.float32(0.99 if big else 0.7), o)
+            L.put(s2, petal, mat, np.float32(0.4), o)
+        L.put(s2, (np.abs(X2 - cx) < 0.5) & (np.abs(Y2 - cy) < 0.5), mat, np.float32(0.6 if big else 0.4), o)
     return L
 
 
@@ -666,7 +666,7 @@ def canopy(L, side):
             [(24, 2, 70, 44), (136, -8, 70, 40), (236, 2, 50, 28)],
             [(6, 76, 56, 48), (94, 42, 60, 36), (186, 36, 50, 28), (262, 44, 32, 18)],
             [(24, 144, 44, 38), (90, 100, 44, 30), (164, 78, 42, 24), (232, 76, 28, 15)],
-            [(12, 200, 32, 32), (60, 154, 30, 24), (124, 116, 30, 17), (192, 104, 22, 12)],
+            [(12, 196, 32, 32), (60, 146, 30, 22), (124, 106, 28, 15), (192, 98, 22, 12)],
         ]
     for ri, row in enumerate(rows):
         for k, (x, y, rx, ry) in enumerate(row):
@@ -710,9 +710,8 @@ def hanging(L, side, rows):
             lv = 0.14 + 0.18 * (1 - t) + (0.2 if facing else 0.02) + (rnd(seed, k * 31 + i, 5) - 0.5) * 0.12
             leaf(L, px, py, ang, (4.4 + rnd(seed, k * 31 + i, 6) * 2.6) * (1 - 0.35 * t), 2.6, LEAF, lv, o, tipv=0.12, sidev=0.08)
     # Thin vines: catenary loops between two points of the canopy, or a single hanging strand.
-    for k in range(4):
-        xa = 40 + rnd(seed + 1, k) * (330 if side == 'L' else 220)
-        xb = xa + 30 + rnd(seed + 1, k, 5) * 60
+    spans = [(20, 70), (66, 120), (372, 430)] if side == 'L' else [(14, 64), (60, 116), (190, 236)]
+    for k, (xa, xb) in enumerate(spans):
         ya = 90 + rnd(seed + 1, k, 2) * 50
         yb = ya - 10 + rnd(seed + 1, k, 6) * 20
         drop = 30 + rnd(seed + 1, k, 3) * 50
@@ -765,30 +764,30 @@ def finish(L, seed, outline=False, inner=True, rim=True):
 
 def scene_json():
     spots = [
-        {'x': 372, 'y': 352, 'facing': 'right', 'note': 'left of the fire'},
+        {'x': 394, 'y': 354, 'facing': 'right', 'note': 'left of the fire'},
         {'x': 590, 'y': 352, 'facing': 'left', 'note': 'right of the fire'},
         {'x': 418, 'y': 306, 'facing': 'right', 'note': 'behind the fire, left'},
         {'x': 548, 'y': 304, 'facing': 'left', 'note': 'behind the fire, right'},
     ]
     # Props: x, y = where the sprite's anchor lands. z nudges the draw order among props at one y.
     props = [
-        {'group': 'campsite', 'name': 'tent_large', 'x': 206, 'y': 314},
-        {'group': 'campsite', 'name': 'bedroll', 'x': 292, 'y': 330},
-        {'group': 'campsite', 'name': 'backpack', 'x': 326, 'y': 326},
-        {'group': 'campsite', 'name': 'sword_stuck', 'x': 346, 'y': 314},
-        {'group': 'campsite', 'name': 'stump_axe', 'x': 160, 'y': 374},
-        {'group': 'campsite', 'name': 'firewood', 'x': 268, 'y': 380},
+        {'group': 'campsite', 'name': 'tent_large', 'x': 238, 'y': 316},
+        {'group': 'campsite', 'name': 'stump_axe', 'x': 174, 'y': 382},
+        {'group': 'campsite', 'name': 'sword_stuck', 'x': 206, 'y': 366},
+        {'group': 'campsite', 'name': 'bedroll', 'x': 316, 'y': 348},
+        {'group': 'campsite', 'name': 'backpack', 'x': 350, 'y': 330},
+        {'group': 'campsite', 'name': 'firewood', 'x': 286, 'y': 390},
         {'group': 'campsite', 'name': 'campfire_large', 'x': FIRE[0], 'y': FIRE[1], 'anim': 'burning', 'note': 'anchor = centre of the ring'},
         {'group': 'campsite', 'name': 'smoke_tall', 'x': FIRE[0] + 2, 'y': FIRE[1] - 52, 'z': 52.5, 'note': 'foot at the flame tips'},
         {'group': 'campsite', 'name': 'cooking_tripod', 'x': FIRE[0], 'y': FIRE[1], 'z': 1, 'note': 'anchor = ground under the pot'},
-        {'group': 'campsite', 'name': 'log_seat', 'x': 600, 'y': 398},
-        {'group': 'campsite', 'name': 'tent_small', 'x': 716, 'y': 306, 'flip': True},
-        {'group': 'campsite', 'name': 'swords_pair', 'x': 640, 'y': 326},
-        {'group': 'campsite', 'name': 'torii', 'x': 870, 'y': 294},
-        {'group': 'landmarks', 'name': 'stone_lantern', 'x': 796, 'y': 344, 'anim': 'lit'},
-        {'group': 'campsite', 'name': 'fern_clump', 'x': 932, 'y': 330},
-        {'group': 'campsite', 'name': 'fern_clump', 'x': 770, 'y': 352, 'flip': True},
-        {'group': 'campsite', 'name': 'fern_clump', 'x': 118, 'y': 396},
+        {'group': 'campsite', 'name': 'log_seat', 'x': 604, 'y': 400},
+        {'group': 'campsite', 'name': 'torii', 'x': 838, 'y': 304},
+        {'group': 'campsite', 'name': 'tent_small', 'x': 694, 'y': 308, 'flip': True},
+        {'group': 'campsite', 'name': 'swords_pair', 'x': 640, 'y': 338},
+        {'group': 'landmarks', 'name': 'stone_lantern', 'x': 786, 'y': 352, 'anim': 'lit'},
+        {'group': 'campsite', 'name': 'fern_clump', 'x': 900, 'y': 318},
+        {'group': 'campsite', 'name': 'fern_clump', 'x': 760, 'y': 356, 'flip': True},
+        {'group': 'campsite', 'name': 'fern_clump', 'x': 128, 'y': 400},
     ]
     return {
         'name': 'camp_night',
@@ -810,12 +809,12 @@ def scene_json():
             'note': 'How day-lit sprites are lit in this scene (tools/scenes/camp_preview.py grade()): multiply by the moon and add its ambient; '
                     'firelight by distance from the flames (57 px/m across, 38 px/m deep), quantised to 4 levels through the warm tint; '
                     'a warm rim on silhouette edges facing the fire, a faint cool rim on edges facing the upper right. Flames stay as they are.',
-            'moonMul': [0.4, 0.48, 0.68],
-            'moonAdd': [5, 9, 21],
+            'moonMul': [0.33, 0.41, 0.6],
+            'moonAdd': [4, 8, 20],
             'fireTint': [1.9, 1.4, 0.92],
             'fireAdd': [58, 34, 14],
             'fireLevels': [0, 0.32, 0.62, 0.95],
-            'fireFalloff': 'w = 1.3 / (1 + (d / 1.55)^2) - 0.1, d in metres',
+            'fireFalloff': 'w = 1.4 / (1 + (d / 1.8)^2) - 0.1, d in metres',
         },
     }
 

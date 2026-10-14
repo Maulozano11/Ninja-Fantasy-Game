@@ -1185,7 +1185,7 @@ function aTent(o: TentSpec): WorldSprite {
     const sc = new Scene();
     const sway = [0, 1, 0, -1][t % 4];
     const nearN = rotYp(unit([0, B, -HR]), YAW);
-    const near = sc.add(Y(sheet(grid(NU, NV, (u, v) => slopePt(u, v, -1, sway)))), canvasOpts(o.seed + 1, { ao: 3, bias: -0.3, jitter: 0.05, bump: { base: nearN, gain: 3.4 } }));
+    const near = sc.add(Y(sheet(grid(NU, NV, (u, v) => slopePt(u, v, -1, sway)))), canvasOpts(o.seed + 1, { ao: 3, bias: -0.36, jitter: 0.05, bump: { base: nearN, gain: 3.8 } }));
     const far = sc.add(Y(sheet(grid(24, 16, (u, v) => slopePt(u, v, 1)))), canvasOpts(o.seed + 2, { pal: INSIDE, steps: [0, 1, 1, 2], castShadow: false }));
     const A: V3 = [L / 2, ridgeH(1), 0], S: V3 = [L / 2, 0, 0], Fb: V3 = [L / 2, 0, B], Bn: V3 = [L / 2, 0, -B];
     const A0: V3 = [-L / 2, ridgeH(0), 0];
@@ -1202,7 +1202,7 @@ function aTent(o: TentSpec): WorldSprite {
         const uu = u * wv;
         let p = lerp3(lerp3(A, hingeEnd, v), lerp3(A, S, v), uu);
         // Gathered folds stand out of the gable plane; the whole curtain bellies out a little.
-        const folds = Math.sin(u * Math.PI * 3.2 + side) * 1.5 * (0.4 + Math.abs(v - tieV));
+        const folds = Math.sin(u * Math.PI * 4.2 + side) * 2.8 * (0.35 + Math.abs(v - tieV));
         p = add(p, mul(gable, 1.6 + folds + Math.sin(Math.PI * u) * (1.5 + sway * 0.4)));
         if (p[1] < 0.6) p = [p[0], 0.6, p[2]];
         return p;
@@ -1248,8 +1248,8 @@ function aTent(o: TentSpec): WorldSprite {
       const p = f.world(i);
       // Weave: a sparse diagonal twill in the lit cloth, a darker thread here and there in the shade.
       const tw = (Math.floor(U) + Math.floor(V)) % 4;
-      if (s >= 4 && tw === 0 && noise(U * 0.5, V * 0.5, 1.4, o.seed + 60) > 0.45) s -= 1;
-      else if (s === 3 && tw === 0 && noise(U * 0.5, V * 0.5, 1.4, o.seed + 61) > 0.72) s += 1;
+      if (s >= 4 && tw === 0 && noise(U * 0.5, V * 0.5, 1.4, o.seed + 60) > 0.55) s -= 1;
+      else if (s === 3 && tw === 0 && noise(U * 0.5, V * 0.5, 1.4, o.seed + 61) > 0.82) s += 1;
       else if (s === 2 && tw === 2 && noise(U * 0.5, V * 0.5, 1.4, o.seed + 61) > 0.8) s -= 1;
       // Rain stains: a few soft streaks running down from the ridge.
       if (noise(U / 3.5, V / 26, 1, o.seed + 62) > 0.84 && s > 2 && V > 10) s -= 1;
@@ -1300,10 +1300,15 @@ function aTent(o: TentSpec): WorldSprite {
       const p = rotYp(f.world(i), -YAW);
       if (p[0] < L / 2 - 14) f.step[i] = 0;
     });
-    // The flaps' free edges are rolled hems that catch the light; their seam down the middle.
+    // The flaps' free edges are rolled hems that catch the light; a cord binds each at the tie.
     for (const fl of [flapN, flapF])
       f.each(fl.id, (i) => {
         const [u, v] = uvAt(i);
+        if (Math.abs(v - 0.58) < 0.022) {
+          f.pal[i] = ROPE;
+          f.step[i] = u < 0.5 ? 3 : 2;
+          return;
+        }
         if (u > 0.92 && v > 0.04) f.step[i] = Math.min(4, f.step[i] + 1);
         else if (v > 0.95) f.step[i] = Math.max(1, f.step[i] - 1);
         else if (Math.abs(u - 0.5) < 0.04 && v > 0.1) f.step[i] = Math.max(1, f.step[i] - 1);

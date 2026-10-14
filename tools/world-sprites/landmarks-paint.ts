@@ -14,7 +14,7 @@ export const rampOf = (hexes: string[]): Color[] => hexes.map((h) => hex(h));
 // --- stone ----------------------------------------------------------------------------------
 
 /** Granite: indigo shadows, neutral body, warm cream lights. */
-export const STONE_R = rampOf(['#1b1926', '#33334a', '#4b4e64', '#6b6e7b', '#8d8c8b', '#b0a998', '#d4cbb2']);
+export const STONE_R = rampOf(['#1b1926', '#33334a', '#4b4e64', '#6b6e7b', '#928d85', '#b9ad96', '#ddcdae']);
 /** Warm sandstone / river pebble. */
 export const STONE_WARM_R = rampOf(['#221a1d', '#45393e', '#655759', '#857868', '#a39780', '#c1b59a', '#ddd3b7']);
 /** Dark slate pebble (blue-grey). */
@@ -32,7 +32,7 @@ export const WATER_R = rampOf(['#0f2238', '#1c3c5c', '#2a5a80', '#3f7fa8', '#5fa
 // --- growth ---------------------------------------------------------------------------------
 
 /** Moss cushions: blue-green in shadow, yellow-green where the sun hits the leaf tips. */
-export const MOSS_R = rampOf(['#12201b', '#1e382c', '#30532f', '#4a7031', '#6c8e35', '#97b043', '#c7d46a']);
+export const MOSS_R = rampOf(['#12201b', '#1e382c', '#2f512f', '#476c31', '#668936', '#8ca544', '#b8c962']);
 /** Pale crust lichen (sage to cream). */
 export const LICHEN_R = rampOf(['#2a2f26', '#59624f', '#7f896f', '#a2a886', '#c0c09c', '#d8d3b2', '#ebe5c8']);
 /** Orange lichen (sparse accents). */

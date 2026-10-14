@@ -27,8 +27,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from scene_kit import WARM_LEVELS, noise, warm_color  # noqa: E402
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-MOON_MUL = np.array([0.4, 0.48, 0.68])
-MOON_ADD = np.array([5.0, 9.0, 21.0])
+MOON_MUL = np.array([0.33, 0.41, 0.6])
+MOON_ADD = np.array([4.0, 8.0, 20.0])
 RIM_WARM = np.array([255.0, 178.0, 104.0])
 RIM_COOL = np.array([128.0, 156.0, 192.0])
 
@@ -66,8 +66,9 @@ def grade(img, x0, y0, ground_y, fire, flame, emissive=False, seed=0):
     height_m = np.maximum(0, (ground_y - Y)) / 57
     flame_h = (fire[1] - flame[1]) / 57
     d = np.sqrt(((X - fire[0]) / 57) ** 2 + ((ground_y - fire[1]) / 38) ** 2 + ((height_m - flame_h) * 0.7) ** 2)
-    wv = np.clip(1.3 / (1 + (d / 1.55) ** 2) - 0.1, 0, 1)
-    lv = np.clip(np.floor(wv * 3 + 0.5 + (noise(X, Y, 3.0, 61 + seed) - 0.5) * 0.6), 0, 3).astype(int)
+    wv = np.clip(1.4 / (1 + (d / 1.8) ** 2) - 0.1, 0, 1)
+    # Clean bands (no dither on sprites): the rim below carries the direction of the light.
+    lv = np.clip(np.floor(wv * 2.7 + 0.3), 0, 3).astype(int)
     out = c.copy()
     for k in range(1, 4):
         sel = lv == k

@@ -659,7 +659,7 @@ function paintMoss(f: Frame, o: MossOpts): void {
   // Cushions, back to front.
   const cover = new Int8Array(N).fill(-1);
   const sz = o.size ?? 1;
-  const clumps: [number, number, number, number, boolean][] = [];
+  const clumps: [number, number, number, number, boolean, boolean][] = [];
   const g = 3;
   for (let gy = 0; gy < f.h; gy += g)
     for (let gx = 0; gx < f.w; gx += g) {
@@ -667,11 +667,11 @@ function paintMoss(f: Frame, o: MossOpts): void {
       const ci = f.idx(Math.floor(cx), Math.floor(cy));
       if (ci < 0 || mask[ci] !== 1) continue;
       const rx = (1.5 + hash(gx, gy, o.seed + 3) * 1.4) * sz;
-      clumps.push([cx, cy, rx, rx * 0.72, f.lightv[ci] > 0.34]);
+      clumps.push([cx, cy, rx, rx * 0.72, f.lightv[ci] > 0.34, f.lightv[ci] > 0.62]);
     }
   clumps.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
-  for (const [cx, cy, rx, ry, lit] of clumps) {
-    const base = lit ? 4 : 2;
+  for (const [cx, cy, rx, ry, lit, sunny] of clumps) {
+    const base = sunny ? 4 : lit ? 3 : 2;
     for (let y = Math.floor(cy - ry - 1); y <= Math.ceil(cy + ry); y++)
       for (let x = Math.floor(cx - rx - 1); x <= Math.ceil(cx + rx); x++) {
         const j = f.idx(x, y);
@@ -730,7 +730,7 @@ function paintLichen(f: Frame, o: { meshes: number[]; seed: number; density: num
       const cx = gx + Math.floor(hash(gx, gy, o.seed + 1) * g), cy = gy + Math.floor(hash(gx, gy, o.seed + 2) * g);
       const i = f.idx(cx, cy);
       if (!isBare(f, i, o.meshes) || f.lightv[i] < (o.minLight ?? 0.3)) continue;
-      const P = hash(gx, gy, o.seed + 4) < (o.orange ?? 0.18) ? LICHEN_O : LICHEN;
+      const P = hash(gx, gy, o.seed + 4) < (o.orange ?? 0.08) ? LICHEN_O : LICHEN;
       const r = 1.0 + hash(gx, gy, o.seed + 3) * 1.3;
       const mi = f.mesh[i];
       for (let dy = -2; dy <= 2; dy++)
@@ -740,7 +740,7 @@ function paintLichen(f: Frame, o: { meshes: number[]; seed: number; density: num
           const j = f.idx(cx + dx, cy + dy);
           if (!isBare(f, j, [mi]) || hash(cx + dx, cy + dy, o.seed + 6) < 0.12) continue;
           const rim = d > r - 0.8;
-          let s = rim ? 4 : 3;
+          let s = rim ? 3 : 2;
           if (f.lightv[j] < 0.5) s -= 1;
           if (rim && dx + dy < 0 && f.lightv[j] > 0.62) s += 1;
           f.pal[j] = P;
@@ -994,9 +994,8 @@ function lotus(f: Frame, mesh: number, n: number, minUp: number, maxUp: number, 
     if (nn[1] < minUp || nn[1] > maxUp) continue;
     const p = f.world(i);
     const fr = ((((Math.atan2(p[2], p[0]) + rot) / TAU) * n) % 1 + 1) % 1;
-    if (fr < 0.14) f.step[i] = Math.max(1, f.step[i] - 2);
-    else if (fr < 0.26) f.step[i] = Math.max(1, f.step[i] - 1);
-    else if (fr > 0.5 && fr < 0.68 && f.lightv[i] > 0.35) f.step[i] = Math.min(6, f.step[i] + 1);
+    if (fr < 0.12) f.step[i] = Math.max(1, f.step[i] - 1);
+    else if (fr < 0.24 && f.lightv[i] > 0.35) f.step[i] = Math.min(6, f.step[i] + 1);
   }
 }
 
@@ -1020,7 +1019,7 @@ function stoneLantern(): WorldSprite {
   const build = () => {
     GROUP = 1;
     const sc = new Scene();
-    const st = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.07, texCell: 6, steps: [1, 2, 3, 4, 5], ...extra });
+    const st = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.07, texCell: 6, steps: [1, 2, 3, 4, 5], bias: -0.06, ...extra });
     // Base: a wide hexagonal slab and a chamfered second tier (petals are carved on its slope).
     const base = sc.add(loft([hexRing(0, 0, 0, 16), hexRing(0, 4.5, 0, 16), hexRing(0, 6.5, 0, 14.5)], { capEnd: true }), st(11, { ao: 2 }));
     const base2 = sc.add(loft([hexRing(0, 6.5, 0, 11.5), hexRing(0, 9, 0, 11.5), hexRing(0, 10.5, 0, 8.5)], { capEnd: true }), st(12));
@@ -1087,7 +1086,7 @@ function stoneLantern(): WorldSprite {
     paintMoss(f, { meshes: [id(parts.chudai), id(parts.base2)], amount: 0.3, seed: 302, cell: 6, drip: 2, tufts: 0.15 });
     paintMoss(f, { meshes: [id(parts.base)], amount: 0.42, seed: 303, cell: 7, drip: 2, bumps: true, tufts: 0.2 });
     paintStreaks(f, { meshes: all, seed: 320, density: 0.2, maxLen: 9 });
-    paintLichen(f, { meshes: all, seed: 310, density: 0.2, minLight: 0.4 });
+    paintLichen(f, { meshes: all, seed: 310, density: 0.12, minLight: 0.4 });
     autoChips(f, { meshes: all, seed: 330, density: 0.07 });
     paintCrack(f, crackPath(ox - 12, oy - 3, 6, 341, { drift: 1 }), [id(parts.base)]);
     paintCrack(f, crackPath(ox + 3, oy - 31, 5, 342), [id(parts.pillar)]);
@@ -1206,7 +1205,7 @@ function rockMesh(o: { cx: number; cd: number; rx: number; rd: number; h: number
   return loft(rings, { capEnd: apex });
 }
 
-const stoneOpts = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.035, texCell: 10, contrast: 1.2, facetVar: 0.07, ao: 3, form: 0.35, steps: [1, 2, 3, 4, 5], ...extra });
+const stoneOpts = (seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: STONE, seed, tex: 0.035, texCell: 10, contrast: 1.2, facetVar: 0.07, ao: 3, form: 0.35, steps: [1, 2, 3, 4, 5], bias: -0.06, ...extra });
 
 function boulder(): WorldSprite {
   const W = 130, H = 110, ox = 62, oy = 90;
@@ -1227,7 +1226,7 @@ function boulder(): WorldSprite {
   paintMoss(f, { meshes: [main.id], amount: 0.5, seed: 401, cell: 10, drip: 3, minUp: 0.4, bumps: true, tufts: 0.2, size: 1.1 });
   paintMoss(f, { meshes: [lump.id], amount: 0.32, seed: 402, cell: 7, drip: 2, minUp: 0.4, bumps: true, tufts: 0.15 });
   paintStreaks(f, { meshes: big, seed: 420, density: 0.26, maxLen: 11 });
-  paintLichen(f, { meshes: big, seed: 410, density: 0.3, minLight: 0.35 });
+  paintLichen(f, { meshes: big, seed: 410, density: 0.14, minLight: 0.35 });
   autoChips(f, { meshes: [...big, ...feet.map((x) => x.id)], seed: 430, density: 0.08 });
   paintCrack(f, crackPath(ox - 9, oy - 31, 17, 441, { branch: true }), [main.id]);
   paintCrack(f, crackPath(ox + 15, oy - 41, 8, 442, { drift: 1 }), [main.id]);
@@ -1248,7 +1247,7 @@ function rock(): WorldSprite {
   const f = render(sc, W, H, ox, oy);
   paintMoss(f, { meshes: [main.id], amount: 0.34, seed: 451, cell: 6, drip: 2, minUp: 0.45, bumps: true, tufts: 0.18 });
   paintStreaks(f, { meshes: [main.id], seed: 455, density: 0.25, maxLen: 6 });
-  paintLichen(f, { meshes: [main.id], seed: 452, density: 0.3, minLight: 0.35 });
+  paintLichen(f, { meshes: [main.id], seed: 452, density: 0.18, minLight: 0.35 });
   autoChips(f, { meshes: [main.id, side.id], seed: 456, density: 0.09, gap: 6 });
   paintCrack(f, crackPath(ox + 4, oy - 17, 9, 453, { branch: true }), [main.id]);
   const c = f.compose();
@@ -1473,7 +1472,7 @@ function shell(xs: number[], hOf: (x: number) => number, d0: number, d1: number,
 
 /**
  * A small Kasuga-style shrine on a mossy stone plinth, in the torii's colours: vermilion posts
- * and beams, black lacquered bargeboards, ridge, chigi and katsuogi (gilt caps), a white gable,
+ * and beams, black lacquered bargeboards, ridge and chigi (gilt tips), a white gable,
  * a dark hinoki-bark roof that sags into a curve and flicks up at the eaves, black doors with gilt
  * studs, a shimenawa with zigzag shide across the front, and an offering of kagami mochi between
  * two sakaki vases.
@@ -1482,136 +1481,127 @@ function hokora(): WorldSprite {
   const W = 90, H = 110, ox = 45, oy = 92;
   GROUP = 1;
   const sc = new Scene();
-  const st = (seed: number): MeshOpts => ({ pal: STONE, seed, tex: 0.04, texCell: 8, contrast: 1.1, ao: 2, steps: [1, 2, 3, 4, 5] });
+  const st = (seed: number): MeshOpts => ({ pal: STONE, seed, tex: 0.04, texCell: 8, contrast: 1.1, ao: 2, steps: [1, 2, 3, 4, 5], bias: -0.06 });
   const lac = (p: number, seed: number, extra: Partial<MeshOpts> = {}): MeshOpts => ({ pal: p, seed, contrast: 1.15, facetVar: 0.02, steps: [1, 2, 3, 4, 5], ...extra });
   // Stone plinth: a footing, a pedestal and a top slab deep enough to hold the offering.
-  const foot = sc.add(slab(-17, 17, 0, 5.5, -15, 12, 1.4), st(81));
-  const ped = sc.add(slab(-11, 11, 5.5, 16.5, -10, 8, 1), st(82));
-  const top = sc.add(slab(-14.5, 14.5, 16.5, 21, -13.5, 10.5, 1.2), st(83));
+  const foot = sc.add(slab(-17, 17, 0, 5, -14, 11, 1.2), st(81));
+  const ped = sc.add(slab(-11, 11, 5, 14, -9.5, 7, 1), st(82));
+  const top = sc.add(slab(-14.5, 14.5, 14, 18, -13, 9.5, 1.1), st(83));
   // Black floor, white walls, vermilion posts, sill and lintel, a black head beam.
-  sc.add(slab(-12, 12, 21, 23, -9.5, 8, 0.6), lac(BLACK, 84));
-  sc.add(box(-9, 9, 23, 41, -6.5, 6), lac(PAPER, 85, { contrast: 0.9 }));
-  sc.add(box(-9.6, -7, 23, 40.5, -7.6, -5), lac(RED, 86));
-  sc.add(box(7, 9.6, 23, 40.5, -7.6, -5), lac(RED, 87));
-  sc.add(box(-9.6, 9.6, 23, 24.6, -7.3, -5.5), lac(RED, 88));
-  sc.add(box(-9.6, 9.6, 36.2, 38, -7.4, -5.5), lac(RED, 89));
-  sc.add(box(-11.5, 11.5, 39.6, 42, -8, -4.8), lac(BLACK, 90));
+  const B0 = 20; // floor top
+  sc.add(slab(-11.5, 11.5, 18, B0, -9, 6.5, 0.6), lac(BLACK, 84));
+  sc.add(box(-8.5, 8.5, B0, B0 + 17, -6.2, 4.5), lac(PAPER, 85, { contrast: 0.9 }));
+  sc.add(box(-9.2, -6.6, B0, B0 + 16.6, -7.2, -4.8), lac(RED, 86));
+  sc.add(box(6.6, 9.2, B0, B0 + 16.6, -7.2, -4.8), lac(RED, 87));
+  sc.add(box(-9.2, 9.2, B0, B0 + 1.6, -7, -5.3), lac(RED, 88));
+  sc.add(box(-9.2, 9.2, B0 + 12.6, B0 + 14.2, -7.1, -5.3), lac(RED, 89));
+  sc.add(box(-11.2, 11.2, B0 + 15.6, B0 + 17.8, -7.8, -4.6), lac(BLACK, 90));
   // The roof's curve: steep at the ridge, sagging toward the eaves, flicking up at the tips.
-  const X = 17.5;
+  const X = 16.5, EAVE = B0 + 19.6, RISE = 14;
   const hOf = (x: number): number => {
     const ax = Math.abs(x);
-    if (ax > X) return 44 + (ax - X) * 0.6;
+    if (ax > X) return EAVE + (ax - X) * 0.65;
     const t = ax / X;
-    return 59 - 15 * (0.55 * t + 0.45 * (2 * t - t * t));
+    return EAVE + RISE - RISE * (0.55 * t + 0.45 * (2 * t - t * t));
   };
-  const d0 = -10.5, d1 = 9;
+  const APEX = EAVE + RISE;
+  const d0 = -9.8, d1 = 6;
   // White gable under the bargeboards, with a red tie beam and king post.
-  const gxs = [10, 7.5, 5, 2.5, 0, -2.5, -5, -7.5, -10];
-  sc.add(extrudeXH([[-10, 42], [10, 42], ...gxs.map((x) => [x, hOf(x) - 2.3] as [number, number])], -8.4, -7), lac(PAPER, 91, { contrast: 0.9 }));
-  sc.add(box(-7.8, 7.8, 45.2, 46.8, -9, -7.8), lac(RED, 92));
-  sc.add(box(-0.9, 0.9, 46.8, 55, -8.9, -7.9), lac(RED, 93));
-  const xs = [-19, -17.5, -15, -12.5, -10, -7.5, -5, -2.5, 0, 2.5, 5, 7.5, 10, 12.5, 15, 17.5, 19];
-  const roof = sc.add(shell(xs, hOf, d0, d1, 2.2), { pal: HIWADA, seed: 94, contrast: 1.25, facetVar: 0.02, steps: [1, 2, 3, 4, 5] });
-  const xsB = [-19.7, ...xs.slice(1, -1), 19.7];
-  const barge = sc.add(shell(xsB, (x) => hOf(x) + 0.7, d0 - 0.9, d0 + 0.9, 3), lac(BLACK, 95));
-  const ridge = sc.add(box(-1.6, 1.6, 58.3, 60.4, d0 - 0.4, d1 - 0.5), lac(BLACK, 96));
-  const chigi = [0.62, -0.62].map((a, k) => sc.add(rotZ(box(-0.85, 0.85, 54, 65.5, d0 - 0.7, d0 + 0.7), a, 0, 58.5), lac(BLACK, 97 + k)));
-  const katsuo = [-3, 4].map((dk, k) => sc.add(pole([-3.8, 61.6, dk], [3.8, 61.6, dk], 1.35, 8), lac(BLACK, 99 + k)));
+  const gxs = [9, 6.75, 4.5, 2.25, 0, -2.25, -4.5, -6.75, -9];
+  sc.add(extrudeXH([[-9, B0 + 17.8], [9, B0 + 17.8], ...gxs.map((x) => [x, hOf(x) - 2.1] as [number, number])], -8, -6.8), lac(PAPER, 91, { contrast: 0.9 }));
+  sc.add(box(-7, 7, B0 + 20.6, B0 + 22, -8.6, -7.6), lac(RED, 92));
+  sc.add(box(-0.85, 0.85, B0 + 22, APEX - 3.5, -8.5, -7.6), lac(RED, 93));
+  const xs = [-18, -16.5, -14, -11.5, -9, -6.75, -4.5, -2.25, 0, 2.25, 4.5, 6.75, 9, 11.5, 14, 16.5, 18];
+  const roof = sc.add(shell(xs, hOf, d0, d1, 2), { pal: HIWADA, seed: 94, contrast: 1.25, facetVar: 0.02, steps: [1, 2, 3, 4, 5] });
+  const xsB = [-18.4, ...xs.slice(1, -1), 18.4];
+  const barge = sc.add(shell(xsB, (x) => hOf(x) + 0.6, d0 - 0.8, d0 + 0.8, 2.5), lac(BLACK, 95));
+  sc.add(box(-0.9, 0.9, APEX - 0.7, APEX + 0.9, d0 + 0.8, d1 - 0.5), lac(BLACK, 96));
+  // Chigi: the bargeboards cross at the apex and run on past it as a V.
+  const chigi = [0.66, -0.66].map((a, k) => sc.add(rotZ(box(-0.8, 0.8, APEX - 1, APEX + 6.2, d0 - 0.6, d0 + 0.6), a, 0, APEX), lac(BLACK, 97 + k)));
   const f = render(sc, W, H, ox, oy);
   const stone = [foot.id, ped.id, top.id];
-  // Bark courses on the roof: a dark seam every 2.4 px of rise with a lit edge above it.
+  // Bark courses on the roof: a dark seam every 2.2 px of rise with a lit edge above it.
   for (let i = 0; i < W * H; i++) {
     if (!isBare(f, i, [roof.id]) || f.normal(i)[1] < 0.3) continue;
     const p = f.world(i);
-    const r = (((59 - p[1]) % 2.4) + 2.4) % 2.4;
-    if (r < 0.7) f.step[i] = Math.max(1, f.step[i] - 1);
-    else if (r > 1.8 && f.lightv[i] > 0.5) f.step[i] = Math.min(6, f.step[i] + 1);
+    const r = (((APEX - p[1]) % 2.2) + 2.2) % 2.2;
+    if (r < 0.65) f.step[i] = Math.max(1, f.step[i] - 1);
+    else if (r > 1.7 && f.lightv[i] > 0.5) f.step[i] = Math.min(6, f.step[i] + 1);
   }
-  // A lit edge along the top of the bargeboards and gilt caps on the katsuogi and chigi tips.
+  // A lit edge along the top of the left bargeboard and gilt caps on the chigi tips.
   for (let i = 0; i < W * H; i++) {
     const mi = f.mesh[i];
     if (mi < 0) continue;
     const p = f.world(i);
-    if (katsuo.some((k) => k.id === mi) && Math.abs(p[0]) > 2.6) {
-      f.pal[i] = GOLD;
-      f.step[i] = clamp(f.step[i] + 1, 2, 6);
-    }
     if (mi === barge.id && f.normal(i)[1] > 0.3 && p[0] < 0) f.step[i] = Math.min(6, f.step[i] + 1);
-    if (chigi.some((k) => k.id === mi) && p[1] > 63.6) {
+    if (chigi.some((k) => k.id === mi) && p[1] > APEX + 3.4) {
       f.pal[i] = GOLD;
-      f.step[i] = clamp(f.step[i], 2, 5);
+      f.step[i] = clamp(f.step[i] + 1, 2, 5);
     }
   }
-  void ridge;
-  paintMoss(f, { meshes: [roof.id], amount: 0.24, seed: 811, cell: 6, drip: 1, minUp: 0.3, bumps: true, tufts: 0.18 });
-  paintMoss(f, { meshes: [foot.id], amount: 0.38, seed: 812, cell: 6, drip: 2, tufts: 0.18 });
+  paintMoss(f, { meshes: [roof.id], amount: 0.26, seed: 811, cell: 6, drip: 1, minUp: 0.3, bumps: true, tufts: 0.18 });
+  paintMoss(f, { meshes: [foot.id], amount: 0.4, seed: 812, cell: 6, drip: 2, tufts: 0.18 });
   paintMoss(f, { meshes: [top.id], amount: 0.22, seed: 815, cell: 5, drip: 2, tufts: 0.12 });
   paintStreaks(f, { meshes: stone, seed: 816, density: 0.22, maxLen: 6 });
-  paintLichen(f, { meshes: stone, seed: 813, density: 0.3, minLight: 0.35 });
+  paintLichen(f, { meshes: stone, seed: 813, density: 0.16, minLight: 0.35 });
   autoChips(f, { meshes: stone, seed: 817, density: 0.08, gap: 6 });
-  paintCrack(f, crackPath(ox + 6, oy - 14, 6, 818, { branch: true }), [ped.id]);
+  paintCrack(f, crackPath(ox + 6, oy - 11, 6, 818, { branch: true }), [ped.id]);
   const fr = (x: number, h: number, d: number) => f.proj([x, h, d]).map(Math.round) as [number, number];
   const c0 = f.compose();
-  // Doors: black lacquer leaves with a lattice over the dark inside, gilt studs and hinges.
-  const [dx0, dy0] = fr(-7, 36.2, -6.6);
-  const [dx1, dy1] = fr(7, 24.6, -6.6);
+  // Doors: two black lacquer leaves in a lit frame, gilt studs, hinges and pulls.
+  const [dx0, dy0] = fr(-6.6, B0 + 12.6, -6.3);
+  const [dx1, dy1] = fr(6.6, B0 + 1.6, -6.3);
   const midX = Math.floor((dx0 + dx1) / 2);
   for (let y = dy0; y < dy1; y++)
     for (let x = dx0; x < dx1; x++) {
       const u = x - dx0, v = y - dy0;
-      const edge = u === 0 || x === dx1 - 1 || v === 0 || y === dy1 - 1 || x === midX - 1 || x === midX;
-      let col: Color;
-      if (edge) col = C(BLACK, v === 0 ? 2 : x === midX ? 2 : u === 0 || x === midX + 1 ? 4 : 3);
-      else if ((x - dx0) % 2 === 0) col = C(BLACK, v < 2 ? 3 : 4);
-      else col = v < 3 ? C(BLACK, 0) : C(BLACK, 1);
-      c0.set(x, y, col);
+      let s: number;
+      if (v === 0) s = 1; // under the lintel
+      else if (u === 0 || x === midX) s = 4; // lit left edge of each leaf
+      else if (x === dx1 - 1 || x === midX - 1) s = 2;
+      else if (y === dy1 - 1) s = 2;
+      else s = v < 3 ? 2 : 3;
+      c0.set(x, y, C(BLACK, s));
     }
-  for (const [x, y] of [[midX - 2, dy0 + 5], [midX + 1, dy0 + 5]]) {
-    c0.set(x, y, C(GOLD, 5));
-    c0.set(x, y + 1, C(GOLD, 3));
-  }
-  for (const x of [dx0 + 1, dx1 - 2]) for (const y of [dy0 + 2, dy1 - 3]) c0.set(x, y, C(GOLD, x < midX ? 5 : 4));
+  for (const x of [dx0 + 2, midX + 2]) for (const y of [dy0 + 2, dy1 - 3]) c0.set(x, y, C(GOLD, x < midX ? 5 : 4));
+  c0.set(midX - 2, dy0 + 6, C(GOLD, 5));
+  c0.set(midX + 1, dy0 + 6, C(GOLD, 4));
   // Gegyo: a gilt boss where the bargeboards meet.
   {
-    const [gx, gy] = fr(0, 55.6, d0 - 1);
-    const boss: [number, number, number][] = [[-1, 0, 4], [0, 0, 6], [1, 0, 4], [-1, 1, 3], [0, 1, 4], [1, 1, 2], [0, 2, 2]];
+    const [gx, gy] = fr(0, APEX - 3.4, d0 - 1);
+    const boss: [number, number, number][] = [[-1, 0, 4], [0, 0, 6], [1, 0, 3], [0, 1, 3]];
     for (const [dx, dy, s] of boss) c0.set(gx + dx, gy + dy, C(GOLD, s));
   }
   // Shimenawa: a twisted straw rope sagging between the posts, thickest in the middle, with shide.
   const sh = new Canvas(W, H);
+  const ropeH = B0 + 15.2, ropeX = 9.6, sagMax = 2;
+  const ropeAt = (x: number): [number, number] => fr(x, ropeH - sagMax * (1 - (x / ropeX) ** 2), -9);
   const ropePts: [number, number][] = [];
-  for (let k = 0; k <= 20; k++) {
-    const x = -10.2 + k * 1.02;
-    const sag = 2.2 * (1 - (x / 10.2) ** 2);
-    const [px, py] = f.proj([x, 38.9 - sag, -9.2]);
-    ropePts.push([px, py]);
-  }
+  for (let k = 0; k <= 20; k++) ropePts.push(f.proj([-ropeX + k * (ropeX / 10), ropeH - sagMax * (1 - ((-ropeX + k * (ropeX / 10)) / ropeX) ** 2), -9]));
   drawRope(sh, ropePts, 3, ROPE_R, { period: 3, taper: true, steps: [1, 2, 3, 4, 5] });
-  // Straw tassels between the shide.
-  for (const x of [-7.5, 2.6]) {
-    const [tx, ty] = fr(x, 38.9 - 2.2 * (1 - (x / 10.2) ** 2), -9.2);
-    for (let k = 1; k <= 3; k++) sh.set(tx, ty + k, C(ROPE, k === 3 ? 2 : 3));
-    sh.set(tx + 1, ty + 1, C(ROPE, 4));
+  // Straw tassels (shime-no-ko) and two shide.
+  for (const x of [-6.5, 0, 6.5]) {
+    const [tx, ty] = ropeAt(x);
+    for (let k = 2; k <= 3; k++) sh.set(tx, ty + k, C(ROPE, k === 3 ? 2 : 3));
   }
-  for (const [x, dir] of [[-5, 1], [0, -1], [5.2, 1]] as [number, 1 | -1][]) {
-    const [tx, ty] = fr(x, 38.9 - 2.2 * (1 - (x / 10.2) ** 2), -9.2);
-    drawShide(sh, tx, ty + 1, 4, PAPER_R, { dir });
+  for (const [x, dir] of [[-3.4, 1], [3.2, -1]] as [number, 1 | -1][]) {
+    const [tx, ty] = ropeAt(x);
+    drawShide(sh, tx, ty + 2, 4, PAPER_R, { dir });
   }
   c0.draw(sh, 0, 0);
   // Offering on the slab: kagami mochi with a mikan on a little hinoki stand, sakaki in two vases.
   const off = new Canvas(W, H);
   {
-    const [cx, by] = fr(0, 21, -11.6);
+    const [cx, by] = fr(0, 18, -11.2);
     const MIKAN = rampOf(['#5a2408', '#a2440f', '#d9701c', '#f29a34', '#fbc25e']);
     const rows: [number, string][] = [
-      [-8, '...l...'],
-      [-7, '..mmm..'],
-      [-6, '..wwW..'],
-      [-5, '.wwwwW.'],
-      [-4, 'wwwwwwW'],
-      [-3, 'ttttttt'],
-      [-2, '.s...s.'],
-      [-1, '.sssss.'],
+      [-7, '...l...'],
+      [-6, '..mmm..'],
+      [-5, '..wwW..'],
+      [-4, '.wwwwW.'],
+      [-3, 'wwwwwwW'],
+      [-2, 'ttttttt'],
+      [-1, '.s...s.'],
     ];
     for (const [dy, row] of rows)
       [...row].forEach((ch, k) => {
@@ -1619,13 +1609,13 @@ function hokora(): WorldSprite {
         const lit = k < 3;
         if (ch === 'l') off.set(x, y, C(MOSS, 4));
         else if (ch === 'm') off.set(x, y, MIKAN[k === 2 ? 4 : k === 3 ? 3 : 2]);
-        else if (ch === 'w') off.set(x, y, C(PAPER, dy === -4 && k > 4 ? 3 : lit ? 6 : 5));
+        else if (ch === 'w') off.set(x, y, C(PAPER, dy === -3 && k > 4 ? 3 : lit ? 6 : 5));
         else if (ch === 'W') off.set(x, y, C(PAPER, 3));
         else if (ch === 't') off.set(x, y, C(WOOD, k < 2 ? 6 : k > 5 ? 4 : 5));
-        else if (ch === 's') off.set(x, y, C(WOOD, dy === -1 ? 3 : 4));
+        else if (ch === 's') off.set(x, y, C(WOOD, 3));
       });
-    for (const sx of [-12.2, 12.2]) {
-      const [vx, vy] = fr(sx, 21, -11.2);
+    for (const sx of [-12.4, 12.4]) {
+      const [vx, vy] = fr(sx, 18, -11);
       // Vase.
       off.set(vx, vy - 1, C(PAPER, sx < 0 ? 5 : 4));
       off.set(vx + 1, vy - 1, C(PAPER, 3));
@@ -2161,6 +2151,7 @@ function fenceBamboo(): WorldSprite {
     const P = r < 0.18 ? BAMBOO_G : r > 0.8 ? BAMBOO_GREY : BAMBOO;
     const nodeOff = 4 + Math.floor(hash(slat, 3, 193) * 16);
     const nodeGap = 18 + Math.floor(hash(slat, 4, 193) * 5);
+    const stainH = 5 + Math.floor(hash(slat, 9, 193) * 4);
     const split = hash(slat, 5, 193) < 0.2 ? { u: 1 + Math.floor(hash(slat, 6, 193) * (wdt - 1)), y0: yTop + 4 + Math.floor(hash(slat, 7, 193) * 25), len: 6 + Math.floor(hash(slat, 8, 193) * 10) } : null;
     for (let u = 0; u <= wdt; u++) {
       const x = sx + u;
@@ -2181,9 +2172,9 @@ function fenceBamboo(): WorldSprite {
         else if (nd === 1) s = Math.min(5, s + 1);
         // Shade under the cap, damp and grime near the ground.
         if (y < yTop + 2) s = Math.max(1, s - 1);
-        if (hh < 6) s = Math.max(1, s - (hh < 2 ? 2 : 1));
+        if (hh < 2) s = Math.max(1, s - 1);
         let col = C(P, s);
-        if (hh < 9 && hash(x, y, 195) < (9 - hh) / 14) col = mix(col, C(MOSS, 2), 0.45);
+        if (hh < stainH) col = mix(col, C(MOSS, hh < stainH - 3 ? 1 : 2), hh < stainH - 3 ? 0.5 : 0.35);
         if (split && u === split.u && y >= split.y0 && y < split.y0 + split.len) col = C(P, y < split.y0 + split.len - 2 ? 0 : 1);
         else if (split && u === split.u + 1 && y >= split.y0 && y < split.y0 + split.len - 1) col = C(P, Math.min(5, s + 1));
         panel.set(x, y, col);

@@ -18,7 +18,7 @@
 import { join } from 'node:path';
 import { Canvas, Color, MATERIALS, WorldSprite, hash, hex, lambert, m, mix, noise, preview, previewDir, ramp, writeGroup } from './kit';
 import {
-  Buf, Cluster, Leaf, Mass, PAL, Pt, Tube, TAU, barkStep, canopy, clamp, composite, despeckle, drawTube, frac, grow, lerp, needleTufts,
+  Buf, Cluster, Leaf, Mass, Pt, Tube, TAU, barkStep, canopy, clamp, composite, despeckle, drawTube, frac, grow, lerp, needleTufts,
   outlineBuf, ovalLeaves, paintLeaf, pal, putField, rasterCluster, rnd, shade, spline, starLeaves, vine,
 } from './foliage';
 
@@ -490,6 +490,8 @@ function pine(): WorldSprite {
     // Elbowed branches out to the pads.
     pads.forEach((p, i) => {
       if (i === pads.length - 1) return;
+      // The burnt trunk breaks off below the upper branches.
+      if (burnt && p.y0 < spine[5][1] + 24) return;
       const x0 = xAt(p.y0);
       const ex = p.px - p.side * p.rx * 0.2, ey = p.py + p.ry * 0.5;
       const elbow: Pt = [lerp(x0, ex, 0.45) + p.side * 4, p.y0 - 4 - hash(i, 1, 9) * 10];
@@ -517,8 +519,6 @@ function pine(): WorldSprite {
     putField(B, Fo, C.cl, { th: TH });
     return toFrame(B);
   };
-  // Tag clusters with their pad index for the underside shade.
-  cl.forEach((c) => (c.tag = masses[c.group].tag ?? 0));
   const idle = Array.from({ length: n }, (_, f) => render(f, 'idle'));
   const burnt = [render(0, 'burnt')];
   return finish('pine', 'Black Pine', [4.5, 8.4], ['cover-half', 'blocks-sight', 'flammable', 'destructible', 'climbable'], {
@@ -819,8 +819,9 @@ function stump(): WorldSprite {
   const cyt = cyb - hgt; // top ellipse centre
   const B = new Buf(W, H);
   const bark: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'> = { pal: BARK_OAK, tex: 'furrow', moss: MOSS, mossAmt: 0.7, spacing: 4.5 };
-  const roots: [number, number, number, boolean][] = [[-150, 14, 6, true], [-30, 13, 6, true], [178, 20, 7, false], [2, 18, 7, false], [154, 13, 6, false], [28, 11, 5, false]];
-  for (const [deg, len, r0, behind] of roots) if (behind) drawTube(B, rootTube(gx, gy - 4, Rr - 4, deg, len, r0, 700 + deg, bark, 9));
+  const roots: [number, number, number][] = [[-150, 14, 6], [-30, 13, 6], [180, 20, 7], [4, 18, 7], [150, 14, 6], [36, 12, 6]];
+  // All roots are drawn behind the wall, so they flare out from its sides.
+  for (const [deg, len, r0] of roots) drawTube(B, { ...rootTube(gx, gy - 4, Rr - 4, deg, len + 6, r0, 700 + deg, bark, 9), point: 5 });
   // Wall: a bark cylinder with a slightly irregular rim.
   const rimJ = (u: number) => (noise(u * 6 + 3, 0, 1, 31) - 0.5) * 3;
   const tb: Tube = { ...bark, pts: [], r0: Rr, r1: Rr, seed: 9, knots: [{ s: 12, a: 8, r: 3.5 }] };
@@ -842,7 +843,6 @@ function stump(): WorldSprite {
       B.put(x, y, p, st, 1, 0);
     }
   }
-  for (const [deg, len, r0, behind] of roots) if (!behind) drawTube(B, { ...rootTube(gx, gy - 4, Rr - 4, deg, len, r0, 700 + deg, bark, 9), part: 2, point: 4 });
   // The cut face: growth rings, radial cracks, a dark heart, a lit sapwood rim and a bark lip.
   for (let y = Math.floor(cyt - ryT) - 2; y <= cyt + ryT + 2; y++)
     for (let x = gx - Rr - 1; x <= gx + Rr + 1; x++) {
@@ -922,4 +922,3 @@ for (const s of sprites) {
     strip.save(join(dir, `trees-${s.name}-${k}.png`));
   }
 }
-void PAL;

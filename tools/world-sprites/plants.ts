@@ -13,7 +13,7 @@
 // outlines, inner lines only where a part stands in front of another.
 
 import { join } from 'node:path';
-import { Anim, Canvas, Color, MATERIALS, WorldSprite, hash, hex, lambert, m, noise, preview, previewDir, ramp, withAlpha, writeGroup } from './kit';
+import { Anim, Canvas, Color, MATERIALS, WorldSprite, hash, m, noise, preview, previewDir, ramp, withAlpha, writeGroup } from './kit';
 import { Buf, Cluster, Leaf, Mass, N4, PAL, Pt, Tube, TAU, canopy, clamp, composite, drawTube, frac, leafPixels, lerp, outlineBuf, ovalLeaves, paintLeaf, pal, putField, quad, rasterCluster, rnd, shade, smooth, spline } from './foliage';
 
 // --- palettes --------------------------------------------------------------------------------
@@ -224,7 +224,6 @@ function bushFrame(s: BushSpec, C: { cl: Cluster[]; ras: ReturnType<typeof raste
 
 function bushSprite(s: BushSpec): WorldSprite {
   const C = bushCanopy(s);
-  const n = C.cl.length;
   // Idle: the upper clusters drift 1 px right, back, 1 px left, back (the base never moves).
   const idle = [0, 1, 0, -1].map((p) => bushFrame(s, C, C.cl.map((c) => [c.hf > 0.5 ? p : 0, 0] as Pt)));
   // Rustle: squash back (anticipation), a hard shake that alternates between lobes, smaller swings, rest.
@@ -256,7 +255,6 @@ function bushSprite(s: BushSpec): WorldSprite {
     }
     return frame;
   });
-  void n;
   return assemble(s.name, s.label, s.meters, ['hide-spot', 'cover-half', 'flammable', 'destructible'], { idle: { frames: idle, fps: 4 }, rustle: { frames: rustle, fps: 12, loop: false } }, s.gx, s.ground);
 }
 
@@ -986,5 +984,3 @@ for (const s of sprites) {
       .join(' ')}`,
   );
 }
-void hex;
-void lambert;

@@ -62,7 +62,7 @@ export interface Billow { x: number; y: number; r: number; heat: number; glow?: 
  * renders them: fire in the fire ramp (hotter toward each billow's lit side), smoke in the warm
  * smoke ramp, with dark outlines. Volumes of fire cooling into smoke, smoke trails, mushroom caps.
  */
-export function billows(w: number, h: number, list: Billow[], seed: number, t = 0): Canvas {
+export function billows(w: number, h: number, list: Billow[], seed: number, t = 0, smokePal: Color[] = SMOKE, alpha = 255): Canvas {
   const val = new Float32Array(w * h), heat = new Float32Array(w * h), glow = new Float32Array(w * h);
   const on = new Uint8Array(w * h);
   const ball = (b: Billow, px: number, py: number, pr: number) => {
@@ -107,11 +107,11 @@ export function billows(w: number, h: number, list: Billow[], seed: number, t = 
       const v = val[i] + glow[i] * 0.35;
       let idx = 1;
       for (let k = 1; k < sth.length; k++) if (v >= sth[k]) idx = k + 1;
-      col = SMOKE[Math.min(6, idx)];
+      col = smokePal[Math.min(6, idx)];
       // A smoke underside lit by the fire turns warm orange at the brightest step.
       if (glow[i] > 0.35 && idx >= 4) col = FIRE[idx >= 6 ? 3 : 2];
     }
-    c.set(i % w, (i / w) | 0, col);
+    c.set(i % w, (i / w) | 0, alpha < 255 && heat[i] < 0.1 ? [col[0], col[1], col[2], alpha] : col);
   }
   const ol: number[] = [];
   for (let y = 0; y < h; y++)
@@ -125,6 +125,9 @@ export function billows(w: number, h: number, list: Billow[], seed: number, t = 
       }
       if (hot >= 0) ol.push(x, y, hot >= 0.1 ? 1 : 0);
     }
-  for (let i = 0; i < ol.length; i += 3) c.set(ol[i], ol[i + 1], ol[i + 2] ? FIRE[0] : SMOKE[0]);
+  for (let i = 0; i < ol.length; i += 3) c.set(ol[i], ol[i + 1], ol[i + 2] ? FIRE[0] : alpha < 255 ? [smokePal[0][0], smokePal[0][1], smokePal[0][2], alpha] : smokePal[0]);
   return c;
 }
+
+/** Grey smoke, for haze rising behind walls of fire. */
+export const GREY = palette('#16161c', '#2c2b31', '#433f45', '#5b565a', '#746e70', '#8f898a', '#aaa4a3');

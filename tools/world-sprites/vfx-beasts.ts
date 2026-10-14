@@ -399,14 +399,14 @@ const PHX_BASE = { pitch: -0.38, bob: 0, spread: 1, farSpread: 1, head: 0, beak:
 // The owner's loop: the V (0), sweeping forward and down with the wingtips curling in (1-2), a glide
 // with the wings level and back (3-4), rising again (5-6), the smoke trail starting (6-7).
 const PHX_FLY: PhxPose[] = [
-  { ...PHX_BASE, arm: -104, hand: -124, farArm: -62, farHand: -80, bob: 1 },
+  { ...PHX_BASE, arm: -112, hand: -132, farArm: -62, farHand: -80, bob: 1 },
   { ...PHX_BASE, arm: -132, hand: 160, spread: 0.85, farArm: 18, farHand: 52, farSpread: 0.8, bob: -1, pitch: -0.32 },
   { ...PHX_BASE, arm: -158, hand: 132, spread: 0.8, farArm: 34, farHand: 68, farSpread: 0.75, bob: -2, pitch: -0.28, tail: 6 },
   { ...PHX_BASE, arm: 176, hand: 172, spread: 0.9, farArm: 22, farHand: 34, farSpread: 0.85, bob: -1, pitch: -0.18, tail: -8 },
   { ...PHX_BASE, arm: -164, hand: -172, spread: 1, farArm: -14, farHand: -6, farSpread: 0.9, bob: 0, pitch: -0.2, tail: -4 },
   { ...PHX_BASE, arm: -134, hand: -150, farArm: -42, farHand: -58, bob: 1, pitch: -0.3 },
-  { ...PHX_BASE, arm: -108, hand: -128, farArm: -66, farHand: -84, bob: 2, smoke: 0.6 },
-  { ...PHX_BASE, arm: -168, hand: -176, spread: 0.95, farArm: -24, farHand: -16, farSpread: 0.9, bob: 0, pitch: -0.2, tail: -6, smoke: 1 },
+  { ...PHX_BASE, arm: -114, hand: -134, farArm: -66, farHand: -84, bob: 2, smoke: 0.6 },
+  { ...PHX_BASE, arm: -146, hand: -158, spread: 0.95, farArm: -118, farHand: -132, farSpread: 0.85, bob: 0, pitch: -0.06, head: 0.05, tail: 40, smoke: 1 },
 ];
 // A steep dive: nose down, wings swept back, the tail streaming above.
 const PHX_DIVE: PhxPose[] = [0, 1, 2, 3, 4].map((k) => {
@@ -449,7 +449,8 @@ function phxFlame(seed: number, far = false) {
 
 /** The side of a wing bone its trailing feathers grow toward: the perpendicular nearest straight back. */
 function trailSide(arm: number): number {
-  const back = (a: number): number => Math.abs((((a - 180) % 360) + 540) % 360 - 180);
+  // How far an angle is from straight back; a wing held level lets its feathers hang down.
+  const back = (a: number): number => Math.abs(((((a - 180) % 360) + 540) % 360) - 180) - (Math.sin(a * D2R) > 0.5 ? 30 : 0);
   return back(arm + 90) <= back(arm - 90) ? 1 : -1;
 }
 
@@ -470,8 +471,8 @@ function phxWing(f: Frame, S: P2, arm: number, hand: number, spread: number, k: 
   for (let j = 6; j >= 0; j--) {
     const u = j / 6;
     const root: P2 = [lerp(Wr[0], T[0], 1 - u * 0.8), lerp(Wr[1], T[1], 1 - u * 0.8)];
-    const a = hand + sg * (4 + lerp(0, 60, u) * spread);
-    const len = lerp(33, 22, u) * k * (0.82 + 0.18 * spread);
+    const a = hand + sg * (4 + lerp(0, 76, u) * spread);
+    const len = lerp(36, 23, u) * k * (0.82 + 0.18 * spread);
     const d = dirOf(a);
     const tip: P2 = [root[0] + d[0] * len, root[1] + d[1] * len];
     f.part_([lens(root, tip, lerp(3.9, 3.5, u) * k, { bend: -sg * 1.2 * k, peak: 0.42, tip: 1.3, base: 0.6 })], phxFeather(5000 + j, far), style);
@@ -523,7 +524,7 @@ function phxWing(f: Frame, S: P2, arm: number, hand: number, spread: number, k: 
 
 /** One phoenix frame on a W x H canvas, the body centre at (cx, cy). */
 function phxFrame(g: PhxPose, fi: number, t: number, W: number, H: number, cx: number, cy: number): Canvas {
-  const K = 0.95; // wing scale
+  const K = 1.06; // wing scale
   const f = new Frame(W, H);
   const style = { outline: PHX.outline, line: PHX.line, solid: 150 };
   const cp = Math.cos(g.pitch), sp = Math.sin(g.pitch);
@@ -534,21 +535,22 @@ function phxFrame(g: PhxPose, fi: number, t: number, W: number, H: number, cx: n
   const plumeTips: P2[] = [];
   for (let i = 3; i >= 0; i--) {
     const root = P(-13, 3 + i * 0.7);
-    const len = [60, 68, 63, 52][i];
-    const a0 = 104 + i * 15 + g.tail - (g.pitch / D2R) * 0.6;
+    const len = [58, 74, 67, 52][i];
+    const a0 = [110, 124, 140, 156][i] + g.tail - (g.pitch / D2R) * 0.6;
+    const curl = [48, 66, 26, -30][i];
     const pts: P2[] = [root];
     let [x, y] = root;
     const n = 12;
     for (let s = 1; s <= n; s++) {
       const u = s / n;
-      const a = a0 + smooth(0, 0.45, u) * (46 - i * 10) + smooth(0.62, 1, u) * (78 + i * 6) + Math.sin(TAU * t - u * 5 + i * 1.3) * (6 + u * 12);
+      const a = a0 + smooth(0, 0.45, u) * (40 - i * 10) + smooth(0.6, 1, u) * curl + Math.sin(TAU * t - u * 5 + i * 1.3) * (6 + u * 14);
       x += Math.cos(a * D2R) * (len / n);
       y += Math.sin(a * D2R) * (len / n);
       pts.push([x, y]);
     }
     plumeTips.push([x, y]);
     const seed = 6000 + i * 13;
-    f.part_([tube(pts, (u) => (u < 0.68 ? lerp(2, 4.4, smooth(0, 0.68, u)) : lerp(4.4, 0.5, smooth(0.68, 1, u))))], (h) => {
+    f.part_([tube(pts, (u) => (u < 0.62 ? lerp(1.8, 3.8, smooth(0, 0.62, u)) : lerp(3.8, 0.5, smooth(0.62, 1, u))))], (h) => {
       // The end breaks up into flame: ragged, flickering edges.
       if (h.u > 0.6 && Math.abs(h.v) > 0.4 && noise(h.x * 0.9 - fi * 3, h.y * 0.9, 1.6, seed) < (h.u - 0.6) * 1.5) return null;
       const core = 1 - Math.abs(h.v);
@@ -596,12 +598,12 @@ function phxFrame(g: PhxPose, fi: number, t: number, W: number, H: number, cx: n
   }, style);
   // Crest: flame feathers off the back of the head.
   const ruffle = (j: number): number => noise(j * 2.3, fi * 1.9, 1, 6200);
-  for (let j = 0; j < 4; j++) {
-    const r = HZ(-2 - j * 1.5, -3.5 + j * 1.1);
-    const a = -128 - j * 13 + (ruffle(j) - 0.5) * 14 + ht / D2R;
-    const l = (9 - j * 1.4) * (0.85 + ruffle(j + 5) * 0.3);
+  for (let j = 0; j < 5; j++) {
+    const r = HZ(-1 - j * 1.4, -4 + j * 1);
+    const a = -112 - j * 14 + (ruffle(j) - 0.5) * 14 + ht / D2R;
+    const l = (12 - j * 1.6) * (0.85 + ruffle(j + 5) * 0.3);
     const d = dirOf(a);
-    f.part_([lens(r, [r[0] + d[0] * l, r[1] + d[1] * l], 2, { peak: 0.3, tip: 1.6, bend: 0.7 })], phxFlame(6400 + j), style);
+    f.part_([lens(r, [r[0] + d[0] * l, r[1] + d[1] * l], 2.1, { peak: 0.3, tip: 1.6, bend: 0.9 })], phxFlame(6400 + j), style);
   }
   // Beak: the lower mandible (it drops as the beak opens), the mouth, then the hooked upper mandible.
   const lowA = 0.32 + g.beak * 0.5;
@@ -2537,6 +2539,7 @@ if (!FOCUS) {
   beastsLineup(sprites, dir, stage);
   beastsAnims(sprites, dir);
   beastsCompare(sprites, dir, stage);
+  saveWhole(characterRef(), join(dir, 'beasts-character.png'));
 }
 for (const s of sprites) {
   if (s.name === 'lightning') lightningSheet(s, dir, stage);

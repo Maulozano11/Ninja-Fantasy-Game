@@ -4,7 +4,7 @@
 // white-hot cores.
 
 import { Canvas, Color, WorldSprite, withAlpha } from './kit';
-import { Billow, FIRE, ROCK, SMOKE, TH, billows, embers, erode, flow, tongue } from './vfx-a-fire-kit';
+import { Billow, FIRE, GREY, ROCK, SMOKE, TH, billows, embers, erode, flow, tongue } from './vfx-a-fire-kit';
 import {
   Field, Pt, TAU, WallKind, WallLine, bez, clamp, flySprite, frames, fract, lerp, pfbm, pnoise, render, rr, seamStack, smooth, stack, tubeShade, vfxSprite, wallGround, wallLine, wp,
 } from './vfx-a-lib';
@@ -274,7 +274,7 @@ function fireWall(t: number, grow: (s: number) => number, L: WallLine, seed: num
   // The scorched glowing ground: the footprint and a strip spreading toward the viewer.
   const groundC = new Canvas(W, H);
   {
-    const reachQ = L.kind === 'wall_depth' ? 22 : 30;
+    const reachQ = L.kind === 'wall_depth' ? 26 : L.kind === 'wall' ? 44 : 64;
     const corners = [wp(L, -half - 10, -12), wp(L, half + 10, -12), wp(L, -half - 10, reachQ), wp(L, half + 10, reachQ)];
     const x0 = Math.floor(Math.min(...corners.map((c) => c[0]))), x1 = Math.ceil(Math.max(...corners.map((c) => c[0])));
     const y0 = Math.floor(Math.min(...corners.map((c) => c[1]))), y1 = Math.ceil(Math.max(...corners.map((c) => c[1])));
@@ -288,9 +288,9 @@ function fireWall(t: number, grow: (s: number) => number, L: WallLine, seed: num
         const ragged = 1 + 0.25 * (pnoise(x, y, 8, 0, 0, seed + 1) - 0.5) * 2;
         if (qn > ragged) continue;
         const endFade = smooth(-0.03, 0.03, sAt) * smooth(1.03, 0.97, sAt);
-        const hot = (1 - qn) * Math.min(1, g * 1.5) * endFade + (pnoise(x * 0.7, y * 1.4, 10, 0, 0, seed + 2) - 0.5) * 0.3;
-        const col: Color = hot > 0.7 ? FIRE[3] : hot > 0.48 ? FIRE[2] : hot > 0.24 ? FIRE[1] : SMOKE[1];
-        groundC.set(x, y, withAlpha(col, hot > 0.24 ? 200 : 130));
+        const hot = (1.15 - qn) * Math.min(1, g * 1.5) * endFade + (pnoise(x * 0.7, y * 1.4, 10, 0, 0, seed + 2) - 0.5) * 0.3;
+        const col: Color = hot > 0.92 ? FIRE[3] : hot > 0.68 ? FIRE[2] : hot > 0.38 ? FIRE[1] : SMOKE[1];
+        groundC.set(x, y, withAlpha(col, hot > 0.38 ? 215 : hot > 0.16 ? 170 : 110));
       }
   }
   // Tongues: a back row of tall ones and a front row of shorter ones, pointed and uneven.
@@ -311,13 +311,16 @@ function fireWall(t: number, grow: (s: number) => number, L: WallLine, seed: num
       tongue(fields[layerOf(depthOf(tt, r.q), r.q)], [bx, by + 2], -Math.PI / 2 + rr(r.s + 2, k, -0.08, 0.08), hgt, r.w * Math.min(1, 0.5 + g * 0.6), r.heat, 0.12, ph + k * 1.7, rr(r.s + 3, k, -0.14, 0.14));
       if (r.q < 0) tops.push([bx, by - hgt]);
     }
-  // The glowing ember line at the roots.
+  // The glowing ember line at the roots (on the ground, under the flames).
+  const emberF = new Field(W, H);
   {
-    const [ax, ay] = wp(L, -half + 4), [bx2, by2] = wp(L, half - 4);
+    const [ax, ay] = wp(L, -half + 4, 3), [bx2, by2] = wp(L, half - 4, 3);
     const len = Math.hypot(bx2 - ax, by2 - ay), dx = (bx2 - ax) / len, dy = (by2 - ay) / len;
-    const target = fields[nL - 1];
+    const target = emberF;
     target.region(Math.min(ax, bx2) - 4, Math.min(ay, by2) - 4, Math.max(ax, bx2) + 4, Math.max(ay, by2) + 4, (x, y) => {
-      const u = clamp(((x - ax) * dx + (y - ay) * dy) / len, 0, 1);
+      const uRaw = ((x - ax) * dx + (y - ay) * dy) / len;
+      if (uRaw < 0 || uRaw > 1) return 0;
+      const u = uRaw;
       if (grow(u) <= 0.05) return 0;
       const px = ax + (bx2 - ax) * u, py = ay + (by2 - ay) * u;
       const d = L.kind === 'wall_depth' ? Math.abs(x - px) / 3 : Math.abs(y - py) / 2.4;
@@ -334,21 +337,18 @@ function fireWall(t: number, grow: (s: number) => number, L: WallLine, seed: num
   const bl: Billow[] = [];
   const gAll = grow(0.5);
   if (gAll > 0.3) {
-    const n = L.kind === 'wall_depth' ? 7 : 12;
+    const n = L.kind === 'wall_depth' ? 9 : 18;
     for (let k = 0; k < n; k++) {
-      const sAt = L.kind === 'wall_depth' ? 0.55 + k * 0.06 : (k + 0.5) / n;
+      const sAt = L.kind === 'wall_depth' ? 0.5 + k * 0.055 : (k + 0.5) / n;
       if (grow(sAt) < 0.4) continue;
       const tt = (sAt - 0.5) * L.len;
       const rise = fract(rr(seed + 30, k, 0, 1) + t);
-      const [bx, by] = wp(L, tt, -6, 54 + rise * 40 + rr(seed + 31, k, 0, 22));
-      const r = (8 + rise * 7) * rr(seed + 32, k, 0.8, 1.2) * Math.min(1, (gAll - 0.3) * 2);
+      const [bx, by] = wp(L, tt, -6, 34 + rise * 52 + rr(seed + 31, k, 0, 22));
+      const r = (10 + rise * 8) * rr(seed + 32, k, 0.8, 1.2) * Math.min(1, (gAll - 0.3) * 2);
       bl.push({ x: bx + Math.sin(ph + k) * 2, y: Math.max(r * 1.6 + 4, by), r, heat: 0, glow: 0.5, back: k % 3 === 0, bumps: 2 });
     }
   }
-  let smoke = bl.length ? billows(W, H, bl, seed + 33, t) : null;
-  if (smoke) {
-    for (let i = 3; i < smoke.px.length; i += 4) smoke.px[i] = Math.round(smoke.px[i] * 0.78);
-  }
+  const smoke = bl.length ? billows(W, H, bl, seed + 33, t, GREY, 160) : null;
   // End-on: wisps of smoke curling up off the top of the column.
   let curls: Canvas | null = null;
   if (L.kind === 'wall_depth' && gAll > 0.5) {
@@ -361,9 +361,9 @@ function fireWall(t: number, grow: (s: number) => number, L: WallLine, seed: num
         const a = u * 4.2 + ph + k * 2.1;
         pts.push([tx + Math.sin(a) * (6 + u * 12) + (k - 1) * 4, ty - u * (60 + k * 8)]);
       }
-      cf.path(pts.filter(([, y]) => y > 6), (u) => lerp(3.2, 1.6, u) * Math.min(1, (gAll - 0.5) * 3), (u) => lerp(0.5, 0.3, u), 1);
+      cf.path(pts.filter(([, y]) => y > 6), (u) => lerp(5, 2.2, u) * Math.min(1, (gAll - 0.5) * 3), (u) => lerp(0.56, 0.32, u), 1);
     }
-    curls = render(cf, SMOKE, { th: [0, 0.2, 0.32, 0.44, 0.56], lo: 2, hi: 5, rim: [1] });
+    curls = render(cf, GREY, { th: [0, 0.2, 0.32, 0.44, 0.56], lo: 2, hi: 5, rim: [1], alpha: [190, 190, 190, 190, 190, 190, 190] });
   }
   const em: { x: number; y: number; s: number }[] = [];
   tops.forEach(([x, y], k) => {
@@ -371,7 +371,8 @@ function fireWall(t: number, grow: (s: number) => number, L: WallLine, seed: num
     const p = fract(k * 0.37 + t);
     em.push({ x: x + Math.sin(p * 6 + k) * 3, y: y - 6 - p * 30, s: p < 0.3 ? 2 : 1 });
   });
-  const body = stack(W, H, groundC, smoke, curls, ...flames);
+  const emberC = emberF.any() ? render(emberF, FIRE, { th: TH, rim: [1] }) : null;
+  const body = stack(W, H, groundC, smoke, curls, emberC, ...flames);
   return stack(W, H, body, embers(W, H, em.filter((e) => e.y > 3 && e.x > 3 && e.x < W - 4), body));
 }
 const fireGrow = (i: number) => (sAt: number) => {

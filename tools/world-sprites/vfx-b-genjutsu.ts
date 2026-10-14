@@ -438,7 +438,7 @@ function breath(): WorldSprite {
     const c = new Canvas(BW, BH), t = f / N;
     const list: Puff[] = [];
     for (let i = 0; i < 14; i++) {
-      const s = 10 + fract(i / 14 + rnd(41, i) * 0.05 + t) * 84;
+      const s = 10 + fract(i / 14 + rnd(41, i) * 0.05 + t) * 76;
       const a = (rnd(42, i) - 0.5) * 0.7;
       list.push({ x: ox + Math.cos(a) * s, y: oy + Math.sin(a) * s, r: 2.5 + s * 0.07, steps: [1, 2, 2, 3] });
     }

@@ -739,24 +739,32 @@ function windCrane(): WorldSprite {
 }
 
 // =============================================================================================
-// THUNDER HOUND (Raiton)
+// RAIJU (lightning)
 // =============================================================================================
 //
-// A wolf made of lightning in a full gallop: a deep chest, tucked loins, a snarling head with the
-// ears laid back, a mane of electric spikes and a tail that ends in a forked bolt. The body glows
-// from a white core out to blue at the rim (light still comes from the upper left), its fur streaks
-// back with the motion, and bright veins of current crawl through it. Crackling arcs hug the
-// silhouette and change every frame; sparks fly off the paws and the back.
+// The thunder beast of the old stories: a lean wolf-cat made of lightning, in a pouncing cycle
+// that holds its body centre on the anchor: it coils, springs, stretches out flat with the
+// forelegs reaching and the claws spread, strikes with the jaw wide, then tucks its legs back in.
+// The body is lit like any solid creature (light planes on the shoulder, ribs and haunch, the
+// underside in amber shadow) with a white-hot core; layered fur tufts ride the back, shoulder,
+// haunch, belly and chest; the far legs sit a step darker behind, the near ones in front with
+// three claws on every paw. The head snarls: brow ridge drawn down, muzzle wrinkled, fangs bared,
+// ears pinned, a glowing eye. A mane of zigzag bolts crackles along the neck, the tail is a bolt
+// that forks at the end, current runs inside the body, arcs jump off it and sparks fly. In the
+// stretch it leaves faint after-images. Yellow throughout: white-hot, pale yellow, gold, amber,
+// with a deep orange-brown outline and only a couple of cool sparks.
 
-const BOLT = (() => ({
-  ramp: [hex('#141a5c'), hex('#2340b8'), hex('#3f7ee8'), hex('#78bdf8'), hex('#c4ecff'), hex('#ffffff')] as Color[],
-  outline: hex('#0c1048'),
-  line: hex('#2a3aa0'),
-  arc: hex('#e8fbff'),
-  arcDim: hex('#8fd6ff'),
-  eye: hex('#fff6a8'),
+const RAI = (() => ({
+  ramp: [hex('#4a2106'), hex('#8a4508'), hex('#c87c10'), hex('#f0b41c'), hex('#ffe46a'), hex('#fffbe4')] as Color[],
+  outline: hex('#5a2a08'),
+  line: hex('#7c3c08'),
+  mouth: [hex('#3a1604'), hex('#6a2c06')] as Color[],
+  arc: hex('#fffef0'),
+  glow: hex('#ffd23c'),
+  cool: hex('#c8f2ff'),
 }))();
 
+// The gallop the chakra fox runs with (the raiju pounces instead).
 interface Gait {
   /** Leg angles in degrees from straight down (positive swings forward): upper and lower segments. */
   fN: [number, number];
@@ -808,120 +816,242 @@ function lightningLine(c: Canvas, a: P2, b: P2, bulge: number, rough: number, se
   for (const [x, y] of cells) if (!(skip && skip(x, y))) c.set(x, y, core);
 }
 
-function thunderHound(): WorldSprite {
-  const W = 200, H = 150, cx = 98, cy = 72;
-  const Z = 1.14;
+interface Pounce {
+  /** Chest and hip centres (relative to the anchor), the back's arch (px, negative humps up). */
+  chest: P2;
+  hips: P2;
+  arch: number;
+  /** Head centre, its tilt (radians, positive looks down) and how far the jaw is open (0..1). */
+  head: P2;
+  ha: number;
+  jaw: number;
+  /** Paw positions: front near/far, hind near/far. */
+  fN: P2;
+  fF: P2;
+  hN: P2;
+  hF: P2;
+  /** 0 gathered .. 1 fully stretched (claws spread, tail streams). */
+  reach: number;
+}
+// coil, spring, launch, stretch, strike, tuck, tuck, gather
+const POUNCE: Pounce[] = [
+  { chest: [11, 1], hips: [-11, 2], arch: -9, head: [26, 1], ha: 0.25, jaw: 0.25, fN: [15, 15], fF: [11, 15], hN: [-4, 15], hF: [-8, 15], reach: 0 },
+  { chest: [14, -2], hips: [-14, 2], arch: -5, head: [30, -6], ha: -0.1, jaw: 0.4, fN: [25, 9], fF: [21, 11], hN: [-27, 14], hF: [-23, 15], reach: 0.3 },
+  { chest: [17, -4], hips: [-18, 1], arch: -2, head: [34, -9], ha: -0.15, jaw: 0.6, fN: [37, 0], fF: [33, 3], hN: [-39, 10], hF: [-35, 12], reach: 0.7 },
+  { chest: [19, -2], hips: [-20, 0], arch: 0, head: [36, -6], ha: -0.05, jaw: 0.85, fN: [45, 3], fF: [41, 6], hN: [-45, 6], hF: [-41, 9], reach: 1 },
+  { chest: [19, -1], hips: [-19, -1], arch: 1, head: [36, -3], ha: 0.12, jaw: 1, fN: [44, 9], fF: [39, 11], hN: [-43, 2], hF: [-39, 5], reach: 1 },
+  { chest: [16, 0], hips: [-16, -2], arch: -4, head: [32, -1], ha: 0.18, jaw: 0.6, fN: [29, 14], fF: [25, 15], hN: [-21, 10], hF: [-25, 8], reach: 0.5 },
+  { chest: [13, 1], hips: [-13, -1], arch: -8, head: [28, 0], ha: 0.22, jaw: 0.35, fN: [17, 15], fF: [13, 15], hN: [-7, 13], hF: [-11, 13], reach: 0.15 },
+  { chest: [12, 1], hips: [-12, 1], arch: -9, head: [27, 1], ha: 0.24, jaw: 0.28, fN: [16, 15], fF: [12, 15], hN: [-5, 14], hF: [-9, 14], reach: 0.05 },
+];
+
+/** Two-bone joint between a and b (bone lengths l1, l2), bent toward `side` (+1 forward, -1 back). */
+function joint(a: P2, b: P2, l1: number, l2: number, side: number): P2 {
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  const d = Math.min(Math.hypot(dx, dy), l1 + l2 - 0.01);
+  const dl = Math.hypot(dx, dy) || 1;
+  const ux = dx / dl, uy = dy / dl;
+  const along = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, l1 * l1 - along * along));
+  // Perpendicular that points forward (+x) for a leg hanging down.
+  let px = -uy, py = ux;
+  if (px < 0) {
+    px = -px;
+    py = -py;
+  }
+  return [a[0] + ux * along + px * h * side, a[1] + uy * along + py * h * side];
+}
+
+/** A zigzag bolt shape from `root` along `ang` (degrees): a polygon whose spine kinks left and right. */
+function boltSpike(root: P2, ang: number, len: number, w: number, seed: number): Prim {
+  const d = dirOf(ang), n: P2 = [-d[1], d[0]];
+  const kinks = 3;
+  const spine: P2[] = [root];
+  for (let k = 1; k <= kinks; k++) {
+    const u = k / (kinks + 1);
+    const off = (k % 2 ? 1 : -1) * w * (0.9 + rnd(seed, k) * 0.6);
+    spine.push([root[0] + d[0] * len * u + n[0] * off, root[1] + d[1] * len * u + n[1] * off]);
+  }
+  spine.push([root[0] + d[0] * len, root[1] + d[1] * len]);
+  const left: P2[] = [], right: P2[] = [];
+  spine.forEach(([x, y], i) => {
+    const hw = w * (1 - i / spine.length) + 0.3;
+    left.push([x + n[0] * hw, y + n[1] * hw]);
+    right.push([x - n[0] * hw, y - n[1] * hw]);
+  });
+  return poly([...left, ...right.reverse()], [-0.3, -0.5, 0.8]);
+}
+
+function raiju(): WorldSprite {
+  const W = 200, H = 150, cx = 100, cy = 76;
   const frames: Canvas[] = [];
-  GALLOP.forEach((g, fi) => {
-    const t = fi / GALLOP.length;
+  POUNCE.forEach((g, fi) => {
+    const t = fi / POUNCE.length;
     const f = new Frame(W, H);
-    const cp = Math.cos(g.pitch), sp = Math.sin(g.pitch);
-    const B = (x: number, y: number): P2 => [cx + (x * cp + y * sp) * Z, cy + (g.bob - x * sp + y * cp) * Z];
-    const sk = lerp(0.9, 1.06, g.stretch); // spine stretch
-    const style = { outline: BOLT.outline, line: BOLT.line, solid: 150 };
-    /**
-     * Lightning flesh: a white-hot core fading to deep blue, an electric rim that flares on the
-     * lit (upper-left) side, and fur streaks flowing back with the run.
-     */
-    const shock = (seed: number, far = 0) => (h: Hit): Color => {
+    const A = (p: P2): P2 => [cx + p[0], cy + p[1]];
+    const style = { outline: RAI.outline, line: RAI.line, solid: 150 };
+    /** Lit electric flesh: real light and shadow planes, a white-hot core, fur streaks flowing back. */
+    const flesh = (seed: number, far = 0, bias = 0) => (h: Hit): Color => {
       const L = lit(h);
       const core = Math.pow(h.nz, 1.6);
-      const fur = noise(h.x * 0.3 + t * 22, h.y * 1.5, 1.6, seed);
-      let s = stepOf(0.6 * core + 0.32 * L + (fur - 0.5) * 0.4, h.x, h.y, [0.24, 0.5, 0.76, 0.9], 0.05, seed, 2.2);
-      // The rim: the outermost band of the form glows where the light hits it.
-      if (h.nz < 0.38 && L > 0.5) s = Math.max(s, 4);
-      else if (h.nz < 0.3) s = Math.min(s, 2);
-      return BOLT.ramp[clamp(s - far, 1, 5)];
+      const fur = noise(h.x * 0.32 + fi * 3.1, h.y * 1.5, 1.6, seed);
+      let st = stepOf(0.66 * L + 0.3 * core + bias + (fur - 0.5) * 0.3, h.x, h.y, [0.28, 0.48, 0.68, 0.86], 0.05, seed, 2.2);
+      if (h.nz < 0.35 && L > 0.6) st = Math.max(st, 4); // the lit rim crackles
+      return RAI.ramp[clamp(st - far, 1, 5)];
     };
-    const leg = (root: P2, ang: [number, number], l1: number, l2: number, w1: number): Prim[] => {
-      const k: P2 = [root[0] + Math.sin(ang[0] * D2R) * l1 * Z, root[1] + Math.cos(ang[0] * D2R) * l1 * Z];
-      const p: P2 = [k[0] + Math.sin(ang[1] * D2R) * l2 * Z, k[1] + Math.cos(ang[1] * D2R) * l2 * Z];
-      const toe: P2 = [p[0] + 3.5 * Z, p[1] + 0.5];
-      return [
-        lens(root, k, w1 * Z, { peak: 0.3, tip: 0.5, base: 1 }),
-        tube([k, p], (u) => lerp(w1 * 0.55, 2.0, u) * Z),
-        blob((p[0] + toe[0]) / 2, (p[1] + toe[1]) / 2, 3.4 * Z, 2.2 * Z, Math.atan2(toe[1] - p[1], toe[0] - p[0])),
-      ];
+    /** Fur tufts: blades lit along their spine, the tips a little brighter. */
+    const tuft = (seed: number, far = 0) => (h: Hit): Color => {
+      const st = stepOf(lit(h) * 0.75 + h.u * 0.25 + (noise(h.x, h.y, 1.6, seed) - 0.5) * 0.2, h.x, h.y, [0.3, 0.5, 0.7, 0.86], 0.05, seed);
+      return RAI.ramp[clamp(st - far, 1, 5)];
     };
-    // --- far legs ---------------------------------------------------------------------------
-    f.part_(leg(B(-22 * sk, 2), g.hF, 15, 17, 6), shock(11, 1), style);
-    f.part_(leg(B(17 * sk, 6), g.fF, 13, 16, 5), shock(13, 1), style);
-    // --- tail: streaming back --------------------------------------------------------------
-    const tail: P2[] = [];
-    for (let q = 0; q <= 16; q++) {
-      const u = q / 16;
-      tail.push(B(-30 * sk - u * 24, -6 - u * 8 + Math.sin(TAU * (u * 0.8 - t)) * 3 * u));
+    const tufts = (defs: [P2, number, number, number][], seed: number): Prim[] =>
+      defs.map(([r, a, l, w], j) => {
+        const d = dirOf(a + Math.sin(TAU * t + j * 1.9) * 5);
+        return lens(r, [r[0] + d[0] * l, r[1] + d[1] * l], w, { tip: 1.8, peak: 0.25, bend: (j % 2 ? 1 : -1) * 1.1 + rnd(seed, j) - 0.5 });
+      });
+    const C = A(g.chest), Hp = A(g.hips);
+    const mid: P2 = [(C[0] + Hp[0]) / 2, (C[1] + Hp[1]) / 2 + g.arch * 0.6];
+    // --- legs ----------------------------------------------------------------------------------
+    const frontLeg = (paw: P2, far: boolean): Prim[] => {
+      const S: P2 = [C[0] + (far ? 0 : 2), C[1] + 3];
+      const P = A(paw);
+      const E = joint(S, P, 12, 12, -1); // the elbow folds back
+      const ang = Math.atan2(P[1] - E[1], P[0] - E[0]);
+      return [lens(S, E, far ? 4.6 : 5.4, { peak: 0.3, tip: 0.6, base: 1 }), tube([E, P], (u) => lerp(3.3, 2.3, u)), blob(P[0] + Math.cos(ang) * 1.5, P[1] + Math.sin(ang) * 1.5, 3.4, 2.5, ang)];
+    };
+    const hindLeg = (paw: P2, far: boolean): Prim[] => {
+      const Hj: P2 = [Hp[0] - 1, Hp[1] + 3];
+      const P = A(paw);
+      const toHip = Math.atan2(Hj[1] - P[1], Hj[0] - P[0]) + 0.5; // the hock bends back
+      const K: P2 = [P[0] + Math.cos(toHip) * 7, P[1] + Math.sin(toHip) * 7];
+      const N = joint(Hj, K, 12, 11, 1); // the knee points forward
+      const ang = Math.atan2(P[1] - K[1], P[0] - K[0]);
+      return [lens(Hj, N, far ? 6.2 : 7.2, { peak: 0.35, tip: 0.5, base: 1 }), tube([N, K], (u) => lerp(3.6, 2.4, u)), tube([K, P], () => 2.2), blob(P[0] + Math.cos(ang) * 1.2, P[1] + Math.sin(ang) * 1.2, 3.2, 2.3, ang)];
+    };
+    /** Three claws off the end of a paw, spreading as the beast reaches. */
+    const claws = (paw: P2, from: P2): Prim[] => {
+      const P = A(paw);
+      const base = Math.atan2(P[1] - from[1], P[0] - from[0]) * (180 / Math.PI);
+      const spread = 14 + g.reach * 16;
+      return [-1, 0, 1].map((k) => {
+        const a = base + 25 + k * spread;
+        const d = dirOf(a);
+        const r: P2 = [P[0] + Math.cos((base * Math.PI) / 180) * 3, P[1] + Math.sin((base * Math.PI) / 180) * 3];
+        const l = 3 + g.reach * 1.5;
+        return lens(r, [r[0] + d[0] * l, r[1] + d[1] * l], 0.9, { tip: 1, peak: 0.2, base: 1, bend: 0.6 });
+      });
+    };
+    // --- far side: tail, far legs ----------------------------------------------------------------
+    // Tail: a bolt that leaves the rump, kinks back and forks into three prongs.
+    const tailRoot: P2 = [Hp[0] - 9, Hp[1] - 4];
+    const tailDir = lerp(-150, -172, g.reach) + Math.sin(TAU * t) * 6;
+    const tpts: P2[] = [tailRoot];
+    const td = dirOf(tailDir), tn: P2 = [-td[1], td[0]];
+    for (let k = 1; k <= 5; k++) {
+      const off = (k % 2 ? 1 : -1) * (2.4 + rnd(901 + fi, k) * 1.2);
+      tpts.push([tailRoot[0] + td[0] * k * 6.5 + tn[0] * off, tailRoot[1] + td[1] * k * 6.5 + tn[1] * off]);
     }
-    f.part_([tube(tail, (u) => lerp(5, 1.8, u) * Z)], shock(17), style);
-    // --- mane: thin electric spikes swept back along the neck and spine -------------------
+    const tTip = tpts[tpts.length - 1];
+    const prongs: Prim[] = [-24, 4, 30].map((da, k) => {
+      const d = dirOf(tailDir + da);
+      const mid2: P2 = [tTip[0] + d[0] * 5 + (k - 1) * 1.5, tTip[1] + d[1] * 5 + (rnd(950 + fi, k) - 0.5) * 3];
+      return tube([tTip, mid2, [tTip[0] + d[0] * 11, tTip[1] + d[1] * 11]], (u) => lerp(1.8, 0.5, u));
+    });
+    f.part_([tube(tpts, (u) => lerp(4.2, 2.2, u)), ...prongs], flesh(17, 0, 0.12), style);
+    f.part_(hindLeg(g.hF, true), flesh(11, 1), style);
+    f.part_(claws(g.hF, A([g.hips[0] - 1, g.hips[1] + 3])), () => RAI.ramp[4], style);
+    f.part_(frontLeg(g.fF, true), flesh(13, 1), style);
+    f.part_(claws(g.fF, A([g.chest[0], g.chest[1] + 3])), () => RAI.ramp[4], style);
+    // --- body: chest, ribs and haunch -----------------------------------------------------------
+    const nb: P2 = [C[0] + 7, C[1] - 6];
+    const Hd = A(g.head);
+    f.part_([
+      blob(C[0], C[1], 12, 11, -0.2),
+      tube([C, mid, Hp], (u) => lerp(10, 8.5, Math.sin(u * Math.PI))),
+      blob(Hp[0], Hp[1], 10.5, 10, 0.1),
+      tube([nb, [lerp(nb[0], Hd[0], 0.5), lerp(nb[1], Hd[1], 0.5) - 2], [Hd[0] - 4, Hd[1] + 1]], (u) => lerp(9, 7, u)),
+    ], flesh(23), style);
+    // --- layered fur: back (two rows), shoulder, haunch, belly fringe, chest ruff ------------
+    const backAt = (u: number): P2 => {
+      const x = lerp(C[0] + 4, Hp[0] - 6, u), yb = lerp(C[1] - 10, Hp[1] - 9, u) + g.arch * Math.sin(u * Math.PI) * 0.9;
+      return [x, yb];
+    };
+    f.part_(tufts([0.1, 0.3, 0.5, 0.7, 0.9].map((u, j) => [backAt(u), -162 + j * 3, 9 - j * 0.5, 2.8]), 31), tuft(31), style);
+    f.part_(tufts([0.2, 0.4, 0.6, 0.8].map((u, j) => [[backAt(u)[0], backAt(u)[1] + 3], -170 + j * 2, 8, 2.6] as [P2, number, number, number]), 33), tuft(33), style);
+    f.part_(tufts([[[C[0] + 3, C[1] - 4], 158, 9, 3], [[C[0] + 1, C[1] + 1], 150, 9, 3], [[C[0] + 4, C[1] + 5], 140, 7, 2.6]], 35), tuft(35), style);
+    f.part_(tufts([[[Hp[0] + 2, Hp[1] - 5], 176, 9, 3], [[Hp[0] + 3, Hp[1]], 170, 9, 3], [[Hp[0] + 1, Hp[1] + 5], 160, 7, 2.6]], 37), tuft(37), style);
+    f.part_(tufts([0.25, 0.5, 0.75].map((u, j) => [[lerp(C[0], Hp[0], u), lerp(C[1], Hp[1], u) + 8 + Math.sin(u * Math.PI) * 1.5] as P2, 150 + j * 6, 7, 2.4]), 39), tuft(39, 1), style);
+    f.part_(tufts([[[C[0] + 9, C[1] + 3], 115, 8, 2.8], [[C[0] + 7, C[1] + 7], 125, 8, 2.6], [[C[0] + 4, C[1] + 9], 135, 6, 2.2]], 41), tuft(41), style);
+    // --- mane of crackling bolts along the neck and over the shoulders --------------------------
     const mane: Prim[] = [];
-    for (let j = 0; j < 11; j++) {
-      const u = j / 10;
-      const r = B(lerp(30, -24, u) * sk, lerp(-17, -10, u) - Math.sin(u * Math.PI) * 2);
-      const a = -152 - u * 12 + Math.sin(TAU * t + j * 1.3) * 7 + (j % 2) * 10;
-      const l = (lerp(13, 7, u) + (j % 3) * 2.5) * Z;
-      const d = dirOf(a);
-      mane.push(lens(r, [r[0] + d[0] * l, r[1] + d[1] * l], 1.9 * Z, { tip: 2, peak: 0.2, bend: (j % 2 ? 1 : -1) * 0.8 }));
-    }
-    f.part_(mane, (h) => BOLT.ramp[clamp(stepOf(lit(h) + h.u * 0.35, h.x, h.y, [0.2, 0.45, 0.68, 0.88]), 2, 5)], style);
-    // --- body: chest, loins and haunch as one form, with a shaggy chest ruff ---------------
-    const torso = [
-      blob(...B(16 * sk, -2), 15 * Z, 13.5 * Z, g.pitch * 0.5),
-      tube([B(14 * sk, -2), B(-4 * sk, -3 - (1 - g.stretch) * 3), B(-20 * sk, -3)], (u) => lerp(12, 9, Math.sin(u * Math.PI)) * Z),
-      blob(...B(-20 * sk, -2), 12.5 * Z, 11.5 * Z),
-      lens(B(22 * sk, 6), B(12 * sk, 17), 3.6 * Z, { tip: 1.8, peak: 0.3 }),
-      lens(B(16 * sk, 8), B(5 * sk, 17), 3.2 * Z, { tip: 1.8, peak: 0.3 }),
-      lens(B(9 * sk, 9), B(0, 15), 2.6 * Z, { tip: 1.8, peak: 0.3 }),
-    ];
-    // Electric fur: spikes off the belly and the back of the haunch, crackling outward.
     for (let j = 0; j < 6; j++) {
       const u = j / 5;
-      const r = B(lerp(8, -26, u) * sk, lerp(6, 4, u) + Math.sin(u * Math.PI) * 2);
-      const a = 120 + u * 25 + Math.sin(TAU * t + j * 2.1) * 8;
-      const d = dirOf(a);
-      const l = (6 + (j % 2) * 3) * Z;
-      torso.push(lens(r, [r[0] + d[0] * l, r[1] + d[1] * l], 1.8 * Z, { tip: 2, peak: 0.2 }));
+      const r: P2 = [lerp(Hd[0] - 6, C[0] - 2, u), lerp(Hd[1] - 6, C[1] - 11, u) - Math.sin(u * Math.PI) * 2];
+      mane.push(boltSpike(r, -150 - u * 18 + Math.sin(TAU * t + j) * 6, lerp(14, 10, u) + rnd(960 + fi, j) * 3, 2.1, 970 + fi * 7 + j));
     }
-    f.part_(torso, shock(23), style);
-    // --- head: neck, skull, snout, snarling open jaw, ears laid back ----------------------
-    const nb = B(26 * sk, -8);
-    const hc: P2 = [nb[0] + 14 * Z, nb[1] - 10 * Z + Math.sin(TAU * t) * 1.2];
-    const HZ = (x: number, y: number): P2 => [hc[0] + x * Z, hc[1] + y * Z];
-    f.part_([lens(HZ(2, 5), HZ(22, 9.5), 3.2 * Z, { peak: 0.2, tip: 0.7, base: 1, bend: 1 })], shock(29), style);
-    f.part_([poly([HZ(4, 3), HZ(21, 4), HZ(20, 8.5), HZ(6, 7)])], () => BOLT.ramp[0], { outline: null, line: null });
-    f.part_([poly([HZ(18, 8), HZ(19.5, 8), HZ(18.6, 4.5)]), poly([HZ(12, 7.4), HZ(13.4, 7.2), HZ(12.6, 4.6)])], () => BOLT.ramp[5], { outline: null, line: null });
-    const ears = [lens(HZ(-1, -6), HZ(-13, -14), 3.2 * Z, { peak: 0.3, tip: 1.4, bend: -1 }), lens(HZ(-4, -4), HZ(-15, -8.5), 2.6 * Z, { peak: 0.3, tip: 1.4 })];
-    // Cheek tufts: electric spikes swept back off the jaw.
-    const cheeks = [lens(HZ(-2, 3), HZ(-12, 8), 2 * Z, { tip: 2, peak: 0.2 }), lens(HZ(0, 5), HZ(-9, 12), 1.8 * Z, { tip: 2, peak: 0.2 })];
-    f.part_([tube([nb, [nb[0] + 8 * Z, nb[1] - 6 * Z], HZ(-3, 1)], (u) => lerp(10, 7, u) * Z), blob(hc[0], hc[1], 9 * Z, 7.5 * Z, 0.05), lens(HZ(1, -1.5), HZ(24, 3), 5 * Z, { peak: 0.18, tip: 0.85, base: 1 }), ...ears, ...cheeks], shock(31), style);
-    f.part_([poly([HZ(19, 3.6), HZ(20.6, 3.6), HZ(19.8, 7)]), poly([HZ(13, 3.8), HZ(14.6, 3.8), HZ(13.8, 6.6)])], () => BOLT.ramp[5], { outline: BOLT.outline, line: null });
-    // --- near legs ---------------------------------------------------------------------------
-    f.part_(leg(B(-20 * sk, 2), g.hN, 16, 18, 7), shock(37), style);
-    f.part_(leg(B(19 * sk, 6), g.fN, 14, 17, 5.5), shock(41), style);
+    f.part_(mane, (h) => RAI.ramp[clamp(stepOf(0.5 + (1 - Math.abs(h.v)) * 0.45, h.x, h.y, [0.3, 0.52, 0.7, 0.86], 0.06, 61), 2, 5)], style);
+    // --- head: snarling -------------------------------------------------------------------------
+    const HS = 1.15;
+    const ca = Math.cos(g.ha), sa = Math.sin(g.ha);
+    const HZ = (x: number, y: number): P2 => [Hd[0] + (x * ca - y * sa) * HS, Hd[1] + (x * sa + y * ca) * HS];
+    f.part_([lens(HZ(-3, -6), HZ(-14, -12), 3, { peak: 0.3, tip: 1.3, bend: -1 })], flesh(43, 1), style); // far ear
+    const jawEnd = HZ(15, 4 + 6.5 * g.jaw);
+    f.part_([lens(HZ(0, 4), jawEnd, 2.9 * HS, { peak: 0.25, tip: 0.8, base: 1 })], flesh(45, 0, -0.05), style);
+    f.part_([poly([HZ(1, 1.5), HZ(16, 2), jawEnd, HZ(3, 5)])], (h) => RAI.mouth[h.v < -0.2 ? 1 : 0], { outline: null, line: null });
+    // Teeth: a row along the upper jaw with a long fang, two fangs rising from the lower jaw.
+    const fangs: Prim[] = [poly([HZ(12.5, 2), HZ(14.5, 2), HZ(13.6, 6.5)]), poly([HZ(9, 2), HZ(10.3, 2), HZ(9.6, 4)]), poly([HZ(6, 2), HZ(7.2, 2), HZ(6.6, 3.6)])];
+    const ly = (x: number): P2 => {
+      const a: P2 = HZ(0, 4), b = jawEnd;
+      const u = x / 15;
+      return [lerp(a[0], b[0], u), lerp(a[1], b[1], u) - 1];
+    };
+    const lf1 = ly(12.5), lf2 = ly(8.5);
+    fangs.push(poly([[lf1[0] - 1, lf1[1]], [lf1[0] + 1, lf1[1]], [lf1[0] + 0.2, lf1[1] - 3.5]]), poly([[lf2[0] - 0.8, lf2[1]], [lf2[0] + 0.8, lf2[1]], [lf2[0], lf2[1] - 2.4]]));
+    f.part_(fangs, () => RAI.ramp[5], { outline: RAI.outline, line: null });
+    // Skull, brow ridge drawn down, muzzle, cheek tufts, the near ear pinned back.
+    f.part_([
+      blob(Hd[0], Hd[1], 8.5 * HS, 7.5 * HS, g.ha),
+      blob(...HZ(4.5, -4.2), 5.2 * HS, 2.4 * HS, g.ha + 0.25),
+      lens(HZ(2, -1.5), HZ(17.5, 1.2), 4.4 * HS, { peak: 0.25, tip: 0.6, base: 1 }),
+      lens(HZ(-1, -6.5), HZ(-12, -15), 3.4 * HS, { peak: 0.3, tip: 1.3, bend: -1 }),
+      lens(HZ(-2, 4), HZ(-12, 8), 2.6, { tip: 1.8, peak: 0.25 }),
+      lens(HZ(0, 6), HZ(-9, 12), 2.4, { tip: 1.8, peak: 0.25 }),
+    ], flesh(47), style);
     const fc = f.finish();
-    // Eye: a hot slit under a dark brow; nose.
-    const [ex, ey] = HZ(6, -2).map(Math.round);
-    for (const [dx, dy, col] of [[-1, -1, BOLT.outline], [0, -1, BOLT.outline], [1, -1, BOLT.outline], [2, -1, BOLT.outline], [3, -1, BOLT.outline], [-1, 0, BOLT.ramp[3]], [0, 0, BOLT.eye], [1, 0, BOLT.eye], [2, 0, BOLT.eye], [3, 0, BOLT.ramp[4]], [0, 1, BOLT.ramp[1]], [1, 1, BOLT.ramp[1]], [2, 1, BOLT.ramp[1]]] as [number, number, Color][]) fc.set(ex + dx, ey + dy, col);
-    const [nx2, ny2] = HZ(23, 2).map(Math.round);
-    fc.set(nx2, ny2, BOLT.outline);
-    fc.set(nx2 - 1, ny2, BOLT.outline);
-    // Bolts of current running through the body (only inside it), re-struck every frame.
+    // Snarl: wrinkles over the muzzle, the nose, and a glowing eye under the brow.
+    for (const [x, y] of [[9, -2.6], [10, -2.6], [11.5, -1.8], [12.5, -1.8]] as P2[]) {
+      const [X, Y] = HZ(x, y).map(Math.round);
+      fc.set(X, Y, RAI.line);
+    }
+    const [nX, nY] = HZ(17.3, -0.2).map(Math.round);
+    fc.set(nX, nY, RAI.outline);
+    fc.set(nX - 1, nY, RAI.outline);
+    fc.set(nX, nY - 1, RAI.mouth[1]);
+    const [ex, ey] = HZ(5.5, -2.2).map(Math.round);
+    for (const [dx, dy] of [[-2, 0], [4, 0], [-1, 1], [3, 1], [0, 2], [1, 2], [2, 2]]) if (fc.alpha(ex + dx, ey + dy) > 200) fc.plot(ex + dx, ey + dy, wa(RAI.glow, 120));
+    for (const [dx, dy, col] of [[-1, -1, RAI.outline], [0, -1, RAI.outline], [1, -1, RAI.outline], [2, -1, RAI.outline], [3, -1, RAI.outline], [-1, 0, RAI.ramp[4]], [0, 0, RAI.arc], [1, 0, RAI.arc], [2, 0, RAI.ramp[4]], [0, 1, RAI.glow], [1, 1, RAI.glow]] as [number, number, Color][]) fc.set(ex + dx, ey + dy, col);
+    // Current inside the body: bolts from the chest to the haunch, and down the near legs.
     const inside = (x: number, y: number): boolean => fc.alpha(x, y) >= 220 && f.part[y * W + x] >= 0;
     const veins: [P2, P2][] = [
-      [B(22 * sk, -4), B(-22 * sk, -2)],
-      [B(18 * sk, 0), B(24 * sk, 16)],
-      [B(-18 * sk, 0), B(-26 * sk, 14)],
-      [B(26 * sk, -8), HZ(4, 2)],
+      [[C[0] + 6, C[1] - 2], [Hp[0] - 4, Hp[1] - 2]],
+      [[C[0] + 2, C[1] + 4], A(g.fN)],
+      [[Hp[0], Hp[1] + 3], A(g.hN)],
     ];
-    veins.forEach(([a, b], v) => {
-      if (rnd(1000 + fi, v) < 0.25) return;
-      lightningLine(fc, a, b, (rnd(1100 + fi, v) - 0.5) * 8, 0.8, 1200 + fi * 10 + v, BOLT.ramp[5], wa(BOLT.ramp[4], 255), (x, y) => !inside(x, y));
-    });
-    // The tail ends in a forked bolt.
-    const tt = tail[tail.length - 1];
-    lightningLine(fc, tt, [tt[0] - 14, tt[1] - 7 + Math.sin(TAU * t) * 3], 2, 0.7, 300 + fi, BOLT.arc, BOLT.ramp[3]);
-    lightningLine(fc, tt, [tt[0] - 12, tt[1] + 6 - Math.sin(TAU * t) * 2], -2, 0.7, 400 + fi, BOLT.arc, BOLT.ramp[3]);
-    // Crackling arcs: short bolts that jump off the silhouette and land back on it.
+    veins.forEach(([a, b], v) => lightningLine(fc, a, b, (rnd(1100 + fi, v) - 0.5) * 8, 0.8, 1200 + fi * 10 + v, RAI.ramp[5], RAI.glow, (x, y) => !inside(x, y)));
+    // Near legs, drawn after the veins so they read in front (a second pass on the same canvas).
+    const f2 = new Frame(W, H);
+    f2.part_(hindLeg(g.hN, false), flesh(37), style);
+    f2.part_(claws(g.hN, A([g.hips[0] - 1, g.hips[1] + 3])), () => RAI.ramp[5], style);
+    f2.part_(frontLeg(g.fN, false), flesh(41), style);
+    f2.part_(claws(g.fN, A([g.chest[0] + 2, g.chest[1] + 3])), () => RAI.ramp[5], style);
+    const legs = f2.finish();
+    // The near legs' outline meets the body as an inner line.
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const c = legs.get(x, y);
+        if (c[3]) fc.set(x, y, c);
+      }
+    // Arcs jumping off the silhouette and landing back on it.
     const solidAt = (x: number, y: number): boolean => fc.alpha(x, y) >= 220;
     const rim: P2[] = [];
     for (let y = 1; y < H - 1; y++)
@@ -929,42 +1059,43 @@ function thunderHound(): WorldSprite {
         if (!solidAt(x, y)) continue;
         if (!solidAt(x + 1, y) || !solidAt(x - 1, y) || !solidAt(x, y + 1) || !solidAt(x, y - 1)) rim.push([x, y]);
       }
-    const bcx = cx, bcy = cy - 4;
     for (let a = 0; a < 5; a++) {
       const p0 = rim[Math.floor(rnd(500 + fi, a) * rim.length)];
-      // Land 12-22 px further round the rim.
       const want = 12 + rnd(600 + fi, a) * 10;
       let p1 = p0;
       for (let q = 0; q < 40; q++) {
         const c2 = rim[Math.floor(rnd(650 + fi, a, q) * rim.length)];
-        const d = Math.hypot(c2[0] - p0[0], c2[1] - p0[1]);
-        if (Math.abs(d - want) < 3) {
+        if (Math.abs(Math.hypot(c2[0] - p0[0], c2[1] - p0[1]) - want) < 3) {
           p1 = c2;
           break;
         }
       }
       if (p1 === p0) continue;
-      // Bulge away from the body centre.
-      const mx = (p0[0] + p1[0]) / 2 - bcx, my = (p0[1] + p1[1]) / 2 - bcy;
-      const ddx = p1[0] - p0[0], ddy = p1[1] - p0[1];
-      const side = Math.sign(-ddy * mx + ddx * my) || 1;
-      lightningLine(fc, p0, p1, side * (6 + rnd(700 + fi, a) * 6), 0.9, 800 + fi * 10 + a, BOLT.arc, BOLT.ramp[3], (x, y) => solidAt(x, y));
+      const mx = (p0[0] + p1[0]) / 2 - cx, my = (p0[1] + p1[1]) / 2 - cy;
+      const side = Math.sign(-(p1[1] - p0[1]) * mx + (p1[0] - p0[0]) * my) || 1;
+      lightningLine(fc, p0, p1, side * (6 + rnd(700 + fi, a) * 5), 0.9, 800 + fi * 10 + a, RAI.arc, RAI.glow, solidAt);
     }
-    // Sparks thrown off the back and the paws, drifting back.
+    // After-images: in the stretch the beast leaves two fading echoes behind it.
+    if (g.reach > 0.6) {
+      const snap = fc.clone();
+      for (const [dx, al] of [[-11, 70], [-21, 36]] as [number, number][])
+        for (let y = 0; y < H; y++)
+          for (let x = 0; x < W; x++) {
+            if (snap.alpha(x, y) < 220 || fc.alpha(x + dx, y)) continue;
+            fc.plot(x + dx, y, wa(RAI.glow, al));
+          }
+    }
+    // Sparks: gold and white, a couple of cool ones.
     for (let k = 0; k < 16; k++) {
       const p = fract(k / 16 + t);
-      const x = cx + 36 - rnd(901, k) * 90 - p * 30, y = cy - 40 + rnd(902, k) * 84 + (p - 0.5) * 6;
-      const X = Math.round(x), Y = Math.round(y);
+      const X = Math.round(cx + 34 - rnd(911, k) * 90 - p * 26), Y = Math.round(cy - 34 + rnd(912, k) * 70 + (p - 0.5) * 6);
       if (fc.alpha(X, Y)) continue;
-      fc.set(X, Y, p < 0.5 ? BOLT.arc : BOLT.arcDim);
-      if (p < 0.3) {
-        fc.plot(X + 1, Y, wa(BOLT.ramp[3], 170));
-        fc.plot(X, Y + 1, wa(BOLT.ramp[3], 120));
-      }
+      fc.set(X, Y, k % 7 === 3 ? RAI.cool : p < 0.5 ? RAI.arc : RAI.glow);
+      if (p < 0.3) fc.plot(X + 1, Y, wa(RAI.glow, 170));
     }
     frames.push(fc);
   });
-  return flySprite('lightning', 'Thunder hound (Raiton)', [2.5, 1.7], frames, cx, cy);
+  return flySprite('lightning', 'Raiju (lightning)', [2.6, 1.8], frames, cx, cy);
 }
 
 // =============================================================================================
@@ -1622,7 +1753,7 @@ const FOCUS = process.env.FOCUS?.split(',');
 const BUILDERS: [string, () => WorldSprite][] = [
   ['water', waterDragon],
   ['wind', windCrane],
-  ['lightning', thunderHound],
+  ['lightning', raiju],
   ['earth', stoneDragon],
   ['genjutsu', illusionCrow],
   ['chakra', chakraFox],

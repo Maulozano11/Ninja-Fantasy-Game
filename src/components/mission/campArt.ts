@@ -30,8 +30,8 @@ export const SPOTS = scene.spots.map((s) => ({ x: s.x, y: s.y, flip: s.facing ==
 
 /**
  * Where a pose's support goes, from the pose rig (design units from the feet at x 32): the seat's
- * centre behind the feet for sit and read, the leaning face behind the feet for lean. In 1x world
- * px (the sprite's fine pixels), measured on the frames: 17 and 26.
+ * centre behind the feet for sit and read, the leaning face behind the feet for lean, in 1x world
+ * px (the sprite's fine pixels). Read live from CAMP_PROPS, so the supports follow the poses.
  */
 export const SEAT_DX = (32 - CAMP_PROPS.SEAT_X) * RES;
 export const LEAN_DX = (32 - CAMP_PROPS.LEAN_X) * RES;

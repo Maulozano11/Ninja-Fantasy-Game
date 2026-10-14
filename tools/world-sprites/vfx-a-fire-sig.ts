@@ -336,7 +336,7 @@ export function waveFrame(w: Wave, st: WaveState): Canvas {
   }
   // The crest breaks like a wave: a lip of fire rolls forward and curls down over a hollow,
   // lit along its back, dark inside the curl, with spray streaming off it.
-  const lipOn = !(great && st.dragon > 0.3) && st.burn > 0.7;
+  const lipOn = !(great && st.dragon > 0.6) && st.burn > 0.7;
   if (lipOn) {
     const ch = heightAt(crestX - 4, 0);
     if (ch > 30) {
@@ -366,8 +366,8 @@ export function waveFrame(w: Wave, st: WaveState): Canvas {
         const rad = thick(uu) * 0.65;
         tongue(lipF, [q[0] + Math.cos(ang) * rad, q[1] + Math.sin(ang) * rad], lerp(-2.45, -2.05, k / 5) + Math.sin(ph + k) * 0.08, ch * (0.2 - k * 0.018) * rr(seed + 61, k, 0.55, 1.25), ch * 0.034, 0.7, 0.2, ph + k * 1.3, -0.18);
       });
-      // As the fire dies the lip breaks up into loose flames before it goes.
-      erode(lipF, 0.5 + (st.phase === 'fade' ? (1 - st.burn) * 4 : 0), er);
+      // As the fire dies (or the dragon forms out of it) the lip breaks up into loose flames.
+      erode(lipF, 0.5 + (st.phase === 'fade' ? (1 - st.burn) * 4 : 0) + (great ? st.dragon * 4 : 0), er);
     }
   }
   // Burning ground over the cone's footprint, with ragged edges; it breaks into glowing patches

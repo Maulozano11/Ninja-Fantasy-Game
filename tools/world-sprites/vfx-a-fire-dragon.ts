@@ -290,8 +290,8 @@ export function dragonHead(s: number, t: number, jaw = 0, tilt = 0, eastern = fa
   if (eastern) {
     const wf = new Field(W, H);
     const sway = Math.sin(ph) * 2;
-    tubeShade(wf, pathP(bez([72, -9], [86, -26 + sway], [70, -44], [44 + sway, -40], 24)), (u) => lerp(1.3, 0.5, u) * s, (u) => lerp(0.66, 0.4, u));
-    tubeShade(wf, pathP(bez([63, 27], [68, 44 + sway], [46, 54], [20, 50 - sway], 24)), (u) => lerp(1.2, 0.5, u) * s, (u) => lerp(0.6, 0.36, u));
+    tubeShade(wf, pathP(bez([72, -10], [60, -26 + sway], [30, -26], [-8, -42 - sway], 28)), (u) => lerp(1.3, 0.5, u) * s, (u) => lerp(0.66, 0.4, u));
+    tubeShade(wf, pathP(bez([63, 27], [50, 42 + sway], [22, 44], [-8, 56 - sway], 28)), (u) => lerp(1.2, 0.5, u) * s, (u) => lerp(0.6, 0.36, u));
     const wc = render(wf, FIRE, { th: TH });
     c.draw(wc, 0, 0);
   }
@@ -379,7 +379,7 @@ export function drawDragon(W: number, H: number, snoutAt: Pt, neckBase: Pt, s: n
 // --- the S-rank serpent: a whole Eastern dragon weaving through the fire --------------------
 
 /** Arc-length positions (0..1) of a polyline's points. */
-function arcU(pts: Pt[]): number[] {
+export function arcU(pts: Pt[]): number[] {
   const L = [0];
   for (let i = 1; i < pts.length; i++) L.push(L[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
   const tot = L[L.length - 1] || 1;
@@ -432,8 +432,8 @@ export function serpentBody(W: number, H: number, pts: Pt[], radius: (u: number)
       const r = radius(u);
       const sweep = 0.75;
       const a = Math.atan2(nb[1] * (1 - sweep) - d[1] * sweep, nb[0] * (1 - sweep) - d[0] * sweep);
-      const len = lerp(14, 30, Math.sin(Math.PI * Math.min(1, u * 1.15))) * rr(seed + 5, Math.round(u * 400), 0.8, 1.15) + Math.sin(ph + u * 30) * 2;
-      tongue(fins, [p[0] + nb[0] * (r - 3), p[1] + nb[1] * (r - 3)], a, len, Math.max(3, r * 0.42), 0.58, 0.16, ph + u * 23 + seed, -0.15);
+      const len = lerp(20, 44, Math.sin(Math.PI * Math.min(1, u * 1.15))) * rr(seed + 5, Math.round(u * 400), 0.8, 1.15) + Math.sin(ph + u * 30) * 2;
+      tongue(fins, [p[0] + nb[0] * (r - 3), p[1] + nb[1] * (r - 3)], a, len, Math.max(3.5, r * 0.55), 0.7, 0.16, ph + u * 23 + seed, -0.15);
     }
     // The tail ends in a plume of flame flicking up.
     if (u0 <= 0.001) {
@@ -455,21 +455,23 @@ export function serpentBody(W: number, H: number, pts: Pt[], radius: (u: number)
 export function dragonLeg(W: number, H: number, shoulder: Pt, elbow: Pt, paw: Pt, r: number, t: number, seed: number): Canvas {
   const ph = t * TAU;
   const leg = new Field(W, H), fin = new Field(W, H), claw = new Field(W, H);
-  const arm = spline([shoulder, elbow, paw], 10);
-  // A muscled limb: thick at the shoulder, lit on its front, plated on its inside.
-  tubeShade(leg, arm, (u) => r * lerp(1, 0.6, u) * (1 + 0.18 * Math.sin(Math.PI * Math.min(1, u * 2))), (u, sd) => (sd > 0.55 ? 0.58 : sd > -0.3 ? 0.36 : 0.15) + (fract(u * 8) < 0.14 && sd > 0.1 ? -0.18 : 0));
-  leg.disc(paw[0], paw[1], r * 0.75, 0.42, 1.3);
+  // Upper arm, forearm and a short foot, each lit on its front and plated on its inside.
+  const wrist: Pt = [lerp(elbow[0], paw[0], 0.72), lerp(elbow[1], paw[1], 0.72)];
+  const shade = (u: number, sd: number) => (sd > 0.55 ? 0.58 : sd > -0.3 ? 0.36 : 0.15) + (fract(u * 6) < 0.16 && sd > 0.1 ? -0.18 : 0);
+  tubeShade(leg, spline([shoulder, [lerp(shoulder[0], elbow[0], 0.5), lerp(shoulder[1], elbow[1], 0.5) - r * 0.2], elbow], 8), (u) => r * lerp(1.05, 0.8, u) * (1 + 0.2 * Math.sin(Math.PI * u)), shade);
+  tubeShade(leg, [elbow, wrist], (u) => r * lerp(0.82, 0.6, u), shade);
+  tubeShade(leg, [wrist, paw], (u) => r * lerp(0.62, 0.7, u), (_u, sd) => (sd > 0.3 ? 0.5 : 0.3));
   // A fin of flame off the elbow, swept back.
   const dx = elbow[0] - shoulder[0], dy = elbow[1] - shoulder[1];
   tongue(fin, elbow, Math.atan2(-dy, -dx) - 0.7, r * 3 + Math.sin(ph + seed) * 2, r * 0.55, 0.6, 0.18, ph + seed, -0.2);
-  // Four talons spread and curling down to grip.
-  const fa = Math.atan2(paw[1] - elbow[1], paw[0] - elbow[0]);
+  // Four talons spread like a hand, each hooking a little at its tip.
+  const fa = Math.atan2(paw[1] - wrist[1], paw[0] - wrist[0]);
   for (let k = 0; k < 4; k++) {
-    const a = fa + (k - 1.6) * 0.5;
-    const b: Pt = [paw[0] + Math.cos(a) * r * 0.55, paw[1] + Math.sin(a) * r * 0.55];
-    const len = r * (k === 0 ? 1.5 : 2.1);
-    const pts = bez(b, [b[0] + Math.cos(a) * len * 0.7, b[1] + Math.sin(a) * len * 0.7], [b[0] + Math.cos(a + 0.8) * len * 1.05, b[1] + Math.sin(a + 0.8) * len * 1.05], [b[0] + Math.cos(a + 1.6) * len * 0.95, b[1] + Math.sin(a + 1.6) * len * 0.95], 12);
-    tubeShade(claw, pts, (u) => lerp(r * 0.4, 0.6, Math.pow(u, 0.8)), (u, sd) => lerp(0.46, 0.9, u) - (sd > 0.4 ? 0.12 : 0));
+    const a = fa + (k - 1.5) * 0.42 + (k === 0 ? -0.3 : 0);
+    const b: Pt = [paw[0] + Math.cos(a) * r * 0.45, paw[1] + Math.sin(a) * r * 0.45];
+    const len = r * (k === 0 ? 1.3 : 1.9);
+    const pts = bez(b, [b[0] + Math.cos(a) * len * 0.5, b[1] + Math.sin(a) * len * 0.5], [b[0] + Math.cos(a + 0.25) * len * 0.9, b[1] + Math.sin(a + 0.25) * len * 0.9], [b[0] + Math.cos(a + 0.6) * len, b[1] + Math.sin(a + 0.6) * len], 12);
+    tubeShade(claw, pts, (u) => lerp(r * 0.36, 0.6, Math.pow(u, 0.9)), (u, sd) => lerp(0.5, 0.92, u) - (sd > 0.4 ? 0.14 : 0));
   }
   return seamStack(W, H, [render(fin, FIRE, { th: TH, outline: false }), render(leg, FIRE, { th: TH, outline: false }), render(claw, FIRE, { th: TH, outline: false })], FIRE[1], FIRE[0]);
 }

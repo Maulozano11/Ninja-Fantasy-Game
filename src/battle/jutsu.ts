@@ -177,11 +177,15 @@ export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DA
 export function enhanced(spec: JutsuSpec): JutsuSpec {
   const more = spec.rank === 'S' ? 2 : 1;
   const dice = spec.dice?.replace(/^(\d+)d/, (_, n) => `${Number(n) + more}d`);
+  // More damage and a bigger reach: circles grow by half, cones and lines reach a quarter further,
+  // cones open a third wider and lines run half as wide again.
   return {
     ...spec,
     dice,
     radius: spec.radius ? spec.radius * 1.5 : spec.radius,
     length: spec.length ? spec.length * (spec.shape === 'wall' ? 1.5 : 1.25) : spec.length,
+    angle: spec.angle && spec.shape === 'cone' ? spec.angle * (4 / 3) : spec.angle,
+    width: spec.width && spec.shape === 'line' ? spec.width * 1.5 : spec.width,
   };
 }
 

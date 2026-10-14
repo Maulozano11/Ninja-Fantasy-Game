@@ -15,7 +15,7 @@
 
 import { Canvas, WorldSprite } from './kit';
 import { FIRE, SMOKE, TH, embers, erode, tongue } from './vfx-a-fire-kit';
-import { DRAGON_TILT, dragonHead, dragonLeg, serpentBody, spline } from './vfx-a-fire-dragon';
+import { DRAGON_TILT, arcU, dragonHead, dragonLeg, serpentBody, spline } from './vfx-a-fire-dragon';
 import { Field, Pt, TAU, bez, clamp, dissolve, fract, lerp, palette, pfbm, pnoise, render, rr, smooth, stack, vfxSprite } from './vfx-a-lib';
 
 /** Cool smoke for the tops of the billows, away from the fire. */
@@ -299,9 +299,9 @@ function bodyPath(st: SState): Pt[] {
   const ph = st.t * TAU;
   const wob = (k: number) => (st.phase === 'burn' ? 1 : 0.6) * Math.sin(ph + k * 0.9);
   const P: Pt[] = [
-    [205, GY - 345], [236, GY - 300], [262, GY - 228], [290, GY - 140], [338, GY - 118],
-    [382, GY - 210], [444, GY - 300], [520, GY - 334], [590, GY - 300], [628, GY - 214],
-    [655, GY - 132], [694, GY - 170], [706, GY - 270], [714, GY - 352],
+    [205, GY - 345], [236, GY - 300], [262, GY - 228], [292, GY - 120], [338, GY - 96],
+    [382, GY - 200], [444, GY - 300], [520, GY - 334], [590, GY - 300], [628, GY - 206],
+    [655, GY - 104], [694, GY - 160], [706, GY - 270], [714, GY - 352],
   ];
   return spline(P.map(([x, y], k) => [x + wob(k) * 3, y + wob(k + 2) * 6] as Pt), 8);
 }
@@ -321,14 +321,17 @@ function dragonLayers(st: SState): DragonLayers {
   const t = st.t, ph = t * TAU;
   const pts = bodyPath(st);
   // The tail and the dive are behind the near flames, the arch between the rows, the neck in front.
-  const [back, mid, neck] = serpentBody(W, H, pts, radius, [[0, 0.3], [0.29, 0.73], [0.72, 1]], t, SEED + 100);
+  // (sections by the control points: tail and dive up to P3, the arch and the dip to P10, the neck)
+  const us = arcU(pts);
+  const uA = us[8 * 3], uB = us[8 * 10];
+  const [back, mid, neck] = serpentBody(W, H, pts, radius, [[0, uA + 0.01], [uA, uB + 0.01], [uB, 1]], t, SEED + 100);
   const head = dragonHead(2.0, t, 6 + (st.phase === 'burn' ? 2 * Math.sin(ph * 2) : 0), DRAGON_TILT * 0.4, true);
   const joint = pts[pts.length - 1];
   const dx = Math.round(joint[0] - head.joint[0]), dy = Math.round(joint[1] - head.joint[1]);
   const front = new Canvas(W, H);
   // The hind leg grips out of the flames under the arch; the foreleg reaches down at the front.
   const hind = dragonLeg(W, H, [396, GY - 210], [414, GY - 160], [446, GY - 150], 11, t, 3);
-  const fore = dragonLeg(W, H, [702, GY - 236], [752, GY - 204], [790, GY - 168], 13, t, 7);
+  const fore = dragonLeg(W, H, [700, GY - 238], [748, GY - 214], [784, GY - 176], 13, t, 7);
   const midC = new Canvas(W, H);
   midC.draw(hind, 0, 0);
   midC.draw(mid, 0, 0);

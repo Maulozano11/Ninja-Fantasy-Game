@@ -140,7 +140,10 @@ elements.
   provokes an opportunity attack; flanking gives advantage; characters can
   shove and knock prone.
 - **Enhanced jutsu**: when casting, the player can pay extra chakra for the
-  jutsu's enhanced version (more damage or a bigger area).
+  jutsu's enhanced version. It does more damage (one more die; two for rank S)
+  and reaches further: circles grow by half (Kirin), cones reach a quarter
+  further and open a third wider (the Great Fire Annihilation), lines reach a
+  quarter further and run half as wide again, and walls are half as long again.
 - **Ultimate (rank S) jutsu** have no use limit: only their chakra cost.
 - **Mercy**: a character who drops an enemy to 0 HP with a melee attack can
   knock it out instead of killing it (it matters later for the story:

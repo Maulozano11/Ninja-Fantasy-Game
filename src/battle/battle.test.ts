@@ -16,6 +16,7 @@ import { foreseen, planIntent } from './intent';
 import { aiAction, runAi } from './ai';
 import { battleResult } from './result';
 import { HYDRA_ID } from './hydra';
+import { JUTSU, enhanced } from './jutsu';
 
 const hero = (over: Partial<ShinobiCharacter> = {}): ShinobiCharacter => ({ ...DEFAULT_CHARACTER, effects: [], ...over });
 
@@ -201,6 +202,16 @@ describe('jutsu', () => {
     assert.equal(out.state.units.a.chakra, chakra - 3);
     const saves = out.events.filter((e) => e.t === 'save').map((e) => (e.t === 'save' ? e.unit : ''));
     assert.ok(saves.includes('rogue_0') && saves.includes('b'));
+  });
+
+  it('enhanced reaches further: a longer, wider cone and a bigger circle', () => {
+    const fire = JUTSU.great_fire_annihilation;
+    const big = enhanced(fire);
+    assert.equal(big.length, (fire.length ?? 0) * 1.25);
+    assert.ok((big.angle ?? 0) > (fire.angle ?? 0));
+    const kirin = JUTSU.kirin_thunder;
+    assert.equal(enhanced(kirin).radius, (kirin.radius ?? 0) * 1.5);
+    assert.equal(enhanced(kirin).dice, '10d10');
   });
 
   it('enhanced costs more and adds a die', () => {

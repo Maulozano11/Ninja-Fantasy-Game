@@ -6,7 +6,7 @@
 import { worldSprite } from '../world/WorldSpriteView';
 import type { Fx } from './playback';
 import type { Scene } from './renderer';
-import { project } from './renderer';
+import { auraDx, project } from './renderer';
 
 type Sheet = NonNullable<ReturnType<typeof worldSprite>>;
 
@@ -141,7 +141,7 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       const s = sheet(el, 'aura');
       if (!s) return false;
       const p = project(sc.map, f.from);
-      blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X, p.Y, false, t > 0.7 ? (1 - t) / 0.3 : 1);
+      blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, t > 0.7 ? (1 - t) / 0.3 : 1);
       return true;
     }
     case 'wall': {

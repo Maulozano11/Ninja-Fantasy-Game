@@ -65,6 +65,8 @@ export interface Fx {
   role?: VfxRole;
   /** Height above the ground (px) at the start and end (casting hands, a head). */
   lift?: [number, number];
+  /** The unit an aura surrounds, so it centres on the body rather than the feet. */
+  unit?: string;
 }
 
 export interface Banner {
@@ -348,7 +350,7 @@ export class Playback {
             return castDelay + 500;
           case 'clone':
           case 'flicker':
-            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 700 });
+            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 700, unit: ev.unit });
             return castDelay + 200;
           case 'trap':
             this.fx.push({ ...base, kind: 'seal', from: ev.at, to: ev.at, dur: 700, sig: 'tag' });
@@ -454,7 +456,7 @@ export class Playback {
         }
         if (ev.cond === 'prone' && ev.on) this.setPose(v, 'downed', now, 500);
         if (label) this.float(label, '#c4b5fd', this.posOf(ev.unit, now), now, { rise: 120 });
-        if (ev.cond === 'foresight') this.fx.push({ kind: 'aura', element: 'fire', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 700, sig: 'eyes' });
+        if (ev.cond === 'foresight') this.fx.push({ kind: 'aura', element: 'fire', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 700, sig: 'eyes', unit: ev.unit });
         return label ? 200 : 0;
       }
       case 'effect': {
@@ -526,7 +528,7 @@ export class Playback {
         h.shake(6);
         return 380;
       case 'clone':
-        if (ev.on) this.fx.push({ kind: 'aura', element: 'chakra', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 600 });
+        if (ev.on) this.fx.push({ kind: 'aura', element: 'chakra', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 600, unit: ev.unit });
         else this.fx.push({ kind: 'smoke', element: 'chakra', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 500 });
         if (!ev.on && label) this.float(label, '#e9d8a6', this.posOf(ev.unit, now), now);
         return 250;
@@ -582,7 +584,7 @@ export class Playback {
       }
       case 'act': {
         if (label) this.float(label, '#e2e8f0', this.posOf(ev.unit, now), now, { rise: 124 });
-        if (ev.act === 'foresight') this.fx.push({ kind: 'aura', element: 'fire', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 700, sig: 'eyes' });
+        if (ev.act === 'foresight') this.fx.push({ kind: 'aura', element: 'fire', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 700, sig: 'eyes', unit: ev.unit });
         return 180;
       }
       case 'intent':

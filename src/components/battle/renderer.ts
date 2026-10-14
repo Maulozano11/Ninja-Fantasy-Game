@@ -9,7 +9,7 @@ import { lookOf as guardLook, VISION } from '../../battle/stealth';
 import { worldSprite } from '../world/WorldSpriteView';
 import type { MapArt } from './mapArt';
 import type { Fx, Playback } from './playback';
-import { FEET, fpsOf, framesOf, lookOf, STRIDE, unitFrame } from './unitArt';
+import { bodyCenterDx, FEET, fpsOf, framesOf, lookOf, STRIDE, unitFrame } from './unitArt';
 import { drawVfxSprite } from './vfxSprites';
 
 export interface Camera {
@@ -66,6 +66,15 @@ const ready = (img: HTMLImageElement) => img.complete && img.naturalWidth > 0;
 /** Map pixels of a ground point. */
 export function project(map: MapDef, p: Pt, level = map.levelAt(p.x, p.z)): { X: number; Y: number } {
   return { X: p.x * map.px.perM, Y: map.px.backY + p.z * map.px.perMDepth - level * map.px.level };
+}
+
+/** Screen pixels from a unit's feet to the middle of its drawn body, for centring an aura on it. */
+export function auraDx(sc: Scene, id: string | undefined): number {
+  const u = id ? sc.state.units[id] : undefined;
+  const v = id ? sc.pb.views.get(id) : undefined;
+  if (!u || !v || u.kind !== 'ninja') return 0;
+  const look = lookOf({ ...u, armed: v.armed });
+  return look ? bodyCenterDx(u, look) * v.facing : 0;
 }
 
 export const ELEMENT_COLORS: Record<string, [string, string, string, string]> = {
@@ -830,6 +839,7 @@ function drawFx(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): void {
     case 'heal':
     case 'aura': {
       const p = project(map, f.from);
+      p.X += auraDx(sc, f.unit);
       ctx.globalAlpha = 1 - t;
       const c = f.kind === 'heal' ? ['#bbf7d0', '#4ade80'] : f.sig === 'eyes' ? ['#fecaca', '#ef4444'] : [col[0], col[2]];
       ctx.strokeStyle = c[1];

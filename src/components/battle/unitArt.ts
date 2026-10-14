@@ -33,6 +33,33 @@ export function lookOf(u: Unit): SpriteAppearance | undefined {
   return l;
 }
 
+const centers = new Map<string, number>();
+
+/**
+ * How far right of the feet the drawn body sits, facing right (cape and weapon included): the
+ * weighted middle of the shoulders-to-hips band of the idle frame. Auras centre on it, so a cape or
+ * a sword hanging to one side doesn't leave the ninja off-centre in the aura.
+ */
+export function bodyCenterDx(u: Unit, look: SpriteAppearance): number {
+  const key = `${u.id}|${look.stowed ? 1 : 0}`;
+  const hit = centers.get(key);
+  if (hit !== undefined) return hit;
+  const spr = renderSpriteCached(look, 'idle', 0, dojutsuToEye(u.character?.dojutsu));
+  const y0 = Math.max(0, Math.round((spr.rig.neck.y + 0.5) * RES));
+  const y1 = Math.min(GRID - 1, Math.round((spr.rig.pelvis.y + 0.5) * RES) + 10 * RES);
+  let sum = 0;
+  let sumX = 0;
+  for (let y = y0; y <= y1; y++)
+    for (let x = 0; x < GRID; x++) {
+      const a = spr.rgba[(y * GRID + x) * 4 + 3];
+      sum += a;
+      sumX += a * (x + 0.5);
+    }
+  const dx = sum ? Math.round(sumX / sum - FEET.x) : 0;
+  centers.set(key, dx);
+  return dx;
+}
+
 export const framesOf = (look: SpriteAppearance, pose: SpritePose): number => frameCount(rigPoseFor(pose, look.cast?.style));
 export const fpsOf = (pose: SpritePose): number => POSE_FPS[pose] ?? 6;
 

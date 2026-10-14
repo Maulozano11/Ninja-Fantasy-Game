@@ -35,6 +35,8 @@ const smooth = (e0: number, e1: number, x: number): number => {
   return t * t * (3 - 2 * t);
 };
 const fract = (v: number): number => v - Math.floor(v);
+const D2R = Math.PI / 180;
+const dirOf = (deg: number): P2 => [Math.cos(deg * D2R), Math.sin(deg * D2R)];
 const rnd = (seed: number, i: number, j = 0): number => hash(i * 7 + 3, j * 13 + 5, seed);
 const blend = (a: string, b: string, t: number): string => toHex(mix(hex(a), hex(b), t));
 /** A color with alpha, clamped to 0..255 (an overflowing byte would wrap around). */

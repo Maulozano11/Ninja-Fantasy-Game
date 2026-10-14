@@ -226,19 +226,21 @@ function cloud(dst: Canvas, o: { rot: number; reveal: number; drift: number; alp
   const src = S.layers.cloud;
   const [ex, ey] = S.eye;
   const [bx0, by0, bx1, by1] = bbox(src, 60);
-  // Reach of the cloud in swirl units.
+  // Reach of the cloud in swirl units, and of the vortex inside it (only the vortex turns; the
+  // billows around it stay, so the mass never swings out of its footprint).
   let reach = 1;
   for (const [x, y] of [[bx0, by0], [bx1, by0], [bx0, by1], [bx1, by1]]) reach = Math.max(reach, Math.hypot(x - ex, (y - ey) / SQUASH));
-  const grow = 1 + 0.16 * o.drift;
+  const vortex = (S.enh ? 250 : 200) * (S.scale / 0.6);
+  const grow = 1 + 0.07 * o.drift;
   paint(
     dst,
     src,
     (x, y) => {
-      const u = (x + 0.5 - ex) / grow, v = (y + 0.5 - ey + 26 * o.drift) / SQUASH / grow;
+      const u = (x + 0.5 - ex) / grow, v = (y + 0.5 - ey + 12 * o.drift) / SQUASH / grow;
       const R = Math.hypot(u, v);
       const edge = o.reveal * reach * (0.88 + 0.24 * noise(x, y, 9, 301));
       if (R > edge) return null;
-      const th = Math.atan2(v, u) + o.rot * (0.35 + 0.65 * clamp(1 - R / (reach * 0.85), 0, 1));
+      const th = Math.atan2(v, u) + o.rot * Math.pow(clamp(1 - R / vortex, 0, 1), 1.2);
       return [ex + R * Math.cos(th), ey + R * Math.sin(th) * SQUASH];
     },
     (c, x, y) => {
@@ -435,7 +437,7 @@ function impactFrame(i: number): Canvas {
   const tau = i / 14, t = T_IMPACT + tau;
   cloud(c, { rot: spin(t), reveal: 1, drift: 0, alpha: 1, f: 40 + i });
   kanji(c, { write: 1, burn: 0, f: i === 0 ? 999 : 40 + i });
-  const spread = 1 + 0.022 * i;
+  const spread = 1 + 0.012 * i;
   if (S.enh) {
     ground(c, { spread, burst: [0, 0.15, 0.3, 0.45, 0.6, 0.7, 0.78, 0.85][i], alpha: 1 - 0.02 * i, erode: 0, f: i });
     sparks(c, 1 - i / 6, i);
@@ -452,7 +454,7 @@ function fadeFrame(f: number): Canvas {
   const c = new Canvas(S.W, S.H);
   const q = f / 7, tau = 8 / 14 + f / 12, t = T_FADE + f / 12;
   cloud(c, { rot: spin(t), reveal: 1, drift: smooth(0, 1, q), alpha: 1 - smooth(0.45, 1, q), f: 60 + f });
-  ground(c, { spread: 1.18 + 0.03 * f, burst: S.enh ? 0.9 : 0.55 + 0.4 * q, alpha: Math.pow(1 - q, 1.3), erode: q, f: 60 + f });
+  ground(c, { spread: 1.09 + 0.012 * f, burst: S.enh ? 0.9 : 0.55 + 0.4 * q, alpha: Math.pow(1 - q, 1.3), erode: q, f: 60 + f });
   if (S.enh) rocks(c, tau, 1 - smooth(0.2, 0.9, q));
   kanji(c, { write: 1, burn: smooth(0, 0.85, q), f: 60 + f });
   return c;

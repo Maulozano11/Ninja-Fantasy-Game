@@ -21,6 +21,7 @@ Every deliverable puts his crop and our frame side by side at the same scale.
 | `lightning-set-owner-reference.jpg` | Every lightning effect: bolt, stream, breath, sphere, slash, multi, hit, the sky-strike blast, walls (3 orientations), aura. |
 | `wind-set-owner-reference.jpg` | Every wind effect (spiral bolt, braided stream, vortex breath, orbit sphere, slash, mini-tornado multi, cross hit, tornado blast, walls in 3 orientations, wind aura) and the wind crane (bottom right). |
 | `water-set-owner-reference.jpg` | Every water effect: orb bolt, wave stream with a crest head, fan breath, bubble sphere, crescent slash, triple-droplet multi, splash hit, geyser blast, walls (3 orientations), water aura. The beast stays the approved water dragon already in the game. |
+| `earth-set-owner-reference.jpg` | Every earth effect: dusty boulder bolt, spike-row stream with dust, dust-cloud breath with rocks, ringed boulder sphere, rock crescent slash, three rock bullets with dust trails, a side dust burst (unlabelled, between multi and hit), rock-burst hit, spike eruption blast in a dust cloud, the stone walls (3 orientations, with grass, vines and rubble), the orbiting-rock aura with a dust ring, and a new four-legged stone drake (bottom). |
 | `phoenix-owner-reference.jpg` | The fire phoenix: 8-frame flight loop, dive, attack, variant forms. |
 | `raiju-owner-reference.jpg` | The lightning beast (raijū): 8-frame pounce loop, plus the phoenix at scale. |
 | `kirin-owner-reference.jpg` | Kirin: the normal lightning bolt and the enhanced lightning dragon. |

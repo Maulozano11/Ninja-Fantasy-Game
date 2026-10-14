@@ -12,4 +12,10 @@ folders.
       python3 -I tools/refs/beasts-from-ref.py phoenix docs/reference/phoenix-owner-reference.jpg docs/reference/raiju-owner-reference.jpg tools/world-sprites/vfx-beasts-ref-fire.ts
       python3 -I tools/refs/beasts-from-ref.py raiju docs/reference/raiju-owner-reference.jpg docs/reference/raiju-owner-reference.jpg tools/world-sprites/vfx-beasts-ref-lightning.ts
 
+  Its `crane` mode copies the wind crane from his wind sheet (BEAST (WIND CRANE, NEWER), two frames
+  that become frames 0 and 3; the in-betweens swing his raised wings back) into
+  `tools/world-sprites/vfx-beasts-ref-wind.ts`:
+
+      python3 -I tools/refs/beasts-from-ref.py crane <wind-sheet.jpg> <wind-sheet.jpg> tools/world-sprites/vfx-beasts-ref-wind.ts
+
 - `vfx-fire-extract.py` (when present): pieces of the fire references for the fire generators.

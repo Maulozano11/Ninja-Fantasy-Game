@@ -630,7 +630,7 @@ def crane():
     teal = PAL[(PAL[:, 1] > PAL[:, 0] + 10)]
     OUTLINE = teal[np.argmin(teal.sum(1))]
     fxs = np.concatenate([keys[k][0][keys[k][2] > 0] for k in keys])
-    FXPAL = median_palette(fxs, 10)
+    FXPAL = median_palette(fxs, 14)
     print('crane outline', OUTLINE.astype(int).tolist())
 
     # Frame 0's wings are everything above this line (working coords); the rest is the body.
@@ -665,7 +665,13 @@ def crane():
         g = Af > 0.3
         out[g, :3] = snap(Cf, FXPAL)[g]
         out[g, 3] = np.where(Af[g] > 0.6, 255, 170).astype(np.uint8)
-        op, edge = outline_clean(A >= 0.5)
+        op = A >= 0.5
+        if wing is not None:
+            # Slivers left over where a swung wing used to be.
+            for pts in components(op):
+                if len(pts) < 16:
+                    op[tuple(np.array(pts).T)] = False
+        op, edge = outline_clean(op)
         out[op, :3] = snap(C, PAL)[op]
         out[op, 3] = 255
         out[edge, :3] = OUTLINE
@@ -695,8 +701,17 @@ def crane():
     rgb0 = shift(crop0, dx0, dy0)
     b0 = shift(body0, dx0, dy0)
     f0 = shift(fx0, dx0, dy0)
-    wing0 = b0 * above
-    band0 = b0 * ~above
+    # The wings: the pieces of body above the line that reach back past the shoulder (loose wisps off
+    # to the right of them stay put).
+    wings = np.zeros((CH, CW), bool)
+    for pts in components((b0 > 0.5) & above):
+        py_ = np.array([p[0] for p in pts])
+        px_ = np.array([p[1] for p in pts])
+        if px_.min() < 100 and len(pts) > 40:
+            wings[py_, px_] = True
+    wings = dilate(wings, 1) & above
+    wing0 = b0 * wings
+    band0 = b0 * ~wings
     wake0 = f0 * above  # the wind lines shed off the raised wings swing with them
     loose0 = f0 * ~above
     dx3, dy3 = WAX - a3[0], WAY - a3[1]
@@ -719,8 +734,8 @@ def crane():
         my = SHOULDER0[1] + rx * np.sin(a) + ry * np.cos(a) - cy_ + bob
         wk = shift(wake0, mx - 6, my) * (1.0 if wake else 0.0)
         wkr = shift(rgb0 * wake0[..., None], mx - 6, my) * (1.0 if wake else 0.0)
-        ls = shift(loose, drift, bob * 0.5)
-        lsr = shift(loose_rgb * loose[..., None], drift, bob * 0.5)
+        ls = shift(loose, drift, bob * 0.5) * (yy < 100)
+        lsr = shift(loose_rgb * loose[..., None], drift, bob * 0.5) * (yy < 100)[..., None]
         fcov = np.clip(wk + ls, 0, 1)
         fcol = (wkr + lsr) / np.maximum(wk + ls, 1e-4)[..., None]
         return render(col, cov, fcol, fcov, wing=w)

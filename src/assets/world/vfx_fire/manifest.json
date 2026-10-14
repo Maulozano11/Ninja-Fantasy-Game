@@ -1,0 +1,93 @@
+{
+ "group": "vfx_fire",
+ "pxPerMeter": 57,
+ "sprites": {
+  "beast": {
+   "label": "Fire beast (phoenix)",
+   "file": "beast.png",
+   "frameW": 128,
+   "frameH": 104,
+   "anchor": [
+    64,
+    52
+   ],
+   "meters": [
+    2.25,
+    1.82
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "fireball": {
+   "label": "Great Fireball (radius 1.5 m)",
+   "file": "fireball.png",
+   "frameW": 192,
+   "frameH": 158,
+   "anchor": [
+    96,
+    96
+   ],
+   "meters": [
+    3.37,
+    2.77
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    },
+    "burst": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "fireball_great": {
+   "label": "Great Fireball, enhanced (radius 2.25 m)",
+   "file": "fireball_great.png",
+   "frameW": 300,
+   "frameH": 264,
+   "anchor": [
+    160,
+    160
+   ],
+   "meters": [
+    5.26,
+    4.63
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    },
+    "burst": {
+     "row": 1,
+     "frames": 10,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  }
+ }
+}

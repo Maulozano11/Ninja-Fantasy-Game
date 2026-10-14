@@ -369,10 +369,13 @@ export class Playback {
         }
         if (ev.shape?.kind === 'cone') {
           // A signature cone (the Great Fire Annihilation) plays its whole surge, burn and fade.
+          // It hits once the fire has spread all the way, and the next turn waits for it to burn out.
           const long = signatureMs(el, spec?.sig, ev.enhanced);
-          this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, dur: long ?? 900, lift: [head ? 120 : 70, 30] });
-          if (long) h.shake(ev.enhanced ? 7 : 5);
-          return castDelay + (long ? long * 0.75 : 650);
+          this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, dur: long?.total ?? 900, lift: [head ? 120 : 70, 30] });
+          if (!long) return castDelay + 650;
+          h.shake(ev.enhanced ? 7 : 5);
+          this.lingerUntil = Math.max(this.lingerUntil, t1 + long.total / this.speed);
+          return castDelay + long.hit;
         }
         if (ev.shape?.kind === 'line') {
           this.fx.push({ ...base, kind: 'line', from, to: ev.at, area: ev.shape, dur: 750, lift: [head ? 120 : 70, 50] });

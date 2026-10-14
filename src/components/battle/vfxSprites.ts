@@ -221,10 +221,14 @@ export function skySignature(element: string, sig: string | undefined, enhanced:
   return { total, hit };
 }
 
-/** How long a signature cone plays (its surge, a few burns and its fade), or null. */
-export function signatureMs(element: string, sig: string | undefined, enhanced: boolean): number | null {
+/**
+ * A signature cone (the Great Fire Annihilation): how long it plays (its surge, a few burns and its
+ * fade) and when it hits (the fire has spread all the way: the end of its surge), or null.
+ */
+export function signatureMs(element: string, sig: string | undefined, enhanced: boolean): { total: number; hit: number } | null {
   if (sig !== 'annihilation') return null;
   const s = sheet(element, enhanced ? 'annihilation_enh' : 'annihilation');
   if (!s) return null;
-  return animMs(s, 'surge') + animMs(s, 'burn') * 2 + animMs(s, 'fade');
+  const hit = animMs(s, 'surge');
+  return { total: hit + animMs(s, 'burn') * 2 + animMs(s, 'fade'), hit };
 }

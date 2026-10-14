@@ -100,6 +100,8 @@ export class Playback {
   banners: Banner[] = [];
   /** Animals that took off (prop index → when). */
   fled = new Map<number, number>();
+  /** When each jutsu wall was raised, so it plays its rise before standing. */
+  wallBorn = new Map<string, number>();
   /** Whose turn the screen shows (it trails the engine while events play). */
   turnUnit: string | undefined;
   round = 0;
@@ -358,7 +360,8 @@ export class Playback {
           case 'earthWall':
           case 'waterWall':
             this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 800 });
-            return castDelay + 600;
+            // The wall itself rises when its event plays, right as the jutsu lands.
+            return castDelay;
         }
         if (ev.shape?.kind === 'cone') {
           // A signature cone (the Great Fire Annihilation) plays its whole surge, burn and fade.
@@ -510,6 +513,7 @@ export class Playback {
       case 'body':
         return 0;
       case 'wall':
+        if (ev.on) this.wallBorn.set(ev.wall.id, now);
         return 0;
       case 'prop': {
         const at = propPos(state, `prop:${ev.prop}`);

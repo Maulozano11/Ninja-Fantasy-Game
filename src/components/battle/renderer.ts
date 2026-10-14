@@ -2,7 +2,7 @@
 // overlays (reach, path, areas, vision cones, intents), jutsu effects, numbers and the night.
 // One world pixel is drawn as `k` device pixels (an integer), so the pixel art stays crisp.
 
-import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit } from '../../battle/types';
+import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wall } from '../../battle/types';
 import type { MapDef } from '../../battle/map';
 import { CELL, cellCenter, dist } from '../../battle/map';
 import { lookOf as guardLook, VISION } from '../../battle/stealth';
@@ -10,7 +10,7 @@ import { worldSprite } from '../world/WorldSpriteView';
 import type { MapArt } from './mapArt';
 import type { Fx, Playback } from './playback';
 import { bodyCenterDx, FEET, fpsOf, framesOf, lookOf, STRIDE, unitFrame } from './unitArt';
-import { drawVfxSprite } from './vfxSprites';
+import { drawVfxSprite, drawWallSprite } from './vfxSprites';
 
 export interface Camera {
   /** World pixel at the screen's top-left. */
@@ -116,7 +116,7 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
     if (st?.destroyed) return;
     items.push({ z: p.sortZ ?? p.z, draw: () => drawProp(ctx, sc, p, i < map.props.length ? i : -1) });
   });
-  for (const w of state.walls) items.push({ z: (w.a.z + w.b.z) / 2, draw: () => drawWall(ctx, sc, w.a, w.b, w.kind) });
+  for (const w of state.walls) items.push({ z: (w.a.z + w.b.z) / 2, draw: () => drawWall(ctx, sc, w) });
   const hydra = Object.values(state.units).find((u) => u.kind === 'hydra_body');
   for (const u of Object.values(state.units)) {
     if (u.kind === 'hydra_head') continue;
@@ -300,8 +300,12 @@ function drawTrap(ctx: CanvasRenderingContext2D, map: MapDef, t: Trap): void {
   ctx.restore();
 }
 
-function drawWall(ctx: CanvasRenderingContext2D, sc: Scene, a: Pt, b: Pt, kind: 'earth' | 'water'): void {
+function drawWall(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): void {
+  // Not raised yet: its event is still waiting in the playback queue.
+  if (sc.pb.queue.some((e) => e.t === 'wall' && e.on && e.wall.id === w.id)) return;
+  if (drawWallSprite(ctx, sc, w)) return;
   const { map } = sc;
+  const { a, b, kind } = w;
   const pa = project(map, a);
   const pb = project(map, b);
   const h = kind === 'earth' ? 96 : 84;

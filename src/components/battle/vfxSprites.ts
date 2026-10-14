@@ -3,6 +3,7 @@
 // Great Fireball, the Great Fire Annihilation) with their enhanced versions. When an element's
 // sheets aren't in the game yet, the renderer falls back to its drawn effects.
 
+import type { Wall } from '../../battle/types';
 import { worldSprite } from '../world/WorldSpriteView';
 import type { Fx } from './playback';
 import type { Scene } from './renderer';
@@ -144,16 +145,36 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, t > 0.7 ? (1 - t) / 0.3 : 1);
       return true;
     }
-    case 'wall': {
-      const s = sheet(el, 'wall');
-      if (!s) return false;
-      const p = project(sc.map, f.from);
-      blit(ctx, s, 'rise', frameAt(s, 'rise', ms), p.X, p.Y, false);
-      return true;
-    }
+    case 'wall':
+      // With the element's wall sheet in the game, the standing wall plays its own rise.
+      return !!sheet(el, 'wall');
     default:
       return false;
   }
+}
+
+/**
+ * A standing jutsu wall from its element's sheets, turned to match the ground: `wall` runs across
+ * the screen, `wall_diag` at 45° (mirrored for the other diagonal) and `wall_depth` straight into
+ * the depth. It rises when raised, then idles. Returns false when the sheets aren't in the game.
+ */
+export function drawWallSprite(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): boolean {
+  const el = w.kind;
+  const angle = (Math.atan2(Math.abs(w.b.z - w.a.z), Math.abs(w.b.x - w.a.x)) * 180) / Math.PI;
+  const name = angle < 22.5 ? 'wall' : angle > 67.5 ? 'wall_depth' : 'wall_diag';
+  // Without the turned sheet, the drawn wall (which follows any angle) stands in.
+  const s = sheet(el, name);
+  if (!s) return false;
+  // The diagonal sheet runs from a near-left end to a far-right end ("/"); mirror it for "\".
+  const [left, right] = w.a.x <= w.b.x ? [w.a, w.b] : [w.b, w.a];
+  const mirror = name === 'wall_diag' && left.z < right.z;
+  const p = project(sc.map, { x: (w.a.x + w.b.x) / 2, z: (w.a.z + w.b.z) / 2 });
+  const born = sc.pb.wallBorn.get(w.id);
+  const ms = born === undefined ? Infinity : (sc.now - born) * sc.pb.speed;
+  const rise = s.spec.anims.rise ? animMs(s, 'rise') : 0;
+  if (ms < rise) blit(ctx, s, 'rise', frameAt(s, 'rise', ms), p.X, p.Y, mirror);
+  else blit(ctx, s, 'idle', frameAt(s, 'idle', Number.isFinite(ms) ? ms - rise : sc.now), p.X, p.Y, mirror);
+  return true;
 }
 
 /** How long a signature cone plays (its surge, a few burns and its fade), or null. */

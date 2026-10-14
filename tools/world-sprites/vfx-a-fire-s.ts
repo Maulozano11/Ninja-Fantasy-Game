@@ -50,7 +50,7 @@ export interface SState {
 
 // --- the kanji 火 in strokes of flame ---------------------------------------------------------
 
-const KX = 270, KY = 92, KW = 350, KH = 300;
+const KX = 250, KY = 92, KW = 350, KH = 300;
 const K = (x: number, y: number): Pt => [KX + x * KW, KY + y * KH];
 /** The four strokes in writing order: left dot, right dot, the long fall to the left, the sweep to the right. */
 const STROKES: { pts: Pt[]; w: (u: number) => number }[] = [
@@ -99,7 +99,7 @@ function puffs(st: SState): Puff[] {
   const out: Puff[] = [];
   const ph = st.t * TAU;
   const a: Pt = [190, GY - 170], b: Pt = [905, 150];
-  const n = 170;
+  const n = 130;
   for (let k = 0; k < n; k++) {
     // Billows drift along the mass over a loop and wrap round.
     const u = fract(rr(SEED + 49, k, 0, 1) + (st.phase === 'burn' ? st.t * 0.06 : 0));
@@ -110,9 +110,9 @@ function puffs(st: SState): Puff[] {
     const wid = lerp(70, 250, u);
     const x = lerp(a[0], b[0], u) + g * wid * 0.62 + Math.sin(ph + k) * 2.5;
     const y = lerp(a[1], b[1], Math.pow(u, 0.9)) + g * wid * 0.42 + Math.cos(ph + k * 1.3) * 2;
-    let r = lerp(15, 36, u) * rr(SEED + 52, k, 0.65, 1.2) * (0.5 + 0.5 * grow) * (st.phase === 'fade' ? 0.75 + 0.25 * st.smoke : 1);
+    let r = lerp(17, 36, u) * rr(SEED + 52, k, 0.65, 1.2) * (0.5 + 0.5 * grow) * (st.phase === 'fade' ? 0.75 + 0.25 * st.smoke : 1);
     r *= 1 + 0.06 * Math.sin(ph + k * 2.1);
-    out.push({ x: Math.min(x, W - r - 8), y: Math.max(y, r + 8), r, back: g < -0.1, warm: smooth(GY - 330, GY - 170, y) });
+    out.push({ x: Math.min(x, W - r * 1.2 - 8), y: Math.max(y, r * 1.5 + 8), r, back: g < -0.1, warm: smooth(GY - 470, GY - 230, y) });
   }
   // Loose puffs breaking off the top of the mass, rising to the top of the frame.
   for (let k = 0; k < 14; k++) {
@@ -130,26 +130,37 @@ function smokeLayer(st: SState): Canvas | null {
   const list = puffs(st);
   if (!list.length) return null;
   const v = new Float32Array(W * H), warm = new Float32Array(W * H);
-  for (const p of list) {
-    const x0 = Math.max(0, Math.floor(p.x - p.r)), x1 = Math.min(W - 1, Math.ceil(p.x + p.r));
-    const y0 = Math.max(0, Math.floor(p.y - p.r)), y1 = Math.min(H - 1, Math.ceil(p.y + p.r));
-    const near = p.warm;
+  const ball = (px: number, py: number, pr: number, near: number, back: boolean) => {
+    const x0 = Math.max(0, Math.floor(px - pr * 1.1)), x1 = Math.min(W - 1, Math.ceil(px + pr * 1.1));
+    const y0 = Math.max(0, Math.floor(py - pr * 1.1)), y1 = Math.min(H - 1, Math.ceil(py + pr * 1.1));
     for (let y = y0; y <= y1; y++)
       for (let x = x0; x <= x1; x++) {
-        const dx = (x + 0.5 - p.x) / p.r, dy = (y + 0.5 - p.y) / p.r;
+        const dx = (x + 0.5 - px) / pr, dy = (y + 0.5 - py) / pr;
         const d = Math.hypot(dx, dy);
-        const edge = 1 + 0.16 * (pnoise(x, y - st.t * 40, 5, 0, 40, SEED + 60) - 0.5) * 2;
+        const edge = 1 + 0.07 * (pnoise(x, y - st.t * 40, 9, 0, 40, SEED + 60) - 0.5) * 2;
         if (d > edge) continue;
         const i = y * W + x;
-        // Lit from above, dark underneath; near the fire the underside glows warm instead.
-        let val = 0.5 - 0.32 * dy - 0.1 * dx - 0.16 * Math.pow(d, 3) + 0.12 * (pnoise(x, y, 4, 0, 0, SEED + 61) - 0.5);
-        if (near > 0.3 && dy > 0.25) val += 0.26 * near * dy;
-        if (p.back) val -= 0.12;
+        // Lit from the upper left, dark underneath; near the fire the underside glows warm instead.
+        let val = 0.46 - 0.36 * dy - 0.12 * dx - 0.2 * Math.pow(d, 4) + 0.08 * (pnoise(x, y, 5, 0, 0, SEED + 61) - 0.5);
+        if (dy < -0.4 && dx < 0.35 && d > 0.55) val += 0.1;
+        if (near > 0.3 && dy > 0.25) val += 0.3 * near * dy;
+        if (back) val -= 0.12;
         // A dark crease where a billow overlaps the one behind it.
-        if (v[i] > 0 && d > 0.84 && dy > -0.2) val = 0.08;
+        if (v[i] > 0 && d > 0.86 && dy > -0.3) val = 0.07;
         v[i] = clamp(val, 0.03, 0.95);
         warm[i] = near;
       }
+  };
+  for (const p of list) {
+    ball(p.x, p.y, p.r, p.warm, p.back);
+    // Cauliflower bumps along its top.
+    for (let k = 0; k < 3; k++) {
+      const a = -Math.PI / 2 + (k - 1) * 0.95 + rr(SEED + 63, Math.round(p.x * 3 + p.y) + k, -0.2, 0.2);
+      const br = p.r * rr(SEED + 64, Math.round(p.x + p.y * 3) + k, 0.42, 0.6);
+      const bx = p.x + Math.cos(a) * p.r * 0.72, by = p.y + Math.sin(a) * p.r * 0.72;
+      if (by - br < 6 || bx + br > W - 6) continue;
+      ball(bx, by, br, p.warm, p.back);
+    }
   }
   const c = new Canvas(W, H);
   const th = [0, 0.12, 0.26, 0.42, 0.58, 0.76];
@@ -294,7 +305,7 @@ function bodyPath(st: SState): Pt[] {
   ];
   return spline(P.map(([x, y], k) => [x + wob(k) * 3, y + wob(k + 2) * 6] as Pt), 8);
 }
-const radius = (u: number) => lerp(3, 19, Math.pow(smooth(0, 0.55, u), 0.8)) * (u > 0.9 ? lerp(1, 0.92, (u - 0.9) / 0.1) : 1);
+const radius = (u: number) => lerp(5, 19, Math.pow(smooth(0, 0.55, u), 0.8)) * (u > 0.9 ? lerp(1, 0.92, (u - 0.9) / 0.1) : 1);
 
 interface DragonLayers {
   /** Behind the middle row of flames (the tail and the dive). */
@@ -340,8 +351,8 @@ function dragonLayers(st: SState): DragonLayers {
   return { back: parts[0].c, mid: parts[1].c, front: parts[2].c, mouth, edge: parts.flatMap((p) => p.edge) };
 }
 
-/** Flames wrapped round the body where it dives into and rises out of the fire. */
-function collars(st: SState): Canvas | null {
+/** Flames wrapped round the body where it dives into and rises out of the fire (unused: the rows of flames do it). */
+export function collars(st: SState): Canvas | null {
   const k = smooth(0.15, 0.6, st.dragon) * st.burn * (st.phase === 'fade' ? smooth(0.6, 0.85, st.dragon) : 1);
   if (k < 0.05) return null;
   const f = new Field(W, H);
@@ -426,7 +437,7 @@ export function sFrame(st: SState): Canvas {
   layers.push(wall.rows[1]);
   if (dr) layers.push(dr.mid);
   layers.push(wall.rows[2]);
-  if (dr) layers.push(collars(st), dr.front);
+  if (dr) layers.push(dr.front);
   layers.push(kanjiC, jet ? jet.c : null);
   const body = stack(W, H, ...layers);
   // Sparks everywhere: off the wall, the kanji, the dragon and the jet; they die with the fire.

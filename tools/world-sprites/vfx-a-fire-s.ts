@@ -22,11 +22,13 @@ import { Field, Pt, TAU, bez, clamp, dissolve, fract, lerp, palette, pfbm, pnois
 const SMOKE_COOL = palette('#121019', '#24212b', '#38333d', '#4f4851', '#675e66', '#82787e', '#a0969a');
 
 const PX = 57;
-const W = 1016, H = 912, X0 = 12, GY = 780;
+const W = 1016, H = 968, X0 = 12, GY = 780;
 const LEN = Math.round(15 * PX);
 const HMAX = 270;
 const SEED = 1900;
-const halfDepth = (d: number) => 5 + 0.1 * d;
+/** Half the cone's depth on screen at d px from the apex: the enhanced cone is 80 degrees wide
+ * (the normal one is 60), so its near and far edges spread about 1.45 times as far apart. */
+const halfDepth = (d: number) => 5 + 0.145 * d;
 
 export interface SState {
   /** How far the wall has rolled out (0..1 of the cone). */
@@ -50,26 +52,34 @@ export interface SState {
 
 // --- the kanji 火 in strokes of flame ---------------------------------------------------------
 
-const KX = 250, KY = 92, KW = 350, KH = 300;
-const K = (x: number, y: number): Pt => [KX + x * KW, KY + y * KH];
-/** The four strokes in writing order: left dot, right dot, the long fall to the left, the sweep to the right. */
+/** Where the kanji sits: its box in the frame. */
+export interface KanjiBox { x: number; y: number; w: number; h: number }
+const SBOX: KanjiBox = { x: 226, y: 88, w: 350, h: 300 };
+/** The four strokes in writing order (in the box's 0..1 space): left dot, right dot, the long fall to the left, the sweep to the right. */
 const STROKES: { pts: Pt[]; w: (u: number) => number }[] = [
-  { pts: bez(K(0.33, 0.25), K(0.24, 0.32), K(0.15, 0.42), K(0.17, 0.53), 24), w: (u) => lerp(0.006, 0.05, Math.pow(u, 0.7)) * (u > 0.85 ? 1 - (u - 0.85) * 2 : 1) },
-  { pts: bez(K(0.8, 0.17), K(0.7, 0.3), K(0.6, 0.42), K(0.53, 0.49), 26), w: (u) => lerp(0.006, 0.055, Math.pow(u, 0.7)) * (u > 0.85 ? 1 - (u - 0.85) * 2 : 1) },
-  { pts: bez(K(0.43, 0.02), K(0.47, 0.42), K(0.37, 0.72), K(0.02, 0.98), 48), w: (u) => (0.03 + 0.035 * Math.sin(Math.PI * Math.min(1, u * 1.4))) * Math.pow(1 - u, 0.35) + 0.004 },
-  { pts: bez(K(0.45, 0.47), K(0.53, 0.68), K(0.72, 0.86), K(0.99, 0.93), 44), w: (u) => lerp(0.018, 0.068, smooth(0, 0.86, u)) * (u > 0.9 ? Math.max(0.15, (1 - u) / 0.1) : 1) + 0.004 },
+  { pts: bez([0.33, 0.25], [0.24, 0.32], [0.15, 0.42], [0.17, 0.53], 24), w: (u) => lerp(0.006, 0.05, Math.pow(u, 0.7)) * (u > 0.85 ? 1 - (u - 0.85) * 2 : 1) },
+  { pts: bez([0.8, 0.17], [0.7, 0.3], [0.6, 0.42], [0.53, 0.49], 26), w: (u) => lerp(0.006, 0.055, Math.pow(u, 0.7)) * (u > 0.85 ? 1 - (u - 0.85) * 2 : 1) },
+  { pts: bez([0.43, 0.02], [0.47, 0.42], [0.37, 0.72], [0.02, 0.98], 48), w: (u) => (0.03 + 0.035 * Math.sin(Math.PI * Math.min(1, u * 1.4))) * Math.pow(1 - u, 0.35) + 0.004 },
+  { pts: bez([0.45, 0.47], [0.53, 0.68], [0.72, 0.86], [0.99, 0.93], 44), w: (u) => lerp(0.018, 0.068, smooth(0, 0.86, u)) * (u > 0.9 ? Math.max(0.15, (1 - u) / 0.1) : 1) + 0.004 },
 ];
 
-/** Writes the kanji into `f` (heat) and returns its hottest points for sparks. */
-function kanji(f: Field, prog: number[], t: number): Pt[] {
+/**
+ * The kanji 火 in strokes of flame inside `box`: each stroke a white-hot core with licking edges
+ * and flames rising off it; `prog` writes each stroke part-way (a bright brush head leads it),
+ * `vis` < 1 burns it away from the top down. Returns the layer and its hottest points (for sparks).
+ */
+export function kanjiFire(Wd: number, Hd: number, box: KanjiBox, prog: number[], vis: number, t: number, seed: number): { c: Canvas | null; hot: Pt[] } {
+  if (!prog.some((p) => p > 0) || vis <= 0) return { c: null, hot: [] };
+  const f = new Field(Wd, Hd);
   const ph = t * TAU;
-  const hot: Pt[] = [];
+  let hot: Pt[] = [];
+  const K = ([x, y]: Pt): Pt => [box.x + x * box.w, box.y + y * box.h];
   STROKES.forEach((st, si) => {
     const p = prog[si];
     if (p <= 0) return;
     const n = Math.max(2, Math.round(st.pts.length * p));
-    const pts = st.pts.slice(0, n);
-    const w = (u: number) => st.w(u * (n - 1) / (st.pts.length - 1)) * KW * 1.45;
+    const pts = st.pts.slice(0, n).map(K);
+    const w = (u: number) => st.w(u * (n - 1) / (st.pts.length - 1)) * box.w * 1.45;
     // The stroke: a white-hot core inside licking edges.
     f.path(pts, (u) => w(u) * (1 + 0.14 * Math.sin(ph * 2 + u * 9 + si)), (u) => 1.04 - 0.1 * u, 1.35);
     // Flames rising off the stroke, and a bright brush head while it is being written.
@@ -78,18 +88,31 @@ function kanji(f: Field, prog: number[], t: number): Pt[] {
       const r = w(k / (n - 1));
       if (r < 3) continue;
       const len = r * 2.2 + 8 + 5 * Math.sin(ph + k + si * 2);
-      tongue(f, [x + rr(SEED + si, k, -3, 3), y - r * 0.3], -Math.PI / 2 + rr(SEED + 10 + si, k, -0.4, 0.4), len, r * 0.62, 0.72, 0.24, ph + k * 0.7 + si, rr(SEED + 20 + si, k, -0.25, 0.25));
+      tongue(f, [x + rr(seed + si, k, -3, 3), y - r * 0.3], -Math.PI / 2 + rr(seed + 10 + si, k, -0.4, 0.4), len, r * 0.62, 0.72, 0.24, ph + k * 0.7 + si, rr(seed + 20 + si, k, -0.25, 0.25));
       if (k % 4 === 1) hot.push([x, y - r]);
     }
     if (p < 1) {
       const [hx, hy] = pts[n - 1];
-      f.disc(hx, hy, Math.max(5, w(1) * 1.3), 1.05, 1.4);
-      for (let k = 0; k < 6; k++) hot.push([hx + rr(SEED + 30, k + si * 6, -10, 10), hy + rr(SEED + 31, k + si * 6, -10, 6)]);
+      f.disc(hx, hy, Math.max(4, w(1) * 1.3), 1.05, 1.4);
+      for (let k = 0; k < 6; k++) hot.push([hx + rr(seed + 30, k + si * 6, -10, 10), hy + rr(seed + 31, k + si * 6, -10, 6)]);
     }
   });
-  erode(f, 0.85, (x, y) => pfbm(x, y + t * 90, 7, 2, 0, 90, SEED + 40));
-  return hot;
+  erode(f, 0.85, (x, y) => pfbm(x, y + t * 90, 7, 2, 0, 90, seed + 40));
+  let c = render(f, FIRE, { th: TH, rim: [1] });
+  if (vis < 1) {
+    const key = (x: number, y: number) => clamp(pnoise(x, y, 18, 0, 0, seed + 160) * 0.5 + ((y - box.y) / box.h) * 0.5, 0, 1);
+    const dz = dissolve(c, vis, key, [FIRE[2], FIRE[3], FIRE[4], FIRE[5]], FIRE[0]);
+    c = dz.c;
+    hot = hot.filter((_, i) => i % 2 === 0).concat(dz.edge.filter((_, i) => i % 3 === 0));
+  }
+  return { c, hot };
 }
+
+/** The kanji's writing schedule over an 8-frame surge (strokes 1-4 written over frames 3-7). */
+export const kanjiSurge = (i: number): number[] =>
+  [clamp((i - 2.5) / 1, 0, 1), clamp((i - 3.5) / 1, 0, 1), clamp((i - 4) / 1.5, 0, 1), clamp((i - 5) / 1.6, 0, 1)].map((p) => (p > 0 && p < 0.25 ? 0.25 : p));
+/** The kanji burning away over a 6-frame fade. */
+export const KANJI_FADE = [0.82, 0.58, 0.36, 0.17, 0.05, 0];
 
 // --- smoke: billowing volumes up to the upper right --------------------------------------------
 
@@ -99,7 +122,7 @@ function puffs(st: SState): Puff[] {
   const out: Puff[] = [];
   const ph = st.t * TAU;
   const a: Pt = [190, GY - 170], b: Pt = [905, 150];
-  const n = 130;
+  const n = 160;
   for (let k = 0; k < n; k++) {
     // Billows drift along the mass over a loop and wrap round.
     const u = fract(rr(SEED + 49, k, 0, 1) + (st.phase === 'burn' ? st.t * 0.06 : 0));
@@ -112,7 +135,7 @@ function puffs(st: SState): Puff[] {
     const y = lerp(a[1], b[1], Math.pow(u, 0.9)) + g * wid * 0.42 + Math.cos(ph + k * 1.3) * 2;
     let r = lerp(17, 36, u) * rr(SEED + 52, k, 0.65, 1.2) * (0.5 + 0.5 * grow) * (st.phase === 'fade' ? 0.75 + 0.25 * st.smoke : 1);
     r *= 1 + 0.06 * Math.sin(ph + k * 2.1);
-    out.push({ x: Math.min(x, W - r * 1.2 - 8), y: Math.max(y, r * 1.5 + 8), r, back: g < -0.1, warm: smooth(GY - 470, GY - 230, y) });
+    out.push({ x: Math.min(x, W - r * 1.2 - 8), y: Math.max(y, r * 1.5 + 8), r, back: g < -0.1, warm: smooth(GY - 560, GY - 300, y) });
   }
   // Loose puffs breaking off the top of the mass, rising to the top of the frame.
   for (let k = 0; k < 14; k++) {
@@ -201,7 +224,8 @@ function groundLayer(st: SState): Canvas {
     const apron = smooth(near - 30, near - 4, y) * 0.35;
     const g = (n - 0.36) * 1.9 * edge + (cracks + apron) * edge;
     if (g > 0.12) return Math.min(0.9, g) * glowK + (st.phase === 'fade' ? 0 : 0.02);
-    char.put(x, y, edge > 0.2 ? 0.3 : 0);
+    // Charred patches, which go with the glow as the fire dies (the last fade frame is empty).
+    if (st.phase !== 'fade' || st.dead < 0.6) char.put(x, y, edge > 0.2 ? 0.3 : 0);
     return 0;
   });
   const charC = render(char, SMOKE, { th: [0, 0.2], lo: 1, hi: 1, outline: false, alpha: [0, 150] });
@@ -305,7 +329,7 @@ function bodyPath(st: SState): Pt[] {
   ];
   return spline(P.map(([x, y], k) => [x + wob(k) * 3, y + wob(k + 2) * 6] as Pt), 8);
 }
-const radius = (u: number) => lerp(5, 19, Math.pow(smooth(0, 0.55, u), 0.8)) * (u > 0.9 ? lerp(1, 0.92, (u - 0.9) / 0.1) : 1);
+const radius = (u: number) => lerp(7, 23, Math.pow(smooth(0, 0.55, u), 0.8)) * (u > 0.9 ? lerp(1, 0.92, (u - 0.9) / 0.1) : 1);
 
 interface DragonLayers {
   /** Behind the middle row of flames (the tail and the dive). */
@@ -325,13 +349,13 @@ function dragonLayers(st: SState): DragonLayers {
   const us = arcU(pts);
   const uA = us[8 * 3], uB = us[8 * 10];
   const [back, mid, neck] = serpentBody(W, H, pts, radius, [[0, uA + 0.01], [uA, uB + 0.01], [uB, 1]], t, SEED + 100);
-  const head = dragonHead(2.0, t, 6 + (st.phase === 'burn' ? 2 * Math.sin(ph * 2) : 0), DRAGON_TILT * 0.4, true);
+  const head = dragonHead(2.3, t, 6 + (st.phase === 'burn' ? 2 * Math.sin(ph * 2) : 0), DRAGON_TILT * 0.4, true);
   const joint = pts[pts.length - 1];
   const dx = Math.round(joint[0] - head.joint[0]), dy = Math.round(joint[1] - head.joint[1]);
   const front = new Canvas(W, H);
   // The hind leg grips out of the flames under the arch; the foreleg reaches down at the front.
-  const hind = dragonLeg(W, H, [396, GY - 210], [414, GY - 160], [446, GY - 150], 11, t, 3);
-  const fore = dragonLeg(W, H, [700, GY - 238], [748, GY - 214], [784, GY - 176], 13, t, 7);
+  const hind = dragonLeg(W, H, [396, GY - 210], [414, GY - 160], [448, GY - 150], 13, t, 3);
+  const fore = dragonLeg(W, H, [700, GY - 238], [750, GY - 212], [788, GY - 172], 15, t, 7);
   const midC = new Canvas(W, H);
   midC.draw(hind, 0, 0);
   midC.draw(mid, 0, 0);
@@ -421,19 +445,8 @@ export function sFrame(st: SState): Canvas {
   const wall = wallLayers(st);
   const dr = st.dragon > 0.01 ? dragonLayers(st) : null;
   // The kanji, written stroke by stroke and burning away at the end.
-  let kanjiC: Canvas | null = null;
-  let hot: Pt[] = [];
-  if (st.kanji.some((p) => p > 0) && st.kanjiVis > 0) {
-    const kf = new Field(W, H);
-    hot = kanji(kf, st.kanji, t);
-    kanjiC = render(kf, FIRE, { th: TH, rim: [1] });
-    if (st.kanjiVis < 1) {
-      const key = (x: number, y: number) => clamp(pnoise(x, y, 18, 0, 0, SEED + 160) * 0.7 + ((y - KY) / KH) * 0.3, 0, 1);
-      const dz = dissolve(kanjiC, st.kanjiVis, key, [FIRE[2], FIRE[3], FIRE[4], FIRE[5]], FIRE[0]);
-      kanjiC = dz.c;
-      hot = hot.filter((_, i) => i % 2 === 0).concat(dz.edge.filter((_, i) => i % 3 === 0));
-    }
-  }
+  const kj = kanjiFire(W, H, SBOX, st.kanji, st.kanjiVis, t, SEED);
+  const kanjiC = kj.c, hot = kj.hot;
   const jet = dr ? breathJet(st, dr.mouth) : null;
   const layers: (Canvas | null)[] = [ground, smoke, wall.bed, wall.rows[0]];
   if (dr) layers.push(dr.back);
@@ -470,13 +483,13 @@ export function sStates(): Record<'surge' | 'burn' | 'fade', SState[]> {
   return {
     surge: n(8).map((i) => ({
       roll: ease((i + 1) / 6), burn: lerp(0.75, 1, i / 7), dead: 0, smoke: smooth(0.5, 7, i), dragon: smooth(1.6, 6.6, i),
-      kanji: [clamp((i - 2.5) / 1, 0, 1), clamp((i - 3.5) / 1, 0, 1), clamp((i - 4) / 1.5, 0, 1), clamp((i - 5) / 1.6, 0, 1)].map((p) => (p > 0 && p < 0.25 ? 0.25 : p)),
+      kanji: kanjiSurge(i),
       kanjiVis: 1, jet: clamp((i - 5.4) / 1.8, 0, 1), phase: 'surge' as const, t: i / 8,
     })),
     burn: n(6).map((i) => ({ roll: 1, burn: 1, dead: 0, smoke: 1, dragon: 1, kanji: [1, 1, 1, 1], kanjiVis: 1, jet: 1, phase: 'burn' as const, t: i / 6 })),
     fade: n(6).map((i) => ({
       roll: 1, burn: [0.8, 0.58, 0.38, 0.2, 0.08, 0][i], dead: [0.1, 0.3, 0.5, 0.7, 0.88, 1][i], smoke: [0.85, 0.65, 0.45, 0.26, 0.1, 0][i],
-      dragon: [0.85, 0.62, 0.4, 0.2, 0.06, 0][i], kanji: [1, 1, 1, 1], kanjiVis: [0.82, 0.58, 0.36, 0.17, 0.05, 0][i], jet: [0.55, 0.15, 0, 0, 0, 0][i],
+      dragon: [0.85, 0.62, 0.4, 0.2, 0.06, 0][i], kanji: [1, 1, 1, 1], kanjiVis: KANJI_FADE[i], jet: [0.55, 0.15, 0, 0, 0, 0][i],
       phase: 'fade' as const, t: i / 6,
     })),
   };

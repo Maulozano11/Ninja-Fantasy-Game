@@ -45,16 +45,16 @@
    "note": "right of the fire"
   },
   {
-   "x": 418,
-   "y": 306,
-   "facing": "right",
-   "note": "behind the fire, left"
-  },
-  {
    "x": 548,
    "y": 304,
    "facing": "left",
    "note": "behind the fire, right"
+  },
+  {
+   "x": 436,
+   "y": 298,
+   "facing": "right",
+   "note": "behind the fire, left"
   }
  ],
  "partySpots": [

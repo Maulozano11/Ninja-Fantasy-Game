@@ -504,9 +504,9 @@ export function crop(c: Canvas, x: number, y: number, w: number, h: number): Can
 }
 const r2 = (v: number): number => Math.round(v * 100) / 100;
 /** A projectile sprite: one 'fly' loop, anchored at the frame center. */
-export function flySprite(name: string, label: string, fr: Canvas[], fps = 12): WorldSprite {
+export function flySprite(name: string, label: string, fr: Canvas[], fps = 12, anchor?: [number, number]): WorldSprite {
   const f = fr[0];
-  return { name, label, meters: [r2(f.w / PX_PER_M), r2(f.h / PX_PER_M)], anchor: [f.w / 2, f.h / 2], tags: ['vfx'], anims: { fly: { frames: fr, fps, loop: true } } };
+  return { name, label, meters: [r2(f.w / PX_PER_M), r2(f.h / PX_PER_M)], anchor: anchor ?? [f.w / 2, f.h / 2], tags: ['vfx'], anims: { fly: { frames: fr, fps, loop: true } } };
 }
 /** A sprite with explicit animations and anchor. */
 export function vfxSprite(name: string, label: string, anchor: [number, number], anims: Record<string, { frames: Canvas[]; fps: number; loop?: boolean }>): WorldSprite {
@@ -606,4 +606,41 @@ export function dissolve(c: Canvas, vis: number, key: (x: number, y: number) => 
     for (let i = 0; i < ol.length; i += 2) out.set(ol[i], ol[i + 1], outline);
   }
   return { c: out, edge };
+}
+
+/**
+ * Drops loose bits (sparks, droplets, embers: connected pieces of at most `max` px) that touch
+ * the frame border on the given sides, so no particle is ever cut flat by the frame. Larger
+ * shapes are left alone (those need a bigger frame).
+ */
+export function clearEdgeBits(c: Canvas, max = 64, sides = 'ltrb'): Canvas {
+  const { w, h } = c;
+  const out = c.clone();
+  const seen = new Uint8Array(w * h);
+  const onSide = (x: number, y: number) =>
+    (sides.includes('l') && x === 0) || (sides.includes('r') && x === w - 1) || (sides.includes('t') && y === 0) || (sides.includes('b') && y === h - 1);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      if (!onSide(x, y) || seen[y * w + x] || !c.alpha(x, y)) continue;
+      // Flood the whole piece (8-connected) and clear it when it is small.
+      const piece: number[] = [];
+      const todo = [y * w + x];
+      seen[y * w + x] = 1;
+      while (todo.length) {
+        const i = todo.pop()!;
+        piece.push(i);
+        const px = i % w, py = (i / w) | 0;
+        for (let oy = -1; oy <= 1; oy++)
+          for (let ox = -1; ox <= 1; ox++) {
+            const nx = px + ox, ny = py + oy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const j = ny * w + nx;
+            if (seen[j] || !c.alpha(nx, ny)) continue;
+            seen[j] = 1;
+            todo.push(j);
+          }
+      }
+      if (piece.length <= max) for (const i of piece) out.set(i % w, (i / w) | 0, [0, 0, 0, 0]);
+    }
+  return out;
 }

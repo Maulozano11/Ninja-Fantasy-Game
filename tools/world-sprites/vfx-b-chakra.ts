@@ -5,6 +5,7 @@
 // Palette: deep blue, blue, sky cyan, light cyan, ice white, white, with gold for the seals.
 
 import { Anim, Canvas, WorldSprite } from './kit';
+import { HGT, LEN, Orient, march, orientations, proj } from './vfx-b-wall3d';
 import { L, Pt, TAU, clamp, fract, lerp, pal, pnoise, polar, rnd, rot, smooth, fadeLeft } from './vfx-b-lib';
 
 /** 0 outline, 1 deep blue, 2 royal, 3 blue, 4 azure, 5 sky cyan, 6 light cyan, 7 ice white, 8 white. */
@@ -28,8 +29,8 @@ const range = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
 /** Standard chakra banding: blue rim, cyan body, white only where the shape is thick. */
 const BAND_CUTS = [1, 2, 3, 4.4, 6, 8];
 const BAND_STEPS = [2, 3, 4, 5, 6, 7, 8];
-function energy(l: L, o: { cuts?: number[]; steps?: number[]; mod?: (x: number, y: number, d: number) => number; wrapX?: boolean } = {}): L {
-  return l.bands(o.cuts ?? BAND_CUTS, o.steps ?? BAND_STEPS, { mod: o.mod, jitter: 0.3, seed: 13, wrapX: o.wrapX }).clean(1, o.wrapX);
+function energy(l: L, o: { cuts?: number[]; steps?: number[]; mod?: (x: number, y: number, d: number) => number; wrapX?: boolean; period?: number } = {}): L {
+  return l.bands(o.cuts ?? BAND_CUTS, o.steps ?? BAND_STEPS, { mod: o.mod, jitter: 0.3, seed: 13, wrapX: o.wrapX, period: o.period }).clean(1, o.wrapX);
 }
 
 /**
@@ -363,12 +364,23 @@ function stream(): WorldSprite {
 function streamHead(): WorldSprite {
   const frames = range(N).map((f) => {
     const c = new Canvas(64, 64), t = f / N;
-    const b = new L(64, 64);
-    b.tube([[0, 32], [24, 32]], [6, 6], 1);
-    energy(b, { cuts: [1, 2, 3, 4, 5], steps: [2, 3, 4, 5, 6, 8] });
-    b.render(c, C);
+    // The beam continues the last tile exactly (same width profile, same band noise), on a
+    // buffer that starts a tile further back so the joint gets no false edge.
+    const b = new L(128, 64);
+    for (let X = 0; X < 64 + 26; X++) {
+      const xh = X - 64;
+      const taper = xh > 14 ? lerp(1, 0.35, clamp((xh - 14) / 12, 0, 1)) : 1;
+      const w = (6 + Math.sin((X / 64) * TAU * 2 - t * TAU) * 1.2 + Math.sin((X / 64) * TAU * 3 + t * TAU * 2) * 0.8) * taper;
+      for (let y = Math.floor(32 - w); y <= Math.ceil(32 + w); y++) if (Math.abs(y + 0.5 - 32) <= w) b.set(X, y, 1);
+    }
+    energy(b, { cuts: [1, 2, 3, 4, 5], steps: [2, 3, 4, 5, 6, 8], period: 64 });
+    b.render(c, C, { dx: -64 });
+    // The chain carries on from the tile: same spacing, phase and face/edge order.
     const ch = new L(64, 64);
-    for (let k = 0; k < 2; k++) link(ch, k * 16 + 4 + t * 16 * 0, 32, k % 2 === 0);
+    for (let k = 3; k <= 5; k++) {
+      const x = k * 16 + 8 + t * 32 - 64;
+      if (x > -7 && x < 20) link(ch, x, 32, k % 2 === 0);
+    }
     ch.render(c, GOLD);
     const blade = new L(64, 64);
     blade.poly([[24, 32], [34, 23], [58, 32], [34, 41]], 1);
@@ -779,6 +791,158 @@ function wall(): WorldSprite {
   return sprite('wall', 'Chakra wall: seal barrier', [WW / 2, WGY], { rise: once(rise, 12), idle: loop(idle, 8) });
 }
 
+// --- the seal barrier in 3/4 and depth ------------------------------------------------------
+
+const BAR_HALF = 11;
+const POST = 6;
+
+/** Is (gx, gy) (0..4) a stroke of glyph `seed`? */
+function glyphBit(seed: number, gx: number, gy: number): boolean {
+  if (gx < 0 || gy < 0 || gx > 4 || gy > 4) return false;
+  const g = GLYPHS[Math.floor(rnd(seed, 0) * GLYPHS.length)];
+  return g[gy][rnd(seed, 1) < 0.5 ? 4 - gx : gx] === '#';
+}
+
+/** Hex cell of a face point (a along, b down from the top): distances to the nearest and second centre. */
+function hexAt(a: number, b: number, cell = 9): { best: number; b2: number; bid: number; bx: number; by: number } {
+  const q = a / (cell * 1.732), r = b / (cell * 1.5);
+  const row = Math.round(r), col = Math.round(q - (row % 2 ? 0.5 : 0));
+  let best = Infinity, b2 = Infinity, bid = 0, bx = 0, by = 0;
+  for (let dr = -1; dr <= 1; dr++)
+    for (let dc = -1; dc <= 1; dc++) {
+      const rr = row + dr, cc = col + dc;
+      const cx = (cc + (rr % 2 ? 0.5 : 0)) * cell * 1.732, cy = rr * cell * 1.5;
+      const d = Math.max(Math.abs(a + 0.5 - cx) * 0.866 + Math.abs(b + 0.5 - cy) * 0.5, Math.abs(b + 0.5 - cy));
+      if (d < best) {
+        b2 = best;
+        best = d;
+        bid = rr * 100 + cc;
+        bx = cx;
+        by = cy;
+      } else if (d < b2) b2 = d;
+    }
+  return { best, b2, bid, bx, by };
+}
+
+/** One frame of the barrier slab in orientation o, raised to hk, the shimmer at sh. */
+function barrier3d(o: Orient, hk: number, sh: number, f: number, t: number): Canvas {
+  const c = new Canvas(o.w, o.h);
+  const limV = HGT * hk;
+  const crestV = (u: number): number => limV - 2 - Math.sin((u / LEN) * TAU * 4 - t * TAU) * 1.6;
+  const postTop = Math.max(limV, 10) + 4;
+  const tagTop = Math.max(Math.min(HGT * hk - 6, 40), 24);
+  const inside = (u: number, s: number, v: number): number => {
+    if (u < 0) return 3;
+    if (u > LEN) return 4;
+    if (u < POST || u > LEN - POST) return v > postTop ? 0 : Math.abs(s) > BAR_HALF + 2 ? 1 : -1;
+    if (v < 7) return Math.abs(s) > BAR_HALF + 1 ? 1 : -1;
+    if (v > crestV(u)) return 0;
+    return Math.abs(s) > BAR_HALF ? 1 : -1;
+  };
+  const hits = march(o, inside, { sMax: BAR_HALF + 3, vMax: HGT + 8 });
+  const fill = new L(o.w, o.h), edge = new L(o.w, o.h), gold = new L(o.w, o.h), energyMask = new L(o.w, o.h), crestL = new L(o.w, o.h);
+  for (let i = 0; i < o.w * o.h; i++) {
+    const fc = hits.face[i];
+    if (fc < 0) continue;
+    const x = i % o.w, y = (i / o.w) | 0;
+    const u = hits.u[i], sv = hits.s[i], v = hits.v[i];
+    const haze = o.key !== 'wall' && u > LEN * 0.66 ? 1 : 0;
+    if (u < POST || u > LEN - POST) {
+      // Gold seal posts.
+      const lu = u < POST ? u : LEN - u;
+      gold.set(x, y, fc === 0 ? 4 : lu < 1 || POST - lu < 1 ? 2 : v % 8 < 1 ? 4 : 3);
+      continue;
+    }
+    if (v < 7) {
+      // Gold base band with glyphs.
+      let st = fc === 0 ? 4 : v < 1 || v > 6 ? 4 : 2;
+      if (fc === 1 || fc === 2)
+        for (let k = 0; k < 19; k++) {
+          const gu = 12 + ((k * 13 + f * 2) % (LEN - 22));
+          if (glyphBit(110 + k, Math.round(u - gu) + 2, Math.round(5 - v))) st = 5;
+        }
+      gold.set(x, y, st);
+      continue;
+    }
+    energyMask.set(x, y, 1);
+    const fromTop = crestV(u) - v;
+    if (fc === 0 || fromTop < 1.5) {
+      crestL.set(x, y, fc === 0 ? (sv > BAR_HALF - 2 ? 8 : pnoise(u * 0.8 + sv, t * 16, 3, 16, 70) > 0.6 ? 6 : 7) : 8);
+      continue;
+    }
+    if (fromTop < 3) {
+      crestL.set(x, y, 7);
+      continue;
+    }
+    // Honeycomb on the broad faces; across the thickness on the ends.
+    const a = fc === 3 || fc === 4 ? sv + BAR_HALF : u;
+    const h = hexAt(a, HGT - v);
+    const sweep = Math.abs(u - (sh * (LEN + 60) - 30) + v * 0.4);
+    if (h.b2 - h.best < 1.2) {
+      const node = h.b2 - h.best < 0.5 && h.best > 9 * 0.7;
+      edge.set(x, y, Math.max(5, (node || sweep < 8 ? 8 : 6) - haze));
+    } else {
+      const lit = a + 0.5 - h.bx + (HGT - v + 0.5 - h.by) < -9 * 0.55;
+      let st = v < 30 ? 4 : 3;
+      if (lit) st += 1;
+      if (h.best < 1.6 && rnd(101, h.bid, f % 3) < 0.35) st = 7;
+      if (sweep < 7) st += 2;
+      if (fc === 3 || fc === 4) st -= 1;
+      fill.set(x, y, Math.max(2, Math.min(8, st) - haze));
+    }
+  }
+  // Seal tags on the broad face near the posts.
+  const tags = new L(o.w, o.h);
+  for (const tu of [7, LEN - 14])
+    for (let lu = 0; lu < 7; lu++)
+      for (let lv = 0; lv < 16; lv++) {
+        const q = proj(o, tu + lu + 0.5, BAR_HALF + 0.6, tagTop - lv);
+        let st = lu === 0 || lu === 6 ? 3 : 5;
+        if (glyphBit(170, lu - 1, lv - 3) || glyphBit(171, lu - 1, lv - 9)) st = lv < 8 ? 1 : 2;
+        tags.set(q[0], q[1], st);
+      }
+  energyMask.render(c, C, { alpha: 0, outlineAlpha: 150, outline: C[2] });
+  fill.render(c, C, { outline: null, alpha: (st, x, y) => (st >= 7 ? 240 : Math.round(lerp(175, 95, clamp(hits.v[y * o.w + x] / HGT, 0, 1))) + (st >= 5 ? 40 : 0)) });
+  edge.render(c, C, { outline: null, alpha: 235 });
+  crestL.render(c, C, { outline: null, alpha: 240 });
+  // Tongues of chakra licking up from the crest.
+  const tongues = new L(o.w, o.h);
+  for (let x = 0; x < o.w; x++)
+    for (let y = 1; y < o.h; y++) {
+      if (crestL.get(x, y) < 0 || crestL.get(x, y - 1) >= 0 || energyMask.get(x, y - 1) >= 0) continue;
+      const n = Math.floor(pnoise(x * 0.8, (y + t * 24) % 24, 3, 24, 61) * 7) - 2;
+      for (let k = 1; k <= n; k++) tongues.set(x, y - k, k === n ? 7 : 6);
+    }
+  tongues.render(c, C, { outline: C[3], alpha: 220, outlineAlpha: 160 });
+  gold.render(c, GOLD);
+  tags.render(c, GOLD);
+  return c;
+}
+
+/** Seal barrier in 3/4 or depth: 'rise' (6, cell rows from the ground up) then 'idle' (4, shimmering). */
+function barrierWall(key: 'wall_diag' | 'wall_depth'): WorldSprite {
+  const o = orientations()[key];
+  const hks = [0.15, 0.4, 0.65, 0.88, 1, 1];
+  const rise = range(6).map((f) => {
+    const c = barrier3d(o, hks[f], 0.5, f, f / 6);
+    sparks(c, range(14).map((k) => {
+      const q = proj(o, 10 + rnd(201, k, f) * (LEN - 20), BAR_HALF + 1, HGT * hks[f] + (rnd(202, k, f) - 0.5) * 10);
+      return [q[0], q[1], k % 3 === 0 ? 2 : 1] as [number, number, number];
+    }));
+    return c;
+  });
+  const idle = range(4).map((f) => {
+    const c = barrier3d(o, 1, f / 4, f, f / 4);
+    sparks(c, range(4).map((k) => {
+      const q = proj(o, 16 + ((rnd(203, k) * 225 + (f / 4) * 225) % 225), BAR_HALF + 1, 20 + rnd(204, k) * 70);
+      return [q[0], q[1], 1] as [number, number, number];
+    }));
+    return c;
+  });
+  const label = key === 'wall_diag' ? 'Chakra wall (3/4): seal barrier' : 'Chakra wall (depth): seal barrier';
+  return sprite(key, label, [o.ax, o.ay], { rise: once(rise, 12), idle: loop(idle, 8) });
+}
+
 /** Aura: chakra flame tongues licking up both sides, a gold seal ring turning at the feet, sparks. */
 function aura(): WorldSprite {
   const W = 80, H = 128, ax = 40, ay = 112;
@@ -817,5 +981,5 @@ function aura(): WorldSprite {
 }
 
 export function buildChakra(): WorldSprite[] {
-  return [bolt(), beast(), stream(), streamHead(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura()];
+  return [bolt(), beast(), stream(), streamHead(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura(), barrierWall('wall_diag'), barrierWall('wall_depth')];
 }

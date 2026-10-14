@@ -17,7 +17,7 @@
 
 import { Canvas, WorldSprite, withAlpha } from './kit';
 import { FIRE, ROCK, SMOKE, TH, embers, erode, flow, tongue } from './vfx-a-fire-kit';
-import { Field, Pt, TAU, bez, clamp, frames, fract, lerp, pfbm, pnoise, render, rr, smooth, stack, tubeShade, vfxSprite } from './vfx-a-lib';
+import { Field, Pt, TAU, bez, clamp, dissolve, frames, fract, lerp, pfbm, pnoise, render, rr, smooth, stack, tubeShade, vfxSprite } from './vfx-a-lib';
 import { drawDragon } from './vfx-a-fire-dragon';
 
 const PX = 57;
@@ -367,7 +367,7 @@ export function waveFrame(w: Wave, st: WaveState): Canvas {
         tongue(lipF, [q[0] + Math.cos(ang) * rad, q[1] + Math.sin(ang) * rad], lerp(-2.45, -2.05, k / 5) + Math.sin(ph + k) * 0.08, ch * (0.2 - k * 0.018) * rr(seed + 61, k, 0.55, 1.25), ch * 0.034, 0.7, 0.2, ph + k * 1.3, -0.18);
       });
       // As the fire dies (or the dragon forms out of it) the lip breaks up into loose flames.
-      erode(lipF, 0.5 + (st.phase === 'fade' ? (1 - st.burn) * 4 : 0) + (great ? st.dragon * 4 : 0), er);
+      erode(lipF, 0.5 + (st.phase === 'fade' ? (1 - st.burn) * 4 : 0), er);
     }
   }
   // Burning ground over the cone's footprint, with ragged edges; it breaks into glowing patches
@@ -428,7 +428,11 @@ export function waveFrame(w: Wave, st: WaveState): Canvas {
   layers.push(bed.any() ? render(bed, FIRE, { th: TH, hi: 5, rim: [1] }) : null);
   const streaks = (x: number, y: number) => (pnoise(x * 0.5, (y + t * 180) * 0.15, 2, 0, 27, seed + 46) - 0.5) * 0.26;
   layers.push(render(rows[0], FIRE, { th: TH, rim: [1], hi: 5, jitter: streaks }));
-  if (lipF.any()) layers.push(render(lipF, FIRE, { th: TH, rim: [1], jitter: streaks }));
+  if (lipF.any()) {
+    // On the great wave the lip burns away into the dragon forming out of it.
+    const lipC = render(lipF, FIRE, { th: TH, rim: [1], jitter: streaks });
+    layers.push(great && st.dragon > 0 ? dissolve(lipC, 1 - st.dragon * 1.7, (x, y) => pnoise(x, y, 12, 0, 0, seed + 64), [FIRE[4], FIRE[6]], FIRE[0]).c : lipC);
+  }
   const em: { x: number; y: number; s: number }[] = [];
   if (great && st.dragon > 0.01) {
     // The dragon rides the crest: placed on the wave's shape (not its burn), so it holds still

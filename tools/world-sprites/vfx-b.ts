@@ -117,11 +117,12 @@ function elementSheet(e: Element, sprites: WorldSprite[]): Canvas {
   {
     const s = by('stream'), h = by('stream_head');
     const f = frameOf(s, 'fly', 0), hf = frameOf(h, 'fly', 0);
-    const c = new Canvas(f.w * 3 + hf.w / 2 + 4, f.h);
+    const c = new Canvas(f.w * 3 + hf.w, f.h);
     c.fillRect(0, 0, c.w, c.h, PANEL);
     for (let i = 0; i < 3; i++) c.fillRect(i * f.w, 0, 1, 3, PANEL2);
     for (let i = 0; i < 3; i++) c.draw(f, i * f.w, 0);
-    c.draw(hf, f.w * 3 - hf.w / 2 + 4, 0);
+    // The head's left edge meets the end of the last tile (its anchor is the line's end).
+    c.draw(hf, f.w * 3, 0);
     cells.push({ label: 'stream x3 + head', sub: 'tile 64x64', c });
   }
   for (const n of ['hit', 'blast']) {

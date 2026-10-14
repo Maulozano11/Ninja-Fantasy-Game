@@ -7,6 +7,7 @@ import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS } from './ctx';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor } from './rig';
+import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { applyTexture, frayHair } from './texture';
 import type { EyeSpecial, PixelEdit, SlotId, SpriteAppearance, SpritePose } from './types';
@@ -128,7 +129,7 @@ export function renderSprite(
   eyeSpecial: EyeSpecial = 'none',
   opts: { skipEdits?: boolean } = {},
 ): SpriteFrame {
-  const rig = drawRig(look.body, rigPoseFor(pose, look.cast?.style), frame);
+  const rig = drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();
@@ -181,6 +182,7 @@ export function renderSprite(
     if (L) sculptClothes(g, L);
   }
   drawCastFx(g);
+  drawCampFx(g);
   if (rig.farHandFront) farHandToFront(layers, g);
   guardFace(g, layers);
 

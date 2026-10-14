@@ -1,56 +1,53 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ShinobiCharacter } from '../../types/shinobi';
 import type { FireLevel } from '../../rules/rest';
 import { STICKS_PER_CAMP } from '../../data/campActivities';
 import { isUnconscious } from '../../rules/ninja';
-import { ShinobiSpriteCanvas } from '../ShinobiSpriteCanvas';
-import { WorldSpriteView, worldSpriteSpec } from '../world/WorldSpriteView';
+import { subscribeTick, TICK_FPS } from '../../sprite/ticker';
+import type { SpritePose } from '../../sprite/types';
 import { useLang } from '../../i18n';
 import { Gauge } from '../ui/Ornate';
 import { T } from './campText';
+import {
+  airGlow,
+  backdrop,
+  FIRE,
+  FireLight,
+  footShadow,
+  gradedMember,
+  gradedSprite,
+  GradedSprite,
+  knownPose,
+  layer,
+  lightKey,
+  loadLayers,
+  poseFrames,
+  PROPS,
+  SCENE_H,
+  SCENE_W,
+  ScenePropDef,
+  SPOTS,
+} from './campArt';
 
-// The camp at night, drawn at the world scale (1 m = 57 px) and scaled to the panel's width.
-const W = 720;
-const H = 300;
+// The camp at night: the painted scene (tools/scenes/camp_night.py) at the world scale
+// (1 m = 57 px), the campsite props and the party graded to the moon and the fire (campArt.ts),
+// drawn into one pixel canvas and scaled to the panel's width.
+const W = SCENE_W;
+const H = SCENE_H;
+/** On wide screens at most this much of the sky (world px) is cropped, so the moon stays. */
+const MAX_SKY_CROP = 50;
+const MAX_HEIGHT = 440;
+const MIN_SCALE = 0.75;
 
-/** A world sprite placed by its anchor (the point that touches the ground). */
-function Placed({ group, name, x, y, anim, scale = 1, light = 1, flip, z }: { group: string; name: string; x: number; y: number; anim?: string; scale?: number; light?: number; flip?: boolean; z?: number }) {
-  const spec = worldSpriteSpec(group, name);
-  if (!spec) return null;
-  const [ax, ay] = spec.anchor;
-  return (
-    <div
-      className="absolute pointer-events-none"
-      style={{
-        left: x - ax * scale,
-        top: y - ay * scale,
-        zIndex: z ?? Math.round(y),
-        filter: light < 1 ? `brightness(${light}) saturate(${0.5 + light / 2})` : undefined,
-        transform: flip ? 'scaleX(-1)' : undefined,
-      }}
-    >
-      <WorldSpriteView group={group} name={name} anim={anim} scale={scale} title="" />
-    </div>
-  );
-}
+/**
+ * Poses the camp shows when nobody asked for one, seat by seat (Sentado, Leyendo, Recargado,
+ * Entrenando). Each is used as soon as the sprite system knows it; until then the seat stands idle.
+ */
+export const CAMP_IDLE_POSES = ['sit', 'read', 'lean', 'train'] as const;
+export type CampSeatPose = (typeof CAMP_IDLE_POSES)[number];
+export type CampScenePose = 'idle' | 'handsigns' | 'cast' | 'charge' | 'victory' | CampSeatPose;
 
-// Fixed star field (a tiny LCG, so it never moves between renders).
-const STARS = (() => {
-  let s = 7;
-  const r = () => ((s = (s * 1103515245 + 12345) % 2147483648) / 2147483648);
-  return Array.from({ length: 46 }, () => ({ x: r() * W, y: r() * 150, big: r() > 0.85 }));
-})();
-
-// Where the party sits around the fire: two on each side, facing it.
-const SEATS = [
-  { x: 286, y: 262, flip: false },
-  { x: 436, y: 262, flip: true },
-  { x: 236, y: 281, flip: false },
-  { x: 486, y: 281, flip: true },
-];
-const FIRE = { x: 361, y: 270 };
-const MAX_HEIGHT = 380;
-const MIN_SCALE = 0.8;
+const poseOrIdle = (p: string): SpritePose => (knownPose(p) ? p : 'idle');
 
 export function IncenseSticks({ used, compact }: { used: number; compact?: boolean }) {
   useLang();
@@ -84,19 +81,36 @@ export interface CampSceneProps {
   selected?: string;
   onSelect?: (id: string) => void;
   sticksUsed?: Record<string, number>;
-  /** Pose per ninja (a ninja doing a jutsu activity casts). */
-  poses?: Record<string, 'idle' | 'handsigns' | 'cast' | 'charge' | 'victory'>;
+  /** Pose per ninja (a ninja doing a jutsu activity casts); others take their seat's camp pose. */
+  poses?: Record<string, CampScenePose>;
+}
+
+interface Item {
+  z: number;
+  key: string;
+  draw: (g: CanvasRenderingContext2D, tick: number) => void;
+  frameAt: (tick: number) => number;
+}
+
+/** Frame of a looping (or held) animation at this tick of the shared 12 fps clock. */
+function frameOf(tick: number, fps: number, n: number, loop = true): number {
+  if (fps <= 0 || n <= 1) return 0;
+  const f = Math.floor((tick * fps) / TICK_FPS);
+  return loop ? f % n : Math.min(f, n - 1);
 }
 
 export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, dangerLabel, selected, onSelect, sticksUsed, poses }: CampSceneProps) {
   useLang();
   const ref = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [scale, setScale] = useState(1);
   const [width, setWidth] = useState(W);
-  // On wide screens the sky is cropped so the camp's controls stay in view; on narrow ones the
-  // sides are cropped around the fire so the party stays big enough to read.
-  const height = Math.min(H * scale, MAX_HEIGHT);
-  const left = Math.min(0, (width - W * scale) / 2);
+  const [ready, setReady] = useState(false);
+  // On wide screens a little sky is cropped so the camp's controls stay in view (never the moon);
+  // on narrow ones the sides are cropped around the fire so the party stays big enough to read.
+  const height = Math.max((H - MAX_SKY_CROP) * scale, Math.min(H * scale, MAX_HEIGHT));
+  const left = Math.min(0, width / 2 - FIRE.x * scale);
+  const clampedLeft = Math.max(width - W * scale, left);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -109,80 +123,161 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  useEffect(() => {
+    let alive = true;
+    loadLayers().then(() => alive && setReady(true));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const lit = fire === 'low' || fire === 'bonfire';
-  const glow = !lit ? 0 : asleep ? 0.18 : fire === 'bonfire' ? 0.55 : 0.36;
   const fireAnim = !lit ? 'out' : asleep ? 'smoldering' : 'burning';
-  const warm = dawn ? 0.95 : !lit ? 0.62 : asleep ? 0.7 : fire === 'bonfire' ? 1 : 0.9;
-  const shade = dawn ? 0.6 : 1;
+  const light: FireLight = useMemo(
+    () =>
+      !lit
+        ? { k: 0, reach: 1, pool: 0, air: 0 }
+        : asleep
+          ? { k: 0.42, reach: 0.65, pool: 0.4, air: 0.35 }
+          : fire === 'bonfire'
+            ? { k: 1, reach: 1, pool: 1, air: 1 }
+            : { k: 0.78, reach: 0.85, pool: 0.72, air: 0.7 },
+    [lit, asleep, fire],
+  );
+  const smoke = lit && !asleep ? (fire === 'bonfire' ? 1 : 0.7) : 0;
+
+  const seats = members.slice(0, SPOTS.length);
+  const seatPoses = seats.map((m, i) => {
+    const down = m.currentHp <= 0 || isUnconscious(m);
+    return down ? ('hurt' as SpritePose) : poseOrIdle(poses?.[m.id] ?? CAMP_IDLE_POSES[i % CAMP_IDLE_POSES.length]);
+  });
+  const poseKey = seatPoses.join(',');
+
+  // Everything drawn between the backdrop and the front frame, sorted by where it stands.
+  const items = useMemo<Item[]>(() => {
+    if (!ready) return [];
+    const out: Item[] = [];
+    const prop = (p: ScenePropDef, anim: string | undefined, opts: { alpha?: number; emissive?: boolean } = {}) => {
+      let g: GradedSprite | undefined;
+      const get = () => (g ??= gradedSprite(p, anim, light, opts.emissive));
+      out.push({
+        z: p.y + (p.z ?? 0),
+        key: `${p.name}@${p.x},${p.y}`,
+        frameAt: (tick) => {
+          const s = get();
+          return s ? frameOf(tick, s.fps, s.frames.length, s.loop) : -1;
+        },
+        draw: (ctx, tick) => {
+          const s = get();
+          if (!s) return;
+          ctx.globalAlpha = opts.alpha ?? 1;
+          ctx.drawImage(s.frames[frameOf(tick, s.fps, s.frames.length, s.loop)], s.x0, s.y0);
+          ctx.globalAlpha = 1;
+        },
+      });
+    };
+    for (const p of PROPS) {
+      if (p.shrine && !shrine) continue;
+      if (p.name === 'campfire_large') prop(p, fireAnim, { emissive: true });
+      else if (p.name === 'smoke_tall') {
+        if (smoke > 0) prop(p, undefined, { alpha: smoke });
+      } else if (p.name === 'stone_lantern') prop(p, 'lit', { emissive: true });
+      else prop(p, p.anim);
+    }
+    seats.forEach((m, i) => {
+      const spot = SPOTS[i];
+      const pose = seatPoses[i];
+      const { n, fps } = poseFrames(m, pose);
+      const isSel = selected === m.id;
+      out.push({
+        z: spot.y + 0.5,
+        key: `${m.id}`,
+        frameAt: (tick) => frameOf(tick, fps, n),
+        draw: (ctx, tick) => {
+          const sh = footShadow();
+          ctx.drawImage(sh, spot.x - sh.width / 2, spot.y - sh.height / 2 - 1);
+          if (isSel) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(103,232,249,0.28)';
+            ctx.strokeStyle = 'rgba(103,232,249,0.8)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(spot.x, spot.y - 1, 27, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+          }
+          const c = gradedMember(m, pose, frameOf(tick, fps, n), spot.x, spot.y, spot.flip, light);
+          ctx.drawImage(c, spot.x - (spot.flip ? 127 - 64 : 64), spot.y - 120);
+        },
+      });
+    });
+    return out.sort((a, b) => a.z - b.z);
+    // seats/seatPoses change with members and poseKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, members, poseKey, selected, shrine, fireAnim, lightKey(light), smoke]);
+
+  // Redraw only when some animation frame changes (the 12 fps clock), never re-grading.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx || !ready) return;
+    ctx.imageSmoothingEnabled = false;
+    const front = layer('front');
+    const fireGlow = light.air > 0 ? airGlow(FIRE.x, FIRE.flameY, 0.9, [46, 22, 4], 'fire') : null;
+    const lantern = shrine ? PROPS.find((p) => p.name === 'stone_lantern') : undefined;
+    const lanternGlow = lantern ? airGlow(lantern.x, lantern.y - 52, 0.32, [40, 24, 8], 'lantern') : null;
+    let last = '';
+    return subscribeTick((tick) => {
+      const bg = backdrop(light);
+      const flick = Math.floor(tick / 2) % 4;
+      const key = `${bg ? 1 : 0}|${flick}|` + items.map((it) => it.frameAt(tick)).join(',');
+      if (key === last) return;
+      last = key;
+      ctx.clearRect(0, 0, W, H);
+      if (bg) ctx.drawImage(bg, 0, 0);
+      for (const it of items) it.draw(ctx, tick);
+      if (front?.naturalWidth) ctx.drawImage(front, 0, 0);
+      ctx.globalCompositeOperation = 'lighter';
+      if (fireGlow) {
+        ctx.globalAlpha = light.air * [1, 0.93, 0.97, 0.9][flick];
+        ctx.drawImage(fireGlow, 0, 0);
+      }
+      if (lanternGlow) {
+        ctx.globalAlpha = 0.85 + 0.05 * (flick % 2);
+        ctx.drawImage(lanternGlow, 0, 0);
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    });
+  }, [ready, items, light, shrine]);
+
   const gaugeSize = width < 560 ? 56 : width < 900 ? 68 : 80;
 
   // The bronze frame around the scene is drawn by the screen that shows it (an OrnateFrame).
   return (
     <div ref={ref} className="relative w-full overflow-hidden rounded-[3px] bg-[#070b1a]" style={{ height }}>
-      <div className="absolute origin-top-left" style={{ left, top: height - H * scale, width: W, height: H, transform: `scale(${scale})` }}>
-        {/* sky and stars */}
-        <div
-          className="absolute inset-0 transition-[background] duration-1000"
+      <div className="absolute origin-top-left" style={{ left: clampedLeft, top: height - H * scale, width: W, height: H, transform: `scale(${scale})` }}>
+        <canvas
+          ref={canvasRef}
+          width={W}
+          height={H}
+          className="absolute inset-0 transition-[filter] duration-1000"
           style={{
-            background: dawn
-              ? 'linear-gradient(#1e2b4a 0%, #4b5a7a 38%, #c98a5a 62%, #e8b07a 68%, #2b3424 72%, #1d261b 100%)'
-              : 'linear-gradient(#060a1c 0%, #101a38 48%, #18233f 64%, #1c2a2a 70%, #141d1a 100%)',
+            width: W,
+            height: H,
+            imageRendering: 'pixelated',
+            // Morning: the same night scene, lighter and cooler.
+            filter: dawn ? 'brightness(1.7) saturate(0.78) contrast(0.9)' : undefined,
           }}
         />
-        {!dawn && STARS.map((s, i) => (
-          <span key={i} className="absolute rounded-full bg-slate-100" style={{ left: s.x, top: s.y, width: s.big ? 2 : 1, height: s.big ? 2 : 1, opacity: s.big ? 0.9 : 0.55 }} />
-        ))}
-        {/* ground */}
-        <div className="absolute left-0 right-0" style={{ top: 206, bottom: 0, background: 'radial-gradient(ellipse 60% 70% at 50% 70%, #2a3324 0%, #1b2419 55%, #10160f 100%)' }} />
-
-        {/* trees and the clearing's edge */}
-        <Placed group="trees" name="pine" x={64} y={214} light={0.28 / shade} z={1} />
-        <Placed group="trees" name="oak" x={668} y={220} light={0.26 / shade} z={1} />
-        <Placed group="trees" name="pine" x={560} y={204} light={0.2 / shade} z={0} flip />
-        <Placed group="plants" name="bush_wide" x={520} y={236} light={0.38 / shade} />
-        <Placed group="plants" name="bush_round" x={96} y={262} light={0.42 / shade} />
-        <Placed group="trees" name="stump" x={124} y={292} light={0.5} />
-        <Placed group="landmarks" name="rocks_small" x={318} y={292} light={0.6} />
-        <Placed group="plants" name="fern" x={452} y={296} light={0.55} />
-
-        {/* camp */}
-        <Placed group="camp" name="tent" x={168} y={242} light={dawn ? 0.8 : 0.42 + glow * 0.5} />
-        {shrine && (
-          <>
-            <Placed group="landmarks" name="hokora" x={590} y={244} light={0.5 + glow * 0.4} />
-            <Placed group="landmarks" name="stone_lantern" x={630} y={250} anim="lit" light={0.9} />
-          </>
+        {dawn && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ zIndex: 2, mixBlendMode: 'screen', background: 'linear-gradient(rgba(150,172,206,0.34) 0%, rgba(176,186,204,0.2) 55%, rgba(206,186,160,0.14) 100%)' }}
+          />
         )}
-        <Placed group="camp" name="campfire" x={FIRE.x} y={FIRE.y} anim={fireAnim} scale={fire === 'bonfire' && !asleep ? 1.5 : 1} />
-        {lit && <Placed group="camp" name="smoke" x={FIRE.x + 2} y={FIRE.y - (fire === 'bonfire' ? 70 : 46)} light={0.5} z={400} />}
-
-        {/* the party */}
-        {members.slice(0, SEATS.length).map((m, i) => {
-          const seat = SEATS[i];
-          const down = m.currentHp <= 0 || isUnconscious(m);
-          const pose = down ? 'hurt' : poses?.[m.id] ?? 'idle';
-          return (
-            <div key={m.id} className="absolute pointer-events-none" style={{ left: seat.x - 64, top: seat.y - 120, zIndex: seat.y + 1, width: 128 }}>
-              {selected === m.id && (
-                <div className="absolute left-1/2 -translate-x-1/2 rounded-[50%] bg-cyan-300/30 border border-cyan-300/70" style={{ top: 114, width: 54, height: 12 }} />
-              )}
-              <div style={{ filter: `brightness(${warm}) ${asleep ? 'saturate(0.7)' : ''}`, transform: seat.flip ? 'scaleX(-1)' : undefined }}>
-                <ShinobiSpriteCanvas character={m} size={128} stance={pose} showAura={false} />
-              </div>
-            </div>
-          );
-        })}
-
-        {/* firelight and the dark around it */}
-        <div
-          className="absolute inset-0 pointer-events-none transition-opacity duration-700"
-          style={{ zIndex: 500, opacity: glow, mixBlendMode: 'screen', background: `radial-gradient(circle 230px at ${FIRE.x}px ${FIRE.y - 30}px, rgba(255,160,70,0.85), rgba(255,110,40,0.25) 55%, transparent 100%)` }}
-        />
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ zIndex: 501, background: `radial-gradient(ellipse 70% 85% at ${FIRE.x}px ${FIRE.y - 40}px, transparent 40%, rgba(2,4,14,${dawn ? 0.15 : asleep ? 0.65 : 0.45}) 100%)` }}
-        />
+        {asleep && !dawn && <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2, background: 'rgba(2,4,14,0.22)' }} />}
 
         {alarm && (
           <div
@@ -192,8 +287,8 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
         )}
 
         {/* names, incense and click areas, above the light */}
-        {members.slice(0, SEATS.length).map((m, i) => {
-          const seat = SEATS[i];
+        {seats.map((m, i) => {
+          const seat = SPOTS[i];
           return (
             <div key={m.id} className="absolute pointer-events-none" style={{ left: seat.x - 64, top: seat.y - 120, zIndex: 510, width: 128, height: 140 }}>
               {onSelect && (

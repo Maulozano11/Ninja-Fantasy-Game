@@ -770,11 +770,12 @@ def finish(L, seed, outline=False, inner=True, rim=True):
 
 
 def scene_json():
+    # Spots in the order the party fills them (the game seats up to four), each facing the fire.
     spots = [
         {'x': 394, 'y': 354, 'facing': 'right', 'note': 'left of the fire'},
         {'x': 590, 'y': 352, 'facing': 'left', 'note': 'right of the fire'},
-        {'x': 418, 'y': 306, 'facing': 'right', 'note': 'behind the fire, left'},
         {'x': 548, 'y': 304, 'facing': 'left', 'note': 'behind the fire, right'},
+        {'x': 436, 'y': 298, 'facing': 'right', 'note': 'behind the fire, left'},
     ]
     # Props: x, y = where the sprite's anchor lands. z nudges the draw order among props at one y.
     props = [
@@ -812,7 +813,7 @@ def scene_json():
         'fire': {'x': FIRE[0], 'y': FIRE[1], 'flameY': FIRE_FLAME[1], 'lightRadiusM': 3.9},
         'moon': {'x': MOON[0], 'y': MOON[1], 'r': MOON_R},
         'spots': spots,
-        'partySpots': [spots[0], spots[1], spots[3]],
+        'partySpots': spots[:3],
         'props': props,
         'grade': {
             'note': 'How day-lit sprites are lit in this scene (tools/scenes/camp_preview.py grade()): multiply by the moon and add its ambient; '

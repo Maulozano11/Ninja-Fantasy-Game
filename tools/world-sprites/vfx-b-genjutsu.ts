@@ -6,7 +6,8 @@
 // Palette: deep purple, violet, magenta, orchid, pink, pink-white; feathers white-violet.
 
 import { Anim, Canvas, WorldSprite } from './kit';
-import { L, Pt, Puff, TAU, clamp, fract, lerp, pal, polar, puffs, rnd, rot, fadeLeft } from './vfx-b-lib';
+import { HGT, LEN, Orient, march, orientations, proj } from './vfx-b-wall3d';
+import { L, Pt, Puff, TAU, clamp, fract, lerp, pal, polar, puffs, rnd, rot, fadeLeft, segDist } from './vfx-b-lib';
 
 /** 0 outline, 1 deep purple, 2 purple, 3 violet, 4 violet-magenta, 5 magenta, 6 orchid, 7 pink, 8 pink-white. */
 export const G = pal('#1c0830', '#3a0f5e', '#561894', '#7424b8', '#9a28b8', '#bf34b8', '#e660d8', '#ffa2e2', '#ffecfa');
@@ -364,7 +365,7 @@ function beast(): WorldSprite {
 }
 
 /** Two smoke ribbons twisting around each other (tileable when wrap). */
-function ribbons(c: Canvas, f: number, x0: number, x1: number, o: { wrap?: boolean; cy?: number } = {}): void {
+function ribbons(c: Canvas, f: number, x0: number, x1: number, o: { wrap?: boolean; cy?: number; period?: number } = {}): void {
   const cy = o.cy ?? 32, ph = f * (TAU / N);
   for (const k of [1, 0]) {
     const l = new L(c.w, c.h);
@@ -374,7 +375,7 @@ function ribbons(c: Canvas, f: number, x0: number, x1: number, o: { wrap?: boole
       const w = 1.4 + 3.4 * Math.abs(Math.cos(a * 0.5 + (k ? 0.6 : 0)));
       for (let y = Math.floor(yc - w); y <= Math.ceil(yc + w); y++) if (Math.abs(y + 0.5 - yc) <= w) l.set(x, y, 1);
     }
-    l.bands([1, 1.8, 2.6, 3.4], k ? [1, 2, 3, 4, 4] : [4, 5, 6, 7, 8], { wrapX: o.wrap, jitter: 0.2, seed: 9 + k });
+    l.bands([1, 1.8, 2.6, 3.4], k ? [1, 2, 3, 4, 4] : [4, 5, 6, 7, 8], { wrapX: o.wrap, jitter: 0.2, seed: 9 + k, period: o.period });
     l.clean(1, o.wrap);
     l.render(c, G, { wrapX: o.wrap });
   }
@@ -412,7 +413,10 @@ function streamHead(): WorldSprite {
   const cx = 36, cy = 32;
   const frames = range(N).map((f) => {
     const c = new Canvas(64, 64), t = f / N;
-    ribbons(c, f, 0, 30);
+    // The ribbons continue the last tile: drawn on a buffer one tile longer so the joint has no edge.
+    const rb = new Canvas(128, 64);
+    ribbons(rb, f, 0, 94, { period: 64 });
+    c.draw(rb, -64, 0);
     const halo = new L(64, 64);
     halo.disc(cx, cy, 19.5, 1);
     halo.erase((x, y) => Math.hypot(x + 0.5 - cx, y + 0.5 - cy) < 16.5);
@@ -826,6 +830,166 @@ function wall(): WorldSprite {
   return sprite('wall', 'Genjutsu wall: mirror veil', [WW / 2, WGY], { rise: once(rise, 12), idle: loop(idle, 8) });
 }
 
+// --- the mirror veil in 3/4 and depth --------------------------------------------------------
+
+/** Panel layout of the veil along the wall (same panels as the horizontal veil). */
+interface Panel {
+  u0: number;
+  u1: number;
+  h: number;
+  apex: number;
+  lt: number;
+  rt: number;
+  sc: number;
+  k: number;
+  cracks: Pt[][];
+}
+const GLASS_HALF = 9;
+function veilPanels(): Panel[] {
+  const n = 11;
+  const ws = range(n).map((k) => 0.75 + rnd(906, k) * 0.5);
+  const tot = ws.reduce((a, b) => a + b, 0);
+  let u = 0;
+  return range(n).map((k) => {
+    const w = (ws[k] / tot) * LEN;
+    const lean = (rnd(901, k) - 0.5) * 6;
+    const h = HGT * (0.78 + rnd(907, k) * 0.22);
+    const p: Panel = { u0: u, u1: u + w, h, apex: w * 0.45 + lean, lt: 8 + rnd(902, k) * 6, rt: 5 + rnd(903, k) * 8, sc: k % 2 ? 2.5 : -2.5, k, cracks: [] };
+    for (let i = 0; i < 2; i++) {
+      const cu = w * (0.3 + rnd(904, k, i) * 0.4), cv = h - 15 - rnd(905, k, i) * (h - 30);
+      p.cracks.push([[cu, cv], [cu + 3, cv - 5], [cu + 1, cv - 10], [cu + 4, cv - 15]]);
+    }
+    u += w;
+    return p;
+  });
+}
+/** Top of a panel at local u (corners low, an apex leaning a little). */
+function panelTop(p: Panel, lu: number): number {
+  const w = p.u1 - p.u0;
+  return lu < p.apex ? lerp(p.h - p.lt, p.h, clamp(lu / Math.max(1, p.apex), 0, 1)) : lerp(p.h, p.h - p.rt, clamp((lu - p.apex) / Math.max(1, w - p.apex), 0, 1));
+}
+
+/** One frame of the veil in orientation o: panel k shows rise(k) of its height; the sweep at sh. */
+function veilFrame(o: Orient, panels: Panel[], rise: (k: number) => number, sh: number, t: number, extras: (c: Canvas, P: (u: number, s: number, v: number) => Pt) => void): Canvas {
+  const c = new Canvas(o.w, o.h);
+  const P = (u: number, s: number, v: number): Pt => proj(o, u, s, v);
+  const at = (u: number): Panel | null => {
+    if (u < 0 || u > LEN) return null;
+    for (const p of panels) if (u >= p.u0 && u < p.u1 + (p.k === panels.length - 1 ? 0.01 : 0)) return p;
+    return panels[panels.length - 1];
+  };
+  // Base smoke behind the veil.
+  const smokeAt = (side: number): Puff[] =>
+    range(11).map((i) => {
+      const ph = fract(rnd(910, i) + t);
+      const q = P(10 + i * 22 + (rnd(921, i) - 0.5) * 10 + ph * 5, side * (GLASS_HALF + 4 + rnd(922, i) * 6), 3 + ph * 5);
+      return { x: q[0], y: q[1], r: (3 + rnd(911, i) * 5.5) * (1 - ph * 0.45), steps: [1, 2, 3, 4, 5] };
+    });
+  smoke(c, smokeAt(-1).sort((a, b) => a.y - b.y), { seed: 912, alpha: 205 });
+  const inside = (u: number, s: number, v: number): number => {
+    if (u < 0) return 3;
+    if (u > LEN) return 4;
+    const p = at(u)!;
+    const r = rise(p.k);
+    if (r <= 0.03) return 0;
+    if (v > panelTop(p, u - p.u0) * r) return 0;
+    if (Math.abs(s - p.sc) > GLASS_HALF) return 1;
+    return -1;
+  };
+  const hits = march(o, inside, { sMax: GLASS_HALF + 3, vMax: HGT + 2 });
+  const front = new L(o.w, o.h), rim = new L(o.w, o.h), glow = new L(o.w, o.h), mask = new L(o.w, o.h);
+  for (let i = 0; i < o.w * o.h; i++) {
+    const fc = hits.face[i];
+    if (fc < 0) continue;
+    const x = i % o.w, y = (i / o.w) | 0;
+    const u = hits.u[i], v = hits.v[i];
+    const p = at(u)!;
+    const r = Math.max(0.05, rise(p.k));
+    const lu0 = u - p.u0, lv = v / r;
+    mask.set(x, y, 1);
+    const haze = o.key !== 'wall' && u > LEN * 0.66 ? 1 : 0;
+    // Which face: from the local geometry (the panel's near end, its top, or its broad face).
+    const topV = panelTop(p, lu0);
+    const ls = hits.s[i] - p.sc + GLASS_HALF;
+    const end = lu0 < 0.9 && lv < topV - 0.8;
+    if (!end && (fc === 0 || lv > topV - 0.9)) {
+      const gl2 = fract((u * 0.7 - ls * 0.9) / 11 + p.k * 0.37);
+      rim.set(x, y, Math.max(3, (ls > 2 * GLASS_HALF - 2 || gl2 < 0.12 ? 7 : ls < 2 ? 5 : gl2 > 0.6 ? 5 : 6) - haze));
+      continue;
+    }
+    // Glass: reflection bands, a sweep of light, ripples and cracks, lit left/top edges. The
+    // near end of a panel is glass too, seen across its thickness.
+    const lu = end ? ls * 0.9 : lu0;
+    const band = fract((lu * 0.5 + lv * 0.9) / 26 + p.k * 0.29);
+    const sweep = Math.abs((end ? p.u0 + ls : u) - (sh * (LEN + 80) - 40) + lv * 0.5);
+    let st: number;
+    if (sweep < 3) st = 7;
+    else if (sweep < 6) st = 6;
+    else if (fract(-lv / 9 + Math.sin(lu * 0.25 + p.k) * 0.18) < 0.12) st = 2;
+    else st = band < 0.08 ? 6 : band < 0.18 ? 5 : lv < 14 ? 2 : p.k % 2 ? 3 : 4 - (band > 0.6 ? 1 : 0);
+    if (!end)
+      for (const cr of p.cracks)
+      for (let k = 0; k + 1 < cr.length; k++) {
+        const d = segDist(lu, lv, cr[k][0], cr[k][1], cr[k + 1][0], cr[k + 1][1])[0];
+        if (d < 0.6) st = 1;
+        else if (d < 1.4 && lu > cr[k][0] && st >= 3) st = 6;
+      }
+    const top = panelTop(p, lu0);
+    if (end) {
+      if (ls < 1.5 || top - lv < 1.5) st = Math.min(7, st + 2);
+      else if (ls > 2 * GLASS_HALF - 1.5) st = Math.max(1, st - 1);
+    } else if (lu < 1.5 || top - lv < 1.5) st = Math.min(7, st + 2);
+    else if (p.u1 - u < 1.2) st = Math.max(1, st - 1);
+    front.set(x, y, Math.max(1, st - haze - (end ? 1 : 0)));
+    if (!end && lu < 1) glow.set(x, y, lv > top * 0.7 ? 6 : 4);
+    if (end && ls < 1) glow.set(x, y, lv > top * 0.7 ? 6 : 4);
+  }
+  mask.render(c, GLASS, { alpha: 0, outlineAlpha: 230 });
+  front.render(c, GLASS, { outline: null, alpha: (v) => (v >= 6 ? 240 : 190) });
+  rim.render(c, GLASS, { outline: null, alpha: 225 });
+  glow.render(c, G, { outline: null, alpha: 170 });
+  smoke(c, smokeAt(1).sort((a, b) => a.y - b.y), { seed: 913, alpha: 205 });
+  extras(c, P);
+  return c;
+}
+
+/** Mirror veil in 3/4 or depth: 'rise' (6, the shards shooting up from the middle out) then 'idle' (4). */
+function veilWall(key: 'wall_diag' | 'wall_depth'): WorldSprite {
+  const o = orientations()[key];
+  const panels = veilPanels();
+  const rise = range(6).map((f) =>
+    veilFrame(o, panels, (k) => clamp((f + 1) / 4 - Math.abs(k - 5) * 0.06, 0, 1) * (f === 3 ? 1.03 : 1), 0.5, f / 6, (c, P) => {
+      const sp = new L(o.w, o.h);
+      for (let i = 0; i < 10; i++) {
+        const q = P(8 + rnd(913, i, f) * (LEN - 16), GLASS_HALF + 2, 20 + rnd(914, i, f) * 70);
+        sparkle(sp, q[0], q[1], 1 + ((i + f) % 2));
+      }
+      sp.render(c, G, { outline: null });
+      for (let i = 0; i < 6; i++) {
+        const q = P(16 + rnd(915, i, f) * (LEN - 32), GLASS_HALF + 4, 12 + rnd(916, i, f) * 80);
+        feather(c, q[0], q[1], rnd(917, i, f) * TAU, 8, { wid: 3.4, curl: 0.5 });
+      }
+    }),
+  );
+  const idle = range(4).map((f) =>
+    veilFrame(o, panels, () => 1, f / 4, f / 4, (c, P) => {
+      for (let i = 0; i < 5; i++) {
+        const ph = fract(rnd(918, i) + f / 4);
+        const q = P(16 + i * 52 + ph * 14, GLASS_HALF + 4, HGT - 10 - ph * 80);
+        petal(c, q[0], q[1], ph * TAU + i, 2.6);
+      }
+      const sp = new L(o.w, o.h);
+      for (let i = 0; i < 3; i++) {
+        const q = P(16 + ((rnd(919, i) * 225 + (f / 4) * 225) % 225), GLASS_HALF + 2, 30 + rnd(920, i) * 60);
+        sparkle(sp, q[0], q[1], 1 + (i % 2));
+      }
+      sp.render(c, G, { outline: null });
+    }),
+  );
+  const label = key === 'wall_diag' ? 'Genjutsu wall (3/4): mirror veil' : 'Genjutsu wall (depth): mirror veil';
+  return sprite(key, label, [o.ax, o.ay], { rise: once(rise, 12), idle: loop(idle, 8) });
+}
+
 /** Aura (the owner approved this look: keep it): smoke tongues at the sides, sigils orbiting, petals and feathers. */
 function aura(): WorldSprite {
   const W = 80, H = 128, ax = 40, ay = 112;
@@ -875,5 +1039,5 @@ function aura(): WorldSprite {
 }
 
 export function buildGenjutsu(): WorldSprite[] {
-  return [bolt(), beast(), stream(), streamHead(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura()];
+  return [bolt(), beast(), stream(), streamHead(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura(), veilWall('wall_diag'), veilWall('wall_depth')];
 }

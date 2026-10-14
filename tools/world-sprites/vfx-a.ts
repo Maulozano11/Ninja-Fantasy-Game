@@ -16,7 +16,7 @@
 import { mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { CHARACTER_FEET, Canvas, Color, WorldSprite, characterRef, hex, previewDir, writeGroup } from './kit';
-import { animInfo, text, textWidth } from './vfx-a-lib';
+import { animInfo, clearEdgeBits, text, textWidth } from './vfx-a-lib';
 import { fireSprites } from './vfx-a-fire';
 import { waterSprites } from './vfx-a-water';
 import { windSprites } from './vfx-a-wind';
@@ -316,6 +316,18 @@ function signatureCompares(sprites: WorldSprite[], dir: string): void {
   }
 }
 
+/**
+ * No particle may be cut by the frame: loose bits touching the border are dropped. The beasts
+ * are left exactly as they are (another artist owns them now), the stream tile wraps by design
+ * and the stream head joins the tile on its left.
+ */
+function edgeClean(s: WorldSprite): WorldSprite {
+  if (s.name === 'beast' || s.name === 'stream') return s;
+  const sides = s.name === 'stream_head' ? 'trb' : 'ltrb';
+  const anims = Object.fromEntries(Object.entries(s.anims).map(([k, a]) => [k, { ...a, frames: a.frames.map((f) => clearEdgeBits(f, 64, sides)) }]));
+  return { ...s, anims };
+}
+
 const only = process.env.VFX_ONLY ? process.env.VFX_ONLY.split(',') : null;
 const outDir = previewDir();
 // Staging only: refuse to run without WORLD_OUT, so nothing is ever written into src/assets.
@@ -325,7 +337,7 @@ const tmpRoot = join(outDir, 'vfx-a-tmp');
 const built: [string, WorldSprite[]][] = [];
 for (const el of Object.keys(ELEMENTS)) {
   if (only && !only.includes(el)) continue;
-  const sprites = ELEMENTS[el].build();
+  const sprites = ELEMENTS[el].build().map(edgeClean);
   writeGroupWhole(`vfx_${el}`, sprites, worldOut, tmpRoot);
   elementSheet(el, sprites, join(outDir, `vfx-${el}.png`));
   if (process.env.VFX_WORK) for (const s of sprites) workStrips(el, s, join(outDir, 'vfx-a-work'));

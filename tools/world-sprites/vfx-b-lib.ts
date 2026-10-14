@@ -254,7 +254,7 @@ export class L {
    * Re-indexes the shape by inset distance: pixels with distance <= cuts[i] take steps[i]
    * (the rest take the last step). `mod` scales the distance per pixel (e.g. a hotter front).
    */
-  bands(cuts: number[], steps: number[], o: { jitter?: number; seed?: number; cell?: number; mod?: (x: number, y: number, d: number) => number; wrapX?: boolean } = {}): this {
+  bands(cuts: number[], steps: number[], o: { jitter?: number; seed?: number; cell?: number; mod?: (x: number, y: number, d: number) => number; wrapX?: boolean; period?: number } = {}): this {
     const d = this.dist(o.wrapX);
     const j = o.jitter ?? 0;
     for (let y = 0; y < this.h; y++)
@@ -263,7 +263,8 @@ export class L {
         if (this.idx[k] < 0) continue;
         let v = d[k];
         if (o.mod) v = o.mod(x, y, v);
-        if (j) v += (o.wrapX ? pnoise(x, y, o.cell ?? 3, this.w, o.seed ?? 3) - 0.5 : noise(x, y, o.cell ?? 3, o.seed ?? 3) - 0.5) * 2 * j;
+        const per = o.period ?? (o.wrapX ? this.w : 0);
+        if (j) v += (per ? pnoise(x, y, o.cell ?? 3, per, o.seed ?? 3) - 0.5 : noise(x, y, o.cell ?? 3, o.seed ?? 3) - 0.5) * 2 * j;
         let s = steps[steps.length - 1];
         for (let i = 0; i < cuts.length; i++)
           if (v <= cuts[i]) {

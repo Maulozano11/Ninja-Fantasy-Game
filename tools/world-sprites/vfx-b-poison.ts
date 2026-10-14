@@ -313,7 +313,7 @@ function beast(): WorldSprite {
 }
 
 /** Acid jet band with a wobbling edge (tileable when wrap). */
-function jet(c: Canvas, x0: number, x1: number, t: number, wrap: boolean): L {
+function jet(c: Canvas, x0: number, x1: number, t: number, wrap: boolean, period?: number): L {
   const l = new L(c.w, c.h);
   for (let x = x0; x < x1; x++) {
     const a = (x / 64) * TAU;
@@ -321,13 +321,13 @@ function jet(c: Canvas, x0: number, x1: number, t: number, wrap: boolean): L {
     const bot = 32 + 6 + Math.sin(a * 2 - t * TAU + 1.3) * 1.5 + Math.sin(a * 5 - t * TAU) * 0.6;
     for (let y = Math.floor(top); y <= Math.ceil(bot); y++) if (y + 0.5 >= top && y + 0.5 <= bot) l.set(x, y, 1);
   }
-  l.bands([1, 2, 3, 4.2, 5.4], [2, 3, 4, 5, 6, 7], { jitter: 0.25, seed: 19, wrapX: wrap });
+  l.bands([1, 2, 3, 4.2, 5.4], [2, 3, 4, 5, 6, 7], { jitter: 0.25, seed: 19, wrapX: wrap, period });
   l.clean(1, wrap);
   // Shine along the top of the jet.
   for (let x = x0; x < x1; x++)
     for (let y = 0; y < c.h; y++)
       if (l.get(x, y) >= 0) {
-        if (fract(x / 21 + t) < 0.55) l.set(x, y + 2, 8);
+        if (fract(x / 16 + t) < 0.55) l.set(x, y + 2, 8);
         break;
       }
   l.render(c, P, { wrapX: wrap });
@@ -358,7 +358,10 @@ function stream(): WorldSprite {
 function streamHead(): WorldSprite {
   const frames = range(N).map((f) => {
     const c = new Canvas(64, 64), t = f / N;
-    jet(c, 0, 26, t, false);
+    // The jet continues the last tile: drawn on a buffer one tile longer so the joint has no edge.
+    const jb = new Canvas(128, 64);
+    jet(jb, 0, 90, t, false, 64);
+    c.draw(jb, -64, 0);
     const l = new L(64, 64);
     blob(l, 32, 32, 10, 0.3, 61, t, 1.1, 1);
     for (let k = 0; k < 6; k++) {

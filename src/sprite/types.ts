@@ -8,7 +8,7 @@ export type BodyType = 'male' | 'female' | 'bulky' | 'slender';
 /** Bodies drawn with the female face, lashes, lips and slimmer feet. */
 export const isFemaleBody = (b: BodyType | string): boolean => b === 'female' || b === 'slender';
 
-export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge' | MovePose;
+export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge' | MovePose | CampPose;
 
 /** Poses for moving around the battle map: walking, running, crouching, sneaking and lying downed. */
 export type MovePose = 'walk' | 'run' | 'crouch' | 'sneak' | 'downed';
@@ -17,6 +17,16 @@ export type MovePose = 'walk' | 'run' | 'crouch' | 'sneak' | 'downed';
 export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'cast', 'hurt', 'victory', 'charge'];
 
 export const MOVE_POSES: MovePose[] = ['walk', 'run', 'crouch', 'sneak', 'downed'];
+
+/**
+ * Looping poses for the camp around the fire: leaning back against a tree,
+ * rock or tent pole; sitting on a log seat; reading a book on the seat; and
+ * training alone with the held weapon (a blade kata, a polearm drill, or a
+ * strike and kick drill with bare hands).
+ */
+export type CampPose = 'lean' | 'sit' | 'read' | 'train';
+
+export const CAMP_POSES: CampPose[] = ['lean', 'sit', 'read', 'train'];
 
 /**
  * How a character casts: hand signs, runes floating before an open palm, a

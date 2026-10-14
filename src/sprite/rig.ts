@@ -142,7 +142,7 @@ export type HandShape = 'relaxed' | 'fist' | 'open' | 'sign' | 'grip' | 'hold' |
 
 /** Hand targets: relative to a landmark, in arm-length units ('arm') or pixels ('px'). */
 interface HandTarget {
-  from: 'shoulder' | 'chest';
+  from: 'shoulder' | 'chest' | 'kneeN' | 'kneeF';
   x: number;
   y: number;
   units: 'arm' | 'px';
@@ -203,6 +203,8 @@ interface PoseFrame {
 
 const arm = (x: number, y: number): HandTarget => ({ from: 'shoulder', x, y, units: 'arm' });
 const chest = (x: number, y: number): HandTarget => ({ from: 'chest', x, y, units: 'px' });
+/** A hand resting on (or near) a knee, in pixels from the knee joint. */
+const knee = (side: 'N' | 'F', x: number, y: number): HandTarget => ({ from: side === 'N' ? 'kneeN' : 'kneeF', x, y, units: 'px' });
 
 const IDLE: PoseFrame = {
   // Upright, chest slightly out, head over the shoulders (no hunch).
@@ -217,8 +219,12 @@ const IDLE: PoseFrame = {
   shapeF: 'fist',
 };
 
-/** Rig poses: the sprite poses plus one cast pose per cast style ('cast' itself is the runes pose). */
-export type RigPose = SpritePose | 'castBook' | 'castSphere' | 'castLightning' | 'castWave' | 'castFlash' | 'castEye' | 'castScript';
+/**
+ * Rig poses: the sprite poses plus one cast pose per cast style ('cast' itself
+ * is the runes pose) and one training drill per kind of weapon ('train' itself
+ * is the blade kata).
+ */
+export type RigPose = SpritePose | 'castBook' | 'castSphere' | 'castLightning' | 'castWave' | 'castFlash' | 'castEye' | 'castScript' | 'trainPole' | 'trainFist';
 
 const CAST_POSES: Record<CastStyle, RigPose> = {
   signs: 'handsigns',
@@ -232,9 +238,24 @@ const CAST_POSES: Record<CastStyle, RigPose> = {
   script: 'castScript',
 };
 
-/** The rig pose that plays for a sprite pose: 'cast' turns into the chosen cast style's pose. */
-export function rigPoseFor(pose: SpritePose, style: CastStyle = 'runes'): RigPose {
-  return pose === 'cast' ? CAST_POSES[style] ?? 'cast' : pose;
+/**
+ * The rig pose that plays for a sprite pose: 'cast' turns into the chosen cast
+ * style's pose, and 'train' into the drill for the held item (`held`: its item
+ * id, missing when the hands are empty or the weapon is stowed). Every drill
+ * has the same number of frames, so frameCount(rigPoseFor('train')) holds for
+ * any weapon.
+ */
+export function rigPoseFor(pose: SpritePose, style: CastStyle = 'runes', held?: string): RigPose {
+  if (pose === 'cast') return CAST_POSES[style] ?? 'cast';
+  if (pose === 'train') return trainingFor(held);
+  return pose;
+}
+
+/** Blades train a sword kata, polearms a staff drill, everything else (bare hands, held techniques) strikes and kicks. */
+function trainingFor(held: string | undefined): RigPose {
+  if (held === 'held_naginata') return 'trainPole';
+  if (held === 'held_katana' || held === 'held_crystal' || held === 'held_kunai') return 'train';
+  return 'trainFist';
 }
 
 /** Both grimoire styles: the open book carried at the side (elbow down), the far arm straight out pointing. */
@@ -407,6 +428,134 @@ const DOWNED_BASE: PoseFrame = {
 };
 const DOWNED: PoseFrame[] = [DOWNED_BASE, { ...DOWNED_BASE, lean: -6.5 }];
 
+// ---------------------------------------------------------------------------
+// Camp: lean, sit, read, train
+// ---------------------------------------------------------------------------
+
+/**
+ * Where the camp props go, for the scene that places them (design units from
+ * the feet anchor at x 32, y GROUND; fine pixels are twice these).
+ * - SEAT_TOP: the top of the log seat under 'sit' and 'read' (26 px above the feet).
+ * - SEAT_X: the middle of the seat under the hips, behind the feet.
+ * - LEAN_X: the front face of the trunk, rock or pole a 'lean' rests against.
+ */
+export const CAMP_PROPS = { SEAT_TOP: GROUND - 13, SEAT_X: 32 - 8.5, LEAN_X: 32 - 13 };
+
+/** Breathing for the resting poses: the chest rises 1 px on half the loop. */
+const breathe = (f: PoseFrame, n: number): PoseFrame[] => Array.from({ length: n }, (_, i) => (i < n / 2 ? f : { ...f, chestDy: 0.5 }));
+
+/**
+ * Lean, 4 frames: leaning back against something behind (the scene puts its
+ * front face at CAMP_PROPS.LEAN_X), arms crossed, the near foot planted back
+ * flat against it, the far foot on the ground at the anchor. Slow breathing.
+ */
+const LEAN_BASE: PoseFrame = {
+  lean: -9,
+  pelvisDx: -3.5,
+  snap: true,
+  footN: v(-0.3, 0.55),
+  footF: v(0.24, 0.962),
+  // Arms crossed: the near forearm across the chest, the far hand tucked under its elbow.
+  handN: chest(3, 1.5),
+  handF: chest(-2.5, 2.5),
+  shapeN: 'relaxed',
+  shapeF: 'fist',
+  farHandFront: true,
+};
+const LEAN = breathe(LEAN_BASE, 4);
+
+/**
+ * Sit, 4 frames: on a log seat (CAMP_PROPS: its top 26 px above the feet,
+ * under the hips), the feet on the ground at the anchor, leaning in a little
+ * toward the fire: the near hand on the knee, the far palm out to the
+ * flames. Gentle breathing.
+ */
+const SEAT_HIP = 0.74;
+const SIT_LEGS = { hip: SEAT_HIP, footN: v(0.5, groundY(SEAT_HIP, 0.5)), footF: v(0.47, groundY(SEAT_HIP, 0.47)) };
+const SIT_BASE: PoseFrame = {
+  lean: 14,
+  pelvisDx: -8.5,
+  snap: true,
+  ...SIT_LEGS,
+  handN: knee('N', 0.6, -1.4),
+  handF: arm(0.82, 0.42),
+  shapeN: 'relaxed',
+  shapeF: 'open',
+};
+const SIT = breathe(SIT_BASE, 4);
+
+/**
+ * Read, 12 frames: on the same seat, a book held open in both hands over the
+ * lap, eyes lowered to it (drawn in campfx.ts). It breathes for 9 frames, then
+ * a page turns over (frames 9-11).
+ */
+const READ_BASE: PoseFrame = {
+  lean: 17,
+  pelvisDx: -8.5,
+  snap: true,
+  ...SIT_LEGS,
+  headDx: 0.5,
+  headDy: 0.5,
+  handN: chest(1.2, 4.6),
+  handF: chest(6.6, 4.2),
+  shapeN: 'hold',
+  shapeF: 'hold',
+  farHandFront: true,
+};
+const READ: PoseFrame[] = Array.from({ length: 12 }, (_, i) => {
+  const breath = i % 6 >= 3 ? 0.5 : 0;
+  // the far hand lifts the page corner as it turns
+  const turn = i === 9 ? -1 : i === 10 ? -0.6 : 0;
+  return { ...READ_BASE, chestDy: breath, handF: chest(6.6, 4.2 + turn) };
+});
+
+/** Stance for the drills: feet apart, the near foot back. */
+const STANCE = { footN: v(-0.32, 0.94), footF: v(0.36, 0.93) };
+
+/**
+ * Train, 8 frames per drill. Blades: a sword kata (ready guard, raise,
+ * downward cut, follow-through, side guard, level cut, rising guard, back to
+ * ready). The weapon angles per frame are in grip.ts.
+ */
+const TRAIN_BLADE: PoseFrame[] = [
+  { lean: 4, ...STANCE, handN: arm(0.6, 0.45), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
+  { lean: -3, ...STANCE, handN: arm(0.12, -0.86), handF: chest(1, -1), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 12, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.95, 0.12), handF: arm(-0.3, 0.75), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 15, pelvisDx: 2, footN: v(-0.42, 0.9), footF: v(0.4, 0.92), handN: arm(0.62, 0.74), handF: arm(-0.32, 0.72), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 2, ...STANCE, handN: arm(-0.42, 0.78), handF: chest(3, 0), shapeN: 'grip', shapeF: 'open' },
+  { lean: 10, pelvisDx: 1, footN: v(-0.38, 0.92), footF: v(0.38, 0.93), handN: arm(0.98, -0.05), handF: arm(-0.25, 0.8), shapeN: 'grip', shapeF: 'open' },
+  { lean: 5, ...STANCE, handN: arm(0.66, -0.6), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 4, ...STANCE, handN: arm(0.58, 0.5), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
+];
+
+/** Polearms: thrust, recoil, raise overhead, chop down, low sweep, spin upright, back to guard. */
+const TRAIN_POLE: PoseFrame[] = [
+  { lean: 4, ...STANCE, handN: arm(0.4, 0.7), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 11, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.96, 0.15), handF: arm(-0.25, 0.78), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 4, ...STANCE, handN: arm(0.3, 0.76), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
+  { lean: -4, ...STANCE, handN: arm(0.18, -0.84), handF: chest(1, -1), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 12, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.9, 0.25), handF: arm(-0.3, 0.75), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 14, pelvisDx: 1, footN: v(-0.42, 0.88), footF: v(0.42, 0.88), handN: arm(0.6, 0.76), handF: arm(-0.3, 0.72), shapeN: 'grip', shapeF: 'open' },
+  { lean: 2, ...STANCE, handN: arm(0.32, 0.28), handF: chest(2, 0), shapeN: 'grip', shapeF: 'open' },
+  { lean: 4, ...STANCE, handN: arm(0.38, 0.72), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
+];
+
+/**
+ * Bare hands (and held techniques): guard, jab, guard, cross, guard, knee up,
+ * front kick, back to guard.
+ */
+const GUARD: PoseFrame = { lean: 5, ...STANCE, handN: chest(4.5, -2.5), handF: chest(2.5, -4), shapeN: 'fist', shapeF: 'fist', farHandFront: true };
+const TRAIN_FIST: PoseFrame[] = [
+  GUARD,
+  { lean: 9, pelvisDx: 1, ...STANCE, handN: arm(0.98, -0.1), handF: chest(2.5, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  { ...GUARD, chestDy: 0.5 },
+  { lean: 12, pelvisDx: 1.5, footN: v(-0.38, 0.93), footF: v(0.34, 0.94), handN: chest(3, -1.5), handF: arm(0.98, -0.08), shapeN: 'fist', shapeF: 'fist' },
+  GUARD,
+  { lean: -2, footN: v(0.3, 0.52), footF: v(0.12, 0.97), handN: chest(4, -2), handF: chest(2, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  { lean: -8, pelvisDx: -1, footN: v(0.9, 0.32), footF: v(0.1, 0.97), handN: arm(-0.4, 0.6), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  { lean: -2, footN: v(0.3, 0.55), footF: v(0.12, 0.97), handN: chest(4, -2), handF: chest(2, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+];
+
 export const POSES: Record<RigPose, PoseFrame[]> = {
   idle: [IDLE, IDLE, { ...IDLE, chestDy: 1 }, { ...IDLE, chestDy: 1 }],
   handsigns: [
@@ -566,6 +715,13 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
   crouch: CROUCH,
   sneak: SNEAK,
   downed: DOWNED,
+  // Camp poses.
+  lean: LEAN,
+  sit: SIT,
+  read: READ,
+  train: TRAIN_BLADE,
+  trainPole: TRAIN_POLE,
+  trainFist: TRAIN_FIST,
 };
 
 export const POSE_FPS: Record<SpritePose, number> = {
@@ -581,6 +737,10 @@ export const POSE_FPS: Record<SpritePose, number> = {
   crouch: 3,
   sneak: 8,
   downed: 2,
+  lean: 2,
+  sit: 2,
+  read: 3,
+  train: 8,
 };
 
 export interface Rig {
@@ -767,6 +927,8 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   const armLen = bp.upperArm + bp.forearm + bp.handR;
   const resolve = (t: HandTarget, shoulder: Vec): Vec => {
     if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
+    if (t.from === 'kneeN') return add(legN.mid, v(t.x, t.y));
+    if (t.from === 'kneeF') return add(legF.mid, v(t.x, t.y));
     return add(shoulder, scale(v(t.x, t.y), armLen));
   };
   const solveArm = (shoulder: Vec, t: HandTarget, bend: 1 | -1 = 1) => {

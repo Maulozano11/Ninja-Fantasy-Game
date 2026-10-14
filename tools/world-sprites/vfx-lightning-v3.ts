@@ -398,8 +398,9 @@ function streamTile(k: Key, i: number): Ix {
   return t;
 }
 
+/** The tile stays exactly 64x64 with its centre line on y = 32 (the renderer tiles it as before). */
 function streamPad(): { l: number; t: number; r: number; b: number } {
-  return { l: 0, t: PAD, r: 0, b: PAD };
+  return { l: 0, t: 0, r: 0, b: 0 };
 }
 
 function stream(): WorldSprite[] {

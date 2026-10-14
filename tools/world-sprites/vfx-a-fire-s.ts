@@ -16,7 +16,7 @@
 import { Canvas, WorldSprite } from './kit';
 import { FIRE, SMOKE, TH, embers, erode, tongue } from './vfx-a-fire-kit';
 import { spline } from './vfx-a-fire-dragon';
-import { dim, displace, flicker, raggedCut, refPiece, roughen, scaled } from './vfx-a-ref';
+import { burnOut, columnBottoms, dim, displace, dropColumns, dropCrumbs, fillEnclosed, flicker, raggedCut, refPiece, roughen, scaled, sinkColumns } from './vfx-a-ref';
 void smokeLayer;
 import { Field, Pt, TAU, bez, clamp, dissolve, fract, lerp, palette, pfbm, pnoise, render, rr, smooth, stack, vfxSprite } from './vfx-a-lib';
 
@@ -104,10 +104,10 @@ export function kanjiFire(Wd: number, Hd: number, box: KanjiBox, prog: number[],
   erode(f, 0.85, (x, y) => pfbm(x, y + t * 90, 7, 2, 0, 90, seed + 40));
   let c = render(f, FIRE, { th: TH, rim: [1] });
   if (vis < 1) {
-    const key = (x: number, y: number) => clamp(pnoise(x, y, 18, 0, 0, seed + 160) * 0.5 + ((y - box.y) / box.h) * 0.5, 0, 1);
-    const dz = dissolve(c, vis, key, [FIRE[2], FIRE[3], FIRE[4], FIRE[5]], FIRE[0]);
-    c = dz.c;
-    hot = hot.filter((_, i) => i % 2 === 0).concat(dz.edge.filter((_, i) => i % 3 === 0));
+    // It dies like fire: the strokes thin from their edges, darken to embers and their tops cool
+    // into smoke (no blocky holes).
+    c = burnOut(c, 1 - vis, SMOKE_HIS, FIRE[0], seed + 160, box.y, box.h);
+    hot = hot.filter((_, i) => i % 3 === 0);
   }
   return { c, hot };
 }
@@ -216,16 +216,24 @@ function hisSmoke(): Canvas {
   const pc = refPiece('s_smoke');
   const c = new Canvas(W, H);
   c.draw(pc.c, pc.x, pc.y);
+  const src = c.clone();
   const cut = new Uint8Array(W * H);
+  const right = Math.min(W - 6, pc.x + pc.c.w - 2);
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       if (!c.alpha(x, y)) continue;
-      const e = Math.min(y - 4, W - 5 - x) / 40;
-      if (e < 1 && pnoise(x, y, 9, 0, 0, SEED + 66) > e) {
+      // Near the frame's top and his piece's right edge the smoke ends in round billows.
+      const e = Math.min((y - 6) / 34, (right - x) / 70);
+      const n = pnoise(x, y, 26, 0, 0, SEED + 66) * 0.7 + pnoise(x, y, 11, 0, 0, SEED + 65) * 0.3;
+      if (e < 1 && n > e) {
         c.set(x, y, [0, 0, 0, 0]);
         cut[y * W + x] = 1;
       }
     }
+  // No holes inside it: anything cut that is enclosed by smoke goes back.
+  const filled = dropCrumbs(fillEnclosed(c, src), 12);
+  for (let i = 0; i < W * H; i++) if (filled.px[i * 4 + 3]) cut[i] = 0;
+  c.px.set(filled.px);
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       if (!c.alpha(x, y)) continue;
@@ -425,6 +433,18 @@ function dragonLayers(st: SState): DragonLayers {
     return st.phase === 'fade' ? clamp((1 - hgt) * 0.7 + (n - 0.5) * 0.34 + 0.15, 0, 1) : clamp(hgt * 0.65 + n * 0.35, 0, 1);
   };
   const burn = [FIRE[2], FIRE[3], FIRE[4], FIRE[5]];
+  if (st.phase === 'fade') {
+    // It dies with the fire: its body sinks with the wall (no night opens under it), darkens
+    // to embers, thins from its edges and cools into smoke from the top.
+    const k = 1 - st.dragon;
+    const sink = (c: Canvas) => dropColumns(c, (x) => wallDrop(st, x), (x) => GY - 60 + 20 * pnoise(x, 0, 9, 0, 0, SEED + 117));
+    const parts = [back, front].map((c) => burnOut(sink(c), k, SMOKE_HIS, FIRE[0], SEED + 118, GY - 520, 420));
+    const edge: Pt[] = [];
+    parts[0].px.forEach((_, i) => {
+      if (i % 4 === 3 && parts[0].px[i] && (i >> 2) % 97 === 0) edge.push([(i >> 2) % W, Math.floor((i >> 2) / W)]);
+    });
+    return { back: parts[0], mid, front: parts[1], mouth, edge };
+  }
   const parts = [back, front].map((c) => dissolve(c, st.dragon, key, burn, FIRE[0]));
   return { back: parts[0].c, mid, front: parts[1].c, mouth, edge: parts.flatMap((p) => p.edge) };
 }
@@ -496,9 +516,13 @@ function hisWall(): Canvas {
 function hisWallLayer(st: SState): Canvas | null {
   const ph = st.t * TAU;
   let c = flicker(hisWall(), ph, 1.6, GY + 40, SEED + 91);
-  const sy = st.phase === 'fade' ? lerp(0.3, 1, st.burn) : lerp(0.72, 1, smooth(0.75, 1, st.burn));
-  if (sy < 0.999) c = scaled(c, 1, sy, 0, GY + 60);
-  if (st.phase === 'fade') c = dim(c, lerp(0.35, 1, st.burn));
+  if (st.phase !== 'fade') {
+    const sy = lerp(0.72, 1, smooth(0.75, 1, st.burn));
+    if (sy < 0.999) c = scaled(c, 1, sy, 0, GY + 60);
+  } else {
+    c = sinkColumns(c, (x) => wallH(st, x), wallBottoms());
+    c = dim(c, lerp(0.35, 1, st.burn));
+  }
   const burn = [FIRE[2], FIRE[3], FIRE[4], FIRE[5]];
   if (st.phase === 'surge' && st.roll < 1) {
     const reach = X0 + st.roll * (LEN + 60);
@@ -515,12 +539,39 @@ function hisWallLayer(st: SState): Canvas | null {
       }
     c = stack(W, H, c, front);
   }
-  if (st.phase === 'fade' && st.dead > 0) {
-    // Dying back from the caster outward along a front that is ragged along its height only (no
-    // holes punched into the burning mass).
-    c = dissolve(c, 1 - st.dead * 0.97, (x, y) => clamp(1 - (x - X0) / (LEN + 40) + (pnoise(0, y, 16, 0, 0, SEED + 94) - 0.5) * 0.12, 0, 1), burn, FIRE[0], 0.004).c;
-  }
   return c;
+}
+/** The wall's column bottoms (its glowing ground's lower edge), computed once. */
+let wallBottomsCache: Int32Array | null = null;
+function wallBottoms(): Int32Array {
+  return (wallBottomsCache ??= columnBottoms(hisWall()));
+}
+/**
+ * How much of each wall column still stands in the fade (1 = full height): the fire burns down
+ * from the caster outward and toward the far end, every tongue at its own pace, so the dying
+ * front is a row of uneven flames sinking into embers rather than a cut.
+ */
+function wallH(st: SState, x: number): number {
+  const front = X0 + st.dead * (LEN + 120) - 40;
+  const tongue = 0.55 + 0.9 * pnoise(x, 0, 7, 0, 0, SEED + 96) * pnoise(x, 3, 19, 0, 0, SEED + 97);
+  const behind = smooth(front - 90, front + 50, x);
+  const end = smooth(W - 120 + 40 * pnoise(0, x, 9, 0, 0, SEED + 98), W - 300, x + (1 - st.burn) * 200);
+  return clamp(lerp(0.3, 1, st.burn) * behind * Math.min(1, end + 0.25 * st.burn) * Math.min(1, tongue * (1.3 - 0.3 * st.burn)), 0, 1);
+}
+/** How far the top of each wall column has sunk (px), for the dragon to sink with it. */
+function wallDrop(st: SState, x: number): number {
+  const col = Math.max(0, Math.min(W - 1, Math.round(x)));
+  const yb = wallBottoms()[col];
+  if (yb < 0) return 0;
+  // Smoothed over the columns so the body bends rather than shears.
+  let h = 0;
+  for (let k = -12; k <= 12; k += 4) h += wallHsmooth(st, x + k);
+  h /= 7;
+  return (1 - h) * Math.max(0, yb - (GY - 330));
+}
+function wallHsmooth(st: SState, x: number): number {
+  const front = X0 + st.dead * (LEN + 120) - 40;
+  return clamp(lerp(0.3, 1, st.burn) * smooth(front - 90, front + 50, x), 0, 1);
 }
 
 export function sFrame(st: SState): Canvas {

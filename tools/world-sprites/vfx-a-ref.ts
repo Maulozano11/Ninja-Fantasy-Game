@@ -134,3 +134,170 @@ export function roughen(c: Canvas, del: (x: number, y: number) => boolean, outli
     }
   return out;
 }
+
+/** The lowest opaque row of each column (-1 where the column is empty). */
+export function columnBottoms(c: Canvas): Int32Array {
+  const out = new Int32Array(c.w).fill(-1);
+  for (let x = 0; x < c.w; x++)
+    for (let y = c.h - 1; y >= 0; y--)
+      if (c.alpha(x, y)) {
+        out[x] = y;
+        break;
+      }
+  return out;
+}
+
+/**
+ * Burns a wall of flames down column by column: each column is squashed toward its own bottom
+ * by h(x) (1 = as drawn, 0 = gone), so its flame tips sink into the burning ground; varying h
+ * between neighbouring columns gives tongues of different heights.
+ */
+export function sinkColumns(c: Canvas, h: (x: number) => number, bottoms = columnBottoms(c)): Canvas {
+  const out = new Canvas(c.w, c.h);
+  for (let x = 0; x < c.w; x++) {
+    const yb = bottoms[x];
+    if (yb < 0) continue;
+    const k = h(x);
+    if (k <= 0.01) continue;
+    for (let y = 0; y <= yb; y++) {
+      const ys = Math.round(yb - (yb - y) / k);
+      if (ys < 0) continue;
+      const p = c.get(x, ys);
+      if (p[3]) out.set(x, y, p);
+    }
+  }
+  return out;
+}
+
+/** Moves each column down by drop(x) px (for things that sink with the wall), dropping what falls below cutY(x). */
+export function dropColumns(c: Canvas, drop: (x: number) => number, cutY: (x: number) => number): Canvas {
+  const out = new Canvas(c.w, c.h);
+  for (let x = 0; x < c.w; x++) {
+    const d = Math.round(drop(x)), cy = cutY(x);
+    for (let y = 0; y < c.h; y++) {
+      const yd = y + d;
+      if (yd >= c.h || yd > cy) continue;
+      const p = c.get(x, y);
+      if (p[3]) out.set(x, yd, p);
+    }
+  }
+  return out;
+}
+
+/**
+ * Burns a shape out the way fire dies, with no blocky holes: it darkens toward embers, thins
+ * from its edges inward (a few px per step, the edge ragged), and its upper parts cool into
+ * smoke. k: 0 = as drawn, 1 = gone. Loose crumbs are dropped; the new edge gets `outline`.
+ */
+export function burnOut(c: Canvas, k: number, smoke: Color[], outline: Color, seed: number, top = 0, height = c.h): Canvas {
+  if (k <= 0) return c;
+  if (k >= 1) return new Canvas(c.w, c.h);
+  // Thin from the edges: distance (in 4-neighbour steps) to the outside, capped.
+  const W = c.w, H = c.h, maxD = 16;
+  const dist = new Uint8Array(W * H);
+  let frontier: number[] = [];
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (!c.alpha(x, y)) continue;
+      const edge = x === 0 || y === 0 || x === W - 1 || y === H - 1 || !c.alpha(x + 1, y) || !c.alpha(x - 1, y) || !c.alpha(x, y + 1) || !c.alpha(x, y - 1);
+      if (edge) {
+        dist[y * W + x] = 1;
+        frontier.push(y * W + x);
+      }
+    }
+  for (let d = 2; d <= maxD && frontier.length; d++) {
+    const next: number[] = [];
+    for (const i of frontier) {
+      const x = i % W, y = (i / W) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const u = x + dx, v = y + dy;
+        if (u < 0 || v < 0 || u >= W || v >= H) continue;
+        const j = v * W + u;
+        if (dist[j] || !c.alpha(u, v)) continue;
+        dist[j] = d;
+        next.push(j);
+      }
+    }
+    frontier = next;
+  }
+  let out = new Canvas(W, H);
+  const thin = k * 9;
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const p = c.get(x, y);
+      if (!p[3]) continue;
+      const d = dist[y * W + x] || maxD + 1;
+      if (d <= thin * (0.7 + 0.6 * pnoise(x, y, 7, 0, 0, seed))) continue;
+      out.set(x, y, p);
+    }
+  out = dropCrumbs(out, 6);
+  // Upper parts cool into smoke, the rest darkens toward embers.
+  out = cool(out, (_x, y) => k * 1.4 - ((y - top) / Math.max(1, height)) * 0.9 + 0.1, smoke, seed + 1);
+  out = dim(out, 1 - k * 0.7);
+  // The new edge (where it thinned) gets the dark outline.
+  const res = out.clone();
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (!out.alpha(x, y)) continue;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const u = x + dx, v = y + dy;
+        if (u >= 0 && v >= 0 && u < W && v < H && !out.alpha(u, v) && c.alpha(u, v)) {
+          res.set(x, y, outline);
+          break;
+        }
+      }
+    }
+  return res;
+}
+
+/** Drops connected pieces of at most `max` px. */
+export function dropCrumbs(c: Canvas, max: number): Canvas {
+  const W = c.w, H = c.h, out = c.clone();
+  const seen = new Uint8Array(W * H);
+  for (let y0 = 0; y0 < H; y0++)
+    for (let x0 = 0; x0 < W; x0++) {
+      if (seen[y0 * W + x0] || !c.alpha(x0, y0)) continue;
+      const piece: number[] = [], todo = [y0 * W + x0];
+      seen[y0 * W + x0] = 1;
+      while (todo.length) {
+        const i = todo.pop()!;
+        piece.push(i);
+        const x = i % W, y = (i / W) | 0;
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const u = x + dx, v = y + dy;
+            if (u < 0 || v < 0 || u >= W || v >= H) continue;
+            const j = v * W + u;
+            if (seen[j] || !c.alpha(u, v)) continue;
+            seen[j] = 1;
+            todo.push(j);
+          }
+      }
+      if (piece.length <= max) for (const i of piece) out.set(i % W, (i / W) | 0, [0, 0, 0, 0]);
+    }
+  return out;
+}
+
+/** Fills enclosed transparent holes (not connected to the frame's border) with what `src` has there. */
+export function fillEnclosed(c: Canvas, src: Canvas): Canvas {
+  const W = c.w, H = c.h, out = c.clone();
+  const outside = new Uint8Array(W * H);
+  const todo: number[] = [];
+  for (let x = 0; x < W; x++) for (const y of [0, H - 1]) if (!c.alpha(x, y)) { outside[y * W + x] = 1; todo.push(y * W + x); }
+  for (let y = 0; y < H; y++) for (const x of [0, W - 1]) if (!c.alpha(x, y) && !outside[y * W + x]) { outside[y * W + x] = 1; todo.push(y * W + x); }
+  while (todo.length) {
+    const i = todo.pop()!;
+    const x = i % W, y = (i / W) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const u = x + dx, v = y + dy;
+      if (u < 0 || v < 0 || u >= W || v >= H) continue;
+      const j = v * W + u;
+      if (outside[j] || c.alpha(u, v)) continue;
+      outside[j] = 1;
+      todo.push(j);
+    }
+  }
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) if (!c.alpha(x, y) && !outside[y * W + x] && src.alpha(x, y)) out.set(x, y, src.get(x, y));
+  return out;
+}

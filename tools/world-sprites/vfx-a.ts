@@ -226,9 +226,14 @@ function wallsSheet(all: [string, WorldSprite[]][], path: string): void {
   const refW = rb[2] - rb[0] + 8;
   const pad = 10, gap = 14;
   const rows = all.map(([el, ss]) => ({ el, walls: WALLS.map((n) => ss.find((s) => s.name === n)).filter((s): s is WorldSprite => !!s) })).filter((r) => r.walls.length);
+  const labels = (el: string, s: WorldSprite) => {
+    const f = s.anims.idle.frames[0];
+    return [`${el.toUpperCase()} - ${WALL_TITLES[s.name]}`, `${f.w}x${f.h}  ANCHOR ${s.anchor[0]},${s.anchor[1]}`, `${animInfo(s, 'rise')}, ${animInfo(s, 'idle')}`];
+  };
   const cellW = (s: WorldSprite) => s.anims.idle.frames[0].w + refW;
-  const colW = WALLS.map((_, k) => Math.max(...rows.map((r) => (r.walls[k] ? cellW(r.walls[k]) : 0))));
-  const rowH = rows.map((r) => Math.max(...r.walls.map((s) => s.anims.idle.frames[0].h)) + 24);
+  const colOf = (el: string, s: WorldSprite) => Math.max(cellW(s), ...labels(el, s).map((l) => textWidth(l)));
+  const colW = WALLS.map((_, k) => Math.max(...rows.map((r) => (r.walls[k] ? colOf(r.el, r.walls[k]) : 0))));
+  const rowH = rows.map((r) => Math.max(...r.walls.map((s) => s.anims.idle.frames[0].h)) + 30);
   const W = pad * 2 + colW.reduce((a, b) => a + b + gap, -gap);
   const H = pad * 2 + 14 + rowH.reduce((a, b) => a + b + gap, 0);
   const out = new Canvas(W, H);
@@ -240,10 +245,12 @@ function wallsSheet(all: [string, WorldSprite[]][], path: string): void {
     let x = pad;
     r.walls.forEach((s, k) => {
       const f = s.anims.idle.frames[0];
-      text(out, x, y, `${r.el.toUpperCase()} - ${WALL_TITLES[s.name]}`, accent);
-      text(out, x, y + 7, `${f.w}x${f.h}  ANCHOR ${s.anchor[0]},${s.anchor[1]}  ${animInfo(s, 'rise')}, ${animInfo(s, 'idle')}`, INK_DIM);
-      const top = y + 16;
-      panel(out, x, top, cellW(s), rowH[ri] - 24);
+      const [l0, l1, l2] = labels(r.el, s);
+      text(out, x, y, l0, accent);
+      text(out, x, y + 7, l1, INK_DIM);
+      text(out, x, y + 14, l2, INK_DIM);
+      const top = y + 22;
+      panel(out, x, top, cellW(s), rowH[ri] - 30);
       const gy = top + s.anchor[1];
       out.fillRect(x, gy, cellW(s), 1, PANEL_EDGE);
       out.draw(f, x, top);

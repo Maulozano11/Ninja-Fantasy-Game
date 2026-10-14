@@ -662,8 +662,8 @@ function wallFrameTurned(t: number, grow: (s: number) => number, L: WallLine): C
   const layerOf = (z: number) => clamp(Math.floor(((z - zMin) / (zMax - zMin)) * nL), 0, nL - 1);
   const fields = Array.from({ length: nL }, () => new Field(W, H));
   const rows = [
-    { n: 12, h: 96, w: 11, heat: 0.8, seed: 141, q: -5, off: 0.5 },
-    { n: 13, h: 58, w: 10, heat: 0.92, seed: 151, q: 5, off: 0 },
+    { n: 12, h: 96, w: 11, heat: 0.8, seed: 141, q: -3, off: 0.5 },
+    { n: 13, h: 58, w: 10, heat: 0.92, seed: 151, q: 3, off: 0 },
   ];
   for (const r of rows)
     for (let k = 0; k < r.n; k++) {
@@ -715,7 +715,7 @@ const fireGrow = (i: number) => (sAt: number) => {
   return d > reach ? 0 : height * lerp(1, 0.45, smooth(reach - 0.35, reach, d));
 };
 function wallTurned(kind: WallKind, label: string): WorldSprite {
-  const L = wallLine(kind, 120, 10, { l: 24, t: 10, r: 24, b: 14 });
+  const L = wallLine(kind, 120, 6, kind === 'wall_depth' ? { l: 30, t: 10, r: 30, b: 14 } : { l: 24, t: 10, r: 24, b: 14 });
   const idle = frames(4, (t) => wallFrameTurned(t, () => 1, L));
   const rise = frames(6, (_, i) => wallFrameTurned(i / 6, fireGrow(i), L));
   return vfxSprite(kind, label, L.anchor, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });

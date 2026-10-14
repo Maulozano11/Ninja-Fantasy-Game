@@ -5,7 +5,7 @@
 
 import { Canvas, Color, WorldSprite, withAlpha } from './kit';
 import {
-  Field, Pt, TAU, arc, bez, clamp, crop, flySprite, frames, fract, lerp, outlineIn, palette, pnoise, render, rr, seamStack, smooth, stack, vfxSprite,
+  Field, Pt, TAU, WallKind, WallLine, arc, bez, clamp, crop, flySprite, frames, fract, lerp, outlineIn, palette, pnoise, render, rr, seamStack, smooth, stack, vfxSprite, wallCast, wallLine, wp,
 } from './vfx-a-lib';
 
 export const WIND = palette('#0d3b38', '#2a6b5c', '#5ea48a', '#92d8b4', '#c4f2d6', '#e9fff1', '#ffffff');
@@ -576,6 +576,96 @@ function wall(): WorldSprite {
   return vfxSprite('wall', 'Wind wall (4.5 m x 1.8 m)', [W / 2 + ox, gy], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
 }
 
+/**
+ * The same curtain of rising wind re-laid along a turned ground line: the veil becomes a body of
+ * moving air, the swirls are rings turning round it (their far halves behind the veil, near
+ * halves in front), the streaks race up its near face, and the dust skirt follows the footprint.
+ */
+function wallFrameTurned(t: number, g: number, L: WallLine): Canvas {
+  const { W, H } = L;
+  const W0 = 264;
+  const veil = new Field(W, H), swB = new Field(W, H), swF = new Field(W, H), sl = new Field(W, H), dust = new Field(W, H);
+  const hgt = L.rise * g;
+  const hq = L.thick / 2;
+  const topH = (tt: number) => {
+    const x = tt + W0 / 2;
+    return hgt * Math.pow(Math.sin(clamp((x - 4) / (W0 - 8), 0, 1) * Math.PI), 0.3) * (0.92 + 0.08 * Math.sin(x * 0.05 + t * TAU));
+  };
+  if (hgt > 6) wallCast(veil, { ...L, len: L.len - 8 }, (tt) => topH(tt), (tt, _q, h) => 0.2 + 0.08 * Math.sin((112 - h + t * 40) * 0.3 + (tt + W0 / 2) * 0.05));
+  // Rings of wind turning round the wall as they climb (rx along it, ry across it).
+  const rows = 6;
+  for (let r = 0; r < rows; r++) {
+    const q = fract(r / rows + t * 0.5);
+    for (let k = 0; k < 6; k++) {
+      const tt = 22 + ((k + (r % 2) * 0.5 + fract(t)) / 6) * (W0 - 44) - W0 / 2;
+      const top = topH(tt);
+      const h = 6 + q * (top - 4);
+      if (h > top - 2 || hgt < 14) continue;
+      const a0 = t * TAU + k + r * 1.3;
+      const rx = 18 + (k % 2) * 6, ry = hq + 3 + (r % 2);
+      const pts: Pt[] = [];
+      for (let j = 0; j <= 16; j++) {
+        const a = a0 + (2.6 * j) / 16;
+        pts.push(wp(L, tt + Math.cos(a) * rx, Math.sin(a) * ry, h));
+      }
+      const mid = Math.sin(a0 + 1.3);
+      gust(mid > 0 ? swF : swB, pts, lerp(1.8, 1.3, q), lerp(0.95, 0.7, q));
+    }
+  }
+  // Slanting streaks racing up the near face.
+  for (let k = 0; k < 18; k++) {
+    const tt0 = 12 + (k / 17) * (W0 - 24) - W0 / 2;
+    const p = fract(t + rr(321, k, 0, 1));
+    const hb = p * hgt * 0.7;
+    const len = 22 * g;
+    if (len < 4 || hb + len * 0.9 > topH(tt0)) continue;
+    gust(sl, [[0, 0], [0.25, 0.5], [0.4, 1]].map(([a, b]) => wp(L, tt0 + len * a, hq, hb + len * b)), 1.2, 0.85, 0.8);
+  }
+  // Wisps curling off the top edge.
+  for (let k = 0; k < 9; k++) {
+    const tt = 18 + ((k + fract(t * 2) * 0.5) / 9) * (W0 - 36) - W0 / 2;
+    if (hgt < 14) continue;
+    const top = topH(tt);
+    const pts: Pt[] = [];
+    for (let j = 0; j <= 12; j++) {
+      const a = Math.PI * 0.9 + t * TAU + (Math.PI * 1.5 * j) / 12;
+      pts.push(wp(L, tt + Math.cos(a) * 5, 0, top - 4 - Math.sin(a) * 5));
+    }
+    gust(swF, pts, 1.4, 0.9);
+  }
+  // A skirt of dust over the footprint.
+  const ga = wp(L, -10, 0), gb = wp(L, 10, 0);
+  const rot = Math.atan2(gb[1] - ga[1], gb[0] - ga[0]), along = Math.hypot(gb[0] - ga[0], gb[1] - ga[1]) / 20;
+  for (let k = 0; k < 30; k++) {
+    const x = 8 + (k / 29) * (W0 - 16);
+    if (Math.abs(x - W0 / 2) > (W0 / 2) * Math.min(1, g * 1.5)) continue;
+    const [px, py] = wp(L, x - W0 / 2 + Math.sin(t * TAU + k) * 2, 0);
+    dust.ell(px, py - 3 + rr(324, k, -2, 1), Math.max(4, rr(325, k, 8, 13) * along), rr(326, k, 3.5, 6) + (L.kind === 'wall_depth' ? 3 : 1), rot, 0.6, 2);
+  }
+  const dustPal: Color[] = palette('#2a2418', '#5a4a34', '#7d6a4c', '#a08a68', '#c4b08c', '#e0d0b0', '#f4ead8');
+  const c = stack(W, H,
+    render(dust, dustPal, { th: TH, alpha: [110, 80, 100, 120, 140, 160, 180], rim: [1] }),
+    swB.any() ? air(swB, { hi: 4 }) : null,
+    render(veil, WIND, { th: TH, lo: 2, hi: 3, outline: false, alpha: [0, 0, 38, 50, 0, 0, 0] }),
+    air(sl, { hi: 5 }), air(swF));
+  const lv = new Canvas(W, H);
+  for (let k = 0; k < 8; k++) {
+    const p = fract(k / 8 + t);
+    const x = rr(323, k, 20, W0 - 20);
+    const tt = x - W0 / 2;
+    if (Math.abs(tt) > (W0 / 2) * Math.min(1, g * 1.5) || 8 + p * hgt > topH(tt)) continue;
+    const [px, py] = wp(L, tt + Math.sin(p * 6 + k) * 6, hq, 8 + p * hgt);
+    leaf(lv, px, py, 8, p * 8 + k, p * TAU * 2 + k);
+  }
+  return stack(W, H, c, lv);
+}
+function wallTurned(kind: WallKind, label: string): WorldSprite {
+  const L = wallLine(kind, 103, 16, { l: 22, t: 12, r: 22, b: 12 });
+  const idle = frames(4, (t) => wallFrameTurned(t, 1, L));
+  const rise = frames(6, (_, i) => wallFrameTurned(i / 6, [0.1, 0.3, 0.55, 0.82, 1.06, 1][i], L));
+  return vfxSprite(kind, label, L.anchor, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
+}
+
 // --- aura: wind spiralling up around the body -----------------------------------------------
 //
 // Built like the fire aura (an open teardrop around the body) out of wind: crescent strokes
@@ -651,7 +741,12 @@ function aura(): WorldSprite {
 }
 
 export function windSprites(): WorldSprite[] {
-  return [bolt(), beast(), ...stream(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura()];
+  return [
+    bolt(), beast(), ...stream(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(),
+    wallTurned('wall_diag', 'Wind wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)'),
+    wallTurned('wall_depth', 'Wind wall, end-on (4.5 m x 1.8 m, running into the screen)'),
+    aura(),
+  ];
 }
 
 void smooth;

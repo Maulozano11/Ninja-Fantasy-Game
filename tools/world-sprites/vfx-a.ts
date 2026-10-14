@@ -124,7 +124,7 @@ function elementSheet(el: string, sprites: WorldSprite[], path: string): void {
       });
       continue;
     }
-    const withRef = ['aura', 'wall', 'blast'].includes(s.name);
+    const withRef = ['aura', 'blast', ...WALLS].includes(s.name);
     const refW = withRef && s.name !== 'aura' ? refBounds[2] - refBounds[0] + 6 : 0;
     const w = f.w + refW;
     cards.push({
@@ -209,6 +209,54 @@ function animSheet(all: [string, WorldSprite[]][], path: string): void {
     for (const p of s.lay.place) p.card.draw(out, pad + p.x, y + p.y);
     y += s.lay.h + 8;
   }
+  saveWhole(out.scaled(2), path);
+}
+
+const WALLS = ['wall', 'wall_diag', 'wall_depth'];
+const WALL_TITLES: Record<string, string> = { wall: 'HORIZONTAL (WALL)', wall_diag: '3/4 (WALL_DIAG, MIRROR IT FOR THE OTHER DIAGONAL)', wall_depth: 'END-ON (WALL_DEPTH)' };
+
+/**
+ * The walls in their three orientations, element by element (idle frame), each with a character
+ * standing on the same ground line beside it for scale; the anchor (the wall's centre on the
+ * ground) is marked with a small cross.
+ */
+function wallsSheet(all: [string, WorldSprite[]][], path: string): void {
+  const ref = characterRef();
+  const rb = ref.bounds()!;
+  const refW = rb[2] - rb[0] + 8;
+  const pad = 10, gap = 14;
+  const rows = all.map(([el, ss]) => ({ el, walls: WALLS.map((n) => ss.find((s) => s.name === n)).filter((s): s is WorldSprite => !!s) })).filter((r) => r.walls.length);
+  const cellW = (s: WorldSprite) => s.anims.idle.frames[0].w + refW;
+  const colW = WALLS.map((_, k) => Math.max(...rows.map((r) => (r.walls[k] ? cellW(r.walls[k]) : 0))));
+  const rowH = rows.map((r) => Math.max(...r.walls.map((s) => s.anims.idle.frames[0].h)) + 24);
+  const W = pad * 2 + colW.reduce((a, b) => a + b + gap, -gap);
+  const H = pad * 2 + 14 + rowH.reduce((a, b) => a + b + gap, 0);
+  const out = new Canvas(W, H);
+  out.fillRect(0, 0, W, H, BG);
+  text(out, pad, pad, 'WALLS IN THREE ORIENTATIONS - IDLE FRAME, 2X, CHARACTER FOR SCALE, + = ANCHOR (WALL CENTRE ON THE GROUND)', INK);
+  let y = pad + 14;
+  rows.forEach((r, ri) => {
+    const accent = hex(ELEMENTS[r.el].accent);
+    let x = pad;
+    r.walls.forEach((s, k) => {
+      const f = s.anims.idle.frames[0];
+      text(out, x, y, `${r.el.toUpperCase()} - ${WALL_TITLES[s.name]}`, accent);
+      text(out, x, y + 7, `${f.w}x${f.h}  ANCHOR ${s.anchor[0]},${s.anchor[1]}  ${animInfo(s, 'rise')}, ${animInfo(s, 'idle')}`, INK_DIM);
+      const top = y + 16;
+      panel(out, x, top, cellW(s), rowH[ri] - 24);
+      const gy = top + s.anchor[1];
+      out.fillRect(x, gy, cellW(s), 1, PANEL_EDGE);
+      out.draw(f, x, top);
+      out.draw(ref, x + f.w + 4 - rb[0], gy - CHARACTER_FEET[1]);
+      const ax = x + s.anchor[0];
+      for (let d = -2; d <= 2; d++) {
+        out.set(ax + d, gy, INK);
+        out.set(ax, gy + d, INK);
+      }
+      x += colW[k] + gap;
+    });
+    y += rowH[ri] + gap;
+  });
   saveWhole(out.scaled(2), path);
 }
 
@@ -353,4 +401,6 @@ for (const el of Object.keys(ELEMENTS)) {
   }
 }
 if (!only) animSheet(built, join(outDir, 'vfx-vfx-a-anims.png'));
+wallsSheet(built, join(outDir, 'vfx-a-walls.png'));
+animSheet(built.map(([el, ss]) => [el, ss.filter((s) => WALLS.includes(s.name))] as [string, WorldSprite[]]), join(outDir, 'vfx-a-walls-anims.png'));
 rmSync(tmpRoot, { recursive: true, force: true });

@@ -666,7 +666,12 @@ function aura(): WorldSprite {
 }
 
 export function lightningSprites(): WorldSprite[] {
-  return [bolt(), beast(), ...stream(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura()];
+  return [
+    bolt(), beast(), ...stream(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(),
+    fence('wall_diag', 'Lightning wall, 3/4 (fence, 4.5 m x 1.8 m, turned 45 degrees)'),
+    fence('wall_depth', 'Lightning wall, end-on (fence, 4.5 m x 1.8 m, running into the screen)'),
+    aura(),
+  ];
 }
 
 void arc;

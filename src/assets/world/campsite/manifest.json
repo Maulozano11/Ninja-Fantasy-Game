@@ -405,16 +405,16 @@
    }
   },
   "seat_log": {
-   "label": "Log Seat (short)",
+   "label": "Log Seat",
    "file": "seat_log.png",
-   "frameW": 66,
+   "frameW": 92,
    "frameH": 40,
    "anchor": [
-    33,
+    46,
     34
    ],
    "meters": [
-    1.05,
+    1.5,
     0.46
    ],
    "tags": [

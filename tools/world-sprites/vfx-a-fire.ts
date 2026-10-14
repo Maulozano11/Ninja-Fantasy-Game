@@ -7,7 +7,7 @@ import { fireSignature } from './vfx-a-fire-sig';
 
 export { FIRE };
 import {
-  Field, Pt, TAU, along, arc, bez, qbez, clamp, crop, flySprite, frames, fract, lerp, outlineIn, palette, pfbm, pnoise, render, rnd, rr, seamStack, smooth, spark, stack, vfxSprite,
+  Field, Pt, TAU, WallKind, WallLine, along, arc, bez, qbez, clamp, crop, flySprite, frames, fract, lerp, outlineIn, palette, pfbm, pnoise, render, rnd, rr, seamStack, smooth, spark, stack, vfxSprite, wallGround, wallLine, wp,
 } from './vfx-a-lib';
 
 // --- bolt: a fireball with a curved tail ----------------------------------------------------
@@ -647,6 +647,80 @@ function wall(): WorldSprite {
   return vfxSprite('wall', 'Fire wall (4.5 m x 1.8 m)', [W / 2, gy], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
 }
 
+/**
+ * The same fire wall re-laid along a turned ground line (3/4 or end-on): the two rows of flames
+ * stand a little apart across the wall, the ember bed follows the footprint, and everything is
+ * drawn in depth slices, far first, so nearer flames overlap farther ones.
+ */
+function wallFrameTurned(t: number, grow: (s: number) => number, L: WallLine): Canvas {
+  const { W, H } = L;
+  const W0 = 264;
+  const nL = L.kind === 'wall_depth' ? 7 : 5;
+  const depth = (tt: number, q: number) => L.u[1] * tt + L.v[1] * q;
+  const zs = [depth(-L.len / 2, 0), depth(L.len / 2, 0)];
+  const zMin = Math.min(...zs) - 10, zMax = Math.max(...zs) + 10;
+  const layerOf = (z: number) => clamp(Math.floor(((z - zMin) / (zMax - zMin)) * nL), 0, nL - 1);
+  const fields = Array.from({ length: nL }, () => new Field(W, H));
+  const rows = [
+    { n: 12, h: 96, w: 11, heat: 0.8, seed: 141, q: -5, off: 0.5 },
+    { n: 13, h: 58, w: 10, heat: 0.92, seed: 151, q: 5, off: 0 },
+  ];
+  for (const r of rows)
+    for (let k = 0; k < r.n; k++) {
+      const x = 14 + ((k + r.off) / r.n) * (W0 - 28) + rr(r.seed, k, -4, 4);
+      const env = Math.pow(Math.sin(((x - 2) / (W0 - 4)) * Math.PI), 0.3);
+      const tt = x - W0 / 2, sAt = tt / L.len + 0.5;
+      const g = grow(sAt);
+      if (g <= 0.02) continue;
+      const hgt = r.h * env * rr(r.seed + 1, k, 0.8, 1.06) * g * (1 + 0.08 * Math.sin(t * TAU + k * 1.3));
+      const base = wp(L, tt, r.q);
+      tongue(fields[layerOf(depth(tt, r.q))], [base[0], base[1] + 1], -Math.PI / 2 + rr(r.seed + 2, k, -0.1, 0.1), hgt, r.w * Math.min(1, 0.5 + g * 0.6), r.heat, 0.14, t * TAU + k * 1.7, rr(r.seed + 3, k, -0.12, 0.12));
+    }
+  // The ember bed over the footprint, each part in the slice of its depth.
+  const band = Math.max(9.75, 9);
+  const corners = [wp(L, -L.len / 2, -band), wp(L, -L.len / 2, band), wp(L, L.len / 2, -band), wp(L, L.len / 2, band)];
+  const bx0 = Math.min(...corners.map((c) => c[0])) - 2, bx1 = Math.max(...corners.map((c) => c[0])) + 2;
+  const by0 = Math.min(...corners.map((c) => c[1])) - 2, by1 = Math.max(...corners.map((c) => c[1])) + 2;
+  for (let y = Math.floor(by0); y <= by1; y++)
+    for (let x = Math.floor(bx0); x <= bx1; x++) {
+      const [tt, q] = wallGround(L, x + 0.5, y + 1.5);
+      const sAt = tt / L.len + 0.5;
+      if (sAt < 6 / W0 || sAt > 1 - 6 / W0 || grow(sAt) <= 0.02) continue;
+      const d = Math.abs(q) / band;
+      if (d >= 1) continue;
+      fields[layerOf(depth(tt, q))].put(x, y, (1 - d) * (0.62 + 0.3 * pnoise(tt + W0 / 2, q, 6, 0, 0, 148)));
+    }
+  const er = (x: number, y: number) => pfbm(x, y + t * 120, 8, 2, 0, 120, 147);
+  const layers = fields.map((f, i) => {
+    if (!f.any()) return null;
+    erode(f, 0.55, er);
+    return render(f, FIRE, { th: TH, rim: [1], hi: i === 0 && nL > 1 ? 5 : undefined, jitter: (x, y) => (pnoise(x, (y + t * 120) * 0.25, 2, 0, 30, 149 + i) - 0.5) * 0.2 });
+  });
+  const body = stack(W, H, ...layers);
+  const em: { x: number; y: number; s: number }[] = [];
+  for (let k = 0; k < 18; k++) {
+    const p = fract(k / 18 * 3 + t);
+    const tt = rr(149, k, 12, W0 - 12) - W0 / 2 + Math.sin(p * 5 + k) * 3;
+    if (grow(tt / L.len + 0.5) < 0.5) continue;
+    const [x, y] = wp(L, tt, 0, 50 + p * 66);
+    em.push({ x, y, s: p < 0.3 ? 2 : 1 });
+  }
+  return stack(W, H, body, embers(W, H, em.filter((e) => e.y > 2), body));
+}
+/** Rise: the fire catches at the middle and runs out to both ends while it climbs (s along the wall). */
+const fireGrow = (i: number) => (sAt: number) => {
+  const reach = [0.2, 0.45, 0.7, 0.92, 1.2, 1.2][i];
+  const height = [0.12, 0.3, 0.52, 0.78, 1.08, 1][i];
+  const d = Math.abs(sAt - 0.5) * 2;
+  return d > reach ? 0 : height * lerp(1, 0.45, smooth(reach - 0.35, reach, d));
+};
+function wallTurned(kind: WallKind, label: string): WorldSprite {
+  const L = wallLine(kind, 120, 10, { l: 16, t: 10, r: 16, b: 14 });
+  const idle = frames(4, (t) => wallFrameTurned(t, () => 1, L));
+  const rise = frames(6, (_, i) => wallFrameTurned(i / 6, fireGrow(i), L));
+  return vfxSprite(kind, label, L.anchor, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
+}
+
 // --- aura: flames licking up around a standing character ------------------------------------
 
 function aura(): WorldSprite {
@@ -701,7 +775,12 @@ function aura(): WorldSprite {
 }
 
 export function fireSprites(): WorldSprite[] {
-  return [bolt(), beast(), ...stream(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura(), ...fireSignature()];
+  return [
+    bolt(), beast(), ...stream(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(),
+    wallTurned('wall_diag', 'Fire wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)'),
+    wallTurned('wall_depth', 'Fire wall, end-on (4.5 m x 1.8 m, running into the screen)'),
+    aura(), ...fireSignature(),
+  ];
 }
 
 void clamp;

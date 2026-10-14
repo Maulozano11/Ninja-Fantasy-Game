@@ -131,7 +131,10 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
   // On wide screens a little sky is cropped so the camp's controls stay in view (never the moon);
   // on narrow ones the sides are cropped around the fire so the party stays big enough to read.
   const height = Math.max((H - MAX_SKY_CROP) * scale, Math.min(H * scale, MAX_HEIGHT));
-  const left = Math.min(0, width / 2 - FIRE.x * scale);
+  // Narrow screens frame the fire and everyone seated round it (the trainer stands off to the side).
+  const taken = SPOTS.slice(0, Math.min(members.length, SPOTS.length));
+  const focusX = taken.length ? (Math.min(FIRE.x, ...taken.map((p) => p.x - 56)) + Math.max(FIRE.x, ...taken.map((p) => p.x + 56))) / 2 : FIRE.x;
+  const left = Math.min(0, width / 2 - focusX * scale);
   const clampedLeft = Math.max(width - W * scale, left);
   useEffect(() => {
     const el = ref.current;

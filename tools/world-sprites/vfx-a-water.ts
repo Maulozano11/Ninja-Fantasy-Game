@@ -5,7 +5,7 @@
 
 import { Canvas, Color, WorldSprite, withAlpha } from './kit';
 import {
-  Field, Pt, TAU, arc, bez, clamp, crop, dist, flySprite, frames, fract, glint, lerp, outlineIn, palette, pnoise, qbez, render, rr, seamStack, smooth, stack, vfxSprite,
+  Field, Pt, TAU, WallKind, WallLine, arc, bez, clamp, crop, dist, flySprite, frames, fract, glint, lerp, outlineIn, palette, pnoise, qbez, render, rr, seamStack, smooth, stack, vfxSprite, wallCast, wallLine, wp,
 } from './vfx-a-lib';
 
 export const WATER = palette('#0a1640', '#123f78', '#1670a6', '#22a6d6', '#62d6f0', '#b8f2f8', '#ffffff');
@@ -715,6 +715,79 @@ function wall(): WorldSprite {
   return vfxSprite('wall', 'Water wall (4.5 m x 1.8 m)', [W / 2 + ox, gy + oy], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
 }
 
+/**
+ * The same sheet of water re-laid along a turned ground line, now with a body: its near face
+ * carries the rising streaks, the crest band and the top are pale, the end facing the viewer is
+ * darker; foam rides the crest along the top and churns at the foot on both sides.
+ */
+function wallFrameTurned(t: number, g: number, L: WallLine): Canvas {
+  const { W, H } = L;
+  const W0 = 264, gy0 = 112;
+  const w = new Field(W, H), foB = new Field(W, H), fo = new Field(W, H), dr = new Field(W, H);
+  const ph = t * TAU;
+  const k103 = L.rise / 103;
+  // The crest height at t (px along the wall from its centre), as on the straight wall.
+  const crest = (tt: number) => {
+    const x = tt + W0 / 2;
+    const env = Math.pow(Math.sin(clamp((x - 4) / (W0 - 8), 0, 1) * Math.PI), 0.25);
+    return (96 * env + 4 * Math.sin(x * 0.07 - ph) + 3 * Math.sin(x * 0.15 + ph * 2)) * g * k103;
+  };
+  const half = L.len / 2 - 4;
+  wallCast(w, { ...L, len: half * 2 }, (tt) => crest(tt), (tt, _q, h, face) => {
+    const x = tt + W0 / 2, y = gy0 - h;
+    const dTop = crest(tt) - h;
+    if (face === 'top') return 0.72;
+    const streak = pnoise(x, (y + t * 120) * 0.18, 2.2, 0, 120 * 0.18, 271);
+    let v = 0.46 + 0.16 * (streak - 0.5) * 2 - 0.14 * smooth(30, 100, dTop);
+    if (dTop < 7) v = 0.66;
+    else if (dTop < 10) v = 0.82;
+    if (face === 'end') v -= 0.14;
+    else if (face === 'back') v -= 0.08;
+    return Math.max(0.05, v);
+  });
+  const hq = L.thick / 2;
+  // Foam along the crest, across the whole top.
+  for (let k = 0; k < 46; k++) {
+    const x = 8 + ((k + fract(t * 2) * 2) / 46) * (W0 - 16);
+    const tt = x - W0 / 2;
+    for (const q of [-hq * 0.55, hq * 0.55]) {
+      const [px, py] = wp(L, tt, q, crest(tt));
+      fo.disc(px, py + 1 + rr(272, k, -1.5, 1.5), rr(274, k + (q > 0 ? 50 : 0), 2.6, 4.8) + Math.sin(ph + k * 1.7) * 0.6, 0.85, 1.6);
+    }
+  }
+  // Crest lips curling forward over the near edge.
+  for (let k = 0; k < 6; k++) {
+    const tt = 30 + ((k + fract(t)) / 6) * (W0 - 60) - W0 / 2;
+    const top = crest(tt);
+    fo.path([[-8, -2], [-2, 4], [5, 3], [8, -2]].map(([dt, dh]) => wp(L, tt + dt, hq, top + dh)), (u) => lerp(2.6, 1.4, u), 0.9);
+  }
+  // Foam churning at the foot, on the far side behind the sheet and on the near side in front.
+  for (let k = 0; k < 40; k++) {
+    const x = 6 + (k / 39) * (W0 - 12);
+    if (g < 0.2 && Math.abs(x - W0 / 2) > W0 * 0.45 * (g / 0.2)) continue;
+    const tt = x - W0 / 2;
+    for (const side of [-1, 1]) {
+      const [px, py] = wp(L, tt, side * hq);
+      const rx = rr(277, k + (side > 0 ? 0 : 40), 3.5, 7) + Math.sin(ph * 2 + k) * 1.2;
+      (side > 0 ? fo : foB).ell(px, py + rr(276, k, -1, 2), rx, rr(278, k, 2.2, 3.6), 0, 0.78, 1.5);
+    }
+  }
+  for (let k = 0; k < 12; k++) {
+    const p = fract(k / 12 * 2 + t);
+    const tt = rr(273, k, 14, W0 - 14) - W0 / 2 + p * 4;
+    const [px, py] = wp(L, tt, 0, crest(tt));
+    drop(dr, px, py - 4 - p * 10 + p * p * 12, k % 3 ? 1.6 : 2.4, -1.2, 1.5);
+  }
+  const body = render(w, WATER, { th: TH, rim: [1], alpha: [255, 220, 220, 230, 255, 255, 255] });
+  return stack(W, H, foB.any() ? foamR(foB) : null, body, foamR(fo), render(dr, WATER, { th: TH }));
+}
+function wallTurned(kind: WallKind, label: string): WorldSprite {
+  const L = wallLine(kind, 103, 26, { l: 12, t: 22, r: 12, b: 10 });
+  const idle = frames(4, (t) => wallFrameTurned(t, 1, L));
+  const rise = frames(6, (_, i) => wallFrameTurned(i / 6, [0.08, 0.28, 0.55, 0.84, 1.07, 1][i], L));
+  return vfxSprite(kind, label, L.anchor, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
+}
+
 // --- aura: a sheath of water spiralling up around the body ----------------------------------
 //
 // Built like the fire aura (an outer teardrop minus an inner one, open in the middle) but made of
@@ -793,5 +866,10 @@ function aura(): WorldSprite {
 }
 
 export function waterSprites(): WorldSprite[] {
-  return [bolt(), beast(), ...stream(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura()];
+  return [
+    bolt(), beast(), ...stream(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(),
+    wallTurned('wall_diag', 'Water wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)'),
+    wallTurned('wall_depth', 'Water wall, end-on (4.5 m x 1.8 m, running into the screen)'),
+    aura(),
+  ];
 }

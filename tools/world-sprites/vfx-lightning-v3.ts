@@ -139,6 +139,37 @@ function crackle(ix: Ix, amp: number, cell: number, seed: number, weight: (x: nu
 const dissolve = (ix: Ix, p: number, seed: number, cell = 3): Ix =>
   p <= 0 ? ix : keep(ix, (x, y) => noise(x, y, cell, seed) * 0.8 + hash(x, y, seed + 1) * 0.2 >= p);
 
+/**
+ * Light dying away: every stroke, outline and glow pixel steps `steps` down the ladder (white,
+ * blue, outline blue, glow, gone), keeping its shape. Other kinds are left to the layer's alpha.
+ */
+function dim(ix: Ix, steps: number | ((x: number, y: number) => number)): Ix {
+  return remap(ix, (v, x, y) => {
+    const lp = LPOS[v - 1];
+    const k = typeof steps === 'number' ? steps : steps(x, y);
+    if (lp < 0 || k <= 0) return v;
+    return lp - k < 0 ? 0 : LADDER[lp - k] + 1;
+  });
+}
+
+/** The picture scaled by s (sy vertically) about (cx, cy), nearest pixel: for growing effects. */
+const scaleAbout = (ix: Ix, cx: number, cy: number, s: number, sy = s): Ix =>
+  displace(ix, (x, y) => [(x - cx) * (1 - 1 / s), (y - cy) * (1 - 1 / sy)]);
+
+/** Keeps the pixels within `r` px (Chebyshev) of any pixel of `of`: a halo following a shape. */
+function near(ix: Ix, of: Ix, r: number): Ix {
+  const m = blank(ix.w, ix.h);
+  for (let y = 0; y < of.h; y++)
+    for (let x = 0; x < of.w; x++)
+      if (of.d[y * of.w + x])
+        for (let dy = -r; dy <= r; dy++)
+          for (let dx = -r; dx <= r; dx++) {
+            const X = x + dx, Y = y + dy;
+            if (X >= 0 && Y >= 0 && X < m.w && Y < m.h) m.d[Y * m.w + X] = 1;
+          }
+  return keep(ix, (x, y) => m.d[y * m.w + x] === 1);
+}
+
 /** Stamps src into dst at (x, y) (non-clear pixels only). */
 function stamp(dst: Ix, src: Ix, x: number, y: number): void {
   for (let yy = 0; yy < src.h; yy++)
@@ -149,17 +180,52 @@ function stamp(dst: Ix, src: Ix, x: number, y: number): void {
     }
 }
 
-/** Renders indexed layers (each with an alpha factor) into a canvas, later layers on top. */
-function render(w: number, h: number, layers: [Ix, number?][]): Canvas {
+type Fade = Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
+/** A layer: an indexed image, an alpha factor and the fade toward the frame sides it gets. */
+type Layer = [Ix, number?, Fade?];
+
+/** The fade ladder, faint to bright: glow, the deep-blue outline, then the strokes (blue to white). */
+const LADDER = [...RAMP.glow, ...RAMP.outline.slice(0, 1), ...RAMP.stroke];
+const LPOS = LV3_PAL.map((_, i) => LADDER.indexOf(i));
+
+/** 0 on a faded side of the frame, rising to 1 where the fade ends. */
+function fadeT(f: Fade | undefined, x: number, y: number, w: number, h: number): number {
+  if (!f) return 1;
+  let t = 1;
+  if (f.top) t = Math.min(t, y / f.top);
+  if (f.right) t = Math.min(t, (w - 1 - x) / f.right);
+  if (f.bottom) t = Math.min(t, (h - 1 - y) / f.bottom);
+  if (f.left) t = Math.min(t, x / f.left);
+  return clamp(t, 0, 1);
+}
+
+/**
+ * Renders indexed layers into a canvas, later layers on top. Toward a faded side (where his art ran
+ * off his panel) strokes step down the ladder (white, blue, outline blue, glow, gone), so a bolt
+ * dies away into its own glow instead of greying; other pixels lose alpha in four steps.
+ */
+function render(w: number, h: number, layers: Layer[], fade?: Fade): Canvas {
   const c = new Canvas(w, h);
-  for (const [ix, k = 1] of layers) {
+  for (const [ix, k = 1, own] of layers) {
     if (k <= 0) continue;
+    const f = own ?? fade;
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) {
-        const v = ix.d[y * ix.w + x];
+        let v = ix.d[y * ix.w + x];
         if (!v) continue;
+        let a = k;
+        const t = fadeT(f, x, y, w, h);
+        if (t < 1) {
+          const lp = LPOS[v - 1];
+          if (lp >= 0) {
+            const np = lp - Math.round((1 - t) * LADDER.length);
+            if (np < 0) continue;
+            v = LADDER[np] + 1;
+          } else a *= Math.floor(t * 4) / 4;
+        }
         const p = PAL[v - 1];
-        c.plot(x, y, k >= 1 ? p : [p[0], p[1], p[2], Math.round(p[3] * k)]);
+        if (a <= 0) continue;
+        c.plot(x, y, a >= 1 ? p : [p[0], p[1], p[2], Math.round(p[3] * a)]);
       }
   }
   return c;
@@ -178,7 +244,7 @@ interface Key {
   ay: number;
   /** Every piece as a full-frame layer: main, stain, sparks, bolt, posts... */
   p: Record<string, Ix>;
-  fade: Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
+  fade: Fade;
 }
 
 function key(name: string, pad: { l: number; t: number; r: number; b: number } = { l: PAD, t: PAD, r: PAD, b: PAD }): Key {
@@ -199,25 +265,6 @@ function key(name: string, pad: { l: number; t: number; r: number; b: number } =
 }
 const none = (k: Key): Ix => blank(k.w, k.h);
 const piece = (k: Key, n: string): Ix => k.p[n] ?? none(k);
-
-/** Fades a frame out toward the sides where his art ran off his panel, in 4 alpha steps. */
-function edgeFade(c: Canvas, fade: Key['fade']): Canvas {
-  for (let y = 0; y < c.h; y++)
-    for (let x = 0; x < c.w; x++) {
-      const a = c.alpha(x, y);
-      if (!a) continue;
-      let t = 1;
-      if (fade.top) t = Math.min(t, y / fade.top);
-      if (fade.right) t = Math.min(t, (c.w - 1 - x) / fade.right);
-      if (fade.bottom) t = Math.min(t, (c.h - 1 - y) / fade.bottom);
-      if (fade.left) t = Math.min(t, x / fade.left);
-      if (t >= 1) continue;
-      const q = Math.floor(clamp(t, 0, 1) * 4) / 4;
-      const p = c.get(x, y);
-      c.set(x, y, [p[0], p[1], p[2], Math.round(a * q)]);
-    }
-  return c;
-}
 
 /** Sparks twinkle: in some frames some of them are out or dimmer. */
 function twinkle(sp: Ix, frame: number, share: number, seed: number): Ix {
@@ -253,7 +300,7 @@ function flyLoop(k: Key, opts: { amp?: number; cell?: number; core?: number; see
       m = level(m, strokeK[i], ['stroke']);
     }
     const sp = i ? twinkle(piece(k, 'sparks'), i, 0.35, opts.seed + 5) : piece(k, 'sparks');
-    return edgeFade(render(k.w, k.h, [[m], [sp]]), k.fade);
+    return render(k.w, k.h, [[m], [sp]], k.fade);
   });
 }
 
@@ -403,17 +450,17 @@ function blast(): WorldSprite {
     });
   const fr: Canvas[] = [];
   // 0: the leader feels its way down from the sky (the top 45% of his bolt, dim and blue).
-  fr.push(render(k.w, k.h, [[level(keep(bolt, (_x, y) => y < top + (k.ay - top) * 0.45), -2)]]));
+  fr.push(render(k.w, k.h, [[level(keep(bolt, (_x, y) => y < top + (k.ay - top) * 0.45), -2)]], k.fade));
   // 1: the bolt reaches the ground, white-hot; the flash and the stain start at the impact.
   fr.push(
     render(k.w, k.h, [
       [stain, 0.5],
       [level(keep(ground, (x, y) => d(x, y) < R * 0.22), 1)],
       [level(bolt, 1)],
-    ]),
+    ], k.fade),
   );
   // 2: his picture.
-  fr.push(render(k.w, k.h, [[stain], [ground], [bolt], [sp]]));
+  fr.push(render(k.w, k.h, [[stain], [ground], [bolt], [sp]], k.fade));
   // 3: the return stroke: the bolt re-routes and flashes, the crackle runs on along the ground.
   fr.push(
     render(k.w, k.h, [
@@ -421,7 +468,7 @@ function blast(): WorldSprite {
       [level(crackle(ground, 1.4, 9, 913, (x, y) => smooth(6, 24, d(x, y))), 1, ['glow'])],
       [level(crackle(bolt, 1.6, 10, 914, (x, y) => smooth(4, 20, Math.hypot(x - k.ax, y - k.ay)) * 0.7 + 0.3), 1)],
       [fly(sp, 0.25)],
-    ]),
+    ], k.fade),
   );
   // 4: the bolt flickers out; the ground crackle dims.
   fr.push(
@@ -430,15 +477,15 @@ function blast(): WorldSprite {
       [level(crackle(ground, 1.6, 9, 915, (x, y) => smooth(6, 24, d(x, y))), -1)],
       [level(dissolve(bolt, 0.55, 916, 4), -3), 0.6],
       [fly(sp, 0.5)],
-    ]),
+    ], k.fade),
   );
   // 5: the bolt is gone; the crackle breaks up.
-  fr.push(render(k.w, k.h, [[stain], [level(dissolve(crackle(ground, 1.8, 9, 917), 0.45, 918), -2), 0.85], [twinkle(fly(sp, 0.75), 5, 0.3, 919)]]));
+  fr.push(render(k.w, k.h, [[stain], [level(dissolve(crackle(ground, 1.8, 9, 917), 0.45, 918), -2), 0.85], [twinkle(fly(sp, 0.75), 5, 0.3, 919)]], k.fade));
   // 6: last forks on the scorch.
-  fr.push(render(k.w, k.h, [[stain, 0.9], [level(dissolve(ground, 0.78, 920), -3), 0.6], [twinkle(fly(sp, 1), 6, 0.6, 921)]]));
+  fr.push(render(k.w, k.h, [[stain, 0.9], [level(dissolve(ground, 0.78, 920), -3), 0.6], [twinkle(fly(sp, 1), 6, 0.6, 921)]], k.fade));
   // 7: the scorch is left.
-  fr.push(render(k.w, k.h, [[level(stain, -1), 0.75], [level(dissolve(ground, 0.93, 922), -4), 0.4]]));
-  return sprite(k, 'Lightning blast (thunder strike from the sky)', { blast: { frames: fr.map((c) => edgeFade(c, k.fade)), fps: 12, loop: false } });
+  fr.push(render(k.w, k.h, [[level(stain, -1), 0.75], [level(dissolve(ground, 0.93, 922), -4), 0.4]], k.fade));
+  return sprite(k, 'Lightning blast (thunder strike from the sky)', { blast: { frames: fr, fps: 12, loop: false } });
 }
 
 function bounds(ix: Ix): [number, number, number, number] | null {
@@ -494,6 +541,8 @@ function posts(ix: Ix): { x: number; foot: number; top: number }[] {
 function fence(name: 'wall' | 'wall_diag', label: string, seed: number): WorldSprite {
   const k = key(name);
   const P = piece(k, 'posts'), M = piece(k, 'main'), ST = piece(k, 'stain'), SP = piece(k, 'sparks');
+  // The 3/4 wall's ground strip ran off his panel's right edge: it dies away over a longer stretch.
+  const stFade: Fade | undefined = name === 'wall_diag' ? { ...k.fade, right: 56 } : undefined;
   const ps = posts(P);
   if (ps.length !== 5) throw new Error(`vfx-lightning-v3: ${name} has ${ps.length} posts, expected 5`);
   // The ground line runs through the posts' feet (a least-squares line).
@@ -521,9 +570,9 @@ function fence(name: 'wall' | 'wall_diag', label: string, seed: number): WorldSp
     if (r === 2 || r === 3) arcs = level(crackle(arcs, 1.2, 8, seed + r), -1);
     if (r === 4) arcs = level(arcs, -1, ['glow']);
     const sparks = r >= 3 ? twinkle(SP, r, r === 3 ? 0.5 : 0.2, seed + 3) : none(k);
-    let c = render(k.w, k.h, [[ST, stainK[r]], [arcs], [grown], [sparks]]);
-    if (r === 5) c = render(k.w, k.h, [[ST], [level(M, 1, ['stroke'])], [level(P, 1)], [SP]]);
-    rise.push(edgeFade(c, k.fade));
+    let c = render(k.w, k.h, [[ST, stainK[r], stFade], [arcs], [grown], [sparks]], k.fade);
+    if (r === 5) c = render(k.w, k.h, [[ST, 1, stFade], [level(M, 1, ['stroke'])], [level(P, 1)], [SP]], k.fade);
+    rise.push(c);
   }
   const idle: Canvas[] = [];
   for (let i = 0; i < 4; i++) {
@@ -536,7 +585,7 @@ function fence(name: 'wall' | 'wall_diag', label: string, seed: number): WorldSp
       st = level(ST, [0, 0, 1, 0][i]);
     }
     const sparks = i ? twinkle(SP, i, 0.35, seed + 9) : SP;
-    idle.push(edgeFade(render(k.w, k.h, [[st], [arcs], [pp], [sparks]]), k.fade));
+    idle.push(render(k.w, k.h, [[st, 1, stFade], [arcs], [pp], [sparks]], k.fade));
   }
   return sprite(k, label, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
 }

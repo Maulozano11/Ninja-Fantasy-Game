@@ -254,7 +254,8 @@ function hisSmokeLayer(st: SState): Canvas | null {
       }
     c = out;
   } else if (st.phase === 'fade') {
-    c = dissolve(c, st.smoke / 0.85, (x, y) => clamp(pnoise(x, y, 22, 0, 0, SEED + 70) * 0.7 + (1 - along(x, y)) * 0.3, 0, 1), [], SMOKE_HIS[0]).c;
+    // It clears from the caster's end up along its diagonal, its edge ragged in big billows.
+    c = dissolve(c, st.smoke / 0.85, (x, y) => clamp((1 - along(x, y)) * 0.86 + pnoise(x, y, 60, 0, 0, SEED + 70) * 0.14, 0, 1), [], SMOKE_HIS[0]).c;
   }
   return c;
 }
@@ -407,7 +408,7 @@ function dragonLayers(st: SState): DragonLayers {
   const headBob: Pt = [Math.sin(ph + 3) * live, 1.5 * Math.sin(ph + 3.4) * live];
   back.draw(part('s_head', headBob, 0), 0, 0);
   const front = new Canvas(W, H);
-  front.draw(part('s_claw', [Math.sin(ph + 0.6) * live, Math.sin(ph + 1) * live], 0), 0, 0);
+  front.draw(part('s_claw', [0, 0], 0), 0, 0);
   // Where the breath leaves the mouth (his mouth, mapped to our frame).
   const mouth: Pt = [914 + Math.round(headBob[0]), 456 + Math.round(headBob[1])];
   const mid = new Canvas(W, H);
@@ -501,18 +502,23 @@ function hisWallLayer(st: SState): Canvas | null {
   const burn = [FIRE[2], FIRE[3], FIRE[4], FIRE[5]];
   if (st.phase === 'surge' && st.roll < 1) {
     const reach = X0 + st.roll * (LEN + 60);
-    c = dissolve(c, 1, (x, y) => (x > reach + 14 * (pnoise(x, y, 9, 0, 0, SEED + 92) - 0.5) * 2 ? 2 : 0), burn, FIRE[0]).c;
+    // (the front is ragged along its height only, so it never punches holes into the mass)
+    const frontAt = (y: number) => reach + 26 * (pnoise(0, y, 18, 0, 0, SEED + 92) - 0.5) * 2 + 8 * (pnoise(0, y, 5, 0, 0, SEED + 95) - 0.5) * 2;
+    c = dissolve(c, 1, (x, y) => (x > frontAt(y) ? 2 : 0), burn, FIRE[0]).c;
     // A burning front where it is rolling out.
     const front = new Canvas(W, H);
     for (let y = 0; y < H; y++)
-      for (let x = Math.max(0, Math.floor(reach - 40)); x < Math.min(W, reach + 16); x++) {
+      for (let x = Math.max(0, Math.floor(reach - 70)); x < Math.min(W, reach + 40); x++) {
         const p = c.get(x, y);
-        if (p[3] && x > reach - 10 - 8 * pnoise(x, y, 6, 0, 0, SEED + 93)) front.set(x, y, burn[Math.min(3, Math.floor((reach - x + 10) / 6))] ?? burn[0]);
+        const fx = frontAt(y);
+        if (p[3] && x > fx - 12) front.set(x, y, burn[Math.max(0, Math.min(3, 3 - Math.floor((fx - x) / 4)))]);
       }
     c = stack(W, H, c, front);
   }
   if (st.phase === 'fade' && st.dead > 0) {
-    c = dissolve(c, 1 - st.dead * 0.97, (x, y) => clamp(1 - (x - X0) / (LEN + 40) + (pnoise(x, y, 14, 0, 0, SEED + 94) - 0.5) * 0.3, 0, 1), burn, FIRE[0]).c;
+    // Dying back from the caster outward along a front that is ragged along its height only (no
+    // holes punched into the burning mass).
+    c = dissolve(c, 1 - st.dead * 0.97, (x, y) => clamp(1 - (x - X0) / (LEN + 40) + (pnoise(0, y, 16, 0, 0, SEED + 94) - 0.5) * 0.12, 0, 1), burn, FIRE[0], 0.012).c;
   }
   return c;
 }

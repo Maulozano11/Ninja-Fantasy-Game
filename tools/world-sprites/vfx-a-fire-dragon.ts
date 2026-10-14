@@ -71,13 +71,15 @@ export interface DragonHead {
   /** Where the neck joins (behind the jaw hinge) and the snout tip, in the head's canvas. */
   joint: Pt;
   snout: Pt;
+  /** The front of the open mouth (where a breath of fire comes out). */
+  mouth: Pt;
 }
 
 /**
  * The head at scale s, facing right, tilted nose-down by `tilt` (radians). t is the loop phase
  * (flames, eye) and `jaw` opens the lower jaw a few degrees more.
  */
-export function dragonHead(s: number, t: number, jaw = 0, tilt = 0): DragonHead {
+export function dragonHead(s: number, t: number, jaw = 0, tilt = 0, eastern = false): DragonHead {
   const W = Math.round(214 * s), H = Math.round(156 * s);
   const ox = 88 * s, oy = 86 * s;
   const cs = Math.cos(tilt), sn = Math.sin(tilt);
@@ -109,7 +111,17 @@ export function dragonHead(s: number, t: number, jaw = 0, tilt = 0): DragonHead 
   {
     const f = new Field(W, H);
     tubeShade(f, pathP(bez([-6, -17], [-16, -31], [-30, -42], [-46, -43], 20)), (u) => lerp(4.6, 0.9, u) * s, (u, sd) => (sd > 0.3 ? 0.3 : 0.17) - u * 0.06 - (fract(u * 6) < 0.16 ? 0.07 : 0));
+    if (eastern) tubeShade(f, pathP(bez([-22, -36], [-22, -41], [-19, -45], [-15, -49], 8)), (u) => lerp(2.6, 0.6, u) * s, () => 0.2);
     back.push(render(f, FIRE, { ...PLANE, hi: 3 }));
+  }
+  // An Eastern dragon's beard: spiky flame locks hanging back from the cheek and jaw.
+  if (eastern) {
+    const f = new Field(W, H);
+    for (let k = 0; k < 6; k++) {
+      const a = (128 + k * 9) * D;
+      tongue(f, P(-4 + k * 5, 12 + k * 2.5), a + tilt, (30 - Math.abs(k - 2) * 3) * s + Math.sin(ph * 1.4 + k) * 2.5, 3.2 * s, 0.42, 0.16, ph + k * 1.1, curlTo(a) * 1.5);
+    }
+    back.push(render(f, FIRE, { ...PLANE, jitter: (x, y) => (pnoise(x * 0.4 + t * 30, y, 2, 30, 0, 963) - 0.5) * 0.16 }));
   }
 
   // --- front: middle mane ---
@@ -203,6 +215,8 @@ export function dragonHead(s: number, t: number, jaw = 0, tilt = 0): DragonHead 
   {
     const f = new Field(W, H);
     tubeShade(f, pathP(bez([4, -21], [-8, -36], [-24, -50], [-42, -54], 22)), (u) => lerp(6, 1.1, u) * s, (u, sd) => (sd > 0.35 ? 0.62 : sd > -0.35 ? 0.42 : 0.2) - u * 0.1 - (fract(u * 7) < 0.14 ? 0.16 : 0));
+    // Antler tines branching up off the horn.
+    if (eastern) tubeShade(f, pathP(bez([-14, -42], [-14, -48], [-11, -53], [-6, -58], 8)), (u) => lerp(3, 0.7, u) * s, (_u, sd) => (sd > 0 ? 0.56 : 0.34));
     front.push(render(f, FIRE, PLANE));
   }
   // Front mane: short locks over the join with the neck.
@@ -272,7 +286,16 @@ export function dragonHead(s: number, t: number, jaw = 0, tilt = 0): DragonHead 
     if (y <= 0 || u < -20 || u > 66) continue;
     if (c.alpha(x, y - 1)) c.set(x, y - 1, u > 6 && u < 50 ? FIRE[6] : FIRE[5]);
   }
-  return { back: backC, front: stack(W, H, c), joint: P(-14, 5), snout: P(79.6, -4) };
+  // Barbels: long thin whiskers flowing back from the snout and the chin.
+  if (eastern) {
+    const wf = new Field(W, H);
+    const sway = Math.sin(ph) * 2;
+    tubeShade(wf, pathP(bez([72, -9], [86, -26 + sway], [70, -44], [44 + sway, -40], 24)), (u) => lerp(1.3, 0.5, u) * s, (u) => lerp(0.66, 0.4, u));
+    tubeShade(wf, pathP(bez([63, 27], [68, 44 + sway], [46, 54], [20, 50 - sway], 24)), (u) => lerp(1.2, 0.5, u) * s, (u) => lerp(0.6, 0.36, u));
+    const wc = render(wf, FIRE, { th: TH });
+    c.draw(wc, 0, 0);
+  }
+  return { back: backC, front: stack(W, H, c), joint: P(-14, 5), snout: P(79.6, -4), mouth: P(68, 11) };
 }
 
 /**
@@ -352,5 +375,105 @@ export function drawDragon(W: number, H: number, snoutAt: Pt, neckBase: Pt, s: n
   };
   return dissolve(all, vis, key, [FIRE[2], FIRE[3], FIRE[4], FIRE[5]], FIRE[0]);
 }
+
+// --- the S-rank serpent: a whole Eastern dragon weaving through the fire --------------------
+
+/** Arc-length positions (0..1) of a polyline's points. */
+function arcU(pts: Pt[]): number[] {
+  const L = [0];
+  for (let i = 1; i < pts.length; i++) L.push(L[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const tot = L[L.length - 1] || 1;
+  return L.map((l) => l / tot);
+}
+
+/**
+ * The serpent's body from the tail tip (pts[0]) to the neck's end, cut into depth sections:
+ * each [u0, u1] range is rendered on its own canvas so the caller can slot it in front of or
+ * behind rows of flames. Belly plates follow the curve on the belly side (the path's left-hand
+ * normal), the back carries scallop scales with bright highlight dots, and dorsal flame-fins
+ * stand along the spine, swept back; the tail ends in a plume of flame.
+ */
+export function serpentBody(W: number, H: number, pts: Pt[], radius: (u: number) => number, ranges: [number, number][], t: number, seed: number): Canvas[] {
+  const ph = t * TAU;
+  const us = arcU(pts);
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  const plates = total / 9;
+  const at = (u: number): { p: Pt; d: Pt } => {
+    let i = 1;
+    while (i < us.length - 1 && us[i] < u) i++;
+    const k = (u - us[i - 1]) / Math.max(1e-6, us[i] - us[i - 1]);
+    const a = pts[i - 1], b = pts[i];
+    const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+    return { p: [lerp(a[0], b[0], k), lerp(a[1], b[1], k)], d: [dx / l, dy / l] };
+  };
+  return ranges.map(([u0, u1]) => {
+    const body = new Field(W, H), fins = new Field(W, H);
+    const i0 = us.findIndex((u) => u >= u0), i1 = Math.max(i0 + 1, us.findIndex((u) => u >= u1) === -1 ? us.length - 1 : us.findIndex((u) => u >= u1));
+    const sub = pts.slice(Math.max(0, i0 - 1), Math.min(pts.length, i1 + 2));
+    const g0 = us[Math.max(0, i0 - 1)], g1 = us[Math.min(pts.length - 1, i1 + 1)];
+    tubeShade(body, sub, (ul) => radius(lerp(g0, g1, ul)), (ul, sd) => {
+      const u = lerp(g0, g1, ul);
+      // sd > 0: the belly (left-hand normal), sd < 0: the back.
+      if (sd > 0.9) return 0.72; // lit by the fire below
+      if (sd > 0.22) return fract(u * plates) < 0.17 ? 0.16 : lerp(0.58, 0.44, (sd - 0.22) / 0.68);
+      if (sd < -0.86) return 0.12;
+      const rv = (sd + 1) * 1.8, rowN = Math.floor(rv), fv = fract(rv);
+      const fu = fract(u * plates * 0.8 + (rowN % 2) * 0.5) - 0.5;
+      const r = Math.hypot(fu * 1.25, (fv - 0.2) * 1.05);
+      if (r > 0.52 && r < 0.68) return 0.13;
+      const base = 0.22 + 0.16 * (sd + 1) * 0.6;
+      return r < 0.18 ? base + 0.3 : base;
+    });
+    // Dorsal flame-fins along the spine, swept back toward the tail.
+    for (let u = Math.max(0.05, Math.ceil(u0 * 40) / 40); u <= Math.min(0.97, u1); u += 1 / 40) {
+      const { p, d } = at(u);
+      const nb: Pt = [d[1], -d[0]];
+      const r = radius(u);
+      const sweep = 0.75;
+      const a = Math.atan2(nb[1] * (1 - sweep) - d[1] * sweep, nb[0] * (1 - sweep) - d[0] * sweep);
+      const len = lerp(14, 30, Math.sin(Math.PI * Math.min(1, u * 1.15))) * rr(seed + 5, Math.round(u * 400), 0.8, 1.15) + Math.sin(ph + u * 30) * 2;
+      tongue(fins, [p[0] + nb[0] * (r - 3), p[1] + nb[1] * (r - 3)], a, len, Math.max(3, r * 0.42), 0.58, 0.16, ph + u * 23 + seed, -0.15);
+    }
+    // The tail ends in a plume of flame flicking up.
+    if (u0 <= 0.001) {
+      const { p, d } = at(0.004);
+      const a = Math.atan2(-d[1], -d[0]);
+      tongue(fins, p, a - 0.5, 64 + Math.sin(ph) * 6, 13, 0.92, 0.22, ph, -0.35);
+      tongue(fins, [p[0] + 4, p[1] + 6], a - 0.15, 40 + Math.sin(ph + 2) * 5, 8, 0.8, 0.2, ph + 1.3, -0.2);
+    }
+    const finC = render(fins, FIRE, { th: TH, outline: false, jitter: (x, y) => (pnoise(x * 0.4, y + t * 60, 2, 0, 60, seed + 9) - 0.5) * 0.14 });
+    const bodyC = render(body, FIRE, { th: TH, outline: false });
+    return seamStack(W, H, [finC, bodyC], FIRE[1], FIRE[0]);
+  });
+}
+
+/**
+ * A clawed leg reaching from `shoulder` through `elbow` to `paw`, with an elbow fin of flame and
+ * four talons curling down to grip.
+ */
+export function dragonLeg(W: number, H: number, shoulder: Pt, elbow: Pt, paw: Pt, r: number, t: number, seed: number): Canvas {
+  const ph = t * TAU;
+  const leg = new Field(W, H), fin = new Field(W, H), claw = new Field(W, H);
+  const arm = spline([shoulder, elbow, paw], 10);
+  // A muscled limb: thick at the shoulder, lit on its front, plated on its inside.
+  tubeShade(leg, arm, (u) => r * lerp(1, 0.6, u) * (1 + 0.18 * Math.sin(Math.PI * Math.min(1, u * 2))), (u, sd) => (sd > 0.55 ? 0.58 : sd > -0.3 ? 0.36 : 0.15) + (fract(u * 8) < 0.14 && sd > 0.1 ? -0.18 : 0));
+  leg.disc(paw[0], paw[1], r * 0.75, 0.42, 1.3);
+  // A fin of flame off the elbow, swept back.
+  const dx = elbow[0] - shoulder[0], dy = elbow[1] - shoulder[1];
+  tongue(fin, elbow, Math.atan2(-dy, -dx) - 0.7, r * 3 + Math.sin(ph + seed) * 2, r * 0.55, 0.6, 0.18, ph + seed, -0.2);
+  // Four talons spread and curling down to grip.
+  const fa = Math.atan2(paw[1] - elbow[1], paw[0] - elbow[0]);
+  for (let k = 0; k < 4; k++) {
+    const a = fa + (k - 1.6) * 0.5;
+    const b: Pt = [paw[0] + Math.cos(a) * r * 0.55, paw[1] + Math.sin(a) * r * 0.55];
+    const len = r * (k === 0 ? 1.5 : 2.1);
+    const pts = bez(b, [b[0] + Math.cos(a) * len * 0.7, b[1] + Math.sin(a) * len * 0.7], [b[0] + Math.cos(a + 0.8) * len * 1.05, b[1] + Math.sin(a + 0.8) * len * 1.05], [b[0] + Math.cos(a + 1.6) * len * 0.95, b[1] + Math.sin(a + 1.6) * len * 0.95], 12);
+    tubeShade(claw, pts, (u) => lerp(r * 0.4, 0.6, Math.pow(u, 0.8)), (u, sd) => lerp(0.46, 0.9, u) - (sd > 0.4 ? 0.12 : 0));
+  }
+  return seamStack(W, H, [render(fin, FIRE, { th: TH, outline: false }), render(leg, FIRE, { th: TH, outline: false }), render(claw, FIRE, { th: TH, outline: false })], FIRE[1], FIRE[0]);
+}
+
+export { spline };
 
 void rr;

@@ -256,10 +256,9 @@ function burnPaint(burnY: number, scorch: number, seed: number) {
  * A root: it leaves the trunk's flare well above the ground, bends down along it and runs over the
  * ground toward ground-plane angle `deg` (0 right, 90 toward the viewer), tapering into the soil.
  */
-function rootTube(gx: number, gy: number, rT: number, deg: number, len: number, r0: number, seed: number, base: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'>): Tube {
+function rootTube(gx: number, gy: number, rT: number, deg: number, len: number, r0: number, seed: number, base: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'>, h0 = r0 * 1.5 + 8): Tube {
   const a = (deg * Math.PI) / 180;
   const ca = Math.cos(a), sa = Math.sin(a) * K;
-  const h0 = r0 * 1.5 + 8;
   const wig = (hash(seed, 1, 2) - 0.5) * 10, wig2 = (hash(seed, 3, 2) - 0.5) * 8;
   // Across the ground direction, for the root's sideways wander.
   const px = -Math.sin(a), py = Math.cos(a) * K;
@@ -820,8 +819,8 @@ function stump(): WorldSprite {
   const cyt = cyb - hgt; // top ellipse centre
   const B = new Buf(W, H);
   const bark: Omit<Tube, 'pts' | 'r0' | 'r1' | 'seed'> = { pal: BARK_OAK, tex: 'furrow', moss: MOSS, mossAmt: 0.7, spacing: 4.5 };
-  const roots: [number, number, number, boolean][] = [[-150, 26, 6, true], [-30, 24, 6, true], [174, 36, 8, false], [8, 34, 8, false], [128, 30, 7, false], [60, 28, 7, false]];
-  for (const [deg, len, r0, behind] of roots) if (behind) drawTube(B, rootTube(gx, gy - 4, Rr - 4, deg, len, r0, 700 + deg, bark));
+  const roots: [number, number, number, boolean][] = [[-150, 14, 6, true], [-30, 13, 6, true], [176, 20, 7, false], [6, 19, 7, false], [130, 15, 6, false], [58, 13, 6, false]];
+  for (const [deg, len, r0, behind] of roots) if (behind) drawTube(B, rootTube(gx, gy - 4, Rr - 4, deg, len, r0, 700 + deg, bark, 9));
   // Wall: a bark cylinder with a slightly irregular rim.
   const rimJ = (u: number) => (noise(u * 6 + 3, 0, 1, 31) - 0.5) * 3;
   const tb: Tube = { ...bark, pts: [], r0: Rr, r1: Rr, seed: 9, knots: [{ s: 12, a: 8, r: 3.5 }] };
@@ -843,7 +842,7 @@ function stump(): WorldSprite {
       B.put(x, y, p, st, 1, 0);
     }
   }
-  for (const [deg, len, r0, behind] of roots) if (!behind) drawTube(B, { ...rootTube(gx, gy - 4, Rr - 4, deg, len, r0, 700 + deg, bark), part: 2 });
+  for (const [deg, len, r0, behind] of roots) if (!behind) drawTube(B, { ...rootTube(gx, gy - 4, Rr - 4, deg, len, r0, 700 + deg, bark, 9), part: 2, point: 4 });
   // The cut face: growth rings, radial cracks, a dark heart, a lit sapwood rim and a bark lip.
   for (let y = Math.floor(cyt - ryT) - 2; y <= cyt + ryT + 2; y++)
     for (let x = gx - Rr - 1; x <= gx + Rr + 1; x++) {
@@ -873,10 +872,10 @@ function stump(): WorldSprite {
   // A moss cushion creeping over the shaded back rim, and two small shelf fungi on the wall.
   for (let y = Math.floor(cyt - ryT) - 5; y <= cyt; y++)
     for (let x = gx + 2; x <= gx + Rr + 3; x++) {
-      const u = (x + 0.5 - gx - 14) / 10, v = (y + 0.5 - cyt + ryT * 0.7) / 5;
+      const u = (x + 0.5 - gx - 13) / 8, v = (y + 0.5 - cyt + ryT * 0.72) / 4;
       const cell = noise(x, y, 2, 33);
       if (u * u + v * v > 1 - (cell < 0.3 ? 0.35 : 0)) continue;
-      B.put(x, y, MOSS, clamp(Math.round(4.6 - (u + v) * 1.3 + (cell - 0.5) * 2), 1, 6), 4, 2);
+      B.put(x, y, MOSS, clamp(Math.round(3.6 - (u + v) * 1.2 + (cell - 0.5) * 2), 1, 5), 4, 2);
     }
   shelfFungus(B, gx + 13, cyb - 14, 7, 3, 5);
   shelfFungus(B, gx + 18, cyb - 8, 5, 2.4, 6);

@@ -41,7 +41,7 @@ WARM_LEVELS = [0.0, 0.32, 0.62, 0.95]
 
 def warm_color(c, g):
     c = np.asarray(c, float)
-    lum = (c @ np.array([0.3, 0.59, 0.11])) / 255
+    lum = (c @ np.array([0.3, 0.59, 0.11]))[..., None] / 255
     out = c * (1 - g) + c * FIRE_TINT * g + FIRE_ADD * g * (0.5 + 0.9 * lum)
     return np.clip(out, 0, 255)
 

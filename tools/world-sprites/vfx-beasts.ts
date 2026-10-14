@@ -540,8 +540,9 @@ function waterDragon(): WorldSprite {
 // lines, and curling eddies spin off the wingtips and tail.
 
 const WIND = (() => ({
-  ramp: ramp(blend('#9fe0c8', MATERIALS.paper, 0.35), { shift: 14, spread: 0.85 }),
-  tip: ramp(blend('#5fb8a8', '#2f7f86', 0.3), { shift: 12 }),
+  // Pale mint to white, with deep teal shadows so the form still reads against a bright sky.
+  ramp: [hex('#123c3a'), hex('#2f7a70'), hex('#55ae9a'), hex('#8fd8bf'), hex('#cdf6e6'), hex('#f8fffc')] as Color[],
+  tip: [hex('#0c2e30'), hex('#1d5658'), hex('#2f7f80'), hex('#4fa6a2'), hex('#86d2c6'), hex('#c8f2ea')] as Color[],
   outline: hex('#17423f'),
   line: hex('#3f8c84'),
   white: hex('#f6fffb'),
@@ -574,9 +575,9 @@ function featherShade(t: number, o: { far?: boolean; tipDark?: boolean; seed: nu
     const L = lit(h) - (o.far ? 0.12 : 0);
     // Vane streaks: thin lines along the blade.
     const vane = noise(h.u * h.len * 0.25 - t * 8, h.v * 3.2, 1.6, o.seed);
-    let s = stepOf(L + (vane - 0.5) * 0.25, h.u * h.len, h.v * 4, [0.22, 0.44, 0.7, 0.86], 0.05, o.seed);
+    let s = stepOf(L + (vane - 0.5) * 0.25, h.u * h.len, h.v * 4, [0.26, 0.48, 0.72, 0.88], 0.05, o.seed);
     if (Math.abs(h.v) < 0.12 && h.u > 0.1) s = Math.max(1, s - 1); // the rachis
-    if (o.tipDark && h.u > 0.72) return WIND.tip[clamp(s, 1, 4)];
+    if (o.tipDark && h.u > 0.7) return WIND.tip[clamp(s, 1, 4)];
     return WIND.ramp[clamp(s - (o.far ? 1 : 0), 1, 5)];
   };
 }
@@ -637,7 +638,7 @@ function windCrane(): WorldSprite {
     const style = { outline: WIND.outline, line: WIND.line, solid: 150 };
     const body = (h: Hit): Color => {
       const L = lit(h);
-      const s = stepOf(L + (noise(h.x * 0.5 - t * 20, h.y, 2, 91) - 0.5) * 0.12, h.x, h.y, [0.22, 0.44, 0.7, 0.86], 0.05, 91);
+      const s = stepOf(L + (noise(h.x * 0.5 - t * 20, h.y, 2, 91) - 0.5) * 0.12, h.x, h.y, [0.26, 0.48, 0.72, 0.88], 0.05, 91);
       return WIND.ramp[clamp(s, 1, 5)];
     };
     // Far wing, behind everything, raised a little ahead of the near one.

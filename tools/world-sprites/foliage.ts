@@ -852,7 +852,7 @@ export function drawTube(b: Buf, t: Tube): void {
     }
   // Moss: cushions in tube-local coordinates on the upper and shaded sides.
   const mossOn = t.moss !== undefined && (t.mossAmt ?? 0) > 0;
-  const charT: Tube | null = t.charAt && t.charPal !== undefined ? { ...t, pal: t.charPal, tex: 'charred', moss: undefined, ember: t.ember || 0.14 } : null;
+  const charT: Tube | null = t.charAt && t.charPal !== undefined ? { ...t, pal: t.charPal, tex: 'charred', moss: undefined, ember: t.ember || 0.24 } : null;
   for (let y = y0; y < y0 + MH; y++)
     for (let x = x0; x < x0 + MW; x++) {
       if (!has(x, y)) continue;

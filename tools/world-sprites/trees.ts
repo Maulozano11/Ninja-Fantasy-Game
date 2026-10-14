@@ -53,7 +53,7 @@ const GLOW_OAK = pal(['#141408', '#24220c', '#3a3410', '#564816', '#76601e', '#9
 const GLOW_SCORCH = pal(['#200c06', '#3c1608', '#5e260c', '#823a12', '#a6521a', '#c86e24', '#e48e32', '#f6b448']);
 const GLOW_CHARLEAF = pal(['#160606', '#2c0c0a', '#4a160e', '#6a2412', '#8e3816', '#b4521c', '#d87426', '#f29a36']);
 const GLOW_BARK = pal(['#1a0a0c', '#321410', '#4e2216', '#6c321c', '#8e4624', '#b0602e', '#d0803c']);
-const GLOW_CHAR = pal(['#160808', '#2c0e0c', '#461610', '#622014', '#80301a', '#a0441e', '#c45c26']);
+const GLOW_CHAR = pal(['#1c0a0a', '#3a1210', '#5a1c12', '#7c2a16', '#a03c1a', '#c4541e', '#e47028']);
 const FUNGUS = pal(['#1e1210', '#3c231a', '#64392a', '#8f5a3a', '#b88050', '#d6a66c', '#ecd09a']);
 
 const FOLIAGE = new Set([LEAF_OAK, LEAF_PINE, LEAF_BAMBOO, LEAF_MAPLE, LEAF_CHAR, LEAF_SCORCH, GLOW_OAK, GLOW_SCORCH, GLOW_CHARLEAF]);
@@ -230,10 +230,10 @@ function oak(): WorldSprite {
     Math.min(...ign.map(([ix, iy]) => Math.hypot(x - ix, (y - iy) * (y < iy ? 0.55 : 1.45)))) + (noise(x, y, 34, 5) - 0.5) * 56;
   const RF = 120;
   const massLag = [30, -14, -26, 16, 74, 10, 8, 36, 52, 96];
-  /** Burn state of a cluster: > 22 charred, > 0 burning, > -26 scorched, else still green. */
-  const burnOf = (c: Cluster): number => RF - burnD(c.x, c.y) - massLag[c.group] - (hash(c.seed, 0, 3) - 0.5) * 24;
-  /** Bark charring follows the same front (limbs inside the burnt crown are charred and glowing). */
-  const charAt = (x: number, y: number): number => clamp((RF + 12 - burnD(x, y)) / 26, 0, 1);
+  /** Burn state of a cluster: > 64 charred, > 0 burning, > -30 scorched, else still green. */
+  const burnOf = (c: Cluster): number => RF - burnD(c.x, c.y) - massLag[c.group] - (hash(c.seed, 0, 3) - 0.5) * 44;
+  /** Bark chars ahead of the leaves: limbs under the burning crown blacken and glow in their cracks. */
+  const charAt = (x: number, y: number): number => clamp((gy - 128 - y) / 46, 0, 1) * clamp((RF + 100 - burnD(x, y)) / 40, 0, 1) + clamp((RF + 12 - burnD(x, y)) / 26, 0, 1);
   const skeleton = (mode: 'idle' | 'burning' | 'burnt', t = 0): Tube[] => {
     const burnt = mode === 'burnt';
     const palB = burnt ? CHAR : BARK_OAK;
@@ -287,22 +287,22 @@ function oak(): WorldSprite {
   const sources: FireSource[] = [];
   const cand = C.cl
     .map((c) => ({ c, b: burnOf(c) }))
-    .filter(({ b }) => b > 0 && b < 34)
+    .filter(({ b }) => b > 0 && b < 92)
     .sort((a, b2) => a.c.y - b2.c.y || hash(a.c.seed, 5, 1) - hash(b2.c.seed, 5, 1));
   for (const { c, b } of cand) {
-    if (sources.some((s) => Math.hypot(s.x - c.x, (s.y - c.y) * 1.4) < 15)) continue;
+    if (sources.some((s) => Math.hypot(s.x - c.x, (s.y - c.y) * 1.3) < 20)) continue;
     const open = !C.cl.some((o) => o !== c && Math.abs(o.x - c.x) < 9 && o.y < c.y - 4 && o.y > c.y - 22);
     const top = clamp((gy - 250 - c.y) / 170, 0, 1);
-    const dying = b > 22 ? 0.6 : 1;
-    const h = (14 + 30 * top + 12 * hash(c.seed, 6, 1)) * (open ? 1.35 : 0.9) * dying;
-    sources.push({ x: c.x, y: c.y - c.r * 0.3, h, w: h * 0.42 + 4, z: c.z + 1, k: (0.62 + 0.38 * (c.z - zMin) / (zMax - zMin)) * (dying < 1 ? 0.85 : 1), seed: c.seed % 100000, n: h > 22 ? 3 : 2 });
+    const dying = b > 64 + (hash(c.seed, 4, 3) - 0.5) * 60 ? 0.65 : 1;
+    const h = (18 + 38 * top + 30 * hash(c.seed, 6, 1) ** 2) * (open ? 1.4 : 1) * dying;
+    sources.push({ x: c.x, y: c.y - c.r * 0.2, h, w: h * 0.36 + 6, z: c.z + 1, k: (0.62 + 0.38 * (c.z - zMin) / (zMax - zMin)) * (dying < 1 ? 0.85 : 1), seed: c.seed % 100000, n: 3 });
   }
   // The highest flames feed the smoke: two or three plumes drifting with the draft.
   const plumes: Plume[] = [];
   for (const s of sources.slice().sort((a, b) => a.y - b.y)) {
     if (plumes.length >= 3) break;
     if (plumes.some((p) => Math.abs(p.x - s.x) < 60)) continue;
-    plumes.push({ x: s.x + 6, y: s.y - s.h * 0.7, rise: 150 - plumes.length * 25, drift: 64, size: 15 - plumes.length * 2, seed: plumes.length * 3 + 1 });
+    plumes.push({ x: s.x + 10, y: s.y - s.h * 0.55, rise: 140 - plumes.length * 25, drift: 70, size: 19 - plumes.length * 3, seed: plumes.length * 3 + 1 });
   }
 
   const render = (f: number, mode: 'idle' | 'burning' | 'burnt'): Canvas => {
@@ -315,7 +315,7 @@ function oak(): WorldSprite {
       ashPile(B, gx, gy + 6, 50, 5, 5);
       const c = toFrame(B);
       // The last smoke still curls up from the broken limb and the ash.
-      const sm = smoke(W, H, [{ x: gx + 46, y: gy - 236, rise: 70, drift: 26, size: 6, seed: 5 }, { x: gx - 8, y: gy - 4, rise: 46, drift: 18, size: 5, seed: 9 }], 0.3);
+      const sm = smoke(W, H, [{ x: gx + 46, y: gy - 236, rise: 70, drift: 26, size: 6, seed: 5 }], 0.3);
       overlay(c, sm, 0.7);
       return c;
     }
@@ -329,8 +329,8 @@ function oak(): WorldSprite {
           const b = burnOf(c);
           const st = line ? 1 : clamp(1 + TH.filter((th) => v >= th).length, 1, 7);
           const flick = 0.5 + 0.5 * Math.sin(TAU * (t + hash(c.seed, 2, 3)));
-          if (b > 22) {
-            if (!line && v > 0.6 && hash(x >> 1, y >> 1, 41) < 0.08 + 0.1 * flick) return [FIRE, v > 0.72 ? 3 : 2];
+          if (b > 64 + (hash(c.seed, 4, 3) - 0.5) * 60) {
+            if (!line && v > 0.64 && hash(x >> 1, y >> 1, 41) < 0.04 + 0.07 * flick) return [FIRE, v > 0.74 ? 3 : 2];
             return [LEAF_CHAR, st];
           }
           if (b > 0) {
@@ -338,7 +338,7 @@ function oak(): WorldSprite {
             if (line || g < 0.36) return [LEAF_CHAR, 2];
             return [FIRE, g > 0.66 ? 4 : g > 0.5 ? 3 : 2];
           }
-          if (b > -26) return [LEAF_SCORCH, st];
+          if (b > -30) return [LEAF_SCORCH, st];
           return [c.pal, st];
         }
       : undefined;
@@ -365,7 +365,7 @@ function oak(): WorldSprite {
     }
     // Burning: the flames of this frame, then their heat lights the leaves and bark from below.
     const FL = flames(W, H, sources, t, { lean: 0.3, seed: 77 });
-    const G = glowField(FL, 7, 5, 2.8);
+    const G = glowField(FL, 11, 2, 3.6);
     for (let y = 0; y < H; y++)
       for (let x = 0; x < W; x++) {
         const pl = B.palAt(x, y);
@@ -379,7 +379,7 @@ function oak(): WorldSprite {
     // Smoke behind the flames, then the flames (hidden where a nearer clump stands in front),
     // then sparks riding the draft up and embers falling from the crown.
     overlay(c, smoke(W, H, plumes, t), 1);
-    drawFire(c, FL, (x, y, z) => B.has(x, y) && B.zAt(x, y) > z + 3);
+    drawFire(c, FL, (x, y, z) => B.has(x, y) && B.zAt(x, y) > z + 9);
     sparks(c, { x0: gx + 4, y0: gy - 380, spread: 230, rise: 120, drift: 40, n: 30, t, seed: 9 });
     sparks(c, { x0: gx - 10, y0: gy - 300, spread: 220, rise: 150, drift: 20, n: 12, t, seed: 21, fall: true });
     return c;

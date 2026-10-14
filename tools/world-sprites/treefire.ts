@@ -86,12 +86,12 @@ export function flames(W: number, H: number, src: FireSource[], t: number, o: { 
     for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1); y++)
       for (let x = Math.max(0, x0); x <= Math.min(W - 1, x1); x++) {
         const v = (T.by - (y + 0.5)) / T.h;
-        if (v < -0.3 || v > 1.05) continue;
-        const vv = Math.max(0, v);
+        if (v < -0.18 || v >= 0.995) continue;
+        const vv = clamp(v, 0, 0.995);
         // Centre line: the common draft bends the tip, a wave licks up the tongue.
         const wave = Math.sin(TAU * (vv * 0.85 - T.L * 1.3) + T.seed) * T.w * 0.32 * vv;
         const cx = T.bx + lean * vv * vv * T.h + wave;
-        let hw = v < 0 ? T.w * 0.5 * Math.sqrt(Math.max(0, 1 - (v / 0.3) ** 2)) : T.w * 0.5 * Math.pow(1 - vv, 0.8) * (1 + 0.18 * Math.sin(TAU * (vv * 1.6 - T.L) + T.seed * 2));
+        let hw = v < 0 ? T.w * 0.5 * Math.sqrt(Math.max(0, 1 - (v / 0.18) ** 2)) : T.w * 0.5 * Math.pow(1 - vv, 0.8) * (1 + 0.18 * Math.sin(TAU * (vv * 1.6 - T.L) + T.seed * 2));
         let u: number;
         if (fork > 0 && v > ts) {
           // The tip splits into two prongs that drift apart; the second one is a little shorter.
@@ -107,28 +107,35 @@ export function flames(W: number, H: number, src: FireSource[], t: number, o: { 
         // Heat: hottest low in the middle; vertical streaks scroll up through the body.
         const streak = (loopNoise(x * 2.2, y * 0.35, t, 1.6, 6, o.seed + 9) - 0.5) * 0.2;
         const heat = T.k * (1 - Math.pow(clamp(u, 0, 1), 2.2)) * (1 - 0.8 * Math.pow(vv, 0.85)) + nz * 0.22 + streak;
-        let st = heat > 0.88 && v < 0.32 ? 6 : heat > 0.7 ? 5 : heat > 0.52 ? 4 : heat > 0.34 ? 3 : heat > 0.17 ? 2 : 1;
+        let st = heat > 0.84 && v < 0.34 ? 6 : heat > 0.64 ? 5 : heat > 0.47 ? 4 : heat > 0.3 ? 3 : heat > 0.15 ? 2 : 1;
         if (u > 0.8) st = Math.min(st, T.k < 0.8 ? 1 : 2);
         const p = y * W + x;
         step[p] = st;
         z[p] = T.z;
         id[p] = ti;
       }
-    // Dying: the tip breaks off and floats up, shrinking.
-    if (T.L > 0.68) {
-      const q = (T.L - 0.68) / 0.32;
-      const r = T.w * 0.3 * (1 - q) + 0.4;
-      const wx = T.bx + lean * T.h + Math.sin(TAU * q + T.seed) * 2, wy = T.by - T.h - 3 - q * T.h * 0.6 - 2;
-      for (let y = Math.floor(wy - r * 1.8); y <= wy + r * 1.8; y++)
-        for (let x = Math.floor(wx - r); x <= wx + r; x++) {
-          if (x < 0 || y < 0 || x >= W || y >= H) continue;
-          const e = ((x + 0.5 - wx) / r) ** 2 + ((y + 0.5 - wy) / (r * 1.8)) ** 2;
-          if (e > 1) continue;
-          const p = y * W + x;
-          step[p] = e < 0.35 && r > 1.4 ? 4 : q > 0.5 ? 2 : 3;
-          z[p] = T.z;
-          id[p] = ti;
-        }
+    // Dying: the tip breaks off as a small pointed flick that rises and shrinks.
+    if (T.L > 0.66) {
+      const q = (T.L - 0.66) / 0.34;
+      const r = Math.max(0, T.w * 0.22 * (1 - q));
+      if (r >= 0.7) {
+        const fh = r * 3.4;
+        const wx = T.bx + lean * T.h * 0.9 + Math.sin(TAU * q + T.seed) * 1.5, wb = T.by - T.h * 0.8 - q * T.h * 0.5;
+        for (let y = Math.floor(wb - fh); y <= wb + r; y++)
+          for (let x = Math.floor(wx - r - 2); x <= wx + r + 2; x++) {
+            if (x < 0 || y < 0 || x >= W || y >= H) continue;
+            const v = (wb - (y + 0.5)) / fh;
+            if (v < -0.3 || v >= 0.99) continue;
+            const hw = v < 0 ? r * Math.sqrt(Math.max(0, 1 - (v / 0.3) ** 2)) : r * Math.pow(1 - v, 0.9);
+            const cx = wx + lean * v * v * fh;
+            const u = Math.abs(x + 0.5 - cx) / Math.max(0.4, hw);
+            if (u > 1 || hw < 0.35) continue;
+            const p = y * W + x;
+            step[p] = u < 0.45 && v < 0.4 && r > 1.4 ? (q < 0.5 ? 4 : 3) : q > 0.6 ? 1 : 2;
+            z[p] = T.z;
+            id[p] = ti;
+          }
+      }
     }
   });
   // Rim lines on a back tongue where a front tongue overlaps it, then the outer outline.
@@ -153,14 +160,18 @@ export function flames(W: number, H: number, src: FireSource[], t: number, o: { 
     for (let x = 0; x < W; x++) {
       const p = y * W + x;
       if (step[p] >= 0) continue;
-      let zz = -Infinity;
+      // No rim under a flame: its base melts into the glowing bed it rises from.
+      let zz = -Infinity, sideOrTop = false;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const xx = x + dx, yy = y + dy;
         if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
         const q = yy * W + xx;
-        if (step[q] >= 0) zz = Math.max(zz, z[q]);
+        if (step[q] >= 0) {
+          zz = Math.max(zz, z[q]);
+          if (dy !== -1) sideOrTop = true;
+        }
       }
-      if (zz > -Infinity) out.push([p, zz]);
+      if (zz > -Infinity && sideOrTop) out.push([p, zz]);
     }
   for (const [p, zz] of out) {
     step[p] = 0;
@@ -186,7 +197,7 @@ export function drawFire(c: Canvas, F: FireLayer, hidden: (x: number, y: number,
  */
 export function glowField(F: FireLayer, R: number, up: number, gain: number): Float32Array {
   const { W, H } = F;
-  let a = new Float32Array(W * H);
+  let a: Float32Array = new Float32Array(W * H);
   for (let p = 0; p < W * H; p++) a[p] = F.step[p] >= 2 ? (F.step[p] - 1) / 5 : 0;
   const blur = (src: Float32Array, horiz: boolean): Float32Array => {
     const dst = new Float32Array(W * H);
@@ -246,7 +257,7 @@ export function sparks(c: Canvas, o: { x0: number; y0: number; spread: number; r
 // --- smoke --------------------------------------------------------------------------------
 
 /** Smoke greys (lit from the upper left) and the fire-lit brown of the underside. */
-const SMOKE = ['#262224', '#3e383a', '#585153', '#746c6c', '#928a86', '#b0a8a0'].map((h) => hex(h));
+const SMOKE = ['#1e1a1c', '#302a2c', '#443d3e', '#5a5252', '#71696a', '#8a8282'].map((h) => hex(h));
 const SMOKE_WARM = ['#3a1c16', '#5a2c1c', '#7a4026'].map((h) => hex(h));
 
 export interface Plume {
@@ -268,22 +279,26 @@ export interface Plume {
 export function smoke(W: number, H: number, plumes: Plume[], t: number): Canvas {
   const lobes: { x: number; y: number; r: number; z: number; id: number; s: number }[] = [];
   plumes.forEach((pl, pi) => {
-    const K = 8;
-    for (const [ci, off, side, size] of [[0, 0, 1, 1], [1, 0.5, -1, 0.82]] as [number, number, number, number][])
+    const K = 9;
+    // Three interleaved chains that spread apart as they rise, so the column widens into a cloud.
+    for (const [ci, off, side, size] of [[0, 0, 1, 1], [1, 0.34, -1, 0.85], [2, 0.67, 0.4, 0.7]] as [number, number, number, number][])
       for (let k = -1; k < K; k++) {
         const s = (k + off + t) / K;
         if (s <= 0.02 || s >= 1) continue;
-        const x = pl.x + pl.drift * Math.pow(s, 1.5) + side * (2 + 3 * s) * Math.sin(s * TAU * 1.1 + ci * 2 + pl.seed);
-        const y = pl.y - s * pl.rise;
+        const spread = side * (2 + pl.size * 0.9 * s) + (2 + 3 * s) * Math.sin(s * TAU * 1.1 + ci * 2 + pl.seed);
+        const x = pl.x + pl.drift * Math.pow(s, 1.5) + spread;
+        const y = pl.y - s * pl.rise + ci * 3;
         const grow = s < 0.12 ? 0.55 + 0.45 * (s / 0.12) : 1;
-        const r = pl.size * (0.35 + 0.95 * Math.sqrt(s)) * grow * size;
+        const r = pl.size * (0.32 + 1.05 * Math.sqrt(s)) * grow * size;
         if (r < 1.5) continue;
-        const pid = (pi * 2 + ci) * 64 + k + 1;
+        const pid = (pi * 3 + ci) * 64 + k + 1;
         const rot = s * 6 + ci * 1.7 + pl.seed;
-        lobes.push({ x, y, r: r * 0.8, z: s * 10 + ci * 0.5, id: pid * 8, s });
-        for (let q = 0; q < 4; q++) {
-          const a = rot + (q / 4) * TAU;
-          lobes.push({ x: x + Math.cos(a) * r * 0.5, y: y + Math.sin(a) * r * 0.38, r: r * (0.5 + 0.12 * Math.sin(q * 2.3 + rot)), z: s * 10 + ci * 0.5 - Math.sin(a) * 0.4, id: pid * 8 + 1 + q, s });
+        lobes.push({ x, y, r: r * 0.72, z: s * 10 + ci * 0.5, id: pid * 8, s });
+        // Uneven lobes (a cauliflower billow, not a ball): sizes and reaches vary around the core.
+        for (let q = 0; q < 5; q++) {
+          const a = rot + (q / 5) * TAU + Math.sin(q * 1.7 + pl.seed) * 0.4;
+          const reach = 0.42 + 0.22 * Math.sin(q * 2.9 + rot * 0.7);
+          lobes.push({ x: x + Math.cos(a) * r * reach * 1.15, y: y + Math.sin(a) * r * reach * 0.8, r: r * (0.38 + 0.2 * (0.5 + 0.5 * Math.sin(q * 2.3 + rot))), z: s * 10 + ci * 0.5 - Math.sin(a) * 0.4, id: pid * 8 + 1 + q, s });
         }
       }
   });
@@ -324,7 +339,7 @@ export function smoke(W: number, H: number, plumes: Plume[], t: number): Canvas 
       let col = SMOKE[clamp(st, 0, 5)];
       // Fire-lit underside low in the column.
       if (s < 0.28 && vy[i] > 0.1) col = SMOKE_WARM[clamp(st - 1, 0, 2)];
-      const a = (s < 0.45 ? 215 : s < 0.65 ? 175 : s < 0.82 ? 130 : 85) * (edge ? 0.6 : 1) * (s < 0.06 ? 0.7 : 1);
+      const a = (s < 0.12 ? 120 : s < 0.45 ? 200 : s < 0.65 ? 165 : s < 0.82 ? 120 : 80) * (edge ? 0.6 : 1);
       c.set(x, y, [col[0], col[1], col[2], Math.round(a)]);
     }
   return c;

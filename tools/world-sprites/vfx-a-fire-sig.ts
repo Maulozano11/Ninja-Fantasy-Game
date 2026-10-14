@@ -296,7 +296,8 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
     const da = deadAt(x), u = (x - x0) / len;
     return shapeAt(x, row) * st.burn * (da < 0 ? 1 : smooth(da, da + 0.12, u));
   };
-  const bodyK = smooth(0.2, 0.55, st.burn);
+  const er = (x: number, y: number) => pfbm(x, y + t * 180, 9, 2, 0, 180, seed + 33);
+  const bodyK = smooth(0.5, 0.85, st.burn);
   for (let row = 0; row < 3; row++) {
     const f = rows[row];
     // The wave's solid body: a wall of fire from the ground up to about 60% of the row height,
@@ -311,7 +312,7 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
         if (hFull <= 0) return 0;
         const front = Math.sqrt(clamp((crestX + (surging ? 6 : 0) - x + 6 * (pnoise(y, row, 5, 0, 0, seed + 47) - 0.5)) / (surging ? 22 : 38), 0, 1));
         const hb = hFull * 0.6 * bodyK * (0.82 + 0.3 * pnoise(x - t * 90, row * 40, 22, 90, 0, seed + 40 + row)) * front;
-        if (hb < 4) return 0;
+        if (hb < 10) return 0;
         const u = (yg - y) / hb;
         if (u >= 1 || u < 0) return 0;
         return lerp(rowHeat[row] * 0.86, 0.4, Math.pow(u, 1.1));
@@ -338,13 +339,15 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
     if (ch > 30) {
       const yg = gy - halfDepth(crestX - x0);
       const top = yg - ch * 0.95;
-      const lip = bez([crestX - ch * 0.34, top + ch * 0.26], [crestX - ch * 0.12, top - ch * 0.08], [crestX + ch * 0.22, top + ch * 0.0], [crestX + ch * 0.19, top + ch * 0.28], 24)
-        .concat(bez([crestX + ch * 0.19, top + ch * 0.28], [crestX + ch * 0.17, top + ch * 0.4], [crestX + ch * 0.09, top + ch * 0.42], [crestX + ch * 0.05, top + ch * 0.35], 10).slice(1));
-      tubeShade(lipF, lip, (u) => ch * lerp(0.11, 0.022, Math.pow(u, 0.85)), (u, sd) => (sd > 0.35 ? 0.4 : sd > -0.45 ? 0.7 : 0.88) - u * 0.12);
-      for (let k = 0; k < 5; k++) {
-        const q = lip[Math.round((0.12 + k * 0.1) * (lip.length - 1))];
-        tongue(lipF, [q[0], q[1] - ch * 0.02], (-155 + k * 9) * (Math.PI / 180), ch * (0.17 - k * 0.018) + Math.sin(ph + k) * 3, ch * 0.028, 0.72, 0.16, ph + k * 1.3, 0.1);
+      const lip = bez([crestX - ch * 0.36, top + ch * 0.5], [crestX - ch * 0.2, top + ch * 0.0], [crestX + ch * 0.14, top - ch * 0.06], [crestX + ch * 0.23, top + ch * 0.22], 26)
+        .concat(bez([crestX + ch * 0.23, top + ch * 0.22], [crestX + ch * 0.24, top + ch * 0.34], [crestX + ch * 0.15, top + ch * 0.4], [crestX + ch * 0.1, top + ch * 0.33], 10).slice(1));
+      tubeShade(lipF, lip, (u) => ch * lerp(0.13, 0.02, Math.pow(u, 0.8)), (u, sd) => (sd > 0.35 ? 0.42 : sd > -0.45 ? 0.68 : 0.86) - u * 0.12);
+      // Spray streaming back off the top of the lip, and flames licking up its back.
+      for (let k = 0; k < 6; k++) {
+        const q = lip[Math.round((0.2 + k * 0.1) * (lip.length - 1))];
+        tongue(lipF, [q[0], q[1] - ch * 0.03], (-150 + k * 8) * (Math.PI / 180), ch * (0.2 - k * 0.022) + Math.sin(ph + k) * 3, ch * 0.03, 0.74, 0.16, ph + k * 1.3, 0.12);
       }
+      erode(lipF, 0.5, er);
     }
   }
   // Burning ground over the cone's footprint, with ragged edges; it breaks into glowing patches
@@ -357,16 +360,16 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
     if (d < 16 || Math.abs(y - gy) > hd) return 0;
     const n = pnoise(x, y, 6, 0, 0, seed + 31);
     const da = deadAt(x);
-    if (da >= 0 && u < da) return n > 0.8 + Math.max(0, st.dead - 0.6) * 0.6 ? 0.34 : 0;
     if (st.dead > 0) {
-      const cut = 0.2 + st.dead * 0.55;
+      // Dying: the bed breaks into scattered embers, thinning out toward the caster and over time.
+      const behind = da >= 0 ? smooth(da + 0.15, da - 0.1, u) : 0;
+      const cut = 0.62 + st.dead * 0.22 + behind * 0.12;
       if (n < cut) return 0;
-      return (0.3 + 0.45 * ((n - cut) / (1 - cut))) * Math.min(1, st.burn * 2) * (da >= 0 ? smooth(da, da + 0.15, u) : 1);
+      return 0.3 + 0.4 * ((n - cut) / (1 - cut)) * (1 - behind * 0.5);
     }
     const v = (0.42 + 0.3 * pnoise(x, y, 8, 0, 0, seed + 32)) * Math.min(1, st.burn * 1.5);
     return v > 0.12 || n > 0.6 ? Math.max(v, 0.2) : 0;
   });
-  const er = (x: number, y: number) => pfbm(x, y + t * 180, 9, 2, 0, 180, seed + 33);
   rows.forEach((f) => erode(f, 0.55, er));
   // Smoke: billows rolling over the fire (plus a dark ceiling on the great one, growing in from
   // the caster's side); nothing is ever cut by the frame.
@@ -379,10 +382,11 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
       const x = x0 + 50 + u * (xEnd - x0 - 50);
       const uu = (x - x0) / len;
       const top = gy - halfDepth(x - x0) - hMax * lerp(0.26, 1, Math.pow(uu, 0.75)) * Math.max(0.55, st.burn);
-      const r = (great ? 22 : 16) * (0.6 + 0.6 * st.smoke) * rr(seed + 35, k, 0.6, 1.25) * lerp(0.55, 1, uu);
+      if (st.phase === 'fade' && rr(seed + 36, k, 0, 1) > st.smoke * 1.4) continue;
+      const r = (great ? 22 : 16) * (0.6 + 0.6 * (st.phase === 'fade' ? 0.7 : st.smoke)) * rr(seed + 35, k, 0.6, 1.25) * lerp(0.55, 1, uu);
       const y = Math.max(r + 3, top - st.smoke * 20 + rr(seed + 34, k, -r * 0.9, r * 0.3) - Math.sin(ph + k) * 1.5);
       if (great && st.dragon > 0.01 && x > crestX - 200) continue;
-      smoke.disc(x + Math.sin(ph + k * 1.7) * 2, y, r, (great ? 0.85 : 0.7) * sm, 2.4);
+      smoke.disc(x + Math.sin(ph + k * 1.7) * 2, y, r, (great ? 0.85 : 0.7) * (st.phase === 'fade' ? 1 : sm), 2.4);
     }
     if (great) {
       const xs = x0 + 100;
@@ -390,9 +394,10 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
       for (let k = 0; k < 30; k++) {
         const x = xs + ((k + 0.5) / 30) * (xEnd - xs);
         if (x > crestX - 40) continue;
-        const r = rr(seed + 39, k, 18, 28) * (0.35 + 0.65 * grow) * smooth(xs - 20, xs + 140, x);
+        if (st.phase === 'fade' && rr(seed + 40, k, 0, 1) > st.smoke * 1.4) continue;
+        const r = rr(seed + 39, k, 18, 28) * (st.phase === 'fade' ? 1 : 0.35 + 0.65 * grow) * smooth(xs - 20, xs + 140, x);
         if (r < 4) continue;
-        smoke.disc(x + Math.sin(ph + k * 1.3) * 3, r + 4 + rr(seed + 38, k, 0, 12), r, 0.8 * Math.min(1, st.smoke * 1.6), 2.4);
+        smoke.disc(x + Math.sin(ph + k * 1.3) * 3, r + 4 + rr(seed + 38, k, 0, 12), r, 0.8 * (st.phase === 'fade' ? 1 : Math.min(1, st.smoke * 1.6)), 2.4);
       }
     }
   }
@@ -401,7 +406,7 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
   layers.push(bed.any() ? render(bed, FIRE, { th: TH, hi: 5, rim: [1] }) : null);
   const streaks = (x: number, y: number) => (pnoise(x * 0.5, (y + t * 180) * 0.15, 2, 0, 27, seed + 46) - 0.5) * 0.26;
   layers.push(render(rows[0], FIRE, { th: TH, rim: [1], hi: 5, jitter: streaks }));
-  if (lipF.any()) layers.push(render(lipF, FIRE, { th: TH, rim: [1] }));
+  if (lipF.any()) layers.push(render(lipF, FIRE, { th: TH, rim: [1], jitter: streaks }));
   const em: { x: number; y: number; s: number }[] = [];
   if (great && st.dragon > 0.01) {
     // The dragon rides the crest: placed on the wave's shape (not its burn), so it holds still
@@ -415,11 +420,13 @@ function waveFrame(w: Wave, st: WaveState): Canvas {
     layers.push(dr.c);
     // Flames wrapping the root of the neck so it rises out of the wave.
     const roots = new Field(W, H);
-    for (let k = 0; k < 7; k++) {
-      const x = neckBase[0] - 26 + k * 9 + rr(seed + 83, k, -3, 3);
-      const hgt = (34 + rr(seed + 84, k, 0, 22)) * Math.min(1, st.dragon * 1.4 + 0.2) * (0.6 + 0.4 * st.burn);
-      tongue(roots, [x, neckBase[1] + 30], -Math.PI / 2 + rr(seed + 85, k, -0.15, 0.15), hgt, 8, 0.9, 0.14, ph + k * 1.7, 0);
-    }
+    const rootK = smooth(0.1, 0.6, st.dragon) * st.burn;
+    if (rootK > 0.05)
+      for (let k = 0; k < 7; k++) {
+        const x = neckBase[0] - 26 + k * 9 + rr(seed + 83, k, -3, 3);
+        const hgt = (34 + rr(seed + 84, k, 0, 22)) * rootK;
+        tongue(roots, [x, neckBase[1] + 30], -Math.PI / 2 + rr(seed + 85, k, -0.15, 0.15), hgt, 8 * Math.min(1, 0.4 + rootK), 0.9, 0.14, ph + k * 1.7, 0);
+      }
     erode(roots, 0.45, er);
     layers.push(render(roots, FIRE, { th: TH, rim: [1], jitter: streaks }));
     for (const [x, y] of dr.edge) em.push({ x: x + rr(seed + 81, Math.round(x + y), -6, 6), y: y - rr(seed + 82, Math.round(x * y), 4, 14), s: (x + y) % 3 ? 1 : 2 });

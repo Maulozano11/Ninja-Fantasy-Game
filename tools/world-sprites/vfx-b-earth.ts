@@ -3,8 +3,10 @@
 // wall and a dust whirlwind with levitating stones.
 // Palette: dark brown, umber, ochre, tan, sand, pale sand, with moss-green accents.
 
-import { Anim, Canvas, WorldSprite, lambert } from './kit';
-import { L, Pt, Puff, TAU, chip, clamp, facetRock, fract, gasLayer, lerp, pal, pnoise, polar, puffs, rnd, rockPts, rot, smooth } from './vfx-b-lib';
+import { Anim, Canvas, WorldSprite, fbm, hash, hex, lambert, mix } from './kit';
+import { MOSS_R, outlineTinted } from './landmarks-paint';
+import { L, Pt, Puff, TAU, chip, clamp, facetRock, fract, gasLayer, lerp, pal, pnoise, polar, puffs, rnd, rockPts, rot, segDist, smooth } from './vfx-b-lib';
+import { HGT, Hits, LEN, Orient, WallKey, march, orientations, proj } from './vfx-b-wall3d';
 
 /** 0 outline, 1 dark brown, 2 umber, 3 brown ochre, 4 ochre, 5 tan ochre, 6 tan, 7 sand, 8 pale sand. */
 export const E = pal('#26140a', '#4a2812', '#6e3e1a', '#95561e', '#b8701f', '#d48c34', '#e8ad55', '#f6d184', '#fff3cf');
@@ -772,135 +774,453 @@ function blast(): WorldSprite {
   return sprite('blast', 'Earth blast: split ground, slab rim and spike crown', [ax, ay], { blast: once(frames, 12) });
 }
 
-const WW = 272, WH = 128, WGY = 120, WALL_H = 103, WALL_W = 257;
+// --- the stone wall, in three orientations ---------------------------------------------------
+//
+// Big fitted blocks and tall slabs of different sizes, each a solid with chamfered top edges,
+// chipped corners (bright fresh breaks), facets on every face, branching cracks with a lit lip
+// and pits; joints recessed and packed with earth; moss cushions on the crown with strands
+// hanging over the front; a damp, cooler band at the foot; rubble and dust at the base. The
+// solid is ray-cast with the battle projection (vfx-b-wall3d.ts), so the horizontal, 3/4 and
+// depth walls are all painted from the same blocks. Ramps follow the landmarks standard:
+// hand-made, cool violet-brown shadows to warm sand lights, outlines tinted by the material.
 
-/** The stacked-rock wall: irregular stones (Voronoi cells) with mortar gaps, moss on top. */
-function wallArt(c: Canvas, gy: number, seed: number): void {
-  const x0 = Math.round((WW - WALL_W) / 2), x1 = x0 + WALL_W, top = gy - WALL_H;
-  const sites: { x: number; y: number; top: number; row: number; tilt: number; tone: number }[] = [];
-  const rows = 4;
-  for (let r = 0; r < rows; r++) {
-    const yc = gy - (r + 0.5) * (WALL_H / rows);
-    let x = x0 + 6 + rnd(seed, r) * 12 - (r % 2 ? 16 : 0);
+/** Wall stone: 0 outline .. 7 glint. */
+const WST = pal('#1c1418', '#33242a', '#4f3830', '#6e4d36', '#8f663f', '#b3864e', '#d4aa6c', '#efd49c');
+/** The same stone wet at the foot of the wall: darker and cooler. */
+const WST_WET = WST.map((c) => mix(c, hex('#28303c'), 0.34));
+/** Packed earth and grit in the joints. */
+const JOINT = pal('#140d0d', '#251814', '#36241b', '#4b3324', '#62452f', '#7a5a3c');
+/** Half thickness of the wall in px (0.55 m). */
+const HALF_T = 15.5;
+
+interface Block {
+  u0: number;
+  u1: number;
+  v0: number;
+  v1: number;
+  crown: boolean;
+  seed: number;
+  prot: number;
+  tone: number;
+  pu: number;
+  pv: number;
+  jag: [number, number, number];
+  crack: Pt[][];
+  /** Facet sites on the face (u, v) and their light offsets. */
+  fs: [number, number, number][];
+}
+
+/** A crack from the block's top edge wandering down, with one branch (block face coordinates). */
+function crackIn(b: Block, seed: number): Pt[][] {
+  const main: Pt[] = [];
+  let u = lerp(b.u0 + 6, b.u1 - 6, rnd(seed, 20)), v = b.v1 - 1.5;
+  const len = (b.v1 - b.v0) * (0.45 + rnd(seed, 21) * 0.35);
+  let drift = 0;
+  for (let k = 0; k < len; k += 1.5) {
+    main.push([u, v]);
+    const r = rnd(seed, 22, k);
+    if (r < 0.25) drift = -0.8;
+    else if (r > 0.75) drift = 0.8;
+    else if (r < 0.4) drift = 0;
+    u += drift;
+    v -= 1.5;
+  }
+  const paths = [main];
+  if (main.length > 6) {
+    const at = main[Math.floor(main.length * 0.4)];
+    const dir = rnd(seed, 23) < 0.5 ? -1 : 1;
+    const br: Pt[] = [at];
+    for (let k = 1; k < 6; k++) br.push([at[0] + dir * k * 1.4, at[1] - k * 0.9]);
+    paths.push(br);
+  }
+  return paths;
+}
+
+/** Courses of big blocks with staggered joints and two tall slabs through the lower courses. */
+function stoneBlocks(seed: number): Block[] {
+  const courses: [number, number][] = [[0, 37], [37, 71], [71, HGT]];
+  const lens: [number, number][] = [[42, 66], [30, 50], [34, 56]];
+  const tallAt = [44 + rnd(seed, 1) * 30, 168 + rnd(seed, 2) * 34];
+  const blocks: Block[] = [];
+  const occ: [number, number][] = [];
+  for (let c = 0; c < 3; c++) {
+    let u = c === 0 ? 0 : -(6 + rnd(seed, c, 3) * 14);
     let k = 0;
-    while (x < x1 + 10) {
-      sites.push({ x, y: yc + (rnd(seed, r, k) - 0.5) * 9, top: top + rnd(seed + 1, r, k) * 9, row: r, tilt: (rnd(seed + 2, r, k) - 0.5) * 0.5, tone: (rnd(seed + 12, r, k) - 0.5) * 0.16 });
-      x += 24 + rnd(seed + 3, r, k) * 18;
+    while (u < LEN - 0.5) {
+      let len = lens[c][0] + rnd(seed, c * 50 + k, 4) * (lens[c][1] - lens[c][0]);
+      let tall = false;
+      if (c === 0 && tallAt.some((t) => t >= u && t < u + len)) {
+        tall = true;
+        len = 26 + rnd(seed, k, 5) * 8;
+      }
+      if (c === 1) {
+        const inOcc = occ.find(([a0, b0]) => u >= a0 - 0.5 && u < b0);
+        if (inOcc) {
+          u = inOcc[1];
+          continue;
+        }
+        const nxt = occ.find(([a0]) => a0 > u && a0 < u + len);
+        if (nxt) len = nxt[0] - u;
+      }
+      if (LEN - (u + len) < 14) len = LEN - u;
+      const u0 = Math.max(0, u), u1 = Math.min(LEN, u + len);
+      if (u1 - u0 >= 4) {
+        const v0 = courses[c][0], v1 = tall ? courses[1][1] : courses[c][1];
+        const s2 = seed * 31 + c * 17 + k;
+        const b: Block = {
+          u0, u1, v0, v1, crown: c === 2, seed: s2,
+          prot: rnd(s2, 1) < 0.3 ? 1.5 : rnd(s2, 1) > 0.8 ? -1 : 0,
+          tone: (rnd(s2, 2) - 0.5) * 0.14,
+          pu: lerp(u0, u1, 0.3 + rnd(s2, 3) * 0.4),
+          pv: lerp(v0, v1, 0.35 + rnd(s2, 4) * 0.35),
+          jag: [-(1 + rnd(s2, 5) * 5), rnd(s2, 6) * 4, -(1 + rnd(s2, 7) * 5)],
+          crack: [],
+          fs: [],
+        };
+        const nf = 3 + Math.floor(((u1 - u0) * (v1 - v0)) / 700);
+        for (let q = 0; q < nf; q++) {
+          const fu = lerp(u0, u1, rnd(s2, 30 + q)), fv = lerp(v0, v1, rnd(s2, 50 + q));
+          const up = (fv - v0) / (v1 - v0);
+          b.fs.push([fu, fv, (up - 0.45) * 0.42 + (rnd(s2, 70 + q) - 0.5) * 0.16]);
+        }
+        if (tall) occ.push([u0, u1]);
+        if ((u1 - u0) * (v1 - v0) > 1300 && rnd(s2, 8) < 0.75) b.crack = crackIn(b, s2);
+        blocks.push(b);
+      }
+      u += len;
       k++;
     }
   }
-  const stones = new L(WW, WH), mortar = new L(WW, WH), owner = new Int16Array(WW * WH).fill(-1);
-  for (let y = top; y <= gy; y++)
-    for (let x = x0; x < x1; x++) {
-      let d1 = Infinity, d2 = Infinity, i1 = -1;
-      for (let i = 0; i < sites.length; i++) {
-        const s = sites[i];
-        const d = Math.hypot((x + 0.5 - s.x) * 0.8, (y + 0.5 - s.y) * 1.15);
-        if (d < d1) {
-          d2 = d1;
-          d1 = d;
-          i1 = i;
-        } else if (d < d2) d2 = d;
-      }
-      const s = sites[i1];
-      if (s.row === rows - 1 && y < s.top + Math.abs(x - s.x) * 0.12) continue;
-      const edge = x <= x0 + 1 || x >= x1 - 2;
-      if (d2 - d1 < 1.5 || edge) {
-        mortar.set(x, y, 1);
-        continue;
-      }
-      owner[y * WW + x] = i1;
-      const u = (x + 0.5 - s.x) / 18, v = (y + 0.5 - s.y) / 14;
-      const nx = u * 0.75 + s.tilt, ny = v * 0.75 - 0.1, nz = Math.sqrt(Math.max(0.15, 1 - u * u * 0.5 - v * v * 0.5));
-      const ln = Math.hypot(nx, ny, nz);
-      let li = lambert(nx / ln, ny / ln, nz / ln, 0.12) + s.tone + (pnoise(x, y, 3, WW, seed + 4) - 0.5) * 0.16;
-      const b = d2 - d1;
-      if (b < 3.2) li += (x + 0.5 - s.x) * 0.55 + (y + 0.5 - s.y) < 0 ? 0.16 : -0.18;
-      stones.set(x, y, FACETS[clamp(Math.floor(li * 7), 0, 6)]);
-    }
-  for (let x = x0; x < x1; x++)
-    for (let y = top; y < gy; y++)
-      if (stones.get(x, y) >= 0) {
-        if (y < gy - WALL_H * 0.6) {
-          stones.set(x, y, 7);
-          if (stones.get(x, y + 1) >= 0) stones.set(x, y + 1, 6);
-        }
-        break;
-      }
-  for (let k = 0; k < 10; k++) {
-    let x = x0 + 10 + rnd(seed + 5, k) * (WALL_W - 20), y = top + 20 + rnd(seed + 6, k) * (WALL_H - 30);
-    for (let s = 0; s < 6; s++) {
-      const nx = x + (rnd(seed + 7, k, s) - 0.3) * 4, ny = y + 1.5 + rnd(seed + 8, k, s) * 2;
-      stones.line(x, y, nx, ny, (xx, yy) => (stones.get(xx, yy) >= 0 ? 1 : null));
-      x = nx;
-      y = ny;
-    }
-  }
-  for (let k = 0; k < 40; k++) {
-    const x = Math.round(x0 + 4 + rnd(seed + 13, k) * (WALL_W - 8)), y = Math.round(top + 8 + rnd(seed + 14, k) * (WALL_H - 12));
-    if (stones.get(x, y) >= 3 && stones.get(x + 1, y + 1) >= 3) {
-      stones.set(x, y, 2);
-      stones.set(x + 1, y + 1, Math.min(7, stones.get(x + 1, y + 1) + 1));
-    }
-  }
-  stones.clean();
-  mortar.render(c, E, { outline: null });
-  stones.render(c, E, { outline: E[0] });
-  const ml = new L(WW, WH);
-  ml.fill((x, y) => {
-    const i = owner[y * WW + x];
-    if (i < 0) return false;
-    const s = sites[i];
-    let d = 0;
-    while (d < 12 && y - d - 1 >= 0 && owner[(y - d - 1) * WW + x] === i) d++;
-    const depth = s.row === rows - 1 ? 2 + pnoise(x, 0, 2.5, WW, seed + 9) * 5 : rnd(seed + 10, i) < 0.22 ? pnoise(x, 1, 2, WW, seed + 11) * 4 - 1 : -1;
-    return d <= depth;
-  }, (x, y) => mossOver(stones.get(x, y)));
-  ml.render(c, MOSS, { outline: null });
+  return blocks;
 }
 
-/** Wall: stacked rock grinding up out of the ground ('rise'), then trickling grit ('idle'). */
-function wall(): WorldSprite {
-  const full = new Canvas(WW, WH);
-  wallArt(full, WGY, 400);
-  const rise = range(6).map((f) => {
-    const c = new Canvas(WW, WH);
-    const p = [0.16, 0.48, 0.8, 1.04, 1, 1][f];
-    const off = Math.round((1 - p) * WALL_H);
-    const sx = f < 3 ? (f % 2 ? 1 : -1) : 0;
-    for (let y = 0; y < WH; y++)
-      for (let x = 0; x < WW; x++) {
-        const sy = y - off;
-        if (y > WGY + 1 || sy < 0) continue;
-        const col = full.get(x - sx, sy);
-        if (col[3]) c.set(x, y, col);
-      }
-    const list: Puff[] = [];
-    const pr = [7, 9, 9.5, 8.5, 6.5, 4.5][f];
-    for (let k = 0; k < 22; k++) {
-      const big = rnd(412, k) < 0.4;
-      list.push({ x: 8 + rnd(410, k) * 256, y: WGY - 2 - rnd(411, k) * 5 - (f >= 3 ? (f - 2) * 1.5 : 0) - (big ? 2 : 0), r: pr * (big ? 1 : 0.55 + rnd(413, k) * 0.25), steps: dustAge(f / 6 + (big ? 0 : 0.2)) });
-    }
-    list.sort((p, q) => p.y - q.y);
-    dust(c, list, { seed: 413 + f, alpha: f >= 5 ? 210 : 255 });
-    if (f <= 3) grit(c, range(24).map((k) => [8 + rnd(414, k) * 256, WGY - off - 4 - rnd(415, k) * 18 - f * 3, rnd(416, k) < 0.4 ? 3 : 2]));
-    if (f >= 1 && f <= 3)
-      for (let k = 0; k < 5; k++) stone(c, 20 + rnd(417, k) * 232, WGY - off - 10 - f * 5 - rnd(418, k) * 8, 3 + rnd(419, k) * 1.5, 430 + k, f + k, { n: 6 });
-    return c;
-  });
-  const idle = range(N).map((f) => {
-    const c = full.clone();
-    grit(c, range(8).map((k) => [20 + rnd(420, k) * 232, WGY - WALL_H + 12 + fract(rnd(421, k) + f / N) * (WALL_H - 16), 2]));
-    const list: Puff[] = [];
-    for (let k = 0; k < 6; k++) {
-      const ph = fract(rnd(422, k) + f / N);
-      list.push({ x: 20 + k * 46 + ph * 6, y: WGY - 1 - ph * 3, r: 3.8 * (1 - ph * 0.6), steps: dustAge(ph) });
-    }
-    dust(c, list, { seed: 423, alpha: 220 });
-    return c;
-  });
-  return sprite('wall', 'Earth wall: stacked rock', [WW / 2, WGY], { rise: once(rise, 12), idle: loop(idle, 8) });
+interface Probe {
+  bi: number;
+  vv: number;
+  joint: boolean;
+  chip: boolean;
+  hs: number;
+  top: number;
 }
+
+/** The stone wall solid: blocks, per-block rise offsets, joints, chips and chamfers. */
+class StoneWall {
+  readonly blocks: Block[];
+  readonly col: number[][] = [];
+  off: number[];
+  constructor(seed: number) {
+    this.blocks = stoneBlocks(seed);
+    this.off = this.blocks.map(() => 0);
+    for (let u = 0; u <= LEN; u++) this.col.push(this.blocks.map((b, i) => (u >= b.u0 && u < b.u1) || (u === LEN && b.u1 === LEN) ? i : -1).filter((i) => i >= 0));
+  }
+  topAt(b: Block, u: number): number {
+    if (!b.crown) return b.v1;
+    const t = clamp((u - b.u0) / (b.u1 - b.u0), 0, 1);
+    return b.v1 + (t < 0.5 ? lerp(b.jag[0], b.jag[1], t * 2) : lerp(b.jag[1], b.jag[2], (t - 0.5) * 2));
+  }
+  probe(u0: number, v: number): Probe | null {
+    // Joints wander a little so the stones read as hand-fitted, not sawn.
+    const u = clamp(u0 + (pnoise(v * 1.3, 7, 6, 160, 801) - 0.5) * 3.2, 0, LEN);
+    v += (pnoise(u0, 3, 7, LEN, 802) - 0.5) * 3;
+    const ui = clamp(Math.floor(u), 0, LEN);
+    for (const bi of this.col[ui]) {
+      const b = this.blocks[bi];
+      const vv = v + this.off[bi];
+      const top = this.topAt(b, u);
+      if (vv < b.v0 || vv > top) continue;
+      const dl = Math.min(b.u0 > 0 ? u - b.u0 : 99, b.u1 < LEN ? b.u1 - u : 99, b.v0 > 0 ? vv - b.v0 : 99, b.crown ? 99 : top - vv);
+      const joint = dl < 1.45;
+      const dEdge = Math.min(b.u0 > 0 ? u - b.u0 : 99, b.u1 < LEN ? b.u1 - u : 99, top - vv, b.v0 > 0 ? vv - b.v0 : 99);
+      // Corner knocks (bigger) and small chips along the edges.
+      let chip = !joint && dEdge < 3.2 && hash(Math.floor(u / 2.5), Math.floor(vv / 2.5), b.seed + 3) < 0.16;
+      if (!joint)
+        for (const [cu, cv, k] of [[b.u0, top, 0], [b.u1, top, 1], [b.u0, b.v0, 2], [b.u1, b.v0, 3]] as [number, number, number][]) {
+          if ((k >= 2 && b.v0 === 0) || (k % 2 === 0 && b.u0 === 0 && k >= 2) || rnd(b.seed, 90 + k) > 0.55) continue;
+          if (Math.hypot(u - cu, vv - cv) < 2.5 + rnd(b.seed, 95 + k) * 2.5) chip = true;
+        }
+      let hs = HALF_T + b.prot;
+      if (joint) hs = HALF_T - 3.5;
+      else if (chip) hs -= 2.6;
+      return { bi, vv, joint, chip, hs, top: joint && b.crown ? top - 4 : top };
+    }
+    return null;
+  }
+  inside = (u: number, s: number, v: number): number => {
+    if (u < 0) return 3;
+    if (u > LEN) return 4;
+    const p = this.probe(u, v);
+    if (!p) return 0;
+    if (p.vv > p.top) return 0;
+    if (Math.abs(s) > p.hs) return 1;
+    const over = Math.abs(s) - (p.hs - 2.5);
+    if (!p.joint && over > 0 && p.vv > p.top - over * 1.2) return 0;
+    return -1;
+  };
+}
+
+/** Stone tone of a hit: [layer (0 stone, 1 wet, 2 joint), step]. */
+function stoneTone(w: StoneWall, face: number, u: number, s: number, v: number, haze: boolean): [number, number] {
+  const p = w.probe(u, v);
+  if (!p) return [0, 4];
+  const b = w.blocks[p.bi];
+  if (p.joint) {
+    const top = !b.crown && p.vv > p.top - 1.4;
+    const g = hash(Math.floor(u * 1.3), Math.floor(p.vv * 1.3), 71);
+    return [2, top || (b.v0 > 0 && p.vv - b.v0 < 1.1) ? 1 : g < 0.12 ? 5 : g < 0.3 ? 4 : g < 0.6 ? 3 : 2];
+  }
+  const hu = Math.max(4, (b.u1 - b.u0) / 2);
+  const du0 = 0;
+  const nz = (pnoise(u, p.vv + s * 0.7, 3.2, LEN, b.seed % 997) - 0.5) * 0.14;
+  let step: number;
+  if (face === 0) {
+    let li = 0.78 + b.tone + nz + (s > 0 ? 0.05 : -0.06) + ((u - b.pu) / hu > 0.4 ? -0.04 : 0);
+    if (s > p.hs - 1.6) li += 0.12;
+    step = clamp(3 + Math.floor((li - 0.3) * 6), 4, 7);
+  } else {
+    // Facets: the nearest facet site picks the plane; planes high on the block catch the light,
+    // and where a lit plane meets a darker one its edge gets a crest.
+    const fu = face === 3 || face === 4 ? b.pu + s * 1.6 : u;
+    let d1 = Infinity, d2 = Infinity, i1 = 0, i2 = 0;
+    for (let q = 0; q < b.fs.length; q++) {
+      const d = Math.hypot(fu - b.fs[q][0], (p.vv - b.fs[q][1]) * 1.2);
+      if (d < d1) {
+        d2 = d1;
+        i2 = i1;
+        d1 = d;
+        i1 = q;
+      } else if (d < d2) {
+        d2 = d;
+        i2 = q;
+      }
+    }
+    let li = 0.5 + b.tone + nz + b.fs[i1][2] + ((p.vv - b.v0) / (p.top - b.v0) - 0.5) * 0.16;
+    if (d2 - d1 < 0.9 && b.fs[i1][2] > b.fs[i2][2]) li += 0.14;
+    if (face === 3 || face === 4) li -= 0.08;
+    step = clamp(1 + Math.floor(li * 6.2), 2, 6);
+    if (p.chip && face !== 3 && face !== 4) step = hash(Math.floor(u), Math.floor(p.vv), b.seed) < 0.5 ? 7 : 6;
+    void du0;
+    if (face === 1 || face === 2) {
+      for (const path of b.crack)
+        for (let k = 0; k + 1 < path.length; k++) {
+          const d = segDist(u, p.vv, path[k][0], path[k][1], path[k + 1][0], path[k + 1][1])[0];
+          if (d < 0.7) step = 1;
+          else if (d < 1.6 && step > 1 && u > path[k][0]) step = Math.min(7, step + 1);
+        }
+      if (hash(Math.floor(u), Math.floor(p.vv), b.seed + 9) < 0.012) step = 2;
+    }
+  }
+  if (haze && step >= 3) step -= 1;
+  if (v < 6 && face !== 0) return [1, Math.max(1, step - 1)];
+  return [0, step];
+}
+
+/** A loose stone of the wall at (x, y). */
+function wallStone(c: Canvas, x: number, y: number, r: number, seed: number, spin: number): void {
+  const l = new L(c.w, c.h);
+  const pts = rockPts(x, y, r, 6, seed, spin, 1, 0.78, 0.4);
+  facetRock(l, pts, [x + r * 0.1, y - r * 0.2], r * 0.9, [2, 3, 4, 5, 6], 0, { ring: r >= 4 ? 0.5 : 0, jitter: 0.25, seed });
+  l.bevel({ lit: 1, shade: 0, max: 7 });
+  l.render(c, WST);
+}
+
+/** Wall debris chips (wall stone). */
+function debris(c: Canvas, pts: [number, number, number][]): void {
+  const l = new L(c.w, c.h);
+  pts.forEach(([x, y, s], i) => chip(l, x, y, s, i, [3, 5, 7]));
+  l.render(c, WST);
+}
+
+/**
+ * Moss on the crown: cushions stamped back to front on the mossy part of the top faces (lit
+ * crescent, dark under-edge), strands hanging a few px over the front face, sprigs on top.
+ */
+function wallMoss(c: Canvas, hits: Hits, w: StoneWall, seed: number, haze: (u: number) => boolean): [number, number, number][] {
+  const { w: W, h: H } = hits;
+  const mossy = (u: number, s: number): boolean => fbm(u + 50, s * 1.4 + 50, 9, 3, seed) > 0.52;
+  const mask = new Uint8Array(W * H);
+  for (let i = 0; i < W * H; i++) {
+    const f = hits.face[i];
+    if (f < 0) continue;
+    const u = hits.u[i], s = hits.s[i], v = hits.v[i];
+    const p = w.probe(u, v);
+    if (!p || p.joint) continue;
+    const b = w.blocks[p.bi];
+    if (f === 0 && b.crown && mossy(u, s)) mask[i] = 1;
+    else if ((f === 1 || f === 3 || f === 4) && b.crown && mossy(u, HALF_T)) {
+      const drip = 1 + Math.floor(hash(Math.floor(u), 3, seed) * 5);
+      if (p.top - p.vv < drip) mask[i] = 2;
+    }
+  }
+  const cover = new Int8Array(W * H).fill(-1);
+  const clumps: [number, number, number][] = [];
+  for (let gy = 0; gy < H; gy += 3)
+    for (let gx = 0; gx < W; gx += 3) {
+      const cx = gx + hash(gx, gy, seed + 1) * 3, cy = gy + hash(gx, gy, seed + 2) * 3;
+      const ci = Math.floor(cy) * W + Math.floor(cx);
+      if (ci < 0 || ci >= W * H || mask[ci] !== 1) continue;
+      clumps.push([cx, cy, 1.5 + hash(gx, gy, seed + 3) * 1.4]);
+    }
+  clumps.sort((p, q) => p[1] - q[1] || p[0] - q[0]);
+  for (const [cx, cy, rx] of clumps) {
+    const ry = rx * 0.72;
+    const ci = Math.floor(cy) * W + Math.floor(cx);
+    const base = haze(hits.u[ci]) ? 2 : hash(Math.floor(cx), Math.floor(cy), seed + 4) < 0.5 ? 4 : 3;
+    for (let y = Math.floor(cy - ry - 1); y <= Math.ceil(cy + ry); y++)
+      for (let x = Math.floor(cx - rx - 1); x <= Math.ceil(cx + rx); x++) {
+        if (x < 0 || y < 0 || x >= W || y >= H) continue;
+        const j = y * W + x;
+        if (!mask[j]) continue;
+        const uu = (x + 0.5 - cx) / rx, vv = (y + 0.5 - cy) / ry, d = uu * uu + vv * vv;
+        if (d > 1) continue;
+        let st = base;
+        if (uu + vv * 1.3 < -0.45) st += 1;
+        else if (uu * 0.5 + vv > 0.3) st -= 1;
+        if (vv > 0.4 && d > 0.45) st = base - 2;
+        if (st > base && hash(x, y, seed + 11) < 0.3) st += 1;
+        cover[j] = clamp(st, 1, 6);
+      }
+  }
+  const l = new L(W, H);
+  for (let i = 0; i < W * H; i++) {
+    const x = i % W, y = (i / W) | 0;
+    if (cover[i] >= 0) l.set(x, y, cover[i]);
+    else if (mask[i] === 1) l.set(x, y, 2);
+    else if (mask[i] === 2) l.set(x, y, mask[i + W] === 2 ? (hash(x, y, seed + 5) < 0.5 ? 2 : 3) : 1);
+  }
+  l.render(c, MOSS_R, { outline: null });
+  // Sprigs on lit top edges (drawn after the outline by the caller).
+  const sprigs: [number, number, number][] = [];
+  for (let i = W; i < W * H; i++) {
+    if (cover[i] < 3 || hits.face[i - W] >= 0 || cover[i - W] >= 0 || hash(i % W, (i / W) | 0, seed + 13) > 0.14) continue;
+    sprigs.push([i % W, ((i / W) | 0) - 1, 1 + Math.floor(hash(i % W, 1, seed + 14) * 2.4)]);
+  }
+  return sprigs;
+}
+
+/** One frame of the stone wall in orientation `o`. */
+function stoneWallFrame(o: Orient, w: StoneWall, f: number, mode: 'rise' | 'idle'): Canvas {
+  const c = new Canvas(o.w, o.h);
+  const t = mode === 'idle' ? f / 4 : f / 6;
+  const p = mode === 'rise' ? [0.12, 0.42, 0.74, 0.97, 1, 1][f] : 1;
+  w.off = w.blocks.map((b) => Math.max(0, (1 - p) * HGT + (rnd(b.seed, 40) - 0.5) * (1 - p) * 18 + (b.crown ? 0 : (1 - p) * 4)));
+  const sx = mode === 'rise' ? [-1, 1, -1, 1, 0, 0][f] : 0;
+  const haze = (u: number): boolean => o.key !== 'wall' && u > LEN * 0.66;
+  const P = (u: number, s: number, v: number): Pt => proj(o, u, s, v);
+  // Contact shadow and the damp ground along the foot.
+  const sh = new L(o.w, o.h);
+  for (let u = -2; u <= LEN + 2; u += 0.5)
+    for (const ss of [HALF_T + 1, HALF_T + 2.5, -(HALF_T + 1)]) {
+      const q = P(u, ss, 0);
+      sh.set(q[0], q[1], 1);
+    }
+  if (mode === 'rise' && f <= 2) {
+    // The ground splitting where the slabs come up.
+    for (let u = 0; u <= LEN; u += 0.5) {
+      const q = P(u, (hash(Math.floor(u / 6), 1, 77) - 0.5) * 8, 0);
+      sh.set(q[0], q[1], 1);
+    }
+  }
+  sh.render(c, WST, { outline: null, alpha: 110 });
+  // Dust churning along the foot: a band hugging the base line on each side.
+  const dustH = mode === 'rise' ? [17, 23, 25, 20, 14, 9][f] : 6;
+  const band = (side: number) => {
+    const a0 = P(4, side * (HALF_T + 4), 0), a1 = P(LEN - 4, side * (HALF_T + 4), 0);
+    return (x: number, y: number): number => {
+      const tt = clamp((x + 0.5 - a0[0]) / (a1[0] - a0[0] || 1), 0, 1);
+      const ly = lerp(a0[1], a1[1], tt);
+      if (o.key === 'wall_depth') {
+        // Along a vertical base line: billows to the side.
+        const dx = Math.abs(x + 0.5 - a0[0]);
+        const ty = clamp((y + 0.5 - a1[1]) / (a0[1] - a1[1] || 1), 0, 1);
+        const bump = 0.45 + 1.1 * pnoise(ty * 48 + side * 7, 0, 5, 48, 617 + f);
+        if (y + 0.5 < a1[1] - 4 || y + 0.5 > a0[1] + 4) return 0;
+        const along = (1 - smooth(0.4, 1, dx / (dustH * 0.42 * bump * (0.45 + 0.55 * ty)))) * smooth(0.25, 0.75, ty);
+        // A cloud rolling out in front of the near end.
+        const nearEnd = 1 - smooth(0.4, 1.05, Math.hypot((x + 0.5 - o.ax) / (dustH * 1.1), (y + 0.5 - (a0[1] - dustH * 0.25)) / (dustH * 0.75)));
+        return Math.max(along, nearEnd) * (y + 0.5 > a0[1] + 4 ? 0 : 1);
+      }
+      const above = ly + 3 - (y + 0.5);
+      if (above < 0) return 0;
+      const ends = smooth(0, 0.08, tt) * (1 - smooth(0.92, 1, tt));
+      const bump = (0.35 + 1.25 * pnoise(tt * 64 + side * 9, 0, 5, 64, 617 + f)) * (0.3 + 0.7 * ends);
+      return (1 - smooth(0.35, 1, above / (dustH * bump))) * (x + 0.5 < a0[0] - 6 || x + 0.5 > a1[0] + 6 ? 0 : 1);
+    };
+  };
+  const dustSteps = mode === 'rise' ? dustAge(f / 6) : [2, 3, 4, 5, 6];
+  if (o.key !== 'wall') dustGas(c, band(-1), t, { seed: 615, alpha: mode === 'idle' ? 200 : 245, steps: dustSteps, thr: 0.4, scale: 0.8 });
+  // The wall.
+  const hits = march(o, w.inside, { sMax: HALF_T + 2, vMax: HGT + 8 }, sx);
+  const layers = [new L(o.w, o.h), new L(o.w, o.h), new L(o.w, o.h)];
+  for (let i = 0; i < o.w * o.h; i++) {
+    const fc = hits.face[i];
+    if (fc < 0) continue;
+    const [k, st] = stoneTone(w, fc, hits.u[i], hits.s[i], hits.v[i], haze(hits.u[i]));
+    layers[k].set(i % o.w, (i / o.w) | 0, st);
+  }
+  const wc = new Canvas(o.w, o.h);
+  layers[2].render(wc, JOINT, { outline: null });
+  layers[0].render(wc, WST, { outline: null });
+  layers[1].render(wc, WST_WET, { outline: null });
+  const sprigs = wallMoss(wc, hits, w, 640, haze);
+  outlineTinted(wc);
+  c.draw(wc, 0, 0);
+  const sp = new L(o.w, o.h);
+  for (const [x, y, hgt] of sprigs)
+    for (let k = 0; k < hgt; k++) sp.set(x, y - k, k === hgt - 1 ? 5 : 4);
+  sp.render(c, MOSS_R, { outline: null });
+  // Rubble at the foot, near side, back to front.
+  const rub: [number, number, number, number][] = [];
+  for (let k = 0; k < 13; k++) {
+    const u = 4 + rnd(620, k) * (LEN - 8);
+    const q = P(u, HALF_T + 2 + rnd(621, k) * 5, 0);
+    rub.push([q[0], q[1], 2.4 + rnd(622, k) * 2.6, k]);
+  }
+  if (o.key !== 'wall')
+    for (let k = 0; k < 4; k++) {
+      const q = P(-3 - rnd(623, k) * 5, (rnd(624, k) - 0.5) * 2 * HALF_T, 0);
+      rub.push([q[0], q[1], 2.2 + rnd(625, k) * 2, 20 + k]);
+    }
+  rub.sort((a, b) => a[1] - b[1]);
+  for (const [x, y, r, k] of rub) wallStone(c, x, y - r * 0.4, r, 630 + k, rnd(626, k) * TAU);
+  dustGas(c, band(1), t, { seed: 616, alpha: mode === 'idle' ? 200 : 245, steps: dustSteps, thr: 0.4, scale: 0.8 });
+  // Debris: chips thrown up and falling off the rising slabs; grit trickling at rest.
+  if (mode === 'rise' && f >= 1 && f <= 4) {
+    const pts: [number, number, number][] = [];
+    for (let k = 0; k < 22; k++) {
+      const u = 6 + rnd(650, k) * (LEN - 12);
+      const top = HGT * p + 4;
+      const fall = (f - 1) * (6 + rnd(651, k) * 8);
+      const q = P(u, (rnd(652, k) - 0.3) * HALF_T * 2, top + 10 - fall + rnd(653, k) * 14);
+      pts.push([q[0], q[1], rnd(654, k) < 0.4 ? 3 : 2]);
+    }
+    debris(c, pts);
+    for (let k = 0; k < 4; k++) {
+      const u = 20 + rnd(655, k) * (LEN - 40);
+      const q = P(u, HALF_T + 4, HGT * p + 16 - (f - 1) * 9 + rnd(656, k) * 10);
+      wallStone(c, q[0], q[1], 2.6 + rnd(657, k) * 1.4, 660 + k, f + k);
+    }
+  } else if (mode === 'idle') {
+    const pts: [number, number, number][] = [];
+    for (let k = 0; k < 6; k++) {
+      const u = 10 + rnd(670, k) * (LEN - 20);
+      const q = P(u, HALF_T + 1, HGT * (0.92 - fract(rnd(671, k) + t) * 0.85));
+      pts.push([q[0], q[1], 2]);
+    }
+    debris(c, pts);
+  }
+  return c;
+}
+
+/** Wall sprite in orientation `key`: 'rise' (6 frames, once) then 'idle' (4 frames, loop). */
+function stoneWall(key: WallKey): WorldSprite {
+  const o = orientations()[key];
+  const w = new StoneWall(400);
+  const rise = range(6).map((f) => stoneWallFrame(o, w, f, 'rise'));
+  const idle = range(4).map((f) => stoneWallFrame(o, w, f, 'idle'));
+  const label = { wall: 'Earth wall: fitted stone slabs', wall_diag: 'Earth wall (3/4): fitted stone slabs', wall_depth: 'Earth wall (depth): fitted stone slabs' }[key];
+  return sprite(key, label, [o.ax, o.ay], { rise: once(rise, 12), idle: loop(idle, 8) });
+}
+const wall = (): WorldSprite => stoneWall('wall');
 
 /** Aura (the owner approved this look: keep it): dust whirlwind walls at the sides, levitating stones, a cracked ring. */
 function aura(): WorldSprite {
@@ -955,5 +1275,5 @@ function aura(): WorldSprite {
 }
 
 export function buildEarth(): WorldSprite[] {
-  return [bolt(), beast(), stream(), streamHead(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura()];
+  return [bolt(), beast(), stream(), streamHead(), breath(), sphere(), slash(), multi(), hit(), blast(), wall(), aura(), stoneWall('wall_diag'), stoneWall('wall_depth')];
 }

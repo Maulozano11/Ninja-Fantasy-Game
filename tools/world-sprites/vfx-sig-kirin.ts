@@ -502,12 +502,14 @@ function kanji(c: Canvas, write: number, bright: number, fseed: number): void {
     if (q < 1) tips.push(pts[pts.length - 1]);
     else if (rnd(fseed, k, 3) < 0.8) for (const fp of forkPaths(s.pts, fseed * 31 + k, 2, 26 * (G.kw / 184), 0.3)) arcs.add(fp, 0.5);
   });
-  const dim = Math.round((1 - bright) * 4);
-  glow(c, [l], [[3, K[5], 140], [7, K[3], 80], [13, K[2], 36]], bright);
+  // Fading out: it loses its white core first, then its alpha (no dark ghost outline is left).
+  const dim = Math.round((1 - bright) * 2);
+  const a = Math.round(255 * Math.min(1, Math.pow(bright, 1.5) * 1.3));
+  glow(c, [l], [[3, K[5], 140], [7, K[3], 80], [13, K[2], 36]], bright * bright);
   l.bands([1, 2, 3.2], [3, 5, 7, 8])
-    .map((s) => Math.max(1, s - dim))
-    .render(c, K, { outline: K[1], alpha: Math.round(255 * Math.min(1, bright * 1.4)), outlineAlpha: Math.round(255 * Math.min(1, bright * 1.2)) });
-  arcs.render(c, { dim, glow: null, alpha: 255 * bright });
+    .map((s) => Math.max(2, s - dim))
+    .render(c, K, { outline: K[2], alpha: a, outlineAlpha: Math.round(a * 0.8) });
+  arcs.render(c, { dim, glow: null, alpha: a });
   for (const t of tips) spark(c, t, 5);
 }
 

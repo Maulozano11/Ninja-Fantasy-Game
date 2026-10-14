@@ -6,7 +6,7 @@
 import { Canvas, Color, WorldSprite, withAlpha } from './kit';
 import { Billow, FIRE, GREY, ROCK, SMOKE, TH, billows, embers, erode, flow, tongue } from './vfx-a-fire-kit';
 import {
-  Field, Pt, TAU, WallKind, WallLine, bez, clamp, flySprite, frames, fract, lerp, pfbm, pnoise, render, rr, seamStack, smooth, stack, tubeShade, vfxSprite, wallGround, wallLine, wp,
+  Field, Pt, TAU, WallKind, WallLine, bez, clamp, crop, flySprite, frames, fract, lerp, pfbm, pnoise, render, rr, seamStack, smooth, stack, tubeShade, vfxSprite, wallGround, wallLine, wp,
 } from './vfx-a-lib';
 
 const D = Math.PI / 180;
@@ -395,6 +395,311 @@ export function walls(): WorldSprite[] {
     make('wall_diag', 'Fire wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)', { l: 18, t: 34, r: 22, b: 28 }),
     make('wall_depth', 'Fire wall, end-on (4.5 m x 1.8 m, running into the screen)', { l: 34, t: 80, r: 34, b: 24 }),
   ];
+}
+
+// --- breath: a cone of flame wrapped in smoke ------------------------------------------------
+
+export function breath(): WorldSprite {
+  // The origin (the mouth) is 48 px left of the anchor on its row, as before.
+  const o = 4, W = 108, H = 76, oy = 38, seed = 3700;
+  const fr = frames(4, (t) => {
+    const ph = t * TAU;
+    const f = new Field(W, H);
+    // The cone: hot white-yellow along its axis, widening and breaking into billowing tongues.
+    f.region(o, 0, W - 1, H - 1, (x, y) => {
+      const d = x - o;
+      if (d < 0) return 0;
+      const u = d / 78;
+      if (u > 1.05) return 0;
+      const half = lerp(2, 25, Math.pow(Math.min(1, u), 0.7)) * (1 + 0.18 * (pnoise(d - t * 108, y, 9, 108, 0, seed) - 0.5) * 2);
+      const q = Math.abs(y - oy) / half;
+      if (q > 1) return 0;
+      const streak = (pnoise((d - t * 108) * 0.35, (y - oy) * 1.2, 2, 108 * 0.35, 0, seed + 1) - 0.5) * 0.22;
+      return (1.06 - 0.55 * Math.pow(q, 1.5) - 0.35 * Math.pow(u, 1.4)) * (u > 0.85 ? smooth(1.05, 0.85, u) : 1) + streak;
+    });
+    for (let k = 0; k < 9; k++) {
+      const u = fract(k / 9 + t);
+      const d = 20 + u * 58, side = k % 2 ? 1 : -1;
+      const half = lerp(2, 25, Math.pow(d / 78, 0.7));
+      tongue(f, [o + d, oy + side * half * 0.7], side * (0.35 + 0.3 * u), 10 + 8 * u, 4.5, 0.62, 0.2, ph + k, side * 0.2);
+    }
+    erode(f, 0.6, (x, y) => pfbm(x - t * 108, y, 7, 2, 108, 0, seed + 2), (x) => smooth(o + 30, o + 70, x));
+    // Dark smoke puffs along its edges and tail, rolling out with it.
+    const bl: Billow[] = [];
+    for (let k = 0; k < 12; k++) {
+      const u = fract(k / 12 + t * 0.5);
+      const d = 26 + u * 56, side = k % 2 ? 1 : -1;
+      const half = lerp(2, 25, Math.pow(Math.min(1, d / 78), 0.7));
+      const r = lerp(6, 11, u) * rr(seed + 3, k, 0.85, 1.15);
+      const x = Math.min(W - r * 1.2 - 3, o + d + 4), y = clamp(oy + side * (half + r * 0.2), r * 1.6 + 3, H - r - 3);
+      bl.push({ x, y, r, heat: 0, glow: side < 0 ? 0 : 0.6, back: true, bumps: 2 });
+    }
+    const smoke = billows(W, H, bl, seed + 4, t);
+    const fire = render(f, FIRE, { th: TH, rim: [1] });
+    const em: { x: number; y: number; s: number }[] = [];
+    for (let k = 0; k < 8; k++) {
+      const p = fract(k / 8 + t);
+      em.push({ x: o + 30 + p * 66, y: oy + rr(seed + 5, k, -1, 1) * (12 + p * 22), s: k % 3 === 0 ? 2 : 1 });
+    }
+    return stack(W, H, smoke, fire, embers(W, H, em.filter((e) => e.x < W - 3 && e.y > 2 && e.y < H - 3), fire));
+  });
+  return flySprite('breath', 'Fire breath (flame cone wrapped in smoke, origin left middle)', fr, 12, [48 + o, oy]);
+}
+
+// --- stream: a jet with a white-hot core and raking flame tongues -------------------------------
+
+const JY = 32;
+/** The jet across [x0, x1] at scroll s (periodic in 64 px): a hot core line inside a flame sheath. */
+function jet(f: Field, s: number, x0: number, x1: number, ox: number, seed: number): void {
+  f.region(x0, 0, x1, f.h - 1, (x, y) => {
+    const xx = x - ox;
+    const r = 7.5 + 1.5 * pnoise(xx - s, 3, 16, 64, 0, seed);
+    const q = Math.abs(y - JY) / r;
+    if (q > 1) return 0;
+    const streak = (pnoise((xx - s) * 0.3, (y - JY) * 1.2, 2, 64 * 0.3, 0, seed + 1) - 0.5) * 0.2;
+    return 1.06 - 0.6 * Math.pow(q, 1.6) + streak;
+  });
+}
+/** Tongues raking back along the top and bottom edges, every 16 px, scrolling with s. */
+function rakes(f: Field, s: number, x0: number, x1: number, ox: number, ph: number): void {
+  for (let k = 0; k < 4; k++)
+    for (const rep of [-64, 0, 64]) {
+      for (const side of [-1, 1]) {
+        const bx = fract((k * 16 + (side > 0 ? 8 : 0) + s) / 64) * 64 + rep + ox;
+        if (bx < x0 - 14 || bx > x1 + 4) continue;
+        const a = Math.PI + side * 0.55;
+        tongue(f, [bx, JY + side * 5], a, 15 + 2 * Math.sin(ph + k), 3.6, 0.78, 0.12, ph + k + side, side * -0.25);
+      }
+    }
+}
+export function stream(): WorldSprite[] {
+  const W = 64, H = 64, PAD = 32, HR = 10, seed = 3800;
+  const tile = frames(4, (t) => {
+    const s = t * 64, ph = t * TAU;
+    const f = new Field(W + PAD * 2, H);
+    jet(f, s, 0, W + PAD * 2 - 1, PAD, seed);
+    rakes(f, s, 0, W + PAD * 2, PAD, ph);
+    const c = render(f, FIRE, { th: TH, rim: [1] });
+    const em: { x: number; y: number; s: number }[] = [];
+    for (let k = 0; k < 3; k++) for (const rep of [-64, 0, 64]) em.push({ x: fract((k * 21 + 5 + s) / 64) * 64 + rep + PAD, y: JY + (k % 2 ? 1 : -1) * rr(seed + 2, k, 16, 22), s: 1 });
+    return crop(stack(W + PAD * 2, H, c, embers(W + PAD * 2, H, em)), PAD, 0, W, H);
+  });
+  const head = frames(4, (t) => {
+    const s = t * 64, ph = t * TAU;
+    const f = new Field(W + PAD + HR, H);
+    jet(f, s, 0, PAD + 30, PAD, seed);
+    rakes(f, s, 0, PAD + 26, PAD, ph);
+    // The mouth: the jet flares into a bright ragged burst.
+    const hx = PAD + 38;
+    f.ell(hx, JY, 15, 13, 0, 1.08, 1.5);
+    for (let k = 0; k < 11; k++) {
+      const a = -1.35 + (k / 10) * 2.7 + rr(seed + 3, k, -0.1, 0.1);
+      tongue(f, [hx + Math.cos(a) * 9, JY + Math.sin(a) * 9], a * 0.85, 9 + rr(seed + 4, k, 0, 7) + 3 * Math.sin(ph + k * 1.7), 3.6, 0.82, 0.18, ph + k, a > 0 ? 0.2 : -0.2);
+    }
+    erode(f, 0.5, (x, y) => pfbm(x, y, 5, 2, 0, 0, seed + 5 + Math.round(t * 4)), (x) => smooth(hx - 6, hx + 12, x));
+    const c = render(f, FIRE, { th: TH, rim: [1] });
+    const em: { x: number; y: number; s: number }[] = [];
+    for (let k = 0; k < 10; k++) {
+      const p = fract(k / 10 + t);
+      const a = rr(seed + 6, k, -1.2, 1.2);
+      em.push({ x: hx + Math.cos(a) * (18 + p * 14), y: JY + Math.sin(a) * (18 + p * 12), s: p < 0.4 ? 2 : 1 });
+    }
+    return crop(stack(W + PAD + HR, H, c, embers(W + PAD + HR, H, em.filter((e) => e.x < W + PAD + HR - 3 && e.y > 2 && e.y < H - 3), c)), PAD, 0, W + HR, H);
+  });
+  return [flySprite('stream', 'Fire stream (fire jet, tileable 64 px)', tile), flySprite('stream_head', 'Fire stream head', head, 12, [32, 32])];
+}
+
+// --- bolt: a spiralling fireball with a comet tail ---------------------------------------------
+
+/** A ball whose bands spiral into a white core, turning with the loop. */
+function spiralBall(f: Field, cx: number, cy: number, R: number, t: number, seed: number): void {
+  f.region(cx - R, cy - R, cx + R, cy + R, (x, y) => {
+    const dx = x - cx, dy = y - cy, r = Math.hypot(dx, dy) / R;
+    if (r > 1) return 0;
+    const a = Math.atan2(dy, dx);
+    const sp = Math.sin(a * 2 + r * 9 - t * TAU * 2);
+    return 0.62 + 0.4 * (1 - r) + 0.16 * sp * smooth(0.12, 0.4, r) * (1 - smooth(0.82, 1, r)) - 0.15 * smooth(0.7, 1, r) + (pnoise(x, y, 3, 0, 0, seed) - 0.5) * 0.06;
+  });
+}
+export function bolt(): WorldSprite {
+  const o = 6, W = 64 + o, H = 64, cx = 40 + o, cy = 32, seed = 3900;
+  const fr = frames(4, (t) => {
+    const ph = t * TAU;
+    const f = new Field(W, H);
+    // The comet tail: licking tongues streaming back, longest in the middle.
+    for (let k = 0; k < 7; k++) {
+      const u = k / 6;
+      const a = Math.PI + lerp(-0.6, 0.6, u);
+      const len = (16 + 20 * (1 - Math.abs(u - 0.5) * 2)) * (1 + 0.12 * Math.sin(ph + k * 1.7));
+      tongue(f, [cx + Math.cos(a) * 9, cy + Math.sin(a) * 9], Math.atan2(Math.sin(a) * 0.45, -1), len, 5, 0.78, 0.16, ph + k * 1.3, Math.sin(a) * 0.15);
+    }
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * TAU;
+      tongue(f, [cx + Math.cos(a) * 10, cy + Math.sin(a) * 10], Math.atan2(Math.sin(a), Math.cos(a) - 0.9), 5 + 2 * Math.sin(ph * 2 + k), 2.6, 0.72, 0.14, ph + k, 0);
+    }
+    spiralBall(f, cx, cy, 12, t, seed);
+    erode(f, 0.55, (x, y) => pfbm(x + t * 64, y, 5, 2, 64, 0, seed + 1), (x, y) => smooth(11, 14, Math.hypot(x - cx, y - cy)));
+    const c = render(f, FIRE, { th: TH, rim: [1] });
+    const em: { x: number; y: number; s: number }[] = [];
+    for (let k = 0; k < 8; k++) {
+      const p = fract(k / 8 + t);
+      em.push({ x: cx - 16 - p * 28 + rr(seed + 2, k, -3, 3), y: cy + rr(seed + 3, k, -18, 16) - p * 4, s: p < 0.4 ? 2 : 1 });
+    }
+    return stack(W, H, c, embers(W, H, em.filter((e) => e.x > 3 && e.y > 2 && e.y < H - 3), c));
+  });
+  return flySprite('bolt', 'Fire bolt (spiralling fireball)', fr, 12, [32 + o, 32]);
+}
+
+// --- sphere: a burning orb with orbiting rings of fire ------------------------------------------
+
+export function sphere(): WorldSprite {
+  const W = 72, H = 72, cx = 36, cy = 36, R = 13, seed = 4000;
+  const rings = [{ rx: 30, ry: 9, rot: -0.35 }, { rx: 27, ry: 10, rot: 0.75 }, { rx: 24, ry: 7, rot: 1.75 }];
+  const fr = frames(4, (t) => {
+    const ph = t * TAU;
+    const ball = new Field(W, H), back = new Field(W, H), front = new Field(W, H);
+    // The orb: a corona of short flames round a white-hot core.
+    for (let k = 0; k < 14; k++) {
+      const a = (k / 14) * TAU + 0.2;
+      tongue(ball, [cx + Math.cos(a) * R * 0.85, cy + Math.sin(a) * R * 0.85], a - 0.3, 6 + 3 * Math.sin(ph * 2 + k * 1.3), 3.4, 0.74, 0.16, ph + k, 0);
+    }
+    spiralBall(ball, cx, cy, R, t, seed);
+    // The rings: each a thin band of fire on a tilted ellipse, hottest at a bright head running round it.
+    rings.forEach((rg, j) => {
+      const cr = Math.cos(rg.rot), sr = Math.sin(rg.rot);
+      const head = ph + j * 2.1;
+      for (let k = 0; k < 90; k++) {
+        const a = (k / 90) * TAU;
+        const ex = Math.cos(a) * rg.rx, ey = Math.sin(a) * rg.ry;
+        const x = cx + ex * cr - ey * sr, y = cy + ex * sr + ey * cr;
+        const behind = Math.sin(a) < 0;
+        const lag = fract((head - a) / TAU);
+        const heat = 0.5 + 0.48 * Math.pow(1 - lag, 3);
+        (behind ? back : front).disc(x, y, 1.9 + (1 - lag) * 1.1, heat, 1.2);
+      }
+    });
+    const c = stack(W, H, render(back, FIRE, { th: TH, rim: [1], hi: 5 }), render(ball, FIRE, { th: TH, rim: [1] }), render(front, FIRE, { th: TH, rim: [1] }));
+    const em: { x: number; y: number; s: number }[] = [];
+    for (let k = 0; k < 9; k++) {
+      const a = rr(seed + 1, k, 0, TAU) + t * 0.6, r = rr(seed + 2, k, 22, 32);
+      em.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r * 0.8, s: k % 3 === 0 ? 2 : 1 });
+    }
+    return stack(W, H, c, embers(W, H, em.filter((e) => e.x > 2 && e.x < W - 3 && e.y > 2 && e.y < H - 3), c));
+  });
+  return flySprite('sphere', 'Fire sphere (burning orb with orbiting rings)', fr, 12, [cx, cy]);
+}
+
+// --- slash: a thick crescent of fire --------------------------------------------------------
+
+export function slash(): WorldSprite {
+  const W = 64, H = 72, seed = 4100;
+  const C: Pt = [14, 36], R = 33;
+  const fr = frames(4, (t) => {
+    const ph = t * TAU;
+    const f = new Field(W, H);
+    f.region(0, 0, W - 1, H - 1, (x, y) => {
+      const dx = x - C[0], dy = y - C[1];
+      const a = Math.atan2(dy, dx);
+      if (Math.abs(a) > 1.12) return 0;
+      const taper = Math.pow(Math.cos((a / 1.12) * Math.PI * 0.5), 0.75);
+      const r = Math.hypot(dx, dy);
+      const inner = R - 15 * taper;
+      if (r > R || r < inner) return 0;
+      const u = (r - inner) / Math.max(1, R - inner);
+      // Inner flame strokes: bands raking in from the back edge.
+      const strokes = (pnoise(a * 30 + 4, (r - t * 30) * 0.4, 2.2, 0, 12, seed) - 0.5) * 0.3;
+      return 0.3 + 0.78 * Math.pow(u, 1.3) + strokes * (1 - u);
+    });
+    // Flames tearing back off the inner edge.
+    for (let k = 0; k < 7; k++) {
+      const a = -0.9 + (k / 6) * 1.8;
+      const taper = Math.pow(Math.cos((a / 1.12) * Math.PI * 0.5), 0.75);
+      const r = R - 15 * taper + 2;
+      tongue(f, [C[0] + Math.cos(a) * r, C[1] + Math.sin(a) * r], Math.PI + a * 0.4, (8 + 6 * taper) * (1 + 0.2 * Math.sin(ph + k)), 3 * taper + 1, 0.55, 0.2, ph + k * 1.6, 0.1);
+    }
+    erode(f, 0.45, (x, y) => pfbm(x, y + t * 64, 5, 2, 0, 64, seed + 1), (x) => smooth(C[0] + R - 8, C[0] + R - 20, x));
+    const c = render(f, FIRE, { th: TH, rim: [1] });
+    const em: { x: number; y: number; s: number }[] = [];
+    for (let k = 0; k < 10; k++) {
+      const p = fract(k / 10 + t);
+      const a = rr(seed + 2, k, -0.9, 0.9);
+      em.push({ x: C[0] + Math.cos(a) * (R - 18) - p * 14, y: C[1] + Math.sin(a) * (R - 10), s: p < 0.3 ? 2 : 1 });
+    }
+    return stack(W, H, c, embers(W, H, em.filter((e) => e.x > 2 && e.y > 2 && e.y < H - 3), c));
+  });
+  return flySprite('slash', 'Fire slash (thick crescent of flame)', fr, 12, [32, 36]);
+}
+
+// --- multi: three comet flames in a staggered volley ---------------------------------------------
+
+export function multi(): WorldSprite {
+  const W = 72, H = 64, seed = 4200;
+  const comets = [{ x: 46, y: 14, r: 6 }, { x: 56, y: 32, r: 6.5 }, { x: 42, y: 50, r: 5.5 }];
+  const fr = frames(4, (t) => {
+    const ph = t * TAU;
+    const f = new Field(W, H);
+    comets.forEach((cm, j) => {
+      for (let k = 0; k < 4; k++) {
+        const u = k / 3;
+        const a = Math.PI + lerp(-0.45, 0.45, u);
+        tongue(f, [cm.x + Math.cos(a) * cm.r * 0.7, cm.y + Math.sin(a) * cm.r * 0.7], Math.atan2(Math.sin(a) * 0.5, -1), cm.r * (2.4 + 1.6 * (1 - Math.abs(u - 0.5) * 2)) * (1 + 0.15 * Math.sin(ph + k + j)), cm.r * 0.55, 0.8, 0.16, ph + k * 1.3 + j, 0.1);
+      }
+      f.disc(cm.x, cm.y, cm.r, 1.06, 1.8);
+    });
+    erode(f, 0.5, (x, y) => pfbm(x + t * 64, y, 4, 2, 64, 0, seed), (x) => smooth(36, 20, x));
+    const c = render(f, FIRE, { th: TH, rim: [1] });
+    const em: { x: number; y: number; s: number }[] = [];
+    comets.forEach((cm, j) => {
+      for (let k = 0; k < 3; k++) {
+        const p = fract(k / 3 + t + j * 0.3);
+        em.push({ x: cm.x - 18 - p * 16, y: cm.y + rr(seed + 1, k + j * 3, -5, 5), s: 1 });
+      }
+    });
+    return stack(W, H, c, embers(W, H, em.filter((e) => e.x > 2 && e.y > 2 && e.y < H - 3), c));
+  });
+  return flySprite('multi', 'Fire multi (three comet flames in a volley)', fr, 12, [32, 32]);
+}
+
+// --- hit: a starburst of flame spikes -------------------------------------------------------------
+
+export function hit(): WorldSprite {
+  const W = 84, H = 84, cx = 42, cy = 42, seed = 4300;
+  const fr = frames(6, (_, i) => {
+    const t = i / 6, ph = t * TAU;
+    const f = new Field(W, H), deb = new Field(W, H);
+    const R = [10, 20, 28, 30, 26, 0][i];
+    const heat = [1.05, 1.02, 0.95, 0.82, 0.62, 0][i];
+    if (R > 0) {
+      // A star of sharp flame spikes round a white core.
+      const n = 12;
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * TAU + 0.13;
+        const len = R * (k % 2 ? 0.72 : 1) * rr(seed, k, 0.85, 1.12);
+        tongue(f, [cx + Math.cos(a) * R * 0.2, cy + Math.sin(a) * R * 0.2], a, len, Math.max(2.5, R * 0.17), heat * 0.88, 0.05, ph + k, 0);
+      }
+      f.disc(cx, cy, R * 0.42, heat * 1.03, 1.8);
+      if (i >= 3) erode(f, 0.6 + (i - 3) * 0.9, (x, y) => pnoise(x, y, 5, 0, 0, seed + 1 + i));
+    }
+    // Debris chunks flying out and falling.
+    if (i >= 1) {
+      const p = i / 5;
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * TAU + rr(seed + 2, k, -0.25, 0.25);
+        const d = (14 + 26 * p) * rr(seed + 3, k, 0.85, 1.15);
+        const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d + p * p * 10;
+        if (x < 4 || x > W - 5 || y < 4 || y > H - 5) continue;
+        deb.disc(x, y, k % 3 === 0 ? 2.4 : 1.8, 0.8, 1);
+      }
+    }
+    const c = stack(W, H, deb.any() ? render(deb, ROCK, { th: [0, 0.3, 0.55, 0.75], hi: 4 }) : null, f.any() ? render(f, FIRE, { th: TH, rim: [1] }) : null);
+    const em: { x: number; y: number; s: number }[] = [];
+    if (i >= 2) for (let k = 0; k < 10; k++) {
+      const a = rr(seed + 4, k, 0, TAU), d = (18 + 18 * (i / 5)) * rr(seed + 5, k, 0.8, 1.2);
+      em.push({ x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d + (i / 5) * 6, s: i < 4 && k % 3 === 0 ? 2 : 1 });
+    }
+    return stack(W, H, c, embers(W, H, em.filter((e) => e.x > 2 && e.x < W - 3 && e.y > 2 && e.y < H - 3), c));
+  });
+  return vfxSprite('hit', 'Fire hit (starburst of flame spikes)', [cx, cy], { hit: { frames: fr, fps: 12, loop: false } });
 }
 
 void bez; void flow; void flySprite; void lerp; void seamStack; void wallGround; void wallLine; void wp;

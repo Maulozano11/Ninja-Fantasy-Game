@@ -411,15 +411,15 @@ const PHX_FLY: PhxPose[] = [
 // A steep dive: nose down, wings swept back, the tail streaming above.
 const PHX_DIVE: PhxPose[] = [0, 1, 2, 3, 4].map((k) => {
   const w = Math.sin((k / 5) * TAU);
-  return { ...PHX_BASE, pitch: 0.55, bob: 0, arm: -164 + w * 4, hand: -174 + w * 6, spread: 0.55, farArm: -146 + w * 4, farHand: -158 + w * 5, farSpread: 0.5, head: -0.25, beak: 0.1, tail: -52 + w * 4, smoke: 0 };
+  return { ...PHX_BASE, pitch: 0.6, bob: 0, arm: -142 + w * 5, hand: -156 + w * 7, spread: 0.6, farArm: -128 + w * 4, farHand: -142 + w * 6, farSpread: 0.55, head: -0.2, beak: 0.1, tail: 62 + w * 5, smoke: 0 };
 });
 // Attack (once): wings up, the head rears back, lunges and spits a fireball, then settles.
 const PHX_ATTACK: PhxPose[] = [
   { ...PHX_BASE, arm: -112, hand: -132, farArm: -66, farHand: -84, head: -0.2, beak: 0.2 },
   { ...PHX_BASE, arm: -100, hand: -118, farArm: -58, farHand: -74, head: -0.42, beak: 0.6, bob: 1, fire: [4, 2.5] },
   { ...PHX_BASE, arm: -104, hand: -122, farArm: -60, farHand: -78, head: 0.18, beak: 1, bob: 0, fire: [9, 4.5] },
-  { ...PHX_BASE, arm: -110, hand: -130, farArm: -64, farHand: -82, head: 0.12, beak: 0.8, fire: [30, 6] },
-  { ...PHX_BASE, arm: -128, hand: -148, farArm: -46, farHand: -62, head: 0.05, beak: 0.4, fire: [50, 5] },
+  { ...PHX_BASE, arm: -110, hand: -130, farArm: -64, farHand: -82, head: 0.12, beak: 0.8, fire: [34, 8] },
+  { ...PHX_BASE, arm: -128, hand: -148, farArm: -46, farHand: -62, head: 0.05, beak: 0.4, fire: [54, 7] },
   { ...PHX_BASE, arm: -112, hand: -132, farArm: -64, farHand: -82, head: 0, beak: 0.15 },
 ];
 
@@ -435,7 +435,7 @@ const phxHeat = (heat: number, x: number, y: number, seed: number): Color => {
 function phxFeather(seed: number, far: boolean, hot = 0) {
   return (h: Hit): Color => {
     const L = lit(h, 0.4);
-    let heat = 0.44 + h.u * 0.12 + smooth(0.45, 1, Math.abs(h.v)) * 0.22 + (L - 0.5) * 0.34 + hot - (far ? 0.22 : 0);
+    let heat = 0.49 + h.u * 0.1 + smooth(0.45, 1, Math.abs(h.v)) * 0.22 + (L - 0.5) * 0.34 + hot - (far ? 0.22 : 0);
     if (h.u > 0.82) heat += (h.u - 0.82) * 1.2;
     if (Math.abs(h.v) < 0.13 && h.u > 0.05 && h.u < 0.8) heat -= 0.12;
     return phxHeat(heat, h.x, h.y, seed);
@@ -475,9 +475,9 @@ function phxWing(f: Frame, S: P2, arm: number, hand: number, spread: number, k: 
     const len = lerp(36, 23, u) * k * (0.82 + 0.18 * spread);
     const d = dirOf(a);
     const tip: P2 = [root[0] + d[0] * len, root[1] + d[1] * len];
-    f.part_([lens(root, tip, lerp(3.9, 3.5, u) * k, { bend: -sg * 1.2 * k, peak: 0.42, tip: 1.3, base: 0.6 })], phxFeather(5000 + j, far), style);
+    f.part_([lens(root, tip, lerp(4.6, 4, u) * k, { bend: -sg * 1.2 * k, peak: 0.45, tip: 1.1, base: 0.7 })], phxFeather(5000 + j, far), style);
     // The flame tip, flickering.
-    const fl = (2 + flick(j) * 5) * k;
+    const fl = (1 + flick(j) * 3.5) * k;
     const fd = dirOf(a - sg * (6 + flick(j + 9) * 10));
     const f0: P2 = [tip[0] - d[0] * 3 * k, tip[1] - d[1] * 3 * k];
     const fe: P2 = [f0[0] + fd[0] * (fl + 3 * k), f0[1] + fd[1] * (fl + 3 * k)];
@@ -492,7 +492,7 @@ function phxWing(f: Frame, S: P2, arm: number, hand: number, spread: number, k: 
     const len = (18 + (j % 2) * 2) * k * (0.85 + 0.15 * spread);
     const d = dirOf(a);
     const tip: P2 = [root[0] + d[0] * len, root[1] + d[1] * len];
-    f.part_([lens(root, tip, 4 * k, { bend: -sg * 0.9, peak: 0.42, tip: 1.2, base: 0.7 })], phxFeather(5200 + j, far, -0.02), style);
+    f.part_([lens(root, tip, 4.6 * k, { bend: -sg * 0.9, peak: 0.45, tip: 1.1, base: 0.75 })], phxFeather(5200 + j, far, 0), style);
     if (j % 2 === 0) tips.push(tip);
   }
   // Greater coverts over the roots of the secondaries and the inner primaries.
@@ -581,11 +581,11 @@ function phxFrame(g: PhxPose, fi: number, t: number, W: number, H: number, cx: n
   const hc = Math.cos(ht), hs = Math.sin(ht);
   const HZ = (x: number, y: number): P2 => [HD[0] + x * hc - y * hs, HD[1] + x * hs + y * hc];
   f.part_([fused([
-    blob(...P(-1, 0), 15, 10, g.pitch),
-    blob(...P(7, -1), 10, 9.6, g.pitch - 0.3),
-    blob(...P(-10, 2), 7.5, 6.5, g.pitch),
-    tube([P(8, -5), P(13, -10), HZ(-1, 1)], (u) => lerp(6.2, 5, u)),
-    blob(HD[0], HD[1], 6.4, 5.8, ht),
+    blob(...P(-1, 0), 16, 11, g.pitch),
+    blob(...P(7, -1), 11, 10.6, g.pitch - 0.3),
+    blob(...P(-10, 2), 8, 7, g.pitch),
+    tube([P(8, -5), P(13, -10), HZ(-1, 1)], (u) => lerp(6.8, 5.4, u)),
+    blob(HD[0], HD[1], 6.8, 6.2, ht),
   ], 3)], (h) => {
     const L = lit(h, 0.4);
     // Orange breast of scalloped feathers in front and below; the back deep red.
@@ -1380,7 +1380,7 @@ function raiju(): WorldSprite {
       const ang = Math.atan2(P[1] - E[1], P[0] - E[0]);
       const pa = ang * 0.55;
       const pc: P2 = [P[0] + Math.cos(pa) * 1.1 * Z, P[1] + Math.sin(pa) * 1.1 * Z];
-      return { prim: fused([lens(S, E, (far ? 3.4 : 3.8) * Z, { peak: 0.25, tip: 0.55, base: 1 }), tube([E, P], (u) => lerp(2, 1.55, u) * Z), blob(pc[0], pc[1], 2.5 * Z, 1.7 * Z, pa)], 1.5 * Z), P: pc, E, pa };
+      return { prim: fused([blob(S[0], S[1], 4 * Z, 4.4 * Z, 0), lens(S, E, (far ? 3.4 : 3.8) * Z, { peak: 0.25, tip: 0.55, base: 0.7 }), tube([E, P], (u) => lerp(2, 1.55, u) * Z), blob(pc[0], pc[1], 2.5 * Z, 1.7 * Z, pa)], 1.5 * Z), P: pc, E, pa };
     };
     const hindLeg = (target: P2, far: boolean) => {
       const Hj = B(-g.span - 1, 4);
@@ -1391,7 +1391,8 @@ function raiju(): WorldSprite {
       const ang = Math.atan2(P[1] - K[1], P[0] - K[0]);
       const pa = ang * 0.8;
       const pc: P2 = [P[0] + Math.cos(pa) * 1.1 * Z, P[1] + Math.sin(pa) * 1.1 * Z];
-      return { prim: fused([lens(Hj, N, (far ? 5 : 5.6) * Z, { peak: 0.3, tip: 0.5, base: 1 }), tube([N, K], (u) => lerp(2.4, 1.7, u) * Z), tube([K, P], () => 1.5 * Z), blob(pc[0], pc[1], 2.4 * Z, 1.7 * Z, pa)], 1.5 * Z), P: pc, E: N, pa };
+      const thighA = Math.atan2(N[1] - Hj[1], N[0] - Hj[0]);
+      return { prim: fused([blob(Hj[0] + Math.cos(thighA) * 2 * Z, Hj[1] + Math.sin(thighA) * 2 * Z, (far ? 5.2 : 5.8) * Z, (far ? 4.6 : 5.2) * Z, thighA), lens(Hj, N, (far ? 4.6 : 5.2) * Z, { peak: 0.3, tip: 0.5, base: 0.6 }), tube([N, K], (u) => lerp(2.4, 1.7, u) * Z), tube([K, P], () => 1.5 * Z), blob(pc[0], pc[1], 2.4 * Z, 1.7 * Z, pa)], 1.5 * Z), P: pc, E: N, pa };
     };
     const claws = (P: P2, pa: number): Prim[] => {
       const spread = 0.3 + g.reach * 0.25;
@@ -1430,7 +1431,7 @@ function raiju(): WorldSprite {
       tube([B(g.span - 2, -2.5), B(0, g.arch * 0.5 - 3.5), B(-g.span + 2, -2)], (u) => lerp(7.5, 5.6, Math.sin(u * Math.PI)) * Z),
       blob(Hp[0], Hp[1] - 0.5 * Z, 9.5 * Z, 9 * Z, g.pitch + 0.1),
       tube([B(g.span + 4, -5), HZ(-3, 1.5)], (u) => lerp(6.5, 4.8, u) * Z),
-    ], 4 * Z)], fur(23), style);
+    ], 4 * Z)], fur(23, 0, -0.04), style);
     // Fur fringes: the back, the belly, the back of the haunch (no inner lines: they are the coat).
     const backAt = (u: number, dy = 0): P2 => B(lerp(g.span - 1, -g.span - 6, u), lerp(-10.5, -9, u) + g.arch * Math.sin(u * Math.PI) * 0.6 + dy);
     f.part_(tufts([0.3, 0.45, 0.6, 0.75, 0.9].map((u, j): Tuft => [backAt(u, 1.2), -174 + j, 5.5 + (j % 2), 1.4])), tuft(31, 0, 0.02), bare);

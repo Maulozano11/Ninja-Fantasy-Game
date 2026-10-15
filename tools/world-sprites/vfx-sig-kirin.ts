@@ -347,7 +347,7 @@ function kanji(dst: Canvas, o: { write: number; breath: number; fade: number; f:
       if (o.fade > 0) {
         // The glow dies: it loses its white, then burns away from the edges of its strokes inward.
         k *= 1 - 0.55 * smooth(0, 0.6, o.fade);
-        if (!survives(src, x, y, smooth(0.1, 1, o.fade), x, y, 421, 8, 0.6)) return null;
+        if (!survives(src, x, y, Math.pow(smooth(0.2, 1, o.fade), 1.3), x, y, 421, 8, 0.6)) return null;
       }
       const col = k < 0.999 ? dimmed(c[0], c[1], c[2], k, ELECTRIC) : c;
       return withA(col, a * (c[3] / 255));
@@ -596,10 +596,10 @@ function alive(c: Canvas, phase: number, q: number, fi: number, tau: number): vo
     alpha: 1 - 0.3 * smooth(0.7, 1, q),
     dim: 0.35 * q,
     eyeGlow: (0.3 + 0.25 * (1 - FLICK[fi % 12])) * (1 - q),
-    burn: Math.pow(q, 1.1),
+    burn: Math.pow(smooth(0.05, 1, q), 1.6),
   });
   const fl = FLICK[fi % 12];
-  ground(c, { spread: 1 + 0.01 * w + 0.03 * q, burst: (S.enh ? 0.55 + 0.15 * w2 : 0.8 + 0.2 * w2) * (1 - 0.8 * q), glow: 1 - 0.12 * fl - 0.3 * q, alpha: 1 - 0.3 * smooth(0.7, 1, q), burn: Math.pow(q, 0.9) });
+  ground(c, { spread: 1 + 0.01 * w + 0.03 * q, burst: (S.enh ? 0.55 + 0.15 * w2 : 0.8 + 0.2 * w2) * (1 - 0.8 * q), glow: 1 - 0.12 * fl - 0.3 * q, alpha: 1 - 0.3 * smooth(0.7, 1, q), burn: Math.pow(smooth(0.05, 1, q), 1.5) });
   if (S.enh) {
     sparks(c, 0.5 + 0.2 * w2, 1 - smooth(0, 0.5, q), fi);
     rocks(c, 1, 1 - smooth(0.2, 0.9, q));
@@ -608,8 +608,8 @@ function alive(c: Canvas, phase: number, q: number, fi: number, tau: number): vo
   spits(c, phase, 1 - smooth(0, 0.4, q), S.enh ? 960 : 970);
   if (S.enh) {
     const roar = [0, 0, 0.15, 0.35, 0.45, 0.3, 0.1, 0, 0, 0, 0, 0][fi % 12] * (1 - q);
-    dragon(c, { t: 1, writhe: q > 0 ? 0 : w, roar, dim: 0.3 * fl + 0.3 * smooth(0, 0.4, q), alpha: 1, burn: smooth(0, 0.75, q) });
-  } else bolt(c, { front: 1, dim: Math.min(1, fl + 1.6 * q), dx: [0, 1, 0, -1][fi % 4] * (q > 0 ? 0 : 1), branches: q > 0 ? 1 : 0.55 + 0.4 * (1 - fl), boost: fl === 0 && q === 0, alpha: 1, f: fi, burn: smooth(0, 0.5, q) });
+    dragon(c, { t: 1, writhe: q > 0 ? 0 : w, roar, dim: 0.3 * fl + 0.3 * smooth(0, 0.4, q), alpha: 1, burn: Math.pow(smooth(0.05, 0.9, q), 1.3) });
+  } else bolt(c, { front: 1, dim: Math.min(1, fl + 1.6 * q), dx: [0, 1, 0, -1][fi % 4] * (q > 0 ? 0 : 1), branches: q > 0 ? 1 : 0.55 + 0.4 * (1 - fl), boost: fl === 0 && q === 0, alpha: 1, f: fi, burn: Math.pow(smooth(0, 0.7, q), 1.2) });
   kanji(c, { write: 1, breath: 0.12 * (0.5 - 0.5 * w2), fade: q, f: 80 + fi });
 }
 

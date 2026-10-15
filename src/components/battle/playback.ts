@@ -6,7 +6,7 @@ import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit } from '../../
 import type { SpritePose } from '../../sprite/types';
 import { JUTSU } from '../../battle/jutsu';
 import type { VfxElement, VfxRole } from '../../battle/jutsu';
-import { signatureMs, skySignature } from './vfxSprites';
+import { blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
 import { dist } from '../../battle/map';
 
 export interface UnitView {
@@ -344,26 +344,31 @@ export class Playback {
           if (ev.jutsu === 'hydra_roar') h.sound('roar');
         }
         const el: VfxElement = spec?.element ?? 'chakra';
-        const castDelay = head ? 150 : 420;
-        const fly = Math.max(180, dist(from, ev.at) * 45);
+        // Jutsu play at a pace the player can follow: a beat for the cast, a flight you can watch
+        // (beasts slower still), and the impact plays out whole before the next turn starts.
+        const castDelay = head ? 150 : 560;
+        const fly = spec?.vfx === 'beast' ? Math.max(900, dist(from, ev.at) * 150) : Math.max(500, dist(from, ev.at) * 115);
+        const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, t1 + ms / this.speed));
         h.sound('jutsu', el);
         if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
         const t1 = now + castDelay / this.speed;
         const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig, role: spec?.vfx };
         switch (spec?.special) {
           case 'heal':
-            this.fx.push({ ...base, kind: 'heal', from: ev.at, to: ev.at, dur: 900 });
-            return castDelay + 500;
+            this.fx.push({ ...base, kind: 'heal', from: ev.at, to: ev.at, dur: 1300 });
+            linger(1300);
+            return castDelay + 700;
           case 'clone':
           case 'flicker':
-            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 700, unit: ev.unit });
-            return castDelay + 200;
+            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 1100, unit: ev.unit });
+            linger(1100);
+            return castDelay + 400;
           case 'trap':
-            this.fx.push({ ...base, kind: 'seal', from: ev.at, to: ev.at, dur: 700, sig: 'tag' });
-            return castDelay + 300;
+            this.fx.push({ ...base, kind: 'seal', from: ev.at, to: ev.at, dur: 1000, sig: 'tag' });
+            return castDelay + 500;
           case 'earthWall':
           case 'waterWall':
-            this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 800 });
+            this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200 });
             // The wall itself rises when its event plays, right as the jutsu lands.
             return castDelay;
         }
@@ -371,19 +376,25 @@ export class Playback {
           // A signature cone (the Great Fire Annihilation) plays its whole surge, burn and fade.
           // It hits once the fire has spread all the way, and the next turn waits for it to burn out.
           const long = signatureMs(el, spec?.sig, ev.enhanced);
-          this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, dur: long?.total ?? 900, lift: [head ? 120 : 70, 30] });
-          if (!long) return castDelay + 650;
+          this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, dur: long?.total ?? 1400, lift: [head ? 120 : 70, 30] });
+          if (!long) {
+            linger(1400);
+            return castDelay + 900;
+          }
           h.shake(ev.enhanced ? 7 : 5);
           this.lingerUntil = Math.max(this.lingerUntil, t1 + long.total / this.speed);
           return castDelay + long.hit;
         }
         if (ev.shape?.kind === 'line') {
-          this.fx.push({ ...base, kind: 'line', from, to: ev.at, area: ev.shape, dur: 750, lift: [head ? 120 : 70, 50] });
-          return castDelay + 550;
+          this.fx.push({ ...base, kind: 'line', from, to: ev.at, area: ev.shape, dur: 1300, lift: [head ? 120 : 70, 50] });
+          linger(1300);
+          return castDelay + 900;
         }
         if (spec?.melee) {
-          this.fx.push({ ...base, kind: 'burst', from: ev.at, to: ev.at, dur: 600, lift: [60, 60] });
-          return castDelay + 400;
+          const hitMs = impactMs(el, spec.vfx, 900);
+          this.fx.push({ ...base, kind: 'burst', from: ev.at, to: ev.at, dur: hitMs, lift: [60, 60] });
+          linger(hitMs);
+          return castDelay + 450;
         }
         // A signature from the sky (Kirin) needs no projectile: the storm gathers over the target.
         const sky = ev.shape?.kind === 'circle' ? skySignature(el, spec?.sig, ev.enhanced) : null;
@@ -395,10 +406,16 @@ export class Playback {
         }
         this.fx.push({ ...base, kind: 'projectile', from, to: ev.at, dur: fly, lift: [head ? 120 : 70, ev.shape ? 30 : 60] });
         if (ev.shape?.kind === 'circle') {
-          this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: spec?.sig ? 1000 : 800 });
+          const boom = blastMs(el, spec?.sig ? 1400 : 1200);
+          this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: boom });
           h.shake(ev.enhanced ? 5 : 3);
-        } else this.fx.push({ ...base, kind: 'burst', from, to: ev.at, t0: t1 + fly / this.speed, dur: 500, lift: [60, 60] });
-        return castDelay + fly + 250;
+          linger(fly + boom);
+        } else {
+          const hitMs = impactMs(el, spec?.vfx, 900);
+          this.fx.push({ ...base, kind: 'burst', from, to: ev.at, t0: t1 + fly / this.speed, dur: hitMs, lift: [60, 60] });
+          linger(fly + hitMs);
+        }
+        return castDelay + fly + 300;
       }
       case 'save': {
         h.roll(ev);

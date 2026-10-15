@@ -247,6 +247,21 @@ export function skySignature(element: string, sig: string | undefined, enhanced:
   return { total, hit };
 }
 
+/**
+ * How long a jutsu's impact plays on its target: the multi's own impact sheet, else the element's
+ * hit, at least `min` ms so it never flashes past. The stand-in effect gets `min`.
+ */
+export function impactMs(element: string, role: string | undefined, min: number): number {
+  const s = (role === 'multi' ? sheet(element, 'multi_hit') : undefined) ?? sheet(element, 'hit');
+  return Math.max(min, s ? animMs(s, Object.keys(s.spec.anims)[0]) : 0);
+}
+
+/** How long an element's blast plays on its circle, at least `min` ms. */
+export function blastMs(element: string, min: number): number {
+  const s = sheet(element, 'blast');
+  return Math.max(min, s ? animMs(s, Object.keys(s.spec.anims)[0]) : 0);
+}
+
 /** A long surge is split over rows (surge, surge2, surge3...) that play once, in order. */
 const surgeRows = (s: Sheet): string[] => ['surge', 'surge2', 'surge3', 'surge4'].filter((r) => s.spec.anims[r]);
 const surgeMs = (s: Sheet): number => surgeRows(s).reduce((t, r) => t + animMs(s, r), 0);

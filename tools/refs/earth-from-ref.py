@@ -995,6 +995,9 @@ def under_fill(idx, kinds, PALC, region, cfg, dust_pal):
         Q[upd] = acc[upd] / cnt[upd][:, None]
     a = np.where(unknown, Q[..., 3], 0.0)
     a_max = cfg.get('dust_a', 0.9)
+    # The faint part of the fill (toward the clear background) is dropped, so the fill's edge
+    # follows its own smooth fall-off, never the straight sides of a traced rock.
+    a = np.clip((a - 0.25 * a_max) / 0.75, 0, 1)
     out = np.zeros((H, W), np.int32)
     if len(dust_pal) == 0:
         return out

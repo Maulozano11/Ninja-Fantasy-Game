@@ -10,13 +10,23 @@
 // pixels, a palette from his pixels per sprite, his rims as a clean 1 px deep-brown outline, his
 // dust kept semi-transparent) and writes them to vfx-earth-v3-refdata.ts as pieces (main body, loose
 // bits, dust, shadow, and named parts). This file only animates them, deriving every other frame
-// from the key frame, so the key frame of each animation is his picture:
-//   - loops start on his picture and come back to it (displacements that run round a small circle,
-//     drifts that wrap), so frame 0 is exact and the loop is seamless;
-//   - one-shots (hit, multi_hit, blast, the walls' rise) build up to or break down from his picture.
-// Same sprite names, anims, frame counts and fps as vfx_earth, plus `multi_hit` (the rock bullets'
-// impact, his unlabelled panel) and `aura_back`. Frames are sized to his art and the anchors moved
-// with it. The earth beast is out of scope: beast.png is copied through from vfx_earth unchanged.
+// from the key frame, so the key frame of each animation is his picture. The owner found the jutsu
+// too fast ("like a flashing star"), so every animation has about twice the frames, moving a
+// little from one to the next, and the light changes evenly (the build prints a flash check):
+//   - fly loops    8 frames at 12 fps: frame 0 is his picture; displacements run round a small
+//                  circle and drifts wrap, so the loop closes;
+//   - hit,         12 frames at 12 fps: builds up over 3, his picture (frame 3) held for 3 with only
+//     multi_hit    a little churn, then the dust spreads, settles, dims and dissolves over 6 while
+//                  the rocks fly on and drop;
+//   - blast        16 frames at 12 fps: anticipation over 4, his picture (frame 4) held for 3, a
+//                  settle over 9 (the dust dims, the rocks fall, the crystals sink back);
+//   - walls        'rise' 12 frames at 12 fps ending on his picture; 'idle' 8 frames at 10 fps;
+//   - aura         12 frames at 10 fps, both layers in step.
+// In-between frames never open holes: dust lies under the rocks ('under'), pinholes where his
+// picture has art are patched, and a wall's frames are sealed (nothing see-through inside).
+// Same sprite names and anims as vfx_earth, plus `multi_hit` (the rock bullets' impact, his
+// unlabelled panel) and `aura_back`. Frames are sized to his art and the anchors moved with it.
+// The earth beast is out of scope: beast.png is copied through from vfx_earth unchanged.
 // Deterministic: no Math.random.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
@@ -451,6 +461,36 @@ function patch(L: Layer, key: Layer): Layer {
   return out;
 }
 
+/**
+ * A wall is solid: any clear pocket a rising frame encloses (the border cannot reach it through
+ * clear pixels) is filled in from its edge inward, each pixel taking the commonest value round it
+ * (dust where there is dust), so no ground ever shows through the stone.
+ */
+function seal(L: Layer): Layer {
+  const out = L.clone();
+  const sil = silhouette(L);
+  let todo: number[] = [];
+  for (let i = 0; i < L.v.length; i++) if (sil[i] && !L.v[i]) todo.push(i);
+  while (todo.length) {
+    const next: number[] = [], set: [number, number][] = [];
+    for (const i of todo) {
+      const x = i % L.w, y = (i / L.w) | 0;
+      const nb = [x > 0 ? out.v[i - 1] : 0, x < L.w - 1 ? out.v[i + 1] : 0, y > 0 ? out.v[i - L.w] : 0, y < L.h - 1 ? out.v[i + L.w] : 0].filter((v) => v);
+      if (!nb.length) {
+        next.push(i);
+        continue;
+      }
+      const soft = nb.filter((v) => L.pal.kind(v) === 'dust');
+      const from = soft.length ? soft : nb;
+      set.push([i, from.reduce((best, v) => (from.filter((u) => u === v).length > from.filter((u) => u === best).length ? v : best), from[0])]);
+    }
+    if (!set.length) break;
+    for (const [i, v] of set) out.v[i] = v;
+    todo = next;
+  }
+  return out;
+}
+
 /** The frames rendered, every one but the key frame (his picture) patched against it. */
 const finish = (frames: Layer[], keyIndex: number): Canvas[] => frames.map((f, i) => (i === keyIndex ? f : patch(f, frames[keyIndex])).render());
 
@@ -706,9 +746,9 @@ interface Step { s: number; sy?: number; d: number; t: number; cool: number; dim
  * small, so nothing flashes; the last frame is faint, so the end does not pop.
  */
 const HIT_PLAN: Step[] = [
-  { s: 0.6, d: 0.58, t: 0, cool: 0, dim: 1, thin: 0, fall: 0, gone: 0.45 },
-  { s: 0.76, d: 0.74, t: 0, cool: 0, dim: 0, thin: 0, fall: 0, gone: 0.2 },
-  { s: 0.9, d: 0.89, t: 0, cool: 0, dim: 0, thin: 0, fall: 0, gone: 0 },
+  { s: 0.65, d: 0.7, t: 0, cool: 0, dim: 1, thin: 0, fall: 0, gone: 0.35 },
+  { s: 0.79, d: 0.83, t: 0, cool: 0, dim: 0, thin: 0, fall: 0, gone: 0.15 },
+  { s: 0.9, d: 0.92, t: 0, cool: 0, dim: 0, thin: 0, fall: 0, gone: 0 },
   { s: 1, d: 1, t: 0, cool: 0, dim: 0, thin: 0, fall: 0, gone: 0 },
   { s: 1.02, d: 1.04, t: 0.05, cool: 0, dim: 0, thin: 0, fall: 0, gone: 0 },
   { s: 1.04, d: 1.08, t: 0.1, cool: 0, dim: 0, thin: 0.02, fall: 1, gone: 0.04 },
@@ -738,6 +778,8 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
       // there yet at the very start).
       if (n < big && rr(seed + 2, k, 0, 1) < p.gone) return null;
       if (n >= big && i > HIT_KEY && rr(seed + 3, k, 0, 1) < (p.gone - 0.3) * 1.4) return null;
+      // (building up, the big rocks break out one after another, not all bunched at the core)
+      if (n >= big && i < HIT_KEY && rr(seed + 4, k, 0, 1) < p.gone * 1.2) return null;
       return [(cx - K.ax) * (p.d - 1), (cy - K.ay) * (p.d - 1) + p.fall * (n >= big ? 1 : 0.6)];
     });
     return union(d, r);
@@ -912,9 +954,12 @@ function wall(kind: 'wall' | 'wall_diag' | 'wall_depth', label: string, seed: nu
     // (the same share more each frame, so the light grows evenly).
     const s = 0.16 * Math.pow(1 / 0.16, i / (RISE_N - 1));
     // (neighbouring columns smoothed, so the rising top edge stays his outline, a little uneven)
+    // (a short column, the rubble at the foot, never sinks much deeper than it is tall, so it
+    // comes up with the rest instead of appearing on the last frame)
     const sink = (x: number) => {
       let h = 0;
       for (let k = -3; k <= 3; k++) h = Math.max(h, colH[clamp(x + k, 0, K.w - 1)]);
+      h = Math.min(h, colH[x] + 8);
       return Math.round(h * (1 - s) * (0.9 + 0.2 * pnoise(x, 0, 24, 0, 0, seed + 3)));
     };
     const m = cut(remap(main, (x, y) => [x, y - sink(x)]), (x, y) => y <= g[x]);
@@ -925,8 +970,8 @@ function wall(kind: 'wall' | 'wall_diag' | 'wall_depth', label: string, seed: nu
     return union(d, m, b);
   });
   const key0 = idle[0];
-  const riseC = rise.map((f, i) => (i === RISE_N - 1 ? f : patch(f, key0)).render());
-  const idleC = idle.map((f, i) => (i === 0 ? f : patch(f, key0)).render());
+  const riseC = rise.map((f, i) => (i === RISE_N - 1 ? f : seal(patch(f, key0))).render());
+  const idleC = idle.map((f, i) => (i === 0 ? f : seal(patch(f, key0))).render());
   return vfxSprite(kind, label, [K.ax, K.ay], { rise: { frames: riseC, fps: RISE_FPS, loop: false }, idle: { frames: idleC, fps: IDLE_FPS, loop: true } });
 }
 

@@ -22,7 +22,10 @@ every key frame is HIS pixels:
   copy.
 * Classes, decided at his resolution and then area-averaged (box filter) to game scale:
     body    - rock, spikes, slabs, moss, vines, grass, pebbles, the pale speed streaks: opaque,
-              quantized to a palette median-cut from his own pixels of that sprite;
+              quantized to a palette median-cut from his own pixels of that sprite (his greens and,
+              on the walls, his saturated amber get slots of their own); traced polygons ('solid')
+              and, for the aura's columns of glossy golden pebbles, his saturated gold and moss
+              found by colour ('solid_auto') are solid rock even where no rim closes them;
     outline - his deep-brown (or deep moss-green) rims: a clean 1 px tinted outline wherever his
               art has one, never black; JPEG ringing (cold, dark halos) is not outline;
     dust    - his dust clouds, trails, haze and dithered cloud edges: SEMI-TRANSPARENT. In a dust
@@ -30,9 +33,20 @@ every key frame is HIS pixels:
               dithered edges thin out) and its colour is un-blended from his panel fill, so it
               composites back to his look on his background and reads as dust on any map;
     shade   - the blast's shadow on the ground: a dark brown stain, semi-transparent.
+* Walls are solid: every pixel the stone encloses (or nearly: 1 px gaps, and the side his panel
+  border cut on the end-on wall) is filled, with his own colour there (his near-black shadow
+  between the leaves and in the cracks), so no map shows through; the log prints the enclosed
+  clear pixels left after quantizing (0).
+* Fades where his panel cut the art (the bolt's trail, the blast's sides) reach a different
+  length on each row and their alpha steps are ordered-dithered, so they end in wisps.
+* Art he drew on the page outside the panels (the multi_hit burst) keeps its true colours and
+  its dust is un-blended from the page colour.
 * Pieces. Each key frame is split into the parts the generator animates on their own: loose rocks
   and pebbles ('bits'), 'dust', and named parts per sprite (the bolt's boulder, the blast's spikes,
-  the wall's moss...); the rest is 'main'.
+  the bullets...); the rest is 'main'. 'under' is his dust continued under the rock that sits in
+  his cloud (the rock inside the cloud's envelope: his dust closed by a few px), each pixel the
+  local mean of his dust round it, tapered at the cloud's edge and dithered onto his dust
+  palette: a rock that moves, rocks or sinks uncovers his cloud, not a hole.
 * The stream tile is the 64 px of his spike row that end exactly where his head begins, closed into
   a loop by a seam cut where its two ends match best; the head is the rest of his row, so a line of
   tiles plus the head is his picture.
@@ -47,6 +61,7 @@ import base64
 import json
 import os
 import sys
+import warnings
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -323,7 +338,7 @@ SPRITES = {
     'wall_depth': dict(s=2.26, anchor=(140, 1736), area=[rect(24, 1360, 451, 1974)],
                        drop=[[(288, 1795), (318, 1670), (451, 1670), (451, 1974), (325, 1974), (325, 1878), (300, 1870), (288, 1840)]],
                        dust=[[(180, 1780), (330, 1780), (330, 1974), (24, 1974), (24, 1900)]], sparse=True,
-                       art_d=14, dust_a=0.85, bits=40, wall=True),
+                       art_d=14, dust_a=0.85, bits=40, wall=True, cut=('left',)),
     'aura': dict(s=2.41, anchor=(1072, 1175), area=[rect(929, 867, 1192, 1215)],
                  dust=[rect(929, 867, 1192, 1215)], dust_a=0.85, bits=30, aura=True, figure=AURA_FIGURE,
                  solid_auto=dict(zone=AURA_COLUMNS, sat=0.55, L=70, min=40),
@@ -630,22 +645,39 @@ def decide(cfg, g, W, H, ax, ay):
         # encloses (or nearly: gaps up to 1 px are closed) is filled. Inside the stone (its edge
         # mostly stone) it becomes stone in his own colour there (his near-black shadow between
         # the leaves and in the cracks); a pocket inside his dust at the base becomes dust.
-        art = solid | rim | dust | shade
-        stone = solid | rim
-        enc = holes_of(stone) | (holes_of(erode(dilate(stone, 1, nb=N8), 1, nb=N8)) & ~stone)
-        enc |= holes_of(art) | (holes_of(erode(dilate(art, 1, nb=N8), 1, nb=N8)) & ~art)
-        enc &= ~stone
-        lab, n = components(enc, nb=N4)
-        for c in range(1, n + 1):
-            m = lab == c
-            edge = dilate(m, 1) & ~m
-            if (edge & stone).sum() >= 0.5 * edge.sum():
-                holefill |= m
-            elif not (m & dust).all():
-                holedust |= m & ~dust
-        solid = solid | holefill
-        dust &= ~holefill
-        shade &= ~holefill
+        # Where his panel border cut the stone ('cut': the sides), the shadow between the leaves
+        # reaches that side: a barrier along it closes those bays too.
+        bar = np.zeros((H, W), bool)
+        for side in cfg.get('cut', ()):
+            st0 = solid | rim
+            cols = np.nonzero(st0.any(0))[0]
+            x0 = cols[0] if side == 'left' else cols[-1]
+            near = st0[:, x0:x0 + 4].any(1) if side == 'left' else st0[:, max(0, x0 - 3):x0 + 1].any(1)
+            r = np.nonzero(near)[0]
+            bar[r[0]:r[-1] + 1, x0 - 1 if side == 'left' else x0 + 1] = True
+        # (repeated: filling a nearly closed pocket can seal off the one beside it)
+        for _ in range(4):
+            art = solid | rim | dust | shade | holedust | bar
+            stone = solid | rim | bar
+            enc = holes_of(stone) | (holes_of(erode(dilate(stone, 1, nb=N8), 1, nb=N8)) & ~stone)
+            enc |= holes_of(art) | (holes_of(erode(dilate(art, 1, nb=N8), 1, nb=N8)) & ~art)
+            enc &= ~stone & ~holedust
+            enc &= ~(dust & ~holes_of(stone))
+            if not enc.any():
+                break
+            lab, n = components(enc, nb=N4)
+            for c in range(1, n + 1):
+                m = lab == c
+                edge = dilate(m, 1) & ~m
+                if (edge & stone).sum() >= 0.5 * edge.sum():
+                    holefill |= m
+                else:
+                    holedust |= m & ~dust
+            holefill &= ~bar
+            solid = solid | holefill
+            dust &= ~holefill
+            shade &= ~holefill
+            holedust &= ~holefill
     return dict(solid=solid, rim=rim, dust=dust, da=da, dcol=dcol, shade=shade, sa=np.clip(SA, 0, 0.85),
                 fadek=fadek, holefill=holefill, holedust=holedust)
 
@@ -693,7 +725,9 @@ for name, cfg in SPRITES.items():
                 v = shift(g['col'], dy, dx)
                 ok = shift(so, dy, dx)
                 stack.append(np.where(ok[..., None], v, np.nan))
-        med = np.nanmedian(np.stack(stack), 0)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)       # (pixels with no body round them)
+            med = np.nanmedian(np.stack(stack), 0)
         g['col'] = np.where((so & ~np.isnan(med).any(-1))[..., None], np.nan_to_num(med), g['col'])
     # Stone filled in where the wall enclosed a hole: his own colour there (dark shadow).
     g['col'] = np.where(d['holefill'][..., None], g['flat'], g['col'])
@@ -1031,6 +1065,8 @@ for name, b in built.items():
     PALC = np.array([p[:4] for p in pal], np.float64)
     kinds = np.array(['clear'] + [p[4] for p in pal])
     idx = quantize(b, pal, body, rims, dust)
+    if cfg.get('wall'):
+        print('%-11s enclosed clear pixels after quantize: %d' % (name, holes_of(idx > 0).sum()))
     pal_json = [{'rgba': '#%02x%02x%02x%02x' % p[:4], 'kind': p[4]} for p in pal]
     if cfg.get('stream'):
         ay = b['ay']

@@ -5,7 +5,9 @@
 //
 //   npx tsx tools/refs/kit-sheet.ts <groupDir> <element> <out.png> [beastsDir]
 //
-// beastsDir defaults to src/assets/world/vfx_beasts (the approved beasts).
+// beastsDir defaults to src/assets/world/vfx_beasts (the approved beasts). KIT_KEYS (optional,
+// e.g. KIT_KEYS=hit=3,multi_hit=3,blast=4) names the key frame of a sprite's first animation,
+// for sets whose one-shots were re-cut longer; without it the usual choice below is used.
 
 import { existsSync, readFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
@@ -71,8 +73,13 @@ function readGroup(dir: string): WorldSprite[] {
   });
 }
 
-/** Which frame shows a sprite best (the same choice as the other kits). */
+const KIT_KEYS: Record<string, number> = Object.fromEntries(
+  (process.env.KIT_KEYS ?? '').split(',').filter((p) => p.includes('=')).map((p) => [p.split('=')[0].trim(), Number(p.split('=')[1])]),
+);
+
+/** Which frame shows a sprite best (the same choice as the other kits, unless KIT_KEYS names it). */
 function keyFrame(s: WorldSprite): { key: string; i: number } {
+  if (s.name in KIT_KEYS) return { key: Object.keys(s.anims)[0], i: KIT_KEYS[s.name] };
   if (s.anims.idle && s.anims.rise) return { key: 'idle', i: 0 };
   if (s.anims.burn) return { key: 'burn', i: 0 };
   if (s.name === 'hit') return { key: 'hit', i: 2 };

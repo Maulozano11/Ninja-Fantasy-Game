@@ -228,6 +228,8 @@ def classify(src, cfg):
         # Its darker edges and the gaps between the shadow and the strip above it (dull dark
         # violets) are the same stain, darker: never an opaque rim round it.
         cls[gr & art & (cls == BODY) & (lum(D) < 95)] = GROUND
+        # His magenta splash where it spills onto the shadow (red near blue) is the splash: solid.
+        cls[gr & art & (D[..., 0] > D[..., 2] - 22) & (lum(D) > 70)] = BODY
     if cfg.get('ground_all'):
         cls[gr & art] = GROUND
     keep = m('keep') if cfg.get('keep') else np.ones((H, W), bool)
@@ -284,6 +286,62 @@ def fill_from(C, hole, src_mask):
     ok = hole & (w > 1e-9)
     res[ok] = cw[ok] / w[ok][:, None]
     return res
+
+def fill_vertical(C, hole, src_mask):
+    """Fills `hole` with vertical flame streaks: in each column, every hidden run takes the mean of
+    the src_mask pixels just above it and just below it (up to 3 px) and runs from one to the
+    other (one side only: that side's colour), so his flames run on straight up behind the figure,
+    a streak per column, instead of a blur. What has neither is left to fill_from."""
+    res = C.copy()
+    H, W = hole.shape
+    left = np.zeros_like(hole)
+    for x in range(W):
+        y = 0
+        while y < H:
+            if not hole[y, x]:
+                y += 1; continue
+            y0 = y
+            while y < H and hole[y, x]: y += 1
+            y1 = y - 1
+            up = [C[v, x] for v in range(max(0, y0 - 3), y0) if src_mask[v, x]]
+            dn = [C[v, x] for v in range(y1 + 1, min(H, y1 + 4)) if src_mask[v, x]]
+            if not up and not dn:
+                left[y0:y1 + 1, x] = True; continue
+            cu = np.mean(up, 0) if up else np.mean(dn, 0)
+            cd = np.mean(dn, 0) if dn else cu
+            n = y1 - y0 + 2
+            for v in range(y0, y1 + 1):
+                t = (v - y0 + 1) / n
+                res[v, x] = cu * (1 - t) + cd * t
+    if left.any():
+        res = fill_from(res, left, src_mask | (hole & ~left))
+    return res
+
+# His plain character beside the blast is the same drawing as his figure in the aura panel, at
+# (+294, -229) his px from it (registered by luminance correlation, best at (0, 0)).
+AURA_PLAIN = (294, -229)
+BLAST_CHAR = [(786, 280), (834, 280), (843, 320), (843, 425), (792, 425), (784, 410), (765, 404), (760, 380),
+              (764, 356), (776, 330)]
+
+def aura_figure(C, x0, y0):
+    """Which of the aura panel's pixels are his figure: his plain character laid over it. A pixel
+    within 2 px of that silhouette also counts as figure unless it has his flames' colour (his
+    tinted figure is drawn a touch wider than the plain one). Everything else is his flame art."""
+    H, W = C.shape[:2]
+    dx, dy = AURA_PLAIN
+    P = IM[y0 + dy + PADSRC:y0 + dy + H + PADSRC, x0 + dx + PADSRC:x0 + dx + W + PADSRC]
+    G = gauss(P, 0.8)
+    m = (np.sqrt(((G - BG) ** 2).sum(-1)) >= 14) & poly_mask(H, W, x0 + dx, y0 + dy, [BLAST_CHAR])
+    lab_, n = components(m, N8)
+    if n:
+        sizes = np.bincount(lab_.ravel(), minlength=n + 1); sizes[0] = 0
+        m = sizes[lab_] >= 40
+    # His figure's own small gaps (a pixel or two) are figure too; the gaps between arm and body stay.
+    m = m | (dilate(m, 1, nb=N8) & ~dilate(~dilate(m, 1, nb=N8), 1, nb=N8))
+    A = gauss(C, 0.8)
+    flame = (A[..., 2] > A[..., 1] + 30) & (A[..., 0] > A[..., 1] + 25)
+    band = dilate(m, 2, nb=N8) & ~m
+    return m | (band & ~flame)
 
 def fill_holes(C, hole, src_mask):
     """Fills `hole` by diffusion from the pixels round it (his ground strip where src_mask, his
@@ -371,8 +429,13 @@ AURA_RING = [(468, 634), (500, 640), (528, 642), (560, 637), (572, 634), (572, 6
 DIAG_CHAR = [(972, 594), (1002, 594), (1010, 612), (1016, 640), (1016, 740), (996, 740), (976, 740), (966, 730),
              (954, 716), (937, 704), (933, 662), (942, 636), (958, 616)]
 
+# His black crow feathers round the blast's column (each a dark blue-black quill with a black edge).
+BLAST_FEATHERS = [ellipse(534, 260, 12, 13), ellipse(609, 279, 8, 11), ellipse(531, 336, 9, 11), ellipse(572, 330, 8, 10),
+                  ellipse(587, 333, 10, 8), ellipse(613, 368, 11, 7), ellipse(623, 351, 7, 9), ellipse(686, 266, 9, 12),
+                  ellipse(712, 340, 8, 8)]
+
 SPRITES = {
-    'bolt': dict(area=(10, 54, 94, 139), k=K64, origin=(9, 53), base=(64, 64), anchor=(70.5, 96.5), smoke=True,
+    'bolt': dict(area=(10, 54, 94, 139), k=K64, origin=(9, 53), base=(64, 64), anchor=(70.5, 96.5), smoke=True, solid_dark=22,
                  eyes=[(71, 96.5, 9, 9, 'lmin')],
                  pieces=[('orb', [ellipse(71, 96.5, 15.5)])]),
     'stream': dict(k=KST, wrap=True, tile=(TILE_X, 84), area=(TILE_X, 54, TILE_X + 84, 139), origin=(TILE_X, ST_Y - 32 / KST),
@@ -409,8 +472,10 @@ SPRITES = {
                   boost=[[(538, 230), (690, 230), (690, 300), (676, 390), (650, 404), (600, 410), (560, 404), (546, 380), (540, 300)]],
                   black=[ellipse(484, 268, 13, 10), ellipse(575, 286, 9, 15), ellipse(503, 343, 11, 9), ellipse(570, 330, 10, 10),
                          ellipse(605, 375, 12, 18), ellipse(630, 365, 9, 9), ellipse(690, 258, 11, 12), ellipse(711, 351, 10, 8),
-                         ellipse(560, 368, 6, 14)],
-                  pieces=[('column', [[(538, 230), (690, 230), (690, 300), (676, 390), (650, 404), (600, 410), (560, 404),
+                         ellipse(560, 368, 6, 14)] + BLAST_FEATHERS,
+                  # His black crow feathers: solid (dark, opaque), their own piece (they fly with the bits).
+                  pieces=[('feathers', BLAST_FEATHERS, ['dark', 'body', 'outline']),
+                          ('column', [[(538, 230), (690, 230), (690, 300), (676, 390), (650, 404), (600, 410), (560, 404),
                                        (546, 380), (540, 300)]]),
                           ('pool', [[(437, 360), (843, 360), (843, 456), (437, 456)]])]),
     'wall': dict(area=(10, 492, 373, 652), k=1 / 1.30, anchor=(190, 646),
@@ -428,7 +493,7 @@ SPRITES = {
     # (normalised correlation of luminance over +-14 his px, best at scale 1.30: (519.5, 635.5);
     # the same fit puts our character on his plain one beside the blast at r = 0.75).
     'aura_back': dict(area=(466, 492, 572, 652), k=1 / AURA_S, anchor=AURA_FEET, smoke=True,
-                      fill=[AURA_CHAR], fill_src='flame', base_rect=(-40, -112, 40, 16),
+                      fill_figure=True, fill_src='flame', base_rect=(-40, -112, 40, 16),
                       fill_full=AURA_PETALS + AURA_FEATHERS, drop=[AURA_RING]),
     'aura': dict(area=(466, 492, 572, 652), k=1 / AURA_S, anchor=AURA_FEET, smoke=True, frame_like='aura_back',
                  keep=AURA_PETALS + AURA_FEATHERS + [AURA_RING], pink=AURA_PETALS,
@@ -436,8 +501,10 @@ SPRITES = {
     'wall_diag': dict(area=(620, 492, 1014, 780), k=1 / 1.27, anchor=(772, 708), fade={'right': 30},
                       fill=[DIAG_CHAR], fill_slope=0.37, ground_violet=True,
                       # His long shadow and, above it, the thin strip of it that runs on under his character.
-                      ground=[[(744, 676), (790, 664), (840, 680), (866, 663), (900, 672), (940, 688), (1016, 714),
-                               (1016, 782), (870, 782), (800, 752), (760, 730), (735, 708)]],
+                      # (Its top edge runs along the crystals' real feet: the crystal bases above it, lit
+                      # violet and magenta, are his crystal (opaque), not shadow.)
+                      ground=[[(735, 708), (762, 714), (790, 715), (812, 713), (838, 684), (866, 663), (900, 672),
+                               (940, 688), (1016, 714), (1016, 782), (870, 782), (800, 752), (760, 730)]],
                       black=[rect(620, 600, 900, 782)],
                       lines=dict(poly=[[(640, 640), (700, 590), (760, 540), (850, 500), (905, 500), (905, 640), (840, 680), (760, 720),
                                         (700, 740), (640, 740)]], minL=170, contrast=24),
@@ -464,7 +531,7 @@ def source(name, cfg):
         y0, y1 = cfg['area'][1], cfg['area'][3]
         A = IM[y0 + PADSRC:y1 + PADSRC, tx + PADSRC:tx + tw + PADSRC].copy()
         B = IM[y0 + PADSRC:y1 + PADSRC, tx - tw + PADSRC:tx + PADSRC]
-        ov = 22
+        ov = 30
         err = ((gauss(A, 0.8)[:, tw - ov:] - gauss(B, 0.8)[:, tw - ov:]) ** 2).sum(-1)
         H = err.shape[0]
         cost = err.copy(); back = np.zeros(err.shape, np.int32)
@@ -482,6 +549,8 @@ def source(name, cfg):
     C = IM[y0 + PADSRC:y1 + PADSRC, x0 + PADSRC:x1 + PADSRC].copy()
     H, W = C.shape[:2]
     hole = poly_mask(H, W, x0, y0, cfg.get('fill', []))
+    if cfg.get('fill_figure'):
+        hole |= aura_figure(C, x0, y0)
     hole |= poly_mask(H, W, x0, y0, cfg.get('fill_full', []))
     if hole.any():
         dist = np.sqrt(((gauss(C, 0.8) - BG) ** 2).sum(-1))
@@ -491,12 +560,13 @@ def source(name, cfg):
             # outline or the panel: the flames run on behind the whole figure.
             G = gauss(C, 0.8)
             src &= (G[..., 2] > G[..., 1] + 30) & (G[..., 0] > G[..., 1] + 10) & (lum(G) > 45)
+            src &= ~poly_mask(H, W, x0, y0, cfg.get('drop', []))
         elif cfg.get('fill_src') != 'art':
             src &= poly_mask(H, W, x0, y0, cfg.get('ground', []))
         # (The aura: his flames run on behind the whole of his figure, so whatever figure stands
         # there, no map shows between it and the flames.)
         if 'fill_slope' in cfg: C = fill_along(C, hole, src & ~hole, cfg['fill_slope'])
-        elif cfg.get('fill_src') == 'flame': C = fill_from(C, hole, src & ~hole)
+        elif cfg.get('fill_src') == 'flame': C = fill_vertical(C, hole, src & ~hole)
         else: C = fill_holes(C, hole, src & ~hole)
     return C, x0, y0
 
@@ -643,6 +713,11 @@ def cleanup(name, cfg, d):
     rim = (g == DARK) & dilate(body, 1, wrap)
     black = gmask(d, cfg, 'black')
     smoke = (g == DARK) & ~rim & ~black if cfg.get('smoke') else np.zeros_like(body)
+    # Where his smoke is truly black (a dense mass: the bolt's trail), it is solid: dark, but still
+    # in the smoke piece (see the pieces).
+    solid = smoke & (L < cfg['solid_dark']) if cfg.get('solid_dark') else np.zeros_like(body)
+    smoke &= ~solid
+    d['solid_smoke'] = solid
     kind = np.full((H, W), '', dtype=object)
     kind[g == BODY] = 'body'
     kind[g == DARK] = 'dark'
@@ -849,6 +924,7 @@ for name, cfg in SPRITES.items():
     owner = np.full((H, W), 'main', dtype=object)
     owner[kinds == 'smoke'] = 'smoke'
     owner[kinds == 'ground'] = 'stain'
+    owner[d['solid_smoke'] & (idx > 0)] = 'smoke'
     assigned = owner != 'main'
     for spec in cfg.get('pieces', []):
         pname, polys = spec[0], spec[1]

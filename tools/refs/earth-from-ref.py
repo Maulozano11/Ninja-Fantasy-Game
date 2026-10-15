@@ -308,7 +308,7 @@ def classify_his(cfg):
         keep &= ~poly_mask(H0, W0, cfg['drop'])
     L = lum(c)
     dist = np.sqrt(((c - BG) ** 2).sum(-1))
-    art = keep & ((L >= 70) | (dist >= 24))
+    art = keep & ((L >= 70) | (dist >= cfg.get('art_d', 24)))
     # His rims: deep brown (or deep moss green), warm (red well above blue), darker than the art
     # round them. Read on a lightly smoothed copy so a 1 px rim survives; JPEG ringing is cold
     # (blue-grey) and is not a rim.
@@ -339,6 +339,11 @@ def classify_his(cfg):
     if cfg.get('dust'):
         dz = poly_mask(H0, W0, cfg['dust'])
         dust = dz & body & reach & ~thin
+        if cfg.get('sparse'):
+            # Only his dithered, broken-up dust is see-through: dense art (rock faces, rubble)
+            # stays solid even where no rim closes it.
+            dens = gauss(art.astype(np.float64), 2.0)
+            dust &= dens < 0.8
         if cfg.get('dust_l'):
             lo, hi = cfg['dust_l']
             dust &= (L >= lo) & (L <= hi)

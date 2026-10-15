@@ -8,14 +8,18 @@
 // run-length rows), decoded here:
 //
 //   fly     6 frames, 12 fps, loop. Frame 0 is his left picture (crows circling the vortex), frame 4 his
-//           right picture (the flock streaming right). 1-3 and 5 move his crows as cut-out pieces round
-//           a spiral between the two (wings beaten down, the two looking back turning round), spin and
-//           close his vortex as the flock forms, fade his smoke in and out, drift his feathers back.
-//   summon  6 frames, 12 fps, once: his vortex opens at the caster and the crows come out of it, dark
-//           with lit eyes at first, and circle in, ending on his left picture (fly frame 0).
+//           right picture (the flock streaming right). 1-3 and 5 move his crows as cut-out pieces (whole
+//           pixels; the two looking back mirrored to turn round) along loops round the swarm's centre,
+//           out one way and back the other; they beat their wings with his own wing pixels flipped below
+//           the shoulder or folded half way, in two flights that never beat as one. His vortex spins and
+//           closes as the flock forms and opens again; his smoke trails in behind the flock and its tail
+//           is left behind; his feathers drift back.
+//   summon  6 frames, 12 fps, once: his vortex opens at the caster, spinning, and the crows come up out of
+//           it (dark, with lit eyes, at first) and spiral out round it, ending on his left picture (fly 0).
 //
 // The anchor is the centre of the swarm's mass, the same point in both of his pictures. Facing right
-// (the game mirrors it). To merge into vfx-beasts.ts: import crowSwarm() and use it for 'genjutsu'.
+// (the game mirrors it). To merge into vfx-beasts.ts: import crowSwarm() and use it for 'genjutsu'
+// (see art2/beasts-crows-NOTES.md).
 
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

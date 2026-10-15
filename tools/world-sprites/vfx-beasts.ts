@@ -4,8 +4,9 @@
 // crow, chakra fox and venom cobra. Each has a 'fly' loop facing right (the game mirrors it), with
 // the anchor at the body centre; the phoenix also has 'dive' and 'attack'.
 //
-//   npx tsx tools/world-sprites/vfx-beasts.ts [previewDir]
-//   WORLD_OUT=<dir> ... writes the sheets for approval instead of into src/assets/world.
+//   WORLD_OUT=<dir> npx tsx tools/world-sprites/vfx-beasts.ts [previewDir]
+//   writes the sheets for approval under <dir>/vfx_beasts/ (it refuses to run without WORLD_OUT, so it
+//   never writes into src/assets; copy the approved sheets into the game from there).
 //   FOCUS=water,wind ... builds only those (inspection images only, no sheets).
 //
 // The phoenix, the raiju, the wind crane and the stone drake are copied from the owner's own
@@ -1333,9 +1334,14 @@ function beastsCompare(sprites: WorldSprite[], dir: string, stage: string, k = 3
   saveWhole(out.scaled(k), join(dir, 'beasts-compare.png'));
 }
 
+// Staging only: refuse to run without WORLD_OUT, so nothing is ever written into src/assets.
+if (!process.env.WORLD_OUT) {
+  console.error('vfx-beasts: set WORLD_OUT=<dir> (the sheets wait there for approval; this never writes into src/assets).');
+  process.exit(1);
+}
 const sprites: WorldSprite[] = BUILDERS.filter(([n]) => !FOCUS || FOCUS.includes(n)).map(([, f]) => f());
 const dir = previewDir();
-const stage = process.env.WORLD_OUT ?? join(dir, 'staging');
+const stage = process.env.WORLD_OUT;
 if (!FOCUS) {
   writeGroup('vfx_beasts', sprites);
   beastsLineup(sprites, dir, stage);

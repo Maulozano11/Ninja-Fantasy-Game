@@ -543,8 +543,42 @@ function wallDepth(): Built {
 // --- aura ----------------------------------------------------------------------------------------------------
 
 /** His ribbons spiralling round the figure (front, over the character) with a travelling wave
- *  climbing them, leaves circling; his green glow is split off as aura_back (behind the
- *  character) and breathes. Both share the frame and the anchor (the feet). */
+ *  climbing them, leaves circling, over a veil of his wind colour that tints the figure (see
+ *  veil()); his green glow is split off as aura_back (behind the character) and breathes. Both
+ *  share the frame and the anchor (the feet). */
+const smooth = (a: number, b: number, v: number): number => {
+  const t = clamp((v - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+};
+
+/**
+ * His wind colour over the body, as in his picture, where the figure is seen through the wind (the
+ * owner chose a tint over a clear middle, as for the lightning aura). A soft field round the body,
+ * 30% in the middle rising to 45% toward its rim, deeper teal inside and mint at the rim (both from
+ * his aura palette); not the shape of any one character, so it sits right on every figure. It
+ * breathes with the frames (frame 1 is his picture).
+ */
+function veil(s: Spr, frame: number): Canvas {
+  const c = new Canvas(s.W, s.H);
+  const wind = s.pal.filter((p) => p[3] === 255 && p[1] > p[0] + 15 && p[2] >= p[0]).sort((a, b) => lum(a) - lum(b));
+  const inner = wind[Math.floor(wind.length * 0.4)], rim = wind[Math.floor(wind.length * 0.85)];
+  const cx = s.ax + 0.5, cy = s.ay - 49, rx = 24, ry = 56;
+  const breathe = 1 + 0.08 * Math.sin((frame / 6) * TAU);
+  for (let y = 0; y < s.H; y++)
+    for (let x = 0; x < s.W; x++) {
+      const r = Math.hypot((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry);
+      let a = (0.3 + 0.15 * smooth(0.5, 0.95, r)) * (1 - smooth(0.9, 1.04, r)) * breathe;
+      a = Math.round(a / 0.05) * 0.05;
+      if (a <= 0.02) continue;
+      // Three bands of colour from the middle out, so it reads as pixel art, not a gradient.
+      const t = Math.round(smooth(0.3, 1, r) * 2) / 2;
+      const col = [0, 1, 2].map((i) => Math.round(inner[i] + (rim[i] - inner[i]) * t));
+      c.set(x, y, [col[0], col[1], col[2], Math.round(Math.min(1, a) * 255)]);
+    }
+  return c;
+}
+const lum = (p: Color): number => 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2];
+
 function aura(): { front: Built; back: Built } {
   const s = spr('aura');
   const main = layer(s, 'main'), glow = layer(s, 'glow'), ls = leaves(s);
@@ -553,7 +587,8 @@ function aura(): { front: Built; back: Built } {
     const t = k / 6;
     const m = k ? warp(main, (x, y) => [wave(y * 0.2, t, 0.9 * (Math.sign(x - s.ax) || 1)), 0]) : main;
     const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ ...bob(t, 2, i * 1.5), flip: (k + i) % 2 === 1 }));
-    front.push(stack(s.W, s.H, m, lv));
+    // The veil first (over the character), then his ribbons and leaves on top of it.
+    front.push(stack(s.W, s.H, veil(s, k), m, lv));
     back.push(k ? alphaMul(glow, 1 + 0.15 * Math.sin(TAU * t)) : glow);
   }
   // One frame for both, so they stay aligned.
@@ -599,7 +634,7 @@ export function windV3Sprites(): WorldSprite[] {
     sprite('wall', 'Wind wall (swirling ribbons over a dust bank)', fit(wallH())),
     sprite('wall_diag', 'Wind wall, 3/4 (sweeping strands along the diagonal, glow, dust)', fit(wallDiag())),
     sprite('wall_depth', 'Wind wall, end-on (tornado column on a dust base)', fit(wallDepth())),
-    sprite('aura', 'Wind aura, front (ribbons spiralling round the figure, leaves)', a.front),
+    sprite('aura', 'Wind aura, front (ribbons spiralling round the figure, leaves, a wind veil over the body)', a.front),
     sprite('aura_back', 'Wind aura, back (green glow behind the figure)', a.back),
   ];
 }

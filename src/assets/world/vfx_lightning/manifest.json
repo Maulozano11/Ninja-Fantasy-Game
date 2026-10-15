@@ -21,7 +21,7 @@
    "anims": {
     "fly": {
      "row": 0,
-     "frames": 4,
+     "frames": 8,
      "fps": 12,
      "loop": true
     }
@@ -46,7 +46,7 @@
    "anims": {
     "fly": {
      "row": 0,
-     "frames": 4,
+     "frames": 8,
      "fps": 12,
      "loop": true
     }
@@ -71,7 +71,7 @@
    "anims": {
     "fly": {
      "row": 0,
-     "frames": 4,
+     "frames": 8,
      "fps": 12,
      "loop": true
     }
@@ -96,7 +96,7 @@
    "anims": {
     "fly": {
      "row": 0,
-     "frames": 4,
+     "frames": 8,
      "fps": 12,
      "loop": true
     }
@@ -121,7 +121,7 @@
    "anims": {
     "fly": {
      "row": 0,
-     "frames": 4,
+     "frames": 8,
      "fps": 12,
      "loop": true
     }
@@ -146,7 +146,7 @@
    "anims": {
     "fly": {
      "row": 0,
-     "frames": 4,
+     "frames": 8,
      "fps": 12,
      "loop": true
     }
@@ -171,7 +171,7 @@
    "anims": {
     "fly": {
      "row": 0,
-     "frames": 4,
+     "frames": 8,
      "fps": 12,
      "loop": true
     }
@@ -180,15 +180,15 @@
   "hit": {
    "label": "Lightning hit (spark burst)",
    "file": "hit.png",
-   "frameW": 83,
-   "frameH": 83,
+   "frameW": 91,
+   "frameH": 91,
    "anchor": [
-    40,
-    40
+    44,
+    44
    ],
    "meters": [
-    1.46,
-    1.46
+    1.6,
+    1.6
    ],
    "tags": [
     "vfx"
@@ -196,7 +196,7 @@
    "anims": {
     "hit": {
      "row": 0,
-     "frames": 6,
+     "frames": 12,
      "fps": 12,
      "loop": false
     }
@@ -221,7 +221,7 @@
    "anims": {
     "blast": {
      "row": 0,
-     "frames": 8,
+     "frames": 16,
      "fps": 12,
      "loop": false
     }
@@ -246,14 +246,14 @@
    "anims": {
     "rise": {
      "row": 0,
-     "frames": 6,
+     "frames": 12,
      "fps": 12,
      "loop": false
     },
     "idle": {
      "row": 1,
-     "frames": 4,
-     "fps": 12,
+     "frames": 8,
+     "fps": 10,
      "loop": true
     }
    }
@@ -277,14 +277,14 @@
    "anims": {
     "rise": {
      "row": 0,
-     "frames": 6,
+     "frames": 12,
      "fps": 12,
      "loop": false
     },
     "idle": {
      "row": 1,
-     "frames": 4,
-     "fps": 12,
+     "frames": 8,
+     "fps": 10,
      "loop": true
     }
    }
@@ -308,14 +308,14 @@
    "anims": {
     "rise": {
      "row": 0,
-     "frames": 6,
+     "frames": 12,
      "fps": 12,
      "loop": false
     },
     "idle": {
      "row": 1,
-     "frames": 4,
-     "fps": 12,
+     "frames": 8,
+     "fps": 10,
      "loop": true
     }
    }
@@ -339,8 +339,8 @@
    "anims": {
     "idle": {
      "row": 0,
-     "frames": 6,
-     "fps": 12,
+     "frames": 12,
+     "fps": 10,
      "loop": true
     }
    }

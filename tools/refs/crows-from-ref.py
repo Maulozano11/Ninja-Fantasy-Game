@@ -32,7 +32,8 @@ vortex at the caster and brings the crows out of it and round it, ending on his 
 The result is a TypeScript data module (palette + run-length rows) that the generator
 (tools/world-sprites/vfx-beast-crows.ts) decodes, so the build needs no image files. Deterministic.
 The build fails if a frame has an enclosed transparent gap over 20 px, a speck of 3 px or less, an
-opaque pixel on its edge, or (fly) an opaque mass more than 25 % off its neighbour's.
+opaque pixel on its edge, or (fly) an opaque mass more than 25 % off its neighbour's or a crow moving
+more than 25 px from one frame to the next.
 """
 import json
 import os
@@ -1107,6 +1108,10 @@ for i in range(len(mass)):
     ratio = mass[j] / mass[i]
     if not 0.8 <= ratio <= 1.25:
         FAILS.append(f'fly {i} -> {j}: opaque mass {mass[i]} -> {mass[j]} ({ratio:.2f}x, allowed 0.80-1.25)')
+for i, step in enumerate(TRAVEL):
+    for n, d in step.items():
+        if d > 25:
+            FAILS.append(f'fly {i} -> {(i + 1) % 6}: {n} moves {d} px (allowed 25)')
 for msg in FAILS:
     print('CHECK FAILED:', msg)
 if FAILS and os.environ.get('CROWS_DEV') != '1':  # CROWS_DEV=1: keep going (debug images), never for the real build
@@ -1225,7 +1230,7 @@ if DEBUG:
     info = {'ref': os.path.basename(REF), 'scale': S, 'hisCharacter': heights, 'pictures': PICS, 'panel': PANEL,
             'anchors': {k: [ANCH[k][0] + PICS[k][0], ANCH[k][1] + PICS[k][1]] for k in PICS},
             'frame': FSIZE, 'anchor': FANCHOR, 'vortex': [VCX + PICS['L'][0], VCY + PICS['L'][1], VRAD],
-            'stats': STATS, 'outline': OUTLINE.tolist()}
+            'stats': STATS, 'travel': TRAVEL, 'outline': OUTLINE.tolist()}
     tmp = os.path.join(DEBUG, 'crows-ref.json.part')
     with open(tmp, 'w') as fh:
         json.dump(info, fh, indent=1, default=lambda o: o.tolist() if hasattr(o, 'tolist') else str(o))

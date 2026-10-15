@@ -310,6 +310,8 @@ interface Key {
   /** Every piece as a full-frame layer. */
   p: Record<string, Ix>;
   fade: Fade;
+  /** The wall's pillar edges (x), where his art has them. */
+  seams: number[];
 }
 interface Pad {
   l: number;
@@ -328,7 +330,7 @@ function key(name: string, room: Pad = pad(0)): Key {
   const fade = { ...s.fade };
   if (fade.top) fade.top += room.t;
   if (fade.right) fade.right += room.r;
-  return { name, w, h, ax: s.anchor[0] + room.l, ay: s.anchor[1] + room.t, p, fade };
+  return { name, w, h, ax: s.anchor[0] + room.l, ay: s.anchor[1] + room.t, p, fade, seams: (s.seams ?? []).map((x) => x + room.l) };
 }
 const none = (k: Key): Ix => blank(k.w, k.h);
 const piece = (k: Key, n: string): Ix => k.p[n] ?? none(k);
@@ -627,11 +629,13 @@ function wall(): WorldSprite {
   const H = k.ay - cb[1];
   const top = new Int32Array(k.w).fill(k.h);
   for (let y = k.h - 1; y >= 0; y--) for (let x = 0; x < k.w; x++) if (at(cr, x, y)) top[x] = y;
-  const beat = (x: number) => 0.55 * vnoise(Math.floor(x / 22), 0, 1, 1010) + 0.45 * hash(Math.floor(x / 22), 3, 1011);
+  // Each of his pillars (between his seams) rises whole, on its own beat.
+  const pillar = (x: number) => k.seams.filter((sx) => sx <= x).length;
+  const beat = (x: number) => hash(pillar(x), 3, 1011);
   const rise: Canvas[] = [];
   for (let r = 0; r < 6; r++) {
     const T = (r + 1) / 5;
-    const p = (x: number) => (r >= 5 ? 1 : smooth(beat(x) * 0.5, beat(x) * 0.5 + 0.55, T));
+    const p = (x: number) => (r >= 5 ? 1 : smooth(beat(x) * 0.45, beat(x) * 0.45 + 0.55, T));
     let c = emerge(cr, ground, p, H);
     // A white-hot glint on the tops while they climb.
     if (r < 5) c = tone(c, (x, y) => (p(x) < 1 && y < top[x] + Math.round((1 - p(x)) * H) + 5 ? 2 : 0));
@@ -671,20 +675,30 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
       const f = foot[x] >= 0 ? foot[x] : ab[3];
       return [0, (y - f) * (1 - 1 / Math.max(0.02, s))];
     });
-  const beat = (x: number) => 0.5 * vnoise(x, 0, 18, seed) + 0.5 * hash(Math.floor(x / 16), 5, seed + 1);
+  const top = new Int32Array(k.w).fill(-1);
+  for (let y = k.h - 1; y >= 0; y--) for (let x = 0; x < k.w; x++) if (at(all, x, y)) top[x] = y;
   const rise: Canvas[] = [];
   for (let r = 0; r < 6; r++) {
     const T = [0.18, 0.4, 0.62, 0.82, 0.95, 1][r];
     let a: Ix;
     if (r >= 5) a = all;
-    else {
-      // Per column its own beat, so the crystals arrive one after another.
-      const parts2 = blank(k.w, k.h);
-      for (const lv of [0.25, 0.5, 0.75, 1]) {
-        const s = clamp(T * 1.25 - (1 - lv) * 0.3, 0, 1);
-        stamp(parts2, keep(grow(all, s), (x) => Math.abs(beat(x) - (lv - 0.125)) <= 0.125 + 1e-6));
+    else if (name === 'wall_diag') {
+      // The crystals push up out of the ground, in a wave from the near end to the far end,
+      // white-hot at their tops while they climb.
+      const p = (x: number) => smooth(0, 1, T * 1.7 - 0.7 * ((x - ab[0]) / (ab[2] - ab[0])));
+      const out = blank(k.w, k.h);
+      for (let x = 0; x < k.w; x++) {
+        if (foot[x] < 0) continue;
+        const lift = Math.round((1 - p(x)) * (foot[x] - top[x] + 1));
+        for (let y = 0; y <= foot[x]; y++) {
+          const v = at(all, x, y - lift);
+          if (v) out.d[y * k.w + x] = lift && y - lift < top[x] + 5 ? toneMap(2)[v - 1] + 1 : v;
+        }
       }
-      a = tone(parts2, 1);
+      a = out;
+    } else {
+      // End-on: the column grows up from its base, white-hot while it shoots up.
+      a = tone(grow(all, T), 1);
     }
     rise.push(render(k.w, k.h, [[stain, [0.2, 0.4, 0.6, 0.8, 1, 1][r]], [sm, [0, 0.3, 0.6, 0.8, 1, 1][r]], [a], [bits, [0, 0, 0, 0.4, 0.8, 1][r]]], k.fade));
   }

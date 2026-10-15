@@ -283,7 +283,7 @@ SPRITES = {
                   drop=[[(1640, 640), (1700, 640), (1700, 797), (1640, 797)]],
                   solid=BLAST_SOLID, dust=[rect(1159, 435, 1668, 797)], dust_a=0.92, shade=[rect(1159, 600, 1668, 797)],
                   pieces=[('k%d' % k, [p]) for k, p in enumerate(BLAST_SOLID[:12])] + [('rocks', BLAST_SOLID[12:])],
-                  fade={'right': 6}, bits=80),
+                  fade={'right': 6}, bits=80, under_rows=True),
     'wall': dict(s=2.34, anchor=(379.5, 1177), area=[rect(24, 867, 745, 1253)], art_d=14, bits=40,
                  dust=[rect(24, 1195, 745, 1253)], sparse=True, dust_a=0.85),
     'wall_diag': dict(s=2.35, anchor=(1545, 1302), area=[rect(1222, 867, 1975, 1490)],
@@ -745,6 +745,63 @@ def seam_rows(A, B, PALC, lo, hi):
     return out
 
 
+def fill_from(idx, dust, hole):
+    """Each hole pixel takes the dust value of its neighbours, filled in from the hole's edge inward."""
+    out = np.where(dust, idx, 0)
+    todo = hole.copy()
+    while todo.any():
+        got = np.zeros_like(out)
+        for dy, dx in N8:
+            v = shift(out, dy, dx)
+            got = np.where((got == 0) & (v > 0), v, got)
+        new = todo & (got > 0)
+        if not new.any():
+            break
+        out[new] = got[new]
+        todo &= ~new
+    return np.where(hole, out, 0)
+
+
+def dust_under(idx, kinds, rows=False, max_size=500, reach=70):
+    """His dust continued under the rocks that sit in it, so a rock that moves away leaves dust
+    behind, not a hole. Hidden: a rock whose rim is mostly dust; with `rows`, also any rock pixel
+    with his dust on both sides of it in its row (within `reach` px: the cloud the blast's crystals
+    stand in goes on behind them)."""
+    k = kinds[idx]
+    rock = (k == 'body') | (k == 'outline')
+    dust = k == 'dust'
+    lab, n = components(rock, nb=N8)
+    hole = np.zeros(idx.shape, bool)
+    for c in range(1, n + 1):
+        m = lab == c
+        if m.sum() > max_size:
+            continue
+        ring = dilate(m, 1, nb=N8) & ~m
+        if ring.sum() and (ring & dust).sum() >= 0.5 * ring.sum():
+            hole |= m
+    if rows:
+        # (across its row, or down its column)
+        for D, R in ((dust, rock), (dust.T, rock.T)):
+            Hh = hole if D is dust else hole.T
+            for y in range(D.shape[0]):
+                xs = np.nonzero(D[y])[0]
+                if len(xs) < 2:
+                    continue
+                for x in np.nonzero(R[y])[0]:
+                    if ((xs < x) & (xs >= x - reach)).any() and ((xs > x) & (xs <= x + reach)).any():
+                        Hh[y, x] = True
+    return fill_from(idx, dust, hole)
+
+
+def add_under(pieces, idx, kinds, rows=False):
+    u = dust_under(idx, kinds, rows)
+    if u.any():
+        ys, xs = np.nonzero(u)
+        bx0, by0, bx1, by1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+        pieces['under'] = {'x': int(bx0), 'y': int(by0), 'w': int(bx1 - bx0), 'h': int(by1 - by0), 'rle': rle(u[by0:by1, bx0:bx1].ravel())}
+    return pieces
+
+
 result = {}
 review = {}
 for name, b in built.items():
@@ -771,7 +828,7 @@ for name, b in built.items():
         result['stream'] = {'w': 64, 'h': 64, 'anchor': [0, 32], 'pal': pal_json,
                             'pieces': split_pieces(tile, kinds, b, keep_full=True, wrap=True)}
         result['stream_head'] = {'w': int(head.shape[1]), 'h': int(head.shape[0]), 'anchor': [32 - 0, int(ay)], 'pal': pal_json,
-                                 'pieces': split_pieces(head, kinds, b, keep_full=True)}
+                                 'pieces': add_under(split_pieces(head, kinds, b, keep_full=True), head, kinds)}
         # (The head's anchor is 32 px right of its left edge, the joint with the last tile.)
         review['stream'] = (tile, PALC, b['g']['his'][ay - 32:ay + 32, :64])
         review['stream_head'] = (head, PALC, b['g']['his'][:, 64:])
@@ -784,10 +841,11 @@ for name, b in built.items():
         for lname, m in (('aura', front), ('aura_back', ~front)):
             sub = np.where(m, idx, 0)
             result[lname] = {'w': b['W'], 'h': b['H'], 'anchor': [b['ax'], b['ay']], 'pal': pal_json,
-                             'pieces': split_pieces(sub, kinds, b)}
+                             'pieces': add_under(split_pieces(sub, kinds, b), sub, kinds)}
             review[lname] = (sub, PALC, b['g']['his'])
         continue
-    result[name] = {'w': b['W'], 'h': b['H'], 'anchor': [b['ax'], b['ay']], 'pal': pal_json, 'pieces': split_pieces(idx, kinds, b)}
+    result[name] = {'w': b['W'], 'h': b['H'], 'anchor': [b['ax'], b['ay']], 'pal': pal_json,
+                    'pieces': add_under(split_pieces(idx, kinds, b), idx, kinds, rows=cfg.get('under_rows', False))}
     review[name] = (idx, PALC, b['g']['his'])
 
 for name, r in result.items():
@@ -826,6 +884,9 @@ if REVIEW:
         A = rgba[..., 3:] / 255
         return rgba[..., :3] * A + np.asarray(bg, np.float64) * (1 - A)
 
+    anchors = {n: r['anchor'] for n, r in result.items()}
+    with open(os.path.join(REVIEW, 'his-anchors.json'), 'w') as fh:
+        json.dump(anchors, fh)
     for name, (idx, PALC, his) in review.items():
         np.savez(os.path.join(REVIEW, 'k-' + name + '.npz'), idx=idx, pal=PALC)
         Image.fromarray(np.clip(his, 0, 255).astype(np.uint8)).save(os.path.join(REVIEW, 'his-' + name + '.png'))

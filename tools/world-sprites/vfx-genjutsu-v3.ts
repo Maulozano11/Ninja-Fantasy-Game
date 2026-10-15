@@ -56,41 +56,66 @@ const FILL: [number, number, number] = [32, 32, 42];
 const LOOK = PAL.map((c) => [0, 1, 2].map((k) => c[k] * (c[3] / 255) + FILL[k] * (1 - c[3] / 255)));
 
 const recolorCache = new Map<string, Int16Array>();
+/** sRGB (0-255) to CIE Lab. */
+function toLab(c: number[]): [number, number, number] {
+  const lin = c.map((v) => {
+    const u = v / 255;
+    return u > 0.04045 ? ((u + 0.055) / 1.055) ** 2.4 : u / 12.92;
+  });
+  const X = (lin[0] * 0.4124 + lin[1] * 0.3576 + lin[2] * 0.1805) / 0.95047;
+  const Y = lin[0] * 0.2126 + lin[1] * 0.7152 + lin[2] * 0.0722;
+  const Z = (lin[0] * 0.0193 + lin[1] * 0.1192 + lin[2] * 0.9505) / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  return [116 * f(Y) - 16, 500 * (f(X) - f(Y)), 200 * (f(Y) - f(Z))];
+}
+const LAB = LOOK.map(toLab);
 /**
- * A recolouring of the palette: each entry goes to the entry of its own kind nearest to fn(its
- * look). The outline and the translucent kinds (glow, smoke, ground) keep: their few entries are
- * his alpha steps, not a brightness ramp.
+ * One step along an entry's own hue ramp: the entry of its kind about 8 L lighter (dir 1) or
+ * darker (dir -1) with the nearest hue and chroma, so a tone step never turns his violets grey.
+ * Kinds whose entries are his alpha steps (outline, glow, smoke, ground) keep.
  */
-function recolorMap(key: string, fn: (c: number[], kind: GjKind) => number[]): Int16Array {
-  const hit = recolorCache.get(key);
-  if (hit) return hit;
-  const out = new Int16Array(PAL.length);
-  for (let i = 0; i < PAL.length; i++) {
-    if (KIND[i] === 'outline' || KIND[i] === 'glow' || KIND[i] === 'smoke' || KIND[i] === 'ground') {
-      out[i] = i;
-      continue;
-    }
-    const t = fn(LOOK[i], KIND[i]);
+const rampStep = (dir: number): Int16Array =>
+  recolorRamp(`ramp${dir}`, (i) => {
+    const [L, a, b] = LAB[i];
     let best = i, bd = Infinity;
     for (let j = 0; j < PAL.length; j++) {
-      if (KIND[j] !== KIND[i]) continue;
-      const d = (LOOK[j][0] - t[0]) ** 2 * 0.8 + (LOOK[j][1] - t[1]) ** 2 + (LOOK[j][2] - t[2]) ** 2 * 0.7;
+      if (KIND[j] !== KIND[i] || j === i) continue;
+      const dL = (LAB[j][0] - L) * dir;
+      if (dL < 2.5) continue;
+      // Toward white a ramp loses chroma: aim at the entry's chroma scaled down as it nears L 100.
+      const keepC = dir > 0 ? Math.max(0.35, (100 - LAB[j][0]) / Math.max(1, 100 - L)) : 1;
+      const d = (LAB[j][1] - a * keepC) ** 2 + (LAB[j][2] - b * keepC) ** 2 + 0.6 * (dL - 8) ** 2;
       if (d < bd) {
         bd = d;
         best = j;
       }
     }
-    out[i] = best;
+    return best;
+  });
+function recolorRamp(key: string, fn: (i: number) => number): Int16Array {
+  const hit = recolorCache.get(key);
+  if (hit) return hit;
+  const out = new Int16Array(PAL.length);
+  for (let i = 0; i < PAL.length; i++)
+    out[i] = KIND[i] === 'outline' || KIND[i] === 'glow' || KIND[i] === 'smoke' || KIND[i] === 'ground' ? i : fn(i);
+  recolorCache.set(key, out);
+  return out;
+}
+/** k > 0 steps each colour k steps lighter along its own hue ramp, k < 0 darker. */
+function toneMap(k: number): Int16Array {
+  const key = `tone${k}`;
+  const hit = recolorCache.get(key);
+  if (hit) return hit;
+  const step = rampStep(k > 0 ? 1 : -1);
+  const out = new Int16Array(PAL.length);
+  for (let i = 0; i < PAL.length; i++) {
+    let v = i;
+    for (let n = 0; n < Math.abs(k); n++) v = step[v];
+    out[i] = v;
   }
   recolorCache.set(key, out);
   return out;
 }
-const mixTo = (c: number[], t: number[], k: number): number[] => c.map((v, i) => v + (t[i] - v) * k);
-const WHITE = [255, 236, 255];
-const DEEP = [26, 10, 38];
-/** k > 0 brightens toward pink-white, k < 0 darkens toward deep violet (about 18% a step). */
-const toneMap = (k: number): Int16Array =>
-  recolorMap(`tone${k}`, (c) => (k > 0 ? mixTo(c, WHITE, Math.min(0.85, 0.18 * k)) : mixTo(c, DEEP, Math.min(0.9, -0.2 * k))));
 
 // --- indexed images ---------------------------------------------------------------------------
 
@@ -168,6 +193,55 @@ function rotateAbout(ix: Ix, cx: number, cy: number, ang: number, squash = 1, on
       const su = c * u + s * v, sv = -s * u + c * v;
       out.d[y * ix.w + x] = at(ix, Math.floor(cx + su), Math.floor(cy + sv * squash));
     }
+  return out;
+}
+
+/**
+ * Turns the picture INSIDE its own silhouette: a true rotation by `ang` in the ellipse's own space
+ * (y scaled by 1/squash, turned about (cx, cy), scaled back), sampled only from the picture's own
+ * pixels and written only where it has pixels, so the outline holds and nothing smears past it.
+ * Each output pixel takes the commonest of 4 sub-samples (no new colours, fewer jaggies).
+ */
+function turnInside(ix: Ix, cx: number, cy: number, ang: number, squash = 1, disc?: (x: number, y: number) => boolean): Ix {
+  const out = blank(ix.w, ix.h);
+  const c = Math.cos(ang), s = Math.sin(ang);
+  const inD = (x: number, y: number) => !!at(ix, x, y) && (!disc || disc(x, y));
+  for (let y = 0; y < ix.h; y++)
+    for (let x = 0; x < ix.w; x++) {
+      const v0 = ix.d[y * ix.w + x];
+      if (!v0) continue;
+      if (disc && !disc(x, y)) {
+        out.d[y * ix.w + x] = v0;
+        continue;
+      }
+      const votes = new Map<number, number>();
+      for (const [ox, oy] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) {
+        const u = x + ox - cx, v = (y + oy - cy) / squash;
+        const sx = Math.floor(cx + c * u + s * v), sy = Math.floor(cy + (-s * u + c * v) * squash);
+        const sv = inD(sx, sy) ? at(ix, sx, sy) : 0;
+        if (sv) votes.set(sv, (votes.get(sv) ?? 0) + 1);
+      }
+      let best = v0, bn = 0;
+      for (const [val, n] of votes) if (n > bn || (n === bn && val < best)) [best, bn] = [val, n];
+      out.d[y * ix.w + x] = best;
+    }
+  return out;
+}
+
+/**
+ * Pushes columns of the picture up out of the ground: column x shows the picture moved down by
+ * lift(x) px, clipped at that column's own ground y (nothing shows below it while it is lifted).
+ * No shear, no scaling: every column is his pixels, translated.
+ */
+function emergeCols(ix: Ix, ground: (x: number) => number, lift: (x: number) => number): Ix {
+  const out = blank(ix.w, ix.h);
+  for (let x = 0; x < ix.w; x++) {
+    const l = Math.round(lift(x)), g = ground(x);
+    for (let y = 0; y < ix.h; y++) {
+      if (l > 0 && y > g) continue;
+      out.d[y * ix.w + x] = at(ix, x, y - l);
+    }
+  }
   return out;
 }
 
@@ -266,24 +340,35 @@ type Fade = Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
 /** A layer: an indexed image, an alpha factor and its own fade toward the frame's sides. */
 type Layer = [Ix, number?, Fade?, ((x: number, y: number) => number)?];
 
+const BAYER4 = [
+  [0, 8, 2, 10],
+  [12, 4, 14, 6],
+  [3, 11, 1, 9],
+  [15, 7, 13, 5],
+];
 /**
- * How far into a faded side a pixel is (0 at the frame's edge, 1 past the fade), with the side's
- * edge made ragged: the cut-off wanders along the side (each column of the column's light, each
- * row of the long shadow ends at its own place), so the art ends in streaks, not in specks.
+ * The alpha factor toward a faded side (where his art ran off his panel): 1 inside, 0 past the end.
+ *   - top (the blast's column of light): each streak of light ends at its own height (a ragged,
+ *     column-by-column cut-off over the band), with a short 3 px stepped end: hard streak ends;
+ *   - right (the 3/4 wall's long shadow): each row ends at its own place, and the stain thins
+ *     out in an ordered (Bayer) alpha ramp of 8 levels, so it does not band into blocks.
  */
-function fadeT(f: Fade | undefined, x: number, y: number, w: number, h: number): number {
+function fadeA(f: Fade | undefined, x: number, y: number, w: number, h: number): number {
   if (!f) return 1;
-  let t = 1;
-  const rag = (along: number, side: number) => 0.45 * vnoise(along, side, 2.5, 911);
-  const edge = (d: number, len: number, along: number, side: number) => {
-    const c = rag(along, side);
-    return (d / len - c) / (1 - c);
+  let a = 1;
+  if (f.top) {
+    const end = f.top * (0.15 + 0.85 * vnoise(x, 1, 1.6, 911));
+    a = Math.min(a, Math.ceil(clamp((y - end) / 3, 0, 1) * 4) / 4);
+  }
+  const ordered = (d: number, len: number, along: number, side: number) => {
+    const c = 0.4 * vnoise(along, side, 2.5, 911);
+    const t = clamp((d / len - c) / (1 - c), 0, 1);
+    return clamp(Math.floor(t * 8 + BAYER4[y & 3][x & 3] / 16) / 8, 0, 1);
   };
-  if (f.top) t = Math.min(t, edge(y, f.top, x, 1));
-  if (f.right) t = Math.min(t, edge(w - 1 - x, f.right, y, 2));
-  if (f.bottom) t = Math.min(t, edge(h - 1 - y, f.bottom, x, 3));
-  if (f.left) t = Math.min(t, edge(x, f.left, y, 4));
-  return clamp(t, 0, 1);
+  if (f.right) a = Math.min(a, ordered(w - 1 - x, f.right, y, 2));
+  if (f.bottom) a = Math.min(a, ordered(h - 1 - y, f.bottom, x, 3));
+  if (f.left) a = Math.min(a, ordered(x, f.left, y, 4));
+  return a;
 }
 
 /**
@@ -301,12 +386,8 @@ function render(w: number, h: number, layers: Layer[], fade?: Fade): Canvas {
         if (!v) continue;
         let a = k * (alphaAt ? alphaAt(x, y) : 1);
         if (a <= 0) continue;
-        const t = fadeT(f, x, y, w, h);
-        if (t < 1) {
-          if (t <= 0) continue;
-          // Stepped alpha (pixel art): a quarter at the ragged end, full past the fade.
-          a *= Math.ceil(t * 4) / 4;
-        }
+        a *= fadeA(f, x, y, w, h);
+        if (a <= 0) continue;
         const p = PAL[v - 1];
         const al = Math.round(p[3] * a);
         if (al <= 0) continue;
@@ -396,6 +477,9 @@ const ROOM = 0;
 function bolt(): WorldSprite {
   const k = key('bolt', pad(ROOM));
   const orb = piece(k, 'orb'), main = piece(k, 'main'), sm = piece(k, 'smoke');
+  // His trailing smoke is fine speckle, not blobs: a third of its pixels open up, and it is a
+  // quarter lighter than his opaque rims.
+  const smk = keep(sm, (x, y) => hash(x, y, 4242) > 0.33);
   const fr = range(6).map((i) => {
     const ph = (i / 6) * TAU;
     // The tendrils wave, more the further back they are; none at the orb.
@@ -405,7 +489,7 @@ function bolt(): WorldSprite {
     }) : main;
     // The orb's rim breathes a step brighter and darker; the eye at its middle holds still.
     const o = tone(orb, (x, y) => (Math.hypot(x - k.ax, y - k.ay) > 6 ? [0, 1, 1, 0, -1, -1][i] : 0));
-    return render(k.w, k.h, [[conveyor(sm, i, 6, k.ax - 10), 1, { left: 10 }], [m], [o]]);
+    return render(k.w, k.h, [[conveyor(smk, i, 6, k.ax - 10), 0.75, { left: 10 }], [m], [o]]);
   });
   return sprite(k, 'Genjutsu bolt: watching-eye orb with streaming tendrils', { fly: { frames: fr, fps: 12, loop: true } });
 }
@@ -471,8 +555,9 @@ function breath(): WorldSprite {
   const orb = piece(k, 'orb'), main = piece(k, 'main'), sm = piece(k, 'smoke'), eyes = piece(k, 'eyes');
   const ob = bounds(orb)!;
   const ox = (ob[0] + ob[2]) / 2, oy = (ob[1] + ob[3]) / 2;
+  type Part = { ix: Ix; b: [number, number, number, number] };
   // His eyes, each gathered from its bits (a ring and a pupil may not touch).
-  const eyeParts: { ix: Ix; b: [number, number, number, number] }[] = [];
+  const eyeParts: Part[] = [];
   for (const p of parts(eyes)) {
     const cx = (p.b[0] + p.b[2]) / 2, cy = (p.b[1] + p.b[3]) / 2;
     const near = eyeParts.find((e) => Math.abs((e.b[0] + e.b[2]) / 2 - cx) < 6 && Math.abs((e.b[1] + e.b[3]) / 2 - cy) < 5);
@@ -481,34 +566,66 @@ function breath(): WorldSprite {
       near.b = bounds(near.ix)!;
     } else eyeParts.push({ ix: p.ix, b: p.b });
   }
-  const LAMBDA = 13;
-  const mainParts = parts(main);
+  // The arcs: each big part, with every small bit within 3 px of it (his rim dashes and specks),
+  // so an arc moves as one layer and its rim never parts from it.
+  const all = parts(main);
+  const size = (p: Part) => p.ix.d.reduce((n, v) => n + (v ? 1 : 0), 0);
+  const arcs = all.filter((p) => size(p) >= 40);
+  const label = new Int16Array(k.w * k.h).fill(-1);
+  arcs.forEach((p, j) => p.ix.d.forEach((v, n) => {
+    if (v) label[n] = j;
+  }));
+  const groups: Part[] = arcs.map((p) => ({ ix: stamp(blank(k.w, k.h), p.ix), b: p.b }));
+  for (const p of all) {
+    if (size(p) >= 40) continue;
+    const votes = new Map<number, number>();
+    for (let y = p.b[1]; y <= p.b[3]; y++)
+      for (let x = p.b[0]; x <= p.b[2]; x++) {
+        if (!at(p.ix, x, y)) continue;
+        for (let dy = -3; dy <= 3; dy++)
+          for (let dx = -3; dx <= 3; dx++) {
+            const u = x + dx, v = y + dy;
+            if (u < 0 || v < 0 || u >= k.w || v >= k.h) continue;
+            const l = label[v * k.w + u];
+            if (l >= 0) votes.set(l, (votes.get(l) ?? 0) + 1);
+          }
+      }
+    let best = -1, bn = 0;
+    for (const [l, n] of votes) if (n > bn || (n === bn && l < best)) [best, bn] = [l, n];
+    if (best >= 0) {
+      stamp(groups[best].ix, p.ix);
+      groups[best].b = bounds(groups[best].ix)!;
+    } else groups.push({ ix: p.ix, b: p.b });
+  }
+  // The ripple: each arc (and each eye) moves as a whole a pixel out and back along its ray from
+  // the orb, the wave travelling outward arc to arc (one frame of lag per 13 px of radius), with
+  // an equal step every frame, so the loop has no hitch. Frame 0 is his picture.
+  const WAVE = [0, 1, 1, 0, -1, -1];
+  const push = (p: Part, i: number): [number, number] => {
+    const cx = (p.b[0] + p.b[2]) / 2, cy = (p.b[1] + p.b[3]) / 2;
+    const r = Math.hypot(cx - ox, cy - oy) || 1;
+    const lag = Math.round(r / 13);
+    const d = WAVE[(((i - lag) % 6) + 6) % 6] - WAVE[(((-lag) % 6) + 6) % 6];
+    return [Math.round(((cx - ox) / r) * d), Math.round(((cy - oy) / r) * d * 0.6)];
+  };
   const fr = range(6).map((i) => {
     const t = i / 6;
-    // The arcs ripple outward from the orb: each arc (and each eye) moves as a whole, a pixel or
-    // so out and back, the wave travelling outward from arc to arc.
-    const push = (cx: number, cy: number): [number, number] => {
-      const r = Math.hypot(cx - ox, cy - oy) || 1;
-      const d = Math.round((Math.sin((r / LAMBDA) * TAU - t * TAU) - Math.sin((r / LAMBDA) * TAU)) * 1.1);
-      return [Math.round(((cx - ox) / r) * d), Math.round(((cy - oy) / r) * d * 0.6)];
-    };
     const m = blank(k.w, k.h);
-    for (const p of mainParts) {
-      const [dx, dy] = i ? push((p.b[0] + p.b[2]) / 2, (p.b[1] + p.b[3]) / 2) : [0, 0];
+    for (const p of groups) {
+      const [dx, dy] = i ? push(p, i) : [0, 0];
       stamp(m, p.ix, dx, dy);
     }
     const s = i ? displace(sm, wobble(t, 1, 6, 220)) : sm;
-    // The watching eyes blink in turn (each shut for one frame) and ride the ripple.
+    // The watching eyes ride the ripple and blink in turn (each shut for one frame).
     const e = blank(k.w, k.h);
     eyeParts.forEach((p, j) => {
       const cy = (p.b[1] + p.b[3]) / 2;
       const shut = i && (j * 5 + 1) % 6 === i;
-      const [dx, dy] = i ? push((p.b[0] + p.b[2]) / 2, cy) : [0, 0];
+      const [dx, dy] = i ? push(p, i) : [0, 0];
       stamp(e, shut ? scaleAbout(p.ix, (p.b[0] + p.b[2]) / 2, cy, 1, 0.25) : p.ix, dx, dy);
     });
-    const ee = e;
     const o = tone(orb, [0, 1, 2, 1, 0, -1][i]);
-    return render(k.w, k.h, [[s], [m], [ee], [o]]);
+    return render(k.w, k.h, [[s], [m], [e], [o]]);
   });
   return sprite(k, 'Genjutsu breath: ripples of watching eyes from a glowing orb (origin at the anchor)', { fly: { frames: fr, fps: 12, loop: true } });
 }
@@ -523,13 +640,21 @@ function stream(): WorldSprite[] {
   const tiles = range(6).map((i) => (i ? displace(tm, () => [STREAM_SHIFT[i], 0], true) : tm));
   const h = key('stream_head', { l: 0, t: 0, r: ROOM, b: 0 });
   if (h.ay !== t.ay || h.h !== t.h) throw new Error('vfx-genjutsu-v3: the stream head and the tile do not line up');
-  const spiral = piece(h, 'spiral'), hm = piece(h, 'main'), sparks = piece(h, 'sparks'), hs = piece(h, 'smoke');
+  const spiral = piece(h, 'spiral'), sparks = piece(h, 'sparks'), hs = piece(h, 'smoke');
+  // His white wisp under the ribbons (bottom left) is kept in every frame; it drifts a pixel.
+  const isWisp = (x: number, y: number) => x < 20 && y > 42;
+  const hm = keep(piece(h, 'main'), (x, y) => !isWisp(x, y)), wisp = keep(piece(h, 'main'), isWisp);
   const sb = bounds(spiral)!;
   const cx = (sb[0] + sb[2] + 1) / 2, cy = (sb[1] + sb[3] + 1) / 2;
+  // The vortex proper (his bright spiral and its dark rim): it turns inside its own disc.
+  const R = 15.5;
+  const inDisc = (x: number, y: number) => Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= R;
+  const body = union(hm, spiral);
+  const disc = keep(body, inDisc);
   // Frame 0 is his head as he painted it (his head starts exactly two braid periods after the
-  // tile, so it runs on from the tile's end). In the other frames his ribbons up to the spiral's
-  // middle slide on into the vortex with the stream (and are swallowed by it), and the braid
-  // follows them in from the last tile, so the joint is seamless in every frame.
+  // tile, so it runs on from the tile's end; its first 2 columns are the tile's, so the joint is
+  // clean). In the other frames his ribbons left of the vortex slide on into it with the stream
+  // and the braid follows them in from the last tile, so the joint is seamless in every frame.
   const HEAD_JOINT = Math.round(cx);
   const slide = (ix: Ix, s: number, withTile: boolean): Ix => {
     const out = keep(ix, (x) => x >= HEAD_JOINT);
@@ -541,11 +666,25 @@ function stream(): WorldSprite[] {
       }
     return out;
   };
+  const RIM = KIND.indexOf('outline') + 1;
   const heads = range(6).map((i) => {
-    // The spiral turns a sixth of a turn a frame (a full turn per loop).
-    const sp = i ? rotateAbout(spiral, cx, cy, (i / 6) * TAU) : spiral;
     const s = STREAM_SHIFT[i];
-    return render(h.w, h.h, [[s ? slide(hs, s, false) : hs], [s ? slide(hm, s, true) : hm], [sp], [twinkle(sparks, i, 0.34, 707)]]);
+    const w = move(wisp, [0, 1, 1, 1, 0, 0][i], [0, 0, -1, -1, -1, 0][i]);
+    if (!i) {
+      const f0 = union(body);
+      for (let y = 0; y < h.h; y++) for (let x = 0; x < 2; x++) f0.d[y * h.w + x] = at(tm, x, y);
+      return render(h.w, h.h, [[hs], [f0], [w], [sparks]]);
+    }
+    // The ribbons swallowed by the vortex: they end at its rim, where his dark rim covers the cut.
+    const flow = keep(slide(body, s, true), (x, y) => !inDisc(x, y));
+    for (let y = 0; y < h.h; y++)
+      for (let x = 0; x < HEAD_JOINT; x++) {
+        const r = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+        if (r > R && r <= R + 1.2 && flow.d[y * h.w + x] && LAB[flow.d[y * h.w + x] - 1][0] > 45) flow.d[y * h.w + x] = RIM;
+      }
+    // The spiral turns a sixth of a turn a frame inside its disc (4 sub-samples a pixel).
+    const sp = turnInside(disc, cx, cy, (i / 6) * TAU, 1, inDisc);
+    return render(h.w, h.h, [[slide(hs, s, false)], [flow], [sp], [w], [twinkle(sparks, i, 0.34, 707)]]);
   });
   return [
     sprite(t, 'Genjutsu stream: braided magenta ribbons (tileable 64 px)', { fly: { frames: tiles.map((ix) => render(t.w, t.h, [[ix]])), fps: 12, loop: true } }),
@@ -582,25 +721,27 @@ function blast(): WorldSprite {
   const k = key('blast', pad(2));
   const pool = piece(k, 'pool'), col = piece(k, 'column'), fx = piece(k, 'main'), sm = piece(k, 'smoke');
   const pb = bounds(pool)!;
-  // The pool lies on the ground: an ellipse about the anchor, about a third as tall as wide.
+  // The pool lies on the ground: its own ellipse (centre and height / width) is what turns.
+  const pcx = (pb[0] + pb[2] + 1) / 2, pcy = (pb[1] + pb[3] + 1) / 2;
   const squash = clamp((pb[3] - pb[1]) / (pb[2] - pb[0]), 0.2, 0.6);
   const cb = bounds(col)!;
-  const colBottom = cb[3];
+  const colBottom = cb[3], colH = colBottom - cb[1];
+  const DEG = Math.PI / 180;
   const fr: Canvas[] = [];
   for (let i = 0; i < 8; i++) {
-    const turn = ((i - 3) * TAU) / 18;
-    const poolS = [0.3, 0.6, 0.86, 1, 1, 1, 0.97, 0.9][i];
-    const poolA = [1, 1, 1, 1, 1, 1, 0.85, 0.55][i];
-    let p = i === 3 ? pool : inside(rotateAbout(pool, k.ax, k.ay, turn, squash), 1);
+    // The vortex turns 8 degrees a frame inside its own outline (frame 3 is his picture).
+    const poolS = [0.3, 0.6, 0.86, 1, 1, 1, 0.97, 0.92][i];
+    const poolA = [1, 1, 1, 1, 1, 1, 0.85, 0.6][i];
+    let p = i === 3 ? pool : turnInside(pool, pcx, pcy, (i - 3) * 8 * DEG, squash);
     if (poolS < 1) p = scaleAbout(p, k.ax, k.ay, poolS);
-    if (i >= 6) p = dissolve(tone(p, -1), [0, 0, 0, 0, 0, 0, 0.2, 0.45][i], 920 + i);
+    // Dying: each colour steps down its own hue ramp (the vortex darkens, it never greys).
+    if (i >= 6) p = tone(p, i === 6 ? -1 : -2);
     // The column shoots up out of the pool, white-hot at its front, then flickers and lifts away.
     let c = col;
     const reach = [0, 0.3, 0.72, 1, 1, 1, 1, 1][i];
-    // Its front is ragged (the light tears upward in streaks).
-    // Its front is ragged in streaks (each column of light ends at its own height) and soft: the
-    // last 12 px fade out in steps, white-hot just below. It starts narrow and widens.
-    const front = (x: number) => colBottom - (colBottom - cb[1]) * reach + snoise(x, i, 2.5, 925) * 9;
+    // Its front is ragged in streaks (each column of light ends at its own height): the last
+    // 12 px fade out in steps, white-hot just below. It starts narrow and widens.
+    const front = (x: number) => colBottom - colH * reach + snoise(x, i, 2.5, 925) * 9;
     let colFront: ((x: number, y: number) => number) | undefined;
     if (reach < 1) {
       c = scaleAbout(col, k.ax, colBottom, [1, 0.62, 0.86][i], 1);
@@ -608,11 +749,18 @@ function blast(): WorldSprite {
       colFront = (x, y) => Math.ceil(clamp((y - front(x)) / 12, 0, 1) * 4) / 4;
     }
     if (i === 4 || i === 5) c = inside(displace(col, wobble((i - 3) / 6, 1.6, 5, 930, 1)), 1);
-    if (i >= 6) c = inside(move(dissolve(tone(col, i === 6 ? -1 : -2), i === 6 ? 0.3 : 0.6, 940 + i, 4), 0, i === 6 ? -6 : -14), 1);
-    const colA = [0, 1, 1, 1, 1, 1, 0.8, 0.5][i];
+    if (i >= 6) {
+      // The light goes out from the top down: each streak ends lower (ragged, in ordered alpha
+      // steps), and what is left steps down its own hue ramp. It stays opaque, so it darkens
+      // to violet instead of greying over the pool; no specks, no holes.
+      const gone = (x: number) => cb[1] + colH * (i === 6 ? 0.32 : 0.66) + snoise(x, i, 2, 945) * 8;
+      c = tone(col, i === 6 ? -1 : -3);
+      colFront = (x, y) => Math.ceil(clamp((y - gone(x)) / 12, 0, 1) * 4) / 4;
+    }
+    const colA = 1;
     // The feathers, sparkles and splashes burst out with the column and drift away.
     let f = fx;
-    if (i < 3) f = i < 2 ? none(k) : dissolve(scaleAbout(fx, k.ax, k.ay - 30, 0.85), 0.35, 950);
+    if (i < 3) f = i < 2 ? none(k) : keep(scaleAbout(fx, k.ax, k.ay - 30, 0.85), (x, y) => hash(x >> 2, y >> 2, 950) > 0.3);
     if (i > 3) {
       const u = (i - 3) / 4;
       f = inside(twinkle(displace(fx, (x, y) => {
@@ -695,7 +843,10 @@ function wall(): WorldSprite {
   });
 }
 
-/** The 3/4 and end-on walls: the crystals grow up out of the ground (scaled from their base). */
+/**
+ * The 3/4 and end-on walls: the crystals push up out of the ground, translated column by column
+ * and clipped at each column's ground line (never scaled or sheared).
+ */
 function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, seed: number): WorldSprite {
   const room = name === 'wall_diag' ? { l: 2, t: 2, r: 0, b: 2 } : pad(2);
   const k = key(name, room);
@@ -703,38 +854,36 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
   const all = union(main, col);
   const ab = bounds(all)!;
   const stainB = bounds(stain);
-  // Each column's lowest pixel is its ground; the art grows up from there.
-  const foot = new Int32Array(k.w).fill(-1);
-  for (let y = 0; y < k.h; y++) for (let x = 0; x < k.w; x++) if (at(all, x, y)) foot[x] = y;
-  const grow = (ix: Ix, s: number) =>
-    s >= 1 ? ix : displace(ix, (x, y) => {
-      const f = foot[x] >= 0 ? foot[x] : ab[3];
-      return [0, (y - f) * (1 - 1 / Math.max(0.02, s))];
-    });
+  // Each column's ground: on the 3/4 wall, his slanted foot line (the near-left foot about
+  // (-95, +45) from the anchor, the far end about (+95, -55), along the crystal bases, a few px
+  // of base below it); end-on, each column's lowest pixel (the ground runs back into the screen).
+  const footLow = new Int32Array(k.w).fill(-1);
+  for (let y = 0; y < k.h; y++) for (let x = 0; x < k.w; x++) if (at(all, x, y)) footLow[x] = y;
+  const ground = name === 'wall_diag'
+    ? (x: number) => Math.round(k.ay + 45 - ((x - (k.ax - 95)) * 100) / 190 + 6)
+    : (x: number) => (footLow[x] >= 0 ? footLow[x] : ab[3]);
+  // What stands on the ground (crystals) rises; what lies in front of the foot line (brambles,
+  // shards and the splash on the ground) comes up after, with the bits.
+  const up = keep(all, (x, y) => y <= ground(x));
+  const front = keep(all, (x, y) => y > ground(x));
   const top = new Int32Array(k.w).fill(-1);
-  for (let y = k.h - 1; y >= 0; y--) for (let x = 0; x < k.w; x++) if (at(all, x, y)) top[x] = y;
+  for (let y = k.h - 1; y >= 0; y--) for (let x = 0; x < k.w; x++) if (at(up, x, y)) top[x] = y;
+  let hMax = 0;
+  for (let x = 0; x < k.w; x++) if (top[x] >= 0) hMax = Math.max(hMax, ground(x) - top[x] + 1);
   const rise: Canvas[] = [];
   for (let r = 0; r < 6; r++) {
     const T = [0.18, 0.4, 0.62, 0.82, 0.95, 1][r];
     let a: Ix;
     if (r >= 5) a = all;
-    else if (name === 'wall_diag') {
-      // The crystals push up out of the ground, in a wave from the near end to the far end,
-      // white-hot at their tops while they climb.
-      const p = (x: number) => smooth(0, 1, T * 1.7 - 0.7 * ((x - ab[0]) / (ab[2] - ab[0])));
-      const out = blank(k.w, k.h);
-      for (let x = 0; x < k.w; x++) {
-        if (foot[x] < 0) continue;
-        const lift = Math.round((1 - p(x)) * (foot[x] - top[x] + 1));
-        for (let y = 0; y <= foot[x]; y++) {
-          const v = at(all, x, y - lift);
-          if (v) out.d[y * k.w + x] = lift && y - lift < top[x] + 5 ? toneMap(2)[v - 1] + 1 : v;
-        }
-      }
-      a = out;
-    } else {
-      // End-on: the column grows up from its base, white-hot while it shoots up.
-      a = tone(grow(all, T), 1);
+    else {
+      // 3/4: a wave from the near end to the far end; end-on: the column all at once.
+      const t = name === 'wall_diag' ? (x: number) => smooth(0, 1, T * 1.7 - 0.7 * ((x - ab[0]) / (ab[2] - ab[0]))) : () => T;
+      const lift = (x: number) => Math.round((1 - t(x)) * hMax);
+      a = emergeCols(up, ground, lift);
+      // White-hot at their tops while they climb (one step up each colour's own ramp, two at the tip).
+      a = tone(a, (x, y) => (lift(x) > 0 && top[x] >= 0 ? (y < top[x] + lift(x) + 3 ? 2 : y < top[x] + lift(x) + 7 ? 1 : 0) : 0));
+      const fa = [0, 0, 0.4, 0.7, 1][r];
+      if (fa > 0) a = union(a, fa >= 1 ? front : keep(front, (x, y) => hash(x >> 1, y >> 1, seed + 3) < fa));
     }
     // The long shadow stretches out from the wall's foot as the wall grows; the smoke comes up
     // with the crystals (none above their growing tops).
@@ -796,12 +945,13 @@ function aura(): WorldSprite[] {
  */
 function veil(k: Key, frame: number): Canvas {
   const c = new Canvas(k.w, k.h);
-  const cx = k.ax - 3, cy = k.ay - 48, rx = 25, ry = 54;
+  // Fitted to a 96 px figure standing on the anchor (feet): x -25..+17, y -93..+2 (characterRef).
+  const cx = k.ax - 4, cy = k.ay - 46, rx = 22, ry = 49;
   const breathe = 1 + 0.12 * Math.sin((frame / 6) * TAU);
   for (let y = 0; y < k.h; y++)
     for (let x = 0; x < k.w; x++) {
       const r = Math.hypot((x - cx) / rx, (y - cy) / ry);
-      let a = (0.18 + 0.18 * smooth(0.45, 0.9, r)) * (1 - smooth(0.82, 1.06, r)) * breathe;
+      let a = (0.18 + 0.16 * smooth(0.4, 0.78, r)) * (1 - smooth(0.78, 1, r)) * breathe;
       a = Math.round(a / 0.06) * 0.06;
       if (a <= 0) continue;
       const t = smooth(0.4, 1, r);

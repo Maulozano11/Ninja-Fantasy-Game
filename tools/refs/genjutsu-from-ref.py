@@ -222,6 +222,9 @@ def classify(src, cfg):
         # His long shadow is a flat violet field: a stain on the ground (translucent), while the
         # crystal shards lying on it (lavender to white) stay solid.
         cls[gr & art & (lum(D) < 120) & (D[..., 2] > D[..., 1] + 40)] = GROUND
+        # Its darker edges and the gaps between the shadow and the strip above it (dull dark
+        # violets) are the same stain, darker: never an opaque rim round it.
+        cls[gr & art & (cls == BODY) & (lum(D) < 95)] = GROUND
     if cfg.get('ground_all'):
         cls[gr & art] = GROUND
     keep = m('keep') if cfg.get('keep') else np.ones((H, W), bool)
@@ -263,6 +266,22 @@ def fill_along(C, hole, src_mask, slope):
             res[y, x] = (c0 * t1 + c1 * t0) / (t0 + t1)
     return res
 
+def fill_from(C, hole, src_mask):
+    """Fills `hole` from the src_mask pixels only (normalised diffusion: colour and weight spread
+    together, so the gap takes the colour of the nearest of those pixels, not of anything else
+    round it)."""
+    cw = np.where(src_mask[..., None], C, 0.0); w = src_mask.astype(np.float64)
+    free = ~src_mask
+    for _ in range(400):
+        pc = np.pad(cw, ((1, 1), (1, 1), (0, 0)), mode='edge'); pw = np.pad(w, 1, mode='edge')
+        ac = (pc[:-2, 1:-1] + pc[2:, 1:-1] + pc[1:-1, :-2] + pc[1:-1, 2:]) / 4
+        aw = (pw[:-2, 1:-1] + pw[2:, 1:-1] + pw[1:-1, :-2] + pw[1:-1, 2:]) / 4
+        cw[free] = ac[free]; w[free] = aw[free]
+    res = C.copy()
+    ok = hole & (w > 1e-9)
+    res[ok] = cw[ok] / w[ok][:, None]
+    return res
+
 def fill_holes(C, hole, src_mask):
     """Fills `hole` by diffusion from the pixels round it (his ground strip where src_mask, his
     fill elsewhere), so what his character hid continues smoothly across the gap."""
@@ -276,6 +295,52 @@ def fill_holes(C, hole, src_mask):
     res = C.copy()
     res[hole] = out[hole]
     return res
+
+def thin_lines(C, minL, contrast, sign=1):
+    """His thin lines at his resolution. sign 1: bright lines (cracks' white cores, sparkle arms,
+    highlight lines): pixels brighter than minL that stand above BOTH sides 2 px away across some
+    direction (so lines up to 3 px wide), thinned to their crest. sign -1: his thin dark lines (a
+    crack's dark edges, the seams on the crystal faces), the same way down, not as dark as his
+    black vines. Returns the mask and the lightness."""
+    L = lum(gauss(C, 0.5))
+    best = np.zeros(L.shape); crest = np.zeros(L.shape, bool)
+    for dy, dx in ((0, 1), (1, 0), (1, 1), (1, -1)):
+        a, b = shift(L, 2 * dy, 2 * dx), shift(L, -2 * dy, -2 * dx)
+        r = L - np.maximum(a, b) if sign > 0 else np.minimum(a, b) - L
+        c = sign * (L - shift(L, dy, dx)) >= 0
+        c &= sign * (L - shift(L, -dy, -dx)) >= 0
+        better = r > best
+        best = np.where(better, r, best); crest = np.where(better, c, crest)
+    m = ((L > minL) if sign > 0 else (L > 40)) & (best > contrast) & crest
+    m[:2] = m[-2:] = False; m[:, :2] = m[:, -2:] = False
+    return m, L
+
+EYE_SM = EYE_L = None
+
+def eye_lmin(cx, cy, rx, ry, ox, oy, k, H, W):
+    """An eye, downscaled lightness-aware: a game pixel whose footprint is a third or more his
+    dark (pupil, lid) takes his darkest pixel there; one that is half or more his light (sclera)
+    takes his lightest; the rest the mean. Keeps the pupil and the white ring crisp at 1x."""
+    global EYE_SM, EYE_L
+    if EYE_SM is None:
+        EYE_SM = gauss(IM, 0.45); EYE_L = lab(EYE_SM)[..., 0]
+    LL, P = EYE_L, PADSRC
+    reg = LL[int(cy - ry) + P:int(cy + ry) + 1 + P, int(cx - rx) + P:int(cx + rx) + 1 + P]
+    lo, hi = np.percentile(reg, 3), np.percentile(reg, 97)
+    out = {}
+    for gy in range(int((cy - ry - oy) * k) - 1, int((cy + ry - oy) * k) + 2):
+        for gx in range(int((cx - rx - ox) * k) - 1, int((cx + rx - ox) * k) + 2):
+            if not (0 <= gx < W and 0 <= gy < H): continue
+            hx0, hy0, hx1, hy1 = ox + gx / k, oy + gy / k, ox + (gx + 1) / k, oy + (gy + 1) / k
+            if (((hx0 + hx1) / 2 - cx) / rx) ** 2 + (((hy0 + hy1) / 2 - cy) / ry) ** 2 > 1: continue
+            px = [(LL[y + P, x + P], EYE_SM[y + P, x + P]) for y in range(int(math.floor(hy0 + 0.2)), int(math.ceil(hy1 - 0.2)))
+                  for x in range(int(math.floor(hx0 + 0.2)), int(math.ceil(hx1 - 0.2)))]
+            Ls = np.array([p[0] for p in px]); cs = np.array([p[1] for p in px])
+            t = (Ls - lo) / max(1.0, hi - lo)
+            if (t < 0.35).mean() >= 0.34: out[(gy, gx)] = cs[Ls.argmin()]
+            elif (t > 0.75).mean() >= 0.5: out[(gy, gx)] = cs[Ls.argmax()]
+            else: out[(gy, gx)] = cs.mean(0)
+    return out
 
 # --- the sprites ----------------------------------------------------------------------------------
 # area:    his region holding the sprite's art (x0, y0, x1, y1), everything else is ignored.
@@ -298,12 +363,14 @@ AURA_CHAR = [(505, 513), (532, 511), (546, 528), (548, 548), (556, 556), (557, 5
              (484, 556), (492, 546), (494, 527)]
 AURA_PETALS = [ellipse(499, 520, 7), ellipse(497, 556, 8), ellipse(545, 535, 5)]
 AURA_FEATHERS = [ellipse(487, 533, 6, 9), ellipse(557, 566, 6, 9)]
+AURA_S, AURA_FEET = 1.30, (519.5, 635.5)
 AURA_RING = [(468, 634), (500, 640), (528, 642), (560, 637), (572, 634), (572, 653), (466, 653)]
 DIAG_CHAR = [(972, 594), (1002, 594), (1010, 612), (1016, 640), (1016, 740), (996, 740), (976, 740), (966, 730),
              (954, 716), (937, 704), (933, 662), (942, 636), (958, 616)]
 
 SPRITES = {
     'bolt': dict(area=(10, 54, 94, 139), k=K64, origin=(9, 53), base=(64, 64), anchor=(70.5, 96.5), smoke=True,
+                 eyes=[(71, 96.5, 9, 9, 'lmin')],
                  pieces=[('orb', [ellipse(71, 96.5, 15.5)])]),
     'stream': dict(k=KST, wrap=True, tile=(TILE_X, 84), area=(TILE_X, 54, TILE_X + 84, 139), origin=(TILE_X, ST_Y - 32 / KST),
                    base=(64, 64), anchor=(TILE_X, ST_Y), smoke=True),
@@ -312,19 +379,30 @@ SPRITES = {
                         pieces=[('sparks', [ellipse(652, 66, 7), ellipse(665, 106, 7), ellipse(626, 127, 8)]),
                                 ('spiral', [ellipse(638, 98, 32, 31)])]),
     'breath': dict(area=(692, 54, 839, 192), k=K64, origin=(691, 53), base=(112, 104), anchor=(707 - 4 / K64, 121.5), smoke=True,
+                   eyes=[(748, 82, 7, 5.5, 'box'), (781, 98, 7, 5.5, 'box'), (818, 83, 7, 5.5, 'box'), (745, 161, 7.5, 5.5, 'box'),
+                         (778, 153, 7, 5.5, 'box'), (820, 165, 7.5, 5.5, 'box')],
                    pieces=[('orb', [ellipse(707, 121.5, 9)]),
                            ('eyes', [ellipse(748, 82, 7, 5), ellipse(781, 98, 6, 5), ellipse(817, 84, 6, 5), ellipse(746, 165, 7, 5),
                                      ellipse(817, 165, 7, 6), ellipse(780, 155, 5, 4), ellipse(795, 119, 4, 4), ellipse(780, 140, 4, 4)])]),
     'sphere': dict(area=(855, 54, 939, 139), k=K64, origin=(854, 53), base=(64, 64), anchor=(899.5, 97.5),
+                   eyes=[(900, 97.5, 17.5, 11.5, 'box')],
                    pieces=[('core', [ellipse(899.5, 97, 23, 21)])]),
     'slash': dict(area=(9, 231, 94, 315), k=K64, origin=(8, 230), base=(64, 64), anchor=(51, 273), smoke=True),
     'multi': dict(area=(152, 231, 236, 315), k=K64, origin=(151, 230), base=(64, 64), anchor=(194, 273),
+                  noline=[rect(140, 220, 250, 330)],   # his darts have soft glowing edges, no dark outline
                   pieces=[('d0', [rect(150, 230, 240, 263)]), ('d1', [rect(150, 263, 240, 282)]), ('d2', [rect(150, 282, 240, 318)])]),
-    'hit': dict(area=(295, 231, 379, 315), k=72.0 / 87.0, origin=(294, 230), base=(72, 72), anchor=(337.5, 273)),
+    # His hit panel is the same 87 px box as the bolt's (his '72x72' label is a garbled copy of
+    # ours), so it is at the projectiles' scale.
+    'hit': dict(area=(295, 231, 379, 315), k=K64, origin=(294, 230), base=(64, 64), anchor=(337.5, 273)),
     'blast': dict(area=(438, 230, 841, 454), k=1 / 1.30, anchor=(607, 401), fade={'top': 16},
                   drop=[[(786, 280), (834, 280), (843, 320), (843, 425), (792, 425), (784, 410), (765, 404), (760, 380),
                          (764, 356), (776, 330)]],
                   smoke=True,
+                  # His four-point sparkles: white stars with long 1 px arms, kept crisp (see lines).
+                  lines=dict(poly=[ellipse(548, 294, 10, 12), ellipse(574, 303, 16, 18), ellipse(555, 318, 5, 5),
+                                   ellipse(660, 330, 16, 16), ellipse(672, 287, 6, 6)], minL=150, contrast=22, add=True),
+                  # The column's streaks: distinct violets with his fill between them, not a haze.
+                  boost=[[(538, 230), (690, 230), (690, 300), (676, 390), (650, 404), (600, 410), (560, 404), (546, 380), (540, 300)]],
                   black=[ellipse(484, 268, 13, 10), ellipse(575, 286, 9, 15), ellipse(503, 343, 11, 9), ellipse(570, 330, 10, 10),
                          ellipse(605, 375, 12, 18), ellipse(630, 365, 9, 9), ellipse(690, 258, 11, 12), ellipse(711, 351, 10, 8),
                          ellipse(560, 368, 6, 14)],
@@ -334,16 +412,21 @@ SPRITES = {
     'wall': dict(area=(10, 492, 373, 652), k=1 / 1.30, anchor=(190, 646),
                  seams=[17, 46, 79, 100, 134, 158, 196, 222, 263, 290, 332, 363],   # his pillars' edges
                  black=[rect(9, 540, 373, 654)],
+                 # His white zig-zag cracks and highlight lines on the crystal faces, kept 1 px and crisp.
+                 lines=dict(poly=[rect(14, 500, 372, 640)], minL=130, contrast=28, dark=True),
                  pieces=[('bits', [[(9, 491), (373, 491), (373, 545), (360, 548), (360, 525), (340, 520), (300, 525), (250, 525),
                                     (240, 535), (230, 528), (175, 520), (150, 528), (100, 530), (55, 525), (30, 530), (20, 548), (9, 548)]]),
                          ('vines', [rect(9, 540, 373, 654)], ['dark'])]),
     # The aura in two layers with one frame: the back (all his flames; what his character hid is
     # filled in from the flames round him) and the front (his petals, feathers and the near half
     # of the ring at the feet, drawn over the character).
-    'aura_back': dict(area=(466, 492, 572, 652), k=1 / 1.31, anchor=(528.5, 646), smoke=True,
-                      fill=[AURA_CHAR], fill_src='art', fill_band=5, fill_keep_purple=True, base_rect=(-40, -112, 40, 16),
+    # The anchor is his character's feet, found by registering our characterRef on his figure
+    # (normalised correlation of luminance over +-14 his px, best at scale 1.30: (519.5, 635.5);
+    # the same fit puts our character on his plain one beside the blast at r = 0.75).
+    'aura_back': dict(area=(466, 492, 572, 652), k=1 / AURA_S, anchor=AURA_FEET, smoke=True,
+                      fill=[AURA_CHAR], fill_src='flame', base_rect=(-40, -112, 40, 16),
                       fill_full=AURA_PETALS + AURA_FEATHERS, drop=[AURA_RING]),
-    'aura': dict(area=(466, 492, 572, 652), k=1 / 1.31, anchor=(528.5, 646), smoke=True, frame_like='aura_back',
+    'aura': dict(area=(466, 492, 572, 652), k=1 / AURA_S, anchor=AURA_FEET, smoke=True, frame_like='aura_back',
                  keep=AURA_PETALS + AURA_FEATHERS + [AURA_RING], pink=AURA_PETALS,
                  pieces=[('petals', AURA_PETALS + AURA_FEATHERS)]),
     'wall_diag': dict(area=(620, 492, 1014, 780), k=1 / 1.27, anchor=(772, 708), fade={'right': 30},
@@ -352,12 +435,15 @@ SPRITES = {
                       ground=[[(744, 676), (790, 664), (840, 680), (866, 663), (900, 672), (940, 688), (1016, 714),
                                (1016, 782), (870, 782), (800, 752), (760, 730), (735, 708)]],
                       black=[rect(620, 600, 900, 782)],
+                      lines=dict(poly=[[(640, 640), (700, 590), (760, 540), (850, 500), (905, 500), (905, 640), (840, 680), (760, 720),
+                                        (700, 740), (640, 740)]], minL=170, contrast=24),
                       pieces=[('bits', [ellipse(636, 699, 5), ellipse(640, 745, 5), ellipse(830, 745, 6), ellipse(907, 551, 5),
                                         ellipse(913, 568, 5), ellipse(935, 590, 6), ellipse(752, 520, 8), ellipse(736, 562, 6),
                                         ellipse(740, 586, 4)])]),
     'wall_depth': dict(area=(9, 701, 152, 1010), k=1 / 1.25, anchor=(80, 919),
                        black=[ellipse(122, 772, 12, 14), ellipse(40, 803, 12, 14), ellipse(25, 978, 14, 14)],
                        smoke=True,
+                       lines=dict(poly=[rect(60, 704, 100, 1000)], minL=175, contrast=24),
                        pieces=[('column', [rect(62, 704, 98, 1006)]),
                                ('bits', [ellipse(122, 772, 12, 14), ellipse(40, 803, 12, 14), ellipse(38, 746, 9, 7),
                                          ellipse(108, 804, 9, 6), ellipse(118, 840, 5), ellipse(122, 881, 7, 9), ellipse(45, 874, 5),
@@ -392,30 +478,22 @@ def source(name, cfg):
     C = IM[y0 + PADSRC:y1 + PADSRC, x0 + PADSRC:x1 + PADSRC].copy()
     H, W = C.shape[:2]
     hole = poly_mask(H, W, x0, y0, cfg.get('fill', []))
-    full = poly_mask(H, W, x0, y0, cfg.get('fill_full', []))
-    if cfg.get('fill_keep_purple'):
-        # His character is drawn inside the aura: inside his outline only the flame colours
-        # (saturated violet to magenta) are the aura; skin, cloth, hair and sword are him.
-        G = gauss(C, 0.7)
-        rb = np.maximum(G[..., 0], G[..., 2])
-        purple = (G[..., 1] < 0.45 * rb) & (G[..., 2] > G[..., 1] + 25) & (rb > 70)
-        purple &= ~dilate(~purple, 1)   # not the thin purple rim light on his outline
-        hole &= ~purple
-    hole |= full
+    hole |= poly_mask(H, W, x0, y0, cfg.get('fill_full', []))
     if hole.any():
         dist = np.sqrt(((gauss(C, 0.8) - BG) ** 2).sum(-1))
         src = dist >= T_ART
-        if cfg.get('fill_src') != 'art':
+        if cfg.get('fill_src') == 'flame':
+            # Only his flame colours (violet to magenta) feed the fill, not his figure's dark
+            # outline or the panel: the flames run on behind the whole figure.
+            G = gauss(C, 0.8)
+            src &= (G[..., 2] > G[..., 1] + 30) & (G[..., 0] > G[..., 1] + 10) & (lum(G) > 45)
+        elif cfg.get('fill_src') != 'art':
             src &= poly_mask(H, W, x0, y0, cfg.get('ground', []))
-        C = fill_along(C, hole, src & ~hole, cfg['fill_slope']) if 'fill_slope' in cfg else fill_holes(C, hole, src & ~hole)
-        if cfg.get('fill_band'):
-            full = poly_mask(H, W, x0, y0, cfg.get('fill_full', []))
-            # Only a band round the hole's edge keeps the fill (the flames run on under the
-            # character's edge); deeper inside is his fill colour, i.e. clear.
-            inner = hole.copy()
-            for _ in range(cfg['fill_band']):
-                inner &= ~dilate(~inner, 1)
-            C[inner & ~full] = BG
+        # (The aura: his flames run on behind the whole of his figure, so whatever figure stands
+        # there, no map shows between it and the flames.)
+        if 'fill_slope' in cfg: C = fill_along(C, hole, src & ~hole, cfg['fill_slope'])
+        elif cfg.get('fill_src') == 'flame': C = fill_from(C, hole, src & ~hole)
+        else: C = fill_holes(C, hole, src & ~hole)
     return C, x0, y0
 
 # --- to game scale --------------------------------------------------------------------------------
@@ -493,7 +571,12 @@ def to_game(name, cfg):
         comp = np.stack([rs(np.where(cls > 0, M[..., i], BG[i]), BG[i]) for i in range(3)], -1)
     for c in col:
         col[c] = col[c] / np.maximum(cov[c], 1e-6)[..., None]
-    score = np.stack([cov[CLEAR], cov[GLOW] * W_GLOW, cov[DARK] * W_DARK, cov[BODY] * W_BODY, cov[GROUND] * W_GROUND], -1)
+    wb = np.full((h, w), W_BODY); wg = np.full((h, w), W_GLOW)
+    if cfg.get('boost'):
+        # Where his streaks are distinct (the blast's column), a part-covered pixel is the streak.
+        bm = poly_mask(h, w, ox, oy, cfg['boost'], k)
+        wb[bm] = 2.2; wg[bm] = 0.45
+    score = np.stack([cov[CLEAR], cov[GLOW] * wg, cov[DARK] * W_DARK, cov[BODY] * wb, cov[GROUND] * W_GROUND], -1)
     g = score.argmax(-1).astype(np.int8)
     rgb = np.zeros((h, w, 3))
     for c in (DARK, BODY, GROUND):
@@ -502,7 +585,25 @@ def to_game(name, cfg):
     # Faint glow that would composite to almost his fill goes.
     a, _ = c2a(comp)
     g[(g == GLOW) & (a < 0.07)] = CLEAR
-    return dict(g=g, rgb=rgb, w=w, h=h, anchor=(ax, ay), origin=(ox, oy), k=k, cov_dark=cov[DARK])
+    out = dict(g=g, rgb=rgb, w=w, h=h, anchor=(ax, ay), origin=(ox, oy), k=k, cov_dark=cov[DARK])
+    if cfg.get('lines'):
+        # His thin bright lines mapped to game pixels by their crest (the brightest of his line
+        # pixels in each game pixel), so the box filter cannot soften them; written after the
+        # palette (see quantize).
+        # With 'dark', his thin dark lines too (a crack is his white core between two dark edges):
+        # a game pixel holding both is the bright core.
+        sp = cfg['lines']
+        pm = poly_mask(C.shape[0], C.shape[1], x0, y0, sp['poly'])
+        lmask = np.zeros((h, w), np.int8); lrgb = np.zeros((h, w, 3))
+        for sign in ((-1, 1) if sp.get('dark') else (1,)):
+            lm, LL = thin_lines(C, sp['minL'], sp['contrast'], sign)
+            best = np.full((h, w), -1e9)
+            for yy, xx in zip(*np.nonzero(lm & pm)):
+                gx = int(math.floor((x0 + xx + 0.5 - ox) * k)); gy = int(math.floor((y0 + yy + 0.5 - oy) * k))
+                if 0 <= gx < w and 0 <= gy < h and sign * LL[yy, xx] > best[gy, gx]:
+                    best[gy, gx] = sign * LL[yy, xx]; lrgb[gy, gx] = M[yy, xx]; lmask[gy, gx] = sign
+        out.update(lines=lmask, lines_rgb=lrgb, lines_add=bool(sp.get('add')))
+    return out
 
 # --- clean-up at game scale ------------------------------------------------------------------------
 
@@ -560,6 +661,15 @@ def cleanup(name, cfg, d):
     if not wrap:
         ring[0, :] = ring[-1, :] = False; ring[:, 0] = ring[:, -1] = False
     kind[ring] = 'outline'
+    # His eyes: their own kind, quantized by lightness (see quantize) and left out of the hue
+    # smoothing, so the white ring, the dark lid and the pupil stay apart.
+    ox, oy = d['origin']; k = d['k']
+    for cx, cy, rx, ry, mode in cfg.get('eyes', []):
+        em = poly_mask(H, W, ox, oy, [ellipse(cx, cy, rx, ry)], k) & ((g == BODY) | (g == DARK))
+        if mode == 'lmin':
+            for (yy, xx), c in eye_lmin(cx, cy, rx, ry, ox, oy, k, H, W).items():
+                if em[yy, xx]: rgb[yy, xx] = c
+        kind[em] = 'eye'
     d['kind'] = kind
     return d
 
@@ -591,6 +701,9 @@ def calm_chroma(d, wrap, sl=6.0, sab=10.0):
     out[..., 1:] = np.where(m[..., None], acc / np.maximum(ws, 1e-9)[..., None], L[..., 1:])
     d['rgb'] = np.where(m[..., None], lab2rgb(out), d['rgb'])
 
+if os.environ.get('GJ_ONLY'):
+    # (Experiments only: a subset of the sprites; the palette then comes from that subset.)
+    SPRITES = {n: c for n, c in SPRITES.items() if n in os.environ['GJ_ONLY'].split(',')}
 data = {}
 for name, cfg in SPRITES.items():
     data[name] = cleanup(name, cfg, to_game(name, cfg))
@@ -625,6 +738,7 @@ def by_lum(p):
 
 N_COOL = 150   # violets, lavenders, whites
 N_HOT = 30     # his hot pinks and magentas (red over blue)
+SCLERA = np.array([[240.0, 228.0, 248.0], [252.0, 244.0, 255.0]])   # his eyes' white (fixed entries)
 
 def body_palette():
     """150 colours for the violets and lavenders, plus 30 for his hot pinks and magentas (red over
@@ -632,7 +746,7 @@ def body_palette():
     (Fewer left his lavender planes between two hues; the indices stay one byte.)"""
     c = gather('body', 4000)
     hot = c[:, 0] > c[:, 2] + 12
-    return np.concatenate([kmeans_lab(c[~hot], N_COOL), kmeans_lab(c[hot], N_HOT)])
+    return np.concatenate([kmeans_lab(c[~hot], N_COOL), kmeans_lab(c[hot], N_HOT), SCLERA])
 
 FLOORS = {'glow': 0.0, 'smoke': 0.85, 'ground': 0.6}
 OUTLINE = np.array([[40, 16, 58]])   # deep violet (his darkest violet rims), never black
@@ -643,7 +757,7 @@ SETS = {
     'dark': by_lum(median_cut(gather('dark'), 6)),
     'smoke': by_lum(median_cut(gather('smoke'), 4)),
     'glow': by_lum(kmeans_lab(gather('glow'), 20)),
-    'ground': by_lum(median_cut(gather('ground'), 8)),
+    'ground': by_lum(kmeans_lab(gather('ground'), 12)),
 }
 PAL = []   # (r, g, b, a, kind, order); the composite colour each entry stands for, for lookups
 COMPOSITE = []
@@ -664,24 +778,52 @@ COMPOSITE = np.array(COMPOSITE)
 # step in lightness, rather than flipping between neighbouring hues.
 QW = np.array([1.0, 1.6, 1.6])
 
+QW_EYE = np.array([2.0, 1.0, 1.0])   # eyes: lightness first, so sclera, lid and pupil stay apart
+
+def nearest(rgb, ids, w):
+    pal = lab(COMPOSITE[ids]) * w
+    dist = ((lab(rgb)[:, None, :] * w - pal[None, :, :]) ** 2).sum(-1)
+    return np.array(ids)[dist.argmin(1)] + 1
+
 def quantize(d):
     H, W = d['g'].shape
     idx = np.zeros((H, W), np.int32)
     for kind, ids in IDX.items():
         m = d['kind'] == kind
-        if not m.any(): continue
-        pal = lab(COMPOSITE[ids]) * QW
-        dist = ((lab(d['rgb'][m])[:, None, :] * QW - pal[None, :, :]) ** 2).sum(-1)
-        idx[m] = np.array(ids)[dist.argmin(1)] + 1
-    # Specks inside a kind: a pixel unlike all 4 neighbours of its own kind takes their commonest value.
+        if m.any(): idx[m] = nearest(d['rgb'][m], ids, QW)
+    eye = d['kind'] == 'eye'
+    if eye.any(): idx[eye] = nearest(d['rgb'][eye], IDX['body'] + IDX['outline'], QW_EYE)
+    # JPEG specks inside a flat plane: a pixel unlike all 4 neighbours, which are alike (one flat
+    # plane of one kind), and only a little off them, takes their commonest value. A pixel well
+    # off its plane (his 1 px cracks, highlights, pupils) is his detail and stays.
+    LP = lab(COMPOSITE)
     out = idx.copy()
     for y in range(1, H - 1):
         for x in range(1, W - 1):
             v = idx[y, x]
-            if not v: continue
+            if not v or eye[y, x]: continue
             nb = [idx[y, x + 1], idx[y, x - 1], idx[y + 1, x], idx[y - 1, x]]
-            if v not in nb and all(nb) and all(PAL[n - 1][4] == PAL[v - 1][4] for n in nb):
+            if v in nb or not all(nb) or not all(PAL[n - 1][4] == PAL[v - 1][4] for n in nb): continue
+            ln = LP[np.array(nb) - 1]
+            flat = max(np.sqrt(((ln[i] - ln[j]) ** 2).sum()) for i in range(4) for j in range(i + 1, 4)) < 12
+            if flat and np.sqrt(((LP[v - 1] - ln.mean(0)) ** 2).sum()) < 16:
                 out[y, x] = max(set(nb), key=nb.count)
+    # His thin bright lines, written last (1 px, his crest colour by lightness): over his body
+    # only, or anywhere for sparkles; never darker than what is there.
+    if d.get('lines') is not None:
+        for sign in (-1, 1):
+            if sign > 0:
+                m = (d['lines'] > 0) & ((out > 0) | d['lines_add'])
+            else:
+                # Dark lines only on his crystal faces (body), never on his black vines or rims.
+                m = (d['lines'] < 0) & (d['kind'] == 'body') & (out > 0)
+            if not m.any(): continue
+            li = nearest(d['lines_rgb'][m], IDX['body'], QW_EYE)
+            ys, xs = np.nonzero(m)
+            for yy, xx, v in zip(ys, xs, li):
+                cur = out[yy, xx]
+                if not cur or PAL[cur - 1][4] in ('glow', 'smoke') or sign * (LP[v - 1][0] - LP[cur - 1][0]) > 0:
+                    out[yy, xx] = v
     return out
 
 def rle(flat):

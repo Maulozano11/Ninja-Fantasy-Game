@@ -10,7 +10,7 @@
 //               the eye head-first into an explosive starburst, rings, crater and flying rocks.
 //
 // His two panels are the peak frames (the first frame of `impact`). They were cut into layers by
-// art2/vfx-kirin-src/vfx-kirin-extract.py (his character and the background removed, one uniform
+// tools/refs/kirin-from-ref.py into tools/refs/kirin-layers/ (his character and the background removed, one uniform
 // scale per panel so his outer ring spans our circle, area-downsampled and quantized to a palette
 // sampled from his image). This file animates those layers, so his panels are the key frames:
 //   gather  (10f once, 12 fps)  the cloud spins up out of its eye and the kanji writes itself
@@ -23,7 +23,7 @@
 //                               out; the last frame is almost empty.
 // The anchor is the impact point on the ground (the centre of the rings). Deterministic.
 //
-//   python3 -I <art2>/vfx-kirin-src/vfx-kirin-extract.py <art2>        (only when the reference changes)
+//   python3 -I tools/refs/kirin-from-ref.py docs/reference/kirin-owner-reference.jpg tools/refs/kirin-layers   (only when the reference changes)
 //   WORLD_OUT=<art2>/staging npx tsx tools/world-sprites/vfx-sig-kirin.ts <art2>
 
 import { join } from 'node:path';
@@ -34,7 +34,8 @@ import { Pt, TAU, clamp, lerp, smooth, text, textWidth } from './vfx-b-lib';
 import { borderTouches } from './vfx-b-wall3d';
 
 const OUT = previewDir();
-const SRC = join(OUT, 'vfx-kirin-src');
+// His panels cut into layers by tools/refs/kirin-from-ref.py.
+const SRC = join(import.meta.dirname, '../refs/kirin-layers');
 /** Room added around his panel's footprint for the cloud drifting apart and the rings spreading. */
 const PAD = { l: 8, r: 8, t: 16, b: 16 };
 
@@ -676,6 +677,41 @@ function fadeFrame(f: number): Canvas {
   return c;
 }
 
+/**
+ * Final clean-up of a frame: a clear pixel with three or four opaque neighbours (a pinhole where
+ * layers meet) takes the most common of their colours; an opaque pixel with no neighbour at all
+ * (a stray speck) is cleared.
+ */
+function tidy(c: Canvas): Canvas {
+  const { w, h, px } = c;
+  for (let pass = 0; pass < 4; pass++) {
+    const src = new Uint8Array(px);
+    const op = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < w && y < h && src[(y * w + x) * 4 + 3] > 0;
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const o = (y * w + x) * 4;
+        const n4 = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]].filter(([a, b]) => op(a, b));
+        if (!src[o + 3]) {
+          if (n4.length < 3) continue;
+          const seen = new Map<number, number>();
+          let best = 0, bc = 0;
+          for (const [a, b] of n4) {
+            const q = (b * w + a) * 4;
+            const key = (src[q] << 24) | (src[q + 1] << 16) | (src[q + 2] << 8) | src[q + 3];
+            const n = (seen.get(key) ?? 0) + 1;
+            seen.set(key, n);
+            if (n > bc) {
+              bc = n;
+              best = q;
+            }
+          }
+          for (let k = 0; k < 4; k++) px[o + k] = src[best + k];
+        } else if (!n4.length && !op(x + 1, y + 1) && !op(x - 1, y - 1) && !op(x + 1, y - 1) && !op(x - 1, y + 1)) px[o + 3] = 0;
+      }
+  }
+  return c;
+}
+
 // --- build -------------------------------------------------------------------------------------
 
 const once = (frames: Canvas[], fps: number): Anim => ({ frames, fps, loop: false });
@@ -683,11 +719,11 @@ const once = (frames: Canvas[], fps: number): Anim => ({ frames, fps, loop: fals
 function build(key: 'kirin' | 'kirin_enh'): WorldSprite {
   S = load(key);
   const anims: Record<string, Anim> = {
-    gather: once(Array.from({ length: 10 }, (_, f) => gatherFrame(f)), 12),
-    strike: once(Array.from({ length: 8 }, (_, f) => strikeFrame(f)), 16),
-    impact: once(Array.from({ length: 8 }, (_, f) => impactFrame(f)), 14),
-    sustain: { frames: Array.from({ length: 12 }, (_, f) => sustainFrame(f)), fps: 12, loop: true },
-    fade: once(Array.from({ length: 8 }, (_, f) => fadeFrame(f)), 12),
+    gather: once(Array.from({ length: 10 }, (_, f) => tidy(gatherFrame(f))), 12),
+    strike: once(Array.from({ length: 8 }, (_, f) => tidy(strikeFrame(f))), 16),
+    impact: once(Array.from({ length: 8 }, (_, f) => tidy(impactFrame(f))), 14),
+    sustain: { frames: Array.from({ length: 12 }, (_, f) => tidy(sustainFrame(f))), fps: 12, loop: true },
+    fade: once(Array.from({ length: 8 }, (_, f) => tidy(fadeFrame(f))), 12),
   };
   const label = S.enh ? 'Kirin, enhanced: lightning dragon annihilation (4.5 m)' : 'Kirin: lightning annihilation (3 m)';
   return { name: key, label, meters: [+(S.W / 57).toFixed(2), +(S.H / 57).toFixed(2)], anchor: [S.AX, S.AY], tags: ['vfx'], anims };

@@ -123,11 +123,20 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       if (sig) {
         const s = sheet(el, sig);
         if (!s) return false;
-        // The wave rolls out, burns, then dies back.
-        const surge = animMs(s, 'surge');
+        // The wave rolls out (its surge may be split over several rows), burns, then dies back.
+        const surge = surgeMs(s);
         const fade = animMs(s, 'fade');
-        if (ms < surge) blit(ctx, s, 'surge', frameAt(s, 'surge', ms), o.X, o.Y, mirror);
-        else if (ms < f.dur - fade) blit(ctx, s, 'burn', frameAt(s, 'burn', ms - surge), o.X, o.Y, mirror);
+        if (ms < surge) {
+          let at = ms;
+          for (const row of surgeRows(s)) {
+            const d = animMs(s, row);
+            if (at < d) {
+              blit(ctx, s, row, frameAt(s, row, at), o.X, o.Y, mirror);
+              break;
+            }
+            at -= d;
+          }
+        } else if (ms < f.dur - fade) blit(ctx, s, 'burn', frameAt(s, 'burn', ms - surge), o.X, o.Y, mirror);
         else blit(ctx, s, 'fade', frameAt(s, 'fade', ms - (f.dur - fade)), o.X, o.Y, mirror);
         return true;
       }
@@ -238,6 +247,10 @@ export function skySignature(element: string, sig: string | undefined, enhanced:
   return { total, hit };
 }
 
+/** A long surge is split over rows (surge, surge2, surge3...) that play once, in order. */
+const surgeRows = (s: Sheet): string[] => ['surge', 'surge2', 'surge3', 'surge4'].filter((r) => s.spec.anims[r]);
+const surgeMs = (s: Sheet): number => surgeRows(s).reduce((t, r) => t + animMs(s, r), 0);
+
 /**
  * A signature cone (the Great Fire Annihilation): how long it plays (its surge, a few burns and its
  * fade) and when it hits (the fire has spread all the way: the end of its surge), or null.
@@ -246,6 +259,6 @@ export function signatureMs(element: string, sig: string | undefined, enhanced: 
   if (sig !== 'annihilation') return null;
   const s = sheet(element, enhanced ? 'annihilation_enh' : 'annihilation');
   if (!s) return null;
-  const hit = animMs(s, 'surge');
+  const hit = surgeMs(s);
   return { total: hit + animMs(s, 'burn') * 2 + animMs(s, 'fade'), hit };
 }

@@ -6,13 +6,17 @@
 // round the strokes and kept his soft glow as semi-transparent pixels. That data is in
 // vfx-lightning-v3-refdata.ts; this generator only DERIVES the other frames from those key frames:
 //
-//   - fly loops    frame 0 is his picture; frames 1-3 re-route the arcs with small smooth
-//                  displacements (none at the projectile's core) and flicker the brightness;
-//   - stream       his 64 px tile, scrolled 16 px a frame along the beam (still tiles);
-//   - hit / blast  grow or reveal up to his picture, then crackle, dim and fade;
-//   - walls        'rise' grows the posts out of the ground, then the arcs out from the posts;
-//                  'idle' is his picture, then re-routed and flickering variants;
-//   - aura         his picture, then re-routed and flickering variants (the middle stays clear).
+//   - fly loops    8 frames at 12 fps: frame 0 is his picture; the arcs then churn along a smooth
+//                  field that circles once per loop (none at the projectile's core), the light
+//                  shimmers in soft regional waves and whole sparks twinkle, so nothing jumps;
+//   - stream       his 64 px tile flowing 8 px a frame along the beam (still tiles);
+//   - hit          12 frames: builds up over 3, his picture held for 3, breaks up slowly over 6;
+//   - blast        16 frames: anticipation over 4, his picture held for 3, a settle over 9;
+//   - walls        'rise' (12 frames) grows the posts out of the ground, then the arcs out from
+//                  the posts, ending on his picture; 'idle' (8 at 10 fps) churns and shimmers;
+//   - aura         12 frames at 10 fps: his picture churning and shimmering over the breathing veil.
+// The owner asked for more, slower frames ("it looks like a flashing star"): every effect above
+// is nothing at the key frame and changes a little from frame to frame, with no frame-wide flash.
 //
 //   WORLD_OUT=<dir> npx tsx tools/world-sprites/vfx-lightning-v3.ts
 //

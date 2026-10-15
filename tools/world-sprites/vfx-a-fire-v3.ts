@@ -59,14 +59,14 @@ export function blast(): WorldSprite {
     const ph = ((i - PEAK) / 8) * TAU;
     const ringK = kf(i, [[0, 0.16], [PEAK, 1]]);
     const groundK = kf(i, [[0, 0.28], [PEAK, 1]]);
-    const groundDim = kf(i, [[6, 1], [N - 1, 0.32]]);
+    const groundDim = kf(i, [[6, 1], [N - 1, 0.24]]);
     const stemK = kf(i, [[0, 0], [1, 0.4], [2, 0.7], [3, 0.9], [PEAK, 1], [8, 1], [10, 0.8], [13, 0.3], [14, 0]]);
-    const capK = kf(i, [[0, 0.28], [PEAK, 1], [6, 1.012], [N - 1, 1.12]]);
+    const capK = kf(i, [[0, 0.36], [1, 0.58], [2, 0.75], [3, 0.88], [PEAK, 1], [6, 1.012], [N - 1, 1.12]]);
     const capRise = kf(i, [[PEAK, 0], [6, -1.5], [N - 1, -10]]);
     const coolK = kf(i, [[6, 0], [7, 0.12], [11, 0.75], [13, 1]]);
-    const thinK = kf(i, [[10, 0], [N - 1, 0.8]]);
-    const ringH = kf(i, [[6, 1], [N - 1, 0.25]]);
-    const ringDim = kf(i, [[6, 1], [N - 1, 0.4]]);
+    const thinK = kf(i, [[10, 0], [N - 1, 1]]);
+    const ringH = kf(i, [[6, 1], [N - 1, 0.16]]);
+    const ringDim = kf(i, [[6, 1], [N - 1, 0.3]]);
     const layers: (Canvas | null)[] = [];
     // The scorched glowing ground, spreading with the ring.
     layers.push(dim(scaled(placed('b_ground', W, H), groundK, groundK, cx, gy), groundDim, [26, 14, 18, 255]));
@@ -200,11 +200,18 @@ function refWall(kind: WallKind, piece: string, label: string, ground: (x: numbe
   }
   const IDLE = 8, RISE = 12;
   const idle = frames(IDLE, (t) => loopFlicker(base, t * TAU, 1.6, F.ay, seed));
+  const key = (x: number, y: number) => clamp(ground(x, y) * 0.6 + along(x, y) * 0.3 + pnoise(x, y, 8, 0, 0, seed + 1) * 0.1, 0, 1);
+  // The reveal is paced partly by height and partly by how much of his wall has come up, so the
+  // low dense flames do not all appear at once and the tips do not crawl in over the last frames.
+  const keys: number[] = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (base.alpha(x, y)) keys.push(key(x, y));
+  keys.sort((a, b) => a - b);
   const rise = frames(RISE, (_, i) => {
     const c = loopFlicker(base, ((i - RISE) / IDLE) * TAU, 1.6, F.ay, seed);
-    const vis = (i + 1) / (RISE - 0.4);
-    if (vis > 1) return c;
-    return dissolve(c, vis, (x, y) => clamp(ground(x, y) * 0.6 + along(x, y) * 0.3 + pnoise(x, y, 8, 0, 0, seed + 1) * 0.1, 0, 1), [FIRE[2], FIRE[3], FIRE[5]], FIRE[0]).c;
+    if (i === RISE - 1) return c;
+    const u = (i + 1) / RISE;
+    const vis = lerp(u * keys[keys.length - 1], keys[Math.floor(u * (keys.length - 1))], 0.6);
+    return dissolve(c, vis, key, [FIRE[2], FIRE[3], FIRE[5]], FIRE[0]).c;
   });
   return vfxSprite(kind, label, [F.ax, F.ay], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 10, loop: true } });
 }

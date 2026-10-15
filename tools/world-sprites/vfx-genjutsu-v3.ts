@@ -544,7 +544,7 @@ function breath(): WorldSprite {
   const eyeParts: Part[] = [];
   for (const p of parts(eyes)) {
     const cx = (p.b[0] + p.b[2]) / 2, cy = (p.b[1] + p.b[3]) / 2;
-    const near = eyeParts.find((e) => Math.abs((e.b[0] + e.b[2]) / 2 - cx) < 6 && Math.abs((e.b[1] + e.b[3]) / 2 - cy) < 5);
+    const near = eyeParts.find((e) => Math.abs((e.b[0] + e.b[2]) / 2 - cx) < 9 && Math.abs((e.b[1] + e.b[3]) / 2 - cy) < 7);
     if (near) {
       stamp(near.ix, p.ix);
       near.b = bounds(near.ix)!;

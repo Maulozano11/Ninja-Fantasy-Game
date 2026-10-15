@@ -4,8 +4,8 @@
 //   fireball          Great Fireball, circle radius 1.5 m. 'fly' (6f loop) + 'burst' (8f once).
 //   fireball_great    enhanced: radius 2.25 m, ball twice the size, white-hot core, heat-shimmer
 //                     ring, heavier smoke tail; 'burst' (10f) with a shock ring and scorched ground.
-//   annihilation      Great Fire Annihilation, 60 deg cone 12 m long (684 px): 'surge' (8f once, the
-//                     wave rolls out), 'burn' (6f loop), 'fade' (6f once).
+//   annihilation      Great Fire Annihilation, 60 deg cone 12 m long (684 px): 'surge' (20f once, the
+//                     wave rolls out), 'burn' (6f loop), 'fade' (8f once).
 //   annihilation_enh  enhanced: 15 m (855 px), taller, a second wave, a fire dragon in the crest,
 //                     a dark smoke ceiling and falling embers.
 //
@@ -20,7 +20,7 @@ import { FIRE, ROCK, SMOKE, TH, embers, erode, flow, tongue } from './vfx-a-fire
 import { Field, Pt, TAU, bez, clamp, dissolve, frames, fract, lerp, pfbm, pnoise, render, rr, smooth, stack, tubeShade, vfxSprite } from './vfx-a-lib';
 import { drawDragon } from './vfx-a-fire-dragon';
 import { dropCrumbs } from './vfx-a-ref';
-import { KANJI_FADE, KanjiBox, SURGE_N, annihilationS, kanjiFire, kanjiSurge20, surgeRows } from './vfx-a-fire-s';
+import { FADE_N, KANJI_FADE, KanjiBox, SURGE_N, annihilationS, fadeCurve, kanjiFire, kanjiSurge20, surgeRows } from './vfx-a-fire-s';
 
 const PX = 57;
 const DEPTH = 38;
@@ -525,7 +525,7 @@ export function waveSpec(great: boolean): Wave {
   return { great, W, H, x0, gy, len, hMax, seed: great ? 900 : 800 };
 }
 
-/** The surge, burn and fade schedules (8, 6 and 6 frames). */
+/** The surge, burn and fade schedules (20, 6 and 8 frames). */
 export function waveStates(): Record<'surge' | 'burn' | 'fade', WaveState[]> {
   const ease = (u: number) => 1 - Math.pow(1 - u, 1.6);
   const n = (k: number) => Array.from({ length: k }, (_, i) => i);
@@ -535,7 +535,7 @@ export function waveStates(): Record<'surge' | 'burn' | 'fade', WaveState[]> {
     // and the kanji writes itself in the second half.
     surge: n(SURGE_N).map((i) => ({ crest: ease(clamp((i + 0.6) / 15, 0.02, 1)), burn: lerp(0.55, 1, smooth(0, SURGE_N - 1, i)), dead: 0, smoke: 0.6 * smooth(2, SURGE_N - 1, i), t: fract((i - SURGE_N) / 6), dragon: 0, phase: 'surge' as const, kanji: kanjiSurge20(i), kanjiVis: 1 })),
     burn: n(6).map((i) => ({ crest: 1, burn: 1, dead: 0, smoke: 0.6, t: i / 6, dragon: 1, phase: 'burn' as const, kanji: [1, 1, 1, 1], kanjiVis: 1 })),
-    fade: n(6).map((i) => ({ crest: 1, burn: [0.8, 0.58, 0.38, 0.2, 0.08, 0][i], dead: [0.1, 0.3, 0.5, 0.7, 0.88, 1][i], smoke: [0.7, 0.55, 0.4, 0.24, 0.1, 0][i], t: i / 6, dragon: [0.85, 0.62, 0.4, 0.2, 0.06, 0][i], phase: 'fade' as const, kanji: [1, 1, 1, 1], kanjiVis: KANJI_FADE[i] })),
+    fade: n(FADE_N).map((i) => ({ crest: 1, burn: fadeCurve(1, [0.8, 0.58, 0.38, 0.2, 0.08, 0])[i], dead: fadeCurve(0, [0.1, 0.3, 0.5, 0.7, 0.88, 1])[i], smoke: fadeCurve(0.6, [0.7, 0.55, 0.4, 0.24, 0.1, 0])[i], t: i / 6, dragon: fadeCurve(1, [0.85, 0.62, 0.4, 0.2, 0.06, 0])[i], phase: 'fade' as const, kanji: [1, 1, 1, 1], kanjiVis: KANJI_FADE[i] })),
   };
 }
 

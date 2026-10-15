@@ -141,8 +141,22 @@ export const kanjiSurge20 = (i: number): number[] => [0, 1, 2, 3].map((j) => {
   const p = clamp((i - (9.5 + j * 2.3)) / 2.4, 0, 1);
   return p > 0 && p < 0.2 ? 0.2 : p;
 });
-/** The kanji burning away over a 6-frame fade. */
-export const KANJI_FADE = [0.82, 0.58, 0.36, 0.17, 0.05, 0];
+/**
+ * The fade: 8 frames, and where each falls on its course (0 = the burn, 1 = gone). It starts slow,
+ * so the fire dies down over the whole fade instead of losing half its light in one frame.
+ */
+export const FADE_N = 8;
+const FADE_U = [0.1, 0.19, 0.28, 0.37, 0.47, 0.6, 0.77, 1];
+/** A fade curve given by its value in the burn and at u = 1/6, 2/6 .. 1, read on each fade frame. */
+export function fadeCurve(burnVal: number, keys: number[]): number[] {
+  const pts = [burnVal, ...keys];
+  return FADE_U.map((u) => {
+    const f = u * (pts.length - 1), j = Math.min(pts.length - 2, Math.floor(f));
+    return lerp(pts[j], pts[j + 1], f - j);
+  });
+}
+/** The kanji burning away over the fade. */
+export const KANJI_FADE = fadeCurve(1, [0.82, 0.58, 0.36, 0.17, 0.05, 0]);
 
 // --- smoke: billowing volumes up to the upper right --------------------------------------------
 
@@ -845,7 +859,7 @@ export function sFrame(st: SState): Canvas {
   return stack(W, H, body, embers(W, H, em.filter((e) => e.x > 3 && e.x < W - 4 && e.y > 3 && e.y < H - 4)));
 }
 
-/** The surge, burn and fade schedules (8, 6 and 6 frames). */
+/** The surge, burn and fade schedules (20, 6 and 8 frames). */
 export function sStates(): Record<'surge' | 'burn' | 'fade', SState[]> {
   const n = (k: number) => Array.from({ length: k }, (_, i) => i);
   const ease = (u: number) => 1 - Math.pow(1 - clamp(u, 0, 1), 1.6);
@@ -862,9 +876,9 @@ export function sStates(): Record<'surge' | 'burn' | 'fade', SState[]> {
       kanjiVis: 1, jet: clamp((i - 16.4) / 2.6, 0, 1), phase: 'surge' as const, t: fract((i - SURGE_N) / 6),
     })),
     burn: n(6).map((i) => ({ roll: 1, burn: 1, dead: 0, smoke: 1, dragon: 1, kanji: [1, 1, 1, 1], kanjiVis: 1, jet: 1, phase: 'burn' as const, t: i / 6 })),
-    fade: n(6).map((i) => ({
-      roll: 1, burn: [0.8, 0.58, 0.38, 0.2, 0.08, 0][i], dead: [0.1, 0.3, 0.5, 0.7, 0.88, 1][i], smoke: [0.85, 0.65, 0.45, 0.26, 0.1, 0][i],
-      dragon: [0.85, 0.62, 0.4, 0.2, 0.06, 0][i], kanji: [1, 1, 1, 1], kanjiVis: KANJI_FADE[i], jet: [0.55, 0.15, 0, 0, 0, 0][i],
+    fade: n(FADE_N).map((i) => ({
+      roll: 1, burn: fadeCurve(1, [0.8, 0.58, 0.38, 0.2, 0.08, 0])[i], dead: fadeCurve(0, [0.1, 0.3, 0.5, 0.7, 0.88, 1])[i], smoke: fadeCurve(1, [0.85, 0.65, 0.45, 0.26, 0.1, 0])[i],
+      dragon: fadeCurve(1, [0.85, 0.62, 0.4, 0.2, 0.06, 0])[i], kanji: [1, 1, 1, 1], kanjiVis: KANJI_FADE[i], jet: fadeCurve(1, [0.55, 0.15, 0, 0, 0, 0])[i],
       phase: 'fade' as const, t: i / 6,
     })),
   };

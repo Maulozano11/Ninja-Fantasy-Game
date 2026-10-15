@@ -284,7 +284,7 @@ function hisSmokeLayer(st: SState): Canvas | null {
     for (let y = 0; y < H; y++)
       for (let x = 0; x < W; x++) {
         const p = c.get(x, y);
-        if (p[3] && along(x, y) + 0.12 * pnoise(x, y, 20, 0, 0, SEED + 69) < st.smoke * 1.12) out.set(x, y, p);
+        if (p[3] && along(x, y) + 0.3 * pnoise(x, y, 40, 0, 0, SEED + 69) < st.smoke * 1.3) out.set(x, y, p);
       }
     c = out;
   } else if (st.phase === 'fade') {
@@ -424,7 +424,7 @@ interface DragonLayers {
 }
 /**
  * The dragon is the owner's own dragon, cut from his reference image (REF-s-tier-fire-annihilation.jpg)
- * at game scale by art2/vfx-a-extract.py: the flame-tipped tail, the hump, the neck with the head,
+ * at game scale by tools/refs/fire-from-ref.py: the flame-tipped tail, the hump, the neck with the head,
  * and the claw, each placed where his picture has it. They move a little (each part bobs on its
  * own, the tail's flame flickers) and their bottoms sink raggedly into the flames.
  */

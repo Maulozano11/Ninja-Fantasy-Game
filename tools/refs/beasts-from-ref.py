@@ -1,8 +1,9 @@
-"""Turns the owner's reference sheets into game frames for vfx_beasts (the phoenix, the raiju, the crane).
+"""Turns the owner's reference sheets into game frames for vfx_beasts (the phoenix, the raiju, the crane, the drake).
 
     python3 -I beasts-from-ref.py phoenix REF-phoenix-owner.jpg REF-raiju-owner.jpg <out.ts> [debugDir]
     python3 -I beasts-from-ref.py raiju   REF-raiju-owner.jpg   REF-raiju-owner.jpg <out.ts> [debugDir]
     python3 -I beasts-from-ref.py crane   REF-wind-set-owner.jpg REF-wind-set-owner.jpg <out.ts> [debugDir]
+    python3 -I beasts-from-ref.py drake   REF-earth-set-owner.jpg REF-earth-set-owner.jpg <out.ts> [debugDir]
 
 The owner asked for his sheets to be copied as exactly as possible, so his panels ARE the frames:
 each numbered fly-loop panel is cropped, its olive background, frame number and anchor ticks
@@ -822,36 +823,35 @@ def drake():
         r, g, b = crop[..., 0], crop[..., 1], crop[..., 2]
         head = poly_mask(HEAD[k], (CH, CW), (ox, oy))
         fg = (diff > 22) & inside
-        # Dust and flying dirt: saturated orange-brown (his stone is a greyer brown).
-        warm = (r - b > 0.42 * r) & (r > g + 12) & (diff > 40) & ~head
+        # Dust and flying dirt (the lunge only): saturated orange-brown (his stone is a greyer brown).
+        warm = (r - b > 0.42 * r) & (r > g + 12) & (diff > 40) & ~head & (k == 5)
         # Specks of it inside the body are his shading, not dust.
         for p in components(warm):
             if len(p) < 8:
                 p = np.array(p)
                 warm[p[:, 0], p[:, 1]] = False
         solid = fg & ~warm
-        comps = sorted(components(solid), key=len, reverse=True)
-        body = np.zeros((CH, CW), bool)
-        pts = np.array(comps[0])
-        body[pts[:, 0], pts[:, 1]] = True
-        # Holes inside the body: his dark seams and shadows (not background) belong to it.
-        outside = ~body
-        lab = components(outside)
-        for p in lab:
-            p = np.array(p)
-            touches = (p[:, 0].min() == 0) or (p[:, 1].min() == 0) or (p[:, 0].max() == CH - 1) or (p[:, 1].max() == CW - 1)
-            if touches:
-                continue
-            if len(p) < 60 or diff[p[:, 0], p[:, 1]].mean() > 14:
-                body[p[:, 0], p[:, 1]] = True
+        def biggest(m):
+            out = np.zeros((CH, CW), bool)
+            pts = np.array(max(components(m), key=len))
+            out[pts[:, 0], pts[:, 1]] = True
+            return out
+
+        def fill_holes(m):
+            # Holes inside the body: his dark seams and shadows (not background) belong to it.
+            for p in components(~m):
+                p = np.array(p)
+                if p[:, 0].min() == 0 or p[:, 1].min() == 0 or p[:, 0].max() == CH - 1 or p[:, 1].max() == CW - 1:
+                    continue
+                if len(p) < 60 or diff[p[:, 0], p[:, 1]].mean() > 14:
+                    m[p[:, 0], p[:, 1]] = True
+            return m
+
+        body = fill_holes(biggest(solid))
         # His dark edging on the dust streaks that touch the drake is not the drake's (it would be left
         # floating when the dust moves): the dark pixels next to dust go with the dust.
         lum = crop @ np.array([0.3, 0.55, 0.15], np.float32)
-        body &= ~(dilate(warm, 3) & (lum < 62))
-        comps = sorted(components(body), key=len, reverse=True)
-        body = np.zeros((CH, CW), bool)
-        pts = np.array(comps[0])
-        body[pts[:, 0], pts[:, 1]] = True
+        body = fill_holes(biggest(body & ~(dilate(warm, 3) & (lum < 62))))
         rest = fg & ~body
         return crop, body, rest, diff, (ox, oy)
 
@@ -865,7 +865,7 @@ def drake():
     glow = (r_ - b_ > 0.42 * r_) & (r_ > g_ + 12) & (r_ > 120)  # the eyes and the glints over them
     horn = (np.abs(r_ - b_) < 12) & (r_ > 110)  # the cool grey of the horns and the brightest plates
     stone = ~green & ~glow & ~horn
-    PAL = np.concatenate([median_palette(body_px[stone], 32), median_palette(body_px[green], 8), median_palette(body_px[horn], 5), median_palette(body_px[glow], 5)])
+    PAL = np.concatenate([median_palette(body_px[stone], 30), median_palette(body_px[green], 8), median_palette(body_px[horn], 5), median_palette(body_px[glow], 5)])
     # His outline: the median of his darkest brown pixels (a deep brown, not black).
     lum_px = body_px @ np.array([0.3, 0.55, 0.15], np.float32)
     dark = body_px[(lum_px < 30) & (r_ > b_ + 6) & (r_ >= g_)]
@@ -873,7 +873,9 @@ def drake():
     print('drake palette', len(PAL), 'outline', OUTLINE.astype(int).tolist())
     # The dust: un-mixed from the panel background as one of his dust colours with an alpha.
     crop5, body5, rest5, diff5, off5 = keys[5]
-    DUST = median_palette(crop5[rest5 & (diff5 > 150)], 8)
+    # (Sampled from his solid dust: saturated, so the pixels his dust shares with the background stay out.)
+    r5, b5 = crop5[..., 0], crop5[..., 2]
+    DUST = median_palette(crop5[rest5 & (diff5 > 70) & (r5 - b5 > 0.42 * r5)], 9)
     print('dust palette', DUST.astype(int).tolist())
 
     def unmix(crop, m):
@@ -1020,7 +1022,7 @@ def drake():
         prem = np.zeros((CH, CW, 3), np.float32)
         cov = np.zeros((CH, CW), np.float32)
         free = np.zeros((CH, CW), np.float32)  # near pieces away from their joint (they get an edge line)
-        for i, (pr, a, w) in enumerate(layers):
+        for pr, a, w in layers:
             prem = pr + prem * (1 - a[..., None])
             cov = a + cov * (1 - a)
             free = w + free * (1 - a)
@@ -1076,8 +1078,8 @@ def drake():
     # drifting back and fading. Leg angles in degrees (+ turns a hanging limb's foot backward).
     frames = {'fly': [
         key_frame(0),
-        pose(0, pitch=-2.0, bob=-1.0, legs={'nf': 8, 'ff': -8, 'nh': 10, 'fh': 6, 'tail': -6}),
-        pose(0, pitch=-4.0, bob=-2.0, legs={'nf': 16, 'ff': -16, 'nh': 20, 'fh': 12, 'tail': -12}),
+        pose(0, pitch=-2.0, bob=-2.5, legs={'nf': 8, 'ff': -8, 'nh': 10, 'fh': 6, 'tail': -6}),
+        pose(0, pitch=-4.0, bob=-5.5, legs={'nf': 16, 'ff': -16, 'nh': 20, 'fh': 12, 'tail': -12}),
         pose(5, pitch=6.0, bob=-2.0, legs={'nf': -4, 'ff': 6, 'nh': -12, 'fh': -10, 'tail': 8}, dust=(0.5, 2.0, 2.0, 0.6)),
         pose(5, pitch=3.0, bob=-1.0, legs={'nf': -2, 'ff': 3, 'nh': -6, 'fh': -5, 'tail': 4}, dust=(0.78, 1.0, 1.0, 0.85)),
         key_frame(5),

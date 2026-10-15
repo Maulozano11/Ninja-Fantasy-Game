@@ -19,6 +19,7 @@ import { Canvas, WorldSprite, withAlpha } from './kit';
 import { FIRE, ROCK, SMOKE, TH, embers, erode, flow, tongue } from './vfx-a-fire-kit';
 import { Field, Pt, TAU, bez, clamp, dissolve, frames, fract, lerp, pfbm, pnoise, render, rr, smooth, stack, tubeShade, vfxSprite } from './vfx-a-lib';
 import { drawDragon } from './vfx-a-fire-dragon';
+import { dropCrumbs } from './vfx-a-ref';
 import { KANJI_FADE, KanjiBox, SURGE_N, annihilationS, kanjiFire, kanjiSurge20, surgeRows } from './vfx-a-fire-s';
 
 const PX = 57;
@@ -347,14 +348,16 @@ export function waveFrame(w: Wave, st: WaveState): Canvas {
       const yg = gy + rowSide[row] * halfDepth(d) + jit * halfDepth(d) * scatter;
       const h = heightAt(jx, row) * rr(seed + 10 + row, Math.round(jx), 0.82, 1.12) * lerp(1, rr(seed + 91 + row, Math.round(jx), 0.4, 1.3), scatter) * (1 + 0.08 * Math.sin(ph + jx * 0.05));
       if (h < 5) continue;
-      const lean = 0.42 * smooth(80, 0, crestX - jx) * (surging ? 1 : 0.35);
+      const lean = (great ? 0.42 : 0.16) * smooth(80, 0, crestX - jx) * (surging ? 1 : 0.35);
       const wdt = Math.min(great ? 17 : 15, 5 + h * 0.08);
       tongue(f, [jx, yg - h * 0.42 * (0.4 + 0.6 * bodyK)], -Math.PI / 2 + lean + rr(seed + 20, Math.round(jx), -0.08, 0.08), h * 0.6, wdt, rowHeat[row] * 0.85, 0.13, ph + jx * 0.07, lean * 0.4);
     }
   }
   // The crest breaks like a wave: a lip of fire rolls forward and curls down over a hollow,
   // lit along its back, dark inside the curl, with spray streaming off it.
-  const lipOn = !(great && st.dragon > 0.6) && st.burn > 0.7;
+  // (the normal one shows only the kanji above its wave: no curled crest that could read as a
+  // dragon's neck; the enhanced one is the S-rank sprite)
+  const lipOn = great && st.dragon <= 0.6 && st.burn > 0.7;
   if (lipOn) {
     const ch = heightAt(crestX - 4, 0);
     if (ch > 30) {
@@ -399,11 +402,13 @@ export function waveFrame(w: Wave, st: WaveState): Canvas {
     const n = pnoise(x, y, 6, 0, 0, seed + 31);
     const da = deadAt(x);
     if (st.dead > 0) {
-      // Dying: the bed breaks into scattered embers, thinning out toward the caster and over time.
+      // Dying: the bed darkens to a glowing ember bed and breaks into patches (never single
+      // specks), most behind the dying front and more over time.
       const behind = da >= 0 ? smooth(da + 0.15, da - 0.1, u) : 0;
-      const cut = 0.62 + st.dead * 0.22 + behind * 0.12;
-      if (n < cut) return 0;
-      return 0.3 + 0.4 * ((n - cut) / (1 - cut)) * (1 - behind * 0.5);
+      const nb = pnoise(x, y * 1.6, 16, 0, 0, seed + 31) * 0.7 + pnoise(x, y, 7, 0, 0, seed + 30) * 0.3;
+      const cut = 0.3 + st.dead * 0.4 + behind * 0.22;
+      if (nb < cut) return 0;
+      return lerp(0.16, 0.46, (1 - behind) * (1 - st.dead * 0.6)) + (nb - cut) * 0.25;
     }
     const v = (0.42 + 0.3 * pnoise(x, y, 8, 0, 0, seed + 32)) * Math.min(1, st.burn * 1.5);
     return v > 0.12 || n > 0.6 ? Math.max(v, 0.2) : 0;
@@ -443,7 +448,7 @@ export function waveFrame(w: Wave, st: WaveState): Canvas {
   if (st.phase === 'fade') erode(smoke, (1 - st.smoke / 0.7) * 1.8, (x, y) => pfbm(x, y - t * 60, 7, 2, 0, 0, seed + 37));
   const layers: (Canvas | null)[] = [];
   layers.push(smoke.any() ? render(smoke, SMOKE, { th: [0, 0.12, 0.26, 0.42, 0.6, 0.78], hi: great ? 4 : 5, rim: [1, 2], jitter: (x, y) => (pfbm(x - t * 120, y, 6, 2, 120, 0, seed + 36) - 0.5) * 0.3 }) : null);
-  layers.push(bed.any() ? render(bed, FIRE, { th: TH, hi: 5, rim: [1] }) : null);
+  layers.push(bed.any() ? (st.dead > 0 ? dropCrumbs(render(bed, FIRE, { th: TH, hi: 5, rim: [1] }), 10) : render(bed, FIRE, { th: TH, hi: 5, rim: [1] })) : null);
   const streaks = (x: number, y: number) => (pnoise(x * 0.5, (y + t * 180) * 0.15, 2, 0, 27, seed + 46) - 0.5) * 0.26;
   layers.push(render(rows[0], FIRE, { th: TH, rim: [1], hi: 5, jitter: streaks }));
   if (lipF.any()) {

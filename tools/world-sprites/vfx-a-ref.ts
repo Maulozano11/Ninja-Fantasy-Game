@@ -1,4 +1,4 @@
-// Decodes the owner's reference pieces (vfx-a-fire-refdata.ts, made by art2/vfx-a-extract.py)
+// Decodes the owner's reference pieces (vfx-a-fire-refdata.ts, made by tools/refs/fire-from-ref.py)
 // into canvases, and the small moves the generator animates them with.
 
 import { Canvas, Color, hex } from './kit';

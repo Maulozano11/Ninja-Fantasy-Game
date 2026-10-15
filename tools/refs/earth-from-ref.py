@@ -254,10 +254,16 @@ BLAST_SOLID = [
     [(1415, 752), (1432, 736), (1450, 738), (1461, 760), (1460, 788), (1416, 788)],                         # rock, bottom
 ]
 
+# His figure inside the aura (removed; the ring's front arc across his waist is kept in front).
+AURA_FIGURE = [(1040, 962), (1055, 944), (1075, 942), (1095, 952), (1100, 975), (1100, 1000), (1110, 1004), (1112, 1040),
+               (1116, 1060), (1120, 1082), (1112, 1090), (1106, 1100), (1104, 1120), (1103, 1140), (1112, 1152), (1112, 1162),
+               (1095, 1165), (1083, 1170), (1060, 1172), (1058, 1180), (1033, 1180), (1036, 1160), (1035, 1135), (1030, 1110),
+               (1020, 1100), (1000, 1092), (1000, 1078), (1010, 1070), (1013, 1045), (1012, 1006), (1030, 1000), (1040, 990)]
+
 SPRITES = {
-    'bolt': dict(s=S_MED, anchor=(206, 221), area=[rect(25, 101, 267, 336)],
+    'bolt': dict(s=S_MED, anchor=(206, 221), area=[rect(28, 101, 267, 336)],
                  solid=[BOULDER], dust=[rect(25, 101, 267, 336)], dust_a=0.9,
-                 fade={'left': 14}, bits=40, pieces=[('boulder', [BOULDER])]),
+                 fade={'left': 22}, bits=40, pieces=[('boulder', [BOULDER])]),
     'breath': dict(s=S_MED, anchor=(1323, 237), area=[rect(1317, 101, 1634, 362)],
                    dust=[rect(1317, 101, 1634, 362)], dust_a=0.92, bits=60),
     'sphere': dict(s=S_MED, anchor=(1801, 236), area=[rect(1664, 101, 1922, 348)],
@@ -278,15 +284,19 @@ SPRITES = {
                   solid=BLAST_SOLID, dust=[rect(1159, 435, 1668, 797)], dust_a=0.92, shade=[rect(1159, 600, 1668, 797)],
                   pieces=[('spikes', BLAST_SOLID[:12]), ('rocks', BLAST_SOLID[12:])],
                   fade={'right': 6}, bits=80),
-    'wall': dict(s=2.34, anchor=(379.5, 1177), area=[rect(24, 867, 745, 1253)], bits=40),
+    'wall': dict(s=2.34, anchor=(379.5, 1177), area=[rect(24, 867, 745, 1253)], art_d=14, bits=40,
+                 dust=[rect(24, 1195, 745, 1253)], sparse=True, dust_a=0.85),
     'wall_diag': dict(s=2.35, anchor=(1545, 1302), area=[rect(1222, 867, 1975, 1490)],
                       drop=[[(1828, 1050), (1975, 1050), (1975, 1320), (1828, 1320)]],
-                      dust=[[(1222, 1240), (1500, 1240), (1840, 1150), (1840, 1490), (1222, 1490)]], dust_a=0.85, bits=40),
+                      dust=[[(1222, 1240), (1500, 1240), (1840, 1150), (1840, 1490), (1222, 1490)]], sparse=True,
+                      art_d=14, dust_a=0.85, bits=40),
     'wall_depth': dict(s=2.26, anchor=(140, 1736), area=[rect(24, 1360, 451, 1974)],
                        drop=[[(318, 1670), (451, 1670), (451, 1974), (318, 1974)]],
-                       dust=[[(180, 1780), (330, 1780), (330, 1974), (24, 1974), (24, 1900)]], dust_a=0.85, bits=40),
+                       dust=[[(180, 1780), (330, 1780), (330, 1974), (24, 1974), (24, 1900)]], sparse=True,
+                       art_d=14, dust_a=0.85, bits=40),
     'aura': dict(s=2.41, anchor=(1072, 1175), area=[rect(929, 867, 1192, 1215)],
-                 dust=[rect(929, 867, 1192, 1215)], dust_a=0.85, bits=30, aura=True),
+                 dust=[rect(929, 867, 1192, 1215)], dust_a=0.85, bits=30, aura=True, figure=AURA_FIGURE,
+                 front_band=(985, 1060, 1140, 1098)),
     # The stream: his spike row, the tile ending where his head begins (x 975), the line 262.
     'stream': dict(s=158 / 64, anchor=(975, 262), area=[rect(650, 101, 1287, 324)],
                    dust=[[(978, 101), (1287, 101), (1287, 324), (978, 324)]], dust_l=(0, 150), dust_a=0.8,
@@ -308,6 +318,15 @@ def classify_his(cfg):
         keep &= ~poly_mask(H0, W0, cfg['drop'])
     L = lum(c)
     dist = np.sqrt(((c - BG) ** 2).sum(-1))
+    front = np.zeros_like(keep)
+    if cfg.get('figure'):
+        # His figure goes, except the ring's light tan band crossing in front of his waist.
+        fig = poly_mask(H0, W0, [cfg['figure']])
+        bx0, by0, bx1, by1 = cfg['front_band']
+        band = poly_mask(H0, W0, [rect(bx0, by0, bx1, by1)])
+        tan = (c[..., 1] - c[..., 2] >= 22) & (c[..., 0] - c[..., 1] <= 62) & (L >= 118)
+        front = band & tan & keep
+        keep &= ~fig | front
     art = keep & ((L >= 70) | (dist >= cfg.get('art_d', 24)))
     # His rims: deep brown (or deep moss green), warm (red well above blue), darker than the art
     # round them. Read on a lightly smoothed copy so a 1 px rim survives; JPEG ringing is cold
@@ -364,7 +383,7 @@ def classify_his(cfg):
         a = np.clip((gauss(d, 1.2) * v).sum(-1) / (v * v).sum(), 0, 1)
         shade = sz & (a >= 0.08)
         sa = np.where(shade, a, 0.0)
-    return dict(body=body, outline=outline, dust=dust, da=da, shade=shade, sa=sa, keep=keep, enclosed=enclosed)
+    return dict(body=body, outline=outline, dust=dust, da=da, shade=shade, sa=sa, keep=keep, enclosed=enclosed, front=front)
 
 
 SHADE = np.array([16.0, 10.0, 6.0])  # the colour his ground shadow darkens toward
@@ -411,3 +430,409 @@ if DEBUG:
         debug_classes(name, cfg, classify_his(cfg))
         print('debug', name)
     sys.exit(0)
+
+
+# --- to game scale ----------------------------------------------------------------------------
+
+def his_box(cfg, W, H, ax, ay):
+    """His rectangle (float) covered by a W x H game frame with the anchor at (ax, ay)."""
+    sx, sy = scale_of(cfg)
+    hx, hy = cfg['anchor']
+    return (hx - ax * sx, hy - ay * sy, hx + (W - ax) * sx, hy + (H - ay) * sy)
+
+
+def resample(arr, box, W, H, P=64):
+    """Box-filters an array of his sheet onto a W x H game grid covering `box` (padded with its
+    edge, so a frame may reach past the sheet's border)."""
+    if arr.ndim == 2:
+        a = np.pad(arr.astype(np.float32), P, mode='edge')
+        b = (box[0] + P, box[1] + P, box[2] + P, box[3] + P)
+        return np.asarray(Image.fromarray(a, 'F').resize((W, H), Image.BOX, box=b), np.float64)
+    return np.stack([resample(arr[..., k], box, W, H, P) for k in range(arr.shape[2])], -1)
+
+
+def bounds_game(cfg, cls):
+    """The art's extent at game scale, relative to the anchor."""
+    m = cls['body'] | cls['outline'] | (cls['da'] > 0.1) | (cls['sa'] > 0.1)
+    ys, xs = np.nonzero(m)
+    sx, sy = scale_of(cfg)
+    hx, hy = cfg['anchor']
+    return ((xs.min() - hx) / sx, (ys.min() - hy) / sy, (xs.max() + 1 - hx) / sx, (ys.max() + 1 - hy) / sy)
+
+
+def frame_for(cfg, cls):
+    """The art's bounds plus MARGIN, plus `pad` (left, top, right, bottom) where the animation
+    throws rocks or dust further out than his picture."""
+    x0, y0, x1, y1 = bounds_game(cfg, cls)
+    pl, pt, pr, pb = cfg.get('pad', (0, 0, 0, 0))
+    ax = int(np.ceil(-x0)) + MARGIN + pl
+    ay = int(np.ceil(-y0)) + MARGIN + pt
+    return ax + int(np.ceil(x1)) + MARGIN + pr, ay + int(np.ceil(y1)) + MARGIN + pb, ax, ay
+
+
+def to_game(cfg, cls, W, H, ax, ay):
+    box = his_box(cfg, W, H, ax, ay)
+    r = lambda a: resample(a, box, W, H)
+    B = r(cls['body'].astype(np.float64))
+    O = r(cls['outline'].astype(np.float64))
+    col = r(SHARP * cls['body'][..., None]) / np.maximum(B, 1e-6)[..., None]
+    rcol = r(SMOOTH * cls['outline'][..., None]) / np.maximum(O, 1e-6)[..., None]
+    DA = r(cls['da'])
+    SA = r(cls['sa'])
+    allc = r(np.where(cls['keep'][..., None], SMOOTH, BG))
+    F = r(cls['front'].astype(np.float64))
+    return dict(B=B, O=O, col=col, rcol=rcol, DA=DA, SA=SA, all=allc, F=F, box=box,
+                his=r(IM0), flat=r(np.where(cls['keep'][..., None], FLAT, BG)))
+
+
+def decide(cfg, g, W, H, ax, ay):
+    """Solid body, rim, dust and shade at game scale. A pixel is drawn solid where his opaque art
+    covers at least half of it; it is rim where his rim dominates it, and a clear pixel just outside
+    a solid becomes rim where his rim reaches into it, so the silhouette gets one clean 1 px rim
+    wherever his art has one. A pixel not drawn solid but holding his dust is dust: its alpha is
+    how much of it his art covers (dust weighted by its strength) times the sprite's dust opacity,
+    and its colour is his colour there un-blended from his panel fill."""
+    B, O, DA, SA = g['B'], g['O'], g['DA'], g['SA']
+    S = B + O
+    drawn = S >= 0.5
+    nb = sum(shift(drawn, dy, dx).astype(int) for dy, dx in N4)
+    drawn |= (~drawn) & (nb >= 3) & (S >= 0.25)          # pinholes
+    dark = drawn & (O > B)
+    solid = drawn & ~dark
+    ring = dilate(solid) & ~drawn & (O >= 0.14)
+    rim = dark | ring
+    rim &= dilate(solid, 2, nb=N8)                       # a rim with no body near it is noise
+    solid |= drawn & ~rim                                # (rim specks dropped above become body)
+    free = ~solid & ~rim
+    cover = np.clip(S + DA, 0, 1)
+    dust = free & (DA >= 0.03) & (cover >= 0.07)
+    da = cover * cfg.get('dust_a', 0.9)
+    # Fades where his panel cut the art (the dust thins out over the last n px).
+    xs = np.arange(W)[None, :]
+    ys = np.arange(H)[:, None]
+    for side, n in cfg.get('fade', {}).items():
+        any_art = solid | rim | dust | (SA > 0.06)
+        cols = np.nonzero(any_art.any(0))[0]
+        rows = np.nonzero(any_art.any(1))[0]
+        if side == 'left':
+            k = np.clip((xs - cols[0] + 0.5) / n, 0, 1)
+        elif side == 'right':
+            k = np.clip((cols[-1] - xs + 0.5) / n, 0, 1)
+        elif side == 'top':
+            k = np.clip((ys - rows[0] + 0.5) / n, 0, 1)
+        else:
+            k = np.clip((rows[-1] - ys + 0.5) / n, 0, 1)
+        da = da * k
+        SA = SA * k
+    dust &= da >= 0.05
+    a_f = np.maximum(da, 1e-3)[..., None]
+    dcol = np.clip((g['all'] - (1 - a_f) * BG) / a_f, 0, 255)
+    shade = free & ~dust & (SA >= 0.06)
+    return dict(solid=solid, rim=rim, dust=dust, da=da, dcol=dcol, shade=shade, sa=np.clip(SA * 1.6, 0, 0.75))
+
+
+# --- build every key frame ----------------------------------------------------------------------
+
+ONLY = os.environ.get('EARTH_ONLY')
+built = {}
+for name, cfg in SPRITES.items():
+    if ONLY and name not in ONLY.split(','):
+        continue
+    cls = classify_his(cfg)
+    W, H, ax, ay = frame_for(cfg, cls)
+    if cfg.get('stream'):
+        # One strip: the tile's 64 columns left of the anchor, then the head.
+        x0, y0, x1, y1 = bounds_game(cfg, cls)
+        ax = 64
+        W = 64 + int(np.ceil(x1)) + MARGIN
+        H = max(H, ay + 32)
+    g = to_game(cfg, cls, W, H, ax, ay)
+    d = decide(cfg, g, W, H, ax, ay)
+    # A pixel drawn solid with little of his body in it (a pinhole, a dark crack speck) takes the
+    # mean of his body and rim there, or of the solid pixels round it.
+    weak = d['solid'] & (g['B'] < 0.15)
+    both = (g['col'] * g['B'][..., None] + g['rcol'] * g['O'][..., None]) / np.maximum(g['B'] + g['O'], 1e-6)[..., None]
+    g['col'] = np.where((weak & (g['B'] + g['O'] > 0.05))[..., None], both, g['col'])
+    weak &= g['B'] + g['O'] <= 0.05
+    if weak.any():
+        ok = (d['solid'] & ~weak).astype(np.float64)
+        nbm = gauss(g['col'] * ok[..., None], 1.0) / np.maximum(gauss(ok, 1.0), 1e-6)[..., None]
+        g['col'] = np.where(weak[..., None], nbm, g['col'])
+    # The box filter softens his crisp pixel clusters; a light unsharp mask over the body (within
+    # the body only) brings back his contrast between neighbouring shades.
+    sm = d['solid'].astype(np.float64)
+    blur = gauss(g['col'] * sm[..., None], 0.8) / np.maximum(gauss(sm, 0.8), 1e-6)[..., None]
+    delta = np.clip(cfg.get('crisp', 0.45) * (g['col'] - blur), -16, 16)
+    g['col'] = np.where(d['solid'][..., None], np.clip(g['col'] + delta, 0, 255), g['col'])
+    built[name] = dict(cfg=cfg, cls=cls, g=g, W=W, H=H, ax=ax, ay=ay, **d)
+    print('built %-11s %3dx%-3d anchor %3d,%-3d' % (name, W, H, ax, ay))
+
+
+# --- palettes: one per sprite, from his pixels ---------------------------------------------------
+
+def median_cut(cols, n):
+    cols = np.asarray(np.clip(np.round(cols), 0, 255), np.uint8).reshape(1, -1, 3)
+    if cols.shape[1] == 0:
+        return np.zeros((0, 3))
+    q = Image.fromarray(cols, 'RGB').quantize(colors=n, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    pal = np.array(q.getpalette()[:n * 3], np.float64).reshape(-1, 3)
+    used = np.unique(np.asarray(q).ravel())
+    return pal[used]
+
+
+def nearest(cols, pal):
+    return ((cols[..., None, :] - pal) ** 2).sum(-1).argmin(-1)
+
+
+DUST_STEPS = 8
+SHADE_STEPS = [0.12, 0.22, 0.34, 0.46, 0.6, 0.75]
+
+
+def palette_for(b):
+    cls, cfg = b['cls'], b['cfg']
+    # His body colours as they land at game scale, cut separately for his greens (moss, vines,
+    # grass: few pixels, but they must keep their own hues) and for the rest.
+    cols = b['g']['col'][b['solid']]
+    green = cols[:, 1] > cols[:, 0] + 4
+    n = cfg.get('colors', 36)
+    ng = 0 if green.sum() < 6 else int(np.clip(round(n * 2.5 * green.mean()), 3, 12))
+    body = median_cut(cols[~green], n - ng)
+    if ng:
+        body = np.concatenate([body, median_cut(cols[green], ng)])
+    body = body[np.argsort(lum(body))]
+    rims = median_cut(SMOOTH[cls['outline'] & erode(cls['outline'] | ~cls['keep'], 1, nb=N4) | (cls['outline'] & False)], 3)
+    if len(rims) == 0:
+        rims = median_cut(SMOOTH[cls['outline']], 3)
+    if len(rims) == 0:
+        rims = np.array([[52.0, 26.0, 12.0]])
+    # Rims are deep and tinted, never black: pulled a little darker than his JPEG-softened mean.
+    rims = np.clip(rims * 0.9, 0, 255)
+    rims = rims[np.argsort(lum(rims))]
+    dsrc = b['dcol'][b['dust']]
+    dust = median_cut(dsrc, 10) if len(dsrc) else np.zeros((0, 3))
+    pal = []
+    for c in body:
+        pal.append((*[int(round(v)) for v in c], 255, 'body'))
+    for c in rims:
+        pal.append((*[int(round(v)) for v in c], 255, 'outline'))
+    a_max = cfg.get('dust_a', 0.9)
+    for c in dust:
+        for k in range(DUST_STEPS):
+            pal.append((*[int(round(v)) for v in c], int(round(255 * a_max * (k + 1) / DUST_STEPS)), 'dust'))
+    if b['shade'].any():
+        for a in SHADE_STEPS:
+            pal.append((*[int(v) for v in SHADE], int(round(255 * a)), 'shade'))
+    assert len(pal) <= 255, len(pal)
+    return pal, body, rims, dust
+
+
+def quantize(b, pal, body, rims, dust):
+    H, W = b['solid'].shape
+    idx = np.zeros((H, W), np.int32)
+    nb = len(body)
+    s = b['solid']
+    idx[s] = nearest(b['g']['col'][s], body) + 1
+    # Speck clean-up: a body pixel unlike all four neighbours and close to them in brightness is
+    # JPEG noise and takes their commonest value (real highlights stand out and stay).
+    for y in range(1, H - 1):
+        for x in range(1, W - 1):
+            v = idx[y, x]
+            if not v:
+                continue
+            n4 = [idx[y, x + 1], idx[y, x - 1], idx[y + 1, x], idx[y - 1, x]]
+            if v in n4 or not all(n4) or max(n4) > nb:
+                continue
+            m = max(set(n4), key=n4.count)
+            if abs(lum(body[v - 1]) - lum(body[m - 1])) < 30:
+                idx[y, x] = m
+    r = b['rim']
+    idx[r] = nb + nearest(b['g']['rcol'][r], rims) + 1
+    d = b['dust']
+    if d.any():
+        a_max = b['cfg'].get('dust_a', 0.9)
+        ci = nearest(b['dcol'][d], dust)
+        ai = np.clip(np.round(b['da'][d] / a_max * DUST_STEPS) - 1, 0, DUST_STEPS - 1).astype(int)
+        idx[d] = nb + len(rims) + ci * DUST_STEPS + ai + 1
+    sh = b['shade']
+    if sh.any():
+        base = nb + len(rims) + len(dust) * DUST_STEPS
+        ai = np.abs(b['sa'][sh][:, None] - np.array(SHADE_STEPS)[None]).argmin(1)
+        idx[sh] = base + ai + 1
+    return idx
+
+
+def rle(flat):
+    out = bytearray()
+    i = 0
+    while i < len(flat):
+        v = int(flat[i])
+        n = 1
+        while i + n < len(flat) and flat[i + n] == v and n < 255:
+            n += 1
+        out += bytes((n, v))
+        i += n
+    return base64.b64encode(bytes(out)).decode('ascii')
+
+
+def split_pieces(idx, kinds, b, keep_full=False, wrap=False, names_extra=()):
+    """'dust', 'shade', 'bits' (small loose rocks and pebbles with their rims), named pieces, and
+    'main'."""
+    H, W = idx.shape
+    k = kinds[idx]
+    owner = np.full((H, W), 'main', dtype=object)
+    owner[k == 'dust'] = 'dust'
+    owner[k == 'shade'] = 'shade'
+    rock = (k == 'body') | (k == 'outline')
+    lab, n = components(rock, nb=N8, wrap=wrap)
+    sizes = np.bincount(lab.ravel(), minlength=n + 1)
+    big = sizes[1:].max() if n else 0
+    cfg = b['cfg']
+    bits = np.zeros((H, W), bool)
+    for c in range(1, n + 1):
+        if sizes[c] > cfg.get('bits', 30) or sizes[c] >= big:
+            continue
+        bits |= lab == c
+    owner[bits] = 'bits'
+    names = ['main', 'bits', 'dust', 'shade']
+    x0, y0 = b['g']['box'][:2]
+    sx, sy = scale_of(cfg)
+    for pname, polys in cfg.get('pieces', []):
+        m = poly_mask(H, W, polys, x0, y0, 1 / sx, 1 / sy) & np.isin(owner, ['main', 'bits']) & rock
+        owner[m] = pname
+        names.append(pname)
+    for pname, m in names_extra:
+        owner[m & (idx > 0)] = pname
+        names.append(pname)
+    pieces = {}
+    for pname in names:
+        m = (owner == pname) & (idx > 0)
+        if not m.any():
+            continue
+        sub = np.where(m, idx, 0)
+        if keep_full:
+            bx0, by0, bx1, by1 = 0, 0, W, H
+        else:
+            ys, xs = np.nonzero(sub)
+            bx0, by0, bx1, by1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+        pieces[pname] = {'x': int(bx0), 'y': int(by0), 'w': int(bx1 - bx0), 'h': int(by1 - by0),
+                         'rle': rle(sub[by0:by1, bx0:bx1].ravel())}
+    return pieces
+
+
+def seam_rows(A, B, PALC, lo, hi):
+    """Per row, the column s in [lo, hi] where a strip switches from A (left of s) to B (from s
+    on), chosen where the two match best, moving at most 1 px from row to row."""
+    H = A.shape[0]
+    ca = PALC[np.maximum(A, 1) - 1][..., :3] * (A > 0)[..., None]
+    cb = PALC[np.maximum(B, 1) - 1][..., :3] * (B > 0)[..., None]
+    diff = np.sqrt(((ca - cb) ** 2).sum(-1)) + 200 * ((A > 0) != (B > 0))
+    S = np.arange(lo, hi + 1)
+    cost = np.array([[diff[y, s] + (diff[y, s - 1] if s > 0 else 0) for s in S] for y in range(H)])
+    acc = cost.copy()
+    back = np.zeros(acc.shape, np.int32)
+    for y in range(1, H):
+        for i in range(len(S)):
+            j0, j1 = max(0, i - 1), min(len(S), i + 2)
+            kk = j0 + int(np.argmin(acc[y - 1, j0:j1]))
+            acc[y, i] += acc[y - 1, kk]
+            back[y, i] = kk
+    i = int(np.argmin(acc[-1]))
+    out = [0] * H
+    for y in range(H - 1, -1, -1):
+        out[y] = int(S[i])
+        i = back[y, i]
+    return out
+
+
+result = {}
+review = {}
+for name, b in built.items():
+    cfg = b['cfg']
+    pal, body, rims, dust = palette_for(b)
+    PALC = np.array([p[:4] for p in pal], np.float64)
+    kinds = np.array(['clear'] + [p[4] for p in pal])
+    idx = quantize(b, pal, body, rims, dust)
+    pal_json = [{'rgba': '#%02x%02x%02x%02x' % p[:4], 'kind': p[4]} for p in pal]
+    if cfg.get('stream'):
+        ay = b['ay']
+        assert ay >= 32 and ay + 32 <= b['H'], (ay, b['H'])
+        tile = idx[ay - 32:ay + 32, :64].copy()
+        head0 = idx[ay - 32:ay + 32, 64:76]
+        seam = seam_rows(head0, tile[:, :12], PALC, 0, 11)
+        for y, sc in enumerate(seam):
+            tile[y, :sc] = head0[y, :sc]
+        # No loose bit may touch the tile's top or bottom row.
+        lab, n = components(tile > 0, wrap=True)
+        for c in set(np.unique(np.concatenate([lab[0], lab[-1]]))) - {0}:
+            if (lab == c).sum() <= 40:
+                tile[lab == c] = 0
+        head = idx[:, 64:].copy()
+        result['stream'] = {'w': 64, 'h': 64, 'anchor': [0, 32], 'pal': pal_json,
+                            'pieces': split_pieces(tile, kinds, b, keep_full=True, wrap=True)}
+        result['stream_head'] = {'w': int(head.shape[1]), 'h': int(head.shape[0]), 'anchor': [32 - 0, int(ay)], 'pal': pal_json,
+                                 'pieces': split_pieces(head, kinds, b, keep_full=True)}
+        # (The head's anchor is 32 px right of its left edge, the joint with the last tile.)
+        review['stream'] = (tile, PALC, b['g']['his'][ay - 32:ay + 32, :64])
+        review['stream_head'] = (head, PALC, b['g']['his'][:, 64:])
+        continue
+    if cfg.get('aura'):
+        front = (b['g']['F'] >= 0.3) & (idx > 0)
+        rows = np.arange(b['H'])[:, None]
+        front |= (rows >= b['ay']) & (idx > 0)                 # the pebbles at his feet
+        front = dilate(front, 1, nb=N8) & (idx > 0) & ((rows >= b['ay']) | (b['g']['F'] >= 0.05) | front)
+        for lname, m in (('aura', front), ('aura_back', ~front)):
+            sub = np.where(m, idx, 0)
+            result[lname] = {'w': b['W'], 'h': b['H'], 'anchor': [b['ax'], b['ay']], 'pal': pal_json,
+                             'pieces': split_pieces(sub, kinds, b)}
+            review[lname] = (sub, PALC, b['g']['his'])
+        continue
+    result[name] = {'w': b['W'], 'h': b['H'], 'anchor': [b['ax'], b['ay']], 'pal': pal_json, 'pieces': split_pieces(idx, kinds, b)}
+    review[name] = (idx, PALC, b['g']['his'])
+
+for name, r in result.items():
+    print('%-11s %3dx%-3d anchor %3d,%-3d pal %3d pieces %s' % (name, r['w'], r['h'], r['anchor'][0], r['anchor'][1], len(r['pal']), ','.join(r['pieces'])))
+
+if not ONLY:
+    scales = {n: scale_of(c) for n, c in SPRITES.items()}
+    ts = ["// GENERATED by tools/refs/earth-from-ref.py from the owner's paint-over of the earth sheet",
+          "// (docs/reference/earth-set-owner-reference.jpg): do not edit by hand. Each sprite's key frame has",
+          "// its own palette (his rock, his rims, his dust at alpha steps, his ground shadow) and is split into",
+          "// pieces of base64 run-length data, as (run, palette index + 1) byte pairs (0 = clear), each placed",
+          "// at (x, y) in the sprite's frame.", '',
+          "export type EarthKind = 'body' | 'outline' | 'dust' | 'shade';",
+          'export interface EarthPal { rgba: string; kind: EarthKind }',
+          'export interface EarthPiece { x: number; y: number; w: number; h: number; rle: string }',
+          'export interface EarthRef { w: number; h: number; anchor: [number, number]; pal: EarthPal[]; pieces: Record<string, EarthPiece> }',
+          '/** His px per game px (across, down), per panel. */',
+          'export const EV3_SCALE: Record<string, [number, number]> = ' + json.dumps({k: [round(v[0], 4), round(v[1], 4)] for k, v in scales.items()}) + ';',
+          'export const EV3_REF: Record<string, EarthRef> = ' + json.dumps(result, indent=1) + ';', '']
+    tmp = OUT_TS + '.part'
+    with open(tmp, 'w') as fh:
+        fh.write('\n'.join(ts))
+    os.replace(tmp, OUT_TS)
+    print('wrote', OUT_TS)
+
+if REVIEW:
+    os.makedirs(REVIEW, exist_ok=True)
+
+    def rgba_of(idx, PALC):
+        out = np.zeros(idx.shape + (4,))
+        on = idx > 0
+        out[on] = PALC[idx[on] - 1]
+        return out
+
+    def comp(rgba, bg):
+        A = rgba[..., 3:] / 255
+        return rgba[..., :3] * A + np.asarray(bg, np.float64) * (1 - A)
+
+    for name, (idx, PALC, his) in review.items():
+        np.savez(os.path.join(REVIEW, 'k-' + name + '.npz'), idx=idx, pal=PALC)
+        Image.fromarray(np.clip(his, 0, 255).astype(np.uint8)).save(os.path.join(REVIEW, 'his-' + name + '.png'))
+        rgba = rgba_of(idx, PALC)
+        H, W = idx.shape
+        k = 4 if max(W, H) < 120 else 3 if max(W, H) < 200 else 2
+        imgs = [his, comp(rgba, BG), comp(rgba, [96, 124, 72])]
+        S = Image.new('RGB', (W * k * len(imgs) + 10 * len(imgs), H * k), (0, 0, 0))
+        for i, x in enumerate(imgs):
+            S.paste(Image.fromarray(np.clip(x, 0, 255).astype(np.uint8)).resize((W * k, H * k), Image.NEAREST), (i * (W * k + 10), 0))
+        S.save(os.path.join(REVIEW, 'x-' + name + '.png'))

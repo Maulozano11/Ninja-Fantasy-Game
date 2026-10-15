@@ -449,7 +449,11 @@ function dragon(dst: Canvas, o: { t: number; writhe: number; roar: number; dim: 
       return [mx + px * ct + py * st, my - px * st + py * ct];
     },
     (c, x, y, sx, sy) => {
-      if (y < ey + 6) return null;
+      // It comes out of the eye's funnel: inside the eye's ellipse (ragged edge) it is hidden, and
+      // its rim there takes the eye's glow, so no straight cut shows.
+      const de = Math.hypot((x + 0.5 - ex) / 46, (y + 0.5 - ey) / 17) - 0.22 * (noise(x, y, 5, 730) - 0.5);
+      if (de < 1 || y < ey) return null;
+      if (de < 1.18) return withA(dimmed(c[0], c[1], c[2], 0.82, ELECTRIC), o.alpha);
       if (o.burn && !survives(src, sx, sy, o.burn, x, y, 711, 10, 0.6)) return null;
       // While it dives, its cut-off underside (the burst hid it in his panel) frays into sparks.
       if (o.t < 1 && sy > y1 - 18) {

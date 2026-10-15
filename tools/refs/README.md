@@ -18,7 +18,28 @@ folders.
 
       python3 -I tools/refs/beasts-from-ref.py crane <wind-sheet.jpg> <wind-sheet.jpg> tools/world-sprites/vfx-beasts-ref-wind.ts
 
-- `vfx-fire-extract.py` (when present): pieces of the fire references for the fire generators.
+  Its `drake` mode copies the stone drake (the earth beast; it replaced the old serpent) from his
+  earth sheet's BEAST panel into `tools/world-sprites/vfx-beasts-ref-earth.ts`. His left picture
+  (prowl) is fly frame 0 and his right one (lunge, dust kicking up) is frame 5, both on one anchor
+  at the middle of the torso; the scale comes from his character on the WALL panel (228 px tall
+  against our 96). The in-betweens turn his own legs and tail about their joints (the turn eases in
+  from the cut, so each piece stays joined), pitch and bob the body a few pixels, and grow his dust
+  behind the hind feet around the lunge, then drift it back and fade it (his dust was clipped by
+  his frame box, so it fades out toward those edges). The pieces, joints and torso points are the
+  tables at the top of `drake()`. With a fifth argument, a folder, it writes the cut-out pieces,
+  his pictures beside ours and onion skins.
+
+      python3 -I tools/refs/beasts-from-ref.py drake docs/reference/earth-set-owner-reference.jpg docs/reference/earth-set-owner-reference.jpg tools/world-sprites/vfx-beasts-ref-earth.ts [debugDir]
+
+- `fire-from-ref.py`: the fire set (`vfx_fire`, all but the phoenix) and the S-rank Great Fire
+  Annihilation (`annihilation_enh`) from his fire sheet and his S-rank picture. It writes
+  `tools/world-sprites/vfx-a-fire-refdata.ts`, which `vfx-a-fire-v3.ts` (the fire set) and
+  `vfx-a-fire-s.ts` (the annihilation) animate. With a fourth argument it also writes a preview
+  of every piece.
+
+      python3 -I tools/refs/fire-from-ref.py docs/reference/s-tier-jutsu-standard.jpg docs/reference/fire-set-owner-reference.jpg tools/world-sprites/vfx-a-fire-refdata.ts [preview.png]
+
+  (`vfx-fire-extract.py`, when present, is an older copy of it.)
 
 - `water-from-ref.py`: the whole water set (`vfx_water_v3`) from his water sheet. It writes
   `tools/world-sprites/vfx-water-v3-refdata.ts`, which `vfx-water-v3.ts` animates. The third

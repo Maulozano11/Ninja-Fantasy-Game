@@ -1,6 +1,6 @@
 // Fire set, third pass: the sprites copied from the owner's paint-over of the fire sheet
 // (REF-fire-set-owner.jpg). Each key frame is his own drawing, cut at game scale by
-// art2/vfx-a-extract.py into vfx-a-fire-refdata.ts; the other frames are derived from it
+// tools/refs/fire-from-ref.py into vfx-a-fire-refdata.ts; the other frames are derived from it
 // (grown, revealed, flickered, cooled into smoke), so the peak frame is his picture.
 
 import { Canvas, Color, WorldSprite, withAlpha } from './kit';
@@ -22,7 +22,7 @@ function hexC(h: string): Color {
 }
 
 /**
- * His mushroom cloud, built from his own pixels (art2/vfx-a-extract.py cuts his panel into the
+ * His mushroom cloud, built from his own pixels (tools/refs/fire-from-ref.py cuts his panel into the
  * cap, the stem with its flaring root, the far and near halves of the ring of fire and the
  * scorched ground). Frame 4 is his picture exactly; the frames before grow into it (a flash,
  * the stem rising, the cap blooming, the ring spreading), the frames after cool it into smoke
@@ -148,9 +148,24 @@ export function aura(): WorldSprite[] {
  * ground up and from the middle out (height above the ground line), with a burning edge, ending
  * on his picture. Edges where his panel cut the flames are roughened.
  */
-function refWall(kind: WallKind, piece: string, label: string, ground: (x: number, y: number) => number, along: (x: number, y: number) => number, rough: (x: number, y: number) => boolean, seed: number): WorldSprite {
+function refWall(kind: WallKind, piece: string, label: string, ground: (x: number, y: number) => number, along: (x: number, y: number) => number, rough: (x: number, y: number) => boolean, seed: number, tipLine?: (x: number) => number): WorldSprite {
   const F = REF_FRAMES[kind], W = F.w, H = F.h;
-  const base = roughen(placed(piece, W, H), rough, refPiece(piece).pal[0]);
+  let base = roughen(placed(piece, W, H), (x, y) => rough(x, y) || (tipLine ? y < tipLine(x) : false), refPiece(piece).pal[0]);
+  if (tipLine) {
+    // Where his panel cut the flames off, they end in pointed tips, cooling to red at the ends
+    // like his tips elsewhere along the wall.
+    const out = base.clone();
+    for (let x = 0; x < W; x++) {
+      const t = tipLine(x);
+      for (let y = Math.max(0, Math.floor(t)); y < Math.min(H, t + 7); y++) {
+        const p = base.get(x, y);
+        if (!p[3] || (p[0] === FIRE[0][0] && p[1] === FIRE[0][1])) continue;
+        const k = lerp(0.5, 1, clamp((y - t) / 7, 0, 1));
+        out.set(x, y, [Math.round(p[0] * lerp(0.85, 1, k)), Math.round(p[1] * k * k), Math.round(p[2] * k * k), p[3]]);
+      }
+    }
+    base = out;
+  }
   const idle = frames(4, (t) => flicker(base, t * TAU, 1.6, F.ay, seed));
   const vis = [0.16, 0.32, 0.5, 0.68, 0.86, 1.01];
   const rise = frames(6, (_, i) => {
@@ -168,7 +183,12 @@ export function walls(): WorldSprite[] {
     refWall('wall', 'w_wall', 'Fire wall (4.5 m x 1.8 m)', (_x, y) => clamp((fw.ay - y) / (fw.ay - 8), 0, 1), (x) => Math.abs(x - fw.ax) / (fw.w / 2),
       (x, y) => y > fw.h - 9 - 6 * pnoise(x, 0, 5, 0, 0, 3501), 3500),
     refWall('wall_diag', 'w_diag', 'Fire wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)', (x, y) => clamp((diagG(x) - y) / 150, 0, 1), (x) => Math.abs(x - fd.ax) / (fd.w / 2),
-      (x, y) => y < 10 + 16 * pnoise(x, 0, 6, 0, 0, 3601) || x > fd.w - 11 - 16 * pnoise(0, y, 6, 0, 0, 3602) || (y > diagG(x) + 2 && x > 190 - 12 * pnoise(0, y, 5, 0, 0, 3603)), 3600),
+      (x, y) => x > fd.w - 11 - 16 * pnoise(0, y, 6, 0, 0, 3602) || (y > diagG(x) + 4 + 16 * pnoise(x, 0, 9, 0, 0, 3606) && x > 190 - 12 * pnoise(0, y, 5, 0, 0, 3603)), 3600,
+      // (pointed tips along the top, the flames getting shorter toward the far end)
+      (x) => {
+        const per = 15, u = fract((x + 9 * pnoise(x, 0, 30, 0, 0, 3604)) / per);
+        return 9 + 1.7 * Math.max(0, x - (fd.w - 75)) + 30 * Math.pow(1 - Math.abs(u * 2 - 1), 0.8) * (0.7 + 0.6 * pnoise(Math.floor(x / per), 1, 1.5, 0, 0, 3605));
+      }),
     refWall('wall_depth', 'w_depth', 'Fire wall, end-on (4.5 m x 1.8 m, running into the screen)', (_x, y) => clamp((240 - y) / 200, 0, 1), () => 0,
       (x, y) => x < 10 + 6 * pnoise(0, y, 6, 0, 0, 3701) || x > REF_FRAMES.wall_depth.w - 12 - 14 * pnoise(0, y, 6, 0, 0, 3702) || y > REF_FRAMES.wall_depth.h - 12 - 10 * pnoise(x, 0, 6, 0, 0, 3703) || (y > 108 && x > 60 - 8 * pnoise(0, y, 5, 0, 0, 3704)), 3700),
   ];

@@ -27,3 +27,13 @@ folders.
   at game scale and before/after previews.
 
       python3 -I tools/refs/water-from-ref.py docs/reference/water-set-owner-reference.jpg tools/world-sprites/vfx-water-v3-refdata.ts <character.png> [reviewDir]
+
+- `wind-from-ref.py`: the whole wind set (`vfx_wind_v3`) from his wind sheet. It writes
+  `tools/world-sprites/vfx-wind-v3-refdata.ts` (his key frames cut into the pieces that
+  `vfx-wind-v3.ts` animates, one palette per sprite from his pixels). With a third argument, a
+  folder, it also writes before/after previews.
+
+      python3 -I tools/refs/wind-from-ref.py <REF-wind-set-owner.jpg> tools/world-sprites/vfx-wind-v3-refdata.ts [previewDir]
+
+  `wind-v3-review.py <art2>` then makes the review sheets from the built group (his layout, his
+  panels beside ours, every animation, the blast and walls GIFs).

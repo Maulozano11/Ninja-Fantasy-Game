@@ -742,6 +742,31 @@ function surgeTop(st: SState, x: number): number {
   if (g.bottom[xi] < 0) return GY;
   return g.clip[xi] - surgeStand(st, x) * g.hgt[xi] * 0.7;
 }
+/**
+ * His backdrop under the dragon (his dark smoke and shadows between the flame tips and the
+ * dragon, never his night sky), shown only where the whole wall and the dragon stand: all of
+ * burn, the last surge frame, the first fade frame.
+ */
+let backCache: Canvas | null = null;
+function hisBackLayer(st: SState): Canvas | null {
+  if (!backCache) {
+    const pc = refPiece('s_back');
+    backCache = new Canvas(W, H);
+    backCache.draw(pc.c, pc.x, pc.y);
+  }
+  if (st.phase === 'burn') return backCache;
+  const show = (x: number) =>
+    st.phase === 'surge' ? (st.rise ?? [1, 1, 1]).every((r) => r >= 1) && surgeStand(st, x) >= 0.99 : st.dragon >= 0.84 && wallStand(st, x) >= 0.97;
+  const out = new Canvas(W, H);
+  for (let x = 0; x < W; x++) {
+    if (!show(x)) continue;
+    for (let y = 0; y < H; y++) {
+      const p = backCache.get(x, y);
+      if (p[3]) out.set(x, y, p);
+    }
+  }
+  return out;
+}
 /** The wall's column bottoms (its glowing ground's lower edge). */
 function wallBottoms(): Int32Array {
   return wallGeom().bottom;
@@ -776,7 +801,7 @@ export function sFrame(st: SState): Canvas {
   const jet = dr ? breathJet(st, dr.mouth) : null;
   // His picture's order: smoke, the dragon's tail, hump and neck rising out of the fire, his fire
   // wall in front of their roots, the claw gripping over the wall, the kanji and the breath.
-  const layers: (Canvas | null)[] = [smoke];
+  const layers: (Canvas | null)[] = [hisBackLayer(st), smoke];
   if (dr) layers.push(dr.back, dr.mid);
   layers.push(hisWallC, wallDragonLayer(st));
   if (dr) layers.push(dr.front);

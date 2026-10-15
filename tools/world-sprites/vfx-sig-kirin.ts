@@ -224,6 +224,48 @@ function bbox(c: Canvas, pad = 0): [number, number, number, number] {
   return [b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad];
 }
 
+/** Inset distance (px) of every opaque pixel of a layer from its edge, cached. */
+const insetCache = new Map<Canvas, Float32Array>();
+function inset(c: Canvas): Float32Array {
+  let d = insetCache.get(c);
+  if (d) return d;
+  const { w, h } = c;
+  d = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) d[i] = c.px[i * 4 + 3] > 0 ? 1e6 : 0;
+  const g = (x: number, y: number): number => (x < 0 || y < 0 || x >= w || y >= h ? 0 : d![y * w + x]);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (d[i]) d[i] = Math.min(d[i], g(x - 1, y) + 3, g(x, y - 1) + 3, g(x - 1, y - 1) + 4, g(x + 1, y - 1) + 4);
+    }
+  for (let y = h - 1; y >= 0; y--)
+    for (let x = w - 1; x >= 0; x--) {
+      const i = y * w + x;
+      if (d[i]) d[i] = Math.min(d[i], g(x + 1, y) + 3, g(x, y + 1) + 3, g(x + 1, y + 1) + 4, g(x - 1, y + 1) + 4);
+    }
+  let mx = 0;
+  for (let i = 0; i < w * h; i++) {
+    d[i] /= 3;
+    mx = Math.max(mx, d[i]);
+  }
+  insetMax.set(c, mx);
+  insetCache.set(c, d);
+  return d;
+}
+const insetMax = new Map<Canvas, number>();
+
+/**
+ * Burning a shape away from its edges inward: a source pixel survives while its inset distance
+ * beats `burn` (0..1, a fraction of the layer's thickest part), give or take soft low-frequency
+ * noise, so it thins into wisps and filaments instead of dropping single pixels; at 1 it is gone.
+ */
+function survives(src: Canvas, sx: number, sy: number, burn: number, x: number, y: number, seed: number, cell = 12, wob = 0.45): boolean {
+  if (burn <= 0) return true;
+  const d = inset(src)[sy * src.w + sx];
+  const depth = burn * (insetMax.get(src) ?? 1) * (1 + wob / 2);
+  return d > depth * (1 - wob / 2 + wob * noise(x, y, cell, seed));
+}
+
 const withA = (c: Color, a: number): Color => [c[0], c[1], c[2], Math.round(c[3] * clamp(a, 0, 1))];
 
 // --- the pieces ---------------------------------------------------------------------------------
@@ -237,7 +279,7 @@ const SQUASH = 0.46;
  * with a billowy edge (it grows from the eye while it forms, and thins back while it fades), lifted
  * by `lift`, brightened at the eye by `eyeGlow`.
  */
-function cloud(dst: Canvas, o: { rot: number; reveal: number; lift: number; alpha: number; dim: number; eyeGlow: number }): void {
+function cloud(dst: Canvas, o: { rot: number; reveal: number; lift: number; alpha: number; dim: number; eyeGlow: number; burn?: number }): void {
   const src = S.layers.cloud;
   const [ex, ey] = S.eye;
   const [bx0, by0, bx1, by1] = bbox(src, 2);
@@ -255,7 +297,8 @@ function cloud(dst: Canvas, o: { rot: number; reveal: number; lift: number; alph
       const th = Math.atan2(v, u) + o.rot * Math.pow(clamp(1 - R / vortex, 0, 1), 1.2);
       return [ex + R * Math.cos(th), ey + R * Math.sin(th) * SQUASH];
     },
-    (c, x, y) => {
+    (c, x, y, sx, sy) => {
+      if (o.burn && !survives(src, sx, sy, o.burn, x, y + dy, 311, 16, 0.8)) return null;
       let k = c;
       if (o.eyeGlow > 0) {
         const d = Math.hypot(x - ex, (y - ey) / SQUASH);
@@ -302,9 +345,9 @@ function kanji(dst: Canvas, o: { write: number; breath: number; fade: number; f:
       }
       if (o.breath && L < 200) k *= 1 - o.breath;
       if (o.fade > 0) {
-        // The glow dies: it loses its white first, then fades out (it stays electric blue).
-        a *= 1 - smooth(0.05, 0.8, o.fade);
+        // The glow dies: it loses its white, then burns away from the edges of its strokes inward.
         k *= 1 - 0.55 * smooth(0, 0.6, o.fade);
+        if (!survives(src, x, y, smooth(0.1, 1, o.fade), x, y, 421, 8, 0.6)) return null;
       }
       const col = k < 0.999 ? dimmed(c[0], c[1], c[2], k, ELECTRIC) : c;
       return withA(col, a * (c[3] / 255));
@@ -338,7 +381,7 @@ function toMain(x: number, y: number): number {
  * by `dim`, shifted by `dx`; with `strike` (0..1) only part of the branches are lit (they re-strike
  * frame to frame: the pattern follows `f`), the main channel always.
  */
-function bolt(dst: Canvas, o: { front: number; dim: number; dx: number; branches: number; boost: boolean; alpha: number; f: number }): void {
+function bolt(dst: Canvas, o: { front: number; dim: number; dx: number; branches: number; boost: boolean; alpha: number; f: number; burn?: number }): void {
   const src = S.layers.bolt;
   const [x0, y0, x1, y1] = bbox(src);
   const top = S.eye[1], bottom = y1;
@@ -350,6 +393,7 @@ function bolt(dst: Canvas, o: { front: number; dim: number; dx: number; branches
     (c, x, y) => {
       if (o.front < 1 && y > fy + 18 * (noise(x, 0, 14, 505) - 0.5)) return null;
       if (o.branches < 1 && toMain(x - o.dx, y) > 9 && noise(x, y, 26, 520 + o.f) > o.branches) return null;
+      if (o.burn && !survives(src, x - o.dx, y, o.burn, x, y, 531, 10, 0.6)) return null;
       let k: Color = c;
       if (o.boost && c[0] + c[1] + c[2] > 520) k = [255, 255, 255, c[3]];
       else if (o.dim > 0) k = dimmed(c[0], c[1], c[2], 1 - o.dim * 0.6, ELECTRIC);
@@ -364,14 +408,15 @@ function bolt(dst: Canvas, o: { front: number; dim: number; dx: number; branches
  * (0..1) is how much of the bright starburst and ring glow shows (dimmed, never dropped),
  * `glow` pulses the ring's brightness, `alpha` fades the whole decal.
  */
-function ground(dst: Canvas, o: { spread: number; burst: number; glow: number; alpha: number }): void {
+function ground(dst: Canvas, o: { spread: number; burst: number; glow: number; alpha: number; burn?: number }): void {
   const src = S.layers.ground;
   const [x0, y0, x1, y1] = bbox(src, Math.ceil((o.spread - 1) * 260) + 2);
   paint(
     dst,
     src,
     (x, y) => [S.AX + (x + 0.5 - S.AX) / o.spread, S.AY + (y + 0.5 - S.AY) / o.spread],
-    (c) => {
+    (c, x, y, sx, sy) => {
+      if (o.burn && !survives(src, sx, sy, o.burn, x, y, 611, 14, 0.7)) return null;
       const L = (c[0] + c[1] + c[2]) / 3;
       let k = 1;
       if (L > 150) k = lerp(0.55, 1, o.burst) * o.glow;
@@ -387,7 +432,7 @@ function ground(dst: Canvas, o: { spread: number; burst: number; glow: number; a
  * writhing by `writhe` (turned about its mouth, a little bob), roaring (`roar` whitens the jaws),
  * dimmed by `dim`, faded by `alpha`.
  */
-function dragon(dst: Canvas, o: { t: number; writhe: number; roar: number; dim: number; alpha: number }): void {
+function dragon(dst: Canvas, o: { t: number; writhe: number; roar: number; dim: number; alpha: number; burn?: number }): void {
   const src = S.layers.dragon;
   const [ex, ey] = S.eye, [mx, my] = S.mouth!;
   const ox = (1 - o.t) * (ex - mx) * 0.96, oy = (1 - o.t) * (ey - my) * 0.96 + o.writhe * 2;
@@ -400,8 +445,9 @@ function dragon(dst: Canvas, o: { t: number; writhe: number; roar: number; dim: 
       const px = x - ox - mx, py = y - oy - my;
       return [mx + px * ct + py * st, my - px * st + py * ct];
     },
-    (c, x, y) => {
+    (c, x, y, sx, sy) => {
       if (y < ey + 6) return null;
+      if (o.burn && !survives(src, sx, sy, o.burn, x, y, 711, 10, 0.6)) return null;
       let k: Color = c;
       if (o.roar > 0) {
         const d = Math.hypot(x - mx - ox, y - my - oy);
@@ -545,15 +591,15 @@ function alive(c: Canvas, phase: number, q: number, fi: number, tau: number): vo
   const t = T_IMPACT + 8 / 14 + 1 + Math.max(0, tau - 8 / 14 - 1);
   cloud(c, {
     rot: q > 0 ? ROT_HOLD - 0.25 * (t - (T_IMPACT + 8 / 14 + 1)) : ROT_HOLD + 0.04 * w,
-    reveal: 1 - 0.3 * smooth(0.1, 1, q),
-    lift: 12 * q,
-    alpha: 1 - smooth(0.3, 1, q),
-    dim: 0.4 * q,
+    reveal: 1,
+    lift: 14 * q,
+    alpha: 1 - 0.3 * smooth(0.7, 1, q),
+    dim: 0.35 * q,
     eyeGlow: (0.3 + 0.25 * (1 - FLICK[fi % 12])) * (1 - q),
+    burn: Math.pow(q, 1.1),
   });
   const fl = FLICK[fi % 12];
-  const groundA = Math.pow(1 - q, 1.2);
-  ground(c, { spread: 1 + 0.01 * w + 0.03 * q, burst: (S.enh ? 0.55 + 0.15 * w2 : 0.8 + 0.2 * w2) * (1 - 0.7 * q), glow: 1 - 0.12 * fl, alpha: groundA });
+  ground(c, { spread: 1 + 0.01 * w + 0.03 * q, burst: (S.enh ? 0.55 + 0.15 * w2 : 0.8 + 0.2 * w2) * (1 - 0.8 * q), glow: 1 - 0.12 * fl - 0.3 * q, alpha: 1 - 0.3 * smooth(0.7, 1, q), burn: Math.pow(q, 0.9) });
   if (S.enh) {
     sparks(c, 0.5 + 0.2 * w2, 1 - smooth(0, 0.5, q), fi);
     rocks(c, 1, 1 - smooth(0.2, 0.9, q));
@@ -562,8 +608,8 @@ function alive(c: Canvas, phase: number, q: number, fi: number, tau: number): vo
   spits(c, phase, 1 - smooth(0, 0.4, q), S.enh ? 960 : 970);
   if (S.enh) {
     const roar = [0, 0, 0.15, 0.35, 0.45, 0.3, 0.1, 0, 0, 0, 0, 0][fi % 12] * (1 - q);
-    dragon(c, { t: 1, writhe: q > 0 ? 0 : w, roar, dim: 0.3 * fl + 0.5 * q, alpha: 1 - smooth(0, 0.55, q) });
-  } else bolt(c, { front: 1, dim: Math.min(1, fl + q), dx: [0, 1, 0, -1][fi % 4] * (q > 0 ? 0 : 1), branches: q > 0 ? 1 : 0.55 + 0.4 * (1 - fl), boost: fl === 0 && q === 0, alpha: 1 - smooth(0, 0.5, q), f: fi });
+    dragon(c, { t: 1, writhe: q > 0 ? 0 : w, roar, dim: 0.3 * fl + 0.3 * smooth(0, 0.4, q), alpha: 1, burn: smooth(0, 0.75, q) });
+  } else bolt(c, { front: 1, dim: Math.min(1, fl + 1.6 * q), dx: [0, 1, 0, -1][fi % 4] * (q > 0 ? 0 : 1), branches: q > 0 ? 1 : 0.55 + 0.4 * (1 - fl), boost: fl === 0 && q === 0, alpha: 1, f: fi, burn: smooth(0, 0.5, q) });
   kanji(c, { write: 1, breath: 0.12 * (0.5 - 0.5 * w2), fade: q, f: 80 + fi });
 }
 

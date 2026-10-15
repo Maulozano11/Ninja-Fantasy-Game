@@ -554,14 +554,14 @@ const smooth = (a: number, b: number, v: number): number => {
 /**
  * His wind colour over the body, as in his picture, where the figure is seen through the wind (the
  * owner chose a tint over a clear middle, as for the lightning aura). A soft field round the body,
- * 30% in the middle rising to 45% toward its rim, deeper teal inside and mint at the rim (both from
+ * 30% in the middle rising to 45% toward its rim, mid teal inside and mint at the rim (both from
  * his aura palette); not the shape of any one character, so it sits right on every figure. It
  * breathes with the frames (frame 1 is his picture).
  */
 function veil(s: Spr, frame: number): Canvas {
   const c = new Canvas(s.W, s.H);
   const wind = s.pal.filter((p) => p[3] === 255 && p[1] > p[0] + 15 && p[2] >= p[0]).sort((a, b) => lum(a) - lum(b));
-  const inner = wind[Math.floor(wind.length * 0.4)], rim = wind[Math.floor(wind.length * 0.85)];
+  const inner = wind[Math.floor(wind.length * 0.6)], rim = wind[Math.floor(wind.length * 0.92)];
   const cx = s.ax + 0.5, cy = s.ay - 49, rx = 24, ry = 56;
   const breathe = 1 + 0.08 * Math.sin((frame / 6) * TAU);
   for (let y = 0; y < s.H; y++)
@@ -611,12 +611,14 @@ function sprite(name: string, label: string, b: Built): WorldSprite {
 export function windV3Sprites(): WorldSprite[] {
   const st = streamTile();
   const tile = st.tile, head = streamHead(st.base);
-  // Tile and head share their rows, so their anchors stay on one line; only empty rows are trimmed.
-  const [, ty0, , ty1] = bounds([...tile, ...head]);
-  const y0 = ty0 - 1, y1 = ty1 + 1;
+  // The tile stays 64 x 64 with its centreline on y = 32 (his braid fits with rows to spare); the
+  // head keeps the tile's anchor row and grows to its art (his big crescents are taller).
+  const ty = WV3_REF.stream.anchor[1];
+  const [, by0, , by1] = bounds(tile);
+  if (by0 < ty - 32 || by1 > ty + 31) throw new Error('vfx-wind-v3: the stream tile no longer fits 64 px');
   const hb = bounds(head);
-  const tileB = fit({ anims: { fly: { frames: tile, fps: 12, loop: true } }, ax: 32, ay: WV3_REF.stream.anchor[1] }, { x: [0, 63], y: [y0, y1] });
-  const headB = fit({ anims: { fly: { frames: head, fps: 12, loop: true } }, ax: 32, ay: WV3_REF.stream_head.anchor[1] }, { x: [0, hb[2] + 1], y: [y0, y1] });
+  const tileB = fit({ anims: { fly: { frames: tile, fps: 12, loop: true } }, ax: 32, ay: ty }, { x: [0, 63], y: [ty - 32, ty + 31] });
+  const headB = fit({ anims: { fly: { frames: head, fps: 12, loop: true } }, ax: 32, ay: WV3_REF.stream_head.anchor[1] }, { x: [0, hb[2] + 1], y: [hb[1] - 1, hb[3] + 1] });
   const a = aura();
   return [
     sprite('bolt', 'Wind bolt (spiral vortex ball, his paint-over)', fit(bolt())),

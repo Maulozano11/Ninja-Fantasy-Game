@@ -18,8 +18,8 @@
 //           it (dark, with lit eyes, at first) and spiral out round it, ending on his left picture (fly 0).
 //
 // The anchor is the centre of the swarm's mass, the same point in both of his pictures. Facing right
-// (the game mirrors it). To merge into vfx-beasts.ts: import crowSwarm() and use it for 'genjutsu'
-// (see art2/beasts-crows-NOTES.md).
+// (the renderer mirrors it when the swarm flies left). To merge into vfx-beasts.ts: import { crowSwarm }
+// from './vfx-beast-crows' and put it in BUILDERS in place of illusionCrow (['genjutsu', crowSwarm]).
 
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';

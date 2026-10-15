@@ -437,8 +437,7 @@ def lab(rgb):
     M = np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]])
     xyz = c @ M.T / np.array([0.9505, 1.0, 1.089])
     f = np.where(xyz > 0.008856, np.cbrt(xyz), 7.787 * xyz + 16 / 116)
-    # (a and b weighted up: in his washes a shift of hue reads more than one of lightness)
-    return np.stack([116 * f[..., 1] - 16, 1.6 * 500 * (f[..., 0] - f[..., 1]), 1.6 * 200 * (f[..., 1] - f[..., 2])], -1)
+    return np.stack([116 * f[..., 1] - 16, 500 * (f[..., 0] - f[..., 1]), 200 * (f[..., 1] - f[..., 2])], -1)
 
 def median_cut(cols, n):
     cols = np.asarray(cols, np.float64)
@@ -447,8 +446,10 @@ def median_cut(cols, n):
     pal = np.array(q.getpalette()[:n * 3], np.float64).reshape(-1, 3)
     return pal[np.unique(np.asarray(q).ravel())]
 
-def kmeans_lab(cols, init, iters=10):
-    """Refines a palette (median cut) with k-means in Lab; returns RGB means of his pixels."""
+def kmeans_lab(cols, init, iters=10, fixed=0):
+    """Refines a palette (median cut) with k-means in Lab; returns RGB means of his pixels. The
+    first `fixed` entries (his extremes: the deepest shade, the brightest highlight) stay put, so
+    averaging does not wash them out."""
     cols = np.asarray(cols, np.float64)
     if len(cols) == 0 or len(init) == 0: return init
     if len(cols) > 40000:
@@ -457,10 +458,24 @@ def kmeans_lab(cols, init, iters=10):
     for _ in range(iters):
         d = ((L[:, None, :] - lab(pal)[None]) ** 2).sum(-1)
         a = d.argmin(1)
-        for k in range(len(pal)):
+        for k in range(fixed, len(pal)):
             m = a == k
             if m.any(): pal[k] = cols[m].mean(0)
     return pal
+
+def extremes(cols, q=1.5):
+    """His extreme colours of a family: the darkest, the brightest, and the most saturated of his
+    dark shades and of his mid tones (medians of small slices, so JPEG specks do not count)."""
+    lc = lum(cols); sat = cols.max(-1) - cols.min(-1)
+    lo = np.median(cols[lc <= np.percentile(lc, q)], 0)
+    hi = np.median(cols[lc >= np.percentile(lc, 100 - q)], 0)
+    out = [lo, hi]
+    for a, b in ((5, 30), (30, 70)):
+        band = (lc >= np.percentile(lc, a)) & (lc <= np.percentile(lc, b))
+        if band.sum() > 40:
+            sb = sat[band]
+            out.append(np.median(cols[band][sb >= np.percentile(sb, 95)], 0))
+    return np.array(out)
 
 ALEV = np.array([0.12, 0.24, 0.36, 0.5, 0.64, 0.78])
 FAM_N = {0: 26, 1: 8, 2: 7}
@@ -475,7 +490,8 @@ class Palette:
             cols = opq[fam == f]
             if len(cols) < 12: continue
             n = min(n, max(3, len(cols) // 16))
-            pal = kmeans_lab(cols, median_cut(cols, n))
+            ex = extremes(cols) if n >= 6 else np.zeros((0, 3))
+            pal = kmeans_lab(cols, np.concatenate([ex, median_cut(cols, n - len(ex))]), fixed=len(ex))
             pal = pal[np.argsort(lum(pal))]
             lc = lum(cols)
             if f == 2: lc = np.where(lc < 52, 999, lc)  # his dust edge is a dark brown, not the fill
@@ -533,16 +549,6 @@ class Palette:
         idx = idx.copy()
         idx[op & (nb == 0) & (L < 90)] = 0
         op = self.is_op(idx)
-        # A pixel unlike all 4 neighbours (all opaque) takes the most common neighbour (JPEG noise).
-        out = idx.copy()
-        for y in range(1, H - 1):
-            for x in range(1, W - 1):
-                if not op[y, x]: continue
-                v = idx[y, x]
-                n4 = [idx[y, x + 1], idx[y, x - 1], idx[y + 1, x], idx[y - 1, x]]
-                if v not in n4 and all(0 < u <= self.n_op for u in n4):
-                    out[y, x] = max(set(n4), key=n4.count)
-        idx = out
         op = self.is_op(idx)
         # Silhouette edges: next to a clear or faint pixel (not next to a dense veil inside the art).
         faint = ~op & (self.arr[np.maximum(idx - 1, 0), 3] * (idx > 0) < 0.3 * 255)
@@ -552,28 +558,31 @@ class Palette:
         edge[0, :] |= op[0, :]; edge[-1, :] |= op[-1, :]; edge[:, 0] |= op[:, 0]; edge[:, -1] |= op[:, -1]
         L = lum(self.rgb(idx))
         fam_px = self.fam_of(idx)
-        dark_edge = edge & (L < 72)
+        dark_edge = edge & (L < 62)
         for f, oi in self.outline.items():
             idx[dark_edge & (fam_px == f)] = oi + 1
         return idx
 
-    def leaves(self, idx, min_px=2, max_px=40):
-        """Loose leaves: small clumps of bright yellow-green with their outline, clear of any stroke."""
+    def leaves(self, idx, max_px=60):
+        """Loose leaves: clumps of yellow-green with their dark outline that do not lie on a stroke
+        (most of what borders them is clear or dark), so they can be moved on their own."""
         op = self.is_op(idx)
-        L = lum(self.rgb(idx))
         fam_px = self.fam_of(idx)
-        seed = op & (fam_px == 1) & (L >= 90)
-        labs, n = components(seed)
+        L = lum(self.rgb(idx))
+        seed = op & (fam_px == 1) & (L >= 60)
+        labs, n = components(seed, N8)
         out = []
         taken = np.zeros_like(op)
         for k in range(1, n + 1):
             m = labs == k
             cnt = m.sum()
-            if cnt < min_px or cnt > max_px: continue
-            reg = dilate(m, 1, N8) & op & ((fam_px == 1) | (L < 85))
-            reg &= ~taken
-            ring = dilate(reg, 1, N8) & ~reg
-            if (ring & op & (fam_px != 1) & (L >= 85)).sum() > 3: continue
+            if cnt < 2 or cnt > max_px: continue
+            # The leaf: its bright part, the rest of its yellow-green and its dark outline.
+            reg = m | (dilate(m, 2, N8) & op & ((fam_px == 1) | (L < 60)) & ~taken)
+            reg &= dilate(m, 2, N8)
+            ring = dilate(reg, 2, N8) & ~reg
+            on_stroke = (ring & op & (fam_px == 0) & (L >= 85)).sum() / max(1, ring.sum())
+            if on_stroke > 0.2: continue
             taken |= reg
             out.append(reg)
         return out, taken

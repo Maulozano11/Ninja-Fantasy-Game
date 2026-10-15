@@ -69,6 +69,17 @@ def gauss(a, s, wrap=False):
 def lum(c):
     return 0.3 * c[..., 0] + 0.59 * c[..., 1] + 0.11 * c[..., 2]
 
+def lab(c):
+    """sRGB (0-255) to CIE Lab, for colour distances that keep hues apart."""
+    c = np.asarray(c, np.float64) / 255.0
+    c = np.where(c > 0.04045, ((c + 0.055) / 1.055) ** 2.4, c / 12.92)
+    X = (c[..., 0] * 0.4124 + c[..., 1] * 0.3576 + c[..., 2] * 0.1805) / 0.95047
+    Y = c[..., 0] * 0.2126 + c[..., 1] * 0.7152 + c[..., 2] * 0.0722
+    Z = (c[..., 0] * 0.0193 + c[..., 1] * 0.1192 + c[..., 2] * 0.9505) / 1.08883
+    f = lambda t: np.where(t > 0.008856, np.cbrt(t), 7.787 * t + 16 / 116)
+    fx, fy, fz = f(X), f(Y), f(Z)
+    return np.stack([116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)], -1)
+
 def c2a(c, floor=0.0):
     """Colour-to-alpha against his fill, both ways (lighter or darker channels): the least alpha a
     with c = a*F + (1-a)*BG, F in [0,255]; with `floor`, at least that (F then further from BG)."""
@@ -171,6 +182,11 @@ def classify(src, cfg):
     if cfg.get('ground_all'):
         cls[gr & art] = GROUND
     keep = m('keep') if cfg.get('keep') else np.ones((H, W), bool)
+    if cfg.get('pink'):
+        # Petals over his character: only their pink (and their dark rim) is kept.
+        pm = m('pink')
+        pink = (D[..., 0] > D[..., 1] + 45) & (D[..., 2] > D[..., 1] + 25) & (lum(D) > 70)
+        keep &= ~pm | dilate(pink, 1)
     cls[~keep] = CLEAR
     cls[m('drop')] = CLEAR
     return cls, M, dist
@@ -208,8 +224,11 @@ TILE_X = 420               # his tile window [420, 504): his stream head starts 
 AURA_CHAR = [(505, 513), (532, 511), (546, 528), (548, 548), (556, 556), (557, 590), (552, 600), (549, 615),
              (545, 637), (530, 643), (516, 644), (505, 640), (494, 636), (488, 612), (484, 600), (481, 583),
              (484, 556), (492, 546), (494, 527)]
-DIAG_CHAR = [(976, 600), (1000, 600), (1006, 616), (1010, 650), (1016, 664), (1016, 724), (996, 724), (978, 724),
-             (968, 716), (952, 700), (950, 660), (955, 640), (962, 628)]
+AURA_PETALS = [ellipse(499, 520, 7), ellipse(497, 556, 8), ellipse(545, 535, 5)]
+AURA_FEATHERS = [ellipse(487, 533, 6, 9), ellipse(557, 566, 6, 9)]
+AURA_RING = [(468, 634), (500, 640), (528, 642), (560, 637), (572, 634), (572, 653), (466, 653)]
+DIAG_CHAR = [(972, 594), (1002, 594), (1010, 612), (1016, 640), (1016, 740), (996, 740), (976, 740), (966, 730),
+             (954, 716), (944, 700), (936, 662), (942, 636), (958, 616)]
 
 SPRITES = {
     'bolt': dict(area=(10, 54, 94, 139), k=K64, origin=(9, 53), base=(64, 64), anchor=(70.5, 96.5), smoke=True,
@@ -247,10 +266,11 @@ SPRITES = {
     # filled in from the flames round him) and the front (his petals, feathers and the near half
     # of the ring at the feet, drawn over the character).
     'aura_back': dict(area=(466, 492, 572, 652), k=1 / 1.31, anchor=(528.5, 646), smoke=True,
-                      fill=[AURA_CHAR], fill_src='art', base_rect=(-40, -112, 40, 16)),
+                      fill=[AURA_CHAR], fill_src='art', fill_band=5, fill_keep_purple=True, base_rect=(-40, -112, 40, 16),
+                      fill_full=AURA_PETALS + AURA_FEATHERS, drop=[AURA_RING]),
     'aura': dict(area=(466, 492, 572, 652), k=1 / 1.31, anchor=(528.5, 646), smoke=True, frame_like='aura_back',
-                 keep=[ellipse(499, 520, 7), ellipse(497, 556, 8), ellipse(487, 533, 6, 9), ellipse(557, 566, 6, 9),
-                       ellipse(545, 535, 5), [(470, 636), (500, 641), (528, 643), (560, 638), (572, 636), (572, 653), (466, 653)]]),
+                 keep=AURA_PETALS + AURA_FEATHERS + [AURA_RING], pink=AURA_PETALS,
+                 pieces=[('petals', AURA_PETALS + AURA_FEATHERS)]),
     'wall_diag': dict(area=(620, 492, 1014, 780), k=1 / 1.27, anchor=(772, 708), fade={'right': 30},
                       fill=[DIAG_CHAR], ground=[[(744, 676), (790, 664), (840, 680), (900, 706), (960, 726), (1016, 744),
                                                  (1016, 782), (870, 782), (800, 752), (760, 730), (735, 708)]],
@@ -295,12 +315,30 @@ def source(name, cfg):
     C = IM[y0 + PADSRC:y1 + PADSRC, x0 + PADSRC:x1 + PADSRC].copy()
     H, W = C.shape[:2]
     hole = poly_mask(H, W, x0, y0, cfg.get('fill', []))
+    full = poly_mask(H, W, x0, y0, cfg.get('fill_full', []))
+    if cfg.get('fill_keep_purple'):
+        # His character is drawn inside the aura: inside his outline only the flame colours
+        # (saturated violet to magenta) are the aura; skin, cloth, hair and sword are him.
+        G = gauss(C, 0.7)
+        rb = np.maximum(G[..., 0], G[..., 2])
+        purple = (G[..., 1] < 0.45 * rb) & (G[..., 2] > G[..., 1] + 25) & (rb > 70)
+        purple &= ~dilate(~purple, 1)   # not the thin purple rim light on his outline
+        hole &= ~purple
+    hole |= full
     if hole.any():
         dist = np.sqrt(((gauss(C, 0.8) - BG) ** 2).sum(-1))
         src = dist >= T_ART
         if cfg.get('fill_src') != 'art':
             src &= poly_mask(H, W, x0, y0, cfg.get('ground', []))
         C = fill_holes(C, hole, src & ~hole)
+        if cfg.get('fill_band'):
+            full = poly_mask(H, W, x0, y0, cfg.get('fill_full', []))
+            # Only a band round the hole's edge keeps the fill (the flames run on under the
+            # character's edge); deeper inside is his fill colour, i.e. clear.
+            inner = hole.copy()
+            for _ in range(cfg['fill_band']):
+                inner &= ~dilate(~inner, 1)
+            C[inner & ~full] = BG
     return C, x0, y0
 
 # --- to game scale --------------------------------------------------------------------------------
@@ -329,7 +367,9 @@ def frame_of(cfg, cls, x0, y0):
         gx0, gy0 = min(gx0, -ax), min(gy0, -ay)
         gx1, gy1 = max(gx1, bw - ax), max(gy1, bh - ay)
         if cfg.get('head'):
-            gx0 = -ax  # the joint edge stays on the tile's end
+            # The joint edge stays on the tile's end, and the head keeps the tile's rows (64,
+            # centre line on 32), so the two line up.
+            gx0, gy0, gy1 = -ax, -ay, bh - ay
     if 'base_rect' in cfg:
         bx0, by0, bx1, by1 = cfg['base_rect']
         gx0, gy0, gx1, gy1 = min(gx0, bx0), min(gy0, by0), max(gx1, bx1), max(gy1, by1)
@@ -459,9 +499,29 @@ data = {}
 for name, cfg in SPRITES.items():
     data[name] = cleanup(name, cfg, to_game(name, cfg))
 
-def gather(kind):
-    parts = [d['rgb'][d['kind'] == kind] for d in data.values() if (d['kind'] == kind).any()]
+if os.environ.get('GJ_DUMP'):
+    import pickle
+    pickle.dump({n: {k: v for k, v in d.items()} for n, d in data.items()}, open(os.environ['GJ_DUMP'], 'wb'))
+
+def gather(kind, per=2500):
+    """A kind's colours from every sprite, at most `per` from each (an even stride), so a small
+    sprite's own hues (the hit's and the sphere's hot pinks) count as much as a wall's lavender."""
+    parts = []
+    for d in data.values():
+        c = d['rgb'][d['kind'] == kind]
+        if len(c) > per: c = c[np.linspace(0, len(c) - 1, per).astype(int)]
+        if len(c): parts.append(c)
     return np.concatenate(parts) if parts else np.zeros((0, 3))
+
+def kmeans_lab(cols, n, iters=12):
+    """A palette of n colours: median cut to start, then k-means with Lab distances (RGB means)."""
+    cen = median_cut(cols, n)
+    L = lab(cols)
+    for _ in range(iters):
+        dist = ((L[:, None, :] - lab(cen)[None, :, :]) ** 2).sum(-1)
+        a = dist.argmin(1)
+        cen = np.array([cols[a == i].mean(0) if (a == i).any() else cen[i] for i in range(len(cen))])
+    return cen
 
 def by_lum(p):
     return p[np.argsort(lum(p))]
@@ -470,11 +530,11 @@ FLOORS = {'glow': 0.0, 'smoke': 0.85, 'ground': 0.6}
 OUTLINE = np.array([[40, 16, 58]])   # deep violet (his darkest violet rims), never black
 SETS = {
     'outline': OUTLINE,
-    'body': by_lum(median_cut(gather('body'), 48)),
+    'body': by_lum(kmeans_lab(gather('body'), 80)),
     'weed': by_lum(median_cut(gather('weed'), 5)),
     'dark': by_lum(median_cut(gather('dark'), 6)),
     'smoke': by_lum(median_cut(gather('smoke'), 4)),
-    'glow': by_lum(median_cut(gather('glow'), 10)),
+    'glow': by_lum(kmeans_lab(gather('glow'), 20)),
     'ground': by_lum(median_cut(gather('ground'), 6)),
 }
 PAL = []   # (r, g, b, a, kind, order); the composite colour each entry stands for, for lookups
@@ -498,8 +558,8 @@ def quantize(d):
     for kind, ids in IDX.items():
         m = d['kind'] == kind
         if not m.any(): continue
-        pal = COMPOSITE[ids]
-        dist = ((d['rgb'][m][:, None, :] - pal[None, :, :]) ** 2).sum(-1)
+        pal = lab(COMPOSITE[ids])
+        dist = ((lab(d['rgb'][m])[:, None, :] - pal[None, :, :]) ** 2).sum(-1)
         idx[m] = np.array(ids)[dist.argmin(1)] + 1
     # Specks inside a kind: a pixel unlike all 4 neighbours of its own kind takes their commonest value.
     out = idx.copy()

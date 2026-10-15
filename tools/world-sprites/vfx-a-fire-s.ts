@@ -417,11 +417,11 @@ interface DragonLayers {
 function dragonLayers(st: SState): DragonLayers {
   const t = st.t, ph = t * TAU;
   const live = st.phase === 'burn' ? 1 : 0.5;
-  const part = (name: string, bob: Pt, cutY: number, flick?: { amp: number; baseY: number }) => {
+  const part = (name: string, bob: Pt, cut: ((x: number) => number) | null, flick?: { amp: number; baseY: number }) => {
     const pc = refPiece(name);
     let c = pc.c;
     if (flick) c = flicker(c, ph, flick.amp * live, flick.baseY, SEED + name.length);
-    if (cutY > 0) c = raggedCut(c, (x) => cutY - pc.y - Math.round(bob[1]) - 8 * pnoise(x + pc.x, 0, 7, 0, 0, SEED + 115) - 3 * Math.sin(ph + x * 0.2));
+    if (cut) c = raggedCut(c, (x) => cut(x + pc.x + Math.round(bob[0])) - pc.y - Math.round(bob[1]) - 6 * pnoise(x + pc.x, 0, 7, 0, 0, SEED + 115) - 3 * Math.sin(ph + x * 0.2));
     const out = new Canvas(W, H);
     out.draw(c, pc.x + Math.round(bob[0]), pc.y + Math.round(bob[1]));
     return out;
@@ -430,16 +430,17 @@ function dragonLayers(st: SState): DragonLayers {
   // where it comes from): the tail tip and the hump first, then the neck with the head.
   const rise = st.phase === 'surge' ? st.rise ?? [1, 1, 1] : [1, 1, 1];
   const up = (r: number, dist: number) => Math.pow(1 - r, 2) * dist;
-  const below = GY - 112;
+  // Rising parts come up out of the flames as they stand now (cut a little below their tops).
+  const below = (x: number) => surgeTop(st, x) + 26;
   const back = new Canvas(W, H);
-  if (rise[0] > 0) back.draw(part('s_tail', [0, Math.sin(ph) * live + up(rise[0], 190)], rise[0] < 1 ? below : 0, { amp: 2, baseY: 110 }), 0, 0);
-  if (rise[1] > 0) back.draw(part('s_hump', [0, Math.sin(ph + 1.8) * live + up(rise[1], 210)], rise[1] < 1 ? below : 0), 0, 0);
+  if (rise[0] > 0) back.draw(part('s_tail', [0, Math.sin(ph) * live + up(rise[0], 190)], rise[0] < 1 ? below : null, { amp: 2, baseY: 110 }), 0, 0);
+  if (rise[1] > 0) back.draw(part('s_hump', [0, Math.sin(ph + 1.8) * live + up(rise[1], 210)], rise[1] < 1 ? below : null), 0, 0);
   const headBob: Pt = [Math.sin(ph + 3) * live, 1.5 * Math.sin(ph + 3.4) * live + up(rise[2], 330)];
-  if (rise[2] > 0) back.draw(part('s_head', headBob, rise[2] < 1 ? below : 0), 0, 0);
+  if (rise[2] > 0) back.draw(part('s_head', headBob, rise[2] < 1 ? below : null), 0, 0);
   const front = new Canvas(W, H);
   if (rise[2] > 0.6) {
     // The claw grows out of the flames from its core (no wipe), as the neck comes up.
-    const claw = part('s_claw', [0, 0], 0);
+    const claw = part('s_claw', [0, 0], null);
     front.draw(rise[2] < 1 ? burnOut(claw, 1 - (rise[2] - 0.6) / 0.4, SMOKE_HIS, FIRE[0], SEED + 119) : claw, 0, 0);
   }
   // Where the breath leaves the mouth (his mouth, mapped to our frame).
@@ -452,7 +453,10 @@ function dragonLayers(st: SState): DragonLayers {
       rise.forEach((r, k) => {
         if (r <= 0 || r >= 1) return;
         const x0 = [190, 350, 690][k], x1 = [300, 680, 860][k];
-        for (let j = 0; j < 10; j++) edge.push([lerp(x0, x1, rr(SEED + 120 + k, j, 0, 1)), below - rr(SEED + 121 + k, j, 0, 30)]);
+        for (let j = 0; j < 10; j++) {
+          const x = lerp(x0, x1, rr(SEED + 120 + k, j, 0, 1));
+          edge.push([x, surgeTop(st, x) - rr(SEED + 121 + k, j, 0, 30)]);
+        }
       });
     return { back, mid, front, mouth, edge };
   }
@@ -473,8 +477,8 @@ function dragonLayers(st: SState): DragonLayers {
     // to embers, thins from its edges and cools into smoke from the top.
     const k = 1 - st.dragon;
     const g = wallGeom();
-    const sink = (c: Canvas) => dropColumns(c, (x) => wallDrop(st, x), (x) => (g.bottom[Math.max(0, Math.min(W - 1, x))] >= 0 ? g.clip[Math.max(0, Math.min(W - 1, x))] : GY - 40));
-    const parts = [back, front].map((c) => burnOut(sink(c), k, SMOKE_HIS, FIRE[0], SEED + 118, GY - 520, 420));
+    const sink = (c: Canvas) => dropColumns(c, (x) => wallDrop(st, x) * 1.5, (x) => (g.bottom[Math.max(0, Math.min(W - 1, x))] >= 0 ? g.clip[Math.max(0, Math.min(W - 1, x))] : GY - 40));
+    const parts = [back, front].map((c) => burnOut(sink(c), k, SMOKE_HIS, FIRE[0], SEED + 118, GY - 520, 420, 30));
     const edge: Pt[] = [];
     parts[0].px.forEach((_, i) => {
       if (i % 4 === 3 && parts[0].px[i] && (i >> 2) % 97 === 0) edge.push([(i >> 2) % W, Math.floor((i >> 2) / W)]);
@@ -551,7 +555,7 @@ function hisWall(): Canvas {
  */
 function hisWallLayer(st: SState): Canvas | null {
   const ph = st.t * TAU;
-  const base = flicker(hisWall(), ph, 1.6, GY + 40, SEED + 91);
+  const base = flicker(hisWallFire(), ph, 1.6, GY + 40, SEED + 91);
   const g = wallGeom();
   if (st.phase === 'surge') {
     // It rolls out from the caster: the glowing bed lights up as a ragged front passes, and the
@@ -559,7 +563,9 @@ function hisWallLayer(st: SState): Canvas | null {
     const front = X0 - 20 + st.roll * (LEN + 160);
     const grow = st.grow ?? 1;
     const behind = (x: number) => front - x + 22 * (pnoise(x, 0, 9, 0, 0, SEED + 99) - 0.5) * 2;
-    const k = (x: number) => clamp(grow * Math.pow(smooth(0, 240, behind(x)), 0.8) * (0.8 + 0.4 * pnoise(x, 1, 26, 0, 0, SEED + 96)), 0, 1);
+    // (a long, gentle ramp: neighbouring columns sink almost alike, so his flames keep their shapes)
+    const k = (x: number) => surgeStand(st, x);
+    void grow;
     let c = sinkWall(base, (x) => (1 - k(x)) * g.hgt[x], (x) => behind(x) > 0);
     // The ignition at the caster's hands in the first frames: his first flames, small and growing.
     if (st.roll < 0.2) {
@@ -573,17 +579,17 @@ function hisWallLayer(st: SState): Canvas | null {
   if (st.phase === 'fade') {
     // It burns down from the caster outward: the flames sink into the bed at their own pace (an
     // uneven row of shrinking tongues, not a cut), the bed darkens to embers behind them.
-    let c = sinkWall(base, (x) => wallDrop(st, x, true), () => true);
+    let c = sinkWall(base, (x) => wallDrop(st, x), () => true);
     c = dim(c, lerp(0.35, 1, st.burn));
-    // Behind the dying front the bed breaks into glowing embers.
-    const front = X0 + st.dead * (LEN + 160) - 60;
+    // Where the flames have sunk away, the bed breaks into glowing embers.
     const out = new Canvas(W, H);
     for (let y = 0; y < H; y++)
       for (let x = 0; x < W; x++) {
         const p = c.get(x, y);
         if (!p[3]) continue;
-        const past = (front - x) / 120 + (pnoise(x, y, 7, 0, 0, SEED + 100) - 0.5) * 0.8;
-        if (past > 0.2 && pnoise(x, y, 5, 0, 0, SEED + 101) < 0.45 + past * 0.5) continue;
+        const gone = 1 - wallStand(st, x);
+        const past = (gone - 0.55) * 2.4 + (pnoise(x, y, 7, 0, 0, SEED + 100) - 0.5) * 0.6;
+        if (past > 0 && pnoise(x, y, 5, 0, 0, SEED + 101) < 0.4 + past * 0.5) continue;
         out.set(x, y, p);
       }
     return dropCrumbs(out, 3);
@@ -636,6 +642,82 @@ function sinkWall(c: Canvas, drop: (x: number) => number, bedOn: (x: number) => 
   }
   return out;
 }
+/** Where his dragon lies over his wall (the dragon pieces at their places). */
+let dragonMaskCache: Canvas | null = null;
+function dragonMask(): Canvas {
+  if (dragonMaskCache) return dragonMaskCache;
+  const m = new Canvas(W, H);
+  for (const n of ['s_tail', 's_hump', 's_head', 's_claw']) {
+    const pc = refPiece(n);
+    m.draw(pc.c, pc.x, pc.y);
+  }
+  return (dragonMaskCache = m);
+}
+/**
+ * His wall with the dragon taken out: every pixel the dragon covered gets the fire from the same
+ * row a little to the side (his fire is much the same along a row), so the wall can rise and sink
+ * on its own without carrying ghosts of the dragon.
+ */
+let wallFireCache: Canvas | null = null;
+function hisWallFire(): Canvas {
+  if (wallFireCache) return wallFireCache;
+  const c = hisWall(), m = dragonMask();
+  const out = c.clone();
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (!c.alpha(x, y) || !m.alpha(x, y)) continue;
+      for (let d = 12; d < 400; d += 6) {
+        const xl = x - d, xr = x + d;
+        if (xl >= 0 && c.alpha(xl, y) && !m.alpha(xl, y)) { out.set(x, y, c.get(xl, y)); break; }
+        if (xr < W && c.alpha(xr, y) && !m.alpha(xr, y)) { out.set(x, y, c.get(xr, y)); break; }
+      }
+    }
+  return (wallFireCache = out);
+}
+/** The dragon's own pixels in his wall (its legs and neck where they pass in front of the fire), by part. */
+let wallDragonCache: Canvas[] | null = null;
+function hisWallDragon(): Canvas[] {
+  if (wallDragonCache) return wallDragonCache;
+  const c = hisWall(), m = dragonMask();
+  const parts = [new Canvas(W, H), new Canvas(W, H), new Canvas(W, H)];
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) if (c.alpha(x, y) && m.alpha(x, y)) parts[x < 330 ? 0 : x < 680 ? 1 : 2].set(x, y, c.get(x, y));
+  return (wallDragonCache = parts);
+}
+/** The dragon's pixels in the wall for this frame: they come in as each part has risen, and sink and burn away with it. */
+function wallDragonLayer(st: SState): Canvas | null {
+  if (st.dragon <= 0.01) return null;
+  const parts = hisWallDragon();
+  const out = new Canvas(W, H);
+  if (st.phase === 'surge') {
+    const rise = st.rise ?? [1, 1, 1];
+    parts.forEach((p, k) => {
+      const v = clamp((rise[k] - 0.8) / 0.2, 0, 1);
+      if (v > 0) out.draw(v < 1 ? burnOut(p, 1 - v, SMOKE_HIS, FIRE[0], SEED + 130 + k) : p, 0, 0);
+    });
+    return out;
+  }
+  parts.forEach((p) => out.draw(p, 0, 0));
+  if (st.phase === 'fade') {
+    const g = wallGeom();
+    const sunk = dropColumns(out, (x) => wallDrop(st, x) * 1.5, (x) => g.clip[Math.max(0, Math.min(W - 1, x))]);
+    return burnOut(sunk, 1 - st.dragon, SMOKE_HIS, FIRE[0], SEED + 118, GY - 520, 420, 30);
+  }
+  return out;
+}
+/** How much of the wall stands at x during the surge (0..1). */
+function surgeStand(st: SState, x: number): number {
+  if (st.phase !== 'surge') return 1;
+  const front = X0 - 20 + st.roll * (LEN + 160);
+  return clamp((st.grow ?? 1) * clamp((front - x) / 420, 0, 1), 0, 1);
+}
+/** The top of the wall's flames at x as they stand now in the surge (frame y). */
+function surgeTop(st: SState, x: number): number {
+  const g = wallGeom();
+  const xi = Math.max(0, Math.min(W - 1, Math.round(x)));
+  if (g.bottom[xi] < 0) return GY;
+  return g.clip[xi] - surgeStand(st, x) * g.hgt[xi] * 0.7;
+}
 /** The wall's column bottoms (its glowing ground's lower edge). */
 function wallBottoms(): Int32Array {
   return wallGeom().bottom;
@@ -644,13 +726,19 @@ function wallBottoms(): Int32Array {
  * How far each column's flames have sunk in the fade (px): the fire burns down from the caster
  * outward and toward the far end; with `tongues` every few columns go at their own pace.
  */
-function wallDrop(st: SState, x: number, tongues = false): number {
+function wallDrop(st: SState, x: number): number {
   const g = wallGeom();
   const xi = Math.max(0, Math.min(W - 1, Math.round(x)));
-  const front = X0 + st.dead * (LEN + 160) - 40;
-  let h = lerp(0.3, 1, st.burn) * smooth(front - 110, front + 60, x) * (0.75 + 0.5 * pnoise(x, 2, 40, 0, 0, SEED + 103));
-  if (tongues) h *= 0.8 + 0.4 * pnoise(x, 0, 11, 0, 0, SEED + 96);
-  return (1 - clamp(h, 0, 1)) * (g.hgt[xi] + 8);
+  return (1 - wallStand(st, x)) * (g.hgt[xi] + 8);
+}
+/**
+ * How much of the wall still stands at x in the fade (1 = full height): it sinks everywhere as
+ * the fire weakens, and a long, gentle front sweeps from the caster outward (neighbouring columns
+ * sink almost alike, so his flames keep their shapes as they go down).
+ */
+function wallStand(st: SState, x: number): number {
+  const front = -520 + st.dead * (W + 1040);
+  return clamp(lerp(0.3, 1, st.burn) * clamp((x - front + 450) / 900, 0, 1), 0, 1);
 }
 
 export function sFrame(st: SState): Canvas {
@@ -666,7 +754,7 @@ export function sFrame(st: SState): Canvas {
   // wall in front of their roots, the claw gripping over the wall, the kanji and the breath.
   const layers: (Canvas | null)[] = [smoke];
   if (dr) layers.push(dr.back, dr.mid);
-  layers.push(hisWallC);
+  layers.push(hisWallC, wallDragonLayer(st));
   if (dr) layers.push(dr.front);
   layers.push(kanjiC, jet ? jet.c : null);
   const body = stack(W, H, ...layers);

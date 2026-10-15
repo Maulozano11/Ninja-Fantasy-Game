@@ -36,7 +36,7 @@ import { borderTouches } from './vfx-b-wall3d';
 const OUT = previewDir();
 const SRC = join(OUT, 'vfx-kirin-src');
 /** Room added around his panel's footprint for the cloud drifting apart and the rings spreading. */
-const PAD = { l: 40, r: 40, t: 40, b: 30 };
+const PAD = { l: 8, r: 8, t: 16, b: 16 };
 
 // --- reading the extracted layers ------------------------------------------------------------
 
@@ -105,6 +105,10 @@ interface Src {
   scale: number;
   charFeet: Pt;
   mouth?: Pt;
+  /** The bolt's main channel (normal), top to bottom. */
+  main: Pt[];
+  /** His outer ring's half-axes in sprite px. */
+  ring: Pt;
 }
 
 /** Loads one version and pads it so the animation has room to spread without touching the border. */
@@ -139,6 +143,8 @@ function load(key: 'kirin' | 'kirin_enh'): Src {
     scale,
     charFeet: [info.anchor[0] + PAD.l + feet[0] * scale, info.anchor[1] + PAD.t + feet[1] * scale],
     mouth: info.mouth ? sh(info.mouth) : undefined,
+    main: ((info.main ?? []) as number[][]).map(sh),
+    ring: [info.ring[0], info.ring[1]],
   };
 }
 
@@ -218,57 +224,51 @@ const withA = (c: Color, a: number): Color => [c[0], c[1], c[2], Math.round(c[3]
 const SQUASH = 0.46;
 
 /**
- * The storm cloud, his pixels turned around the vortex eye by `rot` (more near the eye than at
- * the rim, so it spins), shown out to `reveal` of its reach (it grows from the eye while it forms),
- * and drifting apart into wisps over `drift` (0..1).
+ * The storm cloud, his pixels turned around the vortex eye by `rot` (only the vortex turns, more
+ * near the eye; the billows around it stay in their footprint), shown out to `reveal` of its reach
+ * with a billowy edge (it grows from the eye while it forms, and thins back while it fades), lifted
+ * by `lift`, brightened at the eye by `eyeGlow`.
  */
-function cloud(dst: Canvas, o: { rot: number; reveal: number; drift: number; alpha: number; f: number }): void {
+function cloud(dst: Canvas, o: { rot: number; reveal: number; lift: number; alpha: number; dim: number; eyeGlow: number }): void {
   const src = S.layers.cloud;
   const [ex, ey] = S.eye;
-  const [bx0, by0, bx1, by1] = bbox(src, 60);
-  // Reach of the cloud in swirl units, and of the vortex inside it (only the vortex turns; the
-  // billows around it stay, so the mass never swings out of its footprint).
+  const [bx0, by0, bx1, by1] = bbox(src, 2);
   let reach = 1;
   for (const [x, y] of [[bx0, by0], [bx1, by0], [bx0, by1], [bx1, by1]]) reach = Math.max(reach, Math.hypot(x - ex, (y - ey) / SQUASH));
   const vortex = (S.enh ? 250 : 200) * (S.scale / 0.6);
-  const grow = 1 + 0.07 * o.drift;
+  const dy = Math.round(o.lift);
   paint(
     dst,
     src,
     (x, y) => {
-      const u = (x + 0.5 - ex) / grow, v = (y + 0.5 - ey + 12 * o.drift) / SQUASH / grow;
+      const u = x + 0.5 - ex, v = (y + 0.5 - ey + dy) / SQUASH;
       const R = Math.hypot(u, v);
-      const edge = o.reveal * reach * (0.88 + 0.24 * noise(x, y, 9, 301));
-      if (R > edge) return null;
+      if (o.reveal < 1 && R > o.reveal * reach * (0.86 + 0.28 * noise(x, y + dy, 11, 301))) return null;
       const th = Math.atan2(v, u) + o.rot * Math.pow(clamp(1 - R / vortex, 0, 1), 1.2);
       return [ex + R * Math.cos(th), ey + R * Math.sin(th) * SQUASH];
     },
     (c, x, y) => {
-      if (o.drift > 0) {
-        // Torn into wisps along the swirl: streaky noise stretched around the eye.
-        const u = x + 0.5 - ex, v = (y + 0.5 - ey) / SQUASH;
-        const R = Math.hypot(u, v), th = Math.atan2(v, u);
-        const streak = noise(((th / TAU + 1) * 160 + o.f * 7) % 160, R * 0.35, 4, 302 + o.f);
-        if (streak < o.drift * 1.15 - 0.12) return null;
+      let k = c;
+      if (o.eyeGlow > 0) {
+        const d = Math.hypot(x - ex, (y - ey) / SQUASH);
+        if (d < 70 && c[0] + c[1] + c[2] > 420) k = dimmed(c[0], c[1], c[2], 1 + o.eyeGlow * (1 - d / 70));
       }
-      return withA(c, o.alpha);
+      if (o.dim > 0) k = dimmed(k[0], k[1], k[2], 1 - o.dim);
+      return withA(k, o.alpha);
     },
-    [bx0 - 40, by0 - 40, bx1 + 40, by1 + 40],
+    [bx0, by0 - Math.max(0, dy), bx1, by1],
   );
 }
 
-interface KanjiOpts {
-  /** Writing progress 0..1 (strokes in order, each drawn along its length). */
-  write: number;
-  /** Burning out 0..1. */
-  burn: number;
-  f: number;
-}
-
-/** The kanji, his pixels revealed stroke by stroke with a white-hot writing tip; sparks flicker. */
-function kanji(dst: Canvas, o: KanjiOpts): void {
+/**
+ * The kanji. While written, each stroke lights up in order, glowing in softly from its start to
+ * its end (no wipe edge) with a white flash as it catches; the sparks and rays come last. Then it
+ * breathes (`breath`), and while fading its glow dims out (`fade`) with embers floating off.
+ */
+function kanji(dst: Canvas, o: { write: number; breath: number; fade: number; f: number }): void {
   const src = S.layers.kanji, km = S.kmap;
-  const span = 0.8 / 13, dur = span * 1.6;
+  const span = 0.78 / 13, dur = span * 2.4;
+  const lv = (a: number): number => (a >= 0.9 ? 1 : a >= 0.65 ? 0.8 : a >= 0.4 ? 0.55 : a >= 0.15 ? 0.3 : 0);
   paint(
     dst,
     src,
@@ -276,43 +276,58 @@ function kanji(dst: Canvas, o: KanjiOpts): void {
     (c, x, y) => {
       const i = (y * km.w + x) * 4;
       const sid = km.px[i], prog = km.px[i + 1] / 255;
-      let a = 1;
+      const L = (c[0] + c[1] + c[2]) / 3;
+      let a = 1, k = 1;
       if (sid >= 1 && sid <= 13) {
-        const front = (o.write - (sid - 1) * span) / dur;
-        if (prog > front) return null;
-        if (front < 1.05 && prog > front - 0.08) return [255, 255, 255, 255];
+        const local = (o.write - (sid - 1) * span) / dur;
+        a = lv(clamp(local * 1.7 - prog * 0.7, 0, 1));
+        if (a <= 0) return null;
+        if (a < 1) k = 0.45 + 0.55 * a;
+        else if (local > 0.55 && local < 1.0 && L > 170) return [255, 255, 255, c[3]];
       } else {
-        // Sparks and rays: they come once the character is complete, and flicker.
-        if (o.write < 0.92) return null;
-        if (noise(x, y, 3, 400 + o.f) < 0.3) return null;
+        a = lv(clamp((o.write - 0.84) / 0.16, 0, 1));
+        if (a <= 0) return null;
+        // Sparks blink in clusters.
+        if (noise(x, y, 10, 400 + o.f) < 0.28) return null;
       }
-      if (o.burn > 0) {
-        const n = noise(x, y, 4, 77);
-        const cut = o.burn * 1.2 - 0.12;
-        if (n < cut) return null;
-        if (n < cut + 0.06) return [200, 245, 255, 255];
-        a = 1 - smooth(0.7, 1, o.burn);
+      if (o.breath && L < 200) k *= 1 - o.breath;
+      if (o.fade > 0) {
+        a *= 1 - smooth(0.15, 0.95, o.fade);
+        k *= 1 - 0.55 * o.fade;
       }
-      return withA(c, a);
+      const col = k < 0.999 ? dimmed(c[0], c[1], c[2], k) : c;
+      return withA(col, a * (c[3] / 255));
     },
     bbox(src, 2),
   );
-  // Embers drifting up off the burning strokes.
-  if (o.burn > 0.05 && o.burn < 0.95) {
+  // Embers floating up off the strokes as the glow dies.
+  if (o.fade > 0.05) {
     const [x0, y0, x1, y1] = bbox(src);
-    for (let k = 0; k < 40; k++) {
-      const x = Math.floor(lerp(x0, x1, noise(k * 13, o.f * 5, 1, 410))), y = Math.floor(lerp(y0, y1, noise(k * 7, o.f * 3, 1, 411)));
+    for (let k = 0; k < 26; k++) {
+      const x = Math.floor(lerp(x0, x1, noise(k * 13, 3, 1, 410))), y = Math.floor(lerp(y0, y1, noise(k * 7, 5, 1, 411)));
       const s = (y * src.w + x) * 4;
-      if (!src.px[s + 3] || lum(src.px, s) < 150) continue;
-      const yy = y - Math.round(6 + 30 * o.burn * noise(k, 1, 1, 412));
-      dst.plot(x, yy, [210, 248, 255, 230]);
-      dst.plot(x, yy + 1, [120, 200, 255, 160]);
+      if (!src.px[s + 3] || lum(src.px, s) < 170) continue;
+      const rise = Math.round(4 + 46 * o.fade * (0.5 + noise(k, 1, 1, 412)));
+      const a = 1 - smooth(0.55, 1, o.fade);
+      dst.plot(x, y - rise, [210, 248, 255, Math.round(230 * a)]);
+      dst.plot(x, y - rise + 1, [110, 190, 255, Math.round(150 * a)]);
     }
   }
 }
 
-/** The normal bolt: revealed down to `front`, dimmed by `dim`, shifted by `dx`, broken up by `frag`. */
-function bolt(dst: Canvas, o: { front: number; dim: number; dx: number; frag: number; boost: boolean; f: number }): void {
+/** Distance from a point to the bolt's main channel (normal). */
+function toMain(x: number, y: number): number {
+  let best = Infinity;
+  for (const [mx, my] of S.main) if (Math.abs(my - y) < 8) best = Math.min(best, Math.abs(mx - x));
+  return best;
+}
+
+/**
+ * The normal bolt: revealed down to `front` (an uneven front, the branches reaching ahead), dimmed
+ * by `dim`, shifted by `dx`; with `strike` (0..1) only part of the branches are lit (they re-strike
+ * frame to frame: the pattern follows `f`), the main channel always.
+ */
+function bolt(dst: Canvas, o: { front: number; dim: number; dx: number; branches: number; boost: boolean; alpha: number; f: number }): void {
   const src = S.layers.bolt;
   const [x0, y0, x1, y1] = bbox(src);
   const top = S.eye[1], bottom = y1;
@@ -322,141 +337,258 @@ function bolt(dst: Canvas, o: { front: number; dim: number; dx: number; frag: nu
     src,
     (x, y) => [x - o.dx, y],
     (c, x, y) => {
-      if (y > fy) return null;
-      if (o.frag > 0 && noise(x, y, 5, 500 + o.f) < o.frag) return null;
-      if (o.front < 1 && y > fy - 7) return [255, 255, 255, 255];
-      if (o.boost && c[0] + c[1] + c[2] > 560) return [255, 255, 255, c[3]];
-      if (o.dim > 0) return withA(dimmed(c[0], c[1], c[2], 1 - o.dim * 0.55), c[3] / 255);
-      return c;
+      if (o.front < 1 && y > fy + 18 * (noise(x, 0, 14, 505) - 0.5)) return null;
+      if (o.branches < 1 && toMain(x - o.dx, y) > 9 && noise(x, y, 26, 520 + o.f) > o.branches) return null;
+      let k: Color = c;
+      if (o.boost && c[0] + c[1] + c[2] > 520) k = [255, 255, 255, c[3]];
+      else if (o.dim > 0) k = dimmed(c[0], c[1], c[2], 1 - o.dim * 0.6);
+      return withA(k, o.alpha);
     },
     [x0 - 4 + o.dx, y0, x1 + 4 + o.dx, y1 + 1],
   );
 }
 
 /**
- * Ground: rings, scorch or crater and the burst, spread by `spread` about the anchor; the bright
- * burst fades by `burst`, the whole decal by `alpha`, eaten away by `erode`; bright crackle flickers.
+ * Ground: rings, scorch or crater and the burst, spread by `spread` about the anchor. `burst`
+ * (0..1) is how much of the bright starburst and ring glow shows (dimmed, never dropped),
+ * `glow` pulses the ring's brightness, `alpha` fades the whole decal.
  */
-function ground(dst: Canvas, o: { spread: number; burst: number; alpha: number; erode: number; f: number }): void {
+function ground(dst: Canvas, o: { spread: number; burst: number; glow: number; alpha: number }): void {
   const src = S.layers.ground;
   const [x0, y0, x1, y1] = bbox(src, Math.ceil((o.spread - 1) * 260) + 2);
   paint(
     dst,
     src,
     (x, y) => [S.AX + (x + 0.5 - S.AX) / o.spread, S.AY + (y + 0.5 - S.AY) / o.spread],
-    (c, x, y) => {
-      if (o.erode > 0 && noise(x, y, 4, 600 + o.f) < o.erode * 1.2 - 0.15) return null;
+    (c) => {
       const L = (c[0] + c[1] + c[2]) / 3;
-      let a = o.alpha;
-      if (L > 185) {
-        a *= 1 - o.burst;
-        if (noise(x, y, 2, 610 + o.f) < 0.22) return withA(dimmed(c[0], c[1], c[2], 0.7), a * (c[3] / 255));
-      }
-      return withA(c, a);
+      let k = 1;
+      if (L > 150) k = lerp(0.55, 1, o.burst) * o.glow;
+      const col = Math.abs(k - 1) > 0.01 ? dimmed(c[0], c[1], c[2], k) : c;
+      return withA(col, o.alpha);
     },
     [x0, y0, x1, y1],
   );
 }
 
-/** The enhanced dragon: his dragon slid along its dive from the eye (t 0) to the ground (t 1). */
-function dragon(dst: Canvas, o: { t: number; dissolve: number; dim: number; f: number }): void {
+/**
+ * The enhanced dragon: his dragon slid along its dive from the eye (t 0) to the ground (t 1),
+ * writhing by `writhe` (turned about its mouth, a little bob), roaring (`roar` whitens the jaws),
+ * dimmed by `dim`, faded by `alpha`.
+ */
+function dragon(dst: Canvas, o: { t: number; writhe: number; roar: number; dim: number; alpha: number }): void {
   const src = S.layers.dragon;
   const [ex, ey] = S.eye, [mx, my] = S.mouth!;
-  const ox = (1 - o.t) * (ex - mx) * 0.96, oy = (1 - o.t) * (ey - my) * 0.96;
+  const ox = (1 - o.t) * (ex - mx) * 0.96, oy = (1 - o.t) * (ey - my) * 0.96 + o.writhe * 2;
+  const th = o.writhe * 0.025, ct = Math.cos(th), st = Math.sin(th);
   const [x0, y0, x1, y1] = bbox(src);
-  const cut = lerp(y0 - 4, y1 + 4, o.dissolve);
   paint(
     dst,
     src,
-    (x, y) => [x - ox, y - oy],
-    (c, x, y, sx, sy) => {
-      if (y < ey + 6) return null;
-      if (o.dissolve > 0 && sy < cut + 30 * (noise(x, y, 6, 700 + o.f) - 0.5)) return null;
-      if (o.dim > 0) return withA(dimmed(c[0], c[1], c[2], 1 - o.dim * 0.5), c[3] / 255);
-      return c;
+    (x, y) => {
+      const px = x - ox - mx, py = y - oy - my;
+      return [mx + px * ct + py * st, my - px * st + py * ct];
     },
-    [x0 + Math.floor(ox) - 2, y0 + Math.floor(oy) - 2, x1 + Math.ceil(ox) + 2, y1 + Math.ceil(oy) + 2],
+    (c, x, y) => {
+      if (y < ey + 6) return null;
+      let k: Color = c;
+      if (o.roar > 0) {
+        const d = Math.hypot(x - mx - ox, y - my - oy);
+        if (d < 34 && c[0] + c[1] + c[2] > 330) k = dimmed(c[0], c[1], c[2], 1 + o.roar * (1 - d / 34));
+      }
+      if (o.dim > 0) k = dimmed(k[0], k[1], k[2], 1 - o.dim);
+      return withA(k, o.alpha);
+    },
+    [x0 + Math.floor(ox) - 6, y0 + Math.floor(oy) - 6, x1 + Math.ceil(ox) + 6, y1 + Math.ceil(oy) + 6],
   );
 }
 
-/** Loose sparks of the enhanced burst. */
-function sparks(dst: Canvas, a: number, f: number): void {
-  if (a <= 0.02 || !S.layers.sparks) return;
-  paint(dst, S.layers.sparks, null, (c, x, y) => (noise(x, y, 3, 800 + f) < 0.25 ? null : withA(c, a)), bbox(S.layers.sparks, 1));
+/** Loose sparks of the enhanced burst: they blink in clusters and dim with the burst. */
+function sparks(dst: Canvas, burst: number, alpha: number, f: number): void {
+  if (alpha <= 0.02 || !S.layers.sparks) return;
+  paint(dst, S.layers.sparks, null, (c, x, y) => (noise(x, y, 12, 800 + f) < 0.25 ? null : withA(dimmed(c[0], c[1], c[2], lerp(0.55, 1, burst)), alpha)), bbox(S.layers.sparks, 1));
 }
 
-/** Rocks flying out of the crater: from his positions at the peak, outward and falling back. */
+/** His rocks (enhanced): flung from where they are at the peak, they land by the end of the impact. */
 function rocks(dst: Canvas, tau: number, a: number): void {
   if (a <= 0.02) return;
+  const T = 7 / 14;
+  const tt = Math.min(tau, T);
   for (const [k, d] of S.debris.entries()) {
     const gx = d.ground[0] - S.AX, gy = d.ground[1] - S.AY;
     const len = Math.hypot(gx, gy) || 1;
-    const sp = 90 + 70 * noise(k * 3, 1, 1, 900);
-    const x = Math.round(d.x + (gx / len) * sp * tau), y = Math.round(d.y - 70 * tau + 300 * tau * tau);
-    const m = 6;
+    const sp = 60 + 50 * noise(k * 3, 1, 1, 900);
+    // A hop that comes back down 14 px below where it was (on the crater's slope) at T.
+    const x = Math.round(d.x + (gx / len) * sp * tt), y = Math.round(d.y + lerp(0, 14, tt / T) - 140 * tt * (T - tt));
+    const m = 4;
     if (x < m || y < m || x + d.img.w > S.W - m || y + d.img.h > S.H - m) continue;
     paint(dst, d.img, (px, py) => [px - x, py - y], (c) => withA(c, a), [x, y, x + d.img.w, y + d.img.h]);
   }
 }
 
-// --- the four phases ----------------------------------------------------------------------------
+/** The four darkest and four brightest colours of his palette (for particles). */
+const darks = (): Color[] => S.palette.slice(2, 8);
+const lights = (): Color[] => S.palette.slice(-6);
 
-const T_STRIKE = 10 / 12, T_IMPACT = T_STRIKE + 8 / 16, T_FADE = T_IMPACT + 8 / 14;
+/**
+ * Sparks and small chips spat off the ring, looping with `phase` (each particle is at its own
+ * point of a hop that repeats every cycle), at strength `k`.
+ */
+function spits(dst: Canvas, phase: number, k: number, seed: number): void {
+  if (k <= 0.02) return;
+  const [rx, ry] = S.ring;
+  const n = S.enh ? 22 : 16;
+  for (let j = 0; j < n; j++) {
+    const ang = noise(j * 17, 1, 1, seed) * TAU;
+    const r0 = 0.55 + 0.45 * noise(j * 5, 2, 1, seed);
+    const life = ((phase + noise(j * 3, 3, 1, seed)) % 1 + 1) % 1;
+    const bx = S.AX + Math.cos(ang) * rx * r0, by = S.AY + Math.sin(ang) * ry * r0;
+    const out = 18 + 26 * noise(j, 4, 1, seed), up = 34 + 40 * noise(j, 5, 1, seed);
+    const x = bx + Math.cos(ang) * out * life, y = by - up * life * (1 - life) * 2.4 + 8 * life;
+    const chip = j % 3 === 0;
+    const a = k * (1 - smooth(0.7, 1, life));
+    if (x < 4 || y < 4 || x > S.W - 5 || y > S.H - 5) continue;
+    if (chip) {
+      const col = darks()[j % 6];
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) dst.plot(Math.round(x) + dx, Math.round(y) + dy, withA(col, a));
+    } else {
+      const col = lights()[(j * 7) % 6];
+      dst.plot(Math.round(x), Math.round(y), withA(col, a));
+      dst.plot(Math.round(x - Math.cos(ang) * 2), Math.round(y + 2), withA(lights()[0], a * 0.7));
+    }
+  }
+}
 
-/** Rotation of the vortex relative to his panel: it spins up to full speed at the impact. */
+/** A little smoke rising off the ring while it fades: soft dark puffs, shaded from above. */
+function smoke(dst: Canvas, q: number): void {
+  if (q <= 0.02 || q >= 0.98) return;
+  const [rx, ry] = S.ring;
+  const cols = S.palette.slice(3, 9);
+  for (let j = 0; j < 9; j++) {
+    const ang = Math.PI * (1.05 + 0.9 * (j / 8)) + 0.2 * noise(j, 1, 1, 950);
+    const r = (5 + 9 * q) * (0.8 + 0.5 * noise(j, 2, 1, 951)) * (S.scale / 0.6);
+    const cx = S.AX + Math.cos(ang) * rx * 0.9, cy = S.AY + Math.sin(ang) * ry * 0.9 - 10 - 40 * q * (0.6 + 0.6 * noise(j, 3, 1, 952));
+    const a = 0.75 * (1 - smooth(0.5, 1, q)) * smooth(0, 0.2, q);
+    for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++)
+      for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) {
+        const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy) / r;
+        if (d > 1 || x < 2 || y < 2 || x > S.W - 3 || y > S.H - 3) continue;
+        const lit = (y + 0.5 - cy) / r < -0.35 ? 3 : d > 0.8 ? 0 : 1;
+        dst.plot(x, y, withA(cols[Math.min(cols.length - 1, lit + 1)], a));
+      }
+  }
+}
+
+// --- the five phases -------------------------------------------------------------------------------
+
+const T_STRIKE = 10 / 12, T_IMPACT = T_STRIKE + 8 / 16;
+/** Vortex rotation relative to his panel: spinning up to the impact, slowing after it. */
 function spin(t: number): number {
   const d = T_IMPACT - t;
-  return d > 0 ? d * 1.6 - d * d * 0.5 : d * 1.6;
+  return d > 0 ? d * 1.6 - d * d * 0.5 : d * 0.6;
 }
+const ROT_HOLD = spin(T_IMPACT + 8 / 14);
+
+/** The bolt's flicker through the sustain loop (dim per frame) and which branches are lit. */
+const FLICK = [0, 0.3, 0.08, 0.4, 0, 0.22, 0.5, 0.1, 0, 0.35, 0.15, 0.42];
 
 function gatherFrame(f: number): Canvas {
   const c = new Canvas(S.W, S.H);
   const p = f / 9, t = f / 12;
-  cloud(c, { rot: spin(t), reveal: 0.22 + 0.78 * smooth(0, 0.8, p), drift: 0, alpha: 0.5 + 0.5 * smooth(0, 0.4, p), f });
-  kanji(c, { write: smooth(0.12, 1, p), burn: 0, f });
+  cloud(c, { rot: spin(t), reveal: 0.22 + 0.78 * smooth(0, 0.8, p), lift: 0, alpha: 0.55 + 0.45 * smooth(0, 0.4, p), dim: 0.35 * (1 - p), eyeGlow: 0 });
+  kanji(c, { write: smooth(0.1, 1, p), breath: 0, fade: 0, f });
   return c;
 }
 
 function strikeFrame(f: number): Canvas {
   const c = new Canvas(S.W, S.H);
   const t = T_STRIKE + f / 16;
-  cloud(c, { rot: spin(t), reveal: 1, drift: 0, alpha: 1, f: 20 + f });
-  kanji(c, { write: 1, burn: 0, f: 20 + f });
-  if (S.enh) dragon(c, { t: Math.pow((f + 1) / 8, 1.3), dissolve: 0, dim: 0, f });
+  cloud(c, { rot: spin(t), reveal: 1, lift: 0, alpha: 1, dim: 0, eyeGlow: 0.25 + 0.05 * f });
+  kanji(c, { write: 1, breath: 0, fade: 0, f: 20 + f });
+  if (S.enh) dragon(c, { t: Math.pow((f + 1) / 8, 1.3), writhe: 0, roar: 0, dim: 0, alpha: 1 });
   else {
     const front = [0.25, 0.5, 0.78, 1, 1, 1, 1, 1][f];
     const dim = [0.45, 0.45, 0.45, 0, 0.6, 0, 0.55, 0][f];
     const dx = [0, 0, 0, 0, 1, -1, 1, 0][f];
-    bolt(c, { front, dim, dx, frag: 0, boost: f === 7, f });
+    bolt(c, { front, dim, dx, branches: f < 3 ? 1 : [1, 0.7, 1, 0.65, 1][f - 3], boost: f === 7, alpha: 1, f });
   }
   return c;
 }
 
+/**
+ * The peak held alive (sustain, and the start of the fade): `phase` 0..1 runs the loop; `q` is how
+ * far the fade has gone (0 in the sustain).
+ */
+function alive(c: Canvas, phase: number, q: number, fi: number, tau: number): void {
+  const w = Math.sin(phase * TAU), w2 = Math.cos(phase * TAU);
+  const t = T_IMPACT + 8 / 14 + 1 + Math.max(0, tau - 8 / 14 - 1);
+  cloud(c, {
+    rot: q > 0 ? ROT_HOLD - 0.25 * (t - (T_IMPACT + 8 / 14 + 1)) : ROT_HOLD + 0.04 * w,
+    reveal: 1 - 0.3 * smooth(0.1, 1, q),
+    lift: 12 * q,
+    alpha: 1 - smooth(0.3, 1, q),
+    dim: 0.4 * q,
+    eyeGlow: (0.3 + 0.25 * (1 - FLICK[fi % 12])) * (1 - q),
+  });
+  const fl = FLICK[fi % 12];
+  const groundA = Math.pow(1 - q, 1.2);
+  ground(c, { spread: 1 + 0.01 * w + 0.03 * q, burst: (S.enh ? 0.55 + 0.15 * w2 : 0.8 + 0.2 * w2) * (1 - 0.7 * q), glow: 1 - 0.12 * fl, alpha: groundA });
+  if (S.enh) {
+    sparks(c, 0.5 + 0.2 * w2, 1 - smooth(0, 0.5, q), fi);
+    rocks(c, 1, 1 - smooth(0.2, 0.9, q));
+  }
+  smoke(c, q);
+  spits(c, phase, 1 - smooth(0, 0.4, q), S.enh ? 960 : 970);
+  if (S.enh) {
+    const roar = [0, 0, 0.15, 0.35, 0.45, 0.3, 0.1, 0, 0, 0, 0, 0][fi % 12] * (1 - q);
+    dragon(c, { t: 1, writhe: q > 0 ? 0 : w, roar, dim: 0.3 * fl + 0.5 * q, alpha: 1 - smooth(0, 0.55, q) });
+  } else bolt(c, { front: 1, dim: Math.min(1, fl + q), dx: [0, 1, 0, -1][fi % 4] * (q > 0 ? 0 : 1), branches: q > 0 ? 1 : 0.55 + 0.4 * (1 - fl), boost: fl === 0 && q === 0, alpha: 1 - smooth(0, 0.5, q), f: fi });
+  kanji(c, { write: 1, breath: 0.12 * (0.5 - 0.5 * w2), fade: q, f: 80 + fi });
+}
+
 function impactFrame(i: number): Canvas {
   const c = new Canvas(S.W, S.H);
-  const tau = i / 14, t = T_IMPACT + tau;
-  cloud(c, { rot: spin(t), reveal: 1, drift: 0, alpha: 1, f: 40 + i });
-  kanji(c, { write: 1, burn: 0, f: i === 0 ? 999 : 40 + i });
-  const spread = 1 + 0.012 * i;
-  if (S.enh) {
-    ground(c, { spread, burst: [0, 0.15, 0.3, 0.45, 0.6, 0.7, 0.78, 0.85][i], alpha: 1 - 0.02 * i, erode: 0, f: i });
-    sparks(c, 1 - i / 6, i);
-    rocks(c, tau, 1);
-    dragon(c, { t: 1, dissolve: [0, 0.12, 0.3, 0.5, 0.72, 0.9, 1.02, 1.1][i], dim: [0, 0.1, 0.25, 0.4, 0.55, 0.7, 0.8, 0.9][i], f: i });
-  } else {
-    ground(c, { spread, burst: [0, 0.05, 0.12, 0.2, 0.28, 0.35, 0.42, 0.5][i], alpha: 1 - 0.02 * i, erode: 0, f: i });
-    if (i < 4) bolt(c, { front: 1, dim: [0, 0.25, 0.5, 0.7][i], dx: 0, frag: [0, 0, 0.35, 0.7][i], boost: false, f: i });
+  if (i === 0) {
+    // His panel: every layer as he drew it.
+    cloud(c, { rot: 0, reveal: 1, lift: 0, alpha: 1, dim: 0, eyeGlow: 0 });
+    ground(c, { spread: 1, burst: 1, glow: 1, alpha: 1 });
+    if (S.enh) {
+      sparks(c, 1, 1, 999);
+      rocks(c, 0, 1);
+      dragon(c, { t: 1, writhe: 0, roar: 0, dim: 0, alpha: 1 });
+    } else bolt(c, { front: 1, dim: 0, dx: 0, branches: 1, boost: false, alpha: 1, f: 0 });
+    kanji(c, { write: 1, breath: 0, fade: 0, f: 999 });
+    return c;
   }
+  // Settling from his panel into the held state the sustain loops on (its phase just before 0).
+  const tau = i / 14, s = smooth(1, 7, i);
+  const phase = 1 - (8 - i) / 12;
+  const w = Math.sin(phase * TAU), w2 = Math.cos(phase * TAU);
+  cloud(c, { rot: spin(T_IMPACT + tau), reveal: 1, lift: 0, alpha: 1, dim: 0, eyeGlow: 0.55 * s });
+  const fl = [0, 0.15, 0.05, 0.3, 0.1, 0.35, 0.15, 0.42][i];
+  const base = S.enh ? 0.55 + 0.15 * w2 : 0.8 + 0.2 * w2;
+  ground(c, { spread: 1 + 0.025 * Math.sin((i / 7) * Math.PI) + 0.01 * w * s, burst: lerp(1, base, s), glow: 1 - 0.12 * fl, alpha: 1 });
+  if (S.enh) {
+    sparks(c, lerp(1, 0.5 + 0.2 * w2, s), 1, 40 + i);
+    rocks(c, tau, 1);
+  }
+  spits(c, phase, s, S.enh ? 960 : 970);
+  if (S.enh) dragon(c, { t: 1, writhe: w * s, roar: 0, dim: 0.3 * fl, alpha: 1 });
+  else bolt(c, { front: 1, dim: fl, dx: [0, 1, 0, -1][i % 4], branches: lerp(1, 0.55 + 0.4 * (1 - fl), s), boost: fl === 0, alpha: 1, f: 40 + i });
+  kanji(c, { write: 1, breath: 0.12 * (0.5 - 0.5 * w2) * s, fade: 0, f: 40 + i });
+  return c;
+}
+
+function sustainFrame(f: number): Canvas {
+  const c = new Canvas(S.W, S.H);
+  alive(c, f / 12, 0, f, 8 / 14 + f / 12);
   return c;
 }
 
 function fadeFrame(f: number): Canvas {
   const c = new Canvas(S.W, S.H);
-  const q = f / 7, tau = 8 / 14 + f / 12, t = T_FADE + f / 12;
-  cloud(c, { rot: spin(t), reveal: 1, drift: smooth(0, 1, q), alpha: 1 - smooth(0.45, 1, q), f: 60 + f });
-  ground(c, { spread: 1.09 + 0.012 * f, burst: S.enh ? 0.9 : 0.55 + 0.4 * q, alpha: Math.pow(1 - q, 1.3), erode: q, f: 60 + f });
-  if (S.enh) rocks(c, tau, 1 - smooth(0.2, 0.9, q));
-  kanji(c, { write: 1, burn: smooth(0, 0.85, q), f: 60 + f });
+  // Frame 0 is the sustain's phase 0 with the fade just begun, so it follows the loop's last frame.
+  alive(c, 0, f / 7, 12 + f, 8 / 14 + 1 + f / 12);
   return c;
 }
 
@@ -470,6 +602,7 @@ function build(key: 'kirin' | 'kirin_enh'): WorldSprite {
     gather: once(Array.from({ length: 10 }, (_, f) => gatherFrame(f)), 12),
     strike: once(Array.from({ length: 8 }, (_, f) => strikeFrame(f)), 16),
     impact: once(Array.from({ length: 8 }, (_, f) => impactFrame(f)), 14),
+    sustain: { frames: Array.from({ length: 12 }, (_, f) => sustainFrame(f)), fps: 12, loop: true },
     fade: once(Array.from({ length: 8 }, (_, f) => fadeFrame(f)), 12),
   };
   const label = S.enh ? 'Kirin, enhanced: lightning dragon annihilation (4.5 m)' : 'Kirin: lightning annihilation (3 m)';
@@ -479,7 +612,7 @@ function build(key: 'kirin' | 'kirin_enh'): WorldSprite {
 // --- review sheets -----------------------------------------------------------------------------
 
 const BG = hex('#14121a'), PANEL = hex('#0a1030'), INK = hex('#d9d4e6'), DIM = hex('#8a8499'), ACC = hex('#8fe0ff');
-const PHASES: [string, number][] = [['gather', 12], ['strike', 16], ['impact', 14], ['fade', 12]];
+const PHASES: [string, number][] = [['gather', 12], ['strike', 16], ['impact', 14], ['sustain', 12], ['fade', 12]];
 
 /** A frame on his navy with our character standing where his did. */
 function staged(src: Src, fr: Canvas): Canvas {
@@ -496,7 +629,8 @@ const KEYS: [string, [string, number], [string, number]][] = [
   ['gather end', ['gather', 9], ['gather', 9]],
   ['strike: the leader / the dragon dives', ['strike', 1], ['strike', 3]],
   ['impact frame 1: his panel', ['impact', 0], ['impact', 0]],
-  ['impact: the bolt or the dragon breaks up', ['impact', 4], ['impact', 4]],
+  ['impact: settling into the hold', ['impact', 5], ['impact', 5]],
+  ['sustain: the strike held alive for 1 s (loop)', ['sustain', 4], ['sustain', 4]],
   ['fade', ['fade', 3], ['fade', 3]],
 ];
 

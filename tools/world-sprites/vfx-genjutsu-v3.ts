@@ -82,8 +82,9 @@ const rampStep = (dir: number): Int16Array =>
       if (KIND[j] !== KIND[i] || j === i) continue;
       const dL = (LAB[j][0] - L) * dir;
       if (dL < 2.5) continue;
-      // Toward white a ramp loses chroma: aim at the entry's chroma scaled down as it nears L 100.
-      const keepC = dir > 0 ? Math.max(0.35, (100 - LAB[j][0]) / Math.max(1, 100 - L)) : 1;
+      // Toward white (above L 60) a ramp loses chroma: aim at the chroma scaled down as it nears
+      // L 100. Below that the step keeps the full chroma, so a lit violet stays a violet.
+      const keepC = dir > 0 ? clamp((100 - LAB[j][0]) / Math.max(1, 100 - Math.max(L, 60)), 0.35, 1) : 1;
       const d = (LAB[j][1] - a * keepC) ** 2 + (LAB[j][2] - b * keepC) ** 2 + 0.6 * (dL - 8) ** 2;
       if (d < bd) {
         bd = d;
@@ -566,11 +567,18 @@ function breath(): WorldSprite {
       near.b = bounds(near.ix)!;
     } else eyeParts.push({ ix: p.ix, b: p.b });
   }
-  // The arcs: each big part, with every small bit within 3 px of it (his rim dashes and specks),
-  // so an arc moves as one layer and its rim never parts from it.
-  const all = parts(main);
+  // The arcs: his arcs touch through their dark rims, so each arc is found by its lit body (the
+  // big parts of his lighter pixels); every other pixel (its dark rim and outline, the dashes and
+  // specks) goes with the arc within 3 px of it, so an arc moves as one layer and its rim never
+  // parts from it.
+  const lit = (v: number) => KIND[v - 1] === 'body' && LAB[v - 1][0] > 30;
   const size = (p: Part) => p.ix.d.reduce((n, v) => n + (v ? 1 : 0), 0);
-  const arcs = all.filter((p) => size(p) >= 40);
+  const arcs = parts(keep(main, (_x, _y, v) => lit(v))).filter((p) => size(p) >= 40);
+  const rest = blank(k.w, k.h);
+  main.d.forEach((v, n) => {
+    if (v && !arcs.some((p) => p.ix.d[n])) rest.d[n] = v;
+  });
+  const all = [...arcs, ...parts(rest)];
   const label = new Int16Array(k.w * k.h).fill(-1);
   arcs.forEach((p, j) => p.ix.d.forEach((v, n) => {
     if (v) label[n] = j;
@@ -868,8 +876,10 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
   const front = keep(all, (x, y) => y > ground(x));
   const top = new Int32Array(k.w).fill(-1);
   for (let y = k.h - 1; y >= 0; y--) for (let x = 0; x < k.w; x++) if (at(up, x, y)) top[x] = y;
-  let hMax = 0;
-  for (let x = 0; x < k.w; x++) if (top[x] >= 0) hMax = Math.max(hMax, ground(x) - top[x] + 1);
+  // Each column rises by its own height (the tallest within 8 px, so a pillar moves as one).
+  const colHt = new Float64Array(k.w);
+  for (let x = 0; x < k.w; x++)
+    for (let u = Math.max(0, x - 8); u <= Math.min(k.w - 1, x + 8); u++) if (top[u] >= 0) colHt[x] = Math.max(colHt[x], ground(u) - top[u] + 1);
   const rise: Canvas[] = [];
   for (let r = 0; r < 6; r++) {
     const T = [0.18, 0.4, 0.62, 0.82, 0.95, 1][r];
@@ -878,20 +888,25 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
     else {
       // 3/4: a wave from the near end to the far end; end-on: the column all at once.
       const t = name === 'wall_diag' ? (x: number) => smooth(0, 1, T * 1.7 - 0.7 * ((x - ab[0]) / (ab[2] - ab[0]))) : () => T;
-      const lift = (x: number) => Math.round((1 - t(x)) * hMax);
+      const lift = (x: number) => Math.round((1 - t(x)) * colHt[x]);
       a = emergeCols(up, ground, lift);
       // White-hot at their tops while they climb (one step up each colour's own ramp, two at the tip).
       a = tone(a, (x, y) => (lift(x) > 0 && top[x] >= 0 ? (y < top[x] + lift(x) + 3 ? 2 : y < top[x] + lift(x) + 7 ? 1 : 0) : 0));
-      const fa = [0, 0, 0.4, 0.7, 1][r];
-      if (fa > 0) a = union(a, fa >= 1 ? front : keep(front, (x, y) => hash(x >> 1, y >> 1, seed + 3) < fa));
     }
-    // The long shadow stretches out from the wall's foot as the wall grows; the smoke comes up
-    // with the crystals (none above their growing tops).
-    const sl = stainB ? stainB[0] + (stainB[2] - stainB[0] + 1) * [0.12, 0.3, 0.55, 0.8, 0.95, 1][r] : 0;
-    const st = r >= 5 ? stain : keep(stain, (x) => x <= sl);
+    const frontA = r >= 5 ? 0 : [0, 0, 0.4, 0.7, 1][r];
+    // The long shadow stretches out from the wall's foot along its own run (down to the right,
+    // about 0.37 px down per px across) as the wall grows; until the wall stands, none of it
+    // shows behind the foot line. The smoke comes up with the crystals (none above their tops).
+    const run = (x: number, y: number) => x + 0.37 * y;
+    let st = stain;
+    if (r < 5 && stainB) {
+      const r0 = run(stainB[0], stainB[1]), r1 = run(stainB[2], stainB[3]);
+      const reach = r0 + (r1 - r0) * [0.12, 0.3, 0.55, 0.8, 0.95][r];
+      st = keep(stain, (x, y) => run(x, y) <= reach && (r >= 4 || y > ground(x) - 2));
+    }
     const reachTop = ab[3] - (ab[3] - ab[1]) * T - 10;
     const s = r >= 5 ? sm : keep(sm, (_x, y) => y >= reachTop);
-    rise.push(render(k.w, k.h, [[st, [0.4, 0.6, 0.8, 1, 1, 1][r]], [s, [0, 0.3, 0.6, 0.8, 1, 1][r]], [a], [bits, [0, 0, 0, 0.4, 0.8, 1][r]]], k.fade));
+    rise.push(render(k.w, k.h, [[st, [0.4, 0.6, 0.8, 1, 1, 1][r]], [s, [0, 0.3, 0.6, 0.8, 1, 1][r]], [a], [front, frontA], [bits, [0, 0, 0, 0.4, 0.8, 1][r]]], k.fade));
   }
   const idle = range(idleN).map((i) => {
     if (!i) return render(k.w, k.h, [[stain], [sm], [all], [bits]], k.fade);

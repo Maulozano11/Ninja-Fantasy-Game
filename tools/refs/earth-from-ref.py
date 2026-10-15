@@ -335,6 +335,13 @@ def classify_his(cfg):
     warm = FLAT[..., 0] - FLAT[..., 2]
     near_art = dilate(L >= 78, 3, nb=N8)
     outline = keep & (Lr < cfg.get('rim_l', 58)) & (warm >= 18) & near_art & (dist >= 16)
+    sz = poly_mask(H0, W0, cfg['shade']) & keep if cfg.get('shade') else np.zeros_like(keep)
+    if sz.any():
+        # His ground shadow is a broad dark brown, not a rim: dark areas too wide to be a line
+        # (they survive a 3 px erosion) are shadow there.
+        darkw = keep & (Lr < 66) & (warm >= 8) & (L < 90)
+        broad = dilate(erode(darkw, 3), 3) & sz
+        outline &= ~broad
     art |= outline
     # Pale streaks (speed lines, ray dashes): thin and light. Always opaque body.
     pale = art & (L >= 175) & ((c.max(-1) - c.min(-1)) < 120)
@@ -375,18 +382,21 @@ def classify_his(cfg):
     da = np.where(dust, strength, 0.0)
     shade = np.zeros_like(art)
     sa = np.zeros((H0, W0))
-    if cfg.get('shade'):
-        sz = poly_mask(H0, W0, cfg['shade']) & keep & ~art
-        # A stain darker and warmer than the fill: alpha from its projection on SHADE.
-        d = FLAT - BG
+    if sz.any():
+        # His shadow on the ground: dark warm brown over the fill, not enclosed by a rim. Its alpha
+        # is its projection on SHADE (his shadow brown) from the fill; it leaves the dust class.
+        d = gauss(FLAT, 1.0) - BG
         v = SHADE - BG
-        a = np.clip((gauss(d, 1.2) * v).sum(-1) / (v * v).sum(), 0, 1)
-        shade = sz & (a >= 0.08)
+        a = np.clip((d * v).sum(-1) / (v * v).sum(), 0, 1)
+        cand = sz & ~enclosed & ~outline & (L < 66) & (a >= 0.08)
+        shade = cand
         sa = np.where(shade, a, 0.0)
-    return dict(body=body, outline=outline, dust=dust, da=da, shade=shade, sa=sa, keep=keep, enclosed=enclosed, front=front)
+        dust &= ~shade
+        body &= ~shade
+    return dict(body=body, outline=outline, dust=dust, da=np.where(dust, da, 0.0), shade=shade, sa=sa, keep=keep, enclosed=enclosed, front=front)
 
 
-SHADE = np.array([16.0, 10.0, 6.0])  # the colour his ground shadow darkens toward
+SHADE = np.array([66.0, 45.0, 30.0])  # his ground shadow's brown, at its strongest
 
 
 def debug_classes(name, cfg, cls):
@@ -481,8 +491,9 @@ def to_game(cfg, cls, W, H, ax, ay):
     SA = r(cls['sa'])
     allc = r(np.where(cls['keep'][..., None], SMOOTH, BG))
     F = r(cls['front'].astype(np.float64))
+    clean = r(np.where(cls['keep'][..., None], FLAT, BG))
     return dict(B=B, O=O, col=col, rcol=rcol, DA=DA, SA=SA, all=allc, F=F, box=box,
-                his=r(IM0), flat=r(np.where(cls['keep'][..., None], FLAT, BG)))
+                his=r(IM0) if cfg.get('aura') else clean, flat=clean)
 
 
 def decide(cfg, g, W, H, ax, ay):
@@ -529,7 +540,7 @@ def decide(cfg, g, W, H, ax, ay):
         SA = SA * k
     dust &= da >= 0.05
     shade = free & ~dust & (SA >= 0.06)
-    return dict(solid=solid, rim=rim, dust=dust, da=da, dcol=dcol, shade=shade, sa=np.clip(SA * 1.6, 0, 0.75))
+    return dict(solid=solid, rim=rim, dust=dust, da=da, dcol=dcol, shade=shade, sa=np.clip(SA, 0, 0.85))
 
 
 # --- build every key frame ----------------------------------------------------------------------
@@ -586,7 +597,7 @@ def nearest(cols, pal):
 
 
 DUST_STEPS = 8
-SHADE_STEPS = [0.12, 0.22, 0.34, 0.46, 0.6, 0.75]
+SHADE_STEPS = [0.12, 0.24, 0.36, 0.48, 0.6, 0.72, 0.85]
 
 
 def palette_for(b):

@@ -9,13 +9,16 @@
 //
 //   fly     6 frames, 12 fps, loop. Frame 0 is his left picture (crows circling the vortex), frame 4 his
 //           right picture (the flock streaming right). 1-3 and 5 move his crows as cut-out pieces (whole
-//           pixels; the two looking back mirrored to turn round) along loops round the swarm's centre,
-//           out one way and back the other; they beat their wings with his own wing pixels flipped below
-//           the shoulder or folded half way, in two flights that never beat as one. His vortex spins and
-//           closes as the flock forms and opens again; his smoke trails in behind the flock and its tail
-//           is left behind; his feathers drift back.
-//   summon  6 frames, 12 fps, once: his vortex opens at the caster, spinning, and the crows come up out of
-//           it (dark, with lit eyes, at first) and spiral out round it, ending on his left picture (fly 0).
+//           pixels; the two looking back mirrored to turn round), each at most ~23 px a frame: out round
+//           the swarm's centre into the flock, then back round the reopening vortex (three flock crows
+//           head for his left picture's places, three sink into the vortex, one comes up out of it). They
+//           beat their wings with his own raised wings turned about the shoulder (30 and 60 degrees), in
+//           two flights that never beat as one. His vortex spins and closes as the flock forms and opens
+//           again (turned and scaled in polar space, so its rings stay crisp); his smoke trails in behind
+//           the flock and its tail is left behind; his feathers and black wisps drift back.
+//   summon  6 frames, 12 fps, once (our proposal: he painted only the fly frames): his vortex opens at the
+//           caster, spinning, and the crows come up out of it (dark, with lit eyes, at first) and spiral
+//           out round it, wings beating mid and up, ending on his left picture (fly 0).
 //
 // The anchor is the centre of the swarm's mass, the same point in both of his pictures. Facing right
 // (the renderer mirrors it when the swarm flies left). To merge into vfx-beasts.ts: import { crowSwarm }

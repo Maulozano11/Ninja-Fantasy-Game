@@ -492,7 +492,7 @@ for k in PICS:
     veil_cols.append(C_[A_ >= 0.5])
 veil_cols = np.concatenate(veil_cols + [crow_cols[mag]])
 # The veil: his vortex's dark, its violet, its magenta stripes and their brightest light.
-VEIL = bands(veil_cols, lum(veil_cols), [0, 40, 70, 95, 999], [8, 6, 6, 4])
+VEIL = bands(veil_cols, lum(veil_cols), [0, 40, 70, 95, 999], [8, 8, 8, 4])
 GLOW = VEIL[lum(VEIL) >= 40]
 ALEVELS = [(0.72, 255), (0.42, 170)]
 EDGE_LUM = 52.0  # edge pixels darker than this are his outline
@@ -675,12 +675,13 @@ def unpremul(pm):
 
 
 VCX, VCY, VRAD = VORTEX[0] - PICS['L'][0], VORTEX[1] - PICS['L'][1], VORTEX[2]
-DR, RMAX, NT = 0.5, 104.0, 1440  # polar grid: radius step (sheet px), outer radius, angle bins
+DR, RMAX, NT, FADE = 0.5, 104.0, 1440, 60  # polar grid: radius step (sheet px), outer radius, angle bins; fill fade (bins)
 
 
 def polar_vortex():
     """His vortex unwrapped about its eye: rows are radii, columns angles (clockwise from +x). Where his
-    crows and feathers hid it, each ring is filled along the angle from the same ring either side."""
+    crows and feathers hid it, each ring is filled along the angle from the same ring: from his pixels
+    either side of the hole, fading into that ring's average in the middle of a long hole."""
     L = LAY['L']
     rgb, alpha = L['veil']
     pm = premul(rgb, alpha)
@@ -708,18 +709,28 @@ def polar_vortex():
     ok = wsum > 0.3
     P = np.where(ok[..., None], acc / np.maximum(wsum[..., None], 1e-6), 0)
     idx = np.arange(NT)
+    ring = np.zeros(4, np.float32)
     for i in range(len(rr)):
         good = np.nonzero(ok[i])[0]
+        if len(good) >= NT // 20:
+            ring = np.median(P[i, good], 0)  # the ring as he painted it, on average
         if len(good) == 0:
-            P[i] = P[i - 1] if i else 0
+            P[i] = ring
             continue
         if len(good) == NT:
             continue
-        # Circular linear interpolation along the ring between the known angles either side.
+        # Along the ring from the known angles either side: a short gap is bridged straight across, a
+        # long one blends from each side into the ring's own average over FADE bins, so a crow-sized hole
+        # leaves no long smear and no hard edge where the visible arc ends.
+        bad = idx[~ok[i]]
         gx = np.concatenate([good - NT, good, good + NT])
-        for c in range(4):
-            gv = np.tile(P[i, good, c], 3)
-            P[i, ~ok[i], c] = np.interp(idx[~ok[i]], gx, gv)
+        pos = np.searchsorted(gx, bad)
+        left, right = gx[pos - 1], gx[pos]
+        dl, dr = bad - left, right - bad
+        t = (dl / (dl + dr))[:, None]
+        lin = P[i, left % NT] * (1 - t) + P[i, right % NT] * t
+        b_ = np.clip(np.minimum(dl, dr) / FADE, 0, 1)[:, None]
+        P[i, bad] = lin * (1 - b_) + ring[None, :] * b_
     return P
 
 
@@ -748,13 +759,17 @@ def stepped(A):
     return out
 
 
-def quantize_veil(cov, col):
-    """Coverage + colour -> RGBA with stepped alpha and the veil's own colours (the vortex and the smoke keep
-    their violets and blacks; the crows' greyed violets are not theirs)."""
+def quantize_veil(cov, col, opaque=None):
+    """Coverage + colour -> RGBA with stepped alpha; opaque pixels from `opaque` (the vortex: the veil's own
+    violets only, never the crows' greyed ones; the smoke between the flock's crows: either), translucent
+    ones from the veil's."""
+    pal = PAL_OPAQUE if opaque is None else opaque
     out = np.zeros(cov.shape + (4,), np.uint8)
     a = stepped(cov)
-    on = a > 0
-    out[on, :3] = VEIL[snap_idx(col, VEIL)][on]
+    op = a == 255
+    tr = (a > 0) & ~op
+    out[op, :3] = pal[snap_idx(col, pal)][op]
+    out[tr, :3] = VEIL[snap_idx(col, VEIL)][tr]
     out[..., 3] = a
     return out
 
@@ -777,13 +792,13 @@ def vortex(deg=0.0, scale=1.0, glow=1.0):
     """His vortex on the game grid, spun and scaled about its eye in polar space."""
     rgb, a = unpremul(vortex_sheet(deg, scale))
     A, C = shrink_pic('L', rgb, a, padded=True)
-    return ('veil', dim(quantize_veil(A, C), A, C, glow))
+    return ('veil', dim(quantize_veil(A, C, VEIL), A, C, glow))
 
 
 def his_veil(key):
     rgb, alpha = LAY[key]['veil']
     A, C = shrink_pic(key, rgb, alpha)
-    return quantize_veil(A, C)
+    return quantize_veil(A, C, VEIL if key == 'L' else None)
 
 
 SMOKE = his_veil('R')
@@ -844,8 +859,13 @@ def compose(items, his=None):
     acc = np.zeros((OH, OW, 4), np.float32)
     eyes = np.zeros((OH, OW), bool)
     pasted = np.zeros((OH, OW), bool)
+    layers_ = np.zeros((OH, OW), np.int32)  # how many veils lie on a pixel (one: its own colour stands)
+    single = np.zeros((OH, OW, 4), np.uint8)
     for it in items:
         if it[0] == 'veil':
+            on = it[1][..., 3] > 0
+            layers_ += on & ~pasted
+            single[on] = it[1][on]
             v = it[1].astype(np.float32)
             a = v[..., 3:4] / 255
             da = acc[..., 3:4] / 255
@@ -871,6 +891,9 @@ def compose(items, his=None):
     if mixed.any():
         q = quantize_veil(a, col)
         f[mixed] = q[mixed]
+        one = mixed & (layers_ == 1)
+        f[one, :3] = single[one, :3]
+        f[one, 3] = np.where(a[one] >= 0.999, 255, single[one, 3])
     # Specks of 3 px or less (a crumb of a moved veil or a cut) go.
     for pts in components(f[..., 3] > 0):
         if len(pts) <= 3:
@@ -1049,34 +1072,20 @@ def frame_stats(f):
 
 POS[0] = {n: eye(n) for n in ORDER['L']}
 POS[4] = {n: eye(n) for n in ORDER['R']}
-# Who is who from frame to frame: the same crow, its partner (out: L -> R; back: R -> L) or, for a crow
-# that comes up out of the vortex or sinks into it, the vortex's eye.
-OUT_OF = {**{v: k for k, v in PAIRS.items()}}
+# How far each crow moves from frame to frame (game px): the same crow, or the crow it becomes (out: his
+# left picture's crow -> its flock partner at frame 3; back: a flock crow -> his left picture's crow
+# whose place it heads for at frame 0). Crows that come up out of the vortex or sink into it appear or
+# vanish behind it and are not counted.
+BECOMES = {(2, 3): PAIRS, (5, 0): BACK}
 TRAVEL = []
 for i in range(6):
     j = (i + 1) % 6
+    ren = BECOMES.get((i, j), {})
     step = {}
-    for n, q in POS[j].items():
-        if n in POS[i]:
-            src = POS[i][n]
-        elif j <= 4 and n in OUT_OF and OUT_OF[n] in POS[i]:
-            src = POS[i][OUT_OF[n]]
-        elif j == 0 and n in PAIRS and PAIRS[n] in POS[i]:
-            src = None
-            for r_, l_ in BACK.items():
-                if l_ == n:
-                    src = POS[i][r_]
-            if src is None and n == RISE:
-                src = POS[i][n] if n in POS[i] else None
-        else:
-            src = None
-        if src is not None:
-            step[n] = round(float(np.linalg.norm(q - src)), 1)
     for n, src in POS[i].items():
-        if n not in POS[j] and j == 0:
-            back_to = BACK.get(n)
-            if back_to:
-                step[n] = round(float(np.linalg.norm(POS[0][back_to] - src)), 1)
+        m_ = ren.get(n, n)
+        if m_ in POS[j]:
+            step[n if m_ == n else f'{n}->{m_}'] = round(float(np.linalg.norm(POS[j][m_] - src)), 1)
     TRAVEL.append(step)
     print(f'fly {i} -> {j} crow travel (px):', step)
 STATS = {anim: [frame_stats(f) for f in fr] for anim, fr in frames.items()}

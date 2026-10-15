@@ -892,10 +892,38 @@ function borderCheck(s: WorldSprite): string[] {
 /** The sprites in the order of the vfx_earth manifest (beast copied through), with multi_hit after multi and aura_back after aura. */
 const ORDER = ['bolt', 'beast', 'stream', 'stream_head', 'breath', 'sphere', 'slash', 'multi', 'multi_hit', 'hit', 'blast', 'wall', 'aura', 'aura_back', 'wall_diag', 'wall_depth'];
 
+/**
+ * The stream tile and its head on one frame height and one anchor row (the line), so they line up
+ * when drawn side by side in any layout, not only by their anchors: the tile gets empty rows above
+ * (for the head's flying chunks) and both get the same rows below.
+ */
+function lineUp(tile: WorldSprite, head: WorldSprite): WorldSprite[] {
+  // The rows the art of either uses, above and below the line, plus one clear row each way.
+  let above = 0, below = 0;
+  for (const s of [tile, head]) for (const f of s.anims.fly.frames)
+    for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) if (f.alpha(x, y)) {
+      above = Math.max(above, s.anchor[1] - y + 1);
+      below = Math.max(below, y - s.anchor[1] + 2);
+    }
+  const pad = (s: WorldSprite): WorldSprite => {
+    const dy = above - s.anchor[1];
+    const anims = Object.fromEntries(Object.entries(s.anims).map(([k, a]) => [k, { ...a, frames: a.frames.map((f) => {
+      const c = new Canvas(f.w, above + below);
+      for (let y = 0; y < f.h; y++) for (let x = 0; x < f.w; x++) {
+        const px = f.get(x, y);
+        if (px[3]) c.set(x, y + dy, px);
+      }
+      return c;
+    }) }]));
+    return vfxSprite(s.name, s.label, [s.anchor[0], above], anims);
+  };
+  return [pad(tile), pad(head)];
+}
+
 export function earthV3Sprites(): WorldSprite[] {
   const [tile, head] = stream();
   return [
-    ...fit([bolt()]), tile, ...fit([head], true), ...fit([breath()]), ...fit([sphere()]), ...fit([slash()]), ...fit([multi()]),
+    ...fit([bolt()]), ...lineUp(tile, fit([head], true)[0]), ...fit([breath()]), ...fit([sphere()]), ...fit([slash()]), ...fit([multi()]),
     ...fit([multiHit()]), ...fit([hit()]), ...fit([blast()]),
     ...fit([wall('wall', 'Earth wall: fitted stone slabs with moss, grass and rubble (4.5 m)', 8100)]),
     ...fit(aura()),

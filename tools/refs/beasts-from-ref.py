@@ -775,20 +775,30 @@ def poly_mask(pts, shape, off=(0, 0)):
     return np.asarray(img).astype(bool)
 
 
+def erode(m, n):
+    return ~dilate(~m, n)
+
+
 def drake():
     """His BEAST panel on the earth sheet: a four-legged stone drake in two poses (prowl, lunge).
 
     His left picture (the prowl) is fly frame 0 and his right one (the lunge, dust kicking up behind the
-    hind legs) is frame 5. Both are placed on one anchor, the middle of the torso (between the shoulder
-    and the hip), so the loop does not jitter. The in-betweens move his own pieces: the legs and the tail
-    turn about their joints, the whole body pitches and bobs a few pixels, and his dust grows behind the
-    hind feet around the lunge, then drifts back and fades.
+    hind legs) is frame 5. Both stand on his one ground line: the prowl's claws and the lunge's dust pile
+    rest on it, so the lunge is a leap (his lunge sits higher than his prowl) and the dust stays on the
+    ground. Their eyes keep one x. The in-betweens move his own pieces: the legs and the tail turn about
+    their joints, the whole body pitches and rises or falls along a smooth arc from his prowl to his
+    lunge and back, and his dust grows behind the hind feet around the lunge, then drifts back and fades.
     """
     PANEL = (502, 1544, 1758, 1975)  # the panel's border lines
     SPLIT = 1118  # between his two pictures
-    # Where the torso centre (the anchor) is in his two pictures.
-    TORSO = {0: (792, 1755), 5: (1458, 1735)}
-    WAX, WAY, CW, CH = 350, 205, 680, 440  # working canvas (his pixels) around each torso centre
+    GROUND = 1948  # his ground under both pictures (the prowl's lowest claw, the lunge's flat dust bottom)
+    EYE = {0: (1014, 1781), 5: (1670, 1728)}  # his near eyes (the middle of the yellow glow)
+    # Where each picture sits on our anchor (his sheet's coordinates). Frame 0: the middle of his prowl's
+    # torso, between the shoulder and the hip. Frame 5: on the same ground line, and with the eye at the
+    # same x, so the lunge rises 53 of his px (22 game px) over the prowl as he drew it.
+    TORSO = {0: (792, 1755)}
+    TORSO[5] = (TORSO[0][0] + EYE[5][0] - EYE[0][0], TORSO[0][1] + GROUND - GROUND)
+    WAX, WAY, CW, CH = 420, 215, 760, 450  # working canvas (his pixels) around each placement point
     # Our character's height against his, measured on his WALL panel: that sets the scale.
     c = ref[960:1240, 765:900]
     bgc = np.median(np.concatenate([c[:4].reshape(-1, 3), c[-4:].reshape(-1, 3)]), 0)
@@ -800,13 +810,17 @@ def drake():
     BG = np.median(np.concatenate([pn[:6].reshape(-1, 3), pn[:, :6].reshape(-1, 3)]), 0)
     print('drake: his character', his_char_h, 'px tall, scale', round(S, 4), 'panel bg', BG.astype(int).tolist())
     # The head (its eyes and glints are warm like the dust, but they are the drake's).
+    # Flying dirt in his lunge that touches the drake: the clod on the tip of his tallest back spike and the
+    # streak that ends on the spikes above the hip (their cream highlights are not saturated like his dust).
+    LOOSE = [[(1565, 1593), (1587, 1593), (1587, 1609), (1565, 1609)],
+             [(1395, 1628), (1440, 1628), (1440, 1638), (1427, 1640), (1395, 1646)]]
     HEAD = {
         0: [(915, 1640), (1100, 1640), (1100, 1860), (915, 1860)],
         5: [(1580, 1600), (1745, 1600), (1745, 1800), (1580, 1800)],
     }
 
     def key(k):
-        """His picture k on the working canvas (torso centre at WAX, WAY): colour and layers."""
+        """His picture k on the working canvas (placement point at WAX, WAY): colour and layers."""
         ax, ay = TORSO[k]
         ox, oy = ax - WAX, ay - WAY
         crop = np.empty((CH, CW, 3), np.float32)
@@ -825,12 +839,18 @@ def drake():
         fg = (diff > 22) & inside
         # Dust and flying dirt (the lunge only): saturated orange-brown (his stone is a greyer brown).
         warm = (r - b > 0.42 * r) & (r > g + 12) & (diff > 40) & ~head & (k == 5)
+        if k == 5:
+            # They fly with the dust, highlights and dark rims included (left on the spikes, they would blink
+            # as dark stubs when the dust moves).
+            for pts in LOOSE:
+                warm |= fg & poly_mask(pts, (CH, CW), (ox, oy))
         # Specks of it inside the body are his shading, not dust.
         for p in components(warm):
             if len(p) < 8:
                 p = np.array(p)
                 warm[p[:, 0], p[:, 1]] = False
         solid = fg & ~warm
+
         def biggest(m):
             out = np.zeros((CH, CW), bool)
             pts = np.array(max(components(m), key=len))
@@ -851,47 +871,46 @@ def drake():
         # His dark edging on the dust streaks that touch the drake is not the drake's (it would be left
         # floating when the dust moves): the dark pixels next to dust go with the dust.
         lum = crop @ np.array([0.3, 0.55, 0.15], np.float32)
-        body = fill_holes(biggest(body & ~(dilate(warm, 3) & (lum < 62))))
+        near_dust = dilate(warm, 4) & (lum < 70)
+        body = fill_holes(biggest(body & ~near_dust))
+        # His dark under-body shadow (the belly, under the chin and the neck, the far legs) is barely lighter
+        # than the panel but warmer (red - blue about -2 against the panel's -10): where it joins the body it
+        # is the body's, so the battlefield does not show through the drake.
+        before = body.copy()
+        shade = inside & ~warm & ~near_dust & ((r - b) >= (BG[0] - BG[2]) + 5) & (diff > 8) & (lum < 80)
+        # (Areas only: the thin ring of JPEG ringing around his outline is not shadow.)
+        shade &= dilate(erode(shade, 2), 2)
+        body = fill_holes(biggest(body | shade))
         rest = fg & ~body
-        return crop, body, rest, diff, (ox, oy)
+        return crop, body, rest, diff, (ox, oy), shade & body & ~before
 
     keys = {k: key(k) for k in (0, 5)}
-    for k, (crop, body, rest, diff, off) in keys.items():
-        print('key', k, 'body px', int(body.sum()), 'rest px', int(rest.sum()))
+    for k, (crop, body, rest, diff, off, shade) in keys.items():
+        print('key', k, 'body px', int(body.sum()), 'rest px', int(rest.sum()), 'shadow px', int(shade.sum()))
     # His palette: the stone and moss, plus his eye and glint yellows (too few pixels for the median cut).
     body_px = np.concatenate([keys[k][0][keys[k][1]] for k in keys])
     r_, g_, b_ = body_px[:, 0], body_px[:, 1], body_px[:, 2]
+    lum_px = body_px @ np.array([0.3, 0.55, 0.15], np.float32)
     green = (g_ > r_ + 6) & (g_ > b_ + 20)
     glow = (r_ - b_ > 0.42 * r_) & (r_ > g_ + 12) & (r_ > 120)  # the eyes and the glints over them
     horn = (np.abs(r_ - b_) < 12) & (r_ > 110)  # the cool grey of the horns and the brightest plates
     stone = ~green & ~glow & ~horn
-    PAL = np.concatenate([median_palette(body_px[stone], 30), median_palette(body_px[green], 8), median_palette(body_px[horn], 5), median_palette(body_px[glow], 5)])
-    # His outline: the median of his darkest brown pixels (a deep brown, not black).
-    lum_px = body_px @ np.array([0.3, 0.55, 0.15], np.float32)
-    dark = body_px[(lum_px < 30) & (r_ > b_ + 6) & (r_ >= g_)]
-    OUTLINE = np.round(np.median(dark, 0))
-    print('drake palette', len(PAL), 'outline', OUTLINE.astype(int).tolist())
-    # The dust: un-mixed from the panel background as one of his dust colours with an alpha.
-    crop5, body5, rest5, diff5, off5 = keys[5]
-    # (Sampled from his solid dust: saturated, so the pixels his dust shares with the background stay out.)
-    r5, b5 = crop5[..., 0], crop5[..., 2]
-    DUST = median_palette(crop5[rest5 & (diff5 > 70) & (r5 - b5 > 0.42 * r5)], 9)
-    print('dust palette', DUST.astype(int).tolist())
-
-    def unmix(crop, m):
-        d = crop - BG
-        best_a = np.zeros(m.shape, np.float32)
-        best_c = np.zeros(m.shape + (3,), np.float32)
-        best_e = np.full(m.shape, 1e9, np.float32)
-        for E in DUST:
-            v = E - BG
-            a = np.clip((d * v).sum(2) / (v * v).sum(), 0, 1)
-            err = np.abs(d - a[..., None] * v).sum(2)
-            better = err < best_e
-            best_e = np.where(better, err, best_e)
-            best_a = np.where(better, a, best_a)
-            best_c = np.where(better[..., None], E, best_c)
-        return np.where(m, best_a, 0).astype(np.float32), best_c
+    # His near-white horn highlight (the top edge of the big horn) and the orange-amber surround of his
+    # eyes are too few pixels for the median cut: they are added as they are.
+    hl = horn & (lum_px >= np.percentile(lum_px[horn], 96))
+    HORN_HI = np.round(np.median(body_px[hl], 0))
+    amb = (r_ > 150) & (r_ - g_ > 40) & (g_ > 80) & (b_ < 100)
+    EYE_AMBER = np.round(np.median(body_px[amb], 0))
+    PAL = np.concatenate([median_palette(body_px[stone], 30), median_palette(body_px[green], 8),
+                          median_palette(body_px[horn], 5), median_palette(body_px[glow], 5), HORN_HI[None], EYE_AMBER[None]])
+    # His outline: the median of the dark pixels on his silhouette (a cool deep brown, not black).
+    ring = np.concatenate([keys[k][0][keys[k][1] & ~erode(keys[k][1], 2) & ~keys[k][5]] for k in keys])
+    ring = ring[ring @ np.array([0.3, 0.55, 0.15], np.float32) < 30]
+    OUTLINE = np.round(np.median(ring, 0))
+    # His under-body shadow colour (it fills what a turned leg uncovers next to its joint).
+    SHADOW = np.round(np.median(np.concatenate([keys[k][0][keys[k][5]] for k in keys]), 0))
+    print('drake palette', len(PAL), 'outline', OUTLINE.astype(int).tolist(), 'shadow', SHADOW.astype(int).tolist(),
+          'horn highlight', HORN_HI.astype(int).tolist(), 'eye amber', EYE_AMBER.astype(int).tolist())
 
     # His pieces that move in the in-betweens (his sheet's coordinates). Each is cut from the body along
     # `cut` (its joint) and turned about `pivot`; the turn eases in over `bend` px from the cut, so the
@@ -925,9 +944,7 @@ def drake():
     }
     # The body pitches about the shoulders (the head stays steady; the hindquarters rise and fall).
     PITCH = {0: (880, 1745), 5: (1540, 1715)}
-    # His dust is clipped by his frame box on the left and at the bottom: it fades out toward those edges.
-    DUST_CLIP_X, DUST_CLIP_Y, DUST_FADE = 1138, 1948, 26
-    DUST_ORIGIN = (1330, 1880)  # where it bursts from (behind the hind feet)
+    DUST_ORIGIN = (1330, GROUND)  # where it bursts from: the ground behind the hind feet
 
     size, oanchor = canvas_for([(WAX, WAY)], CW, CH, S)
     OW, OH = size
@@ -938,10 +955,9 @@ def drake():
         ox, oy = keys[k][4]
         return (pt[0] - ox, pt[1] - oy)
 
-    def bend_field(k, pc, deg):
-        """Inverse displacement (for warp) that turns piece pc by deg degrees, easing in from its cut."""
+    def cut_dist(k, pc):
+        """Signed distance (his px) from a piece's cut line, positive toward the piece."""
         (x0, y0), (x1, y1) = [to_work(k, p) for p in pc['cut']]
-        px, py = to_work(k, pc['pivot'])
         tx, ty = x1 - x0, y1 - y0
         L = float(np.hypot(tx, ty))
         nx, ny = -ty / L, tx / L
@@ -949,6 +965,12 @@ def drake():
         cy = float(np.mean([to_work(k, p)[1] for p in pc['poly']]))
         if (cx - x0) * nx + (cy - y0) * ny < 0:
             nx, ny = -nx, -ny
+        return x0, y0, nx, ny
+
+    def bend_field(k, pc, deg):
+        """Inverse displacement (for warp) that turns piece pc by deg degrees, easing in from its cut."""
+        x0, y0, nx, ny = cut_dist(k, pc)
+        px, py = to_work(k, pc['pivot'])
         R0 = pc['bend']
 
         def disp(qx, qy):
@@ -974,44 +996,95 @@ def drake():
         sy = py - rx * np.sin(a) + ry * np.cos(a)
         return (xx - sx).astype(np.float32), (yy - sy).astype(np.float32)
 
-    # Each key split into its pieces and the rest of the body.
+    # Each key split into its pieces and the rest of the body; `under` is the joint zone of every piece
+    # (the first stretch from its cut), which a turned leg must not uncover as a see-through gap.
     split = {}
     for k in (0, 5):
-        crop, body, rest, diff, off = keys[k]
+        crop, body, rest, diff, off, shade = keys[k]
         masks = {n: poly_mask(pc['poly'], (CH, CW), off) & body for n, pc in PIECES[k].items()}
         base = body.copy()
         for m in masks.values():
             base &= ~m
-        split[k] = (masks, base)
+        under = np.zeros((CH, CW), bool)
+        for n, pc in PIECES[k].items():
+            x0, y0, nx, ny = cut_dist(k, pc)
+            d = (xx - x0) * nx + (yy - y0) * ny
+            under |= masks[n] & (d < pc['bend'] * 1.6)
+        under = erode(under | base, 3) & under
+        split[k] = (masks, base, under)
     if DEBUG:
         cols = {'ff': (255, 128, 0), 'fh': (0, 255, 0), 'tail': (255, 0, 255), 'nh': (0, 255, 255), 'nf': (255, 255, 0)}
         for k in (0, 5):
-            masks, base = split[k]
+            masks, base, under = split[k]
             vis = (keys[k][0] * 0.5).astype(np.uint8)
             vis[base] = keys[k][0][base].astype(np.uint8)
             for n, m in masks.items():
                 vis[m] = (keys[k][0][m] * 0.5 + np.array(cols[n]) * 0.5).astype(np.uint8)
+            vis[under & ~dilate(~under, 1)] = (255, 255, 255)
             Image.fromarray(vis).save(os.path.join(DEBUG, f'drake-pieces-{k}.png'))
-    # The dust (his lunge picture only), faded toward the edges his frame box cut it off at.
-    da5, dc5 = unmix(crop5, rest5)
-    gx5, gy5 = xx + off5[0], yy + off5[1]
-    sm = lambda v: np.clip(v, 0, 1) ** 2 * (3 - 2 * np.clip(v, 0, 1))
-    # (A wavy edge, so the fade does not read as a straight line.)
-    jx = 9 * np.sin(gy5 / 7.0) + 6 * np.sin(gy5 / 3.1 + 1.3)
-    jy = 8 * np.sin(gx5 / 8.0 + 0.7) + 5 * np.sin(gx5 / 3.7 + 2.1)
-    da5 = da5 * sm((gx5 - DUST_CLIP_X - 4 - jx) / DUST_FADE) * sm((DUST_CLIP_Y - gy5 - 4 - jy) / DUST_FADE)
 
-    def pose(k, pitch=0.0, bob=0.0, legs=None, dust=None):
+    # His dust (his lunge picture only), in his own colours and opaque, as he painted it: the pile is a solid
+    # mound of cream boulders on dark soil whose flat bottom is his ground; the streaks and specks flying off
+    # it are kept too, and only where they are thinner than a game pixel do they keep a partial alpha.
+    crop5, body5, rest5, diff5, off5, _ = keys[5]
+    gx5, gy5 = xx + off5[0], yy + off5[1]
+    dust = rest5.copy()
+    lum5 = crop5 @ np.array([0.3, 0.55, 0.15], np.float32)
+    # The pile's left side is a straight line (x 1137) where his picture's box cut it. It ends instead along
+    # his boulders there: each cream boulder the line cuts is rounded off, the darker soil between them stays
+    # a few px further in, and the pile's foot spreads out to the line on the ground.
+    CUT_X = 1137
+    col = (lum5 > 150) & dust
+    xc = int(round(CUT_X + 2 - off5[0]))
+    rows_l = [int(y) for y in range(CH) if col[y, xc]]
+    spans = []
+    for y in rows_l:
+        if spans and y <= spans[-1][1] + 2:
+            spans[-1][1] = y
+        else:
+            spans.append([y, y])
+    spans = [(a + off5[1], b + off5[1]) for a, b in spans if b - a >= 6]
+    gyv = gy5[:, 0]
+    depth = np.minimum((GROUND - gyv) * 0.55, 15.0)
+    for ya, yb in spans:
+        cy_, h = (ya + yb) / 2.0, (yb - ya) / 2.0 + 1.0
+        R = min(h, 11.0)
+        u = np.abs(gyv - cy_) / h
+        dd = np.where(u <= 1, R * (1 - np.sqrt(np.clip(1 - u * u, 0, 1))), R + (np.abs(gyv - cy_) - h) * 1.1)
+        depth = np.minimum(depth, dd)
+    dust &= ~(gx5 < (CUT_X + depth)[:, None])
+    dust &= gy5 <= GROUND + 1  # (his flat bottom is the ground; below it is the soft edge of the JPEG)
+    print('dust: boulders cut by his frame line at y', spans)
+    # Specks of a few px that are no brighter than the panel's JPEG ringing are noise, not his dirt.
+    for p in components(dust):
+        p = np.array(p)
+        if len(p) < 10 and diff5[p[:, 0], p[:, 1]].max() < 90:
+            dust[p[:, 0], p[:, 1]] = False
+    # The pile is the biggest piece of it; thin streaks and loose specks are the parts an opening removes.
+    comps = sorted(components(dust), key=len, reverse=True)
+    pile = np.zeros((CH, CW), bool)
+    pts = np.array(comps[0])
+    pile[pts[:, 0], pts[:, 1]] = True
+    core = dilate(erode(dust, 3), 3)
+    # Colour from his solid dust pixels (the edge pixels he shares with the dark panel would darken it).
+    wcol = np.clip((diff5 - 30.0) / 50.0, 0.05, 1.0) * dust
+    sat = dust & (diff5 > 70)
+    DUST = median_palette(crop5[sat], 10)
+    print('dust palette', DUST.astype(int).tolist(), 'pile px', int(pile.sum()), 'dust px', int(dust.sum()))
+
+    def pose(k, pitch=0.0, bob=0.0, legs=None, dust_at=None):
         """Frame from key k: pieces turned by legs[name] degrees, body pitched and bobbed, dust placed.
 
-        dust = (scale, dx, dy, alpha) in game px about DUST_ORIGIN, or None for no dust."""
+        dust_at = (x scale, y scale, dx in game px, alpha) about DUST_ORIGIN (on the ground), or None."""
         crop = keys[k][0]
-        masks, base = split[k]
+        masks, base, under = split[k]
         legs = legs or {}
         far, near = [], []
+        moved = False
         for n, pc in PIECES[k].items():
             m = masks[n].astype(np.float32)
             if legs.get(n, 0.0):
+                moved = True
                 dx, dy, t = bend_field(k, pc, legs[n])
                 lay = (warp(crop * m[..., None], dx, dy), warp(m, dx, dy), warp(m, dx, dy) * t)
             else:
@@ -1019,6 +1092,9 @@ def drake():
             (far if pc.get('far') else near).append(lay)
         b = base.astype(np.float32)
         layers = far + [(crop * b[..., None], b, np.zeros_like(b))] + near
+        if moved:
+            u = under.astype(np.float32)
+            layers = [(SHADOW[None, None] * u[..., None], u, np.zeros_like(u))] + layers
         prem = np.zeros((CH, CW, 3), np.float32)
         cov = np.zeros((CH, CW), np.float32)
         free = np.zeros((CH, CW), np.float32)  # near pieces away from their joint (they get an edge line)
@@ -1033,17 +1109,26 @@ def drake():
         A, C = shrink(rgb, cov, (WAX, WAY), S, size, oanchor)
         Af, _ = shrink(rgb, free, (WAX, WAY), S, size, oanchor)
         out = np.zeros((OH, OW, 4), np.uint8)
-        if dust is not None:
-            s_, ddx, ddy, alpha = dust
-            ox_, oy_ = to_work(5, DUST_ORIGIN)
-            # Where each output pixel comes from in his dust: scaled about the origin, then moved.
-            qx = ox_ + (xx - ox_ - ddx / S) / s_
-            qy = oy_ + (yy - oy_ - ddy / S) / s_
-            wdx, wdy = xx - qx, yy - qy
-            Ad, Cd = shrink(warp(dc5, wdx, wdy), warp(da5, wdx, wdy) * alpha, (WAX, WAY), S, size, oanchor)
-            g = Ad > 0.1
-            out[g, :3] = snap(Cd, DUST)[g]
-            out[g, 3] = np.where(Ad[g] > 0.7, 225, np.where(Ad[g] > 0.4, 160, 95)).astype(np.uint8)
+        if dust_at is not None:
+            sx_, sy_, ddx, alpha = dust_at
+            # (The dust lives on the ground: it does not follow the body's pitch and bob. Every key's working
+            # canvas has its placement point at (WAX, WAY), so key 5's dust lands on any frame as it is.)
+            gox, goy = to_work(5, DUST_ORIGIN)
+            qx = gox + (xx - gox - ddx / S) / sx_
+            qy = goy + (yy - goy) / sy_
+            fx_, fy_ = xx - qx, yy - qy
+            Ad, _ = shrink(crop5, warp(dust.astype(np.float32), fx_, fy_), (WAX, WAY), S, size, oanchor)
+            _, Cd = shrink(warp(crop5, fx_, fy_), warp(wcol.astype(np.float32), fx_, fy_), (WAX, WAY), S, size, oanchor)
+            Ac, _ = shrink(crop5, warp(core.astype(np.float32), fx_, fy_), (WAX, WAY), S, size, oanchor)
+            solid_px = Ad >= 0.5
+            thin_px = (Ad >= 0.22) & ~solid_px & (Ac < 0.1)
+            a_px = np.where(solid_px, 1.0, 0.6) * alpha
+            g = solid_px | thin_px
+            levels = np.where(a_px > 0.8, 255, np.where(a_px > 0.47, 160, np.where(a_px > 0.2, 95, 0)))
+            g &= levels > 0
+            # (The faintest level takes every other dust colour: the palette has to fit the alphabet.)
+            out[g, :3] = np.where((levels == 95)[..., None], snap(Cd, DUST[::2]), snap(Cd, DUST))[g]
+            out[g, 3] = levels[g].astype(np.uint8)
         op = A >= 0.5
         if legs or pitch or bob:
             # Slivers left at a joint where a piece turned away.
@@ -1053,11 +1138,16 @@ def drake():
         op, edge = outline_clean(op)
         out[op, :3] = snap(C, PAL)[op]
         # His glowing eyes and glints are smaller than the averaging footprint: where they cover a good
-        # part of a pixel, the pixel takes their colour (so they keep glowing instead of turning muddy).
+        # part of a pixel, the pixel takes their colour (so they keep glowing instead of turning muddy),
+        # and where only his orange-amber surround of the eye does, it takes his amber.
         hot = (rgb[..., 0] > 200) & (rgb[..., 1] > 140) & (rgb[..., 2] < 120) & (cov > 0.5)
+        amber = (rgb[..., 0] > 150) & (rgb[..., 0] - rgb[..., 1] > 40) & (rgb[..., 1] > 80) & (rgb[..., 2] < 100) & (cov > 0.5)
         Ah, Ch = shrink(rgb, hot.astype(np.float32), (WAX, WAY), S, size, oanchor)
+        Aa, _ = shrink(rgb, (hot | amber).astype(np.float32), (WAX, WAY), S, size, oanchor)
         hm = (Ah > 0.25) & op
+        am = (Aa > 0.25) & ~hm & op & dilate(hm, 1)
         out[hm, :3] = snap(Ch, PAL)[hm]
+        out[am, :3] = EYE_AMBER
         out[op, 3] = 255
         out[edge, :3] = OUTLINE
         out[edge, 3] = 255
@@ -1070,42 +1160,60 @@ def drake():
         return out
 
     def key_frame(k):
-        return pose(k, dust=(1.0, 0.0, 0.0, 1.0) if k == 5 else None)
+        return pose(k, dust_at=(1.0, 1.0, 0.0, 1.0) if k == 5 else None)
 
-    # The run (a bounding gallop): 0 his prowl, gathered; 1-2 the hind legs push back, the front legs
-    # lift and tuck and the tail drops; 3-4 springing into 5, his lunge, with his dust bursting behind the
-    # hind feet; 6 the front legs reach down for the landing; 7 landing and gathering again, the dust
-    # drifting back and fading. Leg angles in degrees (+ turns a hanging limb's foot backward).
-    frames = {'fly': [
-        key_frame(0),
-        pose(0, pitch=-2.0, bob=-2.5, legs={'nf': 8, 'ff': -8, 'nh': 10, 'fh': 6, 'tail': -6}),
-        pose(0, pitch=-4.0, bob=-5.5, legs={'nf': 16, 'ff': -16, 'nh': 20, 'fh': 12, 'tail': -12}),
-        pose(5, pitch=6.0, bob=-2.0, legs={'nf': -4, 'ff': 6, 'nh': -12, 'fh': -10, 'tail': 8}, dust=(0.5, 2.0, 2.0, 0.6)),
-        pose(5, pitch=3.0, bob=-1.0, legs={'nf': -2, 'ff': 3, 'nh': -6, 'fh': -5, 'tail': 4}, dust=(0.78, 1.0, 1.0, 0.85)),
-        key_frame(5),
-        pose(5, pitch=4.0, bob=1.0, legs={'nf': -14, 'ff': -10, 'nh': -16, 'fh': -12, 'tail': 6}, dust=(1.08, -14.0, 2.0, 0.6)),
-        pose(0, pitch=2.0, bob=2.0, legs={'nf': -8, 'ff': 4, 'nh': -10, 'fh': -6, 'tail': -8}, dust=(1.15, -30.0, 4.0, 0.3)),
-    ]}
+    # The run (a bounding gallop along one arc): 0 his prowl, gathered on the ground; 1-2 the hind legs push
+    # back, the front legs lift and tuck, the tail drops and the body starts to rise; 3-4 springing into 5,
+    # his lunge at the top of the leap, with his dust bursting off the ground behind the hind feet; 6 the
+    # front legs reach down as the body comes down; 7 about to land, the dust drifting back, settling
+    # (it spreads out low) and fading.
+    # Leg angles in degrees (+ turns a hanging limb's foot backward); bob in game px (+ is down).
+    FLY = [
+        None,
+        dict(k=0, pitch=-2.0, bob=-4.0, legs={'nf': 8, 'ff': -8, 'nh': 10, 'fh': 6, 'tail': -6}),
+        dict(k=0, pitch=-4.0, bob=-8.0, legs={'nf': 16, 'ff': -16, 'nh': 20, 'fh': 12, 'tail': -12}),
+        dict(k=5, pitch=6.0, bob=0.0, legs={'nf': -4, 'ff': 6, 'nh': -12, 'fh': -10, 'tail': 8}, dust_at=(0.7, 0.7, 2.0, 1.0)),
+        dict(k=5, pitch=3.0, bob=0.0, legs={'nf': -2, 'ff': 3, 'nh': -6, 'fh': -5, 'tail': 4}, dust_at=(0.88, 0.88, 1.0, 1.0)),
+        None,
+        dict(k=5, pitch=4.0, bob=2.0, legs={'nf': -14, 'ff': -10, 'nh': -16, 'fh': -12, 'tail': 6}, dust_at=(1.04, 0.9, -5.0, 0.85)),
+        dict(k=0, pitch=2.0, bob=-10.5, legs={'nf': -8, 'ff': 4, 'nh': -10, 'fh': -6, 'tail': -8}, dust_at=(1.08, 0.6, -10.0, 0.4)),
+    ]
+    frames = {'fly': [key_frame(0) if i == 0 else key_frame(5) if i == 5 else
+                      pose(f['k'], f['pitch'], f['bob'], f['legs'], f.get('dust_at')) for i, f in enumerate(FLY)]}
     f0 = frames['fly'][0]
     feet = int(np.nonzero((f0[..., 3] == 255).any(1))[0].max())
     print('drake: feet line (lowest claw of frame 0) at y', feet, 'of', OH, '; anchor', oanchor)
+    for i, f in enumerate(frames['fly']):
+        e = (f[..., 0] > 200) & (f[..., 1] > 150) & (f[..., 2] < 130) & (f[..., 3] == 255)
+        e[:, :oanchor[0] + 60] = False
+        ys_, xs_ = np.nonzero(e)
+        sel = xs_ > np.percentile(xs_, 40) if len(xs_) else xs_
+        solid_rows = np.nonzero((f[..., 3] == 255).any(1))[0]
+        dust_rows = np.nonzero(((f[..., 3] > 0) & (f[..., 3] < 255)).any(1))[0]
+        print(f'  frame {i}: eye ~({xs_[sel].mean():.1f}, {ys_[sel].mean():.1f}) n={len(xs_)}; lowest solid y {solid_rows.max()},'
+              f' lowest soft y {dust_rows.max() if len(dust_rows) else "-"}')
     note = [
         "The stone drake (vfx_beasts/earth), copied from his earth sheet's BEAST panel: his left picture",
-        "(the prowl) is frame 0 and his right one (the lunge, dust kicking up) is frame 5, both on one",
-        "anchor (the middle of the torso). 1-4, 6 and 7 turn his legs and tail about their joints, pitch",
-        "and bob the body and move his dust. Scale: his character is " + f"{his_char_h} px tall in that sheet, ours {CHAR_H:.0f}.",
+        "(the prowl) is frame 0 and his right one (the lunge, dust kicking up) is frame 5, both standing on",
+        "his one ground line with the eye at one x. 1-4, 6 and 7 turn his legs and tail about their joints,",
+        "pitch the body and carry it along the leap between his two pictures, and move his dust.",
+        "Scale: his character is " + f"{his_char_h} px tall in that sheet, ours {CHAR_H:.0f}.",
     ]
     write_module(frames, size, oanchor, note)
-    sidecar('earth', {'ref': os.path.basename(REF), 'scale': S, 'panel': list(PANEL),
-                      'keys': {str(k): {'torso': list(TORSO[k]), 'origin': list(keys[k][4])} for k in (0, 5)},
-                      'work': [WAX, WAY, CW, CH], 'feet': feet})
+    sidecar('earth', {'ref': os.path.basename(REF), 'scale': S, 'panel': list(PANEL), 'ground': GROUND,
+                      'keys': {str(k): {'torso': list(TORSO[k]), 'origin': list(keys[k][4]), 'eye': list(EYE[k])} for k in (0, 5)},
+                      'work': [WAX, WAY, CW, CH], 'oanchor': list(oanchor), 'size': list(size), 'feet': feet})
     if DEBUG:
-        for k, (crop, body, rest, diff, off) in keys.items():
+        for k, (crop, body, rest, diff, off, shade) in keys.items():
             vis = (crop * 0.35).astype(np.uint8)
             vis[body] = crop[body].astype(np.uint8)
+            vis[shade] = (vis[shade] * 0.5 + np.array([0, 160, 255]) * 0.5).astype(np.uint8)
             vis[rest] = [255, 0, 255]
+            if k == 5:
+                vis[dust & ~pile] = [255, 255, 0]
+                vis[rest & ~dust] = [255, 0, 0]
             Image.fromarray(vis).save(os.path.join(DEBUG, f'drake-seg-{k}.png'))
-        # His picture box-filtered to game scale beside ours, on his panel colour, x4.
+        # His picture box-filtered to game scale beside ours, on his panel colour, x3.
         rows = []
         for i, k in enumerate((0, 5)):
             crop = keys[k][0]
@@ -1121,7 +1229,7 @@ def drake():
         sheet.paste(rows[0], (0, 0))
         sheet.paste(rows[1], (0, OH + 4))
         sheet.resize((sheet.width * 3, sheet.height * 3), Image.NEAREST).save(os.path.join(DEBUG, 'drake-keys.png'))
-        # Onion skin of the two keys on the shared anchor (red: frame 0, cyan: frame 5).
+        # Onion skin of the two keys (red: frame 0, cyan: frame 5).
         on = np.zeros((OH, OW, 3), np.uint8)
         on[frames['fly'][0][..., 3] > 0, 0] = 255
         on[frames['fly'][5][..., 3] > 0, 1:] = 200

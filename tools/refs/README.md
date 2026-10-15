@@ -20,14 +20,20 @@ folders.
 
   Its `drake` mode copies the stone drake (the earth beast; it replaced the old serpent) from his
   earth sheet's BEAST panel into `tools/world-sprites/vfx-beasts-ref-earth.ts`. His left picture
-  (prowl) is fly frame 0 and his right one (lunge, dust kicking up) is frame 5, both on one anchor
-  at the middle of the torso; the scale comes from his character on the WALL panel (228 px tall
-  against our 96). The in-betweens turn his own legs and tail about their joints (the turn eases in
-  from the cut, so each piece stays joined), pitch and bob the body a few pixels, and grow his dust
-  behind the hind feet around the lunge, then drift it back and fade it (his dust was clipped by
-  his frame box, so it fades out toward those edges). The pieces, joints and torso points are the
-  tables at the top of `drake()`. With a fifth argument, a folder, it writes the cut-out pieces,
-  his pictures beside ours and onion skins.
+  (prowl) is fly frame 0 and his right one (lunge, dust kicking up) is frame 5. Both stand on his one
+  ground line (y 1948 in his sheet) with the eye at one x, so the lunge is a leap and the dust pile
+  sits on the ground; the anchor is the middle of the prowl's torso. The scale comes from his
+  character on the WALL panel (228 px tall against our 96). The drake keeps his dark under-body
+  shadow (warmer than his panel), and his dust is kept opaque in his own colours (only streaks and
+  specks thinner than a game pixel get a partial alpha); the straight side where his picture's box cut
+  the pile ends along his boulders instead. The in-betweens turn his own legs and tail about their
+  joints (the turn eases in from the cut, so each piece stays joined, and his shadow colour fills what
+  a turned leg uncovers at its joint), pitch the body and carry it along the leap so the head moves
+  on a smooth arc, and grow his dust off the ground behind the hind feet around the lunge, then let it
+  drift back, settle and fade. The pieces, joints, loose dirt and placement points are the tables at
+  the top of `drake()`; the frame table (pitch, bob, leg angles, dust) is at its end. With a fifth
+  argument, a folder, it writes the cut-out pieces, the segmentation, his pictures beside ours and
+  onion skins.
 
       python3 -I tools/refs/beasts-from-ref.py drake docs/reference/earth-set-owner-reference.jpg docs/reference/earth-set-owner-reference.jpg tools/world-sprites/vfx-beasts-ref-earth.ts [debugDir]
 

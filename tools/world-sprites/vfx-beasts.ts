@@ -644,10 +644,12 @@ function windCrane(): WorldSprite {
 // The owner's stone drake from his earth sheet (the BEAST panel, where he painted a new four-legged
 // drake over our old serpent and asked for the serpent to go): grey-brown rock plates, moss on the
 // back, horns and spikes, glowing yellow eyes and a toothy jaw. His left picture (prowling) is fly
-// frame 0 and his right one (the low charging lunge, dust kicking up behind the hind legs) is frame 5,
-// both on one anchor at the middle of the torso. tools/refs/beasts-from-ref.py (drake mode) copies
-// them and builds the in-betweens by turning his legs and tail about their joints, pitching and
-// bobbing the body and moving his dust, writing vfx-beasts-ref-earth.ts.
+// frame 0 and his right one (the low charging lunge, dust kicking up behind the hind legs) is frame 5.
+// Both stand on his one ground line with the eye at one x, so the lunge is a leap and his dust pile sits
+// on the ground; the anchor is the middle of the prowl's torso. tools/refs/beasts-from-ref.py (drake
+// mode) copies them and builds the in-betweens by turning his legs and tail about their joints,
+// pitching the body and carrying it along the leap, and growing, drifting and settling his dust,
+// writing vfx-beasts-ref-earth.ts.
 
 function stoneDrake(): WorldSprite {
   const f = refFrames(REF_EARTH);

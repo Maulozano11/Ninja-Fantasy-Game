@@ -437,7 +437,8 @@ def lab(rgb):
     M = np.array([[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]])
     xyz = c @ M.T / np.array([0.9505, 1.0, 1.089])
     f = np.where(xyz > 0.008856, np.cbrt(xyz), 7.787 * xyz + 16 / 116)
-    return np.stack([116 * f[..., 1] - 16, 500 * (f[..., 0] - f[..., 1]), 200 * (f[..., 1] - f[..., 2])], -1)
+    # (a and b weighted up: in his washes a shift of hue reads more than one of lightness)
+    return np.stack([116 * f[..., 1] - 16, 1.6 * 500 * (f[..., 0] - f[..., 1]), 1.6 * 200 * (f[..., 1] - f[..., 2])], -1)
 
 def median_cut(cols, n):
     cols = np.asarray(cols, np.float64)
@@ -462,7 +463,7 @@ def kmeans_lab(cols, init, iters=10):
     return pal
 
 ALEV = np.array([0.12, 0.24, 0.36, 0.5, 0.64, 0.78])
-FAM_N = {0: 22, 1: 8, 2: 7}
+FAM_N = {0: 26, 1: 8, 2: 7}
 
 class Palette:
     def __init__(self, imgs, extra_tr=()):

@@ -817,10 +817,10 @@ function blast(): WorldSprite {
     { sh: 1.05, ds: 1.08, up: 0.76, bits: 1.3, t: 0.2, cool: 1, dim: 1, thin: 0.16, shDim: 1 },
     { sh: 1.05, ds: 1.1, up: 0.65, bits: 1.39, t: 0.24, cool: 2, dim: 1, thin: 0.23, shDim: 1 },
     { sh: 1.06, ds: 1.12, up: 0.54, bits: 1.48, t: 0.28, cool: 2, dim: 1, thin: 0.3, shDim: 2 },
-    { sh: 1.06, ds: 1.13, up: 0.43, bits: 1.57, t: 0.32, cool: 3, dim: 2, thin: 0.37, shDim: 2 },
-    { sh: 1.07, ds: 1.14, up: 0.32, bits: 1.66, t: 0.36, cool: 3, dim: 2, thin: 0.45, shDim: 3 },
-    { sh: 1.07, ds: 1.15, up: 0.21, bits: 1.75, t: 0.4, cool: 3, dim: 2, thin: 0.53, shDim: 3 },
-    { sh: 1.08, ds: 1.16, up: 0.1, bits: 1.84, t: 0.44, cool: 3, dim: 3, thin: 0.6, shDim: 4 },
+    { sh: 1.06, ds: 1.13, up: 0.43, bits: 1.57, t: 0.32, cool: 3, dim: 2, thin: 0.32, shDim: 2 },
+    { sh: 1.07, ds: 1.14, up: 0.32, bits: 1.66, t: 0.36, cool: 3, dim: 3, thin: 0.36, shDim: 3 },
+    { sh: 1.07, ds: 1.15, up: 0.21, bits: 1.75, t: 0.4, cool: 3, dim: 4, thin: 0.4, shDim: 3 },
+    { sh: 1.08, ds: 1.16, up: 0.1, bits: 1.84, t: 0.44, cool: 3, dim: 5, thin: 0.44, shDim: 4 },
   ];
   // Up per crystal: rising, the middle ones lead; sinking, all together.
   const upOf = (i: number, u: number, off: number) => (i < BLAST_KEY ? clamp(u * 1.3 - off * 0.3, 0, 1) : u);

@@ -313,7 +313,7 @@ SPRITES = {
                   drop=[[(1640, 640), (1700, 640), (1700, 797), (1640, 797)]],
                   solid=BLAST_SOLID, dust=[rect(1159, 435, 1668, 797)], dust_a=0.92, shade=[rect(1159, 600, 1668, 797)],
                   pieces=[('k%d' % k, [p]) for k, p in enumerate(BLAST_SOLID[:12])] + [('rocks', BLAST_SOLID[12:])],
-                  fade={'right': 6}, bits=80, cloud_r=10),
+                  fade={'right': 6, 'left': 10}, bits=80, cloud_r=10),
     'wall': dict(s=2.34, anchor=(379.5, 1177), area=[rect(24, 867, 745, 1253)], art_d=14, bits=40,
                  dust=[rect(24, 1195, 745, 1253)], sparse=True, dust_a=0.85, wall=True),
     'wall_diag': dict(s=2.35, anchor=(1545, 1302), area=[rect(1222, 867, 1975, 1490)],
@@ -953,7 +953,8 @@ def under_region(idx, kinds, cfg, line=None):
     k = kinds[idx]
     rock = (k == 'body') | (k == 'outline')
     dust = k == 'dust'
-    region = rock & cloud_of(dust, cfg.get('cloud_r', 6))
+    cloud = dust | (k == 'shade')
+    region = rock & cloud_of(cloud, cfg.get('cloud_r', 6))
     if cfg.get('wall'):
         lab, n = components(rock, nb=N8)
         small = np.zeros(idx.shape, bool)
@@ -992,7 +993,7 @@ def under_fill(idx, kinds, PALC, region, cfg, dust_pal):
         done |= ok
     a = np.where(region & done, out_q[..., 3], 0.0)
     # Taper: thinner over the last 2 px inside the cloud's envelope.
-    env = cloud_of(dust, cfg.get('cloud_r', 6))
+    env = cloud_of(dust | (k == 'shade'), cfg.get('cloud_r', 6))
     e1 = erode(env, 1, nb=N8)
     e2 = erode(e1, 1, nb=N8)
     a = a * np.where(e2, 1.0, np.where(e1, 0.75, 0.45))

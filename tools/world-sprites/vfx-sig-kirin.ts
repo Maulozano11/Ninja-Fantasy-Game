@@ -394,7 +394,11 @@ function bolt(dst: Canvas, o: { front: number; dim: number; dx: number; branches
     src,
     (x, y) => [x - o.dx, y],
     (c, x, y) => {
+      // It leaves the eye's funnel: hidden inside the eye's ellipse (ragged), its rim there glowing.
+      const de = Math.hypot((x + 0.5 - S.eye[0]) / 34, (y + 0.5 - S.eye[1]) / 13) - 0.22 * (noise(x, y, 5, 506) - 0.5);
+      if (de < 1 || y < S.eye[1]) return null;
       if (o.front < 1 && y > fy + 18 * (noise(x, 0, 14, 505) - 0.5)) return null;
+      if (de < 1.2) return withA(dimmed(c[0], c[1], c[2], 0.85, ELECTRIC), o.alpha);
       if (o.branches < 1 && toMain(x - o.dx, y) > 9 && noise(x, y, 26, 520 + o.f) > o.branches) return null;
       if (o.burn && !survives(src, x - o.dx, y, o.burn, x, y, 531, 10, 0.6)) return null;
       let k: Color = c;

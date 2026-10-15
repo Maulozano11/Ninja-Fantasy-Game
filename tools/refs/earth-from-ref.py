@@ -282,7 +282,7 @@ SPRITES = {
     'blast': dict(s=2.39, anchor=(1412, 737), area=[rect(1159, 435, 1668, 797)],
                   drop=[[(1640, 640), (1700, 640), (1700, 797), (1640, 797)]],
                   solid=BLAST_SOLID, dust=[rect(1159, 435, 1668, 797)], dust_a=0.92, shade=[rect(1159, 600, 1668, 797)],
-                  pieces=[('spikes', BLAST_SOLID[:12]), ('rocks', BLAST_SOLID[12:])],
+                  pieces=[('k%d' % k, [p]) for k, p in enumerate(BLAST_SOLID[:12])] + [('rocks', BLAST_SOLID[12:])],
                   fade={'right': 6}, bits=80),
     'wall': dict(s=2.34, anchor=(379.5, 1177), area=[rect(24, 867, 745, 1253)], art_d=14, bits=40,
                  dust=[rect(24, 1195, 745, 1253)], sparse=True, dust_a=0.85),
@@ -296,7 +296,7 @@ SPRITES = {
                        art_d=14, dust_a=0.85, bits=40),
     'aura': dict(s=2.41, anchor=(1072, 1175), area=[rect(929, 867, 1192, 1215)],
                  dust=[rect(929, 867, 1192, 1215)], dust_a=0.85, bits=30, aura=True, figure=AURA_FIGURE,
-                 front_band=(985, 1060, 1140, 1098)),
+                 front_band=(988, 1060, 1124, 1098)),
     # The stream: his spike row, the tile ending where his head begins (x 975), the line 262.
     'stream': dict(s=158 / 64, anchor=(975, 262), area=[rect(650, 101, 1287, 324)],
                    dust=[[(978, 101), (1287, 101), (1287, 324), (978, 324)]], dust_l=(0, 150), dust_a=0.8,
@@ -507,6 +507,9 @@ def decide(cfg, g, W, H, ax, ay):
     cover = np.clip(S + DA, 0, 1)
     dust = free & (DA >= 0.03) & (cover >= 0.07)
     da = cover * cfg.get('dust_a', 0.9)
+    # His colour un-blended at the dust's own alpha (before any fade, which only thins it).
+    a_f = np.maximum(da, 1e-3)[..., None]
+    dcol = np.clip((g['all'] - (1 - a_f) * BG) / a_f, 0, 255)
     # Fades where his panel cut the art (the dust thins out over the last n px).
     xs = np.arange(W)[None, :]
     ys = np.arange(H)[:, None]
@@ -525,8 +528,6 @@ def decide(cfg, g, W, H, ax, ay):
         da = da * k
         SA = SA * k
     dust &= da >= 0.05
-    a_f = np.maximum(da, 1e-3)[..., None]
-    dcol = np.clip((g['all'] - (1 - a_f) * BG) / a_f, 0, 255)
     shade = free & ~dust & (SA >= 0.06)
     return dict(solid=solid, rim=rim, dust=dust, da=da, dcol=dcol, shade=shade, sa=np.clip(SA * 1.6, 0, 0.75))
 

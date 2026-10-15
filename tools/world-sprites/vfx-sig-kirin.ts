@@ -287,8 +287,7 @@ function kanji(dst: Canvas, o: { write: number; breath: number; fade: number; f:
         const local = (o.write - (sid - 1) * span) / dur;
         a = lv(clamp(local * 1.7 - prog * 0.7, 0, 1));
         if (a <= 0) return null;
-        if (a < 1) k = 0.45 + 0.55 * a;
-        else if (local > 0.55 && local < 1.0 && L > 170) return [255, 255, 255, c[3]];
+        if (a >= 1 && local > 0.55 && local < 1.0 && L > 170) return [255, 255, 255, c[3]];
       } else {
         a = lv(clamp((o.write - 0.84) / 0.16, 0, 1));
         if (a <= 0) return null;
@@ -297,8 +296,9 @@ function kanji(dst: Canvas, o: { write: number; breath: number; fade: number; f:
       }
       if (o.breath && L < 200) k *= 1 - o.breath;
       if (o.fade > 0) {
-        a *= 1 - smooth(0.15, 0.95, o.fade);
-        k *= 1 - 0.55 * o.fade;
+        // The glow dies: it loses its white first, then fades out (it stays electric blue).
+        a *= 1 - smooth(0.05, 0.8, o.fade);
+        k *= 1 - 0.3 * smooth(0, 0.5, o.fade);
       }
       const col = k < 0.999 ? dimmed(c[0], c[1], c[2], k) : c;
       return withA(col, a * (c[3] / 255));

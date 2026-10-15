@@ -19,3 +19,11 @@ folders.
       python3 -I tools/refs/beasts-from-ref.py crane <wind-sheet.jpg> <wind-sheet.jpg> tools/world-sprites/vfx-beasts-ref-wind.ts
 
 - `vfx-fire-extract.py` (when present): pieces of the fire references for the fire generators.
+
+- `water-from-ref.py`: the whole water set (`vfx_water_v3`) from his water sheet. It writes
+  `tools/world-sprites/vfx-water-v3-refdata.ts`, which `vfx-water-v3.ts` animates. The third
+  argument is our character at 1x (kit `characterRef()` saved as a PNG; it splits the aura into
+  the layers behind and over the figure). With a fourth, a review folder, it also writes his crops
+  at game scale and before/after previews.
+
+      python3 -I tools/refs/water-from-ref.py docs/reference/water-set-owner-reference.jpg tools/world-sprites/vfx-water-v3-refdata.ts <character.png> [reviewDir]

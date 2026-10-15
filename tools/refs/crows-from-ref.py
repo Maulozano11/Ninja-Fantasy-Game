@@ -23,17 +23,21 @@ The other frames are made from the same pixels, so the crows stay his: each crow
 picture at sheet scale with its holes closed, and beats its wings by turning his own raised-wing
 pixels about the shoulder (30 and 60 degrees, nearest neighbour, before the shrink), the far wing
 behind the body and the near wing in front. They move by whole pixels and are mirrored to turn
-round. His vortex is unwrapped about its eye into polar space, the holes the crows leave are filled
-along each ring from the same radius, and it spins by shifting the angle and closes by scaling the
-radius, so its stripes stay crisp. His smoke trails in behind the flock and is left behind; his
+round; where one of his flock crows is partly hidden in his flock (a wing and a head), the whole crow
+of his left picture flies its place while it is away from the flock. One-pixel hairs and loose crumbs
+(under 10 px) of the lifted pieces are left out, so nothing reads as a stray line. His vortex is
+unwrapped about its eye into polar space, the holes the crows leave are filled along each ring from
+the same radius, and it spins by shifting the angle and closes by scaling the radius, so its stripes
+stay crisp. His smoke trails in behind the flock and is left behind; his
 feathers drift back. The 'summon' anim (our proposal: he painted only the fly frames) opens his
 vortex at the caster and brings the crows out of it and round it, ending on his left picture.
 
 The result is a TypeScript data module (palette + run-length rows) that the generator
 (tools/world-sprites/vfx-beast-crows.ts) decodes, so the build needs no image files. Deterministic.
 The build fails if a frame has an enclosed transparent gap over 20 px, a speck of 3 px or less, an
-opaque pixel on its edge, or (fly) an opaque mass more than 25 % off its neighbour's or a crow moving
-more than 25 px from one frame to the next.
+opaque pixel on its edge, a mean luma more than 20 % off its neighbour's (a flash), or (fly) an
+opaque mass more than 25 % off its neighbour's, a light (alpha x luma) more than 1.5x off it, or a
+crow moving more than 25 px from one frame to the next.
 """
 import json
 import os
@@ -265,10 +269,11 @@ CROWS = {
         {'name': 'L2', 'cut': [(395, 866), (428, 866), (440, 856), (448, 846), (458, 843), (472, 841), (492, 841)], 'split': 449, 'near': 'lo', 'eye': (468, 852), 'face': 1,
          'pivot': {'lo': (446, 845), 'hi': (453, 843)},
          'poly': [(406, 808), (411, 809), (418, 819), (425, 827), (432, 834), (440, 839), (447, 843), (453, 841), (459, 835), (466, 828), (474, 821), (481, 815), (486, 812), (488, 817), (483, 826), (477, 834), (471, 841), (473, 846), (479, 852), (484, 858), (487, 864), (481, 865), (473, 863), (468, 867), (466, 872), (462, 872), (446, 871), (436, 868), (428, 863), (420, 859), (412, 853), (405, 847), (401, 839), (400, 829), (402, 818)]},
-        # L3's outline hugs its beak: the dark smoke streak under it is the vortex's, not the crow's.
+        # L3's outline hugs its beak: the dark smoke streak under it is the vortex's, not the crow's. It
+        # also hugs the tip of its raised near wing: the dark stripe edge running right from it is the vortex's.
         {'name': 'L3', 'cut': [(365, 932), (400, 936), (420, 918), (430, 914), (440, 913), (458, 913), (475, 913)], 'split': 431, 'near': 'lo', 'eye': (446, 924), 'face': 1,
          'pivot': {'lo': (430, 913), 'hi': (447, 912)}, 'turn': {'hi': -1},
-         'poly': [(388, 853), (396, 860), (404, 866), (410, 876), (416, 888), (422, 898), (428, 906), (433, 910), (436, 900), (436, 885), (437, 870), (442, 865), (452, 864), (460, 866), (463, 876), (462, 892), (459, 906), (458, 913), (461, 920), (463, 926), (461, 932), (456, 935), (452, 940), (450, 946), (442, 950), (438, 958), (434, 963), (420, 963), (414, 956), (412, 948), (406, 942), (398, 938), (392, 932), (389, 922), (386, 910), (384, 898), (382, 886), (381, 872), (383, 860)],
+         'poly': [(388, 853), (393, 861), (399, 868), (410, 876), (416, 888), (422, 898), (428, 906), (433, 910), (436, 900), (436, 885), (437, 870), (442, 865), (452, 864), (460, 866), (463, 876), (462, 892), (459, 906), (458, 913), (461, 920), (463, 926), (461, 932), (456, 935), (452, 940), (450, 946), (442, 950), (438, 958), (434, 963), (420, 963), (414, 956), (412, 948), (406, 942), (398, 938), (392, 932), (389, 922), (386, 910), (384, 898), (382, 886), (381, 872), (383, 860)],
          'keep': [(414, 946), (440, 946), (440, 965), (414, 965)]},
     ],
     'R': [
@@ -605,13 +610,17 @@ def turn_nn(mask, rgb, deg, px, py):
 
 def sheet_crow(key, cr):
     """His crow lifted off his picture (sheet pixels, padded): its holes closed from its own pixels, its
-    raised wings found above the shoulder line (minus the head) with their shoulder joints."""
+    raised wings found above the shoulder line (minus the head) with their shoulder joints. `gap` is where
+    his vortex's purple showed between its feathers: closed, but see-through wherever the crow flies over
+    something (the vortex, another crow), as he painted it."""
     L = LAY[key]
     x0, y0 = PICS[key][:2]
     m, rgb = fill_holes(cr['mask'], L['rgb'])
+    c = L['rgb']
+    vivid = (c.max(2) - c.min(2) > 40) & (c[..., 1] < 0.5 * np.maximum(c[..., 0], c[..., 2])) & (key == 'L')
     H, W = m.shape
     yy, xx = np.mgrid[0:H, 0:W]
-    out = {'mask': pad(m), 'rgb': pad(rgb), 'wings': []}
+    out = {'mask': pad(m), 'rgb': pad(rgb), 'gap': pad(m & ~cr['mask'] & vivid), 'wings': []}
     if 'cut' in cr:
         line = np.interp(np.arange(W), [p[0] - x0 for p in cr['cut']], [p[1] - y0 for p in cr['cut']])
         head = np.hypot(xx - (cr['eye'][0] - x0), yy - (cr['eye'][1] - y0)) < 7.5
@@ -632,30 +641,35 @@ _poses = {}
 
 
 def pose(name, mode):
-    """(mask, rgba, eyes) of his crow `name` at its place in his picture, wings 'up' (as he painted
+    """(mask, rgba, eyes, see) of his crow `name` at its place in his picture, wings 'up' (as he painted
     them), 'mid' or 'down' (each wing turned down about its shoulder by 30 or 60 degrees: the far wing
-    behind the body, the near wing in front), shrunk to the game scale, snapped, gaps closed, eye stamped."""
+    behind the body, the near wing in front), shrunk to the game scale, snapped, gaps closed, eye stamped.
+    `see`: the gaps between its feathers where his vortex showed through (see-through over anything)."""
     k = (name, mode)
     if k in _poses:
         return _poses[k]
     sc = SHEET[name]
     key = BY[name]['key']
     if mode == 'up' or not sc['wings']:
-        cov, col = sc['mask'], sc['rgb']
+        cov, col, gap = sc['mask'], sc['rgb'], sc['gap']
     else:
         allw = np.zeros_like(sc['mask'])
         for w in sc['wings']:
             allw |= w['mask']
         cov = np.zeros_like(sc['mask'])
+        gap = np.zeros_like(sc['mask'])
         col = np.zeros_like(sc['rgb'])
         for it in [w for w in sc['wings'] if not w['near']] + ['body'] + [w for w in sc['wings'] if w['near']]:
             if it == 'body':
-                pm, pc = sc['mask'] & ~allw, sc['rgb']
+                pm, pc, pg = sc['mask'] & ~allw, sc['rgb'], sc['gap']
             else:
                 pm, pc = turn_nn(it['mask'], sc['rgb'], it['sign'] * WING_DEG[mode], *it['pivot'])
+                pg = turn_nn(it['mask'] & sc['gap'], sc['rgb'], it['sign'] * WING_DEG[mode], *it['pivot'])[0]
             cov[pm] = True
             col[pm] = pc[pm]
+            gap[pm] = pg[pm]
     A, C = shrink_pic(key, col, cov, padded=True)
+    Ag = shrink_pic(key, col, gap, padded=True)[0]
     m = A >= 0.5
     nb = nb4(m)
     m = (m & (nb >= 1)) | (~m & (nb >= 3) & (A >= 0.2))
@@ -675,7 +689,7 @@ def pose(name, mode):
     rgba[m, 3] = 255
     m, rgba = fill_holes(m, rgba)
     m, rgba, eyes = stamp_eye(m, rgba, *EYES_AT[name])
-    _poses[k] = (m, rgba, eyes)
+    _poses[k] = (m, rgba, eyes, m & ~eyes & (Ag >= 0.5))
     return _poses[k]
 
 
@@ -857,21 +871,23 @@ def darkened(rgba, m, eyes, k):
 def place(p, dx=0, dy=0, mirror=False, wings='up', dark=0.0):
     """A piece moved by whole pixels, its wings beaten, mirrored about its eye (to turn round), darkened."""
     if p['kind'] == 'crow':
-        m, rgba, eyes = pose(p['name'], wings)
+        m, rgba, eyes, see = pose(p['name'], wings)
     else:
         m, rgba, eyes = p['fmask'], p['frgba'], p['eyes']
+        see = np.zeros_like(m)
     if mirror:
         ex2 = int(round(2 * p['eye'][0] - 1))  # pixel i (centre i + 0.5) -> 2 * eye - i - 1
         src = ex2 - np.arange(OW)
         ok = (src >= 0) & (src < OW)
-        nm, nr, ne = np.zeros_like(m), np.zeros_like(rgba), np.zeros_like(eyes)
-        nm[:, ok] = m[:, src[ok]]
-        nr[:, ok] = rgba[:, src[ok]]
-        ne[:, ok] = eyes[:, src[ok]]
-        m, rgba, eyes = nm, nr, ne
+        flip = []
+        for a in (m, rgba, eyes, see):
+            b = np.zeros_like(a)
+            b[:, ok] = a[:, src[ok]]
+            flip.append(b)
+        m, rgba, eyes, see = flip
     if dark:
         rgba = darkened(rgba, m, eyes, min(dark, 0.5))
-    return ('piece', move(m, dx, dy), move(rgba, dx, dy), move(eyes, dx, dy))
+    return ('piece', move(m, dx, dy), move(rgba, dx, dy), move(eyes, dx, dy), move(see, dx, dy))
 
 
 def compose(items, his=None):
@@ -897,7 +913,9 @@ def compose(items, his=None):
             pasted &= ~(v[..., 3] > 0)
             eyes &= ~(v[..., 3] > 0)
         else:
-            _, m, rgba, ey = it
+            m, rgba, ey = it[1:4]
+            if len(it) > 4:  # the gaps between its feathers show what is behind it, if anything is
+                m = m & ~(it[4] & (acc[..., 3] >= 128))
             acc[m] = rgba[m]
             pasted |= m
             eyes = (eyes & ~m) | ey
@@ -1148,6 +1166,29 @@ for i, step in enumerate(TRAVEL):
     for n, d in step.items():
         if d > 25:
             FAILS.append(f'fly {i} -> {(i + 1) % 6}: {n} moves {d} px (allowed 25)')
+
+
+# No flash: the light of a frame (alpha x luma summed over it) and the mean luma of what it covers change
+# smoothly from frame to frame. The fly loop's light may change by at most 1.5x a step, the wrap included
+# (the vortex closes over four frames and opens again over two, so ~1.35x a step coming back is the least
+# it can be); in both anims a frame's mean luma stays within 20 % of its neighbour's, so no frame is a
+# brighter flash of the same swarm.
+def light(f):
+    a = f[..., 3].astype(np.float32) / 255
+    return float((a * lum(f)).sum()), float((a * lum(f)).sum() / max(1, (f[..., 3] > 0).sum()))
+
+
+LIGHT = {anim: [light(f) for f in fr] for anim, fr in frames.items()}
+for anim, ls in LIGHT.items():
+    print(anim, 'light (k)', [round(t / 1000, 1) for t, _ in ls], 'mean luma', [round(m, 1) for _, m in ls])
+    n = len(ls)
+    for i in range(n if anim == 'fly' else n - 1):
+        j = (i + 1) % n
+        r_tot, r_mean = ls[j][0] / ls[i][0], ls[j][1] / ls[i][1]
+        if anim == 'fly' and not 1 / 1.5 <= r_tot <= 1.5:
+            FAILS.append(f'{anim} {i} -> {j}: light {r_tot:.2f}x (allowed 0.67-1.50)')
+        if not 1 / 1.2 <= r_mean <= 1.2:
+            FAILS.append(f'{anim} {i} -> {j}: mean luma {r_mean:.2f}x (allowed 0.83-1.20)')
 for msg in FAILS:
     print('CHECK FAILED:', msg)
 if FAILS and os.environ.get('CROWS_DEV') != '1':  # CROWS_DEV=1: keep going (debug images), never for the real build
@@ -1266,7 +1307,7 @@ if DEBUG:
     info = {'ref': os.path.basename(REF), 'scale': S, 'hisCharacter': heights, 'pictures': PICS, 'panel': PANEL,
             'anchors': {k: [ANCH[k][0] + PICS[k][0], ANCH[k][1] + PICS[k][1]] for k in PICS},
             'frame': FSIZE, 'anchor': FANCHOR, 'vortex': [VCX + PICS['L'][0], VCY + PICS['L'][1], VRAD],
-            'stats': STATS, 'travel': TRAVEL, 'outline': OUTLINE.tolist()}
+            'stats': STATS, 'travel': TRAVEL, 'light': LIGHT, 'outline': OUTLINE.tolist()}
     tmp = os.path.join(DEBUG, 'crows-ref.json.part')
     with open(tmp, 'w') as fh:
         json.dump(info, fh, indent=1, default=lambda o: o.tolist() if hasattr(o, 'tolist') else str(o))
@@ -1307,7 +1348,7 @@ if DEBUG:
             if mode == 'exact':
                 rgba = BY[n]['rgba']
             else:
-                _, m, rgba, _ = place(BY[n], wings=mode)
+                m, rgba = place(BY[n], wings=mode)[1:3]
             cx, cy = int(BY[n]['eye'][0]), int(BY[n]['eye'][1])
             big = np.zeros((OH + 2 * T, OW + 2 * T, 4), np.uint8)
             big[T:T + OH, T:T + OW] = rgba

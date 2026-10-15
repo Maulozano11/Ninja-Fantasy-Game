@@ -6,20 +6,24 @@
 // deep-violet outline and kept his glows and dark smoke as semi-transparent pixels. That data is in
 // vfx-genjutsu-v3-refdata.ts; this generator only DERIVES the other frames from those key frames:
 //
-//   - fly loops    frame 0 is his picture; the core (orb, eye, crescent) holds still while the
-//                  tendrils wave, the smoke streams back, the arcs ripple out, the eyes blink;
-//   - stream       his 64 px tile (one braid period), scrolled along the line (still tiles); the
-//                  head is his head in frame 0, then his ribbons slide on into the turning spiral
-//                  with the braid following from the last tile (seamless joint in every frame);
-//   - hit / blast  grow up to his picture (hit frame 2, blast frame 3), then break up and fade;
-//                  the blast's column shoots up in streaks of light out of the opening pool;
-//   - walls        'rise' pushes his crystals up out of the ground, then the vines and petals come
-//                  (the 3/4 wall's long shadow stretches out with it); 'idle' is his picture, then
-//                  a glint runs over the crystals and the bits drift;
-//   - aura         two layers: aura_back (behind the character: his flames and smoke) and aura
-//                  (over the character: his violet veil as a soft field over the body, measured
-//                  on his sheet, plus his petals, feathers and the ring at the feet); the flames
-//                  lick upward, the veil breathes and the petals drift.
+//   - fly loops    8 frames at 10 fps; frame 0 is his picture; the core (orb, eye, crescent) holds
+//                  still while the tendrils wave, the smoke streams back, the arcs ripple out, the
+//                  eyes blink;
+//   - stream       his 64 px tile (one braid period), scrolled 8 px a frame (still tiles); the head
+//                  is his head in frame 0, then his ribbons slide on into the turning spiral with
+//                  the braid following from the last tile (seamless joint in every frame);
+//   - hit          12 frames: it builds over 3 frames, his picture on frame 3, held 2 frames, then
+//                  it dissipates over 6 (flies apart, shrinks, cools down its ramps, fades);
+//   - blast        16 frames: anticipation over 4 (the pool opens, the column shoots up in streaks
+//                  of light), his picture on frame 4, held 2 frames, then a long settle and fade;
+//   - walls        'rise' (12 frames) pushes his crystals up out of the ground, then the vines and
+//                  petals come (the 3/4 wall's long shadow stretches out with it) and ends on his
+//                  picture; 'idle' (8 frames) is his picture, then a glint runs over the crystals
+//                  and the bits drift;
+//   - aura         12 frames, two layers: aura_back (behind the character: his flames and smoke)
+//                  and aura (over the character: his violet veil as a soft field over the body,
+//                  measured on his sheet, plus his petals, feathers and the ring at the feet); the
+//                  flames lick upward, the veil breathes and the petals drift.
 //
 //   WORLD_OUT=<dir> npx tsx tools/world-sprites/vfx-genjutsu-v3.ts
 //
@@ -430,6 +434,62 @@ function key(name: string, room: Pad = pad(0)): Key {
   return { name, w, h, ax: s.anchor[0] + room.l, ay: s.anchor[1] + room.t, p, fade, seams: (s.seams ?? []).map((x) => x + room.l) };
 }
 const none = (k: Key): Ix => blank(k.w, k.h);
+
+/**
+ * Seals the small see-through holes INSIDE his black shapes (crow feathers, thorns): where his
+ * feather's middle was as dark as his panel, the cut-out took it for background, so on the map
+ * the map showed through a black feather. A clear region not reaching the frame's edge, up to
+ * 80 px, whose rim is mostly dark (L < 25), takes the rim's commonest colour and goes into the
+ * piece that owns most of the rim (so it moves with the feather). On his panel it looks the same.
+ */
+function sealDarkHoles(k: Key, names: string[]): void {
+  const any = (x: number, y: number) => names.some((n) => !!at(piece(k, n), x, y));
+  const seen = new Uint8Array(k.w * k.h);
+  for (let y0 = 0; y0 < k.h; y0++)
+    for (let x0 = 0; x0 < k.w; x0++) {
+      if (seen[y0 * k.w + x0] || any(x0, y0)) continue;
+      const region: number[] = [];
+      const st = [y0 * k.w + x0];
+      seen[y0 * k.w + x0] = 1;
+      let open = false;
+      const rim = new Map<string, number>();
+      while (st.length) {
+        const n = st.pop()!;
+        region.push(n);
+        const x = n % k.w, y = (n - x) / k.w;
+        if (x === 0 || y === 0 || x === k.w - 1 || y === k.h - 1) open = true;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const u = x + dx, v = y + dy;
+          if (u < 0 || v < 0 || u >= k.w || v >= k.h) continue;
+          const m = v * k.w + u;
+          if (any(u, v)) {
+            for (const pn of names) {
+              const val = at(piece(k, pn), u, v);
+              if (val) rim.set(`${pn}:${val}`, (rim.get(`${pn}:${val}`) ?? 0) + 1);
+            }
+          } else if (!seen[m]) {
+            seen[m] = 1;
+            st.push(m);
+          }
+        }
+      }
+      if (open || region.length > 80 || !rim.size) continue;
+      let dark = 0, total = 0, best = '', bn = 0;
+      const owner = new Map<string, number>();
+      for (const [key, n] of rim) {
+        const [pn, val] = key.split(':');
+        total += n;
+        if (LAB[Number(val) - 1][0] < 25) dark += n;
+        owner.set(pn, (owner.get(pn) ?? 0) + n);
+        if (n > bn || (n === bn && key < best)) [best, bn] = [key, n];
+      }
+      if (dark < total * 0.7) continue;
+      let own = '', on = 0;
+      for (const [pn, n] of owner) if (n > on || (n === on && pn < own)) [own, on] = [pn, n];
+      const fillV = Number(best.split(':')[1]);
+      for (const n of region) k.p[own].d[n] = fillV;
+    }
+}
 const piece = (k: Key, n: string): Ix => k.p[n] ?? none(k);
 
 /** Bright small bits (sparkles) blink: in some frames some of them are out. */
@@ -701,7 +761,7 @@ function stream(): WorldSprite[] {
       }
     // The spiral turns an eighth of a turn a frame inside its disc (4 sub-samples a pixel).
     const sp = turnInside(disc, cx, cy, (i / FLY_N) * TAU, 1, inDisc);
-    return render(h.w, h.h, [[slide(hs, s, false)], [flow], [sp], [w], [twinkle(sparks, i, 0.34, 707)]]);
+    return render(h.w, h.h, [[slide(hs, s, false)], [flow], [sp], [w], [twinkle(sparks, i, 0.2, 707)]]);
   });
   return [
     sprite(t, 'Genjutsu stream: braided magenta ribbons (tileable 64 px)', { fly: { frames: tiles.map((ix) => render(t.w, t.h, [[ix]])), fps: FLY_FPS, loop: true } }),
@@ -774,6 +834,7 @@ function hit(): WorldSprite {
 
 function blast(): WorldSprite {
   const k = key('blast', pad(2));
+  sealDarkHoles(k, ['main', 'smoke', 'column', 'pool']);
   const pool = piece(k, 'pool'), col = piece(k, 'column'), fx = piece(k, 'main'), sm = piece(k, 'smoke');
   const pb = bounds(pool)!;
   // The pool lies on the ground: its own ellipse (centre and height / width) is what turns.
@@ -781,6 +842,21 @@ function blast(): WorldSprite {
   const squash = clamp((pb[3] - pb[1]) / (pb[2] - pb[0]), 0.2, 0.6);
   const cb = bounds(col)!;
   const colBottom = cb[3], colH = colBottom - cb[1];
+  // His dark smoke streaks and feathers lie across the column, so the column has gaps under them,
+  // and the smoke is see-through: on the map those gaps would show the map. They are filled from
+  // the nearest column pixel in the same row (both sides within 14 px) and drawn UNDER the smoke:
+  // where the smoke still lies over them, the fill is his deep violet (so the smoke composites
+  // back to his look, within 2-3 levels), and where it has drifted off, the column runs on.
+  const colFill = blank(k.w, k.h);
+  const DEEP = KIND.indexOf('outline') + 1;
+  for (let y = 0; y < k.h; y++)
+    for (let x = 0; x < k.w; x++) {
+      if (at(col, x, y) || !at(sm, x, y)) continue;
+      let l = 0, r = 0;
+      for (let d = 1; d <= 14 && !l; d++) if (at(col, x - d, y)) l = d;
+      for (let d = 1; d <= 14 && !r; d++) if (at(col, x + d, y)) r = d;
+      if (l && r) colFill.d[y * k.w + x] = l <= r ? at(col, x - l, y) : at(col, x + r, y);
+    }
   const DEG = Math.PI / 180;
   const K = BLAST_KEY;
   // The plan, one entry per frame. Anticipation (0-3): the pool opens and turns, the column
@@ -805,7 +881,7 @@ function blast(): WorldSprite {
   const fr: Canvas[] = [];
   for (let i = 0; i < BLAST_N; i++) {
     if (i === K) {
-      fr.push(render(k.w, k.h, [[pool], [sm], [col], [fx]], k.fade));
+      fr.push(render(k.w, k.h, [[pool], [remap(colFill, () => DEEP)], [sm], [col], [fx]], k.fade));
       continue;
     }
     // The vortex turns 6 degrees a frame inside its own outline (a true rotation in the ground
@@ -814,22 +890,24 @@ function blast(): WorldSprite {
     if (P.poolS[i] < 1) p = scaleAbout(p, k.ax, k.ay, P.poolS[i]);
     // Dying: each colour steps down its own hue ramp (the vortex darkens, it never greys).
     if (P.poolDim[i]) p = tone(p, P.poolDim[i]);
-    // The column shoots up out of the pool, white-hot at its front.
-    let c = col;
+    // The column shoots up out of the pool, white-hot at its front. (`shape` is applied to the
+    // column and to its fill under his smoke alike.)
+    let shape: (src: Ix) => Ix;
     let colFront: ((x: number, y: number) => number) | undefined;
     if (P.reach[i] < 1) {
       // Its front is ragged in streaks (each column of light ends at its own height): the last
       // 12 px fade out in steps, white-hot just below. It starts narrow and widens.
       const front = (x: number) => colBottom - colH * P.reach[i] + snoise(x, i, 2.5, 925) * 9;
-      c = scaleAbout(col, k.ax, colBottom, P.narrow[i], 1);
-      c = tone(keep(c, (x, y) => y >= front(x)), (x, y) => (y < front(x) + 10 ? 2 : y < front(x) + 22 ? 1 : 0));
+      shape = (src) => tone(keep(scaleAbout(src, k.ax, colBottom, P.narrow[i], 1), (x, y) => y >= front(x)), (x, y) => (y < front(x) + 10 ? 2 : y < front(x) + 22 ? 1 : 0));
       colFront = (x, y) => Math.ceil(clamp((y - front(x)) / 12, 0, 1) * 4) / 4;
     } else {
       // Held and settling: the column wavers (a rising, looping field: 0 at his picture),
       // a little at first, more as it dies.
       const amp = i < K + 3 ? 0.7 + 0.35 * (i - K) : 1.6;
-      c = inside(displace(col, wobble((i - K) / 12, amp, 5, 930, 1)), 1);
+      const wv = wobble((i - K) / 12, amp, 5, 930, 1);
+      shape = (src) => inside(displace(src, wv), 1);
     }
+    let c = shape(col), cFill = shape(colFill);
     if (P.gone[i]) {
       // The light goes out from the top down: each streak ends lower (ragged, in ordered alpha
       // steps), and what is left steps down its own hue ramp. It stays opaque, so it darkens
@@ -837,7 +915,10 @@ function blast(): WorldSprite {
       const gone = (x: number) => cb[1] + colH * P.gone[i] + snoise(x, 0, 2, 945) * 8;
       colFront = (x, y) => Math.ceil(clamp((y - gone(x)) / 12, 0, 1) * 4) / 4;
     }
-    if (P.colDim[i]) c = tone(c, P.colDim[i]);
+    if (P.colDim[i]) {
+      c = tone(c, P.colDim[i]);
+      cFill = tone(cFill, P.colDim[i]);
+    }
     // The feathers, sparkles and splashes burst out with the column, then fly out and up.
     let f = fx;
     if (i < K) {
@@ -860,7 +941,9 @@ function blast(): WorldSprite {
       const front = (x: number) => colBottom - colH * P.reach[i] + snoise(x, i, 2.5, 925) * 9;
       s = keep(scaleAbout(sm, k.ax, k.ay, Math.max(P.poolS[i], 0.5)), (x, y) => y >= front(x) + 4 || y > k.ay - 26);
     } else s = inside(move(displace(sm, wobble((i - K) / 12, 1.4, 5, 970, 1)), 0, -Math.round((i - K) * 1.2)), 1);
-    fr.push(render(k.w, k.h, [[p, P.poolA[i]], [s, P.smA[i]], [c, Math.min(1, P.poolA[i] + 0.08), undefined, colFront], [f, P.fA[i]]], k.fade));
+    const colA = Math.min(1, P.poolA[i] + 0.08);
+    cFill = remap(cFill, (v, x, y) => (at(s, x, y) ? DEEP : v));
+    fr.push(render(k.w, k.h, [[p, P.poolA[i]], [cFill, colA, undefined, colFront], [s, P.smA[i]], [c, colA, undefined, colFront], [f, P.fA[i]]], k.fade));
   }
   return sprite(k, 'Genjutsu blast: column of violet light out of a swirling vortex, with crow feathers', { blast: { frames: fr, fps: BLAST_FPS, loop: false } });
 }
@@ -894,6 +977,7 @@ function glint(ix: Ix, t: number, x0: number, x1: number): Ix {
 
 function wall(): WorldSprite {
   const k = key('wall', pad(2));
+  sealDarkHoles(k, ['main', 'vines', 'bits', 'smoke']);
   const cr = piece(k, 'main'), vines = piece(k, 'vines'), bits = piece(k, 'bits'), sm = piece(k, 'smoke');
   const cb = bounds(cr)!;
   const ground = k.ay + 2;
@@ -940,6 +1024,7 @@ function wall(): WorldSprite {
 function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, seed: number): WorldSprite {
   const room = name === 'wall_diag' ? { l: 2, t: 2, r: 0, b: 2 } : pad(2);
   const k = key(name, room);
+  sealDarkHoles(k, ['main', 'column', 'bits', 'smoke', 'stain']);
   const main = piece(k, 'main'), col = piece(k, 'column'), bits = piece(k, 'bits'), sm = piece(k, 'smoke'), stain = piece(k, 'stain');
   const all = union(main, col);
   const ab = bounds(all)!;

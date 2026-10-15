@@ -162,6 +162,25 @@ def flood(free, seeds):
     return seen
 
 
+def holes_of(m):
+    """The pixels not in `m` that cannot be reached (4-way) from the border without crossing `m`."""
+    free = ~m
+    border = np.zeros_like(m)
+    border[0, :] = border[-1, :] = True
+    border[:, 0] = border[:, -1] = True
+    return free & ~flood(free, border & free)
+
+
+def bayer4():
+    """The 4x4 ordered-dither thresholds, in (0, 1)."""
+    b = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]], np.float64)
+    return (b + 0.5) / 16
+
+
+def bayer_at(H, W):
+    return np.tile(bayer4(), (H // 4 + 1, W // 4 + 1))[:H, :W]
+
+
 def poly_mask(h, w, polys, x0=0.0, y0=0.0, sx=1.0, sy=1.0):
     """Polygons in his coordinates rasterized on a grid whose (0, 0) is his (x0, y0), with sx, sy
     grid pixels per his pixel."""
@@ -254,6 +273,17 @@ BLAST_SOLID = [
     [(1415, 752), (1432, 736), (1450, 738), (1461, 760), (1460, 788), (1416, 788)],                         # rock, bottom
 ]
 
+# The sphere's planet, traced on his panel: the whole striped ball (its moss band runs from its
+# left edge, his x 1716), the ring's front arc where it crosses the ball included.
+PLANET = [(1716, 200), (1722, 185), (1728, 172), (1738, 157), (1752, 145), (1770, 136), (1795, 132), (1818, 135),
+          (1838, 145), (1852, 156), (1862, 172), (1867, 195), (1868, 218), (1864, 240), (1856, 258), (1846, 275),
+          (1832, 290), (1812, 300), (1790, 304), (1768, 300), (1750, 292), (1738, 280), (1728, 262), (1716, 245),
+          (1712, 225)]
+
+# The aura's two columns of golden pebbles and rocks (his x 929-1015 and 1105-1192): inside them,
+# his saturated gold and his moss are solid rock, found by colour (see solid_mask).
+AURA_COLUMNS = [rect(929, 867, 1016, 1215), rect(1104, 867, 1192, 1215)]
+
 # His figure inside the aura (removed; the ring's front arc across his waist is kept in front).
 AURA_FIGURE = [(1040, 962), (1055, 944), (1075, 942), (1095, 952), (1100, 975), (1100, 1000), (1110, 1004), (1112, 1040),
                (1116, 1060), (1120, 1082), (1112, 1090), (1106, 1100), (1104, 1120), (1103, 1140), (1112, 1152), (1112, 1162),
@@ -267,8 +297,8 @@ SPRITES = {
     'breath': dict(s=S_MED, anchor=(1323, 237), area=[rect(1317, 101, 1634, 362)],
                    dust=[rect(1317, 101, 1634, 362)], dust_a=0.92, bits=60),
     'sphere': dict(s=S_MED, anchor=(1801, 236), area=[rect(1664, 101, 1922, 348)],
-                   solid=[ellipse(1801, 236, 68, 95)], dust=[rect(1664, 101, 1922, 348)], dust_a=0.9, bits=20,
-                   pieces=[('planet', [ellipse(1801, 236, 70, 97)])]),
+                   solid=[PLANET], dust=[rect(1664, 101, 1922, 348)], dust_a=0.9, bits=20, smooth_body=True,
+                   pieces=[('planet', [PLANET])]),
     'slash': dict(s=S_MED, anchor=(150, 556), area=[rect(25, 435, 267, 679)],
                   solid=[CRESCENT], dust=[rect(25, 435, 267, 679)], dust_a=0.9, bits=24),
     'multi': dict(s=S_MED, anchor=(444, 557), area=[rect(298, 435, 575, 679)],

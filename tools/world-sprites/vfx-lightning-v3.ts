@@ -564,6 +564,14 @@ function fence(name: 'wall' | 'wall_diag', label: string, seed: number): WorldSp
   const arcK = [0, 0, 0.25, 0.62, 1, 1];
   const stainK = [0.25, 0.5, 0.75, 1, 1, 1];
   const glowOnly = (ix: Ix) => keep(ix, (x, y) => KIND[ix.d[y * ix.w + x] - 1] === 'glow');
+  // The 3/4 wall's ground strip is softened into a glow on the ground (the owner chose it over
+  // his flat strip, which sat heavy on the grass); the straight wall keeps his stain as it is.
+  const withStain = (st: Layer, rest: Layer[]): Canvas => {
+    if (name !== 'wall_diag') return render(k.w, k.h, [st, ...rest], k.fade);
+    const c = softGround(render(k.w, k.h, [st], k.fade));
+    c.draw(render(k.w, k.h, rest, k.fade), 0, 0);
+    return c;
+  };
   for (let r = 0; r < 6; r++) {
     const ph = postK[r] * postH;
     // The posts grow out of the ground with a white-hot tip, their glow following them.
@@ -580,8 +588,8 @@ function fence(name: 'wall' | 'wall_diag', label: string, seed: number): WorldSp
     if (r === 4) arcs = level(arcs, -1, ['glow']);
     const halo = r < 4 ? near_(glowOnly(M), grown, 3) : none(k);
     const sparks = r >= 3 ? twinkle(SP, r, r === 3 ? 0.5 : 0.2, seed + 3) : none(k);
-    let c = render(k.w, k.h, [[ST, stainK[r], stFade], [halo], [arcs], [grown], [sparks]], k.fade);
-    if (r === 5) c = render(k.w, k.h, [[ST, 1, stFade], [level(M, 1, ['stroke'])], [level(P, 1)], [SP]], k.fade);
+    let c = withStain([ST, stainK[r], stFade], [[halo], [arcs], [grown], [sparks]]);
+    if (r === 5) c = withStain([ST, 1, stFade], [[level(M, 1, ['stroke'])], [level(P, 1)], [SP]]);
     rise.push(c);
   }
   const idle: Canvas[] = [];
@@ -595,7 +603,7 @@ function fence(name: 'wall' | 'wall_diag', label: string, seed: number): WorldSp
       st = level(ST, [0, 0, 1, 0][i]);
     }
     const sparks = i ? twinkle(SP, i, 0.35, seed + 9) : SP;
-    idle.push(render(k.w, k.h, [[st, 1, stFade], [arcs], [pp], [sparks]], k.fade));
+    idle.push(withStain([st, 1, stFade], [[arcs], [pp], [sparks]]));
   }
   return sprite(k, label, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
 }
@@ -632,6 +640,50 @@ function wallDepth(): WorldSprite {
   });
 }
 
+/**
+ * A ground stain made soft: blurred (colour weighted by alpha, so the edges keep their blue), at
+ * half strength, in stepped alpha so it stays pixel art. The frame's outer pixel ring stays clear.
+ */
+function softGround(c: Canvas): Canvas {
+  const { w, h } = c;
+  const R = 4, SIGMA = 2.2;
+  const kern = Array.from({ length: R * 2 + 1 }, (_, i) => Math.exp(-((i - R) ** 2) / (2 * SIGMA * SIGMA)));
+  const ksum = kern.reduce((a, b) => a + b, 0);
+  const chans = [0, 1, 2, 3].map(() => new Float64Array(w * h));
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const p = c.get(x, y), a = p[3] / 255, i = y * w + x;
+      chans[0][i] = p[0] * a;
+      chans[1][i] = p[1] * a;
+      chans[2][i] = p[2] * a;
+      chans[3][i] = a;
+    }
+  const pass = (src: Float64Array, dx: number, dy: number): Float64Array => {
+    const out = new Float64Array(w * h);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        let v = 0;
+        for (let t = -R; t <= R; t++) {
+          const sx = clamp(x + t * dx, 0, w - 1), sy = clamp(y + t * dy, 0, h - 1);
+          v += src[sy * w + sx] * kern[t + R];
+        }
+        out[y * w + x] = v / ksum;
+      }
+    return out;
+  };
+  const [r, g, b, a] = chans.map((ch) => pass(pass(ch, 1, 0), 0, 1));
+  const out = new Canvas(w, h);
+  for (let y = 1; y < h - 1; y++)
+    for (let x = 1; x < w - 1; x++) {
+      const i = y * w + x;
+      const al = Math.round((a[i] * 0.5 * 255) / 20) * 20;
+      if (al <= 0) continue;
+      const ch = (v: number) => clamp(Math.round(v / a[i] / 12) * 12, 0, 255);
+      out.set(x, y, [ch(r[i]), ch(g[i]), ch(b[i]), Math.min(255, al)]);
+    }
+  return out;
+}
+
 // --- aura --------------------------------------------------------------------------------------------
 
 function aura(): WorldSprite {
@@ -646,9 +698,33 @@ function aura(): WorldSprite {
       m = level(m, glowK[i], ['glow']);
       m = level(m, strokeK[i], ['stroke']);
     }
-    return render(k.w, k.h, [[m], [i ? twinkle(SP, i, 0.4, 1210) : SP]]);
+    const c = veil(k, i);
+    c.draw(render(k.w, k.h, [[m], [i ? twinkle(SP, i, 0.4, 1210) : SP]]), 0, 0);
+    return c;
   });
   return sprite(k, 'Lightning aura (charge / buff)', { idle: { frames: fr, fps: 12, loop: true } });
+}
+
+/**
+ * The blue veil over the body, as in his picture, where the figure is seen through the charge (the
+ * owner chose it over a clear middle). A soft field round the body, brighter toward its rim, not
+ * the shape of any one character, so it sits right on every figure. It breathes with the frames.
+ */
+function veil(k: Key, frame: number): Canvas {
+  const c = new Canvas(k.w, k.h);
+  const cx = k.ax, cy = k.ay - 50, rx = 23, ry = 55;
+  const breathe = 1 + 0.1 * Math.sin(frame * 1.05);
+  for (let y = 0; y < k.h; y++)
+    for (let x = 0; x < k.w; x++) {
+      const r = Math.hypot((x - cx) / rx, (y - cy) / ry);
+      let a = (0.4 + 0.14 * smooth(0.55, 0.95, r)) * (1 - smooth(0.92, 1.04, r)) * breathe;
+      a = Math.round(a / 0.07) * 0.07;
+      if (a <= 0) continue;
+      const t = smooth(0.35, 1, r);
+      const ch = (from: number, to: number) => Math.round((from + (to - from) * t) / 12) * 12;
+      c.set(x, y, [ch(40, 104), ch(84, 180), ch(190, 252), Math.round(Math.min(1, a) * 255)]);
+    }
+  return c;
 }
 
 // --- checks and output ------------------------------------------------------------------------------

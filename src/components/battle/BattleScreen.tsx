@@ -34,6 +34,7 @@ import { SAVE_EN, SAVE_ES, T } from './battleText';
 import type { TKey } from './battleText';
 import { ACTION_ICON, ActionBar, ELEMENT_ICON, InitiativeBar, LogPanel, PartyFrames, Prompt, RollToast, Tip, UnitCard } from './hud';
 import type { ActionButton } from './hud';
+import { preloadWorldGroups } from '../world/WorldSpriteView';
 
 type Mode =
   | { k: 'move' }
@@ -194,6 +195,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     },
     [centerOn, map],
   );
+
+  // The jutsu effects' sheets load now, so the first cast already plays from its sheet.
+  useEffect(() => preloadWorldGroups('vfx_'), []);
 
   useEffect(() => {
     // Start centred on the party.

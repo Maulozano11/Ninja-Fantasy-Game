@@ -77,7 +77,9 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       return true;
     }
     case 'area': {
-      const s = sig ? sheet(el, sig) : sheet(el, 'blast');
+      // A signature without its own sheet in the game yet plays the element's blast.
+      const sigSheet = sig ? sheet(el, sig) : undefined;
+      const s = sigSheet ?? sheet(el, 'blast');
       if (!s) return false;
       const c = f.area?.kind === 'circle' ? f.area.center : f.from;
       const p = project(sc.map, c);
@@ -95,7 +97,7 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
         }
         return true;
       }
-      const anim = sig ? 'burst' : Object.keys(s.spec.anims)[0];
+      const anim = sigSheet ? 'burst' : Object.keys(s.spec.anims)[0];
       blit(ctx, s, anim, frameAt(s, anim, ms), p.X, p.Y, false, t > 0.85 ? (1 - t) / 0.15 : 1);
       return true;
     }

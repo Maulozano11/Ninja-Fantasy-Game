@@ -34,6 +34,17 @@ export function sheetImage(url: string): HTMLImageElement {
   return img;
 }
 
+/**
+ * Starts loading every sheet of the groups whose name starts with `prefix` (e.g. 'vfx_'), so an
+ * effect is drawn from its sheet the first time it plays instead of its stand-in.
+ */
+export function preloadWorldGroups(prefix: string): void {
+  for (const [path, url] of Object.entries(SHEETS)) {
+    const group = path.split('/').at(-2) ?? '';
+    if (group.startsWith(prefix)) sheetImage(url);
+  }
+}
+
 export function worldSpriteSpec(group: string, name: string) {
   return MANIFESTS[`../../assets/world/${group}/manifest.json`]?.sprites[name];
 }

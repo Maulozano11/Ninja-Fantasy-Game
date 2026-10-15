@@ -58,3 +58,16 @@ folders.
 
   `wind-v3-review.py <art2>` then makes the review sheets from the built group (his layout, his
   panels beside ours, every animation, the blast and walls GIFs).
+
+- `earth-from-ref.py`: the whole earth set (`vfx_earth_v3`, all but the beast) from his earth
+  sheet. It writes `tools/world-sprites/vfx-earth-v3-refdata.ts` (his key frames, one palette per
+  sprite from his pixels, cut into the pieces that `vfx-earth-v3.ts` animates). The third argument
+  is our character at 1x (kit `characterRef()` saved as a PNG). With a fourth, a review folder, it
+  also writes his crops at game scale (`his-<name>.png`, `his-anchors.json`) and before/after
+  previews. With `EARTH_DEBUG=<dir>` it only writes his class maps (rock, rim, dust, shadow) with
+  the hand-drawn masks over them.
+
+      python3 -I tools/refs/earth-from-ref.py docs/reference/earth-set-owner-reference.jpg tools/world-sprites/vfx-earth-v3-refdata.ts <character.png> [reviewDir]
+
+  `earth-v3-review.py <art2> <reviewDir> <character.png>` then makes the review sheets from the
+  built group (his panels beside ours, every animation, the blast and walls GIFs).

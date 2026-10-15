@@ -189,9 +189,9 @@ def gif_frames(parts, size, k, fps, charpos=None):
 m = MAN['blast']
 fr = frames('blast')['blast']
 ax, ay = m['anchor']
-size = (m['frameW'] + 90, m['frameH'] + 10)
+size = (m['frameW'] + 70, m['frameH'] + 10)
 parts = [[(f, (5, 5))] for f in fr] + [[(fr[-1], (5, 5))]] * 4 + [[]] * 2
-g = gif_frames(parts, size, 2, 12, charpos=[(5 + m['frameW'] - 30, 5 + ay - 120)])
+g = gif_frames(parts, size, 2, 12, charpos=[(5 + m['frameW'] + 2 - 27, 5 + ay - 120)])
 save(g, os.path.join(ART2, 'vfx-earth-v3-blast.gif'))
 
 walls = ['wall', 'wall_diag', 'wall_depth']
@@ -201,7 +201,7 @@ xs = []
 x = 10
 for w in ws:
     xs.append(x)
-    x += w['frameW'] + 60
+    x += w['frameW'] + 74
 size = (x, gy + max(w['frameH'] - w['anchor'][1] for w in ws) + 10)
 parts = []
 seq = [('rise', i) for i in range(6)] + [('idle', i % 4) for i in range(12)]
@@ -211,6 +211,6 @@ for a, i in seq:
         f = frames(w)[a][i]
         comp.append((f, (wx, gy - MAN[w]['anchor'][1])))
     parts.append(comp)
-chars = [(wx + MAN[w]['frameW'] - 20, gy - 120) for w, wx in zip(walls, xs)]
+chars = [(wx + MAN[w]['frameW'] + 2 - 27, gy - 120) for w, wx in zip(walls, xs)]  # (the figure starts 27 px into its canvas)
 g = gif_frames(parts, size, 1, 12, charpos=chars)
 save(g, os.path.join(ART2, 'vfx-earth-v3-walls.gif'))

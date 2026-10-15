@@ -541,7 +541,7 @@ function spikeWave(L: Layer, t: number, line: number, x0: number, amp: number, s
       if (y < line) out.set(i % above.w, y, above.v[i]);
     }
   }
-  return union(out, below);
+  return union(softOf(L), out, below);
 }
 
 /**
@@ -552,7 +552,7 @@ function spikeWave(L: Layer, t: number, line: number, x0: number, amp: number, s
 function stream(): WorldSprite[] {
   const KT = key('stream'), KH = key('stream_head'), seed = 7600;
   const line = KT.ay + 6;
-  const T = union(KT.part('main'), KT.part('bits'));
+  const T = union(KT.part('dust'), KT.part('main'), KT.part('bits'));
   const tile = [0, 1, 2, 3, 4, 5].map((i) => {
     const t = i / 6;
     // The tile wraps: spikes are found on a tile laid out twice, so one crossing the seam moves whole.

@@ -9,7 +9,7 @@ our 2x wind sheet <art2>/vfx-wind.png (for our character) and tools/world-sprite
   vfx-wind-v3-compare.png  his panel at game scale beside ours, same scale (2x), sprite by sprite
   vfx-wind-v3-anims.png    every animation as frame strips at 2x
   vfx-wind-v3-blast.gif    the blast at 2x, our character beside it
-  vfx-wind-v3-walls.gif    the three walls at 2x: rise, then the idle loop three times
+  vfx-wind-v3-walls.gif    the three walls at 2x: rise, then the idle loop three times (each at its fps)
 Every file is written whole (temp name, then rename). Deterministic.
 """
 import json, os, re, sys
@@ -78,7 +78,7 @@ def info(name):
     an = ', '.join(f"{k} {a['frames']}f {a['fps']}fps {'loop' if a['loop'] else 'once'}" for k, a in m['anims'].items())
     return f"{m['frameW']}x{m['frameH']}  anchor {m['anchor'][0]},{m['anchor'][1]}  {an}"
 
-KEY = {'hit': ('hit', 2), 'blast': ('blast', 4), 'wall': ('idle', 0), 'wall_diag': ('idle', 0), 'wall_depth': ('idle', 0), 'aura': ('idle', 0), 'aura_back': ('idle', 0)}
+KEY = {'hit': ('hit', 3), 'blast': ('blast', 5), 'wall': ('idle', 0), 'wall_diag': ('idle', 0), 'wall_depth': ('idle', 0), 'aura': ('idle', 0), 'aura_back': ('idle', 0)}
 def key(name):
     anim, i = KEY.get(name, (next(iter(MAN[name]['anims'])), 0))
     return frames(name, anim)[i]
@@ -257,8 +257,10 @@ def anims(path):
 
 # --- 4. GIFs -----------------------------------------------------------------------------------------------------------
 def gif(path, frames_rgba, ms=83):
-    pal_src = Image.new('RGB', (frames_rgba[0].width, frames_rgba[0].height * len(frames_rgba)))
-    for i, f in enumerate(frames_rgba): pal_src.paste(f.convert('RGB'), (0, i * f.height))
+    """ms: one duration for every frame, or a list (one per frame)."""
+    some = frames_rgba[::max(1, len(frames_rgba) // 12)]
+    pal_src = Image.new('RGB', (frames_rgba[0].width, frames_rgba[0].height * len(some)))
+    for i, f in enumerate(some): pal_src.paste(f.convert('RGB'), (0, i * f.height))
     pq = pal_src.quantize(colors=255, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
     qs = [f.convert('RGB').quantize(palette=pq, dither=Image.Dither.NONE) for f in frames_rgba]
     tmp = path + '.part'
@@ -273,18 +275,23 @@ def stage_frame(name, f, char=True):
     if char: place_char(img, 4 + f.width + 4, 4 + ay)
     return img
 
+def fps(name, anim): return MAN[name]['anims'][anim]['fps']
+
 def blast_gif(path):
     fr = frames('blast', 'blast')
     seq = [stage_frame('blast', f) for f in fr]
     blank = stage_frame('blast', Image.new('RGBA', fr[0].size, (0, 0, 0, 0)))
-    gif(path, [x2(f) for f in seq + [blank] * 6])
+    ms = round(1000 / fps('blast', 'blast'))
+    gif(path, [x2(f) for f in seq + [blank]], [ms] * len(seq) + [600])
 
 def walls_gif(path):
     names = ['wall', 'wall_diag', 'wall_depth']
     seqs = []
     for n in names:
         rise, idle = frames(n, 'rise'), frames(n, 'idle')
-        seqs.append([stage_frame(n, f) for f in rise + idle * 4])
+        seqs.append([stage_frame(n, f) for f in rise + idle * 3])
+    # rise at its fps, then the idle loop three times at its own fps
+    ms = [round(1000 / fps('wall', 'rise'))] * len(frames('wall', 'rise')) + [round(1000 / fps('wall', 'idle'))] * (3 * len(frames('wall', 'idle')))
     H = max(s[0].height for s in seqs); W = sum(s[0].width for s in seqs) + 8 * (len(seqs) - 1)
     out = []
     for i in range(len(seqs[0])):
@@ -292,7 +299,7 @@ def walls_gif(path):
         for s in seqs:
             img.alpha_composite(s[i], (x, H - s[i].height)); x += s[i].width + 8
         out.append(x2(img))
-    gif(path, out)
+    gif(path, out, ms)
 
 overview(os.path.join(ART2, 'vfx-wind-v3.png'))
 compare(os.path.join(ART2, 'vfx-wind-v3-compare.png'))

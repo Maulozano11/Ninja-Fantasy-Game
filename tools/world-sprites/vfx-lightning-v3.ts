@@ -266,11 +266,63 @@ function key(name: string, pad: { l: number; t: number; r: number; b: number } =
 const none = (k: Key): Ix => blank(k.w, k.h);
 const piece = (k: Key, n: string): Ix => k.p[n] ?? none(k);
 
-/** Sparks twinkle: in frames after the first, a share of them (whole sparks) are out. */
-function twinkle(sp: Ix, frame: number, share: number, seed: number): Ix {
-  // Each spark (8-connected) is kept or dropped whole, by a hash of its first pixel.
+// --- motion over time --------------------------------------------------------------------------
+// The owner found the first cut too fast ("a flashing star"), so every in-between now moves a
+// little, continuously: t is the time in cycles of a loop (or a running clock for one-shots), and
+// every effect below is exactly nothing at t = 0, so frame 0 / the peak stays his picture.
+
+/** Frame i of an n-frame loop, as a time in cycles. */
+const cyc = (i: number, n: number): number => i / n;
+const range = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
+
+/**
+ * Churn: the arcs drift along a smooth random field that circles once per cycle, so they re-route
+ * a little from frame to frame (about a pixel), never jumping. weight(x, y) scales it per pixel.
+ */
+function churn(ix: Ix, t: number, amp: number, cell: number, seed: number, weight: (x: number, y: number) => number = () => 1, perX = 0): Ix {
+  const s = Math.sin(TAU * t), c = (1 - Math.cos(TAU * t)) * 0.6;
+  if (!s && !c) return ix;
+  return displace(
+    ix,
+    (x, y) => {
+      const w = weight(x, y) * amp;
+      if (w <= 0) return [0, 0];
+      return [(snoise(x, y, cell, seed, perX) * s + snoise(x, y, cell, seed + 3, perX) * c) * w, (snoise(x, y, cell, seed + 7, perX) * s + snoise(x, y, cell, seed + 11, perX) * c) * w];
+    },
+    perX > 0,
+  );
+}
+
+/**
+ * Shimmer: soft waves of brightness (one ramp step up or down) drift across the art, each region
+ * at its own time, so the light flickers here and there but the whole sprite never jumps at once.
+ */
+function shimmer(ix: Ix, t: number, seed: number, cell = 14, kinds: RefKind[] = ['stroke', 'glow'], perX = 0): Ix {
+  return level(
+    ix,
+    (x, y) => {
+      const ph = (snoise(x, y, cell, seed, perX) + 1) * 0.75;
+      return Math.round(0.6 * (Math.sin(TAU * (t + ph)) - Math.sin(TAU * ph)));
+    },
+    kinds,
+  );
+}
+
+/** The picture turned by `ang` radians about (cx, cy) (nearest pixel). */
+const rotateAbout = (ix: Ix, cx: number, cy: number, ang: number): Ix =>
+  displace(ix, (x, y) => {
+    const dx = x - cx, dy = y - cy, c = Math.cos(ang), s = Math.sin(ang);
+    return [x - (cx + dx * c + dy * s), y - (cy - dx * s + dy * c)];
+  });
+
+/**
+ * Sparks twinkle: each whole spark (8-connected) goes out for a `share` of the cycle, at its own
+ * time, never at t = 0 (so frame 0 keeps all of his sparks).
+ */
+function twinkle(sp: Ix, t: number, share: number, seed: number): Ix {
   const id = new Int32Array(sp.w * sp.h).fill(-1);
   const out = blank(sp.w, sp.h);
+  const ft = t - Math.floor(t);
   for (let start = 0; start < sp.d.length; start++) {
     if (!sp.d[start] || id[start] >= 0) continue;
     const comp: number[] = [start];
@@ -286,7 +338,8 @@ function twinkle(sp: Ix, frame: number, share: number, seed: number): Ix {
           }
         }
     }
-    if (hash(start % sp.w, Math.floor(start / sp.w), seed + frame * 31) < share) continue;
+    const h = 0.06 + hash(start % sp.w, Math.floor(start / sp.w), seed) * (0.9 - share);
+    if (ft >= h && ft < h + share) continue;
     for (const n of comp) out.d[n] = sp.d[n];
   }
   return out;
@@ -305,84 +358,67 @@ function sprite(k: Key, label: string, anims: Record<string, { frames: Canvas[];
   };
 }
 
+/** Frames and fps of the fly loops (the owner asked for more, smoother frames). */
+const FLY_N = 8, FLY_FPS = 12;
+
 /**
- * A projectile's fly loop: frame 0 is his picture. Frames 1-3 re-route the arcs (no move within
- * `core` px of the anchor, full move beyond core + 10) and flicker the strokes and glow.
+ * A projectile's fly loop of FLY_N frames: frame 0 is his picture; the arcs then churn (not within
+ * `core` px of the anchor, fully beyond core + 10), the light shimmers and the sparks twinkle.
  */
 function flyLoop(k: Key, opts: { amp?: number; cell?: number; core?: number; seed: number; weight?: (x: number, y: number) => number }): Canvas[] {
   const amp = opts.amp ?? 1.6, cell = opts.cell ?? 9, core = opts.core ?? 6;
   const weight = opts.weight ?? ((x: number, y: number) => smooth(core, core + 10, Math.hypot(x - k.ax, y - k.ay)));
-  const glowK = [0, 1, 1, -1], strokeK = [0, 0, 1, -1];
-  return [0, 1, 2, 3].map((i) => {
-    let m = piece(k, 'main');
-    if (i) {
-      m = crackle(m, amp, cell, opts.seed + i * 13, weight);
-      m = level(m, glowK[i], ['glow']);
-      m = level(m, strokeK[i], ['stroke']);
-    }
-    const sp = i ? twinkle(piece(k, 'sparks'), i, 0.35, opts.seed + 5) : piece(k, 'sparks');
-    return render(k.w, k.h, [[m], [sp]], k.fade);
+  return range(FLY_N).map((i) => {
+    const t = cyc(i, FLY_N);
+    const m = shimmer(churn(piece(k, 'main'), t, amp, cell, opts.seed, weight), t, opts.seed + 50);
+    return render(k.w, k.h, [[m], [twinkle(piece(k, 'sparks'), t, 0.3, opts.seed + 5)]], k.fade);
   });
 }
+const fly = (frames: Canvas[]) => ({ fly: { frames, fps: FLY_FPS, loop: true } });
 
 function bolt(): WorldSprite {
   const k = key('bolt');
-  return sprite(k, 'Lightning bolt (spark ball)', { fly: { frames: flyLoop(k, { seed: 100, core: 5 }), fps: 12, loop: true } });
+  return sprite(k, 'Lightning bolt (spark ball)', fly(flyLoop(k, { seed: 100, core: 5 })));
 }
 
 function breath(): WorldSprite {
   const k = key('breath');
-  // The breath's anchor is 48 px right of the caster's hands; its arcs jitter more away from them.
+  // The breath's anchor is 48 px right of the caster's hands; its arcs churn more away from them.
   const ox = k.ax - 48, oy = k.ay;
-  const fr = [0, 1, 2, 3].map((i) => {
-    let m = piece(k, 'main');
-    if (i) {
-      m = crackle(m, 1.8, 9, 200 + i * 13, (x, y) => smooth(6, 30, Math.hypot(x - ox, y - oy)));
-      m = level(m, [0, 1, 1, -1][i], ['glow']);
-      m = level(m, [0, 0, 1, -1][i], ['stroke']);
-    }
-    const sp = i ? twinkle(piece(k, 'sparks'), i, 0.35, 205) : piece(k, 'sparks');
-    return render(k.w, k.h, [[m], [sp]]);
-  });
-  return sprite(k, 'Lightning breath (forked cone, origin left middle)', { fly: { frames: fr, fps: 12, loop: true } });
+  return sprite(k, 'Lightning breath (forked cone, origin left middle)', fly(flyLoop(k, { seed: 200, amp: 1.8, weight: (x, y) => smooth(6, 30, Math.hypot(x - ox, y - oy)) })));
 }
 
 function sphere(): WorldSprite {
   const k = key('sphere');
-  // The orb holds still (it is the projectile's core); its filaments flicker, the rings and the
-  // arcs round it are re-routed.
+  // The orb holds still (it is the projectile's core) while its filaments shimmer; the arcs round
+  // it churn, and the rings sway back and forth about it.
   const R = 21;
-  const fr = [0, 1, 2, 3].map((i) => {
-    let m = piece(k, 'main');
-    let sp = piece(k, 'sparks');
-    if (i) {
-      const out = (x: number, y: number) => smooth(R, R + 6, Math.hypot(x - k.ax, y - k.ay));
-      m = crackle(m, 1.5, 8, 300 + i * 13, out);
-      m = level(m, (x, y) => (Math.hypot(x - k.ax, y - k.ay) < R ? [0, 1, -1, 1][i] : [0, 1, 0, -1][i]), ['stroke']);
-      m = level(m, [0, 1, 1, -1][i], ['glow']);
-      sp = crackle(sp, 1, 10, 310 + i * 13, out);
-      sp = level(sp, [0, 1, -1, 0][i], ['cream']);
-    }
-    return render(k.w, k.h, [[m], [sp]]);
+  const out = (x: number, y: number) => smooth(R, R + 6, Math.hypot(x - k.ax, y - k.ay));
+  const fr = range(FLY_N).map((i) => {
+    const t = cyc(i, FLY_N);
+    const m = shimmer(churn(piece(k, 'main'), t, 1.5, 8, 300, out), t, 350, 10);
+    const sp = rotateAbout(piece(k, 'sparks'), k.ax, k.ay, 0.06 * Math.sin(TAU * t));
+    return render(k.w, k.h, [[m], [shimmer(sp, t, 360, 12, ['cream'])]]);
   });
-  return sprite(k, 'Lightning sphere (thunder sphere)', { fly: { frames: fr, fps: 12, loop: true } });
+  return sprite(k, 'Lightning sphere (thunder sphere)', fly(fr));
 }
 
 function slash(): WorldSprite {
   const k = key('slash');
-  return sprite(k, 'Lightning slash (electric crescent)', { fly: { frames: flyLoop(k, { seed: 400, amp: 1.3, core: 4 }), fps: 12, loop: true } });
+  return sprite(k, 'Lightning slash (electric crescent)', fly(flyLoop(k, { seed: 400, amp: 1.3, core: 4 })));
 }
 
 function multi(): WorldSprite {
   const k = key('multi');
-  // The three needles' heads hold their shape; their crackling trails behind them re-route.
+  // The three needles' heads hold their shape; their crackling trails behind them churn.
   const trails = (x: number) => smooth(k.ax + 12, k.ax - 2, x);
-  return sprite(k, 'Lightning multi (thunder needles)', { fly: { frames: flyLoop(k, { seed: 500, amp: 1.4, core: 0, weight: trails }), fps: 12, loop: true } });
+  return sprite(k, 'Lightning multi (thunder needles)', fly(flyLoop(k, { seed: 500, amp: 1.4, core: 0, weight: trails })));
 }
 
-// --- the stream: his 64 px tile, scrolled along the beam, and its head --------------------------------
+// --- the stream: his 64 px tile, flowing along the beam, and its head --------------------------------
 
-const STREAM_SHIFT = 16;
+/** The tile scrolls this many px a frame (64 / FLY_N: one tile per loop). */
+const STREAM_SHIFT = 64 / FLY_N;
 /** The beam's core rows (within this many px of the centre line) never move. */
 const STREAM_CORE = 5;
 /** The head's left columns are the scrolled tile itself, so the joint is seamless in every frame. */
@@ -391,11 +427,11 @@ const HEAD_JOINT = 26;
 function streamTile(k: Key, i: number): Ix {
   const m = piece(k, 'main');
   if (!i) return m;
+  const t = cyc(i, FLY_N);
   const shifted = displace(m, () => [STREAM_SHIFT * i, 0], true);
-  let t = crackle(shifted, 1.2, 8, 600 + i * 13, (_x, y) => smooth(STREAM_CORE, STREAM_CORE + 6, Math.abs(y - k.ay)), 64);
-  t = level(t, [0, 1, 1, -1][i], ['glow']);
-  t = level(t, [0, 0, 1, 0][i], ['stroke']);
-  return t;
+  // Everything here is periodic in x over 64 px, so every frame still tiles.
+  const c = churn(shifted, t, 1.2, 8, 600, (_x, y) => smooth(STREAM_CORE, STREAM_CORE + 6, Math.abs(y - k.ay)), 64);
+  return shimmer(c, t, 650, 16, ['stroke', 'glow'], 64);
 }
 
 /** The tile stays exactly 64x64 with its centre line on y = 32 (the renderer tiles it as before). */
@@ -405,33 +441,29 @@ function streamPad(): { l: number; t: number; r: number; b: number } {
 
 function stream(): WorldSprite[] {
   const t = key('stream', streamPad());
-  const tiles = [0, 1, 2, 3].map((i) => streamTile(t, i));
+  const tiles = range(FLY_N).map((i) => streamTile(t, i));
   const h = key('stream_head', { ...streamPad(), r: PAD });
   if (h.ay !== t.ay) throw new Error('vfx-lightning-v3: the stream head and tile centre lines differ');
-  const heads = [0, 1, 2, 3].map((i) => {
-    let m = piece(h, 'main');
-    let sp = piece(h, 'sparks');
-    if (i) {
-      m = crackle(m, 1.6, 8, 700 + i * 13, (x, y) => smooth(HEAD_JOINT, HEAD_JOINT + 12, x) * smooth(3, 10, Math.hypot(x - 38, y - h.ay)));
-      m = level(m, [0, 1, 1, -1][i], ['glow']);
-      m = level(m, [0, 0, 1, 0][i], ['stroke']);
-      sp = twinkle(sp, i, 0.35, 705);
-    }
+  const heads = range(FLY_N).map((i) => {
+    const tt = cyc(i, FLY_N);
+    const w = (x: number, y: number) => smooth(HEAD_JOINT, HEAD_JOINT + 12, x) * smooth(3, 10, Math.hypot(x - 38, y - h.ay));
+    let m = shimmer(churn(piece(h, 'main'), tt, 1.6, 8, 700, w), tt, 750);
     // The joint: the head's first columns are this frame's tile, continued.
     m = keep(m, (x) => x >= HEAD_JOINT);
     stamp(m, keep(tiles[i], (x) => x < HEAD_JOINT), 0, 0);
-    return render(h.w, h.h, [[m], [sp]]);
+    return render(h.w, h.h, [[m], [twinkle(piece(h, 'sparks'), tt, 0.3, 705)]]);
   });
   return [
-    sprite(t, 'Lightning stream (beam, tileable 64 px)', { fly: { frames: tiles.map((ix) => render(t.w, t.h, [[ix]])), fps: 12, loop: true } }),
-    sprite(h, 'Lightning stream head', { fly: { frames: heads, fps: 12, loop: true } }),
+    sprite(t, 'Lightning stream (beam, tileable 64 px)', fly(tiles.map((ix) => render(t.w, t.h, [[ix]])))),
+    sprite(h, 'Lightning stream head', fly(heads)),
   ];
 }
 
-// --- hit: a starburst that flashes up to his picture and breaks up ------------------------------------
+// --- hit: a starburst that builds up to his picture, holds, and breaks up slowly ---------------------
 
 function hit(): WorldSprite {
-  const k = key('hit');
+  // More room than the others: its spikes fly on outward as it breaks up.
+  const k = key('hit', { l: 7, t: 7, r: 7, b: 7 });
   const m = piece(k, 'main');
   const sp = piece(k, 'sparks');
   const d = (x: number, y: number) => Math.hypot(x - k.ax, y - k.ay);
@@ -441,17 +473,35 @@ function hit(): WorldSprite {
       const r = d(x, y), s = smooth(14, 34, r) * push;
       return r ? [((x - k.ax) / r) * s, ((y - k.ay) / r) * s] : [0, 0];
     });
+  const PEAK = 3;
   const fr: Canvas[] = [];
-  // 0-1: the burst grows out of a white flash: his picture, small and white-hot, then larger.
-  fr.push(render(k.w, k.h, [[level(scaleAbout(m, k.ax, k.ay, 0.3), 3)]]));
-  fr.push(render(k.w, k.h, [[level(scaleAbout(m, k.ax, k.ay, 0.68), 1)], [scaleAbout(sp, k.ax, k.ay, 0.68)]]));
-  // 2: his picture.
+  // 0-2: the burst builds up: his picture growing out of its core, one step hot; its size grows
+  //      by square roots (50%, 71%, 87%), so its light grows evenly toward the peak.
+  for (const [s, hot] of [[0.5, 1], [0.71, 1], [0.87, 0]] as const)
+    fr.push(render(k.w, k.h, [[level(scaleAbout(m, k.ax, k.ay, s), hot, ['stroke'])], [scaleAbout(sp, k.ax, k.ay, s)]]));
+  // 3: his picture. 4-5: it holds, the spikes churning a little.
   fr.push(render(k.w, k.h, [[m], [sp]]));
-  // 3: the spikes fly out and re-route, the core cools a step.
-  fr.push(render(k.w, k.h, [[level(crackle(outward(m, 2), 1.4, 8, 813), (x, y) => (d(x, y) < 12 ? -1 : 0))], [outward(sp, 3)]]));
-  // 4-5: the light dies away (white, blue, glow, gone) as the spikes fly on.
-  fr.push(render(k.w, k.h, [[dim(crackle(outward(m, 4), 1.4, 8, 814), 6)], [outward(sp, 6)]]));
-  fr.push(render(k.w, k.h, [[dim(crackle(outward(m, 7), 1.4, 8, 815), 12)], [twinkle(outward(sp, 9), 5, 0.4, 816), 0.75]]));
+  for (const i of [4, 5]) {
+    const t = (i - PEAK) / 16;
+    fr.push(render(k.w, k.h, [[shimmer(churn(outward(m, i - PEAK - 1), t, 1.4, 8, 810), t, 820)], [outward(sp, i - PEAK)]]));
+  }
+  // 6-11: it breaks up slowly: the core shrinks and cools, the spikes fly on and scatter, the light
+  //       steps down the ladder (white, blue, glow, gone) and the sparks drift off.
+  // One smooth radial field, so the core and the spikes never come apart at a seam: within ~12 px
+  // the burst draws in by `shrink`, beyond ~20 px it flies out by `push`.
+  const breakUp = (ix: Ix, shrink: number, push: number) =>
+    displace(ix, (x, y) => {
+      const r = d(x, y);
+      if (!r) return [0, 0];
+      const s = -shrink * r * (1 - smooth(8, 20, r)) + push * smooth(12, 34, r);
+      return [((x - k.ax) / r) * s, ((y - k.ay) / r) * s];
+    });
+  const cool = [1, 2, 4, 6, 9, 13];
+  for (let j = 0; j < 6; j++) {
+    const t = (6 + j - PEAK) / 16;
+    const m2 = churn(breakUp(m, 0.06 + j * 0.07, 2 + j * 1.5), t, 1.4, 8, 810, (x, y) => smooth(10, 20, d(x, y)));
+    fr.push(render(k.w, k.h, [[dim(m2, cool[j])], [twinkle(outward(sp, 4 + j * 1.6), t * 2, 0.15 + j * 0.08, 830), 1 - j * 0.1]]));
+  }
   return sprite(k, 'Lightning hit (spark burst)', { hit: { frames: fr, fps: 12, loop: false } });
 }
 
@@ -467,30 +517,42 @@ function blast(): WorldSprite {
   // The ground is seen at a slant: distances on it are squashed 2.2 times vertically.
   const d = (x: number, y: number) => Math.hypot(x - k.ax, (y - k.ay) * 2.2);
   // Sparks thrown up and out from the impact as the strike ends.
-  const fly = (ix: Ix, t: number) =>
+  const throwSparks = (ix: Ix, t: number) =>
     displace(ix, (x, y) => {
       const r = Math.hypot(x - k.ax, y - k.ay) || 1;
       return [((x - k.ax) / r) * 10 * t, ((y - k.ay) / r) * 6 * t - 8 * t + 10 * t * t];
     });
+  const hold = (x: number, y: number) => smooth(4, 22, Math.hypot(x - k.ax, y - k.ay));
+  const PEAK = 4;
   const fr: Canvas[] = [];
-  // 0: the leader feels its way down from the sky: his bolt down to a ragged front 45% of the way,
-  //    blue, with a white-hot tip.
-  const front = (x: number) => top + (k.ay - top) * 0.45 + snoise(x, 0, 6, 901) * 5;
-  fr.push(render(k.w, k.h, [[level(keep(M, (x, y) => y < front(x)), (x, y) => (y > front(x) - 6 ? 2 : -2))]], k.fade));
-  // 1: the bolt reaches the ground, white-hot; the crackle races out of the impact: bright near
-  //    it, still faint further out (it steps down the ladder with distance, so it has no rim).
-  const burst = dim(M, (x, y) => Math.round(clamp((d(x, y) - 18) / 70, 0, 1) * 16 * (1 - above(y))));
-  fr.push(render(k.w, k.h, [[scaleAbout(stain, k.ax, k.ay, 0.55), 0.6], [level(burst, 1, ['stroke'])]], k.fade));
-  // 2: his picture.
+  // 0-3: anticipation. The charge gathers high in the sky, then the leader feels its way down
+  //      (his bolt to a ragged front, blue, with a hot tip) while the ground below starts to glow,
+  //      and on frame 3 the bolt touches down and the crackle races out from the impact.
+  const front = (x: number, f: number) => top + (k.ay - top) * f + snoise(x, 0, 6, 901) * 5;
+  const leader = (f: number, cool: number) =>
+    dim(keep(M, (x, y) => y < front(x, f) && above(y) > 0.3), (x, y) => (y > front(x, f) - 7 ? 0 : cool));
+  const groundGlow = (steps: number) => dim(keep(M, (_x, y) => above(y) <= 0.3), (x, y) => Math.round(steps + clamp((d(x, y) - 18) / 70, 0, 1) * 10));
+  fr.push(render(k.w, k.h, [[stain, 0.15], [groundGlow(14)], [leader(0.2, 4)]], k.fade));
+  fr.push(render(k.w, k.h, [[stain, 0.35], [groundGlow(9)], [leader(0.5, 3)]], k.fade));
+  fr.push(render(k.w, k.h, [[stain, 0.6], [groundGlow(5)], [leader(0.8, 2)]], k.fade));
+  const burst = dim(M, (x, y) => Math.round(clamp((d(x, y) - 18) / 70, 0, 1) * 6 * (1 - above(y))));
+  fr.push(render(k.w, k.h, [[scaleAbout(stain, k.ax, k.ay, 0.9), 0.85], [burst], [twinkle(sp, 0.5, 0.5, 905)]], k.fade));
+  // 4: his picture. 5-6: it holds, churning a little (the impact holds still).
   fr.push(render(k.w, k.h, [[stain], [M], [sp]], k.fade));
-  // 3: the return stroke: everything re-routes (the impact holds) and flashes.
-  fr.push(render(k.w, k.h, [[stain], [level(crackle(M, 1.6, 10, 913, (x, y) => smooth(4, 22, Math.hypot(x - k.ax, y - k.ay))), 1)], [fly(sp, 0.25)]], k.fade));
-  // 4-6: the light dies away (white, blue, glow, gone), the bolt high up first.
-  fr.push(render(k.w, k.h, [[stain], [dim(crackle(M, 1.6, 9, 915, (x, y) => smooth(4, 22, Math.hypot(x - k.ax, y - k.ay))), (_x, y) => Math.round(2 + 8 * above(y)))], [fly(sp, 0.5)]], k.fade));
-  fr.push(render(k.w, k.h, [[stain], [dim(crackle(M, 1.8, 9, 917), (_x, y) => Math.round(6 + 13 * above(y)))], [twinkle(fly(sp, 0.75), 5, 0.3, 919)]], k.fade));
-  fr.push(render(k.w, k.h, [[stain], [dim(crackle(M, 1.8, 9, 920), (_x, y) => Math.round(11 + 9 * above(y)))], [twinkle(fly(sp, 1), 6, 0.6, 921), 0.7]], k.fade));
-  // 7: the scorch is left.
-  fr.push(render(k.w, k.h, [[level(stain, -1), 0.8], [dim(M, (_x, y) => Math.round(16 + 6 * above(y)))]], k.fade));
+  for (const i of [5, 6]) {
+    const t = (i - PEAK) / 24;
+    fr.push(render(k.w, k.h, [[stain], [shimmer(churn(M, t, 1.6, 10, 913, hold), t, 917)], [throwSparks(sp, (i - PEAK) * 0.08)]], k.fade));
+  }
+  // 7-15: the long settle. The light steps down the ladder, the bolt high up first, while the
+  //       ground crackle keeps churning and cools; the sparks are thrown out and fall; the dark
+  //       scorch is left and the last glints die.
+  const boltK = [2, 4, 6, 9, 12, 15, 18, 21, 24], groundK = [1, 1, 2, 3, 4, 6, 8, 10, 13];
+  for (let j = 0; j < 9; j++) {
+    const t = (7 + j - PEAK) / 24;
+    const m = dim(churn(M, t, 1.7, 10, 913, hold), (_x, y) => Math.round(groundK[j] + (boltK[j] - groundK[j]) * above(y)));
+    const sparks = twinkle(throwSparks(sp, 0.24 + j * 0.11), t, 0.15 + j * 0.07, 921);
+    fr.push(render(k.w, k.h, [[stain, 1 - Math.max(0, j - 4) * 0.05], [m], [sparks, 1 - j * 0.08]], k.fade));
+  }
   return sprite(k, 'Lightning blast (thunder strike from the sky)', { blast: { frames: fr, fps: 12, loop: false } });
 }
 
@@ -539,6 +601,9 @@ function posts(ix: Ix): { x: number; foot: number; top: number }[] {
   return out;
 }
 
+/** Walls: rise plays once, then idle loops (the owner asked for more, slower frames). */
+const RISE_N = 12, RISE_FPS = 12, IDLE_N = 8, IDLE_FPS = 10;
+
 /**
  * A fence wall ('wall' or 'wall_diag'). rise: the posts grow out of the ground with a white-hot
  * tip, then the arcs crackle out from the posts and join; it ends at his picture. idle: his
@@ -559,10 +624,6 @@ function fence(name: 'wall' | 'wall_diag', label: string, seed: number): WorldSp
   const postH = Math.max(...ps.map((p) => p.foot - p.top));
   const near = (x: number) => Math.min(...ps.map((p) => Math.abs(x - p.x)));
   const spacing = (ps[n - 1].x - ps[0].x) / (n - 1);
-  const rise: Canvas[] = [];
-  const postK = [0.18, 0.5, 0.85, 1, 1, 1];
-  const arcK = [0, 0, 0.25, 0.62, 1, 1];
-  const stainK = [0.25, 0.5, 0.75, 1, 1, 1];
   const glowOnly = (ix: Ix) => keep(ix, (x, y) => KIND[ix.d[y * ix.w + x] - 1] === 'glow');
   // The 3/4 wall's ground strip is softened into a glow on the ground (the owner chose it over
   // his flat strip, which sat heavy on the grass); the straight wall keeps his stain as it is.
@@ -572,71 +633,77 @@ function fence(name: 'wall' | 'wall_diag', label: string, seed: number): WorldSp
     c.draw(render(k.w, k.h, rest, k.fade), 0, 0);
     return c;
   };
-  for (let r = 0; r < 6; r++) {
+  // rise, RISE_N frames: the posts grow out of the ground (white-hot tips, their glow following),
+  // then the arcs crawl out from the posts and join, and the strip glows up; the last frame is
+  // his picture, ready for idle.
+  const rise: Canvas[] = [];
+  const postK = [0.08, 0.18, 0.31, 0.46, 0.62, 0.78, 0.9, 1, 1, 1, 1, 1];
+  // How far (px) the arcs have crawled out from the nearest post; it keeps growing past half the
+  // post spacing so the 3/4 wall's dense arcs beyond its far post crawl in too.
+  const reachPx = [0, 0, 0, 0, 4, 8, 13, 19, 27, 40, 64, Infinity];
+  const stainK = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.88, 0.94, 1, 1];
+  for (let r = 0; r < RISE_N; r++) {
+    if (r === RISE_N - 1) {
+      rise.push(withStain([ST, 1, stFade], [[M], [P], [SP]]));
+      break;
+    }
     const ph = postK[r] * postH;
-    // The posts grow out of the ground with a white-hot tip, their glow following them.
-    const grown = level(keep(P, (x, y) => height(x, y) <= ph + 2), (x, y) => (r < 3 && height(x, y) > ph - 5 ? 2 : 0));
-    // The arcs crawl out from the posts, each row its own length, with a bright front; the
-    // charged feet glow from the start.
-    const reach = (x: number, y: number) => arcK[r] * spacing * 0.5 * (0.75 + 0.5 * noise(0, y, 4, seed + 31));
+    const growing = postK[r] < 1;
+    const grown = level(keep(P, (x, y) => height(x, y) <= ph + 2), (x, y) => (growing && height(x, y) > ph - 5 ? 2 : 0));
+    // Each row of arcs reaches its own length, with a bright front while it crawls.
+    const reach = (_x: number, y: number) => reachPx[r] * (0.75 + 0.5 * noise(0, y, 4, seed + 31));
+    const crawling = reachPx[r] > 0 && reachPx[r] < Infinity;
     let arcs = keep(M, (x, y) => {
       const h = height(x, y), dn = near(x);
-      if (h <= 9 && dn <= 12) return true;
-      return h <= ph + 3 && (arcK[r] >= 1 || dn <= reach(x, y));
+      if (h <= 9 && dn <= 12) return true; // the charged feet glow from the start
+      return reachPx[r] > 0 && h <= ph + 3 && dn <= reach(x, y);
     });
-    if (r === 2 || r === 3) arcs = level(crackle(arcs, 1.2, 8, seed + r), (x, y) => (near(x) > reach(x, y) - 5 ? 2 : -1));
-    if (r === 4) arcs = level(arcs, -1, ['glow']);
-    const halo = r < 4 ? near_(glowOnly(M), grown, 3) : none(k);
-    const sparks = r >= 3 ? twinkle(SP, r, r === 3 ? 0.5 : 0.2, seed + 3) : none(k);
-    let c = withStain([ST, stainK[r], stFade], [[halo], [arcs], [grown], [sparks]]);
-    if (r === 5) c = withStain([ST, 1, stFade], [[level(M, 1, ['stroke'])], [level(P, 1)], [SP]]);
-    rise.push(c);
+    const t = r / 24;
+    arcs = churn(arcs, t, 1.2, 8, seed + 40, (x) => smooth(2, 9, near(x)));
+    if (crawling) arcs = level(arcs, (x, y) => (near(x) > reach(x, y) - 5 ? 1 : 0), ['stroke']);
+    if (r === RISE_N - 2) arcs = level(arcs, -1, ['glow']); // still charging, then settles into idle
+    const halo = postK[r] < 1 || crawling ? near_(glowOnly(M), grown, 3) : none(k);
+    const sparks = reachPx[r] >= 13 ? keep(twinkle(SP, t, 0.3, seed + 3), (x, y) => near(x) <= reach(x, y)) : none(k);
+    rise.push(withStain([ST, stainK[r], stFade], [[halo], [arcs], [grown], [sparks]]));
   }
-  const idle: Canvas[] = [];
-  for (let i = 0; i < 4; i++) {
-    let arcs = M, pp = P, st = ST;
-    if (i) {
-      arcs = crackle(M, 1.4, 9, seed + 20 + i * 13, (x) => smooth(2, 9, near(x)));
-      arcs = level(arcs, [0, 1, 1, -1][i], ['glow']);
-      arcs = level(arcs, [0, 0, 1, -1][i], ['stroke']);
-      pp = level(P, [0, 0, 1, 0][i]);
-      st = level(ST, [0, 0, 1, 0][i]);
-    }
-    const sparks = i ? twinkle(SP, i, 0.35, seed + 9) : SP;
-    idle.push(withStain([st, 1, stFade], [[arcs], [pp], [sparks]]));
-  }
-  return sprite(k, label, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
+  // idle, IDLE_N frames: his picture, then the arcs churn (pinned at the posts), the light
+  // shimmers and the sparks twinkle.
+  const idle = range(IDLE_N).map((i) => {
+    const t = cyc(i, IDLE_N);
+    const arcs = shimmer(churn(M, t, 1.4, 9, seed + 20, (x) => smooth(2, 9, near(x))), t, seed + 25);
+    return withStain([shimmer(ST, t, seed + 27, 24, ['ground']), 1, stFade], [[arcs], [shimmer(P, t, seed + 29, 20, ['stroke'])], [twinkle(SP, t, 0.3, seed + 9)]]);
+  });
+  return sprite(k, label, { rise: { frames: rise, fps: RISE_FPS, loop: false }, idle: { frames: idle, fps: IDLE_FPS, loop: true } });
 }
 
-/** The fence end-on: tall columns of lightning. rise shoots them up from the ground; idle crackles. */
+/** The fence end-on: tall columns of lightning. rise shoots them up from the ground; idle churns. */
 function wallDepth(): WorldSprite {
   const k = key('wall_depth');
   const M = piece(k, 'main'), SP = piece(k, 'sparks');
   const b = bounds(M)!;
   const bottom = b[3];
+  const base = (_x: number, y: number) => smooth(bottom, bottom - 14, y);
   const rise: Canvas[] = [];
-  const riseK = [0.18, 0.42, 0.68, 0.9, 1, 1];
-  for (let r = 0; r < 6; r++) {
-    // His columns stretched up from their base, white-hot while they shoot up.
-    let m = riseK[r] < 1 ? scaleAbout(M, k.ax, bottom, 1, riseK[r]) : M;
-    if (r < 4) m = level(m, [2, 2, 1, 1][r], ['stroke']);
-    if (r === 2 || r === 3) m = crackle(m, 1.2, 8, 1100 + r);
-    if (r === 4) m = level(m, -1, ['glow']);
-    if (r === 5) m = level(M, 1, ['stroke']);
-    rise.push(render(k.w, k.h, [[m], [r >= 4 ? SP : none(k)]]));
-  }
-  const idle = [0, 1, 2, 3].map((i) => {
-    let m = M;
-    if (i) {
-      m = crackle(M, 1.4, 9, 1120 + i * 13, (_x, y) => smooth(bottom, bottom - 14, y));
-      m = level(m, [0, 1, 1, -1][i], ['glow']);
-      m = level(m, [0, 0, 1, -1][i], ['stroke']);
+  const riseK = [0.08, 0.16, 0.26, 0.37, 0.49, 0.61, 0.72, 0.82, 0.9, 0.96, 1, 1];
+  const hotK = [2, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0];
+  for (let r = 0; r < RISE_N; r++) {
+    if (r === RISE_N - 1) {
+      rise.push(render(k.w, k.h, [[M], [SP]]));
+      break;
     }
-    return render(k.w, k.h, [[m], [i ? twinkle(SP, i, 0.35, 1130) : SP]]);
+    // His columns stretched up from their base, hot while they shoot up.
+    let m = riseK[r] < 1 ? scaleAbout(M, k.ax, bottom, 1, riseK[r]) : M;
+    m = level(churn(m, r / 24, 1.2, 8, 1100, base), hotK[r], ['stroke']);
+    if (r === RISE_N - 2) m = level(m, -1, ['glow']);
+    rise.push(render(k.w, k.h, [[m], [riseK[r] >= 0.9 ? twinkle(SP, r / 24, 0.4, 1105) : none(k)]]));
+  }
+  const idle = range(IDLE_N).map((i) => {
+    const t = cyc(i, IDLE_N);
+    return render(k.w, k.h, [[shimmer(churn(M, t, 1.4, 9, 1120, base), t, 1125)], [twinkle(SP, t, 0.3, 1130)]]);
   });
   return sprite(k, 'Lightning wall, end-on (fence, 4.5 m x 1.8 m, running into the screen)', {
-    rise: { frames: rise, fps: 12, loop: false },
-    idle: { frames: idle, fps: 12, loop: true },
+    rise: { frames: rise, fps: RISE_FPS, loop: false },
+    idle: { frames: idle, fps: IDLE_FPS, loop: true },
   });
 }
 
@@ -686,23 +753,22 @@ function softGround(c: Canvas): Canvas {
 
 // --- aura --------------------------------------------------------------------------------------------
 
+/** The aura's idle loop (the owner asked for more, slower frames). */
+const AURA_N = 12, AURA_FPS = 10;
+
 function aura(): WorldSprite {
   const k = key('aura');
   const M = piece(k, 'main'), SP = piece(k, 'sparks');
-  // Six frames: his picture, then arcs re-routed (the feet's anchor holds) and pulsing.
-  const glowK = [0, 1, 0, -1, 1, 0], strokeK = [0, 0, 1, 0, -1, 1];
-  const fr = [0, 1, 2, 3, 4, 5].map((i) => {
-    let m = M;
-    if (i) {
-      m = crackle(M, 1.5, 8, 1200 + i * 13);
-      m = level(m, glowK[i], ['glow']);
-      m = level(m, strokeK[i], ['stroke']);
-    }
+  // His picture, then the arcs churn (the feet's anchor holds), the light shimmers, the sparks
+  // twinkle and the veil over the body breathes.
+  const fr = range(AURA_N).map((i) => {
+    const t = cyc(i, AURA_N);
+    const m = shimmer(churn(M, t, 1.5, 8, 1200), t, 1250);
     const c = veil(k, i);
-    c.draw(render(k.w, k.h, [[m], [i ? twinkle(SP, i, 0.4, 1210) : SP]]), 0, 0);
+    c.draw(render(k.w, k.h, [[m], [twinkle(SP, t, 0.3, 1210)]]), 0, 0);
     return c;
   });
-  return sprite(k, 'Lightning aura (charge / buff)', { idle: { frames: fr, fps: 12, loop: true } });
+  return sprite(k, 'Lightning aura (charge / buff)', { idle: { frames: fr, fps: AURA_FPS, loop: true } });
 }
 
 /**

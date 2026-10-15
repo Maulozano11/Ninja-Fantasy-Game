@@ -16,8 +16,9 @@
 //   - droplets drift, fall or orbit as whole pieces;
 //   - the stream tile scrolls (it still tiles) and flows into his crest head;
 //   - the hit, the blast and the walls' rise grow or reveal into his picture, then break up and fade.
-// Same sprite names, anims, frame counts and fps as vfx_water; frames are sized to his art and the
-// anchors moved with it (projectile core, breath origin + 48, ground centre, feet). The aura is
+// Same sprite names and anims as vfx_water, with more frames at a slower pace (the owner found the
+// jutsu too fast; see FLY below); frames are sized to his art and the anchors moved with it
+// (projectile core, breath origin + 48, ground centre, feet). The aura is
 // split in two layers, `aura_back` (behind the character) and `aura` (over it: the water the figure
 // is seen through, as in his picture). The water beast is out of scope: the approved dragon stays,
 // and beast.png is copied through from vfx_water unchanged.
@@ -26,7 +27,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Canvas, Color, PX_PER_M, WorldSprite, hex, writeGroup } from './kit';
-import { TAU, clamp, clearEdgeBits, fract, pnoise, rr, smooth, vfxSprite } from './vfx-a-lib';
+import { TAU, clamp, clearEdgeBits, fade, fract, pnoise, rnd, rr, smooth, vfxSprite } from './vfx-a-lib';
 import { WV3_PAL, WV3_REF, WV3_VEIL } from './vfx-water-v3-refdata';
 
 // --- his palette and key frames ----------------------------------------------------------------
@@ -298,6 +299,14 @@ const stackC = (w: number, h: number, ...cs: (Canvas | Layer | null)[]): Canvas 
   return out;
 };
 
+/**
+ * Frame counts (the owner asked for slower, smoother jutsu: more frames, small steps between them).
+ * Flying loops: 8 frames at 10 fps. Hit: 12 at 12. Blast: 16 at 12. Wall rise: 12 at 12, idle: 8 at
+ * 10. Aura: 12 at 10. His picture stays the key frame of each.
+ */
+const FLY = 8, FLY_FPS = 10, AURA = 12;
+const range = (n: number) => Array.from({ length: n }, (_, i) => i);
+
 /** Drift that starts at 0 and wraps (a droplet leaving is replaced by one arriving). */
 const drift = (t: number, ph: number) => fract(ph + t) - ph;
 
@@ -307,8 +316,8 @@ const drift = (t: number, ph: number) => fract(ph + t) - ph;
 function bolt(): WorldSprite {
   const K = key('bolt'), seed = 5100;
   const main = K.part('main'), drops = K.part('drops');
-  const fr = [0, 1, 2, 3].map((i) => {
-    const t = i / 4;
+  const fr = range(FLY).map((i) => {
+    const t = i / FLY;
     // The orb's inner swirl turns a quarter each frame (a vortex: full turn at the centre, none at its rim).
     const R = 10;
     let m = remap(main, (x, y) => {
@@ -332,7 +341,7 @@ function bolt(): WorldSprite {
     });
     return stackC(K.w, K.h, m, d);
   });
-  return vfxSprite('bolt', 'Water bolt (orb with a swirling tail)', [K.ax, K.ay], { fly: { frames: fr, fps: 12, loop: true } });
+  return vfxSprite('bolt', 'Water bolt (orb with a swirling tail)', [K.ax, K.ay], { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
 
 /** breath: his fan of jets. The jets churn outward from a still origin; spray flies on and falls. */
@@ -340,8 +349,8 @@ function breath(): WorldSprite {
   const K = key('breath'), seed = 5200;
   const ox = K.ax, oy = K.ay; // his cone's tip (the caster's mouth)
   const main = K.part('main'), drops = K.part('drops');
-  const fr = [0, 1, 2, 3].map((i) => {
-    const t = i / 4;
+  const fr = range(FLY).map((i) => {
+    const t = i / FLY;
     const reach = (x: number) => smooth(ox + 4, ox + 34, x);
     let m = churn(main, t, { amp: 2.4, ampY: 1.4, cell: 6, seed, where: reach, flow: [2, 0] });
     m = wobble(m, t, 1, 10, seed + 1, (x) => smooth(ox + 30, ox + 80, x));
@@ -353,15 +362,15 @@ function breath(): WorldSprite {
     return stackC(K.w, K.h, m, d);
   });
   // The anchor is 48 px right of the origin on its row, as before.
-  return vfxSprite('breath', 'Water breath (fan of jets, origin 48 px left of the anchor)', [ox + 48, oy], { fly: { frames: fr, fps: 12, loop: true } });
+  return vfxSprite('breath', 'Water breath (fan of jets, origin 48 px left of the anchor)', [ox + 48, oy], { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
 
 /** sphere: his glossy bubble. The water inside and the swirl round it churn; droplets orbit. */
 function sphere(): WorldSprite {
   const K = key('sphere'), seed = 5300;
   const main = K.part('main'), drops = K.part('drops');
-  const fr = [0, 1, 2, 3].map((i) => {
-    const t = i / 4;
+  const fr = range(FLY).map((i) => {
+    const t = i / FLY;
     const r = (x: number, y: number) => Math.hypot(x - K.ax, y - K.ay);
     let m = churn(main, t, { amp: 1.3, cell: 8, seed, where: (x, y) => 0.5 + 0.5 * smooth(17, 21, r(x, y)) });
     m = wobble(m, t, 0.7, 14, seed + 1, (x, y) => smooth(19, 24, r(x, y)));
@@ -372,15 +381,15 @@ function sphere(): WorldSprite {
     });
     return stackC(K.w, K.h, m, d);
   });
-  return vfxSprite('sphere', 'Water sphere (glossy bubble with a swirl)', [K.ax, K.ay], { fly: { frames: fr, fps: 12, loop: true } });
+  return vfxSprite('sphere', 'Water sphere (glossy bubble with a swirl)', [K.ax, K.ay], { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
 
 /** slash: his crescent. Its water runs along the blade and its tips lick. */
 function slash(): WorldSprite {
   const K = key('slash'), seed = 5400;
   const main = K.part('main'), drops = K.part('drops');
-  const fr = [0, 1, 2, 3].map((i) => {
-    const t = i / 4;
+  const fr = range(FLY).map((i) => {
+    const t = i / FLY;
     let m = churn(main, t, { amp: 1.8, cell: 5, seed });
     m = wobble(m, t, 0.9, 9, seed + 1);
     const d = moveDrops(drops, (k) => {
@@ -389,7 +398,7 @@ function slash(): WorldSprite {
     });
     return stackC(K.w, K.h, m, d);
   });
-  return vfxSprite('slash', 'Water slash (crescent of water)', [K.ax, K.ay], { fly: { frames: fr, fps: 12, loop: true } });
+  return vfxSprite('slash', 'Water slash (crescent of water)', [K.ax, K.ay], { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
 
 /** multi: his water blades in a fan. Each blade bobs on its own beat, churns, and its pale trail flickers. */
@@ -397,8 +406,8 @@ function multi(): WorldSprite {
   const K = key('multi'), seed = 5500;
   const main = K.part('main'), glow = K.part('glow'), drops = K.part('drops');
   const blades = pieces(main);
-  const fr = [0, 1, 2, 3].map((i) => {
-    const t = i / 4;
+  const fr = range(FLY).map((i) => {
+    const t = i / FLY;
     const m = main.empty();
     blades.forEach((pc, k) => {
       const ph = rr(seed, k, 0, TAU);
@@ -407,12 +416,12 @@ function multi(): WorldSprite {
       for (const j of pc) m.set((j % m.w) + dx, ((j / m.w) | 0) + dy, main.v[j]);
     });
     const mm = churn(m, t, { amp: 1.4, ampY: 0.8, cell: 5, seed: seed + 1, flow: [-1, 0] });
-    // The trails stream back a pixel and breathe.
-    const g = i % 2 ? dimGlow(moved(glow, -1, 0), 1) : glow;
+    // The trails stream back a pixel and breathe (two frames on, two off).
+    const g = Math.floor(i / 2) % 2 ? dimGlow(moved(glow, -1, 0), 1) : glow;
     const d = moveDrops(drops, (k) => [-4 * drift(t, rr(seed + 2, k, 0, 1)), 0]);
     return stackC(K.w, K.h, g, mm, d);
   });
-  return vfxSprite('multi', 'Water multi (water blades in a fan)', [K.ax, K.ay], { fly: { frames: fr, fps: 12, loop: true } });
+  return vfxSprite('multi', 'Water multi (water blades in a fan)', [K.ax, K.ay], { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
 
 // --- stream ---------------------------------------------------------------------------------------
@@ -421,7 +430,7 @@ function multi(): WorldSprite {
 const scrolled = (T: Layer, s: number): Layer => remap(T, (x, y) => [(((x - s) % 64) + 64) % 64, y]);
 
 /**
- * stream: his jet, 64 px, scrolling 16 px a frame along the line. stream_head: his crest. On frame
+ * stream: his jet, 64 px, scrolling 8 px a frame along the line. stream_head: his crest. On frame
  * 0 the head is his crest as he drew it (the tile ends where his head begins, so the joint is his
  * picture); on later frames the scrolled jet flows into the crest up to a seam cut where the two
  * match best, and the crest churns and throws its spray.
@@ -429,14 +438,15 @@ const scrolled = (T: Layer, s: number): Layer => remap(T, (x, y) => [(((x - s) %
 function stream(): WorldSprite[] {
   const KT = key('stream'), KH = key('stream_head'), seed = 5600;
   const T = union(KT.part('main'), KT.part('drops'));
-  const tile = [0, 1, 2, 3].map((i) => scrolled(T, 16 * i).render());
+  const step = 64 / FLY;
+  const tile = range(FLY).map((i) => scrolled(T, step * i).render());
   const hm = KH.part('main'), hd = KH.part('drops');
   const off = KH.ay - KT.ay; // the head's rows above the tile's
-  const head = [0, 1, 2, 3].map((i) => {
-    const t = i / 4;
+  const head = range(FLY).map((i) => {
+    const t = i / FLY;
     if (i === 0) return stackC(KH.w, KH.h, hm, hd);
     const crest = wobble(churn(hm, t, { amp: 2, cell: 6, seed, where: (x) => smooth(14, 30, x), flow: [1.5, 0] }), t, 1, 8, seed + 1, (x) => smooth(24, 44, x));
-    const jet = remap(scrolled(T, 16 * i), (x, y) => (x < 64 ? [x, y - off] : null));
+    const jet = remap(scrolled(T, step * i), (x, y) => (x < 64 ? [x, y - off] : null));
     // Per row, the seam (between columns 2 and 24) where the jet and the crest differ least,
     // moving at most 1 px from row to row.
     const lo = 2, hi = 24, n = hi - lo + 1;
@@ -481,50 +491,78 @@ function stream(): WorldSprite[] {
     return stackC(KH.w, KH.h, m, d);
   });
   return [
-    vfxSprite('stream', 'Water stream (rushing jet, tileable 64 px)', [32, 32], { fly: { frames: tile, fps: 12, loop: true } }),
-    vfxSprite('stream_head', 'Water stream head (crested wave)', [KH.ax, KH.ay], { fly: { frames: head, fps: 12, loop: true } }),
+    vfxSprite('stream', 'Water stream (rushing jet, tileable 64 px)', [32, 32], { fly: { frames: tile, fps: FLY_FPS, loop: true } }),
+    vfxSprite('stream_head', 'Water stream head (crested wave)', [KH.ax, KH.ay], { fly: { frames: head, fps: FLY_FPS, loop: true } }),
   ];
 }
 
 // --- hit and blast -------------------------------------------------------------------------------------
 
-/** hit: his star-burst splash. It bursts out of a bright core into his picture (frame 3 of 6), then empties from the core out into flying fragments and droplets. */
+/**
+ * Darkens his water by `steps` shades of his own palette (the body colours are sorted by
+ * brightness), as a splash loses its light while it falls apart.
+ */
+function cool(L: Layer, steps: number): Layer {
+  if (steps <= 0) return L;
+  const out = L.clone();
+  for (let i = 0; i < out.v.length; i++) {
+    const v = out.v[i];
+    if (v && KIND[v - 1] === 'body') out.v[i] = Math.max(1, v - steps);
+  }
+  return out;
+}
+
+/**
+ * hit: his star-burst splash, 12 frames. It builds out of a small core over 3 frames, frame 4 is his
+ * picture and it holds there for 3 frames (only churning), then it slowly empties from the core
+ * outward into flying fragments and droplets that fall, darken and fade over 6 frames.
+ */
 function hit(): WorldSprite {
   const K = key('hit'), seed = 5700;
   const main = K.part('main'), drops = K.part('drops'), glow = K.part('glow');
   const r = (x: number, y: number) => Math.hypot(x - K.ax, y - K.ay);
+  // s: scale; reach: radius shown while it builds; d: droplet spread; g: glow steps down;
+  // thin: how much has emptied; cool: shades darker; a: opacity at the very end.
   const plan = [
-    { s: 0.45, reach: 9, d: 0.5, g: 2, thin: 0 },
-    { s: 0.78, reach: 24, d: 0.8, g: 1, thin: 0 },
-    { s: 1, reach: 99, d: 1, g: 0, thin: 0 },
-    { s: 1.06, reach: 99, d: 1.2, g: 1, thin: 0 },
-    { s: 1.13, reach: 99, d: 1.42, g: 3, thin: 0.5 },
-    { s: 1.2, reach: 99, d: 1.62, g: 9, thin: 0.78 },
+    { s: 0.45, reach: 11, d: 0.45, g: 3, thin: 0, cool: 0, a: 1 },
+    { s: 0.68, reach: 22, d: 0.68, g: 2, thin: 0, cool: 0, a: 1 },
+    { s: 0.87, reach: 34, d: 0.87, g: 1, thin: 0, cool: 0, a: 1 },
+    { s: 1, reach: 99, d: 1, g: 0, thin: 0, cool: 0, a: 1 },
+    { s: 1.02, reach: 99, d: 1.05, g: 0, thin: 0, cool: 0, a: 1 },
+    { s: 1.04, reach: 99, d: 1.1, g: 0, thin: 0, cool: 0, a: 1 },
+    { s: 1.06, reach: 99, d: 1.17, g: 1, thin: 0.2, cool: 0, a: 1 },
+    { s: 1.09, reach: 99, d: 1.25, g: 1, thin: 0.31, cool: 1, a: 1 },
+    { s: 1.12, reach: 99, d: 1.34, g: 2, thin: 0.42, cool: 1, a: 1 },
+    { s: 1.15, reach: 99, d: 1.43, g: 3, thin: 0.51, cool: 2, a: 0.94 },
+    { s: 1.18, reach: 99, d: 1.52, g: 4, thin: 0.6, cool: 2, a: 0.82 },
+    { s: 1.21, reach: 99, d: 1.62, g: 9, thin: 0.69, cool: 3, a: 0.62 },
   ];
   const fr = plan.map((p, i) => {
     let m = scaled(main, p.s, p.s, K.ax, K.ay);
     if (p.reach < 99) m = cut(m, (x, y) => r(x, y) <= p.reach + 2 * pnoise(x, y, 3, 0, 0, seed));
-    if (i >= 3) m = churn(m, (i - 2) / 4, { amp: 1.4, cell: 5, seed });
+    if (i >= 3) m = churn(m, (i - 3) / 8, { amp: 1.4, cell: 5, seed });
     if (p.thin > 0) {
       // The splash empties from its core outward: its spikes fly on as loose fragments.
-      m = cut(m, (x, y) => grain(x, y, seed + i) * 0.4 + Math.min(1, r(x, y) / 34) * 0.6 > p.thin, 5);
+      m = cut(m, (x, y) => grain(x, y, seed + 7) * 0.4 + Math.min(1, r(x, y) / 34) * 0.6 > p.thin, 5);
     }
-    const d = moveDrops(drops, (k, cx, cy) => {
-      if (i === 5 && k % 2) return null;
-      const fall = Math.max(0, i - 2) ** 2 * 0.8;
+    m = cool(m, p.cool);
+    const d = cool(moveDrops(drops, (k, cx, cy) => {
+      if (i >= 10 && rnd(seed + 8, k) < (i - 9) * 0.3) return null;
+      const fall = Math.max(0, i - 4) ** 2 * 0.2;
       return [(cx - K.ax) * (p.d - 1), (cy - K.ay) * (p.d - 1) + fall];
-    });
+    }), p.cool);
     const g = p.g < 9 ? scaled(dimGlow(glow, p.g), Math.min(1, p.s), Math.min(1, p.s), K.ax, K.ay) : null;
-    return stackC(K.w, K.h, g, m, i === 0 ? null : d);
+    const c = stackC(K.w, K.h, g, m, i === 0 ? null : d);
+    return p.a < 1 ? fade(c, p.a) : c;
   });
   return vfxSprite('hit', 'Water hit (star-burst splash)', [K.ax, K.ay], { hit: { frames: fr, fps: 12, loop: false } });
 }
 
 /**
- * blast: his geyser. The pool's ripples spread and the column shoots up out of it (frames 1-3),
- * frame 4 is his picture, then the crown breaks into falling spray, the column drops back into the
- * pool from the top down, and the ripples spread and fade (frames 5-8). His soft teal light glows
- * round it and fades with it.
+ * blast: his geyser, 16 frames. The pool's ripples spread and the column shoots up out of it
+ * (frames 1-4), frame 5 is his picture and it holds there for 3 frames (churning), then the crown
+ * breaks into falling spray, the column drops back into the pool from the top down, and the ripples
+ * spread, break up and fade (frames 8-16). His soft teal light glows round it and fades with it.
  */
 function blast(): WorldSprite {
   const K = key('blast'), seed = 5800;
@@ -535,41 +573,52 @@ function blast(): WorldSprite {
   for (let i = 0; i < crown.v.length; i++) if (crown.v[i]) crownBottom = Math.max(crownBottom, (i / K.w) | 0);
   const colH = K.ay - top;
   const plan = [
-    { pool: 0.4, rise: 0.12, crown: 0, fall: 0, drops: 0.15, light: 0.35, poolCut: 0 },
-    { pool: 0.68, rise: 0.45, crown: 0, fall: 0, drops: 0.5, light: 0.65, poolCut: 0 },
-    { pool: 0.88, rise: 0.85, crown: 0.6, fall: 0, drops: 0.85, light: 0.9, poolCut: 0 },
-    { pool: 1, rise: 1, crown: 1, fall: 0, drops: 1, light: 1, poolCut: 0 },
-    { pool: 1.03, rise: 1, crown: 1, fall: 0, drops: 1, light: 1, poolCut: 0 },
-    { pool: 1.07, rise: 0.62, crown: 1, fall: 1, drops: 1, light: 0.75, poolCut: 0.2 },
-    { pool: 1.11, rise: 0.3, crown: 1, fall: 2, drops: 1, light: 0.45, poolCut: 0.5 },
-    { pool: 1.15, rise: 0.08, crown: 0, fall: 3, drops: 1, light: 0.2, poolCut: 0.78 },
+    { pool: 0.4, rise: 0.14, crown: 0, fall: 0, light: 0.25, poolCut: 0, a: 1 },
+    { pool: 0.6, rise: 0.36, crown: 0, fall: 0, light: 0.45, poolCut: 0, a: 1 },
+    { pool: 0.78, rise: 0.6, crown: 0.3, fall: 0, light: 0.66, poolCut: 0, a: 1 },
+    { pool: 0.92, rise: 0.84, crown: 0.7, fall: 0, light: 0.86, poolCut: 0, a: 1 },
+    { pool: 1, rise: 1, crown: 1, fall: 0, light: 1, poolCut: 0, a: 1 },
+    { pool: 1.01, rise: 1, crown: 1, fall: 0, light: 1, poolCut: 0, a: 1 },
+    { pool: 1.02, rise: 1, crown: 1, fall: 0, light: 1, poolCut: 0, a: 1 },
+    { pool: 1.04, rise: 0.92, crown: 1, fall: 0.4, light: 0.95, poolCut: 0, a: 1 },
+    { pool: 1.06, rise: 0.8, crown: 1, fall: 0.9, light: 0.85, poolCut: 0.08, a: 1 },
+    { pool: 1.08, rise: 0.66, crown: 1, fall: 1.4, light: 0.72, poolCut: 0.18, a: 1 },
+    { pool: 1.1, rise: 0.52, crown: 1, fall: 1.9, light: 0.6, poolCut: 0.28, a: 1 },
+    { pool: 1.12, rise: 0.38, crown: 1, fall: 2.4, light: 0.48, poolCut: 0.38, a: 1 },
+    { pool: 1.14, rise: 0.25, crown: 1, fall: 2.9, light: 0.36, poolCut: 0.5, a: 1 },
+    { pool: 1.16, rise: 0.14, crown: 0, fall: 0, light: 0.25, poolCut: 0.62, a: 0.95 },
+    { pool: 1.18, rise: 0.05, crown: 0, fall: 0, light: 0.15, poolCut: 0.74, a: 0.8 },
+    { pool: 1.2, rise: 0, crown: 0, fall: 0, light: 0.06, poolCut: 0.85, a: 0.55 },
   ];
+  const PEAK = 4;
   const fr = plan.map((p, i) => {
+    const t = (i - PEAK) / 8;
     // The pool: his ripples, spreading over the ground from the centre, then fading out.
     let pl = scaled(pool, p.pool, p.pool, K.ax, K.ay);
-    if (i >= 4) pl = churn(pl, (i - 3) / 4, { amp: 1.3, ampY: 0.6, cell: 7, seed });
+    if (i > PEAK) pl = churn(pl, t, { amp: 1.3, ampY: 0.6, cell: 7, seed });
     if (p.poolCut) pl = cut(pl, (x, y) => pnoise(x, y * 2, 7, 0, 0, seed + 1) * 0.7 + (Math.abs(x - K.ax) / 90) * 0.3 > p.poolCut, 4);
     // The column: revealed from the ground up while it shoots up, dropped from the top as it falls.
     let c = col;
-    if (i >= 3) c = churn(c, (i - 3) / 4, { amp: 1.6, ampY: 2.4, cell: 7, seed: seed + 2, flow: [0, -1.5] });
+    if (i > PEAK) c = churn(c, t, { amp: 1.6, ampY: 2.4, cell: 7, seed: seed + 2, flow: [0, -1.5] });
     if (p.rise < 1) {
       const lim = K.ay - colH * p.rise;
-      c = cut(c, (x, y) => y >= lim + 3 * (pnoise(x, 0, 4, 0, 0, seed + 3 + i) - 0.5) * 2);
+      c = p.rise > 0 ? cut(c, (x, y) => y >= lim + 3 * (pnoise(x, 0, 4, 0, 0, seed + 3 + i) - 0.5) * 2) : c.empty();
     }
     // The crown: grows out of the column's top, then breaks up and falls.
     let cr: Layer | null = null;
     if (p.crown > 0) {
       cr = p.crown < 1 ? moved(scaled(crown, p.crown, p.crown, K.ax, crownBottom), 0, colH * (1 - p.rise)) : crown;
-      if (i >= 4) cr = wobble(churn(cr, (i - 3) / 4, { amp: 1.5, cell: 5, seed: seed + 4 }), (i - 3) / 4, 1.2, 8, seed + 5);
+      if (i > PEAK) cr = wobble(churn(cr, t, { amp: 1.5, cell: 5, seed: seed + 4 }), t, 1.2, 8, seed + 5);
       if (p.fall) cr = cut(moved(scaled(cr, 1 + 0.12 * p.fall, 1, K.ax, crownBottom), 0, 7 * p.fall + 2 * p.fall * p.fall), (x, y) => grain(x, y, seed + 6) > 0.18 + 0.27 * p.fall);
     }
-    // The spray: thrown up and out, then falling (only drops below the column's top while it rises).
+    // The spray: thrown up and out, then falling (only drops below the column's top while it
+    // rises); it thins out at the end.
     const lim = K.ay - colH * p.rise - 4;
     const d = moveDrops(drops, (k, cx, cy) => {
-      if (p.rise < 1 && i < 3 && cy < lim) return null;
-      if (i === 7 && k % 3) return null;
+      if (i < PEAK && cy < lim) return null;
+      if (i > 12 && rnd(seed + 7, k) < (i - 12) * 0.28) return null;
       const dir = Math.sign(cx - K.ax) || 1;
-      const u = Math.max(0, i - 3);
+      const u = Math.max(0, i - PEAK) / 2.75;
       return [dir * 1.4 * u, -2 * u + 1.1 * u * u];
     });
     // His teal light round the geyser.
@@ -577,7 +626,8 @@ function blast(): WorldSprite {
       const e = Math.hypot((x - K.ax) / (70 * Math.max(0.5, p.pool)), (y - (K.ay - 30)) / 50);
       return clamp(1.15 - e, 0, 1) * clamp(p.light * 1.2, 0, 1);
     });
-    return stackC(K.w, K.h, light, pl, c, cr, d);
+    const out = stackC(K.w, K.h, light, pl, c, cr, d);
+    return p.a < 1 ? fade(out, p.a) : out;
   });
   return vfxSprite('blast', 'Water blast (geyser bursting from a splash pool, 3 m)', [K.ax, K.ay], { blast: { frames: fr, fps: 12, loop: false } });
 }
@@ -614,19 +664,21 @@ function wall(kind: 'wall' | 'wall_diag' | 'wall_depth', label: string, seed: nu
     return { m, d };
   };
   const glow = light ? slabGlow(main, K.w, K.h, 1) : null;
-  const idle = [0, 1, 2, 3].map((i) => {
-    const { m, d } = idleAt(i / 4);
+  const IDLE = 8, RISE = 12;
+  const idle = range(IDLE).map((i) => {
+    const { m, d } = idleAt(i / IDLE);
     return stackC(K.w, K.h, glow, m, d);
   });
-  const heights = [0.14, 0.32, 0.52, 0.72, 0.9, 1];
+  // The height grows fast at first and settles into his picture on the last frame.
+  const heights = range(RISE).map((i) => 1 - Math.pow(1 - (i + 1) / RISE, 1.35));
   const rise = heights.map((s, i) => {
-    const { m, d } = idleAt(((i - 5) / 4 + 4) % 1);
+    const { m, d } = idleAt((((i - (RISE - 1)) / IDLE) % 1 + 1) % 1);
     const grow = (L: Layer) => remap(L, (x, y) => [x, g[x] - (g[x] - y) / s]);
-    const dd = i === 5 ? d : i >= 3 ? cut(grow(d), (x, y) => grain(x, y, seed + 3) < 0.35 + 0.22 * i, 0) : null;
+    const dd = i === RISE - 1 ? d : i >= 5 ? cut(grow(d), (x, y) => grain(x, y, seed + 3) < 0.1 + 0.15 * (i - 4), 0) : null;
     const gm = grow(m);
     return stackC(K.w, K.h, light ? slabGlow(gm, K.w, K.h, s) : null, gm, dd);
   });
-  return vfxSprite(kind, label, [K.ax, K.ay], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
+  return vfxSprite(kind, label, [K.ax, K.ay], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 10, loop: true } });
 }
 
 /** A soft teal light hugging a slab of water: banded by distance from it, up to 12 px out. */
@@ -668,7 +720,7 @@ function slabGlow(L: Layer, w: number, h: number, k: number): Canvas {
 function veil(w: number, h: number, ax: number, ay: number, frame: number): Canvas {
   const c = new Canvas(w, h);
   const deep = hex(WV3_VEIL.deep), light = hex(WV3_VEIL.light);
-  const ph = (frame / 6) * TAU;
+  const ph = (frame / AURA) * TAU;
   const breathe = 1 + 0.1 * Math.sin(ph), size = 1 + 0.02 * Math.sin(ph);
   const cx = ax, cy = ay - 50, rx = 23 * size, ry = 55 * size;
   for (let y = 0; y < h; y++)
@@ -695,8 +747,8 @@ function aura(): WorldSprite[] {
   const bm = KB.part('main'), bd = KB.part('drops'), bg = KB.part('glow');
   const fm = union(KF.part('main'), KF.part('drops')), fg = KF.part('glow');
   const back: Canvas[] = [], front: Canvas[] = [];
-  for (let i = 0; i < 6; i++) {
-    const t = i / 6;
+  for (let i = 0; i < AURA; i++) {
+    const t = i / AURA;
     const opts: ChurnOpts = { amp: 1.4, ampY: 2.6, cell: 7, seed, flow: [0, -1.4] };
     const up = (y: number) => 0.4 + 0.6 * smooth(KB.ay, KB.ay - 90, y);
     const b = wobble(churn(bm, t, opts), t, 1.1, 11, seed + 1, (_x, y) => up(y));
@@ -704,14 +756,14 @@ function aura(): WorldSprite[] {
       const u = drift(t, rr(seed + 2, k, 0, 1));
       return [Math.sin(u * 5 + k) * 1.2, -7 * u];
     });
-    const g = i === 2 || i === 3 ? dimGlow(bg, 1) : bg;
+    const g = i >= 4 && i <= 7 ? dimGlow(bg, 1) : bg;
     back.push(stackC(KB.w, KB.h, g, b, d));
     const f = wobble(churn(fm, t, opts), t, 1.1, 11, seed + 1, (_x, y) => up(y));
     front.push(stackC(KF.w, KF.h, veil(KF.w, KF.h, KF.ax, KF.ay, i), fg, f));
   }
   return [
-    vfxSprite('aura', 'Water aura, front layer (draw OVER the character)', [KF.ax, KF.ay], { idle: { frames: front, fps: 12, loop: true } }),
-    vfxSprite('aura_back', 'Water aura, back layer (draw BEHIND the character)', [KB.ax, KB.ay], { idle: { frames: back, fps: 12, loop: true } }),
+    vfxSprite('aura', 'Water aura, front layer (draw OVER the character)', [KF.ax, KF.ay], { idle: { frames: front, fps: 10, loop: true } }),
+    vfxSprite('aura_back', 'Water aura, back layer (draw BEHIND the character)', [KB.ax, KB.ay], { idle: { frames: back, fps: 10, loop: true } }),
   ];
 }
 

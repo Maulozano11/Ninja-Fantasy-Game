@@ -234,53 +234,63 @@ function fit(b: Built, opt: { x?: [number, number]; y?: [number, number]; includ
 
 // --- projectiles ----------------------------------------------------------------------------------------
 
-/** His spiral vortex ball: the swirl turns a quarter turn a frame (his five arms read as a steady
- *  counter-clockwise spin, the way the arms trail), the trail streaks flutter, the leaves bob. */
+// --- timing (owner: slower, more frames, no flashes) -------------------------------------------------------
+// Flying loops: 8 frames at 10 fps. hit: 12 at 12 (build-up 3, his picture at frame 4 held 3, a
+// slow 6-frame dissipation). blast: 16 at 12 (anticipation 3, growth 2, his picture at frame 6 held
+// 3, an 8-frame settle). Walls: rise 12 at 12, idle 8 at 10. Aura and aura_back: 12 at 10.
+const FLY_N = 8, FLY_FPS = 10;
+const range = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
+
+/** His spiral vortex ball: the swirl turns a quarter turn a frame, exactly (no resampling), twice
+ *  round per loop; his five arms then advance a fifth of their spacing a frame, a steady
+ *  counter-clockwise spin the way the arms trail. The trail streaks ripple, the leaves bob. */
 function bolt(): Built {
   const s = spr('bolt');
   const swirl = layer(s, 'swirl'), main = layer(s, 'main'), ls = leaves(s);
   const cx = s.ax + 0.5, cy = s.ay + 0.5;
-  const frames = [0, 1, 2, 3].map((k) => {
-    const t = k / 4;
+  const frames = range(FLY_N).map((k) => {
+    const t = k / FLY_N;
     // The trail streaks ripple along their length (whole columns move, so their outline holds).
     const trail = k ? warp(main, (x) => (x < s.ax - 18 ? [0, wave(x * 0.5, t, 0.8)] : [0, 0])) : main;
-    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ ...bob(t, 1.4, i * 2.1), flip: k % 2 === 1 }));
+    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ ...bob(t, 1.4, i * 2.1), flip: ((k >> 1) & 1) === 1 }));
     return stack(s.W, s.H, trail, quarterTurns(swirl, k, cx, cy), lv);
   });
-  return { anims: { fly: { frames, fps: 12, loop: true } }, ax: s.ax, ay: s.ay };
+  return { anims: { fly: { frames, fps: FLY_FPS, loop: true } }, ax: s.ax, ay: s.ay };
 }
 
-/** His braided jet: a 64 px tile cut round his second crescent that scrolls forward 16 px a frame. */
-function streamTile(): { tile: Canvas[]; base: Canvas; top: number } {
+/** His braided jet: a 64 px tile cut round his second crescent that scrolls forward 8 px a frame. */
+const STEP = 64 / FLY_N;
+function streamTile(): { tile: Canvas[]; base: Canvas } {
   const s = spr('stream', 0);
   const base = layer(s, 'tile', 0);
-  const tile = [0, 1, 2, 3].map((k) => {
+  const tile = range(FLY_N).map((k) => {
     const out = new Canvas(64, base.h);
     for (let y = 0; y < base.h; y++)
       for (let x = 0; x < 64; x++) {
-        const p = base.get((((x - 16 * k) % 64) + 64) % 64, y);
+        const p = base.get((((x - STEP * k) % 64) + 64) % 64, y);
         if (p[3]) out.set(x, y, p);
       }
     return out;
   });
-  return { tile, base, top: 0 };
+  return { tile, base };
 }
 /** His flaring head: left of his big crescent it shows the scrolling tile (so it joins the tile in
- *  every frame); the crescent hides the seam and pulses forward a pixel; his spray and leaves flutter. */
+ *  every frame); the crescent hides the seam and swells forward a pixel; his spray flutters and
+ *  his leaves bob. */
 function streamHead(base: Canvas): Canvas[] {
   const s = spr('stream_head', 0);
   const head = layer(s, 'head', 0), cres = layer(s, 'crescent', 0), ls = leaves(s, 0);
   const back = s.ref.back ?? [];
   const W = s.W + 4; // room for the spray to flutter forward
-  return [0, 1, 2, 3].map((k) => {
-    const t = k / 4;
-    const pulse = [0, 1, 1, 0][k];
+  return range(FLY_N).map((k) => {
+    const t = k / FLY_N;
+    const pulse = Math.round(0.5 - 0.5 * Math.cos(TAU * t));
     const out = new Canvas(W, s.H);
     for (let y = 0; y < s.H; y++)
       for (let x = 0; x < s.W; x++) {
         let p: Color;
-        // (when the crescent pulses forward, the tile shows in the pixel it leaves)
-        if (x < (back[y] ? back[y] + pulse : 0)) p = base.get((((x - 16 * k) % 64) + 64) % 64, y);
+        // (when the crescent swells forward, the tile shows in the pixel it leaves)
+        if (x < (back[y] ? back[y] + pulse : 0)) p = base.get((((x - STEP * k) % 64) + 64) % 64, y);
         else p = head.get(x, y);
         if (p[3]) out.set(x, y, p);
       }
@@ -288,7 +298,7 @@ function streamHead(base: Canvas): Canvas[] {
     const spray = keep(out, (x) => x >= 76);
     const body = keep(out, (x) => x < 76);
     const fl = k ? warp(spray, (x, y) => [Math.max(0, wave(y * 0.7, t, 0.9)), 0]) : spray;
-    const lv = drawLeaves(W, s.H, ls, (l, i) => ({ dx: k + bob(t, 1, i * 2).dx, dy: bob(t, 1.2, i * 2).dy, flip: k >= 2 }));
+    const lv = drawLeaves(W, s.H, ls, (l, i) => ({ ...bob(t, 1.4, i * 2), flip: ((k >> 1) & 1) === 1 }));
     return stack(W, s.H, body, fl, shifted(cres, pulse, 0), lv);
   });
 }
@@ -299,13 +309,13 @@ function breath(): Built {
   const s = spr('breath');
   const main = layer(s, 'main'), ls = leaves(s);
   const x0 = s.ax - 48;
-  const frames = [0, 1, 2, 3].map((k) => {
-    const t = k / 4;
+  const frames = range(FLY_N).map((k) => {
+    const t = k / FLY_N;
     const body = k ? warp(main, (x) => [0, wave((x - x0) * 0.26, t, clamp((x - x0) / 60, 0, 1) * 1.3)]) : main;
-    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ dx: bob(t, 1.5, i * 1.7).dx + Math.round(k * 0.5), dy: bob(t, 1.5, i * 1.7).dy }));
+    const lv = drawLeaves(s.W, s.H, ls, (l, i) => bob(t, 1.8, i * 1.7));
     return stack(s.W, s.H, body, lv);
   });
-  return { anims: { fly: { frames, fps: 12, loop: true } }, ax: s.ax, ay: s.ay };
+  return { anims: { fly: { frames, fps: FLY_FPS, loop: true } }, ax: s.ax, ay: s.ay };
 }
 
 /** His ball of wind: the bands inside the ball churn (a wave rolling down through them), the orbit
@@ -314,8 +324,8 @@ function sphere(): Built {
   const s = spr('sphere');
   const main = layer(s, 'main'), ls = leaves(s);
   const R = 21;
-  const frames = [0, 1, 2, 3].map((k) => {
-    const t = k / 4;
+  const frames = range(FLY_N).map((k) => {
+    const t = k / FLY_N;
     const body = k
       ? warp(main, (x, y) => {
           const r = Math.hypot(x + 0.5 - s.ax, y + 0.5 - s.ay);
@@ -326,31 +336,31 @@ function sphere(): Built {
     const lv = drawLeaves(s.W, s.H, ls, (l, i) => bob(t, 1.5, i * 2.4));
     return stack(s.W, s.H, body, lv);
   });
-  return { anims: { fly: { frames, fps: 12, loop: true } }, ax: s.ax, ay: s.ay };
+  return { anims: { fly: { frames, fps: FLY_FPS, loop: true } }, ax: s.ax, ay: s.ay };
 }
 
-/** His crescent of swept strokes: the strokes behind the blade flutter, the blade holds. */
+/** His crescent of swept strokes: the strokes behind the blade ripple, the blade holds. */
 function slash(): Built {
   const s = spr('slash');
   const main = layer(s, 'main'), ls = leaves(s);
   const blade = s.ax + 8; // his crescent is right of this
-  const frames = [0, 1, 2, 3].map((k) => {
-    const t = k / 4;
+  const frames = range(FLY_N).map((k) => {
+    const t = k / FLY_N;
     const body = k ? warp(main, (x) => [0, x < blade ? wave(x * 0.45, t, 0.9 * clamp((blade - x) / 12, 0, 1)) : 0]) : main;
-    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ ...bob(t, 1.4, i * 2.2), flip: k % 2 === 1 }));
+    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ ...bob(t, 1.4, i * 2.2), flip: ((k >> 1) & 1) === 1 }));
     return stack(s.W, s.H, body, lv);
   });
-  return { anims: { fly: { frames, fps: 12, loop: true } }, ax: s.ax, ay: s.ay };
+  return { anims: { fly: { frames, fps: FLY_FPS, loop: true } }, ax: s.ax, ay: s.ay };
 }
 
 /** His small tornado cones: each cone's bands ripple round it and the cone bobs a pixel, out of
- *  step with the others; the trails flutter. */
+ *  step with the others; the trails ripple. */
 function multi(): Built {
   const s = spr('multi');
   const cones = ['cone1', 'cone2', 'cone3', 'cone4'].map((n) => layer(s, n));
   const main = layer(s, 'main'), ls = leaves(s);
-  const frames = [0, 1, 2, 3].map((k) => {
-    const t = k / 4;
+  const frames = range(FLY_N).map((k) => {
+    const t = k / FLY_N;
     const parts = cones.map((c, j) => {
       if (!k) return c;
       // Cone 4 lies on its side (axis left to right): its bands ripple up and down.
@@ -358,47 +368,78 @@ function multi(): Built {
       return shifted(rip, 0, Math.round(Math.sin(TAU * t + j * 1.6) - Math.sin(j * 1.6)));
     });
     const tr = k ? warp(main, (x) => [0, wave(x * 0.5, t, 0.7)]) : main;
-    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ ...bob(t, 1.2, i * 2), flip: k % 2 === 1 }));
+    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ ...bob(t, 1.2, i * 2), flip: ((k >> 1) & 1) === 1 }));
     return stack(s.W, s.H, tr, ...parts, lv);
   });
-  return { anims: { fly: { frames, fps: 12, loop: true } }, ax: s.ax, ay: s.ay };
+  return { anims: { fly: { frames, fps: FLY_FPS, loop: true } }, ax: s.ax, ay: s.ay };
 }
 
-/** His X burst: it snaps open from the hit point (frames 1-2), frame 3 is his picture, then the
- *  blades thin out into the wind while the leaves fly on outward. */
+/** Colours pulled toward a deep teal by k (0 keeps them): wind cooling as it dies. */
+function cool(c: Canvas, k: number, to: Color): Canvas {
+  if (k <= 0) return c;
+  const out = new Canvas(c.w, c.h);
+  for (let y = 0; y < c.h; y++)
+    for (let x = 0; x < c.w; x++) {
+      const p = c.get(x, y);
+      if (p[3]) out.set(x, y, [Math.round(p[0] + (to[0] - p[0]) * k), Math.round(p[1] + (to[1] - p[1]) * k), Math.round(p[2] + (to[2] - p[2]) * k), p[3]]);
+    }
+  return out;
+}
+/** A mid-dark teal from a sprite's own palette (his colours), for cooling. */
+function deepTeal(s: Spr): Color {
+  const wind = s.pal.filter((p) => p[3] === 255 && p[1] > p[0] + 15 && p[2] >= p[0]).sort((a, b) => lum(a) - lum(b));
+  return wind[Math.floor(wind.length * 0.3)];
+}
+
+/** His X of wind blades. It builds up from the hit point over 3 frames (growing and filling in),
+ *  frame 4 is his picture and it holds for 3 frames with a faint shimmer along the blades, then it
+ *  dissipates over 6 frames: spreading a little, cooling to teal, scattering and fading, while the
+ *  leaves fly on outward and drop. Brightness rises and falls smoothly: no single-frame flash. */
 function hit(): Built {
   const s = spr('hit');
   const main = layer(s, 'main'), ls = leaves(s);
   const cx = s.ax + 0.5, cy = s.ay + 0.5;
+  const teal = deepTeal(s);
   const plan = [
-    { k: 0.3, fade: 1, leaf: 0.2 },
-    { k: 0.68, fade: 1, leaf: 0.6 },
-    { k: 1, fade: 1, leaf: 1 },
-    { k: 1.06, fade: 0.78, leaf: 1.18 },
-    { k: 1.1, fade: 0.5, leaf: 1.34 },
-    { k: 1.13, fade: 0.24, leaf: 1.48 },
+    { k: 0.52, fade: 0.72, leaf: 0.45, cool: 0, scatter: 0, shimmer: 0 },
+    { k: 0.7, fade: 0.86, leaf: 0.68, cool: 0, scatter: 0, shimmer: 0 },
+    { k: 0.86, fade: 0.95, leaf: 0.86, cool: 0, scatter: 0, shimmer: 0 },
+    { k: 1, fade: 1, leaf: 1, cool: 0, scatter: 0, shimmer: 0 },
+    { k: 1, fade: 1, leaf: 1.04, cool: 0, scatter: 0, shimmer: 1 / 3 },
+    { k: 1.015, fade: 1, leaf: 1.08, cool: 0.05, scatter: 0, shimmer: 0 },
+    { k: 1.03, fade: 0.9, leaf: 1.13, cool: 0.12, scatter: 0, shimmer: 0 },
+    { k: 1.05, fade: 0.78, leaf: 1.19, cool: 0.2, scatter: 0.06, shimmer: 0 },
+    { k: 1.07, fade: 0.64, leaf: 1.25, cool: 0.28, scatter: 0.12, shimmer: 0 },
+    { k: 1.09, fade: 0.5, leaf: 1.31, cool: 0.36, scatter: 0.18, shimmer: 0 },
+    { k: 1.11, fade: 0.36, leaf: 1.37, cool: 0.44, scatter: 0.24, shimmer: 0 },
+    { k: 1.13, fade: 0.22, leaf: 1.43, cool: 0.52, scatter: 0.3, shimmer: 0 },
   ];
   const frames = plan.map((p, i) => {
     let body = p.k === 1 ? main : scaled(main, p.k, p.k, cx, cy);
-    // The cut blows away: the cross fades out as it spreads.
+    // While it holds: a faint shimmer running along the two diagonals of the X.
+    if (p.shimmer) body = warp(body, (x, y) => [wave((x - y) * 0.35, p.shimmer, 0.4), 0]);
+    if (p.scatter) body = disperse(body, p.scatter, 4300 + i, (x, y) => 0.25 - Math.hypot(x - cx, y - cy) / 120);
+    body = cool(body, p.cool, teal);
     if (p.fade < 1) body = alphaMul(body, p.fade);
     const lv = drawLeaves(s.W, s.H, ls, (l) => ({
       dx: (l.cx - cx) * (p.leaf - 1),
-      dy: (l.cy - cy) * (p.leaf - 1) + (i > 2 ? (i - 2) * (i - 2) * 0.8 : 0),
-      flip: i % 2 === 1,
+      dy: (l.cy - cy) * (p.leaf - 1) + (i > 5 ? (i - 5) * (i - 5) * 0.3 : 0),
+      flip: ((i >> 1) & 1) === 1,
       hide: i === 0,
     }));
-    return stack(s.W, s.H, body, lv);
+    return stack(s.W, s.H, body, i >= 10 ? alphaMul(lv, i === 10 ? 0.7 : 0.4) : lv);
   });
   return { anims: { hit: { frames, fps: 12, loop: false } }, ax: s.ax, ay: s.ay };
 }
 
 // --- blast ------------------------------------------------------------------------------------------------
 
-/** His tornado over a spiral of wind on the ground. The rings spin up on the ground and spread
- *  (frames 1-3), the funnel builds from its tip up (2-4), frame 5 is his picture, then it writhes,
- *  breaks up from the bottom and lifts away while the rings fade. The leaves are swept round the
- *  funnel. A soft green glow (his glow colours) lights the ground under it. */
+/** His tornado over a spiral of wind on the ground (16 frames). Anticipation (1-3): the spiral
+ *  winds up on the ground and spreads, the glow grows, the funnel's tip touches down. Growth (4-5):
+ *  the funnel builds from its tip up, squashed, thin and faint at first. Frame 6 is his picture, held to frame 8 while
+ *  the spiral keeps turning and the funnel starts to writhe. Settle (9-16): it writhes, lifts off
+ *  the ground from the tip up and fades, the spiral and the glow fade, the leaves are swept round
+ *  the funnel and rise. */
 function blast(): Built {
   const s = spr('blast');
   const ground = layer(s, 'main'), funnel = layer(s, 'funnel'), glow = layer(s, 'glow'), ls = leaves(s);
@@ -407,49 +448,58 @@ function blast(): Built {
   const tipY = fb[3], topY = fb[1];
   const ratio = 3.2; // his ground spiral is about 3.2 times wider than tall
   const D = Math.PI / 180;
-  const plan = [
-    { ring: 0.38, turn: -75, grow: 0, glow: 0.35, writhe: 0, gone: 0, lift: 0, ringGone: 0 },
-    { ring: 0.62, turn: -50, grow: 0.12, glow: 0.6, writhe: 0, gone: 0, lift: 0, ringGone: 0 },
-    { ring: 0.84, turn: -30, grow: 0.38, glow: 0.8, writhe: 0, gone: 0, lift: 0, ringGone: 0 },
-    { ring: 0.96, turn: -14, grow: 0.72, glow: 0.95, writhe: 0, gone: 0, lift: 0, ringGone: 0 },
+  const PEAK = 5;
+  type Step = { ring: number; turn: number; grow: number; glow: number; writhe: number; gone: number; lift: number; ringGone: number };
+  const plan: Step[] = [
+    { ring: 0.36, turn: -100, grow: 0, glow: 0.25, writhe: 0, gone: 0, lift: 0, ringGone: 0 },
+    { ring: 0.56, turn: -80, grow: 0.14, glow: 0.45, writhe: 0, gone: 0, lift: 0, ringGone: 0 },
+    { ring: 0.72, turn: -60, grow: 0.38, glow: 0.62, writhe: 0, gone: 0, lift: 0, ringGone: 0 },
+    { ring: 0.86, turn: -40, grow: 0.62, glow: 0.78, writhe: 0, gone: 0, lift: 0, ringGone: 0 },
+    { ring: 0.95, turn: -20, grow: 0.84, glow: 0.9, writhe: 0, gone: 0, lift: 0, ringGone: 0 },
     { ring: 1, turn: 0, grow: 1, glow: 1, writhe: 0, gone: 0, lift: 0, ringGone: 0 },
-    { ring: 1, turn: 16, grow: 1, glow: 1, writhe: 0.5, gone: 0, lift: 0, ringGone: 0.1 },
-    { ring: 1.02, turn: 32, grow: 1, glow: 0.7, writhe: 0.75, gone: 0.4, lift: -4, ringGone: 0.42 },
-    { ring: 1.04, turn: 48, grow: 1, glow: 0.35, writhe: 1, gone: 0.75, lift: -10, ringGone: 0.78 },
+    { ring: 1, turn: 10, grow: 1, glow: 1, writhe: 0.35, gone: 0, lift: 0, ringGone: 0 },
+    { ring: 1, turn: 20, grow: 1, glow: 1, writhe: 0.6, gone: 0, lift: 0, ringGone: 0 },
   ];
+  for (let j = 1; j <= 8; j++) {
+    const u = j / 8;
+    plan.push({ ring: 1 + 0.01 * j, turn: 20 + 10 * j, grow: 1, glow: 1 - 0.85 * u, writhe: Math.min(1, 0.6 + 0.2 * j), gone: 0.86 * u ** 1.2, lift: -1.75 * j, ringGone: 0.85 * u });
+  }
   const frames = plan.map((p, i) => {
-    const t = i / 8;
-    let g = scaled(glow, p.ring, p.ring, cx, cy);
+    const t = Math.max(0, i - PEAK) / 8;
+    let g = p.ring === 1 ? glow : scaled(glow, p.ring, p.ring, cx, cy);
     if (p.glow !== 1) g = alphaMul(g, p.glow);
     let r = p.turn ? turnOnGround(ground, p.turn * D, cx, cy, ratio) : ground;
     if (p.ring !== 1) r = scaled(r, p.ring, p.ring, cx, cy);
-    if (p.ringGone) r = alphaMul(disperse(r, p.ringGone * 0.5, 5100 + i), 1 - p.ringGone * 0.6);
+    if (p.ringGone) r = alphaMul(disperse(r, p.ringGone * 0.45, 5100 + i), 1 - p.ringGone * 0.8);
     let f: Canvas | null = null;
     if (p.grow > 0) {
-      // Built from the tip up: the part above the reached height is not there yet.
-      const reach = tipY - (tipY - topY + 4) * p.grow;
-      f = p.grow < 1 ? keep(funnel, (x, y) => y >= reach - 4 * hash(x >> 1, 0, 51)) : funnel;
-      // Young, it is thinner: it widens as it climbs.
-      if (p.grow < 1) f = scaled(f, 0.55 + 0.45 * p.grow, 1, cx, tipY);
+      if (p.grow < 1) {
+        // Built from the tip up: squashed toward the ground, cut at the height reached so far,
+        // thinner while young, and still faint, so it fills in smoothly.
+        const reach = tipY - (tipY - topY + 4) * Math.min(1, p.grow * 1.25);
+        f = scaled(funnel, 0.55 + 0.45 * p.grow, 0.35 + 0.65 * p.grow, cx, tipY);
+        f = keep(f, (x, y) => y >= reach - 4 * hash(x >> 1, 0, 51));
+        f = alphaMul(f, 0.5 + 0.5 * p.grow);
+      } else f = funnel;
       if (p.writhe) f = warp(f, (x, y) => [wave((tipY - y) * 0.16, t, 1.6 * p.writhe * clamp((tipY - y) / 40, 0.3, 1)), 0]);
       // Spent, it lifts off the ground from the tip up and fades.
       if (p.gone) {
         const cut = tipY - (tipY - topY) * p.gone * 0.6;
         f = keep(f, (x, y) => y < cut + 4 * hash(x >> 1, 1, 52));
-        f = alphaMul(f, 1 - p.gone * 0.6);
+        f = alphaMul(f, 1 - p.gone * 0.85);
       }
       if (p.lift) f = shifted(f, 0, p.lift);
     }
     const lv = drawLeaves(s.W, s.H, ls, (l, j) => {
       if (i < 2) return { dx: 0, dy: 0, hide: true };
       // Swept round the funnel: along an ellipse about the axis, rising after the peak.
-      const ang = (i - 4) * 0.32 * (j % 2 ? 1 : 0.8);
+      const ang = (i - PEAK) * 0.1 * (j % 2 ? 1 : 0.8);
       const rx = l.cx - cx, ry = (l.cy - cy) * 1.6;
       const nx = rx * Math.cos(ang) - ry * Math.sin(ang), ny = (rx * Math.sin(ang) + ry * Math.cos(ang)) / 1.6;
-      const spread = i < 4 ? 0.7 + 0.15 * (i - 2) : 1 + 0.07 * (i - 4);
-      return { dx: cx + nx * spread - l.cx, dy: cy + ny * spread - l.cy - Math.max(0, i - 4) * 3, flip: i % 2 === 1, hide: i === 7 && j % 2 === 0 };
+      const spread = i < PEAK ? 0.6 + (0.4 * (i - 2)) / (PEAK - 2) : 1 + 0.02 * (i - PEAK);
+      return { dx: cx + nx * spread - l.cx, dy: cy + ny * spread - l.cy - Math.max(0, i - PEAK) * 1.6, flip: ((i >> 1) & 1) === 1, hide: i >= 14 && j % 2 === 0 };
     });
-    return stack(s.W, s.H, g, r, f, lv);
+    return stack(s.W, s.H, g, r, f, i >= 13 ? alphaMul(lv, [0.75, 0.5, 0.3][i - 13]) : lv);
   });
   return { anims: { blast: { frames, fps: 12, loop: false } }, ax: s.ax, ay: s.ay };
 }
@@ -465,8 +515,9 @@ interface WallSpec {
    *  gentle waves so his strokes move as a whole instead of tearing. */
   writhe: (x: number, y: number, t: number, h: number) => [number, number];
 }
-/** Rise (6, once): the wall grows up out of its own dust, his picture at the end (= idle frame 1).
- *  Idle (4, loop): his ribbons writhe with small travelling waves, the dust churns, the leaves are
+const RISE_N = 12, IDLE_N = 8;
+/** Rise (12, once): the wall grows up out of its own dust, his picture at the end (= idle frame 1).
+ *  Idle (8, loop): his ribbons writhe with small travelling waves, the dust churns, the leaves are
  *  carried round. */
 function wall(spec: WallSpec): Built {
   const s = spr(spec.name);
@@ -474,20 +525,20 @@ function wall(spec: WallSpec): Built {
   const mb = main.bounds()!;
   let hMax = 0;
   for (let x = mb[0]; x <= mb[2]; x++) hMax = Math.max(hMax, spec.ground(x) - mb[1]);
-  const idle = [0, 1, 2, 3].map((k) => {
-    const t = k / 4;
+  const idle = range(IDLE_N).map((k) => {
+    const t = k / IDLE_N;
     const m = k ? warp(main, (x, y) => spec.writhe(x, y, t, clamp((spec.ground(x) - y) / hMax, 0, 1))) : main;
     const d = k ? warp(dust, (x, y) => [wave(y * 0.5 + x * 0.05, t, 0.7), 0]) : dust;
     const g = k ? alphaMul(glow, 1 + 0.12 * Math.sin(TAU * t)) : glow;
-    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ ...bob(t, 2, i * 1.9), flip: (k + i) % 2 === 1 }));
+    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ ...bob(t, 2, i * 1.9), flip: (((k >> 1) + i) & 1) === 1 }));
     return stack(s.W, s.H, g, d, m, lv);
   });
-  const rise = [0, 1, 2, 3, 4, 5].map((k) => {
-    if (k === 5) return idle[0];
-    const f = (k + 1) / 6;
+  const rise = range(RISE_N).map((k) => {
+    if (k === RISE_N - 1) return idle[0];
+    const f = (k + 1) / RISE_N;
     // Grown up from the ground: squashed toward it and cut at the height reached so far.
     const sy = 0.3 + 0.7 * f;
-    const reach = hMax * Math.min(1, f * 1.15);
+    const reach = hMax * Math.min(1, f * 1.12);
     const grow = (c: Canvas) => {
       const out = new Canvas(c.w, c.h);
       for (let y = 0; y < c.h; y++)
@@ -500,12 +551,12 @@ function wall(spec: WallSpec): Built {
         }
       return out;
     };
-    const d = k < 2 ? disperse(dust, [0.55, 0.25][k], 6100 + k) : dust;
+    const d = k < 4 ? disperse(dust, [0.6, 0.45, 0.3, 0.15][k], 6100 + k) : dust;
     const g = alphaMul(glow, f);
-    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ dx: 0, dy: (spec.ground(Math.round(l.cx)) - l.cy) * (1 - f), hide: k < 2 || (i + k) % 3 === 0 }));
+    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ dx: 0, dy: (spec.ground(Math.round(l.cx)) - l.cy) * (1 - f), hide: k < 4 || (k < 8 && (i + k) % 3 === 0) }));
     return stack(s.W, s.H, g, d, grow(main), lv);
   });
-  return { anims: { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } }, ax: s.ax, ay: s.ay };
+  return { anims: { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 10, loop: true } }, ax: s.ax, ay: s.ay };
 }
 
 function wallH(): Built {
@@ -518,11 +569,9 @@ function wallH(): Built {
   });
 }
 function wallDiag(): Built {
-  const s = spr('wall_diag');
   // His base runs from his lower-left (40, 226) to his upper-right (186, 118), in canvas pixels.
   const g0 = [40 + PAD, 226 + PAD], g1 = [186 + PAD, 118 + PAD];
   const ground = (x: number) => g0[1] + ((x - g0[0]) / (g1[0] - g0[0])) * (g1[1] - g0[1]);
-  void s;
   return wall({
     name: 'wall_diag',
     ground: (x) => ground(clamp(x, g0[0] - 30, g1[0] + 30)),
@@ -542,28 +591,25 @@ function wallDepth(): Built {
 
 // --- aura ----------------------------------------------------------------------------------------------------
 
-/** His ribbons spiralling round the figure (front, over the character) with a travelling wave
- *  climbing them, leaves circling, over a veil of his wind colour that tints the figure (see
- *  veil()); his green glow is split off as aura_back (behind the character) and breathes. Both
- *  share the frame and the anchor (the feet). */
 const smooth = (a: number, b: number, v: number): number => {
   const t = clamp((v - a) / (b - a), 0, 1);
   return t * t * (3 - 2 * t);
 };
+const lum = (p: Color): number => 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2];
 
 /**
  * His wind colour over the body, as in his picture, where the figure is seen through the wind (the
  * owner chose a tint over a clear middle, as for the lightning aura). A soft field round the body,
  * 30% in the middle rising to 45% toward its rim, mid teal inside and mint at the rim (both from
  * his aura palette); not the shape of any one character, so it sits right on every figure. It
- * breathes with the frames (frame 1 is his picture).
+ * breathes with the loop phase t (frame 1 is his picture).
  */
-function veil(s: Spr, frame: number): Canvas {
+function veil(s: Spr, t: number): Canvas {
   const c = new Canvas(s.W, s.H);
   const wind = s.pal.filter((p) => p[3] === 255 && p[1] > p[0] + 15 && p[2] >= p[0]).sort((a, b) => lum(a) - lum(b));
   const inner = wind[Math.floor(wind.length * 0.6)], rim = wind[Math.floor(wind.length * 0.92)];
   const cx = s.ax + 0.5, cy = s.ay - 49, rx = 24, ry = 56;
-  const breathe = 1 + 0.08 * Math.sin((frame / 6) * TAU);
+  const breathe = 1 + 0.08 * Math.sin(t * TAU);
   for (let y = 0; y < s.H; y++)
     for (let x = 0; x < s.W; x++) {
       const r = Math.hypot((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry);
@@ -571,32 +617,36 @@ function veil(s: Spr, frame: number): Canvas {
       a = Math.round(a / 0.05) * 0.05;
       if (a <= 0.02) continue;
       // Three bands of colour from the middle out, so it reads as pixel art, not a gradient.
-      const t = Math.round(smooth(0.3, 1, r) * 2) / 2;
-      const col = [0, 1, 2].map((i) => Math.round(inner[i] + (rim[i] - inner[i]) * t));
+      const b = Math.round(smooth(0.3, 1, r) * 2) / 2;
+      const col = [0, 1, 2].map((i) => Math.round(inner[i] + (rim[i] - inner[i]) * b));
       c.set(x, y, [col[0], col[1], col[2], Math.round(Math.min(1, a) * 255)]);
     }
   return c;
 }
-const lum = (p: Color): number => 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2];
 
+/** His ribbons spiralling round the figure (front, over the character) with a travelling wave
+ *  climbing them, leaves circling, over a veil of his wind colour that tints the figure (see
+ *  veil()); his green glow is split off as aura_back (behind the character) and breathes. Both
+ *  share the frame, the anchor (the feet) and the frame index: 12 frames at 10 fps. */
+const AURA_N = 12, AURA_FPS = 10;
 function aura(): { front: Built; back: Built } {
   const s = spr('aura');
   const main = layer(s, 'main'), glow = layer(s, 'glow'), ls = leaves(s);
   const front: Canvas[] = [], back: Canvas[] = [];
-  for (let k = 0; k < 6; k++) {
-    const t = k / 6;
+  for (let k = 0; k < AURA_N; k++) {
+    const t = k / AURA_N;
     const m = k ? warp(main, (x, y) => [wave(y * 0.2, t, 0.9 * (Math.sign(x - s.ax) || 1)), 0]) : main;
-    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ ...bob(t, 2, i * 1.5), flip: (k + i) % 2 === 1 }));
+    const lv = drawLeaves(s.W, s.H, ls, (l, i) => ({ ...bob(t, 2, i * 1.5), flip: (((k >> 1) + i) & 1) === 1 }));
     // The veil first (over the character), then his ribbons and leaves on top of it.
-    front.push(stack(s.W, s.H, veil(s, k), m, lv));
+    front.push(stack(s.W, s.H, veil(s, t), m, lv));
     back.push(k ? alphaMul(glow, 1 + 0.15 * Math.sin(TAU * t)) : glow);
   }
   // One frame for both, so they stay aligned.
-  const both = fit({ anims: { idle: { frames: [...front, ...back], fps: 12, loop: true } }, ax: s.ax, ay: s.ay });
+  const both = fit({ anims: { idle: { frames: [...front, ...back], fps: AURA_FPS, loop: true } }, ax: s.ax, ay: s.ay });
   const fr = both.anims.idle.frames;
   return {
-    front: { anims: { idle: { frames: fr.slice(0, 6), fps: 12, loop: true } }, ax: both.ax, ay: both.ay },
-    back: { anims: { idle: { frames: fr.slice(6), fps: 12, loop: true } }, ax: both.ax, ay: both.ay },
+    front: { anims: { idle: { frames: fr.slice(0, AURA_N), fps: AURA_FPS, loop: true } }, ax: both.ax, ay: both.ay },
+    back: { anims: { idle: { frames: fr.slice(AURA_N), fps: AURA_FPS, loop: true } }, ax: both.ax, ay: both.ay },
   };
 }
 
@@ -617,8 +667,8 @@ export function windV3Sprites(): WorldSprite[] {
   const [, by0, , by1] = bounds(tile);
   if (by0 < ty - 32 || by1 > ty + 31) throw new Error('vfx-wind-v3: the stream tile no longer fits 64 px');
   const hb = bounds(head);
-  const tileB = fit({ anims: { fly: { frames: tile, fps: 12, loop: true } }, ax: 32, ay: ty }, { x: [0, 63], y: [ty - 32, ty + 31] });
-  const headB = fit({ anims: { fly: { frames: head, fps: 12, loop: true } }, ax: 32, ay: WV3_REF.stream_head.anchor[1] }, { x: [0, hb[2] + 1], y: [hb[1] - 1, hb[3] + 1] });
+  const tileB = fit({ anims: { fly: { frames: tile, fps: FLY_FPS, loop: true } }, ax: 32, ay: ty }, { x: [0, 63], y: [ty - 32, ty + 31] });
+  const headB = fit({ anims: { fly: { frames: head, fps: FLY_FPS, loop: true } }, ax: 32, ay: WV3_REF.stream_head.anchor[1] }, { x: [0, hb[2] + 1], y: [hb[1] - 1, hb[3] + 1] });
   const a = aura();
   return [
     sprite('bolt', 'Wind bolt (spiral vortex ball, his paint-over)', fit(bolt())),
@@ -657,6 +707,38 @@ export function borderReport(sprites: WorldSprite[]): string[] {
       });
   }
   return lines;
+}
+
+/**
+ * The flash check: each frame's mean alpha x brightness, and the biggest change between
+ * neighbouring frames (and from the last frame back to the first, for loops) as a share of the
+ * animation's brightest frame. A flash would show as a big jump.
+ */
+export function flashReport(sprites: WorldSprite[]): { lines: string[]; worst: number } {
+  const lines: string[] = [];
+  let worst = 0;
+  for (const s of sprites) {
+    if (s.name === 'beast') continue;
+    for (const [k, a] of Object.entries(s.anims)) {
+      const e = a.frames.map((f) => {
+        let sum = 0;
+        for (let y = 0; y < f.h; y++)
+          for (let x = 0; x < f.w; x++) {
+            const p = f.get(x, y);
+            if (p[3]) sum += (p[3] / 255) * ((0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2]) / 255);
+          }
+        return sum / (f.w * f.h);
+      });
+      const peak = Math.max(...e);
+      let jump = 0;
+      for (let i = 1; i < e.length; i++) jump = Math.max(jump, Math.abs(e[i] - e[i - 1]));
+      if (a.loop !== false) jump = Math.max(jump, Math.abs(e[0] - e[e.length - 1]));
+      const rel = peak ? jump / peak : 0;
+      worst = Math.max(worst, rel);
+      lines.push(`${s.name.padEnd(12)} ${k.padEnd(6)} ${a.frames.length}f@${a.fps}  brightness ${e.map((v) => Math.round((v / peak) * 100)).join(' ')}  biggest step ${Math.round(rel * 100)}%`);
+    }
+  }
+  return { lines, worst };
 }
 
 // --- main ----------------------------------------------------------------------------------------------------------
@@ -702,6 +784,16 @@ function main(): void {
   }
   const border = borderReport(sprites);
   console.log(border.length ? border.join('\n') : 'border check: no pixel on any frame border (stream tiles and the head joint excepted)');
+  const flash = flashReport(sprites);
+  console.log('flash check (each frame\'s mean alpha x brightness, % of the brightest frame):');
+  console.log(flash.lines.join('\n'));
+  console.log(`flash check: biggest step between neighbouring frames ${Math.round(flash.worst * 100)}% of the brightest frame`);
+  // Every sheet row must stay under 8192 px.
+  for (const s of sprites)
+    for (const [k, a] of Object.entries(s.anims)) {
+      const w = a.frames.length * a.frames[0].w;
+      if (w >= 8192) throw new Error(`vfx-wind-v3: ${s.name} ${k} row is ${w} px wide`);
+    }
 }
 
 main();

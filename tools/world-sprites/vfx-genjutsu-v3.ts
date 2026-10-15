@@ -180,23 +180,6 @@ const move = (ix: Ix, dx: number, dy: number): Ix => displace(ix, () => [dx, dy]
 const scaleAbout = (ix: Ix, cx: number, cy: number, s: number, sy = s): Ix =>
   s <= 0.02 || sy <= 0.02 ? blank(ix.w, ix.h) : displace(ix, (x, y) => [(x - cx) * (1 - 1 / s), (y - cy) * (1 - 1 / sy)]);
 
-/** The picture turned by `ang` (radians, clockwise on screen) about (cx, cy), on a ground squashed by `squash`. */
-function rotateAbout(ix: Ix, cx: number, cy: number, ang: number, squash = 1, only?: (x: number, y: number) => boolean): Ix {
-  const out = blank(ix.w, ix.h);
-  const c = Math.cos(ang), s = Math.sin(ang);
-  for (let y = 0; y < ix.h; y++)
-    for (let x = 0; x < ix.w; x++) {
-      if (only && !only(x, y)) {
-        out.d[y * ix.w + x] = ix.d[y * ix.w + x];
-        continue;
-      }
-      const u = x + 0.5 - cx, v = (y + 0.5 - cy) / squash;
-      const su = c * u + s * v, sv = -s * u + c * v;
-      out.d[y * ix.w + x] = at(ix, Math.floor(cx + su), Math.floor(cy + sv * squash));
-    }
-  return out;
-}
-
 /**
  * Turns the picture INSIDE its own silhouette: a true rotation by `ang` in the ellipse's own space
  * (y scaled by 1/squash, turned about (cx, cy), scaled back), sampled only from the picture's own
@@ -568,43 +551,44 @@ function breath(): WorldSprite {
     } else eyeParts.push({ ix: p.ix, b: p.b });
   }
   // The arcs: his arcs touch through their dark rims, so each arc is found by its lit body (the
-  // big parts of his lighter pixels); every other pixel (its dark rim and outline, the dashes and
-  // specks) goes with the arc within 3 px of it, so an arc moves as one layer and its rim never
-  // parts from it.
+  // big parts of his lighter pixels). Every other pixel (an arc's darker half, its rim and
+  // outline, the dashes) goes with the nearest arc within 6 px, so an arc moves as one layer
+  // and its rim never parts from it. All of those darker pixels also stay in place as an
+  // underlay, so where neighbouring arcs part by a pixel his own dark colours show, never a gap.
   const lit = (v: number) => KIND[v - 1] === 'body' && LAB[v - 1][0] > 30;
   const size = (p: Part) => p.ix.d.reduce((n, v) => n + (v ? 1 : 0), 0);
   const arcs = parts(keep(main, (_x, _y, v) => lit(v))).filter((p) => size(p) >= 40);
-  const rest = blank(k.w, k.h);
-  main.d.forEach((v, n) => {
-    if (v && !arcs.some((p) => p.ix.d[n])) rest.d[n] = v;
-  });
-  const all = [...arcs, ...parts(rest)];
   const label = new Int16Array(k.w * k.h).fill(-1);
+  let front: number[] = [];
   arcs.forEach((p, j) => p.ix.d.forEach((v, n) => {
-    if (v) label[n] = j;
+    if (v) {
+      label[n] = j;
+      front.push(n);
+    }
   }));
-  const groups: Part[] = arcs.map((p) => ({ ix: stamp(blank(k.w, k.h), p.ix), b: p.b }));
-  for (const p of all) {
-    if (size(p) >= 40) continue;
-    const votes = new Map<number, number>();
-    for (let y = p.b[1]; y <= p.b[3]; y++)
-      for (let x = p.b[0]; x <= p.b[2]; x++) {
-        if (!at(p.ix, x, y)) continue;
-        for (let dy = -3; dy <= 3; dy++)
-          for (let dx = -3; dx <= 3; dx++) {
-            const u = x + dx, v = y + dy;
-            if (u < 0 || v < 0 || u >= k.w || v >= k.h) continue;
-            const l = label[v * k.w + u];
-            if (l >= 0) votes.set(l, (votes.get(l) ?? 0) + 1);
-          }
+  // Nearest arc for every pixel within 6 px (a breadth-first spread from all arcs at once).
+  for (let step = 0; step < 6 && front.length; step++) {
+    const next: number[] = [];
+    for (const n of front) {
+      const x = n % k.w, y = (n - x) / k.w;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const u = x + dx, v = y + dy;
+        if (u < 0 || v < 0 || u >= k.w || v >= k.h || label[v * k.w + u] >= 0) continue;
+        label[v * k.w + u] = label[n];
+        next.push(v * k.w + u);
       }
-    let best = -1, bn = 0;
-    for (const [l, n] of votes) if (n > bn || (n === bn && l < best)) [best, bn] = [l, n];
-    if (best >= 0) {
-      stamp(groups[best].ix, p.ix);
-      groups[best].b = bounds(groups[best].ix)!;
-    } else groups.push({ ix: p.ix, b: p.b });
+    }
+    front = next;
   }
+  const groups: Part[] = arcs.map(() => ({ ix: blank(k.w, k.h), b: [0, 0, 0, 0] as [number, number, number, number] }));
+  const haze = blank(k.w, k.h);
+  main.d.forEach((v, n) => {
+    if (!v) return;
+    if (label[n] >= 0) groups[label[n]].ix.d[n] = v;
+    // (Specks far from any arc stay in place too.)
+    if (!lit(v) || label[n] < 0) haze.d[n] = v;
+  });
+  for (const g of groups) g.b = bounds(g.ix)!;
   // The ripple: each arc (and each eye) moves as a whole a pixel out and back along its ray from
   // the orb, the wave travelling outward arc to arc (one frame of lag per 13 px of radius), with
   // an equal step every frame, so the loop has no hitch. Frame 0 is his picture.
@@ -628,12 +612,13 @@ function breath(): WorldSprite {
     const e = blank(k.w, k.h);
     eyeParts.forEach((p, j) => {
       const cy = (p.b[1] + p.b[3]) / 2;
-      const shut = i && (j * 5 + 1) % 6 === i;
+      // (Only his eyes blink; the small pink orbs among them do not.)
+      const shut = i && p.b[2] - p.b[0] >= 6 && (j * 5 + 1) % 6 === i;
       const [dx, dy] = i ? push(p, i) : [0, 0];
       stamp(e, shut ? scaleAbout(p.ix, (p.b[0] + p.b[2]) / 2, cy, 1, 0.25) : p.ix, dx, dy);
     });
     const o = tone(orb, [0, 1, 2, 1, 0, -1][i]);
-    return render(k.w, k.h, [[s], [m], [e], [o]]);
+    return render(k.w, k.h, [[s], [haze], [m], [e], [o]]);
   });
   return sprite(k, 'Genjutsu breath: ripples of watching eyes from a glowing orb (origin at the anchor)', { fly: { frames: fr, fps: 12, loop: true } });
 }

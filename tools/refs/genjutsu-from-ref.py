@@ -8,11 +8,11 @@ The owner asked for his reference to be copied as exactly as possible, so every 
 pixels:
   * Scale. His sheet is our 2x kit sheet re-arranged into a square at about 0.65 of its size, so
     his art is about 1.3 of his pixels per game pixel. Measured by fitting our character
-    (characterRef, 96 px tall) onto his: 1.30 beside the blast and the straight wall, 1.31 in the
-    aura, 1.27 beside the 3/4 wall and 1.25 beside the end-on wall; each of those panels uses its
-    own factor. The projectile panels have no character: their inside (86-87 px) is our 64 px
-    frame (the hit's is his 72 px label). The stream's braid repeats every 84 of his pixels, so
-    the tile is exactly one braid period (64 px).
+    (characterRef, 96 px tall) onto his: 1.30 beside the blast and the straight wall and in the
+    aura (where the anchor, the feet, is registered on his figure), 1.27 beside the 3/4 wall and
+    1.25 beside the end-on wall; each of those panels uses its own factor. The projectile panels
+    (the hit's too) have no character: their inside (86-87 px) is our 64 px frame. The stream's
+    braid repeats every 84 of his pixels, so the tile is exactly one braid period (64 px).
   * Clean-up. His panel fill (#20202a), his character, the labels and the panel borders are
     removed (what his character hid of the 3/4 wall's shadow is filled in from around it). The
     JPEG is smoothed (gaussian) before every decision, so its ringing and blocks are not copied.
@@ -26,15 +26,18 @@ pixels:
       ground  - the 3/4 wall's long shadow (and the thin strip of it above): colour-to-alpha
                 with an alpha floor (0.6), so it reads as a violet stain on any map; what his
                 character hid of it is filled in along the shadow's own slant;
-      weed    - the olive brambles of the 3/4 wall (their own small palette).
+      weed    - the olive brambles of the 3/4 wall (their own small palette);
+      eye     - his eyes (hand-set ellipses): no hue smoothing, quantized by lightness first.
   * Game scale. Every class is area-averaged (box filter) down to game scale; each game pixel
     takes its strongest class (bodies weighted up a little so his thin bright lines survive)
     and that class's mean colour.
   * Colour. Within a body, each pixel's hue (Lab a, b; not its lightness, so his 1 px cracks and
     highlights stay crisp) is averaged with its near-alike neighbours: the JPEG's colour speckle
     goes, his flat planes keep one hue.
-  * Palette. One palette for the set (224 entries), from his own pixels of each class (k-means in
-    Lab); each pixel takes the nearest entry of its class, hue weighted up.
+  * Palette. One palette for the set (230 entries), from his own pixels of each class (k-means in
+    Lab); each pixel takes the nearest entry of its class, hue weighted up (eyes: lightness).
+  * Thin lines. His 1-3 px bright and dark lines (the walls' cracks and seams, the blast's
+    sparkle arms) are found at his resolution and written as 1 px lines after the palette.
   * Edges. Where a body meets the empty background his 1 px deep-violet outline is restored (it
     is lost in the downscale); dark rims he painted are kept. Tiny bright sparkles get none.
   * Pieces. Each key frame is split into the parts the generator animates (the orb, the spiral,

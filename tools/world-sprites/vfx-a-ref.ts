@@ -3,7 +3,7 @@
 
 import { Canvas, Color, hex } from './kit';
 import { REF_PIECES } from './vfx-a-fire-refdata';
-import { pnoise } from './vfx-a-lib';
+import { TAU, pnoise } from './vfx-a-lib';
 
 export interface Piece { c: Canvas; x: number; y: number; pal: Color[] }
 const cache = new Map<string, Piece>();
@@ -49,6 +49,30 @@ export function flicker(c: Canvas, ph: number, amp: number, baseY: number, seed:
     const up = Math.max(0, baseY - y) / Math.max(1, baseY);
     const n = pnoise(x * 0.5, y * 0.25 + ph * 3, 6, 0, 0, seed) - 0.5;
     return [Math.round((Math.sin(y * 0.18 + ph) * 0.6 + n * 1.4) * amp * up), Math.round(-Math.abs(n) * amp * up * 0.6)];
+  });
+}
+
+/**
+ * A displacement loop: `disp(x, y, ph)` taken relative to its value at ph = 0, so frame 0 of the
+ * loop is the drawing itself; `disp` must be periodic in ph (TAU) for the loop to run on seamlessly.
+ */
+export function loopDisplace(c: Canvas, ph: number, disp: (x: number, y: number, ph: number) => [number, number]): Canvas {
+  if (Math.abs(Math.sin(ph / 2)) < 1e-9) return c;
+  return displace(c, (x, y) => {
+    const a = disp(x, y, ph), b = disp(x, y, 0);
+    return [Math.round(a[0] - b[0]), Math.round(a[1] - b[1])];
+  });
+}
+
+/**
+ * A looping flame flicker, the same sway as `flicker` but periodic (its noise turns on a circle)
+ * and zero at ph = 0: frame 0 is his picture and the last frame runs on into it.
+ */
+export function loopFlicker(c: Canvas, ph: number, amp: number, baseY: number, seed: number): Canvas {
+  return loopDisplace(c, ph, (x, y, p) => {
+    const up = Math.max(0, baseY - y) / Math.max(1, baseY);
+    const n = pnoise(x * 0.5 + Math.cos(p) * 3, y * 0.25 + Math.sin(p) * 3, 6, 0, 0, seed) - 0.5;
+    return [(Math.sin(y * 0.18 + p) * 0.6 + n * 1.4) * amp * up * 0.8, -Math.abs(n) * amp * up * 0.5];
   });
 }
 

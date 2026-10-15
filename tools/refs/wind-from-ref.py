@@ -664,6 +664,13 @@ for name, st in stage.items():
 # The stream tile and head share one palette.
 pal = Palette([tile_img, head_img]); PALS['stream'] = pal
 tidx = pal.clean(pal.quantize(tile_img))
+# Slivers his tile cut off at its ends (the edge of a leaf just past it) have nothing to join
+# across the wrap: pixels in the last 3 columns whose row is empty at the tile's start go.
+for y_ in range(tidx.shape[0]):
+    if not (tidx[max(0, y_ - 1):y_ + 2, :2] > 0).any():
+        tidx[y_, -3:] = 0
+    if not (tidx[max(0, y_ - 1):y_ + 2, -2:] > 0).any():
+        tidx[y_, :3] = 0
 hidx = pal.clean(pal.quantize(head_img))
 H = hidx.shape[0]
 cb = poly_mask(H, hidx.shape[1], TILE_X1, gt_stream, [C_BIG])

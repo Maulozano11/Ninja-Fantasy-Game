@@ -34,8 +34,9 @@ The owner wants his reference copied as exactly as possible, so every key frame 
   tiles plus the head is his picture.
 * The aura is split for drawing round a character: 'aura_back' (behind) is all his water, with the
   part our character hides filled in from round it; 'aura' (in front) is the bright streaks and
-  the splash his picture puts over the figure, plus a light veil of his water tint (fitted to his
-  picture, kept faint so the character reads).
+  the splash his picture puts over the figure. The veil of water over the figure is drawn by the
+  generator; its colours come from his picture (his tint fitted over our character, and his bright
+  water round the figure).
 The result is indexed run-length data (tools/world-sprites/vfx-water-v3-refdata.ts) that
 tools/world-sprites/vfx-water-v3.ts decodes and animates. With a review directory it also writes
 his crops at game scale (for the comparison sheets) and before/after previews. Deterministic.
@@ -403,8 +404,6 @@ def aura_split(b):
     zone = dilate(body)
     col = g['col']
     L = lum(col)
-    # A streak is his bright water where our character is darker (his lit sword is the
-    # character's, not water).
     # His bright streaks cross the figure's legs (higher up, his bright bits are the figure's own
     # lit edges seen through the water). A streak is a line brighter than what is round it.
     rows = np.arange(H)[:, None]
@@ -442,18 +441,18 @@ def aura_split(b):
         veil[y0:y0 + 6] = a
         veil_col[y0:y0 + 6] = np.clip(sol[1:] / max(a, 1e-3), 0, 255)
     print('aura veil per band', [round(float(veil[y, ax]), 2) for y in range(0, H, 6)])
-    # His tint is strong (the figure is deep in the water); in game the middle must read, so the
-    # front keeps it as a faint wash of his fitted water colour over the body: an ellipse from the
-    # chest to the feet (whatever the pose), about 12 % in the middle and 6 % at its rim.
-    strong = veil > 0.2
-    tint = np.median(veil_col[strong], 0) if strong.any() else np.array([80.0, 190.0, 230.0])
-    yy, xx = np.mgrid[0:H, 0:W]
-    d = np.hypot((xx + 0.5 - ax) / 15.0, (yy + 0.5 - (ay - 33)) / 36.0)
-    veil = np.where(d < 1, 0.11 * (1 - d * d) + 0.03, 0.0)
-    veil_col = np.zeros((H, W, 3)) + tint
-    print('aura veil colour', tint.round())
-    b['veil'] = veil
-    b['veil_col'] = veil_col
+    # The veil itself is drawn by the generator (a soft field round the body that breathes, so it
+    # sits right on any figure); from his picture it takes its colours: his fitted water tint over
+    # the body (deep) and his bright water just round the figure (the lighter rim).
+    strong = veil >= 0.4
+    deep = np.median(veil_col[strong], 0)
+    ring = b['solid'] & dilate(zone, 6) & ~zone
+    rc = col[ring]
+    light = np.median(rc[lum(rc) >= np.percentile(lum(rc), 75)], 0)
+    b['veil_info'] = {'deep': '#%02x%02x%02x' % tuple(int(round(v)) for v in deep),
+                      'light': '#%02x%02x%02x' % tuple(int(round(v)) for v in light),
+                      'fit': round(float(np.median(veil[strong])), 2)}
+    print('aura veil', b['veil_info'])
     # Behind: everything else; what our character covers is filled from the water round it.
     hole = zone & (b['solid'] | b['rim'])
     back_solid = (b['solid'] & ~zone) | hole
@@ -500,7 +499,7 @@ def aura_split(b):
 
 aura_split(built['aura'])
 
-GLOW_SRC = [b['g']['gcol'][b['glow']] for b in built.values()] + [built['aura']['veil_col'][built['aura']['veil'] > 0.02]]
+GLOW_SRC = [b['g']['gcol'][b['glow']] for b in built.values()]
 GLOW = median_cut(np.concatenate(GLOW_SRC), 6)
 ALPHAS = [15, 30, 55, 85, 120, 160, 200]
 
@@ -522,7 +521,7 @@ def glow_index(cols, alphas):
     return I_GLOW + gi * len(ALPHAS) + ai + 1
 
 
-def quantize(solid, rim, glow, col, g, extra_glow=None):
+def quantize(solid, rim, glow, col, g):
     H, W = solid.shape
     idx = np.zeros((H, W), np.int32)
     idx[solid] = nearest(col[solid], BODY) + 1
@@ -542,10 +541,6 @@ def quantize(solid, rim, glow, col, g, extra_glow=None):
     idx[rim] = I_OUT + 1
     if glow.any():
         idx[glow] = glow_index(g['gcol'][glow], g['A'][glow])
-    if extra_glow is not None:
-        m, cols, al = extra_glow
-        m = m & (idx == 0) & (al >= ALPHAS[0] / 255 * 0.7)
-        idx[m] = glow_index(cols[m], al[m])
     return idx
 
 
@@ -639,8 +634,7 @@ for name, b in built.items():
     cfg = b['cfg']
     if cfg.get('aura'):
         for lname, Ly in b['layers'].items():
-            extra = (b['veil'] > 0.02, b['veil_col'], b['veil']) if lname == 'aura' else None
-            idx = quantize(Ly['solid'], Ly['rim'], Ly['glow'], Ly['col'], b['g'], extra)
+            idx = quantize(Ly['solid'], Ly['rim'], Ly['glow'], Ly['col'], b['g'])
             result[lname] = {'w': b['W'], 'h': b['H'], 'anchor': [b['ax'], b['ay']], 'pieces': split_pieces(idx, cfg, b)}
             idx_for_review[lname] = idx
         continue
@@ -684,6 +678,9 @@ ts = ["// GENERATED by tools/refs/water-from-ref.py from the owner's paint-over 
       '/** Game px per pixel of his sheet (across, down). */',
       'export const WV3_SCALE: [number, number] = [%s, %s];' % (SX, SY),
       'export const WV3_PAL: WaterPal[] = ' + json.dumps(pal_json) + ';',
+      '/** The aura veil over the figure, from his picture: his water tint fitted over the body (deep), his',
+      ' *  bright water round the figure (light, the rim) and the tint he painted (median fitted alpha). */',
+      'export const WV3_VEIL = ' + json.dumps(built['aura']['veil_info']) + ';',
       'export const WV3_REF: Record<string, WaterRef> = ' + json.dumps(result, indent=1) + ';', '']
 tmp = OUT_TS + '.part'
 with open(tmp, 'w') as fh:

@@ -18,15 +18,16 @@
 //   - the hit, the blast and the walls' rise grow or reveal into his picture, then break up and fade.
 // Same sprite names, anims, frame counts and fps as vfx_water; frames are sized to his art and the
 // anchors moved with it (projectile core, breath origin + 48, ground centre, feet). The aura is
-// split in two layers, `aura_back` (behind the character) and `aura` (over it). The water beast is
-// out of scope: the approved dragon stays, and beast.png is copied through from vfx_water unchanged.
+// split in two layers, `aura_back` (behind the character) and `aura` (over it: the water the figure
+// is seen through, as in his picture). The water beast is out of scope: the approved dragon stays,
+// and beast.png is copied through from vfx_water unchanged.
 // Deterministic: no Math.random.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Canvas, Color, PX_PER_M, WorldSprite, hex, writeGroup } from './kit';
 import { TAU, clamp, clearEdgeBits, fract, pnoise, rr, smooth, vfxSprite } from './vfx-a-lib';
-import { WV3_PAL, WV3_REF } from './vfx-water-v3-refdata';
+import { WV3_PAL, WV3_REF, WV3_VEIL } from './vfx-water-v3-refdata';
 
 // --- his palette and key frames ----------------------------------------------------------------
 
@@ -657,10 +658,37 @@ function slabGlow(L: Layer, w: number, h: number, k: number): Canvas {
 // --- aura -----------------------------------------------------------------------------------------
 
 /**
+ * The water over the figure, as in his picture, where the figure is seen through the water (the
+ * owner chose the tint over a clear middle). A soft field round the body, not the shape of any one
+ * character, so it sits right on every figure: an ellipse centred 50 px above the feet, 46 x 110 px,
+ * about 42 % in the middle and 55 % toward its rim (his own tint fits to about 73 %), stepped. Its
+ * colour runs from his water tint over the body (deep) to his bright water round the figure
+ * (light) toward the rim, in four steps. It breathes with the frames (alpha +-10 %, size +-2 %).
+ */
+function veil(w: number, h: number, ax: number, ay: number, frame: number): Canvas {
+  const c = new Canvas(w, h);
+  const deep = hex(WV3_VEIL.deep), light = hex(WV3_VEIL.light);
+  const ph = (frame / 6) * TAU;
+  const breathe = 1 + 0.1 * Math.sin(ph), size = 1 + 0.02 * Math.sin(ph);
+  const cx = ax, cy = ay - 50, rx = 23 * size, ry = 55 * size;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const r = Math.hypot((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry);
+      let a = (0.42 + 0.13 * smooth(0.55, 0.95, r)) * (1 - smooth(0.92, 1.04, r)) * breathe;
+      a = Math.round(a / 0.07) * 0.07;
+      if (a <= 0.02) continue;
+      const t = Math.round(smooth(0.35, 1, r) * 3) / 3;
+      const ch = (k: number) => Math.round(deep[k] + (light[k] - deep[k]) * t);
+      c.set(x, y, [ch(0), ch(1), ch(2), Math.round(Math.min(1, a) * 255)]);
+    }
+  return c;
+}
+
+/**
  * His aura in two frame-synchronized layers with the same size and anchor (the feet):
  * `aura_back` goes BEHIND the character (all his water round the figure, its halo and spray);
- * `aura` goes OVER it (his bright streaks across the legs, the splash at the feet and a faint
- * veil of his water tint, light enough that the character reads). Both churn upward together.
+ * `aura` goes OVER it: the veil of water the figure is seen through, with his bright streaks across
+ * the legs and the splash at the feet on top. Both churn upward together.
  */
 function aura(): WorldSprite[] {
   const KB = key('aura_back'), KF = key('aura'), seed = 5900;
@@ -679,7 +707,7 @@ function aura(): WorldSprite[] {
     const g = i === 2 || i === 3 ? dimGlow(bg, 1) : bg;
     back.push(stackC(KB.w, KB.h, g, b, d));
     const f = wobble(churn(fm, t, opts), t, 1.1, 11, seed + 1, (_x, y) => up(y));
-    front.push(stackC(KF.w, KF.h, fg, f));
+    front.push(stackC(KF.w, KF.h, veil(KF.w, KF.h, KF.ax, KF.ay, i), fg, f));
   }
   return [
     vfxSprite('aura', 'Water aura, front layer (draw OVER the character)', [KF.ax, KF.ay], { idle: { frames: front, fps: 12, loop: true } }),

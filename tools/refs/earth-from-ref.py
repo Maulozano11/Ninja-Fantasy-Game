@@ -313,7 +313,7 @@ SPRITES = {
                   drop=[[(1640, 640), (1700, 640), (1700, 797), (1640, 797)]],
                   solid=BLAST_SOLID, dust=[rect(1159, 435, 1668, 797)], dust_a=0.92, shade=[rect(1159, 600, 1668, 797)],
                   pieces=[('k%d' % k, [p]) for k, p in enumerate(BLAST_SOLID[:12])] + [('rocks', BLAST_SOLID[12:])],
-                  fade={'right': 6}, bits=80),
+                  fade={'right': 6}, bits=80, cloud_r=10),
     'wall': dict(s=2.34, anchor=(379.5, 1177), area=[rect(24, 867, 745, 1253)], art_d=14, bits=40,
                  dust=[rect(24, 1195, 745, 1253)], sparse=True, dust_a=0.85, wall=True),
     'wall_diag': dict(s=2.35, anchor=(1545, 1302), area=[rect(1222, 867, 1975, 1490)],
@@ -924,85 +924,84 @@ def fill_from(idx, dust, hole):
     return np.where(hole, out, 0)
 
 
+def grow_round(m, n):
+    """Dilated n px, alternating 4- and 8-neighbour steps (a rounder, octagonal growth)."""
+    for k in range(n):
+        m = dilate(m, 1, nb=N8 if k % 2 else N4)
+    return m
+
+
+def shrink_round(m, n):
+    return ~grow_round(~m, n)
+
+
+def cloud_of(dust, r):
+    """His cloud's envelope: his dust closed by r px (gaps and bays narrower than about 2r, where a
+    rock sits in it, count as cloud) with the holes it encloses filled."""
+    H, W = dust.shape
+    P = r + 2
+    m = np.pad(dust, P)
+    c = shrink_round(grow_round(m, r), r)[P:P + H, P:P + W] | dust
+    return c | holes_of(c)
+
+
 def under_region(idx, kinds, cfg, line=None):
     """Where dust goes under the rock, so that a rock that moves (rocks, tumbles, bobs, sinks)
-    uncovers dust, not a hole. Every rock pixel, except on the walls (whose stone never moves):
-    there only the small rocks sitting in his dust. `line`: only above that row (the stream head,
-    whose spikes sink into the rubble at the line)."""
+    uncovers dust, not a hole: the rock that lies inside his cloud's envelope (cloud_of). On the
+    walls (whose stone never moves) only the small rocks sitting in his dust. `line`: only above
+    that row (the stream, whose spikes sink into the rubble at the line)."""
     k = kinds[idx]
     rock = (k == 'body') | (k == 'outline')
-    if not cfg.get('wall'):
-        region = rock.copy()
-    else:
-        dust = k == 'dust'
+    dust = k == 'dust'
+    region = rock & cloud_of(dust, cfg.get('cloud_r', 6))
+    if cfg.get('wall'):
         lab, n = components(rock, nb=N8)
-        region = np.zeros(idx.shape, bool)
+        small = np.zeros(idx.shape, bool)
         for c in range(1, n + 1):
             m = lab == c
             if m.sum() > 500:
                 continue
             ring = dilate(m, 1, nb=N8) & ~m
             if ring.sum() and (ring & dust).sum() >= 0.5 * ring.sum():
-                region |= m
+                small |= m
+        region &= small
     if line is not None:
         region &= (np.arange(idx.shape[0]) < line)[:, None]
     return region
 
 
 def under_fill(idx, kinds, PALC, region, cfg, dust_pal):
-    """His dust continued under `region` by a smooth 2D fill (premultiplied colour and alpha
-    relaxed from the dust and the clear background round it; other rock is a wall the fill does
-    not leak through), then put back on his dust palette with an ordered dither on the alpha
-    steps. Where a rock stands in his cloud this gives the cloud behind it; where it stands
-    against the background the dust behind it fades out."""
+    """His dust continued under `region`: each pixel takes the local mean of his dust round it
+    (premultiplied colour and alpha, a normalized gaussian over his dust pixels only, widened where
+    his dust is far), tapered over the 2 px inside the cloud's edge, then put back on his dust
+    palette with an ordered dither on the alpha steps."""
     H, W = idx.shape
     k = kinds[idx]
-    rock = (k == 'body') | (k == 'outline')
     dust = k == 'dust'
     rgba = PALC[np.maximum(idx, 1) - 1]
     A = np.where(dust, rgba[..., 3] / 255.0, 0.0)
     Q = np.concatenate([rgba[..., :3] * A[..., None], A[..., None]], -1)
-    unknown = region
-    ignore = rock & ~region
-    open_ = ~ignore
-    known = open_ & ~unknown
-    # First guess: grown in from the edge (mean of the neighbours already set), then relaxed.
-    have = known.copy()
-    Q = np.where(have[..., None], Q, 0.0)
-    for _ in range(H + W):
-        todo = unknown & ~have
-        if not todo.any():
-            break
-        acc = np.zeros_like(Q)
-        cnt = np.zeros((H, W))
-        for dy, dx in N8:
-            hv = shift(have, dy, dx)
-            acc += shift(Q, dy, dx) * hv[..., None]
-            cnt += hv
-        new = todo & (cnt > 0)
-        if not new.any():
-            break
-        Q[new] = acc[new] / cnt[new][:, None]
-        have |= new
-    for _ in range(300):
-        acc = np.zeros_like(Q)
-        cnt = np.zeros((H, W))
-        for dy, dx in N4:
-            ov = shift(open_ & have, dy, dx)
-            acc += shift(Q, dy, dx) * ov[..., None]
-            cnt += ov
-        upd = unknown & (cnt > 0)
-        Q[upd] = acc[upd] / cnt[upd][:, None]
-    a = np.where(unknown, Q[..., 3], 0.0)
+    w = dust.astype(np.float64)
+    out_q = np.zeros_like(Q)
+    done = np.zeros((H, W), bool)
+    for sg in (1.5, 3.0, 6.0, 12.0, 24.0):
+        wb = gauss(w, sg)
+        qb = gauss(Q * w[..., None], sg) / np.maximum(wb, 1e-9)[..., None]
+        ok = region & ~done & (wb > 0.04)
+        out_q[ok] = qb[ok]
+        done |= ok
+    a = np.where(region & done, out_q[..., 3], 0.0)
+    # Taper: thinner over the last 2 px inside the cloud's envelope.
+    env = cloud_of(dust, cfg.get('cloud_r', 6))
+    e1 = erode(env, 1, nb=N8)
+    e2 = erode(e1, 1, nb=N8)
+    a = a * np.where(e2, 1.0, np.where(e1, 0.75, 0.45))
     a_max = cfg.get('dust_a', 0.9)
-    # The faint part of the fill (toward the clear background) is dropped, so the fill's edge
-    # follows its own smooth fall-off, never the straight sides of a traced rock.
-    a = np.clip((a - 0.25 * a_max) / 0.75, 0, 1)
     out = np.zeros((H, W), np.int32)
     if len(dust_pal) == 0:
         return out
-    on = unknown & (a > 0.02)
-    colr = Q[on][:, :3] / np.maximum(a[on], 1e-6)[:, None]
+    on = region & (a > 0.02)
+    colr = out_q[on][:, :3] / np.maximum(out_q[on][:, 3], 1e-6)[:, None]
     ci = nearest(colr, dust_pal)
     st = np.floor(a[on] / a_max * DUST_STEPS + bayer_at(H, W)[on]) - 1
     keep = st >= 0

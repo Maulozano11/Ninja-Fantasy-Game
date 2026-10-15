@@ -829,7 +829,7 @@ function blast(): WorldSprite {
     if (i === BLAST_KEY) return union(shade, under, dust, ...crystals, loose);
     const sh = dimSoft(scaled(shade, p.sh, p.sh, K.ax, K.ay), p.shDim);
     const ds = scaled(dust, p.ds, p.ds, K.ax, K.ay);
-    const sil = silhouette(ds, 9);
+    const sil = silhouette(ds, 6);
     const us = scaled(under, p.ds, p.ds, K.ax, K.ay).filter((_v, x, y) => !!sil[y * ds.w + x]);
     let d = union(us, ds);
     if (p.t > 0) d = churn(d, p.t, { amp: 1.6, cell: 7, seed, flow: (x) => [Math.sign(x - K.ax) * 1.4, -1] });

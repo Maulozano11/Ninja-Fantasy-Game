@@ -9,12 +9,17 @@
 //   - fly loops    frame 0 is his picture; the core (orb, eye, crescent) holds still while the
 //                  tendrils wave, the smoke streams back, the arcs ripple out, the eyes blink;
 //   - stream       his 64 px tile (one braid period), scrolled along the line (still tiles); the
-//                  head's spiral turns;
+//                  head is his head in frame 0, then his ribbons slide on into the turning spiral
+//                  with the braid following from the last tile (seamless joint in every frame);
 //   - hit / blast  grow up to his picture (hit frame 2, blast frame 3), then break up and fade;
-//   - walls        'rise' pushes his crystals up out of the ground, then the vines and petals come;
-//                  'idle' is his picture, then a glint runs over the crystals and the bits drift;
-//   - aura         two layers (aura_back behind the character, aura in front), his picture, then
-//                  the flames lick upward and the petals drift.
+//                  the blast's column shoots up in streaks of light out of the opening pool;
+//   - walls        'rise' pushes his crystals up out of the ground, then the vines and petals come
+//                  (the 3/4 wall's long shadow stretches out with it); 'idle' is his picture, then
+//                  a glint runs over the crystals and the bits drift;
+//   - aura         two layers: aura_back (behind the character: his flames and smoke) and aura
+//                  (over the character: his violet veil as a soft field over the body, measured
+//                  on his sheet, plus his petals, feathers and the ring at the feet); the flames
+//                  lick upward, the veil breathes and the petals drift.
 //
 //   WORLD_OUT=<dir> npx tsx tools/world-sprites/vfx-genjutsu-v3.ts
 //
@@ -259,15 +264,25 @@ function wobble(t: number, amp: number, cell: number, seed: number, rise = 0): (
 
 type Fade = Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
 /** A layer: an indexed image, an alpha factor and its own fade toward the frame's sides. */
-type Layer = [Ix, number?, Fade?];
+type Layer = [Ix, number?, Fade?, ((x: number, y: number) => number)?];
 
+/**
+ * How far into a faded side a pixel is (0 at the frame's edge, 1 past the fade), with the side's
+ * edge made ragged: the cut-off wanders along the side (each column of the column's light, each
+ * row of the long shadow ends at its own place), so the art ends in streaks, not in specks.
+ */
 function fadeT(f: Fade | undefined, x: number, y: number, w: number, h: number): number {
   if (!f) return 1;
   let t = 1;
-  if (f.top) t = Math.min(t, y / f.top);
-  if (f.right) t = Math.min(t, (w - 1 - x) / f.right);
-  if (f.bottom) t = Math.min(t, (h - 1 - y) / f.bottom);
-  if (f.left) t = Math.min(t, x / f.left);
+  const rag = (along: number, side: number) => 0.45 * vnoise(along, side, 2.5, 911);
+  const edge = (d: number, len: number, along: number, side: number) => {
+    const c = rag(along, side);
+    return (d / len - c) / (1 - c);
+  };
+  if (f.top) t = Math.min(t, edge(y, f.top, x, 1));
+  if (f.right) t = Math.min(t, edge(w - 1 - x, f.right, y, 2));
+  if (f.bottom) t = Math.min(t, edge(h - 1 - y, f.bottom, x, 3));
+  if (f.left) t = Math.min(t, edge(x, f.left, y, 4));
   return clamp(t, 0, 1);
 }
 
@@ -277,18 +292,20 @@ function fadeT(f: Fade | undefined, x: number, y: number, w: number, h: number):
  */
 function render(w: number, h: number, layers: Layer[], fade?: Fade): Canvas {
   const c = new Canvas(w, h);
-  for (const [ix, k = 1, own] of layers) {
+  for (const [ix, k = 1, own, alphaAt] of layers) {
     if (k <= 0) continue;
     const f = own ?? fade;
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) {
         const v = ix.d[y * ix.w + x];
         if (!v) continue;
-        let a = k;
+        let a = k * (alphaAt ? alphaAt(x, y) : 1);
+        if (a <= 0) continue;
         const t = fadeT(f, x, y, w, h);
         if (t < 1) {
-          if (hash(x, y, 913) * 0.6 + vnoise(x, y, 3, 917) * 0.4 > t * 1.1) continue;
-          a *= Math.max(0.25, Math.ceil(t * 4) / 4);
+          if (t <= 0) continue;
+          // Stepped alpha (pixel art): a quarter at the ragged end, full past the fade.
+          a *= Math.ceil(t * 4) / 4;
         }
         const p = PAL[v - 1];
         const al = Math.round(p[3] * a);
@@ -509,15 +526,26 @@ function stream(): WorldSprite[] {
   const spiral = piece(h, 'spiral'), hm = piece(h, 'main'), sparks = piece(h, 'sparks'), hs = piece(h, 'smoke');
   const sb = bounds(spiral)!;
   const cx = (sb[0] + sb[2] + 1) / 2, cy = (sb[1] + sb[3] + 1) / 2;
-  // Up to the spiral's middle the head is the scrolled tile itself (the ribbons run on into the
-  // vortex and are swallowed by it), so the joint with the last tile is seamless in every frame.
+  // Frame 0 is his head as he painted it (his head starts exactly two braid periods after the
+  // tile, so it runs on from the tile's end). In the other frames his ribbons up to the spiral's
+  // middle slide on into the vortex with the stream (and are swallowed by it), and the braid
+  // follows them in from the last tile, so the joint is seamless in every frame.
   const HEAD_JOINT = Math.round(cx);
+  const slide = (ix: Ix, s: number, withTile: boolean): Ix => {
+    const out = keep(ix, (x) => x >= HEAD_JOINT);
+    for (let y = 0; y < h.h; y++)
+      for (let x = 0; x < HEAD_JOINT; x++) {
+        const sx = x - s;
+        const v = sx >= 0 ? at(ix, sx, y) : withTile ? at(tm, ((sx % t.w) + t.w) % t.w, y) : 0;
+        if (v) out.d[y * h.w + x] = v;
+      }
+    return out;
+  };
   const heads = range(6).map((i) => {
     // The spiral turns a sixth of a turn a frame (a full turn per loop).
     const sp = i ? rotateAbout(spiral, cx, cy, (i / 6) * TAU) : spiral;
-    let m = keep(hm, (x) => x >= HEAD_JOINT);
-    m = stamp(m, keep(tiles[i], (x) => x < HEAD_JOINT));
-    return render(h.w, h.h, [[keep(hs, (x) => x >= HEAD_JOINT)], [m], [sp], [twinkle(sparks, i, 0.34, 707)]]);
+    const s = STREAM_SHIFT[i];
+    return render(h.w, h.h, [[s ? slide(hs, s, false) : hs], [s ? slide(hm, s, true) : hm], [sp], [twinkle(sparks, i, 0.34, 707)]]);
   });
   return [
     sprite(t, 'Genjutsu stream: braided magenta ribbons (tileable 64 px)', { fly: { frames: tiles.map((ix) => render(t.w, t.h, [[ix]])), fps: 12, loop: true } }),
@@ -570,8 +598,15 @@ function blast(): WorldSprite {
     let c = col;
     const reach = [0, 0.3, 0.72, 1, 1, 1, 1, 1][i];
     // Its front is ragged (the light tears upward in streaks).
-    const front = (x: number) => colBottom - (colBottom - cb[1]) * reach + snoise(x, i, 5, 925) * 7;
-    if (reach < 1) c = tone(keep(col, (x, y) => y >= front(x)), (x, y) => (y < front(x) + 8 ? 3 : 1));
+    // Its front is ragged in streaks (each column of light ends at its own height) and soft: the
+    // last 12 px fade out in steps, white-hot just below. It starts narrow and widens.
+    const front = (x: number) => colBottom - (colBottom - cb[1]) * reach + snoise(x, i, 2.5, 925) * 9;
+    let colFront: ((x: number, y: number) => number) | undefined;
+    if (reach < 1) {
+      c = scaleAbout(col, k.ax, colBottom, [1, 0.62, 0.86][i], 1);
+      c = tone(keep(c, (x, y) => y >= front(x)), (x, y) => (y < front(x) + 10 ? 2 : y < front(x) + 22 ? 1 : 0));
+      colFront = (x, y) => Math.ceil(clamp((y - front(x)) / 12, 0, 1) * 4) / 4;
+    }
     if (i === 4 || i === 5) c = inside(displace(col, wobble((i - 3) / 6, 1.6, 5, 930, 1)), 1);
     if (i >= 6) c = inside(move(dissolve(tone(col, i === 6 ? -1 : -2), i === 6 ? 0.3 : 0.6, 940 + i, 4), 0, i === 6 ? -6 : -14), 1);
     const colA = [0, 1, 1, 1, 1, 1, 0.8, 0.5][i];
@@ -589,7 +624,7 @@ function blast(): WorldSprite {
     const smA = [0, 0.35, 0.75, 1, 1, 1, 0.8, 0.5][i];
     // The dark smoke rises with the column (below its front), then drifts up.
     const s = i > 3 ? inside(move(displace(sm, wobble((i - 3) / 6, 1.4, 5, 970, 1)), 0, -(i - 3) * 2), 1) : reach < 1 ? keep(sm, (x, y) => y >= front(x) + 4 || y > k.ay - 26) : sm;
-    fr.push(render(k.w, k.h, [[p, poolA], [s, smA], [c, colA], [f, fA]], k.fade));
+    fr.push(render(k.w, k.h, [[p, poolA], [s, smA], [c, colA, undefined, colFront], [f, fA]], k.fade));
   }
   return sprite(k, 'Genjutsu blast: column of violet light out of a swirling vortex, with crow feathers', { blast: { frames: fr, fps: 12, loop: false } });
 }
@@ -667,6 +702,7 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
   const main = piece(k, 'main'), col = piece(k, 'column'), bits = piece(k, 'bits'), sm = piece(k, 'smoke'), stain = piece(k, 'stain');
   const all = union(main, col);
   const ab = bounds(all)!;
+  const stainB = bounds(stain);
   // Each column's lowest pixel is its ground; the art grows up from there.
   const foot = new Int32Array(k.w).fill(-1);
   for (let y = 0; y < k.h; y++) for (let x = 0; x < k.w; x++) if (at(all, x, y)) foot[x] = y;
@@ -700,7 +736,13 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
       // End-on: the column grows up from its base, white-hot while it shoots up.
       a = tone(grow(all, T), 1);
     }
-    rise.push(render(k.w, k.h, [[stain, [0.2, 0.4, 0.6, 0.8, 1, 1][r]], [sm, [0, 0.3, 0.6, 0.8, 1, 1][r]], [a], [bits, [0, 0, 0, 0.4, 0.8, 1][r]]], k.fade));
+    // The long shadow stretches out from the wall's foot as the wall grows; the smoke comes up
+    // with the crystals (none above their growing tops).
+    const sl = stainB ? stainB[0] + (stainB[2] - stainB[0] + 1) * [0.12, 0.3, 0.55, 0.8, 0.95, 1][r] : 0;
+    const st = r >= 5 ? stain : keep(stain, (x) => x <= sl);
+    const reachTop = ab[3] - (ab[3] - ab[1]) * T - 10;
+    const s = r >= 5 ? sm : keep(sm, (_x, y) => y >= reachTop);
+    rise.push(render(k.w, k.h, [[st, [0.4, 0.6, 0.8, 1, 1, 1][r]], [s, [0, 0.3, 0.6, 0.8, 1, 1][r]], [a], [bits, [0, 0, 0, 0.4, 0.8, 1][r]]], k.fade));
   }
   const idle = range(idleN).map((i) => {
     if (!i) return render(k.w, k.h, [[stain], [sm], [all], [bits]], k.fade);
@@ -734,12 +776,39 @@ function aura(): WorldSprite[] {
     backFr.push(render(kb.w, kb.h, [[tone(b, (x, y) => (KIND[at(b, x, y) - 1] === 'glow' ? lit : 0))]]));
     // In front: the petals drift and turn a little, the ring at the feet flickers.
     const p = i ? displace(petals, (x, y) => [Math.round(Math.sin(t * TAU + y * 0.2) - Math.sin(y * 0.2)), Math.round(Math.cos(t * TAU + x * 0.3) - Math.cos(x * 0.3))]) : petals;
-    frontFr.push(render(kf.w, kf.h, [[tone(ring, lit)], [p]]));
+    const front = veil(kf, i);
+    front.draw(render(kf.w, kf.h, [[tone(ring, lit)], [p]]), 0, 0);
+    frontFr.push(front);
   }
   return [
-    sprite(kf, 'Genjutsu aura, front layer (draw OVER the character): petals, feathers, the ring at the feet', { idle: { frames: frontFr, fps: 10, loop: true } }),
+    sprite(kf, 'Genjutsu aura, front layer (draw OVER the character): the violet veil over the body, petals, feathers, the ring at the feet', { idle: { frames: frontFr, fps: 10, loop: true } }),
     sprite(kb, 'Genjutsu aura, back layer (draw BEHIND the character): dark violet flames and smoke', { idle: { frames: backFr, fps: 10, loop: true } }),
   ];
+}
+
+/**
+ * The violet veil over the body, as in his picture, where the figure is seen through the genjutsu
+ * (the owner chose this for the lightning aura too). Measured on his sheet by laying his plain
+ * character (beside the blast) over his character in the aura panel: about a quarter of a
+ * violet-magenta (116, 57, 126) over the body, light in the middle and stronger toward the rim.
+ * A soft field round the body, not the shape of any one character, so it sits right on every
+ * figure; it breathes with the frames.
+ */
+function veil(k: Key, frame: number): Canvas {
+  const c = new Canvas(k.w, k.h);
+  const cx = k.ax - 3, cy = k.ay - 48, rx = 25, ry = 54;
+  const breathe = 1 + 0.12 * Math.sin((frame / 6) * TAU);
+  for (let y = 0; y < k.h; y++)
+    for (let x = 0; x < k.w; x++) {
+      const r = Math.hypot((x - cx) / rx, (y - cy) / ry);
+      let a = (0.18 + 0.18 * smooth(0.45, 0.9, r)) * (1 - smooth(0.82, 1.06, r)) * breathe;
+      a = Math.round(a / 0.06) * 0.06;
+      if (a <= 0) continue;
+      const t = smooth(0.4, 1, r);
+      const ch = (from: number, to: number) => Math.round((from + (to - from) * t) / 8) * 8;
+      c.set(x, y, [ch(112, 152), ch(54, 60), ch(124, 178), Math.round(Math.min(1, a) * 255)]);
+    }
+  return c;
 }
 
 // --- checks and output ------------------------------------------------------------------------------

@@ -40,8 +40,8 @@ export function blast(): WorldSprite {
     const groundK = [0.3, 0.55, 0.8, 1, 1, 1, 1, 1][i];
     const groundDim = [1, 1, 1, 1, 1, 0.85, 0.62, 0.42][i];
     const stemK = [0, 0.45, 0.8, 1, 1, 0.92, 0.6, 0][i];
-    const capK = [0.24, 0.5, 0.8, 1, 1.03, 1.06, 1.09, 1.12][i];
-    const capRise = [0, 0, 0, 0, -2, -5, -8, -11][i];
+    const capK = [0.24, 0.5, 0.8, 1, 1.03, 1.06, 1.08, 1.1][i];
+    const capRise = [0, 0, 0, 0, -2, -4, -5, -6][i];
     const coolK = [0, 0, 0, 0, 0, 0.4, 0.8, 1][i];
     const ringH = [1, 1, 1, 1, 1, 0.8, 0.55, 0.3][i];
     const ringDim = [1, 1, 1, 1, 1, 0.9, 0.72, 0.5][i];

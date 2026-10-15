@@ -23,13 +23,18 @@ pixels:
                 smoke, or opaque where his art is truly black (feathers, thorns, vines);
       glow    - faint colour over his fill (soft halos, the column's veils, the aura's flame
                 edges): colour-to-alpha against his fill, so it composites back to his look;
-      ground  - the 3/4 wall's long shadow: colour-to-alpha with an alpha floor, so it reads as
-                a stain on any map;
+      ground  - the 3/4 wall's long shadow (and the thin strip of it above): colour-to-alpha
+                with an alpha floor (0.6), so it reads as a violet stain on any map; what his
+                character hid of it is filled in along the shadow's own slant;
       weed    - the olive brambles of the 3/4 wall (their own small palette).
   * Game scale. Every class is area-averaged (box filter) down to game scale; each game pixel
     takes its strongest class (bodies weighted up a little so his thin bright lines survive)
     and that class's mean colour.
-  * Palette. One palette for the set, median-cut from his own pixels of each class.
+  * Colour. Within a body, each pixel's hue (Lab a, b; not its lightness, so his 1 px cracks and
+    highlights stay crisp) is averaged with its near-alike neighbours: the JPEG's colour speckle
+    goes, his flat planes keep one hue.
+  * Palette. One palette for the set (224 entries), from his own pixels of each class (k-means in
+    Lab); each pixel takes the nearest entry of its class, hue weighted up.
   * Edges. Where a body meets the empty background his 1 px deep-violet outline is restored (it
     is lost in the downscale); dark rims he painted are kept. Tiny bright sparkles get none.
   * Pieces. Each key frame is split into the parts the generator animates (the orb, the spiral,
@@ -100,6 +105,19 @@ def lab(c):
     f = lambda t: np.where(t > 0.008856, np.cbrt(t), 7.787 * t + 16 / 116)
     fx, fy, fz = f(X), f(Y), f(Z)
     return np.stack([116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)], -1)
+
+def lab2rgb(L):
+    """CIE Lab back to sRGB (0-255)."""
+    fy = (L[..., 0] + 16) / 116
+    fx, fz = fy + L[..., 1] / 500, fy - L[..., 2] / 200
+    inv = lambda t: np.where(t ** 3 > 0.008856, t ** 3, (t - 16 / 116) / 7.787)
+    X, Y, Z = inv(fx) * 0.95047, inv(fy), inv(fz) * 1.08883
+    r = 3.2406 * X - 1.5372 * Y - 0.4986 * Z
+    g = -0.9689 * X + 1.8758 * Y + 0.0415 * Z
+    b = 0.0557 * X - 0.2040 * Y + 1.0570 * Z
+    c = np.clip(np.stack([r, g, b], -1), 0, 1)
+    c = np.where(c > 0.0031308, 1.055 * c ** (1 / 2.4) - 0.055, 12.92 * c)
+    return np.clip(c * 255, 0, 255)
 
 def c2a(c, floor=0.0):
     """Colour-to-alpha against his fill, both ways (lighter or darker channels): the least alpha a
@@ -200,6 +218,10 @@ def classify(src, cfg):
     cls[black & (cls == GLOW)] = BODY      # feather / vine highlights are part of the shape
     gr = m('ground')
     cls[gr & art & (cls != BODY)] = GROUND
+    if cfg.get('ground_violet'):
+        # His long shadow is a flat violet field: a stain on the ground (translucent), while the
+        # crystal shards lying on it (lavender to white) stay solid.
+        cls[gr & art & (lum(D) < 120) & (D[..., 2] > D[..., 1] + 40)] = GROUND
     if cfg.get('ground_all'):
         cls[gr & art] = GROUND
     keep = m('keep') if cfg.get('keep') else np.ones((H, W), bool)
@@ -211,6 +233,35 @@ def classify(src, cfg):
     cls[~keep] = CLEAR
     cls[m('drop')] = CLEAR
     return cls, M, dist
+
+def fill_along(C, hole, src_mask, slope):
+    """Fills `hole` along his shadow's own slant (direction (1, slope)): each hidden pixel takes
+    the colours where its line leaves the hole on either side (his ground where src_mask, his
+    fill elsewhere), mixed by distance, so the shadow's bands run on straight under his character."""
+    base = np.where(src_mask[..., None], C, BG)
+    H, W = hole.shape
+    res = C.copy()
+    n = math.hypot(1, slope)
+    ux, uy = 1 / n, slope / n
+    for y, x in zip(*np.nonzero(hole)):
+        found = []
+        for sgn in (-1, 1):
+            t = 0.0
+            while True:
+                t += 0.5
+                u, v = int(round(x + sgn * ux * t)), int(round(y + sgn * uy * t))
+                if not (0 <= u < W and 0 <= v < H):
+                    break
+                if not hole[v, u]:
+                    found.append((t, base[v, u])); break
+        if not found:
+            res[y, x] = BG
+        elif len(found) == 1:
+            res[y, x] = found[0][1]
+        else:
+            (t0, c0), (t1, c1) = found
+            res[y, x] = (c0 * t1 + c1 * t0) / (t0 + t1)
+    return res
 
 def fill_holes(C, hole, src_mask):
     """Fills `hole` by diffusion from the pixels round it (his ground strip where src_mask, his
@@ -249,7 +300,7 @@ AURA_PETALS = [ellipse(499, 520, 7), ellipse(497, 556, 8), ellipse(545, 535, 5)]
 AURA_FEATHERS = [ellipse(487, 533, 6, 9), ellipse(557, 566, 6, 9)]
 AURA_RING = [(468, 634), (500, 640), (528, 642), (560, 637), (572, 634), (572, 653), (466, 653)]
 DIAG_CHAR = [(972, 594), (1002, 594), (1010, 612), (1016, 640), (1016, 740), (996, 740), (976, 740), (966, 730),
-             (954, 716), (944, 700), (936, 662), (942, 636), (958, 616)]
+             (954, 716), (937, 704), (933, 662), (942, 636), (958, 616)]
 
 SPRITES = {
     'bolt': dict(area=(10, 54, 94, 139), k=K64, origin=(9, 53), base=(64, 64), anchor=(70.5, 96.5), smoke=True,
@@ -296,8 +347,10 @@ SPRITES = {
                  keep=AURA_PETALS + AURA_FEATHERS + [AURA_RING], pink=AURA_PETALS,
                  pieces=[('petals', AURA_PETALS + AURA_FEATHERS)]),
     'wall_diag': dict(area=(620, 492, 1014, 780), k=1 / 1.27, anchor=(772, 708), fade={'right': 30},
-                      fill=[DIAG_CHAR], ground=[[(744, 676), (790, 664), (840, 680), (900, 706), (960, 726), (1016, 744),
-                                                 (1016, 782), (870, 782), (800, 752), (760, 730), (735, 708)]],
+                      fill=[DIAG_CHAR], fill_slope=0.37, ground_violet=True,
+                      # His long shadow and, above it, the thin strip of it that runs on under his character.
+                      ground=[[(744, 676), (790, 664), (840, 680), (866, 663), (900, 672), (940, 688), (1016, 714),
+                               (1016, 782), (870, 782), (800, 752), (760, 730), (735, 708)]],
                       black=[rect(620, 600, 900, 782)],
                       pieces=[('bits', [ellipse(636, 699, 5), ellipse(640, 745, 5), ellipse(830, 745, 6), ellipse(907, 551, 5),
                                         ellipse(913, 568, 5), ellipse(935, 590, 6), ellipse(752, 520, 8), ellipse(736, 562, 6),
@@ -354,7 +407,7 @@ def source(name, cfg):
         src = dist >= T_ART
         if cfg.get('fill_src') != 'art':
             src &= poly_mask(H, W, x0, y0, cfg.get('ground', []))
-        C = fill_holes(C, hole, src & ~hole)
+        C = fill_along(C, hole, src & ~hole, cfg['fill_slope']) if 'fill_slope' in cfg else fill_holes(C, hole, src & ~hole)
         if cfg.get('fill_band'):
             full = poly_mask(H, W, x0, y0, cfg.get('fill_full', []))
             # Only a band round the hole's edge keeps the fill (the flames run on under the
@@ -519,9 +572,29 @@ def median_cut(cols, n):
     used = np.unique(np.asarray(q).ravel())
     return pal[used]
 
+def calm_chroma(d, wrap, sl=6.0, sab=10.0):
+    """His flat planes keep one hue: within a body, each pixel's colour (a, b in Lab, not its
+    lightness, so his 1 px cracks and highlight lines stay crisp) is averaged with its body
+    neighbours of near the same lightness and hue. What is left of the JPEG's colour speckle
+    goes, so the palette does not flip one plane between neighbouring hues."""
+    m = d['kind'] == 'body'
+    if not m.any(): return
+    L = lab(d['rgb'])
+    acc = np.zeros(L.shape[:2] + (2,)); ws = np.zeros(L.shape[:2])
+    for dy in (-1, 0, 1):
+        for dx in (-1, 0, 1):
+            Ln = shift(L, dy, dx, wrap); mn = shift(m, dy, dx, wrap)
+            w = mn * np.exp(-((L[..., 0] - Ln[..., 0]) ** 2) / (2 * sl * sl)) \
+                * np.exp(-((L[..., 1:] - Ln[..., 1:]) ** 2).sum(-1) / (2 * sab * sab)) * (1.0 if dy == 0 and dx == 0 else 0.7)
+            acc += w[..., None] * Ln[..., 1:]; ws += w
+    out = L.copy()
+    out[..., 1:] = np.where(m[..., None], acc / np.maximum(ws, 1e-9)[..., None], L[..., 1:])
+    d['rgb'] = np.where(m[..., None], lab2rgb(out), d['rgb'])
+
 data = {}
 for name, cfg in SPRITES.items():
     data[name] = cleanup(name, cfg, to_game(name, cfg))
+    calm_chroma(data[name], bool(cfg.get('wrap')))
 
 if os.environ.get('GJ_DUMP'):
     import pickle
@@ -550,12 +623,16 @@ def kmeans_lab(cols, n, iters=12):
 def by_lum(p):
     return p[np.argsort(lum(p))]
 
+N_COOL = 150   # violets, lavenders, whites
+N_HOT = 30     # his hot pinks and magentas (red over blue)
+
 def body_palette():
-    """80 colours for the violets and lavenders, plus 14 for his hot pinks and magentas (red over
-    blue: the sphere's spikes, the hit, the splashes), which are too few to win slots otherwise."""
-    c = gather('body')
+    """150 colours for the violets and lavenders, plus 30 for his hot pinks and magentas (red over
+    blue: the sphere's spikes, the hit, the splashes), which are too few to win slots otherwise.
+    (Fewer left his lavender planes between two hues; the indices stay one byte.)"""
+    c = gather('body', 4000)
     hot = c[:, 0] > c[:, 2] + 12
-    return np.concatenate([kmeans_lab(c[~hot], 80), kmeans_lab(c[hot], 14)])
+    return np.concatenate([kmeans_lab(c[~hot], N_COOL), kmeans_lab(c[hot], N_HOT)])
 
 FLOORS = {'glow': 0.0, 'smoke': 0.85, 'ground': 0.6}
 OUTLINE = np.array([[40, 16, 58]])   # deep violet (his darkest violet rims), never black
@@ -566,7 +643,7 @@ SETS = {
     'dark': by_lum(median_cut(gather('dark'), 6)),
     'smoke': by_lum(median_cut(gather('smoke'), 4)),
     'glow': by_lum(kmeans_lab(gather('glow'), 20)),
-    'ground': by_lum(median_cut(gather('ground'), 6)),
+    'ground': by_lum(median_cut(gather('ground'), 8)),
 }
 PAL = []   # (r, g, b, a, kind, order); the composite colour each entry stands for, for lookups
 COMPOSITE = []
@@ -583,14 +660,18 @@ for kind, cols in SETS.items():
         IDX[kind].append(len(PAL) - 1)
 COMPOSITE = np.array(COMPOSITE)
 
+# Nearest palette colour in Lab with the hue (a, b) weighted up: a plane keeps his hue and may
+# step in lightness, rather than flipping between neighbouring hues.
+QW = np.array([1.0, 1.6, 1.6])
+
 def quantize(d):
     H, W = d['g'].shape
     idx = np.zeros((H, W), np.int32)
     for kind, ids in IDX.items():
         m = d['kind'] == kind
         if not m.any(): continue
-        pal = lab(COMPOSITE[ids])
-        dist = ((lab(d['rgb'][m])[:, None, :] - pal[None, :, :]) ** 2).sum(-1)
+        pal = lab(COMPOSITE[ids]) * QW
+        dist = ((lab(d['rgb'][m])[:, None, :] * QW - pal[None, :, :]) ** 2).sum(-1)
         idx[m] = np.array(ids)[dist.argmin(1)] + 1
     # Specks inside a kind: a pixel unlike all 4 neighbours of its own kind takes their commonest value.
     out = idx.copy()

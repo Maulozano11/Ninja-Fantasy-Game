@@ -566,7 +566,7 @@ function hisWall(): Canvas {
   // Rough ends: the left end at the frame edge, and his wall's right end where his picture cut it.
   const right = new Int32Array(H).fill(-1);
   for (let y = 0; y < H; y++) for (let x = W - 1; x >= 0; x--) if (c.alpha(x, y)) { right[y] = x; break; }
-  hisWallBase = roughen(c, (x, y) => x < 6 + 8 * pnoise(0, y, 5, 0, 0, SEED + 90) || (right[y] > 600 && x > right[y] - 16 * pnoise(0, y, 4, 0, 0, SEED + 89)), pc.pal[0]);
+  hisWallBase = roughen(c, (x, y) => x < 6 + 8 * pnoise(0, y, 5, 0, 0, SEED + 90) || (right[y] > 600 && x > right[y] - 30 * pnoise(0, y, 8, 0, 0, SEED + 89)), pc.pal[0]);
   return hisWallBase;
 }
 /**
@@ -588,7 +588,9 @@ function hisWallLayer(st: SState): Canvas | null {
     // (a long, gentle ramp: neighbouring columns sink almost alike, so his flames keep their shapes)
     const k = (x: number) => surgeStand(st, x);
     void grow;
-    let c = sinkWall(base, (x) => (1 - k(x)) * g.hgt[x], (x) => behind(x) > 0);
+    // (the far end slopes down while it builds up, so it never stands as a cut-off block)
+    const endSlope = (x: number) => 0.55 * smooth(840, 960, x) * (1 - smooth(0.85, 1, grow));
+    let c = sinkWall(base, (x) => Math.min(1, 1 - k(x) + endSlope(x)) * g.hgt[x], (x) => behind(x) > 0);
     // The ignition at the caster's hands in the first frames: his first flames, small and growing.
     if (st.roll < 0.2) {
       const s0 = clamp(st.roll / 0.2, 0, 1);
@@ -673,7 +675,16 @@ function dragonMask(): Canvas {
     const pc = refPiece(n);
     m.draw(pc.c, pc.x, pc.y);
   }
-  return (dragonMaskCache = m);
+  // Grown by 2 px, so no ring of the dragon's outline stays behind in the wall.
+  const grown = m.clone();
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (m.alpha(x, y)) continue;
+      let near = false;
+      for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2 && !near; dx++) if (m.alpha(x + dx, y + dy)) near = true;
+      if (near) grown.set(x, y, [255, 255, 255, 255]);
+    }
+  return (dragonMaskCache = grown);
 }
 /**
  * His wall with the dragon taken out: every pixel the dragon covered gets the fire from the same
@@ -751,8 +762,9 @@ let backCache: Canvas | null = null;
 function hisBackLayer(st: SState): Canvas | null {
   if (!backCache) {
     const pc = refPiece('s_back');
-    backCache = new Canvas(W, H);
-    backCache.draw(pc.c, pc.x, pc.y);
+    const c = new Canvas(W, H);
+    c.draw(pc.c, pc.x, pc.y);
+    backCache = roughen(c, (x, y) => x < 8 + 10 * pnoise(0, y, 5, 0, 0, SEED + 88), pc.pal[0]);
   }
   if (st.phase === 'burn') return backCache;
   const show = (x: number) =>
@@ -778,7 +790,9 @@ function wallBottoms(): Int32Array {
 function wallDrop(st: SState, x: number): number {
   const g = wallGeom();
   const xi = Math.max(0, Math.min(W - 1, Math.round(x)));
-  return (1 - wallStand(st, x)) * (g.hgt[xi] + 8);
+  // (the far end slopes down as it dies, so it never stands as a cut-off block)
+  const endSlope = 0.55 * smooth(840, 960, x) * (1 - st.burn);
+  return Math.min(1, 1 - wallStand(st, x) + endSlope) * (g.hgt[xi] + 8);
 }
 /**
  * How much of the wall still stands at x in the fade (1 = full height): it sinks everywhere as

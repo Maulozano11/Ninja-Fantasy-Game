@@ -1,6 +1,6 @@
 // Summoned jutsu beasts: the creatures a jutsu sends flying or running from the caster to the
 // target. One sprite per element in the group vfx_beasts (the battle renderer prefers these over
-// the per-element 'beast' sheets): phoenix, water dragon, wind crane, raiju, stone dragon, illusion
+// the per-element 'beast' sheets): phoenix, water dragon, wind crane, raiju, stone drake, illusion
 // crow, chakra fox and venom cobra. Each has a 'fly' loop facing right (the game mirrors it), with
 // the anchor at the body centre; the phoenix also has 'dive' and 'attack'.
 //
@@ -8,9 +8,9 @@
 //   WORLD_OUT=<dir> ... writes the sheets for approval instead of into src/assets/world.
 //   FOCUS=water,wind ... builds only those (inspection images only, no sheets).
 //
-// The phoenix, the raiju and the wind crane are copied from the owner's own reference sheets (see
-// their sections and tools/refs/beasts-from-ref.py). Every other creature is built from parts
-// painted back to front: tubes along a path (serpent bodies, necks, tails, legs) whose
+// The phoenix, the raiju, the wind crane and the stone drake are copied from the owner's own
+// reference sheets (see their sections and tools/refs/beasts-from-ref.py). Every other creature is
+// built from parts painted back to front: tubes along a path (serpent bodies, necks, tails, legs) whose
 // cross-section gives a true normal, ellipsoids (heads, chests, haunches) and lens shapes (horns,
 // feathers, fins, flame tongues, petals). Each part has a material shader that turns its normal and
 // surface coordinates into a ramp step, lit from the upper left and broken into clusters by noise
@@ -22,6 +22,7 @@ import { existsSync, readFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { CHARACTER_FEET, Canvas, Color, LIGHT, MATERIALS, WorldSprite, characterRef, hash, hex, mix, noise, previewDir, ramp, toHex, withAlpha, writeGroup } from './kit';
+import * as REF_EARTH from './vfx-beasts-ref-earth';
 import * as REF_FIRE from './vfx-beasts-ref-fire';
 import * as REF_LIGHTNING from './vfx-beasts-ref-lightning';
 import * as REF_WIND from './vfx-beasts-ref-wind';
@@ -636,194 +637,20 @@ function windCrane(): WorldSprite {
 }
 
 // =============================================================================================
-// STONE DRAGON (earth)
+// STONE DRAKE (earth)
 // =============================================================================================
 //
-// A dragon of living rock, heavier and slower than the water dragon: the body is a chain of armour
-// plates, each cut into flat facets (lit facets carry a crest, the plates part on dark seams),
-// moss creeping over the tops, a row of stone spikes along the spine. The head is blocky and
-// faceted, with thick swept horns, a jaw of stone teeth and eyes glowing like embers in a cave.
-// Pebbles shake loose and fall as it moves.
+// The owner's stone drake from his earth sheet (the BEAST panel, where he painted a new four-legged
+// drake over our old serpent and asked for the serpent to go): grey-brown rock plates, moss on the
+// back, horns and spikes, glowing yellow eyes and a toothy jaw. His left picture (prowling) is fly
+// frame 0 and his right one (the low charging lunge, dust kicking up behind the hind legs) is frame 5,
+// both on one anchor at the middle of the torso. tools/refs/beasts-from-ref.py (drake mode) copies
+// them and builds the in-betweens by turning his legs and tail about their joints, pitching and
+// bobbing the body and moving his dust, writing vfx-beasts-ref-earth.ts.
 
-const STONE = (() => {
-  const st = ramp(blend(MATERIALS.stone, MATERIALS.stoneWarm, 0.45), { shift: 10 });
-  return {
-    ramp: st,
-    dark: ramp(blend(MATERIALS.stone, MATERIALS.bark, 0.4), { shift: 10 }),
-    moss: ramp(MATERIALS.moss, { shift: 14 }),
-    mossLight: ramp(blend(MATERIALS.moss, MATERIALS.leafLight, 0.5), { shift: 14 }),
-    outline: hex('#1c1712'),
-    line: hex('#2e2722'),
-    glow: [hex('#7a3a10'), hex('#c8641c'), hex('#f0a030'), hex('#ffd86a'), hex('#fff6c8')] as Color[],
-  };
-})();
-
-/** Flat facets: the normal snapped to one of a few directions per plate, so rock reads as cut planes. */
-function facet(h: Hit, plate: number, seed: number): [number, number, number] {
-  const az = Math.atan2(h.ny, h.nx);
-  const el = Math.acos(clamp(h.nz, -1, 1));
-  const ai = Math.round(az / (Math.PI / 3)), ei = Math.round(el / 0.5);
-  const jz = (rnd(seed, plate, ai * 7 + ei) - 0.5) * 0.55, ja = (rnd(seed + 1, plate, ai * 7 + ei) - 0.5) * 0.6;
-  const A = ai * (Math.PI / 3) + ja, E = clamp(ei * 0.5 + jz, 0, 1.45);
-  return [Math.cos(A) * Math.sin(E), Math.sin(A) * Math.sin(E), Math.cos(E)];
-}
-
-/** Light for a facet normal (same light as everywhere else). */
-const litN = (n: [number, number, number], wrap = 0.35): number => clamp((n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2] + wrap) / (1 + wrap), 0, 1);
-
-function earthSpine(t: number, cx: number, cy: number): P2[] {
-  const pts: P2[] = [];
-  const N = 50;
-  for (let i = 0; i <= N; i++) {
-    const s = i / N;
-    const x = cx + 22 - s * 100;
-    const amp = lerp(2, 13, smooth(0, 0.4, s)) * lerp(1, 0.8, smooth(0.8, 1, s));
-    const y = cy + 6 + amp * Math.sin(TAU * (s * 0.95 - t) + 1.1) - 7 * (1 - smooth(0, 0.3, s));
-    pts.push([x, y]);
-  }
-  return pts;
-}
-
-function stoneDragon(): WorldSprite {
-  const W = 190, H = 130, cx = 100, cy = 64;
-  const frames: Canvas[] = [];
-  const NF = 8;
-  for (let fi = 0; fi < NF; fi++) {
-    const t = fi / NF;
-    const f = new Frame(W, H);
-    const spine = earthSpine(t, cx, cy);
-    const neck = spine[0];
-    const PL = 8.5; // plate length along the body (px)
-    const hwBase = (u: number): number => (u < 0.1 ? lerp(10, 12.5, u / 0.1) : u < 0.42 ? 12.5 : lerp(12.5, 2.2, ((u - 0.42) / 0.58) ** 1.05));
-    // Plates overlap like armour: each is a little fuller at its front edge.
-    const totalLen = (() => {
-      let L = 0;
-      for (let i = 1; i < spine.length; i++) L += Math.hypot(spine[i][0] - spine[i - 1][0], spine[i][1] - spine[i - 1][1]);
-      return L;
-    })();
-    const hw = (u: number): number => hwBase(u) * (1 + 0.07 * (1 - fract((u * totalLen) / PL)));
-    const style = { outline: STONE.outline, line: STONE.line, solid: 150 };
-    const bob = Math.sin(TAU * t) * 1;
-    const S = 1.5;
-    const hx = neck[0] - 2, hy = neck[1] - 6 + bob;
-    const ang = -0.04 + Math.sin(TAU * t + 0.8) * 0.03;
-    const ca = Math.cos(ang), sa = Math.sin(ang);
-    const H2 = (x: number, y: number): P2 => [hx + (x * ca - y * sa) * S, hy + (x * sa + y * ca) * S];
-
-    /** Faceted stone: staggered armour plates, crests on lit facet edges, moss on top. */
-    const rock = (o: { seed: number; plates?: boolean; moss?: number; far?: number }) => (h: Hit): Color => {
-      const along = h.u * h.len;
-      // Two rows of plates, staggered like brickwork (upper row above the body's midline).
-      const row = h.v < -0.05 ? 0 : 1;
-      const pAlong = along + (row ? PL * 0.5 : 0);
-      const plate = o.plates ? Math.floor(pAlong / PL) * 2 + row : Math.floor(h.x / 6) + Math.floor(h.y / 6) * 31;
-      const n = facet(h, plate, o.seed);
-      const L = litN(n);
-      let s = stepOf(L, h.x, h.y, [0.28, 0.5, 0.74, 0.9], 0.04, o.seed, 2.4) - (o.far ?? 0);
-      if (o.plates) {
-        const pu = fract(pAlong / PL);
-        const rowSeam = Math.abs(h.v + 0.05) < 0.09;
-        if (pu < 0.11 || rowSeam) {
-          // Seams: dark, and a few deep ones glow like embers in the lower row.
-          if (!rowSeam && row && rnd(o.seed + 13, plate) < 0.3) return STONE.glow[pu < 0.05 ? 2 : 1];
-          return STONE.dark[1];
-        }
-        if ((pu < 0.24 || (row && h.v < 0.18)) && L > 0.5) s = Math.min(5, s + 1); // lit lip beside a seam
-        if (rnd(o.seed + 7, plate) < 0.25 && Math.abs(pu - 0.55 - h.v * 0.3) < 0.05) return STONE.dark[1];
-      }
-      // Moss on upward-facing stone, in patches.
-      if ((o.moss ?? 0) > 0 && h.ny < -0.2) {
-        const m = noise(h.x * 0.7, h.y * 0.9, 3.2, o.seed + 9) * 0.7 + noise(along * 0.2, h.v, 5, o.seed + 19) * 0.3;
-        if (m > 1 - (o.moss ?? 0)) {
-          const ms = stepOf(L + (m - 0.5) * 0.4, h.x, h.y, [0.3, 0.5, 0.72, 0.9], 0.06, o.seed + 11);
-          return (ms >= 4 ? STONE.mossLight : STONE.moss)[clamp(ms, 1, 4)];
-        }
-      }
-      return STONE.ramp[clamp(s, 1, 5)];
-    };
-
-    // --- far horn ----------------------------------------------------------------------------
-    f.part_([lens(H2(4, -8), H2(-16, -21), 3.4 * S, { bend: -4, tip: 1.3, peak: 0.2, base: 0.9 })], rock({ seed: 3, far: 1 }), style);
-    // --- spikes along the spine ----------------------------------------------------------------
-    const spikes: Prim[] = [];
-    for (let j = 0; j < 9; j++) {
-      const u = 0.07 + j * 0.088;
-      const i = Math.round(u * (spine.length - 1));
-      const [px, py] = spine[i];
-      const [qx, qy] = spine[Math.min(spine.length - 1, i + 1)];
-      const dx = qx - px, dy = qy - py, dl = Math.hypot(dx, dy) || 1;
-      const ux2 = -dy / dl, uy2 = dx / dl;
-      const w = hwBase(u);
-      const len = lerp(12, 5, u);
-      const root: P2 = [px + ux2 * w * 0.7, py + uy2 * w * 0.7];
-      const tip: P2 = [root[0] + ux2 * len + (dx / dl) * len * 0.45, root[1] + uy2 * len + (dy / dl) * len * 0.45];
-      spikes.push(lens(root, tip, lerp(4.4, 2.2, u), { tip: 0.9, peak: 0.15, base: 1, curve: 0.9 }));
-    }
-    f.part_(spikes, rock({ seed: 5 }), style);
-    // --- body ----------------------------------------------------------------------------------
-    f.part_([tube(spine, hw)], rock({ seed: 21, plates: true, moss: 0.36 }), style);
-    // --- head ----------------------------------------------------------------------------------
-    f.part_([lens(H2(-2, 5), H2(24, 10), 4.2 * S, { bend: 0.6, peak: 0.25, tip: 0.6, base: 0.9, curve: 0.8 })], rock({ seed: 31 }), style);
-    f.part_([poly([H2(1, 2), H2(23, 3), H2(22, 8), H2(4, 7)])], () => STONE.glow[0], { outline: null, line: null });
-    f.part_([poly([H2(19, 8), H2(21, 8), H2(20, 4)]), poly([H2(13, 7.6), H2(15, 7.4), H2(14, 4)]), poly([H2(7, 7), H2(9, 7), H2(8, 4.5)])], (h) => STONE.ramp[h.v < 0 ? 5 : 4], { outline: STONE.outline, line: null });
-    const skull = [
-      blob(...H2(5, -1), 9.5 * S, 7.5 * S, ang),
-      lens(H2(2, -2), H2(28, 1), 5.6 * S, { peak: 0.35, tip: 0.5, base: 0.95, curve: 0.8 }),
-      blob(...H2(10, -6.5), 6 * S, 2.8 * S, ang - 0.12),
-      blob(...H2(25, -1.5), 3.6 * S, 3 * S),
-    ];
-    f.part_(skull, rock({ seed: 41, moss: 0.3 }), style);
-    f.part_([poly([H2(20, 2.6), H2(22.4, 2.6), H2(21.3, 6.8)]), poly([H2(15, 2.8), H2(17, 2.8), H2(16, 6.4)]), poly([H2(9.5, 3), H2(11.4, 3), H2(10.4, 5.8)])], (h) => STONE.ramp[h.v < 0 ? 5 : 4], { outline: STONE.outline, line: null });
-    // Near horns: a thick main horn swept back and curling up, a shorter one below it, a row of
-    // spikes along the brow, and a cheek spur.
-    f.part_([
-      lens(H2(5, -7), H2(-17, -18), 3.4 * S, { bend: -4.5, tip: 1.3, peak: 0.2, base: 0.9 }),
-      lens(H2(1, -4), H2(-14, -7), 2.2 * S, { bend: -2, tip: 1.4, peak: 0.2, base: 0.9 }),
-      lens(H2(-2, 1), H2(-11, 6), 2 * S, { tip: 1.5, peak: 0.25 }),
-      lens(H2(12, -7), H2(8, -12), 1.5 * S, { tip: 1.4, peak: 0.2 }),
-      lens(H2(17, -5.5), H2(14, -10), 1.3 * S, { tip: 1.4, peak: 0.2 }),
-    ], rock({ seed: 51 }), style);
-    const fc = f.finish();
-    // Eyes: embers glowing under the brow, with a soft glow around.
-    const glowEye = (ex: number, ey: number): void => {
-      for (const [dx, dy] of [[-2, 0], [4, 0], [-1, -1], [0, -2], [1, -2], [2, -2], [3, -1], [-1, 1], [0, 2], [1, 2], [2, 2], [3, 1]]) fc.plot(ex + dx, ey + dy, wa(STONE.glow[2], 110));
-      for (const [dx, dy, c] of [[0, -1, STONE.glow[2]], [1, -1, STONE.glow[3]], [2, -1, STONE.glow[2]], [-1, 0, STONE.glow[2]], [0, 0, STONE.glow[4]], [1, 0, STONE.glow[4]], [2, 0, STONE.glow[3]], [3, 0, STONE.glow[1]], [0, 1, STONE.glow[1]], [1, 1, STONE.glow[2]], [2, 1, STONE.glow[1]]] as [number, number, Color][]) fc.set(ex + dx, ey + dy, c);
-    };
-    const [ex, ey] = H2(11, -3).map(Math.round);
-    glowEye(ex, ey);
-    const [nx2, ny2] = H2(25.5, -2.5).map(Math.round);
-    fc.set(nx2, ny2, STONE.glow[1]);
-    fc.set(nx2 + 1, ny2, STONE.outline);
-    // Pebbles shaking loose and falling, tumbling as they go: little outlined stones.
-    for (let k = 0; k < 11; k++) {
-      const p = fract(k / 11 + t);
-      const src = spine[Math.round(lerp(0.1, 0.95, rnd(71, k)) * (spine.length - 1))];
-      const x = src[0] - p * 10 - rnd(72, k) * 4, y = src[1] + 9 + p * p * 40;
-      if (y > H - 4) continue;
-      const big = k % 3 !== 1;
-      const X = Math.round(x), Y = Math.round(y);
-      const rot = Math.floor(p * 5 + k) % 3;
-      const shapes: [number, number, number][][] = big
-        ? [
-            [[0, 0, 4], [1, 0, 3], [-1, 1, 3], [0, 1, 2], [1, 1, 2], [0, 2, 1]],
-            [[0, 0, 4], [1, 0, 4], [0, 1, 3], [1, 1, 2], [2, 1, 2], [1, 2, 1]],
-            [[1, 0, 4], [0, 1, 4], [1, 1, 3], [2, 1, 2], [0, 2, 2], [1, 2, 1]],
-          ]
-        : [
-            [[0, 0, 4], [1, 0, 2], [0, 1, 2]],
-            [[0, 0, 3], [1, 0, 4], [1, 1, 2]],
-            [[0, 0, 4], [0, 1, 2], [1, 1, 2]],
-          ];
-      const sh = shapes[rot];
-      const cells = new Set(sh.map(([dx, dy]) => `${dx},${dy}`));
-      for (const [dx, dy] of sh)
-        for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1]])
-          if (!cells.has(`${dx + ox},${dy + oy}`) && !fc.alpha(X + dx + ox, Y + dy + oy)) fc.set(X + dx + ox, Y + dy + oy, STONE.outline);
-      for (const [dx, dy, st] of sh) fc.set(X + dx, Y + dy, STONE.ramp[st]);
-    }
-    frames.push(fc);
-  }
-  return flySprite('earth', 'Stone dragon (earth)', [2.8, 1.9], frames, cx, cy);
+function stoneDrake(): WorldSprite {
+  const f = refFrames(REF_EARTH);
+  return beastSprite('earth', 'Stone drake (earth)', [4.1, 2.5], [['fly', f.fly, 12, true]], ...REF_EARTH.ANCHOR);
 }
 
 // =============================================================================================
@@ -1314,7 +1141,7 @@ const BUILDERS: [string, () => WorldSprite][] = [
   ['water', waterDragon],
   ['wind', windCrane],
   ['lightning', raiju],
-  ['earth', stoneDragon],
+  ['earth', stoneDrake],
   ['genjutsu', illusionCrow],
   ['chakra', chakraFox],
   ['poison', venomCobra],

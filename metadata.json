@@ -1,0 +1,6 @@
+{
+  "name": "Shinobi Chronicles: 5e Tactical Combat",
+  "description": "Naruto 5e tactical turn-based RPG with deep 2D sprite character creator, interactive destructible environments, D&D d20 dice rolls, jutsu skill trees, and titanic boss battles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

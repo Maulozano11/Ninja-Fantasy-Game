@@ -189,7 +189,7 @@ export function dropColumns(c: Canvas, drop: (x: number) => number, cutY: (x: nu
  * from its edges inward (a few px per step, the edge ragged), and its upper parts cool into
  * smoke. k: 0 = as drawn, 1 = gone. Loose crumbs are dropped; the new edge gets `outline`.
  */
-export function burnOut(c: Canvas, k: number, smoke: Color[], outline: Color, seed: number, top = 0, height = c.h): Canvas {
+export function burnOut(c: Canvas, k: number, smoke: Color[], outline: Color, seed: number, top = 0, height = c.h, thinPx = 9): Canvas {
   if (k <= 0) return c;
   if (k >= 1) return new Canvas(c.w, c.h);
   // Thin from the edges: distance (in 4-neighbour steps) to the outside, capped.
@@ -221,7 +221,7 @@ export function burnOut(c: Canvas, k: number, smoke: Color[], outline: Color, se
     frontier = next;
   }
   let out = new Canvas(W, H);
-  const thin = k * 9;
+  const thin = k * thinPx;
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       const p = c.get(x, y);

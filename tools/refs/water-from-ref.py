@@ -172,9 +172,10 @@ def flatten():
     dd = d.copy()
     band = np.zeros((H0, W0), bool)
     for x0, y0, x1, y1 in PANELS.values():
-        for y in (y0, y1):
-            dd[y - 1:y + 2, x0 - 1:x1 + 2] = ((d[y - 2, x0 - 1:x1 + 2] + d[y + 2, x0 - 1:x1 + 2]) / 2)[None]
-            band[y - 1:y + 2, x0 - 1:x1 + 2] = True
+        # (The top line is filled from inside only: his labels sit right above it.)
+        dd[y0 - 1:y0 + 2, x0 - 1:x1 + 2] = d[y0 + 2, x0 - 1:x1 + 2][None]
+        dd[y1 - 1:y1 + 2, x0 - 1:x1 + 2] = ((d[y1 - 2, x0 - 1:x1 + 2] + d[y1 + 2, x0 - 1:x1 + 2]) / 2)[None]
+        band[y0 - 1:y0 + 2, x0 - 1:x1 + 2] = band[y1 - 1:y1 + 2, x0 - 1:x1 + 2] = True
         for x in (x0, x1):
             dd[y0 - 1:y1 + 2, x - 1:x + 2] = ((d[y0 - 1:y1 + 2, x - 2] + d[y0 - 1:y1 + 2, x + 2]) / 2)[:, None]
             band[y0 - 1:y1 + 2, x - 1:x + 2] = True
@@ -222,7 +223,7 @@ SPRITES = {
                  halo=[rect(200, 670, 330, 830)]),
     # The stream: his jet, the tile ending where his crest head begins (the anchor's x), centred
     # on the anchor's y.
-    'stream': dict(anchor=(457.6, 76.5), area=[rect(276, 42, 520, 112)], drops=30, stream=True, head_w=64),
+    'stream': dict(anchor=(457.6, 76.5), area=[rect(276, 42, 520, 112)], drops=30, stream=True, head_w=66),
 }
 MARGIN = 4
 
@@ -272,20 +273,22 @@ def classify_his(cfg):
         glow |= grey
     body = art & ~outline
     if cfg.get('halo'):
-        # Inside the halo, mid-dark blue that is not shut in by his outline is haze, not water.
+        # Round the aura his haze is strong; what can be reached from outside the art without
+        # crossing his bright water is haze (glow), except the dark rim right against the water.
         halo = keep & poly_mask(H0, W0, cfg['halo'])
-        wall = (L >= 100) | outline
         y0, y1 = np.nonzero(halo.any(1))[0][[0, -1]]
         x0, x1 = np.nonzero(halo.any(0))[0][[0, -1]]
-        sub = ~dilate(wall[y0:y1 + 1, x0:x1 + 1]) & halo[y0:y1 + 1, x0:x1 + 1]
+        bright = (L >= 85)[y0:y1 + 1, x0:x1 + 1]
+        sub = ~dilate(bright) & halo[y0:y1 + 1, x0:x1 + 1]
         lab, n = components(sub, nb=N4)
         edge = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
-        outside = np.isin(lab, list(edge))
-        out_full = np.zeros_like(halo)
-        out_full[y0:y1 + 1, x0:x1 + 1] = dilate(outside) & ~wall[y0:y1 + 1, x0:x1 + 1]
-        hz = out_full & body & (L < 100)
+        reach = np.zeros_like(halo)
+        reach[y0:y1 + 1, x0:x1 + 1] = dilate(np.isin(lab, list(edge))) & ~bright
+        rim_ok = dilate(keep & (L >= 85), nb=N8)
+        hz = reach & ~(outline & rim_ok)
         body &= ~hz
-        glow |= hz
+        outline &= ~hz
+        glow |= hz & (a >= 0.035)
     return dict(body=body, outline=outline, glow=glow, a=np.where(glow, a, 0), F=F)
 
 
@@ -394,7 +397,9 @@ def aura_split(b):
     zone = dilate(body)
     col = g['col']
     L = lum(col)
-    streak = b['solid'] & zone & (L >= 140) & (col[..., 2] - col[..., 0] >= 40)
+    # A streak is his bright water where our character is darker (his lit sword is the
+    # character's, not water).
+    streak = b['solid'] & zone & (L >= 140) & (col[..., 2] - col[..., 0] >= 40) & (L - lum(ch[..., :3]) * body >= 50)
     feet = b['solid'] & zone & (np.arange(H)[:, None] >= ay - 4)
     front = streak | feet
     # Only streak pieces of a few pixels (single bright pixels are his tinted highlights).
@@ -426,9 +431,16 @@ def aura_split(b):
         veil[y0:y0 + 6] = a
         veil_col[y0:y0 + 6] = np.clip(sol[1:] / max(a, 1e-3), 0, 255)
     print('aura veil per band', [round(float(veil[y, ax]), 2) for y in range(0, H, 6)])
-    # Faint, so the character reads: at most 0.28, and 0.12 over the head.
-    head = np.arange(H)[:, None] < ay - 66
-    veil = np.minimum(veil, np.where(head, 0.12, 0.28)) * body
+    # His tint is strong (the figure is deep in the water); in game the middle must read, so the
+    # front keeps it as a faint wash of his fitted water colour over the body: an ellipse from the
+    # chest to the feet (whatever the pose), 0.2 in the middle fading to 0.1 at its rim.
+    strong = veil > 0.2
+    tint = np.median(veil_col[strong], 0) if strong.any() else np.array([80.0, 190.0, 230.0])
+    yy, xx = np.mgrid[0:H, 0:W]
+    d = np.hypot((xx + 0.5 - ax) / 15.0, (yy + 0.5 - (ay - 33)) / 36.0)
+    veil = np.where(d < 1, 0.2 - 0.1 * d, 0.0)
+    veil_col = np.zeros((H, W, 3)) + tint
+    print('aura veil colour', tint.round())
     b['veil'] = veil
     b['veil_col'] = veil_col
     # Behind: everything else; what our character covers is filled from the water round it.
@@ -527,10 +539,21 @@ def split_pieces(idx, cfg, b, keep_full=False, wrap=False):
     kinds = KIND[idx]
     owner = np.full((H, W), 'main', dtype=object)
     owner[kinds == 'glow'] = 'glow'
-    lab, n = components((kinds == 'body') | (kinds == 'outline'), wrap=wrap)
+    # Droplets: small bits of water standing clear of the rest (more than their rim apart), with
+    # the rim round them.
+    body = kinds == 'body'
+    lab, n = components(body, nb=N4, wrap=wrap)
     sizes = np.bincount(lab.ravel(), minlength=n + 1)
     big = sizes[1:].max() if n else 0
-    owner[(lab > 0) & (sizes[lab] <= cfg['drops']) & (sizes[lab] < big)] = 'drops'
+    drop_body = np.zeros((H, W), bool)
+    for k in range(1, n + 1):
+        if sizes[k] > cfg['drops'] or sizes[k] >= big:
+            continue
+        m = lab == k
+        if not (dilate(m, 2, wrap=wrap, nb=N8) & body & ~m).any():
+            drop_body |= m
+    drop_rim = (kinds == 'outline') & dilate(drop_body, wrap=wrap, nb=N8) & ~dilate(body & ~drop_body, wrap=wrap, nb=N8)
+    owner[drop_body | drop_rim] = 'drops'
     names = ['main', 'drops', 'glow']
     for pname, polys in cfg.get('pieces', []):
         x0, y0 = b['g']['box'][:2]

@@ -131,9 +131,10 @@ def prep(cfg):
     gone = on_border & plain
     gone |= poly_mask(H, W, sx0, sy0, cfg.get('drop', []))
     c[gone] = B[gone]
-    return c, B, gone
+    cr = raw.copy(); cr[gone] = B[gone]
+    return c, B, gone, cr
 
-def classify(c, B, cfg):
+def classify(c, B, cfg, cr=None):
     """Splits each pixel into what he painted (alpha, colour F) over the background B under it."""
     d = c - B
     L, LB = lum(c), lum(B)
@@ -143,7 +144,7 @@ def classify(c, B, cfg):
     near = dilate(core, 2)
     # Dark paint: dark teal (green well above red, not much lighter than his fill), or anything
     # darker than his fill (the deep green round leaves, the brown shadows of the dust).
-    darkish = (((c[..., 1] - c[..., 0] >= 12) & (L < LB + 18)) | (L < LB - 2)) & (dsum >= 16)
+    darkish = (((c[..., 1] - c[..., 0] >= 24) & (L < LB + 18)) | (L < LB - 2)) & (dsum >= 16)
     # Solid: his strokes, with their shading and the dark outline round them.
     solid = core | (dilate(core, 1) & painted) | (darkish & near)
     # See-through: lighter than his fill (veils, wisps, glows): the least alpha that gives his pixel.
@@ -152,7 +153,9 @@ def classify(c, B, cfg):
     # Dark teal away from any stroke: a dark veil.
     dark_veil = darkish & ~solid
     alpha = np.where(solid, 1.0, np.where(dark_veil, 0.72, np.where(lighter, a_light, 0.0)))
-    F = np.clip(np.where(alpha[..., None] > 0, B + d / np.maximum(alpha, 1e-6)[..., None], 0), 0, 255)
+    # Decisions are made on the smoothed pixels; colours come from his unsmoothed ones (contrast).
+    dr = (c if cr is None else cr) - B
+    F = np.clip(np.where(alpha[..., None] > 0, B + dr / np.maximum(alpha, 1e-6)[..., None], 0), 0, 255)
     return alpha, F, solid
 
 def to_game(cfg, alpha, F, solid):
@@ -244,8 +247,8 @@ def pg_to_his(cfg, pts):
 def prep_sprite(name, cfg):
     cfg = dict(cfg)
     cfg['drop'] = [pg_to_his(cfg, p) for p in cfg.get('drop', [])]
-    c, B, gone = prep(cfg)
-    alpha, F, solid = classify(c, B, cfg)
+    c, B, gone, cr = prep(cfg)
+    alpha, F, solid = classify(c, B, cfg, cr)
     sx0, sy0, sx1, sy1 = cfg['src']
     H, W = alpha.shape
     if cfg.get('soft'):
@@ -269,7 +272,7 @@ def prep_sprite(name, cfg):
         alpha[keep_in] = 1; solid[keep_in] = True
         alpha[ring] = 1; solid[ring] = True
         F[ring] = OUTLINE_GUESS
-        F[keep_in] = c[keep_in]
+        F[keep_in] = cr[keep_in]
     return c, B, alpha, F, solid
 
 OUTLINE_GUESS = np.array([18.0, 41.0, 38.0])
@@ -301,11 +304,33 @@ def compose(Cs, Ps, At, Pt):
     out[t, 3] = np.minimum(tA[t], 0.9)
     return out
 
+def fill_holes(img, max_px=12):
+    """Small see-through gaps enclosed by his strokes become opaque in the colour they show over
+    his fill: inside a mass of wind they are paint, not holes."""
+    op = img[..., 3] >= 1
+    tr = (img[..., 3] > 0) & ~op
+    labs, n = components(~op, N4)
+    if n == 0: return img
+    sizes = np.bincount(labs.ravel(), minlength=n + 1)
+    edge = np.zeros(n + 1, bool)
+    edge[np.unique(labs[0, :])] = True; edge[np.unique(labs[-1, :])] = True
+    edge[np.unique(labs[:, 0])] = True; edge[np.unique(labs[:, -1])] = True
+    # Only gaps that are see-through all the way (no fully clear pixel) are filled.
+    clear_in = np.zeros(n + 1, bool)
+    clear_in[np.unique(labs[(img[..., 3] == 0) & ~op])] = True
+    sel = (sizes[labs] <= max_px) & ~edge[labs] & ~clear_in[labs] & tr
+    out = img.copy()
+    a = img[sel][:, 3:4]
+    out[sel, :3] = img[sel][:, :3] * a + FILL * (1 - a)
+    out[sel, 3] = 1
+    return out
+
 # --- pass 1: every sprite at game scale, unquantized -------------------------------------------------
 stage = {}
 for name, cfg in SPRITES.items():
     c, B, alpha, F, solid = prep_sprite(name, cfg)
     img, org = to_game(cfg, alpha, F, solid)
+    img = fill_holes(img)
     sx0, sy0, sx1, sy1 = cfg['src']
     raw = IM[sy0:sy1, sx0:sx1]
     rawc, _ = to_game(cfg, np.ones(raw.shape[:2]), raw, np.ones(raw.shape[:2], bool))
@@ -314,8 +339,8 @@ for name, cfg in SPRITES.items():
 # His glow colours: the see-through pixels of his halo round his character in the blast panel.
 def halo_colours():
     cfg = SPRITES['blast']
-    c, B, gone = prep(dict(cfg, drop=[]))
-    alpha, F, solid = classify(c, B, cfg)
+    c, B, gone, cr = prep(dict(cfg, drop=[]))
+    alpha, F, solid = classify(c, B, cfg, cr)
     sx0, sy0 = cfg['src'][:2]
     H, W = alpha.shape
     m = poly_mask(H, W, sx0, sy0, [pg_to_his(cfg, rect(146, 52, 164, 140))]) & ~solid & (alpha > 0.08)
@@ -387,18 +412,23 @@ def stream_parts():
     head = compose(Cs, Ps, At, Pt)
     return out, head
 tile_img, head_img = stream_parts()
+tile_img, head_img = fill_holes(tile_img), fill_holes(head_img)
 gt_stream = stage['stream']['org'][1]
 C_BIG = [(141, 3), (150, 3), (160, 9), (167, 18), (170, 28), (170, 38), (166, 48), (158, 57), (150, 61), (144, 60), (149, 53),
          (153, 44), (154, 36), (154, 28), (152, 19), (147, 10)]
 print('stream tile', tile_img.shape[1], 'x', tile_img.shape[0], 'head', head_img.shape[1], 'x', head_img.shape[0])
 
-# --- the palette: one for the set, from his pixels ---------------------------------------------------
+# --- palettes: one per sprite, from his own pixels of that panel ------------------------------------------
+# His panels differ in hue (the bolt is a deep emerald, the breath a pale aqua, the walls a grey
+# teal), so each sprite gets its own palette sampled from its panel: opaque colours per family
+# (wind, leaves, dust) refined with k-means in Lab, the outline colour of each family (the median
+# of his darkest pixels of it), and see-through colours at six alpha steps.
 def family(rgb):
     """0 wind (teal / mint / white), 1 leaf (yellow-green), 2 dust (brown / grey)."""
-    h, s = hue(rgb); L = lum(rgb)
-    leaf = (h >= 62) & (h < 138) & (s >= 0.16)
-    wind = ((h >= 138) & (h <= 215) & (s >= 0.08)) | ((s < 0.12) & (L > 150))
-    return np.where(leaf, 1, np.where(wind, 0, 2))
+    h, s = hue(rgb)
+    leaf = (h >= 66) & (h < 135) & (s >= 0.2)
+    dust = ((h < 66) | (h >= 260)) & (s >= 0.04)
+    return np.where(leaf, 1, np.where(dust, 2, 0))
 
 def lab(rgb):
     """sRGB (0-255) to CIELAB, for matching colours the way the eye does."""
@@ -409,11 +439,19 @@ def lab(rgb):
     f = np.where(xyz > 0.008856, np.cbrt(xyz), 7.787 * xyz + 16 / 116)
     return np.stack([116 * f[..., 1] - 16, 500 * (f[..., 0] - f[..., 1]), 200 * (f[..., 1] - f[..., 2])], -1)
 
+def median_cut(cols, n):
+    cols = np.asarray(cols, np.float64)
+    if len(cols) == 0: return np.zeros((0, 3))
+    q = Image.fromarray(np.clip(cols, 0, 255).astype(np.uint8).reshape(1, -1, 3), 'RGB').quantize(colors=n, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    pal = np.array(q.getpalette()[:n * 3], np.float64).reshape(-1, 3)
+    return pal[np.unique(np.asarray(q).ravel())]
+
 def kmeans_lab(cols, init, iters=10):
     """Refines a palette (median cut) with k-means in Lab; returns RGB means of his pixels."""
     cols = np.asarray(cols, np.float64)
-    if len(cols) > 60000:
-        cols = cols[np.linspace(0, len(cols) - 1, 60000).astype(int)]
+    if len(cols) == 0 or len(init) == 0: return init
+    if len(cols) > 40000:
+        cols = cols[np.linspace(0, len(cols) - 1, 40000).astype(int)]
     L = lab(cols); pal = init.copy()
     for _ in range(iters):
         d = ((L[:, None, :] - lab(pal)[None]) ** 2).sum(-1)
@@ -423,123 +461,121 @@ def kmeans_lab(cols, init, iters=10):
             if m.any(): pal[k] = cols[m].mean(0)
     return pal
 
-def median_cut(cols, n):
-    cols = np.asarray(cols, np.float64)
-    if len(cols) == 0: return np.zeros((0, 3))
-    q = Image.fromarray(np.clip(cols, 0, 255).astype(np.uint8).reshape(1, -1, 3), 'RGB').quantize(colors=n, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
-    pal = np.array(q.getpalette()[:n * 3], np.float64).reshape(-1, 3)
-    return pal[np.unique(np.asarray(q).ravel())]
-
-for k_, st_ in stage.items():
-    for key_ in ('img', 'glow'):
-        if key_ in st_ and np.isnan(st_[key_]).any(): print('NaN in', k_, key_, np.isnan(st_[key_]).sum())
-all_imgs = [st['img'] for k, st in stage.items() if k != 'stream'] + [tile_img, head_img]
-opq = np.concatenate([im_[im_[..., 3] >= 1][:, :3] for im_ in all_imgs])
-trn = np.concatenate([im_[(im_[..., 3] > 0) & (im_[..., 3] < 1)] for im_ in all_imgs]
-                     + [st['glow'][st['glow'][..., 3] > 0] for st in stage.values() if 'glow' in st])
-fam = family(opq)
-PAL_OP = []
-FAM_N = {0: 22, 1: 8, 2: 7}
-FAM_OUTLINE = {}
-for f, n in FAM_N.items():
-    cols = opq[fam == f]
-    pal = kmeans_lab(cols, median_cut(cols, n))
-    pal = pal[np.argsort(lum(pal))]
-    # The family's outline: the median of his darkest pixels of that family (never black).
-    lc = lum(cols)
-    if f == 2: lc = np.where(lc < 52, 999, lc)  # his dust edge is a dark brown, not the fill
-    dark = cols[lc <= np.percentile(lc, 4)]
-    ol = np.median(dark, 0)
-    FAM_OUTLINE[f] = len(PAL_OP)
-    PAL_OP.append((ol, f))
-    for p_ in pal: PAL_OP.append((p_, f))
-OP_RGB = np.array([p_[0] for p_ in PAL_OP]); OP_FAM = np.array([p_[1] for p_ in PAL_OP])
 ALEV = np.array([0.12, 0.24, 0.36, 0.5, 0.64, 0.78])
-TR_F = kmeans_lab(trn[:, :3], median_cut(trn[:, :3], 10)); TR_F = TR_F[np.argsort(lum(TR_F))]
-PAL = [tuple(int(round(v)) for v in p_) + (255,) for p_ in OP_RGB]
-TR_BASE = len(PAL)
-for fc in TR_F:
-    for a in ALEV:
-        PAL.append(tuple(int(round(v)) for v in fc) + (int(round(a * 255)),))
-print('palette', len(PAL), 'opaque', len(OP_RGB), 'outlines', {k: OP_RGB[v].round().tolist() for k, v in FAM_OUTLINE.items()})
+FAM_N = {0: 22, 1: 8, 2: 7}
 
-def nearest(cols, pal):
-    d = ((lab(cols)[:, None, :] - lab(pal)[None, :, :]) ** 2).sum(-1)
-    return d.argmin(1)
+class Palette:
+    def __init__(self, imgs, extra_tr=()):
+        opq = np.concatenate([im_[im_[..., 3] >= 1][:, :3] for im_ in imgs])
+        trn = np.concatenate([im_[(im_[..., 3] > 0) & (im_[..., 3] < 1)][:, :3] for im_ in imgs] + [e[e[..., 3] > 0][:, :3] for e in extra_tr])
+        fam = family(opq)
+        rgb, fams, self.outline = [], [], {}
+        for f, n in FAM_N.items():
+            cols = opq[fam == f]
+            if len(cols) < 12: continue
+            n = min(n, max(3, len(cols) // 16))
+            pal = kmeans_lab(cols, median_cut(cols, n))
+            pal = pal[np.argsort(lum(pal))]
+            lc = lum(cols)
+            if f == 2: lc = np.where(lc < 52, 999, lc)  # his dust edge is a dark brown, not the fill
+            ol = np.median(cols[lc <= np.percentile(lc, 4)], 0)
+            self.outline[f] = len(rgb)
+            rgb.append(ol); fams.append(f)
+            for p_ in pal: rgb.append(p_); fams.append(f)
+        self.op = np.array(rgb); self.fam = np.array(fams)
+        self.tr = kmeans_lab(trn, median_cut(trn, 6)) if len(trn) else np.zeros((0, 3))
+        self.tr = self.tr[np.argsort(lum(self.tr))]
+        self.n_op = len(self.op)
+        entries = [tuple(int(round(v)) for v in c_) + (255,) for c_ in self.op]
+        for fc in self.tr:
+            for a in ALEV:
+                entries.append(tuple(int(round(v)) for v in fc) + (int(round(a * 255)),))
+        self.entries = entries
+        self.arr = np.array(entries, np.float64)
 
-def quantize(im_):
-    H, W = im_.shape[:2]
-    idx = np.zeros((H, W), np.int32)
-    op = im_[..., 3] >= 1
-    if op.any(): idx[op] = nearest(im_[op][:, :3], OP_RGB) + 1
-    tr = (im_[..., 3] > 0) & ~op
-    if tr.any():
-        fi = nearest(im_[tr][:, :3], TR_F)
-        ai = np.abs(im_[tr][:, 3][:, None] - ALEV[None]).argmin(1)
-        idx[tr] = TR_BASE + fi * len(ALEV) + ai + 1
-    return idx
+    def nearest(self, cols, pal):
+        d = ((lab(cols)[:, None, :] - lab(pal)[None, :, :]) ** 2).sum(-1)
+        return d.argmin(1)
 
-PAL_ARR = np.array(PAL, np.float64)
-def is_op(idx): return (idx > 0) & (idx <= len(OP_RGB))
+    def quantize(self, im_):
+        H, W = im_.shape[:2]
+        idx = np.zeros((H, W), np.int32)
+        op = im_[..., 3] >= 1
+        if op.any():
+            # Each pixel takes the nearest colour of its own family (leaves stay yellow-green).
+            cols = im_[op][:, :3]
+            fam = family(cols)
+            out = self.nearest(cols, self.op)
+            for f in np.unique(fam):
+                ids = np.nonzero(self.fam == f)[0]
+                if len(ids) == 0: continue
+                m = fam == f
+                out[m] = ids[self.nearest(cols[m], self.op[ids])]
+            idx[op] = out + 1
+        tr = (im_[..., 3] > 0) & ~op
+        if tr.any() and len(self.tr):
+            fi = self.nearest(im_[tr][:, :3], self.tr)
+            ai = np.abs(im_[tr][:, 3][:, None] - ALEV[None]).argmin(1)
+            idx[tr] = self.n_op + fi * len(ALEV) + ai + 1
+        return idx
 
-def clean(idx):
-    """Specks dropped, and dark silhouette edges set to the tinted outline of what they surround."""
-    H, W = idx.shape
-    op = is_op(idx)
-    # Lone dark opaque pixels (JPEG specks) go.
-    nb = sum(shift(op, dy, dx).astype(int) for dy, dx in N8)
-    rgb = PAL_ARR[np.maximum(idx - 1, 0), :3]
-    L = lum(rgb)
-    idx[op & (nb == 0) & (L < 90)] = 0
-    op = is_op(idx)
-    # A pixel unlike all 4 neighbours (all opaque) takes the most common neighbour (JPEG noise).
-    out = idx.copy()
-    for y in range(1, H - 1):
-        for x in range(1, W - 1):
-            v = idx[y, x]
-            if not op[y, x]: continue
-            n4 = [idx[y, x + 1], idx[y, x - 1], idx[y + 1, x], idx[y - 1, x]]
-            if v not in n4 and all(is_op(np.array(n4))):
-                out[y, x] = max(set(n4), key=n4.count)
-    idx = out
-    op = is_op(idx)
-    edge = np.zeros_like(op)
-    for dy, dx in N4:
-        edge |= op & ~shift(op, dy, dx)
-    # Outside the frame counts as empty too.
-    edge[0, :] |= op[0, :]; edge[-1, :] |= op[-1, :]; edge[:, 0] |= op[:, 0]; edge[:, -1] |= op[:, -1]
-    rgb = PAL_ARR[np.maximum(idx - 1, 0), :3]
-    L = lum(rgb)
-    fam_px = OP_FAM[np.clip(idx - 1, 0, len(OP_FAM) - 1)]
-    dark_edge = edge & (L < 72)
-    for f, oi in FAM_OUTLINE.items():
-        idx[dark_edge & (fam_px == f)] = oi + 1
-    return idx
+    def is_op(self, idx): return (idx > 0) & (idx <= self.n_op)
+    def rgb(self, idx): return self.arr[np.maximum(idx - 1, 0), :3]
+    def fam_of(self, idx): return np.where(self.is_op(idx), self.fam[np.clip(idx - 1, 0, self.n_op - 1)], -1)
 
-def leaves_of(idx, min_px=2, max_px=40):
-    """Loose leaves: small clumps of bright yellow-green with their outline, not touching a stroke."""
-    op = is_op(idx)
-    rgb = PAL_ARR[np.maximum(idx - 1, 0), :3]
-    L = lum(rgb)
-    fam_px = np.where(op, OP_FAM[np.clip(idx - 1, 0, len(OP_FAM) - 1)], -1)
-    seed = op & (fam_px == 1) & (L >= 95)
-    lab, n = components(seed)
-    out = []
-    taken = np.zeros_like(op)
-    for k in range(1, n + 1):
-        m = lab == k
-        cnt = m.sum()
-        if cnt < min_px or cnt > max_px: continue
-        reg = dilate(m, 1, N8) & op & ((fam_px == 1) | (L < 80))
-        reg = reg & ~taken
-        ring = dilate(reg, 1, N8) & ~reg
-        bright_wind = ring & op & (fam_px != 1) & (L >= 80)
-        if bright_wind.sum() > 2: continue
-        if reg.sum() > max_px + 16: continue
-        taken |= reg
-        ys, xs = np.nonzero(reg)
-        out.append((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1, reg))
-    return out, taken
+    def clean(self, idx):
+        """Specks dropped, and dark silhouette edges set to the tinted outline of what they surround."""
+        H, W = idx.shape
+        op = self.is_op(idx)
+        nb = sum(shift(op, dy, dx).astype(int) for dy, dx in N8)
+        L = lum(self.rgb(idx))
+        idx = idx.copy()
+        idx[op & (nb == 0) & (L < 90)] = 0
+        op = self.is_op(idx)
+        # A pixel unlike all 4 neighbours (all opaque) takes the most common neighbour (JPEG noise).
+        out = idx.copy()
+        for y in range(1, H - 1):
+            for x in range(1, W - 1):
+                if not op[y, x]: continue
+                v = idx[y, x]
+                n4 = [idx[y, x + 1], idx[y, x - 1], idx[y + 1, x], idx[y - 1, x]]
+                if v not in n4 and all(0 < u <= self.n_op for u in n4):
+                    out[y, x] = max(set(n4), key=n4.count)
+        idx = out
+        op = self.is_op(idx)
+        # Silhouette edges: next to a clear or faint pixel (not next to a dense veil inside the art).
+        faint = ~op & (self.arr[np.maximum(idx - 1, 0), 3] * (idx > 0) < 0.3 * 255)
+        edge = np.zeros_like(op)
+        for dy, dx in N4:
+            edge |= op & shift(faint, dy, dx)
+        edge[0, :] |= op[0, :]; edge[-1, :] |= op[-1, :]; edge[:, 0] |= op[:, 0]; edge[:, -1] |= op[:, -1]
+        L = lum(self.rgb(idx))
+        fam_px = self.fam_of(idx)
+        dark_edge = edge & (L < 72)
+        for f, oi in self.outline.items():
+            idx[dark_edge & (fam_px == f)] = oi + 1
+        return idx
+
+    def leaves(self, idx, min_px=2, max_px=40):
+        """Loose leaves: small clumps of bright yellow-green with their outline, clear of any stroke."""
+        op = self.is_op(idx)
+        L = lum(self.rgb(idx))
+        fam_px = self.fam_of(idx)
+        seed = op & (fam_px == 1) & (L >= 90)
+        labs, n = components(seed)
+        out = []
+        taken = np.zeros_like(op)
+        for k in range(1, n + 1):
+            m = labs == k
+            cnt = m.sum()
+            if cnt < min_px or cnt > max_px: continue
+            reg = dilate(m, 1, N8) & op & ((fam_px == 1) | (L < 85))
+            reg &= ~taken
+            ring = dilate(reg, 1, N8) & ~reg
+            if (ring & op & (fam_px != 1) & (L >= 85)).sum() > 3: continue
+            taken |= reg
+            out.append(reg)
+        return out, taken
 
 def rle(arr):
     flat = arr.ravel(); out = bytearray(); i = 0
@@ -549,24 +585,23 @@ def rle(arr):
         out += bytes((n, v)); i += n
     return base64.b64encode(bytes(out)).decode('ascii')
 
-def piece(idx, mask=None, pad=0):
+def piece(idx, mask=None):
     a = idx if mask is None else np.where(mask, idx, 0)
     ys, xs = np.nonzero(a)
     if len(ys) == 0: return None
     x0, y0, x1, y1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
-    sub = a[y0:y1, x0:x1]
-    return {'x': int(x0), 'y': int(y0), 'w': int(x1 - x0), 'h': int(y1 - y0), 'rle': rle(sub)}
+    return {'x': int(x0), 'y': int(y0), 'w': int(x1 - x0), 'h': int(y1 - y0), 'rle': rle(a[y0:y1, x0:x1])}
 
-# --- pass 2: quantize, clean, cut into pieces --------------------------------------------------------
-RESULT = {}
-QUANT = {}
+# --- pass 2: quantize, clean, cut into pieces --------------------------------------------------------------
+RESULT, QUANT, PALS = {}, {}, {}
 for name, st in stage.items():
+    if name == 'stream': continue
     cfg = st['cfg']; org = st['org']
-    if name == 'stream':
-        continue
-    idx = clean(quantize(st['img']))
+    pal = Palette([st['img']], [st['glow']] if 'glow' in st else [])
+    PALS[name] = pal
+    idx = pal.clean(pal.quantize(st['img']))
     H, W = idx.shape
-    lv, taken = leaves_of(idx)
+    lv, taken = pal.leaves(idx)
     main = np.where(taken, 0, idx)
     pieces = {}
     used = np.zeros((H, W), bool)
@@ -577,47 +612,45 @@ for name, st in stage.items():
         if p_: pieces[pname] = p_
     rest = (main > 0) & ~used
     if cfg.get('dust'):
-        fam_px = np.where(is_op(main), OP_FAM[np.clip(main - 1, 0, len(OP_FAM) - 1)], -1)
+        fam_px = pal.fam_of(main)
         dm = rest & (fam_px == 2)
-        # Dust outline pixels (dark) next to dust belong to it too.
-        dm |= rest & dilate(dm, 1) & (lum(PAL_ARR[np.maximum(main - 1, 0), :3]) < 60) & is_op(main) & (fam_px != 1)
+        dm |= rest & dilate(dm, 1) & (lum(pal.rgb(main)) < 60) & pal.is_op(main) & (fam_px != 1)
         p_ = piece(main, dm)
         if p_: pieces['dust'] = p_
         rest &= ~dm
     p_ = piece(main, rest)
     if p_: pieces['main'] = p_
     if 'glow' in st:
-        g = quantize(st['glow'])
-        p_ = piece(g)
+        p_ = piece(pal.quantize(st['glow']))
         if p_: pieces['glow'] = p_
     ax, ay = cfg['anchor']
-    RESULT[name] = {'w': W, 'h': H, 'anchor': [int(ax - org[0]), int(ay - org[1])], 'pieces': pieces,
-                    'leaves': [piece(idx, m) for (_, _, _, _, m) in lv]}
-    QUANT[name] = (idx, main, lv)
-    print(f'{name:11s} {W}x{H} anchor {RESULT[name]["anchor"]} pieces {sorted(pieces)} leaves {len(lv)}')
+    RESULT[name] = {'w': W, 'h': H, 'anchor': [int(ax - org[0]), int(ay - org[1])], 'pal': name, 'pieces': pieces,
+                    'leaves': [piece(idx, m) for m in lv]}
+    QUANT[name] = (idx, main, lv, pal)
+    print(f'{name:11s} {W}x{H} anchor {RESULT[name]["anchor"]} colours {len(pal.entries)} pieces {sorted(pieces)} leaves {len(lv)}')
 
-# The stream tile and head.
-tidx = clean(quantize(tile_img))
-hidx = clean(quantize(head_img))
+# The stream tile and head share one palette.
+pal = Palette([tile_img, head_img]); PALS['stream'] = pal
+tidx = pal.clean(pal.quantize(tile_img))
+hidx = pal.clean(pal.quantize(head_img))
 H = hidx.shape[0]
 cb = poly_mask(H, hidx.shape[1], TILE_X1, gt_stream, [C_BIG])
-hl, htaken = leaves_of(hidx)
+hl, htaken = pal.leaves(hidx)
 hmain = np.where(htaken, 0, hidx)
-# The big crescent's back edge per row: the head shows the scrolling tile left of it.
 back = [int(np.nonzero(cb[y])[0].min()) if cb[y].any() else 0 for y in range(H)]
-RESULT['stream'] = {'w': 64, 'h': tidx.shape[0], 'anchor': [32, int(32 - gt_stream)], 'pieces': {'tile': piece(tidx)}, 'leaves': []}
-RESULT['stream_head'] = {'w': hidx.shape[1], 'h': H, 'anchor': [32, int(32 - gt_stream)],
+RESULT['stream'] = {'w': 64, 'h': tidx.shape[0], 'anchor': [32, int(32 - gt_stream)], 'pal': 'stream', 'pieces': {'tile': piece(tidx)}, 'leaves': []}
+RESULT['stream_head'] = {'w': hidx.shape[1], 'h': H, 'anchor': [32, int(32 - gt_stream)], 'pal': 'stream',
                          'pieces': {'head': piece(hmain, ~cb), 'crescent': piece(hmain, cb)},
-                         'leaves': [piece(hidx, m) for (_, _, _, _, m) in hl], 'back': back}
-QUANT['stream'] = (tidx, tidx, [])
-QUANT['stream_head'] = (hidx, hmain, hl)
-print('stream tile 64x%d, head %dx%d leaves %d' % (tidx.shape[0], hidx.shape[1], H, len(hl)))
+                         'leaves': [piece(hidx, m) for m in hl], 'back': back}
+QUANT['stream'] = (tidx, tidx, [], pal)
+QUANT['stream_head'] = (hidx, hmain, hl, pal)
+print('stream tile 64x%d, head %dx%d leaves %d colours %d' % (tidx.shape[0], hidx.shape[1], H, len(hl), len(pal.entries)))
 
 # --- previews -------------------------------------------------------------------------------------------
-def render(idx):
+def render(idx, pal):
     rgba = np.zeros(idx.shape + (4,))
     on = idx > 0
-    rgba[on] = PAL_ARR[idx[on] - 1]
+    rgba[on] = pal.arr[idx[on] - 1]
     return rgba
 
 def over(rgba, bg):
@@ -626,20 +659,17 @@ def over(rgba, bg):
 
 if PREVIEW:
     os.makedirs(PREVIEW, exist_ok=True)
-    for name, (idx, main, lv) in QUANT.items():
-        st = stage.get(name if name in stage else 'stream')
-        rgba = render(idx)
+    for name, (idx, main, lv, pal) in QUANT.items():
         tiles = []
         if name in stage and name != 'stream':
-            tiles.append(st['raw'])
+            tiles.append(stage[name]['raw'])
+        rgba = render(idx, pal)
         tiles += [over(rgba, (32, 32, 42)), over(rgba, (92, 124, 66))]
         lvm = np.zeros(idx.shape, bool)
-        for (_, _, _, _, m) in lv: lvm |= m
-        dbg = over(render(main), (32, 32, 42)); dbg[lvm] = (255, 0, 255)
-        if name in RESULT and 'glow' in RESULT[name]['pieces']:
-            g = stage[name]['glow']
-            gl = render(quantize(g))
-            tiles.append(over(gl, (32, 32, 42)))
+        for m in lv: lvm |= m
+        dbg = over(render(main, pal), (32, 32, 42)); dbg[lvm] = (255, 0, 255)
+        if name in stage and 'glow' in stage[name]:
+            tiles.append(over(render(pal.quantize(stage[name]['glow']), pal), (32, 32, 42)))
         tiles.append(dbg)
         Hh = max(t.shape[0] for t in tiles)
         row = np.concatenate([np.pad(t, ((0, Hh - t.shape[0]), (0, 3), (0, 0))) for t in tiles], 1)

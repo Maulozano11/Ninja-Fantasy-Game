@@ -16,7 +16,7 @@
 import { Canvas, WorldSprite } from './kit';
 import { FIRE, SMOKE, TH, embers, erode, tongue } from './vfx-a-fire-kit';
 import { spline } from './vfx-a-fire-dragon';
-import { burnOut, columnBottoms, dim, displace, dropColumns, dropCrumbs, fillEnclosed, flicker, raggedCut, refPiece, roughen, scaled, sinkColumns } from './vfx-a-ref';
+import { burnOut, columnBottoms, dim, displace, dropColumns, dropCrumbs, fillEnclosed, flicker, raggedCut, refPiece, roughen, scaled } from './vfx-a-ref';
 void smokeLayer;
 import { Field, Pt, TAU, bez, clamp, dissolve, fract, lerp, palette, pfbm, pnoise, render, rr, smooth, stack, vfxSprite } from './vfx-a-lib';
 
@@ -110,7 +110,12 @@ export function kanjiFire(Wd: number, Hd: number, box: KanjiBox, prog: number[],
   if (vis < 1) {
     // It dies like fire: the strokes thin from their edges, darken to embers and their tops cool
     // into smoke (no blocky holes).
-    c = burnOut(c, 1 - vis, SMOKE_HIS, FIRE[0], seed + 160, box.y, box.h);
+    const k = 1 - vis;
+    c = burnOut(c, k, SMOKE_HIS, FIRE[0], seed + 160, box.y, box.h, Math.max(9, box.w * 0.05));
+    // ...and drifts up as it goes.
+    const up = new Canvas(Wd, Hd);
+    up.draw(c, 0, -Math.round(k * box.h * 0.1));
+    c = up;
     hot = hot.filter((_, i) => i % 3 === 0);
   }
   return { c, hot };
@@ -416,7 +421,7 @@ function dragonLayers(st: SState): DragonLayers {
     const pc = refPiece(name);
     let c = pc.c;
     if (flick) c = flicker(c, ph, flick.amp * live, flick.baseY, SEED + name.length);
-    if (cutY > 0) c = raggedCut(c, (x) => cutY - pc.y - 8 * pnoise(x + pc.x, 0, 7, 0, 0, SEED + 115) - 3 * Math.sin(ph + x * 0.2));
+    if (cutY > 0) c = raggedCut(c, (x) => cutY - pc.y - Math.round(bob[1]) - 8 * pnoise(x + pc.x, 0, 7, 0, 0, SEED + 115) - 3 * Math.sin(ph + x * 0.2));
     const out = new Canvas(W, H);
     out.draw(c, pc.x + Math.round(bob[0]), pc.y + Math.round(bob[1]));
     return out;
@@ -467,7 +472,8 @@ function dragonLayers(st: SState): DragonLayers {
     // It dies with the fire: its body sinks with the wall (no night opens under it), darkens
     // to embers, thins from its edges and cools into smoke from the top.
     const k = 1 - st.dragon;
-    const sink = (c: Canvas) => dropColumns(c, (x) => wallDrop(st, x), (x) => GY - 60 + 20 * pnoise(x, 0, 9, 0, 0, SEED + 117));
+    const g = wallGeom();
+    const sink = (c: Canvas) => dropColumns(c, (x) => wallDrop(st, x), (x) => (g.bottom[Math.max(0, Math.min(W - 1, x))] >= 0 ? g.clip[Math.max(0, Math.min(W - 1, x))] : GY - 40));
     const parts = [back, front].map((c) => burnOut(sink(c), k, SMOKE_HIS, FIRE[0], SEED + 118, GY - 520, 420));
     const edge: Pt[] = [];
     parts[0].px.forEach((_, i) => {
@@ -545,77 +551,106 @@ function hisWall(): Canvas {
  */
 function hisWallLayer(st: SState): Canvas | null {
   const ph = st.t * TAU;
-  let c = flicker(hisWall(), ph, 1.6, GY + 40, SEED + 91);
-  if (st.phase !== 'fade') {
-    const sy = lerp(0.72, 1, smooth(0.75, 1, st.burn));
-    if (sy < 0.999) c = scaled(c, 1, sy, 0, GY + 60);
-  } else {
-    c = sinkColumns(c, (x) => wallH(st, x), wallBottoms());
-    c = dim(c, lerp(0.35, 1, st.burn));
-  }
-  const burn = [FIRE[2], FIRE[3], FIRE[4], FIRE[5]];
-  if (st.phase === 'surge' && st.grow !== undefined) {
-    // It rolls out from the caster: columns light up as the front passes and keep growing taller
-    // behind it; at the front itself the flames are short and uneven (no straight edge).
-    const front = X0 - 20 + st.roll * (LEN + 140);
-    const g = st.grow;
-    c = sinkColumns(c, (x) => {
-      const behind = front - x;
-      if (behind <= 0) return 0;
-      const tongue = 0.55 + 0.9 * pnoise(x, 0, 7, 0, 0, SEED + 96) * pnoise(x, 3, 19, 0, 0, SEED + 97);
-      const ramp = Math.pow(smooth(0, 230, behind), 0.85);
-      return clamp(g * ramp * lerp(Math.min(1, tongue), 1, smooth(60, 260, behind)), 0, 1);
-    }, wallBottoms());
+  const base = flicker(hisWall(), ph, 1.6, GY + 40, SEED + 91);
+  const g = wallGeom();
+  if (st.phase === 'surge') {
+    // It rolls out from the caster: the glowing bed lights up as a ragged front passes, and the
+    // flames rise out of it behind the front, growing taller as the front moves on.
+    const front = X0 - 20 + st.roll * (LEN + 160);
+    const grow = st.grow ?? 1;
+    const behind = (x: number) => front - x + 22 * (pnoise(x, 0, 9, 0, 0, SEED + 99) - 0.5) * 2;
+    const k = (x: number) => clamp(grow * Math.pow(smooth(0, 240, behind(x)), 0.8) * (0.8 + 0.4 * pnoise(x, 1, 26, 0, 0, SEED + 96)), 0, 1);
+    let c = sinkWall(base, (x) => (1 - k(x)) * g.hgt[x], (x) => behind(x) > 0);
+    // The ignition at the caster's hands in the first frames: his first flames, small and growing.
+    if (st.roll < 0.2) {
+      const s0 = clamp(st.roll / 0.2, 0, 1);
+      const seed = new Canvas(W, H);
+      for (let y = 0; y < H; y++) for (let x = X0; x < X0 + 80; x++) { const p = hisWall().get(x, y); if (p[3]) seed.set(x, y, p); }
+      c = stack(W, H, scaled(seed, lerp(0.3, 0.8, s0), lerp(0.35, 0.8, s0), X0 + 6, GY + 4), c);
+    }
     return c;
   }
-  if (st.phase === 'surge' && st.roll < 1) {
-    const reach = X0 + st.roll * (LEN + 60);
-    // (the front is ragged along its height only, so it never punches holes into the mass)
-    const frontAt = (y: number) => reach + 26 * (pnoise(0, y, 18, 0, 0, SEED + 92) - 0.5) * 2 + 8 * (pnoise(0, y, 5, 0, 0, SEED + 95) - 0.5) * 2;
-    c = dissolve(c, 1, (x, y) => (x > frontAt(y) ? 2 : 0), burn, FIRE[0]).c;
-    // A burning front where it is rolling out.
-    const front = new Canvas(W, H);
+  if (st.phase === 'fade') {
+    // It burns down from the caster outward: the flames sink into the bed at their own pace (an
+    // uneven row of shrinking tongues, not a cut), the bed darkens to embers behind them.
+    let c = sinkWall(base, (x) => wallDrop(st, x, true), () => true);
+    c = dim(c, lerp(0.35, 1, st.burn));
+    // Behind the dying front the bed breaks into glowing embers.
+    const front = X0 + st.dead * (LEN + 160) - 60;
+    const out = new Canvas(W, H);
     for (let y = 0; y < H; y++)
-      for (let x = Math.max(0, Math.floor(reach - 70)); x < Math.min(W, reach + 40); x++) {
+      for (let x = 0; x < W; x++) {
         const p = c.get(x, y);
-        const fx = frontAt(y);
-        if (p[3] && x > fx - 12) front.set(x, y, burn[Math.max(0, Math.min(3, 3 - Math.floor((fx - x) / 4)))]);
+        if (!p[3]) continue;
+        const past = (front - x) / 120 + (pnoise(x, y, 7, 0, 0, SEED + 100) - 0.5) * 0.8;
+        if (past > 0.2 && pnoise(x, y, 5, 0, 0, SEED + 101) < 0.45 + past * 0.5) continue;
+        out.set(x, y, p);
       }
-    c = stack(W, H, c, front);
+    return dropCrumbs(out, 3);
   }
-  return c;
+  return base;
 }
-/** The wall's column bottoms (its glowing ground's lower edge), computed once. */
-let wallBottomsCache: Int32Array | null = null;
+/** Per column of his wall: its bottom, the top of its glowing bed (the clip line flames sink behind) and its flames' height. */
+let wallGeo: { bottom: Int32Array; clip: Float32Array; hgt: Float32Array } | null = null;
+function wallGeom(): { bottom: Int32Array; clip: Float32Array; hgt: Float32Array } {
+  if (wallGeo) return wallGeo;
+  const c = hisWall();
+  const bottom = columnBottoms(c);
+  const top = new Int32Array(W).fill(-1), base = new Float32Array(W);
+  for (let x = 0; x < W; x++) {
+    for (let y = 0; y < H; y++) if (c.alpha(x, y)) { top[x] = y; break; }
+    // The bed's top: the lowest white-hot pixel in the column (his bright base line).
+    base[x] = -1;
+    for (let y = bottom[x]; y >= 0 && bottom[x] >= 0; y--) {
+      const p = c.get(x, y);
+      if (p[3] && 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2] > 205) { base[x] = y; break; }
+    }
+  }
+  const clip = new Float32Array(W), hgt = new Float32Array(W);
+  for (let x = 0; x < W; x++) {
+    if (bottom[x] < 0) continue;
+    const near: number[] = [];
+    for (let k = -14; k <= 14; k++) if (base[x + k] > 0) near.push(base[x + k]);
+    near.sort((a, b) => a - b);
+    clip[x] = (near.length ? near[Math.floor(near.length / 2)] : bottom[x] - 20) + 2 + 3 * (pnoise(x, 0, 6, 0, 0, SEED + 102) - 0.5) * 2;
+    let t = bottom[x];
+    for (let k = -18; k <= 18; k++) if (top[x + k] >= 0) t = Math.min(t, top[x + k]);
+    hgt[x] = Math.max(0, clip[x] - t);
+  }
+  return (wallGeo = { bottom, clip, hgt });
+}
+/** His wall with its flames moved down by drop(x) and hidden behind the bed (bed shown where bedOn(x)). */
+function sinkWall(c: Canvas, drop: (x: number) => number, bedOn: (x: number) => boolean): Canvas {
+  const g = wallGeom();
+  const out = new Canvas(W, H);
+  for (let x = 0; x < W; x++) {
+    if (g.bottom[x] < 0) continue;
+    const d = Math.round(drop(x)), cl = g.clip[x], bed = bedOn(x);
+    for (let y = 0; y <= g.bottom[x]; y++) {
+      const p = c.get(x, y);
+      if (!p[3]) continue;
+      if (y >= cl) {
+        if (bed) out.set(x, y, p);
+      } else if (y + d < cl) out.set(x, y + d, p);
+    }
+  }
+  return out;
+}
+/** The wall's column bottoms (its glowing ground's lower edge). */
 function wallBottoms(): Int32Array {
-  return (wallBottomsCache ??= columnBottoms(hisWall()));
+  return wallGeom().bottom;
 }
 /**
- * How much of each wall column still stands in the fade (1 = full height): the fire burns down
- * from the caster outward and toward the far end, every tongue at its own pace, so the dying
- * front is a row of uneven flames sinking into embers rather than a cut.
+ * How far each column's flames have sunk in the fade (px): the fire burns down from the caster
+ * outward and toward the far end; with `tongues` every few columns go at their own pace.
  */
-function wallH(st: SState, x: number): number {
-  const front = X0 + st.dead * (LEN + 120) - 40;
-  const tongue = 0.55 + 0.9 * pnoise(x, 0, 7, 0, 0, SEED + 96) * pnoise(x, 3, 19, 0, 0, SEED + 97);
-  const behind = smooth(front - 90, front + 50, x);
-  const end = smooth(W - 120 + 40 * pnoise(0, x, 9, 0, 0, SEED + 98), W - 300, x + (1 - st.burn) * 200);
-  return clamp(lerp(0.3, 1, st.burn) * behind * Math.min(1, end + 0.25 * st.burn) * Math.min(1, tongue * (1.3 - 0.3 * st.burn)), 0, 1);
-}
-/** How far the top of each wall column has sunk (px), for the dragon to sink with it. */
-function wallDrop(st: SState, x: number): number {
-  const col = Math.max(0, Math.min(W - 1, Math.round(x)));
-  const yb = wallBottoms()[col];
-  if (yb < 0) return 0;
-  // Smoothed over the columns so the body bends rather than shears.
-  let h = 0;
-  for (let k = -12; k <= 12; k += 4) h += wallHsmooth(st, x + k);
-  h /= 7;
-  return (1 - h) * Math.max(0, yb - (GY - 330));
-}
-function wallHsmooth(st: SState, x: number): number {
-  const front = X0 + st.dead * (LEN + 120) - 40;
-  return clamp(lerp(0.3, 1, st.burn) * smooth(front - 90, front + 50, x), 0, 1);
+function wallDrop(st: SState, x: number, tongues = false): number {
+  const g = wallGeom();
+  const xi = Math.max(0, Math.min(W - 1, Math.round(x)));
+  const front = X0 + st.dead * (LEN + 160) - 40;
+  let h = lerp(0.3, 1, st.burn) * smooth(front - 110, front + 60, x) * (0.75 + 0.5 * pnoise(x, 2, 40, 0, 0, SEED + 103));
+  if (tongues) h *= 0.8 + 0.4 * pnoise(x, 0, 11, 0, 0, SEED + 96);
+  return (1 - clamp(h, 0, 1)) * (g.hgt[xi] + 8);
 }
 
 export function sFrame(st: SState): Canvas {

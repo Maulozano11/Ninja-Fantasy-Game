@@ -36,6 +36,7 @@ from PIL import Image, ImageDraw
 REF, OUT_TS = sys.argv[1:3]
 DEBUG = sys.argv[3] if len(sys.argv) > 3 else None
 CHAR_H = 96.0  # our character (kit characterRef), hair to feet, at 1x
+RESAMPLE = getattr(Image, os.environ.get("CROWS_FILTER", "BILINEAR"))
 
 ref = np.asarray(Image.open(REF).convert('RGB')).astype(np.float32)
 H_REF, W_REF = ref.shape[:2]
@@ -122,8 +123,8 @@ def shrink(arr, cov, anchor, s, out_size, out_anchor):
         z[pad:pad + H, pad:pad + W] = a
         return Image.fromarray(z, 'F')
     box = (x0 + pad, y0 + pad, x0 + pad + ow / s, y0 + pad + oh / s)
-    A = np.asarray(big(cov).resize((ow, oh), Image.BOX, box=box))
-    ch = np.stack([np.asarray(big(arr[..., c] * cov).resize((ow, oh), Image.BOX, box=box)) for c in range(arr.shape[2])], -1)
+    A = np.asarray(big(cov).resize((ow, oh), RESAMPLE, box=box))
+    ch = np.stack([np.asarray(big(arr[..., c] * cov).resize((ow, oh), RESAMPLE, box=box)) for c in range(arr.shape[2])], -1)
     col = np.where(A[..., None] > 1e-4, ch / np.maximum(A[..., None], 1e-4), 0)
     return A, col
 

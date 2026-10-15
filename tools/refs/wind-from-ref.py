@@ -209,30 +209,30 @@ def circle(cx, cy, r, n=40):
     return ellipse(cx, cy, r, r, n)
 
 SPRITES = {
-    'bolt': dict(panel=P['bolt'], src=grow(P['bolt'], 1), anchor=(44, 31), ts=24,
+    'bolt': dict(panel=P['bolt'], src=P['bolt'], anchor=(44, 31), ts=24,
                  pieces={'swirl': [circle(44.5, 31.5, 29.0)]}),
-    'stream': dict(panel=P['stream'], src=grow(P['stream'], 1), anchor=(32, 32), ts=24),
-    'breath': dict(panel=P['breath'], src=grow(P['breath'], 1), anchor=(48, 32), ts=110),
-    'sphere': dict(panel=P['sphere'], src=grow(P['sphere'], 1), anchor=(36, 33), ts=24),
-    'slash': dict(panel=P['slash'], src=grow(P['slash'], 1), anchor=(32, 32), ts=24),
-    'multi': dict(panel=P['multi'], src=grow(P['multi'], 1), anchor=(32, 32), ts=24,
+    'stream': dict(panel=P['stream'], src=P['stream'], anchor=(32, 32), ts=24),
+    'breath': dict(panel=P['breath'], src=P['breath'], anchor=(48, 32), ts=110),
+    'sphere': dict(panel=P['sphere'], src=P['sphere'], anchor=(36, 33), ts=24),
+    'slash': dict(panel=P['slash'], src=P['slash'], anchor=(32, 32), ts=24),
+    'multi': dict(panel=P['multi'], src=P['multi'], anchor=(32, 32), ts=24,
                   pieces={'cone1': [[(4, 6), (34, 6), (34, 30), (22, 34), (16, 34), (4, 20)]],
                           'cone2': [[(34, 2), (66, 2), (66, 20), (50, 30), (40, 26), (34, 16)]],
                           'cone3': [[(18, 26), (50, 26), (50, 42), (36, 46), (14, 42), (14, 34)]],
                           'cone4': [[(18, 44), (62, 42), (62, 62), (34, 62), (18, 58)]]}),
-    'hit': dict(panel=P['hit'], src=grow(P['hit'], 1), anchor=(37, 40), ts=24),
-    'blast': dict(panel=P['blast'], src=grow(P['blast'], 1), anchor=(88, 110), ts=24,
+    'hit': dict(panel=P['hit'], src=P['hit'], anchor=(37, 40), ts=24),
+    'blast': dict(panel=P['blast'], src=P['blast'], anchor=(88, 110), ts=24,
                   drop=[rect(164, -2, 240, 145)],
                   soft=[rect(146, 52, 165, 145)],
                   pieces={'funnel': [[(28, 2), (168, 2), (168, 52), (146, 58), (132, 72), (122, 90), (115, 106), (110, 121),
                                       (90, 121), (84, 106), (78, 90), (68, 74), (46, 60), (28, 52)]]},
                   glow=dict(kind='ellipse', cx=90, cy=104, rx=84, ry=36, a=0.42)),
-    'wall': dict(panel=P['wall'], src=grow(P['wall'], 1), anchor=(150, 112), ts=24,
+    'wall': dict(panel=P['wall'], src=P['wall'], anchor=(150, 112), ts=24,
                  drop=[rect(296, -2, 362, 125)], dust=True),
-    'wall_diag': dict(panel=P['wall_diag'], src=grow(P['wall_diag'], 1), anchor=(118, 179), ts=24,
-                      drop=[ellipse(254, 152, 44, 64)], soft=[ellipse(254, 152, 62, 80)], dust=True,
-                      glow=dict(kind='segment', x0=26, y0=236, x1=196, y1=112, r=34, a=0.34)),
-    'wall_depth': dict(panel=P['wall_depth'], src=grow(P['wall_depth'], 1), anchor=(30, 200), ts=24,
+    'wall_diag': dict(panel=P['wall_diag'], src=P['wall_diag'], anchor=(118, 179), ts=24,
+                      drop=[ellipse(254, 150, 48, 70)], soft=[ellipse(254, 150, 64, 84)], dust=True,
+                      glow=dict(kind='segment', x0=40, y0=226, x1=186, y1=118, r=56, a=0.30)),
+    'wall_depth': dict(panel=P['wall_depth'], src=P['wall_depth'], anchor=(30, 200), ts=24,
                        drop=[rect(62, 96, 122, 212)], dust=True),
     'aura': dict(panel=P['aura'], src=(212, 683, 321, 826), anchor=(40, 112), ts=24,
                  body=[[(25, 20), (51, 20), (53, 34), (51, 46), (58, 52), (62, 62), (61, 76), (54, 82), (53, 98), (55, 114),
@@ -359,7 +359,7 @@ def synth_glow(spec, W, H, org):
         vx, vy = bx - ax, by - ay
         t = np.clip(((gx - ax) * vx + (gy - ay) * vy) / (vx * vx + vy * vy), 0, 1)
         r = np.hypot(gx - (ax + t * vx), gy - (ay + t * vy)) / spec['r']
-    a = spec['a'] * np.clip(1 - r, 0, 1) ** 1.4
+    a = spec['a'] * np.clip(1 - r, 0, 1) ** 1.7
     out = np.zeros((H, W, 4))
     # Brighter green near the middle, deeper teal at the rim (his halo).
     med = np.median(HALO_A)
@@ -368,7 +368,7 @@ def synth_glow(spec, W, H, org):
     k = np.clip(1 - r, 0, 1)[..., None]
     out[..., :3] = rim * (1 - k) + col * k
     out[..., 3] = a
-    out[a < 0.05] = 0
+    out[a < 0.03] = 0
     return out
 
 for name, st in stage.items():
@@ -478,6 +478,7 @@ def extremes(cols, q=1.5):
     return np.array(out)
 
 ALEV = np.array([0.12, 0.24, 0.36, 0.5, 0.64, 0.78])
+GLEV = np.array([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.36, 0.42])
 FAM_N = {0: 26, 1: 8, 2: 7}
 
 class Palette:
@@ -507,6 +508,16 @@ class Palette:
         for fc in self.tr:
             for a in ALEV:
                 entries.append(tuple(int(round(v)) for v in fc) + (int(round(a * 255)),))
+        # His glow: two colours (middle and rim) at finer alpha steps, so it falls off softly.
+        self.n_tr = len(entries)
+        self.glow = np.zeros((0, 3))
+        if len(extra_tr):
+            gl = np.concatenate([e[e[..., 3] > 0] for e in extra_tr])
+            if len(gl):
+                self.glow = gl[:, :3][np.argsort(gl[:, 3])][[0, -1]]
+                for fc in self.glow:
+                    for a in GLEV:
+                        entries.append(tuple(int(round(v)) for v in fc) + (int(round(a * 255)),))
         self.entries = entries
         self.arr = np.array(entries, np.float64)
 
@@ -534,6 +545,15 @@ class Palette:
             fi = self.nearest(im_[tr][:, :3], self.tr)
             ai = np.abs(im_[tr][:, 3][:, None] - ALEV[None]).argmin(1)
             idx[tr] = self.n_op + fi * len(ALEV) + ai + 1
+        return idx
+
+    def quantize_glow(self, im_):
+        idx = np.zeros(im_.shape[:2], np.int32)
+        on = im_[..., 3] > 0
+        if on.any() and len(self.glow):
+            fi = self.nearest(im_[on][:, :3], self.glow)
+            ai = np.abs(im_[on][:, 3][:, None] - GLEV[None]).argmin(1)
+            idx[on] = self.n_tr + fi * len(GLEV) + ai + 1
         return idx
 
     def is_op(self, idx): return (idx > 0) & (idx <= self.n_op)
@@ -631,7 +651,7 @@ for name, st in stage.items():
     p_ = piece(main, rest)
     if p_: pieces['main'] = p_
     if 'glow' in st:
-        p_ = piece(pal.quantize(st['glow']))
+        p_ = piece(pal.quantize_glow(st['glow']))
         if p_: pieces['glow'] = p_
     ax, ay = cfg['anchor']
     RESULT[name] = {'w': W, 'h': H, 'anchor': [int(ax - org[0]), int(ay - org[1])], 'pal': name, 'pieces': pieces,
@@ -679,7 +699,7 @@ if PREVIEW:
         for m in lv: lvm |= m
         dbg = over(render(main, pal), (32, 32, 42)); dbg[lvm] = (255, 0, 255)
         if name in stage and 'glow' in stage[name]:
-            tiles.append(over(render(pal.quantize(stage[name]['glow']), pal), (32, 32, 42)))
+            tiles.append(over(render(pal.quantize_glow(stage[name]['glow']), pal), (32, 32, 42)))
         tiles.append(dbg)
         Hh = max(t.shape[0] for t in tiles)
         row = np.concatenate([np.pad(t, ((0, Hh - t.shape[0]), (0, 3), (0, 0))) for t in tiles], 1)

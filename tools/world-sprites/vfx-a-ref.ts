@@ -192,8 +192,40 @@ export function dropColumns(c: Canvas, drop: (x: number) => number, cutY: (x: nu
 export function burnOut(c: Canvas, k: number, smoke: Color[], outline: Color, seed: number, top = 0, height = c.h, thinPx = 9): Canvas {
   if (k <= 0) return c;
   if (k >= 1) return new Canvas(c.w, c.h);
+  let out = thinOut(c, k, thinPx, seed, null);
+  // It cools into smoke along a ragged front (more from the top, never a straight line), and
+  // darkens toward embers as a whole.
+  out = cool(out, (x, y) => k * 1.4 - ((y - top) / Math.max(1, height)) * 0.5 - 0.1 + (pnoise(x, y, 10, 0, 0, seed + 2) - 0.5) * 0.8, smoke, seed + 1);
+  out = dim(out, 1 - k * 0.7);
+  return outlineNew(out, c, outline);
+}
+
+/** Pixels of `out` next to where `orig` had pixels but `out` lost them get the outline colour. */
+function outlineNew(out: Canvas, orig: Canvas, outline: Color): Canvas {
+  const W = out.w, H = out.h, res = out.clone();
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (!out.alpha(x, y)) continue;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const u = x + dx, v = y + dy;
+        if (u >= 0 && v >= 0 && u < W && v < H && !out.alpha(u, v) && orig.alpha(u, v)) {
+          res.set(x, y, outline);
+          break;
+        }
+      }
+    }
+  return res;
+}
+
+/**
+ * Thins a shape from its edges inward by up to k * thinPx px (the depth varying smoothly along
+ * the edge, so it never punches speckled holes), dropping loose crumbs; with `outline`, the new
+ * edge gets it.
+ */
+export function thinOut(c: Canvas, k: number, thinPx: number, seed: number, outline: Color | null): Canvas {
+  if (k <= 0) return c;
   // Thin from the edges: distance (in 4-neighbour steps) to the outside, capped.
-  const W = c.w, H = c.h, maxD = 16;
+  const W = c.w, H = c.h, maxD = Math.max(16, Math.ceil(thinPx * 1.4) + 1);
   const dist = new Uint8Array(W * H);
   let frontier: number[] = [];
   for (let y = 0; y < H; y++)
@@ -227,27 +259,11 @@ export function burnOut(c: Canvas, k: number, smoke: Color[], outline: Color, se
       const p = c.get(x, y);
       if (!p[3]) continue;
       const d = dist[y * W + x] || maxD + 1;
-      if (d <= thin * (0.7 + 0.6 * pnoise(x, y, 7, 0, 0, seed))) continue;
+      if (d <= thin * (0.6 + 0.8 * pnoise(x, y, 18, 0, 0, seed))) continue;
       out.set(x, y, p);
     }
-  out = dropCrumbs(out, 6);
-  // Upper parts cool into smoke, the rest darkens toward embers.
-  out = cool(out, (_x, y) => k * 1.4 - ((y - top) / Math.max(1, height)) * 0.9 + 0.1, smoke, seed + 1);
-  out = dim(out, 1 - k * 0.7);
-  // The new edge (where it thinned) gets the dark outline.
-  const res = out.clone();
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      if (!out.alpha(x, y)) continue;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const u = x + dx, v = y + dy;
-        if (u >= 0 && v >= 0 && u < W && v < H && !out.alpha(u, v) && c.alpha(u, v)) {
-          res.set(x, y, outline);
-          break;
-        }
-      }
-    }
-  return res;
+  out = dropCrumbs(out, 10);
+  return outline ? outlineNew(out, c, outline) : out;
 }
 
 /** Drops connected pieces of at most `max` px. */

@@ -451,6 +451,12 @@ function dragon(dst: Canvas, o: { t: number; writhe: number; roar: number; dim: 
     (c, x, y, sx, sy) => {
       if (y < ey + 6) return null;
       if (o.burn && !survives(src, sx, sy, o.burn, x, y, 711, 10, 0.6)) return null;
+      // While it dives, its cut-off underside (the burst hid it in his panel) frays into sparks.
+      if (o.t < 1 && sy > y1 - 18) {
+        const k = (sy - (y1 - 18)) / 18;
+        if (noise(x, y, 4, 720) < k * 1.1) return null;
+        if (k > 0.3) return [235, 250, 255, c[3]];
+      }
       let k: Color = c;
       if (o.roar > 0) {
         const d = Math.hypot(x - mx - ox, y - my - oy);

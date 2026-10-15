@@ -865,7 +865,7 @@ def drake():
     glow = (r_ - b_ > 0.42 * r_) & (r_ > g_ + 12) & (r_ > 120)  # the eyes and the glints over them
     horn = (np.abs(r_ - b_) < 12) & (r_ > 110)  # the cool grey of the horns and the brightest plates
     stone = ~green & ~glow & ~horn
-    PAL = np.concatenate([median_palette(body_px[stone], 36), median_palette(body_px[green], 8), median_palette(body_px[horn], 5), median_palette(body_px[glow], 5)])
+    PAL = np.concatenate([median_palette(body_px[stone], 32), median_palette(body_px[green], 8), median_palette(body_px[horn], 5), median_palette(body_px[glow], 5)])
     # His outline: the median of his darkest brown pixels (a deep brown, not black).
     lum_px = body_px @ np.array([0.3, 0.55, 0.15], np.float32)
     dark = body_px[(lum_px < 30) & (r_ > b_ + 6) & (r_ >= g_)]
@@ -873,7 +873,8 @@ def drake():
     print('drake palette', len(PAL), 'outline', OUTLINE.astype(int).tolist())
     # The dust: un-mixed from the panel background as one of his dust colours with an alpha.
     crop5, body5, rest5, diff5, off5 = keys[5]
-    DUST = median_palette(crop5[rest5 & (diff5 > 150)], 7)
+    DUST = median_palette(crop5[rest5 & (diff5 > 150)], 8)
+    print('dust palette', DUST.astype(int).tolist())
 
     def unmix(crop, m):
         d = crop - BG
@@ -1049,6 +1050,12 @@ def drake():
                     op[tuple(np.array(pts).T)] = False
         op, edge = outline_clean(op)
         out[op, :3] = snap(C, PAL)[op]
+        # His glowing eyes and glints are smaller than the averaging footprint: where they cover a good
+        # part of a pixel, the pixel takes their colour (so they keep glowing instead of turning muddy).
+        hot = (rgb[..., 0] > 200) & (rgb[..., 1] > 140) & (rgb[..., 2] < 120) & (cov > 0.5)
+        Ah, Ch = shrink(rgb, hot.astype(np.float32), (WAX, WAY), S, size, oanchor)
+        hm = (Ah > 0.25) & op
+        out[hm, :3] = snap(Ch, PAL)[hm]
         out[op, 3] = 255
         out[edge, :3] = OUTLINE
         out[edge, 3] = 255

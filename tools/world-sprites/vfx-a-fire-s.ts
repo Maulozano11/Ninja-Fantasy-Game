@@ -16,7 +16,7 @@
 import { Canvas, WorldSprite } from './kit';
 import { FIRE, SMOKE, TH, embers, erode, tongue } from './vfx-a-fire-kit';
 import { spline } from './vfx-a-fire-dragon';
-import { burnOut, columnBottoms, dim, displace, dropColumns, dropCrumbs, fillEnclosed, flicker, raggedCut, refPiece, roughen, scaled } from './vfx-a-ref';
+import { burnOut, thinOut, columnBottoms, dim, displace, dropColumns, dropCrumbs, fillEnclosed, flicker, raggedCut, refPiece, roughen, scaled } from './vfx-a-ref';
 void smokeLayer;
 import { Field, Pt, TAU, bez, clamp, dissolve, fract, lerp, palette, pfbm, pnoise, render, rr, smooth, stack, vfxSprite } from './vfx-a-lib';
 
@@ -289,7 +289,11 @@ function hisSmokeLayer(st: SState): Canvas | null {
     c = out;
   } else if (st.phase === 'fade') {
     // It clears from the caster's end up along its diagonal, its edge ragged in big billows.
-    c = dissolve(c, st.smoke / 0.85, (x, y) => clamp((1 - along(x, y)) * 0.86 + pnoise(x, y, 60, 0, 0, SEED + 70) * 0.14, 0, 1), [], SMOKE_HIS[0]).c;
+    // It thins away as a whole from its edges (never along a straight front) and drifts up.
+    const k = clamp(1 - st.smoke / 0.85, 0, 1);
+    const thin = thinOut(c, k, 64, SEED + 70, SMOKE_HIS[0]);
+    c = new Canvas(W, H);
+    c.draw(thin, 0, -Math.round(k * 30));
   }
   return c;
 }

@@ -536,7 +536,7 @@ function multi(): WorldSprite {
 
 function breath(): WorldSprite {
   const k = key('breath', pad(ROOM));
-  const orb = piece(k, 'orb'), main = piece(k, 'main'), sm = piece(k, 'smoke'), eyes = piece(k, 'eyes');
+  const orb = piece(k, 'orb'), main = piece(k, 'main'), sm = piece(k, 'smoke'), eyes = piece(k, 'eyes'), orbs = piece(k, 'orbs');
   const ob = bounds(orb)!;
   const ox = (ob[0] + ob[2]) / 2, oy = (ob[1] + ob[3]) / 2;
   type Part = { ix: Ix; b: [number, number, number, number] };
@@ -550,6 +550,7 @@ function breath(): WorldSprite {
       near.b = bounds(near.ix)!;
     } else eyeParts.push({ ix: p.ix, b: p.b });
   }
+  const orbParts: Part[] = parts(orbs);
   // The arcs: his arcs touch through their dark rims, so each arc is found by its lit body (the
   // big parts of his lighter pixels). Every other pixel (an arc's darker half, its rim and
   // outline, the dashes) goes with the nearest arc within 6 px, so an arc moves as one layer
@@ -612,11 +613,15 @@ function breath(): WorldSprite {
     const e = blank(k.w, k.h);
     eyeParts.forEach((p, j) => {
       const cy = (p.b[1] + p.b[3]) / 2;
-      // (Only his eyes blink; the small pink orbs among them do not.)
-      const shut = i && p.b[2] - p.b[0] >= 6 && (j * 5 + 1) % 6 === i;
+      const shut = i && (j * 5 + 1) % 6 === i;
       const [dx, dy] = i ? push(p, i) : [0, 0];
       stamp(e, shut ? scaleAbout(p.ix, (p.b[0] + p.b[2]) / 2, cy, 1, 0.25) : p.ix, dx, dy);
     });
+    // His small pink orbs among them ride the ripple too (they do not blink).
+    for (const p of orbParts) {
+      const [dx, dy] = i ? push(p, i) : [0, 0];
+      stamp(e, p.ix, dx, dy);
+    }
     const o = tone(orb, [0, 1, 2, 1, 0, -1][i]);
     return render(k.w, k.h, [[s], [haze], [m], [e], [o]]);
   });

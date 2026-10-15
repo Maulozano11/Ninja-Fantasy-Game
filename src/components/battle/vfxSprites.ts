@@ -58,6 +58,21 @@ function flight(sc: Scene, f: Fx, t: number): { x: number; y: number } {
   return { x: a.X + (b.X - a.X) * e, y: a.Y - l0 + (b.Y - l1 - (a.Y - l0)) * e - Math.sin(t * Math.PI) * 30 };
 }
 
+/**
+ * The back layer of an aura (aura_back), drawn just behind its caster so the element wraps round
+ * the body; its front layer ('aura') is drawn over the caster with the other effects.
+ */
+export function drawAuraBack(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): void {
+  if (f.kind !== 'aura' || f.sig === 'eyes') return;
+  const s = sheet(f.element, 'aura_back');
+  if (!s) return;
+  const ms = (sc.now - f.t0) * sc.pb.speed;
+  const t = ms / f.dur;
+  if (t < 0 || t > 1) return;
+  const p = project(sc.map, f.from);
+  blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, t > 0.7 ? (1 - t) / 0.3 : 1);
+}
+
 /** Draws an effect from its sheets. Returns false when the sheets aren't available. */
 export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolean {
   const el = f.element;

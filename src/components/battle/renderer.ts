@@ -10,7 +10,7 @@ import { worldSprite } from '../world/WorldSpriteView';
 import type { MapArt } from './mapArt';
 import type { Fx, Playback } from './playback';
 import { bodyCenterDx, FEET, fpsOf, framesOf, lookOf, STRIDE, unitFrame } from './unitArt';
-import { drawVfxSprite, drawWallSprite } from './vfxSprites';
+import { drawAuraBack, drawVfxSprite, drawWallSprite } from './vfxSprites';
 
 export interface Camera {
   /** World pixel at the screen's top-left. */
@@ -130,6 +130,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
     items.push({ z: pos.z + 0.01, draw: () => drawUnit(ctx, sc, u, pos) });
   }
   void hydra;
+  // An aura's back layer sits just behind its caster.
+  for (const fx of sc.pb.fx) if (fx.kind === 'aura') items.push({ z: fx.from.z + 0.005, draw: () => drawAuraBack(ctx, sc, fx) });
   items.sort((a, b) => a.z - b.z);
   for (const it of items) it.draw();
 

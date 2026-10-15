@@ -36,6 +36,21 @@ import { GJ_PAL, GJ_REF, GjKind } from './vfx-genjutsu-v3-refdata';
 const GROUP = 'vfx_genjutsu_v3';
 const OLD_GROUP = 'vfx_genjutsu';
 const TAU = Math.PI * 2;
+
+// Frame counts (the owner found the jutsu too fast, "like a flashing star"; these are the targets
+// shared by every element): small, continuous steps between frames, his picture still the key.
+/** Flying loops (bolt, sphere, slash, multi, breath, stream, stream_head): frame 0 is his picture. */
+const FLY_N = 8, FLY_FPS = 10;
+/** hit: builds over frames 0-2, his picture on HIT_KEY, held 2 more frames, then dissipates. */
+const HIT_N = 12, HIT_KEY = 3, HIT_FPS = 12;
+/** blast: anticipation 0-3, his picture on BLAST_KEY, held 2 more frames, a long settle and fade. */
+const BLAST_N = 16, BLAST_KEY = 4, BLAST_FPS = 12;
+/** Walls: `rise` ends on his picture (its last frame equals idle frame 0); `idle` loops on it. */
+const RISE_N = 12, RISE_FPS = 12, IDLE_N = 8, IDLE_FPS = 10;
+/** aura / aura_back: one loop, frame-synced, frame 0 is his picture. */
+const AURA_N = 12, AURA_FPS = 10;
+/** Rise progress for frame r of RISE_N: quick at first, settling into his picture on the last frame. */
+const riseT = (r: number): number => 1 - (1 - (r + 1) / RISE_N) ** 1.2;
 const clamp = (v: number, a: number, b: number): number => (v < a ? a : v > b ? b : v);
 const smooth = (a: number, b: number, t: number): number => {
   const u = clamp((t - a) / (b - a), 0, 1);
@@ -464,57 +479,57 @@ function bolt(): WorldSprite {
   // His trailing smoke is fine speckle, not blobs: a third of its pixels open up, and it is a
   // quarter lighter than his opaque rims.
   const smk = keep(sm, (x, y) => hash(x, y, 4242) > 0.33);
-  const fr = range(6).map((i) => {
-    const ph = (i / 6) * TAU;
+  const fr = range(FLY_N).map((i) => {
+    const ph = (i / FLY_N) * TAU;
     // The tendrils wave, more the further back they are; none at the orb.
     const m = i ? displace(main, (x) => {
       const w = smooth(2, 26, k.ax - 8 - x);
       return [0, (Math.sin(ph - (k.ax - x) * 0.24) - Math.sin(-(k.ax - x) * 0.24)) * 1.4 * w];
     }) : main;
     // The orb's rim breathes a step brighter and darker; the eye at its middle holds still.
-    const o = tone(orb, (x, y) => (Math.hypot(x - k.ax, y - k.ay) > 6 ? [0, 1, 1, 0, -1, -1][i] : 0));
-    return render(k.w, k.h, [[conveyor(smk, i, 6, k.ax - 10), 0.75, { left: 10 }], [m], [o]]);
+    const o = tone(orb, (x, y) => (Math.hypot(x - k.ax, y - k.ay) > 6 ? [0, 0, 1, 1, 0, 0, -1, -1][i] : 0));
+    return render(k.w, k.h, [[conveyor(smk, i, FLY_N, k.ax - 10), 0.75, { left: 10 }], [m], [o]]);
   });
-  return sprite(k, 'Genjutsu bolt: watching-eye orb with streaming tendrils', { fly: { frames: fr, fps: 12, loop: true } });
+  return sprite(k, 'Genjutsu bolt: watching-eye orb with streaming tendrils', { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
 
 function sphere(): WorldSprite {
   const k = key('sphere', pad(ROOM));
   const core = piece(k, 'core'), main = piece(k, 'main');
-  const fr = range(6).map((i) => {
+  const fr = range(FLY_N).map((i) => {
     if (!i) return render(k.w, k.h, [[main], [core]]);
     // The spikes and sparks crackle round the still eye; the orbit ring holds; light pulses.
-    const w = wobble(i / 6, 1.6, 4, 300);
+    const w = wobble(i / FLY_N, 1.6, 4, 300);
     const m = displace(main, (x, y) => {
       const r = Math.hypot(x - k.ax, y - k.ay);
       const s = smooth(25, 31, r);
       const [dx, dy] = w(x, y);
       return [dx * s, dy * s];
     });
-    const lit = [0, 1, 1, 0, -1, 0][i];
+    const lit = [0, 0, 1, 1, 0, 0, -1, -1][i];
     return render(k.w, k.h, [[tone(m, (x, y) => (Math.hypot(x - k.ax, y - k.ay) > 26 ? lit : 0))], [core]]);
   });
-  return sprite(k, 'Genjutsu sphere: eye orb with an orbit ring and magenta spikes', { fly: { frames: fr, fps: 12, loop: true } });
+  return sprite(k, 'Genjutsu sphere: eye orb with an orbit ring and magenta spikes', { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
 
 function slash(): WorldSprite {
   const k = key('slash', pad(ROOM));
   const main = piece(k, 'main'), sm = piece(k, 'smoke');
   const b = bounds(main)!;
-  const fr = range(6).map((i) => {
+  const fr = range(FLY_N).map((i) => {
     // A light runs down the bright edge; the wisps stream back.
-    const yc = b[1] + ((b[3] - b[1]) * i) / 6;
+    const yc = b[1] + ((b[3] - b[1]) * i) / FLY_N;
     const m = i ? tone(main, (x, y) => (Math.abs(y - yc) < 4 && LOOK[at(main, x, y) - 1][0] > 150 ? 1 : 0)) : main;
-    const s = i ? inside(displace(conveyor(sm, i, 6, b[0] + Math.round((b[2] - b[0]) * 0.6)), wobble(i / 6, 1, 5, 410)), 1) : sm;
+    const s = i ? inside(displace(conveyor(sm, i, FLY_N, b[0] + Math.round((b[2] - b[0]) * 0.6)), wobble(i / FLY_N, 1, 5, 410)), 1) : sm;
     return render(k.w, k.h, [[s, 1, { left: 8 }], [m]]);
   });
-  return sprite(k, 'Genjutsu slash: violet crescent of swept blades', { fly: { frames: fr, fps: 12, loop: true } });
+  return sprite(k, 'Genjutsu slash: violet crescent of swept blades', { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
 
 function multi(): WorldSprite {
   const k = key('multi', pad(ROOM));
-  const fr = range(6).map((i) => {
-    const ph = (i / 6) * TAU;
+  const fr = range(FLY_N).map((i) => {
+    const ph = (i / FLY_N) * TAU;
     const layers: Layer[] = ['d0', 'd1', 'd2'].map((n, j) => {
       const d = piece(k, n);
       if (!i) return [d];
@@ -522,7 +537,7 @@ function multi(): WorldSprite {
       // Each dart bobs a pixel on its own beat; its streak trail waves behind it.
       const bob = Math.round(Math.sin(ph + j * 2.1)) - Math.round(Math.sin(j * 2.1));
       const head = b[2] - 14;
-      const w = wobble(i / 6, 1.2, 4, 500 + j * 17);
+      const w = wobble(i / FLY_N, 1.2, 4, 500 + j * 17);
       return [displace(d, (x, y) => {
         const [dx, dy] = w(x, y);
         const s = smooth(head, head - 10, x);
@@ -531,7 +546,7 @@ function multi(): WorldSprite {
     });
     return render(k.w, k.h, layers);
   });
-  return sprite(k, 'Genjutsu multi: three feather darts with magenta streaks', { fly: { frames: fr, fps: 12, loop: true } });
+  return sprite(k, 'Genjutsu multi: three feather darts with magenta streaks', { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
 
 function breath(): WorldSprite {
@@ -593,49 +608,53 @@ function breath(): WorldSprite {
   // The ripple: each arc (and each eye) moves as a whole a pixel out and back along its ray from
   // the orb, the wave travelling outward arc to arc (one frame of lag per 13 px of radius), with
   // an equal step every frame, so the loop has no hitch. Frame 0 is his picture.
-  const WAVE = [0, 1, 1, 0, -1, -1];
+  const N = FLY_N;
+  const WAVE = [0, 1, 1, 1, 0, -1, -1, -1];
   const push = (p: Part, i: number): [number, number] => {
     const cx = (p.b[0] + p.b[2]) / 2, cy = (p.b[1] + p.b[3]) / 2;
     const r = Math.hypot(cx - ox, cy - oy) || 1;
     const lag = Math.round(r / 13);
-    const d = WAVE[(((i - lag) % 6) + 6) % 6] - WAVE[(((-lag) % 6) + 6) % 6];
+    const d = WAVE[(((i - lag) % N) + N) % N] - WAVE[(((-lag) % N) + N) % N];
     return [Math.round(((cx - ox) / r) * d), Math.round(((cy - oy) / r) * d * 0.6)];
   };
-  const fr = range(6).map((i) => {
-    const t = i / 6;
+  const fr = range(N).map((i) => {
+    const t = i / N;
     const m = blank(k.w, k.h);
     for (const p of groups) {
       const [dx, dy] = i ? push(p, i) : [0, 0];
       stamp(m, p.ix, dx, dy);
     }
     const s = i ? displace(sm, wobble(t, 1, 6, 220)) : sm;
-    // The watching eyes ride the ripple and blink in turn (each shut for one frame).
+    // The watching eyes ride the ripple and blink in turn: each lid drops half-way on one frame,
+    // shuts on the next and opens again (never on frame 0, which is his picture).
     const e = blank(k.w, k.h);
     eyeParts.forEach((p, j) => {
       const cy = (p.b[1] + p.b[3]) / 2;
-      const shut = i && (j * 5 + 1) % 6 === i;
+      const b0 = 1 + ((j * 5) % (N - 2));
+      const lid = i === b0 ? 0.55 : i === b0 + 1 ? 0.25 : 1;
       const [dx, dy] = i ? push(p, i) : [0, 0];
-      stamp(e, shut ? scaleAbout(p.ix, (p.b[0] + p.b[2]) / 2, cy, 1, 0.25) : p.ix, dx, dy);
+      stamp(e, lid < 1 ? scaleAbout(p.ix, (p.b[0] + p.b[2]) / 2, cy, 1, lid) : p.ix, dx, dy);
     });
     // His small pink orbs among them ride the ripple too (they do not blink).
     for (const p of orbParts) {
       const [dx, dy] = i ? push(p, i) : [0, 0];
       stamp(e, p.ix, dx, dy);
     }
-    const o = tone(orb, [0, 1, 2, 1, 0, -1][i]);
+    const o = tone(orb, [0, 1, 1, 2, 1, 0, -1, -1][i]);
     return render(k.w, k.h, [[s], [haze], [m], [e], [o]]);
   });
-  return sprite(k, 'Genjutsu breath: ripples of watching eyes from a glowing orb (origin at the anchor)', { fly: { frames: fr, fps: 12, loop: true } });
+  return sprite(k, 'Genjutsu breath: ripples of watching eyes from a glowing orb (origin at the anchor)', { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
 
 // --- stream: his braid tile, scrolled, and the spiral head --------------------------------------------
 
-const STREAM_SHIFT = [0, 11, 21, 32, 43, 53];
+/** The stream scrolls one 64 px braid period per loop: 8 px a frame. */
+const STREAM_SHIFT = range(FLY_N).map((i) => Math.round((64 * i) / FLY_N));
 
 function stream(): WorldSprite[] {
   const t = key('stream');
   const tm = piece(t, 'main');
-  const tiles = range(6).map((i) => (i ? displace(tm, () => [STREAM_SHIFT[i], 0], true) : tm));
+  const tiles = range(FLY_N).map((i) => (i ? displace(tm, () => [STREAM_SHIFT[i], 0], true) : tm));
   const h = key('stream_head', { l: 0, t: 0, r: ROOM, b: 0 });
   if (h.ay !== t.ay || h.h !== t.h) throw new Error('vfx-genjutsu-v3: the stream head and the tile do not line up');
   const spiral = piece(h, 'spiral'), sparks = piece(h, 'sparks'), hs = piece(h, 'smoke');
@@ -665,9 +684,9 @@ function stream(): WorldSprite[] {
     return out;
   };
   const RIM = KIND.indexOf('outline') + 1;
-  const heads = range(6).map((i) => {
+  const heads = range(FLY_N).map((i) => {
     const s = STREAM_SHIFT[i];
-    const w = move(wisp, [0, 1, 1, 1, 0, 0][i], [0, 0, -1, -1, -1, 0][i]);
+    const w = move(wisp, [0, 0, 1, 1, 1, 1, 0, 0][i], [0, 0, 0, -1, -1, -1, -1, 0][i]);
     if (!i) {
       const f0 = union(body);
       for (let y = 0; y < h.h; y++) for (let x = 0; x < 2; x++) f0.d[y * h.w + x] = at(tm, x, y);
@@ -680,13 +699,13 @@ function stream(): WorldSprite[] {
         const r = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
         if (r > R && r <= R + 1.2 && flow.d[y * h.w + x] && LAB[flow.d[y * h.w + x] - 1][0] > 45) flow.d[y * h.w + x] = RIM;
       }
-    // The spiral turns a sixth of a turn a frame inside its disc (4 sub-samples a pixel).
-    const sp = turnInside(disc, cx, cy, (i / 6) * TAU, 1, inDisc);
+    // The spiral turns an eighth of a turn a frame inside its disc (4 sub-samples a pixel).
+    const sp = turnInside(disc, cx, cy, (i / FLY_N) * TAU, 1, inDisc);
     return render(h.w, h.h, [[slide(hs, s, false)], [flow], [sp], [w], [twinkle(sparks, i, 0.34, 707)]]);
   });
   return [
-    sprite(t, 'Genjutsu stream: braided magenta ribbons (tileable 64 px)', { fly: { frames: tiles.map((ix) => render(t.w, t.h, [[ix]])), fps: 12, loop: true } }),
-    sprite(h, 'Genjutsu stream head: spiral vortex', { fly: { frames: heads, fps: 12, loop: true } }),
+    sprite(t, 'Genjutsu stream: braided magenta ribbons (tileable 64 px)', { fly: { frames: tiles.map((ix) => render(t.w, t.h, [[ix]])), fps: FLY_FPS, loop: true } }),
+    sprite(h, 'Genjutsu stream head: spiral vortex', { fly: { frames: heads, fps: FLY_FPS, loop: true } }),
   ];
 }
 
@@ -696,21 +715,59 @@ function hit(): WorldSprite {
   const k = key('hit');
   const m = union(piece(k, 'main'), piece(k, 'smoke'));
   const d = (x: number, y: number) => Math.hypot(x - k.ax, y - k.ay);
-  // The spikes fly outward (more toward their tips); what reaches the frame's edge goes.
-  const outward = (ix: Ix, push: number) =>
+  /**
+   * One radial move: the burst scaled by `sc` about its centre while its spikes fly outward by
+   * `push` px (more toward their tips), read back in one step (nearest pixel); what reaches the
+   * frame's edge goes.
+   */
+  const radial = (ix: Ix, sc: number, push: number) =>
     inside(displace(ix, (x, y) => {
-      const r = d(x, y), s = smooth(8, 30, r) * push;
-      return r ? [((x - k.ax) / r) * s, ((y - k.ay) / r) * s] : [0, 0];
+      const r = d(x, y);
+      if (!r) return [0, 0];
+      const src = Math.max(0, (r - push * smooth(8, 30, r / sc)) / sc);
+      return [((x - k.ax) / r) * (r - src), ((y - k.ay) / r) * (r - src)];
     }), 1);
-  const fr: Canvas[] = [];
-  // 0-1: a white-hot flash grows into the burst; 2: his picture; 3-5: it flies apart and dies.
-  fr.push(render(k.w, k.h, [[tone(scaleAbout(m, k.ax, k.ay, 0.34), 4)]]));
-  fr.push(render(k.w, k.h, [[tone(scaleAbout(m, k.ax, k.ay, 0.72), 2)]]));
-  fr.push(render(k.w, k.h, [[m]]));
-  fr.push(render(k.w, k.h, [[tone(outward(m, 2), (x, y) => (d(x, y) < 10 ? -1 : 0))]]));
-  fr.push(render(k.w, k.h, [[dissolve(tone(outward(m, 3), -2), 0.3, 811), 0.85]]));
-  fr.push(render(k.w, k.h, [[dissolve(tone(outward(m, 4), -3), 0.62, 812), 0.6]]));
-  return sprite(k, 'Genjutsu hit: violet and magenta star-burst', { hit: { frames: fr, fps: 15, loop: false } });
+  // Build-up (0-2): the burst grows out of a small hot core (each colour stepped up its own hue
+  // ramp, less as it grows: no white flash). HIT_KEY (3): his picture. 4-5: it holds, the spikes
+  // churning a little. 6-11: it dissipates slowly: the spikes fly outward and shrink back as
+  // fragments, the colours cool down their ramps, it breaks up from the tips in and fades.
+  //   sc size   push spikes outward (px)   heat / cool ramp steps up / down (core: 1 more)
+  //   churn phase of the looping wobble   diss share broken up (from the tips in)   a alpha
+  const plan: { sc: number; push: number; heat: number; cool: number; coreOnly?: boolean; churn: number; diss: number; a: number }[] = [
+    { sc: 0.4, push: 0, heat: 2, cool: 0, churn: 0, diss: 0, a: 0.9 },
+    { sc: 0.64, push: 0, heat: 1, cool: 0, churn: 0, diss: 0, a: 1 },
+    { sc: 0.84, push: 0, heat: 1, cool: 0, churn: 0, diss: 0, a: 1 },
+    { sc: 1, push: 0, heat: 0, cool: 0, churn: 0, diss: 0, a: 1 },
+    { sc: 1, push: 0, heat: 0, cool: 0, churn: 1 / 12, diss: 0, a: 1 },
+    { sc: 1, push: 0.6, heat: 0, cool: 0, churn: 2 / 12, diss: 0, a: 1 },
+    { sc: 0.99, push: 1.5, heat: 0, cool: 0, coreOnly: true, churn: 3 / 12, diss: 0.04, a: 1 },
+    { sc: 0.97, push: 2.5, heat: 0, cool: 1, coreOnly: true, churn: 4 / 12, diss: 0.1, a: 0.94 },
+    { sc: 0.95, push: 3.5, heat: 0, cool: 1, churn: 5 / 12, diss: 0.19, a: 0.88 },
+    { sc: 0.92, push: 4.5, heat: 0, cool: 2, churn: 6 / 12, diss: 0.3, a: 0.8 },
+    { sc: 0.89, push: 5.5, heat: 0, cool: 2, churn: 7 / 12, diss: 0.43, a: 0.66 },
+    { sc: 0.85, push: 6.5, heat: 0, cool: 3, churn: 8 / 12, diss: 0.55, a: 0.52 },
+  ];
+  if (plan.length !== HIT_N || plan[HIT_KEY].sc !== 1 || plan[HIT_KEY].push) throw new Error('vfx-genjutsu-v3: hit plan');
+  const fr = plan.map((p, i) => {
+    if (i === HIT_KEY) return render(k.w, k.h, [[m]]);
+    let ix = p.sc !== 1 || p.push ? radial(m, p.sc, p.push) : m;
+    // The churn: the spikes beyond the core move a pixel or so (a looping field, 0 at his picture).
+    if (p.churn) {
+      const w = wobble(p.churn, 1.1, 5, 820);
+      ix = displace(ix, (x, y) => {
+        const s = smooth(6, 16, d(x, y));
+        const [dx, dy] = w(x, y);
+        return [dx * s, dy * s];
+      });
+    }
+    // Hot while it grows (more at the core), cooling from the core out as it dies.
+    if (p.heat) ix = tone(ix, (x, y) => (d(x, y) < 12 * p.sc ? p.heat + 1 : p.heat));
+    if (p.cool || p.coreOnly) ix = tone(ix, (x, y) => -Math.min(3, (p.coreOnly ? 0 : p.cool) + (d(x, y) < 10 ? (p.coreOnly ? p.cool + 1 : 1) : 0)));
+    // Breaking up from the tips inward (clustered), so the burst thins into fragments.
+    if (p.diss) ix = keep(ix, (x, y) => vnoise(x, y, 3, 811) * 0.7 + hash(x, y, 812) * 0.1 + (1 - smooth(4, 34, d(x, y))) * 0.35 >= p.diss);
+    return render(k.w, k.h, [[ix, p.a]]);
+  });
+  return sprite(k, 'Genjutsu hit: violet and magenta star-burst', { hit: { frames: fr, fps: HIT_FPS, loop: false } });
 }
 
 // --- blast: the column of violet light out of a swirling pool ----------------------------------------
@@ -725,54 +782,87 @@ function blast(): WorldSprite {
   const cb = bounds(col)!;
   const colBottom = cb[3], colH = colBottom - cb[1];
   const DEG = Math.PI / 180;
+  const K = BLAST_KEY;
+  // The plan, one entry per frame. Anticipation (0-3): the pool opens and turns, the column
+  // shoots up out of it in streaks of light (narrow at first, white-hot at its ragged front), the
+  // feathers and sparkles burst out. BLAST_KEY (4): his picture, held (5-6) with small motion.
+  // Settle (7-15): the pool keeps turning and darkens, the column wavers and goes out from the
+  // top down, the feathers fly out and up, the smoke rises; everything fades over the last frames.
+  //   poolS  pool size     reach  column height (1 = his)   narrow  column width while it rises
+  //   gone   share of the column gone from the top (ragged)  dim  ramp steps down (column, pool)
+  const P = {
+    poolS: [0.34, 0.56, 0.76, 0.91, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    poolA: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.94, 0.84, 0.7, 0.52, 0.32],
+    poolDim: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -2, -2, -2],
+    reach: [0.14, 0.4, 0.68, 0.9, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    narrow: [0.5, 0.64, 0.8, 0.93, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    gone: [0, 0, 0, 0, 0, 0, 0, 0.06, 0.15, 0.25, 0.36, 0.48, 0.6, 0.72, 0.84, 0.95],
+    colDim: [0, 0, 0, 0, 0, 0, 0, 0, -1, -1, -1, -2, -2, -2, -3, -3],
+    fA: [0, 0, 0.45, 0.8, 1, 1, 1, 1, 1, 0.92, 0.82, 0.7, 0.56, 0.42, 0.28, 0.14],
+    smA: [0.12, 0.3, 0.55, 0.8, 1, 1, 1, 1, 0.95, 0.88, 0.8, 0.7, 0.58, 0.45, 0.32, 0.18],
+  };
+  if (P.poolS.length !== BLAST_N || P.reach[K] !== 1 || P.gone[K] || P.poolS[K] !== 1) throw new Error('vfx-genjutsu-v3: blast plan');
   const fr: Canvas[] = [];
-  for (let i = 0; i < 8; i++) {
-    // The vortex turns 8 degrees a frame inside its own outline (frame 3 is his picture).
-    const poolS = [0.3, 0.6, 0.86, 1, 1, 1, 0.97, 0.92][i];
-    const poolA = [1, 1, 1, 1, 1, 1, 0.85, 0.6][i];
-    let p = i === 3 ? pool : turnInside(pool, pcx, pcy, (i - 3) * 8 * DEG, squash);
-    if (poolS < 1) p = scaleAbout(p, k.ax, k.ay, poolS);
+  for (let i = 0; i < BLAST_N; i++) {
+    if (i === K) {
+      fr.push(render(k.w, k.h, [[pool], [sm], [col], [fx]], k.fade));
+      continue;
+    }
+    // The vortex turns 6 degrees a frame inside its own outline (a true rotation in the ground
+    // ellipse's own space, sampled only from the pool), opening out of the ground while it grows.
+    let p = turnInside(pool, pcx, pcy, (i - K) * 6 * DEG, squash);
+    if (P.poolS[i] < 1) p = scaleAbout(p, k.ax, k.ay, P.poolS[i]);
     // Dying: each colour steps down its own hue ramp (the vortex darkens, it never greys).
-    if (i >= 6) p = tone(p, i === 6 ? -1 : -2);
-    // The column shoots up out of the pool, white-hot at its front, then flickers and lifts away.
+    if (P.poolDim[i]) p = tone(p, P.poolDim[i]);
+    // The column shoots up out of the pool, white-hot at its front.
     let c = col;
-    const reach = [0, 0.3, 0.72, 1, 1, 1, 1, 1][i];
-    // Its front is ragged in streaks (each column of light ends at its own height): the last
-    // 12 px fade out in steps, white-hot just below. It starts narrow and widens.
-    const front = (x: number) => colBottom - colH * reach + snoise(x, i, 2.5, 925) * 9;
     let colFront: ((x: number, y: number) => number) | undefined;
-    if (reach < 1) {
-      c = scaleAbout(col, k.ax, colBottom, [1, 0.62, 0.86][i], 1);
+    if (P.reach[i] < 1) {
+      // Its front is ragged in streaks (each column of light ends at its own height): the last
+      // 12 px fade out in steps, white-hot just below. It starts narrow and widens.
+      const front = (x: number) => colBottom - colH * P.reach[i] + snoise(x, i, 2.5, 925) * 9;
+      c = scaleAbout(col, k.ax, colBottom, P.narrow[i], 1);
       c = tone(keep(c, (x, y) => y >= front(x)), (x, y) => (y < front(x) + 10 ? 2 : y < front(x) + 22 ? 1 : 0));
       colFront = (x, y) => Math.ceil(clamp((y - front(x)) / 12, 0, 1) * 4) / 4;
+    } else {
+      // Held and settling: the column wavers (a rising, looping field: 0 at his picture),
+      // a little at first, more as it dies.
+      const amp = i < K + 3 ? 0.7 + 0.35 * (i - K) : 1.6;
+      c = inside(displace(col, wobble((i - K) / 12, amp, 5, 930, 1)), 1);
     }
-    if (i === 4 || i === 5) c = inside(displace(col, wobble((i - 3) / 6, 1.6, 5, 930, 1)), 1);
-    if (i >= 6) {
+    if (P.gone[i]) {
       // The light goes out from the top down: each streak ends lower (ragged, in ordered alpha
       // steps), and what is left steps down its own hue ramp. It stays opaque, so it darkens
       // to violet instead of greying over the pool; no specks, no holes.
-      const gone = (x: number) => cb[1] + colH * (i === 6 ? 0.32 : 0.66) + snoise(x, i, 2, 945) * 8;
-      c = tone(col, i === 6 ? -1 : -3);
+      const gone = (x: number) => cb[1] + colH * P.gone[i] + snoise(x, 0, 2, 945) * 8;
       colFront = (x, y) => Math.ceil(clamp((y - gone(x)) / 12, 0, 1) * 4) / 4;
     }
-    const colA = 1;
-    // The feathers, sparkles and splashes burst out with the column and drift away.
+    if (P.colDim[i]) c = tone(c, P.colDim[i]);
+    // The feathers, sparkles and splashes burst out with the column, then fly out and up.
     let f = fx;
-    if (i < 3) f = i < 2 ? none(k) : keep(scaleAbout(fx, k.ax, k.ay - 30, 0.85), (x, y) => hash(x >> 2, y >> 2, 950) > 0.3);
-    if (i > 3) {
-      const u = (i - 3) / 4;
-      f = inside(twinkle(displace(fx, (x, y) => {
+    if (i < K) {
+      const g = [0, 0, 0.8, 0.92][i];
+      f = g ? keep(scaleAbout(fx, k.ax, k.ay - 30, g), (x, y) => hash(x >> 2, y >> 2, 950) > (i === 2 ? 0.35 : 0.12)) : none(k);
+    } else {
+      // Bits go out one by one and stay out (thinned where they started, before they move, so
+      // nothing blinks on and off).
+      const u = (i - K) / (BLAST_N - 1 - K);
+      const thin = keep(fx, (x, y) => hash(Math.floor(x / 6), Math.floor(y / 6), 960) >= 0.55 * u * u);
+      f = inside(displace(thin, (x, y) => {
         const r = Math.hypot(x - k.ax, (y - k.ay) * 1.6) || 1;
-        return [((x - k.ax) / r) * 10 * u, -9 * u];
-      }), i, 0.3, 960), 1);
+        return [((x - k.ax) / r) * 12 * u, -12 * u];
+      }), 1);
     }
-    const fA = [0, 0, 1, 1, 1, 1, 0.8, 0.5][i];
-    const smA = [0, 0.35, 0.75, 1, 1, 1, 0.8, 0.5][i];
-    // The dark smoke rises with the column (below its front), then drifts up.
-    const s = i > 3 ? inside(move(displace(sm, wobble((i - 3) / 6, 1.4, 5, 970, 1)), 0, -(i - 3) * 2), 1) : reach < 1 ? keep(sm, (x, y) => y >= front(x) + 4 || y > k.ay - 26) : sm;
-    fr.push(render(k.w, k.h, [[p, poolA], [s, smA], [c, colA, undefined, colFront], [f, fA]], k.fade));
+    // The dark smoke opens out with the pool and rises with the column (below its front), then
+    // drifts up.
+    let s = sm;
+    if (i < K) {
+      const front = (x: number) => colBottom - colH * P.reach[i] + snoise(x, i, 2.5, 925) * 9;
+      s = keep(scaleAbout(sm, k.ax, k.ay, Math.max(P.poolS[i], 0.5)), (x, y) => y >= front(x) + 4 || y > k.ay - 26);
+    } else s = inside(move(displace(sm, wobble((i - K) / 12, 1.4, 5, 970, 1)), 0, -Math.round((i - K) * 1.2)), 1);
+    fr.push(render(k.w, k.h, [[p, P.poolA[i]], [s, P.smA[i]], [c, Math.min(1, P.poolA[i] + 0.08), undefined, colFront], [f, P.fA[i]]], k.fade));
   }
-  return sprite(k, 'Genjutsu blast: column of violet light out of a swirling vortex, with crow feathers', { blast: { frames: fr, fps: 12, loop: false } });
+  return sprite(k, 'Genjutsu blast: column of violet light out of a swirling vortex, with crow feathers', { blast: { frames: fr, fps: BLAST_FPS, loop: false } });
 }
 
 // --- walls: amethyst crystal pillars wrapped in black thorns -------------------------------------------
@@ -814,21 +904,23 @@ function wall(): WorldSprite {
   const pillar = (x: number) => k.seams.filter((sx) => sx <= x).length;
   const beat = (x: number) => hash(pillar(x), 3, 1011);
   const rise: Canvas[] = [];
-  for (let r = 0; r < 6; r++) {
-    const T = (r + 1) / 5;
-    const p = (x: number) => (r >= 5 ? 1 : smooth(beat(x) * 0.45, beat(x) * 0.45 + 0.55, T));
+  const vb = bounds(vines);
+  for (let r = 0; r < RISE_N; r++) {
+    const T = riseT(r);
+    const last = r === RISE_N - 1;
+    const p = (x: number) => (last ? 1 : smooth(beat(x) * 0.4, beat(x) * 0.4 + 0.6, T));
     let c = emerge(cr, ground, p, H);
     // A white-hot glint on the tops while they climb.
-    if (r < 5) c = tone(c, (x, y) => (p(x) < 1 && y < top[x] + Math.round((1 - p(x)) * H) + 5 ? 2 : 0));
+    if (!last) c = tone(c, (x, y) => (p(x) < 1 && y < top[x] + Math.round((1 - p(x)) * H) + 5 ? 2 : 0));
     // The thorns climb after the crystals; the petals and feathers come last.
-    const vr = [0, 0, 0.25, 0.6, 0.9, 1][r];
-    const vb = bounds(vines);
-    const v = vb ? keep(vines, (_x, y) => y >= vb[3] - (vb[3] - vb[1] + 2) * vr) : vines;
-    rise.push(render(k.w, k.h, [[sm, [0, 0, 0.4, 0.7, 1, 1][r]], [c], [v], [bits, [0, 0, 0, 0.4, 0.8, 1][r]]]));
+    const vr = last ? 1 : smooth(0.3, 0.97, T);
+    const v = vb && !last ? keep(vines, (_x, y) => y >= vb[3] - (vb[3] - vb[1] + 2) * vr) : vines;
+    const smA = last ? 1 : smooth(0.25, 0.9, T), bitsA = last ? 1 : smooth(0.6, 1, T);
+    rise.push(render(k.w, k.h, [[sm, smA], [c], [v], [bits, bitsA]]));
   }
-  const idle = range(6).map((i) => {
+  const idle = range(IDLE_N).map((i) => {
     if (!i) return render(k.w, k.h, [[sm], [cr], [vines], [bits]]);
-    const t = i / 6;
+    const t = i / IDLE_N;
     const c = glint(cr, t, cb[0], cb[2]);
     // The thorn tips sway a pixel; the bits drift and bob.
     const v = displace(vines, (x, y) => [(Math.sin(t * TAU + x * 0.07) - Math.sin(x * 0.07)) * smooth(k.ay - 10, k.ay - 50, y) * 1.2, 0]);
@@ -836,8 +928,8 @@ function wall(): WorldSprite {
     return render(k.w, k.h, [[displace(sm, wobble(t, 1, 5, 1020))], [c], [v], [b]]);
   });
   return sprite(k, 'Genjutsu wall: amethyst crystal pillars in black thorns (4.5 m x 1.8 m)', {
-    rise: { frames: rise, fps: 12, loop: false },
-    idle: { frames: idle, fps: 8, loop: true },
+    rise: { frames: rise, fps: RISE_FPS, loop: false },
+    idle: { frames: idle, fps: IDLE_FPS, loop: true },
   });
 }
 
@@ -871,32 +963,36 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
   for (let x = 0; x < k.w; x++)
     for (let u = Math.max(0, x - 8); u <= Math.min(k.w - 1, x + 8); u++) if (top[u] >= 0) colHt[x] = Math.max(colHt[x], ground(u) - top[u] + 1);
   const rise: Canvas[] = [];
-  for (let r = 0; r < 6; r++) {
-    const T = [0.18, 0.4, 0.62, 0.82, 0.95, 1][r];
+  for (let r = 0; r < RISE_N; r++) {
+    const T = riseT(r);
+    const last = r === RISE_N - 1;
     let a: Ix;
-    if (r >= 5) a = all;
+    if (last) a = all;
     else {
       // 3/4: a wave from the near end to the far end; end-on: the column all at once.
-      const t = name === 'wall_diag' ? (x: number) => smooth(0, 1, T * 1.7 - 0.7 * ((x - ab[0]) / (ab[2] - ab[0]))) : () => T;
+      // (each column eases out: it shoots up and settles; the far end starts a third of the way in)
+      const Tl = (r + 1) / RISE_N;
+      const t = name === 'wall_diag' ? (x: number) => 1 - (1 - clamp(Tl * 1.5 - 0.5 * ((x - ab[0]) / (ab[2] - ab[0])), 0, 1)) ** 2 : () => T;
       const lift = (x: number) => Math.round((1 - t(x)) * colHt[x]);
       a = emergeCols(up, ground, lift);
       // White-hot at their tops while they climb (one step up each colour's own ramp, two at the tip).
       a = tone(a, (x, y) => (lift(x) > 0 && top[x] >= 0 ? (y < top[x] + lift(x) + 3 ? 2 : y < top[x] + lift(x) + 7 ? 1 : 0) : 0));
     }
-    const frontA = r >= 5 ? 0 : [0, 0, 0.4, 0.7, 1][r];
+    const frontA = last ? 0 : smooth(0.35, 0.92, T);
     // The long shadow stretches out from the wall's foot along its own run (down to the right,
     // about 0.37 px down per px across) as the wall grows; until the wall stands, none of it
     // shows behind the foot line. The smoke comes up with the crystals (none above their tops).
     const run = (x: number, y: number) => x + 0.37 * y;
     let st = stain;
-    if (r < 5 && stainB) {
+    if (!last && stainB) {
       const r0 = run(stainB[0], stainB[1]), r1 = run(stainB[2], stainB[3]);
-      const reach = r0 + (r1 - r0) * [0.12, 0.3, 0.55, 0.8, 0.95][r];
-      st = keep(stain, (x, y) => run(x, y) <= reach && (r >= 4 || y > ground(x) - 2));
+      const reach = r0 + (r1 - r0) * (0.06 + 0.94 * smooth(0, 0.92, T));
+      st = keep(stain, (x, y) => run(x, y) <= reach && (T >= 0.9 || y > ground(x) - 2));
     }
     const reachTop = ab[3] - (ab[3] - ab[1]) * T - 10;
-    const s = r >= 5 ? sm : keep(sm, (_x, y) => y >= reachTop);
-    rise.push(render(k.w, k.h, [[st, [0.4, 0.6, 0.8, 1, 1, 1][r]], [s, [0, 0.3, 0.6, 0.8, 1, 1][r]], [a], [front, frontA], [bits, [0, 0, 0, 0.4, 0.8, 1][r]]], k.fade));
+    const s = last ? sm : keep(sm, (_x, y) => y >= reachTop);
+    const stA = last ? 1 : 0.4 + 0.6 * smooth(0, 0.7, T), smA = last ? 1 : smooth(0.08, 0.85, T), bitsA = last ? 1 : smooth(0.55, 1, T);
+    rise.push(render(k.w, k.h, [[st, stA], [s, smA], [a], [front, frontA], [bits, bitsA]], k.fade));
   }
   const idle = range(idleN).map((i) => {
     if (!i) return render(k.w, k.h, [[stain], [sm], [all], [bits]], k.fade);
@@ -905,7 +1001,7 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
     const b = displace(bits, (x) => [0, Math.round(Math.sin(t * TAU + x * 0.13) - Math.sin(x * 0.13))]);
     return render(k.w, k.h, [[stain], [displace(sm, wobble(t, 1, 5, seed + 20))], [a], [b]], k.fade);
   });
-  return sprite(k, label, { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 8, loop: true } });
+  return sprite(k, label, { rise: { frames: rise, fps: RISE_FPS, loop: false }, idle: { frames: idle, fps: IDLE_FPS, loop: true } });
 }
 
 // --- aura: violet flames round the figure, in two layers -----------------------------------------------
@@ -917,8 +1013,8 @@ function aura(): WorldSprite[] {
   const back = union(piece(kb, 'main'), piece(kb, 'smoke'));
   const ring = union(piece(kf, 'main'), piece(kf, 'smoke')), petals = piece(kf, 'petals');
   const backFr: Canvas[] = [], frontFr: Canvas[] = [];
-  for (let i = 0; i < 6; i++) {
-    const t = i / 6;
+  for (let i = 0; i < AURA_N; i++) {
+    const t = i / AURA_N;
     // The flames lick upward (the noise rises through them), more toward their tips.
     const w = wobble(t, 2.2, 6, 1200, 1);
     const b = i ? displace(back, (x, y) => {
@@ -926,7 +1022,8 @@ function aura(): WorldSprite[] {
       const up = clamp((kb.ay - y) / 90, 0.25, 1);
       return [dx * up, dy * up * 0.8];
     }) : back;
-    const lit = [0, 1, 0, -1, 0, 1][i];
+    // The ring at the feet and the bits glow up and down a ramp step, slowly.
+    const lit = Math.round(Math.sin(t * TAU) * 1.2);
     backFr.push(render(kb.w, kb.h, [[tone(b, (x, y) => (KIND[at(b, x, y) - 1] === 'glow' ? lit : 0))]]));
     // In front: the petals drift and turn a little, the ring at the feet flickers.
     const p = i ? displace(petals, (x, y) => [Math.round(Math.sin(t * TAU + y * 0.2) - Math.sin(y * 0.2)), Math.round(Math.cos(t * TAU + x * 0.3) - Math.cos(x * 0.3))]) : petals;
@@ -935,8 +1032,8 @@ function aura(): WorldSprite[] {
     frontFr.push(front);
   }
   return [
-    sprite(kf, 'Genjutsu aura, front layer (draw OVER the character): the violet veil over the body, petals, feathers, the ring at the feet', { idle: { frames: frontFr, fps: 10, loop: true } }),
-    sprite(kb, 'Genjutsu aura, back layer (draw BEHIND the character): dark violet flames and smoke', { idle: { frames: backFr, fps: 10, loop: true } }),
+    sprite(kf, 'Genjutsu aura, front layer (draw OVER the character): the violet veil over the body, petals, feathers, the ring at the feet', { idle: { frames: frontFr, fps: AURA_FPS, loop: true } }),
+    sprite(kb, 'Genjutsu aura, back layer (draw BEHIND the character): dark violet flames and smoke', { idle: { frames: backFr, fps: AURA_FPS, loop: true } }),
   ];
 }
 
@@ -952,7 +1049,7 @@ function veil(k: Key, frame: number): Canvas {
   const c = new Canvas(k.w, k.h);
   // Fitted to a 96 px figure standing on the anchor (feet): x -25..+17, y -93..+2 (characterRef).
   const cx = k.ax - 4, cy = k.ay - 46, rx = 22, ry = 49;
-  const breathe = 1 + 0.12 * Math.sin((frame / 6) * TAU);
+  const breathe = 1 + 0.12 * Math.sin((frame / AURA_N) * TAU);
   for (let y = 0; y < k.h; y++)
     for (let x = 0; x < k.w; x++) {
       const r = Math.hypot((x - cx) / rx, (y - cy) / ry);
@@ -1005,8 +1102,8 @@ export function genjutsuV3Sprites(): WorldSprite[] {
     wall(),
     auraFront,
     auraBack,
-    wall3d('wall_diag', 'Genjutsu wall, 3/4: crystal pillars, brambles and a long shadow (4.5 m x 1.8 m, turned 45 degrees)', 4, 1300),
-    wall3d('wall_depth', 'Genjutsu wall, end-on: crystal column with shards, feathers and orbs (running into the screen)', 4, 1400),
+    wall3d('wall_diag', 'Genjutsu wall, 3/4: crystal pillars, brambles and a long shadow (4.5 m x 1.8 m, turned 45 degrees)', IDLE_N, 1300),
+    wall3d('wall_depth', 'Genjutsu wall, end-on: crystal column with shards, feathers and orbs (running into the screen)', IDLE_N, 1400),
   ];
 }
 

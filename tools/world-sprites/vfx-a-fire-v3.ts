@@ -60,7 +60,7 @@ export function blast(): WorldSprite {
     const ringK = kf(i, [[0, 0.16], [PEAK, 1]]);
     const groundK = kf(i, [[0, 0.28], [PEAK, 1]]);
     const groundDim = kf(i, [[6, 1], [N - 1, 0.24]]);
-    const stemK = kf(i, [[0, 0], [1, 0.4], [2, 0.7], [3, 0.9], [PEAK, 1], [8, 1], [10, 0.8], [13, 0.3], [14, 0]]);
+    const stemK = kf(i, [[8, 1], [14, 0]]);
     const capK = kf(i, [[0, 0.36], [1, 0.58], [2, 0.75], [3, 0.88], [PEAK, 1], [6, 1.012], [N - 1, 1.12]]);
     const capRise = kf(i, [[PEAK, 0], [6, -1.5], [N - 1, -10]]);
     const coolK = kf(i, [[6, 0], [7, 0.12], [11, 0.75], [13, 1]]);
@@ -77,33 +77,59 @@ export function blast(): WorldSprite {
       return ringDim < 1 ? dim(c, ringDim) : c;
     };
     layers.push(ringAt('b_ring_back'));
-    // The stem: revealed from the ground up while it rises, eroded from the top as it dies.
-    if (stemK > 0) {
-      const top = stemBottom - (stemBottom - stemTop) * stemK;
-      const sc = placed('b_stem', W, H);
-      let cut = new Canvas(W, H);
-      for (let y = 0; y < H; y++)
-        for (let x = 0; x < W; x++) {
-          const p = sc.get(x, y);
-          if (p[3] && (stemK >= 1 || y >= top + 3 * pnoise(x, 0, 4, 0, 0, seed + 1))) cut.set(x, y, p);
+    // Where the cap's bottom centre sits: on the ground, then climbing the stem as it rises, then his.
+    const baseY = i < PEAK ? lerp(gy - 2, capBottom, [0, 0.4, 0.7, 0.9][i]) : capBottom + capRise;
+    // The stem: revealed from the ground up under the rising cap; after the peak it stretches up
+    // with the cap, then thins from its edges, darkens and cools as it dies.
+    let stemC: Canvas | null = null;
+    if (i > 0 && stemK > 0) {
+      let sc = placed('b_stem', W, H);
+      if (i < PEAK) {
+        // (his stem runs up into the cap's underside: keep it reaching into the growing cap)
+        const top = baseY - (capBottom - stemTop) * capK - 2;
+        const cut = new Canvas(W, H);
+        for (let y = 0; y < H; y++)
+          for (let x = 0; x < W; x++) {
+            const p = sc.get(x, y);
+            if (p[3] && y >= top + 3 * pnoise(x, 0, 4, 0, 0, seed + 1)) cut.set(x, y, p);
+          }
+        sc = cut;
+      } else {
+        if (capRise < 0) sc = scaled(sc, 1, (stemBottom - stemTop - capRise) / (stemBottom - stemTop), cx, stemBottom);
+        sc = loopFlicker(sc, ph, 0.8, stemBottom, seed + 2);
+        if (stemK < 1) {
+          // It also burns down from the top (a ragged line), so no thin spire is left standing.
+          // (the part inside the cap's underside stays, so the cap keeps no notch where the stem was)
+          const top = stemTop + capRise, hgt = stemBottom - top, capBase = capBottom + capRise;
+          const down = capBase + (1 - stemK) * (stemBottom - capBase) * 0.62;
+          for (let y = Math.round(capBase) + 2; y < H; y++) for (let x = 0; x < W; x++) if (y < down + 8 * pnoise(x, 0, 5, 0, 0, seed + 11) + 16 * clamp(Math.abs(x - cx) / 20, 0, 1) - 8) sc.set(x, y, [0, 0, 0, 0]);
+          sc = thinOut(sc, 1 - stemK, 14, seed + 1, null);
+          sc = cool(sc, (x, y) => (1 - stemK) * 1.5 - ((y - top) / hgt) * 0.8 + (pnoise(x, y, 10, 0, 0, seed + 9) - 0.5) * 0.4, SMOKE_WARM, seed + 10);
+          sc = dim(sc, lerp(0.55, 1, stemK));
         }
-      if (i > 8) cut = dim(cut, kf(i, [[8, 1], [14, 0.55]]));
-      layers.push(i >= PEAK ? loopFlicker(cut, ph, 0.8, stemBottom, seed + 2) : cut);
+      }
+      layers.push((stemC = sc));
     }
     // The cap: grown from a small dome at the ground up to his cap on top of the stem.
     {
       const sx = capK, sy = capK;
-      // Where the cap's bottom centre sits: on the ground, then climbing the stem as it rises, then his.
-      const baseY = i < PEAK ? lerp(gy - 2, capBottom, [0, 0.4, 0.7, 0.9][i]) : capBottom + capRise;
       let c = scaled(placed('b_cap', W, H), sx, sy, capCx, capBottom);
       const moved = new Canvas(W, H);
       moved.draw(c, 0, Math.round(baseY - capBottom));
       c = moved;
+      if (i < PEAK) {
+        // While it grows, the dark rim along the cap's underside would cross the stem: let the stem show there.
+        for (let y = Math.round(baseY) - 7; y <= Math.round(baseY) + 1; y++)
+          for (let x = 0; x < W; x++) {
+            const p = c.get(x, y);
+            if (p[3] && stemC && stemC.alpha(x, y) && 0.3 * p[0] + 0.59 * p[1] + 0.11 * p[2] < 70) c.set(x, y, [0, 0, 0, 0]);
+          }
+      }
       const top = baseY - cap.c.h * sy, hgt = cap.c.h * sy;
       if (coolK > 0) c = cool(c, (x, y) => coolK * 1.6 - ((y - top) / hgt) * 0.9 + (pnoise(x, y, 12, 0, 0, seed + 8) - 0.5) * 0.5, SMOKE_WARM, seed + 3);
       if (thinK > 0) {
         // The smoke thins from its edges and the last of it drifts up.
-        const thin = dim(thinOut(c, thinK, 22, seed + 4, SMOKE_WARM[0]), 1 - thinK * 0.45, SMOKE_WARM[0]);
+        const thin = dim(thinOut(c, thinK, 28, seed + 4, SMOKE_WARM[0]), 1 - thinK * 0.45, SMOKE_WARM[0]);
         c = new Canvas(W, H);
         c.draw(thin, 0, -Math.round(thinK * 6));
       }
@@ -359,7 +385,7 @@ export function hit(): WorldSprite {
     const k = (i - 5) / 6, sk = 1.024 - 0.26 * k;
     let c = scaled(shimmer(base, ph, 2.4), sk, sk, F.ax, F.ay);
     c = thinOut(c, k, 12, seed + 1, null);
-    c = cool(c, (x, y) => k * 1.45 - 0.3 + (Math.hypot(x - F.ax, y - F.ay) / (R * sk)) * 0.55 + (pnoise(x, y, 7, 0, 0, seed + 2) - 0.5) * 0.5, SMOKE_WARM, seed + 3);
+    c = cool(c, (x, y) => k * 1.5 - 0.42 + (Math.hypot(x - F.ax, y - F.ay) / (R * sk)) * 0.6 + (pnoise(x, y, 10, 0, 0, seed + 2) - 0.5) * 0.3, SMOKE_WARM, seed + 3);
     c = dim(c, 1 - 0.55 * k, SMOKE_WARM[0]);
     // The smoke rises a little as it goes.
     const body = new Canvas(W, H);

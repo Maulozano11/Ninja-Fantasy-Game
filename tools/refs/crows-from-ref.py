@@ -111,6 +111,12 @@ def nb4(m):
     return sum(shift_bool(m, dy, dx).astype(np.int32) for dy, dx in N4)
 
 
+def hood(m):
+    """How many of the 3 x 3 pixels round each pixel (itself included) are in the mask: 3 or less on a
+    line one pixel wide, 6 or more on any edge of a solid shape."""
+    return sum(shift_bool(m, dy, dx).astype(np.int32) for dy in (-1, 0, 1) for dx in (-1, 0, 1))
+
+
 def poly_mask(pts, shape, off=(0, 0)):
     img = Image.new('L', (shape[1], shape[0]), 0)
     ImageDraw.Draw(img).polygon([(x - off[0], y - off[1]) for x, y in pts], fill=1, outline=1)
@@ -577,6 +583,7 @@ FEATHERS = {k: [p['name'] for p in PIECES[k] if p['kind'] == 'feather'] for k in
 # --- the wing beat: his own raised wings turned about the shoulder at sheet scale --------------------------
 
 WING_DEG = {'up': 0, 'mid': 30, 'down': 60}
+FRAG = 10  # game px: in the in-betweens, loose crumbs smaller than this (a crow's or a wisp's) are left out
 
 
 def turn_nn(mask, rgb, deg, px, py):
@@ -654,6 +661,14 @@ def pose(name, mode):
     m = (m & (nb >= 1)) | (~m & (nb >= 3) & (A >= 0.2))
     for pts in components(m):
         if len(pts) <= 3:
+            m[tuple(np.array(pts).T)] = False
+    # Lifted off his picture, a crow is one piece: a hair one pixel wide (a wisp of the vortex his cut
+    # caught at a wing tip, a turned tip's jag) or a crumb left floating beside it (under FRAG px) would
+    # read as a stray line once the crow flies over open ground. In his pictures they sit on the vortex.
+    for _ in range(2):
+        m &= hood(m) > 3
+    for pts in components(m):
+        if len(pts) < FRAG:
             m[tuple(np.array(pts).T)] = False
     rgba = np.zeros((OH, OW, 4), np.uint8)
     rgba[m, :3] = snap_crow(C)[m]
@@ -793,7 +808,13 @@ def vortex(deg=0.0, scale=1.0, glow=1.0):
     """His vortex on the game grid, spun and scaled about its eye in polar space."""
     rgb, a = unpremul(vortex_sheet(deg, scale))
     A, C = shrink_pic('L', rgb, a, padded=True)
-    return ('veil', dim(quantize_veil(A, C, VEIL), A, C, glow))
+    v = dim(quantize_veil(A, C, VEIL), A, C, glow)
+    if deg or scale != 1:  # spun or scaled: a crumb of its outer wisps turned out over open ground goes
+        for pts in components(v[..., 3] > 0):
+            if len(pts) < FRAG:
+                P = np.array(pts)
+                v[P[:, 0], P[:, 1]] = 0
+    return ('veil', v)
 
 
 def his_veil(key):
@@ -934,6 +955,12 @@ EMERGE = ['R3', 'R4']  # in the flock only: they come up out of the vortex on th
 BACK = {'R2': 'L2', 'R4': 'L3', 'R5': 'L4'}  # back: the flock crows nearest each of his left picture's places
 SINK = ['R1', 'R3', 'R6']  # ... and the rest sink back into the vortex as it opens (behind it)
 RISE = 'L1'  # ... while L1, whose place is far from every flock crow, comes up out of its outer swirl
+# Three of his flock crows are partly hidden behind the others in his right picture (R2 is a wing and a
+# head, R5 a body cut by R6's wing, R4 smaller than the L3 it heads for). Wherever such a crow is away
+# from its place in his flock (frame 3 on the way in, frame 5 on the way out) its partner from his left
+# picture flies in its place, a whole crow of his, so no cut edge shows over open ground.
+WHOLE = {'R2': 'L2', 'R5': 'L4'}  # frame 3: the left picture's crow until the flock closes up
+WHOLE_BACK = {'R2': 'L2', 'R4': 'L3', 'R5': 'L4'}  # frame 5: the crow whose place it heads for
 PHI = 8.0  # how far the swarm turns (degrees, clockwise) on its way out
 T_OUT = (0.25, 0.5, 0.75)  # how far frames 1-3 are on the way from his left picture to his right one
 # Wing beats through the loop (f0..f5), two flights so the swarm never beats as one; his pictures are 'up'.
@@ -971,7 +998,8 @@ def at(name, pos, **kw):
 def feathers(key, deg=0.0, dx=0, dy=0, rho=1.0, centre=None, only=None):
     """His loose feathers of a picture, carried round the vortex by deg and drifted by (dx, dy)."""
     c = VC if centre is None else centre
-    names = FEATHERS[key] if only is None else [n for i, n in enumerate(FEATHERS[key]) if i % only[0] == only[1]]
+    names = [n for n in FEATHERS[key] if BY[n]['fmask'].sum() >= FRAG]  # his crumbs stay in his pictures only
+    names = names if only is None else [n for i, n in enumerate(names) if i % only[0] == only[1]]
     return [at(n, turn(eye(n), c, deg, rho) + np.array([dx, dy], np.float32)) for n in names]
 
 
@@ -1021,8 +1049,12 @@ def fly():
 
     def r3(n):
         start = eye(partner[n]) if n in partner else VC
-        return at(n, swirl(start, eye(n), T_OUT[2]), wings=wings(n, 3))
-    f3 = compose([vortex(60, 0.65, glow=0.75), smoke(0.7, dx=4)] + feathers('R', 0, 5, -1) + [r3(n) for n in ORDER['R']])
+        pos = swirl(start, eye(n), T_OUT[2])
+        if n in WHOLE:  # his left picture's whole crow, already turned to face right, flies this place
+            w = WHOLE[n]
+            return at(w, pos, mirror=BY[w]['face'] < 0, wings=wings(w, 3))
+        return at(n, pos, wings=wings(n, 3))
+    f3 = compose([vortex(60, 0.72, glow=0.85), smoke(0.7, dx=4)] + feathers('R', 0, 5, -1) + [r3(n) for n in ORDER['R']])
     POS[3] = dict(TRACE)
     TRACE.clear()
 
@@ -1031,11 +1063,13 @@ def fly():
     # swirl; the tail of the smoke is left behind.
     def back(n):
         dest = eye(BACK[n])
-        return at(n, eye(n) + (dest - eye(n)) * 0.5, wings=wings(n, 5), mirror=BY[BACK[n]]['face'] < 0)
+        pos = eye(n) + (dest - eye(n)) * 0.5
+        w = WHOLE_BACK.get(n, n)  # the left picture's whole crow, half way back to its place
+        return at(w, pos, wings=wings(w, 5), mirror=(BY[BACK[n]]['face'] < 0) != (BY[w]['face'] < 0))
     sink = [at(n, eye(n) + (VC - eye(n)) * (0.4 if n == 'R6' else 0.5), wings=wings(n, 5), dark=0.5) for n in SINK]
     u = (VC - eye(RISE)) / np.linalg.norm(VC - eye(RISE))
-    rise = at(RISE, eye(RISE) + u * 18, wings=wings(RISE, 5), dark=0.4)
-    f5 = compose([smoke(tail=-34, dx=-8, dy=1)] + sink + [rise] + [vortex(-20, 1.0)] +
+    rise = at(RISE, eye(RISE) + u * 18, wings=wings(RISE, 5), dark=0.3)
+    f5 = compose([smoke(tail=-34, dx=-8, dy=1)] + sink + [rise] + [vortex(-20, 0.93, glow=0.65)] +
                  feathers('R', 0, -9, 1) + feathers('L', -16, 4, -1) + [back(n) for n in BACK])
     POS[5] = dict(TRACE)
     TRACE.clear()
@@ -1048,13 +1082,15 @@ def summon():
     Their wings beat mid and up, all up by the last frame before his picture."""
     def ring_(names, rho, deg, i, dark=0.0):
         return [at(n, turn(eye(n), VC, deg, rho), wings=['mid', 'up'][(j + i) % 2], dark=dark) for j, n in enumerate(names)]
-    s0 = compose([vortex(-150, 0.3, glow=0.75)] + feathers('L', -120, 0, 0, 0.3, only=(3, 0)))
-    s1 = compose(ring_(['L2', 'L3'], 0.5, -100, 0, dark=0.5) + [vortex(-115, 0.5, glow=0.9)] +
-                 feathers('L', -95, 0, 0, 0.5, only=(2, 0)))
-    s2 = compose([vortex(-85, 0.7)] + feathers('L', -70, 0, 0, 0.7) + ring_(['L4', 'L1'], 0.66, -72, 0, dark=0.45) +
-                 ring_(['L2', 'L3'], 0.72, -66, 1, dark=0.3))
-    s3 = compose([vortex(-55, 0.88)] + feathers('L', -45, 0, 0, 0.84) + ring_(ORDER['L'], 0.86, -42, 0, dark=0.15))
-    s4 = compose([vortex(-25)] + feathers('L', -20, 0, 0, 0.94) + [at(n, turn(eye(n), VC, -20, 0.94), wings='up') for n in ORDER['L']])
+    # The vortex opens first (half size), then grows a step each frame, so the swarm builds up without a
+    # pop; a crow coming out of it is drawn behind it, so only its wings show past the swirl at first.
+    s0 = compose([vortex(-150, 0.5, glow=0.8)] + feathers('L', -125, 0, 0, 0.45, only=(3, 0)))
+    s1 = compose(ring_(['L2', 'L3'], 0.4, -105, 0, dark=0.3) + [vortex(-115, 0.68, glow=0.9)] +
+                 feathers('L', -95, 0, 0, 0.6, only=(2, 0)))
+    s2 = compose(ring_(['L4', 'L1'], 0.6, -75, 0, dark=0.25) + [vortex(-85, 0.84)] + feathers('L', -70, 0, 0, 0.78) +
+                 ring_(['L2', 'L3'], 0.72, -66, 1, dark=0.15))
+    s3 = compose([vortex(-55, 0.94)] + feathers('L', -45, 0, 0, 0.9) + ring_(ORDER['L'], 0.86, -42, 0, dark=0.1))
+    s4 = compose([vortex(-25)] + feathers('L', -20, 0, 0, 0.96) + [at(n, turn(eye(n), VC, -20, 0.95), wings='up') for n in ORDER['L']])
     return [s0, s1, s2, s3, s4, key_frame('L')]
 
 
@@ -1074,10 +1110,10 @@ def frame_stats(f):
 POS[0] = {n: eye(n) for n in ORDER['L']}
 POS[4] = {n: eye(n) for n in ORDER['R']}
 # How far each crow moves from frame to frame (game px): the same crow, or the crow it becomes (out: his
-# left picture's crow -> its flock partner at frame 3; back: a flock crow -> his left picture's crow
-# whose place it heads for at frame 0). Crows that come up out of the vortex or sink into it appear or
-# vanish behind it and are not counted.
-BECOMES = {(2, 3): PAIRS, (5, 0): BACK}
+# left picture's crow -> its flock partner at frame 3, or at frame 4 for the two whose partners are hidden
+# in his flock; back: a flock crow -> the left picture's crow that flies its place from frame 5). Crows
+# that come up out of the vortex or sink into it appear or vanish behind it and are not counted.
+BECOMES = {(2, 3): {k: v for k, v in PAIRS.items() if v not in WHOLE}, (3, 4): {v: k for k, v in WHOLE.items()}, (4, 5): WHOLE_BACK}
 TRAVEL = []
 for i in range(6):
     j = (i + 1) % 6
@@ -1255,8 +1291,8 @@ if DEBUG:
         bg.alpha_composite(Image.fromarray(h, 'RGBA'), (0, 0))
         bg.alpha_composite(Image.fromarray(o, 'RGBA'), (W + 4, 0))
         save_whole(bg.resize((bg.width * 4, bg.height * 4), Image.NEAREST), os.path.join(DEBUG, f'cmp-{k}.png'))
-    vs = [his_veil('L'), vortex()[1], vortex(20, 0.92)[1], vortex(40, 0.8, 0.9)[1], vortex(60, 0.6, 0.75)[1], vortex(-20, 0.8, 0.9)[1],
-          SMOKE, smoke(0.7, dx=4)[1], smoke(tail=-44, dx=-8, dy=1)[1]]
+    vs = [his_veil('L'), vortex()[1], vortex(20)[1], vortex(40, 0.85, 0.9)[1], vortex(60, 0.72, 0.85)[1], vortex(-20, 0.93, 0.65)[1],
+          SMOKE, smoke(0.7, dx=4)[1], smoke(tail=-34, dx=-8, dy=1)[1]]
     strip = np.concatenate([v[CY0:CY1, CX0:CX1] for v in vs], 1)
     bg = Image.new('RGBA', (strip.shape[1], strip.shape[0]), (0x5d, 0x6b, 0x57, 255))
     bg.alpha_composite(Image.fromarray(strip, 'RGBA'))

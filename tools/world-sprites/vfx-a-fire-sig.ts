@@ -19,7 +19,7 @@ import { Canvas, WorldSprite, withAlpha } from './kit';
 import { FIRE, ROCK, SMOKE, TH, embers, erode, flow, tongue } from './vfx-a-fire-kit';
 import { Field, Pt, TAU, bez, clamp, dissolve, frames, fract, lerp, pfbm, pnoise, render, rr, smooth, stack, tubeShade, vfxSprite } from './vfx-a-lib';
 import { drawDragon } from './vfx-a-fire-dragon';
-import { KANJI_FADE, KanjiBox, annihilationS, kanjiFire, kanjiSurge } from './vfx-a-fire-s';
+import { KANJI_FADE, KanjiBox, SURGE_N, annihilationS, kanjiFire, kanjiSurge20, surgeRows } from './vfx-a-fire-s';
 
 const PX = 57;
 const DEPTH = 38;
@@ -525,7 +525,10 @@ export function waveStates(): Record<'surge' | 'burn' | 'fade', WaveState[]> {
   const ease = (u: number) => 1 - Math.pow(1 - u, 1.6);
   const n = (k: number) => Array.from({ length: k }, (_, i) => i);
   return {
-    surge: n(8).map((i) => ({ crest: ease((i + 1) / 8), burn: lerp(0.75, 1, i / 7), dead: 0, smoke: Math.max(0, (i - 3) / 8), t: i / 8, dragon: smooth(1.5, 6.2, i), phase: 'surge' as const, kanji: kanjiSurge(i), kanjiVis: 1 })),
+    // 20 frames (1.7 s): it ignites at the caster and rolls out a little more each frame (full
+    // length by frame 15), its flames rising behind the front; the smoke billows up as it grows
+    // and the kanji writes itself in the second half.
+    surge: n(SURGE_N).map((i) => ({ crest: ease(clamp((i + 0.6) / 15, 0.02, 1)), burn: lerp(0.55, 1, smooth(0, SURGE_N - 1, i)), dead: 0, smoke: 0.6 * smooth(2, SURGE_N - 1, i), t: fract((i - SURGE_N) / 6), dragon: 0, phase: 'surge' as const, kanji: kanjiSurge20(i), kanjiVis: 1 })),
     burn: n(6).map((i) => ({ crest: 1, burn: 1, dead: 0, smoke: 0.6, t: i / 6, dragon: 1, phase: 'burn' as const, kanji: [1, 1, 1, 1], kanjiVis: 1 })),
     fade: n(6).map((i) => ({ crest: 1, burn: [0.8, 0.58, 0.38, 0.2, 0.08, 0][i], dead: [0.1, 0.3, 0.5, 0.7, 0.88, 1][i], smoke: [0.7, 0.55, 0.4, 0.24, 0.1, 0][i], t: i / 6, dragon: [0.85, 0.62, 0.4, 0.2, 0.06, 0][i], phase: 'fade' as const, kanji: [1, 1, 1, 1], kanjiVis: KANJI_FADE[i] })),
   };
@@ -536,7 +539,7 @@ function annihilation(great: boolean): WorldSprite {
   if (great) return annihilationS();
   const w = waveSpec(great), st = waveStates();
   return vfxSprite('annihilation', 'Great Fire Annihilation (cone 12 m, 60 deg, kanji)', [w.x0, w.gy], {
-    surge: { frames: st.surge.map((s) => waveFrame(w, s)), fps: 12, loop: false },
+    ...surgeRows(st.surge.map((s) => waveFrame(w, s))),
     burn: { frames: st.burn.map((s) => waveFrame(w, s)), fps: 12, loop: true },
     fade: { frames: st.fade.map((s) => waveFrame(w, s)), fps: 12, loop: false },
   });

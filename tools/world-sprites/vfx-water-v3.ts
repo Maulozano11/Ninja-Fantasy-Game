@@ -25,7 +25,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Canvas, Color, PX_PER_M, WorldSprite, hex, writeGroup } from './kit';
-import { TAU, clamp, clearEdgeBits, fract, lerp, pnoise, rr, smooth, vfxSprite } from './vfx-a-lib';
+import { TAU, clamp, clearEdgeBits, fract, pnoise, rr, smooth, vfxSprite } from './vfx-a-lib';
 import { WV3_PAL, WV3_REF } from './vfx-water-v3-refdata';
 
 // --- his palette and key frames ----------------------------------------------------------------
@@ -43,7 +43,6 @@ const ALPHA_STEPS = (() => {
   while (WV3_PAL[GLOW0 - 1 + n]?.rgba.slice(0, 7) === first) n++;
   return n;
 })();
-const kindOf = (v: number): Kind | null => (v ? KIND[v - 1] : null);
 
 /** An indexed layer (0 = clear, else palette index + 1), the size of a sprite's frame. */
 class Layer {
@@ -254,7 +253,8 @@ function cut(L: Layer, keep: (x: number, y: number) => boolean, minPiece = 3): L
     if (!v || KIND[v - 1] !== 'body') continue;
     if ((x > 0 && gone[i - 1]) || (x < L.w - 1 && gone[i + 1]) || (y > 0 && gone[i - L.w]) || (y < L.h - 1 && gone[i + L.w])) out.v[i] = RIM;
   }
-  for (const pc of pieces(out)) if (pc.length <= minPiece) for (const i of pc) out.v[i] = 0;
+  // (and bits that are mostly rim: a broken edge, not water)
+  for (const pc of pieces(out)) if (pc.length <= minPiece || pc.filter((i) => KIND[out.v[i] - 1] === 'body').length < pc.length * 0.4) for (const i of pc) out.v[i] = 0;
   return out;
 }
 
@@ -281,15 +281,15 @@ function glowLight(w: number, h: number, col: Color, peak: number, alpha: (x: nu
   const c = new Canvas(w, h);
   const steps = [0.18, 0.4, 0.66, 1];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const a = alpha(x, y);
+    const a = alpha(x, y) * smooth(1, 5, Math.min(x, y, w - 1 - x, h - 1 - y));
     if (a < 0.1) continue;
     const q = steps.find((s) => a <= s) ?? 1;
     c.set(x, y, [col[0], col[1], col[2], Math.round(peak * q * 255)]);
   }
   return c;
 }
-/** His teal light (un-blended from the glow round his characters: about 23 % of this colour). */
-const TEAL: Color = [44, 236, 214, 255];
+/** His teal light: his glow round his characters, (28, 83, 86) on his panel (32, 33, 43), un-blended: 22 % of this colour. */
+const TEAL: Color = [32, 250, 230, 255];
 
 const stackC = (w: number, h: number, ...cs: (Canvas | Layer | null)[]): Canvas => {
   const out = new Canvas(w, h);
@@ -317,8 +317,14 @@ function bolt(): WorldSprite {
       const sx = K.ax + dx * Math.cos(a) - dy * Math.sin(a), sy = K.ay + dx * Math.sin(a) + dy * Math.cos(a);
       return KIND[main.get(Math.round(sx), Math.round(sy)) - 1] === 'body' ? [sx, sy] : [x, y];
     });
-    m = churn(m, t, { amp: 2.2, ampY: 1, cell: 6, seed, where: (x) => smooth(K.ax - 6, K.ax - 18, x), flow: [-1.5, 0] });
-    m = wobble(m, t, 0.8, 9, seed + 1, (x) => smooth(K.ax - 10, K.ax - 26, x));
+    // The tail's streaks stream back: each row slides along itself (so the thin streaks stay
+    // whole), more toward the tail's end; the water near the orb churns a little.
+    m = remap(m, (x, y) => {
+      const w = smooth(K.ax - 10, K.ax - 30, x);
+      const ph = y * 0.45 + pnoise(0, y, 4, 0, 0, seed + 3) * 3;
+      return [x + Math.round(2.2 * w * (Math.sin(t * TAU + ph) - Math.sin(ph))), y];
+    });
+    m = churn(m, t, { amp: 1.2, ampY: 0.6, cell: 8, seed, where: (x) => smooth(K.ax - 4, K.ax - 14, x) * (1 - smooth(K.ax - 14, K.ax - 24, x)) });
     const d = moveDrops(drops, (k) => {
       const u = drift(t, rr(seed + 2, k, 0, 1));
       return [-9 * u, 2.5 * u * u + 1.5 * u];
@@ -356,8 +362,8 @@ function sphere(): WorldSprite {
   const fr = [0, 1, 2, 3].map((i) => {
     const t = i / 4;
     const r = (x: number, y: number) => Math.hypot(x - K.ax, y - K.ay);
-    let m = churn(main, t, { amp: 1.6, cell: 6, seed, where: (x, y) => 0.5 + 0.5 * smooth(17, 21, r(x, y)) });
-    m = wobble(m, t, 1, 8, seed + 1, (x, y) => smooth(18, 23, r(x, y)));
+    let m = churn(main, t, { amp: 1.3, cell: 8, seed, where: (x, y) => 0.5 + 0.5 * smooth(17, 21, r(x, y)) });
+    m = wobble(m, t, 0.7, 14, seed + 1, (x, y) => smooth(19, 24, r(x, y)));
     const d = moveDrops(drops, (k, cx, cy) => {
       const a = 0.22 * Math.sin(t * TAU + rr(seed + 2, k, 0, TAU)) - 0.22 * Math.sin(rr(seed + 2, k, 0, TAU));
       const dx = cx - K.ax, dy = cy - K.ay;
@@ -481,7 +487,7 @@ function stream(): WorldSprite[] {
 
 // --- hit and blast -------------------------------------------------------------------------------------
 
-/** hit: his star-burst splash. It bursts out of a bright core into his picture (frame 3), then breaks into flying droplets. */
+/** hit: his star-burst splash. It bursts out of a bright core into his picture (frame 3 of 6), then empties from the core out into flying fragments and droplets. */
 function hit(): WorldSprite {
   const K = key('hit'), seed = 5700;
   const main = K.part('main'), drops = K.part('drops'), glow = K.part('glow');
@@ -490,16 +496,17 @@ function hit(): WorldSprite {
     { s: 0.45, reach: 9, d: 0.5, g: 2, thin: 0 },
     { s: 0.78, reach: 24, d: 0.8, g: 1, thin: 0 },
     { s: 1, reach: 99, d: 1, g: 0, thin: 0 },
-    { s: 1.07, reach: 99, d: 1.18, g: 1, thin: 0.25 },
-    { s: 1.12, reach: 99, d: 1.38, g: 3, thin: 0.62 },
-    { s: 1.16, reach: 99, d: 1.55, g: 9, thin: 0.9 },
+    { s: 1.06, reach: 99, d: 1.2, g: 1, thin: 0 },
+    { s: 1.13, reach: 99, d: 1.42, g: 3, thin: 0.5 },
+    { s: 1.2, reach: 99, d: 1.62, g: 9, thin: 0.78 },
   ];
   const fr = plan.map((p, i) => {
     let m = scaled(main, p.s, p.s, K.ax, K.ay);
     if (p.reach < 99) m = cut(m, (x, y) => r(x, y) <= p.reach + 2 * pnoise(x, y, 3, 0, 0, seed));
+    if (i >= 3) m = churn(m, (i - 2) / 4, { amp: 1.4, cell: 5, seed });
     if (p.thin > 0) {
-      // The splash breaks up from its tips inward into spray.
-      m = cut(churn(m, i / 6, { amp: 1.5, cell: 5, seed }), (x, y) => grain(x, y, seed + i) * 0.55 + (1 - r(x, y) / 34) * 0.45 > p.thin);
+      // The splash empties from its core outward: its spikes fly on as loose fragments.
+      m = cut(m, (x, y) => grain(x, y, seed + i) * 0.4 + Math.min(1, r(x, y) / 34) * 0.6 > p.thin, 5);
     }
     const d = moveDrops(drops, (k, cx, cy) => {
       if (i === 5 && k % 2) return null;
@@ -537,11 +544,10 @@ function blast(): WorldSprite {
     { pool: 1.15, rise: 0.08, crown: 0, fall: 3, drops: 1, light: 0.2, poolCut: 0.78 },
   ];
   const fr = plan.map((p, i) => {
-    const t = i / 8;
     // The pool: his ripples, spreading over the ground from the centre, then fading out.
     let pl = scaled(pool, p.pool, p.pool, K.ax, K.ay);
     if (i >= 4) pl = churn(pl, (i - 3) / 4, { amp: 1.3, ampY: 0.6, cell: 7, seed });
-    if (p.poolCut) pl = cut(pl, (x, y) => grain(x, y, seed + 1) * 0.7 + (Math.abs(x - K.ax) / 90) * 0.3 > p.poolCut, 2);
+    if (p.poolCut) pl = cut(pl, (x, y) => pnoise(x, y * 2, 7, 0, 0, seed + 1) * 0.7 + (Math.abs(x - K.ax) / 90) * 0.3 > p.poolCut, 4);
     // The column: revealed from the ground up while it shoots up, dropped from the top as it falls.
     let c = col;
     if (i >= 3) c = churn(c, (i - 3) / 4, { amp: 1.6, ampY: 2.4, cell: 7, seed: seed + 2, flow: [0, -1.5] });
@@ -552,7 +558,7 @@ function blast(): WorldSprite {
     // The crown: grows out of the column's top, then breaks up and falls.
     let cr: Layer | null = null;
     if (p.crown > 0) {
-      cr = p.crown < 1 ? scaled(crown, p.crown, p.crown, K.ax, crownBottom) : crown;
+      cr = p.crown < 1 ? moved(scaled(crown, p.crown, p.crown, K.ax, crownBottom), 0, colH * (1 - p.rise)) : crown;
       if (i >= 4) cr = wobble(churn(cr, (i - 3) / 4, { amp: 1.5, cell: 5, seed: seed + 4 }), (i - 3) / 4, 1.2, 8, seed + 5);
       if (p.fall) cr = cut(moved(scaled(cr, 1 + 0.12 * p.fall, 1, K.ax, crownBottom), 0, 7 * p.fall + 2 * p.fall * p.fall), (x, y) => grain(x, y, seed + 6) > 0.18 + 0.27 * p.fall);
     }
@@ -566,11 +572,10 @@ function blast(): WorldSprite {
       return [dir * 1.4 * u, -2 * u + 1.1 * u * u];
     });
     // His teal light round the geyser.
-    const light = glowLight(K.w, K.h, TEAL, 0.24 * p.light, (x, y) => {
-      const e = Math.hypot((x - K.ax) / (64 * Math.max(0.5, p.pool)), (y - (K.ay - 26)) / 52);
+    const light = glowLight(K.w, K.h, TEAL, 0.16 * p.light, (x, y) => {
+      const e = Math.hypot((x - K.ax) / (70 * Math.max(0.5, p.pool)), (y - (K.ay - 30)) / 50);
       return clamp(1.15 - e, 0, 1) * clamp(p.light * 1.2, 0, 1);
     });
-    void t;
     return stackC(K.w, K.h, light, pl, c, cr, d);
   });
   return vfxSprite('blast', 'Water blast (geyser bursting from a splash pool, 3 m)', [K.ax, K.ay], { blast: { frames: fr, fps: 12, loop: false } });
@@ -607,7 +612,7 @@ function wall(kind: 'wall' | 'wall_diag' | 'wall_depth', label: string, seed: nu
     });
     return { m, d };
   };
-  const glow = light ? slabGlow(main, K.w, K.h) : null;
+  const glow = light ? slabGlow(main, K.w, K.h, 1) : null;
   const idle = [0, 1, 2, 3].map((i) => {
     const { m, d } = idleAt(i / 4);
     return stackC(K.w, K.h, glow, m, d);
@@ -617,16 +622,15 @@ function wall(kind: 'wall' | 'wall_diag' | 'wall_depth', label: string, seed: nu
     const { m, d } = idleAt(((i - 5) / 4 + 4) % 1);
     const grow = (L: Layer) => remap(L, (x, y) => [x, g[x] - (g[x] - y) / s]);
     const dd = i === 5 ? d : i >= 3 ? cut(grow(d), (x, y) => grain(x, y, seed + 3) < 0.35 + 0.22 * i, 0) : null;
-    const gl = glow ? stackC(K.w, K.h, glow) : null;
-    if (gl) for (let k = 3; k < gl.px.length; k += 4) gl.px[k] = Math.round(gl.px[k] * s);
-    return stackC(K.w, K.h, gl, grow(m), dd);
+    const gm = grow(m);
+    return stackC(K.w, K.h, light ? slabGlow(gm, K.w, K.h, s) : null, gm, dd);
   });
   return vfxSprite(kind, label, [K.ax, K.ay], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 12, loop: true } });
 }
 
-/** A soft teal light hugging a slab of water: banded by distance from it, up to 9 px out. */
-function slabGlow(L: Layer, w: number, h: number): Canvas {
-  const R = 9;
+/** A soft teal light hugging a slab of water: banded by distance from it, up to 12 px out. */
+function slabGlow(L: Layer, w: number, h: number, k: number): Canvas {
+  const R = 12;
   const dist = new Float32Array(w * h).fill(99);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (L.get(x, y)) dist[y * w + x] = 0;
   // Two-pass chamfer distance.
@@ -644,7 +648,7 @@ function slabGlow(L: Layer, w: number, h: number): Canvas {
     if (x < w - 1 && y < h - 1) dist[i] = Math.min(dist[i], dist[i + w + 1] + 1.41);
     if (x > 0 && y < h - 1) dist[i] = Math.min(dist[i], dist[i + w - 1] + 1.41);
   }
-  return glowLight(w, h, TEAL, 0.2, (x, y) => {
+  return glowLight(w, h, TEAL, 0.14 * k, (x, y) => {
     const d = dist[y * w + x];
     return d > 0 && d <= R && x > 1 && y > 1 && x < w - 2 && y < h - 2 ? 1 - d / (R + 1) : 0;
   });
@@ -741,5 +745,4 @@ function main(): void {
   }
 }
 
-void lerp;
 main();

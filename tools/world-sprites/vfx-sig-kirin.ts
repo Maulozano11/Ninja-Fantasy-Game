@@ -152,14 +152,19 @@ function load(key: 'kirin' | 'kirin_enh'): Src {
 
 let S: Src = undefined as unknown as Src;
 
-/** Nearest palette colour to (r, g, b) scaled by k (for dimming and flicker), cached. */
+/**
+ * Nearest palette colour to (r, g, b) dimmed (k < 1: toward the deep electric blue of his glow, so
+ * white goes to cyan, then blue, never grey) or brightened (k > 1: toward white), cached.
+ */
 const dimCache = new Map<number, Color>();
+const DEEP = [16, 30, 110];
 function dimmed(r: number, g: number, b: number, k: number): Color {
   const kk = Math.round(k * 20);
   const key = (((r << 16) | (g << 8) | b) * 64 + kk) * 2 + (S.enh ? 1 : 0);
   const hit = dimCache.get(key);
   if (hit) return hit;
-  const tr = (r * kk) / 20, tg = (g * kk) / 20, tb = (b * kk) / 20;
+  const t = kk / 20;
+  const tr = t <= 1 ? lerp(DEEP[0], r, t) : lerp(r, 255, t - 1), tg = t <= 1 ? lerp(DEEP[1], g, t) : lerp(g, 255, t - 1), tb = t <= 1 ? lerp(DEEP[2], b, t) : lerp(b, 255, t - 1);
   let best = S.palette[0], bd = Infinity;
   for (const c of S.palette) {
     const d = (c[0] - tr) ** 2 + (c[1] - tg) ** 2 + (c[2] - tb) ** 2;
@@ -287,8 +292,8 @@ function kanji(dst: Canvas, o: { write: number; breath: number; fade: number; f:
       } else {
         a = lv(clamp((o.write - 0.84) / 0.16, 0, 1));
         if (a <= 0) return null;
-        // Sparks blink in clusters.
-        if (noise(x, y, 10, 400 + o.f) < 0.28) return null;
+        // Sparks blink in clusters (dimmed, so no holes open in the glow).
+        if (noise(x, y, 10, 400 + o.f) < 0.28) k = 0.5;
       }
       if (o.breath && L < 200) k *= 1 - o.breath;
       if (o.fade > 0) {
@@ -406,7 +411,17 @@ function dragon(dst: Canvas, o: { t: number; writhe: number; roar: number; dim: 
 /** Loose sparks of the enhanced burst: they blink in clusters and dim with the burst. */
 function sparks(dst: Canvas, burst: number, alpha: number, f: number): void {
   if (alpha <= 0.02 || !S.layers.sparks) return;
-  paint(dst, S.layers.sparks, null, (c, x, y) => (noise(x, y, 12, 800 + f) < 0.25 ? null : withA(dimmed(c[0], c[1], c[2], lerp(0.55, 1, burst)), alpha)), bbox(S.layers.sparks, 1));
+  paint(
+    dst,
+    S.layers.sparks,
+    null,
+    (c, x, y) => {
+      const bright = c[0] + c[1] + c[2] > 450;
+      if (bright && noise(x, y, 12, 800 + f) < 0.25) return withA(dimmed(c[0], c[1], c[2], 0.5), alpha);
+      return withA(dimmed(c[0], c[1], c[2], bright ? lerp(0.55, 1, burst) : 1), alpha);
+    },
+    bbox(S.layers.sparks, 1),
+  );
 }
 
 /** His rocks (enhanced): flung from where they are at the peak, they land by the end of the impact. */

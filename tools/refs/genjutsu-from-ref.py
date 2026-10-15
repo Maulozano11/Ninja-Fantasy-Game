@@ -66,6 +66,27 @@ def gauss(a, s, wrap=False):
         out = acc
     return out
 
+def median3(C, wrap=False):
+    """3x3 median per channel (edges clamped, or wrapped in x): takes out the JPEG's speckle
+    without blurring his edges."""
+    p = np.pad(C, ((1, 1), (1, 1), (0, 0)), mode='edge')
+    if wrap:
+        p[:, 0] = p[:, -3]; p[:, -1] = p[:, 2]
+    H, W = C.shape[:2]
+    st = np.stack([p[dy:dy + H, dx:dx + W] for dy in range(3) for dx in range(3)], 0)
+    return np.median(st, 0)
+
+def denoise(C, wrap=False):
+    """His colours for game scale: the brightness lightly smoothed (his 1 px cracks and highlight
+    lines survive), the colour (chroma) through a 3x3 median and a blur, where the JPEG's speckle
+    and 4:2:0 smear live."""
+    m = np.array([[0.299, 0.587, 0.114], [-0.168736, -0.331264, 0.5], [0.5, -0.418688, -0.081312]])
+    Y = C @ m.T
+    Yl = gauss(Y[..., :1], 0.35, wrap)
+    Yc = gauss(median3(Y, wrap)[..., 1:], 0.6, wrap)
+    out = np.concatenate([Yl, Yc], -1) @ np.linalg.inv(m).T
+    return np.clip(out, 0, 255)
+
 def lum(c):
     return 0.3 * c[..., 0] + 0.59 * c[..., 1] + 0.11 * c[..., 2]
 
@@ -161,7 +182,7 @@ def classify(src, cfg):
     wrap = bool(cfg.get('wrap'))
     m = lambda key: poly_mask(H, W, x0, y0, cfg.get(key, []))
     D = gauss(C, 0.8, wrap)     # decisions
-    M = gauss(C, 0.35, wrap)    # colours (the box filter to game scale averages the rest)
+    M = denoise(C, wrap)        # colours (the box filter to game scale averages the rest)
     dist = np.sqrt(((D - BG) ** 2).sum(-1))
     dl = lum(D) - lum(BG)
     a, _ = c2a(D)
@@ -240,7 +261,9 @@ SPRITES = {
                         pieces=[('sparks', [ellipse(652, 66, 7), ellipse(665, 106, 7), ellipse(626, 127, 8)]),
                                 ('spiral', [ellipse(638, 98, 32, 31)])]),
     'breath': dict(area=(692, 54, 839, 192), k=K64, origin=(691, 53), base=(112, 104), anchor=(707 - 4 / K64, 121.5), smoke=True,
-                   pieces=[('orb', [ellipse(707, 121.5, 9)])]),
+                   pieces=[('orb', [ellipse(707, 121.5, 9)]),
+                           ('eyes', [ellipse(748, 82, 7, 5), ellipse(781, 98, 6, 5), ellipse(817, 84, 6, 5), ellipse(746, 165, 7, 5),
+                                     ellipse(817, 165, 7, 6), ellipse(780, 155, 5, 4), ellipse(795, 119, 4, 4), ellipse(780, 140, 4, 4)])]),
     'sphere': dict(area=(855, 54, 939, 139), k=K64, origin=(854, 53), base=(64, 64), anchor=(899.5, 97.5),
                    pieces=[('core', [ellipse(899.5, 97, 23, 21)])]),
     'slash': dict(area=(9, 231, 94, 315), k=K64, origin=(8, 230), base=(64, 64), anchor=(51, 273), smoke=True),
@@ -526,11 +549,18 @@ def kmeans_lab(cols, n, iters=12):
 def by_lum(p):
     return p[np.argsort(lum(p))]
 
+def body_palette():
+    """80 colours for the violets and lavenders, plus 14 for his hot pinks and magentas (red over
+    blue: the sphere's spikes, the hit, the splashes), which are too few to win slots otherwise."""
+    c = gather('body')
+    hot = c[:, 0] > c[:, 2] + 12
+    return np.concatenate([kmeans_lab(c[~hot], 80), kmeans_lab(c[hot], 14)])
+
 FLOORS = {'glow': 0.0, 'smoke': 0.85, 'ground': 0.6}
 OUTLINE = np.array([[40, 16, 58]])   # deep violet (his darkest violet rims), never black
 SETS = {
     'outline': OUTLINE,
-    'body': by_lum(kmeans_lab(gather('body'), 80)),
+    'body': by_lum(body_palette()),
     'weed': by_lum(median_cut(gather('weed'), 5)),
     'dark': by_lum(median_cut(gather('dark'), 6)),
     'smoke': by_lum(median_cut(gather('smoke'), 4)),

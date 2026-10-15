@@ -126,6 +126,16 @@ export const kanjiSurge = (i: number): number[] =>
   [clamp((i - 2.5) / 1, 0, 1), clamp((i - 3.5) / 1, 0, 1), clamp((i - 4) / 1.5, 0, 1), clamp((i - 5) / 1.6, 0, 1)].map((p) => (p > 0 && p < 0.25 ? 0.25 : p));
 /** The surge's length in frames (it was 8; the owner wants it to build up gradually). */
 export const SURGE_N = 20;
+/**
+ * The surge as sheet rows: a row may be at most 8192 px wide, so a long surge is split into
+ * `surge`, `surge2`, `surge3`, ... (each played once, in order, before `burn`).
+ */
+export function surgeRows(frames: Canvas[], fps = 12): Record<string, { frames: Canvas[]; fps: number; loop: boolean }> {
+  const per = Math.max(1, Math.floor(8192 / frames[0].w));
+  const out: Record<string, { frames: Canvas[]; fps: number; loop: boolean }> = {};
+  for (let i = 0, k = 1; i < frames.length; i += per, k++) out[k === 1 ? 'surge' : `surge${k}`] = { frames: frames.slice(i, i + per), fps, loop: false };
+  return out;
+}
 /** The kanji written stroke by stroke over the second half of the 20-frame surge. */
 export const kanjiSurge20 = (i: number): number[] => [0, 1, 2, 3].map((j) => {
   const p = clamp((i - (9.5 + j * 2.3)) / 2.4, 0, 1);
@@ -432,10 +442,19 @@ function dragonLayers(st: SState): DragonLayers {
   const up = (r: number, dist: number) => Math.pow(1 - r, 2) * dist;
   // Rising parts come up out of the flames as they stand now (cut a little below their tops).
   const below = (x: number) => surgeTop(st, x) + 26;
+  // A rising part never shows its cut-off bottom: it stays sunk until the flames there cover it.
+  const sunk = (name: string, r: number, dist: number) => {
+    if (st.phase !== 'surge') return up(r, dist);
+    const pc = refPiece(name);
+    let need = 0;
+    const g = wallGeom();
+    for (let x = Math.max(0, pc.x); x < Math.min(W, pc.x + pc.c.w); x += 6) if (g.bottom[x] >= 0) need = Math.max(need, surgeTop(st, x) + 12 - (pc.y + pc.c.h));
+    return Math.max(up(r, dist), need);
+  };
   const back = new Canvas(W, H);
-  if (rise[0] > 0) back.draw(part('s_tail', [0, Math.sin(ph) * live + up(rise[0], 190)], rise[0] < 1 ? below : null, { amp: 2, baseY: 110 }), 0, 0);
-  if (rise[1] > 0) back.draw(part('s_hump', [0, Math.sin(ph + 1.8) * live + up(rise[1], 210)], rise[1] < 1 ? below : null), 0, 0);
-  const headBob: Pt = [Math.sin(ph + 3) * live, 1.5 * Math.sin(ph + 3.4) * live + up(rise[2], 330)];
+  if (rise[0] > 0) back.draw(part('s_tail', [0, Math.sin(ph) * live + sunk('s_tail', rise[0], 190)], rise[0] < 1 ? below : null, { amp: 2, baseY: 110 }), 0, 0);
+  if (rise[1] > 0) back.draw(part('s_hump', [0, Math.sin(ph + 1.8) * live + sunk('s_hump', rise[1], 210)], rise[1] < 1 ? below : null), 0, 0);
+  const headBob: Pt = [Math.sin(ph + 3) * live, 1.5 * Math.sin(ph + 3.4) * live + sunk('s_head', rise[2], 330)];
   if (rise[2] > 0) back.draw(part('s_head', headBob, rise[2] < 1 ? below : null), 0, 0);
   const front = new Canvas(W, H);
   if (rise[2] > 0.6) {
@@ -544,7 +563,10 @@ function hisWall(): Canvas {
   const pc = refPiece('s_wall');
   const c = new Canvas(W, H);
   c.draw(pc.c, pc.x, pc.y);
-  hisWallBase = roughen(c, (x, y) => x < 6 + 8 * pnoise(0, y, 5, 0, 0, SEED + 90), pc.pal[0]);
+  // Rough ends: the left end at the frame edge, and his wall's right end where his picture cut it.
+  const right = new Int32Array(H).fill(-1);
+  for (let y = 0; y < H; y++) for (let x = W - 1; x >= 0; x--) if (c.alpha(x, y)) { right[y] = x; break; }
+  hisWallBase = roughen(c, (x, y) => x < 6 + 8 * pnoise(0, y, 5, 0, 0, SEED + 90) || (right[y] > 600 && x > right[y] - 16 * pnoise(0, y, 4, 0, 0, SEED + 89)), pc.pal[0]);
   return hisWallBase;
 }
 /**
@@ -666,10 +688,10 @@ function hisWallFire(): Canvas {
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       if (!c.alpha(x, y) || !m.alpha(x, y)) continue;
-      for (let d = 12; d < 400; d += 6) {
-        const xl = x - d, xr = x + d;
-        if (xl >= 0 && c.alpha(xl, y) && !m.alpha(xl, y)) { out.set(x, y, c.get(xl, y)); break; }
-        if (xr < W && c.alpha(xr, y) && !m.alpha(xr, y)) { out.set(x, y, c.get(xr, y)); break; }
+      // (a few fixed offsets, so the copied fire comes in coherent patches, not streaks)
+      for (const d of [-170, 170, -300, 300, -90, 90, -420, 420, -560, 560]) {
+        const xs = x + d;
+        if (xs >= 0 && xs < W && c.alpha(xs, y) && !m.alpha(xs, y)) { out.set(x, y, c.get(xs, y)); break; }
       }
     }
   return (wallFireCache = out);
@@ -708,8 +730,10 @@ function wallDragonLayer(st: SState): Canvas | null {
 /** How much of the wall stands at x during the surge (0..1). */
 function surgeStand(st: SState, x: number): number {
   if (st.phase !== 'surge') return 1;
-  const front = X0 - 20 + st.roll * (LEN + 160);
-  return clamp((st.grow ?? 1) * clamp((front - x) / 420, 0, 1), 0, 1);
+  // The flames' front trails the bed's front and overtakes the far end in the last frames, so
+  // the whole wall stands at full height on the last surge frame.
+  const front = X0 - 20 + st.roll * (LEN + 160) + 460 * ((st.grow ?? 1) - 0.5) * 2;
+  return clamp((front - x) / 420, 0, 1);
 }
 /** The top of the wall's flames at x as they stand now in the surge (frame y). */
 function surgeTop(st: SState, x: number): number {
@@ -807,7 +831,7 @@ export function sStates(): Record<'surge' | 'burn' | 'fade', SState[]> {
 export function annihilationS(): WorldSprite {
   const st = sStates();
   return vfxSprite('annihilation_enh', 'Great Fire Annihilation, enhanced S-rank (15 m cone, dragon, kanji)', [X0, GY], {
-    surge: { frames: st.surge.map(sFrame), fps: 12, loop: false },
+    ...surgeRows(st.surge.map(sFrame)),
     burn: { frames: st.burn.map(sFrame), fps: 12, loop: true },
     fade: { frames: st.fade.map(sFrame), fps: 12, loop: false },
   });

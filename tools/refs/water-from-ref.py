@@ -201,14 +201,14 @@ SHARP = np.clip(FLAT + 0.6 * (FLAT - gauss(FLAT, 0.9)), 0, 255)
 # drops:  the largest loose bit (px at game scale) still counted as a droplet.
 
 SPRITES = {
-    'bolt': dict(anchor=(62, 78), area=[rect(10, 42, 82, 112)], drops=24),
-    'breath': dict(anchor=(536, 77), area=[rect(534, 42, 640, 112)], drops=24, breath=True),
+    'bolt': dict(anchor=(62, 78), area=[rect(10, 42, 82, 112)], drops=24, pad=(6, 2, 0, 3)),
+    'breath': dict(anchor=(536, 77), area=[rect(534, 42, 640, 112)], drops=24, breath=True, pad=(0, 3, 6, 4)),
     'sphere': dict(anchor=(689.5, 77.5), area=[rect(653, 42, 724, 112)], drops=24),
     'slash': dict(anchor=(46, 198.5), area=[rect(10, 160, 78, 234)], drops=12),
     'multi': dict(anchor=(164.5, 195), area=[rect(125, 160, 198, 229)], drops=6, glow=True,
                   mist=[rect(125, 160, 163, 229)]),
-    'hit': dict(anchor=(281, 200), area=[rect(241, 160, 318, 238)], drops=30, glow=True),
-    'blast': dict(anchor=(456, 293), area=[rect(357, 160, 560, 324)], drops=30,
+    'hit': dict(anchor=(281, 200), area=[rect(241, 160, 318, 238)], drops=30, glow=True, pad=(8, 8, 8, 10)),
+    'blast': dict(anchor=(456, 293), area=[rect(357, 160, 560, 324)], drops=30, pad=(14, 2, 14, 8),
                   drop=[rect(548, 190, 622, 325)], teal=[rect(480, 200, 622, 325)],
                   pieces=[('crown', [[(415, 160), (500, 160), (500, 214), (472, 214), (462, 222), (446, 222), (436, 214), (415, 214)]]),
                           ('pool', [[(356, 262), (420, 262), (425, 276), (440, 284), (472, 284), (490, 276), (494, 262), (560, 262), (560, 324), (356, 324)]])]),
@@ -223,7 +223,7 @@ SPRITES = {
                  halo=[rect(200, 670, 330, 830)]),
     # The stream: his jet, the tile ending where his crest head begins (the anchor's x), centred
     # on the anchor's y.
-    'stream': dict(anchor=(457.6, 76.5), area=[rect(276, 42, 520, 112)], drops=30, stream=True, head_w=66),
+    'stream': dict(anchor=(457.6, 76.5), area=[rect(276, 42, 520, 112)], drops=30, stream=True, head_w=72),
 }
 MARGIN = 4
 
@@ -234,11 +234,14 @@ def his_box(cfg, W, H, ax, ay):
     return (hx - ax / SX, hy - ay / SY, hx + (W - ax) / SX, hy + (H - ay) / SY)
 
 
-def resample(arr, box, W, H):
-    """Box-filters an HxW(xC) array of his sheet onto a W x H game grid covering `box`."""
+def resample(arr, box, W, H, P=48):
+    """Box-filters an HxW(xC) array of his sheet onto a W x H game grid covering `box` (the sheet
+    is padded with its edge, so a frame may reach past the sheet's border)."""
     if arr.ndim == 2:
-        return np.asarray(Image.fromarray(arr.astype(np.float32), 'F').resize((W, H), Image.BOX, box=box), np.float64)
-    return np.stack([resample(arr[..., k], box, W, H) for k in range(arr.shape[2])], -1)
+        a = np.pad(arr.astype(np.float32), P, mode='edge')
+        b = (box[0] + P, box[1] + P, box[2] + P, box[3] + P)
+        return np.asarray(Image.fromarray(a, 'F').resize((W, H), Image.BOX, box=b), np.float64)
+    return np.stack([resample(arr[..., k], box, W, H, P) for k in range(arr.shape[2])], -1)
 
 
 def classify_his(cfg):
@@ -333,10 +336,13 @@ def decide(g, wrap=False):
 
 
 def frame_for(cfg, cls):
+    """The art's bounds plus MARGIN, plus `pad` (left, top, right, bottom) where the animation
+    throws water further out than his picture."""
     x0, y0, x1, y1 = bounds_game(cfg, cls)
-    ax = int(np.ceil(-x0)) + MARGIN
-    ay = int(np.ceil(-y0)) + MARGIN
-    return ax + int(np.ceil(x1)) + MARGIN, ay + int(np.ceil(y1)) + MARGIN, ax, ay
+    pl, pt, pr, pb = cfg.get('pad', (0, 0, 0, 0))
+    ax = int(np.ceil(-x0)) + MARGIN + pl
+    ay = int(np.ceil(-y0)) + MARGIN + pt
+    return ax + int(np.ceil(x1)) + MARGIN + pr, ay + int(np.ceil(y1)) + MARGIN + pb, ax, ay
 
 
 # --- build every key frame (classes at game scale) --------------------------------------------
@@ -399,13 +405,18 @@ def aura_split(b):
     L = lum(col)
     # A streak is his bright water where our character is darker (his lit sword is the
     # character's, not water).
-    streak = b['solid'] & zone & (L >= 140) & (col[..., 2] - col[..., 0] >= 40) & (L - lum(ch[..., :3]) * body >= 50)
-    feet = b['solid'] & zone & (np.arange(H)[:, None] >= ay - 4)
+    # His bright streaks cross the figure's legs (higher up, his bright bits are the figure's own
+    # lit edges seen through the water). A streak is a line brighter than what is round it.
+    rows = np.arange(H)[:, None]
+    Lf = lum(g['flat'])
+    ridge = Lf - gauss(Lf, 2.0)
+    streak = b['solid'] & zone & (rows >= ay - 30) & (ridge >= 12) & (Lf >= 125) & (col[..., 2] - col[..., 0] >= 40)
+    feet = b['solid'] & zone & (rows >= ay - 4)
     front = streak | feet
-    # Only streak pieces of a few pixels (single bright pixels are his tinted highlights).
+    # Only whole streaks (a few loose bright pixels are the figure's highlights).
     lab, n = components(front)
     sizes = np.bincount(lab.ravel(), minlength=n + 1)
-    front &= sizes[lab] >= 4
+    front &= sizes[lab] >= 10
     front_rim = b['rim'] & dilate(front, nb=N8) & zone
     # The veil: his picture over our character is (1 - a) * ours + a * W, fitted per band of rows
     # (least squares) on the character's pixels away from the streaks.
@@ -433,12 +444,12 @@ def aura_split(b):
     print('aura veil per band', [round(float(veil[y, ax]), 2) for y in range(0, H, 6)])
     # His tint is strong (the figure is deep in the water); in game the middle must read, so the
     # front keeps it as a faint wash of his fitted water colour over the body: an ellipse from the
-    # chest to the feet (whatever the pose), 0.2 in the middle fading to 0.1 at its rim.
+    # chest to the feet (whatever the pose), about 12 % in the middle and 6 % at its rim.
     strong = veil > 0.2
     tint = np.median(veil_col[strong], 0) if strong.any() else np.array([80.0, 190.0, 230.0])
     yy, xx = np.mgrid[0:H, 0:W]
     d = np.hypot((xx + 0.5 - ax) / 15.0, (yy + 0.5 - (ay - 33)) / 36.0)
-    veil = np.where(d < 1, 0.2 - 0.1 * d, 0.0)
+    veil = np.where(d < 1, 0.11 * (1 - d * d) + 0.03, 0.0)
     veil_col = np.zeros((H, W, 3)) + tint
     print('aura veil colour', tint.round())
     b['veil'] = veil
@@ -448,7 +459,28 @@ def aura_split(b):
     back_solid = (b['solid'] & ~zone) | hole
     back_rim = b['rim'] & ~zone
     known = b['solid'] & ~zone
+    # First his own texture, mirrored in across the nearer edge of the hole in each row; what
+    # that cannot reach is filled smoothly from round it.
+    mir = np.zeros((H, W, 3))
+    got = np.zeros((H, W), bool)
+    for y in range(H):
+        xs = np.nonzero(hole[y])[0]
+        for x in xs:
+            l = x
+            while l >= 0 and hole[y, l]:
+                l -= 1
+            r = x
+            while r < W and hole[y, r]:
+                r += 1
+            for src in sorted([(x - l, 2 * l - x + 1), (r - x, 2 * r - x - 1)]):
+                sx = src[1]
+                if 0 <= sx < W and known[y, sx]:
+                    mir[y, x] = col[y, sx]
+                    got[y, x] = True
+                    break
     cur = np.where(known[..., None], col, 0.0)
+    cur[got] = mir[got]
+    known = known | got
     w = known.astype(np.float64)
     for _ in range(300):
         acc = np.zeros_like(cur)
@@ -456,7 +488,7 @@ def aura_split(b):
         for dy, dx in N4:
             acc += shift(cur * w[..., None], dy, dx)
             cnt += shift(w, dy, dx)
-        upd = hole & (cnt > 0)
+        upd = hole & ~got & (cnt > 0)
         cur[upd] = acc[upd] / cnt[upd][:, None]
         w = np.where(upd, 1.0, w)
     back_col = np.where(hole[..., None], cur, col)
@@ -470,7 +502,7 @@ aura_split(built['aura'])
 
 GLOW_SRC = [b['g']['gcol'][b['glow']] for b in built.values()] + [built['aura']['veil_col'][built['aura']['veil'] > 0.02]]
 GLOW = median_cut(np.concatenate(GLOW_SRC), 6)
-ALPHAS = [30, 55, 85, 120, 160, 200]
+ALPHAS = [15, 30, 55, 85, 120, 160, 200]
 
 PAL = []  # (r, g, b, a, kind)
 for c in BODY:
@@ -512,7 +544,7 @@ def quantize(solid, rim, glow, col, g, extra_glow=None):
         idx[glow] = glow_index(g['gcol'][glow], g['A'][glow])
     if extra_glow is not None:
         m, cols, al = extra_glow
-        m = m & (idx == 0) & (al >= ALPHAS[0] / 255 * 0.6)
+        m = m & (idx == 0) & (al >= ALPHAS[0] / 255 * 0.7)
         idx[m] = glow_index(cols[m], al[m])
     return idx
 

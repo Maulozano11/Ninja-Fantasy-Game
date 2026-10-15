@@ -232,14 +232,18 @@ def layers(key):
             fg[tuple(np.array(pts).T)] = False
     # The vortex's bright violet: it shows between the crows' feathers and stays with the vortex.
     vivid = ((b - g > 62) | ((r + b) / 2 - g > 50)) & (lum > 40) & (key == 'L')
+    # ... and so does its dark purple (his crows are a greyed violet, never this saturated).
+    chroma = c.max(2) - c.min(2)
+    vivid |= (chroma > 46) & (key == 'L')
     crows = []
     taken = np.zeros((H, W), bool)
     for spec in reversed(CROWS[key]):  # front first
         m = poly_mask(spec['poly'], (H, W), (x0, y0)) & fg & ~taken
         keep = poly_mask(spec['keep'], (H, W), (x0, y0)) if 'keep' in spec else np.zeros((H, W), bool)
+        eye = m & (r > 95) & (r > g + 38) & (r > b + 4)
+        keep |= dilate(eye, 2)
         m &= ~vivid | keep
         taken |= m
-        eye = m & (r > 95) & (r > g + 38) & (r > b + 4)
         wing = np.zeros((H, W), bool)
         if 'cut' in spec:
             cx_ = [p[0] - x0 for p in spec['cut']]
@@ -472,6 +476,21 @@ def game_pieces(key):
         rgba = np.zeros((OH, OW, 4), np.uint8)
         rgba[m, :3] = SOLID[snap_idx(C, SOLID)][m]
         rgba[m, 3] = 255
+        # Pinholes inside a piece (a gap of a pixel or two between feathers) take a neighbour's colour,
+        # so a crow lifted off his picture has no specks of daylight in it.
+        ys_, xs_ = np.nonzero(m)
+        bx0, by0, bx1, by1 = xs_.min(), ys_.min(), xs_.max() + 1, ys_.max() + 1
+        for pts in components(~m[by0:by1, bx0:bx1]):
+            P = np.array(pts)
+            if len(pts) > 4 or P[:, 0].min() == 0 or P[:, 1].min() == 0 or P[:, 0].max() == by1 - by0 - 1 or P[:, 1].max() == bx1 - bx0 - 1:
+                continue
+            for py_, px_ in pts:
+                Y, X = py_ + by0, px_ + bx0
+                for dy, dx in ((0, -1), (-1, 0), (0, 1), (1, 0)):
+                    if m[Y + dy, X + dx]:
+                        rgba[Y, X] = rgba[Y + dy, X + dx]
+                        break
+            m[P[:, 0] + by0, P[:, 1] + bx0] = True
         eyes = np.zeros((OH, OW), bool)
         wing = np.zeros((OH, OW), bool)
         piece = {'name': it['name'], 'kind': kind, 'key': key, 'mask': m, 'rgba': rgba, 'eyes': eyes, 'wing': wing}
@@ -853,10 +872,9 @@ if DEBUG:
         row = []
         for n in names:
             m, rgba, _ = place(BY[n], flap=k)
-            ys, xs = np.nonzero(m)
             cx, cy = int(BY[n]['eye'][0]), int(BY[n]['eye'][1])
-            tile = np.zeros((90, 90, 4), np.uint8)
-            src = rgba[max(0, cy - 50):cy + 40, max(0, cx - 60):cx + 30]
+            tile = np.zeros((110, 120, 4), np.uint8)
+            src = rgba[cy - 60:cy + 50, cx - 60:cx + 60]
             tile[:src.shape[0], :src.shape[1]] = src
             row.append(tile)
         rows.append(np.concatenate(row, 1))

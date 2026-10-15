@@ -231,7 +231,7 @@ SPRITES = {
                  drop=[rect(296, -2, 362, 125)], dust=True),
     'wall_diag': dict(panel=P['wall_diag'], src=P['wall_diag'], anchor=(118, 179), ts=24,
                       drop=[ellipse(254, 150, 48, 70)], soft=[ellipse(254, 150, 64, 84)], dust=True,
-                      glow=dict(kind='segment', x0=40, y0=226, x1=186, y1=118, r=60, a=0.26)),
+                      glow=dict(kind='segment', x0=52, y0=196, x1=168, y1=96, r=78, a=0.3)),
     'wall_depth': dict(panel=P['wall_depth'], src=P['wall_depth'], anchor=(30, 200), ts=24,
                        drop=[rect(62, 96, 122, 212)], dust=True),
     'aura': dict(panel=P['aura'], src=(212, 683, 321, 826), anchor=(40, 112), ts=24,
@@ -359,7 +359,7 @@ def synth_glow(spec, W, H, org):
         vx, vy = bx - ax, by - ay
         t = np.clip(((gx - ax) * vx + (gy - ay) * vy) / (vx * vx + vy * vy), 0, 1)
         r = np.hypot(gx - (ax + t * vx), gy - (ay + t * vy)) / spec['r']
-    a = spec['a'] * np.clip(1 - r, 0, 1) ** 2.0
+    a = spec['a'] * np.clip(1 - r, 0, 1) ** 2.4
     out = np.zeros((H, W, 4))
     # Brighter green near the middle, deeper teal at the rim (his halo).
     med = np.median(HALO_A)
@@ -367,7 +367,7 @@ def synth_glow(spec, W, H, org):
     rim = np.median(HALO_F[HALO_A <= med], 0)
     out[..., :3] = col
     out[..., 3] = a
-    out[a < 0.03] = 0
+    out[a < 0.02] = 0
     return out
 
 for name, st in stage.items():
@@ -395,10 +395,13 @@ def stream_parts():
     E = np.concatenate([Ps + Pt, np.minimum(Cs + At, 1)[..., None]], -1)
     solidf = Cs
     tile = E[:, :64].copy(); sol = solidf[:, :64].copy()
+    # Only the braid's rows are blended (his loose leaves near the seam are left out of it).
+    gt_ = math.floor((cfg['src'][1] - cfg['panel'][1]) / S)
+    rows = slice(14 - gt_, 51 - gt_)
     for x in range(BLEND):
         w = (x + 0.5) / BLEND
-        tile[:, x] = E[:, 64 + x] * (1 - w) + E[:, x] * w
-        sol[:, x] = solidf[:, 64 + x] * (1 - w) + solidf[:, x] * w
+        tile[rows, x] = E[rows, 64 + x] * (1 - w) + E[rows, x] * w
+        sol[rows, x] = solidf[rows, 64 + x] * (1 - w) + solidf[rows, x] * w
     H = tile.shape[0]
     out = np.zeros((H, 64, 4))
     a = tile[..., 3]
@@ -477,7 +480,7 @@ def extremes(cols, q=1.5):
     return np.array(out)
 
 ALEV = np.array([0.12, 0.24, 0.36, 0.5, 0.64, 0.78])
-GLEV = np.array([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.36, 0.42])
+GLEV = np.array([0.03, 0.06, 0.1, 0.15, 0.2, 0.26, 0.33, 0.4, 0.48])
 FAM_N = {0: 26, 1: 8, 2: 7}
 
 class Palette:

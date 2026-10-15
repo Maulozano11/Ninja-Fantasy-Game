@@ -158,13 +158,16 @@ let S: Src = undefined as unknown as Src;
  */
 const dimCache = new Map<number, Color>();
 const DEEP = [16, 30, 110];
-function dimmed(r: number, g: number, b: number, k: number): Color {
+/** The electric blue his strokes and bolts glow in at their edges. */
+const ELECTRIC = [40, 100, 240];
+function dimmed(r: number, g: number, b: number, k: number, to: number[] = DEEP): Color {
   const kk = Math.round(k * 20);
-  const key = (((r << 16) | (g << 8) | b) * 64 + kk) * 2 + (S.enh ? 1 : 0);
+  const key = ((((r << 16) | (g << 8) | b) * 64 + kk) * 2 + (S.enh ? 1 : 0)) * 2 + (to === DEEP ? 0 : 1);
   const hit = dimCache.get(key);
   if (hit) return hit;
   const t = kk / 20;
-  const tr = t <= 1 ? lerp(DEEP[0], r, t) : lerp(r, 255, t - 1), tg = t <= 1 ? lerp(DEEP[1], g, t) : lerp(g, 255, t - 1), tb = t <= 1 ? lerp(DEEP[2], b, t) : lerp(b, 255, t - 1);
+  const DEEP_ = to;
+  const tr = t <= 1 ? lerp(DEEP_[0], r, t) : lerp(r, 255, t - 1), tg = t <= 1 ? lerp(DEEP_[1], g, t) : lerp(g, 255, t - 1), tb = t <= 1 ? lerp(DEEP_[2], b, t) : lerp(b, 255, t - 1);
   let best = S.palette[0], bd = Infinity;
   for (const c of S.palette) {
     const d = (c[0] - tr) ** 2 + (c[1] - tg) ** 2 + (c[2] - tb) ** 2;
@@ -285,22 +288,25 @@ function kanji(dst: Canvas, o: { write: number; breath: number; fade: number; f:
       let a = 1, k = 1;
       if (sid >= 1 && sid <= 13) {
         const local = (o.write - (sid - 1) * span) / dur;
-        a = lv(clamp(local * 1.7 - prog * 0.7, 0, 1));
-        if (a <= 0) return null;
-        if (a >= 1 && local > 0.55 && local < 1.0 && L > 170) return [255, 255, 255, c[3]];
+        const lit = lv(clamp(local * 1.7 - prog * 0.7, 0, 1));
+        if (lit <= 0) return null;
+        // Lighting up: electric blue first, then cyan, then his white core (full opacity).
+        if (lit < 1) k = 0.25 + 0.75 * lit;
+        if (lit >= 1 && local > 0.55 && local < 1.0 && L > 170) return [255, 255, 255, c[3]];
       } else {
-        a = lv(clamp((o.write - 0.84) / 0.16, 0, 1));
-        if (a <= 0) return null;
+        const lit = lv(clamp((o.write - 0.84) / 0.16, 0, 1));
+        if (lit <= 0) return null;
+        k = 0.25 + 0.75 * lit;
         // Sparks blink in clusters (dimmed, so no holes open in the glow).
-        if (noise(x, y, 10, 400 + o.f) < 0.28) k = 0.5;
+        if (noise(x, y, 10, 400 + o.f) < 0.28) k *= 0.5;
       }
       if (o.breath && L < 200) k *= 1 - o.breath;
       if (o.fade > 0) {
         // The glow dies: it loses its white first, then fades out (it stays electric blue).
         a *= 1 - smooth(0.05, 0.8, o.fade);
-        k *= 1 - 0.3 * smooth(0, 0.5, o.fade);
+        k *= 1 - 0.55 * smooth(0, 0.6, o.fade);
       }
-      const col = k < 0.999 ? dimmed(c[0], c[1], c[2], k) : c;
+      const col = k < 0.999 ? dimmed(c[0], c[1], c[2], k, ELECTRIC) : c;
       return withA(col, a * (c[3] / 255));
     },
     bbox(src, 2),
@@ -346,7 +352,7 @@ function bolt(dst: Canvas, o: { front: number; dim: number; dx: number; branches
       if (o.branches < 1 && toMain(x - o.dx, y) > 9 && noise(x, y, 26, 520 + o.f) > o.branches) return null;
       let k: Color = c;
       if (o.boost && c[0] + c[1] + c[2] > 520) k = [255, 255, 255, c[3]];
-      else if (o.dim > 0) k = dimmed(c[0], c[1], c[2], 1 - o.dim * 0.6);
+      else if (o.dim > 0) k = dimmed(c[0], c[1], c[2], 1 - o.dim * 0.6, ELECTRIC);
       return withA(k, o.alpha);
     },
     [x0 - 4 + o.dx, y0, x1 + 4 + o.dx, y1 + 1],
@@ -401,7 +407,7 @@ function dragon(dst: Canvas, o: { t: number; writhe: number; roar: number; dim: 
         const d = Math.hypot(x - mx - ox, y - my - oy);
         if (d < 34 && c[0] + c[1] + c[2] > 330) k = dimmed(c[0], c[1], c[2], 1 + o.roar * (1 - d / 34));
       }
-      if (o.dim > 0) k = dimmed(k[0], k[1], k[2], 1 - o.dim);
+      if (o.dim > 0) k = dimmed(k[0], k[1], k[2], 1 - o.dim, ELECTRIC);
       return withA(k, o.alpha);
     },
     [x0 + Math.floor(ox) - 6, y0 + Math.floor(oy) - 6, x1 + Math.ceil(ox) + 6, y1 + Math.ceil(oy) + 6],

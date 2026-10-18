@@ -308,7 +308,7 @@ AURA_FIGURE = [(1040, 962), (1055, 944), (1075, 942), (1095, 952), (1100, 975), 
 SPRITES = {
     'bolt': dict(s=S_MED, anchor=(206, 221), area=[rect(28, 101, 267, 336)],
                  solid=[BOULDER], dust=[rect(25, 101, 267, 336)], dust_a=0.9, mute_streaks=True,
-                 fade={'left': 22}, bits=40, pieces=[('boulder', [BOULDER])]),
+                 fade={'left': 22}, bits=40, pieces=[('boulder', [BOULDER])], under='harmonic'),
     'breath': dict(s=S_MED, anchor=(1323, 237), area=[rect(1317, 101, 1634, 362)],
                    dust=[rect(1317, 101, 1634, 362)], dust_a=0.92, bits=60),
     'sphere': dict(s=S_MED, anchor=(1801, 236), area=[rect(1664, 101, 1922, 348)],
@@ -323,12 +323,14 @@ SPRITES = {
                       solid=[ellipse(752, 515, 20, 22), ellipse(770, 592, 22, 22)],
                       dust=[rect(586, 425, 802, 660)], dust_a=0.95, bits=60, ground=PAGE),
     'hit': dict(s=S_MED, anchor=(962, 562), area=[rect(811, 435, 1121, 679)],
-                dust=[rect(811, 435, 1121, 679)], dust_a=0.95, bits=60, dust_colors=18, dither_dust=True),
+                dust=[rect(811, 435, 1121, 679)], dust_a=0.95, bits=60, dust_colors=18, dither_dust=True,
+                # (the rock right of the core: its glowing top is rock, not dust; its rim is open)
+                solid=[ellipse(1031, 540, 19, 14)]),
     'blast': dict(s=2.39, anchor=(1412, 737), area=[rect(1159, 435, 1668, 797)],
                   drop=[[(1640, 640), (1700, 640), (1700, 797), (1640, 797)]],
                   solid=BLAST_SOLID, dust=[rect(1159, 435, 1668, 797)], dust_a=0.92, shade=[rect(1159, 600, 1668, 797)],
                   pieces=[('k%d' % k, [p]) for k, p in enumerate(BLAST_SOLID[:12])] + [('rocks', BLAST_SOLID[12:])],
-                  fade={'right': 6, 'left': 10}, bits=80, cloud_r=10),
+                  fade={'right': 6, 'left': 10}, bits=80, cloud_r=10, under='harmonic', ground_band=14),
     'wall': dict(s=2.34, anchor=(379.5, 1177), area=[rect(24, 867, 745, 1253)], art_d=14, bits=40,
                  dust=[rect(24, 1195, 745, 1253)], sparse=True, dust_a=0.85, wall=True),
     'wall_diag': dict(s=2.35, anchor=(1545, 1302), area=[rect(1222, 867, 1975, 1490)],
@@ -1046,10 +1048,126 @@ def under_fill(idx, kinds, PALC, region, cfg, dust_pal):
     return out
 
 
-def add_under(pieces, idx, kinds, PALC, cfg, dust_pal, line=None):
+def harmonic(known, val, unknown, iters=4000):
+    """A field equal to `val` on `known` and harmonic (each pixel the mean of its four neighbours)
+    on `unknown`, 0 beyond the frame: the smoothest continuation of what lies round a hole. Solved
+    by relaxation from a multi-scale normalized-blur start (deterministic)."""
+    w = known.astype(np.float64)
+    v = np.where(known, val, 0.0)
+    est = np.zeros_like(v)
+    got = np.zeros(v.shape, bool)
+    for sg in (2.0, 4.0, 8.0, 16.0, 32.0):
+        wb = gauss(w, sg)
+        ok = unknown & ~got & (wb > 0.02)
+        est[ok] = (gauss(v * w, sg) / np.maximum(wb, 1e-9))[ok]
+        got |= ok
+    v = np.where(unknown, est, v)
+    for _ in range(iters):
+        p = np.pad(v, 1)
+        avg = (p[:-2, 1:-1] + p[2:, 1:-1] + p[1:-1, :-2] + p[1:-1, 2:]) / 4
+        nv = np.where(unknown, avg, v)
+        if np.abs(nv - v).max() < 1e-5:
+            v = nv
+            break
+        v = nv
+    return v
+
+
+def smooth_noise(H, W, cell, seed):
+    """Value noise in [0, 1) on a cell-px lattice, bilinear (deterministic)."""
+    gh, gw = H // cell + 2, W // cell + 2
+    j = np.sin((np.arange(gh)[:, None] * 127.1 + np.arange(gw)[None, :] * 311.7 + seed * 74.7)) * 43758.5453
+    g = j - np.floor(j)
+    ys = np.arange(H)[:, None] / cell
+    xs = np.arange(W)[None, :] / cell
+    y0, x0 = np.floor(ys).astype(int), np.floor(xs).astype(int)
+    fy, fx = ys - y0, xs - x0
+    fy, fx = fy * fy * (3 - 2 * fy), fx * fx * (3 - 2 * fx)
+    a, b = g[y0, x0], g[y0, x0 + 1]
+    c, d = g[y0 + 1, x0], g[y0 + 1, x0 + 1]
+    return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy
+
+
+def harmonic_under(idx, kinds, PALC, cfg, dust_pal, ground=None):
+    """His cloud continued behind the rock that stands in it (the blast's crystals, the bolt's
+    boulder): where his cloud goes on behind a rock is read from what lies round the rock. Cloud
+    is 1 on his dust (by its strength) and 0 on the clear background, and is continued across the
+    rock as a harmonic field (the smoothest surface joining the cloud's edges on either side), so the
+    hidden cloud's outline runs on from his on both sides of the rock in a smooth, billowing curve
+    (a little noise on the threshold), never along the rock's straight edges. Behind a rock half in
+    the cloud only the half in it gets dust; a crystal tip in the clear sky gets none. Under it, his
+    dust colours and strength are carried in from round the rock (normalized blur), thinner toward
+    the hidden outline, then put on his dust palette with an ordered dither between his two nearest
+    dust colours and between alpha steps (his own pixel-art texture, not a flat fill). Where his
+    ground shadow lies round a rock's foot (rows from `ground` down), the shadow is continued under
+    it the same way."""
+    H, W = idx.shape
+    k = kinds[idx]
+    rock = (k == 'body') | (k == 'outline')
+    dust = k == 'dust'
+    shade = k == 'shade'
+    rgba = PALC[np.maximum(idx, 1) - 1]
+    a_max = cfg.get('dust_a', 0.9)
+    A = np.where(dust, rgba[..., 3] / 255.0, 0.0)
+    occ = harmonic(~rock, np.clip(A / a_max * 1.25, 0, 1), rock)
+    jit = (smooth_noise(H, W, 5, 11) - 0.5) * 0.22
+    region = rock & (occ >= 0.5 + jit)
+    # His dust carried in (premultiplied colour and alpha over his dust pixels only).
+    Q = np.concatenate([rgba[..., :3] * A[..., None], A[..., None]], -1)
+    w = dust.astype(np.float64)
+    out_q = np.zeros_like(Q)
+    done = np.zeros((H, W), bool)
+    for sg in (1.5, 3.0, 6.0, 12.0, 24.0):
+        wb = gauss(w, sg)
+        qb = gauss(Q * w[..., None], sg) / np.maximum(wb, 1e-9)[..., None]
+        ok = region & ~done & (wb > 0.03)
+        out_q[ok] = qb[ok]
+        done |= ok
+    edge = np.clip((occ - 0.5 - jit) / 0.22, 0, 1)
+    a = np.where(region & done, out_q[..., 3], 0.0) * (0.55 + 0.45 * edge)
+    out = np.zeros((H, W), np.int32)
+    d0 = int(np.nonzero(kinds == 'dust')[0][0]) if (kinds == 'dust').any() else 0
+    on = region & (a > 0.02)
+    if len(dust_pal) and on.any():
+        colr = out_q[on][:, :3] / np.maximum(out_q[on][:, 3], 1e-6)[:, None]
+        dd = ((colr[:, None, :] - dust_pal[None]) ** 2).sum(-1)
+        order = np.argsort(dd, 1)
+        ci = order[:, 0]
+        bay = bayer_at(H, W)[on]
+        if dust_pal.shape[0] > 1:
+            d1 = np.sqrt(dd[np.arange(len(ci)), ci])
+            d2 = np.sqrt(dd[np.arange(len(ci)), order[:, 1]])
+            ci = np.where(bay < d1 / np.maximum(d1 + d2, 1e-6), order[:, 1], ci)
+        st = np.floor(a[on] / a_max * DUST_STEPS + bay) - 1
+        keep = st >= 0
+        st = np.clip(st, 0, DUST_STEPS - 1).astype(int)
+        out[on] = np.where(keep, d0 + ci * DUST_STEPS + st, 0)
+    if shade.any() and ground is not None:
+        # His ground shadow continued under the rocks standing in it (below the cloud's dust).
+        s0 = int(np.nonzero(kinds == 'shade')[0][0])
+        SAv = np.where(shade, (idx - s0) / max(1, len(SHADE_STEPS) - 1), 0.0)
+        socc = harmonic(~rock, shade.astype(np.float64), rock)
+        sreg = rock & (out == 0) & (socc >= 0.5 + jit) & (np.arange(H) >= ground)[:, None]
+        sw = shade.astype(np.float64)
+        sval = np.zeros((H, W))
+        sdone = np.zeros((H, W), bool)
+        for sg in (2.0, 4.0, 8.0, 16.0):
+            wb = gauss(sw, sg)
+            ok = sreg & ~sdone & (wb > 0.03)
+            sval[ok] = (gauss(SAv * sw, sg) / np.maximum(wb, 1e-9))[ok]
+            sdone |= ok
+        st = np.clip(np.round(sval * (len(SHADE_STEPS) - 1)), 0, len(SHADE_STEPS) - 1).astype(int)
+        out = np.where(sreg, s0 + st, out)
+    return out
+
+
+def add_under(pieces, idx, kinds, PALC, cfg, dust_pal, line=None, ground=None):
     if not (kinds == 'dust').any():
         return pieces
-    u = under_fill(idx, kinds, PALC, under_region(idx, kinds, cfg, line), cfg, dust_pal)
+    if cfg.get('under') == 'harmonic':
+        u = harmonic_under(idx, kinds, PALC, cfg, dust_pal, ground)
+    else:
+        u = under_fill(idx, kinds, PALC, under_region(idx, kinds, cfg, line), cfg, dust_pal)
     if u.any():
         ys, xs = np.nonzero(u)
         bx0, by0, bx1, by1 = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
@@ -1102,7 +1220,7 @@ for name, b in built.items():
             review[lname] = (sub, PALC, b['g']['his'])
         continue
     result[name] = {'w': b['W'], 'h': b['H'], 'anchor': [b['ax'], b['ay']], 'pal': pal_json,
-                    'pieces': add_under(split_pieces(idx, kinds, b), idx, kinds, PALC, cfg, dust)}
+                    'pieces': add_under(split_pieces(idx, kinds, b), idx, kinds, PALC, cfg, dust, ground=b['ay'] - cfg.get('ground_band', 0))}
     review[name] = (idx, PALC, b['g']['his'])
 
 for name, r in result.items():

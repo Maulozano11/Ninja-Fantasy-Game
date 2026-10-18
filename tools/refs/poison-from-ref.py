@@ -260,8 +260,10 @@ def his_character(name, grow=3):
 #           glow (his light, his mist's soft edges). grey_glow: grey haze is kept as glow (trails).
 # pieces:   [(name, polygons[, family])] named pieces split off 'main' (first match wins; only that
 #           family's pixels when one is named); purple_piece: a
-#           piece taking every violet pixel left in 'main'; frame: the stone frame is its own piece.
+#           piece taking every violet pixel left in 'main'.
 # drops:    the largest loose bit (px at game scale) still counted as a droplet.
+# frame:    polygons of his stone frame (walls): his stone is grown into its dark faces and rimmed,
+#           and it is its own piece.
 # pad:      extra room (left, top, right, bottom) round the art for the animation.
 
 SPRITES = {
@@ -278,8 +280,12 @@ SPRITES = {
                   pad=(3, 0, 3, 3),
                   pieces=[('mist', [rect(339, 179, 411, 262), [(455, 179), (520, 179), (520, 240), (470, 240), (462, 222)]], 'purple'),
                           ('pool', [[(339, 258), (409, 258), (416, 280), (458, 282), (466, 258), (581, 258), (581, 344), (339, 344)]])]),
-    'wall': dict(anchor=(149.5, 503), area=[rect(6, 375, 300, 510)], drops=30, char=True, frame=True, pad=(3, 3, 3, 3)),
-    'wall_diag': dict(anchor=(600, 590), area=[rect(480, 375, 759, 657)], drops=30, char=True, frame=True,
+    'wall': dict(anchor=(149.5, 503), area=[rect(6, 375, 300, 510)], drops=30, char=True, pad=(3, 3, 3, 3),
+                 frame=[rect(11, 403, 39.5, 510), rect(260.5, 403, 292, 510), rect(11, 484, 292, 510)]),
+    'wall_diag': dict(anchor=(600, 590), area=[rect(480, 375, 759, 657)], drops=30, char=True,
+                      frame=[[(484, 497), (530, 497), (530, 531), (527, 531), (527, 545), (524.5, 545), (524.5, 649), (484, 649)],
+                             rect(678.5, 390, 706, 553), [(524, 614), (540, 606), (600, 571), (650, 542), (679, 525), (706, 553), (531, 646)],
+                             rect(598, 566, 619, 592)],
                       light=[[(528, 640), (600, 606), (650, 579), (700, 553), (720, 541), (759, 505), (759, 657), (528, 657)]], fade={'r': 36, 'b': 30}, light_s=0.7, light_gap=2, pad=(3, 3, 0, 0)),
     'aura': dict(anchor=(401, 493.4), area=[rect(360, 375, 441, 510)], drops=20, aura=True, pad=(3, 3, 3, 3)),
     # The stream: his beam, the tile ending where his splash head begins (anchor x), centred on
@@ -385,6 +391,7 @@ def classify_his(name, cfg):
         sizes = np.bincount(lab.ravel(), minlength=n + 1)
         stone = np.isin(lab, [k for k in range(1, n + 1) if sizes[k] >= 25])
         cand = keep & ~art & ~dark & (L < 110) & (dist >= 7) & ((fs != 0) | (L < 60))
+        cand &= dilate(poly_mask(H0, W0, cfg['frame']), 2, nb=N8)
         if cfg.get('light'):
             cand &= ~poly_mask(H0, W0, cfg['light'])
         for _ in range(40):
@@ -770,32 +777,20 @@ KIND = np.array(['clear'] + [p[4] for p in PAL])
 PFAM = np.array(['none'] + [p[5] for p in PAL])
 
 
-def frame_piece(idx, cfg):
-    """His stone frame: the neutral (stone) pixels, closed over his green runes cut into it."""
-    kinds = KIND[idx]
-    stone = (PFAM[idx] == 'neutral') & ((kinds == 'body') | (kinds == 'outline'))
-    # Big stone parts only (the pale motes are neutral too).
-    lab, n = components(stone, nb=N8)
-    sizes = np.bincount(lab.ravel(), minlength=n + 1)
-    stone = np.isin(lab, [k for k in range(1, n + 1) if sizes[k] >= 60])
-    # A rune pixel is enclosed: stone on both sides within 4 px, across or down.
+def frame_piece(idx, cfg, b):
+    """His stone frame (the posts, the base and its rune plaques): every drawn pixel inside the
+    frame's polygons (traced on his sheet) except his light."""
     H, W = idx.shape
-    enclosed = np.zeros((H, W), bool)
-    for axis in (0, 1):
-        before = np.zeros((H, W), bool)
-        after = np.zeros((H, W), bool)
-        for d in range(1, 5):
-            if axis == 1:
-                before |= shift(stone, 0, d)
-                after |= shift(stone, 0, -d)
-            else:
-                before |= shift(stone, d, 0)
-                after |= shift(stone, -d, 0)
-        enclosed |= before & after
-    frame = (stone | (enclosed & (idx > 0) & (kinds != 'glow')))
-    # (and the frame's own rim)
-    frame |= (kinds == 'outline') & dilate(frame, nb=N8) & ~dilate((idx > 0) & ~frame & (kinds == 'body'), nb=N4)
-    return frame
+    x0, y0 = b['g']['box'][:2]
+    m = poly_mask(H, W, cfg['frame'], x0, y0, sx_of(cfg), SY)
+    fr = m & (idx > 0) & (KIND[idx] != 'glow')
+    # His slime reaching into a polygon stays slime: a bright green part that runs on outside the
+    # polygons is not a rune cut into the stone (his greenish stone is darker).
+    green = (idx > 0) & (PFAM[idx] == 'green') & (KIND[idx] == 'body') & (lum(PALC[np.maximum(idx, 1) - 1][..., :3]) > 95)
+    lab, n = components(green, nb=N4)
+    out = np.unique(lab[green & ~m])
+    fr &= ~np.isin(lab, out[out > 0])
+    return fr
 
 
 def split_pieces(idx, cfg, b, keep_full=False, wrap=False):
@@ -806,7 +801,7 @@ def split_pieces(idx, cfg, b, keep_full=False, wrap=False):
     owner[kinds == 'glow'] = 'glow'
     names = ['main', 'drops', 'glow']
     if cfg.get('frame'):
-        fr = frame_piece(idx, cfg)
+        fr = frame_piece(idx, cfg, b)
         owner[fr] = 'frame'
         names.append('frame')
     body = (kinds == 'body') & (owner == 'main')

@@ -854,15 +854,15 @@ function blast(): WorldSprite {
     { sh: 1, ds: 1, up: 1, bits: 1, t: 0, cool: 0, dim: 0, thin: 0, shDim: 0 },
     { sh: 1.01, ds: 1.01, up: 1, bits: 1.04, t: 0.04, cool: 0, dim: 0, thin: 0, shDim: 0 },
     { sh: 1.02, ds: 1.02, up: 1, bits: 1.08, t: 0.08, cool: 0, dim: 0, thin: 0, shDim: 0 },
-    { sh: 1.03, ds: 1.04, up: 0.95, bits: 1.14, t: 0.12, cool: 0, dim: 0, thin: 0.04, shDim: 0 },
-    { sh: 1.04, ds: 1.06, up: 0.86, bits: 1.22, t: 0.16, cool: 1, dim: 0, thin: 0.1, shDim: 0 },
-    { sh: 1.05, ds: 1.08, up: 0.76, bits: 1.3, t: 0.2, cool: 1, dim: 1, thin: 0.16, shDim: 1 },
-    { sh: 1.05, ds: 1.1, up: 0.65, bits: 1.39, t: 0.24, cool: 2, dim: 1, thin: 0.23, shDim: 1 },
-    { sh: 1.06, ds: 1.12, up: 0.54, bits: 1.48, t: 0.28, cool: 2, dim: 1, thin: 0.3, shDim: 2 },
-    { sh: 1.06, ds: 1.13, up: 0.43, bits: 1.57, t: 0.32, cool: 3, dim: 2, thin: 0.32, shDim: 2 },
-    { sh: 1.07, ds: 1.14, up: 0.32, bits: 1.66, t: 0.36, cool: 3, dim: 3, thin: 0.36, shDim: 3 },
-    { sh: 1.07, ds: 1.15, up: 0.21, bits: 1.75, t: 0.4, cool: 3, dim: 4, thin: 0.4, shDim: 3 },
-    { sh: 1.08, ds: 1.16, up: 0.1, bits: 1.84, t: 0.44, cool: 3, dim: 5, thin: 0.44, shDim: 4 },
+    { sh: 1.03, ds: 1.03, up: 0.94, bits: 1.14, t: 0.12, cool: 0, dim: 0, thin: 0.03, shDim: 0 },
+    { sh: 1.04, ds: 1.05, up: 0.84, bits: 1.22, t: 0.16, cool: 1, dim: 1, thin: 0.08, shDim: 0 },
+    { sh: 1.05, ds: 1.07, up: 0.72, bits: 1.3, t: 0.2, cool: 1, dim: 1, thin: 0.14, shDim: 1 },
+    { sh: 1.05, ds: 1.09, up: 0.6, bits: 1.39, t: 0.24, cool: 2, dim: 2, thin: 0.2, shDim: 1 },
+    { sh: 1.06, ds: 1.1, up: 0.48, bits: 1.48, t: 0.28, cool: 2, dim: 2, thin: 0.28, shDim: 2 },
+    { sh: 1.06, ds: 1.11, up: 0.36, bits: 1.57, t: 0.32, cool: 3, dim: 3, thin: 0.36, shDim: 3 },
+    { sh: 1.07, ds: 1.12, up: 0.25, bits: 1.66, t: 0.36, cool: 3, dim: 4, thin: 0.45, shDim: 4 },
+    { sh: 1.07, ds: 1.13, up: 0.14, bits: 1.75, t: 0.4, cool: 3, dim: 5, thin: 0.55, shDim: 5 },
+    { sh: 1.08, ds: 1.14, up: 0.05, bits: 1.84, t: 0.44, cool: 4, dim: 6, thin: 0.65, shDim: 6 },
   ];
   // Up per crystal: rising, the middle ones lead; sinking, all together.
   const upOf = (i: number, u: number, off: number) => (i < BLAST_KEY ? clamp(u * 1.3 - off * 0.3, 0, 1) : u);
@@ -870,10 +870,9 @@ function blast(): WorldSprite {
   const fr = plan.map((p, i) => {
     if (i === BLAST_KEY) return union(shade, under, dust, ...crystals, loose);
     const sh = dimSoft(scaled(shade, p.sh, p.sh, K.ax, K.ay), p.shDim);
-    const ds = scaled(dust, p.ds, p.ds, K.ax, K.ay);
-    const sil = silhouette(ds, 6);
-    const us = scaled(under, p.ds, p.ds, K.ax, K.ay).filter((_v, x, y) => !!sil[y * ds.w + x]);
-    let d = union(us, ds);
+    // His cloud and its continuation behind the crystals (the extractor reads where his cloud goes
+    // on behind each crystal from the cloud round it, so it has his outline, never a crystal's).
+    let d = scaled(union(under, dust), p.ds, p.ds, K.ax, K.ay);
     if (p.t > 0) d = churn(d, p.t, { amp: 1.6, cell: 7, seed, flow: (x) => [Math.sign(x - K.ax) * 1.4, -1] });
     d = thinFine(settle(d, p.cool, p.dim), p.thin, seed + 1, bias);
     const ks = crystals.map((c, k) => {

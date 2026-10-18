@@ -13,11 +13,12 @@ Each picture is split into layers in his own pixels: every crow is cut out along
 outline (the bright vortex showing between its feathers stays with the vortex, and so does the
 black smoke behind the flock), small loose feathers are found as separate pieces, and what is
 left (the vortex, the smoke) is a veil un-mixed from his background into colour plus alpha. Each
-layer is area-averaged down to the game scale on one grid (the anchor at the centre of the swarm's
-mass, shared by both pictures) and snapped to a palette sampled from his pixels at that scale (dark
-and light halves sampled apart, plus his brightest beak and feather glints, so his highlights are
-not outvoted). Dark edges on open air get a 1 px outline in the colour of his own crow edges. Every
-eye is the same round stamp at the traced eye: a crimson ring round a rose core.
+layer is area-averaged (a true box filter) down to the game scale on one grid (the anchor at the
+centre of the swarm's mass, shared by both pictures) and snapped to a palette sampled from his pixels
+at that scale in brightness bands, up to his brightest beak, rim and vortex glints, with brightness
+weighing more than hue in the snap, so his highlights keep their count and level. Dark edges on open
+air get a 1 px outline in the colour of his own crow edges. Every eye is the same round stamp at the
+traced eye, in his hue: a dark crimson ring round a dim mauve core.
 
 The other frames are made from the same pixels, so the crows stay his: each crow is lifted off his
 picture at sheet scale with its holes closed, and beats its wings by turning his own raised-wing
@@ -25,19 +26,24 @@ pixels about the shoulder (30 and 60 degrees, nearest neighbour, before the shri
 behind the body and the near wing in front. They move by whole pixels and are mirrored to turn
 round; where one of his flock crows is partly hidden in his flock (a wing and a head), the whole crow
 of his left picture flies its place while it is away from the flock. One-pixel hairs and loose crumbs
-(under 10 px) of the lifted pieces are left out, so nothing reads as a stray line. His vortex is
-unwrapped about its eye into polar space, the holes the crows leave are filled along each ring from
-the same radius, and it spins by shifting the angle and closes by scaling the radius, so its stripes
-stay crisp. His smoke trails in behind the flock and is left behind; his
-feathers drift back. The 'summon' anim (our proposal: he painted only the fly frames) opens his
-vortex at the caster and brings the crows out of it and round it, ending on his left picture.
+of the lifted pieces are left out, and so are loose black scratches of wisp, so nothing reads as a
+stray line. His vortex is unwrapped about its eye into polar space (nearest neighbour, so its pixels
+come back unblurred); the parts his crows hid are filled with his own stripes, copied round from the
+visible arc at the same radius and cross-faded in, and it spins by shifting the angle and closes by
+scaling the radius. His smoke trails in behind the flock and is left behind; his feathers drift
+back. Soft pixels are kept only on the swarm's outer edge: inside it everything is solid, so the
+ground never shows through his art. The 'summon' anim (our proposal: he painted only the fly frames)
+opens his vortex at the caster and brings the crows out of it head first, ending on his left picture.
 
 The result is a TypeScript data module (palette + run-length rows) that the generator
 (tools/world-sprites/vfx-beast-crows.ts) decodes, so the build needs no image files. Deterministic.
 The build fails if a frame has an enclosed transparent gap over 20 px, a speck of 3 px or less, an
-opaque pixel on its edge, a mean luma more than 20 % off its neighbour's (a flash), or (fly) an
-opaque mass more than 25 % off its neighbour's, a light (alpha x luma) more than 1.5x off it, or a
-crow moving more than 25 px from one frame to the next.
+opaque pixel on its edge, a translucent pixel more than 2 px inside the swarm, a loose bit of crow, a
+mean luma more than 20 % off its neighbour's (a flash), a crow coming into or out of sight without
+going behind the vortex, or (fly) an opaque mass more than 25 % off its neighbour's, a light (alpha x
+luma) more than 1.5x off it, a crow moving more than 25 px from one frame to the next (R1's swoop back
+to L1's place: 32), a vortex whose lit violet share is more than 30 % off his picture's (fly 1, 2, 5),
+or key frames whose pixels above luma 90 and 100 are more than 20 % off his picture's at game scale.
 """
 import json
 import os
@@ -271,8 +277,11 @@ CROWS = {
         {'name': 'L1', 'cut': [(268, 862), (293, 860), (298, 855), (322, 855), (329, 860), (346, 864), (380, 862)], 'split': 320, 'near': 'hi', 'eye': (308, 863), 'face': -1,
          'pivot': {'lo': (297, 859), 'hi': (326, 859)},
          'poly': [(276, 838), (282, 840), (288, 846), (296, 851), (302, 855), (310, 855), (318, 857), (322, 860), (326, 856), (332, 848), (338, 840), (343, 833), (348, 826), (356, 820), (364, 814), (370, 809), (374, 811), (375, 820), (375, 832), (372, 842), (366, 850), (358, 857), (350, 861), (345, 868), (343, 878), (340, 888), (335, 896), (326, 900), (316, 897), (309, 892), (304, 884), (299, 878), (295, 873), (294, 867), (296, 863), (290, 861), (284, 857), (279, 851), (275, 844)]},
+        # L2 sits on L3's raised wing: its belly under the head is cut along that wing in his picture, so the
+        # lifted crow leaves that cut edge (a drip under the throat) behind (`trim`). Its far wing, up over
+        # its head, sweeps back when it beats, never down across its beak.
         {'name': 'L2', 'cut': [(395, 866), (428, 866), (440, 856), (448, 846), (458, 843), (472, 841), (492, 841)], 'split': 449, 'near': 'lo', 'eye': (468, 852), 'face': 1,
-         'pivot': {'lo': (446, 845), 'hi': (453, 843)},
+         'pivot': {'lo': (446, 845), 'hi': (453, 843)}, 'turn': {'hi': -1}, 'trim': [(452, 864), (474, 864), (474, 878), (452, 878)],
          'poly': [(406, 808), (411, 809), (418, 819), (425, 827), (432, 834), (440, 839), (447, 843), (453, 841), (459, 835), (466, 828), (474, 821), (481, 815), (486, 812), (488, 817), (483, 826), (477, 834), (471, 841), (473, 846), (479, 852), (484, 858), (487, 864), (481, 865), (473, 863), (468, 867), (466, 872), (462, 872), (446, 871), (436, 868), (428, 863), (420, 859), (412, 853), (405, 847), (401, 839), (400, 829), (402, 818)]},
         # L3's outline hugs its beak: the dark smoke streak under it is the vortex's, not the crow's. It
         # also hugs the tip of its raised near wing: the dark stripe edge running right from it is the vortex's.
@@ -594,7 +603,7 @@ FEATHERS = {k: [p['name'] for p in PIECES[k] if p['kind'] == 'feather'] for k in
 
 WING_DEG = {'up': 0, 'mid': 30, 'down': 60}
 FRAG = 10  # game px: in the in-betweens, loose crumbs smaller than this (a crow's or a wisp's) are left out
-FRAG_V = 24  # game px: a bit of the vortex's outer wisps that a spin turns out loose, smaller than this, is left out
+FRAG_V = 25  # game px: a loose scratch of black wisp (or of the spun vortex) smaller than this is left out of the frames we make
 
 
 def turn_nn(mask, rgb, deg, px, py):
@@ -622,6 +631,8 @@ def sheet_crow(key, cr):
     L = LAY[key]
     x0, y0 = PICS[key][:2]
     m, rgb = fill_holes(cr['mask'], L['rgb'])
+    if 'trim' in cr:  # a cut edge that would hang loose off the lifted crow
+        m &= ~poly_mask(cr['trim'], m.shape, (x0, y0))
     c = L['rgb']
     vivid = (c.max(2) - c.min(2) > 40) & (c[..., 1] < 0.5 * np.maximum(c[..., 0], c[..., 2])) & (key == 'L')
     H, W = m.shape
@@ -1012,10 +1023,11 @@ def compose(items, his=None):
         one = mixed & (layers_ == 1)
         f[one, :3] = single[one, :3]
         f[one, 3] = np.where(a[one] >= 0.999, 255, single[one, 3])
-    # Specks of 3 px or less (a crumb of a moved veil or a cut) go.
+    # Specks of 3 px or less (a crumb of a moved veil or a cut) go. In the frames we make, so does a black
+    # scratch of wisp under FRAG_V px left loose over open ground (his lit feathers stay).
     for pts in components(f[..., 3] > 0):
-        if len(pts) <= 3:
-            P = np.array(pts)
+        P = np.array(pts)
+        if len(pts) <= 3 or (his is None and len(pts) < FRAG_V and lum(f[P[:, 0], P[:, 1]]).mean() < 30):
             f[P[:, 0], P[:, 1]] = 0
             pasted[P[:, 0], P[:, 1]] = False
     # Gaps shut in by the swarm (his background showing between crows that overlap, or crows moved apart)
@@ -1071,12 +1083,12 @@ def compose(items, his=None):
 O = np.array([OAX, OAY], np.float32)  # the swarm's centre (the anchor)
 VC = np.array(to_game('L', VCX + PICS['L'][0], VCY + PICS['L'][1]), np.float32)  # the vortex's eye
 PAIRS = {'L1': 'R1', 'L2': 'R2', 'L3': 'R6', 'L4': 'R5'}  # out: who becomes who (by place in the swarm)
-EMERGE = ['R3', 'R4']  # in the flock only: they come up out of the vortex on the way out
+EMERGE = {'R3': 0.5, 'R4': 0.72}  # in the flock only: they come up out of the vortex on the way out (how far out in frame 2)
 # Back (frame 5): the flock crows nearest each of his left picture's places head for them, R1 turning round
 # to swoop back to L1's (63 px off, so its two strokes are the loop's longest, 31 px); R3 and R6 sink toward
 # the vortex's eye (by these game px), tucked behind its front swirl, and are gone into it by frame 0.
 BACK = {'R1': 'L1', 'R2': 'L2', 'R4': 'L3', 'R5': 'L4'}
-SINK = {'R3': 10, 'R6': 23}
+SINK = {'R3': 10, 'R6': 6}
 SWOOP = {(4, 'R1->L1'): 32.0, (5, 'L1'): 32.0}  # the travel limit for that one swoop's two strokes (every other crow: 25 px a frame)
 # Three of his flock crows are partly hidden behind the others in his right picture (R2 is a wing and a
 # head, R5 a body cut by R6's wing, R4 smaller than the L3 it heads for). Wherever such a crow is away
@@ -1163,7 +1175,7 @@ def fly():
     TRACE.clear()
     # 2: half way: they break out to the right (the two looking back turn round), the first two of the
     # flock come up out of the vortex behind its swirl, the vortex closes, the feathers stream back.
-    f2 = compose([at(n, swirl(VC, eye(n), 0.5), wings=wings(n, 2), dark=0.3) for n in EMERGE] +
+    f2 = compose([at(n, swirl(VC, eye(n), EMERGE[n]), wings=wings(n, 2), dark=0.3) for n in EMERGE] +
                  [vortex(30, 0.85)] +
                  feathers('L', 30, -10, 2, only=(2, 0)) + feathers('R', 0, 10, -2, only=(2, 1)) +
                  [at(n, swirl(eye(n), eye(PAIRS[n]), T_OUT[1]), mirror=BY[n]['face'] < 0, wings=wings(n, 2)) for n in ORDER['L']])
@@ -1195,7 +1207,7 @@ def fly():
     def sink(n):
         u = (VC - eye(n)) / np.linalg.norm(VC - eye(n))
         return at(n, eye(n) + u * SINK[n], wings=wings(n, 5), dark=0.3)
-    f5 = compose([smoke(tail=SMOKE5, dx=-8, dy=1)] + [sink(n) for n in SINK] + [vortex(-15, V5)] +
+    f5 = compose([smoke(tail=SMOKE5, dx=-8, dy=1)] + [sink(n) for n in SINK] + [vortex(-30, V5)] +
                  feathers('R', 0, -9, 1) + feathers('L', -16, 4, -1) + [back(n) for n in BACK])
     POS[5] = dict(TRACE)
     TRACE.clear()
@@ -1342,27 +1354,30 @@ for i in (1, 2, 5):
         if not 0.7 <= di / max(d0, 1e-6) <= 1.3:
             FAILS.append(f'fly {i}: vortex {k} share {di:.3f} against {d0:.3f} in his picture (allowed +-30 %)')
 
-# No crow pops: one may leave the swarm or join it only into or out of the vortex: in the frame it is last
-# or first seen, at least 40 % of it is hidden (behind the vortex's swirl or the crows in front of it) and
-# some of it (10 % or more) is behind the vortex itself.
-BECOMES = dict(BECOMES)
+# No crow pops: a crow may come into sight or go out of it only from behind something, the vortex above
+# all. A crow counts as seen in a frame when 5 % of it or more shows. When it comes into sight or goes out
+# of it between two frames, one of the two must draw it at least 40 % hidden (behind the vortex's swirl or
+# the crows in front of it) with at least 10 % of it behind the vortex itself.
+SEEN = 0.05
 for anim, fr in frames.items():
     n = len(fr)
     for i in range(n if anim == 'fly' else n - 1):
         j = (i + 1) % n
         ci, cj = META[id(fr[i])]['crows'], META[id(fr[j])]['crows']
         ren = BECOMES.get((i, j), {}) if anim == 'fly' else {}
-        gone = [c for c in ci if ren.get(c, c) not in cj]
-        new = [c for c in cj if c not in {ren.get(x, x) for x in ci}]
-        for c in gone:
-            if 1 - ci[c]['visible'] < 0.4 or ci[c]['behind_vortex'] < 0.1:
-                FAILS.append(f'{anim} {i} -> {j}: {c} vanishes with only {1 - ci[c]["visible"]:.0%} of it hidden ({ci[c]["behind_vortex"]:.0%} behind the vortex)')
-        for c in new:
-            if 1 - cj[c]['visible'] < 0.4 or cj[c]['behind_vortex'] < 0.1:
-                FAILS.append(f'{anim} {i} -> {j}: {c} appears with only {1 - cj[c]["visible"]:.0%} of it hidden ({cj[c]["behind_vortex"]:.0%} behind the vortex)')
-        if gone or new:
-            print(f'{anim} {i} -> {j}: into the vortex (hidden, behind the vortex)', {c: (round(1 - ci[c]['visible'], 2), round(ci[c]['behind_vortex'], 2)) for c in gone},
-                  'out of it', {c: (round(1 - cj[c]['visible'], 2), round(cj[c]['behind_vortex'], 2)) for c in new})
+        back_ = {v: k for k, v in ren.items()}
+        pairs = {(c, ren.get(c, c)) for c in ci} | {(back_.get(c, c), c) for c in cj}
+        for a_, b_ in sorted(pairs):
+            va = ci[a_]['visible'] if a_ in ci else 0.0
+            vb = cj[b_]['visible'] if b_ in cj else 0.0
+            if (va >= SEEN) == (vb >= SEEN):
+                continue
+            tucked = [d[c] for d, c in ((ci, a_), (cj, b_)) if c in d and 1 - d[c]['visible'] >= 0.4 and d[c]['behind_vortex'] >= 0.1]
+            what = 'goes out of sight' if va >= SEEN else 'comes into sight'
+            print(f'{anim} {i} -> {j}: {a_ if va >= SEEN else b_} {what} (shows {va:.0%} -> {vb:.0%}), behind the vortex: '
+                  f'{ci[a_]["behind_vortex"] if a_ in ci else 0:.0%} -> {cj[b_]["behind_vortex"] if b_ in cj else 0:.0%}')
+            if not tucked:
+                FAILS.append(f'{anim} {i} -> {j}: {a_}/{b_} {what} without going behind the vortex (shows {va:.0%} -> {vb:.0%})')
 
 # No loose bit of a crow: in the frames we made, every piece of the swarm that is mostly crow is a whole
 # crow (over 150 px), never a cut wing, a talon or a drip floating on its own.
@@ -1547,7 +1562,7 @@ if DEBUG:
         bg.alpha_composite(Image.fromarray(h, 'RGBA'), (0, 0))
         bg.alpha_composite(Image.fromarray(o, 'RGBA'), (W + 4, 0))
         save_whole(bg.resize((bg.width * 4, bg.height * 4), Image.NEAREST), os.path.join(DEBUG, f'cmp-{k}.png'))
-    vs = [his_veil('L'), vortex()[1], vortex(15)[1], vortex(30, 0.85)[1], vortex(45, 0.72, 0.85)[1], vortex(-15, V5)[1],
+    vs = [his_veil('L'), vortex()[1], vortex(15)[1], vortex(30, 0.85)[1], vortex(45, 0.72, 0.85)[1], vortex(-30, V5)[1],
           SMOKE, smoke(0.7, dx=4)[1], smoke(tail=SMOKE5, dx=-8, dy=1)[1]]
     strip = np.concatenate([v[CY0:CY1, CX0:CX1] for v in vs], 1)
     bg = Image.new('RGBA', (strip.shape[1], strip.shape[0]), (0x5d, 0x6b, 0x57, 255))

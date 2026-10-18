@@ -21,13 +21,18 @@ filter is then the identity and nothing is blurred). Each picture is split into 
 The body pixels are snapped to a palette sampled from his pixels and the body gets a 1 px outline in
 the deep green of his own edges. The two pictures share one anchor: the centre of the body's mass.
 
-In-betweens (1-4 from his LEFT to his RIGHT picture, 6-7 back): the coils slither: the spine bends
-from one of his shapes to the other, the change starting at the neck and running down to the tail
-(a travelling wave), and the coil pixels of the nearer picture are carried along it (each keeps its
-place along and across the body). The head piece is moved whole, by whole pixels: it draws back,
-strikes forward and settles (the hood sways with it), and the neck bends to follow it. His mist
-blobs drift back and fade while the other picture's blobs drift in. No frame flashes: the build
-fails if a frame's light (alpha x luma) or opaque mass jumps from its neighbour's.
+In-betweens (1-4 from his LEFT to his RIGHT picture, 6-7 back): the coils slither. Both spines are
+laid on one parameter by his landmarks (the tail's low point, the top of the hump, the coil on the
+ground under the neck), so each point of the body moves from its place in one picture to its place
+in the other (his hump to his hump), and his coil pixels are carried along the moving spine (each
+keeps its place along and across the body, nearest pixel). They come from his starting picture,
+except the tail end, which takes the other picture's pixels first, more of the body each frame (so
+the light changes a little each frame, never all at once). The head piece is his starting picture's,
+moved whole by whole pixels: it draws back, strikes forward and settles (the hood sways with it), and
+the neck bends to follow it. His mist blobs drift back and fade one after another while the other
+picture's blobs drift in. No frame flashes: the build fails if a frame's light (alpha x luma) or
+opaque mass is more than 12 % off its neighbour's. Where his mist hides or tints the edge of a coil,
+the coil goes on under it with his own scales from one scale period along the body.
 
 The result is a TypeScript data module (palette + run-length rows) that the generator
 (tools/world-sprites/vfx-beast-cobra.ts) decodes, so the build needs no image files. Deterministic.
@@ -244,6 +249,10 @@ S_MEASURED = CHAR_H / HIS_CHAR_H
 # then taken one to one (no resampling blur at all).
 S = 1.0 if abs(S_MEASURED - 1.0) <= 0.03 else S_MEASURED
 print('his character:', {k: h for k, (h, _) in HEIGHTS.items()}, '-> median', HIS_CHAR_H, 'measured scale', round(S_MEASURED, 4), '-> scale', S)
+if S != 1.0:
+    # Everything below works on his pixels one to one (whole-pixel moves keep them his); a sheet at another
+    # scale needs an area-filter shrink of each frame's layers before the palette snap and the outline.
+    raise SystemExit(f'his sheet is at {S_MEASURED:.3f} of the game scale: this converter takes his pixels 1:1')
 print('panel background', BG.astype(int).tolist())
 
 
@@ -362,15 +371,6 @@ def project(P, Q, chunk=3000):
         v_out[i0:i0 + chunk] = ((q - C[r, j]) * Nseg[j]).sum(1)
         d_out[i0:i0 + chunk] = np.sqrt(d2[r, j])
     return s_out, v_out, d_out
-
-
-def at(P, u):
-    """The polyline P at fractional point indices u (extended along its end directions)."""
-    n = len(P)
-    u = np.asarray(u, np.float64)
-    i = np.clip(np.floor(u).astype(int), 0, n - 2)
-    f = (u - i)[..., None]
-    return P[i] * (1 - f) + P[i + 1] * f
 
 
 # --- his two pictures, split into their pieces -------------------------------------------------------------
@@ -515,7 +515,6 @@ for k, d in KEYS.items():
     c['wl'] = np.interp(idx, np.arange(len(d['wl'])), d['wl'])
     c['wr'] = np.interp(idx, np.arange(len(d['wr'])), d['wr'])
     c['seg'] = float(np.hypot(*np.diff(P, axis=0).T).mean())
-    c['th'] = np.unwrap(np.arctan2(np.diff(P[:, 1]), np.diff(P[:, 0])))
     C[k] = c
 
 
@@ -561,6 +560,28 @@ for k, c in C.items():
 
 # --- his coils under his mist: the body goes on under a mist blob that hides its edge ----------------------
 TEX_PERIOD = 6.0  # px along the body: the hidden coil repeats his scales from one or more periods away
+
+
+def period_copy(c, xs, ys, clean):
+    """Colours for coil pixels (xs, ys) taken from his clean coil pixels one or more scale periods along the
+    body at the same place across it."""
+    s_, v_, _ = project(c['P'], np.stack([xs, ys], 1).astype(np.float64))
+    hu = to_index(s_, c['P'])
+    got = np.zeros(len(xs), bool)
+    colr = np.zeros((len(xs), 3), np.float32)
+    for m in range(1, 6):
+        for sgn in (1, -1):
+            uu = hu + sgn * m * TEX_PERIOD / c['seg']
+            pt, nm = along(c, uu)
+            q = pt + nm * v_[:, None]
+            ix = np.clip(np.round(q[:, 0]).astype(int), 0, CW - 1)
+            iy = np.clip(np.round(q[:, 1]).astype(int), 0, CH - 1)
+            ok = ~got & clean[iy, ix] & (np.abs(c['u'][iy, ix] - uu) * c['seg'] < 4)
+            colr[ok] = c['col'][iy[ok], ix[ok]]
+            got |= ok
+    return colr, got
+
+
 for k, c in C.items():
     near = dilate(c['purple'], 1) & ~c['body']
     ys, xs = np.nonzero(near)
@@ -568,34 +589,30 @@ for k, c in C.items():
     u = to_index(s_, c['P'])
     w = np.where(v_ > 0, interp_profile(c['wr'], u), interp_profile(c['wl'], u))
     hid = (np.abs(v_) <= w - 0.5) & (u >= 0) & (u <= M - 1)
-    # Only where the body runs on under the mist, not in an open loop: the pixel next to it inwards is body.
-    hx, hy, hu, hv = xs[hid], ys[hid], u[hid], v_[hid]
-    got = np.zeros(len(hx), bool)
-    colr = np.zeros((len(hx), 3), np.float32)
-    for m in range(1, 6):
-        for sgn in (1, -1):
-            uu = hu + sgn * m * TEX_PERIOD / c['seg']
-            pt, nm = along(c, uu)
-            q = pt + nm * hv[:, None]
-            ix = np.clip(np.round(q[:, 0]).astype(int), 0, CW - 1)
-            iy = np.clip(np.round(q[:, 1]).astype(int), 0, CH - 1)
-            ok = ~got & c['lower'][iy, ix] & (np.abs(c['u'][iy, ix] - uu) * c['seg'] < 4)
-            colr[ok] = c['col'][iy[ok], ix[ok]]
-            got |= ok
-    hx, hy = hx[got], hy[got]
-    c['hidden'] = np.zeros((CH, CW), bool)
-    c['hidden'][hy, hx] = True
-    c['hidden_col'] = np.zeros((CH, CW, 3), np.float32)
-    c['hidden_col'][hy, hx] = colr[got]
-    # Keep only what joins the visible body (a stray pixel of tube out in open air is not his body).
+    hidden = np.zeros((CH, CW), bool)
+    hidden[ys[hid], xs[hid]] = True
+    # Only what joins the visible body (a stray pixel of tube out in open air is not his body), and no thin
+    # slivers along an edge that shows his outline (there the mist is behind the body, not over it).
     keep = np.zeros((CH, CW), bool)
-    for p in components(c['hidden']):
+    for p in components(hidden):
         if dilate(c['lower'], 1)[p[:, 0], p[:, 1]].any():
             keep[p[:, 0], p[:, 1]] = True
-    c['hidden'] &= keep
-    # (Thin slivers along an edge that shows his outline are mist behind the body, not body under mist.)
-    c['hidden'] &= dilate(erode(c['hidden'], 1), 1)
-    print('key', k, 'coil px hidden under his mist (rebuilt)', int(c['hidden'].sum()))
+    hidden &= keep
+    hidden &= dilate(erode(hidden, 1), 1)
+    # His coil pixels the mist bleeds into in his JPEG (bluish-pink, not his greens): rebuilt too.
+    r_, g_, b_ = c['col'][..., 0], c['col'][..., 1], c['col'][..., 2]
+    tinted = c['lower'] & dilate(c['purple'], 2) & (b_ > g_ - 12) & (c['col'] @ LUMA > 40)
+    clean = c['lower'] & ~dilate(c['purple'], 2)
+    ys, xs = np.nonzero(hidden | tinted)
+    colr, got = period_copy(c, xs, ys, clean)
+    c['hidden'] = np.zeros((CH, CW), bool)
+    c['hidden'][ys[got], xs[got]] = True
+    c['hidden_col'] = np.zeros((CH, CW, 3), np.float32)
+    c['hidden_col'][ys[got], xs[got]] = colr[got]
+    c['hidden'] &= ~c['lower'] | tinted
+    c['retint'] = c['hidden'] & c['lower']
+    c['hidden'] &= ~c['lower']
+    print('key', k, 'coil px hidden under his mist (rebuilt)', int(c['hidden'].sum()), '; tinted by it (recoloured)', int(c['retint'].sum()))
 
 if DEBUG:
     for k, c in C.items():
@@ -609,7 +626,7 @@ if DEBUG:
 # --- his mist, un-mixed into colour and alpha --------------------------------------------------------------
 for k, c in C.items():
     c['coil_src'] = c['lower'] | c['hidden']
-    c['coil_col'] = np.where(c['hidden'][..., None], c['hidden_col'], c['col'])
+    c['coil_col'] = np.where((c['hidden'] | c['retint'])[..., None], c['hidden_col'], c['col'])
 MIST_FULL = 190.0  # his colour distance from the panel at which his mist is solid
 solid_mist = np.concatenate([c['col'][c['purple'] & ~c['body'] & (c['diff'] > MIST_FULL)] for c in C.values()])
 MISTPAL = kmeans(solid_mist, median_palette(solid_mist, 4))
@@ -645,7 +662,7 @@ for k, c in C.items():
     print('key', k, 'mist blobs', len(blobs), 'mist alpha sum', round(float(alpha.sum()), 1))
 
 # --- palettes: from his pixels -----------------------------------------------------------------------------
-body_px = np.concatenate([np.concatenate([c['col'][c['body']], c['col'][c['drips']]]) for c in C.values()])
+body_px = np.concatenate([np.concatenate([c['col'][c['body'] & ~c['retint']], c['hidden_col'][c['retint'] | c['hidden']], c['col'][c['drips']]]) for c in C.values()])
 lum_px = body_px @ LUMA
 r_, g_, b_ = body_px[:, 0], body_px[:, 1], body_px[:, 2]
 warm = (r_ - g_ > 45) & (r_ > 120)  # his eye glow and the mouth's lit edge
@@ -854,7 +871,7 @@ def frame(spec):
     def seen(g):
         ma, mc, mf = mist_layers(spec['mist'], g)
         lv = alevel(ma)
-        vis = (lv > 0) & (~occupied | (body & mf))
+        vis = (lv > 0) & (~occupied | (body & mf & (lv >= 255)))
         return ma, mc, mf, float((lv * vis / 255.0 * (snap(mc, MISTPAL) @ LUMA / 255.0)).mean())
 
     g = 1.0
@@ -870,7 +887,8 @@ def frame(spec):
     free = (lev > 0) & (out[..., 3] == 0)
     out[free, :3] = snap(mist_c[free], MISTPAL)
     out[free, 3] = lev[free]
-    front = (lev > 0) & body & mist_f
+    # (A thinned mist over the body would only grey the scales: over the body only his thick mist shows.)
+    front = (lev >= 255) & body & mist_f
     if front.any():
         af = (lev[front] / 255.0)[:, None]
         out[front, :3] = snap(mist_c[front] * af + out[front, :3] * (1 - af), np.concatenate([OVERPAL, PAL]))

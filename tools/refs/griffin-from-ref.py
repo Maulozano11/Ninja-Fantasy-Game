@@ -66,6 +66,17 @@ WISP_ROOT_X = 228.0
 # His light streak kicking off the hind foot (bottom left), and the foot it starts from.
 STREAK = [(110, 103), (140, 103), (166, 120), (176, 128), (178, 138), (110, 138)]
 STREAK_DIR = (-0.78, -0.62)  # along it, from the foot up and back
+# His crest: three tall spikes (cream, cyan, pale) with dark gaps between them. The near-black JPEG ringing
+# round them is not griffin, so the gaps stay open, and the spikes keep his colours to the tip (no outline).
+CREST = [(211, 60), (231, 60), (231, 72), (211, 72)]
+# Where his two wings rise from the body: the patch above his back line between the near wing's shoulder and
+# the far wing's root behind the neck. The body keeps his pixels here as well (an underlay under the near
+# wing, over the far one), so a swung wing never uncovers a hole there: the wing roots stay where he painted
+# them, the way a real wing's root does.
+ROOT_ZONE = [(187, 88), (188, 79), (194, 73), (201, 68), (209, 66), (214, 72), (213, 77), (206, 81), (199, 85), (192, 88)]
+# A tear check: no frame may open a see-through gap here (over the back, round the wing roots and the neck)
+# that his picture does not have.
+UPPER = [(160, 92), (170, 72), (190, 62), (212, 56), (220, 76), (214, 86), (200, 92)]
 
 # Our character against his, measured on his two wall panels (the plain ones): that sets the scale.
 CHAR_BOXES = [(285, 408, 338, 522), (128, 805, 190, 925)]
@@ -231,8 +242,12 @@ while q:
             outside[ny, nx] = True
             q.append((ny, nx))
 body_all |= ~outside & ~specks & (diff > 20)
-# The griffin's soft edge: the 1 px ring of his rim colour just outside (the box filter weighs it in).
-edge_soft = dilate(body_all, 1) & ~body_all & (diff > 40) & ~specks & ~streak_zone
+# His crest's gaps: the near-black ringing between the spikes is the JPEG's, not his, so it is not griffin.
+crest_zone = poly_mask(CREST, (H, W), OFF)
+body_all &= ~(crest_zone & (lum < 45))
+# The griffin's soft edge: the 1 px ring of his rim colour just outside (the box filter weighs it in; not
+# between the crest's spikes).
+edge_soft = dilate(body_all, 1) & ~body_all & (diff > 40) & ~specks & ~streak_zone & ~crest_zone
 cov_beast = body_all.astype(np.float32) + 0.5 * edge_soft
 
 # Light streak and specks, un-mixed from the panel: alpha toward one of his glow colours.
@@ -293,11 +308,27 @@ def to_game(pt):
     return (OAX + (pt[0] - ANCHOR[0]) * S, OAY + (pt[1] - ANCHOR[1]) * S)
 
 
+def game_poly(pts):
+    """A polygon given in his sheet's pixels, as a mask on the game grid."""
+    return poly_mask([to_game((x + 0.5, y + 0.5)) for x, y in pts], (OH, OW), (0.5, 0.5))
+
+
+def game_below(line):
+    """Game pixels under a left-to-right polyline given in his sheet's pixels."""
+    g = [to_game(p) for p in line]
+    yl = np.interp(np.arange(OW) + 0.5, [p[0] for p in g], [p[1] for p in g])
+    return (np.arange(OH)[:, None] + 0.5) >= yl[None, :]
+
+
+CREST_G = game_poly(CREST)
+ROOT_G = game_poly(ROOT_ZONE)
+UPPER_G = game_poly(UPPER)
+
 A, C = shrink(crop, cov_beast, S, SIZE, OANCHOR, SRC_ANCHOR)
 op = A >= 0.5
-# Pinholes filled, specks dropped.
+# Pinholes filled (not his crest's gaps), specks dropped.
 nb = sum(np.roll(np.roll(op, oy, 0), ox, 1).astype(int) for oy, ox in ((1, 0), (-1, 0), (0, 1), (0, -1)))
-op = (op & (nb >= 1)) | (~op & (nb >= 3))
+op = (op & (nb >= 1)) | (~op & (nb >= 3) & ~CREST_G)
 for p in components(op):
     if len(p) < 4:
         op[p[:, 0], p[:, 1]] = False
@@ -354,11 +385,17 @@ is_gold = (gp[:, 0] > gp[:, 2] + 8) & (gp[:, 0] > 70)
 # cyans do not swallow it.)
 is_indigo = ~is_gold & (gp[:, 2] > gp[:, 1] + 45) & (gp[:, 1] < 90)
 # (And his open mouth: a dark red throat and a dusty pink tongue and lower beak, a few pixels of their own.)
-is_red = (gp[:, 0] - gp[:, 1] > 18) & (gp[:, 0] > 45) & (np.abs(gp[:, 1] - gp[:, 2]) < 25)
+is_red = (gp[:, 0] - gp[:, 1] > 18) & (gp[:, 0] > 30) & (np.abs(gp[:, 1] - gp[:, 2]) < 25)
 is_gold &= ~is_red
-PAL = np.concatenate([kmeans_palette(gp[~is_gold & ~is_indigo & ~is_red], 34), kmeans_palette(gp[is_indigo], 6),
-                      kmeans_palette(gp[is_gold], 8), kmeans_palette(gp[is_red], 2)])
+# (And the pale yellow-green of his glyphs on the haunch and the wing: greener than his cyans.)
+is_glyph = ~is_gold & ~is_red & (gp[:, 1] > gp[:, 2] + 8) & (gp[:, 1] > gp[:, 0] + 18) & ((gp @ LUMA) > 120)
+rest = ~is_gold & ~is_indigo & ~is_red & ~is_glyph
+PAL = np.concatenate([kmeans_palette(gp[rest], 34), kmeans_palette(gp[is_indigo], 8), kmeans_palette(gp[is_gold], 8),
+                      kmeans_palette(gp[is_red], 4), kmeans_palette(gp[is_glyph], 3)])
 PAL = np.unique(np.round(PAL), axis=0)
+# (No near-black: his blackest pixels are JPEG ringing in the gaps of the talons and the crest; they take
+# the nearest of his real darks, the deep blue rim or the maroon of his throat.)
+PAL = PAL[(PAL @ LUMA) >= 18]
 # His outline: the deep blue of his rim (the darkest quarter of the blue pixels on the griffin's edge),
 # and a dark gold for the gold parts' edge.
 rim = body_all & dilate(~body_all, 1)
@@ -377,7 +414,8 @@ print(f'snap error {snap_err:.1f} (r+g+b); saturation his {sat_his:.1f}, ours {s
 
 # Streak and specks at the game scale: alpha levels and his glow colours.
 ALEVELS = [(0.68, 255), (0.40, 170), (0.16, 95)]  # his specks
-ALEVELS_STREAK = [(0.70, 255), (0.48, 190), (0.30, 135), (0.14, 80)]  # his streak (a smoother glow)
+# His streak is one soft cone of light: 7 alpha steps, down to his faint outer glow.
+ALEVELS_STREAK = [(0.78, 255), (0.60, 215), (0.45, 178), (0.33, 142), (0.23, 108), (0.145, 78), (0.08, 50)]
 
 
 def soft_layer(alpha, col):
@@ -388,8 +426,47 @@ def soft_layer(alpha, col):
 
 SA, SC = soft_layer(streak_a, streak_c)
 PA, PC = soft_layer(speck_a, speck_c)
+
+
+def fill_along(a, c, d, n=2):
+    """Closes gaps of a pixel or so along direction d (his streak's rays): a pixel between two lit ones on a
+    line along d takes the weaker of their light (a little less), and their colour."""
+    for _ in range(n):
+        f = np.zeros_like(a)
+        fc = np.zeros_like(c)
+        for step in (1.0, 1.5):
+            ax_, ay_ = d[0] * step, d[1] * step
+            p = bilinear(a, XXs + 0.5 + ax_, YYs + 0.5 + ay_)
+            m = bilinear(a, XXs + 0.5 - ax_, YYs + 0.5 - ay_)
+            v = np.minimum(p, m) * 0.85
+            better = v > f
+            f = np.where(better, v, f)
+            fc = np.where(better[..., None], (bilinear(c, XXs + 0.5 + ax_, YYs + 0.5 + ay_) + bilinear(c, XXs + 0.5 - ax_, YYs + 0.5 - ay_)) / 2, fc)
+        grow = f > a
+        a = np.where(grow, f, a)
+        c = np.where(grow[..., None], fc, c)
+    return a, c
+
+
+def bilinear(a, sx, sy):
+    h, w = a.shape[:2]
+    x = np.clip(sx - 0.5, 0, w - 1.001)
+    y = np.clip(sy - 0.5, 0, h - 1.001)
+    x0 = np.floor(x).astype(int)
+    y0 = np.floor(y).astype(int)
+    fx, fy = x - x0, y - y0
+    if a.ndim == 3:
+        fx, fy = fx[..., None], fy[..., None]
+    top = a[y0, x0] * (1 - fx) + a[y0, x0 + 1] * fx
+    bot = a[y0 + 1, x0] * (1 - fx) + a[y0 + 1, x0 + 1] * fx
+    return top * (1 - fy) + bot * fy
+
+
+YYs, XXs = np.mgrid[0:OH, 0:OW].astype(np.float32)
+# His streak stays one continuous cone: the breaks along its rays (the box filter's and the JPEG's) are closed.
+SA, SC = fill_along(SA, SC, STREAK_DIR)
 # (Each has its own few colours: his streak runs from slate blue to cream, his specks are cream and cyan.)
-SPAL_STREAK = np.unique(np.round(kmeans_palette(SC[SA > 0.16], 5)), axis=0)
+SPAL_STREAK = np.unique(np.round(kmeans_palette(SC[SA > 0.08], 6)), axis=0)
 SPAL_SPECK = np.unique(np.round(kmeans_palette(PC[PA > 0.16], 4)), axis=0)
 print("streak colours", SPAL_STREAK.astype(int).tolist(), "speck colours", SPAL_SPECK.astype(int).tolist())
 
@@ -435,18 +512,28 @@ def sample(m, m8, sx, sy):
 layers = {}
 for i, name in enumerate(PIECES):
     m = np.where(label == i, idx0, 0)
+    if name == 'body':
+        # The underlay: his own pixels at the wing roots (whatever piece they are) stay on the body too, under
+        # the near wing and over the far one. In his picture the wings cover them, so frame 0 is unchanged;
+        # in the beat they keep the roots in place instead of opening a see-through slit behind the neck.
+        m = np.where(ROOT_G & (idx0 > 0) & (label >= 0), idx0, m)
     layers[name] = (m, up8(m))
 
 N = 8
 T = np.arange(N) / N
-# The beat. Each wing turns about its own root; the swing eases in over ROOT game px from it (so the wing
-# bends there instead of shearing off the body), and the tips lag behind (FLEX: up on the way down, down
-# on the way up). His near wing is swept back: 72 degrees takes it from raised to hanging below the body.
-# His far wing rises straight up from behind the neck: it swings further (to tuck behind the body).
+# The beat (one slow wing beat per loop). Each wing turns about its own root; the swing eases in over `ease`
+# game px from it (so the wing bends there instead of shearing off the body), and the tips lag a little
+# behind (`flex`: up on the way down, down on the way up), most at mid-stroke and not at all near the top,
+# so frames 7, 0 and 1 stay close to his raised wings. Down the beat follows a cosine, so no step between
+# neighbouring frames is much bigger than the others. His far wing (behind) swings a little further and
+# shortens more, so it sinks behind the body at the bottom of the beat instead of lying flat over the back.
 WINGS = {
-    'near': {'root': SHOULDER, 'swing': 62.0, 'flex': 16.0, 'ease': 9.0, 'short': 0.14},
-    'far': {'root': FAR_ROOT, 'swing': 96.0, 'flex': 14.0, 'ease': 7.0, 'short': 0.10},
+    'near': {'root': SHOULDER, 'swing': 45.0, 'flex': 7.0, 'ease': 9.0, 'short': 0.10},
+    'far': {'root': FAR_ROOT, 'swing': 56.0, 'flex': 7.0, 'ease': 8.0, 'short': 0.30},
 }
+if os.environ.get('GRIFFIN_WINGS'):  # TEMP-DRAFT
+    _v = [float(v) for v in os.environ['GRIFFIN_WINGS'].split(',')]  # TEMP-DRAFT
+    WINGS['near'].update(swing=_v[0], flex=_v[1], short=_v[2]); WINGS['far'].update(swing=_v[3], flex=_v[4], short=_v[5])  # TEMP-DRAFT
 BOB = 2.0      # game px the body rises at the bottom of the beat
 tr = to_game(TAIL_ROOT)
 wr_x = to_game((WISP_ROOT_X, 0))[0]
@@ -458,23 +545,41 @@ for w in WINGS.values():
     w['tipw'] = np.clip((w['dist'] - w['ease']) / 50.0, 0, 1)
 
 
+DOWN_MIX = 0.0  # 0: a cosine beat; 1: an even (triangle) beat
+
+
+def down(t):
+    """How far down the beat is at phase t: 0 at his raised wings (frame 0), 1 at the bottom (frame 4)."""
+    tri = 1 - np.abs(1 - 2 * (np.asarray(t) % 1.0))
+    return (1 - DOWN_MIX) * (1 - np.cos(2 * np.pi * t)) / 2 + DOWN_MIX * tri
+
+
+if os.environ.get('GRIFFIN_MIX'):  # TEMP-DRAFT
+    DOWN_MIX, BOB = [float(v) for v in os.environ['GRIFFIN_MIX'].split(',')]  # TEMP-DRAFT
+
+
+def lag(t):
+    """The tips' lag at phase t, -1..1: + on the way down (the tips trail up), - on the way up; ~0 near the top."""
+    return np.sin(2 * np.pi * t) * down(t) / 0.6495
+
+
 def beat(t):
-    """The near wing's swing at phase t (screen degrees; negative swings it down and back)."""
-    return -WINGS['near']['swing'] * (1 - np.cos(2 * np.pi * t)) / 2
+    """The near wing's swing at its root at phase t (screen degrees; negative swings it down and back)."""
+    return -WINGS['near']['swing'] * down(t)
 
 
 def wing_field(name, t):
     """Inverse map for a wing at phase t: its turn about its root, eased in from the root, tips lagging."""
     w = WINGS[name]
-    down = (1 - np.cos(2 * np.pi * t)) / 2
-    theta = -w['swing'] * down
-    a = np.deg2rad(w['easef'] * (theta + w['flex'] * w['tipw'] * np.sin(2 * np.pi * t)))
+    dn = down(t)
+    theta = -w['swing'] * dn
+    a = np.deg2rad(w['easef'] * (theta + w['flex'] * w['tipw'] * lag(t)))
     px, py = w['g']
     rx, ry = XX + 0.5 - px, YY + 0.5 - py
     # Swung down toward us, the wing looks shorter: it is drawn up to `short` shorter along its length at
     # the bottom of the beat (not at its root). Rotation about the root keeps the distance to it, so the
     # inverse is the opposite turn and the opposite stretch.
-    k = 1.0 + w['short'] * down * w['easef']
+    k = 1.0 + w['short'] * dn * w['easef']
     rx, ry = rx * k, ry * k
     sx = px + rx * np.cos(a) + ry * np.sin(a)
     sy = py - rx * np.sin(a) + ry * np.cos(a)
@@ -506,20 +611,6 @@ def streak_field(t):
     ph = s / 6.0
     u = 1.4 * w * (np.sin(2 * np.pi * t - ph) - np.sin(-ph))
     return XX + 0.5 - u * ux, YY + 0.5 - u * uy
-
-
-def bilinear(a, sx, sy):
-    h, w = a.shape[:2]
-    x = np.clip(sx - 0.5, 0, w - 1.001)
-    y = np.clip(sy - 0.5, 0, h - 1.001)
-    x0 = np.floor(x).astype(int)
-    y0 = np.floor(y).astype(int)
-    fx, fy = x - x0, y - y0
-    if a.ndim == 3:
-        fx, fy = fx[..., None], fy[..., None]
-    top = a[y0, x0] * (1 - fx) + a[y0, x0 + 1] * fx
-    bot = a[y0 + 1, x0] * (1 - fx) + a[y0 + 1, x0 + 1] * fx
-    return top * (1 - fy) + bot * fy
 
 
 # His specks: each drifts back (left, the way the griffin leaves them) and fades out, then comes back in
@@ -576,9 +667,25 @@ def shift_rows(a, n):
     return out
 
 
+N4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
+N8 = N4 + ((1, 1), (1, -1), (-1, 1), (-1, -1))
+
+
+def count_nb(m, offs=N4):
+    return sum(np.roll(np.roll(m, oy, 0), ox, 1).astype(int) for oy, ox in offs)
+
+
+def edge_of(m):
+    """The 1 px inner edge of a mask (4-neighbourhood)."""
+    e = np.zeros_like(m)
+    for oy, ox in N4:
+        e |= m & ~np.roll(np.roll(m, oy, 0), ox, 1)
+    return e
+
+
 def frame(k):
     t = T[k]
-    bob = int(np.round(-BOB * (1 - np.cos(2 * np.pi * t)) / 2))
+    bob = -int(np.ceil(BOB * round(float(down(t)), 6) - 0.5))  # (rounded half down, the same both ways of the beat)
     ids = np.zeros((OH, OW), np.int64)
     if k == 0:
         fields = {n: (XX + 0.5, YY + 0.5) for n in PIECES}
@@ -596,49 +703,69 @@ def frame(k):
     for n in ('far', 'tail', 'body', 'wisp', 'near'):
         ids = np.where(got[n] > 0, got[n], ids)
     opq = ids > 0
-    # Slivers a swung piece leaves (a pixel or three cut off at the edge of a feather) are dropped.
-    for p in (components(opq) if k else []):
-        if len(p) < 6 and not (got['body'][p[:, 0], p[:, 1]] > 0).any():
-            opq[p[:, 0], p[:, 1]] = False
+    body = got['body'] > 0
+    if k:
+        # Slivers a swung piece leaves (a pixel or three cut off at the edge of a feather) are dropped, and so
+        # are the 1-2 px spikes a turn leaves sticking out of the silhouette (each would show for one frame).
+        for p in components(opq):
+            if len(p) < 6 and not body[p[:, 0], p[:, 1]].any():
+                opq[p[:, 0], p[:, 1]] = False
+        for _ in range(3):
+            drop = opq & (count_nb(opq) <= 1) & ~body
+            if not drop.any():
+                break
+            opq &= ~drop
     ids = np.where(opq, ids, 0)
-    # His edge: a 1 px outline on the silhouette, deep blue (dark gold on his gold).
-    edge = np.zeros_like(opq)
-    for oy, ox in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-        edge |= opq & ~np.roll(np.roll(opq, oy, 0), ox, 1)
+    colr = PAL[np.clip(ids - 1, 0, len(PAL) - 1)]
+    gold = opq & (colr[..., 0] > colr[..., 2] + 8) & (colr[..., 0] > 80)
+    # His edge: a 1 px outline on the silhouette, deep blue (dark gold on and next to his gold).
+    edge = edge_of(opq)
     # A swung near wing keeps its own edge where it now lies over the body (not at its root, and not where
     # it lay in his picture, so frame 0 has none).
     nw = got['near'] > 0
-    nedge = np.zeros_like(nw)
-    for oy, ox in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-        nedge |= nw & ~np.roll(np.roll(nw, oy, 0), ox, 1)
-    nedge &= opq & ~edge & (WINGS['near']['dist'] > WINGS['near']['ease'] + 3) & ~(layers['near'][0] > 0) if k else np.zeros_like(nw)
+    nedge = edge_of(nw) & opq & ~edge & (WINGS['near']['dist'] > WINGS['near']['ease'] + 3) & ~(layers['near'][0] > 0) if k else np.zeros_like(nw)
     out = np.zeros((OH, OW, 4), np.uint8)
     # Soft layers first (under the griffin): his streak (it moves with the body) and his specks.
     ssx, ssy = streak_field(t) if k else (XX + 0.5, YY + 0.5)
     sa = shift_rows(bilinear(SA, ssx, ssy), bob)
     sc = shift_rows(bilinear(SC, ssx, ssy), bob)
     pa, pc = specks_at(t)
-    for a, c, spal, lv in ((sa, sc, SPAL_STREAK, ALEVELS_STREAK), (pa, pc, SPAL_SPECK, ALEVELS)):
-        qa = quant_alpha(a, lv)
+    q_streak = quant_alpha(sa, ALEVELS_STREAK)
+    for qa, c, spal in ((q_streak, sc, SPAL_STREAK), (quant_alpha(pa, ALEVELS), pc, SPAL_SPECK)):
         put = qa > out[..., 3]
         out[put, :3] = spal[snap_idx(c, spal)][put].astype(np.uint8)
         out[put, 3] = qa[put]
-    colr = PAL[np.clip(ids - 1, 0, len(PAL) - 1)]
     out[opq, :3] = colr[opq].astype(np.uint8)
     out[opq, 3] = 255
-    goldish = (colr[..., 0] > colr[..., 2] + 8) & (colr[..., 0] > 80)
     ring = edge | nedge
-    out[ring & ~goldish, :3] = OUTLINE.astype(np.uint8)
-    out[ring & goldish, :3] = OUTLINE_GOLD.astype(np.uint8)
-    return out, theta, bob
+    gring = ring & (gold | (count_nb(gold, N8) >= 2))
+    # His crest's spikes keep his colours to the tip (they are light on any ground), and where the hind foot
+    # stands in his light streak its edge melts into the light, as he painted it (no dark ring there).
+    crest = shift_rows(CREST_G, bob) & ((colr @ LUMA) > 90)
+    lit = (q_streak >= 108) & ~opq
+    foot = body & (count_nb(lit, N8) > 0) & ~(count_nb(~opq & ~lit, N4) > 0)
+    # A swung near wing's gold trim that comes to lie on the silhouette keeps its cream gold, with the dark
+    # gold edge just outside it (so it reads as his band, not as a brown dotted line).
+    trim = (edge & gold & nw) if k else np.zeros_like(nw)
+    beyond = np.zeros_like(trim)
+    for oy, ox in N4:
+        beyond |= np.roll(np.roll(trim, oy, 0), ox, 1)
+    beyond &= ~opq
+    line = ring & ~crest & ~foot & ~trim
+    out[line & ~gring, :3] = OUTLINE.astype(np.uint8)
+    out[line & gring, :3] = OUTLINE_GOLD.astype(np.uint8)
+    out[beyond, :3] = OUTLINE_GOLD.astype(np.uint8)
+    out[beyond, 3] = 255
+    return out, theta, bob, opq | beyond
 
 
-frames, thetas, bobs = [], [], []
+frames, thetas, bobs, solids = [], [], [], []
 for k in range(N):
-    f, th, bb = frame(k)
+    f, th, bb, so = frame(k)
     frames.append(f)
     thetas.append(th)
     bobs.append(bb)
+    solids.append(so)
 
 # --- 5. checks -------------------------------------------------------------------------------------------
 
@@ -653,9 +780,32 @@ def light(f):
 # No flash: the light of a frame may change by at most 18 % from its neighbour's (the wrap included; the
 # wing covering the body is the only thing that changes it, and smoothly), and its mean luma by at most 6 %.
 LIGHT = [light(f) for f in frames]
-print('frame  wing deg  bob   light  mean luma  covered px')
+
+
+def enclosed(m):
+    """Clear pixels a mask closes in (not 4-connected to the frame's border through clear pixels)."""
+    img = Image.fromarray(np.where(m, 1, 0).astype(np.uint8), 'L').copy()  # (a copy: fromarray's image is read-only)
+    ImageDraw.floodfill(img, (0, 0), 2)
+    return np.asarray(img) == 0
+
+
+# No tears: no frame may open a see-through gap over the back, round the wing roots and the neck (UPPER) that
+# his picture does not have there. (The gaps between the talons, and between the tail, a lowered wing and the
+# hind leg, are outside this zone: those are the griffin's own shapes.)
+HOLES0 = enclosed(solids[0])
+HOLES = []
 for k in range(N):
-    print(f'{k:5d}  {thetas[k]:8.1f}  {bobs[k]:3d}  {LIGHT[k][0]:6.1f}  {LIGHT[k][1]:9.3f}  {LIGHT[k][2]}')
+    new_h = enclosed(solids[k]) & ~shift_rows(HOLES0, bobs[k]) & shift_rows(UPPER_G, bobs[k])
+    HOLES.append(int(new_h.sum()))
+# The silhouette (opaque px) changes smoothly: the part of it that differs between neighbouring frames, out of
+# the two together.
+SIL = []
+for k in range(N):
+    a_, b_ = frames[k][..., 3] == 255, frames[(k + 1) % N][..., 3] == 255
+    SIL.append(float((a_ ^ b_).sum() / max((a_ | b_).sum(), 1)))
+print('frame  wing deg  bob   light  mean luma  covered px  new holes  silhouette step to next')
+for k in range(N):
+    print(f'{k:5d}  {thetas[k]:8.1f}  {bobs[k]:3d}  {LIGHT[k][0]:6.1f}  {LIGHT[k][1]:9.3f}  {LIGHT[k][2]:10d}  {HOLES[k]:9d}  {SIL[k]:.3f}')
 FAILS = []
 for k in range(N):
     j = (k + 1) % N
@@ -665,8 +815,15 @@ for k in range(N):
         FAILS.append(f'light {k}->{j}: {ratio:.2f}x')
     if not 0.94 <= mr <= 1.06:
         FAILS.append(f'mean luma {k}->{j}: {mr:.2f}x')
-if FAILS:
-    raise SystemExit('flash check failed: ' + '; '.join(FAILS))
+    if HOLES[k]:
+        FAILS.append(f'frame {k}: {HOLES[k]} px of see-through gap over the back / wing roots')
+    if SIL[k] > 0.22:
+        FAILS.append(f'silhouette {k}->{j}: {SIL[k]:.0%} changes')
+if DEBUG:  # TEMP-DRAFT
+    np.savez_compressed(os.path.join(DEBUG, 'draft.npz'), frames=np.stack(frames), solids=np.stack(solids), holes0=HOLES0, upper=UPPER_G, bobs=np.array(bobs), root=ROOT_G, crest=CREST_G)  # TEMP-DRAFT
+if FAILS and not os.environ.get('GRIFFIN_DRAFT'):  # TEMP-DRAFT
+    raise SystemExit('frame checks failed: ' + '; '.join(FAILS))
+print('FAILS', FAILS)  # TEMP-DRAFT
 
 # Crop every frame to their union + 2 px.
 union = np.zeros((OH, OW), bool)
@@ -685,7 +842,11 @@ for k, f in enumerate(frames):
 
 # --- 6. the data module ----------------------------------------------------------------------------------
 
-ALPH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-./:;<=>?@[]^_{|}'
+# The symbols (index 0 = clear). Past the ASCII ones come the Latin-1 letters, so his streak's soft glow
+# can keep its 7 alpha steps (the module is written as UTF-8; each symbol is one UTF-16 unit, so the
+# decoder's /(\D)(\d*)/ reads it as before).
+ALPH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-./:;<=>?@[]^_{|}~`"' + ''.join(
+    chr(c) for c in range(0xC0, 0x100) if c not in (0xD7, 0xF7))
 
 
 def write_module(anims, size, anchor, note):
@@ -740,7 +901,7 @@ def write_module(anims, size, anchor, note):
     ts.append('};')
     ts.append('')
     tmp = OUT_TS + '.part'
-    with open(tmp, 'w') as fh:
+    with open(tmp, 'w', encoding='utf-8') as fh:
         fh.write('\n'.join(ts))
     os.replace(tmp, OUT_TS)
     print('colours', len(colors), 'bytes', os.path.getsize(OUT_TS))

@@ -779,6 +779,33 @@ def erode(m, n):
     return ~dilate(~m, n)
 
 
+def components4(mask):
+    """4-connected regions of a mask (a hole that meets the outside only at a corner is still a hole)."""
+    H, W = mask.shape
+    seen = np.zeros((H, W), bool)
+    out = []
+    ys, xs = np.nonzero(mask)
+    for y, x in zip(ys.tolist(), xs.tolist()):
+        if seen[y, x]:
+            continue
+        q = deque([(y, x)])
+        seen[y, x] = True
+        pts = []
+        while q:
+            cy, cx = q.popleft()
+            pts.append((cy, cx))
+            for ny, nx in ((cy + 1, cx), (cy - 1, cx), (cy, cx + 1), (cy, cx - 1)):
+                if 0 <= ny < H and 0 <= nx < W and mask[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True
+                    q.append((ny, nx))
+        out.append(pts)
+    return out
+
+
+GAP_PX = 40  # a hole in the drake up to this many game px is one of his narrow gaps: it is closed
+GAPS = []  # the gaps closed in the frame being built (for the log)
+
+
 def drake():
     """His BEAST panel on the earth sheet: a four-legged stone drake in two poses (prowl, lunge).
 
@@ -1135,6 +1162,25 @@ def drake():
             for pts in components(op):
                 if len(pts) < 6:
                     op[tuple(np.array(pts).T)] = False
+        # Gaps closed inside the drake: a see-through hole the body surrounds is his dark under-body shadow,
+        # not the battlefield. That is every small one (his narrowest gaps between plates, where his panel
+        # peeks through) and every one a turned leg or tail uncovered (it was body in his picture).
+        if legs or pitch or bob:
+            kb = keys[k][1].astype(np.float32)
+            if pitch or bob:
+                kb = warp(kb, *rigid(k, pitch, bob))
+            Ab, _ = shrink(rgb, kb, (WAX, WAY), S, size, oanchor)
+        else:
+            Ab = A
+        gap = np.zeros_like(op)
+        for pts in components4(~op):
+            p = np.array(pts)
+            if p[:, 0].min() == 0 or p[:, 1].min() == 0 or p[:, 0].max() == OH - 1 or p[:, 1].max() == OW - 1:
+                continue
+            if len(p) <= GAP_PX or (Ab[p[:, 0], p[:, 1]] >= 0.5).mean() >= 0.5:
+                gap[p[:, 0], p[:, 1]] = True
+                GAPS.append(len(p))
+        op |= gap
         op, edge = outline_clean(op)
         out[op, :3] = snap(C, PAL)[op]
         # His glowing eyes and glints are smaller than the averaging footprint: where they cover a good
@@ -1149,6 +1195,7 @@ def drake():
         out[hm, :3] = snap(Ch, PAL)[hm]
         out[am, :3] = EYE_AMBER
         out[op, 3] = 255
+        out[gap & ~edge, :3] = SHADOW
         out[edge, :3] = OUTLINE
         out[edge, 3] = 255
         # A moved piece keeps its own edge where it lies over the body (away from its joint).
@@ -1162,36 +1209,56 @@ def drake():
     def key_frame(k):
         return pose(k, dust_at=(1.0, 1.0, 0.0, 1.0) if k == 5 else None)
 
-    # The run (a bounding gallop along one arc): 0 his prowl, gathered on the ground; 1-2 the hind legs push
-    # back, the front legs lift and tuck, the tail drops and the body starts to rise; 3-4 springing into 5,
-    # his lunge at the top of the leap, with his dust bursting off the ground behind the hind feet; 6 the
-    # front legs reach down as the body comes down; 7 about to land, the dust drifting back, settling
-    # (it spreads out low) and fading.
-    # Leg angles in degrees (+ turns a hanging limb's foot backward); bob in game px (+ is down).
+    def eye_at(k, pitch=0.0, bob=0.0):
+        """Where his near eye lands on our canvas for a frame from key k pitched and bobbed (exact, no search)."""
+        ex, ey = to_work(k, EYE[k])
+        px, py = to_work(k, PITCH[k])
+        a = np.deg2rad(pitch)
+        dx_, dy_ = ex - px, ey - py
+        wx = px + dx_ * np.cos(a) - dy_ * np.sin(a)
+        wy = py + dx_ * np.sin(a) + dy_ * np.cos(a) + bob / S
+        return oanchor[0] + (wx - WAX) * S, oanchor[1] + (wy - WAY) * S
+
+    # The run, a bounding charge. 0: his prowl, gathered on the ground. 1-2: the hind legs push back, the
+    # front legs lift and tuck, the tail drops and the body rises. 3-4: his lunge, springing off the ground,
+    # his dust bursting behind the hind feet; 5: his lunge at the top of the leap. 6: the body comes down
+    # nose first, the front legs reaching, the dust drifting back. 7: about to land, nose down and tail up,
+    # the dust settling (it spreads out low) and fading. Then his prowl again, landed.
+    # The two cuts between his drawings (2->3 and 7->0) happen with the head where it was, so the body changes
+    # pose under a steady head; the head rises over 1-5 and comes down over 6-7 (eye heights are printed).
+    # Leg angles in degrees (+ turns a hanging limb's foot backward, and lifts the tail); bob in game px
+    # (+ is down); pitch in degrees about the shoulders (+ is nose down).
     FLY = [
         None,
-        dict(k=0, pitch=-2.0, bob=-4.0, legs={'nf': 8, 'ff': -8, 'nh': 10, 'fh': 6, 'tail': -6}),
-        dict(k=0, pitch=-4.0, bob=-8.0, legs={'nf': 16, 'ff': -16, 'nh': 20, 'fh': 12, 'tail': -12}),
-        dict(k=5, pitch=6.0, bob=0.0, legs={'nf': -4, 'ff': 6, 'nh': -12, 'fh': -10, 'tail': 8}, dust_at=(0.7, 0.7, 2.0, 1.0)),
-        dict(k=5, pitch=3.0, bob=0.0, legs={'nf': -2, 'ff': 3, 'nh': -6, 'fh': -5, 'tail': 4}, dust_at=(0.88, 0.88, 1.0, 1.0)),
+        dict(k=0, pitch=-2.0, bob=-4.5, legs={'nf': 8, 'ff': -8, 'nh': 10, 'fh': 6, 'tail': -6}),
+        dict(k=0, pitch=-4.0, bob=-9.0, legs={'nf': 16, 'ff': -16, 'nh': 20, 'fh': 12, 'tail': -12}),
+        dict(k=5, pitch=4.0, bob=4.6, legs={'nf': -2, 'ff': 2, 'nh': -12, 'fh': -10, 'tail': 6}, dust_at=(0.7, 0.7, 2.0, 1.0)),
+        dict(k=5, pitch=2.0, bob=2.0, legs={'nf': -1, 'ff': 1, 'nh': -6, 'fh': -5, 'tail': 3}, dust_at=(0.88, 0.88, 1.0, 1.0)),
         None,
-        dict(k=5, pitch=4.0, bob=2.0, legs={'nf': -14, 'ff': -10, 'nh': -16, 'fh': -12, 'tail': 6}, dust_at=(1.04, 0.9, -5.0, 0.85)),
-        dict(k=0, pitch=2.0, bob=-10.5, legs={'nf': -8, 'ff': 4, 'nh': -10, 'fh': -6, 'tail': -8}, dust_at=(1.08, 0.6, -10.0, 0.4)),
+        dict(k=5, pitch=6.0, bob=4.2, legs={'nf': -14, 'ff': -10, 'nh': -16, 'fh': -12, 'tail': 6}, dust_at=(1.04, 0.9, -5.0, 0.85)),
+        dict(k=5, pitch=9.0, bob=11.6, legs={'nf': -24, 'ff': -18, 'nh': -22, 'fh': -18, 'tail': 12}, dust_at=(1.08, 0.6, -10.0, 0.4)),
     ]
-    frames = {'fly': [key_frame(0) if i == 0 else key_frame(5) if i == 5 else
-                      pose(f['k'], f['pitch'], f['bob'], f['legs'], f.get('dust_at')) for i, f in enumerate(FLY)]}
+    GAPS.clear()
+    frames = {'fly': []}
+    for i, f in enumerate(FLY):
+        frames['fly'].append(key_frame(0) if i == 0 else key_frame(5) if i == 5 else
+                             pose(f['k'], f['pitch'], f['bob'], f['legs'], f.get('dust_at')))
+        print(f'  frame {i}: closed gaps (px)', GAPS[:])
+        GAPS.clear()
     f0 = frames['fly'][0]
     feet = int(np.nonzero((f0[..., 3] == 255).any(1))[0].max())
     print('drake: feet line (lowest claw of frame 0) at y', feet, 'of', OH, '; anchor', oanchor)
+    eyes = []
     for i, f in enumerate(frames['fly']):
-        e = (f[..., 0] > 200) & (f[..., 1] > 150) & (f[..., 2] < 130) & (f[..., 3] == 255)
-        e[:, :oanchor[0] + 60] = False
-        ys_, xs_ = np.nonzero(e)
-        sel = xs_ > np.percentile(xs_, 40) if len(xs_) else xs_
-        solid_rows = np.nonzero((f[..., 3] == 255).any(1))[0]
-        dust_rows = np.nonzero(((f[..., 3] > 0) & (f[..., 3] < 255)).any(1))[0]
-        print(f'  frame {i}: eye ~({xs_[sel].mean():.1f}, {ys_[sel].mean():.1f}) n={len(xs_)}; lowest solid y {solid_rows.max()},'
-              f' lowest soft y {dust_rows.max() if len(dust_rows) else "-"}')
+        src = FLY[i] or {'k': i}
+        ex, ey = eye_at(src['k'], src.get('pitch', 0.0), src.get('bob', 0.0))
+        eyes.append((ex, ey))
+        a = f[..., 3]
+        ys_, xs_ = np.nonzero(a > 0)
+        solid_rows = np.nonzero((a == 255).any(1))[0]
+        print(f'  frame {i}: eye ({ex:.1f}, {ey:.1f}); lowest solid y {solid_rows.max()}, lowest any y {ys_.max()};'
+              f' clear margin L{xs_.min()} T{ys_.min()} R{OW - 1 - xs_.max()} B{OH - 1 - ys_.max()}')
+    print('  eye steps', ', '.join(f'{i}->{(i + 1) % 8} {eyes[(i + 1) % 8][1] - eyes[i][1]:+.1f}' for i in range(8)))
     note = [
         "The stone drake (vfx_beasts/earth), copied from his earth sheet's BEAST panel: his left picture",
         "(the prowl) is frame 0 and his right one (the lunge, dust kicking up) is frame 5, both standing on",

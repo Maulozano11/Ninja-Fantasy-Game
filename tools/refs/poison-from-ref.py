@@ -54,6 +54,7 @@ import base64
 import json
 import os
 import sys
+import zlib
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -275,25 +276,24 @@ SPRITES = {
                   pieces=[('dashes', [[(6, 179), (24, 179), (34, 195), (36, 230), (24, 244), (6, 244)]])]),
     'multi': dict(anchor=(149.5, 211.5), area=[rect(117, 179, 181, 244)], drops=10, grey_glow=True, pad=(4, 2, 2, 2)),
     'hit': dict(anchor=(261.5, 211), area=[rect(228, 179, 292, 244)], drops=20, purple_piece='streaks', pad=(6, 6, 6, 6)),
-    # His light: everything right of the pillar, its left edge traced 1 px outside the pool's dark
-    # rim (his pixels between the rim and the light are light, not slime) and round the drop on a
-    # stalk at x 476 (the one at x 494 is inside: it is kept as slime by its highlight). His light
-    # is continued under his removed character from the light round it; the ground his character
-    # shades stays dark (his pixels), and the light is cut at x 566 (a little past where his
-    # character stood) and fades out there instead of running on into his backlight. His loose
-    # drops inside it stay slime, his violet mist stays mist.
-    'blast': dict(anchor=(435, 300), area=[rect(339, 179, 566, 344)], drops=40, char=True,
-                  light=[[(466, 180), (566, 180), (566, 344), (486, 344), (486, 325), (499, 323), (508, 320), (513, 318), (516, 316),
-                          (516, 311), (515, 310), (513, 309), (512, 308), (511, 307), (511, 304), (514, 303), (519, 302), (522, 301),
-                          (525, 300), (526, 299), (527, 298), (527, 296), (526, 294), (525, 293), (522, 292), (521, 291), (520, 290),
-                          (520, 289), (518, 288), (517, 287), (514, 286), (513, 285), (511, 284), (511, 283), (510, 282), (510, 281),
-                          (511, 280), (512, 279), (513, 278), (513, 276), (514, 275), (514, 274), (513, 272), (511, 270), (508, 268),
-                          (501, 266), (491, 266), (489, 264), (483, 264), (483, 256), (474, 256), (474, 265), (466, 264)]],
-                  keep_art=[rect(490.5, 249.5, 499.5, 257.5), rect(492.5, 257.5, 497.5, 270)],
-                  fade={'r': 30, 'b': 18}, light_s=4.0, light_gap=3, light_edge=0, light_min=0.02, islands=20, dither=True, light_dark_hole=6,
+    # His light (raw_light): read straight from his pixels as his green excess over his panel
+    # colour, on ONE light colour (his light lies on one line from his panel colour: dR = 0.41 dG,
+    # dB = 0.23 dG), stored with full 8-bit alpha (no steps, no rings). Its zone is everything of
+    # his light reachable from the open light right of the pillar without crossing his slime or its
+    # dark rim (so it runs right up to the pool's rim: his light pixels outside the rim are light,
+    # never opaque body). Only his character and the shadow it casts are filled, from the light
+    # round them (the smoothest surface meeting it: linear in each direction). His light runs on to
+    # his panel's right edge; past it the frame is widened and it fades out (smoothstep, 44 px).
+    'blast': dict(anchor=(435, 300), area=[rect(339, 179, 581, 344)], drops=40, char=True,
+                  raw_light=dict(region=[(466, 180), (581, 180), (581, 344), (470, 344), (470, 300), (488, 288), (492, 266), (466, 264)],
+                                 seeds=[(540, 230), (578, 250), (540, 300)],
+                                 # (the shadow his character casts on the ground below its feet)
+                                 shadow=[(515, 311), (521, 307), (530, 308), (540, 300), (542, 290), (581, 286), (581, 344), (515, 344)],
+                                 keep_art=[rect(490.5, 249.5, 499.5, 257.5), rect(492.5, 257.5, 497.5, 270)],
+                                 edge_x=578, ext=44, fade_b=24, gexf=200.0),
                   pad=(3, 0, 3, 3),
                   pieces=[('mist', [rect(339, 179, 411, 262), [(455, 179), (520, 179), (520, 240), (470, 240), (462, 222)]], 'purple'),
-                          ('pool', [[(339, 258), (409, 258), (416, 280), (458, 282), (466, 258), (566, 258), (566, 344), (339, 344)]])]),
+                          ('pool', [[(339, 258), (409, 258), (416, 280), (458, 282), (466, 258), (581, 258), (581, 344), (339, 344)]])]),
     'wall': dict(anchor=(149.5, 503), area=[rect(6, 375, 300, 510)], drops=30, char=True, pad=(3, 3, 3, 3),
                  frame=[rect(11, 403, 39.5, 510), rect(260.5, 403, 292, 510), rect(11, 484, 292, 510)]),
     'wall_diag': dict(anchor=(600, 590), area=[rect(480, 375, 759, 657)], drops=30, char=True,
@@ -369,6 +369,94 @@ def edge_ramp(cfg):
     return ramp
 
 
+def flood(passable, seeds):
+    """The pixels of `passable` 4-connected to the seeds ((x, y) in his coordinates)."""
+    seen = np.zeros(passable.shape, bool)
+    st = []
+    for x, y in seeds:
+        if passable[y, x] and not seen[y, x]:
+            seen[y, x] = True
+            st.append((y, x))
+    H, W = passable.shape
+    while st:
+        y, x = st.pop()
+        for dy, dx in N4:
+            u, v = y + dy, x + dx
+            if 0 <= u < H and 0 <= v < W and passable[u, v] and not seen[u, v]:
+                seen[u, v] = True
+                st.append((u, v))
+    return seen
+
+
+def raw_light(name, cfg):
+    """His light read straight from his pixels (cfg['raw_light']):
+      * a pixel is light-like when it lies on the line from his panel colour toward his light
+        (dR 0.2-0.85 dG, dB 0.06-0.55 dG) or is near his panel colour; his slime (saturated, its
+        dark rim) and his venom stop it;
+      * the zone is what the seeds reach through light-like pixels inside the region (his removed
+        character and the shadow it casts are let through), plus what it encloses (under his
+        drops); everything in it is light, never body: his light pixels outside the pool's rim are
+        light;
+      * the value is his green excess over his panel colour (lightly smoothed for JPEG noise),
+        divided by gexf; only his character and its shadow are filled, with the smoothest surface
+        meeting the light round them;
+      * past edge_x (his panel's right edge) it runs on, fading out over `ext` px (smoothstep);
+        at the panel's bottom it fades over fade_b px.
+    Returns the zone, the alpha field (his grid) and the light colour."""
+    rl = cfg['raw_light']
+    c = SMOOTH
+    d = c - BG
+    dG = d[..., 1]
+    near = np.sqrt((d ** 2).sum(-1)) < 14
+    lightlike = (dG > 6) & (d[..., 0] >= 0.2 * dG) & (d[..., 0] <= 0.85 * dG) & (d[..., 2] >= 0.06 * dG) & (d[..., 2] <= 0.55 * dG) & (c[..., 1] < 185)
+    R = poly_mask(H0, W0, [rl['region']])
+    CM = his_character(name, 2)
+    SHp = poly_mask(H0, W0, [rl['shadow']])
+    ka = poly_mask(H0, W0, rl['keep_art']) if rl.get('keep_art') else np.zeros((H0, W0), bool)
+    zone = flood(R & ~ka & (near | lightlike | CM | SHp), rl['seeds'])
+    # (what the zone encloses inside the region: under his drops, the light goes on)
+    ys, xs = np.nonzero(R)
+    y0, y1, x0, x1 = ys.min() - 1, ys.max() + 2, xs.min() - 1, xs.max() + 2
+    lab, n = components((R & ~zone)[y0:y1, x0:x1], nb=N4)
+    bnd = (R & dilate(~R, 1))[y0:y1, x0:x1]
+    edge = set(np.unique(lab[bnd]).tolist()) - {0}
+    LZ = zone.copy()
+    LZ[y0:y1, x0:x1] |= np.isin(lab, [k for k in range(1, n + 1) if k not in edge])
+    # The mask: his character and the dark shadow it casts (with its soft edge).
+    SH = SHp & zone & ~(lightlike & (dG > 34))
+    SH = dilate(SH, 1, nb=N8) & SHp & zone
+    M = (CM | SH) & LZ
+    known = zone & ~dilate(M, 2, nb=N8)
+    gex = np.clip(dG, 0, None)
+    # (JPEG blocks smoothed out over his light only, never across his slime)
+    w = known.astype(np.float64)
+    gs = gauss(gex * w, 1.2) / np.maximum(gauss(w, 1.2), 1e-6)
+    gs = np.where(known, gs, 0)
+    gf = harmonic_fill(gs, known, LZ & ~known, iters=2500)
+    A = np.where(LZ, np.clip(gf / rl['gexf'], 0, 1), 0.0)
+    # Past his panel's right edge: the edge column's light, fading out.
+    ex = rl['edge_x']
+    col = A[:, ex - 2:ex + 1].mean(1)
+    col = gauss(col[:, None], 1.5)[:, 0] * (LZ[:, ex] > 0)
+    for k in range(1, rl['ext'] + 1):
+        t = 1 - k / rl['ext']
+        A[:, ex + k] = col * (t * t * (3 - 2 * t))
+    # At his panel's bottom it fades.
+    yb = max(p[1] for p in rl['region'])
+    Y = np.arange(H0)[:, None] + 0.5
+    tb = np.clip((yb - Y) / rl['fade_b'], 0, 1)
+    A = A * (tb * tb * (3 - 2 * tb))
+    # His light colour: the line his light pixels lie on (least squares, through his panel colour).
+    dk = d[known & (dG > 8)]
+    kr = float((dk[:, 0] * dk[:, 1]).sum() / (dk[:, 1] ** 2).sum())
+    kb = float((dk[:, 2] * dk[:, 1]).sum() / (dk[:, 1] ** 2).sum())
+    rgb = np.clip(BG + rl['gexf'] * np.array([kr, 1.0, kb]), 0, 255)
+    resid = np.abs(BG + gex[known & (dG > 8)][:, None] * np.array([kr, 1.0, kb]) - c[known & (dG > 8)]).mean(0)
+    print('%-10s raw light: colour %s, residual %s, zone %d px, filled %d px, peak alpha %.2f' % (
+        name, rgb.round(), resid.round(1), LZ.sum(), (LZ & ~known).sum(), A.max()))
+    return dict(zone=LZ, A=A, rgb=rgb, M=M, known=known, gex=gex)
+
+
 def classify_his(name, cfg):
     """Class maps at his resolution over the whole sheet, limited to the sprite's area."""
     c = SMOOTH
@@ -377,6 +465,11 @@ def classify_his(name, cfg):
     L = lum(c)
     dist = np.sqrt(((c - BG) ** 2).sum(-1))
     art = keep & (dist >= cfg.get('t_body', 40))
+    RL = raw_light(name, cfg) if cfg.get('raw_light') else None
+    if RL is not None:
+        # (his light is never body; his character and its shadow are removed)
+        art &= ~RL['zone']
+        removed |= RL['M'] & keep
     if cfg.get('char'):
         removed |= his_character(name) & keep
     if cfg.get('shade'):
@@ -421,6 +514,8 @@ def classify_his(name, cfg):
     Lr = lum(FLAT)
     dr = np.sqrt(((FLAT - BG) ** 2).sum(-1))
     dark = keep & (((Lr < LBG - 7) & (dr >= 9)) | ((L < LBG - 6) & (dist >= 9)))
+    if RL is not None:
+        dark &= ~RL['zone']
     art &= ~dark
     if cfg.get('frame'):
         # His stone is dark: its shadowed faces sit close to his panel colour. Grown from the
@@ -453,7 +548,7 @@ def classify_his(name, cfg):
         if seal:
             m = np.zeros((H0, W0), bool)
             m[y0:y1, x0:x1] = np.isin(lab, seal)
-            art |= m & keep
+            art |= m & keep & (~RL['zone'] if RL is not None else True)
     a, F = c2a(c)
     fam = family_of(np.where(art[..., None], SHARP, F))
     glow = keep & ~art & ~dark & (a >= 0.035)
@@ -461,6 +556,8 @@ def classify_his(name, cfg):
         # Dull haze is JPEG fringe round his stone and motes, not light: his light and his mist
         # un-blend to saturated colours.
         glow &= (F.max(-1) - F.min(-1)) >= 45
+    if RL is not None:
+        glow &= ~RL['zone']
     if cfg.get('light'):
         # His light: a soft gradient, cleaned of JPEG blocks (blurred by light_s) and continued
         # under what was removed (his character and its shadow) from the light round it, leaving
@@ -497,7 +594,8 @@ def classify_his(name, cfg):
     glow &= (a >= 0.035) | (lzone & (a >= cfg.get('light_min', 0.035)))
     # His dark rims: dark pixels right beside his art (a rim is at most 2 px from it).
     outline = dark & dilate(art, 2, nb=N8)
-    return dict(body=art, outline=outline, glow=glow, a=np.where(glow, a, 0), F=F, fam=fam, keep=keep, removed=removed, lzone=lzone)
+    return dict(body=art, outline=outline, glow=glow, a=np.where(glow, a, 0), F=F, fam=fam, keep=keep, removed=removed, lzone=lzone,
+                raw=RL)
 
 
 def to_game(cfg, cls, W, H, ax, ay):
@@ -512,13 +610,16 @@ def to_game(cfg, cls, W, H, ax, ay):
     fams = np.stack([resample((cls['body'] & (cls['fam'] == k)).astype(np.float64), box, W, H) for k in range(3)], -1)
     ofams = np.stack([resample((dilate(cls['body'] & (cls['fam'] == k), 2, nb=N8) & cls['outline']).astype(np.float64), box, W, H) for k in range(3)], -1)
     Z = resample(cls['lzone'].astype(np.float64), box, W, H)
-    return dict(B=B, O=O, col=col, A=A, gcol=gcol, fams=fams, ofams=ofams, box=box, Z=Z,
+    RA = resample(cls['raw']['A'], box, W, H) if cls.get('raw') is not None else None
+    return dict(B=B, O=O, col=col, A=A, gcol=gcol, fams=fams, ofams=ofams, box=box, Z=Z, RA=RA,
                 his=resample(IM0, box, W, H), flat=resample(FLAT, box, W, H))
 
 
 def bounds_game(cfg, cls):
     """The art's extent at game scale, relative to the anchor."""
     m = cls['body'] | cls['outline'] | (cls['a'] > 0.05)
+    if cls.get('raw') is not None:
+        m = m | (cls['raw']['A'] > 0.02)
     ys, xs = np.nonzero(m)
     hx, hy = cfg['anchor']
     sx = sx_of(cfg)
@@ -944,7 +1045,9 @@ PFAM = np.array(['none'] + [p[5] for p in PAL])
 
 def frame_piece(idx, cfg, b):
     """His stone frame (the posts, the base and its rune plaques): every drawn pixel inside the
-    frame's polygons (traced on his sheet) except his light."""
+    frame's polygons (traced on his sheet) except his light and his slime. Returns the frame mask
+    and each pixel's block (the polygon it falls in first: each post, then the base beam; the
+    diagonal wall's medallion belongs to the beam), so the rise can push each block up whole."""
     H, W = idx.shape
     x0, y0 = b['g']['box'][:2]
     m = poly_mask(H, W, cfg['frame'], x0, y0, sx_of(cfg), SY)
@@ -954,8 +1057,21 @@ def frame_piece(idx, cfg, b):
     green = (idx > 0) & (PFAM[idx] == 'green') & (KIND[idx] == 'body') & (lum(PALC[np.maximum(idx, 1) - 1][..., :3]) > 95)
     lab, n = components(green, nb=N4)
     out = np.unique(lab[green & ~m])
-    fr &= ~np.isin(lab, out[out > 0])
-    return fr
+    slime = np.isin(lab, out[out > 0])
+    # (and so does his slime's own green rim, and any green joined to it: the thin slime edges along
+    # the posts' inner sides and over the caps would otherwise rise with the stone)
+    # (grown at most 2 px into the polygons, through green only: the runes deeper in stay stone)
+    gfam = (idx > 0) & (PFAM[idx] == 'green') & (KIND[idx] != 'glow')
+    reach = (gfam & ~m) | slime
+    for _ in range(2):
+        reach |= dilate(reach, 1, nb=N8) & gfam
+    slime |= reach
+    fr &= ~slime
+    blocks = np.zeros((H, W), np.int8)
+    for k in range(len(cfg['frame']) - 1, -1, -1):
+        pm = poly_mask(H, W, [cfg['frame'][k]], x0, y0, sx_of(cfg), SY)
+        blocks[pm] = min(k, cfg.get('frame_blocks', 3) - 1)
+    return fr, blocks
 
 
 def split_pieces(idx, cfg, b, keep_full=False, wrap=False):
@@ -966,9 +1082,10 @@ def split_pieces(idx, cfg, b, keep_full=False, wrap=False):
     owner[kinds == 'glow'] = 'glow'
     names = ['main', 'drops', 'glow']
     if cfg.get('frame'):
-        fr = frame_piece(idx, cfg, b)
-        owner[fr] = 'frame'
-        names.append('frame')
+        fr, blk = frame_piece(idx, cfg, b)
+        for k in range(cfg.get('frame_blocks', 3)):
+            owner[fr & (blk == k)] = 'frame%d' % k
+            names.append('frame%d' % k)
     body = (kinds == 'body') & (owner == 'main')
     lab, n = components(body, nb=N4, wrap=wrap)
     sizes = np.bincount(lab.ravel(), minlength=n + 1)
@@ -1044,9 +1161,19 @@ def seam_rows(A, B, lo, hi):
 result = {}
 idx_for_review = {}
 refmap = {}
+lights = {}
 for name, b in built.items():
     cfg = b['cfg']
     box = [round(float(v), 3) for v in b['g']['box']]
+    if b['g'].get('RA') is not None:
+        # His light with full alpha (one colour), stored apart: zlib-packed alpha bytes.
+        la = np.clip(np.round(b['g']['RA'] * 255), 0, 255).astype(np.uint8)
+        ys, xs = np.nonzero(la)
+        lx0, ly0, lx1, ly1 = int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
+        rgb = b['cls']['raw']['rgb']
+        lights[name] = {'x': lx0, 'y': ly0, 'w': lx1 - lx0, 'h': ly1 - ly0, 'rgb': '#%02x%02x%02x' % tuple(int(round(v)) for v in rgb),
+                        'a': base64.b64encode(zlib.compress(la[ly0:ly1, lx0:lx1].tobytes(), 9)).decode('ascii')}
+        b['rawrgba'] = np.concatenate([np.broadcast_to(rgb, la.shape + (3,)), la[..., None].astype(np.float64)], -1)
     if cfg.get('aura'):
         for lname, Ly in b['layers'].items():
             idx = soften_small_rims(quantize(Ly['solid'], Ly['rim'], Ly['glow'], Ly['g']))
@@ -1105,11 +1232,14 @@ ts = ["// GENERATED by tools/refs/poison-from-ref.py from the owner's paint-over
       'export interface PoisonPal { rgba: string; kind: PoisonKind; fam: PoisonFam }',
       'export interface PoisonPiece { x: number; y: number; w: number; h: number; rle: string }',
       'export interface PoisonRef { w: number; h: number; anchor: [number, number]; pieces: Record<string, PoisonPiece> }',
+      '/** His light read straight from his pixels: one colour, alpha 0-255 per pixel (zlib, base64), placed at (x, y) in the frame. */',
+      'export interface PoisonLight { x: number; y: number; w: number; h: number; rgb: string; a: string }',
       '/** Game px per pixel of his sheet (across, down). */',
       'export const PV3_SCALE: [number, number] = [%s, %s];' % (SX, round(SY, 5)),
       '/** The tint his aura lays over the figure (fitted: his figure in the aura against his plain figure). */',
       'export const PV3_VEIL = ' + json.dumps(veil) + ';',
       'export const PV3_PAL: PoisonPal[] = ' + json.dumps(pal_json) + ';',
+      'export const PV3_LIGHT: Record<string, PoisonLight> = ' + json.dumps(lights, indent=1) + ';',
       'export const PV3_REF: Record<string, PoisonRef> = ' + json.dumps(result, indent=1) + ';', '']
 tmp = OUT_TS + '.part'
 with open(tmp, 'w') as fh:
@@ -1133,11 +1263,25 @@ if REVIEW:
         A = rgba[..., 3:] / 255
         return rgba[..., :3] * A + np.asarray(bg, np.float64) * (1 - A)
 
+    for name, b in built.items():
+        if b['cls'].get('raw') is not None:
+            # (where his light was filled under his character and its shadow, at game scale: the
+            # light check compares ours with his everywhere else)
+            mk = resample(b['cls']['raw']['M'].astype(np.float64), b['g']['box'], b['W'], b['H']) > 0.02
+            Image.fromarray((mk * 255).astype(np.uint8)).save(os.path.join(REVIEW, 'mask-' + name + '.png'))
+            zn = resample((b['cls']['raw']['zone'] & ~b['cls']['raw']['M']).astype(np.float64), b['g']['box'], b['W'], b['H']) > 0.98
+            Image.fromarray((zn * 255).astype(np.uint8)).save(os.path.join(REVIEW, 'zone-' + name + '.png'))
     for name, rm in refmap.items():
         his = resample(IM0, rm['box'], rm['w'], rm['h'])
         Image.fromarray(np.clip(his, 0, 255).astype(np.uint8)).save(os.path.join(REVIEW, 'his-' + name + '.png'))
         idx = idx_for_review[name]
         rgba = rgba_of(idx)
+        if name in built and 'rawrgba' in built[name]:
+            lr = built[name]['rawrgba']
+            A1 = rgba[..., 3:] / 255
+            A2 = lr[..., 3:] / 255 * (1 - A1)
+            oa = A1 + A2
+            rgba = np.concatenate([(rgba[..., :3] * A1 + lr[..., :3] * A2) / np.maximum(oa, 1e-6), oa * 255], -1)
         H, W = idx.shape
         k = 4 if max(W, H) < 120 else 3 if max(W, H) < 200 else 2
         imgs = [his, comp(rgba, BG), comp(rgba, [84, 110, 70])]

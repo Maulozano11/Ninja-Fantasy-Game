@@ -37,9 +37,17 @@ every key frame is HIS pixels:
   border cut on the end-on wall) is filled, with his own colour there (his near-black shadow
   between the leaves and in the cracks), so no map shows through; the log prints the enclosed
   clear pixels left after quantizing (0).
-* Fades where his panel cut the art (the bolt's trail, the blast's sides, the blast's ground shadow
-  where his figure stood) reach a different length on each row and their alpha steps are
-  ordered-dithered, so they end in wisps.
+* Where his panel cut the art: the bolt's trail runs on past his cut (each streak row continued)
+  and only the new pixels fade, so all he drew stays at full strength; the blast's sides, its
+  ground shadow and its two right-hand dust streaks (cut where his figure stood) fade over their
+  last px. Each row reaches its own length and the alpha steps are dithered, so they end in wisps.
+  The end-on wall's side, cut by his panel border, ends on the dark gaps between whole leaves and
+  steps in and out like broken stone, outlined in his rim.
+* The hit's golden ray dashes glow: gold with no rim, their box-filtered edges translucent gold
+  (opacity = how much of the dash's gold a pixel holds over his panel), so no ray reads as a brown
+  stick with a dark outline on a lighter map.
+* Traced solid rock (the sphere's planet, the blast's crystals) has no see-through pixel inside,
+  nor a pinhole in its rim.
 * Art he drew on the page outside the panels (the multi_hit burst) keeps its true colours and
   its dust is un-blended from the page colour.
 * Pieces. Each key frame is split into the parts the generator animates on their own: loose rocks
@@ -53,8 +61,10 @@ every key frame is HIS pixels:
   moves, rocks or sinks uncovers his cloud, not a hole. Inside a traced crystal his dark foot is
   rock in shadow, never the see-through ground shadow.
 * The stream tile is the 64 px of his spike row that end exactly where his head begins, closed into
-  a loop by a seam cut where its two ends match best; the head is the rest of his row, so a line of
-  tiles plus the head is his picture.
+  a loop by a seam cut where its two ends match best (a rock the joint cuts is closed on the
+  tile's first column). The head starts 32 px before his joint, over the last tile's right half,
+  so its anchor (x 32) is the joint: the game draws the head's anchor at the end of the line of
+  tiles, and a line of tiles plus the head is his picture.
 * The aura is split for drawing round a character: 'aura_back' (behind) and 'aura' (in front: the
   dust ring's front arc across the waist and the pebbles at the feet), using our character placed
   on his.
@@ -99,6 +109,11 @@ N8 = N4 + ((1, 1), (1, -1), (-1, 1), (-1, -1))
 
 def lum(c):
     return 0.3 * c[..., 0] + 0.59 * c[..., 1] + 0.11 * c[..., 2]
+
+
+def olive_of(c):
+    """His olive moss: yellow-green with almost no blue (green near red, blue under half of green)."""
+    return (c[..., 2] < 0.5 * c[..., 1]) & (c[..., 1] > 0.78 * c[..., 0]) & (c[..., 0] < 150)
 
 
 def gauss(a, s):
@@ -325,7 +340,7 @@ SPRITES = {
                    dust=[rect(1317, 101, 1634, 362)], dust_a=0.92, bits=60),
     'sphere': dict(s=S_MED, anchor=(1801, 236), area=[rect(1664, 101, 1922, 348)],
                    solid=[PLANET], dust=[rect(1664, 101, 1922, 348)], dust_a=0.9, bits=20, smooth_body=True,
-                   pieces=[('planet', [PLANET])], fill_solid=[PLANET], green_hi=1),
+                   pieces=[('planet', [PLANET])], fill_solid=[PLANET], green_hi=1, olive=2),
     'slash': dict(s=S_MED, anchor=(150, 556), area=[rect(25, 435, 267, 679)],
                   solid=[CRESCENT], dust=[rect(25, 435, 267, 679)], dust_a=0.9, bits=24),
     'multi': dict(s=S_MED, anchor=(444, 557), area=[rect(298, 435, 575, 679)],
@@ -755,6 +770,7 @@ def decide(cfg, g, W, H, ax, ay):
         gold = np.zeros((H, W, 3))
         # (first the pieces of solid and rim, then of solid, rim and dust together; a speck of 1-3
         # px out on the clear is a dash's dimmed edge whatever its shape, a pebble being bigger)
+        deep = erode(solid | rim | dust, 2, nb=N8)       # (2 px or more inside his art)
         for pool in (solid | rim, solid | rim | dust):
             lab, n = components(pool, nb=N8)
             for c in range(1, n + 1):
@@ -762,7 +778,9 @@ def decide(cfg, g, W, H, ax, ay):
                 ys_, xs_ = np.nonzero(m)
                 if len(ys_) > 70 or (m & dash).any():
                     continue
-                speck = len(ys_) <= 3 and not (m & dust).any() and (dilate(m, 1, nb=N8) & ~(solid | rim | dust)).any()
+                if (m & ~deep).sum() == 0:
+                    continue                               # (deep in the cloud: his own detail)
+                speck = len(ys_) <= 3 and not (m & dust).any()
                 if len(ys_) < 3 and not speck:
                     continue
                 ev = np.linalg.eigvalsh(np.cov(np.stack([xs_, ys_]).astype(np.float64)) + 1e-6 * np.eye(2)) if len(ys_) >= 3 else np.array([0.0, 1.0])
@@ -785,13 +803,12 @@ def decide(cfg, g, W, H, ax, ay):
         sizes = np.bincount(lab.ravel(), minlength=n + 1)
         near_d = dilate(dash, 1, nb=N8)
         Lall = lum(g['all'])
-        art_ = solid | rim | dust
         for c in range(1, n + 1):
             if sizes[c] > 12:
                 continue
             m = lab == c
-            if not (dilate(m, 1, nb=N8) & ~art_).any():
-                continue                                   # (inside the cloud: his own detail)
+            if (m & ~deep).sum() == 0:
+                continue                                   # (deep in the cloud: his own detail)
             if (m & near_d).any() and lum(g['bright'][m]).max() >= 110:
                 gc = gold[dilate(m, 1, nb=N8) & dash].mean(0) if (dilate(m, 1, nb=N8) & dash).any() else g['bright'][m][np.argmax(lum(g['bright'][m]))]
                 dash |= m
@@ -799,6 +816,19 @@ def decide(cfg, g, W, H, ax, ay):
             elif (m & near_d).any() and Lall[m].max() < 80:
                 solid &= ~m
                 rim &= ~m
+        # (and every speck of solid or rim out on the cloud's fringe that is not a rock, where his
+        # gold shines within a pixel: the dimmed edges of the dashes the pieces above missed; the
+        # dust beside them follows as below)
+        labr, nr = components((solid | rim) & ~dash, nb=N8)
+        szr = np.bincount(labr.ravel(), minlength=nr + 1)
+        rocky = dilate(np.isin(labr, np.nonzero(szr > 12)[0]) & (labr > 0), 1, nb=N8)
+        shine = dilate(lum(g['bright']) >= 160, 1, nb=N8)
+        fringe = (solid | rim) & ~deep & ~rocky & ~dash & shine
+        if fringe.any():
+            bw = (lum(g['bright']) >= 160).astype(np.float64)
+            gb_ = gauss(g['bright'] * bw[..., None], 1.0) / np.maximum(gauss(bw, 1.0), 1e-6)[..., None]
+            gold = np.where(fringe[..., None], gb_, gold)
+            dash |= fringe
         other = (solid | rim) & ~dash
         near = dilate(dash, 1, nb=N8) & dust & ~dilate(other, 1, nb=N8) & ~dash
         cand = dash | near
@@ -902,7 +932,7 @@ for name, cfg in SPRITES.items():
         # JPEG speckle the box filter carried down.
         # (his greens are left out: a median would erase the thin moss strip down the ball's side)
         gcol = g['col']
-        greenish = (gcol[..., 1] > gcol[..., 0] + 4) & (gcol[..., 1] > gcol[..., 2] + 10)
+        greenish = ((gcol[..., 1] > gcol[..., 0] + 4) & (gcol[..., 1] > gcol[..., 2] + 10)) | (olive_of(gcol) if cfg.get('olive') else False)
         so = d['solid'] & ~d['holefill'] & ~greenish
         stack = []
         for dy in (-1, 0, 1):
@@ -952,7 +982,16 @@ def palette_for(b):
     # to his tan stone: it gets slots of its own, so it keeps its chroma instead of going beige.
     amber = (cols[:, 2] < 0.35 * cols[:, 0]) & (cols[:, 0] > 110) & ~green if cfg.get('wall') else np.zeros(len(cols), bool)
     na = 0 if amber.sum() < 6 else int(np.clip(round(n * 3 * amber.mean()), 2, 6))
-    body = median_cut(cols[~green & ~amber], n - ng - na)
+    # (the sphere's faint olive moss streaks, yellow-green with almost no blue, also few pixels
+    # among his browns: slots of their own, or they go brown)
+    olive = olive_of(cols) & ~green & ~amber if cfg.get('olive') else np.zeros(len(cols), bool)
+    no = 0 if olive.sum() < 6 else cfg['olive']
+    if no:
+        amber = amber | olive
+    body = median_cut(cols[~green & ~amber], n - ng - na - no)
+    if no:
+        body = np.concatenate([body, median_cut(cols[olive], no)])
+        amber = amber & ~olive
     if na:
         body = np.concatenate([body, median_cut(cols[amber], na)])
     if ng:

@@ -1044,8 +1044,8 @@ def drake():
             # The far hind leg: the dark limb in the shadow between the haunch and the near front leg.
             'fh': {'far': True, 'cut': [(714, 1796), (768, 1800)], 'pivot': (740, 1798), 'bend': 12,
                    'poly': [(714, 1796), (768, 1800), (752, 1812), (749, 1856), (712, 1856)], 'minus': THIGH0},
-            # The head, cut at the neck and scaled about the eye (his prowl head is drawn about 18% larger than
-            # his lunge head, so the in-betweens bring them together); the scale eases in over `bend` px.
+            # The head, cut at the neck: scaled and turned about the eye toward his other drawing's head (ZREL),
+            # easing in over `bend` px from the neck.
             # The hook of his curled tail: it turns about the bottom of the curl, so the curl opens or closes.
             'tip': {'parent': 'tail', 'cut': [(515, 1748), (600, 1742)], 'pivot': (548, 1752), 'bend': 30,
                     'poly': [(515, 1748), (600, 1742), (600, 1650), (515, 1650)]},
@@ -1163,11 +1163,17 @@ def drake():
         base = body.copy()
         for m in masks.values():
             base &= ~m
-        split[k] = (masks, base)
+        # The joints are where a turned piece meets the body proper: a stray body pixel or two left between two
+        # pieces (between his lunge's front paws) is not a joint, or the paws near it would be bent into specks.
+        core = base.copy()
+        for p in components(base):
+            if len(p) < 20:
+                core[tuple(np.array(p).T)] = False
+        split[k] = (masks, base, core)
     if DEBUG:
         cols = {'ff': (255, 128, 0), 'fh': (0, 255, 0), 'tail': (255, 0, 255), 'nh': (0, 255, 255), 'nf': (255, 255, 0), 'head': (255, 64, 64), 'tip': (128, 0, 255)}
         for k in (0, 5):
-            masks, base = split[k]
+            masks, base, _ = split[k]
             vis = (keys[k][0] * 0.5).astype(np.uint8)
             vis[base] = keys[k][0][base].astype(np.uint8)
             for n, m in masks.items():
@@ -1212,8 +1218,8 @@ def drake():
         p = np.array(p)
         if len(p) < 10 and diff5[p[:, 0], p[:, 1]].max() < 90:
             dust[p[:, 0], p[:, 1]] = False
-    # His clod on the tip of his tallest back spike is not part of the burst: it rides the spike while the dirt
-    # flies (frames 4 and 5), then is kicked off up and back and fades.
+    # His clod on the tip of his tallest back spike is not part of the burst: it rides the spike from the leap
+    # (frames 3-5, so it comes in with the switch to his lunge drawing), then is kicked off up and back and fades.
     clod = dust & poly_mask(LOOSE[0], (CH, CW), off5)
     dust &= ~clod
     # (It is drawn from its core, 1 of his px in from its edge: his edge pixels are half panel, and kept whole
@@ -1314,7 +1320,7 @@ def drake():
         clod_at = (dx, dy in game px, alpha): his clod on the spike tip, moved off it, or None.
         Returns the frame and its (bob, tx) in game px."""
         crop = crop6[k]
-        masks, base = split[k]
+        masks, base, _ = split[k]
         legs = dict(legs or {})
         hsc, hdeg = head_tf(hz, pitch, scale)
         if hz:
@@ -1353,7 +1359,7 @@ def drake():
             DX = np.zeros((CH, CW), np.float32)
             DY = np.zeros((CH, CW), np.float32)
             joint = np.zeros((CH, CW), bool)
-            near_base = dilate(base, JOINT)
+            near_base = dilate(split[k][2], JOINT)
             for n, (dx, dy) in fields.items():
                 w = np.clip(soften(masks[n], SOFT) / gb, 0.0, 1.0)
                 DX += w * dx
@@ -1509,32 +1515,34 @@ def drake():
     def key_frame(k):
         return pose(k, dust_at=(1.0, 1.0, 0.0, 1.0), clod_at=(0.0, 0.0, 1.0)) if k == 5 else pose(k)
 
-    # The run, a bounding charge. 0: his prowl, gathered on the ground. 1-2: the hind legs push off (the claws
-    # stay on the feet line), the front legs lift and tuck, the tail drops and the front of the body rises.
-    # 3-4: his lunge, springing off the ground, his dust bursting behind the hind feet; 5: his lunge at the top
-    # of the leap. 6: the body comes down nose first, the front legs reaching, the dust drifting back. 7: about
-    # to land, nose down and tail up, the dust settling (it spreads out low) and fading. Then his prowl, landed.
+    # The run, a bounding charge. 0: his prowl, gathered on the ground. 1-2: the hind legs push (the claws stay on
+    # the feet line), the front of the body rears up, the near front leg swings back and the tail drops. 3-4: his
+    # lunge, sprung off the ground, the legs pushing back, his dust bursting behind the hind feet; 5: his lunge at
+    # the top of the leap. 6: the body comes down nose first, the legs reaching forward, the dust drifting back.
+    # 7: about to land, nose down and tail up, the dust settling (it spreads out low) and fading. Then his prowl.
     # His prowl is drawn larger than his lunge: the in-betweens scale the body about the eye, and grow or shrink the
     # head along ZREL (hz, see head_tf), so the size changes over the loop and both sides of each switch between
-    # his drawings (2->3 and 7->0) show the same head: the same eye, snout tip and horn tip.
-    # Leg angles in degrees (+ turns a hanging limb's foot backward, and lifts the tail); pitch in degrees about
-    # the shoulders (+ is nose down); eye: the eye's height in game px below frame 0's (+ is down).
+    # his drawings (2->3 and 7->0) show the same head: the same eye, snout tip and horn tip. The body angles,
+    # scales and leg turns of frames 2, 3 and 7 were searched (coordinate descent, frames 1, 4 and 6 halfway) for
+    # the smallest silhouette change at every step with the eye rising steadily to the top of the leap: no step
+    # changes more than about 29% of the body's silhouette (the switches were 41-43%).
     FLY = [
         None,
-        dict(k=0, pitch=-5.0, feet=True, scale=0.98, hz=-0.25,
-             legs={'nf': 11, 'ff': -4, 'nh': 14, 'fh': 0, 'tail': -6}),
-        dict(k=0, pitch=-10.0, feet=True, scale=0.96, hz=-0.5,
-             legs={'nf': 22, 'ff': -8, 'nh': 28, 'fh': 0, 'tail': -12}),
-        dict(k=5, pitch=3.0, eye=-6.0, scale=1.11, hz=0.5,
-             legs={'nf': 10, 'ff': 8, 'nh': -24, 'fh': -4, 'tail': 4}, dust_at=(0.7, 0.7, 2.0, 1.0)),
-        dict(k=5, pitch=1.5, eye=-14.0, scale=1.055, hz=0.25,
-             legs={'nf': 5, 'ff': 4, 'nh': -12, 'fh': -2, 'tail': 2}, dust_at=(0.88, 0.88, 1.0, 1.0),
+        dict(k=0, pitch=-4.5, feet=True, scale=0.995, hz=-0.25,
+             legs={'nf': 12.5, 'ff': -3, 'nh': 9.5, 'fh': 0, 'tail': -6}),
+        dict(k=0, pitch=-9.0, feet=True, scale=0.99, hz=-0.5,
+             legs={'nf': 25, 'ff': -6, 'nh': 19, 'fh': 0, 'tail': -12}),
+        dict(k=5, pitch=1.0, eye=-17.4, scale=1.13, hz=0.5,
+             legs={'nf': 22, 'ff': 23, 'nh': -18, 'fh': 17, 'tail': -8}, dust_at=(0.7, 0.7, 2.0, 1.0),
+             clod_at=(0.0, 0.0, 1.0)),
+        dict(k=5, pitch=0.5, eye=-19.9, scale=1.065, hz=0.25,
+             legs={'nf': 11, 'ff': 11.5, 'nh': -9, 'fh': 8.5, 'tail': -4}, dust_at=(0.88, 0.88, 1.0, 1.0),
              clod_at=(0.0, 0.0, 1.0)),
         None,
-        dict(k=5, pitch=3.5, eye=-14.2, scale=1.07, hz=0.5,
+        dict(k=5, pitch=3.5, eye=-13.8, scale=1.07, hz=0.5,
              legs={'nf': -0.5, 'ff': -14, 'nh': -20, 'fh': 7.5, 'tail': 10}, dust_at=(1.04, 0.9, -5.0, 0.75),
              clod_at=(-3.5, -3.5, 0.63)),
-        dict(k=5, pitch=7.0, eye=-2.0, scale=1.14, hz=1.0,
+        dict(k=5, pitch=7.0, eye=-1.0, scale=1.14, hz=1.0,
              legs={'nf': -1, 'ff': -28, 'nh': -40, 'fh': 15, 'tail': 20}, dust_at=(1.08, 0.6, -10.0, 0.4)),
     ]
     GAPS.clear()

@@ -17,16 +17,18 @@
 //                  circle and drifts wrap, so the loop closes;
 //   - hit,         12 frames at 12 fps: builds up over 3, his picture (frame 3) held for 3 with only
 //     multi_hit    a little churn, then the dust spreads, settles, dims and dissolves over 6 while
-//                  the rocks fly on and drop;
+//                  the rocks fly on, drop and crumble away (no solid rock is left in the last frame);
 //   - blast        16 frames at 12 fps: anticipation over 4, his picture (frame 4) held for 3, a
 //                  settle over 9 (the dust dims, the rocks fall, the crystals sink back);
-//   - walls        'rise' 12 frames at 12 fps ending on his picture; 'idle' 8 frames at 10 fps;
+//   - walls        'rise' 12 frames at 12 fps (ease-out) ending on his picture; 'idle' 8 frames at 10 fps;
 //   - aura         12 frames at 10 fps, both layers in step.
 // In-between frames never open holes: dust lies under the rocks ('under'), pinholes and clear
 // pockets where his picture has art are filled from the dust round them (a one-shot's dissolving
 // tail excepted), and a wall's frames are sealed (nothing see-through inside). His rims travel with
 // their rock (the extractor gives them to it), a drifting pebble carries its dark halo of dust, and
-// fades step down through dithered fractions of an alpha step, so the light falls evenly.
+// fades step down through fractions of an alpha step dithered on blue noise (no grid), so the light
+// falls evenly. A blast crystal's foot dissolves into the dust as it rises or sinks (no line along
+// the cut), and the walls start wholly below the ground and ease out into his picture.
 // Same sprite names and anims as vfx_earth, plus `multi_hit` (the rock bullets' impact, his
 // unlabelled panel) and `aura_back`. Frames are sized to his art and the anchors moved with it.
 // The earth beast is out of scope: beast.png is copied through from vfx_earth unchanged.

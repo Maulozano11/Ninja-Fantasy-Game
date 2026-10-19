@@ -453,6 +453,17 @@ BLAST_FEATHERS = [ellipse(534, 260, 12, 13), ellipse(609, 279, 8, 11), ellipse(5
                   ellipse(587, 333, 10, 8), ellipse(613, 368, 11, 7), ellipse(623, 351, 7, 9), ellipse(686, 266, 9, 12),
                   ellipse(712, 340, 8, 8)]
 
+# The pool of the blast: his vortex up to its own dark back rim (his coords, a pixel above it;
+# where the column hides it, the curve runs on behind the column), and his pink splash stalks on
+# that rim (left: a spike and an arm; right: a branching arm and a spike).
+BLAST_POOL = [(437, 371), (451, 361), (470, 358), (490, 356), (500, 353), (510, 350), (520, 347), (540, 345), (560, 344),
+              (600, 343), (640, 344), (660, 346), (680, 350), (700, 354), (720, 361), (740, 370), (760, 380), (790, 388),
+              (843, 392), (843, 456), (437, 456)]
+BLAST_STALKS = [[(491, 351), (499, 351), (502, 362), (502, 377), (495, 377), (491, 365)],
+                [(514, 344), (530, 344), (547, 354), (547, 361), (538, 361), (514, 351)],
+                [(702, 346), (712, 343), (724, 346), (728, 360), (730, 388), (722, 396), (714, 390), (716, 372), (712, 360), (702, 354)],
+                rect(727, 334, 739, 368)]
+
 SPRITES = {
     'bolt': dict(area=(10, 54, 94, 139), k=K64, origin=(9, 53), base=(64, 64), anchor=(70.5, 96.5), smoke=True, solid_dark=22,
                  eyes=[(71, 96.5, 9, 9, 'lmin')],
@@ -496,7 +507,12 @@ SPRITES = {
                   pieces=[('feathers', BLAST_FEATHERS, ['dark', 'body', 'outline']),
                           ('column', [[(538, 230), (690, 230), (690, 300), (676, 390), (650, 404), (600, 410), (560, 404),
                                        (546, 380), (540, 300)]]),
-                          ('pool', [[(437, 360), (843, 360), (843, 456), (437, 456)]])]),
+                          # His pink splash stalks standing on the pool's back rim fly with the bits (they
+                          # must not turn with the pool).
+                          ('stalks', BLAST_STALKS, ['body', 'outline', 'glow']),
+                          # The pool, up to his own back rim (a curve along its dark outer edge, which
+                          # the column and the smoke hide in the middle), never a straight cut.
+                          ('pool', [BLAST_POOL])]),
     'wall': dict(area=(10, 492, 373, 652), k=1 / 1.30, anchor=(190, 646),
                  seams=[17, 46, 79, 100, 134, 158, 196, 222, 263, 290, 332, 363],   # his pillars' edges
                  black=[rect(9, 540, 373, 654)],

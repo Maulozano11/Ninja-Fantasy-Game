@@ -14,7 +14,7 @@ import { cool, dim, loopDisplace, loopFlicker, placed, refPiece, roughen, scaled
 import { fireballOld } from './vfx-a-fire-sig';
 import { REF_FRAMES } from './vfx-a-fire-refdata';
 import {
-  TAU, WallKind, clamp, dissolve, flySprite, frames, fract, lerp, pnoise, rr, stack, vfxSprite,
+  TAU, WallKind, clamp, dissolve, flySprite, frames, fract, lerp, pnoise, rr, smooth, stack, vfxSprite,
 } from './vfx-a-lib';
 
 
@@ -204,26 +204,14 @@ export function aura(): WorldSprite[] {
  * A wall from his panel: `idle` (8 frames at 10 fps, frame 0 his picture) flickers his flames;
  * `rise` (12 frames at 12 fps) reveals his picture from the ground up and from the middle out
  * (height above the ground line) with a burning edge, its flicker running on into the idle loop.
- * Edges where his panel cut the flames are roughened.
+ * Edges where his panel cut the flames are roughened; `prep` can first rework his piece, and
+ * where `loose(x)` holds, bits of the reveal that come up on their own (150 px or less) wait for
+ * the front instead of popping in ahead of it.
  */
-function refWall(kind: WallKind, piece: string, label: string, ground: (x: number, y: number) => number, along: (x: number, y: number) => number, rough: (x: number, y: number) => boolean, seed: number, tipLine?: (x: number) => number): WorldSprite {
+function refWall(kind: WallKind, piece: string, label: string, ground: (x: number, y: number) => number, along: (x: number, y: number) => number, rough: (x: number, y: number) => boolean, seed: number, prep?: (c: Canvas) => Canvas, loose?: (x: number) => boolean): WorldSprite {
   const F = REF_FRAMES[kind], W = F.w, H = F.h;
-  let base = roughen(placed(piece, W, H), (x, y) => rough(x, y) || (tipLine ? y < tipLine(x) : false), refPiece(piece).pal[0]);
-  if (tipLine) {
-    // Where his panel cut the flames off, they end in pointed tips, cooling to red at the ends
-    // like his tips elsewhere along the wall.
-    const out = base.clone();
-    for (let x = 0; x < W; x++) {
-      const t = tipLine(x);
-      for (let y = Math.max(0, Math.floor(t)); y < Math.min(H, t + 7); y++) {
-        const p = base.get(x, y);
-        if (!p[3] || (p[0] === FIRE[0][0] && p[1] === FIRE[0][1])) continue;
-        const k = lerp(0.5, 1, clamp((y - t) / 7, 0, 1));
-        out.set(x, y, [Math.round(p[0] * lerp(0.85, 1, k)), Math.round(p[1] * k * k), Math.round(p[2] * k * k), p[3]]);
-      }
-    }
-    base = out;
-  }
+  const his = placed(piece, W, H);
+  const base = roughen(prep ? prep(his) : his, rough, refPiece(piece).pal[0]);
   const IDLE = 8, RISE = 12;
   const idle = frames(IDLE, (t) => loopFlicker(base, t * TAU, 1.6, F.ay, seed));
   const key = (x: number, y: number) => clamp(ground(x, y) * 0.6 + along(x, y) * 0.3 + pnoise(x, y, 8, 0, 0, seed + 1) * 0.1, 0, 1);
@@ -237,9 +225,91 @@ function refWall(kind: WallKind, piece: string, label: string, ground: (x: numbe
     if (i === RISE - 1) return c;
     const u = (i + 1) / RISE;
     const vis = lerp(u * keys[keys.length - 1], keys[Math.floor(u * (keys.length - 1))], 0.6);
-    return dissolve(c, vis, key, [FIRE[2], FIRE[3], FIRE[5]], FIRE[0]).c;
+    const d = dissolve(c, vis, key, [FIRE[2], FIRE[3], FIRE[5]], FIRE[0]).c;
+    return loose ? dropLoose(d, 150, loose) : d;
   });
   return vfxSprite(kind, label, [F.ax, F.ay], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 10, loop: true } });
+}
+/** Drops the connected pieces of at most `max` px that lie wholly where `region(x)` holds. */
+function dropLoose(c: Canvas, max: number, region: (x: number) => boolean): Canvas {
+  const W = c.w, H = c.h, out = c.clone(), seen = new Uint8Array(W * H);
+  for (let y0 = 0; y0 < H; y0++)
+    for (let x0 = 0; x0 < W; x0++) {
+      if (seen[y0 * W + x0] || !c.alpha(x0, y0)) continue;
+      const piece: number[] = [], todo = [y0 * W + x0];
+      seen[y0 * W + x0] = 1;
+      let inside = true;
+      while (todo.length) {
+        const i = todo.pop()!;
+        piece.push(i);
+        const x = i % W, y = (i / W) | 0;
+        if (!region(x)) inside = false;
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const u = x + dx, v = y + dy;
+            if (u < 0 || v < 0 || u >= W || v >= H) continue;
+            const j = v * W + u;
+            if (seen[j] || !c.alpha(u, v)) continue;
+            seen[j] = 1;
+            todo.push(j);
+          }
+      }
+      if (inside && piece.length <= max) for (const i of piece) out.set(i % W, (i / W) | 0, [0, 0, 0, 0]);
+    }
+  return out;
+}
+
+/**
+ * His 3/4 wall, finished at its far end. His panel's frame lines (round the crop) are dropped,
+ * and the far (right) end, which his panel cut off at the top and the right and which held the
+ * flat fill where his character stood, is rebuilt from his own wall: the stretch 120 px back along
+ * the ground line is carried forward, smaller with distance (and never taller than the frame
+ * allows), joined to his wall along a ragged seam. `g` is the ground line.
+ */
+function diagWall(src: Canvas, g: (x: number) => number): Canvas {
+  const W = src.w, H = src.h, SEAM = 182, P = 120, END = 266;
+  const c = new Canvas(W, H);
+  for (let y = 14; y < 183; y++) for (let x = 12; x < 273; x++) c.set(x, y, src.get(x, y));
+  // How tall his flames stand above the ground line in each column.
+  const hgt = new Float64Array(W);
+  for (let x = 0; x < W; x++) {
+    let top = -1;
+    for (let y = 14; y < g(x) && top < 0; y++) {
+      const p = c.get(x, y);
+      if (p[3] && p[0] > 150 && p[0] - p[2] > 60) top = y;
+    }
+    hgt[x] = top < 0 ? 0 : g(x) - top;
+  }
+  // The scale of the carried stretch: smaller toward the far end, and low enough to stay under the frame top.
+  const xsOf = new Float64Array(W), sc = new Float64Array(W);
+  const persp = (x: number) => lerp(0.95, 0.66, smooth(SEAM, END, x));
+  let xs = SEAM - P;
+  for (let x = SEAM - 12; x < W; x++) {
+    let h = 1;
+    for (let k = -10; k <= 10; k++) h = Math.max(h, hgt[clamp(Math.round(xs) + k, 0, W - 1)]);
+    sc[x] = Math.min(persp(x), (g(x) - 7) / h);
+    if (x >= SEAM) xs += 1 / sc[x];
+    xsOf[x] = x < SEAM ? SEAM - P - (SEAM - x) : xs;
+  }
+  const sm = new Float64Array(W);
+  for (let x = SEAM - 12; x < W; x++) {
+    let m = 1;
+    for (let k = -8; k <= 8; k++) m = Math.min(m, sc[clamp(x + k, SEAM - 12, W - 1)]);
+    sm[x] = m;
+  }
+  // The last flames burn low: squashed toward the ground over the last 34 px, like his near end.
+  const endLow = (x: number) => lerp(1, 0.32, smooth(END - 34, END + 2, x));
+  const out = c.clone();
+  for (let x = SEAM - 10; x < W; x++) {
+    const s = sm[x] * endLow(x), xs0 = Math.round(xsOf[x]);
+    for (let y = 0; y < H; y++) {
+      // (a ragged seam: his wall on the left, the carried stretch on the right)
+      if (x < SEAM + 10 && pnoise(x, y, 5, 0, 0, 3610) * 20 - 10 > x - SEAM) continue;
+      const ys = Math.round(g(xs0) + (y - g(x)) / s);
+      out.set(x, y, ys >= 14 && ys < 183 ? c.get(xs0, ys) : [0, 0, 0, 0]);
+    }
+  }
+  return out;
 }
 export function walls(): WorldSprite[] {
   const fw = REF_FRAMES.wall, fd = REF_FRAMES.wall_diag;
@@ -249,12 +319,14 @@ export function walls(): WorldSprite[] {
     refWall('wall', 'w_wall', 'Fire wall (4.5 m x 1.8 m)', (_x, y) => clamp((fw.ay - y) / (fw.ay - 8), 0, 1), (x) => Math.abs(x - fw.ax) / (fw.w / 2),
       (x, y) => y > fw.h - 9 - 6 * pnoise(x, 0, 5, 0, 0, 3501), 3500),
     refWall('wall_diag', 'w_diag', 'Fire wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)', (x, y) => clamp((diagG(x) - y) / 150, 0, 1), (x) => Math.abs(x - fd.ax) / (fd.w / 2),
-      (x, y) => x > fd.w - 11 - 16 * pnoise(0, y, 6, 0, 0, 3602) || (y > diagG(x) + 4 + 16 * pnoise(x, 0, 9, 0, 0, 3606) && x > 190 - 12 * pnoise(0, y, 5, 0, 0, 3603)), 3600,
-      // (pointed tips along the top, the flames getting shorter toward the far end)
-      (x) => {
-        const per = 15, u = fract((x + 9 * pnoise(x, 0, 30, 0, 0, 3604)) / per);
-        return 9 + 1.7 * Math.max(0, x - (fd.w - 75)) + 30 * Math.pow(1 - Math.abs(u * 2 - 1), 0.8) * (0.7 + 0.6 * pnoise(Math.floor(x / per), 1, 1.5, 0, 0, 3605));
-      }),
+      // The glowing ground strip runs along the wall's foot as a band (his panel's crop made it a
+      // triangle with a flat bottom), thinner with distance; the far end burns out raggedly, the
+      // strip ending a little before the flames.
+      (x, y) => {
+        const below = y - diagG(x), end = 265 + 6 * pnoise(0, y, 5, 0, 0, 3602) - Math.max(0, below) * 0.7 - Math.max(0, -below) * 0.3;
+        const depth = lerp(28, 12, clamp((x - 22) / 244, 0, 1)) * (1 - 0.75 * smooth(234, 266, x)) + 7 * pnoise(x, 0, 9, 0, 0, 3606);
+        return x > end || below > depth;
+      }, 3600, (c) => diagWall(c, diagG), (x) => x > 200),
     refWall('wall_depth', 'w_depth', 'Fire wall, end-on (4.5 m x 1.8 m, running into the screen)', (_x, y) => clamp((240 - y) / 200, 0, 1), () => 0,
       (x, y) => x < 10 + 6 * pnoise(0, y, 6, 0, 0, 3701) || x > REF_FRAMES.wall_depth.w - 12 - 14 * pnoise(0, y, 6, 0, 0, 3702) || y > REF_FRAMES.wall_depth.h - 12 - 10 * pnoise(x, 0, 6, 0, 0, 3703) || (y > 108 && x > 60 - 8 * pnoise(0, y, 5, 0, 0, 3704)), 3700),
   ];

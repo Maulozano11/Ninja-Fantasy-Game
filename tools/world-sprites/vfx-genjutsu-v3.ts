@@ -884,10 +884,12 @@ function inPoly(px: number, py: number, pts: [number, number][]): boolean {
 
 /**
  * His ribbons in the head (game px): the braid running in from the tile up to where it meets his
- * vortex, traced on his picture (his (584..620, 60..114), at the head's 64/84 scale). Only these
- * flow with the stream; his vortex (spiral, dark rings, outer arcs) keeps its frame-0 pixels.
+ * vortex, traced on his picture (his (584..620, 60..114), at the head's 64/84 scale). Outside it,
+ * his own head pixels (the vortex's outer arcs, the wisp) are drawn over the incoming braid.
  */
 const HEAD_RIBBONS: [number, number][] = [[-3, 3.8], [10.7, 3.8], [18.3, 13], [19.8, 22.1], [23.6, 25.1], [24.4, 34.3], [22.9, 41.9], [18.3, 45], [9.1, 52], [-3, 52]];
+/** His vortex's dark rim: its radius from the spiral's centre, where the braid hands over to it. */
+const HEAD_RIM = 21;
 
 function stream(): WorldSprite[] {
   const t = key('stream');
@@ -896,71 +898,106 @@ function stream(): WorldSprite[] {
   const h = key('stream_head', { l: 0, t: 0, r: ROOM, b: 0 });
   if (h.ay !== t.ay || h.h !== t.h) throw new Error('vfx-genjutsu-v3: the stream head and the tile do not line up');
   const spiral = piece(h, 'spiral'), sparks = piece(h, 'sparks'), hs = piece(h, 'smoke');
-  // His white wisp under the ribbons (bottom left) is kept in every frame; it drifts a pixel.
+  // His white wisp under the ribbons (bottom left) drifts a pixel. Its tail touched the joint
+  // with the tile, so it lies 3 px further into the head (whole, its own tapered tail first): it
+  // never meets the tile at the joint.
   const isWisp = (x: number, y: number) => x < 20 && y > 42;
-  const hm = keep(piece(h, 'main'), (x, y) => !isWisp(x, y)), wisp = keep(piece(h, 'main'), isWisp);
+  const WISP_DX = 3;
+  const hm = keep(piece(h, 'main'), (x, y) => !isWisp(x, y)), wisp = move(keep(piece(h, 'main'), isWisp), WISP_DX, 0);
   const sb = bounds(spiral)!;
   const cx = (sb[0] + sb[2] + 1) / 2, cy = (sb[1] + sb[3] + 1) / 2;
   const rr = (x: number, y: number) => Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
-  // Frame 0 is his head as he painted it (his head starts exactly two braid periods after the
-  // tile, so it runs on from the tile's end; its first 2 columns are the tile's, so the joint is
-  // clean).
-  const f0 = union(hm, spiral);
-  for (let y = 0; y < h.h; y++) for (let x = 0; x < 2; x++) f0.d[y * h.w + x] = at(tm, x, y);
+  const his = union(hm, spiral);
   const ribPoly = (x: number, y: number) => inPoly(x + 0.5, y + 0.5, HEAD_RIBBONS);
-  const vortex = keep(f0, (x, y) => !ribPoly(x, y));
-  // Where the ribbons may flow: his ribbon outline, and the empty space between his vortex's outer
-  // arcs left of the spiral (the braid passes behind the arcs, which are drawn over it).
-  const xEnd = cx - 13;
-  const dom = (x: number, y: number) => ribPoly(x, y) || (x >= 0 && x < xEnd && y >= 0 && y < h.h && !at(vortex, x, y));
-  // The ribbons flow on into the vortex with the stream: each pixel reads `s` px back (his head's
-  // own ribbons, then the braid from the last tile), so the joint with the tile is seamless in
-  // every frame; they stop at his own boundary with the vortex, where his vortex pixels stay. The
-  // last two pixels before that boundary shade a ramp step or two darker, so a ribbon is swallowed
-  // into the vortex rather than cut.
-  const flow = (src: Ix, s: number, tile: Ix | null): Ix => {
+  // The head in every frame (his picture in frame 0 too): left of his vortex's dark rim, the braid
+  // is the continuation of that frame's tile (the tile scrolled, run on into the head), so the
+  // joint with the last tile is the tile's own seamless wrap; it hands over to his vortex along a
+  // curve round the vortex (radius HEAD_RIM from its centre, a 2.5 px ordered-dither band). Within
+  // 4 px of that rim, on both sides, each lit ribbon pixel steps down its own ramp (4 steps at the
+  // rim, 1 at 4 px), so the incoming braid and his ribbons' ends inside are both swallowed by the
+  // vortex's dark rim rather than cut.
+  const inBeam = (x: number, y: number) => x <= 34 && rr(x, y) - HEAD_RIM > (BAYER4[y & 3][x & 3] / 16 - 0.5) * 2.5;
+  const rimDim = (v: number, x: number, y: number) => {
+    const dz = Math.abs(rr(x, y) - HEAD_RIM);
+    if (dz >= 4 || KIND[v - 1] !== 'body' || LAB[v - 1][0] <= 30) return v;
+    return toneMap(-(4 - Math.floor(dz)))[v - 1] + 1;
+  };
+  const beam = (i: number): Ix => {
     const out = blank(h.w, h.h);
     for (let y = 0; y < h.h; y++)
       for (let x = 0; x < h.w; x++) {
-        if (!dom(x, y)) continue;
-        const sx = x - s;
-        const v = sx >= 0 ? at(src, sx, y) : tile ? at(tile, ((sx % t.w) + t.w) % t.w, y) : 0;
-        if (!v) continue;
-        const edge = !dom(x + 1, y) ? 1 : !dom(x + 2, y) ? 2 : 0;
-        const lit = LAB[v - 1][0] > 45 && KIND[v - 1] === 'body';
-        out.d[y * h.w + x] = edge && lit ? toneMap(edge === 1 ? -2 : -1)[v - 1] + 1 : v;
+        if (!inBeam(x, y)) continue;
+        const v = at(tiles[i], x % t.w, y);
+        if (v) out.d[y * h.w + x] = rimDim(v, x, y);
       }
     return out;
   };
-  const ribSrc = keep(f0, ribPoly);
+  // His own pixels in the beam's zone that are not the braid (the vortex's outer arcs above and
+  // below it), drawn over the incoming braid; nearer the joint than 10 px only the braid shows.
+  const overBeam = keep(his, (x, y) => inBeam(x, y) && !ribPoly(x, y) && x >= 10);
+  const vortex = remap(keep(his, (x, y) => !inBeam(x, y)), rimDim);
+  const smokeStill = keep(hs, (x, y) => !inBeam(x, y));
   // The vortex turns: his bright inner spiral (r <= 10.5) an eighth of a turn a frame inside its
   // own disc (4 sub-samples a pixel); between r 10.5 and 12 (where his arms fade into the dark
   // ring) each pixel takes the darker of the turned and the still picture, so no arm is cut and no
   // stub is left; beyond, his dark rings and outer arcs hold still.
   const inner = keep(vortex, (x, y) => rr(x, y) <= 12);
-  const smokeRib = keep(hs, ribPoly), smokeStill = keep(hs, (x, y) => !ribPoly(x, y));
   const sparkParts = parts(sparks);
+  const lumOf = (c: Canvas) => {
+    let sum = 0;
+    for (let n = 0; n < c.w * c.h; n++) sum += ((0.299 * c.px[n * 4] + 0.587 * c.px[n * 4 + 1] + 0.114 * c.px[n * 4 + 2]) * c.px[n * 4 + 3]) / 255;
+    return sum / (c.w * c.h);
+  };
+  let lum0 = 0;
   const heads = range(FLY_N).map((i) => {
-    const s = STREAM_SHIFT[i];
     const w = move(wisp, [0, 0, 1, 1, 1, 1, 0, 0][i], [0, 0, 0, -1, -1, -1, -1, 0][i]);
-    if (!i) return render(h.w, h.h, [[hs], [f0], [w], [sparks]]);
-    const rot = turnInside(inner, cx, cy, (i / FLY_N) * TAU, 1, (x, y) => rr(x, y) <= 12);
-    const v = remap(vortex, (val, x, y) => {
-      const r = rr(x, y);
-      if (r <= 10.5) return at(rot, x, y) || val;
-      if (r <= 12) {
-        const o = at(rot, x, y);
-        return o && LAB[o - 1][0] < LAB[val - 1][0] ? o : val;
-      }
-      return val;
-    });
+    let v = vortex;
+    if (i) {
+      const rot = turnInside(inner, cx, cy, (i / FLY_N) * TAU, 1, (x, y) => rr(x, y) <= 12);
+      v = remap(vortex, (val, x, y) => {
+        const r = rr(x, y);
+        if (r <= 10.5) return at(rot, x, y) || val;
+        if (r <= 12) {
+          const o = at(rot, x, y);
+          return o && LAB[o - 1][0] < LAB[val - 1][0] ? o : val;
+        }
+        return val;
+      });
+    }
     // His sparks twinkle by a ramp step each, on their own beats (never cut).
     const sp = blank(h.w, h.h);
     sparkParts.forEach((p, j) => {
-      const st = clamp(Math.round(Math.sin((i / FLY_N) * TAU + j * 2.1) * 1.4) - Math.round(Math.sin(j * 2.1) * 1.4), -1, 1);
+      const st = i ? clamp(Math.round(Math.sin((i / FLY_N) * TAU + j * 2.1) * 1.4) - Math.round(Math.sin(j * 2.1) * 1.4), -1, 1) : 0;
       stamp(sp, st ? tone(p.ix, st) : p.ix);
     });
-    return render(h.w, h.h, [[smokeStill], [flow(smokeRib, s, null)], [flow(ribSrc, s, tm)], [v], [w], [sp]]);
+    const b = beam(i);
+    // The braid's light and dark crossings flow through the head's narrow beam zone, which would
+    // swell and dim the head by itself (the tile behind it is steady). So each frame one ramp
+    // step (up or down) goes to a share of the head's lit pixels (an ordered-dither share, 0 to
+    // all, spread evenly over the head; none within 4 px of the joint, so the braid stays the
+    // exact run-on of the tile there): the share that keeps the head's brightness nearest to
+    // frame 0's. A faint, even shimmer instead of a dimming vortex.
+    const draw = (bb: Ix, vv: Ix) => render(h.w, h.h, [[smokeStill], [bb], [vv], [overBeam], [w], [sp]]);
+    if (!i) {
+      const c0 = draw(b, v);
+      lum0 = lumOf(c0);
+      return c0;
+    }
+    let best = draw(b, v), bd = Math.abs(lumOf(best) - lum0);
+    // (Level q: q/16 of them a step, past 16 the rest a second step; negative: down.)
+    for (const q of [...range(32).map((n) => n + 1), ...range(32).map((n) => -n - 1)]) {
+        const sel = (x: number, y: number, ix: Ix) => {
+          const val = at(ix, x, y);
+          if (!val || KIND[val - 1] !== 'body' || LAB[val - 1][0] <= 30) return 0;
+          if ((x - 4) / 4 <= BAYER4[(y + 1) & 3][(x + 2) & 3] / 16) return 0;
+          const bq = BAYER4[y & 3][x & 3], aq = Math.abs(q);
+          return Math.sign(q) * ((bq < aq ? 1 : 0) + (bq < aq - 16 ? 1 : 0));
+        };
+        const c = draw(tone(b, (x, y) => sel(x, y, b)), tone(v, (x, y) => sel(x, y, v)));
+        const d = Math.abs(lumOf(c) - lum0);
+        if (d < bd - 1e-9) [best, bd] = [c, d];
+      }
+    return best;
   });
   return [
     sprite(t, 'Genjutsu stream: braided magenta ribbons (tileable 64 px)', { fly: { frames: tiles.map((ix) => render(t.w, t.h, [[ix]])), fps: FLY_FPS, loop: true } }),
@@ -1041,8 +1078,9 @@ function blast(): WorldSprite {
   const behind = (v: number) => KIND[v - 1] === 'body' && LAB[v - 1][0] > 40;
   const fea = keep(fea0, (_x, _y, v) => !behind(v));
   const pool0 = piece(k, 'pool'), col0 = union(piece(k, 'column'), keep(fea0, (_x, _y, v) => behind(v))), sm0 = piece(k, 'smoke');
-  // His black crow feathers fly with his sparkles and splashes.
-  const fx = union(piece(k, 'main'), fea);
+  // His black crow feathers fly with his sparkles and splashes (his pink splash stalks on the
+  // pool's back rim among them).
+  const fx = union(piece(k, 'main'), piece(k, 'stalks'), fea);
   // His dark smoke in two parts: the pool's dark outer rings (smoke touching the pool more than
   // the column) turn with the pool as one picture, so they never part from it; the rest (the
   // streaks on the column, the wisps in the air) drifts up.
@@ -1076,6 +1114,22 @@ function blast(): WorldSprite {
     if (yt < 0 || yt > cb[1] + 2) continue;
     for (let y = 2; y < yt; y++) col.d[y * k.w + x] = at(col0, x, yt);
   }
+  // Each streak of his column (a column of pixels): its own end (top) and foot (bottom).
+  const colTopX = new Int32Array(k.w).fill(-1), colBotX = new Int32Array(k.w).fill(-1);
+  for (let y = 0; y < k.h; y++)
+    for (let x = 0; x < k.w; x++)
+      if (at(col, x, y)) {
+        if (colTopX[x] < 0) colTopX[x] = y;
+        colBotX[x] = y;
+      }
+  // A streak's own pace (his streaks are 2-4 px wide: one value per 3 px), 0.85-1.15.
+  const pace = (x: number) => 0.85 + 0.3 * vnoise(x, 1, 3, 925);
+  /** Rising: the top of streak x when the column has reached `reach` of its height. */
+  const streakFront = (x: number, reach: number) =>
+    colTopX[x] < 0 ? k.h : colBotX[x] - (colBotX[x] - colTopX[x]) * clamp(reach * pace(x), 0, 1);
+  /** Going out: the top of what is left of streak x when the share `g` of it has gone. */
+  const streakGone = (x: number, g: number) =>
+    colTopX[x] < 0 ? k.h : colTopX[x] + (colBotX[x] - colTopX[x]) * clamp(g * (2 - pace(x)), 0, 1) + snoise(x, 0, 2, 945) * 7 * Math.min(1, g * 8);
   // On his picture and its hold the column's top ends straight, in a short stepped alpha fade
   // over 5 rows (he ran it off his panel); the ragged streak ends are kept for its going out.
   const SOFT_TOP: Fade = { soft: 6 };
@@ -1106,35 +1160,71 @@ function blast(): WorldSprite {
     }
   // His column stands in the middle of the pool, so the pool has no pixels behind it; when the
   // column is narrow (rising) or going out, the pool runs on there: each hidden pixel inside the
-  // pool's ellipse takes the pool's own pixel at the same radius, the nearest angle round the
+  // pool's own outline takes the pool's own pixel at the same radius, the nearest angle round the
   // ellipse (in its own space), so his spiral arms run on behind the column.
+  // The pool's outline at its back is HIS back rim where it shows (the pool's top in a column
+  // whose pixel above is not hidden by the column, its fill, the smoke or the bits); across the
+  // span the column hid, it runs on along an ellipse arc fitted (least squares) to his shown rim,
+  // a pixel ragged like his rim. Never a straight cut: a pool pixel shows only below that line.
   const prx = (pb[2] - pb[0] + 1) / 2, pry = (pb[3] - pb[1] + 1) / 2;
+  const hiddenAt = (x: number, y: number) => !!(at(col, x, y) || at(colFill, x, y) || at(sm, x, y) || at(fx, x, y));
+  const poolTop = new Int32Array(k.w).fill(-1), poolBot = new Int32Array(k.w).fill(-1);
+  for (let y = 0; y < k.h; y++)
+    for (let x = 0; x < k.w; x++)
+      if (at(pool, x, y)) {
+        if (poolTop[x] < 0) poolTop[x] = y;
+        poolBot[x] = y;
+      }
+  const arcS = (x: number) => Math.sqrt(Math.max(0, 1 - ((x + 0.5 - pcx) / prx) ** 2));
+  let s11 = 0, s1 = 0, n1 = 0, sy = 0, sys = 0;
+  const shown: boolean[] = range(k.w).map((x) => poolTop[x] >= 0 && !hiddenAt(x, poolTop[x] - 1));
+  for (let x = pb[0]; x <= pb[2]; x++) {
+    if (!shown[x] || Math.abs(x + 0.5 - pcx) > prx * 0.85) continue;
+    const sx = arcS(x);
+    s11 += sx * sx;
+    s1 += sx;
+    n1++;
+    sy += poolTop[x];
+    sys += poolTop[x] * sx;
+  }
+  // top(x) = cyb - ryb * s(x), least squares over his shown rim.
+  const det = n1 * s11 - s1 * s1;
+  const cyb = det ? (sy * s11 - sys * s1) / det : pb[1];
+  const ryb = det ? (sy * s1 - sys * n1) / det : 0;
+  const backTop = new Int32Array(k.w);
+  for (let x = 0; x < k.w; x++) {
+    const est = Math.round(cyb - ryb * arcS(x) + snoise(x, 3, 1.5, 1033) * 2.6) - (hash(x, 3, 1034) < 0.3 ? 1 : 0);
+    backTop[x] = shown[x] ? poolTop[x] : poolTop[x] >= 0 ? Math.min(poolTop[x], est) : est;
+  }
   const poolBehind = blank(k.w, k.h);
-  for (let y = pb[1]; y <= pb[3]; y++)
+  for (let y = pb[1] - 12; y <= pb[3]; y++)
     for (let x = pb[0]; x <= pb[2]; x++) {
-      if (at(pool, x, y) || !(at(col, x, y) || at(colFill, x, y) || at(sm, x, y) || at(fx, x, y))) continue;
+      if (y < backTop[x] || at(pool, x, y) || !hiddenAt(x, y)) continue;
+      // (Below the back line and above the pool's own front edge in this column, or inside its
+      // ellipse where the column hid even the front.)
       const u = (x + 0.5 - pcx) / prx, v = (y + 0.5 - pcy) / pry;
       const r = Math.hypot(u, v);
-      if (r > 0.92) continue;
+      if (poolBot[x] >= 0 ? y > poolBot[x] : r > 0.98) continue;
       const th = Math.atan2(v, u);
+      // (A pixel of his back rim beyond the fitted ellipse samples its rim, just inside.)
+      const rq = Math.min(r, 0.97);
       const hid = (sx: number, sy: number) => !at(pool0, sx, sy) || !!(at(col, sx, sy) || at(colFill, sx, sy));
-      const ox = Math.floor(2 * pcx - x - 0.5 + 0.5), oy = Math.floor(2 * pcy - y - 0.5 + 0.5);
+      const ox = Math.floor(pcx - Math.cos(th) * rq * prx), oy = Math.floor(pcy - Math.sin(th) * rq * pry);
       if (!hid(ox, oy)) {
         poolBehind.d[y * k.w + x] = at(pool0, ox, oy);
         continue;
       }
-      for (let d = 1; d <= 90; d++) {
-        let got = 0;
-        for (const sg of [1, -1]) {
-          const a = th + sg * d * (Math.PI / 180) * 2;
-          const sx = Math.floor(pcx + Math.cos(a) * r * prx), sy = Math.floor(pcy + Math.sin(a) * r * pry);
-          if (!got && at(pool0, sx, sy) && !(at(col, sx, sy) || at(colFill, sx, sy))) got = at(pool0, sx, sy);
-        }
-        if (got) {
-          poolBehind.d[y * k.w + x] = got;
-          break;
-        }
-      }
+      // The nearest angle at this radius where his pool shows; at the vortex's heart, where the
+      // column hid the whole ring, the nearest ring outward that shows (his hot core).
+      let got = 0;
+      for (let rr = rq; rr <= 1 && !got; rr += 0.03)
+        for (let d = 1; d <= 90 && !got; d++)
+          for (const sg of [1, -1]) {
+            const a = th + sg * d * (Math.PI / 180) * 2;
+            const sx = Math.floor(pcx + Math.cos(a) * rr * prx), sy = Math.floor(pcy + Math.sin(a) * rr * pry);
+            if (!got && at(pool0, sx, sy) && !(at(col, sx, sy) || at(colFill, sx, sy))) got = at(pool0, sx, sy);
+          }
+      if (got) poolBehind.d[y * k.w + x] = got;
     }
   const DEG = Math.PI / 180;
   const K = BLAST_KEY;
@@ -1180,26 +1270,39 @@ function blast(): WorldSprite {
     let shape: (src: Ix) => Ix;
     let colFront: ((x: number, y: number) => number) | undefined;
     if (P.reach[i] < 1) {
-      // Its front is ragged in streaks (each column of light ends at its own height): the last
-      // 12 px fade out in steps, white-hot just below. It starts narrow and widens.
-      const front = (x: number) => colBottom - colH * P.reach[i] + snoise(x, i, 2.5, 925) * 9;
-      shape = (src) => tone(keep(scaleAbout(src, k.ax, colBottom, P.narrow[i], 1), (x, y) => y >= front(x)), (x, y) => (y < front(x) + 10 ? 2 : y < front(x) + 22 ? 1 : 0));
-      colFront = (x, y) => Math.ceil(clamp((y - front(x)) / 12, 0, 1) * 4) / 4;
+      // It shoots up streak by streak: each of his streaks (a column of the column) shows the
+      // lower `reach` share of its own length, from its own foot to its own end in his picture,
+      // each at its own pace (so the streak ends stay his, never a row of even spikes), its last
+      // 4 px in two alpha steps, in his own colours. It starts narrow and widens.
+      const nw = P.narrow[i];
+      const xs = (x: number) => clamp(Math.round(k.ax + (x - k.ax) / nw), 0, k.w - 1);
+      const fr = (x: number) => streakFront(x, P.reach[i]);
+      shape = (src) => scaleAbout(keep(src, (x, y) => y >= fr(x)), k.ax, colBottom, nw, 1);
+      colFront = (x, y) => Math.ceil(clamp((y - fr(xs(x)) + 1) / 4, 0, 1) * 2) / 2;
     } else {
       // Held and settling: the column wavers (a rising, looping field: 0 at his picture),
       // a little at first, more as it dies.
       const amp = i < K + 3 ? 0.7 + 0.35 * (i - K) : 1.6;
       const wv = wobble((i - K) / 12, amp, 5, 930, 1);
       // (Over his own column, so where a streak wavers off a pixel his streak shows, never a slit.)
-      shape = (src) => stamp(union(src), inside(displace(src, wv), 1));
+      // As it goes out it also draws in toward its middle (to 70% of its width), the reverse of
+      // its rise, so what is left is no block with straight sides.
+      const nw = 1 - 0.3 * P.gone[i];
+      shape = (src) => {
+        const w = stamp(union(src), inside(displace(src, wv), 1));
+        return nw < 1 ? scaleAbout(w, k.ax, colBottom, nw, 1) : w;
+      };
     }
     let c = shape(col), cFill = shape(colFill);
     if (P.gone[i]) {
       // The light goes out from the top down: each streak ends lower (ragged, in ordered alpha
       // steps), and what is left steps down its own hue ramp. It stays opaque, so it darkens
       // to violet instead of greying over the pool; no specks, no holes.
-      const gone = (x: number) => cb[1] + colH * P.gone[i] + snoise(x, 0, 2, 945) * 8;
-      colFront = (x, y) => Math.ceil(clamp((y - gone(x)) / 12, 0, 1) * 4) / 4;
+      // (Each streak from its own end down toward its own foot: the stubs end at their own
+      // heights along the column's foot on the pool, never on one line.)
+      const g = P.gone[i], nw = 1 - 0.3 * g;
+      const xs = (x: number) => clamp(Math.round(k.ax + (x - k.ax) / nw), 0, k.w - 1);
+      colFront = (x, y) => Math.ceil(clamp((y - streakGone(xs(x), g)) / 8, 0, 1) * 4) / 4;
     }
     if (P.colDim[i]) {
       c = tone(c, P.colDim[i]);
@@ -1227,8 +1330,10 @@ function blast(): WorldSprite {
     // drifts up.
     let s = sm;
     if (i < K) {
-      const front = (x: number) => colBottom - colH * P.reach[i] + snoise(x, i, 2.5, 925) * 9;
-      s = keep(scaleAbout(sm, k.ax, k.ay, Math.max(P.poolS[i], 0.5)), (x, y) => y >= front(x) + 4 || y > k.ay - 26);
+      // (Over the column: below its front; beside it, the smoke opens out with the pool.)
+      const nw = P.narrow[i];
+      const xs = (x: number) => clamp(Math.round(k.ax + (x - k.ax) / nw), 0, k.w - 1);
+      s = keep(scaleAbout(sm, k.ax, k.ay, Math.max(P.poolS[i], 0.5)), (x, y) => colTopX[xs(x)] < 0 || y >= streakFront(xs(x), P.reach[i]) + 4);
     } else {
       // It drifts up (and wavers), held where it meets the pool's back rim, so no slit opens
       // between the smoke and the pool; over the hold it moves a pixel at most.
@@ -1244,16 +1349,9 @@ function blast(): WorldSprite {
     }
     const colA = Math.min(1, P.poolA[i] + 0.08);
     cFill = remap(cFill, (v, x, y) => (at(s, x, y) ? DEEP : v));
-    // His pool was cut along a straight line at its back (the column and the smoke hid it there):
-    // off his picture and its hold, its top rows fade out in ordered alpha steps down to a ragged
-    // line 5-9 px below that cut, so no straight edge shows where the column has gone.
-    const sc = P.poolS[i];
-    const cut = k.ay + (pb[1] - k.ay) * sc;
-    const vig = i > K && i < K + 3 ? undefined : (x: number, y: number) => {
-      const t = clamp((y + 0.5 - cut) / ((5 + 4 * vnoise(x, 7, 3, 1031)) * Math.max(sc, 0.5)), 0, 1);
-      return clamp(Math.floor(t * 4 + BAYER4[y & 3][x & 3] / 16) / 4, 0, 1);
-    };
-    fr.push(render(k.w, k.h, [[p, P.poolA[i], undefined, vig], [cFill, colA, undefined, colFront], [s, P.smA[i]], [c, colA, undefined, colFront], [f, P.fA[i]]], i > K && i < K + 3 ? SOFT_TOP : k.fade));
+    // (The pool ends at its own back rim, his where it shows and its run-on behind the column (see
+    // poolBehind): the turned pool stays inside that outline, so no straight edge ever shows.)
+    fr.push(render(k.w, k.h, [[p, P.poolA[i]], [cFill, colA, undefined, colFront], [s, P.smA[i]], [c, colA, undefined, colFront], [f, P.fA[i]]], i > K && i < K + 3 ? SOFT_TOP : k.fade));
   }
   return sprite(k, 'Genjutsu blast: column of violet light out of a swirling vortex, with crow feathers', { blast: { frames: fr, fps: BLAST_FPS, loop: false } });
 }

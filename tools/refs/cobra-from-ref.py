@@ -1038,15 +1038,17 @@ def sample_coils(k, u, v_):
     return c['coil_col'][iy, ix], ok
 
 
-def render_coils(a, b, t, head, Pt, light_target=None):
+def render_coils(a, b, t, head, Pt, coil):
     """His coils carried onto the spine Pt (on the common parameter): every pixel keeps its place along the
     body and its place across it as a fraction of his half-width there (nearest pixel, so they stay his, and
-    his dark rim stays on the rim even where the body is wider or narrower than in his picture). The pixels
-    come from his picture a or b by stretch: the tail end changes over to b first and the change runs up
-    the body, as far as gives this frame its even share of the change in light between his two pictures
-    (`light_target`, the body's mean alpha x luma: his RIGHT is the brighter, and his bright hump would
-    otherwise change over in one frame); the neck always matches the head piece's picture. Also returns
-    which pixels are the tail end and how far up the body the change has run (a fraction of the body)."""
+    his dark rim stays on the rim even where the body is wider or narrower than in his picture). Whole
+    stretches of the body come from one of his pictures, cut at his landmarks (`coil` = the stretch, from one
+    landmark to another, taken from b; the rest from a): the hump and the coil under the neck always from
+    the nearer picture, so his scale lattice, his yellow saddles and his belly band stay whole and are carried
+    the shortest way (a picture carried most of the way to the other turns his lattice to mottle); his RIGHT
+    is the brighter in the tail end only, so the tail end changes over a frame apart from the hump, which
+    spreads the change in light; the neck always matches the head piece's picture. Also returns which
+    pixels are the tail end."""
     x0 = int(max(0, np.floor(Pt[:, 0].min()) - 16))
     x1 = int(min(CW, np.ceil(Pt[:, 0].max()) + 17))
     y0 = int(max(0, np.floor(Pt[:, 1].min()) - 16))
@@ -1067,19 +1069,8 @@ def render_coils(a, b, t, head, Pt, light_target=None):
     tsrc = tip_plan(a, t)[0]
     ok = inside & (oka | okb) & (u >= PIECE[tsrc]['j'])  # (past the joint: his tip piece, below)
 
-    def pick(q):
-        use_b = np.where(sig >= SIG[3], head == b, sig < q)
-        return np.where((use_b & (okb | ~oka)) | (~use_b & ~oka & okb), True, False)
-
-    q = SIG[3] * t
-    if light_target is not None:
-        # (the frame's body light, estimated from his raw pixels, for each place the change could have run to)
-        lum_a, lum_b = ca @ LUMA / 255.0, cb @ LUMA / 255.0
-        qs = np.linspace(0.0, SIG[3], 49)
-        est = [float(np.where(pick(qq), lum_b, lum_a)[ok].sum()) / (CH * CW) for qq in qs]
-        q = float(qs[int(np.argmin([abs(e + light_target[1] - light_target[0]) for e in est]))])
-
-    pick_b = pick(q)
+    use_b = np.where(sig >= SIG[3], head == b, (sig >= SIG[coil[0]]) & (sig < SIG[coil[1]]))
+    pick_b = (use_b & (okb | ~oka)) | (~use_b & ~oka & okb)
     colr = np.where(pick_b[:, None], cb, ca)
     mask = np.zeros((CH, CW), bool)
     col = np.zeros((CH, CW, 3), np.float32)
@@ -1101,7 +1092,7 @@ def render_coils(a, b, t, head, Pt, light_target=None):
     # Notches up to two px wide that the carrying opens in an edge: closed (his edges are smooth there).
     closed = erode(dilate(mask, 1), 1) & ~mask
     mask, col = fill_from_neighbours(mask, col, closed)
-    return mask, col, tail, q
+    return mask, col, tail
 
 
 TIP_SS = 4  # subsamples per px (each way) when his tip piece is turned
@@ -1177,8 +1168,13 @@ TAIL_TOP = min(v[1] for v in TAIL_BOX.values())  # his highest and furthest-out 
 TAIL_LEFT = min(v[0] for v in TAIL_BOX.values())
 
 # Each blob his mist lays over the coil is carried with the coil under it: its place along and across the body.
+# Only a blob that he painted over the coil (a tenth or more of it his purple over the scales: the puffs at the
+# neck base, a few bubbles) is drawn over the coil in the in-betweens; one that only bleeds onto the coil's rim
+# (his great cloud over the hump) stays behind the coil and its 1 px rim, as in his pictures.
+OVER_COIL = 0.1
 for k, c in C.items():
     c['blob_on_coil'] = []
+    c['blob_over'] = [bool(fr and (m & c['mist_front']).sum() >= OVER_COIL * m.sum()) for m, fr in zip(c['blobs'], c['blob_front'])]
     for m, fr in zip(c['blobs'], c['blob_front']):
         if not fr:
             c['blob_on_coil'].append(None)
@@ -1189,7 +1185,7 @@ for k, c in C.items():
         c['blob_on_coil'].append((cen[0], float(to_index(s_, c['Pm'])[0]), float(v_[0])))
 
 
-def mist_layers(items, Pt=None, gain=1.0):
+def mist_layers(items, Pt=None, gain=1.0, boost=0.0):
     """His blobs, each moved whole by whole pixels and faded. A fading blob shrinks into a smaller copy of
     itself, his core keeping his purple at his own alpha and his soft rim staying its rim (a whole blob
     thinned at once would turn into a grey film over the grass; one eaten from its edge would leave a thin
@@ -1198,14 +1194,14 @@ def mist_layers(items, Pt=None, gain=1.0):
     mist_c = np.zeros((CH, CW, 3), np.float32)
     mist_f = np.zeros((CH, CW), bool)
     mist_rgb = np.zeros((CH, CW, 3), np.float32)
-    mist_bf = np.zeros((CH, CW), bool)  # (pixels of a blob that lies in front of the coil)
+    mist_bf = np.zeros((CH, CW), np.int8)  # (pixels of a blob carried with the coil: 1 over it, 2 behind it)
     if Pt is not None:
         Nt = normals(Pt)
         segt = float(np.hypot(*np.diff(Pt, axis=0).T).mean())
-    for k, j, fade, (mx, my) in items:
+    for k, j, fade, (mx, my), trim in items:
         ck = C[k]
         m = ck['blobs'][j]
-        f = min(1.0, fade * gain)
+        f = min(1.0, fade * gain) if trim == 'puff' else (float(np.clip(fade + boost, 0.0, 1.0)) if trim == 'cloud' else fade)
         if f <= 0.02:
             continue
         oc = ck['blob_on_coil'][j]
@@ -1245,7 +1241,8 @@ def mist_layers(items, Pt=None, gain=1.0):
         mist_c = np.where(take[..., None], cm, mist_c)
         mist_f = np.where(take, fm, mist_f)
         mist_rgb = np.where(take[..., None], rm, mist_rgb)
-        mist_bf = np.where(take, (am > 0) & (oc is not None), mist_bf)
+        code = 0 if oc is None else (1 if ck['blob_over'][j] else 2)
+        mist_bf = np.where(take, np.where(am > 0, code, 0), mist_bf).astype(np.int8)
     return mist_a, mist_c, mist_f, mist_rgb, mist_bf
 
 
@@ -1265,12 +1262,7 @@ def frame(spec):
         coils, ccol = c['coil_src'], c['coil_col']
     else:
         Pt = target_spine(a, b, t, src, c['P'][-1] + np.array([hdx, hdy]))
-        lt = None
-        if 'body_target' in spec:
-            # (the head piece's own light, so that the coils make up the rest of the target)
-            hl = float((shift_arr(c['upper'] & ~c['lower'], hdx, hdy, False) * (shift_arr(c['col'], hdx, hdy, 0.0) @ LUMA / 255.0)).sum()) / (CH * CW)
-            lt = (spec['body_target'] + spec.get('body_trim', 0.0), hl)
-        coils, ccol, tail, spec['switch'] = render_coils(a, b, t, src, Pt, lt)
+        coils, ccol, tail = render_coils(a, b, t, src, Pt, spec['coil'])
     spec['Pt'] = Pt
     up = shift_arr(c['upper'], hdx, hdy, False)
     ucol = shift_arr(c['col'], hdx, hdy, 0.0)
@@ -1303,10 +1295,10 @@ def frame(spec):
     base = (out[..., 3] / 255.0) * (out[..., :3] @ LUMA / 255.0)
     base[dd] = (snap_head(dcol[dd], dwarm[dd]) @ LUMA / 255.0) if dd.any() else 0.0
 
-    def seen(g):
+    def seen(g, d=0.0):
         """The mist at gain g, and the light of the whole frame with it (the mist beside the body, and his
         mist over the coil in place of the scales under it)."""
-        ma, mc, mf, mr, bf = mist_layers(spec['mist'], Pt, g)
+        ma, mc, mf, mr, bf = mist_layers(spec['mist'], Pt, g, d)
         lv = alevel(ma)
         free = (lv > 0) & ~occupied
         tot = float(base.sum())
@@ -1318,33 +1310,47 @@ def frame(spec):
         return ma, mc, mf, mr, bf, tot / (CH * CW)
 
     def front_colours(lv, mc, mf, mr, bf):
-        """His mist over the coil: his own pixels where he painted it over the coil, and the rest of a blob
-        that lies in front of the coil laid over the scales at its alpha (so the coil's rim does not cut
-        through the blob)."""
-        front = (lv > 0) & body & (mf | bf)
+        """His mist over the coil: on his own pictures his own pixels where he painted it over the coil; on
+        every frame a blob he painted over the coil laid over the scales at its alpha (so the coil's rim does
+        not cut through the blob). Any other blob stays behind the coil and its rim."""
+        front = (lv > 0) & body & ((bf == 1) | (mf & (Pt is None)))
         rgb = np.where(mf[..., None], mr, snap(mc, MISTPAL) * (lv / 255.0)[..., None] + out[..., :3] * (1 - lv / 255.0)[..., None])
         return front, snap_purple(rgb[front])
 
-    g = 1.0
+    g, d = 1.0, 0.0
     mist_a, mist_c, mist_f, mist_rgb, mist_bf, ml = seen(g)
     if 'light_target' in spec:
-        # Half-faded blobs read dimmer than his whole ones: how far the blobs have faded is scaled (a bisection
-        # on the gain) so the frame's light goes evenly from his one picture's to his other's.
+        # The frame's light goes evenly from his one picture's to his other's: first his small puffs fade a little
+        # faster or slower (a bisection on their gain); what that cannot make up, his big clouds do, each a
+        # little ahead of or behind its even share, by at most CLOUD_TRIM of one frame's share, so every cloud
+        # still only grows (or only shrinks) frame by frame.
+        tgt = spec['light_target']
         lo, hi = np.log(0.25), np.log(4.0)
-        best = (abs(ml - spec['light_target']), g, (mist_a, mist_c, mist_f, mist_rgb, mist_bf, ml))
+        best = (abs(ml - tgt), g, d, (mist_a, mist_c, mist_f, mist_rgb, mist_bf, ml))
         for _ in range(12):
             mid_ = (lo + hi) / 2
-            g = float(np.exp(mid_))
-            res = seen(g)
-            if abs(res[5] - spec['light_target']) < best[0]:
-                best = (abs(res[5] - spec['light_target']), g, res)
-            if res[5] < spec['light_target']:
+            res = seen(float(np.exp(mid_)))
+            if abs(res[5] - tgt) < best[0]:
+                best = (abs(res[5] - tgt), float(np.exp(mid_)), 0.0, res)
+            if res[5] < tgt:
                 lo = mid_
             else:
                 hi = mid_
-        g = best[1]
-        mist_a, mist_c, mist_f, mist_rgb, mist_bf, ml = best[2]
-    spec['mist_gain'], spec['light'] = g, ml
+        if best[0] > 0.02e-3:
+            g = best[1]
+            lo, hi = -CLOUD_TRIM * spec['step'], CLOUD_TRIM * spec['step']
+            for _ in range(10):
+                mid_ = (lo + hi) / 2
+                res = seen(g, mid_)
+                if abs(res[5] - tgt) < best[0]:
+                    best = (abs(res[5] - tgt), g, mid_, res)
+                if res[5] < tgt:
+                    lo = mid_
+                else:
+                    hi = mid_
+        g, d = best[1], best[2]
+        mist_a, mist_c, mist_f, mist_rgb, mist_bf, ml = best[3]
+    spec['mist_gain'], spec['cloud_trim'], spec['light'] = g, d, ml
     lev = alevel(mist_a)
     # A drop a mist blob drifts over goes behind it (the whole drop, so no green ring floats in the purple).
     for p in components(dd):
@@ -1404,13 +1410,18 @@ TIP_TAPER = 9.0  # px over which the tail narrows to its point in the in-between
 DRIFT, RISE = 9.0, 3.0  # px a mist blob drifts back (and up) while it fades
 
 
-STAGGER = 0.5  # the blobs fade one after another over this much of the move, not all at once
+STAGGER = 0.5  # the small blobs fade one after another over this much of the move, not all at once
+BIG_CLOUD = 100.0  # summed alpha (0-1 per px) from which a blob of his is one of his big clouds
+CLOUD_TRIM = 0.4  # how far (in frames' shares) a big cloud may run ahead of or behind its even fade for the light
+HUMP_CLOUD = 300.0  # summed alpha from which a cloud is his great cloud over the hump: it keeps its even fade exactly
 
 
 def mist(a, b, t):
-    """Blobs of a drift back and fade out (the hindmost first), blobs of b drift in from in front and fade in
-    (the foremost first): each blob fades over half the move, so few are half-faded at once. (A blob over
-    the coil goes with the coil instead: see mist_layers.)"""
+    """Blobs of a drift back and fade out, blobs of b drift in from in front and fade in. His big clouds
+    (the cloud over the hump, the puffs at the neck base) shrink and grow evenly over the whole move, the
+    same share every frame, so none collapses in one step; his small puffs fade one after another (the
+    hindmost first out, the foremost first in) over half the move each. Only the small puffs take the light
+    trim (mist_layers' gain). (A blob over the coil goes with the coil instead: see mist_layers.)"""
     out = []
     for k, sgn in ((a, -1), (b, 1)):
         blobs = C[k]['blobs']
@@ -1419,10 +1430,12 @@ def mist(a, b, t):
         rank = np.empty(len(blobs))
         rank[order] = np.arange(len(blobs)) / max(1, len(blobs) - 1)
         for j in range(len(blobs)):
-            w = smoothstep((t - STAGGER * rank[j]) / (1 - STAGGER))
+            mass = float(C[k]['mist_a'][blobs[j]].sum())
+            big = mass >= BIG_CLOUD
+            w = t if big else smoothstep((t - STAGGER * rank[j]) / (1 - STAGGER))
             fade = 1.0 - w if sgn < 0 else w
             move = (-DRIFT * t, -RISE * t) if sgn < 0 else (DRIFT * (1 - t), RISE * (1 - t))
-            out.append((k, j, fade, move))
+            out.append((k, j, fade, move, 'puff' if not big else ('cloud' if mass < HUMP_CLOUD else 'even')))
     return out
 
 
@@ -1431,34 +1444,44 @@ def mist(a, b, t):
 # starts from (his two heads are nearly one drawing); its drops change over one frame before it does.
 FRAMES = [
     dict(a='L', b='R', t=0.0, src='L', strike=(0, 0)),
-    dict(a='L', b='R', t=0.2, src='L', strike=(-2, -1)),
-    dict(a='L', b='R', t=0.4, src='L', strike=(2, 0)),
-    dict(a='L', b='R', t=0.6, src='L', strike=(6, 2)),
-    dict(a='L', b='R', t=0.8, src='L', strike=(3, 1), drips='R'),
+    dict(a='L', b='R', t=0.2, src='L', strike=(-2, -1), coil=(0, 0)),
+    dict(a='L', b='R', t=0.4, src='L', strike=(2, 0), coil=(0, 1)),
+    dict(a='L', b='R', t=0.6, src='L', strike=(6, 2), drips='R', coil=(0, 3)),
+    dict(a='L', b='R', t=0.8, src='R', strike=(3, 1), coil=(0, 3)),
     dict(a='R', b='L', t=0.0, src='R', strike=(0, 0)),
-    dict(a='R', b='L', t=1 / 3, src='R', strike=(-1, -1)),
-    dict(a='R', b='L', t=2 / 3, src='R', strike=(-1, 0), drips='L'),
+    dict(a='R', b='L', t=1 / 3, src='L', strike=(-1, -1), drips='R', coil=(0, 0)),
+    dict(a='R', b='L', t=2 / 3, src='L', strike=(0, -1), coil=(1, 3)),
 ]
 for f in FRAMES:
-    f['mist'] = mist(f['a'], f['b'], f['t']) if f['t'] > 0 else [(f['a'], j, 1.0, (0.0, 0.0)) for j in range(len(C[f['a']]['blobs']))]
+    f['mist'] = mist(f['a'], f['b'], f['t']) if f['t'] > 0 else [(f['a'], j, 1.0, (0.0, 0.0), 'puff') for j in range(len(C[f['a']]['blobs']))]
 fly = [None] * len(FRAMES)
 for i, f in enumerate(FRAMES):
     if f['t'] == 0:
         fly[i] = frame(f)
 KEY_LIGHT = {f['a']: f['light'] for f in FRAMES if f['t'] == 0}  # (the whole frame's light)
-KEY_BODY_LIGHT = {f['a']: f['body_light_raw'] for f in FRAMES if f['t'] == 0}
 for i, f in enumerate(FRAMES):
     if f['t'] > 0:
-        # Each in-between gets its even share of the change in light between his two pictures: the body's (by how
-        # far up the body his other picture's pixels have come) and the mist's (by how far the blobs have faded).
+        # Each in-between aims at its even share of the change in light between his two pictures: his small puffs
+        # fade a little faster or slower (the gain) to make up what the coil, taken whole from the nearer
+        # picture, does not.
         f['light_target'] = KEY_LIGHT[f['a']] * (1 - f['t']) + KEY_LIGHT[f['b']] * f['t']
-        f['body_target'] = KEY_BODY_LIGHT[f['a']] * (1 - f['t']) + KEY_BODY_LIGHT[f['b']] * f['t']
+        f['step'] = 0.2 if f['a'] == 'L' else 1 / 3
         fly[i] = frame(f)
-        # (the estimate reads his raw pixels before the rim and the tidy: one more pass, trimmed by what it missed)
-        f['body_trim'] = f['body_target'] - f['body_light_raw']
-        fly[i] = frame(f)
-print('mist gain per frame', [round(f['mist_gain'], 3) for f in FRAMES])
-print('body changed over to the other picture up to (fraction of the body)', [round(f.get('switch', 0.0), 3) for f in FRAMES])
+# A frame whose mist cannot reach its share (his RIGHT's brighter tail end and hump come in whole stretches)
+# keeps the light it has; the frames between such frames are re-aimed on the straight line between them, so
+# the change in light is spread evenly over the frames that can take it, not left in one step.
+PINNED = [f['t'] == 0 or abs(f['light'] - f['light_target']) > 0.02e-3 for f in FRAMES]
+n_ = len(FRAMES)
+for i, f in enumerate(FRAMES):
+    if PINNED[i]:
+        continue
+    p0 = next(k for k in range(1, n_) if PINNED[(i - k) % n_])
+    p1 = next(k for k in range(1, n_) if PINNED[(i + k) % n_])
+    l0, l1 = FRAMES[(i - p0) % n_]['light'], FRAMES[(i + p1) % n_]['light']
+    f['light_target'] = l0 + (l1 - l0) * p0 / (p0 + p1)
+    fly[i] = frame(f)
+print('mist gain per frame', [round(f['mist_gain'], 3) for f in FRAMES], 'big-cloud trim', [round(f.get('cloud_trim', 0.0), 3) for f in FRAMES],
+      'light aimed at', [round(f['light_target'] * 1000, 2) if 'light_target' in f else None for f in FRAMES], 'kept (out of reach)', [i for i, p_ in enumerate(PINNED) if p_ and FRAMES[i]['t'] > 0])
 
 
 def light(f):

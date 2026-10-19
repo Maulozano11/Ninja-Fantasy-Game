@@ -26,7 +26,8 @@ pixels:
       ground  - the 3/4 wall's long shadow (and the thin strip of it above): colour-to-alpha
                 with an alpha floor (0.8), so it reads as a violet stain on any map; what his
                 character hid of it is filled in along the shadow's own slant;
-      weed    - the olive brambles of the 3/4 wall (their own small palette);
+      weed    - the khaki brambles of the 3/4 wall (their own small palette), opaque: inside boxes
+                round them every pixel of their hue is bramble, their black strokes opaque dark;
       eye     - his eyes (hand-set ellipses): no hue smoothing, quantized by lightness first.
   * Game scale. Every class is area-averaged (box filter) down to game scale; each game pixel
     takes its strongest class (bodies weighted up a little so his thin bright lines survive)

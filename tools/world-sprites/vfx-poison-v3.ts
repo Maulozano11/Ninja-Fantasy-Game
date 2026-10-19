@@ -270,7 +270,18 @@ function circleDisp(x: number, y: number, t: number, cell: number, seed: number)
   return [n1 * c + n2 * s, n2 * c - n1 * s];
 }
 
-interface ChurnOpts { amp: number; ampY?: number; cell: number; seed: number; where?: (x: number, y: number) => number; flow?: [number, number] }
+interface ChurnOpts {
+  amp: number;
+  ampY?: number;
+  cell: number;
+  seed: number;
+  where?: (x: number, y: number) => number;
+  flow?: [number, number];
+  /** Only these values move and are sampled (the rest stays exactly his). */
+  movable?: (v: number) => boolean;
+  /** Per pixel, the part it belongs to: a pixel only takes a colour from its own part. */
+  part?: Int32Array;
+}
 /**
  * His slime churning inside its own silhouette: every body pixel takes the colour of a body pixel
  * of the same family a little way off (the rims and the silhouette stay, so the outline stays
@@ -293,7 +304,10 @@ function churn(L: Layer, t: number, o: ChurnOpts): Layer {
       dx += o.flow[0] * f;
       dy += o.flow[1] * f;
     }
-    const s = L.get(Math.round(x - dx), Math.round(y - dy));
+    const sx = Math.round(x - dx), sy = Math.round(y - dy);
+    const s = L.get(sx, sy);
+    if (o.movable && (!o.movable(v) || !o.movable(s))) continue;
+    if (o.part && (sx < 0 || sy < 0 || sx >= L.w || sy >= L.h || o.part[sy * L.w + sx] !== o.part[y * L.w + x])) continue;
     if (isKind(s, 'body') && FAM[s - 1] === FAM[v - 1]) out.v[y * L.w + x] = s;
   }
   return out;
@@ -622,10 +636,36 @@ function sphere(): WorldSprite {
 function slash(): WorldSprite {
   const K = key('slash'), seed = 7400;
   const main = K.part('main'), dashes = K.part('dashes'), glow = K.part('glow'), drops = K.part('drops');
+  // Each crescent churns only inside itself (its own slime, mid tones only): the dark gap between
+  // them, their dark tear lines and the bone-white fang edges stay exactly his.
+  const part = new Int32Array(main.w * main.h).fill(-1);
+  pieces(main).forEach((pc, k) => {
+    for (const j of pc) part[j] = k;
+  });
+  const movable = (v: number) => isKind(v, 'body') && FAM[v - 1] === 'green' && lumOf(PAL[v - 1]) >= 70;
+  const spatter = union(dashes, drops);
+  const fixedAt = new Set<number>();
+  for (const pc of pieces(spatter)) {
+    let touches = false;
+    for (const j of pc) {
+      const x = j % K.w, y = (j / K.w) | 0;
+      for (let dy = -1; dy <= 1 && !touches; dy++) for (let dx = -1; dx <= 1; dx++) if (main.get(x + dx, y + dy)) touches = true;
+      if (touches) break;
+    }
+    if (!touches) continue;
+    let sx = 0, sy = 0;
+    for (const j of pc) {
+      sx += j % K.w;
+      sy += (j / K.w) | 0;
+    }
+    fixedAt.add(Math.round(sy / pc.length) * K.w + Math.round(sx / pc.length));
+  }
   const fr = range(FLY).map((i) => {
     const t = i / FLY;
-    const m = churn(main, t, { amp: 1.4, cell: 5, seed });
-    const ds = moveDrops(union(dashes, drops), (k) => {
+    const m = churn(main, t, { amp: 0.9, cell: 5, seed, movable, part });
+    // (the spatter streams back; a bit that touches a crescent is part of its edge and stays)
+    const ds = moveDrops(spatter, (k, cx, cy) => {
+      if (fixedAt.has(Math.round(cy) * K.w + Math.round(cx))) return [0, 0];
       const u = drift(t, rr(seed + 1, k, 0, 1));
       return [-4 * u, 0];
     });
@@ -748,24 +788,26 @@ function hit(): WorldSprite {
   const r = (x: number, y: number) => Math.hypot(x - K.ax, y - K.ay);
   // s: scale; reach: radius shown while it builds; d: spread of drops and streaks; g: his light's
   // strength; thin: how much has broken up; cool: ramp steps down (gradual); a: opacity at the end.
+  // churn: how far his slime churns (px; 0 = still): the hold barely moves, so his picture and his
+  // cell grid stay through frame 6 and only break up from frame 7.
   const plan = [
-    { s: 0.66, reach: 17, d: 0.66, g: 0.5, thin: 0, cool: 0, a: 1 },
-    { s: 0.8, reach: 26, d: 0.8, g: 0.7, thin: 0, cool: 0, a: 1 },
-    { s: 0.92, reach: 35, d: 0.92, g: 0.87, thin: 0, cool: 0, a: 1 },
-    { s: 1, reach: 99, d: 1, g: 1, thin: 0, cool: 0, a: 1 },
-    { s: 1, reach: 99, d: 1.04, g: 1, thin: 0, cool: 0, a: 1 },
-    { s: 1.02, reach: 99, d: 1.09, g: 1, thin: 0, cool: 0, a: 1 },
-    { s: 1.04, reach: 99, d: 1.15, g: 0.88, thin: 0.12, cool: 0.3, a: 1 },
-    { s: 1.06, reach: 99, d: 1.22, g: 0.74, thin: 0.22, cool: 0.7, a: 0.95 },
-    { s: 1.08, reach: 99, d: 1.3, g: 0.6, thin: 0.31, cool: 1, a: 0.87 },
-    { s: 1.1, reach: 99, d: 1.38, g: 0.46, thin: 0.38, cool: 1.4, a: 0.76 },
-    { s: 1.12, reach: 99, d: 1.46, g: 0.32, thin: 0.42, cool: 1.8, a: 0.65 },
-    { s: 1.14, reach: 99, d: 1.54, g: 0.18, thin: 0.49, cool: 2.2, a: 0.42 },
+    { s: 0.66, reach: 17, d: 0.66, g: 0.5, thin: 0, cool: 0, a: 1, churn: 0 },
+    { s: 0.8, reach: 26, d: 0.8, g: 0.7, thin: 0, cool: 0, a: 1, churn: 0 },
+    { s: 0.92, reach: 35, d: 0.92, g: 0.87, thin: 0, cool: 0, a: 1, churn: 0 },
+    { s: 1, reach: 99, d: 1, g: 1, thin: 0, cool: 0, a: 1, churn: 0 },
+    { s: 1, reach: 99, d: 1.02, g: 1, thin: 0, cool: 0, a: 1, churn: 0.45 },
+    { s: 1, reach: 99, d: 1.04, g: 0.98, thin: 0, cool: 0, a: 1, churn: 0.52 },
+    { s: 1, reach: 99, d: 1.1, g: 0.88, thin: 0, cool: 0.25, a: 1, churn: 0.75 },
+    { s: 1.03, reach: 99, d: 1.17, g: 0.75, thin: 0.14, cool: 0.6, a: 0.96, churn: 1 },
+    { s: 1.05, reach: 99, d: 1.25, g: 0.61, thin: 0.25, cool: 1, a: 0.88, churn: 1.2 },
+    { s: 1.08, reach: 99, d: 1.34, g: 0.47, thin: 0.34, cool: 1.4, a: 0.77, churn: 1.2 },
+    { s: 1.1, reach: 99, d: 1.43, g: 0.33, thin: 0.41, cool: 1.8, a: 0.67, churn: 1.2 },
+    { s: 1.12, reach: 99, d: 1.52, g: 0.19, thin: 0.48, cool: 2.2, a: 0.48, churn: 1.2 },
   ];
   const fr = plan.map((p, i) => {
     let m = scaled(main, p.s, p.s, K.ax, K.ay);
     if (p.reach < 99) m = cut(m, (x, y) => r(x, y) <= p.reach + 2 * pnoise(x, y, 3, 0, 0, seed));
-    if (i >= 3 && i !== 3) m = churn(m, (i - 3) / 9, { amp: 1.2, cell: 5, seed });
+    if (p.churn > 0) m = churn(m, (i - 3) / 9, { amp: p.churn, cell: 5, seed });
     if (p.thin > 0) m = cut(m, (x, y) => grain(x, y, seed + 7) * 0.4 + Math.min(1, r(x, y) / 30) * 0.6 > p.thin, 4);
     m = cool(m, p.cool, seed + 11);
     const spread = (L: Layer, fall: boolean) => moveDrops(L, (k, cx, cy) => {
@@ -1282,10 +1324,10 @@ function mist3d(o: Orient, hk: number, t: number): Canvas {
  * Our end-on mist curtain with the new frame counts, made of our own frames. `idle` (8 at 10 fps):
  * the even frames 0, 2, 4, 6 are our old idle frames 0-3 pixel for pixel (t = f / 8 runs the same
  * churn); the odd frames lie halfway in time, their bubbles halfway in size. `rise` (12 at 12 fps):
- * the odd frames 1, 3 ... 11 are our old rise frames 0-5 pixel for pixel (heights 0.2, 0.45, 0.7,
- * 0.92, 1.02, 1); the even frames lie halfway in height and time and keep the drops of the old frame
- * before them (frame 0 boils up at height 0.1 with the first frame's drops). The last rise frame
- * runs into idle frame 0 as before.
+ * our old rise frame 0 was already 73 % of the wall's light, so it now comes up out of the ground
+ * first (frames 0-2: pushed up whole, its round top carried along, 15 / 47 / 72 % of its height);
+ * frames 3, 5, 7, 9, 10, 11 are our old rise frames 0-5 pixel for pixel, and frames 4, 6, 8 lie
+ * halfway between the old frames round them. The last rise frame runs into idle frame 0 as before.
  */
 function wallDepth(): WorldSprite {
   const o = orientations().wall_depth;
@@ -1308,19 +1350,40 @@ function wallDepth(): WorldSprite {
     }));
     return c;
   });
-  const rise = range(RISE).map((j) => {
-    // Odd frames: our old frame f exactly. Even frames: halfway between old frames f - 1 and f.
-    const f = Math.floor(j / 2);
-    const odd = j % 2 === 1;
-    const hk = odd ? HK[f] : f === 0 ? HK[0] / 2 : (HK[f - 1] + HK[f]) / 2;
-    const t = odd ? f / 6 : fract((2 * f - 1) / 12);
-    const df = odd || f === 0 ? f : f - 1; // whose drops
+  /** Our old rise frame f (heights HK, time f / 6, its own drops), exactly as vfx-b-poison.ts drew it. */
+  const oldRise = (hk: number, t: number, df: number): Canvas => {
     const c = mist3d(o, hk, t);
     oDrops(c, orange(10).map((k) => {
       const q = at(4 + B.rnd(141, k, df) * 248, MIST_HALF * 0.6, 10 + B.rnd(142, k, df) * 90 * Math.min(1, hk));
       return [q[0], q[1], 1.6, 2] as [number, number, number, number];
     }));
     return c;
+  };
+  const old0 = oldRise(HK[0], 0, 0);
+  // (old frame 0's extent: each column's foot, and the whole curtain's height)
+  const foot = new Array<number>(old0.w).fill(-1);
+  let yTop = old0.h, yBot = -1;
+  for (let x = 0; x < old0.w; x++) for (let y = 0; y < old0.h; y++) if (old0.alpha(x, y)) {
+    foot[x] = y;
+    yTop = Math.min(yTop, y);
+    yBot = Math.max(yBot, y);
+  }
+  /** Old frame 0 coming up out of the ground: pushed up from below, its round top carried along, each column cut at its own foot. */
+  const reveal = (k: number): Canvas => {
+    const d = Math.round((1 - k) * (yBot - yTop + 1));
+    const c = new Canvas(old0.w, old0.h);
+    for (let x = 0; x < old0.w; x++) for (let y = 0; y <= foot[x]; y++) if (y - d >= 0) c.set(x, y, old0.get(x, y - d));
+    return c;
+  };
+  // The rise, re-timed so it starts from (almost) nothing: frames 0-2 push old frame 0 up out of
+  // the ground (15 %, 47 %, 72 % of its height), frame 3 is old frame 0, then old frames 1-5 with
+  // halfway in-betweens where the old steps were big: 3 old 0, 4 half, 5 old 1, 6 half, 7 old 2,
+  // 8 half, 9 old 3, 10 old 4, 11 old 5. Every frame named "old" is our old frame pixel for pixel.
+  const plan: (number | [number, number] | { reveal: number })[] = [{ reveal: 0.15 }, { reveal: 0.47 }, { reveal: 0.72 }, 0, [0, 1], 1, [1, 2], 2, [2, 3], 3, 4, 5];
+  const rise = plan.map((pl) => {
+    if (typeof pl === 'number') return pl === 0 ? old0.clone() : oldRise(HK[pl], pl / 6, pl);
+    if (Array.isArray(pl)) return oldRise((HK[pl[0]] + HK[pl[1]]) / 2, (pl[0] + pl[1]) / 12, pl[0]);
+    return reveal(pl.reveal);
   });
   return vfxSprite('wall_depth', 'Poison wall (depth): mist curtain (ours, kept)', [o.ax, o.ay], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 10, loop: true } });
 }
@@ -1330,13 +1393,13 @@ function wallDepth(): WorldSprite {
 /**
  * The tint his aura lays over the figure, as a soft field round the body (not the shape of any one
  * character, so it sits right on every figure): an ellipse centred 50 px above the feet, 46 x 110
- * px, his violet flame colour in the middle at the strength fitted on his figure, running to his
- * green flame light toward its rim and a little stronger there, gone at its edge, stepped. It
- * breathes with the frames (alpha +-12 %, size +-2 %), twice a loop.
+ * px, his violet flame colour at the strength fitted on his figure, full out to 60 % of its radius
+ * and falling to nothing at its edge (smoothstep, full alpha precision: no rim, no ring, no green
+ * edge). It breathes with the frames (alpha +-12 %, size +-2 %), twice a loop.
  */
 function veil(w: number, h: number, ax: number, ay: number, frame: number): Canvas {
   const c = new Canvas(w, h);
-  const deep = hex(PV3_VEIL.deep), light = hex(PV3_VEIL.light);
+  const deep = hex(PV3_VEIL.deep);
   const ph = (frame / AURA) * TAU * 2;
   const breathe = 1 + 0.12 * Math.sin(ph), size = 1 + 0.02 * Math.sin(ph);
   const cx = ax, cy = ay - 50, rx = 23 * size, ry = 55 * size;
@@ -1344,12 +1407,9 @@ function veil(w: number, h: number, ax: number, ay: number, frame: number): Canv
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
       const r = Math.hypot((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry);
-      let a = (a0 + 0.1 * smooth(0.55, 0.95, r)) * (1 - smooth(0.92, 1.04, r)) * breathe;
-      a = Math.round(a / 0.05) * 0.05;
-      if (a <= 0.02) continue;
-      const t = Math.round(smooth(0.45, 1, r) * 3) / 3;
-      const ch = (k: number) => Math.round(deep[k] + (light[k] - deep[k]) * t);
-      c.set(x, y, [ch(0), ch(1), ch(2), Math.round(Math.min(1, a) * 255)]);
+      const a = Math.round(a0 * (1 - smooth(0.6, 1, r)) * breathe * 255);
+      if (a < 1) continue;
+      c.set(x, y, [deep[0], deep[1], deep[2], a]);
     }
   return c;
 }
@@ -1369,7 +1429,8 @@ function aura(): WorldSprite[] {
   for (let i = 0; i < AURA; i++) {
     const t = i / AURA;
     const up = (y: number) => 0.35 + 0.65 * smooth(KB.ay - 4, KB.ay - 80, y);
-    const b = wobble(churn(bm, t, { amp: 1.3, ampY: 2.4, cell: 7, seed, flow: [0, -1.3], where: (_x, y) => up(y) }), t, 1.2, 10, seed + 1, (_x, y) => up(y));
+    // (the tips lick up 2-3 px; the flames' feet barely move)
+    const b = wobble(churn(bm, t, { amp: 1.3, ampY: 2.6, cell: 7, seed, flow: [0, -1.8], where: (_x, y) => up(y) }), t, 2.4, 10, seed + 1, (_x, y) => up(y) ** 1.5);
     const d = moveDrops(bd, (k) => {
       const u = drift(t, rr(seed + 2, k, 0, 1));
       return [Math.sin(u * TAU + k) * 1 - Math.sin(k), -6 * u];

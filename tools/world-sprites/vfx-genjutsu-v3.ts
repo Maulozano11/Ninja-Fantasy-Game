@@ -10,8 +10,8 @@
 //                  still while the tendrils wave, the smoke streams back, the arcs ripple out, the
 //                  eyes blink;
 //   - stream       his 64 px tile (one braid period), scrolled 8 px a frame (still tiles); the head
-//                  is his head in frame 0, then his ribbons slide on into the turning spiral with
-//                  the braid following from the last tile (seamless joint in every frame);
+//                  is his vortex with the tile's braid run on into it up to the vortex's dark rim
+//                  (the joint is the tile's own wrap in every frame), the inner spiral turning;
 //   - hit          12 frames: it builds over 3 frames, his picture on frame 3, held 2 frames, then
 //                  it dissipates over 6 (flies apart, shrinks, cools down its ramps, fades);
 //   - blast        16 frames: anticipation over 4 (the pool opens, the column shoots up in streaks

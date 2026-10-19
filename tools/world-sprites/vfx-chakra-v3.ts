@@ -32,9 +32,10 @@
 //
 // wall_depth is NOT his: the owner said his end-on wall is not right and we keep ours. It is our
 // seal barrier from vfx-b-chakra.ts (barrierWall('wall_depth')), whose code is copied below,
-// played with the new frame counts (rise 12, idle 8). Two changes, both for the new timing: its
-// glint streaks never drop below a 15% share (they blinked off on two old frames), and the first
-// rise frame is our barrier lower down at half strength (see depthFrames).
+// played with the new frame counts (rise 12, idle 8). Two changes, both for the new timing: on the
+// two frames where its glint streaks fell to none they are soft whole strokes (they blinked off,
+// then broke into dots), and the first rise frame is our first frame sunk into its base at 60%
+// (see depthFrames).
 //
 //   WORLD_OUT=<dir> npx tsx tools/world-sprites/vfx-chakra-v3.ts
 //
@@ -1370,8 +1371,8 @@ function barrier(name: 'wall' | 'wall_diag', label: string, seed: number): World
 // --- wall_depth: OURS (the owner kept our end-on wall) ---------------------------------------------
 // Copied from vfx-b-chakra.ts (barrier3d, barrierWall and their helpers), so the look is our seal
 // barrier; the frame counts change (rise 12, idle 8), sampled more finely along the same rise and
-// the same shimmer cycle. Changed for the new timing only: the streak floor (streakCut) and the
-// first rise frame (depthFrames).
+// the same shimmer cycle. Changed for the new timing only: the soft streaks (streakCut) and the
+// first rise frame (depthFrames, sunk).
 
 /** 0 outline, 1 deep blue, 2 royal, 3 blue, 4 azure, 5 sky cyan, 6 light cyan, 7 ice white, 8 white. */
 const C = pal('#081040', '#12288c', '#1a46c8', '#2a6cf0', '#2fa0ff', '#3cc8ff', '#8ae8ff', '#d4f8ff', '#ffffff');
@@ -1436,22 +1437,28 @@ function hexAt(a: number, b: number, cell = 9): { best: number; b2: number; bid:
   return { best, b2, bid, bx, by };
 }
 
+/** Our streak colour between light cyan and ice white: the soft streaks (streakCut). */
+const CX = [...C, ...pal('#aff0ff')];
+const SOFT_STREAK = C.length;
 /**
- * The share of the top face's glint streaks at time t never drops below 15%: in our old frames it
- * fell to none at t = 0.5 and 0.625, so with twice the frames the streaks blinked off and on. The
- * threshold is lowered only there (to the strip's top-15% value), so every other frame is ours.
+ * The top face's glint streaks at time t. In our old frames they fell to none at t = 0.5 and 0.625
+ * (the noise is nearly flat there), so with twice the frames they blinked off and on; cut at a
+ * small share of that flat noise they broke into dots. There (only where fewer than 15% of the
+ * strip would streak, so every other frame is ours) the cut takes a 40% share, which gives whole
+ * strokes, drawn soft (a colour between our light cyan and ice white): the streaks fade down and
+ * back instead of blinking or dotting.
  */
-function streakCut(t: number): number {
+function streakCut(t: number): { cut: number; soft: boolean } {
   const v: number[] = [];
   for (let x = 0; x < 16; x += 0.125) v.push(pnoise(x, t * 16, 3, 16, 70));
   v.sort((a, b) => b - a);
-  return Math.min(0.6, v[Math.floor(0.15 * v.length)]);
+  return v[Math.floor(0.15 * v.length)] >= 0.6 ? { cut: 0.6, soft: false } : { cut: v[Math.floor(0.4 * v.length)], soft: true };
 }
 
 /** One frame of the barrier slab in orientation o, raised to hk, the shimmer at sh. */
 function barrier3d(o: Orient, hk: number, sh: number, f: number, t: number): Canvas {
   const c = new Canvas(o.w, o.h);
-  const cut = streakCut(t);
+  const { cut, soft } = streakCut(t);
   const limV = HGT * hk;
   const crestV = (u: number): number => limV - 2 - Math.sin((u / LEN) * TAU * 4 - t * TAU) * 1.6;
   const postTop = Math.max(limV, 10) + 4;
@@ -1507,7 +1514,7 @@ function barrier3d(o: Orient, hk: number, sh: number, f: number, t: number): Can
     energyMask.set(x, y, 1);
     const fromTop = crestV(u) - v;
     if (fc === 0 || fromTop < 1.5) {
-      crestL.set(x, y, fc === 0 ? (sv > BAR_HALF - 2 ? 8 : pnoise(u * 0.8 + sv, t * 16, 3, 16, 70) > cut ? 6 : 7) : 8);
+      crestL.set(x, y, fc === 0 ? (sv > BAR_HALF - 2 ? 8 : pnoise(u * 0.8 + sv, t * 16, 3, 16, 70) > cut ? (soft ? SOFT_STREAK : 6) : 7) : 8);
       continue;
     }
     if (fromTop < 3) {
@@ -1544,7 +1551,7 @@ function barrier3d(o: Orient, hk: number, sh: number, f: number, t: number): Can
   energyMask.render(c, C, { alpha: 0, outlineAlpha: 150, outline: C[2] });
   fill.render(c, C, { outline: null, alpha: (st, x, y) => (st >= 7 ? 240 : Math.round(lerp(175, 95, clamp(hits.v[y * o.w + x] / HGT, 0, 1))) + (st >= 5 ? 40 : 0)) });
   edge.render(c, C, { outline: null, alpha: 235 });
-  crestL.render(c, C, { outline: null, alpha: 240 });
+  crestL.render(c, CX, { outline: null, alpha: 240 });
   // Tongues of chakra licking up from the crest.
   const tongues = new L(o.w, o.h);
   for (let x = 0; x < o.w; x++)
@@ -1562,8 +1569,8 @@ function barrier3d(o: Orient, hk: number, sh: number, f: number, t: number): Can
 
 /** Our 6 rise heights (barrierWall in vfx-b-chakra.ts). */
 const DEPTH_OLD_H = [0.15, 0.4, 0.65, 0.88, 1, 1];
-/** The new first rise frame: height and alpha (see depthFrames). */
-const DEPTH_FIRST_H = 0.11, DEPTH_FIRST_A = 0.5;
+/** The new first rise frame: how far our first frame is sunk into its base, and its strength (see depthFrames). */
+const DEPTH_FIRST_DY = 16, DEPTH_FIRST_A = 0.6;
 /** One frame of our end-on wall's rise (as barrierWall drew it). */
 export function depthRiseFrame(o: Orient, hk: number, f: number, t: number, sparkF: number): Canvas {
   const c = barrier3d(o, hk, 0.5, f, t);
@@ -1589,10 +1596,34 @@ export function depthIdleFrame(o: Orient, ph: number, f: number): Canvas {
   return c;
 }
 
-/** The canvas with its alpha scaled by a. */
-function faded(c: Canvas, a: number): Canvas {
-  const out = c.clone();
-  for (let i = 3; i < out.px.length; i += 4) out.px[i] = Math.round(out.px[i] * a);
+/**
+ * Our first rise frame sunk dy px into its base (the glass and its cap moved down behind the gold
+ * base, which stays; cut to the frame's own outline), at strength a. At that strength its pale glass and gold would read
+ * grey and khaki, so each colour is drawn half way toward our sky cyan (two fifths toward our seal
+ * gold).
+ */
+function sunk(c: Canvas, dy: number, a: number): Canvas {
+  const out = new Canvas(c.w, c.h);
+  const cyan = C[5], gold = GOLD[3];
+  // The gold base (from the bottom up to the first glass pixel down the middle) stays where it is;
+  // the glass and the cap above it go down behind it.
+  const mid = Math.floor(c.w / 2);
+  let base = c.h;
+  for (let y = c.h - 1; y >= 0; y--) {
+    const p = (y * c.w + mid) * 4;
+    if (c.px[p + 3] && c.px[p + 2] > c.px[p] + 20) break;
+    if (c.px[p + 3]) base = y;
+  }
+  for (let y = 0; y < c.h; y++)
+    for (let x = 0; x < c.w; x++) {
+      const sy = y >= base ? y : y - dy;
+      if (sy < 0 || (y < base && sy >= base)) continue;
+      const s = (sy * c.w + x) * 4;
+      if (!c.alpha(x, y) || !c.px[s + 3]) continue;
+      const r = c.px[s], g = c.px[s + 1], b = c.px[s + 2];
+      const [to, k] = r > b + 20 ? [gold, 0.4] : [cyan, 0.5];
+      out.plot(x, y, [Math.round(lerp(r, to[0], k)), Math.round(lerp(g, to[1], k)), Math.round(lerp(b, to[2], k)), Math.round(c.px[s + 3] * a)]);
+    }
   return out;
 }
 
@@ -1601,16 +1632,15 @@ function faded(c: Canvas, a: number): Canvas {
  * 6 old rise frames and every even one lies halfway between its neighbours (height and time); every
  * even idle frame (0, 2, 4, 6) IS one of our 4 old idle frames and every odd one is halfway through
  * the same shimmer cycle. (Our glyph band and node twinkles step with the old frame number, so they
- * hold for two frames.) Rise frame 0, before our first frame, is our barrier at a lower height
- * (its glass pane just showing above the gold base: lower and it is only the base's flat gold top)
- * fading in at half strength, so the wall comes up out of the light instead of popping in. The streaks keep
- * a 15% share on our two plain frames (streakCut).
+ * hold for two frames.) Rise frame 0, before our first frame, is that first frame sunk 16 px
+ * into its base at 60% (sunk), so the wall comes up out of the ground and the light instead of
+ * popping in. On our plain frames the streaks are soft whole strokes (streakCut).
  */
 export function depthFrames(): { rise: Canvas[]; idle: Canvas[] } {
   const o = orientations().wall_depth;
   const rise = range(RISE_N).map((r) => {
     const f = Math.floor(r / 2);
-    if (r === 0) return faded(depthRiseFrame(o, DEPTH_FIRST_H, 0, 0, 0), DEPTH_FIRST_A);
+    if (r === 0) return sunk(depthRiseFrame(o, DEPTH_OLD_H[0], 0, 0, 0), DEPTH_FIRST_DY, DEPTH_FIRST_A);
     const hk = r % 2 ? DEPTH_OLD_H[f] : (DEPTH_OLD_H[f - 1] + DEPTH_OLD_H[f]) / 2;
     return depthRiseFrame(o, hk, f, (r - 1) / 12, f);
   });
@@ -1674,7 +1704,12 @@ function aura(): WorldSprite[] {
   const RF = piece(k, 'ringfront'), SP = piece(k, 'loose');
   // The back layer had holes where the near half of the ring sits (it is on the front layer); they
   // are filled with the warm glow round them, so the glow never shows a gap beside a ring dash.
-  const M = fillUnder(piece(k, 'main'), RF);
+  const M0 = fillUnder(piece(k, 'main'), RF);
+  // Beside his head, where his character was taken out, the glow the flames throw ended in two
+  // round, hard-edged patches (dark discs on a bright map; his picture there is near-dark haze):
+  // up there, light more than 2 px from a flame fades out toward its outer edge over 5 px.
+  const solidD = distTo(M0, (v) => isSolid(v) || isLine(v)), edgeD = depth(M0);
+  const M = level(M0, (x, y) => (y < k.ay - 65 && solidD[y * k.w + x] > 2 ? -Math.max(0, 5 - edgeD[y * k.w + x]) : 0), ['glow']);
   // The feet (the ring, the warm glow) hold still; above them the flames lick upward, more at
   // their tips, as a steady travelling wave.
   const tips = (_x: number, y: number) => smooth(k.ay - 6, k.ay - 18, y) * (0.35 + 0.65 * smooth(k.ay - 10, k.ay - 90, y));

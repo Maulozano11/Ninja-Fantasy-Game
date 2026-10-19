@@ -8,11 +8,14 @@ exactly as possible, so his pixels are the key frames: the left picture is fly f
 one is frame 5, at the 2/3 point of the 8-frame loop. The other frames are cut from his pixels, as a
 running-in-the-air cycle:
 
-- legs: the region under the body around each shoulder and hip is swung about that joint (front
-  legs reaching forward on the way into the leap, sweeping back after it; hind legs the other way),
-  easing in near the joint so the legs bend instead of shearing off the body;
+- legs: each of his four legs below the belly is traced along his outline (never the tail, belly or
+  jaw) and swung about its own joint, nearly rigidly, so it keeps his outline and shading: the near
+  legs reach and push, the far legs swing the other way a little less (a diagonal gait);
 - tail and dorsal fins: a travelling wave sways the tail and the fins lean with the stride;
-- spray: his droplets drift back.
+- spray: his droplets drift back, building up toward the leap and thinning after it;
+- the switch between his two drawings (2->3 and 6->7): around it each picture is turned toward the
+  other's torso angle, and frames 3 and 7 lean most on the pose they come from, so the switch reads
+  as the leap starting and ending.
 Frames 1-2 and 7 are cut from the striding picture, 3-4 and 6 from the leaping one.
 
 Scale: his character in the same sheet is ~102 px tall and ours is 96 px. The box filter is laid on
@@ -38,18 +41,28 @@ ref = np.asarray(Image.open(REF).convert('RGB')).astype(np.float32)
 PANEL = (332, 712, 690, 822)  # the BEAST panel (inside its frame)
 SPLIT = 503  # between his two pictures
 BG = np.array([30, 30, 40], np.float32)
-# Per picture (his image pixels): the anchor (middle of the torso), the shoulder and hip pivots with
-# the belly line under them, the tail base and the dorsal fins' box.
+# Per picture (his image pixels): the anchor (middle of the torso); the front and hind legs below the
+# belly, traced along his outlines so they hold the legs and nothing else (not the tail, the belly or the
+# jaw), each with the joint it swings about; the tail base and the dorsal fins' box.
 KEYS = {
     'stride': {
-        'anchor': (419.0, 772.0), 'shoulder': (438.0, 776.0), 'hip': (402.0, 774.0),
-        'front': (420, 484, 777), 'hind': (372, 419, 775),  # x range and the belly line
-        'jaw': [(462, 779), (476, 786), (500, 786), (500, 760), (462, 760)],  # kept out of the front legs
+        'anchor': (419.0, 772.0),
+        'legs': {  # polygon, joint
+            'near_front': ([(428, 782), (434, 775), (446, 776), (450, 790), (452, 809), (428, 809)], (439, 778)),
+            'far_front': ([(446, 777), (458, 786), (468, 792), (483, 794), (483, 803), (452, 803), (450, 790)], (450, 781)),
+            'near_hind': ([(374, 802), (374, 786), (388, 780), (398, 777), (407, 779), (404, 790), (398, 802)], (400, 779)),
+            'far_hind': ([(407, 779), (408, 773), (424, 774), (427, 780), (427, 796), (412, 796), (404, 790)], (415, 775)),
+        },
         'tail': 392, 'fins': (398, 448, 752),
     },
     'leap': {
-        'anchor': (601.0, 769.0), 'shoulder': (616.0, 766.0), 'hip': (588.0, 770.0),
-        'front': (603, 662, 768), 'hind': (545, 602, 772),
+        'anchor': (601.0, 769.0),
+        'legs': {
+            'near_front': ([(606, 779), (614, 773), (626, 771), (634, 776), (632, 795), (610, 795)], (617, 774)),
+            'far_front': ([(626, 771), (644, 773), (654, 780), (654, 795), (632, 795), (634, 776)], (637, 774)),
+            'near_hind': ([(550, 815), (550, 801), (560, 793), (572, 789), (584, 785), (592, 790), (586, 800), (578, 815)], (586, 787)),
+            'far_hind': ([(586, 800), (592, 790), (596, 787), (602, 796), (601, 815), (578, 815)], (595, 790)),
+        },
         'tail': 566, 'fins': (586, 632, 746),
     },
 }
@@ -166,27 +179,37 @@ class Key:
         # Each droplet on its own, so the spray can thin out or build up a few drops at a time.
         self.drops = [np.array(pts) for pts in components(spray)]
         L = lambda p: (p[0] - self.ox, p[1] - self.oy)
-        self.shoulder, self.hip = L(k['shoulder']), L(k['hip'])
-        f0, f1, fb = k['front']
-        h0, h1, hb = k['hind']
-        self.front = body & (gx >= f0) & (gx < f1) & (gy > fb)
-        if 'jaw' in k:
-            jaw = Image.new('L', (CW, CH), 0)
-            ImageDraw.Draw(jaw).polygon([(x - self.ox, y - self.oy) for x, y in k['jaw']], fill=255)
-            self.front &= ~(np.asarray(jaw) > 0)
-        self.hind = body & (gx >= h0) & (gx < h1) & (gy > hb)
+        def poly(pts):
+            img = Image.new('L', (CW, CH), 0)
+            ImageDraw.Draw(img).polygon([(x - self.ox, y - self.oy) for x, y in pts], fill=255)
+            return np.asarray(img) > 0
+        # Each leg on its own (the far ones a step behind the body, the near ones over it), with its joint.
+        self.legs = {}
+        taken = np.zeros(body.shape, bool)
+        for name, (pts, joint) in k['legs'].items():
+            m = body & poly(pts) & ~taken
+            taken |= m
+            self.legs[name] = (m, L(joint))
         self.tailx = k['tail'] - self.ox
         fx0, fx1, fy1 = k['fins']
         self.fins = body & (gx >= fx0) & (gx < fx1) & (gy < fy1)
-        self.rest = body & ~self.front & ~self.hind
+        self.rest = body & ~taken
         self.anchor_frac = (ax - self.ox, ay - self.oy)
+        # The torso's lean (principal axis of the body without the legs), to ease one pose into the other.
+        ys, xs = np.nonzero(self.rest)
+        cov = np.cov(np.stack([xs, ys]).astype(np.float64))
+        w, v = np.linalg.eigh(cov)
+        ax_ = v[:, np.argmax(w)]
+        if ax_[0] < 0:
+            ax_ = -ax_
+        self.lean = float(np.degrees(np.arctan2(ax_[1], ax_[0])))
 
     def layer(self, mask):
         m = mask.astype(np.float32)
         return np.concatenate([self.crop * m[..., None], m[..., None]], -1)
 
 
-def swing(arr, deg, pivot, ease=12.0):
+def swing(arr, deg, pivot, ease=4.0):
     """arr swung by deg (screen degrees, positive = clockwise) about pivot, easing in near it."""
     px, py = pivot
     rx, ry = xx - px, yy - py
@@ -210,7 +233,16 @@ def some_drops(key, frac, salt):
     return np.concatenate([key.crop * m[..., None], m[..., None].astype(np.float32)], -1)
 
 
-def frame_layers(key, front=0.0, hind=0.0, tail=(0.0, 0.0), fins=0.0, drift=0.0, own=1.0, other=None, other_frac=0.0, salt=0, stretch=1.0):
+def turn(arr, deg):
+    """arr turned rigidly by deg (screen degrees, positive = nose down) about the anchor."""
+    a = np.deg2rad(deg)
+    rx, ry = xx - WAX, yy - WAY
+    sx = WAX + rx * np.cos(a) + ry * np.sin(a)
+    sy = WAY - rx * np.sin(a) + ry * np.cos(a)
+    return warp(arr, (xx - sx).astype(np.float32), (yy - sy).astype(np.float32))
+
+
+def frame_layers(key, front=0.0, hind=0.0, tail=(0.0, 0.0), fins=0.0, drift=0.0, own=1.0, other=None, other_frac=0.0, salt=0, stretch=1.0, tilt=0.0, tone=1.0):
     """His picture with the legs swung, the tail and fins swayed and the spray drifted; `own` keeps a share
     of its droplets and `other_frac` borrows droplets from the other picture, so the spray builds up toward
     the leap and thins out after it instead of popping."""
@@ -225,9 +257,11 @@ def frame_layers(key, front=0.0, hind=0.0, tail=(0.0, 0.0), fins=0.0, drift=0.0,
         fx0, fx1, fy1 = key.k['fins']
         top = np.clip((fy1 - key.oy - yy) / 20, 0, 1) * ((xx + key.ox >= fx0 - 4) & (xx + key.ox < fx1 + 4))
         rest = warp(rest, (fins * top).astype(np.float32), np.zeros_like(xx))
-    legs_f = swing(key.layer(key.front), front, key.shoulder)
-    legs_h = swing(key.layer(key.hind), hind, key.hip)
-    body = over(legs_f, over(legs_h, rest))  # near legs are drawn over the body in his picture too
+    # Diagonal gait: the far legs swing the other way, a little less. Far legs lie behind the body,
+    # near legs over it, as in his picture.
+    angle = {'near_front': front, 'far_front': -0.6 * front, 'near_hind': hind, 'far_hind': -0.6 * hind}
+    leg = {n: swing(key.layer(m), angle[n], j) for n, (m, j) in key.legs.items()}
+    body = over(leg['near_front'], over(leg['near_hind'], over(rest, over(leg['far_front'], leg['far_hind']))))
     if stretch != 1.0:
         # Reaching into the leap the body lengthens a little (and gathers after it), about the anchor.
         body = warp(body, ((xx - WAX) * (1 - 1 / stretch)).astype(np.float32), np.zeros_like(xx))
@@ -235,6 +269,13 @@ def frame_layers(key, front=0.0, hind=0.0, tail=(0.0, 0.0), fins=0.0, drift=0.0,
     if other is not None and other_frac > 0:
         spray = over(some_drops(other, other_frac, salt + 1), spray)
     spray = warp(spray, np.full(xx.shape, drift, np.float32), np.zeros_like(xx))
+    if tilt:
+        body, spray = turn(body, tilt), turn(spray, tilt)
+    if tone != 1.0:
+        # His leaping picture is painted a little paler than the striding one: next to the switch the
+        # tone eases a few percent toward the other picture so the light does not jump (the colours are
+        # snapped back to his palette afterwards).
+        body = np.concatenate([np.minimum(body[..., :3] * tone, 255 * body[..., 3:4]), body[..., 3:4]], -1)
     return body, spray
 
 
@@ -289,7 +330,7 @@ def origin_for(key, n):
 print('phases', PHASE, 'anchor', (OAX, OAY), 'size', (OW, OH))
 
 
-def render(n, body, spray):
+def render(n, body, spray, fill=True):
     key = keys[n]
     o = origin_for(key, n)
     A, C = shrink(body, o)
@@ -306,13 +347,24 @@ def render(n, body, spray):
     for oy, ox in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         nb += np.roll(np.roll(op, oy, 0), ox, 1)
     op = (op & (nb >= 1)) | (~op & (nb >= 3))
+    # Small pockets of background closed in where two of his swung legs meet are filled with his colours
+    # from around them (an outline drawn around them would read as a tear). His two pictures keep theirs.
+    col = snap(C, PAL)
+    for pts in (components(~op) if fill else []):
+        pts = np.array(pts)
+        if len(pts) > 8 or pts[:, 0].min() == 0 or pts[:, 1].min() == 0 or pts[:, 0].max() == OH - 1 or pts[:, 1].max() == OW - 1:
+            continue
+        for y, x in pts:
+            nbrs = [col[y + dy, x + dx] for dy, dx in ((0, -1), (0, 1), (-1, 0), (1, 0)) if op[y + dy, x + dx]]
+            col[y, x] = nbrs[0] if nbrs else OUTLINE
+        op[pts[:, 0], pts[:, 1]] = True
     # The 1 px outline goes on the body's rim, except across thin strips (a 1-2 px sliver of water
     # stays its own colour instead of turning into a dark line).
     edge = np.zeros_like(op)
     sh = lambda m, oy, ox: np.roll(np.roll(m, oy, 0), ox, 1)
     for oy, ox in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         edge |= op & ~sh(op, oy, ox) & sh(op, -oy, -ox) & sh(op, -2 * oy, -2 * ox)
-    out[op, :3] = snap(C, PAL)[op]
+    out[op, :3] = col[op]
     out[op, 3] = 255
     out[edge, :3] = OUTLINE
     out[edge, 3] = 255
@@ -323,22 +375,27 @@ def render(n, body, spray):
 # a front leg swung negative reaches forward, a hind leg swung positive pushes back.
 # The spray builds up toward the leap and thins out after it: own = share of the picture's own droplets,
 # borrow = share of the other picture's droplets laid in.
-PLAN = [  # source, front, hind, tail amplitude, fin lean, spray drift, own, borrow, stretch
-    ('stride', 0, 0, 0.0, 0.0, 0, 1.0, 0.0, 1.0),
-    ('stride', -12, 10, 3.0, -1.0, -5, 1.0, 0.3, 1.035),
-    ('stride', -24, 20, 3.5, -2.0, -10, 0.9, 0.6, 1.07),
-    ('leap', 22, -18, 3.5, 1.5, 12, 0.75, 0.0, 0.95),
-    ('leap', 11, -9, 3.0, 0.8, 6, 0.9, 0.0, 0.975),
-    ('leap', 0, 0, 0.0, 0.0, 0, 1.0, 0.0, 1.0),
-    ('leap', 18, -16, 3.0, 1.5, -6, 0.7, 0.0, 0.955),
-    ('stride', -10, 8, 3.0, -0.8, 6, 1.0, 0.35, 1.03),
+# The switch between his two drawings happens 2->3 and 6->7. Around it each picture leans toward the
+# other's torso angle (`lean`, a fraction of the angle between them), and frames 3 and 7 lean most on the
+# pose they come from, so the switch reads as the leap starting and ending rather than a cut.
+DLEAN = keys['leap'].lean - keys['stride'].lean
+print('torso lean: stride', round(keys['stride'].lean, 1), 'leap', round(keys['leap'].lean, 1))
+PLAN = [  # source, front, hind, tail amplitude, fin lean, spray drift, own, borrow, stretch, lean, tone
+    ('stride', 0, 0, 0.0, 0.0, 0, 1.0, 0.0, 1.0, 0.0, 1.0),
+    ('stride', -10, 8, 2.5, -1.0, -5, 1.0, 0.3, 1.03, 0.2, 1.015),
+    ('stride', -18, 14, 3.0, -1.6, -9, 0.9, 0.85, 1.05, 0.45, 1.035),
+    ('leap', 14, -10, 2.5, 1.2, 9, 0.55, 0.0, 0.97, -0.5, 0.965),
+    ('leap', 7, -5, 2.0, 0.6, 5, 0.9, 0.0, 0.985, -0.25, 0.985),
+    ('leap', 0, 0, 0.0, 0.0, 0, 1.0, 0.0, 1.0, 0.0, 1.0),
+    ('leap', 10, -8, 2.5, 1.0, -5, 0.75, 0.0, 0.975, -0.3, 0.98),
+    ('stride', -8, 6, 2.5, -0.8, 5, 1.0, 0.65, 1.02, 0.5, 1.03),
 ]
 frames = {'fly': []}
-for i, (n, fr, hd, ta, fi, dr, own, borrow, st) in enumerate(PLAN):
+for i, (n, fr, hd, ta, fi, dr, own, borrow, st, ln, tn) in enumerate(PLAN):
     ph = 2 * np.pi * i / len(PLAN)
     other = keys['leap' if n == 'stride' else 'stride']
-    body, spray = frame_layers(keys[n], front=fr, hind=hd, tail=(ph, ta), fins=fi, drift=dr, own=own, other=other, other_frac=borrow, salt=i, stretch=st)
-    frames['fly'].append(render(n, body, spray))
+    body, spray = frame_layers(keys[n], front=fr, hind=hd, tail=(ph, ta), fins=fi, drift=dr, own=own, other=other, other_frac=borrow, salt=i, stretch=st, tilt=ln * DLEAN, tone=tn)
+    frames['fly'].append(render(n, body, spray, fill=i not in (0, 5)))
 
 # --- write the data module -----------------------------------------------------------------------------
 

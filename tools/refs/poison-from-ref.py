@@ -722,6 +722,13 @@ def aura_veil():
     return V, G, a
 
 
+def pnoise_py(x, y):
+    """A fixed per-pixel jitter in [0, 1) (hash of the position, deterministic)."""
+    h = (x * 374761393 + y * 668265263) & 0xFFFFFFFF
+    h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
+    return ((h ^ (h >> 16)) & 0xFFFF) / 65536.0
+
+
 def aura_split(b):
     """The aura's key frame split into what goes behind the figure and what goes over it."""
     W, H, ax, ay = b['W'], b['H'], b['ax'], b['ay']
@@ -742,33 +749,66 @@ def aura_split(b):
         inside = zone[y] & (np.arange(W) > xs.min()) & (np.arange(W) < xs.max())
         hole[y] = inside
     hole &= ~solid
-    # His flames' own texture is mirrored in from each side of the hole (row by row, from the
-    # nearer side), so wherever a slimmer figure lets it show it reads as his flames, not as a
-    # smooth fill. Where the mirror would land outside his flames, the hole takes a smooth fill
-    # of his violet flames round it.
+    # His flames run upward, so the hole is filled along them: each column takes his flame above
+    # the hole (folded back and forth over its length, so strands and their shading run on down
+    # through it); a column with too little flame above takes the nearer side's flame in its row
+    # (folded the same way), and only what is left takes a smooth fill of his violet flames.
     known = solid & dilate(hole, 6, nb=N8) & (game_family(g) == 1)
     fill_col = smooth_fill(np.where(known[..., None], col, 0), known, 1.5)
     hole_rim = np.zeros((H, W), bool)
+    tri = lambda d, L: (d % (2 * L)) if (d % (2 * L)) < L else 2 * L - 1 - (d % (2 * L))
+    done = np.zeros((H, W), bool)
+    for x in range(W):
+        ys = np.nonzero(hole[:, x])[0]
+        if not len(ys):
+            continue
+        for run in np.split(ys, np.nonzero(np.diff(ys) > 1)[0] + 1):
+            y0 = int(run[0])
+            L = 0
+            while y0 - 1 - L >= 0 and solid[y0 - 1 - L, x]:
+                L += 1
+            if L < 8:
+                continue
+            for y in run:
+                sy = y0 - 1 - tri(int(y) - y0, L)
+                col[y, x] = col[sy, x]
+                fams[y, x] = fams[sy, x]
+                done[y, x] = True
+    # (within 5 px of the hole's sides, the side's own flames run on into it, mirrored, so its edge
+    # is no straight seam where a slimmer figure shows it)
     for y in range(H):
         xs = np.nonzero(hole[y])[0]
         if not len(xs):
             continue
-        runs = np.split(xs, np.nonzero(np.diff(xs) > 1)[0] + 1)
-        for run in runs:
+        for run in np.split(xs, np.nonzero(np.diff(xs) > 1)[0] + 1):
             x0, x1 = int(run[0]), int(run[-1])
+            Ll = 0
+            while x0 - 1 - Ll >= 0 and solid[y, x0 - 1 - Ll]:
+                Ll += 1
+            Lr = 0
+            while x1 + 1 + Lr < W and solid[y, x1 + 1 + Lr]:
+                Lr += 1
             for x in range(x0, x1 + 1):
-                dl, dr = x - x0 + 1, x1 - x + 1
-                sx = x0 - dl if dl <= dr else x1 + dr
-                if 0 <= sx < W and solid[y, sx]:
+                dl, dr = x - x0, x1 - x
+                edge = 4 + (2 * pnoise_py(x, y) > 1)
+                if done[y, x] and min(dl, dr) > edge:
+                    continue
+                if Ll >= 4 and (dl <= dr or Lr < 4):
+                    sx = x0 - 1 - tri(dl, Ll)
+                elif Lr >= 4:
+                    sx = x1 + 1 + tri(dr, Lr)
+                else:
+                    sx = -1
+                if sx >= 0:
                     col[y, x] = col[y, sx]
                     fams[y, x] = fams[y, sx]
-                elif 0 <= sx < W and rim[y, sx]:
-                    hole_rim[y, x] = True
                 else:
                     col[y, x] = fill_col[y, x]
                     fams[y, x] = np.array([0.0, 1.0, 0.0])
     back_solid = (solid | hole) & ~hole_rim
-    back_rim = (rim & ~hole) | hole_rim
+    # (his flames glow: they have no dark rim; a rim along a thin strand reads as dirt specks on
+    # grass. Only his pool keeps its rim.)
+    back_rim = ((rim & ~hole) | hole_rim) & (np.arange(H)[:, None] >= ay - 4)
     # The near half of his pool (below the feet) goes over the figure's feet.
     rows = np.arange(H)[:, None]
     pool = (rows >= ay - 1) & (back_solid | back_rim)

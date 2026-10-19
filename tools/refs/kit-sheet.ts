@@ -9,7 +9,8 @@
 // e.g. KIT_KEYS=hit=3,multi_hit=3,blast=4) names the key frame of a sprite's first animation,
 // for sets whose one-shots were re-cut longer; without it the usual choice below is used.
 // KIT_HEAD_JOIN=anchor (optional) places the stream head by its anchor on the next tile's anchor,
-// as the game does, instead of by its left edge at the end of the third tile.
+// as the game does, instead of by its left edge at the end of the third tile. KIT_GROUP (optional,
+// e.g. KIT_GROUP=vfx_chakra_v3) names the group in the header instead of vfx_<element>.
 
 import { existsSync, readFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
@@ -214,7 +215,7 @@ const lay = flow(cards, 820, 12);
 const pad = 10;
 const out = new Canvas(lay.w + pad * 2, lay.h + pad * 2 + 16);
 out.fillRect(0, 0, out.w, out.h, BG);
-text(out, pad, pad, `${el.toUpperCase()}   GROUP VFX_${el.toUpperCase()}   ${sprites.length} SPRITES   (SHOWN 2X, KEY FRAME)`, INK);
+text(out, pad, pad, `${el.toUpperCase()}   GROUP ${(process.env.KIT_GROUP ?? `vfx_${el}`).toUpperCase()}   ${sprites.length} SPRITES   (SHOWN 2X, KEY FRAME)`, INK);
 for (const p of lay.place) p.card.draw(out, pad + p.x, pad + 16 + p.y);
 const tmp = `${outPath}.part`;
 out.scaled(2).save(tmp);

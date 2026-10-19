@@ -1,0 +1,317 @@
+// Drawing primitives for the battle UI kit, all in ART pixels (the kit doubles every art pixel
+// when it writes a piece, so one art pixel is 2 screen pixels in a 1600x900 window).
+//
+// Metal is shaded like a rounded bar lit from the upper left and quantized to the palette, so
+// edges stay crisp; filigree is drawn as 1-2 pixel strokes into a mask and embossed (lit edge
+// up-left, shadow edge down-right, a tinted dark outline around it).
+
+import { Img, RGBA, hex } from './ui-img';
+
+// --- palette (sampled from the owner's picture, then reduced) ---------------------------------
+
+const H = (s: string) => hex(s);
+/** Antique gold / bronze metal, outline to highlight (his frames, medallions, scrollwork). */
+export const METAL = ['#140c05', '#2e2010', '#4c3b23', '#6e5d40', '#918063', '#b3a383', '#d3c6a5', '#efe7cf'].map(H);
+/** Ivory-silver bands (his minimap ring, the bar rails). */
+export const IVORY = ['#16120b', '#3a352b', '#5d584b', '#83806f', '#a8a491', '#c8c3ae', '#e0dbc8', '#f4f1e4'].map(H);
+/** Bright gold (the acting unit's frame, the active medallion rim). */
+export const GOLD = ['#1a1004', '#3e2c0c', '#6b5420', '#958035', '#bca659', '#dcc87e', '#f0e2a6', '#fff6d6'].map(H);
+/** Warm bronze (the skill slot frames, the number tags). */
+export const BRONZE = ['#170c04', '#3a210d', '#5e3a1c', '#80562f', '#a27448', '#c19468', '#dbb790', '#f1dcbd'].map(H);
+/** The dark panels: bar interior, slot wells. */
+export const PANEL = ['#0d0a06', '#16120c', '#1e1a13', '#28231b', '#332d23', '#3f382c'].map(H);
+/** The dark brown of the round medallions. */
+export const BROWN = ['#1d130c', '#2b1e15', '#36271c', '#433123', '#4f3b2b'].map(H);
+/** Health red. */
+export const RED = ['#2c0d0b', '#5a1d19', '#87302a', '#ad453c', '#c9625a', '#e38c80'].map(H);
+/** Movement teal. */
+export const TEAL = ['#0f2224', '#1d3d3e', '#2b5d60', '#3d7f84', '#55a1a6', '#86cbcc'].map(H);
+/** The party frames' second bar (his green). */
+export const GREEN = ['#0f2412', '#1e4a25', '#2f6f37', '#46944b', '#68b864', '#9ad88e'].map(H);
+/** Gems: outline, dark, mid, light, highlight, sparkle. */
+export const GEM: Record<string, RGBA[]> = {
+  red: ['#2a0709', '#62121a', '#9e2430', '#cf4652', '#ef8a90', '#fff0f0'].map(H),
+  green: ['#062012', '#0f4826', '#1d7a40', '#36a65d', '#86dca0', '#f0fff4'].map(H),
+  orange: ['#2e1504', '#6e3a0a', '#b26a14', '#e89a26', '#ffd27a', '#fffbe8'].map(H),
+  blue: ['#07163a', '#13337a', '#2457b8', '#4b8cee', '#a6cdff', '#f4faff'].map(H),
+  magenta: ['#260a2a', '#55195c', '#8f3196', '#cf55d6', '#f2a6f6', '#fff2ff'].map(H),
+  teal: ['#06201f', '#0f4644', '#1b7a73', '#33aaa0', '#8ee0d6', '#f0fffc'].map(H),
+};
+/** Initiative rings: allies blue, enemies red. */
+export const ALLY = ['#0c1a24', '#1d3a4f', '#2f5f7c', '#4c87a8', '#79b2cc', '#b5dbe8'].map(H);
+export const FOE = ['#240c0c', '#4f1d1d', '#7d3434', '#a85252', '#cf7f78', '#ebb5a8'].map(H);
+/** Count badges (his little blue discs). */
+export const BADGE = ['#0b1824', '#1c3550', '#2c5478', '#4479a6', '#7fb0d6', '#d5ecff'].map(H);
+/** Text. */
+export const INK = { cream: H('#efe6cf'), dim: H('#b8ad94'), faint: H('#7d735f'), white: H('#fbf8ee'), dark: H('#0b0805'), shadow: H('#000000') };
+
+/** Toward the light: upper left, out of the screen. */
+const L3 = (() => {
+  const v = [-0.52, -0.62, 0.59];
+  const l = Math.hypot(...v);
+  return v.map((k) => k / l) as [number, number, number];
+})();
+
+// --- masks ------------------------------------------------------------------------------------
+
+export class Mask {
+  readonly m: Uint8Array;
+  constructor(readonly w: number, readonly h: number) {
+    this.m = new Uint8Array(w * h);
+  }
+  get(x: number, y: number): number {
+    return x >= 0 && y >= 0 && x < this.w && y < this.h ? this.m[y * this.w + x] : 0;
+  }
+  set(x: number, y: number, v = 1): void {
+    x = Math.floor(x);
+    y = Math.floor(y);
+    if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.m[y * this.w + x] = v;
+  }
+  /** A 1-pixel (width 1) or round (width > 1) stroke through the points. */
+  stroke(pts: [number, number][], width = 1): void {
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+      const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 3));
+      for (let k = 0; k <= n; k++) {
+        const x = x0 + ((x1 - x0) * k) / n, y = y0 + ((y1 - y0) * k) / n;
+        if (width <= 1) this.set(Math.floor(x), Math.floor(y));
+        else this.disc(x, y, width / 2);
+      }
+    }
+  }
+  disc(cx: number, cy: number, r: number, v = 1): void {
+    for (let y = Math.floor(cy - r - 1); y <= Math.ceil(cy + r + 1); y++)
+      for (let x = Math.floor(cx - r - 1); x <= Math.ceil(cx + r + 1); x++) if (Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= r) this.set(x, y, v);
+  }
+  sdf(fn: (x: number, y: number) => number, v = 1): void {
+    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) if (fn(x + 0.5, y + 0.5) <= 0) this.set(x, y, v);
+  }
+  clear(x: number, y: number): void {
+    this.set(x, y, 0);
+  }
+  /** Removes pixels that are set in `o`. */
+  minus(o: Mask): void {
+    for (let i = 0; i < this.m.length; i++) if (o.m[i]) this.m[i] = 0;
+  }
+  flipX(): Mask {
+    const o = new Mask(this.w, this.h);
+    for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) o.m[y * this.w + x] = this.m[y * this.w + this.w - 1 - x];
+    return o;
+  }
+}
+
+/**
+ * Embossed metal from a mask: edges facing the light get the bright steps, edges facing away
+ * the dark ones, the middle the base step; then a 1-pixel outline (4-neighbour) in the ramp's
+ * darkest color. `base` is the ramp index of the flat middle.
+ */
+export function emboss(img: Img, mk: Mask, ramp: RGBA[], opts: { base?: number; outline?: boolean; ox?: number; oy?: number; outlineColor?: RGBA } = {}): void {
+  const base = opts.base ?? 5, ox = opts.ox ?? 0, oy = opts.oy ?? 0;
+  const on = (x: number, y: number) => mk.get(x, y) === 1;
+  if (opts.outline !== false)
+    for (let y = -1; y <= mk.h; y++)
+      for (let x = -1; x <= mk.w; x++) {
+        if (on(x, y)) continue;
+        if (on(x - 1, y) || on(x + 1, y) || on(x, y - 1) || on(x, y + 1)) img.set(x + ox, y + oy, opts.outlineColor ?? ramp[0]);
+      }
+  for (let y = 0; y < mk.h; y++)
+    for (let x = 0; x < mk.w; x++) {
+      if (!on(x, y)) continue;
+      const lit = (on(x, y - 1) ? 0 : 1) + (on(x - 1, y) ? 0 : 1) + (on(x - 1, y - 1) ? 0 : 0.5);
+      const dark = (on(x, y + 1) ? 0 : 1) + (on(x + 1, y) ? 0 : 1) + (on(x + 1, y + 1) ? 0 : 0.5);
+      const s = lit - dark;
+      const k = s >= 1.5 ? base + 2 : s >= 0.5 ? base + 1 : s <= -1.5 ? base - 2 : s <= -0.5 ? base - 1 : base;
+      img.set(x + ox, y + oy, ramp[Math.max(1, Math.min(ramp.length - 1, k))]);
+    }
+}
+
+// --- shaded bands from distance fields -----------------------------------------------------------
+
+export type Sdf = (x: number, y: number) => number;
+
+export const sdCircle = (cx: number, cy: number, r: number): Sdf => (x, y) => Math.hypot(x - cx, y - cy) - r;
+export function sdRoundRect(x0: number, y0: number, x1: number, y1: number, r: number): Sdf {
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, hx = (x1 - x0) / 2 - r, hy = (y1 - y0) / 2 - r;
+  return (x, y) => {
+    const qx = Math.abs(x - cx) - hx, qy = Math.abs(y - cy) - hy;
+    return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
+  };
+}
+/** A rounded diamond: the L^p ball (p between 1 and 2), stretched to rx by ry. */
+export function sdLp(cx: number, cy: number, rx: number, ry: number, p: number): Sdf {
+  return (x, y) => {
+    const u = Math.abs(x - cx) / rx, v = Math.abs(y - cy) / ry;
+    const n = Math.pow(Math.pow(u, p) + Math.pow(v, p), 1 / p);
+    return (n - 1) * Math.min(rx, ry);
+  };
+}
+
+function grad(f: Sdf, x: number, y: number): [number, number] {
+  const e = 0.35;
+  const gx = f(x + e, y) - f(x - e, y), gy = f(x, y + e) - f(x, y - e);
+  const l = Math.hypot(gx, gy) || 1;
+  return [gx / l, gy / l];
+}
+
+export interface BandOpts {
+  /** Distance inward from the shape's edge where the band starts (0 = the edge). */
+  from: number;
+  /** Band width in art pixels. */
+  width: number;
+  ramp: RGBA[];
+  /** Fraction of the band that is flat on top (0 = fully round). */
+  flat?: number;
+  /** Raised beads along the band: their spacing in pixels, measured as angle * radius about (cx, cy). */
+  beads?: { period: number; cx: number; cy: number; r: number; depth?: number };
+  /** Lowest and highest ramp index to use. */
+  lo?: number;
+  hi?: number;
+  /** Ramp thresholds bias (+ brighter). */
+  bias?: number;
+}
+
+/** Paints a rounded metal band lying along the inside of the shape's edge. */
+export function band(img: Img, f: Sdf, o: BandOpts): void {
+  const lo = o.lo ?? 1, hi = o.hi ?? o.ramp.length - 1, flat = o.flat ?? 0;
+  for (let y = 0; y < img.h; y++)
+    for (let x = 0; x < img.w; x++) {
+      const px = x + 0.5, py = y + 0.5;
+      const d = -f(px, py) - o.from; // 0 at the band's outer edge, width at its inner edge
+      if (d < 0 || d >= o.width) continue;
+      const [nx, ny] = grad(f, px, py);
+      let t = 1 - (2 * (d + 0.5)) / o.width; // +1 outer, -1 inner
+      const at = Math.abs(t);
+      t = at <= flat ? 0 : (Math.sign(t) * (at - flat)) / (1 - flat);
+      let N: [number, number, number] = [nx * t, ny * t, Math.sqrt(Math.max(0, 1 - t * t))];
+      if (o.beads) {
+        const { period, cx, cy, r } = o.beads;
+        const ang = Math.atan2(py - cy, px - cx);
+        const s = ang * r;
+        const ph = Math.sin((2 * Math.PI * s) / period) * (o.beads.depth ?? 0.8);
+        const tx = -Math.sin(ang), ty = Math.cos(ang);
+        N = [N[0] + tx * ph, N[1] + ty * ph, N[2]];
+        const nl = Math.hypot(...N);
+        N = [N[0] / nl, N[1] / nl, N[2] / nl];
+        // The grooves between beads go dark.
+        if (Math.cos((2 * Math.PI * s) / period) < -0.82 && Math.abs(t) < 0.9) N = [N[0] * 0.3, N[1] * 0.3, 0.05];
+      }
+      const l = N[0] * L3[0] + N[1] * L3[1] + N[2] * L3[2] + (o.bias ?? 0);
+      const steps = hi - lo;
+      const k = lo + Math.max(0, Math.min(steps, Math.round(((l + 0.35) / 1.3) * steps)));
+      img.set(x, y, o.ramp[k]);
+    }
+}
+
+/** Fills the inside of a shape (d <= -inset) with a color or a function of the distance. */
+export function fillShape(img: Img, f: Sdf, inset: number, paint: RGBA | ((x: number, y: number, d: number) => RGBA | null)): void {
+  for (let y = 0; y < img.h; y++)
+    for (let x = 0; x < img.w; x++) {
+      const d = -f(x + 0.5, y + 0.5);
+      if (d < inset) continue;
+      const c = typeof paint === 'function' ? paint(x, y, d) : paint;
+      if (c) img.set(x, y, c);
+    }
+}
+/** A 1-pixel line along the iso-distance `at` (inward positive) of the shape. */
+export function isoLine(img: Img, f: Sdf, at: number, c: RGBA, thick = 1): void {
+  for (let y = 0; y < img.h; y++)
+    for (let x = 0; x < img.w; x++) {
+      const d = -f(x + 0.5, y + 0.5) - at;
+      if (d >= 0 && d < thick) img.set(x, y, c);
+    }
+}
+
+// --- gems -------------------------------------------------------------------------------------
+
+/** A round cabochon of radius r centred on (cx, cy) (pixel centres at +0.5). */
+export function gem(img: Img, cx: number, cy: number, r: number, ramp: RGBA[], outline = true): void {
+  for (let y = Math.floor(cy - r - 2); y <= cy + r + 2; y++)
+    for (let x = Math.floor(cx - r - 2); x <= cx + r + 2; x++) {
+      const u = (x + 0.5 - cx) / r, v = (y + 0.5 - cy) / r;
+      const q = u * u + v * v;
+      if (q > 1) {
+        if (outline && Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= r + 1) img.set(x, y, ramp[0]);
+        continue;
+      }
+      const z = Math.sqrt(1 - q);
+      const l = u * L3[0] + v * L3[1] + z * L3[2];
+      // Gems are lit from inside too: the far lower side glows.
+      const back = Math.max(0, u * 0.5 + v * 0.7) * (1 - z) * 1.2;
+      const k = l > 0.93 ? 5 : l > 0.75 ? 4 : l + back * 0.6 > 0.45 ? 3 : l + back > 0.1 ? 2 : 1;
+      img.set(x, y, ramp[k]);
+    }
+}
+
+/** A faceted diamond-shaped gem (the chakra gems), w by h, centred on (cx, cy). */
+export function diamondGem(img: Img, cx: number, cy: number, w: number, h: number, ramp: RGBA[]): void {
+  const rx = w / 2, ry = h / 2;
+  for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++)
+    for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++) {
+      const u = (x + 0.5 - cx) / rx, v = (y + 0.5 - cy) / ry;
+      const q = Math.abs(u) + Math.abs(v);
+      if (q > 1) {
+        if (Math.abs(x + 0.5 - cx) / (rx + 1) + Math.abs(y + 0.5 - cy) / (ry + 1) <= 1) img.set(x, y, ramp[0]);
+        continue;
+      }
+      // Four facets around a small flat table.
+      let k: number;
+      if (q < 0.34) k = u + v < -0.1 ? 4 : 3;
+      else if (u <= 0 && v <= 0) k = 4;
+      else if (u > 0 && v <= 0) k = 3;
+      else if (u <= 0 && v > 0) k = 2;
+      else k = 1;
+      img.set(x, y, ramp[k]);
+    }
+  img.set(Math.floor(cx - rx / 2.6), Math.floor(cy - ry / 2.4), ramp[5]);
+}
+
+// --- curves -------------------------------------------------------------------------------------
+
+export type Pt = [number, number];
+/** Points of a spiral about (cx, cy): radius r0 at angle a0 to r1 at a1 (radians, screen y down). */
+export function spiral(cx: number, cy: number, r0: number, r1: number, a0: number, a1: number, n = 40): Pt[] {
+  const out: Pt[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, a = a0 + (a1 - a0) * t, r = r0 + (r1 - r0) * t;
+    out.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+  }
+  return out;
+}
+export function qbez(p0: Pt, c: Pt, p1: Pt, n = 24): Pt[] {
+  const out: Pt[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, s = 1 - t;
+    out.push([s * s * p0[0] + 2 * s * t * c[0] + t * t * p1[0], s * s * p0[1] + 2 * s * t * c[1] + t * t * p1[1]]);
+  }
+  return out;
+}
+export function cbez(p0: Pt, c0: Pt, c1: Pt, p1: Pt, n = 32): Pt[] {
+  const out: Pt[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n, s = 1 - t;
+    out.push([
+      s * s * s * p0[0] + 3 * s * s * t * c0[0] + 3 * s * t * t * c1[0] + t * t * t * p1[0],
+      s * s * s * p0[1] + 3 * s * s * t * c0[1] + 3 * s * t * t * c1[1] + t * t * t * p1[1],
+    ]);
+  }
+  return out;
+}
+
+// --- hand-drawn maps ------------------------------------------------------------------------------
+
+/**
+ * Draws a character map: each character is a palette key, '.' or ' ' is left alone. Rows are
+ * separated by spaces or given as an array.
+ */
+export function stamp(img: Img, x0: number, y0: number, rows: string[] | string, pal: Record<string, RGBA>, flipX = false): void {
+  const rs = typeof rows === 'string' ? rows.trim().split(/\s+/) : rows;
+  const w = Math.max(...rs.map((r) => r.length));
+  for (let y = 0; y < rs.length; y++)
+    for (let x = 0; x < rs[y].length; x++) {
+      const ch = rs[y][x];
+      if (ch === '.' || ch === ' ') continue;
+      const c = pal[ch];
+      if (!c) throw new Error(`stamp: no color for '${ch}'`);
+      img.set(x0 + (flipX ? w - 1 - x : x), y0 + y, c);
+    }
+}

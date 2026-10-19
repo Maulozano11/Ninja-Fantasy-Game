@@ -519,6 +519,22 @@ def classify_his(cfg):
     reach[y0:y1 + 1, x0:x1 + 1] = flood(sub, seeds)
     inside = ~reach & ~barrier & art
     enclosed = art & ~outline & ~reach & dilate(inside, 2, nb=N8)
+    if cfg.get('streaks'):
+        # (and the faint dark line the JPEG leaves a little further along a streak, out on his
+        # panel: a flat run of 'rim' within 3 px of the streak's band that rims no rock (it touches
+        # nothing enclosed) and has mostly panel round it, not his trail; his own dark specks on
+        # the trail's edge, which have trail round them, and the rims of his pebbles stay)
+        lab3, n3 = components(outline & dilate(band, 3, nb=N8) & ~rockz, nb=N8)
+        rocky = dilate(enclosed & ~outline, 1, nb=N8)
+        for k3 in range(1, n3 + 1):
+            m3 = lab3 == k3
+            ys3, xs3 = np.nonzero(m3)
+            if ys3.max() - ys3.min() + 1 > 2 or xs3.max() - xs3.min() + 1 < 3 or (m3 & rocky).any():
+                continue
+            ring3 = dilate(m3, 1, nb=N8) & ~m3 & ~band
+            if (ring3 & art & ~outline).sum() < 0.35 * max(1, ring3.sum()):
+                outline &= ~m3
+                art &= ~m3
     reach = art & ~outline & ~enclosed
     body = art & ~outline
     dust = np.zeros_like(art)

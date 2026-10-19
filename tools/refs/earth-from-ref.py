@@ -37,16 +37,21 @@ every key frame is HIS pixels:
   border cut on the end-on wall) is filled, with his own colour there (his near-black shadow
   between the leaves and in the cracks), so no map shows through; the log prints the enclosed
   clear pixels left after quantizing (0).
-* Fades where his panel cut the art (the bolt's trail, the blast's sides) reach a different
-  length on each row and their alpha steps are ordered-dithered, so they end in wisps.
+* Fades where his panel cut the art (the bolt's trail, the blast's sides, the blast's ground shadow
+  where his figure stood) reach a different length on each row and their alpha steps are
+  ordered-dithered, so they end in wisps.
 * Art he drew on the page outside the panels (the multi_hit burst) keeps its true colours and
   its dust is un-blended from the page colour.
 * Pieces. Each key frame is split into the parts the generator animates on their own: loose rocks
   and pebbles ('bits'), 'dust', and named parts per sprite (the bolt's boulder, the blast's spikes,
-  the bullets...); the rest is 'main'. 'under' is his dust continued under the rock that sits in
-  his cloud (the rock inside the cloud's envelope: his dust closed by a few px), each pixel the
-  local mean of his dust round it, tapered at the cloud's edge and dithered onto his dust
-  palette: a rock that moves, rocks or sinks uncovers his cloud, not a hole.
+  the bullets...); the rest is 'main'. His rims just outside a traced outline join that named
+  part, so they move with it. 'under' is his dust continued under the rock that sits in his cloud
+  (the rock inside the cloud's envelope: his dust closed by a few px; for the boulder and the
+  blast's crystals, a harmonic continuation of his cloud across the rock, and on the blast
+  everything below hidden cloud as well, since a cloud is a mound), each pixel the local mean of
+  his dust round it, tapered at the cloud's edge and dithered onto his dust palette: a rock that
+  moves, rocks or sinks uncovers his cloud, not a hole. Inside a traced crystal his dark foot is
+  rock in shadow, never the see-through ground shadow.
 * The stream tile is the 64 px of his spike row that end exactly where his head begins, closed into
   a loop by a seam cut where its two ends match best; the head is the rest of his row, so a line of
   tiles plus the head is his picture.
@@ -255,6 +260,8 @@ SHARP = np.clip(FLAT + 0.5 * (FLAT - gauss(FLAT, 1.0)), 0, 255)
 # dust_a: the dust's opacity where it is dense (his cloud cores); edges thin out from there;
 # shade:  polygons where a dark stain on the ground is kept as a semi-transparent shadow;
 # fade:   {side: n}: the art fades out over its last n game px on that side (his panel cut it);
+# shade_fade: {side: n}: the ground shadow alone fades out over its last n px on that side (the blast's
+#         shadow, cut where his figure stood beside it);
 # pieces: [(name, polygons)]: named pieces split off 'main' (first match wins);
 # bits:   the largest loose bit (game px) still counted as a flying rock or pebble.
 
@@ -289,10 +296,13 @@ BLAST_SOLID = [
 ]
 
 # The sphere's planet, traced on his panel: the whole striped ball (its moss band runs from its
-# left edge, his x 1716), the ring's front arc where it crosses the ball included.
+# left edge, his x 1716), the ring's front arc where it crosses the ball included. On the right
+# it follows his curved dark shadow side out to his x 1879 (between y 200 and 230), and at the
+# bottom his ball's dark underside down to y 308, so the shadow side is solid rock.
 PLANET = [(1716, 200), (1722, 185), (1728, 172), (1738, 157), (1752, 145), (1770, 136), (1795, 132), (1818, 135),
-          (1838, 145), (1852, 156), (1862, 172), (1867, 195), (1868, 218), (1864, 240), (1856, 258), (1846, 275),
-          (1832, 290), (1812, 300), (1790, 304), (1768, 300), (1750, 292), (1738, 280), (1728, 262), (1716, 245),
+          (1838, 145), (1852, 156), (1862, 168), (1868, 180), (1872, 192), (1877, 202), (1879, 214), (1879, 226),
+          (1876, 236), (1872, 248), (1869, 258), (1863, 268), (1856, 279), (1846, 289), (1834, 297), (1820, 304),
+          (1806, 307), (1792, 307), (1780, 304), (1768, 300), (1750, 292), (1738, 280), (1728, 262), (1716, 245),
           (1712, 225)]
 
 # The aura's two columns of golden pebbles and rocks (his x 929-1015 and 1105-1192): inside them,
@@ -313,7 +323,7 @@ SPRITES = {
                    dust=[rect(1317, 101, 1634, 362)], dust_a=0.92, bits=60),
     'sphere': dict(s=S_MED, anchor=(1801, 236), area=[rect(1664, 101, 1922, 348)],
                    solid=[PLANET], dust=[rect(1664, 101, 1922, 348)], dust_a=0.9, bits=20, smooth_body=True,
-                   pieces=[('planet', [PLANET])]),
+                   pieces=[('planet', [PLANET])], fill_solid=[PLANET], green_hi=1),
     'slash': dict(s=S_MED, anchor=(150, 556), area=[rect(25, 435, 267, 679)],
                   solid=[CRESCENT], dust=[rect(25, 435, 267, 679)], dust_a=0.9, bits=24),
     'multi': dict(s=S_MED, anchor=(444, 557), area=[rect(298, 435, 575, 679)],
@@ -323,14 +333,18 @@ SPRITES = {
                       solid=[ellipse(752, 515, 20, 22), ellipse(770, 592, 22, 22)],
                       dust=[rect(586, 425, 802, 660)], dust_a=0.95, bits=60, ground=PAGE),
     'hit': dict(s=S_MED, anchor=(962, 562), area=[rect(811, 435, 1121, 679)],
-                dust=[rect(811, 435, 1121, 679)], dust_a=0.95, bits=60, dust_colors=18, dither_dust=True,
+                dust=[rect(811, 435, 1121, 679)], dust_a=0.95, bits=60, dust_colors=18, dither_dust=True, glow_rays=True,
                 # (the rock right of the core: its glowing top is rock, not dust; its rim is open)
                 solid=[ellipse(1031, 540, 19, 14)]),
     'blast': dict(s=2.39, anchor=(1412, 737), area=[rect(1159, 435, 1668, 797)],
                   drop=[[(1640, 640), (1700, 640), (1700, 797), (1640, 797)]],
                   solid=BLAST_SOLID, dust=[rect(1159, 435, 1668, 797)], dust_a=0.92, shade=[rect(1159, 600, 1668, 797)],
                   pieces=[('k%d' % k, [p]) for k, p in enumerate(BLAST_SOLID[:12])] + [('rocks', BLAST_SOLID[12:])],
-                  fade={'right': 6, 'left': 10}, bits=80, cloud_r=10, under='harmonic', ground_band=14),
+                  fade={'right': 6, 'left': 10}, shade_fade={'right': 14}, bits=80, cloud_r=10, under='harmonic', under_down=True,
+                  ground_band=14, under_clip=True, fill_solid=BLAST_SOLID,
+                  # (the two dust streaks on the right were cut where his figure stood: they end in
+                  # ragged wisps over their last 16 px, like his ground shadow)
+                  dust_fade={'right': 16}, dust_fade_from=640),
     'wall': dict(s=2.34, anchor=(379.5, 1177), area=[rect(24, 867, 745, 1253)], art_d=14, bits=40,
                  dust=[rect(24, 1195, 745, 1253)], sparse=True, dust_a=0.85, wall=True),
     'wall_diag': dict(s=2.35, anchor=(1545, 1302), area=[rect(1222, 867, 1975, 1490)],
@@ -470,6 +484,10 @@ def classify_his(cfg):
         v = SHADE - BG
         a = np.clip((d * v).sum(-1) / (v * v).sum(), 0, 1)
         cand = sz & ~enclosed & ~outline & (L < 66) & (a >= 0.08)
+        if cfg.get('solid'):
+            # (a crystal's dark foot inside its traced outline is rock in shadow, not the ground
+            # shadow: it stays opaque, so no map shows through the crystal)
+            cand &= ~solid_mask(cfg)
         shade = cand
         sa = np.where(shade, a, 0.0)
         dust &= ~shade
@@ -583,8 +601,24 @@ def to_game(cfg, cls, W, H, ax, ay):
     gr = np.asarray(cfg.get('ground', BG), np.float64)
     off = BG - gr
     col, rcol, allc, clean = col - off, rcol - off, allc - off, clean - off
+    # His thin pale streaks (ray dashes): their coverage, and their own colour (his streak pixels
+    # only, spread a little so the pixels beside a dash know it too).
+    T = r(cls['thin'].astype(np.float64))
+    colT = r(SHARP * cls['thin'][..., None])
+    colT = gauss(colT, 1.0) / np.maximum(gauss(T, 1.0), 1e-6)[..., None] - off
+    bright = None
+    if cfg.get('glow_rays'):
+        # (each pixel of his sheet as the brightest colour round it: a 1 px gold dash at his
+        # resolution keeps its own gold at game scale here, where the box filter dims it)
+        Ls = lum(SHARP)
+        best, bl = SHARP.copy(), Ls.copy()
+        for dy, dx in N8:
+            c2, l2 = shift(SHARP, dy, dx), shift(Ls, dy, dx)
+            up = l2 > bl
+            best[up], bl[up] = c2[up], l2[up]
+        bright = r(np.where(cls['keep'][..., None], best, BG)) - off
     return dict(B=B, O=O, col=col, rcol=rcol, DA=DA, SA=SA, all=allc, F=F, box=box, ground=gr,
-                his=r(IM0) if cfg.get('aura') else clean, flat=clean)
+                his=r(IM0) if cfg.get('aura') else clean, flat=clean, T=T, colT=colT, bright=bright)
 
 
 def decide(cfg, g, W, H, ax, ay):
@@ -638,7 +672,83 @@ def decide(cfg, g, W, H, ax, ay):
         da = da * k
         SA = SA * k
         fadek = fadek * k
+    for side, n in cfg.get('shade_fade', {}).items():
+        # His ground shadow cut by the figure he stood beside (the blast): it ends in ragged wisps
+        # over its last n px instead of a straight edge (a jitter of its own on each row).
+        cols = np.nonzero((SA > 0.06).any(0))[0]
+        j = np.sin(np.arange(H) * 78.233 + 1.7) * 43758.5453
+        j = gauss((j - np.floor(j) - 0.5)[:, None], 1.2)[:, 0]
+        j = (j / max(1e-6, np.abs(j).max()) * 0.5 * n)[:, None]
+        if side == 'right':
+            k = np.clip((cols[-1] - xs + 0.5 - j - 0.4 * n) / n * 1.4, 0, 1)
+        else:
+            k = np.clip((xs - cols[0] + 0.5 - j - 0.4 * n) / n * 1.4, 0, 1)
+        SA = SA * k
+    for side, n in cfg.get('dust_fade', {}).items():
+        # His dust cut where his figure stood (rows from his y `dust_fade_from` down): it ends in
+        # ragged wisps over its last n px, each row reaching its own length.
+        y_from = int(np.floor(ay + (cfg['dust_fade_from'] - cfg['anchor'][1]) / scale_of(cfg)[1]))
+        rows = np.arange(H) >= y_from
+        cols = np.nonzero(((da > 0.03) & rows[:, None]).any(0))[0]
+        j = np.sin(np.arange(H) * 39.346 + 0.9) * 43758.5453
+        j = gauss((j - np.floor(j) - 0.5)[:, None], 1.0)[:, 0]
+        j = (j / max(1e-6, np.abs(j).max()) * 0.5 * n)[:, None]
+        if side == 'right':
+            k = np.clip((cols[-1] - xs + 0.5 - j - 0.4 * n) / n * 1.4, 0, 1)
+        else:
+            k = np.clip((xs - cols[0] + 0.5 - j - 0.4 * n) / n * 1.4, 0, 1)
+        k = np.where(rows[:, None], k, 1.0)
+        da = da * k
+        fadek = fadek * k
     dust &= da >= 0.05
+    glow = np.zeros((H, W), bool)
+    if cfg.get('glow_rays'):
+        # His ray dashes glow: gold with no outline. The box filter mixes his dark panel into their
+        # edges, which would read as a brown stick with a dark rim on any lighter map. Round each
+        # dash, a pixel's opacity is how much of the dash's gold it holds over his panel (its colour
+        # projected on gold-minus-panel), and its colour is the gold: the core stays opaque gold,
+        # the edges become translucent gold. Rock that is not a dash keeps its rims.
+        # (a dash: a small, long piece of solid and rim; the rocks, which are round, keep theirs)
+        lab, n = components(solid | rim, nb=N8)
+        dash = np.zeros((H, W), bool)
+        gold = np.zeros((H, W, 3))
+        for c in range(1, n + 1):
+            m = lab == c
+            ys_, xs_ = np.nonzero(m)
+            if len(ys_) < 4 or len(ys_) > 60:
+                continue
+            ev = np.linalg.eigvalsh(np.cov(np.stack([xs_, ys_]).astype(np.float64)) + 1e-6 * np.eye(2))
+            if os.environ.get('EARTH_DASHDBG'):
+                print('comp', c, len(ys_), round(ev[1] / max(ev[0], 1e-6), 1), xs_.mean().round(), ys_.mean().round())
+            if ev[1] < 2.4 * ev[0]:
+                continue
+            # (the dash's own gold: the brightest of his colours along it; a dark piece is no dash)
+            cc = g['bright'][m]
+            gc = cc[np.argsort(lum(cc))[-max(1, len(cc) // 3):]].mean(0)
+            if lum(gc) < 110:
+                continue
+            dash |= m
+            gold[m] = gc
+        other = (solid | rim) & ~dash
+        near = dilate(dash, 1, nb=N8) & dust & ~dilate(other, 1, nb=N8) & ~dash
+        cand = dash | near
+        if near.any():
+            gw = dash.astype(np.float64)
+            gwb = gauss(gw, 1.0)
+            gb = gauss(gold * gw[..., None], 1.0) / np.maximum(gwb, 1e-6)[..., None]
+            near &= gwb >= 0.05
+            gold = np.where(near[..., None], gb, gold)
+        v = gold - g['ground']
+        a = np.clip(((g['all'] - g['ground']) * v).sum(-1) / np.maximum((v * v).sum(-1), 1.0), 0, 1)
+        core = cand & (a >= 0.8)
+        glow = cand & ~core & (a >= 0.1)
+        g['col'] = np.where(core[..., None], np.clip(gold, 0, 255), g['col'])
+        solid = (solid & ~cand) | core
+        rim &= ~cand
+        dust = (dust & ~cand) | glow
+        da = np.where(glow, np.minimum(a, cfg.get('dust_a', 0.9)), da)
+        dcol = np.where(glow[..., None], np.clip(gold, 0, 255), dcol)
+        fadek = np.where(glow, 0.99, fadek)     # (its alpha steps dithered, like a fade)
     shade = free & ~dust & (SA >= 0.06)
     holefill = np.zeros((H, W), bool)
     holedust = np.zeros((H, W), bool)
@@ -681,7 +791,7 @@ def decide(cfg, g, W, H, ax, ay):
             shade &= ~holefill
             holedust &= ~holefill
     return dict(solid=solid, rim=rim, dust=dust, da=da, dcol=dcol, shade=shade, sa=np.clip(SA, 0, 0.85),
-                fadek=fadek, holefill=holefill, holedust=holedust)
+                fadek=fadek, holefill=holefill, holedust=holedust, glow=glow)
 
 
 # --- build every key frame ----------------------------------------------------------------------
@@ -720,7 +830,10 @@ for name, cfg in SPRITES.items():
     if cfg.get('smooth_body'):
         # His bands are smooth: a 3x3 median over the body (body pixels only) takes out the
         # JPEG speckle the box filter carried down.
-        so = d['solid'] & ~d['holefill']
+        # (his greens are left out: a median would erase the thin moss strip down the ball's side)
+        gcol = g['col']
+        greenish = (gcol[..., 1] > gcol[..., 0] + 4) & (gcol[..., 1] > gcol[..., 2] + 10)
+        so = d['solid'] & ~d['holefill'] & ~greenish
         stack = []
         for dy in (-1, 0, 1):
             for dx in (-1, 0, 1):
@@ -774,6 +887,13 @@ def palette_for(b):
         body = np.concatenate([body, median_cut(cols[amber], na)])
     if ng:
         body = np.concatenate([body, median_cut(cols[green], ng)])
+    if ng and cfg.get('green_hi'):
+        # His lime moss highlights are a few bright pixels: the median cut averages them into the
+        # darker moss, so his brightest greens (top 30%) get a slot of their own.
+        gc = cols[green]
+        gl = lum(gc)
+        top = gc[gl >= np.quantile(gl, 0.7)]
+        body = np.concatenate([body, median_cut(top, cfg['green_hi'])])
     body = body[np.argsort(lum(body))]
     rims = median_cut(SMOOTH[cls['outline'] & erode(cls['outline'] | ~cls['keep'], 1, nb=N4) | (cls['outline'] & False)], 3)
     if len(rims) == 0:
@@ -783,8 +903,11 @@ def palette_for(b):
     # Rims are deep and tinted, never black: pulled a little darker than his JPEG-softened mean.
     rims = np.clip(rims * 0.9, 0, 255)
     rims = rims[np.argsort(lum(rims))]
-    dsrc = b['dcol'][b['dust']]
+    dsrc = b['dcol'][b['dust'] & ~b['glow']]
     dust = median_cut(dsrc, cfg.get('dust_colors', 10)) if len(dsrc) else np.zeros((0, 3))
+    if b['glow'].any():
+        # (his glowing ray gold gets dust colours of its own, at every alpha step)
+        dust = np.concatenate([dust, median_cut(b['dcol'][b['glow']], 2)])
     pal = []
     for c in body:
         pal.append((*[int(round(v)) for v in c], 255, 'body'))
@@ -828,6 +951,11 @@ def quantize(b, pal, body, rims, dust):
         bay = bayer_at(H, W)[d]
         cols = b['dcol'][d]
         dd = ((cols[:, None, :] - dust[None]) ** 2).sum(-1)
+        ng_ = 2 if b['glow'].any() else 0
+        if ng_:
+            isg = b['glow'][d]
+            dd[np.ix_(isg, np.arange(len(dust) - ng_))] = 1e12
+            dd[np.ix_(~isg, np.arange(len(dust) - ng_, len(dust)))] = 1e12
         order = np.argsort(dd, 1)
         ci = order[:, 0]
         s_ = b['da'][d] / a_max * DUST_STEPS
@@ -899,6 +1027,41 @@ def split_pieces(idx, kinds, b, keep_full=False, wrap=False, names_extra=()):
         m = poly_mask(H, W, polys, x0, y0, 1 / sx, 1 / sy) & np.isin(owner, ['main', 'bits']) & rock
         owner[m] = pname
         names.append(pname)
+    # His rims just outside a traced outline (the polygons sit a hair inside his deep-brown edge)
+    # belong to that piece, so they move with it (the boulder rocking, a crystal sinking, a bullet
+    # bobbing) instead of staying behind as a floating line: a loose rock piece that lies mostly
+    # within 2 px of the named pieces joins them, each pixel the nearest named piece.
+    named = [p for p, _ in cfg.get('pieces', [])]
+    if named:
+        near1 = {p: dilate(owner == p, 1, nb=N8) for p in named}
+        near2 = {p: grow_round(owner == p, 2) for p in named}
+        loose = np.isin(owner, ['main', 'bits']) & rock
+        lab2, n2 = components(loose, nb=N8, wrap=wrap)
+        any2 = np.zeros((H, W), bool)
+        for p in named:
+            any2 |= near2[p]
+        for c in range(1, n2 + 1):
+            m = lab2 == c
+            if (m & any2).sum() < 0.5 * m.sum():
+                continue
+            best = max(named, key=lambda p: (m & near2[p]).sum())
+            owner[m] = best
+            for p in reversed(named):
+                owner[m & near2[p]] = p
+            for p in reversed(named):
+                owner[m & near1[p]] = p
+    glow = b.get('glow')
+    if glow is not None and glow.any():
+        # (a dash's translucent glow moves with the dash)
+        gl = glow & (k == 'dust')
+        lab3, n3 = components(rock | gl, nb=N8)
+        for c in range(1, n3 + 1):
+            m = lab3 == c
+            r_ = m & rock
+            if not r_.any() or not (m & gl).any():
+                continue
+            vals, cnt = np.unique(owner[r_], return_counts=True)
+            owner[m & gl] = vals[np.argmax(cnt)]
     for pname, m in names_extra:
         owner[m & (idx > 0)] = pname
         names.append(pname)
@@ -1088,6 +1251,50 @@ def smooth_noise(H, W, cell, seed):
     return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy
 
 
+def clip_outer(region, dust, rock):
+    """The hidden cloud clipped to the cloud's own outer outline on the left and right. On each row
+    his cloud's outer edge shows where its last dust pixel has clear ground beyond it; where a rock
+    stands there instead (a crystal at the cloud's side), the edge is hidden and is interpolated
+    from the rows above and below where it shows, smoothed, with small round billows. The hidden
+    cloud stops at that edge and thins over the 3 px inside it (his dust edges thin out the same
+    way), so no crystal's straight side survives in the dust. Returns (region, alpha factor)."""
+    H, W = region.shape
+    xs = np.arange(W)[None, :]
+    factor = np.ones((H, W))
+    keep = region.copy()
+    for side in ('left', 'right'):
+        edge = np.full(H, np.nan)
+        for y in range(H):
+            d = np.nonzero(dust[y])[0]
+            if len(d) == 0:
+                continue
+            if side == 'left':
+                x = d[0]
+                if not rock[y, max(0, x - 3):x].any():
+                    edge[y] = x
+            else:
+                x = d[-1]
+                if not rock[y, x + 1:x + 4].any():
+                    edge[y] = x
+        ok = ~np.isnan(edge)
+        if ok.sum() < 2:
+            continue
+        ys = np.arange(H)
+        e = np.interp(ys, ys[ok], edge[ok])
+        e = gauss(e[:, None], 2.0)[:, 0]
+        # billows: round bulges outward, about 9 rows apart
+        bump = 2.2 * np.abs(np.sin(np.pi * (ys + (3.0 if side == 'left' else 7.0)) / 9.0))
+        if side == 'left':
+            lim = (e - bump)[:, None]
+            dist = xs - lim
+        else:
+            lim = (e + bump)[:, None]
+            dist = lim - xs
+        keep &= dist >= 0
+        factor *= np.clip(0.4 + 0.2 * dist, 0, 1)
+    return keep, factor
+
+
 def harmonic_under(idx, kinds, PALC, cfg, dust_pal, ground=None):
     """His cloud continued behind the rock that stands in it (the blast's crystals, the bolt's
     boulder): where his cloud goes on behind a rock is read from what lies round the rock. Cloud
@@ -1112,6 +1319,19 @@ def harmonic_under(idx, kinds, PALC, cfg, dust_pal, ground=None):
     occ = harmonic(~rock, np.clip(A / a_max * 1.25, 0, 1), rock)
     jit = (smooth_noise(H, W, 5, 11) - 0.5) * 0.22
     region = rock & (occ >= 0.5 + jit)
+    if cfg.get('under_down'):
+        # A cloud is a mound: behind a rock, everything below a point of hidden cloud (down to the
+        # rock's foot, above the ground band) is cloud too. Without this a wide crystal standing in
+        # the middle of the cloud, whose sides are cloud on both hands but whose middle the harmonic
+        # field reads as thin, leaves a clear hole behind it that opens as it sinks.
+        lab, n = components(rock, nb=N8)
+        above = (np.arange(H) < (ground if ground is not None else H))[:, None]
+        for c in range(1, n + 1):
+            m = (lab == c) & above
+            region |= np.maximum.accumulate(region & m, axis=0) & m
+    outer = np.ones((H, W))
+    if cfg.get('under_clip'):
+        region, outer = clip_outer(region, dust & (A >= 0.15 * a_max), rock)
     # His dust carried in (premultiplied colour and alpha over his dust pixels only).
     Q = np.concatenate([rgba[..., :3] * A[..., None], A[..., None]], -1)
     w = dust.astype(np.float64)
@@ -1124,7 +1344,7 @@ def harmonic_under(idx, kinds, PALC, cfg, dust_pal, ground=None):
         out_q[ok] = qb[ok]
         done |= ok
     edge = np.clip((occ - 0.5 - jit) / 0.22, 0, 1)
-    a = np.where(region & done, out_q[..., 3], 0.0) * (0.55 + 0.45 * edge)
+    a = np.where(region & done, out_q[..., 3], 0.0) * (0.55 + 0.45 * edge) * outer
     out = np.zeros((H, W), np.int32)
     d0 = int(np.nonzero(kinds == 'dust')[0][0]) if (kinds == 'dust').any() else 0
     on = region & (a > 0.02)
@@ -1175,6 +1395,38 @@ def add_under(pieces, idx, kinds, PALC, cfg, dust_pal, line=None, ground=None):
     return pieces
 
 
+def polys_game(b, polys):
+    """Polygons in his coordinates rasterized on the sprite's game frame."""
+    H, W = b['solid'].shape
+    x0, y0 = b['g']['box'][:2]
+    sx, sy = scale_of(b['cfg'])
+    return poly_mask(H, W, polys, x0, y0, 1 / sx, 1 / sy)
+
+
+def fill_solid(idx, kinds, inside):
+    """His solid rock has no see-through pixels: every clear or semi-transparent pixel inside
+    `inside` (a traced outline, shrunk 1 px so its rim is left alone) takes the commonest opaque
+    value among its 8 neighbours, filled in from the opaque edge inward."""
+    rockk = np.isin(kinds, ['body', 'outline'])
+    out = idx.copy()
+    H, W = idx.shape
+    todo = inside & ~rockk[out]
+    n0 = int(todo.sum())
+    while todo.any():
+        sets = []
+        for y, x in zip(*np.nonzero(todo)):
+            nb = [out[y + dy, x + dx] for dy, dx in N8 if 0 <= y + dy < H and 0 <= x + dx < W and rockk[out[y + dy, x + dx]] and not todo[y + dy, x + dx]]
+            if nb:
+                vals, cnt = np.unique(nb, return_counts=True)
+                sets.append((y, x, int(vals[np.argmax(cnt)])))
+        if not sets:
+            break
+        for y, x, v in sets:
+            out[y, x] = v
+            todo[y, x] = False
+    return out, n0
+
+
 result = {}
 review = {}
 for name, b in built.items():
@@ -1183,6 +1435,12 @@ for name, b in built.items():
     PALC = np.array([p[:4] for p in pal], np.float64)
     kinds = np.array(['clear'] + [p[4] for p in pal])
     idx = quantize(b, pal, body, rims, dust)
+    if cfg.get('fill_solid'):
+        inside = np.zeros(idx.shape, bool)
+        for poly in cfg['fill_solid']:
+            inside |= erode(polys_game(b, [poly]), 1)
+        idx, nf = fill_solid(idx, kinds, inside)
+        print('%-11s see-through pixels filled inside his solid rock: %d (left: %d)' % (name, nf, int((inside & ~np.isin(kinds[idx], ['body', 'outline'])).sum())))
     if cfg.get('wall'):
         print('%-11s enclosed clear pixels after quantize: %d' % (name, holes_of(idx > 0).sum()))
     pal_json = [{'rgba': '#%02x%02x%02x%02x' % p[:4], 'kind': p[4]} for p in pal]
@@ -1194,19 +1452,34 @@ for name, b in built.items():
         seam = seam_rows(head0, tile[:, :12], PALC, 0, 11)
         for y, sc in enumerate(seam):
             tile[y, :sc] = head0[y, :sc]
+        # Where his rock runs on across the joint (the pebble the joint cuts), the tile's first column
+        # takes his column just past the joint, so the next tile closes that rock instead of leaving
+        # it cut flat at column 63; a body pixel there with nothing beyond becomes his rim.
+        rock_k = np.isin(kinds, ['body', 'outline'])
+        for y in range(64):
+            if rock_k[tile[y, 63]] and not tile[y, 0] and rock_k[head0[y, 0]]:
+                tile[y, 0] = head0[y, 0]
+                if kinds[tile[y, 0]] == 'body' and not rock_k[tile[y, 1]]:
+                    tile[y, 0] = len(body) + 1 + int(np.argmin(lum(rims)))
+        print('stream seam: rows with column 63 opaque and column 0 clear: %s' % [y for y in range(64) if tile[y, 63] and not tile[y, 0]])
         # No loose bit may touch the tile's top or bottom row.
         lab, n = components(tile > 0, wrap=True)
         for c in set(np.unique(np.concatenate([lab[0], lab[-1]]))) - {0}:
             if (lab == c).sum() <= 40:
                 tile[lab == c] = 0
-        head = idx[:, 64:].copy()
+        # The head starts 32 columns before the joint: the game puts the head's anchor (x 32) on the
+        # end of the last tile, so its first 32 columns lie over the last tile's right half and are
+        # that half (his columns there), and the anchor is exactly his joint.
+        head = idx[:, 32:].copy()
         result['stream'] = {'w': 64, 'h': 64, 'anchor': [0, 32], 'pal': pal_json,
                             'pieces': add_under(split_pieces(tile, kinds, b, keep_full=True, wrap=True), tile, kinds, PALC, cfg, dust, line=32 + 6)}
-        result['stream_head'] = {'w': int(head.shape[1]), 'h': int(head.shape[0]), 'anchor': [32 - 0, int(ay)], 'pal': pal_json,
+        result['stream_head'] = {'w': int(head.shape[1]), 'h': int(head.shape[0]), 'anchor': [32, int(ay)], 'pal': pal_json,
                                  'pieces': add_under(split_pieces(head, kinds, b, keep_full=True), head, kinds, PALC, cfg, dust, line=ay + 6)}
-        # (The head's anchor is 32 px right of its left edge, the joint with the last tile.)
         review['stream'] = (tile, PALC, b['g']['his'][ay - 32:ay + 32, :64])
-        review['stream_head'] = (head, PALC, b['g']['his'][:, 64:])
+        review['stream_head'] = (head, PALC, b['g']['his'][:, 32:])
+        if REVIEW:
+            os.makedirs(REVIEW, exist_ok=True)
+            np.savez(os.path.join(REVIEW, 'strip-stream.npz'), idx=idx, pal=PALC, ay=ay)
         continue
     if cfg.get('aura'):
         front = (b['g']['F'] >= 0.3) & (idx > 0)
@@ -1259,6 +1532,9 @@ if REVIEW:
         A = rgba[..., 3:] / 255
         return rgba[..., :3] * A + np.asarray(bg, np.float64) * (1 - A)
 
+    for n, r in result.items():
+        with open(os.path.join(REVIEW, 'ref-' + n + '.json'), 'w') as fh:
+            json.dump(r, fh)
     anchors = {n: r['anchor'] for n, r in result.items()}
     with open(os.path.join(REVIEW, 'his-anchors.json'), 'w') as fh:
         json.dump(anchors, fh)

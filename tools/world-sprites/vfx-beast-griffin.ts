@@ -12,11 +12,15 @@
 //         raised), pixel for pixel at the game scale. 1-7 are a wing beat derived from it: his two wings
 //         (the near one in front of the body, the far one behind it) are cut along his back line and swung
 //         down and back up about their roots as cut-out pieces of his own wings (eased in from the root so
-//         they bend there; the tips lag behind; a little shorter at the bottom of the beat, where they come
-//         toward us), sampled through a Scale2x x3 copy so his feather lines stay crisp. The body rises up to
-//         2 px with each downstroke, his tail sways in a wave from the root, his ribbon of chakra under the
-//         talons ripples, his light streak off the hind foot flows, and his specks drift back and fade in
-//         turn. No frame flashes (the converter checks the light of every frame against its neighbours).
+//         they bend there; the near wing's tips lag behind; the far wing pivots at the top of its rounded
+//         gold-trimmed base and follows the near one a little less far, with no lag, so it always peeks
+//         above the near wing's trim and never pops in or out; a little shorter at the bottom of the beat,
+//         where they come toward us), sampled through a Scale2x x3 copy so his feather lines stay crisp.
+//         The body rises 1-2 px with the downstroke, his tail sways in a wave from the root, his ribbon of
+//         chakra under the talons ripples, his light streak off the hind foot flows, his cyan wisps are
+//         carried (never turned) with the wing tips they trail from and fade out while the tips are down,
+//         and his other specks stream back as cross-fading copies. No frame flashes (the converter checks
+//         the light of every frame, and the light outside the griffin, against its neighbours).
 //
 // The anchor is the middle of his griffin's torso. To merge into vfx-beasts.ts: import { chakraGriffin }
 // from './vfx-beast-griffin' and put it in BUILDERS in place of chakraFox (['chakra', chakraGriffin]).

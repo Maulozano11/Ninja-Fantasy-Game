@@ -802,6 +802,18 @@ def components4(mask):
     return out
 
 
+def soften(m, r):
+    """A mask (or field) softened by three box blurs of radius r, about a Gaussian (deterministic)."""
+    a = m.astype(np.float32)
+    n = 2 * r + 1
+    for _ in range(3):
+        c = np.cumsum(np.pad(a, ((r + 1, r), (0, 0))), 0)
+        a = (c[n:] - c[:-n]) / n
+        c = np.cumsum(np.pad(a, ((0, 0), (r + 1, r))), 1)
+        a = (c[:, n:] - c[:, :-n]) / n
+    return a
+
+
 GAP_PX = 40  # a hole in the drake up to this many game px is one of his narrow gaps: it is closed
 GAPS = []  # the gaps closed in the frame being built (for the log)
 
@@ -839,12 +851,24 @@ def drake():
     # The head (its eyes and glints are warm like the dust, but they are the drake's).
     # Flying dirt in his lunge that touches the drake: the clod on the tip of his tallest back spike and the
     # streak that ends on the spikes above the hip (their cream highlights are not saturated like his dust).
+    CLOD_FOOT = 1606  # the top of his tallest back spike, under the clod
     LOOSE = [[(1565, 1593), (1587, 1593), (1587, 1609), (1565, 1609)],
              [(1395, 1628), (1440, 1628), (1440, 1638), (1427, 1640), (1395, 1646)]]
     HEAD = {
         0: [(915, 1640), (1100, 1640), (1100, 1860), (915, 1860)],
         5: [(1580, 1600), (1745, 1600), (1745, 1800), (1580, 1800)],
     }
+    # His horns (the upright one and the big near one swept back along the neck): their pixels snap only to
+    # his horn greys, which are cooler than the stone.
+    HORNS = {
+        0: [[(994, 1646), (1008, 1646), (1022, 1670), (1044, 1692), (1048, 1716), (1030, 1718), (1010, 1712), (994, 1690)],
+            [(918, 1655), (935, 1660), (960, 1700), (1000, 1735), (1005, 1760), (985, 1765), (950, 1735), (925, 1710), (915, 1680)]],
+        5: [[(1650, 1612), (1660, 1612), (1672, 1640), (1694, 1660), (1698, 1684), (1676, 1686), (1660, 1668), (1648, 1640)],
+            [(1593, 1618), (1604, 1620), (1620, 1650), (1655, 1685), (1660, 1705), (1640, 1708), (1610, 1680), (1596, 1650)]],
+    }
+    # His far eye: a small lemon-yellow oval on the far side of the brow.
+    FAREYE = {0: [(1038, 1734), (1064, 1734), (1064, 1768), (1038, 1768)],
+              5: [(1686, 1678), (1714, 1678), (1714, 1712), (1686, 1712)]}
 
     def key(k):
         """His picture k on the working canvas (placement point at WAX, WAY): colour and layers."""
@@ -869,8 +893,15 @@ def drake():
         if k == 5:
             # They fly with the dust, highlights and dark rims included (left on the spikes, they would blink
             # as dark stubs when the dust moves).
-            for pts in LOOSE:
-                warm |= fg & poly_mask(pts, (CH, CW), (ox, oy))
+            for i, pts in enumerate(LOOSE):
+                lp = poly_mask(pts, (CH, CW), (ox, oy))
+                if i == 0:
+                    # The clod: only its own bright and warm pixels fly. The dark ring the JPEG left around it
+                    # is not his (it bloated the clod over the spike tip), and the spike keeps its outline.
+                    warm |= fg & lp & (diff > 80)
+                    fg &= ~(lp & ~warm & (gy < CLOD_FOOT))
+                else:
+                    warm |= fg & lp
         # Specks of it inside the body are his shading, not dust.
         for p in components(warm):
             if len(p) < 8:
@@ -928,50 +959,102 @@ def drake():
     HORN_HI = np.round(np.median(body_px[hl], 0))
     amb = (r_ > 150) & (r_ - g_ > 40) & (g_ > 80) & (b_ < 100)
     EYE_AMBER = np.round(np.median(body_px[amb], 0))
-    PAL = np.concatenate([median_palette(body_px[stone], 30), median_palette(body_px[green], 8),
-                          median_palette(body_px[horn], 5), median_palette(body_px[glow], 5), HORN_HI[None], EYE_AMBER[None]])
+    # His far eye: a small lemon-yellow oval. It takes the colour of his oval's core (the brighter half of its
+    # pixels); the dimmer half is the JPEG halo where the yellow meets the grey brow, not his.
+    EYEW = {k: poly_mask(FAREYE[k], (CH, CW), keys[k][4]) for k in keys}
+
+    def limes(c):
+        return (c[..., 0] > 140) & (c[..., 1] > 140) & (c[..., 2] < 110) & (c[..., 1] >= c[..., 0] - 15)
+
+    lime_px = np.concatenate([keys[k][0][keys[k][1] & EYEW[k] & limes(keys[k][0])] for k in keys])
+    lime_l = lime_px @ np.array([0.3, 0.55, 0.15], np.float32)
+    EYE_LEMON = np.round(np.median(lime_px[lime_l >= np.median(lime_l)], 0))
+    # His horn greys: sampled inside his horns only (cooler than the stone), from his darkest seam grey to
+    # his near-white highlight.
+    HORNW = {}
+    for k in keys:
+        hm_ = np.zeros((CH, CW), bool)
+        for pts in HORNS[k]:
+            hm_ |= poly_mask(pts, (CH, CW), keys[k][4])
+        HORNW[k] = hm_ & keys[k][1]
+    horn_px = np.concatenate([keys[k][0][HORNW[k] & (keys[k][3] > 22)] for k in keys])
+    PAL_STONE, PAL_MOSS = median_palette(body_px[stone], 30), median_palette(body_px[green], 8)
+    PAL_H5 = median_palette(body_px[horn], 5)
+    PAL_REST = np.concatenate([PAL_H5, median_palette(body_px[glow], 5), HORN_HI[None], EYE_AMBER[None]])
+    # The horn group: the cool greys above, plus his horns' own cool mid greys and the dark grey of his horn
+    # seams. His near-white highlight joins it only where his horn is that light.
+    hl_ = horn_px @ np.array([0.3, 0.55, 0.15], np.float32)
+    cool_mid = (np.abs(horn_px[:, 0] - horn_px[:, 2]) <= 10) & (hl_ >= 60) & (hl_ < 140)
+    PAL_HORN = np.concatenate([PAL_H5, median_palette(horn_px[cool_mid], 2), np.round(np.median(horn_px[hl_ < 60], 0))[None]])
+    PAL = np.concatenate([PAL_STONE, PAL_MOSS, PAL_REST])
+    PAL_NO_MOSS = np.concatenate([PAL_STONE, PAL_REST])
     # His outline: the median of the dark pixels on his silhouette (a cool deep brown, not black).
     ring = np.concatenate([keys[k][0][keys[k][1] & ~erode(keys[k][1], 2) & ~keys[k][5]] for k in keys])
     ring = ring[ring @ np.array([0.3, 0.55, 0.15], np.float32) < 30]
     OUTLINE = np.round(np.median(ring, 0))
-    # His under-body shadow colour (it fills what a turned leg uncovers next to its joint).
+    # His under-body shadow colour (it fills the narrow gaps closed inside the drake).
     SHADOW = np.round(np.median(np.concatenate([keys[k][0][keys[k][5]] for k in keys]), 0))
     print('drake palette', len(PAL), 'outline', OUTLINE.astype(int).tolist(), 'shadow', SHADOW.astype(int).tolist(),
-          'horn highlight', HORN_HI.astype(int).tolist(), 'eye amber', EYE_AMBER.astype(int).tolist())
+          'horn highlight', HORN_HI.astype(int).tolist(), 'eye amber', EYE_AMBER.astype(int).tolist(),
+          'far eye', EYE_LEMON.astype(int).tolist(), f'({len(lime_px)} px)', 'horn greys', PAL_HORN.astype(int).tolist())
 
     # His pieces that move in the in-betweens (his sheet's coordinates). Each is cut from the body along
     # `cut` (its joint) and turned about `pivot`; the turn eases in over `bend` px from the cut, so the
     # piece stays joined to the body there. Far pieces go behind the body, the others over it.
+    # His prowl's big round near-thigh plate: it stays on the body, whole (the shin and the far hind leg turn
+    # behind it).
+    THIGH0 = [(655, 1700), (745, 1700), (745, 1790), (736, 1812), (724, 1832), (702, 1843), (682, 1840), (670, 1828),
+              (664, 1810), (662, 1780)]
     PIECES = {
         0: {
             'ff': {'far': True, 'cut': [(892, 1824), (965, 1830)], 'pivot': (928, 1827), 'bend': 16,
                    'poly': [(892, 1824), (965, 1830), (990, 1853), (1058, 1853), (1058, 1904), (892, 1904)]},
             'tail': {'cut': [(652, 1686), (646, 1800)], 'pivot': (649, 1743), 'bend': 22,
                      'poly': [(652, 1680), (646, 1802), (626, 1797), (560, 1806), (515, 1790), (515, 1650), (640, 1650)]},
-            'nh': {'cut': [(624, 1794), (692, 1800)], 'pivot': (660, 1797), 'bend': 18,
-                   'poly': [(624, 1794), (692, 1800), (696, 1848), (714, 1858), (714, 1904), (618, 1904)]},
+            # The near hind leg below the knee. His big round thigh plate stays on the body, whole, and the
+            # shin and foot turn behind it (he drew the thigh over the top of the shin).
+            'nh': {'far': True, 'cut': [(624, 1794), (664, 1800)], 'pivot': (650, 1806), 'bend': 18,
+                   'poly': [(624, 1794), (692, 1800), (696, 1848), (714, 1858), (714, 1904), (618, 1904)],
+                   'minus': THIGH0},
             'nf': {'cut': [(750, 1802), (848, 1820)], 'pivot': (800, 1811), 'bend': 20,
                    'poly': [(750, 1802), (848, 1820), (858, 1862), (898, 1898), (898, 1955), (745, 1955)]},
             # The far hind leg: the dark limb in the shadow between the haunch and the near front leg.
             'fh': {'far': True, 'cut': [(714, 1796), (768, 1800)], 'pivot': (740, 1798), 'bend': 12,
-                   'poly': [(714, 1796), (768, 1800), (752, 1812), (749, 1856), (712, 1856)]},
+                   'poly': [(714, 1796), (768, 1800), (752, 1812), (749, 1856), (712, 1856)], 'minus': THIGH0},
+            # The head, cut at the neck and scaled about the eye (his prowl head is drawn about 18% larger than
+            # his lunge head, so the in-betweens bring them together); the scale eases in over `bend` px.
+            # The hook of his curled tail: it turns about the bottom of the curl, so the curl opens or closes.
+            'tip': {'parent': 'tail', 'cut': [(515, 1748), (600, 1742)], 'pivot': (548, 1752), 'bend': 30,
+                    'poly': [(515, 1748), (600, 1742), (600, 1650), (515, 1650)]},
+            'head': {'cut': [(906, 1640), (936, 1828)], 'pivot': EYE[0], 'bend': 40,
+                     'poly': [(906, 1600), (1112, 1600), (1112, 1853), (990, 1853), (965, 1830), (936, 1828)]},
         },
         5: {
             'ff': {'far': True, 'cut': [(1550, 1768), (1606, 1758)], 'pivot': (1578, 1763), 'bend': 14,
                    'poly': [(1550, 1768), (1606, 1758), (1616, 1800), (1614, 1838), (1558, 1838), (1556, 1798)]},
             'fh': {'far': True, 'cut': [(1376, 1806), (1418, 1798)], 'pivot': (1397, 1802), 'bend': 12,
                    'poly': [(1376, 1806), (1418, 1798), (1424, 1852), (1372, 1852)]},
+            # The tail and the near hind leg part along the dark gap he left between them (the panel shows
+            # there), so the tail keeps its whole underside outline and nothing of either is left behind as
+            # a sliver when they move apart.
             'tail': {'cut': [(1348, 1692), (1338, 1776)], 'pivot': (1343, 1734), 'bend': 26,
-                     'poly': [(1348, 1692), (1338, 1776), (1312, 1796), (1290, 1830), (1235, 1870), (1195, 1890), (1150, 1890), (1150, 1845), (1240, 1745), (1300, 1686)]},
+                     'poly': [(1348, 1692), (1338, 1776), (1336, 1790), (1318, 1812), (1300, 1832), (1235, 1870), (1195, 1890), (1150, 1890), (1150, 1845), (1240, 1745), (1300, 1686)]},
             'nh': {'cut': [(1333, 1774), (1388, 1800)], 'pivot': (1360, 1787), 'bend': 18,
-                   'poly': [(1333, 1774), (1388, 1800), (1368, 1842), (1356, 1892), (1292, 1892), (1296, 1840), (1318, 1800)]},
+                   'poly': [(1333, 1774), (1388, 1800), (1368, 1842), (1356, 1892), (1292, 1892), (1290, 1845), (1300, 1832), (1318, 1812), (1336, 1790), (1338, 1776)]},
             'nf': {'cut': [(1478, 1765), (1543, 1768)], 'pivot': (1510, 1766), 'bend': 16,
                    'poly': [(1478, 1765), (1543, 1768), (1560, 1798), (1558, 1852), (1488, 1852), (1486, 1800)]},
+            # The outer half of his straight tail: it turns about the middle of the tail, so the tail curls.
+            'tip': {'parent': 'tail', 'cut': [(1236, 1760), (1292, 1830)], 'pivot': (1264, 1795), 'bend': 40,
+                    'poly': [(1236, 1760), (1292, 1830), (1150, 1905), (1095, 1840)]},
+            'head': {'cut': [(1594, 1600), (1612, 1772)], 'pivot': EYE[5], 'bend': 40,
+                     'poly': [(1594, 1590), (1748, 1590), (1748, 1805), (1640, 1805), (1616, 1795), (1612, 1772)]},
         },
     }
     # The body pitches about the shoulders (the head stays steady; the hindquarters rise and fall).
     PITCH = {0: (880, 1745), 5: (1540, 1715)}
     DUST_ORIGIN = (1330, GROUND)  # where it bursts from: the ground behind the hind feet
+    JOINT = 10  # (his px) how far from the body a turned piece's joint reaches
+    SOFT = 4  # (his px) how far a turned piece's motion blends into the body across its sides, per box pass
 
     size, oanchor = canvas_for([(WAX, WAY)], CW, CH, S)
     OW, OH = size
@@ -994,17 +1077,20 @@ def drake():
             nx, ny = -nx, -ny
         return x0, y0, nx, ny
 
-    def bend_field(k, pc, deg):
-        """Inverse displacement (for warp) that turns piece pc by deg degrees, easing in from its cut."""
+    def bend_field(k, pc, deg, sc=1.0):
+        """Inverse displacement (for warp) that turns piece pc by deg degrees and scales it by sc about its
+        pivot, easing in from its cut."""
         x0, y0, nx, ny = cut_dist(k, pc)
         px, py = to_work(k, pc['pivot'])
         R0 = pc['bend']
 
         def disp(qx, qy):
             t = np.clip(((qx - x0) * nx + (qy - y0) * ny) / R0, 0, 1)
-            a = np.deg2rad(deg) * t * t * (3 - 2 * t)
+            e = t * t * (3 - 2 * t)
+            a = np.deg2rad(deg) * e
+            m = 1.0 + (sc - 1.0) * e
             rx, ry = qx - px, qy - py
-            return px + rx * np.cos(a) - ry * np.sin(a) - qx, py + rx * np.sin(a) + ry * np.cos(a) - qy
+            return px + m * (rx * np.cos(a) - ry * np.sin(a)) - qx, py + m * (rx * np.sin(a) + ry * np.cos(a)) - qy
 
         qx, qy = xx, yy
         for _ in range(5):
@@ -1013,41 +1099,54 @@ def drake():
         t = np.clip(((qx - x0) * nx + (qy - y0) * ny) / R0, 0, 1)
         return dx.astype(np.float32), dy.astype(np.float32), t.astype(np.float32)
 
-    def rigid(k, deg, bob_px):
-        """Inverse displacement for the whole body: pitched deg about PITCH[k], then moved down bob_px (game px)."""
+    def rigid(k, deg, bob_px, scale=1.0, tx_px=0.0):
+        """Inverse displacement for the whole body: scaled by `scale` about his eye, pitched deg about PITCH[k],
+        then moved right tx_px and down bob_px (game px)."""
         px, py = to_work(k, PITCH[k])
+        ex, ey = to_work(k, EYE[k])
         ty = bob_px / S
+        tx = tx_px / S
         a = np.deg2rad(deg)
-        rx, ry = xx - px, yy - ty - py
+        rx, ry = xx - tx - px, yy - ty - py
         sx = px + rx * np.cos(a) + ry * np.sin(a)
         sy = py - rx * np.sin(a) + ry * np.cos(a)
+        if scale != 1.0:
+            sx = ex + (sx - ex) / scale
+            sy = ey + (sy - ey) / scale
         return (xx - sx).astype(np.float32), (yy - sy).astype(np.float32)
 
-    # Each key split into its pieces and the rest of the body; `under` is the joint zone of every piece
-    # (the first stretch from its cut), which a turned leg must not uncover as a see-through gap.
+    # Each key split into its pieces and the rest of the body.
     split = {}
     for k in (0, 5):
         crop, body, rest, diff, off, shade = keys[k]
         masks = {n: poly_mask(pc['poly'], (CH, CW), off) & body for n, pc in PIECES[k].items()}
+        for n, pc in PIECES[k].items():
+            if 'minus' in pc:
+                masks[n] &= ~poly_mask(pc['minus'], (CH, CW), off)
+        # (The head keeps out of the legs' pieces; a piece's child is cut out of it.)
+        for n in masks:
+            if n != 'head':
+                masks['head'] &= ~masks[n]
+        for n, pc in PIECES[k].items():
+            if 'parent' in pc:
+                masks[pc['parent']] &= ~masks[n]
+        for n, pc in PIECES[k].items():
+            # Crumbs the outline caught that are not joined to the piece stay on the body.
+            for p in components(masks[n]):
+                if len(p) < 60:
+                    masks[n][tuple(np.array(p).T)] = False
         base = body.copy()
         for m in masks.values():
             base &= ~m
-        under = np.zeros((CH, CW), bool)
-        for n, pc in PIECES[k].items():
-            x0, y0, nx, ny = cut_dist(k, pc)
-            d = (xx - x0) * nx + (yy - y0) * ny
-            under |= masks[n] & (d < pc['bend'] * 1.6)
-        under = erode(under | base, 3) & under
-        split[k] = (masks, base, under)
+        split[k] = (masks, base)
     if DEBUG:
-        cols = {'ff': (255, 128, 0), 'fh': (0, 255, 0), 'tail': (255, 0, 255), 'nh': (0, 255, 255), 'nf': (255, 255, 0)}
+        cols = {'ff': (255, 128, 0), 'fh': (0, 255, 0), 'tail': (255, 0, 255), 'nh': (0, 255, 255), 'nf': (255, 255, 0), 'head': (255, 64, 64), 'tip': (128, 0, 255)}
         for k in (0, 5):
-            masks, base, under = split[k]
+            masks, base = split[k]
             vis = (keys[k][0] * 0.5).astype(np.uint8)
             vis[base] = keys[k][0][base].astype(np.uint8)
             for n, m in masks.items():
                 vis[m] = (keys[k][0][m] * 0.5 + np.array(cols[n]) * 0.5).astype(np.uint8)
-            vis[under & ~dilate(~under, 1)] = (255, 255, 255)
             Image.fromarray(vis).save(os.path.join(DEBUG, f'drake-pieces-{k}.png'))
 
     # His dust (his lunge picture only), in his own colours and opaque, as he painted it: the pile is a solid
@@ -1061,6 +1160,7 @@ def drake():
     # his boulders there: each cream boulder the line cuts is rounded off, the darker soil between them stays
     # a few px further in, and the pile's foot spreads out to the line on the ground.
     CUT_X = 1137
+    PILE_R = 7  # (his px) splash fingers thinner than twice this are spray, not pile
     col = (lum5 > 150) & dust
     xc = int(round(CUT_X + 2 - off5[0]))
     rows_l = [int(y) for y in range(CH) if col[y, xc]]
@@ -1087,55 +1187,156 @@ def drake():
         p = np.array(p)
         if len(p) < 10 and diff5[p[:, 0], p[:, 1]].max() < 90:
             dust[p[:, 0], p[:, 1]] = False
-    # The pile is the biggest piece of it; thin streaks and loose specks are the parts an opening removes.
-    comps = sorted(components(dust), key=len, reverse=True)
+    # His clod on the tip of his tallest back spike is not part of the burst: it rides the spike while the dirt
+    # flies (frames 4 and 5), then is kicked off up and back and fades.
+    clod = dust & poly_mask(LOOSE[0], (CH, CW), off5)
+    dust &= ~clod
+    # The pile is his mound: the biggest piece of the dust once an opening has taken off its thin splash
+    # fingers. Everything else (the fingers, the streaks and the loose specks) is his spray.
+    mound = dilate(erode(dust, PILE_R), PILE_R) & dust
+    comps = sorted(components(mound), key=len, reverse=True)
     pile = np.zeros((CH, CW), bool)
     pts = np.array(comps[0])
     pile[pts[:, 0], pts[:, 1]] = True
-    core = dilate(erode(dust, 3), 3)
+    pile = dilate(pile, 2) & dust
+    # (The mound's foot along the ground is pile however thin it gets: his dark soil tapering off to the right.)
+    pile |= dust & (gy5 >= GROUND - 14)
+    spray = dust & ~pile
+    # His spray is thin, bright orange strokes with no dark edge. The dark rim around each stroke is where the
+    # JPEG blended it into his dark panel; kept as solid soil browns, it made every streak read as a muddy
+    # outline. So each of his spray pixels counts for how much of it is his stroke and how much his panel
+    # (by its brightness, from the panel's to his stroke cores'), and only his bright stroke pixels give the
+    # colour (strongly orange: red over blue by more than 50, and light).
+    r5c, b5c = crop5[..., 0], crop5[..., 2]
+    spray_a = spray * np.clip((lum5 - 40.0) / (140.0 - 40.0), 0.0, 1.0) * (r5c - b5c >= 20)
+    sbright = spray & (r5c - b5c > 50) & (lum5 >= 110)
+    print('dust: pile px', int(pile.sum()), 'spray px', int(spray.sum()), 'bright spray px', int(sbright.sum()),
+          'clod px', int(clod.sum()))
+    core = dilate(erode(pile, 3), 3)
     # Colour from his solid dust pixels (the edge pixels he shares with the dark panel would darken it).
-    wcol = np.clip((diff5 - 30.0) / 50.0, 0.05, 1.0) * dust
-    sat = dust & (diff5 > 70)
+    wcol = np.clip((diff5 - 30.0) / 50.0, 0.05, 1.0) * pile
+    sat = pile & (diff5 > 70)
     DUST = median_palette(crop5[sat], 10)
-    print('dust palette', DUST.astype(int).tolist(), 'pile px', int(pile.sum()), 'dust px', int(dust.sum()))
-
-    def pose(k, pitch=0.0, bob=0.0, legs=None, dust_at=None):
-        """Frame from key k: pieces turned by legs[name] degrees, body pitched and bobbed, dust placed.
-
-        dust_at = (x scale, y scale, dx in game px, alpha) about DUST_ORIGIN (on the ground), or None."""
+    # Partly clear dust takes every other dust colour (the palette has to fit the alphabet).
+    DUST_A = DUST[::2]
+    # His streak oranges: the light half of his dust colours (his streak cores' mid orange and the lighter
+    # tone along their middle); never the dark soil browns, which are his pile's. Partly clear spray takes the
+    # partly clear dust colour nearest to his streaks' mean.
+    lw = np.array([0.3, 0.55, 0.15], np.float32)
+    SPRAY = DUST[DUST @ lw >= 100]
+    spray_mean = crop5[sbright].mean(0)
+    SPRAY_A = DUST_A[np.argmin(((DUST_A - spray_mean) ** 2).sum(1))]
+    print('dust palette', DUST.astype(int).tolist(), 'spray colours', SPRAY.astype(int).tolist(),
+          'his spray mean', np.round(spray_mean).astype(int).tolist(), 'partly clear spray', SPRAY_A.astype(int).tolist())
+    pile_f, core_f, spray_f, clod_f = (m.astype(np.float32) for m in (pile, core, sbright, clod))
+    spray_a = spray_a.astype(np.float32)
+    # His aux layers, carried through every warp with the colour: horn (ch 3) and far eye (ch 4).
+    crop6 = {}
+    for k in (0, 5):
         crop = keys[k][0]
-        masks, base, under = split[k]
-        legs = legs or {}
+        fe = (EYEW[k] & limes(crop) & keys[k][1]).astype(np.float32)
+        crop6[k] = np.concatenate([crop, HORNW[k].astype(np.float32)[..., None], fe[..., None],
+                                   np.zeros((CH, CW, 1), np.float32)], -1)
+    # His lowest claw in his prowl (the feet line), in working-canvas rows; both keys share the canvas rows.
+    FEET_ROW = int(np.nonzero(keys[0][1].sum(1) >= 2)[0].max())
+
+    def eye_at(k, pitch=0.0, bob=0.0, tx=0.0):
+        """Where his near eye lands on our canvas for a frame from key k pitched, bobbed and moved (exact)."""
+        ex, ey = to_work(k, EYE[k])
+        px, py = to_work(k, PITCH[k])
+        a = np.deg2rad(pitch)
+        dx_, dy_ = ex - px, ey - py
+        wx = px + dx_ * np.cos(a) - dy_ * np.sin(a) + tx / S
+        wy = py + dx_ * np.sin(a) + dy_ * np.cos(a) + bob / S
+        return oanchor[0] + (wx - WAX) * S, oanchor[1] + (wy - WAY) * S
+
+    EYE0 = eye_at(0)
+
+    def pose(k, pitch=0.0, eye=0.0, legs=None, dust_at=None, scale=1.0, head=1.0, feet=False, clod_at=None):
+        """Frame from key k: pieces turned by legs[name] degrees and the head scaled by `head` about the eye; the
+        whole body scaled by `scale` about the eye, pitched, and carried so that the eye sits at frame 0's x and
+        `eye` game px below frame 0's eye (or, with `feet`, so that the lowest claw stands on the feet line).
+
+        dust_at = (x scale, y scale, dx in game px, alpha) about DUST_ORIGIN (on the ground), or None.
+        clod_at = (dx, dy in game px, alpha): his clod on the spike tip, moved off it, or None.
+        Returns the frame and its (bob, tx) in game px."""
+        crop = crop6[k]
+        masks, base = split[k]
+        legs = dict(legs or {})
+        if head != 1.0:
+            legs['head'] = 0.0
         far, near = [], []
-        moved = False
+        fields = {}
+        own = {}
         for n, pc in PIECES[k].items():
             m = masks[n].astype(np.float32)
-            if legs.get(n, 0.0):
-                moved = True
-                dx, dy, t = bend_field(k, pc, legs[n])
+            sc = head if n == 'head' else 1.0
+            par = pc.get('parent')
+            if legs.get(n, 0.0) or sc != 1.0 or (par and legs.get(par, 0.0)):
+                dx, dy, t = bend_field(k, pc, legs.get(n, 0.0), sc)
+                if par and par in own:
+                    # A child piece turns with its parent: its own turn first, then the parent's (and it is as
+                    # free of the body as its parent, so no edge line is drawn where it joins it).
+                    pdx, pdy, pt = own[par]
+                    dx, dy, t = pdx + warp(dx, pdx, pdy), pdy + warp(dy, pdx, pdy), np.maximum(warp(t, pdx, pdy), pt)
+                own[n] = (dx, dy, t)
+                fields[n] = (dx, dy)
                 lay = (warp(crop * m[..., None], dx, dy), warp(m, dx, dy), warp(m, dx, dy) * t)
             else:
                 lay = (crop * m[..., None], m, np.zeros_like(m))
             (far if pc.get('far') else near).append(lay)
         b = base.astype(np.float32)
         layers = far + [(crop * b[..., None], b, np.zeros_like(b))] + near
-        if moved:
-            u = under.astype(np.float32)
-            layers = [(SHADOW[None, None] * u[..., None], u, np.zeros_like(u))] + layers
-        prem = np.zeros((CH, CW, 3), np.float32)
+        if fields:
+            # The joints. A turned piece must not open a see-through gap, or a flat patch, where it leaves the
+            # body along its sides. Under everything goes the whole body bent by one smooth field: each piece's
+            # own turn, blended into the body's stillness over about SOFT px across the piece's edges. So
+            # whatever a turned piece uncovers shows his own pixels there, stretched a little, as a joint does.
+            # It is kept to the joints: where a turned piece lay next to the body (within JOINT px of it).
+            # Elsewhere it would leave a half-turned ghost of the piece's edges where the piece moved away.
+            bk = keys[k][1].astype(np.float32)
+            gb = np.maximum(soften(bk, SOFT), 1e-3)
+            DX = np.zeros((CH, CW), np.float32)
+            DY = np.zeros((CH, CW), np.float32)
+            joint = np.zeros((CH, CW), bool)
+            near_base = dilate(base, JOINT)
+            for n, (dx, dy) in fields.items():
+                w = np.clip(soften(masks[n], SOFT) / gb, 0.0, 1.0)
+                DX += w * dx
+                DY += w * dy
+                joint |= masks[n] & near_base
+            ja = (bk * joint).astype(np.float32)
+            layers = [(warp(crop * ja[..., None], DX, DY), warp(ja, DX, DY), np.zeros((CH, CW), np.float32))] + layers
+        prem = np.zeros((CH, CW, crop.shape[2]), np.float32)
         cov = np.zeros((CH, CW), np.float32)
         free = np.zeros((CH, CW), np.float32)  # near pieces away from their joint (they get an edge line)
         for pr, a, w in layers:
             prem = pr + prem * (1 - a[..., None])
             cov = a + cov * (1 - a)
             free = w + free * (1 - a)
-        if pitch or bob:
-            dx, dy = rigid(k, pitch, bob)
-            prem, cov, free = warp(prem, dx, dy), warp(cov, dx, dy), warp(free, dx, dy)
-        rgb = prem / np.maximum(cov, 1e-4)[..., None]
+        moved = bool(legs) or pitch != 0.0 or scale != 1.0 or feet or eye != 0.0
+        bob, tx = 0.0, 0.0
+        if moved:
+            # Carried so the eye keeps frame 0's x; held up by the feet or by the eye's arc.
+            tx = EYE0[0] - eye_at(k, pitch)[0]
+            if feet:
+                c0 = warp(cov, *rigid(k, pitch, 0.0, scale, tx))
+                low = int(np.nonzero((c0 > 0.5).sum(1) >= 2)[0].max())
+                bob = (FEET_ROW - low) * S
+            else:
+                bob = EYE0[1] + eye - eye_at(k, pitch)[1]
+            RG = rigid(k, pitch, bob, scale, tx)
+            prem, cov, free = warp(prem, *RG), warp(cov, *RG), warp(free, *RG)
+        rgb6 = prem / np.maximum(cov, 1e-4)[..., None]
+        rgb = rgb6[..., :3]
         A, C = shrink(rgb, cov, (WAX, WAY), S, size, oanchor)
         Af, _ = shrink(rgb, free, (WAX, WAY), S, size, oanchor)
+        _, AUX = shrink(rgb6[..., 3:6], cov, (WAX, WAY), S, size, oanchor)
         out = np.zeros((OH, OW, 4), np.uint8)
+
+        def levels_of(a_px):
+            return np.where(a_px > 0.8, 255, np.where(a_px > 0.47, 160, np.where(a_px > 0.2, 95, 0)))
+
         if dust_at is not None:
             sx_, sy_, ddx, alpha = dust_at
             # (The dust lives on the ground: it does not follow the body's pitch and bob. Every key's working
@@ -1144,20 +1345,30 @@ def drake():
             qx = gox + (xx - gox - ddx / S) / sx_
             qy = goy + (yy - goy) / sy_
             fx_, fy_ = xx - qx, yy - qy
-            Ad, _ = shrink(crop5, warp(dust.astype(np.float32), fx_, fy_), (WAX, WAY), S, size, oanchor)
-            _, Cd = shrink(warp(crop5, fx_, fy_), warp(wcol.astype(np.float32), fx_, fy_), (WAX, WAY), S, size, oanchor)
-            Ac, _ = shrink(crop5, warp(core.astype(np.float32), fx_, fy_), (WAX, WAY), S, size, oanchor)
+            c5 = warp(crop5, fx_, fy_)
+            # His pile: solid in his colours; only where it is thinner than a game pixel is it partly clear.
+            Ad, _ = shrink(crop5, warp(pile_f, fx_, fy_), (WAX, WAY), S, size, oanchor)
+            _, Cd = shrink(c5, warp(wcol.astype(np.float32), fx_, fy_), (WAX, WAY), S, size, oanchor)
+            Ac, _ = shrink(crop5, warp(core_f, fx_, fy_), (WAX, WAY), S, size, oanchor)
             solid_px = Ad >= 0.5
             thin_px = (Ad >= 0.22) & ~solid_px & (Ac < 0.1)
-            a_px = np.where(solid_px, 1.0, 0.6) * alpha
-            g = solid_px | thin_px
-            levels = np.where(a_px > 0.8, 255, np.where(a_px > 0.47, 160, np.where(a_px > 0.2, 95, 0)))
-            g &= levels > 0
-            # (The faintest level takes every other dust colour: the palette has to fit the alphabet.)
-            out[g, :3] = np.where((levels == 95)[..., None], snap(Cd, DUST[::2]), snap(Cd, DUST))[g]
-            out[g, 3] = levels[g].astype(np.uint8)
+            lv = levels_of(np.where(solid_px, 1.0, 0.6) * alpha)
+            g = (solid_px | thin_px) & (lv > 0)
+            out[g, :3] = np.where((lv < 255)[..., None], snap(Cd, DUST_A), snap(Cd, DUST))[g]
+            out[g, 3] = lv[g].astype(np.uint8)
+            # His spray: a game pixel his bright strokes cover at least half of is solid streak orange; one they
+            # cover a quarter of is the same orange, partly clear; less, and it is clear.
+            As, _ = shrink(c5, warp(spray_a, fx_, fy_), (WAX, WAY), S, size, oanchor)
+            Asb, Cs = shrink(c5, warp(spray_f, fx_, fy_), (WAX, WAY), S, size, oanchor)
+            s_solid = As >= 0.5
+            s_thin = (As >= 0.25) & ~s_solid
+            lv = levels_of(np.where(s_solid, 1.0, 0.63) * alpha)
+            g = (s_solid | s_thin) & (lv > 0) & (Asb > 0.02) & ~(solid_px & (out[..., 3] == 255))
+            g &= lv >= out[..., 3]
+            out[g, :3] = np.where((lv < 255)[..., None], SPRAY_A, snap(Cs, SPRAY))[g]
+            out[g, 3] = lv[g].astype(np.uint8)
         op = A >= 0.5
-        if legs or pitch or bob:
+        if moved:
             # Slivers left at a joint where a piece turned away.
             for pts in components(op):
                 if len(pts) < 6:
@@ -1165,10 +1376,9 @@ def drake():
         # Gaps closed inside the drake: a see-through hole the body surrounds is his dark under-body shadow,
         # not the battlefield. That is every small one (his narrowest gaps between plates, where his panel
         # peeks through) and every one a turned leg or tail uncovered (it was body in his picture).
-        if legs or pitch or bob:
+        if moved:
             kb = keys[k][1].astype(np.float32)
-            if pitch or bob:
-                kb = warp(kb, *rigid(k, pitch, bob))
+            kb = warp(kb, *RG)
             Ab, _ = shrink(rgb, kb, (WAX, WAY), S, size, oanchor)
         else:
             Ab = A
@@ -1183,17 +1393,31 @@ def drake():
         op |= gap
         op, edge = outline_clean(op)
         out[op, :3] = snap(C, PAL)[op]
+        # His horns snap only to his horn greys (cooler than the stone; his seams stay dark, and his near-white
+        # highlight comes only where his own horn is that light).
+        hn = op & (AUX[..., 0] >= 0.5)
+        hi = (C @ np.array([0.3, 0.55, 0.15], np.float32)) >= 150
+        out[hn, :3] = np.where(hi[..., None], snap(C, np.concatenate([PAL_HORN, HORN_HI[None]])), snap(C, PAL_HORN))[hn]
         # His glowing eyes and glints are smaller than the averaging footprint: where they cover a good
         # part of a pixel, the pixel takes their colour (so they keep glowing instead of turning muddy),
-        # and where only his orange-amber surround of the eye does, it takes his amber.
-        hot = (rgb[..., 0] > 200) & (rgb[..., 1] > 140) & (rgb[..., 2] < 120) & (cov > 0.5)
-        amber = (rgb[..., 0] > 150) & (rgb[..., 0] - rgb[..., 1] > 40) & (rgb[..., 1] > 80) & (rgb[..., 2] < 100) & (cov > 0.5)
+        # and where only his orange-amber surround of the eye does, it takes his amber. (His far eye is not
+        # one of them: it is his lemon oval, below.)
+        fe_full = rgb6[..., 4] > 0.5
+        hot = (rgb[..., 0] > 200) & (rgb[..., 1] > 140) & (rgb[..., 2] < 120) & (cov > 0.5) & ~fe_full
+        amber = (rgb[..., 0] > 150) & (rgb[..., 0] - rgb[..., 1] > 40) & (rgb[..., 1] > 80) & (rgb[..., 2] < 100) & (cov > 0.5) & ~fe_full
         Ah, Ch = shrink(rgb, hot.astype(np.float32), (WAX, WAY), S, size, oanchor)
         Aa, _ = shrink(rgb, (hot | amber).astype(np.float32), (WAX, WAY), S, size, oanchor)
         hm = (Ah > 0.25) & op
         am = (Aa > 0.25) & ~hm & op & dilate(hm, 1)
+        # His far eye: where his lemon oval covers a quarter of a pixel, the pixel is his lemon. No ring.
+        lm = (AUX[..., 1] * A > 0.25) & ~hm & ~am & op
+        # Next to a glowing eye nothing is moss: the mixed yellow-grey there snapped to the moss greens and
+        # gave the eyes a green rim he did not draw.
+        rim = dilate(hm | lm, 1) & op & ~hm & ~am & ~lm & ~hn
+        out[rim, :3] = snap(C, PAL_NO_MOSS)[rim]
         out[hm, :3] = snap(Ch, PAL)[hm]
         out[am, :3] = EYE_AMBER
+        out[lm, :3] = EYE_LEMON
         out[op, 3] = 255
         out[gap & ~edge, :3] = SHADOW
         out[edge, :3] = OUTLINE
@@ -1204,46 +1428,65 @@ def drake():
         for oy, ox in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             fe |= fm & op & ~np.roll(np.roll(Af >= 0.25, oy, 0), ox, 1)
         out[fe, :3] = OUTLINE
-        return out
+        if clod_at is not None:
+            # His clod rides the spike tip with the body (it is key 5's), then flies off it.
+            cdx, cdy, calpha = clod_at
+            cf, cc = clod_f, crop5
+            if moved:
+                cf, cc = warp(cf, *RG), warp(cc, *RG)
+            if cdx or cdy:
+                cf, cc = warp(cf, cdx / S, cdy / S), warp(cc, cdx / S, cdy / S)
+            Acl, Ccl = shrink(cc, cf, (WAX, WAY), S, size, oanchor)
+            g = Acl >= 0.5
+            lv = levels_of(np.full((OH, OW), calpha, np.float32))
+            g &= lv > 0
+            out[g, :3] = (snap(Ccl, DUST_A) if calpha < 0.8 else snap(Ccl, DUST))[g]
+            out[g, 3] = lv[g].astype(np.uint8)
+        return out, bob, tx
 
     def key_frame(k):
-        return pose(k, dust_at=(1.0, 1.0, 0.0, 1.0) if k == 5 else None)
+        return pose(k, dust_at=(1.0, 1.0, 0.0, 1.0), clod_at=(0.0, 0.0, 1.0)) if k == 5 else pose(k)
 
-    def eye_at(k, pitch=0.0, bob=0.0):
-        """Where his near eye lands on our canvas for a frame from key k pitched and bobbed (exact, no search)."""
-        ex, ey = to_work(k, EYE[k])
-        px, py = to_work(k, PITCH[k])
-        a = np.deg2rad(pitch)
-        dx_, dy_ = ex - px, ey - py
-        wx = px + dx_ * np.cos(a) - dy_ * np.sin(a)
-        wy = py + dx_ * np.sin(a) + dy_ * np.cos(a) + bob / S
-        return oanchor[0] + (wx - WAX) * S, oanchor[1] + (wy - WAY) * S
-
-    # The run, a bounding charge. 0: his prowl, gathered on the ground. 1-2: the hind legs push back, the
-    # front legs lift and tuck, the tail drops and the body rises. 3-4: his lunge, springing off the ground,
-    # his dust bursting behind the hind feet; 5: his lunge at the top of the leap. 6: the body comes down
-    # nose first, the front legs reaching, the dust drifting back. 7: about to land, nose down and tail up,
-    # the dust settling (it spreads out low) and fading. Then his prowl again, landed.
-    # The two cuts between his drawings (2->3 and 7->0) happen with the head where it was, so the body changes
-    # pose under a steady head; the head rises over 1-5 and comes down over 6-7 (eye heights are printed).
-    # Leg angles in degrees (+ turns a hanging limb's foot backward, and lifts the tail); bob in game px
-    # (+ is down); pitch in degrees about the shoulders (+ is nose down).
+    # The run, a bounding charge. 0: his prowl, gathered on the ground. 1-2: the hind legs push off (the claws
+    # stay on the feet line), the front legs lift and tuck, the tail drops and the front of the body rises.
+    # 3-4: his lunge, springing off the ground, his dust bursting behind the hind feet; 5: his lunge at the top
+    # of the leap. 6: the body comes down nose first, the front legs reaching, the dust drifting back. 7: about
+    # to land, nose down and tail up, the dust settling (it spreads out low) and fading. Then his prowl, landed.
+    # His prowl is drawn about 12% larger than his lunge, and its head about 18% larger: the in-betweens
+    # scale the body (and the head a little more) so the size changes over the loop instead of at the two cuts
+    # between his drawings (2->3 and 7->0). The eye keeps one x.
+    # Leg angles in degrees (+ turns a hanging limb's foot backward, and lifts the tail); pitch in degrees about
+    # the shoulders (+ is nose down); eye: the eye's height in game px below frame 0's (+ is down).
     FLY = [
         None,
-        dict(k=0, pitch=-2.0, bob=-4.5, legs={'nf': 8, 'ff': -8, 'nh': 10, 'fh': 6, 'tail': -6}),
-        dict(k=0, pitch=-4.0, bob=-9.0, legs={'nf': 16, 'ff': -16, 'nh': 20, 'fh': 12, 'tail': -12}),
-        dict(k=5, pitch=4.0, bob=4.6, legs={'nf': -2, 'ff': 2, 'nh': -12, 'fh': -10, 'tail': 6}, dust_at=(0.7, 0.7, 2.0, 1.0)),
-        dict(k=5, pitch=2.0, bob=2.0, legs={'nf': -1, 'ff': 1, 'nh': -6, 'fh': -5, 'tail': 3}, dust_at=(0.88, 0.88, 1.0, 1.0)),
+        dict(k=0, pitch=-5.0, feet=True, scale=0.97, head=0.975,
+             legs={'nf': 8, 'ff': -4, 'nh': 8, 'fh': 6, 'tail': -12}),
+        dict(k=0, pitch=-10.0, feet=True, scale=0.94, head=0.95,
+             legs={'nf': 16, 'ff': -8, 'nh': 16, 'fh': 12, 'tail': -25}),
+        dict(k=5, pitch=5.0, eye=-10.0, scale=1.07, head=1.0,
+             legs={'nf': -2, 'ff': 2, 'nh': -12, 'fh': -10, 'tail': 10}, dust_at=(0.7, 0.7, 2.0, 1.0)),
+        dict(k=5, pitch=2.5, eye=-16.5, scale=1.035, head=1.0,
+             legs={'nf': -1, 'ff': 1, 'nh': -6, 'fh': -5, 'tail': 5}, dust_at=(0.88, 0.88, 1.0, 1.0),
+             clod_at=(0.0, 0.0, 1.0)),
         None,
-        dict(k=5, pitch=6.0, bob=4.2, legs={'nf': -14, 'ff': -10, 'nh': -16, 'fh': -12, 'tail': 6}, dust_at=(1.04, 0.9, -5.0, 0.85)),
-        dict(k=5, pitch=9.0, bob=11.6, legs={'nf': -24, 'ff': -18, 'nh': -22, 'fh': -18, 'tail': 12}, dust_at=(1.08, 0.6, -10.0, 0.4)),
+        dict(k=5, pitch=6.0, eye=-12.5, scale=1.04, head=1.03,
+             legs={'nf': -12, 'ff': -10, 'nh': -16, 'fh': -12, 'tail': 10}, dust_at=(1.04, 0.9, -5.0, 0.75),
+             clod_at=(-3.5, -3.5, 0.63)),
+        dict(k=5, pitch=9.0, eye=-3.0, scale=1.08, head=1.06,
+             legs={'nf': -16, 'ff': -14, 'nh': -22, 'fh': -18, 'tail': 20}, dust_at=(1.08, 0.6, -10.0, 0.4)),
     ]
     GAPS.clear()
     frames = {'fly': []}
+    moves = []
     for i, f in enumerate(FLY):
-        frames['fly'].append(key_frame(0) if i == 0 else key_frame(5) if i == 5 else
-                             pose(f['k'], f['pitch'], f['bob'], f['legs'], f.get('dust_at')))
-        print(f'  frame {i}: closed gaps (px)', GAPS[:])
+        if f is None:
+            fr, bob, tx = key_frame(i)
+        else:
+            fr, bob, tx = pose(f['k'], f['pitch'], f.get('eye', 0.0), f['legs'], f.get('dust_at'), f.get('scale', 1.0),
+                               f.get('head', 1.0), f.get('feet', False), f.get('clod_at'))
+        frames['fly'].append(fr)
+        moves.append((bob, tx))
+        print(f'  frame {i}: bob {bob:+.1f} tx {tx:+.1f} (game px); closed gaps (px)', GAPS[:])
         GAPS.clear()
     f0 = frames['fly'][0]
     feet = int(np.nonzero((f0[..., 3] == 255).any(1))[0].max())
@@ -1251,7 +1494,7 @@ def drake():
     eyes = []
     for i, f in enumerate(frames['fly']):
         src = FLY[i] or {'k': i}
-        ex, ey = eye_at(src['k'], src.get('pitch', 0.0), src.get('bob', 0.0))
+        ex, ey = eye_at(src['k'], src.get('pitch', 0.0), moves[i][0], moves[i][1])
         eyes.append((ex, ey))
         a = f[..., 3]
         ys_, xs_ = np.nonzero(a > 0)
@@ -1266,6 +1509,9 @@ def drake():
         "pitch the body and carry it along the leap between his two pictures, and move his dust.",
         "Scale: his character is " + f"{his_char_h} px tall in that sheet, ours {CHAR_H:.0f}.",
     ]
+    used = np.unique(np.concatenate([f.reshape(-1, 4) for f in frames['fly']]), axis=0)
+    used = used[used[:, 3] > 0]
+    print('drake colours', len(used), 'by alpha', {int(a): int((used[:, 3] == a).sum()) for a in np.unique(used[:, 3])})
     write_module(frames, size, oanchor, note)
     sidecar('earth', {'ref': os.path.basename(REF), 'scale': S, 'panel': list(PANEL), 'ground': GROUND,
                       'keys': {str(k): {'torso': list(TORSO[k]), 'origin': list(keys[k][4]), 'eye': list(EYE[k])} for k in (0, 5)},
@@ -1277,8 +1523,10 @@ def drake():
             vis[shade] = (vis[shade] * 0.5 + np.array([0, 160, 255]) * 0.5).astype(np.uint8)
             vis[rest] = [255, 0, 255]
             if k == 5:
-                vis[dust & ~pile] = [255, 255, 0]
-                vis[rest & ~dust] = [255, 0, 0]
+                vis[spray] = [255, 255, 0]
+                vis[sbright] = [255, 140, 0]
+                vis[clod] = [0, 255, 255]
+                vis[rest & ~dust & ~clod] = [255, 0, 0]
             Image.fromarray(vis).save(os.path.join(DEBUG, f'drake-seg-{k}.png'))
         # His picture box-filtered to game scale beside ours, on his panel colour, x3.
         rows = []

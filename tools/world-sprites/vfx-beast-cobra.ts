@@ -10,13 +10,17 @@
 // run-length rows), decoded here:
 //
 //   fly     8 frames, 10 fps, loop. Frame 0 is his LEFT picture and frame 5 his RIGHT picture, his
-//           pixels one to one. 1-4 (left to right) and 6-7 (back): the coils slither (his coil pixels
-//           carried along a spine that moves from one of his shapes to the other, his hump to his hump,
-//           the tail end taking the other picture's pixels first), his head piece (head, jaws, hood,
-//           venom drops) moves whole by whole pixels: it draws back, strikes forward and settles, the
-//           neck bending to follow; his mist blobs drift back and fade while the other picture's drift
-//           in. No frame flashes: the converter fails the build if a frame's light (alpha x luma) or
-//           opaque mass is more than 12 % off its neighbour's.
+//           pixels one to one: his mist over the coil where he painted it (the two-lobed puff at the
+//           neck base), his head's warm accents (rosy-amber eye, crimson jaws, ochre hood spot) on
+//           colours of their own hue. 1-4 (left to right, a fifth of the way each) and 6-7 (back, a
+//           third each): the coils slither (his coil pixels carried along a spine that moves evenly
+//           from one of his shapes to the other, his hump to his hump; the tail end bends, its tip led
+//           on the straight line between his two tips, so it never stands up as a stalk), his head
+//           piece (head, jaws, hood) moves whole by whole pixels: it draws back, strikes forward and
+//           settles, the neck bending to follow, and its venom drops change over one frame before it
+//           does; his mist blobs shrink out and grow in, the ones over the coil going with it. No frame
+//           flashes: the light goes evenly between his two pictures, and the converter fails the build
+//           if a frame's light (alpha x luma) or opaque mass is more than 12 % off its neighbour's.
 //
 // The anchor is the centre of the body's mass, the same point in both of his pictures. Facing right
 // (the renderer mirrors it when the cobra flies left). To merge into vfx-beasts.ts: import

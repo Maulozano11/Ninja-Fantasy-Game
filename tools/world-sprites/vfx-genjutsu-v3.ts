@@ -110,6 +110,14 @@ const rampStep = (dir: number): Int16Array =>
       // Toward white (above L 60) a ramp loses chroma: aim at the chroma scaled down as it nears
       // L 100. Below that the step keeps the full chroma, so a lit violet stays a violet.
       const keepC = dir > 0 ? clamp((100 - LAB[j][0]) / Math.max(1, 100 - Math.max(L, 60)), 0.35, 1) : 1;
+      // Never a step out of its family: a saturated colour keeps most of its chroma and its hue
+      // within 35 degrees (else it does not step), so a violet never turns grey-blue.
+      const C0 = Math.hypot(a, b), Cj = Math.hypot(LAB[j][1], LAB[j][2]);
+      if (C0 > 12) {
+        if (Cj < 0.6 * C0 * keepC) continue;
+        const dh = Math.abs(Math.atan2(LAB[j][2], LAB[j][1]) - Math.atan2(b, a));
+        if (Math.min(dh, TAU - dh) > (35 * Math.PI) / 180) continue;
+      }
       const d = (LAB[j][1] - a * keepC) ** 2 + (LAB[j][2] - b * keepC) ** 2 + 0.6 * (dL - 8) ** 2;
       if (d < bd) {
         bd = d;
@@ -455,33 +463,62 @@ function holes(c: Canvas): number[][] {
   return out;
 }
 
-/** Holes sealed by the safety net, per sprite (reported by the build). */
+/** Holes sealed by the safety net, per sprite and kind (reported by the build). */
 const SEALED = new Map<string, number>();
 /**
- * The safety net under every derived frame: a see-through hole (see holes()) that his picture
- * (`key`) does not have at that place takes the commonest solid colour round it, so no derived
- * frame opens a speck of map inside the art. The structural fixes (underlays, whole-piece moves)
- * leave few; the build reports how many were sealed.
+ * His panel fill as an opaque entry of his palette (the nearest one, #1a1525): a speck of his
+ * panel enclosed by his art looks the same on his panel when it takes this colour.
  */
-function sealNew(name: string, c: Canvas, key: Canvas): Canvas {
-  for (const region of holes(c)) {
-    if (region.every((n) => key.px[n * 4 + 3] < 40)) continue;
-    const votes = new Map<string, number>();
-    for (const n of region) {
-      const x = n % c.w, y = (n - x) / c.w;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const p = c.get(x + dx, y + dy);
-        if (p[3] >= 200) votes.set(p.join(','), (votes.get(p.join(',')) ?? 0) + 1);
-      }
+const PANEL_IX = (() => {
+  let best = 0, bd = Infinity;
+  PAL.forEach((c, i) => {
+    if (c[3] < 255) return;
+    const d = (c[0] - FILL[0]) ** 2 + (c[1] - FILL[1]) ** 2 + (c[2] - FILL[2]) ** 2;
+    if (d < bd) [best, bd] = [i, d];
+  });
+  return best;
+})();
+/** The commonest solid (alpha >= 200) colour 4-adjacent to a region, or null. */
+function ringColour(c: Canvas, region: number[]): Color | null {
+  const votes = new Map<string, number>();
+  for (const n of region) {
+    const x = n % c.w, y = (n - x) / c.w;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const q = c.get(x + dx, y + dy);
+      if (q[3] >= 200) votes.set(q.join(','), (votes.get(q.join(',')) ?? 0) + 1);
     }
-    let best = '', bn = 0;
-    for (const [col, nv] of votes) if (nv > bn || (nv === bn && col < best)) [best, bn] = [col, nv];
-    if (!best) continue;
-    const col = best.split(',').map(Number) as Color;
-    for (const n of region) c.set(n % c.w, Math.floor(n / c.w), col);
-    SEALED.set(name, (SEALED.get(name) ?? 0) + region.length);
+  }
+  let best = '', bn = 0;
+  for (const [col, nv] of votes) if (nv > bn || (nv === bn && col < best)) [best, bn] = [col, nv];
+  return best ? (best.split(',').map(Number) as Color) : null;
+}
+/**
+ * The safety net under every frame, so no frame shows a speck of map inside the art (see holes()):
+ *   - in his picture (`key` given as null): a speck of his panel that his art encloses (where the
+ *     cut-out took a pixel as dark as his panel for background) takes his panel colour as an
+ *     opaque palette entry (#1a1525), so on his panel it looks as he painted it;
+ *   - in a derived frame: a hole where his picture has art takes the commonest solid colour round
+ *     it; one where his picture is also clear (a gap closed up by the motion) takes his panel
+ *     colour, as in his picture.
+ * The structural fixes (underlays, whole-piece moves) leave few; the build reports how many.
+ */
+function sealHoles(name: string, c: Canvas, key: Canvas | null): Canvas {
+  // (Sealing one hole can close the ring of a clear speck diagonal to it: run until none is left.)
+  for (let pass = 0; pass < 4; pass++) {
+    const found = holes(c);
+    if (!found.length) break;
+    sealRegions(name, c, key, found);
   }
   return c;
+}
+function sealRegions(name: string, c: Canvas, key: Canvas | null, found: number[][]): void {
+  for (const region of found) {
+    const keyArt = key ? region.filter((n) => key.px[n * 4 + 3] >= 40).length : 0;
+    const col = (keyArt * 2 >= region.length ? ringColour(c, region) : null) ?? PAL[PANEL_IX];
+    for (const n of region) c.set(n % c.w, Math.floor(n / c.w), col);
+    const tag = `${name}${key ? '' : ' (key)'}`;
+    SEALED.set(tag, (SEALED.get(tag) ?? 0) + region.length);
+  }
 }
 
 // --- the key frames ---------------------------------------------------------------------------
@@ -583,15 +620,19 @@ function twinkle(ix: Ix, frame: number, share: number, seed: number): Ix {
 }
 
 function sprite(k: Key, label: string, anims: Record<string, { frames: Canvas[]; fps: number; loop?: boolean }>): WorldSprite {
-  // The safety net (see sealNew): every derived frame against his picture.
+  // The safety net (see sealHoles): his picture first, then every derived frame against it. A
+  // frame identical to his picture (a wall's last rise frame) takes the sealed picture.
   if (k.name !== 'stream' && !process.env.GJ_NOSEAL) {
-    const [an0, a0] = Object.entries(anims)[0];
+    const an0 = Object.keys(anims)[0];
     const keyAt: [string, number] = anims.idle ? ['idle', 0] : k.name === 'hit' ? [an0, HIT_KEY] : k.name === 'blast' ? [an0, BLAST_KEY] : [an0, 0];
     const keyC = anims[keyAt[0]].frames[keyAt[1]];
-    void a0;
+    const same = (f: Canvas) => f !== keyC && f.w === keyC.w && f.h === keyC.h && Buffer.from(f.px).equals(Buffer.from(keyC.px));
+    const twins = Object.values(anims).flatMap((a) => a.frames.map((f, i) => [a, i, same(f)] as const)).filter((t) => t[2]);
+    sealHoles(k.name, keyC, null);
+    for (const [a, i] of twins) a.frames[i] = keyC;
     for (const [an, a] of Object.entries(anims))
       a.frames.forEach((f, i) => {
-        if (an !== keyAt[0] || i !== keyAt[1]) sealNew(k.name, f, keyC);
+        if (f !== keyC && !(an === keyAt[0] && i === keyAt[1])) sealHoles(k.name, f, keyC);
       });
   }
   return {
@@ -632,7 +673,14 @@ function bolt(): WorldSprite {
   const k = key('bolt', pad(ROOM));
   const orb = piece(k, 'orb'), main = piece(k, 'main'), sm = piece(k, 'smoke');
   // His trailing smoke is a dense dark mass with solid blobs (its blackest pixels are solid in the
-  // key frame, the rest his 0.85 smoke): it streams back whole, at full strength.
+  // key frame, the rest his 0.85 smoke), drawn at full strength in every frame. The mass behind
+  // the tendrils (its big parts) stays where he put it and churns at its edges, over itself as it
+  // lies in his picture (so it never thins or opens); his small flecks stream back past it.
+  const smParts = parts(sm);
+  const mass = blank(k.w, k.h), flecks = blank(k.w, k.h);
+  for (const p of smParts) stamp(p.ix.d.reduce((n, v) => n + (v ? 1 : 0), 0) >= 30 ? mass : flecks, p.ix);
+  const DEEP = KIND.indexOf('outline') + 1;
+  const tendrilBed = remap(keep(main, (x, _y, v) => x < k.ax - 9 && PAL[v - 1][3] === 255), () => DEEP);
   const fr = range(FLY_N).map((i) => {
     const ph = (i / FLY_N) * TAU;
     // The tendrils wave, more the further back they are; none at the orb.
@@ -642,7 +690,16 @@ function bolt(): WorldSprite {
     }) : main;
     // The orb's rim breathes a step brighter and darker; the eye at its middle holds still.
     const o = tone(orb, (x, y) => (Math.hypot(x - k.ax, y - k.ay) > 6 ? [0, 0, 1, 1, 0, 0, -1, -1][i] : 0));
-    return render(k.w, k.h, [[conveyor(sm, i, FLY_N, k.ax - 10)], [m], [o]]);
+    if (!i) return render(k.w, k.h, [[sm], [m], [o]]);
+    const w = wobble(i / FLY_N, 1.6, 4, 4242);
+    const ms = stamp(union(mass), displace(mass, (x, y) => {
+      const g = smooth(k.ax - 18, k.ax - 44, x);
+      const [dx, dy] = w(x, y);
+      return [dx * g, dy * g];
+    }));
+    // Under the waving tendrils lies their own footprint in his deep violet (their outline colour),
+    // so where a tendril moves off a pixel, dark shows there and never the map.
+    return render(k.w, k.h, [[ms], [conveyor(flecks, i, FLY_N, k.ax - 10)], [tendrilBed], [m], [o]]);
   });
   return sprite(k, 'Genjutsu bolt: watching-eye orb with streaming tendrils', { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
@@ -661,7 +718,9 @@ function sphere(): WorldSprite {
       return [dx * s, dy * s];
     });
     const lit = [0, 0, 1, 1, 0, 0, -1, -1][i];
-    return render(k.w, k.h, [[tone(m, (x, y) => (Math.hypot(x - k.ax, y - k.ay) > 26 ? lit : 0))], [core]]);
+    // (Only his hot pinks and magentas pulse, a step at most, within their own family; his dark
+    // violet spike edges keep their colour.)
+    return render(k.w, k.h, [[tone(m, (x, y) => (Math.hypot(x - k.ax, y - k.ay) > 26 && HOT[at(m, x, y) - 1] ? lit : 0))], [core]]);
   });
   return sprite(k, 'Genjutsu sphere: eye orb with an orbit ring and magenta spikes', { fly: { frames: fr, fps: FLY_FPS, loop: true } });
 }
@@ -763,7 +822,8 @@ function breath(): WorldSprite {
   // eye moves off a pixel, his dark shows there (a dark gap between arcs, as he paints them),
   // never the map, and no stray mid-tone rim pixel is left behind (each arc's rim moves with it).
   const DEEP = KIND.indexOf('outline') + 1;
-  const backDark = remap(union(main, eyes, orbs), () => DEEP);
+  // (Only under his opaque pixels: his translucent glows stay see-through, as in his picture.)
+  const backDark = remap(keep(union(main, eyes, orbs), (_x, _y, v) => PAL[v - 1][3] === 255), () => DEEP);
   for (const g of groups) g.b = bounds(g.ix)!;
   // The ripple: each arc (and each eye) moves as a whole a pixel out and back along its ray from
   // the orb, the wave travelling outward arc to arc (one frame of lag per 13 px of radius), with
@@ -974,7 +1034,13 @@ function hit(): WorldSprite {
 function blast(): WorldSprite {
   const k = key('blast', pad(2));
   sealDarkHoles(k, ['main', 'smoke', 'feathers', 'column', 'pool']);
-  const pool0 = piece(k, 'pool'), col0 = piece(k, 'column'), fea = piece(k, 'feathers'), sm0 = piece(k, 'smoke');
+  // His feathers are cut out by hand-set ellipses round them, which also take in a little of the
+  // column's light behind them: that light (L > 40) stays with the column, so no chip of the
+  // column flies off with a feather.
+  const fea0 = piece(k, 'feathers');
+  const behind = (v: number) => KIND[v - 1] === 'body' && LAB[v - 1][0] > 40;
+  const fea = keep(fea0, (_x, _y, v) => !behind(v));
+  const pool0 = piece(k, 'pool'), col0 = union(piece(k, 'column'), keep(fea0, (_x, _y, v) => behind(v))), sm0 = piece(k, 'smoke');
   // His black crow feathers fly with his sparkles and splashes.
   const fx = union(piece(k, 'main'), fea);
   // His dark smoke in two parts: the pool's dark outer rings (smoke touching the pool more than
@@ -1022,13 +1088,53 @@ function blast(): WorldSprite {
   // back to his look, within 2-3 levels), and where it has drifted off, the column runs on.
   const colFill = blank(k.w, k.h);
   const DEEP = KIND.indexOf('outline') + 1;
+  // (Only inside the column's own span in each row, so nothing grows past its sides.)
+  const colL = new Int32Array(k.h).fill(k.w), colR = new Int32Array(k.h).fill(-1);
+  for (let y = 0; y < k.h; y++)
+    for (let x = 0; x < k.w; x++)
+      if (at(col, x, y)) {
+        colL[y] = Math.min(colL[y], x);
+        colR[y] = Math.max(colR[y], x);
+      }
   for (let y = 0; y < k.h; y++)
     for (let x = 0; x < k.w; x++) {
-      if (at(col, x, y) || !(at(sm, x, y) || at(fea, x, y))) continue;
+      if (at(col, x, y) || !(at(sm, x, y) || at(fx, x, y)) || x < colL[y] || x > colR[y]) continue;
       let l = 0, r = 0;
-      for (let d = 1; d <= 14 && !l; d++) if (at(col, x - d, y)) l = d;
-      for (let d = 1; d <= 14 && !r; d++) if (at(col, x + d, y)) r = d;
-      if (l && r) colFill.d[y * k.w + x] = l <= r ? at(col, x - l, y) : at(col, x + r, y);
+      for (let d = 1; d <= 24 && !l; d++) if (at(col, x - d, y)) l = d;
+      for (let d = 1; d <= 24 && !r; d++) if (at(col, x + d, y)) r = d;
+      if (l || r) colFill.d[y * k.w + x] = l && (l <= r || !r) ? at(col, x - l, y) : at(col, x + r, y);
+    }
+  // His column stands in the middle of the pool, so the pool has no pixels behind it; when the
+  // column is narrow (rising) or going out, the pool runs on there: each hidden pixel inside the
+  // pool's ellipse takes the pool's own pixel at the same radius, the nearest angle round the
+  // ellipse (in its own space), so his spiral arms run on behind the column.
+  const prx = (pb[2] - pb[0] + 1) / 2, pry = (pb[3] - pb[1] + 1) / 2;
+  const poolBehind = blank(k.w, k.h);
+  for (let y = pb[1]; y <= pb[3]; y++)
+    for (let x = pb[0]; x <= pb[2]; x++) {
+      if (at(pool, x, y) || !(at(col, x, y) || at(colFill, x, y) || at(sm, x, y) || at(fx, x, y))) continue;
+      const u = (x + 0.5 - pcx) / prx, v = (y + 0.5 - pcy) / pry;
+      const r = Math.hypot(u, v);
+      if (r > 0.92) continue;
+      const th = Math.atan2(v, u);
+      const hid = (sx: number, sy: number) => !at(pool0, sx, sy) || !!(at(col, sx, sy) || at(colFill, sx, sy));
+      const ox = Math.floor(2 * pcx - x - 0.5 + 0.5), oy = Math.floor(2 * pcy - y - 0.5 + 0.5);
+      if (!hid(ox, oy)) {
+        poolBehind.d[y * k.w + x] = at(pool0, ox, oy);
+        continue;
+      }
+      for (let d = 1; d <= 90; d++) {
+        let got = 0;
+        for (const sg of [1, -1]) {
+          const a = th + sg * d * (Math.PI / 180) * 2;
+          const sx = Math.floor(pcx + Math.cos(a) * r * prx), sy = Math.floor(pcy + Math.sin(a) * r * pry);
+          if (!got && at(pool0, sx, sy) && !(at(col, sx, sy) || at(colFill, sx, sy))) got = at(pool0, sx, sy);
+        }
+        if (got) {
+          poolBehind.d[y * k.w + x] = got;
+          break;
+        }
+      }
     }
   const DEG = Math.PI / 180;
   const K = BLAST_KEY;
@@ -1063,7 +1169,9 @@ function blast(): WorldSprite {
     // The vortex (with its dark outer rings) turns inside its own outline (a true rotation in the
     // ground ellipse's own space, sampled only from the pool, every pixel of the outline kept), so
     // no pixel of it ever opens; it opens out of the ground while it grows.
-    let p = turnInside(pool, pcx, pcy, TURN[i] * DEG, squash);
+    // (Off his picture and its hold, the pool behind the column runs on under it; over the hold,
+    // his own pool lies under the turned one, so a pixel the turn leaves shows his pixel.)
+    let p = i > K && i < K + 3 ? stamp(union(pool), turnInside(pool, pcx, pcy, TURN[i] * DEG, squash)) : turnInside(union(poolBehind, pool), pcx, pcy, TURN[i] * DEG, squash);
     if (P.poolS[i] < 1) p = scaleAbout(p, k.ax, k.ay, P.poolS[i]);
     // Dying: each colour steps down its own hue ramp (the vortex darkens, it never greys).
     if (P.poolDim[i]) p = tone(p, P.poolDim[i]);
@@ -1105,7 +1213,8 @@ function blast(): WorldSprite {
     } else {
       // Bits go out one by one and stay out (thinned where they started, before they move, so
       // nothing blinks on and off).
-      const u = (i - K) / (BLAST_N - 1 - K);
+      // (Over the hold they stay where he put them: what lies under a bit is not in his picture.)
+      const u = Math.max(0, i - K - 2) / (BLAST_N - 3 - K);
       const thin = keep(fx, (x, y) => hash(Math.floor(x / 6), Math.floor(y / 6), 960) >= 0.55 * u * u);
       // (What sits on the pool's back rim moves less, so it never parts from the pool.)
       f = inside(displace(thin, (x, y) => {
@@ -1130,10 +1239,21 @@ function blast(): WorldSprite {
         const [dx, dy] = wv(x, y);
         return [dx * g, (dy - rise) * g];
       }), 1);
+      // (Over the hold it moves over itself as it lies in his picture, so it opens no slit.)
+      if (i < K + 3) s = stamp(union(sm), s);
     }
     const colA = Math.min(1, P.poolA[i] + 0.08);
     cFill = remap(cFill, (v, x, y) => (at(s, x, y) ? DEEP : v));
-    fr.push(render(k.w, k.h, [[p, P.poolA[i]], [cFill, colA, undefined, colFront], [s, P.smA[i]], [c, colA, undefined, colFront], [f, P.fA[i]]], i > K && i < K + 3 ? SOFT_TOP : k.fade));
+    // His pool was cut along a straight line at its back (the column and the smoke hid it there):
+    // off his picture and its hold, its top rows fade out in ordered alpha steps down to a ragged
+    // line 5-9 px below that cut, so no straight edge shows where the column has gone.
+    const sc = P.poolS[i];
+    const cut = k.ay + (pb[1] - k.ay) * sc;
+    const vig = i > K && i < K + 3 ? undefined : (x: number, y: number) => {
+      const t = clamp((y + 0.5 - cut) / ((5 + 4 * vnoise(x, 7, 3, 1031)) * Math.max(sc, 0.5)), 0, 1);
+      return clamp(Math.floor(t * 4 + BAYER4[y & 3][x & 3] / 16) / 4, 0, 1);
+    };
+    fr.push(render(k.w, k.h, [[p, P.poolA[i], undefined, vig], [cFill, colA, undefined, colFront], [s, P.smA[i]], [c, colA, undefined, colFront], [f, P.fA[i]]], i > K && i < K + 3 ? SOFT_TOP : k.fade));
   }
   return sprite(k, 'Genjutsu blast: column of violet light out of a swirling vortex, with crow feathers', { blast: { frames: fr, fps: BLAST_FPS, loop: false } });
 }
@@ -1334,19 +1454,83 @@ function thornGrowth(v: Ix, band: number): { f: Float32Array; rx: Int16Array } {
 /** Clears the outer `m` px of an image (particles drifting off the frame go at its edge). */
 const inside = (ix: Ix, m: number): Ix => keep(ix, (x, y) => x >= m && y >= m && x < ix.w - m && y < ix.h - m);
 
-/** A glint: a slanted band of light running over the crystals, at phase t. */
-function glint(ix: Ix, t: number, x0: number, x1: number): Ix {
-  const span = x1 - x0 + 60;
-  const c = x0 - 30 + span * t;
-  return tone(ix, (x, y, v = at(ix, x, y)) => (KIND[v - 1] === 'body' && Math.abs(x + y * 0.6 - c - 0.6 * 60) < 3 ? 2 : 0));
+/**
+ * The floating bits (feathers, petals, chips) bob a pixel up and down at phase t, each as a whole
+ * (its parts within 2 px of each other move together), so none is sheared or torn.
+ */
+function bob(ix: Ix, t: number, rest?: Ix): Ix {
+  const groups: { ix: Ix; b: [number, number, number, number] }[] = [];
+  for (const p of parts(ix)) {
+    const g = groups.find((q) => p.b[0] <= q.b[2] + 2 && q.b[0] <= p.b[2] + 2 && p.b[1] <= q.b[3] + 2 && q.b[1] <= p.b[3] + 2);
+    if (g) {
+      stamp(g.ix, p.ix);
+      g.b = bounds(g.ix)!;
+    } else groups.push({ ix: union(p.ix), b: p.b });
+  }
+  const out = blank(ix.w, ix.h);
+  for (const g of groups) {
+    // (A bit lying on the wall itself, `rest`, holds still: moving it would bare what it covers.)
+    let touches = false;
+    if (rest)
+      for (let n = 0; n < g.ix.d.length && !touches; n++) {
+        if (!g.ix.d[n]) continue;
+        const x = n % ix.w, y = (n - x) / ix.w;
+        touches = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !!at(rest, x + dx, y + dy));
+      }
+    if (touches) {
+      stamp(out, g.ix);
+      continue;
+    }
+    const cx = (g.b[0] + g.b[2]) / 2;
+    stamp(out, g.ix, 0, Math.round(Math.sin(t * TAU + cx * 0.13) - Math.sin(cx * 0.13)));
+  }
+  return out;
+}
+
+/**
+ * A glint: a slanted band of light running over the crystals, at phase t. It crosses the
+ * crystals' own extent once over the loop (t = 0 just before it, so frame 0 is his picture).
+ */
+function glint(ix: Ix, t: number): Ix {
+  let lo = Infinity, hi = -Infinity;
+  for (let n = 0; n < ix.w * ix.h; n++)
+    if (ix.d[n] && KIND[ix.d[n] - 1] === 'body') {
+      const u = (n % ix.w) + Math.floor(n / ix.w) * 0.6;
+      lo = Math.min(lo, u);
+      hi = Math.max(hi, u);
+    }
+  const c = lo - 4 + (hi - lo + 8) * t;
+  return tone(ix, (x, y, v = at(ix, x, y)) => (KIND[v - 1] === 'body' && Math.abs(x + y * 0.6 - c) < 3 ? 2 : 0));
 }
 
 function wall(): WorldSprite {
   const k = key('wall', pad(2));
   sealDarkHoles(k, ['main', 'vines', 'bits', 'smoke']);
   const vines = piece(k, 'vines'), bits = piece(k, 'bits'), sm = piece(k, 'smoke');
-  // His crystal, with his faces run on under his thorns (see underThorns).
-  const cr = underThorns(piece(k, 'main'), vines);
+  const W = k.w;
+  // His crystal, with his faces run on under his thorns (see underThorns). Small loose pieces of
+  // it (under 40 px, apart from the pillars: a chip, a bit of a feather) belong to no pillar:
+  // they stay where he put them and come in with the bits.
+  const crAll = underThorns(piece(k, 'main'), vines);
+  // His floating feathers' dark rims (in the crystal piece, touching a feather of the bits) are the
+  // feathers', not a pillar's: the dark run from a feather, as far as it stays off the crystal's
+  // faces, goes with the loose pieces (so no dark bar rises with a pillar).
+  const rim = new Uint8Array(W * k.h);
+  const kindAt = (n: number) => (crAll.d[n] ? KIND[crAll.d[n] - 1] : '');
+  const nb4 = (n: number) => [n - 1, n + 1, n - W, n + W].filter((m) => m >= 0 && m < W * k.h && Math.abs((m % W) - (n % W)) <= 1);
+  let front = range(W * k.h).filter((n) => kindAt(n) === 'dark' && nb4(n).some((m) => bits.d[m]));
+  while (front.length) {
+    const next: number[] = [];
+    for (const n of front) {
+      if (rim[n] || nb4(n).some((m) => kindAt(m) === 'body')) continue;
+      rim[n] = 1;
+      for (const m of nb4(n)) if (!rim[m] && kindAt(m) === 'dark') next.push(m);
+    }
+    front = next;
+  }
+  const cr = blank(W, k.h), loose = blank(W, k.h);
+  for (const p of parts(keep(crAll, (x, y) => !rim[y * W + x]))) stamp(p.ix.d.reduce((n, v) => n + (v ? 1 : 0), 0) < 40 ? loose : cr, p.ix);
+  stamp(loose, keep(crAll, (x, y) => !!rim[y * W + x]));
   const cb = bounds(cr)!;
   const ground = k.ay + 2;
   const H = k.ay - cb[1];
@@ -1356,65 +1540,160 @@ function wall(): WorldSprite {
   const beat = (c: number) => hash(c, 3, 1011);
   const DEEP = KIND.indexOf('outline') + 1;
   const isLit = (v: number) => !!v && KIND[v - 1] === 'body' && LAB[v - 1][0] >= 36;
-  // His thorns grow out of the ground along their own length (see thornGrowth), each from its root
-  // once the crystal it climbs has mostly risen.
-  const tg = thornGrowth(vines, 4);
-  const colCluster = new Int16Array(k.w).fill(-1);
-  for (let x = 0; x < k.w; x++) for (let y = k.h - 1; y >= 0 && colCluster[x] < 0; y--) if (lab[y * k.w + x] >= 0) colCluster[x] = lab[y * k.w + x];
+  // The cluster standing on each column (its lowest crystal pixel's).
+  const colCluster = new Int16Array(W).fill(-1);
+  for (let x = 0; x < W; x++) for (let y = k.h - 1; y >= 0 && colCluster[x] < 0; y--) if (lab[y * W + x] >= 0) colCluster[x] = lab[y * W + x];
+  // Each pillar's full shape. Where a neighbour stood in front of a pillar in his picture (its
+  // pointed top crossing into the pillar's columns), the pillar has no pixels; when the two rise
+  // apart, it would show a bite. Over its own columns, the pillar is completed below its own top
+  // line (where the neighbour hid its top, the line runs on from its nearest open columns), each
+  // hidden pixel taking the pillar's own pixel at the same depth below the top in its nearest open
+  // column (so its outline, bevel and faces run on), or its nearest pixel in the same row.
+  const fill = new Map<number, Ix>();
+  for (const c of clusters) {
+    const f = blank(W, k.h);
+    const xs = range(W).filter((x) => colCluster[x] === c);
+    const topC = new Map<number, number>(), open = new Set<number>();
+    for (const x of xs) {
+      let t = -1;
+      for (let y = 0; y < k.h && t < 0; y++) if (lab[y * W + x] === c) t = y;
+      if (t < 0) continue;
+      topC.set(x, t);
+      const above = t > 0 ? lab[(t - 1) * W + x] : -1;
+      if (above < 0 || above === c) open.add(x);
+    }
+    const openXs = xs.filter((x) => open.has(x));
+    if (!openXs.length) {
+      fill.set(c, f);
+      continue;
+    }
+    const nearOpen = (x: number) => openXs.reduce((b, o) => (Math.abs(o - x) < Math.abs(b - x) ? o : b), openXs[0]);
+    for (const x of xs) {
+      if (open.has(x) && topC.has(x)) {
+        // Open column: only what another cluster covers below its top (a seam bar crossing in).
+        for (let y = topC.get(x)! + 1; y <= ground; y++) {
+          const n = y * W + x;
+          if (cr.d[n] && lab[n] !== c) f.d[n] = at(cr, x, y - 1) && lab[n - W] === c ? cr.d[n - W] : f.d[n - W] || 0;
+        }
+        continue;
+      }
+      // Hidden top: the line runs on between the nearest open columns on each side (or from the
+      // nearest one, with its slope, on one side only).
+      const L = openXs.filter((o) => o < x), R = openXs.filter((o) => o > x);
+      const xl = L.length ? L[L.length - 1] : -1, xr = R.length ? R[0] : -1;
+      let est: number;
+      if (xl >= 0 && xr >= 0) est = topC.get(xl)! + ((topC.get(xr)! - topC.get(xl)!) * (x - xl)) / (xr - xl);
+      else {
+        const o = xl >= 0 ? xl : xr, dir = xl >= 0 ? -1 : 1;
+        const o2 = topC.has(o + dir * 3) && open.has(o + dir * 3) ? o + dir * 3 : o;
+        const slope = o2 === o ? 0 : (topC.get(o)! - topC.get(o2)!) / 3;
+        est = topC.get(o)! + slope * Math.abs(x - o);
+      }
+      const e = clamp(Math.round(est), cb[1], ground);
+      const src = nearOpen(x);
+      for (let y = e; y <= ground; y++) {
+        const n = y * W + x;
+        if (lab[n] === c) continue;
+        if (!cr.d[n] && y >= (topC.get(x) ?? ground)) continue;
+        const d = y - e, sy = topC.get(src)! + d;
+        let v = sy <= ground && lab[sy * W + src] === c ? cr.d[sy * W + src] : 0;
+        for (let dx = 1; dx < 16 && !v; dx++)
+          for (const sx of [x - dx, x + dx]) if (!v && sx >= 0 && sx < W && lab[y * W + sx] === c) v = cr.d[y * W + sx];
+        if (v) f.d[n] = v;
+      }
+    }
+    fill.set(c, f);
+  }
+  // Who stands in front: a cluster whose pixels cross into a neighbour's columns stood in front
+  // of it there. Drawn back to front (and every completion under every pillar's own pixels), so in
+  // his picture each completion lies under the neighbour that hid it.
+  const score = new Map(clusters.map((c) => [c, 0]));
+  for (const a of clusters)
+    for (const b of clusters) {
+      if (a >= b) continue;
+      let ab = 0, ba = 0;
+      for (let n = 0; n < W * k.h; n++) {
+        const x = n % W;
+        if (lab[n] === a && colCluster[x] === b) ab++;
+        if (lab[n] === b && colCluster[x] === a) ba++;
+      }
+      if (ab + ba < 4 || ab === ba) continue;
+      score.set(a, score.get(a)! + (ab > ba ? 1 : -1));
+      score.set(b, score.get(b)! + (ab > ba ? -1 : 1));
+    }
+  const order = [...clusters].sort((a, b) => score.get(a)! - score.get(b)! || a - b);
+  // His thorns go up with the pillar they lie on (the cluster behind each thorn pixel, or the one
+  // standing on its column), a beat behind it, clipped at the ground like the crystal: they come
+  // up out of the ground wrapped round the pillars, never as a line along the ground.
+  const thornCl = new Int16Array(W * k.h).fill(-1);
+  for (let n = 0; n < W * k.h; n++) {
+    if (!vines.d[n]) continue;
+    const x = n % W;
+    let cl = lab[n] >= 0 ? lab[n] : colCluster[x];
+    for (let d = 1; d < W && cl < 0; d++) cl = colCluster[clamp(x - d, 0, W - 1)] >= 0 ? colCluster[clamp(x - d, 0, W - 1)] : colCluster[clamp(x + d, 0, W - 1)];
+    thornCl[n] = cl;
+  }
   const rise: Canvas[] = [];
   for (let r = 0; r < RISE_N; r++) {
     const T = riseT(r);
     if (r === RISE_N - 1) {
-      rise.push(render(k.w, k.h, [[sm], [cr], [vines], [bits]]));
+      rise.push(render(W, k.h, [[sm], [cr], [loose], [vines], [bits]]));
       continue;
     }
     const p = (c: number) => smooth(beat(c) * 0.4, beat(c) * 0.4 + 0.6, T);
     const lift = new Map(clusters.map((c) => [c, Math.round((1 - p(c)) * H)]));
     // Every cluster moved down by its lift, clipped at the ground (nothing shows below it).
-    const c = blank(k.w, k.h);
-    const who = new Int16Array(k.w * k.h).fill(-1);
-    for (let n = 0; n < k.w * k.h; n++) {
-      const v = cr.d[n];
-      if (!v) continue;
-      const l = lift.get(lab[n])!;
-      const x = n % k.w, y = (n - x) / k.w + l;
-      if (y >= k.h || (l > 0 && y > ground)) continue;
-      c.d[y * k.w + x] = v;
-      who[y * k.w + x] = lab[n];
-    }
+    const c = blank(W, k.h);
+    const who = new Int16Array(W * k.h).fill(-1);
+    const put = (src: Ix, cl: number, only?: (n: number) => boolean) => {
+      const l = lift.get(cl)!;
+      for (let n = 0; n < W * k.h; n++) {
+        const v = src.d[n];
+        if (!v || (only && !only(n))) continue;
+        const x = n % W, y = (n - x) / W + l;
+        if (y >= k.h || (l > 0 && y > ground)) continue;
+        c.d[y * W + x] = v;
+        who[y * W + x] = cl;
+      }
+    };
+    for (const cl of order) put(fill.get(cl)!, cl);
+    for (const cl of order) put(cr, cl, (n) => lab[n] === cl);
     // White-hot at the top of a cluster while it climbs (two ramp steps, one just below).
     const lit = remap(c, (v, x, y) => {
-      const l = lift.get(who[y * k.w + x])!;
+      const l = lift.get(who[y * W + x])!;
       if (!l) return v;
       let t = y;
-      while (t > 0 && who[(t - 1) * k.w + x] === who[y * k.w + x]) t--;
+      while (t > 0 && who[(t - 1) * W + x] === who[y * W + x]) t--;
       return y < t + 3 ? toneMap(2)[v - 1] + 1 : y < t + 6 ? toneMap(1)[v - 1] + 1 : v;
     });
     // Where a risen cluster stands beside a lower one, its side is bare where his seam outline
     // belonged to the neighbour: his deep-violet outline runs down that side.
     for (let y = 0; y <= ground; y++)
-      for (let x = 0; x < k.w; x++) {
-        if (lit.d[y * k.w + x] || !cr.d[y * k.w + x]) continue;
-        if (isLit(at(lit, x - 1, y)) || isLit(at(lit, x + 1, y))) lit.d[y * k.w + x] = DEEP;
+      for (let x = 0; x < W; x++) {
+        if (lit.d[y * W + x] || !cr.d[y * W + x]) continue;
+        if (isLit(at(lit, x - 1, y)) || isLit(at(lit, x + 1, y))) lit.d[y * W + x] = DEEP;
       }
-    // The thorns grow from their roots once their crystal is three quarters up.
-    const v = keep(vines, (x, y) => {
-      const n = y * k.w + x;
-      const cl = colCluster[tg.rx[n]];
-      const b0 = cl >= 0 ? beat(cl) * 0.4 : 0.4;
-      const q = smooth(b0 + 0.3, Math.min(0.97, b0 + 0.75), T);
-      return q > 0 && tg.f[n] <= q;
-    });
+    // The thorns, a beat behind their pillar.
+    const v = blank(W, k.h);
+    for (let n = 0; n < W * k.h; n++) {
+      if (!vines.d[n]) continue;
+      const cl = thornCl[n];
+      const q = cl >= 0 ? smooth(beat(cl) * 0.4 + 0.12, Math.min(1, beat(cl) * 0.4 + 0.72), T) : T;
+      const l = Math.round((1 - q) * H);
+      const x = n % W, y = (n - x) / W + l;
+      if (y >= k.h || (l > 0 && y > ground)) continue;
+      v.d[y * W + x] = vines.d[n];
+    }
     const smA = smooth(0.25, 0.9, T), bitsA = smooth(0.6, 1, T);
-    rise.push(render(k.w, k.h, [[sm, smA], [lit], [v], [bits, bitsA]]));
+    rise.push(render(W, k.h, [[sm, smA], [lit], [loose, bitsA], [v], [bits, bitsA]]));
   }
   const idle = range(IDLE_N).map((i) => {
-    if (!i) return render(k.w, k.h, [[sm], [cr], [vines], [bits]]);
+    if (!i) return render(k.w, k.h, [[sm], [cr], [loose], [vines], [bits]]);
     const t = i / IDLE_N;
-    const c = glint(cr, t, cb[0], cb[2]);
+    const c = stamp(glint(cr, t), loose);
     // The thorn tips sway a pixel over his crystal (his faces lie under them); the bits bob.
     const v = displace(vines, (x, y) => [(Math.sin(t * TAU + x * 0.07) - Math.sin(x * 0.07)) * smooth(k.ay - 10, k.ay - 50, y) * 1.2, 0]);
-    const b = displace(bits, (x) => [0, Math.round(Math.sin(t * TAU + x * 0.13) - Math.sin(x * 0.13))]);
+    const b = bob(bits, t, union(cr, vines));
     return render(k.w, k.h, [[stamp(union(sm), displace(sm, wobble(t, 1, 5, 1020)))], [c], [v], [b]]);
   });
   return sprite(k, 'Genjutsu wall: amethyst crystal pillars in black thorns (4.5 m x 1.8 m)', {
@@ -1440,9 +1719,22 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
   // of base below it); end-on, each column's lowest pixel (the ground runs back into the screen).
   const footLow = new Int32Array(k.w).fill(-1);
   for (let y = 0; y < k.h; y++) for (let x = 0; x < k.w; x++) if (at(all, x, y)) footLow[x] = y;
-  const ground = name === 'wall_diag'
-    ? (x: number) => Math.round(k.ay + 45 - ((x - (k.ax - 95)) * 100) / 190 + 6)
-    : (x: number) => (footLow[x] >= 0 ? footLow[x] : ab[3]);
+  const line = (x: number) => Math.round(k.ay + 45 - ((x - (k.ax - 95)) * 100) / 190 + 6);
+  // On the 3/4 wall a crystal's foot can dip below the straight line (his crystal bases and the
+  // magenta splash at the foot): the column's ground follows its crystal down while it runs on
+  // unbroken below the line, so the bases rise with their columns (and no hole of map shows
+  // under a risen column).
+  const solidAt = (x: number, y: number) => {
+    const v = at(all, x, y);
+    return !!v && PAL[v - 1][3] === 255 && KIND[v - 1] !== 'weed';
+  };
+  const footDip = new Int32Array(k.w);
+  for (let x = 0; x < k.w; x++) {
+    let g = line(x);
+    if (name === 'wall_diag' && solidAt(x, g)) while (g + 1 < k.h && solidAt(x, g + 1)) g++;
+    footDip[x] = g;
+  }
+  const ground = name === 'wall_diag' ? (x: number) => footDip[clamp(x, 0, k.w - 1)] : (x: number) => (footLow[x] >= 0 ? footLow[x] : ab[3]);
   // What stands on the ground (crystals) rises; what lies in front of the foot line (brambles,
   // shards and the splash on the ground) comes up after, with the bits.
   const up = keep(all, (x, y) => y <= ground(x));
@@ -1453,44 +1745,70 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
   const colHt = new Float64Array(k.w);
   for (let x = 0; x < k.w; x++)
     for (let u = Math.max(0, x - 8); u <= Math.min(k.w - 1, x + 8); u++) if (top[u] >= 0) colHt[x] = Math.max(colHt[x], ground(u) - top[u] + 1);
+  // Where a point of the long shadow starts on the foot line, following the shadow's run back
+  // (0.37 px down per px across; the foot line climbs 100 px over 190), and the shadow's length.
+  const footX = (x: number, y: number) => (k.ay + 51 + (k.ax - 95) * (100 / 190) - y + 0.37 * x) / (0.37 + 100 / 190);
+  let shadowLen = 1;
+  for (let n = 0; n < k.w * k.h; n++) if (stain.d[n]) shadowLen = Math.max(shadowLen, (n % k.w) - footX(n % k.w, Math.floor(n / k.w)) + 8);
   const rise: Canvas[] = [];
   for (let r = 0; r < RISE_N; r++) {
-    const T = riseT(r);
+    // A strong ease-out (it shoots up and settles: the last steps are a pixel or two).
+    const T = 1 - (1 - (r + 1) / RISE_N) ** 2;
     const last = r === RISE_N - 1;
+    // 3/4: a wave from the near end to the far end; end-on: the column all at once.
+    // (each column eases out: it shoots up and settles; the far end starts a third of the way in)
+    const Tl = (r + 1) / RISE_N;
+    const t = name === 'wall_diag' ? (x: number) => 1 - (1 - clamp(Tl * 1.5 - 0.5 * ((x - ab[0]) / (ab[2] - ab[0])), 0, 1)) ** 2 : () => T;
+    const lift = (x: number) => (last ? 0 : Math.round((1 - t(x)) * colHt[x]));
     let a: Ix;
     if (last) a = all;
     else {
-      // 3/4: a wave from the near end to the far end; end-on: the column all at once.
-      // (each column eases out: it shoots up and settles; the far end starts a third of the way in)
-      const Tl = (r + 1) / RISE_N;
-      const t = name === 'wall_diag' ? (x: number) => 1 - (1 - clamp(Tl * 1.5 - 0.5 * ((x - ab[0]) / (ab[2] - ab[0])), 0, 1)) ** 2 : () => T;
-      const lift = (x: number) => Math.round((1 - t(x)) * colHt[x]);
       a = emergeCols(up, ground, lift);
       // White-hot at their tops while they climb (one step up each colour's own ramp, two at the tip).
       a = tone(a, (x, y) => (lift(x) > 0 && top[x] >= 0 ? (y < top[x] + lift(x) + 3 ? 2 : y < top[x] + lift(x) + 7 ? 1 : 0) : 0));
     }
-    const frontA = last ? 0 : smooth(0.35, 0.92, T);
+    // What lies in front of the foot (brambles, shards) comes up with the wave: in each column it
+    // fades in (ordered alpha steps) as that column's crystal comes up, full by the time it stands
+    // (the end-on wall: full by frame 9).
+    const ordered = (v: number, x: number, y: number) => clamp(Math.floor(v * 4 + BAYER4[y & 3][x & 3] / 16) / 4, 0, 1);
+    const frontAt = last ? undefined : (x: number, y: number) => ordered(name === 'wall_diag' ? smooth(0.2, 0.75, t(x)) : smooth(0.3, 0.86, T), x, y);
     // The long shadow stretches out from the wall's foot along its own run (down to the right,
-    // about 0.37 px down per px across) as the wall grows; until the wall stands, none of it
-    // shows behind the foot line. The smoke comes up with the crystals (none above their tops).
+    // about 0.37 px down per px across) as the wall grows, its moving end an ordered alpha ramp
+    // 8 px long (as at its far end); until the wall stands, none of it shows behind the foot line.
+    // The smoke comes up with the crystals (none above their tops).
     const run = (x: number, y: number) => x + 0.37 * y;
+    let stAt: ((x: number, y: number) => number) | undefined;
     let st = stain;
     if (!last && stainB) {
-      const r0 = run(stainB[0], stainB[1]), r1 = run(stainB[2], stainB[3]);
-      const reach = r0 + (r1 - r0) * (0.06 + 0.94 * smooth(0, 0.92, T));
-      st = keep(stain, (x, y) => run(x, y) <= reach && (T >= 0.9 || y > ground(x) - 2));
+      st = keep(stain, (x, y) => T >= 0.9 || y > ground(x) - 2);
+      if (name === 'wall_diag') {
+        // Each column's shadow stretches out from its own foot as that column comes up: a stain
+        // pixel belongs to the column whose foot its run (down-right, 0.37 px per px) starts from.
+        stAt = (x, y) => {
+          const xs = clamp(Math.round(footX(x, y)), ab[0], ab[2]);
+          const reach = shadowLen * smooth(0.05, 0.95, t(xs));
+          return ordered(clamp((reach - (x - xs)) / 8, 0, 1), x, y);
+        };
+      } else {
+        const r0 = run(stainB[0], stainB[1]), r1 = run(stainB[2], stainB[3]);
+        const reach = r0 + (r1 - r0 + 8) * (0.06 + 0.94 * smooth(0, 0.92, T));
+        stAt = (x, y) => ordered(clamp((reach - run(x, y)) / 8, 0, 1), x, y);
+      }
     }
-    const reachTop = ab[3] - (ab[3] - ab[1]) * T - 10;
-    const s = last ? sm : keep(sm, (_x, y) => y >= reachTop);
+    // His smoke (with his dark thorns and feathers in it) comes up with the crystals, moved as they
+    // are, so it never parts from them.
+    const s = last ? sm : emergeCols(sm, ground, lift);
     const stA = last ? 1 : 0.4 + 0.6 * smooth(0, 0.7, T), smA = last ? 1 : smooth(0.08, 0.85, T), bitsA = last ? 1 : smooth(0.55, 1, T);
-    rise.push(render(k.w, k.h, [[st, stA], [s, smA], [a], [front, frontA], [bits, bitsA]], k.fade));
+    rise.push(render(k.w, k.h, [[st, stA, undefined, stAt], [s, smA], [a], [front, last ? 0 : 1, undefined, frontAt], [bits, bitsA]], k.fade));
   }
   const idle = range(idleN).map((i) => {
     if (!i) return render(k.w, k.h, [[stain], [sm], [all], [bits]], k.fade);
     const t = i / idleN;
-    const a = glint(all, t, ab[0], ab[2]);
-    const b = displace(bits, (x) => [0, Math.round(Math.sin(t * TAU + x * 0.13) - Math.sin(x * 0.13))]);
-    return render(k.w, k.h, [[stain], [displace(sm, wobble(t, 1, 5, seed + 20))], [a], [b]], k.fade);
+    const a = glint(all, t);
+    const b = bob(bits, t, union(all, sm));
+    // His smoke churns over itself as it lies in his picture (his dark thorns and feathers are in
+    // it), so where a shape moves off a pixel, his own pixel shows, never a slit of map.
+    return render(k.w, k.h, [[stain], [stamp(union(sm), displace(sm, wobble(t, 1, 5, seed + 20)))], [a], [b]], k.fade);
   });
   return sprite(k, label, { rise: { frames: rise, fps: RISE_FPS, loop: false }, idle: { frames: idle, fps: IDLE_FPS, loop: true } });
 }
@@ -1531,25 +1849,28 @@ function aura(): WorldSprite[] {
 /**
  * The violet veil over the body, as in his picture, where the figure is seen through the genjutsu
  * (the owner chose this for the lightning aura too). Measured on his sheet by laying his plain
- * character (beside the blast) over his character in the aura panel: about a quarter of a
- * violet-magenta (116, 57, 126) over the body, light in the middle and stronger toward the rim.
- * A soft field round the body, not the shape of any one character, so it sits right on every
- * figure; it breathes with the frames.
+ * character (beside the blast) over his character in the aura panel and fitting his tinted figure
+ * as plain * (1 - a) + C * a (least squares over 3940 figure pixels): a = 0.37, C = (114, 55,
+ * 126), a violet-magenta. Flat over the whole body (no brighter rim), fading out only over the
+ * outer twelfth of its field. A soft field round the body, not the shape of any one character, so
+ * it sits right on every figure; it breathes a little with the frames (33-37%).
  */
 function veil(k: Key, frame: number): Canvas {
   const c = new Canvas(k.w, k.h);
   // Fitted to a 96 px figure standing on the anchor (feet): x -25..+17, y -93..+2 (characterRef).
-  const cx = k.ax - 4, cy = k.ay - 46, rx = 22, ry = 49;
-  const breathe = 1 + 0.12 * Math.sin((frame / AURA_N) * TAU);
+  // (Its field reaches a little past the head and the feet, so the whole figure is tinted.)
+  const cx = k.ax - 4, cy = k.ay - 47, rx = 24, ry = 56;
+  const base = 0.35 + 0.02 * Math.sin((frame / AURA_N) * TAU);
   for (let y = 0; y < k.h; y++)
     for (let x = 0; x < k.w; x++) {
-      const r = Math.hypot((x - cx) / rx, (y - cy) / ry);
-      let a = (0.18 + 0.16 * smooth(0.4, 0.78, r)) * (1 - smooth(0.78, 1, r)) * breathe;
-      a = Math.round(a / 0.06) * 0.06;
+      const r = Math.hypot((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry);
+      if (r >= 1) continue;
+      // The edge: ordered (Bayer) steps over r 0.92-1, so the fade does not band into rings.
+      const edge = clamp((1 - r) / 0.08, 0, 1);
+      const e = clamp(Math.floor(edge * 4 + BAYER4[y & 3][x & 3] / 16) / 4, 0, 1);
+      const a = Math.round(base * e * 64) / 64;
       if (a <= 0) continue;
-      const t = smooth(0.4, 1, r);
-      const ch = (from: number, to: number) => Math.round((from + (to - from) * t) / 8) * 8;
-      c.set(x, y, [ch(112, 152), ch(54, 60), ch(124, 178), Math.round(Math.min(1, a) * 255)]);
+      c.set(x, y, [114, 55, 126, Math.round(a * 255)]);
     }
   return c;
 }
@@ -1577,26 +1898,32 @@ export function borderCheck(s: WorldSprite): string[] {
   return bad;
 }
 
-export function genjutsuV3Sprites(): WorldSprite[] {
-  const [streamTile, streamHead] = stream();
-  const [auraFront, auraBack] = aura();
-  return [
-    bolt(),
-    streamTile,
-    streamHead,
-    breath(),
-    sphere(),
-    slash(),
-    multi(),
-    hit(),
-    blast(),
-    wall(),
-    auraFront,
-    auraBack,
-    wall3d('wall_diag', 'Genjutsu wall, 3/4: crystal pillars, brambles and a long shadow (4.5 m x 1.8 m, turned 45 degrees)', IDLE_N, 1300),
-    wall3d('wall_depth', 'Genjutsu wall, end-on: crystal column with shards, feathers and orbs (running into the screen)', IDLE_N, 1400),
-  ];
+/**
+ * Every sprite of the set (beast aside). `only` (from GJ_SPRITES, for experiments in a scratch
+ * folder only) builds just the named ones.
+ */
+export function genjutsuV3Sprites(only?: string[]): WorldSprite[] {
+  const want = (...n: string[]) => !only || n.some((x) => only.includes(x));
+  const out: WorldSprite[] = [];
+  if (want('bolt')) out.push(bolt());
+  if (want('stream', 'stream_head')) out.push(...stream());
+  if (want('breath')) out.push(breath());
+  if (want('sphere')) out.push(sphere());
+  if (want('slash')) out.push(slash());
+  if (want('multi')) out.push(multi());
+  if (want('hit')) out.push(hit());
+  if (want('blast')) out.push(blast());
+  if (want('wall')) out.push(wall());
+  if (want('aura', 'aura_back')) out.push(...aura());
+  if (want('wall_diag'))
+    out.push(wall3d('wall_diag', 'Genjutsu wall, 3/4: crystal pillars, brambles and a long shadow (4.5 m x 1.8 m, turned 45 degrees)', IDLE_N, 1300));
+  if (want('wall_depth'))
+    out.push(wall3d('wall_depth', 'Genjutsu wall, end-on: crystal column with shards, feathers and orbs (running into the screen)', IDLE_N, 1400));
+  return out;
 }
+
+/** For debugging scripts in a scratch folder only (nothing in the build uses it). */
+export const __gjDebug = { key, piece, pillarClusters, underThorns, thornGrowth, render, bounds, parts, holes, toneMap, PAL, KIND, LAB };
 
 /** The order of the old group's manifest (beast second), with aura_back after aura. */
 const ORDER = ['bolt', 'beast', 'stream', 'stream_head', 'breath', 'sphere', 'slash', 'multi', 'hit', 'blast', 'wall', 'aura', 'aura_back', 'wall_diag', 'wall_depth'];
@@ -1605,7 +1932,7 @@ const ORDER = ['bolt', 'beast', 'stream', 'stream_head', 'breath', 'sphere', 'sl
  * writeGroup into a temp folder, add the beast (sheet and manifest entry copied through unchanged
  * from the old group), then move each file into the group (PNGs first, manifest last).
  */
-function writeGroupWhole(sprites: WorldSprite[], root: string): void {
+function writeGroupWhole(sprites: WorldSprite[], root: string, partial = false): void {
   const tmpRoot = join(root, `.${GROUP}-tmp`);
   rmSync(tmpRoot, { recursive: true, force: true });
   writeGroup(GROUP, sprites, tmpRoot);
@@ -1616,7 +1943,9 @@ function writeGroupWhole(sprites: WorldSprite[], root: string): void {
     throw new Error(`vfx-genjutsu-v3: ${oldDir} has no beast to copy through`);
   const oldMan = JSON.parse(readFileSync(join(oldDir, 'manifest.json'), 'utf8'));
   copyFileSync(join(oldDir, 'beast.png'), join(src, 'beast.png'));
-  const sp: Record<string, unknown> = { ...man.sprites, beast: oldMan.sprites.beast };
+  // (A partial build, GJ_SPRITES, keeps the other sprites' entries of the group it writes into.)
+  const kept = partial && existsSync(join(dest, 'manifest.json')) ? JSON.parse(readFileSync(join(dest, 'manifest.json'), 'utf8')).sprites : {};
+  const sp: Record<string, unknown> = { ...kept, ...man.sprites, beast: oldMan.sprites.beast };
   const ordered: Record<string, unknown> = {};
   for (const n of ORDER) if (sp[n]) ordered[n] = sp[n];
   for (const n of Object.keys(sp)) if (!ordered[n]) ordered[n] = sp[n];
@@ -1631,13 +1960,15 @@ if (process.argv[1] && /vfx-genjutsu-v3\.ts$/.test(process.argv[1])) {
   // Staging only: refuse to run without WORLD_OUT, so nothing is ever written into src/assets.
   const worldOut = process.env.WORLD_OUT;
   if (!worldOut) throw new Error('vfx-genjutsu-v3: set WORLD_OUT to the staging folder (this generator never writes into src/assets)');
-  const sprites = genjutsuV3Sprites();
+  const only = process.env.GJ_SPRITES ? process.env.GJ_SPRITES.split(',') : undefined;
+  const sprites = genjutsuV3Sprites(only);
   const bad = sprites.flatMap(borderCheck);
   if (bad.length) throw new Error('vfx-genjutsu-v3: art on the frame border:\n  ' + bad.join('\n  '));
-  writeGroupWhole(sprites, worldOut);
+  writeGroupWhole(sprites, worldOut, !!only);
   for (const s of sprites) {
     const f = Object.values(s.anims)[0].frames[0];
     console.log(`${s.name.padEnd(12)} ${`${f.w}x${f.h}`.padEnd(8)} anchor ${s.anchor.join(',').padEnd(8)} ` + Object.entries(s.anims).map(([n, a]) => `${n} ${a.frames.length}f@${a.fps}`).join(', '));
   }
+  if (SEALED.size) console.log('safety net (see sealHoles), px sealed: ' + [...SEALED].map(([n, c]) => `${n} ${c}`).join(', '));
   console.log(`wrote ${sprites.length} sprites + beast (copied) to ${join(worldOut, GROUP)}`);
 }

@@ -267,26 +267,46 @@ def his_character(name, grow=3):
 # pad:      extra room (left, top, right, bottom) round the art for the animation.
 
 SPRITES = {
-    'bolt': dict(anchor=(53, 70), area=[rect(6, 42, 71, 107)], drops=24, purple_piece='mist', pad=(1, 2, 3, 3)),
+    # (the anchor is the coil's eye, where the swirl turns)
+    'bolt': dict(anchor=(53, 74.1), area=[rect(6, 42, 71, 107)], drops=24, purple_piece='mist', pad=(1, 2, 3, 3)),
     'breath': dict(anchor=(544, 95), area=[rect(536, 42, 650, 148)], drops=30, purple_piece='mist', pad=(0, 3, 5, 4)),
     'sphere': dict(anchor=(699.5, 71), area=[rect(664, 42, 728, 107)], drops=24, purple_piece='ring', pad=(2, 2, 2, 2)),
     'slash': dict(anchor=(38.5, 211.5), area=[rect(6, 179, 70, 244)], drops=12, grey_glow=True, pad=(3, 2, 2, 2),
                   pieces=[('dashes', [[(6, 179), (24, 179), (34, 195), (36, 230), (24, 244), (6, 244)]])]),
     'multi': dict(anchor=(149.5, 211.5), area=[rect(117, 179, 181, 244)], drops=10, grey_glow=True, pad=(4, 2, 2, 2)),
     'hit': dict(anchor=(261.5, 211), area=[rect(228, 179, 292, 244)], drops=20, purple_piece='streaks', pad=(6, 6, 6, 6)),
-    'blast': dict(anchor=(435, 300), area=[rect(339, 179, 581, 344)], drops=40, char=True,
-                  shade=[[(527, 296), (581, 296), (581, 344), (503, 344), (518, 318)]],
-                  light=[[(470, 180), (581, 180), (581, 344), (512, 344), (512, 331), (522, 318), (528, 301), (527, 285), (518, 270), (505, 262), (500, 240), (490, 230), (470, 232)]], fade={'r': 40, 'b': 18}, light_s=4.0, light_gap=3, light_edge=12,
+    # His light: everything right of the pillar, its left edge traced 1 px outside the pool's dark
+    # rim (his pixels between the rim and the light are light, not slime) and round the drop on a
+    # stalk at x 476 (the one at x 494 is inside: it is kept as slime by its highlight). His light
+    # is continued under his removed character from the light round it; the ground his character
+    # shades stays dark (his pixels), and the light is cut at x 566 (a little past where his
+    # character stood) and fades out there instead of running on into his backlight. His loose
+    # drops inside it stay slime, his violet mist stays mist.
+    'blast': dict(anchor=(435, 300), area=[rect(339, 179, 566, 344)], drops=40, char=True,
+                  light=[[(466, 180), (566, 180), (566, 344), (486, 344), (486, 325), (499, 323), (508, 320), (513, 318), (516, 316),
+                          (516, 311), (515, 310), (513, 309), (512, 308), (511, 307), (511, 304), (514, 303), (519, 302), (522, 301),
+                          (525, 300), (526, 299), (527, 298), (527, 296), (526, 294), (525, 293), (522, 292), (521, 291), (520, 290),
+                          (520, 289), (518, 288), (517, 287), (514, 286), (513, 285), (511, 284), (511, 283), (510, 282), (510, 281),
+                          (511, 280), (512, 279), (513, 278), (513, 276), (514, 275), (514, 274), (513, 272), (511, 270), (508, 268),
+                          (501, 266), (491, 266), (489, 264), (483, 264), (483, 256), (474, 256), (474, 265), (466, 264)]],
+                  keep_art=[rect(490.5, 249.5, 499.5, 257.5), rect(492.5, 257.5, 497.5, 270)],
+                  fade={'r': 30, 'b': 18}, light_s=4.0, light_gap=3, light_edge=0, light_min=0.02, islands=20, dither=True, light_dark_hole=6,
                   pad=(3, 0, 3, 3),
                   pieces=[('mist', [rect(339, 179, 411, 262), [(455, 179), (520, 179), (520, 240), (470, 240), (462, 222)]], 'purple'),
-                          ('pool', [[(339, 258), (409, 258), (416, 280), (458, 282), (466, 258), (581, 258), (581, 344), (339, 344)]])]),
+                          ('pool', [[(339, 258), (409, 258), (416, 280), (458, 282), (466, 258), (566, 258), (566, 344), (339, 344)]])]),
     'wall': dict(anchor=(149.5, 503), area=[rect(6, 375, 300, 510)], drops=30, char=True, pad=(3, 3, 3, 3),
                  frame=[rect(11, 403, 39.5, 510), rect(260.5, 403, 292, 510), rect(11, 484, 292, 510)]),
     'wall_diag': dict(anchor=(600, 590), area=[rect(480, 375, 759, 657)], drops=30, char=True,
                       frame=[[(484, 497), (530, 497), (530, 531), (527, 531), (527, 545), (524.5, 545), (524.5, 649), (484, 649)],
                              rect(678.5, 390, 706, 553), [(524, 614), (540, 606), (600, 571), (650, 542), (679, 525), (706, 553), (531, 646)],
                              rect(598, 566, 619, 592)],
-                      light=[[(528, 640), (600, 606), (650, 579), (700, 553), (720, 541), (759, 505), (759, 657), (528, 657)]], fade={'r': 36, 'b': 30}, light_s=0.7, light_gap=2, pad=(3, 3, 0, 0)),
+                      # (his lit ground: from inside the wall's base, whose stone stays stone, down, and
+                      # past the end post along a straight edge to where his light meets the panel's
+                      # right edge under his character's feet; the dark rim and shade of his removed
+                      # character are filled like the character, so the light runs on smoothly)
+                      light=[[(526, 632), (540, 622), (600, 587), (650, 558), (679, 541), (708, 541), (712, 549), (759, 577),
+                              (759, 657), (526, 657)]], fade={'r': 36, 'b': 30}, light_s=0.7, light_gap=2, light_edge=6,
+                      light_dark_hole=8, islands=20, pad=(3, 3, 0, 0)),
     'aura': dict(anchor=(401, 493.4), area=[rect(360, 375, 441, 510)], drops=20, aura=True, pad=(3, 3, 3, 3)),
     # The stream: his beam, the tile ending where his splash head begins (anchor x), centred on
     # the anchor's y.
@@ -366,16 +386,37 @@ def classify_his(name, cfg):
     art &= keep
     if cfg.get('light'):
         # In his light everything is light, except his loose drops of slime (small, with a bright
-        # highlight).
+        # highlight) and his motes.
         lz = poly_mask(H0, W0, cfg['light'])
-        lab, n = components(art & lz, nb=N8)
+        # (his light is a dull green on the line from his panel colour to his light colour; his
+        # drops and stalks are not: they are found among the other pixels, so a drop next to
+        # bright light stays a drop, and bright light next to a drop stays light)
+        d = c - BG
+        dG = d[..., 1]
+        lightcol = (dG > 10) & (d[..., 0] >= 0.15 * dG) & (d[..., 0] <= 0.62 * dG) & (d[..., 2] <= 0.45 * dG) & (c[..., 1] < 175)
+        lab, n = components(art & lz & ~lightcol, nb=N8)
         if n:
             sizes = np.bincount(lab.ravel(), minlength=n + 1)
             peak = np.zeros(n + 1)
             np.maximum.at(peak, lab.ravel(), L.ravel())
-            slime = (sizes < 120) & (peak >= 160)
+            # (his motes, violet-grey, are not his light either: his light is green)
+            fam_c = family_of(c)
+            green = np.bincount(lab.ravel(), weights=(fam_c == 0).ravel().astype(np.float64), minlength=n + 1)
+            # (his motes are bright; a dull grey-green edge of the shade his character casts is not)
+            slime = (sizes < 120) & ((peak >= 160) | ((green < 0.5 * sizes) & (peak >= 95)))
+            if cfg.get('frame'):
+                # (and his stone, where the light zone runs up under it)
+                slime |= green < 0.5 * sizes
             slime[0] = False
-            art &= ~(lz & ~slime[lab])
+            # (his violet mist reaching into the light stays mist; so does whatever he painted inside
+            # the keep_art polygons: his thin drop stalks, whose 2 px body is a dull green too)
+            ka = poly_mask(H0, W0, cfg['keep_art']) if cfg.get('keep_art') else np.zeros((H0, W0), bool)
+            art &= ~(lz & ~slime[lab] & (fam_c != 1) & ~ka)
+            # (a few dark specks in his light are JPEG noise or the tip of his character's gear:
+            # they are filled with his light like his character)
+            specks = lz & np.isin(lab, [k for k in range(1, n + 1) if sizes[k] <= 8 and peak[k] < 90])
+            art &= ~specks
+            removed |= specks & keep
     # His dark rims, read on the unsmoothed sheet (smoothing melts a 1 px rim into its neighbour).
     Lr = lum(FLAT)
     dr = np.sqrt(((FLAT - BG) ** 2).sum(-1))
@@ -427,31 +468,36 @@ def classify_his(name, cfg):
         ls, gap = cfg.get('light_s', 1.0), cfg.get('light_gap', 3)
         lz = poly_mask(H0, W0, cfg['light']) & poly_mask(H0, W0, cfg['area'])
         known = lz & keep & ~art & ~dark & ~dilate(removed, gap, nb=N8)
+        # (dark pixels this close to his removed character are its rim and shade: filled too)
+        near = dilate(removed, max(gap, cfg.get('light_dark_hole', 0)), nb=N8)
         af = smooth_fill(a * known, known, ls)
         Ff = smooth_fill(F * (a * known)[..., None], known, ls) / np.maximum(af, 1e-6)[..., None]
-        zone = lz & ~art & ~(dark & keep & ~dilate(removed, gap, nb=N8))
+        zone = lz & ~art & ~(dark & keep & ~near)
         hole = zone & ~known
         af = harmonic_fill(af, known, hole)
         Ff = harmonic_fill(np.clip(Ff, 0, 255), known, hole)
         if cfg.get('light_edge'):
-            # (his light ends softly where the zone meets the panel, not along the zone's edge)
+            # (his light ends softly where the zone meets his panel inside the sprite's area,
+            # not with the zone's edge; the edges along his slime and stone, and the area's own
+            # border, which edge_ramp fades, give no ramp)
             n = cfg['light_edge']
             depth = np.zeros((H0, W0))
-            inside = lz.copy()
+            inside = lz | ~poly_mask(H0, W0, cfg['area']) | dilate(art, 3, nb=N8)
             for i in range(n):
                 inside = inside & ~dilate(~inside, 1, nb=N8)
-                depth += inside
+                depth += inside & lz
             t = depth / n
             af = af * (t * t * (3 - 2 * t))
         a = np.where(zone, af, a)
         F = np.where(zone[..., None], np.clip(Ff, 0, 255), F)
-        glow = (glow & ~lz) | (zone & (a >= 0.035))
+        glow = (glow & ~lz) | (zone & (a >= cfg.get('light_min', 0.035)))
     # Where his art ran off his panel, it fades out.
     a = a * edge_ramp(cfg)
-    glow &= a >= 0.035
+    lzone = zone if cfg.get('light') else np.zeros((H0, W0), bool)
+    glow &= (a >= 0.035) | (lzone & (a >= cfg.get('light_min', 0.035)))
     # His dark rims: dark pixels right beside his art (a rim is at most 2 px from it).
     outline = dark & dilate(art, 2, nb=N8)
-    return dict(body=art, outline=outline, glow=glow, a=np.where(glow, a, 0), F=F, fam=fam, keep=keep, removed=removed)
+    return dict(body=art, outline=outline, glow=glow, a=np.where(glow, a, 0), F=F, fam=fam, keep=keep, removed=removed, lzone=lzone)
 
 
 def to_game(cfg, cls, W, H, ax, ay):
@@ -465,7 +511,8 @@ def to_game(cfg, cls, W, H, ax, ay):
     gcol = FA / np.maximum(A, 1e-6)[..., None]
     fams = np.stack([resample((cls['body'] & (cls['fam'] == k)).astype(np.float64), box, W, H) for k in range(3)], -1)
     ofams = np.stack([resample((dilate(cls['body'] & (cls['fam'] == k), 2, nb=N8) & cls['outline']).astype(np.float64), box, W, H) for k in range(3)], -1)
-    return dict(B=B, O=O, col=col, A=A, gcol=gcol, fams=fams, ofams=ofams, box=box,
+    Z = resample(cls['lzone'].astype(np.float64), box, W, H)
+    return dict(B=B, O=O, col=col, A=A, gcol=gcol, fams=fams, ofams=ofams, box=box, Z=Z,
                 his=resample(IM0, box, W, H), flat=resample(FLAT, box, W, H))
 
 
@@ -478,7 +525,7 @@ def bounds_game(cfg, cls):
     return ((xs.min() - hx) * sx, (ys.min() - hy) * SY, (xs.max() + 1 - hx) * sx, (ys.max() + 1 - hy) * SY)
 
 
-def decide(g, wrap=False):
+def decide(g, wrap=False, light_min=0.045):
     """Body, outline and glow at game scale. A pixel is drawn where his art covers at least half
     of it; it is outline where his dark rim dominates it, and a clear pixel just outside the body
     becomes outline where his rim reaches into it, so the silhouette gets one clean 1 px rim
@@ -494,8 +541,17 @@ def decide(g, wrap=False):
     rim = dark | ring
     # A rim pixel with no body near it is a speck of his dark noise.
     rim &= dilate(solid, 2, wrap=wrap, nb=N8)
-    glow = (~drawn) & (~ring) & (A >= 0.045)
+    glow = (~drawn) & (~ring) & ((A >= 0.045) | ((g['Z'] > 0.5) & (A >= light_min)))
     return solid, rim, glow
+
+
+def drop_small(m, n):
+    """m without its 8-connected pieces smaller than n px (stray islands of light)."""
+    lab, k = components(m, nb=N8)
+    if not k:
+        return m
+    sizes = np.bincount(lab.ravel(), minlength=k + 1)
+    return m & np.isin(lab, [i for i in range(1, k + 1) if sizes[i] >= n])
 
 
 def frame_for(cfg, cls):
@@ -519,7 +575,9 @@ for name, cfg in SPRITES.items():
     else:
         W, H, ax, ay = frame_for(cfg, cls)
     g = to_game(cfg, cls, W, H, ax, ay)
-    solid, rim, glow = decide(g)
+    solid, rim, glow = decide(g, light_min=cfg.get('light_min', 0.045))
+    if cfg.get('islands'):
+        glow = drop_small(glow, cfg['islands'])
     built[name] = dict(cfg=cfg, cls=cls, g=g, W=W, H=H, ax=ax, ay=ay, solid=solid, rim=rim, glow=glow)
     print('%-10s %3dx%-3d anchor %3d,%-3d solid %5d rim %4d glow %5d' % (name, W, H, ax, ay, solid.sum(), rim.sum(), glow.sum()))
 
@@ -583,13 +641,33 @@ def aura_split(b):
         inside = zone[y] & (np.arange(W) > xs.min()) & (np.arange(W) < xs.max())
         hole[y] = inside
     hole &= ~solid
-    # (from his violet flames: they are the ones rising behind the figure)
+    # His flames' own texture is mirrored in from each side of the hole (row by row, from the
+    # nearer side), so wherever a slimmer figure lets it show it reads as his flames, not as a
+    # smooth fill. Where the mirror would land outside his flames, the hole takes a smooth fill
+    # of his violet flames round it.
     known = solid & dilate(hole, 6, nb=N8) & (game_family(g) == 1)
     fill_col = smooth_fill(np.where(known[..., None], col, 0), known, 1.5)
-    col[hole] = fill_col[hole]
-    fams[hole] = np.array([0.0, 1.0, 0.0])
-    back_solid = solid | hole
-    back_rim = rim & ~hole
+    hole_rim = np.zeros((H, W), bool)
+    for y in range(H):
+        xs = np.nonzero(hole[y])[0]
+        if not len(xs):
+            continue
+        runs = np.split(xs, np.nonzero(np.diff(xs) > 1)[0] + 1)
+        for run in runs:
+            x0, x1 = int(run[0]), int(run[-1])
+            for x in range(x0, x1 + 1):
+                dl, dr = x - x0 + 1, x1 - x + 1
+                sx = x0 - dl if dl <= dr else x1 + dr
+                if 0 <= sx < W and solid[y, sx]:
+                    col[y, x] = col[y, sx]
+                    fams[y, x] = fams[y, sx]
+                elif 0 <= sx < W and rim[y, sx]:
+                    hole_rim[y, x] = True
+                else:
+                    col[y, x] = fill_col[y, x]
+                    fams[y, x] = np.array([0.0, 1.0, 0.0])
+    back_solid = (solid | hole) & ~hole_rim
+    back_rim = (rim & ~hole) | hole_rim
     # The near half of his pool (below the feet) goes over the figure's feet.
     rows = np.arange(H)[:, None]
     pool = (rows >= ay - 1) & (back_solid | back_rim)
@@ -689,7 +767,7 @@ for b in built.values():
         GLOW_SRC.append(g['gcol'][glow])
 GLOW = median_cut(np.concatenate(GLOW_SRC), 12)
 GLOW = GLOW[np.argsort(lum(GLOW))]
-ALPHAS = [14, 28, 46, 68, 94, 124, 158, 196]
+ALPHAS = [10, 20, 32, 45, 59, 74, 90, 107, 125, 144, 164, 185, 207, 230]  # (fine steps: his light is a smooth gradient)
 
 PAL = []  # (r, g, b, a, kind, fam)
 I_BODY = []
@@ -710,17 +788,100 @@ assert len(PAL) < 255, len(PAL)
 print('palette', len(PAL))
 
 
-def glow_index(cols, alphas):
+BAYER4 = (np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]) + 0.5) / 16
+
+
+def glow_index(cols, alphas, ys=None, xs=None):
+    """Palette values of light pixels. With their positions, the alpha is ordered-dithered between
+    the two steps round it (4 x 4 Bayer), so his smooth light shows no rings; below the first step
+    a pixel is kept with a matching chance (the light ends without a contour line)."""
     gi = nearest(cols, GLOW)
-    ai = np.abs(alphas[:, None] * 255 - np.array(ALPHAS)[None]).argmin(1)
-    return I_GLOW + gi * len(ALPHAS) + ai + 1
+    A = np.array(ALPHAS, np.float64)
+    a = alphas * 255
+    if ys is None:
+        ai = np.abs(a[:, None] - A[None]).argmin(1)
+        return I_GLOW + gi * len(ALPHAS) + ai + 1
+    T = BAYER4[ys % 4, xs % 4]
+    hi = np.searchsorted(A, a)
+    lo = hi - 1
+    hic = np.clip(hi, 0, len(A) - 1)
+    a_lo = np.where(lo >= 0, A[np.clip(lo, 0, len(A) - 1)], 0.0)
+    a_hi = A[hic]
+    frac = np.where(a_hi > a_lo, (a - a_lo) / np.maximum(a_hi - a_lo, 1e-6), 1.0)
+    pick = np.where(hi >= len(A), len(A) - 1, np.where(frac > T, hic, lo))
+    return np.where(pick < 0, 0, I_GLOW + gi * len(ALPHAS) + np.maximum(pick, 0) + 1)
 
 
-def quantize(solid, rim, glow, g, stone_rim=False):
+def seal_holes(idx, frame_mask):
+    """His dark grooves in the stone (and pinholes in the slime) must not be see-through: every
+    pixel the outside cannot reach (4-connected through pixels under alpha 200) is filled, with the
+    dark-stone rim inside his frame and the commonest slime colour round it elsewhere."""
+    H, W = idx.shape
+    alpha = np.where(idx > 0, PALC[np.maximum(idx, 1) - 1][..., 3], 0)
+    solid = alpha >= 200
+    lab, n = components(~solid, nb=N4)
+    edge = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]).tolist())) - {0}
+    hole = (~solid) & (lab > 0) & ~np.isin(lab, sorted(edge))
+    if not hole.any():
+        return idx, 0
+    out = idx.copy()
+    fm = dilate(frame_mask, 1, nb=N8) & hole
+    out[fm] = I_RIM + 2 + 1
+    todo = hole & ~fm
+    while todo.any():
+        done = np.zeros((H, W), bool)
+        for y, x in zip(*np.nonzero(todo)):
+            vals = [out[y + dy, x + dx] for dy, dx in N8 if 0 <= y + dy < H and 0 <= x + dx < W and not todo[y + dy, x + dx]
+                    and out[y + dy, x + dx] > 0 and KIND[out[y + dy, x + dx]] == 'body']
+            if vals:
+                out[y, x] = max(sorted(set(vals)), key=vals.count)
+                done[y, x] = True
+        if not done.any():
+            out[todo] = I_RIM + 1
+            break
+        todo &= ~done
+    return out, int(hole.sum())
+
+
+def soften_small_rims(idx, maxbody=6):
+    """On the map's grass a dark 1 px rim round a tiny drop or mote reads as dirt; his were glowing
+    dots. Pieces of at most `maxbody` body px lose the dark rim (2 px or less) or get a mid-tone rim
+    of their own colour."""
+    kinds = KIND[idx]
+    drawn = (kinds == 'body') | (kinds == 'outline')
+    lab, n = components(drawn, nb=N8)
+    out = idx.copy()
+    for k in range(1, n + 1):
+        m = lab == k
+        body = m & (kinds == 'body')
+        nb_ = int(body.sum())
+        if nb_ > maxbody or not (m & (kinds == 'outline')).any():
+            continue
+        rim = m & (kinds == 'outline')
+        if nb_ <= 2:
+            out[rim] = 0
+            continue
+        c = PALC[idx[body] - 1][:, :3].mean(0)
+        f = FAM.index(PFAM[idx[body]][0])
+        pal = BODY[f]
+        want = c * 0.62
+        out[rim] = I_BODY[f] + int(nearest(want[None], pal)[0]) + 1
+    return out
+
+
+def quantize(solid, rim, glow, g, stone_rim=False, dither=False, orb=None):
     H, W = solid.shape
     idx = np.zeros((H, W), np.int32)
     fam = game_family(g)
     col = chroma_smooth(g['col'], solid, fam)
+    if orb:
+        # His orb is smooth dark glass under its highlight: its interior is smoothed before it is
+        # quantized, so it maps to a soft run of his greens instead of blotches.
+        cx, cy, r = orb
+        Y, X = np.mgrid[0:H, 0:W]
+        inside = solid & (fam == 0) & (np.hypot(X + 0.5 - cx, Y + 0.5 - cy) < r) & (lum(col) < 125)
+        sm = smooth_fill(np.where(inside[..., None], col, 0), inside, 1.1)
+        col[inside] = 0.3 * col[inside] + 0.7 * sm[inside]
     for k in range(3):
         m = solid & (fam == k)
         if m.any():
@@ -756,7 +917,11 @@ def quantize(solid, rim, glow, g, stone_rim=False):
         edge = big & dilate(~(solid | rim), nb=N4)
         idx[edge] = I_RIM + 2 + 1
     if glow.any():
-        idx[glow] = glow_index(g['gcol'][glow], g['A'][glow])
+        if dither:
+            ys, xs = np.nonzero(glow)
+            idx[glow] = glow_index(g['gcol'][glow], g['A'][glow], ys, xs)
+        else:
+            idx[glow] = glow_index(g['gcol'][glow], g['A'][glow])
     return idx
 
 
@@ -884,12 +1049,18 @@ for name, b in built.items():
     box = [round(float(v), 3) for v in b['g']['box']]
     if cfg.get('aura'):
         for lname, Ly in b['layers'].items():
-            idx = quantize(Ly['solid'], Ly['rim'], Ly['glow'], Ly['g'])
+            idx = soften_small_rims(quantize(Ly['solid'], Ly['rim'], Ly['glow'], Ly['g']))
             result[lname] = {'w': b['W'], 'h': b['H'], 'anchor': [b['ax'], b['ay']], 'pieces': split_pieces(idx, cfg, b)}
             idx_for_review[lname] = idx
             refmap[lname] = {'box': box, 'w': b['W'], 'h': b['H'], 'anchor': [b['ax'], b['ay']]}
         continue
-    idx = quantize(b['solid'], b['rim'], b['glow'], b['g'], stone_rim=bool(cfg.get('frame')))
+    orb = (b['ax'] + 0.5, b['ay'] + 0.5, 10.5) if name == 'sphere' else None
+    idx = quantize(b['solid'], b['rim'], b['glow'], b['g'], stone_rim=bool(cfg.get('frame')), dither=bool(cfg.get('dither')), orb=orb)
+    idx = soften_small_rims(idx)
+    if cfg.get('frame'):
+        x0, y0 = b['g']['box'][:2]
+        idx, nh = seal_holes(idx, poly_mask(b['H'], b['W'], cfg['frame'], x0, y0, sx_of(cfg), SY))
+        print('%-10s sealed %d see-through px' % (name, nh))
     if cfg.get('stream'):
         # The tile: his 64 px before the head (rows 4..67). Its left end is closed onto its right
         # end by taking the head's first columns (which continue the right end) up to a seam.

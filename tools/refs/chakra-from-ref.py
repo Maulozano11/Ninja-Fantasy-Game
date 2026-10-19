@@ -23,6 +23,8 @@ The owner wants his reference copied as exactly as possible, so every key frame 
     blue    - the chakra itself (swirls, beams, crescents, spikes, hex lines): opaque, quantized to
               one blue ramp for the set (median cut of his own pixels), navy to white;
     gold    - his gold seals, rims and frames: opaque, one gold ramp from his pixels;
+    cream   - his small warm flecks round the bolt and the slash: opaque, their own greyish-cream
+              ramp read from his own pixels (they are not his seal gold);
     outline - his dark rims: a clean 1 px tinted outline (deep blue round chakra, dark gold round
               gold) wherever his art has a rim or ends on the background;
     glow    - his soft blue light (the blast's pillar haze, the halo round the orbs and the
@@ -33,17 +35,21 @@ The owner wants his reference copied as exactly as possible, so every key frame 
               alpha floor so it stays a solid blue pane;
     shade   - the soft blue shadow the 3/4 wall casts on the ground (un-blended, faded where his
               panel cut it).
-* Palette. One for the set: a blue ramp (28) and a gold ramp (16), median cut of his pixels then
-  refined (k-means); his light in a few hues x alpha steps, each pixel taking the entry whose look
-  over his background is nearest to his.
+* Palette. One for the set: a blue ramp (28), a gold ramp (16) and a cream ramp for the flecks
+  (6, last, so the other entries keep their indices), median cut of his pixels then refined
+  (k-means); his light in a few hues x alpha steps, each pixel taking the entry whose look over
+  his background is nearest to his.
 * Pieces. Each key frame is split into pieces the generator animates on their own: 'loose' (his
   small flecks, sparkles and dots), the sphere's 'orb' and 'ring', the hit's 'core', the blast's
   'seal', 'lines' and 'pillar', the walls' gold 'frame' and the 3/4 wall's 'shadow', the aura's
   'ringfront' (the near half of the ring, drawn over the character), and the rest ('main'). For
-  the blast it also keeps what his picture hides, for the frames where it is not covered: the haze
-  under the circle, the lines and the pillar ('under', filled in from his haze round them) and
-  the far arcs of the circle and the hexagram behind the pillar ('sealback', 'linesback': their
-  near halves turned half a turn about the circle's centre).
+  the blast the pillar piece takes its own halo (the light it spills 4 px round it), and it also
+  keeps what his picture hides, for the frames where it is not covered: the haze under the
+  circle, the lines and the pillar ('under': filled in from his haze round them; where the pillar
+  stood it is rebuilt row by row from his haze beside it and brought to the level of the haze band
+  in the circle, thinning upward, so no dark pit and no ghost pillar are left) and the far arcs of
+  the circle and the hexagram behind the pillar ('sealback', 'linesback': their near halves turned
+  half a turn about the circle's centre).
 * The stream tile is one 64 px period of his beam (it repeats every 64.4 px), its first columns
   blended into the next period's so it closes into a loop; the head starts two periods later, so a
   line of tiles plus the head is his picture.
@@ -215,6 +221,7 @@ SHARP = np.clip(IM + 0.5 * (IM - gauss(IM, 0.9)), 0, 255)
 # fill:    his character: removed, and what he hid filled in from round it.
 # noring:  polygons where no outline is added (thin lines lying on his glow).
 # loose:   small separate bits (up to this many px) are the 'loose' piece (flecks, sparkles).
+# cream:   his small warm flecks are greyish cream, not seal gold: they take their own ramp.
 # pieces:  [(piece, polygons or None, kinds or None)], first match wins; the rest is 'main'.
 # fade:    {side: px}: his art ran off his panel there; it fades out over px pixels.
 # frame:   (x0, y0, x1, y1) fixed frame in his coordinates (the stream tile and head).
@@ -227,9 +234,11 @@ SEAM = 8                         # the tile's first columns blend into the next 
 # hexagram behind it are their near halves turned half a turn about the circle's centre (both are
 # symmetric that way, so the far arcs fall where his circle runs behind the pillar).
 PILLAR = [(388, 174), (456, 174), (456, 290), (466, 300), (466, 320), (376, 320), (376, 300), (388, 290)]
+# The pillar's own light spills a few px round it: that halo belongs to the pillar (it goes with it).
+PILLAR_HALO = 4
 
 SPRITES = {
-    'bolt': dict(crop=(8, 43, 71, 106), anchor=(45, 72), solid=0.30, enclose=True, warm=6, loose=40),
+    'bolt': dict(crop=(8, 43, 71, 106), anchor=(45, 72), solid=0.30, enclose=True, warm=6, loose=40, cream=True),
     'stream': dict(crop=(STREAM_X0, 42, STREAM_X0 + 64, 105), frame=(STREAM_X0, STREAM_Y0, STREAM_X0 + 64, STREAM_Y0 + 64),
                    anchor=(STREAM_X0, 72), tile=True, solid=0.45, solidL=80, loose=24),
     'stream_head': dict(crop=(HEAD_X0, 42, 513, 105), frame=(HEAD_X0, STREAM_Y0, 518, STREAM_Y0 + 68),
@@ -238,7 +247,7 @@ SPRITES = {
     'sphere': dict(crop=(652, 43, 724, 105), anchor=(684, 71), solid=0.36, enclose=True, loose=12,
                    pieces=[('ring', [ellipse(684, 71, 22.5, 22.5)], ['gold', 'goldline']),
                            ('orb', [ellipse(684, 71, 17.5, 17.5)], None)]),
-    'slash': dict(crop=(8, 174, 71, 237), anchor=(39, 205), solid=0.34, enclose=True, warm=6, loose=30),
+    'slash': dict(crop=(8, 174, 71, 237), anchor=(39, 205), solid=0.34, enclose=True, warm=6, loose=30, cream=True),
     'multi': dict(crop=(116, 174, 179, 237), anchor=(147, 205), solid=0.26, enclose=True, loose=12),
     'hit': dict(crop=(225, 174, 288, 237), anchor=(256, 205), solid=0.24, enclose=True, loose=12,
                 pieces=[('core', [ellipse(256, 205, 15, 15)], None)]),
@@ -248,7 +257,7 @@ SPRITES = {
                   pieces=[('seal', [ellipse(420, 306, 84, 53)], ['gold', 'goldline']),
                           ('pillar', [PILLAR], ['blue', 'glow']),
                           ('lines', [ellipse(420, 306, 84, 53)], ['blue', 'outline'])],
-                  hidden=dict(poly=PILLAR, reflect=['seal', 'lines']), halo={'seal': 3}),
+                  hidden=dict(poly=PILLAR, reflect=['seal', 'lines'], halo=PILLAR_HALO, ring=(420, 306, 84, 53)), halo={'seal': 3, 'pillar': PILLAR_HALO}),
     'wall': dict(crop=(8, 392, 281, 520), anchor=(145, 513), solid=0.45, barrier=[rect(22, 408, 268, 503)], lineL=118, loose=10,
                  pieces=[('frame', None, ['gold', 'goldline'])]),
     'wall_diag': dict(crop=(464, 392, 762, 667), anchor=(584, 588), solid=0.45, glowA=0.04, fade={'right': 18, 'bottom': 14},
@@ -265,8 +274,8 @@ SPRITES = {
                  pieces=[('ringfront', [rect(348, 503, 429, 519)], ['gold', 'goldline'])]),
 }
 
-CLEAR, GLOW, WARM, BARRIER, SHADE, BLUE, GOLD, OUTLINE, GOLDLINE = range(9)
-KIND_OF = ['clear', 'glow', 'warm', 'barrier', 'shade', 'blue', 'gold', 'outline', 'goldline']
+CLEAR, GLOW, WARM, BARRIER, SHADE, BLUE, GOLD, OUTLINE, GOLDLINE, CREAM = range(10)
+KIND_OF = ['clear', 'glow', 'warm', 'barrier', 'shade', 'blue', 'gold', 'outline', 'goldline', 'cream']
 LBG = float(lum(BG))
 
 
@@ -335,13 +344,52 @@ def classify(name, cfg):
     ring_g = dilate(gold) & ~blue & ~gold & dark & ~nr
     cls[ring_b] = OUTLINE
     cls[ring_g & ~ring_b] = GOLDLINE
+    if cfg.get('cream'):
+        # His small warm flecks (the bolt's, the slash's) are a greyish cream, not his seal gold.
+        lab, n = components(np.isin(cls, (BLUE, GOLD, OUTLINE, GOLDLINE)), N8)
+        sizes = np.bincount(lab.ravel(), minlength=n + 1)
+        cls[(lab > 0) & (sizes[lab] <= cfg['loose']) & (cls == GOLD)] = CREAM
     d = dict(c=c, cs=cs, cm=cm, sh=sh, a=a, F=F, cls=cls, hole=hole, ox=ox, oy=oy)
     if cfg.get('hidden'):
         # The haze behind the pillar, the circle, its lines and the sparks: filled in from the haze
         # and the background round them (every opaque pixel and the pillar's own light is a hole).
-        holes = poly_mask(H, W, [cfg['hidden']['poly']], ox, oy) | np.isin(cls, (BLUE, GOLD, OUTLINE, GOLDLINE, WARM))
+        pol = dilate(poly_mask(H, W, [cfg['hidden']['poly']], ox, oy), cfg['hidden'].get('halo', 0), nb=N8)
+        holes = pol | np.isin(cls, (BLUE, GOLD, OUTLINE, GOLDLINE, WARM))
         holes |= dilate(cls == GOLD, 3, nb=N8)
         cu = fill_holes(c, holes, ~holes)
+        # Where the pillar stood (with its halo), a diffusion fill is fed by the dark sky above it and
+        # leaves a dark pit in the circle once the pillar has gone. So the haze there is rebuilt row
+        # by row from his haze just left and right of it, smoothed down the column, and brought to the
+        # level of the haze band inside the circle round it (so no pit and no ghost pillar); then the
+        # small holes round it are filled again from it.
+        ys = np.nonzero(pol.any(1))[0]
+        rows = np.zeros((len(ys), 2, 3))
+        for i, y in enumerate(ys):
+            xs = np.nonzero(pol[y])[0]
+            rows[i, 0] = cu[y, max(0, xs[0] - 3):xs[0]].mean(0)
+            rows[i, 1] = cu[y, xs[-1] + 1:xs[-1] + 4].mean(0)
+        r = 7
+        kern = np.exp(-0.5 * (np.arange(-r, r + 1) / 2.5) ** 2)
+        kern /= kern.sum()
+        padded = np.pad(rows, ((r, r), (0, 0), (0, 0)), mode='edge')
+        sm = sum(w * padded[k:k + len(ys)] for k, w in enumerate(kern))
+        for i, y in enumerate(ys):
+            xs = np.nonzero(pol[y])[0]
+            u = (xs - xs[0] + 0.5) / (len(xs) + 0.0)
+            cu[y, xs] = sm[i, 0] * (1 - u[:, None]) + sm[i, 1] * u[:, None]
+        ecx, ecy, erx, ery = cfg['hidden']['ring']
+        yy, xx = np.mgrid[:H, :W]
+        ell = ((xx + ox - ecx) / erx) ** 2 + ((yy + oy - ecy) / ery) ** 2 < 1
+        band, mid = lum(c[ell & ~holes]).mean(), lum(cu[ell & pol]).mean()
+        k = min(1.0, (band - LBG) / max(1e-6, mid - LBG))
+        # Above the circle it thins out upward: a glow pool at the pillar's base, not a ghost pillar.
+        up = np.clip((ecy - ery - (yy + oy)) / 44.0, 0, 1)
+        kk = k * (1 - 0.6 * up * up * (3 - 2 * up))
+        cu[pol] = BG + (cu[pol] - BG) * kk[pol][:, None]
+        # Its rim blends into his haze round it, so no straight seam shows.
+        rim = pol & ~erode(pol, 5, nb=N8)
+        cu = fill_holes(cu, rim, ~rim, iters=80)
+        cu = fill_holes(cu, holes & ~pol, ~(holes & ~pol))
         au, _ = c2a(gauss(cu, 0.6))
         d['under'] = holes & (au >= cfg.get('glowA', 0.05))
         d['under_cm'] = gauss(cu, 0.45)
@@ -354,7 +402,7 @@ def classify(name, cfg):
 
 
 def class_preview(d, k=4):
-    col = np.array([[0, 0, 0], [40, 80, 160], [160, 110, 40], [30, 60, 120], [60, 60, 90], [120, 200, 255], [255, 200, 60], [255, 0, 255], [255, 120, 0]], np.uint8)
+    col = np.array([[0, 0, 0], [40, 80, 160], [160, 110, 40], [30, 60, 120], [60, 60, 90], [120, 200, 255], [255, 200, 60], [255, 0, 255], [255, 120, 0], [230, 220, 190]], np.uint8)
     img = col[d['cls']]
     his = np.clip(d['c'], 0, 255).astype(np.uint8)
     both = np.concatenate([his, np.zeros((d['H'], 4, 3), np.uint8), img], 1)
@@ -397,7 +445,8 @@ def refine(cols, pal, iters=10):
 
 
 def gather(cl, key):
-    parts = [d[key][d['cls'] == cl] for d in DATA.values() if (d['cls'] == cl).any()]
+    cl = cl if isinstance(cl, tuple) else (cl,)
+    parts = [d[key][np.isin(d['cls'], cl)] for d in DATA.values() if np.isin(d['cls'], cl).any()]
     return np.concatenate(parts) if parts else np.zeros((0, 3))
 
 
@@ -419,9 +468,14 @@ def unblend(cl, floor=0.0):
     return np.concatenate(out_c), np.concatenate(out_a)
 
 
-_b, _g = gather(BLUE, 'sh'), gather(GOLD, 'sh')
+# (The gold ramp is still sampled with the flecks in it, as it was before they had their own.)
+_b, _g = gather(BLUE, 'sh'), gather((GOLD, CREAM), 'sh')
 BLUE_RAMP = by_lum(refine(_b, median_cut(_b, 28)))
 GOLD_RAMP = by_lum(refine(_g, median_cut(_g, 16)))
+# His flecks' greyish cream, read from his own pixels (sharpening warms and brightens such small
+# marks, smoothing dims them).
+_c = gather(CREAM, 'c')
+CREAM_RAMP = by_lum(refine(_c, median_cut(_c, 6)))
 # His rims are near-black navy; they are kept as a deep blue and a dark gold (never black).
 OUTLINES = {'outline': np.array([22.0, 34.0, 96.0]), 'goldline': np.array([86.0, 50.0, 14.0])}
 LIGHTS = {  # kind: (class, hues, alpha levels 0..255, alpha floor)
@@ -460,6 +514,7 @@ add('blue', BLUE_RAMP)
 add('gold', GOLD_RAMP)
 for kind, (cl, nh, levels, floor) in LIGHTS.items():
     add(kind, HUES[kind], levels)
+add('cream', CREAM_RAMP)  # last, so every other entry keeps its index
 if len(PAL) > 254:
     raise SystemExit('chakra-from-ref: palette too big (%d)' % len(PAL))
 PALC = np.array([p[:4] for p in PAL], np.float64)
@@ -476,10 +531,10 @@ def quantize(name, d):
     H, W = d['H'], d['W']
     cls = d['cls']
     idx = np.zeros((H, W), np.int32)  # palette index + 1, 0 = clear
-    for kind, cl, ramp in (('blue', BLUE, BLUE_RAMP), ('gold', GOLD, GOLD_RAMP)):
+    for kind, cl, ramp, src in (('blue', BLUE, BLUE_RAMP, 'sh'), ('gold', GOLD, GOLD_RAMP, 'sh'), ('cream', CREAM, CREAM_RAMP, 'c')):
         m = cls == cl
         if m.any():
-            idx[m] = np.array(IDX[kind])[nearest(d['sh'][m], ramp)] + 1
+            idx[m] = np.array(IDX[kind])[nearest(d[src][m], ramp)] + 1
     # Speck clean-up: an opaque pixel unlike all four neighbours and close to them in brightness
     # is JPEG noise and takes their commonest value (real highlights stand out and stay).
     for y in range(1, H - 1):
@@ -564,7 +619,7 @@ for name, cfg in SPRITES.items():
             assigned |= h
     if cfg.get('loose'):
         # Small separate bits (flecks, sparkles, dots) are their own piece.
-        opaque = (frame > 0) & np.isin(kinds, ['blue', 'gold', 'outline', 'goldline']) & (owner == 'main')
+        opaque = (frame > 0) & np.isin(kinds, ['blue', 'gold', 'cream', 'outline', 'goldline']) & (owner == 'main')
         lab, n = components(opaque, N8, wrap=bool(cfg.get('tile')))
         sizes = np.bincount(lab.ravel(), minlength=n + 1)
         owner[(lab > 0) & (sizes[lab] <= cfg['loose'])] = 'loose'
@@ -615,7 +670,7 @@ ts = ["// GENERATED by tools/refs/chakra-from-ref.py from the owner's paint-over
       "// each sprite's key frame is split into pieces of base64 run-length data, as (run, palette",
       "// index + 1) byte pairs (0 = clear), each placed at (x, y) in the sprite's frame. 'origin' is",
       "// where the frame's (0, 0) lies in his sheet.", '',
-      "export type CkKind = 'outline' | 'goldline' | 'blue' | 'gold' | 'glow' | 'warm' | 'barrier' | 'shade';",
+      "export type CkKind = 'outline' | 'goldline' | 'blue' | 'gold' | 'glow' | 'warm' | 'barrier' | 'shade' | 'cream';",
       'export interface CkPal { rgba: string; kind: CkKind; order: number; hue: number }',
       'export interface CkPiece { x: number; y: number; w: number; h: number; rle: string }',
       "export interface CkSprite { w: number; h: number; anchor: [number, number]; origin: [number, number]; fade: Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>; pieces: Record<string, CkPiece> }",

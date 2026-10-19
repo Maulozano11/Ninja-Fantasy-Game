@@ -397,8 +397,8 @@ function refFrames(ref: RefSheet): Record<string, Canvas[]> {
   return out;
 }
 
-/** A beast with several animations sharing one frame: crops all of them to their union. */
-function beastSprite(name: string, label: string, meters: [number, number], anims: [string, Canvas[], number, boolean][], ax: number, ay: number): WorldSprite {
+/** A beast with several animations sharing one frame: crops all of them to their union, `pad` px clear around it. */
+function beastSprite(name: string, label: string, meters: [number, number], anims: [string, Canvas[], number, boolean][], ax: number, ay: number, pad = 1): WorldSprite {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const [, frames] of anims)
     for (const f of frames) {
@@ -409,10 +409,10 @@ function beastSprite(name: string, label: string, meters: [number, number], anim
       x1 = Math.max(x1, b[2]);
       y1 = Math.max(y1, b[3]);
     }
-  x0 -= 1;
-  y0 -= 1;
-  x1 += 1;
-  y1 += 1;
+  x0 -= pad;
+  y0 -= pad;
+  x1 += pad;
+  y1 += pad;
   const crop = (f: Canvas): Canvas => {
     const c = new Canvas(x1 - x0 + 1, y1 - y0 + 1);
     c.draw(f, -x0, -y0);
@@ -647,13 +647,14 @@ function windCrane(): WorldSprite {
 // frame 0 and his right one (the low charging lunge, dust kicking up behind the hind legs) is frame 5.
 // Both stand on his one ground line with the eye at one x, so the lunge is a leap and his dust pile sits
 // on the ground; the anchor is the middle of the prowl's torso. tools/refs/beasts-from-ref.py (drake
-// mode) copies them and builds the in-betweens by turning his legs and tail about their joints,
-// pitching the body and carrying it along the leap, and growing, drifting and settling his dust,
-// writing vfx-beasts-ref-earth.ts.
+// mode) copies them and builds the in-betweens by turning his legs and tail about their joints (each
+// joint bends smoothly, so it shows his own pixels and never a gap), pitching the body and carrying it
+// along the leap, and growing, drifting and settling his dust, writing vfx-beasts-ref-earth.ts.
 
 function stoneDrake(): WorldSprite {
   const f = refFrames(REF_EARTH);
-  return beastSprite('earth', 'Stone drake (earth)', [4.1, 2.5], [['fly', f.fly, 12, true]], ...REF_EARTH.ANCHOR);
+  // 3 px clear on every side (the other beasts keep 1).
+  return beastSprite('earth', 'Stone drake (earth)', [4.1, 2.5], [['fly', f.fly, 12, true]], REF_EARTH.ANCHOR[0], REF_EARTH.ANCHOR[1], 3);
 }
 
 // =============================================================================================

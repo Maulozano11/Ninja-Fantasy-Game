@@ -10,26 +10,31 @@
 // generator only DERIVES the other frames from those key frames:
 //
 //   - fly loops    8 frames at 12 fps; frame 0 is his picture. The vortex (bolt) and the spiral orb
-//                  (sphere) turn one full revolution per loop, 45 degrees a frame; the rest churns
-//                  along a smooth field that circles once per loop, the light shimmers in soft
-//                  regional waves, gold rings carry a travelling glint and small bits twinkle;
+//                  (sphere) turn 60 degrees per loop, 7.5 a frame, every angle turned the same way
+//                  (Scale2x x3, turn, commonest of 16 samples, his rim put back), handing over to his
+//                  picture over the last two frames; the rest ripples with a steady travelling wave,
+//                  the light shimmers in soft regional waves, gold rings carry a travelling glint
+//                  and small bits twinkle whole with their glow;
 //   - stream       his 64 px period of the beam, flowing 8 px a frame toward the target (it still
 //                  tiles); the head's first columns are the flowing tile itself;
-//   - hit          12 frames at 12 fps: builds up over 3, his picture held for 3, breaks up over 6;
-//   - blast        16 frames at 12 fps: the seal circle draws itself and the pillar shoots up over 4,
-//                  his picture held for 3, then a long settle over 9;
+//   - hit          12 frames at 12 fps: builds up over 3, his picture held for 3, goes out over 6;
+//   - blast        16 frames at 12 fps: the seal circle lights at its front and draws itself round,
+//                  the pillar climbs out of it (4), his picture held for 3, then a long settle (9);
 //   - walls        'rise' 12 frames at 12 fps (the gold frame rises, then the pane fills up from the
 //                  ground, ending on his picture), 'idle' 8 frames at 10 fps (a light sweep across
-//                  the cells, the crest churning, the foam twinkling);
+//                  the cells, ripples along the crest, the foam twinkling);
 //   - aura         12 frames at 10 fps, in two layers like the fire aura: 'aura_back' (behind the
 //                  character: his flames, their haze and the gold glow at the feet) and 'aura' (over
 //                  it: the near half of the gold ring and his sparkles).
 // The owner found the earlier jutsu too fast ("like a flashing star"), so every in-between moves a
-// little, and the light (mean alpha x brightness) changes smoothly from frame to frame.
+// little, every step of a loop about as much as the next (no freeze round his frame, no lurch: see
+// dither and wave), and the light (mean alpha x brightness) changes smoothly from frame to frame.
 //
 // wall_depth is NOT his: the owner said his end-on wall is not right and we keep ours. It is our
-// seal barrier from vfx-b-chakra.ts (barrierWall('wall_depth')), whose code is copied below
-// unchanged, played with the new frame counts (rise 12, idle 8).
+// seal barrier from vfx-b-chakra.ts (barrierWall('wall_depth')), whose code is copied below,
+// played with the new frame counts (rise 12, idle 8). Two changes, both for the new timing: its
+// glint streaks never drop below a 15% share (they blinked off on two old frames), and the first
+// rise frame is our barrier lower down at half strength (see depthFrames).
 //
 //   WORLD_OUT=<dir> npx tsx tools/world-sprites/vfx-chakra-v3.ts
 //
@@ -97,6 +102,33 @@ function stepMap(dir: 1 | -1): number[] {
   });
 }
 const UP = stepMap(1), DOWN = stepMap(-1);
+/**
+ * One step cooler for his chakra: the most saturated blue of his ramp that is 6 to 30 dimmer (his
+ * ramp also holds greyish blues, which a plain step down can land on: light going out should turn
+ * cyan and blue, not grey).
+ */
+const COOL: number[] = CK_PAL.map((p, i) => {
+  if (p.kind !== 'blue') return i;
+  const lc = lumOf(PAL[i]);
+  let best = i, bs = -Infinity;
+  CK_PAL.forEach((q, j) => {
+    const dl = lc - lumOf(PAL[j]);
+    if (q.kind !== 'blue' || dl < 6 || dl > 30) return;
+    const sat = PAL[j][2] - PAL[j][0];
+    if (sat > bs) {
+      bs = sat;
+      best = j;
+    }
+  });
+  return best;
+});
+/** n cool steps (COOL) for every chakra pixel (n per pixel). */
+const cool = (ix: Ix, n: (x: number, y: number) => number): Ix =>
+  remap(ix, (v, x, y) => {
+    let j = v - 1;
+    for (let k = n(x, y); k > 0; k--) j = COOL[j];
+    return j + 1;
+  });
 
 // --- indexed images ---------------------------------------------------------------------------
 
@@ -158,8 +190,91 @@ function level(ix: Ix, k: number | ((x: number, y: number) => number), only?: Ck
   });
 }
 
-/** Moves every pixel by disp(x, y) (read back from the source spot, nearest pixel). */
-function displace(ix: Ix, disp: (x: number, y: number) => [number, number], wrapX = false): Ix {
+const OUTLINE_V = KIND.indexOf('outline') + 1, GOLDLINE_V = KIND.indexOf('goldline') + 1;
+const isSolid = (v: number): boolean => v > 0 && (KIND[v - 1] === 'blue' || KIND[v - 1] === 'gold' || KIND[v - 1] === 'cream');
+const isLine = (v: number): boolean => v === OUTLINE_V || v === GOLDLINE_V;
+
+/**
+ * His 1 px rim, put back after a frame was turned or displaced: an outline pixel that no longer
+ * touches any chakra or gold goes (no hollow rings left where a dot moved off), and bare chakra or
+ * gold meeting the clear gets its rim (deep blue next to chakra, dark gold next to gold only).
+ * This is exactly his rule (his bolt, slash and multi key frames are unchanged by it). With
+ * add = false it only takes the stray rims away (for art whose rim is not that regular).
+ */
+function reline(ix: Ix, add = true): Ix {
+  const out = blank(ix.w, ix.h);
+  const N4: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (let y = 0; y < ix.h; y++)
+    for (let x = 0; x < ix.w; x++) {
+      const v = ix.d[y * ix.w + x];
+      if (v && !isLine(v)) {
+        out.d[y * ix.w + x] = v;
+        continue;
+      }
+      let blue = false, any = false;
+      for (const [dx, dy] of N4) {
+        const n = at(ix, x + dx, y + dy);
+        if (isSolid(n)) {
+          any = true;
+          if (KIND[n - 1] === 'blue') blue = true;
+        }
+      }
+      if (any && (add || v)) out.d[y * ix.w + x] = add ? (blue ? OUTLINE_V : GOLDLINE_V) : v;
+    }
+  return out;
+}
+
+/**
+ * A smooth offset field in [-0.5, 0.5), added to a small displacement or brightness step before it
+ * is rounded. Without it every pixel starts at exactly 0 on his key frame and nothing moves until
+ * the change passes half a pixel, so the loops froze round frame 0 and then lurched. With it a
+ * small change moves a matching share of the pixels (in soft patches), and no change stays none.
+ */
+const dither = (x: number, y: number, seed: number, perX = 0): number =>
+  // (on a tile the cell divides its period, so the field repeats with it)
+  fract(snoise(x, y, perX ? perX / Math.round(perX / 12) : 12, seed, perX) * 1.5) - 0.5;
+
+/**
+ * A travelling wave: every pixel is displaced by amp * w * (sin(phase - 2 pi t) - sin(phase)), with
+ * the phase advancing along `along(x, y)` (one wavelength per `len` px, roughened by `rough` x pi of
+ * noise on a `cell` px grid), so the ripples travel that way at a steady pace: every step of the
+ * loop moves about as much as any other, and t = 0 is his picture exactly. amp is [x, y] in px.
+ * (The field must vary slowly across thin strokes, or they tear: keep amp x (2 pi / len + rough x
+ * pi / cell) well under 1/2.)
+ */
+function wave(
+  ix: Ix,
+  t: number,
+  o: { amp: [number, number]; len: number; along: (x: number, y: number) => number; seed: number; weight?: (x: number, y: number) => number; cell?: number; rough?: number; perX?: number },
+): Ix {
+  if (!fract(t)) return ix;
+  const perX = o.perX ?? 0, rough = o.rough ?? 0.6;
+  const cell = perX ? perX / Math.round(perX / (o.cell ?? 12)) : (o.cell ?? 12);
+  return displace(
+    ix,
+    (x, y) => {
+      const w = o.weight ? o.weight(x, y) : 1;
+      if (w <= 0) return [0, 0];
+      const s = o.along(x, y);
+      const d: [number, number] = [0, 0];
+      for (let a = 0; a < 2; a++) {
+        if (!o.amp[a]) continue;
+        const ph = (TAU * s) / o.len + Math.PI * rough * snoise(x, y, cell, o.seed + 31 * a, perX);
+        d[a] = Math.round(o.amp[a] * w * (Math.sin(ph - TAU * t) - Math.sin(ph)) + dither(x, y, o.seed + 17 + a, perX));
+      }
+      return d;
+    },
+    perX > 0,
+    true,
+  );
+}
+
+/**
+ * Moves every pixel by disp(x, y) (read back from the source spot, nearest pixel). With `patch`, a
+ * pixel the move left clear while at least 3 of its 4 neighbours are not keeps its own value, so
+ * where neighbours move apart by a pixel no pinhole or crack opens in the art.
+ */
+function displace(ix: Ix, disp: (x: number, y: number) => [number, number], wrapX = false, patch = false): Ix {
   const out = blank(ix.w, ix.h);
   for (let y = 0; y < ix.h; y++)
     for (let x = 0; x < ix.w; x++) {
@@ -173,41 +288,84 @@ function displace(ix: Ix, disp: (x: number, y: number) => [number, number], wrap
       if (wrapX) sx = ((sx % ix.w) + ix.w) % ix.w;
       out.d[y * ix.w + x] = at(ix, sx, sy);
     }
+  if (patch) {
+    const fixed = new Uint8Array(out.d);
+    for (let y = 0; y < ix.h; y++)
+      for (let x = 0; x < ix.w; x++) {
+        const i = y * ix.w + x;
+        if (out.d[i] || !ix.d[i]) continue;
+        const n = Number(!!at(out, x + 1, y)) + Number(!!at(out, x - 1, y)) + Number(!!at(out, x, y + 1)) + Number(!!at(out, x, y - 1));
+        if (n >= 3) fixed[i] = ix.d[i];
+      }
+    out.d = fixed;
+  }
+  return out;
+}
+
+/** Scale2x (EPX): twice the size, diagonal edges rounded instead of stair-stepped. */
+function scale2x(ix: Ix): Ix {
+  const out = blank(ix.w * 2, ix.h * 2);
+  for (let y = 0; y < ix.h; y++)
+    for (let x = 0; x < ix.w; x++) {
+      const P = ix.d[y * ix.w + x], A = at(ix, x, y - 1), B = at(ix, x + 1, y), Cc = at(ix, x - 1, y), D = at(ix, x, y + 1);
+      const o = (2 * y) * out.w + 2 * x;
+      out.d[o] = Cc === A && Cc !== D && A !== B ? A : P;
+      out.d[o + 1] = A === B && A !== Cc && B !== D ? B : P;
+      out.d[o + out.w] = D === Cc && D !== B && Cc !== A ? Cc : P;
+      out.d[o + out.w + 1] = B === D && B !== A && D !== Cc ? D : P;
+    }
   return out;
 }
 
 /**
- * The picture turned by `ang` radians (clockwise on screen for ang > 0) about (cx, cy). Each pixel
- * takes the commonest of 4 sub-samples (a little like RotSprite), so thin lines stay whole.
+ * The picture turned by `ang` radians (clockwise on screen for ang > 0) about (cx, cy), the same
+ * way at every angle, like RotSprite: blown up 8 times with Scale2x, turned, and brought back
+ * down by taking each pixel's commonest value over 4 x 4 samples (ties: the value under its
+ * centre). His 1 px rim is then put back (reline), so every turned frame keeps a crisp edge (not for
+ * art that has no rim of its own, like the sphere's orb inside its ring).
  */
-function rotate(ix: Ix, cx: number, cy: number, ang: number): Ix {
+function rotate(ix: Ix, cx: number, cy: number, ang: number, rim = true): Ix {
   if (!ang) return ix;
+  const up = scale2x(scale2x(scale2x(ix)));
   const out = blank(ix.w, ix.h);
   const c = Math.cos(ang), s = Math.sin(ang);
-  const subs = [-0.25, 0.25];
-  const votes: number[] = [];
+  const votes: number[] = new Array(16);
+  const sample = (px: number, py: number): number => {
+    const dx = px - cx, dy = py - cy;
+    // Inverse rotation: where this point came from (in the 8x picture).
+    const sx = (cx + dx * c + dy * s) * 8, sy = (cy - dx * s + dy * c) * 8;
+    return at(up, Math.floor(sx), Math.floor(sy));
+  };
   for (let y = 0; y < ix.h; y++)
     for (let x = 0; x < ix.w; x++) {
-      votes.length = 0;
-      for (const oy of subs)
-        for (const ox of subs) {
-          const dx = x + 0.5 + ox - cx, dy = y + 0.5 + oy - cy;
-          // Inverse rotation: where this point came from.
-          const sx = cx + dx * c + dy * s, sy = cy - dx * s + dy * c;
-          votes.push(at(ix, Math.floor(sx), Math.floor(sy)));
-        }
-      let best = 0, bestN = 0;
+      let k = 0;
+      for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) votes[k++] = sample(x + (i + 0.5) / 4, y + (j + 0.5) / 4);
+      const mid = sample(x + 0.5, y + 0.5);
+      let best = mid, bestN = 0;
+      for (const v of votes) if (v === mid) bestN++;
       for (const v of votes) {
         let n = 0;
         for (const u of votes) if (u === v) n++;
-        // Ties go to the opaque pixel, then the brighter one, so the shape keeps its lines.
-        if (n > bestN || (n === bestN && v && (!best || (!isLight(v - 1) && isLight(best - 1))))) {
+        if (n > bestN) {
           best = v;
           bestN = n;
         }
       }
       out.d[y * ix.w + x] = best;
     }
+  return rim ? reline(out) : out;
+}
+
+/** a and b mixed (premultiplied, so the light of the mix is the mix of the lights): w of b. */
+function mixCanvas(a: Canvas, b: Canvas, w: number): Canvas {
+  const out = new Canvas(a.w, a.h);
+  for (let i = 0; i < a.w * a.h; i++) {
+    const p = i * 4;
+    const aa = (a.px[p + 3] / 255) * (1 - w), bb = (b.px[p + 3] / 255) * w, al = aa + bb;
+    if (al <= 0) continue;
+    for (let ch = 0; ch < 3; ch++) out.px[p + ch] = Math.round((a.px[p + ch] * aa + b.px[p + ch] * bb) / al);
+    out.px[p + 3] = Math.round(al * 255);
+  }
   return out;
 }
 
@@ -280,8 +438,9 @@ function shimmer(ix: Ix, t: number, seed: number, cell = 14, only: CkKind[] = ['
   return level(
     ix,
     (x, y) => {
-      const ph = (snoise(x, y, cell, seed, perX) + 1) * 0.75;
-      return Math.round(amp * (Math.sin(TAU * (t + ph)) - Math.sin(TAU * ph)));
+      // (phases spread evenly round the cycle, so the ups and downs cancel over the sprite)
+      const ph = fract((snoise(x, y, cell, seed, perX) + 1) * 1.5);
+      return Math.round(amp * (Math.sin(TAU * (t + ph)) - Math.sin(TAU * ph)) + dither(x, y, seed + 5, perX));
     },
     only,
     true,
@@ -359,13 +518,20 @@ function moveBits(sp: Ix, move: (b: { id: number; cx: number; cy: number }, i: n
   return out;
 }
 /**
- * Each bit twinkles out for a `share` of the cycle at its own time (never at t = 0, so frame 0 has
- * all of them) and may drift by drift(bit, t).
+ * When bit number i of a sprite twinkles out (its share of the cycle starts): spread evenly round
+ * the cycle (a golden-ratio sequence from a per-sprite start), so only a bit or two are out at a
+ * time and the light stays level; never at t = 0, so frame 0 has all of them.
+ */
+const twinkleAt = (i: number, share: number, seed: number): number => 0.08 + fract(hash(seed, 0, 991) + i * 0.618034) * (0.86 - share);
+
+/**
+ * Each bit twinkles out for a `share` of the cycle at its own time (twinkleAt) and may drift by
+ * drift(bit, t).
  */
 function twinkle(sp: Ix, t: number, share: number, seed: number, drift?: (b: { cx: number; cy: number }, u: number) => [number, number]): Ix {
   const ft = fract(t);
-  return moveBits(sp, (b) => {
-    const h = 0.08 + hash(b.id % sp.w, Math.floor(b.id / sp.w), seed) * (0.86 - share);
+  return moveBits(sp, (b, i) => {
+    const h = twinkleAt(i, share, seed);
     if (share > 0 && ft >= h && ft < h + share) return null;
     return drift ? drift(b, ft) : [0, 0];
   });
@@ -382,8 +548,10 @@ const scaleAbout = (ix: Ix, cx: number, cy: number, s: number, sy = s): Ix =>
 // --- rendering -----------------------------------------------------------------------------------
 
 type Fade = Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
+/** An alpha factor for a layer: one for all of it, or per pixel (feathered wipes, soft cuts). */
+type Alpha = number | ((x: number, y: number) => number);
 /** A layer: an indexed image, an alpha factor and the fade toward the frame sides it gets. */
-type Layer = [Ix, number?, Fade?];
+type Layer = [Ix, Alpha?, Fade?];
 
 /** 0 on a faded side of the frame, rising to 1 where the fade ends. */
 function fadeT(f: Fade | undefined, x: number, y: number, w: number, h: number): number {
@@ -401,17 +569,17 @@ function fadeT(f: Fade | undefined, x: number, y: number, w: number, h: number):
  * faded side (where his art ran off his panel) the alpha falls off in six steps, so a pillar or a
  * haze dies away instead of ending in a straight cut.
  */
-function render(w: number, h: number, layers: Layer[], fade?: Fade): Canvas {
-  const c = new Canvas(w, h);
+function render(w: number, h: number, layers: Layer[], fade?: Fade, base?: Canvas): Canvas {
+  const c = base ?? new Canvas(w, h);
   for (const [ix, k = 1, own] of layers) {
-    if (k <= 0) continue;
+    if (typeof k === 'number' && k <= 0) continue;
     const f = own ?? fade;
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) {
         const v = ix.d[y * ix.w + x];
         if (!v) continue;
         const t = fadeT(f, x, y, w, h);
-        const a = k * (t < 1 ? Math.floor(t * 6) / 6 : 1);
+        const a = (typeof k === 'number' ? k : k(x, y)) * (t < 1 ? Math.floor(t * 6) / 6 : 1);
         if (a <= 0) continue;
         const p = PAL[v - 1];
         const al = Math.round(p[3] * Math.min(1, a));
@@ -490,59 +658,148 @@ const fly = (frames: Canvas[]) => ({ fly: { frames, fps: FLY_FPS, loop: true } }
 
 // --- projectiles -------------------------------------------------------------------------------------
 
-/** The vortex turns one full revolution per loop (clockwise, so its arms trail), its flecks with it. */
+/**
+ * The spin of the vortex and of the sphere's orb: 60 degrees per loop, 7.5 degrees a frame (the
+ * outer arms move about 4 px a frame; clockwise, so the arms trail), every angle turned the same
+ * way (rotate). No turn brings his picture back (his arms are not regular: no angle matches it
+ * better than the smallest), so over the last two frames the turned picture hands over (a
+ * premultiplied mix, 1/3 then 2/3, so the light stays level) to the same picture turned 60 degrees
+ * less, which carries on into his picture at frame 0. (A pixel-by-pixel dissolve broke the arms
+ * into pieces; keeping the stronger copy doubled the arms and flashed.)
+ */
+const SPIN = TAU / 6;
+const SPIN_SEAM = [0, 0, 0, 0, 0, 0, 1 / 3, 2 / 3];
+function spinFrames(draw: (ang: number, t: number) => Canvas): Canvas[] {
+  return range(FLY_N).map((i) => {
+    const t = cyc(i, FLY_N), w = SPIN_SEAM[i];
+    const a = draw(SPIN * t, t);
+    return w ? mixCanvas(a, draw(SPIN * (t - 1), t), w) : a;
+  });
+}
+
+/**
+ * Small bits orbiting (cx, cy) by `orbit` radians per loop, as whole pieces (not resampled). Each
+ * one twinkles out for `share` of the loop at its own time and is set back by the same angle while
+ * it is out, so the loop closes on his picture with no bit jumping in view.
+ */
+function orbitBits(sp: Ix, t: number, cx: number, cy: number, orbit: number, share: number, seed: number): Ix {
+  const ft = fract(t);
+  return moveBits(sp, (b, i) => {
+    const h = twinkleAt(i, share, seed);
+    if (ft >= h && ft < h + share) return null;
+    const wrap = h + share / 2;
+    const a = orbit * (fract(t - wrap) - fract(-wrap));
+    const dx = b.cx + 0.5 - cx, dy = b.cy + 0.5 - cy;
+    return [dx * Math.cos(a) - dy * Math.sin(a) - dx, dx * Math.sin(a) + dy * Math.cos(a) - dy];
+  });
+}
+
+/**
+ * The vortex turns 60 degrees per loop (spinFrames), its light shimmering; his cream flecks circle
+ * with it more slowly (30 degrees per loop, 2-3 px a frame) and twinkle.
+ */
 function bolt(): WorldSprite {
   const k = spinKey('bolt');
-  const M = piece(k, 'main'), F = piece(k, 'loose');
-  const fr = range(FLY_N).map((i) => {
-    const t = cyc(i, FLY_N), ang = TAU * t;
-    const m = shimmer(rotate(M, k.ax, k.ay, ang), t, 120, 10);
-    const f = twinkle(rotate(F, k.ax, k.ay, ang), t, 0.25, 130);
-    return render(k.w, k.h, [[m], [f]]);
-  });
+  const [F, M] = withHalo(piece(k, 'loose'), piece(k, 'main'));
+  const arms = spinFrames((ang, t) => render(k.w, k.h, [[shimmer(rotate(M, k.ax, k.ay, ang), t, 120, 10)]]));
+  const fr = arms.map((c, i) => render(k.w, k.h, [[orbitBits(F, cyc(i, FLY_N), k.ax, k.ay, TAU / 12, 0.16, 130)]], undefined, c));
   return sprite(k, 'Chakra bolt: swirling vortex orb', fly(fr));
 }
 
 /**
- * The spiral orb turns one revolution per loop inside its gold ring, which holds still with a glint
- * running round it; the arcs round it and the speed lines churn and shimmer, the motes twinkle.
+ * The spiral orb turns 60 degrees per loop inside its gold ring (spinFrames), over a still disc
+ * of his dark rim colour so nothing shows through between the turning orb and the ring. The ring
+ * holds still with a glint running round it; the arcs round it and the speed lines ripple and
+ * shimmer, the motes twinkle.
  */
 function sphere(): WorldSprite {
   const k = key('sphere');
-  const O = piece(k, 'orb'), R = piece(k, 'ring'), M = piece(k, 'main'), S = piece(k, 'loose');
-  const fr = range(FLY_N).map((i) => {
+  const O = piece(k, 'orb'), R = piece(k, 'ring');
+  const [S, M] = withHalo(piece(k, 'loose'), piece(k, 'main'));
+  // His orb's outer rim colour (#07152d, his darkest blue), under the orb wherever his key frame
+  // is opaque (so his key frame is unchanged by it).
+  const blues = PAL.map((p, i) => (KIND[i] === 'blue' ? lumOf(p) : Infinity));
+  const rim = blues.indexOf(Math.min(...blues)) + 1;
+  const under = remap(union(O, R, M), (v, x, y) => (Math.hypot(x + 0.5 - k.ax, y + 0.5 - k.ay) <= 19.5 && (isSolid(v) || isLine(v)) ? rim : 0));
+  const out = (x: number, y: number) => smooth(20, 26, Math.hypot(x - k.ax, y - k.ay));
+  const orbs = spinFrames((ang, t) => render(k.w, k.h, [[shimmer(rotate(O, k.ax, k.ay, ang, false), t, 310, 8)]]));
+  const fr = orbs.map((orb, i) => {
     const t = cyc(i, FLY_N);
-    const orb = shimmer(rotate(O, k.ax, k.ay, TAU * t), t, 310, 8);
-    const out = (x: number, y: number) => smooth(20, 26, Math.hypot(x - k.ax, y - k.ay));
-    const m = shimmer(churn(M, t, 1.4, 8, 300, out), t, 320, 10);
-    return render(k.w, k.h, [[m], [orb], [glint(R, t, k.ax, k.ay)], [twinkle(S, t, 0.3, 330)]]);
+    const m = shimmer(reline(wave(M, t, { amp: [0.8, 0.8], len: 18, along: (x, y) => Math.hypot(x - k.ax, y - k.ay), seed: 300, weight: out })), t, 320, 10);
+    const c = render(k.w, k.h, [[under], [m]]);
+    // The turned orb over the disc, then the ring and the motes over both.
+    for (let p = 0; p < c.w * c.h; p++) if (orb.px[p * 4 + 3]) c.plot(p % c.w, Math.floor(p / c.w), [orb.px[p * 4], orb.px[p * 4 + 1], orb.px[p * 4 + 2], orb.px[p * 4 + 3]]);
+    return render(k.w, k.h, [[glint(R, t, k.ax, k.ay)], [twinkle(S, t, 0.3, 330)]], undefined, c);
   });
   return sprite(k, 'Chakra sphere: spiral sphere in a gold ring', fly(fr));
 }
 
-/** A projectile that keeps its shape: the light churns and shimmers, small bits twinkle. */
-function flyLoop(k: Key, seed: number, opts: { amp?: number; cell?: number; weight?: (x: number, y: number) => number; drift?: number } = {}): Canvas[] {
-  const amp = opts.amp ?? 1.2, cell = opts.cell ?? 9;
-  const M = union(...Object.entries(k.p).filter(([n]) => n !== 'loose').map(([, ix]) => ix));
+/**
+ * The small separate dots of a piece (up to n px of chakra with their rim, like the beads between
+ * the multi's orbs): [dots, the rest]. Dots move as whole pieces and are never pulled apart by the
+ * ripples (a torn dot leaves a hollow rim behind).
+ */
+function splitDots(M: Ix, n: number): [Ix, Ix] {
+  const op = keep(M, (_, __, v) => isSolid(v) || isLine(v));
+  const dots = blank(M.w, M.h);
+  for (const b of bits(op)) if (b.px.length <= n) for (const p of b.px) dots.d[p] = M.d[p];
+  return [dots, keep(M, (x, y) => !dots.d[y * M.w + x])];
+}
+
+/**
+ * Small bits with the light round them: the light pixels of `m` within r px of a bit of `sp` (and
+ * not as near to other art of m) go with the bits, so a dot that twinkles out takes its glow with
+ * it instead of leaving a faint ring behind. Returns [bits with their halos, m without them].
+ */
+function withHalo(sp: Ix, m: Ix, r = 2): [Ix, Ix] {
+  const bitsOut = { ...sp, d: new Uint8Array(sp.d) }, rest = { ...m, d: new Uint8Array(m.d) };
+  for (let y = 0; y < m.h; y++)
+    for (let x = 0; x < m.w; x++) {
+      const v = m.d[y * m.w + x];
+      if (!v || !isLight(v - 1) || sp.d[y * m.w + x]) continue;
+      let near = false, other = false;
+      for (let dy = -r; dy <= r && !other; dy++)
+        for (let dx = -r; dx <= r; dx++) {
+          if (at(sp, x + dx, y + dy)) near = true;
+          const o = at(m, x + dx, y + dy);
+          if (isSolid(o) || isLine(o)) other = true;
+        }
+      if (near && !other) {
+        bitsOut.d[y * m.w + x] = v;
+        rest.d[y * m.w + x] = 0;
+      }
+    }
+  return [bitsOut, rest];
+}
+
+/**
+ * A projectile that keeps its shape: ripples travel back along it (a steady travelling wave, so
+ * every step of the loop moves alike), his rim is kept on whatever moved, the light shimmers, and
+ * the small bits and dots twinkle and drift back whole.
+ */
+function flyLoop(k: Key, seed: number, opts: { amp?: [number, number]; len?: number; weight?: (x: number, y: number) => number; drift?: number } = {}): Canvas[] {
+  const [D, M0] = splitDots(union(...Object.entries(k.p).filter(([n]) => n !== 'loose').map(([, ix]) => ix)), 16);
+  const [L, M] = withHalo(union(piece(k, 'loose'), D), M0);
+  const dr = opts.drift ?? 0;
   return range(FLY_N).map((i) => {
     const t = cyc(i, FLY_N);
-    const m = shimmer(churn(M, t, amp, cell, seed, opts.weight), t, seed + 50);
-    const dr = opts.drift ?? 0;
-    const sp = twinkle(piece(k, 'loose'), t, 0.25, seed + 5, (b, u) => [-dr * Math.sin(Math.PI * u) ** 2 * (0.5 + hash(Math.round(b.cx), Math.round(b.cy), seed) * 0.5), 0]);
+    const rip = wave(M, t, { amp: opts.amp ?? [0.8, 0.8], len: opts.len ?? 18, along: (x) => -x, seed, weight: opts.weight });
+    const m = shimmer(reline(rip), t, seed + 50);
+    const sp = twinkle(L, t, 0.16, seed + 5, (b, u) => [-dr * Math.sin(Math.PI * u) ** 2 * (0.5 + hash(Math.round(b.cx), Math.round(b.cy), seed) * 0.5), 0]);
     return render(k.w, k.h, [[m], [sp]], k.fade);
   });
 }
 
 function slash(): WorldSprite {
   const k = key('slash');
-  return sprite(k, 'Chakra slash: glowing crescent', fly(flyLoop(k, 400, { amp: 1.0, drift: 2 })));
+  return sprite(k, 'Chakra slash: glowing crescent', fly(flyLoop(k, 400, { amp: [0.6, 0.6], len: 20, drift: 2 })));
 }
 
 function multi(): WorldSprite {
   const k = key('multi');
-  // The three seal orbs hold their shape (only their light shimmers); their trails churn.
+  // The three seal orbs hold their shape (only their light shimmers); their trails ripple.
   const trails = (x: number) => smooth(k.ax + 2, k.ax - 10, x);
-  return sprite(k, 'Chakra multi: three seal orbs', fly(flyLoop(k, 500, { amp: 1.3, weight: trails, drift: 2 })));
+  return sprite(k, 'Chakra multi: three seal orbs', fly(flyLoop(k, 500, { amp: [0.8, 0.8], weight: trails, drift: 2 })));
 }
 
 /** Chebyshev distance of every pixel of `ix` to the nearest clear pixel (0 where clear). */
@@ -570,15 +827,17 @@ function depth(ix: Ix): Float32Array {
 
 function breath(): WorldSprite {
   const k = key('breath');
-  // The anchor is the cone's origin (the caster's hands). Its ragged edges and wisps churn and
-  // stream outward; its body (the open hand, the seal marks) holds still, its light shimmering.
-  const M = piece(k, 'main');
+  // The anchor is the cone's origin (the caster's hands). Ripples run outward along its ragged
+  // edges and wisps (a steady travelling wave); its body (the open hand, the seal marks) holds
+  // still, its light shimmering.
+  const [BL, M] = withHalo(piece(k, 'loose'), piece(k, 'main'));
   const dep = depth(M);
   const w = (x: number, y: number) => smooth(7, 2, dep[y * k.w + x]) * smooth(10, 40, Math.hypot(x - k.ax, y - k.ay));
   const fr = range(FLY_N).map((i) => {
     const t = cyc(i, FLY_N);
-    const m = shimmer(churn(M, t, 1.5, 8, 200, w, 0, [1.0, 0]), t, 250, 16);
-    const sp = twinkle(piece(k, 'loose'), t, 0.25, 205, (b, u) => [3 * Math.sin(Math.PI * u) ** 2 * smooth(10, 60, b.cx - k.ax), 0]);
+    const rip = wave(M, t, { amp: [0.9, 0.8], len: 26, along: (x, y) => Math.hypot(x - k.ax, y - k.ay), seed: 200, weight: w, cell: 16, rough: 0.5 });
+    const m = shimmer(reline(rip), t, 250, 16);
+    const sp = twinkle(BL, t, 0.25, 205, (b, u) => [3 * Math.sin(Math.PI * u) ** 2 * smooth(10, 60, b.cx - k.ax), 0]);
     return render(k.w, k.h, [[m], [sp]]);
   });
   return sprite(k, 'Chakra breath: open-hand cone of chakra (origin at the anchor)', fly(fr));
@@ -606,18 +865,27 @@ function stream(): WorldSprite[] {
   const tiles = range(FLY_N).map((i) => streamTile(t, i));
   const h = key('stream_head', { l: 0, t: 0, r: PAD, b: PAD });
   if (h.ay !== t.ay) throw new Error('vfx-chakra-v3: the stream head and tile centre lines differ');
-  const HM = piece(h, 'main'), HS = piece(h, 'loose');
+  const [HD, HM0] = splitDots(piece(h, 'main'), 16);
+  const [HS, HM] = withHalo(union(piece(h, 'loose'), HD), HM0);
   const ringC: [number, number] = [h.ax + 6, h.ay];
+  const burst: [number, number] = [ringC[0] + 8, ringC[1]];
+  // The beam: the head's first columns, and up to the big ring the band round the centre line, are
+  // the flowing tile itself. Outside the band the tile hands over to his head art across the last
+  // 4 columns before HEAD_JOINT, so the tile's marks fade out there instead of popping off.
+  const inBand = (x: number, y: number) => x < HEAD_BEAM && Math.abs(y - h.ay) <= BEAM_BAND;
+  const beam = (x: number, y: number) => x < HEAD_JOINT || inBand(x, y);
+  const solidTile = (x: number, y: number) => x < HEAD_JOINT - 4 || inBand(x, y);
+  const tileA = (x: number, y: number) => (solidTile(x, y) ? 1 : (HEAD_JOINT - x) / 5);
   const heads = range(FLY_N).map((i) => {
     const tt = cyc(i, FLY_N);
-    // The burst's spikes churn (not the joint, the ring or the hot core).
-    const w = (x: number, y: number) => smooth(HEAD_JOINT + 4, HEAD_JOINT + 14, x) * smooth(12, 20, Math.hypot(x - ringC[0] - 8, y - ringC[1]));
-    let m = shimmer(churn(HM, tt, 1.4, 7, 700, w), tt, 750);
+    // Ripples run out along the burst's spikes (not the joint, his big ring or the hot core).
+    const w = (x: number, y: number) =>
+      smooth(HEAD_JOINT + 4, HEAD_JOINT + 14, x) * smooth(12, 20, Math.hypot(x - burst[0], y - burst[1])) * smooth(13, 18, Math.hypot(x - ringC[0], y - ringC[1]));
+    const rip = wave(HM, tt, { amp: [0.8, 0.8], len: 16, along: (x, y) => Math.hypot(x - burst[0], y - burst[1]), seed: 700, weight: w });
+    let m = shimmer(reline(rip), tt, 750);
     m = glint(m, tt, ringC[0], ringC[1], 0.8);
-    const beam = (x: number, y: number) => x < HEAD_JOINT || (x < HEAD_BEAM && Math.abs(y - h.ay) <= BEAM_BAND);
-    m = keep(m, (x, y) => !beam(x, y));
-    stamp(m, keep(tiles[i], beam));
-    return render(h.w, h.h, [[m], [twinkle(keep(HS, (x, y) => !beam(x, y)), tt, 0.3, 705)]]);
+    m = keep(m, (x, y) => !solidTile(x, y));
+    return render(h.w, h.h, [[m], [keep(tiles[i], beam), tileA], [twinkle(keep(HS, (x, y) => !beam(x, y)), tt, 0.3, 705)]]);
   });
   return [
     sprite(t, 'Chakra stream: beam threaded with seal rings (tileable 64 px)', fly(tiles.map((ix) => render(t.w, t.h, [[ix]])))),
@@ -649,14 +917,24 @@ function hit(): WorldSprite {
     const t = (i - 3) / 16;
     fr.push(render(k.w, k.h, [[shimmer(churn(out(M, i - 3), t, 1.2, 7, 810, (x, y) => smooth(12, 20, d(x, y))), t, 820)], [glint(C, (i - 3) / 6, k.ax, k.ay)], [out(S, (i - 3) * 1.2)]]));
   }
-  // 6-11: it breaks up slowly: the spikes fly on, thin and fade; the seal core shrinks and dims
-  //       into its own glow; the motes drift off and go out.
+  // 6-11: it breaks up slowly: the spikes fly on, thin and fade; the seal core shrinks and goes
+  //       out like light (by alpha, a step paler, never darker: a seal stepped down its ramp reads
+  //       as burnt brown); the motes drift off and go out. A rim left without its fill goes too.
   const fadeU = [0.1, 0.24, 0.4, 0.57, 0.76, 0.93];
+  // ...and its rim lifts to a mid gold (blue) as it goes, so no dark ring is left round it.
+  const nearest = (kind: CkKind, l: number) => {
+    let best = 0, bd = Infinity;
+    PAL.forEach((p, i) => {
+      if (KIND[i] === kind && Math.abs(lumOf(p) - l) < bd) [best, bd] = [i + 1, Math.abs(lumOf(p) - l)];
+    });
+    return best;
+  };
+  const softRim = [nearest('gold', 110), nearest('blue', 95)];
   for (let j = 0; j < 6; j++) {
     const t = (6 + j - 3) / 16, u = fadeU[j];
-    const m = dissolve(churn(out(M, 2.5 + j * 1.3), t, 1.3, 7, 810), 0.1 + u * 0.55, 840 + j);
-    const c = level(scaleAbout(C, k.ax, k.ay, 1 - u * 0.35), -Math.round(u * 3));
-    fr.push(render(k.w, k.h, [[level(m, -Math.round(u * 2), ['blue']), 1 - u * 0.75], [c, 1 - u * 0.85], [twinkle(out(S, 4 + j * 2, 6), t * 2, 0.2 + u * 0.3, 830), 1 - u * 0.8]]));
+    const m = reline(dissolve(churn(out(M, 2.5 + j * 1.3), t, 1.3, 7, 810), 0.1 + u * 0.55, 840 + j), false);
+    const c = remap(level(scaleAbout(C, k.ax, k.ay, 1 - u * 0.2), 1, ['gold', 'blue']), (v) => (v === GOLDLINE_V ? softRim[0] : v === OUTLINE_V ? softRim[1] : v));
+    fr.push(render(k.w, k.h, [[m, 1 - u * 0.8], [c, 1 - u * 0.9], [twinkle(out(S, 4 + j * 2, 6), t * 2, 0.2 + u * 0.3, 830), 1 - u * 0.8]]));
   }
   return sprite(k, 'Chakra hit: starburst round a gold seal', { hit: { frames: fr, fps: HIT_FPS, loop: false } });
 }
@@ -666,51 +944,62 @@ function hit(): WorldSprite {
 function blast(): WorldSprite {
   const k = key('blast', pads(4));
   const HZ = piece(k, 'main'), SEAL = piece(k, 'seal'), P = piece(k, 'pillar'), LN = piece(k, 'lines'), SP = piece(k, 'loose');
-  // What the pillar hides in his picture (the haze, the far arcs of the circle and the hexagram):
-  // drawn only where the pillar of a frame does not cover them, so his picture is unchanged.
-  const U = piece(k, 'under'), SB = piece(k, 'sealback'), LB = piece(k, 'linesback');
-  const behind = (cur: Ix, ix: Ix) => keep(ix, (x, y) => at(P, x, y) !== 0 && at(cur, x, y) === 0);
+  // What the pillar hides in his picture (the haze, rebuilt from the haze round it; the far arcs of
+  // the circle and the hexagram): drawn only where the pillar of a frame does not cover them, so
+  // his picture is unchanged. The pillar piece holds its own halo, so the halo goes with it.
+  // (The far arcs are his near arcs turned round, which carried their dark rim against his
+  // background to the inside: his own far arcs, beside the pillar, sit in the haze with no rim.)
+  const U = piece(k, 'under'), SB = keep(piece(k, 'sealback'), (_, __, v) => !isLine(v)), LB = keep(piece(k, 'linesback'), (_, __, v) => !isLine(v));
+  const alphaAt = (a: Alpha, x: number, y: number) => (typeof a === 'number' ? a : a(x, y));
+  // ...behind the pillar of a frame wherever that pillar is not opaque (its soft front and foot
+  // and its fading body show them through).
+  const behind = (cur: Ix, ix: Ix, a: Alpha = 1) => keep(ix, (x, y) => at(P, x, y) !== 0 && (at(cur, x, y) === 0 || alphaAt(a, x, y) < 1));
   // The haze under whatever of the circle, its lines, the pillar and the sparks a frame leaves out
-  // or draws see-through (only layers drawn at full strength hide it, as in his picture).
-  const haze = (...cover: Layer[]) => keep(U, (x, y) => cover.every(([c, a = 1]) => a < 1 || at(c, x, y) === 0));
+  // or draws see-through (only what is drawn at full strength hides it, as in his picture).
+  const haze = (...cover: [Ix, Alpha][]) => keep(U, (x, y) => cover.every(([c, a]) => at(c, x, y) === 0 || alphaAt(a, x, y) < 1));
   const foot = k.ay + 14; // the pillar's foot, in the middle of the circle
   const top = bounds(P)![1];
   const H = foot - top;
-  // On the ground the circle is seen at a slant (it is 1.6 times wider than tall).
-  const ang = (x: number, y: number) => fract(Math.atan2((y - k.ay) * 1.6, x - k.ax) / TAU + 0.25);
-  // The circle draws itself clockwise from the front (f: 0..1 of the way round).
-  const drawn = (ix: Ix, f: number) => (f >= 1 ? ix : keep(ix, (x, y) => ang(x, y) <= f));
+  // On the ground the circle is seen at a slant (it is 1.6 times wider than tall). ang: how far
+  // round the circle a point is from its front (0) to its back (0.5), either way.
+  const ang = (x: number, y: number) => {
+    const a = fract(Math.atan2((y + 0.5 - k.ay) * 1.6, x + 0.5 - k.ax) / TAU - 0.25);
+    return Math.min(a, 1 - a);
+  };
+  // The circle lights at its front and draws itself round both ways to the back: drawn up to f,
+  // its two leading edges feathered over ~3 px (alpha) and a step hot just behind them. (Lit both
+  // ways from a point, it has no start line to cut across it.)
+  const FEATHER = 0.01, DONE = 0.5 + FEATHER;
+  const wipe = (f: number, a = 1): Alpha => (f >= DONE ? a : (x, y) => a * clamp((f - ang(x, y)) / FEATHER, 0, 1));
+  const hotEdge = (ix: Ix, f: number) => (f >= DONE ? ix : level(ix, (x, y) => (ang(x, y) > f - 0.035 && ang(x, y) <= f ? 1 : 0)));
   const ragged = (x: number, seed: number) => noise(x, 0, 3, seed) * 7;
   const thin = (w: number) => (w === 1 ? P : scaleAbout(P, k.ax, 0, w, 1));
-  // The pillar climbing out of the circle: up to `f` of its height, `w` of its width, with a ragged
-  // front a step hot.
-  const climb = (f: number, w: number) => {
-    const front = (x: number) => foot - H * f - ragged(x, 931);
-    return level(keep(thin(w), (x, y) => y >= front(x)), (x, y) => (y < front(x) + 5 ? 1 : 0), ['blue']);
-  };
   const up = (ix: Ix, dy: number) => displace(ix, () => [0, -dy]);
   const fr: Canvas[] = [];
-  // 0-3: anticipation. The seal circle draws itself and its lines light up while the haze gathers;
-  //      the light wells up in the middle and the pillar climbs out of it.
-  const sealF = [0.34, 0.7, 1, 1], lineK = [0, 0.4, 0.8, 1], hazeK = [0.14, 0.32, 0.5, 0.72];
-  const pillarF = [0.07, 0.25, 0.5, 0.8], pillarW = [0.45, 0.6, 0.75, 0.9], pillarA = [0.6, 0.8, 0.9, 1];
+
+  // 0-3: anticipation. The seal circle lights at its front and draws itself round both ways, the
+  //      hexagram following it, while the haze gathers (by alpha). The pillar stays down until frame 2, then climbs
+  //      out of the circle with a ragged front, soft (alpha over 4 px) and a step hot.
+  const sealF = [0.2, 0.4, DONE, DONE], lineF = [0.06, 0.26, 0.45, DONE], lineK = [0.55, 0.75, 0.95, 1];
+  const hazeK = [0.18, 0.42, 0.6, 0.8];
+  const pillarF = [0, 0, 0.34, 0.76], pillarW = [0, 0, 0.72, 0.9];
   for (let i = 0; i < 4; i++) {
-    const cur = climb(pillarF[i], pillarW[i]);
-    const seal = level(drawn(union(SEAL, behind(cur, SB)), sealF[i]), i < 3 ? 1 : 0);
-    const lines = drawn(union(LN, behind(cur, LB)), lineK[i] * 1.1);
+    let cur = none(k);
+    let curA: Alpha = 0;
+    if (pillarF[i] > 0) {
+      const front = (x: number) => foot - H * pillarF[i] - ragged(x, 931);
+      cur = level(keep(thin(pillarW[i]), (x, y) => y >= front(x) - 1), (x, y) => (y < front(x) + 6 ? 1 : 0), ['blue']);
+      curA = (x, y) => clamp((y - front(x) + 1) / 4, 0, 1);
+    }
+    const seal = hotEdge(union(SEAL, behind(cur, SB, curA)), sealF[i]), sealA = wipe(sealF[i]);
+    const lines = union(LN, behind(cur, LB, curA)), linesA = wipe(lineF[i], lineK[i]);
     const sp = i >= 2 ? twinkle(SP, i / 8, 0.5, 905) : none(k);
+    const spA = i === 3 ? 0.8 : 0.4;
     fr.push(
       render(
         k.w,
         k.h,
-        [
-          [HZ, hazeK[i]],
-          [haze([seal], [lines, Math.min(1, lineK[i] + 0.3)], [cur, pillarA[i]], [sp, 0.4]), hazeK[i]],
-          [seal],
-          [lines, Math.min(1, lineK[i] + 0.3)],
-          [cur, pillarA[i]],
-          [sp, i === 3 ? 0.8 : 0.4],
-        ],
+        [[HZ, hazeK[i]], [haze([seal, sealA], [lines, linesA], [cur, curA], [sp, spA]), hazeK[i]], [seal, sealA], [lines, linesA], [cur, curA], [sp, spA]],
         k.fade,
       ),
     );
@@ -723,22 +1012,28 @@ function blast(): WorldSprite {
     const cur = shimmer(churn(P, t, 1.2, 9, 913, hold), t, 917, 12);
     const seal = glint(union(SEAL, behind(cur, SB)), (i - 4) / 10, k.ax, k.ay, 0.9, Math.PI / 2);
     const lines = union(LN, behind(cur, LB)), sp = twinkle(up(SP, (i - 4) * 2), t, 0.15, 921);
-    fr.push(render(k.w, k.h, [[HZ], [haze([seal], [lines], [cur], [sp])], [seal], [lines], [cur], [sp]], k.fade));
+    fr.push(render(k.w, k.h, [[HZ], [haze([seal, 1], [lines, 1], [cur, 1], [sp, 1])], [seal], [lines], [cur], [sp]], k.fade));
   }
-  // 7-15: the long settle. The pillar thins and draws up off the circle into the sky (its foot
-  //       ragged), dimming as it goes; the haze thins; the circle's lines go out and the gold dims
-  //       and fades last; the sparks float up and go out.
+  // 7-15: the long settle. The pillar thins and draws up off the circle into the sky, its foot
+  //       ragged but soft (alpha over 4 px), fading by alpha and cooling to cyan and blue (not
+  //       dimmed to grey);
+  //       for a few frames it leaves a soft glow pool where it stood, over the haze it hid (rebuilt
+  //       at the level of the haze round it, so no pit opens in the circle). The haze thins, the
+  //       circle's lines go out and the gold fades last (by alpha, never darker); the sparks float
+  //       up and go out.
   for (let j = 0; j < 9; j++) {
     const u = (j + 1) / 9, t = (7 + j - 4) / 12;
     const cut = foot + 6 - (H * 0.85 + 6) * smooth(0.2, 1, u) ** 1.2;
-    let cur = shimmer(churn(thin(1 - 0.5 * smooth(0, 1, u)), t, 1.2, 9, 913, hold), t, 917, 12);
-    cur = keep(cur, (x, y) => y < cut - ragged(x, 941 + j));
-    cur = level(cur, -Math.round(u * 2), ['blue']);
-    const hz = 1 - 0.95 * u, sa = 1 - smooth(0.35, 1, u), la = 1 - smooth(0, 0.7, u);
-    const seal = level(union(SEAL, behind(cur, SB)), -Math.round(u * 1.5)), lines = union(LN, behind(cur, LB));
-    const sp = twinkle(up(SP, 4 + j * 3), t, 0.15 + u * 0.4, 921);
+    const cutR = (x: number) => cut - ragged(x, 941 + j);
+    const cur = cool(shimmer(churn(thin(1 - 0.5 * smooth(0, 1, u)), t, 1.2, 9, 913, hold), t, 917, 12), () => Math.round(u * 3));
     const pa = 1 - smooth(0.15, 1, u);
-    fr.push(render(k.w, k.h, [[HZ, hz], [haze([seal, sa], [lines, la], [cur, pa], [sp, 0.5]), hz], [seal, sa], [lines, la], [cur, pa], [sp, 1 - u * 0.9]], k.fade));
+    const pool = 0.5 * clamp(1 - (foot + 6 - cut) / 40, 0, 1);
+    const curA: Alpha = (x, y) => pa * (y < cutR(x) - 4 ? 1 : y < cutR(x) ? Math.max(pool, (cutR(x) - y) / 4) : pool);
+    const hz = 1 - 0.95 * u, sa = 1 - smooth(0.35, 1, u), la = 1 - smooth(0, 0.7, u);
+    const seal = union(SEAL, behind(cur, SB, curA)), lines = union(LN, behind(cur, LB, curA));
+    const sp = twinkle(up(SP, 4 + j * 3), t, 0.15 + u * 0.4, 921);
+    const spA = 1 - u * 0.9;
+    fr.push(render(k.w, k.h, [[HZ, hz], [haze([seal, sa], [lines, la], [cur, curA], [sp, spA]), hz], [seal, sa], [lines, la], [cur, curA], [sp, spA]], k.fade));
   }
   return sprite(k, 'Chakra blast: pillar of light over a gold seal circle', { blast: { frames: fr, fps: BLAST_FPS, loop: false } });
 }
@@ -769,7 +1064,9 @@ function barrier(name: 'wall' | 'wall_diag', label: string, seed: number): World
   const pane = (ph: number): Ix => {
     if (ph <= 0) return none(k);
     const crest = keep(displace(crestP, () => [0, top - ph]), (x, y) => height(x, y) >= 0);
-    const b = level(upTo(body, ph - CREST), (x, y) => (height(x, y) > ph - CREST - 4 ? 1 : 0), ['blue', 'barrier']);
+    // The cells reach 2 px up under the crest, so the seam between them (the crest moves by whole
+    // pixels, the 3/4 wall's ground line by fractions) never opens into pinholes.
+    const b = level(upTo(body, ph - CREST + 2), (x, y) => (height(x, y) > ph - CREST - 4 ? 1 : 0), ['blue', 'barrier']);
     return stamp(b, crest);
   };
   const rise: Canvas[] = [];
@@ -787,7 +1084,7 @@ function barrier(name: 'wall' | 'wall_diag', label: string, seed: number): World
     rise.push(render(k.w, k.h, [[SH, shadeK[r]], [pane(ph)], [fr], [foam]], k.fade));
   }
   // idle: a band of light sweeps across the cells (off the wall at frame 0, so frame 0 is his
-  // picture), the crest churns, the pane breathes and the foam twinkles.
+  // picture), ripples run along the crest, the pane breathes and the foam twinkles.
   const W = k.w;
   const crest = (x: number, y: number) => smooth(top - 22, top - 8, height(x, y));
   const idle = range(IDLE_N).map((i) => {
@@ -797,7 +1094,7 @@ function barrier(name: 'wall' | 'wall_diag', label: string, seed: number): World
       const d = Math.abs(x - band + (y - k.ay) * 0.45);
       return d < 5 ? 2 : d < 13 ? 1 : 0;
     };
-    let m = churn(M, t, 1.2, 8, seed + 20, crest);
+    let m = wave(M, t, { amp: [0.8, 1.0], len: 26, along: (x) => x, seed: seed + 20, weight: crest });
     m = level(m, sweep, ['blue', 'barrier']);
     m = shimmer(m, t, seed + 25, 22, ['glow'], 0, 0.55);
     return render(k.w, k.h, [[SH], [m], [glint(FR, t, k.ax, k.ay - 50, 0.5)], [twinkle(SP, t, 0.3, seed + 9)]], k.fade);
@@ -806,9 +1103,10 @@ function barrier(name: 'wall' | 'wall_diag', label: string, seed: number): World
 }
 
 // --- wall_depth: OURS (the owner kept our end-on wall) ---------------------------------------------
-// Copied unchanged from vfx-b-chakra.ts (barrier3d, barrierWall and their helpers), so the look is
-// exactly our seal barrier; only the frame counts change (rise 12, idle 8), sampled more finely
-// along the same rise and the same shimmer cycle.
+// Copied from vfx-b-chakra.ts (barrier3d, barrierWall and their helpers), so the look is our seal
+// barrier; the frame counts change (rise 12, idle 8), sampled more finely along the same rise and
+// the same shimmer cycle. Changed for the new timing only: the streak floor (streakCut) and the
+// first rise frame (depthFrames).
 
 /** 0 outline, 1 deep blue, 2 royal, 3 blue, 4 azure, 5 sky cyan, 6 light cyan, 7 ice white, 8 white. */
 const C = pal('#081040', '#12288c', '#1a46c8', '#2a6cf0', '#2fa0ff', '#3cc8ff', '#8ae8ff', '#d4f8ff', '#ffffff');
@@ -873,9 +1171,22 @@ function hexAt(a: number, b: number, cell = 9): { best: number; b2: number; bid:
   return { best, b2, bid, bx, by };
 }
 
+/**
+ * The share of the top face's glint streaks at time t never drops below 15%: in our old frames it
+ * fell to none at t = 0.5 and 0.625, so with twice the frames the streaks blinked off and on. The
+ * threshold is lowered only there (to the strip's top-15% value), so every other frame is ours.
+ */
+function streakCut(t: number): number {
+  const v: number[] = [];
+  for (let x = 0; x < 16; x += 0.125) v.push(pnoise(x, t * 16, 3, 16, 70));
+  v.sort((a, b) => b - a);
+  return Math.min(0.6, v[Math.floor(0.15 * v.length)]);
+}
+
 /** One frame of the barrier slab in orientation o, raised to hk, the shimmer at sh. */
 function barrier3d(o: Orient, hk: number, sh: number, f: number, t: number): Canvas {
   const c = new Canvas(o.w, o.h);
+  const cut = streakCut(t);
   const limV = HGT * hk;
   const crestV = (u: number): number => limV - 2 - Math.sin((u / LEN) * TAU * 4 - t * TAU) * 1.6;
   const postTop = Math.max(limV, 10) + 4;
@@ -931,7 +1242,7 @@ function barrier3d(o: Orient, hk: number, sh: number, f: number, t: number): Can
     energyMask.set(x, y, 1);
     const fromTop = crestV(u) - v;
     if (fc === 0 || fromTop < 1.5) {
-      crestL.set(x, y, fc === 0 ? (sv > BAR_HALF - 2 ? 8 : pnoise(u * 0.8 + sv, t * 16, 3, 16, 70) > 0.6 ? 6 : 7) : 8);
+      crestL.set(x, y, fc === 0 ? (sv > BAR_HALF - 2 ? 8 : pnoise(u * 0.8 + sv, t * 16, 3, 16, 70) > cut ? 6 : 7) : 8);
       continue;
     }
     if (fromTop < 3) {
@@ -986,6 +1297,8 @@ function barrier3d(o: Orient, hk: number, sh: number, f: number, t: number): Can
 
 /** Our 6 rise heights (barrierWall in vfx-b-chakra.ts). */
 const DEPTH_OLD_H = [0.15, 0.4, 0.65, 0.88, 1, 1];
+/** The new first rise frame: height and alpha (see depthFrames). */
+const DEPTH_FIRST_H = 0.11, DEPTH_FIRST_A = 0.5;
 /** One frame of our end-on wall's rise (as barrierWall drew it). */
 export function depthRiseFrame(o: Orient, hk: number, f: number, t: number, sparkF: number): Canvas {
   const c = barrier3d(o, hk, 0.5, f, t);
@@ -1011,19 +1324,30 @@ export function depthIdleFrame(o: Orient, ph: number, f: number): Canvas {
   return c;
 }
 
+/** The canvas with its alpha scaled by a. */
+function faded(c: Canvas, a: number): Canvas {
+  const out = c.clone();
+  for (let i = 3; i < out.px.length; i += 4) out.px[i] = Math.round(out.px[i] * a);
+  return out;
+}
+
 /**
  * Our end-on seal barrier, with twice the frames. Every odd rise frame (1, 3 ... 11) IS one of our
  * 6 old rise frames and every even one lies halfway between its neighbours (height and time); every
  * even idle frame (0, 2, 4, 6) IS one of our 4 old idle frames and every odd one is halfway through
  * the same shimmer cycle. (Our glyph band and node twinkles step with the old frame number, so they
- * hold for two frames.)
+ * hold for two frames.) Rise frame 0, before our first frame, is our barrier at a lower height
+ * (its glass pane just showing above the gold base: lower and it is only the base's flat gold top)
+ * fading in at half strength, so the wall comes up out of the light instead of popping in. The streaks keep
+ * a 15% share on our two plain frames (streakCut).
  */
 export function depthFrames(): { rise: Canvas[]; idle: Canvas[] } {
   const o = orientations().wall_depth;
   const rise = range(RISE_N).map((r) => {
     const f = Math.floor(r / 2);
-    const hk = r % 2 ? DEPTH_OLD_H[f] : f === 0 ? 0.06 : (DEPTH_OLD_H[f - 1] + DEPTH_OLD_H[f]) / 2;
-    return depthRiseFrame(o, hk, f, Math.max(0, (r - 1) / 12), f);
+    if (r === 0) return faded(depthRiseFrame(o, DEPTH_FIRST_H, 0, 0, 0), DEPTH_FIRST_A);
+    const hk = r % 2 ? DEPTH_OLD_H[f] : (DEPTH_OLD_H[f - 1] + DEPTH_OLD_H[f]) / 2;
+    return depthRiseFrame(o, hk, f, (r - 1) / 12, f);
   });
   const idle = range(IDLE_N).map((i) => depthIdleFrame(o, i / IDLE_N, Math.floor(i / 2)));
   return { rise, idle };
@@ -1041,6 +1365,39 @@ function wallDepth(): WorldSprite {
 // --- aura ---------------------------------------------------------------------------------------------
 
 /**
+ * `ix` with the clear pixels under `cover` filled from the light round them (each takes the
+ * commonest light value of its filled neighbours, ring by ring inward), so nothing see-through is
+ * left under a piece that is drawn on another layer.
+ */
+function fillUnder(ix: Ix, cover: Ix): Ix {
+  const out = { ...ix, d: new Uint8Array(ix.d) };
+  for (let pass = 0; pass < 8; pass++) {
+    const next = new Uint8Array(out.d);
+    let n = 0;
+    for (let y = 0; y < ix.h; y++)
+      for (let x = 0; x < ix.w; x++) {
+        const i = y * ix.w + x;
+        if (out.d[i] || !cover.d[i]) continue;
+        const votes = new Map<number, number>();
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const v = at(out, x + dx, y + dy);
+            if (v && isLight(v - 1)) votes.set(v, (votes.get(v) ?? 0) + 1);
+          }
+        let best = 0, bn = 0;
+        for (const [v, c] of [...votes].sort((a, b) => a[0] - b[0])) if (c > bn) [best, bn] = [v, c];
+        if (best) {
+          next[i] = best;
+          n++;
+        }
+      }
+    out.d = next;
+    if (!n) break;
+  }
+  return out;
+}
+
+/**
  * His aura in two frame-synchronized layers with the same size and anchor (the feet): `aura_back`
  * goes BEHIND the character (his two flames, their haze, the gold glow at the feet and the far half
  * of the gold ring); `aura` goes OVER it (the near half of the ring and his sparkles). The flames lick
@@ -1049,13 +1406,18 @@ function wallDepth(): WorldSprite {
  */
 function aura(): WorldSprite[] {
   const k = key('aura');
-  const M = piece(k, 'main'), RF = piece(k, 'ringfront'), SP = piece(k, 'loose');
-  const tips = (_x: number, y: number) => 0.35 + 0.65 * smooth(k.ay - 10, k.ay - 90, y);
+  const RF = piece(k, 'ringfront'), SP = piece(k, 'loose');
+  // The back layer had holes where the near half of the ring sits (it is on the front layer); they
+  // are filled with the warm glow round them, so the glow never shows a gap beside a ring dash.
+  const M = fillUnder(piece(k, 'main'), RF);
+  // The feet (the ring, the warm glow) hold still; above them the flames lick upward, more at
+  // their tips, as a steady travelling wave.
+  const tips = (_x: number, y: number) => smooth(k.ay - 6, k.ay - 18, y) * (0.35 + 0.65 * smooth(k.ay - 10, k.ay - 90, y));
   const ringC: [number, number] = [k.ax, k.ay + 3];
   const back: Canvas[] = [], front: Canvas[] = [];
   for (let i = 0; i < AURA_N; i++) {
     const t = cyc(i, AURA_N);
-    let m = churn(M, t, 1.5, 7, 1200, tips, 0, [0, -1.2]);
+    let m = wave(M, t, { amp: [1.2, 1.0], len: 24, along: (_x, y) => -y, seed: 1200, weight: tips });
     m = shimmer(m, t, 1250, 10, ['blue', 'glow']);
     m = shimmer(m, t, 1260, 16, ['warm']);
     m = glint(m, t, ringC[0], ringC[1], 0.8, Math.PI);

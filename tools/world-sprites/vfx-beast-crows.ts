@@ -9,18 +9,21 @@
 //
 //   fly     6 frames, 12 fps, loop. Frame 0 is his left picture (crows circling the vortex), frame 4 his
 //           right picture (the flock streaming right). 1-3 and 5 move his crows as cut-out pieces (whole
-//           pixels; the two looking back mirrored to turn round), at most 25 px a frame (R1's swoop back to
-//           L1's place: 31): out round the swarm's centre into the flock, then back round the reopening
-//           vortex (four flock crows head for his left picture's places, two sink toward its eye behind
-//           its swirl). A crow only comes into or goes out of sight behind the vortex. Away from the
+//           pixels; the two looking back mirrored to turn round as they set off), at most 25 px a frame
+//           (R1's swoop back to L1's place: 31): out round the swarm's centre into the flock, then back
+//           round the reopening vortex (four flock crows head for his left picture's places, two sink
+//           toward its eye behind its swirl). A crow only comes into or goes out of sight behind the vortex. Away from the
 //           flock, a flock crow he painted half hidden is flown by the whole crow of his left picture, so
-//           no cut edge shows. They beat their wings with his own raised wings turned about the shoulder
-//           (30 and 60 degrees), in two flights that never beat as one. His vortex spins and closes as the
-//           flock forms and opens again over two frames (turned and scaled in polar space; the parts his
-//           crows hid are filled with his own stripes); his smoke trails in behind the flock and its tail
-//           is left behind; his feathers drift back. Only the swarm's outer edge is soft: the ground never
+//           no cut edge shows. They beat their wings with his own raised wings (the near wing turned about
+//           the shoulder by 30 and 60 degrees, the far wing sunk behind the body), in two flights that never
+//           beat as one. His vortex spins and closes as the flock forms and opens again over two frames
+//           (turned and scaled in polar space; the parts his crows hid are filled by his own vortex turned
+//           rigidly about its eye, so his spiral arms run on through them); his smoke trails in behind the
+//           flock and its tail is left behind; his feathers drift back. Only the swarm's outer edge is soft: the ground never
 //           shows through his art. No frame flashes: the converter fails the build if a frame's light,
-//           mean luma or the vortex's lit violet jumps from its neighbour's or his picture's.
+//           mean luma or the vortex's lit violet jumps from its neighbour's or his picture's. Colours: a
+//           palette sampled from his pixels in brightness bands and chroma tiers, so his crows keep their
+//           blue-violet sheen (the build fails if fly 0 / 4 have 20 % more or fewer saturated pixels than his).
 //   summon  6 frames, 12 fps, once (our proposal: he painted only the fly frames): his vortex opens at the
 //           caster (0.6 size, then a step bigger each frame), spinning, and the crows come up out of it
 //           head first (beak and red eye past its rim, body still behind its swirl, a little dark at

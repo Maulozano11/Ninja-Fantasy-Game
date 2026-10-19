@@ -416,7 +416,10 @@ def eye_lmin(cx, cy, rx, ry, ox, oy, k, H, W):
 K64 = 64.0 / 86.0          # a 64 px projectile panel (86 px inside)
 KST = 64.0 / 84.0          # the stream: one braid period (84 his px) per tile
 ST_Y = 97.0                # the braid's centre line in his image
-TILE_X = 420               # his tile window [420, 504): his stream head starts at 588 = 420 + 2*84
+# His tile window [504, 588): the full braid period just before his stream head (588 = 504 + 84),
+# where his braid repeats most closely (its two periods [420, 504) and [504, 588) differ by 13-17
+# per column over columns 41-56, against 15-30 at best for the window [420, 504)).
+TILE_X = 504
 
 # His character in the aura, the 3/4 wall and the end-on wall (polygons round him).
 AURA_CHAR = [(505, 513), (532, 511), (546, 528), (548, 548), (556, 556), (557, 590), (552, 600), (549, 615),
@@ -524,15 +527,20 @@ SPRITES = {
 def source(name, cfg):
     """His colours for the sprite's region (with his character filled or removed), plus origin."""
     if cfg.get('tile'):
-        # One braid period, made seamless: the window's last 20 px are quilted into the 20 px
-        # just before it (a least-error vertical seam), so the tile's right end runs straight
-        # on into its left end.
+        # One braid period, made seamless from his own pixels only: the tile is his window A up
+        # to a seam, then the period before it, B, from the seam to the end. B's last column is
+        # followed in his image by A's first, so the tile's right end runs straight on into its
+        # left end; the seam itself (a least-error vertical path) runs through the 16 columns
+        # where his two periods match best, so nothing is painted in.
         tx, tw = cfg['tile']
         y0, y1 = cfg['area'][1], cfg['area'][3]
         A = IM[y0 + PADSRC:y1 + PADSRC, tx + PADSRC:tx + tw + PADSRC].copy()
         B = IM[y0 + PADSRC:y1 + PADSRC, tx - tw + PADSRC:tx + PADSRC]
-        ov = 30
-        err = ((gauss(A, 0.8)[:, tw - ov:] - gauss(B, 0.8)[:, tw - ov:]) ** 2).sum(-1)
+        ov = 16
+        err0 = ((gauss(A, 0.8) - gauss(B, 0.8)) ** 2).sum(-1)
+        col = np.sqrt(err0).mean(0)
+        s0 = min(range(8, tw - ov - 4), key=lambda i: (col[i:i + ov].mean(), i))
+        err = err0[:, s0:s0 + ov]
         H = err.shape[0]
         cost = err.copy(); back = np.zeros(err.shape, np.int32)
         for y in range(1, H):
@@ -542,8 +550,9 @@ def source(name, cfg):
                 cost[y, x] += cost[y - 1, j]; back[y, x] = j
         x = int(np.argmin(cost[-1]))
         for y in range(H - 1, -1, -1):
-            A[y, tw - ov + x:] = B[y, tw - ov + x:]
+            A[y, s0 + x:] = B[y, s0 + x:]
             x = back[y, x]
+        print('stream tile: his window [%d, %d), the period before it from a seam in columns %d-%d' % (tx, tx + tw, s0, s0 + ov - 1))
         return A, tx, y0
     x0, y0, x1, y1 = cfg['area']
     C = IM[y0 + PADSRC:y1 + PADSRC, x0 + PADSRC:x1 + PADSRC].copy()

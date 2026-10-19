@@ -4,7 +4,8 @@
 //   WORLD_OUT=<art2>/staging npx tsx tools/world-sprites/vfx-poison-v3.ts
 //
 // writes the group `vfx_poison_v3` under <WORLD_OUT>/vfx_poison_v3/ (staging only: it refuses to
-// run without WORLD_OUT, so it never writes into src/assets).
+// run without WORLD_OUT, so it never writes into src/assets). POISON_LIGHT=1 also prints each
+// frame's light (mean alpha x brightness), for the flash check.
 //
 // Every key frame is HIS picture: tools/refs/poison-from-ref.py cuts his panels to game scale (his
 // pixels, his palette, his rims as a clean 1 px tinted outline, his light kept semi-transparent)
@@ -331,16 +332,29 @@ function cut(L: Layer, keep: (x: number, y: number) => boolean, minPiece = 3, ri
   return out;
 }
 
-/** His light dimmed: each glow pixel steps down `steps` alpha levels (and goes below the first). */
-function dimGlow(L: Layer, steps: number | ((x: number, y: number) => number)): Layer {
+/** The alpha (0-255) of each of his light's alpha steps. */
+const STEP_ALPHA = Array.from({ length: ALPHA_STEPS }, (_, a) => parseInt(PV3_PAL[GLOW0 - 1 + a].rgba.slice(7, 9), 16));
+/**
+ * His light dimmed (or brightened) by a factor: each glow pixel takes the alpha step nearest to its
+ * own alpha times m, keeping its colour (and goes when that is under half the first step), so the
+ * light fades smoothly whatever the number of steps.
+ */
+function glowMul(L: Layer, m: number | ((x: number, y: number) => number)): Layer {
   const out = L.clone();
   for (let i = 0; i < out.v.length; i++) {
     const v = out.v[i];
     if (!isKind(v, 'glow')) continue;
-    const s = typeof steps === 'number' ? steps : steps(i % L.w, (i / L.w) | 0);
-    if (s <= 0) continue;
+    const k = typeof m === 'number' ? m : m(i % L.w, (i / L.w) | 0);
+    if (k === 1) continue;
     const a = (v - GLOW0) % ALPHA_STEPS, c = Math.floor((v - GLOW0) / ALPHA_STEPS);
-    out.v[i] = a - s < 0 ? 0 : GLOW0 + c * ALPHA_STEPS + a - s;
+    const want = STEP_ALPHA[a] * Math.max(0, k);
+    if (want < STEP_ALPHA[0] / 2) {
+      out.v[i] = 0;
+      continue;
+    }
+    let best = 0;
+    for (let s = 1; s < ALPHA_STEPS; s++) if (Math.abs(STEP_ALPHA[s] - want) < Math.abs(STEP_ALPHA[best] - want)) best = s;
+    out.v[i] = GLOW0 + c * ALPHA_STEPS + best;
   }
   return out;
 }
@@ -378,6 +392,13 @@ function shimmer(L: Layer, t: number, o: { period: number; dir: [number, number]
 
 /** A thinning noise key in [0, 1) (for breaking slime up into drops as it fades). */
 const grain = (x: number, y: number, seed: number) => pnoise(x, y, 3, 0, 0, seed) * 0.6 + pnoise(x, y, 1.5, 0, 0, seed + 1) * 0.4;
+/**
+ * His colours cooled q steps down their own ramps, gradually: floor(q) steps everywhere and one
+ * more in patches covering the fraction of q (a noise threshold), so the slime cools in patches
+ * from frame to frame instead of all at once.
+ */
+const cool = (L: Layer, q: number, seed: number): Layer =>
+  q <= 0 ? L : tone(L, (x, y) => -(Math.floor(q) + (grain(x, y, seed) < 0.15 + 0.7 * (q - Math.floor(q)) && q - Math.floor(q) > 0 ? 1 : 0)));
 
 const stackC = (w: number, h: number, ...cs: (Canvas | Layer | null)[]): Canvas => {
   const out = new Canvas(w, h);
@@ -658,37 +679,37 @@ function hit(): WorldSprite {
   const K = key('hit'), seed = 7700;
   const main = K.part('main'), drops = K.part('drops'), glow = K.part('glow'), streaks = K.part('streaks');
   const r = (x: number, y: number) => Math.hypot(x - K.ax, y - K.ay);
-  // s: scale; reach: radius shown while it builds; d: spread of drops and streaks; g: light steps
-  // down; thin: how much has broken up; cool: ramp steps down; a: opacity at the very end.
+  // s: scale; reach: radius shown while it builds; d: spread of drops and streaks; g: his light's
+  // strength; thin: how much has broken up; cool: ramp steps down (gradual); a: opacity at the end.
   const plan = [
-    { s: 0.5, reach: 12, d: 0.5, g: 3, thin: 0, cool: 0, a: 1 },
-    { s: 0.72, reach: 22, d: 0.72, g: 2, thin: 0, cool: 0, a: 1 },
-    { s: 0.89, reach: 32, d: 0.89, g: 1, thin: 0, cool: 0, a: 1 },
-    { s: 1, reach: 99, d: 1, g: 0, thin: 0, cool: 0, a: 1 },
-    { s: 1, reach: 99, d: 1.04, g: 0, thin: 0, cool: 0, a: 1 },
-    { s: 1.02, reach: 99, d: 1.09, g: 0, thin: 0, cool: 0, a: 1 },
-    { s: 1.04, reach: 99, d: 1.15, g: 1, thin: 0.16, cool: 0, a: 1 },
-    { s: 1.06, reach: 99, d: 1.22, g: 1, thin: 0.27, cool: 1, a: 1 },
-    { s: 1.08, reach: 99, d: 1.3, g: 2, thin: 0.38, cool: 1, a: 1 },
-    { s: 1.1, reach: 99, d: 1.38, g: 3, thin: 0.48, cool: 2, a: 0.92 },
-    { s: 1.12, reach: 99, d: 1.46, g: 4, thin: 0.58, cool: 2, a: 0.78 },
-    { s: 1.14, reach: 99, d: 1.54, g: 9, thin: 0.68, cool: 3, a: 0.58 },
+    { s: 0.66, reach: 17, d: 0.66, g: 0.5, thin: 0, cool: 0, a: 1 },
+    { s: 0.8, reach: 26, d: 0.8, g: 0.7, thin: 0, cool: 0, a: 1 },
+    { s: 0.92, reach: 35, d: 0.92, g: 0.87, thin: 0, cool: 0, a: 1 },
+    { s: 1, reach: 99, d: 1, g: 1, thin: 0, cool: 0, a: 1 },
+    { s: 1, reach: 99, d: 1.04, g: 1, thin: 0, cool: 0, a: 1 },
+    { s: 1.02, reach: 99, d: 1.09, g: 1, thin: 0, cool: 0, a: 1 },
+    { s: 1.04, reach: 99, d: 1.15, g: 0.88, thin: 0.12, cool: 0.3, a: 1 },
+    { s: 1.06, reach: 99, d: 1.22, g: 0.74, thin: 0.22, cool: 0.7, a: 0.95 },
+    { s: 1.08, reach: 99, d: 1.3, g: 0.6, thin: 0.31, cool: 1, a: 0.87 },
+    { s: 1.1, reach: 99, d: 1.38, g: 0.46, thin: 0.38, cool: 1.4, a: 0.76 },
+    { s: 1.12, reach: 99, d: 1.46, g: 0.32, thin: 0.42, cool: 1.8, a: 0.65 },
+    { s: 1.14, reach: 99, d: 1.54, g: 0.18, thin: 0.49, cool: 2.2, a: 0.42 },
   ];
   const fr = plan.map((p, i) => {
     let m = scaled(main, p.s, p.s, K.ax, K.ay);
     if (p.reach < 99) m = cut(m, (x, y) => r(x, y) <= p.reach + 2 * pnoise(x, y, 3, 0, 0, seed));
     if (i >= 3 && i !== 3) m = churn(m, (i - 3) / 9, { amp: 1.2, cell: 5, seed });
     if (p.thin > 0) m = cut(m, (x, y) => grain(x, y, seed + 7) * 0.4 + Math.min(1, r(x, y) / 30) * 0.6 > p.thin, 4);
-    m = tone(m, -p.cool);
+    m = cool(m, p.cool, seed + 11);
     const spread = (L: Layer, fall: boolean) => moveDrops(L, (k, cx, cy) => {
       if (i >= 10 && rnd(seed + 8, k) < (i - 9) * 0.3) return null;
       const f = fall ? Math.max(0, i - 5) ** 2 * 0.15 : 0;
       return [(cx - K.ax) * (p.d - 1), (cy - K.ay) * (p.d - 1) + f];
     });
-    const d = tone(spread(scaled(drops, Math.min(1, p.s), Math.min(1, p.s), K.ax, K.ay), true), -p.cool);
+    const d = cool(spread(scaled(drops, Math.min(1, p.s), Math.min(1, p.s), K.ax, K.ay), true), p.cool, seed + 12);
     let st = spread(scaled(streaks, Math.min(1, p.s), Math.min(1, p.s), K.ax, K.ay), false);
     if (p.thin > 0) st = cut(st, (x, y) => grain(x, y, seed + 9) > p.thin * 0.9, 1, false);
-    const g = p.g < 9 ? scaled(dimGlow(glow, p.g), Math.min(1, p.s), Math.min(1, p.s), K.ax, K.ay) : null;
+    const g = scaled(glowMul(glow, p.g), Math.min(1, p.s), Math.min(1, p.s), K.ax, K.ay);
     const c = stackC(K.w, K.h, g, st, m, i === 0 ? null : d);
     return p.a < 1 ? fade(c, p.a) : c;
   });
@@ -696,11 +717,12 @@ function hit(): WorldSprite {
 }
 
 /**
- * blast: his gushing pillar of slime over its bubbling pool, 16 frames. Frames 0-2: the pool opens
- * out of the ground and the pillar shoots up out of it (revealed from the ground up, its front
- * ragged), his light and his venom mist come up. Frame 3 is his picture, held to frame 5 (the slime
- * churns and the mist sways). Frames 6-15: the pillar falls back into the pool from the top down,
- * the drops rain down, the mist rises and thins, the pool breaks up, cools and fades.
+ * blast: his gushing pillar of slime over its bubbling pool, 16 frames. Frames 0-3 (anticipation):
+ * the pool opens out of the ground and the pillar shoots up out of it (revealed from the ground
+ * up, its front ragged), his light and his venom mist come up with it. Frame 4 is his picture,
+ * held to frame 6 (the slime churns and the mist sways). Frames 7-15 (the settle): the pillar
+ * falls back into the pool from the top down, the drops are thrown out and rain down, the mist
+ * rises and thins, his light dims, the pool breaks up, cools down his ramps and fades.
  */
 function blast(): WorldSprite {
   const K = key('blast'), seed = 7800;
@@ -708,57 +730,64 @@ function blast(): WorldSprite {
   let top = K.h;
   for (let i = 0; i < col.v.length; i++) if (col.v[i]) top = Math.min(top, (i / K.w) | 0);
   const colH = K.ay - top;
-  const PEAK = 3;
+  const PEAK = 4, HOLD = 6;
+  /** How far above the anchor his pool's surface meets the pillar's foot (px). */
+  const FOOT = 19;
+  // pool: its spread; rise: the pillar's height (share of his); mist: how far his mist has come
+  // up; light: his light's strength; poolCut: how much of the pool has broken up; a: opacity.
   const plan = [
-    { pool: 0.42, rise: 0.22, mist: 0, light: 5, poolCut: 0, a: 1 },
-    { pool: 0.66, rise: 0.52, mist: 0.4, light: 3, poolCut: 0, a: 1 },
-    { pool: 0.86, rise: 0.8, mist: 0.75, light: 1, poolCut: 0, a: 1 },
-    { pool: 1, rise: 1, mist: 1, light: 0, poolCut: 0, a: 1 },
-    { pool: 1.01, rise: 1, mist: 1, light: 0, poolCut: 0, a: 1 },
-    { pool: 1.02, rise: 1, mist: 1, light: 0, poolCut: 0, a: 1 },
-    { pool: 1.03, rise: 0.9, mist: 1, light: 0, poolCut: 0, a: 1 },
-    { pool: 1.04, rise: 0.78, mist: 1, light: 1, poolCut: 0.05, a: 1 },
-    { pool: 1.05, rise: 0.65, mist: 1, light: 1, poolCut: 0.12, a: 1 },
-    { pool: 1.06, rise: 0.52, mist: 1, light: 2, poolCut: 0.2, a: 1 },
-    { pool: 1.07, rise: 0.4, mist: 1, light: 2, poolCut: 0.28, a: 1 },
-    { pool: 1.08, rise: 0.29, mist: 1, light: 3, poolCut: 0.37, a: 1 },
-    { pool: 1.09, rise: 0.19, mist: 1, light: 4, poolCut: 0.47, a: 0.96 },
-    { pool: 1.1, rise: 0.11, mist: 1, light: 5, poolCut: 0.57, a: 0.86 },
-    { pool: 1.11, rise: 0.05, mist: 1, light: 6, poolCut: 0.67, a: 0.7 },
-    { pool: 1.12, rise: 0, mist: 1, light: 9, poolCut: 0.77, a: 0.5 },
+    { pool: 0.52, rise: 0.25, mist: 0, light: 0.55, poolCut: 0, a: 1 },
+    { pool: 0.67, rise: 0.45, mist: 0.3, light: 0.7, poolCut: 0, a: 1 },
+    { pool: 0.8, rise: 0.65, mist: 0.58, light: 0.82, poolCut: 0, a: 1 },
+    { pool: 0.91, rise: 0.84, mist: 0.82, light: 0.92, poolCut: 0, a: 1 },
+    { pool: 1, rise: 1, mist: 1, light: 1, poolCut: 0, a: 1 },
+    { pool: 1.01, rise: 1, mist: 1, light: 1, poolCut: 0, a: 1 },
+    { pool: 1.02, rise: 1, mist: 1, light: 1, poolCut: 0, a: 1 },
+    { pool: 1.03, rise: 0.9, mist: 1, light: 0.94, poolCut: 0.03, a: 1 },
+    { pool: 1.04, rise: 0.78, mist: 1, light: 0.86, poolCut: 0.08, a: 1 },
+    { pool: 1.05, rise: 0.65, mist: 1, light: 0.77, poolCut: 0.14, a: 0.97 },
+    { pool: 1.06, rise: 0.52, mist: 1, light: 0.67, poolCut: 0.2, a: 0.93 },
+    { pool: 1.07, rise: 0.4, mist: 1, light: 0.56, poolCut: 0.27, a: 0.87 },
+    { pool: 1.08, rise: 0.29, mist: 1, light: 0.45, poolCut: 0.35, a: 0.79 },
+    { pool: 1.09, rise: 0.19, mist: 1, light: 0.33, poolCut: 0.44, a: 0.68 },
+    { pool: 1.1, rise: 0.1, mist: 1, light: 0.21, poolCut: 0.54, a: 0.54 },
+    { pool: 1.11, rise: 0.03, mist: 1, light: 0.1, poolCut: 0.65, a: 0.38 },
   ];
   const fr = plan.map((p, i) => {
-    const t = (i - PEAK) / 13;
+    const t = (i - PEAK) / 12;
     // The pool: spreads over the ground from the centre, bubbles churn, breaks up at the end.
     let pl = scaled(pool, p.pool, p.pool, K.ax, K.ay);
     if (i > PEAK) pl = churn(pl, t, { amp: 1.2, ampY: 0.6, cell: 6, seed });
-    if (i > 8) pl = tone(pl, -Math.floor((i - 7) / 3));
+    pl = cool(pl, (i - HOLD - 2) / 3, seed + 9);
     if (p.poolCut) pl = cut(pl, (x, y) => pnoise(x, y * 2, 7, 0, 0, seed + 1) * 0.65 + (Math.hypot((x - K.ax) / 95, (y - K.ay) / 30)) * 0.35 > p.poolCut, 4);
-    // The pillar: revealed from the ground up while it shoots, cut from the top as it falls.
-    let c = col;
+    // The pillar: revealed from the ground up while it shoots, cut from the top as it falls (its
+    // foot stays in the pool).
+    // (while the pool is still small its surface is lower: the pillar's foot sits down in it)
+    let c = i < PEAK ? moved(col, 0, Math.round(FOOT * (1 - p.pool))) : col;
     if (i > PEAK) c = churn(c, t, { amp: 1.3, ampY: 2.2, cell: 7, seed: seed + 2, flow: [0, -1.4] });
-    if (i > 9) c = tone(c, -Math.floor((i - 8) / 3));
+    c = cool(c, (i - HOLD - 3) / 3, seed + 10);
     if (p.rise < 1) {
       const lim = K.ay - colH * p.rise;
       const wave = (x: number) => 3 * (pnoise(x, 0, 4, 0, 0, seed + 3 + i) - 0.5) * 2;
-      c = p.rise > 0 ? cut(c, (x, y) => (i < PEAK ? y >= lim + wave(x) : y >= lim + wave(x) || y >= K.ay - 22)) : cut(c, (x, y) => y >= K.ay - 22 + 4 * i - 60 + wave(x));
+      c = cut(c, (x, y) => (i < PEAK ? y >= lim + wave(x) : y >= lim + wave(x) || y >= K.ay - 22 + Math.max(0, i - 12) * 4));
     }
     // His venom mist: comes up with the pillar, sways, then rises and thins away.
     let ms: Layer | null = null;
     if (p.mist > 0) {
       ms = i < PEAK ? cut(moved(mist, 0, (1 - p.mist) * 24), (x, y) => grain(x, y, seed + 4) < p.mist + 0.15, 2, false) : wobble(churn(mist, t, { amp: 1.4, cell: 6, seed: seed + 5 }), t, 1.3, 9, seed + 6);
-      if (i > 6) ms = cut(moved(ms, 0, -(i - 6) * 1.5), (x, y) => grain(x, y, seed + 7) > (i - 6) * 0.1, 2, false);
+      if (i > HOLD + 1) ms = cut(moved(ms, 0, -(i - HOLD - 1) * 1.5), (x, y) => grain(x, y, seed + 7) > (i - HOLD - 1) * 0.1, 2, false);
     }
     // The drops: below the pillar's front while it rises, then thrown out and raining down.
     const lim = K.ay - colH * p.rise - 4;
     const d = moveDrops(drops, (k, cx, cy) => {
       if (i < PEAK && cy < lim) return null;
-      if (i > 11 && rnd(seed + 8, k) < (i - 11) * 0.25) return null;
+      if (i > HOLD + 6 && rnd(seed + 8, k) < (i - HOLD - 6) * 0.25) return null;
       const dir = Math.sign(cx - K.ax) || 1;
       const u = Math.max(0, i - PEAK) / 3;
       return [dir * 1.2 * u, -1.5 * u + 0.9 * u * u];
     });
-    const lt = p.light < 9 ? dimGlow(light, p.light) : null;
+    // His light: spreads out with the pool from the pillar's foot as it comes up, then dims.
+    const lt = scaled(glowMul(light, p.light), Math.min(1, p.pool), Math.min(1, p.pool), K.ax, K.ay);
     const out = fadeTop(stackC(K.w, K.h, lt, pl, c, ms, d), 3, 14);
     return p.a < 1 ? fade(out, p.a) : out;
   });
@@ -790,8 +819,8 @@ function tops(L: Layer): number[] {
  * His framed slime barrier (straight or 3/4). `idle`: a soft light runs across his hexagon cells
  * (one ramp step up where it passes), the dripping slime on top churns and licks, the bubbles and
  * drops bob, his runes pulse. `rise`: the stone frame pushes up out of the ground (each column out
- * of its own foot), then the slime fills it from the bottom up and the bubbling top and the drops
- * come up last, his light on the ground growing with it; the last frame is his picture (idle
+ * of its own foot) while the slime starts to fill it from the bottom up; the bubbling top and the
+ * drops come up last, his light on the ground growing with it; the last frame is his picture (idle
  * frame 0).
  */
 function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSprite {
@@ -831,9 +860,10 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
     return stackC(K.w, K.h, light, runes, s, d);
   });
   // The rise: the frame pushes up out of the ground over frames 0-4 (each column out of its own
-  // foot, by its own height), then the slime fills it from the bottom over frames 5-10 (its level
-  // climbing from the wall's ground line, fitted through the slime's feet), the drops come up over
-  // 8-10. Frame 11 is his picture.
+  // foot, by its own height); from frame 2 the slime fills it from the bottom at an even pace up
+  // to frame 11 (its level climbing from the wall's ground line, fitted through the slime's feet),
+  // the drops come up over 8-10 and his light on the ground grows evenly over frames 2-10, so
+  // the wall's light climbs in even steps. Frame 11 is his picture.
   const fFoot = feet(frame), fTop = tops(frame);
   const raw = feet(slime);
   // The ground line under the slime: a straight line through the feet of its columns (the
@@ -854,7 +884,7 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
   const ease = (u: number) => 1 - Math.pow(1 - clamp(u, 0, 1), 1.6);
   const rise = range(RISE).map((i) => {
     if (i === RISE - 1) return idle[0];
-    const pf = ease((i + 1) / 5), ps = ease((i - 4) / 6), pt = clamp((i - 7) / 3, 0, 1);
+    const pf = ease((i + 1) / 5), ps = clamp((i - 1.5) / 9.5, 0, 1), pt = clamp((i - 7) / 3, 0, 1);
     const fr = pf >= 1 ? frame : remap(frame, (x, y) => (fFoot[x] < 0 || y > fFoot[x] ? null : [x, y - Math.round((1 - pf) * (fFoot[x] - fTop[x] + 2))]));
     let sl: Layer | null = null;
     if (ps > 0) {
@@ -862,7 +892,7 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
       sl = cut(s, (x, y) => ground(x) - y <= ps * hMax + 2.5 * (pnoise(x, i * 3, 6, 0, 0, seed + 4) - 0.5) * 2, 4);
     }
     const d = pt > 0 ? cut(drops, (x, y) => grain(x, y, seed + 6) < pt, 0, false) : null;
-    const lt = dimGlow(light, Math.round((1 - ease((i - 2) / 8)) * (ALPHA_STEPS + 1)));
+    const lt = glowMul(light, clamp((i - 1) / 9, 0, 1));
     return stackC(K.w, K.h, lt, fr, sl, d);
   });
   return vfxSprite(kind, label, [K.ax, K.ay], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 10, loop: true } });
@@ -969,42 +999,45 @@ function mist3d(o: Orient, hk: number, t: number): Canvas {
 }
 
 /**
- * Our end-on mist curtain with the new frame counts. `idle` (8 at 10 fps) runs the same churn as
- * before over a finer step (t = f / 8; frame 0 is our old idle frame 0 exactly), its drops slide
- * down and its bubbles swell and shrink on the same cycle. `rise` (12 at 12 fps) boils up through
- * our old heights (0.2, 0.45, 0.7, 0.92, 1.02, 1, eased between them), its drops climbing with it,
- * and runs the churn into idle frame 0, which is its last frame.
+ * Our end-on mist curtain with the new frame counts, made of our own frames. `idle` (8 at 10 fps):
+ * the even frames 0, 2, 4, 6 are our old idle frames 0-3 pixel for pixel (t = f / 8 runs the same
+ * churn); the odd frames lie halfway in time, their bubbles halfway in size. `rise` (12 at 12 fps):
+ * the odd frames 1, 3 ... 11 are our old rise frames 0-5 pixel for pixel (heights 0.2, 0.45, 0.7,
+ * 0.92, 1.02, 1); the even frames lie halfway in height and time and keep the drops of the old frame
+ * before them (frame 0 boils up at height 0.1 with the first frame's drops). The last rise frame
+ * runs into idle frame 0 as before.
  */
 function wallDepth(): WorldSprite {
   const o = orientations().wall_depth;
   const at = (u: number, s: number, v: number): B.Pt => proj(o, u, s, v);
   const HK = [0.2, 0.45, 0.7, 0.92, 1.02, 1];
-  const idleAt = (t: number): Canvas => {
+  /** Bubble k's radius on old idle frame f (every third one big, as before). */
+  const bubbleR = (k: number, f: number) => ((k + f) % 3 === 0 ? 2 : 1.2);
+  const idle = range(IDLE).map((i) => {
+    const t = i / IDLE;
     const c = mist3d(o, 1, t);
     oDrops(c, orange(8).map((k) => {
       const ph = B.fract(B.rnd(143, k) + t);
       const q = at(8 + B.rnd(144, k) * 240, MIST_HALF * 0.6, 60 - ph * 56);
       return [q[0], q[1], 1.6, 2 + ph * 2] as [number, number, number, number];
     }));
+    const f0 = Math.floor(i / 2), f1 = (Math.ceil(i / 2)) % (IDLE / 2);
     oBubbles(c, orange(8).map((k) => {
       const q = at(8 + B.rnd(145, k) * 240, (k % 2 ? 1 : -1) * (MIST_HALF + 2 + B.rnd(148, k) * 4), 3 + B.fract(B.rnd(146, k) + t) * 12);
-      // (the old 4-frame loop showed every third bubble big; here each swells and shrinks in turn,
-      // the same ones big on frame 0)
-      const w = Math.max(0, Math.cos(TAU * (t + (k % 3) / 3)));
-      return [q[0], q[1], 1.2 + 0.8 * w] as [number, number, number];
+      return [q[0], q[1], (bubbleR(k, f0) + bubbleR(k, f1)) / 2] as [number, number, number];
     }));
     return c;
-  };
-  const idle = range(IDLE).map((f) => idleAt(f / IDLE));
-  const rise = range(RISE).map((f) => {
-    if (f === RISE - 1) return idle[0];
-    const u = (f * (HK.length - 1)) / (RISE - 1);
-    const j = Math.min(HK.length - 2, Math.floor(u));
-    const hk = HK[j] + (HK[j + 1] - HK[j]) * smooth(0, 1, u - j);
-    const t = fract((f - (RISE - 1)) / IDLE);
+  });
+  const rise = range(RISE).map((j) => {
+    // Odd frames: our old frame f exactly. Even frames: halfway between old frames f - 1 and f.
+    const f = Math.floor(j / 2);
+    const odd = j % 2 === 1;
+    const hk = odd ? HK[f] : f === 0 ? HK[0] / 2 : (HK[f - 1] + HK[f]) / 2;
+    const t = odd ? f / 6 : fract((2 * f - 1) / 12);
+    const df = odd || f === 0 ? f : f - 1; // whose drops
     const c = mist3d(o, hk, t);
     oDrops(c, orange(10).map((k) => {
-      const q = at(4 + B.rnd(141, k) * 248, MIST_HALF * 0.6, 10 + B.rnd(142, k) * 90 * Math.min(1, hk));
+      const q = at(4 + B.rnd(141, k, df) * 248, MIST_HALF * 0.6, 10 + B.rnd(142, k, df) * 90 * Math.min(1, hk));
       return [q[0], q[1], 1.6, 2] as [number, number, number, number];
     }));
     return c;
@@ -1154,6 +1187,19 @@ function main(): void {
     const anims = Object.entries(s.anims).map(([k, a]) => `${k}:${a.frames.length}@${a.fps}${a.loop === false ? ' once' : ''}`).join(' ');
     console.log(`${GROUP} ${s.name.padEnd(12)} ${f0.w}x${f0.h} anchor ${s.anchor} ${anims}`);
   }
+  // POISON_LIGHT=1: each frame's light (mean alpha x brightness, per mille), for the flash check.
+  if (process.env.POISON_LIGHT)
+    for (const s of sprites)
+      for (const [k, a] of Object.entries(s.anims)) {
+        const e = a.frames.map((f) => {
+          let sum = 0;
+          for (let i = 0; i < f.px.length; i += 4) sum += (f.px[i + 3] / 255) * ((0.3 * f.px[i] + 0.59 * f.px[i + 1] + 0.11 * f.px[i + 2]) / 255);
+          return (sum / (f.w * f.h)) * 1000;
+        });
+        const peak = Math.max(...e);
+        const steps = e.map((v, i) => (i ? Math.abs(v - e[i - 1]) : a.loop !== false ? Math.abs(v - e[e.length - 1]) : 0));
+        console.log(`light ${s.name.padEnd(12)} ${k.padEnd(5)} max step ${((Math.max(...steps) / peak) * 100).toFixed(1).padStart(5)} %  [${e.map((v) => v.toFixed(1)).join(' ')}]`);
+      }
 }
 
 if (process.argv[1] && /vfx-poison-v3\.ts$/.test(process.argv[1])) main();

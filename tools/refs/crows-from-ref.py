@@ -15,22 +15,25 @@ black smoke behind the flock), small loose feathers are found as separate pieces
 left (the vortex, the smoke) is a veil un-mixed from his background into colour plus alpha. Each
 layer is area-averaged (a true box filter) down to the game scale on one grid (the anchor at the
 centre of the swarm's mass, shared by both pictures) and snapped to a palette sampled from his pixels
-at that scale in brightness bands, up to his brightest beak, rim and vortex glints, with brightness
-weighing more than hue in the snap, so his highlights keep their count and level. Dark edges on open
-air get a 1 px outline in the colour of his own crow edges. Every eye is the same round stamp at the
-traced eye, in his hue: a dark crimson ring round a dim mauve core.
+at that scale in brightness bands, up to his brightest beak, rim and vortex glints, and in tiers of
+chroma inside each band, so his blue-violet (indigo) sheen keeps colours of its own instead of being
+averaged into the grey-violets; brightness weighs a little more than hue in the snap. So his highlights
+and his sheen keep their count and level. Dark edges on open air get a 1 px outline in the colour of his
+own crow edges. Every eye is the same round stamp at the traced eye, in his hue and no brighter than his:
+a dark crimson ring round a dim mauve core.
 
 The other frames are made from the same pixels, so the crows stay his: each crow is lifted off his
-picture at sheet scale with its holes closed, and beats its wings by turning his own raised-wing
-pixels about the shoulder (30 and 60 degrees, nearest neighbour, before the shrink), the far wing
-behind the body and the near wing in front. They move by whole pixels and are mirrored to turn
-round; where one of his flock crows is partly hidden in his flock (a wing and a head), the whole crow
+picture at sheet scale with its holes closed, and beats its wings with his own raised-wing pixels:
+the near wing turns about the shoulder (30 and 60 degrees, nearest neighbour, before the shrink) in
+front of the body, the far wing sinks behind the body (half way at 'mid', hidden at 'down'). They move
+by whole pixels and are mirrored to turn round (as soon as they fly the other way); where one of his flock crows is partly hidden in his flock (a wing and a head), the whole crow
 of his left picture flies its place while it is away from the flock. One-pixel hairs and loose crumbs
 of the lifted pieces are left out, and so are loose black scratches of wisp, so nothing reads as a
-stray line. His vortex is unwrapped about its eye into polar space (nearest neighbour, so its pixels
-come back unblurred); the parts his crows hid are filled with his own stripes, copied round from the
-visible arc at the same radius and cross-faded in, and it spins by shifting the angle and closes by
-scaling the radius. His smoke trails in behind the flock and is left behind; his feathers drift
+stray line, and so is a feather tucked behind a crow's head. His vortex is unwrapped about its eye
+into polar space (nearest neighbour, so its pixels come back unblurred); the parts his crows hid are
+filled with his own vortex turned rigidly about its eye (so his spiral arms run on through them), and it
+spins by shifting the angle and closes by scaling the radius. His faint glow streak outside the vortex
+is left out (it would read as an opaque bar on any ground but his). His smoke trails in behind the flock and is left behind; his feathers drift
 back. Soft pixels are kept only on the swarm's outer edge: inside it everything is solid, so the
 ground never shows through his art. The 'summon' anim (our proposal: he painted only the fly frames)
 opens his vortex at the caster and brings the crows out of it head first, ending on his left picture.
@@ -43,7 +46,8 @@ mean luma more than 20 % off its neighbour's (a flash), a crow coming into or ou
 going behind the vortex, or (fly) an opaque mass more than 25 % off its neighbour's, a light (alpha x
 luma) more than 1.5x off it, a crow moving more than 25 px from one frame to the next (R1's swoop back
 to L1's place: 32), a vortex whose lit violet share is more than 30 % off his picture's (fly 1, 2, 5),
-or key frames whose pixels above luma 90 and 100 are more than 20 % off his picture's at game scale.
+key frames whose pixels above luma 90 and 100, or of chroma above 30 and 40, are more than 20 % off his
+picture's at game scale, or an eye brighter than his brightest.
 """
 import json
 import os
@@ -160,12 +164,14 @@ def shrink(arr, cov, anchor, s, out_size, out_anchor):
 
 
 SNAP_Y = np.array([0.299, 0.587, 0.114], np.float32)
+SNAP_W = 2.0  # the weight of the squared brightness difference, on top of the RGB distance
 
 
 def snap_idx(col, pal):
-    """The nearest palette colour, a difference in brightness weighing about three times a difference in
-    hue, so his highlights and his darks keep their brightness when they snap."""
-    d = ((col[..., None, :] - pal[None, None]) ** 2).sum(-1) + 8.0 * ((col @ SNAP_Y)[..., None] - (pal @ SNAP_Y)[None, None]) ** 2
+    """The nearest palette colour, a difference in brightness weighing a little more than a difference in
+    hue, so his highlights and his darks keep their brightness when they snap, and his blue-violet sheen
+    keeps its hue."""
+    d = ((col[..., None, :] - pal[None, None]) ** 2).sum(-1) + SNAP_W * ((col @ SNAP_Y)[..., None] - (pal @ SNAP_Y)[None, None]) ** 2
     return np.argmin(d, -1)
 
 
@@ -264,29 +270,31 @@ print('his character:', heights, '-> median', HIS_CHAR_H, 'scale', round(S, 4))
 # Each crow is the polygon around it; where crows overlap the one listed later is in front. The part
 # of a crow above its `cut` line (its shoulders) is its raised wings: left of `split` is the 'lo'
 # wing, right of it the 'hi' wing; `near` is the wing on our side (drawn over the body when it beats).
-# `pivot` is each wing's shoulder joint, the point it turns about when it beats: down and away from
-# the body (a wing whose tip is left of its shoulder turns anticlockwise), or as `turn` says (L3's
-# upright far wing sweeps back behind it rather than forward over its head). `face` is the way it
+# `pivot` is each wing's shoulder joint: the near wing turns about it when it beats, down and away from
+# the body (a wing whose tip is left of its shoulder turns anticlockwise); the far wing sinks toward it,
+# behind the body, so it never swings up into a blade or forward past the beak. `face` is the way it
 # looks (1 right, -1 left).
 
 CROWS = {
     'L': [
+        # L4's outline stops at the lower edge of its raised near wing: the dark round eye of the vortex under that
+        # wing (and the violet ring round it) is the vortex's, so it stays with the vortex instead of flying off as
+        # a flat dark block under the crow.
         {'name': 'L4', 'cut': [(292, 921), (314, 918), (322, 914), (345, 916), (356, 925), (372, 935), (396, 941)], 'split': 330, 'near': 'hi', 'eye': (329, 928), 'face': -1,
          'pivot': {'lo': (320, 916), 'hi': (344, 919)},
-         'poly': [(298, 893), (304, 891), (312, 899), (318, 907), (322, 914), (330, 916), (338, 919), (343, 924), (345, 912), (350, 904), (357, 896), (365, 889), (372, 884), (379, 879), (383, 884), (386, 896), (389, 910), (392, 922), (392, 932), (386, 936), (375, 937), (364, 940), (358, 946), (350, 950), (342, 950), (336, 946), (330, 944), (324, 945), (318, 944), (315, 939), (317, 932), (315, 926), (309, 919), (303, 909), (298, 900)]},
+         'poly': [(298, 893), (304, 891), (312, 899), (318, 907), (322, 914), (330, 916), (338, 919), (343, 924), (345, 912), (350, 904), (357, 896), (365, 889), (372, 884), (379, 879), (383, 884), (386, 896), (388, 906), (384, 911), (374, 913), (366, 917), (363, 924), (365, 932), (364, 940), (358, 946), (350, 950), (342, 950), (336, 946), (330, 944), (324, 945), (318, 944), (315, 939), (317, 932), (315, 926), (309, 919), (303, 909), (298, 900)]},
         {'name': 'L1', 'cut': [(268, 862), (293, 860), (298, 855), (322, 855), (329, 860), (346, 864), (380, 862)], 'split': 320, 'near': 'hi', 'eye': (308, 863), 'face': -1,
          'pivot': {'lo': (297, 859), 'hi': (326, 859)},
          'poly': [(276, 838), (282, 840), (288, 846), (296, 851), (302, 855), (310, 855), (318, 857), (322, 860), (326, 856), (332, 848), (338, 840), (343, 833), (348, 826), (356, 820), (364, 814), (370, 809), (374, 811), (375, 820), (375, 832), (372, 842), (366, 850), (358, 857), (350, 861), (345, 868), (343, 878), (340, 888), (335, 896), (326, 900), (316, 897), (309, 892), (304, 884), (299, 878), (295, 873), (294, 867), (296, 863), (290, 861), (284, 857), (279, 851), (275, 844)]},
         # L2 sits on L3's raised wing: its belly under the head is cut along that wing in his picture, so the
-        # lifted crow leaves that cut edge (a drip under the throat) behind (`trim`). Its far wing, up over
-        # its head, sweeps back when it beats, never down across its beak.
+        # lifted crow leaves that cut edge (a drip under the throat) behind (`trim`).
         {'name': 'L2', 'cut': [(395, 866), (428, 866), (440, 856), (448, 846), (458, 843), (472, 841), (492, 841)], 'split': 449, 'near': 'lo', 'eye': (468, 852), 'face': 1,
-         'pivot': {'lo': (446, 845), 'hi': (453, 843)}, 'turn': {'hi': -1}, 'trim': [(452, 864), (474, 864), (474, 878), (452, 878)],
+         'pivot': {'lo': (446, 845), 'hi': (453, 843)}, 'trim': [(452, 864), (474, 864), (474, 878), (452, 878)],
          'poly': [(406, 808), (411, 809), (418, 819), (425, 827), (432, 834), (440, 839), (447, 843), (453, 841), (459, 835), (466, 828), (474, 821), (481, 815), (486, 812), (488, 817), (483, 826), (477, 834), (471, 841), (473, 846), (479, 852), (484, 858), (487, 864), (481, 865), (473, 863), (468, 867), (466, 872), (462, 872), (446, 871), (436, 868), (428, 863), (420, 859), (412, 853), (405, 847), (401, 839), (400, 829), (402, 818)]},
         # L3's outline hugs its beak: the dark smoke streak under it is the vortex's, not the crow's. It
         # also hugs the tip of its raised near wing: the dark stripe edge running right from it is the vortex's.
         {'name': 'L3', 'cut': [(365, 932), (400, 936), (420, 918), (430, 914), (440, 913), (458, 913), (475, 913)], 'split': 431, 'near': 'lo', 'eye': (446, 924), 'face': 1,
-         'pivot': {'lo': (430, 913), 'hi': (447, 912)}, 'turn': {'hi': -1},
+         'pivot': {'lo': (430, 913), 'hi': (447, 912)},
          'poly': [(388, 853), (393, 861), (399, 868), (410, 876), (416, 888), (422, 898), (428, 906), (433, 910), (436, 900), (436, 885), (437, 870), (442, 865), (452, 864), (460, 866), (463, 876), (462, 892), (459, 906), (458, 913), (461, 920), (463, 926), (461, 932), (456, 935), (452, 940), (450, 946), (442, 950), (438, 958), (434, 963), (420, 963), (414, 956), (412, 948), (406, 942), (398, 938), (392, 932), (389, 922), (386, 910), (384, 898), (382, 886), (381, 872), (383, 860)],
          'keep': [(414, 946), (440, 946), (440, 965), (414, 965)]},
     ],
@@ -509,8 +517,21 @@ def bands(px, lu, edges, ns):
     return np.unique(np.concatenate([median_palette(px[(lu >= lo) & (lu < hi)], n) for (lo, hi), n in zip(zip(edges[:-1], edges[1:]), ns)]), axis=0)
 
 
-# Crows and feathers: his black-violets, his lit feathers, and his brightest (pale beaks, lilac sheen).
-SOLID = bands(plain, pl, [0, 60, 85, 98, 112, 999], [16, 9, 6, 4, 3])
+def tiers(px, spec):
+    """Luma bands sampled separately in tiers of chroma (max - min channel): {(lo, hi): (edges, counts)}. His
+    blue-violet sheen, where blue stands well clear of green, keeps entries of its own in every band instead
+    of being averaged into the many grey-violets around it."""
+    ch = px.max(1) - px.min(1)
+    lu = lum(px)
+    return np.unique(np.concatenate([bands(px[(ch >= lo) & (ch < hi)], lu[(ch >= lo) & (ch < hi)], e, n) for (lo, hi), (e, n) in spec.items()]), axis=0)
+
+
+# Crows and feathers: his black-violets, his lit feathers, and his brightest (pale beaks, lilac sheen), with
+# his blue-violet (indigo) sheen sampled on its own: chroma 30-40 and 40 up, in every band.
+SOLID = tiers(plain, {(0, 25): ([0, 60, 85, 98, 112, 999], [12, 6, 4, 3, 3]),
+                      (25, 32): ([0, 45, 60, 75, 95, 999], [3, 2, 2, 2, 1]),
+                      (32, 40): ([0, 30, 45, 60, 70, 85, 999], [2, 2, 2, 2, 2, 1]),
+                      (40, 999): ([0, 40, 55, 70, 85, 999], [2, 2, 2, 2, 2])})
 veil_cols = []
 for k in PICS:
     rgb_, a_ = LAY[k]['veil']
@@ -518,8 +539,12 @@ for k in PICS:
     veil_cols.append(C_[A_ >= 0.5])
 veil_cols = np.concatenate(veil_cols + [crow_cols[mag]])
 # The veil: his vortex's dark, its violet, its magenta stripes and their brightest light.
-VEIL = bands(veil_cols, lum(veil_cols), [0, 40, 70, 92, 104, 999], [8, 8, 7, 3, 4])
+VEIL = tiers(veil_cols, {(0, 25): ([0, 20, 40, 999], [3, 2, 1]),
+                         (25, 35): ([0, 20, 40, 70, 999], [1, 1, 1, 1]),
+                         (35, 45): ([0, 20, 30, 45, 70, 999], [1, 1, 1, 1, 1]),
+                         (45, 999): ([0, 30, 45, 70, 92, 104, 999], [2, 2, 5, 7, 3, 4])})
 GLOW = VEIL[lum(VEIL) >= 40]
+GLOW_D = float(np.sqrt(((GLOW[lum(GLOW) >= 70].mean(0) - BG) ** 2).sum()))  # how far his vortex's lit violet stands from his background
 ALEVELS = [(0.72, 255), (0.42, 170)]
 EDGE_LUM = 52.0  # edge pixels darker than this are his outline
 PAL_OPAQUE = np.concatenate([SOLID, VEIL])
@@ -537,9 +562,10 @@ for k in PICS:
 edge_px = np.concatenate(edge_px)
 OUTLINE = np.round(np.median(edge_px, 0)).astype(np.float32)
 
-# His eyes: a dark crimson ring round a dim mauve core (his hue: the JPEG shows them mauve, not rose), the
-# same round stamp on every crow, centred on the traced eye. Plain eyes, as he painted them.
-EYE_RING, EYE_MID, EYE_CORE = (np.array(c, np.float32) for c in ((85, 25, 55), (140, 60, 95), (180, 105, 135)))
+# His eyes: a dark crimson ring round a dim mauve core (his hue and level: his brightest eye pixels are
+# about (146, 99, 117) to (156, 109, 143), luma 115-127, round a crimson-violet glow), the same round stamp
+# on every crow, centred on the traced eye. Plain eyes, as he painted them.
+EYE_RING, EYE_MID, EYE_CORE = (np.array(c, np.float32) for c in ((85, 25, 55), (120, 55, 88), (150, 95, 125)))
 EYE_STAMP = ['.rr.', 'rccr', 'rmmr', '.rr.']
 print('solid', len(SOLID), 'veil', len(VEIL), 'outline', OUTLINE.astype(int).tolist(), 'brightest solid', SOLID[np.argmax(lum(SOLID))].astype(int).tolist(),
       'brightest glow', GLOW[np.argmax(lum(GLOW))].astype(int).tolist())
@@ -599,9 +625,10 @@ ORDER = {k: [p['name'] for p in PIECES[k] if p['kind'] == 'crow'] for k in PICS}
 FEATHERS = {k: [p['name'] for p in PIECES[k] if p['kind'] == 'feather'] for k in PICS}
 
 
-# --- the wing beat: his own raised wings turned about the shoulder at sheet scale --------------------------
+# --- the wing beat: his own raised wings, the near one turned about the shoulder, the far one sunk ---------
 
-WING_DEG = {'up': 0, 'mid': 30, 'down': 60}
+WING_DEG = {'up': 0, 'mid': 30, 'down': 60}  # the near wing's turn about its shoulder
+FAR_SINK = 0.45  # at 'mid' the far wing sinks this much of its length toward its shoulder, behind the body
 FRAG = 10  # game px: in the in-betweens, loose crumbs smaller than this (a crow's or a wisp's) are left out
 FRAG_V = 25  # game px: a loose scratch of black wisp (or of the spun vortex) smaller than this is left out of the frames we make
 
@@ -649,7 +676,8 @@ def sheet_crow(key, cr):
             ys, xs = np.nonzero(part)
             tip = np.argmax(np.hypot(xs - (px - x0), ys - (py - y0)))
             out['wings'].append({'side': side, 'mask': pad(part), 'pivot': (px - x0 + PADS, py - y0 + PADS),
-                                 'sign': cr.get('turn', {}).get(side, 1 if xs[tip] > px - x0 else -1), 'near': side == cr['near']})
+                                 'tip': (xs[tip] + PADS, ys[tip] + PADS), 'above': pad(yy < line[None, :]),
+                                 'sign': 1 if xs[tip] > px - x0 else -1, 'near': side == cr['near']})
     return out
 
 
@@ -659,9 +687,12 @@ _poses = {}
 
 def pose(name, mode):
     """(mask, rgba, eyes, see) of his crow `name` at its place in his picture, wings 'up' (as he painted
-    them), 'mid' or 'down' (each wing turned down about its shoulder by 30 or 60 degrees: the far wing
-    behind the body, the near wing in front), shrunk to the game scale, snapped, gaps closed, eye stamped.
-    `see`: the gaps between its feathers where his vortex showed through (see-through over anything)."""
+    them), 'mid' or 'down', shrunk to the game scale, snapped, gaps closed, eye stamped. The near wing turns
+    down about its shoulder by 30 or 60 degrees, in front of the body. The far wing goes down behind the body:
+    at 'mid' it sinks toward its shoulder along its own length (FAR_SINK of it), and only what is still above
+    the shoulder line shows (his tip, over the back); at 'down' it is hidden behind the body. So it never
+    swings up into a blade over the head or out past the beak. `see`: the gaps between its feathers where his
+    vortex showed through (see-through over anything)."""
     k = (name, mode)
     if k in _poses:
         return _poses[k]
@@ -679,6 +710,14 @@ def pose(name, mode):
         for it in [w for w in sc['wings'] if not w['near']] + ['body'] + [w for w in sc['wings'] if w['near']]:
             if it == 'body':
                 pm, pc, pg = sc['mask'] & ~allw, sc['rgb'], sc['gap']
+            elif not it['near']:
+                if mode == 'down':
+                    continue
+                dx = -int(round(FAR_SINK * (it['tip'][0] - it['pivot'][0])))
+                dy = -int(round(FAR_SINK * (it['tip'][1] - it['pivot'][1])))
+                pm = shift_bool(it['mask'], dy, dx) & it['above']
+                pc = shift_bool(sc['rgb'], dy, dx)
+                pg = shift_bool(it['mask'] & sc['gap'], dy, dx) & it['above']
             else:
                 pm, pc = turn_nn(it['mask'], sc['rgb'], it['sign'] * WING_DEG[mode], *it['pivot'])
                 pg = turn_nn(it['mask'] & sc['gap'], sc['rgb'], it['sign'] * WING_DEG[mode], *it['pivot'])[0]
@@ -725,127 +764,100 @@ VCX, VCY, VRAD = VORTEX[0] - PICS['L'][0], VORTEX[1] - PICS['L'][1], VORTEX[2]
 DR, RMAX, NT = 0.5, 104.0, 1440  # polar grid: radius step (sheet px), outer radius, angle bins
 
 
-def runs(mask):
-    """Circular runs of True in a 1-D mask: [(start, length)], start in [0, n)."""
-    n = len(mask)
-    if mask.all():
-        return [(0, n)]
-    if not mask.any():
-        return []
-    r = int(np.argmin(mask))  # start the scan on a False, so no run is cut by the wrap
-    m = np.roll(mask, -r)
-    out, i = [], 0
-    while i < n:
-        if m[i]:
-            j = i
-            while j < n and m[j]:
-                j += 1
-            out.append(((i + r) % n, j - i))
-            i = j
-        else:
-            i += 1
-    return out
+TURNS = [d for d in range(-180, 180, 2) if abs(d) >= 24]  # the turns (degrees) of his vortex tried for a hidden part
 
 
-def circ_dist(mask):
-    """For a circular 1-D mask, each bin's distance (in bins) to the nearest True bin."""
-    n = len(mask)
-    if not mask.any():
-        return np.full(n, n, np.float32)
-    m3 = np.concatenate([mask, mask, mask])
-    j = np.arange(3 * n)
-    last = np.maximum.accumulate(np.where(m3, j, -10 ** 9))
-    nxt = np.minimum.accumulate(np.where(m3, j, 10 ** 9)[::-1])[::-1]
-    return np.minimum(j - last, nxt - j)[n:2 * n].astype(np.float32)
+def turned_src(dx, dy, deg):
+    """Where a point (dx, dy from the vortex's eye, sheet px) comes from when the vortex is turned by deg."""
+    a = np.deg2rad(deg)
+    return np.round(VCX + dx * np.cos(a) + dy * np.sin(a)).astype(int), np.round(VCY - dx * np.sin(a) + dy * np.cos(a)).astype(int)
 
 
-CANDS = sorted(range(-NT + 1, NT), key=lambda k: (abs(k), k))  # angular offsets, smallest first
-BAND = 8  # polar rows (4 sheet px) that share one copy offset, so his stripes stay continuous across radii
-
-
-def polar_vortex():
-    """His vortex unwrapped about its eye: rows are radii, columns angles (clockwise from +x). Where his
-    crows and feathers hid it, each band of rings is filled with his own stripes: the visible arc at the
-    same radius, copied across by the smallest angular offset whose source he painted (the offset a band
-    used is kept by the next band while it fits, so a stripe runs on across radii), cross-faded into his
-    pixels over a few sheet pixels at each end. A hole longer than any visible arc is filled in
-    overlapping pieces, each cross-faded into the next. Only rings he hid almost all of (the dark eye)
-    take the ring's own average."""
+def filled_vortex():
+    """His vortex (sheet pixels, premultiplied) with the parts his crows and feathers hid filled by his own
+    vortex turned rigidly about its eye: a spiral turned is still the same spiral, so his arms run on through
+    the filled part instead of stacking up as rings. For each hidden part the turn is the one whose pixels best
+    match his own all round its edge (so his stripes meet at the seam), among the turns that cover most of it
+    with pixels he painted; what that turn leaves (its source hidden too) takes the next best turn, and so on.
+    Only what no turn reaches (round the dark eye he hid almost entirely) takes the ring's own median."""
     L = LAY['L']
     rgb, alpha = L['veil']
-    pm = premul(rgb, alpha)
+    pm = premul(rgb, alpha).astype(np.float32)
     H, W = alpha.shape
+    # What his crows hid, with the gaps between their feathers (where his vortex shows in pieces shaped like
+    # the crow) and a 2 px fringe round them (their dark halo): once the crows fly off, none of it may stay
+    # behind in the vortex as the ghost of a crow.
     hidden = np.zeros((H, W), bool)
     for it in L['crows'] + L['feathers']:
         hidden |= it['mask']
-    known = (~hidden).astype(np.float32)
+    for cr in L['crows']:
+        hidden |= poly_mask(cr['poly'], (H, W), PICS['L'][:2])
+    hidden = dilate(hidden, 2)
+    yy, xx = np.mgrid[0:H, 0:W]
+    dxa, dya = (xx - VCX).astype(np.float32), (yy - VCY).astype(np.float32)
+    rad = np.hypot(dxa, dya)
+    zone = hidden & (rad < RMAX)
+    out = pm.copy()
+    good = ~zone  # pixels whose colour is known (his, or filled already)
+    for pts in sorted(components(zone), key=lambda P: (-len(P), P[0])):
+        P = np.array(pts)
+        hole = np.zeros((H, W), bool)
+        hole[P[:, 0], P[:, 1]] = True
+        rim = dilate(hole, 4) & ~hole & ~hidden
+        ry, rx = np.nonzero(rim)
+        for _ in range(6):
+            hy, hx = np.nonzero(hole & ~good)
+            if not len(hy):
+                break
+            best = None
+            for d in TURNS:
+                sx, sy = turned_src(dxa[hy, hx], dya[hy, hx], d)
+                ok = (sx >= 0) & (sx < W) & (sy >= 0) & (sy < H)
+                ok[ok] = good[sy[ok], sx[ok]]
+                cover = float(ok.mean())
+                if cover < 0.25:
+                    continue
+                tx, ty = turned_src(dxa[ry, rx], dya[ry, rx], d)
+                tok = (tx >= 0) & (tx < W) & (ty >= 0) & (ty < H)
+                tok[tok] = good[ty[tok], tx[tok]]
+                if tok.sum() < 8:
+                    continue
+                err = float(np.abs(out[ry[tok], rx[tok]] - out[ty[tok], tx[tok]]).mean())
+                score = err + 40.0 * (1.0 - cover)
+                if best is None or score < best[0]:
+                    best = (score, d)
+            if best is None:
+                break
+            sx, sy = turned_src(dxa[hy, hx], dya[hy, hx], best[1])
+            ok = (sx >= 0) & (sx < W) & (sy >= 0) & (sy < H)
+            ok[ok] = good[sy[ok], sx[ok]]
+            out[hy[ok], hx[ok]] = out[sy[ok], sx[ok]]
+            good[hy[ok], hx[ok]] = True
+    left = zone & ~good
+    if left.any():
+        ri = np.round(rad).astype(int)
+        for r_ in np.unique(ri[left]):
+            ring = (ri == r_) & ~zone
+            near = r_
+            while not ring.any() and near > 0:  # a ring he hid all of takes the nearest ring inside it he painted
+                near -= 1
+                ring = (ri == near) & ~zone
+            out[left & (ri == r_)] = np.median(out[ring], 0) if ring.any() else 0
+    return out
+
+
+def polar_vortex():
+    """His filled vortex unwrapped about its eye: rows are radii, columns angles (clockwise from +x). Nearest
+    neighbour (the polar grid is finer than his pixels: 0.5 px by at most 0.45 px), so wrapped back unturned
+    it gives his pixels back, and turned it moves them without blurring his stripes."""
+    F = filled_vortex()
+    H, W = F.shape[:2]
     rr = np.arange(0, RMAX, DR, dtype=np.float32)
     th = np.arange(NT, dtype=np.float32) * (2 * np.pi / NT)
-    X = VCX + rr[:, None] * np.cos(th)[None, :]
-    Y = VCY + rr[:, None] * np.sin(th)[None, :]
-    # Nearest neighbour (the polar grid is finer than his pixels: 0.5 px by at most 0.45 px), so unwrapped
-    # and wrapped back unturned it gives his pixels back, and turned it moves them without blurring his stripes.
-    xi, yi = np.round(X).astype(int), np.round(Y).astype(int)
+    xi = np.round(VCX + rr[:, None] * np.cos(th)[None, :]).astype(int)
+    yi = np.round(VCY + rr[:, None] * np.sin(th)[None, :]).astype(int)
     inside = (yi >= 0) & (yi < H) & (xi >= 0) & (xi < W)
-    yc, xc = np.clip(yi, 0, H - 1), np.clip(xi, 0, W - 1)
-    ok = ~inside | (known[yc, xc] > 0)  # outside his picture: known, and empty
-    P = np.where((inside & ok)[..., None], pm[yc, xc], 0).astype(np.float32)
-    out = P.copy()
-    prev = []  # (span start, span length, offset) used by the band before
-    # Each ring's own average as he painted it; a ring he hid all of (round the eye) takes the nearest
-    # ring's that he did paint.
-    have = [i for i in range(len(rr)) if ok[i].sum() >= NT // 20]
-    ring = np.stack([np.median(P[min(have, key=lambda h: (abs(h - i), -h)), ok[min(have, key=lambda h: (abs(h - i), -h))]], 0)
-                     for i in range(len(rr))])
-    for b0 in range(0, len(rr), BAND):
-        rows = np.arange(b0, min(b0 + BAND, len(rr)))
-        vis = ok[rows].all(0)  # the angles he painted in every ring of the band
-        hid = ~vis
-        if not hid.any():
-            prev = []
-            continue
-        r_mid = float(rr[rows].mean())
-        fade = int(np.clip(round(3.0 / (max(r_mid, 1.0) * 2 * np.pi / NT)), 8, 90))  # ~3 sheet px of arc
-        vis_runs = [n for _, n in runs(vis)]
-        longest = max(vis_runs) if vis_runs else 0
-        if longest < max(2 * fade + 8, NT // 24):
-            # He hid almost all of this ring (the eye under his crows): the ring's own average.
-            for i in rows:
-                out[i, ~ok[i]] = ring[i]
-            prev = []
-            continue
-        need = circ_dist(hid) <= fade  # the bins that take copied stripes (the hole and its cross-fade)
-        num = np.zeros((len(rows), NT, 4), np.float32)
-        den = np.zeros(NT, np.float32)
-        used = []
-        for a0, n in runs(need):
-            pieces = max(1, int(np.ceil((n - fade) / max(1, longest - 2 - fade))))
-            ln = int(np.ceil((n + (pieces - 1) * fade) / pieces))
-            for c in range(pieces):
-                s0 = a0 + c * (ln - fade)
-                span = (s0 + np.arange(ln)) % NT
-                cands = [k for _, _, k in prev] + CANDS
-                k = next((k for k in cands if k % NT and vis[(span + k) % NT].all()), None)
-                if k is None:
-                    continue
-                used.append((s0, ln, k))
-                # A trapezoid weight: full in the middle, fading over `fade` bins where it overlaps the
-                # next piece (or where it meets his own pixels, which the outer blend handles).
-                t = np.arange(ln, dtype=np.float32)
-                w = np.minimum(1.0, np.minimum(t + 1, ln - t) / max(1, fade))
-                num[:, span] += P[rows][:, (span + k) % NT] * w[None, :, None]
-                den[span] += w
-        prev = used
-        cp = num / np.maximum(den[None, :, None], 1e-6)
-        for j, i in enumerate(rows):
-            # His own pixel stays where he painted it, beyond the fade; inside the hole the copy stands.
-            wh = np.clip(circ_dist(~ok[i]) / fade, 0, 1)
-            wh = np.where(den > 0, wh, 1.0)
-            fill = ~ok[i] & (den <= 0)
-            out[i] = P[i] * wh[:, None] + cp[j] * (1 - wh[:, None])
-            if fill.any():  # nothing he painted fits here: the ring's own average
-                out[i, fill] = ring[i]
-    return out
+    return np.where(inside[..., None], F[np.clip(yi, 0, H - 1), np.clip(xi, 0, W - 1)], 0).astype(np.float32)
 
 
 POLAR = polar_vortex()
@@ -904,7 +916,7 @@ def vortex(deg=0.0, scale=1.0, glow=1.0):
     """His vortex on the game grid, spun and scaled about its eye in polar space."""
     rgb, a = unpremul(vortex_sheet(deg, scale))
     A, C = shrink_pic('L', rgb, a, padded=True)
-    v = dim(quantize_veil(A, C, VEIL), A, C, glow)
+    v = dim(faint_strips(quantize_veil(A, C, VEIL), scale), A, C, glow)
     if deg or scale != 1:  # spun or scaled: a scratch of its outer wisps turned out loose over open ground goes
         for pts in components(v[..., 3] > 0):
             if len(pts) < FRAG_V:
@@ -913,10 +925,38 @@ def vortex(deg=0.0, scale=1.0, glow=1.0):
     return ('veil', v, 'vortex')
 
 
+def faint_strips(v, scale=1.0):
+    """His vortex without the loose strips of faint glow outside its outer ring (4 px wide or less, on open
+    air), barely above his background, as his faint violet streak right of L3 is: un-mixed as a glow of the
+    vortex's own lit violet they are under half strength, so they are left out rather than laid as an opaque
+    violet bar he did not paint, which is what they would read as on any ground but his panel."""
+    a = v[..., 3]
+    c = v[..., :3].astype(np.float32)
+    glow_a = np.sqrt(((c - BG) ** 2).sum(-1)) / GLOW_D
+    faint = (a == 255) & (lum(c) > lum(BG)) & (glow_a < 0.5)
+    lit = (a > 0) & (lum(c) > lum(BG)) & (glow_a >= 0.5)
+    yy, xx = np.mgrid[0:OH, 0:OW]
+    out = v.copy()
+    gone = np.zeros(a.shape, bool)
+    for pts in components(faint):
+        P = np.array(pts)
+        m = np.zeros(a.shape, bool)
+        m[P[:, 0], P[:, 1]] = True
+        outside = np.hypot(xx[m] + 0.5 - VC[0], yy[m] + 0.5 - VC[1]).mean() > VRAD * S * scale
+        if outside and not erode(m, 2).any() and (dilate(m) & (a == 0)).any():
+            gone |= m & (hood(lit) == 0)  # the soft fringe hugging a lit stripe or feather stays
+    out[gone] = 0
+    for _ in range(3):  # and a hair one pixel wide left along the strip goes with it
+        on = out[..., 3] > 0
+        out[on & (hood(on) <= 3) & dilate(gone, 2)] = 0
+    return out
+
+
 def his_veil(key):
     rgb, alpha = LAY[key]['veil']
     A, C = shrink_pic(key, rgb, alpha)
-    return quantize_veil(A, C, VEIL if key == 'L' else None)
+    v = quantize_veil(A, C, VEIL if key == 'L' else None)
+    return faint_strips(v) if key == 'L' else v
 
 
 SMOKE = his_veil('R')
@@ -980,6 +1020,24 @@ def compose(items, his=None):
     and the alpha steps), pieces are pasted. Then the clean-up: gaps shut in by the swarm are closed,
     specks of 3 px or less go, soft pixels inside the swarm go solid, and a piece's dark edge on open air
     gets his outline. Items: ('veil', rgba[, 'vortex']) or ('piece', mask, rgba, eyes, see, name)."""
+    if his is None:
+        # A feather or wisp partly tucked behind a crow that flies over it is left out of the frames we make
+        # when it would show only a sliver (a hair along a wing) or sits at the crow's head (a hook round a
+        # beak, a horn behind a skull).
+        keep = []
+        for idx, it in enumerate(items):
+            if it[0] == 'piece' and BY[it[5]]['kind'] == 'feather':
+                over = np.zeros((OH, OW), bool)
+                heads = np.zeros((OH, OW), bool)
+                for jt in items[idx + 1:]:
+                    if jt[0] == 'piece' and BY[jt[5]]['kind'] == 'crow':
+                        over |= jt[1]
+                        heads |= jt[3]
+                vis = it[1] & ~over
+                if vis.sum() < it[1].sum() and (vis.sum() < FRAG or erode(vis).sum() < 0.25 * vis.sum() or (it[1] & dilate(heads, 9)).any()):
+                    continue
+            keep.append(it)
+        items = keep
     acc = np.zeros((OH, OW, 4), np.float32)
     eyes = np.zeros((OH, OW), bool)
     pasted = np.zeros((OH, OW), bool)
@@ -1098,7 +1156,8 @@ WHOLE = {'R2': 'L2', 'R5': 'L4'}  # frame 3: the left picture's crow until the f
 WHOLE_BACK = {'R1': 'L1', 'R2': 'L2', 'R4': 'L3', 'R5': 'L4'}  # frame 5: the crow whose place it heads for
 PHI = 8.0  # how far the swarm turns (degrees, clockwise) on its way out
 T_OUT = (0.25, 0.5, 0.75)  # how far frames 1-3 are on the way from his left picture to his right one
-V5 = 0.82  # the vortex's size as it reopens in frame 5
+V5 = 0.88  # the vortex's size as it reopens in frame 5
+V1 = 0.95  # and as it starts to close in frame 1
 SMOKE5 = 0  # game px from the anchor: in frame 5 his smoke left of this is left behind
 # Wing beats through the loop (f0..f5), two flights so the swarm never beats as one; his pictures are 'up'.
 BEATS = {'A': ['up', 'mid', 'down', 'mid', 'up', 'down'], 'B': ['up', 'down', 'mid', 'up', 'up', 'mid']}
@@ -1168,12 +1227,13 @@ def fly():
     f0 = key_frame('L')
     f4 = key_frame('R')
     TRACE.clear()
-    # 1: the crows ride out round the vortex, a quarter of the way; it spins and starts to close.
-    f1 = compose([vortex(15)] + feathers('L', 16, -4, 1) +
-                 [at(n, swirl(eye(n), eye(PAIRS[n]), T_OUT[0]), wings=wings(n, 1)) for n in ORDER['L']])
+    # 1: the crows ride out round the vortex, a quarter of the way (the two looking back have turned round,
+    # so no crow flies backwards); it spins and starts to close.
+    f1 = compose([vortex(15, V1)] + feathers('L', 16, -4, 1) +
+                 [at(n, swirl(eye(n), eye(PAIRS[n]), T_OUT[0]), mirror=BY[n]['face'] < 0, wings=wings(n, 1)) for n in ORDER['L']])
     POS[1] = dict(TRACE)
     TRACE.clear()
-    # 2: half way: they break out to the right (the two looking back turn round), the first two of the
+    # 2: half way: they break out to the right, the first two of the
     # flock come up out of the vortex behind its swirl, the vortex closes, the feathers stream back.
     f2 = compose([at(n, swirl(VC, eye(n), EMERGE[n]), wings=wings(n, 2), dark=0.3) for n in EMERGE] +
                  [vortex(30, 0.85)] +
@@ -1195,8 +1255,8 @@ def fly():
     POS[3] = dict(TRACE)
     TRACE.clear()
 
-    # 5: the flock curls back round the vortex as it opens again (at 0.58 size; whole in frame 0, so it
-    # reopens evenly over the two steps): four crows head for his left picture's places (R1 swoops back to
+    # 5: the flock curls back round the vortex as it opens again (at V5 size; whole in frame 0, so it
+    # reopens over the two steps): four crows head for his left picture's places (R1 swoops back to
     # L1's), R3 and R6 sink toward its eye behind its front swirl, a little dark; the smoke's tail is left behind.
     def back(n):
         dest = eye(BACK[n])
@@ -1398,7 +1458,7 @@ EYEZONE = np.zeros((OH, OW), bool)
 for nm in EYES_AT:
     yy, xx = np.mgrid[0:OH, 0:OW]
     EYEZONE |= np.hypot(xx + 0.5 - EYES_AT[nm][0], yy + 0.5 - EYES_AT[nm][1]) < 3.6
-HIGHLIGHTS = {}
+HIGHLIGHTS, CHROMA = {}, {}
 for key, i in (('L', 0), ('R', 4)):
     L_ = LAY[key]
     _, his_box = shrink_pic(key, L_['rgb'], np.ones(L_['rgb'].shape[:2], np.float32))
@@ -1418,6 +1478,24 @@ for key, i in (('L', 0), ('R', 4)):
         h_, o_ = HIGHLIGHTS[key][t]
         if not 0.8 <= o_ / max(h_, 1) <= 1.2:
             FAILS.append(f'fly {i}: {o_} px above luma {t} against his {h_} (allowed +-20 %)')
+    # His blue-violet sheen and his vortex's violet, kept: the pixels whose chroma (max - min channel) is
+    # above 30 and above 40, ours laid on his background, number within 20 % of his.
+    a8 = f[..., 3:4].astype(np.float32) / 255
+    shown = f[..., :3].astype(np.float32) * a8 + BG * (1 - a8)
+    ch_h = his_box.max(-1) - his_box.min(-1)
+    ch_o = shown.max(-1) - shown.min(-1)
+    CHROMA[key] = {t: (int((inside & (ch_h > t)).sum()), int((inside & (ch_o > t)).sum())) for t in (30, 40)}
+    print(f'chroma {key} (his, ours):', CHROMA[key])
+    for t in (30, 40):
+        h_, o_ = CHROMA[key][t]
+        if not 0.8 <= o_ / max(h_, 1) <= 1.2:
+            FAILS.append(f'fly {i}: {o_} px of chroma above {t} against his {h_} (allowed +-20 %)')
+    # His eyes are a dim crimson-mauve glow: no eye pixel of ours is brighter than his brightest.
+    eye_h = float((his_box @ LUMA601)[EYEZONE & (yy > gy0) & (yy < gy1) & (xx > gx0) & (xx < gx1)].max())
+    eye_o = float((f[..., :3].astype(np.float32) @ LUMA601)[EYEZONE & (f[..., 3] > 0)].max())
+    print(f'eyes {key}: brightest his {eye_h:.1f}, ours {eye_o:.1f}')
+    if eye_o > eye_h + 2:
+        FAILS.append(f'fly {i}: an eye pixel of luma {eye_o:.1f}, brighter than his {eye_h:.1f}')
 
 for msg in FAILS:
     print('CHECK FAILED:', msg)
@@ -1505,8 +1583,9 @@ note = [
     "The crow swarm (vfx_beasts/genjutsu), copied from his genjutsu sheet's BEAST panel, where he painted",
     "a swarm over our single crow: his left picture (crows circling a vortex) is fly frame 0 and the last",
     "summon frame, his right picture (the flock streaming right) is fly frame 4. The other frames move",
-    "his crows as cut-out pieces (whole pixels, mirrored; his wing pixels turned about the shoulder for",
-    "the beat), spin and close his vortex in polar space, trail his smoke in and out, drift his feathers.",
+    "his crows as cut-out pieces (whole pixels, mirrored; for the beat his near wing turns about the",
+    "shoulder and his far wing sinks behind the body), spin and close his vortex in polar space (the parts",
+    "his crows hid filled by his own vortex turned about its eye), trail his smoke, drift his feathers.",
     f"Scale: his character is {HIS_CHAR_H:.0f} px tall in that sheet, ours {CHAR_H:.0f}.",
 ]
 write_module(frames, FSIZE, FANCHOR, note)
@@ -1562,7 +1641,7 @@ if DEBUG:
         bg.alpha_composite(Image.fromarray(h, 'RGBA'), (0, 0))
         bg.alpha_composite(Image.fromarray(o, 'RGBA'), (W + 4, 0))
         save_whole(bg.resize((bg.width * 4, bg.height * 4), Image.NEAREST), os.path.join(DEBUG, f'cmp-{k}.png'))
-    vs = [his_veil('L'), vortex()[1], vortex(15)[1], vortex(30, 0.85)[1], vortex(45, 0.72, 0.85)[1], vortex(-30, V5)[1],
+    vs = [his_veil('L'), vortex()[1], vortex(15, V1)[1], vortex(30, 0.85)[1], vortex(45, 0.72, 0.85)[1], vortex(-30, V5)[1],
           SMOKE, smoke(0.7, dx=4)[1], smoke(tail=SMOKE5, dx=-8, dy=1)[1]]
     strip = np.concatenate([v[CY0:CY1, CX0:CX1] for v in vs], 1)
     bg = Image.new('RGBA', (strip.shape[1], strip.shape[0]), (0x5d, 0x6b, 0x57, 255))

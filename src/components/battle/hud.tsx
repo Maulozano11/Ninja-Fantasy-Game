@@ -10,7 +10,6 @@ import {
   CircleDot,
   Crosshair,
   DoorOpen,
-  Eye,
   EyeOff,
   FlaskConical,
   Footprints,
@@ -36,6 +35,7 @@ import {
   Skull,
 } from 'lucide-react';
 import type { AiOrder, BattleState, Unit } from '../../battle/types';
+import { clanName } from '../../data/shinobiData';
 import type { Lang } from '../../i18n';
 import { T } from './battleText';
 import type { TKey } from './battleText';
@@ -51,6 +51,9 @@ export const ELEMENT_ICON: Record<string, React.FC<{ size?: number; className?: 
   chakra: Sparkles,
   poison: Skull,
 };
+
+/** Clan abilities with an icon of their own (the others show their element's). */
+export const ABILITY_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {};
 
 export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {
   attack: Sword,
@@ -71,7 +74,6 @@ export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: s
   tag: Bomb,
   stabilize: HeartPulse,
   flee: DoorOpen,
-  foresight: Eye,
   stone: CircleDot,
   end: X,
   items: Package,
@@ -130,8 +132,9 @@ export function UnitCard({ u, hp, chakra, lang }: { u: Unit; hp: number; chakra:
           {status && <span className="ml-auto text-[10px] uppercase tracking-wider text-violet-300">{status}</span>}
         </div>
         <div className="text-[11px] text-slate-400 truncate">
-          {c ? `${c.clan} · ${c.shinobiClass} · ` : ''}
-          {T('ac', { n: u.ac + (u.cond.foresight ?? 0) }, lang)}
+          {c ? `${clanName(c.clan)} · ${c.shinobiClass} · ` : ''}
+          {u.rank ? `${T(`rank_${u.rank}`, undefined, lang)} · ` : ''}
+          {T('ac', { n: u.ac }, lang)}
           {u.weapon.held ? ` · ${T(u.armed ? 'drawn' : 'stowed', undefined, lang)}` : ''}
         </div>
         <div className="mt-1.5 flex items-center gap-2">

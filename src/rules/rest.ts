@@ -3,7 +3,7 @@
 // each step returns the new party and camp state plus what happened, or why it can't be done.
 
 import { ACTIVITY, ActivityId, CampActivity, STICKS_PER_CAMP } from '../data/campActivities';
-import { JUTSUS_DATA, SHINOBI_CLASSES } from '../data/shinobiData';
+import { clanName, JUTSUS_DATA, SHINOBI_CLASSES } from '../data/shinobiData';
 import type { JutsuDefinition, ShinobiCharacter } from '../types/shinobi';
 import type { PartyState, RuleEvent, SupplyId } from '../types/mission';
 import { abilityMod, skillCheck } from './checks';
@@ -111,7 +111,7 @@ export function activityBlocker(
   if (isDown(c)) return 'Cannot act';
   if (act.viaFire) return 'Chosen with the fire';
   if (!camp && !act.atStop) return 'Camp only';
-  if (act.requires?.clan && c.clan !== act.requires.clan) return `${act.requires.clan} only`;
+  if (act.requires?.clan && c.clan !== act.requires.clan) return `${clanName(act.requires.clan)} only`;
   if (act.requires?.shinobiClass && c.shinobiClass !== act.requires.shinobiClass) return `${act.requires.shinobiClass} only`;
   if (act.requires?.shrine && !camp?.site.shrine) return 'Needs a shrine';
   if (camp) {

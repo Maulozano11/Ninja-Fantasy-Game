@@ -2,12 +2,14 @@
 // striking and casting, damage numbers, effects, banners and sounds. The engine has already
 // decided everything; this only paces it so it can be watched.
 
-import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit } from '../../battle/types';
+import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit, Wall } from '../../battle/types';
 import type { SpritePose } from '../../sprite/types';
 import { JUTSU } from '../../battle/jutsu';
 import type { VfxElement, VfxRole } from '../../battle/jutsu';
 import { blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
 import { dist } from '../../battle/map';
+import { closestPoint } from '../../battle/structures';
+import { midpoint } from '../../battle/combat';
 
 export interface UnitView {
   pos: Pt;
@@ -210,6 +212,25 @@ export class Playback {
     return w.path[w.path.length - 1];
   }
 
+  /** Walls already gone from the state whose breaking (or fading) hasn't played yet: they still show. */
+  goneWalls(): Wall[] {
+    const out: Wall[] = [];
+    for (const e of this.queue) if (e.t === 'wall' && !e.on) out.push(e.wall);
+    return out;
+  }
+
+  /** A wall by id: standing, or gone with an event still to play. */
+  wallOf(id: string, state: BattleState): Wall | undefined {
+    return state.walls.find((w) => w.id === id) ?? this.goneWalls().find((w) => w.id === id);
+  }
+
+  /** A structure's HP as the screen shows it: the hits still waiting to play haven't landed yet. */
+  wallHp(w: Wall): number {
+    let hp = w.hp;
+    for (const e of this.queue) if (e.t === 'wallHit' && e.wall === w.id) hp += e.amount;
+    return Math.min(w.maxHp ?? hp, hp);
+  }
+
   /** Metres walked so far (for the gait frame). */
   walked(id: string, now: number): number {
     const w = this.views.get(id)?.walk;
@@ -296,8 +317,9 @@ export class Playback {
       }
       case 'attack': {
         const a = this.view(ev.unit);
-        const target = ev.target.startsWith('prop:') ? undefined : state.units[ev.target];
-        const to = target ? this.posOf(target.id, now) : propPos(state, ev.target);
+        const target = ev.target.startsWith('prop:') || ev.target.startsWith('wall:') ? undefined : state.units[ev.target];
+        const wall = ev.target.startsWith('wall:') ? this.wallOf(ev.target.slice(5), state) : undefined;
+        const to = target ? this.posOf(target.id, now) : wall ? closestPoint(wall, this.posOf(ev.unit, now)) : propPos(state, ev.target);
         h.roll(ev);
         if (!a) return 0;
         const from = this.posOf(ev.unit, now);
@@ -491,7 +513,6 @@ export class Playback {
         }
         if (ev.cond === 'prone' && ev.on) this.setPose(v, 'downed', now, 500);
         if (label) this.float(label, '#c4b5fd', this.posOf(ev.unit, now), now, { rise: 120 });
-        if (ev.cond === 'foresight') this.fx.push({ kind: 'aura', element: 'fire', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 700, sig: 'eyes', unit: ev.unit });
         return label ? 200 : 0;
       }
       case 'effect': {
@@ -544,9 +565,25 @@ export class Playback {
         return 0;
       case 'body':
         return 0;
-      case 'wall':
-        if (ev.on) this.wallBorn.set(ev.wall.id, now);
-        return 0;
+      case 'wall': {
+        if (ev.on) {
+          this.wallBorn.set(ev.wall.id, now);
+          return 0;
+        }
+        // A broken structure falls apart in a cloud of dust (a water barrier just fades).
+        if (!label) return 0;
+        const at = midpoint(ev.wall.a, ev.wall.b);
+        this.fx.push({ kind: 'wall', element: 'earth', from: at, to: at, t0: now, dur: 900, sig: 'debris' });
+        this.float(label, '#e2e8f0', at, now, { rise: 110 });
+        h.sound('crit');
+        h.shake(3);
+        return 300;
+      }
+      case 'wallHit':
+        this.float(`-${ev.amount}`, '#cbd5e1', ev.at, now, { rise: 70 });
+        this.fx.push({ kind: 'burst', element: 'earth', from: ev.at, to: ev.at, t0: now, dur: 400, lift: [40, 40] });
+        h.sound('hit');
+        return 120;
       case 'prop': {
         const at = propPos(state, `prop:${ev.prop}`);
         if (ev.state === 'burnt') this.fx.push({ kind: 'fire', element: 'fire', from: at, to: at, t0: now, dur: 1400 });
@@ -620,7 +657,6 @@ export class Playback {
       }
       case 'act': {
         if (label) this.float(label, '#e2e8f0', this.posOf(ev.unit, now), now, { rise: 124 });
-        if (ev.act === 'foresight') this.fx.push({ kind: 'aura', element: 'fire', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 700, sig: 'eyes', unit: ev.unit });
         return 180;
       }
       case 'intent':

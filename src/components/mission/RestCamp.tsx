@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Bell, Check, ChevronRight, Eye, Flame, Moon, Sun, Swords, TriangleAlert } from 'lucide-react';
 import type { ShinobiCharacter } from '../../types/shinobi';
 import type { PartyState, SupplyId } from '../../types/mission';
+import { clanName } from '../../data/shinobiData';
 import { ActivityId, CAMP_ACTIVITIES, CampActivity, STICKS_PER_CAMP } from '../../data/campActivities';
 import { checkAdvantage, cannotBeSurprised, skillModifier, successChance } from '../../rules/checks';
 import { effectiveMaxHp } from '../../rules/derived';
@@ -283,7 +284,7 @@ export function RestCamp({ party, camp, zoneName, nodeName, recent, onFire, onAc
                               {pick(act.name, act.nameEs)}
                               {special && (
                                 <span className="rounded border border-violet-400/40 bg-violet-950/70 px-1 text-[9px] font-semibold uppercase tracking-wide text-violet-200">
-                                  {act.requires?.clan ?? classShort(me)}
+                                  {act.requires?.clan ? clanName(act.requires.clan) : classShort(me)}
                                 </span>
                               )}
                               {done && <Check className="w-3.5 h-3.5 text-emerald-400" />}

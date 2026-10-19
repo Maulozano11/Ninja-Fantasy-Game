@@ -1,11 +1,13 @@
 // Traps, explosions and what jutsu do to the ground around them: fire burns bushes and trees, wind
 // cuts the foliage, explosive barrels and tags blow up (and set each other off), lightning runs
-// through the water. These return the hits to apply; the engine applies them.
+// through the water, blasts dent metal structures. These return the hits to apply; the engine
+// applies them.
 
 import type { AreaShape, BattleEvent, BattleState, DamageType, Hit, Pt, Trap, Unit } from './types';
-import { dist, getMap, propRules, waterAtPt } from './map';
+import { dist, fullCoverBetween, getMap, propRules, waterAtPt } from './map';
 import { inArea } from './jutsu';
 import { rollDiceExpr, savingThrow } from './combat';
+import { hitStructuresIn } from './structures';
 
 /** Explosive barrels and tags: 3d6 fire in 1.5 m, DEX save for half. */
 export const BARREL = { dice: '3d6', radius: 1.5, dc: 13 };
@@ -20,9 +22,12 @@ export const onMapUnits = (s: BattleState): Unit[] => Object.values(s.units).fil
 /** Where a unit is hit by areas: hydra bodies are big. */
 const padOf = (u: Unit): number => (u.bulk ? u.bulk * 0.7 : 0.25);
 
-/** Units inside an area (a severed head's stump counts too: fire, lightning and blasts seal it). */
-export function unitsInArea(s: BattleState, area: AreaShape, exclude: string[] = []): Unit[] {
-  return onMapUnits(s).filter((u) => !exclude.includes(u.id) && inArea(area, u.pos, padOf(u)));
+/**
+ * Units inside an area (a severed head's stump counts too: fire, lightning and blasts seal it).
+ * From `origin` (where it bursts or the caster), a metal wall shelters whoever is behind it.
+ */
+export function unitsInArea(s: BattleState, area: AreaShape, exclude: string[] = [], origin?: Pt): Unit[] {
+  return onMapUnits(s).filter((u) => !exclude.includes(u.id) && inArea(area, u.pos, padOf(u)) && !(origin && fullCoverBetween(s, origin, u.pos)));
 }
 
 /** A trap of the other team right where a unit steps. */
@@ -53,7 +58,8 @@ export function explode(s: BattleState, at: Pt, radius: number, dice: string, dc
   const area: AreaShape = { kind: 'circle', center: at, radius };
   const amount = rollDiceExpr(s, dice);
   const hits: Hit[] = [];
-  for (const u of unitsInArea(s, area)) hits.push(saveHit(s, u, 'dex', dc, amount, 'Fire', true, source, 'explosion', { explosion: true }, ev));
+  for (const u of unitsInArea(s, area, [], at)) hits.push(saveHit(s, u, 'dex', dc, amount, 'Fire', true, source, 'explosion', { explosion: true }, ev));
+  hitStructuresIn(s, area, amount, ev);
   hits.push(...groundEffects(s, area, 'Fire', ev, seen));
   return hits;
 }
@@ -73,8 +79,7 @@ export function saveHit(
   ev: BattleEvent[],
 ): Hit {
   if (u.head?.severed) return { unit: u.id, amount: 0, type, source, what, ...extra, effect: undefined };
-  // Mirai Future Foresight: they see the blow coming (advantage on DEX saves).
-  const roll = savingThrow(s, u, ab, dc, ab === 'dex' && u.cond.foresight ? 'advantage' : 'none');
+  const roll = savingThrow(s, u, ab, dc);
   ev.push({ t: 'save', unit: u.id, what, roll });
   const got = roll.success ? (half ? Math.floor(amount / 2) : 0) : amount;
   return { unit: u.id, amount: got, type, source, what, ...extra, effect: roll.success ? undefined : extra.effect };

@@ -14,7 +14,8 @@ import { JUTSU, areaOf, enhanced as enhancedSpec } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
 import { cellCenter, cellOf, dist, getMap, gridFor, idx, lineOfSight, sameCell } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
-import { foreseen, foresightBonus, FORESIGHT_COST } from '../../battle/intent';
+import { foreseen } from '../../battle/intent';
+import { STRUCTURE_AC, breakable, structureAttack, structureDist } from '../../battle/structures';
 import { KUNAI, KUNAI_LONG, handsFree, wielded } from '../../battle/units';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
@@ -25,14 +26,14 @@ import { LangToggle } from '../../i18n/LangToggle';
 import { soundManager } from '../../utils/audio';
 import { MAP_ART } from './mapArt';
 import { Playback } from './playback';
-import { drawBattle, image, pickGround, pickUnit, project, screenToWorld } from './renderer';
+import { drawBattle, image, pickGround, pickStructure, pickUnit, project, screenToWorld } from './renderer';
 import type { Camera, Overlay } from './renderer';
 import { playSound, startAmbience } from './battleSound';
-import { floatLabel, logLine } from './battleLog';
+import { floatLabel, jutsuName, logLine, structureName } from './battleLog';
 import type { LogLine } from './battleLog';
 import { SAVE_EN, SAVE_ES, T } from './battleText';
 import type { TKey } from './battleText';
-import { ACTION_ICON, ActionBar, ELEMENT_ICON, InitiativeBar, LogPanel, PartyFrames, Prompt, RollToast, Tip, UnitCard } from './hud';
+import { ABILITY_ICON, ACTION_ICON, ActionBar, ELEMENT_ICON, InitiativeBar, LogPanel, PartyFrames, Prompt, RollToast, Tip, UnitCard } from './hud';
 import type { ActionButton } from './hud';
 import { preloadWorldGroups } from '../world/WorldSpriteView';
 
@@ -91,7 +92,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
 
   const [mode, setMode] = useState<Mode>({ k: 'move' });
   const [selected, setSelected] = useState<string | undefined>();
-  const [hover, setHover] = useState<{ unit?: string; pt?: Pt; sx: number; sy: number } | null>(null);
+  const [hover, setHover] = useState<{ unit?: string; wall?: string; pt?: Pt; sx: number; sy: number } | null>(null);
   const [hoverBtn, setHoverBtn] = useState<ActionButton | null>(null);
   const [zoom, setZoom] = useState<1 | 2>(1);
   const [, setUi] = useState(0);
@@ -120,7 +121,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     pbRef.current = new Playback(initial.state, {
       sound: (n, d) => playSound(n, d),
       log: (ev) => {
-        const line = logLine(ev, stateRef.current, langRef.current);
+        const line = logLine(ev, stateRef.current, langRef.current, (id) => pbRef.current?.wallOf(id, stateRef.current));
         if (line) setLog((l) => [...l.slice(-199), line]);
       },
       roll: (ev) => {
@@ -128,7 +129,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         const lg = langRef.current;
         if (ev.t === 'attack') {
           const who = s.units[ev.unit]?.name ?? '';
-          const tgt = ev.target.startsWith('prop:') ? '' : s.units[ev.target]?.name ?? '';
+          const tgt = ev.target.startsWith('prop:')
+            ? ''
+            : ev.target.startsWith('wall:')
+              ? structureName(pbRef.current?.wallOf(ev.target.slice(5), s), lg)
+              : s.units[ev.target]?.name ?? '';
           setToast({ text: `${who} → ${tgt}`, sub: `d20 ${ev.roll.d20} ${ev.roll.mod >= 0 ? '+' : '−'} ${Math.abs(ev.roll.mod)} = ${ev.roll.total} vs ${lg === 'es' ? 'CA' : 'AC'} ${ev.roll.dc}`, ok: ev.roll.success });
         } else if (ev.t === 'save' || ev.t === 'deathSave') {
           const who = s.units[ev.unit]?.name ?? '';
@@ -362,11 +367,18 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     } else if (mode.k === 'attack') {
       const range = mode.ranged ? KUNAI.reach : wielded(actor).reach;
       o.range = { at: actor.pos, radius: range };
+      const hw = !hu && hover?.wall ? s.walls.find((w) => w.id === hover.wall) : undefined;
       if (hu && hu.team !== actor.team) {
         const pv = attackPreview(s, actor, hu, mode.ranged ? 'ranged' : 'melee');
         o.targets = [hu.id];
         label = pv.inRange ? T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(actor).dice }) : T('aimNoReach');
         sub = reasonsText(pv, lang);
+      } else if (hw) {
+        // A Kōton structure: AC 10, like a crate.
+        const pv = structureAttack(s, actor, hw, mode.ranged);
+        o.point = { at: pv.at, ok: pv.inRange && pv.sight };
+        label = pv.inRange && pv.sight ? T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(actor).dice }) : T('aimNoReach');
+        sub = `${structureName(hw, lang)} · ${T('ac', { n: STRUCTURE_AC })}${pv.adv === 'disadvantage' ? ` · ${T('disadv')} · ${T('reason_longRange')}` : ''}`;
       }
     } else if (mode.k === 'jutsu' && spec) {
       const self = spec.shape === 'self' || spec.shape === 'selfCircle';
@@ -565,9 +577,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     const w = worldAt(e.clientX, e.clientY);
     const unit = pickUnit({ state: stateRef.current, pb, map, now: performance.now() }, w.X, w.Y);
     const pt = pickGround(map, w.X, w.Y);
+    const wall = unit ? undefined : structureAt(w.X, w.Y, pt);
     setHover((h) => {
-      const same = h && h.unit === unit && h.pt && pt && sameCell(cellOf(h.pt), cellOf(pt));
-      return same ? { ...h!, sx: w.cx, sy: w.cy } : { unit, pt: pt ?? undefined, sx: w.cx, sy: w.cy };
+      const same = h && h.unit === unit && h.wall === wall && h.pt && pt && sameCell(cellOf(h.pt), cellOf(pt));
+      return same ? { ...h!, sx: w.cx, sy: w.cy } : { unit, wall, pt: pt ?? undefined, sx: w.cx, sy: w.cy };
     });
   };
 
@@ -584,6 +597,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     if (e.button !== 0 || wasDrag) return;
     cam.current.follow = true;
     clickAt(e.clientX, e.clientY);
+  };
+
+  /** The breakable structure under the cursor: its drawn face, or its foot within 0.6 m of the ground point. */
+  const structureAt = (X: number, Y: number, pt: Pt | null): string | undefined => {
+    const s = stateRef.current;
+    const face = pickStructure({ state: s, map }, X, Y);
+    if (face || !pt) return face;
+    let best: { id: string; d: number } | undefined;
+    for (const w of s.walls) {
+      const d = breakable(w) ? structureDist(w, pt) : Infinity;
+      if (d <= 0.6 && (!best || d < best.d)) best = { id: w.id, d };
+    }
+    return best?.id;
   };
 
   const clickAt = (clientX: number, clientY: number) => {
@@ -608,14 +634,21 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         }
         if (pt) act({ type: 'move', unit: actor.id, to: cellOf(pt), sneak: s.phase === 'stealth' });
         return;
-      case 'attack':
-        if (u && u.team !== actor.team) act({ type: 'attack', unit: actor.id, target: u.id, ranged: mode.ranged, knockout: !mode.ranged && u.team === 'enemy' });
+      case 'attack': {
+        if (u && u.team !== actor.team) {
+          act({ type: 'attack', unit: actor.id, target: u.id, ranged: mode.ranged, knockout: !mode.ranged && u.team === 'enemy' });
+          return;
+        }
+        // A Kōton structure in the way: the blade or the kunai goes at it.
+        const wall = u ? undefined : structureAt(w.X, w.Y, pt);
+        if (wall) act({ type: 'attack', unit: actor.id, target: `wall:${wall}`, ranged: mode.ranged });
         else if (mode.ranged && pt) {
           // A kunai at an explosive barrel.
           const i = s.props.findIndex((p) => !p.destroyed && p.hp !== undefined && dist(p.def, pt) < 0.8);
           if (i >= 0) act({ type: 'attack', unit: actor.id, target: `prop:${i}`, ranged: true });
         }
         return;
+      }
       case 'jutsu': {
         const sp = JUTSU[mode.id];
         const self = sp.shape === 'self' || sp.shape === 'selfCircle';
@@ -663,23 +696,27 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         if (!sp || sp.cast === 'reaction') continue;
         const cost = jutsuCost(u, sp, false);
         const busyHands = needsSeals(u, sp) && !handsFree(u) && !!u.turn.interacted;
+        const name = jutsuName(id, lang);
+        const helpKey = `help_${id}`;
         add({
           id: `jutsu:${id}`,
           label: jutsuShort(id, lang),
-          icon: ELEMENT_ICON[sp.element] ?? ACTION_ICON.focus,
+          icon: ABILITY_ICON[id] ?? ELEMENT_ICON[sp.element] ?? ACTION_ICON.focus,
           badge: cost,
           tone: 'jutsu',
           element: sp.element,
           disabled: (sp.cast === 'bonus' ? !can.bonus : !can.action) || u.chakra < cost || busyHands,
           active: mode.k === 'jutsu' && mode.id === id,
-          help: `${sp.name} · ${sp.rank} · ${sp.range} m${sp.dice ? ` · ${sp.dice}` : ''}${sp.save ? ` · ${(lang === 'es' ? SAVE_ES : SAVE_EN)[sp.save]}` : ''}`,
+          // A clan ability explains itself; a jutsu shows its rank, reach, dice and save.
+          help: T.has(helpKey)
+            ? `${name} · ${T(helpKey, undefined, lang)}`
+            : `${name} · ${sp.rank} · ${sp.range} m${sp.dice ? ` · ${sp.dice}` : ''}${sp.save ? ` · ${(lang === 'es' ? SAVE_ES : SAVE_EN)[sp.save]}` : ''}`,
         });
       }
       add({ id: 'dash', label: t('act_dash'), icon: ACTION_ICON.dash, disabled: !can.action, help: t('help_dash') });
       add({ id: 'dodge', label: t('act_dodge'), icon: ACTION_ICON.dodge, disabled: !can.action || stealth, help: t('help_dodge') });
       add({ id: 'hide', label: t('act_hide'), icon: ACTION_ICON.hide, disabled: !can.action, help: t('help_hide') });
       if (u.weapon.held) add({ id: 'draw', label: t(u.armed ? 'act_stow' : 'act_draw'), icon: ACTION_ICON.draw, disabled: !!u.turn.interacted && !can.bonus, help: t('help_draw') });
-      if (u.character?.clan === 'Mirai') add({ id: 'foresight', label: t('act_foresight'), icon: ACTION_ICON.foresight, badge: FORESIGHT_COST, disabled: !can.bonus || u.chakra < FORESIGHT_COST, help: T('help_foresight', { ac: foresightBonus(u) }, lang) });
       add({ id: 'more', label: t('act_more'), icon: ACTION_ICON.items });
       add({ id: 'end', label: stealth ? t('done') : t('act_end'), icon: ACTION_ICON.end, tone: 'end', help: t('help_end') });
     } else {
@@ -748,7 +785,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         case 'crouch':
         case 'jump':
         case 'focus':
-        case 'foresight':
         case 'draw':
           act({ type: id, unit: u.id });
           return;
@@ -874,7 +910,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
   };
   const prompt = askPlayer ? promptText() : null;
 
-  const helpLine = hoverBtn?.help ?? (mode.k === 'jutsu' && spec ? `${spec.name}${spec.enhCost ? ` · ${T('enhancedToggle', { n: spec.enhCost })} (E)` : ''}` : null);
+  const helpLine = hoverBtn?.help ?? (mode.k === 'jutsu' && spec ? `${jutsuName(spec.id, lang)}${spec.enhCost ? ` · ${T('enhancedToggle', { n: spec.enhCost })} (E)` : ''}` : null);
   const banners = pb.banners;
   const nowMs = performance.now();
 
@@ -1117,7 +1153,7 @@ const SHORT: Record<string, [string, string]> = {
 /** A jutsu's short name for its button. */
 function jutsuShort(id: string, lang: ReturnType<typeof useLang>): string {
   const s = SHORT[id];
-  return s ? s[lang === 'es' ? 1 : 0] : (JUTSU[id]?.name ?? id).split(/[\s:(]/)[0];
+  return s ? s[lang === 'es' ? 1 : 0] : jutsuName(id, lang).split(/[\s:(]/)[0];
 }
 
 /** Why an attack has advantage or disadvantage, and cover and height, in a short line. */

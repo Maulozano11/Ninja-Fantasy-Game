@@ -20,13 +20,14 @@ import type {
   Hit,
   Outcome,
   Pt,
+  Rank,
   TimeOfDay,
   Trap,
   Unit,
   Wall,
 } from './types';
-import { CELL, cellBlocked, cellCenter, cellOf, coverBetween, dist, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, waterAtPt } from './map';
-import { canStop, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
+import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, waterAtPt } from './map';
+import { canStop, freeSpot, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, passivePerception, rollDiceExpr, skillMod } from './combat';
 import { JUTSU, areaOf, enhanced } from './jutsu';
@@ -37,7 +38,8 @@ import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
 import { electrify, groundEffects, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
-import { FORESIGHT_COST, foresightBonus, reachTo } from './intent';
+import { breakable, damageStructure, hitStructuresIn, STRUCTURE_AC, structureAttack } from './structures';
+import { reachTo } from './intent';
 
 // --- setup ---------------------------------------------------------------------------------
 
@@ -55,6 +57,8 @@ export interface EnemySetup {
   route?: Pt[];
   /** Where it looks at first, in degrees. */
   look?: number;
+  /** Its rank, when the encounter wants another than its template's (a Sub-boss). */
+  rank?: Rank;
 }
 
 export interface BattleSetup {
@@ -85,11 +89,11 @@ export function createBattle(setup: BattleSetup): { state: BattleState; events: 
   const count: Record<string, number> = {};
   for (const e of setup.enemies) {
     if (e.kind === 'hydra') {
-      for (const u of hydraUnits(e.pos, setup.difficulty)) units[u.id] = u;
+      for (const u of hydraUnits(e.pos, setup.difficulty)) units[u.id] = e.rank ? { ...u, rank: e.rank } : u;
       continue;
     }
     const n = (count[e.kind] = (count[e.kind] ?? -1) + 1);
-    const u = enemyUnit(e.kind, n, snap(e.pos), setup.difficulty);
+    const u = enemyUnit(e.kind, n, snap(e.pos), setup.difficulty, e.rank);
     if (setup.stealth) {
       u.guard = { route: (e.route ?? [u.pos]).map(snap), next: 0, suspicion: {}, alerted: false };
       if (e.look !== undefined) u.guard.look = e.look;
@@ -230,8 +234,6 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
       return doCrouch(s, u, ev);
     case 'jump':
       return doJump(u, ev);
-    case 'foresight':
-      return doForesight(u, ev);
     case 'draw':
       return doDraw(u, ev);
     case 'shove':
@@ -315,6 +317,8 @@ function provoker(s: BattleState, u: Unit, next: Pt, skip: string[]): Unit | und
   for (const r of Object.values(s.units)) {
     if (r.team === u.team || r.kind !== 'ninja' || r.down || skip.includes(r.id)) continue;
     if (!r.turn.reaction || r.cond.surprised) continue;
+    // Nothing reaches across a metal wall.
+    if (fullCoverBetween(s, r.pos, u.pos)) continue;
     // A hidden mover it can't see slips past.
     if (u.cond.hidden !== undefined && passivePerception(r) < u.cond.hidden) continue;
     const reach = wielded(r).reach + 0.1;
@@ -382,6 +386,7 @@ function afterMove(s: BattleState, u: Unit, ev: BattleEvent[]): void {
 function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, knockout: boolean, ev: BattleEvent[]): string | null {
   if (!u.turn.action) return 'noAction';
   if (targetId.startsWith('prop:')) return attackProp(s, u, Number(targetId.slice(5)), ranged, ev);
+  if (targetId.startsWith('wall:')) return attackStructure(s, u, targetId.slice(5), ranged, ev);
   const t = s.units[targetId];
   if (!t || !targetable(t)) return 'badTarget';
   if (t.team === u.team) return 'ally';
@@ -394,6 +399,7 @@ function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, kn
   const pv = attackPreview(s, u, t, ranged ? 'ranged' : 'melee');
   if (!pv.inRange) return 'outOfRange';
   if (ranged && !lineOfSight(s, u.pos, t.pos)) return 'noSight';
+  if (!ranged && fullCoverBetween(s, u.pos, t.pos)) return 'blocked';
   u.turn.action = false;
   const stealth = s.phase === 'stealth';
   const takedown = stealth && canTakedown(s, u, t);
@@ -423,7 +429,7 @@ function weaponAttack(
   const roll = check(s, 'attack', pv.mod, pv.ac, adv, true);
   if (t.pos.x !== a.pos.x) a.facing = t.pos.x > a.pos.x ? 1 : -1;
   ev.push({ t: 'attack', unit: a.id, target: t.id, what: w.name, roll, ranged });
-  const surprise = (a.cond.hidden !== undefined && !t.cond.foresight) || !!o.takedown;
+  const surprise = a.cond.hidden !== undefined || !!o.takedown;
   if (a.cond.hidden !== undefined) {
     a.cond.hidden = undefined;
     ev.push({ t: 'condition', unit: a.id, cond: 'hidden', on: false });
@@ -436,10 +442,7 @@ function weaponAttack(
     let amount = rollDiceExpr(s, w.dice, roll.crit) + mod + (ranged ? 0 : effectMods(a.effects).meleeDamage);
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
     if (!ranged && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
-    const hit: Hit = { unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true };
-    // Taki: their critical hits seal the target's chakra.
-    if (roll.crit && a.character?.clan === 'Taki') hit.effect = 'chakra_sealed';
-    hits.push(hit);
+    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true });
   }
   applyHits(s, hits, after, ev);
   return !!s.pending;
@@ -473,6 +476,22 @@ function attackProp(s: BattleState, u: Unit, i: number, ranged: boolean, ev: Bat
     ev.push({ t: 'prop', prop: i, state: 'exploded' });
     applyHits(s, throwTag(s, u, { x: p.x, z: p.z }, ev), loud(s, u), ev);
   } else ev.push({ t: 'prop', prop: i, state: 'broken' });
+  return null;
+}
+
+/** Attacking a Kōton structure: AC 10 and the weapon's dice, like a prop (structures.ts). */
+function attackStructure(s: BattleState, u: Unit, id: string, ranged: boolean, ev: BattleEvent[]): string | null {
+  const w = s.walls.find((x) => x.id === id);
+  if (!w || !breakable(w)) return 'badTarget';
+  const pv = structureAttack(s, u, w, ranged);
+  if (!pv.inRange) return 'outOfRange';
+  if (!pv.sight) return 'noSight';
+  u.turn.action = false;
+  const wpn = ranged ? KUNAI : wielded(u);
+  const roll = check(s, 'attack', pv.mod, STRUCTURE_AC, pv.adv, true);
+  if (pv.at.x !== u.pos.x) u.facing = pv.at.x > u.pos.x ? 1 : -1;
+  ev.push({ t: 'attack', unit: u.id, target: `wall:${w.id}`, what: wpn.name, roll, ranged });
+  if (roll.success) damageStructure(s, w, Math.max(1, rollDiceExpr(s, wpn.dice, roll.crit)), ev, pv.at);
   return null;
 }
 
@@ -552,31 +571,6 @@ function kawarimi(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   ev.push({ t: 'kawarimi', unit: t.id, from, to });
 }
 
-/** The best free cell between `min` and `max` meters from a point (dry, open, nobody on it). */
-function freeSpot(s: BattleState, u: Unit, around: Pt, min: number, max: number, score: (p: Pt) => number): Pt {
-  const g = gridFor(s.mapId);
-  const occ = occupancy(s);
-  const c0 = cellOf(around);
-  const r = Math.ceil(max / CELL);
-  let best = around;
-  let bestScore = -Infinity;
-  for (let dr = -r; dr <= r; dr++) {
-    for (let dc = -r; dc <= r; dc++) {
-      const c = { c: c0.c + dc, r: c0.r + dr };
-      if (!inGrid(g, c) || cellBlocked(s, c) || g.water[idx(g, c)] === 2) continue;
-      const p = cellCenter(c);
-      const d = dist(p, around);
-      if (d < min || d > max || !canStop(s, u, c, occ)) continue;
-      const sc = score(p);
-      if (sc > bestScore) {
-        best = p;
-        bestScore = sc;
-      }
-    }
-  }
-  return best;
-}
-
 function finishAfter(s: BattleState, after: AfterHits, ev: BattleEvent[], resumed: boolean): void {
   if (s.phase === 'stealth') {
     if (after.stealthAttack) {
@@ -622,9 +616,9 @@ function react(s: BattleState, unitId: string, take: boolean, ev: BattleEvent[])
 
 // --- jutsu ---------------------------------------------------------------------------------
 
-/** Chakra a jutsu costs this unit (enhanced, and Centered chakra's discount on the first one). */
+/** Chakra a jutsu costs this unit (enhanced, and Centered chakra's discount on the first jutsu). */
 export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
-  const discount = u.stats2.jutsuCast === 0 ? effectMods(u.effects).firstJutsuDiscount : 0;
+  const discount = !spec.ability && u.stats2.jutsuCast === 0 ? effectMods(u.effects).firstJutsuDiscount : 0;
   return Math.max(0, spec.cost + (enh ? spec.enhCost : 0) - discount);
 }
 
@@ -650,6 +644,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       if (!target || !targetable(target)) return 'needTarget';
       if (d > spec.range + 0.1 + (target.bulk ?? 0) + (target.kind === 'hydra_head' ? 2.5 : 0)) return 'outOfRange';
       if (!spec.melee && !lineOfSight(s, u.pos, target.pos)) return 'noSight';
+      if (spec.melee && fullCoverBetween(s, u.pos, target.pos)) return 'blocked';
       break;
     case 'ally':
       if (!target || target.team !== u.team || !targetable(target)) return 'needAlly';
@@ -675,7 +670,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   // Pay, and spend the action.
   u.chakra -= cost;
   if (cost) ev.push({ t: 'chakra', unit: u.id, delta: -cost, chakra: u.chakra, reason: id });
-  u.stats2.jutsuCast += 1;
+  if (!base.ability) u.stats2.jutsuCast += 1;
   if (base.cast === 'bonus') u.turn.bonus = false;
   else u.turn.action = false;
   if (spec.loud && u.cond.hidden !== undefined) {
@@ -721,9 +716,11 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
 function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | undefined, at: Pt, ev: BattleEvent[]): Hit[] {
   const area = areaOf(spec, u.pos, at);
   const fromCaster = spec.shape === 'selfCircle' || spec.shape === 'cone' || spec.shape === 'line';
-  const victims = area ? unitsInArea(s, area, fromCaster ? [u.id] : []) : target ? [target] : [];
+  const victims = area ? unitsInArea(s, area, fromCaster ? [u.id] : [], fromCaster ? u.pos : at) : target ? [target] : [];
   const type = spec.dmgType ?? 'Force';
   const amount = spec.dice ? rollDiceExpr(s, spec.dice) : 0;
+  // Areas dent the Kōton structures they reach (an illusion doesn't).
+  if (area && spec.dmgType && type !== 'Psychic') hitStructuresIn(s, area, amount, ev);
   const hits: Hit[] = [];
   for (const v of victims) {
     const extra: Partial<Hit> = { aimed: !area, effect: spec.effect, tension: spec.tension };
@@ -778,8 +775,8 @@ function raiseWall(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleE
   ev.push({ t: 'wall', wall, on: true });
 }
 
-/** Ninjutsu and genjutsu are woven with hand seals; taijutsu and sword arts are not. */
-export const needsSeals = (u: Unit, spec: JutsuSpec): boolean => u.kind === 'ninja' && !spec.melee;
+/** Ninjutsu and genjutsu are woven with hand seals; taijutsu, sword arts and bloodline abilities are not. */
+export const needsSeals = (u: Unit, spec: JutsuSpec): boolean => u.kind === 'ninja' && !spec.melee && !spec.ability;
 
 function setArmed(u: Unit, armed: boolean, cost: 'free' | 'bonus', ev: BattleEvent[]): void {
   u.armed = armed;
@@ -880,25 +877,6 @@ function doJump(u: Unit, ev: BattleEvent[]): string | null {
   return null;
 }
 
-/**
- * Mirai Future Foresight (bonus action, 2 chakra), until the Mirai's next turn: parry (+1 to +3 AC
- * by Sharingan stage), dodge (advantage on DEX saves) and no edge for attackers from hiding or
- * flanking. Reading the enemies' next moves is always on (intent.ts).
- */
-function doForesight(u: Unit, ev: BattleEvent[]): string | null {
-  if (u.character?.clan !== 'Mirai') return 'notMirai';
-  if (!u.turn.bonus) return 'noBonus';
-  if (u.chakra < FORESIGHT_COST) return 'noChakra';
-  if (effectMods(u.effects).noJutsu) return 'chakraSealed';
-  u.turn.bonus = false;
-  u.chakra -= FORESIGHT_COST;
-  u.cond.foresight = foresightBonus(u);
-  ev.push({ t: 'chakra', unit: u.id, delta: -FORESIGHT_COST, chakra: u.chakra, reason: 'foresight' });
-  ev.push({ t: 'act', unit: u.id, act: 'foresight' });
-  ev.push({ t: 'condition', unit: u.id, cond: 'foresight', on: true });
-  return null;
-}
-
 /** Shove: Athletics against the target's Athletics or Acrobatics; knock it prone or push it 1.5 m. */
 function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'push', ev: BattleEvent[]): string | null {
   if (!u.turn.action) return 'noAction';
@@ -906,6 +884,7 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
   if (!t || t.down || t.team === u.team) return 'badTarget';
   if (t.kind !== 'ninja') return 'tooBig';
   if (dist(u.pos, t.pos) > 1.6) return 'outOfRange';
+  if (fullCoverBetween(s, u.pos, t.pos)) return 'blocked';
   u.turn.action = false;
   const def = check(s, 'check', Math.max(skillMod(t, 'athletics'), skillMod(t, 'acrobatics')), 0);
   ev.push({ t: 'check', unit: t.id, what: 'resistShove', roll: def });

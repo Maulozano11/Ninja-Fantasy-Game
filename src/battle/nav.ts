@@ -1,5 +1,6 @@
 // Movement on the hidden 0.5 m grid: what a step costs (water, cliffs, the ninja jump), where a unit
-// can reach with the movement it has left, and the path there. Movement is shown in meters.
+// can reach with the movement it has left, the path there, and free spots to land on (Kawarimi, a
+// flash-in). Movement is shown in meters.
 
 import type { BattleState, Cell, Pt, Unit } from './types';
 import { CELL, cellBlocked, cellCenter, cellOf, dist, gridFor, idx, inGrid } from './map';

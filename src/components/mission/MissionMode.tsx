@@ -16,6 +16,7 @@ import {
 import type { ShinobiCharacter } from '../../types/shinobi';
 import type { Difficulty, PartyState } from '../../types/mission';
 import { COMPANIONS, MISSIONS, MissionDef, nextPos, nodeAt, RoadNode } from '../../data/missions';
+import { clanName } from '../../data/shinobiData';
 import type { ActivityId } from '../../data/campActivities';
 import { DEFAULT_SUPPLIES, endMissionAtVillage, isStanding } from '../../rules/mission';
 import {
@@ -479,7 +480,7 @@ function BattlePrep({ run, battle: b, intro, onFight }: { run: MissionRun; battl
                   {m.id === run.party.leaderId && <Crown className="w-3 h-3 text-amber-300" />}
                   {m.name}
                   <span className="text-[10px] font-normal text-slate-500">
-                    {m.clan} · {classShort(m)}
+                    {clanName(m.clan)} · {classShort(m)}
                   </span>
                 </div>
                 <Bar value={m.currentHp} max={effectiveMaxHp(m)} tone="hp" />
@@ -622,7 +623,7 @@ function Village({
                         {c.name}
                         {isHero && <span className="rounded bg-cyan-500 px-1 text-[9px] font-black uppercase text-slate-950">{T('you')}</span>}
                       </div>
-                      <div className="text-[10px] text-slate-400 truncate">{T('levelLine', { level: c.level, clan: c.clan, cls: className(c) })}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{T('levelLine', { level: c.level, clan: clanName(c.clan), cls: className(c) })}</div>
                       <div className="text-[10px] font-mono text-slate-500">{T('statsLine', { hp: c.maxHp, chakra: c.maxChakra, ac: c.armorClass })}</div>
                       <div className="mt-1 flex items-center gap-2">
                         {!isHero && (

@@ -1,5 +1,5 @@
 // What a unit means to do on its turn. Enemies commit to a plan at the end of each of their turns
-// (and when the fighting starts), and a Mirai's Future Foresight shows it to the party. The AI
+// (and when the fighting starts), and a Mirai's Eye of Tomorrow shows it to the party. The AI
 // carries the plan out on its next turn if it still makes sense, or plans again.
 
 import { averageDice, parseDice } from '../rules/dice';
@@ -12,10 +12,8 @@ import type { JutsuSpec } from './jutsu';
 import { passivePerception } from './combat';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 
-/** How far a Mirai's eyes read an enemy's next move. */
+/** How far a Mirai's Eye of Tomorrow reads an enemy's next move. */
 export const FORESIGHT_RANGE = 18;
-/** Future Foresight: bonus action and its chakra. */
-export const FORESIGHT_COST = 2;
 
 const avg = (dice?: string): number => {
   const d = dice ? parseDice(dice) : null;
@@ -157,10 +155,10 @@ export function planEnemy(s: BattleState, u: Unit): void {
   u.intent = planIntent(s, u);
 }
 
-/** Mirai eyes in the party: who can read the enemies' next moves. */
+/** The Eye of Tomorrow in the party: the Mirai who can read the enemies' next moves. */
 export const miraiSeers = (s: BattleState): Unit[] => Object.values(s.units).filter((u) => u.team === 'party' && !u.down && u.character?.clan === 'Mirai');
 
-/** The enemies' plans a Mirai in the party can see (in range and in sight). */
+/** The enemies' plans a Mirai in the party sees with the Eye of Tomorrow (in range and in sight). */
 export function foreseen(s: BattleState): Record<string, Intent> {
   const out: Record<string, Intent> = {};
   const seers = miraiSeers(s);
@@ -170,12 +168,4 @@ export function foreseen(s: BattleState): Record<string, Intent> {
     if (seers.some((m) => dist(m.pos, e.pos) <= FORESIGHT_RANGE && lineOfSight(s, m.pos, e.pos))) out[e.id] = e.intent;
   }
   return out;
-}
-
-/** Future Foresight's parry: +1 AC with the first Sharingan stage (or none), up to +3. */
-export function foresightBonus(u: Unit): number {
-  const d = u.character?.dojutsu ?? 'None';
-  if (d.includes('Mangekyo') || d.includes('3-Tomoe')) return 3;
-  if (d.includes('2-Tomoe')) return 2;
-  return 1;
 }

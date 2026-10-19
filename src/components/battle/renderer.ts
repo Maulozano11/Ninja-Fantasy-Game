@@ -4,7 +4,8 @@
 
 import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wall } from '../../battle/types';
 import type { MapDef } from '../../battle/map';
-import { CELL, cellCenter, dist } from '../../battle/map';
+import { BLOCK_HALF, CELL, cellCenter, dist } from '../../battle/map';
+import { breakable } from '../../battle/structures';
 import { lookOf as guardLook, VISION } from '../../battle/stealth';
 import { worldSprite } from '../world/WorldSpriteView';
 import type { MapArt } from './mapArt';
@@ -116,7 +117,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
     if (st?.destroyed) return;
     items.push({ z: p.sortZ ?? p.z, draw: () => drawProp(ctx, sc, p, i < map.props.length ? i : -1) });
   });
-  for (const w of state.walls) items.push({ z: (w.a.z + w.b.z) / 2, draw: () => drawWall(ctx, sc, w) });
+  // Walls broken by events still playing stand until their moment comes.
+  for (const w of [...state.walls, ...sc.pb.goneWalls()]) items.push({ z: (w.a.z + w.b.z) / 2, draw: () => drawWall(ctx, sc, w) });
   const hydra = Object.values(state.units).find((u) => u.kind === 'hydra_body');
   for (const u of Object.values(state.units)) {
     if (u.kind === 'hydra_head') continue;
@@ -305,12 +307,25 @@ function drawTrap(ctx: CanvasRenderingContext2D, map: MapDef, t: Trap): void {
 function drawWall(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): void {
   // Not raised yet: its event is still waiting in the playback queue.
   if (sc.pb.queue.some((e) => e.t === 'wall' && e.on && e.wall.id === w.id)) return;
-  if (drawWallSprite(ctx, sc, w)) return;
+  // A block is always drawn; a wall plays its element's sheet when the game has one.
+  if (w.kind === 'metalBlock') drawSteel(ctx, sc, w);
+  else if (!drawWallSprite(ctx, sc, w)) {
+    if (w.kind === 'metal') drawSteel(ctx, sc, w);
+    else drawWallShape(ctx, sc, w);
+  }
+  drawWallHp(ctx, sc, w);
+}
+
+/** Heights of the drawn walls (px). */
+const WALL_H: Record<Wall['kind'], number> = { earth: 96, water: 84, metal: 90, metalBlock: 48 };
+
+/** A wall drawn as a shape: an earth bank or a sheet of water. */
+function drawWallShape(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): void {
   const { map } = sc;
   const { a, b, kind } = w;
   const pa = project(map, a);
   const pb = project(map, b);
-  const h = kind === 'earth' ? 96 : 84;
+  const h = WALL_H[kind];
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(pa.X, pa.Y);
@@ -339,6 +354,112 @@ function drawWall(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): void {
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+type Px = { X: number; Y: number };
+
+/** The ground corners of a Kōton structure: a 1.5 m square, or a wall as thick as the cells it fills. */
+function footprint(w: Wall): Pt[] {
+  if (w.kind === 'metalBlock') {
+    const { x, z } = w.a;
+    const r = BLOCK_HALF;
+    return [{ x: x - r, z: z - r }, { x: x + r, z: z - r }, { x: x + r, z: z + r }, { x: x - r, z: z + r }];
+  }
+  const d = Math.max(1e-6, dist(w.a, w.b));
+  const nx = (-(w.b.z - w.a.z) / d) * 0.35;
+  const nz = ((w.b.x - w.a.x) / d) * 0.35;
+  return [{ x: w.a.x + nx, z: w.a.z + nz }, { x: w.b.x + nx, z: w.b.z + nz }, { x: w.b.x - nx, z: w.b.z - nz }, { x: w.a.x - nx, z: w.a.z - nz }];
+}
+
+/**
+ * A steel box as the viewer sees it: the sides turned toward the front (each with how far it faces
+ * right, for its shade and its ground length) and the top.
+ */
+function steelBox(map: MapDef, w: Wall): { sides: { pts: Px[]; right: number; len: number }[]; top: Px[] } {
+  const foot = footprint(w);
+  const c = { x: foot.reduce((a, p) => a + p.x, 0) / 4, z: foot.reduce((a, p) => a + p.z, 0) / 4 };
+  const lvl = map.levelAt(c.x, c.z);
+  const h = WALL_H[w.kind];
+  const g = foot.map((p) => project(map, p, lvl));
+  const top = g.map((p) => ({ X: p.X, Y: p.Y - h }));
+  const sides: { pts: Px[]; right: number; len: number }[] = [];
+  for (let i = 0; i < 4; i++) {
+    const j = (i + 1) % 4;
+    const out = { x: (foot[i].x + foot[j].x) / 2 - c.x, z: (foot[i].z + foot[j].z) / 2 - c.z };
+    // Only the sides that face the front (toward +z) show; the others are hidden behind the top.
+    if (out.z <= 1e-3) continue;
+    sides.push({ pts: [g[i], g[j], top[j], top[i]], right: out.x / Math.hypot(out.x, out.z), len: dist(foot[i], foot[j]) });
+  }
+  return { sides, top };
+}
+
+const polyPath = (ctx: CanvasRenderingContext2D, pts: Px[]): void => {
+  ctx.beginPath();
+  pts.forEach((p, i) => (i ? ctx.lineTo(p.X, p.Y) : ctx.moveTo(p.X, p.Y)));
+  ctx.closePath();
+};
+
+/**
+ * A Kōton structure in plain steel (a stand-in until its sheet is painted): a block, or a wall of
+ * plates with seams, lit from the left and the top.
+ */
+function drawSteel(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): void {
+  const { sides, top } = steelBox(sc.map, w);
+  const h = WALL_H[w.kind];
+  ctx.save();
+  ctx.strokeStyle = '#1f2937';
+  ctx.lineWidth = 1.5;
+  for (const f of sides) {
+    const [g0, g1] = f.pts;
+    const grad = ctx.createLinearGradient(0, Math.min(g0.Y, g1.Y) - h, 0, Math.max(g0.Y, g1.Y));
+    grad.addColorStop(0, '#9aa3ad');
+    grad.addColorStop(1, '#4b5563');
+    polyPath(ctx, f.pts);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    if (f.right > 0.1) {
+      ctx.fillStyle = `rgba(17, 24, 39, ${0.35 * f.right})`;
+      ctx.fill();
+    }
+    ctx.stroke();
+    // A wall's long faces are plates with two seams.
+    if (w.kind === 'metal' && f.len > 2) {
+      ctx.save();
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(31, 41, 55, 0.7)';
+      ctx.beginPath();
+      for (const k of [1 / 3, 2 / 3]) {
+        const x = g0.X + (g1.X - g0.X) * k;
+        const y = g0.Y + (g1.Y - g0.Y) * k;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y - h);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+  polyPath(ctx, top);
+  ctx.fillStyle = '#c3cad3';
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A thin grey bar over a structure that has been hurt. */
+function drawWallHp(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): void {
+  if (!breakable(w) || !w.maxHp) return;
+  const hp = sc.pb.wallHp(w);
+  if (hp >= w.maxHp) return;
+  const { top } = steelBox(sc.map, w);
+  const x = top.reduce((sum, p) => sum + p.X, 0) / 4;
+  const y = Math.min(...top.map((p) => p.Y));
+  const bw = 34;
+  ctx.save();
+  ctx.fillStyle = 'rgba(8, 10, 18, 0.8)';
+  ctx.fillRect(x - bw / 2 - 1, y - 9, bw + 2, 5);
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillRect(x - bw / 2, y - 8, Math.round((bw * Math.max(0, hp)) / w.maxHp), 3);
   ctx.restore();
 }
 
@@ -878,7 +999,7 @@ function drawFx(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): void {
     case 'wall': {
       const p = project(map, f.from);
       ctx.globalAlpha = 1 - t;
-      ctx.fillStyle = f.element === 'water' ? '#bae6fd' : '#c4a27a';
+      ctx.fillStyle = f.sig === 'debris' ? '#9aa3ad' : f.element === 'water' ? '#bae6fd' : '#c4a27a';
       for (let i = 0; i < 12; i++) {
         const x = p.X + (((i * 41) % 120) - 60);
         const y = p.Y - t * 40 - ((i * 17) % 30);
@@ -1145,6 +1266,30 @@ export function pickUnit(sc: { state: BattleState; pb: Playback; map: MapDef; no
       const p = project(sc.map, body.pos, 0);
       if (Math.abs(X - p.X) < 140 && Y < p.Y && Y > p.Y - 96) return body.id;
     }
+  }
+  return best?.id;
+}
+
+/** A point inside a polygon (even-odd rule). */
+function inPoly(pts: Px[], X: number, Y: number): boolean {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i];
+    const b = pts[j];
+    if (a.Y > Y !== b.Y > Y && X < ((b.X - a.X) * (Y - a.Y)) / (b.Y - a.Y) + a.X) inside = !inside;
+  }
+  return inside;
+}
+
+/** The breakable structure drawn under a map pixel, the nearest to the viewer first. */
+export function pickStructure(sc: { state: BattleState; map: MapDef }, X: number, Y: number): string | undefined {
+  let best: { id: string; z: number } | undefined;
+  for (const w of sc.state.walls) {
+    if (!breakable(w)) continue;
+    const box = steelBox(sc.map, w);
+    const hit = inPoly(box.top, X, Y) || box.sides.some((f) => inPoly(f.pts, X, Y));
+    const z = (w.a.z + w.b.z) / 2;
+    if (hit && (!best || z > best.z)) best = { id: w.id, z };
   }
   return best?.id;
 }

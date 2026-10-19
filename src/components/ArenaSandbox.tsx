@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShinobiCharacter, WeatherType } from '../types/shinobi';
-import { DEFAULT_CHARACTER } from '../data/shinobiData';
+import { DEFAULT_CHARACTER, clanName } from '../data/shinobiData';
 import { ShinobiSpriteCanvas } from './ShinobiSpriteCanvas';
 import { soundManager } from '../utils/audio';
 import { Swords, Users, Shield, Zap, Skull, CloudRain, Sun, Compass } from 'lucide-react';
@@ -113,7 +113,7 @@ export const ArenaSandbox: React.FC<ArenaSandboxProps> = ({
                 </span>
               </div>
               <div className="text-xs text-cyan-400 font-mono mt-0.5">
-                {playerCharacter.clan} Clan • Level {playerCharacter.level} {playerCharacter.shinobiClass}
+                {clanName(playerCharacter.clan)} Clan • Level {playerCharacter.level} {playerCharacter.shinobiClass}
               </div>
               <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-1 font-mono">
                 <span>HP: <strong className="text-emerald-400">{playerCharacter.currentHp}/{playerCharacter.maxHp}</strong></span>

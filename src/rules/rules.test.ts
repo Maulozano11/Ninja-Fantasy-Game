@@ -5,12 +5,12 @@ import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
 import type { ShinobiCharacter } from '../types/shinobi';
 import type { PartyState } from '../types/mission';
-import { proficiencyBonus, rollCheck, saveModifier, skillModifier, successChance } from './checks';
+import { cannotBeSurprised, proficiencyBonus, rollCheck, saveModifier, skillModifier, successChance } from './checks';
 import { deriveStats } from './derived';
 import { formatDice, parseDice, rollDice } from './dice';
 import { addEffect, effectMods, endBattle, morningAfter, tickRound, treat } from './effects';
 import { applyBattleResult, enterNextZone, flankWear, newMission, rollDeathSaves, takeSoldierPill, travelLeg } from './mission';
-import { changeExhaustion, changeTension, hitDiceLeft, returnToVillage, sanitizeMissionFields } from './ninja';
+import { changeExhaustion, changeTension, hitDiceLeft, migrateCharacter, migrateClan, returnToVillage, sanitizeMissionFields } from './ninja';
 import { ambushChance, chooseFire, doActivity, morning, rollNight, serveFood, spendHitDie, startCamp, startShortStop, stopActivity } from './rest';
 import { hashString, mulberry32, rngFor } from './rng';
 
@@ -95,6 +95,39 @@ describe('derived stats', () => {
   });
 });
 
+describe('clans', () => {
+  it('old clan names load as the new ones', () => {
+    for (const old of ['Uddo', 'Senju']) assert.equal(migrateClan(old), 'Ryusei');
+    for (const old of ['Akkai', 'Uzumaki']) assert.equal(migrateClan(old), 'Koton');
+    for (const old of ['Taki', 'Hyuga']) assert.equal(migrateClan(old), 'Northstar');
+    for (const old of ['Uchiha', 'Mirai']) assert.equal(migrateClan(old), 'Mirai');
+    // The shown name loads too, whichever way its accent was written.
+    assert.equal(migrateClan('Kōton'.normalize('NFC')), 'Koton');
+    assert.equal(migrateClan('Kōton'.normalize('NFD')), 'Koton');
+    assert.equal(migrateClan('Nope'), null);
+    const old = ninja({ clan: 'Taki' as ShinobiCharacter['clan'], currentHp: 7, maxHp: 50 });
+    const now = migrateCharacter(old);
+    assert.equal(now.clan, 'Northstar');
+    assert.equal(now.currentHp, 7);
+    assert.equal(now.maxHp, 50);
+    assert.equal(migrateCharacter(ninja({ clan: 'Nope' as ShinobiCharacter['clan'] })).clan, DEFAULT_CHARACTER.clan);
+  });
+
+  it('derived stats carry no old clan bonus', () => {
+    const b = { level: 4, stats: { str: 10, dex: 14, con: 14, int: 16, wis: 10, cha: 8 }, shinobiClass: 'Ninjutsu Specialist' as const, armor: 'Leaf Chunin Flak' as const, feats: [] };
+    const all = (['Mirai', 'Koton', 'Ryusei', 'Northstar'] as const).map((clan) => deriveStats({ ...b, clan }));
+    for (const d of all) {
+      assert.equal(d.maxHp, all[0].maxHp);
+      assert.equal(d.maxChakra, all[0].maxChakra);
+    }
+  });
+
+  it('only Watchful prevents surprise', () => {
+    assert.equal(cannotBeSurprised(ninja({ clan: 'Northstar' })), false);
+    assert.equal(cannotBeSurprised(ninja({ effects: addEffect([], 'watchful').effects })), true);
+  });
+});
+
 describe('effects', () => {
   it('refresh instead of stacking', () => {
     let fx = addEffect([], 'sharpened').effects;
@@ -171,10 +204,10 @@ describe('tension and exhaustion', () => {
 
 describe('camp', () => {
   const mirai = ninja({ id: 'a', name: 'Ren', clan: 'Mirai', shinobiClass: 'Ninjutsu Specialist', level: 4, currentHp: 10, currentChakra: 5 });
-  const uddo = ninja({ id: 'b', name: 'Saber', clan: 'Uddo', shinobiClass: 'Taijutsu Master', level: 4, currentHp: 20, currentChakra: 30, tension: 4 });
-  const taki = ninja({ id: 'c', name: 'Hana', clan: 'Taki', shinobiClass: 'Medical Specialist', level: 4 });
+  const ryusei = ninja({ id: 'b', name: 'Saber', clan: 'Ryusei', shinobiClass: 'Taijutsu Master', level: 4, currentHp: 20, currentChakra: 30, tension: 4 });
+  const northstar = ninja({ id: 'c', name: 'Hana', clan: 'Northstar', shinobiClass: 'Medical Specialist', level: 4 });
   const site = { nodeId: 'clearing', zoneDanger: 30 };
-  const base = (): PartyState => newMission([mirai, uddo, taki], { seed: 99 });
+  const base = (): PartyState => newMission([mirai, ryusei, northstar], { seed: 99 });
 
   it('works through the steps and shows the moon %', () => {
     let s = ok(startCamp(base(), site));
@@ -190,7 +223,7 @@ describe('camp', () => {
   it('spends incense and refuses what a ninja cannot do', () => {
     let s = ok(startCamp(base(), site));
     s = ok(chooseFire(s.party, s.state, 'low'));
-    assert.equal(doActivity(s.party, s.state, 'a', 'wood_shelter').ok, false, 'Uddo only');
+    assert.equal(doActivity(s.party, s.state, 'a', 'wood_shelter').ok, false, 'Ryusei only');
     s = ok(doActivity(s.party, s.state, 'a', 'meditate'));
     assert.equal(doActivity(s.party, s.state, 'a', 'meditate').ok, false, 'once per camp');
     assert.equal(doActivity(s.party, s.state, 'a', 'train_jutsu').ok, false, '2 + 2 sticks > 3');
@@ -215,7 +248,7 @@ describe('camp', () => {
 
   it('feeds the party, rolls the night and recovers in the morning', () => {
     const tired = ninja({ ...mirai, hitDiceSpent: 3, chakraDiceSpent: 1, exhaustion: 2, effects: addEffect([], 'crash', { campNo: 0 }).effects });
-    let s = ok(startCamp(newMission([tired, taki], { seed: 5 }), site));
+    let s = ok(startCamp(newMission([tired, northstar], { seed: 5 }), site));
     s = ok(chooseFire(s.party, s.state, 'low'));
     assert.equal(serveFood(s.party, s.state, 'feast').ok, false, 'a feast needs a hunt');
     s = ok(serveFood(s.party, s.state, 'hot'));

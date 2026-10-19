@@ -211,8 +211,9 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       return true;
     }
     case 'wall':
-      // With the element's wall sheet in the game, the standing wall plays its own rise.
-      return !!sheet(el, 'wall');
+      // With the element's wall sheet in the game, the standing wall plays its own rise (a broken
+      // structure's debris has no sheet yet: it falls back to the drawn dust).
+      return f.sig !== 'debris' && !!sheet(el, 'wall');
     default:
       return false;
   }

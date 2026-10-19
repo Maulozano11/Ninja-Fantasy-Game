@@ -2,6 +2,7 @@ import React from 'react';
 import { Backpack, Crown, Skull } from 'lucide-react';
 import type { ShinobiCharacter } from '../../types/shinobi';
 import type { PartyState, StatusEffect, SupplyId } from '../../types/mission';
+import { clanName } from '../../data/shinobiData';
 import { EFFECTS } from '../../rules/effects';
 import { effectiveMaxHp } from '../../rules/derived';
 import { chakraDiceLeft, exhaustionOf, hitDiceLeft, isUnconscious, tensionOf } from '../../rules/ninja';
@@ -150,7 +151,7 @@ export function MemberCard({
         <div className="flex items-center gap-1.5 min-w-0">
           {leader && <Crown className="w-3 h-3 text-amber-300 shrink-0" aria-label={T('missionLeader')} />}
           <span className={`font-bold text-sm truncate ${ornate ? (selected ? 'text-[#ffe9b0]' : 'text-[#f6ecd4]') : 'text-white'}`}>{c.name}</span>
-          <span className={`text-[10px] truncate ${ornate ? 'text-[#b9a77f]' : 'text-slate-500'}`}>{T('levelLine', { level: c.level, clan: c.clan, cls: classShort(c) })}</span>
+          <span className={`text-[10px] truncate ${ornate ? 'text-[#b9a77f]' : 'text-slate-500'}`}>{T('levelLine', { level: c.level, clan: clanName(c.clan), cls: classShort(c) })}</span>
         </div>
         <Bar value={c.currentHp} max={effectiveMaxHp(c)} tone="hp" ornate={ornate} />
         <Bar value={c.currentChakra} max={c.maxChakra} tone="chakra" ornate={ornate} />

@@ -121,6 +121,48 @@ psychological disruption.
   party until the end of the mission. Not bosses. With the Shadow Barracks it
   can become permanent later.
 
+## Phase 1 rulings
+
+Where the numbers above leave a question open, phase 1 is built with these
+rulings (conservative, each with its reason). The owner approved one
+recommendation in particular: the Aura of Sovereignty gives **plain
+disadvantage** (two d20, keep the lower); *High Disadvantage* (three dice)
+stays reserved for the Path of the Sovereign.
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| D1 | Kōton id and Spanish clan names | Id `Koton`, displayed "Kōton". All four names are the same in both languages. | A literal ō can fail to match decomposed Unicode from imported JSON. The names are proper names. |
+| D2 | Stat bonuses | Set in data and shown on the clan card, **not applied**, as before. | They were never applied. Applying them shifts every saved character, and an existing rules test pins the default hero's DEX save at +2. It would be a one-helper change later if the owner wants it. |
+| D3 | Old traits the doc doesn't list (Uddo +6 HP, Akkai necrotic resistance, Taki "can't be surprised") | All removed. Mirai's unused vs-genjutsu save option stays (dead code; Mirai is unchanged). | The phase-1 lists define each new clan completely. The Taki trait text itself defines "360° vision" as "can't be flanked or surprised". |
+| D4 | Saved characters | Only the clan is renamed. Stored HP, chakra, maxima, look and jutsu are untouched. Companions defined in code re-derive (Kenji 28 → 22 max HP, Hana 41 → 34 max chakra). | No numbers are taken away mid-mission, and the look is kept as the doc requires. |
+| D5 | Old signature jutsu and camp activities | Ids and numbers kept. Jutsu names re-prefixed with the new clan. Camp activities re-gated by conversion. | Saves reference the ids. The doc gives no replacement, so the owner can re-flavour them with the Paths. |
+| D6 | Enemy clans | Converted like everything else: rogue and Kagero Mirai, hunter Kōton, raider Ryusei. They get their clan abilities. | "Old clans convert the same way". Enemies of these clans must work. Consequence: rogues are immune to Command. |
+| D7 | Ranks | Rogue, hunter and raider are Minions; Kagero is a Captain; the hydra (body and heads) is the Boss; the party has no rank. An encounter can override the rank. | Follows the doc's definitions. No Sub-boss exists yet. |
+| D8 | Bloodline abilities and the jutsu pipeline | No seals, no discount, not enhanceable, blocked by sealed chakra. Pursuing Flame is a real jutsu. | Seals would stow the blade before a Warp Strike. The old foresight never needed hands. Katon is ninjutsu. |
+| D9 | "Saw it coming" | The attacker is within the Eye's reach (18 m, in sight) and not attacking from hiding. The same rule applies to party and enemy Mirai. | It ties Evasion to the Eye, the Kōton counter works through sight, and enemy Mirai can still use it (enemies have no intents to read). |
+| D10 | What Evasion covers and its order | Every single-target hit Kawarimi covers. Order: clone → Evasion → Kawarimi; declining offers Kawarimi. The AI uses Kawarimi's threshold. Evading during its own move ends the move. | Reuses tested rules. |
+| D11 | Eye ground destination | Planned with full speed at plan time. The AI keeps to it if it is still reachable and still serves the plan. | Otherwise the forecast would lie. |
+| D12 | Structure range, cap, placement and AC | 6 m in sight (like Earth Wall). A third makes the oldest crumble (like Nodes). Not over a unit. AC 10 (like props). Areas damage them. Permanent. | Mirrors existing rules and the owner's own "oldest goes" pattern. Never traps a unit. |
+| D13 | Full cover | Only Kōton metal walls give it. Nothing passes: sight, attacks, melee, opportunity attacks, flanking, shoves, areas from the far side. Earth and water walls are unchanged. | This is the rule full cover means. It changes nothing for existing jutsu. |
+| D14 | Nodes | Weapon attacks only, at the target's position. Static, visible to both sides, they outlive the owner, and using them doesn't consume them. | "Where the weapon lands". The Paths add moving Nodes and bulk Nodes later. |
+| D15 | Warp Strike wording | Sight ignores structures, but trees still block. "Next to" means within weapon reach. "From behind" means advantage. "Can't be blocked" skips clone, Kawarimi and Evasion, but not AC, cover or Dodge. | One shared reading for the engine and the preview. "Blocks" are the defensive negations. |
+| D16 | Spatial Swap | 18 m to the Node in sight (like Warp). "On a Node" means within 0.75 m. Ninjas only. A resisted swap still costs. Combat only. | The doc gives no range, so this mirrors Warp. The hydra is too big. |
+| D17 | Aura | Plain disadvantage (owner-approved). The movement penalty applies literally to "anyone" (allies too) except the Northstar itself, and only on the mover's own turn. "Warp" = Warp Strike, Swap, Body Flicker; "dash" = walking after Dash, and melee flash-ins. | The owner wrote "anyone" twice, against "enemies" for the attack rule. Outside one's own turn there is no remaining movement to halve. |
+| D18 | Command details | Needs sight. Invalid targets are refused before paying. Units without a rank (the party) can't be commanded. It lasts until the end of the target's next N turns and ends if the target drops. AI-driven. Victory, defeat and results use the home team. | No enemy Northstar exists. Taking a player's ninja away is a big change for the owner to approve. Flipping teams keeps the AI, targeting and pathing correct. |
+| D19 | Level-9 Command | The engine accepts a second target. The screen uses a second click. | No unit is above level 6 today. |
+| D20 | Natural Submission | 9 m (like Command). Boss and Sub-boss excluded. Joins for the rest of the battle. Carrying it through the mission is deferred. | No beast or summon units exist. Carry-over needs beast party units in missions. |
+| D21 | AI scope | Uses Pursuing Flame, Evasion, the Block (for cover), Warp (to close in) and Command. Does not use the full Wall, Swap or Submission. Reacts by routing around structures and breaking a structure that blocks its melee target. The aura gets no AI change. | Valid and deterministic, with no stalls. Wall and Swap need tactical judgment, so they are deferred. |
+| D22 | Stealth phase | Command, Submission and Swap are combat only. The other abilities are allowed; loud ones start the fight. | Flipping an unaware guard's side mid-stealth has no defined meaning. |
+| D23 | "Once a round" | The existing reaction, refreshed at the start of the unit's turn. | Nothing new to track. |
+
+Open questions for the owner:
+
+- D2: apply the clan stat bonuses to the ability scores?
+- D5: new camp activities and signature jutsu flavour per clan?
+- D6: should the common enemies stay Mirai (immune to Command)?
+- D17: should the aura's movement penalty spare the Northstar's allies?
+- D18: may an enemy Northstar command the party's ninjas?
+
 ## Later phases: the Paths of Mastery (the owner's design)
 
 Not built yet. Numbers will be proposed and approved before each Path is

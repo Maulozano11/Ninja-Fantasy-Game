@@ -1,5 +1,5 @@
 // The flow of a battle: initiative when the fighting starts, the start and end of each unit's turn
-// (death saves, bleeding, Uddo chakra, the hydra growing heads back), rounds, and the end.
+// (death saves, bleeding, the hydra growing heads back), rounds, and the end.
 
 import { abilityMod, cannotBeSurprised } from '../rules/checks';
 import { removeEffect, tickRound } from '../rules/effects';
@@ -31,7 +31,7 @@ export function startCombat(s: BattleState, ev: BattleEvent[], by: string | unde
   s.order = Object.keys(rolls).sort((a, b) => rolls[b] - rolls[a]);
   for (const id of surprised) {
     const u = s.units[id];
-    // Taki see all around them and Watchful ninjas are never caught unaware.
+    // Watchful ninjas are never caught unaware.
     if (u && takesTurns(u) && !(u.character && cannotBeSurprised(u.character))) u.cond.surprised = true;
   }
   for (const u of Object.values(s.units)) {
@@ -65,7 +65,6 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     u.cond.disengaged = false;
     u.cond.waterWalk = false;
     u.cond.ninjaJump = false;
-    u.cond.foresight = undefined;
     ev.push({ t: 'turn', unit: u.id, round: s.round });
     if (u.down === 'downed') {
       deathSave(s, u, ev);
@@ -94,12 +93,6 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     if (u.down) {
       advance(s, ev);
       continue;
-    }
-    // The Uddo's chakra comes back by itself (+2 a round).
-    if (u.character?.clan === 'Uddo' && u.chakra < u.maxChakra) {
-      const was = u.chakra;
-      u.chakra = Math.min(u.maxChakra, u.chakra + 2);
-      ev.push({ t: 'chakra', unit: u.id, delta: u.chakra - was, chakra: u.chakra, reason: 'Uddo' });
     }
     // Confused: one turn in four is lost to the illusion.
     if (u.effects.some((e) => e.id === 'confused') && rollDie(nextRng(s), 4) === 1) {

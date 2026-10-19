@@ -5,9 +5,10 @@ import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
 import { HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import type { Difficulty } from '../types/mission';
+import type { ShinobiCharacter } from '../types/shinobi';
 import type { PartyBattleResult } from '../battle/result';
 import { chooseFire, doActivity, rollNight, serveFood, startCamp, startShortStop } from '../rules/rest';
-import { applyOutcome, continueRoad, intoNextZone, MissionRun, newBattle, resolvePartyBattle, startRun } from './missionRun';
+import { applyOutcome, continueRoad, intoNextZone, migrateRun, MissionRun, newBattle, resolvePartyBattle, startRun } from './missionRun';
 
 const hero = { ...DEFAULT_CHARACTER, id: 'hero', name: 'Solen' };
 
@@ -167,5 +168,32 @@ describe('mission flow', () => {
       return;
     }
     assert.fail('no seed left survivors');
+  });
+
+  it('a run saved with the old clans loads with the new ones, and nothing else changes', () => {
+    const r = begin();
+    // A sheet from before the conversion: its old clan, and the numbers it had then.
+    const old = (c: ShinobiCharacter, clan: string): ShinobiCharacter => ({ ...c, clan: clan as ShinobiCharacter['clan'], currentHp: 9, maxHp: c.maxHp + 6, maxChakra: c.maxChakra + 5 });
+    const [a, b, c] = r.party.members;
+    const saved: MissionRun = {
+      ...r,
+      party: { ...r.party, members: [old(a, 'Uddo'), old(b, 'Akkai')], dead: [old(c, 'Taki')] },
+      entry: { ...r.entry, members: [old(a, 'Senju')], dead: [old(b, 'Uchiha')] },
+    };
+    const m = migrateRun(saved);
+    assert.deepEqual(m.party.members.map((x) => x.clan), ['Ryusei', 'Koton']);
+    assert.deepEqual(m.party.dead.map((x) => x.clan), ['Northstar']);
+    assert.deepEqual(m.entry.members.map((x) => x.clan), ['Ryusei']);
+    assert.deepEqual(m.entry.dead.map((x) => x.clan), ['Mirai']);
+    const pairs: [ShinobiCharacter, ShinobiCharacter][] = [
+      [saved.party.members[0], m.party.members[0]],
+      [saved.party.members[1], m.party.members[1]],
+      [saved.party.dead[0], m.party.dead[0]],
+      [saved.entry.members[0], m.entry.members[0]],
+      [saved.entry.dead[0], m.entry.dead[0]],
+    ];
+    for (const [was, now] of pairs) {
+      for (const k of ['appearance', 'dojutsu', 'palette', 'currentHp', 'maxHp', 'maxChakra'] as const) assert.deepEqual(now[k], was[k], k);
+    }
   });
 });

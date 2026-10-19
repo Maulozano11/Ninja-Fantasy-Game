@@ -4,11 +4,12 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
 import { HANA, KENJI } from '../data/missions';
+import { addEffect } from '../rules/effects';
 import type { ShinobiCharacter } from '../types/shinobi';
-import type { Action, BattleEvent, BattleState, Pt, Unit } from './types';
+import type { Action, BattleEvent, BattleState, Pt, Unit, Wall } from './types';
 import { applyAction, createBattle } from './engine';
 import type { BattleSetup } from './engine';
-import { cellBlocked, cellCenter, cellOf, dist, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellOf, coverBetween, dist, lineOfSight, waterAtPt } from './map';
 import { canStop, reachable } from './nav';
 import { attackPreview, damage } from './combat';
 import { current, endTurn } from './turns';
@@ -90,13 +91,15 @@ describe('battle setup', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(a.state)), JSON.parse(JSON.stringify(b.state)));
   });
 
-  it('a party caught at night loses its first turn (except a Taki)', () => {
-    const { state } = createBattle(setup({ partySurprised: true, party: [
-      { character: hero({ id: 'a' }), pos: { x: 8, z: 10 } },
-      { character: hero({ id: 't', clan: 'Taki' }), pos: { x: 8, z: 12 } },
+  it('a party caught at night loses its first turn, whatever the clan; Watchful still saves', () => {
+    const { events } = createBattle(setup({ partySurprised: true, party: [
+      { character: hero({ id: 'n', clan: 'Northstar' }), pos: { x: 8, z: 10 } },
+      { character: hero({ id: 'w', effects: addEffect([], 'watchful').effects }), pos: { x: 8, z: 12 } },
     ] }));
-    assert.equal(!!state.units.a.cond.surprised || current(state)?.id === 'a', true);
-    assert.equal(!!state.units.t.cond.surprised, false);
+    const start = events.find((e) => e.t === 'combatStart');
+    assert.ok(start?.t === 'combatStart');
+    assert.ok(start.surprised.includes('n'));
+    assert.ok(!start.surprised.includes('w'));
   });
 });
 
@@ -290,7 +293,7 @@ describe('the hydra', () => {
   });
 });
 
-describe('Mirai Future Foresight', () => {
+describe('Mirai: Eye of Tomorrow', () => {
   const mirai = (dojutsu: ShinobiCharacter['dojutsu'] = 'None') => hero({ id: 'm', name: 'Ren', clan: 'Mirai', dojutsu });
 
   it('reads what each enemy in sight will do next', () => {
@@ -302,25 +305,126 @@ describe('Mirai Future Foresight', () => {
     assert.deepEqual(foreseen(other), {});
   });
 
-  it('parries (+AC by Sharingan stage) and dodges until the next turn', () => {
-    const s = turnOf(createBattle(setup({ party: [{ character: mirai('Sharingan (2-Tomoe)'), pos: { x: 8, z: 10 } }] })).state, 'm');
-    place(s, 'rogue_0', { x: 9.5, z: 10 });
-    const before = attackPreview(s, s.units.rogue_0, s.units.m, 'melee');
-    const out = ok(applyAction(s, { type: 'foresight', unit: 'm' }));
-    assert.equal(out.state.units.m.cond.foresight, 2);
-    assert.equal(out.state.units.m.chakra, s.units.m.chakra - 2);
-    assert.equal(out.state.units.m.turn.bonus, false);
-    const after = attackPreview(out.state, out.state.units.rogue_0, out.state.units.m, 'melee');
-    assert.equal(after.ac, before.ac + 2);
-    assert.ok(after.chance < before.chance);
-    assert.equal(applyAction(turnOf(createBattle(setup()).state, 'a'), { type: 'foresight', unit: 'a' }).reason, 'notMirai');
-  });
-
   it('enemies follow the plan the Mirai saw, if it still makes sense', () => {
     const { state } = createBattle(setup({ party: [{ character: mirai(), pos: { x: 8, z: 10 } }] }));
     const s = turnOf(state, 'rogue_0');
     const plan = s.units.rogue_0.intent!;
     assert.deepEqual(planIntent(s, s.units.rogue_0)?.kind, plan.kind);
+  });
+});
+
+describe('clans: phase 1 foundation', () => {
+  it('the old clan abilities are gone', () => {
+    // A Ryusei (once Uddo) gets no chakra back at the start of its turn.
+    const s = turnOf(createBattle(setup()).state, 'rogue_0');
+    assert.equal(s.units.a.character?.clan, 'Ryusei');
+    s.units.a.chakra = 5;
+    const out = ok(applyAction(s, { type: 'endTurn', unit: 'rogue_0' }));
+    assert.equal(current(out.state)?.id, 'a');
+    assert.equal(out.state.units.a.chakra, 5);
+    assert.ok(!out.events.some((e) => e.t === 'chakra' && e.reason === 'Uddo'));
+    // A Northstar (once Taki) can be flanked.
+    const f = turnOf(createBattle(setup({ party: [
+      { character: hero({ id: 'a' }), pos: { x: 8, z: 10 } },
+      { character: hero({ id: 'b' }), pos: { x: 8, z: 12 } },
+    ] })).state, 'a');
+    const r = f.units.rogue_0;
+    r.character = { ...r.character!, clan: 'Northstar' };
+    place(f, 'a', { x: r.pos.x - 1.5, z: r.pos.z });
+    place(f, 'b', { x: r.pos.x + 1.5, z: r.pos.z });
+    assert.ok(attackPreview(f, f.units.a, r, 'melee').reasons.includes('flanking'));
+    // A Mirai has no parry on top of its AC.
+    const m = turnOf(createBattle(setup({ party: [{ character: hero({ id: 'm', clan: 'Mirai', dojutsu: 'Sharingan (3-Tomoe)' }), pos: { x: 8, z: 10 } }] })).state, 'rogue_0');
+    place(m, 'rogue_0', { x: 9.5, z: 10 });
+    assert.equal(attackPreview(m, m.units.rogue_0, m.units.m, 'melee').ac, m.units.m.ac);
+  });
+
+  it('enemies have ranks', () => {
+    const { state } = createBattle(setup({ enemies: [
+      { kind: 'rogue', pos: { x: 14, z: 10 } },
+      { kind: 'hunter', pos: { x: 16, z: 10 } },
+      { kind: 'raider', pos: { x: 14, z: 13 } },
+      { kind: 'jonin', pos: { x: 16, z: 13 } },
+    ] }));
+    assert.equal(state.units.rogue_0.rank, 'minion');
+    assert.equal(state.units.hunter_0.rank, 'minion');
+    assert.equal(state.units.raider_0.rank, 'minion');
+    assert.equal(state.units.jonin_0.rank, 'captain');
+    assert.equal(state.units.a.rank, undefined);
+    const lair = createBattle(setup({ party: [{ character: hero({ id: 'a' }), pos: { x: 10, z: 14 } }], enemies: [{ kind: 'hydra', pos: { x: 16, z: 8 } }] })).state;
+    const hydra = Object.values(lair.units).filter((u) => u.kind !== 'ninja');
+    assert.equal(hydra.length, 8);
+    assert.ok(hydra.every((u) => u.rank === 'boss'));
+    // An encounter can name another rank.
+    assert.equal(createBattle(setup({ enemies: [{ kind: 'rogue', pos: { x: 14, z: 10 }, rank: 'subboss' }] })).state.units.rogue_0.rank, 'subboss');
+  });
+
+  describe('metal structures', () => {
+    const metal = (): Wall => ({ id: 'w1', kind: 'metal', a: { x: 11, z: 8 }, b: { x: 11, z: 12.5 }, hp: 20, maxHp: 20 });
+    const block = (): Wall => ({ id: 'b1', kind: 'metalBlock', a: { x: 8.25, z: 12.75 }, b: { x: 8.25, z: 12.75 }, hp: 20, maxHp: 20 });
+
+    it('a metal wall blocks the way, sight, blows across it and areas from the far side', () => {
+      const s = turnOf(createBattle(setup({ party: [
+        { character: hero({ id: 'a' }), pos: { x: 10.25, z: 10.25 } },
+        { character: hero({ id: 'b' }), pos: { x: 16.25, z: 10.25 } },
+      ] })).state, 'a');
+      s.walls.push(metal());
+      place(s, 'rogue_0', { x: 11.75, z: 10.25 });
+      assert.equal(dist(s.units.a.pos, s.units.rogue_0.pos), 1.5);
+      assert.ok(cellBlocked(s, cellOf({ x: 10.9, z: 10.25 })) && cellBlocked(s, cellOf({ x: 11.1, z: 10.25 })));
+      assert.equal(lineOfSight(s, s.units.a.pos, s.units.rogue_0.pos), false);
+      assert.equal(applyAction(s, { type: 'attack', unit: 'a', target: 'rogue_0' }).reason, 'blocked');
+      assert.equal(applyAction(s, { type: 'shove', unit: 'a', target: 'rogue_0', mode: 'push' }).reason, 'blocked');
+      // A fireball bursting on the far side: the rogue is caught, Aki behind the wall is not, and
+      // the wall takes the blast.
+      const fire = ok(applyAction(turnOf(s, 'b'), { type: 'jutsu', unit: 'b', jutsu: 'fireball_goukakyu', at: { x: 12, z: 10.25 } }));
+      const saves = fire.events.filter((e) => e.t === 'save').map((e) => (e.t === 'save' ? e.unit : ''));
+      assert.ok(saves.includes('rogue_0'));
+      assert.ok(!saves.includes('a'));
+      assert.ok(fire.events.some((e) => e.t === 'wallHit' && e.wall === 'w1'));
+      const w = fire.state.walls.find((x) => x.id === 'w1');
+      assert.ok(!w || w.hp < 20);
+    });
+
+    it('a metal block fills its 3 × 3 cells and gives half cover without hiding anyone', () => {
+      const s = turnOf(createBattle(setup()).state, 'a');
+      s.walls.push(block());
+      for (const dx of [-0.5, 0, 0.5]) for (const dz of [-0.5, 0, 0.5]) assert.ok(cellBlocked(s, cellOf({ x: 8.25 + dx, z: 12.75 + dz })));
+      for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) assert.equal(cellBlocked(s, cellOf({ x: 8.25 + dx, z: 12.75 + dz })), false);
+      assert.equal(coverBetween(s, { x: 4.25, z: 12.75 }, { x: 9.75, z: 12.75 }), 2);
+      assert.equal(lineOfSight(s, { x: 4.25, z: 12.75 }, { x: 9.75, z: 12.75 }), true);
+      // Cover the attacker stands behind doesn't count.
+      assert.equal(coverBetween(s, { x: 7.25, z: 12.75 }, { x: 12.25, z: 12.75 }), 0);
+    });
+
+    it('can be struck down: AC 10, the weapon\'s dice, gone at 0 HP', () => {
+      const s = turnOf(createBattle(setup()).state, 'a');
+      s.walls.push(block());
+      place(s, 'a', { x: 8.25, z: 11.25 });
+      const strike = (from: BattleState): ReturnType<typeof applyAction> => {
+        for (let seed = 1; seed < 40; seed++) {
+          const t = structuredClone(from);
+          t.seed = seed;
+          const out = ok(applyAction(t, { type: 'attack', unit: 'a', target: 'wall:b1' }));
+          if (out.events.some((e) => e.t === 'wallHit')) return out;
+        }
+        throw new Error('no seed hits');
+      };
+      const hit = strike(s);
+      const atk = hit.events.find((e) => e.t === 'attack');
+      assert.ok(atk?.t === 'attack' && atk.target === 'wall:b1' && atk.roll.dc === 10);
+      assert.ok(hit.state.walls.find((w) => w.id === 'b1')!.hp < 20);
+      s.walls[0].hp = 1;
+      const broken = strike(s);
+      assert.equal(broken.state.walls.some((w) => w.id === 'b1'), false);
+      assert.ok(broken.events.some((e) => e.t === 'wall' && !e.on && e.wall.id === 'b1'));
+      assert.equal(cellBlocked(broken.state, cellOf({ x: 8.25, z: 12.75 })), false);
+      // Earth walls stay unbreakable.
+      const earth = turnOf(createBattle(setup()).state, 'a');
+      earth.walls.push({ ...block(), kind: 'earth', b: { x: 8.25, z: 14 } });
+      place(earth, 'a', { x: 8.25, z: 11.25 });
+      assert.equal(applyAction(earth, { type: 'attack', unit: 'a', target: 'wall:b1' }).reason, 'badTarget');
+    });
   });
 });
 

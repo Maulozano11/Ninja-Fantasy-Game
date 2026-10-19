@@ -885,6 +885,33 @@ function fadeAbove(c: Canvas, line: (x: number) => number, n: number): Canvas {
 }
 
 /**
+ * Churning and cooling can leave 2 x 2 checkerboards of two colours (a dither his art does not
+ * have there): each such block of opaque pixels takes the commoner of its two colours round it.
+ */
+function dechecker(c: Canvas): Canvas {
+  const out = c.clone();
+  const { w, h } = c;
+  const at = (x: number, y: number) => (y * w + x) * 4;
+  const same = (i: number, j: number) => out.px[i] === out.px[j] && out.px[i + 1] === out.px[j + 1] && out.px[i + 2] === out.px[j + 2] && out.px[i + 3] === out.px[j + 3];
+  for (let y = 0; y + 1 < h; y++)
+    for (let x = 0; x + 1 < w; x++) {
+      const a = at(x, y), b = at(x + 1, y), cc = at(x, y + 1), d = at(x + 1, y + 1);
+      if (out.px[a + 3] < 255 || out.px[b + 3] < 255 || out.px[cc + 3] < 255 || out.px[d + 3] < 255) continue;
+      if (!same(a, d) || !same(b, cc) || same(a, b)) continue;
+      let na = 0, nb = 0;
+      for (let v = Math.max(0, y - 1); v <= Math.min(h - 1, y + 2); v++)
+        for (let u = Math.max(0, x - 1); u <= Math.min(w - 1, x + 2); u++) {
+          if (same(at(u, v), a)) na++;
+          else if (same(at(u, v), b)) nb++;
+        }
+      const src = na >= nb ? a : b;
+      const col: Color = [out.px[src], out.px[src + 1], out.px[src + 2], out.px[src + 3]];
+      for (const [u, v] of [[x, y], [x + 1, y], [x, y + 1], [x + 1, y + 1]]) out.set(u, v, col);
+    }
+  return out;
+}
+
+/**
  * The longest run of neighbouring columns whose topmost violet pixel (alpha 48 or more) lies on the
  * same row: a straight cut across his venom mist (or his violet slime) shows as a long run.
  */
@@ -1150,7 +1177,9 @@ function blast(): WorldSprite {
     if (i < PEAK) gm = p.mist > 0 ? fadeAbove(cut(moved(glowP, 0, d * 0.85), (x, y) => grain(x, y, seed + 4) < p.mist + 0.15, 0, false).render(), mistLine, 9) : new Canvas(K.w, K.h);
     else if (i > HOLD + 1) gm = glowMul(moved(glowP, 0, -(i - HOLD - 1) * 1.5), Math.max(0, 1 - (i - HOLD - 1) * 0.12)).render();
     const out = fadeTop(stackC(K.w, K.h, lt, gl, gm, c, pl, i > HOLD ? cool(spray, (i - HOLD - 3) / 3, seed + 12) : spray, ms, dr), 5, 16, seed + 20);
-    const fin = p.a < 1 ? fade(out, p.a) : out;
+    // (the settle churns and cools his slime: no checkerboard dither is left from it)
+    const clean = i > HOLD ? dechecker(out) : out;
+    const fin = p.a < 1 ? fade(clean, p.a) : clean;
     // (check: no violet top is a straight cut, the mist's least of all)
     const run = flatVioletRun(fin);
     if (run > 4) MIST_FAULTS.push(`blast[${i}]: ${run} neighbouring columns share their topmost violet row`);

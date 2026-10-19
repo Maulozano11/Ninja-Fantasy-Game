@@ -218,6 +218,49 @@ def harmonic_fill(val, known, hole, iters=1500):
     return out
 
 
+def laplace_fill(val, known, hole, wy=1.0, iters=6000, tol=1e-12):
+    """Fills `hole` (a 2-D field) with the solution of Laplace's equation that meets the `known`
+    pixels round it, solved to convergence (conjugate gradients): the smoothest surface, with no
+    bump, ridge or bright core inside, and nothing in it brighter than the light round it. wy < 1
+    ties the rows together more loosely than the columns, so each row runs from its own left value
+    to its own right value (no point brighter than both), while neighbouring rows still blend
+    smoothly (no crease). Hole pixels next to neither are free (no boundary there)."""
+    ys, xs = np.nonzero(dilate(hole, 1))
+    if not len(ys):
+        return val
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    v = val[y0:y1, x0:x1].astype(np.float64)
+    kn = known[y0:y1, x0:x1]
+    ho = (hole[y0:y1, x0:x1] & ~kn).astype(np.float64)
+    live = (kn | (ho > 0)).astype(np.float64)
+    W = (((0, 1), 1.0), ((0, -1), 1.0), ((1, 0), wy), ((-1, 0), wy))
+    diag = sum(w * shift(live, dy, dx) for (dy, dx), w in W)
+    kv = np.where(kn, v, 0.0)
+    b = sum(w * shift(kv, dy, dx) for (dy, dx), w in W) * ho
+
+    def op(x):
+        return (diag * x - sum(w * shift(x, dy, dx) for (dy, dx), w in W)) * ho
+
+    x = np.zeros_like(v)
+    r = b - op(x)
+    p = r.copy()
+    rs = float((r * r).sum())
+    bb = max(float((b * b).sum()), 1e-30)
+    for _ in range(iters):
+        if rs <= tol * bb:
+            break
+        Ap = op(p)
+        al = rs / float((p * Ap).sum())
+        x += al * p
+        r -= al * Ap
+        rn = float((r * r).sum())
+        p = r + (rn / rs) * p
+        rs = rn
+    out = val.copy()
+    out[y0:y1, x0:x1] = np.where(ho > 0, x, out[y0:y1, x0:x1])
+    return out
+
+
 # --- his sheet, his panels only ----------------------------------------------------------------
 
 def flatten():
@@ -292,7 +335,7 @@ SPRITES = {
                                  # (the shadow his character casts on the ground below its feet)
                                  shadow=[(515, 311), (521, 307), (530, 308), (540, 300), (542, 290), (581, 286), (581, 344), (515, 344)],
                                  keep_art=[rect(490.5, 249.5, 499.5, 257.5), rect(492.5, 257.5, 497.5, 270)],
-                                 edge_x=578, ext=16, reach_s=10.0, fade_b=24, gexf=200.0),
+                                 edge_x=578, ext=16, reach_s=10.0, fade_b=24, gexf=200.0, close=4, fill_wy=float(os.environ.get('PWY', '1.0'))),
                   pad=(3, 0, 3, 3),
                   pieces=[('mist', [rect(339, 179, 411, 262), [(455, 179), (520, 179), (520, 240), (470, 240), (462, 222)]], 'purple'),
                           ('pool', [[(339, 258), (409, 258), (416, 280), (458, 282), (466, 258), (581, 258), (581, 344), (339, 344)]])]),
@@ -432,7 +475,17 @@ def raw_light(name, cfg):
     SH = SHp & zone & ~(lightlike & (dG > 34))
     SH = dilate(SH, 1, nb=N8) & SHp & zone
     M = (CM | SH) & LZ
-    known = zone & ~dilate(M, 2, nb=N8)
+    # (for the fill, the gaps his character's limbs close round, between the legs and between an
+    # arm and the body, go with the character: his light seen through them is brighter than the
+    # light round the figure, and left in the fill it stood out as a bright spot with ridges
+    # rising from it)
+    gr = rl.get('close', 0)
+    Mf = M | (~dilate(~dilate(M, gr, nb=N8), gr, nb=N8) & LZ) if gr else M
+    lab, n = components((~Mf)[y0:y1, x0:x1], nb=N4)
+    outside = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]])).tolist())
+    Mf = Mf.copy()
+    Mf[y0:y1, x0:x1] |= np.isin(lab, [k for k in range(1, n + 1) if k not in outside]) & LZ[y0:y1, x0:x1]
+    known = zone & ~dilate(Mf, 2, nb=N8)
     gex = np.clip(dG, 0, None)
     # (JPEG blocks smoothed out over his light only, never across his slime)
     w = known.astype(np.float64)
@@ -445,8 +498,20 @@ def raw_light(name, cfg):
     # bright right up to the edge, beside his character's feet, the fill meets his light there)
     ex0 = rl['edge_x']
     darkrow = SMOOTH[:, ex0 - 4:ex0 + 1, 1].mean(1) - BG[1] < 20
-    edge0 = dilate(LZ & ~known, 1, nb=N8) & ~R & darkrow[:, None]
-    gf = harmonic_fill(np.where(edge0, 0.0, gs), known | edge0, LZ & ~known, iters=2500)
+    # At his panel's bottom his light fades, each column over a length set by its own brightness
+    # there (so the bottom edge is rounded too); under his removed character the fill meets nothing
+    # (0) at the panel's bottom, so it fades out there with the light round it, rounding the corner
+    # it makes with the panel's right edge, instead of being cut flat.
+    yb = max(p[1] for p in rl['region'])
+    Y = np.arange(H0)[:, None] + 0.5
+    ref = gs[int(yb - rl['fade_b'])]
+    fb = rl['fade_b'] * (0.35 + 0.65 * np.sqrt(np.clip(ref / max(ref.max(), 1e-6), 0, 1)))
+    tb = np.clip((yb - Y) / fb[None, :], 0, 1)
+    gs = gs * (tb * tb * (3 - 2 * tb))
+    edge0 = dilate(LZ & ~known, 1, nb=N8) & ~R & (darkrow[:, None] | (Y > yb))
+    # (the fill is solved to convergence: no point in it is brighter than his light round it, and
+    # it has no ridges)
+    gf = laplace_fill(np.where(edge0, 0.0, gs), known | edge0, LZ & ~known, wy=rl.get('fill_wy', 1.0))
     A = np.where(LZ, np.clip(gf / rl['gexf'], 0, 1), 0.0)
     # Past his panel's right edge the edge column's light runs on and fades out, each row as far as
     # its own brightness carries it (the brightest `ext` px), so the light's end is rounded like its
@@ -472,14 +537,6 @@ def raw_light(name, cfg):
         f = np.clip(1 - k / reach, 0, 1)
         A[:, ex + k] = (col3 * (1 - b) + colS * b) * (f * f * (3 - 2 * f))
     A[:, ex + rl['ext'] + 1:] = 0
-    # At his panel's bottom it fades, each column over a length set by its own brightness there,
-    # so the bottom edge is rounded too.
-    yb = max(p[1] for p in rl['region'])
-    Y = np.arange(H0)[:, None] + 0.5
-    ref = A[int(yb - rl['fade_b'])]
-    fb = rl['fade_b'] * (0.35 + 0.65 * np.sqrt(np.clip(ref / max(ref.max(), 1e-6), 0, 1)))
-    tb = np.clip((yb - Y) / fb[None, :], 0, 1)
-    A = A * (tb * tb * (3 - 2 * tb))
     # His light colour: the line his light pixels lie on (least squares, through his panel colour).
     dk = d[known & (dG > 8)]
     kr = float((dk[:, 0] * dk[:, 1]).sum() / (dk[:, 1] ** 2).sum())
@@ -488,7 +545,7 @@ def raw_light(name, cfg):
     resid = np.abs(BG + gex[known & (dG > 8)][:, None] * np.array([kr, 1.0, kb]) - c[known & (dG > 8)]).mean(0)
     print('%-10s raw light: colour %s, residual %s, zone %d px, filled %d px, peak alpha %.2f' % (
         name, rgb.round(), resid.round(1), LZ.sum(), (LZ & ~known).sum(), A.max()))
-    return dict(zone=LZ, A=A, rgb=rgb, M=M, known=known, gex=gex)
+    return dict(zone=LZ, A=A, rgb=rgb, M=M, Mf=Mf, known=known, gex=gex)
 
 
 def classify_his(name, cfg):
@@ -1371,9 +1428,9 @@ if REVIEW:
         if b['cls'].get('raw') is not None:
             # (where his light was filled under his character and its shadow, at game scale: the
             # light check compares ours with his everywhere else)
-            mk = resample(b['cls']['raw']['M'].astype(np.float64), b['g']['box'], b['W'], b['H']) > 0.02
+            mk = resample(b['cls']['raw']['Mf'].astype(np.float64), b['g']['box'], b['W'], b['H']) > 0.02
             Image.fromarray((mk * 255).astype(np.uint8)).save(os.path.join(REVIEW, 'mask-' + name + '.png'))
-            zn = resample((b['cls']['raw']['zone'] & ~b['cls']['raw']['M']).astype(np.float64), b['g']['box'], b['W'], b['H']) > 0.98
+            zn = resample((b['cls']['raw']['zone'] & ~b['cls']['raw']['Mf']).astype(np.float64), b['g']['box'], b['W'], b['H']) > 0.98
             Image.fromarray((zn * 255).astype(np.uint8)).save(os.path.join(REVIEW, 'zone-' + name + '.png'))
     for name, rm in refmap.items():
         his = resample(IM0, rm['box'], rm['w'], rm['h'])

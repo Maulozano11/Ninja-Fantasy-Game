@@ -994,11 +994,12 @@ function sealCircle(k: Key) {
   // How far out on his circle (84 x 53 px about the anchor) a pixel is.
   const r0 = (x: number, y: number) => Math.hypot((x + 0.5 - k.ax) / 84, (y + 0.5 - k.ay) / 53);
   const ringTop = keep(MAIN, (x, y, v) => !blueLight(v) && r0(x, y) > 0.8 && r0(x, y) < 1.2);
-  const HZ = union(keep(MAIN, (x, y) => !at0(ringTop, x, y)), keep(SEAL0, (_, __, v) => blueLight(v)));
+  const HZ = keep(MAIN, (x, y) => !at0(ringTop, x, y)), HALO = keep(SEAL0, (_, __, v) => blueLight(v));
   const SEAL = union(keep(SEAL0, (_, __, v) => !blueLight(v)), ringTop);
-  // (what the haze holds under that top, filled from the haze round it, is drawn wherever the
-  // circle is not lit, like the rest of the haze under the circle)
-  const U = union(keep(piece(k, 'under'), (x, y) => !at0(HZ, x, y)), keep(fillUnder(HZ, ringTop), (x, y) => !at0(HZ, x, y)));
+  // The haze his picture hides under the circle (and under that top: filled from the haze round
+  // it), drawn wherever the circle is not lit.
+  const U0 = piece(k, 'under');
+  const U = union(U0, keep(fillUnder(union(HZ, U0), ringTop), (x, y) => !at0(HZ, x, y)));
   const OUTER = keep(SEAL, (x, y) => r0(x, y) >= 0.58), INNER = keep(SEAL, (x, y) => r0(x, y) < 0.58);
   // The circle's centre: the mean of the centres of his two outer lines.
   const e1 = fitEllipse(brightGold(OUTER, 170, (x, y) => r0(x, y) >= 0.83));
@@ -1046,7 +1047,7 @@ function sealCircle(k: Key) {
       if (hidden(x, y) || nearLines(x, y)) RING.d[y * k.w + x] = v;
     }
   const RP = keep(RING, hidden), RL = keep(RING, (x, y) => !hidden(x, y));
-  return { HZ, U, SEAL, SB, LB, RP, RL, center: [cx, cy] as [number, number], ring3: [c3x, c3y, r3x, r3y] };
+  return { HZ, HALO, U, SEAL, SB, LB, RP, RL, center: [cx, cy] as [number, number], ring3: [c3x, c3y, r3x, r3y] };
 }
 
 /**
@@ -1078,7 +1079,7 @@ function coolTop(P: Ix, fadeTop: number): Ix {
 function blast(): WorldSprite {
   const k = key('blast', pads(4));
   const P = coolTop(piece(k, 'pillar'), k.fade.top ?? 0), LN = piece(k, 'lines'), SP = piece(k, 'loose');
-  const { HZ, U, SEAL, SB, LB, RP, RL } = sealCircle(k);
+  const { HZ, HALO, U, SEAL, SB, LB, RP, RL } = sealCircle(k);
   const alphaAt = (a: Alpha, x: number, y: number) => (typeof a === 'number' ? a : a(x, y));
   // What the pillar hides in his picture (the haze, rebuilt from the haze round it; the far arcs of
   // the circle and the hexagram, the far half of the third ring): drawn only where the pillar of a
@@ -1121,8 +1122,11 @@ function blast(): WorldSprite {
   const frame = (hz: number, cur: Ix, curA: Alpha, sealF: number, sealA: Alpha, linesA: Alpha, sp: Ix, spA: number, fx: (ix: Ix) => Ix = (ix) => ix) => {
     const seal = fx(hotEdge(circle(cur, curA), sealF));
     const ln = lines(cur, curA), rA = ringA(sealA, linesA);
-    const under = haze([sealCover(cur, curA), sealA], [RL, rA], [ln, linesA], [cur, curA], [sp, spA]);
-    return render(k.w, k.h, [[HZ, hz], [under, hz], [seal, sealA], [RL, rA], [ln, linesA], [cur, curA], [sp, spA]], k.fade);
+    // The circle's halo (his blue light round the gold) is haze: as strong as the haze, where the
+    // circle has been lit (before that, the haze it hides).
+    const lit: Alpha = (x, y) => (alphaAt(sealA, x, y) >= 0.5 ? 1 : 0);
+    const under = haze([HALO, lit], [sealCover(cur, curA), sealA], [RL, rA], [ln, linesA], [cur, curA], [sp, spA]);
+    return render(k.w, k.h, [[HZ, hz], [HALO, (x, y) => alphaAt(lit, x, y) * hz], [under, hz], [seal, sealA], [RL, rA], [ln, linesA], [cur, curA], [sp, spA]], k.fade);
   };
 
   // 0-3: anticipation. The seal circle lights at its front and draws itself round both ways, the
@@ -1144,7 +1148,7 @@ function blast(): WorldSprite {
     fr.push(frame(hazeK[i], cur, curA, sealF[i], wipe(sealF[i]), wipe(lineF[i], lineK[i]), sp, i === 3 ? 0.8 : 0.4));
   }
   // 4: his picture. 5-6: it holds; the pillar's light shimmers and the sparks begin to rise.
-  fr.push(render(k.w, k.h, [[HZ], [SEAL], [LN], [P], [SP]], k.fade));
+  fr.push(render(k.w, k.h, [[HZ], [HALO], [SEAL], [LN], [P], [SP]], k.fade));
   const hold = (x: number, y: number) => smooth(4, 16, Math.abs(x - k.ax)) * smooth(0, 10, foot - y);
   for (const i of [5, 6]) {
     const t = (i - 4) / 12;

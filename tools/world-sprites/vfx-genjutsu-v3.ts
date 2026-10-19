@@ -970,11 +970,11 @@ function stream(): WorldSprite[] {
   const overBeam = keep(his, (x, y) => inBeam(x, y) && !ribPoly(x, y) && x >= 10);
   const vortex = remap(keep(his, (x, y) => !inBeam(x, y)), rimDim);
   const smokeStill = keep(hs, (x, y) => !inBeam(x, y));
-  // The vortex turns: his bright inner spiral an eighth of a turn a frame inside its own disc (4
-  // sub-samples a pixel), handing over to his still dark ring in an ordered dither between r 9.5
-  // and 12.5 (where his arms fade into the ring), so no arm is cut and no stub is left; beyond,
-  // his dark rings and outer arcs hold still.
-  const inner = keep(vortex, (x, y) => rr(x, y) <= 12.5);
+  // The vortex turns: his bright inner spiral (r <= 10.5) an eighth of a turn a frame inside its
+  // own disc (4 sub-samples a pixel); between r 10.5 and 12 (where his arms fade into the dark
+  // ring) each pixel takes the darker of the turned and the still picture, so no arm is cut and no
+  // stub is left; beyond, his dark rings and outer arcs hold still.
+  const inner = keep(vortex, (x, y) => rr(x, y) <= 12);
   const sparkParts = parts(sparks);
   const lumOf = (c: Canvas) => {
     let sum = 0;
@@ -986,12 +986,14 @@ function stream(): WorldSprite[] {
     const w = move(wisp, [0, 0, 1, 1, 1, 1, 0, 0][i], [0, 0, 0, -1, -1, -1, -1, 0][i]);
     let v = vortex;
     if (i) {
-      const rot = turnInside(inner, cx, cy, (i / FLY_N) * TAU, 1, (x, y) => rr(x, y) <= 12.5);
-      // (Turned fully inside r 9.5, in an ordered dither out to r 12.5, so the turning disc has
-      // no edge against his still ring.)
+      const rot = turnInside(inner, cx, cy, (i / FLY_N) * TAU, 1, (x, y) => rr(x, y) <= 12);
       v = remap(vortex, (val, x, y) => {
         const r = rr(x, y);
-        if (r <= 9.5 || (r <= 12.5 && (12.5 - r) / 3 > BAYER4[y & 3][x & 3] / 16)) return at(rot, x, y) || val;
+        if (r <= 10.5) return at(rot, x, y) || val;
+        if (r <= 12) {
+          const o = at(rot, x, y);
+          return o && LAB[o - 1][0] < LAB[val - 1][0] ? o : val;
+        }
         return val;
       });
     }

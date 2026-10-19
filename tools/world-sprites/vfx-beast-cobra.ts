@@ -17,13 +17,15 @@
 //           from one of his shapes to the other, in whole stretches of the nearer picture, so his
 //           lattice and yellow saddles stay whole); his tail tip is a rigid piece of his own pixels
 //           turned whole over the top from his curled LEFT tip to his long RIGHT point and back, at an
-//           even speed, so it keeps his thin taper on every frame; his head piece moves whole by whole
+//           even speed, so it keeps his thin taper on every frame, and the tail end bends smoothly into
+//           it (the least added curvature: no kink or wave at the joint); his head piece moves whole by whole
 //           pixels (draws back, strikes, recoils) and changes over to his other head inside the recoil
 //           (3 -> 4) and as it sways back (5 -> 6), the drops a frame apart; his mist blobs shrink out
-//           and grow in (his great cloud over the hump evenly, behind the coil's rim). No frame
-//           flashes: the light goes on an even ramp between his two pictures, and the converter fails
-//           the build if a frame's light (alpha x luma) or opaque mass is more than 12 % off its
-//           neighbour's, or if the tail tip is wider than his or turns back within a half of the loop.
+//           and grow in (his great cloud over the hump behind the coil's rim, easing out on the
+//           return), and how much mist shows goes on an even ramp between his two pictures. No frame
+//           flashes: the converter fails the build if a frame's light (alpha x luma) or opaque mass is
+//           more than 6 % off its neighbour's, if the tail tip is wider than his or turns back within a
+//           half of the loop, or if the tail end kinks at the tip's joint.
 //
 // The anchor is the centre of the body's mass, the same point in both of his pictures. Facing right
 // (the renderer mirrors it when the cobra flies left). To merge into vfx-beasts.ts: import

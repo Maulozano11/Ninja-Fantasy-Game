@@ -831,23 +831,66 @@ function hit(): WorldSprite {
 }
 
 /**
+ * Small pieces of a layer (his drops), each as pixels relative to its centre, smallest first: the
+ * shapes the spray is made of.
+ */
+function dropShapes(L: Layer, minPx: number, maxPx: number, fam: Fam): [number, number, number][][] {
+  return pieces(L)
+    .filter((pc) => pc.length >= minPx && pc.length <= maxPx && pc.filter((j) => FAM[L.v[j] - 1] === fam).length >= pc.length * 0.6)
+    .map((pc) => {
+      let sx = 0, sy = 0;
+      for (const j of pc) {
+        sx += j % L.w;
+        sy += (j / L.w) | 0;
+      }
+      const cx = Math.round(sx / pc.length), cy = Math.round(sy / pc.length);
+      return pc.map((j) => [(j % L.w) - cx, ((j / L.w) | 0) - cy, L.v[j]] as [number, number, number]);
+    })
+    .sort((a, b) => a.length - b.length || a[0][0] - b[0][0] || a[0][1] - b[0][1]);
+}
+/** A drop shape at a smaller size (nearest), its rim kept round the outside. */
+function shrinkShape(s: [number, number, number][], k: number): [number, number, number][] {
+  const m = new Map<string, number>();
+  for (const [dx, dy, v] of s) m.set(`${dx},${dy}`, v);
+  const out: [number, number, number][] = [];
+  const R = Math.max(...s.map(([dx, dy]) => Math.max(Math.abs(dx), Math.abs(dy)))) + 1;
+  for (let y = -R; y <= R; y++) for (let x = -R; x <= R; x++) {
+    const v = m.get(`${Math.round(x / k)},${Math.round(y / k)}`);
+    if (v && !out.some((o) => o[0] === x && o[1] === y)) out.push([x, y, v]);
+  }
+  // (the rim: any body pixel on the outside of the small shape takes his rim colour)
+  const has = new Set(out.map(([x, y]) => `${x},${y}`));
+  return out.map(([x, y, v]) => {
+    const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !has.has(`${x + a},${y + b}`));
+    return [x, y, edge && isKind(v, 'body') ? RIM[FAM[v - 1]] : v] as [number, number, number];
+  });
+}
+
+/**
  * blast: his gushing pillar of slime over its bubbling pool, 16 frames.
+ *  - The pillar and the pool are cut apart along the line where his pillar's flared foot meets the
+ *    bubbles (traced on his picture), so the pillar can move inside the pool: the pool is drawn in
+ *    front of it, its surface re-rimmed along that line.
  *  - Anticipation 0-3: the pool opens out of the ground and his pillar gushes up out of it: the
- *    shaft is pushed up from the pool (translated, never wiped), thin at first and filling out,
- *    with a round slime head on its front and his drops riding round the head; the splash drops
- *    fly out from the pool's edge to where he drew them; his light spreads out with the pool, his
- *    venom mist comes up.
+ *    whole pillar is pushed up through the pool's surface (translated, never wiped or stretched),
+ *    thin at first and filling out, his top rows on its front shaped into a round, lobed slime head
+ *    that swells a little wider than the shaft, with spray (his own drop shapes) thrown up round it
+ *    and his drops riding beside it; his venom mist comes up beside the head (never above it); the
+ *    splash drops fly out from the pool's edge to where he drew them; his light spreads with the pool.
  *  - Frame 4 is his picture, held to frame 6 (the slime churns, the mist sways).
- *  - Settle 7-15: the pillar sinks back into the pool and squashes down, its top breaking up into
- *    drops that fall (no straight cut, no rim along it); the drops rain down, the mist rises and
- *    thins, his light dims, the pool breaks up, cools in patches and fades.
+ *  - Settle 7-15: the pillar sinks back down through the pool's surface, slumping wider, with the
+ *    same round lobed head on its falling top (no straight cut anywhere); drops break off the head
+ *    and fall in arcs back into the pool; his drops rain down, the mist rises and thins, his light
+ *    dims, the pool breaks up, cools in patches and fades.
  * His pillar ran off the top of his panel, so the top rows fade out along a ragged line.
  */
 function blast(): WorldSprite {
   const K = key('blast'), seed = 7800;
   const col = K.part('main'), pool = K.part('pool'), mist = K.part('mist'), drops = K.part('drops'), glow = K.part('glow');
   const light = Light.of('blast');
-  const colTop = tops(col), J = feet(col);
+  const glowG = glow.empty(), glowP = glow.empty();
+  for (let i = 0; i < glow.v.length; i++) if (glow.v[i]) (FAM[glow.v[i] - 1] === 'purple' ? glowP : glowG).v[i] = glow.v[i];
+  const colTop = tops(col);
   const top = Math.min(...colTop);
   // The shaft's centre line and half width, measured on its upper part.
   let sx0 = K.w, sx1 = -1;
@@ -857,8 +900,51 @@ function blast(): WorldSprite {
   }
   const scx = (sx0 + sx1 + 1) / 2, shw = (sx1 - sx0 + 1) / 2;
   const colH = K.ay - top;
+  // Where his pillar's flared foot meets the pool's bubbles (traced on his picture, frame px): an
+  // arch from y 96 at x 72 and x 134 down to y 112 under the shaft's middle. Above it (between those
+  // columns) his pixels are the pillar, below it and to the sides they are the pool.
+  const FX0 = 72, FX1 = 134, fcx = (FX0 + FX1 + 1) / 2, fhw = (FX1 - FX0 + 1) / 2;
+  // (scalloped like the row of bubbles in front of the pillar's foot, so it never reads as a bowl)
+  const surf = (x: number) => {
+    if (x < FX0 || x > FX1) return -1;
+    const ph = fract((x - FX0 + 3) / 10);
+    return Math.round(97 + 12 * (1 - ((x + 0.5 - fcx) / fhw) ** 2) - 3.2 * Math.sqrt(Math.max(0, 1 - (2 * ph - 1) ** 2)) + 1.5 * (2 * pnoise(x, 0, 6, 0, 0, seed + 60) - 1));
+  };
+  const inShaft = (x: number, y: number) => y < surf(x);
+  const shaftL = col.clone();
+  for (let y = 0; y < K.h; y++) for (let x = 0; x < K.w; x++) if (inShaft(x, y) && pool.get(x, y)) shaftL.set(x, y, pool.get(x, y));
+  const poolOnly = cut(pool, (x, y) => !inShaft(x, y), 2, true);
+  /** The pool's surface line in a frame whose pool is scaled by ps about the anchor (the pillar is clipped there). */
+  const clipY = (x: number, ps: number) => {
+    const xk = K.ax + (x + 0.5 - K.ax) / ps - 0.5;
+    const s = surf(Math.round(xk));
+    return K.ay + ((s < 0 ? 96 : s) - K.ay) * ps;
+  };
+  /** The round, lobed slime head on the pillar's moving top: its top line at column x. */
+  const headTop = (x: number, y0: number, hw: number, i: number) => {
+    const u = clamp((x + 0.5 - scx) / Math.max(4, hw), -1, 1);
+    const dome = 0.7 * hw * (1 - Math.sqrt(1 - u * u));
+    const lobes = 2.6 * Math.cos(u * Math.PI * 1.6 + i * 1.9) * (1 - 0.5 * Math.abs(u));
+    return y0 + 3 + dome + lobes + 1.4 * (2 * pnoise(x, i * 5, 9, 0, 0, seed + 30) - 1);
+  };
+  /** The pillar pushed up (or sunk) d px under the pool's surface, scaled across by sxs, swelling under its head. */
+  const pillar = (L: Layer, d: number, sxs: number, swell: number, ps: number, i: number): Layer => {
+    const y0 = top + d;
+    const bulge = (y: number) => 1 + swell * Math.sin(Math.PI * clamp((y - y0) / 26, 0, 1)) ** 0.7;
+    const sh = remap(L, (x, y) => {
+      if (y > clipY(x, ps) + 1) return null;
+      return [scx + (x + 0.5 - scx) / (sxs * bulge(y)) - 0.5, y - d];
+    });
+    return d < 1 ? sh : cut(sh, (x, y) => y >= headTop(x, y0, shw * sxs * (1 + 0.5 * swell), i), 4, true);
+  };
+  // The spray: his own small drop shapes.
+  const big = dropShapes(drops, 20, 60, 'green');
+  const shapes = [...big.map((s) => shrinkShape(s, 0.55)), ...big.map((s) => shrinkShape(s, 0.75)), ...big];
+  const stamp = (L: Layer, s: [number, number, number][], x: number, y: number) => {
+    for (const [dx, dy, v] of s) if (!L.get(Math.round(x) + dx, Math.round(y) + dy)) L.set(Math.round(x) + dx, Math.round(y) + dy, v);
+  };
   const PEAK = 4, HOLD = 6, N = 16;
-  // pool: its spread; rise: the shaft's height (share of his); mist: how far his mist has come up;
+  // pool: its spread; rise: the pillar's height (share of his); mist: how far his mist has come up;
   // light: his light's strength; poolCut: how much of the pool has broken up; a: opacity.
   const plan = [
     { pool: 0.6, rise: 0.22, mist: 0, light: 0.4, poolCut: 0, a: 1 },
@@ -868,99 +954,83 @@ function blast(): WorldSprite {
     { pool: 1, rise: 1, mist: 1, light: 1, poolCut: 0, a: 1 },
     { pool: 1.01, rise: 1, mist: 1, light: 1, poolCut: 0, a: 1 },
     { pool: 1.02, rise: 1, mist: 1, light: 1, poolCut: 0, a: 1 },
-    { pool: 1.03, rise: 0.9, mist: 1, light: 0.93, poolCut: 0.03, a: 1 },
-    { pool: 1.04, rise: 0.78, mist: 1, light: 0.85, poolCut: 0.08, a: 1 },
-    { pool: 1.05, rise: 0.65, mist: 1, light: 0.76, poolCut: 0.14, a: 0.97 },
-    { pool: 1.06, rise: 0.52, mist: 1, light: 0.66, poolCut: 0.2, a: 0.93 },
-    { pool: 1.07, rise: 0.4, mist: 1, light: 0.55, poolCut: 0.27, a: 0.87 },
-    { pool: 1.08, rise: 0.29, mist: 1, light: 0.44, poolCut: 0.35, a: 0.79 },
-    { pool: 1.09, rise: 0.19, mist: 1, light: 0.33, poolCut: 0.44, a: 0.68 },
-    { pool: 1.1, rise: 0.1, mist: 1, light: 0.21, poolCut: 0.54, a: 0.54 },
-    { pool: 1.11, rise: 0.03, mist: 1, light: 0.1, poolCut: 0.65, a: 0.38 },
+    { pool: 1.03, rise: 0.92, mist: 1, light: 0.93, poolCut: 0.03, a: 1 },
+    { pool: 1.04, rise: 0.8, mist: 1, light: 0.85, poolCut: 0.08, a: 1 },
+    { pool: 1.05, rise: 0.67, mist: 1, light: 0.76, poolCut: 0.14, a: 0.97 },
+    { pool: 1.06, rise: 0.54, mist: 1, light: 0.66, poolCut: 0.2, a: 0.93 },
+    { pool: 1.07, rise: 0.42, mist: 1, light: 0.55, poolCut: 0.27, a: 0.87 },
+    { pool: 1.08, rise: 0.31, mist: 1, light: 0.44, poolCut: 0.35, a: 0.79 },
+    { pool: 1.09, rise: 0.21, mist: 1, light: 0.33, poolCut: 0.44, a: 0.68 },
+    { pool: 1.1, rise: 0.12, mist: 1, light: 0.21, poolCut: 0.54, a: 0.54 },
+    { pool: 1.11, rise: 0.05, mist: 1, light: 0.1, poolCut: 0.65, a: 0.38 },
   ];
-  /** The shaft's foot line in a frame whose pool is scaled by ps (the pool's surface sinks with it). */
-  const footAt = (x: number, ps: number) => (J[x] < 0 ? -1 : K.ay - (K.ay - J[x]) * Math.min(1, ps));
-  /** The round slime head on the gushing front: its top line at column x. */
-  const dome = (x: number, y0: number, hw: number, cap: number, i: number) => {
-    const u = clamp((x + 0.5 - scx) / Math.max(4, hw), -1, 1);
-    return y0 + cap * (1 - Math.sqrt(1 - u * u)) + 1.6 * (2 * pnoise(x, i * 5, 3, 0, 0, seed + 30) - 1);
-  };
+  /** The settle's slump: the pillar widens as it sinks. */
+  const slump = (r: number) => 1 + 0.16 * (1 - r);
   const fr = plan.map((p, i) => {
     const t = (i - PEAK) / 12;
-    // The pool: spreads over the ground from the centre, bubbles churn, breaks up at the end.
-    let pl = scaled(pool, p.pool, p.pool, K.ax, K.ay);
+    const ps = Math.min(1, p.pool);
+    const d = (1 - p.rise) * colH;
+    const moving = i < PEAK || i > HOLD;
+    // The pool: spreads over the ground from the centre, bubbles churn, breaks up at the end. While
+    // the pillar moves, it is the pool without the pillar's foot, in front of the pillar.
+    let pl = scaled(moving ? poolOnly : pool, p.pool, p.pool, K.ax, K.ay);
     if (i > PEAK) pl = churn(pl, t, { amp: 1.2, ampY: 0.6, cell: 6, seed });
     pl = cool(pl, (i - HOLD - 2) / 3, seed + 9);
     if (p.poolCut) pl = cut(pl, (x, y) => pnoise(x, y * 2, 7, 0, 0, seed + 1) * 0.65 + Math.hypot((x - K.ax) / 95, (y - K.ay) / 30) * 0.35 > p.poolCut, 4);
-    // The shaft.
+    // The pillar.
     let c: Layer = col;
-    let spray: Layer | null = null;
-    // (his drops round the upper shaft ride with it while it gushes)
-    const headDrop = (cx: number, cy: number) => cy < K.ay - 55 && Math.abs(cx - scx) < shw + 26;
-    let dRise = 0, sxs = 1, sJ = 0;
+    const spray = col.empty();
+    let headY = 0;
     if (i < PEAK) {
-      // Pushed up out of the pool: thin at first, filling out; its foot sits in the (smaller) pool.
-      dRise = (1 - p.rise) * colH;
-      sxs = 0.72 + 0.28 * p.rise;
-      sJ = 20 * (1 - p.pool);
-      // (the head: his shaft's top rows, swelling out a little below its round front)
-      const y0 = top + dRise + sJ + 1;
-      const hw = shw * sxs;
-      const bulge = (y: number) => 1 + 0.18 * Math.sin(Math.PI * clamp((y - y0) / 24, 0, 1));
-      const sh = remap(col, (x, y) => {
-        const fy = footAt(x, p.pool);
-        if (fy < 0 || y > fy + 1) return null;
-        return [scx + (x + 0.5 - scx) / (sxs * bulge(y)) - 0.5, y - dRise - sJ];
-      });
-      c = cut(sh, (x, y) => y >= dome(x, y0, hw * 1.12, 0.8 * hw, i), 4, true);
+      // Gushing up: thin at first, filling out, its head swelling; spray thrown up round the head.
+      const sxs = 0.74 + 0.26 * p.rise;
+      c = pillar(shaftL, d, sxs, 0.3, ps, i);
+      headY = top + d;
+      const hw = shw * sxs * 1.15;
+      for (let k = 0; k < 7; k++) {
+        const ux = rr(seed + 40, k + 11 * i, -1, 1);
+        const s = shapes[Math.floor(rnd(seed + 41, k + 11 * i) * shapes.length)];
+        stamp(spray, s, scx + ux * hw * 1.05, headTop(scx + ux * hw, headY, hw, i) - rr(seed + 42, k + 11 * i, 2, 9) - 3 * (1 - Math.abs(ux)));
+      }
     } else if (i > HOLD) {
-      // Sinks back into the pool, squashing down; its top breaks up into drops that fall.
-      const u = (i - HOLD) / (N - 1 - HOLD);
-      const h = colH * p.rise, S = colH * (1 - 0.55 * (1 - p.rise));
-      // (measured from one base line, the shaft's foot at its middle, so its sides sink with it)
-      const base = Math.max(...J);
-      let sh = churn(col, t, { amp: 1.3, ampY: 2.2, cell: 7, seed: seed + 2, flow: [0, -1.4] });
+      // Sinking back: churning and cooling, slumping wider, the same round head on its falling top.
+      let sh = churn(shaftL, t, { amp: 1.3, ampY: 2.2, cell: 7, seed: seed + 2, flow: [0, -1.4] });
       sh = cool(sh, (i - HOLD - 3) / 3, seed + 10);
-      sh = remap(sh, (x, y) => {
-        if (J[x] < 0 || y > J[x]) return null;
-        const tt = (base - y) / Math.max(1, h);
-        if (tt > 1.3) return null;
-        return [x, base - tt * S];
-      });
-      // (its top: a wavy, rounded line, no straight cut and no rim along it; above it the top
-      // breaks into round drops of his slime, thrown off as it sinks)
-      const topY = (x: number) => base - h + 3.5 * (2 * pnoise(x, i * 3, 8, 0, 0, seed + 31) - 1) + 0.5 * shw * (1 - Math.sqrt(Math.max(0, 1 - ((x + 0.5 - scx) / (shw + 4)) ** 2)));
-      const band = 6 + 6 * u;
-      const body = cut(sh, (x, y) => y >= topY(x) + band, 2, false);
-      const blob = (x: number, y: number) => {
-        const gx = Math.floor(x / 8), gy = Math.floor(y / 8);
-        for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) {
-          const cxx = (gx + k) * 8 + 4 + 3 * (rnd(seed + 35, gx + k, gy + j) - 0.5), cyy = (gy + j) * 8 + 4 + 3 * (rnd(seed + 36, gx + k, gy + j) - 0.5);
-          const r = 1.8 + 1.4 * rnd(seed + 37, gx + k, gy + j) * (1 - 0.4 * u);
-          if (Math.hypot(x + 0.5 - cxx, y + 0.5 - cyy) < r) return true;
-        }
-        return false;
-      };
-      const loose = rimOut(cut(sh, (x, y) => y >= topY(x) - 3 && y < topY(x) + band - 1 && blob(x, y), 3, false));
-      c = body;
-      spray = moveDrops(loose, (k, cx) => [Math.sign(cx - scx) * rr(seed + 33, k, 0.5, 2.5), -rr(seed + 34, k, 1, 4) * (1 - u) + 2 * u]);
+      c = pillar(sh, d, slump(p.rise), 0.3, ps, i);
+      headY = top + d;
+      // Drops break off the head (three a frame over frames 7-12) and fall in arcs into the pool.
+      for (let k = 0; k < 18; k++) {
+        const fk = HOLD + 1 + Math.floor(k / 3), dt = i - fk;
+        if (dt < 0 || dt > 4) continue;
+        const rk = plan[fk].rise, hk = shw * slump(rk) * 1.15;
+        const ux = rr(seed + 50, k, -1, 1);
+        const x0 = scx + ux * hk * 0.9, y0 = headTop(scx + ux * hk * 0.9, top + (1 - rk) * colH, hk, fk) + 1;
+        const vx = (ux < 0 ? -1 : 1) * rr(seed + 51, k, 1.2, 3.4), vy = -rr(seed + 52, k, 1.5, 4.5);
+        const x = x0 + vx * dt * 2, y = y0 + vy * dt + 2.4 * dt * dt;
+        if (y > clipY(Math.round(x), ps) - 3) continue;
+        stamp(spray, shapes[Math.floor(rnd(seed + 53, k) * shapes.length)], x, y);
+      }
     } else if (i > PEAK) {
       c = churn(col, t, { amp: 1.3, ampY: 2.2, cell: 7, seed: seed + 2, flow: [0, -1.4] });
     }
-    // His venom mist: comes up with the pillar, sways, then rises and thins away.
+    // His venom mist: comes up beside the gushing head (never above it), sways, then rises and thins away.
     let ms: Layer | null = null;
     if (p.mist > 0) {
-      ms = i < PEAK ? cut(moved(mist, 0, (1 - p.mist) * 24), (x, y) => grain(x, y, seed + 4) < p.mist + 0.15, 2, false) : wobble(churn(mist, t, { amp: 1.4, cell: 6, seed: seed + 5 }), t, 1.3, 9, seed + 6);
+      ms = i < PEAK
+        ? cut(moved(mist, 0, d * 0.85), (x, y) => y >= headY + 5 && grain(x, y, seed + 4) < p.mist + 0.15, 2, false)
+        : wobble(churn(mist, t, { amp: 1.4, cell: 6, seed: seed + 5 }), t, 1.3, 9, seed + 6);
       if (i > HOLD + 1) ms = cut(moved(ms, 0, -(i - HOLD - 1) * 1.5), (x, y) => grain(x, y, seed + 7) > (i - HOLD - 1) * 0.1, 2, false);
     }
-    // The drops: round the gushing head they ride with the shaft; the splash drops fly out from
-    // the pool's edge to his places by frame 4; after the peak they are thrown out and rain down.
+    // His drops: beside the gushing head they ride with the pillar; the splash drops fly out from the
+    // pool's edge to his places by frame 4 (none on frame 0); after the peak they are thrown out and
+    // rain down.
     const sc = [0.55, 0.7, 0.84, 0.95][i] ?? 1;
-    const d = moveDrops(drops, (k, cx, cy) => {
+    const sxsR = 0.74 + 0.26 * p.rise;
+    const dr = moveDrops(drops, (k, cx, cy) => {
       if (i < PEAK) {
-        if (headDrop(cx, cy)) {
-          const nx = scx + (cx + 0.5 - scx) * sxs - 0.5, ny = cy + dRise + sJ;
-          return ny > K.ay - 22 ? null : [nx - cx, ny - cy];
+        if (cy < K.ay - 55 && Math.abs(cx - scx) < shw + 26) {
+          const nx = scx + (cx + 0.5 - scx) * sxsR - 0.5, ny = cy + d;
+          return ny > K.ay - 22 || ny < headY + 6 ? null : [nx - cx, ny - cy];
         }
         if (i === 0) return null;
         const nx = K.ax + (cx - K.ax) * sc, ny = K.ay + (cy - K.ay) * sc - 9 * Math.sin(Math.PI * sc) * (1 - sc) * 2;
@@ -972,10 +1042,13 @@ function blast(): WorldSprite {
       return [dir * 1.2 * u, -1.5 * u + 0.9 * u * u];
     });
     // His light: spreads out with the pool from the pillar's foot as it comes up, then dims.
-    const ls = Math.min(1, p.pool);
-    const lt = light.mul(p.light).scaled(ls, K.ax, K.ay).render();
-    const gl = scaled(glowMul(glow, p.light), ls, ls, K.ax, K.ay);
-    const out = fadeTop(stackC(K.w, K.h, lt, gl, pl, c, spray, ms, d), 5, 16, seed + 20);
+    const lt = light.mul(p.light).scaled(ps, K.ax, K.ay).render();
+    const gl = scaled(glowMul(glowG, p.light), ps, ps, K.ax, K.ay);
+    // (the soft edges of his mist go with the mist)
+    let gm: Layer = glowP;
+    if (i < PEAK) gm = p.mist > 0 ? cut(moved(glowP, 0, d * 0.85), (x, y) => y >= headY + 5 && grain(x, y, seed + 4) < p.mist + 0.15, 0, false) : glowP.empty();
+    else if (i > HOLD + 1) gm = glowMul(moved(glowP, 0, -(i - HOLD - 1) * 1.5), Math.max(0, 1 - (i - HOLD - 1) * 0.12));
+    const out = fadeTop(stackC(K.w, K.h, lt, gl, gm, c, pl, i > HOLD ? cool(spray, (i - HOLD - 3) / 3, seed + 12) : spray, ms, dr), 5, 16, seed + 20);
     return p.a < 1 ? fade(out, p.a) : out;
   });
   return vfxSprite('blast', 'Poison blast: gushing pillar of slime into a bubbling pool', [K.ax, K.ay], { blast: { frames: fr, fps: 12, loop: false } });
@@ -1100,8 +1173,79 @@ const WALL_HOLES: string[] = [];
 function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSprite {
   const K = key(kind);
   const blocks = [K.part('frame0'), K.part('frame1'), K.part('frame2')];
-  const frame = union(...blocks);
   const slime = K.part('main'), drops = K.part('drops'), light = K.part('glow');
+  // (what of his slime lies above a post's stone in its column is slime, not post: it must not
+  // rise with the post)
+  for (const k of [0, 1]) {
+    const Bk = blocks[k];
+    for (let x = 0; x < K.w; x++) {
+      let st = -1;
+      for (let y = 0; y < K.h && st < 0; y++) if (Bk.get(x, y) && FAM[Bk.get(x, y) - 1] === 'neutral') st = y;
+      for (let y = 0; y < st; y++) if (Bk.get(x, y)) {
+        slime.set(x, y, Bk.get(x, y));
+        Bk.set(x, y, 0);
+      }
+    }
+  }
+  // (his slime's own colours on a post where it touches the slime: the slime spilling over the
+  // capitals; up to 3 px in from the slime, saturated green only, so his runes stay stone)
+  const satGreen = (v: number) => v > 0 && FAM[v - 1] === 'green' && (KIND[v - 1] === 'outline' || Math.max(...PAL[v - 1].slice(0, 3)) - Math.min(...PAL[v - 1].slice(0, 3)) >= 45);
+  for (const k of [0, 1]) {
+    const Bk = blocks[k];
+    for (let step = 0; step < 3; step++) {
+      const mv: number[] = [];
+      for (let y = 0; y < K.h; y++) for (let x = 0; x < K.w; x++) {
+        if (!satGreen(Bk.get(x, y))) continue;
+        if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isKind(slime.get(x + dx, y + dy), 'body') && FAM[slime.get(x + dx, y + dy) - 1] === 'green')) mv.push(y * K.w + x);
+      }
+      for (const j of mv) {
+        slime.v[j] = Bk.v[j];
+        Bk.v[j] = 0;
+      }
+    }
+  }
+  // (small loose bits of his slime and light inside the frame's outline, not touching its stone:
+  // they come up with his light on the ground, not with the stone)
+  const bits = slime.empty();
+  for (const Bk of blocks) {
+    const ps = pieces(Bk).sort((a, b) => b.length - a.length);
+    for (const pc of ps.slice(1)) {
+      if (pc.length > 40 || pc.some((j) => FAM[Bk.v[j] - 1] === 'neutral')) continue;
+      for (const j of pc) {
+        bits.v[j] = Bk.v[j];
+        Bk.v[j] = 0;
+      }
+    }
+  }
+  const frame = union(...blocks);
+  /**
+   * His stone is lit green by the slime (his mossy green-grey stone): until the slime has come up,
+   * the stone is its own grey (the nearest stone colour by brightness); the green light on it comes
+   * in with the slime, in patches. His glowing runes (saturated green) keep their colour.
+   */
+  const unlit = (() => {
+    const map = new Int16Array(PAL.length + 1);
+    for (let v = 1; v <= PAL.length; v++) {
+      map[v] = v;
+      const c = PAL[v - 1];
+      if (KIND[v - 1] !== 'body' || FAM[v - 1] !== 'green' || Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]) >= 45) continue;
+      let best = 1e9;
+      for (let w = 1; w <= PAL.length; w++) {
+        if (KIND[w - 1] !== 'body' || FAM[w - 1] !== 'neutral') continue;
+        const dl = Math.abs(lumOf(PAL[w - 1]) - lumOf(c));
+        if (dl < best) {
+          best = dl;
+          map[v] = w;
+        }
+      }
+    }
+    return (L: Layer, lit: number): Layer => {
+      if (lit >= 1) return L;
+      const out = L.clone();
+      for (let i = 0; i < out.v.length; i++) if (out.v[i] && grain(i % L.w, (i / L.w) | 0, seed + 9) >= lit) out.v[i] = map[out.v[i]];
+      return out;
+    };
+  })();
   const top = tops(slime);
   // Smoothed top line of the slime: the bubbling top is the band below it.
   const topS = top.map((_, x) => {
@@ -1121,10 +1265,10 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
     let s = shimmer(slime, t, { period: 46, dir, width: 0.16, where: (x, y) => 1 - topBand(x, y) });
     s = churn(s, t, { amp: 1.4, ampY: 1.2, cell: 6, seed, where: topBand, flow: [0, -0.8] });
     s = wobble(s, t, 0.9, 9, seed + 1, (x, y) => topBand(x, y) * smooth(topS[x] + 6, topS[x] - 4, y));
-    const runes = tone(frame, (x, y) => {
+    const runes = union(tone(frame, (x, y) => {
       const v = frame.get(x, y);
       return FAM[v - 1] === 'green' ? Math.round(0.5 - 0.5 * Math.cos(t * TAU)) : 0;
-    });
+    }), bits);
     const d = moveDrops(drops, (k) => {
       const ph = rr(seed + 2, k, 0, TAU);
       return bob(t, ph, 1.2);
@@ -1162,6 +1306,33 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
     return { B, f, hmax };
   });
   const raw = feet(slime);
+  // Per block, its pixels next to his slime (and on which side), for the rise.
+  const slimeEdge = blk.map((b) => {
+    const out: [number, number, [number, number][]][] = [];
+    for (let y = 0; y < K.h; y++) for (let x = 0; x < K.w; x++) {
+      if (!b.B.get(x, y)) continue;
+      const offs = ([[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]).filter(([dx, dy]) => slime.get(x + dx, y + dy) && !frame.get(x + dx, y + dy));
+      if (offs.length) out.push([x, y, offs]);
+    }
+    return out;
+  });
+  // The beam's foot line (a straight line under its lowest feet) and its thickness above it.
+  let fa = 0, fb = 0;
+  {
+    let pts = blk[2].f.map((f, x) => [x, f] as [number, number]).filter((p) => p[1] >= 0);
+    for (let it = 0; it < 4; it++) {
+      const n = pts.length, mx = pts.reduce((a, p) => a + p[0], 0) / n, my = pts.reduce((a, p) => a + p[1], 0) / n;
+      const sxy = pts.reduce((a, p) => a + (p[0] - mx) * (p[1] - my), 0), sxx = pts.reduce((a, p) => a + (p[0] - mx) ** 2, 0);
+      fb = sxx ? sxy / sxx : 0;
+      fa = my - fb * mx;
+      pts = pts.filter((p) => p[1] >= fa + fb * p[0] - 2);
+    }
+    fa += Math.max(0, ...blk[2].f.map((f, x) => (f < 0 ? 0 : f - (fa + fb * x))));
+  }
+  const beamFoot = (x: number) => fa + fb * x;
+  const beamT = tops(blk[2].B);
+  const beamTh = beamT.map((t, x) => (blk[2].f[x] < 0 ? -1 : beamFoot(x) - t)).filter((v) => v >= 0).sort((a, b) => a - b);
+  const beamH = beamTh[Math.floor(beamTh.length * 0.9)];
   // The ground line under the slime: a straight line through the feet of its columns (the
   // highest feet, where the slime only shows above the posts, are dropped and the line refitted).
   let ga = 0, gb = 0;
@@ -1190,18 +1361,15 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
     if (i === RISE - 1) return idle[0];
     const pf = ease((i + 1) / 5), ps = clamp((i - 1.5) / 9.5, 0, 1), pt = clamp((i - 7) / 3, 0, 1);
     const dB = blk.map((b) => Math.round((1 - pf) * (b.hmax + 2)));
-    // (the 3/4 wall's beam runs along the diagonal and is thin between its plaques: pushed up by a
-    // shift it would come up in dashes, so it rises whole, growing up from its own foot line)
-    const grow = (b: (typeof blk)[number]) => {
-      const t = tops(b.B);
-      return remap(b.B, (x, y) => {
-        if (b.f[x] < 0 || y > b.f[x]) return null;
-        const hx = b.f[x] - t[x] + 1;
-        const src = b.f[x] - (b.f[x] - y) / Math.max(0.05, pf);
-        return src < t[x] - 0.5 || hx <= 0 ? null : [x, Math.max(t[x], Math.round(src))];
-      });
+    // (the 3/4 wall's beam runs along the diagonal: cut at each column's own (ragged) foot it would
+    // come up in dashes, so it is pushed up whole out of one straight foot line along its length,
+    // and its top edge comes up at once, unbroken)
+    const push = (b: (typeof blk)[number]) => {
+      const d = Math.round((1 - pf) * (beamH + 2));
+      return remap(b.B, (x, y) => (b.f[x] < 0 || y > beamFoot(x) + 0.5 ? null : [x, y - d]));
     };
-    const fr = union(...blk.map((b, k) => (dB[k] === 0 ? b.B : kind === 'wall_diag' && k === 2 ? grow(b) : remap(b.B, (x, y) => (b.f[x] < 0 || y > b.f[x] ? null : [x, y - dB[k]])))));
+    const shift = blk.map((b, k) => (kind === 'wall_diag' && k === 2 ? Math.round((1 - pf) * (beamH + 2)) : dB[k]));
+    const fr = unlit(union(...blk.map((b, k) => (dB[k] === 0 ? b.B : kind === 'wall_diag' && k === 2 ? push(b) : remap(b.B, (x, y) => (b.f[x] < 0 || y > b.f[x] ? null : [x, y - dB[k]]))))), clamp((i - 3) / 7, 0, 1));
     if (kind === 'wall_diag') {
       // (the slime rides on the growing beam: its median thickness still to come)
       const th = blk[2].f.map((f, x) => (f < 0 ? -1 : f - tops(blk[2].B)[x])).filter((v) => v >= 0).sort((a, b) => a - b);
@@ -1218,8 +1386,25 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
       }
     }
     const d = pt > 0 ? cut(drops, (x, y) => grain(x, y, seed + 6) < pt, 0, false) : null;
-    const lt = union(glowMul(groundGlow, clamp((i - 1) / 9, 0, 1)), pt > 0 ? glowMul(topGlow, pt) : null);
-    return sealed(stackC(K.w, K.h, lt, fr, sl, d), fr, `rise[${i}]`);
+    // (the glow round the bubbling top only where the top already is: within 3 px of the slime)
+    const tg = pt > 0 && sl ? remap(glowMul(topGlow, pt), (x, y) => {
+      for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (isKind(sl!.get(x + dx, y + dy), 'body')) return [x, y];
+      return null;
+    }) : null;
+    const gk = clamp((i - 1) / 9, 0, 1);
+    const lt = union(glowMul(groundGlow, gk), tg);
+    const bt = gk > 0 ? cut(bits, (x, y) => grain(x, y, seed + 8) < gk, 0, false) : null;
+    // (where his slime covered the stone's edge and it has not come up yet, the stone ends in his
+    // dark stone rim, so a capital or a post is never left open on the side the slime hid)
+    const frR = fr.clone();
+    blk.forEach((b, k) => {
+      for (const [x, y, offs] of slimeEdge[k]) {
+        const yo = y + shift[k];
+        if (fr.get(x, yo) === 0 || !isKind(fr.get(x, yo), 'body')) continue;
+        if (offs.some(([dx, dy]) => !fr.get(x + dx, yo + dy) && !(sl && sl.get(x + dx, yo + dy)))) frR.set(x, yo, RIM.neutral);
+      }
+    });
+    return sealed(stackC(K.w, K.h, lt, frR, bt, sl, d), fr, `rise[${i}]`);
   });
   return vfxSprite(kind, label, [K.ax, K.ay], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 10, loop: true } });
 }

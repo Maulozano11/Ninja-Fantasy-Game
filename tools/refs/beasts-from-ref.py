@@ -1046,9 +1046,6 @@ def drake():
                    'poly': [(714, 1796), (768, 1800), (752, 1812), (749, 1856), (712, 1856)], 'minus': THIGH0},
             # The head, cut at the neck: scaled and turned about the eye toward his other drawing's head (ZREL),
             # easing in over `bend` px from the neck.
-            # The hook of his curled tail: it turns about the bottom of the curl, so the curl opens or closes.
-            'tip': {'parent': 'tail', 'cut': [(515, 1748), (600, 1742)], 'pivot': (548, 1752), 'bend': 30,
-                    'poly': [(515, 1748), (600, 1742), (600, 1650), (515, 1650)]},
             'head': {'cut': [(906, 1640), (936, 1828)], 'pivot': EYE[0], 'bend': 40,
                      'poly': [(906, 1600), (1112, 1600), (1112, 1853), (990, 1853), (965, 1830), (936, 1828)]},
         },
@@ -1068,9 +1065,6 @@ def drake():
                    'poly': [(1333, 1774), (1388, 1800), (1368, 1842), (1356, 1892), (1292, 1892), (1290, 1845), (1300, 1832), (1318, 1812), (1336, 1790), (1338, 1776)]},
             'nf': {'cut': [(1478, 1765), (1543, 1768)], 'pivot': (1510, 1766), 'bend': 16,
                    'poly': [(1478, 1765), (1543, 1768), (1551, 1796), (1548, 1812), (1546, 1852), (1488, 1852), (1486, 1800)]},
-            # The outer half of his straight tail: it turns about the middle of the tail, so the tail curls.
-            'tip': {'parent': 'tail', 'cut': [(1236, 1760), (1292, 1830)], 'pivot': (1264, 1795), 'bend': 40,
-                    'poly': [(1236, 1760), (1292, 1830), (1150, 1905), (1095, 1840)]},
             'head': {'cut': [(1594, 1600), (1612, 1772)], 'pivot': EYE[5], 'bend': 40,
                      'poly': [(1594, 1590), (1748, 1590), (1748, 1805), (1640, 1805), (1616, 1795), (1612, 1772)]},
         },
@@ -1140,6 +1134,134 @@ def drake():
             sy = ey + (sy - ey) / scale
         return (xx - sx).astype(np.float32), (yy - sy).astype(np.float32)
 
+    # His two tails bend along their own centre lines (his sheet's coordinates, root to tip; checked on his crops):
+    # the prowl's thick tail curls up into a hook, the lunge's spear runs straight down to the dust. In the in-betweens
+    # a tail bends toward his other drawing's tail ('curl' in the legs: 0 is his own tail, 1 bends it just as his other
+    # tail bends, from a fifth of the way out to the tip), so the curl opens into a spear before the leap and the spear
+    # curls back up as the drake lands. The tail keeps its own pixels, plates, length and thickness: every pixel keeps
+    # its place along the centre line and its distance from it (a bend, not a stretch). Its base turn ('tail') is the
+    # piece's turn about the hip, as for the legs.
+    TAIL_AXIS = {
+        0: [(650, 1766), (620, 1768), (590, 1770), (565, 1770), (547, 1762), (538, 1748), (537, 1732), (541, 1718),
+            (550, 1707), (562, 1699), (575, 1693), (585, 1690)],
+        5: [(1338, 1748), (1310, 1772), (1284, 1797), (1260, 1815), (1235, 1833), (1210, 1849), (1186, 1862)],
+    }
+    AXIS_EXT, TIP_EXT = 60, 12  # (his px) the centre line runs on straight before the root and past the tip
+    # How far his tail reaches on the inner side of its curl (the side the prowl's hook curls toward), along its
+    # length (0 root, 1 tip): the plates on the top of his prowl's tail belong to it, not to the hook just beside them,
+    # and the tall plates by the hip belong to the root. On the outer side it reaches TAIL_OUTER px.
+    TAIL_INNER = {0: [(0.0, 130.0), (0.15, 130.0), (0.3, 50.0), (0.40, 50.0), (0.52, 16.0), (1.0, 16.0)],
+                  5: [(0.0, 70.0), (1.0, 70.0)]}
+    TAIL_OUTER = 60.0
+
+    def axis_of(k):
+        """His tail's centre line at 1 px steps (work coordinates, smoothed so its corners do not kink the bend), the
+        heading of each step, and the line's length, with straight runs added before the root (AXIS_EXT px) and past
+        the tip (TIP_EXT px: far enough for the tip's last pixels, not so far that it takes in the plates by the hip)."""
+        pts = np.array([to_work(k, p) for p in TAIL_AXIS[k]], np.float64)
+        cum = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(pts, axis=0).T))])
+        sv = np.arange(0.0, cum[-1], 1.0)
+        P = np.stack([np.interp(sv, cum, pts[:, 0]), np.interp(sv, cum, pts[:, 1])], 1)
+        for _ in range(3):
+            q = np.pad(P, ((6, 6), (0, 0)), mode='edge')
+            c = np.cumsum(np.pad(q, ((1, 0), (0, 0))), 0)
+            P = (c[13:] - c[:-13]) / 13.0
+        d = np.diff(P, axis=0)
+        L = float(np.hypot(*d.T).sum())
+        head = P[0] - np.arange(AXIS_EXT, 0, -1)[:, None] * (d[0] / np.hypot(*d[0]))
+        tail_ = P[-1] + np.arange(1, TIP_EXT + 1)[:, None] * (d[-1] / np.hypot(*d[-1]))
+        return np.concatenate([head, P, tail_]), L
+
+    AXES = {k: axis_of(k) for k in (0, 5)}
+
+    def tail_axis(k, w):
+        """His tail k's centre line (with its straight runs) and the same line bent toward his other tail by w."""
+        P, L = AXES[k]
+        n = len(P) - AXIS_EXT - TIP_EXT
+        d = np.diff(P, axis=0)
+        phi = np.unwrap(np.arctan2(d[:, 1], d[:, 0]))
+        if not w:
+            return P, P, phi, phi
+        Po, _ = AXES[5 - k]
+        do = np.diff(Po, axis=0)
+        phio = np.unwrap(np.arctan2(do[:, 1], do[:, 0]))
+        no = len(Po) - AXIS_EXT - TIP_EXT
+        # Each tail's turn along its length (from its root), on one scale from root (0) to tip (1).
+        sig = np.clip((np.arange(len(phi)) - AXIS_EXT) / (n - 1), 0.0, 1.0)
+        tau = phi - phi[AXIS_EXT]
+        tau_o = np.interp(sig * (no - 1), np.arange(no), phio[AXIS_EXT:AXIS_EXT + no] - phio[AXIS_EXT])
+        u = np.clip((sig - 0.15) / 0.3, 0.0, 1.0)
+        phin = phi + w * u * u * (3 - 2 * u) * (tau_o - tau)
+        ang = phin - phi
+        rot = np.stack([d[:, 0] * np.cos(ang) - d[:, 1] * np.sin(ang), d[:, 0] * np.sin(ang) + d[:, 1] * np.cos(ang)], 1)
+        Pn = np.concatenate([P[:1], P[0] + np.cumsum(rot, 0)])
+        return P, Pn, phi, phin
+
+    def nearest_vertex(k, P, phi, qx, qy):
+        """Index of the nearest point of his tail k's centre line P for every query point (first one on ties), among
+        the points whose reach on the inner side (TAIL_INNER) takes the query point in."""
+        n = len(P) - AXIS_EXT - TIP_EXT
+        sig = np.clip((np.arange(len(P)) - AXIS_EXT) / (n - 1), 0.0, 1.0)
+        tab = np.array(TAIL_INNER[k])
+        lim = np.interp(sig, tab[:, 0], tab[:, 1])[None]
+        ph = np.concatenate([phi, phi[-1:]])
+        Px, Py, sn, cs = P[:, 0][None], P[:, 1][None], np.sin(ph)[None], np.cos(ph)[None]
+        out = np.empty(len(qx), np.int64)
+        for i in range(0, len(qx), 4096):
+            rx, ry = qx[i:i + 4096, None] - Px, qy[i:i + 4096, None] - Py
+            dd = rx * rx + ry * ry
+            b = -rx * sn + ry * cs
+            dd = np.where((b > lim) | (b < -TAIL_OUTER), dd + 1e9, dd)
+            out[i:i + 4096] = np.argmin(dd, 1)
+        return out
+
+    def curl_layer(k, w, img, m):
+        """His tail k (image `img`, mask `m`, work coordinates) bent by w: each of his tail pixels (4 x 4 samples per
+        pixel) keeps its place along the centre line and its signed distance from it, and is laid down on the bent
+        line (bilinear splat). Returns the premultiplied image and the coverage."""
+        P, Pn, phi, phin = tail_axis(k, w)
+        ys, xs = np.nonzero(m)
+        sub = (np.arange(4) + 0.5) / 4 - 0.5
+        oy, ox = [a.ravel() for a in np.meshgrid(sub, sub, indexing='ij')]
+        qx = (xs[:, None] + ox[None]).ravel().astype(np.float64)
+        qy = (ys[:, None] + oy[None]).ravel().astype(np.float64)
+        src = np.repeat(np.arange(len(xs)), 16)
+        idx = np.minimum(nearest_vertex(k, P, phi, qx, qy), len(phi) - 1)
+        rx, ry = qx - P[idx, 0], qy - P[idx, 1]
+        c, s_ = np.cos(phi[idx]), np.sin(phi[idx])
+        a, b = rx * c + ry * s_, -rx * s_ + ry * c
+        cn, sn = np.cos(phin[idx]), np.sin(phin[idx])
+        dx_ = Pn[idx, 0] + a * cn - b * sn
+        dy_ = Pn[idx, 1] + a * sn + b * cn
+        H, W = m.shape
+        ch = img.shape[2]
+        acc = np.zeros((H * W, ch), np.float64)
+        wsum = np.zeros(H * W, np.float64)
+        # (Source pixel colour: the subsample's own pixel; image coordinates are pixel centres.)
+        colv = img[ys[src], xs[src]].astype(np.float64)
+        x0 = np.floor(dx_).astype(np.int64)
+        y0 = np.floor(dy_).astype(np.int64)
+        fx, fy = dx_ - x0, dy_ - y0
+        for ddx, ddy, wt in ((0, 0, (1 - fx) * (1 - fy)), (1, 0, fx * (1 - fy)), (0, 1, (1 - fx) * fy), (1, 1, fx * fy)):
+            xi, yi = x0 + ddx, y0 + ddy
+            ok = (xi >= 0) & (xi < W) & (yi >= 0) & (yi < H)
+            flat = yi[ok] * W + xi[ok]
+            np.add.at(wsum, flat, wt[ok] / 16.0)
+            np.add.at(acc, flat, colv[ok] * (wt[ok] / 16.0)[:, None])
+        cov = np.clip(wsum, 0.0, 1.0).reshape(H, W)
+        colr = (acc / np.maximum(wsum, 1e-9)[:, None]).reshape(H, W, ch)
+        return (colr * cov[..., None]).astype(np.float32), cov.astype(np.float32)
+
+    def tail_tip(k, legs):
+        """Where his tail k's tip lands (work coordinates) with the legs' 'curl' and the tail's base turn."""
+        P, Pn, phi, phin = tail_axis(k, legs.get('curl', 0.0))
+        q = Pn[len(Pn) - TIP_EXT - 1]
+        pc = PIECES[k]['tail']
+        px, py = to_work(k, pc['pivot'])
+        a = np.deg2rad(legs.get('tail', 0.0))
+        rx, ry = q[0] - px, q[1] - py
+        return px + rx * np.cos(a) - ry * np.sin(a), py + rx * np.sin(a) + ry * np.cos(a)
+
     # Each key split into its pieces and the rest of the body.
     split = {}
     for k in (0, 5):
@@ -1171,7 +1293,7 @@ def drake():
                 core[tuple(np.array(p).T)] = False
         split[k] = (masks, base, core)
     if DEBUG:
-        cols = {'ff': (255, 128, 0), 'fh': (0, 255, 0), 'tail': (255, 0, 255), 'nh': (0, 255, 255), 'nf': (255, 255, 0), 'head': (255, 64, 64), 'tip': (128, 0, 255)}
+        cols = {'ff': (255, 128, 0), 'fh': (0, 255, 0), 'tail': (255, 0, 255), 'nh': (0, 255, 255), 'nf': (255, 255, 0), 'head': (255, 64, 64)}
         for k in (0, 5):
             masks, base, _ = split[k]
             vis = (keys[k][0] * 0.5).astype(np.uint8)
@@ -1332,7 +1454,14 @@ def drake():
             m = masks[n].astype(np.float32)
             sc = hsc if n == 'head' else 1.0
             par = pc.get('parent')
-            if legs.get(n, 0.0) or sc != 1.0 or (par and legs.get(par, 0.0)):
+            if n == 'tail' and legs.get('curl', 0.0):
+                # The tail bent toward his other tail along its centre line, then turned about the hip.
+                pr, cv = curl_layer(k, legs['curl'], crop, masks[n])
+                dx, dy, t = bend_field(k, pc, legs.get(n, 0.0), 1.0)
+                own[n] = (dx, dy, t)
+                fields[n] = (dx, dy)
+                lay = (warp(pr, dx, dy), warp(cv, dx, dy), warp(cv, dx, dy) * t)
+            elif legs.get(n, 0.0) or sc != 1.0 or (par and legs.get(par, 0.0)):
                 dx, dy, t = bend_field(k, pc, legs.get(n, 0.0), sc)
                 if par and par in own:
                     # A child piece turns with its parent: its own turn first, then the parent's (and it is as

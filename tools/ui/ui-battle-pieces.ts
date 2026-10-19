@@ -8,8 +8,8 @@
 
 import { Img, RGBA, alpha, hex, mixc } from './ui-img';
 import {
-  ALLY, BADGE, BRONZE, BROWN, FOE, GEM, GOLD, GREEN, IVORY, METAL, Mask, PANEL, Pt, RED, TEAL,
-  band, cbez, diamondGem, emboss, fillShape, gem, isoLine, qbez, sdCircle, sdLp, sdRoundRect, spiral, stamp,
+  ALLY, BADGE, BROWN, FOE, GEM, GOLD, GREEN, KHAKI, METAL, Mask, OLIVE, PANEL, Pt, RAIL, RED, SILVER, TEAL,
+  band, cbez, cutGem, emboss, fillShape, gem, isoLine, lace, orb, qbez, sdCircle, sdLp, sdRoundRect, spiral, stamp,
 } from './ui-draw';
 
 export interface Piece {
@@ -37,11 +37,11 @@ function studGem(img: Img, cx: number, cy: number, r: number, color: keyof typeo
 
 /** The rail-and-studs border used by the action bar, the crest strip and the plaques. */
 function railRows(dir: 'top' | 'bottom'): RGBA[] {
-  // From the outside in.
-  const studs = IVORY[4];
+  // From the outside in: his dim grey-silver rails, lit on the top and left.
+  const studs = RAIL[4];
   return dir === 'top'
-    ? [METAL[0], IVORY[6], IVORY[4], IVORY[2], PANEL[0], studs, PANEL[1]]
-    : [METAL[0], IVORY[2], IVORY[3], IVORY[5], PANEL[0], studs, PANEL[1]];
+    ? [METAL[0], RAIL[5], RAIL[4], RAIL[2], PANEL[0], studs, PANEL[1]]
+    : [METAL[0], RAIL[2], RAIL[3], RAIL[4], PANEL[0], studs, PANEL[1]];
 }
 
 // --- action bar frame (9-slice) ----------------------------------------------------------------------
@@ -92,70 +92,119 @@ export function gemStud(color: 'red' | 'green'): Piece {
 
 // --- target bar (top centre) ---------------------------------------------------------------------------
 
-/** Left end ornament of the target plaque (his): arrow tip, a knot of two rings, tendrils along the rails. */
-function plaqueEnd(img: Img, flip: boolean): void {
-  const W = 20;
-  const mk = new Mask(W, 16);
-  const F = (pts: Pt[]): Pt[] => (flip ? pts.map(([x, y]) => [W - x, y] as Pt) : pts);
-  const set = (x: number, y: number) => mk.set(flip ? W - 1 - x : x, y);
-  // Arrow tip (a long diamond pointing out).
-  for (let x = 0; x <= 6; x++) {
-    const hh = x <= 3 ? Math.floor(x / 1.4) : Math.floor((6 - x) / 1.2) + 1;
-    for (let y = 7 - hh; y <= 8 + hh; y++) set(x, y);
-  }
-  // The knot: two rings, one above and one below the middle line, joined by a bar.
-  for (let y = 0; y < 16; y++)
-    for (let x = 0; x < W; x++) {
-      for (const cy of [4.2, 11.8]) {
-        const d = Math.hypot(x + 0.5 - 10, y + 0.5 - cy);
-        if (d <= 3.1 && d >= 1.6) set(x, y);
-      }
+/** Light from the upper left, as a 2D direction (screen y down). */
+const LIT: [number, number] = [-0.6, -0.8];
+
+/**
+ * Shades a rim band inside an outline given by an approximate distance field `f` (negative
+ * inside): the band's pixels facing the light get the bright steps, those facing away the dark.
+ */
+function rimShade(img: Img, f: (x: number, y: number) => number, from: number, width: number, ramp: RGBA[], steps: number[]): void {
+  for (let y = 0; y < img.h; y++)
+    for (let x = 0; x < img.w; x++) {
+      const px = x + 0.5, py = y + 0.5, d = -f(px, py) - from;
+      if (d < 0 || d >= width) continue;
+      const e = 0.4, gx = f(px + e, py) - f(px - e, py), gy = f(px, py + e) - f(px, py - e);
+      const l = Math.hypot(gx, gy) || 1;
+      const lit = (gx / l) * LIT[0] + (gy / l) * LIT[1]; // +1 when the outward normal faces the light
+      const t = (d + 0.5) / width; // 0 outer, 1 inner
+      // Outer half follows the light, inner half is one step darker (a rounded wire).
+      const k = lit > 0.35 ? 0 : lit > -0.35 ? 1 : 2;
+      img.set(x, y, ramp[steps[Math.min(steps.length - 1, k + (t > 0.5 ? 1 : 0))]]);
     }
-  for (let x = 5; x <= 13; x++) {
-    set(x, 7);
-    set(x, 8);
+}
+
+/** His spear-tip finial on the left end of the target plaque (mirrored for the right end). */
+function spearTip(img: Img, flip: boolean, cy: number): void {
+  const W = 16, Hh = img.h;
+  const mk = new Mask(W, Hh);
+  // The lozenge tip: point at x 0, widest at x 4.5, a short neck into the collar.
+  for (let x = 0; x < 10; x++) {
+    const xc = x + 0.5;
+    const t = xc <= 4.5 ? xc * 0.82 : Math.max(1.2, 3.7 - (xc - 4.5) * 0.55);
+    for (let y = 0; y < Hh; y++) if (Math.abs(y + 0.5 - cy) <= t) mk.set(x, y);
   }
-  // Tendrils along the rails, curling in at their tips.
-  mk.stroke(F(qbez([11.5, 1.2], [15, -0.4], [20, 1.5])));
-  mk.stroke(F(qbez([11.5, 14.8], [15, 16.4], [20, 14.5])));
-  emboss(img, mk, METAL, { base: 5, ox: flip ? img.w - W : 0 });
+  // The openwork collar: a loop above and below the neck, pierced.
+  const holes = new Mask(W, Hh);
+  for (const ly of [cy - 5.2, cy + 5.2])
+    for (let y = 0; y < Hh; y++)
+      for (let x = 0; x < W; x++) {
+        const d = Math.hypot((x + 0.5 - 10.2) / 1.05, y + 0.5 - ly);
+        if (d <= 3.1) mk.set(x, y);
+        if (d <= 1.35) holes.set(x, y);
+      }
+  // A cross-bar binding the loops to the neck.
+  for (let y = Math.floor(cy - 2); y < Math.ceil(cy + 2); y++) for (let x = 8; x <= 11; x++) mk.set(x, y);
+  mk.minus(holes);
+  const out = new Img(W, Hh);
+  emboss(out, mk, METAL, { base: 5 });
+  // His small rose-brown jewel in the lozenge.
+  stamp(out, 3, Math.floor(cy) - 1, ['ab', 'bc'], { a: GEM.red[3], b: GEM.red[2], c: GEM.red[1] });
+  img.draw(out, flip ? img.w - W : 0, 0, flip);
 }
 
 export function targetBar(): Piece {
-  const W = 200, Hh = 16, cap = 20;
+  const W = 200, Hh = 20, cap = 28, cy = 10, ch0 = 16;
   const img = new Img(W, Hh);
-  // A capsule: rails round the channel ends, inside the end ornaments.
-  const f = sdRoundRect(cap - 6, 0, W - cap + 6, Hh, 8);
-  fillShape(img, f, 0, PANEL[1]);
-  band(img, f, { from: 0, width: 3.4, ramp: IVORY, lo: 1, hi: 6, flat: 0 });
-  isoLine(img, f, -0.01, METAL[0], 1);
-  isoLine(img, f, 3.4, PANEL[0]);
-  plaqueEnd(img, false);
-  plaqueEnd(img, true);
+  // Outer frame: rails 8 above and below the centre line, flaring at the ends into his collar.
+  const hh = (x: number): number => {
+    const u = Math.min(x, W - x); // distance from the nearer end
+    if (u < 8) return -1;
+    if (u < 14) return 2 + 7.2 * Math.sin(((u - 8) / 6) * (Math.PI / 2));
+    if (u < 24) return 8 + 1.2 * (1 + Math.cos((Math.PI * (u - 14)) / 10)) / 2;
+    return 8;
+  };
+  const fO = (x: number, y: number): number => {
+    const h = hh(x), e = 0.5, s = (hh(x + e) - hh(x - e)) / (2 * e);
+    return (Math.abs(y - cy) - h) / Math.sqrt(1 + s * s);
+  };
+  // The channel: a capsule with rounded ends inside the frame.
+  const fC = sdRoundRect(ch0, cy - 3, W - ch0, cy + 3, 3.5);
+  for (let y = 0; y < Hh; y++)
+    for (let x = 0; x < W; x++) {
+      const px = x + 0.5, py = y + 0.5;
+      if (fO(px, py) > 0) continue;
+      const e = fC(px, py);
+      // Inside the frame: dark, then the channel's light ring, then the channel.
+      img.set(x, y, e <= 0 ? (py < cy - 2 ? PANEL[0] : PANEL[1]) : e <= 1 ? (py < cy ? RAIL[6] : RAIL[4]) : METAL[1]);
+    }
+  // The gold frame band and its outline.
+  rimShade(img, fO, 0, 2, METAL, [6, 5, 3, 2]);
+  for (let y = 0; y < Hh; y++)
+    for (let x = 0; x < W; x++) {
+      const v = fO(x + 0.5, y + 0.5);
+      if (v > 0 && v <= 1) img.set(x, y, METAL[0]);
+    }
+  spearTip(img, false, cy);
+  spearTip(img, true, cy);
   return {
     name: 'target_bar', img, group: 'target bar',
-    use: 'Chained plaque for the targeted or hovered enemy (or the boss): 3-slice; the red fill goes in the channel.',
+    use: 'Chained plaque for the targeted or hovered enemy (or the boss): 3-slice (the centre is one repeating column); his spear-tip finials at both ends; the red fill goes in the rounded channel.',
     slice: [0, cap, 0, cap],
-    window: { x: cap - 1, y: 5, w: W - 2 * cap + 2, h: 6, shape: 'rect' },
+    window: { x: ch0, y: cy - 3, w: W - 2 * ch0, h: 6, shape: 'rect' },
   };
 }
 
-/** A red fill strip (3-slice: rounded 2-pixel ends). */
+/** A fill strip with rounded ends (3-slice), shaded top-light. */
 export function fillBar(name: string, ramp: RGBA[], h: number, use: string, group: string): Piece {
   const W = 16;
   const img = new Img(W, h);
+  // Row insets of the rounded ends (his capsule bars).
+  const inset: number[] = Array(h).fill(0);
+  const ends = h >= 6 ? [2, 1] : [1];
+  ends.forEach((v, i) => {
+    inset[i] = v;
+    inset[h - 1 - i] = v;
+  });
   for (let y = 0; y < h; y++) {
     const t = y / (h - 1);
     const k = h <= 4 ? [4, 3, 2, 1][Math.min(3, y)] : t < 0.2 ? 5 : t < 0.45 ? 4 : t < 0.75 ? 3 : t < 0.95 ? 2 : 1;
-    for (let x = 0; x < W; x++) img.set(x, y, ramp[k]);
+    for (let x = inset[y]; x < W - inset[y]; x++) img.set(x, y, ramp[k]);
+    // A darker last pixel on the right end of each row.
+    if (W - 1 - inset[y] > inset[y]) img.set(W - 1 - inset[y], y, ramp[Math.max(1, k - 1)]);
   }
-  // Rounded ends: clip the corner pixels; a darker last column.
-  for (const x of [0, W - 1]) {
-    img.set(x, 0, [0, 0, 0, 0]);
-    img.set(x, h - 1, [0, 0, 0, 0]);
-  }
-  for (let y = 1; y < h - 1; y++) img.set(W - 1, y, ramp[Math.max(1, (h <= 4 ? 2 : 2))]);
-  return { name, img, group, use, slice: [0, 2, 0, 2] };
+  const s = h >= 6 ? 3 : 2;
+  return { name, img, group, use, slice: [0, s, 0, s] };
 }
 
 // --- chains -------------------------------------------------------------------------------------------
@@ -206,25 +255,32 @@ function chainPiece(name: string, w: number, h: number, pts: Pt[], use: string):
 
 // --- round medallion (RONDA) ---------------------------------------------------------------------------
 
+/** A small gem set into a rim: a thin bezel ring flush with the metal around it. */
+function setGem(img: Img, cx: number, cy: number, r: number, color: keyof typeof GEM, metal: RGBA[] = METAL): void {
+  const f = sdCircle(cx, cy, r + 1.1);
+  band(img, f, { from: 0, width: 1.1, ramp: metal, lo: 2, hi: 6 });
+  gem(img, cx, cy, r, GEM[color], false);
+}
+
 export function roundMedallion(): Piece {
-  const W = 36, Hh = 40, cx = 18, cy = 20;
+  const W = 36, Hh = 38, cx = 18, cy = 19;
   const img = new Img(W, Hh);
-  const f = sdLp(cx, cy, 15.5, 16.5, 1.8);
+  const f = sdLp(cx, cy, 16.2, 17.2, 1.72);
   // Dark brown face, a touch lighter at the centre.
   fillShape(img, f, 0, (_x, _y, d) => BROWN[d > 7 ? 3 : d > 4 ? 2 : 1]);
   // Beaded rim.
   band(img, f, { from: 0, width: 3.2, ramp: METAL, lo: 3, hi: 7, beads: { period: 2.6, cx, cy, r: 15, depth: 0.9 } });
   isoLine(img, f, -1, METAL[0]);
   isoLine(img, f, 3, METAL[1]);
-  // Gems at the four tips: red top and left, green right and bottom (his).
-  studGem(img, cx, 3.2, 2.4, 'red');
-  studGem(img, 2.6, cy, 2.4, 'red');
-  studGem(img, W - 2.6, cy, 2.4, 'green');
-  studGem(img, cx, Hh - 3.2, 2.4, 'green');
+  // Gems set into the rim at the four tips: red top and left, green right and bottom (his).
+  setGem(img, cx, 2.6, 1.9, 'red');
+  setGem(img, 2.4, cy, 1.9, 'red');
+  setGem(img, W - 2.4, cy, 1.9, 'green');
+  setGem(img, cx, Hh - 2.6, 1.9, 'green');
   return {
     name: 'round_medallion', img, group: 'turn row',
-    use: 'Round counter medallion ("RONDA" over the number); four gem tips. The chains hang from its left gem.',
-    window: { x: 8, y: 10, w: 20, h: 20, shape: 'rect' },
+    use: 'Round counter medallion ("RONDA" over the number, no box behind the word); four gems set into the rim. The chains hang from its left gem.',
+    window: { x: 8, y: 9, w: 20, h: 20, shape: 'rect' },
   };
 }
 
@@ -261,129 +317,165 @@ function initBell(name: string, ramp: RGBA[], use: string): Piece {
   isoLine(img, f, 1.7, ramp[0]);
   return { name, img, group: 'turn row', use, window: { x: 2, y: 2, w: 14, h: 14, shape: 'circle' } };
 }
-export const initAlly = () => initBell('init_ally', ALLY, 'Turn row: an ally (round window, blue base).');
-export const initEnemy = () => initBell('init_enemy', FOE, 'Turn row: an enemy (round window, red base).');
+export const initAlly = () => initBell('init_ally', ALLY, 'Turn row: an ally (round window, his muted steel-blue rim and base).');
+export const initEnemy = () => initBell('init_enemy', FOE, 'Turn row: an enemy (round window, his muted rose rim and base).');
 
 export function initEnd(): Piece {
-  const W = 22, Hh = 17;
-  const img = new Img(W, Hh);
-  const cx = 13.5, cy = 8.5;
-  const f = sdCircle(cx, cy, 7.8);
-  fillShape(img, f, 0, BROWN[1]);
-  band(img, f, { from: 0, width: 1.5, ramp: METAL, lo: 2, hi: 6 });
+  // His end circle: portrait-ring sized, dark, with a thin antique-gold rim (the chain hooks on).
+  const S = 19, c = 9.5;
+  const img = new Img(S, S);
+  const f = sdCircle(c, c, 8.6);
+  fillShape(img, f, 0, (_x, _y, d) => (d > 5 ? PANEL[2] : PANEL[1]));
+  band(img, f, { from: 0, width: 1.6, ramp: METAL, lo: 2, hi: 5 });
   isoLine(img, f, -1, METAL[0]);
-  // The link bar that joins it to the last portrait.
-  const mk = new Mask(W, Hh);
-  for (let x = 0; x <= 5; x++) for (let y = 7; y <= 9; y++) mk.set(x, y);
-  emboss(img, mk, METAL, { base: 4 });
-  isoLine(img, f, 1.5, METAL[1]);
-  return { name: 'init_end', img, group: 'turn row', use: 'Turn row: the empty circle that closes the round, with its link.', window: { x: 8, y: 3, w: 11, h: 11, shape: 'circle' } };
+  isoLine(img, f, 1.6, PANEL[0]);
+  return { name: 'init_end', img, group: 'turn row', use: 'Turn row: the dark empty circle that closes the round (the size of a portrait ring).', window: { x: 2, y: 2, w: 15, h: 15, shape: 'circle' } };
 }
 
 // --- minimap ring --------------------------------------------------------------------------------------------
 
+/** Polar helper: a point at angle a (radians) and radius r about (c, c). */
+const polar = (c: number, a: number, r: number): Pt => [c + Math.cos(a) * r, c + Math.sin(a) * r];
+
 export function minimapRing(): Piece {
   const S = 98, c = 49;
   const img = new Img(S, S);
-  const R = 46;
-  // Outer lace band: scalloped bead ring.
-  const lace = new Mask(S, S);
+  const R0 = 42.6; // where the silver band meets the gold lace
+  // --- the gold openwork rim: a running scroll (one curl per step) over a thin base wire ---------------
+  const lc = new Mask(S, S);
+  const N = 32;
+  // Local (u along the ring, v outward from R0) to the picture.
+  const at = (i: number, u: number, v: number): Pt => polar(c, ((i + u) / N) * Math.PI * 2 - Math.PI / 2, R0 + v);
+  for (let i = 0; i < N; i++) {
+    // A wave rising from the base wire into a curl (the classic running scroll).
+    const pts: Pt[] = [];
+    for (let k = 0; k <= 12; k++) {
+      const t = k / 12;
+      pts.push(at(i, t * 0.55, 0.6 + Math.sin(t * Math.PI * 0.9) * 3.6));
+    }
+    lc.stroke(pts, 1.4);
+    const cu: Pt[] = [];
+    for (let k = 0; k <= 16; k++) {
+      const t = k / 16, a = Math.PI * (0.15 + 1.5 * t), r = 1.9 * (1 - 0.6 * t);
+      cu.push(at(i, 0.62 + (Math.cos(a) * r) / ((2 * Math.PI * R0) / N), 2.7 - Math.sin(a) * r));
+    }
+    lc.stroke(cu, 1.2);
+    // A bead on the outer edge between curls.
+    const [bx, by] = at(i, 0.05, 4.6);
+    lc.disc(bx, by, 0.9);
+  }
+  // Base wire under the scrolls.
   for (let y = 0; y < S; y++)
     for (let x = 0; x < S; x++) {
-      const dx = x + 0.5 - c, dy = y + 0.5 - c;
-      const r = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
-      const sc = Math.cos(a * 36) * 0.9;
-      if (r <= R + 1.2 + Math.max(0, sc) && r >= R - 3) lace.set(x, y);
+      const r = Math.hypot(x + 0.5 - c, y + 0.5 - c);
+      if (r >= R0 - 0.2 && r < R0 + 1.2) lc.set(x, y);
     }
-  // Holes in the lace (between scallops) for an open-work look.
-  for (let i = 0; i < 36; i++) {
-    const a = ((i + 0.5) / 36) * Math.PI * 2;
-    lace.clear(Math.floor(c + Math.cos(a) * (R - 1.2)), Math.floor(c + Math.sin(a) * (R - 1.2)));
-  }
-  emboss(img, lace, METAL, { base: 4 });
-  // Ivory band.
-  const fIv = sdCircle(c, c, R - 3.2);
-  band(img, fIv, { from: 0, width: 5.4, ramp: IVORY, lo: 2, hi: 6, flat: 0.15 });
-  isoLine(img, fIv, -1, METAL[1]);
-  // Inner gold ring and its dark lines.
-  const fIn = sdCircle(c, c, R - 8.6);
-  band(img, fIn, { from: 0, width: 2, ramp: GOLD, lo: 2, hi: 6 });
-  isoLine(img, fIn, -0.6, METAL[0], 0.6);
-  isoLine(img, fIn, 2, METAL[0]);
-  // Gems at the eight points: green except south and south-west (red), as he painted.
+  // The lace is see-through between the curls (openwork): only the strokes, outlined dark.
+  emboss(img, lc, METAL, { base: 5 });
+  // --- cool silver-ivory band with his fine dark grooves ---------------------------------------------------
+  const fIv = sdCircle(c, c, R0 - 0.2);
+  band(img, fIv, { from: 0, width: 6, ramp: SILVER, lo: 3, hi: 7, flat: 0.25 });
+  isoLine(img, fIv, -0.6, METAL[1], 0.6);
+  isoLine(img, fIv, 1.6, SILVER[3], 0.8);
+  isoLine(img, fIv, 4.4, SILVER[3], 0.7);
+  // --- the thin muted gold inner ring --------------------------------------------------------------------
+  const fIn = sdCircle(c, c, R0 - 6.2);
+  isoLine(img, fIn, 0, METAL[1]);
+  isoLine(img, fIn, 1, METAL[4]);
+  isoLine(img, fIn, 2, METAL[1]);
+  // --- gems: cardinal ones in pointed lozenge bezels with side prongs, diagonals round -----------------
   const gems: [number, keyof typeof GEM][] = [[-90, 'green'], [-45, 'green'], [0, 'green'], [45, 'green'], [90, 'red'], [135, 'red'], [180, 'green'], [-135, 'green']];
   for (const [deg, col] of gems) {
     const a = (deg * Math.PI) / 180;
-    const rr = deg % 90 === 0 ? R - 0.5 : R - 1.5;
-    const gx = c + Math.cos(a) * rr, gy = c + Math.sin(a) * rr;
-    if (deg % 90 !== 0) {
-      // Diagonal gems sit in small square bezels.
-      const sq = new Mask(S, S);
-      for (let y = -4; y <= 3; y++) for (let x = -4; x <= 3; x++) sq.set(Math.floor(gx) + x, Math.floor(gy) + y);
-      emboss(img, sq, METAL, { base: 4 });
+    const ux = Math.cos(a), uy = Math.sin(a), tx = -uy, ty = ux;
+    if (deg % 90 === 0) {
+      const rr = R0 + 1.2;
+      const gx = c + ux * rr, gy = c + uy * rr;
+      // Lozenge bezel: long along the radius (pointed out and in), with two prongs on the sides.
+      const bz = new Mask(S, S);
+      for (let y = 0; y < S; y++)
+        for (let x = 0; x < S; x++) {
+          const dx = x + 0.5 - gx, dy = y + 0.5 - gy;
+          const along = dx * ux + dy * uy, across = dx * tx + dy * ty;
+          if (Math.abs(along) / 7.6 + Math.abs(across) / 5.2 <= 1) bz.set(x, y);
+          // Side prongs: small leaves pointing along the ring.
+          if (Math.abs(across) >= 4 && Math.abs(across) <= 7.4 && Math.abs(along + 0.4) <= 1.25 - (Math.abs(across) - 4) * 0.3) bz.set(x, y);
+        }
+      emboss(img, bz, METAL, { base: 5 });
+      gem(img, Math.floor(gx) + 0.5, Math.floor(gy) + 0.5, 2.5, GEM[col], true);
+    } else {
+      const rr = R0 + 0.6;
+      const gx = Math.floor(c + ux * rr) + 0.5, gy = Math.floor(c + uy * rr) + 0.5;
+      const bz = new Mask(S, S);
+      bz.disc(gx, gy, 4.1);
+      // Two little leaf curls hugging the bezel along the ring.
+      for (const sg of [-1, 1]) bz.stroke([[gx + tx * sg * 3.4 + ux * 1.6, gy + ty * sg * 3.4 + uy * 1.6], [gx + tx * sg * 5.6 + ux * 0.4, gy + ty * sg * 5.6 + uy * 0.4]], 1.2);
+      emboss(img, bz, METAL, { base: 5 });
+      gem(img, gx, gy, 2.3, GEM[col], true);
     }
-    studGem(img, Math.floor(gx) + 0.5, Math.floor(gy) + 0.5, 2.4, col);
   }
   return {
     name: 'minimap_ring', img, group: 'minimap',
-    use: 'Round minimap frame: lace rim, ivory band, gold inner ring, eight gems. The map shows through the round window.',
-    window: { x: c - 37, y: c - 37, w: 74, h: 74, shape: 'circle' },
+    use: 'Round minimap frame: gold openwork rim, cool silver band with fine grooves, thin muted gold inner ring, eight gems (pointed bezels N/E/S/W). The map shows through the round window.',
+    window: { x: c - 36, y: c - 36, w: 72, h: 72, shape: 'circle' },
   };
 }
 
 // --- action bar contents ------------------------------------------------------------------------------------
 
+/** Chamfered-square ring index: 0 on the outer edge, 1 the next ring in, ...; -1 outside. */
+function chamferRing(x: number, y: number, W: number, H: number, ch: number): number {
+  const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
+  const r = Math.min(dx, dy, dx + dy - ch);
+  return r < 0 ? -1 : r;
+}
+
 export function skillSlot(active = false): Piece {
-  const R = active ? GOLD : BRONZE;
-  const S = 28;
+  const R = active ? GOLD : KHAKI;
+  const S = 28, ch = 3;
   const img = new Img(S, S);
-  // Chamfered square (2-pixel corners), bronze line with a dark outline, dark well.
-  const ch = 3;
-  const inside = (x: number, y: number, inset: number) => {
-    const lo = inset, hi = S - 1 - inset;
-    if (x < lo || y < lo || x > hi || y > hi) return false;
-    const dx = Math.min(x - lo, hi - x), dy = Math.min(y - lo, hi - y);
-    return dx + dy >= ch - inset * 0.5 - 0.01 || inset >= ch;
-  };
+  // His frame: a thin khaki-silver line (gold when active) between dark lines, 45-degree chamfered
+  // corners, a dark well.
   for (let y = 0; y < S; y++)
     for (let x = 0; x < S; x++) {
-      if (!inside(x, y, 0)) continue;
-      const ring = !inside(x, y, 1) ? 0 : !inside(x, y, 2) ? 1 : !inside(x, y, 3) ? 2 : 3;
-      const lit = x + y < S - 1; // upper-left half
-      const c = ring === 0 ? R[0] : ring === 1 ? (lit ? R[6] : R[4]) : ring === 2 ? R[1] : PANEL[1];
-      img.set(x, y, c);
+      const ring = chamferRing(x, y, S, S, ch);
+      if (ring < 0) continue;
+      const lit = x + y < S - 1;
+      img.set(x, y, ring === 0 ? PANEL[0] : ring === 1 ? (lit ? R[6] : R[4]) : ring === 2 ? PANEL[0] : PANEL[1]);
     }
-  // A faint inner bevel on the well.
-  for (let i = 3; i < S - 3; i++) {
-    if (img.get(i, 3)[3]) img.set(i, 3, PANEL[0]);
-    if (img.get(3, i)[3]) img.set(3, i, PANEL[0]);
+  // His small corner notches: a light tick and a dark step inside each chamfer.
+  for (const [cx, cy, sx, sy] of [[3, 3, 1, 1], [S - 4, 3, -1, 1], [3, S - 4, 1, -1], [S - 4, S - 4, -1, -1]] as const) {
+    const lit = sx + sy > 0 || (sx > 0 && sy < 0) || (sx < 0 && sy > 0);
+    img.set(cx, cy, lit && !(sx < 0 && sy < 0) ? R[5] : R[3]);
+    img.set(cx + sx, cy, PANEL[0]);
+    img.set(cx, cy + sy, PANEL[0]);
   }
   return {
     name: active ? 'skill_slot_active' : 'skill_slot', img, group: 'action bar',
     use: active
-      ? 'Skill slot, selected or hovered: the same frame in bright gold.'
-      : 'Skill slot frame (his chamfered bronze square). The skill icon (painted later) goes in the window.',
+      ? 'Skill slot, selected or hovered: the same frame in gold.'
+      : 'Skill slot frame (his thin khaki-silver chamfered square with corner notches). The skill icon (painted later) goes in the window.',
     slice: [5, 5, 5, 5],
     window: { x: 3, y: 3, w: 22, h: 22, shape: 'rect' },
   };
 }
 
 export function skillTag(): Piece {
-  const W = 11, Hh = 10;
+  // His number tag: a free-standing hexagonal shield (chamfered top corners, pointed bottom),
+  // silver rim, dark fill, the cream digit inside. It overlaps the slot top by 3 art pixels.
+  const W = 11, Hh = 12;
+  const half = [3, 4, 5, 5, 5, 5, 5, 5, 4, 3, 2, 1];
   const img = new Img(W, Hh);
-  stamp(img, 0, 0, [
-    '..ooooooo..',
-    '.o6666665o.',
-    'o6411111140',
-    'o6111111130',
-    'o6111111130',
-    'o6111111130',
-    'o5111111130',
-    'o5111111130',
-    'o4333333330',
-    'ooooooooooo',
-  ], { o: BRONZE[0], '0': BRONZE[0], '1': PANEL[2], '3': BRONZE[3], '4': BRONZE[4], '5': BRONZE[5], '6': BRONZE[6] });
-  return { name: 'skill_tag', img, group: 'action bar', use: 'Number tag over a skill slot (the slot number in the label font).', window: { x: 2, y: 2, w: 7, h: 6, shape: 'rect' } };
+  const inside = (x: number, y: number) => y >= 0 && y < Hh && Math.abs(x - 5) <= half[y];
+  for (let y = 0; y < Hh; y++)
+    for (let x = 0; x < W; x++) {
+      if (!inside(x, y)) continue;
+      const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+      const rim = !edge && (!inside(x - 2, y) || !inside(x + 2, y) || !inside(x, y - 2) || !inside(x, y + 2) || !inside(x - 1, y - 1) || !inside(x + 1, y - 1) || !inside(x - 1, y + 1) || !inside(x + 1, y + 1));
+      const lit = x < 5 || y < 3;
+      img.set(x, y, edge ? SILVER[0] : rim ? (lit && y < 8 ? SILVER[6] : SILVER[4]) : PANEL[2]);
+    }
+  return { name: 'skill_tag', img, group: 'action bar', use: 'Number tag over a skill slot: his hexagonal shield (the slot number, cream, in the label font).', window: { x: 2, y: 2, w: 7, h: 7, shape: 'rect' } };
 }
 
 export function itemSlot(): Piece {
@@ -406,20 +498,20 @@ export function itemSlot(): Piece {
 }
 
 export function itemBadge(): Piece {
-  const img = new Img(10, 10);
-  gem(img, 5, 5, 4.1, BADGE, true);
-  return { name: 'item_badge', img, group: 'action bar', use: 'Blue count badge on an item slot (the count in the label font, white).' };
+  const img = new Img(9, 9);
+  gem(img, 4.5, 4.5, 3.6, BADGE, true);
+  return { name: 'item_badge', img, group: 'action bar', use: 'His small dim blue count dot on an item slot (the count in the label font, dim blue-white #b4c4d2).' };
 }
 
 export function pip(name: string, color: keyof typeof GEM | 'spent', use: string): Piece {
   const img = new Img(11, 11);
   if (color === 'spent') {
-    gem(img, 5.5, 5.5, 4.2, [PANEL[0], PANEL[1], PANEL[2], PANEL[3], PANEL[4], PANEL[5]], true);
+    orb(img, 1, 1, [PANEL[0], PANEL[1], PANEL[2], PANEL[3], PANEL[4], PANEL[5]]);
   } else {
-    // A soft glow ring, then the orb.
+    // A faint glow ring, then his smooth glossy orb.
     const ramp = GEM[color];
-    for (let y = 0; y < 11; y++) for (let x = 0; x < 11; x++) if (Math.hypot(x + 0.5 - 5.5, y + 0.5 - 5.5) <= 5.6) img.set(x, y, alpha(ramp[2], 110));
-    gem(img, 5.5, 5.5, 4.2, ramp, true);
+    for (let y = 0; y < 11; y++) for (let x = 0; x < 11; x++) if (Math.hypot(x + 0.5 - 5.5, y + 0.5 - 5.5) <= 5.6) img.set(x, y, alpha(ramp[2], 80));
+    orb(img, 1, 1, ramp);
   }
   return { name, img, group: 'action bar', use };
 }
@@ -439,88 +531,126 @@ export function moveTrough(): Piece {
 }
 
 export function chakraGem(color: 'red' | 'orange' | 'blue' | 'empty'): Piece {
-  const img = new Img(9, 11);
-  if (color === 'empty') {
-    diamondGem(img, 4.5, 5.5, 7, 9, [PANEL[0], PANEL[1], PANEL[2], PANEL[3], PANEL[4], PANEL[4]]);
-  } else diamondGem(img, 4.5, 5.5, 7, 9, GEM[color]);
-  return { name: `chakra_${color}`, img, group: 'crest', use: color === 'empty' ? 'Spent chakra gem (socket).' : `Chakra gem (${color}).` };
+  const img = new Img(9, 10);
+  cutGem(img, 0, 0, color === 'empty' ? [PANEL[0], PANEL[1], PANEL[2], PANEL[3], PANEL[4], PANEL[4]] : GEM[color]);
+  return { name: `chakra_${color}`, img, group: 'crest', use: color === 'empty' ? 'Spent chakra gem (dark socket), on the chakra line.' : `Chakra gem (${color}): his compact round-cut gem, threaded on the chakra line.` };
 }
 
-// --- crest: HP strip, chakra strip and their scrolls ------------------------------------------------------
+export function chakraLine(): Piece {
+  // The thin line his chakra gems sit on, with a small bead at each end (3-slice).
+  const W = 8, Hh = 3;
+  const img = new Img(W, Hh);
+  for (let x = 0; x < W; x++) {
+    img.set(x, 0, PANEL[0]);
+    img.set(x, 1, RAIL[3]);
+    img.set(x, 2, PANEL[0]);
+  }
+  for (const x of [0, W - 1]) {
+    img.set(x, 0, RAIL[3]);
+    img.set(x, 1, RAIL[5]);
+    img.set(x, 2, RAIL[2]);
+  }
+  return { name: 'chakra_line', img, group: 'crest', use: 'The thin line through the chakra trough that the gems sit on (3-slice), centred on the gems.', slice: [0, 2, 0, 2] };
+}
+
+// --- crest: the HP and chakra troughs and their scroll shoulders --------------------------------------------
 
 /**
- * The scrollwork on the crest's left end (his): a curl hugging the strip's rounded end, a tail
- * lying along the bar's rail with a curl at its tip, and a flourish off the strip's top corner.
+ * His crest shoulder (left end): a C-scroll rising from the rail around the trough's rounded end,
+ * curling over its top into a leaf with a knob; three inner curls; a long sweep down to the rail
+ * with a big curl (a pale teal bead in its eye) and two small knobs at the tip. Strokes are 2-3
+ * art pixels, embossed over a dark backing so the cluster reads dense, like his.
  */
-function crestScroll(): { mk: Mask; bead: Pt } {
-  const W = 30, Hh = 26;
+function crestShoulder(W: number, Hh: number): { mk: Mask; bead: Pt } {
   const mk = new Mask(W, Hh);
-  // A curl hugging the strip's rounded end.
-  mk.stroke(spiral(18.6, 14.2, 3.6, 0.7, Math.PI * 0.45, Math.PI * 2.2, 40), 1.5);
-  // The long tail lying along the bar's rail, outward, ending in a small curl.
-  mk.stroke(cbez([19.5, 18], [13, 18.5], [8, 22], [1, 24.6]), 2);
-  mk.stroke(spiral(5.4, 20.6, 2.2, 0.6, Math.PI * 0.55, Math.PI * 2.3, 24), 1);
-  // An upper flourish off the strip's top corner, curling back.
-  mk.stroke(cbez([25, 10.2], [21, 5.4], [14.5, 5.6], [11.6, 8.8]), 1.5);
-  mk.stroke(spiral(13.4, 10.4, 1.8, 0.5, Math.PI * 1.15, Math.PI * 2.7, 20), 1);
-  // Ball terminals.
-  mk.disc(9.5, 15.5, 1.2);
-  mk.disc(1.5, 21.5, 1);
-  return { mk, bead: [24.5, 21.5] };
+  // The C-scroll hugging the trough's end, from the rail up and over.
+  mk.taper(cbez([41, 23.6], [32.5, 22.4], [29.2, 10], [35, 4.4]), 2.8, 2.3);
+  mk.taper(cbez([35, 4.4], [38.6, 1.2], [44.6, 1.2], [48, 4]), 2.3, 1.5);
+  mk.disc(49, 5, 1.35);
+  // A leaf off the top of the C, pointing back out.
+  mk.taper(qbez([33.4, 4.6], [30, 1.4], [27.2, 2.6]), 1.8, 1);
+  // Inner curls inside the C.
+  mk.taper(spiral(35.7, 8.6, 2.5, 0.6, -Math.PI * 0.55, -Math.PI * 2.3, 30), 1.6, 1);
+  mk.taper(spiral(35.4, 15.2, 2.3, 0.5, Math.PI * 0.6, Math.PI * 2.4, 30), 1.6, 1);
+  mk.taper(spiral(37.4, 20.6, 1.7, 0.4, -Math.PI * 0.9, Math.PI * 0.8, 24), 1.4, 1);
+  // The long sweep down to the rail.
+  mk.taper(cbez([31.6, 12], [24.5, 8.4], [16.6, 11.6], [13.2, 18]), 2.7, 2.1);
+  mk.taper(qbez([13.2, 18], [10.8, 22.6], [3.6, 22.6]), 2.1, 1.5);
+  mk.disc(2, 21.4, 1.5);
+  // A small knob on a stem.
+  mk.taper([[8.6, 22.6], [8.6, 19.4]], 1.4, 1.2);
+  mk.disc(8.6, 18.6, 1.25);
+  // The big curl under the sweep (its eye holds the bead).
+  mk.taper(spiral(23.2, 18.4, 4.4, 2.3, -Math.PI * 0.95, Math.PI * 0.85, 40), 2, 1.4);
+  // Feet of the cluster on the rail.
+  mk.taper([[14, 23.5], [33, 23.5]], 1.4, 1.4);
+  return { mk, bead: [23.2, 18.4] };
 }
 
 export function crestStrip(): Piece {
-  const W = 72, Hh = 26, cap = 30, sTop = 9;
+  const W = 112, Hh = 24, cap = 52, capL = 39, sTop = 7;
   const img = new Img(W, Hh);
-  // Strip body between the rounded ends.
-  const f = sdRoundRect(cap - 8, sTop, W - cap + 8, Hh + 6, 7);
-  fillShape(img, f, 0, PANEL[2]);
-  band(img, f, { from: 0, width: 2.4, ramp: IVORY, lo: 2, hi: 6, flat: 0 });
-  isoLine(img, f, -1, METAL[0]);
-  isoLine(img, f, 2.4, PANEL[0], 1.6);
-  // Studded line.
+  // The shoulders first; the trough lies over their inner ends.
+  const { mk, bead } = crestShoulder(cap, Hh);
+  lace(img, mk, METAL, { close: 2.2 });
+  lace(img, mk.flipX(), METAL, { close: 2.2, ox: W - cap });
+  gem(img, bead[0], bead[1], 1.5, GEM.teal, true);
+  gem(img, W - bead[0], bead[1], 1.5, GEM.teal, true);
+  // The trough: a capsule with his rounded ends whose bottom is the bar's top rail.
+  const f = sdRoundRect(capL, sTop, W - capL, Hh + 2, 9.5);
   for (let y = 0; y < Hh; y++)
     for (let x = 0; x < W; x++) {
       const d = -f(x + 0.5, y + 0.5);
-      if (d >= 4 && d < 5 && (x + y) % 2 === 0) img.set(x, y, IVORY[4]);
-      else if (d >= 4 && d < 5) img.set(x, y, PANEL[0]);
+      if (d < -1) continue;
+      let c: RGBA;
+      if (d < 0) c = METAL[0];
+      else if (d < 2) continue; // the rail, banded below
+      else if (d < 3) c = PANEL[0];
+      else if (d < 4) c = (x + y) % 2 === 0 ? RAIL[4] : PANEL[0];
+      else if (d < 5) c = PANEL[1];
+      else c = PANEL[2];
+      img.set(x, y, c);
     }
-  // Scrolls on both ends.
-  const { mk: sc, bead } = crestScroll();
-  emboss(img, sc, METAL, { base: 5 });
-  emboss(img, sc.flipX(), METAL, { base: 5, ox: W - sc.w });
-  studGem(img, bead[0] + 0.5, bead[1] + 0.5, 1.4, 'green');
-  studGem(img, W - bead[0] - 0.5, bead[1] + 0.5, 1.4, 'green');
+  // His double light rail: a rounded silver wire, then the dotted line inside it (above).
+  band(img, f, { from: 0, width: 2, ramp: RAIL, lo: 2, hi: 6, flat: 0 });
   return {
     name: 'crest_strip', img, group: 'crest',
-    use: 'Raised strip over the action bar (3-slice): the HP bar sits in its left half, the chakra gems in its right half; the acting character medallion covers the middle. Scrollwork at both ends.',
+    use: 'Raised crest over the action bar (3-slice; centre repeats every 2 art pixels): the HP trough on the left, the chakra trough on the right, both with his rounded double-rail ends and scroll shoulders; the acting character medallion covers the middle.',
     slice: [0, cap, 0, cap],
-    window: { x: cap - 2, y: sTop + 6, w: W - 2 * cap + 4, h: 7, shape: 'rect' },
+    window: { x: capL + 5, y: sTop + 5, w: W - 2 * (capL + 5), h: Hh - sTop - 8, shape: 'rect' },
   };
 }
 
 // --- acting character medallion -----------------------------------------------------------------------------
 
 export function medallionActive(): Piece {
-  const W = 62, Hh = 52, cx = 31, cy = 27;
+  const W = 72, Hh = 52, cx = 36, cy = 27;
   const img = new Img(W, Hh);
-  // Filigree wings and side bosses (behind the ring).
+  // His filigree crown and shoulders (behind the ring), drawn for the right side and mirrored.
   const mk = new Mask(W, Hh);
   for (const sgn of [-1, 1]) {
-    // Drawn for the right wing (x measured from the centre), mirrored for the left one.
     const P = (pts: Pt[]): Pt[] => pts.map(([x, y]) => [cx + sgn * x, y] as Pt);
-    // Leaf from the boss up toward the top gem.
-    mk.stroke(P(cbez([21, 12], [18, 7], [13, 4.5], [7, 4.5])), 1.5);
-    // Scroll under the boss curling out and down onto the strip.
-    mk.stroke(P(cbez([21, 22], [26, 23.5], [29.5, 28], [28.5, 33])), 2);
-    mk.stroke(P(spiral(26.2, 32.4, 2.3, 0.5, 0, Math.PI * 1.9, 24).map(([x, y]) => [x, y] as Pt)), 1);
-    mk.stroke(P(cbez([19, 31], [22, 35], [25, 38], [30, 39])), 1.5);
+    // The arch from the top gem out to the small boss, and its leafy inner scrolls.
+    mk.taper(P(cbez([3.5, 4.6], [9, 1.8], [15.5, 4], [18.4, 9.6])), 2.4, 2);
+    mk.taper(P(spiral(10.8, 8.2, 2.6, 0.6, -Math.PI * 0.6, Math.PI * 1.2, 30)), 1.8, 1.1);
+    mk.taper(P(qbez([5.5, 8.5], [6.5, 6], [8.6, 5.6])), 1.4, 1);
+    // From the small boss down and out to the big boss.
+    mk.taper(P(cbez([21.6, 14.4], [24, 15.6], [25.4, 18], [25.6, 20.4])), 2.2, 2);
+    // Under the big boss: a scroll curling out and down onto the crest.
+    mk.taper(P(cbez([24.2, 28.4], [27.8, 31.2], [31.6, 30.6], [33.8, 33])), 2.2, 1.4);
+    mk.taper(P(spiral(30.6, 32.6, 1.9, 0.5, -Math.PI * 0.2, Math.PI * 1.5, 22)), 1.3, 1);
+    mk.taper(P(cbez([20, 30.5], [22, 34.5], [26.5, 36], [30, 36.4])), 1.8, 1.2);
   }
-  emboss(img, mk, METAL, { base: 5 });
+  lace(img, mk, METAL, { close: 2.4, edgeSet: false });
+  // Bosses: two small ones on the arch, two big dark ones at shoulder level (his "eyes").
   for (const sgn of [-1, 1]) {
-    // Round boss with a dark socket and two pale dots (his little "eyes").
-    const bx = cx + sgn * 25, by = 16.5;
-    const fb = sdCircle(bx, by, 5.2);
+    const sx = cx + sgn * 20.4, sy = cy - 14.4;
+    const fs = sdCircle(sx, sy, 3);
+    fillShape(img, fs, 0, PANEL[2]);
+    band(img, fs, { from: 0, width: 1.4, ramp: METAL, lo: 2, hi: 7 });
+    isoLine(img, fs, -1, METAL[0]);
+    const bx = cx + sgn * 28.4, by = cy - 3.4;
+    const fb = sdCircle(bx, by, 5.4);
     fillShape(img, fb, 0, PANEL[2]);
     band(img, fb, { from: 0, width: 2, ramp: METAL, lo: 2, hi: 7 });
     isoLine(img, fb, -1, METAL[0]);
@@ -529,66 +659,63 @@ export function medallionActive(): Piece {
     img.set(Math.floor(bx), Math.floor(by) + 1, METAL[4]);
   }
   // Outer beaded ring, then the gold rim.
-  const fo = sdCircle(cx, cy, 22.6);
-  band(img, fo, { from: 0, width: 2.4, ramp: METAL, lo: 2, hi: 7, beads: { period: 2.5, cx, cy, r: 21.5, depth: 0.9 } });
+  const fo = sdCircle(cx, cy, 21.8);
+  band(img, fo, { from: 0, width: 2, ramp: METAL, lo: 2, hi: 7, beads: { period: 2.5, cx, cy, r: 21, depth: 0.9 } });
   isoLine(img, fo, -1, METAL[0]);
-  const fr = sdCircle(cx, cy, 20.2);
-  band(img, fr, { from: 0, width: 3.6, ramp: GOLD, lo: 2, hi: 7, flat: 0.1 });
+  const fr = sdCircle(cx, cy, 19.8);
+  band(img, fr, { from: 0, width: 3.3, ramp: GOLD, lo: 2, hi: 7, flat: 0.1 });
   isoLine(img, fr, 0, GOLD[0], 0.7);
-  isoLine(img, fr, 3.6, GOLD[0]);
-  // Gems: red on top (with leaf flares), green at the bottom, two tiny teal ones on the sides.
-  const leaf = new Mask(W, Hh);
-  leaf.stroke([[cx - 6, 5], [cx - 3, 3]], 1);
-  leaf.stroke([[cx + 5, 5], [cx + 2, 3]], 1);
-  emboss(img, leaf, METAL, { base: 5 });
-  studGem(img, cx, 3.6, 2.6, 'red');
-  studGem(img, cx, 49, 1.9, 'green');
-  studGem(img, cx - 15.5, cy + 15, 1.3, 'teal');
-  studGem(img, cx + 15.5, cy + 15, 1.3, 'teal');
+  isoLine(img, fr, 3.3, GOLD[0]);
+  // Gems: red on top, a small pale green one on the bottom rim (it sits on the bar's rail).
+  studGem(img, cx, 4.4, 2.6, 'red');
+  studGem(img, cx, cy + 20.6, 1.9, 'green');
   return {
     name: 'medallion_active', img, group: 'crest',
-    use: 'Acting character medallion: the portrait shows through the round window. Sits on the middle of the crest strip.',
+    use: 'Acting character medallion: the portrait shows through the round window. Sits on the middle of the crest strip; its bottom gem rests on the bar\'s top rail.',
     window: { x: cx - 16.5, y: cy - 16.5, w: 33, h: 33, shape: 'circle' },
   };
 }
 
 // --- plaque under the bar ------------------------------------------------------------------------------------
 
-function bracket(): Mask {
-  const W = 28, Hh = 16;
+/** His lower bracket (left): a scrolled diagonal from the bar's rail down to the plaque's end. */
+function lowerBracket(W: number, Hh: number): Mask {
   const mk = new Mask(W, Hh);
-  // A triangle hanging under the bar's rail (his): the rail on top, a scroll down the long side,
-  // the plaque side on the right, an eye inside and a crossing stroke.
-  for (let x = 0; x < W; x++) mk.set(x, 0);
-  mk.stroke(cbez([0, 0.5], [7, 2.5], [15, 8], [26.5, 15.2]), 1.6);
-  for (let y = 0; y < Hh; y++) mk.set(26, y);
-  const eye = (x: number, y: number) => ((x + 0.5 - 15) / 4.6) ** 2 + ((y + 0.5 - 5) / 2.5) ** 2;
-  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) if (eye(x, y) <= 1 && eye(x, y) > 0.4) mk.set(x, y);
-  mk.stroke([[20, 2], [25.5, 12]], 1);
-  mk.stroke(spiral(7.5, 2.6, 1.6, 0.4, Math.PI * 0.5, Math.PI * 2.3, 16), 1);
+  mk.taper([[0.5, 0.6], [30, 0.6]], 1.2, 1.2); // along the bar's underside
+  mk.taper(cbez([0.6, 1.2], [9, 2.4], [21, 7.4], [31.6, 14.6]), 2.2, 1.6);
+  // The big curl in the triangle (its eye holds his pale stone).
+  mk.taper(spiral(17.4, 5.2, 3.4, 1.8, Math.PI * 0.75, Math.PI * 2.55, 36), 1.8, 1.3);
+  // The X binding near the plaque's end.
+  mk.taper([[24.4, 1.2], [31.6, 10.6]], 1.6, 1.4);
+  mk.taper([[31, 1.2], [25.6, 8.4]], 1.4, 1.2);
+  mk.taper(spiral(8.4, 2.6, 1.5, 0.4, Math.PI * 0.5, Math.PI * 2.2, 18), 1.2, 1);
   return mk;
 }
 
 export function lowerPlaque(): Piece {
-  const W = 80, Hh = 16, cap = 30;
+  const W = 88, Hh = 16, cap = 40, end = 31;
   const img = new Img(W, Hh);
-  const f = sdRoundRect(cap - 5, 1, W - cap + 5, Hh - 1, 4);
-  fillShape(img, f, 0, mixc(PANEL[3], BROWN[1], 0.4));
-  isoLine(img, f, -1, METAL[0]);
-  isoLine(img, f, 0, PANEL[0]);
-  isoLine(img, f, 1, PANEL[4]);
-  const br = bracket();
-  emboss(img, br, METAL, { base: 5, ox: 0, oy: 0 });
-  // The eye's teal pupil.
-  stamp(img, 14, 4, ['ab', 'bc'], { a: GEM.teal[3], b: GEM.teal[2], c: GEM.teal[1] });
-  const fl = br.flipX();
-  emboss(img, fl, METAL, { base: 5, ox: W - fl.w, oy: 0 });
-  stamp(img, W - 16, 4, ['ab', 'bc'], { a: GEM.teal[3], b: GEM.teal[2], c: GEM.teal[1] });
+  const br = lowerBracket(cap, Hh);
+  lace(img, br, METAL, { close: 1.8 });
+  lace(img, br.flipX(), METAL, { close: 1.8, ox: W - cap });
+  // The pale stones in the curls' eyes.
+  gem(img, 17.4, 5.2, 1.4, GEM.teal, true);
+  gem(img, W - 17.4, 5.2, 1.4, GEM.teal, true);
+  // The plaque: dark, with his rounded ends and a silver rail along the bottom; its top is the
+  // bar's bottom rail.
+  const f = sdRoundRect(end, -8, W - end, Hh, 7.5);
+  for (let y = 0; y < Hh; y++)
+    for (let x = 0; x < W; x++) {
+      const d = -f(x + 0.5, y + 0.5);
+      if (d < -1) continue;
+      img.set(x, y, d < 0 ? METAL[0] : d < 1.6 ? RAIL[3] : d < 2.6 ? PANEL[0] : mixc(PANEL[3], BROWN[1], 0.4));
+    }
+  band(img, f, { from: 0, width: 1.6, ramp: RAIL, lo: 2, hi: 5 });
   return {
     name: 'lower_plaque', img, group: 'action bar',
-    use: 'Dark plaque under the action bar with corner brackets (3-slice); for the hint line or the combat log.',
+    use: 'Dark plaque under the action bar with his scrolled corner brackets and rounded ends (3-slice); for the hint line or the combat log.',
     slice: [0, cap, 0, cap],
-    window: { x: cap - 4, y: 3, w: W - 2 * cap + 8, h: Hh - 6, shape: 'rect' },
+    window: { x: end + 4, y: 1, w: W - 2 * (end + 4), h: Hh - 5, shape: 'rect' },
   };
 }
 
@@ -597,43 +724,59 @@ export function lowerPlaque(): Piece {
 export function partyFrame(): Piece {
   const W = 30, Hh = 40;
   const img = new Img(W, Hh);
-  const f = sdRoundRect(0, 0, W, Hh, 1.5);
-  fillShape(img, f, 0, PANEL[2]);
-  // Thin olive-gold double line (his) with dark outline.
-  isoLine(img, f, 0, METAL[0]);
-  band(img, sdRoundRect(1, 1, W - 1, Hh - 1, 1), { from: 0, width: 2, ramp: METAL, lo: 2, hi: 6, flat: 0.3 });
-  isoLine(img, sdRoundRect(1, 1, W - 1, Hh - 1, 1), 2, METAL[1]);
-  // Corner notches: little L ornaments just inside each corner.
-  const notch = ['66.', '6..', '...'];
-  stamp(img, 3, 3, notch, { '6': METAL[6] });
-  stamp(img, W - 6, 3, notch, { '6': METAL[6] }, true);
-  stamp(img, 3, Hh - 6, [...notch].reverse(), { '6': METAL[5] });
-  stamp(img, W - 6, Hh - 6, [...notch].reverse(), { '6': METAL[5] }, true);
-  // Bar wells under the portrait: red (HP) then green.
-  for (let y = 3; y < 28; y++) for (let x = 3; x < W - 3; x++) img.set(x, y, [0, 0, 0, 0]);
-  stamp(img, 3, 3, notch, { '6': METAL[6] });
-  stamp(img, W - 6, 3, notch, { '6': METAL[6] }, true);
-  img.rect(3, 28, W - 6, 1, METAL[2]);
+  // His thin olive-gold line: a dark outline, one gold pixel (lit top and left), a dark inner line.
+  for (let y = 0; y < Hh; y++)
+    for (let x = 0; x < W; x++) {
+      const r = Math.min(x, y, W - 1 - x, Hh - 1 - y);
+      if (r === 0) img.set(x, y, OLIVE[0]);
+      else if (r === 1) img.set(x, y, x === 1 || y === 1 ? (x === W - 2 || y === Hh - 2 ? OLIVE[4] : OLIVE[6]) : OLIVE[4]);
+      else if (r === 2) img.set(x, y, OLIVE[1]);
+    }
+  // Soften the outer corners (one pixel).
+  for (const [x, y] of [[0, 0], [W - 1, 0], [0, Hh - 1], [W - 1, Hh - 1]]) img.set(x, y, [0, 0, 0, 0]);
+  // The bar wells under the portrait: red (HP) then green.
+  img.rect(3, 28, W - 6, 1, OLIVE[2]);
   img.rect(3, 29, W - 6, 4, PANEL[0]);
   img.rect(3, 33, W - 6, 1, PANEL[1]);
   img.rect(3, 34, W - 6, 3, PANEL[0]);
+  // His curled L brackets in the four inner corners.
+  const curl = [
+    '6665.',
+    '6..4.',
+    '6.54.',
+    '544..',
+    '.....',
+  ];
+  const pal = { '6': OLIVE[6], '5': OLIVE[5], '4': OLIVE[4] };
+  const pal2 = { '6': OLIVE[5], '5': OLIVE[4], '4': OLIVE[3] };
+  stamp(img, 3, 3, curl, pal);
+  stamp(img, W - 8, 3, curl, pal, true);
+  stamp(img, 3, Hh - 8, [...curl].reverse(), pal2);
+  stamp(img, W - 8, Hh - 8, [...curl].reverse(), pal2, true);
   return {
     name: 'party_frame', img, group: 'party',
-    use: 'Party portrait frame (9-slice): portrait window on top, two bar wells below (red HP, then green).',
-    slice: [5, 5, 13, 5],
+    use: 'Party portrait frame (9-slice): his thin olive-gold line with curled corner brackets; portrait window on top, two bar wells below (red HP at 3,29 4 high, green at 3,34 3 high, in art pixels).',
+    slice: [8, 8, 14, 8],
     window: { x: 3, y: 3, w: W - 6, h: 25, shape: 'rect' },
   };
 }
 
 // --- buttons ---------------------------------------------------------------------------------------------------
 
+/** His small square button: a thin grey-gold rim lit on the top and left, on a dark square. */
 function squareButton(img: Img, x0: number, y0: number, S: number): void {
-  const f = sdRoundRect(x0, y0, x0 + S, y0 + S, 2);
-  fillShape(img, f, 0, PANEL[2]);
-  band(img, f, { from: 0, width: 2.2, ramp: METAL, lo: 2, hi: 7, flat: 0.25 });
-  isoLine(img, f, 0, METAL[0], 0.8);
-  isoLine(img, f, 2.2, METAL[0]);
-  fillShape(img, f, 3.2, (_x, y) => (y - y0 < S / 2 ? PANEL[3] : PANEL[2]));
+  for (let y = 0; y < S; y++)
+    for (let x = 0; x < S; x++) {
+      const r = Math.min(x, y, S - 1 - x, S - 1 - y);
+      const corner = (x === 0 || x === S - 1) && (y === 0 || y === S - 1);
+      if (corner) continue;
+      let c: RGBA;
+      if (r === 0) c = PANEL[0];
+      else if (r === 1) c = x === 1 || y === 1 ? (x === S - 2 || y === S - 2 ? KHAKI[4] : KHAKI[6]) : KHAKI[3];
+      else if (r === 2) c = PANEL[0];
+      else c = PANEL[2];
+      img.set(x0 + x, y0 + y, c);
+    }
 }
 
 export function menuButton(): Piece {
@@ -642,12 +785,13 @@ export function menuButton(): Piece {
   squareButton(img, 0, 2, S);
   // Three bars.
   const mk = new Mask(S, S + 2);
-  for (const y of [8, 12, 16]) for (let x = 6; x <= 13; x++) mk.set(x, y);
-  emboss(img, mk, IVORY, { base: 5 });
-  studGem(img, S / 2, 2.6, 1.9, 'red');
+  for (const y of [9, 12, 15]) for (let x = 6; x <= 13; x++) mk.set(x, y);
+  emboss(img, mk, SILVER, { base: 5 });
+  // The red gem set into the top of the rim.
+  setGem(img, S / 2, 3, 2, 'red');
   return {
     name: 'menu_button', img, group: 'buttons',
-    use: 'Menu button (top left, replaces the web navigation bar in battle): bronze square, red gem, three bars.',
+    use: 'Menu button (top left, replaces the web navigation bar in battle): his thin-rimmed square with a red gem set into the top of the frame, three bars.',
   };
 }
 
@@ -655,7 +799,7 @@ export function smallButton(): Piece {
   const S = 12;
   const img = new Img(S, S);
   squareButton(img, 0, 0, S);
-  return { name: 'button_small', img, group: 'buttons', use: 'Small square button (his, above the party frames); 9-slice; an emblem goes inside.', slice: [4, 4, 4, 4], window: { x: 3, y: 3, w: 6, h: 6, shape: 'rect' } };
+  return { name: 'button_small', img, group: 'buttons', use: 'Small square button (his, above the party frames); 9-slice with a flat centre; the trefoil emblem goes inside.', slice: [4, 4, 4, 4], window: { x: 3, y: 3, w: 6, h: 6, shape: 'rect' } };
 }
 
 export function endTurnGem(): Piece {

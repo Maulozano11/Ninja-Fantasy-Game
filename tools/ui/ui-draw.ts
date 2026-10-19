@@ -37,11 +37,19 @@ export const GEM: Record<string, RGBA[]> = {
   magenta: ['#260a2a', '#55195c', '#8f3196', '#cf55d6', '#f2a6f6', '#fff2ff'].map(H),
   teal: ['#06201f', '#0f4644', '#1b7a73', '#33aaa0', '#8ee0d6', '#f0fffc'].map(H),
 };
-/** Initiative rings: allies blue, enemies red. */
-export const ALLY = ['#0c1a24', '#1d3a4f', '#2f5f7c', '#4c87a8', '#79b2cc', '#b5dbe8'].map(H);
-export const FOE = ['#240c0c', '#4f1d1d', '#7d3434', '#a85252', '#cf7f78', '#ebb5a8'].map(H);
-/** Count badges (his little blue discs). */
-export const BADGE = ['#0b1824', '#1c3550', '#2c5478', '#4479a6', '#7fb0d6', '#d5ecff'].map(H);
+/** Initiative rings: allies his muted steel blue, enemies his muted rose. */
+export const ALLY = ['#111a21', '#243442', '#395064', '#567087', '#7c94a6', '#aebfca'].map(H);
+export const FOE = ['#1f1214', '#40252a', '#613a3f', '#86565a', '#a87b7b', '#cca9a4'].map(H);
+/** Count badges (his small, dim blue dots). */
+export const BADGE = ['#0a1219', '#152638', '#203c56', '#2f5574', '#4f7697', '#8eaac2'].map(H);
+/** The bar's rails and the troughs' light lines: his dim, slightly cool grey-silver. */
+export const RAIL = ['#15150f', '#33352e', '#53574e', '#71766c', '#8f978c', '#a1a49b', '#b9bcb1', '#d2d4ca'].map(H);
+/** Cool silver-ivory (his minimap band, the number tags' rims). */
+export const SILVER = ['#17171a', '#34333a', '#57555a', '#7d7a7a', '#a29d97', '#c4bdb3', '#e2dbd0', '#f3f0e9'].map(H);
+/** Khaki-silver (his skill slot frames). */
+export const KHAKI = ['#15120d', '#2d281f', '#4a4334', '#695f4c', '#8a7d66', '#a99475', '#bfae92', '#d6cab2'].map(H);
+/** Olive gold (his party frames). */
+export const OLIVE = ['#121109', '#2a281b', '#47442f', '#66624a', '#857d66', '#aea989', '#c9c4a3', '#e1dcc0'].map(H);
 /** Text. */
 export const INK = { cream: H('#efe6cf'), dim: H('#b8ad94'), faint: H('#7d735f'), white: H('#fbf8ee'), dark: H('#0b0805'), shadow: H('#000000') };
 
@@ -98,6 +106,85 @@ export class Mask {
     for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) o.m[y * this.w + x] = this.m[y * this.w + this.w - 1 - x];
     return o;
   }
+  /** A stroke whose width goes from w0 at the first point to w1 at the last. */
+  taper(pts: [number, number][], w0: number, w1: number): void {
+    const L = [0];
+    for (let i = 1; i < pts.length; i++) L.push(L[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const tot = L[L.length - 1] || 1;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+      const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 3));
+      for (let k = 0; k <= n; k++) {
+        const t = k / n, s = (L[i] + (L[i + 1] - L[i]) * t) / tot, w = w0 + (w1 - w0) * s;
+        const x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+        if (w <= 1) this.set(Math.floor(x), Math.floor(y));
+        else this.disc(x, y, w / 2);
+      }
+    }
+  }
+  /** Pixels within distance r of a set pixel (round structuring element). */
+  dilate(r: number): Mask {
+    const o = new Mask(this.w, this.h);
+    const R = Math.ceil(r);
+    for (let y = 0; y < this.h; y++)
+      for (let x = 0; x < this.w; x++) {
+        if (!this.get(x, y)) continue;
+        for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) if (dx * dx + dy * dy <= r * r) o.set(x + dx, y + dy);
+      }
+    return o;
+  }
+  /** Pixels whose whole r-disc is set (outside the image counts as unset unless `edgeSet`). */
+  erode(r: number, edgeSet = false): Mask {
+    const o = new Mask(this.w, this.h);
+    const R = Math.ceil(r);
+    for (let y = 0; y < this.h; y++)
+      for (let x = 0; x < this.w; x++) {
+        let ok = true;
+        for (let dy = -R; dy <= R && ok; dy++)
+          for (let dx = -R; dx <= R; dx++) {
+            if (dx * dx + dy * dy > r * r) continue;
+            const xx = x + dx, yy = y + dy;
+            const inside = xx >= 0 && yy >= 0 && xx < this.w && yy < this.h;
+            if (inside ? !this.m[yy * this.w + xx] : !edgeSet) {
+              ok = false;
+              break;
+            }
+          }
+        if (ok) o.m[y * this.w + x] = 1;
+      }
+    return o;
+  }
+  /** Morphological closing: fills the gaps narrower than about 2r between strokes. */
+  closed(r: number, edgeSet = true): Mask {
+    return this.dilate(r).erode(r, edgeSet);
+  }
+  or(o: Mask): Mask {
+    const n = new Mask(this.w, this.h);
+    for (let i = 0; i < this.m.length; i++) n.m[i] = this.m[i] || o.m[i] ? 1 : 0;
+    return n;
+  }
+  count(): number {
+    let n = 0;
+    for (let i = 0; i < this.m.length; i++) n += this.m[i] ? 1 : 0;
+    return n;
+  }
+}
+
+/**
+ * Pierced filigree (his "lace"): the strokes embossed in metal over a dark backing that fills
+ * the gaps between them (a closing of the strokes), so the openwork reads dense, with dark
+ * holes, instead of a thin wire. `hole` keeps the bigger gaps see-through.
+ */
+export function lace(img: Img, strokes: Mask, ramp: RGBA[], opts: { close?: number; back?: RGBA; base?: number; ox?: number; oy?: number; edgeSet?: boolean } = {}): void {
+  const back = strokes.closed(opts.close ?? 2, opts.edgeSet ?? true);
+  const ox = opts.ox ?? 0, oy = opts.oy ?? 0, bc = opts.back ?? ramp[1];
+  // The backing, with an outline in the ramp's darkest step.
+  for (let y = -1; y <= back.h; y++)
+    for (let x = -1; x <= back.w; x++) {
+      if (back.get(x, y)) img.set(x + ox, y + oy, bc);
+      else if (back.get(x - 1, y) || back.get(x + 1, y) || back.get(x, y - 1) || back.get(x, y + 1)) img.set(x + ox, y + oy, ramp[0]);
+    }
+  emboss(img, strokes, ramp, { base: opts.base ?? 5, ox, oy, outlineColor: ramp[0] });
 }
 
 /**
@@ -263,6 +350,59 @@ export function diamondGem(img: Img, cx: number, cy: number, w: number, h: numbe
       img.set(x, y, ramp[k]);
     }
   img.set(Math.floor(cx - rx / 2.6), Math.floor(cy - ry / 2.4), ramp[5]);
+}
+
+/**
+ * A smooth glossy orb (his action pips): a 9-pixel round, soft darker rim (no black outline),
+ * smooth shading lit from the upper left and one specular highlight.
+ */
+export function orb(img: Img, x0: number, y0: number, ramp: RGBA[]): void {
+  const half = [2, 3, 4, 4, 4, 4, 4, 3, 2]; // half-widths about the centre column (4)
+  const inside = (x: number, y: number) => y >= 0 && y < 9 && Math.abs(x - 4) <= half[y];
+  for (let y = 0; y < 9; y++)
+    for (let x = 0; x < 9; x++) {
+      if (!inside(x, y)) continue;
+      const rim = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+      const u = (x - 4) / 4.5, v = (y - 4) / 4.5;
+      const l = -0.55 * u - 0.6 * v; // toward the upper left
+      let k: number;
+      if (rim) k = l > 0.3 ? 2 : 1;
+      else k = l > 0.35 ? 4 : l > -0.25 ? 3 : 2;
+      img.set(x0 + x, y0 + y, ramp[k]);
+    }
+  // One specular highlight, and a faint bounce on the lower right.
+  img.set(x0 + 2, y0 + 2, ramp[5]);
+  img.set(x0 + 3, y0 + 2, ramp[4]);
+  img.set(x0 + 2, y0 + 3, ramp[4]);
+  img.set(x0 + 6, y0 + 6, ramp[3]);
+}
+
+/**
+ * A compact round-cut faceted gem (his chakra gems): an octagonal outline in the ramp's darkest
+ * step, a lit table, crown facets lighter up-left and darker down-right, one sparkle.
+ */
+export function cutGem(img: Img, x0: number, y0: number, ramp: RGBA[]): void {
+  // 9 wide, 10 tall: half-widths per row about the centre column 4.
+  const half = [1, 2, 3, 4, 4, 4, 4, 3, 2, 1];
+  const inside = (x: number, y: number) => y >= 0 && y < 10 && Math.abs(x - 4) <= half[y];
+  for (let y = 0; y < 10; y++)
+    for (let x = 0; x < 9; x++) {
+      if (!inside(x, y)) continue;
+      const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+      if (edge) {
+        img.set(x0 + x, y0 + y, ramp[0]);
+        continue;
+      }
+      const u = x - 4, v = y - 4.5;
+      let k: number;
+      if (Math.abs(u) <= 1 && Math.abs(v) <= 1.5) k = 3; // the table
+      else if (u + v < -1.5) k = 4; // upper-left crown
+      else if (u + v > 1.5) k = 1; // lower-right crown
+      else k = u < 0 ? 3 : 2;
+      img.set(x0 + x, y0 + y, ramp[k]);
+    }
+  img.set(x0 + 3, y0 + 3, ramp[5]);
+  img.set(x0 + 4, y0 + 4, ramp[4]);
 }
 
 // --- curves -------------------------------------------------------------------------------------

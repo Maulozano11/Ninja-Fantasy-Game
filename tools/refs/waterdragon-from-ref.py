@@ -209,7 +209,7 @@ def some_drops(key, frac, salt):
     return np.concatenate([key.crop * m[..., None], m[..., None].astype(np.float32)], -1)
 
 
-def frame_layers(key, front=0.0, hind=0.0, tail=(0.0, 0.0), fins=0.0, drift=0.0, own=1.0, other=None, other_frac=0.0, salt=0):
+def frame_layers(key, front=0.0, hind=0.0, tail=(0.0, 0.0), fins=0.0, drift=0.0, own=1.0, other=None, other_frac=0.0, salt=0, stretch=1.0):
     """His picture with the legs swung, the tail and fins swayed and the spray drifted; `own` keeps a share
     of its droplets and `other_frac` borrows droplets from the other picture, so the spray builds up toward
     the leap and thins out after it instead of popping."""
@@ -227,6 +227,9 @@ def frame_layers(key, front=0.0, hind=0.0, tail=(0.0, 0.0), fins=0.0, drift=0.0,
     legs_f = swing(key.layer(key.front), front, key.shoulder)
     legs_h = swing(key.layer(key.hind), hind, key.hip)
     body = over(legs_f, over(legs_h, rest))  # near legs are drawn over the body in his picture too
+    if stretch != 1.0:
+        # Reaching into the leap the body lengthens a little (and gathers after it), about the anchor.
+        body = warp(body, ((xx - WAX) * (1 - 1 / stretch)).astype(np.float32), np.zeros_like(xx))
     spray = some_drops(key, own, salt) if own < 1 else key.layer(key.spray)
     if other is not None and other_frac > 0:
         spray = over(some_drops(other, other_frac, salt + 1), spray)
@@ -316,21 +319,21 @@ def render(n, body, spray):
 # a front leg swung negative reaches forward, a hind leg swung positive pushes back.
 # The spray builds up toward the leap and thins out after it: own = share of the picture's own droplets,
 # borrow = share of the other picture's droplets laid in.
-PLAN = [  # source, front, hind, tail amplitude, fin lean, spray drift, own, borrow
-    ('stride', 0, 0, 0.0, 0.0, 0, 1.0, 0.0),
-    ('stride', -12, 10, 3.0, -1.0, -5, 1.0, 0.3),
-    ('stride', -24, 20, 3.5, -2.0, -10, 0.9, 0.6),
-    ('leap', 22, -18, 3.5, 1.5, 12, 0.75, 0.0),
-    ('leap', 11, -9, 3.0, 0.8, 6, 0.9, 0.0),
-    ('leap', 0, 0, 0.0, 0.0, 0, 1.0, 0.0),
-    ('leap', 18, -16, 3.0, 1.5, -6, 0.7, 0.0),
-    ('stride', -10, 8, 3.0, -0.8, 6, 1.0, 0.35),
+PLAN = [  # source, front, hind, tail amplitude, fin lean, spray drift, own, borrow, stretch
+    ('stride', 0, 0, 0.0, 0.0, 0, 1.0, 0.0, 1.0),
+    ('stride', -12, 10, 3.0, -1.0, -5, 1.0, 0.3, 1.035),
+    ('stride', -24, 20, 3.5, -2.0, -10, 0.9, 0.6, 1.07),
+    ('leap', 22, -18, 3.5, 1.5, 12, 0.75, 0.0, 0.95),
+    ('leap', 11, -9, 3.0, 0.8, 6, 0.9, 0.0, 0.975),
+    ('leap', 0, 0, 0.0, 0.0, 0, 1.0, 0.0, 1.0),
+    ('leap', 18, -16, 3.0, 1.5, -6, 0.7, 0.0, 0.955),
+    ('stride', -10, 8, 3.0, -0.8, 6, 1.0, 0.35, 1.03),
 ]
 frames = {'fly': []}
-for i, (n, fr, hd, ta, fi, dr, own, borrow) in enumerate(PLAN):
+for i, (n, fr, hd, ta, fi, dr, own, borrow, st) in enumerate(PLAN):
     ph = 2 * np.pi * i / len(PLAN)
     other = keys['leap' if n == 'stride' else 'stride']
-    body, spray = frame_layers(keys[n], front=fr, hind=hd, tail=(ph, ta), fins=fi, drift=dr, own=own, other=other, other_frac=borrow, salt=i)
+    body, spray = frame_layers(keys[n], front=fr, hind=hd, tail=(ph, ta), fins=fi, drift=dr, own=own, other=other, other_frac=borrow, salt=i, stretch=st)
     frames['fly'].append(render(n, body, spray))
 
 # --- write the data module -----------------------------------------------------------------------------

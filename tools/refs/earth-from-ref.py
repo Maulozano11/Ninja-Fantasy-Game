@@ -280,7 +280,9 @@ SHARP = np.clip(FLAT + 0.5 * (FLAT - gauss(FLAT, 1.0)), 0, 255)
 # shade_fade: {side: n}: the ground shadow alone fades out over its last n px on that side (the blast's
 #         shadow, cut where his figure stood beside it);
 # pieces: [(name, polygons)]: named pieces split off 'main' (first match wins);
-# bits:   the largest loose bit (game px) still counted as a flying rock or pebble.
+# bits:   the largest loose bit (game px) still counted as a flying rock or pebble;
+# streaks: his thin pale speed streaks keep his own cream (their colour from his streak pixels only,
+#         with palette slots of their own), so they read as light glints, not as the tan trail.
 
 BOULDER = [(146, 215), (150, 192), (160, 178), (178, 166), (195, 158), (215, 153), (238, 153), (252, 163), (260, 180),
            (265, 205), (265, 232), (259, 252), (248, 268), (230, 281), (208, 287), (185, 284), (166, 272), (153, 255), (147, 236)]
@@ -334,7 +336,7 @@ AURA_FIGURE = [(1040, 962), (1055, 944), (1075, 942), (1095, 952), (1100, 975), 
 
 SPRITES = {
     'bolt': dict(s=S_MED, anchor=(206, 221), area=[rect(28, 101, 267, 336)],
-                 solid=[BOULDER], dust=[rect(25, 101, 267, 336)], dust_a=0.9, mute_streaks=True,
+                 solid=[BOULDER], dust=[rect(25, 101, 267, 336)], dust_a=0.9, streaks=True,
                  # (his panel cut the trail at his x 24; his first few px there are dimmed by the
                  # border line, so the trail runs on from his x 33, 22 px past it, and fades there)
                  extend=('left', 22, 33), pad=(22, 0, 0, 0), bits=40, pieces=[('boulder', [BOULDER])], under='harmonic'),
@@ -346,7 +348,7 @@ SPRITES = {
     'slash': dict(s=S_MED, anchor=(150, 556), area=[rect(25, 435, 267, 679)],
                   solid=[CRESCENT], dust=[rect(25, 435, 267, 679)], dust_a=0.9, bits=24),
     'multi': dict(s=S_MED, anchor=(444, 557), area=[rect(298, 435, 575, 679)],
-                  solid=BULLETS, dust=[rect(298, 435, 575, 679)], dust_a=0.88, bits=10, mute_streaks=True,
+                  solid=BULLETS, dust=[rect(298, 435, 575, 679)], dust_a=0.88, bits=10, streaks=True,
                   pieces=[('b%d' % k, [b]) for k, b in enumerate(BULLETS)]),
     'multi_hit': dict(s=S_MED, anchor=(750, 556), area=[rect(586, 425, 802, 660)],
                       solid=[ellipse(752, 515, 20, 22), ellipse(770, 592, 22, 22)],
@@ -378,7 +380,7 @@ SPRITES = {
                        art_d=14, dust_a=0.85, bits=40, wall=True, cut=('left',)),
     'aura': dict(s=2.41, anchor=(1072, 1175), area=[rect(929, 867, 1192, 1215)],
                  dust=[rect(929, 867, 1192, 1215)], dust_a=0.85, bits=30, aura=True, figure=AURA_FIGURE,
-                 solid_auto=dict(zone=AURA_COLUMNS, sat=0.55, L=70, min=40),
+                 solid_auto=dict(zone=AURA_COLUMNS, sat=0.55, L=70, min=40, hi_L=195),
                  front_band=(988, 1060, 1124, 1098),
                  # The ring's near arc across his waist, as he drew it: its centre line and half
                  # thickness (his px), from the swirl past the hand on the left to the right column.
@@ -400,7 +402,8 @@ def scale_of(cfg):
 def solid_mask(cfg):
     """Where all of his art is opaque rock: the traced 'solid' polygons, plus with 'solid_auto' his
     saturated gold and his moss inside its zone (the aura's columns of glossy golden pebbles have
-    no closed rim, but no dust is that saturated). The colour mask is closed (2 px), its holes are
+    no closed rim, but no dust is that saturated), and with 'hi_L' his near-white highlights on
+    that gold. The colour mask is closed (2 px), its holes are
     filled (the dark shading and rims inside a pebble), thin strokes are opened away, small specks
     are dropped and the rest grown 2 px to take in the pebbles' rims."""
     m = poly_mask(H0, W0, cfg['solid']) if cfg.get('solid') else np.zeros((H0, W0), bool)
@@ -416,6 +419,13 @@ def solid_mask(cfg):
         gold = (sat >= sa['sat']) & (L >= sa['L'])
         green = (c[..., 1] > c[..., 0] + 4) & (c[..., 1] > c[..., 2] + 20) & (L >= 45)
         g = (gold | green) & zone[y0:y1, x0:x1]
+        if sa.get('hi_L'):
+            # His glossy highlights on the gold pebbles are near-white (too pale for the gold test):
+            # bright, low-saturation pixels touching the gold, and the bright pixels joined to them,
+            # are the pebble too (opaque), never dust.
+            hi = (L >= sa['hi_L']) & (sat < sa['sat']) & zone[y0:y1, x0:x1]
+            for _ in range(4):
+                g |= hi & dilate(g, 1, nb=N4)
         g = erode(dilate(g, 2, nb=N8), 2, nb=N8)
         # (only small holes: a pebble's shading, not the dust a ring of pebbles closes round)
         hl, nh = components(holes_of(g), nb=N4)
@@ -616,11 +626,6 @@ def to_game(cfg, cls, W, H, ax, ay):
     allc = r(np.where(cls['keep'][..., None], SMOOTH, BG))
     F = r(cls['front'].astype(np.float64))
     clean = r(np.where(cls['keep'][..., None], FLAT, BG))
-    if cfg.get('mute_streaks'):
-        # His thin pale speed streaks are a pixel or two wide: at game scale he sees them blended
-        # with the fill (a muted tan), so they take his colour there, not the streak's own.
-        T = r(cls['thin'].astype(np.float64))
-        col = np.where((T >= 0.25)[..., None], allc, col)
     # Art drawn on his page (outside the panels) was put back on the panel fill by flatten(); its
     # real colours are those less the difference, and its dust is un-blended from the page.
     gr = np.asarray(cfg.get('ground', BG), np.float64)
@@ -631,6 +636,10 @@ def to_game(cfg, cls, W, H, ax, ay):
     T = r(cls['thin'].astype(np.float64))
     colT = r(SHARP * cls['thin'][..., None])
     colT = gauss(colT, 1.0) / np.maximum(gauss(T, 1.0), 1e-6)[..., None] - off
+    if cfg.get('streaks'):
+        # His thin pale speed streaks, a pixel or two wide at his size: a pixel mostly streak takes
+        # his streak's own cream (from his streak pixels only), not a blend with the trail round it.
+        col = np.where((T >= 0.25)[..., None], np.clip(r(SHARP * cls['thin'][..., None]) / np.maximum(T, 1e-6)[..., None] - off, 0, 255), col)
     bright = None
     if cfg.get('glow_rays'):
         # (each pixel of his sheet as the brightest colour round it: a 1 px gold dash at his
@@ -1020,9 +1029,17 @@ def palette_for(b):
     # among his browns: slots of their own, or they go brown)
     olive = olive_of(cols) & ~green & ~amber if cfg.get('olive') else np.zeros(len(cols), bool)
     no = 0 if olive.sum() < 6 else cfg['olive']
+    # (his cream speed streaks: few pixels, their own slots, or the median cut averages them into tan)
+    streak = (b['g']['T'][b['solid']] >= 0.25) & ~green & ~amber & ~olive if cfg.get('streaks') else np.zeros(len(cols), bool)
+    ns = 0 if streak.sum() < 4 else 2
+    if ns:
+        amber = amber | streak
     if no:
         amber = amber | olive
-    body = median_cut(cols[~green & ~amber], n - ng - na - no)
+    body = median_cut(cols[~green & ~amber], n - ng - na - no - ns)
+    if ns:
+        body = np.concatenate([body, median_cut(cols[streak], ns)])
+        amber = amber & ~streak
     if no:
         body = np.concatenate([body, median_cut(cols[olive], no)])
         amber = amber & ~olive

@@ -283,15 +283,16 @@ SPRITES = {
     # dark rim (so it runs right up to the pool's rim: his light pixels outside the rim are light,
     # never opaque body). Only his character and the shadow it casts are filled, from the light
     # round them (the smoothest surface meeting it: linear in each direction; where his shadow and
-    # dark rock run out to his panel's edge it meets his dark there). His light runs on to his panel's right edge; past it the frame is widened and it
-    # fades out (smoothstep, each row as far as its brightness carries it, at most 16 px).
+    # dark rock run out to his panel's edge it meets his dark there). His light runs on to his panel's right edge at
+    # full brightness; past it the frame is widened and it fades out (smoothstep, each row as far as
+    # its brightness, smoothed over rows, carries it: at most 16 px), so its end is one convex curve.
     'blast': dict(anchor=(435, 300), area=[rect(339, 179, 581, 344)], drops=40, char=True,
                   raw_light=dict(region=[(466, 180), (581, 180), (581, 344), (470, 344), (470, 300), (488, 288), (492, 266), (466, 264)],
                                  seeds=[(540, 230), (578, 250), (540, 300)],
                                  # (the shadow his character casts on the ground below its feet)
                                  shadow=[(515, 311), (521, 307), (530, 308), (540, 300), (542, 290), (581, 286), (581, 344), (515, 344)],
                                  keep_art=[rect(490.5, 249.5, 499.5, 257.5), rect(492.5, 257.5, 497.5, 270)],
-                                 edge_x=578, ext=16, fade=24, fade_b=24, gexf=200.0),
+                                 edge_x=578, ext=16, reach_s=10.0, fade_b=24, gexf=200.0),
                   pad=(3, 0, 3, 3),
                   pieces=[('mist', [rect(339, 179, 411, 262), [(455, 179), (520, 179), (520, 240), (470, 240), (462, 222)]], 'purple'),
                           ('pool', [[(339, 258), (409, 258), (416, 280), (458, 282), (466, 258), (581, 258), (581, 344), (339, 344)]])]),
@@ -403,8 +404,9 @@ def raw_light(name, cfg):
         meeting the light round them;
       * where the filled shadow and rock run out to his panel's edge, the fill meets 0 there (his
         dark), so it never forms a bright core where his picture is dark;
-      * past edge_x (his panel's right edge) it runs on, fading out (smoothstep) as far as each
-        row's brightness carries it (at most `ext` px); at the panel's bottom it fades over up to
+      * his pixels keep their brightness up to edge_x (his panel's right edge); past it it runs on,
+        fading out (smoothstep) as far as each row's brightness, smoothed over rows (sigma reach_s),
+        carries it (at most `ext` px), so its end is one convex curve; at the panel's bottom it fades over up to
         fade_b px, each column by its own brightness, so the light's ends are rounded.
     Returns the zone, the alpha field (his grid) and the light colour."""
     rl = cfg['raw_light']
@@ -439,23 +441,37 @@ def raw_light(name, cfg):
     # (where his character's shadow and the dark rock it stands on run out to his panel's edge, the
     # light there is his dark: the fill meets 0 at the panel's edge, so it never forms a bright core
     # where his picture is dark, and it dims toward the panel's corner like his light round it)
-    edge0 = dilate(LZ & ~known, 1, nb=N8) & ~R
+    # (only on the rows where his picture really is dark at the panel's edge: where his light runs
+    # bright right up to the edge, beside his character's feet, the fill meets his light there)
+    ex0 = rl['edge_x']
+    darkrow = SMOOTH[:, ex0 - 4:ex0 + 1, 1].mean(1) - BG[1] < 20
+    edge0 = dilate(LZ & ~known, 1, nb=N8) & ~R & darkrow[:, None]
     gf = harmonic_fill(np.where(edge0, 0.0, gs), known | edge0, LZ & ~known, iters=2500)
     A = np.where(LZ, np.clip(gf / rl['gexf'], 0, 1), 0.0)
     # Past his panel's right edge the edge column's light runs on and fades out, each row as far as
     # its own brightness carries it (the brightest `ext` px), so the light's end is rounded like its
     # own falloff, not a vertical line.
+    # His own pixels keep their brightness right up to his panel's edge: the fade starts there.
+    # Each row's reach past it comes from his edge light smoothed over rows (sigma `reach_s`), so the
+    # light's end is ONE convex curve (no lumps where his edge column dips); its value blends from his
+    # edge column (lightly smoothed) into that smooth profile over the first 6 px, then falls
+    # (smoothstep) to nothing at the row's reach.
     ex = rl['edge_x']
-    col = A[:, ex - 2:ex + 1].mean(1)
-    col = gauss(col[:, None], 3.0)[:, 0] * (LZ[:, ex] > 0)
+    col = A[:, ex - 2:ex + 1].mean(1) * (LZ[:, ex] > 0)
+    col3 = gauss(col[:, None], 3.0)[:, 0]
+    colS = gauss(col[:, None], rl['reach_s'])[:, 0]
+    # (the reach: one elliptical cap over all the rows his light reaches the edge on, so the end is
+    # one convex curve, rounded top and bottom, where the light is dim anyway)
+    lit = np.nonzero(colS >= 0.05 * colS.max())[0]
+    rc, rh = (lit[0] + lit[-1]) / 2.0, max((lit[-1] - lit[0]) / 2.0 + 4, 1.0)
+    cap = np.sqrt(np.clip(1 - ((np.arange(H0) - rc) / rh) ** 2, 0, 1))
+    reach = np.maximum(rl['ext'] * cap, 1e-3)
     for k in range(1, rl['ext'] + 1):
-        A[:, ex + k] = col
-    # (its end: a soft edge `fade` px wide that ends at ex + ext on the brightest row and further in
-    # on the dimmer rows above and below, so its contour is rounded like the light's own falloff)
-    xe = ex + rl['ext'] * np.sqrt(np.clip(col / max(col.max(), 1e-6), 0, 1))
-    X = np.arange(W0)[None, :] + 0.5
-    te = np.clip((xe[:, None] - X) / rl['fade'], 0, 1)
-    A = A * (te * te * (3 - 2 * te))
+        b = min(1.0, k / 6.0)
+        b = b * b * (3 - 2 * b)
+        f = np.clip(1 - k / reach, 0, 1)
+        A[:, ex + k] = (col3 * (1 - b) + colS * b) * (f * f * (3 - 2 * f))
+    A[:, ex + rl['ext'] + 1:] = 0
     # At his panel's bottom it fades, each column over a length set by its own brightness there,
     # so the bottom edge is rounded too.
     yb = max(p[1] for p in rl['region'])

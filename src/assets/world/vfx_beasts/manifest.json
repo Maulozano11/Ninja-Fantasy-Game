@@ -53,17 +53,17 @@
    }
   },
   "genjutsu": {
-   "label": "Illusion crow (genjutsu)",
+   "label": "Crow swarm (genjutsu)",
    "file": "genjutsu.png",
-   "frameW": 144,
-   "frameH": 121,
+   "frameW": 212,
+   "frameH": 167,
    "anchor": [
-    93,
-    69
+    116,
+    82
    ],
    "meters": [
-    2.6,
-    2
+    3.7,
+    2.9
    ],
    "tags": [
     "vfx"
@@ -74,6 +74,12 @@
      "frames": 6,
      "fps": 12,
      "loop": true
+    },
+    "summon": {
+     "row": 1,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
     }
    }
   },
@@ -185,6 +191,31 @@
      "row": 0,
      "frames": 6,
      "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "chakra": {
+   "label": "Chakra griffin",
+   "file": "chakra.png",
+   "frameW": 130,
+   "frameH": 94,
+   "anchor": [
+    79,
+    59
+   ],
+   "meters": [
+    2.3,
+    1.6
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
      "loop": true
     }
    }

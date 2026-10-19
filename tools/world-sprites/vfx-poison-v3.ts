@@ -531,13 +531,18 @@ function bolt(): WorldSprite {
     const t = i / FLY;
     // The swirl: his coil turns a full turn a loop inside its own outline (sampled only from the
     // coil, 3 x 3 samples a pixel, so its arms stay clean lines).
+    // Only his slime inside the coil turns (nearest pixel, so his dark spiral arms keep their
+    // colours and contrast); his rim and its pale highlight stay where he drew them.
     const cx = K.ax + 0.5, cy = K.ay + 0.5, a = -t * TAU, ca = Math.cos(a), sa = Math.sin(a);
-    const turned = remapSS(coil, (x, y) => {
-      const dx = x - cx, dy = y - cy;
-      return [cx + dx * ca - dy * sa, cy + dx * sa + dy * ca];
-    });
+    const swirl = (v: number) => isKind(v, 'body') && FAM[v - 1] === 'green';
     let m = main.clone();
-    for (let k = 0; k < m.v.length; k++) if (coil.v[k]) m.v[k] = turned.v[k] || coil.v[k];
+    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) {
+      const k = y * m.w + x, v = coil.v[k];
+      if (!swirl(v) || Math.hypot(x + 0.5 - cx, y + 0.5 - cy) > R - 2.5) continue;
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+      const s2 = coil.get(Math.floor(cx + dx * ca - dy * sa), Math.floor(cy + dx * sa + dy * ca));
+      if (swirl(s2)) m.v[k] = s2;
+    }
     // The cone behind it churns and streams back.
     m = churn(m, t, { amp: 1.4, ampY: 0.7, cell: 6, seed, where: (x, y) => smooth(K.ax - R + 2, K.ax - R - 6, x) * (Math.hypot(x - K.ax, y - K.ay) >= R ? 1 : 0), flow: [-1, 0] });
     const ms = wobble(churn(mist, t, { amp: 1.6, cell: 6, seed: seed + 1 }), t, 1.1, 9, seed + 2);

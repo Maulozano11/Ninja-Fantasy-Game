@@ -770,22 +770,68 @@ function withHalo(sp: Ix, m: Ix, r = 2): [Ix, Ix] {
  * every step of the loop moves alike), his rim is kept on whatever moved, the light shimmers, and
  * the small bits and dots twinkle and drift back whole.
  */
-function flyLoop(k: Key, seed: number, opts: { amp?: [number, number]; len?: number; weight?: (x: number, y: number) => number; drift?: number } = {}): Canvas[] {
+function flyLoop(
+  k: Key,
+  seed: number,
+  opts: { amp?: [number, number]; len?: number; weight?: (x: number, y: number) => number; drift?: number; still?: boolean } = {},
+): Canvas[] {
   const [D, M0] = splitDots(union(...Object.entries(k.p).filter(([n]) => n !== 'loose').map(([, ix]) => ix)), 16);
-  const [L, M] = withHalo(union(piece(k, 'loose'), D), M0);
+  let [L, M1] = withHalo(union(piece(k, 'loose'), D), M0);
   const dr = opts.drift ?? 0;
+  // still: his thin strokes apart from the body (the slash's two inner speed arcs, a stroke and a
+  // row of dashes) are held whole, only their light shimmering (a ripple tears a 1 px arc into
+  // fragments, and dashes twinkling out open it up); only his cream flecks twinkle and drift. The
+  // ripple dies out round his gold (the seals along the crescent stay whole: no rim is pulled into
+  // them).
+  let S = none(k), M = M1, w = opts.weight;
+  if (opts.still) {
+    const strokes = bits(keep(M1, (_, __, v) => isSolid(v) || isLine(v))).sort((a, b) => b.px.length - a.px.length).slice(1);
+    const own = blank(k.w, k.h);
+    for (const b of strokes) for (const p of b.px) own.d[p] = M1.d[p];
+    [S, M] = withHalo(own, keep(M1, (x, y) => !own.d[y * k.w + x]));
+    const dashes = blank(k.w, k.h);
+    for (const b of bits(L)) if (!b.px.some((p) => KIND[L.d[p] - 1] === 'cream')) for (const p of b.px) dashes.d[p] = L.d[p];
+    S = union(S, dashes);
+    L = keep(L, (x, y) => !dashes.d[y * k.w + x]);
+    const gold = distTo(M, (v) => KIND[v - 1] === 'gold' || v === GOLDLINE_V);
+    const w0 = w;
+    w = (x, y) => smooth(1.5, 4.5, gold[y * k.w + x]) * (w0 ? w0(x, y) : 1);
+  }
   return range(FLY_N).map((i) => {
     const t = cyc(i, FLY_N);
-    const rip = wave(M, t, { amp: opts.amp ?? [0.8, 0.8], len: opts.len ?? 18, along: (x) => -x, seed, weight: opts.weight });
+    const rip = wave(M, t, { amp: opts.amp ?? [0.8, 0.8], len: opts.len ?? 18, along: (x) => -x, seed, weight: w });
     const m = shimmer(reline(rip), t, seed + 50);
     const sp = twinkle(L, t, 0.16, seed + 5, (b, u) => [-dr * Math.sin(Math.PI * u) ** 2 * (0.5 + hash(Math.round(b.cx), Math.round(b.cy), seed) * 0.5), 0]);
-    return render(k.w, k.h, [[m], [sp]], k.fade);
+    return render(k.w, k.h, [[m], [shimmer(S, t, seed + 60, 10, ['blue', 'glow'], 0, 0.45)], [sp]], k.fade);
   });
+}
+
+/** Chebyshev distance of every pixel to the nearest pixel of `ix` whose value passes `pred`. */
+function distTo(ix: Ix, pred: (v: number) => boolean): Float32Array {
+  const d = new Float32Array(ix.w * ix.h).fill(1e9);
+  const q: number[] = [];
+  for (let i = 0; i < d.length; i++)
+    if (ix.d[i] && pred(ix.d[i])) {
+      d[i] = 0;
+      q.push(i);
+    }
+  for (let h = 0; h < q.length; h++) {
+    const i = q[h], x = i % ix.w, y = Math.floor(i / ix.w);
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++) {
+        const X = x + dx, Y = y + dy, n = Y * ix.w + X;
+        if (X >= 0 && Y >= 0 && X < ix.w && Y < ix.h && d[n] > d[i] + 1) {
+          d[n] = d[i] + 1;
+          q.push(n);
+        }
+      }
+  }
+  return d;
 }
 
 function slash(): WorldSprite {
   const k = key('slash');
-  return sprite(k, 'Chakra slash: glowing crescent', fly(flyLoop(k, 400, { amp: [0.6, 0.6], len: 20, drift: 2 })));
+  return sprite(k, 'Chakra slash: glowing crescent', fly(flyLoop(k, 400, { amp: [0.6, 0.6], len: 20, drift: 2, still: true })));
 }
 
 function multi(): WorldSprite {
@@ -972,6 +1018,23 @@ function brightGold(ix: Ix, minLum: number, pred: (x: number, y: number) => bool
   return out;
 }
 
+/**
+ * `ix` inside `region`, taking on `from` across the region's side edges: a pixel d px (d < n) from
+ * the nearest pixel of `from` in its row takes that pixel's value with a chance of 1 - d / n
+ * (a fixed dither), so the two meet in a soft, broken edge instead of a straight seam.
+ */
+function feather(ix: Ix, from: Ix, region: (x: number, y: number) => boolean, n: number): Ix {
+  return remap(ix, (v, x, y) => {
+    if (!region(x, y)) return v;
+    for (let d = 1; d < n; d++)
+      for (const sx of [x - d, x + d]) {
+        const f = at(from, sx, y);
+        if (f && !region(sx, y)) return hash(x, y, 977) < 1 - d / n ? f : v;
+      }
+    return v;
+  });
+}
+
 /** His blue light (the haze), as against the light of his gold (gold-hued and pale glow, warm). */
 const blueLight = (v: number): boolean => v > 0 && KIND[v - 1] === 'glow' && CK_PAL[v - 1].hue <= 6;
 
@@ -998,7 +1061,9 @@ function sealCircle(k: Key) {
   const SEAL = union(keep(SEAL0, (_, __, v) => !blueLight(v)), ringTop);
   // The haze his picture hides under the circle (and under that top: filled from the haze round
   // it), drawn wherever the circle is not lit.
-  const U0 = piece(k, 'under');
+  // Where the pillar stood, that haze was rebuilt row by row: across the pillar's old edges (4 px)
+  // it takes on his haze beside it, dithered, so no straight seam shows when the pillar is down.
+  const U0 = feather(piece(k, 'under'), HZ, (x, y) => at0(P, x, y) !== 0, 5);
   const U = union(U0, keep(fillUnder(union(HZ, U0), ringTop), (x, y) => !at0(HZ, x, y)));
   const OUTER = keep(SEAL, (x, y) => r0(x, y) >= 0.58), INNER = keep(SEAL, (x, y) => r0(x, y) < 0.58);
   // The circle's centre: the mean of the centres of his two outer lines.

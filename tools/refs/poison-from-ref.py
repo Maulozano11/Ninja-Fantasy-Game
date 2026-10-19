@@ -1075,10 +1075,10 @@ def frame_piece(idx, cfg, b):
         pm = poly_mask(H, W, [cfg['frame'][k]], x0, y0, sx_of(cfg), SY)
         blocks[pm] = min(k, cfg.get('frame_blocks', 3) - 1)
     stone = fr & (PFAM[idx] == 'neutral')
-    for k in range(cfg.get('frame_blocks', 3)):
+    for k in range(cfg.get('frame_blocks', 3) - 1):  # (the posts)
         for x in range(W):
             ys = np.nonzero(stone[:, x] & (blocks[:, x] == k))[0]
-            col = fr[:, x] & (blocks[:, x] == k) & (PFAM[idx[:, x]] == 'green')
+            col = fr[:, x] & (blocks[:, x] == k) & gsat[:, x]
             if len(ys):
                 col[ys.min():] = False
             fr[:, x] &= ~col
@@ -1129,6 +1129,12 @@ def split_pieces(idx, cfg, b, keep_full=False, wrap=False):
         owner[pur] = pn
         if pn not in names:
             names.append(pn)
+    if os.environ.get('POISON_DEBUG') and REVIEW and cfg.get('frame'):
+        cols = {'main': (0, 200, 0), 'drops': (255, 255, 0), 'glow': (0, 80, 160), 'frame0': (255, 0, 0), 'frame1': (255, 128, 0), 'frame2': (255, 0, 255)}
+        dbg = np.zeros((H, W, 3), np.uint8)
+        for k, v in cols.items():
+            dbg[(owner == k) & (idx > 0)] = v
+        Image.fromarray(dbg).resize((W * 3, H * 3), Image.NEAREST).save(os.path.join(REVIEW, 'owner-%d.png' % W))
     pieces = {}
     for pname in names:
         m = (owner == pname) & (idx > 0)

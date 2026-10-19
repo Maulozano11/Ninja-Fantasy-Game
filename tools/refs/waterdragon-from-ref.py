@@ -19,6 +19,7 @@ Scale: his character in the same sheet is ~102 px tall and ours is 96 px. The bo
 his pixel grid at the crispest phase, colours are snapped to a palette sampled from his dragon, and
 the outline is cleaned to 1 px in his darkest navy; droplets keep no outline. The result is a
 TypeScript data module (palette + run-length rows) for tools/world-sprites/vfx-beast-waterdragon.ts.
+Thin slivers of water (1-2 px) keep their own colour rather than becoming outline.
 Deterministic.
 """
 import os
@@ -305,9 +306,12 @@ def render(n, body, spray):
     for oy, ox in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         nb += np.roll(np.roll(op, oy, 0), ox, 1)
     op = (op & (nb >= 1)) | (~op & (nb >= 3))
+    # The 1 px outline goes on the body's rim, except across thin strips (a 1-2 px sliver of water
+    # stays its own colour instead of turning into a dark line).
     edge = np.zeros_like(op)
+    sh = lambda m, oy, ox: np.roll(np.roll(m, oy, 0), ox, 1)
     for oy, ox in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-        edge |= op & ~np.roll(np.roll(op, oy, 0), ox, 1)
+        edge |= op & ~sh(op, oy, ox) & sh(op, -oy, -ox) & sh(op, -2 * oy, -2 * ox)
     out[op, :3] = snap(C, PAL)[op]
     out[op, 3] = 255
     out[edge, :3] = OUTLINE

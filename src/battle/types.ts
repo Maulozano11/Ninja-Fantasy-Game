@@ -43,6 +43,9 @@ export interface Weapon {
 /** What a unit is. */
 export type UnitKind = 'ninja' | 'hydra_body' | 'hydra_head';
 
+/** An enemy's rank (Command and the shadows need it; bosses can't be controlled). */
+export type Rank = 'minion' | 'captain' | 'subboss' | 'boss';
+
 /** Short battle conditions, separate from the mission's status effects. */
 export interface Conditions {
   prone?: boolean;
@@ -64,8 +67,6 @@ export interface Conditions {
   waterWalk?: boolean;
   /** Ninja jump ready: climbing and dropping cost little this turn. */
   ninjaJump?: boolean;
-  /** Mirai Future Foresight active: the AC bonus of the parry (dodging is in the rules). */
-  foresight?: number;
 }
 
 /** What an enemy will do on its next turn (it commits to it; a Mirai can see it). */
@@ -163,6 +164,8 @@ export interface Unit {
   head?: HydraHeadState;
   /** Hydra body: how many cells around its position it occupies (radius in meters). */
   bulk?: number;
+  /** An enemy's rank; party units have none. */
+  rank?: Rank;
   /** Battle bookkeeping for the mission result. */
   stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number };
   /** Skill proficiencies (Stealth, Perception, Medicine...). */
@@ -212,15 +215,22 @@ export interface PropState {
   fledAt?: number;
 }
 
-/** A temporary obstacle made by a jutsu (earth wall, water barrier). */
+/**
+ * An obstacle made by a jutsu (earth wall, water barrier) or a Kōton structure: a metal wall from
+ * `a` to `b`, or a metal block, a 1.5 m square centred on `a` (with `b` the same point).
+ */
 export interface Wall {
   id: string;
-  kind: 'earth' | 'water';
+  kind: 'earth' | 'water' | 'metal' | 'metalBlock';
   a: Pt;
   b: Pt;
   hp: number;
   /** Rounds left (water barriers fade). */
   rounds?: number;
+  /** The unit that raised it (Kōton structures). */
+  owner?: string;
+  /** Structures that can be broken show their HP against this. */
+  maxHp?: number;
 }
 
 /** A trap on the ground (explosive tag, camp perimeter trap). */
@@ -326,7 +336,7 @@ export type Action =
   | { type: 'move'; unit: string; to: Cell; sneak?: boolean }
   | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
   | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean }
-  | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'foresight' | 'draw'; unit: string }
+  | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
   | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag'; target?: string; at?: Pt }
   | { type: 'stabilize'; unit: string; target: string }
@@ -359,7 +369,7 @@ export type BattleEvent =
   | { t: 'teleport'; unit: string; from: Pt; to: Pt; log?: boolean }
   | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number }
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }
-  | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'foresight' | 'item' | 'stone' }
+  | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }
   | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean }
   | { t: 'save'; unit: string; what: string; roll: RollInfo }
   | { t: 'check'; unit: string; what: string; roll: RollInfo }
@@ -382,6 +392,7 @@ export type BattleEvent =
   | { t: 'investigate'; guard: string; at: Pt }
   | { t: 'body'; unit: string; hidden: boolean }
   | { t: 'wall'; wall: Wall; on: boolean }
+  | { t: 'wallHit'; wall: string; amount: number; hp: number; at: Pt }
   | { t: 'prop'; prop: number; state: 'burnt' | 'cut' | 'broken' | 'exploded' }
   | { t: 'electrified'; at: Pt; radius: number }
   | { t: 'trap'; trap: Trap; on: boolean }

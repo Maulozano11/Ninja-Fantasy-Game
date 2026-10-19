@@ -54,6 +54,8 @@ function beast(id: string, name: string, pos: Pt, power: number, o: Partial<Unit
     power,
     stats2: { critsTaken: 0, critsLanded: 0, pills: 0, fell: false, fellToCrit: false, tension: 0, jutsuCast: 0 },
     skills: ['perception'],
+    // The hydra is a boss: no Command or Submission takes it (body and heads alike).
+    rank: 'boss',
     ...o,
   };
 }

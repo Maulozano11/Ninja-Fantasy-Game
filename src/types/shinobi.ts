@@ -1,7 +1,7 @@
 import type { CastStyle, SpriteAppearance } from '../sprite/types';
 import type { ConvictionValue, SkillId, StatusEffect } from './mission';
 
-export type ClanType = 'Mirai' | 'Uddo' | 'Akkai' | 'Taki';
+export type ClanType = 'Mirai' | 'Koton' | 'Ryusei' | 'Northstar';
 
 export type DojutsuType =
   | 'None'

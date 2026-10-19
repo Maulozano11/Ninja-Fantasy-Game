@@ -16,7 +16,8 @@ import type { ItemChoice, SpriteAppearance } from '../sprite/types';
 export const CLANS_DATA: Record<
   ClanType,
   {
-    name: ClanType;
+    /** The clan's name as players see it (the id is plain ASCII: Koton is shown as Kōton). */
+    name: string;
     japaneseName: string;
     description: string;
     lineageTraits: string;
@@ -29,8 +30,8 @@ export const CLANS_DATA: Record<
   Mirai: {
     name: 'Mirai',
     japaneseName: 'ミライ一族',
-    description: 'An ancient bloodline renowned for potent Fire nature and the mystical Sharingan visual prowess.',
-    lineageTraits: 'Eyes of Insight: Gain +2 DEX, +1 INT. Advantage on saving throws against Genjutsu illusions. Unlocks Sharingan stages. Future Foresight: sees the next attack of every enemy in sight; as a bonus action (2 chakra) parries (+1 AC, +2 with 2 tomoe, +3 with 3 tomoe or Mangekyo) and dodges (advantage on DEX saves, no edge for attackers from hiding or flanking) until their next turn.',
+    description: 'Masters of time and flame: control of position, inevitability and bending the dice.',
+    lineageTraits: '+2 DEX, +1 INT. Eye of Tomorrow: sees the next move of every enemy within 18 m in sight; the ground shows where it will move and whom it will attack. Premonitory Evasion (reaction, 2 chakra, once a round): against a single-target attack the Mirai saw coming, it steps 1.5 m aside and the attack misses, provoking no opportunity attack. Katon: Pursuing Flame (action, 3 chakra, 12 m): 2d6 fire; the target makes its DEX save with disadvantage and takes half on a success.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
       { stat: 'int', bonus: 1 },
@@ -45,46 +46,49 @@ export const CLANS_DATA: Record<
     recommendedChakraColor: '#ef4444', // Crimson / Red
     signatureJutsuId: 'dragon_fire_bomb',
   },
-  Uddo: {
-    name: 'Uddo',
-    japaneseName: 'ウッド一族',
-    description: 'The clan of a thousand skills, possessing boundless physical vitality, Wood Release secrets, and rapid cellular regeneration.',
-    lineageTraits: 'Boundless Life Force: Gain +2 CON, +1 WIS. Maximum HP increased by +6. Regenerate 2 Chakra each round.',
+  Koton: {
+    name: 'Kōton',
+    japaneseName: 'コートン一族',
+    description: 'Alchemists of matter: reshaping the map, adaptable weapons and denying ground.',
+    lineageTraits: '+2 CON, +1 INT. Modular Architecture: raises metal structures within 6 m, at most two standing at once (a third makes the oldest crumble), each with 20 HP. Bonus action, 2 chakra: a 1.5 m metal block that gives half cover. Action, 4 chakra: a 4.5 m metal wall that gives full cover and blocks movement and sight.',
     statBonuses: [
       { stat: 'con', bonus: 2 },
+      { stat: 'int', bonus: 1 },
+    ],
+    availableDojutsu: ['None', 'Sage Eyes (Toad)'],
+    recommendedChakraColor: '#f97316', // Fiery Vermillion
+    signatureJutsuId: 'adamantine_sealing_chains',
+  },
+  Ryusei: {
+    name: 'Ryusei',
+    japaneseName: 'リュウセイ一族',
+    description: 'Assassins of space: geometric hypermobility, piercing damage and reshaping the board through Nodes.',
+    lineageTraits: '+2 DEX, +1 WIS. Weapon Nodes: every ranged attack, and every melee attack that misses, leaves a Node where the weapon lands (three at most; the oldest goes). Warp Strike (bonus action, 2 chakra, 18 m): teleports to a Node in sight, even with walls in between; landing next to an enemy, the next attack this turn comes from behind (advantage, and it can\'t be blocked). Spatial Swap (action, 3 chakra): swaps places with anyone standing on a Node; an enemy resists with a STR save.',
+    statBonuses: [
+      { stat: 'dex', bonus: 2 },
       { stat: 'wis', bonus: 1 },
     ],
     availableDojutsu: ['None', 'Sage Eyes (Toad)'],
     recommendedChakraColor: '#10b981', // Emerald Wood
     signatureJutsuId: 'wood_dragon_jutsu',
   },
-  Akkai: {
-    name: 'Akkai',
-    japaneseName: 'アッカイ一族',
-    description: 'Famed for immense vitality, longevity, crimson red locks, and secret Fuinjutsu adamantine sealing chains.',
-    lineageTraits: 'Sealing Vitality: Gain +2 CON, +1 CHA. Maximum Chakra pool increased by +25%. Resistance to necrotic damage.',
+  Northstar: {
+    name: 'Northstar',
+    japaneseName: 'ノーススター一族',
+    description: "The Sovereign's eyes: breaking the enemy's action economy, control of summons and psychological disruption.",
+    lineageTraits: '+2 CHA, +1 WIS. Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and anyone who warps or dashes into it loses half of their remaining movement. Command (action, 4 chakra, 9 m): a Minion that fails a WIS save fights on the Northstar\'s side for 1 round (Captains too from level 5; from level 9, two targets for 2 rounds); Mirai are immune. Natural Submission (action, 5 chakra): a beast or enemy summon that fails a WIS save joins the party; not bosses.',
     statBonuses: [
-      { stat: 'con', bonus: 2 },
-      { stat: 'cha', bonus: 1 },
-    ],
-    availableDojutsu: ['None', 'Sage Eyes (Toad)'],
-    recommendedChakraColor: '#f97316', // Fiery Vermillion
-    signatureJutsuId: 'adamantine_sealing_chains',
-  },
-  Taki: {
-    name: 'Taki',
-    japaneseName: 'タキ一族',
-    description: 'Possessors of the all-seeing Byakugan, masters of the Gentle Fist (Juken) capable of disabling enemy chakra pathways.',
-    lineageTraits: 'All-Seeing Sight: Gain +2 WIS, +1 DEX. 360-degree vision (cannot be flanked or surprised). Critical hits seal chakra.',
-    statBonuses: [
-      { stat: 'wis', bonus: 2 },
-      { stat: 'dex', bonus: 1 },
+      { stat: 'cha', bonus: 2 },
+      { stat: 'wis', bonus: 1 },
     ],
     availableDojutsu: ['Byakugan (Pure)', 'Byakugan (Active Veined)'],
     recommendedChakraColor: '#06b6d4', // Pale Cyan / Pearl
     signatureJutsuId: 'taki_sixtyfour_palms',
   },
 };
+
+/** The clan's name as players see it (the same in Spanish and English). */
+export const clanName = (c: ClanType): string => CLANS_DATA[c]?.name ?? c;
 
 export const SHINOBI_CLASSES: Record<
   ShinobiClassType,
@@ -538,12 +542,12 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'wood_dragon_jutsu',
-    name: 'Uddo Secret: Wood Dragon Technique',
+    name: 'Ryusei Secret: Wood Dragon Technique',
     japaneseName: '木遁・木龍の術 (Mokuton: Mokuryuu)',
     rank: 'A',
     category: 'Clan',
     nature: 'Earth',
-    requiredClan: 'Uddo',
+    requiredClan: 'Ryusei',
     chakraCost: 5,
     castTime: 'Action',
     range: 6,
@@ -558,12 +562,12 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'adamantine_sealing_chains',
-    name: 'Akkai Secret: Adamantine Sealing Chains',
+    name: 'Kōton Secret: Adamantine Sealing Chains',
     japaneseName: '金剛封鎖 (Kongou Fuusa)',
     rank: 'A',
     category: 'Clan',
     nature: 'Water',
-    requiredClan: 'Akkai',
+    requiredClan: 'Koton',
     chakraCost: 5,
     castTime: 'Action',
     range: 6,
@@ -578,12 +582,12 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'taki_sixtyfour_palms',
-    name: 'Taki Secret: Eight Trigrams 64 Palms',
+    name: 'Northstar Secret: Eight Trigrams 64 Palms',
     japaneseName: '八卦六十四掌 (Hakke Rokujuuyon Shou)',
     rank: 'A',
     category: 'Clan',
     nature: 'Taijutsu',
-    requiredClan: 'Taki',
+    requiredClan: 'Northstar',
     chakraCost: 5,
     castTime: 'Action',
     range: 1,
@@ -761,7 +765,7 @@ export const COLOR_PALETTES = {
   hairColors: [
     { label: 'Raven Black', value: '#171717' },
     { label: 'Golden Sun (Naruto Blond)', value: '#facc15' },
-    { label: 'Crimson Red (Akkai)', value: '#dc2626' },
+    { label: 'Crimson Red (Kōton)', value: '#dc2626' },
     { label: 'Silver White (Hatake/Cloud)', value: '#e2e8f0' },
     { label: 'Midnight Blue (Sasuke)', value: '#1e3a8a' },
     { label: 'Fiery Auburn', value: '#ea580c' },
@@ -772,7 +776,7 @@ export const COLOR_PALETTES = {
   chakraColors: [
     { label: 'Azure Blue (Standard)', value: '#38bdf8' },
     { label: 'Vermillion (Nine-Tails Flame)', value: '#f97316' },
-    { label: 'Emerald Jade (Uddo Life)', value: '#10b981' },
+    { label: 'Emerald Jade (Ryusei)', value: '#10b981' },
     { label: 'Amethyst Purple (Susanoo)', value: '#a855f7' },
     { label: 'Golden Sun (Six Paths)', value: '#eab308' },
     { label: 'Crimson Blood (Eight Gates)', value: '#ef4444' },
@@ -849,7 +853,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       name: 'Solen Valcaire',
       title: 'The Founder King',
       level: 6,
-      clan: 'Uddo',
+      clan: 'Ryusei',
       shinobiClass: 'Bukijutsu Master',
       stats: { str: 18, dex: 14, con: 18, int: 14, wis: 16, cha: 16 },
       palette: {
@@ -1095,7 +1099,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       name: 'Hiro',
       title: 'The Sunburst Hero',
       level: 4,
-      clan: 'Akkai',
+      clan: 'Koton',
       shinobiClass: 'Taijutsu Master',
       stats: { str: 14, dex: 16, con: 18, int: 10, wis: 14, cha: 14 },
       palette: {
@@ -1217,7 +1221,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
       name: 'Shiori',
       title: 'The Gentle Fist',
       level: 4,
-      clan: 'Taki',
+      clan: 'Northstar',
       shinobiClass: 'Taijutsu Master',
       stats: { str: 14, dex: 18, con: 14, int: 14, wis: 16, cha: 10 },
       palette: {

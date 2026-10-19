@@ -210,7 +210,7 @@ export const HANA: ShinobiCharacter = companion(presetById('preset_gentle'), {
   name: 'Hana',
   title: 'The Field Medic',
   level: 4,
-  clan: 'Akkai',
+  clan: 'Koton',
   shinobiClass: 'Medical Specialist',
   stats: { str: 10, dex: 14, con: 14, int: 13, wis: 17, cha: 12 },
   selectedFeats: ['chakra_prodigy'],
@@ -239,13 +239,13 @@ export const HANA: ShinobiCharacter = companion(presetById('preset_gentle'), {
   }),
 });
 
-/** A genjutsu adept from the Uddo, for calm nights and wood shelters. */
+/** A genjutsu adept from the Ryusei, for calm nights and wood shelters. */
 export const KENJI: ShinobiCharacter = companion(presetById('preset_storm'), {
   id: 'companion_kenji',
   name: 'Kenji',
   title: 'The Dream Weaver',
   level: 4,
-  clan: 'Uddo',
+  clan: 'Ryusei',
   shinobiClass: 'Genjutsu Adept',
   stats: { str: 10, dex: 14, con: 13, int: 14, wis: 13, cha: 17 },
   selectedFeats: ['chakra_prodigy'],

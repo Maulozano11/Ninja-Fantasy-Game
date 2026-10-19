@@ -9,8 +9,8 @@ import { getItem } from '../sprite/catalog';
 import { abilityMod, proficiencyBonus, skillsOf } from '../rules/checks';
 import { deriveStats, effectiveAC, effectiveMaxHp } from '../rules/derived';
 import { effectMods } from '../rules/effects';
-import type { AiOrder, Pt, Team, Unit, Weapon } from './types';
-import { JUTSU } from './jutsu';
+import type { AiOrder, Pt, Rank, Team, Unit, Weapon } from './types';
+import { JUTSU, clanAbilities } from './jutsu';
 
 const W = (name: string, dice: string, type: Weapon['type'], reach = 1.5, finesse = true, held = false, twoHanded = false): Weapon =>
   twoHanded ? { name, dice, type, reach, finesse, held, twoHanded } : { name, dice, type, reach, finesse, held };
@@ -110,7 +110,8 @@ export function unitFrom(c: ShinobiCharacter, o: UnitOptions): Unit {
     castMod: abilityMod(c.stats[cls?.castingStat ?? 'int']),
     weapon: weaponOf(c),
     armed: weaponOf(c).held,
-    jutsus: Object.values(c.selectedJutsus).filter((id) => JUTSU[id]),
+    // The clan's own abilities first (they get the first hotkeys), then the jutsu it learned.
+    jutsus: [...clanAbilities(c.clan), ...Object.values(c.selectedJutsus).filter((id) => JUTSU[id])],
     effects: [...(c.effects ?? [])],
     cond: {},
     down: hp <= 0 ? 'downed' : undefined,
@@ -151,6 +152,7 @@ interface Template {
   title: string;
   level: number;
   clan: ShinobiCharacter['clan'];
+  rank: Rank;
   shinobiClass: ShinobiCharacter['shinobiClass'];
   stats: ShinobiCharacter['stats'];
   jutsus: string[];
@@ -163,6 +165,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
     title: 'Rogue ninja',
     level: 3,
     clan: 'Mirai',
+    rank: 'minion',
     shinobiClass: 'Bukijutsu Master',
     stats: { str: 12, dex: 15, con: 13, int: 10, wis: 11, cha: 9 },
     jutsus: ['fireball_goukakyu', 'body_flicker'],
@@ -195,7 +198,8 @@ const TEMPLATES: Record<EnemyKind, Template> = {
     name: 'Hunter-nin',
     title: 'Masked hunter-nin',
     level: 4,
-    clan: 'Akkai',
+    clan: 'Koton',
+    rank: 'minion',
     shinobiClass: 'Ninjutsu Specialist',
     stats: { str: 11, dex: 15, con: 13, int: 15, wis: 12, cha: 10 },
     jutsus: ['water_dragon_suiryuudan', 'earth_wall_doryuheki', 'substitution_kawarimi'],
@@ -232,6 +236,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
     title: 'Rogue jonin',
     level: 6,
     clan: 'Mirai',
+    rank: 'captain',
     shinobiClass: 'Ninjutsu Specialist',
     stats: { str: 12, dex: 15, con: 14, int: 17, wis: 13, cha: 12 },
     jutsus: ['chidori_lightning_blade', 'lightning_hound_raidon', 'substitution_kawarimi', 'body_flicker'],
@@ -255,7 +260,8 @@ const TEMPLATES: Record<EnemyKind, Template> = {
     name: 'Raider',
     title: 'Night raider',
     level: 3,
-    clan: 'Uddo',
+    clan: 'Ryusei',
+    rank: 'minion',
     shinobiClass: 'Taijutsu Master',
     stats: { str: 15, dex: 14, con: 14, int: 9, wis: 11, cha: 8 },
     jutsus: ['leaf_hurricane_senpuu'],
@@ -315,6 +321,9 @@ export function enemyCharacter(kind: EnemyKind, n: number): ShinobiCharacter {
   } as ShinobiCharacter;
 }
 
-export function enemyUnit(kind: EnemyKind, n: number, pos: Pt, difficulty: Difficulty): Unit {
-  return unitFrom(enemyCharacter(kind, n), { team: 'enemy', pos, power: difficulty === 'story' ? 0.75 : 1, fresh: true });
+/** An enemy from its template, with the template's rank unless the encounter names another. */
+export function enemyUnit(kind: EnemyKind, n: number, pos: Pt, difficulty: Difficulty, rank?: Rank): Unit {
+  const u = unitFrom(enemyCharacter(kind, n), { team: 'enemy', pos, power: difficulty === 'story' ? 0.75 : 1, fresh: true });
+  u.rank = rank ?? TEMPLATES[kind].rank;
+  return u;
 }

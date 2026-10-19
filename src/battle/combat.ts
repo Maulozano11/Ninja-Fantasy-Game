@@ -9,7 +9,7 @@ import { effectMods, hasEffect } from '../rules/effects';
 import { Rng, rngFor, rollDie } from '../rules/rng';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from './types';
-import { coverBetween, dist, levelAtPt } from './map';
+import { coverBetween, dist, fullCoverBetween, levelAtPt } from './map';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 
 /** The next dice stream of the battle. */
@@ -93,6 +93,8 @@ function flanked(s: BattleState, attacker: Unit, target: Unit): boolean {
   for (const ally of Object.values(s.units)) {
     if (ally.id === attacker.id || ally.team !== attacker.team || !standing(ally)) continue;
     if (dist(ally.pos, target.pos) > wielded(ally).reach + 0.1) continue;
+    // An ally behind a metal wall can't strike the target.
+    if (fullCoverBetween(s, ally.pos, target.pos)) continue;
     const a1 = Math.atan2(attacker.pos.z - target.pos.z, attacker.pos.x - target.pos.x);
     const a2 = Math.atan2(ally.pos.z - target.pos.z, ally.pos.x - target.pos.x);
     let d = Math.abs(a1 - a2);
@@ -131,9 +133,7 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
   const cover = kind === 'melee' ? 0 : coverBetween(s, a.pos, t.pos, [a.id, t.id]);
   const dl = unitLevel(s, a) - unitLevel(s, t);
   const height = dl >= 0.9 ? 2 : dl <= -0.9 ? -2 : 0;
-  // Mirai Future Foresight: an attack they saw coming gets no edge from hiding or flanking.
-  const foreseen = !!t.cond.foresight;
-  if (a.cond.hidden !== undefined && !foreseen) {
+  if (a.cond.hidden !== undefined) {
     advs.push('advantage');
     reasons.push('hidden');
   }
@@ -165,8 +165,7 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     advs.push('advantage');
     reasons.push('rage');
   }
-  // Taki see all around them (360° vision): they can't be flanked.
-  if (kind === 'melee' && !foreseen && t.character?.clan !== 'Taki' && flanked(s, a, t)) {
+  if (kind === 'melee' && flanked(s, a, t)) {
     advs.push('advantage');
     reasons.push('flanking');
   }
@@ -179,16 +178,17 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     reasons.push('targetHidden');
   }
   const adv = combineAdvantage(...advs);
-  if (foreseen) reasons.push('foresight');
-  // Future Foresight's parry adds to AC.
-  const ac = t.ac + tm.ac + cover + (t.cond.foresight ?? 0);
+  const ac = t.ac + tm.ac + cover;
   const total = mod + height;
-  // Attacks hit on a natural 20 and miss on a natural 1.
+  return { mod: total, ac, cover, height, adv, chance: hitChance(total, ac, adv), reasons, inRange };
+}
+
+/** The chance an attack roll hits: it hits on a natural 20 and misses on a natural 1. */
+export function hitChance(mod: number, ac: number, adv: Advantage): number {
   let faces = 0;
-  for (let f = 1; f <= 20; f++) if (f === 20 || (f !== 1 && f + total >= ac)) faces++;
+  for (let f = 1; f <= 20; f++) if (f === 20 || (f !== 1 && f + mod >= ac)) faces++;
   const p = faces / 20;
-  const chance = adv === 'advantage' ? 1 - (1 - p) ** 2 : adv === 'disadvantage' ? p * p : p;
-  return { mod: total, ac, cover, height, adv, chance, reasons, inRange };
+  return adv === 'advantage' ? 1 - (1 - p) ** 2 : adv === 'disadvantage' ? p * p : p;
 }
 
 export function rollAttack(s: BattleState, pv: AttackPreview): RollInfo {

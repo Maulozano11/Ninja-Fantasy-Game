@@ -1,7 +1,8 @@
 // What a ninja carries through a mission: HP, chakra, Hit and Chakra Dice, Tension, Exhaustion and
 // effects (docs/MISSION_DESIGN.md). Every function returns a new character plus the events.
 
-import type { ShinobiCharacter } from '../types/shinobi';
+import type { ClanType, ShinobiCharacter } from '../types/shinobi';
+import { CLANS_DATA, DEFAULT_CHARACTER } from '../data/shinobiData';
 import type { BreakdownKind, ConvictionValue, EffectId, RuleEvent, SkillId } from '../types/mission';
 import { savingThrow, SKILL_ABILITY } from './checks';
 import { effectiveMaxHp } from './derived';
@@ -163,6 +164,26 @@ export function sanitizeMissionFields(c: ShinobiCharacter): ShinobiCharacter {
   out.skillProficiencies = strings(c.skillProficiencies)?.filter((s): s is SkillId => s in SKILL_ABILITY);
   for (const k of Object.keys(out) as (keyof ShinobiCharacter)[]) if (out[k] === undefined) delete out[k];
   return out;
+}
+
+/** Old clan names (two renames deep) and the clans that replaced them. */
+const OLD_CLANS: Record<string, ClanType> = { Uddo: 'Ryusei', Akkai: 'Koton', Taki: 'Northstar', Senju: 'Ryusei', Uzumaki: 'Koton', Hyuga: 'Northstar', Uchiha: 'Mirai' };
+
+/**
+ * The clan a saved or imported sheet names, as one of today's clans: old names load as the clan
+ * that replaced them, and accents don't matter ('Kōton' is Koton). Null when it isn't a clan.
+ */
+export function migrateClan(raw: unknown): ClanType | null {
+  if (typeof raw !== 'string') return null;
+  const plain = raw.normalize('NFD').replace(/\p{M}/gu, '');
+  if (plain in CLANS_DATA) return plain as ClanType;
+  return OLD_CLANS[plain] ?? null;
+}
+
+/** A sheet from an older save with its clan converted; HP, chakra, look and jutsu stay as they are. */
+export function migrateCharacter(c: ShinobiCharacter): ShinobiCharacter {
+  const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
+  return clan === c.clan ? c : { ...c, clan };
 }
 
 /** Spanish name of an effect for the screens. */

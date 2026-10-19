@@ -7,6 +7,7 @@ import {
   JUTSUS_DATA,
   LEGENDARY_PRESETS,
   DEFAULT_CHARACTER,
+  clanName,
 } from '../data/shinobiData';
 import { ShinobiSpriteCanvas } from './ShinobiSpriteCanvas';
 import { AppearanceEditor } from './creator/AppearanceEditor';
@@ -18,7 +19,7 @@ import { CAST_STYLES, CastStyle, SPRITE_POSES, SpriteAppearance, SpritePose } fr
 import { CAST_STYLE_INFO, defaultCastStyle } from '../sprite/castInfo';
 import { soundManager } from '../utils/audio';
 import { deriveStats } from '../rules/derived';
-import { sanitizeMissionFields } from '../rules/ninja';
+import { migrateClan, sanitizeMissionFields } from '../rules/ninja';
 import { Sparkles, Dice5, Download, Upload, Shield, Zap, Eye, Swords, BookOpen, UserCheck } from 'lucide-react';
 
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
@@ -31,8 +32,7 @@ function mergeKind(base: Record<string, unknown>, v: Record<string, unknown>): R
   return out;
 }
 
-/** Earlier sheets used other clan names; they load as the clan that replaced each one. */
-const RENAMED_CLANS: Record<string, ClanType> = { Uchiha: 'Mirai', Senju: 'Uddo', Uzumaki: 'Akkai', Hyuga: 'Taki' };
+/** Earlier sheets used other jutsu ids; they load as the jutsu that replaced each one. */
 const RENAMED_JUTSUS: Record<string, string> = { hyuga_sixtyfour_palms: 'taki_sixtyfour_palms' };
 
 /**
@@ -43,8 +43,8 @@ const RENAMED_JUTSUS: Record<string, string> = { hyuga_sixtyfour_palms: 'taki_si
 function characterFromImport(raw: unknown): ShinobiCharacter | null {
   if (!isObj(raw) || typeof raw.clan !== 'string' || !isObj(raw.stats)) return null;
   const out = mergeKind(DEFAULT_CHARACTER as unknown as Record<string, unknown>, raw);
-  const clan = RENAMED_CLANS[out.clan as string] ?? (out.clan as string);
-  out.clan = clan in CLANS_DATA ? clan : DEFAULT_CHARACTER.clan;
+  // Earlier sheets used other clan names; they load as the clan that replaced each one.
+  out.clan = migrateClan(out.clan) ?? DEFAULT_CHARACTER.clan;
   if (Array.isArray(out.selectedFeats)) out.selectedFeats = out.selectedFeats.filter((f) => typeof f === 'string');
   // every jutsu slot must name a jutsu that exists
   const slots = out.selectedJutsus as Record<string, unknown>;
@@ -221,7 +221,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
 
   const handleRandomize = () => {
     soundManager.playSelect();
-    const clans: ClanType[] = ['Mirai', 'Uddo', 'Akkai', 'Taki'];
+    const clans = Object.keys(CLANS_DATA) as ClanType[];
     const randomClan = clans[Math.floor(Math.random() * clans.length)];
     const clanInfo = CLANS_DATA[randomClan];
 
@@ -469,7 +469,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
               <div>
                 <h2 className="text-lg font-bold text-white">{character.name || 'Unnamed Shinobi'}</h2>
                 <div className="text-xs text-slate-400">
-                  {character.clan} Clan · {character.shinobiClass} · Level {character.level}
+                  {clanName(character.clan)} Clan · {character.shinobiClass} · Level {character.level}
                 </div>
               </div>
               <div className="text-right">
@@ -882,7 +882,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                 <div className="space-y-2 pt-3 border-t border-slate-800">
                   <div className="text-xs font-bold uppercase tracking-wider text-rose-400 flex items-center justify-between">
                     <span>Slot 4: Clan Heritage Secret</span>
-                    <span className="text-[10px] text-slate-400 font-normal">{character.clan} Lineage Arts</span>
+                    <span className="text-[10px] text-slate-400 font-normal">{clanName(character.clan)} Lineage Arts</span>
                   </div>
                   <div className="grid grid-cols-1 gap-2">
                     {clanJutsus.map((jutsu) => (

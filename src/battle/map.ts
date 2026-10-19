@@ -1,7 +1,7 @@
 // A battle map: its geometry (levels, water, ramps), the props on it with what they do in battle,
 // the hidden navigation grid (0.5 m cells) and the sight, cover and projection queries.
 
-import type { BattleState, Cell, PropDef, PropRules, Pt, WaterKind } from './types';
+import type { BattleState, Cell, PropDef, PropRules, Pt, Wall, WaterKind } from './types';
 
 export interface MapDef {
   id: string;
@@ -197,7 +197,13 @@ export function hideSpotAt(s: BattleState, p: Pt): number {
   return h >= 0 && !s.props[h]?.destroyed ? h : -1;
 }
 
-/** A static prop or a jutsu wall stands in the cell. */
+/** Half the side of a Kōton metal block (1.5 m, one of the owner's squares). */
+export const BLOCK_HALF = 0.75;
+
+/** A cell centre inside a metal block: exactly the 3 × 3 cells around the cell it stands on. */
+const inBlock = (w: Wall, p: Pt): boolean => Math.max(Math.abs(p.x - w.a.x), Math.abs(p.z - w.a.z)) < BLOCK_HALF;
+
+/** A static prop, a jutsu wall or a metal block stands in the cell. */
 export function cellBlocked(s: BattleState, c: Cell): boolean {
   const g = gridFor(s.mapId);
   if (!inGrid(g, c)) return true;
@@ -207,7 +213,7 @@ export function cellBlocked(s: BattleState, c: Cell): boolean {
   if (b >= 0 && !s.props[b]?.destroyed) return true;
   if (s.walls.length) {
     const ctr = cellCenter(c);
-    for (const w of s.walls) if (segDist(ctr, w.a, w.b) < 0.35) return true;
+    for (const w of s.walls) if (w.kind === 'metalBlock' ? inBlock(w, ctr) : segDist(ctr, w.a, w.b) < 0.35) return true;
   }
   return false;
 }
@@ -221,7 +227,7 @@ function circleHitsSegment(c: Pt, r: number, a: Pt, b: Pt): boolean {
   return segDist(c, a, b) < r;
 }
 
-/** Nothing that blocks sight stands between two points (trees, tents, stacked crates, walls). */
+/** Nothing that blocks sight stands between two points (trees, tents, stacked crates, earth and metal walls). */
 export function lineOfSight(s: BattleState, a: Pt, b: Pt): boolean {
   const map = getMap(s.mapId);
   for (let i = 0; i < map.props.length; i++) {
@@ -236,17 +242,41 @@ export function lineOfSight(s: BattleState, a: Pt, b: Pt): boolean {
       if (segmentsCross(a, b, pa, pb)) return false;
     } else if (circleHitsSegment(p, rules.radius * 0.8, a, b)) return false;
   }
-  for (const w of s.walls) if (w.kind === 'earth' && segmentsCross(a, b, w.a, w.b)) return false;
+  for (const w of s.walls) if ((w.kind === 'earth' || w.kind === 'metal') && segmentsCross(a, b, w.a, w.b)) return false;
   return true;
 }
 
-function segmentsCross(a: Pt, b: Pt, c: Pt, d: Pt): boolean {
+/** Full cover: a Kōton metal wall stands between two points, and nothing gets past it. */
+export const fullCoverBetween = (s: BattleState, a: Pt, b: Pt): boolean => s.walls.some((w) => w.kind === 'metal' && segmentsCross(a, b, w.a, w.b));
+
+export function segmentsCross(a: Pt, b: Pt, c: Pt, d: Pt): boolean {
   const o = (p: Pt, q: Pt, r: Pt) => (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x);
   const o1 = o(a, b, c);
   const o2 = o(a, b, d);
   const o3 = o(c, d, a);
   const o4 = o(c, d, b);
   return o1 * o2 < 0 && o3 * o4 < 0;
+}
+
+/** The segment a-b passes through the square of half side `half` centred on c (slab clipping). */
+function segmentHitsSquare(a: Pt, b: Pt, c: Pt, half: number): boolean {
+  let t0 = 0;
+  let t1 = 1;
+  for (const [p, d, lo, hi] of [
+    [a.x, b.x - a.x, c.x - half, c.x + half],
+    [a.z, b.z - a.z, c.z - half, c.z + half],
+  ]) {
+    if (Math.abs(d) < 1e-9) {
+      if (p < lo || p > hi) return false;
+      continue;
+    }
+    const u0 = (lo - p) / d;
+    const u1 = (hi - p) / d;
+    t0 = Math.max(t0, Math.min(u0, u1));
+    t1 = Math.min(t1, Math.max(u0, u1));
+    if (t0 > t1) return false;
+  }
+  return true;
 }
 
 /**
@@ -268,7 +298,10 @@ export function coverBetween(s: BattleState, from: Pt, to: Pt, ignore: string[] 
     if (hit && rules.cover > cover) cover = rules.cover;
   }
   for (const w of s.walls) {
-    if (segmentsCross(from, to, w.a, w.b)) cover = Math.max(cover, w.kind === 'earth' ? 5 : 2) as 0 | 2 | 5;
+    if (w.kind === 'metalBlock') {
+      // Half cover, unless the attacker stands right behind the block itself.
+      if (dist(w.a, from) >= 1.2 && segmentHitsSquare(from, to, w.a, BLOCK_HALF)) cover = Math.max(cover, 2) as 0 | 2 | 5;
+    } else if (segmentsCross(from, to, w.a, w.b)) cover = Math.max(cover, w.kind === 'earth' || w.kind === 'metal' ? 5 : 2) as 0 | 2 | 5;
   }
   if (cover < 2) {
     for (const u of Object.values(s.units)) {

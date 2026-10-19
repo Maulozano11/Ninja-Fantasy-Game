@@ -145,5 +145,5 @@ export function toDiceRollResult(o: CheckOutcome, reason: string): DiceRollResul
   };
 }
 
-/** True when a character can't be surprised: Taki (360° vision) or Watchful. */
-export const cannotBeSurprised = (c: ShinobiCharacter): boolean => c.clan === 'Taki' || hasEffect(c.effects, 'watchful');
+/** True when a character can't be surprised: Watchful. */
+export const cannotBeSurprised = (c: ShinobiCharacter): boolean => hasEffect(c.effects, 'watchful');

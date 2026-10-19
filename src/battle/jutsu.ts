@@ -1,10 +1,11 @@
 // How each jutsu works on the battle map, in meters: its shape, reach, roll (attack or saving
 // throw), damage and what it leaves behind. Built from the jutsu data (ranges in old 1.5 m tiles)
-// with a few jutsu that do something special (healing, flicker, clones, traps, walls, Kawarimi).
+// with a few jutsu that do something special (healing, flicker, clones, traps, walls, Kawarimi),
+// plus each clan's own abilities (docs/CLANS_DESIGN.md), which come with the clan, not a slot.
 
 import { JUTSUS_DATA } from '../data/shinobiData';
-import type { JutsuDefinition } from '../types/shinobi';
-import type { Ability } from '../rules/checks';
+import type { ClanType, JutsuDefinition } from '../types/shinobi';
+import type { Ability, Advantage } from '../rules/checks';
 import type { EffectId } from '../types/mission';
 import type { AreaShape, DamageType, Pt } from './types';
 
@@ -16,6 +17,8 @@ export type JutsuShape = 'single' | 'circle' | 'selfCircle' | 'cone' | 'line' | 
 export interface JutsuSpec {
   id: string;
   name: string;
+  /** The Spanish name, when it isn't the same. */
+  nameEs?: string;
   rank: string;
   element: VfxElement;
   cost: number;
@@ -48,6 +51,15 @@ export interface JutsuSpec {
   env?: 'ignite' | 'electrify' | 'clearFoliage';
   /** A failed save adds Tension (the hydra's roar). */
   tension?: boolean;
+  /**
+   * A bloodline technique rather than a jutsu: no hand seals, no Centered chakra discount, not
+   * enhanced. It still costs chakra, so sealed chakra blocks it.
+   */
+  ability?: boolean;
+  /** The clan whose members have it from level 1. */
+  clan?: ClanType;
+  /** The target's save is rolled with this (Pursuing Flame: disadvantage). */
+  saveAdv?: Advantage;
 }
 
 const TILE = 1.5;
@@ -171,7 +183,13 @@ const HYDRA_SPECS: JutsuSpec[] = [
   },
 ];
 
-export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DATA.map((j) => [j.id, specOf(j)]), ...HYDRA_SPECS.map((j) => [j.id, j])]);
+/** Each clan's base abilities (phase 1 of docs/CLANS_DESIGN.md), in the order their buttons show. */
+const CLAN_SPECS: JutsuSpec[] = [];
+
+export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DATA.map((j) => [j.id, specOf(j)]), ...HYDRA_SPECS.map((j) => [j.id, j]), ...CLAN_SPECS.map((j) => [j.id, j])]);
+
+/** The abilities a clan's members have, in order. */
+export const clanAbilities = (clan: ClanType): string[] => CLAN_SPECS.filter((j) => j.clan === clan).map((j) => j.id);
 
 /** Enhanced version: one more damage die (two for rank S) and a 50 % bigger area. */
 export function enhanced(spec: JutsuSpec): JutsuSpec {

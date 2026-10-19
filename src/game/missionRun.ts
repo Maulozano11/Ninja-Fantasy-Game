@@ -7,7 +7,7 @@ import type { Difficulty, PartyState, RuleEvent } from '../types/mission';
 import { MISSIONS, MissionBattle, MissionDef, nextPos, nodeAt, RoadPos } from '../data/missions';
 import { applyBattleResult, enterNextZone, newMission, travelLeg } from '../rules/mission';
 import { CampState, morning, Outcome, StopState } from '../rules/rest';
-import { returnToVillage, sanitizeMissionFields } from '../rules/ninja';
+import { migrateCharacter, returnToVillage, sanitizeMissionFields } from '../rules/ninja';
 import { pick, strings } from '../i18n';
 import { both, describeEvent, LogLine, LogText } from './eventText';
 import type { PartyBattleResult } from '../battle/result';
@@ -203,15 +203,22 @@ export function resolvePartyBattle(run: MissionRun, result: PartyBattleResult): 
 
 const SAVE_KEY = 'shinobi5e.mission.v1';
 
+/** A run saved before the clans were converted: its ninjas load with today's clans (only the clan changes). */
+export function migrateRun(r: MissionRun): MissionRun {
+  const party = (p: PartyState): PartyState => ({ ...p, members: p.members.map(migrateCharacter), dead: (p.dead ?? []).map(migrateCharacter) });
+  return { ...r, party: party(r.party), entry: party(r.entry ?? r.party) };
+}
+
 export function loadRun(): MissionRun | null {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const r = JSON.parse(raw) as MissionRun;
     if (r?.version !== 1 || !MISSIONS.some((m) => m.id === r.missionId) || !r.party?.members) return null;
+    const run = migrateRun(r);
     // A battle can't be saved halfway: it starts again from getting ready (older saves too).
-    if (r.battle && r.battle.phase !== 'prep') r.battle = { id: r.battle.id, battle: r.battle.battle, ambush: r.battle.ambush, objective: r.battle.objective, phase: 'prep', attempt: r.battle.attempt ?? 0 };
-    return r;
+    if (run.battle && run.battle.phase !== 'prep') run.battle = { id: run.battle.id, battle: run.battle.battle, ambush: run.battle.ambush, objective: run.battle.objective, phase: 'prep', attempt: run.battle.attempt ?? 0 };
+    return run;
   } catch {
     return null;
   }

@@ -35,11 +35,9 @@ export function deriveStats(b: BuildInput): DerivedStats {
   const armorAC = ARMOR_STYLES.find((a) => a.id === b.armor)?.acBonus ?? 2;
   const ironSkinBonus = b.feats.includes('iron_skin') ? 1 : 0;
 
-  let maxHp = classInfo.hitDie + conMod + (b.level - 1) * (Math.floor(classInfo.hitDie / 2) + 1 + conMod);
-  if (b.clan === 'Uddo') maxHp += 6;
+  const maxHp = classInfo.hitDie + conMod + (b.level - 1) * (Math.floor(classInfo.hitDie / 2) + 1 + conMod);
 
   let maxChakra = b.level * (Math.floor(classInfo.chakraDie / 2) + 2) + Math.max(1, conMod);
-  if (b.clan === 'Akkai') maxChakra = Math.floor(maxChakra * 1.25);
   if (b.feats.includes('chakra_prodigy')) maxChakra += 4;
 
   return {

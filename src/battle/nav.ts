@@ -2,7 +2,7 @@
 // can reach with the movement it has left, and the path there. Movement is shown in meters.
 
 import type { BattleState, Cell, Pt, Unit } from './types';
-import { CELL, cellBlocked, cellCenter, cellOf, gridFor, idx, inGrid } from './map';
+import { CELL, cellBlocked, cellCenter, cellOf, dist, gridFor, idx, inGrid } from './map';
 
 const DIRS: [number, number, number][] = [
   [1, 0, 1],
@@ -160,6 +160,31 @@ export function canStop(s: BattleState, unit: Unit, c: Cell, occ = occupancy(s))
   if (!inGrid(g, c)) return false;
   const who = occ.get(idx(g, c));
   return !who || who.id === unit.id;
+}
+
+/** The best free cell between `min` and `max` meters from a point (dry, open, nobody on it). */
+export function freeSpot(s: BattleState, u: Unit, around: Pt, min: number, max: number, score: (p: Pt) => number): Pt {
+  const g = gridFor(s.mapId);
+  const occ = occupancy(s);
+  const c0 = cellOf(around);
+  const r = Math.ceil(max / CELL);
+  let best = around;
+  let bestScore = -Infinity;
+  for (let dr = -r; dr <= r; dr++) {
+    for (let dc = -r; dc <= r; dc++) {
+      const c = { c: c0.c + dc, r: c0.r + dr };
+      if (!inGrid(g, c) || cellBlocked(s, c) || g.water[idx(g, c)] === 2) continue;
+      const p = cellCenter(c);
+      const d = dist(p, around);
+      if (d < min || d > max || !canStop(s, u, c, occ)) continue;
+      const sc = score(p);
+      if (sc > bestScore) {
+        best = p;
+        bestScore = sc;
+      }
+    }
+  }
+  return best;
 }
 
 /** The path to a reached cell, from the first step to the target. */

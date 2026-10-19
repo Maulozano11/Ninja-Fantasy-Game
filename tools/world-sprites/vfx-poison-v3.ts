@@ -951,11 +951,12 @@ function flatVioletRun(c: Canvas): number {
         break;
       }
     }
-  let best = 0, run = 0;
+  let best = 0, run = 0, at = 0;
   for (let x = 0; x < c.w; x++) {
     run = topRow[x] >= 0 && x > 0 && topRow[x] === topRow[x - 1] ? run + 1 : topRow[x] >= 0 ? 1 : 0;
-    best = Math.max(best, run);
+    if (run > best) (best = run), (at = x);
   }
+  if (process.env.POISON_DEBUG && best > 4) console.log(`flat violet run ${best} ending at x ${at}, row ${topRow[at]}`);
   return best;
 }
 /** Frames with a straight violet top (the build fails on any). */
@@ -1112,9 +1113,11 @@ function blast(): WorldSprite {
   const shaftM = cut(shaftL, (x, y) => !(y >= top + 23 && y <= top + 38 && x < sx0 + 1), 2, true);
   // The pillar's violet roots in the pool (the venom of its flared foot, the violet blobs of the pool
   // that reach up to the line where the pillar meets the pool): in the settle they sink into the
-  // pool with the pillar, patch by patch over frames 8-11, each root pixel taking the colour of the
-  // nearest green slime of the pool round it, so none is left floating once the pillar has gone.
-  const rootTo = new Int16Array(K.w * K.h).fill(-1);
+  // pool with the pillar over frames 8-11, so none is left floating once the pillar has gone. Where a
+  // root sinks, the pool's own surface shows: each root pixel takes his pool's pixel a set step
+  // further down (bubbles keep their shape and their light from above), the same source the pool
+  // behind the pillar is made from.
+  const isRoot = new Uint8Array(K.w * K.h);
   {
     const vio = poolOnly.empty();
     for (let j = 0; j < vio.v.length; j++) if (poolOnly.v[j] && FAM[poolOnly.v[j] - 1] === 'purple') vio.v[j] = poolOnly.v[j];
@@ -1123,103 +1126,150 @@ function blast(): WorldSprite {
         const x = j % K.w, y = (j / K.w) | 0, sf = surf(Math.min(FX1, Math.max(FX0, x)));
         return x >= FX0 - 4 && x <= FX1 + 4 && y <= sf + 6;
       });
-      if (!atFoot) continue;
+      if (atFoot) for (const j of pc) isRoot[j] = 1;
+    }
+  }
+  /** His pool's surface under (x, y): the pool's pixel a set step further down (not a root, not the pillar's foot). */
+  const poolBelow = (x: number, y: number): number => {
+    for (const [dx, dy] of [[0, 20], [6, 24], [-6, 26], [3, 31], [-3, 16], [0, 36], [8, 40]]) {
+      const u = x + dx, w = y + dy, v = poolOnly.get(u, w);
+      if (v && !inShaft(u, w) && !isRoot[w * K.w + u]) return v;
+    }
+    return 0;
+  };
+  const rootTo = new Int16Array(K.w * K.h).fill(-1);
+  for (let j = 0; j < isRoot.length; j++) {
+    if (!isRoot[j]) continue;
+    const x = j % K.w, y = (j / K.w) | 0;
+    rootTo[j] = poolBelow(x, y);
+    // (failing that, the nearest green slime round it)
+    let best = 1e9;
+    if (rootTo[j] <= 0)
+      for (let dy = -12; dy <= 12; dy++) for (let dx = -12; dx <= 12; dx++) {
+        const v = poolOnly.get(x + dx, y + dy);
+        if (!v || FAM[v - 1] !== 'green' || !isKind(v, 'body')) continue;
+        if (dx * dx + dy * dy * 1.5 < best) (best = dx * dx + dy * dy * 1.5), (rootTo[j] = v);
+      }
+  }
+  // (each root pixel's depth in its own root, 0 at the root's top and 1 at its foot in the pool, and
+  // how far it lies from the root's middle across, 0 in the middle and 1 at its sides on its row)
+  const rootD = new Float32Array(K.w * K.h).fill(-1), rootU = new Float32Array(K.w * K.h);
+  {
+    const rooted = poolOnly.empty();
+    for (let j = 0; j < rooted.v.length; j++) if (isRoot[j]) rooted.v[j] = 1;
+    for (const pc of pieces(rooted)) {
+      let y0 = K.h, y1 = -1;
+      const xl = new Map<number, number>(), xr = new Map<number, number>();
       for (const j of pc) {
         const x = j % K.w, y = (j / K.w) | 0;
-        let best = 1e9;
-        for (let dy = -12; dy <= 12; dy++) for (let dx = -12; dx <= 12; dx++) {
-          const v = poolOnly.get(x + dx, y + dy);
-          if (!v || FAM[v - 1] !== 'green' || !isKind(v, 'body')) continue;
-          const dd = dx * dx + dy * dy * 1.5;
-          if (dd < best) {
-            best = dd;
-            rootTo[j] = v;
-          }
-        }
+        y0 = Math.min(y0, y);
+        y1 = Math.max(y1, y);
+        xl.set(y, Math.min(xl.get(y) ?? K.w, x));
+        xr.set(y, Math.max(xr.get(y) ?? -1, x));
+      }
+      for (const j of pc) {
+        const x = j % K.w, y = (j / K.w) | 0, l = xl.get(y)!, r = xr.get(y)!;
+        rootD[j] = (y - y0) / Math.max(1, y1 - y0);
+        rootU[j] = r > l ? Math.abs((2 * (x - l)) / (r - l) - 1) : 0;
       }
     }
   }
+  /**
+   * The pool with its violet roots sunk k of the way (0-1): a front runs down each root from its top
+   * to its foot, and every root pixel above it takes the pool's surface under it. The front is a
+   * dome across each root (its sides go first), so what is left of a root always has a rounded top,
+   * never a flat cut; one clean front per root, never a speckle of single pixels.
+   */
   const sunk = (k: number): Layer => {
     if (k <= 0) return poolOnly;
     const out = poolOnly.clone();
-    for (let j = 0; j < out.v.length; j++) if (rootTo[j] > 0 && grain(j % K.w, (j / K.w) | 0, seed + 90) < k) out.v[j] = rootTo[j];
+    for (let j = 0; j < out.v.length; j++) {
+      if (rootTo[j] <= 0) continue;
+      const front = 1.3 * k - 0.2 + 0.22 * rootU[j] ** 2 + 0.05 * (2 * pnoise(j % K.w, (j / K.w) | 0, 4, 0, 0, seed + 91) - 1);
+      if (rootD[j] < front) out.v[j] = rootTo[j];
+    }
     return out;
   };
-  /**
-   * Where the pool's cut edge meets the moving pillar's foot, small see-through pockets (up to 12 px)
-   * enclosed by the slime are filled with the slime round them (the commonest of its colours next
-   * to each pixel, filled inward), and the dark rim pixels lining them take the slime's colour too:
-   * no dark notches at the pillar's foot. The fill goes into the pool layer.
-   */
-  const footSeal = (c: Layer, pl: Layer, ps: number): number => {
-    const U = union(c, pl);
-    const near = (x: number, y: number) => x >= FX0 - 6 && x <= FX1 + 6 && Math.abs(y - clipY(x, ps)) <= 9;
-    const seen = new Uint8Array(K.w * K.h);
-    let todo: number[] = [];
-    for (let j0 = 0; j0 < U.v.length; j0++) {
-      if (U.v[j0] || seen[j0]) continue;
-      const pc: number[] = [], st = [j0];
-      seen[j0] = 1;
-      let open = false, inBand = false;
-      while (st.length) {
-        const j = st.pop()!, x = j % K.w, y = (j / K.w) | 0;
-        pc.push(j);
-        if (near(x, y)) inBand = true;
-        if (x === 0 || y === 0 || x === K.w - 1 || y === K.h - 1) open = true;
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const u = x + dx, w = y + dy;
-          if (u < 0 || w < 0 || u >= K.w || w >= K.h) continue;
-          const k = w * K.w + u;
-          if (!U.v[k] && !seen[k]) (seen[k] = 1), st.push(k);
-        }
-      }
-      if (!open && inBand && pc.length <= 12) todo = todo.concat(pc);
+  // The pool behind the pillar. His pillar stands in the middle of his pool, so his picture has no
+  // pool behind it; while the pillar moves (gushing up narrow, sinking) the pool runs on there, behind
+  // the pillar and under the pool's cut edge, so the ground never shows between them:
+  //  - its back edge is the pool's back rim run on across the pillar's span: an elliptic arc fitted
+  //    (least squares) to his shown back rim either side of the pillar (spikes left out), scalloped
+  //    like a row of bubbles (each its own height), and closed with his slime rim;
+  //  - its slime is his own pool, from its own pixels: each pixel takes the pool's pixel a set step
+  //    further down (bubbles keep their shape and their light from above), and a violet root pixel
+  //    there takes the green its root sinks into, so no root is doubled behind the pillar.
+  const poolBack = poolOnly.empty();
+  {
+    let px0 = K.w, px1 = -1;
+    for (let j = 0; j < pool.v.length; j++) if (pool.v[j]) (px0 = Math.min(px0, j % K.w)), (px1 = Math.max(px1, j % K.w));
+    const pcx = (px0 + px1 + 1) / 2, prx = (px1 - px0 + 1) / 2;
+    const pt = tops(poolOnly);
+    // (his shown rim, each column the median of its neighbours' tops, so his thin spikes drop out)
+    const rimAt = (x: number) => {
+      const v = range(13).map((k) => pt[x - 6 + k]).filter((t) => t !== undefined && t < K.h).sort((a, b) => a - b);
+      return v.length ? v[v.length >> 1] : K.h;
+    };
+    const arcS = (x: number) => Math.sqrt(Math.max(0, 1 - ((x + 0.5 - pcx) / prx) ** 2));
+    let s11 = 0, s1 = 0, n1 = 0, sy = 0, sys = 0;
+    for (let x = FX0 - 26; x <= FX1 + 26; x++) {
+      if (x >= FX0 - 2 && x <= FX1 + 2) continue;
+      const t = rimAt(x), s = arcS(x);
+      if (t >= K.h) continue;
+      s11 += s * s;
+      s1 += s;
+      n1++;
+      sy += t;
+      sys += t * s;
     }
-    const filled: number[] = [];
-    for (let guard = 0; todo.length && guard < 12; guard++) {
-      const next: number[] = [], fills: [number, number][] = [];
-      for (const j of todo) {
-        const x = j % K.w, y = (j / K.w) | 0;
-        const votes = new Map<number, number>();
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-          const v = U.get(x + dx, y + dy);
-          if (isKind(v, 'body')) votes.set(v, (votes.get(v) ?? 0) + 1);
-        }
-        let bv = 0, bn = 0;
-        for (const [v, n] of [...votes.entries()].sort((a, b) => a[0] - b[0])) if (n > bn) (bv = v), (bn = n);
-        if (bv) fills.push([j, bv]);
-        else next.push(j);
-      }
-      if (!fills.length) break;
-      for (const [j, v] of fills) {
-        U.v[j] = v;
-        pl.v[j] = v;
-        filled.push(j);
-      }
-      todo = next;
+    // top(x) = cyb - ryb * s(x), least squares over his shown rim.
+    const det = n1 * s11 - s1 * s1;
+    const cyb = (sy * s11 - sys * s1) / det, ryb = (sy * s1 - sys * n1) / det;
+    const backTop = (x: number) => {
+      const k = Math.floor((x - FX0 + 2) / 8), ph = fract((x - FX0 + 2) / 8);
+      const bump = (1 + 1.4 * rnd(seed + 93, k)) * (1 - Math.abs(2 * ph - 1) ** 1.6);
+      return Math.round(cyb - ryb * arcS(x) - bump + 0.8 * (2 * pnoise(x, 0, 5, 0, 0, seed + 94) - 1));
+    };
+    for (let x = FX0; x <= FX1; x++)
+      for (let y = backTop(x); y <= surf(x) + 2; y++) if (!poolOnly.get(x, y)) poolBack.set(x, y, poolBelow(x, y));
+    // (his slime rim round its back edge and its open sides)
+    const bk = poolBack.clone();
+    for (let y = 0; y < K.h; y++) for (let x = 0; x < K.w; x++) {
+      const v = bk.get(x, y);
+      if (!isKind(v, 'body')) continue;
+      if ([[1, 0], [-1, 0], [0, -1]].some(([dx, dy]) => !bk.get(x + dx, y + dy) && !poolOnly.get(x + dx, y + dy))) poolBack.set(x, y, RIM[FAM[v - 1]]);
     }
-    // (the dark rim pixels lining a filled pocket take the slime's colour round them)
-    for (const j of filled) {
-      const x = j % K.w, y = (j / K.w) | 0;
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+  }
+  /** Where the pool (back and front together) leaves the ground showing in a hole it encloses itself. */
+  const poolPockets = (L: Layer): number[] => {
+    const seen = new Uint8Array(L.v.length), st: number[] = [];
+    for (let x = 0; x < K.w; x++) for (const y of [0, K.h - 1]) if (!L.v[y * K.w + x]) (seen[y * K.w + x] = 1), st.push(y * K.w + x);
+    for (let y = 0; y < K.h; y++) for (const x of [0, K.w - 1]) if (!L.v[y * K.w + x] && !seen[y * K.w + x]) (seen[y * K.w + x] = 1), st.push(y * K.w + x);
+    while (st.length) {
+      const j = st.pop()!, x = j % K.w, y = (j / K.w) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const u = x + dx, w = y + dy;
-        if (!isKind(U.get(u, w), 'outline')) continue;
-        const votes = new Map<number, number>();
-        for (let ey = -1; ey <= 1; ey++) for (let ex = -1; ex <= 1; ex++) {
-          const v = U.get(u + ex, w + ey);
-          if (isKind(v, 'body')) votes.set(v, (votes.get(v) ?? 0) + 1);
-        }
-        let bv = 0, bn = 0;
-        for (const [v, n] of [...votes.entries()].sort((a, b) => a[0] - b[0])) if (n > bn) (bv = v), (bn = n);
-        if (bv) {
-          U.set(u, w, bv);
-          if (pl.get(u, w)) pl.set(u, w, bv);
-          else c.set(u, w, bv);
-        }
+        if (u < 0 || w < 0 || u >= K.w || w >= K.h) continue;
+        const k = w * K.w + u;
+        if (!L.v[k] && !seen[k]) (seen[k] = 1), st.push(k);
       }
     }
-    return filled.length;
+    const out: number[] = [];
+    for (let j = 0; j < L.v.length; j++) if (!L.v[j] && !seen[j]) out.push(j);
+    return out;
   };
+  // (the pool's ellipse, for the breakup's order: it breaks up from its outer edge in, and the slime
+  // round the pillar's foot goes last)
+  let qx0 = K.w, qx1 = -1, qy0 = K.h, qy1 = -1;
+  for (let j = 0; j < pool.v.length; j++)
+    if (pool.v[j]) {
+      const x = j % K.w, y = (j / K.w) | 0;
+      qx0 = Math.min(qx0, x);
+      qx1 = Math.max(qx1, x);
+      qy0 = Math.min(qy0, y);
+      qy1 = Math.max(qy1, y);
+    }
+  const qcx = (qx0 + qx1 + 1) / 2, qrx = (qx1 - qx0 + 1) / 2, qry = Math.max(K.ay - qy0, qy1 - K.ay);
   // The spray: his own small drop shapes.
   const big = dropShapes(drops, 20, 60, 'green');
   const shapes = [...big.map((s) => shrinkShape(s, 0.55)), ...big.map((s) => shrinkShape(s, 0.75)), ...big];
@@ -1268,48 +1318,69 @@ function blast(): WorldSprite {
     const moving = i < PEAK || i > HOLD;
     // The pool: spreads over the ground from the centre, bubbles churn, breaks up at the end (into
     // islands that shrink and cool, with no dark rims round the holes). While the pillar moves, it
-    // is the pool without the pillar's foot, in front of the pillar.
-    let pl = scaled(moving ? (i > HOLD ? sunk((i - HOLD - 1) / 4) : poolOnly) : pool, p.pool, p.pool, K.ax, K.ay);
+    // is the pool without the pillar's foot, in front of the pillar, and the pool behind the pillar
+    // (poolBack) runs on under its cut edge: both move, churn, cool and break up as one pool.
+    const back0 = moving ? poolBack : null;
+    let all = scaled(union(back0, moving ? (i > HOLD ? sunk((i - HOLD - 1) / 4) : poolOnly) : pool), p.pool, p.pool, K.ax, K.ay);
+    const backM = back0 ? scaled(back0, p.pool, p.pool, K.ax, K.ay) : null;
     const pe = moving ? scaled(poolEdge, p.pool, p.pool, K.ax, K.ay) : null;
-    if (i > PEAK) pl = churn(pl, t, { amp: 1.2, ampY: 0.6, cell: 6, seed });
-    pl = cool(pl, (i - HOLD - 2) / 3, seed + 9);
+    if (i > PEAK) all = churn(all, t, { amp: 1.2, ampY: 0.6, cell: 6, seed });
+    all = cool(all, (i - HOLD - 2) / 3, seed + 9);
+    const whole = all;
     if (p.poolCut) {
       // (it breaks up first where it spreads out to the frame's edges, so it never runs off the frame)
       const rim = (x: number, y: number) => Math.max(smooth(8, 0, x), smooth(K.w - 9, K.w - 1, x), smooth(K.h - 9, K.h - 1, y));
-      // (and its own lip, the band along its outer edge, breaks up at the same pace as the inside:
-      // the pull of the pool's edge cancels the outer slime's lead, so no outline ring is left)
-      const ed = new Float32Array(K.w * K.h).fill(99);
+      // It breaks up from its outer edge in (the slime round the pillar's foot goes last, so the
+      // sinking pillar always stands in its pool), into ragged islands.
+      all = cut(all, (x, y) => (pnoise(x, y * 1.5, 7, 0, 0, seed + 1) * 0.8 + pnoise(x, y, 3, 0, 0, seed + 3) * 0.2) * 0.6 + (1 - Math.hypot((x + 0.5 - qcx) / qrx, (y + 0.5 - K.ay) / qry)) * 0.55 - 0.6 * rim(x, y) > p.poolCut, 6, false);
+      // (his violet bubbles go or stay whole, so none is left with a flat, cut top)
       {
-        let front: number[] = [];
-        for (let j = 0; j < ed.length; j++) {
-          if (!pl.v[j]) continue;
-          const x = j % K.w, y = (j / K.w) | 0;
-          if (!pl.get(x - 1, y) || !pl.get(x + 1, y) || !pl.get(x, y - 1) || !pl.get(x, y + 1)) (ed[j] = 0), front.push(j);
-        }
-        for (let dist = 1; dist <= 11 && front.length; dist++) {
-          const nx: number[] = [];
-          for (const j of front) {
-            const x = j % K.w, y = (j / K.w) | 0;
-            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-              const k = (y + dy) * K.w + x + dx;
-              if (pl.get(x + dx, y + dy) && ed[k] > dist) (ed[k] = dist), nx.push(k);
-            }
-          }
-          front = nx;
+        const vio = whole.empty();
+        for (let j = 0; j < whole.v.length; j++) if (whole.v[j] && FAM[whole.v[j] - 1] === 'purple') vio.v[j] = 1;
+        for (const pc of pieces(vio)) {
+          const keepIt = pc.filter((j) => all.v[j]).length * 2 >= pc.length;
+          for (const j of pc) all.v[j] = keepIt ? whole.v[j] : 0;
         }
       }
-      pl = cut(pl, (x, y) => (pnoise(x, y * 1.5, 7, 0, 0, seed + 1) * 0.8 + pnoise(x, y, 3, 0, 0, seed + 3) * 0.2) * 0.65 + Math.hypot((x - K.ax) / 95, (y - K.ay) / 30) * 0.35 - 0.6 * rim(x, y) - 0.45 * smooth(10, 2, ed[y * K.w + x]) > p.poolCut, 6, false);
+      // (it only opens from outside: a hole the breakup would leave enclosed in the pool keeps its slime)
+      for (const j of poolPockets(all)) all.v[j] = whole.v[j];
       // (no thin slivers or bars are left floating: a piece must be 12 px or more, and on average
       // 2.5 px thick or more)
-      for (const pc of pieces(pl)) {
+      for (const pc of pieces(all)) {
         let x0 = K.w, x1 = -1;
         for (const j of pc) {
           x0 = Math.min(x0, j % K.w);
           x1 = Math.max(x1, j % K.w);
         }
-        if (pc.length < 12 || pc.length / (x1 - x0 + 1) < 2.5) for (const j of pc) pl.v[j] = 0;
+        if (pc.length < 12 || pc.length / (x1 - x0 + 1) < 2.5) for (const j of pc) all.v[j] = 0;
       }
     }
+    // (his violet bubbles that come to lie open at the end, nothing violet over them any more, are
+    // rounded over their tops: a top row of more than 4 columns is lifted 1 px in its middle, so no
+    // violet top runs flat)
+    if (i > HOLD) {
+      const vio = all.empty();
+      for (let j = 0; j < all.v.length; j++) if (all.v[j] && FAM[all.v[j] - 1] === 'purple') vio.v[j] = 1;
+      for (const pc of pieces(vio)) {
+        const tp = new Map<number, number>();
+        for (const j of pc) tp.set(j % K.w, Math.min(tp.get(j % K.w) ?? K.h, (j / K.w) | 0));
+        const xs = [...tp.keys()].sort((a, b) => a - b);
+        for (let a = 0; a < xs.length; ) {
+          let e = a;
+          while (e + 1 < xs.length && xs[e + 1] === xs[e] + 1 && tp.get(xs[e + 1]) === tp.get(xs[a])) e++;
+          if (e - a + 1 > 4) for (let k = a + 2; k <= e - 2; k++) all.set(xs[k], tp.get(xs[k])! - 1, all.get(xs[k], tp.get(xs[k])!));
+          a = e + 1;
+        }
+      }
+    }
+    // (split again: the pool behind the pillar, and the pool in front of it)
+    const pb = all.empty(), pl = all.clone();
+    if (backM)
+      for (let j = 0; j < all.v.length; j++)
+        if (backM.v[j] && all.v[j]) {
+          pb.v[j] = all.v[j];
+          pl.v[j] = 0;
+        }
     // The pillar.
     let c: Layer = col;
     const spray = col.empty();
@@ -1342,14 +1413,13 @@ function blast(): WorldSprite {
     } else if (i > PEAK) {
       c = churn(col, t, { amp: 1.3, ampY: 2.2, cell: 7, seed: seed + 2, flow: [0, -1.4] });
     }
-    // (the pool's new top edge takes his slime rim only where nothing of the pillar is behind it)
+    // (the pool's new top edge takes his slime rim only where nothing is behind it any more, neither
+    // the pillar nor the pool behind it: over the pool behind, the slime runs on with no seam)
     if (pe)
       for (let y = 1; y < K.h; y++) for (let x = 0; x < K.w; x++) {
         const v = pl.get(x, y);
-        if (pe.get(x, y) && isKind(v, 'body') && !pl.get(x, y - 1) && !c.get(x, y - 1) && !c.get(x, y - 2)) pl.set(x, y, RIM[FAM[v - 1]]);
+        if (pe.get(x, y) && isKind(v, 'body') && !pl.get(x, y - 1) && !pb.get(x, y - 1) && !c.get(x, y - 1) && !c.get(x, y - 2)) pl.set(x, y, RIM[FAM[v - 1]]);
       }
-    // (no dark notches where the pool's cut edge meets the moving pillar's foot)
-    if (moving && d >= 1) footSeal(c, pl, ps);
     // (check: the crown's top never runs flat over more than 4 columns)
     if (moving && d >= 1 && c.v.some((v) => v > 0)) {
       const run = crownRun(c, shw * (i < PEAK ? 0.74 + 0.26 * p.rise : slump(p.rise)), ps);
@@ -1395,11 +1465,41 @@ function blast(): WorldSprite {
     let gm: Canvas = glowP.render();
     if (i < PEAK) gm = p.mist > 0 ? fadeAbove(cut(moved(glowP, 0, d * 0.85), (x, y) => grain(x, y, seed + 4) < p.mist + 0.15, 0, false).render(), mistLine, 9) : new Canvas(K.w, K.h);
     else if (i > HOLD + 1) gm = glowMul(moved(glowP, 0, -(i - HOLD - 1) * 1.5), Math.max(0, 1 - (i - HOLD - 1) * 0.12)).render();
-    const out = fadeTop(stackC(K.w, K.h, lt, gl, gm, c, pl, i > HOLD ? cool(spray, (i - HOLD - 3) / 3, seed + 12) : spray, ms, dr), 5, 16, seed + 20);
-    // (the settle churns and cools his slime: no checkerboard dither is left from it)
-    const clean = i > HOLD ? dechecker(out) : out;
+    const sp = i > HOLD ? cool(spray, (i - HOLD - 3) / 3, seed + 12) : spray;
+    const compose = () => {
+      const out = fadeTop(stackC(K.w, K.h, lt, gl, gm, pb, c, pl, sp, ms, dr), 5, 16, seed + 20);
+      // (the settle churns and cools his slime: no checkerboard dither is left from it)
+      return i > HOLD ? dechecker(out) : out;
+    };
+    const faded = (cl: Canvas) => (p.a < 1 ? fade(cl, p.a) : cl);
+    let clean = compose();
+    if (i !== PEAK) {
+      // No see-through pocket anywhere in the frame (alpha under 128, enclosed: the ground showing
+      // through the middle of the effect). Where the pool had slime before it broke up, the pocket
+      // keeps the pool's slime (behind or in front of the pillar, as it lies); a pinhole left between
+      // other pieces (the pillar's side and the mist, a drop on the pool's rim) takes the colour round
+      // it.
+      let hole = enclosed(faded(clean));
+      let restored = 0;
+      for (let j = 0; j < hole.length; j++)
+        if (hole[j] && whole.v[j] && !pl.v[j] && !pb.v[j]) {
+          (backM?.v[j] ? pb : pl).v[j] = whole.v[j];
+          restored++;
+        }
+      if (restored) {
+        clean = compose();
+        hole = enclosed(faded(clean));
+      }
+      const [sealed, nSealed, left] = sealPockets(clean, hole, 24, Math.ceil(128 / Math.max(p.a, 0.01)));
+      clean = sealed;
+      if (process.env.POISON_DEBUG) console.log(`blast[${i}] pockets: ${restored} px kept the pool's slime, ${nSealed} px sealed, ${left} left`);
+      if (left) BLAST_HOLES.push(`blast[${i}]: ${left} enclosed see-through px left (a pocket over 24 px)`);
+    }
     // (the settle leaves no faint lone pixels: one under alpha 64 with nothing round it goes)
-    const fin = i > HOLD ? dropSpecks(p.a < 1 ? fade(clean, p.a) : clean, 64) : p.a < 1 ? fade(clean, p.a) : clean;
+    const fin = i > HOLD ? dropSpecks(faded(clean), 64) : faded(clean);
+    // (check: no enclosed see-through pixel in any frame, his picture included)
+    const nHole = enclosed(fin).reduce((s, v) => s + v, 0);
+    if (nHole) BLAST_HOLES.push(`blast[${i}]: ${nHole} enclosed see-through px`);
     // (check: no violet top is a straight cut, the mist's least of all)
     const run = flatVioletRun(fin);
     if (run > 4) MIST_FAULTS.push(`blast[${i}]: ${run} neighbouring columns share their topmost violet row`);
@@ -1511,6 +1611,61 @@ function sealFrame(c: Canvas, near: (x: number, y: number) => boolean, maxPocket
   return [out, n];
 }
 
+/**
+ * The pockets of a hole mask (4-connected) of `maxPocket` px or less each take the commonest colour
+ * round them (neighbours with alpha minA or more, filled inward). Returns the frame, how many pixels
+ * were sealed and how many hole pixels are left (in bigger pockets).
+ */
+function sealPockets(c: Canvas, hole: Uint8Array, maxPocket: number, minA = 128): [Canvas, number, number] {
+  const out = c.clone();
+  const { w, h } = c;
+  const seen = new Uint8Array(w * h);
+  let todo: number[] = [], left = 0;
+  for (let i = 0; i < w * h; i++) {
+    if (!hole[i] || seen[i]) continue;
+    const pc: number[] = [], st = [i];
+    seen[i] = 1;
+    while (st.length) {
+      const j = st.pop()!, x = j % w, y = (j / w) | 0;
+      pc.push(j);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const u = x + dx, v = y + dy;
+        if (u < 0 || v < 0 || u >= w || v >= h) continue;
+        const k = v * w + u;
+        if (hole[k] && !seen[k]) (seen[k] = 1), st.push(k);
+      }
+    }
+    if (pc.length <= maxPocket) todo = todo.concat(pc);
+    else left += pc.length;
+  }
+  const n = todo.length;
+  for (let guard = 0; todo.length && guard < 64; guard++) {
+    const next: number[] = [], fills: [number, Color][] = [];
+    for (const j of todo) {
+      const x = j % w, y = (j / w) | 0;
+      const votes = new Map<string, [number, Color]>();
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const col = out.get(x + dx, y + dy);
+        if (col[3] < minA) continue;
+        const key = col.join(',');
+        const e = votes.get(key);
+        votes.set(key, [(e?.[0] ?? 0) + 1, col]);
+      }
+      let best: [number, Color] | null = null;
+      for (const [, e] of [...votes.entries()].sort((p, q) => (p[0] < q[0] ? -1 : 1))) if (!best || e[0] > best[0]) best = e;
+      if (best) fills.push([j, best[1]]);
+      else next.push(j);
+    }
+    if (!fills.length) break;
+    for (const [j, col] of fills) out.set(j % w, (j / w) | 0, col);
+    todo = next;
+  }
+  return [out, n - todo.length, left + todo.length];
+}
+
+/** Enclosed see-through pockets left in a blast frame (the build fails on any). */
+const BLAST_HOLES: string[] = [];
 /** Holes left in the stone after sealing, per wall frame (the build fails on any). */
 const WALL_HOLES: string[] = [];
 /** Post tops that change shape during a rise (the build fails on any). */
@@ -2389,7 +2544,7 @@ export function poisonV3Sprites(): WorldSprite[] {
 /** For review tools only: one of his pieces of a key frame, or one sprite built alone (nothing is written). */
 export const poisonV3Dev = {
   piece: (name: string, p: string): Canvas => key(name).part(p).render(),
-  faults: (): string[] => [...WALL_HOLES, ...TOP_FAULTS, ...MIST_FAULTS, ...AURA_FAULTS],
+  faults: (): string[] => [...WALL_HOLES, ...TOP_FAULTS, ...MIST_FAULTS, ...AURA_FAULTS, ...BLAST_HOLES],
   sprite: (name: string): WorldSprite[] =>
     (({
       bolt: () => [bolt()], stream: () => stream(), breath: () => [breath()], sphere: () => [sphere()], slash: () => [slash()], multi: () => [multi()], hit: () => [hit()], blast: () => [blast()],
@@ -2409,6 +2564,7 @@ function main(): void {
   if (MIST_FAULTS.length) throw new Error('vfx-poison-v3: straight-topped mist:\n  ' + MIST_FAULTS.join('\n  '));
   if (TOP_FAULTS.length) throw new Error('vfx-poison-v3: post tops change shape in the rise:\n  ' + TOP_FAULTS.join('\n  '));
   if (AURA_FAULTS.length) throw new Error('vfx-poison-v3: see-through aura:\n  ' + AURA_FAULTS.join('\n  '));
+  if (BLAST_HOLES.length) throw new Error('vfx-poison-v3: see-through pockets in the blast:\n  ' + BLAST_HOLES.join('\n  '));
   const bad = sprites.flatMap(borderCheck);
   if (bad.length) throw new Error('vfx-poison-v3: art on the frame border:\n  ' + bad.join('\n  '));
   for (const s of sprites)

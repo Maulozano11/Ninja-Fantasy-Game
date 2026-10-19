@@ -1090,6 +1090,7 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
     return false;
   };
   const sealed = (c: Canvas, fr: Layer, tag: string): Canvas => {
+    if (process.env.POISON_NOSEAL) return c;
     const [out, n] = sealFrame(c, near(fr));
     const left = enclosed(out);
     let bad = 0;

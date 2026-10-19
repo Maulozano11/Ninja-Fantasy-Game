@@ -903,7 +903,9 @@ function stream(): WorldSprite[] {
   // never meets the tile at the joint.
   const isWisp = (x: number, y: number) => x < 20 && y > 42;
   const WISP_DX = 3;
-  const hm = keep(piece(h, 'main'), (x, y) => !isWisp(x, y)), wisp = move(keep(piece(h, 'main'), isWisp), WISP_DX, 0);
+  // (Its dim tail, the first 3 columns darker than L 50, is left off, so it begins with its body.)
+  const hm = keep(piece(h, 'main'), (x, y) => !isWisp(x, y));
+  const wisp = move(keep(piece(h, 'main'), (x, y, v) => isWisp(x, y) && (x >= 3 || LAB[v - 1][0] >= 50)), WISP_DX, 0);
   const sb = bounds(spiral)!;
   const cx = (sb[0] + sb[2] + 1) / 2, cy = (sb[1] + sb[3] + 1) / 2;
   const rr = (x: number, y: number) => Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
@@ -917,10 +919,41 @@ function stream(): WorldSprite[] {
   // rim, 1 at 4 px), so the incoming braid and his ribbons' ends inside are both swallowed by the
   // vortex's dark rim rather than cut.
   const inBeam = (x: number, y: number) => x <= 34 && rr(x, y) - HEAD_RIM > (BAYER4[y & 3][x & 3] / 16 - 0.5) * 2.5;
+  // (Toward his rim's own deep violet, not down a ramp: a white highlight would turn grey.)
+  const rimCol = (() => {
+    const acc = [0, 0, 0];
+    let n = 0;
+    for (let y = 0; y < h.h; y++)
+      for (let x = 0; x < h.w; x++) {
+        const v = at(spiral, x, y), r = rr(x, y);
+        if (!v || r < HEAD_RIM - 6 || r > HEAD_RIM + 1 || PAL[v - 1][3] < 255 || LAB[v - 1][0] > 22) continue;
+        for (let c = 0; c < 3; c++) acc[c] += LOOK[v - 1][c];
+        n++;
+      }
+    return acc.map((a) => a / Math.max(1, n));
+  })();
+  const dimCache = new Map<number, number>();
+  const toRim = (v: number, step: number): number => {
+    const key = v * 8 + step;
+    const hit = dimCache.get(key);
+    if (hit !== undefined) return hit;
+    const f = step / 5;
+    const target = toLab(LOOK[v - 1].map((c, j) => c * (1 - f) + rimCol[j] * f));
+    let best = v, bd = Infinity;
+    for (let j = 0; j < PAL.length; j++) {
+      if (KIND[j] !== 'body' && KIND[j] !== 'outline') continue;
+      const d = (LAB[j][0] - target[0]) ** 2 + 1.6 * ((LAB[j][1] - target[1]) ** 2 + (LAB[j][2] - target[2]) ** 2);
+      if (d < bd) [best, bd] = [j + 1, d];
+    }
+    dimCache.set(key, best);
+    return best;
+  };
   const rimDim = (v: number, x: number, y: number) => {
     const dz = Math.abs(rr(x, y) - HEAD_RIM);
     if (dz >= 4 || KIND[v - 1] !== 'body' || LAB[v - 1][0] <= 30) return v;
-    return toneMap(-(4 - Math.floor(dz)))[v - 1] + 1;
+    // (4 shares, 1/5 to 4/5 of the way to the rim's violet, in a dithered ramp over the 4 px.)
+    const step = clamp(Math.floor(4 - dz + BAYER4[y & 3][x & 3] / 16), 1, 4);
+    return toRim(v, step);
   };
   const beam = (i: number): Ix => {
     const out = blank(h.w, h.h);
@@ -937,11 +970,11 @@ function stream(): WorldSprite[] {
   const overBeam = keep(his, (x, y) => inBeam(x, y) && !ribPoly(x, y) && x >= 10);
   const vortex = remap(keep(his, (x, y) => !inBeam(x, y)), rimDim);
   const smokeStill = keep(hs, (x, y) => !inBeam(x, y));
-  // The vortex turns: his bright inner spiral (r <= 10.5) an eighth of a turn a frame inside its
-  // own disc (4 sub-samples a pixel); between r 10.5 and 12 (where his arms fade into the dark
-  // ring) each pixel takes the darker of the turned and the still picture, so no arm is cut and no
-  // stub is left; beyond, his dark rings and outer arcs hold still.
-  const inner = keep(vortex, (x, y) => rr(x, y) <= 12);
+  // The vortex turns: his bright inner spiral an eighth of a turn a frame inside its own disc (4
+  // sub-samples a pixel), handing over to his still dark ring in an ordered dither between r 9.5
+  // and 12.5 (where his arms fade into the ring), so no arm is cut and no stub is left; beyond,
+  // his dark rings and outer arcs hold still.
+  const inner = keep(vortex, (x, y) => rr(x, y) <= 12.5);
   const sparkParts = parts(sparks);
   const lumOf = (c: Canvas) => {
     let sum = 0;
@@ -953,14 +986,12 @@ function stream(): WorldSprite[] {
     const w = move(wisp, [0, 0, 1, 1, 1, 1, 0, 0][i], [0, 0, 0, -1, -1, -1, -1, 0][i]);
     let v = vortex;
     if (i) {
-      const rot = turnInside(inner, cx, cy, (i / FLY_N) * TAU, 1, (x, y) => rr(x, y) <= 12);
+      const rot = turnInside(inner, cx, cy, (i / FLY_N) * TAU, 1, (x, y) => rr(x, y) <= 12.5);
+      // (Turned fully inside r 9.5, in an ordered dither out to r 12.5, so the turning disc has
+      // no edge against his still ring.)
       v = remap(vortex, (val, x, y) => {
         const r = rr(x, y);
-        if (r <= 10.5) return at(rot, x, y) || val;
-        if (r <= 12) {
-          const o = at(rot, x, y);
-          return o && LAB[o - 1][0] < LAB[val - 1][0] ? o : val;
-        }
+        if (r <= 9.5 || (r <= 12.5 && (12.5 - r) / 3 > BAYER4[y & 3][x & 3] / 16)) return at(rot, x, y) || val;
         return val;
       });
     }
@@ -972,11 +1003,11 @@ function stream(): WorldSprite[] {
     });
     const b = beam(i);
     // The braid's light and dark crossings flow through the head's narrow beam zone, which would
-    // swell and dim the head by itself (the tile behind it is steady). So each frame one ramp
-    // step (up or down) goes to a share of the head's lit pixels (an ordered-dither share, 0 to
-    // all, spread evenly over the head; none within 4 px of the joint, so the braid stays the
-    // exact run-on of the tile there): the share that keeps the head's brightness nearest to
-    // frame 0's. A faint, even shimmer instead of a dimming vortex.
+    // swell and dim the head by itself (the tile behind it is steady). So each frame the head's
+    // lightest colours step one ramp step up (or down): every pixel of a colour lighter than a
+    // threshold, as whole colour planes (no dither), none within 6 px of the joint (the braid
+    // stays the exact run-on of the tile there). The highest threshold (the fewest colours) that
+    // keeps the head's brightness within 3% of frame 0's is taken: an even glow, not a dimming.
     const draw = (bb: Ix, vv: Ix) => render(h.w, h.h, [[smokeStill], [bb], [vv], [overBeam], [w], [sp]]);
     if (!i) {
       const c0 = draw(b, v);
@@ -984,14 +1015,16 @@ function stream(): WorldSprite[] {
       return c0;
     }
     let best = draw(b, v), bd = Math.abs(lumOf(best) - lum0);
-    // (Level q: q/16 of them a step, past 16 the rest a second step; negative: down.)
-    for (const q of [...range(32).map((n) => n + 1), ...range(32).map((n) => -n - 1)]) {
+    // (Thresholds from L 95 down by 5; past L 30, a second step for the lightest from L 95 down.)
+    const levels = range(14).map((n) => [95 - 5 * n, 101]).concat(range(14).map((n) => [30, 95 - 5 * n]));
+    for (const [l1, l2] of levels)
+      for (const dir of [1, -1]) {
+        if (bd <= 0.03 * lum0) break;
         const sel = (x: number, y: number, ix: Ix) => {
           const val = at(ix, x, y);
-          if (!val || KIND[val - 1] !== 'body' || LAB[val - 1][0] <= 30) return 0;
-          if ((x - 4) / 4 <= BAYER4[(y + 1) & 3][(x + 2) & 3] / 16) return 0;
-          const bq = BAYER4[y & 3][x & 3], aq = Math.abs(q);
-          return Math.sign(q) * ((bq < aq ? 1 : 0) + (bq < aq - 16 ? 1 : 0));
+          if (!val || x < 6 || KIND[val - 1] !== 'body') return 0;
+          const L = LAB[val - 1][0];
+          return dir * ((L > l1 ? 1 : 0) + (L > l2 ? 1 : 0));
         };
         const c = draw(tone(b, (x, y) => sel(x, y, b)), tone(v, (x, y) => sel(x, y, v)));
         const d = Math.abs(lumOf(c) - lum0);

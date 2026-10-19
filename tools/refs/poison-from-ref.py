@@ -1052,21 +1052,19 @@ def frame_piece(idx, cfg, b):
     x0, y0 = b['g']['box'][:2]
     m = poly_mask(H, W, cfg['frame'], x0, y0, sx_of(cfg), SY)
     fr = m & (idx > 0) & (KIND[idx] != 'glow')
-    # His slime reaching into a polygon stays slime: a bright green part that runs on outside the
-    # polygons is not a rune cut into the stone (his greenish stone is darker).
-    green = (idx > 0) & (PFAM[idx] == 'green') & (KIND[idx] == 'body') & (lum(PALC[np.maximum(idx, 1) - 1][..., :3]) > 95)
-    lab, n = components(green, nb=N4)
-    out = np.unique(lab[green & ~m])
-    slime = np.isin(lab, out[out > 0])
-    # (and so does his slime's own green rim, and any green joined to it: the thin slime edges along
-    # the posts' inner sides and over the caps would otherwise rise with the stone)
-    # (grown at most 2 px into the polygons, through green only: the runes deeper in stay stone)
-    gfam = (idx > 0) & (PFAM[idx] == 'green') & (KIND[idx] != 'glow')
-    reach = (gfam & ~m) | slime
-    for _ in range(2):
-        reach |= dilate(reach, 1, nb=N8) & gfam
-    slime |= reach
-    fr &= ~slime
+    # His slime reaching into a polygon stays slime. The stone's own silhouette is its neutral
+    # stone closed over its thin green joints and seams (2 px) with what it encloses filled (his
+    # runes, plaques, joints and mossy faces): only the saturated green outside that silhouette (the
+    # slime over the posts and its rim, his drops) is taken out of the frame.
+    pc = PALC[np.maximum(idx, 1) - 1][..., :3]
+    chroma = pc.max(-1) - pc.min(-1)
+    stone = m & (idx > 0) & (PFAM[idx] == 'neutral') & (KIND[idx] != 'glow')
+    closed = ~dilate(~dilate(stone, 2, nb=N8), 2, nb=N8)
+    lab, n = components(~closed, nb=N4)
+    edge = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]])).tolist())
+    sil = closed | (np.isin(lab, [k for k in range(1, n + 1) if k not in edge]))
+    gsat = (idx > 0) & (PFAM[idx] == 'green') & (((KIND[idx] == 'body') & (chroma >= 40)) | (KIND[idx] == 'outline'))
+    fr &= ~(gsat & ~sil)
     blocks = np.zeros((H, W), np.int8)
     for k in range(len(cfg['frame']) - 1, -1, -1):
         pm = poly_mask(H, W, [cfg['frame'][k]], x0, y0, sx_of(cfg), SY)

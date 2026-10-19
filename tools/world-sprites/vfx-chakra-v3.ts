@@ -996,7 +996,9 @@ function sealCircle(k: Key) {
   const ringTop = keep(MAIN, (x, y, v) => !blueLight(v) && r0(x, y) > 0.8 && r0(x, y) < 1.2);
   const HZ = union(keep(MAIN, (x, y) => !at0(ringTop, x, y)), keep(SEAL0, (_, __, v) => blueLight(v)));
   const SEAL = union(keep(SEAL0, (_, __, v) => !blueLight(v)), ringTop);
-  const U = keep(piece(k, 'under'), (x, y) => !at0(HZ, x, y));
+  // (what the haze holds under that top, filled from the haze round it, is drawn wherever the
+  // circle is not lit, like the rest of the haze under the circle)
+  const U = union(keep(piece(k, 'under'), (x, y) => !at0(HZ, x, y)), keep(fillUnder(HZ, ringTop), (x, y) => !at0(HZ, x, y)));
   const OUTER = keep(SEAL, (x, y) => r0(x, y) >= 0.58), INNER = keep(SEAL, (x, y) => r0(x, y) < 0.58);
   // The circle's centre: the mean of the centres of his two outer lines.
   const e1 = fitEllipse(brightGold(OUTER, 170, (x, y) => r0(x, y) >= 0.83));
@@ -1047,9 +1049,30 @@ function sealCircle(k: Key) {
   return { HZ, U, SEAL, SB, LB, RP, RL, center: [cx, cy] as [number, number], ring3: [c3x, c3y, r3x, r3y] };
 }
 
-/** The pillar's top, where it fades out (his panel cut it), cools toward his saturated blues as it goes: faint, it reads as blue haze, not as a grey cap. */
+/**
+ * One step cooler for his light: pale glow to his cyan, cyan to his saturated mid-blue (same
+ * alpha), where it stays; gold light keeps.
+ */
+const GLOW_COOL: number[] = CK_PAL.map((p, i) => {
+  const to: Record<number, number> = { 8: 6, 6: 4, 5: 4, 4: 3 };
+  if (p.kind !== 'glow' || to[p.hue] === undefined) return i;
+  const j = CK_PAL.findIndex((q) => q.kind === 'glow' && q.hue === to[p.hue] && q.order === p.order);
+  return j < 0 ? i : j;
+});
+/** n cool steps for every pixel of chakra (COOL) and of its light (GLOW_COOL). */
+const coolAll = (ix: Ix, n: (x: number, y: number) => number): Ix =>
+  remap(cool(ix, n), (v, x, y) => {
+    let j = v - 1;
+    for (let k = n(x, y); k > 0; k--) j = GLOW_COOL[j];
+    return j + 1;
+  });
+
+/**
+ * The pillar's top, where it fades out (his panel cut it off), cools toward his saturated blues
+ * as it goes: faint, it reads as blue haze, not as a grey cap.
+ */
 function coolTop(P: Ix, fadeTop: number): Ix {
-  return cool(P, (_, y) => (y < fadeTop ? Math.ceil(3 * (1 - y / fadeTop)) : 0));
+  return coolAll(P, (_, y) => (y < fadeTop ? Math.ceil(3 * (1 - y / fadeTop)) : 0));
 }
 
 function blast(): WorldSprite {
@@ -1139,7 +1162,7 @@ function blast(): WorldSprite {
     const u = (j + 1) / 9, t = (7 + j - 4) / 12;
     const cut = foot + 6 - (H * 0.85 + 6) * smooth(0.2, 1, u) ** 1.2;
     const cutR = (x: number) => cut - ragged(x, 941 + j);
-    const cur = cool(shimmer(churn(thin(1 - 0.5 * smooth(0, 1, u)), t, 1.2, 9, 913, hold), t, 917, 12), () => Math.round(u * 3));
+    const cur = coolAll(shimmer(churn(thin(1 - 0.5 * smooth(0, 1, u)), t, 1.2, 9, 913, hold), t, 917, 12), () => Math.round(u * 3));
     const pa = 1 - smooth(0.12, 0.88, u);
     const pool = 0.5 * clamp(1 - (foot + 6 - cut) / 40, 0, 1);
     const curA: Alpha = (x, y) => pa * (y < cutR(x) - 4 ? 1 : y < cutR(x) ? Math.max(pool, (cutR(x) - y) / 4) : pool);

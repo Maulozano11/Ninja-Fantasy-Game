@@ -3,17 +3,17 @@
  "pxPerMeter": 57,
  "sprites": {
   "water": {
-   "label": "Water dragon (Suiryudan)",
+   "label": "Water dragon",
    "file": "water.png",
-   "frameW": 156,
-   "frameH": 86,
+   "frameW": 178,
+   "frameH": 95,
    "anchor": [
-    89,
-    42
+    99,
+    51
    ],
    "meters": [
-    2.8,
-    1.9
+    3,
+    1.6
    ],
    "tags": [
     "vfx"
@@ -22,7 +22,7 @@
     "fly": {
      "row": 0,
      "frames": 8,
-     "fps": 12,
+     "fps": 10,
      "loop": true
     }
    }

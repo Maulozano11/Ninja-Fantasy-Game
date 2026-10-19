@@ -18,28 +18,40 @@ hind foot and a ribbon of chakra under the talons. That picture IS fly frame 0:
    edge pixels become a 1 px outline ON his edge (not outside it): his own deep blue rim colour, his own
    indigo rim colour where the griffin just inside is his indigo (under the belly, the far legs), a mid blue
    of his palette where the griffin is bright just inside (his glowing feather tips and head), a dark gold
-   round the gold beak, crest and talons. Never black. His crest's spikes and his throat keep their colours.
+   round the gold beak, crest and talons. Never black. His crest's spikes, his throat and his pale grey claw
+   tips keep their colours (a claw tip gets no rim; the edge beside it is dark gold, never blue).
 
 The other seven frames are derived from that key frame, at the game scale, from his pixels (an 8-frame
 beat, 10 fps): his two wings (the near one in front of the body, the far one behind it) are cut along his
 back line and swung down and back up about their roots (the near wing at the shoulder, the far one high
 behind the neck, at the top of its rounded gold-trimmed base, which stays put), the swing easing in over
-the first px from the root so they bend there instead of shearing off. The near wing's tips lag (they flex
-up on the way down and down on the way up; the arm near the root does not). The far wing follows a little
-less far (0, -6, -18, -36, -46 degrees and back) with no lag, so it always peeks above the near wing's
-trim with its pointed tip, as he painted it, and never pops in or out. Both look a little shorter at the
-bottom of the beat, where they come toward us. Swung pieces are sampled through a Scale2x x3 (8x) copy
-(RotSprite style), so his feather lines stay crisp and in his colours. The body rises 1-2 px with the
-downstroke, his tail sways in a wave from the root, his ribbon of chakra ripples, his light streak flows.
-His cyan wisps off the wing tips are carried (moved, never turned) with the tip they trail from and fade
-out while it is down; his other specks stream back as two cross-fading copies, so none blinks. Frame 0
-stays his picture pixel for pixel.
+the first px from the root so they bend there instead of shearing off. The near wing's timing is a cosine
+blended toward an even pace, and its tips lag by about the same amount through each stroke (they flex up on
+the way down and down on the way up; the arm near the root does not), so its tip moves at most about 25 px a
+frame, down and up alike. The far wing's root follows a little less far (0, -6, -18, -36, -46 degrees and
+back); its outer half flexes up (its tip turns only 1-6 degrees in frames 1-2 and 6-7), so its leading edge
+always rises to his pointed tip while the tip is raised, and slopes down to it at the bottom of the beat:
+never a flat plank. Both look a little shorter at the bottom of the beat, where they come toward us. Swung
+pieces are sampled through a Scale2x x3 (8x) copy (RotSprite style), so his feather lines stay crisp and in
+his colours. Where the turned near wing's trim was cut, its end is tidied: no knob above the wing's top edge,
+no 1 px teeth or notches, his dark grey and brown trim shadow by the background or the tail turned to the
+wing's own blue, a dark gold edge only beside his gold. The body rises 1 px every other frame (0, 0, -1, -1,
+-2, -2, -1, -1), his tail sways in a wave from the root and its tuft lifts and drops out of the near wing's
+way, his ribbon of chakra ripples, his light streak flows. His cyan wisps off the wing tips are carried
+(moved, never turned) with the tip they trail from, its lag included, and fade out while it is down; his
+other specks stream back as two cross-fading copies, so none blinks; a fading wisp or copy keeps all its px
+(at 50 alpha at least), so it stays one soft stroke. Frame 0 stays his picture pixel for pixel (only his
+claw tips keep his pale grey instead of a rim).
 
 Checks (the build fails on any): the light of every frame (alpha x luma summed), the mean luma of what it
 covers and the light outside the griffin against its neighbours (no flash); no speck changes by more than
 half its light in a frame; no see-through tear over the back; no straight wing edge longer than 10 px (or
 his own longest); the silhouette changes by at most 25 % a frame; the far wing turns at most 25 degrees a
-frame and how much of it shows changes by at most 40 % a frame; no pixel on the frame border.
+frame and how much of it shows changes by at most 40 % a frame; the far wing's top edge rises at least 10
+degrees to its tip while the tip is raised and falls at least 10 degrees at the bottom, and its tip is at
+most 6 px wide; the near wing's tip moves at most 26 px a frame; at least 120 tail px and 75 % of the tuft
+show in every frame; no blue rim on or beside a claw tip; no 1 px tooth on the near wing; no pixel on the
+frame border.
 
 Writes a TypeScript data module (palette + run-length rows) that tools/world-sprites/vfx-beast-griffin.ts
 decodes, so the build needs no image files. Deterministic (no randomness; numpy and PIL only).
@@ -88,6 +100,8 @@ STREAK_DIR = (-0.78, -0.62)  # along it, from the foot up and back
 CREST = [(211, 60), (231, 60), (231, 72), (211, 72)]
 # His beak and open mouth: the only place his mouth's dark red and pink may be used.
 BEAK = [(224, 78), (242, 78), (242, 96), (224, 96)]
+# His talons (both feet): his claw tips there are pale grey, and they keep that colour to the tip (no blue rim).
+TALON = [(211, 98), (244, 98), (244, 131), (211, 131)]
 # Where his two wings rise from the body: the patch above his back line between the near wing's shoulder and
 # the far wing's root behind the neck. The body keeps his pixels here as well (an underlay under the near
 # wing, over the far one), so a swung wing never uncovers a hole there: the wing roots stay where he painted
@@ -344,6 +358,7 @@ CREST_G = game_poly(CREST)
 ROOT_G = game_poly(ROOT_ZONE)
 UPPER_G = game_poly(UPPER)
 BEAK_G = game_poly(BEAK)
+TALON_G = game_poly(TALON)
 
 A, C = shrink(crop, cov_beast, S, SIZE, OANCHOR, SRC_ANCHOR)
 # His silhouette at the game scale: half or more of the pixel is his griffin (his soft rim colour only tints
@@ -469,6 +484,12 @@ OUTLINE_INDIGO = np.round(np.median(rim_ind, 0))
 # feathers' darker vanes, halfway between his deep rim and his pale tips.)
 OUTLINE_LIGHT = PAL[int(snap_idx(np.array([[[35.0, 94.0, 127.0]]], np.float32), PAL)[0, 0])].copy()
 IS_INDIGO = np.array([gr == 'indigo' for gr in PAL_GROUP])
+# The dark grey and brown of his trim's shadow (dark and unsaturated). In his picture they lie under the near
+# wing's gold trim; when the wing turns, the trim's end can come to lie by the background or the tail, where
+# they read as dirt, so there (and only in the beat frames) they take the nearest of his saturated blues.
+_sat = PAL.max(1) - PAL.min(1)
+IS_DIRTY = ((PAL @ LUMA) < 100) & (_sat < 40) & ~IS_MOUTH
+NOT_WING_BLUE = ~np.array([gr == 'blue' for gr in PAL_GROUP]) | (_sat < 40)
 print("palette", len(PAL), "outline", OUTLINE.astype(int).tolist(), 'indigo outline', OUTLINE_INDIGO.astype(int).tolist(), 'gold outline', OUTLINE_GOLD.astype(int).tolist(),
       'light rim', OUTLINE_LIGHT.astype(int).tolist(), 'mouth', MOUTH.astype(int).tolist())
 # Snapped in groups: the mouth's colours only inside his beak (so none of his navy wing or leg pixels can
@@ -608,26 +629,41 @@ for i, name in enumerate(PIECES):
 N = 8
 T = np.arange(N) / N
 # The beat (one slow wing beat per loop). Each wing turns about its own root; the swing eases in over `ease`
-# game px from it (so the wing bends there instead of shearing off the body), and the near wing's tips lag a
-# little behind (`flex`: up on the way down, down on the way up), most at mid-stroke and not at all near the
-# top, so frames 7, 0 and 1 stay close to his raised wings. Down the beat follows a cosine (the wings slow
-# at the top and the bottom, as a real beat does).
-# His far wing (behind) follows the near one a little less far (`deg`, per frame: at most 18 degrees a
-# frame), so it is always there, peeking above the near wing's gold trim with its pointed tip and its own
-# trim, the way he painted it, and it never pops in or out from behind the body. It has no lag: its frames
-# on the way down and on the way up are the same (1 = 7, 2 = 6, 3 = 5). In frames 2 and 6 (-18 degrees) its
-# leading edge still rises 6 degrees to its tip (24 in his picture), so it never reads as a flat slab.
+# game px from it (so the wing bends there instead of shearing off the body).
+# The near wing swings 62 degrees down at the bottom of the beat. Its timing is a cosine (slow at the top and the
+# bottom, as a real beat is) blended 60 % toward an even pace, so the mid-stroke frames do not rush: its root
+# turns 0, -13, -31, -49, -62 and back. Its tips lag behind (`flex` degrees x NEAR_LAG: they trail up on the
+# way down and down on the way up), the same over most of each stroke and not at all at the top and the
+# bottom, so the tip never moves more than about 25 px in a frame (on the way down and up alike) and it holds
+# a moment at each end of the beat while the arm turns.
+# His far wing (behind) follows the near one a little less far (`deg`, its root, per frame: at most 18 degrees
+# a frame), so it is always there, peeking above the near wing's gold trim, and never pops in or out. Its outer
+# half flexes up (`tipdeg`, the tip's own angle; one way, the same down and up, so 1 = 7, 2 = 6, 3 = 5): in
+# frames 1-2 and 6-7 its tip has turned only 1-6 degrees, so its leading edge still rises to a pointed tip, the
+# highest and narrowest point, the way he painted it (18-21 degrees of rise; 20 in his picture), never a flat
+# plank; in frames 3-5 it is straight again and slopes down to its tip (13-24 degrees).
+NEAR_SWING = 62.0
+NEAR_BLEND = 0.6
+NEAR_LAG = [0.0, 0.5, 0.8, 0.8, 0.0, -0.4, -0.75, -0.8]
+FAR_DEG = [0.0, -6.0, -18.0, -36.0, -46.0, -36.0, -18.0, -6.0]
+FAR_TIPDEG = [0.0, -1.0, -6.0, -36.0, -46.0, -36.0, -6.0, -1.0]
+FAR_TIPW = (16.0, 26.0)  # (the far wing's flex ramps in from 16 px out from its root to all of it at 42 px)
 WINGS = {
-    'near': {'root': SHOULDER, 'swing': 62.0, 'flex': 16.0, 'ease': 9.0, 'short': 0.14},
-    'far': {'root': FAR_ROOT, 'deg': [0.0, -6.0, -18.0, -36.0, -46.0, -36.0, -18.0, -6.0], 'flex': 0.0, 'ease': 14.0, 'short': 0.10},
+    'near': {'root': SHOULDER, 'swing': NEAR_SWING, 'flex': 8.0, 'ease': 9.0, 'short': 0.14},
+    'far': {'root': FAR_ROOT, 'deg': FAR_DEG, 'tipdeg': FAR_TIPDEG, 'tipw': FAR_TIPW, 'flex': 0.0, 'ease': 14.0, 'short': 0.10},
 }
-# The body rises with the downstroke, in whole px (up is negative): it lifts 1 px as the wings start down
-# and 2 px at the bottom of the beat, and sinks back at the top (frame 0). The 1 px steps fall on the
-# frames where the wings move least (7-0, 0-1, 3-4, 4-5), so the silhouette never jumps twice at once.
-BOB = [0, -1, -1, -1, -2, -1, -1, -1]
-# The tips' lag grows from TIPW[0] px out from a wing's root to full at TIPW[0] + TIPW[1]: the feathers flex,
-# the arm near the root does not, so the near wing's gold trim (and the far wing peeking above it) passes the
-# same places on the way down and on the way up.
+# The body rises with the downstroke, in whole px (up is negative), one px every other frame and each level
+# held for two frames: his picture and the next (0-1) lowest, the bottom of the beat (4-5) highest. So the head
+# never reverses its step at once (no twitch), and the steps fall on the frames where the silhouette changes
+# least otherwise (1-2, 3-4, 5-6, 7-0: the silhouette changes by at most 25 % a frame).
+BOB = [0, 0, -1, -1, -2, -2, -1, -1]
+# His tail sways in a wave from the root, and its tuft lifts as the near wing comes down over it (frames 1-4)
+# and drops as the wing comes back up under it (5-7), so the bright tuft clears the wing in every frame instead
+# of blinking out behind it (px at the tuft, up is positive).
+TAIL_LIFT = [0, 2, 4, 6, 3, -2, -7, -4]
+# The near wing's lag grows from TIPW[0] px out from its root to full at TIPW[0] + TIPW[1]: the feathers flex,
+# the arm near the root does not, so its gold trim (and the far wing peeking above it) passes the same places
+# on the way down and on the way up.
 TIPW = (25.0, 40.0)
 tr = to_game(TAIL_ROOT)
 wr_x = to_game((WISP_ROOT_X, 0))[0]
@@ -636,7 +672,11 @@ for w in WINGS.values():
     w['dist'] = np.hypot(XX + 0.5 - w['g'][0], YY + 0.5 - w['g'][1])
     e = np.clip(w['dist'] / w['ease'], 0, 1)
     w['easef'] = e * e * (3 - 2 * e)
-    w['tipw'] = np.clip((w['dist'] - TIPW[0]) / TIPW[1], 0, 1)
+    if 'tipdeg' in w:  # (the far wing's flex: eased in, a smoothstep)
+        e2 = np.clip((w['dist'] - w['tipw'][0]) / w['tipw'][1], 0, 1)
+        w['tipw'] = e2 * e2 * (3 - 2 * e2)
+    else:
+        w['tipw'] = np.clip((w['dist'] - TIPW[0]) / TIPW[1], 0, 1)
 
 
 def down(t):
@@ -645,26 +685,35 @@ def down(t):
 
 
 def lag(t):
-    """The tips' lag at phase t, -1..1: + on the way down (the tips trail up), - on the way up; ~0 near the top."""
-    return np.sin(2 * np.pi * t) * down(t) / 0.6495
+    """The near wing's tip lag at phase t (a frame's phase), -1..1: + on the way down (the tips trail up)."""
+    return NEAR_LAG[int(round(t * N)) % N]
+
+
+def down_near(t):
+    """How far down the near wing's beat is at phase t: the cosine, blended NEAR_BLEND toward an even pace."""
+    tri = 1 - abs(1 - 2 * (t % 1.0))
+    return (1 - NEAR_BLEND) * down(t) + NEAR_BLEND * tri
 
 
 def beat(t):
     """The near wing's swing at its root at phase t (screen degrees; negative swings it down and back)."""
-    return -WINGS['near']['swing'] * down(t)
+    return -WINGS['near']['swing'] * down_near(t)
 
 
 def wing_field(name, t, flex=True):
     """Inverse map for a wing at phase t: its turn about its root, eased in from the root, tips lagging
     (without the lag when `flex` is off: the wing's main swing alone)."""
     w = WINGS[name]
-    if 'deg' in w:  # (a table, one angle per frame)
-        theta = w['deg'][int(round(t * N)) % N]
+    if 'deg' in w:  # (a table, one angle per frame; the outer half's own angle in 'tipdeg')
+        fi = int(round(t * N)) % N
+        theta = w['deg'][fi]
         dn = abs(theta) / max(abs(v) for v in w['deg'])
+        ang = theta + (w['tipdeg'][fi] - theta) * w['tipw']
     else:
-        dn = float(down(t))
+        dn = float(down_near(t))
         theta = -w['swing'] * dn
-    a = np.deg2rad(w['easef'] * (theta + (w['flex'] * w['tipw'] * lag(t) if flex else 0.0)))
+        ang = theta + (w['flex'] * w['tipw'] * lag(t) if flex else 0.0)
+    a = np.deg2rad(w['easef'] * ang)
     px, py = w['g']
     rx, ry = XX + 0.5 - px, YY + 0.5 - py
     # Swung down toward us, the wing looks shorter: it is drawn up to `short` shorter along its length at
@@ -682,6 +731,8 @@ def tail_field(t):
     w = np.clip(d / 40.0, 0, 1) ** 1.4
     ph = d / 9.0
     dy = 2.2 * w * (np.sin(2 * np.pi * t - ph) - np.sin(-ph))
+    # (and its tuft lifts or drops out of the near wing's way, more toward the tuft)
+    dy = dy - TAIL_LIFT[int(round(t * N)) % N] * np.clip(d / 45.0, 0, 1) ** 1.2
     return XX + 0.5, YY + 0.5 - dy
 
 
@@ -705,8 +756,8 @@ def streak_field(t):
 
 
 # His specks. The cyan wisps trailing off his wing tips (and the few specks touching a wing's tip feathers)
-# belong to that wing: each rides with the point of the wing it trails from, so none is left behind in the
-# sky while the wing is down. They are only moved, never turned: a wisp stays his horizontal trail, leaving
+# belong to that wing: each rides with the point of the wing it trails from (its tips' lag included), so none
+# is left behind in the sky while the wing is down. They are only moved, never turned: a wisp stays his horizontal trail, leaving
 # the tip toward the back, and never becomes a slanted needle. The near wing's wisps fade out as its tips
 # drop below the back (frames 2-3) and back in as they rise (6-7), so they never stand in the light streak
 # or by the legs, and they are never drawn over the streak. The far wing's specks fade with how much of the
@@ -714,7 +765,9 @@ def streak_field(t):
 # griffin leaves them): each is two copies half a loop apart, each copy drifting DRIFT px over its life while
 # it fades in and out again (a tent, a quarter of its light per frame), so the two together always hold the
 # same light (no blinking, no flash) and the stream never jumps. At frame 0 (and at frame 4) each speck is
-# exactly where he painted it, at full strength, and its other copy is at zero.
+# exactly where he painted it, at full strength, and its other copy is at zero. A fading wisp or copy keeps all
+# its px (its 1 px gaps along the row closed), the faintest at WISP_FLOOR alpha, so it fades as one soft
+# stroke instead of breaking into dots.
 speck_lab = np.zeros((OH, OW), np.int32) - 1
 sp_mask = PA > ALEVELS[-1][0]
 for i, p in enumerate(components(sp_mask)):
@@ -756,6 +809,7 @@ for i in range(N_SPECKS):
     SPECK_ANCHOR.append(tuple(int(v) for v in pts[int(np.argmin(d2))]))
 # The near wing's wisps fade out while its tips are down (at most 0.4 of their light a frame: 102 of 255).
 WISP_FADE = [1.0, 0.7, 0.3, 0.0, 0.0, 0.0, 0.3, 0.7]
+WISP_FLOOR = 50  # (the faintest alpha a fading wisp's px keep: his streak's faintest level)
 
 
 def carried(field, yx):
@@ -774,6 +828,7 @@ def specks_at(k, t, bob, fields, far_frac, avoid):
     shows), and kept off `avoid` (his light streak)."""
     a_out = np.zeros((OH, OW), np.float32)
     c_out = np.zeros((OH, OW, 3), np.float32)
+    floor = np.zeros((OH, OW), bool)
     per = []
     for i in range(N_SPECKS):
         m = speck_lab == i
@@ -784,8 +839,13 @@ def specks_at(k, t, bob, fields, far_frac, avoid):
             for half in (0.0, 0.5):
                 u = (t + 0.5 + half) % 1.0
                 dxi = int(np.round(-DRIFT * (u - 0.5)))
-                a = shift_cols(a0, dxi) * (1.0 - abs(2.0 * u - 1.0))
+                w_ = 1.0 - abs(2.0 * u - 1.0)
+                a_full = shift_cols(a0, dxi)
+                a = a_full * w_
                 c = shift_cols(c0, dxi)
+                # (A fading copy keeps all its px too, at the faintest level at least: no dotted dashes.)
+                if 0 < w_ < 1:
+                    floor |= footprint(a_full) & (quant_alpha(a, ALEVELS) == 0)
                 per.append(int(quant_alpha(a, ALEVELS).max()))
                 take = a > a_out
                 a_out = np.where(take, a, a_out)
@@ -794,14 +854,26 @@ def specks_at(k, t, bob, fields, far_frac, avoid):
         else:
             dy, dx = carried(fields[own], SPECK_ANCHOR[i]) if k else (0, 0)
             fade = WISP_FADE[k] if own == 'near' else min(1.0, far_frac)
-            a = shift_rows(shift_cols(a0, dx), dy + bob) * fade
+            a_full = shift_rows(shift_cols(a0, dx), dy + bob)
+            a = a_full * fade
             a = np.where(avoid, 0, a) if k else a
             c = shift_rows(shift_cols(c0, dx), dy + bob)
+            # (A fading wisp keeps all its px: every px is scaled, and the ones that would drop out stay at the
+            # faintest level, so it fades as one soft stroke instead of breaking into dots.)
+            if 0 < fade < 1:
+                floor |= footprint(a_full) & (quant_alpha(a, ALEVELS) == 0) & ~(avoid if k else False)
         per.append(int(quant_alpha(a, ALEVELS).max()))
         take = a > a_out
         a_out = np.where(take, a, a_out)
         c_out = np.where(take[..., None], c, c_out)
-    return a_out, c_out, per
+    return a_out, c_out, per, floor
+
+
+def footprint(a):
+    """A speck's px (the ones shown at full strength), its 1 px gaps along the row closed: the stroke a fading
+    copy keeps whole."""
+    m = a > ALEVELS[-1][0]
+    return m | (np.roll(m, 1, 1) & np.roll(m, -1, 1))
 
 
 def quant_alpha(a, levels=ALEVELS):
@@ -851,7 +923,15 @@ def edge_of(m):
     return e
 
 
+def enclosed(m):
+    """Clear pixels a mask closes in (not 4-connected to the frame's border through clear pixels)."""
+    img = Image.fromarray(np.where(m, 1, 0).astype(np.uint8), 'L').copy()  # (a copy: fromarray's image is read-only)
+    ImageDraw.floodfill(img, (0, 0), 2)
+    return np.asarray(img) == 0
+
+
 FAR_VIS0 = []  # (the far wing's visible px in his picture, frame 0)
+GAPS0 = []  # (the see-through gaps of his picture, frame 0)
 
 
 def frame(k):
@@ -866,9 +946,9 @@ def frame(k):
         theta = beat(t)
         fields = {'body': (XX + 0.5, YY + 0.5), 'far': wing_field('far', t), 'near': wing_field('near', t),
                   'tail': tail_field(t), 'wisp': wisp_field(t)}
-        # (His wing-tip specks are carried by the wing's main swing, without the tips' lag: so they pass the
-        # same places on the way down and up, and are never carried into his light streak.)
-        carry = {'near': wing_field('near', t, flex=False), 'far': fields['far']}
+        # (His wing-tip specks are carried by the wing's whole turn, the tips' lag included, so each one always
+        # leaves the tip it trails from; they are kept off his light streak.)
+        carry = {'near': fields['near'], 'far': fields['far']}
     got = {}
     for n in PIECES:
         m, m8 = layers[n]
@@ -895,7 +975,64 @@ def frame(k):
             if not drop.any():
                 break
             opq &= ~drop
+    # Where the lowered near wing comes to lie on the tail it can close in a 1-2 px slit of background along
+    # its lower edge, over the back. That reads as a crack, not as one of his gaps, so it is filled (the wing
+    # lies on the tail there) and gets the deep blue of the edges on both sides of it.
+    slit = np.zeros_like(opq)
+    if k == 0:
+        GAPS0.append(enclosed(opq))
+    else:
+        new_gap = enclosed(opq) & ~shift_rows(GAPS0[0], bob) & shift_rows(UPPER_G, bob)
+        for p in components(new_gap):
+            if len(p) <= 40 and np.bincount(p[:, 1]).max() <= 2:
+                slit[p[:, 0], p[:, 1]] = True
+        opq |= slit
+        ids = np.where(slit, int(np.argmax(np.where(IS_MOUTH, -1e9, -((PAL - OUTLINE) ** 2).sum(1)))) + 1, ids)
     ids = np.where(opq, ids, 0)
+    if k:
+        def clean_dirty(ids, opq, top):
+            """(The near wing's trim end: his dark grey and brown shadow px within 2 px of the background or the
+            tail become the nearest of his saturated blues, the wing's own shadow, not a dirt crumb.)"""
+            near_px = opq & (top == PIECES.index('near'))
+            bare = ~opq | (top == PIECES.index('tail'))
+            bare = count_nb(count_nb(bare, N8 + ((0, 0),)) > 0, N8 + ((0, 0),)) > 0  # (within 2 px, square)
+            dirty = near_px & IS_DIRTY[np.clip(ids - 1, 0, len(PAL) - 1)] & bare
+            if dirty.any():
+                alt = snap_idx(PAL[np.clip(ids - 1, 0, len(PAL) - 1)], PAL, forbid=NOT_WING_BLUE[None, None, :]) + 1
+                ids = np.where(dirty, alt, ids)
+            return ids, int(dirty.sum())
+        ids, n_dirty = clean_dirty(ids, opq, top)
+        near_px = opq & (top == PIECES.index('near'))
+        # (And the trim's cut end must not stand up as a knob above the wing's top edge: trim-coloured px of the
+        # near wing above the running median (7 columns) of its top edge are taken off; what lies under them
+        # (the far wing, the tail, the body, or the background) shows instead.)
+        nmask = got['near'] > 0
+        cols_ = np.where(nmask.any(0), np.argmax(nmask, 0), OH)
+        pad_ = np.pad(cols_, 3, mode='edge')
+        med = np.median(np.stack([pad_[i:i + OW] for i in range(7)]), 0)
+        warm = (IS_DIRTY | (PAL[:, 0] > PAL[:, 2] + 8) | (_sat < 40))[np.clip(ids - 1, 0, len(PAL) - 1)]
+        knob = near_px & warm & (YY < med[None, :] - 0.5) & (np.abs(cols_ - med)[None, :] >= 1)
+        knob &= dilate(~opq, 1)
+        for _ in range(2):
+            more = near_px & warm & ~knob & (YY < med[None, :] - 0.5) & dilate(knob, 1) & dilate(~opq | knob, 1)
+            if not more.any():
+                break
+            knob |= more
+        if knob.any():
+            under_ids = np.zeros_like(ids)
+            under_top = np.full((OH, OW), -1, np.int64)
+            for n in ('far', 'tail', 'body', 'wisp'):
+                under_ids = np.where(got[n] > 0, got[n], under_ids)
+                under_top = np.where(got[n] > 0, PIECES.index(n), under_top)
+            ids = np.where(knob, under_ids, ids)
+            top = np.where(knob, under_top, top)
+            got['_top'] = top
+            opq &= ~(knob & (under_ids == 0))
+            got['near'] = np.where(knob, 0, got['near'])
+        got['_knob'] = int(knob.sum())
+        # (once more where taking a knob off bared the trim's shadow)
+        ids, n_dirty2 = clean_dirty(ids, opq, top)
+        got['_dirty'] = n_dirty + n_dirty2
     colr = PAL[np.clip(ids - 1, 0, len(PAL) - 1)]
     gold = opq & (colr[..., 0] > colr[..., 2] + 8) & (colr[..., 0] > 80)
     # His edge: a 1 px outline on the silhouette, deep blue (dark gold on and next to his gold).
@@ -916,8 +1053,10 @@ def frame(k):
     sa = shift_rows(bilinear(SA, ssx, ssy), bob)
     sc = shift_rows(bilinear(SC, ssx, ssy), bob)
     q_streak = quant_alpha(sa, ALEVELS_STREAK)
-    pa, pc, per = specks_at(k, t, bob, carry, far_frac, dilate(q_streak > 0, 1))
-    for qa, c, spal in ((q_streak, sc, SPAL_STREAK), (quant_alpha(pa, ALEVELS), pc, SPAL_SPECK)):
+    pa, pc, per, floor = specks_at(k, t, bob, carry, far_frac, dilate(q_streak > 0, 1))
+    q_speck = quant_alpha(pa, ALEVELS)
+    q_speck = np.where(floor & (q_speck == 0), WISP_FLOOR, q_speck).astype(np.uint8)
+    for qa, c, spal in ((q_streak, sc, SPAL_STREAK), (q_speck, pc, SPAL_SPECK)):
         put = qa > out[..., 3]
         out[put, :3] = spal[snap_idx(c, spal)][put].astype(np.uint8)
         out[put, 3] = qa[put]
@@ -926,6 +1065,20 @@ def frame(k):
     ring = edge | nedge
     got['_nedge'] = nedge
     gring = ring & (gold | (count_nb(gold, N8) >= 2))
+    # His claw tips: pale grey px of his talons next to their gold. They keep his colour to the tip (no rim),
+    # and the edge px beside them get the dark gold rim, never a blue one.
+    talon = shift_rows(TALON_G, bob)
+    # (His pale grey px in the talons, grown from the ones next to his gold toes along the claw: the whole hook.)
+    sat_ = colr.max(-1) - colr.min(-1)
+    pale = opq & talon & (sat_ < 45) & ((colr @ LUMA) > 85)
+    claw = pale & dilate(gold & (sat_ >= 45), 2)
+    for _ in range(12):
+        grown = pale & (count_nb(claw, N8) > 0)
+        if not (grown & ~claw).any():
+            break
+        claw |= grown
+    gring |= ring & talon & ~claw & (count_nb(claw, N8) > 0)
+    got['_claw'] = claw
     # His crest's spikes keep his colours to the tip (they are light on any ground), and where the hind foot
     # stands in his light streak its edge melts into the light, as he painted it (no dark ring there).
     crest = shift_rows(CREST_G, bob) & ((colr @ LUMA) > 90)
@@ -938,9 +1091,12 @@ def frame(k):
     for oy, ox in N4:
         beyond |= np.roll(np.roll(trim, oy, 0), ox, 1)
     beyond &= ~opq
+    # (A dark gold px left standing on its own above the trim's end is a tooth, not an edge: dropped.)
+    for _ in range(2):
+        beyond &= count_nb(opq | beyond, N4) >= 2
     # His open mouth keeps its dark red to the edge (his throat is the dark there, not a rim).
     mouth = IS_MOUTH[np.clip(ids - 1, 0, len(PAL) - 1)] & opq
-    line = ring & ~crest & ~foot & ~trim & ~mouth
+    line = ring & ~crest & ~foot & ~trim & ~mouth & ~claw
     # Where his own colour on the edge is bright (the pale feather tips), the rim is his mid blue, so his
     # glow is kept; elsewhere his deep blue (dark gold on and next to his gold).
     # (Bright: the edge pixel itself, or the griffin just inside it: the mean of its neighbours off the edge.)
@@ -960,8 +1116,33 @@ def frame(k):
     out[line & gring, :3] = OUTLINE_GOLD.astype(np.uint8)
     out[beyond, :3] = OUTLINE_GOLD.astype(np.uint8)
     out[beyond, 3] = 255
+    out[slit, :3] = OUTLINE.astype(np.uint8)
+    solid = opq | beyond
+    if k:
+        # (Along the near wing's gold trim where it lies on the silhouette, and at its cut end: no 1 px teeth
+        # standing up and no 1 px notches. A tooth goes, a notch is filled with the trim's dark gold edge.)
+        zone = dilate(nw & gold & dilate(~solid, 2), 2)
+        for _ in range(2):
+            tooth = zone & solid & (count_nb(~solid, N4) >= 3)
+            notch = zone & ~solid & (count_nb(solid, N4) >= 3)
+            if not (tooth.any() or notch.any()):
+                break
+            out[tooth] = 0
+            solid &= ~tooth
+            out[notch, :3] = OUTLINE_GOLD.astype(np.uint8)
+            out[notch, 3] = 255
+            solid |= notch
+        # (And the trim's own px left on the edge by that keep a dark gold edge, not cream on the background.)
+        bare = zone & solid & gold & nw & (count_nb(~solid, N4) >= 2)
+        out[bare, :3] = OUTLINE_GOLD.astype(np.uint8)
+        # (Where the trim's end meets the tail, the near wing's edge there is its mid blue edge over the tail,
+        # not a dark gold wedge: dark gold only right beside his gold.)
+        tail_px = solid & (top == PIECES.index('tail'))
+        wedge = (line & gring & nw & (count_nb(tail_px, N4) > 0) & (count_nb(gold & ~ring, N4) == 0))
+        out[wedge, :3] = OUTLINE_LIGHT.astype(np.uint8)
     got['_far_vis'] = far_vis
-    return out, theta, bob, opq | beyond, per, got
+    got['_slit'] = int(slit.sum())
+    return out, theta, bob, solid, per, got
 
 
 frames, thetas, bobs, solids, speck_alpha, pieces_at = [], [], [], [], [], []
@@ -999,13 +1180,6 @@ LIGHT = [light(f) for f in frames]
 # The light outside the griffin (his streak and his specks, on the panel) changes smoothly too: at most 30 %
 # from a frame to the next. And no speck changes by more than half its light in a frame.
 SOFT = [light(f, ~solids[k])[0] for k, f in enumerate(frames)]
-
-
-def enclosed(m):
-    """Clear pixels a mask closes in (not 4-connected to the frame's border through clear pixels)."""
-    img = Image.fromarray(np.where(m, 1, 0).astype(np.uint8), 'L').copy()  # (a copy: fromarray's image is read-only)
-    ImageDraw.floodfill(img, (0, 0), 2)
-    return np.asarray(img) == 0
 
 
 # No tears: no frame may open a see-through gap over the back, round the wing roots and the neck (UPPER) that
@@ -1046,7 +1220,66 @@ def longest_wing_run(k):
 
 RUNS = [longest_wing_run(k) for k in range(N)]
 RUN_MAX = max(10, RUNS[0])
-FAR_DEG = WINGS['far']['deg']
+
+
+def far_shape(k):
+    """The far wing as it shows (opaque px where it is the piece on top): the slope of its top edge (a straight
+    line fit over the 40 columns nearest its tip, the leftmost; degrees, + when it rises toward the tip) and
+    how wide its tip is: across its top 3 rows when the tip is raised (the tip is the highest point there), across
+    its 3 leftmost columns when it slopes down to the tip."""
+    ys_, xs_ = np.nonzero(TOPS[k] == PIECES.index('far'))
+    tops = {}
+    for x_, y_ in zip(xs_.tolist(), ys_.tolist()):
+        tops[x_] = min(tops.get(x_, 1 << 30), y_)
+    cx_ = np.array(sorted(tops))
+    cy_ = np.array([tops[x_] for x_ in cx_])
+    sel = cx_ < cx_.min() + 40
+    rise_ = float(np.degrees(np.arctan(np.polyfit(cx_[sel], cy_[sel], 1)[0])))
+    if FAR_TIPDEG[k] > -20:
+        r3 = xs_[ys_ < ys_.min() + 3]
+        width = int(r3.max() - r3.min() + 1)
+    else:
+        c3 = ys_[xs_ < xs_.min() + 3]
+        width = int(c3.max() - c3.min() + 1)
+    return rise_, width
+
+
+FAR_RISE, FAR_TIPW_PX = zip(*[far_shape(k) for k in range(N)])
+FAR_RISE0 = FAR_RISE[0]
+
+
+def near_tip(k):
+    """The near wing's tip: its px farthest from the shoulder."""
+    ys_, xs_ = np.nonzero(pieces_at[k]['near'] > 0)
+    gx, gy = WINGS['near']['g']
+    j = int(np.argmax(np.hypot(xs_ + 0.5 - gx, ys_ + 0.5 - gy)))
+    return int(xs_[j]), int(ys_[j])
+
+
+TIPS = [near_tip(k) for k in range(N)]
+TIP_TRAVEL = [float(np.hypot(TIPS[(k + 1) % N][0] - TIPS[k][0], TIPS[(k + 1) % N][1] - TIPS[k][1])) for k in range(N)]
+# His tail as it shows in each frame (px where it is on top), and its tuft (its last 14 columns): how much of
+# the tuft shows, out of the tuft in that frame.
+TAIL_VIS, TUFT_VIS = [], []
+for k in range(N):
+    full_ = pieces_at[k]['tail'] > 0
+    vis_ = TOPS[k] == PIECES.index('tail')
+    x0_ = int(np.nonzero(full_.any(0))[0].min())
+    TAIL_VIS.append(int(vis_.sum()))
+    TUFT_VIS.append(float(vis_[:, :x0_ + 14].sum() / max(full_[:, :x0_ + 14].sum(), 1)))
+# His claw tips: no blue rim on them or next to them (in his talons).
+BLUE_RIMS = np.array([OUTLINE, OUTLINE_LIGHT, OUTLINE_INDIGO], np.float32)
+CLAW_BLUE = []
+for k in range(N):
+    claw_ = pieces_at[k]['_claw']
+    rgb_ = frames[k][..., :3].astype(np.float32)
+    blue_ = (np.abs(rgb_[..., None, :] - BLUE_RIMS[None, None]).sum(-1) == 0).any(-1) & (frames[k][..., 3] == 255)
+    CLAW_BLUE.append(int((blue_ & (claw_ | (count_nb(claw_, N8) > 0))).sum()))
+# No 1 px tooth on the near wing's silhouette (its trim's cut end included).
+TEETH = [int((solids[k] & (count_nb(~solids[k], N4) >= 3) & (TOPS[k] == PIECES.index('near'))).sum()) for k in range(N)]
+print('frame  far rise  far tip w  near tip  tip travel  tail px  tuft shown  claw blue rim  near teeth')
+for k in range(N):
+    print(f'{k:5d}  {FAR_RISE[k]:8.1f}  {FAR_TIPW_PX[k]:9d}  {str(TIPS[k]):>8s}  {TIP_TRAVEL[k]:10.1f}  {TAIL_VIS[k]:7d}  {TUFT_VIS[k]:10.0%}  {CLAW_BLUE[k]:13d}  {TEETH[k]:10d}')
 print('frame  near deg  far deg  bob   light  mean luma  covered px  soft light  far wing px  new holes  silhouette step  wing edge run  speck alpha max')
 for k in range(N):
     print(f'{k:5d}  {thetas[k]:8.1f}  {FAR_DEG[k]:7.1f}  {bobs[k]:3d}  {LIGHT[k][0]:6.1f}  {LIGHT[k][1]:9.3f}  {LIGHT[k][2]:10d}  {SOFT[k]:10.1f}  '
@@ -1078,6 +1311,25 @@ for k in range(N):
         FAILS.append(f'far wing {k}->{j}: {FARVIS[k]} -> {FARVIS[j]} px showing')
     if RUNS[k] > RUN_MAX:
         FAILS.append(f'frame {k}: a straight wing edge {RUNS[k]} px long (his picture: {RUNS[0]})')
+    # The far wing never lies flat like a plank: its top edge rises at least 10 degrees to a pointed tip while
+    # the tip is raised (frames 0-2, 6-7) and falls at least 10 degrees to it at the bottom of the beat (3-5),
+    # and its tip is at most 6 px wide (his: 6).
+    if FAR_TIPDEG[k] > -20 and FAR_RISE[k] < 10:
+        FAILS.append(f'frame {k}: the far wing top edge rises only {FAR_RISE[k]:.1f} degrees to its tip')
+    if FAR_TIPDEG[k] <= -20 and FAR_RISE[k] > -10:
+        FAILS.append(f'frame {k}: the far wing top edge falls only {-FAR_RISE[k]:.1f} degrees to its tip')
+    if FAR_TIPW_PX[k] > max(6, FAR_TIPW_PX[0]):
+        FAILS.append(f'frame {k}: the far wing tip is {FAR_TIPW_PX[k]} px wide')
+    # The near wing's tip moves at most about 25 px a frame (no rushed stroke).
+    if TIP_TRAVEL[k] > 26:
+        FAILS.append(f'near wing tip {k}->{j}: moves {TIP_TRAVEL[k]:.1f} px')
+    # His tail's bright tuft never blinks out behind the near wing, and the tail never all but vanishes.
+    if TUFT_VIS[k] < 0.75 or TAIL_VIS[k] < 120:
+        FAILS.append(f'frame {k}: tail {TAIL_VIS[k]} px showing, tuft {TUFT_VIS[k]:.0%}')
+    if CLAW_BLUE[k]:
+        FAILS.append(f'frame {k}: {CLAW_BLUE[k]} px of blue rim on or next to his claw tips')
+    if TEETH[k]:
+        FAILS.append(f'frame {k}: {TEETH[k]} px of 1 px teeth on the near wing')
 if DEBUG:
     os.makedirs(DEBUG, exist_ok=True)
     path = os.path.join(DEBUG, 'griffin-frames.npz')
@@ -1172,11 +1424,11 @@ def write_module(anims, size, anchor, note):
 note = [
     "The chakra griffin (vfx_beasts/chakra), copied from the BEAST panel of his chakra sheet: his one",
     "picture (wings raised) is fly frame 0; 1-7 swing his two wings down and back up about their roots",
-    "(eased at the root; the near wing's tips lag, the far wing follows it a little less far and always",
-    "peeks above it), bob the body, sway his tail, ripple his ribbon of chakra, flow his light streak,",
-    "carry his wing-tip wisps (unturned, fading while the tips are down) and stream his other specks",
-    "back as cross-fading copies. Scale: his character is " + f"{np.mean(HIS_CHAR):.1f} px tall in that",
-    f"sheet, ours {CHAR_H:.0f}.",
+    "(eased at the root; the near wing's tips lag, the far wing follows it a little less far, its tip",
+    "flexing up so it keeps his pointed tip), bob the body, sway his tail (its tuft out of the wing's way),",
+    "ripple his ribbon of chakra, flow his light streak, carry his wing-tip wisps (unturned, fading while",
+    "the tips are down) and stream his other specks back as cross-fading copies. Scale: his character is",
+    f"{np.mean(HIS_CHAR):.1f} px tall in that sheet, ours {CHAR_H:.0f}.",
 ]
 write_module({'fly': frames}, (FW, FH), FANCHOR, note)
 
@@ -1208,7 +1460,10 @@ if DEBUG:
             'size': [FW, FH], 'anchor': list(FANCHOR), 'light': [round(l[0], 1) for l in LIGHT], 'mean_luma': [round(l[1], 4) for l in LIGHT],
             'covered': [l[2] for l in LIGHT], 'wing_deg': [round(t, 1) for t in thetas], 'bob': [int(v) for v in bobs],
             'soft_light': [round(v, 1) for v in SOFT], 'silhouette_step': [round(v, 3) for v in SIL], 'wing_edge_run': RUNS,
-            'far_deg': list(FAR_DEG), 'far_visible': FARVIS, 'wisp_fade': WISP_FADE,
+            'far_deg': list(FAR_DEG), 'far_tip_deg': list(FAR_TIPDEG), 'far_visible': FARVIS, 'wisp_fade': WISP_FADE,
+            'far_rise': [round(v, 1) for v in FAR_RISE], 'far_tip_width': list(FAR_TIPW_PX), 'near_lag': NEAR_LAG,
+            'near_tip_travel': [round(v, 1) for v in TIP_TRAVEL], 'tail_visible': TAIL_VIS, 'tuft_shown': [round(v, 3) for v in TUFT_VIS],
+            'tail_lift': TAIL_LIFT, 'claw_blue_rim': CLAW_BLUE, 'near_teeth': TEETH,
             'speck_owner': SPECK_OWNER, 'outline': OUTLINE.astype(int).tolist(), 'outline_indigo': OUTLINE_INDIGO.astype(int).tolist(), 'outline_gold': OUTLINE_GOLD.astype(int).tolist(),
             'outline_light': OUTLINE_LIGHT.astype(int).tolist(), 'mouth': MOUTH.astype(int).tolist(), 'bg': BG.astype(int).tolist()}
     path = os.path.join(DEBUG, 'griffin-ref.json')

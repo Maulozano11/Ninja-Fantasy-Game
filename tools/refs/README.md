@@ -32,15 +32,25 @@ folders.
   whole body is bent by one smooth field, so whatever a turned piece uncovers along its sides shows his
   own pixels, stretched a little, never a gap or a flat patch). In his prowl the big round near-thigh
   plate stays whole on the body and the shin and far hind leg turn behind it; in his lunge the tail and
-  near hind leg part along the dark gap he left between them. The body pitches, is scaled about the
+  near hind leg part along the dark gap he left between them, and the near hind foot bends at the
+  ankle. Each tail also bends along its own centre line (`TAIL_AXIS`) toward his other drawing's tail
+  (`curl`: every tail pixel keeps its place along the line and its distance from it, laid down on the
+  bent line, so it bends without stretching): his prowl's curl opens into a spear before the leap and
+  the lunge's spear curls back up into his hook as the drake lands, so the tail never swaps shape in one
+  frame. His far eye is stamped whole from his own game-scale pixels (his lemon, his shaded
+  olive-yellow, his olive rim), and his near eye keeps his dark burnt-orange socket rim. The body pitches, is scaled about the
   eye and is carried along the leap. His prowl head is drawn about 20% larger than his lunge head: the
   in-betweens grow or shrink the head toward his other drawing's (a similarity fitted on his eye, snout
   tip and horn tip), so at the two switches between his drawings (2->3 and 7->0) both sides show the
   same head, and the eye rises steadily from the prowl to the top of the leap. The body angles, scales
   and leg turns around the switches were chosen so that no step changes more than about 30% of the
-  silhouette. His dust grows off the ground behind the hind feet around the lunge, then drifts back,
-  settles and fades; his flung dirt keeps only his bright orange strokes (no dark JPEG rim), and the
-  clod rides the back spike in frames 4-5 and is kicked off in frame 6. The pieces, joints, loose dirt and placement points are the tables at the top of `drake()`;
+  silhouette. His dust grows off the ground behind the hind feet around the lunge, then breaks up as it
+  settles: the darkest soil goes first, the pile wears down from the top, and his cream boulders spread
+  apart and fade one by one, the small ones first. His flung dirt keeps his orange strokes (no dark JPEG
+  rim; thin streaks stay unbroken lines) and his pale pebble specks (in their own greys), and the clod
+  rides the back spike in frames 3-5 and is kicked off in frame 6. A pinhole or slit left between pieces
+  takes its darkest neighbour. The drake has more colours than the shared alphabet holds, so its data
+  module carries a longer alphabet of its own (Latin-1 letters after the shared symbols). The pieces, joints, loose dirt and placement points are the tables at the top of `drake()`;
   the frame table (pitch, bob, leg angles, dust) is at its end. With a fifth argument, a folder (it
   must exist), it writes the cut-out pieces, the segmentation, his pictures beside ours and onion
   skins.

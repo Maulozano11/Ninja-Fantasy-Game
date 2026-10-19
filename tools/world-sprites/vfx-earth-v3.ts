@@ -707,7 +707,7 @@ function withHalo(rocks: Layer, dust: Layer): [Layer, Layer] {
  * The frames rendered, every one but the key frame (his picture) patched against it: pinholes
  * where his picture has art are patched, and so is any clear pocket a frame encloses where his
  * picture has art (dust churned apart round a moving rock), filled in from its edge with the dust
- * round it (seal). Frames after `plugTo` (a one-shot's dissolving tail, whose dithered gaps are
+ * round it (seal). Frames after `plugTo` (a one-shot's last frame, whose wisps' gaps are
  * meant) only get the pinhole patch.
  */
 const finish = (frames: Layer[], keyIndex: number, plugTo = Infinity): Canvas[] =>
@@ -1184,9 +1184,10 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
   return plan.map((p, i) => {
     if (i === HIT_KEY) return union(under, dust, all);
     const sy = p.sy ?? p.s;
-    // The dust behind the rocks only shows inside the dust cloud's own outline.
+    // The dust behind the rocks only shows inside the dust cloud's own outline (bays up to about
+    // 14 px wide closed: a rock sitting in a bite at the cloud's edge leaves cloud, not a notch).
     const ds = scaled(dust, p.s, sy, K.ax, K.ay);
-    const sil = silhouette(ds, 4);
+    const sil = silhouette(ds, 7);
     const us = scaled(under, p.s, sy, K.ax, K.ay).filter((_v, x, y) => !!sil[y * ds.w + x]);
     let d = union(us, ds);
     if (p.t > 0) d = churn(d, p.t, { amp: 1.4, cell: 6, seed, flow: () => dustFlow });
@@ -1236,8 +1237,8 @@ function multiHit(): WorldSprite {
   const plan = HIT_PLAN.map((p) => ({ ...p, sy: 1 + (p.s - 1) * 0.6 }));
   const heart = (x: number) => 1 - Math.min(1, Math.abs(x - K.ax) / 50);
   // (both big chunks fly on to the right together, the upper one too, and fall, faster and
-  // faster: by the last frame the upper one has dropped about 15 px)
-  const fr = impact(K, seed, plan, [-1.2, 0], heart, 20, [26, 10], 1.4);
+  // faster: by the last frame the upper one has dropped about 20 px)
+  const fr = impact(K, seed, plan, [-1.2, 0], heart, 20, [26, 10], 1.8);
   return vfxSprite('multi_hit', 'Earth multi impact: rock bullet burst (anchor = impact point; dust kicks back left, chunks fly right)', [K.ax, K.ay], { hit: { frames: finish(fr, HIT_KEY, HIT_N - 2), fps: HIT_FPS, loop: false } });
 }
 
@@ -1247,7 +1248,7 @@ function multiHit(): WorldSprite {
  *     ground centre, his crystals thrust up out of the ground (the middle ones first) and the
  *     rocks fly out from the centre.
  *   - His picture holds for three frames (4-6), the dust stirring a little and the rocks drifting.
- *   - A long settle (7-15): the dust billows out, settles browner and dissolves, the rocks fall
+ *   - A long settle (7-15): the dust billows out, settles browner and fades rim first, the rocks fall
  *     and go, the crystals sink back into the ground and the shadow fades.
  * The dust behind his crystals (which his picture never shows) is a smooth fill from the cloud
  * round them, clipped to the cloud's own outline, so a sinking crystal uncovers his cloud.
@@ -1305,11 +1306,11 @@ function blast(): WorldSprite {
     { sh: 1.06, ds: 1.1, up: 0.36, bits: 1.48, t: 0.28, cool: 2, dim: 3, thin: 0, shDim: 2.4 },
     { sh: 1.06, ds: 1.11, up: 0.23, bits: 1.57, t: 0.32, cool: 3, dim: 3.7, thin: 0, shDim: 3.1 },
     { sh: 1.07, ds: 1.12, up: 0.12, bits: 1.66, t: 0.36, cool: 3, dim: 4.4, thin: 0, shDim: 3.9 },
-    { sh: 1.07, ds: 1.13, up: 0.04, bits: 1.75, t: 0.4, cool: 3, dim: 5, thin: 0.06, shDim: 4.6 },
+    { sh: 1.07, ds: 1.13, up: 0.04, bits: 1.75, t: 0.4, cool: 3, dim: 5, thin: 0, shDim: 4.6 },
     { sh: 1.08, ds: 1.14, up: 0, bits: 1.84, t: 0.44, cool: 4, dim: 5.6, thin: 0.2, shDim: 5.2 },
   ];
   // (in the settle the dust fades through its alpha, rim first, in soft bands (fadeSoft); only the
-  // last two frames also part it into wisps)
+  // last frame also parts it into wisps)
   // How far up a crystal's foot is ragged into the dust while it rises or sinks.
   const FOOT = 4;
   // Up per crystal: rising, the middle ones lead; sinking, all together.
@@ -1375,7 +1376,7 @@ function blast(): WorldSprite {
     }, (k) => (i > BLAST_KEY ? (i - 8 - rr(seed + 7, k, 0, 4)) / 4 : 0), seed + 8, 0.25);
     return union(sh, d, fl, ...ks, rs);
   });
-  return vfxSprite('blast', 'Earth blast: crystal spikes erupting in a dust cloud (anchor = ground centre)', [K.ax, K.ay], { blast: { frames: finish(fr, BLAST_KEY, BLAST_N - 3), fps: BLAST_FPS, loop: false } });
+  return vfxSprite('blast', 'Earth blast: crystal spikes erupting in a dust cloud (anchor = ground centre)', [K.ax, K.ay], { blast: { frames: finish(fr, BLAST_KEY, BLAST_N - 2), fps: BLAST_FPS, loop: false } });
 }
 
 // --- walls --------------------------------------------------------------------------------------------

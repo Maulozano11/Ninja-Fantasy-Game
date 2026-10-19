@@ -667,7 +667,7 @@ function slash(): WorldSprite {
   }
   const fr = range(FLY).map((i) => {
     const t = i / FLY;
-    const m = churn(main, t, { amp: 0.9, cell: 5, seed, movable, part });
+    const m = churn(main, t, { amp: 0.75, cell: 5, seed, movable, part });
     // (the spatter streams back; a bit that touches a crescent is part of its edge and stays)
     const ds = moveDrops(spatter, (k, cx, cy) => {
       if (fixedAt.has(Math.round(cy) * K.w + Math.round(cx))) return [0, 0];
@@ -796,13 +796,13 @@ function hit(): WorldSprite {
   // churn: how far his slime churns (px; 0 = still): the hold barely moves, so his picture and his
   // cell grid stay through frame 6 and only break up from frame 7.
   const plan = [
-    { s: 0.66, reach: 17, d: 0.66, g: 0.5, thin: 0, cool: 0, a: 1, churn: 0 },
-    { s: 0.8, reach: 26, d: 0.8, g: 0.7, thin: 0, cool: 0, a: 1, churn: 0 },
+    { s: 0.68, reach: 19, d: 0.68, g: 0.55, thin: 0, cool: 0, a: 1, churn: 0 },
+    { s: 0.81, reach: 27, d: 0.81, g: 0.72, thin: 0, cool: 0, a: 1, churn: 0 },
     { s: 0.92, reach: 35, d: 0.92, g: 0.87, thin: 0, cool: 0, a: 1, churn: 0 },
     { s: 1, reach: 99, d: 1, g: 1, thin: 0, cool: 0, a: 1, churn: 0 },
-    { s: 1, reach: 99, d: 1.02, g: 1, thin: 0, cool: 0, a: 1, churn: 0.45 },
-    { s: 1, reach: 99, d: 1.04, g: 0.98, thin: 0, cool: 0, a: 1, churn: 0.52 },
-    { s: 1, reach: 99, d: 1.1, g: 0.88, thin: 0, cool: 0.25, a: 1, churn: 0.75 },
+    { s: 1, reach: 99, d: 1.02, g: 1, thin: 0, cool: 0, a: 1, churn: 0.3 },
+    { s: 1, reach: 99, d: 1.04, g: 0.98, thin: 0, cool: 0, a: 1, churn: 0.32 },
+    { s: 1, reach: 99, d: 1.1, g: 0.88, thin: 0, cool: 0, a: 1, churn: 0.34 },
     { s: 1.03, reach: 99, d: 1.17, g: 0.75, thin: 0.14, cool: 0.6, a: 0.96, churn: 1 },
     { s: 1.05, reach: 99, d: 1.25, g: 0.61, thin: 0.25, cool: 1, a: 0.88, churn: 1.2 },
     { s: 1.08, reach: 99, d: 1.34, g: 0.47, thin: 0.34, cool: 1.4, a: 0.77, churn: 1.2 },
@@ -1159,6 +1159,34 @@ function sealFrame(c: Canvas, near: (x: number, y: number) => boolean): [Canvas,
 
 /** Holes left in the stone after sealing, per wall frame (the build fails on any). */
 const WALL_HOLES: string[] = [];
+/** Post tops that change shape during a rise (the build fails on any). */
+const TOP_FAULTS: string[] = [];
+
+/**
+ * His post tops (the capitals), outlined on his picture (rise frame 11 = idle frame 0), in frame px
+ * (pixel corners), for each post (0: left / near, 1: right / far). The straight wall's capitals
+ * are flat blocks; the 3/4 wall's are cubes (top face and the upper rows of the side faces). Every
+ * pixel of his picture inside an outline is that post's stone, except his slime lying over it.
+ */
+const POST_TOPS: Record<'wall' | 'wall_diag', [number, number][][]> = {
+  wall: [
+    [[11, 33], [34, 33], [34, 46], [11, 46]],
+    [[257, 33], [281, 33], [281, 46], [257, 46]],
+  ],
+  wall_diag: [
+    [[28, 124.5], [48.5, 134.5], [48.5, 147], [8, 147], [8, 136.5]],
+    [[200, 20.5], [223, 31.5], [223, 42], [205, 42], [191.5, 35.5], [191.5, 28.5]],
+  ],
+};
+/** Even-odd test of the point (x, y) against a polygon. */
+function inPoly(P: [number, number][], x: number, y: number): boolean {
+  let c = false;
+  for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+    const [x1, y1] = P[i], [x2, y2] = P[j];
+    if (y1 > y !== y2 > y && x < x1 + ((y - y1) * (x2 - x1)) / (y2 - y1)) c = !c;
+  }
+  return c;
+}
 
 /**
  * His framed slime barrier (straight or 3/4). `idle`: a soft light runs across his hexagon cells
@@ -1217,6 +1245,66 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
       }
     }
   }
+  // His post tops whole: every pixel of his picture inside a post top's outline (POST_TOPS) is that
+  // post's stone, so each capital rises as his shape from the first frame (his lit stone, his rims
+  // and highlight lines were split off into the slime). Only his slime lying over a top stays slime
+  // and comes in with the slime: bright slime that reaches into the outline from outside it
+  // (4-way, through bright pixels that are not the post's). Nothing of a top is rebuilt.
+  const brightSlime = (v: number) => {
+    if (!isKind(v, 'body') || FAM[v - 1] !== 'green') return false;
+    const c = PAL[v - 1];
+    return Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]) >= 45 && lumOf(c) >= 100;
+  };
+  const topIn = POST_TOPS[kind].map((P) => {
+    const m = new Uint8Array(K.w * K.h);
+    for (let y = 0; y < K.h; y++) for (let x = 0; x < K.w; x++) if (inPoly(P, x + 0.5, y + 0.5)) m[y * K.w + x] = 1;
+    return m;
+  });
+  /** His post-top pixels per post (frame 11): what each top must show in every rise frame. */
+  const topMask = topIn.map(() => new Uint8Array(K.w * K.h));
+  topIn.forEach((inside, k) => {
+    const Bk = blocks[k];
+    const layerAt = (i: number) => [slime, drops, bits].find((L) => L.v[i]) ?? null;
+    // (his slime over the top: bright slime reached from outside the outline)
+    const over = new Uint8Array(K.w * K.h), st: number[] = [];
+    const isBright = (i: number) => !Bk.v[i] && brightSlime(layerAt(i)?.v[i] ?? 0);
+    for (let i = 0; i < K.w * K.h; i++) if (!inside[i] && isBright(i)) (over[i] = 1), st.push(i);
+    while (st.length) {
+      const i = st.pop()!, x = i % K.w, y = (i / K.w) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const u = x + dx, w = y + dy;
+        if (u < 0 || w < 0 || u >= K.w || w >= K.h) continue;
+        const j = w * K.w + u;
+        if (!over[j] && isBright(j)) (over[j] = 1), st.push(j);
+      }
+    }
+    for (let i = 0; i < K.w * K.h; i++) {
+      if (!inside[i]) continue;
+      if (Bk.v[i]) {
+        topMask[k][i] = 1;
+        continue;
+      }
+      const L = layerAt(i);
+      if (!L || isKind(L.v[i], 'glow') || over[i]) continue;
+      Bk.v[i] = L.v[i];
+      L.v[i] = 0;
+      topMask[k][i] = 1;
+    }
+    // (where his slime lies over the corner between a top face and the side face under it, with
+    // the post's stone above and below it in the column, the side face runs up to the top face's
+    // edge, in the side face's own colour, under the slime: so no corner is chipped)
+    for (let x = 0; x < K.w; x++) for (let y = 0; y < K.h; y++) {
+      const i = y * K.w + x;
+      if (!inside[i] || !over[i] || Bk.v[i]) continue;
+      let up = false, below = 0;
+      for (let yy = y - 1; yy >= 0 && inside[yy * K.w + x]; yy--) if (Bk.v[yy * K.w + x] && !over[yy * K.w + x]) up = true;
+      for (let yy = y + 1; yy < K.h && yy <= y + 8 && !below; yy++) if (Bk.v[yy * K.w + x] && !over[yy * K.w + x]) below = Bk.v[yy * K.w + x];
+      if (up && below) {
+        Bk.v[i] = below;
+        topMask[k][i] = 1;
+      }
+    }
+  });
   const frame = union(...blocks);
   /**
    * His stone is lit green by the slime (his mossy green-grey stone): until the slime has come up,
@@ -1299,23 +1387,30 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
   // pace, riding with the beam while the beam is still coming up; the drops and the glow round
   // the bubbling top come up with the top over 8-10; his light on the ground grows evenly over
   // frames 2-10. Frame 11 is his picture.
-  const blk = blocks.map((B) => {
+  const blk = blocks.map((B, k) => {
     const f = feet(B), t = tops(B);
+    if (k < 2) {
+      // (a post's columns that do not reach down to its base, the capital's overhang, are cut at
+      // the ground under the post, taken from the nearest columns that do: so the whole capital
+      // comes up with the post instead of only its part above the shaft)
+      const low = Math.max(...f), g: number[] = [];
+      for (let x = 0; x < K.w; x++) if (f[x] >= 0 && f[x] >= low - 24) g.push(x);
+      const f0 = f.slice();
+      for (let x = 0; x < K.w; x++) {
+        if (f0[x] < 0 || f0[x] >= low - 24) continue;
+        let l = -1, r = -1;
+        for (const u of g) {
+          if (u < x) l = u;
+          else if (r < 0) r = u;
+        }
+        f[x] = l < 0 ? f0[r] : r < 0 ? f0[l] : Math.round(f0[l] + ((f0[r] - f0[l]) * (x - l)) / (r - l));
+      }
+    }
     let hmax = 0;
     for (let x = 0; x < K.w; x++) if (f[x] >= 0) hmax = Math.max(hmax, f[x] - t[x]);
     return { B, f, hmax };
   });
   const raw = feet(slime);
-  // Per block, its pixels next to his slime (and on which side), for the rise.
-  const slimeEdge = blk.map((b) => {
-    const out: [number, number, [number, number][]][] = [];
-    for (let y = 0; y < K.h; y++) for (let x = 0; x < K.w; x++) {
-      if (!b.B.get(x, y)) continue;
-      const offs = ([[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]).filter(([dx, dy]) => slime.get(x + dx, y + dy) && !frame.get(x + dx, y + dy));
-      if (offs.length) out.push([x, y, offs]);
-    }
-    return out;
-  });
   // The beam's foot line (a straight line under its lowest feet) and its thickness above it.
   let fa = 0, fb = 0;
   {
@@ -1332,7 +1427,25 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
   const beamFoot = (x: number) => fa + fb * x;
   const beamT = tops(blk[2].B);
   const beamTh = beamT.map((t, x) => (blk[2].f[x] < 0 ? -1 : beamFoot(x) - t)).filter((v) => v >= 0).sort((a, b) => a - b);
-  const beamH = beamTh[Math.floor(beamTh.length * 0.9)];
+  const beamH = beamTh[Math.floor(beamTh.length * 0.9)], beamMed = beamTh[beamTh.length >> 1];
+  // The beam as stone all along, for the rise: where his slime drips over its top edge (hidden
+  // under the slime in his picture), its edge is carried on from the nearest columns along its
+  // foot line, so before the slime comes up the beam's top edge is whole.
+  const beamFull = blk[2].B.clone();
+  for (let x = 0; x < K.w; x++) {
+    if (blk[2].f[x] < 0) continue;
+    for (let y = Math.ceil(beamFoot(x) - beamMed); y <= beamFoot(x); y++) {
+      if (blk[2].B.get(x, y) || !slime.get(x, y)) continue;
+      const off = beamFoot(x) - y;
+      for (let k = 1; k <= 24; k++) {
+        const v = [x - k, x + k].map((u) => blk[2].B.get(u, Math.round(beamFoot(u) - off))).find((w) => w > 0);
+        if (v) {
+          beamFull.set(x, y, v);
+          break;
+        }
+      }
+    }
+  }
   // The ground line under the slime: a straight line through the feet of its columns (the
   // highest feet, where the slime only shows above the posts, are dropped and the line refitted).
   let ga = 0, gb = 0;
@@ -1356,25 +1469,88 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
     if (!v) continue;
     (topS[x] < K.h && y < topS[x] + 20 && y < ground(x) - 10 ? topGlow : groundGlow).set(x, y, v);
   }
+  // The posts as stone all along, for the rise: in each row, where his slime lay over a post (its
+  // capital's top, between its own pixels), the stone is carried on from the nearest stone in the row.
+  const postFull = [0, 1].map((k) => {
+    const Bk = blk[k].B, out = Bk.clone();
+    for (let y = 0; y < K.h; y++) {
+      let x0 = -1, x1 = -1;
+      for (let x = 0; x < K.w; x++) if (Bk.get(x, y)) {
+        if (x0 < 0) x0 = x;
+        x1 = x;
+      }
+      for (let x = x0 + 1; x < x1; x++) {
+        if (Bk.get(x, y) || !slime.get(x, y) || topIn[k][y * K.w + x]) continue;
+        for (let k2 = 1; k2 < K.w; k2++) {
+          const v = Bk.get(x - k2, y) || Bk.get(x + k2, y);
+          if (v) {
+            out.set(x, y, v);
+            break;
+          }
+        }
+      }
+    }
+    // (and in each column, where his slime ran across the post's neck between its stone)
+    for (let x = 0; x < K.w; x++) {
+      let y0 = -1, y1 = -1;
+      for (let y = 0; y < K.h; y++) if (Bk.get(x, y)) {
+        if (y0 < 0) y0 = y;
+        y1 = y;
+      }
+      for (let y = y0 + 1; y < y1; y++) {
+        if (out.get(x, y) || !slime.get(x, y) || topIn[k][y * K.w + x]) continue;
+        for (let k2 = 1; k2 < K.h; k2++) {
+          const v = Bk.get(x, y - k2) || Bk.get(x, y + k2);
+          if (v) {
+            out.set(x, y, v);
+            break;
+          }
+        }
+      }
+    }
+    return out;
+  });
+  const full = [postFull[0], postFull[1], beamFull];
+  // Per block, its pixels next to his slime (and on which side), for the rise.
+  const slimeEdge = full.map((Bf) => {
+    const out: [number, number, [number, number][]][] = [];
+    for (let y = 0; y < K.h; y++) for (let x = 0; x < K.w; x++) {
+      if (!Bf.get(x, y)) continue;
+      const offs = ([[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]).filter(([dx, dy]) => slime.get(x + dx, y + dy) && !full.some((F) => F.get(x + dx, y + dy)));
+      if (offs.length) out.push([x, y, offs]);
+    }
+    return out;
+  });
   const ease = (u: number) => 1 - Math.pow(1 - clamp(u, 0, 1), 1.6);
+  let glowReach = 0;
+  for (let y = 0; y < K.h; y++) for (let x = 0; x < K.w; x++) if (groundGlow.get(x, y)) glowReach = Math.max(glowReach, y - beamFoot(x));
   const rise = range(RISE).map((i) => {
     if (i === RISE - 1) return idle[0];
     const pf = ease((i + 1) / 5), ps = clamp((i - 1.5) / 9.5, 0, 1), pt = clamp((i - 7) / 3, 0, 1);
     const dB = blk.map((b) => Math.round((1 - pf) * (b.hmax + 2)));
-    // (the 3/4 wall's beam runs along the diagonal: cut at each column's own (ragged) foot it would
-    // come up in dashes, so it is pushed up whole out of one straight foot line along its length,
-    // and its top edge comes up at once, unbroken)
+    // (the base beam: cut at each column's own (ragged) foot it would come up in dashes, so it is
+    // pushed up whole out of one straight foot line along its length (along the diagonal for the
+    // 3/4 wall), and its top edge comes up at once, unbroken)
     const push = (b: (typeof blk)[number]) => {
       const d = Math.round((1 - pf) * (beamH + 2));
-      return remap(b.B, (x, y) => (b.f[x] < 0 || y > beamFoot(x) + 0.5 ? null : [x, y - d]));
+      return remap(beamFull, (x, y) => (b.f[x] < 0 || y > beamFoot(x) + 0.5 ? null : [x, y - d]));
     };
-    const shift = blk.map((b, k) => (kind === 'wall_diag' && k === 2 ? Math.round((1 - pf) * (beamH + 2)) : dB[k]));
-    const fr = unlit(union(...blk.map((b, k) => (dB[k] === 0 ? b.B : kind === 'wall_diag' && k === 2 ? push(b) : remap(b.B, (x, y) => (b.f[x] < 0 || y > b.f[x] ? null : [x, y - dB[k]]))))), clamp((i - 3) / 7, 0, 1));
-    if (kind === 'wall_diag') {
-      // (the slime rides on the growing beam: its median thickness still to come)
-      const th = blk[2].f.map((f, x) => (f < 0 ? -1 : f - tops(blk[2].B)[x])).filter((v) => v >= 0).sort((a, b) => a - b);
-      dB[2] = Math.round((1 - pf) * th[th.length >> 1]);
+    const shift = blk.map((b, k) => (k === 2 ? Math.round((1 - pf) * (beamH + 2)) : dB[k]));
+    const posts = [0, 1].map((k) => remap(full[k], (x, y) => (blk[k].f[x] < 0 || y > blk[k].f[x] ? null : [x, y - dB[k]])));
+    const fr = unlit(union(posts[0], posts[1], shift[2] === 0 ? beamFull : push(blk[2])), clamp((i - 3) / 7, 0, 1));
+    // (check: each post top keeps his outline all the way up: above the ground, the post shows
+    // exactly his top's pixels, moved with the post, and nothing else inside the outline)
+    for (const k of [0, 1]) {
+      let bad = 0;
+      for (let y = 0; y < K.h; y++) for (let x = 0; x < K.w; x++) {
+        const j = y * K.w + x, yo = y + dB[k];
+        if (!topIn[k][j] || yo >= K.h || yo > blk[k].f[x]) continue;
+        if (!!posts[k].get(x, yo) !== !!topMask[k][j] || (topMask[k][j] && !fr.get(x, yo))) bad++;
+      }
+      if (bad) TOP_FAULTS.push(`${kind} rise[${i}] post ${k}: ${bad} px of its top differ from his outline`);
     }
+    // (the slime rides on the beam while the beam is still coming up)
+    dB[2] = shift[2];
     let sl: Layer | null = null;
     if (ps > 0) {
       const { s } = idleAt(fract((i - (RISE - 1)) / IDLE));
@@ -1391,8 +1567,12 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
       for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (isKind(sl!.get(x + dx, y + dy), 'body')) return [x, y];
       return null;
     }) : null;
-    const gk = clamp((i - 1) / 9, 0, 1);
-    const lt = union(glowMul(groundGlow, gk), tg);
+    // (his light on the ground has the slime as its source: it starts once the slime shows (frame
+    // 4), grows with how far the slime has filled, and spreads out from the wall's foot line, its
+    // reach growing with it and fading softly at its front)
+    const gk = clamp((ps - 0.16) / 0.73, 0, 1);
+    const reach = (glowReach + 14) * gk;
+    const lt = gk > 0 ? union(glowMul(groundGlow, (x, y) => gk * smooth(reach, reach - 14, Math.max(0, y - beamFoot(x)))), tg) : tg;
     const bt = gk > 0 ? cut(bits, (x, y) => grain(x, y, seed + 8) < gk, 0, false) : null;
     // (where his slime covered the stone's edge and it has not come up yet, the stone ends in his
     // dark stone rim, so a capital or a post is never left open on the side the slime hid)
@@ -1681,6 +1861,16 @@ export function poisonV3Sprites(): WorldSprite[] {
   ].map(edgeClean);
 }
 
+/** For review tools only: one of his pieces of a key frame, or one sprite built alone (nothing is written). */
+export const poisonV3Dev = {
+  piece: (name: string, p: string): Canvas => key(name).part(p).render(),
+  sprite: (name: string): WorldSprite[] =>
+    (({
+      bolt: () => [bolt()], stream: () => stream(), breath: () => [breath()], sphere: () => [sphere()], slash: () => [slash()], multi: () => [multi()], hit: () => [hit()], blast: () => [blast()],
+      wall: () => [wall('wall', 'wall', 8000)], wall_diag: () => [wall('wall_diag', 'wall_diag', 8100)], aura: () => aura(), wall_depth: () => [wallDepth()],
+    }) as Record<string, () => WorldSprite[]>)[name]().map(edgeClean),
+};
+
 function main(): void {
   // Staging only: refuse to run without WORLD_OUT, so nothing is ever written into src/assets.
   const worldOut = process.env.WORLD_OUT;
@@ -1690,6 +1880,7 @@ function main(): void {
   if (!existsSync(beastSrc) || !existsSync(oldManifest)) throw new Error(`vfx-poison-v3: the approved cobra is copied from ${beastSrc}; it is missing`);
   const sprites = poisonV3Sprites();
   if (WALL_HOLES.length) throw new Error('vfx-poison-v3: see-through stone:\n  ' + WALL_HOLES.join('\n  '));
+  if (TOP_FAULTS.length) throw new Error('vfx-poison-v3: post tops change shape in the rise:\n  ' + TOP_FAULTS.join('\n  '));
   const bad = sprites.flatMap(borderCheck);
   if (bad.length) throw new Error('vfx-poison-v3: art on the frame border:\n  ' + bad.join('\n  '));
   for (const s of sprites)

@@ -648,10 +648,12 @@ function windCrane(): WorldSprite {
 // Both stand on his one ground line with the eye at one x, so the lunge is a leap and his dust pile sits
 // on the ground; the anchor is the middle of the prowl's torso. tools/refs/beasts-from-ref.py (drake
 // mode) copies them and builds the in-betweens by turning his legs and tail about their joints (each
-// joint bends smoothly, so it shows his own pixels and never a gap), pitching and scaling the body and
+// joint bends smoothly, so it shows his own pixels and never a gap), bending the tail along its centre
+// line toward his other drawing's tail (his curl opens into the spear before the leap and curls back up
+// as the drake lands, so the tail never swaps shape in one frame), pitching and scaling the body and
 // carrying it along the leap, growing or shrinking his head toward his other drawing's (so both sides of
-// each switch between his drawings show the same head), and growing, drifting and settling his dust,
-// writing vfx-beasts-ref-earth.ts.
+// each switch between his drawings show the same head), and growing his dust, then breaking it up as it
+// settles, writing vfx-beasts-ref-earth.ts (its own longer palette alphabet; refFrames reads it the same).
 
 function stoneDrake(): WorldSprite {
   const f = refFrames(REF_EARTH);

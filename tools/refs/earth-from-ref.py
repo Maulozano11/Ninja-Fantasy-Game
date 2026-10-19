@@ -41,11 +41,12 @@ every key frame is HIS pixels:
   and only the new pixels fade, so all he drew stays at full strength; the blast's sides, its
   ground shadow and its two right-hand dust streaks (cut where his figure stood) fade over their
   last px. Each row reaches its own length and the alpha steps are dithered, so they end in wisps.
-  The end-on wall's side, cut by his panel border, ends on the dark gaps between whole leaves and
-  steps in and out like broken stone, outlined in his rim.
-* The hit's golden ray dashes glow: gold with no rim, their box-filtered edges translucent gold
-  (opacity = how much of the dash's gold a pixel holds over his panel), so no ray reads as a brown
-  stick with a dark outline on a lighter map.
+  The end-on wall's side, cut by his panel border, is broken back course by course at his own
+  joints (alternately 0-1 and 3-6 px), ends on whole leaves and is outlined in his rim.
+* The hit's golden ray dashes glow: his saturated gold (the median of his own bright, saturated
+  pixels along them) with no rim, their box-filtered edges translucent in that same gold (opacity =
+  how much of it a pixel holds over his panel, rounded, never dithered), so no ray reads as a grey
+  or brown stick with a dark outline on a lighter map. A dash touching a rock is traced ('rays').
 * Traced solid rock (the sphere's planet, the blast's crystals) has no see-through pixel inside,
   nor a pinhole in its rim.
 * Art he drew on the page outside the panels (the multi_hit burst) keeps its true colours and
@@ -66,8 +67,9 @@ every key frame is HIS pixels:
   so its anchor (x 32) is the joint: the game draws the head's anchor at the end of the line of
   tiles, and a line of tiles plus the head is his picture.
 * The aura is split for drawing round a character: 'aura_back' (behind) and 'aura' (in front: the
-  dust ring's front arc across the waist and the pebbles at the feet), using our character placed
-  on his.
+  dust ring's front arc across the waist and the pebbles at the feet). Where his figure stood, the
+  arc is rebuilt whole along his own centre line, in his band's colour, translucent, feathered at
+  its ends (removing his figure had left only bits of it), and his hands' skin goes.
 The result is indexed run-length data (tools/world-sprites/vfx-earth-v3-refdata.ts) that
 tools/world-sprites/vfx-earth-v3.ts decodes and animates. With a review directory it also writes
 his crops at game scale and before/after previews. Deterministic.
@@ -351,6 +353,8 @@ SPRITES = {
                       dust=[rect(586, 425, 802, 660)], dust_a=0.95, bits=60, ground=PAGE),
     'hit': dict(s=S_MED, anchor=(962, 562), area=[rect(811, 435, 1121, 679)],
                 dust=[rect(811, 435, 1121, 679)], dust_a=0.95, bits=60, dust_colors=18, dither_dust=True, glow_rays=True,
+                # (his long gold dash down-left from the lower-left rock: a dash, though it touches the rock)
+                rays=[[(879, 633), (885, 639), (915, 610), (909, 603)]],
                 # (the rock right of the core: its glowing top is rock, not dust; its rim is open)
                 solid=[ellipse(1031, 540, 19, 14)]),
     'blast': dict(s=2.39, anchor=(1412, 737), area=[rect(1159, 435, 1668, 797)],
@@ -375,7 +379,11 @@ SPRITES = {
     'aura': dict(s=2.41, anchor=(1072, 1175), area=[rect(929, 867, 1192, 1215)],
                  dust=[rect(929, 867, 1192, 1215)], dust_a=0.85, bits=30, aura=True, figure=AURA_FIGURE,
                  solid_auto=dict(zone=AURA_COLUMNS, sat=0.55, L=70, min=40),
-                 front_band=(988, 1060, 1124, 1098)),
+                 front_band=(988, 1060, 1124, 1098),
+                 # The ring's near arc across his waist, as he drew it: its centre line and half
+                 # thickness (his px), from the swirl past the hand on the left to the right column.
+                 band_line=[(984, 1056, 10.0), (1000, 1065, 10.0), (1015, 1071, 8.5), (1035, 1075.5, 6.5), (1060, 1078, 6.5),
+                            (1085, 1080, 5.5), (1105, 1082, 5.0), (1130, 1085, 4.5)], band_a=0.8),
     # The stream: his spike row, the tile ending where his head begins (x 975), the line 262.
     'stream': dict(s=158 / 64, anchor=(975, 262), area=[rect(650, 101, 1287, 324)],
                    dust=[[(978, 101), (1287, 101), (1287, 324), (978, 324)]], dust_l=(0, 150), dust_a=0.8,
@@ -795,6 +803,12 @@ def decide(cfg, g, W, H, ax, ay):
                     continue
                 dash |= m
                 gold[m] = gc
+        if cfg.get('rays'):
+            # (his dashes that touch a rock, traced: gold, no rim, whatever the box filter made of them)
+            x0_, y0_ = g['box'][:2]
+            sx_, sy_ = scale_of(cfg)
+            forced = poly_mask(H, W, cfg['rays'], x0_, y0_, 1 / sx_, 1 / sy_) & (solid | rim | dust)
+            dash |= forced
         # (a small bit of solid or rim touching a dash, with his gold round it, is part of the same
         # dash, split off by the box filter; a small bit that is dark through and through, out on
         # the clear beside a dash, is his panel shading, nearly invisible on his panel and a dark
@@ -833,16 +847,36 @@ def decide(cfg, g, W, H, ax, ay):
         near = dilate(dash, 1, nb=N8) & dust & ~dilate(other, 1, nb=N8) & ~dash
         cand = dash | near
         if near.any():
-            gw = dash.astype(np.float64)
-            gwb = gauss(gw, 1.0)
-            gb = gauss(gold * gw[..., None], 1.0) / np.maximum(gwb, 1e-6)[..., None]
+            gwb = gauss(dash.astype(np.float64), 1.0)
             near &= gwb >= 0.05
-            gold = np.where(near[..., None], gb, gold)
+            cand = dash | near
+        # His dashes' own gold, saturated: the median of his own pixels along the dashes (at his
+        # resolution) that are bright and saturated. The box filter's average of his pale core and
+        # his orange edges, or the brightest colour round a pixel, is a paler, greyer gold that turns
+        # beige over his panel. Every dash pixel takes this gold; its softness is carried in alpha.
+        x0_, y0_ = g['box'][:2]
+        sx_, sy_ = scale_of(cfg)
+        ky = np.clip(np.floor((np.arange(H0) - y0_) / sy_).astype(int), -1, H)
+        kx = np.clip(np.floor((np.arange(W0) - x0_) / sx_).astype(int), -1, W)
+        okr, okc = (ky >= 0) & (ky < H), (kx >= 0) & (kx < W)
+        hm = np.zeros((H0, W0), bool)
+        sub_ = dash[np.ix_(np.clip(ky, 0, H - 1), np.clip(kx, 0, W - 1))]
+        hm[np.ix_(okr, okc)] = sub_[np.ix_(okr, okc)]
+        Lh = lum(SHARP)
+        sat_ = (SHARP.max(-1) - SHARP.min(-1)) / np.maximum(SHARP.max(-1), 1)
+        pick = hm & (Lh >= 110) & (sat_ >= 0.4)
+        ray_gold = np.median(SHARP[pick], 0) if pick.sum() >= 20 else np.array([224.0, 180.0, 111.0])
+        print('hit ray gold (his, median of %d px): %s' % (int(pick.sum()), np.round(ray_gold).astype(int).tolist()))
+        off_g = BG - g['ground']                         # (art on his page: as in to_game)
+        gold = np.where(cand[..., None], ray_gold - off_g, gold)
         v = gold - g['ground']
         a = np.clip(((g['all'] - g['ground']) * v).sum(-1) / np.maximum((v * v).sum(-1), 1.0), 0, 1)
         core = cand & (a >= 0.8)
         glow = cand & ~core & (a >= 0.1)
-        g['col'] = np.where(core[..., None], np.clip(gold, 0, 255), g['col'])
+        # (a core pixel is his own colour there, un-blended from his panel: his pale-gold heart)
+        a3 = np.maximum(a, 1e-3)[..., None]
+        own = np.clip((g['all'] - (1 - a3) * g['ground']) / a3, 0, 255)
+        g['col'] = np.where(core[..., None], own, g['col'])
         solid = (solid & ~cand) | core
         rim &= ~cand
         dust = (dust & ~cand) | glow
@@ -1081,6 +1115,12 @@ def quantize(b, pal, body, rims, dust):
                 d2 = np.sqrt(dd[np.arange(len(ci)), c2])
                 ci = np.where(bay < d1 / np.maximum(d1 + d2, 1e-6), c2, ci)
             ai = np.floor(s_ + bay) - 1
+        if b['glow'].any():
+            # (his ray dashes' glow: one gold, its alpha rounded, never dithered, so a dash's
+            # translucent edge stays an even line of gold, not a speckled one)
+            isg = b['glow'][d]
+            ci = np.where(isg, order[:, 0], ci)
+            ai = np.where(isg, np.maximum(np.round(s_) - 1, 0), ai)
         keep_ = ai >= 0
         ai = np.clip(ai, 0, DUST_STEPS - 1).astype(int)
         v = np.where(keep_, nb + len(rims) + ci * DUST_STEPS + ai + 1, 0)
@@ -1552,12 +1592,14 @@ def fill_solid(idx, kinds, inside):
 
 def ragged_cut(idx, kinds, PALC, side):
     """Where his panel border cut a wall (the end-on wall's left side), the stone ran into a
-    ruler-straight edge through the vines and stones. The leaves the border cut in half go (each
-    small leaf cluster touching the cut), so the vines end in whole leaves; the stone's edge wanders
-    in and out by 0-3 px, like broken stone; whatever lies left of a removed leaf
-    goes too (no pocket opens behind it); and every pixel the new edge exposes that is not
-    already dark becomes his deepest rim. Returns the new grid, the leaf clusters removed and the
-    rows whose edge moved."""
+    ruler-straight edge through the vines and stones. It becomes a broken stone edge that follows
+    his courses: his horizontal joints are read along the cut (rows where his dark joint lines run
+    in from it), and each course between two joints is set back as a block, alternately a little
+    (0-1 px) and a lot (3-6 px), so the edge steps in and out at his joints like stones broken off
+    one by one, a block's two corners chipped by a pixel. The leaves the new edge would cut go
+    whole: a leaf cluster mostly beyond the edge is dropped, the rest stays whole, overhanging the
+    edge. Every pixel the new edge exposes that is not already dark becomes his deepest rim.
+    Returns the new grid, the leaf clusters removed and the courses found."""
     assert side == 'left'
     H, W = idx.shape
     k = kinds[idx]
@@ -1567,37 +1609,109 @@ def ragged_cut(idx, kinds, PALC, side):
     dark = art & ((k == 'outline') | ((k == 'body') & (L < 46)))
     cols = np.nonzero((art & np.isin(k, ['body', 'outline'])).any(0))[0]
     x0 = cols[0]
+    rows = np.nonzero(art[:, x0:x0 + 2].any(1))[0]
+    # His joints along the cut: rows where his dark lines fill the first 8 columns (a local peak).
+    frac = dark[:, x0:x0 + 8].mean(1)
+    peaks = [y for y in rows if frac[y] >= 0.5 and frac[y] >= frac[max(0, y - 2):y + 3].max()]
+    joints = []
+    for y in peaks:
+        if not joints or y - joints[-1] >= 7:
+            joints.append(y)
+    bounds = [rows[0]] + [j for j in joints if rows[0] + 4 < j < rows[-1] - 4] + [rows[-1] + 1]
+    e = np.full(H, x0)
+    for j in range(len(bounds) - 1):
+        ya, yb = bounds[j], bounds[j + 1]
+        hsh = np.sin(j * 78.233 + 12.9898) * 43758.5453
+        r_ = hsh - np.floor(hsh)
+        inset = int(round(r_)) if j % 2 == 0 else 3 + int(r_ * 3.999)
+        for y in range(ya, yb):
+            corner = 1 if (y == ya or y == yb - 1) and inset >= 3 else 0
+            e[y] = x0 + inset + corner
+    # Leaves: a green cluster the new edge cuts goes whole if it lies mostly beyond the edge, and
+    # stays whole (overhanging) otherwise.
     green = art & (k == 'body') & (rgb[..., 1] > rgb[..., 0] + 4) & (rgb[..., 1] > rgb[..., 2] + 10)
     lab, n = components(green, nb=N4)
+    xs_ = np.arange(W)[None, :]
+    beyond = (xs_ < e[:, None]) & np.isin(np.arange(H), rows)[:, None]
     removed = np.zeros((H, W), bool)
+    keep_leaf = np.zeros((H, W), bool)
     nleaf = 0
     for c in range(1, n + 1):
         m = lab == c
-        if not m[:, x0:x0 + 2].any():
+        cut_px = (m & beyond).sum()
+        if not cut_px:
             continue
-        if m.sum() <= 45 and np.nonzero(m)[1].max() <= x0 + 9:
+        if cut_px >= 0.5 * m.sum() and m.sum() <= 60:
             removed |= m
             nleaf += 1
-    # (the stone's edge: 0-3 px in, wandering gently, a pixel every few rows)
-    d = np.round(smooth_noise(H, 1, 9, 5)[:, 0] * 3.2 - 0.1).clip(0, 3).astype(int)
-    rows = np.nonzero(art[:, x0:x0 + 2].any(1))[0]
-    e = np.full(H, x0)
-    for y in rows:
-        r_ = np.nonzero(removed[y, x0:x0 + 10])[0]
-        e[y] = max(x0 + d[y], x0 + r_.max() + 1 if len(r_) else x0)
+        else:
+            keep_leaf |= m
     out = idx.copy()
-    gone = np.zeros((H, W), bool)
-    for y in rows:
-        gone[y, x0:e[y]] = art[y, x0:e[y]]
-        out[y, x0:e[y]] = 0
+    gone = (beyond & art & ~keep_leaf) | removed
+    out[gone] = 0
     kept = out > 0
-    exposed = kept & (shift(gone, 0, 1) | shift(gone, 1, 0) | shift(gone, -1, 0) | shift(gone, 1, 1) | shift(gone, -1, 1))
-    exposed[:, x0] |= kept[:, x0]
+    exposed = kept & ~keep_leaf & (shift(gone, 0, 1) | shift(gone, 1, 0) | shift(gone, -1, 0) | shift(gone, 1, 1) | shift(gone, -1, 1))
     rims = [i for i in range(1, len(kinds)) if kinds[i] == 'outline']
     rim = rims[int(np.argmin([lum(PALC[i - 1][:3]) for i in rims]))]
     fix = exposed & ~dark & np.isin(k, ['body', 'outline'])
     out[fix] = rim
-    return out, nleaf, int((e[rows] != x0).sum())
+    # (no pocket may open behind an overhanging leaf: an enclosed clear pixel takes his rim)
+    out[holes_of(out > 0)] = rim
+    return out, nleaf, len(bounds) - 1
+
+def waist_band(b, idx, kinds, PALC, cfg, dust_pal):
+    """The dust ring's near arc across his waist, rebuilt whole: where it crossed his figure only
+    bits of it survived removing the figure (a thin, broken strip). It is one translucent band along
+    his centre line (cfg band_line: his x, y and half thickness), from the swirl past the hand on
+    the left to the right column, its colour his band's own (the median of his tan band pixels over
+    the figure) and its opacity band_a, soft over its last px across and feathered over its two
+    ends into the columns (no straight cut). Where his own dust there is stronger, his stays; his
+    rock (the columns) is never covered. Returns the grid and the band's pixels (they go in front)."""
+    H, W = idx.shape
+    x0, y0 = b['g']['box'][:2]
+    sx, sy = scale_of(cfg)
+    hx = x0 + (np.arange(W)[None, :] + 0.5) * sx + np.zeros((H, 1))
+    hy = y0 + (np.arange(H)[:, None] + 0.5) * sy + np.zeros((1, W))
+    pts = np.array(cfg['band_line'], np.float64)
+    seg_len = np.hypot(np.diff(pts[:, 0]), np.diff(pts[:, 1]))
+    total = seg_len.sum()
+    best = np.full((H, W), np.inf)
+    half = np.zeros((H, W))
+    along = np.zeros((H, W))
+    acc = 0.0
+    for k in range(len(pts) - 1):
+        ax_, ay_, ah = pts[k]
+        bx_, by_, bh = pts[k + 1]
+        dx, dy = bx_ - ax_, by_ - ay_
+        t = np.clip(((hx - ax_) * dx + (hy - ay_) * dy) / max(dx * dx + dy * dy, 1e-9), 0, 1)
+        d = np.hypot(hx - (ax_ + t * dx), hy - (ay_ + t * dy))
+        sel = d < best
+        best = np.where(sel, d, best)
+        half = np.where(sel, ah + t * (bh - ah), half)
+        along = np.where(sel, (acc + t * seg_len[k]) / total, along)
+        acc += seg_len[k]
+    # coverage across (soft over its last game px) and the feathered ends
+    cov = np.clip((half - best) / sy + 0.5, 0, 1)
+    ends = np.clip(along / 0.1, 0, 1) * np.clip((1 - along) / 0.1, 0, 1)
+    ends = ends * ends * (3 - 2 * ends)
+    a = cfg.get('band_a', 0.8) * cov * ends
+    # his band's colour: his tan band pixels over the figure (cls 'front' inside the figure)
+    fig = poly_mask(H0, W0, [cfg['figure']])
+    tan = b['cls']['front'] & fig
+    col = np.median(SHARP[tan], 0) if tan.sum() >= 20 else np.array([196.0, 160.0, 105.0])
+    print('aura waist band: his colour %s (median of %d px)' % (np.round(col).astype(int).tolist(), int(tan.sum())))
+    a_max = cfg.get('dust_a', 0.9)
+    d0 = int(np.nonzero(kinds == 'dust')[0][0])
+    ci = int(nearest(col[None], dust_pal)[0])
+    st = np.round(a / a_max * DUST_STEPS)
+    k = kinds[idx]
+    rock = (k == 'body') | (k == 'outline')
+    cur = np.where(k == 'dust', (idx - d0) % DUST_STEPS + 1, 0)
+    put = (st >= 1) & ~rock & (st > cur)
+    out = idx.copy()
+    out[put] = d0 + ci * DUST_STEPS + np.clip(st[put], 1, DUST_STEPS).astype(int) - 1
+    print('aura waist band: %d px drawn (%d of them over clear)' % (int(put.sum()), int((put & (idx == 0)).sum())))
+    return out, (st >= 1) & ~rock
 
 
 result = {}
@@ -1616,7 +1730,7 @@ for name, b in built.items():
         print('%-11s see-through pixels filled inside his solid rock: %d (left: %d)' % (name, nf, int((inside & ~np.isin(kinds[idx], ['body', 'outline'])).sum())))
     for side in cfg.get('cut', ()):
         idx, nleaf, nmoved = ragged_cut(idx, kinds, PALC, side)
-        print('%-11s ragged edge where his panel cut it (%s): %d cut leaves removed, %d rows moved in' % (name, side, nleaf, nmoved))
+        print('%-11s broken edge where his panel cut it (%s): %d cut leaves removed, %d courses set back' % (name, side, nleaf, nmoved))
     if cfg.get('wall'):
         print('%-11s enclosed clear pixels after quantize: %d' % (name, holes_of(idx > 0).sum()))
     pal_json = [{'rgba': '#%02x%02x%02x%02x' % p[:4], 'kind': p[4]} for p in pal]
@@ -1658,7 +1772,20 @@ for name, b in built.items():
             np.savez(os.path.join(REVIEW, 'strip-stream.npz'), idx=idx, pal=PALC, ay=ay)
         continue
     if cfg.get('aura'):
+        if cfg.get('band_line'):
+            idx, band = waist_band(b, idx, kinds, PALC, cfg, dust)
         front = (b['g']['F'] >= 0.3) & (idx > 0)
+        if cfg.get('band_line'):
+            # In front goes the band (and the pebbles at his feet). Inside his figure, and on its edge
+            # where his hands poke out of the traced outline, only the band is the ring: the rest of
+            # his tan there is his hands' skin, which the colour test kept, and it goes with his
+            # figure. His band pixels beside the figure lie over the columns, where front or back
+            # looks the same: they stay behind, so the front layer ends on the band's feathered
+            # ends, not on a straight cut.
+            figg = grow_round(polys_game(b, [cfg['figure']]), 3)
+            feet = (np.arange(b['H']) >= b['ay'])[:, None]
+            idx = np.where(figg & ~band & ~feet & ((b['g']['F'] >= 0.3) | polys_game(b, [cfg['figure']])), 0, idx)
+            front = band & (idx > 0)
         rows = np.arange(b['H'])[:, None]
         front |= (rows >= b['ay']) & (idx > 0)                 # the pebbles at his feet
         front = dilate(front, 1, nb=N8) & (idx > 0) & ((rows >= b['ay']) | (b['g']['F'] >= 0.05) | front)

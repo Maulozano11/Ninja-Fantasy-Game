@@ -962,64 +962,68 @@ function flatVioletRun(c: Canvas): number {
 /** Frames with a straight violet top (the build fails on any). */
 const MIST_FAULTS: string[] = [];
 
+/** An alpha (0-1) put on his light's own alpha steps (0-255): the nearest step, none under half the first. */
+function stepAlpha(a: number): number {
+  const want = a * 255;
+  if (want < STEP_ALPHA[0] / 2) return 0;
+  let best = 0;
+  for (let s = 1; s < ALPHA_STEPS; s++) if (Math.abs(STEP_ALPHA[s] - want) < Math.abs(STEP_ALPHA[best] - want)) best = s;
+  return STEP_ALPHA[best];
+}
+
 /**
- * A field continued smoothly into `hole`: the solution of Laplace's equation that meets `val` on
- * every pixel round the hole (the pixels outside the frame are free), solved to convergence by
- * conjugate gradients, as the extractor fills his light behind his character: the smoothest surface,
- * with no bump, ridge or bright core inside and nothing in it brighter than the values round it.
+ * The blast's light: the pool's green glow on the ground round its right end. In his picture that
+ * light is the pool lighting the ground and his character's legs; read from his pixels and continued
+ * behind his removed character, it had become a block (a straight top and right edge, a wall of light
+ * above the ground). It is one soft ellipse on the ground plane instead, his colour, with no edge:
+ *  - centred inside the pool's right end (INSET px in from its rightmost column, on the rows that
+ *    reach it), so the light wraps that end of the pool and is brightest at the pool's edge, at his
+ *    light's level there (his light just outside the pool's right end);
+ *  - falling smoothly to nothing over the ground, by the ellipse's radius r (0 at the centre, 1 at its
+ *    rim) past the pool's edge (d = r - INSET / its right radius): exp(-S A (sqrt(1 + (d / A)^2) - 1)),
+ *    level at the pool's edge, then a steady fall of S per unit of r (the same share every pixel, so
+ *    its faint outer bands are as wide as its bright ones, and none closes up against his art). The
+ *    ellipse reaches right to his panel's edge (x 245), where his own light ended, and up the far
+ *    ground and down the near ground much less (foreshortened like the pool, the near side less);
+ *    it is under one step at its rim, so it ends on its own;
+ *  - under the pool it stays at the edge's level (no brighter), so the ground the pool leaves as it
+ *    breaks up is lit like the ground round it, with no bright core and no dark ghost.
+ * The frames put it on his light's alpha steps (stepAlpha), so it falls off in soft elliptical bands.
  */
-function laplaceFill(w: number, h: number, val: Float32Array, hole: Uint8Array): Float32Array {
-  const n = w * h, N4: [number, number][] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-  const diag = new Float64Array(n), b = new Float64Array(n);
+function groundGlow(pool: Layer, his: Light): Light {
+  const { w, h } = his;
+  const INSET = 28, RIGHT = 245, LEFT = 40, UP = 48, DOWN = 43, A = 0.2, S = 5.6;
+  const slime = (x: number, y: number) => {
+    const v = pool.get(x, y);
+    return v > 0 && !isKind(v, 'glow');
+  };
+  let xR = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (slime(x, y)) xR = Math.max(xR, x);
+  let sy = 0, ny = 0;
+  for (let y = 0; y < h; y++)
+    if (slime(xR, y) || slime(xR - 1, y)) {
+      sy += y + 0.5;
+      ny++;
+    }
+  const cy = sy / ny, cx = xR + 1 - INSET;
+  // (his light just outside the pool's right end: 8 px out, over the 7 rows round its centre)
+  let sa = 0, na = 0;
+  for (let y = Math.floor(cy) - 3; y <= Math.floor(cy) + 3; y++)
+    for (let x = xR + 1; x <= xR + 8; x++) {
+      sa += his.at(x, y);
+      na++;
+    }
+  const edge = sa / na, rx = RIGHT - cx, rEdge = INSET / rx;
+  const a = new Float32Array(w * h);
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
-      const i = y * w + x;
-      if (!hole[i]) continue;
-      for (const [dx, dy] of N4) {
-        const u = x + dx, v = y + dy;
-        if (u < 0 || v < 0 || u >= w || v >= h) continue;
-        diag[i]++;
-        if (!hole[v * w + u]) b[i] += val[v * w + u];
-      }
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+      const r = Math.hypot(dx / (dx > 0 ? rx : LEFT), dy / (dy > 0 ? DOWN : UP));
+      const d = Math.max(0, r - rEdge);
+      if (r < 1) a[y * w + x] = edge * Math.exp(-S * A * (Math.sqrt(1 + (d / A) ** 2) - 1));
     }
-  const op = (p: Float64Array, out: Float64Array) => {
-    for (let y = 0; y < h; y++)
-      for (let x = 0; x < w; x++) {
-        const i = y * w + x;
-        if (!hole[i]) {
-          out[i] = 0;
-          continue;
-        }
-        let s = diag[i] * p[i];
-        if (x > 0 && hole[i - 1]) s -= p[i - 1];
-        if (x < w - 1 && hole[i + 1]) s -= p[i + 1];
-        if (y > 0 && hole[i - w]) s -= p[i - w];
-        if (y < h - 1 && hole[i + w]) s -= p[i + w];
-        out[i] = s;
-      }
-  };
-  const x = new Float64Array(n), r = Float64Array.from(b), p = Float64Array.from(b), Ap = new Float64Array(n);
-  const dot = (a: Float64Array, c: Float64Array) => {
-    let s = 0;
-    for (let i = 0; i < n; i++) s += a[i] * c[i];
-    return s;
-  };
-  let rs = dot(r, r);
-  const bb = Math.max(rs, 1e-30);
-  for (let it = 0; it < 6000 && rs > 1e-14 * bb; it++) {
-    op(p, Ap);
-    const al = rs / dot(p, Ap);
-    for (let i = 0; i < n; i++) {
-      x[i] += al * p[i];
-      r[i] -= al * Ap[i];
-    }
-    const rn = dot(r, r);
-    for (let i = 0; i < n; i++) p[i] = r[i] + (rn / rs) * p[i];
-    rs = rn;
-  }
-  const out = Float32Array.from(val);
-  for (let i = 0; i < n; i++) if (hole[i]) out[i] = Math.max(0, x[i]);
-  return out;
+  if (process.env.POISON_DEBUG) console.log(`blast ground glow: centre ${cx.toFixed(1)},${cy.toFixed(1)}, pool's right end x ${xR}, his light there ${(edge * 255).toFixed(1)}`);
+  return new Light(w, h, his.rgb, a);
 }
 
 /**
@@ -1100,7 +1104,10 @@ const LIGHT_LOG: string[] = [];
 function blast(): WorldSprite {
   const K = key('blast'), seed = 7800;
   const col = K.part('main'), pool = K.part('pool'), mist = K.part('mist'), drops = K.part('drops'), glow = K.part('glow');
-  const light = Light.of('blast');
+  // (his light as read from his pixels: it sorts his glows and sets the ground glow's level; the
+  // light drawn is the ground glow round the pool's right end)
+  const hisLight = Light.of('blast');
+  const light = groundGlow(pool, hisLight);
   const glowG = glow.empty(), glowP = glow.empty();
   for (let i = 0; i < glow.v.length; i++) if (glow.v[i]) (FAM[glow.v[i] - 1] === 'purple' ? glowP : glowG).v[i] = glow.v[i];
   // (the round drop on top of his right splash stalk is the pool's, not the pillar's: the pieces of
@@ -1241,26 +1248,29 @@ function blast(): WorldSprite {
   // above the rising or sinking top. His glow round the pool's rim where his light does not reach
   // goes with the pool (scaled with it, and only where the frame's pool still has slime within 2 px).
   // His green glow inside his light (round the pool's right end, the stalks and their drops) is his
-  // light, read as glow at his slime's edge (the JPEG's soft edge of his dark rim): it is drawn only
-  // where the frame shows his art round it unchanged and in place (as in his picture); elsewhere his
-  // light continued under his art takes its place. The rest stays.
+  // light, read as glow at his slime's edge (the JPEG's soft edge of his dark rim): it takes the
+  // ground glow's share of his light there (so it goes where the ground glow does not reach: no green
+  // halo round the stalks over unlit ground), and is drawn only where the frame shows his art round
+  // it unchanged and in place (as in his picture); elsewhere the ground glow takes its place. The
+  // rest stays.
   const nearArt = (L: Layer, x: number, y: number, r: number) => {
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (L.get(x + dx, y + dy) && !isKind(L.get(x + dx, y + dy), 'glow')) return true;
     return false;
   };
   const poolAll = union(pool, stalkTop);
   const glowRim = glowG.empty(), glowCol = glowG.empty(), glowRest = glowG.empty(), glowLit = glowG.empty();
-  const lightNear = (x: number, y: number) => {
+  const lightNear = (l: Light, x: number, y: number) => {
     let m = 0;
-    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (dx * dx + dy * dy <= 9) m = Math.max(m, light.at(x + dx, y + dy));
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (dx * dx + dy * dy <= 9) m = Math.max(m, l.at(x + dx, y + dy));
     return m;
   };
   for (let y = 0; y < K.h; y++)
     for (let x = 0; x < K.w; x++) {
       const v = glowG.get(x, y);
       if (!v) continue;
-      (lightNear(x, y) >= 24 / 255 ? glowLit : nearArt(poolAll, x, y, 2) ? glowRim : nearArt(col, x, y, 3) ? glowCol : glowRest).set(x, y, v);
+      (lightNear(hisLight, x, y) >= 24 / 255 ? glowLit : nearArt(poolAll, x, y, 2) ? glowRim : nearArt(col, x, y, 3) ? glowCol : glowRest).set(x, y, v);
     }
+  const glowLitG = glowMul(glowLit, (x, y) => Math.min(1, lightNear(light, x, y) / Math.max(lightNear(hisLight, x, y), 1e-6)));
   const pillarGlow = (L: Layer, d: number, sxs: number, swell: number, ps: number, i: number): Layer => {
     const sh = pillarMove(L, d, sxs, swell, ps);
     if (d < 1) return sh;
@@ -1445,44 +1455,12 @@ function blast(): WorldSprite {
     });
   };
   const PEAK = 4, HOLD = 6;
-  // His light, continued under his art. His light was read from his pixels only where nothing of his
-  // art covered it, so it had no value under his slime: when the pool broke up, the stalks swayed or
-  // a drop flew off, the ground there showed unlit, cut along his art's old outline (a dark ghost of
-  // the pool inside the glow). Under everything of his art that covers it (his slime, its rim, the
-  // stalks and their drops, the mist, the soft glows that have no light of his under them) and under
-  // the few pixels next to his art that his picture leaves unlit inside the light, it is continued
-  // with the solution of Laplace's equation that meets his light round it (and nothing where his
-  // ground is dark), solved to convergence, as the extractor fills his light behind his character:
-  // no bright spot, no ridge, nothing brighter than his light round it, fading out under the pool.
-  // His light touching his art is taken from the light further out too (the JPEG's soft edge of his
-  // dark rim is in it). Frame 4 is still his picture: there, and wherever a later frame shows his art
-  // unchanged and in place round a pixel, the light is his own (and his glow inside his light is
-  // drawn); his glow round the pool's rim outside his light lies over his own light (nothing).
-  const lightF = (() => {
-    const a4 = stackC(K.w, K.h, glowG, glowP, col, pool, stalkTop, mist, drops).px;
-    const n = K.w * K.h, hole = new Uint8Array(n);
-    const al = (x: number, y: number) => (x < 0 || y < 0 || x >= K.w || y >= K.h ? 0 : a4[(y * K.w + x) * 4 + 3]);
-    for (let y = 0; y < K.h; y++)
-      for (let x = 0; x < K.w; x++) {
-        const j = y * K.w + x, a = al(x, y), A = light.a[j];
-        if (a > 0) hole[j] = 1;
-        else if (A > 0) {
-          // (his light touching his art: the soft edge of his dark rim is in it, so it is taken from
-          // the light further out)
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (al(x + dx, y + dy)) hole[j] = 1;
-        } else {
-          // (his unlit specks next to his art inside the light: a drop's dark halo, keyed out)
-          let art = false, m = 0;
-          for (let dy = -3; dy <= 3; dy++)
-            for (let dx = -3; dx <= 3; dx++) {
-              if (Math.abs(dx) <= 2 && Math.abs(dy) <= 2 && al(x + dx, y + dy)) art = true;
-              if (dx * dx + dy * dy <= 9) m = Math.max(m, light.at(x + dx, y + dy));
-            }
-          if (art && m >= 12 / 255) hole[j] = 1;
-        }
-      }
-    return new Light(K.w, K.h, light.rgb, laplaceFill(K.w, K.h, light.a, hole));
-  })();
+  // The light is the ground glow (groundGlow): a smooth field defined everywhere, under his art too,
+  // so wherever the pool breaks up, a stalk sways or a drop flies off, the ground there is lit like
+  // the ground round it (no dark ghost of his art's old outline, no bright core). His glow inside his
+  // light (its ground-glow share) is drawn only where the frame shows his art unchanged and in place
+  // round it, as on frame 4; his glow round the pool's rim outside his light lies over the ground glow
+  // on frame 4 and goes with the pool's slime after.
   /** The alpha of his frame-4 art (without the light), for the light's in-place test. */
   let art4: Uint8Array | null = null;
   const inPlaceOf: (Uint8Array | null)[] = [];
@@ -1665,24 +1643,22 @@ function blast(): WorldSprite {
     const cgl = glowMul(glowCol, p.light);
     const cg = i < PEAK ? pillarGlow(cgl, d, 0.74 + 0.26 * p.rise, 0.2, ps, i) : i > HOLD ? pillarGlow(cgl, d, slump(p.rise), 0.2, ps, i) : cgl;
     const rg0 = scaled(glowMul(glowRim, p.light), p.pool, p.pool, K.ax, K.ay);
-    const glowLitM = glowMul(glowLit, p.light);
+    const glowLitM = glowMul(glowLitG, p.light);
     // (the soft edges of his mist go with the mist)
     let gm: Canvas = glowP.render();
     if (i < PEAK) gm = p.mist > 0 ? fadeAbove(cut(moved(glowP, 0, d * 0.85), (x, y) => grain(x, y, seed + 4) < p.mist + 0.15, 0, false).render(), mistLine, 9) : new Canvas(K.w, K.h);
     else if (i > HOLD + 1) gm = glowMul(moved(glowP, 0, -(i - HOLD - 1) * 1.5), Math.max(0, 1 - (i - HOLD - 1) * 0.12)).render();
     const sp = i > HOLD ? cool(spray, (i - HOLD - 3) / 3, seed + 12) : spray;
-    // His light: spreads out with the pool from the pillar's foot as it comes up, then dims. It is
-    // his light continued under his art (lightF), except where the frame shows his own picture: his
-    // rim glow lies over his own light (from where that glow was drawn), and where his art round a
-    // pixel is his frame-4 art, unchanged and in place, the light there is his own.
-    const lA = light.mul(p.light).scaled(ps, K.ax, K.ay), lF = lightF.mul(p.light).scaled(ps, K.ax, K.ay);
+    // The ground glow: spreads out with the pool from the pillar's foot as it comes up (scaled with
+    // the pool, so it stays round the pool's right end), then dims; on his light's alpha steps.
+    const lF = light.mul(p.light).scaled(ps, K.ax, K.ay);
     let inPlace: Uint8Array | null = null;
     const compose = () => {
       const rg = rg0.empty();
       for (let y = 0; y < K.h; y++)
         for (let x = 0; x < K.w; x++) {
           const v = rg0.get(x, y);
-          // (only next to the frame's slime, and outside his light: inside it, his light continued
+          // (only next to the frame's slime, and outside the ground glow: inside it, the ground glow
           // takes its place)
           if (v && (nearArt(pl, x, y, 2) || nearArt(pb, x, y, 2)) && (i === PEAK || lF.a[y * K.w + x] < 20 / 255)) rg.set(x, y, v);
         }
@@ -1711,19 +1687,33 @@ function blast(): WorldSprite {
       const lt = new Canvas(K.w, K.h);
       for (let y = 0; y < K.h; y++)
         for (let x = 0; x < K.w; x++) {
-          const j = y * K.w + x;
-          let a: number;
-          // (under his glow drawn in place, his own light; elsewhere in place his own light too, unless
-          // it is a dip or a ridge of his (under half or over twice the light continued): on frame 4
-          // those are his picture, on the other frames they would stand out against the light
-          // continued round them as the art there moves)
-          const A = lA.a[j], F = lF.a[j];
-          if (lg.v[j] || (inPlace && inPlace[j] && (i === PEAK || (A >= 0.5 * F && A <= 2 * F)))) a = A;
-          else a = F;
-          const al = Math.round(clamp(a, 0, 1) * 255);
+          const al = stepAlpha(lF.a[y * K.w + x]);
           if (al) lt.set(x, y, [light.rgb[0], light.rgb[1], light.rgb[2], al]);
         }
-      const out = fadeTop(stackC(K.w, K.h, lt, gl, cg, rg, lg, gm, pb, c, pl, sp, ms, dr), 5, 16, seed + 20);
+      const stack = () => fadeTop(stackC(K.w, K.h, lt, gl, cg, rg, lg, gm, pb, c, pl, sp, ms, dr), 5, 16, seed + 20);
+      let out = stack();
+      // (the see-through line, alpha 128, falls between two of his light's steps (125 and 144): where
+      // his art and the light's own brighter band close off a bit of the dimmer band, that bit takes
+      // the brighter light round it, as the light runs on there, so no slit of dimmer light is left
+      // enclosed in the light)
+      const pocket = enclosed(out);
+      let raised = 0;
+      for (let pass = 0, more = true; more && pass < 8; pass++) {
+        more = false;
+        for (let j = 0; j < pocket.length; j++) {
+          if (!pocket[j] || art[j * 4 + 3] || lg.v[j] || !lt.px[j * 4 + 3]) continue;
+          const x = j % K.w, y = (j / K.w) | 0;
+          let m = 0;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) m = Math.max(m, lt.alpha(x + dx, y + dy));
+          if (m >= 128 && m > lt.px[j * 4 + 3]) {
+            lt.px[j * 4 + 3] = m;
+            more = true;
+            raised++;
+          }
+        }
+      }
+      if (raised) out = stack();
+      if (process.env.POISON_DEBUG && raised) console.log(`blast[${i}] light: ${raised} px of an enclosed slit take the light round it`);
       // (the settle churns and cools his slime: no checkerboard dither is left from it)
       return i > HOLD ? dechecker(out) : out;
     };
@@ -1773,7 +1763,7 @@ function blast(): WorldSprite {
         if (ip && ip[j] && his[j]) own++;
         else {
           bad++;
-          if (process.env.POISON_DEBUG) console.log(`  light hole blast[${i}] at ${j % K.w},${(j / K.w) | 0}: alpha ${f.px[j * 4 + 3]} rgb ${f.px.slice(j * 4, j * 4 + 3).join(',')} his ${light.a[j].toFixed(3)} fill ${lightF.a[j].toFixed(3)} inPlace ${ip ? ip[j] : '-'} hisHole ${his[j]} rim ${glowRim.v[j]} rest ${glowRest.v[j]} col ${glowCol.v[j]} lit ${glowLit.v[j]}`);
+          if (process.env.POISON_DEBUG) console.log(`  light hole blast[${i}] at ${j % K.w},${(j / K.w) | 0}: alpha ${f.px[j * 4 + 3]} rgb ${f.px.slice(j * 4, j * 4 + 3).join(',')} ground glow ${light.a[j].toFixed(3)} inPlace ${ip ? ip[j] : '-'} hisHole ${his[j]} rim ${glowRim.v[j]} rest ${glowRest.v[j]} col ${glowCol.v[j]} lit ${glowLit.v[j]}`);
         }
       }
     LIGHT_LOG.push(`blast[${i}]: ${bad} px darker than half the light round them${own ? ` (his own picture, in place: ${own} px)` : ''}`);

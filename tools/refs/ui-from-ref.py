@@ -28,6 +28,7 @@ SCALE = 1600 / 1024
 
 # name: (x0, y0, x1, y1) in his picture (x1, y1 exclusive), and what the piece is.
 BOXES = {
+    'top_centre': ((290, 0, 720, 100), 'top centre: chains, target plaque, round medallion, turn row'),
     'target_bar': ((386, 18, 652, 46), 'chained target plaque with the red bar'),
     'target_end': ((386, 18, 420, 46), 'left end of the target plaque'),
     'target_name': ((430, 6, 606, 25), 'target name over the plaque'),

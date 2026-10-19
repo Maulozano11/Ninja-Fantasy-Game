@@ -163,6 +163,31 @@
      "loop": true
     }
    }
+  },
+  "wind": {
+   "label": "Wind crane",
+   "file": "wind.png",
+   "frameW": 166,
+   "frameH": 123,
+   "anchor": [
+    95,
+    69
+   ],
+   "meters": [
+    2.6,
+    2
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
   }
  }
 }

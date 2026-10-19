@@ -293,8 +293,20 @@ describe('the hydra', () => {
   });
 });
 
-describe('Mirai: Eye of Tomorrow', () => {
+describe('Mirai: Eye of Tomorrow, Premonitory Evasion, Pursuing Flame', () => {
   const mirai = (dojutsu: ShinobiCharacter['dojutsu'] = 'None') => hero({ id: 'm', name: 'Ren', clan: 'Mirai', dojutsu });
+
+  /** A rogue next to a player Mirai strikes it on its turn: the first seed whose blow lands. */
+  function struck(before: (s: BattleState) => void = () => {}): ReturnType<typeof applyAction> {
+    for (let seed = 1; seed < 60; seed++) {
+      const s = turnOf(createBattle(setup({ seed, party: [{ character: mirai(), pos: { x: 8, z: 10 } }] })).state, 'rogue_0');
+      place(s, 'rogue_0', { x: 9.5, z: 10 });
+      before(s);
+      const out = ok(applyAction(s, { type: 'attack', unit: 'rogue_0', target: 'm' }));
+      if (out.events.some((e) => e.t === 'attack' && e.roll.success)) return out;
+    }
+    throw new Error('no seed hits');
+  }
 
   it('reads what each enemy in sight will do next', () => {
     const { state } = createBattle(setup({ party: [{ character: mirai(), pos: { x: 8, z: 10 } }] }));
@@ -310,6 +322,141 @@ describe('Mirai: Eye of Tomorrow', () => {
     const s = turnOf(state, 'rogue_0');
     const plan = s.units.rogue_0.intent!;
     assert.deepEqual(planIntent(s, s.units.rogue_0)?.kind, plan.kind);
+  });
+
+  it('the plan says where the enemy will walk, and it walks exactly there', () => {
+    const { state } = createBattle(setup({ party: [{ character: mirai(), pos: { x: 8, z: 10 } }], enemies: [{ kind: 'rogue', pos: { x: 33, z: 10 } }] }));
+    assert.ok(dist(state.units.rogue_0.pos, state.units.m.pos) > 23);
+    const plan = state.units.rogue_0.intent!;
+    assert.ok(plan.to, 'a far enemy plans its walk');
+    // Nothing changed before its turn: it goes where the Eye showed.
+    const s = turnOf(state, 'rogue_0');
+    const a = aiAction(s);
+    assert.ok(a?.type === 'move');
+    assert.deepEqual(a.to, cellOf(plan.to));
+    assert.deepEqual(ok(applyAction(s, a)).state.units.rogue_0.pos, plan.to);
+    // Close enough to act from where it stands, it plans no walk.
+    assert.equal(createBattle(setup({ party: [{ character: mirai(), pos: { x: 8, z: 10 } }] })).state.units.rogue_0.intent?.to, undefined);
+    // Two enemies never plan to stop on the same spot (the raider's best one is the rogue's).
+    const pair = createBattle(setup({ party: [{ character: mirai(), pos: { x: 7, z: 10 } }], enemies: [{ kind: 'rogue', pos: { x: 19, z: 9.5 } }, { kind: 'raider', pos: { x: 22, z: 10.5 } }] })).state;
+    const [p0, p1] = [pair.units.rogue_0.intent?.to, pair.units.raider_0.intent?.to];
+    assert.ok(p0 && p1);
+    assert.notDeepEqual(cellOf(p0), cellOf(p1));
+  });
+
+  it('Premonitory Evasion: a player Mirai is asked, steps aside and the blow misses', () => {
+    const hit = struck();
+    assert.equal(hit.state.pending?.kind, 'evasion');
+    assert.ok(hit.events.some((e) => e.t === 'reactionAsk'));
+    const m = hit.state.units.m;
+    const take = ok(applyAction(hit.state, { type: 'react', unit: 'm', take: true }));
+    const after = take.state.units.m;
+    assert.equal(after.hp, m.hp);
+    const d = dist(after.pos, m.pos);
+    assert.ok(d >= 1 && d <= 1.6, `stepped ${d} m`);
+    assert.equal(after.chakra, m.chakra - 2);
+    assert.equal(after.turn.reaction, false);
+    assert.ok(take.events.some((e) => e.t === 'evade' && e.unit === 'm'));
+    assert.ok(!take.events.some((e) => e.t === 'damage'));
+    // The step provokes no opportunity attack.
+    assert.equal(take.state.pending, undefined);
+  });
+
+  it('letting Evasion go offers Kawarimi for the same blow', () => {
+    const hit = struck((s) => {
+      s.units.m.jutsus.push('substitution_kawarimi');
+      s.units.m.armed = false;
+    });
+    const p = hit.state.pending;
+    assert.ok(p?.kind === 'evasion');
+    const no = ok(applyAction(hit.state, { type: 'react', unit: 'm', take: false }));
+    const k = no.state.pending;
+    assert.ok(k?.kind === 'kawarimi');
+    assert.equal(k.hit.amount, p.hit.amount);
+    assert.equal(k.hit.source, 'rogue_0');
+    assert.equal(no.state.units.m.chakra, hit.state.units.m.chakra);
+    // Letting both go: the blow lands.
+    const land = ok(applyAction(no.state, { type: 'react', unit: 'm', take: false }));
+    assert.ok(land.state.units.m.hp < hit.state.units.m.hp);
+  });
+
+  it('is not offered against an area, a blow from hiding, or once the reaction is spent', () => {
+    // A fireball is an area, not one attack.
+    const { state } = createBattle(setup({ party: [{ character: mirai(), pos: { x: 8, z: 10 } }] }));
+    const fire = ok(applyAction(turnOf(state, 'rogue_0'), { type: 'jutsu', unit: 'rogue_0', jutsu: 'fireball_goukakyu', at: { ...state.units.m.pos } }));
+    assert.ok(fire.events.some((e) => e.t === 'damage' && e.unit === 'm'));
+    assert.ok(!fire.state.pending && !fire.events.some((e) => e.t === 'evade'));
+    // From hiding: the Mirai never saw it coming.
+    const unseen = struck((s) => {
+      s.units.rogue_0.cond.hidden = 30;
+    });
+    assert.equal(unseen.state.pending, undefined);
+    assert.ok(unseen.events.some((e) => e.t === 'damage' && e.unit === 'm'));
+    // Once a round: the reaction went on the first blow, so the second one lands.
+    const first = ok(applyAction(struck().state, { type: 'react', unit: 'm', take: true })).state;
+    assert.equal(first.units.m.turn.reaction, false);
+    let landed = false;
+    for (let seed = 1; seed < 60 && !landed; seed++) {
+      const t = structuredClone(first);
+      t.seed = seed;
+      t.units.rogue_0.turn.action = true;
+      place(t, 'rogue_0', t.units.m.pos);
+      const again = ok(applyAction(t, { type: 'attack', unit: 'rogue_0', target: 'm' }));
+      if (!again.events.some((e) => e.t === 'attack' && e.roll.success)) continue;
+      landed = true;
+      assert.equal(again.state.pending, undefined);
+      assert.ok(again.state.units.m.hp < first.units.m.hp);
+    }
+    assert.ok(landed, 'some seed lands the second blow');
+  });
+
+  it('an enemy Mirai steps aside on its own from a blow that would drop it', () => {
+    let hit: ReturnType<typeof applyAction> | undefined;
+    let chakra = 0;
+    for (let seed = 1; seed < 60 && !hit; seed++) {
+      const s = turnOf(createBattle(setup({ seed })).state, 'a');
+      place(s, 'rogue_0', { x: 9.5, z: 10 });
+      s.units.rogue_0.hp = 1;
+      chakra = s.units.rogue_0.chakra;
+      const out = ok(applyAction(s, { type: 'attack', unit: 'a', target: 'rogue_0' }));
+      if (out.events.some((e) => e.t === 'attack' && e.roll.success)) hit = out;
+    }
+    assert.ok(hit, 'some seed lands a hit');
+    assert.equal(hit.state.units.rogue_0.hp, 1);
+    assert.equal(hit.state.units.rogue_0.chakra, chakra - 2);
+    assert.ok(hit.events.some((e) => e.t === 'evade' && e.unit === 'rogue_0'));
+  });
+
+  it('Katon: Pursuing Flame: Mirai only, 3 chakra, 12 m, a DEX save with disadvantage for half', () => {
+    const duel = (clan: ShinobiCharacter['clan'], far: number): BattleState => {
+      const s = turnOf(createBattle(setup({ party: [{ character: hero({ id: 'm', clan }), pos: { x: 8, z: 10 } }], enemies: [{ kind: 'raider', pos: { x: 20, z: 10 } }] })).state, 'm');
+      s.units.m.pos = { x: 8.25, z: 10.25 };
+      s.units.raider_0.pos = { x: 8.25 + far, z: 10.25 };
+      return s;
+    };
+    const cast = (s: BattleState) => applyAction(s, { type: 'jutsu', unit: 'm', jutsu: 'katon_pursuing_flame', at: { ...s.units.raider_0.pos }, target: 'raider_0' });
+    assert.equal(cast(duel('Ryusei', 12)).reason, 'unknownJutsu');
+    assert.equal(cast(duel('Mirai', 12.5)).reason, 'outOfRange');
+    const s = duel('Mirai', 12);
+    assert.ok(lineOfSight(s, s.units.m.pos, s.units.raider_0.pos));
+    const out = ok(cast(s));
+    assert.equal(out.state.units.m.chakra, s.units.m.chakra - 3);
+    assert.equal(out.state.units.m.turn.action, false);
+    const save = out.events.find((e) => e.t === 'save' && e.unit === 'raider_0');
+    assert.ok(save?.t === 'save');
+    assert.equal(save.roll.rolls.length, 2);
+    assert.equal(save.roll.d20, Math.min(...save.roll.rolls));
+    // The same flame (the dice are rolled before the save) against a save it can't make and one
+    // it can't miss: a success takes half.
+    const burn = (dc: number): number => {
+      const t = structuredClone(s);
+      t.units.m.saveDC = dc;
+      const d = ok(cast(t)).events.find((e) => e.t === 'damage' && e.unit === 'raider_0');
+      return d?.t === 'damage' ? d.amount : 0;
+    };
+    const full = burn(99);
+    assert.ok(full >= 2);
+    assert.equal(burn(-99), Math.floor(full / 2));
   });
 });
 

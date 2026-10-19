@@ -306,6 +306,20 @@ export class Playback {
         h.sound('kawarimi');
         return 650;
       }
+      case 'evade': {
+        // Premonitory Evasion: the Mirai's eyes flare and it darts a step aside as the blow lands.
+        const v = this.view(ev.unit);
+        if (!v) return 0;
+        const d = dist(ev.from, ev.to);
+        this.fx.push({ kind: 'aura', element: 'fire', sig: 'eyes', from: ev.from, to: ev.from, t0: now, dur: 700, unit: ev.unit });
+        v.pos = { ...ev.from };
+        v.walk = { path: [{ ...ev.to }], t0: now, speed: 7, pose: 'run', lengths: [d], total: d };
+        v.pose = 'run';
+        v.poseT0 = now;
+        if (label) this.float(label, '#fecaca', ev.from, now);
+        h.sound('kawarimi');
+        return 420;
+      }
       case 'pushed': {
         const v = this.view(ev.unit);
         if (!v) return 0;

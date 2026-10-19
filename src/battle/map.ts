@@ -200,8 +200,12 @@ export function hideSpotAt(s: BattleState, p: Pt): number {
 /** Half the side of a Kōton metal block (1.5 m, one of the owner's squares). */
 export const BLOCK_HALF = 0.75;
 
-/** A cell centre inside a metal block: exactly the 3 × 3 cells around the cell it stands on. */
-const inBlock = (w: Wall, p: Pt): boolean => Math.max(Math.abs(p.x - w.a.x), Math.abs(p.z - w.a.z)) < BLOCK_HALF;
+/**
+ * A wall or a block stands on this cell centre: a wall on the cells within 0.35 m of its line, a
+ * metal block on exactly the 3 × 3 cells around the cell it stands on.
+ */
+export const wallCovers = (w: Wall, p: Pt): boolean =>
+  w.kind === 'metalBlock' ? Math.max(Math.abs(p.x - w.a.x), Math.abs(p.z - w.a.z)) < BLOCK_HALF : segDist(p, w.a, w.b) < 0.35;
 
 /** A static prop, a jutsu wall or a metal block stands in the cell. */
 export function cellBlocked(s: BattleState, c: Cell): boolean {
@@ -213,7 +217,7 @@ export function cellBlocked(s: BattleState, c: Cell): boolean {
   if (b >= 0 && !s.props[b]?.destroyed) return true;
   if (s.walls.length) {
     const ctr = cellCenter(c);
-    for (const w of s.walls) if (w.kind === 'metalBlock' ? inBlock(w, ctr) : segDist(ctr, w.a, w.b) < 0.35) return true;
+    for (const w of s.walls) if (wallCovers(w, ctr)) return true;
   }
   return false;
 }

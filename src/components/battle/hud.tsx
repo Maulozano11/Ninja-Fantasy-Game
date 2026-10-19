@@ -53,7 +53,9 @@ export const ELEMENT_ICON: Record<string, React.FC<{ size?: number; className?: 
 };
 
 /** Clan abilities with an icon of their own (the others show their element's). */
-export const ABILITY_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {};
+export const ABILITY_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {
+  katon_pursuing_flame: Flame,
+};
 
 export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {
   attack: Sword,

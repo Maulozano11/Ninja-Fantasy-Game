@@ -5,6 +5,7 @@
 import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wall } from '../../battle/types';
 import type { MapDef } from '../../battle/map';
 import { BLOCK_HALF, CELL, cellCenter, dist } from '../../battle/map';
+import { JUTSU, areaOf } from '../../battle/jutsu';
 import { breakable } from '../../battle/structures';
 import { lookOf as guardLook, VISION } from '../../battle/stealth';
 import { worldSprite } from '../world/WorldSpriteView';
@@ -250,6 +251,8 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
   }
   // Traps the party can see.
   for (const t of state.traps) if (t.owner === sc.team || t.spotted) drawTrap(ctx, map, t);
+  // What the Eye of Tomorrow reads, once the screen has caught up with the state.
+  if (!sc.pb.busy) for (const [id, it] of Object.entries(sc.foreseen)) drawForesight(ctx, sc, id, it);
   if (o.area) {
     ctx.beginPath();
     areaPath(ctx, map, o.area.shape);
@@ -283,6 +286,52 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
     groundEllipse(ctx, map, o.point.at, 0.3);
     ctx.lineWidth = 2;
     ctx.strokeStyle = o.point.ok ? 'rgba(255,255,255,0.9)' : 'rgba(248,113,113,0.9)';
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/**
+ * An enemy's plan on the ground, as a Mirai's Eye of Tomorrow sees it: a dashed line to where it
+ * will walk, a ring under the one it means to strike (green for a friend it means to heal), and
+ * the area its jutsu will cover.
+ */
+function drawForesight(ctx: CanvasRenderingContext2D, sc: Scene, id: string, it: Intent): void {
+  const { map, state, now } = sc;
+  const from = sc.pb.posOf(id, now);
+  const tgt = it.target ? state.units[it.target] : undefined;
+  const red = 'rgba(239, 68, 68, 0.8)';
+  ctx.save();
+  // A jutsu is aimed where its target stands when the turn comes (the hydra's venom and roar too).
+  const spec = it.kind === 'jutsu' || it.kind === 'spit' || it.kind === 'roar' ? JUTSU[it.what] : undefined;
+  const area = spec ? areaOf(spec, it.to ?? from, tgt?.pos ?? it.at ?? from) : null;
+  if (area) {
+    ctx.beginPath();
+    areaPath(ctx, map, area);
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+    ctx.fill();
+  }
+  if (it.to) {
+    const a = project(map, from);
+    const b = project(map, it.to);
+    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = red;
+    ctx.beginPath();
+    ctx.moveTo(a.X, a.Y);
+    ctx.lineTo(b.X, b.Y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    groundEllipse(ctx, map, it.to, 0.35);
+    ctx.stroke();
+  }
+  // Advancing isn't striking yet: only a plan to act gets the ring under its target.
+  if (tgt && it.kind !== 'move' && it.kind !== 'defend') {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = it.kind === 'heal' ? 'rgba(74, 222, 128, 0.8)' : red;
+    ctx.beginPath();
+    groundEllipse(ctx, map, sc.pb.posOf(tgt.id, now), 0.55);
     ctx.stroke();
   }
   ctx.restore();
@@ -1172,23 +1221,9 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
         ctx.fillRect(s.x - w / 2, s.y - f(7), Math.round((w * sus) / 100), f(2));
       }
     }
-    // What a Mirai foresees.
+    // What a Mirai foresees (where and whom is drawn on the ground).
     const it = sc.foreseen[u.id];
     if (it) {
-      const tgt = it.target ? state.units[it.target] : undefined;
-      if (tgt) {
-        const tp = project(map, sc.pb.posOf(tgt.id, now));
-        const ts = toScreen(tp.X, tp.Y - 60);
-        ctx.save();
-        ctx.setLineDash([f(4), f(4)]);
-        ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
-        ctx.lineWidth = f(1.5);
-        ctx.beginPath();
-        ctx.moveTo(s.x, s.y + f(10));
-        ctx.lineTo(ts.x, ts.y);
-        ctx.stroke();
-        ctx.restore();
-      }
       ctx.font = `600 ${f(10)}px Inter, system-ui, sans-serif`;
       const label = intentIcon(it);
       ctx.fillStyle = 'rgba(127, 29, 29, 0.85)';

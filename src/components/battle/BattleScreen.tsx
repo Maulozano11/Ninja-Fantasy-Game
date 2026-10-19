@@ -55,7 +55,7 @@ export interface BattleScreenProps {
   onEnd: (result: PartyBattleResult, state: BattleState) => void;
 }
 
-const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra'] as const;
+const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra', 'tip_mirai'] as const;
 type TipKey = (typeof TIP_KEYS)[number];
 
 function tipSeen(k: string): boolean {
@@ -396,7 +396,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         } else if (hu) o.targets = [hu.id];
         if (spec.save) {
           const sv = lang === 'es' ? SAVE_ES[spec.save] : SAVE_EN[spec.save];
-          const line = T('aimSave', { save: sv, dc: actor.saveDC });
+          const line = T('aimSave', { save: sv, dc: actor.saveDC }) + (spec.saveAdv === 'disadvantage' ? ` · ${T('saveDisadv')}` : '');
           sub = sub ? `${line} · ${sub}` : line;
         }
         if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
@@ -879,11 +879,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
             ? 'tip_move'
             : actor && s.round >= 1 && !tipSeen('tip_attack')
               ? 'tip_attack'
-              : actor && actor.armed && actor.weapon.held && actor.jutsus.some((j) => JUTSU[j] && !JUTSU[j].melee) && !tipSeen('tip_hands')
+              : actor && actor.armed && actor.weapon.held && actor.jutsus.some((j) => JUTSU[j] && needsSeals(actor, JUTSU[j])) && !tipSeen('tip_hands')
                 ? 'tip_hands'
-                : actor && s.round >= 2 && !tipSeen('tip_cover')
-                  ? 'tip_cover'
-                  : null;
+                : actor?.character?.clan === 'Mirai' && !tipSeen('tip_mirai')
+                  ? 'tip_mirai'
+                  : actor && s.round >= 2 && !tipSeen('tip_cover')
+                    ? 'tip_cover'
+                    : null;
     if (want) setTip(want);
   }, [actor, state, tip]);
 
@@ -905,6 +907,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       const mover = state.units[pending.mover];
       const pv = attackPreview(state, reactor, mover, 'melee');
       return { title: T('oaTitle'), text: T('oaAsk', { mover: mover.name, reactor: reactor.name, p: Math.round(pv.chance * 100) }) };
+    }
+    if (pending.kind === 'evasion') {
+      const by = pending.hit.source ? state.units[pending.hit.source]?.name ?? '' : '';
+      return { title: T('evadeTitle'), text: T('evadeAsk', { name: reactor.name, dmg: pending.hit.amount, by }) };
     }
     return { title: T('kawaTitle'), text: T('kawaAsk', { name: reactor.name, dmg: pending.hit.amount, c: JUTSU.substitution_kawarimi.cost }) };
   };
@@ -1148,6 +1154,7 @@ const SHORT: Record<string, [string, string]> = {
   wood_golem_titan: ['Golem', 'Gólem'],
   yasaka_magatama: ['Magatama', 'Magatama'],
   night_guy_dragon: ['Night dragon', 'Dragón noche'],
+  katon_pursuing_flame: ['Pursuing', 'Persecutoria'],
 };
 
 /** A jutsu's short name for its button. */

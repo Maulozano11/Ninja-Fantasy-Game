@@ -3,13 +3,14 @@
 // replays and travels over the network like a player's.
 
 import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
-import { cellCenter, cellOf, coverBetween, dist, gridFor, levelAtPt, lineOfSight } from './map';
-import { canStop, occupancy, reachable } from './nav';
+import { cellCenter, cellOf, coverBetween, dist, gridFor, idx, lineOfSight, sameCell } from './map';
+import { canStop, reachable } from './nav';
 import { JUTSU } from './jutsu';
-import { KUNAI, KUNAI_LONG, handsFree, wielded } from './units';
+import { KUNAI_LONG, handsFree } from './units';
 import { applyAction } from './engine';
 import { current } from './turns';
-import { headOptions, ninjaOptions, planIntent, reachTo, standingUnit } from './intent';
+import { bestCell, goalOf, headOptions, ninjaOptions, planIntent, reachTo, standingUnit, stepToward } from './intent';
+import type { Goal } from './intent';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
 export function aiToAct(s: BattleState): boolean {
@@ -42,7 +43,7 @@ export function aiAction(s: BattleState): Action | null {
     // After a dash, keep closing in with the extra movement.
     const plan = u.team === 'enemy' ? u.intent : planIntent(s, u);
     const t = plan?.target ? s.units[plan.target] : undefined;
-    if (u.turn.dashed && t && standingUnit(t)) return moveToward(s, u, t.pos, (p) => dist(p, t.pos) <= reachTo(u, t), t) ?? end;
+    if (u.turn.dashed && t && standingUnit(t)) return moveToward(s, u, goalOf(s, u, { kind: 'melee', what: u.weapon.name, target: t.id })!) ?? end;
     return afterAction(s, u) ?? end;
   }
   // Enemies follow the plan they committed to (what a Mirai saw); allies plan each turn.
@@ -69,45 +70,34 @@ function headAction(s: BattleState, u: Unit): Action | null {
   return { type: 'jutsu', unit: u.id, jutsu: i.what, at: { ...t.pos } };
 }
 
-/** One step toward the plan: act if in reach, otherwise move into reach. */
+/** One step toward the plan: act if in reach, otherwise move into reach (where it planned to go). */
 function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
+  if (i.kind === 'defend') return { type: 'dodge', unit: u.id };
   const t = i.target ? s.units[i.target] : undefined;
+  const g = goalOf(s, u, i);
+  if (!t || !g) return null;
   switch (i.kind) {
-    case 'defend':
-      return { type: 'dodge', unit: u.id };
-    case 'melee': {
-      if (!t) return null;
-      if (dist(u.pos, t.pos) <= reachTo(u, t) + 0.1) return { type: 'attack', unit: u.id, target: t.id, knockout: u.team === 'party' };
-      return moveToward(s, u, t.pos, (p) => dist(p, t.pos) <= reachTo(u, t), t) ?? kunaiOr(s, u, t);
-    }
-    case 'ranged': {
-      if (!t) return null;
-      const d = dist(u.pos, t.pos);
-      if (d <= KUNAI.reach && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
-      return moveToward(s, u, t.pos, (p) => dist(p, t.pos) <= KUNAI.reach && lineOfSight(s, p, t.pos), t) ?? kunaiOr(s, u, t);
-    }
+    case 'melee':
+      if (g.ready) return { type: 'attack', unit: u.id, target: t.id, knockout: u.team === 'party' };
+      return moveToward(s, u, g, i.to) ?? kunaiOr(s, u, t);
+    case 'ranged':
+      if (g.ready) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
+      return moveToward(s, u, g, i.to) ?? kunaiOr(s, u, t);
     case 'jutsu': {
       const j = JUTSU[i.what];
-      if (!t || !j) return null;
       if (!j.melee && !handsFree(u) && u.turn.interacted) return null;
-      const reach = j.range + (t.bulk ?? 0) + (j.shape === 'single' && t.kind === 'hydra_head' ? 2.5 : 0);
-      const ok = (p: Pt) => dist(p, t.pos) <= reach && (j.melee || lineOfSight(s, p, t.pos));
-      if (ok(u.pos)) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined };
-      return moveToward(s, u, t.pos, ok, t);
+      if (g.ready) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined };
+      return moveToward(s, u, g, i.to);
     }
-    case 'heal': {
-      if (!t) return null;
-      if (dist(u.pos, t.pos) <= 1.6) {
+    case 'heal':
+      if (g.ready) {
         if (i.what === 'mystical_palm') return { type: 'jutsu', unit: u.id, jutsu: 'mystical_palm', at: { ...t.pos }, target: t.id };
         if (i.what === 'bandage') return { type: 'item', unit: u.id, item: 'bandage', target: t.id };
         return { type: 'stabilize', unit: u.id, target: t.id };
       }
-      return moveToward(s, u, t.pos, (p) => dist(p, t.pos) <= 1.6, undefined);
-    }
-    case 'move': {
-      if (!t) return null;
-      return moveToward(s, u, t.pos, () => false, t) ?? (u.turn.action ? { type: 'dash', unit: u.id } : null);
-    }
+      return moveToward(s, u, g, i.to);
+    case 'move':
+      return moveToward(s, u, g, i.to) ?? (u.turn.action ? { type: 'dash', unit: u.id } : null);
     default:
       return null;
   }
@@ -142,45 +132,25 @@ function afterAction(s: BattleState, u: Unit): Action | null {
 }
 
 /**
- * A move toward a goal: a reachable cell where `good` holds (cheapest, with cover and high ground
- * preferred), or else the reachable cell closest to the target point. Null if it can't get closer.
+ * A move toward a plan's goal (stepToward). An enemy keeps to the destination it planned, the one a
+ * Mirai saw on the ground, while it can still get there and it serves the plan as well as a fresh
+ * pick would. Null if it can't get closer.
  */
-function moveToward(s: BattleState, u: Unit, goal: Pt, good: (p: Pt) => boolean, foe: Unit | undefined): Action | null {
+function moveToward(s: BattleState, u: Unit, g: Goal, planned?: Pt): Action | null {
   if (u.turn.move < 0.5 || u.speed <= 0) return null;
-  const score = (p: Pt) => {
-    let v = 0;
-    if (foe && coverBetween(s, foe.pos, p, [foe.id, u.id]) >= 2) v -= 1.5;
-    if (foe && levelAtPt(s, p) - levelAtPt(s, foe.pos) >= 0.9) v -= 1;
-    return v;
-  };
-  let cell = bestCell(s, u, good, score);
-  if (!cell) {
-    const here = dist(u.pos, goal);
-    const c = bestCell(s, u, (p) => dist(p, goal) < here - 0.75, (p) => dist(p, goal) * 2 + score(p));
-    cell = c;
-  }
-  if (!cell || (cell.c === cellOf(u.pos).c && cell.r === cellOf(u.pos).r)) return null;
-  return { type: 'move', unit: u.id, to: cell };
+  const fresh = stepToward(s, u, g, u.turn.move);
+  const kept = planned ? keptCell(s, u, g, planned) : null;
+  const cell = kept && (g.good(cellCenter(kept)) || !fresh || !g.good(cellCenter(fresh))) ? kept : fresh;
+  return cell ? { type: 'move', unit: u.id, to: cell } : null;
 }
 
-/** The reachable cell (this turn) that satisfies `good` with the lowest movement cost + score. */
-function bestCell(s: BattleState, u: Unit, good: (p: Pt) => boolean, score: (p: Pt) => number): Cell | null {
-  const reach = reachable(s, u, u.turn.move);
-  const g = gridFor(s.mapId);
-  const occ = occupancy(s);
-  let best: Cell | null = null;
-  let bestV = Infinity;
-  for (const [i, cost] of reach.cost) {
-    const c = { c: i % g.cols, r: Math.floor(i / g.cols) };
-    const p = cellCenter(c);
-    if (!good(p) || !canStop(s, u, c, occ)) continue;
-    const v = cost * 0.3 + score(p);
-    if (v < bestV) {
-      best = c;
-      bestV = v;
-    }
-  }
-  return best;
+/** The planned cell, if it is still free and reachable this turn and still gets the plan done or closer. */
+function keptCell(s: BattleState, u: Unit, g: Goal, to: Pt): Cell | null {
+  const c = cellOf(to);
+  if (sameCell(c, cellOf(u.pos)) || !canStop(s, u, c)) return null;
+  if (!reachable(s, u, u.turn.move).cost.has(idx(gridFor(s.mapId), c))) return null;
+  const p = cellCenter(c);
+  return g.good(p) || dist(p, g.at) < dist(u.pos, g.at) - 0.75 ? c : null;
 }
 
 /**

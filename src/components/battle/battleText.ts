@@ -56,6 +56,7 @@ export const T = strings({
   structure_metal: { en: 'metal wall', es: 'muro de metal' },
   structure_metalBlock: { en: 'metal block', es: 'bloque de metal' },
   broken: { en: 'Broken!', es: '¡Roto!' },
+  evaded: { en: 'Evaded!', es: '¡Esquivado!' },
   waiting: { en: 'Waiting…', es: 'Esperando…' },
   victory: { en: 'Victory', es: 'Victoria' },
   defeat: { en: 'Defeat', es: 'Derrota' },
@@ -114,6 +115,7 @@ export const T = strings({
   help_flee: { en: 'Leave the battle by the map edge.', es: 'Sal de la batalla por el borde del mapa.' },
   help_stone: { en: 'A noise at a point (12 m): guards who hear it go to look.', es: 'Un ruido en un punto (12 m): los guardias que lo oyen van a mirar.' },
   help_end: { en: 'End this turn.', es: 'Termina este turno.' },
+  help_katon_pursuing_flame: { en: 'Action, 3 chakra, 12 m: 2d6 fire; DEX save with disadvantage, half on a success.', es: 'Acción, 3 chakra, 12 m: 2d6 de fuego; salvación de DES con desventaja, la mitad si la supera.' },
 
   // aiming
   aimMove: { en: '{m} m', es: '{m} m' },
@@ -122,6 +124,7 @@ export const T = strings({
   aimNoReach: { en: 'Out of reach', es: 'Fuera de alcance' },
   aimChance: { en: '{p}% · {dice}', es: '{p}% · {dice}' },
   aimSave: { en: '{save} save DC {dc}', es: 'Salvación {save} CD {dc}' },
+  saveDisadv: { en: 'with disadvantage', es: 'con desventaja' },
   aimHits: { en: 'Hits {n}', es: 'Alcanza a {n}' },
   aimAllies: { en: '{n} allies in the area!', es: '¡{n} aliados en el área!' },
   cover2: { en: 'Half cover', es: 'Cobertura ½' },
@@ -159,6 +162,8 @@ export const T = strings({
   oaAsk: { en: '{mover} is leaving {reactor}’s reach. Strike? {p}% to hit.', es: '{mover} sale del alcance de {reactor}. ¿Atacar? {p}% de acierto.' },
   kawaTitle: { en: 'Kawarimi', es: 'Kawarimi' },
   kawaAsk: { en: '{name} is about to take {dmg} damage. Swap with a log? ({c} chakra and the reaction)', es: '{name} va a recibir {dmg} de daño. ¿Cambiar por un tronco? ({c} chakra y la reacción)' },
+  evadeTitle: { en: 'Premonitory Evasion', es: 'Evasión Premonitoria' },
+  evadeAsk: { en: '{name} saw {by}’s blow coming ({dmg} damage). Step aside and make it miss? (2 chakra and the reaction)', es: '{name} vio venir el golpe de {by} ({dmg} de daño). ¿Apartarse y hacer que falle? (2 chakra y la reacción)' },
   yes: { en: 'Yes', es: 'Sí' },
   no: { en: 'No', es: 'No' },
 
@@ -202,6 +207,7 @@ export const T = strings({
   l_stable: { en: '{t} is stable', es: '{t} está estable' },
   l_deathSave: { en: '{t} death save: {ok} ✓ {bad} ✗', es: '{t} salvación de muerte: {ok} ✓ {bad} ✗' },
   l_kawarimi: { en: '{t} swaps with a log!', es: '¡{t} se cambia por un tronco!' },
+  l_evade: { en: '{t} steps aside: the attack misses', es: '{t} se aparta: el ataque falla' },
   l_clone: { en: 'A clone takes the blow', es: 'Un clon recibe el golpe' },
   l_sever: { en: 'A hydra head is cut off!', es: '¡Una cabeza de la hidra cae cortada!' },
   l_seal_fire: { en: 'The stump is burned: it won’t grow back', es: 'El muñón se quema: no volverá a crecer' },
@@ -250,6 +256,10 @@ export const T = strings({
   tip_stealth: { en: 'Stay out of the vision cones. Running is noisy; crouch in the grass.', es: 'Mantente fuera de los conos de visión. Correr hace ruido; agáchate en el pasto.' },
   tip_hands: { en: 'Seals need both hands: casting stows your weapon.', es: 'Los sellos necesitan las dos manos: conjurar guarda tu arma.' },
   tip_hydra: { en: 'Cut a head, then burn, electrify or blow up the stump, or it grows back.', es: 'Corta una cabeza y luego quema, electrocuta o haz estallar el muñón, o vuelve a crecer.' },
+  tip_mirai: {
+    en: 'Eye of Tomorrow: the ground shows where each enemy in sight will move and whom it will attack. Premonitory Evasion (reaction, 2 chakra) sidesteps a blow you saw coming.',
+    es: 'Ojo del Mañana: el suelo muestra adónde se moverá cada enemigo a la vista y a quién atacará. Evasión Premonitoria (reacción, 2 chakra) esquiva un golpe que viste venir.',
+  },
   tipGotIt: { en: 'Got it', es: 'Entendido' },
   tipsOff: { en: 'No more tips', es: 'No más consejos' },
 

@@ -76,6 +76,8 @@ export interface Intent {
   what: string;
   target?: string;
   at?: Pt;
+  /** Where it means to walk first (the Eye of Tomorrow shows it on the ground). */
+  to?: Pt;
 }
 
 /** 0 HP states. */
@@ -281,6 +283,12 @@ export interface Hit {
   effect?: EffectId;
   /** A failed save against fear (the hydra's roar): +1 Tension. */
   tension?: boolean;
+  /** Struck from hiding: a Mirai can't have seen it coming. */
+  unseen?: boolean;
+  /** Can't be blocked: no clone, Kawarimi or Premonitory Evasion stops it. */
+  unblockable?: boolean;
+  /** The Mirai let Premonitory Evasion go for this hit (Kawarimi may still be offered). */
+  evadeDeclined?: boolean;
 }
 
 /** What still has to happen once the queued hits have landed. */
@@ -298,7 +306,8 @@ export interface AfterHits {
 /** A reaction the engine is waiting for (reactions always ask the player). */
 export type PendingReaction =
   | { kind: 'opportunity'; reactor: string; mover: string; path: Cell[]; stepIndex: number; skip: string[] }
-  | { kind: 'kawarimi'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits };
+  | { kind: 'kawarimi'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits }
+  | { kind: 'evasion'; reactor: string; hit: Hit; rest: Hit[]; after: AfterHits };
 
 export interface BattleState {
   version: 1;
@@ -398,6 +407,7 @@ export type BattleEvent =
   | { t: 'trap'; trap: Trap; on: boolean }
   | { t: 'explode'; at: Pt; radius: number }
   | { t: 'kawarimi'; unit: string; from: Pt; to: Pt }
+  | { t: 'evade'; unit: string; from: Pt; to: Pt; source?: string }
   | { t: 'clone'; unit: string; on: boolean }
   | { t: 'sever'; unit: string }
   | { t: 'seal'; unit: string; how: 'fire' | 'lightning' | 'explosion' }

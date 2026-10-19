@@ -3,6 +3,7 @@
 // through the water, blasts dent metal structures. These return the hits to apply; the engine
 // applies them.
 
+import type { Advantage } from '../rules/checks';
 import type { AreaShape, BattleEvent, BattleState, DamageType, Hit, Pt, Trap, Unit } from './types';
 import { dist, fullCoverBetween, getMap, propRules, waterAtPt } from './map';
 import { inArea } from './jutsu';
@@ -64,7 +65,10 @@ export function explode(s: BattleState, at: Pt, radius: number, dice: string, dc
   return hits;
 }
 
-/** One unit's save against an area: full damage on a failure, half (or none) on a success. */
+/**
+ * One unit's save against a jutsu or a blast: full damage on a failure, half (or none) on a
+ * success. `adv` is the jutsu's own (Pursuing Flame is saved against with disadvantage).
+ */
 export function saveHit(
   s: BattleState,
   u: Unit,
@@ -77,9 +81,10 @@ export function saveHit(
   what: string,
   extra: Partial<Hit>,
   ev: BattleEvent[],
+  adv: Advantage = 'none',
 ): Hit {
   if (u.head?.severed) return { unit: u.id, amount: 0, type, source, what, ...extra, effect: undefined };
-  const roll = savingThrow(s, u, ab, dc);
+  const roll = savingThrow(s, u, ab, dc, adv);
   ev.push({ t: 'save', unit: u.id, what, roll });
   const got = roll.success ? (half ? Math.floor(amount / 2) : 0) : amount;
   return { unit: u.id, amount: got, type, source, what, ...extra, effect: roll.success ? undefined : extra.effect };

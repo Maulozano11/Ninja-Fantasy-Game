@@ -1,19 +1,19 @@
 // What a unit means to do on its turn. Enemies commit to a plan at the end of each of their turns
-// (and when the fighting starts), and a Mirai's Eye of Tomorrow shows it to the party. The AI
-// carries the plan out on its next turn if it still makes sense, or plans again.
+// (and when the fighting starts), with where they will walk first, and a Mirai's Eye of Tomorrow
+// shows it to the party. The AI carries the plan out on its next turn if it still makes sense, or
+// plans again.
 
 import { averageDice, parseDice } from '../rules/dice';
 import { abilityMod } from '../rules/checks';
 import { hasEffect } from '../rules/effects';
-import type { BattleState, Intent, Unit } from './types';
-import { dist, lineOfSight } from './map';
+import type { BattleState, Cell, Intent, Pt, Unit } from './types';
+import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell } from './map';
+import { canStop, occupancy, reachable } from './nav';
 import { JUTSU, areaOf, inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { passivePerception } from './combat';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
-
-/** How far a Mirai's Eye of Tomorrow reads an enemy's next move. */
-export const FORESIGHT_RANGE = 18;
+import { FORESIGHT_RANGE } from './clans';
 
 const avg = (dice?: string): number => {
   const d = dice ? parseDice(dice) : null;
@@ -86,7 +86,9 @@ export function ninjaOptions(s: BattleState, u: Unit): Option[] {
       const hits = areaValue(s, u, j, f);
       if (hits <= 0) continue;
       const thrift = u.chakra >= j.cost * 2 ? 1 : 0.85;
-      out.push({ intent: { kind: 'jutsu', what: id, target: f.id, at: { ...f.pos } }, value: avg(j.dice) * (j.save ? 0.75 : 0.65) * hits * fx * thrift });
+      // A save made with disadvantage (Pursuing Flame) fails more often.
+      const lands = j.save ? (j.saveAdv === 'disadvantage' ? 0.85 : 0.75) : 0.65;
+      out.push({ intent: { kind: 'jutsu', what: id, target: f.id, at: { ...f.pos } }, value: avg(j.dice) * lands * hits * fx * thrift });
     }
   }
   // Helping: healing a hurt friend, getting a fallen one back up.
@@ -116,7 +118,7 @@ export function headOptions(s: BattleState, u: Unit): Option[] {
   for (const f of foes) {
     const d = dist(u.pos, f.pos);
     const fx = focus(u, f);
-    if (d <= u.weapon.reach + 0.1) out.push({ intent: { kind: 'bite', what: 'Bite', target: f.id }, value: (avg(u.weapon.dice) + abilityMod(u.stats.str)) * 0.65 * fx });
+    if (d <= u.weapon.reach + 0.1 && !fullCoverBetween(s, u.pos, f.pos)) out.push({ intent: { kind: 'bite', what: 'Bite', target: f.id }, value: (avg(u.weapon.dice) + abilityMod(u.stats.str)) * 0.65 * fx });
     const spit = JUTSU.hydra_spit;
     if (u.chakra >= spit.cost && d <= spit.range + 0.1 && lineOfSight(s, u.pos, f.pos)) {
       const poison = hasEffect(f.effects, 'poisoned') ? 0 : 3;
@@ -146,13 +148,100 @@ export function planIntent(s: BattleState, u: Unit): Intent | undefined {
   return foes.length && u.speed > 0 ? { kind: 'move', what: 'advance', target: foes[0].id } : undefined;
 }
 
-/** Plans every enemy's next move (start of the fighting, or after its own turn). */
+/** Where a plan takes a unit: the point it heads for and the spots it can carry the plan out from. */
+export interface Goal {
+  at: Pt;
+  good: (p: Pt) => boolean;
+  /** The foe it goes for (cover and high ground against it are worth a detour). */
+  foe?: Unit;
+  /** It can carry the plan out from where it stands (a blade reaches a hair further). */
+  ready: boolean;
+}
+
+/** The goal of a plan that needs a target (null for a dodge, or a plan the AI can't follow). */
+export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
+  const t = i.target ? s.units[i.target] : undefined;
+  if (!t) return null;
+  const goal = (good: (p: Pt) => boolean, foe: Unit | undefined): Goal => ({ at: t.pos, good, foe, ready: good(u.pos) });
+  switch (i.kind) {
+    case 'melee': {
+      // No blow lands across a metal wall: it has to go around (or break through).
+      const good = (p: Pt) => dist(p, t.pos) <= reachTo(u, t) && !fullCoverBetween(s, p, t.pos);
+      return { ...goal(good, t), ready: dist(u.pos, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, u.pos, t.pos) };
+    }
+    case 'ranged':
+      return goal((p) => dist(p, t.pos) <= KUNAI.reach && lineOfSight(s, p, t.pos), t);
+    case 'jutsu': {
+      const j = JUTSU[i.what];
+      if (!j) return null;
+      const reach = j.range + (t.bulk ?? 0) + (j.shape === 'single' && t.kind === 'hydra_head' ? 2.5 : 0);
+      return goal((p) => dist(p, t.pos) <= reach && (j.melee || lineOfSight(s, p, t.pos)), t);
+    }
+    case 'heal':
+      return goal((p) => dist(p, t.pos) <= 1.6, undefined);
+    case 'move':
+      return goal(() => false, t);
+    default:
+      return null;
+  }
+}
+
+/** The reachable cell (within `budget` meters) where `good` holds with the lowest movement cost + score. */
+export function bestCell(s: BattleState, u: Unit, good: (p: Pt) => boolean, score: (p: Pt) => number, budget = u.turn.move): Cell | null {
+  const reach = reachable(s, u, budget);
+  const g = gridFor(s.mapId);
+  const occ = occupancy(s);
+  let best: Cell | null = null;
+  let bestV = Infinity;
+  for (const [i, cost] of reach.cost) {
+    const c = { c: i % g.cols, r: Math.floor(i / g.cols) };
+    const p = cellCenter(c);
+    if (!good(p) || !canStop(s, u, c, occ)) continue;
+    const v = cost * 0.3 + score(p);
+    if (v < bestV) {
+      best = c;
+      bestV = v;
+    }
+  }
+  return best;
+}
+
+/**
+ * A step toward a goal with `budget` meters: a reachable cell where the plan can be carried out
+ * (cheapest, with cover and high ground preferred), or else the reachable cell closest to the goal.
+ * Only cells where `open` holds. Null if it can't get closer.
+ */
+export function stepToward(s: BattleState, u: Unit, g: Goal, budget: number, open: (p: Pt) => boolean = () => true): Cell | null {
+  const foe = g.foe;
+  const score = (p: Pt) => {
+    let v = 0;
+    if (foe && coverBetween(s, foe.pos, p, [foe.id, u.id]) >= 2) v -= 1.5;
+    if (foe && levelAtPt(s, p) - levelAtPt(s, foe.pos) >= 0.9) v -= 1;
+    return v;
+  };
+  const here = dist(u.pos, g.at);
+  const cell = bestCell(s, u, (p) => g.good(p) && open(p), score, budget) ?? bestCell(s, u, (p) => dist(p, g.at) < here - 0.75 && open(p), (p) => dist(p, g.at) * 2 + score(p), budget);
+  return cell && !sameCell(cell, cellOf(u.pos)) ? cell : null;
+}
+
+/**
+ * Plans every enemy's next move (start of the fighting, or after its own turn), with where it will
+ * walk first: from here, with a whole turn's movement (half of it if it must stand up first), and
+ * not onto a spot another enemy already means to stop on.
+ */
 export function planEnemy(s: BattleState, u: Unit): void {
   if (u.team !== 'enemy' || u.down) {
     u.intent = undefined;
     return;
   }
-  u.intent = planIntent(s, u);
+  const i = planIntent(s, u);
+  const g = i && u.speed > 0 ? goalOf(s, u, i) : null;
+  if (i && g && !g.ready) {
+    const taken = Object.values(s.units).flatMap((o) => (o.id !== u.id && o.team === u.team && !o.down && o.intent?.to ? [cellOf(o.intent.to)] : []));
+    const c = stepToward(s, u, g, u.cond.prone ? u.speed / 2 : u.speed, (p) => !taken.some((t) => sameCell(t, cellOf(p))));
+    if (c) i.to = cellCenter(c);
+  }
+  u.intent = i;
 }
 
 /** The Eye of Tomorrow in the party: the Mirai who can read the enemies' next moves. */

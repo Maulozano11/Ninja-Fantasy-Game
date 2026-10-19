@@ -38,7 +38,8 @@ import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
 import { electrify, groundEffects, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
-import { breakable, damageStructure, hitStructuresIn, STRUCTURE_AC, structureAttack } from './structures';
+import { breakable, damageStructure, hitStructuresIn, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker, wallAcross } from './structures';
+import { canEvade, evade } from './clans';
 import { reachTo } from './intent';
 
 // --- setup ---------------------------------------------------------------------------------
@@ -411,8 +412,8 @@ function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, kn
 
 /**
  * Rolls a weapon attack and queues its damage. Attacking from hiding, or a guard that hasn't
- * noticed the attacker, gives advantage and 1d6 surprise damage. Returns true if a Kawarimi
- * prompt paused the battle.
+ * noticed the attacker, gives advantage and 1d6 surprise damage (and no Mirai sees it coming).
+ * Returns true if a reaction prompt (Evasion, Kawarimi) paused the battle.
  */
 function weaponAttack(
   s: BattleState,
@@ -442,7 +443,7 @@ function weaponAttack(
     let amount = rollDiceExpr(s, w.dice, roll.crit) + mod + (ranged ? 0 : effectMods(a.effects).meleeDamage);
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
     if (!ranged && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
-    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true });
+    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise });
   }
   applyHits(s, hits, after, ev);
   return !!s.pending;
@@ -498,7 +499,7 @@ function attackStructure(s: BattleState, u: Unit, id: string, ranged: boolean, e
 /** A loud action in the stealth phase starts the fight (unaware guards are surprised). */
 const loud = (s: BattleState, u: Unit): AfterHits => (s.phase === 'stealth' ? { openFightBy: u.id } : {});
 
-// --- hits, clones and Kawarimi -------------------------------------------------------------
+// --- hits, clones, Premonitory Evasion and Kawarimi ----------------------------------------
 
 const KAWARIMI = 'substitution_kawarimi';
 
@@ -509,12 +510,14 @@ function canKawarimi(s: BattleState, t: Unit): boolean {
   return t.chakra >= JUTSU[KAWARIMI].cost;
 }
 
-/** An AI ninja swaps with a log when the blow would drop it or take a third of its HP. */
-const aiWantsKawarimi = (t: Unit, h: Hit): boolean => h.amount >= t.hp + t.tempHp || h.amount >= t.maxHp * 0.3;
+/** An AI ninja dodges a blow (Evasion or Kawarimi) when it would drop it or take a third of its HP. */
+const aiAvoids = (t: Unit, h: Hit): boolean => h.amount >= t.hp + t.tempHp || h.amount >= t.maxHp * 0.3;
 
 /**
- * Lands queued hits in order. A clone takes an aimed blow instead of its ninja; a ninja who knows
- * Kawarimi may react (a player is asked, which pauses the queue). Then whatever had to follow.
+ * Lands queued hits in order. A clone takes an aimed blow instead of its ninja; a Mirai who saw it
+ * coming may step aside (Premonitory Evasion), and a ninja who knows Kawarimi may swap with a log.
+ * A player is asked, which pauses the queue; Evasion is offered first, and letting it go offers
+ * Kawarimi for the same blow. Then whatever had to follow.
  */
 function applyHits(s: BattleState, hits: Hit[], after: AfterHits, ev: BattleEvent[], resumed = false): void {
   const queue = [...hits];
@@ -522,18 +525,30 @@ function applyHits(s: BattleState, hits: Hit[], after: AfterHits, ev: BattleEven
     const h = queue.shift()!;
     const t = s.units[h.unit];
     if (!t || t.down === 'dead' || t.down === 'fled') continue;
-    if (h.aimed && h.amount > 0 && t.cond.clone) {
+    const blockable = h.aimed && h.amount > 0 && !h.unblockable;
+    if (blockable && t.cond.clone) {
       t.cond.clone = false;
       ev.push({ t: 'clone', unit: t.id, on: false });
       continue;
     }
-    if (h.aimed && h.amount > 0 && canKawarimi(s, t)) {
+    if (blockable && !h.evadeDeclined && canEvade(s, t, h)) {
+      if (t.controller === 'player') {
+        s.pending = { kind: 'evasion', reactor: t.id, hit: h, rest: queue, after };
+        ev.push({ t: 'reactionAsk', pending: s.pending });
+        return;
+      }
+      if (aiAvoids(t, h)) {
+        evade(s, t, h, ev);
+        continue;
+      }
+    }
+    if (blockable && canKawarimi(s, t)) {
       if (t.controller === 'player') {
         s.pending = { kind: 'kawarimi', reactor: t.id, hit: h, rest: queue, after };
         ev.push({ t: 'reactionAsk', pending: s.pending });
         return;
       }
-      if (aiWantsKawarimi(t, h)) {
+      if (aiAvoids(t, h)) {
         kawarimi(s, t, h, ev);
         continue;
       }
@@ -608,6 +623,14 @@ function react(s: BattleState, unitId: string, take: boolean, ev: BattleEvent[])
     return null;
   }
   const t = s.units[p.reactor];
+  if (p.kind === 'evasion') {
+    // Letting Evasion go puts the blow back in the queue: Kawarimi may be offered for it next.
+    if (take && canEvade(s, t, p.hit)) {
+      evade(s, t, p.hit, ev);
+      applyHits(s, p.rest, p.after, ev, true);
+    } else applyHits(s, [{ ...p.hit, evadeDeclined: true }, ...p.rest], p.after, ev, true);
+    return null;
+  }
   if (take && canKawarimi(s, t)) kawarimi(s, t, p.hit, ev);
   else landHit(s, t, p.hit, ev);
   applyHits(s, p.rest, p.after, ev, true);
@@ -666,6 +689,11 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     if (cellBlocked(s, c) || waterAtPt(s, at) === 2 || !canStop(s, u, c)) return 'blocked';
     at = cellCenter(c);
   }
+  // A Kōton structure never rises over anyone.
+  if (spec.special === 'metalBlock' || spec.special === 'metalWall') {
+    const why = structureBlocker(s, structureAt(spec, u.pos, at, u.id, ''));
+    if (why) return why;
+  }
   if (seals && !handsFree(u)) setArmed(u, false, 'free', ev);
   // Pay, and spend the action.
   u.chakra -= cost;
@@ -704,6 +732,10 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     case 'waterWall':
       raiseWall(s, u, spec, at, ev);
       break;
+    case 'metalBlock':
+    case 'metalWall':
+      raiseStructure(s, u, spec, at, ev);
+      break;
     default:
       hits.push(...jutsuHits(s, u, spec, target, at, ev));
   }
@@ -725,7 +757,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   for (const v of victims) {
     const extra: Partial<Hit> = { aimed: !area, effect: spec.effect, tension: spec.tension };
     if (spec.save) {
-      hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev));
+      hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv));
       continue;
     }
     const pv = attackPreview(s, u, v, 'jutsu', { jutsuRange: spec.range });
@@ -758,16 +790,11 @@ function dashTo(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
 
 /** Earth and water walls stand across the caster's line, centered on the point. */
 function raiseWall(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleEvent[]): void {
-  const dir = Math.atan2(at.z - u.pos.z, at.x - u.pos.x);
-  const half = (spec.length ?? 4.5) / 2;
-  const px = -Math.sin(dir);
-  const pz = Math.cos(dir);
   const earth = spec.special === 'earthWall';
   const wall: Wall = {
     id: `wall_${s.tick}_${u.id}`,
     kind: earth ? 'earth' : 'water',
-    a: { x: at.x + px * half, z: at.z + pz * half },
-    b: { x: at.x - px * half, z: at.z - pz * half },
+    ...wallAcross(u.pos, at, spec.length ?? 4.5),
     hp: earth ? 30 : 15,
     rounds: earth ? undefined : 3,
   };

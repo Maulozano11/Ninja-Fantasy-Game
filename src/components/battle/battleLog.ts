@@ -67,6 +67,8 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return { text: t('l_deathSave', { t: nameOf(s, ev.unit), ok: ev.ok, bad: ev.bad }), tone: 'text-amber-200' };
     case 'kawarimi':
       return { text: t('l_kawarimi', { t: nameOf(s, ev.unit) }), tone: 'text-amber-200' };
+    case 'evade':
+      return { text: t('l_evade', { t: nameOf(s, ev.unit) }), tone: 'text-red-300' };
     case 'clone':
       return ev.on ? null : { text: t('l_clone') };
     case 'sever':
@@ -151,6 +153,8 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
       return ev.roll.success ? '✓' : '✗';
     case 'kawarimi':
       return 'Kawarimi!';
+    case 'evade':
+      return t('evaded');
     case 'clone':
       return ev.on ? null : lang === 'es' ? '¡Clon!' : 'Clone!';
     case 'sever':

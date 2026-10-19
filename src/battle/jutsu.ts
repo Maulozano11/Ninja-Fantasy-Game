@@ -36,7 +36,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'trap' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse';
+  special?: 'heal' | 'flicker' | 'clone' | 'trap' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -184,7 +184,91 @@ const HYDRA_SPECS: JutsuSpec[] = [
 ];
 
 /** Each clan's base abilities (phase 1 of docs/CLANS_DESIGN.md), in the order their buttons show. */
-const CLAN_SPECS: JutsuSpec[] = [];
+const CLAN_SPECS: JutsuSpec[] = [
+  // Mirai. The Eye of Tomorrow is passive (intent.ts); Evasion is a reaction the engine offers.
+  {
+    id: 'mirai_evasion',
+    name: 'Premonitory Evasion',
+    nameEs: 'Evasión Premonitoria',
+    clan: 'Mirai',
+    ability: true,
+    rank: '',
+    element: 'fire',
+    cost: 2,
+    enhCost: 0,
+    cast: 'reaction',
+    range: 1.5,
+    shape: 'self',
+    saveHalf: false,
+    special: 'evasion',
+    vfx: 'aura',
+    melee: false,
+    loud: false,
+  },
+  {
+    // A real Katon jutsu: hand seals, and Centered chakra's discount applies.
+    id: 'katon_pursuing_flame',
+    name: 'Katon: Pursuing Flame',
+    nameEs: 'Katon: Llama Persecutoria',
+    clan: 'Mirai',
+    rank: 'C',
+    element: 'fire',
+    cost: 3,
+    enhCost: 0,
+    cast: 'action',
+    range: 12,
+    shape: 'single',
+    dice: '2d6',
+    dmgType: 'Fire',
+    save: 'dex',
+    saveHalf: true,
+    saveAdv: 'disadvantage',
+    vfx: 'bolt',
+    melee: false,
+    loud: true,
+  },
+  // Kōton: Modular Architecture. Two structures stand at most (structures.ts).
+  {
+    id: 'koton_block',
+    name: 'Modular Architecture: Block',
+    nameEs: 'Arquitectura Modular: Bloque',
+    clan: 'Koton',
+    ability: true,
+    rank: '',
+    element: 'earth',
+    cost: 2,
+    enhCost: 0,
+    cast: 'bonus',
+    range: 6,
+    shape: 'point',
+    length: 1.5,
+    saveHalf: false,
+    special: 'metalBlock',
+    vfx: 'wall',
+    melee: false,
+    loud: true,
+  },
+  {
+    id: 'koton_wall',
+    name: 'Modular Architecture: Wall',
+    nameEs: 'Arquitectura Modular: Muro',
+    clan: 'Koton',
+    ability: true,
+    rank: '',
+    element: 'earth',
+    cost: 4,
+    enhCost: 0,
+    cast: 'action',
+    range: 6,
+    shape: 'wall',
+    length: 4.5,
+    saveHalf: false,
+    special: 'metalWall',
+    vfx: 'wall',
+    melee: false,
+    loud: true,
+  },
+];
 
 export const JUTSU: Record<string, JutsuSpec> = Object.fromEntries([...JUTSUS_DATA.map((j) => [j.id, specOf(j)]), ...HYDRA_SPECS.map((j) => [j.id, j]), ...CLAN_SPECS.map((j) => [j.id, j])]);
 

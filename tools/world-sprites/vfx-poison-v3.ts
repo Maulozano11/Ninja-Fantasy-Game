@@ -929,7 +929,7 @@ function blast(): WorldSprite {
       });
       // (its top: a wavy, rounded line, no straight cut and no rim along it; above it the top
       // breaks into round drops of his slime, thrown off as it sinks)
-      const topY = (x: number) => base - h + 5 * (2 * pnoise(x, i * 3, 7, 0, 0, seed + 31) - 1) + 0.5 * shw * (1 - Math.sqrt(Math.max(0, 1 - ((x + 0.5 - scx) / (shw + 4)) ** 2)));
+      const topY = (x: number) => base - h + 3.5 * (2 * pnoise(x, i * 3, 8, 0, 0, seed + 31) - 1) + 0.5 * shw * (1 - Math.sqrt(Math.max(0, 1 - ((x + 0.5 - scx) / (shw + 4)) ** 2)));
       const band = 6 + 6 * u;
       const body = cut(sh, (x, y) => y >= topY(x) + band, 2, false);
       const blob = (x: number, y: number) => {
@@ -1137,7 +1137,6 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
     return false;
   };
   const sealed = (c: Canvas, fr: Layer, tag: string): Canvas => {
-    if (process.env.POISON_NOSEAL) return c;
     const [out, n] = sealFrame(c, near(fr));
     const left = enclosed(out);
     let bad = 0;

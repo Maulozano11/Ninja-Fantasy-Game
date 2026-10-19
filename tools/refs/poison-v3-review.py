@@ -107,8 +107,60 @@ def flash_check():
     return '\n'.join(lines)
 
 
-B = border_check()
-F = flash_check()
+def enclosed(a, thr=128):
+    """Pixels with alpha under thr that the outside cannot reach (4-way through such pixels)."""
+    open_ = a < thr
+    H, W = a.shape
+    seen = np.zeros_like(open_)
+    st = [(y, x) for x in range(W) for y in (0, H - 1) if open_[y, x]] + [(y, x) for y in range(H) for x in (0, W - 1) if open_[y, x]]
+    for y, x in st:
+        seen[y, x] = True
+    while st:
+        y, x = st.pop()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            u, v = y + dy, x + dx
+            if 0 <= u < H and 0 <= v < W and open_[u, v] and not seen[u, v]:
+                seen[u, v] = True
+                st.append((u, v))
+    return open_ & ~seen
+
+
+def holes_check():
+    """His stone is solid: enclosed see-through pixels (alpha < 128) on every rise and idle frame
+    of the three walls."""
+    lines, bad = ['holes check: enclosed see-through pixels (alpha < 128, not reachable from outside) per frame'], 0
+    for name in ('wall', 'wall_diag', 'wall_depth'):
+        for anim, fr in ALL[name].items():
+            n = [int(enclosed(np.asarray(f)[..., 3]).sum()) for f in fr]
+            bad += sum(1 for v in n if v)
+            lines.append(f'  {name:10s} {anim:4s} {n}')
+    lines.append('  OK: no see-through pixel in the stone on any frame' if not bad else f'  {bad} frames have see-through pixels')
+    return '\n'.join(lines)
+
+
+def light_check():
+    """The blast's light against his: his green excess over his panel colour (G - 33) next to ours
+    (key frame composited on his panel colour), where ours is light only, outside the mask of his
+    removed character and its shadow, inside his panel (written by poison-from-ref.py)."""
+    try:
+        his = np.asarray(Image.open(os.path.join(SRC, 'his-blast.png')).convert('RGB')).astype(np.float64)
+        mask = np.asarray(Image.open(os.path.join(SRC, 'mask-blast.png'))) > 0
+        zone = np.asarray(Image.open(os.path.join(SRC, 'zone-blast.png'))) > 0
+    except FileNotFoundError:
+        return 'light check: skipped (no his-blast.png / mask-blast.png / zone-blast.png in ' + SRC + ')'
+    f = np.asarray(ALL['blast']['blast'][4]).astype(np.float64)
+    BGp = np.array(PANEL, np.float64)
+    comp = f[..., :3] * f[..., 3:] / 255 + BGp * (1 - f[..., 3:] / 255)
+    rm = json.load(open(os.path.join(SRC, 'refmap.json')))['blast']
+    xs = rm['box'][0] + (np.arange(f.shape[1]) + 0.5) * (rm['box'][2] - rm['box'][0]) / f.shape[1]
+    sel = (f[..., 3] > 0) & (f[..., 3] < 250) & ~mask & zone & (xs[None, :] <= 579)
+    d = np.abs((comp[..., 1] - 33) - (his[..., 1] - 33))[sel]
+    return (f'light check (blast key frame vs his, green excess G - 33, {int(sel.sum())} px of his light outside his character and its shadow): '
+            f'mean |diff| {d.mean():.2f}, 90th percentile {np.percentile(d, 90):.1f} (target: mean under 8)')
+
+
+B = border_check() + '\n' + holes_check()
+F = flash_check() + '\n' + light_check()
 print(B)
 print(F)
 write(os.path.join(ART2, 'vfx-poison-v3-border.txt'), B)

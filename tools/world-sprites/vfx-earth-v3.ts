@@ -29,8 +29,9 @@
 // their rock (the extractor gives them to it), a drifting pebble carries its dark halo of dust, his
 // dark flecks ride on the dust, and nothing is dithered: dust fades in soft bands one alpha step
 // apart (rim first), and rock wears away as an outlined stone. A blast crystal's foot ends raggedly
-// in the dust as it rises or sinks (no line along the cut), and the walls start wholly below the
-// ground and ease out into his picture, the loose rubble landing at their feet at the end.
+// in the dust as it rises or sinks (no line along the cut; outside the cloud, a soft line fading
+// through alpha), and the walls start wholly below the ground and ease out into his picture (the
+// end-on pillar through one fixed ground line), the loose rubble landing at their feet at the end.
 // Same sprite names and anims as vfx_earth, plus `multi_hit` (the rock bullets' impact, his
 // unlabelled panel) and `aura_back`. Frames are sized to his art and the anchors moved with it.
 // The earth beast is out of scope: beast.png is copied through from vfx_earth unchanged.
@@ -472,7 +473,6 @@ function ghostOf(pal: Pal): (v: number, q: number) => number {
  * see-through spot in the cloud where it lies. 0 when nothing is left (the cloud under it shows).
  */
 function overOf(pal: Pal): (v: number, t: number, u: number) => number {
-  const S = pal.dustSteps, nd = S ? pal.kinds.filter((k) => k === 'dust').length / S : 0;
   return (v: number, t: number, u: number): number => {
     if (t <= 0 || !v) return 0;
     const cv = pal.cols[v - 1], at = (Math.min(1, t) * cv[3]) / 255;
@@ -480,27 +480,33 @@ function overOf(pal: Pal): (v: number, t: number, u: number) => number {
     const a = at + au * (1 - at);
     if (a <= 0) return 0;
     const mix = [0, 1, 2].map((c) => (at * cv[c] + (1 - at) * au * (cu ? cu[c] : 0)) / a);
-    let st = 0, bd = Infinity;
-    for (let s = 0; s < S; s++) {
-      const d = Math.abs(pal.cols[pal.dust0 - 1 + s][3] / 255 - a);
-      if (d < bd) {
-        bd = d;
-        st = s;
-      }
-    }
-    if (pal.kind(u) === 'dust') st = Math.max(st, dustLevel(pal, u) - 1);
-    let fam = 0;
-    bd = Infinity;
-    for (let j = 0; j < nd; j++) {
-      const c = pal.cols[pal.dust0 - 1 + j * S];
-      const d = (c[0] - mix[0]) ** 2 + (c[1] - mix[1]) ** 2 + (c[2] - mix[2]) ** 2;
-      if (d < bd) {
-        bd = d;
-        fam = j;
-      }
-    }
-    return pal.dust0 + fam * S + st;
+    return dustNear(pal, mix, a, pal.kind(u) === 'dust' ? dustLevel(pal, u) : 1);
   };
+}
+
+/** The one of his dust colours nearest to `rgb`, at the alpha step nearest to `a` (0..1) and at least `minLevel`. */
+function dustNear(pal: Pal, rgb: number[], a: number, minLevel = 1): number {
+  const S = pal.dustSteps, nd = S ? pal.kinds.filter((k) => k === 'dust').length / S : 0;
+  let st = 0, bd = Infinity;
+  for (let s = 0; s < S; s++) {
+    const d = Math.abs(pal.cols[pal.dust0 - 1 + s][3] / 255 - a);
+    if (d < bd) {
+      bd = d;
+      st = s;
+    }
+  }
+  st = Math.max(st, minLevel - 1);
+  let fam = 0;
+  bd = Infinity;
+  for (let j = 0; j < nd; j++) {
+    const c = pal.cols[pal.dust0 - 1 + j * S];
+    const d = (c[0] - rgb[0]) ** 2 + (c[1] - rgb[1]) ** 2 + (c[2] - rgb[2]) ** 2;
+    if (d < bd) {
+      bd = d;
+      fam = j;
+    }
+  }
+  return pal.dust0 + fam * S + st;
 }
 
 /**
@@ -993,6 +999,43 @@ function patch(L: Layer, key: Layer): Layer {
  * clear pixels) is filled in from its edge inward, each pixel taking the commonest value round it
  * (dust where there is dust), so no ground ever shows through the stone.
  */
+/**
+ * The pixels `where` marks filled from the dust round them, ring by ring inward: each takes the
+ * mean (colour and alpha) of the dust within 2 px already set, as the nearest of his dust colours,
+ * so the fill is as smooth as the cloud round it and leaves no outline of what was there. Returns
+ * only the filled pixels.
+ */
+function fillIn(L: Layer, where: Uint8Array): Layer {
+  const out = L.clone(), got = L.empty(), pal = L.pal;
+  let todo: number[] = [];
+  for (let i = 0; i < L.v.length; i++) if (where[i] && !L.v[i]) todo.push(i);
+  while (todo.length) {
+    const next: number[] = [], set: [number, number][] = [];
+    for (const i of todo) {
+      const x = i % L.w, y = (i / L.w) | 0;
+      let n = 0, sa = 0;
+      const sc = [0, 0, 0];
+      for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
+        if (ox * ox + oy * oy > 5) continue;
+        const v = out.get(x + ox, y + oy);
+        if (pal.kind(v) !== 'dust') continue;
+        const c = pal.cols[v - 1], a = c[3] / 255;
+        n++;
+        sa += a;
+        for (let k = 0; k < 3; k++) sc[k] += c[k] * a;
+      }
+      if (!n) {
+        next.push(i);
+        continue;
+      }
+      set.push([i, dustNear(pal, sc.map((c) => c / sa), sa / n)]);
+    }
+    if (!set.length) break;
+    for (const [i, v] of set) out.v[i] = got.v[i] = v;
+    todo = next;
+  }
+  return got;
+}
 function seal(L: Layer, only?: Layer): Layer {
   const out = L.clone();
   const sil = silhouette(L);
@@ -1619,6 +1662,21 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
       if (touch) flecks.v[i] = u;
     }
   }
+  // (and the cloud under his marks, for the frames after his picture: inside the cloud, where his
+  // picture has a fleck and no dust under it, and where a mark's dark dust now rides with it, the
+  // dust round it is carried in, so a mark that moves, fades or goes leaves neither a hole nor a
+  // dark ghost of itself in the cloud)
+  const [dustD, underF] = (() => {
+    const soft = union(under, dust), inCloud = silhouette(soft, 2), where = new Uint8Array(soft.v.length);
+    const lift = (L: Layer) => L.map((v, x, y) => (flecks.get(x, y) && !flecks0.get(x, y) ? 0 : v));
+    for (let j = 0; j < where.length; j++) {
+      if (flecks0.v[j] && !soft.v[j] && inCloud[j]) where[j] = 1;
+      if (flecks.v[j] && !flecks0.v[j]) where[j] = 1;
+    }
+    const fill = fillIn(lift(soft), where);
+    // (a filled pixel goes to the dust where his picture had dust there, else under it)
+    return [union(lift(dust), fill.filter((_v, x, y) => !!dust.get(x, y))), union(lift(under), fill.filter((_v, x, y) => !dust.get(x, y)))];
+  })();
   // (`burst`: while the chunks burst out, each carries his dark shading round it in the dust (its
   // halo) with it, and the dust closes over where the halo was, so no dark scratch is left in the
   // dust where the chunk will be; from his picture on, the halo is his dust's again)
@@ -1654,7 +1712,7 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
     const body = new Set(biggest);
     return pc.filter((i) => !body.has(i));
   });
-  let halo: Layer | null = null, haloOwner: Int32Array | null = null, dustB = dust;
+  let halo: Layer | null = null, haloOwner: Int32Array | null = null, dustB = dustD;
   // (and the dark flecks of his that touch a chunk, bits of its rim, go with it too)
   const fleckPcs = pieces(flecks);
   const fleckOwner = new Array<number>(fleckPcs.length).fill(-1);
@@ -1663,7 +1721,7 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
     rockPcs.forEach((pc, k) => {
       if (kindOf[k] === 'chunk') for (const j of pc) chunks.v[j] = rocks.v[j];
     });
-    const [withH, rest] = withHalo(chunks, dust);
+    const [withH, rest] = withHalo(chunks, dustD);
     halo = withH.filter((v) => withH.pal.kind(v) === 'dust');
     dustB = rest;
     const owner = new Int32Array(rocks.v.length).fill(-1);
@@ -1698,8 +1756,9 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
   }
   // His flecks in groups: the bits of one mark (a ring drawn on the dust with nothing inside,
   // broken into a few pieces) ride and go together, so a ring never comes apart into an 'S' or a
-  // '6'. From frame HIT_KEY + 4 on, they fade out through alpha steps with the dust (gone by the
-  // third-last frame), never a dark outline left riding on faint dust.
+  // '6'. From frame HIT_KEY + 4 on, they fade out through alpha with the dust (gone by the
+  // third-last frame), laid over the dust under them (overOf), so a mark pales into the cloud and
+  // never leaves a dark outline riding on faint dust or a see-through glyph in it.
   const over = overOf(dust.pal), S = dust.pal.dustSteps;
   const grp = new Int32Array(fleckPcs.length).fill(-1);
   {
@@ -1727,14 +1786,14 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
   // a third, two thirds, nine tenths, so no broken dark line crosses the bright burst before his
   // picture)
   const burstIn = (i: number) => (i >= HIT_KEY ? 1 : [0.3, 0.6, 0.9][i] ?? 1);
-  return plan.map((p, i) => {
+  const frs = plan.map((p, i) => {
     if (i === HIT_KEY) return union(under, dust, all);
     const sy = p.sy ?? p.s;
     // The dust behind the rocks only shows inside the dust cloud's own outline (bays up to about
     // 14 px wide closed: a rock sitting in a bite at the cloud's edge leaves cloud, not a notch).
-    const ds = scaled(i < HIT_KEY ? dustB : dust, p.s, sy, K.ax, K.ay);
+    const ds = scaled(i < HIT_KEY ? dustB : dustD, p.s, sy, K.ax, K.ay);
     const sil = silhouette(ds, 7);
-    const us = scaled(under, p.s, sy, K.ax, K.ay).filter((_v, x, y) => !!sil[y * ds.w + x]);
+    const us = scaled(underF, p.s, sy, K.ax, K.ay).filter((_v, x, y) => !!sil[y * ds.w + x]);
     let d = union(us, ds);
     if (p.t > 0) d = churn(d, p.t, { amp: 1.4, cell: 6, seed, flow: () => dustFlow });
     d = thinWisps(fadeSoft(d, p.cool, p.dim, field), p.thin, seed + 1, heart);
@@ -1744,15 +1803,16 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
     // dark outline lies in the dust between the core and the chunks before his picture)
     let path: Uint8Array | null = null;
     if (burst && i < HIT_KEY) {
-      path = new Uint8Array(rocks.v.length);
+      const pm = new Uint8Array(rocks.v.length);
       rockPcs.forEach((pc, k) => {
         if (kindOf[k] !== 'chunk') return;
         const [dx, dy] = burstChunk(k, i).map(Math.round);
         for (const j of pc) for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
           const x = (j % rocks.w) + dx + ox, y = ((j / rocks.w) | 0) + dy + oy;
-          if (x >= 0 && y >= 0 && x < rocks.w && y < rocks.h) path[y * rocks.w + x] = 1;
+          if (x >= 0 && y >= 0 && x < rocks.w && y < rocks.h) pm[y * rocks.w + x] = 1;
         }
       });
+      path = pm;
     }
     const onPath = (x: number, y: number) => !!path && x >= 0 && y >= 0 && x < rocks.w && y < rocks.h && !!path[y * rocks.w + x];
     // His flecks ride on the dust (each whole, where the dust under its centre went), never on
@@ -1783,8 +1843,9 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
     const owned = burst && i < HIT_KEY ? moveBits(flecks.map((v, x, y) => v), (k) => (fleckOwner[k] >= 0 ? burstChunk(fleckOwner[k], i) : null)) : null;
     const fl = flMoved.map((v, x, y) => {
       if ((owned && owned.get(x, y)) || onPath(x, y)) return over(v, burstIn(i), base.get(x, y));
+      // (a mark's dark dust is laid over the dust where it lands, so it never thins the cloud)
       const q = fleckFade(i);
-      return q >= S ? v : over(v, q / S, base.get(x, y));
+      return q >= S && dust.pal.kind(v) !== 'dust' ? v : over(v, q / S, base.get(x, y));
     });
     // (each rock wears away on a beat of its own round the plan's: a little ahead or behind)
     const lag = (k: number) => (p.crumble > 0 && p.crumble < 1 ? rr(seed + 8, k, -0.07, 0.07) : 0);
@@ -1836,6 +1897,20 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
       }
     });
     return union(base, fl, tl, dl, r);
+  });
+  // No thin see-through slit inside the cloud in a derived frame (guardSlits: a faint line of his
+  // dust that fades out before the dust round it, a fleck or dash gone from over it) beyond his own
+  // fine gaps, carried with the cloud's scale.
+  const keyF = frs[HIT_KEY], keyG = guardSlits(keyF);
+  const own = new Uint8Array(K.w * K.h);
+  for (let j = 0; j < own.length; j++) if (keyG.v[j] !== keyF.v[j]) own[j] = 1;
+  return frs.map((f, i) => {
+    if (i === HIT_KEY) return f;
+    const sx = plan[i].s, sy = plan[i].sy ?? plan[i].s;
+    return guardSlits(f, (x, y) => {
+      const kx = Math.round(K.ax + (x - K.ax) / sx), ky = Math.round(K.ay + (y - K.ay) / sy);
+      return kx >= 0 && ky >= 0 && kx < K.w && ky < K.h && !!own[ky * K.w + kx];
+    });
   });
 }
 

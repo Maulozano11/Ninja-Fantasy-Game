@@ -968,6 +968,8 @@ const MIST_FAULTS: string[] = [];
  *    bubbles (traced on his picture), so the pillar can move inside the pool: the pool is drawn in
  *    front of it. Its new top edge has no dark rim while the pillar stands behind it (so no seam
  *    shows at the pillar's foot); his slime rim closes it only where nothing is behind it any more.
+ *    While the pillar moves, his pool runs on behind it (made from the pool's own pixels, its back
+ *    rim continued across), so the ground never shows between the pool's cut edge and the pillar.
  *  - Anticipation 0-3: the pool opens out of the ground and his pillar gushes up out of it: the
  *    whole pillar is pushed up through the pool's surface (translated, never wiped or stretched),
  *    thin at first and filling out, its top a splashing crown: tongues of his slime licking up,
@@ -979,11 +981,13 @@ const MIST_FAULTS: string[] = [];
  *  - Settle 7-15: the pillar sinks back down through the pool's surface, slumping wider, with the
  *    same splashing crown on its falling top, until it is gone (frame 14); drops break off the crown
  *    and fall in arcs back into the pool; his drops rain down, the mist rises and thins, his light
- *    dims, the pool breaks up into shrinking, cooling islands (no dark rims round the holes, its
- *    lip breaking up with the rest), the pillar's violet roots sink into the pool by frame 11, and
- *    it fades.
+ *    dims, the pool breaks up from its outer edge in (the slime round the pillar's foot goes last)
+ *    into shrinking, cooling islands (no dark rims round the holes, its lip breaking up with the
+ *    rest, and never opening a hole inside itself), the pillar's violet roots sink into the pool
+ *    by frame 11 (a rounded front running down each root), and it fades.
  * The crown is a dome with lobes between its tongues (never a flat top: the build fails on a run
- * over 4 columns), and the pool's cut edge leaves no notch at the moving pillar's foot.
+ * over 4 columns). No frame has an enclosed see-through pixel (alpha under 128 that the outside
+ * cannot reach): the build fails on any.
  * His pillar ran off the top of his panel, so the top rows fade out along a ragged line.
  */
 function blast(): WorldSprite {
@@ -2262,11 +2266,12 @@ function mist3d(o: Orient, hk: number, t: number): Canvas {
 /**
  * Our end-on mist curtain with the new frame counts, made of our own frames. `idle` (8 at 10 fps):
  * the even frames 0, 2, 4, 6 are our old idle frames 0-3 pixel for pixel (t = f / 8 runs the same
- * churn); the odd frames lie halfway in time, their bubbles halfway in size. `rise` (12 at 12 fps):
- * our old rise frame 0 was already 73 % of the wall's light, so it now comes up out of the ground
- * first (frames 0-2: pushed up whole, its round top carried along, 15 / 47 / 72 % of its height);
- * frames 3, 5, 7, 9, 10, 11 are our old rise frames 0-5 pixel for pixel, and frames 4, 6, 8 lie
- * halfway between the old frames round them. The last rise frame runs into idle frame 0 as before.
+ * churn); the odd frames lie halfway in time, their bubbles halfway in size. `rise` (12 at 12 fps),
+ * one ease-out: our old rise frame 0 was already 73 % of the wall's light, so it now comes up out
+ * of the ground first (frames 0-3: pushed up whole, its round top carried along, 30 / 55 / 75 / 89
+ * % of its height); frames 4, 5, 7, 9, 10, 11 are our old rise frames 0-5 pixel for pixel, and
+ * frames 6 and 8 lie between the old frames round them. The last rise frame runs into idle frame 0
+ * as before.
  */
 function wallDepth(): WorldSprite {
   const o = orientations().wall_depth;
@@ -2314,14 +2319,19 @@ function wallDepth(): WorldSprite {
     for (let x = 0; x < old0.w; x++) for (let y = 0; y <= foot[x]; y++) if (y - d >= 0) c.set(x, y, old0.get(x, y - d));
     return c;
   };
-  // The rise, re-timed so it starts from (almost) nothing: frames 0-2 push old frame 0 up out of
-  // the ground (15 %, 47 %, 72 % of its height), frame 3 is old frame 0, then old frames 1-5 with
-  // halfway in-betweens where the old steps were big: 3 old 0, 4 half, 5 old 1, 6 half, 7 old 2,
-  // 8 half, 9 old 3, 10 old 4, 11 old 5. Every frame named "old" is our old frame pixel for pixel.
-  const plan: (number | [number, number] | { reveal: number })[] = [{ reveal: 0.15 }, { reveal: 0.47 }, { reveal: 0.72 }, 0, [0, 1], 1, [1, 2], 2, [2, 3], 3, 4, 5];
+  // The rise, re-timed as one ease-out that starts from (almost) nothing: frames 0-3 push old frame
+  // 0 up out of the ground (30 %, 55 %, 75 %, 89 % of its height), frame 4 is old frame 0, then old
+  // frames 1-5 with an in-between in each of the two big old steps, placed so the column's top
+  // slows down evenly: 4 old 0, 5 old 1, 6 in-between (75 % of the way to old 2), 7 old 2, 8
+  // in-between (40 % of the way to old 3), 9 old 3, 10 old 4, 11 old 5. The top climbs 45, 36, 26,
+  // 20, 20, 14, 9, 7, 8, 8 and 1 px a frame. Every frame named "old" is our old frame pixel for pixel.
+  const plan: (number | [number, number, number] | { reveal: number })[] = [{ reveal: 0.3 }, { reveal: 0.55 }, { reveal: 0.75 }, { reveal: 0.89 }, 0, 1, [1, 2, 0.75], 2, [2, 3, 0.4], 3, 4, 5];
   const rise = plan.map((pl) => {
     if (typeof pl === 'number') return pl === 0 ? old0.clone() : oldRise(HK[pl], pl / 6, pl);
-    if (Array.isArray(pl)) return oldRise((HK[pl[0]] + HK[pl[1]]) / 2, (pl[0] + pl[1]) / 12, pl[0]);
+    if (Array.isArray(pl)) {
+      const [a, b, f] = pl;
+      return oldRise(HK[a] + (HK[b] - HK[a]) * f, (a + (b - a) * f) / 6, a);
+    }
     return reveal(pl.reveal);
   });
   return vfxSprite('wall_depth', 'Poison wall (depth): mist curtain (ours, kept)', [o.ax, o.ay], { rise: { frames: rise, fps: 12, loop: false }, idle: { frames: idle, fps: 10, loop: true } });

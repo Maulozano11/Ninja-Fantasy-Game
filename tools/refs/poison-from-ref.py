@@ -324,19 +324,23 @@ SPRITES = {
     # dB = 0.23 dG), stored with full 8-bit alpha (no steps, no rings). Its zone is everything of
     # his light reachable from the open light right of the pillar without crossing his slime or its
     # dark rim (so it runs right up to the pool's rim: his light pixels outside the rim are light,
-    # never opaque body). Only his character and the shadow it casts are filled, from the light
-    # round them (the smoothest surface meeting it: linear in each direction; where his shadow and
-    # dark rock run out to his panel's edge it meets his dark there). His light runs on to his panel's right edge at
-    # full brightness; past it the frame is widened and it fades out (smoothstep, each row as far as
-    # its brightness, smoothed over rows, carries it: at most 16 px), so its end is one convex curve.
+    # never opaque body). Only his character and the shadow it casts are filled (with the gaps his
+    # limbs close round, `close`), from the light round them: Laplace's equation solved to
+    # convergence, so the fill has no bright spot or ridge and nothing in it is brighter than his
+    # light round it; where his shadow and dark rock run out to his panel's edge and bottom it meets
+    # his dark there, and under his character's feet it rounds off in one elliptical cap from his
+    # light's right end to the panel's bottom (no square corner). His light runs on to his panel's
+    # right edge at full brightness; past it the frame is widened and it fades out (smoothstep, each
+    # row as far as its brightness, smoothed over rows, carries it: at most 16 px), so its end is one
+    # convex curve.
     'blast': dict(anchor=(435, 300), area=[rect(339, 179, 581, 344)], drops=40, char=True,
                   raw_light=dict(region=[(466, 180), (581, 180), (581, 344), (470, 344), (470, 300), (488, 288), (492, 266), (466, 264)],
                                  seeds=[(540, 230), (578, 250), (540, 300)],
                                  # (the shadow his character casts on the ground below its feet)
                                  shadow=[(515, 311), (521, 307), (530, 308), (540, 300), (542, 290), (581, 286), (581, 344), (515, 344)],
                                  keep_art=[rect(490.5, 249.5, 499.5, 257.5), rect(492.5, 257.5, 497.5, 270)],
-                                 edge_x=578, ext=16, reach_s=10.0, fade_b=24, gexf=200.0, close=4, fill_wy=float(os.environ.get('PWY', '1.0'))),
-                  pad=(3, 0, 3, 3),
+                                 edge_x=578, ext=16, reach_s=10.0, fade_b=24, gexf=200.0, close=4),
+                  pad=(3, 0, 4, 3),
                   pieces=[('mist', [rect(339, 179, 411, 262), [(455, 179), (520, 179), (520, 240), (470, 240), (462, 222)]], 'purple'),
                           ('pool', [[(339, 258), (409, 258), (416, 280), (458, 282), (466, 258), (581, 258), (581, 344), (339, 344)]])]),
     'wall': dict(anchor=(149.5, 503), area=[rect(6, 375, 300, 510)], drops=30, char=True, pad=(3, 3, 3, 3),
@@ -443,14 +447,18 @@ def raw_light(name, cfg):
         drops); everything in it is light, never body: his light pixels outside the pool's rim are
         light;
       * the value is his green excess over his panel colour (lightly smoothed for JPEG noise),
-        divided by gexf; only his character and its shadow are filled, with the smoothest surface
-        meeting the light round them;
-      * where the filled shadow and rock run out to his panel's edge, the fill meets 0 there (his
-        dark), so it never forms a bright core where his picture is dark;
+        divided by gexf; only his character and its shadow are filled (with the gaps his limbs
+        close round, which would show his light as bright spots), with the solution of Laplace's
+        equation meeting the light round them, solved to convergence: no bright spot, no ridge,
+        nothing brighter than the light round it;
+      * at the panel's bottom his light fades over up to fade_b px, each column by its own
+        brightness; where the filled shadow and rock run out to his panel's edge and bottom, the
+        fill meets 0 there (his dark), so it never forms a bright core where his picture is dark;
+        under his character's feet it rounds off in one elliptical cap from his light's right end
+        to the panel's bottom, so the light's lower-right corner is round;
       * his pixels keep their brightness up to edge_x (his panel's right edge); past it it runs on,
         fading out (smoothstep) as far as each row's brightness, smoothed over rows (sigma reach_s),
-        carries it (at most `ext` px), so its end is one convex curve; at the panel's bottom it fades over up to
-        fade_b px, each column by its own brightness, so the light's ends are rounded.
+        carries it (at most `ext` px), so its end is one convex curve.
     Returns the zone, the alpha field (his grid) and the light colour."""
     rl = cfg['raw_light']
     c = SMOOTH
@@ -511,10 +519,26 @@ def raw_light(name, cfg):
     edge0 = dilate(LZ & ~known, 1, nb=N8) & ~R & (darkrow[:, None] | (Y > yb))
     # (the fill is solved to convergence: no point in it is brighter than his light round it, and
     # it has no ridges)
-    gf = laplace_fill(np.where(edge0, 0.0, gs), known | edge0, LZ & ~known, wy=rl.get('fill_wy', 1.0))
+    gf = laplace_fill(np.where(edge0, 0.0, gs), known | edge0, LZ & ~known)
     A = np.where(LZ, np.clip(gf / rl['gexf'], 0, 1), 0.0)
-    if os.environ.get('PDBG'):  # TEMP
-        np.savez(os.environ['PDBG'], edge0=edge0, LZ=LZ, known=known, gf=gf, gs=gs, R=R, Mf=Mf, darkrow=darkrow)
+    # Under his character's feet, where his picture is dark out to his panel's edge and bottom, the
+    # filled light rounds off: one elliptical cap from the right end of his light (the last row his
+    # light reaches the panel's edge on, x = edge + ext) to the panel's bottom at the shadow's left
+    # side, so the light's lower-right corner is round, not square. Only the fill and the run-on past
+    # his edge are touched (inside 75 % of the ellipse, and on his own pixels, it is 1); it eases in
+    # over the 6 rows under his light's last row, so nothing steps.
+    ex = rl['edge_x']
+    hisR = known & R
+    yk = int(np.nonzero(hisR[:, ex - 2:ex + 1].any(1))[0].max())
+    xc = min(p[0] for p in rl['shadow'])
+    rx, ry = ex + rl['ext'] - xc, yb - yk
+    X = np.arange(W0)[None, :] + 0.5
+    q = np.sqrt(np.clip((X - xc) / rx, 0, None) ** 2 + np.clip((Y - yk) / ry, 0, None) ** 2)
+    t = np.clip((q - 0.75) / 0.25, 0, 1)
+    ein = np.clip((Y - yk) / 6.0, 0, 1)
+    corner = 1 - (t * t * (3 - 2 * t)) * (ein * ein * (3 - 2 * ein))
+    corner = np.where(hisR, 1.0, corner)
+    A = A * corner
     # Past his panel's right edge the edge column's light runs on and fades out, each row as far as
     # its own brightness carries it (the brightest `ext` px), so the light's end is rounded like its
     # own falloff, not a vertical line.
@@ -523,7 +547,6 @@ def raw_light(name, cfg):
     # light's end is ONE convex curve (no lumps where his edge column dips); its value blends from his
     # edge column (lightly smoothed) into that smooth profile over the first 6 px, then falls
     # (smoothstep) to nothing at the row's reach.
-    ex = rl['edge_x']
     col = A[:, ex - 2:ex + 1].mean(1) * (LZ[:, ex] > 0)
     col3 = gauss(col[:, None], 3.0)[:, 0]
     colS = gauss(col[:, None], rl['reach_s'])[:, 0]
@@ -539,6 +562,7 @@ def raw_light(name, cfg):
         f = np.clip(1 - k / reach, 0, 1)
         A[:, ex + k] = (col3 * (1 - b) + colS * b) * (f * f * (3 - 2 * f))
     A[:, ex + rl['ext'] + 1:] = 0
+    A[:, ex + 1:] *= corner[:, ex + 1:]
     # His light colour: the line his light pixels lie on (least squares, through his panel colour).
     dk = d[known & (dG > 8)]
     kr = float((dk[:, 0] * dk[:, 1]).sum() / (dk[:, 1] ** 2).sum())

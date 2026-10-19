@@ -135,6 +135,17 @@ def holes_check():
             bad += sum(1 for v in n if v)
             lines.append(f'  {name:10s} {anim:4s} {n}')
     lines.append('  OK: no see-through pixel in the stone on any frame of wall and wall_diag' if not bad else f'  {bad} frames have see-through pixels')
+    # The blast: the ground must never show through the middle of the effect (the pool round the
+    # moving pillar's foot above all). Also counted against a threshold scaled by the frame's own
+    # opacity (its strongest alpha), so a hole in a fading frame is caught too.
+    bb = 0
+    for anim, fr in ALL['blast'].items():
+        n = [int(enclosed(np.asarray(f)[..., 3]).sum()) for f in fr]
+        ns = [int(enclosed(np.asarray(f)[..., 3], max(8, int(0.98 * np.asarray(f)[..., 3].max()))).sum()) for f in fr]
+        bb += sum(1 for v in n + ns if v)
+        lines.append(f'  blast      {anim:4s} {n}')
+        lines.append(f'  blast      {anim:4s} {ns}  (alpha under 98 % of the frame\'s strongest)')
+    lines.append('  OK: no enclosed see-through pixel on any blast frame' if not bb else f'  {bb} blast frames have enclosed see-through pixels')
     # wall_depth is OURS (kept as the owner asked): our mist curtain has a few thin-gas pinholes by
     # design; they are listed for information, and must be the same as in our old vfx_poison frames.
     for anim, fr in ALL['wall_depth'].items():

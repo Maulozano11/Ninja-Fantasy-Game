@@ -157,8 +157,9 @@ function key(name: string): Key {
 }
 
 /**
- * His light read straight from his pixels (the blast's green light): one colour and a full 8-bit
- * alpha per pixel of the frame, so it has no steps or rings and dims or spreads smoothly.
+ * A light field: one colour and a full 8-bit alpha per pixel of the frame (his light read straight
+ * from his pixels, or the blast's ground glow made from it), so it dims or spreads smoothly; the
+ * blast puts it on his alpha steps only when it draws a frame.
  */
 class Light {
   constructor(readonly w: number, readonly h: number, readonly rgb: Color, readonly a: Float32Array) {}
@@ -981,11 +982,12 @@ function stepAlpha(a: number): number {
  *    light's level there (his light just outside the pool's right end);
  *  - falling smoothly to nothing over the ground, by the ellipse's radius r (0 at the centre, 1 at its
  *    rim) past the pool's edge (d = r - INSET / its right radius): exp(-S A (sqrt(1 + (d / A)^2) - 1)),
- *    level at the pool's edge, then a steady fall of S per unit of r (the same share every pixel, so
- *    its faint outer bands are as wide as its bright ones, and none closes up against his art). The
- *    ellipse reaches right to his panel's edge (x 245), where his own light ended, and up the far
- *    ground and down the near ground much less (foreshortened like the pool, the near side less);
- *    it is under one step at its rim, so it ends on its own;
+ *    level at the pool's edge, then falling by a share that grows to S per unit of r and never more
+ *    (so its faint outer bands are as wide as its bright ones, and none pinches against his art into
+ *    a dark slit). The ellipse reaches right to his panel's edge (x 245), where his own light ended
+ *    (79 px from its centre), but only UP px up the far ground and DOWN px down the near ground
+ *    (foreshortened, the ground lying flat); its faintest step (alpha 10) ends on the ellipse's rim,
+ *    a curve;
  *  - under the pool it stays at the edge's level (no brighter), so the ground the pool leaves as it
  *    breaks up is lit like the ground round it, with no bright core and no dark ghost.
  * The frames put it on his light's alpha steps (stepAlpha), so it falls off in soft elliptical bands.

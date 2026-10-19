@@ -154,6 +154,135 @@ def holes_check():
     return '\n'.join(lines)
 
 
+def light_holes(f, rgb):
+    """The blast light check (the same rule the generator's build check uses): pixels darker than half
+    the light round them, a hole in the light and not its own outer edge. A pixel counts when it is
+    not slime (alpha under 200), the strongest pixel of the light's own colour within 3 px is alpha 24
+    or more and over twice its alpha, and along some direction (across, down or a diagonal) there is
+    something over twice its alpha (light or slime) on both sides of it within 3 px."""
+    a = np.asarray(f).astype(int)
+    al = a[..., 3]
+    H, W = al.shape
+    lit = np.where((al > 0) & (np.abs(a[..., 0] - rgb[0]) <= 3) & (np.abs(a[..., 1] - rgb[1]) <= 3) & (np.abs(a[..., 2] - rgb[2]) <= 3), al, 0)
+    S = np.where(al >= 200, 255, al)
+
+    def sh(m, dy, dx):
+        o = np.zeros_like(m)
+        o[max(dy, 0):H + min(dy, 0), max(dx, 0):W + min(dx, 0)] = m[max(-dy, 0):H + min(-dy, 0), max(-dx, 0):W + min(-dx, 0)]
+        return o
+    m = np.zeros_like(al)
+    for dy in range(-3, 4):
+        for dx in range(-3, 4):
+            if (dy or dx) and dy * dy + dx * dx <= 9:
+                m = np.maximum(m, sh(lit, dy, dx))
+    br = np.zeros(al.shape, bool)
+    for d in ((0, 1), (1, 0), (1, 1), (1, -1)):
+        sp = np.zeros_like(al)
+        sn = np.zeros_like(al)
+        for k in (1, 2, 3):
+            sp = np.maximum(sp, sh(S, d[0] * k, d[1] * k))
+            sn = np.maximum(sn, sh(S, -d[0] * k, -d[1] * k))
+        br |= (sp > 2 * al) & (sn > 2 * al)
+    return (al < 200) & (m >= 24) & (2 * al < m) & br
+
+
+def light_rgb():
+    import re
+    src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'world-sprites', 'vfx-poison-v3-refdata.ts')).read()
+    h = re.search(r'"rgb": "#([0-9a-f]{6})"', src).group(1)
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def blast_light_check():
+    """No hole in the blast's light on any frame. His own picture (frame 4) has a few pixels the rule
+    counts (a drop's dark JPEG halo, a dark column beside the pool's foot): they are listed apart, and
+    exempt on another frame only at the same place."""
+    rgb = light_rgb()
+    fr = ALL['blast']['blast']
+    his = light_holes(fr[4], rgb)
+    lines, bad = [f'blast light holes (pixels darker than half the light within 3 px, light colour #{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}):'], 0
+    counts, own = [], []
+    for f in fr:
+        h = light_holes(f, rgb)
+        counts.append(int((h & ~his).sum()))
+        own.append(int((h & his).sum()))
+    bad = sum(1 for v in counts if v)
+    lines.append(f'  blast      blast {counts}')
+    lines.append(f'  his own picture where it stands (frame 4\'s own pixels, at the same place): {own}')
+    lines.append('  OK: no hole in the light on any blast frame' if not bad else f'  {bad} blast frames have holes in the light')
+    return '\n'.join(lines)
+
+
+def aura_check():
+    """The aura's two layers together (back + front, no character): enclosed see-through pockets
+    (alpha 60 or less) per frame, and his pale-lime highlights on the green strands, whole (their
+    7 px matched at some offset) on every frame."""
+    B, F = ALL['aura_back']['idle'], ALL['aura']['idle']
+    pk = []
+    for b, f in zip(B, F):
+        c = b.copy()
+        c.alpha_composite(f)
+        pk.append(int(enclosed(np.asarray(c)[..., 3], 61).sum()))
+    lines = [f'aura pockets: enclosed see-through px (alpha 60 or less) in back + front, per frame: {pk}']
+    f0 = np.asarray(B[0]).astype(int)
+    L0 = 0.3 * f0[..., 0] + 0.59 * f0[..., 1] + 0.11 * f0[..., 2]
+    # (his highlights: pieces of 12 px or less of his bright pixels (brightness 135 or more) holding
+    # his brightest colour #e6fcb9, as the generator lifts them out)
+    bright = (L0 >= 135) & (f0[..., 3] > 0)
+    H, W = bright.shape
+    lab = np.zeros((H, W), int)
+    n = 0
+    for y0 in range(H):
+        for x0 in range(W):
+            if not bright[y0, x0] or lab[y0, x0]:
+                continue
+            n += 1
+            st, pc = [(y0, x0)], []
+            lab[y0, x0] = n
+            while st:
+                y, x = st.pop()
+                pc.append((y, x))
+                for dy in (-1, 0, 1):
+                    for dx in (-1, 0, 1):
+                        v, u = y + dy, x + dx
+                        if 0 <= v < H and 0 <= u < W and bright[v, u] and not lab[v, u]:
+                            lab[v, u] = n
+                            st.append((v, u))
+            if len(pc) > 12 or not any(tuple(f0[y, x, :3]) == (0xe6, 0xfc, 0xb9) for y, x in pc):
+                continue
+            pat = [(x, y, tuple(f0[y, x, :3])) for y, x in pc]
+            x, y = min(p[0] for p in pat), min(p[1] for p in pat)
+            res = []
+            for b in B:
+                a = np.asarray(b).astype(int)
+                best = max(sum(1 for xx, yy, cc in pat if tuple(a[yy + oy, xx + ox, :3]) == cc) for oy in range(-6, 7) for ox in range(-6, 7))
+                res.append(best)
+            lines.append(f'  highlight at {x},{y} ({len(pat)} px): whole on frames {sum(1 for r in res if r == len(pat))}/{len(B)} {res}')
+    return '\n'.join(lines)
+
+
+def wall_top_check():
+    """The straight wall's rising slime top on rise frames 3-7 (between the posts): how far its top
+    row ranges, its mean distance from a straight line, and its longest flat run."""
+    lines = ['wall rise: the rising slime top (x 44-248)']
+    for i, f in enumerate(ALL['wall']['rise']):
+        if i < 3 or i > 7:
+            continue
+        a = np.asarray(f).astype(int)
+        sl = (a[..., 3] >= 200) & (a[..., 1] > a[..., 0] + 30) & (a[..., 1] > a[..., 2] + 30)
+        t = np.array([np.nonzero(sl[:, x])[0].min() if sl[:, x].any() else -1 for x in range(44, 249)])
+        xs = np.arange(44, 249)[t >= 0]
+        ts = t[t >= 0]
+        A = np.vstack([xs, np.ones_like(xs)]).T
+        dev = np.abs(ts - A @ np.linalg.lstsq(A, ts, rcond=None)[0]).mean()
+        run = best = 1
+        for k in range(1, len(ts)):
+            run = run + 1 if ts[k] == ts[k - 1] else 1
+            best = max(best, run)
+        lines.append(f'  rise {i}: top rows range {ts.max() - ts.min()} px, line-fit deviation {dev:.1f} px, longest flat run {best} px')
+    return '\n'.join(lines)
+
+
 def light_check():
     """The blast's light against his: his green excess over his panel colour (G - 33) next to ours
     (key frame composited on his panel colour), where ours is light only, outside the mask of his
@@ -175,8 +304,8 @@ def light_check():
             f'mean |diff| {d.mean():.2f}, 90th percentile {np.percentile(d, 90):.1f} (target: mean under 8)')
 
 
-B = border_check() + '\n' + holes_check()
-F = flash_check() + '\n' + light_check()
+B = border_check() + '\n' + holes_check() + '\n' + aura_check() + '\n' + wall_top_check()
+F = flash_check() + '\n' + light_check() + '\n' + blast_light_check()
 print(B)
 print(F)
 write(os.path.join(ART2, 'vfx-poison-v3-border.txt'), B)

@@ -2276,7 +2276,7 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
   }
   const ground = (x: number) => ga + gb * x;
   const hMax = Math.max(...top.map((tp, x) => (tp >= K.h ? 0 : ground(x) - tp))) + 4;
-  // The rising slime's surface is never a level line: it climbs the posts' inner faces (a meniscus,
+  // The straight wall's rising slime surface is never a level line: it climbs the posts' inner faces (a meniscus,
   // 3 px higher at each post and falling away over about 7 px), slow waves run along it (37 and 21 px
   // long, in opposite directions, with a 10 px ripple), and a broad bulge slides across it as it
   // fills (all scaled down while the layer is still thin). His dripping top comes over it on frames
@@ -2368,6 +2368,23 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
       }
     }
   }
+  // (his dark stone streaks on the ground in front of the beam (the 3/4 wall's dashes): small pieces
+  // of the beam's block lying wholly below the beam in their columns. They are not the beam: in the
+  // rise they come in with his light on the ground, at its strength where they lie, like his bright
+  // streaks there, instead of popping in with the rising beam onto bare ground)
+  {
+    const pcs = pieces(blk[2].B);
+    const low = new Int32Array(K.w).fill(-1);
+    for (const pc of pcs) if (pc.length > 200) for (const j of pc) low[j % K.w] = Math.max(low[j % K.w], (j / K.w) | 0);
+    for (const pc of pcs) {
+      if (pc.length > 80 || !pc.every((j) => low[j % K.w] >= 0 && ((j / K.w) | 0) > low[j % K.w])) continue;
+      for (const j of pc) {
+        bits.v[j] = blk[2].B.v[j];
+        beamFull.v[j] = 0;
+      }
+      if (process.env.POISON_DEBUG) console.log(`${kind}: a ${pc.length} px stone streak in front of the beam comes with the ground light`);
+    }
+  }
   const full = [postFull[0], postFull[1], beamFull];
   // Per block, its pixels next to his slime (and on which side), for the rise.
   const slimeEdge = full.map((Bf) => {
@@ -2412,7 +2429,9 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
     let sl: Layer | null = null;
     if (ps > 0) {
       const { s } = idleAt(fract((i - (RISE - 1)) / IDLE));
-      sl = cut(s, (x, y) => ground(x) - y <= ps * hMax + surfLift(x, i, ps * hMax) + 1.2 * (pnoise(x, i * 3, 6, 0, 0, seed + 4) - 0.5) * 2, 4);
+      // (the 3/4 wall's surface runs up along the diagonal and is ragged already: only the straight
+      // wall's level top takes the meniscus and the waves)
+      sl = cut(s, (x, y) => ground(x) - y <= ps * hMax + (kind === 'wall' ? surfLift(x, i, ps * hMax) + 1.2 * (pnoise(x, i * 3, 6, 0, 0, seed + 4) - 0.5) * 2 : 2.5 * (pnoise(x, i * 3, 6, 0, 0, seed + 4) - 0.5) * 2), 4);
       if (dB[2]) {
         // (it rides with the beam, never below the ground it stands on)
         const bf = blk[2].f;

@@ -678,6 +678,39 @@ function guardSlits(L: Layer, skip?: (x: number, y: number) => boolean): Layer {
 }
 
 /**
+ * Single-pixel alpha dips filled: a dust or clear pixel whose four neighbours are all dust or rock,
+ * at least two of them dust and every dust one thicker than it, is raised to the thinnest of them
+ * (in its own colour, or that neighbour's if it was clear). The faded cloud then shows no lone
+ * see-through specks where the ground glints through.
+ */
+function fillDips(L: Layer): Layer {
+  const { w, h, pal } = L;
+  const out = L.clone();
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x, v = L.v[i];
+    if (v && pal.kind(v) !== 'dust') continue;
+    const q = dustLevel(pal, v);
+    let m = Infinity, mv = 0, nd = 0, ok = true;
+    for (const j of [i - 1, i + 1, i - w, i + w]) {
+      const u = L.v[j], ku = pal.kind(u);
+      if (!u || ku === 'shade') {
+        ok = false;
+        break;
+      }
+      if (ku !== 'dust') continue;
+      nd++;
+      if (dustLevel(pal, u) < m) {
+        m = dustLevel(pal, u);
+        mv = u;
+      }
+    }
+    if (!ok || nd < 2 || m <= q) continue;
+    out.v[i] = v ? v + (m - q) : mv;
+  }
+  return out;
+}
+
+/**
  * Rock moved and crumbling away, piece by piece (pieces of the unmoved layer, so each rock keeps its
  * identity and its timing from frame to frame): move(k, cx, cy, n) gives a piece's offset (null
  * drops it), level(k, cx, cy, n) how far it has crumbled (0 = whole, 1 = gone).
@@ -702,8 +735,8 @@ function guardSlits(L: Layer, skip?: (x: number, y: number) => boolean): Layer {
  */
 function moveCrumble(L: Layer, move: (k: number, cx: number, cy: number, n: number) => [number, number] | null,
   level: (k: number, cx: number, cy: number, n: number) => number, seed: number, step = 0.28,
-  opts: { dash?: (k: number) => boolean; avoid?: Layer } = {}): Layer {
-  const { dash, avoid } = opts;
+  opts: { dash?: (k: number) => boolean; avoid?: Layer; ghost?: Ghost } = {}): Layer {
+  const { dash, avoid, ghost } = opts;
   const out = L.empty();
   const { w } = L;
   const pal = L.pal, rim = pal.rim;
@@ -735,8 +768,15 @@ function moveCrumble(L: Layer, move: (k: number, cx: number, cy: number, n: numb
     const m = move(k, pcx, pcy, n);
     if (!m) return;
     const mx = Math.round(m[0]), my = Math.round(m[1]);
-    const c = clamp(level(k, pcx, pcy, n), 0, 1);
+    const raw = level(k, pcx, pcy, n);
+    let c = clamp(raw, 0, 1);
     if (c <= 0) return place(pc, pc.map((i) => L.v[i]), mx, my);
+    // (`ghost`: a rock worn nearly away does not vanish in one cut: once it is down to its last
+    // remnant, a small compact stone (8 px, or an eighth of it), that remnant pales out through
+    // alpha over the dust under it, as `ghost.alpha` says for how far past that point it is)
+    const cG = clamp(1 - Math.max(8, 0.13 * n) / n, 0.5, 0.87);
+    const ga = ghost && raw >= cG && !dash?.(k) && n >= 10 ? ghost.alpha(k, raw - cG) : 0;
+    if (ga > 0) c = cG;
     if (dash?.(k)) {
       // (a ray dash fades: its opaque heart takes the dash's own gold, then all of it loses alpha)
       if (c >= 1) return;
@@ -824,7 +864,15 @@ function moveCrumble(L: Layer, move: (k: number, cx: number, cy: number, n: numb
         return ch === undefined || c < chips[ch].at;
       });
       const score = new Map<number, number>();
-      for (const i of cand) score.set(i, 0.8 * rho(i) + 0.2 * (1 - depth.get(i)! / Math.max(1, D)) + 0.1 * (pnoise((i % w) - bx, ((i / w) | 0) - by, 3, 0, 0, seed + 9 + k) - 0.5));
+      // (late on, the remnant rounds off: the score leans toward plain distance from the core's
+      // centre, so a long rock's last remnant is a pebble, not a stick or a bar)
+      const lam = 0.8 * clamp((c - 0.35) / 0.35, 0, 1);
+      let rMax = 1;
+      for (const i of cand) rMax = Math.max(rMax, Math.hypot((i % w) - ccx, ((i / w) | 0) - ccy));
+      for (const i of cand) {
+        const s0 = 0.8 * rho(i) + 0.2 * (1 - depth.get(i)! / Math.max(1, D)) + 0.1 * (pnoise((i % w) - bx, ((i / w) | 0) - by, 3, 0, 0, seed + 9 + k) - 0.5);
+        score.set(i, (1 - lam) * s0 + lam * Math.hypot((i % w) - ccx, ((i / w) | 0) - ccy) / rMax);
+      }
       const nKeep = Math.min(cand.length, Math.round(n * (1 - c)));
       kept = [...cand].sort((a, b) => score.get(a)! - score.get(b)! || a - b).slice(0, nKeep);
       // (one piece: its biggest 4-way part, with any pixel of the rock it encloses filled back in)
@@ -859,12 +907,17 @@ function moveCrumble(L: Layer, move: (k: number, cx: number, cy: number, n: numb
         }
       }
       kept = pc.filter((i) => keepSet.has(i) || (!open.has(i) && !(chipOf.has(i) && c >= chips[chipOf.get(i)!].at)));
-      // (opened by a 2 x 2 square before its rim is drawn: a 1 px stem, tail or spur the shrinking
-      // left drops off, and what is left is its biggest piece, so a remnant never reads as a twig
-      // or a hook)
+      // (opened by a 2 x 2 square before its rim is drawn, by a 3 x 3 one late on: a stem, tail,
+      // spur or thin bar the shrinking left drops off, and what is left is its biggest piece, so a
+      // remnant never reads as a twig, a hook or a stick)
       const kk = new Set(kept);
       const sq = (i: number) => kk.has(i) && kk.has(i + 1) && kk.has(i + w) && kk.has(i + w + 1) && (i % w) < w - 1;
-      const op = new Set(kept.filter((i) => sq(i) || sq(i - 1) || sq(i - w) || sq(i - w - 1)));
+      let op = new Set(kept.filter((i) => sq(i) || sq(i - 1) || sq(i - w) || sq(i - w - 1)));
+      if (c >= 0.6) {
+        const sq3 = (i: number) => [-1, 0, 1].every((oy) => [-1, 0, 1].every((ox) => kk.has(i + oy * w + ox) && ((i % w) + ox) >= 0 && ((i % w) + ox) < w));
+        const op3 = new Set(kept.filter((i) => [-1, 0, 1].some((oy) => [-1, 0, 1].some((ox) => sq3(i + oy * w + ox)))));
+        if (op3.size >= 6) op = op3;
+      }
       let biggest: number[] = [];
       const seen2 = new Set<number>();
       for (const i of op) {
@@ -883,6 +936,18 @@ function moveCrumble(L: Layer, move: (k: number, cx: number, cy: number, n: numb
       }
       const bs = new Set(biggest);
       kept = kept.filter((i) => bs.has(i));
+    }
+    if (ga > 0) {
+      // (the ghost: his stone laid over the dust under it at alpha `ga`, never thinner than the dust)
+      if (kept.length >= 6 && fits(kept, mx, my)) {
+        const vals = outlined(kept, kept.map((i) => L.v[i]));
+        kept.forEach((i, j) => {
+          const x = (i % w) + mx, y = ((i / w) | 0) + my;
+          const gv = ghost!.over(vals[j], ga, ghost!.base.get(x, y));
+          if (gv) out.set(x, y, gv);
+        });
+      }
+      return;
     }
     if (kept.length >= 6) place(kept, outlined(kept, kept.map((i) => L.v[i])), mx, my);
     for (const ch of chips) {
@@ -907,6 +972,13 @@ function moveCrumble(L: Layer, move: (k: number, cx: number, cy: number, n: numb
   }
   return out;
 }
+
+/**
+ * A worn-out rock's last remnant fading through alpha (see moveCrumble): `alpha(k, past)` is the
+ * remnant's opacity once its level is `past` beyond the point where only that remnant is left (0:
+ * not a ghost: it wears on as usual, or is gone), laid with `over` on `base`.
+ */
+interface Ghost { base: Layer; over: (v: number, t: number, u: number) => number; alpha: (k: number, level: number) => number }
 
 /** Drift that starts at 0 and wraps (a pebble leaving is replaced by one arriving). */
 const drift = (t: number, ph: number) => fract(ph + t) - ph;
@@ -1304,7 +1376,18 @@ function breath(): WorldSprite {
     }
     const sub = new Layer(rocks0.pal, x1 - x0 + 11, y1 - y0 + 11);
     for (const j of pc) sub.set((j % W0) - x0 + 5, ((j / W0) | 0) - y0 + 5, 1);
-    const inside = silhouette(sub, 3);
+    // (the face a rock encloses: what each of its pieces of 10 px or more encloses with gaps of up
+    // to about 6 px closed, and what the group encloses with gaps of 2 px closed; a few loose
+    // specks near one another enclose no more, or they would carry off a bite of the cloud)
+    const inside = silhouette(sub, 1);
+    const sub1 = sub.empty();
+    for (const q of pieces(sub)) {
+      if (q.length < 10) continue;
+      sub1.v.fill(0);
+      for (const j of q) sub1.v[j] = 1;
+      const si = silhouette(sub1, 3);
+      for (let j = 0; j < si.length; j++) if (si[j]) inside[j] = 1;
+    }
     const px = [...pc];
     for (let y = 0; y < sub.h; y++) for (let x = 0; x < sub.w; x++) {
       const X = x + x0 - 5, Y = y + y0 - 5;
@@ -1313,7 +1396,9 @@ function breath(): WorldSprite {
         px.push(Y * W0 + X);
       }
     }
-    return { px, n: pc.length, c: centre(rocks0, pc) };
+    // (a few specks on the cloud's own edge)
+    const edge = pc.length < 8 && pc.some((j) => [j - 1, j + 1, j - W0, j + W0].some((u) => !rocks0.v[u] && !dust.v[u]));
+    return { px, n: pc.length, c: centre(rocks0, pc), edge };
   });
   const fr = range(FLY_N).map((i) => {
     const t = i / FLY_N;
@@ -1330,10 +1415,12 @@ function breath(): WorldSprite {
     groups.forEach((gp, k) => {
       const [cx, cy] = gp.c, n = gp.n;
       let mx = 0, my = 0;
-      if (n <= 220) {
+      // (the specks at the cone's very tip and on its edge are the cloud's own rim: they stay, so
+      // none drifts back behind the tip or peels off the cloud)
+      const dist = Math.hypot(cx - ox, cy - oy);
+      if (n <= 220 && !gp.edge && dist >= 12) {
         const u = drift(t, rr(seed + 2, k, 0, 1));
         const a = Math.atan2(cy - oy, cx - ox);
-        const dist = Math.hypot(cx - ox, cy - oy);
         const step = (n > 30 ? 5 : 9) * u;
         if (step > 0 && dist + step > 128) return;
         mx = Math.round(Math.cos(a) * step);
@@ -1831,6 +1918,50 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
   // a third, two thirds, nine tenths, so no broken dark line crosses the bright burst before his
   // picture)
   const burstIn = (i: number) => (i >= HIT_KEY ? 1 : [0.3, 0.6, 0.9][i] ?? 1);
+  // (`burst`: the path each bursting chunk sweeps in a build-up frame, 2 px round it)
+  const paths = plan.map((_p, i) => {
+    if (!burst || i >= HIT_KEY) return null;
+    const pm = new Uint8Array(rocks.v.length);
+    rockPcs.forEach((pc, k) => {
+      if (kindOf[k] !== 'chunk') return;
+      const [dx, dy] = burstChunk(k, i).map(Math.round);
+      for (const j of pc) for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
+        const x = (j % rocks.w) + dx + ox, y = ((j / rocks.w) | 0) + dy + oy;
+        if (x >= 0 && y >= 0 && x < rocks.w && y < rocks.h) pm[y * rocks.w + x] = 1;
+      }
+    });
+    return pm;
+  });
+  const onPathAt = (i: number, x: number, y: number) => {
+    const pm = paths[i];
+    return !!pm && x >= 0 && y >= 0 && x < rocks.w && y < rocks.h && !!pm[y * rocks.w + x];
+  };
+  // Small pebbles are not there yet at the very start: they come one by one, and a pebble a
+  // bursting chunk would touch waits until it has passed. Each comes in through alpha over the
+  // two build-up frames before it shows whole (3/10, then 6/10, laid over the dust), so none pops
+  // in; one mostly hidden behind a chunk then is left out.
+  const pebOff = (k: number, i: number): [number, number] => {
+    const [cx, cy] = centre(rocks, rockPcs[k]), p = plan[i];
+    return [Math.round((cx - K.ax) * (p.d - 1)), Math.round((cy - K.ay) * (p.d - 1) + p.fall * 0.6)];
+  };
+  const pebShown = (k: number, i: number): boolean => {
+    if (i >= HIT_KEY) return true;
+    if (rr(seed + 2, k, 0, 1) < plan[i].gone) return false;
+    const [ox, oy] = pebOff(k, i);
+    return !rockPcs[k].some((j) => onPathAt(i, (j % rocks.w) + ox, ((j / rocks.w) | 0) + oy));
+  };
+  const pebFirst = rockPcs.map((_pc, k) => {
+    let f = HIT_KEY;
+    while (f > 0 && pebShown(k, f - 1)) f--;
+    return kindOf[k] === 'chunk' ? 0 : f;
+  });
+  // (his flecks come in the same way, a mark at a time)
+  const fleckFirst = (g: number) => {
+    let f = 0;
+    while (f < HIT_KEY && rr(seed + 5, g, 0, 1) < plan[f].gone) f++;
+    return f;
+  };
+  const GHOST_IN = [0.6, 0.3];
   const frs = plan.map((p, i) => {
     if (i === HIT_KEY) return union(under, dust, all);
     const sy = p.sy ?? p.s;
@@ -1846,20 +1977,7 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
     // of his it passes over (his flecks and shading there) come in through alpha as the chunk's
     // own carried ones do, and a pebble it would touch waits until it has passed, so no broken
     // dark outline lies in the dust between the core and the chunks before his picture)
-    let path: Uint8Array | null = null;
-    if (burst && i < HIT_KEY) {
-      const pm = new Uint8Array(rocks.v.length);
-      rockPcs.forEach((pc, k) => {
-        if (kindOf[k] !== 'chunk') return;
-        const [dx, dy] = burstChunk(k, i).map(Math.round);
-        for (const j of pc) for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
-          const x = (j % rocks.w) + dx + ox, y = ((j / rocks.w) | 0) + dy + oy;
-          if (x >= 0 && y >= 0 && x < rocks.w && y < rocks.h) pm[y * rocks.w + x] = 1;
-        }
-      });
-      path = pm;
-    }
-    const onPath = (x: number, y: number) => !!path && x >= 0 && y >= 0 && x < rocks.w && y < rocks.h && !!path[y * rocks.w + x];
+    const onPath = (x: number, y: number) => onPathAt(i, x, y);
     // His flecks ride on the dust (each whole, where the dust under its centre went), never on
     // their own, and go one by one as the dust thins.
     const flMoved = moveBits(flecks, (k) => {
@@ -1868,6 +1986,12 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
       const [gx, gy, gn] = grpC.get(grp[k])!;
       return [(gx / gn - K.ax) * (p.s - 1), (gy / gn - K.ay) * (sy - 1)];
     });
+    // (the marks still to come, one and two frames ahead, through alpha)
+    const flIn = GHOST_IN.map((_a, jj) => (i < HIT_KEY ? moveBits(flecks, (k) => {
+      if (fleckOwner[k] >= 0 || fleckFirst(grp[k]) - i !== jj + 1) return null;
+      const [gx, gy, gn] = grpC.get(grp[k])!;
+      return [(gx / gn - K.ax) * (p.s - 1), (gy / gn - K.ay) * (sy - 1)];
+    }) : null));
     // (the chunks' halos, bursting out with them, laid over the dust through alpha)
     const hl = d.empty();
     if (halo && haloOwner && i < HIT_KEY) {
@@ -1902,19 +2026,12 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
     }, (k) => (i <= HIT_KEY ? 0 : (p.gone - 0.7 * rr(seed + 3, k, 0, 1)) / 0.3), seed + 5, 0.28, { dash: () => true });
     const r = moveCrumble(rocks, (k, cx, cy) => {
       const chunk = kindOf[k] === 'chunk';
-      // Small pebbles are not there yet at the very start: they come one by one.
-      if (!chunk && i < HIT_KEY && rr(seed + 2, k, 0, 1) < p.gone) return null;
-      if (!chunk && path) {
-        const ox = Math.round((cx - K.ax) * (p.d - 1)), oy = Math.round((cy - K.ay) * (p.d - 1) + p.fall * 0.6);
-        if (rockPcs[k].some((j) => onPath((j % rocks.w) + ox, ((j / rocks.w) | 0) + oy))) return null;
-      }
-      if (chunk && i < HIT_KEY) {
-        // (`burst`: the chunks burst out of the impact point along the line they fly on after it,
-        // out from the core and along `fly`, every one there from the first frame, easing out
-        // into his picture; else they break out one after another, not all bunched at the core)
-        if (burst) return burstChunk(k, i);
-        if (rr(seed + 4, k, 0, 1) < p.gone * 0.8) return null;
-      }
+      if (!chunk && !pebShown(k, i)) return null;
+      // (`burst`: the chunks burst out of the impact point along the line they fly on after it,
+      // out from the core and along `fly`, every one there from the first frame, easing out into
+      // his picture; else every chunk is there from the first frame too, bursting out from the
+      // core with the dust, 70%, 83%, 92% of the way)
+      if (chunk && i < HIT_KEY && burst) return burstChunk(k, i);
       // (the big chunks fly on along `fly` as well as out from the core, and fall: a chunk
       // thrown upward slows and comes down, so every chunk is falling by the end)
       if (chunk && i > HIT_KEY) {
@@ -1928,7 +2045,26 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
       // (the pebbles go one by one as the burst spends itself, each wearing away over about two
       // frames from its own point; all are gone by the last frame)
       return (p.gone - 0.7 * rr(seed + 2, k, 0, 1)) / 0.3;
-    }, seed + 6, 0.28, { avoid: dl });
+    }, seed + 6, 0.28, {
+      avoid: dl,
+      // (in the last frame each chunk's last remnant is a pale ghost laid over the dust, more or
+      // less faint by chunk, so the stones fade out instead of all vanishing in one cut)
+      ghost: { base, over, alpha: (k) => (kindOf[k] !== 'chunk' ? 0 : i === plan.length - 1 ? 0.3 + 0.25 * rr(seed + 15, k, 0, 1) : 0.6) },
+    });
+    // (the pebbles still to come, through alpha; see pebShown)
+    const pg = d.empty();
+    if (i < HIT_KEY) rockPcs.forEach((pc, k) => {
+      const jj = pebFirst[k] - i;
+      if (kindOf[k] === 'chunk' || jj < 1 || jj > 2 || pebShown(k, i)) return;
+      const [ox, oy] = pebOff(k, i);
+      const at = pc.map((j) => [(j % rocks.w) + ox, ((j / rocks.w) | 0) + oy]);
+      if (at.filter(([x, y]) => !r.get(x, y)).length < pc.length * 0.5) return;
+      at.forEach(([x, y], q) => {
+        const gv = r.get(x, y) ? 0 : over(rocks.v[pc[q]], GHOST_IN[jj - 1], base.get(x, y));
+        if (gv) pg.set(x, y, gv);
+      });
+    });
+    const flg = flIn.map((Lg, jj) => (Lg ? Lg.map((v, x, y) => over(v, GHOST_IN[jj], base.get(x, y))) : null));
     // (the bursting chunks' tails, through alpha over the dust)
     const tl = d.empty();
     if (burst && i < HIT_KEY) tails.forEach((px, k) => {
@@ -1941,7 +2077,7 @@ function impact(K: Key, seed: number, plan: Step[], dustFlow: [number, number], 
         tl.set(x, y, over(rocks.v[j], burstIn(i), base.get(x, y)));
       }
     });
-    return union(base, fl, tl, dl, r);
+    return union(base, ...flg, fl, tl, pg, dl, r);
   });
   // No thin see-through slit inside the cloud in a derived frame (guardSlits: a faint line of his
   // dust that fades out before the dust round it, a fleck or dash gone from over it) beyond his own
@@ -2105,6 +2241,23 @@ function blast(): WorldSprite {
   };
   const cloudKey = silhouette(cloud0, 3);
   const inKey = info.map((_, k) => footIn(cloudKey, k, 0, 0));
+  // (the settle frame in which each crystal's last tip would go: from there it pales out through
+  // alpha over two frames, at the size it had the frame before, instead of vanishing in one cut)
+  const endOf = crystals.map((_c, k) => {
+    if (k >= NK) return Infinity;
+    for (let i = BLAST_KEY + 1; i < plan.length; i++) {
+      const u = upOf(i, plan[i].up, info[k].off);
+      const sink = Math.round(info[k].h * (1 - u)), fh = Math.max(1, Math.min(FOOT, Math.round(info[k].h * u * 0.3)));
+      if (u <= 0.02 || info[k].h - sink - fh < 8) return i;
+    }
+    return Infinity;
+  });
+  // (a worn-out rock's last remnant: a pale ghost over the cloud for two frames, 1/2 then 1/4)
+  const lastFade = (_k: number, past: number) => (past < 0.25 ? 0.5 : past < 0.5 ? 0.25 : 0);
+  // (his flecks fade out through alpha, each on its own beat, over three frames ending between
+  // frames 9 and 14; the ones high in the cloud also sink a little as they go)
+  const fleckEnd = (k: number) => 9 + rr(seed + 10, k, 0, 5);
+  const over = overOf(dpal);
   const fr = plan.map((p, i) => {
     if (i === BLAST_KEY) return union(shade, under, dust, ...crystals, loose0);
     const sh = union(fadeSoft(scaled(shadeRest, p.sh, p.sh, K.ax, K.ay), 0, p.shDim, field),
@@ -2124,8 +2277,15 @@ function blast(): WorldSprite {
     const cooled = fadeSoft(d, p.cool, 0, () => 0);
     const faded = fadeSoft(d, p.cool, p.dim, (x, y) => 1.55 - 0.8 * rimHeart(x, y) + 0.15 * (pnoise(x, y, 22, 0, 0, seed + 9) - 0.5));
     d = thinWisps(guardPockets(cooled, faded), p.thin, seed + 1, heart);
+    const base = union(sh, d);
     const ks = crystals.map((c, k) => {
       let u = upOf(i, p.up, info[k].off);
+      let gA = 0;
+      if (i > BLAST_KEY && i >= endOf[k]) {
+        gA = i === endOf[k] ? 0.55 : i === endOf[k] + 1 ? 0.28 : 0;
+        if (!gA) return null;
+        u = upOf(endOf[k] - 1, plan[endOf[k] - 1].up, info[k].off);
+      }
       // Each crystal stands where it stands in his cloud, wherever the cloud is: while the cloud
       // is smaller (bursting out) or bigger (billowing), the crystal is moved with it, so its foot
       // stays in the dust instead of hanging in the sky beside a small cloud.
@@ -2134,12 +2294,12 @@ function blast(): WorldSprite {
       // (the rocks at the feet do not sink in the settle: they wear away like the loose rocks, on
       // beats of their own over frames 8-14, a quarter of each at most a frame)
       if (foot && i > BLAST_KEY) {
-        return moveCrumble(c, () => [tx, ty], () => footLevel(k, i), seed + 14 + k, 0.25);
+        return moveCrumble(c, () => [tx, ty], () => (i - 8 - rr(seed + 12, k, 0, 2.5)) / 4, seed + 14 + k, 0.25, { ghost: { base, over, alpha: lastFade } });
       }
       // (a crystal shows only once the cloud under it covers about as much of its foot as his
       // cloud does in his picture: measured against his own picture, so a crystal at the cloud's
       // edge is not held back; one nearly up is never held back)
-      if (!foot && u < 1 && p.up < 0.9 && footIn(cloud, k, tx, ty) < 0.75 * inKey[k]) u = 0;
+      if (!foot && !gA && u < 1 && p.up < 0.9 && footIn(cloud, k, tx, ty) < 0.75 * inKey[k]) u = 0;
       if (u <= 0.02) return null;
       const placed = tx || ty ? moved(c, tx, ty) : c;
       if (u >= 1) return placed;
@@ -2155,7 +2315,7 @@ function blast(): WorldSprite {
       const fh = Math.max(1, Math.min(FOOT, Math.round(info[k].h * u * 0.3)));
       // (its last tip goes whole once less than 8 px of it would stand clear of the dust: no tiny
       // sliver or broken tip is left hanging in the cloud)
-      if (i > BLAST_KEY && info[k].h - sink - fh < 8) return null;
+      if (!gA && i > BLAST_KEY && info[k].h - sink - fh < 8) return null;
       const top = (x: number) => footY(x) - Math.floor(fh * rr(seed + 11, x * 31 + k, 0, 1.0));
       // Where no dust lies at its foot (an outer crystal standing half outside the cloud), it ends
       // on one smooth line instead, its last three rows fading through alpha steps, so it sinks into
@@ -2196,14 +2356,20 @@ function blast(): WorldSprite {
         ragged.set(x, y, dv && d.pal.kind(dv) === 'dust' ? dv : 0);
       }
       for (const pc of pieces(rockOf(ragged))) if (pc.length < 6) for (const j of pc) ragged.v[j] = d.get(j % K.w, (j / K.w) | 0);
+      // (its last tip pales out over the cloud: laid over what lies under it at alpha gA)
+      if (gA) return ragged.map((v, x, y) => (d.pal.kind(v) === 'dust' ? v : over(v, gA, base.get(x, y)) || 0));
       return ragged;
     });
-    // His flecks ride on the cloud (moved as it grows) and go one by one as it fades.
-    const fl = moveBits(flecks, (k, cx, cy) => {
-      // (and all are gone by the second-last frame, with the cloud's heart)
-      if (i !== BLAST_KEY && rr(seed + 10, k, 0, 1) < (i < BLAST_KEY ? 0.6 - p.bits * 0.6 : (i - 7) / 7)) return null;
-      return [(cx - K.ax) * (p.ds - 1), (cy - K.ay) * (p.ds - 1)];
+    // His flecks ride on the cloud (moved as it grows) and come one by one as it bursts; in the
+    // settle each pales into the cloud through alpha (3/3, 2/3, 1/3) on its own beat, the high
+    // ones sinking a little as they go, all gone by the second-last frame.
+    const flAt = (q: number) => moveBits(flecks, (k, cx, cy) => {
+      if (i < BLAST_KEY && rr(seed + 10, k, 0, 1) < 0.6 - p.bits * 0.6) return null;
+      if (i > BLAST_KEY && clamp(Math.ceil(fleckEnd(k) - i), 0, 3) !== q) return null;
+      const sinkF = i > BLAST_KEY && cy < K.ay - 30 ? 0.12 * (i - BLAST_KEY) ** 2 : 0;
+      return [(cx - K.ax) * (p.ds - 1), (cy - K.ay) * (p.ds - 1) + sinkF];
     });
+    const fl = i < BLAST_KEY ? flAt(3) : union(flAt(3), ...[1, 2].map((q) => flAt(q).map((v, x, y) => over(v, q / 3, base.get(x, y)))));
     // Rising, the rocks fly out from the centre; settling, they fly on and fall, and each wears
     // away from its outline inward over about four frames, on its own beat between frames 8 and
     // 15, shedding a chip or two (no rock pops out, no speckled dissolve).
@@ -2213,7 +2379,7 @@ function blast(): WorldSprite {
       // (bursting out, a rock is at `bits` of his distance from the centre: it flies out with the cloud)
       if (s < 0) return [(cx - K.ax) * s, (cy - K.ay) * s];
       return [(cx - K.ax) * s * 0.25, (cy - K.ay) * s * 0.2 + (s > 0 ? 6 * s * s : 0) * (n > 12 ? 1 : 0.7)];
-    }, (k) => (i > BLAST_KEY ? (i - 8 - rr(seed + 7, k, 0, 4)) / 4 : 0), seed + 8, 0.25);
+    }, (k) => (i > BLAST_KEY ? (i - 8 - rr(seed + 7, k, 0, 4)) / 4 : 0), seed + 8, 0.25, { ghost: { base, over, alpha: lastFade } });
     return union(sh, d, fl, ...ks, rs);
   });
   // No thin see-through slit inside the cloud in a derived frame (guardSlits) beyond his own: the
@@ -2225,10 +2391,12 @@ function blast(): WorldSprite {
   const guarded = fr.map((f, i) => {
     if (i === BLAST_KEY) return f;
     const ds = plan[i].ds;
-    return guardSlits(f, (x, y) => {
+    const g = guardSlits(f, (x, y) => {
       const kx = Math.round(K.ax + (x - K.ax) / ds), ky = Math.round(K.ay + (y - K.ay) / ds);
       return kx >= 0 && ky >= 0 && kx < K.w && ky < K.h && !!own[ky * K.w + kx];
     });
+    // (once the cloud fades, no lone see-through speck in it: see fillDips)
+    return i > BLAST_KEY && plan[i].dim > 0 ? fillDips(g) : g;
   });
   return vfxSprite('blast', 'Earth blast: crystal spikes erupting in a dust cloud (anchor = ground centre)', [K.ax, K.ay], { blast: { frames: finish(guarded, BLAST_KEY, BLAST_N - 1), fps: BLAST_FPS, loop: false } });
 }
@@ -2411,11 +2579,20 @@ function aura(): WorldSprite[] {
   const layer = (K: Key, i: number): Layer => {
     const t = i / AURA_N;
     const rocks = union(K.part('main'), K.part('bits'));
+    const rimBit = new Set<number>();
+    pieces(rocks).forEach((pc, k) => {
+      if (pc.some((j) => rocks.pal.kind(rocks.v[j]) === 'outline')) rimBit.add(k);
+    });
     const d = churn(dustOf(K), t, { amp: 1.1, ampY: 0.7, cell: 6, seed, flow });
     const r = moveBits(rocks, (k, cx, cy, n) => {
       if (cy > K.ay - 2) return [0, 0];                       // pebbles on the ground stay
+      // (a bit of his rim on the dust ring (a small piece holding his outline colour) is the
+      // ring's edge: it stays with its dust, whose outline does not move, never floating free)
+      if (n <= 12 && rimBit.has(k)) return [0, 0];
       const ph = (cy / 20) * TAU;
-      const bob = Math.round(2 * (Math.sin(t * TAU + ph) - Math.sin(ph)));
+      // (the bob's amplitude keeps every step between frames under a pixel, so the columns rise
+      // and fall a pixel at a time, never jumping two)
+      const bob = Math.round(1.9 * (Math.sin(t * TAU + ph) - Math.sin(ph)));
       if (n <= 12) {
         const u = drift(t, rr(seed + 1, k, 0, 1));
         return [0, -6 * u + bob * 0.5];

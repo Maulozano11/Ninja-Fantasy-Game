@@ -712,19 +712,74 @@ function sphere(): WorldSprite {
   const rim = blues.indexOf(Math.min(...blues)) + 1;
   const under = remap(union(O, R, M), (v, x, y) => (Math.hypot(x + 0.5 - k.ax, y + 0.5 - k.ay) <= 19.5 && (isSolid(v) || isLine(v)) ? rim : 0));
   const out = (x: number, y: number) => smooth(20, 26, Math.hypot(x - k.ax, y - k.ay));
-  const orbs = range(FLY_N).map((i) => {
+  const orbIx = range(FLY_N).map((i) => {
     const t = cyc(i, FLY_N);
-    return render(k.w, k.h, [[shimmer(t ? warp(O, swirlFrom(k.ax, k.ay, t, 2, 26, 2, 8), false) : O, t, 310, 8)]]);
+    return t ? warp(O, swirlFrom(k.ax, k.ay, t, 2, 26, 2, 8), false) : O;
   });
+  const orbs = orbIx.map((o, i) => render(k.w, k.h, [[shimmer(o, cyc(i, FLY_N), 310, 8)]]));
+  const keyAll = union(under, M, O, R, S);
   const fr = orbs.map((orb, i) => {
     const t = cyc(i, FLY_N);
     const m = shimmer(reline(wave(M, t, { amp: [0.8, 0.8], len: 18, along: (x, y) => Math.hypot(x - k.ax, y - k.ay), seed: 300, weight: out })), t, 320, 10);
-    const c = render(k.w, k.h, [[under], [m]]);
+    // A see-through pinhole the ripple opens between the ring and the arcs round it (one that his
+    // picture does not have) is plugged with his pixel there, or the art beside it.
+    const sp = twinkle(S, t, 0.3, 330);
+    const plug = plugHoles(union(under, m, orbIx[i], R, sp), keyAll, M);
+    const c = render(k.w, k.h, [[plug], [under], [m]]);
     // The turned orb over the disc, then the ring and the motes over both.
     for (let p = 0; p < c.w * c.h; p++) if (orb.px[p * 4 + 3]) c.plot(p % c.w, Math.floor(p / c.w), [orb.px[p * 4], orb.px[p * 4 + 1], orb.px[p * 4 + 2], orb.px[p * 4 + 3]]);
-    return render(k.w, k.h, [[glint(R, t, k.ax, k.ay)], [twinkle(S, t, 0.3, 330)]], undefined, c);
+    return render(k.w, k.h, [[glint(R, t, k.ax, k.ay)], [sp]], undefined, c);
   });
   return sprite(k, 'Chakra sphere: spiral sphere in a gold ring', fly(fr));
+}
+
+/** The clear pixels of `ix` that are shut in (not reachable from the frame's edge through clear pixels, 4-connected). */
+function enclosed(ix: Ix): Uint8Array {
+  const out = new Uint8Array(ix.w * ix.h).fill(1);
+  const q: number[] = [];
+  for (let i = 0; i < out.length; i++) {
+    const x = i % ix.w, y = Math.floor(i / ix.w);
+    if (ix.d[i]) out[i] = 0;
+    else if (x === 0 || y === 0 || x === ix.w - 1 || y === ix.h - 1) {
+      out[i] = 0;
+      q.push(i);
+    }
+  }
+  for (let h = 0; h < q.length; h++) {
+    const i = q[h], x = i % ix.w, y = Math.floor(i / ix.w);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const X = x + dx, Y = y + dy, n = Y * ix.w + X;
+      if (X >= 0 && Y >= 0 && X < ix.w && Y < ix.h && out[n] && !ix.d[n]) {
+        out[n] = 0;
+        q.push(n);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Plugs for the see-through pinholes a moved frame `cur` has and his key frame `key` does not: each
+ * takes `src` there (his pixel), or the commonest value of its neighbours in `cur`.
+ */
+function plugHoles(cur: Ix, key: Ix, src: Ix): Ix {
+  const hc = enclosed(cur), hk = enclosed(key);
+  const out = blank(cur.w, cur.h);
+  for (let i = 0; i < hc.length; i++) {
+    if (!hc[i] || hk[i]) continue;
+    if (src.d[i]) {
+      out.d[i] = src.d[i];
+      continue;
+    }
+    const x = i % cur.w, y = Math.floor(i / cur.w), votes = new Map<number, number>();
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dx = -1; dx <= 1; dx++) {
+        const v = at(cur, x + dx, y + dy);
+        if (v) votes.set(v, (votes.get(v) ?? 0) + 1);
+      }
+    out.d[i] = [...votes].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]?.[0] ?? 0;
+  }
+  return out;
 }
 
 /**

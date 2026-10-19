@@ -175,7 +175,7 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
       const j = JUTSU[i.what];
       if (!j) return null;
       const reach = j.range + (t.bulk ?? 0) + (j.shape === 'single' && t.kind === 'hydra_head' ? 2.5 : 0);
-      return goal((p) => dist(p, t.pos) <= reach && (j.melee || lineOfSight(s, p, t.pos)), t);
+      return goal((p) => dist(p, t.pos) <= reach && (j.melee ? !fullCoverBetween(s, p, t.pos) : lineOfSight(s, p, t.pos)), t);
     }
     case 'heal':
       return goal((p) => dist(p, t.pos) <= 1.6, undefined);

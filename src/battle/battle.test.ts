@@ -575,6 +575,163 @@ describe('clans: phase 1 foundation', () => {
   });
 });
 
+describe('Kōton: Modular Architecture', () => {
+  const koton = (over: Partial<ShinobiCharacter> = {}) => hero({ id: 'k', name: 'Hiro', clan: 'Koton', ...over });
+  /** A Kōton at (8.25, 10.25) on its turn, the rogue 6 m away at (14.25, 10.25). */
+  const kotonTurn = (over: Partial<BattleSetup> = {}): BattleState => turnOf(createBattle(setup({ party: [{ character: koton(), pos: { x: 8, z: 10 } }], ...over })).state, 'k');
+  const raise = (s: BattleState, id: 'koton_block' | 'koton_wall', at: Pt) => applyAction(s, { type: 'jutsu', unit: 'k', jutsu: id, at });
+  const own = (s: BattleState) => s.walls.filter((w) => w.owner === 'k');
+
+  it('a block: bonus action, 2 chakra, a 1.5 m square of 20 HP that gives half cover and hides nobody', () => {
+    const s = kotonTurn();
+    assert.deepEqual(s.units.k.jutsus.slice(0, 2), ['koton_block', 'koton_wall']);
+    const out = ok(raise(s, 'koton_block', { x: 10.1, z: 12.4 }));
+    const k = out.state.units.k;
+    assert.equal(k.chakra, s.units.k.chakra - 2);
+    assert.equal(k.turn.bonus, false);
+    assert.equal(k.turn.action, true);
+    const [w] = out.state.walls;
+    assert.deepEqual({ kind: w.kind, a: w.a, hp: w.hp, maxHp: w.maxHp, owner: w.owner }, { kind: 'metalBlock', a: { x: 10.25, z: 12.25 }, hp: 20, maxHp: 20, owner: 'k' });
+    assert.ok(out.events.some((e) => e.t === 'wall' && e.on && e.wall.id === w.id));
+    // Centred on the cell under the point: exactly the 3 × 3 cells around it.
+    for (const dx of [-0.5, 0, 0.5]) for (const dz of [-0.5, 0, 0.5]) assert.ok(cellBlocked(out.state, cellOf({ x: 10.25 + dx, z: 12.25 + dz })));
+    for (const [dx, dz] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) assert.equal(cellBlocked(out.state, cellOf({ x: 10.25 + dx, z: 12.25 + dz })), false);
+    assert.equal(lineOfSight(out.state, { x: 7.25, z: 12.25 }, { x: 13.25, z: 12.25 }), true);
+    assert.equal(coverBetween(out.state, { x: 7.25, z: 12.25 }, { x: 13.25, z: 12.25 }), 2);
+    // A bloodline ability: no seals (the blade stays drawn) and no enhanced version.
+    assert.equal(k.armed, s.units.k.armed);
+    assert.equal(applyAction(s, { type: 'jutsu', unit: 'k', jutsu: 'koton_block', at: { x: 10.1, z: 12.4 }, enhanced: true }).reason, 'noEnhanced');
+  });
+
+  it('a wall: action, 4 chakra, 4.5 m across the line it is cast along; it blocks sight', () => {
+    const s = kotonTurn();
+    assert.equal(lineOfSight(s, s.units.k.pos, s.units.rogue_0.pos), true);
+    const out = ok(raise(s, 'koton_wall', { x: 11.25, z: 10.25 }));
+    const k = out.state.units.k;
+    assert.equal(k.chakra, s.units.k.chakra - 4);
+    assert.equal(k.turn.action, false);
+    assert.equal(k.turn.bonus, true);
+    const [w] = out.state.walls;
+    assert.equal(w.kind, 'metal');
+    assert.equal(w.hp, 20);
+    assert.ok(Math.abs(dist(w.a, w.b) - 4.5) < 1e-9);
+    // Perpendicular to the caster's line, centred on the point.
+    const along = { x: 11.25 - k.pos.x, z: 10.25 - k.pos.z };
+    assert.ok(Math.abs((w.b.x - w.a.x) * along.x + (w.b.z - w.a.z) * along.z) < 1e-9);
+    assert.deepEqual({ x: (w.a.x + w.b.x) / 2, z: (w.a.z + w.b.z) / 2 }, { x: 11.25, z: 10.25 });
+    assert.equal(lineOfSight(out.state, k.pos, out.state.units.rogue_0.pos), false);
+  });
+
+  it('beats Mirai: a metal wall hides the enemy\'s next move from the Eye of Tomorrow', () => {
+    const { state } = createBattle(setup({ party: [
+      { character: hero({ id: 'm', name: 'Ren', clan: 'Mirai' }), pos: { x: 8, z: 10 } },
+      { character: koton(), pos: { x: 8, z: 12 } },
+    ] }));
+    const s = turnOf(state, 'k');
+    assert.ok(foreseen(s).rogue_0);
+    const walled = ok(raise(s, 'koton_wall', { x: 11.25, z: 10.25 })).state;
+    assert.equal(foreseen(walled).rogue_0, undefined);
+    walled.walls = [];
+    assert.ok(foreseen(walled).rogue_0);
+  });
+
+  it('two stand at most: raising a third makes the oldest crumble', () => {
+    let s = kotonTurn();
+    s = ok(raise(s, 'koton_block', { x: 9.25, z: 13.25 })).state;
+    s = ok(raise(s, 'koton_wall', { x: 11.25, z: 10.25 })).state;
+    const [first, second] = own(s).map((w) => w.id);
+    assert.equal(own(s).length, 2);
+    const out = ok(raise(turnOf(s, 'k'), 'koton_block', { x: 9.25, z: 7.25 }));
+    assert.equal(own(out.state).length, 2);
+    assert.deepEqual(own(out.state).map((w) => w.id)[0], second);
+    assert.ok(!out.state.walls.some((w) => w.id === first));
+    // It crumbles whole: gone with its HP left, not broken.
+    const off = out.events.find((e) => e.t === 'wall' && !e.on);
+    assert.ok(off?.t === 'wall' && off.wall.id === first && off.wall.hp === 20);
+    assert.equal(cellBlocked(out.state, cellOf({ x: 9.25, z: 13.25 })), false);
+  });
+
+  it('is refused over anyone, beyond 6 m, out of sight, off the map, or to another clan', () => {
+    const s = kotonTurn();
+    // Over a unit: the rogue, the caster itself, or anyone the wall's length would cover.
+    assert.equal(raise(s, 'koton_block', s.units.rogue_0.pos).reason, 'occupied');
+    assert.equal(raise(s, 'koton_block', { x: 8.75, z: 10.25 }).reason, 'occupied');
+    const under = structuredClone(s);
+    place(under, 'rogue_0', { x: 11.25, z: 12.25 });
+    assert.equal(raise(under, 'koton_wall', { x: 11.25, z: 10.25 }).reason, 'occupied');
+    assert.equal(raise(s, 'koton_block', { x: 14.75, z: 10.25 }).reason, 'outOfRange');
+    const hidden = structuredClone(s);
+    hidden.walls.push({ id: 'e1', kind: 'earth', a: { x: 10, z: 8.5 }, b: { x: 10, z: 12 }, hp: 30 });
+    assert.equal(raise(hidden, 'koton_block', { x: 11.25, z: 10.25 }).reason, 'noSight');
+    const edge = structuredClone(s);
+    place(edge, 'k', { x: 1.25, z: 10.25 });
+    assert.equal(raise(edge, 'koton_block', { x: 0.1, z: 10.25 }).reason, 'outOfRange');
+    // The hydra's bulk counts as someone.
+    const lair = turnOf(createBattle(setup({ party: [{ character: koton(), pos: { x: 11, z: 8 } }], enemies: [{ kind: 'hydra', pos: { x: 16, z: 8 } }] })).state, 'k');
+    assert.equal(raise(lair, 'koton_block', { x: 15, z: 8 }).reason, 'occupied');
+    // Only a Kōton has it.
+    const other = turnOf(createBattle(setup()).state, 'a');
+    assert.equal(applyAction(other, { type: 'jutsu', unit: 'a', jutsu: 'koton_block', at: { x: 10, z: 12 } }).reason, 'unknownJutsu');
+    assert.equal(s.walls.length, 0);
+  });
+
+  it('is loud: raised in the stealth phase, it starts the fight', () => {
+    const s = createBattle(setup({ stealth: true, party: [{ character: koton(), pos: { x: 8, z: 10 } }], enemies: [{ kind: 'rogue', pos: { x: 20, z: 10 }, look: 180, route: [{ x: 20, z: 10 }] }] })).state;
+    const out = ok(raise(s, 'koton_block', { x: 10.25, z: 12.25 }));
+    assert.equal(out.state.phase, 'combat');
+  });
+
+  it('the AI: a Kōton in the open raises a block in front of itself, against the foe that sees it', () => {
+    const { state } = createBattle(setup({ enemies: [{ kind: 'hunter', pos: { x: 14, z: 10 } }] }));
+    const s = turnOf(state, 'hunter_0');
+    s.units.hunter_0.turn.action = false;
+    const a = aiAction(s);
+    assert.ok(a?.type === 'jutsu' && a.jutsu === 'koton_block', JSON.stringify(a));
+    const out = ok(applyAction(s, a));
+    const h = out.state.units.hunter_0;
+    const foe = out.state.units.a;
+    // Sheltered from the hero, but the hero gets no cover from the hunter's own kunai and jutsu.
+    assert.equal(coverBetween(out.state, foe.pos, h.pos, ['a', 'hunter_0']), 2);
+    assert.equal(coverBetween(out.state, h.pos, foe.pos, ['a', 'hunter_0']), 0);
+    // With its own block next to it, it doesn't raise another.
+    const again = structuredClone(out.state);
+    again.units.hunter_0.turn.bonus = true;
+    assert.equal(aiAction(again)?.type, 'endTurn');
+  });
+
+  it('the AI goes around a metal wall, and breaks through when walled off', () => {
+    const wall = (id: string, a: Pt, b: Pt): Wall => ({ id, kind: 'metal', a, b, hp: 20, maxHp: 20, owner: 'a' });
+    const at = (walls: Wall[]): BattleState => {
+      const { state } = createBattle(setup({ party: [{ character: hero({ id: 'a' }), pos: { x: 10.25, z: 10.25 } }], enemies: [{ kind: 'raider', pos: { x: 11.75, z: 10.25 } }] }));
+      const s = turnOf(state, 'raider_0');
+      s.walls.push(...walls);
+      const r = s.units.raider_0;
+      r.chakra = 0;
+      r.intent = { kind: 'melee', what: r.weapon.name, target: 'a' };
+      return s;
+    };
+    // One wall between them: no blow across it; it walks around and strikes.
+    const s = at([wall('w1', { x: 11, z: 8 }, { x: 11, z: 12.5 })]);
+    assert.equal(dist(s.units.raider_0.pos, s.units.a.pos), 1.5);
+    const step = aiAction(s);
+    assert.equal(step?.type, 'move');
+    const moved = ok(applyAction(s, step!)).state;
+    const blow = aiAction(moved);
+    assert.ok(blow?.type === 'attack' && blow.target === 'a', JSON.stringify(blow));
+    ok(applyAction(moved, blow));
+    // Boxed in (the walls overlap at the corners): it strikes the wall in the way.
+    const box = at([
+      wall('west', { x: 9.5, z: 9.2 }, { x: 9.5, z: 11.3 }),
+      wall('east', { x: 11, z: 9.2 }, { x: 11, z: 11.3 }),
+      wall('north', { x: 9.2, z: 9.5 }, { x: 11.3, z: 9.5 }),
+      wall('south', { x: 9.2, z: 11 }, { x: 11.3, z: 11 }),
+    ]);
+    const hit = aiAction(box);
+    assert.deepEqual(hit, { type: 'attack', unit: 'raider_0', target: 'wall:east' });
+    ok(applyAction(box, hit!));
+  });
+});
+
 describe('stealth phase', () => {
   const sneak = (over: Partial<BattleSetup> = {}) =>
     createBattle(setup({ stealth: true, enemies: [{ kind: 'rogue', pos: { x: 20, z: 10 }, look: 180, route: [{ x: 20, z: 10 }] }], ...over })).state;

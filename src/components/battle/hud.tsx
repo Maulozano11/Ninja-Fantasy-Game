@@ -33,6 +33,8 @@ import {
   Mountain,
   Brain,
   Skull,
+  Box,
+  BrickWall,
 } from 'lucide-react';
 import type { AiOrder, BattleState, Unit } from '../../battle/types';
 import { clanName } from '../../data/shinobiData';
@@ -55,6 +57,8 @@ export const ELEMENT_ICON: Record<string, React.FC<{ size?: number; className?: 
 /** Clan abilities with an icon of their own (the others show their element's). */
 export const ABILITY_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {
   katon_pursuing_flame: Flame,
+  koton_block: Box,
+  koton_wall: BrickWall,
 };
 
 export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {

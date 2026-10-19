@@ -56,6 +56,7 @@ export const T = strings({
   structure_metal: { en: 'metal wall', es: 'muro de metal' },
   structure_metalBlock: { en: 'metal block', es: 'bloque de metal' },
   broken: { en: 'Broken!', es: '¡Roto!' },
+  crumbled: { en: 'Crumbles', es: 'Se derrumba' },
   evaded: { en: 'Evaded!', es: '¡Esquivado!' },
   waiting: { en: 'Waiting…', es: 'Esperando…' },
   victory: { en: 'Victory', es: 'Victoria' },
@@ -116,6 +117,14 @@ export const T = strings({
   help_stone: { en: 'A noise at a point (12 m): guards who hear it go to look.', es: 'Un ruido en un punto (12 m): los guardias que lo oyen van a mirar.' },
   help_end: { en: 'End this turn.', es: 'Termina este turno.' },
   help_katon_pursuing_flame: { en: 'Action, 3 chakra, 12 m: 2d6 fire; DEX save with disadvantage, half on a success.', es: 'Acción, 3 chakra, 12 m: 2d6 de fuego; salvación de DES con desventaja, la mitad si la supera.' },
+  help_koton_block: {
+    en: 'Bonus action, 2 chakra, 6 m: a 1.5 m metal block (half cover, 20 HP). Two structures at most: the oldest crumbles.',
+    es: 'Acción adicional, 2 chakra, 6 m: un bloque de metal de 1.5 m (media cobertura, 20 PV). Como máximo dos estructuras: la más antigua se derrumba.',
+  },
+  help_koton_wall: {
+    en: 'Action, 4 chakra, 6 m: a 4.5 m metal wall (full cover, blocks movement and sight, 20 HP).',
+    es: 'Acción, 4 chakra, 6 m: un muro de metal de 4.5 m (cobertura total, bloquea el paso y la vista, 20 PV).',
+  },
 
   // aiming
   aimMove: { en: '{m} m', es: '{m} m' },
@@ -127,6 +136,8 @@ export const T = strings({
   saveDisadv: { en: 'with disadvantage', es: 'con desventaja' },
   aimHits: { en: 'Hits {n}', es: 'Alcanza a {n}' },
   aimAllies: { en: '{n} allies in the area!', es: '¡{n} aliados en el área!' },
+  aimStructures: { en: '{n}/2 standing', es: '{n}/2 en pie' },
+  aimOldest: { en: 'the oldest one crumbles', es: 'la más antigua se derrumba' },
   cover2: { en: 'Half cover', es: 'Cobertura ½' },
   cover5: { en: '¾ cover', es: 'Cobertura ¾' },
   heightUp: { en: 'High ground +2', es: 'Altura +2' },
@@ -226,6 +237,8 @@ export const T = strings({
   l_trap: { en: 'A trap goes off!', es: '¡Se activa una trampa!' },
   l_trapSet: { en: 'A tag is hidden on the ground', es: 'Un sello queda oculto en el suelo' },
   l_wall: { en: 'A wall rises', es: 'Se levanta un muro' },
+  l_structureUp: { en: 'A {what} rises', es: 'Se levanta un {what}' },
+  l_wallCrumbled: { en: 'The {what} crumbles', es: 'El {what} se derrumba' },
   l_hitWall: { en: '{a} hits the {what} ({roll} vs AC {ac})', es: '{a} golpea el {what} ({roll} contra CA {ac})' },
   l_missWall: { en: '{a} misses the {what} ({roll} vs AC {ac})', es: '{a} falla contra el {what} ({roll} contra CA {ac})' },
   l_wallHit: { en: '{n} damage to the {what}', es: '{n} de daño al {what}' },
@@ -259,6 +272,10 @@ export const T = strings({
   tip_mirai: {
     en: 'Eye of Tomorrow: the ground shows where each enemy in sight will move and whom it will attack. Premonitory Evasion (reaction, 2 chakra) sidesteps a blow you saw coming.',
     es: 'Ojo del Mañana: el suelo muestra adónde se moverá cada enemigo a la vista y a quién atacará. Evasión Premonitoria (reacción, 2 chakra) esquiva un golpe que viste venir.',
+  },
+  tip_koton: {
+    en: 'Modular Architecture: a metal block (bonus action) gives half cover; a metal wall (action) gives full cover and blocks sight. Two stand at most.',
+    es: 'Arquitectura Modular: un bloque de metal (acción adicional) da media cobertura; un muro de metal (acción) da cobertura total y bloquea la vista. Como máximo, dos en pie.',
   },
   tipGotIt: { en: 'Got it', es: 'Entendido' },
   tipsOff: { en: 'No more tips', es: 'No más consejos' },

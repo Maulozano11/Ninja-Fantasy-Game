@@ -31,6 +31,8 @@ export interface Overlay {
   targets?: string[];
   warn?: string[];
   point?: { at: Pt; ok: boolean };
+  /** Where a Kōton structure would rise, and whether it can. */
+  footprint?: { wall: Wall; ok: boolean };
 }
 
 export interface Scene {
@@ -286,6 +288,17 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
     groundEllipse(ctx, map, o.point.at, 0.3);
     ctx.lineWidth = 2;
     ctx.strokeStyle = o.point.ok ? 'rgba(255,255,255,0.9)' : 'rgba(248,113,113,0.9)';
+    ctx.stroke();
+  }
+  // A Kōton structure about to rise: the block's square, or the band its wall stands on.
+  if (o.footprint) {
+    const { wall: w, ok } = o.footprint;
+    const lvl = map.levelAt((w.a.x + w.b.x) / 2, (w.a.z + w.b.z) / 2);
+    polyPath(ctx, footprint(w).map((p) => project(map, p, lvl)));
+    ctx.fillStyle = 'rgba(148, 178, 204, 0.32)';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = ok ? 'rgba(255,255,255,0.9)' : 'rgba(248,113,113,0.9)';
     ctx.stroke();
   }
   ctx.restore();

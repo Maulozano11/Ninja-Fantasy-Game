@@ -15,7 +15,7 @@ import type { JutsuSpec } from '../../battle/jutsu';
 import { cellCenter, cellOf, dist, getMap, gridFor, idx, lineOfSight, sameCell } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
-import { STRUCTURE_AC, breakable, structureAttack, structureDist } from '../../battle/structures';
+import { MAX_STRUCTURES, STRUCTURE_AC, breakable, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { KUNAI, KUNAI_LONG, handsFree, wielded } from '../../battle/units';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
@@ -55,7 +55,7 @@ export interface BattleScreenProps {
   onEnd: (result: PartyBattleResult, state: BattleState) => void;
 }
 
-const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra', 'tip_mirai'] as const;
+const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra', 'tip_mirai', 'tip_koton'] as const;
 type TipKey = (typeof TIP_KEYS)[number];
 
 function tipSeen(k: string): boolean {
@@ -401,6 +401,16 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         }
         if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
         if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: dist(actor.pos, at) <= spec.range + 0.1 };
+        if (spec.special === 'metalBlock' || spec.special === 'metalWall') {
+          // A Kōton structure: where it would stand, why it can't, and how many already stand.
+          const w = structureAt(spec, actor.pos, at, actor.id, 'preview');
+          const why = dist(actor.pos, at) > spec.range + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at) ? 'noSight' : structureBlocker(s, w);
+          const n = ownStructures(s, actor.id).length;
+          o.point = undefined;
+          o.footprint = { wall: w, ok: !why };
+          label = why ? T(`r_${why}` as TKey) : T('aimStructures', { n });
+          if (n >= MAX_STRUCTURES) sub = T('aimOldest');
+        }
       }
     } else if (mode.k === 'item' && mode.item === 'tag') {
       o.range = { at: actor.pos, radius: TAG.range };
@@ -577,7 +587,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     const w = worldAt(e.clientX, e.clientY);
     const unit = pickUnit({ state: stateRef.current, pb, map, now: performance.now() }, w.X, w.Y);
     const pt = pickGround(map, w.X, w.Y);
-    const wall = unit ? undefined : structureAt(w.X, w.Y, pt);
+    const wall = unit ? undefined : structureUnder(w.X, w.Y, pt);
     setHover((h) => {
       const same = h && h.unit === unit && h.wall === wall && h.pt && pt && sameCell(cellOf(h.pt), cellOf(pt));
       return same ? { ...h!, sx: w.cx, sy: w.cy } : { unit, wall, pt: pt ?? undefined, sx: w.cx, sy: w.cy };
@@ -600,7 +610,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
   };
 
   /** The breakable structure under the cursor: its drawn face, or its foot within 0.6 m of the ground point. */
-  const structureAt = (X: number, Y: number, pt: Pt | null): string | undefined => {
+  const structureUnder = (X: number, Y: number, pt: Pt | null): string | undefined => {
     const s = stateRef.current;
     const face = pickStructure({ state: s, map }, X, Y);
     if (face || !pt) return face;
@@ -640,7 +650,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
           return;
         }
         // A Kōton structure in the way: the blade or the kunai goes at it.
-        const wall = u ? undefined : structureAt(w.X, w.Y, pt);
+        const wall = u ? undefined : structureUnder(w.X, w.Y, pt);
         if (wall) act({ type: 'attack', unit: actor.id, target: `wall:${wall}`, ranged: mode.ranged });
         else if (mode.ranged && pt) {
           // A kunai at an explosive barrel.
@@ -883,9 +893,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
                 ? 'tip_hands'
                 : actor?.character?.clan === 'Mirai' && !tipSeen('tip_mirai')
                   ? 'tip_mirai'
-                  : actor && s.round >= 2 && !tipSeen('tip_cover')
-                    ? 'tip_cover'
-                    : null;
+                  : actor?.character?.clan === 'Koton' && !tipSeen('tip_koton')
+                    ? 'tip_koton'
+                    : actor && s.round >= 2 && !tipSeen('tip_cover')
+                      ? 'tip_cover'
+                      : null;
     if (want) setTip(want);
   }, [actor, state, tip]);
 
@@ -1155,6 +1167,8 @@ const SHORT: Record<string, [string, string]> = {
   yasaka_magatama: ['Magatama', 'Magatama'],
   night_guy_dragon: ['Night dragon', 'Dragón noche'],
   katon_pursuing_flame: ['Pursuing', 'Persecutoria'],
+  koton_block: ['Block', 'Bloque'],
+  koton_wall: ['Metal wall', 'Muro metal'],
 };
 
 /** A jutsu's short name for its button. */

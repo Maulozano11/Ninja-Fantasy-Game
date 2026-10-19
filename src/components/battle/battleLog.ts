@@ -96,8 +96,10 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
     case 'trap':
       return ev.on ? { text: t('l_trapSet') } : { text: t('l_trap'), tone: 'text-orange-300' };
     case 'wall':
-      if (ev.on) return { text: t('l_wall') };
-      return breakable(ev.wall) ? { text: t('l_wallBroken', { what: structureName(ev.wall, lang) }), tone: 'text-amber-300' } : null;
+      if (!breakable(ev.wall)) return ev.on ? { text: t('l_wall') } : null;
+      if (ev.on) return { text: t('l_structureUp', { what: structureName(ev.wall, lang) }) };
+      // Broken at 0 HP, or the oldest of a Kōton's structures crumbling for a new one.
+      return { text: t(ev.wall.hp > 0 ? 'l_wallCrumbled' : 'l_wallBroken', { what: structureName(ev.wall, lang) }), tone: 'text-amber-300' };
     case 'wallHit':
       return { text: t('l_wallHit', { n: ev.amount, what: structureName(wallOf(ev.wall), lang) }), tone: 'text-slate-300' };
     case 'fled':
@@ -172,7 +174,7 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
     case 'jutsu':
       return jutsuName(ev.jutsu, lang);
     case 'wall':
-      return !ev.on && breakable(ev.wall) ? t('broken') : null;
+      return !ev.on && breakable(ev.wall) ? t(ev.wall.hp > 0 ? 'crumbled' : 'broken') : null;
     case 'note': {
       const k = `n_${ev.key}` as TKey;
       return T.has(k) ? t(k, ev.params) : null;

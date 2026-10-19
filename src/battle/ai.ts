@@ -2,15 +2,17 @@
 // Support). It only ever sends ordinary actions through the engine, one at a time, so an AI turn
 // replays and travels over the network like a player's.
 
+import { effectMods } from '../rules/effects';
 import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
-import { cellCenter, cellOf, coverBetween, dist, gridFor, idx, lineOfSight, sameCell } from './map';
+import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross } from './map';
 import { canStop, reachable } from './nav';
 import { JUTSU } from './jutsu';
 import { KUNAI_LONG, handsFree } from './units';
-import { applyAction } from './engine';
+import { applyAction, jutsuCost } from './engine';
 import { current } from './turns';
-import { bestCell, goalOf, headOptions, ninjaOptions, planIntent, reachTo, standingUnit, stepToward } from './intent';
+import { bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, visibleFoes } from './intent';
 import type { Goal } from './intent';
+import { breakable, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
 export function aiToAct(s: BattleState): boolean {
@@ -44,7 +46,7 @@ export function aiAction(s: BattleState): Action | null {
     const plan = u.team === 'enemy' ? u.intent : planIntent(s, u);
     const t = plan?.target ? s.units[plan.target] : undefined;
     if (u.turn.dashed && t && standingUnit(t)) return moveToward(s, u, goalOf(s, u, { kind: 'melee', what: u.weapon.name, target: t.id })!) ?? end;
-    return afterAction(s, u) ?? end;
+    return bonusAfter(s, u) ?? afterAction(s, u) ?? end;
   }
   // Enemies follow the plan they committed to (what a Mirai saw); allies plan each turn.
   let intent = u.team === 'enemy' && stillValid(s, u, u.intent) ? u.intent : planIntent(s, u);
@@ -56,8 +58,8 @@ export function aiAction(s: BattleState): Action | null {
 function headAction(s: BattleState, u: Unit): Action | null {
   if (!u.turn.action) return null;
   let i = stillValid(s, u, u.intent) ? u.intent : undefined;
-  // The planned bite is out of reach now (they moved away): pick again.
-  if (i?.kind === 'bite' && dist(u.pos, s.units[i.target!].pos) > u.weapon.reach + 0.1) i = undefined;
+  // The planned bite is out of reach now (they moved away, or a metal wall rose between): pick again.
+  if (i?.kind === 'bite' && (dist(u.pos, s.units[i.target!].pos) > u.weapon.reach + 0.1 || fullCoverBetween(s, u.pos, s.units[i.target!].pos))) i = undefined;
   if (i && (i.kind === 'spit' || i.kind === 'roar')) {
     const t = s.units[i.target!];
     if (dist(u.pos, t.pos) > JUTSU[i.what].range + 0.1 || !lineOfSight(s, u.pos, t.pos)) i = undefined;
@@ -79,7 +81,7 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
   switch (i.kind) {
     case 'melee':
       if (g.ready) return { type: 'attack', unit: u.id, target: t.id, knockout: u.team === 'party' };
-      return moveToward(s, u, g, i.to) ?? kunaiOr(s, u, t);
+      return moveToward(s, u, g, i.to) ?? kunaiOr(s, u, t) ?? breakThrough(s, u, t);
     case 'ranged':
       if (g.ready) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
       return moveToward(s, u, g, i.to) ?? kunaiOr(s, u, t);
@@ -110,14 +112,74 @@ function kunaiOr(s: BattleState, u: Unit, t: Unit): Action | null {
   return null;
 }
 
+/**
+ * Walled off from its target (it can't get closer, nor throw at it): it strikes a foe's structure
+ * in reach, the one in the way first.
+ */
+function breakThrough(s: BattleState, u: Unit, t: Unit): Action | null {
+  let best: { id: string; v: number } | undefined;
+  for (const w of s.walls) {
+    const owner = w.owner ? s.units[w.owner] : undefined;
+    if (!breakable(w) || !owner || owner.team === u.team) continue;
+    const pv = structureAttack(s, u, w, false);
+    if (!pv.inRange) continue;
+    const v = structureDist(w, t.pos) - (w.kind === 'metal' && segmentsCross(u.pos, t.pos, w.a, w.b) ? 100 : 0);
+    if (!best || v < best.v) best = { id: w.id, v };
+  }
+  return best ? { type: 'attack', unit: u.id, target: `wall:${best.id}` } : null;
+}
+
 /** Nothing worked: the best other option it can do from here, or a dash forward. */
 function fallback(s: BattleState, u: Unit): Action | null {
   for (const o of ninjaOptions(s, u)) {
     const t = o.intent.target ? s.units[o.intent.target] : undefined;
-    if (o.intent.kind === 'melee' && t && dist(u.pos, t.pos) <= reachTo(u, t) + 0.1) return { type: 'attack', unit: u.id, target: t.id };
+    if (o.intent.kind === 'melee' && t && dist(u.pos, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id };
     if (o.intent.kind === 'ranged' && t && dist(u.pos, t.pos) <= KUNAI_LONG && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
   }
   return null;
+}
+
+/** The bonus action, once the action is spent: a Kōton raises a metal block for cover. */
+function bonusAfter(s: BattleState, u: Unit): Action | null {
+  if (!u.turn.bonus) return null;
+  return kotonCover(s, u);
+}
+
+const BLOCK = 'koton_block';
+
+/** Cells whose centre is about 1 m from a unit's (one cell clear of its own, under 1.2 m away). */
+const BLOCK_SPOTS: [number, number][] = [
+  [1, 0], [1, 0.5], [0.5, 1], [0, 1], [-0.5, 1], [-1, 0.5], [-1, 0], [-1, -0.5], [-0.5, -1], [0, -1], [0.5, -1], [1, -0.5],
+];
+
+/**
+ * A Kōton out in the open raises a metal block against the nearest foe that sees it from 3 m or
+ * more, if no structure of its own stands within 2 m and the chakra for its cheapest jutsu is
+ * left over. Never the full wall: where to wall off the field takes judgment the AI doesn't have.
+ */
+function kotonCover(s: BattleState, u: Unit): Action | null {
+  const spec = JUTSU[BLOCK];
+  if (!u.jutsus.includes(BLOCK) || effectMods(u.effects).noJutsu) return null;
+  const keep = Math.min(Infinity, ...u.jutsus.filter((id) => JUTSU[id] && offensive(JUTSU[id])).map((id) => jutsuCost(u, JUTSU[id], false)));
+  if (u.chakra < jutsuCost(u, spec, false) + (isFinite(keep) ? keep : 0)) return null;
+  if (ownStructures(s, u.id).some((w) => structureDist(w, u.pos) <= 2)) return null;
+  const foe = visibleFoes(s, u)
+    .filter((f) => dist(f.pos, u.pos) >= 3 && lineOfSight(s, f.pos, u.pos) && coverBetween(s, f.pos, u.pos, [f.id, u.id]) < 2)
+    .sort((a, b) => dist(a.pos, u.pos) - dist(b.pos, u.pos))[0];
+  if (!foe) return null;
+  // Right in front of it, toward the foe: the block shelters it from the foe, but not the foe from
+  // its own kunai and jutsu (cover the attacker stands right behind doesn't count).
+  const d = dist(u.pos, foe.pos);
+  let best: { at: Pt; v: number } | undefined;
+  for (const [dx, dz] of BLOCK_SPOTS) {
+    const at = { x: u.pos.x + dx, z: u.pos.z + dz };
+    const w = structureAt(spec, u.pos, at, u.id, '');
+    if (structureBlocker(s, w) || !lineOfSight(s, u.pos, at)) continue;
+    if (coverBetween({ ...s, walls: [...s.walls, w] }, foe.pos, u.pos, [foe.id, u.id]) < 2) continue;
+    const v = (dx * (foe.pos.x - u.pos.x) + dz * (foe.pos.z - u.pos.z)) / (Math.hypot(dx, dz) * d);
+    if (!best || v > best.v) best = { at, v };
+  }
+  return best ? { type: 'jutsu', unit: u.id, jutsu: BLOCK, at: best.at } : null;
 }
 
 /** After the action: defensive and support ninjas step into cover if they still can move. */

@@ -407,6 +407,11 @@ export class Playback {
             this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200 });
             // The wall itself rises when its event plays, right as the jutsu lands.
             return castDelay;
+          case 'metalBlock':
+          case 'metalWall':
+            // Steel dust where the structure rises (the earth wall's sheet would hide it otherwise).
+            this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200, sig: 'debris' });
+            return castDelay;
         }
         if (ev.shape?.kind === 'cone') {
           // A signature cone (the Great Fire Annihilation) plays its whole surge, burn and fade.

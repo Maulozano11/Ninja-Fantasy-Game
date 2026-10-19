@@ -147,7 +147,7 @@ function bonusAfter(s: BattleState, u: Unit): Action | null {
 
 const BLOCK = 'koton_block';
 
-/** Cells whose centre is about 1 m from a unit's (one cell clear of its own, under 1.2 m away). */
+/** Where a block can stand right in front of a unit: its centre 1 m out (its 3 × 3 cells stop short of the unit's own) and under 1.2 m away. */
 const BLOCK_SPOTS: [number, number][] = [
   [1, 0], [1, 0.5], [0.5, 1], [0, 1], [-0.5, 1], [-1, 0.5], [-1, 0], [-1, -0.5], [-0.5, -1], [0, -1], [0.5, -1], [1, -0.5],
 ];
@@ -160,8 +160,8 @@ const BLOCK_SPOTS: [number, number][] = [
 function kotonCover(s: BattleState, u: Unit): Action | null {
   const spec = JUTSU[BLOCK];
   if (!u.jutsus.includes(BLOCK) || effectMods(u.effects).noJutsu) return null;
-  const keep = Math.min(Infinity, ...u.jutsus.filter((id) => JUTSU[id] && offensive(JUTSU[id])).map((id) => jutsuCost(u, JUTSU[id], false)));
-  if (u.chakra < jutsuCost(u, spec, false) + (isFinite(keep) ? keep : 0)) return null;
+  const costs = u.jutsus.filter((id) => JUTSU[id] && offensive(JUTSU[id])).map((id) => jutsuCost(u, JUTSU[id], false));
+  if (u.chakra < jutsuCost(u, spec, false) + (costs.length ? Math.min(...costs) : 0)) return null;
   if (ownStructures(s, u.id).some((w) => structureDist(w, u.pos) <= 2)) return null;
   const foe = visibleFoes(s, u)
     .filter((f) => dist(f.pos, u.pos) >= 3 && lineOfSight(s, f.pos, u.pos) && coverBetween(s, f.pos, u.pos, [f.id, u.id]) < 2)

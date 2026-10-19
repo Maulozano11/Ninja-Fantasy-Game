@@ -105,15 +105,15 @@
   "fire": {
    "label": "Phoenix (fire)",
    "file": "fire.png",
-   "frameW": 199,
-   "frameH": 121,
+   "frameW": 127,
+   "frameH": 105,
    "anchor": [
-    109,
-    68
+    82,
+    63
    ],
    "meters": [
-    2.2,
-    2
+    2,
+    1.7
    ],
    "tags": [
     "vfx"
@@ -122,19 +122,19 @@
     "fly": {
      "row": 0,
      "frames": 8,
-     "fps": 12,
+     "fps": 10,
      "loop": true
     },
     "dive": {
      "row": 1,
      "frames": 5,
-     "fps": 12,
+     "fps": 10,
      "loop": true
     },
     "attack": {
      "row": 2,
      "frames": 6,
-     "fps": 12,
+     "fps": 10,
      "loop": false
     }
    }

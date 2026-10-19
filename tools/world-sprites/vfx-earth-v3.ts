@@ -1344,8 +1344,22 @@ function spikeMask(rock: Layer, line: number): Uint8Array {
     const k = syy ? sxy / syy : 0;
     return (y: number) => mx + k * (y - my);
   };
+  // (a piece of rock that never reaches the rubble band, a chunk flying above it, is one rigid
+  // thing: all of it, its outline and rim included, moves with the wave, so its rim never peels
+  // off its body; following it row by row would leave behind a rim that widens faster than 1 px a
+  // row)
+  const comp = new Int32Array(rock.v.length).fill(-1);
+  const comps = pieces(rock);
+  comps.forEach((pc, k) => {
+    for (const j of pc) comp[j] = k;
+  });
   for (const pc of pieces(tips)) {
     if (pc.length < 4) continue;
+    const whole = comps[comp[pc[0]]];
+    if (Math.max(...whole.map((i) => (i / w) | 0)) < line - 8) {
+      for (const j of whole) m[j] = 1;
+      continue;
+    }
     const y0 = Math.min(...pc.map((i) => (i / w) | 0));
     const row0 = pc.filter((i) => ((i / w) | 0) === y0).map((i) => i % w);
     let lo = Math.min(...row0), hi = Math.max(...row0);
@@ -2311,10 +2325,14 @@ function wall(kind: 'wall' | 'wall_diag' | 'wall_depth', label: string, seed: nu
       h = Math.min(h, colH[x] + 8);
       return Math.round(h * (1 - s) * (0.9 + 0.2 * pnoise(x, 0, 24, 0, 0, seed + 3)));
     };
-    // (the end-on pillar's rubble pushes up out of the ground at its foot over the last six frames,
-    // easing out)
+    // (the end-on pillar's heap of rubble rises with the pillar as one block, by the pillar's own
+    // offset in every frame, through its own ground line: his rubble rocks above and below any line
+    // between heap and pillar move together, so no rock is ever torn along a straight seam and the
+    // pillar's repeated bottom course never shows under it; it breaks the ground once the pillar is
+    // nearly up)
     const heapFrom = RISE_N - 7;
     const ru = rubbleAt ? (() => {
+      if (level) return cut(remap(rubble, (x, y) => [x, y - sink(x)]), (x, y) => y <= heapLine[x]);
       const v = clamp((i - heapFrom) / 6, 0, 1);
       if (v <= 0) return null;
       const e = 1 - (1 - v) * (1 - v);

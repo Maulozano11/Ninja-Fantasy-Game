@@ -169,6 +169,10 @@ elements.
 
 ## Clan abilities in battle
 
+**Replaced on 2026-10-19** by `CLANS_DESIGN.md`: four original clans (Mirai,
+Kōton, Ryusei, Northstar), their counters and their Paths. The list below is
+the old design, kept until phase 1 is built.
+
 - **Mirai — Future Foresight.** Enemies commit to their next move at the end
   of each of their turns. A Mirai sees that move (what attack, against whom)
   for every enemy within 18 m in sight; the enemy carries it out if it still

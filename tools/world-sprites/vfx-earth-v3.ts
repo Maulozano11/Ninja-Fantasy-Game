@@ -1277,23 +1277,44 @@ function breath(): WorldSprite {
   // gaps of up to about 6 px closed) travels with it, whole pixels at a time, so its outline stays closed and
   // its light face never churns with the cloud behind it. Each rock keeps its own size and centre
   // for its motion.
+  // (a rock is a group: his rims break at our size, so the bits of one rock (pieces of rock 2 px
+  // apart or less) are one rock, with one beat, never drifting apart into slivers)
+  const W0 = rocks0.w;
+  const grpOf = new Int32Array(rocks0.v.length).fill(-1);
+  {
+    const near = grow(rocks0.v.map((v) => (v ? 1 : 0)), W0, rocks0.h, 1);
+    const g = rocks0.empty();
+    for (let j = 0; j < near.length; j++) g.v[j] = near[j];
+    pieces(g).forEach((pc, k) => {
+      for (const j of pc) if (rocks0.v[j]) grpOf[j] = k;
+    });
+  }
+  const groups0 = new Map<number, number[]>();
+  for (let j = 0; j < rocks0.v.length; j++) if (grpOf[j] >= 0) {
+    const a = groups0.get(grpOf[j]) ?? [];
+    a.push(j);
+    groups0.set(grpOf[j], a);
+  }
   const rocks = rocks0.clone();
-  const info0 = pieces(rocks0).map((pc) => {
+  const groups = [...groups0.values()].map((pc) => {
     let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
     for (const j of pc) {
-      x0 = Math.min(x0, j % rocks0.w); x1 = Math.max(x1, j % rocks0.w);
-      y0 = Math.min(y0, (j / rocks0.w) | 0); y1 = Math.max(y1, (j / rocks0.w) | 0);
+      x0 = Math.min(x0, j % W0); x1 = Math.max(x1, j % W0);
+      y0 = Math.min(y0, (j / W0) | 0); y1 = Math.max(y1, (j / W0) | 0);
     }
     const sub = new Layer(rocks0.pal, x1 - x0 + 11, y1 - y0 + 11);
-    for (const j of pc) sub.set((j % rocks0.w) - x0 + 5, ((j / rocks0.w) | 0) - y0 + 5, 1);
+    for (const j of pc) sub.set((j % W0) - x0 + 5, ((j / W0) | 0) - y0 + 5, 1);
     const inside = silhouette(sub, 3);
+    const px = [...pc];
     for (let y = 0; y < sub.h; y++) for (let x = 0; x < sub.w; x++) {
       const X = x + x0 - 5, Y = y + y0 - 5;
-      if (inside[y * sub.w + x] && !sub.get(x, y) && !rocks0.get(X, Y) && dust.get(X, Y)) rocks.set(X, Y, dust.get(X, Y));
+      if (inside[y * sub.w + x] && !sub.get(x, y) && !rocks0.get(X, Y) && !rocks.get(X, Y) && dust.get(X, Y)) {
+        rocks.set(X, Y, dust.get(X, Y));
+        px.push(Y * W0 + X);
+      }
     }
-    return { n: pc.length, c: centre(rocks0, pc) };
+    return { px, n: pc.length, c: centre(rocks0, pc) };
   });
-  const same = pieces(rocks).length === info0.length;
   const fr = range(FLY_N).map((i) => {
     const t = i / FLY_N;
     const reach = (x: number) => smooth(ox + 4, ox + 40, x);
@@ -1304,15 +1325,25 @@ function breath(): WorldSprite {
       return [Math.cos(a) * 2.5, Math.sin(a) * 2.5];
     } });
     d = wobble(d, t, 0.8, 12, seed + 1, (x) => smooth(ox + 40, ox + 110, x));
-    const r = moveBits(rocks, (k, cx0, cy0, n0) => {
-      const [cx, cy] = same ? info0[k].c : [cx0, cy0], n = same ? info0[k].n : n0;
-      if (n > 220) return [0, 0];
-      const u = drift(t, rr(seed + 2, k, 0, 1));
-      const a = Math.atan2(cy - oy, cx - ox);
-      const dist = Math.hypot(cx - ox, cy - oy);
-      const step = (n > 30 ? 5 : 9) * u;
-      if (step > 0 && dist + step > 128) return null;
-      return [Math.cos(a) * step, Math.sin(a) * step + 1.5 * u * u];
+    // (each rock group moved whole, in whole pixels; one that would reach the frame's edge is dropped)
+    const r = rocks.empty();
+    groups.forEach((gp, k) => {
+      const [cx, cy] = gp.c, n = gp.n;
+      let mx = 0, my = 0;
+      if (n <= 220) {
+        const u = drift(t, rr(seed + 2, k, 0, 1));
+        const a = Math.atan2(cy - oy, cx - ox);
+        const dist = Math.hypot(cx - ox, cy - oy);
+        const step = (n > 30 ? 5 : 9) * u;
+        if (step > 0 && dist + step > 128) return;
+        mx = Math.round(Math.cos(a) * step);
+        my = Math.round(Math.sin(a) * step + 1.5 * u * u);
+      }
+      if (gp.px.some((j) => {
+        const x = (j % W0) + mx, y = ((j / W0) | 0) + my;
+        return x < 1 || y < 1 || x > r.w - 2 || y > r.h - 2;
+      })) return;
+      for (const j of gp.px) r.set((j % W0) + mx, ((j / W0) | 0) + my, rocks.v[j]);
     });
     return union(d, r);
   });

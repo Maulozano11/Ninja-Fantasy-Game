@@ -476,6 +476,34 @@ def classify_his(cfg):
     # Pale streaks (speed lines, ray dashes): thin and light. Always opaque body.
     pale = art & (L >= 175) & ((c.max(-1) - c.min(-1)) < 120)
     thin = pale & ~dilate(erode(pale, 2), 2)
+    if cfg.get('streaks'):
+        # His cream speed streaks lie on his navy panel with nothing round them. The JPEG bleeds
+        # their warmth into the panel pixels just above and below (and at their ends), which then
+        # read as a dark warm rim or dark dust: at game scale a dark row on each side of the
+        # streak, a dark sleeve on any lighter map. Those dark pixels are his panel, not art.
+        # (a streak: a long, flat piece of his thin pale strokes; nothing near his traced rocks)
+        # (the streak's band: its pale core and the lighter pixels joined to it along its own rows,
+        # its soft edges; the halo: the dark pixels touching that band)
+        lab_, n_ = components(thin, nb=N8)
+        band = np.zeros_like(thin)
+        for k_ in range(1, n_ + 1):
+            ys_, xs_ = np.nonzero(lab_ == k_)
+            if xs_.max() - xs_.min() + 1 < 8 or ys_.max() - ys_.min() + 1 > 5:
+                continue
+            win = np.zeros_like(thin)
+            win[max(0, ys_.min() - 2):ys_.max() + 3, max(0, xs_.min() - 14):xs_.max() + 15] = True
+            cur = lab_ == k_
+            for _ in range(16):
+                nxt = dilate(cur, 1, nb=N4) & win & (L >= 75) & keep
+                if (nxt == cur).all():
+                    break
+                cur = nxt | cur
+            band |= cur
+        rockz = dilate(solid_mask(cfg), 3, nb=N8) if cfg.get('solid') else np.zeros_like(thin)
+        halo = dilate(band, 1, nb=N8) & ~band & (L < 75) & ~rockz
+        outline &= ~halo
+        art &= ~halo
+        thin &= ~halo
     # Art enclosed by a rim (rocks, pebbles, spikes, the bullets): not reachable from the open
     # background without crossing a rim (rims thickened 1 px to close JPEG gaps).
     # The rims are thickened 2 px for the flood, closing JPEG gaps of up to ~4 px; what lies
@@ -667,6 +695,12 @@ def decide(cfg, g, W, H, ax, ay):
     drawn = S >= 0.5
     nb = sum(shift(drawn, dy, dx).astype(int) for dy, dx in N4)
     drawn |= (~drawn) & (nb >= 3) & (S >= 0.25)          # pinholes
+    if cfg.get('streaks'):
+        # (his thin pale strokes are opaque body: where one covers a quarter of a game pixel or
+        # more it is drawn, in the row it covers most, so a cream streak a pixel or so tall at his
+        # size stays a crisp cream line at ours instead of thinning into tan dust)
+        T = g['T']
+        drawn |= (T >= 0.25) & (T > shift(T, 1, 0)) & (T >= shift(T, -1, 0))
     dark = drawn & (O > B)
     solid = drawn & ~dark
     ring = dilate(solid) & ~drawn & (O >= 0.14)

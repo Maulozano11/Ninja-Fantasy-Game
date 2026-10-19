@@ -1238,19 +1238,28 @@ function blast(): WorldSprite {
   };
   // His soft green glow beside the pillar (1 px, alpha 20-45, along both its sides) goes with the
   // pillar: moved exactly as the pillar is, and cut along the same crown line, so it never stands
-  // above the rising or sinking top. His glow round the pool's rim and its stalks goes with the pool
-  // (scaled with it, and only where the frame's pool still has slime within 2 px). The rest stays.
+  // above the rising or sinking top. His glow round the pool's rim where his light does not reach
+  // goes with the pool (scaled with it, and only where the frame's pool still has slime within 2 px).
+  // His green glow inside his light (round the pool's right end, the stalks and their drops) is his
+  // light, read as glow at his slime's edge (the JPEG's soft edge of his dark rim): it is drawn only
+  // where the frame shows his art round it unchanged and in place (as in his picture); elsewhere his
+  // light continued under his art takes its place. The rest stays.
   const nearArt = (L: Layer, x: number, y: number, r: number) => {
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (L.get(x + dx, y + dy) && !isKind(L.get(x + dx, y + dy), 'glow')) return true;
     return false;
   };
   const poolAll = union(pool, stalkTop);
-  const glowRim = glowG.empty(), glowCol = glowG.empty(), glowRest = glowG.empty();
+  const glowRim = glowG.empty(), glowCol = glowG.empty(), glowRest = glowG.empty(), glowLit = glowG.empty();
+  const lightNear = (x: number, y: number) => {
+    let m = 0;
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (dx * dx + dy * dy <= 9) m = Math.max(m, light.at(x + dx, y + dy));
+    return m;
+  };
   for (let y = 0; y < K.h; y++)
     for (let x = 0; x < K.w; x++) {
       const v = glowG.get(x, y);
       if (!v) continue;
-      (nearArt(poolAll, x, y, 2) ? glowRim : nearArt(col, x, y, 3) ? glowCol : glowRest).set(x, y, v);
+      (lightNear(x, y) >= 24 / 255 ? glowLit : nearArt(poolAll, x, y, 2) ? glowRim : nearArt(col, x, y, 3) ? glowCol : glowRest).set(x, y, v);
     }
   const pillarGlow = (L: Layer, d: number, sxs: number, swell: number, ps: number, i: number): Layer => {
     const sh = pillarMove(L, d, sxs, swell, ps);
@@ -1445,9 +1454,10 @@ function blast(): WorldSprite {
   // with the solution of Laplace's equation that meets his light round it (and nothing where his
   // ground is dark), solved to convergence, as the extractor fills his light behind his character:
   // no bright spot, no ridge, nothing brighter than his light round it, fading out under the pool.
-  // Frame 4 is still his picture: there, and wherever a later frame shows his art unchanged and in
-  // place round a pixel, the light is his own; his soft glow round the pool's rim always lies over his
-  // own light (his darker soft edge), and goes with the pool.
+  // His light touching his art is taken from the light further out too (the JPEG's soft edge of his
+  // dark rim is in it). Frame 4 is still his picture: there, and wherever a later frame shows his art
+  // unchanged and in place round a pixel, the light is his own (and his glow inside his light is
+  // drawn); his glow round the pool's rim outside his light lies over his own light (nothing).
   const lightF = (() => {
     const a4 = stackC(K.w, K.h, glowG, glowP, col, pool, stalkTop, mist, drops).px;
     const n = K.w * K.h, hole = new Uint8Array(n);
@@ -1455,8 +1465,12 @@ function blast(): WorldSprite {
     for (let y = 0; y < K.h; y++)
       for (let x = 0; x < K.w; x++) {
         const j = y * K.w + x, a = al(x, y), A = light.a[j];
-        if (a === 255 || (a > 0 && A === 0)) hole[j] = 1;
-        else if (a === 0 && A === 0) {
+        if (a > 0) hole[j] = 1;
+        else if (A > 0) {
+          // (his light touching his art: the soft edge of his dark rim is in it, so it is taken from
+          // the light further out)
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (al(x + dx, y + dy)) hole[j] = 1;
+        } else {
           // (his unlit specks next to his art inside the light: a drop's dark halo, keyed out)
           let art = false, m = 0;
           for (let dy = -3; dy <= 3; dy++)
@@ -1651,6 +1665,7 @@ function blast(): WorldSprite {
     const cgl = glowMul(glowCol, p.light);
     const cg = i < PEAK ? pillarGlow(cgl, d, 0.74 + 0.26 * p.rise, 0.2, ps, i) : i > HOLD ? pillarGlow(cgl, d, slump(p.rise), 0.2, ps, i) : cgl;
     const rg0 = scaled(glowMul(glowRim, p.light), p.pool, p.pool, K.ax, K.ay);
+    const glowLitM = glowMul(glowLit, p.light);
     // (the soft edges of his mist go with the mist)
     let gm: Canvas = glowP.render();
     if (i < PEAK) gm = p.mist > 0 ? fadeAbove(cut(moved(glowP, 0, d * 0.85), (x, y) => grain(x, y, seed + 4) < p.mist + 0.15, 0, false).render(), mistLine, 9) : new Canvas(K.w, K.h);
@@ -1667,9 +1682,12 @@ function blast(): WorldSprite {
       for (let y = 0; y < K.h; y++)
         for (let x = 0; x < K.w; x++) {
           const v = rg0.get(x, y);
-          if (v && (nearArt(pl, x, y, 2) || nearArt(pb, x, y, 2))) rg.set(x, y, v);
+          // (only next to the frame's slime, and outside his light: inside it, his light continued
+          // takes its place)
+          if (v && (nearArt(pl, x, y, 2) || nearArt(pb, x, y, 2)) && (i === PEAK || lF.a[y * K.w + x] < 20 / 255)) rg.set(x, y, v);
         }
       const art = stackC(K.w, K.h, gl, cg, rg, gm, pb, c, pl, sp, ms, dr).px;
+      // (his glow inside his light: only where his art round it is in place)
       if (i === PEAK) art4 = Uint8Array.from(art);
       inPlace = null;
       if (i >= PEAK && art4) {
@@ -1688,18 +1706,24 @@ function blast(): WorldSprite {
         inPlace = ip;
       }
       inPlaceOf[i] = inPlace;
+      const lg = glowLit.empty();
+      if (inPlace) for (let j = 0; j < lg.v.length; j++) if (inPlace[j]) lg.v[j] = glowLitM.v[j];
       const lt = new Canvas(K.w, K.h);
       for (let y = 0; y < K.h; y++)
         for (let x = 0; x < K.w; x++) {
           const j = y * K.w + x;
           let a: number;
-          if (rg.get(x, y)) a = light.at(Math.floor(K.ax + (x + 0.5 - K.ax) / p.pool), Math.floor(K.ay + (y + 0.5 - K.ay) / p.pool)) * p.light;
-          else if (inPlace && inPlace[j]) a = lA.a[j];
-          else a = lF.a[j];
+          // (under his glow drawn in place, his own light; elsewhere in place his own light too, unless
+          // it is a dip or a ridge of his (under half or over twice the light continued): on frame 4
+          // those are his picture, on the other frames they would stand out against the light
+          // continued round them as the art there moves)
+          const A = lA.a[j], F = lF.a[j];
+          if (lg.v[j] || (inPlace && inPlace[j] && (i === PEAK || (A >= 0.5 * F && A <= 2 * F)))) a = A;
+          else a = F;
           const al = Math.round(clamp(a, 0, 1) * 255);
           if (al) lt.set(x, y, [light.rgb[0], light.rgb[1], light.rgb[2], al]);
         }
-      const out = fadeTop(stackC(K.w, K.h, lt, gl, cg, rg, gm, pb, c, pl, sp, ms, dr), 5, 16, seed + 20);
+      const out = fadeTop(stackC(K.w, K.h, lt, gl, cg, rg, lg, gm, pb, c, pl, sp, ms, dr), 5, 16, seed + 20);
       // (the settle churns and cools his slime: no checkerboard dither is left from it)
       return i > HOLD ? dechecker(out) : out;
     };
@@ -1747,7 +1771,10 @@ function blast(): WorldSprite {
     for (let j = 0; j < holes.length; j++)
       if (holes[j]) {
         if (ip && ip[j] && his[j]) own++;
-        else bad++;
+        else {
+          bad++;
+          if (process.env.POISON_DEBUG) console.log(`  light hole blast[${i}] at ${j % K.w},${(j / K.w) | 0}: alpha ${f.px[j * 4 + 3]} rgb ${f.px.slice(j * 4, j * 4 + 3).join(',')} his ${light.a[j].toFixed(3)} fill ${lightF.a[j].toFixed(3)} inPlace ${ip ? ip[j] : '-'} hisHole ${his[j]} rim ${glowRim.v[j]} rest ${glowRest.v[j]} col ${glowCol.v[j]} lit ${glowLit.v[j]}`);
+        }
       }
     LIGHT_LOG.push(`blast[${i}]: ${bad} px darker than half the light round them${own ? ` (his own picture, in place: ${own} px)` : ''}`);
     if (bad) LIGHT_FAULTS.push(`blast[${i}]: ${bad} px darker than half the light within 3 px (a hole in the light)`);
@@ -2249,6 +2276,28 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
   }
   const ground = (x: number) => ga + gb * x;
   const hMax = Math.max(...top.map((tp, x) => (tp >= K.h ? 0 : ground(x) - tp))) + 4;
+  // The rising slime's surface is never a level line: it climbs the posts' inner faces (a meniscus,
+  // 3 px higher at each post and falling away over about 7 px), slow waves run along it (37 and 21 px
+  // long, in opposite directions, with a 10 px ripple), and a broad bulge slides across it as it
+  // fills (all scaled down while the layer is still thin). His dripping top comes over it on frames
+  // 8-10.
+  // (each post's inner face: its stone's extent across, half way up the slime)
+  const postIn = [0, 1].map((k) => {
+    const xs: number[] = [];
+    for (let x = 0; x < K.w; x++) {
+      const y = Math.round(ground(x) - hMax / 2);
+      if (blocks[k].get(x, y)) xs.push(x);
+    }
+    return k === 0 ? Math.max(...xs) + 1 : Math.min(...xs) - 1;
+  });
+  const surfLift = (x: number, i: number, level: number) => {
+    const k = clamp(level / 12, 0, 1), ph = i / RISE;
+    const men = 3.2 * (Math.exp(-Math.max(0, x - postIn[0]) / 7) + Math.exp(-Math.max(0, postIn[1] - x) / 7));
+    const wave = 2.0 * Math.sin((x / 37 - 0.9 * ph) * TAU + 1.3) + 1.4 * Math.sin((x / 21 + 1.3 * ph) * TAU + 4.1) + 0.9 * Math.sin((x / 10.5 - 1.7 * ph) * TAU + 2.2);
+    const bc = postIn[0] + (postIn[1] - postIn[0]) * (0.2 + 0.6 * ph);
+    const bulge = 2.4 * Math.exp(-(((x - bc) / 30) ** 2));
+    return k * (men + wave + bulge);
+  };
   // His glow round the bubbling top (above the band's foot) comes up with the top; the rest of his
   // light lies on the ground.
   const topGlow = light.empty(), groundGlow = light.empty();
@@ -2363,7 +2412,7 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
     let sl: Layer | null = null;
     if (ps > 0) {
       const { s } = idleAt(fract((i - (RISE - 1)) / IDLE));
-      sl = cut(s, (x, y) => ground(x) - y <= ps * hMax + 2.5 * (pnoise(x, i * 3, 6, 0, 0, seed + 4) - 0.5) * 2, 4);
+      sl = cut(s, (x, y) => ground(x) - y <= ps * hMax + surfLift(x, i, ps * hMax) + 1.2 * (pnoise(x, i * 3, 6, 0, 0, seed + 4) - 0.5) * 2, 4);
       if (dB[2]) {
         // (it rides with the beam, never below the ground it stands on)
         const bf = blk[2].f;
@@ -2691,6 +2740,44 @@ function aura(): WorldSprite[] {
       const v = bm.get(x, fy0 - 1);
       if (v && !bm.get(x, y) && fm.get(x, y) && sideK[y * KB.w + x] >= 1) under.set(x, y, v);
     }
+  // His pale-lime highlights on the green flame strands (a small spot of 7 px on each strand, his
+  // brightest colour) are lifted out of the warp too: each is taken out of the flames (its pixels take
+  // the strand's colour round it) and drawn back as a rigid sprite, exactly his shape, carried along
+  // with the strand by the warp at its centre, so it never changes shape from frame to frame.
+  const lum = (v: number) => (isKind(v, 'body') ? lumOf(PAL[v - 1]) : 0);
+  const highlights: { px: [number, number, number][]; cx: number; cy: number }[] = [];
+  {
+    const bright = under.empty();
+    for (let j = 0; j < under.v.length; j++) if (lum(under.v[j]) >= 135) bright.v[j] = under.v[j];
+    const todo: number[] = [];
+    for (const pc of pieces(bright)) {
+      const cx = pc.reduce((a, j) => a + (j % KB.w), 0) / pc.length, cy = pc.reduce((a, j) => a + ((j / KB.w) | 0), 0) / pc.length;
+      if (pc.length > 12 || !pc.some((j) => lum(under.v[j]) >= 225) || cy >= KB.ay - 14) continue;
+      highlights.push({ px: pc.map((j) => [j % KB.w, (j / KB.w) | 0, under.v[j]] as [number, number, number]), cx, cy });
+      for (const j of pc) {
+        under.v[j] = 0;
+        todo.push(j);
+      }
+    }
+    // (the strand under it: each pixel takes the commonest of his strand colours round it, inward)
+    for (let guard = 0; todo.length && guard < 8; guard++) {
+      const fills: [number, number][] = [];
+      for (const j of todo) {
+        const x = j % KB.w, y = (j / KB.w) | 0, votes = new Map<number, number>();
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const v = under.get(x + dx, y + dy);
+          if ((dx || dy) && isKind(v, 'body')) votes.set(v, (votes.get(v) ?? 0) + 1);
+        }
+        let best = 0, bn = 0;
+        for (const [v, n] of [...votes.entries()].sort((a, b) => a[0] - b[0])) if (n > bn) (best = v), (bn = n);
+        if (best) fills.push([j, best]);
+      }
+      for (const [j, v] of fills) under.v[j] = v;
+      const left = todo.filter((j) => !under.v[j]);
+      todo.length = 0;
+      todo.push(...left);
+    }
+  }
   const sides = (c: Canvas): Canvas => {
     const out = c.clone();
     for (let i = 0; i < sideK.length; i++) if (sideK[i] < 1 && out.px[i * 4 + 3]) out.px[i * 4 + 3] = Math.round(out.px[i * 4 + 3] * sideK[i]);
@@ -2702,6 +2789,22 @@ function aura(): WorldSprite[] {
     const up = (y: number) => (0.35 + 0.65 * smooth(KB.ay - 4, KB.ay - 80, y)) * pin(y);
     // (the tips lick up 2-3 px; the flames' feet barely move; the pool's bottom rows stay still)
     const b = wobble(churn(under, t, { amp: 1.3, ampY: 2.6, cell: 7, seed, flow: [0, -1.8], where: (_x, y) => up(y) }), t, 2.4, 10, seed + 1, (_x, y) => up(y) ** 1.5);
+    // (his highlights, rigid, where the warp carries their strand: the warp moves what lies at s to
+    // the x with x - d(x) = s, found in two steps)
+    for (const h of highlights) {
+      const d = (x: number, y: number): [number, number] => {
+        const [dx, dy] = circleDisp(x, y, t, 10, seed + 1), w = up(y) ** 1.5;
+        return [dx * 2.4 * w, dy * 2.4 * w];
+      };
+      let [px, py] = [h.cx, h.cy];
+      for (let k = 0; k < 2; k++) {
+        const [dx, dy] = d(px, py);
+        px = h.cx + dx;
+        py = h.cy + dy;
+      }
+      const ox = Math.round(px - h.cx), oy = Math.round(py - h.cy);
+      for (const [x, y, v] of h.px) if (isKind(b.get(x + ox, y + oy), 'body')) b.set(x + ox, y + oy, v);
+    }
     const halo = bg.empty(), body = bg.empty();
     motes.forEach((m, k) => {
       const ph = rr(seed + 2, k, 0, TAU);
@@ -2709,10 +2812,11 @@ function aura(): WorldSprite[] {
       for (const [x, y, v] of m.halo) halo.set(x + dx, y + dy, v);
       for (const [x, y, v] of m.body) body.set(x + dx, y + dy, v);
     });
-    // (the warp can leave a pinhole of 1-3 px enclosed in the flames: it is sealed with the colour
-    // round it, as the walls' stone is)
+    // (the warp can leave a pinhole, or a slit of up to 24 px between two tongues whose tips it
+    // brings together, enclosed in the flames: it is sealed with the colour round it, as the walls'
+    // stone is, so no see-through slit opens and closes from frame to frame)
     const bc = stackC(KB.w, KB.h, bg, halo, b, body);
-    back.push(sides(i ? sealFrame(bc, () => false, 3)[0] : bc));
+    back.push(sides(i ? sealFrame(bc, () => false, 24)[0] : bc));
     const f = shimmer(fm, t, { period: 30, dir: [1, 0], width: 0.2 });
     front.push(stackC(KF.w, KF.h, veil(KF.w, KF.h, KF.ax, KF.ay, i), sides(f.render())));
   }

@@ -166,10 +166,30 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       const dx = (b.X - a.X) * reach;
       const dy = (b.Y - a.Y) * reach;
       const lift = f.lift?.[1] ?? 50;
-      const n = Math.max(1, Math.floor(Math.hypot(dx, dy) / tile.spec.frameW));
       const alpha = t > 0.8 ? (1 - t) / 0.2 : 1;
-      for (let i = 0; i < n; i++) blit(ctx, tile, 'fly', frameAt(tile, 'fly', ms + i * 40), a.X + (dx * i) / n, a.Y - lift + (dy * i) / n, left, alpha);
-      blit(ctx, head, 'fly', frameAt(head, 'fly', ms), a.X + dx, a.Y - lift + dy, left, alpha);
+      // The beam is laid out flat, facing right, from the caster (0, 0) to the head (L, 0), then
+      // sheared onto a shallow slope (pixel columns stay upright) or turned onto a steep one.
+      // The tiles step back from the head a whole tile at a time, all on the head's frame: the
+      // tile wraps onto itself and the head's left end is a copy of the tile's right half, so
+      // the beam reads as one unbroken row. The first tile is cut off at the caster.
+      const run = left ? -dx : dx;
+      const shear = run > 0 && Math.abs(dy) <= run;
+      const L = shear ? run : Math.hypot(dx, dy);
+      const w = tile.spec.frameW;
+      const frame = frameAt(tile, 'fly', ms);
+      ctx.save();
+      ctx.translate(a.X, a.Y - lift);
+      if (left) ctx.scale(-1, 1);
+      if (shear) ctx.transform(1, dy / run, 0, 1, 0, 0);
+      else ctx.rotate(Math.atan2(dy, run));
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, -1e4, 1e5, 2e4);
+      ctx.clip();
+      for (let k = Math.max(1, Math.ceil(L / w)); k >= 1; k--) blit(ctx, tile, 'fly', frame, L - w * k, 0, false, alpha);
+      ctx.restore();
+      blit(ctx, head, 'fly', frame, L, 0, false, alpha);
+      ctx.restore();
       return true;
     }
     case 'burst': {

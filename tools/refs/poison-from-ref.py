@@ -513,6 +513,8 @@ def raw_light(name, cfg):
     # it has no ridges)
     gf = laplace_fill(np.where(edge0, 0.0, gs), known | edge0, LZ & ~known, wy=rl.get('fill_wy', 1.0))
     A = np.where(LZ, np.clip(gf / rl['gexf'], 0, 1), 0.0)
+    if os.environ.get('PDBG'):  # TEMP
+        np.savez(os.environ['PDBG'], edge0=edge0, LZ=LZ, known=known, gf=gf, gs=gs, R=R, Mf=Mf, darkrow=darkrow)
     # Past his panel's right edge the edge column's light runs on and fades out, each row as far as
     # its own brightness carries it (the brightest `ext` px), so the light's end is rounded like its
     # own falloff, not a vertical line.

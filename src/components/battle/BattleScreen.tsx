@@ -851,7 +851,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       }
       if (key === 'Escape') setMode({ k: 'move' });
       else if (key === 'z') setZoom((z) => (z === 1 ? 2 : 1));
-      else if (key === 'e' && mode.k === 'jutsu') setMode({ ...mode, enhanced: !mode.enhanced });
+      else if (key === 'e' && mode.k === 'jutsu' && JUTSU[mode.id]?.enhCost) setMode({ ...mode, enhanced: !mode.enhanced });
       else if ((key === ' ' || key === 'Enter') && actor) {
         e.preventDefault();
         press('end');

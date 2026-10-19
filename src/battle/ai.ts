@@ -89,7 +89,7 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
       const j = JUTSU[i.what];
       if (!j.melee && !handsFree(u) && u.turn.interacted) return null;
       if (g.ready) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined };
-      return moveToward(s, u, g, i.to);
+      return moveToward(s, u, g, i.to) ?? (j.melee ? breakThrough(s, u, t) : null);
     }
     case 'heal':
       if (g.ready) {

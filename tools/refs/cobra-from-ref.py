@@ -857,35 +857,141 @@ def seg_geom(P):
 TAIL_J = int(round(SIG[1] * (M - 1)))  # the tail's low point on the common parameter
 
 
-TIP_BEND = 1.0  # how the extra turn that leads the tip is spread along the tail: as x^this (x: 0 at the low point, 1 at the tip)
+TIP_LEN = 14.0  # px (along the body) of his tail tip carried as one rigid piece of his pixels
+
+
+def wrap(a):
+    return (a + np.pi) % (2 * np.pi) - np.pi
+
+
+def heading(P, j):
+    """The body's heading at point j toward the tail tip (radians), from the two segments on the body side."""
+    d = P[j] - P[j + 2]
+    return float(np.arctan2(d[1], d[0]))
+
+
+def tip_piece(k):
+    """His tail tip in picture k: the coil pixels within TIP_LEN px of the tip along the body, his own
+    pixels, with the joint (where the piece meets the body), the body's heading there and the chord from the
+    joint to the tip."""
+    c = C[k]
+    P = c['Pm']
+    cum = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(P, axis=0).T))])
+    j = int(np.searchsorted(cum, TIP_LEN))
+    ys, xs = np.nonzero(c['coil_src'])
+    s_, _, _ = project(P, np.stack([xs, ys], 1).astype(np.float64))
+    sel = to_index(s_, P) < j
+    m = np.zeros((CH, CW), bool)
+    m[ys[sel], xs[sel]] = True
+    comps = sorted(components(m), key=len, reverse=True)  # (the tip only, no stray pixel of another coil)
+    m[:] = False
+    m[comps[0][:, 0], comps[0][:, 1]] = True
+    phi = heading(P, j)
+    ch = P[0] - P[j]
+    theta = float(np.arctan2(ch[1], ch[0]))
+    return dict(j=j, mask=m, col=c['coil_col'], joint=P[j].copy(), phi=phi, theta=theta, bend=float(wrap(theta - phi)),
+                pts=P[:j + 1].copy(), chord=float(np.hypot(*ch)))
+
+
+PIECE = {k: tip_piece(k) for k in C}
+# His tail tip turns from his LEFT picture's angle to his RIGHT one's the way over the top (his LEFT tip curls up,
+# his RIGHT one lies down to the left: the tip rises, leans over to the left and lies down), evenly frame by frame,
+# and back the same way.
+SWEEP = float(wrap(PIECE['R']['theta'] - PIECE['L']['theta']))
+if SWEEP > 0:
+    SWEEP -= 2 * np.pi
+print('tail tip piece:', {k: dict(j=v['j'], px=int(v['mask'].sum()), chord_deg=round(np.degrees(v['theta']), 1),
+                                    heading_deg=round(np.degrees(v['phi']), 1), bend_deg=round(np.degrees(v['bend']), 1)) for k, v in PIECE.items()},
+      'sweep', round(np.degrees(SWEEP), 1))
+
+
+TIP_DIP = 4.0  # px the joint sinks at mid-sweep, so the tip never rises while it turns over the top
+
+
+def tip_raw(s):
+    """The tip at s of its sweep (0: his LEFT, 1: his RIGHT): its angle (turning one way, over the top), and
+    the joint on the line between his two joints, sunk a little at mid-sweep."""
+    theta = PIECE['L']['theta'] + SWEEP * s
+    joint = PIECE['L']['joint'] * (1 - s) + PIECE['R']['joint'] * s + np.array([0.0, TIP_DIP * np.sin(np.pi * s)])
+    return theta, joint
+
+
+def tip_point(s, src):
+    theta, joint = tip_raw(s)
+    return joint + PIECE[src]['chord'] * np.array([np.cos(theta), np.sin(theta)])
+
+
+# The tip travels its path at an even speed: the sweep re-timed by the distance the tip has gone.
+_TS = np.linspace(0.0, 1.0, 801)
+_TP = np.array([tip_point(v, 'L' if v < 0.5 else 'R') for v in _TS])
+_TARC = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(_TP, axis=0).T))])
+
+
+def tip_plan(a, w):
+    """For a frame w of the way from picture a to the other: which of his tips is carried (the nearer
+    picture's), the tip's angle, the body's heading at the joint that carries it at that angle, and where the
+    joint is. The tip goes the same path out and back, at an even speed in each half."""
+    sig = w if a == 'L' else 1.0 - w
+    src = 'L' if sig < 0.5 else 'R'
+    s = float(np.interp(sig * _TARC[-1], _TARC, _TS))
+    theta, joint = tip_raw(s)
+    return src, theta, theta - PIECE[src]['bend'], joint
 
 
 def curl_tail(P, a, b, w):
-    """The tail end (from its tip to its low point) bent rather than slid. Its turning along the body and the
-    length of each step go from picture a's to b's, and it hangs from the blended body at its low point.
-    Blending the turning alone stands the tail up as a stiff stalk halfway (his LEFT tip curls up, his
-    RIGHT one lies out to the left, and the blend of the two points straight up): so the tip is also led on
-    the straight line from his one tip to his other, evenly frame by frame (the shortest way, so it never
-    jumps), and the bend is solved back from it, the smallest extra turn that puts the tip there, most of
-    it near the tip and none at the low point (a minimum-norm least-squares step, repeated). His up-curled
-    tip so opens into his long RIGHT point and back, keeping its length, its thin tip and his tails' height."""
+    """The tail end (from the joint of his tip piece to the tail's low point) bent rather than slid: its
+    turning along the body and the length of each step go from picture a's to b's, hanging from the blended
+    body at its low point, plus the smallest smooth extra turn (none at the low point, a cubic in the place
+    along the tail end) that puts the joint where tip_plan says with the heading that carries his tip at its
+    angle. His tip itself is a rigid piece of his pixels (render_coils): here the spine past the joint is
+    that piece's spine, turned with it."""
     J = TAIL_J
     tha, la = seg_geom(C[a]['Pm'])
     thb, lb = seg_geom(C[b]['Pm'])
     thp, _ = seg_geom(P)
     th = thp[J] + (tha[:J] - tha[J]) * (1 - w) + (thb[:J] - thb[J]) * w
     ln = la[:J] * (1 - w) + lb[:J] * w
-    tip = P[J] + (C[a]['Pm'][0] - C[a]['Pm'][J]) * (1 - w) + (C[b]['Pm'][0] - C[b]['Pm'][J]) * w
-    W = ((J - np.arange(J)) / float(J)) ** (2 * TIP_BEND)
-    for _ in range(40):
-        r = tip - (P[J] - (ln[:, None] * np.stack([np.cos(th), np.sin(th)], 1)).sum(0))
-        if np.hypot(*r) < 0.01:
-            break
-        Jm = np.stack([ln * np.sin(th), -ln * np.cos(th)], 0)  # how the tip moves as each segment turns
-        th = th + np.clip(W * (Jm.T @ np.linalg.solve((Jm * W[None]) @ Jm.T, r)), -0.2, 0.2)
+    src, theta, phi, jt = tip_plan(a, w)
+    pc = PIECE[src]
+    j = pc['j']
+    x = np.clip((J - np.arange(J)) / float(J - j), 0.0, 1.0)
+    basis = np.stack([x, x ** 2, x ** 3, x ** 4, x ** 5], 0)
     Q = P.copy()
-    for i in range(J - 1, -1, -1):
-        Q[i] = Q[i + 1] - ln[i] * np.array([np.cos(th[i]), np.sin(th[i])])
+
+    def build(c3):
+        Q[:J + 1] = P[:J + 1]
+        th_ = th + c3 @ basis
+        for i in range(J - 1, -1, -1):
+            Q[i] = Q[i + 1] - ln[i] * np.array([np.cos(th_[i]), np.sin(th_[i])])
+        return Q
+
+    def resid(c3):
+        build(c3)
+        return np.array([Q[j][0] - jt[0], Q[j][1] - jt[1], wrap(heading(Q, j) - phi) * 10.0])
+
+    # (Newton steps on the three amounts, numeric derivatives, halved until the miss shrinks; deterministic)
+    c3 = np.zeros(len(basis))
+    r = resid(c3)
+    for _ in range(40):
+        if np.abs(r).max() < 1e-3:
+            break
+        Jm = np.stack([(resid(c3 + e) - r) / 1e-5 for e in np.eye(len(basis)) * 1e-5], 1)
+        step = np.linalg.lstsq(Jm, -r, rcond=None)[0]
+        step *= min(1.0, 0.6 / max(1e-9, float(np.abs(step).max())))
+        for _ in range(12):
+            r2 = resid(c3 + step)
+            if np.hypot(*r2[:2]) + abs(r2[2]) < np.hypot(*r[:2]) + abs(r[2]):
+                break
+            step *= 0.5
+        c3, r = c3 + step, r2
+    r = resid(c3)
+    if np.abs(r[:2]).max() > 0.5 or abs(r[2]) > 0.5:
+        raise SystemExit(f'the tail end cannot carry the tip joint (frame {a} w={w:.2f}: residual {r.round(2).tolist()})')
+    Q = build(c3).copy()
+    # Past the joint: his tip piece's own spine, turned about the joint.
+    rot = heading(Q, j) - pc['phi']
+    R = np.array([[np.cos(rot), -np.sin(rot)], [np.sin(rot), np.cos(rot)]])
+    Q[:j + 1] = Q[j] + (pc['pts'] - pc['joint']) @ R.T
     return Q
 
 
@@ -958,7 +1064,8 @@ def render_coils(a, b, t, head, Pt, light_target=None):
     cb, okb = sample_coils(b, u, v_ * wb / w)
     inside = np.abs(v_) <= w + 1.0
     sig = u / (M - 1)
-    ok = inside & (oka | okb)
+    tsrc = tip_plan(a, t)[0]
+    ok = inside & (oka | okb) & (u >= PIECE[tsrc]['j'])  # (past the joint: his tip piece, below)
 
     def pick(q):
         use_b = np.where(sig >= SIG[3], head == b, sig < q)
@@ -980,6 +1087,11 @@ def render_coils(a, b, t, head, Pt, light_target=None):
     mask[yy.ravel()[ok], xx.ravel()[ok]] = True
     col[yy.ravel()[ok], xx.ravel()[ok]] = colr[ok]
     tail[yy.ravel()[ok & (u < TAIL_J)], xx.ravel()[ok & (u < TAIL_J)]] = True
+    # His tail tip: his own pixels, turned whole about the joint.
+    pm, pcol = place_tip(tsrc, Pt)
+    mask |= pm
+    col[pm] = pcol[pm]
+    tail |= pm
     # Pinholes where two samples landed on one pixel: filled from their neighbours.
     holes = np.zeros((CH, CW), bool)
     for p in components(~mask, conn8=False):
@@ -990,6 +1102,46 @@ def render_coils(a, b, t, head, Pt, light_target=None):
     closed = erode(dilate(mask, 1), 1) & ~mask
     mask, col = fill_from_neighbours(mask, col, closed)
     return mask, col, tail, q
+
+
+TIP_SS = 4  # subsamples per px (each way) when his tip piece is turned
+
+
+def place_tip(k, Pt):
+    """His tip piece of picture k turned about its joint to the heading of the spine Pt there and moved onto
+    it. Each frame pixel is sampled TIP_SS x TIP_SS times back into his picture (nearest pixel): it is part of
+    the tip where at least half the samples land on his tip, in the colour of his pixel most of them land on
+    (a turned copy of his pixels, not a blur, and no pixel lost or doubled along his thin tip)."""
+    pc = PIECE[k]
+    j = pc['j']
+    rot = heading(Pt, j) - pc['phi']
+    cr, sr = np.cos(-rot), np.sin(-rot)
+    r = int(np.ceil(TIP_LEN + 6))
+    jx, jy = Pt[j]
+    x0, x1 = max(0, int(jx) - r), min(CW, int(jx) + r + 1)
+    y0, y1 = max(0, int(jy) - r), min(CH, int(jy) + r + 1)
+    yy, xx = np.mgrid[y0:y1, x0:x1]
+    off = (np.arange(TIP_SS) + 0.5) / TIP_SS - 0.5
+    oy, ox = np.meshgrid(off, off, indexing='ij')
+    qx = xx[..., None] + ox.ravel()[None, None] - jx
+    qy = yy[..., None] + oy.ravel()[None, None] - jy
+    sx = np.round(pc['joint'][0] + cr * qx - sr * qy).astype(int)
+    sy = np.round(pc['joint'][1] + sr * qx + cr * qy).astype(int)
+    inb = (sx >= 0) & (sx < CW) & (sy >= 0) & (sy < CH)
+    sx, sy = np.clip(sx, 0, CW - 1), np.clip(sy, 0, CH - 1)
+    hit = inb & pc['mask'][sy, sx]
+    on = hit.mean(-1) >= 0.5
+    mask = np.zeros((CH, CW), bool)
+    col = np.zeros((CH, CW, 3), np.float32)
+    lin = np.where(hit, sy * CW + sx, -1)
+    for (py, px_) in zip(*np.nonzero(on)):
+        v = lin[py, px_]
+        v = v[v >= 0]
+        vals, cnt = np.unique(v, return_counts=True)
+        best = int(vals[np.argmax(cnt)])
+        mask[py + y0, px_ + x0] = True
+        col[py + y0, px_ + x0] = pc['col'][best // CW, best % CW]
+    return mask, col
 
 
 def tidy(body, col):
@@ -1423,17 +1575,70 @@ for fi, k in KEYF.items():
     if lost >= 10:
         fail(f'frame {fi}: {lost} px of his neck-base mist lost')
 
-# The tail: never higher or further out than his two tails (2 px slack), and its tip moves a few px a frame.
-TIPS = []
+# The tail: never higher or further out than his two tails (2 px slack); its tip his thin taper on every frame,
+# travelling one way within each half (out 0 -> 5, back 5 -> 0): no bobbing, no flip of its direction.
+
+
+def tip_profile(solid, P, j):
+    """Width (px across, per 1 px slice along the body from the tip) of the drawn tail tip: the frame's solid
+    pixels near the spine P[0..j], measured across the spine."""
+    Pj = P[:j + 1]
+    ys, xs = np.nonzero(solid)
+    s_, v_, d_ = project(Pj, np.stack([xs, ys], 1).astype(np.float64))
+    cum = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(Pj, axis=0).T))])
+    near = (d_ <= 7) & (s_ < cum[-1] - 0.5)
+    s0 = float(s_[near].min())  # (his tip pixel may lie a little past the spine's end)
+    out = []
+    for k in range(int(TIP_LEN) - 1):
+        # (px per px of length over 3 px of it: its mean width there, steady on a slanted or turned tip)
+        out.append(float((near & (s_ - s0 >= k - 1) & (s_ - s0 < k + 2)).sum()) / (3.0 if k else 2.0))
+    end = near & (s_ - s0 < 3)
+    return np.array(out), (float(xs[end].mean()), float(ys[end].mean()))  # (and where its last 3 px are)
+
+
+TIPS, TIP_END, TIP_ANG, TIP_W = [], [], [], []
 for i, f in enumerate(FRAMES):
     tm = tail_pixels(f['a']) if f['Pt'] is None else f['tail']
     ys, xs = np.nonzero(tm)
     if ys.min() < TAIL_TOP - 2 or xs.min() < TAIL_LEFT - 2:
         fail(f'frame {i}: the tail reaches ({xs.min()}, {ys.min()}), past his tails ({TAIL_LEFT}, {TAIL_TOP})')
-    TIPS.append(C[f['a']]['Pm'][0] if f['Pt'] is None else f['Pt'][0])
+    if f['Pt'] is None:
+        P_, j_ = C[f['a']]['Pm'], PIECE[f['a']]['j']
+    else:
+        P_, j_ = f['Pt'], PIECE[tip_plan(f['a'], f['t'])[0]]['j']
+    TIPS.append(P_[0])
+    ch = P_[0] - P_[j_]
+    TIP_ANG.append(float(np.arctan2(ch[1], ch[0])))
+    solid = fly[i][..., 3] == 255
+    w_, end_ = tip_profile(solid & dilate(tm, 1), P_, j_)
+    TIP_W.append(w_)
+    TIP_END.append(end_)
+TIP_ANG = np.unwrap(TIP_ANG)
 TIP_STEP = [float(np.hypot(*(TIPS[(i + 1) % len(TIPS)] - TIPS[i]))) for i in range(len(TIPS))]
 print('tail tip per frame', [tuple(np.round(p - [AX, AY], 1).tolist()) for p in TIPS], 'steps px', [round(v, 1) for v in TIP_STEP])
-if max(TIP_STEP) > 13:
+print('tail tip angle (deg)', np.round(np.degrees(TIP_ANG), 1).tolist(), '; its last 3 px drawn at', [tuple(np.round(np.array(e) - [AX, AY], 1).tolist()) for e in TIP_END])
+print('tail tip widths (px, from the tip):', [w[:10].round(1).tolist() for w in TIP_W])
+HIS_TIP_W = np.maximum(TIP_W[0], TIP_W[5])
+for i, w in enumerate(TIP_W):
+    # (his own tips, with their 1 px rim, are 3-5 px across at the end: no wider than his, plus what turning a
+    # thin shape by a slant can add)
+    if w[:3].max() > HIS_TIP_W[:3].max() + 0.5:
+        fail(f'frame {i}: the tail tip is {w[:3].max():.1f} px wide over its last 3 px (his {HIS_TIP_W[:3].max():.1f})')
+    if w[:10].max() > HIS_TIP_W[:10].max() + 1.0:
+        fail(f'frame {i}: the tail tip is {w[:10].max():.1f} px wide over its last 10 px (his widest {HIS_TIP_W[:10].max():.1f})')
+for i0, i1, sgn in ((0, 5, 1), (5, 8, -1)):
+    seq = list(range(i0, i1 + 1))
+    ang = [TIP_ANG[k % 8] + (2 * np.pi * np.round((TIP_ANG[5] - TIP_ANG[0]) / (2 * np.pi)) if k == 8 else 0) for k in seq]
+    ends = [TIP_END[k % 8][1] for k in seq]
+    ys_ = [TIPS[k % 8][1] for k in seq]
+    da = np.diff(np.unwrap(ang))
+    if (da * np.sign(da.sum()) < -1e-6).any():
+        fail(f'frames {i0}-{i1}: the tail tip turns back ({np.degrees(da).round(1).tolist()} deg)')
+    for nm, v, slack in (('tip', ys_, 0.5), ('drawn tip end', ends, 1.0)):
+        dv = np.diff(v) * sgn
+        if (dv < -slack).any():  # (the drawn tip moves by whole px: 1 px of rounding)
+            fail(f'frames {i0}-{i1}: the {nm} goes back up/down ({np.round(v, 1).tolist()})')
+if max(TIP_STEP) > 15:
     fail(f'the tail tip jumps {max(TIP_STEP):.1f} px in one frame')
 ALPH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+,-./:;<=>?@[]^_{|}~`"' + ''.join(chr(c) for c in range(0xC0, 0x100) if c not in (0xD7, 0xF7))
 for i, f in enumerate(fly):

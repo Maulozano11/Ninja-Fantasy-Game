@@ -945,6 +945,30 @@ def drake():
     keys = {k: key(k) for k in (0, 5)}
     for k, (crop, body, rest, diff, off, shade) in keys.items():
         print('key', k, 'body px', int(body.sum()), 'rest px', int(rest.sum()), 'shadow px', int(shade.sum()))
+
+    # His head landmarks (his sheet's coordinates): the eye, the snout tip (the head's rightmost point) and the
+    # tip of his upright horn (its topmost point).
+    def landmarks(k):
+        crop, body, rest, diff, off, shade = keys[k]
+        ys, xs = np.nonzero(poly_mask(HEAD[k], (CH, CW), off) & body)
+        sel = xs >= xs.max() - 1
+        snout = (float(xs[sel].mean() + off[0]), float(ys[sel].mean() + off[1]))
+        ys, xs = np.nonzero(poly_mask(HORNS[k][0], (CH, CW), off) & body)
+        sel = ys <= ys.min() + 1
+        horn = (float(xs[sel].mean() + off[0]), float(ys[sel].mean() + off[1]))
+        return {'snout': snout, 'horn': horn}
+
+    LAND = {k: landmarks(k) for k in keys}
+    # His prowl head is drawn larger than his lunge head (and turned a touch). ZREL is the similarity (a complex
+    # number: its size and its angle) that lays his lunge head onto his prowl head about the eye, fitted on the
+    # snout and horn tips. The in-betweens grow or shrink the head along powers of it, so at each switch between
+    # his two drawings (2->3 and 7->0) both sides show the same head, and the head changes size over the loop
+    # instead of at the switches.
+    vec = {k: [complex(LAND[k][n][0] - EYE[k][0], LAND[k][n][1] - EYE[k][1]) for n in ('snout', 'horn')] for k in keys}
+    ZREL = sum(a.conjugate() * b for a, b in zip(vec[5], vec[0])) / sum(abs(a) ** 2 for a in vec[5])
+    print('drake landmarks', {k: {n: tuple(round(v) for v in p) for n, p in LAND[k].items()} for k in LAND},
+          'prowl head / lunge head', round(abs(ZREL), 4), 'turned', round(float(np.degrees(np.angle(ZREL))), 2), 'deg',
+          'fit residual (his px)', [round(abs(ZREL * a - b), 1) for a, b in zip(vec[5], vec[0])])
     # His palette: the stone and moss, plus his eye and glint yellows (too few pixels for the median cut).
     body_px = np.concatenate([keys[k][0][keys[k][1]] for k in keys])
     r_, g_, b_ = body_px[:, 0], body_px[:, 1], body_px[:, 2]
@@ -959,8 +983,8 @@ def drake():
     HORN_HI = np.round(np.median(body_px[hl], 0))
     amb = (r_ > 150) & (r_ - g_ > 40) & (g_ > 80) & (b_ < 100)
     EYE_AMBER = np.round(np.median(body_px[amb], 0))
-    # His far eye: a small lemon-yellow oval. It takes the colour of his oval's core (the brighter half of its
-    # pixels); the dimmer half is the JPEG halo where the yellow meets the grey brow, not his.
+    # His far eye: a small lemon-yellow oval. It takes the colour of his oval's bright core (the brightest 15% of
+    # its pixels); the rest is the JPEG halo where the yellow meets the grey brow, an olive he did not paint.
     EYEW = {k: poly_mask(FAREYE[k], (CH, CW), keys[k][4]) for k in keys}
 
     def limes(c):
@@ -968,8 +992,8 @@ def drake():
 
     lime_px = np.concatenate([keys[k][0][keys[k][1] & EYEW[k] & limes(keys[k][0])] for k in keys])
     lime_l = lime_px @ np.array([0.3, 0.55, 0.15], np.float32)
-    EYE_LEMON = np.round(np.median(lime_px[lime_l >= np.median(lime_l)], 0))
-    # His horn greys: sampled inside his horns only (cooler than the stone), from his darkest seam grey to
+    EYE_LEMON = np.round(np.median(lime_px[lime_l >= np.percentile(lime_l, 90)], 0))
+    # His horn greys: sampled inside his horns only (greyer than the stone), from his darkest seam grey to
     # his near-white highlight.
     HORNW = {}
     for k in keys:
@@ -979,13 +1003,12 @@ def drake():
         HORNW[k] = hm_ & keys[k][1]
     horn_px = np.concatenate([keys[k][0][HORNW[k] & (keys[k][3] > 22)] for k in keys])
     PAL_STONE, PAL_MOSS = median_palette(body_px[stone], 30), median_palette(body_px[green], 8)
-    PAL_H5 = median_palette(body_px[horn], 5)
-    PAL_REST = np.concatenate([PAL_H5, median_palette(body_px[glow], 5), HORN_HI[None], EYE_AMBER[None]])
-    # The horn group: the cool greys above, plus his horns' own cool mid greys and the dark grey of his horn
-    # seams. His near-white highlight joins it only where his horn is that light.
+    # The horn group: his horns' own greys (a median cut of his horn pixels, so their warmth is his: greyer than
+    # the stone, but not blue) and the dark grey of his horn seams. His near-white highlight joins it only where
+    # his horn is that light. (His palest stone plates may take these greys too.)
     hl_ = horn_px @ np.array([0.3, 0.55, 0.15], np.float32)
-    cool_mid = (np.abs(horn_px[:, 0] - horn_px[:, 2]) <= 10) & (hl_ >= 60) & (hl_ < 140)
-    PAL_HORN = np.concatenate([PAL_H5, median_palette(horn_px[cool_mid], 2), np.round(np.median(horn_px[hl_ < 60], 0))[None]])
+    PAL_HORN = np.concatenate([median_palette(horn_px[hl_ >= 60], 7), np.round(np.median(horn_px[hl_ < 60], 0))[None]])
+    PAL_REST = np.concatenate([PAL_HORN, median_palette(body_px[glow], 5), HORN_HI[None], EYE_AMBER[None]])
     PAL = np.concatenate([PAL_STONE, PAL_MOSS, PAL_REST])
     PAL_NO_MOSS = np.concatenate([PAL_STONE, PAL_REST])
     # His outline: the median of the dark pixels on his silhouette (a cool deep brown, not black).
@@ -1030,8 +1053,10 @@ def drake():
                      'poly': [(906, 1600), (1112, 1600), (1112, 1853), (990, 1853), (965, 1830), (936, 1828)]},
         },
         5: {
+            # (The near and far front paws part along the gap between them, so the far paw's claw and its
+            # outline go with it and nothing of it is left behind when it turns.)
             'ff': {'far': True, 'cut': [(1550, 1768), (1606, 1758)], 'pivot': (1578, 1763), 'bend': 14,
-                   'poly': [(1550, 1768), (1606, 1758), (1616, 1800), (1614, 1838), (1558, 1838), (1556, 1798)]},
+                   'poly': [(1550, 1768), (1606, 1758), (1616, 1800), (1614, 1838), (1552, 1838), (1549, 1812), (1552, 1796)]},
             'fh': {'far': True, 'cut': [(1376, 1806), (1418, 1798)], 'pivot': (1397, 1802), 'bend': 12,
                    'poly': [(1376, 1806), (1418, 1798), (1424, 1852), (1372, 1852)]},
             # The tail and the near hind leg part along the dark gap he left between them (the panel shows
@@ -1042,7 +1067,7 @@ def drake():
             'nh': {'cut': [(1333, 1774), (1388, 1800)], 'pivot': (1360, 1787), 'bend': 18,
                    'poly': [(1333, 1774), (1388, 1800), (1368, 1842), (1356, 1892), (1292, 1892), (1290, 1845), (1300, 1832), (1318, 1812), (1336, 1790), (1338, 1776)]},
             'nf': {'cut': [(1478, 1765), (1543, 1768)], 'pivot': (1510, 1766), 'bend': 16,
-                   'poly': [(1478, 1765), (1543, 1768), (1560, 1798), (1558, 1852), (1488, 1852), (1486, 1800)]},
+                   'poly': [(1478, 1765), (1543, 1768), (1551, 1796), (1548, 1812), (1546, 1852), (1488, 1852), (1486, 1800)]},
             # The outer half of his straight tail: it turns about the middle of the tail, so the tail curls.
             'tip': {'parent': 'tail', 'cut': [(1236, 1760), (1292, 1830)], 'pivot': (1264, 1795), 'bend': 40,
                     'poly': [(1236, 1760), (1292, 1830), (1150, 1905), (1095, 1840)]},
@@ -1191,6 +1216,9 @@ def drake():
     # flies (frames 4 and 5), then is kicked off up and back and fades.
     clod = dust & poly_mask(LOOSE[0], (CH, CW), off5)
     dust &= ~clod
+    # (It is drawn from its core, 1 of his px in from its edge: his edge pixels are half panel, and kept whole
+    # they made the clod about a pixel too wide on each side at game scale.)
+    clod_core = erode(clod, 1)
     # The pile is his mound: the biggest piece of the dust once an opening has taken off its thin splash
     # fingers. Everything else (the fingers, the streaks and the loose specks) is his spray.
     mound = dilate(erode(dust, PILE_R), PILE_R) & dust
@@ -1228,7 +1256,7 @@ def drake():
     SPRAY_A = DUST_A[np.argmin(((DUST_A - spray_mean) ** 2).sum(1))]
     print('dust palette', DUST.astype(int).tolist(), 'spray colours', SPRAY.astype(int).tolist(),
           'his spray mean', np.round(spray_mean).astype(int).tolist(), 'partly clear spray', SPRAY_A.astype(int).tolist())
-    pile_f, core_f, spray_f, clod_f = (m.astype(np.float32) for m in (pile, core, sbright, clod))
+    pile_f, core_f, spray_f, clod_f = (m.astype(np.float32) for m in (pile, core, sbright, clod_core))
     spray_a = spray_a.astype(np.float32)
     # His aux layers, carried through every warp with the colour: horn (ch 3) and far eye (ch 4).
     crop6 = {}
@@ -1252,10 +1280,35 @@ def drake():
 
     EYE0 = eye_at(0)
 
-    def pose(k, pitch=0.0, eye=0.0, legs=None, dust_at=None, scale=1.0, head=1.0, feet=False, clod_at=None):
-        """Frame from key k: pieces turned by legs[name] degrees and the head scaled by `head` about the eye; the
-        whole body scaled by `scale` about the eye, pitched, and carried so that the eye sits at frame 0's x and
-        `eye` game px below frame 0's eye (or, with `feet`, so that the lowest claw stands on the feet line).
+    def head_tf(hz, pitch, scale):
+        """The head piece's own scale and turn (degrees) for a frame whose head is ZREL ** hz of his drawing's
+        (hz < 0 shrinks his prowl head toward his lunge head, hz > 0 grows his lunge head toward his prowl head),
+        on a body scaled by `scale` and pitched by `pitch`: the head keeps that size and that angle on screen."""
+        if not hz:
+            return 1.0, 0.0
+        return abs(ZREL) ** hz / scale, hz * float(np.degrees(np.angle(ZREL))) - pitch
+
+    def land_at(k, pt, pitch, bob, tx, scale, hz):
+        """Where a point of his head (his sheet's coordinates) lands on our canvas in a frame (exact)."""
+        hsc, hdeg = head_tf(hz, pitch, scale)
+        ex, ey = EYE[k]
+        a = np.deg2rad(hdeg)
+        rx, ry = pt[0] - ex, pt[1] - ey
+        qx = ex + scale * hsc * (rx * np.cos(a) - ry * np.sin(a))
+        qy = ey + scale * hsc * (rx * np.sin(a) + ry * np.cos(a))
+        wx, wy = to_work(k, (qx, qy))
+        px, py = to_work(k, PITCH[k])
+        a = np.deg2rad(pitch)
+        dx_, dy_ = wx - px, wy - py
+        wx = px + dx_ * np.cos(a) - dy_ * np.sin(a) + tx / S
+        wy = py + dx_ * np.sin(a) + dy_ * np.cos(a) + bob / S
+        return oanchor[0] + (wx - WAX) * S, oanchor[1] + (wy - WAY) * S
+
+    def pose(k, pitch=0.0, eye=0.0, legs=None, dust_at=None, scale=1.0, hz=0.0, feet=False, clod_at=None):
+        """Frame from key k: pieces turned by legs[name] degrees and the head grown or shrunk toward his other
+        head (head_tf); the whole body scaled by `scale` about the eye, pitched, and carried so that the eye sits
+        at frame 0's x and `eye` game px below frame 0's eye (or, with `feet`, so that the lowest claw stands on
+        the feet line).
 
         dust_at = (x scale, y scale, dx in game px, alpha) about DUST_ORIGIN (on the ground), or None.
         clod_at = (dx, dy in game px, alpha): his clod on the spike tip, moved off it, or None.
@@ -1263,14 +1316,15 @@ def drake():
         crop = crop6[k]
         masks, base = split[k]
         legs = dict(legs or {})
-        if head != 1.0:
-            legs['head'] = 0.0
+        hsc, hdeg = head_tf(hz, pitch, scale)
+        if hz:
+            legs['head'] = hdeg
         far, near = [], []
         fields = {}
         own = {}
         for n, pc in PIECES[k].items():
             m = masks[n].astype(np.float32)
-            sc = head if n == 'head' else 1.0
+            sc = hsc if n == 'head' else 1.0
             par = pc.get('parent')
             if legs.get(n, 0.0) or sc != 1.0 or (par and legs.get(par, 0.0)):
                 dx, dy, t = bend_field(k, pc, legs.get(n, 0.0), sc)
@@ -1409,8 +1463,16 @@ def drake():
         Aa, _ = shrink(rgb, (hot | amber).astype(np.float32), (WAX, WAY), S, size, oanchor)
         hm = (Ah > 0.25) & op
         am = (Aa > 0.25) & ~hm & op & dilate(hm, 1)
-        # His far eye: where his lemon oval covers a quarter of a pixel, the pixel is his lemon. No ring.
-        lm = (AUX[..., 1] * A > 0.25) & ~hm & ~am & op
+        # His far eye: as many pixels of his lemon as his oval covers (its area at game scale), the ones it covers
+        # most, so it keeps his upright oval (a quarter-coverage threshold made a '+'). No ring.
+        fcov = AUX[..., 1] * A
+        lm = np.zeros_like(op)
+        for pts in components(fcov > 0.05):
+            p = np.array(pts)
+            v = fcov[p[:, 0], p[:, 1]]
+            top = np.argsort(-v, kind='stable')[:int(round(float(v.sum())))]
+            lm[p[top, 0], p[top, 1]] = True
+        lm &= ~hm & ~am & op
         # Next to a glowing eye nothing is moss: the mixed yellow-grey there snapped to the moss greens and
         # gave the eyes a green rim he did not draw.
         rim = dilate(hm | lm, 1) & op & ~hm & ~am & ~lm & ~hn
@@ -1452,28 +1514,28 @@ def drake():
     # 3-4: his lunge, springing off the ground, his dust bursting behind the hind feet; 5: his lunge at the top
     # of the leap. 6: the body comes down nose first, the front legs reaching, the dust drifting back. 7: about
     # to land, nose down and tail up, the dust settling (it spreads out low) and fading. Then his prowl, landed.
-    # His prowl is drawn about 12% larger than his lunge, and its head about 18% larger: the in-betweens
-    # scale the body (and the head a little more) so the size changes over the loop instead of at the two cuts
-    # between his drawings (2->3 and 7->0). The eye keeps one x.
+    # His prowl is drawn larger than his lunge: the in-betweens scale the body about the eye, and grow or shrink the
+    # head along ZREL (hz, see head_tf), so the size changes over the loop and both sides of each switch between
+    # his drawings (2->3 and 7->0) show the same head: the same eye, snout tip and horn tip.
     # Leg angles in degrees (+ turns a hanging limb's foot backward, and lifts the tail); pitch in degrees about
     # the shoulders (+ is nose down); eye: the eye's height in game px below frame 0's (+ is down).
     FLY = [
         None,
-        dict(k=0, pitch=-5.0, feet=True, scale=0.97, head=0.975,
-             legs={'nf': 8, 'ff': -4, 'nh': 8, 'fh': 6, 'tail': -12}),
-        dict(k=0, pitch=-10.0, feet=True, scale=0.94, head=0.95,
-             legs={'nf': 16, 'ff': -8, 'nh': 16, 'fh': 12, 'tail': -25}),
-        dict(k=5, pitch=5.0, eye=-10.0, scale=1.07, head=1.0,
-             legs={'nf': -2, 'ff': 2, 'nh': -12, 'fh': -10, 'tail': 10}, dust_at=(0.7, 0.7, 2.0, 1.0)),
-        dict(k=5, pitch=2.5, eye=-16.5, scale=1.035, head=1.0,
-             legs={'nf': -1, 'ff': 1, 'nh': -6, 'fh': -5, 'tail': 5}, dust_at=(0.88, 0.88, 1.0, 1.0),
+        dict(k=0, pitch=-5.0, feet=True, scale=0.98, hz=-0.25,
+             legs={'nf': 11, 'ff': -4, 'nh': 14, 'fh': 0, 'tail': -6}),
+        dict(k=0, pitch=-10.0, feet=True, scale=0.96, hz=-0.5,
+             legs={'nf': 22, 'ff': -8, 'nh': 28, 'fh': 0, 'tail': -12}),
+        dict(k=5, pitch=3.0, eye=-6.0, scale=1.11, hz=0.5,
+             legs={'nf': 10, 'ff': 8, 'nh': -24, 'fh': -4, 'tail': 4}, dust_at=(0.7, 0.7, 2.0, 1.0)),
+        dict(k=5, pitch=1.5, eye=-14.0, scale=1.055, hz=0.25,
+             legs={'nf': 5, 'ff': 4, 'nh': -12, 'fh': -2, 'tail': 2}, dust_at=(0.88, 0.88, 1.0, 1.0),
              clod_at=(0.0, 0.0, 1.0)),
         None,
-        dict(k=5, pitch=6.0, eye=-12.5, scale=1.04, head=1.03,
-             legs={'nf': -12, 'ff': -10, 'nh': -16, 'fh': -12, 'tail': 10}, dust_at=(1.04, 0.9, -5.0, 0.75),
+        dict(k=5, pitch=3.5, eye=-14.2, scale=1.07, hz=0.5,
+             legs={'nf': -0.5, 'ff': -14, 'nh': -20, 'fh': 7.5, 'tail': 10}, dust_at=(1.04, 0.9, -5.0, 0.75),
              clod_at=(-3.5, -3.5, 0.63)),
-        dict(k=5, pitch=9.0, eye=-3.0, scale=1.08, head=1.06,
-             legs={'nf': -16, 'ff': -14, 'nh': -22, 'fh': -18, 'tail': 20}, dust_at=(1.08, 0.6, -10.0, 0.4)),
+        dict(k=5, pitch=7.0, eye=-2.0, scale=1.14, hz=1.0,
+             legs={'nf': -1, 'ff': -28, 'nh': -40, 'fh': 15, 'tail': 20}, dust_at=(1.08, 0.6, -10.0, 0.4)),
     ]
     GAPS.clear()
     frames = {'fly': []}
@@ -1483,7 +1545,7 @@ def drake():
             fr, bob, tx = key_frame(i)
         else:
             fr, bob, tx = pose(f['k'], f['pitch'], f.get('eye', 0.0), f['legs'], f.get('dust_at'), f.get('scale', 1.0),
-                               f.get('head', 1.0), f.get('feet', False), f.get('clod_at'))
+                               f.get('hz', 0.0), f.get('feet', False), f.get('clod_at'))
         frames['fly'].append(fr)
         moves.append((bob, tx))
         print(f'  frame {i}: bob {bob:+.1f} tx {tx:+.1f} (game px); closed gaps (px)', GAPS[:])
@@ -1502,6 +1564,17 @@ def drake():
         print(f'  frame {i}: eye ({ex:.1f}, {ey:.1f}); lowest solid y {solid_rows.max()}, lowest any y {ys_.max()};'
               f' clear margin L{xs_.min()} T{ys_.min()} R{OW - 1 - xs_.max()} B{OH - 1 - ys_.max()}')
     print('  eye steps', ', '.join(f'{i}->{(i + 1) % 8} {eyes[(i + 1) % 8][1] - eyes[i][1]:+.1f}' for i in range(8)))
+    # His head landmarks in every frame (exact), and how far each moves from one frame to the next.
+    lands = []
+    for i in range(len(FLY)):
+        src = FLY[i] or {'k': i}
+        k = src['k']
+        args = (src.get('pitch', 0.0), moves[i][0], moves[i][1], src.get('scale', 1.0), src.get('hz', 0.0))
+        lands.append({n: land_at(k, EYE[k] if n == 'eye' else LAND[k][n], *args) for n in ('eye', 'snout', 'horn')})
+    for i, L_ in enumerate(lands):
+        j = (i + 1) % len(lands)
+        print(f'  frame {i}: ' + ', '.join(f'{n} ({p[0]:.1f}, {p[1]:.1f})' for n, p in L_.items()) + f'; to frame {j}: ' +
+              ', '.join(f'{n} {np.hypot(lands[j][n][0] - p[0], lands[j][n][1] - p[1]):.1f}' for n, p in L_.items()))
     note = [
         "The stone drake (vfx_beasts/earth), copied from his earth sheet's BEAST panel: his left picture",
         "(the prowl) is frame 0 and his right one (the lunge, dust kicking up) is frame 5, both standing on",

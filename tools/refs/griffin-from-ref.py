@@ -15,7 +15,8 @@ hind foot and a ribbon of chakra under the talons. That picture IS fly frame 0:
    his own colours, each group apart: his blues, his indigos (his most violet ones with entries of their
    own), his golds, his glyphs' pale green, and his open mouth's dark red throat and pink tongue (the medians
    of his own mouth pixels, usable only inside his beak, so no navy pixel can turn into a brown dot). Its
-   edge pixels become a 1 px outline ON his edge (not outside it): his own deep blue rim colour, a mid blue
+   edge pixels become a 1 px outline ON his edge (not outside it): his own deep blue rim colour, his own
+   indigo rim colour where the griffin just inside is his indigo (under the belly, the far legs), a mid blue
    of his palette where the griffin is bright just inside (his glowing feather tips and head), a dark gold
    round the gold beak, crest and talons. Never black. His crest's spikes and his throat keep their colours.
 
@@ -458,10 +459,17 @@ rim_px = rim_px[(rim_px @ LUMA) <= np.percentile(rim_px @ LUMA, 25)]
 OUTLINE = np.round(np.median(rim_px, 0))
 gold_px = crop[body_all & (r > b + 30) & (g > 80)]
 OUTLINE_GOLD = np.round(np.percentile(gold_px, 8, axis=0) * 0.62)
+# (Under the belly and on the far legs his rim is indigo, not deep blue: the darkest quarter of his indigo
+# pixels on the griffin's edge. It rims his indigo there, so his violet underside is not edged in navy.)
+indigo_src = blue & (b > g + 45) & (g < 90)
+rim_ind = crop[rim & indigo_src]
+rim_ind = rim_ind[(rim_ind @ LUMA) <= np.percentile(rim_ind @ LUMA, 25)]
+OUTLINE_INDIGO = np.round(np.median(rim_ind, 0))
 # (The mid blue: the entry of his own palette nearest a saturated mid blue (35, 94, 127): the shade of his
 # feathers' darker vanes, halfway between his deep rim and his pale tips.)
 OUTLINE_LIGHT = PAL[int(snap_idx(np.array([[[35.0, 94.0, 127.0]]], np.float32), PAL)[0, 0])].copy()
-print("palette", len(PAL), "outline", OUTLINE.astype(int).tolist(), 'gold outline', OUTLINE_GOLD.astype(int).tolist(),
+IS_INDIGO = np.array([gr == 'indigo' for gr in PAL_GROUP])
+print("palette", len(PAL), "outline", OUTLINE.astype(int).tolist(), 'indigo outline', OUTLINE_INDIGO.astype(int).tolist(), 'gold outline', OUTLINE_GOLD.astype(int).tolist(),
       'light rim', OUTLINE_LIGHT.astype(int).tolist(), 'mouth', MOUTH.astype(int).tolist())
 # Snapped in groups: the mouth's colours only inside his beak (so none of his navy wing or leg pixels can
 # turn into a dark red or brown dot).
@@ -940,7 +948,13 @@ def frame(k):
     lum_ = np.where(core, colr @ LUMA, 0)
     inner = sum(np.roll(np.roll(lum_, oy, 0), ox, 1) for oy, ox in N8) / np.maximum(count_nb(core, N8), 1)
     bright = ((colr @ LUMA) > 150) | ((inner > 150) & (count_nb(core, N8) > 0))
+    # (Where the griffin just inside the edge is his indigo, under the belly and on the far legs, the rim is
+    # his indigo rim colour: the edge pixel's own colour, or most of its neighbours off the edge, indigo.)
+    ind_ = IS_INDIGO[np.clip(ids - 1, 0, len(PAL) - 1)] & opq
+    n_core = count_nb(core, N8)
+    indig = ind_ | ((count_nb(ind_ & core, N8) * 2 >= n_core) & (n_core > 0))
     out[line & ~gring & ~bright, :3] = OUTLINE.astype(np.uint8)
+    out[line & ~gring & ~bright & indig, :3] = OUTLINE_INDIGO.astype(np.uint8)
     out[line & ~gring & bright, :3] = OUTLINE_LIGHT.astype(np.uint8)
     out[line & ~gring & nedge & ~edge, :3] = OUTLINE_LIGHT.astype(np.uint8)
     out[line & gring, :3] = OUTLINE_GOLD.astype(np.uint8)
@@ -1195,7 +1209,7 @@ if DEBUG:
             'covered': [l[2] for l in LIGHT], 'wing_deg': [round(t, 1) for t in thetas], 'bob': [int(v) for v in bobs],
             'soft_light': [round(v, 1) for v in SOFT], 'silhouette_step': [round(v, 3) for v in SIL], 'wing_edge_run': RUNS,
             'far_deg': list(FAR_DEG), 'far_visible': FARVIS, 'wisp_fade': WISP_FADE,
-            'speck_owner': SPECK_OWNER, 'outline': OUTLINE.astype(int).tolist(), 'outline_gold': OUTLINE_GOLD.astype(int).tolist(),
+            'speck_owner': SPECK_OWNER, 'outline': OUTLINE.astype(int).tolist(), 'outline_indigo': OUTLINE_INDIGO.astype(int).tolist(), 'outline_gold': OUTLINE_GOLD.astype(int).tolist(),
             'outline_light': OUTLINE_LIGHT.astype(int).tolist(), 'mouth': MOUTH.astype(int).tolist(), 'bg': BG.astype(int).tolist()}
     path = os.path.join(DEBUG, 'griffin-ref.json')
     with open(path + '.part', 'w') as fh:

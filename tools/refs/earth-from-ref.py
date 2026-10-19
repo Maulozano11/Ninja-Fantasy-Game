@@ -318,7 +318,9 @@ AURA_FIGURE = [(1040, 962), (1055, 944), (1075, 942), (1095, 952), (1100, 975), 
 SPRITES = {
     'bolt': dict(s=S_MED, anchor=(206, 221), area=[rect(28, 101, 267, 336)],
                  solid=[BOULDER], dust=[rect(25, 101, 267, 336)], dust_a=0.9, mute_streaks=True,
-                 fade={'left': 22}, bits=40, pieces=[('boulder', [BOULDER])], under='harmonic'),
+                 # (his panel cut the trail at his x 24; his first few px there are dimmed by the
+                 # border line, so the trail runs on from his x 33, 22 px past it, and fades there)
+                 extend=('left', 22, 33), pad=(22, 0, 0, 0), bits=40, pieces=[('boulder', [BOULDER])], under='harmonic'),
     'breath': dict(s=S_MED, anchor=(1323, 237), area=[rect(1317, 101, 1634, 362)],
                    dust=[rect(1317, 101, 1634, 362)], dust_a=0.92, bits=60),
     'sphere': dict(s=S_MED, anchor=(1801, 236), area=[rect(1664, 101, 1922, 348)],
@@ -652,6 +654,43 @@ def decide(cfg, g, W, H, ax, ay):
     xs = np.arange(W)[None, :]
     ys = np.arange(H)[:, None]
     fadek = np.ones((H, W))
+    if cfg.get('extend'):
+        # His panel cut the trail (the bolt's), but all he drew is bright. The trail runs on past
+        # his cut for n px instead: each row carries on with his colour and strength at the cut
+        # (his trail is horizontal streaks, so each streak row simply continues; a gap between
+        # streaks stays a gap), every new pixel dust (a pale streak there becomes streak-coloured
+        # dust, a pebble's spot takes the dust beside it), and only those new pixels fade out, each
+        # row reaching its own length, so everything he drew stays at full strength.
+        side, n, hx_cut = cfg['extend']
+        assert side == 'left'
+        xc = int(np.ceil((hx_cut - g['box'][0]) / scale_of(cfg)[0] - 1e-6))
+        solid[:, :xc] = rim[:, :xc] = dust[:, :xc] = False
+        da[:, :xc] = 0
+        thin = g['T'] >= 0.25
+        j = np.sin(np.arange(H) * 21.173 + 2.3) * 43758.5453
+        j = gauss((j - np.floor(j) - 0.5)[:, None], 1.5)[:, 0]
+        j = j / max(1e-6, np.abs(j).max()) * 0.3 * n
+        for y in range(H):
+            for x in range(max(0, xc - n), xc):
+                s = xc
+                if dust[y, s]:
+                    a_, c_ = da[y, s], dcol[y, s]
+                elif solid[y, s] and thin[y, s]:
+                    a_, c_ = cfg.get('dust_a', 0.9), g['col'][y, s]
+                elif solid[y, s] or rim[y, s]:
+                    near = [s + o for o in (1, -1, 2, -2, 3, -3) if xc <= s + o < W and dust[y, s + o]]
+                    if not near:
+                        continue
+                    a_, c_ = da[y, near[0]], dcol[y, near[0]]
+                else:
+                    continue
+                k_ = np.clip((x - (xc - n) + 0.5 + j[y]) / (0.75 * n), 0, 1)
+                if k_ <= 0:
+                    continue
+                dust[y, x] = True
+                da[y, x] = a_ * k_
+                dcol[y, x] = c_
+                fadek[y, x] = min(k_, 0.99)
     for side, n in cfg.get('fade', {}).items():
         any_art = solid | rim | dust | (SA > 0.06)
         cols = np.nonzero(any_art.any(0))[0]
@@ -702,33 +741,64 @@ def decide(cfg, g, W, H, ax, ay):
         fadek = fadek * k
     dust &= da >= 0.05
     glow = np.zeros((H, W), bool)
+    core = np.zeros((H, W), bool)
     if cfg.get('glow_rays'):
         # His ray dashes glow: gold with no outline. The box filter mixes his dark panel into their
         # edges, which would read as a brown stick with a dark rim on any lighter map. Round each
         # dash, a pixel's opacity is how much of the dash's gold it holds over his panel (its colour
         # projected on gold-minus-panel), and its colour is the gold: the core stays opaque gold,
         # the edges become translucent gold. Rock that is not a dash keeps its rims.
-        # (a dash: a small, long piece of solid and rim; the rocks, which are round, keep theirs)
-        lab, n = components(solid | rim, nb=N8)
+        # (a dash: a small, long piece of art standing free of the cloud, solid, rim or dust alike,
+        # since the box filter turns a thin gold dash into dark specks and brown dust; the rocks,
+        # which are round, keep their rims)
         dash = np.zeros((H, W), bool)
         gold = np.zeros((H, W, 3))
+        # (first the pieces of solid and rim, then of solid, rim and dust together; a speck of 1-3
+        # px out on the clear is a dash's dimmed edge whatever its shape, a pebble being bigger)
+        for pool in (solid | rim, solid | rim | dust):
+            lab, n = components(pool, nb=N8)
+            for c in range(1, n + 1):
+                m = lab == c
+                ys_, xs_ = np.nonzero(m)
+                if len(ys_) > 70 or (m & dash).any():
+                    continue
+                speck = len(ys_) <= 3 and not (m & dust).any() and (dilate(m, 1, nb=N8) & ~(solid | rim | dust)).any()
+                if len(ys_) < 3 and not speck:
+                    continue
+                ev = np.linalg.eigvalsh(np.cov(np.stack([xs_, ys_]).astype(np.float64)) + 1e-6 * np.eye(2)) if len(ys_) >= 3 else np.array([0.0, 1.0])
+                if ev[1] < 2.4 * ev[0] and not speck:
+                    continue
+                # (the dash's own gold: the brightest of his colours along it; a dark piece is no dash)
+                cc = g['bright'][m]
+                gc = cc[np.argsort(lum(cc))[-max(1, len(cc) // 3):]].mean(0)
+                if os.environ.get('EARTH_DASHDBG'):
+                    print('dash?', c, len(ys_), round(ev[1] / max(ev[0], 1e-6), 1), xs_.mean().round(), ys_.mean().round(), round(float(lum(gc))))
+                if lum(gc) < 110:
+                    continue
+                dash |= m
+                gold[m] = gc
+        # (a small bit of solid or rim touching a dash, with his gold round it, is part of the same
+        # dash, split off by the box filter; a small bit that is dark through and through, out on
+        # the clear beside a dash, is his panel shading, nearly invisible on his panel and a dark
+        # bar on any lighter map, so it goes)
+        lab, n = components((solid | rim) & ~dash, nb=N8)
+        sizes = np.bincount(lab.ravel(), minlength=n + 1)
+        near_d = dilate(dash, 1, nb=N8)
+        Lall = lum(g['all'])
+        art_ = solid | rim | dust
         for c in range(1, n + 1):
+            if sizes[c] > 12:
+                continue
             m = lab == c
-            ys_, xs_ = np.nonzero(m)
-            if len(ys_) < 4 or len(ys_) > 60:
-                continue
-            ev = np.linalg.eigvalsh(np.cov(np.stack([xs_, ys_]).astype(np.float64)) + 1e-6 * np.eye(2))
-            if os.environ.get('EARTH_DASHDBG'):
-                print('comp', c, len(ys_), round(ev[1] / max(ev[0], 1e-6), 1), xs_.mean().round(), ys_.mean().round())
-            if ev[1] < 2.4 * ev[0]:
-                continue
-            # (the dash's own gold: the brightest of his colours along it; a dark piece is no dash)
-            cc = g['bright'][m]
-            gc = cc[np.argsort(lum(cc))[-max(1, len(cc) // 3):]].mean(0)
-            if lum(gc) < 110:
-                continue
-            dash |= m
-            gold[m] = gc
+            if not (dilate(m, 1, nb=N8) & ~art_).any():
+                continue                                   # (inside the cloud: his own detail)
+            if (m & near_d).any() and lum(g['bright'][m]).max() >= 110:
+                gc = gold[dilate(m, 1, nb=N8) & dash].mean(0) if (dilate(m, 1, nb=N8) & dash).any() else g['bright'][m][np.argmax(lum(g['bright'][m]))]
+                dash |= m
+                gold[m] = gc
+            elif (m & near_d).any() and Lall[m].max() < 80:
+                solid &= ~m
+                rim &= ~m
         other = (solid | rim) & ~dash
         near = dilate(dash, 1, nb=N8) & dust & ~dilate(other, 1, nb=N8) & ~dash
         cand = dash | near
@@ -791,7 +861,7 @@ def decide(cfg, g, W, H, ax, ay):
             shade &= ~holefill
             holedust &= ~holefill
     return dict(solid=solid, rim=rim, dust=dust, da=da, dcol=dcol, shade=shade, sa=np.clip(SA, 0, 0.85),
-                fadek=fadek, holefill=holefill, holedust=holedust, glow=glow)
+                fadek=fadek, holefill=holefill, holedust=holedust, glow=glow, core=core)
 
 
 # --- build every key frame ----------------------------------------------------------------------
@@ -813,7 +883,7 @@ for name, cfg in SPRITES.items():
     d = decide(cfg, g, W, H, ax, ay)
     # A pixel drawn solid with little of his body in it (a pinhole, a dark crack speck) takes the
     # mean of his body and rim there, or of the solid pixels round it.
-    weak = d['solid'] & (g['B'] < 0.15)
+    weak = d['solid'] & (g['B'] < 0.15) & ~d['core']     # (a dash's gold core keeps its gold)
     both = (g['col'] * g['B'][..., None] + g['rcol'] * g['O'][..., None]) / np.maximum(g['B'] + g['O'], 1e-6)[..., None]
     g['col'] = np.where((weak & (g['B'] + g['O'] > 0.05))[..., None], both, g['col'])
     weak &= g['B'] + g['O'] <= 0.05
@@ -1424,7 +1494,71 @@ def fill_solid(idx, kinds, inside):
         for y, x, v in sets:
             out[y, x] = v
             todo[y, x] = False
+    # (and on its edge: a clear pixel with rock on three of its four sides, inside the outline grown
+    # 1 px, is a pinhole in the rock's rim, not the dust beside it)
+    edge = dilate(inside, 2, nb=N8)
+    for _ in range(3):
+        rk = rockk[out]
+        nb = sum(shift(rk, dy, dx).astype(int) for dy, dx in N4)
+        pin = edge & ~rk & (out == 0) & (nb >= 3)
+        if not pin.any():
+            break
+        n0 += int(pin.sum())
+        for y, x in zip(*np.nonzero(pin)):
+            vals = [out[y + dy, x + dx] for dy, dx in N4 if 0 <= y + dy < H and 0 <= x + dx < W and rockk[out[y + dy, x + dx]]]
+            u, c = np.unique(vals, return_counts=True)
+            out[y, x] = int(u[np.argmax(c)])
     return out, n0
+
+
+def ragged_cut(idx, kinds, PALC, side):
+    """Where his panel border cut a wall (the end-on wall's left side), the stone ran into a
+    ruler-straight edge through the vines and stones. The leaves the border cut in half go (each
+    small leaf cluster touching the cut), so the vines end in whole leaves; the stone's edge wanders
+    in and out by 0-3 px, like broken stone; whatever lies left of a removed leaf
+    goes too (no pocket opens behind it); and every pixel the new edge exposes that is not
+    already dark becomes his deepest rim. Returns the new grid, the leaf clusters removed and the
+    rows whose edge moved."""
+    assert side == 'left'
+    H, W = idx.shape
+    k = kinds[idx]
+    art = idx > 0
+    rgb = PALC[np.maximum(idx, 1) - 1][..., :3]
+    L = lum(rgb)
+    dark = art & ((k == 'outline') | ((k == 'body') & (L < 46)))
+    cols = np.nonzero((art & np.isin(k, ['body', 'outline'])).any(0))[0]
+    x0 = cols[0]
+    green = art & (k == 'body') & (rgb[..., 1] > rgb[..., 0] + 4) & (rgb[..., 1] > rgb[..., 2] + 10)
+    lab, n = components(green, nb=N4)
+    removed = np.zeros((H, W), bool)
+    nleaf = 0
+    for c in range(1, n + 1):
+        m = lab == c
+        if not m[:, x0:x0 + 2].any():
+            continue
+        if m.sum() <= 45 and np.nonzero(m)[1].max() <= x0 + 9:
+            removed |= m
+            nleaf += 1
+    # (the stone's edge: 0-3 px in, wandering gently, a pixel every few rows)
+    d = np.round(smooth_noise(H, 1, 9, 5)[:, 0] * 3.2 - 0.1).clip(0, 3).astype(int)
+    rows = np.nonzero(art[:, x0:x0 + 2].any(1))[0]
+    e = np.full(H, x0)
+    for y in rows:
+        r_ = np.nonzero(removed[y, x0:x0 + 10])[0]
+        e[y] = max(x0 + d[y], x0 + r_.max() + 1 if len(r_) else x0)
+    out = idx.copy()
+    gone = np.zeros((H, W), bool)
+    for y in rows:
+        gone[y, x0:e[y]] = art[y, x0:e[y]]
+        out[y, x0:e[y]] = 0
+    kept = out > 0
+    exposed = kept & (shift(gone, 0, 1) | shift(gone, 1, 0) | shift(gone, -1, 0) | shift(gone, 1, 1) | shift(gone, -1, 1))
+    exposed[:, x0] |= kept[:, x0]
+    rims = [i for i in range(1, len(kinds)) if kinds[i] == 'outline']
+    rim = rims[int(np.argmin([lum(PALC[i - 1][:3]) for i in rims]))]
+    fix = exposed & ~dark & np.isin(k, ['body', 'outline'])
+    out[fix] = rim
+    return out, nleaf, int((e[rows] != x0).sum())
 
 
 result = {}
@@ -1441,6 +1575,9 @@ for name, b in built.items():
             inside |= erode(polys_game(b, [poly]), 1)
         idx, nf = fill_solid(idx, kinds, inside)
         print('%-11s see-through pixels filled inside his solid rock: %d (left: %d)' % (name, nf, int((inside & ~np.isin(kinds[idx], ['body', 'outline'])).sum())))
+    for side in cfg.get('cut', ()):
+        idx, nleaf, nmoved = ragged_cut(idx, kinds, PALC, side)
+        print('%-11s ragged edge where his panel cut it (%s): %d cut leaves removed, %d rows moved in' % (name, side, nleaf, nmoved))
     if cfg.get('wall'):
         print('%-11s enclosed clear pixels after quantize: %d' % (name, holes_of(idx > 0).sum()))
     pal_json = [{'rgba': '#%02x%02x%02x%02x' % p[:4], 'kind': p[4]} for p in pal]

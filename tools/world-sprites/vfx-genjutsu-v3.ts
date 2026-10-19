@@ -1739,6 +1739,13 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
   // shards and the splash on the ground) comes up after, with the bits.
   const up = keep(all, (x, y) => y <= ground(x));
   const front = keep(all, (x, y) => y > ground(x));
+  // (3/4 wall) Each piece in front of the foot (8-connected), with its own foot in each column, its
+  // height and its middle, for growing it up out of the ground.
+  const frontParts = parts(front).map((p) => {
+    const foot = new Int32Array(k.w).fill(-1);
+    for (let y = 0; y < k.h; y++) for (let x = p.b[0]; x <= p.b[2]; x++) if (p.ix.d[y * k.w + x]) foot[x] = y;
+    return { ix: p.ix, foot, ht: p.b[3] - p.b[1] + 1, cx: Math.round((p.b[0] + p.b[2]) / 2) };
+  });
   const top = new Int32Array(k.w).fill(-1);
   for (let y = k.h - 1; y >= 0; y--) for (let x = 0; x < k.w; x++) if (at(up, x, y)) top[x] = y;
   // Each column rises by its own height (the tallest within 8 px, so a pillar moves as one).
@@ -1767,11 +1774,21 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
       // White-hot at their tops while they climb (one step up each colour's own ramp, two at the tip).
       a = tone(a, (x, y) => (lift(x) > 0 && top[x] >= 0 ? (y < top[x] + lift(x) + 3 ? 2 : y < top[x] + lift(x) + 7 ? 1 : 0) : 0));
     }
-    // What lies in front of the foot (brambles, shards) comes up with the wave: in each column it
-    // fades in (ordered alpha steps) as that column's crystal comes up, full by the time it stands
-    // (the end-on wall: full by frame 9).
+    // What lies in front of the foot (brambles, shards) comes up with the wave. On the 3/4 wall each
+    // piece of it (his brambles, a shard) grows up out of the ground whole, opaque, as the crystal
+    // behind it comes up: moved down and clipped at its own foot in each column, like the crystals
+    // (no see-through dither). End-on, the shards fade in (ordered alpha steps), full by frame 9.
     const ordered = (v: number, x: number, y: number) => clamp(Math.floor(v * 4 + BAYER4[y & 3][x & 3] / 16) / 4, 0, 1);
-    const frontAt = last ? undefined : (x: number, y: number) => ordered(name === 'wall_diag' ? smooth(0.2, 0.75, t(x)) : smooth(0.3, 0.86, T), x, y);
+    const frontAt = last || name === 'wall_diag' ? undefined : (x: number, y: number) => ordered(smooth(0.3, 0.86, T), x, y);
+    let fr = front;
+    if (!last && name === 'wall_diag') {
+      fr = blank(k.w, k.h);
+      for (const p of frontParts) {
+        const q = smooth(0.15, 0.7, t(p.cx));
+        if (q <= 0) continue;
+        stamp(fr, q >= 1 ? p.ix : emergeCols(p.ix, (x) => p.foot[x], () => Math.round((1 - q) * p.ht)));
+      }
+    }
     // The long shadow stretches out from the wall's foot along its own run (down to the right,
     // about 0.37 px down per px across) as the wall grows, its moving end an ordered alpha ramp
     // 8 px long (as at its far end); until the wall stands, none of it shows behind the foot line.
@@ -1799,7 +1816,7 @@ function wall3d(name: 'wall_diag' | 'wall_depth', label: string, idleN: number, 
     // are, so it never parts from them.
     const s = last ? sm : emergeCols(sm, ground, lift);
     const stA = last ? 1 : 0.4 + 0.6 * smooth(0, 0.7, T), smA = last ? 1 : smooth(0.08, 0.85, T), bitsA = last ? 1 : smooth(0.55, 1, T);
-    rise.push(render(k.w, k.h, [[st, stA, undefined, stAt], [s, smA], [a], [front, last ? 0 : 1, undefined, frontAt], [bits, bitsA]], k.fade));
+    rise.push(render(k.w, k.h, [[st, stA, undefined, stAt], [s, smA], [a], [fr, last ? 0 : 1, undefined, frontAt], [bits, bitsA]], k.fade));
   }
   const idle = range(idleN).map((i) => {
     if (!i) return render(k.w, k.h, [[stain], [sm], [all], [bits]], k.fade);

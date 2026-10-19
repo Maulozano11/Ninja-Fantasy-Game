@@ -8,6 +8,8 @@
 // beastsDir defaults to src/assets/world/vfx_beasts (the approved beasts). KIT_KEYS (optional,
 // e.g. KIT_KEYS=hit=3,multi_hit=3,blast=4) names the key frame of a sprite's first animation,
 // for sets whose one-shots were re-cut longer; without it the usual choice below is used.
+// KIT_HEAD_JOIN=anchor (optional) places the stream head by its anchor on the next tile's anchor,
+// as the game does, instead of by its left edge at the end of the third tile.
 
 import { existsSync, readFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
@@ -76,6 +78,9 @@ function readGroup(dir: string): WorldSprite[] {
 const KIT_KEYS: Record<string, number> = Object.fromEntries(
   (process.env.KIT_KEYS ?? '').split(',').filter((p) => p.includes('=')).map((p) => [p.split('=')[0].trim(), Number(p.split('=')[1])]),
 );
+
+/** KIT_HEAD_JOIN=anchor: the stream head is placed by its anchor, as the game places it. */
+const JOIN_BY_ANCHOR = process.env.KIT_HEAD_JOIN === 'anchor';
 
 /** Which frame shows a sprite best (the same choice as the other kits, unless KIT_KEYS names it). */
 function keyFrame(s: WorldSprite): { key: string; i: number } {
@@ -148,7 +153,11 @@ for (const s of sprites) {
   const info = `${f.w}x${f.h}  ` + Object.keys(s.anims).map((k) => animInfo(s, k)).join(', ');
   if (s.name === 'stream') {
     const head = by.stream_head?.anims.fly.frames[0];
-    const w = f.w * 3 + (head ? head.w : 0);
+    // Where the head goes: by default its left edge at the end of the third tile. With
+    // KIT_HEAD_JOIN=anchor it goes where the game puts it, its anchor on the next tile's anchor
+    // (for a set whose head reaches back over the last tile).
+    const hx = head && JOIN_BY_ANCHOR ? 3 * f.w + s.anchor[0] - by.stream_head.anchor[0] : 3 * f.w;
+    const w = Math.max(f.w * 3, head ? hx + head.w : 0);
     cards.push({
       w: Math.max(w, textWidth(info)), h: f.h + 16,
       draw: (c, x, y) => {
@@ -156,7 +165,7 @@ for (const s of sprites) {
         text(c, x, y + 7, info, INK_DIM);
         panel(c, x, y + 14, w, f.h);
         for (let k = 0; k < 3; k++) c.draw(f, x + k * f.w, y + 14);
-        if (head) c.draw(head, x + 3 * f.w, y + 14);
+        if (head) c.draw(head, x + hx, y + 14);
       },
     });
     continue;

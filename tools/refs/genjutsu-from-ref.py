@@ -24,7 +24,7 @@ pixels:
       glow    - faint colour over his fill (soft halos, the column's veils, the aura's flame
                 edges): colour-to-alpha against his fill, so it composites back to his look;
       ground  - the 3/4 wall's long shadow (and the thin strip of it above): colour-to-alpha
-                with an alpha floor (0.6), so it reads as a violet stain on any map; what his
+                with an alpha floor (0.8), so it reads as a violet stain on any map; what his
                 character hid of it is filled in along the shadow's own slant;
       weed    - the olive brambles of the 3/4 wall (their own small palette);
       eye     - his eyes (hand-set ellipses): no hue smoothing, quantized by lightness first.
@@ -191,7 +191,9 @@ def resample(a, box, size):
 
 # --- classification at his resolution -----------------------------------------------------------
 
-CLEAR, GLOW, DARK, BODY, GROUND = 0, 1, 2, 3, 4
+CLEAR, GLOW, DARK, BODY, GROUND, WEED = 0, 1, 2, 3, 4, 5
+CLASSES = (CLEAR, GLOW, DARK, BODY, GROUND, WEED)
+COLOURED = (GLOW, DARK, BODY, GROUND, WEED)
 T_ART = 10.0   # colour distance from his fill below which a pixel is his fill
 A_GLOW = 0.15  # lighter than his fill by less than this (colour-to-alpha) = soft glow
 T_DARK = 6.0   # darker than his fill by more than this (luminance) = dark
@@ -232,6 +234,20 @@ def classify(src, cfg):
         cls[gr & art & (D[..., 0] > D[..., 2] - 22) & (lum(D) > 70)] = BODY
     if cfg.get('ground_all'):
         cls[gr & art] = GROUND
+    if cfg.get('weeds'):
+        # His khaki brambles (the 3/4 wall): every pixel of their warm grey-olive hue (red and green
+        # alike, blue no higher: never his violets, his panel or his crystal's lavender) is the
+        # opaque bramble, even where it is about as dark as his panel or only a thin stem over it;
+        # their black branch strokes (darker than his panel, beside the khaki) are opaque dark. The
+        # glow, the smoke and the ground stain never take a bramble pixel.
+        wm = m('weeds')
+        G = gauss(C, 0.5, wrap)
+        Lg = lum(G)
+        khaki = wm & (G[..., 2] <= G[..., 0] + 5) & (G[..., 2] <= G[..., 1] + 12) & (np.abs(G[..., 0] - G[..., 1]) < 24) \
+            & (Lg > 36) & (Lg < 140)
+        stroke = wm & (Lg < 24) & dilate(khaki, 2, nb=N8) & ~khaki
+        cls[khaki] = WEED
+        cls[stroke] = DARK
     keep = m('keep') if cfg.get('keep') else np.ones((H, W), bool)
     if cfg.get('pink'):
         # Petals over his character: only their pink (and their dark rim) is kept.
@@ -501,7 +517,7 @@ SPRITES = {
     'aura': dict(area=(466, 492, 572, 652), k=1 / AURA_S, anchor=AURA_FEET, smoke=True, frame_like='aura_back',
                  keep=AURA_PETALS + AURA_FEATHERS + [AURA_RING], pink=AURA_PETALS,
                  pieces=[('petals', AURA_PETALS + AURA_FEATHERS)]),
-    'wall_diag': dict(area=(620, 492, 1014, 780), k=1 / 1.27, anchor=(772, 708), fade={'right': 30},
+    'wall_diag': dict(area=(620, 492, 1014, 780), k=1 / 1.27, anchor=(772, 708), fade={'right': 6},
                       fill=[DIAG_CHAR], fill_slope=0.37, ground_violet=True,
                       # His long shadow and, above it, the thin strip of it that runs on under his character.
                       # (Its top edge runs along the crystals' real feet: the crystal bases above it, lit
@@ -509,6 +525,10 @@ SPRITES = {
                       ground=[[(735, 708), (762, 714), (790, 715), (812, 713), (838, 684), (866, 663), (900, 672),
                                (940, 688), (1016, 714), (1016, 782), (870, 782), (800, 752), (760, 730)]],
                       black=[rect(620, 600, 900, 782)],
+                      # His khaki brambles: at the near-left foot, in front of the first pillars, at the
+                      # middle of the foot (on the shadow's edge), beside the splash and at the far end.
+                      weeds=[rect(624, 700, 668, 782), rect(676, 745, 728, 782), rect(735, 688, 800, 735), rect(826, 652, 864, 682),
+                             rect(872, 575, 935, 660)],
                       lines=dict(poly=[[(640, 640), (700, 590), (760, 540), (850, 500), (905, 500), (905, 640), (840, 680), (760, 720),
                                         (700, 740), (640, 740)]], minL=170, contrast=24),
                       pieces=[('bits', [ellipse(636, 699, 5), ellipse(640, 745, 5), ellipse(830, 745, 6), ellipse(907, 551, 5),
@@ -582,6 +602,9 @@ def source(name, cfg):
 # --- to game scale --------------------------------------------------------------------------------
 
 W_BODY, W_DARK, W_GLOW, W_GROUND = 1.35, 1.0, 0.85, 1.0
+# His bramble stems are 1-2 of his px wide: a game pixel a third covered by one is the stem, so
+# the stems stay unbroken lines at game scale.
+W_WEED = 2.4
 PAD = 3
 
 def frame_of(cfg, cls, x0, y0):
@@ -634,8 +657,8 @@ def to_game(name, cfg):
             img = Image.fromarray(a.astype(np.float32), mode='F')
             top = oy - y0
             return np.asarray(img.resize((w, h), Image.BOX, box=(tw, top, 2 * tw, top + h / k)), np.float64)
-        cov = {c: rs((cls3 == c).astype(float)) for c in (CLEAR, GLOW, DARK, BODY, GROUND)}
-        col = {c: np.stack([rs(np.where(cls3 == c, M3[..., i], 0)) for i in range(3)], -1) for c in (GLOW, DARK, BODY, GROUND)}
+        cov = {c: rs((cls3 == c).astype(float)) for c in CLASSES}
+        col = {c: np.stack([rs(np.where(cls3 == c, M3[..., i], 0)) for i in range(3)], -1) for c in COLOURED}
         comp = np.stack([rs(np.where(cls3 > 0, M3[..., i], BG[i])) for i in range(3)], -1)
     else:
         box = (ox, oy, ox + w / k, oy + h / k)
@@ -649,8 +672,8 @@ def to_game(name, cfg):
             img = Image.fromarray(big(a, fill).astype(np.float32), mode='F')
             l, t, r, b = box
             return np.asarray(img.resize((w, h), Image.BOX, box=(l + PADSRC, t + PADSRC, r + PADSRC, b + PADSRC)), np.float64)
-        cov = {c: rs((cls == c).astype(float), 1.0 if c == CLEAR else 0.0) for c in (CLEAR, GLOW, DARK, BODY, GROUND)}
-        col = {c: np.stack([rs(np.where(cls == c, M[..., i], 0)) for i in range(3)], -1) for c in (GLOW, DARK, BODY, GROUND)}
+        cov = {c: rs((cls == c).astype(float), 1.0 if c == CLEAR else 0.0) for c in CLASSES}
+        col = {c: np.stack([rs(np.where(cls == c, M[..., i], 0)) for i in range(3)], -1) for c in COLOURED}
         comp = np.stack([rs(np.where(cls > 0, M[..., i], BG[i]), BG[i]) for i in range(3)], -1)
     for c in col:
         col[c] = col[c] / np.maximum(cov[c], 1e-6)[..., None]
@@ -659,16 +682,16 @@ def to_game(name, cfg):
         # Where his streaks are distinct (the blast's column), a part-covered pixel is the streak.
         bm = poly_mask(h, w, ox, oy, cfg['boost'], k)
         wb[bm] = 2.2; wg[bm] = 0.45
-    score = np.stack([cov[CLEAR], cov[GLOW] * wg, cov[DARK] * W_DARK, cov[BODY] * wb, cov[GROUND] * W_GROUND], -1)
+    score = np.stack([cov[CLEAR], cov[GLOW] * wg, cov[DARK] * W_DARK, cov[BODY] * wb, cov[GROUND] * W_GROUND, cov[WEED] * W_WEED], -1)
     g = score.argmax(-1).astype(np.int8)
     rgb = np.zeros((h, w, 3))
-    for c in (DARK, BODY, GROUND):
+    for c in (DARK, BODY, GROUND, WEED):
         rgb[g == c] = col[c][g == c]
     rgb[g == GLOW] = comp[g == GLOW]
     # Faint glow that would composite to almost his fill goes.
     a, _ = c2a(comp)
     g[(g == GLOW) & (a < 0.07)] = CLEAR
-    out = dict(g=g, rgb=rgb, w=w, h=h, anchor=(ax, ay), origin=(ox, oy), k=k, cov_dark=cov[DARK])
+    out = dict(g=g, rgb=rgb, w=w, h=h, anchor=(ax, ay), origin=(ox, oy), k=k, cov_dark=cov[DARK], col_dark=col[DARK])
     if cfg.get('lines'):
         # His thin bright lines mapped to game pixels by their crest (the brightest of his line
         # pixels in each game pixel), so the box filter cannot soften them; written after the
@@ -702,25 +725,35 @@ def cleanup(name, cfg, d):
     body = g == BODY
     dark = g == DARK
     # Lone specks: a body or dark pixel with no opaque 8-neighbour goes, unless it is bright (a spark).
-    opq = body | dark
+    opq = body | dark | (g == WEED)
     nbo = sum(shift(opq, dy, dx, wrap).astype(int) for dy, dx in N8)
     L = lum(rgb)
     lone = opq & (nbo == 0) & ~(body & (L > 150))
     g[lone] = CLEAR
     # Pinholes: a clear pixel with 4 opaque neighbours takes the commonest neighbour class.
-    body = g == BODY; dark = g == DARK; opq = body | dark
+    body = g == BODY; dark = g == DARK; opq = body | dark | (g == WEED)
     nb4 = sum(shift(opq, dy, dx, wrap).astype(int) for dy, dx in N4)
     hole = (g == CLEAR) & (nb4 == 4)
     for y, x in zip(*np.nonzero(hole)):
         vals = [(y + dy, (x + dx) % W if wrap else x + dx) for dy, dx in N4]
         vals = [(u, v) for u, v in vals if 0 <= u < H and 0 <= v < W]
         rgb[y, x] = np.mean([rgb[u, v] for u, v in vals], 0)
-        g[y, x] = BODY if sum(g[u, v] == BODY for u, v in vals) >= 2 else DARK
+        g[y, x] = WEED if sum(g[u, v] == WEED for u, v in vals) >= 2 else BODY if sum(g[u, v] == BODY for u, v in vals) >= 2 else DARK
+    # His brambles' black outline: where a bramble pixel meets the empty background, his clear
+    # glow or the ground stain and his art is dark there, that pixel is his black stroke (opaque,
+    # his own darkest colour there), so every stem keeps its dark edge on any map.
+    weeds = gmask(d, cfg, 'weeds')
+    if weeds.any():
+        had_w = d['cov_dark'] > 0.12
+        wring = dilate(g == WEED, 1, wrap) & ((g == CLEAR) | (g == GLOW) | (g == GROUND)) & had_w & dilate(weeds, 1, wrap)
+        g[wring] = DARK
+        rgb[wring] = d['col_dark'][wring]
     # Dark: his rim next to a body is opaque; away from bodies it is smoke (translucent) where the
-    # sprite has smoke and the pixel is not in a 'black' (truly black: feathers, vines) polygon.
+    # sprite has smoke and the pixel is not in a 'black' (truly black: feathers, vines, brambles)
+    # polygon.
     body = g == BODY
     rim = (g == DARK) & dilate(body, 1, wrap)
-    black = gmask(d, cfg, 'black')
+    black = gmask(d, cfg, 'black') | weeds
     smoke = (g == DARK) & ~rim & ~black if cfg.get('smoke') else np.zeros_like(body)
     # Where his smoke is truly black (a dense mass: the bolt's trail), it is solid: dark, but still
     # in the smoke piece (see the pieces).
@@ -735,7 +768,7 @@ def cleanup(name, cfg, d):
     kind[g == GROUND] = 'ground'
     # Weeds: the olive brambles (warm and dull) get their own palette.
     weedy = (g == BODY) & (rgb[..., 0] > rgb[..., 2] + 4) & (rgb[..., 1] > rgb[..., 2] - 2) & (L < 150)
-    kind[weedy] = 'weed'
+    kind[weedy | (g == WEED)] = 'weed'
     # The outline: where a body (not a tiny spark) meets the empty background or a soft glow,
     # his 1 px deep-violet edge is restored outside it.
     lab, n = components(body, N4, wrap)
@@ -836,7 +869,9 @@ def body_palette():
     hot = c[:, 0] > c[:, 2] + 12
     return np.concatenate([kmeans_lab(c[~hot], N_COOL), kmeans_lab(c[hot], N_HOT), SCLERA])
 
-FLOORS = {'glow': 0.0, 'smoke': 0.85, 'ground': 0.6}
+# (The 3/4 wall's long shadow is a stain at 0.8 or more: lighter, it mixed with a bright map into a
+# lilac grey; at 0.8 it keeps his violet over grass.)
+FLOORS = {'glow': 0.0, 'smoke': 0.85, 'ground': 0.8}
 OUTLINE = np.array([[40, 16, 58]])   # deep violet (his darkest violet rims), never black
 SETS = {
     'outline': OUTLINE,

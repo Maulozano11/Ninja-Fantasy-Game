@@ -10,9 +10,9 @@
 // generator only DERIVES the other frames from those key frames:
 //
 //   - fly loops    8 frames at 12 fps; frame 0 is his picture. The vortex (bolt) and the spiral orb
-//                  (sphere) turn 60 degrees per loop, 7.5 a frame, every angle turned the same way
-//                  (Scale2x x3, turn, commonest of 16 samples, his rim put back), handing over to his
-//                  picture over the last two frames; the rest ripples with a steady travelling wave,
+//                  (sphere) swirl: a wave runs in along their arms to the core and comes back round
+//                  to his picture, every frame moved the same way (Scale2x x3, warped, commonest of
+//                  16 samples, his rim put back), so no frame is a mix of two pictures; the rest ripples with a steady travelling wave,
 //                  the light shimmers in soft regional waves, gold rings carry a travelling glint
 //                  and small bits twinkle whole with their glow;
 //   - stream       his 64 px period of the beam, flowing 8 px a frame toward the target (it still
@@ -318,23 +318,19 @@ function scale2x(ix: Ix): Ix {
 }
 
 /**
- * The picture turned by `ang` radians (clockwise on screen for ang > 0) about (cx, cy), the same
- * way at every angle, like RotSprite: blown up 8 times with Scale2x, turned, and brought back
- * down by taking each pixel's commonest value over 4 x 4 samples (ties: the value under its
- * centre). His 1 px rim is then put back (reline), so every turned frame keeps a crisp edge (not for
- * art that has no rim of its own, like the sphere's orb inside its ring).
+ * The picture moved through a smooth field, like RotSprite: `from(px, py)` gives the point of the
+ * source that lands on (px, py). The picture is blown up 8 times with Scale2x, sampled 4 x 4 per
+ * pixel through the field, and each pixel takes the commonest value (ties: the value under its
+ * centre). His 1 px rim is then put back (reline), so every moved frame keeps his crisp edge (not
+ * for art that has no rim of its own, like the sphere's orb inside its ring).
  */
-function rotate(ix: Ix, cx: number, cy: number, ang: number, rim = true): Ix {
-  if (!ang) return ix;
+function warp(ix: Ix, from: (px: number, py: number) => [number, number], rim = true): Ix {
   const up = scale2x(scale2x(scale2x(ix)));
   const out = blank(ix.w, ix.h);
-  const c = Math.cos(ang), s = Math.sin(ang);
   const votes: number[] = new Array(16);
   const sample = (px: number, py: number): number => {
-    const dx = px - cx, dy = py - cy;
-    // Inverse rotation: where this point came from (in the 8x picture).
-    const sx = (cx + dx * c + dy * s) * 8, sy = (cy - dx * s + dy * c) * 8;
-    return at(up, Math.floor(sx), Math.floor(sy));
+    const [sx, sy] = from(px, py);
+    return at(up, Math.floor(sx * 8), Math.floor(sy * 8));
   };
   for (let y = 0; y < ix.h; y++)
     for (let x = 0; x < ix.w; x++) {
@@ -354,19 +350,6 @@ function rotate(ix: Ix, cx: number, cy: number, ang: number, rim = true): Ix {
       out.d[y * ix.w + x] = best;
     }
   return rim ? reline(out) : out;
-}
-
-/** a and b mixed (premultiplied, so the light of the mix is the mix of the lights): w of b. */
-function mixCanvas(a: Canvas, b: Canvas, w: number): Canvas {
-  const out = new Canvas(a.w, a.h);
-  for (let i = 0; i < a.w * a.h; i++) {
-    const p = i * 4;
-    const aa = (a.px[p + 3] / 255) * (1 - w), bb = (b.px[p + 3] / 255) * w, al = aa + bb;
-    if (al <= 0) continue;
-    for (let ch = 0; ch < 3; ch++) out.px[p + ch] = Math.round((a.px[p + ch] * aa + b.px[p + ch] * bb) / al);
-    out.px[p + 3] = Math.round(al * 255);
-  }
-  return out;
 }
 
 /** Stamps src into dst at (x, y) (non-clear pixels only). */
@@ -623,7 +606,7 @@ const none = (k: Key): Ix => blank(k.w, k.h);
 const piece = (k: Key, n: string): Ix => k.p[n] ?? none(k);
 const all = (k: Key): Ix => union(...Object.values(k.p));
 
-/** A key re-framed square round its anchor, big enough for the art to turn about it. */
+/** A key re-framed square round its anchor, big enough for the art to swirl about it. */
 function spinKey(name: string): Key {
   const s = CK_REF[name];
   const k0 = key(name, pads(0));
@@ -659,25 +642,6 @@ const fly = (frames: Canvas[]) => ({ fly: { frames, fps: FLY_FPS, loop: true } }
 // --- projectiles -------------------------------------------------------------------------------------
 
 /**
- * The spin of the vortex and of the sphere's orb: 60 degrees per loop, 7.5 degrees a frame (the
- * outer arms move about 4 px a frame; clockwise, so the arms trail), every angle turned the same
- * way (rotate). No turn brings his picture back (his arms are not regular: no angle matches it
- * better than the smallest), so over the last two frames the turned picture hands over (a
- * premultiplied mix, 1/3 then 2/3, so the light stays level) to the same picture turned 60 degrees
- * less, which carries on into his picture at frame 0. (A pixel-by-pixel dissolve broke the arms
- * into pieces; keeping the stronger copy doubled the arms and flashed.)
- */
-const SPIN = TAU / 6;
-const SPIN_SEAM = [0, 0, 0, 0, 0, 0, 1 / 3, 2 / 3];
-function spinFrames(draw: (ang: number, t: number) => Canvas): Canvas[] {
-  return range(FLY_N).map((i) => {
-    const t = cyc(i, FLY_N), w = SPIN_SEAM[i];
-    const a = draw(SPIN * t, t);
-    return w ? mixCanvas(a, draw(SPIN * (t - 1), t), w) : a;
-  });
-}
-
-/**
  * Small bits orbiting (cx, cy) by `orbit` radians per loop, as whole pieces (not resampled). Each
  * one twinkles out for `share` of the loop at its own time and is set back by the same angle while
  * it is out, so the loop closes on his picture with no bit jumping in view.
@@ -695,22 +659,48 @@ function orbitBits(sp: Ix, t: number, cx: number, cy: number, orbit: number, sha
 }
 
 /**
- * The vortex turns 60 degrees per loop (spinFrames), its light shimmering; his cream flecks circle
- * with it more slowly (30 degrees per loop, 2-3 px a frame) and twinkle.
+ * The swirl of the vortex and of the sphere's orb: each point is moved round the centre by
+ * amp * (sin(2 pi r / len + 2 pi t) - sin(2 pi r / len)) px along its circle, a wave that runs IN
+ * toward the core at a steady pace (on a spiral, arms running inward is what a turn looks like),
+ * none inside r0 and full past r1. t = 0 is his picture exactly and t = 1 is his picture again, so
+ * the loop needs no seam: no frame is a mix of two pictures. (A rigid turn never brings his
+ * irregular arms back, so it needed a two-frame cross-fade that read as a double exposure.) Keep
+ * amp x 2 pi / len near 1/2, or thin strokes tear.
+ */
+function swirlFrom(cx: number, cy: number, t: number, amp: number, len: number, r0: number, r1: number): (px: number, py: number) => [number, number] {
+  return (px, py) => {
+    const dx = px - cx, dy = py - cy, r = Math.hypot(dx, dy);
+    if (r < 1e-6) return [px, py];
+    const ph = (TAU * r) / len;
+    // Where this point came from: turned back by the angle the wave moved it.
+    const a = (-amp * smooth(r0, r1, r) * (Math.sin(ph + TAU * t) - Math.sin(ph))) / r;
+    const c = Math.cos(a), s = Math.sin(a);
+    return [cx + dx * c - dy * s, cy + dx * s + dy * c];
+  };
+}
+
+/**
+ * The vortex swirls (swirlFrom: 2.5 px, a 30 px wave running in to the core; the outer arms move
+ * about 2 px a frame), its light shimmering; his cream flecks circle round it (30 degrees per
+ * loop, 2-3 px a frame) and twinkle.
  */
 function bolt(): WorldSprite {
   const k = spinKey('bolt');
   const [F, M] = withHalo(piece(k, 'loose'), piece(k, 'main'));
-  const arms = spinFrames((ang, t) => render(k.w, k.h, [[shimmer(rotate(M, k.ax, k.ay, ang), t, 120, 10)]]));
-  const fr = arms.map((c, i) => render(k.w, k.h, [[orbitBits(F, cyc(i, FLY_N), k.ax, k.ay, TAU / 12, 0.16, 130)]], undefined, c));
+  const fr = range(FLY_N).map((i) => {
+    const t = cyc(i, FLY_N);
+    const arms = t ? warp(M, swirlFrom(k.ax, k.ay, t, 2.5, 30, 3, 12)) : M;
+    const c = render(k.w, k.h, [[shimmer(arms, t, 120, 10)]]);
+    return render(k.w, k.h, [[orbitBits(F, t, k.ax, k.ay, TAU / 12, 0.16, 130)]], undefined, c);
+  });
   return sprite(k, 'Chakra bolt: swirling vortex orb', fly(fr));
 }
 
 /**
- * The spiral orb turns 60 degrees per loop inside its gold ring (spinFrames), over a still disc
- * of his dark rim colour so nothing shows through between the turning orb and the ring. The ring
- * holds still with a glint running round it; the arcs round it and the speed lines ripple and
- * shimmer, the motes twinkle.
+ * The spiral orb swirls inside its gold ring (swirlFrom: 2 px, a 26 px wave), over a still disc of
+ * his dark rim colour so nothing shows through between the orb and the ring. The ring holds still
+ * with a glint running round it; the arcs round it and the speed lines ripple and shimmer, the
+ * motes twinkle.
  */
 function sphere(): WorldSprite {
   const k = key('sphere');
@@ -722,7 +712,10 @@ function sphere(): WorldSprite {
   const rim = blues.indexOf(Math.min(...blues)) + 1;
   const under = remap(union(O, R, M), (v, x, y) => (Math.hypot(x + 0.5 - k.ax, y + 0.5 - k.ay) <= 19.5 && (isSolid(v) || isLine(v)) ? rim : 0));
   const out = (x: number, y: number) => smooth(20, 26, Math.hypot(x - k.ax, y - k.ay));
-  const orbs = spinFrames((ang, t) => render(k.w, k.h, [[shimmer(rotate(O, k.ax, k.ay, ang, false), t, 310, 8)]]));
+  const orbs = range(FLY_N).map((i) => {
+    const t = cyc(i, FLY_N);
+    return render(k.w, k.h, [[shimmer(t ? warp(O, swirlFrom(k.ax, k.ay, t, 2, 26, 2, 8), false) : O, t, 310, 8)]]);
+  });
   const fr = orbs.map((orb, i) => {
     const t = cyc(i, FLY_N);
     const m = shimmer(reline(wave(M, t, { amp: [0.8, 0.8], len: 18, along: (x, y) => Math.hypot(x - k.ax, y - k.ay), seed: 300, weight: out })), t, 320, 10);
@@ -911,11 +904,12 @@ function hit(): WorldSprite {
     const sc = (ix: Ix) => scaleAbout(ix, k.ax, k.ay, s);
     fr.push(render(k.w, k.h, [[level(sc(M), hot, ['blue'])], [level(sc(C), hot)], [sc(S)]]));
   }
-  // 3: his picture. 4-5: it holds, the spikes churning a little.
+  // 3: his picture. 4-5: it holds, the spikes churning a little (a rim the churn left without its
+  //    fill goes).
   fr.push(render(k.w, k.h, [[M], [C], [S]]));
   for (const i of [4, 5]) {
     const t = (i - 3) / 16;
-    fr.push(render(k.w, k.h, [[shimmer(churn(out(M, i - 3), t, 1.2, 7, 810, (x, y) => smooth(12, 20, d(x, y))), t, 820)], [glint(C, (i - 3) / 6, k.ax, k.ay)], [out(S, (i - 3) * 1.2)]]));
+    fr.push(render(k.w, k.h, [[shimmer(reline(churn(out(M, i - 3), t, 1.2, 7, 810, (x, y) => smooth(12, 20, d(x, y))), false), t, 820)], [glint(C, (i - 3) / 6, k.ax, k.ay)], [out(S, (i - 3) * 1.2)]]));
   }
   // 6-11: it breaks up slowly: the spikes fly on, thin and fade; the seal core shrinks and goes
   //       out like light (by alpha, a step paler, never darker: a seal stepped down its ramp reads
@@ -957,6 +951,11 @@ function blast(): WorldSprite {
   // The haze under whatever of the circle, its lines, the pillar and the sparks a frame leaves out
   // or draws see-through (only what is drawn at full strength hides it, as in his picture).
   const haze = (...cover: [Ix, Alpha][]) => keep(U, (x, y) => cover.every(([c, a]) => at(c, x, y) === 0 || alphaAt(a, x, y) < 1));
+  // The rebuilt far arcs sit IN the haze (as his own far arcs beside the pillar do): only their
+  // solid gold hides it; their faint warm glow lies over it (without the haze under it, the band
+  // between the far gold lines read as a dark crown over the climbing pillar's front).
+  const SBsolid = keep(SB, (_, __, v) => !isLight(v - 1));
+  const sealCover = (cur: Ix, a: Alpha = 1) => union(SEAL, behind(cur, SBsolid, a));
   const foot = k.ay + 14; // the pillar's foot, in the middle of the circle
   const top = bounds(P)![1];
   const H = foot - top;
@@ -999,7 +998,7 @@ function blast(): WorldSprite {
       render(
         k.w,
         k.h,
-        [[HZ, hazeK[i]], [haze([seal, sealA], [lines, linesA], [cur, curA], [sp, spA]), hazeK[i]], [seal, sealA], [lines, linesA], [cur, curA], [sp, spA]],
+        [[HZ, hazeK[i]], [haze([sealCover(cur, curA), sealA], [lines, linesA], [cur, curA], [sp, spA]), hazeK[i]], [seal, sealA], [lines, linesA], [cur, curA], [sp, spA]],
         k.fade,
       ),
     );
@@ -1012,7 +1011,7 @@ function blast(): WorldSprite {
     const cur = shimmer(churn(P, t, 1.2, 9, 913, hold), t, 917, 12);
     const seal = glint(union(SEAL, behind(cur, SB)), (i - 4) / 10, k.ax, k.ay, 0.9, Math.PI / 2);
     const lines = union(LN, behind(cur, LB)), sp = twinkle(up(SP, (i - 4) * 2), t, 0.15, 921);
-    fr.push(render(k.w, k.h, [[HZ], [haze([seal, 1], [lines, 1], [cur, 1], [sp, 1])], [seal], [lines], [cur], [sp]], k.fade));
+    fr.push(render(k.w, k.h, [[HZ], [haze([sealCover(cur), 1], [lines, 1], [cur, 1], [sp, 1])], [seal], [lines], [cur], [sp]], k.fade));
   }
   // 7-15: the long settle. The pillar thins and draws up off the circle into the sky, its foot
   //       ragged but soft (alpha over 4 px), fading by alpha and cooling to cyan and blue (not
@@ -1033,7 +1032,7 @@ function blast(): WorldSprite {
     const seal = union(SEAL, behind(cur, SB, curA)), lines = union(LN, behind(cur, LB, curA));
     const sp = twinkle(up(SP, 4 + j * 3), t, 0.15 + u * 0.4, 921);
     const spA = 1 - u * 0.9;
-    fr.push(render(k.w, k.h, [[HZ, hz], [haze([seal, sa], [lines, la], [cur, curA], [sp, spA]), hz], [seal, sa], [lines, la], [cur, curA], [sp, spA]], k.fade));
+    fr.push(render(k.w, k.h, [[HZ, hz], [haze([sealCover(cur, curA), sa], [lines, la], [cur, curA], [sp, spA]), hz], [seal, sa], [lines, la], [cur, curA], [sp, spA]], k.fade));
   }
   return sprite(k, 'Chakra blast: pillar of light over a gold seal circle', { blast: { frames: fr, fps: BLAST_FPS, loop: false } });
 }
@@ -1047,7 +1046,11 @@ function blast(): WorldSprite {
  */
 function barrier(name: 'wall' | 'wall_diag', label: string, seed: number): WorldSprite {
   const k = key(name);
-  const FR = piece(k, 'frame'), M = piece(k, 'main'), SP = piece(k, 'loose'), SH = piece(k, 'shadow');
+  const FR = piece(k, 'frame'), SP = piece(k, 'loose'), SH = piece(k, 'shadow');
+  // The pane under his sparkles is filled from the light round them (they are opaque, so his
+  // picture is unchanged): a sparkle that twinkles out, or is not up yet in the rise, leaves the
+  // pane behind it instead of a pinhole.
+  const M = fillUnder(piece(k, 'main'), SP);
   // The ground line through the anchor: level for the straight wall; for the 3/4 wall it rises
   // 120 px over 182 to the far end, as on our 3/4 walls.
   const slope = name === 'wall' ? 0 : -120 / 182;

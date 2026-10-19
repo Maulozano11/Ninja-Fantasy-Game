@@ -867,14 +867,27 @@ def chroma_smooth(col, solid, fam):
     return out
 
 
-FAM_N = (32, 14, 16)
+FAM_N = (52, 14, 16)
 BODY = []
+
+
+def even_share(c, n=3000):
+    """A sprite's pixels brought to about n (spread evenly, or repeated), so every sprite has a fair
+    share of the palette: the small darts' lime halos and the orb's dark glass count as much as the
+    walls' big slime."""
+    if not len(c):
+        return c
+    if len(c) > n:
+        return c[np.linspace(0, len(c) - 1, n).astype(int)]
+    return np.tile(c, (int(np.ceil(n / len(c))), 1))[:n]
+
+
 for k in range(3):
     src = []
     for b in built.values():
         for _, solid, _, _, g in layers_of(b):
             fam = game_family(g)
-            src.append(chroma_smooth(g['col'], solid, fam)[solid & (fam == k)])
+            src.append(even_share(chroma_smooth(g['col'], solid, fam)[solid & (fam == k)]))
     cols = np.concatenate(src)
     if k == 2:
         # His neutrals are mostly dark stone; his bone and pale motes get their own few colours
@@ -906,7 +919,7 @@ GLOW_SRC = []
 for b in built.values():
     for _, _, _, glow, g in layers_of(b):
         GLOW_SRC.append(g['gcol'][glow])
-GLOW = median_cut(np.concatenate(GLOW_SRC), 12)
+GLOW = median_cut(np.concatenate(GLOW_SRC), 10)
 GLOW = GLOW[np.argsort(lum(GLOW))]
 ALPHAS = [10, 20, 32, 45, 59, 74, 90, 107, 125, 144, 164, 185, 207, 230]  # (fine steps: his light is a smooth gradient)
 

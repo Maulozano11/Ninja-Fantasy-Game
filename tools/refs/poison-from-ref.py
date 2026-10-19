@@ -1052,23 +1052,36 @@ def frame_piece(idx, cfg, b):
     x0, y0 = b['g']['box'][:2]
     m = poly_mask(H, W, cfg['frame'], x0, y0, sx_of(cfg), SY)
     fr = m & (idx > 0) & (KIND[idx] != 'glow')
-    # His slime reaching into a polygon stays slime. The stone's own silhouette is its neutral
-    # stone closed over its thin green joints and seams (2 px) with what it encloses filled (his
-    # runes, plaques, joints and mossy faces): only the saturated green outside that silhouette (the
-    # slime over the posts and its rim, his drops) is taken out of the frame.
+    # His slime reaching into a polygon stays slime: his saturated green joined to the green outside
+    # the polygons (his slime, its rim, the drops), reached through saturated green only and at most
+    # 2 px into the polygons (his runes and the glowing joints deeper in stay stone; his mossy
+    # green-grey stone is not saturated). And no green may stand above a block's stone in its
+    # column (the slime over the caps must not rise with the posts).
     pc = PALC[np.maximum(idx, 1) - 1][..., :3]
     chroma = pc.max(-1) - pc.min(-1)
-    stone = m & (idx > 0) & (PFAM[idx] == 'neutral') & (KIND[idx] != 'glow')
-    closed = ~dilate(~dilate(stone, 2, nb=N8), 2, nb=N8)
-    lab, n = components(~closed, nb=N4)
-    edge = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]])).tolist())
-    sil = closed | (np.isin(lab, [k for k in range(1, n + 1) if k not in edge]))
     gsat = (idx > 0) & (PFAM[idx] == 'green') & (((KIND[idx] == 'body') & (chroma >= 40)) | (KIND[idx] == 'outline'))
-    fr &= ~(gsat & ~sil)
+    # (seeded only by his slime itself: the big bright saturated bodies reaching outside the
+    # polygons, not by the stone's own green-lit edges that the polygons leave out)
+    bright = (idx > 0) & (PFAM[idx] == 'green') & (KIND[idx] == 'body') & (chroma >= 50) & (lum(pc) > 95)
+    lab, n = components(bright, nb=N4)
+    sizes = np.bincount(lab.ravel(), minlength=n + 1)
+    outk = np.unique(lab[bright & ~m])
+    reach = np.isin(lab, [k for k in outk if k and sizes[k] >= 150])
+    for _ in range(3):
+        reach |= dilate(reach, 1, nb=N8) & gsat
+    fr &= ~reach
     blocks = np.zeros((H, W), np.int8)
     for k in range(len(cfg['frame']) - 1, -1, -1):
         pm = poly_mask(H, W, [cfg['frame'][k]], x0, y0, sx_of(cfg), SY)
         blocks[pm] = min(k, cfg.get('frame_blocks', 3) - 1)
+    stone = fr & (PFAM[idx] == 'neutral')
+    for k in range(cfg.get('frame_blocks', 3)):
+        for x in range(W):
+            ys = np.nonzero(stone[:, x] & (blocks[:, x] == k))[0]
+            col = fr[:, x] & (blocks[:, x] == k) & (PFAM[idx[:, x]] == 'green')
+            if len(ys):
+                col[ys.min():] = False
+            fr[:, x] &= ~col
     return fr, blocks
 
 

@@ -1682,6 +1682,9 @@ function wall(): WorldSprite {
   // line (where the neighbour hid its top, the line runs on from its nearest open columns), each
   // hidden pixel taking the pillar's own pixel at the same depth below the top in its nearest open
   // column (so its outline, bevel and faces run on), or its nearest pixel in the same row.
+  // (Only above the wall's base rows: down there his thorns and the dark roots stand, see the base
+  // underlay below, so a completion never shows as a block with straight sides.)
+  const BASE_Y = k.ay - 8;
   const fill = new Map<number, Ix>();
   for (const c of clusters) {
     const f = blank(W, k.h);
@@ -1704,7 +1707,7 @@ function wall(): WorldSprite {
     for (const x of xs) {
       if (open.has(x) && topC.has(x)) {
         // Open column: only what another cluster covers below its top (a seam bar crossing in).
-        for (let y = topC.get(x)! + 1; y <= ground; y++) {
+        for (let y = topC.get(x)! + 1; y < BASE_Y; y++) {
           const n = y * W + x;
           if (cr.d[n] && lab[n] !== c) f.d[n] = at(cr, x, y - 1) && lab[n - W] === c ? cr.d[n - W] : f.d[n - W] || 0;
         }
@@ -1724,7 +1727,7 @@ function wall(): WorldSprite {
       }
       const e = clamp(Math.round(est), cb[1], ground);
       const src = nearOpen(x);
-      for (let y = e; y <= ground; y++) {
+      for (let y = e; y < BASE_Y; y++) {
         const n = y * W + x;
         if (lab[n] === c) continue;
         if (!cr.d[n] && y >= (topC.get(x) ?? ground)) continue;
@@ -1765,6 +1768,33 @@ function wall(): WorldSprite {
     let cl = lab[n] >= 0 ? lab[n] : colCluster[x];
     for (let d = 1; d < W && cl < 0; d++) cl = colCluster[clamp(x - d, 0, W - 1)] >= 0 ? colCluster[clamp(x - d, 0, W - 1)] : colCluster[clamp(x + d, 0, W - 1)];
     thornCl[n] = cl;
+  }
+  // His base (the rows from BASE_Y down: the thorns' roots and the dark crystal feet), per cluster:
+  // its own crystal and the thorns that go up with it, grown by 2 px so the roots of neighbours
+  // overlap irregularly (no straight cut). Once a cluster stands (or is within 8 px of it) his base
+  // under it is laid under the frame, so no grass shows between the roots while the thorns come up.
+  const keyIx = union(sm, cr, loose, vines);
+  const baseMask = new Map<number, Uint8Array>();
+  for (const c of clusters) {
+    let m = new Uint8Array(W * k.h);
+    for (let n = 0; n < W * k.h; n++) if ((lab[n] === c || thornCl[n] === c) && Math.floor(n / W) >= BASE_Y - 2) m[n] = 1;
+    for (let it = 0; it < 2; it++) {
+      const o = m.slice();
+      for (let n = 0; n < W * k.h; n++) {
+        if (m[n]) continue;
+        const x = n % W, y = (n - x) / W;
+        for (let dy = -1; dy <= 1 && !o[n]; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const u = x + dx, v = y + dy;
+            if (u >= 0 && v >= 0 && u < W && v < k.h && m[v * W + u]) {
+              o[n] = 1;
+              break;
+            }
+          }
+      }
+      m = o;
+    }
+    baseMask.set(c, m);
   }
   const rise: Canvas[] = [];
   for (let r = 0; r < RISE_N; r++) {
@@ -1818,7 +1848,10 @@ function wall(): WorldSprite {
       v.d[y * W + x] = vines.d[n];
     }
     const smA = smooth(0.25, 0.9, T), bitsA = smooth(0.6, 1, T);
-    rise.push(render(W, k.h, [[sm, smA], [lit], [loose, bitsA], [v], [bits, bitsA]]));
+    // (Standing, or within 8 px of it: its last steps.)
+    const standing = clusters.filter((cl) => lift.get(cl)! <= 8);
+    const base = keep(keyIx, (x, y) => y >= BASE_Y && standing.some((cl) => !!baseMask.get(cl)![y * W + x]));
+    rise.push(render(W, k.h, [[base], [sm, smA], [lit], [loose, bitsA], [v], [bits, bitsA]]));
   }
   const idle = range(IDLE_N).map((i) => {
     if (!i) return render(k.w, k.h, [[sm], [cr], [loose], [vines], [bits]]);

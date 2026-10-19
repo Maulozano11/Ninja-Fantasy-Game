@@ -29,25 +29,36 @@ The two pictures share one anchor: the centre of the body's mass.
 In-betweens (1-4 from his LEFT to his RIGHT picture, a fifth of the way each; 6-7 back, a third each):
 the coils slither. Both spines are laid on one parameter by his landmarks (the tail's low point, the top
 of the hump, the coil on the ground under the neck), so each point of the body moves evenly from its
-place in one picture to its place in the other (his hump to his hump). The tail end, from its low point
-to the tip, bends instead: its turning and its length go from one picture's to the other's, and its tip
-is led on the straight line between his two tips (evenly, a few px a frame), the bend solved back from
-it, so his curled tip opens into his other picture's long point without standing up as a stalk. His
-coil pixels are carried along the moving spine (each keeps its place along the body and across it as a
-fraction of his half-width, nearest pixel). They come from his starting picture, except from the tail
-end up, which takes the other picture's pixels, as far up the body as gives the frame its even share
-of the change in light. The head piece is his starting picture's, moved whole by whole pixels: it draws
-back, strikes forward and settles, and the neck bends to follow it; on the frame before it changes over
-to his other picture's, the drops (and the little bubble at the neck) already change. His mist blobs
-drift back and shrink into smaller copies of themselves one after another while the other picture's
-grow in; the blobs he laid over the coil go with the coil under them. How far they have faded is set so
-the frame's light goes evenly between his two pictures: no frame flashes, and the build fails if a
-frame's light (alpha x luma) or opaque mass is more than 12 % off its neighbour's.
+place in one picture to its place in the other (his hump to his hump). His coil pixels are carried along
+the moving spine (each keeps its place along the body and across it as a fraction of his half-width,
+nearest pixel), in whole stretches cut at his landmarks: the hump and the coil under the neck always from
+the nearer picture (his lattice, his yellow saddles and his belly band stay whole, carried the shortest
+way); the tail end, where his RIGHT is the brighter, changes over a frame apart from the hump.
+His tail tip (the last TIP_LEN px) is a rigid piece of his own pixels, the nearer picture's, turned about
+its joint (supersampled nearest pixel: his thin taper on every frame). Its angle turns one way from his
+LEFT tip's to his RIGHT one's (over the top: the curled tip rises, leans over to the left and lies down)
+and back the same way; its joint goes along the line between his two joints, sunk a little at mid-sweep,
+and the tip travels its path at an even speed in each half. The tail end from the low point to the joint
+bends (its turning and step lengths go from one picture's to the other's) plus the smallest smooth extra
+turn that carries the joint there with the heading the tip piece needs.
+The head piece is a picture's own, moved whole by whole pixels: it draws back, strikes forward and recoils;
+it changes over to his other picture's head inside the recoil (3 -> 4) and as the head sways back (5 -> 6),
+and the venom drops change a frame apart from it. His mist blobs drift back and shrink into smaller copies
+of themselves while the other picture's grow in: his big clouds evenly over the whole move (his great
+cloud over the hump exactly), his small puffs one after another; the blobs he laid over the coil go with
+the coil, and only those he painted over it cover it (his hump cloud stays behind the coil's rim). The
+light is aimed at an even ramp between his two pictures: the small puffs fade a little faster or slower
+and the other big clouds run a little ahead or behind (at most CLOUD_TRIM of a frame's share); a frame
+that cannot reach its share keeps its light and the frames between are re-aimed on the line between such
+frames. The build fails if a frame's light (alpha x luma) or opaque mass is more than 12 % off its
+neighbour's.
 
 Checks (the build writes nothing if one fails): no pixel on the canvas edge; no enclosed gap, no body
 speck, no see-through pixel walled in; on his two pictures the head keeps his amount of red and of
 ochre (within 15 %), his eye stays rosy-amber and his mist at the neck base is all there; the tail never
-rises higher or reaches further out than his two tails, and its tip moves at most 13 px a frame.
+rises higher or reaches further out than his two tails; the tail tip is no wider than his own tips (over
+its last 3 and 10 px), its angle and height move one way within each half of the loop, and it moves at
+most 15 px a frame.
 
 The result is a TypeScript data module (palette + run-length rows) that the generator
 (tools/world-sprites/vfx-beast-cobra.ts) decodes, so the build needs no image files. Deterministic.
@@ -905,7 +916,7 @@ print('tail tip piece:', {k: dict(j=v['j'], px=int(v['mask'].sum()), chord_deg=r
       'sweep', round(np.degrees(SWEEP), 1))
 
 
-TIP_DIP = 4.0  # px the joint sinks at mid-sweep, so the tip never rises while it turns over the top
+TIP_DIP = 5.0  # px the joint sinks at mid-sweep, so the tip never rises while it turns over the top
 
 
 def tip_raw(s):
@@ -941,9 +952,9 @@ def tip_plan(a, w):
 def curl_tail(P, a, b, w):
     """The tail end (from the joint of his tip piece to the tail's low point) bent rather than slid: its
     turning along the body and the length of each step go from picture a's to b's, hanging from the blended
-    body at its low point, plus the smallest smooth extra turn (none at the low point, a cubic in the place
-    along the tail end) that puts the joint where tip_plan says with the heading that carries his tip at its
-    angle. His tip itself is a rigid piece of his pixels (render_coils): here the spine past the joint is
+    body at its low point, plus the smallest smooth extra turn (none at the low point, a polynomial in the
+    place along the tail end, minimum-norm Newton steps) that puts the joint where tip_plan says with the
+    heading that carries his tip at its angle. His tip itself is a rigid piece of his pixels (render_coils): here the spine past the joint is
     that piece's spine, turned with it."""
     J = TAIL_J
     tha, la = seg_geom(C[a]['Pm'])
@@ -1058,10 +1069,7 @@ def render_coils(a, b, t, head, Pt, coil):
     s_, v_, dist = project(Pt, Q)
     u = to_index(s_, Pt)  # index on the common parameter
     wa, wb = width_at(a, u, v_), width_at(b, u, v_)
-    w = wa + (wb - wa) * t
-    # The tail ends in a point (his tail tips curl away from the line, so the line alone would end it blunt).
-    w = w * np.clip((u * C[a]['segm'] + 1.5) / TIP_TAPER, 0.2, 1.0) ** 0.7
-    w = np.maximum(w, 0.5)
+    w = np.maximum(wa + (wb - wa) * t, 0.5)  # (the tail's point is his own tip piece: see place_tip)
     ca, oka = sample_coils(a, u, v_ * wa / w)
     cb, okb = sample_coils(b, u, v_ * wb / w)
     inside = np.abs(v_) <= w + 1.0
@@ -1286,11 +1294,34 @@ def frame(spec):
     ring = edge4(body)
     out[ring, :3] = OUTLINE
     out[body, 3] = 255
-    spec['body_light'] = float((out[..., 3] / 255.0 * (out[..., :3] @ LUMA / 255.0)).mean())
-    spec['body_light_raw'] = float((body * (col @ LUMA / 255.0)).mean())
     dd = dr & ~body
     # The mist: his blobs, each moved whole (whole pixels) and faded; behind the body unless his blob lay over it.
     occupied = body | dd
+    # His great cloud over the hump: what shows of it beside the coil grows (or shrinks) by the same amount every
+    # frame. It sits behind the hump, so a shrunk copy hides more of itself than its area says: how far it has
+    # faded is found (a bisection) so the part that shows is its even share of what shows on his picture.
+    if Pt is None:
+        for j, m in enumerate(c['blobs']):
+            if float(c['mist_a'][m].sum()) >= HUMP_CLOUD:
+                c.setdefault('cloud_seen', {})[j] = float((mist_layers([(src, j, 1.0, (0.0, 0.0), 'even')])[0] * ~occupied).sum())
+    else:
+        items = []
+        spec['cloud_fade'] = []
+        for it in spec.setdefault('mist_nominal', spec['mist']):  # (the even fades, kept for a second pass)
+            k_, j_, fade_, mv_, kind_ = it
+            if kind_ == 'even' and j_ in C[k_].get('cloud_seen', {}):
+                want = fade_ * C[k_]['cloud_seen'][j_]
+                lo_, hi_ = 0.0, 1.0
+                for _ in range(14):
+                    mid_ = (lo_ + hi_) / 2
+                    if float((mist_layers([(k_, j_, mid_, mv_, 'even')], Pt)[0] * ~occupied).sum()) < want:
+                        lo_ = mid_
+                    else:
+                        hi_ = mid_
+                it = (k_, j_, (lo_ + hi_) / 2, mv_, kind_)
+                spec['cloud_fade'].append(round((lo_ + hi_) / 2, 3))
+            items.append(it)
+        spec['mist'] = items
 
     base = (out[..., 3] / 255.0) * (out[..., :3] @ LUMA / 255.0)
     base[dd] = (snap_head(dcol[dd], dwarm[dd]) @ LUMA / 255.0) if dd.any() else 0.0
@@ -1406,7 +1437,6 @@ def frame(spec):
 
 
 NECK_KEEP = 10.0  # px of neck under the cut that move with the head piece
-TIP_TAPER = 9.0  # px over which the tail narrows to its point in the in-betweens
 DRIFT, RISE = 9.0, 3.0  # px a mist blob drifts back (and up) while it fades
 
 
@@ -1440,8 +1470,10 @@ def mist(a, b, t):
 
 
 # His LEFT is frame 0 and his RIGHT frame 5 (as on our kit). The body moves evenly: a fifth of the way per
-# frame out (1-4) and a third per frame back (6-7). The head piece of an in-between is his picture the move
-# starts from (his two heads are nearly one drawing); its drops change over one frame before it does.
+# frame out (1-4) and a third per frame back (6-7). The head piece changes over to his other picture's inside
+# its largest move (the recoil after the strike, 3 -> 4) and as it sways back (5 -> 6), easing 1 px a frame
+# back into his LEFT (6 -> 7 -> 0); the drops change a frame apart from it. `coil`: the stretch of the body
+# (between landmarks: 0 tail tip, 1 tail low point, 3 coil under the neck) taken from b, the rest from a.
 FRAMES = [
     dict(a='L', b='R', t=0.0, src='L', strike=(0, 0)),
     dict(a='L', b='R', t=0.2, src='L', strike=(-2, -1), coil=(0, 0)),
@@ -1481,6 +1513,7 @@ for i, f in enumerate(FRAMES):
     f['light_target'] = l0 + (l1 - l0) * p0 / (p0 + p1)
     fly[i] = frame(f)
 print('mist gain per frame', [round(f['mist_gain'], 3) for f in FRAMES], 'big-cloud trim', [round(f.get('cloud_trim', 0.0), 3) for f in FRAMES],
+      'hump cloud fade', [f.get('cloud_fade') for f in FRAMES],
       'light aimed at', [round(f['light_target'] * 1000, 2) if 'light_target' in f else None for f in FRAMES], 'kept (out of reach)', [i for i, p_ in enumerate(PINNED) if p_ and FRAMES[i]['t'] > 0])
 
 
@@ -1657,9 +1690,9 @@ for i0, i1, sgn in ((0, 5, 1), (5, 8, -1)):
     da = np.diff(np.unwrap(ang))
     if (da * np.sign(da.sum()) < -1e-6).any():
         fail(f'frames {i0}-{i1}: the tail tip turns back ({np.degrees(da).round(1).tolist()} deg)')
-    for nm, v, slack in (('tip', ys_, 0.5), ('drawn tip end', ends, 1.0)):
+    for nm, v in (('tip', ys_), ('drawn tip end', ends)):
         dv = np.diff(v) * sgn
-        if (dv < -slack).any():  # (the drawn tip moves by whole px: 1 px of rounding)
+        if (dv < -0.5).any():  # (half a px of slack for the drawn tip's rounding)
             fail(f'frames {i0}-{i1}: the {nm} goes back up/down ({np.round(v, 1).tolist()})')
 if max(TIP_STEP) > 15:
     fail(f'the tail tip jumps {max(TIP_STEP):.1f} px in one frame')
@@ -1763,10 +1796,10 @@ write_module(frames_out, (OW, OH), (OAX, OAY), [
     "his LEFT picture is fly frame 0 and his RIGHT picture frame 5, his pixels one to one (his character is",
     f"{HIS_CHAR_H:g} px tall in that sheet against our {CHAR_H:g}: the scale is 1), his mist over the coil where he",
     "painted it and his head's warm accents (eye, jaws, hood spot) on colours of their own hue. Frames 1-4 and",
-    "6-7 carry his coils along a spine that moves evenly from one of his shapes to the other (the tail bends",
-    "its tip along the line between his two tips), move his head piece whole (draw back, strike, settle) and",
-    "shrink his mist blobs out and in, so the light goes evenly between his two pictures. Facing right; the",
-    "anchor is the centre of the body's mass.",
+    "6-7 carry his coils (whole stretches of the nearer picture) along a spine that moves evenly from one of his",
+    "shapes to the other, turn his own tail tip whole over the top from one of his tips to the other, move his",
+    "head piece whole (draw back, strike, recoil) and shrink his mist blobs out and in, so the light goes",
+    "evenly between his two pictures. Facing right; the anchor is the centre of the body's mass.",
 ])
 if DEBUG:
     info = {
@@ -1777,7 +1810,14 @@ if DEBUG:
                  '5': {'pic': 'R', 'anchor_in_sheet': [cents['R'][0] + KEYS['R']['off'][0], cents['R'][1] + KEYS['R']['off'][1]]}},
         'size': [OW, OH], 'anchor': [OAX, OAY], 'fps': FPS,
         'light': [round(v * 1000, 2) for v in LIGHT], 'opaque': [int(v) for v in MASS],
-        'frames': [{k: (v if not isinstance(v, (np.floating, float)) else round(float(v), 3)) for k, v in f.items() if k in ('a', 'b', 't', 'src', 'strike', 'drips', 'mist_gain', 'switch')} for f in FRAMES],
+        'frames': [{k: (v if not isinstance(v, (np.floating, float)) else round(float(v), 3)) for k, v in f.items() if k in ('a', 'b', 't', 'src', 'strike', 'drips', 'coil', 'mist_gain', 'cloud_trim', 'cloud_fade')} for f in FRAMES],
+        'light_aimed': [round(f['light_target'] * 1000, 2) if 'light_target' in f else None for f in FRAMES],
+        'light_kept_out_of_reach': [i for i, p_ in enumerate(PINNED) if p_ and FRAMES[i]['t'] > 0],
+        'tail_tip': {'piece_px': {k: int(v['mask'].sum()) for k, v in PIECE.items()}, 'sweep_deg': round(float(np.degrees(SWEEP)), 1),
+                     'angle_deg': np.round(np.degrees(TIP_ANG), 1).tolist(),
+                     'tip_rel_anchor': [np.round(p - [AX, AY], 1).tolist() for p in TIPS],
+                     'end_rel_anchor': [np.round(np.array(e) - [AX, AY], 1).tolist() for e in TIP_END],
+                     'widths_last10': [w[:10].round(1).tolist() for w in TIP_W]},
         'tail_tip_steps': [round(v, 1) for v in TIP_STEP],
         'head_accents': HEAD_ACCENTS, 'eye': {str(k): v for k, v in EYE.items()}, 'neck_mist': NECK_MIST,
     }

@@ -1144,7 +1144,23 @@ function wall(kind: 'wall' | 'wall_diag', label: string, seed: number): WorldSpr
     if (i === RISE - 1) return idle[0];
     const pf = ease((i + 1) / 5), ps = clamp((i - 1.5) / 9.5, 0, 1), pt = clamp((i - 7) / 3, 0, 1);
     const dB = blk.map((b) => Math.round((1 - pf) * (b.hmax + 2)));
-    const fr = union(...blk.map((b, k) => (dB[k] === 0 ? b.B : remap(b.B, (x, y) => (b.f[x] < 0 || y > b.f[x] ? null : [x, y - dB[k]])))));
+    // (the 3/4 wall's beam runs along the diagonal and is thin between its plaques: pushed up by a
+    // shift it would come up in dashes, so it rises whole, growing up from its own foot line)
+    const grow = (b: (typeof blk)[number]) => {
+      const t = tops(b.B);
+      return remap(b.B, (x, y) => {
+        if (b.f[x] < 0 || y > b.f[x]) return null;
+        const hx = b.f[x] - t[x] + 1;
+        const src = b.f[x] - (b.f[x] - y) / Math.max(0.05, pf);
+        return src < t[x] - 0.5 || hx <= 0 ? null : [x, Math.max(t[x], Math.round(src))];
+      });
+    };
+    const fr = union(...blk.map((b, k) => (dB[k] === 0 ? b.B : kind === 'wall_diag' && k === 2 ? grow(b) : remap(b.B, (x, y) => (b.f[x] < 0 || y > b.f[x] ? null : [x, y - dB[k]])))));
+    if (kind === 'wall_diag') {
+      // (the slime rides on the growing beam: its median thickness still to come)
+      const th = blk[2].f.map((f, x) => (f < 0 ? -1 : f - tops(blk[2].B)[x])).filter((v) => v >= 0).sort((a, b) => a - b);
+      dB[2] = Math.round((1 - pf) * th[th.length >> 1]);
+    }
     let sl: Layer | null = null;
     if (ps > 0) {
       const { s } = idleAt(fract((i - (RISE - 1)) / IDLE));

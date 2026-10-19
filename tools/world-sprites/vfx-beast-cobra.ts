@@ -14,13 +14,16 @@
 //           neck base), his head's warm accents (rosy-amber eye, crimson jaws, ochre hood spot) on
 //           colours of their own hue. 1-4 (left to right, a fifth of the way each) and 6-7 (back, a
 //           third each): the coils slither (his coil pixels carried along a spine that moves evenly
-//           from one of his shapes to the other, his hump to his hump; the tail end bends, its tip led
-//           on the straight line between his two tips, so it never stands up as a stalk), his head
-//           piece (head, jaws, hood) moves whole by whole pixels: it draws back, strikes forward and
-//           settles, the neck bending to follow, and its venom drops change over one frame before it
-//           does; his mist blobs shrink out and grow in, the ones over the coil going with it. No frame
-//           flashes: the light goes evenly between his two pictures, and the converter fails the build
-//           if a frame's light (alpha x luma) or opaque mass is more than 12 % off its neighbour's.
+//           from one of his shapes to the other, in whole stretches of the nearer picture, so his
+//           lattice and yellow saddles stay whole); his tail tip is a rigid piece of his own pixels
+//           turned whole over the top from his curled LEFT tip to his long RIGHT point and back, at an
+//           even speed, so it keeps his thin taper on every frame; his head piece moves whole by whole
+//           pixels (draws back, strikes, recoils) and changes over to his other head inside the recoil
+//           (3 -> 4) and as it sways back (5 -> 6), the drops a frame apart; his mist blobs shrink out
+//           and grow in (his great cloud over the hump evenly, behind the coil's rim). No frame
+//           flashes: the light goes on an even ramp between his two pictures, and the converter fails
+//           the build if a frame's light (alpha x luma) or opaque mass is more than 12 % off its
+//           neighbour's, or if the tail tip is wider than his or turns back within a half of the loop.
 //
 // The anchor is the centre of the body's mass, the same point in both of his pictures. Facing right
 // (the renderer mirrors it when the cobra flies left). To merge into vfx-beasts.ts: import

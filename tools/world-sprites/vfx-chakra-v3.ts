@@ -1073,7 +1073,8 @@ const coolAll = (ix: Ix, n: (x: number, y: number) => number): Ix =>
  * as it goes: faint, it reads as blue haze, not as a grey cap.
  */
 function coolTop(P: Ix, fadeTop: number): Ix {
-  return coolAll(P, (_, y) => (y < fadeTop ? Math.ceil(3 * (1 - y / fadeTop)) : 0));
+  const zone = fadeTop + 4;
+  return coolAll(P, (_, y) => (y < zone ? Math.ceil(3 * (1 - y / zone)) : 0));
 }
 
 function blast(): WorldSprite {
@@ -1114,8 +1115,9 @@ function blast(): WorldSprite {
   const FEATHER = 0.01, DONE = 0.5 + FEATHER;
   const wipe = (f: number, a = 1): Alpha => (f >= DONE ? a : (x, y) => a * clamp((f - ang(x, y)) / FEATHER, 0, 1));
   const hotEdge = (ix: Ix, f: number) => (f >= DONE ? ix : level(ix, (x, y) => (ang(x, y) > f - 0.035 && ang(x, y) <= f ? 1 : 0)));
-  // A ragged edge across the pillar: irregular (two scales of noise), 1 to 6 px deep.
-  const ragged = (x: number, seed: number) => 1 + 3.2 * noise(x, 0, 7, seed) + 1.8 * noise(x, 0, 2.5, seed + 1);
+  // A ragged edge across the pillar: irregular (a slow swell and a random 0-3 px per column), 1 to
+  // 8 px deep, never a regular row of teeth.
+  const ragged = (x: number, seed: number) => 1 + 4 * noise(x, 0, 6, seed) + 3 * hash(x, 0, seed + 1);
   const thin = (w: number) => (w === 1 ? P : scaleAbout(P, k.ax, 0, w, 1));
   const up = (ix: Ix, dy: number) => displace(ix, () => [0, -dy]);
   const fr: Canvas[] = [];
@@ -1134,7 +1136,7 @@ function blast(): WorldSprite {
   //      frame 2, then climbs out of the circle with a ragged front, soft (alpha over 4 px) and a
   //      step hot.
   const sealF = [0.2, 0.4, DONE, DONE], lineF = [0.06, 0.26, 0.45, DONE], lineK = [0.55, 0.75, 0.95, 1];
-  const hazeK = [0.18, 0.42, 0.6, 0.8];
+  const hazeK = [0.2, 0.5, 0.6, 0.8];
   const pillarF = [0, 0, 0.34, 0.76], pillarW = [0, 0, 0.72, 0.9];
   for (let i = 0; i < 4; i++) {
     let cur = none(k);

@@ -282,7 +282,9 @@ SHARP = np.clip(FLAT + 0.5 * (FLAT - gauss(FLAT, 1.0)), 0, 255)
 # pieces: [(name, polygons)]: named pieces split off 'main' (first match wins);
 # bits:   the largest loose bit (game px) still counted as a flying rock or pebble;
 # streaks: his thin pale speed streaks keep his own cream (their colour from his streak pixels only,
-#         with palette slots of their own), so they read as light glints, not as the tan trail.
+#         with palette slots of their own), so they read as light glints, not as the tan trail; a
+#         streak covering a quarter of a game pixel is drawn there opaque, and the dark JPEG bleed
+#         of his navy panel just beside a streak is dropped as panel, not art (no dark sleeves).
 
 BOULDER = [(146, 215), (150, 192), (160, 178), (178, 166), (195, 158), (215, 153), (238, 153), (252, 163), (260, 180),
            (265, 205), (265, 232), (259, 252), (248, 268), (230, 281), (208, 287), (185, 284), (166, 272), (153, 255), (147, 236)]

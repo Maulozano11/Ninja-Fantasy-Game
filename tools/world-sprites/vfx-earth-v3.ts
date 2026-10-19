@@ -1340,7 +1340,12 @@ function multi(): WorldSprite {
   return vfxSprite('multi', 'Earth multi: three rock bullets with dust trails', [K.ax, K.ay], { fly: { frames: finish(fr, 0), fps: FLY_FPS, loop: true } });
 }
 
-/** breath: his cone of dust. The cloud rolls outward from a still origin (his puffs slide whole); the rocks tumble outward and the streaks slide. */
+/**
+ * breath: his cone of dust. The cloud rolls outward from a still origin (his puffs slide whole);
+ * the rocks tumble outward and the streaks slide. Every rock is one rigid group (its pieces 2 px
+ * apart or less, with the face its rim encloses), moved in whole pixels on one beat; the specks at
+ * the cone's very tip stay with the cloud.
+ */
 function breath(): WorldSprite {
   const K = key('breath'), seed = 7500;
   const ox = K.ax, oy = K.ay;  // the cone's tip (the caster's mouth or hands): the anchor
@@ -1440,13 +1445,14 @@ function breath(): WorldSprite {
 // --- stream -----------------------------------------------------------------------------------------
 
 /**
- * The spikes in a row of his rock. A spike's tip is a piece of rock reaching above `line - 16`; it
+ * The spikes in a row of his rock. A spike's tip is a piece of rock reaching above `line - 16`. A
+ * piece of rock that never reaches the rubble band (a chunk flying above it) is taken whole, its
+ * outline and rim with it, so it moves as one rigid piece. Otherwise the tip
  * is followed down row by row, one run of rock a row that overlaps the run above and widens by at
  * most 1 px a side a row, down to `line - 8`, above the rubble. Through the rubble band it is its
  * own body only (reached through body pixels from its body above, within its two sides run on
  * straight), so the pebbles heaped against its foot, which his outline parts from it, stay rubble.
- * A piece whose run stops above the band (a flying pebble) is a spike too: it moves with the
- * wave. Everything else is rubble.
+ * Everything else is rubble.
  */
 function spikeMask(rock: Layer, line: number): Uint8Array {
   const { w } = rock;
@@ -1669,9 +1675,12 @@ interface Step { s: number; sy?: number; d: number; t: number; cool: number; dim
  * for three frames with only a little churn and drift, then the dust spreads, settles into browner
  * dust and fades from its rim inward while the rocks fly on and fall, over the last six frames.
  * Each rock wears away from its outline inward over frames 8-11, on a beat of its own, shedding a
- * chip or two that fall, and the pebbles wear away and the ray dashes fade one by one, so the last
- * frame holds no solid rock: only faint dust is left, and the end does not pop. Every step is
- * small, so nothing flashes.
+ * chip or two that fall, rounding off into a pebble as it goes, and the pebbles wear away and the
+ * ray dashes fade one by one, so the last frame holds no solid rock: only faint dust and the pale
+ * ghosts of the rocks' last remnants (each laid over the dust at its own alpha) are left, and the
+ * end does not pop. In the build-up every big rock bursts out from the core with the dust, and
+ * each pebble and mark that comes later comes in through alpha over the frames before it shows
+ * whole. Every step is small, so nothing flashes.
  */
 // (the dust fades through its alpha, rim first, in soft bands; only the last frame also parts it
 // into wisps)
@@ -2128,9 +2137,11 @@ function multiHit(): WorldSprite {
  *     rocks fly out from the centre.
  *   - His picture holds for three frames (4-6), the dust stirring a little and the rocks drifting.
  *   - A long settle (7-15): the dust billows out, settles browner and thins from its rim inward to a
- *     faint whole cloud (it never parts into holes), the rocks fall and wear away, the rocks at the
- *     crystals' feet wear away where they stand, the crystals sink back into the cloud (the outer
- *     ones a little faster, as the rim thins first) and the shadow fades.
+ *     faint whole cloud (it never parts into holes or lone see-through specks), the rocks fall and
+ *     wear away, the rocks at the crystals' feet wear away where they stand, the crystals sink back
+ *     into the cloud (the outer ones a little faster, as the rim thins first) and the shadow fades.
+ *     Nothing vanishes in one cut: each rock's and each crystal's last remnant pales out through
+ *     alpha over two frames, and his flecks pale into the cloud over three, the high ones sinking.
  * The dust behind his crystals (which his picture never shows) is a smooth fill from the cloud
  * round them, clipped to the cloud's own outline, so a sinking crystal uncovers his cloud; behind
  * his outer crystals and the rocks at their feet, which stand half outside his cloud, his dust
@@ -2411,13 +2422,15 @@ function blast(): WorldSprite {
  * footprint runs into the screen) rises as one block from one shared ground line, so its top comes
  * up level. Nothing floats: the loose pebbles are not lifted with the stone but land at their
  * resting places over the last frames (each on a beat of its own, a few px from above, into his
- * dust there), the end-on pillar's heap of rubble (`rubble`, anchor-relative) pushes up out of the
- * ground at its foot over the last six frames, after the stone, and only the dust he shows is
- * drawn (none from behind the stone, which would hang in the air while the stone is down).
- * The end-on pillar and its heap rise through one fixed ground line, the bottom outline of his
- * picture's foot (under the heap), so the foot never moves from the first frame to the last: the
- * pillar is cut along it in every frame (it carries on down behind his heap, its bottom course
- * repeated where his picture hides it), and the heap comes up in front of it through the same line.
+ * dust there), and only the dust he shows is drawn (none from behind the stone, which would hang
+ * in the air while the stone is down).
+ * The end-on pillar and its heap of rubble (`rubble`, anchor-relative) rise as one block, by the
+ * same offset in every frame, through fixed ground lines: the pillar through the bottom outline of
+ * his picture's foot (under the heap), the heap through its own lowest pixels. So the foot never
+ * moves from the first frame to the last, the heap breaks the ground once the pillar is nearly up,
+ * and no rubble rock is ever torn along the line between heap and pillar (the pillar carries on
+ * down behind his heap, its bottom course repeated where his picture hides it, always covered by
+ * the heap where the heap shows).
  * `idle` (IDLE_N frames) keeps the stone still while the moss and vines stir, the dust at the base
  * drifts and the pebbles settle.
  */
@@ -2566,8 +2579,9 @@ function wall(kind: 'wall' | 'wall_diag' | 'wall_depth', label: string, seed: nu
  * `aura_back` goes BEHIND the character (his two columns of glossy golden pebbles and rocks, the
  * dust ring's far arc and its sides); `aura` goes OVER it (the ring's near arc across the waist and
  * the pebbles on the ground at the feet). His figure is not tinted, so the middle stays clear. In
- * AURA_N frames the rocks bob in a wave that climbs the columns, the small pebbles rise and wrap,
- * and the ring's dust flows round (both layers in step).
+ * AURA_N frames the rocks bob in a wave that climbs the columns (a pixel at a time), the small
+ * pebbles rise and wrap, and the ring's dust flows round (both layers in step); the bits of his rim
+ * on the ring stay on its edge.
  */
 function aura(): WorldSprite[] {
   const KB = key('aura_back'), KF = key('aura'), seed = 8000;

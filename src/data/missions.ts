@@ -6,7 +6,7 @@ import type { Supplies } from '../types/mission';
 import type { CampSite } from '../rules/rest';
 import type { SpriteAppearance } from '../sprite/types';
 import { getItem } from '../sprite/catalog';
-import { deriveStats } from '../rules/derived';
+import { deriveStats, SHEET_VERSION } from '../rules/derived';
 import { LEGENDARY_PRESETS } from './shinobiData';
 import type { EncounterId } from '../battle/encounters';
 
@@ -199,7 +199,7 @@ const item = (id: string, ...colors: string[]) => ({ id, colors });
 function companion(base: ShinobiCharacter, c: Pick<ShinobiCharacter, 'id' | 'name' | 'title' | 'level' | 'clan' | 'shinobiClass' | 'stats' | 'selectedFeats' | 'selectedJutsus' | 'appearance'>): ShinobiCharacter {
   const armorStyle = ((c.appearance?.slots.armor && getItem(c.appearance.slots.armor.id)?.statsArmor) || 'Ronin Wanderer Cloak') as ArmorStyleType;
   const d = deriveStats({ level: c.level, stats: c.stats, clan: c.clan, shinobiClass: c.shinobiClass, armor: armorStyle, feats: c.selectedFeats });
-  return { ...base, ...c, dojutsu: 'None', armorStyle, ...d, currentHp: d.maxHp, currentChakra: d.maxChakra };
+  return { ...base, ...c, dojutsu: 'None', armorStyle, ...d, sheetVersion: SHEET_VERSION, currentHp: d.maxHp, currentChakra: d.maxChakra };
 }
 
 const presetById = (id: string): ShinobiCharacter => (LEGENDARY_PRESETS.find((p) => p.character.id === id) ?? LEGENDARY_PRESETS[0]).character;

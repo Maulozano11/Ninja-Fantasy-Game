@@ -7,7 +7,7 @@ import { SHINOBI_CLASSES } from '../../data/shinobiData';
 import { effectiveMaxHp } from '../../rules/derived';
 import { activityBlocker, healingJutsuOf, StopState } from '../../rules/rest';
 import { chakraDiceLeft, hitDiceLeft } from '../../rules/ninja';
-import { abilityMod } from '../../rules/checks';
+import { abilityMod, abilityScores } from '../../rules/checks';
 import { effectMods } from '../../rules/effects';
 import { ShinobiSpriteCanvas } from '../ShinobiSpriteCanvas';
 import { ruleText } from '../../game/ruleText';
@@ -66,7 +66,7 @@ export function ShortStop({
           const acted = stop.acted.includes(c.id);
           const target = targets[c.id] ?? mostHurt;
           const jutsu = healingJutsuOf(c);
-          const con = abilityMod(c.stats.con);
+          const con = abilityMod(abilityScores(c).con);
           return (
             <div key={c.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 space-y-2">
               <div className="flex gap-2">

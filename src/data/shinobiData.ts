@@ -10,6 +10,7 @@ import {
   ShinobiFeat,
   JutsuDefinition,
   ShinobiCharacter,
+  AbilityScores,
 } from '../types/shinobi';
 import type { ItemChoice, SpriteAppearance } from '../sprite/types';
 
@@ -21,8 +22,8 @@ export const CLANS_DATA: Record<
     japaneseName: string;
     description: string;
     lineageTraits: string;
-    /** The clan's ability bonuses: shown on the clan card, not applied yet (docs/CLANS_DESIGN.md, D2). */
-    statBonuses: { stat: string; bonus: number }[];
+    /** The clan's ability bonuses, added to the base scores wherever numbers are derived (docs/CLANS_DESIGN.md, D2). */
+    statBonuses: { stat: keyof AbilityScores; bonus: number }[];
     availableDojutsu: DojutsuType[];
     recommendedChakraColor: string;
     signatureJutsuId: string;
@@ -32,7 +33,7 @@ export const CLANS_DATA: Record<
     name: 'Mirai',
     japaneseName: 'ミライ一族',
     description: 'Masters of time and flame: control of position, inevitability and bending the dice.',
-    lineageTraits: '+2 DEX, +1 INT (not in effect yet). Eye of Tomorrow: sees the next move of every enemy within 18 m in sight; the ground shows where it will move and whom it will attack. Premonitory Evasion (reaction, 2 chakra, once a round): against a single-target attack the Mirai saw coming, it steps 1.5 m aside and the attack misses, provoking no opportunity attack. Katon: Pursuing Flame (action, 3 chakra, 12 m): 2d6 fire; the target makes its DEX save with disadvantage and takes half on a success.',
+    lineageTraits: '+2 DEX, +1 INT. Eye of Tomorrow: sees the next move of every enemy within 18 m in sight; the ground shows where it will move and whom it will attack. Premonitory Evasion (reaction, 2 chakra, once a round): against a single-target attack the Mirai saw coming, it steps 1.5 m aside and the attack misses, provoking no opportunity attack. Katon: Pursuing Flame (action, 3 chakra, 12 m): 2d6 fire; the target makes its DEX save with disadvantage and takes half on a success.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
       { stat: 'int', bonus: 1 },
@@ -51,7 +52,7 @@ export const CLANS_DATA: Record<
     name: 'Kōton',
     japaneseName: 'コートン一族',
     description: 'Alchemists of matter: reshaping the map, adaptable weapons and denying ground.',
-    lineageTraits: '+2 CON, +1 INT (not in effect yet). Modular Architecture: raises metal structures within 6 m, at most two standing at once (a third makes the oldest crumble), each with 20 HP. Bonus action, 2 chakra: a 1.5 m metal block that gives half cover. Action, 4 chakra: a 4.5 m metal wall that gives full cover and blocks movement and sight.',
+    lineageTraits: '+2 CON, +1 INT. Modular Architecture: raises metal structures within 6 m, at most two standing at once (a third makes the oldest crumble), each with 20 HP. Bonus action, 2 chakra: a 1.5 m metal block that gives half cover. Action, 4 chakra: a 4.5 m metal wall that gives full cover and blocks movement and sight.',
     statBonuses: [
       { stat: 'con', bonus: 2 },
       { stat: 'int', bonus: 1 },
@@ -64,7 +65,7 @@ export const CLANS_DATA: Record<
     name: 'Ryusei',
     japaneseName: 'リュウセイ一族',
     description: 'Assassins of space: geometric hypermobility, piercing damage and reshaping the board through Nodes.',
-    lineageTraits: '+2 DEX, +1 WIS (not in effect yet). Weapon Nodes: every kunai throw, and every melee attack that misses, leaves a Node where the weapon lands (three at most; the oldest goes). Warp Strike (bonus action, 2 chakra, 18 m): teleports to a Node in sight, even with walls in between; landing next to an enemy, the next attack this turn comes from behind (advantage, and it can\'t be blocked). Spatial Swap (action, 3 chakra): swaps places with anyone standing on a Node; an enemy resists with a STR save.',
+    lineageTraits: '+2 DEX, +1 WIS. Weapon Nodes: every kunai throw, and every melee attack that misses, leaves a Node where the weapon lands (three at most; the oldest goes). Warp Strike (bonus action, 2 chakra, 18 m): teleports to a Node in sight, even with walls in between; landing next to an enemy, the next attack this turn comes from behind (advantage, and it can\'t be blocked). Spatial Swap (action, 3 chakra): swaps places with anyone standing on a Node; an enemy resists with a STR save.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
       { stat: 'wis', bonus: 1 },
@@ -77,7 +78,7 @@ export const CLANS_DATA: Record<
     name: 'Northstar',
     japaneseName: 'ノーススター一族',
     description: "The Sovereign's eyes: breaking the enemy's action economy, control of summons and psychological disruption.",
-    lineageTraits: '+2 CHA, +1 WIS (not in effect yet). Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and anyone who warps or dashes into it loses half of their remaining movement. Command (action, 4 chakra, 9 m): a Minion that fails a WIS save fights on the Northstar\'s side for 1 round (Captains too from level 5; from level 9, two targets for 2 rounds); Mirai are immune. Natural Submission (action, 5 chakra): a beast or enemy summon that fails a WIS save joins your side for the rest of the battle; not bosses.',
+    lineageTraits: '+2 CHA, +1 WIS. Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and enemies who warp or dash into it lose half of their remaining movement (allies are spared). Command (action, 4 chakra, 9 m): a Minion that fails a WIS save fights on the Northstar\'s side for 1 round (Captains too from level 5; from level 9, two targets for 2 rounds); Mirai are immune. Natural Submission (action, 5 chakra): a beast or enemy summon that fails a WIS save joins your side for the rest of the battle; not bosses.',
     statBonuses: [
       { stat: 'cha', bonus: 2 },
       { stat: 'wis', bonus: 1 },
@@ -872,6 +873,12 @@ function spriteLook(o: Partial<SpriteAppearance>): SpriteAppearance {
   };
 }
 
+/**
+ * The legendary presets. Their numbers are hand-made by the owner, with the clan's ability bonus
+ * counted in (docs/CLANS_DESIGN.md, D2): each number is his plus exactly what the bonus adds to the
+ * creator's formula (Solen, Akira, Aiden and Ren +1 AC, jutsu DC and attack; Kaien and Raiga +1 AC;
+ * Hiro +4 max HP and +1 max chakra; Shiori nothing). rules.test.ts pins his numbers.
+ */
 export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiCharacter }[] = [
   {
     name: 'Solen, the Founder King',
@@ -911,14 +918,15 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
         slot4Clan: 'wood_dragon_jutsu',
         slot5Ultimate: 'great_fire_annihilation',
       },
+      sheetVersion: 2,
       maxHp: 56,
       currentHp: 56,
       maxChakra: 44,
       currentChakra: 44,
-      armorClass: 19,
+      armorClass: 20,
       speed: 6,
-      jutsuSaveDC: 17,
-      jutsuAttackBonus: 9,
+      jutsuSaveDC: 18,
+      jutsuAttackBonus: 10,
       appearance: spriteLook({
         skin: '#f3c39c',
         eyeShape: 'sharp',
@@ -974,14 +982,15 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
         slot4Clan: 'dragon_fire_bomb',
         slot5Ultimate: 'great_fire_annihilation',
       },
+      sheetVersion: 2,
       maxHp: 38,
       currentHp: 38,
       maxChakra: 30,
       currentChakra: 30,
-      armorClass: 18,
+      armorClass: 19,
       speed: 6,
-      jutsuSaveDC: 15,
-      jutsuAttackBonus: 7,
+      jutsuSaveDC: 16,
+      jutsuAttackBonus: 8,
       appearance: spriteLook({
         skin: '#f0c4a0',
         eyeShape: 'sharp',
@@ -1037,14 +1046,15 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
         slot4Clan: 'dragon_fire_bomb',
         slot5Ultimate: 'great_fire_annihilation',
       },
+      sheetVersion: 2,
       maxHp: 48,
       currentHp: 48,
       maxChakra: 34,
       currentChakra: 34,
-      armorClass: 18,
+      armorClass: 19,
       speed: 6,
-      jutsuSaveDC: 15,
-      jutsuAttackBonus: 8,
+      jutsuSaveDC: 16,
+      jutsuAttackBonus: 9,
       appearance: spriteLook({
         skin: '#f8d3b6',
         slots: {
@@ -1096,11 +1106,12 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
         slot4Clan: 'dragon_fire_bomb',
         slot5Ultimate: 'kirin_thunder',
       },
+      sheetVersion: 2,
       maxHp: 32,
       currentHp: 32,
       maxChakra: 28,
       currentChakra: 28,
-      armorClass: 15,
+      armorClass: 16,
       speed: 7,
       jutsuSaveDC: 15,
       jutsuAttackBonus: 7,
@@ -1156,10 +1167,11 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
         slot4Clan: 'adamantine_sealing_chains',
         slot5Ultimate: 'rasenshuriken_wind',
       },
-      maxHp: 44,
-      currentHp: 44,
-      maxChakra: 42,
-      currentChakra: 42,
+      sheetVersion: 2,
+      maxHp: 48,
+      currentHp: 48,
+      maxChakra: 43,
+      currentChakra: 43,
       armorClass: 14,
       speed: 7,
       jutsuSaveDC: 14,
@@ -1217,11 +1229,12 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
         slot4Clan: 'dragon_fire_bomb',
         slot5Ultimate: 'great_fire_annihilation',
       },
+      sheetVersion: 2,
       maxHp: 42,
       currentHp: 42,
       maxChakra: 36,
       currentChakra: 36,
-      armorClass: 17,
+      armorClass: 18,
       speed: 6,
       jutsuSaveDC: 16,
       jutsuAttackBonus: 8,
@@ -1277,6 +1290,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
         slot4Clan: 'taki_sixtyfour_palms',
         slot5Ultimate: 'night_guy_dragon',
       },
+      sheetVersion: 2,
       maxHp: 38,
       currentHp: 38,
       maxChakra: 32,
@@ -1338,14 +1352,15 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
         slot4Clan: 'dragon_fire_bomb',
         slot5Ultimate: 'kirin_thunder',
       },
+      sheetVersion: 2,
       maxHp: 44,
       currentHp: 44,
       maxChakra: 38,
       currentChakra: 38,
-      armorClass: 16,
+      armorClass: 17,
       speed: 7,
-      jutsuSaveDC: 16,
-      jutsuAttackBonus: 8,
+      jutsuSaveDC: 17,
+      jutsuAttackBonus: 9,
       appearance: spriteLook({
         eyeColor: '#38bdf8',
         slots: {

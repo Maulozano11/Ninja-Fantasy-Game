@@ -173,6 +173,23 @@ truth for them: the four clans (Mirai, Kōton, Ryusei, Northstar), the counters
 between them, their Paths, and the rulings phase 1 is built with. Phase 1 (each
 clan's base abilities) is in the game; the Paths come later.
 
+Decided with the owner on 2026-10-20 (the details are rulings D2, D6, D15, D17,
+D21 and D24 there):
+
+- **Clan ability bonuses count** (+2/+1 per clan) in every number: checks,
+  saves, initiative, attacks, AC, jutsu DC, HP and chakra. The sheet keeps the
+  base scores; the creator shows each one as base + clan bonus, and older
+  saves and imported sheets get the bonus counted once when they load.
+- **Enemy clans are mixed**: every fight against ninjas brings two or more
+  clans, and a mission's road brings all four, so the party meets each clan's
+  abilities and counters. Each encounter fixes the clan of each enemy.
+- **The enemy AI uses the clan abilities more**: Pursuing Flame, kunai that
+  plant Nodes followed by Warp Strike, Kōton blocks and walls for cover, and
+  Command when it has a valid target.
+- **The Northstar's aura slows only its foes**; its allies are spared.
+- **Warp Strike** to a Node someone stands on lands 1 to 1.5 m from them,
+  never on top of them.
+
 ## Party, missions and defeat
 
 - A party of up to 4. Each ally is played by a person or by the AI, depending
@@ -218,6 +235,12 @@ clan's base abilities) is in the game; the Paths come later.
 - Battle, missions and camp in **Spanish and English** with a toggle; the game
   starts in the browser's language and remembers the choice. The character
   creator and the older screens follow later.
+- **Ability names** (2026-10-20): Warp Strike and Command stay in English in
+  both languages, as the owner wrote them. The base jutsu use the owner's
+  short Spanish names (*Bola de fuego* and *Gran bola de fuego*, *Muro de
+  agua*, *Muro de tierra*, *Balas de tierra*; Kirin, Chidori and Rasengan as
+  they are) and drop the "Estilo X:" prefix (*Fuego del dragón*, *Gran ráfaga
+  cortante*).
 - **Sound**: forest ambience (river, birds, crickets at night), footsteps, the
   guard's alert, hits and jutsu, generated in the game (no audio files).
 - **Tips**: short tutorial tips the first time each thing appears (moving,

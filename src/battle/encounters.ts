@@ -1,6 +1,11 @@
 // The battles of the river forest: where the party starts, who waits for it and how (a patrol in
 // the stealth phase, a night raid on the hill camp, the hydra in the river). Missions and the
 // battle demo build their setups from these.
+//
+// Enemy clans are mixed (docs/CLANS_DESIGN.md, D6): every fight against ninjas brings more than one
+// clan, and the two battles every mission run goes through (the cedar road and the ford) bring all
+// four between them. Each slot names its clan, so a battle is always the same; a slot that names
+// none fights with its template's clan.
 
 import type { ShinobiCharacter, WeatherType } from '../types/shinobi';
 import type { Difficulty } from '../types/mission';
@@ -34,7 +39,8 @@ export const ENCOUNTERS: Record<EncounterId, Encounter> = {
       { x: 8.5, z: 14.5 },
     ],
     enemies: [
-      { kind: 'rogue', pos: { x: 20, z: 9 }, route: [{ x: 20, z: 9 }, { x: 23, z: 12 }, { x: 19.5, z: 15 }], look: 180 },
+      // A Ryusei stalker walks the clearing, a Mirai rogue paces the bridge, a Kōton hunter keeps the camp.
+      { kind: 'rogue', clan: 'Ryusei', pos: { x: 20, z: 9 }, route: [{ x: 20, z: 9 }, { x: 23, z: 12 }, { x: 19.5, z: 15 }], look: 180 },
       { kind: 'rogue', pos: { x: 25.5, z: 8.3 }, route: [{ x: 25.5, z: 8.3 }, { x: 31, z: 8.3 }], look: 180 },
       { kind: 'hunter', pos: { x: 42, z: 6 }, route: [{ x: 40.5, z: 5 }, { x: 44, z: 8.5 }], look: 180 },
     ],
@@ -52,8 +58,9 @@ export const ENCOUNTERS: Record<EncounterId, Encounter> = {
       { x: 6, z: 14 },
     ],
     enemies: [
+      // A Mirai rogue, a Northstar lookout and a Ryusei raider.
       { kind: 'rogue', pos: { x: 19, z: 9.5 } },
-      { kind: 'rogue', pos: { x: 21, z: 13 } },
+      { kind: 'rogue', clan: 'Northstar', pos: { x: 21, z: 13 } },
       { kind: 'raider', pos: { x: 22, z: 10.5 } },
     ],
   },
@@ -70,9 +77,11 @@ export const ENCOUNTERS: Record<EncounterId, Encounter> = {
       { x: 46.2, z: 9 },
     ],
     enemies: [
+      // From the river a Ryusei raider and a Kōton iron fist; from the lookout a Northstar shade
+      // guarding Kagero, the Mirai captain.
       { kind: 'raider', pos: { x: 34, z: 12 } },
-      { kind: 'raider', pos: { x: 35, z: 15.5 } },
-      { kind: 'raider', pos: { x: 55, z: 9 } },
+      { kind: 'raider', clan: 'Koton', pos: { x: 35, z: 15.5 } },
+      { kind: 'raider', clan: 'Northstar', pos: { x: 55, z: 9 } },
       { kind: 'jonin', pos: { x: 56.5, z: 12.5 } },
     ],
   },

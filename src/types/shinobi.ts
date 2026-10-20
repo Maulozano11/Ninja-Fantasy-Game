@@ -136,6 +136,7 @@ export interface ShinobiCharacter {
   level: number;
   clan: ClanType;
   shinobiClass: ShinobiClassType;
+  /** The base ability scores, as rolled or bought; the clan's bonus is added when numbers are derived. */
   stats: AbilityScores;
   palette: CharacterPalette;
   hairstyle: HairstyleType;
@@ -154,7 +155,12 @@ export interface ShinobiCharacter {
     slot4Clan: string;
     slot5Ultimate: string;
   };
-  // Derived combat stats
+  /**
+   * Missing (1) on sheets from before 2026-10-20, whose numbers below don't count the clan's ability
+   * bonus yet; 2 when they do (rules/derived.ts, SHEET_VERSION).
+   */
+  sheetVersion?: number;
+  // Derived combat stats (the clan's ability bonus counted in)
   maxHp: number;
   currentHp: number;
   maxChakra: number;

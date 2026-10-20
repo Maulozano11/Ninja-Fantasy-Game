@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
-import { HANA, KENJI } from '../data/missions';
+import { HANA, KENJI, MISSIONS } from '../data/missions';
 import { addEffect } from '../rules/effects';
 import type { ShinobiCharacter } from '../types/shinobi';
 import type { Action, BattleEvent, BattleState, Pt, Unit, Wall, WeaponNode } from './types';
@@ -11,7 +11,7 @@ import { applyAction, createBattle } from './engine';
 import type { BattleSetup } from './engine';
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, lineOfSight, waterAtPt } from './map';
 import { canStop, reachable } from './nav';
-import { attackPreview, damage } from './combat';
+import { attackPreview, damage, saveMod } from './combat';
 import { beginTurn, current, endTurn, startCombat } from './turns';
 import { foreseen, planIntent } from './intent';
 import { aiAction, runAi } from './ai';
@@ -20,6 +20,9 @@ import { HYDRA_ID } from './hydra';
 import { JUTSU, enhanced } from './jutsu';
 import { hitStructuresIn, structureAttack } from './structures';
 import { electrify } from './hazards';
+import { ENCOUNTERS, encounterSetup } from './encounters';
+import type { EncounterId } from './encounters';
+import { auraEntered, commandRefused } from './clans';
 
 const hero = (over: Partial<ShinobiCharacter> = {}): ShinobiCharacter => ({ ...DEFAULT_CHARACTER, effects: [], ...over });
 
@@ -466,6 +469,43 @@ describe('Mirai: Eye of Tomorrow, Premonitory Evasion, Pursuing Flame', () => {
     ok(applyAction(s, a));
   });
 
+  it('the AI (D21): an enemy Mirai opens with Pursuing Flame, then casts it every other jutsu in place of one up to 2.5 flames', () => {
+    // A rogue (a Mirai) 8 m from Aki: where it would cast a Fireball, its first jutsu is the flame.
+    const { state } = createBattle(setup({ enemies: [{ kind: 'rogue', pos: { x: 16, z: 10 } }] }));
+    const s = turnOf(state, 'rogue_0');
+    const r = s.units.rogue_0;
+    const plan = (t: BattleState) => {
+      const i = planIntent(t, t.units.rogue_0);
+      return [i?.kind, i?.what, i?.target];
+    };
+    assert.deepEqual([r.intent?.kind, r.intent?.what, r.intent?.target], ['jutsu', 'katon_pursuing_flame', 'a']);
+    const a = aiAction(s);
+    assert.ok(a?.type === 'jutsu' && a.jutsu === 'katon_pursuing_flame' && a.target === 'a', JSON.stringify(a));
+    assert.equal(ok(applyAction(s, a)).state.units.rogue_0.stats2.jutsuCast, 1);
+    // Then the Fireball, then the flame again: the flame alternates with a jutsu up to 2.5 flames.
+    r.stats2.jutsuCast = 1;
+    assert.deepEqual(plan(s), ['jutsu', 'fireball_goukakyu', 'a']);
+    r.stats2.jutsuCast = 2;
+    assert.deepEqual(plan(s), ['jutsu', 'katon_pursuing_flame', 'a']);
+    // A Fireball that catches two foes is never given up for it.
+    const pair = turnOf(createBattle(setup({
+      party: [{ character: hero({ id: 'a', name: 'Aki' }), pos: { x: 8, z: 10 } }, { character: hero({ id: 'b', name: 'Bo' }), pos: { x: 8, z: 11 } }],
+      enemies: [{ kind: 'rogue', pos: { x: 16, z: 10 } }],
+    })).state, 'rogue_0');
+    assert.deepEqual(plan(pair).slice(0, 2), ['jutsu', 'fireball_goukakyu']);
+    // Kagero opens with the flame too, but after that keeps his Chidori (worth more than 2.5 flames).
+    const kagero = turnOf(createBattle(setup({ enemies: [{ kind: 'jonin', pos: { x: 14, z: 10 } }] })).state, 'jonin_0');
+    const k = (cast: number) => {
+      kagero.units.jonin_0.stats2.jutsuCast = cast;
+      return planIntent(kagero, kagero.units.jonin_0)?.what;
+    };
+    assert.deepEqual([k(0), k(1), k(2)], ['katon_pursuing_flame', 'chidori_lightning_blade', 'chidori_lightning_blade']);
+    // A Mirai of the party on the AI just plays its best move: the Fireball.
+    const ally = hero({ id: 'm', name: 'Ren', clan: 'Mirai', selectedJutsus: { ...DEFAULT_CHARACTER.selectedJutsus, slot3Elemental: '', slot4Clan: '', slot5Ultimate: '' } });
+    const own = turnOf(createBattle(setup({ party: [{ character: ally, pos: { x: 8, z: 10 }, controller: 'ai' }], enemies: [{ kind: 'raider', pos: { x: 16, z: 10 } }] })).state, 'm');
+    assert.equal(planIntent(own, own.units.m)?.what, 'fireball_goukakyu');
+  });
+
   it('Katon: Pursuing Flame: Mirai only, 3 chakra, 12 m, a DEX save with disadvantage for half', () => {
     const duel = (clan: ShinobiCharacter['clan'], far: number): BattleState => {
       const s = turnOf(createBattle(setup({ party: [{ character: hero({ id: 'm', clan }), pos: { x: 8, z: 10 } }], enemies: [{ kind: 'raider', pos: { x: 20, z: 10 } }] })).state, 'm');
@@ -523,6 +563,24 @@ describe('clans: phase 1 foundation', () => {
     const m = turnOf(createBattle(setup({ party: [{ character: hero({ id: 'm', clan: 'Mirai', dojutsu: 'Sharingan (3-Tomoe)' }), pos: { x: 8, z: 10 } }] })).state, 'rogue_0');
     place(m, 'rogue_0', { x: 9.5, z: 10 });
     assert.equal(attackPreview(m, m.units.rogue_0, m.units.m, 'melee').ac, m.units.m.ac);
+  });
+
+  it('the clan\'s ability bonus counts in battle: the scores a unit fights with, its saves and its numbers (D2)', () => {
+    const s = createBattle(setup()).state;
+    // Solen, a Ryusei Bukijutsu Master: DEX 14 and WIS 16 play as 16 and 17.
+    const a = s.units.a;
+    const base = DEFAULT_CHARACTER.stats;
+    assert.deepEqual(a.stats, { ...base, dex: base.dex + 2, wis: base.wis + 1 });
+    assert.equal(a.character?.stats, base, 'the sheet keeps the base scores');
+    assert.equal(saveMod(a, 'dex'), 3 + 3, 'DEX 16, proficient at level 6');
+    assert.equal(a.castMod, 3);
+    assert.deepEqual([a.ac, a.saveDC, a.jutsuAttack], [DEFAULT_CHARACTER.armorClass, DEFAULT_CHARACTER.jutsuSaveDC, DEFAULT_CHARACTER.jutsuAttackBonus]);
+    // An enemy too: a rogue (a Mirai Bukijutsu Master, DEX 15) fights with DEX 17.
+    const r = s.units.rogue_0;
+    assert.equal(r.character?.stats.dex, 15);
+    assert.equal(r.stats.dex, 17);
+    assert.equal(r.saveDC, 8 + 2 + 3);
+    assert.equal(r.character?.sheetVersion, 2);
   });
 
   it('enemies have ranks', () => {
@@ -796,6 +854,66 @@ describe('Kōton: Modular Architecture', () => {
     assert.equal(aiAction(again)?.type, 'endTurn');
   });
 
+  it('the AI (D21): a hurt Kōton raises its wall against the foes shooting at it, or for a hurt friend', () => {
+    const two = [
+      { character: hero({ id: 'a', name: 'Aki' }), pos: { x: 8, z: 10 } },
+      { character: hero({ id: 'b', name: 'Bo' }), pos: { x: 8, z: 13 } },
+    ];
+    /** The hunter (a Kōton) 8 m from Aki and Bo, hurt, on its turn with no plan yet. */
+    const hunted = (): BattleState => {
+      const s = turnOf(createBattle(setup({ party: two, enemies: [{ kind: 'hunter', pos: { x: 16, z: 11.5 } }] })).state, 'hunter_0');
+      s.units.hunter_0.hp = 10;
+      s.units.hunter_0.intent = undefined;
+      return s;
+    };
+    const s = hunted();
+    for (const id of ['a', 'b']) assert.ok(lineOfSight(s, s.units[id].pos, s.units.hunter_0.pos), id);
+    const a = aiAction(s);
+    assert.ok(a?.type === 'jutsu' && a.jutsu === 'koton_wall', JSON.stringify(a));
+    const out = ok(applyAction(s, a));
+    // Neither can see it, nor strike it, now.
+    for (const id of ['a', 'b']) assert.equal(lineOfSight(out.state, out.state.units[id].pos, out.state.units.hunter_0.pos), false, id);
+    // One wall at a time: with its wall standing it raises no other.
+    const walled = structuredClone(out.state);
+    walled.units.hunter_0.turn.action = true;
+    walled.units.hunter_0.intent = undefined;
+    assert.notEqual((aiAction(walled) as { jutsu?: string } | null)?.jutsu, 'koton_wall');
+    // Whole, or with a foe close enough to step around it, it fights on.
+    const whole = hunted();
+    whole.units.hunter_0.hp = whole.units.hunter_0.maxHp;
+    assert.notEqual((aiAction(whole) as { jutsu?: string } | null)?.jutsu, 'koton_wall');
+    const close = hunted();
+    place(close, 'a', { x: 13.75, z: 11.75 });
+    assert.notEqual((aiAction(close) as { jutsu?: string } | null)?.jutsu, 'koton_wall');
+    // An iron fist (a Kōton raider) shelters the hurt rogue beside it.
+    const pair = turnOf(createBattle(setup({ party: two, enemies: [{ kind: 'raider', clan: 'Koton', pos: { x: 17, z: 14 } }, { kind: 'rogue', pos: { x: 16, z: 11 } }] })).state, 'raider_0');
+    pair.units.rogue_0.hp = 6;
+    pair.units.raider_0.intent = undefined;
+    assert.deepEqual([planIntent(pair, pair.units.raider_0)?.what, planIntent(pair, pair.units.raider_0)?.target], ['koton_wall', 'rogue_0']);
+    const sheltered = ok(applyAction(pair, aiAction(pair)!)).state;
+    for (const id of ['a', 'b']) assert.equal(lineOfSight(sheltered, sheltered.units[id].pos, sheltered.units.rogue_0.pos), false, id);
+  });
+
+  it('the AI (D21): a Kōton that walked and has nothing to strike raises its wall rather than dash on in the open', () => {
+    const party = [
+      { character: hero({ id: 'a', name: 'Aki' }), pos: { x: 8, z: 10 } },
+      { character: hero({ id: 'b', name: 'Bo' }), pos: { x: 8, z: 13 } },
+    ];
+    const s = turnOf(createBattle(setup({ party, enemies: [{ kind: 'hunter', pos: { x: 22, z: 11.5 } }] })).state, 'hunter_0');
+    const h = s.units.hunter_0;
+    h.intent = { kind: 'move', what: 'advance', target: 'a' };
+    h.turn.move = 0;
+    const a = aiAction(s);
+    assert.ok(a?.type === 'jutsu' && a.jutsu === 'koton_wall', JSON.stringify(a));
+    const out = ok(applyAction(s, a));
+    for (const id of ['a', 'b']) assert.equal(lineOfSight(out.state, out.state.units[id].pos, out.state.units.hunter_0.pos), false, id);
+    // Seen by only one foe in reach of a kunai, it dashes on.
+    const lone = turnOf(createBattle(setup({ enemies: [{ kind: 'hunter', pos: { x: 22, z: 11.5 } }] })).state, 'hunter_0');
+    lone.units.hunter_0.intent = { kind: 'move', what: 'advance', target: 'a' };
+    lone.units.hunter_0.turn.move = 0;
+    assert.equal(aiAction(lone)?.type, 'dash');
+  });
+
   it('the AI goes around a metal wall, and breaks through when walled off', () => {
     const wall = (id: string, a: Pt, b: Pt): Wall => ({ id, kind: 'metal', a, b, hp: 20, maxHp: 20, owner: 'a' });
     const at = (walls: Wall[]): BattleState => {
@@ -826,6 +944,28 @@ describe('Kōton: Modular Architecture', () => {
     const hit = aiAction(box);
     assert.deepEqual(hit, { type: 'attack', unit: 'raider_0', target: 'wall:east' });
     ok(applyAction(box, hit!));
+  });
+
+  it('the AI breaks through a wall it can swing at, never one behind another metal wall (the engine refuses that blow)', () => {
+    const wall = (id: string, a: Pt, b: Pt): Wall => ({ id, kind: 'metal', a, b, hp: 20, maxHp: 20, owner: 'a' });
+    const { state } = createBattle(setup({ party: [{ character: hero({ id: 'a' }), pos: { x: 10.25, z: 10.25 } }], enemies: [{ kind: 'raider', pos: { x: 11.75, z: 10.25 } }] }));
+    const s = turnOf(state, 'raider_0');
+    const r = s.units.raider_0;
+    r.chakra = 0;
+    r.intent = { kind: 'melee', what: r.weapon.name, target: 'a' };
+    // Boxed in, and a second wall just outside the west one: nearer Aki and within a fist's reach,
+    // but the west wall stands across the swing.
+    s.walls.push(
+      wall('west', { x: 11, z: 9.2 }, { x: 11, z: 11.3 }),
+      wall('east', { x: 12.5, z: 9.2 }, { x: 12.5, z: 11.3 }),
+      wall('north', { x: 10.6, z: 9.5 }, { x: 12.8, z: 9.5 }),
+      wall('south', { x: 10.6, z: 11 }, { x: 12.8, z: 11 }),
+      wall('outer', { x: 10.7, z: 9.2 }, { x: 10.7, z: 11.3 }),
+    );
+    assert.equal(applyAction(s, { type: 'attack', unit: 'raider_0', target: 'wall:outer' }).reason, 'blocked');
+    const hit = aiAction(s);
+    assert.deepEqual(hit, { type: 'attack', unit: 'raider_0', target: 'wall:west' });
+    ok(applyAction(s, hit!));
   });
 });
 
@@ -901,11 +1041,12 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.ok(out.events.some((e) => e.t === 'teleport' && e.unit === 'r'));
     // Using a Node doesn't spend it.
     assert.equal(out.state.nodes.length, 1);
-    // Someone stands on it: it lands on the nearest free cell, within 1.5 m.
+    // Someone stands on it: it lands on the nearest free cell within 1.5 m, and (changed on purpose,
+    // owner 2026-10-20, D15) at least 1 m from whoever stands there, so the sprites never overlap.
     const busy = structuredClone(s);
     busy.nodes = [node('n1', s.units.rogue_0.pos)];
     const d = dist(ok(warp(busy, s.units.rogue_0.pos)).state.units.r.pos, s.units.rogue_0.pos);
-    assert.ok(d > 0 && d <= 1.5, `landed ${d} m away`);
+    assert.ok(d >= 1 && d <= 1.5, `landed ${d} m away`);
     // Beats Kōton: a metal wall between hides nothing from the warp.
     const walled = structuredClone(s);
     walled.walls.push({ id: 'w1', kind: 'metal', a: { x: 10.5, z: 11 }, b: { x: 10.5, z: 15.5 }, hp: 20, maxHp: 20, owner: 'rogue_0' });
@@ -922,6 +1063,42 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     const tent = turnOf(createBattle(setup({ party: [{ character: ryusei(), pos: { x: 43.25, z: 5.25 } }], enemies: [{ kind: 'rogue', pos: { x: 50, z: 10 } }] })).state, 'r');
     tent.nodes.push(node('n1', { x: 43.2, z: 0.1 }));
     assert.equal(warp(tent, { x: 43.2, z: 0.1 }).reason, 'noSight');
+  });
+
+  it('Warp Strike lands at least 1 m from whoever stands on the Node, within 1.5 m of it (D15)', () => {
+    const s = ryuseiTurn();
+    const foe = s.units.rogue_0.pos;
+    // A foe on the Node, on its centre or off it (within 0.75 m): the landing keeps 1 m from the foe,
+    // on its far side, and still wins the blow from behind.
+    for (const [dx, dz] of [[0, 0], [0.5, 0], [-0.5, 0], [0, 0.5], [0.5, -0.5]]) {
+      const t = structuredClone(s);
+      t.nodes = [node('n1', { x: foe.x + dx, z: foe.z + dz })];
+      const out = ok(warp(t, t.nodes[0].pos));
+      const p = out.state.units.r.pos;
+      assert.ok(dist(p, foe) >= 1 - 1e-9, `${dx},${dz}: ${dist(p, foe)} m from the foe`);
+      assert.ok(dist(p, t.nodes[0].pos) <= 1.5 + 1e-9, `${dx},${dz}: ${dist(p, t.nodes[0].pos)} m from the Node`);
+      assert.equal(out.state.units.r.cond.warpEdge, true);
+      if (dx === 0 && dz === 0) assert.ok(p.x > foe.x, 'the far side');
+    }
+    // A friend on it, or a fallen ninja lying there, counts the same.
+    const pair = ryuseiTurn({ party: [{ character: ryusei(), pos: { x: 8, z: 10 } }, { character: hero({ id: 'b', name: 'Bo' }), pos: { x: 11, z: 13 } }] });
+    pair.nodes = [node('n1', pair.units.b.pos)];
+    assert.ok(dist(ok(warp(pair, pair.units.b.pos)).state.units.r.pos, pair.units.b.pos) >= 1);
+    const fallen = structuredClone(pair);
+    fallen.units.b.hp = 0;
+    fallen.units.b.down = 'downed';
+    assert.ok(dist(ok(warp(fallen, fallen.units.b.pos)).state.units.r.pos, fallen.units.b.pos) >= 1);
+    // A Node nobody stands on (the foe is 1 m off): it lands right on it.
+    const near = structuredClone(s);
+    near.nodes = [node('n1', { x: foe.x - 1, z: foe.z })];
+    assert.deepEqual(ok(warp(near, near.nodes[0].pos)).state.units.r.pos, near.nodes[0].pos);
+    // No free cell 1 m from the foe within 1.5 m of the Node: refused, nothing paid.
+    const boxed = structuredClone(s);
+    boxed.nodes = [node('n1', foe)];
+    for (const [bx, bz] of [[1.25, 0], [-1.25, 0], [0, 1.25], [0, -1.25], [1.25, 1.25], [1.25, -1.25], [-1.25, 1.25], [-1.25, -1.25]]) {
+      boxed.walls.push({ id: `b${bx}_${bz}`, kind: 'metalBlock', a: { x: foe.x + bx, z: foe.z + bz }, b: { x: foe.x + bx, z: foe.z + bz }, hp: 20, maxHp: 20 });
+    }
+    assert.equal(warp(boxed, foe).reason, 'blocked');
   });
 
   it('landing beside a foe, the next attack this turn comes from behind: advantage, and nothing blocks it', () => {
@@ -1090,6 +1267,81 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     near.nodes = [node('n1', { x: 11.75, z: 13.25 }, 'raider_0')];
     assert.equal(aiAction(near)?.type, 'move');
   });
+
+  it('the AI (D21): an enemy Ryusei opens with a kunai that leaves a Node at its target, then warps in and strikes from behind', () => {
+    // A Ryusei rogue 8 m from Aki: its Fireball would reach, but with no Node of its own yet it throws.
+    const { state } = createBattle(setup({ enemies: [{ kind: 'rogue', clan: 'Ryusei', pos: { x: 16, z: 10 } }] }));
+    const s = turnOf(state, 'rogue_0');
+    const aki = { ...s.units.a.pos };
+    assert.deepEqual([s.units.rogue_0.intent?.kind, s.units.rogue_0.intent?.target], ['ranged', 'a']);
+    let t = s;
+    for (let i = 0; i < 4 && t.units.rogue_0.turn.action; i++) {
+      const a = aiAction(t);
+      assert.ok(a && a.type !== 'endTurn' && a.type !== 'jutsu', JSON.stringify(a));
+      t = ok(applyAction(t, a)).state;
+    }
+    // Hit or miss, the Node lands at Aki's feet.
+    assert.deepEqual(t.nodes.map((n) => [n.owner, n.pos]), [['rogue_0', aki]]);
+    // Its turn ends: it plans to warp in beside Aki and strike, and the Eye sees where it will land.
+    const planned = ok(applyAction(t, { type: 'endTurn', unit: 'rogue_0' })).state;
+    const plan = planned.units.rogue_0.intent!;
+    assert.deepEqual([plan.kind, plan.target], ['melee', 'a']);
+    assert.ok(plan.to && dist(plan.to, aki) >= 1 - 1e-9 && dist(plan.to, aki) <= 1.5 + 1e-9, JSON.stringify(plan));
+    const next = turnOf(planned, 'rogue_0');
+    const warp = aiAction(next);
+    assert.deepEqual(warp, { type: 'jutsu', unit: 'rogue_0', jutsu: 'ryusei_warp', at: aki });
+    const landed = ok(applyAction(next, warp!)).state;
+    assert.deepEqual(landed.units.rogue_0.pos, plan.to);
+    assert.equal(landed.units.rogue_0.cond.warpEdge, true);
+    const blow = aiAction(landed);
+    assert.ok(blow?.type === 'attack' && blow.target === 'a' && !blow.ranged, JSON.stringify(blow));
+    const atk = ok(applyAction(landed, blow)).events.find((e) => e.t === 'attack');
+    assert.ok(atk?.t === 'attack' && atk.reasons?.includes('behind'));
+    // With a Node of its own already (none near Aki), the kunai no longer takes the Fireball's place.
+    const later = structuredClone(s);
+    later.nodes = [node('old', { x: 30.25, z: 4.25 }, 'rogue_0')];
+    assert.equal(planIntent(later, later.units.rogue_0)?.what, 'fireball_goukakyu');
+    // A Ryusei of the party on the AI isn't held to it: it casts its best jutsu.
+    const ally = turnOf(createBattle(setup({ party: [{ character: hero({ id: 'a', name: 'Aki' }), pos: { x: 8, z: 10 }, controller: 'ai' }] })).state, 'a');
+    assert.equal(planIntent(ally, ally.units.a)?.kind, 'jutsu');
+  });
+
+  it('the AI (D21): Spatial Swap only when it clearly helps: a hurt friend out of a foe\'s reach, a foe in among its friends', () => {
+    /** The raider (a Ryusei) 8 m from Aki, a rogue hurt beside Aki on one of the raider's Nodes. */
+    const rescue = (): BattleState => {
+      const s = turnOf(createBattle(setup({ enemies: [{ kind: 'raider', pos: { x: 16, z: 10 } }, { kind: 'rogue', pos: { x: 14, z: 14 } }] })).state, 'raider_0');
+      place(s, 'rogue_0', { x: 9.75, z: 10.25 });
+      s.units.rogue_0.hp = 5;
+      s.nodes.push(node('n1', s.units.rogue_0.pos, 'raider_0'));
+      s.units.raider_0.intent = undefined;
+      return s;
+    };
+    const s = rescue();
+    const a = aiAction(s);
+    assert.deepEqual(a, { type: 'jutsu', unit: 'raider_0', jutsu: 'ryusei_swap', at: s.units.rogue_0.pos, target: 'rogue_0' });
+    const out = ok(applyAction(s, a!));
+    assert.deepEqual([out.state.units.raider_0.pos, out.state.units.rogue_0.pos], [s.units.rogue_0.pos, s.units.raider_0.pos]);
+    // Not for a friend that isn't hurt, nor when the Ryusei itself stands in a foe's reach.
+    const whole = rescue();
+    whole.units.rogue_0.hp = whole.units.rogue_0.maxHp;
+    assert.notEqual((aiAction(whole) as { jutsu?: string } | null)?.jutsu, 'ryusei_swap');
+    const pressed = rescue();
+    place(pressed, 'raider_0', { x: 8.25, z: 11.75 });
+    pressed.nodes = [node('n1', pressed.units.rogue_0.pos, 'raider_0')];
+    assert.notEqual((aiAction(pressed) as { jutsu?: string } | null)?.jutsu, 'ryusei_swap');
+    // A foe on its Node, weak of arm, pulled in among two of the Ryusei's friends with none of its own near.
+    const pull = turnOf(createBattle(setup({ enemies: [{ kind: 'raider', pos: { x: 18, z: 10 } }, { kind: 'rogue', pos: { x: 18, z: 12 } }, { kind: 'rogue', pos: { x: 19.5, z: 9 } }] })).state, 'raider_0');
+    pull.units.a.stats = { ...pull.units.a.stats, str: 1 };
+    pull.nodes.push(node('n1', pull.units.a.pos, 'raider_0'));
+    pull.units.raider_0.intent = undefined;
+    const p = aiAction(pull);
+    assert.deepEqual(p, { type: 'jutsu', unit: 'raider_0', jutsu: 'ryusei_swap', at: pull.units.a.pos, target: 'a' });
+    ok(applyAction(pull, p!));
+    // A strong one would likely hold: it doesn't try.
+    const strong = structuredClone(pull);
+    strong.units.a.stats = { ...strong.units.a.stats, str: 30 };
+    assert.notEqual((aiAction(strong) as { jutsu?: string } | null)?.jutsu, 'ryusei_swap');
+  });
 });
 
 describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
@@ -1157,14 +1409,18 @@ describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
     assert.ok(!attackPreview(s, s.units.b, r, 'melee').reasons.includes('aura'));
   });
 
-  it('the aura: whoever dashes or warps into it on their own turn loses half the movement left', () => {
-    /** Aki (a Ryusei with Body Flicker) at (8.25, 10.25); a Northstar ally at (18.25, 12.25), its aura from x ≈ 14.2 on Aki's row. */
-    const start = (): BattleState => {
-      const s = turnOf(createBattle(setup({ party: [
-        { character: hero({ id: 'a', name: 'Aki' }), pos: { x: 8, z: 10 } },
-        { character: northstar(), pos: { x: 18, z: 12 } },
-      ], enemies: [{ kind: 'rogue', pos: { x: 6, z: 18 } }] })).state, 'a');
-      assert.deepEqual([s.units.a.pos, s.units.n.pos], [{ x: 8.25, z: 10.25 }, { x: 18.25, z: 12.25 }]);
+  it('the aura: a foe who dashes or warps into it on its own turn loses half the movement left; a friend does not', () => {
+    // Changed on purpose (owner, 2026-10-20, D17): the penalty spares the Northstar's allies. This
+    // test used a party Northstar slowing its own ally; now the Northstar is an enemy, and the same
+    // moves into a party Northstar's aura cost nothing.
+    /** Aki (a Ryusei with Body Flicker) at (8.25, 10.25); a Northstar at (18.25, 12.25), its aura from x ≈ 14.2 on Aki's row. */
+    const start = (friend = false): BattleState => {
+      const s = turnOf(createBattle(setup({
+        party: [{ character: hero({ id: 'a', name: 'Aki' }), pos: { x: 8, z: 10 } }, ...(friend ? [{ character: northstar(), pos: { x: 18, z: 12 } }] : [])],
+        enemies: [{ kind: 'rogue', pos: { x: 6, z: 18 } }, ...(friend ? [] : [{ kind: 'rogue' as const, clan: 'Northstar' as const, pos: { x: 18, z: 12 } }])],
+      })).state, 'a');
+      const n = friend ? s.units.n : s.units.rogue_1;
+      assert.deepEqual([s.units.a.pos, n.pos, n.character?.clan], [{ x: 8.25, z: 10.25 }, { x: 18.25, z: 12.25 }, 'Northstar']);
       return s;
     };
     const slowed = (out: ReturnType<typeof applyAction>) => out.events.find((e) => e.t === 'slowed');
@@ -1178,7 +1434,7 @@ describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
     const to = cellOf({ x: 24.25, z: 10.25 });
     const run = ok(applyAction(dashed, { type: 'move', unit: 'a', to }));
     const sl = slowed(run);
-    assert.ok(sl?.t === 'slowed' && sl.unit === 'a' && sl.by === 'n');
+    assert.ok(sl?.t === 'slowed' && sl.unit === 'a' && sl.by === 'rogue_1');
     const a = run.state.units.a;
     // What is left, plus what it walked, plus what the aura took: the 18 m of the dash.
     assert.ok(Math.abs(a.turn.move + a.turn.moved + sl.move - 18) < 1e-6);
@@ -1201,6 +1457,26 @@ describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
     const inside = start();
     inside.units.a.pos = { x: 15.25, z: 10.25 };
     assert.equal(slowed(ok(applyAction(inside, { type: 'jutsu', unit: 'a', jutsu: 'body_flicker', at: { x: 17.25, z: 10.25 } }))), undefined);
+    // A friend's aura spares it: the same dash, warp and flicker lose nothing.
+    const friendRun = ok(applyAction(ok(applyAction(start(true), { type: 'dash', unit: 'a' })).state, { type: 'move', unit: 'a', to }));
+    assert.equal(slowed(friendRun), undefined);
+    assert.deepEqual(cellOf(friendRun.state.units.a.pos), to);
+    assert.equal(friendRun.state.units.a.turn.move, 2);
+    const friendWarp = start(true);
+    friendWarp.nodes.push({ id: 'n1', owner: 'a', pos: { x: 17.25, z: 10.25 } });
+    const fw = ok(applyAction(friendWarp, { type: 'jutsu', unit: 'a', jutsu: 'ryusei_warp', at: { x: 17.25, z: 10.25 } }));
+    assert.deepEqual([slowed(fw), fw.state.units.a.turn.move], [undefined, 9]);
+    const ff = ok(applyAction(start(true), { type: 'jutsu', unit: 'a', jutsu: 'body_flicker', at: { x: 14.75, z: 10.25 } }));
+    assert.deepEqual([slowed(ff), ff.state.units.a.turn.move], [undefined, 9]);
+    // Sides go by who a unit fights for now: an enemy the party commanded is spared by the party's
+    // Northstar, and slowed by its own side's.
+    const taken = start(true);
+    taken.units.rogue_0.team = 'party';
+    taken.units.rogue_0.commanded = { by: 'n', team: 'enemy', rounds: 1 };
+    assert.equal(auraEntered(taken, { ...taken.units.rogue_0, pos: { x: 15.25, z: 12.25 } }, { x: 10.25, z: 12.25 }), undefined);
+    const theirs = start();
+    theirs.units.a.team = 'enemy';
+    assert.equal(auraEntered(theirs, { ...theirs.units.a, pos: { x: 15.25, z: 10.25 } }, { x: 8.25, z: 10.25 }), undefined);
   });
 
   it('Command: a Minion that fails a WIS save fights for the Northstar until the end of its next turn', () => {
@@ -1389,6 +1665,26 @@ describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
     far.units.raider_0.pos = { x: 20.25, z: 10.25 };
     assert.equal(aiAction(far)?.type, 'move');
   });
+
+  it('the AI (D21): an enemy Northstar commands a valid target in place of an attack on one foe; the party gives it none (D18)', () => {
+    // The lookout (a Northstar rogue) 8 m from Aki: the party's ninjas have no rank, so it casts its Fireball.
+    const s = turnOf(createBattle(setup({ enemies: [{ kind: 'rogue', clan: 'Northstar', pos: { x: 16, z: 10 } }] })).state, 'rogue_0');
+    s.units.rogue_0.intent = undefined;
+    assert.equal(commandRefused(s, s.units.rogue_0, s.units.a), 'cantCommand');
+    assert.equal(planIntent(s, s.units.rogue_0)?.what, 'fireball_goukakyu');
+    // Were a foe a Minion of weak will (none is today: D18 is still the owner's to answer), it would
+    // take that foe's mind rather than burn it.
+    const ranked = structuredClone(s);
+    ranked.units.a.rank = 'minion';
+    ranked.units.a.stats = { ...ranked.units.a.stats, wis: 3 };
+    const a = aiAction(ranked);
+    assert.deepEqual(a, { type: 'jutsu', unit: 'rogue_0', jutsu: 'northstar_command', at: ranked.units.a.pos, target: 'a' });
+    ok(applyAction(ranked, a!));
+    // Not a mind it can hardly break.
+    const strong = structuredClone(ranked);
+    strong.units.a.stats = { ...strong.units.a.stats, wis: 30 };
+    assert.equal(planIntent(strong, strong.units.rogue_0)?.what, 'fireball_goukakyu');
+  });
 });
 
 describe('the counter cycle (docs/CLANS_DESIGN.md)', () => {
@@ -1450,6 +1746,120 @@ describe('the counter cycle (docs/CLANS_DESIGN.md)', () => {
       assert.ok(out.state.units.rogue_0.down);
     }
     assert.ok(struck, 'some seed lands the blow');
+  });
+});
+
+describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
+  const battleOf = (id: EncounterId, seed = 7, party = [{ character: hero({ id: 'a', name: 'Aki' }) }]): BattleState =>
+    createBattle({ ...encounterSetup(id, party, { seed, difficulty: 'normal', supplies: { ...SUPPLIES } }), stealth: false }).state;
+  const enemyNinjas = (s: BattleState): Unit[] => Object.values(s.units).filter((u) => u.team === 'enemy' && u.kind === 'ninja');
+  const clansOf = (s: BattleState): Set<string> => new Set(enemyNinjas(s).map((u) => u.character!.clan));
+  const who = (s: BattleState) => enemyNinjas(s).map((u) => [u.id, u.character!.clan, u.name, u.nameEs]);
+
+  it('every shipped fight against ninjas brings more than one clan; a mission\'s road brings all four', () => {
+    for (const id of Object.keys(ENCOUNTERS) as EncounterId[]) {
+      if (id === 'hydra') {
+        assert.equal(clansOf(battleOf(id)).size, 0, 'the hydra fights alone');
+        continue;
+      }
+      assert.ok(clansOf(battleOf(id)).size > 1, `${id}: ${[...clansOf(battleOf(id))]}`);
+    }
+    for (const m of MISSIONS) {
+      // The battles every run goes through (the night raid only comes with an ambush).
+      const road = m.zones.flatMap((z) => z.nodes).flatMap((n) => (n.kind === 'battle' ? [n.battle.encounter] : []));
+      const met = new Set(road.flatMap((id) => [...clansOf(battleOf(id))]));
+      assert.deepEqual([...met].sort(), ['Koton', 'Mirai', 'Northstar', 'Ryusei'], m.id);
+      // The night raid brings all four at once.
+      assert.equal(clansOf(battleOf(m.ambush.encounter)).size, 4);
+    }
+  });
+
+  it('each slot keeps its clan, its template\'s look and a name of its own, whatever the seed', () => {
+    const a = battleOf('cedar_rogues', 1);
+    assert.deepEqual(who(a), who(battleOf('cedar_rogues', 99)));
+    assert.deepEqual(who(a), [
+      ['rogue_0', 'Mirai', 'Rogue', 'Renegado'],
+      ['rogue_1', 'Northstar', 'Lookout', 'Vigía'],
+      ['raider_0', 'Ryusei', 'Raider', 'Asaltante'],
+    ]);
+    assert.deepEqual(who(battleOf('night_raid')), [
+      ['raider_0', 'Ryusei', 'Raider', 'Asaltante'],
+      ['raider_1', 'Koton', 'Iron Fist', 'Puño de hierro'],
+      ['raider_2', 'Northstar', 'Shade', 'Sombra'],
+      ['jonin_0', 'Mirai', 'Kagero', undefined],
+    ]);
+    assert.deepEqual(who(battleOf('river_patrol')), [
+      ['rogue_0', 'Ryusei', 'Stalker', 'Acechador'],
+      ['rogue_1', 'Mirai', 'Rogue', 'Renegado'],
+      ['hunter_0', 'Koton', 'Hunter-nin', 'Cazador'],
+    ]);
+    assert.equal(a.units.rogue_1.character?.title, 'Rogue lookout');
+    // The look is the template's, slot for slot: the lookout looks like the second rogue always did.
+    const plain = createBattle(setup({ enemies: [{ kind: 'rogue', pos: { x: 14, z: 10 } }, { kind: 'rogue', pos: { x: 14, z: 13 } }, { kind: 'raider', pos: { x: 16, z: 10 } }] })).state;
+    for (const id of ['rogue_0', 'rogue_1', 'raider_0']) assert.deepEqual(a.units[id].look, plain.units[id].look, id);
+    // Enemies that share a name are numbered; one alone is not.
+    assert.deepEqual(['rogue_0', 'rogue_1'].map((id) => plain.units[id].nameEs), ['Renegado 1', 'Renegado 2']);
+    assert.deepEqual([plain.units.raider_0.name, createBattle(setup()).state.units.rogue_0.name], ['Raider', 'Rogue']);
+    const twins = createBattle(setup({ enemies: [
+      { kind: 'rogue', clan: 'Northstar', pos: { x: 14, z: 10 } },
+      { kind: 'rogue', pos: { x: 14, z: 13 } },
+      { kind: 'rogue', clan: 'Northstar', pos: { x: 16, z: 10 } },
+    ] })).state;
+    assert.deepEqual(['rogue_0', 'rogue_1', 'rogue_2'].map((id) => twins.units[id].nameEs), ['Vigía 1', 'Renegado', 'Vigía 2']);
+  });
+
+  it('each fights with its clan: the clan\'s abilities and ability bonus, and the template\'s own jutsu', () => {
+    const s = battleOf('night_raid');
+    const [r0, r1, r2] = ['raider_0', 'raider_1', 'raider_2'].map((id) => s.units[id]);
+    assert.deepEqual(r0.jutsus.slice(0, 2), ['ryusei_warp', 'ryusei_swap']);
+    assert.deepEqual(r1.jutsus.slice(0, 2), ['koton_block', 'koton_wall']);
+    assert.deepEqual(r2.jutsus.slice(0, 2), ['northstar_command', 'northstar_submission']);
+    for (const r of [r0, r1, r2]) assert.ok(r.jutsus.includes('leaf_hurricane_senpuu'), r.id);
+    // Kōton's +2 CON: CON 14 plays as 16, with more HP than its Ryusei brother; Northstar's +2 CHA.
+    assert.deepEqual([r0.stats.dex, r1.stats.con, r2.stats.cha], [16, 16, 10]);
+    assert.ok(r1.maxHp > r0.maxHp);
+  });
+
+  it('an enemy Northstar: its aura works on the party, and Command can\'t take the party\'s ninjas (D18)', () => {
+    const s = turnOf(battleOf('cedar_rogues'), 'rogue_1');
+    const lookout = s.units.rogue_1;
+    place(s, 'a', { x: lookout.pos.x - 1.5, z: lookout.pos.z });
+    const pv = attackPreview(s, s.units.a, s.units.rogue_1, 'melee');
+    assert.ok(pv.reasons.includes('aura'));
+    assert.equal(applyAction(s, { type: 'jutsu', unit: 'rogue_1', jutsu: 'northstar_command', at: { ...s.units.a.pos }, target: 'a' }).reason, 'cantCommand');
+    // A party Northstar can take the lookout and the raider, but not the Mirai rogue.
+    const n = battleOf('cedar_rogues', 7, [{ character: hero({ id: 'n', name: 'Shiori', clan: 'Northstar' }) }]);
+    assert.deepEqual(['rogue_0', 'rogue_1', 'raider_0'].map((id) => commandRefused(n, n.units.n, n.units[id])), ['mindImmune', null, null]);
+  });
+
+  it('AI-only battles on every shipped encounter end, and every action the AI sends is accepted', () => {
+    // Without their S-rank ultimates (which end most fights in the first round), so the enemies get to act.
+    const noUlt = (c: ShinobiCharacter): ShinobiCharacter => ({ ...c, effects: [], selectedJutsus: { ...c.selectedJutsus, slot5Ultimate: '' } });
+    const party = [
+      { character: noUlt(hero({ id: 'a', name: 'Aki' })), controller: 'ai' as const },
+      { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
+      { character: noUlt(KENJI), controller: 'ai' as const },
+      { character: noUlt(hero({ id: 'n', name: 'Shiori', clan: 'Northstar' })), controller: 'ai' as const },
+    ];
+    for (const id of Object.keys(ENCOUNTERS) as EncounterId[]) {
+      for (const seed of [1, 2]) {
+        let s = battleOf(id, seed, party);
+        let last = '';
+        let inTurn = 0;
+        for (let step = 0; s.phase !== 'ended'; step++) {
+          assert.ok(step < 4000, `${id} seed ${seed}: no end`);
+          const a = aiAction(s);
+          assert.ok(a, `${id} seed ${seed}: the AI has nothing to do`);
+          const u = current(s)!;
+          inTurn = u.id === last ? inTurn + 1 : 0;
+          last = u.id;
+          assert.ok(inTurn <= 12, `${id} seed ${seed}: ${u.id} keeps acting without ending its turn`);
+          const out = applyAction(s, a);
+          assert.ok(out.ok, `${id} seed ${seed}: ${u.id} sent ${JSON.stringify(a)}, refused: ${out.reason}`);
+          s = out.state;
+        }
+      }
+    }
   });
 });
 

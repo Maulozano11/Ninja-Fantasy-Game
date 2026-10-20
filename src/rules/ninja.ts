@@ -5,7 +5,8 @@ import type { ClanType, ShinobiCharacter } from '../types/shinobi';
 import { CLANS_DATA, DEFAULT_CHARACTER, SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BreakdownKind, ConvictionValue, EffectId, RuleEvent, SkillId } from '../types/mission';
 import { savingThrow, SKILL_ABILITY } from './checks';
-import { deriveStats, effectiveMaxHp } from './derived';
+import { deriveStats, effectiveMaxHp, SHEET_VERSION } from './derived';
+import type { BuildInput } from './derived';
 import { addEffect, EFFECTS, endMission, hasEffect, removeEffect, sanitizeEffects } from './effects';
 import { checkRng, Dice, pick } from './rng';
 
@@ -184,21 +185,69 @@ export function migrateClan(raw: unknown): ClanType | null {
 /** Old clans whose bonus the old formula built into a sheet's maxima: Uddo's +6 HP, Akkai's +25 % chakra. */
 const OLD_BONUS_CLANS = ['Uddo', 'Senju', 'Akkai', 'Uzumaki'];
 
+const buildOf = (c: ShinobiCharacter): BuildInput => ({ level: c.level, stats: c.stats, clan: c.clan, shinobiClass: c.shinobiClass, armor: c.armorStyle, feats: c.selectedFeats ?? [] });
+
+/** The numbers a sheet stores that a build derives (speed doesn't depend on the scores). */
+const DERIVED_KEYS = ['maxHp', 'maxChakra', 'armorClass', 'jutsuSaveDC', 'jutsuAttackBonus'] as const;
+
 /**
- * A sheet from an older save or an import, with its clan converted. When its numbers came from the
- * creator's formula (its AC and jutsu DC and attack still match it) and its old clan built a bonus
- * into them, its max HP and chakra are worked out again without it, and what it has left is kept
- * under the new maxima. Hand-made numbers (the presets), the look and the jutsu stay as they are.
+ * New maxima for a sheet: a ninja that was at full stays at full; otherwise it keeps what it had
+ * left, never above the new maxima.
+ */
+function refit(was: ShinobiCharacter, now: ShinobiCharacter): ShinobiCharacter {
+  const hpFull = was.currentHp >= effectiveMaxHp(was);
+  const chakraFull = was.currentChakra >= was.maxChakra;
+  const maxHp = effectiveMaxHp(now);
+  return {
+    ...now,
+    currentHp: hpFull ? maxHp : Math.min(was.currentHp, maxHp),
+    currentChakra: chakraFull ? now.maxChakra : Math.min(was.currentChakra, now.maxChakra),
+  };
+}
+
+/**
+ * Counts the clan's ability bonus in a sheet made before it counted (docs/CLANS_DESIGN.md, D2): each
+ * stored number gets exactly what the bonus adds to it (the formula with the bonus minus the formula
+ * without it), so numbers from the creator's formula come out as the formula gives them now, and
+ * hand-made ones keep their hand-made part. Marked as version 2, so it never happens twice.
+ */
+export function countClanBonus(c: ShinobiCharacter): ShinobiCharacter {
+  if ((c.sheetVersion ?? 1) >= SHEET_VERSION) return c;
+  const out: ShinobiCharacter = { ...c, sheetVersion: SHEET_VERSION };
+  if (!Object.hasOwn(SHINOBI_CLASSES, c.shinobiClass) || !Object.hasOwn(CLANS_DATA, c.clan)) return out;
+  const before = deriveStats(buildOf(c), { clanBonus: false });
+  const after = deriveStats(buildOf(c));
+  for (const k of DERIVED_KEYS) {
+    const add = after[k] - before[k];
+    if (Number.isFinite(add) && Number.isFinite(c[k])) out[k] = c[k] + add;
+  }
+  return refit(c, out);
+}
+
+/**
+ * A sheet from an older save or an import, as today's rules read it:
+ * - its clan converted (old names load as the clan that replaced them). When its numbers came from
+ *   the creator's formula (its AC and jutsu DC and attack still match it) and its old clan built a
+ *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is
+ *   kept under the new maxima;
+ * - the clan's ability bonus counted in its numbers, once (countClanBonus).
+ * Hand-made numbers (the presets) keep their hand-made part; the look and the jutsu stay as they are.
+ * A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(c: ShinobiCharacter): ShinobiCharacter {
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
-  if (clan === c.clan) return c;
-  const out = { ...c, clan };
-  if (!OLD_BONUS_CLANS.includes(c.clan) || !Object.hasOwn(SHINOBI_CLASSES, c.shinobiClass)) return out;
-  const d = deriveStats({ level: c.level, stats: c.stats, clan, shinobiClass: c.shinobiClass, armor: c.armorStyle, feats: c.selectedFeats ?? [] });
-  if (d.armorClass !== c.armorClass || d.jutsuSaveDC !== c.jutsuSaveDC || d.jutsuAttackBonus !== c.jutsuAttackBonus) return out;
-  const fresh = { ...out, maxHp: d.maxHp, maxChakra: d.maxChakra };
-  return { ...fresh, currentHp: Math.min(c.currentHp, effectiveMaxHp(fresh)), currentChakra: Math.min(c.currentChakra, d.maxChakra) };
+  const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
+  if (clan === c.clan && !before) return c;
+  let out: ShinobiCharacter = { ...c, clan };
+  if (clan !== c.clan && OLD_BONUS_CLANS.includes(c.clan) && Object.hasOwn(SHINOBI_CLASSES, c.shinobiClass)) {
+    // The formula the sheet was made with: without the clan's ability bonus if it is that old.
+    const d = deriveStats(buildOf(out), { clanBonus: !before });
+    if (d.armorClass === c.armorClass && d.jutsuSaveDC === c.jutsuSaveDC && d.jutsuAttackBonus === c.jutsuAttackBonus) {
+      const fresh = { ...out, maxHp: d.maxHp, maxChakra: d.maxChakra };
+      out = { ...fresh, currentHp: Math.min(c.currentHp, effectiveMaxHp(fresh)), currentChakra: Math.min(c.currentChakra, d.maxChakra) };
+    }
+  }
+  return countClanBonus(out);
 }
 
 /** Spanish name of an effect for the screens. */

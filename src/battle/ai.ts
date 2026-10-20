@@ -10,10 +10,10 @@ import { JUTSU } from './jutsu';
 import { KUNAI_LONG, handsFree } from './units';
 import { applyAction, jutsuCost } from './engine';
 import { current } from './turns';
-import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, visibleFoes } from './intent';
+import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
-import { breakable, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
-import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, WARP, warpBlocker, warpLanding } from './clans';
+import { breakable, MAX_STRUCTURES, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
+import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, SWAP, WARP, warpBlocker, warpLanding } from './clans';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
 export function aiToAct(s: BattleState): boolean {
@@ -29,6 +29,9 @@ export function aiToAct(s: BattleState): boolean {
 function stillValid(s: BattleState, u: Unit, i: Intent | undefined): i is Intent {
   if (!i) return false;
   const t = i.target ? s.units[i.target] : undefined;
+  // A metal wall for cover and a Spatial Swap hold while they can still be made and still help.
+  if (i.kind === 'jutsu' && i.what === WALL) return !!t && !!wallCover(s, u, t);
+  if (i.kind === 'jutsu' && i.what === SWAP) return swapValue(s, u, t) > 0;
   if (i.target && (!t || !standingUnit(t))) {
     // Healing and reviving go to fallen friends; everything else needs a foe still standing.
     if (!(i.kind === 'heal' && t && t.down !== 'dead' && t.down !== 'fled' && t.down !== 'ko')) return false;
@@ -95,6 +98,12 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
       return moveToward(s, u, g, i.to) ?? kunaiOr(s, u, t);
     case 'jutsu': {
       const j = JUTSU[i.what];
+      // Where the wall goes is worked out again from where everyone stands now.
+      if (i.what === WALL) {
+        const c = wallCover(s, u, t);
+        return c ? { type: 'jutsu', unit: u.id, jutsu: WALL, at: c.at } : null;
+      }
+      if (i.what === SWAP) return g.ready ? { type: 'jutsu', unit: u.id, jutsu: SWAP, at: { ...t.pos }, target: t.id } : null;
       if (!j.melee && !handsFree(u) && u.turn.interacted) return null;
       if (g.ready) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined };
       return moveToward(s, u, g, i.to) ?? (j.melee ? breakThrough(s, u, t) : null);
@@ -109,8 +118,14 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
         return { type: 'stabilize', unit: u.id, target: t.id };
       }
       return moveToward(s, u, g, i.to);
-    case 'move':
-      return moveToward(s, u, g, i.to) ?? (u.turn.action ? { type: 'dash', unit: u.id } : null);
+    case 'move': {
+      const step = moveToward(s, u, g, i.to);
+      if (step || !u.turn.action) return step;
+      // Walked as far as it goes with nothing to strike: a Kōton raises its wall against the foes
+      // shooting at it rather than dash on in the open (it advances under cover); others dash.
+      const c = wallCover(s, u, u, true);
+      return c ? { type: 'jutsu', unit: u.id, jutsu: WALL, at: c.at } : { type: 'dash', unit: u.id };
+    }
     default:
       return null;
   }
@@ -133,7 +148,8 @@ function breakThrough(s: BattleState, u: Unit, t: Unit): Action | null {
     const owner = w.owner ? s.units[w.owner] : undefined;
     if (!breakable(w) || !owner || owner.team === u.team) continue;
     const pv = structureAttack(s, u, w, false);
-    if (!pv.inRange) continue;
+    // In reach, and no other metal wall across the swing (the engine refuses it).
+    if (!pv.inRange || !pv.sight) continue;
     const v = structureDist(w, t.pos) - (w.kind === 'metal' && segmentsCross(u.pos, t.pos, w.a, w.b) ? 100 : 0);
     if (!best || v < best.v) best = { id: w.id, v };
   }
@@ -219,7 +235,10 @@ function kotonCover(s: BattleState, u: Unit): Action | null {
   if (!u.jutsus.includes(BLOCK) || effectMods(u.effects).noJutsu) return null;
   const costs = u.jutsus.filter((id) => JUTSU[id] && offensive(JUTSU[id])).map((id) => jutsuCost(u, JUTSU[id], false));
   if (u.chakra < jutsuCost(u, spec, false) + (costs.length ? Math.min(...costs) : 0)) return null;
-  if (ownStructures(s, u.id).some((w) => structureDist(w, u.pos) <= 2)) return null;
+  const own = ownStructures(s, u.id);
+  if (own.some((w) => structureDist(w, u.pos) <= 2)) return null;
+  // A block never makes its own standing wall crumble (the oldest goes when a third rises).
+  if (own.length >= MAX_STRUCTURES && own[0].kind === 'metal') return null;
   const foe = visibleFoes(s, u)
     .filter((f) => dist(f.pos, u.pos) >= 3 && lineOfSight(s, f.pos, u.pos) && coverBetween(s, f.pos, u.pos, [f.id, u.id]) < 2)
     .sort((a, b) => dist(a.pos, u.pos) - dist(b.pos, u.pos))[0];

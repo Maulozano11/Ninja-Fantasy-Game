@@ -19,6 +19,7 @@ import { CAST_STYLES, CastStyle, SPRITE_POSES, SpriteAppearance, SpritePose } fr
 import { CAST_STYLE_INFO, defaultCastStyle } from '../sprite/castInfo';
 import { soundManager } from '../utils/audio';
 import { deriveStats } from '../rules/derived';
+import { clanBonus } from '../rules/checks';
 import { migrateCharacter, sanitizeMissionFields } from '../rules/ninja';
 import { Sparkles, Dice5, Download, Upload, Shield, Zap, Eye, Swords, BookOpen, UserCheck } from 'lucide-react';
 
@@ -51,12 +52,16 @@ function characterFromImport(raw: unknown): ShinobiCharacter | null {
     const id = RENAMED_JUTSUS[slots[k] as string] ?? slots[k];
     slots[k] = JUTSUS_DATA.some((j) => j.id === id) ? id : defSlots[k];
   }
+  // The sheet's version is its own: one without it was saved before the clan bonus counted, and
+  // gets it counted on load (not the default character's version).
+  if (typeof raw.sheetVersion === 'number' && Number.isFinite(raw.sheetVersion)) out.sheetVersion = raw.sheetVersion;
+  else delete out.sheetVersion;
   if ('appearance' in out) {
     if (isObj(out.appearance)) out.appearance = mergeKind(defaultAppearance() as unknown as Record<string, unknown>, out.appearance);
     else delete out.appearance;
   }
   // Earlier sheets used other clan names; they load as the clan that replaced each one (without
-  // the bonus an old clan built into its maxima).
+  // the bonus an old clan built into its maxima), and with the clan's ability bonus counted once.
   return migrateCharacter(sanitizeMissionFields(out as unknown as ShinobiCharacter));
 }
 
@@ -699,22 +704,35 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                     <label className="text-xs font-medium uppercase tracking-wider text-slate-400">
                       Ability Scores (D&D 5e Standard Array / Point Buy)
                     </label>
-                    <span className="text-xs text-slate-400 font-mono">Modifiers calculated live</span>
+                    <span className="text-xs text-slate-400 font-mono">
+                      Base + {clanName(character.clan)} bonus ({CLANS_DATA[character.clan].statBonuses.map((b) => `+${b.bonus} ${b.stat.toUpperCase()}`).join(', ')})
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as (keyof AbilityScores)[]).map((stat) => {
-                      const val = character.stats[stat];
+                      // The sheet keeps the base score; the clan's bonus is added to it for every number.
+                      const base = character.stats[stat];
+                      const bonus = clanBonus(character.clan)[stat] ?? 0;
+                      const val = base + bonus;
                       const mod = Math.floor((val - 10) / 2);
                       const modStr = mod >= 0 ? `+${mod}` : `${mod}`;
                       return (
                         <div
                           key={stat}
-                          className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between"
+                          className={`bg-slate-950 p-3 rounded-xl border flex items-center justify-between ${bonus ? 'border-amber-500/40' : 'border-slate-800'}`}
                         >
                           <div>
                             <div className="text-[11px] uppercase font-mono text-slate-400 font-semibold">{stat}</div>
                             <div className="text-lg font-bold text-white font-mono">{val}</div>
+                            <div className="text-[10px] font-mono text-slate-400">
+                              base {base}
+                              {bonus > 0 && (
+                                <span className="text-amber-300">
+                                  {' '}+{bonus} {clanName(character.clan)}
+                                </span>
+                              )}
+                            </div>
                             <div className="text-[10px] text-cyan-400 font-mono font-medium">Mod: {modStr}</div>
                           </div>
                           <div className="flex flex-col gap-1">

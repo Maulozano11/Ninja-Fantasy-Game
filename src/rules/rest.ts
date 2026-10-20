@@ -6,7 +6,7 @@ import { ACTIVITY, ActivityId, CampActivity, STICKS_PER_CAMP } from '../data/cam
 import { clanName, JUTSUS_DATA, SHINOBI_CLASSES } from '../data/shinobiData';
 import type { JutsuDefinition, ShinobiCharacter } from '../types/shinobi';
 import type { PartyState, RuleEvent, SupplyId } from '../types/mission';
-import { abilityMod, skillCheck } from './checks';
+import { abilityMod, abilityScores, skillCheck } from './checks';
 import { effectiveMaxHp } from './derived';
 import { rollDice } from './dice';
 import { effectMods, hasEffect, morningAfter, treat } from './effects';
@@ -160,7 +160,7 @@ function applyActivity(
   const doer = member(party, who)!;
   const targetId = opts.target ?? who;
   const campNo = camp?.campNo ?? party.progress.campNo;
-  const wis = abilityMod(doer.stats.wis);
+  const wis = abilityMod(abilityScores(doer).wis);
   let p = party;
   let cs = camp;
   const self = (f: (c: ShinobiCharacter) => Step) => (p = withMember(p, who, f, events));
@@ -578,7 +578,7 @@ export function spendHitDie(party: PartyState, who: string): Outcome<null> {
   if (effectMods(c.effects).noRestHp) return fail('Fever: no HP back from rests');
   if (c.currentHp >= effectiveMaxHp(c)) return fail('Already at full HP');
   const rng = rngFor(party.progress.seed, 'stop', party.progress.zone, who, 'hit', c.hitDiceSpent ?? 0);
-  const heal = Math.max(1, rollDie(rng, SHINOBI_CLASSES[c.shinobiClass].hitDie) + abilityMod(c.stats.con));
+  const heal = Math.max(1, rollDie(rng, SHINOBI_CLASSES[c.shinobiClass].hitDie) + abilityMod(abilityScores(c).con));
   const events: RuleEvent[] = [];
   const p = withMember(
     party,

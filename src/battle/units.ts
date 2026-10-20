@@ -1,13 +1,13 @@
 // Battle units from character sheets: HP, chakra, AC, speed in meters, weapon, jutsu and skills,
 // plus the enemy templates (rogues, hunter-nin, a jonin leader, raiders) with their looks.
 
-import type { ShinobiCharacter } from '../types/shinobi';
+import type { ClanType, ShinobiCharacter } from '../types/shinobi';
 import type { Difficulty } from '../types/mission';
 import type { SpriteAppearance } from '../sprite/types';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
 import { getItem } from '../sprite/catalog';
-import { abilityMod, proficiencyBonus, skillsOf } from '../rules/checks';
-import { deriveStats, effectiveAC, effectiveMaxHp } from '../rules/derived';
+import { abilityMod, abilityScores, proficiencyBonus, skillsOf } from '../rules/checks';
+import { deriveStats, effectiveAC, effectiveMaxHp, SHEET_VERSION } from '../rules/derived';
 import { effectMods } from '../rules/effects';
 import type { AiOrder, Pt, Rank, Team, Unit, Weapon } from './types';
 import { JUTSU, clanAbilities } from './jutsu';
@@ -86,6 +86,8 @@ export function unitFrom(c: ShinobiCharacter, o: UnitOptions): Unit {
   const mods = effectMods(c.effects);
   const cls = SHINOBI_CLASSES[c.shinobiClass];
   const hp = o.fresh ? maxHp : Math.max(0, Math.min(maxHp, c.currentHp));
+  // The scores it fights with: the base scores plus the clan's bonus (the sheet's numbers count it too).
+  const scores = abilityScores(c);
   return {
     id: o.id ?? c.id,
     name: c.name,
@@ -94,7 +96,7 @@ export function unitFrom(c: ShinobiCharacter, o: UnitOptions): Unit {
     character: c,
     look: c.appearance,
     level: c.level,
-    stats: c.stats,
+    stats: scores,
     prof: proficiencyBonus(c.level),
     pos: o.pos,
     facing: o.team === 'party' ? 1 : -1,
@@ -107,7 +109,7 @@ export function unitFrom(c: ShinobiCharacter, o: UnitOptions): Unit {
     speed: Math.max(3, c.speed * 1.5 + mods.speedM),
     saveDC: c.jutsuSaveDC,
     jutsuAttack: c.jutsuAttackBonus,
-    castMod: abilityMod(c.stats[cls?.castingStat ?? 'int']),
+    castMod: abilityMod(scores[cls?.castingStat ?? 'int']),
     weapon: weaponOf(c),
     armed: weaponOf(c).held,
     // The clan's own abilities first (they get the first hotkeys), then the jutsu it learned.
@@ -287,23 +289,67 @@ const TEMPLATES: Record<EnemyKind, Template> = {
   },
 };
 
-/** An enemy's name: its template's, numbered when there can be more than one ("Rogue 2"). */
-const enemyName = (t: Template, n: number, name: string): string => (t.looks.length > 1 || n > 0 ? `${name} ${n + 1}` : name);
+/** A template's name in both languages and its title. */
+export interface EnemyName {
+  name: string;
+  nameEs: string;
+  title: string;
+}
 
-/** A character sheet for an enemy (fresh HP and chakra, derived from its build). */
-export function enemyCharacter(kind: EnemyKind, n: number): ShinobiCharacter {
+/**
+ * Templates fought under another clan than their own (docs/CLANS_DESIGN.md, D6): the template's
+ * look, build and jutsu, the clan's abilities and ability bonus, and a name of their own. Each
+ * encounter names the clan of each slot (src/battle/encounters.ts), so nothing here is random.
+ */
+const VARIANTS: Partial<Record<EnemyKind, Partial<Record<ClanType, EnemyName>>>> = {
+  rogue: {
+    // The Sovereign's eyes, keeping watch for the band.
+    Northstar: { name: 'Lookout', nameEs: 'Vigía', title: 'Rogue lookout' },
+    // An assassin of space: its blades leave Nodes to warp to.
+    Ryusei: { name: 'Stalker', nameEs: 'Acechador', title: 'Rogue stalker' },
+  },
+  raider: {
+    // An alchemist of metal who fights with bare fists and raises blocks and walls.
+    Koton: { name: 'Iron Fist', nameEs: 'Puño de hierro', title: 'Iron-fist raider' },
+    // Comes out of the dark; its aura slows whoever warps or dashes at it.
+    Northstar: { name: 'Shade', nameEs: 'Sombra', title: 'Shadow raider' },
+  },
+};
+
+/** What an enemy of this template and clan is called (unnumbered): its variant's name, or its template's. */
+export function enemyNameOf(kind: EnemyKind, clan?: ClanType): EnemyName {
   const t = TEMPLATES[kind];
+  const c = clan ?? t.clan;
+  return (c !== t.clan ? VARIANTS[kind]?.[c] : undefined) ?? { name: t.name, nameEs: t.nameEs, title: t.title };
+}
+
+export interface EnemyOptions {
+  /** Its clan, when the encounter wants another than its template's (D6). */
+  clan?: ClanType;
+  /** Its rank, when the encounter wants another than its template's. */
+  rank?: Rank;
+  /** Its number among the enemies of the battle that share its name ("Rogue 2"); none if it is the only one. */
+  no?: number;
+}
+
+const numbered = (name: string, no?: number): string => (no ? `${name} ${no}` : name);
+
+/** A character sheet for an enemy (fresh HP and chakra, derived from its build, its clan's bonus counted). */
+export function enemyCharacter(kind: EnemyKind, n: number, o: EnemyOptions = {}): ShinobiCharacter {
+  const t = TEMPLATES[kind];
+  const clan = o.clan ?? t.clan;
+  const nm = enemyNameOf(kind, clan);
   const lk = t.looks[n % t.looks.length];
   const armor = ((lk.slots.armor && getItem(lk.slots.armor.id)?.statsArmor) || 'Ronin Wanderer Cloak') as ShinobiCharacter['armorStyle'];
-  const d = deriveStats({ level: t.level, stats: t.stats, clan: t.clan, shinobiClass: t.shinobiClass, armor, feats: [] });
+  const d = deriveStats({ level: t.level, stats: t.stats, clan, shinobiClass: t.shinobiClass, armor, feats: [] });
   const slots = ['slot1Utility', 'slot2Elemental', 'slot3Elemental', 'slot4Clan', 'slot5Ultimate'] as const;
   const selected = Object.fromEntries(slots.map((s, i) => [s, t.jutsus[i] ?? ''])) as unknown as ShinobiCharacter['selectedJutsus'];
   return {
     id: `${kind}_${n}`,
-    name: enemyName(t, n, t.name),
-    title: t.title,
+    name: numbered(nm.name, o.no),
+    title: nm.title,
     level: t.level,
-    clan: t.clan,
+    clan,
     shinobiClass: t.shinobiClass,
     stats: t.stats,
     palette: {
@@ -324,17 +370,19 @@ export function enemyCharacter(kind: EnemyKind, n: number): ShinobiCharacter {
     selectedFeats: [],
     selectedJutsus: selected,
     ...d,
+    sheetVersion: SHEET_VERSION,
     currentHp: d.maxHp,
     currentChakra: d.maxChakra,
     appearance: lk,
   } as ShinobiCharacter;
 }
 
-/** An enemy from its template, with the template's rank unless the encounter names another. */
-export function enemyUnit(kind: EnemyKind, n: number, pos: Pt, difficulty: Difficulty, rank?: Rank): Unit {
+/** An enemy from its template: the template's clan and rank unless the encounter names others. */
+export function enemyUnit(kind: EnemyKind, n: number, pos: Pt, difficulty: Difficulty, o: EnemyOptions = {}): Unit {
   const t = TEMPLATES[kind];
-  const u = unitFrom(enemyCharacter(kind, n), { team: 'enemy', pos, power: difficulty === 'story' ? 0.75 : 1, fresh: true });
-  u.rank = rank ?? t.rank;
-  if (t.nameEs !== t.name) u.nameEs = enemyName(t, n, t.nameEs);
+  const u = unitFrom(enemyCharacter(kind, n, o), { team: 'enemy', pos, power: difficulty === 'story' ? 0.75 : 1, fresh: true });
+  u.rank = o.rank ?? t.rank;
+  const nm = enemyNameOf(kind, o.clan);
+  if (nm.nameEs !== nm.name) u.nameEs = numbered(nm.nameEs, o.no);
   return u;
 }

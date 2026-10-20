@@ -112,7 +112,8 @@ export function startRun(
   members: ShinobiCharacter[],
   opts: { seed: number; leaderId: string; difficulty: Difficulty; noRandomness: boolean },
 ): MissionRun {
-  const fresh = members.map((m) => returnToVillage(sanitizeMissionFields(m)).character);
+  // Older sheets get today's clan rules first (a no-op for a sheet that is already today's).
+  const fresh = members.map((m) => returnToVillage(migrateCharacter(sanitizeMissionFields(m))).character);
   const party = newMission(fresh, { ...opts, supplies: mission.supplies, deadlineHours: mission.deadlineHours });
   const base: MissionRun = {
     version: 1,

@@ -3,11 +3,19 @@
 
 import { ARMOR_STYLES, SHINOBI_CLASSES } from '../data/shinobiData';
 import type { AbilityScores, ArmorStyleType, ClanType, ShinobiCharacter, ShinobiClassType } from '../types/shinobi';
-import { abilityMod, proficiencyBonus } from './checks';
+import { abilityMod, effectiveScores, proficiencyBonus } from './checks';
 import { effectMods } from './effects';
+
+/**
+ * The sheet version this code writes. Version 2 (2026-10-20): the stored numbers (max HP and chakra,
+ * AC, jutsu DC and attack) count the clan's ability bonus (docs/CLANS_DESIGN.md, D2). Older sheets
+ * get it counted once when they load (rules/ninja.ts, migrateCharacter).
+ */
+export const SHEET_VERSION = 2;
 
 export interface BuildInput {
   level: number;
+  /** The base scores, as rolled or bought (the clan's bonus is added here). */
   stats: AbilityScores;
   clan: ClanType;
   shinobiClass: ShinobiClassType;
@@ -25,11 +33,16 @@ export interface DerivedStats {
   jutsuAttackBonus: number;
 }
 
-export function deriveStats(b: BuildInput): DerivedStats {
+/**
+ * The numbers a build gives, with the clan's ability bonus on the base scores. `clanBonus: false`
+ * gives what the formula gave before the bonus counted (to read and convert an older sheet).
+ */
+export function deriveStats(b: BuildInput, opts: { clanBonus?: boolean } = {}): DerivedStats {
   const classInfo = SHINOBI_CLASSES[b.shinobiClass];
-  const castStatMod = abilityMod(b.stats[classInfo.castingStat]);
-  const conMod = abilityMod(b.stats.con);
-  const dexMod = abilityMod(b.stats.dex);
+  const scores = opts.clanBonus === false ? b.stats : effectiveScores(b.stats, b.clan);
+  const castStatMod = abilityMod(scores[classInfo.castingStat]);
+  const conMod = abilityMod(scores.con);
+  const dexMod = abilityMod(scores.dex);
   const prof = proficiencyBonus(b.level);
 
   const armorAC = ARMOR_STYLES.find((a) => a.id === b.armor)?.acBonus ?? 2;

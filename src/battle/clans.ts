@@ -4,7 +4,7 @@
 import { effectMods } from '../rules/effects';
 import type { BattleEvent, BattleState, Hit, Pt, Unit, WeaponNode } from './types';
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, lineOfSight, sameCell, waterAtPt } from './map';
-import { canStop, freeSpot, occupancy, reachable } from './nav';
+import { canStop, freeSpot, isOnMap, occupancy, reachable } from './nav';
 import { AURA_RADIUS, passivePerception, revealOutOfHiding, savingThrow, sovereign } from './combat';
 import { JUTSU } from './jutsu';
 import { trapAt } from './hazards';
@@ -99,8 +99,10 @@ export const SWAP = 'ryusei_swap';
 export const MAX_NODES = 3;
 /** A unit stands on a Node within 0.75 m of it (half a square). */
 export const ON_NODE = 0.75;
-/** Someone on the Node: the warp lands on the nearest free cell within a square (1.5 m). */
+/** Someone on the Node: the warp lands on the nearest free cell within a square (1.5 m)... */
 const LANDING = 1.5;
+/** ...and at least 1 m from whoever stands on it, so the two sprites never overlap (D15, 2026-10-20). */
+export const LANDING_GAP = 1;
 
 /** Weapon Nodes are the Ryusei's: their kunai and their missed blows leave one. */
 export const leavesNodes = (u: Unit): boolean => u.character?.clan === 'Ryusei';
@@ -137,15 +139,18 @@ export const nodeUnder = (s: BattleState, u: Unit, t: Unit): WeaponNode | undefi
 export const nodeInSight = (s: BattleState, u: Unit, n: WeaponNode): boolean => lineOfSight(s, u.pos, n.pos, { structures: false });
 
 /**
- * Where a Warp Strike to a Node lands: on it if it is free, otherwise the nearest free cell within
- * 1.5 m (on the far side of whoever stands on it, when two are as near). Never where the Ryusei
- * already stands. Null if there is nowhere to land.
+ * Where a Warp Strike to a Node lands: on it if nobody stands on it, otherwise the nearest free cell
+ * within 1.5 m of it and at least 1 m from whoever stands on it (on their far side, when two are as
+ * near). Never where the Ryusei already stands. Null if there is nowhere to land.
  */
 export function warpLanding(s: BattleState, u: Unit, n: WeaponNode): Pt | null {
   const here = cellOf(u.pos);
-  const p = freeSpot(s, u, n.pos, 0, LANDING, (q) => (sameCell(cellOf(q), here) ? -Infinity : -dist(q, n.pos) + dist(q, u.pos) * 0.01));
+  // Whoever stands on the Node (fallen ninjas lying there too): the landing keeps 1 m from them.
+  const onIt = Object.values(s.units).filter((o) => o.id !== u.id && isOnMap(o) && dist(o.pos, n.pos) <= ON_NODE);
+  const tooClose = (q: Pt): boolean => onIt.some((o) => dist(q, o.pos) < LANDING_GAP - 1e-6);
+  const p = freeSpot(s, u, n.pos, 0, LANDING, (q) => (sameCell(cellOf(q), here) || tooClose(q) ? -Infinity : -dist(q, n.pos) + dist(q, u.pos) * 0.01));
   const c = cellOf(p);
-  if (sameCell(c, here) || cellBlocked(s, c) || waterAtPt(s, p) === 2 || !canStop(s, u, c)) return null;
+  if (sameCell(c, here) || cellBlocked(s, c) || waterAtPt(s, p) === 2 || !canStop(s, u, c) || tooClose(cellCenter(c))) return null;
   return cellCenter(c);
 }
 
@@ -234,15 +239,18 @@ export const SUBMISSION = 'northstar_submission';
 
 const inAura = (n: Unit, p: Pt): boolean => dist(n.pos, p) <= AURA_RADIUS + 0.05;
 
-/** The Northstar whose aura a unit has just come into from outside it (any Northstar but itself). */
+/**
+ * The Northstar of another side whose aura a unit has just come into from outside it. Its own side's
+ * auras spare it (D17, owner 2026-10-20): a commanded unit goes by the side it fights for now.
+ */
 export function auraEntered(s: BattleState, u: Unit, from: Pt): Unit | undefined {
-  return Object.values(s.units).find((n) => n.id !== u.id && sovereign(n) && !inAura(n, from) && inAura(n, u.pos));
+  return Object.values(s.units).find((n) => n.id !== u.id && n.team !== u.team && sovereign(n) && !inAura(n, from) && inAura(n, u.pos));
 }
 
 /**
- * Aura of Sovereignty: whoever warps or dashes into a Northstar's aura on their own turn, friend or
- * foe, loses half of the movement they have left at once. (A Kawarimi, an Evasion, a push or being
- * swapped happen on someone else's turn: there is no movement to lose.)
+ * Aura of Sovereignty: a foe of the Northstar who warps or dashes into its aura on its own turn loses
+ * half of the movement it has left at once; the Northstar's allies are spared. (A Kawarimi, an
+ * Evasion, a push or being swapped happen on someone else's turn: there is no movement to lose.)
  */
 export function enteredAura(s: BattleState, u: Unit, from: Pt, ev: BattleEvent[]): void {
   if (s.phase !== 'combat' || s.order[s.turn] !== u.id || u.turn.move <= 0) return;

@@ -5,7 +5,7 @@
 // engine waits for a 'react' action from whoever controls the reacting ninja.
 
 import './maps';
-import type { ShinobiCharacter, WeatherType } from '../types/shinobi';
+import type { ClanType, ShinobiCharacter, WeatherType } from '../types/shinobi';
 import type { Difficulty } from '../types/mission';
 import { abilityMod, combineAdvantage } from '../rules/checks';
 import { addEffect, effectMods, hasEffect, removeEffect } from '../rules/effects';
@@ -32,7 +32,7 @@ import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
 import { JUTSU, areaOf, enhanced } from './jutsu';
 import type { JutsuSpec } from './jutsu';
-import { KUNAI, enemyUnit, handsFree, unitFrom, wielded } from './units';
+import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
@@ -77,6 +77,8 @@ export interface EnemySetup {
   look?: number;
   /** Its rank, when the encounter wants another than its template's (a Sub-boss). */
   rank?: Rank;
+  /** Its clan, when the encounter wants another than its template's (docs/CLANS_DESIGN.md, D6). */
+  clan?: ClanType;
 }
 
 export interface BattleSetup {
@@ -105,13 +107,19 @@ export function createBattle(setup: BattleSetup): { state: BattleState; events: 
     units[u.id] = u;
   }
   const count: Record<string, number> = {};
+  // Enemies that share a name are numbered ("Rogue 1", "Rogue 2"); one alone is not.
+  const nameOf = (e: EnemySetup): string => (e.kind === 'hydra' ? '' : enemyNameOf(e.kind, e.clan).name);
+  const named: Record<string, number> = {};
+  for (const e of setup.enemies) named[nameOf(e)] = (named[nameOf(e)] ?? 0) + 1;
+  const seen: Record<string, number> = {};
   for (const e of setup.enemies) {
     if (e.kind === 'hydra') {
       for (const u of hydraUnits(e.pos, setup.difficulty)) units[u.id] = e.rank ? { ...u, rank: e.rank } : u;
       continue;
     }
     const n = (count[e.kind] = (count[e.kind] ?? -1) + 1);
-    const u = enemyUnit(e.kind, n, snap(e.pos), setup.difficulty, e.rank);
+    const no = named[nameOf(e)] > 1 ? (seen[nameOf(e)] = (seen[nameOf(e)] ?? 0) + 1) : undefined;
+    const u = enemyUnit(e.kind, n, snap(e.pos), setup.difficulty, { rank: e.rank, clan: e.clan, no });
     if (setup.stealth) {
       u.guard = { route: (e.route ?? [u.pos]).map(snap), next: 0, suspicion: {}, alerted: false };
       if (e.look !== undefined) u.guard.look = e.look;

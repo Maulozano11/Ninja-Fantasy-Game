@@ -7,10 +7,22 @@ import { HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import type { Difficulty } from '../types/mission';
 import type { ShinobiCharacter } from '../types/shinobi';
 import type { PartyBattleResult } from '../battle/result';
+import { deriveStats } from '../rules/derived';
 import { chooseFire, doActivity, rollNight, serveFood, startCamp, startShortStop } from '../rules/rest';
 import { applyOutcome, continueRoad, intoNextZone, migrateRun, MissionRun, newBattle, resolvePartyBattle, startRun } from './missionRun';
 
 const hero = { ...DEFAULT_CHARACTER, id: 'hero', name: 'Solen' };
+
+/**
+ * A sheet as it was saved before the clan's ability bonus counted (version 1): the creator's old
+ * formula for the companions, the owner's hand-made numbers for Solen (a preset).
+ */
+function savedBefore(c: ShinobiCharacter): ShinobiCharacter {
+  const { sheetVersion: _v, ...rest } = c;
+  if (c.id === 'hero') return { ...rest, maxHp: 56, maxChakra: 44, armorClass: 19, jutsuSaveDC: 17, jutsuAttackBonus: 9, currentHp: Math.min(c.currentHp, 56), currentChakra: Math.min(c.currentChakra, 44) };
+  const { speed: _s, ...d } = deriveStats({ level: c.level, stats: c.stats, clan: c.clan, shinobiClass: c.shinobiClass, armor: c.armorStyle, feats: c.selectedFeats }, { clanBonus: false });
+  return { ...rest, ...d, currentHp: Math.min(c.currentHp, d.maxHp), currentChakra: Math.min(c.currentChakra, d.maxChakra) };
+}
 
 const begin = (difficulty: Difficulty = 'normal', seed = 7): MissionRun =>
   startRun(RIVER_FOREST_PATROL, 'hero', [hero, HANA, KENJI], { seed, leaderId: 'hero', difficulty, noRandomness: false });
@@ -172,8 +184,9 @@ describe('mission flow', () => {
 
   it('a run saved with the old clans loads with the new ones; only an old clan bonus built into the numbers goes', () => {
     const r = begin();
-    // Sheets from before the conversion: the old clan, and the numbers they had then.
-    const old = (c: ShinobiCharacter, clan: string, o: Partial<ShinobiCharacter> = {}): ShinobiCharacter => ({ ...c, clan: clan as ShinobiCharacter['clan'], currentHp: 9, ...o });
+    // Sheets from before the conversion: the old clan, and the numbers they had then (version 1, so
+    // without the clan's ability bonus, which only counts since 2026-10-20).
+    const old = (c: ShinobiCharacter, clan: string, o: Partial<ShinobiCharacter> = {}): ShinobiCharacter => ({ ...savedBefore(c), clan: clan as ShinobiCharacter['clan'], currentHp: 9, ...o });
     const [a, b, c] = r.party.members;
     assert.deepEqual([a.id, b.id, c.id], ['hero', HANA.id, KENJI.id]);
     const saved: MissionRun = {
@@ -203,6 +216,37 @@ describe('mission flow', () => {
     const kenji = m.party.dead[0];
     assert.deepEqual([kenji.maxHp, kenji.currentHp, kenji.maxChakra], [KENJI.maxHp, KENJI.maxHp, KENJI.maxChakra]);
     assert.equal(KENJI.maxHp, 22);
-    assert.equal(HANA.maxChakra, 34);
+    // Changed on purpose (owner, 2026-10-20, D2): Hana is a Kōton, and its +2 CON now counts: 34 → 35.
+    assert.equal(HANA.maxChakra, 35);
+    // Every sheet now counts its clan's bonus, once.
+    assert.ok(all(m).every((x) => x.sheetVersion === 2));
+    assert.deepEqual(migrateRun(m), m);
+  });
+
+  it('a run saved before the clan bonus counted loads with it counted, once (D2)', () => {
+    const r = begin();
+    const [hero0, hana0, kenji0] = r.party.members;
+    // Saved the day before: Hana (a Kōton) hurt and at full chakra, Kenji (a Ryusei) at full HP, Solen fallen.
+    const hana = { ...savedBefore(hana0), currentHp: 12 };
+    const kenji = savedBefore(kenji0);
+    const solen = { ...savedBefore(hero0), currentHp: 0 };
+    assert.deepEqual([hana.maxHp, hana.maxChakra, hana.currentChakra], [31, 34, 34]);
+    const saved: MissionRun = { ...r, party: { ...r.party, members: [hana, kenji], dead: [solen] }, entry: { ...r.entry, members: [solen, hana, kenji] } };
+    const m = migrateRun(JSON.parse(JSON.stringify(saved)) as MissionRun);
+    const [h, k] = m.party.members;
+    // Kōton's +2 CON: CON 14 plays as 16. Max HP 31 → 35 and chakra 34 → 35; the hurt HP stays, full chakra stays full.
+    assert.deepEqual([h.maxHp, h.currentHp, h.maxChakra, h.currentChakra], [35, 12, 35, 35]);
+    assert.deepEqual([h.maxHp, h.maxChakra], [HANA.maxHp, HANA.maxChakra]);
+    // Ryusei's +2 DEX: one more AC for Kenji, still at full HP.
+    assert.deepEqual([k.armorClass, k.maxHp, k.currentHp], [kenji.armorClass + 1, 22, 22]);
+    assert.equal(k.armorClass, KENJI.armorClass);
+    // Solen (hand-made numbers): +1 AC, jutsu DC and attack; fallen, it stays at 0 HP.
+    const s = m.party.dead[0];
+    assert.deepEqual([s.armorClass, s.jutsuSaveDC, s.jutsuAttackBonus, s.currentHp], [20, 18, 10, 0]);
+    assert.deepEqual(m.entry.members.map((x) => x.maxHp), [56, 35, 22]);
+    // The base scores never change; loading again (or saving and loading) adds nothing more.
+    assert.deepEqual(h.stats, hana0.stats);
+    assert.deepEqual(migrateRun(m), m);
+    assert.deepEqual(migrateRun(JSON.parse(JSON.stringify(m)) as MissionRun), m);
   });
 });

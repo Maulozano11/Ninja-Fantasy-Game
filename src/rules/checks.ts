@@ -1,8 +1,8 @@
 // d20 checks and saving throws with the % of success known before rolling (shown on the cards),
 // skills, proficiency by level, and the no-randomness mode where the d20 counts as 10.
 
-import { SHINOBI_CLASSES } from '../data/shinobiData';
-import type { AbilityScores, DiceRollResult, ShinobiCharacter, ShinobiClassType } from '../types/shinobi';
+import { CLANS_DATA, SHINOBI_CLASSES } from '../data/shinobiData';
+import type { AbilityScores, ClanType, DiceRollResult, ShinobiCharacter, ShinobiClassType } from '../types/shinobi';
 import type { CheckOutcome, SkillId } from '../types/mission';
 import { effectMods, hasEffect } from './effects';
 import { Rng, rollDie } from './rng';
@@ -35,6 +35,29 @@ export const CLASS_SKILLS: Record<ShinobiClassType, SkillId[]> = {
 };
 
 export const abilityMod = (score: number): number => Math.floor((score - 10) / 2);
+
+const ABILITIES: Ability[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+
+/** The ability bonus a clan gives (docs/CLANS_DESIGN.md, D2): Mirai +2 DEX +1 INT, Kōton +2 CON +1 INT… */
+export function clanBonus(clan: ClanType): Partial<AbilityScores> {
+  const out: Partial<AbilityScores> = {};
+  if (!Object.hasOwn(CLANS_DATA, clan)) return out;
+  for (const b of CLANS_DATA[clan].statBonuses) out[b.stat] = (out[b.stat] ?? 0) + b.bonus;
+  return out;
+}
+
+/**
+ * The scores a ninja plays with: the base scores the player rolled or bought plus the clan's bonus.
+ * The sheet keeps only the base scores (its `stats`); the bonus is added here, where the numbers
+ * are derived, and nowhere else, so it can never count twice.
+ */
+export function effectiveScores(stats: AbilityScores, clan: ClanType): AbilityScores {
+  const b = clanBonus(clan);
+  return Object.fromEntries(ABILITIES.map((k) => [k, stats[k] + (b[k] ?? 0)])) as unknown as AbilityScores;
+}
+
+/** A character's ability scores with its clan's bonus (what every check, save and derived number uses). */
+export const abilityScores = (c: Pick<ShinobiCharacter, 'stats' | 'clan'>): AbilityScores => effectiveScores(c.stats, c.clan);
 
 /** 5e proficiency: +2 at levels 1–4, +3 at 5–8, +4 at 9–12… */
 export const proficiencyBonus = (level: number): number => 2 + Math.floor((Math.max(1, Math.floor(level)) - 1) / 4);
@@ -80,7 +103,7 @@ export function skillModifier(c: ShinobiCharacter, skill: SkillId): number {
   const ability = SKILL_ABILITY[skill];
   const m = effectMods(c.effects);
   const prof = skillsOf(c).includes(skill) ? proficiencyBonus(c.level) : 0;
-  return abilityMod(c.stats[ability]) + prof - exhaustionPenalty(c) + m.allRolls + (ability === 'dex' ? m.dexRolls : 0);
+  return abilityMod(abilityScores(c)[ability]) + prof - exhaustionPenalty(c) + m.allRolls + (ability === 'dex' ? m.dexRolls : 0);
 }
 
 export function checkAdvantage(c: ShinobiCharacter, skill: SkillId): Advantage {
@@ -100,7 +123,7 @@ const isSaveProficient = (c: ShinobiCharacter, ability: Ability): boolean =>
 export function saveModifier(c: ShinobiCharacter, ability: Ability): number {
   const m = effectMods(c.effects);
   const prof = isSaveProficient(c, ability) ? proficiencyBonus(c.level) : 0;
-  return abilityMod(c.stats[ability]) + prof - exhaustionPenalty(c) + m.allRolls + m.saves + (ability === 'dex' ? m.dexRolls : 0);
+  return abilityMod(abilityScores(c)[ability]) + prof - exhaustionPenalty(c) + m.allRolls + m.saves + (ability === 'dex' ? m.dexRolls : 0);
 }
 
 /** Advantage on a save: Mirai against genjutsu, the shrine's blessing on the Tension save, Hungry on CON… */

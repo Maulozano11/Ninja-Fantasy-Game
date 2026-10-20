@@ -2,15 +2,15 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { DEFAULT_CHARACTER } from '../data/shinobiData';
+import { DEFAULT_CHARACTER, LEGENDARY_PRESETS } from '../data/shinobiData';
 import type { ShinobiCharacter } from '../types/shinobi';
 import type { PartyState } from '../types/mission';
-import { cannotBeSurprised, proficiencyBonus, rollCheck, saveModifier, skillModifier, successChance } from './checks';
+import { abilityScores, cannotBeSurprised, clanBonus, proficiencyBonus, rollCheck, saveModifier, skillModifier, successChance } from './checks';
 import { deriveStats } from './derived';
 import { formatDice, parseDice, rollDice } from './dice';
 import { addEffect, effectMods, endBattle, morningAfter, tickRound, treat } from './effects';
 import { applyBattleResult, enterNextZone, flankWear, newMission, rollDeathSaves, takeSoldierPill, travelLeg } from './mission';
-import { changeExhaustion, changeTension, hitDiceLeft, migrateCharacter, migrateClan, returnToVillage, sanitizeMissionFields } from './ninja';
+import { changeExhaustion, changeTension, countClanBonus, hitDiceLeft, migrateCharacter, migrateClan, returnToVillage, sanitizeMissionFields } from './ninja';
 import { ambushChance, chooseFire, doActivity, morning, rollNight, serveFood, spendHitDie, startCamp, startShortStop, stopActivity } from './rest';
 import { hashString, mulberry32, rngFor } from './rng';
 
@@ -79,8 +79,10 @@ describe('checks', () => {
     assert.equal(skillModifier({ ...c, exhaustion: 2 }, 'medicine'), 4 - 4);
     const crashed = { ...c, effects: addEffect([], 'crash').effects };
     assert.equal(skillModifier(crashed, 'medicine'), 2);
-    assert.equal(saveModifier(c, 'wis'), 2 + 2, 'Medical is proficient in WIS saves');
-    assert.equal(saveModifier(c, 'dex'), 2);
+    assert.equal(saveModifier(c, 'wis'), 2 + 2, 'Medical is proficient in WIS saves (WIS 14 + 1 Ryusei = 15)');
+    // Changed on purpose (owner, 2026-10-20, D2): the clan's bonus counts. The default hero is a
+    // Ryusei, so DEX 14 plays as 16: +3, where it was +2 when the bonus didn't count.
+    assert.equal(saveModifier(c, 'dex'), 3);
   });
 });
 
@@ -116,13 +118,104 @@ describe('clans', () => {
     assert.equal(migrateCharacter(ninja({ clan: 'Nope' as ShinobiCharacter['clan'] })).clan, DEFAULT_CHARACTER.clan);
   });
 
-  it('derived stats carry no old clan bonus', () => {
+  it('derived stats carry no old clan bonus; only the clan\'s ability bonus moves them', () => {
     const b = { level: 4, stats: { str: 10, dex: 14, con: 14, int: 16, wis: 10, cha: 8 }, shinobiClass: 'Ninjutsu Specialist' as const, armor: 'Leaf Chunin Flak' as const, feats: [] };
-    const all = (['Mirai', 'Koton', 'Ryusei', 'Northstar'] as const).map((clan) => deriveStats({ ...b, clan }));
-    for (const d of all) {
-      assert.equal(d.maxHp, all[0].maxHp);
-      assert.equal(d.maxChakra, all[0].maxChakra);
+    const clans = ['Mirai', 'Koton', 'Ryusei', 'Northstar'] as const;
+    // No Uddo +6 HP nor Akkai +25 % chakra: the formula alone gives every clan the same numbers.
+    const plain = clans.map((clan) => deriveStats({ ...b, clan }, { clanBonus: false }));
+    for (const d of plain) assert.deepEqual(d, plain[0]);
+    // Changed on purpose (owner, 2026-10-20, D2): the ability bonus counts, so Kōton's +2 CON gives
+    // exactly what CON 16 gives; the others' bonuses leave HP and chakra alone.
+    const all = clans.map((clan) => deriveStats({ ...b, clan }));
+    const con16 = deriveStats({ ...b, clan: 'Koton', stats: { ...b.stats, con: 16 } }, { clanBonus: false });
+    assert.deepEqual([all[1].maxHp, all[1].maxChakra], [con16.maxHp, con16.maxChakra]);
+    assert.ok(all[1].maxHp > plain[0].maxHp);
+    for (const i of [0, 2, 3]) assert.deepEqual([all[i].maxHp, all[i].maxChakra], [plain[0].maxHp, plain[0].maxChakra], clans[i]);
+  });
+
+  it('the clan\'s ability bonus counts in every number, on top of the base scores the sheet keeps (D2)', () => {
+    assert.deepEqual(clanBonus('Mirai'), { dex: 2, int: 1 });
+    assert.deepEqual(clanBonus('Koton'), { con: 2, int: 1 });
+    assert.deepEqual(clanBonus('Ryusei'), { dex: 2, wis: 1 });
+    assert.deepEqual(clanBonus('Northstar'), { cha: 2, wis: 1 });
+    assert.deepEqual(clanBonus('constructor' as ShinobiCharacter['clan']), {});
+    const base = { str: 10, dex: 14, con: 14, int: 15, wis: 12, cha: 10 };
+    const build = { level: 4, stats: base, shinobiClass: 'Ninjutsu Specialist' as const, armor: 'Leaf Chunin Flak' as const, feats: [] };
+    const k = ninja({ clan: 'Koton', level: 4, shinobiClass: 'Ninjutsu Specialist', stats: base, skillProficiencies: undefined, exhaustion: 0 });
+    // The sheet keeps the base scores; the bonus is added where the numbers are made.
+    assert.deepEqual(k.stats, base);
+    assert.deepEqual(abilityScores(k), { ...base, con: 16, int: 16 });
+    // Saves and skills: CON 16 (+3), INT 16 (+3, proficient in INT saves and Investigation).
+    assert.equal(saveModifier(k, 'con'), 3);
+    assert.equal(saveModifier(k, 'int'), 3 + 2);
+    assert.equal(skillModifier(k, 'investigation'), 3 + 2);
+    // HP and chakra from CON 16, jutsu DC and attack from INT 16.
+    const d = deriveStats({ ...build, clan: 'Koton' });
+    assert.equal(d.maxHp, 8 + 3 + 3 * (4 + 1 + 3));
+    assert.equal(d.maxChakra, 4 * (6 + 2) + 3);
+    assert.equal(d.jutsuSaveDC, 8 + 2 + 3);
+    assert.equal(d.jutsuAttackBonus, 2 + 3);
+    const plain = deriveStats({ ...build, clan: 'Koton' }, { clanBonus: false });
+    assert.deepEqual([plain.maxHp, plain.maxChakra, plain.jutsuSaveDC, plain.jutsuAttackBonus], [8 + 2 + 3 * (4 + 1 + 2), 4 * 8 + 2, 8 + 2 + 2, 2 + 2]);
+    // Mirai's +2 DEX: one more AC (DEX 14 → 16).
+    assert.equal(deriveStats({ ...build, clan: 'Mirai' }).armorClass, deriveStats({ ...build, clan: 'Mirai' }, { clanBonus: false }).armorClass + 1);
+    // Northstar's +2 CHA: a Genjutsu Adept's DC and attack (CHA 15 → 17, +2 → +3).
+    const g = { ...build, shinobiClass: 'Genjutsu Adept' as const, stats: { ...base, cha: 15 } };
+    const gd = deriveStats({ ...g, clan: 'Northstar' });
+    const gPlain = deriveStats({ ...g, clan: 'Northstar' }, { clanBonus: false });
+    assert.deepEqual([gd.jutsuSaveDC, gd.jutsuAttackBonus], [gPlain.jutsuSaveDC + 1, gPlain.jutsuAttackBonus + 1]);
+  });
+
+  it('a sheet saved before the bonus counted gets it counted once; today\'s sheets are left alone', () => {
+    const build = { level: 4, stats: { str: 10, dex: 14, con: 14, int: 15, wis: 12, cha: 10 }, clan: 'Koton' as const, shinobiClass: 'Ninjutsu Specialist' as const, armor: 'Leaf Chunin Flak' as const, feats: [] };
+    const then = deriveStats(build, { clanBonus: false });
+    const now = deriveStats(build);
+    const { sheetVersion: _v, ...rest } = ninja({ level: 4, stats: build.stats, clan: 'Koton', shinobiClass: 'Ninjutsu Specialist', armorStyle: build.armor, selectedFeats: [] });
+    const old: ShinobiCharacter = { ...rest, ...then, currentHp: then.maxHp, currentChakra: 5 };
+    assert.equal(old.sheetVersion, undefined);
+    const m = migrateCharacter(old);
+    assert.equal(m.sheetVersion, 2);
+    // The creator's formula numbers come out as the formula gives them now.
+    for (const key of ['maxHp', 'maxChakra', 'armorClass', 'jutsuSaveDC', 'jutsuAttackBonus'] as const) assert.equal(m[key], now[key], key);
+    // At full HP it stays at full; the chakra it had left stays as it was.
+    assert.deepEqual([m.currentHp, m.currentChakra], [now.maxHp, 5]);
+    assert.deepEqual(m.stats, build.stats, 'the base scores are untouched');
+    // Never twice: today's sheet comes back as it is, also after a trip through JSON.
+    assert.equal(migrateCharacter(m), m);
+    assert.equal(countClanBonus(m), m);
+    assert.deepEqual(migrateCharacter(JSON.parse(JSON.stringify(m))), m);
+    // A hurt ninja keeps what it had; hand-made numbers keep their hand-made part plus the bonus.
+    const hand = migrateCharacter({ ...old, maxHp: 50, currentHp: 20, maxChakra: 40, currentChakra: 40 });
+    assert.deepEqual([hand.maxHp, hand.currentHp, hand.maxChakra, hand.currentChakra], [50 + now.maxHp - then.maxHp, 20, 40 + now.maxChakra - then.maxChakra, 40 + now.maxChakra - then.maxChakra]);
+    // A Grave wound's −10 % still counts on the new maximum.
+    const wounded = migrateCharacter({ ...old, effects: addEffect([], 'grave_wound').effects, currentHp: Math.floor(then.maxHp * 0.9) });
+    assert.equal(wounded.currentHp, Math.floor(now.maxHp * 0.9));
+  });
+
+  it('the presets keep the owner\'s hand-made numbers plus exactly what their clan\'s bonus adds', () => {
+    // His numbers before the bonus counted: max HP, max chakra, AC, jutsu DC, jutsu attack.
+    const owner: Record<string, number[]> = {
+      preset_founder: [56, 44, 19, 17, 9],
+      preset_ember: [38, 30, 18, 15, 7],
+      preset_reference_aiden: [48, 34, 18, 15, 8],
+      preset_storm: [32, 28, 15, 15, 7],
+      preset_sunburst: [44, 42, 14, 14, 6],
+      preset_warlord: [42, 36, 17, 16, 8],
+      preset_gentle: [38, 32, 16, 15, 7],
+      preset_night: [44, 38, 16, 16, 8],
+    };
+    assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(owner).sort());
+    for (const { character: c } of LEGENDARY_PRESETS) {
+      const b = { level: c.level, stats: c.stats, clan: c.clan, shinobiClass: c.shinobiClass, armor: c.armorStyle, feats: c.selectedFeats };
+      const add = (k: 'maxHp' | 'maxChakra' | 'armorClass' | 'jutsuSaveDC' | 'jutsuAttackBonus') => deriveStats(b)[k] - deriveStats(b, { clanBonus: false })[k];
+      const keys = ['maxHp', 'maxChakra', 'armorClass', 'jutsuSaveDC', 'jutsuAttackBonus'] as const;
+      assert.deepEqual(keys.map((k) => c[k]), keys.map((k, i) => owner[c.id][i] + add(k)), c.id);
+      assert.equal(c.sheetVersion, 2, c.id);
+      assert.deepEqual([c.currentHp, c.currentChakra], [c.maxHp, c.maxChakra], c.id);
+      assert.equal(migrateCharacter(c), c, c.id);
     }
+    // Solen (the default hero, a Ryusei Bukijutsu Master) plays DEX 14 as 16: +1 AC, DC and attack.
+    assert.deepEqual([DEFAULT_CHARACTER.armorClass, DEFAULT_CHARACTER.jutsuSaveDC, DEFAULT_CHARACTER.jutsuAttackBonus], [20, 18, 10]);
   });
 
   it('only Watchful prevents surprise', () => {

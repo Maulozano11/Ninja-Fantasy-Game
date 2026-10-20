@@ -63,6 +63,13 @@ SHEETS = {
         ('water_stream', (252, 83, 345, 174), (243, 74, 354, 182), 'Water Stream: a jet of water ending in spray'),
         ('weapon_attack', (369, 83, 462, 174), (360, 74, 471, 182), 'Weapon Attack: a sword with a gold slash crescent and sparkles'),
     ],
+    # Sheet 4 (2026-10-20): bigger windows, 98x96 of his pixels, inside a one-pixel black line.
+    '4': [
+        ('weapon_throw', (14, 83, 112, 179), (8, 77, 118, 185), 'Throw: two kunai, a shuriken and a lit explosive tag over flames'),
+        ('dodge', (132, 83, 230, 179), (126, 77, 236, 185), 'Dodge: a ninja leaping aside, a blue crescent trail, violet smoke'),
+        ('weapon_stow', (250, 83, 348, 179), (244, 77, 354, 185), 'Stow weapon: a masked ninja sheathing his katana, a spark at the scabbard mouth'),
+        ('weapon_draw', (368, 83, 466, 179), (362, 77, 472, 185), 'Draw weapon: two hands drawing a katana in a burst of light'),
+    ],
 }
 
 
@@ -171,10 +178,18 @@ def to_img(arr):
 
 
 def main():
-    if len(sys.argv) != 4:
-        sys.exit('usage: python3 -I tools/refs/icons-from-ref-23.py <icons-owner-reference-2.jpg> <icons-owner-reference-3.jpg> <stagingDir>')
-    srcs = {'2': sys.argv[1], '3': sys.argv[2]}
-    out = sys.argv[3]
+    # Either his sheets 2 and 3 in order, or any of his sheets as N=<picture> (4=...jpg), then the folder.
+    args = sys.argv[1:]
+    if len(args) >= 2 and all('=' in a for a in args[:-1]):
+        srcs = dict(a.split('=', 1) for a in args[:-1])
+        if any(k not in SHEETS for k in srcs):
+            sys.exit('unknown sheet in %s (known: %s)' % (', '.join(srcs), ', '.join(SHEETS)))
+    elif len(args) == 3:
+        srcs = {'2': args[0], '3': args[1]}
+    else:
+        sys.exit('usage: python3 -I tools/refs/icons-from-ref-23.py <icons-owner-reference-2.jpg> <icons-owner-reference-3.jpg> <stagingDir>\n'
+                 '       python3 -I tools/refs/icons-from-ref-23.py 4=<icons-owner-reference-4.jpg> [...] <stagingDir>')
+    out = args[-1]
     ref = os.path.join(out, 'ref')
     study = os.path.join(ref, 'study')
     os.makedirs(study, exist_ok=True)
@@ -226,7 +241,7 @@ def main():
         crops['grid'][sheet]['rowScale'] = {'1x': 44 / ww, '4x': 176 / ww}
     write_atomic(json.dumps(crops, indent=1) + '\n', os.path.join(ref, 'crops.json'))
     write_atomic(json.dumps(pal, indent=1) + '\n', os.path.join(ref, 'palette.json'))
-    print('wrote %d icons and their slots to %s' % (sum(len(v) for v in SHEETS.values()), ref))
+    print('wrote %d icons and their slots to %s' % (sum(len(SHEETS[k]) for k in srcs), ref))
     for s, g in crops['grid'].items():
         print('sheet %s: pitch %.4f x %.4f (spectrum %.4f x %.4f), phase %.2f %.2f, edge ratio %.2f %.2f, block spread %.2f' % (
             s, g['pitch'][0], g['pitch'][1], g['spectrumPitch'][0], g['spectrumPitch'][1], g['phase'][0], g['phase'][1], g['edgeRatio'][0], g['edgeRatio'][1], g['blockSpread']))

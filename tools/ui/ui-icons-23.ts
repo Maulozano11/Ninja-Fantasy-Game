@@ -959,7 +959,7 @@ interface Ctx {
 interface IconSpec {
   id: string;
   name: string;
-  sheet: '2' | '3';
+  sheet: '2' | '3' | '4';
   /** Palette: k-means entries, lightness flattening, hue weight. */
   colors: number;
   flat: number;
@@ -1343,6 +1343,64 @@ const ICONS: IconSpec[] = [
     mark88: 0.06,
     art: weapon,
   },
+  // Sheet 4 (2026-10-20): the weapon actions. His windows are 98x96 of his pixels.
+  {
+    id: 'weapon_throw',
+    name: 'Throw',
+    sheet: '4',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.2,
+    marks: [
+      // Only his near-black outline, lightly: kept heavier, it turned his grey steel kunai black at 44.
+      { kind: 'dark', what: 'the near-black outlines of his kunai, shuriken and tag', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'the light edges of his steel and his sparks', r: 1, thr: 0.08, minL: 0.7, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'dodge',
+    name: 'Dodge',
+    sheet: '4',
+    colors: 20,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'bright', what: 'the white-blue edge of his crescent and his stars', r: 1, thr: 0.08, minL: 0.8, minPx: 6, speck: 0.15, share: 0.35, mix: 0.75 },
+      { kind: 'dark', what: 'the dark silhouette of his ninja', r: 1, thr: 0.06, maxL: 0.22, minPx: 8, share: 0.3, mix: 0.8 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'weapon_stow',
+    name: 'Stow Weapon',
+    sheet: '4',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'dark', what: 'the near-black outlines of his hands and katana', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his spark at the scabbard mouth and the blade glint', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'weapon_draw',
+    name: 'Draw Weapon',
+    sheet: '4',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'bright', what: 'his white-gold burst and its long rays', r: 1, thr: 0.1, minL: 0.85, minPx: 10, share: 0.3, mix: 0.7 },
+      { kind: 'dark', what: 'the near-black outlines of his hands and the hilt', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
 ];
 
 // --- the slot frame (sheet 1's, read only) ------------------------------------------------------------
@@ -1361,7 +1419,9 @@ const frameActive = loadFrame('skill_slot_steel_active.png');
 // --- build, write, check ------------------------------------------------------------------------------
 
 const only = process.env.UI_ONLY ? new Set(process.env.UI_ONLY.split(',')) : null;
-const built = ICONS.filter((s) => !only || only.has(s.id)).map(buildIcon);
+// The icons whose windows were cropped into this folder (sheets 2 and 3 in ui_icons_23, sheet 4 in ui_icons_4).
+const built = ICONS.filter((s) => (!only || only.has(s.id)) && existsSync(join(REF, `${s.id}.png`))).map(buildIcon);
+const SHEETS_BUILT = [...new Set(built.map((b) => b.spec.sheet))].sort();
 for (const b of built) {
   console.log(b.spec.id, b.pal.rgb.length, b.pal.rgb.map((c, i) => toHex(c) + (b.pal.spare[i] ? '*' : '')).join(' '));
   console.log('   88 drops columns', [...Array(b.W.w).keys()].filter((i) => !b.cols.includes(i)).join(','), 'rows', [...Array(b.W.h).keys()].filter((i) => !b.rows.includes(i)).join(','));
@@ -1432,8 +1492,8 @@ for (const b of built) {
 // --- manifest -------------------------------------------------------------------------------------
 
 const manifest = {
-  kit: 'ui_icons_23',
-  references: ['docs/reference/icons-owner-reference-2.jpg', 'docs/reference/icons-owner-reference-3.jpg'],
+  kit: `ui_icons_${SHEETS_BUILT.join('')}`,
+  references: SHEETS_BUILT.map((n) => `docs/reference/icons-owner-reference-${n}.jpg`),
   round: 1,
   screen: [1600, 900],
   pixel: 'one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated',
@@ -1488,7 +1548,8 @@ if (process.env.UI_SHEETS) {
   const parts: { img: Img; x: number; y: number }[] = [];
   let y = pad;
   const put = (img: Img, x: number) => parts.push({ img, x, y });
-  const title = screenText('SKILL ICONS 2 AND 3 (round 1)  -  his icons beside ours', 'title', HEAD);
+  const sheets = SHEETS_BUILT;
+  const title = screenText(`SKILL ICONS ${sheets.join(' AND ')}  -  his icons beside ours`, 'title', HEAD);
   put(title, pad);
   y += title.h + 14;
   const heads = ['his, at 88 (2x)', 'ours, 88 (2x)', 'ours, 44 (4x)', 'his box to 44 (4x)', 'ours, 44 at 1x'];
@@ -1504,7 +1565,7 @@ if (process.env.UI_SHEETS) {
     put(b.out[44].img, pad + LEFT + 4 * (cell + gap));
     y += cell + gap;
   }
-  for (const sheet of ['2', '3']) {
+  for (const sheet of sheets) {
     const list = built.filter((b) => b.spec.sheet === sheet);
     if (!list.length) continue;
     y += 10;
@@ -1539,5 +1600,5 @@ if (process.env.UI_SHEETS) {
   const out = new Img(W, y);
   out.fill(BG);
   for (const p of parts) out.draw(p.img, p.x, p.y);
-  savePng(join(process.env.UI_SHEETS, 'ui-icons-23-compare.png'), out);
+  savePng(join(process.env.UI_SHEETS, `ui-icons-${sheets.join('')}-compare.png`), out);
 }

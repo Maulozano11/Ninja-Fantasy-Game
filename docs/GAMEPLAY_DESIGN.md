@@ -310,3 +310,19 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 ## Open questions
 
 - None for now.
+
+## Three new jutsu (agreed 2026-10-20)
+
+Made for the owner's skill icons. Their effects come from the approved
+element sets, and each one carries his icon in the hotbar. They are learnt
+in the creator like any jutsu of their nature. Ranges convert at
+1 square = 1.5 m.
+
+| jutsu | nature, rank | use | effect | enhanced (+2 chakra) |
+|---|---|---|---|---|
+| **Rasengan** | Chakra, B | action, 4 chakra, touch (1.5 m) | 4d8 force; DEX save for half; on a failed save the target is pushed 1 square (1.5 m) | Great Rasengan: 6d8, pushes 3 squares and knocks prone |
+| **Venom Surge** | Poison, B | action, 4 chakra, line of 7 squares (10.5 m) | 3d6 poison; CON save for half and no poison; on a failed save, Poisoned for 2 rounds | 5d6, Poisoned for 3 rounds |
+| **Water Stream** (*Chorro de agua*) | Water, C | action, 3 chakra, line of 6 squares (9 m) | 3d6 bludgeoning; STR save for half; on a failed save the target is pushed 2 squares (3 m), into the river or off a ledge if that is where it goes; puts out burning ground and burning units it touches | 5d6, pushes 4 squares and knocks prone |
+
+Visuals: Rasengan uses the chakra sphere, Venom Surge the poison stream,
+Water Stream the water stream.

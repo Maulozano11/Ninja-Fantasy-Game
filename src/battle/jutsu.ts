@@ -216,8 +216,8 @@ const CLAN_SPECS: JutsuSpec[] = [
   {
     // A real Katon jutsu: hand seals, and Centered chakra's discount applies.
     id: 'katon_pursuing_flame',
-    name: 'Katon: Pursuing Flame',
-    nameEs: 'Katon: Llama Persecutoria',
+    name: 'Fire Technique: Pursuing Flame',
+    nameEs: 'Técnica de Fuego: Llama persecutoria',
     clan: 'Mirai',
     rank: 'C',
     element: 'fire',

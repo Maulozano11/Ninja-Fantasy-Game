@@ -98,6 +98,8 @@ export interface JutsuDefinition {
   enhancementChakraCost: number; // cost to upcast/empower
   enhancementEffect: string;
   description: string;
+  /** The description on the Spanish screens. */
+  descriptionEs?: string;
   environmentalEffect?: 'Ignites Wood' | 'Creates Earth Wall' | 'Creates Water Barrier' | 'Clears Foliage' | 'Electrifies Water' | 'Freezes Water' | 'Sets Trap';
   requiredClan?: ClanType;
 }

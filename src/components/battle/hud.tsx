@@ -324,6 +324,23 @@ export interface ActionButton {
   element?: string;
   /** A reaction or passive shown for what it is (its help on hover); it can't be pressed. */
   passive?: boolean;
+  /** The painted icon to show when it isn't the button's own (the Great Fireball while it is aimed enhanced). */
+  iconId?: string;
+  /** The pop-up window over the slot: the full name, how it is used, what it does, its description. */
+  tip?: ButtonTip;
+}
+
+export interface ButtonTip {
+  title: string;
+  /** Rank, action, chakra and reach. */
+  meta?: string;
+  /** Dice, area and save. */
+  effect?: string;
+  text?: string;
+  /** What the enhanced cast does. */
+  enh?: string;
+  /** Why it can't be used now. */
+  why?: string;
 }
 
 /** Resources and the buttons of the acting ninja. */

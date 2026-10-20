@@ -77,9 +77,9 @@ export const FLAME = 'katon_pursuing_flame';
 /** Modular Architecture's wall (Kōton). */
 export const WALL = 'koton_wall';
 /**
- * After its opening flame, Pursuing Flame takes the place of a jutsu worth up to two and a half
- * times as much on that foe: the rogues' Fireball (3d8) and Kagero's Lightning Hound (4d6+3), but
- * not Kagero's Chidori (5d8).
+ * Pursuing Flame takes the place of a jutsu worth up to two and a half times as much on that foe:
+ * the rogues' Fireball (3d8) and Kagero's Lightning Hound (4d6+3), but not Kagero's Chidori (5d8),
+ * which he opens with (the owner, 2026-10-20).
  */
 const FLAME_FOR = 2.5;
 /** A blow from behind (Warp Strike): advantage, and nothing blocks it. Worth half again a plain blow. */
@@ -292,9 +292,9 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
  * Each clan fights its own way (docs/CLANS_DESIGN.md, D21), so the party sees it used against it:
  * an enemy's clan move takes the place of a jutsu that would reach just one foe, taking that
  * jutsu's worth (a jutsu that catches two foes or more still comes first).
- * - A Mirai opens with Pursuing Flame: its first jutsu of the fight is the flame at that foe, if
- *   the flame reaches it. After that, every other jutsu (its jutsu cast so far is even) is the
- *   flame too, when the other one is worth no more than two and a half flames (FLAME_FOR).
+ * - A Mirai opens with Pursuing Flame: its first jutsu of the fight, and every other one after it
+ *   (its jutsu cast so far is even), is the flame at that foe, if the flame reaches it and the
+ *   other jutsu is worth no more than two and a half flames (FLAME_FOR; a stronger one comes first).
  * - A Ryusei warps in beside that foe and strikes from behind, when a Node of its own lets it; and
  *   with no Node of its own yet, it opens by throwing a kunai at that foe, to leave one.
  * - A Northstar commands a foe whose WIS save fails at least half the time, in place of any attack
@@ -308,7 +308,7 @@ function clanWays(s: BattleState, u: Unit, out: Option[]): void {
     const flameOn = new Map(out.filter((o) => o.intent.kind === 'jutsu' && o.intent.what === FLAME).map((o) => [o.intent.target!, o.value]));
     for (const o of out) {
       const mine = o.single && o.intent.what !== FLAME ? flameOn.get(o.intent.target!) : undefined;
-      if (mine !== undefined && (u.stats2.jutsuCast === 0 || o.value <= mine * FLAME_FOR)) o.intent = { kind: 'jutsu', what: FLAME, target: o.intent.target, at: { ...s.units[o.intent.target!].pos } };
+      if (mine !== undefined && o.value <= mine * FLAME_FOR) o.intent = { kind: 'jutsu', what: FLAME, target: o.intent.target, at: { ...s.units[o.intent.target!].pos } };
     }
   }
   const opening = !ownNodes(s, u).length;

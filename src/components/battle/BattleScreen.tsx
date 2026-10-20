@@ -33,10 +33,11 @@ import type { Camera, Overlay, Rect } from './renderer';
 import { playSound, startAmbience } from './battleSound';
 import { floatLabel, jutsuName, logLine, structureName, unitName, unitRef } from './battleLog';
 import type { LogLine } from './battleLog';
-import { SAVE_EN, SAVE_ES, T } from './battleText';
+import { DMG_ES, SAVE_EN, SAVE_ES, T } from './battleText';
 import type { TKey } from './battleText';
 import { ABILITY_ICON, ACTION_ICON, ELEMENT_ICON, LogPanel, PartyFrames, Prompt, RollToast, Tip } from './hud';
-import type { ActionButton } from './hud';
+import type { ActionButton, ButtonTip } from './hud';
+import { JUTSUS_DATA } from '../../data/shinobiData';
 import { ActionDock, MiniRing, PartyDock, TopPlaque, plaqueUnit } from './hudKit';
 import { Anchor, Piece, kitText, useHudScale } from './kit';
 import { appNavigate } from '../../appNav';
@@ -105,7 +106,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   const [mode, setMode] = useState<Mode>({ k: 'move' });
   const [selected, setSelected] = useState<string | undefined>();
   const [hover, setHover] = useState<{ unit?: string; wall?: string; pt?: Pt; sx: number; sy: number } | null>(null);
-  const [hoverBtn, setHoverBtn] = useState<ActionButton | null>(null);
+  const [, setHoverBtn] = useState<ActionButton | null>(null);
   const [zoom, setZoom] = useState<number>(1);
   const zoomStep = useCallback((dir: 1 | -1) => {
     setZoom((z) => {
@@ -864,7 +865,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     // A button that is off says why in its help line (hovering it still shows the help).
     const add = (x: ActionButton & { why?: string | null }) => {
       const { why, ...btn } = x;
-      b.push(btn.disabled && why && btn.help ? { ...btn, help: `${btn.help} — ${why}` } : btn);
+      // The pop-up over the slot: its own tip, or the button's name and help line.
+      const tip: ButtonTip = btn.tip ?? { title: btn.label, text: btn.help };
+      b.push({ ...(btn.disabled && why && btn.help ? { ...btn, help: `${btn.help} — ${why}` } : btn), tip: { ...tip, why: btn.disabled && why ? why : undefined } });
     };
     const can = { action: u.turn.action, bonus: u.turn.bonus };
     const noAction = can.action ? null : t('r_noAction');
@@ -891,6 +894,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
             disabled: !ready,
             why: !u.turn.reaction ? t('why_reaction') : t('r_noChakra'),
             help: `${name} · ${T(helpKey, undefined, lang)}`,
+            tip: jutsuTip(sp, sp.cost, lang),
           });
           continue;
         }
@@ -918,6 +922,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           disabled: !!why,
           why,
           active: mode.k === 'jutsu' && mode.id === id,
+          tip: jutsuTip(sp, cost, lang),
+          // Aimed enhanced, the Fireball is the Great Fireball, with its own icon.
+          iconId: mode.k === 'jutsu' && mode.id === id && mode.enhanced && id === 'fireball_goukakyu' ? 'great_fireball' : undefined,
           // A clan ability explains itself; a jutsu shows its rank, reach, dice and save.
           help: T.has(helpKey)
             ? `${name} · ${T(helpKey, undefined, lang)}`
@@ -1154,7 +1161,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   };
   const prompt = askPlayer ? promptText() : null;
 
-  const helpLine = hoverBtn?.help ?? (mode.k === 'jutsu' && spec ? `${jutsuName(spec.id, lang, mode.k === 'jutsu' && mode.enhanced)}${spec.enhCost ? ` · ${T('enhancedToggle', { n: spec.enhCost })} (E)` : ''}` : null);
+  const helpLine = (mode.k === 'jutsu' && spec ? `${jutsuName(spec.id, lang, mode.k === 'jutsu' && mode.enhanced)}${spec.enhCost ? ` · ${T('enhancedToggle', { n: spec.enhCost })} (E)` : ''}` : null);
   // The lower plaque's line: an error first, then the help for what is aimed or hovered.
   const dockLine: { text: string; tone: 'error' | 'help' | 'quiet' } = error
     ? { text: error, tone: 'error' }
@@ -1471,6 +1478,46 @@ const SHORT: Record<string, [string, string]> = {
   northstar_submission: ['Submit', 'Sumisión'],
   mirai_evasion: ['Evasion', 'Evasión'],
 };
+
+const fmtM = (m: number, lang: ReturnType<typeof useLang>): string => (Math.round(m * 10) / 10).toString().replace('.', lang === 'es' ? ',' : '.');
+
+/** A jutsu's dice, area and save in a short line ("3d8 de fuego · área de 2 m · salvación de DES: mitad"). */
+function jutsuEffect(sp: JutsuSpec, lang: ReturnType<typeof useLang>): string {
+  const es = lang === 'es';
+  const m = (n: number) => fmtM(n, lang);
+  const dmg = sp.special === 'heal' && sp.dice ? (es ? `cura ${sp.dice}` : `heals ${sp.dice}`) : sp.dice ? `${sp.dice}${sp.dmgType ? (es ? ` de ${DMG_ES[sp.dmgType] ?? sp.dmgType}` : ` ${sp.dmgType.toLowerCase()}`) : ''}` : '';
+  const area =
+    (sp.shape === 'circle' || sp.shape === 'selfCircle') && sp.radius
+      ? es ? `área de ${m(sp.radius)} m` : `${m(sp.radius)} m radius`
+      : sp.shape === 'line' && sp.length
+        ? es ? `línea de ${m(sp.length)} m` : `${m(sp.length)} m line`
+        : sp.shape === 'cone' && sp.length
+          ? es ? `cono de ${m(sp.length)} m` : `${m(sp.length)} m cone`
+          : sp.shape === 'wall' && sp.length
+            ? es ? `muro de ${m(sp.length)} m` : `${m(sp.length)} m wall`
+            : '';
+  const adv = sp.saveAdv === 'disadvantage' ? (es ? ' con desventaja' : ' with disadvantage') : '';
+  const save = sp.save ? (es ? `salvación de ${SAVE_ES[sp.save]}${adv}${sp.saveHalf ? ': mitad' : ''}` : `${SAVE_EN[sp.save]} save${adv}${sp.saveHalf ? ' for half' : ''}`) : '';
+  return [dmg, area, save].filter(Boolean).join(' · ');
+}
+
+/** The pop-up of a jutsu's slot: its full name, rank, how it is cast, what it does, its description, and enhanced. */
+function jutsuTip(sp: JutsuSpec, cost: number, lang: ReturnType<typeof useLang>): ButtonTip {
+  const es = lang === 'es';
+  const cast = T(sp.cast === 'bonus' ? 'bonus' : sp.cast === 'reaction' ? 'reaction' : 'action', undefined, lang);
+  const reach = sp.shape === 'self' || sp.shape === 'selfCircle' ? (es ? 'en ti' : 'on yourself') : sp.melee || sp.range <= 1.5 ? (es ? 'cuerpo a cuerpo' : 'melee') : `${fmtM(sp.range, lang)} m`;
+  const meta = [sp.rank ? (es ? `Rango ${sp.rank}` : `Rank ${sp.rank}`) : '', cast, `${cost} chakra`, reach].filter(Boolean).join(' · ');
+  const data = JUTSUS_DATA.find((j) => j.id === sp.id);
+  const helpKey = `help_${sp.id}`;
+  const text = T.has(helpKey) ? T(helpKey as TKey, undefined, lang) : es ? data?.descriptionEs ?? data?.description : data?.description;
+  let enh: string | undefined;
+  if (sp.enhCost) {
+    const e = enhancedSpec(sp);
+    const own = es ? sp.nameEnhEs : sp.nameEnh;
+    enh = `${es ? 'Potenciado' : 'Enhanced'} (E, +${sp.enhCost} chakra)${own ? ` · ${own.replace(/^[^:]*: /, '')}` : ''}: ${jutsuEffect(e, lang)}`;
+  }
+  return { title: jutsuName(sp.id, lang), meta, effect: jutsuEffect(sp, lang) || undefined, text, enh };
+}
 
 /** A jutsu's short name for its button. */
 function jutsuShort(id: string, lang: ReturnType<typeof useLang>): string {

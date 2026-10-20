@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { DEFAULT_CHARACTER } from '../data/shinobiData';
+import { DEFAULT_CHARACTER, JUTSUS_DATA } from '../data/shinobiData';
 import { HANA, KENJI, MISSIONS } from '../data/missions';
 import { addEffect } from '../rules/effects';
 import type { ClanType, ShinobiCharacter } from '../types/shinobi';
@@ -561,13 +561,14 @@ describe('Mirai: Eye of Tomorrow, Premonitory Evasion, Pursuing Flame', () => {
       enemies: [{ kind: 'rogue', pos: { x: 16, z: 10 } }],
     })).state, 'rogue_0');
     assert.deepEqual(plan(pair).slice(0, 2), ['jutsu', 'fireball_goukakyu']);
-    // Kagero opens with the flame too, but after that keeps his Chidori (worth more than 2.5 flames).
+    // Kagero keeps his Chidori (worth more than 2.5 flames), opening with it too (the owner,
+    // 2026-10-20; he opened with the flame before).
     const kagero = turnOf(createBattle(setup({ enemies: [{ kind: 'jonin', pos: { x: 14, z: 10 } }] })).state, 'jonin_0');
     const k = (cast: number) => {
       kagero.units.jonin_0.stats2.jutsuCast = cast;
       return planIntent(kagero, kagero.units.jonin_0)?.what;
     };
-    assert.deepEqual([k(0), k(1), k(2)], ['katon_pursuing_flame', 'chidori_lightning_blade', 'chidori_lightning_blade']);
+    assert.deepEqual([k(0), k(1), k(2)], ['chidori_lightning_blade', 'chidori_lightning_blade', 'chidori_lightning_blade']);
     // A Mirai of the party on the AI just plays its best move: the Fireball.
     const ally = hero({ id: 'm', name: 'Ren', clan: 'Mirai', selectedJutsus: { ...DEFAULT_CHARACTER.selectedJutsus, slot3Elemental: '', slot4Clan: '', slot5Ultimate: '' } });
     const own = turnOf(createBattle(setup({ party: [{ character: ally, pos: { x: 8, z: 10 }, controller: 'ai' }], enemies: [{ kind: 'raider', pos: { x: 16, z: 10 } }] })).state, 'm');
@@ -1940,8 +1941,9 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
     ];
     const runs: [EncounterId, number, typeof four][] = [];
     for (const id of ['river_patrol', 'cedar_rogues', 'night_raid'] as EncounterId[]) for (const seed of [1, 2, 3, 4]) runs.push([id, seed, four]);
-    // The mission's own party of three gives the enemies longer fights.
-    for (const seed of [1, 2, 3, 4]) runs.push(['night_raid', seed, four.slice(0, 3)]);
+    // The mission's own party of three gives the enemies longer fights (more of them since Kagero
+    // opens with his Chidori, which ends some raids before a Kōton needs its wall).
+    for (let seed = 1; seed <= 16; seed++) runs.push(['night_raid', seed, four.slice(0, 3)]);
     const seen = new Set<string>();
     for (const [id, seed, party] of runs) {
       let s = battleOf(id, seed, party);
@@ -2201,31 +2203,39 @@ describe('clan playtest fixes: what the screen shows matches the engine', () => 
     assert.equal(state.units.hunter_0.nameEs?.startsWith('Cazador'), true);
     // A proper name stays as it is.
     assert.deepEqual(names('jonin_0'), ['Kagero', undefined]);
-    // The jutsu they cast have Spanish names too: the owner's own short names (D24, 2026-10-20;
-    // this pinned 'Estilo Fuego: Gran Bola de Fuego' before the owner named it).
-    assert.equal(JUTSU.fireball_goukakyu.nameEs, 'Bola de fuego');
+    // The jutsu they cast have Spanish names too: "Técnica de <Elemento>: <his name>" (D24, the
+    // owner, 2026-10-20; this pinned 'Estilo Fuego: Gran Bola de Fuego', then 'Bola de fuego').
+    assert.equal(JUTSU.fireball_goukakyu.nameEs, 'Técnica de Fuego: Bola de fuego');
     assert.ok(Object.values(JUTSU).every((j) => j.nameEs), 'every jutsu has a Spanish name');
   });
 
-  it('the base jutsu take the owner’s short Spanish names, and the enhanced Fireball its own (D24)', () => {
+  it('every jutsu is "Técnica de <Elemento>: <the owner’s name>", the enhanced Fireball its own (D24)', () => {
     const es = (id: string) => JUTSU[id].nameEs;
-    assert.equal(es('fireball_goukakyu'), 'Bola de fuego');
-    assert.equal(JUTSU.fireball_goukakyu.nameEnhEs, 'Gran bola de fuego');
-    assert.equal(JUTSU.fireball_goukakyu.nameEnh, 'Great Fireball');
-    assert.equal(es('water_shield_suijinheki'), 'Muro de agua');
-    assert.equal(es('earth_wall_doryuheki'), 'Muro de tierra');
-    assert.equal(es('earth_spear_doryuudan'), 'Balas de tierra');
-    assert.equal(es('dragon_fire_stream'), 'Fuego del dragón');
-    assert.equal(es('wind_blade_daitoppa'), 'Gran ráfaga cortante');
-    assert.equal(es('chidori_lightning_blade'), 'Chidori');
-    assert.equal(es('kirin_thunder'), 'Kirin');
+    assert.equal(es('fireball_goukakyu'), 'Técnica de Fuego: Bola de fuego');
+    assert.equal(JUTSU.fireball_goukakyu.nameEnhEs, 'Técnica de Fuego: Gran bola de fuego');
+    assert.equal(JUTSU.fireball_goukakyu.nameEnh, 'Fire Technique: Great Fireball');
+    assert.equal(es('water_shield_suijinheki'), 'Técnica de Agua: Muro de agua');
+    assert.equal(es('earth_wall_doryuheki'), 'Técnica de Tierra: Muro de tierra');
+    assert.equal(es('earth_spear_doryuudan'), 'Técnica de Tierra: Balas de tierra');
+    assert.equal(es('dragon_fire_stream'), 'Técnica de Fuego: Fuego del dragón');
+    assert.equal(es('wind_blade_daitoppa'), 'Técnica de Viento: Gran ráfaga cortante');
+    assert.equal(es('chidori_lightning_blade'), 'Técnica de Rayo: Chidori');
+    assert.equal(es('kirin_thunder'), 'Técnica de Rayo: Kirin');
+    assert.equal(JUTSU.kirin_thunder.name, 'Lightning Technique: Kirin');
+    assert.equal(es('katon_pursuing_flame'), 'Técnica de Fuego: Llama persecutoria');
+    // Every jutsu of the data carries it, with its Spanish description; the clan abilities don't.
+    for (const j of JUTSUS_DATA) {
+      assert.match(j.nameEs ?? '', /^Técnica de [A-ZÁÉÍÓÚ][a-záéíóú]+: /, j.id);
+      assert.match(j.name, /^[A-Z][a-z]+ Technique: /, j.id);
+      assert.ok(j.descriptionEs, j.id);
+    }
     // Warp Strike and Command stay in English in both languages.
     assert.equal(es('ryusei_warp'), 'Warp Strike');
     assert.equal(es('northstar_command'), 'Command');
     // No "Estilo X:" prefix is left on any jutsu.
     assert.ok(Object.values(JUTSU).every((j) => !/^Estilo /.test(j.nameEs ?? '')));
     // Only the enhanced Fireball has a name of its own; the enhanced spec keeps it.
-    assert.equal(enhanced(JUTSU.fireball_goukakyu).nameEnhEs, 'Gran bola de fuego');
+    assert.equal(enhanced(JUTSU.fireball_goukakyu).nameEnhEs, 'Técnica de Fuego: Gran bola de fuego');
   });
 });
 
@@ -2257,10 +2267,10 @@ describe('battle text in Spanish', () => {
     assert.equal(line({ t: 'attack', unit: 'raider_0', target: 'a', what: 'weapon', roll: roll(true), ranged: false }), 'El Asaltante golpea a Akira (15→15 contra CA 12)');
     assert.equal(line({ t: 'attack', unit: 'a', target: 'raider_0', what: 'weapon', roll: roll(true), ranged: false }), 'Akira golpea al Asaltante (15→15 contra CA 12)');
     assert.equal(line({ t: 'attack', unit: 'raider_1', target: 'rogue_1', what: 'weapon', roll: roll(false), ranged: false }), 'La Sombra falla contra el Renegado 2 (15→15 contra CA 12)');
-    assert.equal(line({ t: 'jutsu', unit: 'rogue_0', jutsu: 'fireball_goukakyu', at: { x: 8, z: 10 }, shape: null, enhanced: false }), 'El Renegado 1 lanza Bola de fuego');
+    assert.equal(line({ t: 'jutsu', unit: 'rogue_0', jutsu: 'fireball_goukakyu', at: { x: 8, z: 10 }, shape: null, enhanced: false }), 'El Renegado 1 lanza Técnica de Fuego: Bola de fuego');
     // An enhanced cast with a name of its own says it; another says "potenciado".
-    assert.equal(line({ t: 'jutsu', unit: 'rogue_0', jutsu: 'fireball_goukakyu', at: { x: 8, z: 10 }, shape: null, enhanced: true }), 'El Renegado 1 lanza Gran bola de fuego');
-    assert.equal(line({ t: 'jutsu', unit: 'jonin_0', jutsu: 'chidori_lightning_blade', at: { x: 8, z: 10 }, shape: null, enhanced: true }), '¡Kagero lanza Chidori potenciado!');
+    assert.equal(line({ t: 'jutsu', unit: 'rogue_0', jutsu: 'fireball_goukakyu', at: { x: 8, z: 10 }, shape: null, enhanced: true }), 'El Renegado 1 lanza Técnica de Fuego: Gran bola de fuego');
+    assert.equal(line({ t: 'jutsu', unit: 'jonin_0', jutsu: 'chidori_lightning_blade', at: { x: 8, z: 10 }, shape: null, enhanced: true }), '¡Kagero lanza Técnica de Rayo: Chidori potenciado!');
     assert.equal(line({ t: 'jutsu', unit: 'raider_0', jutsu: 'leaf_hurricane_senpuu', at: { x: 8, z: 10 }, shape: null, enhanced: true })?.startsWith('¡El Asaltante lanza'), true);
     // The prompts read the same way.
     assert.equal(T('evadeAsk', { name: unitRef(s.units.a, 'es'), dmg: 5, by: unitRef(s.units.raider_0, 'es') }, 'es').startsWith('Akira vio venir el golpe del Asaltante'), true);

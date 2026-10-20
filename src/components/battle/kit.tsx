@@ -26,6 +26,9 @@ export function iconUrl(id: string, dense: boolean): string | undefined {
   return (dense && ICONS[`../../assets/ui_icons/${id}@2x.png`]) || ICONS[`../../assets/ui_icons/${id}.png`];
 }
 
+/** His steel-and-gold skill slot from the icon pictures (56x56, the icon window 44x44 at 6,6). */
+export const slotFrameUrl = (active: boolean): string => ICONS[`../../assets/ui_icons/skill_slot_steel${active ? '_active' : ''}.png`];
+
 type Box = { x?: number; y?: number; w?: number; h?: number };
 
 /**

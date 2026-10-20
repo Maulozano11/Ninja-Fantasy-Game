@@ -253,14 +253,19 @@ D21 and D24 there):
 - Battle, missions and camp in **Spanish and English** with a toggle; the game
   starts in the browser's language and remembers the choice. The character
   creator and the older screens follow later.
-- **Ability names** (2026-10-20): Warp Strike and Command stay in English in
-  both languages, as the owner wrote them. The base jutsu use the owner's
-  short Spanish names (*Bola de fuego* and *Gran bola de fuego*, *Muro de
-  agua*, *Muro de tierra*, *Balas de tierra*; Kirin, Chidori and Rasengan as
-  they are) and drop the "Estilo X:" prefix (*Fuego del dragón*, *Gran ráfaga
-  cortante*). The enhanced Fireball is called by its own name when cast. The
-  S-rank prefix and the English "X Release:" prefixes went the same way
-  (to be confirmed by the owner: `CLANS_DESIGN.md`, D24).
+- **Ability names** (the owner, 2026-10-20): every jutsu is "Técnica de
+  <Elemento>: <name>" in Spanish and "<Element> Technique: <name>" in English,
+  with the owner's own names after the prefix (*Técnica de Fuego: Bola de
+  fuego*, enhanced *Técnica de Fuego: Gran bola de fuego*; *Técnica de Agua:
+  Muro de agua*, *Técnica de Tierra: Muro de tierra*, *Técnica de Tierra:
+  Balas de tierra*, *Técnica de Rayo: Kirin*). New jutsu follow the rule
+  (*Técnica de Chakra: Rasengan*, *Técnica de Veneno: Venom Surge*, *Técnica
+  de Agua: Chorro de agua*). The clans' bloodline abilities are not jutsu:
+  Warp Strike and Command stay in English, as the owner wrote them.
+- **The action bar** (the owner's kit, 2026-10-20): the skill slots show his
+  painted icons and no name; hovering a slot (or aiming its jutsu) opens a
+  window with the full name, rank, action, chakra and reach, dice, area and
+  save, the description, and what the enhanced cast does.
 - **Names in Spanish sentences**: a generic enemy name takes its article
   ("Turno del Asaltante", "El Renegado 1 golpea a Akira", "la Sombra"), and a
   participle agrees with the one it is about ("Hana está desprevenida"); the

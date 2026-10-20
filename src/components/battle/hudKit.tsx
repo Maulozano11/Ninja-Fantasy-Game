@@ -11,9 +11,9 @@ import type { Lang } from '../../i18n';
 import { T } from './battleText';
 import { unitName } from './battleLog';
 import { portraitOf } from './unitArt';
-import type { ActionButton } from './hud';
+import type { ActionButton, ButtonTip } from './hud';
 import { UnitCard } from './hud';
-import { iconUrl, kitText, Piece } from './kit';
+import { iconUrl, kitText, Piece, slotFrameUrl } from './kit';
 
 const CX = 800;
 const BOTTOM = 900;
@@ -138,7 +138,7 @@ export function MiniRing({ children }: { children: React.ReactNode }) {
 }
 
 const SKILL = (b: ActionButton) => b.id === 'attack' || b.id === 'throw' || b.id.startsWith('jutsu:') || b.id.startsWith('passive:');
-const iconId = (b: ActionButton) => (b.id === 'attack' ? 'weapon_attack' : b.id.replace(/^(jutsu|passive):/, ''));
+const iconId = (b: ActionButton) => b.iconId ?? (b.id === 'attack' ? 'weapon_attack' : b.id.replace(/^(jutsu|passive):/, ''));
 const TINT: Record<string, string> = {
   fire: '#fb923c',
   water: '#38bdf8',
@@ -150,7 +150,7 @@ const TINT: Record<string, string> = {
   poison: '#a3e635',
 };
 
-function SkillSlot({ b, x, dense, onPress, onHover }: { b: ActionButton; x: number; dense: boolean; onPress: (id: string) => void; onHover: (b: ActionButton | null) => void }) {
+function SkillSlot({ b, x, dense, onPress, onHover }: { b: ActionButton; x: number; dense: boolean; onPress: (id: string) => void; onHover: (b: ActionButton | null, x?: number) => void }) {
   const Icon = b.icon;
   const painted = iconUrl(iconId(b), dense);
   const off = b.disabled || b.passive;
@@ -160,21 +160,21 @@ function SkillSlot({ b, x, dense, onPress, onHover }: { b: ActionButton; x: numb
       aria-label={b.label}
       aria-disabled={off}
       onClick={() => !b.disabled && !b.passive && onPress(b.id)}
-      onMouseEnter={() => onHover(b)}
+      onMouseEnter={() => onHover(b, x + 28)}
       onMouseLeave={() => onHover(null)}
       style={{ position: 'absolute', left: x, top: 796 - BOTTOM, width: 56, height: 56, cursor: b.passive ? 'help' : b.disabled ? 'not-allowed' : 'pointer' }}
     >
-      <div style={{ position: 'absolute', left: 6, top: 6, width: 44, height: 44, background: '#16120c', overflow: 'hidden', filter: off ? 'grayscale(0.85) brightness(0.55)' : undefined }}>
+      <div style={{ position: 'absolute', left: 6, top: 6, width: 44, height: 44, background: '#0f1116', overflow: 'hidden', filter: off ? 'grayscale(0.85) brightness(0.55)' : undefined }}>
         {painted ? (
           <img src={painted} alt="" draggable={false} style={{ width: 44, height: 44, imageRendering: 'pixelated' }} />
         ) : (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1, color: b.element ? TINT[b.element] ?? '#efe6cf' : '#efe6cf' }}>
-            <Icon size={18} />
-            <span style={{ ...kitText, fontSize: 7.5, lineHeight: '8px', maxWidth: 42, overflow: 'hidden', textOverflow: 'clip', whiteSpace: 'normal', textAlign: 'center' }}>{b.label}</span>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: b.element ? TINT[b.element] ?? '#efe6cf' : '#efe6cf' }}>
+            <Icon size={24} />
           </div>
         )}
       </div>
-      <Piece p={b.active ? 'skill_slot_active' : 'skill_slot'} x={0} y={0} w={56} h={56} style={{ pointerEvents: 'none', borderStyle: b.passive ? 'dashed' : 'solid' }} />
+      {/* His steel-and-gold slot from the icon pictures, over the icon (its window is open). */}
+      <div style={{ position: 'absolute', left: 0, top: 0, width: 56, height: 56, pointerEvents: 'none', backgroundImage: `url(${slotFrameUrl(!!b.active)})`, backgroundSize: '100% 100%', imageRendering: 'pixelated', opacity: b.passive ? 0.7 : 1 }} />
       {b.hotkey && (
         <Piece p="skill_tag" x={17} y={-14}>
           <span style={{ position: 'absolute', left: 4, top: 4, width: 14, textAlign: 'center', ...kitText, fontSize: 9, lineHeight: '14px' }}>{b.hotkey}</span>
@@ -189,7 +189,7 @@ function SkillSlot({ b, x, dense, onPress, onHover }: { b: ActionButton; x: numb
   );
 }
 
-function ItemSlot({ b, x, onPress, onHover, end }: { b: ActionButton; x: number; onPress: (id: string) => void; onHover: (b: ActionButton | null) => void; end?: boolean }) {
+function ItemSlot({ b, x, onPress, onHover, end }: { b: ActionButton; x: number; onPress: (id: string) => void; onHover: (b: ActionButton | null, x?: number) => void; end?: boolean }) {
   const Icon = b.icon;
   return (
     <button
@@ -197,7 +197,7 @@ function ItemSlot({ b, x, onPress, onHover, end }: { b: ActionButton; x: number;
       aria-label={b.label}
       aria-disabled={b.disabled}
       onClick={() => !b.disabled && onPress(b.id)}
-      onMouseEnter={() => onHover(b)}
+      onMouseEnter={() => onHover(b, x + 26)}
       onMouseLeave={() => onHover(null)}
       style={{ position: 'absolute', left: x, top: 798 - BOTTOM, width: 52, height: 52, cursor: b.disabled ? 'not-allowed' : 'pointer' }}
     >
@@ -214,6 +214,23 @@ function ItemSlot({ b, x, onPress, onHover, end }: { b: ActionButton; x: number;
       )}
       {end && <Piece p="end_turn_gem" x={42} y={-4} />}
     </button>
+  );
+}
+
+/** The pop-up over a slot (the owner: names show here, not under the icons). */
+function TipWindow({ tip, x }: { tip: ButtonTip; x: number }) {
+  return (
+    <div
+      style={{ position: 'absolute', left: x, bottom: BOTTOM - 752, width: 320, pointerEvents: 'none' }}
+      className="rounded-lg border border-[#8a6a3a] bg-[#16120c]/95 px-3 py-2 shadow-2xl shadow-black/60 flex flex-col gap-1"
+    >
+      <div className="text-[14px] font-bold leading-tight text-[#f5d9a8]">{tip.title}</div>
+      {tip.meta && <div className="text-[10.5px] font-semibold uppercase tracking-wide text-[#d9cba8]">{tip.meta}</div>}
+      {tip.effect && <div className="text-[12px] font-semibold text-[#efe6cf]">{tip.effect}</div>}
+      {tip.text && <div className="text-[11.5px] leading-snug text-[#c8bfa6]">{tip.text}</div>}
+      {tip.enh && <div className="text-[11px] leading-snug text-amber-300">{tip.enh}</div>}
+      {tip.why && <div className="text-[11px] font-semibold text-rose-300">{tip.why}</div>}
+    </div>
   );
 }
 
@@ -254,6 +271,11 @@ export function ActionDock({
   onHover: (b: ActionButton | null) => void;
 }) {
   const [card, setCard] = React.useState(false);
+  const [hov, setHov] = React.useState<{ id: string; x: number } | null>(null);
+  const hover = (b: ActionButton | null, x?: number) => {
+    setHov(b && x !== undefined ? { id: b.id, x } : null);
+    onHover(b);
+  };
   const skills = buttons.filter(SKILL);
   const end = buttons.find((b) => b.id === 'end');
   const items = buttons.filter((b) => !SKILL(b) && b.id !== 'end');
@@ -296,12 +318,12 @@ export function ActionDock({
         </>
       )}
       {skills.map((b, i) => (
-        <SkillSlot key={b.id} b={b} x={L + s0 + i * 62} dense={dense} onPress={onPress} onHover={onHover} />
+        <SkillSlot key={b.id} b={b} x={L + s0 + i * 62} dense={dense} onPress={onPress} onHover={hover} />
       ))}
       {items.map((b, i) => (
-        <ItemSlot key={b.id} b={b} x={L + i0 + i * 62} onPress={onPress} onHover={onHover} />
+        <ItemSlot key={b.id} b={b} x={L + i0 + i * 62} onPress={onPress} onHover={hover} />
       ))}
-      {end && <ItemSlot b={end} x={L + e0} onPress={onPress} onHover={onHover} end />}
+      {end && <ItemSlot b={end} x={L + e0} onPress={onPress} onHover={hover} end />}
 
       <Piece p="crest_strip" x={550 - CX} y={724 - BOTTOM} w={512} h={44} />
       {u && (
@@ -334,6 +356,13 @@ export function ActionDock({
       )}
       {!u && <Piece p="medallion_active" x={706 - CX} y={674 - BOTTOM} />}
 
+      {(() => {
+        const shown = hov ? buttons.find((b) => b.id === hov.id) : undefined;
+        const aimed = shown ? undefined : skills.findIndex((b) => b.active);
+        const b = shown ?? (aimed !== undefined && aimed >= 0 ? skills[aimed] : undefined);
+        const x = shown && hov ? hov.x : aimed !== undefined && aimed >= 0 ? L + s0 + aimed * 62 + 28 : 0;
+        return b?.tip ? <TipWindow tip={b.tip} x={Math.max(L + 8, Math.min(L + W - 8 - 320, x - 160))} /> : null;
+      })()}
       <Piece p="lower_plaque" x={-Math.round(plaqueW / 2) + 5} y={868 - BOTTOM} w={Math.round(plaqueW)} h={32} />
       {line && (
         <div

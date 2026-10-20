@@ -47,6 +47,7 @@ BOXES = {
     'bar': ((215, 428, 808, 576), 'action bar, whole'),
     'crest': ((372, 428, 692, 495), 'raised crest: medallion, HP strip, chakra strip, scrolls'),
     'medallion_active': ((478, 428, 556, 495), 'acting character medallion'),
+    'medallion_crown_left': ((440, 436, 500, 476), 'left side of the medallion crown: big dark boss with its twin highlight, third boss on the rail, tail'),
     'hp_strip': ((398, 466, 506, 492), 'HP strip (red bar) left of the medallion'),
     'chakra_strip': ((536, 466, 642, 492), 'chakra strip (gems) right of the medallion'),
     'scroll_left': ((370, 452, 414, 494), 'scrollwork at the left end of the crest'),
@@ -66,6 +67,7 @@ BOXES = {
     'small_button': ((8, 497, 28, 517), 'small square button above the party'),
     'gem_corner_red': ((217, 484, 234, 501), 'red gem stud on the bar corner'),
     'gem_corner_green': ((217, 542, 234, 559), 'green gem stud on the bar corner'),
+    'bar_corner_bottom': ((215, 536, 275, 562), 'bottom-left bar corner: green gem, lace and the scroll arm along the rail'),
     'bar_end_gem': ((784, 484, 808, 510), 'red gems at the bar top right'),
 }
 

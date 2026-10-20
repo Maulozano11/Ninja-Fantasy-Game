@@ -41,8 +41,8 @@ for (const p of pieces) {
 
 /**
  * Every sliced piece must stretch cleanly: its centre (between the insets) has to repeat with a
- * period of 1 or 2 art pixels (2 or 4 screen pixels) that divides the centre's size, so a box of
- * any even size shows no seam. The kit refuses to build otherwise.
+ * period of 1, 2 or 4 art pixels (2, 4 or 8 screen pixels) that divides the centre's size. The
+ * kit refuses to build otherwise; the CSS check below then proves every placement seamless.
  */
 function slicePeriod(img: Img, a0: number, a1: number, vertical: boolean): number | null {
   const same = (a: number, b: number): boolean => {
@@ -53,7 +53,7 @@ function slicePeriod(img: Img, a0: number, a1: number, vertical: boolean): numbe
     }
     return true;
   };
-  for (const per of [1, 2]) {
+  for (const per of [1, 2, 4]) {
     if ((a1 - a0) % per !== 0) continue;
     let ok = true;
     for (let a = a0; a + per < a1 && ok; a++) ok = same(a, a + per);
@@ -68,7 +68,7 @@ for (const p of pieces) {
   const [t, r, b, l] = p.slice;
   const cols = slicePeriod(p.img, l, p.img.w - r, false);
   const rows = t || b ? slicePeriod(p.img, t, p.img.h - b, true) : 1;
-  if (!cols || !rows) throw new Error(`${p.name}: the centre between the slices does not repeat every 1 or 2 art pixels (${cols ? 'rows' : 'columns'})`);
+  if (!cols || !rows) throw new Error(`${p.name}: the centre between the slices does not repeat every 1, 2 or 4 art pixels (${cols ? 'rows' : 'columns'})`);
   periods.set(p.name, [cols * K, rows * K]);
 }
 
@@ -93,7 +93,7 @@ function cssSeamCheck(layout: Record<string, [number, number, number, number][]>
       nine(b, src, ins, 0, 0, w, h, true);
       const same = Buffer.compare(Buffer.from(a.px), Buffer.from(b.px)) === 0;
       if (!same || runW % pc !== 0 || (ins[0] + ins[2] > 0 && runH % pr !== 0))
-        throw new Error(`${name} at ${w}x${h}: CSS repeat would seam next to the corners (centre runs ${runW} x ${runH}, periods ${pc} x ${pr}). For bar_frame keep (width - 48) and (height - 48) multiples of 8.`);
+        throw new Error(`${name} at ${w}x${h}: CSS repeat would seam next to the corners (centre runs ${runW} x ${runH}, periods ${pc} x ${pr}). For bar_frame keep (width - 48) a multiple of 8 and (height - 48) a multiple of 16.`);
     }
   }
 }
@@ -173,7 +173,9 @@ const PAIRS: { ref: string; piece: string; note?: string }[] = [
   { ref: 'init_end', piece: 'init_end' },
   { ref: 'minimap', piece: 'minimap_ring' },
   { ref: 'bar_left', piece: 'bar_frame' },
+  { ref: 'bar_corner_bottom', piece: 'bar_frame' },
   { ref: 'medallion_active', piece: 'medallion_active' },
+  { ref: 'medallion_crown_left', piece: 'medallion_active' },
   { ref: 'scroll_left', piece: 'crest_strip' },
   { ref: 'hp_strip', piece: 'crest_strip' },
   { ref: 'scroll_right', piece: 'crest_strip' },
@@ -282,7 +284,7 @@ function main(): void {
       file: `${p.name}.png`,
       group: p.group,
       size: [img.w, img.h],
-      ...(p.slice ? { slice: p.slice.map(x2) } : {}),
+      ...(p.slice ? { slice: p.slice.map(x2), repeat: periods.get(p.name) } : {}),
       ...(p.outset ? { outset: p.outset.map(x2) } : {}),
       ...(p.window ? { window: { x: x2(p.window.x), y: x2(p.window.y), w: x2(p.window.w), h: x2(p.window.h), shape: p.window.shape } } : {}),
       ...(p.anchor ? { anchor: [x2(p.anchor.x), x2(p.anchor.y)] } : {}),
@@ -298,6 +300,7 @@ function main(): void {
         screen: [1600, 900],
         pixel: 'every art pixel is 2x2 screen pixels; draw with image-rendering: pixelated',
         sliceOrder: 'top, right, bottom, left (screen pixels)',
+        repeat: 'for sliced pieces: the period of the repeating centre, [columns, rows] in screen pixels; with CSS repeat a run (box size minus the two slices) seams unless (run - tile) / 2 is a multiple of it',
         pieces: manifest,
       },
       null,

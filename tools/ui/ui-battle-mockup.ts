@@ -246,18 +246,21 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
   put('medallion_active', maX, maY);
 
   // Action / bonus / reaction pips and the movement bar.
-  const pips: [string, string, number][] = [['pip_action', 'Acción', 248], ['pip_bonus', 'Adicional', 279], ['pip_reaction', 'Reacción', 309]];
-  for (const [pn, label, hx] of pips) {
+  // His pips at x 248, 279 and 309 (388, 436, 482 here); the outer two sit 2 and 4 px further out
+  // so each caption, centred on its pip, keeps a clear gap from the next (his have one).
+  const pips: [string, string, number][] = [['pip_action', 'Acción', 386], ['pip_bonus', 'Adicional', 436], ['pip_reaction', 'Reacción', 486]];
+  for (const [pn, label, px] of pips) {
     const pp = P(pn);
-    put(pn, S(hx) - pp.w / 2, S(516) - pp.h / 2 - 2);
-    textC(out, label, 'title', 1, dim, S(hx), S(516) + 10);
+    put(pn, px - pp.w / 2, S(516) - pp.h / 2 - 2);
+    textC(out, label, 'title', 1, dim, px, S(516) + 10);
   }
+  // The movement trough starts right after "Mov." (x 400, his 256) with its pointed end.
   const trough = P('move_trough');
-  const mvX = S(262), mvW = S(330) - S(262), mvY = S(537) - trough.h / 2;
+  const mvX = 400, mvW = S(330) - mvX, mvY = S(537) - trough.h / 2;
   out.draw(text('Mov.', 'title', 1, dim), S(233), mvY - 1);
   put9('move_trough', mvX, mvY, mvW, trough.h);
-  const mf = P('move_fill');
-  put9('move_fill', mvX + 4, mvY + 2, mvW - 8, mf.h);
+  const mf = P('move_fill'), mw = byName.get('move_trough')!.window!;
+  put9('move_fill', mvX + mw.x * K, mvY + mw.y * K, mvW - (trough.w - mw.w * K), mf.h);
   out.draw(text('9,0/9 m', 'title', 1, cream), S(334), mvY - 1);
 
   // Numbered skill slots, empty for the icons he will paint (a faint placeholder glyph).

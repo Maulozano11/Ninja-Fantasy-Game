@@ -50,19 +50,60 @@ function railRows(dir: 'top' | 'bottom'): RGBA[] {
 // --- action bar frame (9-slice) ----------------------------------------------------------------------
 
 /**
- * His lace mount around a corner gem (top-left; flipped for the others): small gold curls that run
- * from the bezel along the rails, in the outset outside the frame.
+ * Open lace drawn from a character map: the strokes and (unless `shadow` is null) a dark shadow
+ * pixel under each stroke pixel where nothing else is, so the wire reads on any ground while every
+ * other gap stays open (his sparse lace shows the grass between the curls).
  */
-const GEM_MOUNT = [
-  '........LL..',
-  '.......l..L.',
-  '..........M.',
+function openLace(img: Img, rows: string[], ox: number, oy: number, pal: Record<string, RGBA>, opts: { flipX?: boolean; flipY?: boolean; shadow?: RGBA | null } = {}): void {
+  const h = rows.length, w = Math.max(...rows.map((r) => r.length));
+  const at = (x: number, y: number): string => (x < 0 || y < 0 || x >= w || y >= h ? '.' : rows[opts.flipY ? h - 1 - y : y][opts.flipX ? w - 1 - x : x] ?? '.');
+  const sh = opts.shadow === undefined ? WIRE_OUTLINE : opts.shadow;
+  if (sh)
+    for (let y = 0; y <= h; y++)
+      for (let x = 0; x <= w; x++) if (at(x, y) === '.' && at(x, y - 1) !== '.' && img.a(ox + x, oy + y) === 0) img.set(ox + x, oy + y, sh);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const c = at(x, y);
+      if (c === '.') continue;
+      if (!pal[c]) throw new Error(`openLace: no color for '${c}'`);
+      img.set(ox + x, oy + y, pal[c]);
+    }
+}
+
+/** His bar lace (warm khaki gold, like the brackets). */
+const BAR_LACE: Record<string, RGBA> = { H: hex('#d2c4a4'), L: hex('#ab9c7c'), l: hex('#8c7d60'), M: hex('#66583f') };
+
+/**
+ * His sparse lace down the bar's ends (left end; mirrored for the right): a wire scalloped into one
+ * small C-curl every 4 rows (8 px on screen), touching the rail between curls, the grass showing
+ * through each curl, in the 3-pixel outset outside the rail. The motif repeats every 4 rows from
+ * the top of the piece, so the ends tile cleanly.
+ */
+const END_LACE = [
+  '.HL',
+  'L..',
+  'l..',
+  '.lM',
+];
+/** His wire arms from the corner gems along the rails (left corners; mirrored for the right). */
+const ARM_TOP = [
+  '.....LL.....LL.',
+  '.LLLL..LLLLL..L',
+  '............MM.',
+];
+const ARM_BOTTOM = [
+  '..........LLL..',
+  '.lllllllll...l.',
+  '...........ll..',
 ];
 
 export function barFrame(): Piece {
-  const S = 40, m = 3;
-  const img = new Img(S, S);
-  const x0 = m, y0 = m, x1 = S - 1 - m, y1 = S - 1 - m;
+  // 52 x 40 art pixels with a 3-pixel outset: corner slices 12 high and 22 wide, so the gems'
+  // wire arms (14 art px, 28 on screen) stay in the corners; the centre repeats every 2 columns
+  // (the dotted line) and every 4 rows (the end lace).
+  const SW = 52, SH = 40, m = 3, sl = [12, 22, 12, 22] as [number, number, number, number];
+  const img = new Img(SW, SH);
+  const x0 = m, y0 = m, x1 = SW - 1 - m, y1 = SH - 1 - m;
   img.rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1, PANEL[3]);
   const top = railRows('top'), bot = railRows('bottom');
   for (let i = 0; i < top.length; i++) {
@@ -82,36 +123,25 @@ export function barFrame(): Piece {
   // Panel: one darker row/column under the studs.
   for (let x = x0 + 6; x <= x1 - 6; x++) img.set(x, y0 + 6, PANEL[2]);
   for (let y = y0 + 6; y <= y1 - 6; y++) img.set(x0 + 6, y, PANEL[2]);
-  // His gold lace edge down the bar's left and right ends, in the outset: a twisted cord two
-  // pixels wide with a scalloped outer edge (period 2, so the edges repeat cleanly).
-  for (let y = y0 + 1; y <= y1 - 1; y++) {
-    const even = (y - y0) % 2 === 0;
-    img.set(0, y, even ? WIRE_OUTLINE : [0, 0, 0, 0]);
-    img.set(1, y, even ? WIRE.L : WIRE.M);
-    img.set(2, y, even ? WIRE.l : WIRE.H);
-    img.set(S - 1, y, even ? WIRE_OUTLINE : [0, 0, 0, 0]);
-    img.set(S - 2, y, even ? WIRE.l : WIRE.M);
-    img.set(S - 3, y, even ? WIRE.M : WIRE.L);
-  }
-  // Lace mounts around the corner gems, then the gems: red on top, green below (his).
-  const mount = (flipX: boolean, flipY: boolean) => {
-    const rows = flipY ? [...GEM_MOUNT].reverse() : GEM_MOUNT;
-    const sub = new Img(12, 4);
-    wire(sub, rows, { flip: flipX, oy: flipY ? 1 : 0 });
-    img.draw(sub, flipX ? S - 12 : 0, flipY ? S - 4 : 0);
-  };
-  mount(false, false);
-  mount(true, false);
-  mount(false, true);
-  mount(true, true);
+  // His sparse lace down both ends, in the outset (rows between the gems' bezels).
+  const lace: string[] = [];
+  for (let y = 0; y < SH; y++) lace.push(y >= 10 && y < SH - 10 ? END_LACE[y % 4] : '...');
+  openLace(img, lace, 0, 0, BAR_LACE, { shadow: null });
+  openLace(img, lace, SW - 3, 0, BAR_LACE, { flipX: true, shadow: null });
+  // The gems' wire arms along the outside of the top and bottom rails (the bottom ones end in a
+  // clear scroll), then the gems: red on top, green below (his).
+  openLace(img, ARM_TOP, 7, 0, BAR_LACE);
+  openLace(img, ARM_TOP, SW - 7 - ARM_TOP[0].length, 0, BAR_LACE, { flipX: true });
+  openLace(img, ARM_BOTTOM, 7, SH - 3, BAR_LACE);
+  openLace(img, ARM_BOTTOM, SW - 7 - ARM_BOTTOM[0].length, SH - 3, BAR_LACE, { flipX: true });
   studGem(img, x0 + 2, y0 + 2, 2.6, 'red');
   studGem(img, x1 - 1, y0 + 2, 2.6, 'red');
   studGem(img, x0 + 2, y1 - 1, 2.6, 'green');
   studGem(img, x1 - 1, y1 - 1, 2.6, 'green');
   return {
     name: 'bar_frame', img, group: 'action bar',
-    use: 'Action bar frame: 9-slice. His thin grey-silver rails, the dotted inner line, dark panel; a gold lace cord down both ends and lace mounts around the corner gems (red on top, green below). With CSS repeat, keep (width - 48) and (height - 48) multiples of 8.',
-    slice: [12, 12, 12, 12], outset: [m, m, m, m],
+    use: 'Action bar frame: 9-slice (corners 24 px high, 44 px wide). His thin grey-silver rails, the dotted inner line, dark panel; his sparse wire lace down both ends (an S-curl every 8 px, open between) and a wire arm from each corner gem along the rail, the bottom ones ending in a scroll (red gems on top, green below). With CSS repeat, keep (width - 48) a multiple of 8 and (height - 48) a multiple of 16.',
+    slice: sl, outset: [m, m, m, m],
   };
 }
 
@@ -126,90 +156,74 @@ export function gemStud(color: 'red' | 'green'): Piece {
 // --- target bar (top centre) ---------------------------------------------------------------------------
 
 /**
- * His spear-tip finial (left end of the target plaque; mirrored for the right), hand-placed at art
- * resolution and mostly pale silver like his: a pale lozenge tip with a small rose stone at its
- * base, a knot, and an open lyre of two pale loops (each with a dark eye) around the channel's
- * pointed end. Keys as in `wire` ('r' / 'R' the rose stone, ':' the dark between the loops).
+ * His finial (left end of the target plaque; mirrored for the right), hand-placed at art
+ * resolution: the top half of the cap, rows 0..9 (the bottom half is its mirror, a step darker).
+ * From the tip inward: a pale lozenge point, a rose stone in a small bezel, an open lyre (a loop
+ * above and below, each with a dark eye) around the channel's rounded nose, then a thin bronze
+ * arm that rises over the nose, runs along the rail and ends in a small curl about 37 px from the
+ * tip. Keys as in `wire` ('r' / 'R' the rose stone, ':' the dark between the strokes).
  */
-const SPEAR_TIP = [
-  '................',
-  '................',
-  '..........HHL...',
-  '.........HLLLl..',
-  '........HLL:Ll..',
-  '........Ll::lM..',
-  '........Ll:lM...',
-  '....HL..LlM.....',
-  '..HHLLlLLl......',
-  'HHLLrrlLLl......',
-  'llllRRMllM......',
-  '..lllMMlM.......',
-  '....MM..lM......',
-  '........lM:M....',
-  '........lM::M...',
-  '........lMM:MM..',
-  '.........lMMMM..',
-  '..........MMM...',
-  '................',
-  '................',
+const FINIAL_TOP = [
+  '........................................',
+  '...............LLLL...............lL....',
+  '..............L....L.............l..l...',
+  '.............L......LllllllllllllM..M...',
+  '..........LLl...........................',
+  '..........L:M...........................',
+  '..........lMM...........................',
+  '....L....l..............................',
+  '..HLl.Ll.l..............................',
+  'HHLLlLrrMM..............................',
 ];
+/** The bottom half: the top mirrored, each stroke one step darker (the light is above). */
+const FINIAL_MAP = [...FINIAL_TOP, ...[...FINIAL_TOP].reverse().map((r) => r.replace(/[HLl]/g, (c) => ({ H: 'L', L: 'l', l: 'M' })[c as 'H' | 'L' | 'l']).replace(/r/g, 'R'))];
 
-/** The pale silver of his target plaque's finials. */
+/** His warm bronze for the finials and arms (bright mean about 150, 135, 110 like his). */
 const FINIAL: Record<string, RGBA> = {
-  H: hex('#e8dfcf'), L: hex('#cec2ad'), l: hex('#a19480'), M: hex('#756856'),
-  r: hex('#e7a3b1'), R: hex('#b14f68'), ':': hex('#241b11'),
+  H: hex('#cdbf9c'), L: hex('#a4936f'), l: hex('#7f6b4b'), M: hex('#56462e'),
+  r: hex('#c47e88'), R: hex('#843d4c'), ':': hex('#1c150c'),
 };
 
+/** His plaque rail, a thin warm silver: outline, pale line, mid line (top; the bottom a step darker). */
+const PLAQUE_RAIL = { out: hex('#19130b'), paleT: hex('#9d9384'), midT: hex('#5f5649'), paleB: hex('#857b6d'), midB: hex('#4c443a') };
+
 export function targetBar(): Piece {
-  // His plaque: a 14-row body (28 px: outline, a light line, a dark band, the channel's rim and
-  // the 6-row channel, and the same below). Near each end the frame swells into his flared
-  // collar and narrows onto the knot; the channel ends in a point (his chevron) inside the lyre
-  // of the finial. The centre, between the 36-pixel caps, is one repeating column.
-  const W = 200, Hh = 20, cap = 36, cy = 10, t0 = 13;
+  // His plaque is only the thin silver rail around the channel: outline, a pale line, a mid line,
+  // the 6-row channel and the same below (rows 4..15 of 20). At each end the channel
+  // has his rounded bullet nose and the rail follows it round; the finial sits beyond it. The
+  // centre, between the 40-pixel caps, is one repeating column.
+  const W = 200, Hh = 20, cap = 40, cy = 10, t0 = 18, Ln = 5, R = 3;
   const img = new Img(W, Hh);
-  const ease = (t: number) => (1 - Math.cos(Math.PI * Math.max(0, Math.min(1, t)))) / 2;
-  // Frame half-height along the bar: 4.5 at the knot, swelling to 9.6 and settling to 7.
-  const hb = (x: number): number => {
-    const u = Math.min(x, W - x);
-    if (u < 13) return -1;
-    if (u < 20) return 4.5 + 5.1 * ease((u - 13) / 7);
-    if (u < 32) return 9.6 - 2.6 * ease((u - 20) / 12);
-    return 7;
-  };
-  const fO = (x: number, y: number): number => {
-    const e = 0.5, sl = (hb(x + e) - hb(x - e)) / (2 * e);
-    return (Math.abs(y - cy) - hb(x)) / Math.sqrt(1 + sl * sl);
-  };
-  // The channel: 8 rows (rim and 6-row well) with pointed ends (tip at t0 from each end).
-  const fC = (x: number, y: number): number => {
+  // The well's half-height along the bar (u from the nearer end): an elliptical nose, then flat.
+  const hw = (u: number): number => (u < t0 ? -1 : u < t0 + Ln ? R * Math.sqrt(Math.max(0, 1 - ((t0 + Ln - u) / Ln) ** 2)) : R);
+  // Signed distance to the well's edge (positive outside), by dense sampling of the nose curve.
+  const edge: Pt[] = [];
+  for (let u = t0; u <= t0 + Ln + 6; u += 0.05) edge.push([u, hw(u)]);
+  const dist = (x: number, y: number): number => {
     const u = Math.min(x, W - x), v = Math.abs(y - cy);
-    return Math.max(v - 4, (v - (u - t0)) / Math.SQRT2);
+    let m = Infinity;
+    for (const [eu, ev] of edge) m = Math.min(m, Math.hypot(u - eu, v - ev));
+    if (u > t0 + Ln) m = Math.min(m, Math.abs(v - R));
+    return v <= hw(u) ? -m : m;
   };
   for (let y = 0; y < Hh; y++)
     for (let x = 0; x < W; x++) {
-      const px = x + 0.5, py = y + 0.5, d = -fO(px, py);
-      const top = py < cy;
-      const e = -fC(px, py);
-      if (hb(px) < 0 || d < 0) {
-        // Past the frame, only the channel's pointed end (inside the finial's lyre).
-        if (e >= -0.8) img.set(x, y, e < 0.2 ? METAL[0] : e < 1 ? (top ? RAIL[5] : RAIL[3]) : PANEL[2]);
-        continue;
-      }
-      let c: RGBA = d < 1 ? METAL[0] : d < 2 ? (top ? METAL[6] : METAL[3]) : d < 2.6 && !top ? METAL[2] : PANEL[0];
-      if (e >= 0) c = e < 1 ? (top ? RAIL[5] : RAIL[3]) : PANEL[2];
-      else if (e > -1 && d >= 2) c = PANEL[1];
-      img.set(x, y, c);
+      const px = x + 0.5, py = y + 0.5, e = dist(px, py), top = py < cy;
+      // Facing the light (up or toward the tip on the left end): the pale steps.
+      const lit = top || (px < W / 2 && Math.min(px, W - px) < t0 + 1.5 && Math.abs(py - cy) < 2);
+      let c: RGBA | null = null;
+      if (e <= 0) c = PANEL[2];
+      else if (e <= 1) c = lit ? PLAQUE_RAIL.midT : PLAQUE_RAIL.midB;
+      else if (e <= 2) c = lit ? PLAQUE_RAIL.paleT : PLAQUE_RAIL.paleB;
+      else if (e <= 3) c = PLAQUE_RAIL.out;
+      if (c) img.set(x, y, c);
     }
-  // His inner curl line inside each flare (light, 1 pixel), mirrored top/bottom and left/right.
-  const curl: Pt[] = [[15, 6], [16, 5], [17, 4], [18, 4], [19, 3], [20, 3], [21, 3], [22, 3], [23, 3], [24, 4], [25, 4], [26, 3], [26, 2]];
-  for (const [x, y] of curl)
-    for (const [fx, fy] of [[x, y], [W - 1 - x, y], [x, Hh - 1 - y], [W - 1 - x, Hh - 1 - y]]) img.set(fx, fy, fy < cy ? METAL[5] : METAL[4]);
-  for (const flip of [false, true]) wire(img, SPEAR_TIP, { ox: flip ? W - SPEAR_TIP[0].length : 0, flip, pal: FINIAL });
+  for (const flip of [false, true]) wire(img, FINIAL_MAP, { ox: flip ? W - FINIAL_MAP[0].length : 0, flip, pal: FINIAL, outline: hex('#281e12') });
   return {
     name: 'target_bar', img, group: 'target bar',
-    use: 'Chained plaque for the targeted or hovered enemy (or the boss): 3-slice; each 72-px cap holds his pale spear tip (lozenge, rose stone, lyre of two loops), the flared collar and the channel\'s pointed end; the centre is one repeating column (any width works). The red fill goes in the window, with its own pointed ends.',
+    use: 'Chained plaque for the targeted or hovered enemy (or the boss): 3-slice. Only his thin silver rail runs along the bar; each 80-px cap holds his finial (pale lozenge tip, rose stone, an open lyre of two loops with dark eyes) and a thin bronze arm along the top and bottom rails ending in a small curl, round the channel\'s rounded nose. The centre is one repeating column (any width works). The red fill goes in the window (its rounded ends follow the nose).',
     slice: [0, cap, 0, cap],
-    window: { x: t0 + 2, y: 7, w: W - 2 * (t0 + 2), h: 6, shape: 'rect' },
+    window: { x: t0, y: cy - R, w: W - 2 * t0, h: 2 * R, shape: 'rect' },
   };
 }
 
@@ -293,35 +307,56 @@ function setGem(img: Img, cx: number, cy: number, r: number, color: keyof typeof
 
 /** An oval cabochon in a small gold bezel with a point toward the outside (his rim gems). */
 function bezelGem(img: Img, cx: number, cy: number, rx: number, ry: number, color: keyof typeof GEM, out: Pt): void {
-  const f = (x: number, y: number) => Math.hypot((x - cx) / (rx + 1.3), (y - cy) / (ry + 1.3)) - 1;
+  const f = (x: number, y: number) => Math.hypot((x - cx) / (rx + 1.0), (y - cy) / (ry + 1.0)) - 1;
   const mk = new Mask(img.w, img.h);
   mk.sdf(f);
   // The bezel's point, out along the radius.
-  mk.set(Math.floor(cx + out[0] * (Math.max(rx, ry) + 1.8)), Math.floor(cy + out[1] * (Math.max(rx, ry) + 1.8)));
+  mk.set(Math.floor(cx + out[0] * (Math.max(rx, ry) + 1.5)), Math.floor(cy + out[1] * (Math.max(rx, ry) + 1.5)));
   emboss(img, mk, METAL, { base: 5 });
   gemOval(img, cx, cy, rx, ry, GEM[color]);
 }
 
 export function roundMedallion(): Piece {
-  // His rim is round but drawn slightly toward the four gems (a softened diamond), beaded, with
-  // oval cabochons set in small pointed bezels at the tips.
+  // His round rim, fine and dense: an outline, a thin metal line, a row of 1-pixel pale beads with
+  // dark separators, a thin inner line and an inner outline, round the dark brown face. The four
+  // oval gems sit on the bead line in small bezels, flush with the rim (only their points reach
+  // a pixel past it).
   const W = 40, Hh = 40, cx = 20, cy = 20;
   const img = new Img(W, Hh);
-  const f = sdLp(cx, cy, 17.2, 17.2, 1.95);
-  // Dark brown face, a touch lighter at the centre.
-  fillShape(img, f, 0, (_x, _y, d) => BROWN[d > 8 ? 3 : d > 4 ? 2 : 1]);
-  // Beaded rim.
-  band(img, f, { from: 0, width: 3.2, ramp: METAL, lo: 3, hi: 7, beads: { period: 2.6, cx, cy, r: 16, depth: 0.9 } });
-  isoLine(img, f, -1, METAL[0]);
-  isoLine(img, f, 3, METAL[1]);
-  // Gems at the four tips: red top and left, green right and bottom (his), long along the radius.
-  bezelGem(img, cx, 3.2, 1.6, 2.3, 'red', [0, -1]);
-  bezelGem(img, 3.2, cy, 2.3, 1.6, 'red', [-1, 0]);
-  bezelGem(img, W - 3.2, cy, 2.3, 1.6, 'green', [1, 0]);
-  bezelGem(img, cx, Hh - 3.2, 1.6, 2.3, 'green', [0, 1]);
+  const RO = 18.4; // outer edge of the outline
+  const lit = (x: number, y: number) => {
+    const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.hypot(dx, dy) || 1;
+    return -(dx * 0.6 + dy * 0.8) / d; // +1 toward the upper-left light
+  };
+  const beads: { x: number; y: number; a: number }[] = [];
+  for (let y = 0; y < Hh; y++)
+    for (let x = 0; x < W; x++) {
+      const r = Math.hypot(x + 0.5 - cx, y + 0.5 - cy), l = lit(x, y);
+      if (r > RO) continue;
+      let c: RGBA;
+      if (r > RO - 0.9) c = METAL[0];
+      else if (r > RO - 1.9) c = l > 0.3 ? METAL[5] : l > -0.3 ? METAL[4] : METAL[3];
+      else if (r > RO - 2.9) {
+        beads.push({ x, y, a: Math.atan2(y + 0.5 - cy, x + 0.5 - cx) });
+        continue;
+      } else if (r > RO - 3.9) c = l > 0.3 ? METAL[4] : METAL[3];
+      else if (r > RO - 4.7) c = METAL[0];
+      else c = BROWN[r < 8 ? 3 : r < 11.5 ? 2 : 1];
+      img.set(x, y, c);
+    }
+  // The beads: in order round the ring, pale and dark by turns (lit at the upper left).
+  beads.sort((p, q) => p.a - q.a);
+  beads.forEach((b, i) => img.set(b.x, b.y, i % 2 === 0 ? (lit(b.x, b.y) > 0.2 ? METAL[7] : lit(b.x, b.y) > -0.4 ? METAL[6] : METAL[5]) : METAL[1]));
+  // Gems on the bead line (r 16), red top and left, green right and bottom (his), long along the
+  // radius, in thin bezels with a small point outward.
+  const RG = RO - 2.4;
+  bezelGem(img, cx, cy - RG, 1.9, 2.2, 'red', [0, -1]);
+  bezelGem(img, cx - RG, cy, 2.2, 1.9, 'red', [-1, 0]);
+  bezelGem(img, cx + RG, cy, 2.2, 1.9, 'green', [1, 0]);
+  bezelGem(img, cx, cy + RG, 1.9, 2.2, 'green', [0, 1]);
   return {
     name: 'round_medallion', img, group: 'turn row',
-    use: 'Round counter medallion ("RONDA" over the number, no box behind the word); his softly pointed beaded rim with four oval gems in small bezels. The chains hang from its left gem.',
+    use: 'Round counter medallion ("RONDA" over the number, no box behind the word): his round rim of fine 1-pixel beads between two thin lines, four oval gems set on the bead line (red top/left, green right/bottom). The chains hang from its left gem.',
     window: { x: 10, y: 10, w: 20, h: 20, shape: 'rect' },
   };
 }
@@ -343,24 +378,24 @@ export function initActive(): Piece {
 }
 
 function initBell(name: string, ramp: RGBA[], use: string): Piece {
-  const W = 18, Hh = 21;
+  const W = 18, Hh = 20;
   const img = new Img(W, Hh);
   const cx = 9, cy = 8.5, r = 8.5;
   const f = sdCircle(cx, cy, r);
-  // Foot: a short flared plinth with the team color.
-  for (let y = 15; y <= 20; y++) {
-    const inset = y <= 16 ? 4 : y === 17 ? 3 : 2;
-    for (let x = inset; x < W - inset; x++) img.set(x, y, y === 15 || y === 20 ? ramp[0] : y === 16 ? ramp[1] : y === 17 ? ramp[4] : y === 18 ? ramp[3] : ramp[2]);
-    img.set(inset - 1, y, ramp[0]);
-    img.set(W - inset, y, ramp[0]);
-  }
+  // His base: a thin flat strip under the circle, narrower than it (10 of 17 pixels), two rows of
+  // the team color in a dark outline.
+  for (let y = 16; y <= 19; y++)
+    for (let x = 3; x <= 14; x++) {
+      const edge = y === 16 || y === 19 || x === 3 || x === 14;
+      img.set(x, y, edge ? ramp[0] : y === 17 ? ramp[4] : ramp[2]);
+    }
   band(img, f, { from: 0, width: 1.7, ramp, lo: 2, hi: 4 });
   isoLine(img, f, -1, ramp[0]);
   isoLine(img, f, 1.7, ramp[0]);
   return { name, img, group: 'turn row', use, window: { x: 2, y: 2, w: 14, h: 14, shape: 'circle' } };
 }
-export const initAlly = () => initBell('init_ally', ALLY, 'Turn row: an ally (round window, his muted steel-blue rim and base).');
-export const initEnemy = () => initBell('init_enemy', FOE, 'Turn row: an enemy (round window, his muted rose rim and base).');
+export const initAlly = () => initBell('init_ally', ALLY, 'Turn row: an ally (round window, his muted steel-blue rim and thin base strip).');
+export const initEnemy = () => initBell('init_enemy', FOE, 'Turn row: an enemy (round window, his muted rose rim and thin base strip).');
 
 export function initEnd(): Piece {
   // His end circle: a little larger than a portrait ring, dark with a fine checker hatch, a thin
@@ -377,35 +412,62 @@ export function initEnd(): Piece {
 
 // --- minimap ring --------------------------------------------------------------------------------------------
 
-/** His pearly near-white minimap band, dark to light. */
-const PEARL = ['#3e3a33', '#77736a', '#a9a59a', '#cfcbc0', '#e6e2d8', '#f6f3ec'].map((h) => hex(h));
+/** His pearl-grey minimap band, dark to light (lower right #8f8b82 up to the upper left #f4f1ea). */
+const PEARL = ['#3e3a33', '#6f6b63', '#8f8b82', '#aeaaa0', '#cbc7bc', '#e2ded4', '#f4f1ea'].map((h) => hex(h));
 
 export function minimapRing(): Piece {
   // Measured on his frame (in art pixels about the centre): the map window r 38; a thin gold line;
-  // his pearly near-white band, 5 pixels (10 on screen) to r 44; a thin gold line on its outer
-  // edge; then a fine, regular gold lace to r 50 (a row of small rings on the gold line with a bead
-  // between each pair). The cardinal gems sit on the band's outer edge in pointed lozenge bezels
-  // with side prongs; the diagonal gems sit in the lace in gold lozenge bezels.
+  // his pearl band, 5 pixels (10 on screen) to r 44, bright at the upper left and grey toward the
+  // lower right; a thin gold line on its outer edge; then a gold running scroll to a gold line at
+  // r 50 (a wave every 7 pixels, dark between). The cardinal gems sit on the band in pointed lozenge mounts; the
+  // diagonal gems sit in pointed lozenge mounts that stand a little outside the ring.
   const S = 100, c = 50, RW = 38;
   const img = new Img(S, S);
-  // --- the lace: one motif every ~6 pixels round the circle at r 47 ------------------------------
-  const RL = 47, N = Math.round((2 * Math.PI * RL) / 6), P = (2 * Math.PI * RL) / N;
+  // --- the lace: a running scroll between two gold lines (r 45 and r 50), on a dark backing --------
+  const RL = 47, N = Math.round((2 * Math.PI * RL) / 7), P = (2 * Math.PI * RL) / N;
+  // One wave of the scroll in (s along the ring, v outward from the inner gold line): it rises
+  // from the inner line, rolls over toward the outer line and curls down into an eye; the next
+  // wave starts where it began.
+  const wave: Pt[] = [
+    ...(cbez([0, 0.3], [P * 0.15, 4.4], [P * 0.85, 4.6], [P * 0.8, 2.3], 24) as Pt[]),
+    ...spiral(P * 0.56, 2.3, P * 0.24, 0.35, 0, Math.PI * 1.6, 14),
+  ];
+  const segDist = (px: number, py: number): number => {
+    let m = Infinity;
+    for (let i = 0; i + 1 < wave.length; i++) {
+      const [ax, ay] = wave[i], [bx, by] = wave[i + 1];
+      const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1;
+      const u = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2));
+      m = Math.min(m, Math.hypot(px - ax - u * dx, py - ay - u * dy));
+    }
+    return m;
+  };
   const lace = new Mask(S, S);
   for (let y = 0; y < S; y++)
     for (let x = 0; x < S; x++) {
       const dx = x + 0.5 - c, dy = y + 0.5 - c, r = Math.hypot(dx, dy);
-      if (r < 44 || r > 50.2) continue;
+      if (r < 44 || r > 51) continue;
+      if (r <= 50.6) img.set(x, y, METAL[1]);
       const th = (Math.atan2(dy, dx) + 2.5 * Math.PI) % (2 * Math.PI);
-      const sArc = ((th * RL) % P + P) % P, v = r - 44.9; // position in the motif, height above the gold line
-      const ring = Math.abs(Math.hypot(sArc - P / 2, v - 2.4) - 1.55) < 0.55;
-      const bead = Math.min(Math.hypot(sArc, v - 3.9), Math.hypot(sArc - P, v - 3.9)) < 0.95;
-      const stem = Math.min(Math.abs(sArc), Math.abs(sArc - P)) < 0.5 && v > 0 && v < 3.2;
-      if (ring || bead || stem) lace.set(x, y);
+      const sArc = ((th * RL) % P + P) % P, v = r - 45;
+      if (Math.min(segDist(sArc, v), segDist(sArc - P, v), segDist(sArc + P, v)) < 0.58) lace.set(x, y);
     }
-  emboss(img, lace, METAL, { base: 5, outlineColor: METAL[1] });
-  // --- the pearly band, with a thin gold line on each edge ------------------------------------------
-  const fB = sdCircle(c, c, 44);
-  band(img, fB, { from: 0, width: 5, ramp: PEARL, lo: 2, hi: 5, flat: 0.45 });
+  emboss(img, lace, METAL, { base: 5, outline: false });
+  isoLine(img, sdCircle(c, c, 50.6), 0, METAL[4], 0.8);
+  isoLine(img, sdCircle(c, c, 51.4), 0, METAL[1], 0.8);
+  // --- the pearl band, lit from the upper left, with a thin gold line on each edge ------------------
+  const light = Math.atan2(-0.8, -0.6);
+  for (let y = 0; y < S; y++)
+    for (let x = 0; x < S; x++) {
+      const dx = x + 0.5 - c, dy = y + 0.5 - c, r = Math.hypot(dx, dy);
+      if (r < 39 || r >= 44) continue;
+      const t = Math.max(0, Math.cos(Math.atan2(dy, dx) - light)); // 1 facing the light, 0 on the far half
+      let k = 2 + Math.round(t * 3);
+      // The band is rounded: its outer and inner pixel a step darker (the inner one two on the lit side, in shadow).
+      if (r >= 43) k -= 1;
+      else if (r < 40) k -= t > 0.5 ? 2 : 1;
+      img.set(x, y, PEARL[Math.max(1, k)]);
+    }
   isoLine(img, sdCircle(c, c, 45), 0, METAL[1], 0.6);
   isoLine(img, sdCircle(c, c, 45), 0.6, METAL[5], 0.9);
   isoLine(img, sdCircle(c, c, 39.1), 0, METAL[4], 0.9);
@@ -417,6 +479,7 @@ export function minimapRing(): Piece {
     img.set(Math.floor(c + Math.cos(a) * 41.5), Math.floor(c + Math.sin(a) * 41.5), PEARL[1]);
   }
   // --- gems ------------------------------------------------------------------------------------------
+  /** A gold lozenge mount, long along (ux, uy), pointed at both ends, with optional side prongs. */
   const lozenge = (gx: number, gy: number, ux: number, uy: number, along: number, across: number, prongs: boolean) => {
     const tx = -uy, ty = ux;
     const bz = new Mask(S, S);
@@ -427,28 +490,28 @@ export function minimapRing(): Piece {
         if (Math.abs(al) / along + Math.abs(ac) / across <= 1) bz.set(x, y);
         if (prongs && Math.abs(ac) >= across - 1.2 && Math.abs(ac) <= across + 2 && Math.abs(al + 0.3) <= 1.2 - (Math.abs(ac) - across + 1.2) * 0.3) bz.set(x, y);
       }
-    emboss(img, bz, METAL, { base: 5, outlineColor: METAL[1] });
+    emboss(img, bz, METAL, { base: 4, outlineColor: METAL[1] });
   };
   const diagonal: [number, keyof typeof GEM][] = [[-135, 'green'], [-45, 'green'], [45, 'green'], [135, 'red']];
   for (const [deg, col] of diagonal) {
     const a = (deg * Math.PI) / 180, ux = Math.cos(a), uy = Math.sin(a);
-    const gx = Math.floor(c + ux * 47.6) + 0.5, gy = Math.floor(c + uy * 47.6) + 0.5;
-    // A gold lozenge set into the lace, its points along the rim (his diagonal bezels).
-    lozenge(gx, gy, -uy, ux, 5.2, 4.2, false);
-    gem(img, gx, gy, 2.5, GEM[col], false);
+    const gx = Math.floor(c + ux * 49.4) + 0.5, gy = Math.floor(c + uy * 49.4) + 0.5;
+    // Pointed along the radius, out past the lace (his diagonal mounts stand outside the ring).
+    lozenge(gx, gy, ux, uy, 6.4, 4.4, false);
+    gem(img, gx, gy, 2.4, GEM[col], false);
   }
   const cardinal: [number, keyof typeof GEM][] = [[-90, 'green'], [0, 'green'], [90, 'red'], [180, 'green']];
   for (const [deg, col] of cardinal) {
     const a = (deg * Math.PI) / 180;
     const ux = Math.cos(a), uy = Math.sin(a);
-    const gx = Math.floor(c + ux * 44.6) + 0.5, gy = Math.floor(c + uy * 44.6) + 0.5;
-    // Lozenge bezel, long along the radius (pointed out and in), with a prong on each side.
-    lozenge(gx, gy, ux, uy, 5.4, 4.6, true);
-    gem(img, gx, gy, 2.5, GEM[col], true);
+    const gx = Math.floor(c + ux * 44.2) + 0.5, gy = Math.floor(c + uy * 44.2) + 0.5;
+    // Pointed lozenge mount, long along the radius (out and in), with a prong on each side.
+    lozenge(gx, gy, ux, uy, 5.8, 4.0, true);
+    gem(img, gx, gy, 2.4, GEM[col], true);
   }
   return {
     name: 'minimap_ring', img, group: 'minimap',
-    use: 'Round minimap frame: his pearly near-white band with a thin gold line on each edge, a fine regular gold lace outside it; cardinal gems in pointed lozenge bezels, diagonal gems in gold lozenges set into the lace (green, red at the lower left, as he painted them). The map shows through the round window.',
+    use: 'Round minimap frame: his pearl band (bright at the upper left, grey toward the lower right) with a thin gold line on each edge, a gold scroll lace outside it; cardinal gems in pointed lozenge mounts on the band, diagonal gems in pointed lozenge mounts standing a little outside the ring (green, red at the lower left, as he painted them). The map shows through the round window.',
     window: { x: c - RW, y: c - RW, w: 2 * RW, h: 2 * RW, shape: 'circle' },
   };
 }
@@ -491,9 +554,13 @@ export function skillSlot(active = false): Piece {
   };
 }
 
+/** His tag rim: a dim bronze, darkest to lit. */
+const TAG_RIM = ['#3f3527', '#54483a', '#6b5d47', '#85755a'].map((h) => hex(h));
+
 export function skillTag(): Piece {
   // His number tag: a free-standing hexagonal shield (chamfered top corners, pointed bottom),
-  // silver rim, dark fill, the cream digit inside. It overlaps the slot top by 3 art pixels.
+  // a dim bronze rim, dark fill, the cream digit inside; quieter than the slot frame. It overlaps
+  // the slot top by 3 art pixels.
   const W = 11, Hh = 12;
   const half = [3, 4, 5, 5, 5, 5, 5, 5, 4, 3, 2, 1];
   const img = new Img(W, Hh);
@@ -503,11 +570,11 @@ export function skillTag(): Piece {
       if (!inside(x, y)) continue;
       const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
       const rim = !edge && (!inside(x - 2, y) || !inside(x + 2, y) || !inside(x, y - 2) || !inside(x, y + 2) || !inside(x - 1, y - 1) || !inside(x + 1, y - 1) || !inside(x - 1, y + 1) || !inside(x + 1, y + 1));
-      // His rim: a light top edge, mid grey-silver sides, darker on the right and the point.
-      const k = y <= 2 ? (x <= 5 ? 6 : 5) : x < 5 && y < 8 ? 5 : x < 5 ? 4 : 3;
-      img.set(x, y, edge ? SILVER[0] : rim ? SILVER[k] : PANEL[2]);
+      // His rim: a dim bronze, lit a little along the top edge, darker on the right and the point.
+      const k = y <= 2 ? (x <= 5 ? 3 : 2) : x < 5 && y < 8 ? 2 : x < 5 ? 1 : 0;
+      img.set(x, y, edge ? PANEL[0] : rim ? TAG_RIM[k] : PANEL[1]);
     }
-  return { name: 'skill_tag', img, group: 'action bar', use: 'Number tag over a skill slot: his hexagonal shield (the slot number, cream, in the label font).', window: { x: 2, y: 2, w: 7, h: 7, shape: 'rect' } };
+  return { name: 'skill_tag', img, group: 'action bar', use: 'Number tag over a skill slot: his dark hexagonal shield with a dim bronze rim (the slot number, cream, in the label font).', window: { x: 2, y: 2, w: 7, h: 7, shape: 'rect' } };
 }
 
 export function itemSlot(): Piece {
@@ -543,18 +610,24 @@ export function pip(name: string, color: keyof typeof GEM | 'spent', use: string
 }
 
 export function moveTrough(): Piece {
-  // His movement bar: a capsule trough with rounded ends, a dark well and a thin lit rim.
+  // His movement bar: a trough with a small pointed left end (a chevron, like the target plaque's
+  // nose) and a rounded right end, a dark well and a thin lit rim. 3-slice: the 8-pixel left cap,
+  // one repeating column, the 3-pixel right cap.
+  const L = [
+    '....oooo',
+    '..oo4444',
+    'oo440000',
+    'oo331111',
+    '..oo2222',
+    '....oooo',
+  ];
+  const R = ['o..', '3o.', '02o', '12o', '2o.', 'o..'];
+  const C = ['o', '4', '0', '1', '2', 'o'];
   const W = 24, Hh = 6;
   const img = new Img(W, Hh);
-  stamp(img, 0, 0, [
-    '..' + 'o'.repeat(W - 4) + '..',
-    '.o4' + '4'.repeat(W - 6) + '3o.',
-    'o3' + '0'.repeat(W - 4) + '2o',
-    'o3' + '0'.repeat(W - 4) + '2o',
-    '.o2' + '1'.repeat(W - 6) + '2o.',
-    '..' + 'o'.repeat(W - 4) + '..',
-  ], { o: METAL[0], '0': PANEL[0], '1': PANEL[1], '2': METAL[3], '3': METAL[4], '4': METAL[5] });
-  return { name: 'move_trough', img, group: 'action bar', use: 'Movement bar trough, his capsule (3-slice); the teal fill goes inside (2 pixels in from each end, 1 from top and bottom).', slice: [0, 3, 0, 3], window: { x: 2, y: 1, w: W - 4, h: 4, shape: 'rect' } };
+  const rows = L.map((l, y) => l + C[y].repeat(W - l.length - R[y].length) + R[y]);
+  stamp(img, 0, 0, rows, { o: METAL[0], '0': PANEL[0], '1': PANEL[1], '2': METAL[3], '3': METAL[4], '4': METAL[5] });
+  return { name: 'move_trough', img, group: 'action bar', use: 'Movement bar trough, his (3-slice): a small pointed left end (the fill starts just after it) and a rounded right end; the teal fill goes in the window.', slice: [0, 3, 0, 8], window: { x: 6, y: 1, w: W - 8, h: 4, shape: 'rect' } };
 }
 
 export function chakraGem(color: 'red' | 'orange' | 'blue' | 'empty'): Piece {
@@ -766,50 +839,97 @@ export function medallionActive(): Piece {
 // --- plaque under the bar ------------------------------------------------------------------------------------
 
 /**
- * His lower bracket (left end of the plaque under the bar; mirrored for the right) as open
- * wirework, hand-placed at art resolution: a wire along the bar's underside, a curled tip at the
- * outer end, the long two-row arm sweeping down to the plaque's bottom corner, his "eye" (a pale
- * ring with two dark dots), the X binding of two crossing curves by the plaque's end, and small
- * curls on the bar wire and under the arm. Keys as in `wire`; the background shows between them.
+ * Rasterizes 1-pixel curves into a character map for `wire`: each stroke is a list of points and
+ * the key it is drawn with (later strokes draw over earlier ones); `stamps` are small hand-placed
+ * maps laid over the result ('.' leaves the pixel alone).
  */
-const LOWER_BRACKET = [
-  '.LL..L....LLL.....LL...........Ll.......',
-  'L..lL.l.LL...LL.....L........Ll.........',
-  'L.M....L...ooo.L....ML......LM..........',
-  '.l.H......occco.LL...ML....LM...........',
-  '...MH....ocKcKco.l....ML..LM............',
-  '....MH...oCCCCCo.M.....MLLM.............',
-  '.....MH...oCCCo.........LLM.............',
-  '......MH...ooo..........LLM.............',
-  '.......MH..............L..L.............',
-  '.......lMHH...........LM..ML............',
-  '......M.MMMHH........LM....ML..l........',
-  '.......M...MMHL.....LM......ML..........',
-  '.............MMLLL..M........l..........',
-  '..............lMllLLLLLL................',
-  '.............M.M..llllllLLLLLLLLLLL.....',
-  '..............M.........lllllllllll.....',
-];
+function strokeMap(w: number, h: number, strokes: { pts: Pt[]; ch: string }[], stamps: { x: number; y: number; rows: string[] }[] = []): string[] {
+  const g: string[][] = Array.from({ length: h }, () => Array(w).fill('.'));
+  for (const s of strokes) for (const [x, y] of pixelPath(s.pts)) if (x >= 0 && y >= 0 && x < w && y < h) g[y][x] = s.ch;
+  for (const st of stamps)
+    st.rows.forEach((r, dy) => [...r].forEach((c, dx) => {
+      const x = st.x + dx, y = st.y + dy;
+      if (c !== '.' && x >= 0 && y >= 0 && x < w && y < h) g[y][x] = c === '_' ? '.' : c;
+    }));
+  return g.map((r) => r.join(''));
+}
+
+/**
+ * The pixels of a curve as a clean 1-pixel line: the pixels it passes through, in order, with the
+ * corner pixels of every staircase step dropped (a pixel goes when the ones before and after it
+ * touch diagonally), so curves have no doubled steps.
+ */
+export function pixelPath(pts: Pt[]): Pt[] {
+  const out: Pt[] = [];
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 4));
+    for (let k = 0; k <= n; k++) {
+      const p: Pt = [Math.floor(x0 + ((x1 - x0) * k) / n), Math.floor(y0 + ((y1 - y0) * k) / n)];
+      const q = out[out.length - 1];
+      if (!q || q[0] !== p[0] || q[1] !== p[1]) out.push(p);
+    }
+  }
+  for (let i = 1; i + 1 < out.length; ) {
+    const a = out[i - 1], c = out[i + 1];
+    if (Math.abs(a[0] - c[0]) === 1 && Math.abs(a[1] - c[1]) === 1) out.splice(i, 1);
+    else i++;
+  }
+  return out;
+}
+
+/**
+ * His lower bracket (left end of the plaque under the bar; mirrored for the right): a triangular
+ * gusset of curved wire, wide along the bar's underside and pointed at the plaque's lower corner.
+ * A wire along the top with a small curl at the outer tip; the long edge sagging down to the
+ * point; an S-scroll from the top wire down to the edge with his small eye (two dark dots in a pale
+ * ring, about 10 px) in its upper bowl; and the X binding by the plaque's end, two crossing C-curves.
+ * The background shows between the wires.
+ */
+function lowerBracket(): string[] {
+  const W = 38, H = 16;
+  const edge = qbez([1.5, 2.2], [11.5, 14.6], [36.5, 15.5], 40) as Pt[];
+  return strokeMap(W, H, [
+    // The top wire along the bar, and the small curl at the outer tip.
+    { pts: [[3.5, 0.5], [31.5, 0.5]], ch: 'L' },
+    { pts: spiral(2.6, 2.4, 1.9, 0.6, -Math.PI / 2, -Math.PI * 2.3, 20), ch: 'L' },
+    // The long edge, sagging from the tip to the plaque's corner.
+    { pts: edge, ch: 'L' },
+    // The S-scroll: from the top wire down round the eye and back to the edge.
+    { pts: cbez([7.5, 0.5], [9.5, 6.5], [20.5, 2.5], [17.5, 11.8], 30) as Pt[], ch: 'l' },
+    // A small C-curl under the top wire, between the tip and the scroll.
+    { pts: spiral(7.0, 5.6, 2.0, 0.7, -Math.PI * 0.1, Math.PI * 1.5, 18), ch: 'l' },
+    // The X binding: two C-curves crossing near the plaque's end.
+    { pts: qbez([21.5, 0.5], [30.5, 3.5], [31.5, 14.5], 24) as Pt[], ch: 'L' },
+    { pts: qbez([31.5, 0.5], [22.5, 3.5], [22.5, 13.4], 24) as Pt[], ch: 'l' },
+  ], [
+    // His eye: a pale ring with two dark dots.
+    { x: 12, y: 3, rows: ['.LLl.', 'LK.Kl', '.lMM.'] },
+  ]);
+}
 
 export function lowerPlaque(): Piece {
-  const W = 96, Hh = 16, cap = 44, end = 33;
+  const W = 96, Hh = 16, cap = 44, end = 31, rr = 6;
   const img = new Img(W, Hh);
   // The plaque: dark, its top on the bar's bottom rail, his silver rail along the bottom, and
-  // rounded (capsule) lower corners; the brackets overlap its ends.
-  const f = sdRoundRect(end, -10, W - end, Hh - 1, 5);
+  // rounded ends (radius 6) under the brackets' X bindings.
+  const f = sdRoundRect(end, -10, W - end, Hh - 1, rr);
   for (let y = 0; y < Hh; y++)
     for (let x = 0; x < W; x++) {
       const d = -f(x + 0.5, y + 0.5);
       if (d < -1) continue;
       const rail = y >= Hh - 4;
-      img.set(x, y, d < 0 ? METAL[0] : rail && d < 1 ? RAIL[5] : rail && d < 2 ? RAIL[3] : d < 2 && rail ? PANEL[0] : d < 2.5 ? PANEL[0] : mixc(PANEL[3], BROWN[1], 0.4));
+      img.set(x, y, d < 0 ? METAL[0] : rail && d < 1 ? RAIL[5] : rail && d < 2 ? RAIL[3] : d < 1.5 ? PANEL[0] : mixc(PANEL[3], BROWN[1], 0.4));
     }
-  for (const flip of [false, true]) wire(img, LOWER_BRACKET, { ox: flip ? W - LOWER_BRACKET[0].length : 0, flip, pal: { ...WIRE, K: hex('#14100a') } });
+  const map = lowerBracket();
+  // His bracket metal is a warm khaki gold (bright mean about 160, 150, 124).
+  const pal = { H: hex('#d2c4a4'), L: hex('#ab9c7c'), l: hex('#8c7d60'), M: hex('#66583f'), K: hex('#14100a') };
+  for (const flip of [false, true]) wire(img, map, { ox: flip ? W - map[0].length : 0, flip, pal });
   return {
     name: 'lower_plaque', img, group: 'action bar',
-    use: 'Dark plaque under the action bar (3-slice): his openwork corner brackets (curled tip, long arm, an eye of two dark dots in a pale ring, an X binding; the background shows through) and rounded capsule ends with a silver rail; for the hint line or the combat log.',
+    use: 'Dark plaque under the action bar (3-slice): his triangular openwork brackets of curved wire (a curl at the tip, the sagging long edge, an S-scroll holding his small eye, an X of two crossing C-curves; the background shows through) and rounded plaque ends with a silver rail along the bottom; for the hint line or the combat log.',
     slice: [0, cap, 0, cap],
-    window: { x: end + 3, y: 1, w: W - 2 * (end + 3), h: Hh - 5, shape: 'rect' },
+    window: { x: end + rr, y: 1, w: W - 2 * (end + rr), h: Hh - 5, shape: 'rect' },
   };
 }
 
@@ -828,23 +948,27 @@ export function partyFrame(): Piece {
       else if (r === 1) img.set(x, y, OLIVE[0]);
       else if (r === 2) img.set(x, y, lit && (x === 2 || y === 2) ? OLIVE[4] : OLIVE[3]);
     }
-  // Soften the outer corners (one pixel).
-  for (const [x, y] of [[0, 0], [W - 1, 0], [0, Hh - 1], [W - 1, Hh - 1]]) img.set(x, y, [0, 0, 0, 0]);
-  // His gold corner flourishes, on the frame: a bead joining the two lines across the corner and
-  // a small leaf running along each side in the dark line.
-  const flourish = (fx: boolean, fy: boolean, lit: boolean) => {
+  // His slightly rounded corners: the outer line cuts each corner on the diagonal.
+  for (const [fx, fy] of [[false, false], [true, false], [false, true], [true, true]]) {
     const X = (x: number) => (fx ? W - 1 - x : x), Y = (y: number) => (fy ? Hh - 1 - y : y);
-    const hi = lit ? OLIVE[6] : OLIVE[5], mid = lit ? OLIVE[5] : OLIVE[4];
-    img.set(X(1), Y(1), hi);
-    img.set(X(1), Y(3), mid);
-    img.set(X(1), Y(4), OLIVE[3]);
-    img.set(X(3), Y(1), mid);
-    img.set(X(4), Y(1), OLIVE[3]);
-  };
-  flourish(false, false, true);
-  flourish(true, false, true);
-  flourish(false, true, false);
-  flourish(true, true, false);
+    img.set(X(0), Y(0), [0, 0, 0, 0]);
+    img.set(X(1), Y(0), [0, 0, 0, 0]);
+    img.set(X(0), Y(1), [0, 0, 0, 0]);
+    img.set(X(1), Y(1), fy ? OLIVE[4] : OLIVE[5]);
+    // His small gold curl in the corner, curling in from the inner line (at the bottom corners
+    // the bar wells take that space, so only a bright knot on the inner line).
+    if (fy) {
+      img.set(X(2), Y(2), OLIVE[6]);
+      img.set(X(3), Y(2), OLIVE[5]);
+      img.set(X(2), Y(3), OLIVE[5]);
+      continue;
+    }
+    img.set(X(3), Y(3), OLIVE[6]);
+    img.set(X(4), Y(3), OLIVE[5]);
+    img.set(X(3), Y(4), OLIVE[5]);
+    img.set(X(5), Y(4), OLIVE[3]);
+    img.set(X(4), Y(5), OLIVE[3]);
+  }
   // The bar wells under the portrait: red (HP) then green.
   img.rect(3, 28, W - 6, 1, OLIVE[2]);
   img.rect(3, 29, W - 6, 4, PANEL[0]);
@@ -852,7 +976,7 @@ export function partyFrame(): Piece {
   img.rect(3, 34, W - 6, 3, PANEL[0]);
   return {
     name: 'party_frame', img, group: 'party',
-    use: 'Party portrait frame (9-slice): his thin olive-gold double line with small gold flourishes on the corners; portrait window on top, two bar wells below (red HP at 3,29 4 high, green at 3,34 3 high, in art pixels).',
+    use: 'Party portrait frame (9-slice): his thin olive-gold double line with slightly rounded corners and a small gold curl in each corner (over the portrait corner, like his); portrait window on top, two bar wells below (red HP at 3,29 4 high, green at 3,34 3 high, in art pixels).',
     slice: [8, 8, 14, 8],
     window: { x: 3, y: 3, w: W - 6, h: 25, shape: 'rect' },
   };

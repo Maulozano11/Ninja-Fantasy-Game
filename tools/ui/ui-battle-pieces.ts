@@ -9,7 +9,7 @@
 import { Img, RGBA, alpha, hex, mixc } from './ui-img';
 import {
   ALLY, BADGE, BROWN, FOE, GEM, GOLD, GREEN, KHAKI, METAL, Mask, OLIVE, PANEL, Pt, RAIL, RED, SILVER, TEAL,
-  band, cbez, emboss, fillShape, filledLace, gem, isoLine, lace, orb, qbez, rhombGem, sdCircle, sdLp, sdRoundRect, spiral, stamp, wire,
+  band, cbez, emboss, fillShape, filledLace, gem, isoLine, lace, orb, qbez, rhombGem, sdCircle, sdLp, sdRoundRect, spiral, stamp, wire, WIRE,
 } from './ui-draw';
 
 export interface Piece {
@@ -706,27 +706,29 @@ export function medallionActive(): Piece {
 // --- plaque under the bar ------------------------------------------------------------------------------------
 
 /**
- * His lower bracket (left end of the plaque under the bar), hand-placed at art resolution: a wire
- * along the bar's underside, a double diagonal sweep down to the plaque's bottom corner, a small
- * curl and a leaf, an eye curl holding his pale stone, and the X binding by the plaque's end.
+ * His lower bracket (left end of the plaque under the bar; mirrored for the right) as open
+ * wirework, hand-placed at art resolution: a wire along the bar's underside, a curled tip at the
+ * outer end, the long two-row arm sweeping down to the plaque's bottom corner, his "eye" (a pale
+ * ring with two dark dots), the X binding of two crossing curves by the plaque's end, and small
+ * curls on the bar wire and under the arm. Keys as in `wire`; the background shows between them.
  */
 const LOWER_BRACKET = [
-  '########################################',
-  '####:::::#:::::::::::::#:::::::#::::::::',
-  '#######:#:#:####::###:::#:::::#:::::::::',
-  '.....######::::::#:::#:::#:::#::::::::::',
-  '........####:::::#:::#::::#:##::::::::::',
-  '..........#####::#:::#::::###:::::::::::',
-  '.............#####:::#:::::##:::::::::::',
-  '................#####:::::#:#:::::::::::',
-  '...................#####:#:::#::::::::::',
-  '......................#####:::#:::::::::',
-  '........................######:#::::::::',
-  '...........................######:::::::',
-  '..............................######::::',
-  '.................................######:',
-  '....................................####',
-  '......................................##',
+  '.LL.MlMlMlMlMlMlMlMlMlMlMlMlMlMlMl......',
+  'L..l......ooo...........................',
+  'L.M......occco...L.L.........LL.........',
+  '.M.L....oKcccKo.L.l.L.......L..l........',
+  '....HH...oCCCo...M...L.....L...M........',
+  '....MMHH..............L...L.............',
+  '......MMHH.............L.L..............',
+  '........MMH.............H...............',
+  '..........MLL..........l.L..............',
+  '...........MMLL.......l...L.............',
+  '.............llLL.....l....L..L.........',
+  '...............llLL..l.....L.L.M........',
+  '...............llllLLL......L.M.........',
+  '...................lllLLL...............',
+  '......................lllLLLLLLLLL......',
+  '.........................lllllllll......',
 ];
 
 export function lowerPlaque(): Piece {
@@ -742,15 +744,10 @@ export function lowerPlaque(): Piece {
       const rail = y >= Hh - 4;
       img.set(x, y, d < 0 ? METAL[0] : rail && d < 1 ? RAIL[5] : rail && d < 2 ? RAIL[3] : d < 2 && rail ? PANEL[0] : d < 2.5 ? PANEL[0] : mixc(PANEL[3], BROWN[1], 0.4));
     }
-  for (const flip of [false, true]) {
-    const { mk, back } = laceMap(LOWER_BRACKET, flip);
-    filledLace(img, mk, back, METAL, { base: 5, ox: flip ? W - LOWER_BRACKET[0].length : 0, grow: 0, backColor: METAL[1], crevice: METAL[0] });
-  }
-  gem(img, 19.5, 5, 1.2, GEM.teal, true);
-  gem(img, W - 19.5, 5, 1.2, GEM.teal, true);
+  for (const flip of [false, true]) wire(img, LOWER_BRACKET, { ox: flip ? W - LOWER_BRACKET[0].length : 0, flip, pal: { ...WIRE, K: hex('#14100a') } });
   return {
     name: 'lower_plaque', img, group: 'action bar',
-    use: 'Dark plaque under the action bar (3-slice): his scrolled corner brackets (eye, pale stone, X binding) and rounded capsule ends with a silver rail; for the hint line or the combat log.',
+    use: 'Dark plaque under the action bar (3-slice): his openwork corner brackets (curled tip, long arm, an eye of two dark dots in a pale ring, an X binding; the background shows through) and rounded capsule ends with a silver rail; for the hint line or the combat log.',
     slice: [0, cap, 0, cap],
     window: { x: end + 3, y: 1, w: W - 2 * (end + 3), h: Hh - 5, shape: 'rect' },
   };

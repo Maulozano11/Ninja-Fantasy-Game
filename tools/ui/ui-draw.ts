@@ -506,14 +506,14 @@ export function cbez(p0: Pt, c0: Pt, c1: Pt, p1: Pt, n = 32): Pt[] {
 /**
  * His open gold wirework (crest shoulders, lower brackets): 1-art-pixel strokes in light and mid
  * metal, each outlined in a dark brown, with the background showing through every gap wider than
- * the outline. Map keys: 'H' highlight, 'L' light, 'M' mid, 'D' dark metal, 'o' the pale bead rim,
+ * the outline. Map keys: 'H' highlight, 'L' light, 'l' light-mid, 'M' mid, 'D' dark metal, 'o' the pale bead rim,
  * 'c' / 'C' the bead's olive-grey centre, '.' open.
  */
 export const WIRE: Record<string, RGBA> = {
-  H: H('#ddd3bd'), L: H('#bcaf9e'), M: H('#7a6d58'), D: H('#56493a'),
+  H: H('#e0d3b7'), L: H('#bcaf9e'), l: H('#9c8e74'), M: H('#7a6d58'), D: H('#544934'),
   o: H('#cfc4b2'), c: H('#5e5c4d'), C: H('#535740'),
 };
-export const WIRE_OUTLINE = H('#241b11');
+export const WIRE_OUTLINE = H('#2c2316');
 export function wire(img: Img, rows: string[], opts: { ox?: number; oy?: number; flip?: boolean; pal?: Record<string, RGBA>; outline?: RGBA } = {}): void {
   const ox = opts.ox ?? 0, oy = opts.oy ?? 0, pal = opts.pal ?? WIRE, ol = opts.outline ?? WIRE_OUTLINE;
   const w = Math.max(...rows.map((r) => r.length)), h = rows.length;

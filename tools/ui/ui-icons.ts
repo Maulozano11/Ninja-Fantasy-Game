@@ -437,6 +437,314 @@ function prep(his: Img): Img {
   return o;
 }
 
+/** Lightness (0..1, OKLab L) of every pixel. */
+function lightness(f: F): Float32Array {
+  const o = new Float32Array(f.w * f.h);
+  for (let i = 0; i < f.w * f.h; i++) o[i] = oklab(f.d[i * 3], f.d[i * 3 + 1], f.d[i * 3 + 2])[0];
+  return o;
+}
+/** Square min (or max) filter of radius r. */
+function morph(v: Float32Array, w: number, h: number, r: number, max: boolean): Float32Array {
+  const t = new Float32Array(w * h), o = new Float32Array(w * h);
+  const pick = max ? Math.max : Math.min;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let m = v[y * w + x];
+      for (let d = -r; d <= r; d++) m = pick(m, v[y * w + Math.max(0, Math.min(w - 1, x + d))]);
+      t[y * w + x] = m;
+    }
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let m = t[y * w + x];
+      for (let d = -r; d <= r; d++) m = pick(m, t[Math.max(0, Math.min(h - 1, y + d)) * w + x]);
+      o[y * w + x] = m;
+    }
+  return o;
+}
+
+/**
+ * Thin strokes (his dark gaps between scales, teeth and flames, his bright bolts and sparks) are
+ * narrower than one pixel of the small icon and would average away. Strokes found by a closing
+ * (dark) or an opening (bright) of radius r are widened by t pixels of his picture, each pixel
+ * taking the colour of the strongest stroke pixel near it, before the picture is reduced.
+ */
+function widenStrokes(src: F, r: number, t: number, thrDark: number, thrBright: number): F {
+  const { w, h } = src;
+  const L = lightness(src);
+  const close = morph(morph(L, w, h, r, true), w, h, r, false);
+  const open = morph(morph(L, w, h, r, false), w, h, r, true);
+  const out = new F(w, h, new Float32Array(src.d));
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let best = -1, bs = 0;
+      for (let dy = -t; dy <= t; dy++)
+        for (let dx = -t; dx <= t; dx++) {
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+          const j = yy * w + xx;
+          const dk = close[j] - L[j], br = L[j] - open[j];
+          const s = Math.max(dk / thrDark, br / thrBright);
+          if (s > 1 && s > bs) (bs = s), (best = j);
+        }
+      if (best >= 0) for (let k = 0; k < 3; k++) out.d[(y * w + x) * 3 + k] = src.d[best * 3 + k];
+    }
+  return out;
+}
+
+/**
+ * Kuwahara filter: each pixel takes the mean of whichever of its four corner windows (radius r)
+ * varies least, which flattens his brush texture into clean areas while keeping the edges sharp.
+ */
+function kuwahara(src: F, r: number): F {
+  const { w, h } = src;
+  const L = lightness(src);
+  // Summed-area tables of L, L^2 and the three channels.
+  const W = w + 1;
+  const sat = (fn: (i: number) => number): Float64Array => {
+    const t = new Float64Array(W * (h + 1));
+    for (let y = 0; y < h; y++) {
+      let row = 0;
+      for (let x = 0; x < w; x++) {
+        row += fn(y * w + x);
+        t[(y + 1) * W + x + 1] = t[y * W + x + 1] + row;
+      }
+    }
+    return t;
+  };
+  const tl = sat((i) => L[i]), tl2 = sat((i) => L[i] * L[i]);
+  const tc = [0, 1, 2].map((k) => sat((i) => src.d[i * 3 + k]));
+  const box = (t: Float64Array, x0: number, y0: number, x1: number, y1: number): number => t[y1 * W + x1] - t[y0 * W + x1] - t[y1 * W + x0] + t[y0 * W + x0];
+  const out = new F(w, h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let bv = Infinity, bx0 = 0, by0 = 0, bx1 = 0, by1 = 0;
+      for (const [qx, qy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+        const x0 = Math.max(0, qx < 0 ? x - r : x), x1 = Math.min(w, (qx < 0 ? x : x + r) + 1);
+        const y0 = Math.max(0, qy < 0 ? y - r : y), y1 = Math.min(h, (qy < 0 ? y : y + r) + 1);
+        const n = (x1 - x0) * (y1 - y0);
+        const m = box(tl, x0, y0, x1, y1) / n;
+        const v = box(tl2, x0, y0, x1, y1) / n - m * m;
+        if (v < bv - 1e-12) (bv = v), (bx0 = x0), (by0 = y0), (bx1 = x1), (by1 = y1);
+      }
+      const n = (bx1 - bx0) * (by1 - by0);
+      for (let k = 0; k < 3; k++) out.d[(y * w + x) * 3 + k] = box(tc[k], bx0, by0, bx1, by1) / n;
+    }
+  return out;
+}
+
+/** Gaussian blur of a scalar field (separable, clamped edges). */
+function gauss(v: Float32Array, w: number, h: number, sigma: number): Float32Array {
+  const r = Math.ceil(sigma * 2.5);
+  const k: number[] = [];
+  let ks = 0;
+  for (let i = -r; i <= r; i++) {
+    const e = Math.exp(-(i * i) / (2 * sigma * sigma));
+    k.push(e);
+    ks += e;
+  }
+  const t = new Float32Array(w * h), o = new Float32Array(w * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let a = 0;
+      for (let i = -r; i <= r; i++) a += v[y * w + Math.max(0, Math.min(w - 1, x + i))] * k[i + r];
+      t[y * w + x] = a / ks;
+    }
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let a = 0;
+      for (let i = -r; i <= r; i++) a += t[Math.max(0, Math.min(h - 1, y + i)) * w + x] * k[i + r];
+      o[y * w + x] = a / ks;
+    }
+  return o;
+}
+
+/**
+ * Smoothing along his strokes: the direction of every stroke comes from the smoothed structure
+ * tensor of his picture, and each pixel is averaged along that direction only (a line-integral
+ * convolution of `len` pixels each way). Edges across the strokes (the dark gap between two
+ * flames, the line between two bands of the wave) stay sharp; the brush grain along them goes.
+ */
+function flowSmooth(src: F, sigma: number, len: number): F {
+  const { w, h } = src;
+  const L = lightness(src);
+  const gx = new Float32Array(w * h), gy = new Float32Array(w * h);
+  const at = (x: number, y: number) => L[Math.max(0, Math.min(h - 1, y)) * w + Math.max(0, Math.min(w - 1, x))];
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      gx[y * w + x] = at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1) - at(x - 1, y - 1) - 2 * at(x - 1, y) - at(x - 1, y + 1);
+      gy[y * w + x] = at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1) - at(x - 1, y - 1) - 2 * at(x, y - 1) - at(x + 1, y - 1);
+    }
+  const jxx = gauss(gx.map((v) => v * v), w, h, sigma);
+  const jxy = gauss(gx.map((v, i) => v * gy[i]), w, h, sigma);
+  const jyy = gauss(gy.map((v) => v * v), w, h, sigma);
+  // Tangent: the eigenvector of the smaller eigenvalue.
+  const tx = new Float32Array(w * h), ty = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const a = jxx[i], b = jxy[i], c = jyy[i];
+    const l2 = (a + c) / 2 - Math.sqrt(((a - c) * (a - c)) / 4 + b * b);
+    let vx = l2 - c, vy = b;
+    if (Math.abs(vx) + Math.abs(vy) < 1e-9) (vx = b), (vy = l2 - a);
+    const n = Math.hypot(vx, vy);
+    if (n < 1e-9) (tx[i] = 1), (ty[i] = 0);
+    else (tx[i] = vx / n), (ty[i] = vy / n);
+  }
+  const out = new F(w, h);
+  const sample = (x: number, y: number, k: number): number => {
+    const x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+    return (src.at(x0, y0, k) * (1 - fx) + src.at(x0 + 1, y0, k) * fx) * (1 - fy) + (src.at(x0, y0 + 1, k) * (1 - fx) + src.at(x0 + 1, y0 + 1, k) * fx) * fy;
+  };
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const acc = [0, 0, 0];
+      let wt = 0;
+      for (const dir of [1, -1]) {
+        let px = x, py = y, dx = tx[y * w + x] * dir, dy = ty[y * w + x] * dir;
+        for (let s = dir === 1 ? 0 : 1; s <= len; s++) {
+          if (s > 0) {
+            const i = Math.max(0, Math.min(h - 1, Math.round(py))) * w + Math.max(0, Math.min(w - 1, Math.round(px)));
+            let ndx = tx[i], ndy = ty[i];
+            if (ndx * dx + ndy * dy < 0) (ndx = -ndx), (ndy = -ndy);
+            (dx = ndx), (dy = ndy);
+            px += dx;
+            py += dy;
+          }
+          const g = Math.exp(-(s * s) / (2 * (len / 2) * (len / 2)));
+          for (let k = 0; k < 3; k++) acc[k] += sample(px, py, k) * g;
+          wt += g;
+        }
+      }
+      for (let k = 0; k < 3; k++) out.d[(y * w + x) * 3 + k] = acc[k] / wt;
+    }
+  return out;
+}
+
+// --- specks: sparks, embers, foam flecks, bolts ------------------------------------------------
+
+interface Speck {
+  /** Pixels of his picture (indices) that belong to it. */
+  px: number[];
+  cx: number;
+  cy: number;
+  /** His colour: the mean of its most extreme third (brightest for a spark, darkest for an ember). */
+  color: RGBA;
+  bright: boolean;
+  /** Length along its main axis and across it (his pixels), and the axis angle. */
+  long: number;
+  across: number;
+  angle: number;
+  /** Lightness of the ground under it (the opening or closing his picture would have there). */
+  bg: number;
+  /** Its own lightness at its most extreme third. */
+  peak: number;
+}
+
+/**
+ * Finds his small marks on the ground around them: bright ones (top-hat over an opening of radius
+ * r) and dark ones (black-hat). A mark is a connected group of at least `minPx` of his pixels whose
+ * contrast passes `thr`, no wider across than `maxAcross`.
+ */
+function findSpecks(src: F, r: number, thr: number, minPx: number, maxPx: number, maxAcross: number, which: 'bright' | 'dark' | 'both'): Speck[] {
+  const { w, h } = src;
+  const L = lightness(src);
+  const out: Speck[] = [];
+  for (const bright of [true, false]) {
+    if ((bright && which === 'dark') || (!bright && which === 'bright')) continue;
+    const ref = bright ? morph(morph(L, w, h, r, false), w, h, r, true) : morph(morph(L, w, h, r, true), w, h, r, false);
+    const m = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) m[i] = (bright ? L[i] - ref[i] : ref[i] - L[i]) > thr ? 1 : 0;
+    const seen = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+      if (!m[i] || seen[i]) continue;
+      const comp: number[] = [];
+      const st = [i];
+      seen[i] = 1;
+      while (st.length) {
+        const j = st.pop()!;
+        comp.push(j);
+        const x = j % w, y = (j - x) / w;
+        for (const [dx, dy] of N8) {
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+          const k = yy * w + xx;
+          if (m[k] && !seen[k]) {
+            seen[k] = 1;
+            st.push(k);
+          }
+        }
+      }
+      if (comp.length < minPx || comp.length > maxPx) continue;
+      let cx = 0, cy = 0;
+      for (const j of comp) (cx += j % w), (cy += Math.floor(j / w));
+      cx /= comp.length;
+      cy /= comp.length;
+      let sxx = 0, sxy = 0, syy = 0;
+      for (const j of comp) {
+        const dx = (j % w) - cx, dy = Math.floor(j / w) - cy;
+        sxx += dx * dx;
+        sxy += dx * dy;
+        syy += dy * dy;
+      }
+      sxx /= comp.length;
+      sxy /= comp.length;
+      syy /= comp.length;
+      const tr = sxx + syy, det = sxx * syy - sxy * sxy;
+      const l1 = tr / 2 + Math.sqrt(Math.max(0, (tr * tr) / 4 - det)), l2 = tr / 2 - Math.sqrt(Math.max(0, (tr * tr) / 4 - det));
+      const long = Math.sqrt(12 * l1), across = Math.sqrt(12 * Math.max(0, l2));
+      if (across > maxAcross) continue;
+      const angle = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+      const sorted = [...comp].sort((a, b) => (bright ? L[b] - L[a] : L[a] - L[b]) || a - b);
+      const top = sorted.slice(0, Math.max(1, Math.ceil(sorted.length / 3)));
+      const c = [0, 0, 0];
+      for (const j of top) for (let k = 0; k < 3; k++) c[k] += src.d[j * 3 + k] / top.length;
+      let bg = 0, peak = 0;
+      for (const j of comp) bg += ref[j] / comp.length;
+      for (const j of top) peak += L[j] / top.length;
+      out.push({ px: comp, cx, cy, color: [Math.round(c[0]), Math.round(c[1]), Math.round(c[2]), 255], bright, long, across, angle, bg, peak });
+    }
+  }
+  return out;
+}
+
+/** His picture with the specks painted out: each takes the mean colour of the ring just around it. */
+function removeSpecks(src: F, specks: Speck[], grow = 1): F {
+  const { w, h } = src;
+  const out = new F(w, h, new Float32Array(src.d));
+  const mark = new Int32Array(w * h).fill(-1);
+  specks.forEach((s, n) => {
+    for (const j of s.px) {
+      const x = j % w, y = (j - x) / w;
+      for (let dy = -grow; dy <= grow; dy++)
+        for (let dx = -grow; dx <= grow; dx++) {
+          const xx = x + dx, yy = y + dy;
+          if (xx >= 0 && yy >= 0 && xx < w && yy < h) mark[yy * w + xx] = n;
+        }
+    }
+  });
+  specks.forEach((s, n) => {
+    const ring = [0, 0, 0];
+    let cnt = 0;
+    let x0 = w, y0 = h, x1 = 0, y1 = 0;
+    for (const j of s.px) {
+      const x = j % w, y = (j - x) / w;
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+    for (let y = y0 - grow - 2; y <= y1 + grow + 2; y++)
+      for (let x = x0 - grow - 2; x <= x1 + grow + 2; x++) {
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const i = y * w + x;
+        if (mark[i] >= 0) continue;
+        for (let k = 0; k < 3; k++) ring[k] += src.d[i * 3 + k];
+        cnt++;
+      }
+    if (!cnt) return;
+    for (let i = 0; i < w * h; i++) if (mark[i] === n) for (let k = 0; k < 3; k++) out.d[i * 3 + k] = ring[k] / cnt;
+  });
+  return out;
+}
+
 // --- the icons ----------------------------------------------------------------------------------
 
 interface IconSpec {
@@ -457,6 +765,22 @@ function loadHis(id: string): Img {
   return loadPng(path);
 }
 
+if (process.env.UI_SPECKS) {
+  for (const spec of ICONS) {
+    const his = prep(loadHis(spec.id));
+    const src = median3(F.of(his));
+    const sp = findSpecks(src, 4, 0.1, 4, 400, 7, 'both').filter((s) => (s.bright ? s.bg < 0.42 : s.bg > 0.3 && s.peak < 0.3));
+    const o = F.of(his).toImg().scaled(3);
+    for (const s of sp)
+      for (const j of s.px) {
+        const x = j % src.w, y = (j - x) / src.w;
+        o.rect(x * 3, y * 3, 3, 3, s.bright ? [255, 0, 255, 160] : [0, 255, 0, 160]);
+      }
+    savePng(join(process.env.UI_SPECKS, `specks-${spec.id}.png`), o);
+    console.log(spec.id, sp.length, sp.filter((s) => s.bright).length);
+  }
+  process.exit(0);
+}
 if (process.env.UI_EXPERIMENT) {
   const rows: Img[][] = [];
   for (const spec of ICONS) {
@@ -474,7 +798,11 @@ if (process.env.UI_EXPERIMENT) {
     const m44 = areaResize(src, 44, 44);
     v.push(despeckle(quantize(sharpen(m44, 0.6), pal), pal, 1, 0.18).toImg(pal).scaled(8));
     v.push(despeckle(modeResize(srcQ, pal, 44, 44, 0), pal, 1, 0.18).toImg(pal).scaled(8));
-    v.push(despeckle(modeResize(srcQ, pal, 44, 44, 1.5), pal, 1, 0.18).toImg(pal).scaled(8));
+    for (const [sg, ln] of [[2, 4], [3, 6], [3, 9]]) {
+      const fs = flowSmooth(src, sg, ln);
+      v.push(despeckle(quantize(areaResize(fs, 44, 44), pal), pal, 2, 0.2).toImg(pal).scaled(8));
+    }
+    v.push(despeckle(quantize(areaResize(flowSmooth(src, 2, 3), 88, 88), pal), pal, 2, 0.2).toImg(pal).scaled(4));
     rows.push(v);
     console.log(spec.id, pal.rgb.length, pal.rgb.map(toHex).join(' '));
   }

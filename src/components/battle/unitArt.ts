@@ -17,19 +17,34 @@ export const FEET = { x: 64, y: 120 };
 /** Pixels a gait moves per frame, so feet don't slide (1x sprite pixels). */
 export const STRIDE: Partial<Record<SpritePose, number>> = { walk: 32 / 10, run: 87 / 12, sneak: 30 / 8 };
 
-const looks = new Map<string, SpriteAppearance>();
+// The caches below follow the look itself, not the unit's id: a ninja edited in the creator keeps
+// its id, and the next battle must show the new look (its colours, its katana's parts). The battle
+// clones its state on every action, so a look is recognised by what it holds, not by its object.
+const looks = new Map<string, { src: object; sig: string; look: SpriteAppearance }>();
+const lookIds = new WeakMap<SpriteAppearance, number>();
+let lookSerial = 0;
+const idOf = (l: SpriteAppearance): number => {
+  let id = lookIds.get(l);
+  if (!id) lookIds.set(l, (id = ++lookSerial));
+  return id;
+};
 
 /** The appearance a unit is drawn with (the weapon stowed when its hands are free for seals). */
 export function lookOf(u: Unit): SpriteAppearance | undefined {
-  const base = u.look ?? (u.character ? getAppearance(u.character) : undefined);
-  if (!base) return undefined;
+  const src = u.look ?? u.character;
+  if (!src) return undefined;
   const stowed = u.weapon.held && !u.armed;
   const key = `${u.id}|${stowed}`;
-  let l = looks.get(key);
-  if (!l) {
-    l = stowed ? { ...base, stowed: true } : base;
-    looks.set(key, l);
+  const hit = looks.get(key);
+  if (hit && hit.src === src) return hit.look;
+  const base = u.look ?? getAppearance(u.character!);
+  const sig = JSON.stringify(base);
+  if (hit && hit.sig === sig) {
+    looks.set(key, { ...hit, src });
+    return hit.look;
   }
+  const l = stowed ? { ...base, stowed: true } : base;
+  looks.set(key, { src, sig, look: l });
   return l;
 }
 
@@ -41,7 +56,7 @@ const centers = new Map<string, number>();
  * a sword hanging to one side doesn't leave the ninja off-centre in the aura.
  */
 export function bodyCenterDx(u: Unit, look: SpriteAppearance): number {
-  const key = `${u.id}|${look.stowed ? 1 : 0}`;
+  const key = `${idOf(look)}|${u.character?.dojutsu ?? ''}`;
   const hit = centers.get(key);
   if (hit !== undefined) return hit;
   const spr = renderSpriteCached(look, 'idle', 0, dojutsuToEye(u.character?.dojutsu));
@@ -99,7 +114,7 @@ export function unitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, fra
   const eye = dojutsuToEye(u.character?.dojutsu);
   const wantAura = aura && ((aura.mode === 'cast' && look.chakra.onCast) || (aura.mode === 'charge' && look.chakra.onCharge) || aura.mode === 'aura');
   const fxTick = wantAura ? aura!.tick % CHAKRA_LOOP : -1;
-  const key = `${u.id}|${look.stowed ? 1 : 0}|${pose}|${f}|${wantAura ? `${aura!.mode}${fxTick}` : ''}`;
+  const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${fxTick}` : ''}`;
   let c = frames.get(key);
   if (c) {
     frames.delete(key);
@@ -114,15 +129,21 @@ export function unitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, fra
   return c;
 }
 
-const portraits = new Map<string, string>();
+const portraits = new Map<string, { src: object; sig: string; url: string }>();
 
 /** A small head portrait (a data URL) for the HUD. */
 export function portraitOf(u: Unit, size = 44): string | undefined {
-  const look = u.look ?? (u.character ? getAppearance(u.character) : undefined);
-  if (!look) return undefined;
+  const from = u.look ?? u.character;
+  if (!from) return undefined;
   const key = `${u.id}|${size}`;
   const hit = portraits.get(key);
-  if (hit) return hit;
+  if (hit && hit.src === from) return hit.url;
+  const look = u.look ?? getAppearance(u.character!);
+  const sig = `${JSON.stringify(look)}|${u.character?.dojutsu ?? ''}`;
+  if (hit && hit.sig === sig) {
+    portraits.set(key, { ...hit, src: from });
+    return hit.url;
+  }
   const spr = renderSpriteCached(look, 'idle', 0, dojutsuToEye(u.character?.dojutsu));
   const src = toCanvas(spr.rgba);
   const c = document.createElement('canvas');
@@ -135,6 +156,6 @@ export function portraitOf(u: Unit, size = 44): string | undefined {
   const crop = 40;
   g.drawImage(src, Math.round(hx - crop / 2), Math.round(hy - crop / 2 + 2), crop, crop, 0, 0, size, size);
   const url = c.toDataURL();
-  portraits.set(key, url);
+  portraits.set(key, { src: from, sig, url });
   return url;
 }

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import type { PartsPreview } from '../../sprite/ctx';
 
-/** An item on its own (its pixel rows and colours), drawn crisp: the part pickers' thumbnails. */
-export const PartThumb: React.FC<{ art: PartsPreview; zoom?: number }> = ({ art, zoom = 2 }) => {
+/** An item on its own (its pixel rows and colours), drawn crisp at a whole-number zoom: the part pickers' thumbnails. */
+export const PartThumb: React.FC<{ art: PartsPreview; zoom?: number }> = ({ art, zoom = 1 }) => {
   const ref = useRef<HTMLCanvasElement | null>(null);
   const w = art.rows[0]?.length ?? 0;
   const h = art.rows.length;
@@ -23,5 +23,5 @@ export const PartThumb: React.FC<{ art: PartsPreview; zoom?: number }> = ({ art,
     });
     ctx.putImageData(img, 0, 0);
   }, [art, w, h]);
-  return <canvas ref={ref} width={w} height={h} style={{ width: w * zoom, maxWidth: '100%', imageRendering: 'pixelated' }} />;
+  return <canvas ref={ref} width={w} height={h} style={{ width: w * zoom, height: h * zoom, imageRendering: 'pixelated' }} />;
 };

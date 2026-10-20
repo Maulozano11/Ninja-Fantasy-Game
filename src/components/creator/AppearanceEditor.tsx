@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Flame, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
 import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
@@ -732,7 +732,10 @@ const SlotPicker: React.FC<{
   );
 };
 
-/** An item's parts (a katana's steel, blade, guard and hilt): each version shown on the item itself. */
+/**
+ * An item's parts (a katana's steel, blade, guard and hilt): each version a row with the item drawn
+ * with it, and the story of the one picked.
+ */
 const PartPicker: React.FC<{
   def: ItemDef;
   choice: ItemChoice;
@@ -740,27 +743,55 @@ const PartPicker: React.FC<{
   onChange: (c: ItemChoice) => void;
 }> = ({ def, choice, look, onChange }) => {
   const chosen = resolveParts(def, choice.parts);
+  // The thumbnails at a whole-number zoom, so every pixel of the art is drawn the same size: 2x
+  // where the row leaves room beside it for the name, else 1x.
+  const box = useRef<HTMLDivElement | null>(null);
+  const [room, setRoom] = useState(0);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setRoom(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const artW = def.partsPreview?.(look, chosen).rows[0]?.length ?? 1;
+  const zoom = Math.max(1, Math.min(2, Math.floor((room - 120) / artW)));
   return (
-    <div className="space-y-4 p-3 rounded-xl bg-slate-950/50 border border-slate-800">
-      {def.parts!.map((ps) => {
-        const sel = ps.options.find((o) => o.id === chosen[ps.key])!;
-        return (
-          <div key={ps.key}>
-            <div className="text-xs text-slate-300 mb-1.5">{L(ps.label)}</div>
-            <div className="grid grid-cols-3 gap-2">
-              {ps.options.map((o) => {
-                const parts = { ...chosen, [ps.key]: o.id };
-                return (
-                  <OptionCard key={o.id} selected={o.id === sel.id} label={o.label} onClick={() => onChange({ ...choice, parts })}>
-                    {def.partsPreview && <PartThumb art={def.partsPreview(look, parts)} />}
-                  </OptionCard>
-                );
-              })}
-            </div>
-            <div className="text-[11px] text-slate-400 mt-1.5">{L(sel.desc)}</div>
+    <div ref={box} className="space-y-4 p-3 rounded-xl bg-slate-950/50 border border-slate-800">
+      {def.parts!.map((ps) => (
+        <div key={ps.key}>
+          <div className="text-xs text-slate-300 mb-1.5">{L(ps.label)}</div>
+          <div className="flex flex-col gap-1.5">
+            {ps.options.map((o) => {
+              const parts = { ...chosen, [ps.key]: o.id };
+              const sel = o.id === chosen[ps.key];
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => {
+                    soundManager.playSelect();
+                    onChange({ ...choice, parts });
+                  }}
+                  className={`flex items-center gap-3 p-1.5 rounded-xl border text-left transition ${
+                    sel ? 'bg-cyan-950/40 border-cyan-500 ring-1 ring-cyan-500/50' : 'bg-slate-950/60 border-slate-800 hover:border-slate-600'
+                  }`}
+                >
+                  {def.partsPreview && (
+                    <div className="shrink-0 rounded-lg bg-slate-900/80 p-1">
+                      <PartThumb art={def.partsPreview(look, parts)} zoom={zoom} />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className={`text-[11px] leading-tight ${sel ? 'text-white font-semibold' : 'text-slate-300'}`}>{L(o.label)}</div>
+                    {sel && <div className="text-[10px] leading-snug text-slate-400 mt-0.5">{L(o.desc)}</div>}
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 };

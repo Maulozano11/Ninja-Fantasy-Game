@@ -16,7 +16,7 @@ import type { JutsuSpec } from '../../battle/jutsu';
 import { cellCenter, cellOf, dist, getMap, gridFor, idx, lineOfSight, sameCell } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
-import { MAX_STRUCTURES, STRUCTURE_AC, breakable, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
+import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, handsFree, wielded } from '../../battle/units';
 import { STONE_RANGE } from '../../battle/stealth';
@@ -443,15 +443,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         }
         if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
         if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: dist(actor.pos, at) <= spec.range + 0.1 };
-        if (spec.special === 'metalBlock' || spec.special === 'metalWall') {
-          // A Kōton structure: where it would stand, why it can't, and how many already stand.
-          const w = structureAt(spec, actor.pos, at, actor.id, 'preview');
+        if (spec.special === 'metalBlock' || spec.special === 'metalWall' || spec.special === 'earthWall' || spec.special === 'waterWall') {
+          // A wall or a Kōton structure: where it would stand and why it can't (never over anyone);
+          // for a Kōton, how many already stand.
+          const koton = spec.special === 'metalBlock' || spec.special === 'metalWall';
+          const w = koton ? structureAt(spec, actor.pos, at, actor.id, 'preview') : jutsuWallAt(spec, actor.pos, at, 'preview');
           const why = dist(actor.pos, at) > spec.range + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at) ? 'noSight' : structureBlocker(s, w);
           const n = ownStructures(s, actor.id).length;
           o.point = undefined;
           o.footprint = { wall: w, ok: !why };
-          label = why ? reasonLine(why) : T('aimStructures', { n });
-          if (n >= MAX_STRUCTURES) sub = T('aimOldest');
+          label = why ? reasonLine(why) : koton ? T('aimStructures', { n }) : jutsuName(spec.id, lang);
+          if (koton && n >= MAX_STRUCTURES) sub = T('aimOldest');
         }
       }
     } else if (mode.k === 'item' && mode.item === 'tag') {

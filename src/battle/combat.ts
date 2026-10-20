@@ -312,9 +312,10 @@ export function damage(s: BattleState, t: Unit, raw: number, type: DamageType, o
     killHydra(s, t, ev);
     return;
   }
-  // A commanded unit that drops goes back to its own side (and falls as one of them).
+  // A commanded unit that drops goes back to its own side (and falls as one of them). A beast that
+  // joined isn't a party member: it falls like a foe would, with no death saves.
   releaseCommand(t, ev);
-  if (t.team === 'party') {
+  if (t.team === 'party' && !t.joined) {
     t.stats2.fell = true;
     if (o.crit) t.stats2.fellToCrit = true;
     if (s.difficulty === 'legend' && overflow >= t.maxHp) {

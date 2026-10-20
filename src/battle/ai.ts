@@ -10,7 +10,7 @@ import { JUTSU } from './jutsu';
 import { KUNAI_LONG, handsFree } from './units';
 import { applyAction, jutsuCost } from './engine';
 import { current } from './turns';
-import { bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, visibleFoes } from './intent';
+import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, visibleFoes } from './intent';
 import type { Goal } from './intent';
 import { breakable, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
 import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, WARP, warpBlocker, warpLanding } from './clans';
@@ -35,6 +35,8 @@ function stillValid(s: BattleState, u: Unit, i: Intent | undefined): i is Intent
   }
   if (t && (i.kind === 'heal') !== (t.team === u.team)) return false;
   if ((i.kind === 'jutsu' || i.kind === 'spit' || i.kind === 'roar' || i.kind === 'command') && u.chakra < (JUTSU[i.what]?.cost ?? 0)) return false;
+  // Friends who walked into where the blast would go: not worth it any more.
+  if (i.kind === 'jutsu' && t && JUTSU[i.what] && areaValue(s, u, JUTSU[i.what], t) <= 0) return false;
   if (i.kind === 'command' && (i.what === COMMAND ? commandRefused : submissionRefused)(s, u, t)) return false;
   if (i.kind === 'heal' && i.what === 'bandage' && s.supplies.bandages < 1) return false;
   return true;
@@ -158,10 +160,10 @@ function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
 const strikesFrom = (s: BattleState, u: Unit, p: Pt, t: Unit): boolean => dist(p, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, p, t.pos);
 
 /**
- * A Ryusei whose target is beyond a walk and a blow warps to the Node of its own that lands it
- * nearest the target: for a blow it means to walk in for, near enough to walk the rest; for a kunai
- * or an advance, right beside the target, to strike from behind at once. A jutsu it casts from
- * where it stands.
+ * A Ryusei out of reach of its target warps to one of its own Nodes: best, one that lands it right
+ * beside the target, to strike from behind at once; otherwise, for a blow it means to walk in for
+ * that its feet can't carry it to this turn, the one that lands it nearest, to walk the rest. A
+ * jutsu it casts from where it stands, and the warp leaves it the chakra for it.
  */
 function ryuseiWarp(s: BattleState, u: Unit, i: Intent): Action | null {
   const spec = JUTSU[WARP];
@@ -170,14 +172,18 @@ function ryuseiWarp(s: BattleState, u: Unit, i: Intent): Action | null {
   const j = i.kind === 'jutsu' ? JUTSU[i.what] : undefined;
   const walkIn = i.kind === 'melee' || !!j?.melee;
   if (!t || t.team === u.team || !(walkIn || i.kind === 'ranged' || i.kind === 'move')) return null;
+  if (j && u.chakra < jutsuCost(u, spec, false) + jutsuCost(u, j, false)) return null;
   const reach = j?.melee ? j.range + (t.bulk ?? 0) : reachTo(u, t);
-  if (dist(u.pos, t.pos) <= reach + walkBudget(u)) return null;
-  let best: { at: Pt; d: number } | undefined;
+  if (dist(u.pos, t.pos) <= reach + 0.1) return null;
+  const walkable = dist(u.pos, t.pos) <= reach + walkBudget(u);
+  let best: { at: Pt; edge: boolean; d: number } | undefined;
   for (const n of ownNodes(s, u)) {
     if (warpBlocker(s, u, n)) continue;
     const land = warpLanding(s, u, n)!;
     const d = dist(land, t.pos);
-    if ((walkIn ? d <= reach + walkBudget(u) : strikesFrom(s, u, land, t)) && (!best || d < best.d)) best = { at: n.pos, d };
+    const edge = strikesFrom(s, u, land, t);
+    if (!edge && (!walkIn || walkable || d > reach + walkBudget(u))) continue;
+    if (!best || (edge && !best.edge) || (edge === best.edge && d < best.d)) best = { at: n.pos, edge, d };
   }
   return best ? { type: 'jutsu', unit: u.id, jutsu: WARP, at: { ...best.at } } : null;
 }

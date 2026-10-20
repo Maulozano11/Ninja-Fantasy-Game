@@ -152,8 +152,14 @@ export function structureAt(spec: JutsuSpec, from: Pt, at: Pt, owner: string, id
   return { id, kind: 'metal', ...wallAcross(from, at, spec.length ?? 4.5), hp: STRUCTURE_HP, maxHp: STRUCTURE_HP, owner };
 }
 
+/** The earth wall or water barrier a jutsu raises: across the caster's line, centred on the point (they can't be broken). */
+export function jutsuWallAt(spec: JutsuSpec, from: Pt, at: Pt, id: string): Wall {
+  const earth = spec.special === 'earthWall';
+  return { id, kind: earth ? 'earth' : 'water', ...wallAcross(from, at, spec.length ?? 4.5), hp: earth ? 30 : 15, rounds: earth ? undefined : 3 };
+}
+
 /**
- * Why a structure can't stand there, or null: it would stand on someone (any unit, the hydra's bulk
+ * Why a structure (or a jutsu wall) can't stand there, or null: it would stand on someone (any unit, the hydra's bulk
  * too) or run off the map. Props and terrain under it are no obstacle, as for an earth wall.
  */
 export function structureBlocker(s: BattleState, w: Wall): string | null {

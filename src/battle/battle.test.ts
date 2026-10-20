@@ -12,13 +12,14 @@ import type { BattleSetup } from './engine';
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, lineOfSight, waterAtPt } from './map';
 import { canStop, reachable } from './nav';
 import { attackPreview, damage } from './combat';
-import { current, endTurn } from './turns';
+import { beginTurn, current, endTurn, startCombat } from './turns';
 import { foreseen, planIntent } from './intent';
 import { aiAction, runAi } from './ai';
 import { battleResult } from './result';
 import { HYDRA_ID } from './hydra';
 import { JUTSU, enhanced } from './jutsu';
-import { structureAttack } from './structures';
+import { hitStructuresIn, structureAttack } from './structures';
+import { electrify } from './hazards';
 
 const hero = (over: Partial<ShinobiCharacter> = {}): ShinobiCharacter => ({ ...DEFAULT_CHARACTER, effects: [], ...over });
 
@@ -90,6 +91,14 @@ describe('battle setup', () => {
     const b = runAi(saved, 60);
     assert.equal(JSON.stringify(a.events), JSON.stringify(b.events));
     assert.deepEqual(JSON.parse(JSON.stringify(a.state)), JSON.parse(JSON.stringify(b.state)));
+  });
+
+  it('a state from before the clans (an older save or peer, with no Weapon Nodes) plays on', () => {
+    const old: Partial<BattleState> = structuredClone(turnOf(createBattle(setup()).state, 'a'));
+    delete old.nodes;
+    // Aki is a Ryusei: its kunai leaves the first Node.
+    const out = ok(applyAction(old as BattleState, { type: 'attack', unit: 'a', target: 'rogue_0', ranged: true }));
+    assert.equal(out.state.nodes.length, 1);
   });
 
   it('a party caught at night loses its first turn, whatever the clan; Watchful still saves', () => {
@@ -223,6 +232,19 @@ describe('jutsu', () => {
     const out = ok(applyAction(s, { type: 'jutsu', unit: 'a', jutsu: 'fireball_goukakyu', at: { x: 14, z: 10 }, enhanced: true }));
     assert.equal(out.state.units.a.chakra, s.units.a.chakra - 5);
     assert.equal(applyAction(s, { type: 'jutsu', unit: 'a', jutsu: 'chidori_lightning_blade', at: { x: 14, z: 10 } }).reason, 'unknownJutsu');
+  });
+
+  it('an earth wall or a water barrier never rises over anyone', () => {
+    const s = turnOf(createBattle(setup()).state, 'a');
+    s.units.a.jutsus.push('earth_wall_doryuheki', 'water_shield_suijinheki');
+    for (const jutsu of ['earth_wall_doryuheki', 'water_shield_suijinheki']) {
+      const out = ok(applyAction(s, { type: 'jutsu', unit: 'a', jutsu, at: { x: 11.25, z: 10.25 } }));
+      assert.equal(out.state.walls.length, 1);
+      // Over the rogue: refused before paying.
+      const over = applyAction(s, { type: 'jutsu', unit: 'a', jutsu, at: { ...s.units.rogue_0.pos } });
+      assert.equal(over.reason, 'occupied');
+      assert.equal(over.state.units.a.chakra, s.units.a.chakra);
+    }
   });
 });
 
@@ -573,6 +595,62 @@ describe('clans: phase 1 foundation', () => {
       place(earth, 'a', { x: 8.25, z: 11.25 });
       assert.equal(applyAction(earth, { type: 'attack', unit: 'a', target: 'wall:b1' }).reason, 'badTarget');
     });
+
+    it('nothing passes it: no shove through it, no lightning along the water, no blast from behind another', () => {
+      // A push that lands beyond a wall is stopped short (an earth wall too).
+      for (const kind of ['metal', 'earth'] as const) {
+        const s = turnOf(createBattle(setup()).state, 'a');
+        place(s, 'rogue_0', { x: 9.25, z: 10.25 });
+        s.walls.push({ id: 'w1', kind, a: { x: 9.85, z: 8.5 }, b: { x: 9.85, z: 12 }, hp: 20 });
+        const shoved = (t: BattleState) => applyAction(t, { type: 'shove', unit: 'a', target: 'rogue_0', mode: 'push' });
+        let out: ReturnType<typeof applyAction> | undefined;
+        for (let seed = 1; seed < 40 && !out; seed++) {
+          const t = structuredClone(s);
+          t.seed = seed;
+          const o = ok(shoved(t));
+          if (o.events.some((e) => e.t === 'check' && e.what === 'shove' && e.roll.success)) out = o;
+        }
+        assert.ok(out, 'some seed wins the shove');
+        assert.deepEqual(out.state.units.rogue_0.pos, { x: 9.25, z: 10.25 }, kind);
+        assert.ok(out.events.some((e) => e.t === 'note' && e.key === 'shoveBlocked'));
+        // With no wall, the same shove pushes it 1.5 m.
+        const open = structuredClone(s);
+        open.walls = [];
+        open.seed = out.state.seed;
+        assert.deepEqual(ok(shoved(open)).state.units.rogue_0.pos, { x: 10.75, z: 10.25 });
+      }
+      // Lightning landing in the river runs to the rogue in the water on its side, not to the one
+      // behind a metal wall.
+      const river = createBattle(setup({ enemies: [{ kind: 'rogue', pos: { x: 25.25, z: 11.25 } }, { kind: 'rogue', pos: { x: 25.25, z: 14.75 } }] })).state;
+      assert.ok(waterAtPt(river, river.units.rogue_0.pos) && waterAtPt(river, river.units.rogue_1.pos));
+      const zap = (t: BattleState) => electrify(t, [{ x: 25.25, z: 12.25 }], 10, 13, 'a', [], []).map((h) => h.unit);
+      assert.deepEqual(zap(river), ['rogue_0', 'rogue_1']);
+      river.walls.push({ id: 'w1', kind: 'metal', a: { x: 23.5, z: 13.5 }, b: { x: 27, z: 13.5 }, hp: 20, maxHp: 20 });
+      assert.deepEqual(zap(river), ['rogue_0']);
+      // A blast reaching two structures dents the near one; the one sheltered behind it is spared.
+      const yard = turnOf(createBattle(setup()).state, 'a');
+      yard.walls.push(metal(), { ...block(), a: { x: 12.25, z: 10.25 }, b: { x: 12.25, z: 10.25 } });
+      const ev: BattleEvent[] = [];
+      hitStructuresIn(yard, { kind: 'circle', center: { x: 10, z: 10.25 }, radius: 3 }, 5, ev);
+      assert.deepEqual(ev.flatMap((e) => (e.t === 'wallHit' ? [e.wall] : [])), ['w1']);
+      yard.walls = yard.walls.filter((w) => w.id !== 'w1');
+      hitStructuresIn(yard, { kind: 'circle', center: { x: 10, z: 10.25 }, radius: 3 }, 5, ev);
+      assert.deepEqual(ev.flatMap((e) => (e.t === 'wallHit' ? [e.wall] : [])), ['w1', 'b1']);
+    });
+
+    it('a blade doesn\'t reach a structure across another metal wall, and striking one gives a hidden ninja away', () => {
+      const s = turnOf(createBattle(setup()).state, 'a');
+      s.walls.push(
+        { id: 'near', kind: 'metal', a: { x: 8.85, z: 9 }, b: { x: 8.85, z: 11.5 }, hp: 20, maxHp: 20, owner: 'rogue_0' },
+        { id: 'far', kind: 'metal', a: { x: 9.85, z: 9 }, b: { x: 9.85, z: 11.5 }, hp: 20, maxHp: 20, owner: 'rogue_0' },
+      );
+      assert.ok(structureAttack(s, s.units.a, s.walls[1], false).inRange);
+      assert.equal(applyAction(s, { type: 'attack', unit: 'a', target: 'wall:far' }).reason, 'blocked');
+      s.units.a.cond.hidden = 20;
+      const out = ok(applyAction(s, { type: 'attack', unit: 'a', target: 'wall:near' }));
+      assert.equal(out.state.units.a.cond.hidden, undefined);
+      assert.ok(out.events.some((e) => e.t === 'condition' && e.unit === 'a' && e.cond === 'hidden' && !e.on));
+    });
   });
 });
 
@@ -852,6 +930,50 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.ok(!ok(warp(open, { x: 10.25, z: 13.25 })).state.units.r.cond.warpEdge);
   });
 
+  it('the edge lasts the turn it was won in: a stealth turn too, and it never goes into the fight', () => {
+    const s = createBattle(setup({ stealth: true, party: [{ character: ryusei(), pos: { x: 8, z: 10 } }], enemies: [{ kind: 'rogue', pos: { x: 14, z: 10 }, route: [{ x: 14, z: 10 }] }] })).state;
+    s.nodes.push(node('n1', s.units.rogue_0.pos));
+    const warped = ok(warp(s, s.units.rogue_0.pos)).state;
+    assert.equal(warped.phase, 'stealth');
+    assert.equal(warped.units.r.cond.warpEdge, true);
+    assert.ok(!ok(applyAction(warped, { type: 'endTurn', unit: 'r' })).state.units.r.cond.warpEdge);
+    const fight = structuredClone(warped);
+    startCombat(fight, [], 'r', []);
+    assert.ok(!fight.units.r.cond.warpEdge);
+  });
+
+  it('a hidden ninja teleported out into the open is seen at once; onto a hiding place it stays hidden', () => {
+    const s = ryuseiTurn({ party: [
+      { character: ryusei(), pos: { x: 8, z: 10 } },
+      { character: hero({ id: 'b', name: 'Bo' }), pos: { x: 11, z: 13 } },
+    ] });
+    s.units.r.cond.hidden = 30;
+    const seen = (out: ReturnType<typeof applyAction>, id: string) => {
+      assert.equal(out.state.units[id].cond.hidden, undefined, id);
+      assert.ok(out.events.some((e) => e.t === 'condition' && e.unit === id && e.cond === 'hidden' && !e.on), id);
+    };
+    // Warp Strike beside the rogue: the blow comes from behind, but not from hiding.
+    const beside = structuredClone(s);
+    beside.nodes.push(node('n1', s.units.rogue_0.pos));
+    const warped = ok(warp(beside, s.units.rogue_0.pos));
+    seen(warped, 'r');
+    const pv = attackPreview(warped.state, warped.state.units.r, warped.state.units.rogue_0, 'melee');
+    assert.ok(pv.reasons.includes('behind') && !pv.reasons.includes('hidden'));
+    // Spatial Swap: both of them.
+    const swapped = structuredClone(s);
+    swapped.units.b.cond.hidden = 30;
+    swapped.nodes.push(node('n1', s.units.b.pos));
+    const out = ok(swap(swapped, 'b'));
+    seen(out, 'r');
+    seen(out, 'b');
+    // Body Flicker.
+    seen(ok(applyAction(s, { type: 'jutsu', unit: 'r', jutsu: 'body_flicker', at: { x: 11.25, z: 7.25 } })), 'r');
+    // Onto a bush: still hidden.
+    const bush = structuredClone(s);
+    bush.nodes.push(node('n1', { x: 16.25, z: 5.75 }));
+    assert.equal(ok(warp(bush, { x: 16.25, z: 5.75 })).state.units.r.cond.hidden, 30);
+  });
+
   it('a raider\'s blow from behind leaves a player Mirai no Evasion, nor Kawarimi to one who knows it', () => {
     for (const target of [hero({ id: 't', clan: 'Mirai' }), { ...KENJI, id: 't', effects: [] }]) {
       const { state } = createBattle(setup({ party: [{ character: target, pos: { x: 8, z: 10 } }], enemies: [{ kind: 'raider', pos: { x: 20, z: 10 } }] }));
@@ -937,6 +1059,14 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     const landed = ok(applyAction(thrower, aiAction(thrower)!)).state;
     assert.deepEqual(landed.units.raider_0.pos, { x: 9.75, z: 10.25 });
     assert.deepEqual(aiAction(landed), { type: 'attack', unit: 'raider_0', target: 'a', knockout: false });
+    // Within a walk of its target, a Node right beside it is still worth the warp (the blow from
+    // behind); one it would have to walk on from isn't.
+    const near = structuredClone(s);
+    near.units.raider_0.pos = { x: 14.25, z: 10.25 };
+    near.nodes = [node('n1', { x: 9.75, z: 10.25 }, 'raider_0')];
+    assert.deepEqual(aiAction(near), { type: 'jutsu', unit: 'raider_0', jutsu: 'ryusei_warp', at: { x: 9.75, z: 10.25 } });
+    near.nodes = [node('n1', { x: 11.75, z: 13.25 }, 'raider_0')];
+    assert.equal(aiAction(near)?.type, 'move');
   });
 });
 

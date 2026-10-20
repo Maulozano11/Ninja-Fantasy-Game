@@ -24,7 +24,6 @@ import type {
   TimeOfDay,
   Trap,
   Unit,
-  Wall,
 } from './types';
 import { homeTeam } from './types';
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
@@ -39,7 +38,7 @@ import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
 import { electrify, groundEffects, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
-import { breakable, damageStructure, faceToward, hitStructuresIn, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker, wallAcross } from './structures';
+import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
 import {
   addNode,
   auraEntered,
@@ -759,9 +758,10 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     if (cellBlocked(s, c) || waterAtPt(s, at) === 2 || !canStop(s, u, c)) return 'blocked';
     at = cellCenter(c);
   }
-  // A Kōton structure never rises over anyone.
-  if (spec.special === 'metalBlock' || spec.special === 'metalWall') {
-    const why = structureBlocker(s, structureAt(spec, u.pos, at, u.id, ''));
+  // No wall rises over anyone: a Kōton structure, an earth wall or a water barrier.
+  if (spec.special === 'metalBlock' || spec.special === 'metalWall' || spec.special === 'earthWall' || spec.special === 'waterWall') {
+    const w = spec.special === 'earthWall' || spec.special === 'waterWall' ? jutsuWallAt(spec, u.pos, at, '') : structureAt(spec, u.pos, at, u.id, '');
+    const why = structureBlocker(s, w);
     if (why) return why;
   }
   if (seals && !handsFree(u)) setArmed(u, false, 'free', ev);
@@ -884,14 +884,7 @@ function dashTo(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
 
 /** Earth and water walls stand across the caster's line, centered on the point. */
 function raiseWall(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleEvent[]): void {
-  const earth = spec.special === 'earthWall';
-  const wall: Wall = {
-    id: `wall_${s.tick}_${u.id}`,
-    kind: earth ? 'earth' : 'water',
-    ...wallAcross(u.pos, at, spec.length ?? 4.5),
-    hp: earth ? 30 : 15,
-    rounds: earth ? undefined : 3,
-  };
+  const wall = jutsuWallAt(spec, u.pos, at, `wall_${s.tick}_${u.id}`);
   s.walls.push(wall);
   ev.push({ t: 'wall', wall, on: true });
 }

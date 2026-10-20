@@ -50,8 +50,8 @@ function focus(u: Unit, f: Unit): number {
   return 1 + near * 0.8 + hurt * 0.3;
 }
 
-/** Foes and friends an area would hit. */
-function areaValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit): number {
+/** Foes and friends an area would hit (1 for a jutsu with no area). */
+export function areaValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit): number {
   const area = areaOf(j, u.pos, at.pos);
   if (!area) return 1;
   let v = 0;

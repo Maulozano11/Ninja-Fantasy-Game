@@ -8,7 +8,7 @@ import { hexToRgb, retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
 import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, len, lerp, Layer, norm, PartId, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import { GROUND } from '../rig';
-import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
+import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_PLATE, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
 
 const col = (key: string, label: string, def: string, kind: 'cloth' | 'leather' | 'metal' = 'cloth') => ({ key, label, default: def, kind });
 
@@ -452,14 +452,20 @@ const ownerCapeColor = (cloth: string, gold: string) => (ch: string, hex: string
   return r > b + 30 ? retintHex(hex, '#b8913a', gold) : retintHex(hex, '#1c1b22', cloth);
 };
 
+/** His far-shoulder plate recoloured: his black line stays, his steel takes the plate's metal. */
+const ownerPlateColor = (metal: string) => (_ch: string, hex: string) => {
+  const [r, g, b] = hexToRgb(hex);
+  return 0.299 * r + 0.587 * g + 0.114 * b < 16 ? hex : retintHex(hex, '#3b444f', metal);
+};
+
 export const CAPE_ITEMS: ItemDef[] = [
   {
     id: 'cape_shadow',
     slot: 'cape',
     name: 'Shadow Half-Cloak',
-    desc: 'A black cloak: a mantle round the neck and over both shoulders, pinned with gold studs, falling behind the near arm in heavy folds to the calves.',
-    colors: [col('main', 'Cloak', '#1c1b22'), col('clasp', 'Clasps', '#b8913a', 'metal')],
-    draw: (g, [c, gold]) => {
+    desc: 'A black cloak: a mantle round the neck and over both shoulders, pinned with gold studs, over a platinum plate on the far shoulder, falling behind the near arm in heavy folds to the calves.',
+    colors: [col('main', 'Cloak', '#1c1b22'), col('clasp', 'Clasps', '#b8913a', 'metal'), col('plate', 'Shoulder Plate', '#e5e4e2', 'metal')],
+    draw: (g, [c, gold, plate]) => {
       // The owner's cape, his pixels (the standard for capes, 2026-10-20): the mantle round the neck
       // and over both shoulders with its three gold studs (it reads as a scarf, but it is the cape),
       // the part over the near shoulder, and the cloth hanging behind the near arm to the calf.
@@ -467,6 +473,8 @@ export const CAPE_ITEMS: ItemDef[] = [
         const tint = ownerCapeColor(c, gold);
         paintedPart(g, g.L('capeBack'), OWNER_CAPE_BACK, 'back', tint, true);
         const F = g.L('capeFront');
+        // The plate on the far shoulder, under the mantle's edge (his steel: platinum in the game).
+        paintedPart(g, F, OWNER_CAPE_PLATE, 'upperArmF', ownerPlateColor(plate), false, g.rig.shoulderF);
         paintedPart(g, F, OWNER_CAPE_FRONT, 'torso', tint, false, g.rig.neck);
         tuckUnderChin(g, F);
         paintedPart(g, g.L('nearArm.over'), OWNER_CAPE_SHOULDER, 'upperArmN', tint, false);

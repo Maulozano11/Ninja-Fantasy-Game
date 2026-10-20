@@ -11,6 +11,7 @@ script lifts it out of his pixels:
   front   the mantle round the neck and over both shoulders, under the chin, that reads as a scarf
           but is the cape (the owner), with its gold studs
   shoulder the part over the near shoulder, in front of the arm, with his gold stud
+  plate   the piece of armour on the far shoulder, past the mantle (in the game it is platinum)
 
 and writes, in <out>:
 
@@ -52,6 +53,11 @@ SCARF_X = 43
 # The mantle: from under his chin, between the shoulders, down to his coat.
 FRONT_BOX = (35, 28, 66, 41)
 FRONT_SEED = (50, 32)
+# His far shoulder joint: where our rig's far shoulder (fine pixel 70, 55 at rest) sits.
+FAR_SHOULDER = (60, 31)
+# The plate on the far shoulder, below the mantle: his grey-blue steel inside his black line.
+PLATE_BOX = (60, 33, 68, 42)
+PLATE_SEED = (64, 36)
 
 
 def native(a):
@@ -94,7 +100,7 @@ def write_ts(meta, path):
         '',
         'export interface PaintedPart {',
         '  rows: string[];',
-        '  /** The cell on its joint: the near shoulder, or the base of the neck for the mantle. */',
+        '  /** The cell on its joint: the near shoulder, the base of the neck for the mantle, the far shoulder for the plate. */',
         '  pivot: [number, number];',
         '  colors: Record<string, string>;',
         '}',
@@ -104,10 +110,11 @@ def write_ts(meta, path):
         ('back', 'OWNER_CAPE_BACK', 'Behind the near arm and the body, to the calf.'),
         ('front', 'OWNER_CAPE_FRONT', 'The mantle round the neck and over both shoulders, under the chin, with its gold studs; it hangs from the base of the neck.'),
         ('shoulder', 'OWNER_CAPE_SHOULDER', 'Over the near shoulder, with his gold stud.'),
+        ('plate', 'OWNER_CAPE_PLATE', 'The armour plate on the far shoulder, past the mantle, in his black line; it hangs from the far shoulder.'),
     ):
         p = meta[part]
         ox, oy = p['origin']
-        jx, jy = meta['neck'] if part == 'front' else (ax, ay)
+        jx, jy = {'front': meta['neck'], 'plate': meta['farShoulder']}.get(part, (ax, ay))
         out += [f'/** {doc} */', f'export const {name}: PaintedPart = {{', f'  pivot: [{jx - ox}, {jy - oy}],', '  rows: [']
         out += [f"    '{r}'," for r in p['rows']]
         out += ['  ],', '  colors: {']
@@ -135,8 +142,9 @@ def main():
     # His cloth: black to dark grey, neither blue (the coat) nor warm (skin, gold).
     neutral = (np.abs(b - r) < 22) & (np.abs(g - r) < 22) & (L < 110)
     skin = (r > g + 25) & (r > b + 35)
-    # His gold: yellower than skin (more green over blue, less red over green).
-    gold = skin & (L > 120) & (g > b + 45) & (r - g < 50)
+    # His gold: yellower than skin (more green over blue, less red over green), down to the dark gold
+    # on the studs' shaded side (the owner, 2026-10-20: "faltan unos pixeles en los botones").
+    gold = skin & (L > 80) & (g > b + 38) & (r - g < 50)
     # His coat: deep saturated blue (his sword's dark relief is greyer: more green for its blue).
     navy = (b > r + 25) & (L < 100) & (g < 0.62 * b)
     # The background: the white reached from the picture's edge (his sword's white glints are not).
@@ -199,6 +207,23 @@ def main():
         front[y, x] = True
         stack += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
 
+    # The plate on the far shoulder (the owner, 2026-10-20: "un pedazo de armadura o metal"): his
+    # steel, greyer and lighter than his coat's navy, reached from its middle without crossing his
+    # black line, and that line around it (sides, not corners). The mantle gives it up.
+    steel = ~bg & ~navy & (L > 30) & (b > r + 8)
+    pbox = inbox(PLATE_BOX)
+    plate = np.zeros((H, W), bool)
+    stack = [(PLATE_SEED[1], PLATE_SEED[0])]
+    while stack:
+        y, x = stack.pop()
+        if plate[y, x] or not (pbox[y, x] and steel[y, x]):
+            continue
+        plate[y, x] = True
+        stack += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
+    pp = np.pad(plate, 1)
+    plate_line = (pp[:-2, 1:-1] | pp[2:, 1:-1] | pp[1:-1, :-2] | pp[1:-1, 2:]) & ~plate & (L < 30)
+    front &= ~plate
+
     # The near shoulder: all of his cape over it - the mantle, the piece over the shoulder and the top
     # of the cloth falling behind the arm - goes in front of our arm, so our sleeve never shows
     # through where his cape covers his (the owner, 2026-10-20: "el hombro derecho"). Only his own
@@ -240,6 +265,8 @@ def main():
         'back': pack(back),
         'shoulder': pack(shoulder),
         'front': pack(front),
+        'farShoulder': list(FAR_SHOULDER),
+        'plate': pack(plate_line | plate),
     }
     tmp = os.path.join(out, 'cape.json.tmp')
     with open(tmp, 'w') as f:
@@ -251,7 +278,7 @@ def main():
         write_ts(meta, sys.argv[3])
 
     rgba = np.zeros((H, W, 4), np.uint8)
-    for part in ('back', 'front', 'shoulder'):
+    for part in ('back', 'front', 'shoulder', 'plate'):
         p = meta[part]
         ox, oy = p['origin']
         for j, row in enumerate(p['rows']):
@@ -261,7 +288,7 @@ def main():
                     rgba[oy + j, ox + i] = [int(h[1:3], 16), int(h[3:5], 16), int(h[5:7], 16), 255]
     save(rgba[20:92, 8:64], os.path.join(out, 'study', 'cape@8.png'))
     save(a[20:92, 8:64], os.path.join(out, 'study', 'his@8.png'))
-    print('back', len(meta['back']['rows']), 'rows,', len(meta['back']['palette']), 'colours; shoulder', len(meta['shoulder']['rows']), 'rows')
+    print('back', len(meta['back']['rows']), 'rows,', len(meta['back']['palette']), 'colours; shoulder', len(meta['shoulder']['rows']), 'rows; plate', meta['plate']['rows'])
 
 
 if __name__ == '__main__':

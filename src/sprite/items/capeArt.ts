@@ -3,7 +3,7 @@
 
 export interface PaintedPart {
   rows: string[];
-  /** The cell on its joint: the near shoulder, or the base of the neck for the mantle. */
+  /** The cell on its joint: the near shoulder, the base of the neck for the mantle, the far shoulder for the plate. */
   pivot: [number, number];
   colors: Record<string, string>;
 }
@@ -88,15 +88,15 @@ export const OWNER_CAPE_FRONT: PaintedPart = {
     '.aaeeffaabfbchaa.aaaaabadafaa..',
     '.aeibdbbbaabbbddaaaaaaadbadbaa.',
     'abjbfaabaklabfbfdmmddddfanlafa.',
-    'afbmmdfaal..aafbbbdmmpffa.kabba',
-    'abdqaaaaabraafabbbfbbbbaabacaaa',
-    'bbaadmmpbaabafbaafbddbaapbaa..a',
-    'bmmmddbbaaastabbfaaaaaammaa...a',
-    'dhbfaaaa..aafdaaaaaaaaddbud....',
-    'faaa.......aabssmmdmmdbfaaa....',
-    'aa..........aabbbfbbbbbaa.av...',
-    'aa...........aaaabbbbaaa..aad..',
-    '................aaaaafba..a.ad.',
+    'afbmmdfaalpqaafbbbdmmrffapkabba',
+    'abdsaaaaabtaafabbbfbbbbaabacaaa',
+    'bbaadmmrbaabafbaafbddbaarbaa..a',
+    'bmmmddbbaaauvabbfaaaaaammaa...a',
+    'dhbfaaaa..aafdaaaaaaaaddbw.....',
+    'faaa.......aabuummdmmdbfaaa....',
+    'aa..........aabbbfbbbbbaa.a....',
+    'aa...........aaaabbbbaaa..aa...',
+    '................aaaaafba..a.a..',
   ],
   colors: {
     a: '#030302',
@@ -112,13 +112,14 @@ export const OWNER_CAPE_FRONT: PaintedPart = {
     l: '#fddb89',
     m: '#404851',
     n: '#c49c58',
-    p: '#34353a',
-    q: '#40444e',
-    r: '#9e7b44',
-    s: '#2b2d32',
-    t: '#393d43',
-    u: '#040306',
-    v: '#353d48',
+    p: '#8c6639',
+    q: '#856238',
+    r: '#34353a',
+    s: '#40444e',
+    t: '#9e7b44',
+    u: '#2b2d32',
+    v: '#393d43',
+    w: '#040306',
   },
 };
 
@@ -132,10 +133,10 @@ export const OWNER_CAPE_SHOULDER: PaintedPart = {
     '.....aaffbbaabbbch',
     '.....afiedbbbaaeee',
     '....aejbbaabaklmeb',
-    '....abbdddbaal..aa',
-    '...aabddaaaaabnaab',
-    '...aebaadddpeaaeab',
-    '..aaedddddeeaaaqra',
+    '....abbdddbaalnpaa',
+    '...aabddaaaaabqaab',
+    '...aebaadddreaaeab',
+    '..aaedddddeeaaasta',
     '..abddebaaaa..aabd',
     '.abbbaaa.......aae',
     '.aeeaa..........ma',
@@ -160,9 +161,42 @@ export const OWNER_CAPE_SHOULDER: PaintedPart = {
     k: '#c09a57',
     l: '#fddb89',
     m: '#020204',
-    n: '#9e7b44',
-    p: '#323338',
-    q: '#2b2d32',
-    r: '#393d43',
+    n: '#8c6639',
+    p: '#856238',
+    q: '#9e7b44',
+    r: '#323338',
+    s: '#2b2d32',
+    t: '#393d43',
+  },
+};
+
+/** The armour plate on the far shoulder, past the mantle, in his black line; it hangs from the far shoulder. */
+export const OWNER_CAPE_PLATE: PaintedPart = {
+  pivot: [0, -2],
+  rows: [
+    '...aa...',
+    '..abba..',
+    '.acdea..',
+    'fdhdeba.',
+    '.aibdja.',
+    '.akbdla.',
+    '..adbbja',
+    '...admna',
+    '....aaa.',
+  ],
+  colors: {
+    a: '#010102',
+    b: '#272a3d',
+    c: '#1c283e',
+    d: '#3b444f',
+    e: '#4e6269',
+    f: '#040306',
+    h: '#1e2a43',
+    i: '#44545c',
+    j: '#68838d',
+    k: '#353d48',
+    l: '#4b5e66',
+    m: '#495a65',
+    n: '#455562',
   },
 };

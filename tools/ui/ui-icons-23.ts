@@ -1443,15 +1443,25 @@ const ICONS: IconSpec[] = [
       { box: [36, 34, 60, 60], lo: 0.85, hi: 1, spare: false, by: 'chroma', only: { hue: [85, 110], minL: 0.8 }, why: 'his gold cross: its saturated gold' },
       { box: [10, 10, 85, 85], lo: 0, hi: 0.04, spare: true, by: 'L', why: 'the dark brown outline of his scroll' },
     ],
-    // The owner (2026-10-20): the cross must be a clean upright plus sign. His is tilted with uneven
-    // arms, and at 44 it melted into the glowing parchment. Drawn at both sizes where his sits (his
-    // x 36-59, y 37-57), on his glow cream, in his gold #fcf79a with his brown outline #926d46.
+    // The owner (2026-10-20): the cross must be a clean plus sign, turned as his scroll is. His own is
+    // skewed with uneven arms, and at 44 it melted into the glowing parchment. A true plus turned 12
+    // degrees anticlockwise, as his rods and rune rows rise (his top edge 14.6, bottom 9.9 degrees),
+    // drawn at both sizes where his sits (his x 36-59, y 37-57), on his glow cream, in his gold
+    // #fcf79a with his brown outline #926d46.
     art: (pt) => {
       const big = pt.N === 88;
       const [cx, cy] = big ? [46, 44] : [23, 22];
-      const a = big ? 3 : 1; // half the arm's width (arms 7 or 3 wide)
-      const half = big ? 11 : 5; // half the plus's span (23 or 11)
-      const inside = (x: number, y: number) => (Math.abs(x - cx) <= a && Math.abs(y - cy) <= half) || (Math.abs(y - cy) <= a && Math.abs(x - cx) <= half);
+      const a = big ? 2 : 1; // half the arm's width (arms about 5 or 3 wide)
+      const half = big ? 12 : 5; // half the plus's span (25 or 11)
+      const tilt = (12 * Math.PI) / 180;
+      const [ux, uy] = [Math.cos(tilt), -Math.sin(tilt)]; // along the scroll, rising to the right
+      const inside = (x: number, y: number) => {
+        const s = (x - cx) * ux + (y - cy) * uy; // along the scroll
+        const t = (x - cx) * -uy + (y - cy) * ux; // across it, downwards
+        // Arms just over their width when turned (wider and they read as a clover, not a plus).
+        const w = a + (big ? 0.6 : 0.35), l = half + 0.5;
+        return (Math.abs(s) <= w && Math.abs(t) <= l) || (Math.abs(t) <= w && Math.abs(s) <= l);
+      };
       const r = half + (big ? 3 : 1);
       // His tilted cross goes under the glow first, so none of it shows round the plus.
       // His glow round it: brightest near the plus, one step down at the rim.
@@ -1460,8 +1470,8 @@ const ICONS: IconSpec[] = [
           const d = Math.hypot(x - cx, y - cy);
           if (d <= r + 0.5) pt.px(x, y, big && d > r - 2 ? '#f0dda1' : '#fbf2a5');
         }
-      for (let y = cy - half - 1; y <= cy + half + 1; y++)
-        for (let x = cx - half - 1; x <= cx + half + 1; x++) {
+      for (let y = cy - half - 3; y <= cy + half + 3; y++)
+        for (let x = cx - half - 3; x <= cx + half + 3; x++) {
           if (inside(x, y)) {
             const edge = !inside(x - 1, y) || !inside(x, y - 1);
             const core = Math.abs(x - cx) <= (big ? 1 : 0) && Math.abs(y - cy) <= (big ? 1 : 0);

@@ -772,36 +772,40 @@ export function medallionActive(): Piece {
       isoLine(img, fk, -1, METAL[0]);
     }
   /**
-   * His dark dome boss: a thin pale rim lit from the upper left, a dark interior (darker toward the
-   * lower right) and, on the big ones, his pale twin highlight just above the centre.
+   * His dark dome boss: a clean 1-pixel pale rim lit from the upper left (the disc's edge pixels),
+   * a dark interior with a darker crescent of shade inside the rim toward the lower right, and, on
+   * the big ones, his pale twin highlight just above the centre: two bright bumps with a dark notch
+   * between, joined by a dimmer row under them, so it reads as one two-lobed glint (not two eyes).
+   * The small ones get a pale centre dot in a round dark core.
    */
   const darkBoss = (bx: number, by: number, r: number, twin: boolean) => {
+    const inside = (x: number, y: number) => Math.hypot(x + 0.5 - bx, y + 0.5 - by) <= r;
+    const rim = (x: number, y: number) => inside(x, y) && (!inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1));
     for (let y = Math.floor(by - r - 2); y <= by + r + 2; y++)
       for (let x = Math.floor(bx - r - 2); x <= bx + r + 2; x++) {
         const dx = x + 0.5 - bx, dy = y + 0.5 - by, d = Math.hypot(dx, dy);
         if (d > r + 1) continue;
-        if (d > r) {
+        if (!inside(x, y)) {
           img.set(x, y, METAL[0]);
           continue;
         }
         const lit = d > 0 ? -(dx * 0.6 + dy * 0.8) / d : 0; // +1 facing the upper-left light
-        if (d > r - 1) img.set(x, y, lit > 0.45 ? METAL[6] : lit > -0.2 ? METAL[5] : METAL[4]);
-        else img.set(x, y, dx + dy > r * 0.5 ? PANEL[1] : METAL[1]);
+        if (rim(x, y)) img.set(x, y, lit > 0.45 ? METAL[6] : lit > -0.2 ? METAL[5] : METAL[4]);
+        else {
+          const nearRim = rim(x - 1, y) || rim(x + 1, y) || rim(x, y - 1) || rim(x, y + 1);
+          img.set(x, y, nearRim && lit < -0.3 ? PANEL[1] : METAL[1]);
+        }
       }
+    const px = Math.floor(bx), py = Math.floor(by);
     if (twin) {
-      // Two pale bumps side by side, a dark pixel between, two rows tall (bright over dim).
-      const px = Math.floor(bx), py = Math.floor(by) - 2;
-      img.set(px - 2, py, METAL[6]);
-      img.set(px - 1, py, METAL[7]);
-      img.set(px + 1, py, METAL[7]);
-      img.set(px + 2, py, METAL[6]);
-      img.set(px - 2, py + 1, METAL[4]);
-      img.set(px - 1, py + 1, METAL[5]);
-      img.set(px + 1, py + 1, METAL[5]);
-      img.set(px + 2, py + 1, METAL[4]);
-      img.set(px, py, PANEL[0]);
-      img.set(px, py + 1, PANEL[0]);
-    } else img.set(Math.floor(bx), Math.floor(by), METAL[6]);
+      // A 5 x 2 glint: the notch only in the top row, so the two bumps stay one blob.
+      const hy = py - 2;
+      const glint: [number, number, RGBA][] = [
+        [-2, 0, METAL[6]], [-1, 0, METAL[7]], [0, 0, PANEL[0]], [1, 0, METAL[7]], [2, 0, METAL[6]],
+        [-2, 1, METAL[4]], [-1, 1, METAL[6]], [0, 1, METAL[5]], [1, 1, METAL[6]], [2, 1, METAL[4]],
+      ];
+      for (const [gx, gy, col] of glint) img.set(px + gx, hy + gy, col);
+    } else img.set(px, py, METAL[6]);
   };
   for (const sgn of [-1, 1]) {
     const sx = cx + sgn * 20.6, sy = cy - 15.6;
@@ -888,24 +892,44 @@ export function pixelPath(pts: Pt[]): Pt[] {
  */
 function lowerBracket(): string[] {
   const W = 38, H = 16;
-  const edge = qbez([1.5, 2.2], [11.5, 14.6], [36.5, 15.5], 40) as Pt[];
-  return strokeMap(W, H, [
-    // The top wire along the bar, and the small curl at the outer tip.
-    { pts: [[3.5, 0.5], [31.5, 0.5]], ch: 'L' },
+  // His long edge runs nearly straight from the tip to about (20, 13), lit along its top (two
+  // rows: highlight over mid), and ends in a small upturned curl; the grass shows under the
+  // triangle between that curl and the X's outer leg.
+  const edge = qbez([1.5, 2.5], [9.5, 8.6], [19.5, 13.5], 40) as Pt[];
+  const lift = (pts: Pt[], dy: number): Pt[] => pts.map(([x, y]) => [x, y + dy] as Pt);
+  const map = strokeMap(W, H, [
+    // His filigree band along the bar's underside: a wire with a beaded wire under it.
+    { pts: [[3.5, 0.5], [31.5, 0.5]], ch: 'l' },
+    { pts: [[5.5, 1.5], [12.5, 1.5]], ch: 'M' },
+    // The small curl at the outer tip.
     { pts: spiral(2.6, 2.4, 1.9, 0.6, -Math.PI / 2, -Math.PI * 2.3, 20), ch: 'L' },
-    // The long edge, sagging from the tip to the plaque's corner.
-    { pts: edge, ch: 'L' },
+    // The long edge (mid under highlight), and its end curl.
+    { pts: edge, ch: 'l' },
+    { pts: lift(edge.slice(4, -6), -1), ch: 'H' },
+    { pts: spiral(19.0, 11.4, 1.7, 0.5, Math.PI / 2, -Math.PI * 1.4, 16), ch: 'L' },
     // The S-scroll: from the top wire down round the eye and back to the edge.
-    { pts: cbez([7.5, 0.5], [9.5, 6.5], [20.5, 2.5], [17.5, 11.8], 30) as Pt[], ch: 'l' },
-    // A small C-curl under the top wire, between the tip and the scroll.
-    { pts: spiral(7.0, 5.6, 2.0, 0.7, -Math.PI * 0.1, Math.PI * 1.5, 18), ch: 'l' },
-    // The X binding: two C-curves crossing near the plaque's end.
-    { pts: qbez([21.5, 0.5], [30.5, 3.5], [31.5, 14.5], 24) as Pt[], ch: 'L' },
-    { pts: qbez([31.5, 0.5], [22.5, 3.5], [22.5, 13.4], 24) as Pt[], ch: 'l' },
+    { pts: cbez([7.5, 0.5], [9.0, 8.5], [21.5, 2.0], [16.5, 11.2], 30) as Pt[], ch: 'L' },
+    // A small C-curl under the band, between the tip and the scroll.
+    { pts: spiral(6.6, 5.2, 1.9, 0.7, -Math.PI * 0.1, Math.PI * 1.5, 18), ch: 'l' },
+    // The X binding: two C-curves crossing near the plaque's end (his bright crossing at about
+    // (26, 6)).
+    { pts: qbez([20.5, 0.5], [31.0, 5.0], [30.5, 14.5], 24) as Pt[], ch: 'L' },
+    { pts: qbez([31.5, 0.5], [21.0, 5.0], [24.5, 14.0], 24) as Pt[], ch: 'l' },
   ], [
-    // His eye: a pale ring with two dark dots.
-    { x: 12, y: 3, rows: ['.LLl.', 'LK.Kl', '.lMM.'] },
+    // His eye (about 10 px): a pale ring, lit on the left and top right, with two dark dots.
+    { x: 13, y: 4, rows: ['.LLH.', 'HK.Kl', '.lMM.'] },
   ]);
+  // Inside his triangle there is no grass: the gusset is mostly mid bronze with pale scrolls and
+  // dark shadow round each scroll. So the gaps (from the long edge to the plaque, down to row 12)
+  // get the mid bronze 'D' wherever they do not touch a scroll; `wire` gives the pixels that do
+  // touch one its dark outline. Under the X the grass stays open.
+  const stroke = (x: number, y: number) => y >= 0 && y < H && x >= 0 && x < W && map[y][x] !== '.';
+  return map.map((row, y) => {
+    if (y > 12) return row;
+    const from = row.search(/[^.]/);
+    if (from < 0) return row;
+    return [...row].map((c, x) => (c === '.' && x > from && x <= 30 && !stroke(x - 1, y) && !stroke(x + 1, y) && !stroke(x, y - 1) && !stroke(x, y + 1) ? 'D' : c)).join('');
+  });
 }
 
 export function lowerPlaque(): Piece {
@@ -923,7 +947,7 @@ export function lowerPlaque(): Piece {
     }
   const map = lowerBracket();
   // His bracket metal is a warm khaki gold (bright mean about 160, 150, 124).
-  const pal = { H: hex('#d2c4a4'), L: hex('#ab9c7c'), l: hex('#8c7d60'), M: hex('#66583f'), K: hex('#14100a') };
+  const pal = { H: hex('#d2c4a4'), L: hex('#ab9c7c'), l: hex('#8c7d60'), M: hex('#66583f'), K: hex('#14100a'), D: hex('#5a4c35') };
   for (const flip of [false, true]) wire(img, map, { ox: flip ? W - map[0].length : 0, flip, pal });
   return {
     name: 'lower_plaque', img, group: 'action bar',

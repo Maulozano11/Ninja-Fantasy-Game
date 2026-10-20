@@ -1059,24 +1059,74 @@ function peach(pt: Paint): [string, string] {
   return [toHex(pt.p.rgb[sp[0]]), toHex(pt.p.rgb[sp[1]])];
 }
 
-// His Kirin at 44: the head (face and jaws) keeps its light, everything around it goes one or two
-// steps darker so the head reads first; his main bolts and mane spikes are drawn as clean strokes,
-// and the head is restated: brow, snout and horn outlines, the lidded eye, the curved upper gum
-// with five fangs, his white mouth core with its halo, and the lower jaw with three fangs.
-const KIRIN_HEAD44: [number, number][] = [[15, 15], [24, 14], [34, 14], [37, 12], [40, 15], [43, 19], [43, 23], [40, 24], [43, 26], [42, 30], [36, 31], [36, 36], [29, 37], [21, 30], [15, 25]];
+// His Kirin at 44. The head is drawn whole, pixel by pixel, on his anatomy (traced on his crop with
+// a 44 grid): the nose horn rising from the brow, the lit brow, the eye under it, the curved upper
+// gum with five fangs of mixed length, his white mouth core with its halo, and the lower jaw with
+// three fangs, all outlined in navy. Everything outside the head goes one step darker (two away from
+// it) and is simplified, then his main mane spikes and crest spikes are drawn as tapered wedges lit
+// on one edge, his five main bolts as continuous lines, and his peach sparks as short dashes.
+//   K ink  N navy  D dark  d deep  b mid-dark  B mid  m blue  c cyan  s sky  C bright  P pale  W white
+const KIRIN_HEAD44 = {
+  x0: 21,
+  y0: 12,
+  rows: [
+    '................N.....', // 12
+    '...............NPN....', // 13
+    '...............NPCN...', // 14
+    '.........NNNNNNNPCNN..', // 15
+    '......NNNPPPPPPPPCPCN.', // 16
+    '....NBccCCCCCPPPPCCcN.', // 17
+    '...NbBcsssssssKKCCscN.', // 18
+    '..NbBmcssscccccmsCscN.', // 19
+    '.KKKKmmmmmmmccccccsmN.', // 20
+    'NcdCPKKKKKKKmmmmcccN..', // 21
+    '.NcdWWWPCWCWKKKKKKK...', // 22
+    '.NcdWWWWPWCWcmWmWm....', // 23
+    '..NcdWWWPCCWcmWmW.....', // 24
+    '..NcdPWWPCCssccmW.....', // 25
+    '...NcdPPCCsNN.........', // 26
+    '...NcdsCscdcN.........', // 27
+    '....NcdWscdcN.........', // 28
+    '....NcdWccdcN.........', // 29
+    '.....NcdcWdcN.........', // 30
+    '.....NcdmWdcN.........', // 31
+    '......NcddcN..........', // 32
+    '.......NccN...........', // 33
+    '........NN............', // 34
+  ],
+};
+const KIRIN_LEGEND44: Record<string, string> = { K: '#181639', N: '#192351', D: '#1b3067', d: '#1d3d7f', b: '#225da1', B: '#2b7dc0', m: '#388fc7', c: '#48b2da', s: '#62d9ed', C: '#79e8f2', P: '#a0f4f8', W: '#d8fcff' };
+function kirinHead44(x: number, y: number): boolean {
+  const r = KIRIN_HEAD44.rows[y - KIRIN_HEAD44.y0];
+  const ch = r?.[x - KIRIN_HEAD44.x0];
+  return ch !== undefined && ch !== '.';
+}
 function kirin44(pt: Paint): void {
-  const head = KIRIN_HEAD44;
-  pt.shift((x, y) => !pt.inside(head, x, y), -1);
-  if (!process.env.K_ONE) pt.shift((x, y) => !pt.inside(head, x, y) && !nearPoly(pt, head, 3)(x, y), -1);
-  // Mane spikes, behind the head.
-  // His main mane spikes, behind the head: tapered, lit on the upper edge.
-  spike(pt, [15, 8], [2, 1], 3);
-  spike(pt, [13, 11], [3, 9], 2);
-  spike(pt, [14, 16], [1, 14], 2);
-  spike(pt, [21, 10], [18, 1], 2);
-  spike(pt, [26, 12], [24, 4], 2);
-  spike(pt, [29, 12], [28, 5], 2);
-  // His main bolts, each a zigzag as he drew it.
+  const near = (x: number, y: number): boolean => {
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (kirinHead44(x + dx, y + dy)) return true;
+    return false;
+  };
+  // One step darker outside the head; the dark ground away from it one more; the mane's top
+  // lights (pale, white) held one step under the head's.
+  pt.shift((x, y) => !kirinHead44(x, y), -1);
+  pt.shift((x, y) => !near(x, y) && pt.p.lab[pt.at(x, y)][0] < 0.55, -1);
+  pt.recolor((x, y) => !kirinHead44(x, y), ['#a0f4f8', '#d8fcff'], '#79e8f2');
+  // The darkened ground simplified: areas of up to four pixels join their neighbours.
+  const keepHead = new Set<number>();
+  for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) if (kirinHead44(x, y)) keepHead.add(y * 44 + x);
+  pt.q.d.set(cleanup(pt.q, pt.p, ixToF(pt.q, pt.p), 4, 1, keepHead).d);
+  // His mane spikes, sweeping back from the head, and his crest spikes rising from it.
+  const M = '#388fc7', ML = '#79e8f2';
+  spike(pt, [13, 8], [1, 1], 3, M, ML);
+  spike(pt, [12, 12], [1, 7], 3, M, ML);
+  spike(pt, [15, 15], [2, 12], 2, M, ML);
+  spike(pt, [18, 19], [5, 17], 2, M, ML);
+  spike(pt, [21, 25], [7, 24], 2, M, ML);
+  spike(pt, [23, 29], [13, 28], 2, M, ML);
+  spike(pt, [19, 11], [16, 0], 3, M, ML);
+  spike(pt, [24, 12], [21, 1], 2, M, ML);
+  spike(pt, [28, 14], [26, 3], 2, M, ML);
+  // His five main bolts, each a zigzag as he drew it.
   bolt(pt, [[43, 0], [42, 1], [41, 3], [39, 4], [37, 5], [36, 6], [35, 8], [34, 10], [33, 12]]);
   bolt(pt, [[36, 0], [35, 2], [35, 4]]);
   bolt(pt, [[33, 27], [35, 28], [36, 27], [38, 28], [39, 27], [40, 26], [41, 27], [43, 25]]);
@@ -1086,33 +1136,10 @@ function kirin44(pt: Paint): void {
   const [PEACH, PEACH_DIM] = peach(pt);
   pt.spark([[38, 9], [37, 10], [36, 11]], [PEACH, PEACH, PEACH_DIM]);
   pt.spark([[41, 9], [40, 10]], [PEACH, PEACH_DIM]);
-  pt.spark([[37, 30], [36, 29]], [PEACH, PEACH_DIM]);
-  pt.spark([[36, 36], [36, 37], [35, 35]], [PEACH, PEACH, PEACH_DIM]);
-  // The head.
-  pt.ascii(22, 13, [
-    '.....................',
-    '..............NPN....',
-    '..............NPCN...',
-    '......NNNNbbbbNPPCN..',
-    '...........cPPPCPPN..',
-    '............cKKcPPN..',
-    'NNNNN........BccCPN..',
-    '....KKKKKbcccbcCCPN..',
-    '..cCPPWNWKKKKccCCcN..',
-    '.cCWWWPWNWNWNKKKKCN..',
-    '.cWWWWCCbBbWNWNWNN...',
-    '.cWWWPCCcccWbWbbN....',
-    '.cPPCCCCCcccc........',
-    '.NKcCCPCCcc..........',
-    '.PNWcCCCcN...........',
-    '.PNKcCPCWN...........',
-    '..PNWcCccN...........',
-    '...PNcCcWN...........',
-    '...PNWcccN...........',
-    '....PNcBcN...........',
-    '.....PNWbK...........',
-    '......PNKc...........',
-  ], K_LEGEND);
+  pt.spark([[37, 30], [38, 31]], [PEACH, PEACH_DIM]);
+  pt.spark([[35, 35], [36, 36], [36, 37]], [PEACH_DIM, PEACH, PEACH]);
+  // The head, last.
+  pt.ascii(KIRIN_HEAD44.x0, KIRIN_HEAD44.y0, KIRIN_HEAD44.rows, KIRIN_LEGEND44);
 }
 
 /**

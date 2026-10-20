@@ -70,6 +70,25 @@ SHEETS = {
         ('weapon_stow', (250, 83, 348, 179), (244, 77, 354, 185), 'Stow weapon: a masked ninja sheathing his katana, a spark at the scabbard mouth'),
         ('weapon_draw', (368, 83, 466, 179), (362, 77, 472, 185), 'Draw weapon: two hands drawing a katana in a burst of light'),
     ],
+    # Sheet 5 and 6 came smaller (1024x572: his pixels are 2.13 sheet pixels), sheet 7 as sheet 4.
+    '5': [
+        ('dash', (20, 86, 114, 181), (14, 80, 120, 187), 'Dash: a ninja sprinting with speed lines and an afterimage, on teal'),
+        ('hide', (135, 86, 229, 181), (129, 80, 235, 187), 'Hide: a ninja with red eyes melting into violet smoke'),
+        ('more', (251, 86, 344, 181), (245, 80, 350, 187), 'More actions: a glowing scroll with a gold cross and runes, on green'),
+        ('end_turn', (367, 86, 460, 181), (361, 80, 466, 187), 'End turn: an hourglass of red sand among embers'),
+    ],
+    '6': [
+        ('disengage', (14, 82, 112, 179), (8, 76, 118, 185), 'Disengage: a ninja leaping back from a sword slash, a white crescent, on teal'),
+        ('crouch', (132, 82, 230, 179), (126, 76, 236, 185), 'Crouch: a ninja crouched low, a hand on the ground, in brown dust'),
+        ('jump', (250, 82, 348, 179), (244, 76, 354, 185), 'Jump: a ninja leaping high against a bright blue sky'),
+        ('focus', (368, 82, 466, 179), (362, 76, 472, 185), 'Focus: a ninja meditating cross-legged in a violet aura with stars'),
+    ],
+    '7': [
+        ('shove', (14, 83, 112, 179), (8, 77, 118, 185), 'Shove: a ninja shoving a foe, a burst of impact, on orange'),
+        ('trip', (132, 83, 230, 179), (126, 77, 236, 185), 'Trip: a ninja sweeping a kick that throws a foe off his feet, in dust'),
+        ('stabilize', (250, 83, 348, 179), (244, 77, 354, 185), 'Heal: a ninja healing a fallen ally with green chakra'),
+        ('flee', (368, 83, 466, 179), (362, 77, 472, 185), 'Escape: a ninja running into a bright doorway of light, on blue'),
+    ],
 }
 
 
@@ -108,12 +127,12 @@ def kmeans(px, k, iters=25):
 
 
 def spectrum_pitch(g):
-    """The strongest period (in sheet pixels, between 2.2 and 12) of an edge-energy profile."""
+    """The strongest period (in sheet pixels, between 1.8 and 12) of an edge-energy profile."""
     g = g - g.mean()
     n = 1 << 14
     f = np.abs(np.fft.rfft(g, n=n))
     fr = np.fft.rfftfreq(n)
-    m = (fr > 1 / 12) & (fr < 1 / 2.2)
+    m = (fr > 1 / 12) & (fr < 1 / 1.8)
     return float(1 / fr[np.argmax(np.where(m, f, 0))])
 
 
@@ -197,8 +216,9 @@ def main():
     pal = {}
     for sheet, path in srcs.items():
         im = Image.open(path).convert('RGB')
-        if im.size != (2000, 1116):
-            sys.exit('expected his 2000x1116 picture, got %dx%d (%s)' % (im.size + (path,)))
+        # His 480x268 pixel art scaled up evenly: 2000x1116 (sheets 2 to 4), 1024x572 (sheet 5).
+        if abs(im.size[0] / NATIVE[0] - im.size[1] / NATIVE[1]) > 0.02:
+            sys.exit('expected his 480x268 picture scaled up evenly, got %dx%d (%s)' % (im.size + (path,)))
         a = np.asarray(im).astype(float)
         g = grid(a)
         nat, xs, ys, spread = native(a, g)
@@ -212,8 +232,9 @@ def main():
             # The window must sit inside his black inner line: the line of his pixels just outside
             # each side is dark.
             sides = [L[y0:y1, x0 - 1], L[y0:y1, x1], L[y0 - 1, x0:x1], L[y1, x0:x1]]
+            dark = 45 if sheet in ('5', '6') else 30
             for s in sides:
-                if np.mean(s < 30) < 0.9:
+                if np.mean(s < dark) < (0.85 if sheet in ('5', '6') else 0.9):
                     sys.exit('%s: the window %s is not inside his black inner line' % (jid, box))
             win = nat[y0:y1, x0:x1]
             save_atomic(to_img(win), os.path.join(ref, jid + '.png'))

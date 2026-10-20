@@ -959,7 +959,7 @@ interface Ctx {
 interface IconSpec {
   id: string;
   name: string;
-  sheet: '2' | '3' | '4';
+  sheet: '2' | '3' | '4' | '5' | '6' | '7';
   /** Palette: k-means entries, lightness flattening, hue weight. */
   colors: number;
   flat: number;
@@ -1397,6 +1397,203 @@ const ICONS: IconSpec[] = [
     marks: [
       { kind: 'bright', what: 'his white-gold burst and its long rays', r: 1, thr: 0.1, minL: 0.85, minPx: 10, share: 0.3, mix: 0.7 },
       { kind: 'dark', what: 'the near-black outlines of his hands and the hilt', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  // Sheets 5 to 7 (2026-10-20): the bar's actions and the More menu's. Sheets 5 and 6 came at 2.13x.
+  {
+    id: 'dash',
+    name: 'Dash',
+    sheet: '5',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'dark', what: 'the near-black outline of his runner', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his speed lines', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'hide',
+    name: 'Hide',
+    sheet: '5',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      // His glowing red eyes are a few of his pixels: kept one pixel each at 44 by their colour.
+      { kind: 'colour', what: 'his red eyes', r: 0, thr: 0, hue: [340, 45], minC: 0.1, minPx: 1, share: 0.5, mix: 1, pick: 'peak' },
+      { kind: 'dark', what: 'the near-black outline of his ninja', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'the light wisps', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'more',
+    name: 'More Actions',
+    sheet: '5',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    extra: [
+      { box: [36, 34, 60, 60], lo: 0.85, hi: 1, spare: false, by: 'chroma', only: { hue: [85, 110], minL: 0.8 }, why: 'his gold cross: its saturated gold' },
+      { box: [10, 10, 85, 85], lo: 0, hi: 0.04, spare: true, by: 'L', why: 'the dark brown outline of his scroll' },
+    ],
+    // At 44 his gold cross melts into the glowing parchment around it (gold on cream, its brown
+    // outline under a pixel wide). Traced on his pixels: the upright arm his x 46-52, y 37-57, the cross
+    // arm his y 45-48, x 36-59, in his gold #fcf79a with his brown outline #926d46.
+    art: (pt) => {
+      if (pt.N !== 44) return;
+      pt.ascii(16, 16, [
+        '......ooo....',
+        '.....ogggo...',
+        '.....ogggo...',
+        '.....ogggo...',
+        '.ooooogggooo.',
+        'ogggggwwggggo',
+        'ogggggwwggggo',
+        'ogggggggggggo',
+        '.ooooogggooo.',
+        '.....ogggo...',
+        '.....ogggo...',
+        '......ooo....',
+      ], { o: '#926d46', g: '#fcf79a', w: '#fffde0' });
+    },
+    marks: [
+      // His gold cross and sparkles: bright gold on the light parchment, so kept by their colour.
+      { kind: 'colour', what: 'his gold cross and sparkles', r: 0, thr: 0, hue: [85, 110], minC: 0.09, minL: 0.82, minPx: 3, share: 0.5, mix: 1, pick: 'peak' },
+      { kind: 'dark', what: 'the dark outline of his scroll', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his runes and sparkles', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'end_turn',
+    name: 'End Turn',
+    sheet: '5',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'dark', what: 'the dark frame of his hourglass', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his glints and embers', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'disengage',
+    name: 'Disengage',
+    sheet: '6',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'dark', what: 'the near-black outline of his ninja', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his white slash crescent and the blade', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'crouch',
+    name: 'Crouch',
+    sheet: '6',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'dark', what: 'the near-black outline of his ninja', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his light dust', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'jump',
+    name: 'Jump',
+    sheet: '6',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'dark', what: 'the near-black outline of his ninja', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his white sky streaks and clouds', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'focus',
+    name: 'Focus',
+    sheet: '6',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'dark', what: 'the near-black outline of his ninja', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his stars and aura wisps', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'shove',
+    name: 'Shove',
+    sheet: '7',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'dark', what: 'the near-black outlines of his two ninjas', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his white impact burst', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'trip',
+    name: 'Trip',
+    sheet: '7',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'dark', what: 'the near-black outlines of his ninjas', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his light dust', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'stabilize',
+    name: 'Heal',
+    sheet: '7',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'dark', what: 'the near-black outlines of his two ninjas', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his green sparkles and the glow at the hands', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+    ],
+    bil44: [1, 0.05],
+    mark88: 0.06,
+  },
+  {
+    id: 'flee',
+    name: 'Escape',
+    sheet: '7',
+    colors: 22,
+    flat: 0.5,
+    chroma: 1.1,
+    marks: [
+      { kind: 'dark', what: 'the near-black outline of his runner', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'bright', what: 'his stars and the bright doorway', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
     ],
     bil44: [1, 0.05],
     mark88: 0.06,

@@ -14,38 +14,39 @@
 // our four icons in our frame in a row like his picture). UI_DEBUG=<dir> writes the stages of
 // every icon (his box reduction, the smoothed base on the palette, the clean base, the final) at x8.
 //
-// How an icon is made (round 5, after the fourth review: the Kirin at 44 rebuilt on his own mane
-// reduction with a hand-drawn profile head outlined in navy; his swirl at his size; the water's
-// hollow lifted to his blue; the fireball's white-hot core; the frame's brackets and rivets):
+// How an icon is made (round 6, the polish after the fifth review: the Kirin rebuilt from his own
+// pixels; his antique gold on the frame; the water's hollow his own misty reduction with his spray
+// as his own drop shapes; the fireball's arms curling into its core and its outer sparks dimmer; the
+// fire wave's embers at 44 half turned to ash):
 //  1. His art window (201x206 of his pixels): the 1-pixel seam trimmed and the gold bracket tips in
 //     its corners painted over. His specks (sparks, embers, foam flecks, the peach sparks of the
 //     Kirin) are found and painted out of the base, to be put back at the end as designed marks.
 //     For the Kirin's 88 and the water his crop is first smoothed along his own strokes (a short
 //     line-integral blur that follows each stroke's direction), so the mane spikes and the bands
 //     stay continuous lines instead of breaking into grain; the water's 44 uses a slightly longer
-//     stretch, so its bands curve round the barrel, and its 88 a shorter one on the right half, so
+//     stretch, so its bands curve round the hollow, and its 88 a shorter one on the right half, so
 //     his thin bands there stay crisp. The Kirin's 44 is not smoothed: his own strands are kept.
 //  2. Area mean (box) straight down to 44 (or 88): every target pixel is the mean of his pixels
-//     under it. No point sampling anywhere.
+//     under it. No point sampling anywhere. Over the Kirin's head (his fangs, horn and teeth are
+//     finer than a box keeps) his box reduction without the stroke smoothing is unsharp-masked at
+//     the icon size and blended in (`sharp`).
 //  3. Light edge-preserving smoothing at that size (a bilateral filter in OKLab).
 //  4. Nearest palette entry, no dither. One palette per icon, sampled from his picture. For the fire
 //     wave the hue counts more when a pixel is put on the palette, so his crimson bands stay crimson
-//     instead of falling into his smoke; off-tone greyish entries can be dropped (the water's).
+//     instead of falling into his smoke; off-tone greyish entries can be dropped (the water's), and
+//     extra entries are sampled where the k-means misses his colour (the water's misty hollow).
 //  5. Clean-up: every area of one colour of one or two pixels (8-connected) joins the neighbouring
 //     colour closest to the smoothed picture there, until none is left.
-//  6. The hand-traced details are drawn over it (traced on his crop with a 44 or 88 grid): the
-//     Kirin's head at 44 drawn whole by hand (KIRIN_HEAD44: a navy outline all round, the horn hook,
-//     brow, eye slit, nostril, four pointed fangs with navy gaps, a dark mouth wedge with his glow
-//     at its back and his bolt leaving it, the lit lower jaw with three teeth) over his own mane; at
-//     88 his outlines, eye, curved horn, rounded snout with its nostril, mouth glow, his curved gum
-//     with six triangular fangs and navy gaps, and a thick lit lower jaw with five pointed teeth; the
-//     fire wave's inner tongue, its swirl (a spiral field at his size: a dark-red band two tones deep
-//     on his lit orange, and his second small curl), at 88 his dark-red gaps between the flame
-//     tongues of the left flank, and his embers and dark ash flakes; the water's hollow (his blue,
-//     three separate foam drops at 44), lip and foam (his near-white on the crest and on his foam
-//     crests at the lower left); the fireball's darker arm gaps, its white-hot core with three bright
-//     streaks curling in, its softer fade with his arm tips breaking the rim. Then his sparks as
-//     short streaks. These pixels are protected; the clean-up runs again on the rest.
+//  6. Only what the reduction loses is put back, traced on his crop with a 44 or 88 grid (his box
+//     reduction, and the share of his pixels under each icon pixel that are light or dark): the
+//     Kirin's glow (his whitest at the back of the open mouth), his gum stepping down to the nose,
+//     his long uneven fangs with dark gaps at their roots, the tip of his crescent horn, his nostril
+//     slit and his lower teeth; the fire wave's inner tongue, its swirl (a spiral field at his size)
+//     and at 88 his dark-red gaps between the flame tongues of the left flank, his embers and dark ash
+//     flakes; the water's lip and foam (his near-white where most of his pixels are near-white, his
+//     spray as his own drop shapes); the fireball's darker arm gaps, its white-hot core with his arms
+//     curling on into it, its softer fade with his arm tips breaking the rim. Then his sparks. These
+//     pixels are protected; the clean-up runs again on the rest.
 //  7. Checks (printed and written to the manifest): small clusters per icon (his sparks, drawn
 //     details, and what is left over from the reduction), the colour difference to his box
 //     reduction after both are blurred, and the longest 1-pixel straight run (a drawn seam or edge).
@@ -217,6 +218,22 @@ function lightness(f: F): Float32Array {
   const o = new Float32Array(f.w * f.h);
   for (let i = 0; i < f.w * f.h; i++) o[i] = f.lab(i)[0];
   return o;
+}
+/** Unsharp mask: the image plus `amount` times its difference from its Gaussian blur (sigma px). */
+function unsharp(f: F, sigma: number, amount: number): F {
+  const o = new F(f.w, f.h);
+  for (let k = 0; k < 3; k++) {
+    const ch = new Float32Array(f.w * f.h);
+    for (let i = 0; i < f.w * f.h; i++) ch[i] = f.d[i * 3 + k];
+    const bl = gauss(ch, f.w, f.h, sigma);
+    for (let i = 0; i < f.w * f.h; i++) o.d[i * 3 + k] = Math.max(0, Math.min(255, ch[i] + amount * (ch[i] - bl[i])));
+  }
+  return o;
+}
+/** The weight (0..1) of the feathered rectangle `rect` (88 coordinates) at pixel (x, y) of an N icon. */
+function rectWeight(rect: [number, number, number, number], feather: number, N: number, x: number, y: number): number {
+  const X = ((x + 0.5) * 88) / N, Y = ((y + 0.5) * 88) / N;
+  return Math.max(0, Math.min(1, Math.min(X - rect[0], rect[2] - X, Y - rect[1], rect[3] - Y) / feather));
 }
 /** Square min (or max) filter of radius r. */
 function morph(v: Float32Array, w: number, h: number, r: number, max: boolean): Float32Array {
@@ -921,6 +938,8 @@ interface Ctx {
   /** His box reduction at this size (unquantized) and the smoothed base. */
   box: F;
   smooth: F;
+  /** The weight of the sharp rectangle at each pixel (0 everywhere when the icon has none). */
+  sharpW: Float32Array;
 }
 
 interface IconSpec {
@@ -943,6 +962,13 @@ interface IconSpec {
   flowRight88?: [number, number];
   /** Palette entries dropped as off-tone: lightness between the first two values with a chroma (OKLab) under the third. */
   greyOut?: [number, number, number];
+  /**
+   * A sharper base over his subject's fine detail (the Kirin's head: his fangs, horn and teeth, which a
+   * plain box reduction averages away): there the box reduction of his crop (specks out, no stroke
+   * smoothing) is unsharp-masked at the icon size ([sigma px, amount] at 44 and at 88) and blended in
+   * over a feathered rectangle (88 coordinates, feather in 88 pixels).
+   */
+  sharp?: { rect: [number, number, number, number]; feather: number; s44: [number, number]; s88: [number, number] };
   /** Bilateral smoothing at 44 and at 88: [sigma space (px), sigma colour (OKLab)]. */
   bil44: [number, number];
   bil88: [number, number];
@@ -1060,11 +1086,24 @@ function buildIcon(spec: IconSpec): Built {
   for (const N of [44, 88]) {
     const box = areaResize(src, N, N);
     const gbox = areaResize(N === 44 ? ground44 : ground88, N, N);
+    // His fine detail (the sharp rectangle): his unsmoothed reduction, unsharp-masked, blended in.
+    const sharpW = new Float32Array(N * N);
+    if (spec.sharp) {
+      const sh = spec.sharp;
+      const [sg, am] = N === 44 ? sh.s44 : sh.s88;
+      const det = unsharp(areaResize(ground0, N, N), sg, am);
+      for (let y = 0; y < N; y++)
+        for (let x = 0; x < N; x++) {
+          const i = y * N + x, t = rectWeight(sh.rect, sh.feather, N, x, y);
+          sharpW[i] = t;
+          for (let c = 0; c < 3; c++) gbox.d[i * 3 + c] = gbox.d[i * 3 + c] * (1 - t) + det.d[i * 3 + c] * t;
+        }
+    }
     const [ss, sr] = N === 44 ? spec.bil44 : spec.bil88;
     const smooth = sr > 0 ? bilateral(gbox, ss, sr, 2) : gbox;
     const clean = cleanup(quantize(smooth, pal), pal, smooth, 2, 1, new Set());
     const pt = new Paint(clean.clone(), pal);
-    if (!process.env.UI_NOART) spec.art?.(pt, { src, ground0, ground: N === 44 ? ground44 : ground88, specks, box, smooth });
+    if (!process.env.UI_NOART) spec.art?.(pt, { src, ground0, ground: N === 44 ? ground44 : ground88, specks, box, smooth, sharpW });
     const q = cleanup(pt.q, pal, smooth, 2, 1, pt.drawn);
     const ours = ixToF(q, pal);
     const sm = smallClusters(q, pt.sparks, pt.drawn);
@@ -1099,7 +1138,7 @@ function buildIcon(spec: IconSpec): Built {
 // Traced on his picture, in the icon's own pixels (44 or 88). Colours are his (each goes to the
 // nearest entry of the icon's palette).
 
-const K_INK = '#181639', K_NAVY = '#1a2453', K_MIDD = '#225da1', K_MID = '#2b7dc0', K_BRIGHT = '#6fe8f5', K_PALE = '#a1f5fa', K_WHITE = '#d8feff';
+const K_PALE = '#a1f5fa', K_WHITE = '#d8feff';
 
 /** A bolt: a 1-pixel line in his pale cyan with white cores on its middle stretches. */
 function bolt(pt: Paint, pts: [number, number][], core: [number, number] = [0.3, 0.7]): void {
@@ -1118,93 +1157,86 @@ function peach(pt: Paint): [string, string] {
   return [toHex(pt.p.rgb[sp[0]]), toHex(pt.p.rgb[sp[1]])];
 }
 
-// His Kirin at 44 (round 5). The mane is his own reduction (every step of his ramp, only one- and
-// two-pixel areas merged; the flow smoothing the 88 uses is left out here), his deepest gaps
-// between strands one step darker, so his bright strands radiate up and left from the head with his
-// dark navy between them, as at his size. Over it his five main bolts, then the head, drawn by hand on a
-// 44 grid traced on his crop (KIRIN_HEAD44): a profile facing right, outlined all round in his
-// tinted navy (the back of the skull where his crest rises, the brow, the rounded snout front with
-// its nostril, under the jaw), the light mane pixels touching that outline one step darker. Then his
-// three peach sparks as short diagonal streaks.
-//
-// The head, in his palette (a ink, b navy, c deep navy, d dark blue, e f g h i j k m n o: his blues
-// from dark to light, q pale, r his near-white, s his white; '.' is mane):
-//  - the horn: a curved hook two pixels wide rising from the snout top behind the nose, bowing back
-//    and turning up to its white tip (x 36-41, y 8-15), navy on its back edge, lit on its front;
-//  - the brow ridge and the snout top lit (his pale, his near-white along the top), the snout top
-//    sloping down from the brow to the nose;
-//  - the eye: a small bright slit under the dark brow;
-//  - the snout: rounded at the front, a navy nostril just behind its top;
-//  - the upper jaw: his navy gum sloping down to the snout front, four fangs hanging from it, each
-//    two pixels at the root and pointed (white, a near-white root), navy in the gaps between them;
-//  - the open mouth: a dark wedge widening to the right between the fangs and the lower jaw, his
-//    white glow (a near-white ring) only at its back, his bolt leaving it thin;
-//  - the lower jaw: a navy line under it, a lit band two pixels wide from the mouth corner round
-//    the chin, three white teeth on its inner edge pointing into the mouth.
-const KIRIN_HEAD44 = {
-  x0: 21,
-  y0: 8,
+// KIRIN-ART-BEGIN
+// His Kirin (round 6). The head is his own pixels: over his head (KIRIN_SHARP) the base is his box
+// reduction without the stroke smoothing, unsharp-masked at the icon size, put on his palette, and
+// only one- and two-pixel areas that do not stand out are merged. Then only what that reduction loses
+// is put back, each traced on his crop (his box reduction, and the share of his pixels under each
+// icon pixel that are light or dark):
+//  - his glow: his whitest at the back of the open mouth (his box at 0.975 or more) in his white,
+//    then his near-white, so the mouth is the brightest part of the icon;
+//  - his gum: a navy line from the mouth corner stepping down to the nose;
+//  - his upper fangs hanging from it, long, pointed and uneven (a one-pixel tip, the longest in
+//    the middle of the jaw, the front ones curving back), navy in the gaps at their roots;
+//  - his horn: a short thick crescent rising from the nose, its tip leaning back, a darker notch
+//    between its back and the snout top, dark sky in front of its tip;
+//  - his nostril slit, and his lower teeth (at 88 all of them, at 44 the one the reduction loses).
+// The mane keeps the round-5 treatment (his own reduction, his deepest gaps one step down), and his
+// bolts and peach sparks are put back as before.
+
+/** His glow at the back of the mouth: his box lightness for his white and his near-white, in a zone (88 coordinates). */
+const KIRIN_GLOW = { zone: [42, 38, 64, 58] as [number, number, number, number], white: 0.975, near: 0.93 };
+function kirinGlow(pt: Paint, ctx: Ctx): void {
+  const N = pt.N, k = N / 88, z = KIRIN_GLOW.zone;
+  const L = lightness(ctx.box);
+  const W = kirinWhite(pt), near = pt.c('#d3fbfb');
+  for (let y = Math.floor(z[1] * k); y < Math.ceil(z[3] * k); y++)
+    for (let x = Math.floor(z[0] * k); x < Math.ceil(z[2] * k); x++) {
+      const l = L[y * N + x];
+      if (l >= KIRIN_GLOW.white) pt.px(x, y, W);
+      else if (l >= KIRIN_GLOW.near && pt.p.lab[pt.at(x, y)][0] < pt.p.lab[near][0]) pt.px(x, y, near);
+    }
+}
+
+/**
+ * His head at 44, restated only where the reduction loses it (traced on his box reduction at 44 and
+ * on the share of his pixels under each icon pixel that are light or dark). His fangs are the light
+ * pixels under the gum (his box 0.79 to 0.89 at the long middle fang and the two front ones) with
+ * darker pixels between them (his 0.57 to 0.62); at his size they are white with navy outlines, so
+ * here they are his near-white with his blue between, and his gum (his navy line, averaged with his
+ * lit lip to about 0.55 at this size) a tinted line a step darker than his box there. Legend: r his
+ * near-white (fangs), q his pale (fang tips, horn tip), d his dark blue (the nostril slit), e his
+ * blue (gaps between fangs), f his blue a step lighter (the gum).
+ */
+const KIRIN_PATCH44 = {
+  x0: 23,
+  y0: 14,
   rows: [
-    '.................bqsb', // 8
-    '................boqb', // 9
-    '...............boqb', // 10
-    '...............boqb', // 11
-    '................boqb', // 12
-    '.....cbbbbbb....boqb', // 13
-    '....c.oqrrrqbb...boqb', // 14
-    '...c.noqqqqqqqbbbboqb', // 15
-    '...c.mnoooqqqqrrrqqqb', // 16
-    '..c..kmnnnnncbbcooooqb', // 17
-    '.c..kmnnnnnnbrrbooobob', // 18
-    '.c.kmmmmmmmmmooonnnnnb', // 19
-    '...kkkkkkmmmmmmmmmmmmb', // 20
-    '..bbbbbkkkkkmmkkkkkkb', // 21
-    'bbqrrrrbbbbbbbjjjjjjb', // 22
-    'bkrrssrcrrcrrcbbbbbb', // 23
-    'bkmssssrsscsccrrcrrc', // 24
-    '.bkmsssrsdddccsscsc', // 25
-    '.bkmssrqddddccsccc', // 26
-    '..bkmrrqqqqdcccc', // 27
-    '..bkmndddddqqcc', // 28
-    '...bkmnsdddsc', // 29
-    '...bkmmndsdnb', // 30
-    '....bkmmnndmb', // 31
-    '.....bkmmmmkb', // 32
-    '......bkkkkkb', // 33
-    '.......bkkkb', // 34
-    '........bbb', // 35
+    '..............q', // 14 his horn tip (his horn below it is his own reduction)
+    '',
+    '',
+    '',
+    '............d', // 18 his nostril slit
+    '.............d', // 19
+    '.fffffff', // 20 his gum from the mouth corner
+    '.....rerffffff', // 21 two back fangs; the gum stepping down
+    '.......q.ererrff', // 22 the long middle fang, the front fang two wide at its root; the gum stepping down to the nose
+    '..........r.qer', // 23 the front fang's tip, the fang at the nose
+    '..........q...q', // 24 the tips of the long middle fang and the fang at the nose
   ],
 };
-const KIRIN_HEAD_MASK44 = new Set<number>();
-KIRIN_HEAD44.rows.forEach((row, dy) => [...row].forEach((ch, dx) => ch !== '.' && KIRIN_HEAD_MASK44.add((KIRIN_HEAD44.y0 + dy) * 44 + KIRIN_HEAD44.x0 + dx)));
-const kirinHead44 = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < 44 && y < 44 && KIRIN_HEAD_MASK44.has(y * 44 + x);
-/** The head's outline: its navy pixels that touch the mane. */
-const kirinOutline44 = (pt: Paint, x: number, y: number): boolean =>
-  kirinHead44(x, y) && pt.p.lab[pt.at(x, y)][0] <= pt.p.lab[pt.c('#1a3269')][0] && N8.some(([dx, dy]) => !kirinHead44(x + dx, y + dy));
+/** His lower front tooth, lost by the reduction (his box 0.88 there). */
+const KIRIN_TEETH44: [number, number][] = [[28, 32]];
 
 function kirin44(pt: Paint, ctx: Ctx): void {
-  const mane = (x: number, y: number): boolean => !kirinHead44(x, y);
-  // His strands kept apart: only his deepest gaps between strands (darker than their surroundings by
-  // 0.09 or more) one step down, so his bright strands stand on his dark navy as at his size while
-  // his values stay his (only down: his strands keep his own lights). Every step of his ramp stays;
-  // then only one- and two-pixel areas join their neighbours.
+  const head = (x: number, y: number): boolean => ctx.sharpW[y * 44 + x] > 0;
+  const mane = (x: number, y: number): boolean => !head(x, y);
+  // The mane as round 5: his own reduction, his deepest gaps between strands one step down.
   const L = lightness(ctx.smooth), B = gauss(L, 44, 44, 1.5);
   pt.shift((x, y) => mane(x, y) && L[y * 44 + x] - B[y * 44 + x] < -0.09, -1);
-  pt.q.d.set(cleanup(pt.q, pt.p, ctx.smooth, 2, 1, KIRIN_HEAD_MASK44).d);
+  const keepHead = new Set<number>();
+  ctx.sharpW.forEach((t, i) => t > 0 && keepHead.add(i));
+  pt.q.d.set(cleanup(pt.q, pt.p, ctx.smooth, 2, 1, keepHead).d);
   // His five main bolts, each a zigzag as he drew it.
   bolt(pt, [[43, 0], [42, 1], [41, 3], [39, 4], [37, 5], [36, 6], [35, 8], [34, 10], [33, 12]]);
   bolt(pt, [[36, 0], [35, 2], [35, 4]]);
   bolt(pt, [[33, 27], [35, 28], [36, 27], [38, 28], [39, 27], [40, 26], [41, 27], [43, 25]]);
   bolt(pt, [[36, 31], [37, 33], [39, 34], [40, 36], [41, 38], [43, 39]]);
   bolt(pt, [[0, 43], [1, 41], [3, 40], [4, 38], [6, 37], [7, 35], [9, 34], [10, 32], [12, 31]]);
-  // The head, over all of it.
-  pt.ascii(KIRIN_HEAD44.x0, KIRIN_HEAD44.y0, KIRIN_HEAD44.rows, {
-    a: K_INK, b: '#1a2351', c: '#1a3269', d: '#1d3f82', e: '#1d4f91', f: '#225da1', g: '#296fad', h: '#2f7fbc', i: '#328fc8', j: '#3ea0cf',
-    k: '#48b2da', m: '#56c3e2', n: '#5ed5ea', o: '#77e6f2', q: '#96f3f8', r: '#d3fbfb', s: kirinWhite(pt),
-  });
-  // The light mane touching the head's outline one step darker, so the outline reads against it
-  // (the mane already dark there stays as his).
-  pt.shift((x, y) => mane(x, y) && pt.p.lab[pt.at(x, y)][0] > 0.5 && N8.some(([dx, dy]) => kirinOutline44(pt, x + dx, y + dy)), -1);
+  // His head: the glow, then what the reduction loses.
+  kirinGlow(pt, ctx);
+  pt.ascii(KIRIN_PATCH44.x0, KIRIN_PATCH44.y0, KIRIN_PATCH44.rows, { d: '#1d3f82', e: '#1d4f91', f: '#225da1', q: '#96f3f8', r: '#d3fbfb' });
+  for (const [x, y] of KIRIN_TEETH44) pt.px(x, y, '#96f3f8');
   // His peach sparks, at his three places: short diagonal streaks, his warm core and a dimmer end.
   const [PEACH, PEACH_DIM] = peach(pt);
   pt.spark([[43, 8], [42, 9], [41, 10]], [PEACH, PEACH, PEACH_DIM]);
@@ -1218,185 +1250,42 @@ function kirinWhite(pt: Paint): string {
   return toHex(pt.p.rgb[sp[0]]);
 }
 
-// His Kirin at 88 (round 5): his own pixels show the head; restated are his dark separation lines (a
-// short curved crease over the brow, the lip line back from the mouth corner, the cheek); the horn as
-// his curved spike, tapering from the snout up and back to a one-pixel tip, lit on its front edge and
-// outlined in navy on its back edge only; the snout's front rounded out to his nose against the sky,
-// with his nostril near its top; the lidded eye (a dark almond under a lit lid); the upper gum as his
-// smooth curve from the mouth corner down to the snout front; his mouth glow with a white core (his
-// whitest pixel) and a wider pale halo running right along his breath; six fangs hanging from the
-// gum, each a plump triangle three pixels at the root tapering to a one-pixel tip (white, a pale
-// front edge), navy in the gaps between them; and the lower jaw as his thick lit band round the open
-// mouth, with five pointed teeth on its inner edge.
-/** His lower jaw's outer line at 88, from the mouth corner down round the chin and up its front. */
-const KIRIN_JAW88: [number, number][] = [[42, 47], [44, 52], [46, 56], [48, 60], [50, 63.5], [52.5, 66.5], [55.5, 69], [59, 70.5], [62.5, 70.5], [65, 68.5], [66, 65], [65.5, 61.5]];
-/** His five lower teeth, their roots on the jaw's inner edge. */
-const KIRIN_TEETH88: [number, number][] = [[51.6, 58.4], [54.2, 61.8], [57, 64.4], [60.2, 66.4], [63.2, 64.6]];
-const KIRIN_HORN88: [number, number][] = [[74, 22.3], [75.5, 25], [77.2, 28.5], [78.6, 31.5], [79.4, 34.5], [79.8, 37]];
-const KIRIN_HORN_W88 = [1, 1.6, 2.6, 3.6, 4.4, 5];
-/** His snout front at 88: the right-most pixel of the snout on each row (33 to 43). */
-const KIRIN_SNOUT88: Record<number, number> = { 33: 80, 34: 81, 35: 81, 36: 82, 37: 82, 38: 82, 39: 82, 40: 81, 41: 81, 42: 80, 43: 79 };
-/** His upper gum at 88: a smooth curve (quadratic) from the mouth corner, through his line, down to the snout front. */
-const KIRIN_GUM88: [[number, number], [number, number], [number, number]] = [[47, 39.5], [62, 40.5], [80, 46.5]];
-/** His upper fangs at 88: left column and the widths from root to tip (three at the root, a one-pixel tip). */
-const KIRIN_FANGS88: [number, number[]][] = [[54, [3, 2, 1]], [58, [3, 3, 2, 1]], [62, [3, 2, 1]], [66, [3, 3, 2, 1, 1]], [70, [3, 3, 2, 1]], [74, [3, 2, 1]]];
-
-/** A quadratic curve from a (control c) to b as a clean one-pixel line. */
-function curvePixels(a: [number, number], c: [number, number], b: [number, number]): [number, number][] {
-  const pts: [number, number][] = [];
-  for (let i = 0; i <= 200; i++) {
-    const t = i / 200, u = 1 - t;
-    const p: [number, number] = [Math.round(u * u * a[0] + 2 * u * t * c[0] + t * t * b[0]), Math.round(u * u * a[1] + 2 * u * t * c[1] + t * t * b[1])];
-    const q = pts[pts.length - 1];
-    if (!q || q[0] !== p[0] || q[1] !== p[1]) pts.push(p);
-  }
-  return polyPixels(pts);
-}
-
+/** His gum at 88: from the mouth corner stepping down to the nose (traced: his darkest pixels under the snout). */
+const KIRIN_GUM88: [number, number][] = [[49, 41], [51, 40], [58, 40], [59, 41], [62, 41], [63, 42], [64, 43], [74, 43], [75, 44], [76, 45], [77, 45], [78, 44]];
 /**
- * His lower teeth at 88, by the way each points into the mouth: small pointed shapes (W white, P the
- * pale tip, '.' left as it is), with the pixel that stands on the jaw (the root) given.
+ * His upper fangs at 88, traced on his crop (the pixels where most of his are his near-white): each
+ * its pixels from the root down; two pixels wide at the root, a one-pixel tip, the front ones'
+ * tips a pixel back.
  */
-const KIRIN_TOOTH_SHAPES: { maxAngle: number; rows: string[]; root: [number, number] }[] = [
-  { maxAngle: 30, rows: ['W..', 'WWP', 'W..'], root: [0, 1] }, // pointing right
-  { maxAngle: 68, rows: ['..P', '.WW', 'WW.'], root: [0, 2] }, // up and to the right
-  { maxAngle: 112, rows: ['.P.', '.W.', 'WWW'], root: [1, 2] }, // up
-  { maxAngle: 180, rows: ['P..', 'WW.', '.WW'], root: [2, 2] }, // up and to the left
+const KIRIN_FANGS88: [number, number][][] = [
+  [[53, 41], [54, 41], [53, 42], [54, 42], [54, 43]],
+  [[56, 41], [57, 41], [56, 42], [57, 42], [56, 43]],
+  [[59, 42], [60, 42], [59, 43], [60, 43], [59, 44]],
+  [[63, 43], [63, 44], [62, 45]],
+  [[66, 44], [67, 44], [66, 45], [67, 45], [66, 46], [67, 46], [66, 47], [66, 48]],
+  [[70, 44], [71, 44], [70, 45], [71, 45], [70, 46]],
+  [[73, 44], [73, 45], [73, 46]],
+  [[75, 46], [76, 46], [75, 47], [76, 47], [75, 48]],
 ];
+/** His dark blue at the roots between his fangs (his darkest pixels there, under the gum). */
+const KIRIN_GAPS88: [number, number][] = [[55, 41], [55, 42], [58, 41], [58, 42], [61, 42], [61, 43], [62, 43], [64, 44], [65, 44], [65, 45], [68, 44], [68, 45], [69, 44], [72, 44], [74, 44], [74, 45], [74, 46], [77, 46]];
 
-function kirin88(pt: Paint): void {
-  const L = (x: number, y: number): number => pt.p.lab[pt.at(x, y)]?.[0] ?? 0;
-  const lab = (c: string): number => pt.p.lab[pt.c(c)][0];
-  // Separation lines: a short curved crease over the brow, the lip line, the cheek.
-  pt.line([[49, 32], [52, 31], [55, 31], [58, 32], [60, 33]], K_NAVY);
-  pt.line([[41, 38], [44, 39], [47, 40]], K_NAVY); // the lip line, back from the mouth corner
-  pt.line([[40, 44], [43, 47], [45, 50]], K_NAVY); // cheek
-  // The snout's front, rounded out to his nose: pale up to the edge, the edge pixel bright.
-  for (const [ys, edge] of Object.entries(KIRIN_SNOUT88)) {
-    const y = +ys;
-    for (let x = 77; x <= edge; x++) if (L(x, y) < lab(K_PALE)) pt.px(x, y, x === edge ? K_BRIGHT : K_PALE);
-  }
-  // His nostril near the top of the nose: a small dark curl.
-  pt.dots([[77, 38], [78, 37], [79, 37]], K_NAVY);
-  pt.dots([[78, 38]], K_INK);
-  // The horn: drawn from its tip down to the snout, so its lit side is the front.
-  const before = new Set(pt.drawn);
-  flameStroke(pt, KIRIN_HORN88, KIRIN_HORN_W88, K_WHITE, K_PALE, K_BRIGHT);
-  const horn = [...pt.drawn].filter((i) => !before.has(i));
-  for (let y = 22; y <= 33; y++) {
-    const xs = horn.filter((i) => Math.floor(i / 88) === y).map((i) => i % 88);
-    if (xs.length) pt.px(Math.min(...xs) - 1, y, K_NAVY);
-  }
-  // The eye: a dark almond under a lit lid, shaded under it.
-  pt.line([[67, 35], [70, 35], [72, 36], [74, 37]], K_PALE);
-  pt.dots([[69, 37], [73, 39]], K_NAVY);
-  pt.dots([[70, 37], [71, 37], [71, 38], [72, 38]], K_INK);
-  pt.dots([[70, 38], [70, 39], [71, 39], [72, 39]], K_MIDD);
-  // The lower jaw first (the glow lights its upper end): see kirinJaw88.
-  kirinJaw88(pt);
-  // His mouth glow: a pale halo stretched right along his breath, a white ring, his white core.
-  const W = kirinWhite(pt);
-  for (let y = 40; y <= 58; y++)
-    for (let x = 44; x <= 72; x++) {
-      const e = Math.hypot((x - 52.5) / (x > 52.5 ? 10 : 5.5), (y - 48) / 5);
-      const d = Math.hypot(x - 52.5, y - 47.8);
-      if (d <= 2.6) pt.px(x, y, W);
-      else if (d <= 3.7) pt.px(x, y, K_WHITE);
-      else if (e <= 1 && !pt.drawn.has(y * 88 + x) && L(x, y) < lab(K_PALE) && L(x, y) > lab(K_MIDD)) pt.px(x, y, K_PALE);
-    }
-  // The upper gum: his smooth curve, an ink line with navy under it.
-  const gum = curvePixels(...KIRIN_GUM88);
-  const gumY = new Map<number, number>();
-  for (const [x, y] of gum) gumY.set(x, Math.max(gumY.get(x) ?? -1, y));
-  for (const [x, y] of gum) pt.px(x, y, K_INK);
-  for (const [x, y] of gum) if (gumY.get(x) === y) pt.px(x, y + 1, K_NAVY);
-  // The fangs hang from the gum (each column starts under the gum's navy), navy in the gaps between
-  // them and before the first.
-  const tipOf: number[] = [];
-  for (const [x0, widths] of KIRIN_FANGS88) {
-    const top = gumY.get(x0 + 1)! + 2;
-    widths.forEach((wd, i) => {
-      // 3: the whole root; 2: its front two pixels; 1: the centre (the tip). His white, the front
-      // pixel of each wider row pale, and the tip of a long fang pale.
-      const xs = wd === 3 ? [x0, x0 + 1, x0 + 2] : wd === 2 ? [x0 + 1, x0 + 2] : [x0 + 1];
-      const tip = i === widths.length - 1 && widths.length > 4;
-      xs.forEach((x, j) => pt.px(x, top + i, tip || (xs.length > 1 && j === xs.length - 1) ? K_WHITE : W));
-    });
-    // Close the fang up to the gum where the gum is higher over its back column.
-    for (let x = x0; x <= x0 + 2; x++) for (let y = gumY.get(x)! + 2; y < top; y++) pt.px(x, y, W);
-    tipOf.push(top + widths.length - 1);
-  }
-  KIRIN_FANGS88.forEach(([x0], i) => {
-    // Before each fang (the first too, so it stands apart from his glow behind it).
-    const gx = x0 - 1;
-    const bottom = (i === 0 ? tipOf[i] : Math.min(tipOf[i], tipOf[i - 1])) - 1;
-    for (let y = gumY.get(gx)! + 2; y <= bottom; y++) pt.px(gx, y, K_NAVY);
-  });
-  // His peach sparks: dashes of 3 to 4 pixels, a warm core and a dimmer end.
+/** His lower teeth at 88: the pixels along the inner edge of his lower jaw where most of his are his near-white. */
+const KIRIN_TEETH88: [number, number][] = [[50, 56], [52, 59], [54, 61], [54, 62], [57, 64], [56, 65], [57, 65], [58, 67], [61, 59], [62, 59], [61, 60], [62, 62], [63, 62], [64, 64], [63, 65]];
+
+function kirin88(pt: Paint, ctx: Ctx): void {
+  kirinGlow(pt, ctx);
+  pt.line(KIRIN_GUM88, '#1a2351');
+  for (const [x, y] of KIRIN_GAPS88) pt.px(x, y, '#1d3f82');
+  for (const f of KIRIN_FANGS88) f.forEach(([x, y], i) => pt.px(x, y, i === f.length - 1 && f.length > 3 ? '#96f3f8' : '#d3fbfb'));
+  for (const [x, y] of KIRIN_TEETH88) pt.px(x, y, '#96f3f8');
   const [PEACH, PEACH_DIM] = peach(pt);
   pt.spark([[77, 18], [76, 19], [75, 20], [74, 21], [73, 22]], [PEACH, PEACH, PEACH, PEACH_DIM, PEACH_DIM]);
   pt.spark([[82, 18], [81, 19], [80, 20], [79, 21]], [PEACH, PEACH, PEACH_DIM, PEACH_DIM]);
   pt.spark([[75, 61], [74, 60], [73, 59], [76, 60]], [PEACH, PEACH, PEACH_DIM, PEACH_DIM]);
   pt.spark([[71, 69], [72, 70], [72, 71], [73, 72], [73, 73]], [PEACH_DIM, PEACH, PEACH, PEACH, PEACH_DIM]);
 }
-
-/**
- * His lower jaw at 88: a thick lit jaw, 3 to 4 pixels, with his navy line only on its outer underside,
- * from the mouth corner down round the chin and up its front; on its inner edge a mid-blue band, and
- * on it his five teeth, pointed triangles (three pixels at the root, a one-pixel tip) pointing into
- * the mouth, against the mouth in shadow (his darker mid blue) behind them.
- */
-function kirinJaw88(pt: Paint): void {
-  const segs: [[number, number], [number, number]][] = [];
-  for (let i = 0; i + 1 < KIRIN_JAW88.length; i++) segs.push([KIRIN_JAW88[i], KIRIN_JAW88[i + 1]]);
-  const mouth: [number, number] = [59, 56];
-  // Distance to his outer line and whether the pixel lies on the mouth's side of it.
-  const field = (x: number, y: number): { d: number; inside: boolean; t: number } => {
-    let best = Infinity, inside = false, t = 0, acc = 0, total = 0;
-    for (const [a, b] of segs) total += Math.hypot(b[0] - a[0], b[1] - a[1]);
-    for (const [a, b] of segs) {
-      const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy);
-      const u = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (l * l)));
-      const qx = a[0] + dx * u, qy = a[1] + dy * u, d = Math.hypot(x - qx, y - qy);
-      if (d < best) {
-        best = d;
-        const side = dx * (y - a[1]) - dy * (x - a[0]), ms = dx * (mouth[1] - a[1]) - dy * (mouth[0] - a[0]);
-        inside = Math.sign(side) === Math.sign(ms);
-        t = (acc + u * l) / total;
-      }
-      acc += l;
-    }
-    return { d: best, inside, t };
-  };
-  for (let y = 44; y <= 74; y++)
-    for (let x = 38; x <= 72; x++) {
-      const { d, inside, t } = field(x, y);
-      if (!inside || t <= 0.02 || t >= 0.995) continue;
-      if (d <= 2.3) pt.px(x, y, '#48b2da');
-      else if (d <= 3.5) pt.px(x, y, '#5ed5ea');
-      else if (d <= 4.4) pt.px(x, y, '#77e6f2');
-      else if (d <= 5.4) pt.px(x, y, K_MID);
-      else if (d <= 8.6 && t > 0.3) pt.px(x, y, K_MIDD);
-    }
-  pt.line(KIRIN_JAW88.map(([x, y]) => [Math.round(x), Math.round(y)] as [number, number]), K_NAVY);
-  // His teeth: at his places along the jaw, each standing on the mid-blue band and pointing straight
-  // into the mouth (across the jaw): a small pointed shape, its root on the band (KIRIN_TOOTH_SHAPES).
-  const W = kirinWhite(pt);
-  for (const [bx, by] of KIRIN_TEETH88) {
-    let qx = 0, qy = 0, bd = Infinity;
-    for (const [a, b] of segs) {
-      const dx = b[0] - a[0], dy = b[1] - a[1];
-      const u = Math.max(0, Math.min(1, ((bx - a[0]) * dx + (by - a[1]) * dy) / (dx * dx + dy * dy)));
-      const d = Math.hypot(bx - a[0] - dx * u, by - a[1] - dy * u);
-      if (d < bd) (bd = d), (qx = a[0] + dx * u), (qy = a[1] + dy * u);
-    }
-    const nx = (bx - qx) / bd, ny = (by - qy) / bd;
-    const ang = (Math.atan2(-ny, nx) * 180) / Math.PI;
-    const shp = KIRIN_TOOTH_SHAPES.find((t) => ang <= t.maxAngle) ?? KIRIN_TOOTH_SHAPES[3];
-    const rx = Math.round(qx + nx * 4.6), ry = Math.round(qy + ny * 4.6);
-    pt.ascii(rx - shp.root[0], ry - shp.root[1], shp.rows, { W, P: K_WHITE });
-  }
-}
+// KIRIN-ART-END
 
 /** Points traced at 44 put on an icon of size N (pixel centres kept: 44 -> 88 maps x to 2x + 0.5). */
 function at(N: number, pts: [number, number][]): [number, number][] {
@@ -1508,23 +1397,41 @@ function annihilation(pt: Paint, ctx: Ctx): void {
   embers(pt, ctx);
 }
 
-/** His embers in the smoke as short streaks (the strongest of them), then his dark ash flakes. */
+/**
+ * His embers in the smoke as short streaks (the strongest of them), then his dark ash flakes. At 44
+ * (round 6) only his embers in the smoke are drawn (the bright specks in his flames are the fire's own
+ * highlights, which the base keeps): his five nearest the crest stay bright, the next five become
+ * dark ash flakes like his others, each with one glowing pixel on its rim.
+ */
+const ANNI_CREST44: [number, number] = [25, 9];
 function embers(pt: Paint, ctx: Ctx): void {
   const N = pt.N;
   const bright = ctx.specks.filter((s) => s.bright);
-  stampStreaks(pt, bright, ctx.src.w, ctx.src.h, N === 44 ? 10 : 12, N === 44 ? 2 : 3, N === 44 ? 0.12 : 0.08);
-  ashFlakes(pt);
+  if (N === 88) {
+    stampStreaks(pt, bright, ctx.src.w, ctx.src.h, 12, 3, 0.08);
+    return ashFlakes(pt, []);
+  }
+  const pos = (s: Speck): [number, number] => [((s.cx + 0.5) * N) / ctx.src.w - 0.5, ((s.cy + 0.5) * N) / ctx.src.h - 0.5];
+  // His ten strongest embers that lie in the smoke (above his fire's base, 30 of 44; the bright specks
+  // lower down are highlights in his flames and swirl, which the base keeps), nearest the crest first.
+  const inSmoke = (s: Speck): boolean => pos(s)[1] <= 30;
+  const ranked = [...bright].filter(inSmoke).sort((a, b) => b.px.length * Math.abs(b.peak - b.bg) - a.px.length * Math.abs(a.peak - a.bg) || a.cx - b.cx || a.cy - b.cy).slice(0, 10);
+  const d = (s: Speck) => Math.hypot(pos(s)[0] - ANNI_CREST44[0], pos(s)[1] - ANNI_CREST44[1]);
+  const byCrest = ranked.sort((a, b) => d(a) - d(b) || a.cx - b.cx || a.cy - b.cy);
+  stampStreaks(pt, byCrest.slice(0, 5), ctx.src.w, ctx.src.h, 5, 2, 0.12);
+  ashFlakes(pt, byCrest.slice(5).map((s) => pos(s).map(Math.round) as [number, number]));
 }
 
 /**
  * His dark ash flakes in the smoke right of the crest, at his places (88 coordinates, traced on his
  * picture): each a dark mark tilted down-right along the wind (2 rows of 2 at 88, a diagonal pair
- * at 44) with one lit orange pixel at its upper-left end, where it still glows.
+ * at 44) with one glowing pixel (his #b74320) at its upper-left end, where it still glows. At 44 also
+ * at `more` (44 coordinates): his embers that turn to ash there.
  */
 const ANNI_FLAKES88: [number, number][] = [[61.5, 11.5], [59.5, 20], [80, 18], [74, 29.5], [75, 43], [81.5, 47.5], [61.5, 49.5], [63, 56], [44, 42.5]];
-function ashFlakes(pt: Paint): void {
+function ashFlakes(pt: Paint, more: [number, number][]): void {
+  const D = '#361f27', E = '#b74320';
   for (const [fx, fy] of ANNI_FLAKES88) {
-    const D = '#361f27', E = N44(pt) ? '#ee8029' : '#b74320';
     if (pt.N === 88) {
       const x = Math.round(fx - 1), y = Math.round(fy - 0.5);
       pt.spark([[x - 1, y], [x, y], [x + 1, y], [x + 1, y + 1], [x + 2, y + 1]], [E, D]);
@@ -1533,44 +1440,32 @@ function ashFlakes(pt: Paint): void {
       pt.spark([[x - 1, y], [x, y], [x + 1, y + 1]], [E, D]);
     }
   }
+  for (const [x, y] of more) pt.spark([[x - 1, y], [x, y], [x + 1, y + 1]], [E, D]);
 }
 
 // His hollow under the curl at 44: a rounded dome, open toward his lower left.
 const W_HOLLOW44: [number, number][] = [[7.4, 21], [8.2, 18], [9, 16.3], [10.4, 15.2], [12.3, 14.7], [14.2, 15], [15.6, 16.2], [16.4, 18], [16.6, 20.5], [16.4, 23], [15.6, 25.5], [14.4, 27.5], [12.6, 28.8], [10.6, 29], [8.8, 28.2], [7.6, 26.5], [7.2, 24]];
-// The hollow's three tones, lifted one step toward his blue (round 4 had #192538 at its top): his
-// mid-dark blue at the top, under the lip, then one step lighter at a time toward his lower left.
-const W_HOLLOW_DEEP = '#233850', W_NIGHT = '#164c71', W_BARREL_LOW = '#1b5c7c', W_DEEP = '#0a3a64', W_MID = '#1c6d8b', W_TEAL = '#11a0a6', W_TURQ = '#21b3b2', W_SHADOW = '#18a7b8', W_FOAM = '#abeef4', W_WHITE = '#ccf5f8';
+const W_NIGHT = '#164c71', W_DEEP = '#0a3a64', W_MID = '#1c6d8b', W_TEAL = '#11a0a6', W_SHADOW = '#18a7b8', W_FOAM = '#abeef4', W_WHITE = '#ccf5f8';
 /** His near-white foam (sampled from his crest: see the water's extra palette entries). */
 const W_NEAR = '#d2ffff';
 
-// His Water Wall: the barrel under the curl as one clean dark area (darker at the top, as his), his
-// bands as continuous curved stripes wrapping into it (the bright turquoise band at the barrel's
-// edge, then dark, mid and dark again), the foam lip with a white top edge, a pale underside and a
-// turquoise shadow line where it overhangs the barrel, his spray flecks at the top left, and his
-// bottom foam as short horizontal dashes. Traced at 44, drawn at either size.
+// His Water Wall (round 6): his hollow under the curl is his own reduction (a misty grey-blue
+// gradient, his splash rising in it, his teal fading in at its right); his bands as continuous curved
+// stripes outside it, the foam lip with a white top edge, a pale underside and a turquoise shadow line
+// where it overhangs the hollow, his spray as his own drop shapes (chunky at 88), his chunky white
+// foam where most of his pixels are near-white, and his bottom foam as short horizontal dashes.
+// Traced at 44, drawn at either size.
 function water(pt: Paint, ctx: Ctx): void {
   const N = pt.N, k = N / 44;
-  // The barrel.
-  const barrel = at(N, [[9, 15], [12, 14], [15, 15], [16, 17], [16, 25], [15, 28], [12, 30], [9, 29], [7, 26], [8, 20]]);
-  // His hollow under the curl: a rounded dome (traced at 44, his foam left as it is), his mid-dark blue
-  // where it is deepest, at the top of the dome under the lip, and one step lighter at a time toward
-  // his lower left, where it opens. Right under the lip his own teal glow stays.
-  // At 44 every pixel of the hollow takes its tone (his foam drops are drawn back as separate drops,
-  // where his box reduction runs them into one streak); at 88 his foam there stays.
-  const pool: string[] = pt.p.rgb.map((c) => toHex(c)).filter((_, i) => N === 44 || pt.p.lab[i][0] < 0.8);
+  // His hollow under the curl (traced at 44): round 6 leaves it as his own reduction, a misty
+  // grey-blue gradient from under the lip down to his lower left with his splash rising in it and his
+  // teal fading in at its right (two misty tones sampled from his hollow are on the palette for it).
   const hollow = W_HOLLOW44.map(([x, y]) => [x * k + (k - 1) / 2, y * k + (k - 1) / 2] as [number, number]);
   const inHollow = (x: number, y: number) => pt.inside(hollow, x, y);
-  const u = (v: number) => (v - (k - 1) / 2) / k;
-  const glow = (x: number, y: number) => u(x) >= 13.5 && u(y) <= 15.5;
-  // Its tones step along arcs round the deepest point, so the steps follow his curl.
-  const depth = (x: number, y: number) => Math.hypot(u(x) - 12, u(y) - 16.5);
-  pt.recolor((x, y) => inHollow(x, y) && !glow(x, y) && depth(x, y) < 4.5, pool, W_HOLLOW_DEEP);
-  pt.recolor((x, y) => inHollow(x, y) && !glow(x, y) && depth(x, y) >= 4.5 && depth(x, y) < 8.5, pool, W_NIGHT);
-  pt.recolor((x, y) => inHollow(x, y) && !glow(x, y) && depth(x, y) >= 8.5, pool, W_BARREL_LOW);
-  if (N === 44) return water44(pt, ctx, barrel, inHollow);
+  if (N === 44) return water44(pt, ctx, inHollow);
   // The bands, from the barrel's edge outwards.
+  // (Round 6: no drawn turquoise band hugging the barrel any more; his teal fades in there by itself.)
   const bands: [string, [number, number][]][] = [
-    [W_TURQ, [[12, 13], [14, 13], [16, 14], [17, 16], [17, 25], [16, 28], [14, 30], [11, 31]]],
     [W_TEAL, [[15, 12], [17, 13], [18, 15], [18, 26], [17, 29], [15, 31], [12, 32]]],
     [W_DEEP, [[18, 11], [19, 13], [20, 16], [20, 27], [19, 30], [17, 32], [14, 33]]],
     [W_MID, [[21, 11], [22, 14], [22, 28], [21, 31], [19, 33], [16, 35]]],
@@ -1603,17 +1498,21 @@ function water(pt: Paint, ctx: Ctx): void {
       const v = pt.at(x, y), up = pt.at(x, y - 1);
       if (pt.p.lab[v][0] > 0.8 && up >= 0 && pt.p.lab[up][0] < night + 0.08 && !pt.drawn.has(y * N + x)) pt.px(x, y, W_WHITE);
     }
-  // His spray flecks at the top left (and in the barrel), as 1- and 2-pixel marks.
-  const inBarrel = (s: Speck) => inHollow(Math.round(((s.cx + 0.5) * N) / ctx.src.w - 0.5), Math.round(((s.cy + 0.5) * N) / ctx.src.h - 0.5));
-  const spray = ctx.specks.filter((s) => s.cx < 100 && s.cy < 140);
-  // At 88 his finer spray too (found as the hollow's flecks are), about 30 flecks in all, as his.
-  const fine = hollowFlecks(ctx);
-  const spray88 = [...spray, ...fine.filter((f) => f.cx < 100 && f.cy < 140 && !spray.some((s) => Math.hypot(s.cx - f.cx, s.cy - f.cy) < 4))];
-  stampStreaks(pt, spray88.filter((s) => !inBarrel(s)), ctx.src.w, ctx.src.h, 20, 3, 0.2);
-  stampStreaks(pt, fine.filter(inBarrel), ctx.src.w, ctx.src.h, 12, 2, 0.2);
-  // His whitest foam clumps restated in his white (where his own picture is whitest).
+  // His spray at the top left and over the hollow (round 6: his own shapes, not streaks): every fleck
+  // of his (his coarser spray and his finer flecks) put on the pixels it covers by a third or more,
+  // so his bigger drops come out as chunky clumps of two to four pixels, in his colour pushed until
+  // it stands out from the ground.
+  const spray = ctx.specks.filter((s) => s.cx < 100 && s.cy < 150);
+  const fine = hollowFlecks(ctx).filter((f) => f.cx < 100 && f.cy < 150 && !spray.some((s) => Math.hypot(s.cx - f.cx, s.cy - f.cy) < 4));
+  sprayBlobs(pt, ctx, [...spray, ...fine], 1 / 3, 0.18);
+  // His chunky white foam: where most of his own pixels under a pixel are near-white, his near-white
+  // (his crest, his splash in the hollow, his foam crests at the bottom and on the right), and his
+  // pale where a third of them are.
   const L = lightness(ctx.box);
-  pt.recolor((x, y) => L[y * N + x] > 0.87 && !pt.drawn.has(y * N + x), pt.p.rgb.map((c) => toHex(c)), W_WHITE);
+  const share = whiteShare(ctx.src, N, 0.9);
+  const all = pt.p.rgb.map((c) => toHex(c));
+  pt.recolor((x, y) => !pt.drawn.has(y * N + x) && (share[y * N + x] >= 0.33 || L[y * N + x] > 0.87), all, W_WHITE);
+  pt.recolor((x, y) => !pt.drawn.has(y * N + x) && share[y * N + x] >= 0.55, all, W_NEAR);
   // The bottom foam: every pale run in the lower part becomes a horizontal dash of 2 to 4 pixels.
   const pale = (v: number) => pt.p.lab[v][0] > 0.8;
   for (let y = Math.round(30 * k); y < N; y++) {
@@ -1637,37 +1536,43 @@ function water(pt: Paint, ctx: Ctx): void {
   }
 }
 
-/** Points of an ellipse arc (centre, semi-axes, from angle a0 to a1 in degrees, screen y down) as a clean 1-pixel line. */
-function arcPixels(cx: number, cy: number, a: number, b: number, a0: number, a1: number): [number, number][] {
-  const pts: [number, number][] = [];
-  const n = Math.ceil((Math.abs(a1 - a0) / 360) * 2 * Math.PI * Math.max(a, b) * 3);
-  for (let i = 0; i <= n; i++) {
-    const t = ((a0 + ((a1 - a0) * i) / n) * Math.PI) / 180;
-    const p: [number, number] = [Math.round(cx + a * Math.cos(t)), Math.round(cy + b * Math.sin(t))];
-    const q = pts[pts.length - 1];
-    if (!q || q[0] !== p[0] || q[1] !== p[1]) pts.push(p);
-  }
-  return polyPixels(pts);
-}
-
 /**
  * His foam flecks in the hollow: smaller than his spray (one to a few of his pixels), so they are found
  * with their own finer rule on his crop itself (the 3x3 median the other specks are found on wipes them
  * out). They are only drawn: the base keeps them, where its reduction averages them out.
  */
+/**
+ * His spray drops as his own shapes: each fleck put on every icon pixel it covers by `minCover` or
+ * more (at least its centre pixel), in his colour pushed until it stands out from the ground by `minC`.
+ */
+function sprayBlobs(pt: Paint, ctx: Ctx, specks: Speck[], minCover: number, minC: number): void {
+  const N = pt.N, sx = N / ctx.src.w, sy = N / ctx.src.h, per = (1 / sx) * (1 / sy);
+  for (const s of specks) {
+    const cover = new Map<number, number>();
+    for (const j of s.px) {
+      const x = Math.floor(((j % ctx.src.w) + 0.5) * sx), y = Math.floor((Math.floor(j / ctx.src.w) + 0.5) * sy);
+      cover.set(y * N + x, (cover.get(y * N + x) ?? 0) + 1 / per);
+    }
+    let cells = [...cover.entries()].filter(([, c]) => c >= minCover).map(([i]) => i);
+    if (!cells.length) cells = [Math.round((s.cy + 0.5) * sy - 0.5) * N + Math.round((s.cx + 0.5) * sx - 0.5)];
+    const bg = pt.at(cells[0] % N, Math.floor(cells[0] / N));
+    const c = pickContrast(pt.p, s.color, bg >= 0 ? pt.p.lab[bg][0] : 0, minC);
+    pt.spark(cells.sort((a, b) => a - b).map((i) => [i % N, Math.floor(i / N)] as [number, number]), [toHex(pt.p.rgb[c])]);
+  }
+}
+
 const W_HOLLOW_FLECK: SpeckRule = { bright: true, r: 3, thr: 0.07, bgMax: 0.5, minPx: 2, maxPx: 40, maxLong: 9, maxAcross: 5 };
 function hollowFlecks(ctx: Ctx): Speck[] {
   return findSpecks(ctx.src, W_HOLLOW_FLECK);
 }
 
 // The Water Wall at 44. The base is his crop smoothed along his strokes over a longer stretch than
-// the 88 (10 of his pixels), so his bands come out as continuous curves round the barrel and his
-// bottom foam as his diagonal streaks instead of blocks. Over it: the bright turquoise band hugging
-// the barrel as one curved line (an arc concentric to the barrel, as his), the lip, the white top
-// edge of his foam, his spray flecks, and his foam splash at the lower left, put back from his own
-// lightness (his pale where the smoothed picture is pale, his white where it is brightest).
-function water44(pt: Paint, ctx: Ctx, barrel: [number, number][], inHollow: (x: number, y: number) => boolean): void {
-  for (const [x, y] of arcPixels(12.4, 22, 5.6, 8.6, -98, 118)) if (!pt.inside(barrel, x, y)) pt.px(x, y, W_TURQ);
+// the 88 (6 of his pixels), so his bands come out as continuous curves round the hollow and his
+// bottom foam as his diagonal streaks instead of blocks. Over it: the lip, the white top edge of his
+// foam, his spray flecks, his foam splash at the lower left put back from his own lightness (his
+// pale where the smoothed picture is pale, his white where it is brightest), and his three brightest
+// foam drops in the hollow. (Round 6: the hollow is his own misty reduction; no drawn turquoise ring.)
+function water44(pt: Paint, ctx: Ctx, inHollow: (x: number, y: number) => boolean): void {
   // The lip: its underside pale, then the shadow line where it overhangs the barrel.
   pt.line([[6, 15], [8, 13], [11, 12], [14, 12]], W_FOAM);
   pt.line([[7, 15], [9, 14], [11, 13], [13, 13]], W_SHADOW);
@@ -1762,12 +1667,27 @@ function fireball(pt: Paint, ctx: Ctx): void {
   // centre (radius 2.6 of 44), his near-white round it (to radius 4).
   // (His bright arms leave the core at about 90, 210 and 330 degrees and turn clockwise by about 0.05
   // of a turn per pixel of radius: a three-armed spiral fitted to his picture between radius 4 and 16.)
-  for (const a0 of [-90, 30, 150])
-    for (const [x, y] of spiralPts(cx, cy, 4 * k, 11 * k, 0.34, (a0 * Math.PI) / 180)) pt.px(x, y, Math.hypot(x - cx, y - cy) < 7 * k ? '#f9ce5d' : '#f7ab3b');
-  for (const a0 of [-150, -30, 90])
-    for (const [x, y] of spiralPts(cx, cy, 3.6 * k, 10 * k, 0.3, (a0 * Math.PI) / 180)) pt.px(x, y, Math.hypot(x - cx, y - cy) < 7 * k ? '#fdf7ab' : '#fded8e');
+  // Round 6: his arms curl on into the white-hot core: the core is laid first and the spiral runs on
+  // inside it along the same turn (1.5 px further in at 44, 3.5 px at 88), the gaps there his pale
+  // yellow cutting into the white, so the core is his pinwheel rather than a round disc.
   const white = toHex(pt.p.rgb[pt.p.rgb.length - 1]);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (r(x, y) <= 4) pt.px(x, y, r(x, y) <= 2.6 ? white : '#fdfde2');
+  const inward = N === 44 ? 1.5 : 1.75; // in 44 pixels: 1.5 px at 44, 3.5 px at 88
+  // A spiral from r0 to r1 over `turns`, extended inward by `inward` along the same turn rate.
+  const arm = (r0: number, r1: number, turns: number, a0: number): [number, number][] => {
+    const rate = turns / (r1 - r0);
+    return spiralPts(cx, cy, (r0 - inward) * k, r1 * k, turns + rate * inward, ((a0 - rate * inward * 360) * Math.PI) / 180);
+  };
+  for (const a0 of [-90, 30, 150])
+    for (const [x, y] of arm(4, 11, 0.34, a0)) {
+      const d = Math.hypot(x - cx, y - cy) / k;
+      pt.px(x, y, d < 4 ? '#fded8e' : d < 7 ? '#f9ce5d' : '#f7ab3b');
+    }
+  for (const a0 of [-150, -30, 90])
+    for (const [x, y] of arm(3.6, 10, 0.3, a0)) {
+      const d = Math.hypot(x - cx, y - cy) / k;
+      if (d >= 4) pt.px(x, y, d < 7 ? '#fdf7ab' : '#fded8e');
+    }
   // His sparks: irregular, at his own places.
   const sx = N / ctx.src.w, sy = N / ctx.src.h;
   const pos = (s: Speck): [number, number] => [(s.cx + 0.5) * sx - 0.5, (s.cy + 0.5) * sy - 0.5];
@@ -1791,9 +1711,11 @@ function fireball(pt: Paint, ctx: Ctx): void {
       const p: [number, number] = [Math.round(x + ux * t), Math.round(y + uy * t)];
       if (!pts.some((q) => q[0] === p[0] && q[1] === p[1])) pts.push(p);
     }
-    const far = r(x, y) > 23;
-    const core = far ? '#b73f19' : s.peak > 0.66 ? '#f7ab3b' : s.peak > 0.56 ? '#f38a2f' : '#cf5218';
-    const tail = far ? '#8b2916' : '#cf5218';
+    // Round 6: bright (his yellow or orange, by his own brightness) only near the centre; the outer
+    // ones his dim #cf5218 with a darker tail, the farthest dimmer still.
+    const far = r(x, y) > 23, outer = r(x, y) > 18;
+    const core = far ? '#b73f19' : outer ? '#cf5218' : s.peak > 0.66 ? '#f7ab3b' : s.peak > 0.56 ? '#f38a2f' : '#cf5218';
+    const tail = far ? '#8b2916' : outer ? '#a0321a' : '#cf5218';
     pt.spark(pts, n === 1 ? [core] : n === 2 ? [core, tail] : [core, core, tail]);
   }
 }
@@ -1832,7 +1754,8 @@ const ICONS: IconSpec[] = [
     bil44: [0.8, 0.03],
     flow: [2, 6],
     flow44: [0, 0],
-    art: (pt, ctx) => (pt.N === 44 ? kirin44(pt, ctx) : kirin88(pt)),
+    sharp: { rect: [40, 22, 84, 76], feather: 4, s44: [0.9, 0.4], s88: [1.5, 0.5] },
+    art: (pt, ctx) => (pt.N === 44 ? kirin44(pt, ctx) : kirin88(pt, ctx)),
     bil88: [0.8, 0.03],
   },
   {
@@ -1864,6 +1787,8 @@ const ICONS: IconSpec[] = [
       { box: [68, 68, 92, 104], lo: 0.85, hi: 0.95, spare: false, by: 'teal', why: 'his inner curl, its greenest turquoise (the bright band round the barrel)' },
       { box: [68, 68, 92, 104], lo: 0.55, hi: 0.75, spare: false, by: 'teal', why: 'his inner curl, its mid turquoise' },
       { box: [20, 0, 199, 60], lo: 0.97, hi: 1, spare: false, by: 'L', why: 'his crest foam, its near-white (his whitest foam)' },
+      { box: [36, 70, 72, 135], lo: 0.25, hi: 0.4, spare: false, by: 'L', why: 'his hollow, its misty grey-blue (the mist under the curl)' },
+      { box: [36, 70, 72, 135], lo: 0.45, hi: 0.6, spare: false, by: 'L', why: 'his hollow, its lighter misty grey-teal (where his teal fades in)' },
     ],
     art: water,
     bil88: [1, 0.05],
@@ -1879,9 +1804,9 @@ const ICONS: IconSpec[] = [
  * a dark gap, his thin gold line and a black line before the picture. Each side keeps his own
  * shade of steel and gold. Over the corners sit his gold brackets (round 5, BRACKET below): a block
  * holding his rivet, a grey ball lit from the top left in a one-pixel dark socket, and two arms along
- * the bar, two pixels of gold for their full ten pixels (his pale outer edge, his gold inside) with
+ * the bar, two pixels of gold for their full ten pixels (his lighter gold on the outer edge, his gold inside) with
  * his step on the inner edge near the block (three pixels thick there) and a 45-degree tip. Every
- * bracket is drawn the same way mirrored into its corner, so all four are lit pale on their outer
+ * bracket is drawn the same way mirrored into its corner, so all four are lit on their outer
  * edges, with his shadow only on their inner edges. The brackets stay on the 6-pixel border; the
  * window is transparent except its 4 corner pixels (the dark edge where the bracket blocks end), so
  * the frame can be drawn over the icon or under it.
@@ -1902,11 +1827,15 @@ const STEEL: FrameColors = {
   steelLight: ['#626978', '#404858', '#434856', '#484e5c'],
   steel: ['#2d3444', '#2f3340', '#2d3440', '#2e3544'],
   gap: '#0e0f13',
-  gold: ['#c2b38d', '#8c765a', '#af9c7e', '#a18a6a'],
+  // His gold line, per side (round 6: moved toward his antique gold, measured on his four slots: the
+  // median of the line on each side and its brighter half; a little darker and warmer than round 5).
+  gold: ['#b8a27a', '#83684c', '#967c5a', '#8c7253'],
   inner: '#0a0607',
-  // His antique gold, measured on his brackets: his pale on the outer edges, his gold for the arms'
-  // inner row, his two main tones for the body, his darkest for the shadow on the inner edges.
-  bracket: { hi: '#ebd8a9', gold: '#cab082', light: '#a6875b', mid: '#876b46', dark: '#584429', edge: '#1a1206' },
+  // His antique gold on the brackets (round 6, measured on his four slots: the median of his bracket
+  // gold is (144, 117, 85) with a saturation of 0.38, its brighter half (171, 143, 107)): his upper
+  // ramp on the outer edges (no longer a pale cream), his brighter half round the socket, his median
+  // for the arms' inner row, then his two darker steps for the body and the shadow on the inner edges.
+  bracket: { hi: '#bc9c6c', gold: '#a4835c', light: '#8c6d4c', mid: '#6e5437', dark: '#4f3c26', edge: '#1a1206' },
   // His dark steel rivets (his three measured tones) in a dark socket.
   rivet: { hi: '#b4b7bf', mid: '#78787c', dark: '#555251', rim: '#15161a' },
 };
@@ -1919,9 +1848,10 @@ const GOLDEN: FrameColors = {
   steelLight: STEEL.steelLight,
   steel: STEEL.steel,
   gap: '#2a1c0a',
-  gold: ['#ead9a8', '#b89c74', '#d6c39c', '#c8b08a'],
+  // One step up his ramp from the resting slot, every tone.
+  gold: ['#d0b88a', '#9c8260', '#ae9470', '#a48864'],
   inner: '#0a0607',
-  bracket: { hi: '#fff3c8', gold: '#e8cf98', light: '#cfab6f', mid: '#a8875a', dark: '#7c6646', edge: '#1a1206' },
+  bracket: { hi: '#dcbc84', gold: '#bc9c6c', light: '#a4835c', mid: '#8c6d4c', dark: '#6e5437', edge: '#1a1206' },
   rivet: { hi: '#ffffff', mid: '#a8aeba', dark: '#5a606c', rim: '#15161a' },
 };
 
@@ -1929,7 +1859,7 @@ const SLOT = 56, RING = 6, SLICE = 16;
 
 /**
  * The top-left bracket, drawn (row y, column x of the slot), mirrored into the other corners: H his
- * pale outer edge, G his light gold (round the socket), L his gold (the arms' inner row) and M his
+ * lighter gold on the outer edge, G his light gold (round the socket), L his gold (the arms' inner row) and M his
  * darker gold, D his shadow (inner edges only), r the rivet's dark socket, c the rivet's ball ('.'
  * the frame below).
  */
@@ -2059,12 +1989,12 @@ savePng(join(OUT, 'skill_slot_steel_active.png'), frameActive);
 const manifest = {
   kit: 'ui_icons',
   reference: 'docs/reference/icons-owner-reference-1.jpg',
-  round: 5,
+  round: 6,
   screen: [1600, 900],
   pixel: 'one art pixel per screen pixel (finer than ui_battle, whose art pixels are 2x2): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated',
   sliceOrder: 'top, right, bottom, left (pixels)',
   method:
-    'his crop area-averaged (box) straight to the size (smoothed along his strokes first for the Kirin 88 and the water), a light bilateral filter, nearest palette entry with no dither (hue weighed up for the fire wave), every 1- or 2-pixel area of one colour merged into its neighbours, then only what the reduction loses restated on his picture (traced on his crop; the Kirin head at 44 drawn whole by hand over his own mane, as no reduction keeps his profile readable at that size) and his sparks drawn on top (see tools/ui/ui-icons.ts)',
+    'his crop area-averaged (box) straight to the size (smoothed along his strokes first for the Kirin 88 and the water; over the Kirin head his unsmoothed box reduction unsharp-masked at the size), a light bilateral filter, nearest palette entry with no dither (hue weighed up for the fire wave), every 1- or 2-pixel area of one colour merged into its neighbours, then only what the reduction loses restated on his picture (traced on his crop: the Kirin glow, gum, fangs, horn tip, nostril and teeth; the fire wave swirl, tongue and embers; the water lip, foam and spray; the fireball core and arms) and his sparks drawn on top (see tools/ui/ui-icons.ts)',
   checks:
     'small = 8-connected areas of one colour of 1 or 2 pixels: smallSparks hold one of his sparks, embers or foam flecks, smallDrawn hold a drawn detail (fang, eye, outline, bolt, seam), smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick, along a row or a column [length, row or col, index]',
   icons: Object.fromEntries(
@@ -2093,7 +2023,7 @@ const manifest = {
       layer: 'over or under the icon, either way: the window is transparent except its 4 corner pixels (dark #1a1206, where the bracket blocks end), and the gold brackets sit on the 6-pixel border, so nothing else of the frame covers the icon.',
       emptyFill: '#0f1116',
       at2x: 'on a 2x screen: the frame doubled (nearest, 112x112, slices 32) and the @2x icon in its 88x88 window at 12,12',
-      use: 'His skill slot from the icon picture: dark steel bar with a lit outer edge, his thin gold line inside, antique gold corner brackets (arms 2 px of gold for their full 10 px, his pale outer edge and his gold inside, with his step on the inner edge near the block and a 45-degree tip; every bracket lit pale on its outer edges, his shadow only on the inner edges) holding his rivet, a grey ball lit from the top left in a 1-px dark socket (4 px across). The skill icon goes in the window.',
+      use: 'His skill slot from the icon picture: dark steel bar with a lit outer edge, his thin gold line inside, antique gold corner brackets (his gold, measured on his four slots) (arms 2 px of gold for their full 10 px, his lighter gold on the outer edge and his gold inside, with his step on the inner edge near the block and a 45-degree tip; every bracket lit on its outer edges, his shadow only on the inner edges) holding his rivet, a grey ball lit from the top left in a 1-px dark socket (4 px across). The skill icon goes in the window.',
     },
     skill_slot_steel_active: {
       file: 'skill_slot_steel_active.png',
@@ -2128,7 +2058,7 @@ if (process.env.UI_SHEETS) {
   const parts: { img: Img; x: number; y: number }[] = [];
   let y = pad;
   const put = (img: Img, x: number) => parts.push({ img, x, y });
-  const title = screenText('SKILL ICONS 1 (round 5)  -  his icons beside ours (sheet at 2x: every pixel shown 2x2)', 'title', HEAD);
+  const title = screenText('SKILL ICONS 1 (round 6)  -  his icons beside ours (sheet at 2x: every pixel shown 2x2)', 'title', HEAD);
   put(title, pad);
   y += title.h + 14;
   const heads = ['his, at 88', 'ours, 88 (the 2x file)', 'ours, 44 at 2x', 'his box to 44, 2x', 'ours, 44 at 1x'];

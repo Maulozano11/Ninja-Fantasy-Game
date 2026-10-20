@@ -32,8 +32,13 @@ PHASE = (0.6, 0.7)
 POMMEL_BOX = (22, 48, 30, 57)  # x0, y0, x1, y1 (exclusive)
 GRIP = ((28.5, 55.5), (34.0, 61.0))  # the hidden grip, from the pommel to the guard
 BLADE_BOX = (30, 58, 60, 99)
-# The fist's centre on the grip: the template's pivot (where our hand holds it).
-PIVOT = (31, 58)
+# The last row of the hilt (pommel, grip and guard); the blade runs below it. His relief is kept down
+# to here: further down his coat, the same blue as the relief, shows between the blade's facets.
+HILT_END = 67
+# Where our hand holds it: the template's pivot. Our fist sits there one pixel left of his and two
+# higher, so the pivot is that much further along the grip, and our fist covers the sword as his does
+# (the owner, 2026-10-20: the pommel's relief above the fist and the guard's below it showing).
+PIVOT = (32, 60)
 # The angle our idle pose holds a blade at: the template is drawn at it, so at rest it is his pixels.
 ANGLE = 52
 SEED = 7
@@ -101,7 +106,13 @@ def main():
 
     # The crystal: pale blue to white, bluer than it is red (the coat behind is dark navy).
     crystal = ((b > r + 20) & (L > 100)) | ((L > 200) & (b >= r) & (L < 240))
-    lab, n = components(crystal & inbox(BLADE_BOX))
+    # His relief on the hilt: the dark grey-blue edges of the guard, set into the crystal (crystal on
+    # two sides; his coat's grey-blue lies past his black line, touching the crystal at a corner at
+    # most).
+    relief = (b > r + 25) & (g > 0.65 * b) & (L > 55) & (ys <= HILT_END)
+    cp = np.pad(crystal, 1).astype(np.int32)
+    sides = cp[:-2, 1:-1] + cp[2:, 1:-1] + cp[1:-1, :-2] + cp[1:-1, 2:]
+    lab, n = components((crystal | (relief & (sides >= 2))) & inbox(BLADE_BOX))
     biggest = max(range(1, n + 1), key=lambda i: (lab == i).sum())
     blade = lab == biggest
     # The pommel: his blue pixels above the fist (light and mid blue), not his black line.
@@ -143,12 +154,15 @@ def main():
     kind[grip] = 'g'
     kind[ring] = 'o'
     col = a.copy()
-    dark = (luma(a) < 92) & inner
+    # The dark pixels inside: on the blade, all of them (his black line and his coat showing through
+    # between the facets: "los agarraste del abrigo"); on the hilt, only the black and grey ones, as
+    # his dark blues there are the guard's relief (the owner, 2026-10-20: "faltan píxeles de relieve").
+    dim = (luma(a) < 92) & inner
+    dark = dim & (((b - r) < 25) | (ys > HILT_END))
 
-    # His notes before that: no black or near-black pixels inside the sword. His black line between
-    # the guard and the blade, the coat showing through there, and the darkest blue inside the blade
-    # take the exact colour of the crystal next to them, looked for along the blade first, so his
-    # facet stripes run on.
+    # His notes before that: no black or near-black pixels inside the sword. They take the exact
+    # colour of the light crystal next to them, looked for along the blade first, so his facet
+    # stripes run on.
     order = ((-1, -1), (1, 1), (0, -1), (-1, 0), (1, 0), (0, 1), (-1, 1), (1, -1))
     for _ in range(3):
         fix = []
@@ -170,16 +184,17 @@ def main():
                 if not (inside_line or dark_inside):
                     continue
                 for dy, dx in order:
-                    if kind[y + dy, x + dx] == 'c' and not dark[y + dy, x + dx]:
+                    if kind[y + dy, x + dx] == 'c' and not dim[y + dy, x + dx]:
                         fix.append((y, x, col[y + dy, x + dx]))
                         break
         for y, x, c in fix:
             kind[y, x] = 'c'
             col[y, x] = c
             dark[y, x] = False
+            dim[y, x] = False
 
     # His colours as palette characters (one per colour; colours a step apart share one).
-    CHARS = 'abcdefhijklmnpqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-/:;<=>?@[]^_{|}~'
+    CHARS = 'abcdefhijklmnpqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-/:;<=>?@[]^_{|}~' + 'αβγδεζηθικλμνξπρστυφχψω'
     grid = np.full((H, W), '.', dtype='<U1')
     palette = {}
     seen = []

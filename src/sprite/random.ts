@@ -11,13 +11,15 @@ const pick = <T,>(list: T[]): T => list[Math.floor(Math.random() * list.length)]
 const chance = (p: number) => Math.random() < p;
 
 function randomChoice(def: ItemDef): ItemChoice {
-  // Keep each item's own default for metal/glow slots; randomize cloth, leather and hair.
-  return {
+  // Keep each item's own default for metal/glow slots; randomize cloth, leather and hair, and parts.
+  const choice: ItemChoice = {
     id: def.id,
     colors: def.colors.map((c) =>
       c.kind === 'hair' ? pick(HAIR_COLORS) : c.kind === 'metal' || c.kind === 'glow' ? c.default : chance(0.6) ? pick(CLOTH_PALETTE) : c.default,
     ),
   };
+  if (def.parts) choice.parts = Object.fromEntries(def.parts.map((p) => [p.key, pick(p.options).id]));
+  return choice;
 }
 
 function slotItem(slot: SlotId, body: BodyType): ItemChoice | undefined {

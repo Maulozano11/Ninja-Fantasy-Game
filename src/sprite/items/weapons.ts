@@ -175,23 +175,6 @@ export const ICE_CRYSTAL_SWORD: PixelTemplate & { angle: number; colors: Record<
   },
 };
 
-export const KATANA: PixelTemplate = {
-  pivot: [6, 5],
-  rows: [
-    '....................................................',
-    '............db...............................222....',
-    '............cb...................2222222222224442222',
-    'kkkkkkkkkkkkcbg2222222222222222224444444444443334444',
-    'KKwKKwKKwKKwcbg4444444444444444444443333444434445444',
-    'cKKwKKwKKwKKbbg344443333444433334444444444444555....',
-    'KKwKKwKKwKKwbbG444444444444444444555555555555.......',
-    'kkkkkkkkkkkkaaG555555555555555555...................',
-    '............aa......................................',
-    '............aa......................................',
-    '....................................................',
-  ],
-};
-
 export const KUNAI: PixelTemplate = {
   pivot: [6, 3],
   rows: [
@@ -247,7 +230,8 @@ export function drawWeapon(g: DrawCtx, depth: Depth, t: PixelTemplate, hand: Vec
 /**
  * Draws a painted weapon (its own colours and black line, drawn at its own angle) held at `hand`
  * pointing along `deg`. At its own angle every pixel is the painter's; pointing left it is mirrored
- * across its length so the lit edge stays on top. `blade` and `grip` recolour it from `base`.
+ * across its length so the lit edge stays on top. With a `tint`, `blade` and `grip` recolour it from
+ * `base`; without one it keeps its colours.
  */
 export function drawPaintedWeapon(
   g: DrawCtx,
@@ -255,13 +239,13 @@ export function drawPaintedWeapon(
   t: PixelTemplate & { angle: number; colors: Record<string, string> },
   hand: Vec,
   deg: number,
-  tint: { base: string; blade: string; grip: string; gripBase: string },
+  tint?: { base: string; blade: string; grip: string; gripBase: string },
 ): void {
   const a = ((deg % 360) + 540) % 360 - 180;
   const flip = Math.abs(a) > 90;
   const pal: TemplatePalette = {};
   for (const [ch, hex] of Object.entries(t.colors)) {
-    const c = ch === 'o' ? hex : ch === 'g' || ch === 'G' ? retintHex(hex, tint.gripBase, tint.grip) : retintHex(hex, tint.base, tint.blade);
+    const c = !tint || ch === 'o' ? hex : ch === 'g' || ch === 'G' ? retintHex(hex, tint.gripBase, tint.grip) : retintHex(hex, tint.base, tint.blade);
     pal[ch] = [g.m(c, 'flat'), 3];
   }
   // Flipped, the template points at -angle; either way it turns by what is left to reach `a`.

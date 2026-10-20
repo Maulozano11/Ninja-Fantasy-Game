@@ -105,19 +105,47 @@ export interface ColorSlot {
   kind?: RampKind;
 }
 
+/** A part of an item the player picks from a few versions (a katana's steel, blade, guard and hilt). */
+export interface PartSlot {
+  key: string;
+  label: string;
+  /** The versions; the first is the default. */
+  options: { id: string; label: string; desc: string }[];
+}
+
+/** A pixel picture of an item on its own, for the creator's part pickers. */
+export interface PartsPreview {
+  rows: string[];
+  colors: Record<string, string>;
+}
+
 export interface ItemDef {
   id: string;
   slot: SlotId | 'accessory';
   name: string;
   desc: string;
   colors: ColorSlot[];
-  draw: (g: DrawCtx, colors: string[]) => void;
+  /** Parts the player picks a version of; `draw` gets the choice (every key, defaults filled in). */
+  parts?: PartSlot[];
+  /** The item on its own with these parts, for the part pickers' thumbnails. */
+  partsPreview?: (look: SpriteAppearance, parts: Record<string, string>) => PartsPreview;
+  draw: (g: DrawCtx, colors: string[], parts: Record<string, string>) => void;
   /** For armor: which legacy armor style supplies the AC bonus. */
   statsArmor?: string;
   /** Hides the hair layers (full helmets). */
   hidesHair?: boolean;
   /** Body types that can wear it (all when missing): fitted pieces made for one figure. */
   bodies?: BodyType[];
+}
+
+/** An item's parts as chosen, every part filled in (unknown or missing versions take the default). */
+export function resolveParts(def: ItemDef, parts: Record<string, string> | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const p of def.parts ?? []) {
+    const id = parts?.[p.key];
+    out[p.key] = p.options.some((o) => o.id === id) ? id! : p.options[0].id;
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

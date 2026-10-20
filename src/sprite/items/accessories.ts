@@ -6,7 +6,9 @@ import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import type { RampKind } from '../color';
 import { hd } from './hairkit';
-import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KATANA, KUNAI } from './weapons';
+import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
+import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
+import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, poleAngle, swordAngle } from '../grip';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
@@ -293,14 +295,19 @@ export const HELD_ITEMS: ItemDef[] = [
     id: 'held_katana',
     slot: 'held',
     name: 'Katana',
-    desc: 'A curved single-edged blade with a wrapped grip.',
-    colors: [col('blade', 'Blade', '#d4dbe4', 'metal'), col('hilt', 'Grip', '#2b2233', 'leather'), col('guard', 'Guard', '#c9a227', 'metal')],
-    draw: (g, [blade, hilt, guard]) =>
-      handsBusy(g)
-        ? stowKatanaAtHip(g, hilt, guard)
-        : handsLimp(g)
-          ? drawWeapon(g, 'nearArm.held', KATANA, droppedGrip(g, 0.55), -86, { blade, grip: hilt, guard, collar: guard })
-          : drawWeapon(g, 'nearArm.held', KATANA, gripPoint(g), swordAngle(g), { blade, grip: hilt, guard, collar: guard }),
+    desc: 'A curved single-edged blade built from parts in the style of the nichirin swords: steel, blade, guard and hilt.',
+    colors: [],
+    // The parts the owner approved (2026-10-20); a nichirin blade takes the colour of the chakra.
+    parts: KATANA_PARTS,
+    partsPreview: (look, parts) => katanaTemplate(parts, chakraHex(look.chakra)),
+    draw: (g, _colors, parts) => {
+      const t = katanaTemplate(parts, chakraHex(g.look.chakra));
+      if (handsBusy(g)) {
+        const { hilt, guard } = katanaHipColors(parts);
+        stowKatanaAtHip(g, hilt, guard);
+      } else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', t, droppedGrip(g, 0.55), -86);
+      else drawPaintedWeapon(g, 'nearArm.held', t, gripPoint(g), swordAngle(g));
+    },
   },
   {
     id: 'held_crystal',

@@ -185,6 +185,24 @@ const ES: Record<string, string> = {
   Belt: 'Cinturón',
   Bands: 'Bandas',
   Helm: 'Yelmo',
+  // the katana's parts
+  Hilt: "Empuñadura",
+  "Shoulder Plate": "Placa del hombro",
+  "Silver tamahagane": "Tamahagane plateado",
+  "Black kurogane": "Kurogane negro",
+  "Heian tachi": "Tachi Heian",
+  "Bright folded steel, the classic blade.": "Acero plegado y brillante, la hoja clásica.",
+  "Black steel with a cold violet sheen: rare, and of ill omen among demon slayers.": "Acero negro con un brillo violeta frío: raro, y de mal agüero entre los cazadores de demonios.",
+  "The blade takes the colour of its wielder's chakra, strongest toward the edge.": "La hoja toma el color del chakra de quien la empuña, más intenso hacia el filo.",
+  "The classic ridged blade since the Kamakura period, with a straight temper line (suguha).": "La hoja clásica con arista desde el periodo Kamakura, con línea de temple recta (suguha).",
+  "\"Little crow\", forged by Amakuni in the 8th century: edged on both sides toward a spear-like point.": "\"Cuervo pequeño\", forjada por Amakuni en el siglo VIII: con filo por ambos lados hacia una punta de lanza.",
+  "Sōshū style: a groove along the back, a wild temper line, and Kurikara - Fudō Myōō's sword with the dragon round it - carved by the guard.": "Estilo Sōshū: una acanaladura en el lomo, un temple salvaje y Kurikara (la espada de Fudō Myōō con el dragón enroscado) grabada junto a la guarda.",
+  "Four lobes like a cut melon, a court shape since the Heian period: iron with a gold rim.": "Cuatro lóbulos como un melón cortado, forma de la corte desde el periodo Heian: hierro con borde de oro.",
+  "Flames: the fire round Fudō Myōō that burns away evil, for a sword that cuts demons.": "Llamas: el fuego de Fudō Myōō que quema el mal, para una espada que corta demonios.",
+  "Round, with the triple tomoe of Hachiman, the kami of war, inlaid in gold.": "Redonda, con el triple tomoe de Hachiman, el kami de la guerra, incrustado en oro.",
+  "Silk cord crossed over white ray skin, a gold ornament under the middle diamond.": "Cordón de seda cruzado sobre piel de raya blanca, con un adorno de oro bajo el rombo central.",
+  "The bare white ray skin of a court sword, gold fittings and a red silk tassel.": "La piel de raya blanca de una espada de la corte, herrajes de oro y una borla de seda roja.",
+  "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
 };
 
 /** An editor label in the screen's language. */

@@ -3,7 +3,7 @@
 import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
-import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS } from './ctx';
+import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor } from './rig';
@@ -169,11 +169,12 @@ export function renderSprite(
     const def = equipped.get(slot);
     if (!def) continue;
     if (slot === 'hair' && hideHair) continue;
-    def.draw(g, resolveColors(def, look.slots[slot]!.colors));
+    const choice = look.slots[slot]!;
+    def.draw(g, resolveColors(def, choice.colors), resolveParts(def, choice.parts));
   }
   for (const acc of look.accessories) {
     const def = getItem(acc.id);
-    if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors));
+    if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors), resolveParts(def, acc.parts));
   }
   drawHeadband(g);
   // clothes over a female torso follow the bust (fitted armors shape their own plates)

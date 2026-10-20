@@ -62,7 +62,7 @@ function liftOf(hex: string): number {
 }
 /** Draws every item with the tones lifted for its main color (parts in other colors set their own). */
 function liftMain(items: ItemDef[]): ItemDef[] {
-  return items.map((d) => ({ ...d, draw: (g: DrawCtx, c: string[]) => lifted(c[0], () => d.draw(g, c)) }));
+  return items.map((d) => ({ ...d, draw: (g: DrawCtx, c: string[], p: Record<string, string>) => lifted(c[0], () => d.draw(g, c, p)) }));
 }
 /** Runs `fn` with the cloth tones lifted for `hex` (see liftOf). */
 function lifted<T>(hex: string, fn: () => T): T {

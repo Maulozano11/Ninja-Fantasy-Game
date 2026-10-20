@@ -1,17 +1,59 @@
-// Katana parts in the style of Demon Slayer's nichirin blades: a steel colour, a blade, a guard
-// (tsuba) and a hilt (tsuka), each with three versions (a, b, c), built from Japanese sword history,
-// culture and religion. The sword is drawn pointing right with its edge down, the pivot on the grip
-// just behind the guard. Every part paints its own characters; the black line goes round the whole.
+// The katana, built from parts in the style of Demon Slayer's nichirin blades (approved by the owner,
+// 2026-10-20): a steel colour, a blade, a guard (tsuba) and a hilt (tsuka), each in three versions
+// (a, b, c) drawn from Japanese sword history, culture and religion. The sword is drawn pointing right
+// with its edge down, the pivot on the grip just behind the guard. Every part paints its own
+// characters; the black line goes round the whole.
 
-export type Part = 'a' | 'b' | 'c';
-export interface KatanaChoice {
+import type { PartSlot, PartsPreview } from '../ctx';
+import type { PixelTemplate } from '../rotsprite';
+
+type Part = 'a' | 'b' | 'c';
+interface KatanaChoice {
   steel: Part;
   blade: Part;
   guard: Part;
   hilt: Part;
-  /** Steel 'c' (nichirin): the colour of the wielder's nature. */
-  nature?: string;
 }
+
+/** The parts the creator offers, first version the default (the classic silver katana). */
+export const KATANA_PARTS: PartSlot[] = [
+  {
+    key: 'steel',
+    label: 'Steel',
+    options: [
+      { id: 'a', label: 'Silver tamahagane', desc: 'Bright folded steel, the classic blade.' },
+      { id: 'b', label: 'Black kurogane', desc: 'Black steel with a cold violet sheen: rare, and of ill omen among demon slayers.' },
+      { id: 'c', label: 'Nichirin', desc: 'The blade takes the colour of its wielder\'s chakra, strongest toward the edge.' },
+    ],
+  },
+  {
+    key: 'blade',
+    label: 'Blade',
+    options: [
+      { id: 'a', label: 'Shinogi-zukuri', desc: 'The classic ridged blade since the Kamakura period, with a straight temper line (suguha).' },
+      { id: 'b', label: 'Kogarasu-maru', desc: '"Little crow", forged by Amakuni in the 8th century: edged on both sides toward a spear-like point.' },
+      { id: 'c', label: 'Masamune', desc: 'Sōshū style: a groove along the back, a wild temper line, and Kurikara - Fudō Myōō\'s sword with the dragon round it - carved by the guard.' },
+    ],
+  },
+  {
+    key: 'guard',
+    label: 'Guard',
+    options: [
+      { id: 'a', label: 'Mokkō', desc: 'Four lobes like a cut melon, a court shape since the Heian period: iron with a gold rim.' },
+      { id: 'b', label: 'Kaen', desc: 'Flames: the fire round Fudō Myōō that burns away evil, for a sword that cuts demons.' },
+      { id: 'c', label: 'Mitsudomoe', desc: 'Round, with the triple tomoe of Hachiman, the kami of war, inlaid in gold.' },
+    ],
+  },
+  {
+    key: 'hilt',
+    label: 'Hilt',
+    options: [
+      { id: 'a', label: 'Hineri-maki', desc: 'Silk cord crossed over white ray skin, a gold ornament under the middle diamond.' },
+      { id: 'b', label: 'Heian tachi', desc: 'The bare white ray skin of a court sword, gold fittings and a red silk tassel.' },
+      { id: 'c', label: 'Shimenawa', desc: 'A red and white twisted cord like a shrine\'s sacred rope, hung with folded paper (shide) that purifies.' },
+    ],
+  },
+];
 
 const W = 67;
 const H = 25;
@@ -315,15 +357,7 @@ function outline(g: Grid): void {
 }
 
 // --- palettes ------------------------------------------------------------------------------------------
-export const NATURES: Record<string, string> = {
-  fire: '#e2452b',
-  water: '#2f86d9',
-  lightning: '#f2c41c',
-  wind: '#36b25a',
-  earth: '#c48a3c',
-};
-
-function steelColors(steel: Part, nature = NATURES.water): Record<string, string> {
+function steelColors(steel: Part, nature: string): Record<string, string> {
   if (steel === 'b') {
     // Kurogane: black steel, rare and of ill omen among slayers; a cold violet sheen on the ridge.
     return { M: '#0b0a10', J: '#1c1924', R: '#5f5870', H: '#272330', N: '#2f2a3a', E: '#9b92ab', W: '#d9d2e3', k: '#4a4458', B: '#08070b', b: '#2a2633' };
@@ -355,13 +389,13 @@ function hiltColors(kind: Part): Record<string, string> {
   return { I: '#23305a', i: '#4a62a3', d: '#121933', S: '#efe9da', Y: '#f0c14b', y: '#a2771f', C: '#26232b', c: '#121016' };
 }
 
-export interface Built {
-  rows: string[];
-  pivot: [number, number];
-  colors: Record<string, string>;
+const asPart = (v: string | undefined): Part => (v === 'b' || v === 'c' ? v : 'a');
+
+function choiceOf(parts: Record<string, string>): KatanaChoice {
+  return { steel: asPart(parts.steel), blade: asPart(parts.blade), guard: asPart(parts.guard), hilt: asPart(parts.hilt) };
 }
 
-export function buildKatana(k: KatanaChoice): Built {
+function buildKatana(k: KatanaChoice, nature: string): PartsPreview & { pivot: [number, number] } {
   const g = grid();
   paintHilt(g, k.hilt);
   paintGuard(g, k.guard);
@@ -374,10 +408,36 @@ export function buildKatana(k: KatanaChoice): Built {
     a: '#a57a28',
     G: '#e9b84a',
     g: '#3a2f20',
-    ...steelColors(k.steel, k.nature),
+    ...steelColors(k.steel, nature),
     ...hiltColors(k.hilt),
     // the guard's gold collar (fuchi) wins over the hilt's own gold where both use 'Y'/'y'
     ...guardColors(k.guard),
   };
   return { rows: g.map((r) => r.join('')), pivot: [12, C], colors };
+}
+
+const built = new Map<string, PixelTemplate & { angle: number; colors: Record<string, string> }>();
+
+/**
+ * The katana with these parts (missing ones take the classic version), drawn pointing right (angle
+ * 0). `nature` is the nichirin steel's colour: the wielder's chakra.
+ */
+export function katanaTemplate(parts: Record<string, string>, nature: string): PixelTemplate & { angle: number; colors: Record<string, string> } {
+  const k = choiceOf(parts);
+  const key = `${k.steel}${k.blade}${k.guard}${k.hilt}${k.steel === 'c' ? nature : ''}`;
+  let t = built.get(key);
+  if (!t) {
+    t = { ...buildKatana(k, nature), angle: 0 };
+    built.set(key, t);
+  }
+  return t;
+}
+
+/** The colours the sheathed katana shows at the hip: its hilt's wrap and its guard. */
+export function katanaHipColors(parts: Record<string, string>): { hilt: string; guard: string } {
+  const k = choiceOf(parts);
+  return {
+    hilt: { a: '#23305a', b: '#efe9da', c: '#cf2b2f' }[k.hilt],
+    guard: { a: '#d9a63a', b: '#d8322a', c: '#6d6a78' }[k.guard],
+  };
 }

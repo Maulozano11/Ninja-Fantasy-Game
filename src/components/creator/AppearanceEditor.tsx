@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Flame, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
 import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
-import type { ItemDef } from '../../sprite/ctx';
+import { resolveParts, type ItemDef } from '../../sprite/ctx';
 import { EMBLEMS } from '../../sprite/items/headband';
 import { CHAKRA_CHOICES, chakraHex } from '../../sprite/chakraInfo';
 import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
@@ -25,6 +25,7 @@ import { PixelEditor } from './PixelEditor';
 import { L } from './words';
 import { useLang } from '../../i18n';
 import { SpriteThumb } from './SpriteThumb';
+import { PartThumb } from './PartThumb';
 import { serif } from './stage';
 
 /**
@@ -661,6 +662,8 @@ const SlotPicker: React.FC<{
 
   const choose = (def: ItemDef | null) => {
     if (!def) return setSlot(slot, null);
+    // The item already worn stays as it is (its colors and parts).
+    if (current && def.id === current.id) return;
     // Keep the player's colors when switching between items with compatible slots.
     const keep = current && currentDef ? current.colors : [];
     setSlot(slot, { id: def.id, colors: def.colors.map((c, i) => (currentDef?.colors[i]?.kind === c.kind && keep[i]) || c.default) });
@@ -703,18 +706,20 @@ const SlotPicker: React.FC<{
               onChange={(hex) => {
                 const colors = currentDef.colors.map((cc, j) => current!.colors[j] || cc.default);
                 colors[i] = hex;
-                setSlot(slot, { id: currentDef.id, colors });
+                setSlot(slot, { ...current!, id: currentDef.id, colors });
               }}
             />
           ))}
         </div>
       )}
 
+      {currentDef?.parts && <PartPicker def={currentDef} choice={current!} look={look} onChange={(c) => setSlot(slot, c)} />}
+
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {options.map((def) => {
           const sel = def ? def.id === current?.id : !current;
           const slots = { ...look.slots };
-          if (def) slots[slot] = { id: def.id, colors: sel && current ? current.colors : [] };
+          if (def) slots[slot] = sel && current ? current : { id: def.id, colors: [] };
           else delete slots[slot];
           return (
             <OptionCard key={def?.id ?? 'none'} selected={sel} label={def?.name ?? L('None')} onClick={() => choose(def)}>
@@ -723,6 +728,39 @@ const SlotPicker: React.FC<{
           );
         })}
       </div>
+    </div>
+  );
+};
+
+/** An item's parts (a katana's steel, blade, guard and hilt): each version shown on the item itself. */
+const PartPicker: React.FC<{
+  def: ItemDef;
+  choice: ItemChoice;
+  look: SpriteAppearance;
+  onChange: (c: ItemChoice) => void;
+}> = ({ def, choice, look, onChange }) => {
+  const chosen = resolveParts(def, choice.parts);
+  return (
+    <div className="space-y-4 p-3 rounded-xl bg-slate-950/50 border border-slate-800">
+      {def.parts!.map((ps) => {
+        const sel = ps.options.find((o) => o.id === chosen[ps.key])!;
+        return (
+          <div key={ps.key}>
+            <div className="text-xs text-slate-300 mb-1.5">{L(ps.label)}</div>
+            <div className="grid grid-cols-3 gap-2">
+              {ps.options.map((o) => {
+                const parts = { ...chosen, [ps.key]: o.id };
+                return (
+                  <OptionCard key={o.id} selected={o.id === sel.id} label={o.label} onClick={() => onChange({ ...choice, parts })}>
+                    {def.partsPreview && <PartThumb art={def.partsPreview(look, parts)} />}
+                  </OptionCard>
+                );
+              })}
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1.5">{L(sel.desc)}</div>
+          </div>
+        );
+      })}
     </div>
   );
 };

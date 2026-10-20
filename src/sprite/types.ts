@@ -73,6 +73,8 @@ export interface ItemChoice {
   id: string;
   /** One color per color slot the item declares, in order. */
   colors: string[];
+  /** The version picked for each of the item's parts (ItemDef.parts), by part key. */
+  parts?: Record<string, string>;
 }
 
 export type HeadbandPosition = 'none' | 'forehead' | 'neck' | 'arm' | 'waist';

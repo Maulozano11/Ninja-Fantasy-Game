@@ -504,6 +504,36 @@ export function cbez(p0: Pt, c0: Pt, c1: Pt, p1: Pt, n = 32): Pt[] {
 // --- hand-drawn maps ------------------------------------------------------------------------------
 
 /**
+ * His open gold wirework (crest shoulders, lower brackets): 1-art-pixel strokes in light and mid
+ * metal, each outlined in a dark brown, with the background showing through every gap wider than
+ * the outline. Map keys: 'H' highlight, 'L' light, 'M' mid, 'D' dark metal, 'o' the pale bead rim,
+ * 'c' / 'C' the bead's olive-grey centre, '.' open.
+ */
+export const WIRE: Record<string, RGBA> = {
+  H: H('#ddd3bd'), L: H('#bcaf9e'), M: H('#7a6d58'), D: H('#56493a'),
+  o: H('#cfc4b2'), c: H('#5e5c4d'), C: H('#535740'),
+};
+export const WIRE_OUTLINE = H('#241b11');
+export function wire(img: Img, rows: string[], opts: { ox?: number; oy?: number; flip?: boolean; pal?: Record<string, RGBA>; outline?: RGBA } = {}): void {
+  const ox = opts.ox ?? 0, oy = opts.oy ?? 0, pal = opts.pal ?? WIRE, ol = opts.outline ?? WIRE_OUTLINE;
+  const w = Math.max(...rows.map((r) => r.length)), h = rows.length;
+  const at = (x: number, y: number): string => (y < 0 || y >= h || x < 0 || x >= w ? '.' : rows[y][opts.flip ? w - 1 - x : x] ?? '.');
+  for (let y = -1; y <= h; y++)
+    for (let x = -1; x <= w; x++) {
+      if (at(x, y) !== '.') continue;
+      if (at(x - 1, y) !== '.' || at(x + 1, y) !== '.' || at(x, y - 1) !== '.' || at(x, y + 1) !== '.') img.set(ox + x, oy + y, ol);
+    }
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const ch = at(x, y);
+      if (ch === '.') continue;
+      const c = pal[ch];
+      if (!c) throw new Error(`wire: no color for '${ch}'`);
+      img.set(ox + x, oy + y, c);
+    }
+}
+
+/**
  * Draws a character map: each character is a palette key, '.' or ' ' is left alone. Rows are
  * separated by spaces or given as an array.
  */

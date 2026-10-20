@@ -9,7 +9,7 @@
 import { Img, RGBA, alpha, hex, mixc } from './ui-img';
 import {
   ALLY, BADGE, BROWN, FOE, GEM, GOLD, GREEN, KHAKI, METAL, Mask, OLIVE, PANEL, Pt, RAIL, RED, SILVER, TEAL,
-  band, cbez, emboss, fillShape, filledLace, gem, isoLine, lace, orb, qbez, rhombGem, sdCircle, sdLp, sdRoundRect, spiral, stamp,
+  band, cbez, emboss, fillShape, filledLace, gem, isoLine, lace, orb, qbez, rhombGem, sdCircle, sdLp, sdRoundRect, spiral, stamp, wire,
 } from './ui-draw';
 
 export interface Piece {
@@ -556,36 +556,35 @@ export function chakraLine(): Piece {
 // --- crest: the HP and chakra troughs and their scroll shoulders --------------------------------------------
 
 /**
- * His crest shoulder (left end), hand-placed at art resolution from his picture (1 art pixel =
- * 1.28 of his): a mound of curls over the trough's rounded end (a C-scroll rising from the rail,
- * two inner curls, a leaf off its top), a long arm sweeping down to the rail ending in a knob, a
- * big curl under the arm with a pale bead in its eye, a lower arm into a second small curl, two
- * small curls by the trough, and the foot along the rail. '#' is embossed metal, 'b' the bead;
- * ':' is the fill between the curls, so the cluster reads as one dense lace mass.
+ * His crest shoulder (left end; mirrored for the right) as open wirework, hand-placed at art
+ * resolution from his picture (1 art pixel = 1.28 of his): the rail foot along the bar, curling up
+ * at the outer end, a small curl on the rail, the long arm sweeping up to the stem of a tall wave
+ * curl at the trough end (over the top and in to an eye), a curl between the stem and the trough,
+ * his pale hollow bead under the arm, and a tail out to a knob over the trough. Keys as in `wire`.
  */
 const CREST_SHOULDER = [
-  '..................................########......',
-  '................................############....',
-  '...........................###.##:###:::##:##...',
-  '.........................##:::##:#:::#:#::#:##..',
-  '........................##...##::#:#:#:#:#:::##.',
-  '........................#....##::#::#:::#:::::##',
-  '............................:##:::##::::::::::::',
-  '...........................::##:::::::::::::::::',
-  '..........................#####:::::::::::::::::',
-  '......................#######:::::::::::::::::::',
-  '..................########:::::::##:::::::::::::',
-  '...............#######::::###:::#::#::::::::::::',
-  '............######::::::##:::##::#:#::::::::::::',
-  '.........######::::##::#:::b:::#::#:::::::::::::',
-  '......######::::::#::#:#::bbb::#:###::::::::::::',
-  '....#####::::##:::#:#::#::bbb::##:::#:::::::::::',
-  '..#.##...:#:#::#:::#:::#::bbb::##:#:#:::::::::::',
-  '.###....:#::#:##::::####:#:::##::#::#:::::::::::',
-  '.###....:#:#::::#####:::::###:::::##::::::::::::',
-  '..#.....::#:#####:::::::::::::::::::::::::::::::',
-  '.#######################################::::::::',
-  '................................................',
+  '..................................HHHLL.........',
+  '.................................L.....L........',
+  '................................L.......ML...L..',
+  '...............................L...LL...M.LLL.M.',
+  '...............................L..L..M..M....M..',
+  '...............................L...M...M........',
+  '...............................L....MMM.........',
+  '...............................L................',
+  '...............................L................',
+  '............................LLLL..LL............',
+  '..........................LL...L.L..M...........',
+  '........................LL.....L.L..M...........',
+  '.......................L.......L..MM............',
+  '.....................LL...M....L................',
+  '....................H......M...L.L..............',
+  '..................HH..oo...M...L.L..............',
+  '.................H...occo..M...L..LL............',
+  '...............LL....oCCo.M.M..L................',
+  '..LL...LL....LL....M..oo....M..L.M..M...........',
+  '.L..L.L..L.LL..LL..M......MM...L..MM............',
+  '.L.M...MM.L...L..L..M..........L................',
+  '..LMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.........',
 ];
 
 /** A hand-placed lace map: '#' is embossed metal, ':' the dark fill between the curls, '.' empty. */
@@ -606,12 +605,7 @@ export function crestStrip(): Piece {
   const W = 104, Hh = 22, cap = 48, tTop = 6, tL = 38;
   const img = new Img(W, Hh);
   // The shoulders first; the trough lies over their inner ends.
-  for (const flip of [false, true]) {
-    const { mk, back } = laceMap(CREST_SHOULDER, flip);
-    filledLace(img, mk, back, METAL, { base: 6, ox: flip ? W - cap : 0, grow: 0, backColor: METAL[3], crevice: METAL[1] });
-  }
-  gem(img, 27.5, 15, 1.7, GEM.teal, true);
-  gem(img, W - 27.5, 15, 1.7, GEM.teal, true);
+  for (const flip of [false, true]) wire(img, CREST_SHOULDER, { ox: flip ? W - cap : 0, flip });
   // The trough: his capsule, fully rounded at both ends (radius 8), with a dark outline, a two-step
   // silver rail (lit above, shaded below), a dark line, the dotted inner line, and the dark well.
   const f = sdRoundRect(tL, tTop, W - tL, Hh, 8);

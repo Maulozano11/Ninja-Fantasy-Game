@@ -42,6 +42,7 @@ const TABLE = strings({
   menuLang: { en: 'Language', es: 'Idioma' },
   menuLeave: { en: 'Leave the battle', es: 'Salir de la batalla' },
   menuLeaveNote: { en: 'The fight is lost if you leave.', es: 'Si sales, la pelea se pierde.' },
+  nav_title: { en: 'Main menu', es: 'Menú principal' },
   nav_creator: { en: 'Character creator', es: 'Creador de personajes' },
   nav_mission: { en: 'Missions', es: 'Misiones' },
   nav_combat: { en: 'Practice battles', es: 'Batallas de práctica' },

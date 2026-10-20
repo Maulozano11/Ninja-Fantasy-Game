@@ -1268,7 +1268,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
             <div className="border-t border-[#3a2f1f] pt-2 flex flex-col gap-1">
               <span className="text-[10px] uppercase tracking-widest text-[#a8a08c]">{T('menuLeave')}</span>
               <div className="flex flex-wrap gap-1">
-                {(['mission', 'combat', 'creator', 'campaign'] as const).map((v) => (
+                {(['title', 'mission', 'combat', 'creator', 'campaign'] as const).map((v) => (
                   <button key={v} type="button" onClick={() => appNavigate(v)} className="px-2 py-0.5 rounded border border-[#5c4a2e] hover:bg-[#2a2116] text-[11px]">
                     {T(`nav_${v}` as TKey)}
                   </button>

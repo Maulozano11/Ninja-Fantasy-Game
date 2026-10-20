@@ -130,7 +130,10 @@ export interface AbilityScores {
 export interface ShinobiFeat {
   id: string;
   name: string;
+  /** The name and description on the Spanish screens. */
+  nameEs?: string;
   description: string;
+  descriptionEs?: string;
   statBonus?: Partial<AbilityScores>;
 }
 

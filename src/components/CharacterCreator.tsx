@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ShinobiCharacter, ClanType, ArmorStyleType, ShinobiClassType, AbilityScores } from '../types/shinobi';
 import {
   CLANS_DATA,
@@ -21,7 +21,12 @@ import { soundManager } from '../utils/audio';
 import { deriveStats } from '../rules/derived';
 import { clanBonus } from '../rules/checks';
 import { migrateCharacter, sanitizeMissionFields } from '../rules/ninja';
-import { Sparkles, Dice5, Download, Upload, Shield, Zap, Eye, Swords, BookOpen, UserCheck } from 'lucide-react';
+import { Dice5, Download, Shield, Zap, Eye, Swords, BookOpen, UserCheck, Sparkles } from 'lucide-react';
+import { ForestScene, forestGround } from './scene/ForestScene';
+import { BigButton, Chip, Frame, Heading, IronButton, Parchment, Row, StepTabs, serif } from './creator/stage';
+import { iconUrl } from './battle/kit';
+import { L } from './creator/words';
+import { pick, strings, useLang } from '../i18n';
 
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
 const sameKind = (d: unknown, v: unknown) => (Array.isArray(d) ? Array.isArray(v) : isObj(d) ? isObj(v) : typeof d === typeof v);
@@ -41,7 +46,7 @@ const RENAMED_JUTSUS: Record<string, string> = { hyuga_sixtyfour_palms: 'taki_si
  * falls back to the default character, so a partial or older sheet can't
  * break the page. Null when the JSON isn't a character sheet at all.
  */
-function characterFromImport(raw: unknown): ShinobiCharacter | null {
+export function characterFromImport(raw: unknown): ShinobiCharacter | null {
   if (!isObj(raw) || typeof raw.clan !== 'string' || !isObj(raw.stats)) return null;
   const out = mergeKind(DEFAULT_CHARACTER as unknown as Record<string, unknown>, raw);
   if (Array.isArray(out.selectedFeats)) out.selectedFeats = out.selectedFeats.filter((f) => typeof f === 'string');
@@ -65,6 +70,217 @@ function characterFromImport(raw: unknown): ShinobiCharacter | null {
   return migrateCharacter(sanitizeMissionFields(out as unknown as ShinobiCharacter));
 }
 
+// --- the creator's words (ES / EN) and small pieces ----------------------------------------------
+
+const T = strings({
+  title: { en: 'Character creation', es: 'Creación de personaje' },
+  step_origin: { en: 'Origin', es: 'Origen' },
+  step_clan: { en: 'Clan', es: 'Clan' },
+  step_class: { en: 'Class', es: 'Clase' },
+  step_appearance: { en: 'Appearance', es: 'Apariencia' },
+  step_abilities: { en: 'Abilities', es: 'Atributos' },
+  step_jutsus: { en: 'Jutsu', es: 'Jutsus' },
+  stepAppearance: { en: 'Appearance', es: 'Apariencia' },
+  pickOrigin: { en: 'Choose your origin', es: 'Elige tu origen' },
+  pickClan: { en: 'Choose your clan', es: 'Elige tu clan' },
+  pickClass: { en: 'Choose your class', es: 'Elige tu clase' },
+  pickAbilities: { en: 'Ability scores', es: 'Puntuaciones de atributo' },
+  pickJutsus: { en: 'Jutsu loadout', es: 'Jutsus equipados' },
+  stepHint_origin: { en: 'Your own ninja, or one of the legends', es: 'Tu propio ninja, o una de las leyendas' },
+  stepHint_clan: { en: 'Your bloodline: its bonus and its secrets', es: 'Tu linaje: su bonificación y sus secretos' },
+  stepHint_class: { en: 'How you fight and what you cast with', es: 'Cómo peleas y con qué lanzas' },
+  stepHint_appearance: { en: 'Body, face, hair, clothes and chakra', es: 'Cuerpo, cara, pelo, ropa y chakra' },
+  stepHint_abilities: { en: 'Your scores, with the clan bonus, and up to 3 feats', es: 'Tus puntuaciones, con la del clan, y hasta 3 dotes' },
+  stepHint_jutsus: { en: 'Five slots: open one to change it', es: 'Cinco ranuras: abre una para cambiarla' },
+  custom: { en: 'Custom', es: 'Personalizado' },
+  customSub: { en: 'Make your own ninja', es: 'Crea tu propio ninja' },
+  customText: {
+    en: 'Start from this sheet and make it yours: choose a clan and a class, shape the look, set the scores and fill the five jutsu slots. A legend can be your starting point too.',
+    es: 'Parte de esta hoja y hazla tuya: elige clan y clase, dale forma a su aspecto, reparte las puntuaciones y llena las cinco ranuras de jutsu. Una leyenda también puede ser tu punto de partida.',
+  },
+  legends: { en: 'Legends', es: 'Leyendas' },
+  level: { en: 'Level {n}', es: 'Nivel {n}' },
+  jutsus: { en: 'Jutsu', es: 'Jutsus' },
+  clanBonus: { en: 'Clan bonus', es: 'Bonificación de clan' },
+  lineage: { en: 'Bloodline', es: 'Linaje' },
+  castsWith: { en: 'Casts with {stat}', es: 'Lanza con {stat}' },
+  classFeatures: { en: 'Class features', es: 'Rasgos de clase' },
+  dice: { en: 'Dice and saves', es: 'Dados y salvaciones' },
+  hitDie: { en: 'Hit die d{n}', es: 'Dado de golpe d{n}' },
+  chakraDie: { en: 'Chakra die d{n}', es: 'Dado de chakra d{n}' },
+  save: { en: '{s} save', es: 'Salvación de {s}' },
+  base: { en: 'base {n}', es: 'base {n}' },
+  feats: { en: 'Feats · {n} of 3', es: 'Dotes · {n} de 3' },
+  feat: { en: 'Feat', es: 'Dote' },
+  sheet: { en: 'Your sheet', es: 'Tu hoja' },
+  hp: { en: 'HP', es: 'PG' },
+  chakraMax: { en: 'Chakra', es: 'Chakra' },
+  ac: { en: 'AC', es: 'CA' },
+  dc: { en: 'Jutsu DC', es: 'CD jutsu' },
+  atk: { en: 'Attack', es: 'Ataque' },
+  speed: { en: 'Speed', es: 'Velocidad' },
+  tiles: { en: '{n} tiles', es: '{n} casillas' },
+  slotUtility: { en: 'Utility', es: 'Utilidad' },
+  slotElementA: { en: 'Element I', es: 'Elemento I' },
+  slotElementB: { en: 'Element II', es: 'Elemento II' },
+  slotClan: { en: 'Clan secret', es: 'Secreto del clan' },
+  slotUltimate: { en: 'S-rank', es: 'Rango S' },
+  rank: { en: 'Rank {r}', es: 'Rango {r}' },
+  chakra: { en: '{n} chakra', es: '{n} chakra' },
+  reach: { en: 'Reach {n}', es: 'Alcance {n}' },
+  enhanced: { en: 'Enhanced', es: 'Potenciado' },
+  castStyle: { en: 'Casting style', es: 'Estilo de lanzamiento' },
+  castDefault: { en: 'Default ({s})', es: 'Por defecto ({s})' },
+  unnamed: { en: 'Unnamed ninja', es: 'Ninja sin nombre' },
+  auraOn: { en: 'Chakra aura: on', es: 'Aura de chakra: sí' },
+  auraOff: { en: 'Chakra aura: off', es: 'Aura de chakra: no' },
+  name: { en: 'Name', es: 'Nombre' },
+  namePh: { en: 'Your name', es: 'Tu nombre' },
+  randomize: { en: 'Random ninja', es: 'Ninja al azar' },
+  exportImport: { en: 'Export / Import', es: 'Exportar / Importar' },
+  exportText: { en: 'Copy this sheet to keep or share your ninja, or paste another sheet and apply it.', es: 'Copia esta hoja para guardar o compartir a tu ninja, o pega otra hoja y aplícala.' },
+  applyImport: { en: 'Apply', es: 'Aplicar' },
+  close: { en: 'Close', es: 'Cerrar' },
+  back: { en: 'Back', es: 'Atrás' },
+  mainMenu: { en: 'Main menu', es: 'Menú principal' },
+  next: { en: 'Next', es: 'Siguiente' },
+  accept: { en: 'Accept', es: 'Aceptar' },
+  pose_idle: { en: 'Idle', es: 'Reposo' },
+  pose_handsigns: { en: 'Hand signs', es: 'Sellos' },
+  pose_attack: { en: 'Attack', es: 'Ataque' },
+  pose_cast: { en: 'Cast', es: 'Lanzar' },
+  pose_hurt: { en: 'Hurt', es: 'Herido' },
+  pose_victory: { en: 'Victory', es: 'Victoria' },
+  pose_charge: { en: 'Charge', es: 'Cargar' },
+  stat_str: { en: 'Strength', es: 'Fuerza' },
+  stat_dex: { en: 'Dexterity', es: 'Destreza' },
+  stat_con: { en: 'Constitution', es: 'Constitución' },
+  stat_int: { en: 'Intelligence', es: 'Inteligencia' },
+  stat_wis: { en: 'Wisdom', es: 'Sabiduría' },
+  stat_cha: { en: 'Charisma', es: 'Carisma' },
+  short_str: { en: 'STR', es: 'FUE' },
+  short_dex: { en: 'DEX', es: 'DES' },
+  short_con: { en: 'CON', es: 'CON' },
+  short_int: { en: 'INT', es: 'INT' },
+  short_wis: { en: 'WIS', es: 'SAB' },
+  short_cha: { en: 'CHA', es: 'CAR' },
+  about_str: { en: 'Raw power: heavy weapons, shoving and tripping, carrying weight, and Strength saves.', es: 'Fuerza bruta: armas pesadas, empujar y derribar, cargar peso y salvaciones de Fuerza.' },
+  about_dex: { en: 'Speed and precision: light and thrown weapons, armor class in light armor, initiative and Dexterity saves.', es: 'Rapidez y precisión: armas ligeras y arrojadizas, clase de armadura con armadura ligera, iniciativa y salvaciones de Destreza.' },
+  about_con: { en: 'Toughness: hit points every level, holding concentration and Constitution saves.', es: 'Aguante: puntos de golpe en cada nivel, mantener la concentración y salvaciones de Constitución.' },
+  about_int: { en: 'Study and analysis: knowledge, seals and investigation, and the casting score of some classes.', es: 'Estudio y análisis: conocimiento, sellos e investigación, y el atributo de lanzamiento de algunas clases.' },
+  about_wis: { en: 'Awareness: perception, insight, seeing through illusions and Wisdom saves.', es: 'Atención: percepción, perspicacia, ver a través de ilusiones y salvaciones de Sabiduría.' },
+  about_cha: { en: 'Presence: deception, intimidation and command, and the casting score of some classes.', es: 'Presencia: engaño, intimidación y mando, y el atributo de lanzamiento de algunas clases.' },
+});
+type TK = Parameters<typeof T>[0];
+
+const STEPS = ['origin', 'clan', 'class', 'appearance', 'abilities', 'jutsus'] as const;
+type Step = (typeof STEPS)[number];
+const STEP_ICON: Record<Step, React.ReactNode> = {
+  origin: <UserCheck className="w-4 h-4" />,
+  clan: <Eye className="w-4 h-4" />,
+  class: <Swords className="w-4 h-4" />,
+  appearance: <Shield className="w-4 h-4" />,
+  abilities: <BookOpen className="w-4 h-4" />,
+  jutsus: <Zap className="w-4 h-4" />,
+};
+const STATS: (keyof AbilityScores)[] = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+const statLong = (s: keyof AbilityScores) => T(`stat_${s}` as TK);
+const statShort = (s: keyof AbilityScores) => T(`short_${s}` as TK);
+type SlotKey = keyof ShinobiCharacter['selectedJutsus'];
+
+/** What the detail panel shows: the hovered entry, else the step's chosen one. */
+type Hover =
+  | { kind: 'custom' }
+  | { kind: 'preset'; i: number }
+  | { kind: 'clan'; id: ClanType }
+  | { kind: 'dojutsu'; id: string }
+  | { kind: 'class'; id: ShinobiClassType }
+  | { kind: 'stat'; id: keyof AbilityScores }
+  | { kind: 'feat'; id: string }
+  | { kind: 'jutsu'; id: string }
+  | { kind: 'look' };
+
+const jutsuName = (j: { name: string; nameEs?: string }) => pick(j.name, j.nameEs);
+/** A jutsu's name in two lines for a list row: its own name, and its "Fire Technique" kind. */
+const jutsuParts = (j: { name: string; nameEs?: string }): [string, string] => {
+  const n = jutsuName(j);
+  const at = n.indexOf(': ');
+  return at > 0 ? [n.slice(at + 2), n.slice(0, at)] : [n, ''];
+};
+
+/** A clan's lineage text as its abilities: "Name (cost): text." runs split where a new name starts. */
+function traits(text: string): { name?: string; text: string }[] {
+  return text.split(/(?<=\.)\s+(?=\p{Lu}[^.]{2,80}?:)/u).map((part) => {
+    // The name runs to its colon, or past a "(cost):" when it has one ("Katon: Pursuing Flame (action, 3 chakra): ...").
+    const paren = part.indexOf('): ');
+    const colon = part.indexOf(': ');
+    const end = paren >= 0 && paren < 90 ? paren + 1 : colon >= 0 && colon < 50 ? colon : -1;
+    return end > 0 ? { name: part.slice(0, end), text: part.slice(end + 2).trim() } : { text: part };
+  });
+}
+
+/** The eyes' names on the Spanish screens (the Sharingan and Mangekyo keep theirs). */
+const DOJUTSU_ES: Record<string, string> = {
+  None: 'Ninguno',
+  'Sage Eyes (Toad)': 'Ojos de Sabio (Sapo)',
+  'Byakugan (Pure)': 'Byakugan (Puro)',
+  'Byakugan (Active Veined)': 'Byakugan (Venas activas)',
+};
+const dojutsuName = (d: string) => pick(d, DOJUTSU_ES[d]);
+const className = (id: ShinobiClassType) => pick(id, SHINOBI_CLASSES[id].nameEs);
+
+/** A clan's or a class's seal: a diamond in its colour with its first letter. */
+function Seal({ letter, color }: { letter: string; color: string }) {
+  return (
+    <span className="relative grid place-items-center w-9 h-9">
+      <span className="absolute inset-1 rotate-45 border-2" style={{ borderColor: color, background: `radial-gradient(circle, ${color}55, #14110d 75%)` }} />
+      <span style={serif} className="relative text-sm font-bold text-[#efe3c4] [text-shadow:0_1px_0_#000]">
+        {letter}
+      </span>
+    </span>
+  );
+}
+
+/** The owner's painted icon for a jutsu in his steel slot, or its element's initial until he paints one. */
+function JutsuIcon({ id, nature, small, big }: { id?: string; nature?: string; small?: boolean; big?: boolean }) {
+  const dense = typeof window !== 'undefined' && window.devicePixelRatio > 1;
+  const url = id ? iconUrl(id, dense || !!big) : undefined;
+  const size = big ? 88 : small ? 30 : 38;
+  return url ? (
+    <img src={url} alt="" width={size} height={size} className="pixelated border border-[#6b5434] bg-black" style={{ width: size, height: size, imageRendering: 'pixelated' }} />
+  ) : (
+    <span
+      style={{ ...serif, width: size, height: size }}
+      className="grid place-items-center border border-[#6b5434] bg-[radial-gradient(circle,#3a2a12,#14110d)] text-[11px] font-bold text-[#f2c46d]"
+    >
+      {(nature ?? '?').slice(0, 2)}
+    </span>
+  );
+}
+
+/** A ninja's head and shoulders, cut from its sprite, for a list row. */
+function Portrait({ character }: { character: ShinobiCharacter }) {
+  return (
+    <span className="relative block w-10 h-10 overflow-hidden border border-[#6b5434] bg-[radial-gradient(circle,#3a2a12,#0e0b08)]">
+      <span className="absolute" style={{ left: -28, top: -10 }}>
+        <ShinobiSpriteCanvas character={character} size={96} showAura={false} showShadow={false} />
+      </span>
+    </span>
+  );
+}
+
+/** The window's size, for placing the ninja on the forest's ground. */
+function useView() {
+  const get = () => ({ w: typeof window !== 'undefined' ? window.innerWidth : 1600, h: typeof window !== 'undefined' ? window.innerHeight : 900 });
+  const [v, setV] = useState(get);
+  useEffect(() => {
+    const on = () => setV(get());
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, []);
+  return v;
+}
+
 interface CharacterCreatorProps {
   initialCharacter?: ShinobiCharacter;
   onSave: (char: ShinobiCharacter) => void;
@@ -86,6 +302,12 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const [importExportModal, setImportExportModal] = useState<boolean>(false);
   const [importJsonText, setImportJsonText] = useState<string>('');
   const [importError, setImportError] = useState<string>('');
+  useLang();
+  const view = useView();
+  const [step, setStep] = useState<Step>('origin');
+  const [hover, setHover] = useState<Hover | null>(null);
+  const [openSlot, setOpenSlot] = useState<SlotKey | null>(null);
+  const [focusStat, setFocusStat] = useState<keyof AbilityScores>('dex');
 
   const look = useMemo(() => getAppearance(character), [character]);
   const eye = dojutsuToEye(character.dojutsu);
@@ -304,744 +526,588 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const clanJutsus = JUTSUS_DATA.filter((j) => j.category === 'Clan' && (!j.requiredClan || j.requiredClan === character.clan));
   const ultimateJutsus = JUTSUS_DATA.filter((j) => j.category === 'Ultimate');
 
-  return (
-    <div className="relative min-w-full min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      {/* Top Banner Bar */}
-      <div className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-6 py-4 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="text-xs font-mono uppercase tracking-widest text-cyan-400">Shinobi 5e Forge</div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Custom Shinobi Character Creation</h1>
-        </div>
+  // --- the stage: the forest, the ninja standing in it, the panels at its sides ---------------
+  const wide = view.w >= 1100;
+  const ground = forestGround(view.w, view.h);
+  /** The ninja's scale: whole steps, as big as fits between the step tabs and the ground. */
+  const k = wide ? Math.max(2, Math.min(5, Math.floor((ground - 170) / 110))) : 3;
+  const stepIdx = STEPS.indexOf(step);
+  const presetOf = LEGENDARY_PRESETS.findIndex((p) => p.character.id === character.id);
+  const go = (s: Step) => {
+    soundManager.playSelect();
+    setHover(null);
+    setStep(s);
+  };
+  const back = () => (stepIdx === 0 ? onCancel?.() : go(STEPS[stepIdx - 1]));
+  const next = () => {
+    if (stepIdx < STEPS.length - 1) return go(STEPS[stepIdx + 1]);
+    soundManager.playCriticalHit();
+    onSave(character);
+  };
+  const shown: Hover =
+    hover ??
+    (step === 'origin'
+      ? presetOf >= 0
+        ? { kind: 'preset', i: presetOf }
+        : { kind: 'custom' }
+      : step === 'clan'
+        ? { kind: 'clan', id: character.clan }
+        : step === 'class'
+          ? { kind: 'class', id: character.shinobiClass }
+          : step === 'abilities'
+            ? { kind: 'stat', id: focusStat }
+            : step === 'jutsus'
+              ? { kind: 'jutsu', id: (openSlot && character.selectedJutsus[openSlot]) || character.selectedJutsus.slot1Utility }
+              : { kind: 'look' });
+  const hoverOn = (h: Hover) => (on: boolean) => setHover(on ? h : null);
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleRandomize}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
-          >
-            <Dice5 className="w-3.5 h-3.5 text-amber-400" />
-            Randomize Shinobi
-          </button>
-          <button
-            type="button"
-            onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
-          >
-            <Download className="w-3.5 h-3.5 text-cyan-400" />
-            Export / Import JSON
-          </button>
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 transition"
-            >
-              Cancel
-            </button>
-          )}
+  const slots: { key: SlotKey; label: string; list: typeof JUTSUS_DATA; fixed?: boolean }[] = [
+    { key: 'slot1Utility', label: T('slotUtility'), list: utilityJutsus },
+    { key: 'slot2Elemental', label: T('slotElementA'), list: elementalJutsus },
+    { key: 'slot3Elemental', label: T('slotElementB'), list: elementalJutsus },
+    { key: 'slot4Clan', label: T('slotClan'), list: clanJutsus, fixed: true },
+    { key: 'slot5Ultimate', label: T('slotUltimate'), list: ultimateJutsus },
+  ];
+
+  const leftTitle = { origin: T('pickOrigin'), clan: T('pickClan'), class: T('pickClass'), appearance: T('stepAppearance'), abilities: T('pickAbilities'), jutsus: T('pickJutsus') }[step];
+
+  const list = (
+    <div className="flex flex-col gap-0.5 p-2">
+      {step === 'origin' && (
+        <>
+          <Row
+            selected={presetOf < 0}
+            onClick={() => {
+              soundManager.playSelect();
+              if (presetOf >= 0) setCharacter({ ...character, id: `ninja_${Date.now().toString(36)}` });
+            }}
+            onHover={hoverOn({ kind: 'custom' })}
+            icon={<Seal letter="+" color="#c99a4b" />}
+            title={T('custom')}
+            sub={T('customSub')}
+          />
+          <Heading>{T('legends')}</Heading>
+          {LEGENDARY_PRESETS.map((p, i) => (
+            <Row
+              key={p.name}
+              selected={presetOf === i}
+              onClick={() => {
+                soundManager.playCriticalHit();
+                setCharacter(p.character);
+              }}
+              onHover={hoverOn({ kind: 'preset', i })}
+              icon={<Portrait character={p.character} />}
+              title={pick(p.name, p.nameEs)}
+              sub={pick(p.tag, p.tagEs)}
+            />
+          ))}
+        </>
+      )}
+      {step === 'clan' &&
+        (Object.keys(CLANS_DATA) as ClanType[]).map((id) => {
+          const c = CLANS_DATA[id];
+          const on = character.clan === id;
+          return (
+            <React.Fragment key={id}>
+              <Row
+                selected={on}
+                onClick={() => handleClanChange(id)}
+                onHover={hoverOn({ kind: 'clan', id })}
+                icon={<Seal letter={c.name[0]} color={c.recommendedChakraColor} />}
+                title={c.name}
+                sub={c.japaneseName}
+                right={<span className="text-[11px] text-[#d9b46a]">{c.statBonuses.map((b) => `+${b.bonus} ${statShort(b.stat)}`).join(' ')}</span>}
+              />
+              {/* The clan's eyes come under it, as a race's subraces do. */}
+              {on &&
+                c.availableDojutsu.length > 1 &&
+                c.availableDojutsu.map((d) => (
+                  <Row
+                    key={d}
+                    indent
+                    selected={character.dojutsu === d}
+                    onClick={() => {
+                      soundManager.playSelect();
+                      setCharacter({
+                        ...character,
+                        dojutsu: d,
+                        palette: { ...character.palette, eyeColor: d.includes('Sharingan') ? '#ef4444' : d.includes('Byakugan') ? '#e0e7ff' : character.palette.eyeColor },
+                      });
+                    }}
+                    onHover={hoverOn({ kind: 'dojutsu', id: d })}
+                    title={dojutsuName(d)}
+                  />
+                ))}
+            </React.Fragment>
+          );
+        })}
+      {step === 'class' &&
+        (Object.keys(SHINOBI_CLASSES) as ShinobiClassType[]).map((id) => (
+          <Row
+            key={id}
+            selected={character.shinobiClass === id}
+            onClick={() => handleClassChange(id)}
+            onHover={hoverOn({ kind: 'class', id })}
+            icon={<Seal letter={id[0]} color="#c99a4b" />}
+            title={className(id)}
+            sub={T('castsWith', { stat: statLong(SHINOBI_CLASSES[id].castingStat) })}
+          />
+        ))}
+      {step === 'abilities' && (
+        <>
+          {STATS.map((s) => {
+            const base = character.stats[s];
+            const bonus = clanBonus(character.clan)[s] ?? 0;
+            const val = base + bonus;
+            const mod = Math.floor((val - 10) / 2);
+            return (
+              <div
+                key={s}
+                onMouseEnter={() => setHover({ kind: 'stat', id: s })}
+                onMouseLeave={() => setHover(null)}
+                onClick={() => setFocusStat(s)}
+                className={`flex items-center gap-3 px-3 py-2 border cursor-pointer ${focusStat === s ? 'border-[#c99a4b] bg-[rgba(242,196,109,0.08)]' : 'border-transparent hover:border-[#5b4426]'}`}
+              >
+                <div className="min-w-0 flex-1">
+                  <div style={serif} className="font-semibold tracking-wide text-[#efe3c4]">
+                    {statLong(s)}
+                  </div>
+                  <div className="text-[11px] text-[#b9a98a]">
+                    {T('base', { n: base })}
+                    {bonus > 0 && <span className="text-[#f2c46d]"> +{bonus} {clanName(character.clan)}</span>}
+                  </div>
+                </div>
+                <button type="button" aria-label="-" onClick={() => handleStatChange(s, -1)} className="w-7 h-7 border border-[#6b5434] bg-[#1d1812] text-[#efe3c4] hover:border-[#c99a4b] hover:text-[#f2c46d] font-bold">
+                  −
+                </button>
+                <div className="w-14 text-center">
+                  <div style={serif} className="text-xl font-bold text-[#f2c46d] leading-none">
+                    {val}
+                  </div>
+                  <div className="text-[11px] text-[#b9a98a]">{mod >= 0 ? `+${mod}` : mod}</div>
+                </div>
+                <button type="button" aria-label="+" onClick={() => handleStatChange(s, 1)} className="w-7 h-7 border border-[#6b5434] bg-[#1d1812] text-[#efe3c4] hover:border-[#c99a4b] hover:text-[#f2c46d] font-bold">
+                  +
+                </button>
+              </div>
+            );
+          })}
+          <Heading>{T('feats', { n: character.selectedFeats.length })}</Heading>
+          {SHINOBI_FEATS.map((f) => (
+            <Row
+              key={f.id}
+              selected={character.selectedFeats.includes(f.id)}
+              onClick={() => handleFeatToggle(f.id)}
+              onHover={hoverOn({ kind: 'feat', id: f.id })}
+              title={pick(f.name, f.nameEs)}
+            />
+          ))}
+        </>
+      )}
+      {step === 'jutsus' &&
+        slots.map((slot) => {
+          const chosen = JUTSUS_DATA.find((j) => j.id === character.selectedJutsus[slot.key]);
+          const open = openSlot === slot.key;
+          return (
+            <React.Fragment key={slot.key}>
+              <Row
+                selected={open}
+                onClick={() => {
+                  soundManager.playSelect();
+                  setOpenSlot(open ? null : slot.key);
+                }}
+                onHover={chosen ? hoverOn({ kind: 'jutsu', id: chosen.id }) : undefined}
+                icon={<JutsuIcon id={chosen?.id} nature={chosen?.nature} />}
+                title={chosen ? jutsuParts(chosen)[0] : '—'}
+                sub={chosen ? `${slot.label} · ${jutsuParts(chosen)[1]}` : slot.label}
+                right={<span className="text-[#b9a98a] text-xs">{open ? '▾' : '▸'}</span>}
+              />
+              {open &&
+                slot.list.map((j) => (
+                  <Row
+                    key={j.id}
+                    indent
+                    disabled={slot.fixed}
+                    selected={character.selectedJutsus[slot.key] === j.id}
+                    onClick={() => {
+                      if (slot.fixed) return;
+                      soundManager.playSelect();
+                      setCharacter({ ...character, selectedJutsus: { ...character.selectedJutsus, [slot.key]: j.id } });
+                    }}
+                    onHover={hoverOn({ kind: 'jutsu', id: j.id })}
+                    icon={<JutsuIcon id={j.id} nature={j.nature} small />}
+                    title={jutsuParts(j)[0]}
+                    sub={`${jutsuParts(j)[1] ? `${jutsuParts(j)[1]} · ` : ''}${T('rank', { r: j.rank })} · ${T('chakra', { n: j.chakraCost })}${j.damageDice ? ` · ${j.damageDice}` : ''}`}
+                  />
+                ))}
+            </React.Fragment>
+          );
+        })}
+      {step === 'appearance' && (
+        <div className="p-1">
+          <AppearanceEditor look={look} eye={eye} character={character} onChange={updateLook} onPreviewStance={setPreviewStance} />
+        </div>
+      )}
+    </div>
+  );
+
+  const sheet = (
+    <div className="grid grid-cols-3 gap-1.5 text-center">
+      {[
+        [T('hp'), character.maxHp],
+        [T('chakraMax'), character.maxChakra],
+        [T('ac'), character.armorClass],
+        [T('dc'), character.jutsuSaveDC],
+        [T('atk'), `+${character.jutsuAttackBonus}`],
+        [T('speed'), T('tiles', { n: character.speed })],
+      ].map(([l, v]) => (
+        <div key={String(l)} className="border border-[#3d3122] bg-black/30 px-1 py-1.5">
+          <div className="text-[10px] uppercase tracking-wider text-[#b9a98a]">{l}</div>
+          <div style={serif} className="text-base font-bold text-[#f2c46d]">
+            {v}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const detail = (() => {
+    const h = shown;
+    if (h.kind === 'custom')
+      return { title: T('custom'), sub: T('customSub'), body: <Parchment>{T('customText')}</Parchment> };
+    if (h.kind === 'preset') {
+      const p = LEGENDARY_PRESETS[h.i];
+      const c = p.character;
+      const js = [...new Set(Object.values(c.selectedJutsus))].map((id) => JUTSUS_DATA.find((j) => j.id === id)).filter(Boolean) as typeof JUTSUS_DATA;
+      return {
+        title: pick(p.name, p.nameEs),
+        sub: pick(p.tag, p.tagEs),
+        body: (
+          <>
+            <Parchment>
+              <p>
+                <b>{clanName(c.clan)}</b> · {className(c.shinobiClass)} · {T('level', { n: c.level })}
+              </p>
+              <p className="mt-1">{pick(CLANS_DATA[c.clan].description, CLANS_DATA[c.clan].descriptionEs)}</p>
+            </Parchment>
+            <Heading>{T('jutsus')}</Heading>
+            <ul className="flex flex-col gap-1 px-1">
+              {js.map((j) => (
+                <li key={j.id} className="flex items-center gap-2 text-[13px] text-[#efe3c4]">
+                  <JutsuIcon id={j.id} nature={j.nature} small />
+                  {jutsuName(j)}
+                </li>
+              ))}
+            </ul>
+          </>
+        ),
+      };
+    }
+    if (h.kind === 'clan' || h.kind === 'dojutsu') {
+      const id = h.kind === 'clan' ? h.id : character.clan;
+      const c = CLANS_DATA[id];
+      return {
+        title: h.kind === 'dojutsu' ? dojutsuName(h.id) : c.name,
+        sub: c.japaneseName,
+        body: (
+          <>
+            <Parchment>{pick(c.description, c.descriptionEs)}</Parchment>
+            <Heading>{T('clanBonus')}</Heading>
+            <div className="flex flex-wrap gap-1.5 px-3">
+              {c.statBonuses.map((b) => (
+                <Chip key={b.stat}>
+                  +{b.bonus} {statLong(b.stat)}
+                </Chip>
+              ))}
+            </div>
+            <Heading>{T('lineage')}</Heading>
+            <ul className="flex flex-col gap-2 px-3 pb-3">
+              {traits(pick(c.lineageTraits, c.lineageTraitsEs)).map((t, i) => (
+                <li key={i} className="text-[13px] leading-relaxed text-[#d9caa6]">
+                  {t.name && <b className="text-[#f2c46d]">{t.name}: </b>}
+                  {t.text}
+                </li>
+              ))}
+            </ul>
+          </>
+        ),
+      };
+    }
+    if (h.kind === 'class') {
+      const c = SHINOBI_CLASSES[h.id];
+      return {
+        title: className(h.id),
+        sub: T('castsWith', { stat: statLong(c.castingStat) }),
+        body: (
+          <>
+            <Parchment>{pick(c.description, c.descriptionEs)}</Parchment>
+            <Heading>{T('classFeatures')}</Heading>
+            <p className="px-3 text-[13px] leading-relaxed text-[#d9caa6]">{pick(c.classFeatures, c.classFeaturesEs)}</p>
+            <Heading>{T('dice')}</Heading>
+            <div className="flex flex-wrap gap-1.5 px-3 pb-3">
+              <Chip>{T('hitDie', { n: c.hitDie })}</Chip>
+              <Chip>{T('chakraDie', { n: c.chakraDie })}</Chip>
+              {c.savingProficiencies.map((s) => (
+                <Chip key={s} tone="dark">
+                  {T('save', { s })}
+                </Chip>
+              ))}
+            </div>
+          </>
+        ),
+      };
+    }
+    if (h.kind === 'stat')
+      return {
+        title: statLong(h.id),
+        sub: statShort(h.id),
+        body: (
+          <>
+            <Parchment>{T(`about_${h.id}` as TK)}</Parchment>
+            <Heading>{T('sheet')}</Heading>
+            <div className="px-3 pb-3">{sheet}</div>
+          </>
+        ),
+      };
+    if (h.kind === 'feat') {
+      const f = SHINOBI_FEATS.find((x) => x.id === h.id)!;
+      return { title: pick(f.name, f.nameEs), sub: T('feat'), body: <Parchment>{pick(f.description, f.descriptionEs)}</Parchment> };
+    }
+    if (h.kind === 'jutsu') {
+      const j = JUTSUS_DATA.find((x) => x.id === h.id);
+      if (!j) return { title: '—', body: null };
+      return {
+        title: jutsuName(j),
+        sub: `${j.japaneseName} · ${T('rank', { r: j.rank })}`,
+        body: (
+          <>
+            <div className="flex justify-center pt-3">
+              <JutsuIcon id={j.id} nature={j.nature} big />
+            </div>
+            <div className="flex flex-wrap justify-center gap-1.5 px-3 pt-3">
+              <Chip>{T('chakra', { n: j.chakraCost })}</Chip>
+              {j.damageDice && <Chip>{j.damageDice}</Chip>}
+              {j.savingThrow && <Chip tone="dark">{T('save', { s: j.savingThrow })}</Chip>}
+              <Chip tone="dark">{T('reach', { n: j.range })}</Chip>
+            </div>
+            <div className="p-3">
+              <Parchment>{pick(j.description, j.descriptionEs)}</Parchment>
+            </div>
+            <Heading>{T('enhanced')}</Heading>
+            <p className="px-3 text-[13px] leading-relaxed text-[#d9caa6]">
+              {T('chakra', { n: j.enhancementChakraCost })} · {j.enhancementEffect}
+            </p>
+            {Object.values(character.selectedJutsus).includes(j.id) && (
+              <>
+                <Heading>{T('castStyle')}</Heading>
+                <div className="px-3 pb-3">
+                  <select
+                    value={look.cast?.jutsu?.[j.id] ?? ''}
+                    onChange={(e) => {
+                      soundManager.playSelect();
+                      setJutsuCast(j.id, e.target.value as CastStyle | '');
+                    }}
+                    className="w-full border border-[#6b5434] bg-[#14110d] p-2 text-[13px] text-[#efe3c4]"
+                  >
+                    <option value="">{T('castDefault', { s: L(CAST_STYLE_INFO[defaultCastStyle(look)].label) })}</option>
+                    {CAST_STYLES.map((s) => (
+                      <option key={s} value={s}>
+                        {L(CAST_STYLE_INFO[s].label)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+          </>
+        ),
+      };
+    }
+    // Appearance: the sheet and the chakra aura.
+    return {
+      title: character.name || T('unnamed'),
+      sub: `${clanName(character.clan)} · ${className(character.shinobiClass)} · ${T('level', { n: character.level })}`,
+      body: (
+        <div className="p-3 flex flex-col gap-3">
+          {sheet}
           <button
             type="button"
             onClick={() => {
-              soundManager.playCriticalHit();
-              onSave(character);
+              soundManager.playChakraSurge();
+              setPreviewEnhanced(!previewEnhanced);
             }}
-            className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-950 transition active:scale-98"
+            className={`w-full px-3 py-2 text-xs font-semibold border ${previewEnhanced ? 'border-[#f2c46d] text-[#f2c46d] bg-[#3a2a12]' : 'border-[#6b5434] text-[#efe3c4] bg-[#1d1812]'}`}
           >
-            <Sparkles className="w-4 h-4" />
-            Enter Battlefield
+            {T(previewEnhanced ? 'auraOn' : 'auraOff')}
           </button>
         </div>
-      </div>
+      ),
+    };
+  })();
 
-      {/* Main Workspace: Left 2D Sprite Showcase, Right Editor Tabs */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 max-w-7xl mx-auto w-full">
-        {/* LEFT COLUMN: 2D SPRITE VISUALIZER & LIVE COMBAT STAT CARD */}
-        <div className="lg:col-span-5 flex flex-col gap-5">
-          {/* Sprite Stage Card */}
-          <div className="relative rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 p-6 flex flex-col items-center justify-center overflow-hidden shadow-xl">
-            {/* Ambient clan lighting */}
-            <div
-              className="absolute -top-12 -left-12 w-48 h-48 rounded-full blur-3xl opacity-20 pointer-events-none"
-              style={{ backgroundColor: character.palette.chakraAuraColor }}
-            />
+  const figure = (
+    <ShinobiSpriteCanvas
+      character={character}
+      appearance={look}
+      stance={previewStance}
+      castStyle={previewStance === 'cast' ? previewCast ?? undefined : undefined}
+      size={128 * k}
+      isEnhanced={previewEnhanced}
+      showAura={true}
+    />
+  );
 
-            {/* Header controls: Engine selector, Zoom buttons, Chakra Burst */}
-            <div className="w-full flex flex-wrap items-center justify-between mb-3 gap-2">
-              <div className="flex items-center gap-2">
-                {/* Zoom buttons */}
-                <div className="flex items-center bg-slate-800/80 rounded-md p-0.5 border border-slate-700 text-[10px] font-mono">
-                  {([128, 256, 384, 512] as const).map((z) => (
-                    <button
-                      key={z}
-                      type="button"
-                      onClick={() => setPreviewZoom(z)}
-                      className={`px-1.5 py-0.5 rounded transition ${
-                        previewZoom === z
-                          ? 'bg-cyan-500 text-white font-bold'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      {z === 128 ? '1x' : z === 256 ? '2x' : z === 384 ? '3x' : '4x'}
-                    </button>
-                  ))}
-                </div>
+  const nameplate = (
+    <label className="group relative flex flex-col items-center">
+      <span className="text-[10px] uppercase tracking-[0.3em] text-[#b9a98a] [text-shadow:0_1px_0_#000]">{T('name')}</span>
+      <span className="relative mt-1 flex items-center border-2 border-[#8a6a3a] bg-[linear-gradient(180deg,#34373d,#1c1d21)] px-1 shadow-[0_6px_24px_rgba(0,0,0,0.7)]">
+        <span className="text-[#c99a4b] px-2 select-none" aria-hidden>
+          ❖
+        </span>
+        <input
+          value={character.name}
+          onChange={(e) => setCharacter({ ...character, name: e.target.value })}
+          placeholder={T('namePh')}
+          maxLength={28}
+          style={serif}
+          className="w-[16rem] bg-transparent py-1.5 text-center text-xl font-bold tracking-wider text-[#efe3c4] outline-none placeholder:text-[#6b5a44]"
+        />
+        <span className="text-[#c99a4b] px-2 select-none" aria-hidden>
+          ❖
+        </span>
+      </span>
+    </label>
+  );
 
-                {/* Chakra Burst Toggle */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundManager.playChakraSurge();
-                    setPreviewEnhanced(!previewEnhanced);
-                  }}
-                  className={`text-xs px-2.5 py-1 rounded-md font-mono border transition ${
-                    previewEnhanced
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-500/30'
-                      : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:text-slate-200'
-                  }`}
-                >
-                  Chakra Aura: {previewEnhanced ? 'ON' : 'OFF'}
-                </button>
-              </div>
+  const stances = (
+    <div className="flex flex-wrap justify-center gap-1 border border-[#6b5434] bg-[rgba(20,17,13,0.85)] p-1 shadow-[0_6px_24px_rgba(0,0,0,0.7)]">
+      {SPRITE_POSES.map((s) => (
+        <button
+          key={s}
+          type="button"
+          onClick={() => {
+            soundManager.playSelect();
+            setPreviewStance(s);
+            setPreviewCast(null);
+          }}
+          className={`px-2.5 py-1 text-[11px] font-semibold border ${previewStance === s ? 'border-[#f2c46d] text-[#1c1206] bg-[linear-gradient(180deg,#f6d58e,#c99a4b)]' : 'border-[#3d3122] text-[#d9caa6] bg-[#1d1812] hover:border-[#8a6a3a]'}`}
+        >
+          {T(`pose_${s}` as TK)}
+        </button>
+      ))}
+    </div>
+  );
+
+  const tabs = <StepTabs steps={STEPS} active={step} onPick={go} label={(s) => T(`step_${s}` as TK)} icon={(s) => STEP_ICON[s]} />;
+  const tools = (
+    <div className="flex items-center gap-2">
+      <IronButton onClick={handleRandomize} title={T('randomize')}>
+        <Dice5 className="w-3.5 h-3.5" />
+        {wide && T('randomize')}
+      </IronButton>
+      <IronButton onClick={handleExport} title={T('exportImport')}>
+        <Download className="w-3.5 h-3.5" />
+        {wide && T('exportImport')}
+      </IronButton>
+    </div>
+  );
+  const backLabel = stepIdx === 0 ? T('mainMenu') : T('back');
+  const nextLabel = stepIdx === STEPS.length - 1 ? T('accept') : T('next');
+
+  return (
+    <div className="creator-bg3 fixed inset-0 z-30 overflow-hidden bg-black text-[#efe3c4]">
+      <ForestScene className="absolute inset-0" />
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_55%,rgba(0,0,0,0)_40%,rgba(0,0,0,0.6)_100%)]" />
+      {wide ? (
+        <>
+          <div className="absolute inset-x-0 top-0 h-28 pointer-events-none bg-gradient-to-b from-black/70 to-transparent" />
+          <div className="absolute left-6 top-5">
+            <div style={serif} className="text-[11px] uppercase tracking-[0.3em] text-[#b9a98a] [text-shadow:0_1px_0_#000]">
+              Shinobi 5e Chronicles
             </div>
+            <h1 style={serif} className="text-2xl font-bold tracking-wide text-[#f2c46d] [text-shadow:0_2px_0_#000]">
+              {T('title')}
+            </h1>
+          </div>
+          <div className="absolute left-1/2 top-4 -translate-x-1/2">{tabs}</div>
+          <div className="absolute right-6 top-6">{tools}</div>
 
-            {/* Interactive 2D Sprite Showcase with dynamic crisp scaling */}
-            <div className="relative my-2 p-3 rounded-2xl bg-slate-950/90 border border-slate-800 shadow-2xl flex items-center justify-center min-h-[300px]">
-              <ShinobiSpriteCanvas
-                character={character}
-                appearance={look}
-                stance={previewStance}
-                castStyle={previewStance === 'cast' ? previewCast ?? undefined : undefined}
-                size={previewZoom}
-                isEnhanced={previewEnhanced}
-                showAura={true}
-              />
-            </div>
+          <Frame className={`absolute left-6 top-[112px] bottom-[96px] ${step === 'appearance' ? 'w-[min(34vw,560px)]' : 'w-[min(26vw,400px)]'}`} title={leftTitle} sub={T(`stepHint_${step}` as TK)}>
+            {list}
+          </Frame>
+          <Frame className="absolute right-6 top-[112px] bottom-[96px] w-[min(27vw,420px)]" title={detail.title} sub={detail.sub}>
+            <div className="pb-3">{detail.body}</div>
+          </Frame>
 
-            {/* Stance Selector - Full 6 Animation Stances */}
-            <div className="w-full mt-1 mb-3">
-              <div className="text-[11px] uppercase tracking-wider text-slate-400 text-center mb-1.5 font-medium">
-                Sprite Animation Stances
-              </div>
-              <div className="grid grid-cols-4 sm:grid-cols-7 gap-1 p-1 bg-slate-900/90 rounded-lg border border-slate-800">
-                {SPRITE_POSES.map((stance) => (
-                  <button
-                    key={stance}
-                    type="button"
-                    onClick={() => {
-                      soundManager.playSelect();
-                      setPreviewStance(stance);
-                      setPreviewCast(null);
-                    }}
-                    className={`py-1 text-[10px] font-medium rounded-md capitalize transition ${
-                      previewStance === stance
-                        ? 'bg-cyan-600 text-white shadow-xs'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {stance}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick-Pick Legendary Shinobi Presets */}
-            <div className="w-full pt-3 border-t border-slate-800">
-              <div className="text-[11px] uppercase tracking-wider text-amber-400 font-bold mb-2 flex items-center gap-1">
-                <UserCheck className="w-3.5 h-3.5" /> Legendary Shinobi Presets
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {LEGENDARY_PRESETS.map((preset) => (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    onClick={() => {
-                      soundManager.playCriticalHit();
-                      setCharacter(preset.character);
-                    }}
-                    className="p-2 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500 text-left transition"
-                  >
-                    <div className="text-xs font-bold text-white truncate">{preset.name}</div>
-                    <div className="text-[10px] text-cyan-400 font-mono truncate">{preset.tag}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 132 }}>
+            {nameplate}
+          </div>
+          <div className="absolute" style={{ left: view.w / 2 - 64 * k, top: ground - 120 * k }}>
+            {figure}
+          </div>
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: Math.min(ground + 18, view.h - 140) }}>
+            {stances}
           </div>
 
-          {/* Naruto 5e Combat Sheet Summary Card */}
-          <div className="rounded-2xl bg-slate-900/90 border border-slate-800 p-5 space-y-4 shadow-lg">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <h2 className="text-lg font-bold text-white">{character.name || 'Unnamed Shinobi'}</h2>
-                <div className="text-xs text-slate-400">
-                  {clanName(character.clan)} Clan · {character.shinobiClass} · Level {character.level}
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-xs px-2 py-0.5 rounded-sm bg-slate-800 text-amber-300 font-mono border border-slate-700">
-                  AC {character.armorClass}
-                </span>
-              </div>
+          <div className="absolute left-6 bottom-6">
+            <BigButton onClick={back}>‹ {backLabel}</BigButton>
+          </div>
+          <div className="absolute right-6 bottom-6">
+            <BigButton tone="gold" onClick={next}>
+              {nextLabel} ›
+            </BigButton>
+          </div>
+        </>
+      ) : (
+        <div className="absolute inset-0 overflow-y-auto">
+          <div className="flex flex-col gap-4 px-4 py-4">
+            <div className="flex items-center justify-between gap-2">
+              <h1 style={serif} className="text-lg font-bold text-[#f2c46d]">
+                {T('title')}
+              </h1>
+              {tools}
             </div>
-
-            {/* Health & Chakra Pools */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
-                <div className="text-[10px] uppercase tracking-wider text-rose-400 font-bold mb-0.5">
-                  Hit Points (HP)
-                </div>
-                <div className="text-xl font-bold font-mono text-white">
-                  {character.maxHp} <span className="text-xs text-slate-500 font-normal">/ {character.maxHp}</span>
-                </div>
-              </div>
-              <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
-                <div className="text-[10px] uppercase tracking-wider text-cyan-400 font-bold mb-0.5">
-                  Chakra Capacity
-                </div>
-                <div className="text-xl font-bold font-mono text-white">
-                  {character.maxChakra}{' '}
-                  <span className="text-xs text-slate-500 font-normal">/ {character.maxChakra}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 5e Combat Attributes */}
-            <div className="grid grid-cols-4 gap-2 text-center text-xs">
-              <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
-                <div className="text-slate-400 text-[10px]">Jutsu DC</div>
-                <div className="font-bold text-cyan-400 text-base font-mono">{character.jutsuSaveDC}</div>
-              </div>
-              <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
-                <div className="text-slate-400 text-[10px]">Atk Bonus</div>
-                <div className="font-bold text-amber-400 text-base font-mono">+{character.jutsuAttackBonus}</div>
-              </div>
-              <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
-                <div className="text-slate-400 text-[10px]">Speed</div>
-                <div className="font-bold text-emerald-400 text-base font-mono">{character.speed} tiles</div>
-              </div>
-              <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
-                <div className="text-slate-400 text-[10px]">Dojutsu</div>
-                <div className="font-bold text-rose-400 text-[11px] truncate">{character.dojutsu}</div>
-              </div>
+            <div className="overflow-x-auto pb-1">{tabs}</div>
+            <div className="flex justify-center">{nameplate}</div>
+            <div className="flex justify-center">{figure}</div>
+            {stances}
+            <Frame title={leftTitle} sub={T(`stepHint_${step}` as TK)}>
+              {list}
+            </Frame>
+            <Frame title={detail.title} sub={detail.sub}>
+              <div className="pb-3">{detail.body}</div>
+            </Frame>
+            <div className="flex justify-between gap-2 pb-6">
+              <BigButton onClick={back}>‹ {backLabel}</BigButton>
+              <BigButton tone="gold" onClick={next}>
+                {nextLabel} ›
+              </BigButton>
             </div>
           </div>
         </div>
+      )}
 
-        {/* RIGHT COLUMN: EDITOR TABS */}
-        <div className="lg:col-span-7 flex flex-col bg-slate-900/90 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
-          {/* Tab Navigation */}
-          <div className="flex border-b border-slate-800 bg-slate-950/50 p-1.5 gap-1">
-            {[
-              { id: 'identity', label: '1. Clan & Identity', icon: Eye },
-              { id: 'appearance', label: '2. Appearance', icon: Shield },
-              { id: 'stats', label: '3. Stats & Class', icon: Swords },
-              { id: 'jutsus', label: '4. Jutsu Loadout (5 Slots)', icon: Zap },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    soundManager.playSelect();
-                    setActiveTab(tab.id as typeof activeTab);
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-2 text-xs font-semibold rounded-lg transition whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'bg-cyan-600 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex-1 p-6 overflow-y-auto max-h-[720px] space-y-6">
-            {/* TAB 1: CLAN & IDENTITY */}
-            {activeTab === 'identity' && (
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-1.5">
-                    Shinobi Name
-                  </label>
-                  <input
-                    type="text"
-                    value={character.name}
-                    onChange={(e) => setCharacter({ ...character, name: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-hidden focus:border-cyan-500 font-medium"
-                    placeholder="e.g. Renjiro, Sasori, Hanabi..."
-                  />
-                </div>
-
-                {/* Clan Picker */}
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
-                    Noble Clan Heritage
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(Object.keys(CLANS_DATA) as ClanType[]).map((clanKey) => {
-                      const clan = CLANS_DATA[clanKey];
-                      const isSelected = character.clan === clanKey;
-                      return (
-                        <div
-                          key={clanKey}
-                          onClick={() => handleClanChange(clanKey)}
-                          className={`cursor-pointer rounded-xl p-4 border transition ${
-                            isSelected
-                              ? 'bg-cyan-950/30 border-cyan-500 ring-1 ring-cyan-500/50'
-                              : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-white text-base">{clan.name}</span>
-                            <span className="text-xs font-mono text-slate-400">{clan.japaneseName}</span>
-                          </div>
-                          <p className="text-xs text-slate-300 mb-2 leading-relaxed">{clan.description}</p>
-                          {/* The clan's ability bonus: added to the base scores for every number (saves, AC, attack, DC, HP, chakra, skills). */}
-                          <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                            {clan.statBonuses.map((b) => (
-                              <span key={b.stat} className="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/40">
-                                +{b.bonus} {b.stat.toUpperCase()}
-                              </span>
-                            ))}
-                            <span className="text-[10px] text-slate-400">added to your scores · counts in every number</span>
-                          </div>
-                          <div className="text-[11px] text-cyan-400 font-mono bg-slate-900/80 p-2 rounded-md border border-slate-800">
-                            {clan.lineageTraits}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Dojutsu Selection */}
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
-                    Dojutsu / Visual Prowess
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {CLANS_DATA[character.clan].availableDojutsu.map((doj) => (
-                      <button
-                        key={doj}
-                        type="button"
-                        onClick={() => {
-                          soundManager.playSelect();
-                          setCharacter({
-                            ...character,
-                            dojutsu: doj,
-                            palette: {
-                              ...character.palette,
-                              eyeColor: doj.includes('Sharingan')
-                                ? '#ef4444'
-                                : doj.includes('Byakugan')
-                                ? '#e0e7ff'
-                                : character.palette.eyeColor,
-                            },
-                          });
-                        }}
-                        className={`p-2.5 text-xs text-left rounded-lg border transition ${
-                          character.dojutsu === doj
-                            ? 'bg-rose-950/40 border-rose-500 text-rose-200 font-semibold'
-                            : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {doj}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-            )}
-
-            {/* TAB 2: LAYERED SPRITE APPEARANCE */}
-            {activeTab === 'appearance' && (
-              <AppearanceEditor
-                look={look}
-                eye={eye}
-                character={character}
-                onChange={updateLook}
-                onPreviewStance={setPreviewStance}
-              />
-            )}
-
-            {/* TAB 3: STATS & CLASS & FEATS */}
-            {activeTab === 'stats' && (
-              <div className="space-y-6">
-                {/* Shinobi Class */}
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
-                    Shinobi Class Archetype (Naruto 5e Playbook)
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {(Object.keys(SHINOBI_CLASSES) as ShinobiClassType[]).map((clsKey) => {
-                      const cls = SHINOBI_CLASSES[clsKey];
-                      const isSelected = character.shinobiClass === clsKey;
-                      return (
-                        <div
-                          key={clsKey}
-                          onClick={() => handleClassChange(clsKey)}
-                          className={`cursor-pointer rounded-xl p-3.5 border transition ${
-                            isSelected
-                              ? 'bg-cyan-950/40 border-cyan-500 ring-1 ring-cyan-500/50'
-                              : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-white text-xs">{cls.name}</span>
-                            <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded-sm bg-slate-800 text-cyan-300">
-                              Cast: {cls.castingStat.toUpperCase()}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-300 mb-2 leading-relaxed">{cls.description}</p>
-                          <div className="text-[10px] text-amber-300 font-mono bg-slate-900 p-1.5 rounded-md border border-slate-800">
-                            {cls.classFeatures}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 5e Ability Scores Allocation */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                      Ability Scores (D&D 5e Standard Array / Point Buy)
-                    </label>
-                    <span className="text-xs text-slate-400 font-mono">
-                      Base + {clanName(character.clan)} bonus ({CLANS_DATA[character.clan].statBonuses.map((b) => `+${b.bonus} ${b.stat.toUpperCase()}`).join(', ')})
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {(['str', 'dex', 'con', 'int', 'wis', 'cha'] as (keyof AbilityScores)[]).map((stat) => {
-                      // The sheet keeps the base score; the clan's bonus is added to it for every number.
-                      const base = character.stats[stat];
-                      const bonus = clanBonus(character.clan)[stat] ?? 0;
-                      const val = base + bonus;
-                      const mod = Math.floor((val - 10) / 2);
-                      const modStr = mod >= 0 ? `+${mod}` : `${mod}`;
-                      return (
-                        <div
-                          key={stat}
-                          className={`bg-slate-950 p-3 rounded-xl border flex items-center justify-between ${bonus ? 'border-amber-500/40' : 'border-slate-800'}`}
-                        >
-                          <div>
-                            <div className="text-[11px] uppercase font-mono text-slate-400 font-semibold">{stat}</div>
-                            <div className="text-lg font-bold text-white font-mono">{val}</div>
-                            <div className="text-[10px] font-mono text-slate-400">
-                              base {base}
-                              {bonus > 0 && (
-                                <span className="text-amber-300">
-                                  {' '}+{bonus} {clanName(character.clan)}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[10px] text-cyan-400 font-mono font-medium">Mod: {modStr}</div>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleStatChange(stat, 1)}
-                              className="w-7 h-6 rounded-md bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center transition"
-                            >
-                              +
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleStatChange(stat, -1)}
-                              className="w-7 h-6 rounded-md bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center transition"
-                            >
-                              -
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Feats Selection */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                      Shinobi Feats & Talents (Select up to 3)
-                    </label>
-                    <span className="text-xs text-slate-400 font-mono">
-                      {character.selectedFeats.length} / 3 Selected
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {SHINOBI_FEATS.map((feat) => {
-                      const isSelected = character.selectedFeats.includes(feat.id);
-                      return (
-                        <div
-                          key={feat.id}
-                          onClick={() => handleFeatToggle(feat.id)}
-                          className={`cursor-pointer p-3 rounded-xl border transition ${
-                            isSelected
-                              ? 'bg-cyan-950/40 border-cyan-500 ring-1 ring-cyan-500/50'
-                              : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className="font-semibold text-white text-xs">{feat.name}</span>
-                            {isSelected && <span className="text-[10px] text-cyan-400 font-mono font-bold">ACTIVE</span>}
-                          </div>
-                          <p className="text-[11px] text-slate-300 leading-relaxed">{feat.description}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 4: JUTSU LOADOUT (5 SLOTS) */}
-            {activeTab === 'jutsus' && (
-              <div className="space-y-6">
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs text-slate-300 leading-relaxed">
-                  <div className="font-bold text-cyan-400 mb-1 flex items-center gap-1.5">
-                    <BookOpen className="w-4 h-4" /> 5-Slot Tactical Jutsu System
-                  </div>
-                  Your loadout includes <strong className="text-white">1 Utility Technique</strong>,{' '}
-                  <strong className="text-white">2 Elemental Core Techniques</strong> (Fire, Water, Earth, Wind, Lightning, Taijutsu, Genjutsu),{' '}
-                  <strong className="text-white">1 Clan Signature Secret</strong>, and{' '}
-                  <strong className="text-white">1 S-Rank Ultimate Finisher</strong>. All techniques can be empowered during combat using Jutsu Enhancement!
-                </div>
-
-                {/* SLOT 1: UTILITY */}
-                <div className="space-y-2">
-                  <div className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center justify-between">
-                    <span>Slot 1: Utility Jutsu</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Clones, Teleportation, Traps, Medical</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {utilityJutsus.map((jutsu) => {
-                      const isSelected = character.selectedJutsus.slot1Utility === jutsu.id;
-                      return (
-                        <div
-                          key={jutsu.id}
-                          onClick={() => {
-                            soundManager.playSelect();
-                            setCharacter({
-                              ...character,
-                              selectedJutsus: { ...character.selectedJutsus, slot1Utility: jutsu.id },
-                            });
-                          }}
-                          className={`cursor-pointer p-3 rounded-xl border transition ${
-                            isSelected
-                              ? 'bg-amber-950/40 border-amber-500 ring-1 ring-amber-500/50'
-                              : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className="font-bold text-white text-xs">{jutsu.name}</span>
-                            <span className="text-[10px] font-mono text-cyan-400">{jutsu.chakraCost} Chakra</span>
-                          </div>
-                          <div className="text-[10px] font-mono text-slate-400 mb-1">{jutsu.japaneseName}</div>
-                          <p className="text-[11px] text-slate-300 leading-relaxed">{jutsu.description}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* SLOT 2 & 3: ELEMENTAL CORE */}
-                <div className="space-y-3 pt-3 border-t border-slate-800">
-                  <div className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center justify-between">
-                    <span>Slots 2 & 3: Elemental / Core Jutsus (Ranks D to A)</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Interactive & Destructible Environment Powers</span>
-                  </div>
-
-                  {/* Slot 2 selector */}
-                  <div>
-                    <label className="text-[11px] text-slate-300 block mb-1">Elemental Technique A:</label>
-                    <select
-                      value={character.selectedJutsus.slot2Elemental}
-                      onChange={(e) => {
-                        soundManager.playSelect();
-                        setCharacter({
-                          ...character,
-                          selectedJutsus: { ...character.selectedJutsus, slot2Elemental: e.target.value },
-                        });
-                      }}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white"
-                    >
-                      {elementalJutsus.map((j) => (
-                        <option key={j.id} value={j.id}>
-                          [{j.nature} · Rank {j.rank}] {j.name} ({j.chakraCost} Chakra · {j.damageDice || 'Barrier'})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Slot 3 selector */}
-                  <div>
-                    <label className="text-[11px] text-slate-300 block mb-1">Elemental Technique B:</label>
-                    <select
-                      value={character.selectedJutsus.slot3Elemental}
-                      onChange={(e) => {
-                        soundManager.playSelect();
-                        setCharacter({
-                          ...character,
-                          selectedJutsus: { ...character.selectedJutsus, slot3Elemental: e.target.value },
-                        });
-                      }}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-white"
-                    >
-                      {elementalJutsus.map((j) => (
-                        <option key={j.id} value={j.id}>
-                          [{j.nature} · Rank {j.rank}] {j.name} ({j.chakraCost} Chakra · {j.damageDice || 'Barrier'})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* SLOT 4: CLAN SIGNATURE */}
-                <div className="space-y-2 pt-3 border-t border-slate-800">
-                  <div className="text-xs font-bold uppercase tracking-wider text-rose-400 flex items-center justify-between">
-                    <span>Slot 4: Clan Heritage Secret</span>
-                    <span className="text-[10px] text-slate-400 font-normal">{clanName(character.clan)} Lineage Arts</span>
-                  </div>
-                  <div className="grid grid-cols-1 gap-2">
-                    {clanJutsus.map((jutsu) => (
-                      <div
-                        key={jutsu.id}
-                        className="p-3 rounded-xl border bg-rose-950/20 border-rose-500/60 text-xs text-slate-200"
-                      >
-                        <div className="flex items-center justify-between font-bold text-white mb-0.5">
-                          <span>{jutsu.name}</span>
-                          <span className="text-cyan-400 font-mono">{jutsu.chakraCost} Chakra</span>
-                        </div>
-                        <div className="text-[10px] font-mono text-rose-300 mb-1">{jutsu.japaneseName}</div>
-                        <p className="text-[11px] text-slate-300">{jutsu.description}</p>
-                        <div className="mt-2 text-[10px] font-mono text-amber-300 bg-black/40 p-1.5 rounded-sm">
-                          ⚡ Enhancement: {jutsu.enhancementEffect}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* SLOT 5: ULTIMATE S-RANK */}
-                <div className="space-y-2 pt-3 border-t border-slate-800">
-                  <div className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center justify-between">
-                    <span>Slot 5: Ultimate S-Rank Finisher</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Titanic Devastation (8 Chakra)</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {ultimateJutsus.map((jutsu) => {
-                      const isSelected = character.selectedJutsus.slot5Ultimate === jutsu.id;
-                      return (
-                        <div
-                          key={jutsu.id}
-                          onClick={() => {
-                            soundManager.playSelect();
-                            setCharacter({
-                              ...character,
-                              selectedJutsus: { ...character.selectedJutsus, slot5Ultimate: jutsu.id },
-                            });
-                          }}
-                          className={`cursor-pointer p-3 rounded-xl border transition ${
-                            isSelected
-                              ? 'bg-purple-950/40 border-purple-500 ring-1 ring-purple-500/50'
-                              : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className="font-bold text-white text-xs">{jutsu.name}</span>
-                            <span className="text-[10px] font-mono text-purple-300">Rank S</span>
-                          </div>
-                          <div className="text-[10px] font-mono text-slate-400 mb-1">{jutsu.japaneseName}</div>
-                          <p className="text-[11px] text-slate-300 leading-relaxed mb-2">{jutsu.description}</p>
-                          <div className="text-[10px] font-mono text-amber-300 bg-slate-900 p-1.5 rounded-md border border-slate-800">
-                            Dice: {jutsu.damageDice} · {jutsu.damageType}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* CASTING STYLE PER JUTSU */}
-                <div className="space-y-2 pt-3 border-t border-slate-800">
-                  <div className="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center justify-between">
-                    <span>Casting Style per Jutsu</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Default: {CAST_STYLE_INFO[defaultCastStyle(look)].label}</span>
-                  </div>
-                  <div className="grid grid-cols-1 gap-2">
-                    {[...new Set(Object.values(character.selectedJutsus))].map((id) => {
-                      const j = JUTSUS_DATA.find((x) => x.id === id);
-                      if (!j) return null;
-                      return (
-                        <div key={id} className="flex items-center gap-2 p-2 rounded-lg bg-slate-950/60 border border-slate-800">
-                          <span className="flex-1 min-w-0 text-xs text-white truncate">{j.name}</span>
-                          <select
-                            value={look.cast?.jutsu?.[id] ?? ''}
-                            onChange={(e) => {
-                              soundManager.playSelect();
-                              setJutsuCast(id, e.target.value as CastStyle | '');
-                            }}
-                            className="bg-slate-950 border border-slate-700 rounded-md p-1.5 text-[11px] text-white"
-                          >
-                            <option value="">Default ({CAST_STYLE_INFO[defaultCastStyle(look)].label})</option>
-                            {CAST_STYLES.map((s) => (
-                              <option key={s} value={s}>
-                                {CAST_STYLE_INFO[s].label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* JSON Import/Export Modal */}
+      {/* Export / import */}
       {importExportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xs p-4">
-          <div className="w-full max-w-xl bg-slate-900 border border-slate-700 rounded-2xl p-6 space-y-4">
-            <h3 className="text-lg font-bold text-white">Export / Import Shinobi Data</h3>
-            <p className="text-xs text-slate-400">
-              Copy this JSON to share your character build, or paste another character sheet and click Apply.
-            </p>
-            <textarea
-              rows={12}
-              value={importJsonText}
-              onChange={(e) => setImportJsonText(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-cyan-300 focus:outline-hidden"
-            />
-            {importError && <p className="text-xs text-red-400">{importError}</p>}
-            <div className="flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setImportExportModal(false)}
-                className="px-4 py-2 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={handleImportApply}
-                className="px-4 py-2 text-xs font-bold rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white"
-              >
-                Apply Imported Character
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <Frame className="w-full max-w-xl" title={T('exportImport')}>
+            <div className="flex flex-col gap-3 p-4">
+              <p className="text-xs text-[#b9a98a]">{T('exportText')}</p>
+              <textarea
+                rows={12}
+                value={importJsonText}
+                onChange={(e) => setImportJsonText(e.target.value)}
+                className="w-full border border-[#3d3122] bg-black/50 p-3 font-mono text-xs text-[#efe3c4] outline-none focus:border-[#8a6a3a]"
+              />
+              {importError && <p className="text-xs text-[#ff9a7a]">{importError}</p>}
+              <div className="flex items-center justify-end gap-2">
+                <IronButton onClick={() => setImportExportModal(false)}>{T('close')}</IronButton>
+                <BigButton tone="gold" onClick={handleImportApply}>
+                  {T('applyImport')}
+                </BigButton>
+              </div>
             </div>
-          </div>
+          </Frame>
         </div>
       )}
     </div>

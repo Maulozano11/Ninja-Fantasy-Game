@@ -248,11 +248,34 @@ D21 and D24 there):
 - Mouse and touch. Computer and tablet first; a layout for small phone screens
   comes later.
 
+## Title screen and character creator (approved 2026-10-20)
+
+- **No web navigation.** The game opens on its title screen: the owner's
+  burning forest (his creator mockup, `docs/reference/creator-scene-owner-reference.jpg`,
+  built into an animated scene by `tools/scenes/creator_forest.py`: his flames
+  lick in a loop of 16 frames, embers rise, smoke drifts behind the trunks).
+  Menu: **Start game** (continues the mission under way, or the saved ninja),
+  **New game** (the creator; once the new ninja is finished it replaces the
+  mission under way, after a warning), **Load game** (the mission under way,
+  the ninjas made on this device, importing a sheet as JSON) and **Practice**
+  (practice battles, arena, campaign arcs). Every other screen has a Main menu
+  button; the battle menu offers it too.
+- **The creator is laid out like Baldur's Gate 3's**: the ninja stands big in
+  the forest's clearing; the steps run across the top (Origin, Clan, Class,
+  Appearance, Abilities, Jutsu); the choices are listed on the left (a clan's
+  eyes open under it, as a race's subraces do; a jutsu slot opens its options
+  under it); the details sit on parchment on the right and follow the
+  pointer; the name plate, the poses and Back / Next / Accept are at the
+  bottom. Accept saves the ninja on the device and goes into the game.
+- The panels are the owner's iron, bronze and parchment look (his mockup);
+  his own banner, card and rune-bar art from the mockup is the next step.
+
 ## Language, sound and tips
 
-- Battle, missions and camp in **Spanish and English** with a toggle; the game
-  starts in the browser's language and remembers the choice. The character
-  creator and the older screens follow later.
+- Battle, missions, camp, the title screen and the character creator in
+  **Spanish and English** with a toggle; the game starts in the browser's
+  language and remembers the choice. The older screens (village, campaign
+  arcs, arena) follow later.
 - **Ability names** (the owner, 2026-10-20): every jutsu is "Técnica de
   <Elemento>: <name>" in Spanish and "<Element> Technique: <name>" in English,
   with the owner's own names after the prefix (*Técnica de Fuego: Bola de

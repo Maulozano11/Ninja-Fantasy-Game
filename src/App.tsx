@@ -7,25 +7,23 @@ import type { EncounterId } from './battle/encounters';
 import { CampaignMode } from './components/CampaignMode';
 import { ArenaSandbox } from './components/ArenaSandbox';
 import { MissionMode } from './components/mission/MissionMode';
-import { LangToggle } from './i18n/LangToggle';
+import { TitleScreen } from './components/TitleScreen';
 import { strings, useLang } from './i18n';
 import { soundManager } from './utils/audio';
 import { setAppNavigate } from './appNav';
 import type { AppView } from './appNav';
-import { Swords, User, BookOpen, Compass, Shield, Flame } from 'lucide-react';
+import { loadHero, saveHero } from './game/saves';
+import { saveRun } from './game/missionRun';
+import { Menu } from 'lucide-react';
 
 const T = strings({
-  creator: { en: 'Character Creator', es: 'Creador de personajes' },
-  campaign: { en: 'Campaign Arcs', es: 'Arcos de campaña' },
-  missions: { en: 'Missions', es: 'Misiones' },
-  isNew: { en: 'New', es: 'Nuevo' },
-  combat: { en: 'Tactical Combat', es: 'Combate táctico' },
-  arena: { en: 'Arena & PvP', es: 'Arena y JcJ' },
-  launch: { en: 'Launch Battle', es: 'Iniciar batalla' },
-  footer: { en: 'Shinobi 5e Chronicles · Interactive 2D Tactical Engine with Destructible Environments & D&D Rolls', es: 'Shinobi 5e Chronicles · Motor táctico 2D interactivo con escenarios destructibles y tiradas de D&D' },
+  mainMenu: { en: 'Main menu', es: 'Menú principal' },
 });
 
-const founderPreset = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')?.character;
+const founderPreset = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')?.character ?? LEGENDARY_PRESETS[0].character;
+
+/** A new game's ninja: the creator's starting sheet under an id of its own (so it never overwrites a saved one). */
+const freshNinja = (): ShinobiCharacter => ({ ...founderPreset, id: `ninja_${Date.now().toString(36)}` });
 
 /** The new party battle that matches an old encounter type (the arena and campaign still use them). */
 function encounterFor(type?: 'skirmish' | 'rogue_squad' | 'giant_beast' | 'titanic_threat'): EncounterId | undefined {
@@ -35,23 +33,36 @@ function encounterFor(type?: 'skirmish' | 'rogue_squad' | 'giant_beast' | 'titan
 
 export default function App() {
   useLang();
-  // A #creator or #missions link opens straight onto that screen.
+  // The game opens on its title screen; a #creator, #missions or #combat link opens straight onto
+  // that screen (for testing).
   const [activeView, setActiveView] = useState<AppView>(() => {
     const hash = typeof window !== 'undefined' ? window.location.hash : '';
-    return hash === '#creator' ? 'creator' : hash === '#missions' ? 'mission' : 'combat';
+    return hash === '#creator' ? 'creator' : hash === '#missions' ? 'mission' : hash === '#combat' ? 'combat' : 'title';
   });
-  // A battle fills the screen over the navigation; its menu changes screen through this.
-  // Leaving a battle for the screen it was opened from starts that screen afresh.
+  // A battle fills the screen; its menu changes screen through this. Leaving a battle for the
+  // screen it was opened from starts that screen afresh.
   const [visit, setVisit] = useState(0);
+  const go = (v: AppView) => {
+    setActiveView(v);
+    setVisit((n) => n + 1);
+  };
   useEffect(() => {
     setAppNavigate((v) => {
       soundManager.playSelect();
-      setActiveView(v);
-      setVisit((n) => n + 1);
+      go(v);
     });
     return () => setAppNavigate(null);
   }, []);
-  const [character, setCharacter] = useState<ShinobiCharacter>(founderPreset || LEGENDARY_PRESETS[0].character);
+  // The ninja you play: the one saved on this device, else the creator's starting sheet.
+  const [saved, setSaved] = useState<ShinobiCharacter | null>(() => loadHero());
+  const [character, setCharacter] = useState<ShinobiCharacter>(() => saved ?? founderPreset);
+  /** The creator was opened for a new game: finishing the ninja replaces the mission under way. */
+  const [newGame, setNewGame] = useState(false);
+  const keep = (c: ShinobiCharacter) => {
+    setCharacter(c);
+    setSaved(c);
+    saveHero(c);
+  };
   const [activeEncounter, setActiveEncounter] = useState<{
     title: string;
     description: string;
@@ -70,120 +81,60 @@ export default function App() {
     setActiveView('combat');
   };
 
+  if (activeView === 'title') {
+    return (
+      <TitleScreen
+        hero={saved}
+        onStart={() => go('mission')}
+        onNewGame={() => {
+          setNewGame(true);
+          setCharacter(freshNinja());
+          go('creator');
+        }}
+        onPickNinja={(c, edit) => {
+          keep(c);
+          setNewGame(false);
+          go(edit ? 'creator' : 'mission');
+        }}
+        onPractice={(v) => go(v)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
-      {/* Top Bar Contract: Zone 1 (Wordmark) - Zone 2 (Nav Links) - Zone 3 (Primary Action) */}
-      <header className="flex items-center justify-between gap-4 md:gap-8 px-4 md:px-6 py-3.5 border-b border-slate-800 bg-slate-950/95 sticky top-0 z-40 backdrop-blur-md">
-        {/* Zone 1: Single text element wordmark */}
+      {/* No web navigation: every screen goes back to the title screen from here (a battle covers it
+          and has its own menu). The creator has its own way back. */}
+      {activeView !== 'creator' && (
         <button
           type="button"
           onClick={() => {
             soundManager.playSelect();
-            setActiveView('creator');
+            go('title');
           }}
-          className="text-lg font-extrabold tracking-tight text-white whitespace-nowrap shrink-0 flex items-center gap-2 hover:text-cyan-400 transition cursor-pointer"
+          className="fixed left-3 top-3 z-40 inline-flex items-center gap-1.5 rounded-sm border border-[#8a6a3a] bg-[#0e0a07]/90 px-3 py-1.5 text-xs font-semibold text-[#efe3c4] shadow-lg shadow-black hover:text-[#f2c46d]"
         >
-          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
-          <span>Shinobi 5e Chronicles</span>
+          <Menu className="w-3.5 h-3.5" />
+          {T('mainMenu')}
         </button>
+      )}
 
-        {/* Zone 2: single-line text navigation links */}
-        <nav className="hidden md:flex items-center gap-4 xl:gap-7 text-xs font-semibold text-slate-400">
-          <button
-            type="button"
-            onClick={() => {
-              soundManager.playSelect();
-              setActiveView('creator');
-            }}
-            className={`transition whitespace-nowrap shrink-0 pb-0.5 ${
-              activeView === 'creator'
-                ? 'text-cyan-400 border-b-2 border-cyan-400'
-                : 'hover:text-slate-200'
-            }`}
-          >
-            {T('creator')}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              soundManager.playSelect();
-              setActiveView('campaign');
-            }}
-            className={`transition whitespace-nowrap shrink-0 pb-0.5 ${
-              activeView === 'campaign'
-                ? 'text-cyan-400 border-b-2 border-cyan-400'
-                : 'hover:text-slate-200'
-            }`}
-          >
-            {T('campaign')}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              soundManager.playSelect();
-              setActiveView('mission');
-            }}
-            className={`transition whitespace-nowrap shrink-0 pb-0.5 flex items-center gap-1.5 ${
-              activeView === 'mission'
-                ? 'text-cyan-400 border-b-2 border-cyan-400'
-                : 'hover:text-slate-200'
-            }`}
-          >
-            {T('missions')}
-            <span className="rounded bg-amber-400 px-1 text-[9px] font-black uppercase leading-4 text-slate-950">{T('isNew')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              soundManager.playSelect();
-              setActiveView('combat');
-            }}
-            className={`transition whitespace-nowrap shrink-0 pb-0.5 ${
-              activeView === 'combat'
-                ? 'text-cyan-400 border-b-2 border-cyan-400'
-                : 'hover:text-slate-200'
-            }`}
-          >
-            {T('combat')}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              soundManager.playSelect();
-              setActiveView('arena');
-            }}
-            className={`transition whitespace-nowrap shrink-0 pb-0.5 ${
-              activeView === 'arena'
-                ? 'text-cyan-400 border-b-2 border-cyan-400'
-                : 'hover:text-slate-200'
-            }`}
-          >
-            {T('arena')}
-          </button>
-        </nav>
-
-        {/* Zone 3: 1 primary action */}
-        <div className="flex items-center gap-3 shrink-0">
-          <LangToggle />
-          <button
-            type="button"
-            onClick={() => handleLaunchCombat()}
-            className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg hover:from-cyan-400 hover:to-blue-500 shadow-md shadow-cyan-950 transition whitespace-nowrap shrink-0 active:scale-98 cursor-pointer flex items-center gap-1.5"
-          >
-            <Swords className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">{T('launch')}</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Viewport */}
       <main className="flex-1 flex flex-col">
         {activeView === 'creator' && (
           <CharacterCreator
+            key={`${character.id}:${visit}`}
             initialCharacter={character}
+            onCancel={() => {
+              soundManager.playSelect();
+              setNewGame(false);
+              setCharacter(saved ?? founderPreset);
+              go('title');
+            }}
             onSave={(updatedChar) => {
-              setCharacter(updatedChar);
-              handleLaunchCombat();
+              keep(updatedChar);
+              if (newGame) saveRun(null);
+              setNewGame(false);
+              go('mission');
             }}
           />
         )}
@@ -193,7 +144,7 @@ export default function App() {
             key={visit}
             playerCharacter={character}
             onLaunchBattle={(enc) => handleLaunchCombat(enc)}
-            onBackToCreator={() => setActiveView('creator')}
+            onBackToCreator={() => go('creator')}
           />
         )}
 
@@ -202,7 +153,7 @@ export default function App() {
             key={visit}
             hero={character}
             // Only what a mission leaves for good comes home; edits made in the creator meanwhile stay.
-            onHeroReturn={(back) => back && setCharacter((c) => (c.id === back.id ? { ...c, scars: back.scars, traits: back.traits } : c))}
+            onHeroReturn={(back) => back && character.id === back.id && keep({ ...character, scars: back.scars, traits: back.traits })}
           />
         )}
 
@@ -212,15 +163,10 @@ export default function App() {
           <ArenaSandbox
             playerCharacter={character}
             onLaunchBattle={(enc) => handleLaunchCombat(enc)}
-            onBackToCreator={() => setActiveView('creator')}
+            onBackToCreator={() => go('creator')}
           />
         )}
       </main>
-
-      {/* Quiet Minimalist Editorial Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 px-6 py-4 text-center text-xs text-slate-500">
-        {T('footer')}
-      </footer>
     </div>
   );
 }

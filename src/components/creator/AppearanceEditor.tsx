@@ -22,6 +22,8 @@ import type {
 import type { ShinobiCharacter } from '../../types/shinobi';
 import { soundManager } from '../../utils/audio';
 import { PixelEditor } from './PixelEditor';
+import { L } from './words';
+import { useLang } from '../../i18n';
 import { SpriteThumb } from './SpriteThumb';
 
 type Category =
@@ -119,7 +121,7 @@ const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [
 ];
 
 export const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">{children}</div>
+  <div className="text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">{typeof children === 'string' ? L(children) : children}</div>
 );
 
 export const ColorRow: React.FC<{
@@ -131,7 +133,7 @@ export const ColorRow: React.FC<{
   onChange: (hex: string) => void;
 }> = ({ label, value, swatches, families, onChange }) => {
   const picker = (
-    <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title="Custom color">
+    <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title={L('Custom color')}>
       <input
         type="color"
         value={value}
@@ -144,7 +146,7 @@ export const ColorRow: React.FC<{
   const selected = (c: string) => value.toLowerCase() === c.toLowerCase();
   return (
     <div>
-      <div className="text-xs text-slate-300 mb-1.5">{label}</div>
+      <div className="text-xs text-slate-300 mb-1.5">{L(label)}</div>
       {families ? (
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
           {families.map((f) => (
@@ -203,6 +205,7 @@ export const AppearanceEditor: React.FC<{
   onChange: (look: SpriteAppearance) => void;
   onPreviewStance: (stance: SpritePose) => void;
 }> = ({ look, eye, character, onChange, onPreviewStance }) => {
+  useLang();
   const [cat, setCat] = useState<Category>('body');
   const [faceTab, setFaceTab] = useState<FaceTab>('shape');
   const slot = SLOT_CATEGORIES[cat];
@@ -233,7 +236,7 @@ export const AppearanceEditor: React.FC<{
                 : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
             }`}
           >
-            {c.label}
+            {L(c.label)}
           </button>
         ))}
       </div>
@@ -278,7 +281,7 @@ export const AppearanceEditor: React.FC<{
                   : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              {t.label}
+              {L(t.label)}
             </button>
           ))}
         </div>
@@ -478,7 +481,7 @@ export const AppearanceEditor: React.FC<{
                 className={`px-2.5 h-7 text-xs rounded-full border transition ${
                   !look.chakra.tint ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-slate-950/60 border-slate-700 text-slate-300 hover:text-white'
                 }`}
-                title="The burst's own color"
+                title={L("The burst's own color")}
               >
                 Natural
               </button>
@@ -498,7 +501,7 @@ export const AppearanceEditor: React.FC<{
                   title={c.name}
                 />
               ))}
-              <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title="Custom color">
+              <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title={L('Custom color')}>
                 <input
                   type="color"
                   value={/^#[0-9a-f]{6}$/i.test(look.chakra.tint ?? '') ? look.chakra.tint : chakraHex(look.chakra)}
@@ -511,7 +514,7 @@ export const AppearanceEditor: React.FC<{
                 <span className="absolute inset-1 rounded-full" style={{ backgroundColor: chakraHex(look.chakra) }} />
               </label>
             </div>
-            <p className="text-[11px] text-slate-500 mt-1.5">Any nature takes any color: red water, black or blue lightning, green fire…</p>
+            <p className="text-[11px] text-slate-500 mt-1.5">{L('Any nature takes any color: red water, black or blue lightning, green fire…')}</p>
           </div>
           <div>
             <SectionLabel>Casting Style</SectionLabel>
@@ -520,7 +523,7 @@ export const AppearanceEditor: React.FC<{
                 <OptionCard
                   key={s}
                   selected={defaultCastStyle(look) === s}
-                  label={CAST_STYLE_INFO[s].label}
+                  label={L(CAST_STYLE_INFO[s].label)}
                   sub={CAST_STYLE_INFO[s].desc}
                   onClick={() => {
                     soundManager.playChakraSurge();
@@ -532,7 +535,7 @@ export const AppearanceEditor: React.FC<{
                 </OptionCard>
               ))}
             </div>
-            <p className="text-[11px] text-slate-500 mt-1.5">The default for every jutsu. Each jutsu can use its own style in Jutsu Loadout.</p>
+            <p className="text-[11px] text-slate-500 mt-1.5">{L('The default for every jutsu. Each jutsu can use its own style in Jutsu Loadout.')}</p>
           </div>
           <div>
             <SectionLabel>Show the burst when…</SectionLabel>
@@ -586,8 +589,8 @@ const OptionCard: React.FC<{
     }`}
   >
     <div className="rounded-lg bg-slate-900/80">{children}</div>
-    <div className={`text-[11px] leading-tight text-center ${selected ? 'text-white font-semibold' : 'text-slate-300'}`}>{label}</div>
-    {sub && <div className="text-[10px] text-slate-500 text-center leading-tight">{sub}</div>}
+    <div className={`text-[11px] leading-tight text-center ${selected ? 'text-white font-semibold' : 'text-slate-300'}`}>{L(label)}</div>
+    {sub && <div className="text-[10px] text-slate-500 text-center leading-tight">{L(sub)}</div>}
   </button>
 );
 
@@ -603,7 +606,7 @@ const Toggle: React.FC<{ label: string; value: boolean; onChange: (v: boolean) =
     }`}
   >
     <span className={`w-3 h-3 rounded-sm border ${value ? 'bg-white border-white' : 'border-slate-500'}`} />
-    {label}
+    {L(label)}
   </button>
 );
 
@@ -634,7 +637,7 @@ const SlotPicker: React.FC<{
           type="button"
           onClick={() => choose(options[(idx - 1 + options.length) % options.length])}
           className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200"
-          aria-label="Previous"
+          aria-label={L('Previous')}
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -646,7 +649,7 @@ const SlotPicker: React.FC<{
           type="button"
           onClick={() => choose(options[(idx + 1) % options.length])}
           className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200"
-          aria-label="Next"
+          aria-label={L('Next')}
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -704,7 +707,7 @@ const AccessoryPicker: React.FC<{
   };
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-400">Wear as many as you like.</p>
+      <p className="text-xs text-slate-400">{L('Wear as many as you like.')}</p>
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {items.map((def) => (
           <OptionCard key={def.id} selected={worn.has(def.id)} label={def.name} onClick={() => toggle(def)}>

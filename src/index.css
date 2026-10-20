@@ -1,3 +1,5 @@
+/* Cinzel: the title screen's and the creator's carved-letter headings. */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&display=swap');
 @import "tailwindcss";
 
 canvas.pixelated,
@@ -6,4 +8,33 @@ canvas.pixelated,
   image-rendering: -webkit-crisp-edges;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+}
+
+/*
+ * The creator's iron-and-gold look reaches the pieces it shares with the old screens (the
+ * appearance editor): inside it, Tailwind's slate greys are the owner's dark iron and browns and
+ * its cyan accents are gold.
+ */
+.creator-bg3 {
+  --color-slate-950: #0e0b08;
+  --color-slate-900: #17130e;
+  --color-slate-800: #2a2218;
+  --color-slate-700: #3d3122;
+  --color-slate-600: #5b4630;
+  --color-slate-500: #7d6648;
+  --color-slate-400: #a8957a;
+  --color-slate-300: #cbb995;
+  --color-slate-200: #e0d2b2;
+  --color-slate-100: #efe3c4;
+  --color-cyan-200: #f8e2b0;
+  --color-cyan-300: #f6d58e;
+  --color-cyan-400: #f2c46d;
+  --color-cyan-500: #d9a441;
+  --color-cyan-600: #b8862f;
+  --color-cyan-700: #8f6620;
+  --color-cyan-800: #5e4317;
+  --color-cyan-900: #3a2a10;
+  --color-cyan-950: #241a09;
+  --color-blue-500: #c99a4b;
+  --color-blue-600: #9c6b1e;
 }

@@ -21,7 +21,10 @@ export const CLANS_DATA: Record<
     name: string;
     japaneseName: string;
     description: string;
+    /** The description and the lineage on the Spanish screens. */
+    descriptionEs?: string;
     lineageTraits: string;
+    lineageTraitsEs?: string;
     /** The clan's ability bonuses, added to the base scores wherever numbers are derived (docs/CLANS_DESIGN.md, D2). */
     statBonuses: { stat: keyof AbilityScores; bonus: number }[];
     availableDojutsu: DojutsuType[];
@@ -33,6 +36,8 @@ export const CLANS_DATA: Record<
     name: 'Mirai',
     japaneseName: 'ミライ一族',
     description: 'Masters of time and flame: control of position, inevitability and bending the dice.',
+    descriptionEs: 'Maestros del tiempo y la llama: control de la posición, lo inevitable y doblegar los dados.',
+    lineageTraitsEs: 'Ojo del Mañana: ve el próximo movimiento de cada enemigo a la vista a 18 m o menos; el suelo muestra adónde se moverá y a quién atacará. Evasión Premonitoria (reacción, 2 chakra, una vez por ronda): ante un ataque de un solo objetivo que el Mirai vio venir, se aparta 1.5 m y el ataque falla, sin provocar ataque de oportunidad. Técnica de Fuego: Llama persecutoria (acción, 3 chakra, 12 m): 2d6 de fuego; el objetivo hace su salvación de DES con desventaja y recibe la mitad si la supera.',
     lineageTraits: 'Eye of Tomorrow: sees the next move of every enemy within 18 m in sight; the ground shows where it will move and whom it will attack. Premonitory Evasion (reaction, 2 chakra, once a round): against a single-target attack the Mirai saw coming, it steps 1.5 m aside and the attack misses, provoking no opportunity attack. Katon: Pursuing Flame (action, 3 chakra, 12 m): 2d6 fire; the target makes its DEX save with disadvantage and takes half on a success.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
@@ -52,6 +57,8 @@ export const CLANS_DATA: Record<
     name: 'Kōton',
     japaneseName: 'コートン一族',
     description: 'Alchemists of matter: reshaping the map, adaptable weapons and denying ground.',
+    descriptionEs: 'Alquimistas de la materia: rehacen el mapa, adaptan sus armas y niegan terreno.',
+    lineageTraitsEs: 'Arquitectura Modular: alza estructuras de metal a 6 m o menos, con dos en pie como máximo (una tercera derrumba la más antigua), cada una con 20 PG. Acción adicional, 2 chakra: un bloque de metal de 1.5 m que da media cobertura. Acción, 4 chakra: un muro de metal de 4.5 m que da cobertura total y bloquea el paso y la vista.',
     lineageTraits: 'Modular Architecture: raises metal structures within 6 m, at most two standing at once (a third makes the oldest crumble), each with 20 HP. Bonus action, 2 chakra: a 1.5 m metal block that gives half cover. Action, 4 chakra: a 4.5 m metal wall that gives full cover and blocks movement and sight.',
     statBonuses: [
       { stat: 'con', bonus: 2 },
@@ -65,6 +72,8 @@ export const CLANS_DATA: Record<
     name: 'Ryusei',
     japaneseName: 'リュウセイ一族',
     description: 'Assassins of space: geometric hypermobility, piercing damage and reshaping the board through Nodes.',
+    descriptionEs: 'Asesinos del espacio: hipermovilidad geométrica, daño perforante y un tablero que rehacen con sus Nodos.',
+    lineageTraitsEs: 'Nodos de Armas: cada kunai lanzado, y cada ataque cuerpo a cuerpo que falla, deja un Nodo donde cae el arma (tres como máximo; el más antiguo se va). Warp Strike (acción adicional, 2 chakra, 18 m): se teletransporta a un Nodo a la vista, incluso con muros en medio; si cae junto a un enemigo, el próximo ataque de este turno llega por la espalda (ventaja, y no se puede bloquear). Intercambio Espacial (acción, 3 chakra): cambia de lugar con quien esté sobre un Nodo; un enemigo se resiste con una salvación de FUE.',
     lineageTraits: 'Weapon Nodes: every kunai throw, and every melee attack that misses, leaves a Node where the weapon lands (three at most; the oldest goes). Warp Strike (bonus action, 2 chakra, 18 m): teleports to a Node in sight, even with walls in between; landing next to an enemy, the next attack this turn comes from behind (advantage, and it can\'t be blocked). Spatial Swap (action, 3 chakra): swaps places with anyone standing on a Node; an enemy resists with a STR save.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
@@ -78,6 +87,8 @@ export const CLANS_DATA: Record<
     name: 'Northstar',
     japaneseName: 'ノーススター一族',
     description: "The Sovereign's eyes: breaking the enemy's action economy, control of summons and psychological disruption.",
+    descriptionEs: 'Los ojos del Soberano: rompen la economía de acciones del enemigo, controlan las invocaciones y perturban la mente.',
+    lineageTraitsEs: 'Aura de Soberanía (4.5 m): los enemigos dentro atacan con desventaja, y los que entran con un warp o corriendo pierden la mitad del movimiento que les queda (los aliados no). Command (acción, 4 chakra, 9 m): un esbirro que falla una salvación de SAB pelea del lado del Northstar durante 1 ronda (también los capitanes desde el nivel 5; desde el nivel 9, dos objetivos durante 2 rondas); los Mirai son inmunes. Sumisión Natural (acción, 5 chakra): una bestia o invocación enemiga que falla una salvación de SAB se une a tu bando el resto de la batalla; los jefes no.',
     lineageTraits: 'Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and enemies who warp or dash into it lose half of their remaining movement (allies are spared). Command (action, 4 chakra, 9 m): a Minion that fails a WIS save fights on the Northstar\'s side for 1 round (Captains too from level 5; from level 9, two targets for 2 rounds); Mirai are immune. Natural Submission (action, 5 chakra): a beast or enemy summon that fails a WIS save joins your side for the rest of the battle; not bosses.',
     statBonuses: [
       { stat: 'cha', bonus: 2 },
@@ -96,58 +107,77 @@ export const SHINOBI_CLASSES: Record<
   ShinobiClassType,
   {
     name: ShinobiClassType;
+    /** The name, description and features on the Spanish screens. */
+    nameEs?: string;
     castingStat: 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
     description: string;
+    descriptionEs?: string;
     hitDie: number; // e.g. d8, d10
     chakraDie: number;
     savingProficiencies: string[];
     classFeatures: string;
+    classFeaturesEs?: string;
   }
 > = {
   'Ninjutsu Specialist': {
     name: 'Ninjutsu Specialist',
+    nameEs: 'Especialista en Ninjutsu',
     castingStat: 'int',
     description: 'Masters of the 5 nature transformations who sculpt chakra into devastating elemental attacks with high range.',
+    descriptionEs: 'Maestros de las 5 transformaciones de naturaleza que esculpen el chakra en ataques elementales devastadores de gran alcance.',
     hitDie: 8,
     chakraDie: 12,
     savingProficiencies: ['INT', 'WIS'],
     classFeatures: 'Elemental Sculptor: Can alter the shape of elemental techniques, and spend chakra to enhance blast radiuses.',
+    classFeaturesEs: 'Escultor elemental: puede cambiar la forma de sus técnicas elementales y gastar chakra para ampliar el radio de sus explosiones.',
   },
   'Taijutsu Master': {
     name: 'Taijutsu Master',
+    nameEs: 'Maestro de Taijutsu',
     castingStat: 'str',
     description: 'Conditioned physical pugilists who weaponize body speed, devastating martial arts combos, and the Eight Gates.',
+    descriptionEs: 'Luchadores curtidos que convierten en arma la velocidad del cuerpo, los combos marciales devastadores y las Ocho Puertas.',
     hitDie: 10,
     chakraDie: 8,
     savingProficiencies: ['STR', 'DEX'],
     classFeatures: 'Iron Body: Basic melee combo costs 0 chakra. Gains +10ft base movement and resistance to bludgeoning.',
+    classFeaturesEs: 'Cuerpo de hierro: el combo cuerpo a cuerpo básico cuesta 0 chakra. +10 pies de movimiento base y resistencia al daño contundente.',
   },
   'Genjutsu Adept': {
     name: 'Genjutsu Adept',
+    nameEs: 'Adepto del Genjutsu',
     castingStat: 'cha',
     description: 'Weavers of cerebral illusions that ensnare sensory perceptions, causing psychic disorientation and paralysis.',
+    descriptionEs: 'Tejedores de ilusiones mentales que atrapan los sentidos y causan desorientación psíquica y parálisis.',
     hitDie: 6,
     chakraDie: 10,
     savingProficiencies: ['WIS', 'CHA'],
     classFeatures: 'Sensory Subversion: Targets affected by your Genjutsu have disadvantage on attacks and cannot take reactions.',
+    classFeaturesEs: 'Subversión sensorial: los objetivos bajo tu Genjutsu atacan con desventaja y no pueden usar reacciones.',
   },
   'Medical Specialist': {
     name: 'Medical Specialist',
+    nameEs: 'Especialista médico',
     castingStat: 'wis',
     description: 'Field doctors and combat hunters who balance precise chakra scalpels with rapid restorative cellular healing.',
+    descriptionEs: 'Médicos de campo y cazadores de combate que equilibran bisturís de chakra precisos con una curación celular rápida.',
     hitDie: 8,
     chakraDie: 10,
     savingProficiencies: ['CON', 'WIS'],
     classFeatures: 'Chakra Scalpel: Melee strikes bypass armor class. Healing jutsus heal an additional 1d6 + WIS modifier.',
+    classFeaturesEs: 'Bisturí de chakra: los golpes cuerpo a cuerpo ignoran la clase de armadura. Los jutsus de curación curan 1d6 + tu modificador de SAB de más.',
   },
   'Bukijutsu Master': {
     name: 'Bukijutsu Master',
+    nameEs: 'Maestro de Bukijutsu',
     castingStat: 'dex',
     description: 'Blademasters and projectile experts skilled in kenjutsu katana forms, shurikenjutsu ricochets, and weapon chakra coating.',
+    descriptionEs: 'Maestros de la espada y de los proyectiles: formas de kenjutsu con katana, rebotes de shurikenjutsu y armas cubiertas de chakra.',
     hitDie: 10,
     chakraDie: 8,
     savingProficiencies: ['DEX', 'INT'],
     classFeatures: 'Flowing Blade: Can deflect 1 ranged projectile per round as a reaction, and add DEX to all weapon damage.',
+    classFeaturesEs: 'Hoja fluida: puede desviar 1 proyectil a distancia por ronda como reacción, y suma la DES a todo el daño de arma.',
   },
 };
 
@@ -156,48 +186,66 @@ export const SHINOBI_FEATS: ShinobiFeat[] = [
     id: 'chakra_prodigy',
     name: 'Chakra Control Prodigy',
     description: 'Reduce chakra cost of jutsu enhancements by 1 (minimum 1). Max Chakra pool increases by +4.',
+    nameEs: 'Prodigio del control de chakra',
+    descriptionEs: 'Reduce en 1 el coste de chakra de potenciar un jutsu (mínimo 1). Tu reserva de chakra máxima aumenta en 4.',
   },
   {
     id: 'silent_killing',
     name: 'Silent Killing Art',
     description: 'Deal an extra 2d6 damage when attacking from cover, foliage, or smoke clouds.',
+    nameEs: 'Arte del asesinato silencioso',
+    descriptionEs: 'Haz 2d6 de daño extra al atacar desde cobertura, follaje o nubes de humo.',
   },
   {
     id: 'iron_skin',
     name: 'Iron Skin Conditioning',
     description: 'Your unarmored Defense grants +1 AC. Gain resistance to non-elemental physical damage.',
+    nameEs: 'Piel de hierro',
+    descriptionEs: 'Tu defensa sin armadura da +1 a la CA. Ganas resistencia al daño físico no elemental.',
     statBonus: { con: 1 },
   },
   {
     id: 'elemental_weaver',
     name: 'Elemental Weaver',
     description: 'Once per encounter, change the elemental damage type of any Ninjutsu technique to another elemental nature.',
+    nameEs: 'Tejedor elemental',
+    descriptionEs: 'Una vez por encuentro, cambia el tipo de daño elemental de una técnica de Ninjutsu a otra naturaleza.',
   },
   {
     id: 'eight_gates_initiate',
     name: 'Eight Gates Initiate',
     description: 'Open the Gate of Opening as a bonus action: gain +2 tiles movement and +1d8 taijutsu damage for 2 turns.',
+    nameEs: 'Iniciado de las Ocho Puertas',
+    descriptionEs: 'Abre la Puerta de la Apertura como acción adicional: +2 casillas de movimiento y +1d8 de daño de taijutsu durante 2 turnos.',
   },
   {
     id: 'sharingan_precog',
     name: 'Precognitive Reflexes',
     description: 'Gain +2 to Initiative rolls. As a reaction, impose disadvantage on an incoming jutsu or melee attack.',
+    nameEs: 'Reflejos precognitivos',
+    descriptionEs: '+2 a las tiradas de iniciativa. Como reacción, impón desventaja a un jutsu o a un ataque cuerpo a cuerpo que te llega.',
     statBonus: { dex: 1 },
   },
   {
     id: 'tactical_trapper',
     name: 'Tactical Trapper',
     description: 'Can set 2 explosive tags simultaneously. Explosive tags deal +1d6 extra fire damage.',
+    nameEs: 'Trampero táctico',
+    descriptionEs: 'Puedes tener 2 sellos explosivos puestos a la vez. Los sellos explosivos hacen 1d6 de daño de fuego extra.',
   },
   {
     id: 'one_handed_seals',
     name: 'One-Handed Seals',
     description: 'Weave hand seals with one hand: cast ninjutsu and genjutsu (and Kawarimi) with a one-handed weapon drawn. Two-handed weapons still have to be stowed.',
+    nameEs: 'Sellos a una mano',
+    descriptionEs: 'Haz los sellos con una sola mano: lanza ninjutsu y genjutsu (y Kawarimi) con un arma de una mano desenvainada. Las armas a dos manos hay que guardarlas igual.',
   },
   {
     id: 'tenketsu_lockout',
     name: 'Tenketsu Lockout Strike',
     description: 'When rolling a Critical Hit with Taijutsu or Clan jutsu, the target cannot cast jutsus for 1 turn.',
+    nameEs: 'Golpe de bloqueo de tenketsu',
+    descriptionEs: 'Con un crítico de Taijutsu o de jutsu de clan, el objetivo no puede lanzar jutsus durante 1 turno.',
   },
 ];
 
@@ -908,10 +956,12 @@ function spriteLook(o: Partial<SpriteAppearance>): SpriteAppearance {
  * creator's formula (Solen, Akira, Aiden and Ren +1 AC, jutsu DC and attack; Kaien and Raiga +1 AC;
  * Hiro +4 max HP and +1 max chakra; Shiori nothing). rules.test.ts pins his numbers.
  */
-export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiCharacter }[] = [
+export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; tagEs?: string; character: ShinobiCharacter }[] = [
   {
     name: 'Solen, the Founder King',
     tag: 'Legion Plate · Crystal Greatsword',
+    nameEs: 'Solen, el Rey Fundador',
+    tagEs: 'Placas de legión · Mandoble de cristal',
     character: {
       id: 'preset_founder',
       name: 'Solen Valcaire',
@@ -978,6 +1028,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
   {
     name: 'Akira, the Ember Ronin',
     tag: 'Leather Armor · Crimson Eyes',
+    nameEs: 'Akira, el Ronin de las Brasas',
+    tagEs: 'Armadura de cuero · Ojos carmesí',
     character: {
       id: 'preset_ember',
       name: 'Akira',
@@ -1040,6 +1092,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
   {
     name: 'Aiden, the Crimson Knight',
     tag: 'Dread Plate · Crimson Cape',
+    nameEs: 'Aiden, el Caballero Carmesí',
+    tagEs: 'Placas del terror · Capa carmesí',
     character: {
       id: 'preset_reference_aiden',
       name: 'Aiden',
@@ -1102,6 +1156,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
   {
     name: 'Kaien, the Storm Avenger',
     tag: 'Lightning Hand · Rogue Headband',
+    nameEs: 'Kaien, el Vengador de la Tormenta',
+    tagEs: 'Mano de rayo · Bandana de renegado',
     character: {
       id: 'preset_storm',
       name: 'Kaien',
@@ -1162,6 +1218,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
   {
     name: 'Hiro, the Sunburst Hero',
     tag: 'Spiral Orb · Fluttering Headband',
+    nameEs: 'Hiro, el Héroe del Sol Radiante',
+    tagEs: 'Orbe espiral · Bandana al viento',
     character: {
       id: 'preset_sunburst',
       name: 'Hiro',
@@ -1225,6 +1283,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
   {
     name: 'Raiga, the Warlord of Ash',
     tag: 'Warlord Mane · Lamellar Armor',
+    nameEs: 'Raiga, el Señor de la Guerra de Ceniza',
+    tagEs: 'Melena de caudillo · Armadura lamelar',
     character: {
       id: 'preset_warlord',
       name: 'Raiga',
@@ -1286,6 +1346,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
   {
     name: 'Shiori, the Gentle Fist',
     tag: 'Pale Eyes · Palm Glow',
+    nameEs: 'Shiori, el Puño Suave',
+    tagEs: 'Ojos pálidos · Palmas brillantes',
     character: {
       id: 'preset_gentle',
       name: 'Shiori',
@@ -1348,6 +1410,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; character: ShinobiC
   {
     name: 'Ren, the Night Prince',
     tag: 'Midnight Tousle · Warp Katana',
+    nameEs: 'Ren, el Príncipe de la Noche',
+    tagEs: 'Melena de medianoche · Katana de distorsión',
     character: {
       id: 'preset_night',
       name: 'Ren Kuroba',

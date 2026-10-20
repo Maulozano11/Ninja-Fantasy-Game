@@ -296,58 +296,66 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
 
 // Hand templates (fine pixels), drawn hanging down with the wrist at the top
 // and the thumb on the right; rotated to the forearm angle with RotSprite and
-// mirrored so the thumb faces forward. Sized like the reference: a fist is
-// about 9-10 px across, fingers are 1 px wide with a dark crease between them.
-// o outline · D dark · x crease (near-black) · s shadow · b base · l light
+// mirrored so the thumb faces forward. Sized like the owner's crystal sword
+// picture: a fist is about 8-9 px across, smooth light skin shaded along its
+// edges, creases in dark skin.
+// o outline · D dark · x crease (dark skin) · s shadow · b base · l light
 /**
  * Fist wrapped around a weapon handle that passes through it (the pommel
- * shows above-left, the guard below-right): knuckles, a thumb over the grip
- * split off by a crease, three 1px fingers wrapping the handle with dark
- * creases between them, and rounded fingertips.
+ * shows above-left, the guard below-right), copied from the owner's crystal
+ * sword picture (docs/reference/crystal-sword-owner-reference.jpg, 2026-10-20):
+ * a broad round fist in smooth light skin, shadow only along its edges, the
+ * fingers wrapped under the grip (their knuckles in dark skin, bending down to
+ * the left, the little finger curled under the handle), no dark creases.
  */
 const HAND_GRIP: PixelTemplate = {
-  pivot: [5, 0],
+  pivot: [5, 3],
   rows: [
-    '..obbbbo..',
-    '.osbbbbbo.',
-    'osbbbbbbso',
-    'olbbbbbxlo',
-    'oDbbbbbxbo',
-    'obxbxbxbDo',
-    'osDsDsDsDo',
-    '.oDoDoDoo.',
+    // the wrist, shaded on its far edge as his is
+    '...osbbbso.',
+    '...osbbsDo.',
+    '...osbbDo..',
+    '..osbbbDo..',
+    '.osbbbbso..',
+    'osbbbbbbDo.',
+    'obbbbbbbbo.',
+    'osbbbbssbo.',
+    'oDsbbDooDo.',
+    '.oDbso..o..',
+    '..oDso.....',
+    '...oo......',
   ],
 };
-/** Small closed fist with a rounded bottom. */
+/** Closed fist, the owner's grip fist without the handle: broad and round, light, edges shaded. */
 const HAND_FIST: PixelTemplate = {
   pivot: [4, 0],
   rows: [
-    '..obbbo..',
-    '.osbbbbo.',
-    'osbbblbso',
-    'olbbbbbDo',
-    'obxbxbxDo',
-    'oDsDsDsso',
-    '.oDoDoDo.',
+    '.osbbbo..',
+    'osbbbbso.',
+    'osbbbbbDo',
+    'obbbbbbbo',
+    'osbbbbsbo',
+    'oDsbbsDso',
+    '.oDsssDo.',
     '..ooooo..',
   ],
 };
 /**
- * The far hand's fist, after the reference's: small and round, knuckles
- * toward the viewer, one curled-finger crease. Drawn without the far-side
- * darkening, which would turn its creases into a black blob.
+ * The far hand's fist, copied from the owner's picture: small, on the shaded
+ * side, lit along the thumb, its knuckle creases in dark skin (not black).
+ * Drawn without the far-side darkening.
  */
 const HAND_FIST_FAR: PixelTemplate = {
   pivot: [3, 0],
   rows: [
-    '.osbbo..',
+    '.oDbbDo.',
     'osbbbbo.',
-    'olbbbbso',
-    'osbxbbso',
-    'obbbxsso',
-    'osDxDsso',
-    '.osDsso.',
-    '..oooo..',
+    'oDsDsbDo',
+    'olsDDbso',
+    'olDDDsso',
+    '.oDsbbo.',
+    '..osso..',
+    '...oo...',
   ],
 };
 /** Open palm, fingers spread (casting). */
@@ -432,7 +440,7 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
   const pal: TemplatePalette = {
     o: [pen.mat, 0],
     D: [pen.mat, 1 + b],
-    x: [pen.mat, 0], // finger creases are near-black, like the reference
+    x: [pen.mat, 1 + b], // finger creases in dark skin: the owner's hands have no black lines
     s: [pen.mat, 2 + b],
     b: [pen.mat, 3 + b],
     l: [pen.mat, 4 + b],
@@ -476,7 +484,8 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
 }
 
 // ---------------------------------------------------------------------------
-// Feet: pixel templates in 3/4 front view, after the reference sprite. The
+// Feet: pixel templates in 3/4 front view, in the shape of the owner's crystal
+// sword picture (2026-10-20: "copy the shape of the feet, all characters"). The
 // near foot is seen from the front (toes toward the viewer, so it reaches
 // lower on screen); the far foot points right and is authored a shade darker.
 // The layer outline pass adds the outer outline, so templates hold only the

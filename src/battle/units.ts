@@ -26,6 +26,8 @@ export function weaponOf(c: ShinobiCharacter): Weapon {
       return W('Katana', '1d8', 'Slashing', 1.5, true, true);
     case 'held_crystal':
       return W('Crystal blade', '1d10', 'Slashing', 1.5, false, true, true);
+    case 'held_ice_crystal':
+      return W('Ice crystal sword', '1d8', 'Slashing', 1.5, false, true);
     case 'held_naginata':
       return W('Naginata', '1d10', 'Slashing', 3, false, true, true);
     case 'held_kunai':

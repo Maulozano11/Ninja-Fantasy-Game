@@ -330,7 +330,12 @@ function pauldron(g: DrawCtx, s: Side, pen: Pen, o: PauldronOpts): void {
       if (toSeam < FP) return 1; // seam above the first lame
       const tilt = a < 0 ? -1.6 * Math.sqrt(clamp(-a / o.top, 0, 1)) : toSeam < FP * 2 ? 0.9 : 0;
       const d = limbDot(f, b, o.half, tilt);
-      return Math.min(dotShade(d), dg < FP * 2.2 || d > 0.9 ? 4 : 3);
+      // A clean dome (the owner's reference: round, smooth shoulders): one lit arc along its upper
+      // outer edge, a mid-tone body, its underside turning into shadow.
+      const rim = a < 0 && (a / o.top) ** 2 + (b / o.half) ** 2 > 0.62;
+      if (rim && d > 0.15) return 4;
+      if (dg < FP * 1.6) return 4;
+      return d > 0.35 ? 3 : d > -0.15 ? 2 : 1;
     }
     let k = 0;
     while (k < o.n - 1 && a >= bound(k + 1, b)) k++;
@@ -341,7 +346,9 @@ function pauldron(g: DrawCtx, s: Side, pen: Pen, o: PauldronOpts): void {
     // each lame is a shallow band: its top faces up, its lower half turns down
     const fr = clamp(d0 / o.step, 0, 1);
     const d = limbDot(f, b, h, -0.8 + 2.0 * fr);
-    if (d0 < FP) return d > 0.45 ? 4 : d > 0.1 ? 3 : 2; // top rim, lit toward the light
+    // Only the first lame catches a bright rim; the ones under it keep a soft one, so the guard reads
+    // as one rounded piece, not stripes.
+    if (d0 < FP) return k === 0 ? (d > 0.45 ? 4 : d > 0.1 ? 3 : 2) : d > 0.3 ? 3 : 2;
     return Math.min(3, dotShade(d));
   });
   if (edge)

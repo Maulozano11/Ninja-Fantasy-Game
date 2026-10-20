@@ -6,7 +6,7 @@ import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import type { RampKind } from '../color';
 import { hd } from './hairkit';
-import { CRYSTAL_SWORD, drawWeapon, KATANA, KUNAI } from './weapons';
+import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KATANA, KUNAI } from './weapons';
 import { gripPoint, handsBusy, handsLimp, poleAngle, swordAngle } from '../grip';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
@@ -314,6 +314,19 @@ export const HELD_ITEMS: ItemDef[] = [
         : handsLimp(g)
           ? drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, { blade, grip: hilt, guard, wrap: '#8a9bb8' })
           : drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, gripPoint(g), swordAngle(g), { blade, grip: hilt, guard, wrap: '#8a9bb8' }),
+  },
+  {
+    id: 'held_ice_crystal',
+    slot: 'held',
+    name: 'Ice Crystal Sword',
+    desc: 'A faceted blade of ice-blue crystal under a curved crystal guard, painted by the owner.',
+    colors: [col('blade', 'Crystal', '#74aac4', 'metal'), col('hilt', 'Grip', '#3e5f7f', 'leather')],
+    draw: (g, [blade, grip]) => {
+      const tint = { base: '#74aac4', blade, grip, gripBase: '#3e5f7f' };
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_CRYSTAL_SWORD, backGrip(g, 48), 48, tint);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, tint);
+      else drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, gripPoint(g), swordAngle(g), tint);
+    },
   },
   {
     id: 'held_kunai',

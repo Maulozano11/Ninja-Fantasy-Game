@@ -88,7 +88,7 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export function gripAngle(g: DrawCtx): number | null {
   if (handsBusy(g) || handsLimp(g)) return null;
   if (g.has('held', 'held_naginata')) return poleAngle(g);
-  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_kunai')) return swordAngle(g);
+  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;
 }
 

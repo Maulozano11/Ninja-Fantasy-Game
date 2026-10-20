@@ -158,6 +158,24 @@ export class Mask {
   closed(r: number, edgeSet = true): Mask {
     return this.dilate(r).erode(r, edgeSet);
   }
+  /** Sets every pixel whose centre lies inside the polygon (even-odd rule). */
+  poly(pts: [number, number][]): void {
+    for (let y = 0; y < this.h; y++)
+      for (let x = 0; x < this.w; x++) {
+        const px = x + 0.5, py = y + 0.5;
+        let inside = false;
+        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+          const [xi, yi] = pts[i], [xj, yj] = pts[j];
+          if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+        }
+        if (inside) this.set(x, y);
+      }
+  }
+  and(o: Mask): Mask {
+    const n = new Mask(this.w, this.h);
+    for (let i = 0; i < this.m.length; i++) n.m[i] = this.m[i] && o.m[i] ? 1 : 0;
+    return n;
+  }
   or(o: Mask): Mask {
     const n = new Mask(this.w, this.h);
     for (let i = 0; i < this.m.length; i++) n.m[i] = this.m[i] || o.m[i] ? 1 : 0;
@@ -185,6 +203,28 @@ export function lace(img: Img, strokes: Mask, ramp: RGBA[], opts: { close?: numb
       else if (back.get(x - 1, y) || back.get(x + 1, y) || back.get(x, y - 1) || back.get(x, y + 1)) img.set(x + ox, y + oy, ramp[0]);
     }
   emboss(img, strokes, ramp, { base: opts.base ?? 5, ox, oy, outlineColor: ramp[0] });
+}
+
+/**
+ * Dense filled scrollwork (his crest shoulders, brackets, crowns): an explicit dark silhouette
+ * (`back`, outlined in the ramp's darkest step) with the strokes embossed over it, so the cluster
+ * reads as one solid embossed mass with dark gaps between the curls, not as loose wire.
+ */
+export function filledLace(
+  img: Img, strokes: Mask, back: Mask, ramp: RGBA[],
+  opts: { base?: number; ox?: number; oy?: number; backColor?: RGBA; crevice?: RGBA | null; grow?: number } = {},
+): void {
+  const ox = opts.ox ?? 0, oy = opts.oy ?? 0, grow = opts.grow ?? 1;
+  const full = back.or(grow > 0 ? strokes.dilate(grow) : strokes);
+  const bc = opts.backColor ?? ramp[1];
+  const cv = opts.crevice === undefined ? ramp[0] : opts.crevice;
+  const st = (x: number, y: number) => strokes.get(x, y) === 1;
+  for (let y = -1; y <= full.h; y++)
+    for (let x = -1; x <= full.w; x++) {
+      if (full.get(x, y)) img.set(x + ox, y + oy, cv && !st(x, y) && (st(x - 1, y) || st(x + 1, y) || st(x, y - 1) || st(x, y + 1)) ? cv : bc);
+      else if (full.get(x - 1, y) || full.get(x + 1, y) || full.get(x, y - 1) || full.get(x, y + 1)) img.set(x + ox, y + oy, ramp[0]);
+    }
+  emboss(img, strokes, ramp, { base: opts.base ?? 5, ox, oy, outline: false });
 }
 
 /**
@@ -353,28 +393,52 @@ export function diamondGem(img: Img, cx: number, cy: number, w: number, h: numbe
 }
 
 /**
- * A smooth glossy orb (his action pips): a 9-pixel round, soft darker rim (no black outline),
- * smooth shading lit from the upper left and one specular highlight.
+ * A smooth glossy orb (his action pips), radius r about (cx, cy): smooth shading lit from the upper
+ * left, a soft darker rim (no black outline) and one specular highlight.
  */
-export function orb(img: Img, x0: number, y0: number, ramp: RGBA[]): void {
-  const half = [2, 3, 4, 4, 4, 4, 4, 3, 2]; // half-widths about the centre column (4)
-  const inside = (x: number, y: number) => y >= 0 && y < 9 && Math.abs(x - 4) <= half[y];
-  for (let y = 0; y < 9; y++)
+export function orb(img: Img, cx: number, cy: number, r: number, ramp: RGBA[]): void {
+  for (let y = Math.floor(cy - r - 1); y <= cy + r + 1; y++)
+    for (let x = Math.floor(cx - r - 1); x <= cx + r + 1; x++) {
+      const u = (x + 0.5 - cx) / r, v = (y + 0.5 - cy) / r, q = u * u + v * v;
+      if (q > 1) continue;
+      const z = Math.sqrt(1 - q);
+      const l = -0.55 * u - 0.62 * v + 0.55 * z;
+      const rim = q > 0.72;
+      let k = l > 0.62 ? 4 : l > 0.25 ? 3 : l > -0.15 ? 2 : 1;
+      if (rim) k = Math.min(k, l > 0.3 ? 2 : 1);
+      img.set(x, y, ramp[k]);
+    }
+  const hx = Math.floor(cx - r * 0.42), hy = Math.floor(cy - r * 0.45);
+  img.set(hx, hy, ramp[5]);
+  img.set(hx + 1, hy, ramp[4]);
+  img.set(hx, hy + 1, ramp[4]);
+}
+
+/**
+ * His chakra gem: a compact rhombus (pointed top and bottom, blunt sides), outlined in the ramp's
+ * darkest step, four facets lit from the upper left around a small table, one sparkle. 9 x 11.
+ */
+export function rhombGem(img: Img, x0: number, y0: number, ramp: RGBA[]): void {
+  const half = [0, 1, 2, 3, 4, 4, 4, 3, 2, 1, 0];
+  const inside = (x: number, y: number) => y >= 0 && y < 11 && Math.abs(x - 4) <= half[y];
+  for (let y = 0; y < 11; y++)
     for (let x = 0; x < 9; x++) {
       if (!inside(x, y)) continue;
-      const rim = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
-      const u = (x - 4) / 4.5, v = (y - 4) / 4.5;
-      const l = -0.55 * u - 0.6 * v; // toward the upper left
+      const edge = !inside(x - 1, y) || !inside(x + 1, y) || !inside(x, y - 1) || !inside(x, y + 1);
+      if (edge) {
+        img.set(x0 + x, y0 + y, ramp[0]);
+        continue;
+      }
+      const u = x - 4, v = y - 5;
       let k: number;
-      if (rim) k = l > 0.3 ? 2 : 1;
-      else k = l > 0.35 ? 4 : l > -0.25 ? 3 : 2;
+      if (Math.abs(u) + Math.abs(v) <= 1) k = 3; // the table
+      else if (u <= 0 && v <= 0) k = 4;
+      else if (u > 0 && v <= 0) k = 3;
+      else if (u <= 0 && v > 0) k = 2;
+      else k = 1;
       img.set(x0 + x, y0 + y, ramp[k]);
     }
-  // One specular highlight, and a faint bounce on the lower right.
-  img.set(x0 + 2, y0 + 2, ramp[5]);
-  img.set(x0 + 3, y0 + 2, ramp[4]);
-  img.set(x0 + 2, y0 + 3, ramp[4]);
-  img.set(x0 + 6, y0 + 6, ramp[3]);
+  img.set(x0 + 3, y0 + 3, ramp[5]);
 }
 
 /**

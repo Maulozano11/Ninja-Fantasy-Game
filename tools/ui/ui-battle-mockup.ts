@@ -149,16 +149,17 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
   put('init_end', endX, endY);
 
   // --- target bar: the hovered bandit -------------------------------------------------------------------------
+  // His plaque runs from x 391 to 652 (centre 521.5) with its channel centred on y 31.6.
   const tb = P('target_bar');
-  const tbX = S(519) - tb.w / 2, tbY = S(22);
+  const tbX = S(521.5) - tb.w / 2, tbY = S(31.6) - tb.h / 2;
   put('target_bar', tbX, tbY);
   const fill = P('target_fill');
   const hp = 25, hpMax = 25;
   const tw = byName.get('target_bar')!.window!;
   const chX = tbX + tw.x * K, chW = tw.w * K;
   put9('target_fill', chX, tbY + tw.y * K, Math.round((chW * hp) / hpMax), fill.h);
-  textC(out, 'Bandido - Nv 3', 'title', 2, cream, S(519), 6, { shadow: INK.shadow });
-  textC(out, `${hp} / ${hpMax}`, 'label', 2, white, S(519), tbY + 7);
+  textC(out, 'Bandido - Nv 3', 'title', 2, cream, S(521.5), 4, { shadow: INK.shadow });
+  textC(out, `${hp} / ${hpMax}`, 'label', 2, white, S(521.5), tbY + tw.y * K - 3);
 
   // --- minimap ----------------------------------------------------------------------------------------------------
   const ring = P('minimap_ring');
@@ -194,19 +195,27 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
   const barX = S(222) - o, barY = S(492) - o, barW = S(800) - S(222) + 2 * o, barH = S(551) - S(492) + 2 * o;
   put9('bar_frame', barX, barY, barW, barH);
 
-  // Crest strip, then the acting character medallion over its middle.
+  // Crest strip (his runs from x 352 to 680, 512 px here), its trough on the bar's top rail; then
+  // the acting character medallion over its middle.
   const crest = P('crest_strip');
-  const crestL = S(405) - 44, crestR = S(635) + 44;
+  const crestL = 550, crestR = 1062;
   const crestY = S(492) - crest.h;
   put9('crest_strip', crestL, crestY, crestR - crestL, crest.h);
-  // HP (left half) and chakra (right half).
+  const cw = byName.get('crest_strip')!.window!;
+  // HP in the left half of the trough (full: it runs under the medallion), no numbers (his shows
+  // only the bar; the numbers would show on hover).
   const hpFill = P('hp_fill');
-  put9('hp_fill', S(410), crestY + 30, S(497) - S(410), hpFill.h);
-  textC(out, '38/38', 'label', 2, white, (S(410) + S(497)) / 2, crestY + 26);
-  const gems = ['chakra_red', 'chakra_orange', 'chakra_blue'];
-  gems.forEach((g, i) => put(g, 870 + i * 26, crestY + 26));
-  textC(out, '30/30', 'title', 1, dim, 969, crestY + 31);
-  const maX = S(515) - 62, maY = S(465) - 54;
+  put9('hp_fill', crestL + cw.x * K, crestY + cw.y * K, 806 - (crestL + cw.x * K), hpFill.h);
+  // Chakra: his thin line through the right half of the trough, and the three gems on it.
+  const line = P('chakra_line');
+  const gemY = crestY + cw.y * K + (cw.h * K) / 2; // the middle of the trough
+  put9('chakra_line', 846, gemY - line.h / 2, crestR - cw.x * K - 846, line.h);
+  ['chakra_red', 'chakra_orange', 'chakra_blue'].forEach((g, i) => {
+    const gp = P(g);
+    put(g, [880, 914, 948][i] - gp.w / 2, gemY - gp.h / 2);
+  });
+  // His medallion's ring is centred on (516, 466) in his picture: (806, 728) here.
+  const maX = 806 - 72, maY = 728 - 54;
   const akira = from56(shot.crop(25, 98, 56, 56));
   const face = cutBackground(akira).crop(4, 3, 33, 33).scaled(2);
   const fw = byName.get('medallion_active')!.window!;
@@ -239,8 +248,9 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
     const sx = S(358) + i * 62, sy = S(507);
     put('skill_slot', sx, sy);
     put('glyph_placeholder', sx + (slot.w - ph.w) / 2, sy + (slot.h - ph.h) / 2);
-    put('skill_tag', sx + (slot.w - tag.w) / 2, sy - 12);
-    textC(out, String(i + 1), 'label', 2, cream, sx + slot.w / 2, sy - 12 + 2);
+    // His shield tag overlaps the slot's top edge by 8 px.
+    put('skill_tag', sx + (slot.w - tag.w) / 2, sy - tag.h + 8);
+    textC(out, String(i + 1), 'label', 2, cream, sx + slot.w / 2, sy - tag.h + 8 + 1, { outline: null });
   }
 
   // Greyed item slots with dim icons, labels and the blue count badges.
@@ -254,7 +264,7 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
     textC(out, label, 'title', 1, hex('#8f8676'), ix + item.w / 2, iy + 31, { outline: null });
     if (n !== null) {
       put('item_badge', ix + item.w - 14, iy + item.h - 12);
-      textC(out, String(n), 'label', 2, white, ix + item.w - 4, iy + item.h - 11, { outline: null });
+      textC(out, String(n), 'label', 2, hex('#93a6b8'), ix + item.w - 4, iy + item.h - 11, { outline: null });
     }
   });
   put('end_turn_gem', S(795) - 10, S(500) - 10);

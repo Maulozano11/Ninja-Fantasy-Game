@@ -8,3 +8,4 @@ its files here are removed.
 | Proposal | Preview | What it changes |
 | --- | --- | --- |
 | cape-over-shoulders | (pending a new preview) | A cape has priority over shoulder guards: they keep their shape under it, in the cape's cloth, with a stud of its clasp metal (the owner's crystal sword picture). |
+| katana-parts | katana-parts.png | Katanas in the style of Demon Slayer's nichirin blades, built from parts with three versions each: steel (silver tamahagane, black kurogane, nichirin in the nature's colour), blade (shinogi-zukuri straight temper, Kogarasu-maru, Masamune style with Kurikara), guard (mokko, kaen flames, mitsudomoe) and hilt (hineri-maki, Heian tachi with tassel, shimenawa with shide). katana-parts.ts is the generator (pixel parts, palettes); it goes into src/sprite/items once approved, with the part pickers in the creator. |

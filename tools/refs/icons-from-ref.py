@@ -15,7 +15,8 @@ For each icon (named by jutsu id) this writes:
   <out>/ref/study/*-x4.png    crops at 4x (nearest), to study the details
   <out>/ref/crops.json        every box
   <out>/ref/palette.json      the main colours of each icon (k-means) and his frame colours
-                              (steel bar, gold line, bracket, rivet), measured on all four slots
+                              (steel bar, gold line, bracket and its shadow, rivet), measured on
+                              all four slots
 
 Every file is written under a temporary name and then renamed. Run with python3 -I:
 
@@ -120,6 +121,14 @@ def frame_colours(im):
         grey.append(c[isgrey])
     out['bracket'] = kmeans(np.concatenate(gold), 4)
     out['rivet'] = kmeans(np.concatenate(grey), 3)
+    # His bracket shadow: the darkest of five clusters over a wider gold mask (it takes in the dark
+    # antique gold of the shadow edges, which the mask above leaves out).
+    dark = []
+    for x0 in lefts:
+        c = a[259:285, x0 + 2:x0 + 30].reshape(-1, 3)
+        r, g, b = c[:, 0], c[:, 1], c[:, 2]
+        dark.append(c[(r > 70) & (r > b + 20) & (g > b + 10)])
+    out['bracket_shadow'] = kmeans(np.concatenate(dark), 5)[0]['hex']
     return out
 
 

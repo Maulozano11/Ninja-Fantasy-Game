@@ -22,6 +22,8 @@ export interface Piece {
   outset?: [number, number, number, number];
   /** A window inside the frame (where a portrait, a map or an icon shows), art pixels. */
   window?: { x: number; y: number; w: number; h: number; shape: 'rect' | 'circle' };
+  /** A reference point (art pixels), e.g. the centre of a medallion's ring, for placing it. */
+  anchor?: { x: number; y: number };
   group: string;
 }
 
@@ -646,7 +648,10 @@ export function crestStrip(): Piece {
 // --- acting character medallion -----------------------------------------------------------------------------
 
 export function medallionActive(): Piece {
-  const W = 72, Hh = 52, cx = 36, cy = 27;
+  // 100 x 56 art pixels; the ring is centred on (50, 27). His crown steps down on each side from
+  // the top gem: a small boss on the arch, the big dark dome boss at shoulder level, then a third
+  // small dark boss sitting on the trough rail and a short wire tail along the rail.
+  const W = 100, Hh = 56, cx = 50, cy = 27;
   const img = new Img(W, Hh);
   // His crown: a filled dark arch over the ring (r 21 to 26.5, from the big bosses over the top),
   // with a thin metal wire on its outer edge, small curls and knobs set in it, then the bosses.
@@ -665,14 +670,26 @@ export function medallionActive(): Piece {
       mk.taper(spiral(px, py, 1.9, 0.5, sgn > 0 ? Math.PI * 0.2 : Math.PI * 0.8, sgn > 0 ? Math.PI * 2 : -Math.PI, 18), 1.2, 1);
     }
   }
-  // The arch reaches the big bosses at its two ends.
+  // Big boss and third boss centres (pixel centres, mirrored exactly).
+  const BIG = { dx: 28.5, y: 22.5, r: 5.4 }, THIRD = { dx: 40.5, y: 27.5, r: 3.2 };
+  // The arch reaches the big bosses at its two ends; the crown then steps down to the third boss
+  // and the tail on the rail (one dark backing for all of it).
   for (const sgn of [-1, 1]) {
-    back.disc(cx + sgn * 28.4, cy - 5, 6.3);
+    back.disc(cx + sgn * BIG.dx, BIG.y, BIG.r + 1.1);
     back.disc(cx + sgn * 24.4, cy - 7.4, 3.4);
+    back.disc(cx + sgn * THIRD.dx, THIRD.y, THIRD.r + 0.9);
+    back.stroke([[cx + sgn * (BIG.dx + 2), BIG.y + 3.5], [cx + sgn * (THIRD.dx - 1.5), THIRD.y - 1.5]], 3);
+  }
+  // The wire tail: from under the third boss out along the rail, ending in a small upturned curl.
+  const tail = new Mask(W, Hh);
+  for (const sgn of [-1, 1]) {
+    const X = (v: number) => (sgn < 0 ? v : W - v);
+    const pts: Pt[] = [[X(9.5), 30.5], [X(6.5), 30.5], [X(4.5), 30.5], [X(3.2), 29.6], [X(3.0), 28.4], [X(4.0), 27.6]];
+    tail.stroke(pts, 1);
   }
   filledLace(img, mk, back, METAL, { base: 5, grow: 0, backColor: METAL[1], crevice: METAL[0] });
-  // Knobs on the arch's wire, then the bosses: two small ones on the arch, two big dark ones at
-  // shoulder level (his "eyes").
+  emboss(img, tail, METAL, { base: 4, outlineColor: METAL[0] });
+  // Knobs on the arch's wire, then the small bosses on the arch.
   for (const sgn of [-1, 1])
     for (const deg of [104]) {
       const a = (deg * Math.PI) / 180;
@@ -681,6 +698,38 @@ export function medallionActive(): Piece {
       band(img, fk, { from: 0, width: 1.5, ramp: METAL, lo: 3, hi: 7 });
       isoLine(img, fk, -1, METAL[0]);
     }
+  /**
+   * His dark dome boss: a thin pale rim lit from the upper left, a dark interior (darker toward the
+   * lower right) and, on the big ones, his pale twin highlight just above the centre.
+   */
+  const darkBoss = (bx: number, by: number, r: number, twin: boolean) => {
+    for (let y = Math.floor(by - r - 2); y <= by + r + 2; y++)
+      for (let x = Math.floor(bx - r - 2); x <= bx + r + 2; x++) {
+        const dx = x + 0.5 - bx, dy = y + 0.5 - by, d = Math.hypot(dx, dy);
+        if (d > r + 1) continue;
+        if (d > r) {
+          img.set(x, y, METAL[0]);
+          continue;
+        }
+        const lit = d > 0 ? -(dx * 0.6 + dy * 0.8) / d : 0; // +1 facing the upper-left light
+        if (d > r - 1) img.set(x, y, lit > 0.45 ? METAL[6] : lit > -0.2 ? METAL[5] : METAL[4]);
+        else img.set(x, y, dx + dy > r * 0.5 ? PANEL[1] : METAL[1]);
+      }
+    if (twin) {
+      // Two pale bumps side by side, a dark pixel between, two rows tall (bright over dim).
+      const px = Math.floor(bx), py = Math.floor(by) - 2;
+      img.set(px - 2, py, METAL[6]);
+      img.set(px - 1, py, METAL[7]);
+      img.set(px + 1, py, METAL[7]);
+      img.set(px + 2, py, METAL[6]);
+      img.set(px - 2, py + 1, METAL[4]);
+      img.set(px - 1, py + 1, METAL[5]);
+      img.set(px + 1, py + 1, METAL[5]);
+      img.set(px + 2, py + 1, METAL[4]);
+      img.set(px, py, PANEL[0]);
+      img.set(px, py + 1, PANEL[0]);
+    } else img.set(Math.floor(bx), Math.floor(by), METAL[6]);
+  };
   for (const sgn of [-1, 1]) {
     const sx = cx + sgn * 20.6, sy = cy - 15.6;
     const fs = sdCircle(sx, sy, 3.2);
@@ -688,13 +737,8 @@ export function medallionActive(): Piece {
     band(img, fs, { from: 0, width: 1.4, ramp: METAL, lo: 2, hi: 7 });
     isoLine(img, fs, -1, METAL[0]);
     img.set(Math.floor(sx), Math.floor(sy), METAL[5]);
-    // His big bosses: a metal dome with two dark oval holes side by side.
-    const bx = cx + sgn * 28.4, by = cy - 5;
-    const fb = sdCircle(bx, by, 5.2);
-    band(img, fb, { from: 0, width: 5.2, ramp: METAL, lo: 2, hi: 6 });
-    isoLine(img, fb, -1, METAL[0]);
-    isoLine(img, fb, 1.2, METAL[2], 0.6);
-    for (const ex of [-1.9, 1.9]) fillShape(img, (x, y) => Math.hypot((x - (bx + ex)) / 0.85, (y - by - 0.2) / 1.55) - 1, 0, PANEL[0]);
+    darkBoss(cx + sgn * BIG.dx, BIG.y, BIG.r, true);
+    darkBoss(cx + sgn * THIRD.dx, THIRD.y, THIRD.r, false);
   }
   // Outer beaded ring, then the gold rim.
   const fo = sdCircle(cx, cy, 21.8);
@@ -704,13 +748,18 @@ export function medallionActive(): Piece {
   band(img, fr, { from: 0, width: 3.3, ramp: GOLD, lo: 2, hi: 7, flat: 0.1 });
   isoLine(img, fr, 0, GOLD[0], 0.7);
   isoLine(img, fr, 3.3, GOLD[0]);
-  // Gems: red on top, a small pale green one on the bottom rim (it sits on the bar's rail).
+  // Gems: red on top; his pale grey-green pearl at the bottom (13 px across on screen), in a thin
+  // bezel, resting on the bar's top rail.
   studGem(img, cx, 4.4, 2.6, 'red');
-  studGem(img, cx, cy + 20.6, 1.9, 'pearl');
+  const pf = sdCircle(cx, cy + 20.6, 4.4);
+  band(img, pf, { from: 0, width: 1.2, ramp: METAL, lo: 2, hi: 6 });
+  isoLine(img, pf, -1, METAL[0]);
+  gem(img, cx, cy + 20.6, 3.25, GEM.pearl, false);
   return {
     name: 'medallion_active', img, group: 'crest',
-    use: 'Acting character medallion: the portrait shows through the round window. A calm crown of a few curls, bosses with two dark oval holes, a red gem on top and his pale pearl at the bottom, which rests on the bar\'s top rail. Sits on the middle of the crest strip.',
+    use: 'Acting character medallion: the portrait shows through the round window (ring centre at the anchor). His crown: small curls on the arch, a small boss, then on each side his big dark dome boss with a pale twin highlight, stepping down to a third small dark boss on the trough rail and a short wire tail. Red gem on top; his pale pearl at the bottom rests on the bar\'s top rail. Sits on the middle of the crest strip.',
     window: { x: cx - 16.5, y: cy - 16.5, w: 33, h: 33, shape: 'circle' },
+    anchor: { x: cx, y: cy },
   };
 }
 

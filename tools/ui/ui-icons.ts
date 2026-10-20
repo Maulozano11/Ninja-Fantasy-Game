@@ -967,11 +967,11 @@ const ICONS: IconSpec[] = [
   {
     id: 'kirin_thunder',
     name: 'Kirin',
-    colors: 14,
+    colors: 16,
     flat: 0.6,
     chroma: 1,
     specks: [{ bright: true, warm: 14, r: 0, thr: 0, minPx: 3, maxPx: 300, maxLong: 40, maxAcross: 12 }],
-    bil44: [1, 0.05],
+    bil44: [0.8, 0.03],
     bil88: [1, 0.05],
   },
   {

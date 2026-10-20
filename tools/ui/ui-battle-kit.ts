@@ -285,6 +285,7 @@ function main(): void {
       ...(p.slice ? { slice: p.slice.map(x2) } : {}),
       ...(p.outset ? { outset: p.outset.map(x2) } : {}),
       ...(p.window ? { window: { x: x2(p.window.x), y: x2(p.window.y), w: x2(p.window.w), h: x2(p.window.h), shape: p.window.shape } } : {}),
+      ...(p.anchor ? { anchor: [x2(p.anchor.x), x2(p.anchor.y)] } : {}),
       use: p.use,
     };
   }

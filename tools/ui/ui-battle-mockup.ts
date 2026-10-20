@@ -232,7 +232,8 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
     put(g, [880, 914, 948][i] - gp.w / 2, gemY - gp.h / 2);
   });
   // His medallion's ring is centred on (516, 466) in his picture: (806, 728) here.
-  const maX = 806 - 72, maY = 728 - 54;
+  const ma = byName.get('medallion_active')!.anchor!;
+  const maX = 806 - ma.x * K, maY = 728 - ma.y * K;
   const akira = from56(shot.crop(25, 98, 56, 56));
   const face = cutBackground(akira).crop(4, 3, 33, 33).scaled(2);
   const fw = byName.get('medallion_active')!.window!;

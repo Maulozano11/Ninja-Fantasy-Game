@@ -179,3 +179,19 @@ export function mixHex(a: string, b: string, t: number): string {
   const [r2, g2, b2] = hexToRgb(b);
   return rgbToHex(r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t);
 }
+
+/**
+ * A colour of a painted piece (the owner's pixels) moved the way the player moved its base colour:
+ * the hue turned as far, the saturation scaled, the lightness shifted most of the way. With the base
+ * unchanged it is his own colour.
+ */
+export function retintHex(hex: string, from: string, to: string): string {
+  if (from.toLowerCase() === to.toLowerCase()) return hex;
+  const [h, s, l] = rgbToHsl(...hexToRgb(hex));
+  const [h0, s0, l0] = rgbToHsl(...hexToRgb(from));
+  const [h1, s1, l1] = rgbToHsl(...hexToRgb(to));
+  const lt = Math.max(0, Math.min(1, l + (l1 - l0) * 0.7));
+  // A grey base (the owner's black cloth) has no hue of its own to turn from: it takes the new one.
+  if (s0 < 0.15) return hslToHex(h1, s1, lt);
+  return hslToHex(h + (h1 - h0), s0 > 0.02 ? (s * s1) / s0 : s1, lt);
+}

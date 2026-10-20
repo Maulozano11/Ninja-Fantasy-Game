@@ -1,0 +1,113 @@
+// The owner's black cape, his pixels (tools/refs/cape-from-ref.py from
+// docs/reference/crystal-sword-owner-reference.jpg). Generated: rerun the script to change it.
+
+export interface PaintedPart {
+  rows: string[];
+  /** The cell on the near shoulder joint. */
+  pivot: [number, number];
+  colors: Record<string, string>;
+}
+
+/** Behind the near arm and the body, to the calf. */
+export const OWNER_CAPE_BACK: PaintedPart = {
+  pivot: [23, -5],
+  rows: [
+    '...............abbbaaaa',
+    '...............abbaa...',
+    '...............abaaa...',
+    '...............abaaaaa.',
+    '..............acaaaaaaa',
+    '..............abaaaaaaa',
+    '..............aaaaaaaaa',
+    '..............aaaaaaaaa',
+    '..............aaaaaaaaa',
+    '.............aaaaaaaaaa',
+    '.............aaaaaaaaaa',
+    '.............aaaaaaaaaa',
+    '............aaaaaaaaaaa',
+    '............acaaaaaaaad',
+    '............aeaaaaaaaad',
+    '...........aaeaaaaaaafd',
+    '...........aacaaaaaaadd',
+    '..........aaaaaaaaaaddd',
+    '..........aaaaaaaaaaddd',
+    '.........aaaaaaaaaaaddd',
+    '.........abaaaaaaaa....',
+    '........accaaaaaaaa....',
+    '........accaaaaaaaa....',
+    '.......abcbaaaaaaaa....',
+    '.......abbhaaaaaaaa....',
+    '......acchiadaaaaaa....',
+    '.....aaccjaaddaaaaa....',
+    '.....abbjjafdddaaaa....',
+    '....aabbjkadddaaaaa....',
+    '....acchhiaddaaaaaa....',
+    '...aaccjhadddaaaaaa....',
+    '...abbljbafddcaafaa....',
+    '..acbbhjbafdcbcddfa....',
+    '..acbbhhadddbbcdfdd....',
+    '.abcbhhbaddfbbddddd....',
+    '.abbbhjadddcbbddddf....',
+    'aabbbhjadddccbdddda....',
+    'accbhhmadfccbbdddda....',
+    'accbjhmadfbbbbdddfa....',
+    'accchjmaddbbbbdddfa....',
+    'acbhhhkafbbbbdfffa.....',
+    'abbhhhaddbbbbaaaaaa....',
+    'abbhhjafcbbbaa.........',
+    'acchhjafbcaaa..........',
+    '.abhhjaaaa.............',
+    '.abhhhaa...............',
+    '.aajhha................',
+    '..abhja................',
+    '...abja................',
+    '....aca................',
+    '.....aa................',
+  ],
+  colors: {
+    a: '#030303',
+    b: '#252429',
+    c: '#29282d',
+    d: '#16161e',
+    e: '#2c2b31',
+    f: '#14131a',
+    h: '#3e464d',
+    i: '#212025',
+    j: '#414851',
+    k: '#2f3137',
+    l: '#323842',
+    m: '#3d424b',
+  },
+};
+
+/** Over the near shoulder, with his gold stud. */
+export const OWNER_CAPE_SHOULDER: PaintedPart = {
+  pivot: [8, 6],
+  rows: [
+    '.........ab',
+    '.......aaab',
+    '......aaaaa',
+    '....aaccbba',
+    '....acdefbb',
+    '...aehbbaab',
+    '...abbfffba',
+    '..aabffaaaa',
+    '..aebaafffi',
+    '.aaefffffee',
+    '.abfjebaaaa',
+    'abbbaaa....',
+    'aeeaa......',
+    'abaaa......',
+  ],
+  colors: {
+    a: '#000000',
+    b: '#222127',
+    c: '#ad8548',
+    d: '#a78249',
+    e: '#26262b',
+    f: '#3e464e',
+    h: '#b2884a',
+    i: '#323338',
+    j: '#42474f',
+  },
+};

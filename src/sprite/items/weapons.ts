@@ -3,7 +3,7 @@
 // Characters: '1'-'5' blade shades · 'a'-'d' guard/pommel shades 2-5 ·
 // 'k'/'K' grip shades 1/2 · 'w' grip wrap · 'g'/'G' collar (habaki) shades 4/3.
 
-import { hexToRgb, hslToHex, mixHex, rgbToHsl } from '../color';
+import { mixHex, retintHex } from '../color';
 import type { Depth, DrawCtx } from '../ctx';
 import { Vec } from '../raster';
 import { F_NO_OUTLINE, F_NO_TEXTURE } from '../raster';
@@ -244,15 +244,6 @@ export function drawWeapon(g: DrawCtx, depth: Depth, t: PixelTemplate, hand: Vec
   stampTemplate(g.L(depth), t, hand, a, weaponPalette(g, c), 'held', { flipY: Math.abs(a) > 90 });
 }
 
-/** A colour of a painted weapon moved the way the player moved its base colour (none moved: his own). */
-function retint(hex: string, from: string, to: string): string {
-  if (from.toLowerCase() === to.toLowerCase()) return hex;
-  const [h, s, l] = rgbToHsl(...hexToRgb(hex));
-  const [h0, s0, l0] = rgbToHsl(...hexToRgb(from));
-  const [h1, s1, l1] = rgbToHsl(...hexToRgb(to));
-  return hslToHex(h + (h1 - h0), s0 > 0.02 ? (s * s1) / s0 : s1, l + (l1 - l0) * 0.7);
-}
-
 /**
  * Draws a painted weapon (its own colours and black line, drawn at its own angle) held at `hand`
  * pointing along `deg`. At its own angle every pixel is the painter's; pointing left it is mirrored
@@ -270,7 +261,7 @@ export function drawPaintedWeapon(
   const flip = Math.abs(a) > 90;
   const pal: TemplatePalette = {};
   for (const [ch, hex] of Object.entries(t.colors)) {
-    const c = ch === 'o' ? hex : ch === 'g' || ch === 'G' ? retint(hex, tint.gripBase, tint.grip) : retint(hex, tint.base, tint.blade);
+    const c = ch === 'o' ? hex : ch === 'g' || ch === 'G' ? retintHex(hex, tint.gripBase, tint.grip) : retintHex(hex, tint.base, tint.blade);
     pal[ch] = [g.m(c, 'flat'), 3];
   }
   // Flipped, the template points at -angle; either way it turns by what is left to reach `a`.

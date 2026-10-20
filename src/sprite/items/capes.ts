@@ -4,9 +4,11 @@
 // Every shape hangs from the rig's shoulders and is pushed by a little "wind"
 // that depends on the pose, so capes trail behind in attacks and sway in idle.
 
+import { hexToRgb, retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
-import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, fine, GRID, len, lerp, Layer, norm, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
+import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, len, lerp, Layer, norm, PartId, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import { GROUND } from '../rig';
+import { OWNER_CAPE_BACK, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
 
 const col = (key: string, label: string, def: string, kind: 'cloth' | 'leather' | 'metal' = 'cloth') => ({ key, label, default: def, kind });
 
@@ -419,6 +421,37 @@ function clasp(L: Layer, p: Vec, pen: Pen, r = 1.1): void {
   px(L, p.x - r * 0.35, p.y - r * 0.35, { ...pen, flags: F_NO_OUTLINE }, 5);
 }
 
+/**
+ * Stamps a part of a painted cape (the owner's pixels, his colours and black line) with its pivot on
+ * the near shoulder joint. With `sway` the wind pushes it: each row slides by how far down the cloth
+ * it is, so the hem trails and lifts while the top stays on the shoulder.
+ */
+function paintedPart(g: DrawCtx, L: Layer, p: PaintedPart, part: PartId, color: (ch: string, hex: string) => string, sway: boolean): void {
+  const w = capeWind(g);
+  const s = g.rig.shoulderN;
+  const ax = Math.floor(s.x * RES) - p.pivot[0];
+  const ay = Math.floor(s.y * RES) - p.pivot[1];
+  const n = p.rows.length;
+  const pens: Record<string, number> = {};
+  for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
+  p.rows.forEach((row, j) => {
+    const k = sway ? j / Math.max(1, n - 1) : 0;
+    const dx = Math.round((w.dx + w.wave) * RES * k ** 1.3);
+    const dy = -Math.round(w.lift * 1.4 * RES * k * k);
+    for (let i = 0; i < row.length; i++) {
+      const ch = row[i];
+      if (ch !== '.') L.set(ax + i + dx, ay + j + dy, pens[ch], 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
+    }
+  });
+}
+
+/** The owner's cape recoloured: his black line stays, his gold follows the clasps, the cloth the cloak. */
+const ownerCapeColor = (cloth: string, gold: string) => (ch: string, hex: string) => {
+  if (ch === 'a') return hex;
+  const [r, , b] = hexToRgb(hex);
+  return r > b + 30 ? retintHex(hex, '#b8913a', gold) : retintHex(hex, '#1c1b22', cloth);
+};
+
 export const CAPE_ITEMS: ItemDef[] = [
   {
     id: 'cape_shadow',
@@ -431,8 +464,13 @@ export const CAPE_ITEMS: ItemDef[] = [
       const Lt = b.torsoLen;
       const top = topPt(g);
       const pen: Pen = { mat: g.m(c, 'cloth'), part: 'back' };
-      // Hangs behind the near arm on the left, to about mid-shin, with a pointed hem.
-      cloakBack(g, pen, { len: 0.47, flare: 9, bulge: 4.2, slant: 2.2, topR: 0.5, hemR: -b.hipHalf * 0.55, folds: 2, shoulder: 0.5, zig: 2.2, tone: 'dark' });
+      // The owner's cape, his pixels (the standard for capes, 2026-10-20): hanging behind the near
+      // arm to the calf, and over the near shoulder with its gold stud. Knocked out, the cloak is
+      // drawn to lie along the body instead.
+      const painted = g.rig.pose !== 'downed';
+      const tint = ownerCapeColor(c, gold);
+      if (painted) paintedPart(g, g.L('capeBack'), OWNER_CAPE_BACK, 'back', tint, true);
+      else cloakBack(g, pen, { len: 0.47, flare: 9, bulge: 4.2, slant: 2.2, topR: 0.5, hemR: -b.hipHalf * 0.55, folds: 2, shoulder: 0.5, zig: 2.2, tone: 'dark' });
       const fpen: Pen = { mat: pen.mat, part: 'torso' };
       const F = g.L('capeFront');
       // Rolled collar around the neck base (mostly hidden under a scarf).
@@ -441,13 +479,12 @@ export const CAPE_ITEMS: ItemDef[] = [
       fold(F, fpen.mat, add(nk, v(-3.2, 1.4)), add(nk, v(2.6, 1.0)), -1, 0);
       fold(F, fpen.mat, add(nk, v(-1.4, -1.2)), add(nk, v(-0.4, 1.6)), 1, 0);
       tuckUnderChin(g, F);
-      // Small flat cap over the top of the near shoulder only.
-      const cap = shoulderCap(g, c, 0.24, 1.1, 1, 'dark');
-      // Gold clasps at both shoulders (over a scarf), plus one at the collar.
+      // Gold clasps at both shoulders (over a scarf), plus one at the collar; the near one is his.
       const gp: Pen = { mat: g.m(gold, 'metal'), part: 'torso' };
       clasp(F, top(2.2, Lt - 1.6), gp, 0.7);
       const O = g.L('nearArm.over');
-      clasp(O, cap.top, { ...gp, part: 'upperArmN' }, 0.7);
+      if (painted) paintedPart(g, O, OWNER_CAPE_SHOULDER, 'upperArmN', tint, false);
+      else clasp(O, shoulderCap(g, c, 0.24, 1.1, 1, 'dark').top, { ...gp, part: 'upperArmN' }, 0.7);
       clasp(O, top(b.shoulderHalf * 0.62 + 0.6, Lt - 1.1), gp, 0.7);
     },
   },

@@ -105,6 +105,9 @@ describe('clans', () => {
     assert.equal(migrateClan('Kōton'.normalize('NFC')), 'Koton');
     assert.equal(migrateClan('Kōton'.normalize('NFD')), 'Koton');
     assert.equal(migrateClan('Nope'), null);
+    // Names every object has are no clan either: a sheet naming one loads as the default clan.
+    for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) assert.equal(migrateClan(name), null, name);
+    assert.equal(migrateCharacter(ninja({ clan: 'constructor' as ShinobiCharacter['clan'] })).clan, DEFAULT_CHARACTER.clan);
     const old = ninja({ clan: 'Taki' as ShinobiCharacter['clan'], currentHp: 7, maxHp: 50 });
     const now = migrateCharacter(old);
     assert.equal(now.clan, 'Northstar');

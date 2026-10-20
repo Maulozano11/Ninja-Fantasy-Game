@@ -10,6 +10,8 @@ Difieren de la recomendación:
 
 Todavía no se ha construido nada. El siguiente paso es pasar las reglas acordadas a `GAMEPLAY_DESIGN.md` (en inglés) y empezar por el estado del grupo entre batallas y los efectos con duración (sección 4, Paso 1).
 
+> **Documento histórico.** Las reglas acordadas están en `MISSION_DESIGN.md`, y los clanes en `CLANS_DESIGN.md`. El 2026-10-19 los clanes cambiaron: Uddo es ahora Ryusei, Akkai es Kōton y Taki es Northstar (Mirai sigue siendo Mirai). Ya no existen el +2 de chakra por ronda de Uddo, el chakra extra de Akkai, ni la visión de 360° de Taki (no puede ser sorprendido, sus críticos sellan el chakra). Las actividades de campamento de cada clan antiguo pasan al clan que lo sustituye. Este texto se deja como estaba.
+
 Página publicada para leerla: https://claude.ai/artifact/UdsXyzVqx3zFaKkPAd45PA
 
 ---

@@ -7,7 +7,9 @@ Agreed with the owner on 2026-10-13 from the proposal in
 The owner's answers are `1b 2b 3b 4a 5a 6b 7b 8b 9b 10b 11b 12b 13b 14b 15b 16b 17b
 18b 19b 20a 21a H1c H2b H3a H4b H5c`. This file is the source of truth for
 missions, rests, traps, status effects, decisions and cinematics. Battle rules
-stay in `GAMEPLAY_DESIGN.md`; the ones these systems need were added there.
+stay in `GAMEPLAY_DESIGN.md`; the ones these systems need were added there. The
+clans and their abilities are in `CLANS_DESIGN.md` (the old clans converted on
+2026-10-19: Uddo is now Ryusei, Akkai is Kōton, Taki is Northstar).
 Change it here first when a decision changes. All numbers are a starting point
 for playtesting.
 
@@ -39,7 +41,7 @@ for playtesting.
 | Resource | What it is | How it comes back |
 |---|---|---|
 | HP | Life | Healing jutsu, bandages, Hit Dice, camp, village |
-| Chakra | Fuel for jutsu | Uddo, Focus chakra, soldier pills, Chakra Dice, meditation, camp, village |
+| Chakra | Fuel for jutsu | Focus chakra, soldier pills, Chakra Dice, meditation, camp, village |
 | Hit Dice | As many as the level; each heals its die + CON | A camp gives back half of the spent ones, rounded up (at least 1); the village all |
 | Chakra Dice | As many as the level; each gives its chakra die, no modifier | Like Hit Dice |
 | Tension | Mental stress, 0–10 | Hot food, talks, victories, shrines, village |
@@ -52,12 +54,12 @@ Giving back only half the dice at a camp is harsher than 5e on purpose.
 
 | When | HP | Chakra |
 |---|---|---|
-| Battle | Healing jutsu and bandages | No passive regeneration; Uddo keeps +2 per round. **Focus chakra** and **soldier pills** (see `GAMEPLAY_DESIGN.md`) |
+| Battle | Healing jutsu and bandages | No passive regeneration. **Focus chakra** and **soldier pills** (see `GAMEPLAY_DESIGN.md`) |
 | Short stop | Hit Dice | Chakra Dice |
 | Camp | Half of max + food + activities | Half of max + meditation |
 | Village | 100 % | 100 % |
 
-Healing jutsu can be cast at camp, paying their chakra. An Uddo can give HP or
+Healing jutsu can be cast at camp, paying their chakra. A Ryusei can give HP or
 chakra of their own to an ally (Shared vitality).
 
 ## Short stop (short rest)
@@ -126,20 +128,22 @@ Everyone:
 | Fireside talk | 1 | −1 Tension to another ninja and +1 Bond between them; played as a short dialogue scene |
 | Encourage | 1 | Buff Encouraged on another ninja |
 
-Clan and class only:
+Clan and class only (the old clans' activities went to the clans that replaced
+them, with the same numbers, until the owner gives each clan its own;
+`CLANS_DESIGN.md`, D5):
 
 | Who | Activity | Sticks | Effect |
 |---|---|---|---|
 | Mirai | Sharingan reading | 1 | Reveals genjutsu traps and disguised NPCs |
 | Mirai | Katon fire | 1 | Makes the bonfire without a kit (committed when the fire is voted) |
-| Uddo | Wood shelter | 2 | −15 % ambush, shelter from the weather |
-| Uddo | Shared vitality | 1 | Gives up to 10 of own HP (keeping 1) or chakra to an ally (the chakra part is new) |
-| Uddo | Wood skin | 1 | Buff Wood skin on an ally |
-| Akkai | Seal barrier | 1 + a quarter of max chakra | −20 % ambush |
-| Akkai | Seal poison | 1 | Removes Poisoned or a curse |
-| Akkai | Warding seal | 1 | Buff Warding seal on an ally |
-| Taki | Byakugan watch | 3 | Ambush 0 % |
-| Taki | Close tenketsu | 1 | Removes Bleeding |
+| Ryusei | Wood shelter | 2 | −15 % ambush, shelter from the weather |
+| Ryusei | Shared vitality | 1 | Gives up to 10 of own HP (keeping 1) or chakra to an ally (the chakra part is new) |
+| Ryusei | Wood skin | 1 | Buff Wood skin on an ally |
+| Kōton | Seal barrier | 1 + a quarter of max chakra | −20 % ambush |
+| Kōton | Seal poison | 1 | Removes Poisoned or a curse |
+| Kōton | Warding seal | 1 | Buff Warding seal on an ally |
+| Northstar | Byakugan watch | 3 | Ambush 0 % |
+| Northstar | Close tenketsu | 1 | Removes Bleeding |
 | Medical | Field surgery | 2 | Medicine (WIS) check, DC 13: removes Grave wound and cures Fever; on a failure the wound becomes a scar |
 | Medical | Make pills | 2 | 1 soldier pill or 1 antidote |
 | Taijutsu | Stretching | 1 | −1 Exhaustion |
@@ -165,7 +169,6 @@ From 5, the pair has Comrades' bond in every mission.
   stealth phase. Night rules apply.
 - The guard cannot be surprised; the others can, unless there were bells. If
   nobody watched and there were no bells, the whole party starts **surprised**.
-  Taki are never surprised.
 - The ambush counts as a battle for effects that last battles.
 - In Story and Normal an ambush is never a game over: if the whole party falls,
   it wakes up with Fall aftermath and loses half of the supplies. In Legend see
@@ -242,7 +245,7 @@ and shrine: −2 Tension; desecrate: loot and Shrine's curse), abandoned camp
 and time; may be a spy, Sharingan or Byakugan tells; ignoring gives +1 Tension to
 ninjas whose conviction is protecting innocents), shinobi corpse (scrolls,
 tags), hot spring (an extra short stop that does not count against the limit and
-costs no hours), sealed chest (an Akkai opens it safely), village messenger hawk
+costs no hours), sealed chest (a Kōton opens it safely), village messenger hawk
 (choose 1 of 3: bandages, soldier pills or the next zone's trap map). Using the
 right item gives a guaranteed result, and there is always a hint on screen.
 Investigating without an item is a roll with its % shown.
@@ -273,7 +276,7 @@ treated · **M** until the mission ends · **P** permanent.
 |---|---|---|
 | Bleeding | T | 1d4 per round in battle and per road leg; Bandage or Close tenketsu |
 | Burning | 2R | 1d6 per round; water or an action puts it out |
-| Chakra sealed (Taki crit) | 2R | No jutsu |
+| Chakra sealed (Kōton's Adamantine Sealing Chains) | 2R | No jutsu |
 | Confused (genjutsu) | 2R | 25 % chance to attack a random target |
 | Marked | 3R | Visible even when hidden |
 | Poisoned | C | Disadvantage on attacks and checks; antidote or Seal poison |

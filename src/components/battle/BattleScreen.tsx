@@ -3,7 +3,7 @@
 // hydra heads, allies set to the AI) play one action at a time so they can be watched.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Map as MapIcon, Volume2, VolumeX, Sun, Moon, CloudRain } from 'lucide-react';
+import { Volume2, VolumeX, Sun, Moon, CloudRain, ScrollText } from 'lucide-react';
 import type { Action, AiOrder, BattleEvent, BattleState, Cell, Intent, Pt, RollInfo, Unit } from '../../battle/types';
 import { homeTeam } from '../../battle/types';
 import { applyAction } from '../../battle/engine';
@@ -35,8 +35,11 @@ import { floatLabel, jutsuName, logLine, structureName, unitName, unitRef } from
 import type { LogLine } from './battleLog';
 import { SAVE_EN, SAVE_ES, T } from './battleText';
 import type { TKey } from './battleText';
-import { ABILITY_ICON, ACTION_ICON, ActionBar, ELEMENT_ICON, InitiativeBar, LogPanel, PartyFrames, Prompt, RollToast, Tip, UnitCard } from './hud';
+import { ABILITY_ICON, ACTION_ICON, ELEMENT_ICON, LogPanel, PartyFrames, Prompt, RollToast, Tip } from './hud';
 import type { ActionButton } from './hud';
+import { ActionDock, MiniRing, PartyDock, TopPlaque, plaqueUnit } from './hudKit';
+import { Anchor, Piece, kitText, useHudScale } from './kit';
+import { appNavigate } from '../../appNav';
 import { preloadWorldGroups } from '../world/WorldSpriteView';
 
 type Mode =
@@ -53,13 +56,17 @@ type Mode =
 export interface BattleScreenProps {
   initial: { state: BattleState; events: BattleEvent[] };
   title?: string;
-  /** CSS height of the screen (it fills the page under the app header by default). */
-  height?: string;
   onEnd: (result: PartyBattleResult, state: BattleState) => void;
 }
 
 const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra', 'tip_mirai', 'tip_koton', 'tip_ryusei', 'tip_northstar', 'tip_foeAura'] as const;
 type TipKey = (typeof TIP_KEYS)[number];
+
+/** The camera's zoom steps, closest first: Close 2×, Tactical 1×, then up to three times farther out. */
+export const ZOOMS = [2, 1, 2 / 3, 1 / 2, 1 / 3] as const;
+
+/** Canvas pixels per map pixel: whole steps from 1 up (crisp pixel art), the plain fraction below. */
+const camScale = (zoom: number, dpr: number): number => (zoom * dpr >= 1 ? Math.max(1, Math.round(zoom * dpr)) : zoom * dpr);
 
 function tipSeen(k: string): boolean {
   try {
@@ -76,7 +83,7 @@ function markTip(k: string): void {
   }
 }
 
-export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, height, onEnd }) => {
+export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEnd }) => {
   const lang = useLang();
   const [state, setState] = useState<BattleState>(initial.state);
   const stateRef = useRef(state);
@@ -99,7 +106,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
   const [selected, setSelected] = useState<string | undefined>();
   const [hover, setHover] = useState<{ unit?: string; wall?: string; pt?: Pt; sx: number; sy: number } | null>(null);
   const [hoverBtn, setHoverBtn] = useState<ActionButton | null>(null);
-  const [zoom, setZoom] = useState<1 | 2>(1);
+  const [zoom, setZoom] = useState<number>(1);
+  const zoomStep = useCallback((dir: 1 | -1) => {
+    setZoom((z) => {
+      const i = ZOOMS.findIndex((q) => Math.abs(q - z) < 1e-6);
+      return ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? 1 : i) + (dir > 0 ? -1 : 1)))];
+    });
+  }, []);
   const [, setUi] = useState(0);
   const [log, setLog] = useState<LogLine[]>([]);
   const [showLog, setShowLog] = useState(false);
@@ -107,6 +120,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
   const [error, setError] = useState<string | null>(null);
   const [muted, setMuted] = useState(soundManager.getMuted());
   const [more, setMore] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [partyPanel, setPartyPanel] = useState(false);
+  /** The map pixels the round minimap shows (its square around the camera). */
+  const miniView = useRef({ x: 0, y: 0, w: 1 });
+  const hudK = useHudScale(wrapRef);
   const [tip, setTip] = useState<TipKey | null>(null);
   const [speed, setSpeed] = useState<1 | 2 | 3>(() => {
     try {
@@ -181,7 +199,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       const minY = art.backdropTop;
       const maxX = Math.max(0, map.px.width - vw);
       const maxY = Math.max(minY, map.px.height - vh);
-      return { x: vw >= map.px.width ? (map.px.width - vw) / 2 : Math.max(0, Math.min(maxX, x)), y: vh >= map.px.height - minY ? minY : Math.max(minY, Math.min(maxY, y)) };
+      // A view bigger than the map (zoomed far out) holds the map in its middle.
+      return { x: vw >= map.px.width ? (map.px.width - vw) / 2 : Math.max(0, Math.min(maxX, x)), y: vh >= map.px.height - minY ? minY - (vh - (map.px.height - minY)) / 2 : Math.max(minY, Math.min(maxY, y)) };
     },
     [art, map],
   );
@@ -219,6 +238,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     [centerOn, map],
   );
 
+  // The battle covers the whole screen (the web navigation hides behind it): the page doesn't scroll.
+  useEffect(() => {
+    const before = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = before;
+    };
+  }, []);
+
   // The jutsu effects' sheets load now, so the first cast already plays from its sheet.
   useEffect(() => preloadWorldGroups('vfx_'), []);
 
@@ -233,9 +261,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
   }, []);
 
   useEffect(() => {
+    // Keep the middle of the view where it was.
+    const vwOld = size.current.w / cam.current.zoom;
+    const vhOld = size.current.h / cam.current.zoom;
     cam.current.zoom = zoom;
-    const vwOld = size.current.w / (zoom === 2 ? 1 : 2);
-    const vhOld = size.current.h / (zoom === 2 ? 1 : 2);
     const cx = cam.current.x + vwOld / 2;
     const cy = cam.current.y + vhOld / 2;
     const c = clampCam(cx - size.current.w / zoom / 2, cy - size.current.h / zoom / 2);
@@ -577,7 +606,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       if (Math.abs(c.tx - c.x) < 0.3) c.x = c.tx;
       if (Math.abs(c.ty - c.y) < 0.3) c.y = c.ty;
       const { w, h, dpr } = size.current;
-      const kk = Math.max(1, Math.round(c.zoom * dpr));
+      const kk = camScale(c.zoom, dpr);
       const sh = now < shake.current.until ? shake.current.power : 0;
       const camera: Camera = { x: c.x, y: c.y, k: kk };
       drawBattle(ctx, {
@@ -630,24 +659,31 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       const g = mc?.getContext('2d');
       if (!mc || !g) return;
       const s = stateRef.current;
-      const sc = mc.width / map.px.width;
+      const c = cam.current;
+      // A square of the map around the middle of the view, the map's whole height when it fits.
+      const side = Math.min(map.px.width, Math.max(map.px.height - Math.max(0, art.backdropTop), (size.current.w / c.zoom) * 1.15));
+      const mx = Math.max(0, Math.min(map.px.width - side, c.x + size.current.w / c.zoom / 2 - side / 2));
+      const my = side >= map.px.height ? (map.px.height - side) / 2 : Math.max(0, Math.min(map.px.height - side, c.y + size.current.h / c.zoom / 2 - side / 2));
+      miniView.current = { x: mx, y: my, w: side };
+      const sc = mc.width / side;
+      g.setTransform(1, 0, 0, 1, 0, 0);
       g.fillStyle = '#0b1513';
       g.fillRect(0, 0, mc.width, mc.height);
+      g.setTransform(sc, 0, 0, sc, -mx * sc, -my * sc);
       const gr = image(art.ground);
-      if (gr.complete && gr.naturalWidth) g.drawImage(gr, 0, 0, mc.width, map.px.height * sc);
+      if (gr.complete && gr.naturalWidth) g.drawImage(gr, 0, 0);
       for (const u of Object.values(s.units)) {
         if (u.down === 'dead' || u.down === 'fled' || u.kind === 'hydra_head') continue;
         if (u.team === 'enemy' && u.cond.hidden !== undefined) continue;
         const p = project(map, pbRef.current!.posOf(u.id, now));
         g.fillStyle = homeTeam(u) === 'party' ? '#38bdf8' : '#f87171';
         g.beginPath();
-        g.arc(p.X * sc, (p.Y - 30) * sc, u.kind === 'hydra_body' ? 5 : 3, 0, Math.PI * 2);
+        g.arc(p.X, p.Y - 30, (u.kind === 'hydra_body' ? 10 : 6) / sc, 0, Math.PI * 2);
         g.fill();
       }
-      const c = cam.current;
-      g.strokeStyle = 'rgba(255,255,255,0.85)';
-      g.lineWidth = 1;
-      g.strokeRect(c.x * sc, c.y * sc, (size.current.w / c.zoom) * sc, (size.current.h / c.zoom) * sc);
+      g.strokeStyle = 'rgba(255,255,255,0.9)';
+      g.lineWidth = 2 / sc;
+      g.strokeRect(c.x, c.y, size.current.w / c.zoom, size.current.h / c.zoom);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
@@ -686,7 +722,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     const r = canvasRef.current!.getBoundingClientRect();
     const sx = (clientX - r.left) * size.current.dpr;
     const sy = (clientY - r.top) * size.current.dpr;
-    const kk = Math.max(1, Math.round(cam.current.zoom * size.current.dpr));
+    const kk = camScale(cam.current.zoom, size.current.dpr);
     return { ...screenToWorld({ x: cam.current.x, y: cam.current.y, k: kk }, sx, sy), cx: clientX - r.left, cy: clientY - r.top };
   };
 
@@ -1023,7 +1059,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         return;
       }
       if (key === 'Escape') setMode({ k: 'move' });
-      else if (key === 'z') setZoom((z) => (z === 1 ? 2 : 1));
+      else if (key === 'z') setZoom((z) => (z === 2 ? 1 : 2));
+      else if (key === '-' || key === '_') zoomStep(-1);
+      else if (key === '+' || key === '=') zoomStep(1);
       else if (key === 'e' && mode.k === 'jutsu' && JUTSU[mode.id]?.enhCost) setMode({ ...mode, enhanced: !mode.enhanced });
       else if (key === 'Enter' && actor && mode.k === 'jutsu' && mode.picked) {
         // Command from level 9 with one target picked: just that one.
@@ -1050,7 +1088,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
     };
-  }, [act, actor, buttons, centerOn, mode, pb, press, stealthParty]);
+  }, [act, actor, buttons, centerOn, mode, pb, press, stealthParty, zoomStep]);
 
   // --- tips -------------------------------------------------------------------------------
 
@@ -1096,6 +1134,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
   const cardView = cardUnit ? pb.views.get(cardUnit.id) : undefined;
   // The party's own: an enemy under Command fights alongside it but isn't one of them.
   const party = Object.values(state.units).filter((u) => homeTeam(u) === 'party');
+  // The HUD: who the target plaque shows, and whose medallion and bars the action dock carries.
+  const plaque = plaqueUnit(state, hover?.unit, pb.turnUnit);
+  const dockUnit = actor ?? (cardUnit && homeTeam(cardUnit) === 'party' ? cardUnit : undefined);
 
   const promptText = (): { title: string; text: string } | null => {
     if (!pending || !reactor) return null;
@@ -1114,11 +1155,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
   const prompt = askPlayer ? promptText() : null;
 
   const helpLine = hoverBtn?.help ?? (mode.k === 'jutsu' && spec ? `${jutsuName(spec.id, lang, mode.k === 'jutsu' && mode.enhanced)}${spec.enhCost ? ` · ${T('enhancedToggle', { n: spec.enhCost })} (E)` : ''}` : null);
+  // The lower plaque's line: an error first, then the help for what is aimed or hovered.
+  const dockLine: { text: string; tone: 'error' | 'help' | 'quiet' } = error
+    ? { text: error, tone: 'error' }
+    : helpLine && actor
+      ? { text: helpLine, tone: 'help' }
+      : !actor && !ended && state.phase === 'combat'
+        ? { text: T('waiting'), tone: 'quiet' }
+        : { text: T('keysHelp'), tone: 'quiet' };
   const banners = pb.banners;
   const nowMs = performance.now();
 
   return (
-    <div className="relative w-full min-h-[520px] overflow-hidden bg-[#0b1513] select-none" style={{ height: height ?? 'calc(100vh - 64px)' }} ref={wrapRef}>
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[#0b1513] select-none" ref={wrapRef}>
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full"
@@ -1137,7 +1186,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         }}
         onWheel={(e) => {
           if (e.ctrlKey) {
-            setZoom(e.deltaY < 0 ? 2 : 1);
+            zoomStep(e.deltaY < 0 ? 1 : -1);
             return;
           }
           const c = clampCam(cam.current.tx + (e.deltaX + e.deltaY) / cam.current.zoom, cam.current.ty);
@@ -1146,142 +1195,204 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         }}
       />
 
-      {/* The top row: the acting ninja and the party on the left, the turn order in the middle and the
-          map with the switches on the right, side by side so they never cover one another. */}
-      <div className="absolute top-3 inset-x-3 flex flex-wrap md:flex-nowrap items-start justify-between gap-3 pointer-events-none">
-      <div className="flex flex-col gap-2 shrink-0" ref={(el) => void (panelsRef.current[0] = el)}>
-        {cardUnit && cardUnit.kind === 'ninja' && (
-          <div className="pointer-events-auto">
-            <UnitCard u={cardUnit} hp={cardView?.hp ?? cardUnit.hp} chakra={cardView?.chakra ?? cardUnit.chakra} lang={lang} />
+      {/* The HUD from the owner's kit (kit.tsx, hudKit.tsx), scaled as one: the menu at the top left,
+          the target plaque, round and turn row at the top, the round map at the top right, the party
+          at the bottom left and the action bar at the bottom. */}
+      <Anchor at="top-left" k={hudK} innerRef={(el) => void (panelsRef.current[0] = el)}>
+        <button type="button" onClick={() => setMenu((m) => !m)} aria-label={T('menu')} title={T('menu')} style={{ position: 'absolute', left: 16, top: 12, width: 40, height: 40 }}>
+          <Piece p="menu_button" x={0} y={0} />
+        </button>
+        {menu && (
+          <div className="absolute w-[300px] rounded-lg border border-[#8a6a3a] bg-[#16120c]/95 p-3 text-[12px] text-[#efe6cf] shadow-2xl shadow-black/60 flex flex-col gap-2.5" style={{ left: 16, top: 58 }}>
+            {title && <div className="font-bold text-[13px] text-[#f5d9a8]">{title}</div>}
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] uppercase tracking-widest text-[#a8a08c]">{T('menuView')}</span>
+              <div className="flex flex-wrap gap-1">
+                {ZOOMS.map((z) => (
+                  <button key={z} type="button" onClick={() => setZoom(z)} className={`px-2 py-0.5 rounded border text-[11px] font-semibold ${Math.abs(zoom - z) < 1e-6 ? 'bg-[#f5d9a8] text-[#16120c] border-[#f5d9a8]' : 'border-[#5c4a2e] hover:bg-[#2a2116]'}`}>
+                    {z === 2 ? T('close') : z === 1 ? T('tactical') : T('zoomOut', { n: String(1 / z).replace('.', lang === 'es' ? ',' : '.') })}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] uppercase tracking-widest text-[#a8a08c]">{T('menuSpeed')}</span>
+              {([1, 2, 3] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => {
+                    setSpeed(v);
+                    try {
+                      localStorage.setItem('shinobi.battleSpeed', String(v));
+                    } catch {
+                      // not remembered
+                    }
+                  }}
+                  className={`px-2 py-0.5 rounded border text-[11px] font-bold tabular-nums ${speed === v ? 'bg-[#f5d9a8] text-[#16120c] border-[#f5d9a8]' : 'border-[#5c4a2e] hover:bg-[#2a2116]'}`}
+                >
+                  {v}×
+                </button>
+              ))}
+              <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-[#d9cba8]">
+                {state.weather === 'Downpour' ? <CloudRain size={12} /> : state.time === 'night' ? <Moon size={12} /> : <Sun size={12} />}
+                {T(state.time === 'night' ? 'night' : 'day')}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] uppercase tracking-widest text-[#a8a08c]">{T('menuLang')}</span>
+              <LangToggle />
+              <button
+                type="button"
+                onClick={() => {
+                  const m = !muted;
+                  soundManager.setMuted(m);
+                  setMuted(m);
+                }}
+                className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded border border-[#5c4a2e] hover:bg-[#2a2116] text-[11px]"
+              >
+                {muted ? <VolumeX size={13} /> : <Volume2 size={13} />} {T('sound')}
+              </button>
+              <button type="button" onClick={() => setShowLog((v) => !v)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[11px] ${showLog ? 'bg-[#f5d9a8] text-[#16120c] border-[#f5d9a8]' : 'border-[#5c4a2e] hover:bg-[#2a2116]'}`}>
+                <ScrollText size={13} /> {T('log')}
+              </button>
+            </div>
+            <div className="text-[11px] text-[#c8d3dc]">{T('supplies', { p: state.supplies.soldierPills, b: state.supplies.bandages, a: state.supplies.antidotes, t: state.supplies.explosiveTags })}</div>
+            <div className="border-t border-[#3a2f1f] pt-2 flex flex-col gap-1">
+              <span className="text-[10px] uppercase tracking-widest text-[#a8a08c]">{T('menuLeave')}</span>
+              <div className="flex flex-wrap gap-1">
+                {(['mission', 'combat', 'creator', 'campaign'] as const).map((v) => (
+                  <button key={v} type="button" onClick={() => appNavigate(v)} className="px-2 py-0.5 rounded border border-[#5c4a2e] hover:bg-[#2a2116] text-[11px]">
+                    {T(`nav_${v}` as TKey)}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[10px] text-[#a8a08c]">{T('menuLeaveNote')}</span>
+            </div>
           </div>
         )}
-        {title && <div className="text-[11px] text-slate-300/80 pl-1">{title}</div>}
-        <div className="hidden sm:block pointer-events-auto">
-          <PartyFrames
-            party={party}
-            views={pb.views}
-            selected={actor?.id}
-            lang={lang}
-            onSelect={(id) => {
-              if (state.phase === 'stealth' && stealthParty.some((u) => u.id === id)) setSelected(id);
-              centerOn(state.units[id].pos);
-            }}
-            onController={(id, controller, order?: AiOrder) => act({ type: 'setController', unit: id, controller, order })}
-          />
-        </div>
-      </div>
+      </Anchor>
 
-      <div className="flex-1 min-w-0 flex flex-col items-center gap-2 pointer-events-auto" ref={(el) => void (panelsRef.current[1] = el)}>
-        {state.phase === 'stealth' ? (
-          <div className="bg-slate-950/80 border border-amber-500/40 rounded-xl px-4 py-2 flex items-center gap-3 shadow-lg">
-            <span className="text-amber-200 text-sm font-bold">{T('stealthPhase', { n: state.stealthTurn + 1 })}</span>
-            <button type="button" disabled={busy} onClick={() => act({ type: 'endStealthTurn' })} className="text-xs px-3 py-1 rounded-lg bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 disabled:opacity-40">
-              {T('endStealthTurn')}
-            </button>
-          </div>
-        ) : (
-          state.order.length > 0 && <InitiativeBar state={state} turnUnit={pb.turnUnit} round={pb.round || state.round} lang={lang} onPick={(id) => centerOn(state.units[id].pos)} />
-        )}
+      <Anchor at="top" k={hudK} innerRef={(el) => void (panelsRef.current[1] = el)}>
+        <TopPlaque
+          state={state}
+          turnUnit={pb.turnUnit}
+          round={pb.round || state.round}
+          target={plaque}
+          targetHp={plaque ? pb.views.get(plaque.id)?.hp : undefined}
+          lang={lang}
+          onPick={(id) => centerOn(state.units[id].pos)}
+          row={
+            state.phase === 'stealth' ? (
+              <div className="bg-[#16120c]/90 border border-[#8a6a3a] rounded-lg px-4 py-2 flex items-center gap-3 shadow-lg whitespace-nowrap">
+                <span className="text-amber-200 text-sm font-bold">{T('stealthPhase', { n: state.stealthTurn + 1 })}</span>
+                <button type="button" disabled={busy} onClick={() => act({ type: 'endStealthTurn' })} className="text-xs px-3 py-1 rounded bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 disabled:opacity-40">
+                  {T('endStealthTurn')}
+                </button>
+              </div>
+            ) : undefined
+          }
+        />
         {tip && (
-          <Tip
-            text={T(tip)}
-            lang={lang}
-            onClose={() => {
-              markTip(tip);
-              setTip(null);
-            }}
-            onOff={() => {
-              try {
-                localStorage.setItem('shinobi.tips.off', '1');
-              } catch {
-                // not remembered
-              }
-              setTip(null);
-            }}
-          />
+          <div style={{ position: 'absolute', left: -190, top: 152 }}>
+            <Tip
+              text={T(tip)}
+              lang={lang}
+              onClose={() => {
+                markTip(tip);
+                setTip(null);
+              }}
+              onOff={() => {
+                try {
+                  localStorage.setItem('shinobi.tips.off', '1');
+                } catch {
+                  // not remembered
+                }
+                setTip(null);
+              }}
+            />
+          </div>
         )}
-      </div>
+      </Anchor>
 
-      <div className="flex flex-col items-end gap-2 shrink-0 ml-auto pointer-events-auto" ref={(el) => void (panelsRef.current[2] = el)}>
-        <div className="bg-slate-950/80 border border-slate-600/50 rounded-xl p-1.5 hidden md:block">
+      <Anchor at="top-right" k={hudK} innerRef={(el) => void (panelsRef.current[2] = el)}>
+        <MiniRing>
           <canvas
             ref={miniRef}
-            width={260}
-            height={Math.round((260 * map.px.height) / map.px.width)}
-            className="block rounded cursor-pointer w-[220px] xl:w-[260px] h-auto"
+            width={304}
+            height={304}
+            className="block cursor-pointer"
+            style={{ width: 152, height: 152 }}
             onClick={(e) => {
               const r = (e.target as HTMLCanvasElement).getBoundingClientRect();
-              const X = ((e.clientX - r.left) / r.width) * map.px.width;
-              const Y = ((e.clientY - r.top) / r.height) * map.px.height;
+              const m = miniView.current;
+              const X = m.x + ((e.clientX - r.left) / r.width) * m.w;
+              const Y = m.y + ((e.clientY - r.top) / r.height) * m.w;
               const c = clampCam(X - size.current.w / cam.current.zoom / 2, Y - size.current.h / cam.current.zoom / 2);
               cam.current.tx = c.x;
               cam.current.ty = c.y;
               cam.current.follow = false;
             }}
           />
-        </div>
-        <div className="flex flex-wrap justify-end items-center gap-1.5 max-w-[236px] xl:max-w-none">
-          <div className="bg-slate-950/80 border border-slate-600/50 rounded-full p-0.5 flex">
-            {([1, 2] as const).map((z) => (
-              <button key={z} type="button" onClick={() => setZoom(z)} className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${zoom === z ? 'bg-slate-100 text-slate-900' : 'text-slate-300'}`}>
-                {T(z === 1 ? 'tactical' : 'close')}
-              </button>
-            ))}
-          </div>
-          <span className="bg-slate-950/80 border border-slate-600/50 rounded-full px-2 py-1 text-[11px] text-slate-200 inline-flex items-center gap-1">
-            {state.weather === 'Downpour' ? <CloudRain size={12} /> : state.time === 'night' ? <Moon size={12} /> : <Sun size={12} />}
-            {T(state.time === 'night' ? 'night' : 'day')}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              const next = speed === 1 ? 2 : speed === 2 ? 3 : 1;
-              setSpeed(next);
-              try {
-                localStorage.setItem('shinobi.battleSpeed', String(next));
-              } catch {
-                // not remembered
-              }
-            }}
-            title={T('skipAnim')}
-            className="bg-slate-950/80 border border-slate-600/50 rounded-full px-2 py-1 text-[11px] font-bold text-slate-200 tabular-nums"
-          >
-            {speed}×
+        </MiniRing>
+        {([1, -1] as const).map((d, i) => (
+          <button key={d} type="button" onClick={() => zoomStep(d)} aria-label={d > 0 ? '+' : '−'} style={{ position: 'absolute', left: -132 + i * 30, top: 198, width: 24, height: 24 }}>
+            <Piece p="button_small" x={0} y={0} />
+            <span style={{ position: 'absolute', inset: 0, textAlign: 'center', ...kitText, fontSize: 14, lineHeight: '23px' }}>{d > 0 ? '+' : '−'}</span>
           </button>
-          <LangToggle />
-          <button
-            type="button"
-            onClick={() => {
-              const m = !muted;
-              soundManager.setMuted(m);
-              setMuted(m);
-            }}
-            className="bg-slate-950/80 border border-slate-600/50 rounded-full p-1.5 text-slate-200"
-            aria-label={T('sound')}
-          >
-            {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-          </button>
-          <button type="button" onClick={() => setShowLog((v) => !v)} className="bg-slate-950/80 border border-slate-600/50 rounded-full p-1.5 text-slate-200" aria-label={T('log')}>
-            <MapIcon size={14} />
-          </button>
+        ))}
+        <span style={{ position: 'absolute', left: -72, top: 202, ...kitText, fontSize: 10, color: '#d9cba8' }}>{zoom >= 1 ? `${zoom}×` : `÷${String(1 / zoom).replace('.', lang === 'es' ? ',' : '.')}`}</span>
+        <div className="flex flex-col items-end gap-2" style={{ position: 'absolute', right: 12, top: 232, width: 340 }}>
+          {/* The last roll and the log. */}
+          {toast && <RollToast text={toast.text} sub={toast.sub} note={toast.note} die={toast.die} ok={toast.ok} />}
+          {showLog && <LogPanel lines={log} onClose={() => setShowLog(false)} lang={lang} />}
         </div>
-        <div className="text-[10px] text-slate-300/90 bg-slate-950/60 rounded px-2 py-0.5 text-right">
-          {T('supplies', { p: state.supplies.soldierPills, b: state.supplies.bandages, a: state.supplies.antidotes, t: state.supplies.explosiveTags })}
-        </div>
-        {/* The last roll and the log, under the switches and clear of the action bar. */}
-        {toast && <RollToast text={toast.text} sub={toast.sub} note={toast.note} die={toast.die} ok={toast.ok} />}
-        {showLog && <LogPanel lines={log} onClose={() => setShowLog(false)} lang={lang} />}
-      </div>
-      </div>
+      </Anchor>
 
-      {/* Bottom centre: aiming help and the action bar. */}
-      <div className="absolute bottom-3 inset-x-3 flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto" ref={(el) => void (panelsRef.current[3] = el)}>
-        {error && <div className="px-3 py-1.5 rounded-lg bg-rose-950/90 border border-rose-700/60 text-rose-100 text-xs">{error}</div>}
-        {helpLine && actor && <div className="px-3 py-1.5 rounded-lg bg-slate-950/85 border border-slate-600/50 text-slate-100 text-xs max-w-[560px] text-center">{helpLine}</div>}
-        {actor && <ActionBar u={actor} move={actor.turn.move} buttons={buttons} lang={lang} onPress={press} onHover={setHoverBtn} />}
-        {!actor && !ended && state.phase === 'combat' && <div className="px-3 py-1.5 rounded-lg bg-slate-950/70 text-slate-300 text-xs">{T('waiting')}</div>}
-        <div className="hidden lg:block text-[10px] text-slate-400/80">{T('keysHelp')}</div>
-      </div>
+      <Anchor at="bottom-left" k={hudK} innerRef={(el) => void (panelsRef.current[3] = el)}>
+        <PartyDock
+          party={party}
+          views={pb.views}
+          selected={actor?.id}
+          lang={lang}
+          onSelect={(id) => {
+            if (state.phase === 'stealth' && stealthParty.some((u) => u.id === id)) setSelected(id);
+            centerOn(state.units[id].pos);
+          }}
+          onPanel={() => setPartyPanel((v) => !v)}
+        />
+        {partyPanel && (
+          <div className="flex flex-col gap-1.5" style={{ position: 'absolute', left: 10, bottom: 128 }}>
+            <div className="text-[11px] font-semibold text-[#f5d9a8] pl-1" style={kitText}>{T('partyPanel')}</div>
+            <PartyFrames
+              party={party}
+              views={pb.views}
+              selected={actor?.id}
+              lang={lang}
+              onSelect={(id) => centerOn(state.units[id].pos)}
+              onController={(id, controller, order?: AiOrder) => act({ type: 'setController', unit: id, controller, order })}
+            />
+          </div>
+        )}
+      </Anchor>
+
+      <Anchor at="bottom" k={hudK} innerRef={(el) => void (panelsRef.current[4] = el)}>
+        <ActionDock
+          u={dockUnit}
+          hp={dockUnit ? pb.views.get(dockUnit.id)?.hp ?? dockUnit.hp : 0}
+          chakra={dockUnit ? pb.views.get(dockUnit.id)?.chakra ?? dockUnit.chakra : 0}
+          move={dockUnit?.turn.move ?? 0}
+          buttons={actor ? buttons : []}
+          lang={lang}
+          dense={hudK * (size.current.dpr || 1) >= 1.5}
+          line={dockLine.text}
+          lineTone={dockLine.tone}
+          room={size.current.w / hudK / 2}
+          clearLeft={10 + party.length * 64}
+          onPress={press}
+          onHover={setHoverBtn}
+        />
+      </Anchor>
 
       {/* Aim label next to the cursor. */}
       {hover && preview.label && actor && !busy && (

@@ -307,7 +307,7 @@ function PartyBattle({ run, onEnd }: { run: MissionRun; onEnd: (r: PartyBattleRe
     // A battle starts once per attempt.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [b.id, b.attempt]);
-  return <PartyBattleScreen key={`${b.id}:${b.attempt}`} initial={initial} title={pick(b.battle.title, b.battle.titleEs)} height="calc(100vh - 96px)" onEnd={(res) => onEnd(res)} />;
+  return <PartyBattleScreen key={`${b.id}:${b.attempt}`} initial={initial} title={pick(b.battle.title, b.battle.titleEs)} onEnd={(res) => onEnd(res)} />;
 }
 
 function MissionHeader({ run, mission, onAbandon }: { run: MissionRun; mission: MissionDef; onAbandon: () => void }) {

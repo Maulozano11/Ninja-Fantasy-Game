@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ShinobiCharacter, WeatherType } from './types/shinobi';
 import { LEGENDARY_PRESETS } from './data/shinobiData';
 import { CharacterCreator } from './components/CharacterCreator';
@@ -10,9 +10,9 @@ import { MissionMode } from './components/mission/MissionMode';
 import { LangToggle } from './i18n/LangToggle';
 import { strings, useLang } from './i18n';
 import { soundManager } from './utils/audio';
+import { setAppNavigate } from './appNav';
+import type { AppView } from './appNav';
 import { Swords, User, BookOpen, Compass, Shield, Flame } from 'lucide-react';
-
-type AppView = 'creator' | 'campaign' | 'mission' | 'combat' | 'arena';
 
 const T = strings({
   creator: { en: 'Character Creator', es: 'Creador de personajes' },
@@ -40,6 +40,17 @@ export default function App() {
     const hash = typeof window !== 'undefined' ? window.location.hash : '';
     return hash === '#creator' ? 'creator' : hash === '#missions' ? 'mission' : 'combat';
   });
+  // A battle fills the screen over the navigation; its menu changes screen through this.
+  // Leaving a battle for the screen it was opened from starts that screen afresh.
+  const [visit, setVisit] = useState(0);
+  useEffect(() => {
+    setAppNavigate((v) => {
+      soundManager.playSelect();
+      setActiveView(v);
+      setVisit((n) => n + 1);
+    });
+    return () => setAppNavigate(null);
+  }, []);
   const [character, setCharacter] = useState<ShinobiCharacter>(founderPreset || LEGENDARY_PRESETS[0].character);
   const [activeEncounter, setActiveEncounter] = useState<{
     title: string;
@@ -179,6 +190,7 @@ export default function App() {
 
         {activeView === 'campaign' && (
           <CampaignMode
+            key={visit}
             playerCharacter={character}
             onLaunchBattle={(enc) => handleLaunchCombat(enc)}
             onBackToCreator={() => setActiveView('creator')}
@@ -187,13 +199,14 @@ export default function App() {
 
         {activeView === 'mission' && (
           <MissionMode
+            key={visit}
             hero={character}
             // Only what a mission leaves for good comes home; edits made in the creator meanwhile stay.
             onHeroReturn={(back) => back && setCharacter((c) => (c.id === back.id ? { ...c, scars: back.scars, traits: back.traits } : c))}
           />
         )}
 
-        {activeView === 'combat' && <BattleDemo key={activeEncounter?.title ?? 'practice'} character={character} start={encounterFor(activeEncounter?.enemyType)} />}
+        {activeView === 'combat' && <BattleDemo key={`${activeEncounter?.title ?? 'practice'}:${visit}`} character={character} start={encounterFor(activeEncounter?.enemyType)} />}
 
         {activeView === 'arena' && (
           <ArenaSandbox

@@ -325,7 +325,9 @@ function shoulderCap(g: DrawCtx, hex: string, len = 0.5, grow = 1.4, folds = 2, 
   const fall = norm(add(d, v(0, 1.4)));
   let back = perp(fall);
   if (back.x > 0) back = scale(back, -1); // toward the back (screen-left)
-  const R = b.armR[0] + grow;
+  // The cloth lies on the arm, only its own thickness over the sleeve: a shoulder without a guard
+  // stays slim under a cape (the owner's reference).
+  const R = b.armR[0] + Math.min(grow, 0.45);
   const drop = b.upperArm * len;
   const w = capeWind(g);
   const flut = w.dx < -2 ? 0.8 : 0;

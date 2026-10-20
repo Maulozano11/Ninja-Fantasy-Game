@@ -4,6 +4,7 @@ import type { FireLevel } from '../../rules/rest';
 import { STICKS_PER_CAMP } from '../../data/campActivities';
 import { isUnconscious } from '../../rules/ninja';
 import { subscribeTick, TICK_FPS } from '../../sprite/ticker';
+import { GRID } from '../../sprite/raster';
 import type { SpritePose } from '../../sprite/types';
 import { useLang } from '../../i18n';
 import { Gauge } from '../ui/Ornate';
@@ -11,6 +12,7 @@ import { T } from './campText';
 import {
   airGlow,
   backdrop,
+  FEET,
   FIRE,
   FireLight,
   footShadow,
@@ -237,7 +239,7 @@ export function CampScene({ members, fire, asleep, dawn, alarm, shrine, danger, 
             ctx.restore();
           }
           const c = gradedMember(m, pose, frameOf(tick, fps, n), spot.x, spot.y, spot.flip, light);
-          ctx.drawImage(c, spot.x - (spot.flip ? 127 - 64 : 64), spot.y - 120);
+          ctx.drawImage(c.canvas, spot.x - (spot.flip ? GRID - 1 - FEET.x : FEET.x) + c.ox, spot.y - FEET.y + c.oy);
         },
       });
     });

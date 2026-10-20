@@ -6,7 +6,7 @@
 
 import { hexToRgb } from '../color';
 import { armDepth, armJoints, armPoint, DrawCtx, fillTorso, handDraw, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
-import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, GRID, Layer, lerp, norm, PartId, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
+import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, GRID, Layer, lerp, norm, PAD, PartId, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -123,7 +123,7 @@ function capShade(c: Vec, r: number): ShadeFn {
     const dx = clamp((x + 0.5 - c.x) / r, -1, 1);
     const dy = clamp((y + 0.5 - c.y) / r, -1, 1);
     const dz = Math.sqrt(Math.max(0, 1 - dx * dx - dy * dy));
-    return tone(dx * L3.x + dy * L3.y + dz * L3.z + wob((x + y) * 1.6, 5) * 0.16);
+    return tone(dx * L3.x + dy * L3.y + dz * L3.z + wob((x - PAD.x + y - PAD.y) * 1.6, 5) * 0.16);
   };
 }
 
@@ -1164,7 +1164,7 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
         const l = toT(g, x, y);
         const k = clamp((top - l.y) / 3, 0, 1);
         const lt = torsoLight(g, l.x, l.y) * (1 - k) + drape(x + 0.5, y + 0.5) * k;
-        return tone(lt + lift + wob(x * 1.7, 23) * 0.12 - clamp((y + 0.5 - dy) / 16, 0, 0.1));
+        return tone(lt + lift + wob((x - PAD.x) * 1.7, 23) * 0.12 - clamp((y + 0.5 - dy) / 16, 0, 0.1));
       };
       // Far panel (behind at the closure): a shade darker
       poly(O, [fTop, front, fR, fL], clothPen(g, c, 'torso', -1), tails(fTop.y, 0.22));
@@ -1267,7 +1267,7 @@ function widePanel(g: DrawCtx, L: Layer, s: Side, wHip: number, wHem: number, he
     const xl = pts[0].x + (pts[3].x - pts[0].x) * f;
     const xr = pts[1].x + (pts[2].x - pts[1].x) * f;
     const u = (2 * (x + 0.5 - xl)) / Math.max(1, xr - xl) - 1;
-    return tone(hangLight(u) + lift + wob(y * 1.4, 29) * 0.12);
+    return tone(hangLight(u) + lift + wob((y - PAD.y) * 1.4, 29) * 0.12);
   });
   return pts;
 }

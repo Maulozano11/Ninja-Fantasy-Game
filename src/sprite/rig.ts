@@ -2,14 +2,18 @@
 // Every item is drawn against the rig, so one hairstyle or armor works on
 // all body types and in every pose without being redrawn.
 //
-// Screen conventions: 64x64 design grid (rendered at 128x128), y grows downward, the character stands in
+// Screen conventions: the figure's 64x64 design box sits at PAD in the frame (raster.ts), y grows downward, the character stands in
 // a 3/4 view facing RIGHT. "Near" limbs are the character's right arm/leg
 // (screen-left, drawn in front); "far" limbs are on screen-right, behind.
 
-import { add, len, norm, RES, scale, sub, v, Vec } from './raster';
+import { add, len, norm, PAD, RES, scale, sub, v, Vec } from './raster';
 import type { BodyType, CastStyle, SpritePose } from './types';
 
-export const GROUND = 60; // ground line under the body (shadow centre)
+export const GROUND = PAD.y + 60; // ground line under the body (shadow centre)
+/** The design x the feet stand on (the middle of the figure's box). */
+export const FEET_X = PAD.x + 32;
+/** Where the feet touch the ground in a frame, in fine pixels (frames are drawn from here). */
+export const FEET = { x: FEET_X * RES, y: GROUND * RES };
 /** Ankle heights, 3/4 front view: the near foot stands lower on screen, the far foot higher. */
 export const ANKLE_N = GROUND - 4;
 export const FAR_LIFT = 2;
@@ -435,12 +439,12 @@ const DOWNED: PoseFrame[] = [DOWNED_BASE, { ...DOWNED_BASE, lean: -6.5 }];
 
 /**
  * Where the camp props go, for the scene that places them (design units from
- * the feet anchor at x 32, y GROUND; fine pixels are twice these).
+ * the feet anchor at x FEET_X, y GROUND; fine pixels are twice these).
  * - SEAT_TOP: the top of the log seat under 'sit' and 'read' (26 px above the feet).
  * - SEAT_X: the middle of the seat under the hips, behind the feet.
  * - LEAN_X: the front face of the trunk, rock or pole a 'lean' rests against.
  */
-export const CAMP_PROPS = { SEAT_TOP: GROUND - 13, SEAT_X: 32 - 9, LEAN_X: 32 - 16 };
+export const CAMP_PROPS = { SEAT_TOP: GROUND - 13, SEAT_X: FEET_X - 9, LEAN_X: FEET_X - 16 };
 
 /** Breathing for the resting poses: the chest rises 1 px on half the loop. */
 const breathe = (f: PoseFrame, n: number): PoseFrame[] => Array.from({ length: n }, (_, i) => (i < n / 2 ? f : { ...f, chestDy: 0.5 }));
@@ -795,8 +799,8 @@ export interface Lay {
   groundX: number;
 }
 
-/** Design x of the middle of the frame. */
-const FRAME_MID = 32;
+/** Design x of the middle of the figure's box (a lying figure is centred on it). */
+const FRAME_MID = FEET_X;
 
 /** Moves a design y down onto the next fine pixel row (when `snap`). */
 const snapDown = (y: number, snap: boolean): number => (snap ? Math.ceil(y * RES - 1e-6) / RES : y);
@@ -893,7 +897,7 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   // by `hip`); `lift` raises the whole body off it.
   const footDrop = (f.hip ?? Math.max(f.footN.y, f.footF.y)) * legLen;
   const jitter = f.jitter ? (frame % 2 === 0 ? -f.jitter : f.jitter) * 0.5 : 0;
-  const stand = v(31.5 + (f.pelvisDx || 0) + jitter, ANKLE_N - footDrop - (f.lift || 0));
+  const stand = v(FEET_X - 0.5 + (f.pelvisDx || 0) + jitter, ANKLE_N - footDrop - (f.lift || 0));
   // `sink` and `snap` lower the pelvis while the feet stay where the pose puts
   // them (the knees take it up), `snap` onto the fine pixel grid.
   const moved = !!(f.sink || f.snap);

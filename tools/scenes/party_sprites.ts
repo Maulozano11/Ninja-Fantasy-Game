@@ -12,9 +12,9 @@ import { join } from 'node:path';
 import { COMPANIONS } from '../../src/data/missions';
 import { renderSprite } from '../../src/sprite/compose';
 import { dojutsuToEye, getAppearance } from '../../src/sprite/legacy';
-import { GRID } from '../../src/sprite/raster';
+import { BOX } from '../../src/sprite/raster';
 import type { SpritePose } from '../../src/sprite/types';
-import { Canvas } from '../world-sprites/kit';
+import { boxOf, Canvas } from '../world-sprites/kit';
 
 const out = process.argv[2] ?? 'party-preview';
 const wanted = process.argv.slice(3).length ? process.argv.slice(3) : ['Akira:idle', 'Shiori:idle', 'Ren:idle'];
@@ -24,7 +24,7 @@ wanted.forEach((w, k) => {
   const [who, pose = 'idle', frame = '0'] = w.split(':');
   const member = COMPANIONS.find((c) => c.name.startsWith(who)) ?? COMPANIONS[k % COMPANIONS.length];
   const fr = renderSprite(getAppearance(member), pose as SpritePose, Number(frame), dojutsuToEye(member.dojutsu));
-  const c = Canvas.fromRgba(GRID, GRID, fr.rgba);
+  const c = Canvas.fromRgba(BOX.w, BOX.h, boxOf(fr.rgba));
   const file = `${k}.png`;
   c.save(join(out, `.${file}.tmp`));
   renameSync(join(out, `.${file}.tmp`), join(out, file));

@@ -3,19 +3,53 @@
 // layer can be outlined and recolored after it is drawn.
 //
 // Two coordinate spaces:
-//  - DESIGN units: a 64x64 space that the rig, body params and every item use.
-//  - FINE pixels: the real 128x128 canvas (RES fine pixels per design unit).
+//  - DESIGN units: a UNITS x UNITS space that the rig, body params and every item use. The figure
+//    stands in a 64-unit box at PAD inside it; the room around the box is for long blades, raised
+//    swords and effects.
+//  - FINE pixels: the real GRID x GRID canvas (RES fine pixels per design unit).
 // Primitives take design coordinates and rasterize at fine resolution, so
-// silhouettes, outlines and details are crisp 1px at 128x128.
+// silhouettes, outlines and details are crisp 1px.
 // `px` paints ONE fine pixel at a design coordinate (use .5 steps for detail);
 // `dot` paints a whole design pixel (RES x RES block). Layer methods
 // (set/has/clear/reshade/getShade) take FINE integer coordinates.
 
 import { makeRamp, mixHex, Ramp, RampKind } from './color';
 
-export const UNITS = 64;
+export const UNITS = 128;
 export const RES = 2;
 export const GRID = UNITS * RES;
+/**
+ * Where the figure's 64-unit box sits in the frame (design units). The frame used to be that box;
+ * it grew so long blades and raised swords are no longer cut at its edge (the owner, 2026-10-20).
+ * Whole fine pixels that are multiples of 4, so every pattern keyed to the frame's pixels lands
+ * on the figure as it did.
+ */
+export const PAD = { x: 32, y: 48 };
+/** The figure's box in fine pixels: the old 128 x 128 frame, where cards and thumbnails look. */
+export const BOX = { x: PAD.x * RES, y: PAD.y * RES, w: 128, h: 128 };
+
+/**
+ * The smallest rectangle holding every visible pixel of these GRID x GRID RGBA buffers (null when
+ * all are empty), so cached frames keep only that much of the big frame.
+ */
+export function opaqueBox(...bufs: (Uint8ClampedArray | null | undefined)[]): { x: number; y: number; w: number; h: number } | null {
+  let x0 = GRID;
+  let y0 = GRID;
+  let x1 = -1;
+  let y1 = -1;
+  for (const b of bufs) {
+    if (!b) continue;
+    for (let y = 0; y < GRID; y++)
+      for (let x = 0; x < GRID; x++)
+        if (b[(y * GRID + x) * 4 + 3]) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+  }
+  return x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}
 const N = GRID * GRID;
 /** Converts a design coordinate to the fine pixel that contains it. */
 export const fine = (d: number): number => Math.floor(d * RES);

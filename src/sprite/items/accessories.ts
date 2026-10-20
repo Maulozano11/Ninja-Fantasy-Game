@@ -3,7 +3,7 @@
 // T(), head-local hd()) so it works on every body type and pose.
 
 import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
-import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
+import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
 import type { RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
@@ -63,7 +63,7 @@ function gripOf(g: DrawCtx, angle: number, side: Side = 'N'): Grip {
   // "Back" of the blade: the perpendicular that points more upward.
   let n = perp(dir);
   if (n.y > 0 || (Math.abs(n.y) < 0.15 && n.x > 0)) n = scale(n, -1);
-  const lim = (p: number, d: number) => (d > 1e-3 ? (63 - p) / d : d < -1e-3 ? (p - 1) / -d : 999);
+  const lim = (p: number, d: number) => (d > 1e-3 ? (UNITS - 1 - p) / d : d < -1e-3 ? (p - 1) / -d : 999);
   const room = Math.min(lim(j.hand.x, dir.x), lim(j.hand.y, dir.y));
   return { hand: j.hand, dir, n, side, room };
 }

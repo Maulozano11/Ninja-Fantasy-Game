@@ -4,7 +4,7 @@ import { renderSpriteCached } from '../sprite/compose';
 import { CHAKRA_LOOP, ChakraMode, renderChakra } from '../sprite/chakra';
 import { dojutsuToEye, getAppearance } from '../sprite/legacy';
 import { frameCount, GROUND, POSE_FPS, rigPoseFor } from '../sprite/rig';
-import { GRID, RES } from '../sprite/raster';
+import { BOX, GRID, RES } from '../sprite/raster';
 import { subscribeTick, TICK_FPS } from '../sprite/ticker';
 import type { CastStyle, SpriteAppearance, SpritePose } from '../sprite/types';
 
@@ -15,15 +15,23 @@ export interface ShinobiSpriteCanvasProps {
   stance?: SpritePose;
   /** Cast style to show for the 'cast' stance (a jutsu's own style); defaults to the look's. */
   castStyle?: CastStyle;
-  /** Display size in CSS pixels (the sprite itself is always 128x128). */
+  /** Display size in CSS pixels of the part shown (see `frame`). */
   size?: number;
+  /**
+   * 'body' (the default) shows the figure's 128 x 128 box, as cards and lists always have; 'full'
+   * shows the whole frame, with the room around the figure for long weapons and effects.
+   */
+  frame?: 'body' | 'full';
   isEnhanced?: boolean;
   className?: string;
   showAura?: boolean;
   showShadow?: boolean;
 }
 
-/** Alpha-composites `src` over `dst` (both 64x64 RGBA). */
+/** The whole frame, for `frame: 'full'`. */
+const WHOLE = { x: 0, y: 0, w: GRID, h: GRID };
+
+/** Alpha-composites `src` over `dst` (two RGBA buffers of the same size). */
 export function blendOver(dst: Uint8ClampedArray, src: Uint8ClampedArray): void {
   for (let i = 0; i < dst.length; i += 4) {
     const a = src[i + 3];
@@ -75,7 +83,9 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
   className = '',
   showAura = true,
   showShadow = true,
+  frame: view = 'body',
 }) => {
+  const win = view === 'full' ? WHOLE : BOX;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const look = useMemo(() => {
     const base = appearance ?? getAppearance(character);
@@ -113,9 +123,9 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
       if (fx) blendOver(out, fx.back);
       blendOver(out, spr.rgba);
       if (fx) blendOver(out, fx.front);
-      ctx.putImageData(img, 0, 0);
+      ctx.putImageData(img, -win.x, -win.y, win.x, win.y, win.w, win.h);
     });
-  }, [look, stance, eye, isEnhanced, showAura, showShadow]);
+  }, [look, stance, eye, isEnhanced, showAura, showShadow, win]);
 
   return (
     <div
@@ -124,8 +134,8 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
     >
       <canvas
         ref={canvasRef}
-        width={GRID}
-        height={GRID}
+        width={win.w}
+        height={win.h}
         className="w-full h-full pointer-events-none pixelated"
         style={{ imageRendering: 'pixelated' }}
       />

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Eraser, Grid3x3, Paintbrush, Pipette, RotateCcw, Trash2, Undo2 } from 'lucide-react';
 import { nearestPart, renderSprite, toLocal, toWorld } from '../../sprite/compose';
 import { rgbToHex } from '../../sprite/color';
-import { GRID, PARTS, PartId } from '../../sprite/raster';
+import { BOX, GRID, PARTS, PartId } from '../../sprite/raster';
 import { buildRig } from '../../sprite/rig';
 import type { EyeSpecial, PixelEdit, SpriteAppearance } from '../../sprite/types';
 import { CLOTH_COLORS, HAIR_COLORS, SKIN_TONES } from '../../sprite/palettes';
@@ -41,13 +41,14 @@ export const PixelEditor: React.FC<{
   useEffect(() => {
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
-    const W = GRID * SCALE;
+    // The figure's box of the frame is painted on (the room around it is for weapons and effects).
+    const W = BOX.w * SCALE;
     ctx.clearRect(0, 0, W, W);
-    for (let y = 0; y < GRID; y++) {
-      for (let x = 0; x < GRID; x++) {
+    for (let y = 0; y < BOX.h; y++) {
+      for (let x = 0; x < BOX.w; x++) {
         ctx.fillStyle = (x + y) % 2 ? '#1c1f2b' : '#212535';
         ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
-        const i = (y * GRID + x) * 4;
+        const i = ((BOX.y + y) * GRID + BOX.x + x) * 4;
         if (shown.rgba[i + 3]) {
           ctx.fillStyle = `rgb(${shown.rgba[i]},${shown.rgba[i + 1]},${shown.rgba[i + 2]})`;
           ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
@@ -57,7 +58,7 @@ export const PixelEditor: React.FC<{
     if (grid) {
       ctx.strokeStyle = 'rgba(255,255,255,0.06)';
       ctx.lineWidth = 1;
-      for (let k = 0; k <= GRID; k++) {
+      for (let k = 0; k <= BOX.w; k++) {
         ctx.beginPath();
         ctx.moveTo(k * SCALE + 0.5, 0);
         ctx.lineTo(k * SCALE + 0.5, W);
@@ -97,8 +98,8 @@ export const PixelEditor: React.FC<{
   const cell = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     return {
-      x: Math.floor(((e.clientX - r.left) / r.width) * GRID),
-      y: Math.floor(((e.clientY - r.top) / r.height) * GRID),
+      x: BOX.x + Math.floor(((e.clientX - r.left) / r.width) * BOX.w),
+      y: BOX.y + Math.floor(((e.clientY - r.top) / r.height) * BOX.h),
     };
   };
 
@@ -187,10 +188,10 @@ export const PixelEditor: React.FC<{
       <div className="flex flex-wrap gap-4 items-start">
         <canvas
           ref={canvasRef}
-          width={GRID * SCALE}
-          height={GRID * SCALE}
+          width={BOX.w * SCALE}
+          height={BOX.h * SCALE}
           className="rounded-xl border border-slate-800 cursor-crosshair touch-none max-w-full"
-          style={{ width: GRID * SCALE, maxWidth: '100%', imageRendering: 'pixelated' }}
+          style={{ width: BOX.w * SCALE, maxWidth: '100%', imageRendering: 'pixelated' }}
           onPointerDown={(e) => {
             painting.current = true;
             stroke.current = null;

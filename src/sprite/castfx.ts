@@ -6,7 +6,7 @@
 import { CHAKRA_CHOICES, chakraHex } from './chakraInfo';
 import { hexToRgb, mixHex } from './color';
 import type { DrawCtx } from './ctx';
-import { add, ellipse, F_NO_OUTLINE, fine, GRID, Layer, line, norm, PartId, partIndex, Pen, px, RES, scale, sub, v, Vec } from './raster';
+import { add, BOX, ellipse, F_NO_OUTLINE, fine, GRID, Layer, line, norm, PartId, partIndex, Pen, px, RES, scale, sub, v, Vec } from './raster';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import { armJoints } from './ctx';
 import { eyeCells, faceAnchor } from './body';
@@ -439,8 +439,9 @@ function emberOrb(g: DrawCtx, hex: string): void {
   const cy = fine(tip.y + dir.y * 3.4) + 0.5;
   // crust plates: cells of a coarse grid, the seams between them glowing
   const plateAt = (x: number, y: number) => {
-    const u = (x - cx) * 0.3 + Math.sin(y * 0.7) * 0.5 + 0.5;
-    const w = (y - cy) * 0.3 + Math.sin(x * 0.6 + 1) * 0.5 + 0.3;
+    // (the waves keyed to the figure's box, so the plates sit on the orb as they always have)
+    const u = (x - cx) * 0.3 + Math.sin((y - BOX.y) * 0.7) * 0.5 + 0.5;
+    const w = (y - cy) * 0.3 + Math.sin((x - BOX.x) * 0.6 + 1) * 0.5 + 0.3;
     const fu = u - Math.floor(u);
     const fw = w - Math.floor(w);
     return Math.min(fu, 1 - fu, fw, 1 - fw);
@@ -706,7 +707,7 @@ function scriptLetter(L: Layer, letter: Letter, c: Vec, s: number, ink: number, 
   }
   if (dissolve > 0)
     for (const i of [...core]) {
-      const h = Math.sin((i % GRID) * 12.9898 + ((i / GRID) | 0) * 78.233) * 43758.5453;
+      const h = Math.sin(((i % GRID) - BOX.x) * 12.9898 + (((i / GRID) | 0) - BOX.y) * 78.233) * 43758.5453;
       if (h - Math.floor(h) < dissolve) core.delete(i);
     }
   const inCore = (i: number) => core.has(i);

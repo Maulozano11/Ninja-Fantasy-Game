@@ -5,14 +5,14 @@ import { renderSpriteCached } from '../../sprite/compose';
 import { CHAKRA_LOOP, renderChakra } from '../../sprite/chakra';
 import type { ChakraMode } from '../../sprite/chakra';
 import { dojutsuToEye, getAppearance } from '../../sprite/legacy';
-import { frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
+import { FEET, frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
 import type { Rig } from '../../sprite/rig';
-import { GRID, RES } from '../../sprite/raster';
+import { GRID, opaqueBox, RES } from '../../sprite/raster';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { Unit } from '../../battle/types';
 
-/** Where the feet touch the ground in a 128x128 frame. */
-export const FEET = { x: 64, y: 120 };
+/** Where the feet touch the ground in a sprite frame (fine pixels). */
+export { FEET };
 
 /** Pixels a gait moves per frame, so feet don't slide (1x sprite pixels). */
 export const STRIDE: Partial<Record<SpritePose, number>> = { walk: 32 / 10, run: 87 / 12, sneak: 30 / 8 };
@@ -79,29 +79,34 @@ export const framesOf = (look: SpriteAppearance, pose: SpritePose): number => fr
 export const fpsOf = (pose: SpritePose): number => POSE_FPS[pose] ?? 6;
 
 interface Cached {
+  /** Only the frame's drawn pixels: its top-left is (ox, oy) of the frame. */
   canvas: HTMLCanvasElement;
+  ox: number;
+  oy: number;
   rig: Rig;
 }
 
 const frames = new Map<string, Cached>();
 const MAX = 900;
 
-function toCanvas(rgba: Uint8ClampedArray, layers?: { back: Uint8ClampedArray; front: Uint8ClampedArray } | null): HTMLCanvasElement {
+/** A frame (and its aura) as a canvas trimmed to its drawn pixels: the frame is big, the figure small. */
+function toCanvas(rgba: Uint8ClampedArray, layers?: { back: Uint8ClampedArray; front: Uint8ClampedArray } | null): { canvas: HTMLCanvasElement; ox: number; oy: number } {
+  const box = opaqueBox(rgba, layers?.back, layers?.front) ?? { x: 0, y: 0, w: 1, h: 1 };
   const c = document.createElement('canvas');
-  c.width = GRID;
-  c.height = GRID;
+  c.width = box.w;
+  c.height = box.h;
   const g = c.getContext('2d')!;
   const put = (data: Uint8ClampedArray) => {
     const tmp = document.createElement('canvas');
-    tmp.width = GRID;
-    tmp.height = GRID;
-    tmp.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(data), GRID, GRID), 0, 0);
+    tmp.width = box.w;
+    tmp.height = box.h;
+    tmp.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(data), GRID, GRID), -box.x, -box.y, box.x, box.y, box.w, box.h);
     g.drawImage(tmp, 0, 0);
   };
   if (layers) put(layers.back);
   put(rgba);
   if (layers) put(layers.front);
-  return c;
+  return { canvas: c, ox: box.x, oy: box.y };
 }
 
 /**
@@ -123,7 +128,7 @@ export function unitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, fra
   }
   const spr = renderSpriteCached(look, pose, f, eye);
   const fx = wantAura ? renderChakra(look.chakra.color, aura!.mode, fxTick, spr.rgba, spr.rig, look.chakra.tint) : null;
-  c = { canvas: toCanvas(spr.rgba, fx), rig: spr.rig };
+  c = { ...toCanvas(spr.rgba, fx), rig: spr.rig };
   frames.set(key, c);
   if (frames.size > MAX) frames.delete(frames.keys().next().value as string);
   return c;
@@ -145,7 +150,7 @@ export function portraitOf(u: Unit, size = 44): string | undefined {
     return hit.url;
   }
   const spr = renderSpriteCached(look, 'idle', 0, dojutsuToEye(u.character?.dojutsu));
-  const src = toCanvas(spr.rgba);
+  const { canvas: src, ox, oy } = toCanvas(spr.rgba);
   const c = document.createElement('canvas');
   c.width = size;
   c.height = size;
@@ -154,7 +159,7 @@ export function portraitOf(u: Unit, size = 44): string | undefined {
   const hx = spr.rig.head.x * RES;
   const hy = spr.rig.head.y * RES;
   const crop = 40;
-  g.drawImage(src, Math.round(hx - crop / 2), Math.round(hy - crop / 2 + 2), crop, crop, 0, 0, size, size);
+  g.drawImage(src, Math.round(hx - crop / 2) - ox, Math.round(hy - crop / 2 + 2) - oy, crop, crop, 0, 0, size, size);
   const url = c.toDataURL();
   portraits.set(key, { src: from, sig, url });
   return url;

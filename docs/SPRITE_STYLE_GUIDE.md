@@ -14,7 +14,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 
 | | Value |
 |---|---|
-| Canvas | 128 x 128 px. Geometry uses a 64-unit design space (`raster.ts`: `UNITS`, `RES = 2`). |
+| Canvas | 256 x 256 px. The figure stands in a 128 x 128 box (`BOX`) at `PAD`, with room around it for big weapons (great swords, scythes, war hammers) and effects; cards and thumbnails show the box. Geometry uses design units (`raster.ts`: `UNITS`, `RES = 2`). |
 | Height | About 94 px from the top of the hair to the soles, like the reference. |
 | View | 3/4, facing right. The near arm and leg (screen-left) are drawn in front; the far ones are behind and one shade darker. |
 | Head | Shrunk by `headScale` (about 0.78). The face from the lash row down is a fixed pixel template. |

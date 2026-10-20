@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 import { LEGENDARY_PRESETS } from '../../src/data/shinobiData';
 import { renderSprite } from '../../src/sprite/compose';
 import { getAppearance } from '../../src/sprite/legacy';
-import { GRID } from '../../src/sprite/raster';
+import { BOX, GRID } from '../../src/sprite/raster';
 
 // --- scale --------------------------------------------------------------------------------
 
@@ -488,11 +488,18 @@ export function writeGroup(group: string, sprites: WorldSprite[], root = process
 
 // --- previews -----------------------------------------------------------------------------
 
-/** The Solen preset standing idle, as a 128x128 canvas with the feet at y = 120. */
+/** The Solen preset standing idle, as a 128x128 canvas (the figure's box of the frame) with the feet at y = 120. */
 export function characterRef(): Canvas {
   const preset = LEGENDARY_PRESETS.find((p) => p.character.name.startsWith('Solen')) ?? LEGENDARY_PRESETS[0];
   const f = renderSprite(getAppearance(preset.character), 'idle', 0);
-  return Canvas.fromRgba(GRID, GRID, f.rgba);
+  return Canvas.fromRgba(BOX.w, BOX.h, boxOf(f.rgba));
+}
+
+/** The figure's 128 x 128 box cut out of a GRID x GRID frame (the tools work in the old frame). */
+export function boxOf(rgba: Uint8ClampedArray): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(BOX.w * BOX.h * 4);
+  for (let y = 0; y < BOX.h; y++) out.set(rgba.subarray(((BOX.y + y) * GRID + BOX.x) * 4, ((BOX.y + y) * GRID + BOX.x + BOX.w) * 4), y * BOX.w * 4);
+  return out;
 }
 export const CHARACTER_FEET: [number, number] = [64, 120];
 

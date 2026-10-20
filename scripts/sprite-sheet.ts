@@ -12,7 +12,7 @@ import { LEGENDARY_PRESETS } from '../src/data/shinobiData';
 import { getItem } from '../src/sprite/catalog';
 import { renderSprite } from '../src/sprite/compose';
 import { defaultAppearance, dojutsuToEye } from '../src/sprite/legacy';
-import { GRID } from '../src/sprite/raster';
+import { BOX, GRID } from '../src/sprite/raster';
 import { BodyType, EyeSpecial, SPRITE_POSES, SpriteAppearance, SpritePose } from '../src/sprite/types';
 
 // --- tiny PNG codec (8-bit RGBA, non-interlaced) ---------------------------
@@ -148,8 +148,8 @@ if (mode === 'item') {
   const solen = LEGENDARY_PRESETS[0].character;
   const f = renderSprite(solen.appearance!, 'idle', 0, dojutsuToEye(solen.dojutsu));
   const k = 6;
-  const W = (ref.w + GRID + 8) * k;
-  const H = Math.max(ref.h, GRID) * k;
+  const W = (ref.w + BOX.w + 8) * k;
+  const H = Math.max(ref.h, BOX.h) * k;
   const out = new Uint8Array(W * H * 4);
   for (let i = 0; i < W * H; i++) out.set([236, 236, 240, 255], i * 4);
   const put = (x: number, y: number, p: ArrayLike<number>) => {
@@ -160,10 +160,11 @@ if (mode === 'item') {
       const i = (y * ref.w + x) * 4;
       if (ref.rgba[i + 3]) put(x, y + (H / k - ref.h), ref.rgba.subarray(i, i + 4));
     }
-  for (let y = 0; y < GRID; y++)
-    for (let x = 0; x < GRID; x++) {
-      const i = (y * GRID + x) * 4;
-      if (f.rgba[i + 3]) put(ref.w + 8 + x, y + (H / k - GRID), f.rgba.subarray(i, i + 4));
+  // the figure's 128 x 128 box of the frame, its bottom on the reference's
+  for (let y = 0; y < BOX.h; y++)
+    for (let x = 0; x < BOX.w; x++) {
+      const i = ((BOX.y + y) * GRID + BOX.x + x) * 4;
+      if (f.rgba[i + 3]) put(ref.w + 8 + x, y + (H / k - BOX.h), f.rgba.subarray(i, i + 4));
     }
   writePng(outArg || arg || 'compare.png', W, H, out);
 } else {

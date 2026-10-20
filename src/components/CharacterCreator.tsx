@@ -12,7 +12,8 @@ import {
 import { ShinobiSpriteCanvas } from './ShinobiSpriteCanvas';
 import { AppearanceEditor, type AppearanceGroup } from './creator/AppearanceEditor';
 import { renderSpriteCached } from '../sprite/compose';
-import { RES } from '../sprite/raster';
+import { BOX, GRID, RES } from '../sprite/raster';
+import { FEET } from '../sprite/rig';
 import { getItem } from '../sprite/catalog';
 import { chakraHex } from '../sprite/chakraInfo';
 import { defaultAppearance, dojutsuToEye, getAppearance } from '../sprite/legacy';
@@ -955,13 +956,15 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   })();
 
   const faceCam = wide && step === 'appearance' && lookGroup === 'head';
-  const figure = (
+  /** The ninja: the whole frame on the stage (room for long weapons), its box in the phone column. */
+  const figure = (full: boolean) => (
     <ShinobiSpriteCanvas
       character={character}
       appearance={look}
       stance={previewStance}
       castStyle={previewStance === 'cast' ? previewCast ?? undefined : undefined}
-      size={128 * k}
+      size={(full ? GRID : BOX.w) * k}
+      frame={full ? 'full' : 'body'}
       isEnhanced={previewEnhanced}
       showAura={true}
     />
@@ -1039,22 +1042,24 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
               {T('title')}
             </h1>
           </div>
-          <div className="absolute left-1/2 top-4 -translate-x-1/2">{tabs}</div>
-          <div className="absolute right-6 top-6">{tools}</div>
+          {/* over the ninja: a raised weapon or a burst of chakra may reach up to them */}
+          <div className="absolute left-1/2 top-4 -translate-x-1/2 z-10">{tabs}</div>
+          <div className="absolute right-6 top-6 z-10">{tools}</div>
 
           {/* The ninja, under the panels (the close-up on the face grows past them). The camera comes in on
               the face while the head is being edited: the sprite doubles around its head. */}
           <div
             className="absolute"
             style={{
-              left: view.w / 2 - 64 * k,
-              top: ground - 120 * k,
+              left: view.w / 2 - FEET.x * k,
+              top: ground - FEET.y * k,
+              pointerEvents: 'none',
               transform: faceCam ? 'scale(2)' : 'none',
               transformOrigin: `${headAt.x * k}px ${headAt.y * k}px`,
               transition: 'transform 380ms ease-out',
             }}
           >
-            {figure}
+            {figure(true)}
           </div>
           <Frame className={`absolute left-6 top-[112px] bottom-[96px] ${step === 'appearance' ? 'w-[min(34vw,560px)]' : 'w-[min(26vw,400px)]'}`} title={leftTitle} sub={T(`stepHint_${step}` as TK)}>
             {list}
@@ -1090,7 +1095,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
             </div>
             <div className="overflow-x-auto pb-1">{tabs}</div>
             <div className="flex justify-center">{nameplate}</div>
-            <div className="flex justify-center">{figure}</div>
+            <div className="flex justify-center">{figure(false)}</div>
             {stances}
             <Frame title={leftTitle} sub={T(`stepHint_${step}` as TK)}>
               {list}

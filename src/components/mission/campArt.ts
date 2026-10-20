@@ -13,8 +13,8 @@ import frameBackUrl from '../../assets/scenes/camp_night/frame_back.png';
 import frameFrontUrl from '../../assets/scenes/camp_night/frame_front.png';
 import { renderSpriteCached } from '../../sprite/compose';
 import { dojutsuToEye, getAppearance } from '../../sprite/legacy';
-import { CAMP_PROPS, frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
-import { GRID, RES } from '../../sprite/raster';
+import { CAMP_PROPS, FEET, FEET_X, frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
+import { GRID, opaqueBox, RES } from '../../sprite/raster';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { ShinobiCharacter } from '../../types/shinobi';
 import { worldSprite } from '../world/WorldSpriteView';
@@ -33,8 +33,8 @@ export const SPOTS = scene.spots.map((s) => ({ x: s.x, y: s.y, flip: s.facing ==
  * centre behind the feet for sit and read, the leaning face behind the feet for lean, in 1x world
  * px (the sprite's fine pixels). Read live from CAMP_PROPS, so the supports follow the poses.
  */
-export const SEAT_DX = (32 - CAMP_PROPS.SEAT_X) * RES;
-export const LEAN_DX = (32 - CAMP_PROPS.LEAN_X) * RES;
+export const SEAT_DX = (FEET_X - CAMP_PROPS.SEAT_X) * RES;
+export const LEAN_DX = (FEET_X - CAMP_PROPS.LEAN_X) * RES;
 
 export interface ScenePropDef {
   group: string;
@@ -263,12 +263,15 @@ export function poseFrames(m: ShinobiCharacter, pose: SpritePose): { n: number; 
   return { n: Math.max(1, frameCount(rigPoseFor(pose, look.cast?.style))), fps: POSE_FPS[pose] ?? 3 };
 }
 
-const partyCache = new Lru<HTMLCanvasElement>(400);
-/** Where the feet touch the ground in a 128 x 128 sprite frame. */
-export const FEET = { x: 64, y: 120 };
+const partyCache = new Lru<{ canvas: HTMLCanvasElement; ox: number; oy: number }>(400);
+/** Where the feet touch the ground in a sprite frame (fine pixels). */
+export { FEET };
 
-/** One graded frame of a party member standing at (x, y), mirrored when facing left. */
-export function gradedMember(m: ShinobiCharacter, pose: SpritePose, frame: number, x: number, y: number, flip: boolean, light: FireLight): HTMLCanvasElement {
+/**
+ * One graded frame of a party member standing at (x, y), mirrored when facing left: a canvas of
+ * only its drawn pixels, whose top-left is (ox, oy) of the (mirrored) frame.
+ */
+export function gradedMember(m: ShinobiCharacter, pose: SpritePose, frame: number, x: number, y: number, flip: boolean, light: FireLight): { canvas: HTMLCanvasElement; ox: number; oy: number } {
   const look = lookOf(m);
   const key = `${m.id}|${lookIds.get(look)}|${pose}|${frame}|${x},${y}|${flip ? 1 : 0}|${lightKey(light)}`;
   const hit = partyCache.get(key);
@@ -287,7 +290,11 @@ export function gradedMember(m: ShinobiCharacter, pose: SpritePose, frame: numbe
       }
   }
   const fx = flip ? GRID - 1 - FEET.x : FEET.x;
-  const c = toCanvas(gradeFrame(rgba, GRID, GRID, x - fx, y - FEET.y, y, light), GRID, GRID);
+  const graded = gradeFrame(rgba, GRID, GRID, x - fx, y - FEET.y, y, light);
+  const box = opaqueBox(graded) ?? { x: 0, y: 0, w: 1, h: 1 };
+  const crop = new Uint8ClampedArray(box.w * box.h * 4);
+  for (let yy = 0; yy < box.h; yy++) crop.set(graded.subarray(((box.y + yy) * GRID + box.x) * 4, ((box.y + yy) * GRID + box.x + box.w) * 4), yy * box.w * 4);
+  const c = { canvas: toCanvas(crop, box.w, box.h), ox: box.x, oy: box.y };
   partyCache.set(key, c);
   return c;
 }

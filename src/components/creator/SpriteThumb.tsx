@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { renderSpriteCached } from '../../sprite/compose';
-import { GRID, RES } from '../../sprite/raster';
+import { BOX, GRID, RES } from '../../sprite/raster';
 import type { EyeSpecial, SpriteAppearance, SpritePose } from '../../sprite/types';
 
-/** Body crop (fine pixels) and head crop size, shown at whole-pixel zoom so nothing blurs. */
-const FULL = { x: 18, y: 12, w: 92, h: 114 };
+/** Body crop (fine pixels, inside the figure's box) and head crop size, shown at whole-pixel zoom so nothing blurs. */
+const FULL = { x: BOX.x + 18, y: BOX.y + 12, w: 92, h: 114 };
 const HEAD = 44;
 
 /** Static (non-animated) sprite preview, optionally cropped to the head. */

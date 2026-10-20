@@ -1,11 +1,11 @@
-// Composites the base body and every equipped item into one 128x128 frame.
+// Composites the base body and every equipped item into one GRID x GRID frame.
 
 import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { drawHeadband } from './items/headband';
-import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
+import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor } from './rig';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
@@ -339,7 +339,7 @@ export function partFrame(rig: Rig, p: PartId): Frame {
     case 'footF':
       return axis(rig.ankleF);
     default:
-      return axis(v(0, 0));
+      return axis(v(PAD.x, PAD.y));
   }
 }
 
@@ -416,7 +416,8 @@ function applyEdits(edits: PixelEdit[], rig: Rig, rgba: Uint8ClampedArray, part:
 // ---------------------------------------------------------------------------
 
 const cache = new Map<string, SpriteFrame>();
-const CACHE_MAX = 400;
+// Each frame is GRID x GRID (about 330 KB with its part map), so fewer are kept.
+const CACHE_MAX = 200;
 
 export function renderSpriteCached(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial = 'none'): SpriteFrame {
   const key = `${JSON.stringify(look)}|${pose}|${frame}|${eyeSpecial}`;

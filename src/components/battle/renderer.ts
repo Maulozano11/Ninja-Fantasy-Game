@@ -17,6 +17,7 @@ import { FALL_MS, RISE_MS } from './playback';
 import type { Lang } from '../../i18n';
 import { unitName } from './battleLog';
 import { bodyCenterDx, FEET, fpsOf, framesOf, lookOf, STRIDE, unitFrame } from './unitArt';
+import { GRID } from '../../sprite/raster';
 import { drawAuraBack, drawVfxSprite, drawWallSprite } from './vfxSprites';
 
 export interface Camera {
@@ -841,14 +842,15 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   // In the river the body sinks: deep water hides the legs, shallow water the feet.
   if (water !== 'none' && v.pose !== 'downed') {
     ctx.beginPath();
-    ctx.rect(x0 - 70, y0 - 20, 140, FEET.y + 20 - (swimming ? 38 : 8));
+    const half = Math.max(FEET.x, GRID - FEET.x) + 6;
+    ctx.rect(x0 - half, y0 - 20, 2 * half, FEET.y + 20 - (swimming ? 38 : 8));
     ctx.clip();
   }
   if (v.facing < 0) {
     ctx.translate(x0, 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(fr.canvas, -FEET.x, y0);
-  } else ctx.drawImage(fr.canvas, x0 - FEET.x, y0);
+    ctx.drawImage(fr.canvas, -FEET.x + fr.ox, y0 + fr.oy);
+  } else ctx.drawImage(fr.canvas, x0 - FEET.x + fr.ox, y0 + fr.oy);
   ctx.restore();
   if (water !== 'none' && v.pose !== 'downed') {
     // Ripples where the body meets the water.

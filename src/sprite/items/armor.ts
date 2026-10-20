@@ -299,8 +299,20 @@ interface PauldronOpts {
   follow?: number;
 }
 
+/**
+ * Whether a cape lies over the shoulders (any but the long scarf). The cape goes over the armour and
+ * its shoulder guards, and nothing of a guard sticks out past it (the owner, 2026-10-20: "elimina los
+ * pixeles extras de la hombrera y pon la capa sobrepuesta de la armadura y de la hombrera").
+ */
+const capeOverShoulders = (g: DrawCtx): boolean => {
+  const c = g.look.slots.cape;
+  return !!c && c.id !== 'cape_scarf';
+};
+
 /** Segmented shoulder guard: a domed cap plus overlapping curved lames that follow the upper arm. */
 function pauldron(g: DrawCtx, s: Side, pen: Pen, o: PauldronOpts): void {
+  // Under a cape the guard is hidden: the cape covers the shoulder and its edge is the outline.
+  if (capeOverShoulders(g)) return;
   const L = g.L(armDepth(s, 'armor'));
   const fh = hangFrame(g, s, o.follow ?? 0.55);
   const f: LimbFrame = { ...fh, o: add(fh.o, scale(fh.w, o.out ?? 0.5)) };

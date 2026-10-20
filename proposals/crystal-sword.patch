@@ -12,10 +12,10 @@ index a3043d4..1142cbd 100644
        return W('Naginata', '1d10', 'Slashing', 3, false, true, true);
      case 'held_kunai':
 diff --git a/src/sprite/ctx.ts b/src/sprite/ctx.ts
-index d3fbb65..35f44c5 100644
+index d3fbb65..6c5d865 100644
 --- a/src/sprite/ctx.ts
 +++ b/src/sprite/ctx.ts
-@@ -296,58 +296,61 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
+@@ -296,58 +296,66 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
  
  // Hand templates (fine pixels), drawn hanging down with the wrist at the top
  // and the thumb on the right; rotated to the forearm angle with RotSprite and
@@ -34,10 +34,12 @@ index d3fbb65..35f44c5 100644
 + * shows above-left, the guard below-right), copied from the owner's crystal
 + * sword picture (docs/reference/crystal-sword-owner-reference.jpg, 2026-10-20):
 + * a broad round fist in smooth light skin, shadow only along its edges, the
-+ * fingers wrapped under the grip, no dark creases.
++ * fingers wrapped under the grip (their knuckles in dark skin, bending down to
++ * the left, the little finger curled under the handle), no dark creases.
   */
  const HAND_GRIP: PixelTemplate = {
-   pivot: [5, 0],
+-  pivot: [5, 0],
++  pivot: [5, 3],
    rows: [
 -    '..obbbbo..',
 -    '.osbbbbbo.',
@@ -47,15 +49,19 @@ index d3fbb65..35f44c5 100644
 -    'obxbxbxbDo',
 -    'osDsDsDsDo',
 -    '.oDoDoDoo.',
-+    '..osbbbo...',
++    // the wrist, shaded on its far edge as his is
++    '...osbbbso.',
++    '...osbbsDo.',
++    '...osbbDo..',
++    '..osbbbDo..',
 +    '.osbbbbso..',
 +    'osbbbbbbDo.',
 +    'obbbbbbbbo.',
 +    'osbbbbssbo.',
-+    '.oosbbDoo..',
-+    '...obso....',
-+    '....oso....',
-+    '.....o.....',
++    'oDsbbDooDo.',
++    '.oDbso..o..',
++    '..oDso.....',
++    '...oo......',
    ],
  };
 -/** Small closed fist with a rounded bottom. */
@@ -109,7 +115,7 @@ index d3fbb65..35f44c5 100644
    ],
  };
  /** Open palm, fingers spread (casting). */
-@@ -432,7 +435,7 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
+@@ -432,7 +440,7 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
    const pal: TemplatePalette = {
      o: [pen.mat, 0],
      D: [pen.mat, 1 + b],
@@ -118,7 +124,7 @@ index d3fbb65..35f44c5 100644
      s: [pen.mat, 2 + b],
      b: [pen.mat, 3 + b],
      l: [pen.mat, 4 + b],
-@@ -476,7 +479,8 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
+@@ -476,7 +484,8 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
  }
  
  // ---------------------------------------------------------------------------
@@ -128,7 +134,7 @@ index d3fbb65..35f44c5 100644
  // near foot is seen from the front (toes toward the viewer, so it reaches
  // lower on screen); the far foot points right and is authored a shade darker.
  // The layer outline pass adds the outer outline, so templates hold only the
-@@ -491,37 +495,40 @@ export interface FootArt {
+@@ -491,37 +500,40 @@ export interface FootArt {
    F: PixelTemplate;
  }
  

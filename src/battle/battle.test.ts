@@ -440,6 +440,8 @@ describe('Mirai: Eye of Tomorrow, Premonitory Evasion, Pursuing Flame', () => {
       const s = turnOf(createBattle(setup({ seed })).state, 'a');
       place(s, 'rogue_0', { x: 9.5, z: 10 });
       s.units.rogue_0.hp = 1;
+      // Hidden (where Aki still sees it): stepping out into the open gives it away.
+      s.units.rogue_0.cond.hidden = 5;
       chakra = s.units.rogue_0.chakra;
       const out = ok(applyAction(s, { type: 'attack', unit: 'a', target: 'rogue_0' }));
       if (out.events.some((e) => e.t === 'attack' && e.roll.success)) hit = out;
@@ -448,6 +450,20 @@ describe('Mirai: Eye of Tomorrow, Premonitory Evasion, Pursuing Flame', () => {
     assert.equal(hit.state.units.rogue_0.hp, 1);
     assert.equal(hit.state.units.rogue_0.chakra, chakra - 2);
     assert.ok(hit.events.some((e) => e.t === 'evade' && e.unit === 'rogue_0'));
+    assert.equal(hit.state.units.rogue_0.cond.hidden, undefined);
+  });
+
+  it('the AI: a Fireball that would now catch a friend gives way to Pursuing Flame', () => {
+    const { state } = createBattle(setup({ enemies: [{ kind: 'rogue', pos: { x: 16, z: 10 } }, { kind: 'raider', pos: { x: 20, z: 14 } }] }));
+    const s = turnOf(state, 'rogue_0');
+    s.units.rogue_0.intent = { kind: 'jutsu', what: 'fireball_goukakyu', target: 'a', at: { ...s.units.a.pos } };
+    const planned = aiAction(s);
+    assert.ok(planned?.type === 'jutsu' && planned.jutsu === 'fireball_goukakyu', JSON.stringify(planned));
+    // The raider has stepped in beside Aki since the plan was made: the blast would catch it.
+    place(s, 'raider_0', { x: 9.25, z: 10.25 });
+    const a = aiAction(s);
+    assert.ok(a?.type === 'jutsu' && a.jutsu === 'katon_pursuing_flame' && a.target === 'a', JSON.stringify(a));
+    ok(applyAction(s, a));
   });
 
   it('Katon: Pursuing Flame: Mirai only, 3 chakra, 12 m, a DEX save with disadvantage for half', () => {
@@ -1106,6 +1122,13 @@ describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
     assert.ok(attackPreview(s, r, s.units.b, 'melee').reasons.includes('aura'));
     const block: Wall = { id: 'b1', kind: 'metalBlock', a: { x: 9.75, z: 11.75 }, b: { x: 9.75, z: 11.75 }, hp: 20, maxHp: 20, owner: 'b' };
     assert.ok(structureAttack({ ...s, walls: [block] }, r, block, false).reasons.includes('aura'));
+    // And at a prop: a kunai at the fence 8 m off rolls two dice from inside the aura, one from outside.
+    const atFence = (t: BattleState) => ok(applyAction(t, { type: 'attack', unit: 'rogue_0', target: 'prop:26', ranged: true })).events.find((e) => e.t === 'attack');
+    const fenced = atFence(s);
+    assert.ok(fenced?.t === 'attack' && fenced.roll.rolls.length === 2 && fenced.roll.d20 === Math.min(...fenced.roll.rolls));
+    const outside = structuredClone(s);
+    outside.units.rogue_0.pos = { x: 13.25, z: 10.25 };
+    assert.equal(atFence(outside)?.t === 'attack' && atFence(outside)?.roll.rolls.length, 1);
     // The roll: two d20, keeping the lower.
     const atk = ok(applyAction(s, { type: 'attack', unit: 'rogue_0', target: 'n' })).events.find((e) => e.t === 'attack');
     assert.ok(atk?.t === 'attack');
@@ -1240,6 +1263,13 @@ describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
     const far = structuredClone(two);
     far.units.raider_0.pos = { x: 17.75, z: 10.25 };
     assert.equal(cast(far, 'raider_0').reason, 'outOfRange');
+    // Reach is asked last: a boss far off is refused as a boss, and before the fighting, for that.
+    const farBoss = structuredClone(far);
+    farBoss.units.raider_0.rank = 'boss';
+    assert.equal(cast(farBoss, 'raider_0').reason, 'cantControl');
+    const farSneak = structuredClone(sneaking);
+    farSneak.units.raider_0.pos = { x: 20.25, z: 10.25 };
+    assert.equal(cast(farSneak, 'raider_0').reason, 'combatOnly');
   });
 
   it('a commanded enemy is still an enemy: no victory while it stands, and the result counts it as one', () => {
@@ -1260,6 +1290,41 @@ describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
     assert.equal(ok(applyAction(t, { type: 'endTurn', unit: 'n' })).state.outcome, 'victory');
     // Nobody in the party takes its reins, nor opens the backpack for it.
     assert.equal(applyAction(out.state, { type: 'setController', unit: 'raider_0', controller: 'player' }).reason, 'noUnit');
+    assert.equal(applyAction(turnOf(out.state, 'raider_0'), { type: 'item', unit: 'raider_0', item: 'pill' }).reason, 'noItems');
+  });
+
+  it('a unit that changes sides changes the plans aimed at it: no enemy goes on to strike its own side', () => {
+    const s = northstarTurn({ enemies: [{ kind: 'raider', pos: { x: 14, z: 10 } }, { kind: 'rogue', pos: { x: 18, z: 10 } }] });
+    // Hurt, the commanded raider is the one the rogue goes for.
+    s.units.raider_0.hp = 6;
+    const out = seeded(s, (t) => cast(t, 'raider_0'), failed);
+    const planned = ok(applyAction(turnOf(out.state, 'rogue_0'), { type: 'endTurn', unit: 'rogue_0' })).state;
+    assert.equal(planned.units.rogue_0.intent?.target, 'raider_0');
+    // The raider's turn ends and it is back with its friends: the rogue plans again, and says so.
+    const back = ok(applyAction(turnOf(planned, 'raider_0'), { type: 'endTurn', unit: 'raider_0' }));
+    assert.equal(back.state.units.raider_0.team, 'enemy');
+    assert.equal(back.state.units.rogue_0.intent?.target, 'n');
+    assert.ok(back.events.some((e) => e.t === 'intent' && e.unit === 'rogue_0'));
+    // A plan made before a change of sides is dropped on the turn, never carried out against a friend.
+    const stale = turnOf(back.state, 'rogue_0');
+    stale.units.rogue_0.intent = { kind: 'jutsu', what: 'fireball_goukakyu', target: 'raider_0', at: { ...stale.units.raider_0.pos } };
+    const a = aiAction(stale);
+    assert.ok(a && a.type !== 'endTurn' && !('target' in a && a.target === 'raider_0'), JSON.stringify(a));
+  });
+
+  it('a Minion caught by surprise spends its Command on the turn it loses', () => {
+    const s = northstarTurn({ enemies: [{ kind: 'raider', pos: { x: 14, z: 10 } }] });
+    s.units.raider_0.cond.surprised = true;
+    const t = structuredClone(seeded(s, (x) => cast(x, 'raider_0'), failed).state);
+    t.turn = t.order.indexOf('raider_0');
+    const ev: BattleEvent[] = [];
+    beginTurn(t, ev);
+    assert.ok(ev.some((e) => e.t === 'note' && e.key === 'surprisedSkip'));
+    assert.equal(t.units.raider_0.team, 'enemy');
+    assert.equal(t.units.raider_0.commanded, undefined);
+    assert.ok(ev.some((e) => e.t === 'command' && !e.on && e.unit === 'raider_0'));
+    assert.equal(t.units.raider_0.intent?.target, 'n');
+    assert.equal(current(t)?.id, 'n');
   });
 
   it('from level 9 Command takes two Minions, each with its own save, for two of their turns', () => {
@@ -1290,6 +1355,14 @@ describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
     const later = ok(applyAction(turnOf(out.state, 'rogue_0'), { type: 'endTurn', unit: 'rogue_0' })).state;
     assert.equal(later.units.rogue_0.team, 'party');
     assert.ok(!battleResult(later).members.some((m) => m.id === 'rogue_0'));
+    // Struck down, it falls as the beast it is (no death saves, no fallen party member); nobody
+    // takes its reins or opens the party's backpack for it.
+    const struck = structuredClone(later);
+    damage(struck, struck.units.rogue_0, 999, 'Force', {}, []);
+    assert.equal(struck.units.rogue_0.down, 'dead');
+    assert.equal(struck.units.rogue_0.stats2.fell, false);
+    assert.equal(applyAction(later, { type: 'setController', unit: 'rogue_0', controller: 'player' }).reason, 'noUnit');
+    assert.equal(applyAction(turnOf(later, 'rogue_0'), { type: 'item', unit: 'rogue_0', item: 'pill' }).reason, 'noItems');
     // A ninja isn't a beast; a boss isn't taken.
     assert.equal(sub(s, 'raider_0').reason, 'notBeast');
     const boss = structuredClone(s);
@@ -1441,6 +1514,22 @@ describe('the AI', () => {
       assert.equal(r.members.length, 2);
       assert.ok(['victory', 'defeat', 'fled'].includes(r.outcome));
     }
+  });
+
+  it('a prone enemy stands up and walks in with the half of its movement that is left', () => {
+    const { state } = createBattle(setup({ enemies: [{ kind: 'raider', pos: { x: 20, z: 10 } }] }));
+    const s = turnOf(state, 'raider_0');
+    const r = s.units.raider_0;
+    r.cond.prone = true;
+    r.chakra = 0;
+    r.intent = { kind: 'melee', what: r.weapon.name, target: 'a' };
+    const a = aiAction(s);
+    assert.equal(a?.type, 'move');
+    const out = ok(applyAction(s, a!));
+    assert.equal(out.state.units.raider_0.cond.prone, false);
+    assert.ok(out.state.units.raider_0.turn.moved > 0 && out.state.units.raider_0.turn.moved <= r.speed / 2 + 1e-6);
+    // Then it throws, rather than give up the turn.
+    assert.equal(aiAction(out.state)?.type, 'attack');
   });
 
   it('stops for the player: their turn, or their reaction', () => {

@@ -10,7 +10,7 @@ import { Rng, rngFor, rollDie } from '../rules/rng';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from './types';
 import { homeTeam } from './types';
-import { coverBetween, dist, fullCoverBetween, levelAtPt } from './map';
+import { coverBetween, dist, fullCoverBetween, hideSpotAt, levelAtPt } from './map';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 
 /** The next dice stream of the battle. */
@@ -50,6 +50,18 @@ export function skillMod(u: Unit, skill: string): number {
 }
 
 export const passivePerception = (u: Unit): number => 10 + skillMod(u, 'perception');
+
+/** A hidden unit gives itself away (an attack, a loud jutsu). */
+export function reveal(u: Unit, ev: BattleEvent[]): void {
+  if (u.cond.hidden === undefined) return;
+  u.cond.hidden = undefined;
+  ev.push({ t: 'condition', unit: u.id, cond: 'hidden', on: false });
+}
+
+/** Moved out of a hiding place (on foot or by a teleport): a hidden unit is seen. */
+export function revealOutOfHiding(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  if (!u.down && hideSpotAt(s, u.pos) < 0) reveal(u, ev);
+}
 
 export function saveMod(u: Unit, ab: Ability): number {
   const m = effectMods(u.effects);

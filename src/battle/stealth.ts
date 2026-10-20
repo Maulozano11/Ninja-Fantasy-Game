@@ -294,7 +294,11 @@ export function guardsTurn(s: BattleState, ev: BattleEvent[]): void {
     }
   }
   s.stealthTurn += 1;
-  for (const u of party) u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
+  for (const u of party) {
+    u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
+    // A warp edge lasts the turn it was won in.
+    if (u.cond.warpEdge) u.cond.warpEdge = false;
+  }
   s.stealthDone = [];
 }
 

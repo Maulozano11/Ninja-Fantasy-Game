@@ -19,7 +19,7 @@ import { CAST_STYLES, CastStyle, SPRITE_POSES, SpriteAppearance, SpritePose } fr
 import { CAST_STYLE_INFO, defaultCastStyle } from '../sprite/castInfo';
 import { soundManager } from '../utils/audio';
 import { deriveStats } from '../rules/derived';
-import { migrateClan, sanitizeMissionFields } from '../rules/ninja';
+import { migrateCharacter, sanitizeMissionFields } from '../rules/ninja';
 import { Sparkles, Dice5, Download, Upload, Shield, Zap, Eye, Swords, BookOpen, UserCheck } from 'lucide-react';
 
 const isObj = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
@@ -43,8 +43,6 @@ const RENAMED_JUTSUS: Record<string, string> = { hyuga_sixtyfour_palms: 'taki_si
 function characterFromImport(raw: unknown): ShinobiCharacter | null {
   if (!isObj(raw) || typeof raw.clan !== 'string' || !isObj(raw.stats)) return null;
   const out = mergeKind(DEFAULT_CHARACTER as unknown as Record<string, unknown>, raw);
-  // Earlier sheets used other clan names; they load as the clan that replaced each one.
-  out.clan = migrateClan(out.clan) ?? DEFAULT_CHARACTER.clan;
   if (Array.isArray(out.selectedFeats)) out.selectedFeats = out.selectedFeats.filter((f) => typeof f === 'string');
   // every jutsu slot must name a jutsu that exists
   const slots = out.selectedJutsus as Record<string, unknown>;
@@ -57,7 +55,9 @@ function characterFromImport(raw: unknown): ShinobiCharacter | null {
     if (isObj(out.appearance)) out.appearance = mergeKind(defaultAppearance() as unknown as Record<string, unknown>, out.appearance);
     else delete out.appearance;
   }
-  return sanitizeMissionFields(out as unknown as ShinobiCharacter);
+  // Earlier sheets used other clan names; they load as the clan that replaced each one (without
+  // the bonus an old clan built into its maxima).
+  return migrateCharacter(sanitizeMissionFields(out as unknown as ShinobiCharacter));
 }
 
 interface CharacterCreatorProps {

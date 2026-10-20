@@ -17,7 +17,7 @@ import { cellCenter, cellOf, dist, getMap, gridFor, idx, lineOfSight, sameCell }
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
-import { commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
+import { commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, handsFree, wielded } from '../../battle/units';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
@@ -394,7 +394,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         const foe = land ? edgeFoe(s, actor, land) : undefined;
         o.nodes.hover = n.id;
         o.point = { at: land ?? n.pos, ok: !!land };
-        label = why ? T(`r_${why}` as TKey) : foe ? T('aimWarpEdge', { name: foe.name }) : T('aimMove', { m: dist(actor.pos, land!).toFixed(1) });
+        label = why ? reasonLine(why) : foe ? T('aimWarpEdge', { name: foe.name }) : T('aimMove', { m: dist(actor.pos, land!).toFixed(1) });
       } else label = T('r_noNode');
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'onNode') {
       // Spatial Swap: whoever stands on a Node it can reach; an enemy gets a STR save.
@@ -403,7 +403,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       o.targets = Object.values(s.units).filter((x) => !swapBlocker(s, actor, x)).map((x) => x.id);
       if (hu) {
         const why = swapBlocker(s, actor, hu);
-        label = why ? T(`r_${why}` as TKey) : jutsuName(spec.id, lang);
+        label = why ? reasonLine(why) : jutsuName(spec.id, lang);
         if (!why) o.nodes.hover = nodeUnder(s, actor, hu)?.id;
         if (!why && hu.team !== actor.team) sub = T('aimSave', { save: (lang === 'es' ? SAVE_ES : SAVE_EN).str, dc: actor.saveDC });
       } else if (!o.targets.length) label = T('r_notOnNode');
@@ -431,7 +431,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
           o.warn = hit.filter((u) => u.team === actor.team).map((u) => u.id);
           label = T('aimHits', { n: hit.length });
           if (o.warn.length) sub = T('aimAllies', { n: o.warn.length });
-        } else if (hu) o.targets = [hu.id];
+        } else if (hu) {
+          // One target (Pursuing Flame): its name, with the save under it.
+          o.targets = [hu.id];
+          label = jutsuName(spec.id, lang);
+        }
         if (spec.save) {
           const sv = lang === 'es' ? SAVE_ES[spec.save] : SAVE_EN[spec.save];
           const line = T('aimSave', { save: sv, dc: actor.saveDC }) + (spec.saveAdv === 'disadvantage' ? ` · ${T('saveDisadv')}` : '');
@@ -446,7 +450,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
           const n = ownStructures(s, actor.id).length;
           o.point = undefined;
           o.footprint = { wall: w, ok: !why };
-          label = why ? T(`r_${why}` as TKey) : T('aimStructures', { n });
+          label = why ? reasonLine(why) : T('aimStructures', { n });
           if (n >= MAX_STRUCTURES) sub = T('aimOldest');
         }
       }
@@ -755,6 +759,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         if (!sp || sp.cast === 'reaction') continue;
         const cost = jutsuCost(u, sp, false);
         const busyHands = needsSeals(u, sp) && !handsFree(u) && !!u.turn.interacted;
+        // Clan abilities with nothing to work on: Command, Submission and Swap before the fighting,
+        // Warp and Swap with no Node down, Submission with no beast or summon on the field.
+        const idle =
+          (stealth && (sp.special === 'command' || sp.special === 'submission' || sp.special === 'swap')) ||
+          ((sp.special === 'warp' || sp.special === 'swap') && !ownNodes(state, u).length) ||
+          (sp.special === 'submission' && Object.values(state.units).every((x) => submissionRefused(state, u, x)));
         const name = jutsuName(id, lang);
         const helpKey = `help_${id}`;
         add({
@@ -764,7 +774,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
           badge: cost,
           tone: 'jutsu',
           element: sp.element,
-          disabled: (sp.cast === 'bonus' ? !can.bonus : !can.action) || u.chakra < cost || busyHands,
+          disabled: (sp.cast === 'bonus' ? !can.bonus : !can.action) || u.chakra < cost || busyHands || idle,
           active: mode.k === 'jutsu' && mode.id === id,
           // A clan ability explains itself; a jutsu shows its rank, reach, dice and save.
           help: T.has(helpKey)
@@ -799,8 +809,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       if (edge) add({ id: 'flee', label: t('act_flee'), icon: ACTION_ICON.flee, disabled: s.phase === 'combat' && !can.action, help: t('help_flee') });
       add({ id: 'more', label: '←', icon: ACTION_ICON.items, active: true });
     }
-    b.forEach((x, i) => {
-      if (i < 9) x.hotkey = String(i + 1);
+    // Number keys: attack, kunai, dash and dodge first (wherever they sit), then the rest in order.
+    const core = ['attack', 'throw', 'dash', 'dodge'];
+    [...b.filter((x) => core.includes(x.id)), ...b.filter((x) => !core.includes(x.id))].slice(0, 9).forEach((x, i) => {
+      x.hotkey = String(i + 1);
     });
     return b;
   }, [actor, more, mode, state, lang, map]);
@@ -909,7 +921,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         e.preventDefault();
         press('end');
       } else if (/^[1-9]$/.test(key)) {
-        const b = buttons[Number(key) - 1];
+        const b = buttons.find((x) => x.hotkey === key);
         if (b && !b.disabled) press(b.id);
       } else if (key === 'Tab' && actor) {
         e.preventDefault();
@@ -1224,11 +1236,11 @@ const SHORT: Record<string, [string, string]> = {
   wood_golem_titan: ['Golem', 'Gólem'],
   yasaka_magatama: ['Magatama', 'Magatama'],
   night_guy_dragon: ['Night dragon', 'Dragón noche'],
-  katon_pursuing_flame: ['Pursuing', 'Persecutoria'],
+  katon_pursuing_flame: ['Pursuing', 'Persigue'],
   koton_block: ['Block', 'Bloque'],
   koton_wall: ['Metal wall', 'Muro metal'],
   ryusei_warp: ['Warp', 'Warp'],
-  ryusei_swap: ['Swap', 'Intercambio'],
+  ryusei_swap: ['Swap', 'Cambio'],
   northstar_command: ['Command', 'Command'],
   northstar_submission: ['Submit', 'Sumisión'],
 };

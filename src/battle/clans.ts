@@ -5,7 +5,7 @@ import { effectMods } from '../rules/effects';
 import type { BattleEvent, BattleState, Hit, Pt, Unit, WeaponNode } from './types';
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, lineOfSight, sameCell, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, reachable } from './nav';
-import { AURA_RADIUS, passivePerception, savingThrow, sovereign } from './combat';
+import { AURA_RADIUS, passivePerception, revealOutOfHiding, savingThrow, sovereign } from './combat';
 import { JUTSU } from './jutsu';
 import { trapAt } from './hazards';
 import { wielded } from './units';
@@ -72,7 +72,8 @@ export function canEvade(s: BattleState, t: Unit, h: Hit): boolean {
 
 /**
  * Premonitory Evasion: the Mirai pays 2 chakra and its reaction and steps aside, and the blow
- * misses (the hit is dropped). The step provokes no opportunity attack and sets off no trap.
+ * misses (the hit is dropped). The step provokes no opportunity attack and sets off no trap. A
+ * Ryusei's blade that misses this way leaves its Node where the Mirai stood.
  */
 export function evade(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   const to = evasionSpot(s, t, h);
@@ -84,6 +85,9 @@ export function evade(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void 
   const from = { ...t.pos };
   t.pos = to;
   ev.push({ t: 'evade', unit: t.id, from, to, source: h.source });
+  revealOutOfHiding(s, t, ev);
+  const a = h.source ? s.units[h.source] : undefined;
+  if (a && h.melee && leavesNodes(a)) addNode(s, a, from, ev);
 }
 
 // --- Ryusei: Weapon Nodes, Warp Strike, Spatial Swap ---------------------------------------
@@ -175,6 +179,7 @@ export function edgeFoe(s: BattleState, u: Unit, at: Pt = u.pos): Unit | undefin
 export function warpStrike(s: BattleState, u: Unit, to: Pt, ev: BattleEvent[]): void {
   ev.push({ t: 'teleport', unit: u.id, from: { ...u.pos }, to: { ...to } });
   u.pos = { ...to };
+  revealOutOfHiding(s, u, ev);
   if (!edgeFoe(s, u)) return;
   u.cond.warpEdge = true;
   ev.push({ t: 'note', key: 'warpEdge', params: { name: u.name } });
@@ -215,6 +220,8 @@ export function spatialSwap(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[])
   ev.push({ t: 'teleport', unit: t.id, from: b, to: a });
   u.pos = { ...b };
   t.pos = { ...a };
+  revealOutOfHiding(s, u, ev);
+  revealOutOfHiding(s, t, ev);
 }
 
 // --- Northstar: Aura of Sovereignty, Command, Natural Submission ---------------------------

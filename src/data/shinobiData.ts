@@ -21,6 +21,7 @@ export const CLANS_DATA: Record<
     japaneseName: string;
     description: string;
     lineageTraits: string;
+    /** The clan's ability bonuses: shown on the clan card, not applied yet (docs/CLANS_DESIGN.md, D2). */
     statBonuses: { stat: string; bonus: number }[];
     availableDojutsu: DojutsuType[];
     recommendedChakraColor: string;
@@ -31,7 +32,7 @@ export const CLANS_DATA: Record<
     name: 'Mirai',
     japaneseName: 'ミライ一族',
     description: 'Masters of time and flame: control of position, inevitability and bending the dice.',
-    lineageTraits: '+2 DEX, +1 INT. Eye of Tomorrow: sees the next move of every enemy within 18 m in sight; the ground shows where it will move and whom it will attack. Premonitory Evasion (reaction, 2 chakra, once a round): against a single-target attack the Mirai saw coming, it steps 1.5 m aside and the attack misses, provoking no opportunity attack. Katon: Pursuing Flame (action, 3 chakra, 12 m): 2d6 fire; the target makes its DEX save with disadvantage and takes half on a success.',
+    lineageTraits: '+2 DEX, +1 INT (not in effect yet). Eye of Tomorrow: sees the next move of every enemy within 18 m in sight; the ground shows where it will move and whom it will attack. Premonitory Evasion (reaction, 2 chakra, once a round): against a single-target attack the Mirai saw coming, it steps 1.5 m aside and the attack misses, provoking no opportunity attack. Katon: Pursuing Flame (action, 3 chakra, 12 m): 2d6 fire; the target makes its DEX save with disadvantage and takes half on a success.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
       { stat: 'int', bonus: 1 },
@@ -50,7 +51,7 @@ export const CLANS_DATA: Record<
     name: 'Kōton',
     japaneseName: 'コートン一族',
     description: 'Alchemists of matter: reshaping the map, adaptable weapons and denying ground.',
-    lineageTraits: '+2 CON, +1 INT. Modular Architecture: raises metal structures within 6 m, at most two standing at once (a third makes the oldest crumble), each with 20 HP. Bonus action, 2 chakra: a 1.5 m metal block that gives half cover. Action, 4 chakra: a 4.5 m metal wall that gives full cover and blocks movement and sight.',
+    lineageTraits: '+2 CON, +1 INT (not in effect yet). Modular Architecture: raises metal structures within 6 m, at most two standing at once (a third makes the oldest crumble), each with 20 HP. Bonus action, 2 chakra: a 1.5 m metal block that gives half cover. Action, 4 chakra: a 4.5 m metal wall that gives full cover and blocks movement and sight.',
     statBonuses: [
       { stat: 'con', bonus: 2 },
       { stat: 'int', bonus: 1 },
@@ -63,7 +64,7 @@ export const CLANS_DATA: Record<
     name: 'Ryusei',
     japaneseName: 'リュウセイ一族',
     description: 'Assassins of space: geometric hypermobility, piercing damage and reshaping the board through Nodes.',
-    lineageTraits: '+2 DEX, +1 WIS. Weapon Nodes: every ranged attack, and every melee attack that misses, leaves a Node where the weapon lands (three at most; the oldest goes). Warp Strike (bonus action, 2 chakra, 18 m): teleports to a Node in sight, even with walls in between; landing next to an enemy, the next attack this turn comes from behind (advantage, and it can\'t be blocked). Spatial Swap (action, 3 chakra): swaps places with anyone standing on a Node; an enemy resists with a STR save.',
+    lineageTraits: '+2 DEX, +1 WIS (not in effect yet). Weapon Nodes: every kunai throw, and every melee attack that misses, leaves a Node where the weapon lands (three at most; the oldest goes). Warp Strike (bonus action, 2 chakra, 18 m): teleports to a Node in sight, even with walls in between; landing next to an enemy, the next attack this turn comes from behind (advantage, and it can\'t be blocked). Spatial Swap (action, 3 chakra): swaps places with anyone standing on a Node; an enemy resists with a STR save.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
       { stat: 'wis', bonus: 1 },
@@ -76,7 +77,7 @@ export const CLANS_DATA: Record<
     name: 'Northstar',
     japaneseName: 'ノーススター一族',
     description: "The Sovereign's eyes: breaking the enemy's action economy, control of summons and psychological disruption.",
-    lineageTraits: '+2 CHA, +1 WIS. Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and anyone who warps or dashes into it loses half of their remaining movement. Command (action, 4 chakra, 9 m): a Minion that fails a WIS save fights on the Northstar\'s side for 1 round (Captains too from level 5; from level 9, two targets for 2 rounds); Mirai are immune. Natural Submission (action, 5 chakra): a beast or enemy summon that fails a WIS save joins the party; not bosses.',
+    lineageTraits: '+2 CHA, +1 WIS (not in effect yet). Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and anyone who warps or dashes into it loses half of their remaining movement. Command (action, 4 chakra, 9 m): a Minion that fails a WIS save fights on the Northstar\'s side for 1 round (Captains too from level 5; from level 9, two targets for 2 rounds); Mirai are immune. Natural Submission (action, 5 chakra): a beast or enemy summon that fails a WIS save joins your side for the rest of the battle; not bosses.',
     statBonuses: [
       { stat: 'cha', bonus: 2 },
       { stat: 'wis', bonus: 1 },

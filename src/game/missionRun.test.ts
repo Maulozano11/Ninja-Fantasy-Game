@@ -170,30 +170,39 @@ describe('mission flow', () => {
     assert.fail('no seed left survivors');
   });
 
-  it('a run saved with the old clans loads with the new ones, and nothing else changes', () => {
+  it('a run saved with the old clans loads with the new ones; only an old clan bonus built into the numbers goes', () => {
     const r = begin();
-    // A sheet from before the conversion: its old clan, and the numbers it had then.
-    const old = (c: ShinobiCharacter, clan: string): ShinobiCharacter => ({ ...c, clan: clan as ShinobiCharacter['clan'], currentHp: 9, maxHp: c.maxHp + 6, maxChakra: c.maxChakra + 5 });
+    // Sheets from before the conversion: the old clan, and the numbers they had then.
+    const old = (c: ShinobiCharacter, clan: string, o: Partial<ShinobiCharacter> = {}): ShinobiCharacter => ({ ...c, clan: clan as ShinobiCharacter['clan'], currentHp: 9, ...o });
     const [a, b, c] = r.party.members;
+    assert.deepEqual([a.id, b.id, c.id], ['hero', HANA.id, KENJI.id]);
     const saved: MissionRun = {
       ...r,
-      party: { ...r.party, members: [old(a, 'Uddo'), old(b, 'Akkai')], dead: [old(c, 'Taki')] },
-      entry: { ...r.entry, members: [old(a, 'Senju')], dead: [old(b, 'Uchiha')] },
+      // Solen's numbers are hand-made (a preset); Hana's and Kenji's came from the old formula,
+      // with Akkai's +25 % chakra (⌊30 × 1.25⌋ + 4 for Chakra Prodigy) and Uddo's +6 max HP.
+      party: { ...r.party, members: [old(a, 'Uddo'), old(b, 'Akkai', { maxChakra: 41, currentChakra: 40 })], dead: [old(c, 'Uddo', { maxHp: KENJI.maxHp + 6, currentHp: 25 })] },
+      entry: { ...r.entry, members: [old(a, 'Senju')], dead: [old(b, 'Uchiha'), old(c, 'Taki')] },
     };
     const m = migrateRun(saved);
     assert.deepEqual(m.party.members.map((x) => x.clan), ['Ryusei', 'Koton']);
-    assert.deepEqual(m.party.dead.map((x) => x.clan), ['Northstar']);
+    assert.deepEqual(m.party.dead.map((x) => x.clan), ['Ryusei']);
     assert.deepEqual(m.entry.members.map((x) => x.clan), ['Ryusei']);
-    assert.deepEqual(m.entry.dead.map((x) => x.clan), ['Mirai']);
-    const pairs: [ShinobiCharacter, ShinobiCharacter][] = [
-      [saved.party.members[0], m.party.members[0]],
-      [saved.party.members[1], m.party.members[1]],
-      [saved.party.dead[0], m.party.dead[0]],
-      [saved.entry.members[0], m.entry.members[0]],
-      [saved.entry.dead[0], m.entry.dead[0]],
-    ];
-    for (const [was, now] of pairs) {
-      for (const k of ['appearance', 'dojutsu', 'palette', 'currentHp', 'maxHp', 'maxChakra'] as const) assert.deepEqual(now[k], was[k], k);
+    assert.deepEqual(m.entry.dead.map((x) => x.clan), ['Mirai', 'Northstar']);
+    // The look always stays.
+    const all = (x: MissionRun) => [...x.party.members, ...x.party.dead, ...x.entry.members, ...x.entry.dead];
+    all(m).forEach((now, i) => {
+      for (const k of ['appearance', 'dojutsu', 'palette'] as const) assert.deepEqual(now[k], all(saved)[i][k], k);
+    });
+    // Hand-made numbers, and the clans that built no bonus in, stay as they were.
+    for (const [was, now] of [[saved.party.members[0], m.party.members[0]], [saved.entry.members[0], m.entry.members[0]], ...saved.entry.dead.map((x, i) => [x, m.entry.dead[i]])]) {
+      for (const k of ['currentHp', 'maxHp', 'currentChakra', 'maxChakra'] as const) assert.equal(now[k], was[k], k);
     }
+    // The old bonus goes, and what is left fits under the new maxima.
+    const hana = m.party.members[1];
+    assert.deepEqual([hana.maxChakra, hana.currentChakra, hana.maxHp, hana.currentHp], [HANA.maxChakra, HANA.maxChakra, HANA.maxHp, 9]);
+    const kenji = m.party.dead[0];
+    assert.deepEqual([kenji.maxHp, kenji.currentHp, kenji.maxChakra], [KENJI.maxHp, KENJI.maxHp, KENJI.maxChakra]);
+    assert.equal(KENJI.maxHp, 22);
+    assert.equal(HANA.maxChakra, 34);
   });
 });

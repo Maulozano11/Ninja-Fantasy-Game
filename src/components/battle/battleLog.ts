@@ -2,6 +2,7 @@
 // units, in the current language.
 
 import type { BattleEvent, BattleState, Wall } from '../../battle/types';
+import { homeTeam } from '../../battle/types';
 import { JUTSU } from '../../battle/jutsu';
 import { breakable } from '../../battle/structures';
 import { EFFECTS } from '../../rules/effects';
@@ -67,8 +68,11 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return { text: t('l_deathSave', { t: nameOf(s, ev.unit), ok: ev.ok, bad: ev.bad }), tone: 'text-amber-200' };
     case 'kawarimi':
       return { text: t('l_kawarimi', { t: nameOf(s, ev.unit) }), tone: 'text-amber-200' };
-    case 'evade':
-      return { text: t('l_evade', { t: nameOf(s, ev.unit) }), tone: 'text-red-300' };
+    case 'evade': {
+      // Good news when it is one of the party who steps aside.
+      const u = s.units[ev.unit];
+      return { text: t('l_evade', { t: nameOf(s, ev.unit) }), tone: u && homeTeam(u) === 'party' ? 'text-emerald-300' : 'text-red-300' };
+    }
     case 'clone':
       return ev.on ? null : { text: t('l_clone') };
     case 'sever':

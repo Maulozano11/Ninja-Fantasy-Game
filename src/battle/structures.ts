@@ -6,7 +6,7 @@
 import { abilityMod, combineAdvantage } from '../rules/checks';
 import type { Advantage } from '../rules/checks';
 import type { AreaShape, BattleEvent, BattleState, Pt, Unit, Wall } from './types';
-import { BLOCK_HALF, CELL, cellCenter, cellOf, dist, gridFor, idx, inGrid, lineOfSight, segDist, wallCovers } from './map';
+import { BLOCK_HALF, CELL, cellCenter, cellOf, dist, gridFor, idx, inGrid, lineOfSight, segDist, segmentsCross, wallCovers } from './map';
 import { occupancy } from './nav';
 import { inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
@@ -59,6 +59,7 @@ export interface StructureAttack {
   reasons: string[];
   chance: number;
   inRange: boolean;
+  /** The kunai's line to it, or the blade's way: no other metal wall across it. */
   sight: boolean;
   /** Where the blow or the kunai lands. */
   at: Pt;
@@ -86,7 +87,9 @@ export function structureAttack(s: BattleState, u: Unit, w: Wall, ranged: boolea
   const inRange = ranged ? d <= KUNAI_LONG + 0.1 : d <= wielded(u).reach + thickness(w) + 0.1;
   // Aimed a hair short of the wall's face, so the wall itself doesn't hide it.
   const k = d > 0.1 ? 0.05 / d : 0;
-  const sight = !ranged || lineOfSight(s, u.pos, { x: at.x + (u.pos.x - at.x) * k, z: at.z + (u.pos.z - at.z) * k });
+  const sight = ranged
+    ? lineOfSight(s, u.pos, { x: at.x + (u.pos.x - at.x) * k, z: at.z + (u.pos.z - at.z) * k })
+    : !s.walls.some((x) => x.id !== w.id && x.kind === 'metal' && segmentsCross(u.pos, at, x.a, x.b));
   return { mod, adv, reasons, chance: hitChance(mod, STRUCTURE_AC, adv), inRange, sight, at };
 }
 
@@ -111,11 +114,19 @@ function touches(area: AreaShape, w: Wall): boolean {
   return false;
 }
 
-/** An area jutsu or a blast: every breakable structure it reaches takes the rolled damage. */
+/**
+ * An area jutsu or a blast: every breakable structure it reaches takes the rolled damage, unless
+ * another metal wall shelters it from where the area comes (where it bursts, or the caster).
+ */
 export function hitStructuresIn(s: BattleState, area: AreaShape, amount: number, ev: BattleEvent[]): void {
   if (amount <= 0) return;
   const from = area.kind === 'circle' ? area.center : area.origin;
-  for (const w of [...s.walls]) if (breakable(w) && touches(area, w)) damageStructure(s, w, amount, ev, closestPoint(w, from));
+  for (const w of [...s.walls]) {
+    if (!breakable(w) || !touches(area, w)) continue;
+    const at = closestPoint(w, from);
+    if (s.walls.some((x) => x.id !== w.id && x.kind === 'metal' && segmentsCross(from, at, x.a, x.b))) continue;
+    damageStructure(s, w, amount, ev, at);
+  }
 }
 
 // --- Modular Architecture ------------------------------------------------------------------

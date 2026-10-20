@@ -22,7 +22,10 @@ export function aiToAct(s: BattleState): boolean {
   return !!u && u.controller === 'ai';
 }
 
-/** Is a plan still doable: its target still up, its jutsu still affordable, a mind still there to take. */
+/**
+ * Is a plan still doable: its target still up and still on the side it was (a Command can turn a
+ * foe into a friend and back), its jutsu still affordable, a mind still there to take.
+ */
 function stillValid(s: BattleState, u: Unit, i: Intent | undefined): i is Intent {
   if (!i) return false;
   const t = i.target ? s.units[i.target] : undefined;
@@ -30,6 +33,7 @@ function stillValid(s: BattleState, u: Unit, i: Intent | undefined): i is Intent
     // Healing and reviving go to fallen friends; everything else needs a foe still standing.
     if (!(i.kind === 'heal' && t && t.down !== 'dead' && t.down !== 'fled' && t.down !== 'ko')) return false;
   }
+  if (t && (i.kind === 'heal') !== (t.team === u.team)) return false;
   if ((i.kind === 'jutsu' || i.kind === 'spit' || i.kind === 'roar' || i.kind === 'command') && u.chakra < (JUTSU[i.what]?.cost ?? 0)) return false;
   if (i.kind === 'command' && (i.what === COMMAND ? commandRefused : submissionRefused)(s, u, t)) return false;
   if (i.kind === 'heal' && i.what === 'bandage' && s.supplies.bandages < 1) return false;
@@ -167,13 +171,13 @@ function ryuseiWarp(s: BattleState, u: Unit, i: Intent): Action | null {
   const walkIn = i.kind === 'melee' || !!j?.melee;
   if (!t || t.team === u.team || !(walkIn || i.kind === 'ranged' || i.kind === 'move')) return null;
   const reach = j?.melee ? j.range + (t.bulk ?? 0) : reachTo(u, t);
-  if (dist(u.pos, t.pos) <= reach + u.turn.move) return null;
+  if (dist(u.pos, t.pos) <= reach + walkBudget(u)) return null;
   let best: { at: Pt; d: number } | undefined;
   for (const n of ownNodes(s, u)) {
     if (warpBlocker(s, u, n)) continue;
     const land = warpLanding(s, u, n)!;
     const d = dist(land, t.pos);
-    if ((walkIn ? d <= reach + u.turn.move : strikesFrom(s, u, land, t)) && (!best || d < best.d)) best = { at: n.pos, d };
+    if ((walkIn ? d <= reach + walkBudget(u) : strikesFrom(s, u, land, t)) && (!best || d < best.d)) best = { at: n.pos, d };
   }
   return best ? { type: 'jutsu', unit: u.id, jutsu: WARP, at: { ...best.at } } : null;
 }
@@ -231,14 +235,17 @@ function kotonCover(s: BattleState, u: Unit): Action | null {
 
 /** After the action: defensive and support ninjas step into cover if they still can move. */
 function afterAction(s: BattleState, u: Unit): Action | null {
-  if (u.aiOrder === 'aggressive' || u.turn.move < 1 || u.turn.moved > 0) return null;
+  if (u.aiOrder === 'aggressive' || walkBudget(u) < 1 || u.turn.moved > 0) return null;
   const foes = Object.values(s.units).filter((o) => o.team !== u.team && standingUnit(o) && o.kind !== 'hydra_body');
   if (!foes.length) return null;
   const safe = (p: Pt) => foes.every((f) => coverBetween(s, f.pos, p, [f.id, u.id]) >= 2 || !lineOfSight(s, f.pos, p));
   if (safe(u.pos)) return null;
-  const cell = bestCell(s, u, (p) => safe(p), (p) => dist(p, u.pos));
+  const cell = bestCell(s, u, (p) => safe(p), (p) => dist(p, u.pos), walkBudget(u));
   return cell ? { type: 'move', unit: u.id, to: cell } : null;
 }
+
+/** The movement left to walk with: standing up first takes half the speed (as the engine charges it). */
+const walkBudget = (u: Unit): number => u.turn.move - (u.cond.prone ? u.speed / 2 : 0);
 
 /**
  * A move toward a plan's goal (stepToward). An enemy keeps to the destination it planned, the one a
@@ -246,18 +253,19 @@ function afterAction(s: BattleState, u: Unit): Action | null {
  * pick would. Null if it can't get closer.
  */
 function moveToward(s: BattleState, u: Unit, g: Goal, planned?: Pt): Action | null {
-  if (u.turn.move < 0.5 || u.speed <= 0) return null;
-  const fresh = stepToward(s, u, g, u.turn.move);
-  const kept = planned ? keptCell(s, u, g, planned) : null;
+  const budget = walkBudget(u);
+  if (budget < 0.5 || u.speed <= 0) return null;
+  const fresh = stepToward(s, u, g, budget);
+  const kept = planned ? keptCell(s, u, g, planned, budget) : null;
   const cell = kept && (g.good(cellCenter(kept)) || !fresh || !g.good(cellCenter(fresh))) ? kept : fresh;
   return cell ? { type: 'move', unit: u.id, to: cell } : null;
 }
 
 /** The planned cell, if it is still free and reachable this turn and still gets the plan done or closer. */
-function keptCell(s: BattleState, u: Unit, g: Goal, to: Pt): Cell | null {
+function keptCell(s: BattleState, u: Unit, g: Goal, to: Pt, budget: number): Cell | null {
   const c = cellOf(to);
   if (sameCell(c, cellOf(u.pos)) || !canStop(s, u, c)) return null;
-  if (!reachable(s, u, u.turn.move).cost.has(idx(gridFor(s.mapId), c))) return null;
+  if (!reachable(s, u, budget).cost.has(idx(gridFor(s.mapId), c))) return null;
   const p = cellCenter(c);
   return g.good(p) || dist(p, g.at) < dist(u.pos, g.at) - 0.75 ? c : null;
 }

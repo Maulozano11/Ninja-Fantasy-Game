@@ -8,7 +8,7 @@ import type { BattleEvent, BattleState, Unit } from './types';
 import { homeTeam } from './types';
 import { check, damage, deathSave, nextRng, releaseCommand, rollDiceExpr } from './combat';
 import { waterAtPt } from './map';
-import { planEnemy } from './intent';
+import { planEnemy, replanAgainst } from './intent';
 
 /** Whether a unit takes turns (heads of the hydra act on their own; fallen ninjas roll death saves). */
 const takesTurns = (u: Unit): boolean => u.down !== 'dead' && u.down !== 'fled' && u.down !== 'ko' && u.down !== 'stable';
@@ -38,15 +38,13 @@ export function startCombat(s: BattleState, ev: BattleEvent[], by: string | unde
   for (const u of Object.values(s.units)) {
     if (u.guard) u.guard.alerted = true;
     if (u.team === 'party') u.cond.crouched = u.cond.hidden !== undefined ? u.cond.crouched : false;
+    // A warp edge from the stealth phase isn't carried into the fight.
+    if (u.cond.warpEdge) u.cond.warpEdge = false;
   }
   ev.push({ t: 'combatStart', by, surprised: surprised.filter((id) => s.units[id]?.cond.surprised) });
   ev.push({ t: 'initiative', order: [...s.order], rolls });
   // Every enemy commits to its first move (a Mirai can read it).
-  for (const u of Object.values(s.units)) {
-    if (u.team !== 'enemy') continue;
-    planEnemy(s, u);
-    if (u.intent) ev.push({ t: 'intent', unit: u.id, intent: u.intent });
-  }
+  for (const u of Object.values(s.units)) if (u.team === 'enemy') commitPlan(s, u, ev);
   s.turn = 0;
   beginTurn(s, ev);
 }
@@ -81,6 +79,8 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
       u.turn.bonus = false;
       u.turn.move = 0;
       ev.push({ t: 'note', key: 'surprisedSkip', params: { name: u.name } });
+      // A turn lost to surprise is still one of its turns under a Command.
+      if (u.commanded && spendCommandTurn(s, u, ev)) commitPlan(s, u, ev);
       advance(s, ev);
       continue;
     }
@@ -133,19 +133,30 @@ export function endTurn(s: BattleState, ev: BattleEvent[]): void {
     if (u.cond.hidden !== undefined && !u.cond.crouched) u.cond.hidden = undefined;
     // A warp edge not struck with is gone.
     if (u.cond.warpEdge) u.cond.warpEdge = false;
-    // Its turns under a Northstar's Command run out: back to its own side, where it plans again.
-    if (u.commanded) {
-      u.commanded.rounds -= 1;
-      if (u.commanded.rounds <= 0) releaseCommand(u, ev);
-    }
+    if (u.commanded) spendCommandTurn(s, u, ev);
     // An enemy commits to its next move now, so a Mirai can read it.
-    if (u.team === 'enemy') {
-      planEnemy(s, u);
-      if (u.intent) ev.push({ t: 'intent', unit: u.id, intent: u.intent });
-    }
+    if (u.team === 'enemy') commitPlan(s, u, ev);
   }
   advance(s, ev);
   beginTurn(s, ev);
+}
+
+/** An enemy commits to its next move and the screen hears of it (a Mirai can read it). */
+function commitPlan(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  planEnemy(s, u);
+  if (u.intent) ev.push({ t: 'intent', unit: u.id, intent: u.intent });
+}
+
+/**
+ * One of a commanded unit's turns is spent. When its turns under the Command run out it goes back
+ * to its own side (true), and the enemies who planned against it plan again.
+ */
+function spendCommandTurn(s: BattleState, u: Unit, ev: BattleEvent[]): boolean {
+  u.commanded!.rounds -= 1;
+  if (u.commanded!.rounds > 0) return false;
+  releaseCommand(u, ev);
+  replanAgainst(s, u.id, ev);
+  return true;
 }
 
 function advance(s: BattleState, ev: BattleEvent[]): void {

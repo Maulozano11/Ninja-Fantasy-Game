@@ -27,10 +27,10 @@ import type {
   Wall,
 } from './types';
 import { homeTeam } from './types';
-import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
 import { canStop, freeSpot, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
-import { attackPreview, check, damage, heal, passivePerception, rollDiceExpr, skillMod } from './combat';
+import { attackPreview, check, damage, heal, hostileAura, passivePerception, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
 import { JUTSU, areaOf, enhanced } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { KUNAI, enemyUnit, handsFree, unitFrom, wielded } from './units';
@@ -58,7 +58,7 @@ import {
   warpLanding,
   warpStrike,
 } from './clans';
-import { reachTo } from './intent';
+import { reachTo, replanAgainst } from './intent';
 
 // --- setup ---------------------------------------------------------------------------------
 
@@ -192,6 +192,8 @@ const freshBudget = (u: Unit): void => {
 /** Applies one action. On failure the state is unchanged and `reason` says why (a key). */
 export function applyAction(state: BattleState, action: Action): Outcome {
   const s = structuredClone(state);
+  // A state from before the clans (an older save or peer) has no Weapon Nodes yet.
+  s.nodes ??= [];
   const ev: BattleEvent[] = [];
   const err = dispatch(s, action, ev);
   if (err) return { ok: false, reason: err, state, events: [] };
@@ -213,8 +215,8 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
   if (s.phase === 'ended') return 'battleOver';
   if (a.type === 'setController') {
     const u = s.units[a.unit];
-    // A commanded enemy fights for the party for now, but nobody in the party takes its reins.
-    if (!u || homeTeam(u) !== 'party') return 'noUnit';
+    // A commanded enemy or a beast that joined fights for the party, but nobody takes its reins.
+    if (!u || homeTeam(u) !== 'party' || u.joined) return 'noUnit';
     u.controller = a.controller;
     if (a.order) u.aiOrder = a.order;
     return null;
@@ -403,10 +405,7 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
 
 function afterMove(s: BattleState, u: Unit, ev: BattleEvent[]): void {
   if (u.down) return;
-  if (u.cond.hidden !== undefined && hideSpotAt(s, u.pos) < 0 && s.phase === 'combat') {
-    u.cond.hidden = undefined;
-    ev.push({ t: 'condition', unit: u.id, cond: 'hidden', on: false });
-  }
+  revealOutOfHiding(s, u, ev);
   if (s.phase === 'combat' && u.turn.moved > u.speed * 0.75) scareAnimalsNear(s, u.pos, 3, ev);
 }
 
@@ -464,10 +463,7 @@ function weaponAttack(
   const edge = !!a.cond.warpEdge;
   if (edge) a.cond.warpEdge = false;
   const surprise = a.cond.hidden !== undefined || !!o.takedown;
-  if (a.cond.hidden !== undefined) {
-    a.cond.hidden = undefined;
-    ev.push({ t: 'condition', unit: a.id, cond: 'hidden', on: false });
-  }
+  reveal(a, ev);
   const hits: Hit[] = [];
   if (roll.success) {
     const str = abilityMod(a.stats.str);
@@ -501,9 +497,11 @@ function attackProp(s: BattleState, u: Unit, i: number, ranged: boolean, ev: Bat
   const w = ranged ? KUNAI : wielded(u);
   const edge = !!u.cond.warpEdge;
   if (edge) u.cond.warpEdge = false;
-  const adv = combineAdvantage(d > KUNAI.reach ? 'disadvantage' : 'none', edge ? 'advantage' : 'none');
+  // From inside a foe's Aura of Sovereignty, with disadvantage, as against a unit.
+  const adv = combineAdvantage(d > KUNAI.reach ? 'disadvantage' : 'none', edge ? 'advantage' : 'none', hostileAura(s, u) ? 'disadvantage' : 'none');
   const roll = check(s, 'attack', u.prof + abilityMod(ranged ? u.stats.dex : u.stats.str), 10, adv, true);
   ev.push({ t: 'attack', unit: u.id, target: `prop:${i}`, what: w.name, roll, ranged });
+  reveal(u, ev);
   if (leavesNodes(u) && (ranged || !roll.success)) {
     // The Node lands on the prop's side facing the Ryusei.
     const k = d > 0 ? Math.min(1, rules.radius / d) : 0;
@@ -527,13 +525,15 @@ function attackStructure(s: BattleState, u: Unit, id: string, ranged: boolean, e
   if (!w || !breakable(w)) return 'badTarget';
   const pv = structureAttack(s, u, w, ranged);
   if (!pv.inRange) return 'outOfRange';
-  if (!pv.sight) return 'noSight';
+  // A blade isn't swung across another metal wall.
+  if (!pv.sight) return ranged ? 'noSight' : 'blocked';
   u.turn.action = false;
   const wpn = ranged ? KUNAI : wielded(u);
   const roll = check(s, 'attack', pv.mod, STRUCTURE_AC, pv.adv, true);
   if (u.cond.warpEdge) u.cond.warpEdge = false;
   if (pv.at.x !== u.pos.x) u.facing = pv.at.x > u.pos.x ? 1 : -1;
   ev.push({ t: 'attack', unit: u.id, target: `wall:${w.id}`, what: wpn.name, roll, ranged });
+  reveal(u, ev);
   if (leavesNodes(u) && (ranged || !roll.success)) addNode(s, u, faceToward(w, u.pos), ev);
   if (roll.success) damageStructure(s, w, Math.max(1, rollDiceExpr(s, wpn.dice, roll.crit)), ev, pv.at);
   return null;
@@ -705,6 +705,20 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   let at: Pt = target ? { ...target.pos } : { ...atIn };
   if (spec.shape === 'self' || spec.shape === 'selfCircle') at = { ...u.pos };
   const d = dist(u.pos, at);
+  // Command and Natural Submission take only some minds, refused in their own order (range and
+  // sight last); from level 9, Command takes a second one.
+  const minds: Unit[] = [];
+  if (spec.special === 'command' || spec.special === 'submission') {
+    const blocker = spec.special === 'command' ? commandBlocker : submissionBlocker;
+    const ids = target2Id && target2Id !== targetId ? [targetId, target2Id] : [targetId];
+    if (ids.length > 1 && (spec.special !== 'command' || u.level < 9)) return 'oneTarget';
+    for (const tid of ids) {
+      const t = tid ? s.units[tid] : undefined;
+      const why = blocker(s, u, t);
+      if (why) return why;
+      minds.push(t!);
+    }
+  }
   switch (spec.shape) {
     case 'single':
       if (!target || !targetable(target)) return 'needTarget';
@@ -750,19 +764,6 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     const why = structureBlocker(s, structureAt(spec, u.pos, at, u.id, ''));
     if (why) return why;
   }
-  // Command and Natural Submission take only some minds; from level 9, Command takes a second one.
-  const minds: Unit[] = [];
-  if (spec.special === 'command' || spec.special === 'submission') {
-    const blocker = spec.special === 'command' ? commandBlocker : submissionBlocker;
-    const ids = target2Id && target2Id !== targetId ? [targetId, target2Id] : [targetId];
-    if (ids.length > 1 && (spec.special !== 'command' || u.level < 9)) return 'oneTarget';
-    for (const tid of ids) {
-      const t = tid ? s.units[tid] : undefined;
-      const why = blocker(s, u, t);
-      if (why) return why;
-      minds.push(t!);
-    }
-  }
   if (seals && !handsFree(u)) setArmed(u, false, 'free', ev);
   // Pay, and spend the action.
   u.chakra -= cost;
@@ -770,10 +771,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (!base.ability) u.stats2.jutsuCast += 1;
   if (base.cast === 'bonus') u.turn.bonus = false;
   else u.turn.action = false;
-  if (spec.loud && u.cond.hidden !== undefined) {
-    u.cond.hidden = undefined;
-    ev.push({ t: 'condition', unit: u.id, cond: 'hidden', on: false });
-  }
+  if (spec.loud) reveal(u, ev);
   if (spec.melee && spec.shape === 'single' && target) dashTo(s, u, target, ev);
   if (at.x !== u.pos.x) u.facing = at.x > u.pos.x ? 1 : -1;
   const area = areaOf(spec, u.pos, at);
@@ -787,6 +785,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       const from = { ...u.pos };
       ev.push({ t: 'teleport', unit: u.id, from, to: at });
       u.pos = at;
+      revealOutOfHiding(s, u, ev);
       enteredAura(s, u, from, ev);
       break;
     }
@@ -818,10 +817,13 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       break;
     }
     case 'command':
-      for (const t of minds) command(s, u, t, ev);
-      break;
     case 'submission':
-      submit(s, u, minds[0], ev);
+      // A mind taken changes sides: the enemies who meant to strike it, or help it, plan again.
+      for (const t of minds) {
+        if (spec.special === 'command') command(s, u, t, ev);
+        else submit(s, u, t, ev);
+        if (t.team === u.team) replanAgainst(s, t.id, ev);
+      }
       break;
     default:
       hits.push(...jutsuHits(s, u, spec, target, at, ev));
@@ -1022,7 +1024,7 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
     const d = Math.max(0.01, dist(u.pos, t.pos));
     const dest = { x: t.pos.x + ((t.pos.x - u.pos.x) / d) * 1.5, z: t.pos.z + ((t.pos.z - u.pos.z) / d) * 1.5 };
     const c = cellOf(dest);
-    if (cellBlocked(s, c) || !canStop(s, t, c)) ev.push({ t: 'note', key: 'shoveBlocked', params: { name: t.name } });
+    if (!pushClear(s, t.pos, cellCenter(c)) || !canStop(s, t, c)) ev.push({ t: 'note', key: 'shoveBlocked', params: { name: t.name } });
     else {
       const from = { ...t.pos };
       const to = cellCenter(c);
@@ -1044,11 +1046,20 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
   return null;
 }
 
+/** Nothing stops a push on its way: no wall across it (nothing passes a metal wall), no blocked cell along it. */
+function pushClear(s: BattleState, from: Pt, to: Pt): boolean {
+  if (s.walls.some((w) => w.kind !== 'metalBlock' && segmentsCross(from, to, w.a, w.b))) return false;
+  for (let k = 1; k <= 6; k++) {
+    if (cellBlocked(s, cellOf({ x: from.x + ((to.x - from.x) * k) / 6, z: from.z + ((to.z - from.z) * k) / 6 }))) return false;
+  }
+  return true;
+}
+
 const near = (u: Unit, t: Unit): boolean => u.id === t.id || dist(u.pos, t.pos) <= 1.6;
 
 function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' | 'tag', targetId: string | undefined, at: Pt | undefined, ev: BattleEvent[]): string | null {
-  // The backpack is the party's: a commanded enemy doesn't get into it.
-  if (homeTeam(u) !== 'party') return 'noItems';
+  // The backpack is the party's: a commanded enemy or a beast that joined doesn't get into it.
+  if (homeTeam(u) !== 'party' || u.joined) return 'noItems';
   if (item === 'pill') {
     // Soldier pill (bonus action): +2d6 chakra; after the battle it leaves Crash.
     if (!u.turn.bonus) return 'noBonus';

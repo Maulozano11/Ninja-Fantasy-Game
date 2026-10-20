@@ -143,8 +143,8 @@ export const T = strings({
     es: 'Acción, 4 chakra, 9 m: un esbirro (también un capitán desde el nivel 5) que falla una salvación de SAB lucha para ti durante 1 ronda (desde el nivel 9: dos objetivos, 2 rondas). Los Mirai son inmunes; los jefes no se pueden controlar.',
   },
   help_northstar_submission: {
-    en: 'Action, 5 chakra, 9 m: a beast or enemy summon that fails a WIS save joins the party. Not bosses.',
-    es: 'Acción, 5 chakra, 9 m: una bestia o invocación enemiga que falla una salvación de SAB se une al grupo. No sirve con jefes.',
+    en: 'Action, 5 chakra, 9 m: a beast or enemy summon that fails a WIS save joins your side for the rest of this battle. Not bosses.',
+    es: 'Acción, 5 chakra, 9 m: una bestia o invocación enemiga que falla una salvación de SAB se une a tu bando durante el resto de esta batalla. No sirve con jefes.',
   },
 
   // aiming

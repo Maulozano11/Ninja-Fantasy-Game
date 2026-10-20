@@ -6,7 +6,7 @@
 import { averageDice, parseDice } from '../rules/dice';
 import { abilityMod, successChance } from '../rules/checks';
 import { hasEffect } from '../rules/effects';
-import type { BattleState, Cell, Intent, Pt, Unit } from './types';
+import type { BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
 import { homeTeam } from './types';
 import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell } from './map';
 import { canStop, occupancy, reachable } from './nav';
@@ -108,7 +108,7 @@ export function ninjaOptions(s: BattleState, u: Unit): Option[] {
     if (!sealed && u.jutsus.includes('mystical_palm') && u.chakra >= JUTSU.mystical_palm.cost && dist(u.pos, f.pos) <= u.speed + 1.6) {
       out.push({ intent: { kind: 'heal', what: 'mystical_palm', target: f.id }, value: avg(JUTSU.mystical_palm.dice) * support * (f.down ? 2 : 1) });
     }
-    if (homeTeam(u) === 'party' && f.down === 'downed' && dist(u.pos, f.pos) <= u.speed + 1.6) {
+    if (homeTeam(u) === 'party' && !u.joined && f.down === 'downed' && dist(u.pos, f.pos) <= u.speed + 1.6) {
       const bandage = s.supplies.bandages > 0;
       out.push({ intent: { kind: 'heal', what: bandage ? 'bandage' : 'stabilize', target: f.id }, value: (bandage ? 9 : 6) * support });
     }
@@ -253,6 +253,18 @@ export function planEnemy(s: BattleState, u: Unit): void {
     if (c) i.to = cellCenter(c);
   }
   u.intent = i;
+}
+
+/**
+ * A unit changed sides (Command, Natural Submission, or a Command running out): every enemy whose
+ * plan was aimed at it plans again, so it doesn't strike its own side and the Eye shows the new plan.
+ */
+export function replanAgainst(s: BattleState, id: string, ev: BattleEvent[]): void {
+  for (const e of Object.values(s.units)) {
+    if (e.id === id || e.team !== 'enemy' || e.intent?.target !== id) continue;
+    planEnemy(s, e);
+    if (e.intent) ev.push({ t: 'intent', unit: e.id, intent: e.intent });
+  }
 }
 
 /** The Eye of Tomorrow in the party: the Mirai who can read the enemies' next moves. */

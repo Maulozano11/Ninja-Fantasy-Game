@@ -132,7 +132,7 @@ export function groundEffects(s: BattleState, area: AreaShape, type: DamageType 
 
 /**
  * Lightning that lands in water runs through it: everyone else standing in water nearby makes a
- * DEX save against half the damage.
+ * DEX save against half the damage (not behind a metal wall from where it landed).
  */
 export function electrify(s: BattleState, points: Pt[], amount: number, dc: number, source: string, already: string[], ev: BattleEvent[]): Hit[] {
   const wet = points.filter((p) => waterAtPt(s, p) > 0);
@@ -141,7 +141,7 @@ export function electrify(s: BattleState, points: Pt[], amount: number, dc: numb
   const hits: Hit[] = [];
   for (const u of onMapUnits(s)) {
     if (already.includes(u.id) || waterAtPt(s, u.pos) === 0) continue;
-    if (!wet.some((p) => dist(p, u.pos) <= ELECTRIFY_RADIUS + (u.bulk ?? 0))) continue;
+    if (!wet.some((p) => dist(p, u.pos) <= ELECTRIFY_RADIUS + (u.bulk ?? 0) && !fullCoverBetween(s, p, u.pos))) continue;
     hits.push(saveHit(s, u, 'dex', dc, Math.floor(amount / 2), 'Lightning', true, source, 'electrified water', {}, ev));
   }
   return hits;

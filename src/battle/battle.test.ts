@@ -761,12 +761,17 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
       assert.deepEqual(out.state.nodes.map((n) => ({ owner: n.owner, pos: n.pos })), [{ owner: 'r', pos: s.units.rogue_0.pos }]);
       assert.ok(out.events.some((e) => e.t === 'node' && e.on));
     }
-    // A blow: a hit leaves none, a miss leaves one.
+    // A blow: a hit that lands leaves none, a miss leaves one, and so does a hit the rogue (a Mirai)
+    // steps aside from, right where it stood.
     const close = structuredClone(s);
     place(close, 'rogue_0', { x: 9.75, z: 10.25 });
     const blow = (t: BattleState) => applyAction(t, { type: 'attack', unit: 'r', target: 'rogue_0' });
-    assert.equal(seeded(close, blow, hit).state.nodes.length, 0);
+    const evaded = (o: ReturnType<typeof applyAction>) => o.events.some((e) => e.t === 'evade');
+    assert.equal(seeded(close, blow, (o) => hit(o) && !evaded(o)).state.nodes.length, 0);
     assert.deepEqual(seeded(close, blow, (o) => !hit(o)).state.nodes[0].pos, close.units.rogue_0.pos);
+    const stepped = seeded(close, blow, evaded);
+    assert.deepEqual(stepped.state.nodes.map((n) => ({ owner: n.owner, pos: n.pos })), [{ owner: 'r', pos: close.units.rogue_0.pos }]);
+    assert.notDeepEqual(stepped.state.units.rogue_0.pos, close.units.rogue_0.pos);
     // A fourth makes the oldest go.
     const full = structuredClone(s);
     full.nodes.push(node('n1', { x: 9, z: 13 }), node('n2', { x: 10, z: 13 }), node('n3', { x: 11, z: 13 }));

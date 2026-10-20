@@ -2,10 +2,10 @@
 // effects (docs/MISSION_DESIGN.md). Every function returns a new character plus the events.
 
 import type { ClanType, ShinobiCharacter } from '../types/shinobi';
-import { CLANS_DATA, DEFAULT_CHARACTER } from '../data/shinobiData';
+import { CLANS_DATA, DEFAULT_CHARACTER, SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BreakdownKind, ConvictionValue, EffectId, RuleEvent, SkillId } from '../types/mission';
 import { savingThrow, SKILL_ABILITY } from './checks';
-import { effectiveMaxHp } from './derived';
+import { deriveStats, effectiveMaxHp } from './derived';
 import { addEffect, EFFECTS, endMission, hasEffect, removeEffect, sanitizeEffects } from './effects';
 import { checkRng, Dice, pick } from './rng';
 
@@ -171,19 +171,34 @@ const OLD_CLANS: Record<string, ClanType> = { Uddo: 'Ryusei', Akkai: 'Koton', Ta
 
 /**
  * The clan a saved or imported sheet names, as one of today's clans: old names load as the clan
- * that replaced them, and accents don't matter ('Kōton' is Koton). Null when it isn't a clan.
+ * that replaced them, and accents don't matter ('Kōton' is Koton). Null when it isn't a clan (nor
+ * a name every object has, like 'constructor').
  */
 export function migrateClan(raw: unknown): ClanType | null {
   if (typeof raw !== 'string') return null;
   const plain = raw.normalize('NFD').replace(/\p{M}/gu, '');
-  if (plain in CLANS_DATA) return plain as ClanType;
-  return OLD_CLANS[plain] ?? null;
+  if (Object.hasOwn(CLANS_DATA, plain)) return plain as ClanType;
+  return Object.hasOwn(OLD_CLANS, plain) ? OLD_CLANS[plain] : null;
 }
 
-/** A sheet from an older save with its clan converted; HP, chakra, look and jutsu stay as they are. */
+/** Old clans whose bonus the old formula built into a sheet's maxima: Uddo's +6 HP, Akkai's +25 % chakra. */
+const OLD_BONUS_CLANS = ['Uddo', 'Senju', 'Akkai', 'Uzumaki'];
+
+/**
+ * A sheet from an older save or an import, with its clan converted. When its numbers came from the
+ * creator's formula (its AC and jutsu DC and attack still match it) and its old clan built a bonus
+ * into them, its max HP and chakra are worked out again without it, and what it has left is kept
+ * under the new maxima. Hand-made numbers (the presets), the look and the jutsu stay as they are.
+ */
 export function migrateCharacter(c: ShinobiCharacter): ShinobiCharacter {
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
-  return clan === c.clan ? c : { ...c, clan };
+  if (clan === c.clan) return c;
+  const out = { ...c, clan };
+  if (!OLD_BONUS_CLANS.includes(c.clan) || !Object.hasOwn(SHINOBI_CLASSES, c.shinobiClass)) return out;
+  const d = deriveStats({ level: c.level, stats: c.stats, clan, shinobiClass: c.shinobiClass, armor: c.armorStyle, feats: c.selectedFeats ?? [] });
+  if (d.armorClass !== c.armorClass || d.jutsuSaveDC !== c.jutsuSaveDC || d.jutsuAttackBonus !== c.jutsuAttackBonus) return out;
+  const fresh = { ...out, maxHp: d.maxHp, maxChakra: d.maxChakra };
+  return { ...fresh, currentHp: Math.min(c.currentHp, effectiveMaxHp(fresh)), currentChakra: Math.min(c.currentChakra, d.maxChakra) };
 }
 
 /** Spanish name of an effect for the screens. */

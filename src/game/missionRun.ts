@@ -203,7 +203,7 @@ export function resolvePartyBattle(run: MissionRun, result: PartyBattleResult): 
 
 const SAVE_KEY = 'shinobi5e.mission.v1';
 
-/** A run saved before the clans were converted: its ninjas load with today's clans (only the clan changes). */
+/** A run saved before the clans were converted: its ninjas load with today's clans (rules/ninja.ts, migrateCharacter). */
 export function migrateRun(r: MissionRun): MissionRun {
   const party = (p: PartyState): PartyState => ({ ...p, members: p.members.map(migrateCharacter), dead: (p.dead ?? []).map(migrateCharacter) });
   return { ...r, party: party(r.party), entry: party(r.entry ?? r.party) };

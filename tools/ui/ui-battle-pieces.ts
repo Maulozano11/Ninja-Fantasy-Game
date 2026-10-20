@@ -885,10 +885,12 @@ export function pixelPath(pts: Pt[]): Pt[] {
 /**
  * His lower bracket (left end of the plaque under the bar; mirrored for the right): a triangular
  * gusset of curved wire, wide along the bar's underside and pointed at the plaque's lower corner.
- * A wire along the top with a small curl at the outer tip; the long edge sagging down to the
- * point; an S-scroll from the top wire down to the edge with his small eye (two dark dots in a pale
- * ring, about 10 px) in its upper bowl; and the X binding by the plaque's end, two crossing C-curves.
- * The background shows between the wires.
+ * A band along the top with a small curl at the outer tip; the long edge running down from the
+ * tip to an upturned curl; an S-scroll from the band down to the edge with his small eye (two dark
+ * dots in a pale ring, about 10 px) in its upper bowl; and the X binding by the plaque's end, two
+ * crossing C-curves, whose outer leg reaches the plaque's lower corner. As in his picture the
+ * gusset is mostly metal: mid bronze between the scrolls, a dark shadow round each scroll, and the
+ * grass only under the X.
  */
 function lowerBracket(): string[] {
   const W = 38, H = 16;
@@ -951,7 +953,7 @@ export function lowerPlaque(): Piece {
   for (const flip of [false, true]) wire(img, map, { ox: flip ? W - map[0].length : 0, flip, pal });
   return {
     name: 'lower_plaque', img, group: 'action bar',
-    use: 'Dark plaque under the action bar (3-slice): his triangular openwork brackets of curved wire (a curl at the tip, the sagging long edge, an S-scroll holding his small eye, an X of two crossing C-curves; the background shows through) and rounded plaque ends with a silver rail along the bottom; for the hint line or the combat log.',
+    use: 'Dark plaque under the action bar (3-slice): his triangular brackets of curved wire (a curl at the tip, the lit long edge ending in a curl, an S-scroll holding his small eye, an X of two crossing C-curves; mid bronze between the scrolls with a dark shadow round each, the background showing only under the X) and rounded plaque ends with a silver rail along the bottom; for the hint line or the combat log.',
     slice: [0, cap, 0, cap],
     window: { x: end + rr, y: 1, w: W - 2 * (end + rr), h: Hh - 5, shape: 'rect' },
   };

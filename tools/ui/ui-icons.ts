@@ -1073,17 +1073,17 @@ const KIRIN_HEAD44 = {
     '................N.....', // 12
     '...............NPN....', // 13
     '...............NPCN...', // 14
-    '.........NNNNNNNPCNN..', // 15
-    '......NNNPPPPPPPPCPCN.', // 16
-    '....NBccCCCCCPPPPCCcN.', // 17
-    '...NbBcsssssssKKCCscN.', // 18
-    '..NbBmcssscccccmsCscN.', // 19
+    '......NNN.....NPPCN...', // 15
+    '.....NPPPNNN..NPPCNN..', // 16
+    '....NbCCCPPPNNPPPCPCN.', // 17
+    '...NbBcssCCCPPKKCCCsN.', // 18
+    '..NbBmccssssscmmsCscN.', // 19
     '.KKKKmmmmmmmccccccsmN.', // 20
     'NcdCPKKKKKKKmmmmcccN..', // 21
-    '.NcdWWWPCWCWKKKKKKK...', // 22
-    '.NcdWWWWPWCWcmWmWm....', // 23
-    '..NcdWWWPCCWcmWmW.....', // 24
-    '..NcdPWWPCCssccmW.....', // 25
+    '.NsCWWWPCWCWKKKKKKK...', // 22
+    '.NsCWWWWPWCWcmWmWm....', // 23
+    '..NsCWWWPCCWcmWmW.....', // 24
+    '..NcsPWWPCCssccmW.....', // 25
     '...NcdPPCCsNN.........', // 26
     '...NcdsCscdcN.........', // 27
     '....NcdWscdcN.........', // 28
@@ -1450,7 +1450,7 @@ const ICONS: IconSpec[] = [
       { box: [158, 164, 170, 178], lo: 0.88, hi: 0.94, spare: true, by: 'warm', why: 'his peach spark, a dimmer pixel (the spark ends)' },
     ],
     bil44: [0.8, 0.03],
-    flow: process.env.KFLOW ? [2, +process.env.KFLOW] : undefined,
+    flow: [2, 6],
     art: (pt) => (pt.N === 44 ? kirin44(pt) : kirin88(pt)),
     bil88: [0.8, 0.03],
   },

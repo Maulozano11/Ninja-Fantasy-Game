@@ -86,14 +86,14 @@
   "poison": {
    "label": "Venom cobra (poison)",
    "file": "poison.png",
-   "frameW": 156,
-   "frameH": 93,
+   "frameW": 176,
+   "frameH": 105,
    "anchor": [
-    95,
-    32
+    98,
+    58
    ],
    "meters": [
-    2.6,
+    3.1,
     1.8
    ],
    "tags": [
@@ -103,7 +103,7 @@
     "fly": {
      "row": 0,
      "frames": 8,
-     "fps": 12,
+     "fps": 10,
      "loop": true
     }
    }

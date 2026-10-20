@@ -4,16 +4,17 @@
 // plans again.
 
 import { averageDice, parseDice } from '../rules/dice';
-import { abilityMod } from '../rules/checks';
+import { abilityMod, successChance } from '../rules/checks';
 import { hasEffect } from '../rules/effects';
 import type { BattleState, Cell, Intent, Pt, Unit } from './types';
+import { homeTeam } from './types';
 import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell } from './map';
 import { canStop, occupancy, reachable } from './nav';
 import { JUTSU, areaOf, inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
-import { passivePerception } from './combat';
+import { passivePerception, saveMod } from './combat';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
-import { FORESIGHT_RANGE } from './clans';
+import { COMMAND, FORESIGHT_RANGE, SUBMISSION, commandRefused, submissionRefused } from './clans';
 
 const avg = (dice?: string): number => {
   const d = dice ? parseDice(dice) : null;
@@ -90,6 +91,14 @@ export function ninjaOptions(s: BattleState, u: Unit): Option[] {
       const lands = j.save ? (j.saveAdv === 'disadvantage' ? 0.85 : 0.75) : 0.65;
       out.push({ intent: { kind: 'jutsu', what: id, target: f.id, at: { ...f.pos } }, value: avg(j.dice) * lands * hits * fx * thrift });
     }
+    // A Northstar takes a foe's mind (Command) or a beast's (Natural Submission): worth the blows it
+    // would have struck, if the WIS save fails.
+    for (const [id, refused] of [[COMMAND, commandRefused], [SUBMISSION, submissionRefused]] as const) {
+      const j = JUTSU[id];
+      if (!u.jutsus.includes(id) || u.chakra < j.cost || d > j.range + u.speed || refused(s, u, f)) continue;
+      const fails = 1 - successChance(saveMod(f, 'wis'), u.saveDC);
+      out.push({ intent: { kind: 'command', what: id, target: f.id }, value: fails * (avg(f.weapon.dice) + 4) * fx });
+    }
   }
   // Helping: healing a hurt friend, getting a fallen one back up.
   const support = u.aiOrder === 'support' ? 1.6 : u.aiOrder === 'defensive' ? 1.1 : 0.8;
@@ -99,7 +108,7 @@ export function ninjaOptions(s: BattleState, u: Unit): Option[] {
     if (!sealed && u.jutsus.includes('mystical_palm') && u.chakra >= JUTSU.mystical_palm.cost && dist(u.pos, f.pos) <= u.speed + 1.6) {
       out.push({ intent: { kind: 'heal', what: 'mystical_palm', target: f.id }, value: avg(JUTSU.mystical_palm.dice) * support * (f.down ? 2 : 1) });
     }
-    if (u.team === 'party' && f.down === 'downed' && dist(u.pos, f.pos) <= u.speed + 1.6) {
+    if (homeTeam(u) === 'party' && f.down === 'downed' && dist(u.pos, f.pos) <= u.speed + 1.6) {
       const bandage = s.supplies.bandages > 0;
       out.push({ intent: { kind: 'heal', what: bandage ? 'bandage' : 'stabilize', target: f.id }, value: (bandage ? 9 : 6) * support });
     }
@@ -179,6 +188,8 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
     }
     case 'heal':
       return goal((p) => dist(p, t.pos) <= 1.6, undefined);
+    case 'command':
+      return goal((p) => dist(p, t.pos) <= JUTSU[i.what].range && lineOfSight(s, p, t.pos), t);
     case 'move':
       return goal(() => false, t);
     default:

@@ -56,15 +56,14 @@ elements.
 - **Dice**: every roll shows as a quick d20 over the acting character, with a
   button to speed it up. The big dice window is kept for criticals and
   important checks. Checks and attacks show their % before rolling.
-- **Chakra in battle** does not come back by itself (Uddo keeps +2 per round):
+- **Chakra in battle** does not come back by itself:
   - **Focus chakra** (action): recover 1d6 + casting modifier; attacks against
     you have advantage until your next turn.
   - **Soldier pill** (bonus action): +2d6 chakra; after the battle it leaves
     Crash (−2 to all rolls until the next camp). More than one pill between two
     camps gives +1 Exhaustion per extra pill.
 - **Surprised** (5e 2014 rule, on purpose): a surprised character can't act or
-  react on its first turn. Taki can never be surprised (360° vision), nor can a
-  character with Watchful.
+  react on its first turn. A character with Watchful can never be surprised.
 - **Status effects** have a duration: rounds, battles, the zone, until the next
   camp, until treated, the mission, or permanent. The catalog is in
   `MISSION_DESIGN.md`; durations tick at the start and end of each turn and at
@@ -169,23 +168,10 @@ elements.
 
 ## Clan abilities in battle
 
-**Replaced on 2026-10-19** by `CLANS_DESIGN.md`: four original clans (Mirai,
-Kōton, Ryusei, Northstar), their counters and their Paths. The list below is
-the old design, kept until phase 1 is built.
-
-- **Mirai — Future Foresight.** Enemies commit to their next move at the end
-  of each of their turns. A Mirai sees that move (what attack, against whom)
-  for every enemy within 18 m in sight; the enemy carries it out if it still
-  makes sense, so moving the target away or getting ready pays off. As a bonus
-  action (2 chakra), until the Mirai's next turn: **parry** (+1 AC; +2 with
-  2 tomoe; +3 with 3 tomoe or Mangekyo) and **dodge** (advantage on DEX saves,
-  and attackers get no advantage from hiding or flanking).
-- **Taki — All-Seeing Sight.** Can't be flanked or surprised; their critical
-  hits seal chakra.
-- **Uddo — Boundless Life Force.** +2 chakra at the start of each of their
-  turns.
-- **Akkai — Sealing Vitality.** A bigger chakra pool; the adamantine chains
-  seal chakra on a failed save.
+The clans and their abilities are designed in `CLANS_DESIGN.md`, the source of
+truth for them: the four clans (Mirai, Kōton, Ryusei, Northstar), the counters
+between them, their Paths, and the rulings phase 1 is built with. Phase 1 (each
+clan's base abilities) is in the game; the Paths come later.
 
 ## Party, missions and defeat
 

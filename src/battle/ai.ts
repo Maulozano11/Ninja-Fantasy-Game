@@ -13,7 +13,7 @@ import { current } from './turns';
 import { bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, visibleFoes } from './intent';
 import type { Goal } from './intent';
 import { breakable, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
-import { edgeFoe, ownNodes, WARP, warpBlocker, warpLanding } from './clans';
+import { COMMAND, commandRefused, edgeFoe, ownNodes, submissionRefused, WARP, warpBlocker, warpLanding } from './clans';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
 export function aiToAct(s: BattleState): boolean {
@@ -22,7 +22,7 @@ export function aiToAct(s: BattleState): boolean {
   return !!u && u.controller === 'ai';
 }
 
-/** Is a plan still doable: its target still up, its jutsu still affordable. */
+/** Is a plan still doable: its target still up, its jutsu still affordable, a mind still there to take. */
 function stillValid(s: BattleState, u: Unit, i: Intent | undefined): i is Intent {
   if (!i) return false;
   const t = i.target ? s.units[i.target] : undefined;
@@ -30,7 +30,8 @@ function stillValid(s: BattleState, u: Unit, i: Intent | undefined): i is Intent
     // Healing and reviving go to fallen friends; everything else needs a foe still standing.
     if (!(i.kind === 'heal' && t && t.down !== 'dead' && t.down !== 'fled' && t.down !== 'ko')) return false;
   }
-  if ((i.kind === 'jutsu' || i.kind === 'spit' || i.kind === 'roar') && u.chakra < (JUTSU[i.what]?.cost ?? 0)) return false;
+  if ((i.kind === 'jutsu' || i.kind === 'spit' || i.kind === 'roar' || i.kind === 'command') && u.chakra < (JUTSU[i.what]?.cost ?? 0)) return false;
+  if (i.kind === 'command' && (i.what === COMMAND ? commandRefused : submissionRefused)(s, u, t)) return false;
   if (i.kind === 'heal' && i.what === 'bandage' && s.supplies.bandages < 1) return false;
   return true;
 }
@@ -92,6 +93,9 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
       if (g.ready) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined };
       return moveToward(s, u, g, i.to) ?? (j.melee ? breakThrough(s, u, t) : null);
     }
+    case 'command':
+      if (g.ready) return { type: 'jutsu', unit: u.id, jutsu: i.what, at: { ...t.pos }, target: t.id };
+      return moveToward(s, u, g, i.to);
     case 'heal':
       if (g.ready) {
         if (i.what === 'mystical_palm') return { type: 'jutsu', unit: u.id, jutsu: 'mystical_palm', at: { ...t.pos }, target: t.id };

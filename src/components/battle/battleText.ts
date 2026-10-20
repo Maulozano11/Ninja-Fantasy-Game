@@ -58,6 +58,11 @@ export const T = strings({
   broken: { en: 'Broken!', es: '¡Roto!' },
   crumbled: { en: 'Crumbles', es: 'Se derrumba' },
   evaded: { en: 'Evaded!', es: '¡Esquivado!' },
+  commanded: { en: 'Commanded!', es: '¡Bajo mando!' },
+  underCommand: { en: 'Commanded', es: 'Bajo mando' },
+  freed: { en: 'Free', es: 'Libre' },
+  joins: { en: 'Joins the party!', es: '¡Se une al grupo!' },
+  slowed: { en: 'Slowed!', es: '¡Frenado!' },
   waiting: { en: 'Waiting…', es: 'Esperando…' },
   victory: { en: 'Victory', es: 'Victoria' },
   defeat: { en: 'Defeat', es: 'Derrota' },
@@ -133,6 +138,14 @@ export const T = strings({
     en: 'Action, 3 chakra: swap places with anyone standing on one of your Nodes. An enemy resists with STR.',
     es: 'Acción, 3 chakra: intercambia el lugar con quien esté sobre uno de tus Nodos. Un enemigo resiste con FUE.',
   },
+  help_northstar_command: {
+    en: 'Action, 4 chakra, 9 m: a Minion (a Captain too from level 5) that fails a WIS save fights for you for 1 round (from level 9: two targets, 2 rounds). Mirai are immune; bosses can’t be controlled.',
+    es: 'Acción, 4 chakra, 9 m: un esbirro (también un capitán desde el nivel 5) que falla una salvación de SAB lucha para ti durante 1 ronda (desde el nivel 9: dos objetivos, 2 rondas). Los Mirai son inmunes; los jefes no se pueden controlar.',
+  },
+  help_northstar_submission: {
+    en: 'Action, 5 chakra, 9 m: a beast or enemy summon that fails a WIS save joins the party. Not bosses.',
+    es: 'Acción, 5 chakra, 9 m: una bestia o invocación enemiga que falla una salvación de SAB se une al grupo. No sirve con jefes.',
+  },
 
   // aiming
   aimMove: { en: '{m} m', es: '{m} m' },
@@ -147,6 +160,7 @@ export const T = strings({
   aimStructures: { en: '{n}/2 standing', es: '{n}/2 en pie' },
   aimOldest: { en: 'the oldest one crumbles', es: 'la más antigua se derrumba' },
   aimWarpEdge: { en: 'Next to {name}: next attack from behind', es: 'Junto a {name}: el próximo ataque, por la espalda' },
+  aimSecond: { en: 'A second target (Enter: just this one)', es: 'Un segundo objetivo (Intro: solo este)' },
   cover2: { en: 'Half cover', es: 'Cobertura ½' },
   cover5: { en: '¾ cover', es: 'Cobertura ¾' },
   heightUp: { en: 'High ground +2', es: 'Altura +2' },
@@ -166,6 +180,7 @@ export const T = strings({
   reason_targetHidden: { en: 'target hidden', es: 'objetivo oculto' },
   reason_longRange: { en: 'long range', es: 'larga distancia' },
   reason_behind: { en: 'from behind', es: 'por la espalda' },
+  reason_aura: { en: 'Sovereign aura', es: 'aura de soberanía' },
   intent: { en: 'Next: {what} → {target}', es: 'Próximo: {what} → {target}' },
   intentNoTarget: { en: 'Next: {what}', es: 'Próximo: {what}' },
   intent_melee: { en: 'strike', es: 'golpe' },
@@ -176,6 +191,7 @@ export const T = strings({
   intent_heal: { en: 'heal', es: 'curar' },
   intent_defend: { en: 'defend', es: 'defenderse' },
   intent_move: { en: 'advance', es: 'avanzar' },
+  intent_command: { en: 'command', es: 'command' },
   suspicion: { en: 'Suspicion {n}%', es: 'Sospecha {n}%' },
 
   // reactions
@@ -210,6 +226,14 @@ export const T = strings({
   r_noNode: { en: 'Pick one of your Nodes.', es: 'Elige uno de tus Nodos.' },
   r_notOnNode: { en: 'Nobody stands on one of your Nodes.', es: 'Nadie está sobre uno de tus Nodos.' },
   r_combatOnly: { en: 'Only once the fighting starts.', es: 'Solo cuando empieza el combate.' },
+  r_mindImmune: { en: 'Mirai are immune to mind control.', es: 'Los Mirai son inmunes al control mental.' },
+  r_cantControl: { en: 'Bosses can’t be controlled.', es: 'Los jefes no se pueden controlar.' },
+  r_notMinion: { en: 'Only Minions (Captains from level 5).', es: 'Solo esbirros (capitanes desde el nivel 5).' },
+  r_cantCommand: { en: 'Only enemies with a rank can be commanded.', es: 'Solo se puede dar órdenes a enemigos con rango.' },
+  r_notNinja: { en: 'Only ninjas take orders (Natural Submission takes beasts).', es: 'Solo los ninjas obedecen órdenes (las bestias, con Sumisión Natural).' },
+  r_alreadyCommanded: { en: 'Already under command.', es: 'Ya está bajo mando.' },
+  r_notBeast: { en: 'Only beasts and enemy summons.', es: 'Solo bestias e invocaciones enemigas.' },
+  r_oneTarget: { en: 'One target until level 9.', es: 'Un solo objetivo hasta el nivel 9.' },
   r_waitingReaction: { en: 'Waiting for a reaction.', es: 'Esperando una reacción.' },
   r_default: { en: 'Can’t do that now.', es: 'No se puede ahora.' },
 
@@ -257,6 +281,10 @@ export const T = strings({
   l_wallHit: { en: '{n} damage to the {what}', es: '{n} de daño al {what}' },
   l_wallBroken: { en: 'The {what} breaks!', es: '¡El {what} se rompe!' },
   l_fled: { en: '{t} leaves the battle', es: '{t} abandona la batalla' },
+  l_command: { en: '{t} now fights for {a}', es: '{t} ahora lucha para {a}' },
+  l_commandEnd: { en: '{t} shakes off the command', es: '{t} se libra de la orden' },
+  l_joined: { en: '{t} joins the party', es: '{t} se une al grupo' },
+  l_slowed: { en: '{t} loses half its movement in the aura', es: '{t} pierde la mitad de su movimiento en el aura' },
   l_effect: { en: '{t}: {e}', es: '{t}: {e}' },
   l_effectOff: { en: '{t}: {e} ends', es: '{t}: termina {e}' },
   l_weaponOn: { en: '{t} draws the weapon', es: '{t} desenvaina' },
@@ -295,6 +323,10 @@ export const T = strings({
   tip_ryusei: {
     en: 'Weapon Nodes: kunai and missed blows leave a Node (three at most). Warp Strike jumps to one, even through walls; Spatial Swap trades places with whoever stands on one.',
     es: 'Nodos de Armas: los kunai y los golpes fallados dejan un Nodo (tres como máximo). Warp Strike salta a uno, incluso a través de muros; Intercambio Espacial cambia de lugar con quien esté sobre uno.',
+  },
+  tip_northstar: {
+    en: 'Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and whoever warps or dashes in loses half their movement. Command turns a Minion to your side for a round.',
+    es: 'Aura de Soberanía (4.5 m): los enemigos dentro atacan con desventaja, y quien entra con un warp o corriendo pierde la mitad de su movimiento. Command pone a un esbirro de tu lado durante una ronda.',
   },
   tipGotIt: { en: 'Got it', es: 'Entendido' },
   tipsOff: { en: 'No more tips', es: 'No más consejos' },

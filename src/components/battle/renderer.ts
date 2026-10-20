@@ -3,10 +3,12 @@
 // One world pixel is drawn as `k` device pixels (an integer), so the pixel art stays crisp.
 
 import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wall, WeaponNode } from '../../battle/types';
+import { homeTeam } from '../../battle/types';
 import type { MapDef } from '../../battle/map';
 import { BLOCK_HALF, CELL, cellCenter, dist } from '../../battle/map';
 import { JUTSU, areaOf } from '../../battle/jutsu';
 import { breakable } from '../../battle/structures';
+import { AURA_RADIUS, sovereign } from '../../battle/combat';
 import { lookOf as guardLook, VISION } from '../../battle/stealth';
 import { worldSprite } from '../world/WorldSpriteView';
 import type { MapArt } from './mapArt';
@@ -253,6 +255,22 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
       ctx.fill();
     }
   }
+  // Each Northstar's Aura of Sovereignty, around it as it walks (gone once its fall has played).
+  if (state.phase === 'combat') {
+    for (const u of Object.values(state.units)) {
+      const v = sc.pb.views.get(u.id);
+      if (!v || !sovereign({ ...u, down: v.down }) || (u.team !== sc.team && v.hidden)) continue;
+      ctx.beginPath();
+      groundEllipse(ctx, map, sc.pb.posOf(u.id, now), AURA_RADIUS);
+      ctx.fillStyle = 'rgba(167, 139, 250, 0.07)';
+      ctx.fill();
+      ctx.setLineDash([6, 5]);
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(167, 139, 250, 0.55)';
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
   // Traps the party can see.
   for (const t of state.traps) if (t.owner === sc.team || t.spotted) drawTrap(ctx, map, t);
   // Weapon Nodes, both sides' (each from when its event plays until its removal does).
@@ -375,7 +393,8 @@ function drawNode(ctx: CanvasRenderingContext2D, sc: Scene, n: WeaponNode): void
   const { map, state, overlay: o } = sc;
   const p = project(map, n.pos);
   const lit = !!o.nodes?.valid.includes(n.id);
-  const party = state.units[n.owner]?.team !== 'enemy';
+  const owner = state.units[n.owner];
+  const party = !owner || homeTeam(owner) !== 'enemy';
   ctx.save();
   if (o.nodes && !lit) ctx.globalAlpha = 0.45;
   ctx.beginPath();
@@ -632,7 +651,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
         ? `rgba(248, 113, 113, ${pulse})`
         : acting
           ? `rgba(250, 204, 21, ${pulse})`
-          : u.team === 'party'
+          : homeTeam(u) === 'party'
             ? 'rgba(125, 211, 252, 0.9)'
             : 'rgba(248, 113, 113, 0.9)';
     ctx.beginPath();
@@ -1254,7 +1273,7 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
     const frac = Math.max(0, Math.min(1, v.hp / u.maxHp));
     ctx.fillStyle = 'rgba(8, 10, 18, 0.8)';
     ctx.fillRect(s.x - w / 2 - 1, s.y - 1, w + 2, h + 2);
-    ctx.fillStyle = u.team === 'party' ? (frac > 0.5 ? '#4ade80' : frac > 0.25 ? '#facc15' : '#f87171') : '#ef4444';
+    ctx.fillStyle = homeTeam(u) === 'party' ? (frac > 0.5 ? '#4ade80' : frac > 0.25 ? '#facc15' : '#f87171') : '#ef4444';
     ctx.fillRect(s.x - w / 2, s.y, Math.round(w * frac), h);
     if (v.tempHp > 0) {
       ctx.fillStyle = '#93c5fd';
@@ -1269,6 +1288,15 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
         ctx.fillStyle = sus >= 70 ? '#f97316' : '#facc15';
         ctx.fillRect(s.x - w / 2, s.y - f(7), Math.round((w * sus) / 100), f(2));
       }
+    }
+    // An enemy under a Northstar's Command: a violet crown over its (still red) bar.
+    if (sc.pb.commandedNow(u)) {
+      ctx.font = `600 ${f(10)}px Inter, system-ui, sans-serif`;
+      const tw = f(18);
+      ctx.fillStyle = 'rgba(76, 29, 149, 0.9)';
+      ctx.fillRect(s.x - tw / 2, s.y - f(22), tw, f(14));
+      ctx.fillStyle = '#ede9fe';
+      ctx.fillText('♛', s.x, s.y - f(15));
     }
     // What a Mirai foresees (where and whom is drawn on the ground).
     const it = sc.foreseen[u.id];
@@ -1300,7 +1328,7 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
   ctx.globalAlpha = 1;
 }
 
-const INTENT_ICON: Record<string, string> = { melee: '⚔', ranged: '➶', jutsu: '✦', bite: '☠', spit: '☣', roar: '!', heal: '✚', defend: '⛨', move: '➜' };
+const INTENT_ICON: Record<string, string> = { melee: '⚔', ranged: '➶', jutsu: '✦', bite: '☠', spit: '☣', roar: '!', heal: '✚', defend: '⛨', move: '➜', command: '♛' };
 export const intentIcon = (i: Intent): string => INTENT_ICON[i.kind] ?? '?';
 
 // --- picking -------------------------------------------------------------------------------

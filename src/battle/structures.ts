@@ -10,7 +10,7 @@ import { BLOCK_HALF, CELL, cellCenter, cellOf, dist, gridFor, idx, inGrid, lineO
 import { occupancy } from './nav';
 import { inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
-import { hitChance, midpoint } from './combat';
+import { hitChance, hostileAura, midpoint } from './combat';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 
 /** Every structure is AC 10, like the props that can be broken. */
@@ -55,6 +55,8 @@ export function structureDist(w: Wall, p: Pt): number {
 export interface StructureAttack {
   mod: number;
   adv: Advantage;
+  /** Why there is advantage or disadvantage (keys for the screen, as for a unit). */
+  reasons: string[];
   chance: number;
   inRange: boolean;
   sight: boolean;
@@ -64,18 +66,28 @@ export interface StructureAttack {
 
 /**
  * Everything about an attack on a structure before rolling: AC 10, a blade reaches its surface, a
- * kunai flies to it in sight (with disadvantage beyond 9 m). A Ryusei's warp edge counts here too.
+ * kunai flies to it in sight (with disadvantage beyond 9 m). A Ryusei's warp edge and a foe's Aura
+ * of Sovereignty count here too.
  */
 export function structureAttack(s: BattleState, u: Unit, w: Wall, ranged: boolean): StructureAttack {
   const at = closestPoint(w, u.pos);
   const d = dist(u.pos, at);
   const mod = u.prof + abilityMod(ranged ? u.stats.dex : u.stats.str);
-  const adv: Advantage = combineAdvantage(ranged && d > KUNAI.reach ? 'disadvantage' : 'none', u.cond.warpEdge ? 'advantage' : 'none');
+  const reasons: string[] = [];
+  const advs: Advantage[] = [];
+  const add = (a: Advantage, why: string) => {
+    advs.push(a);
+    reasons.push(why);
+  };
+  if (ranged && d > KUNAI.reach) add('disadvantage', 'longRange');
+  if (u.cond.warpEdge) add('advantage', 'behind');
+  if (hostileAura(s, u)) add('disadvantage', 'aura');
+  const adv = combineAdvantage(...advs);
   const inRange = ranged ? d <= KUNAI_LONG + 0.1 : d <= wielded(u).reach + thickness(w) + 0.1;
   // Aimed a hair short of the wall's face, so the wall itself doesn't hide it.
   const k = d > 0.1 ? 0.05 / d : 0;
   const sight = !ranged || lineOfSight(s, u.pos, { x: at.x + (u.pos.x - at.x) * k, z: at.z + (u.pos.z - at.z) * k });
-  return { mod, adv, chance: hitChance(mod, STRUCTURE_AC, adv), inRange, sight, at };
+  return { mod, adv, reasons, chance: hitChance(mod, STRUCTURE_AC, adv), inRange, sight, at };
 }
 
 /** Damage to a structure (no save): it loses that much HP and at 0 it breaks and is gone. */

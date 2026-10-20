@@ -73,8 +73,8 @@ export interface Conditions {
 
 /** What an enemy will do on its next turn (it commits to it; a Mirai can see it). */
 export interface Intent {
-  kind: 'melee' | 'ranged' | 'jutsu' | 'bite' | 'spit' | 'roar' | 'heal' | 'defend' | 'move';
-  /** The weapon name or jutsu id. */
+  kind: 'melee' | 'ranged' | 'jutsu' | 'bite' | 'spit' | 'roar' | 'heal' | 'defend' | 'move' | 'command';
+  /** The weapon name or jutsu id (Command or Natural Submission, for a Northstar's 'command'). */
   what: string;
   target?: string;
   at?: Pt;
@@ -170,11 +170,23 @@ export interface Unit {
   bulk?: number;
   /** An enemy's rank; party units have none. */
   rank?: Rank;
+  /**
+   * Under a Northstar's Command: it fights on the Northstar's side (its `team` for now) for `rounds`
+   * more of its own turns, then goes back to the side it left. Kept out of `cond`, which a fall wipes.
+   */
+  commanded?: { by: string; team: Team; rounds: number };
+  /** A beast or a summon rather than a ninja (Natural Submission takes them). */
+  creature?: 'beast' | 'summon';
+  /** A beast or summon that joined the Northstar's side for the rest of the battle, and the side it left. */
+  joined?: { by: string; team: Team };
   /** Battle bookkeeping for the mission result. */
   stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number };
   /** Skill proficiencies (Stealth, Perception, Medicine...). */
   skills: string[];
 }
+
+/** The side a unit belongs to, whichever side a Command has it fighting on for now. */
+export const homeTeam = (u: Unit): Team => u.commanded?.team ?? u.team;
 
 /** A prop placed on the map (sprite plus gameplay). */
 export interface PropDef {
@@ -359,7 +371,7 @@ export interface BattleState {
 export type Action =
   | { type: 'move'; unit: string; to: Cell; sneak?: boolean }
   | { type: 'attack'; unit: string; target: string; ranged?: boolean; knockout?: boolean }
-  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean }
+  | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
   | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag'; target?: string; at?: Pt }
@@ -430,6 +442,9 @@ export type BattleEvent =
   | { t: 'regrow'; unit: string }
   | { t: 'reactionAsk'; pending: PendingReaction }
   | { t: 'intent'; unit: string; intent: Intent }
+  | { t: 'command'; unit: string; by: string; on: boolean; rounds?: number }
+  | { t: 'joined'; unit: string; by: string }
+  | { t: 'slowed'; unit: string; by: string; move: number }
   | { t: 'fled'; unit: string }
   | { t: 'end'; outcome: BattleOutcome }
   | { t: 'note'; key: string; params?: Record<string, string | number> };

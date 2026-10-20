@@ -231,6 +231,12 @@ export class Playback {
     return state.walls.find((w) => w.id === id) ?? this.goneWalls().find((w) => w.id === id);
   }
 
+  /** A unit is shown under a Northstar's Command: from when its Command plays until its release does. */
+  commandedNow(u: Unit): boolean {
+    const next = this.queue.find((e) => e.t === 'command' && e.unit === u.id);
+    return next?.t === 'command' ? !next.on : !!u.commanded;
+  }
+
   /** A structure's HP as the screen shows it: the hits still waiting to play haven't landed yet. */
   wallHp(w: Wall): number {
     let hp = w.hp;
@@ -328,6 +334,22 @@ export class Playback {
         h.sound('kawarimi');
         return 420;
       }
+      case 'command':
+      case 'joined': {
+        // Taken by a Northstar: a genjutsu glow and a word over it (and a word when it goes free).
+        const at = this.posOf(ev.unit, now);
+        const taken = ev.t === 'joined' || ev.on;
+        if (taken) this.fx.push({ kind: 'aura', element: 'genjutsu', from: at, to: at, t0: now, dur: 900, unit: ev.unit });
+        if (label) this.float(label, taken ? '#c4b5fd' : '#e2e8f0', at, now, { rise: 120 });
+        return taken ? 500 : 250;
+      }
+      case 'slowed': {
+        // Warped or dashed into a Northstar's aura: half the movement left is gone.
+        const at = this.posOf(ev.unit, now);
+        this.fx.push({ kind: 'aura', element: 'genjutsu', from: at, to: at, t0: now, dur: 500, unit: ev.unit });
+        if (label) this.float(label, '#c4b5fd', at, now, { rise: 120 });
+        return 300;
+      }
       case 'pushed': {
         const v = this.view(ev.unit);
         if (!v) return 0;
@@ -422,6 +444,12 @@ export class Playback {
             // Steel dust where the structure rises (the earth wall's sheet would hide it otherwise).
             this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200, sig: 'debris' });
             return castDelay;
+          case 'command':
+          case 'submission':
+            // The Northstar's will flares around it; the mind it takes glows when its event plays.
+            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 900, unit: ev.unit });
+            linger(900);
+            return castDelay + 300;
         }
         if (ev.shape?.kind === 'cone') {
           // A signature cone (the Great Fire Annihilation) plays its whole surge, burn and fade.

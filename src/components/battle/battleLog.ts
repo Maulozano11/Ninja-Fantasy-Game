@@ -104,6 +104,12 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return { text: t('l_wallHit', { n: ev.amount, what: structureName(wallOf(ev.wall), lang) }), tone: 'text-slate-300' };
     case 'fled':
       return { text: t('l_fled', { t: nameOf(s, ev.unit) }) };
+    case 'command':
+      return ev.on ? { text: t('l_command', { t: nameOf(s, ev.unit), a: nameOf(s, ev.by) }), tone: 'text-violet-300' } : { text: t('l_commandEnd', { t: nameOf(s, ev.unit) }), tone: 'text-slate-400' };
+    case 'joined':
+      return { text: t('l_joined', { t: nameOf(s, ev.unit) }), tone: 'text-violet-300' };
+    case 'slowed':
+      return { text: t('l_slowed', { t: nameOf(s, ev.unit) }), tone: 'text-violet-300' };
     case 'effect':
       return { text: t(ev.on ? 'l_effect' : 'l_effectOff', { t: nameOf(s, ev.unit), e: effectName(ev.effect, lang) }), tone: 'text-fuchsia-300' };
     case 'weapon':
@@ -157,6 +163,12 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
       return 'Kawarimi!';
     case 'evade':
       return t('evaded');
+    case 'command':
+      return t(ev.on ? 'commanded' : 'freed');
+    case 'joined':
+      return t('joins');
+    case 'slowed':
+      return t('slowed');
     case 'clone':
       return ev.on ? null : lang === 'es' ? '¡Clon!' : 'Clone!';
     case 'sever':

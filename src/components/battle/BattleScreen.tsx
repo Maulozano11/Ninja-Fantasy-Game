@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Map as MapIcon, Volume2, VolumeX, Sun, Moon, CloudRain } from 'lucide-react';
 import type { Action, AiOrder, BattleEvent, BattleState, Cell, Pt, Unit } from '../../battle/types';
+import { homeTeam } from '../../battle/types';
 import { applyAction } from '../../battle/engine';
 import { jutsuCost, needsSeals } from '../../battle/engine';
 import { aiAction, aiToAct } from '../../battle/ai';
@@ -16,7 +17,7 @@ import { cellCenter, cellOf, dist, getMap, gridFor, idx, lineOfSight, sameCell }
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
-import { edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
+import { commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, handsFree, wielded } from '../../battle/units';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
@@ -41,7 +42,8 @@ import { preloadWorldGroups } from '../world/WorldSpriteView';
 type Mode =
   | { k: 'move' }
   | { k: 'attack'; ranged: boolean }
-  | { k: 'jutsu'; id: string; enhanced: boolean }
+  /** `picked`: Command from level 9, the first of its two targets. */
+  | { k: 'jutsu'; id: string; enhanced: boolean; picked?: string }
   | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' }
   | { k: 'shove'; mode: 'push' | 'prone' }
   | { k: 'stone' }
@@ -56,7 +58,7 @@ export interface BattleScreenProps {
   onEnd: (result: PartyBattleResult, state: BattleState) => void;
 }
 
-const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra', 'tip_mirai', 'tip_koton', 'tip_ryusei'] as const;
+const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra', 'tip_mirai', 'tip_koton', 'tip_ryusei', 'tip_northstar'] as const;
 type TipKey = (typeof TIP_KEYS)[number];
 
 function tipSeen(k: string): boolean {
@@ -254,8 +256,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
 
   const errTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showError = useCallback((reason?: string) => {
-    const k = `r_${reason}` as TKey;
-    setError(T.has(k) ? T(k) : T('r_default'));
+    setError(reasonLine(reason));
     if (errTimer.current) clearTimeout(errTimer.current);
     errTimer.current = setTimeout(() => setError(null), 2200);
   }, []);
@@ -379,7 +380,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         const pv = structureAttack(s, actor, hw, mode.ranged);
         o.point = { at: pv.at, ok: pv.inRange && pv.sight };
         label = pv.inRange && pv.sight ? T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(actor).dice }) : T('aimNoReach');
-        sub = `${structureName(hw, lang)} · ${T('ac', { n: STRUCTURE_AC })}${pv.adv === 'disadvantage' ? ` · ${T('disadv')} · ${T('reason_longRange')}` : ''}`;
+        const adv = pv.adv === 'none' ? [] : [T(pv.adv === 'advantage' ? 'adv' : 'disadv'), ...pv.reasons.map((r) => T(`reason_${r}` as TKey))];
+        sub = [structureName(hw, lang), T('ac', { n: STRUCTURE_AC }), ...adv].join(' · ');
       }
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'node') {
       // Warp Strike: the Nodes it can jump to light up; the one under the cursor shows where it lands.
@@ -405,6 +407,18 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         if (!why) o.nodes.hover = nodeUnder(s, actor, hu)?.id;
         if (!why && hu.team !== actor.team) sub = T('aimSave', { save: (lang === 'es' ? SAVE_ES : SAVE_EN).str, dc: actor.saveDC });
       } else if (!o.targets.length) label = T('r_notOnNode');
+    } else if (mode.k === 'jutsu' && spec && (spec.special === 'command' || spec.special === 'submission')) {
+      // Command and Natural Submission: every mind it can take now lights up; over a unit, its WIS
+      // save, or why it can't be taken.
+      const blocker = spec.special === 'command' ? commandBlocker : submissionBlocker;
+      o.range = { at: actor.pos, radius: spec.range };
+      o.targets = Object.values(s.units).filter((x) => x.id === mode.picked || !blocker(s, actor, x)).map((x) => x.id);
+      if (mode.picked) label = T('aimSecond');
+      else if (hu) {
+        const why = blocker(s, actor, hu);
+        label = why ? reasonLine(why) : jutsuName(spec.id, lang);
+        if (!why) sub = T('aimSave', { save: (lang === 'es' ? SAVE_ES : SAVE_EN).wis, dc: actor.saveDC });
+      }
     } else if (mode.k === 'jutsu' && spec) {
       const self = spec.shape === 'self' || spec.shape === 'selfCircle';
       if (!self) o.range = { at: actor.pos, radius: spec.range };
@@ -546,7 +560,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         if (u.down === 'dead' || u.down === 'fled' || u.kind === 'hydra_head') continue;
         if (u.team === 'enemy' && u.cond.hidden !== undefined) continue;
         const p = project(map, pbRef.current!.posOf(u.id, now));
-        g.fillStyle = u.team === 'party' ? '#38bdf8' : '#f87171';
+        g.fillStyle = homeTeam(u) === 'party' ? '#38bdf8' : '#f87171';
         g.beginPath();
         g.arc(p.X * sc, (p.Y - 30) * sc, u.kind === 'hydra_body' ? 5 : 3, 0, Math.PI * 2);
         g.fill();
@@ -686,6 +700,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       }
       case 'jutsu': {
         const sp = JUTSU[mode.id];
+        // Command from level 9: a click picks a first mind, a click on another sends both (on the
+        // same one, or Enter, just the first).
+        if (sp.special === 'command' && actor.level >= 9) {
+          if (!u) return;
+          if (!mode.picked && !commandBlocker(s, actor, u)) setMode({ ...mode, picked: u.id });
+          else if (mode.picked) act({ type: 'jutsu', unit: actor.id, jutsu: mode.id, at: s.units[mode.picked].pos, target: mode.picked, ...(u.id !== mode.picked ? { target2: u.id } : {}) });
+          else act({ type: 'jutsu', unit: actor.id, jutsu: mode.id, at: u.pos, target: u.id });
+          return;
+        }
         const self = sp.shape === 'self' || sp.shape === 'selfCircle';
         const target = sp.shape === 'single' || sp.shape === 'ally' || sp.shape === 'onNode' ? u?.id : undefined;
         // A warp goes to the Ryusei's own Node nearest the click (or under the unit clicked).
@@ -879,7 +902,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       if (key === 'Escape') setMode({ k: 'move' });
       else if (key === 'z') setZoom((z) => (z === 1 ? 2 : 1));
       else if (key === 'e' && mode.k === 'jutsu' && JUTSU[mode.id]?.enhCost) setMode({ ...mode, enhanced: !mode.enhanced });
-      else if ((key === ' ' || key === 'Enter') && actor) {
+      else if (key === 'Enter' && actor && mode.k === 'jutsu' && mode.picked) {
+        // Command from level 9 with one target picked: just that one.
+        e.preventDefault();
+        act({ type: 'jutsu', unit: actor.id, jutsu: mode.id, at: s.units[mode.picked].pos, target: mode.picked });
+      } else if ((key === ' ' || key === 'Enter') && actor) {
         e.preventDefault();
         press('end');
       } else if (/^[1-9]$/.test(key)) {
@@ -924,9 +951,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
                     ? 'tip_koton'
                     : actor?.character?.clan === 'Ryusei' && !tipSeen('tip_ryusei')
                       ? 'tip_ryusei'
-                      : actor && s.round >= 2 && !tipSeen('tip_cover')
-                        ? 'tip_cover'
-                        : null;
+                      : actor?.character?.clan === 'Northstar' && !tipSeen('tip_northstar')
+                        ? 'tip_northstar'
+                        : actor && s.round >= 2 && !tipSeen('tip_cover')
+                          ? 'tip_cover'
+                          : null;
     if (want) setTip(want);
   }, [actor, state, tip]);
 
@@ -940,7 +969,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
   const turnUnit = pb.turnUnit ? state.units[pb.turnUnit] : undefined;
   const cardUnit = actor ?? turnUnit;
   const cardView = cardUnit ? pb.views.get(cardUnit.id) : undefined;
-  const party = Object.values(state.units).filter((u) => u.team === 'party');
+  // The party's own: an enemy under Command fights alongside it but isn't one of them.
+  const party = Object.values(state.units).filter((u) => homeTeam(u) === 'party');
 
   const promptText = (): { title: string; text: string } | null => {
     if (!pending || !reactor) return null;
@@ -1200,12 +1230,20 @@ const SHORT: Record<string, [string, string]> = {
   koton_wall: ['Metal wall', 'Muro metal'],
   ryusei_warp: ['Warp', 'Warp'],
   ryusei_swap: ['Swap', 'Intercambio'],
+  northstar_command: ['Command', 'Command'],
+  northstar_submission: ['Submit', 'Sumisión'],
 };
 
 /** A jutsu's short name for its button. */
 function jutsuShort(id: string, lang: ReturnType<typeof useLang>): string {
   const s = SHORT[id];
   return s ? s[lang === 'es' ? 1 : 0] : jutsuName(id, lang).split(/[\s:(]/)[0];
+}
+
+/** What an engine reason key says (the generic line for a key without text). */
+function reasonLine(why: string | undefined): string {
+  const k = `r_${why}` as TKey;
+  return T.has(k) ? T(k) : T('r_default');
 }
 
 /** Why an attack has advantage or disadvantage, and cover and height, in a short line. */

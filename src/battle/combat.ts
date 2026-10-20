@@ -9,6 +9,7 @@ import { effectMods, hasEffect } from '../rules/effects';
 import { Rng, rngFor, rollDie } from '../rules/rng';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from './types';
+import { homeTeam } from './types';
 import { coverBetween, dist, fullCoverBetween, levelAtPt } from './map';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 
@@ -104,6 +105,17 @@ function flanked(s: BattleState, attacker: Unit, target: Unit): boolean {
   return false;
 }
 
+/** How far a Northstar's Aura of Sovereignty reaches (3 squares). */
+export const AURA_RADIUS = 4.5;
+
+/** A Northstar ninja still standing: its Aura of Sovereignty is up. */
+export const sovereign = (u: Unit): boolean => u.kind === 'ninja' && !u.down && u.character?.clan === 'Northstar';
+
+/** The Northstar of another side whose aura a unit stands in (its attack rolls have disadvantage). */
+export function hostileAura(s: BattleState, a: Unit): Unit | undefined {
+  return Object.values(s.units).find((n) => n.team !== a.team && sovereign(n) && dist(n.pos, a.pos) <= AURA_RADIUS + 0.05);
+}
+
 function hostileWithin(s: BattleState, u: Unit, r: number): boolean {
   return Object.values(s.units).some((o) => o.team !== u.team && standing(o) && o.kind !== 'hydra_body' && dist(o.pos, u.pos) <= r + 0.05);
 }
@@ -182,6 +194,11 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     advs.push('disadvantage');
     reasons.push('targetHidden');
   }
+  // Inside a foe's Aura of Sovereignty: plain disadvantage (two auras are no worse than one).
+  if (hostileAura(s, a)) {
+    advs.push('disadvantage');
+    reasons.push('aura');
+  }
   const adv = combineAdvantage(...advs);
   const ac = t.ac + tm.ac + cover;
   const total = mod + height;
@@ -248,10 +265,11 @@ export function damage(s: BattleState, t: Unit, raw: number, type: DamageType, o
   }
   const attacker = o.source ? s.units[o.source] : undefined;
   let amount = adjustDamage(s, t, raw, type);
-  if (attacker && attacker.team === 'enemy') amount = Math.round(amount * attacker.power);
+  // By the side it belongs to: a commanded enemy is still an enemy.
+  if (attacker && homeTeam(attacker) === 'enemy') amount = Math.round(amount * attacker.power);
   if (o.crit) {
-    if (t.team === 'party') t.stats2.critsTaken++;
-    if (attacker?.team === 'party') attacker.stats2.critsLanded++;
+    if (homeTeam(t) === 'party') t.stats2.critsTaken++;
+    if (attacker && homeTeam(attacker) === 'party') attacker.stats2.critsLanded++;
   }
   if (t.down === 'downed' || t.down === 'stable') {
     // Hitting a fallen ninja: a failed death save (two on a critical).
@@ -282,6 +300,8 @@ export function damage(s: BattleState, t: Unit, raw: number, type: DamageType, o
     killHydra(s, t, ev);
     return;
   }
+  // A commanded unit that drops goes back to its own side (and falls as one of them).
+  releaseCommand(t, ev);
   if (t.team === 'party') {
     t.stats2.fell = true;
     if (o.crit) t.stats2.fellToCrit = true;
@@ -299,6 +319,14 @@ export function damage(s: BattleState, t: Unit, raw: number, type: DamageType, o
   t.down = o.knockout && o.melee ? 'ko' : 'dead';
   t.cond = {};
   ev.push({ t: 'down', unit: t.id, state: t.down });
+}
+
+/** A commanded unit goes back to the side it left: its turns under command ran out, or it dropped. */
+export function releaseCommand(u: Unit, ev: BattleEvent[]): void {
+  if (!u.commanded) return;
+  u.team = u.commanded.team;
+  ev.push({ t: 'command', unit: u.id, by: u.commanded.by, on: false });
+  u.commanded = undefined;
 }
 
 /** The hydra's body falls: every head falls with it. */

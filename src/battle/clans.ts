@@ -5,7 +5,7 @@ import { effectMods } from '../rules/effects';
 import type { BattleEvent, BattleState, Hit, Pt, Unit, WeaponNode } from './types';
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, lineOfSight, sameCell, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, reachable } from './nav';
-import { passivePerception, savingThrow } from './combat';
+import { AURA_RADIUS, passivePerception, savingThrow, sovereign } from './combat';
 import { JUTSU } from './jutsu';
 import { trapAt } from './hazards';
 import { wielded } from './units';
@@ -215,4 +215,96 @@ export function spatialSwap(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[])
   ev.push({ t: 'teleport', unit: t.id, from: b, to: a });
   u.pos = { ...b };
   t.pos = { ...a };
+}
+
+// --- Northstar: Aura of Sovereignty, Command, Natural Submission ---------------------------
+
+export const COMMAND = 'northstar_command';
+export const SUBMISSION = 'northstar_submission';
+
+const inAura = (n: Unit, p: Pt): boolean => dist(n.pos, p) <= AURA_RADIUS + 0.05;
+
+/** The Northstar whose aura a unit has just come into from outside it (any Northstar but itself). */
+export function auraEntered(s: BattleState, u: Unit, from: Pt): Unit | undefined {
+  return Object.values(s.units).find((n) => n.id !== u.id && sovereign(n) && !inAura(n, from) && inAura(n, u.pos));
+}
+
+/**
+ * Aura of Sovereignty: whoever warps or dashes into a Northstar's aura on their own turn, friend or
+ * foe, loses half of the movement they have left at once. (A Kawarimi, an Evasion, a push or being
+ * swapped happen on someone else's turn: there is no movement to lose.)
+ */
+export function enteredAura(s: BattleState, u: Unit, from: Pt, ev: BattleEvent[]): void {
+  if (s.phase !== 'combat' || s.order[s.turn] !== u.id || u.turn.move <= 0) return;
+  const n = auraEntered(s, u, from);
+  if (!n) return;
+  u.turn.move /= 2;
+  ev.push({ t: 'slowed', unit: u.id, by: n.id, move: u.turn.move });
+}
+
+const gone = (t: Unit): boolean => t.down === 'dead' || t.down === 'fled' || t.down === 'ko';
+
+/**
+ * Why Command can't take this unit, wherever it stands, or null. Only a foe's ninja with a rank
+ * takes orders: a Minion, a Captain too from level 5, never a Sub-boss or a Boss. A Mirai's mind
+ * can't be taken, nor one already under command; and only once the fighting has started.
+ */
+export function commandRefused(s: BattleState, u: Unit, t: Unit | undefined): string | null {
+  if (s.phase !== 'combat') return 'combatOnly';
+  if (!t || t.id === u.id || gone(t)) return 'needTarget';
+  if (t.commanded) return 'alreadyCommanded';
+  if (t.rank === 'boss' || t.rank === 'subboss') return 'cantControl';
+  if (!t.rank || t.team === u.team) return 'cantCommand';
+  if (t.kind !== 'ninja' || t.creature) return 'notNinja';
+  if (t.character?.clan === 'Mirai') return 'mindImmune';
+  return t.rank === 'captain' && u.level < 5 ? 'notMinion' : null;
+}
+
+/** Why Natural Submission can't take this unit, wherever it stands, or null: a foe's beast or summon, never a boss. */
+export function submissionRefused(s: BattleState, u: Unit, t: Unit | undefined): string | null {
+  if (s.phase !== 'combat') return 'combatOnly';
+  if (!t || t.id === u.id || gone(t)) return 'needTarget';
+  if (t.rank === 'boss' || t.rank === 'subboss') return 'cantControl';
+  return t.creature && t.team !== u.team ? null : 'notBeast';
+}
+
+/** Command and Natural Submission reach 9 m, in sight. */
+function mindReach(s: BattleState, u: Unit, t: Unit, id: string): string | null {
+  if (dist(u.pos, t.pos) > JUTSU[id].range + 0.1) return 'outOfRange';
+  return lineOfSight(s, u.pos, t.pos) ? null : 'noSight';
+}
+
+/** Why Command can't be cast at this unit now, or null (the engine, the aim preview and the AI share it). */
+export const commandBlocker = (s: BattleState, u: Unit, t: Unit | undefined): string | null => commandRefused(s, u, t) ?? mindReach(s, u, t!, COMMAND);
+
+/** Why Natural Submission can't be cast at this unit now, or null. */
+export const submissionBlocker = (s: BattleState, u: Unit, t: Unit | undefined): string | null => submissionRefused(s, u, t) ?? mindReach(s, u, t!, SUBMISSION);
+
+/** How many of its own turns a commanded unit fights for the Northstar: one, two from level 9. */
+export const commandTurns = (u: Unit): number => (u.level >= 9 ? 2 : 1);
+
+/**
+ * Command: the target makes a WIS save. Failing it, it fights on the Northstar's side until the end
+ * of its next turn (two of them from level 9), and the plan it had is dropped.
+ */
+export function command(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
+  const roll = savingThrow(s, t, 'wis', u.saveDC);
+  ev.push({ t: 'save', unit: t.id, what: COMMAND, roll });
+  if (roll.success) return;
+  const rounds = commandTurns(u);
+  t.commanded = { by: u.id, team: t.team, rounds };
+  t.team = u.team;
+  t.intent = undefined;
+  ev.push({ t: 'command', unit: t.id, by: u.id, on: true, rounds });
+}
+
+/** Natural Submission: a beast or summon that fails a WIS save joins the Northstar's side for the rest of the battle. */
+export function submit(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
+  const roll = savingThrow(s, t, 'wis', u.saveDC);
+  ev.push({ t: 'save', unit: t.id, what: SUBMISSION, roll });
+  if (roll.success) return;
+  t.joined = { by: u.id, team: t.team };
+  t.team = u.team;
+  t.intent = undefined;
+  ev.push({ t: 'joined', unit: t.id, by: u.id });
 }

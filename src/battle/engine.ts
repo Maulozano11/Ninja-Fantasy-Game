@@ -26,6 +26,7 @@ import type {
   Unit,
   Wall,
 } from './types';
+import { homeTeam } from './types';
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, waterAtPt } from './map';
 import { canStop, freeSpot, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
@@ -39,7 +40,24 @@ import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
 import { electrify, groundEffects, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
 import { breakable, damageStructure, faceToward, hitStructuresIn, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker, wallAcross } from './structures';
-import { addNode, canEvade, evade, leavesNodes, ownNodeAt, spatialSwap, swapBlocker, warpBlocker, warpLanding, warpStrike } from './clans';
+import {
+  addNode,
+  auraEntered,
+  canEvade,
+  command,
+  commandBlocker,
+  enteredAura,
+  evade,
+  leavesNodes,
+  ownNodeAt,
+  spatialSwap,
+  submissionBlocker,
+  submit,
+  swapBlocker,
+  warpBlocker,
+  warpLanding,
+  warpStrike,
+} from './clans';
 import { reachTo } from './intent';
 
 // --- setup ---------------------------------------------------------------------------------
@@ -195,7 +213,8 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
   if (s.phase === 'ended') return 'battleOver';
   if (a.type === 'setController') {
     const u = s.units[a.unit];
-    if (!u || u.team !== 'party') return 'noUnit';
+    // A commanded enemy fights for the party for now, but nobody in the party takes its reins.
+    if (!u || homeTeam(u) !== 'party') return 'noUnit';
     u.controller = a.controller;
     if (a.order) u.aiOrder = a.order;
     return null;
@@ -224,7 +243,7 @@ function dispatch(s: BattleState, a: Action, ev: BattleEvent[]): string | null {
     case 'attack':
       return doAttack(s, u, a.target, !!a.ranged, !!a.knockout, ev);
     case 'jutsu':
-      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev);
+      return doJutsu(s, u, a.jutsu, a.at, a.target, !!a.enhanced, ev, a.target2);
     case 'dash':
     case 'disengage':
     case 'dodge':
@@ -331,7 +350,8 @@ function provoker(s: BattleState, u: Unit, next: Pt, skip: string[]): Unit | und
 
 /**
  * Walks a path in battle, step by step: leaving an enemy's reach asks for an opportunity attack
- * (the move pauses while a player decides), and traps go off underfoot.
+ * (the move pauses while a player decides), and traps go off underfoot. Dashing into a Northstar's
+ * aura halves the movement left, and the walk ends where it runs out.
  */
 function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEvent[], skip: string[]): void {
   let at = cellOf(u.pos);
@@ -343,6 +363,9 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
   for (let i = from; i < path.length; i++) {
     const c = path[i];
     const next = cellCenter(c);
+    const cost = stepCost(s, at, c, at.c !== c.c && at.r !== c.r, rules);
+    // Only a dash slowed by an aura can run short of the path it was given.
+    if (u.turn.dashed && cost > u.turn.move + 1e-6) break;
     for (;;) {
       if (u.cond.disengaged) break;
       const r = provoker(s, u, next, skip);
@@ -357,13 +380,17 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
       const paused = opportunityAttack(s, r, u, ev, { unit: u.id, path, stepIndex: i, skip, at });
       if (paused || u.down || !sameCell(cellOf(u.pos), at)) return;
     }
-    const cost = stepCost(s, at, c, at.c !== c.c && at.r !== c.r, rules);
     u.turn.move = Math.max(0, u.turn.move - cost);
     u.turn.moved += cost;
     if (next.x !== u.pos.x) u.facing = next.x > u.pos.x ? 1 : -1;
+    const was = u.pos;
     u.pos = next;
     pts.push(next);
     at = c;
+    if (u.turn.dashed && auraEntered(s, u, was)) {
+      flush();
+      enteredAura(s, u, was, ev);
+    }
     if (trapAt(s, u, next)) {
       flush();
       stepHazards(s, u, next, ev);
@@ -661,7 +688,7 @@ export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
   return Math.max(0, spec.cost + (enh ? spec.enhCost : 0) - discount);
 }
 
-function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[]): string | null {
+function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string): string | null {
   const base = JUTSU[id];
   if (!base || !u.jutsus.includes(id)) return 'unknownJutsu';
   if (base.cast === 'reaction') return 'reactionOnly';
@@ -723,6 +750,18 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     const why = structureBlocker(s, structureAt(spec, u.pos, at, u.id, ''));
     if (why) return why;
   }
+  // Command and Natural Submission only take some foes; from level 9, Command takes a second one.
+  const minds: Unit[] = [];
+  if (spec.special === 'command' || spec.special === 'submission') {
+    const blocker = spec.special === 'command' ? commandBlocker : submissionBlocker;
+    for (const tid of [targetId, ...(target2Id && target2Id !== targetId ? [target2Id] : [])]) {
+      if (minds.length && (spec.special !== 'command' || u.level < 9)) return 'oneTarget';
+      const t = tid ? s.units[tid] : undefined;
+      const why = blocker(s, u, t);
+      if (why) return why;
+      minds.push(t!);
+    }
+  }
   if (seals && !handsFree(u)) setArmed(u, false, 'free', ev);
   // Pay, and spend the action.
   u.chakra -= cost;
@@ -743,10 +782,13 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     case 'heal':
       heal(target!, rollDiceExpr(s, spec.dice ?? '2d8+3'), id, ev);
       break;
-    case 'flicker':
-      ev.push({ t: 'teleport', unit: u.id, from: { ...u.pos }, to: at });
+    case 'flicker': {
+      const from = { ...u.pos };
+      ev.push({ t: 'teleport', unit: u.id, from, to: at });
       u.pos = at;
+      enteredAura(s, u, from, ev);
       break;
+    }
     case 'clone':
       u.cond.clone = true;
       ev.push({ t: 'clone', unit: u.id, on: true });
@@ -766,10 +808,19 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       raiseStructure(s, u, spec, at, ev);
       break;
     case 'warp':
-      warpStrike(s, u, at, ev);
+    case 'swap': {
+      // A warp into a Northstar's aura costs half the movement left (being swapped in doesn't).
+      const from = { ...u.pos };
+      if (spec.special === 'warp') warpStrike(s, u, at, ev);
+      else spatialSwap(s, u, target!, ev);
+      enteredAura(s, u, from, ev);
       break;
-    case 'swap':
-      spatialSwap(s, u, target!, ev);
+    }
+    case 'command':
+      for (const t of minds) command(s, u, t, ev);
+      break;
+    case 'submission':
+      submit(s, u, minds[0], ev);
       break;
     default:
       hits.push(...jutsuHits(s, u, spec, target, at, ev));
@@ -824,6 +875,8 @@ function dashTo(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
   if (to === t.pos) return;
   u.pos = to;
   ev.push({ t: 'move', unit: u.id, path: [to], run: true });
+  // A flash-in is a dash: into a Northstar's aura, it costs half the movement left.
+  enteredAura(s, u, from, ev);
 }
 
 /** Earth and water walls stand across the caster's line, centered on the point. */
@@ -993,7 +1046,8 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
 const near = (u: Unit, t: Unit): boolean => u.id === t.id || dist(u.pos, t.pos) <= 1.6;
 
 function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' | 'tag', targetId: string | undefined, at: Pt | undefined, ev: BattleEvent[]): string | null {
-  if (u.team !== 'party') return 'noItems';
+  // The backpack is the party's: a commanded enemy doesn't get into it.
+  if (homeTeam(u) !== 'party') return 'noItems';
   if (item === 'pill') {
     // Soldier pill (bonus action): +2d6 chakra; after the battle it leaves Crash.
     if (!u.turn.bonus) return 'noBonus';

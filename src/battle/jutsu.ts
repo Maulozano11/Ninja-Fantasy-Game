@@ -37,7 +37,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'trap' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap';
+  special?: 'heal' | 'flicker' | 'clone' | 'trap' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -305,6 +305,48 @@ const CLAN_SPECS: JutsuSpec[] = [
     save: 'str',
     saveHalf: false,
     special: 'swap',
+    vfx: 'aura',
+    melee: false,
+    loud: true,
+  },
+  // Northstar. The Aura of Sovereignty is passive (combat.ts, clans.ts); both of these are fought out
+  // with a WIS save and take only some foes (clans.ts).
+  {
+    id: 'northstar_command',
+    name: 'Command',
+    nameEs: 'Command',
+    clan: 'Northstar',
+    ability: true,
+    rank: '',
+    element: 'genjutsu',
+    cost: 4,
+    enhCost: 0,
+    cast: 'action',
+    range: 9,
+    shape: 'single',
+    save: 'wis',
+    saveHalf: false,
+    special: 'command',
+    vfx: 'aura',
+    melee: false,
+    loud: true,
+  },
+  {
+    id: 'northstar_submission',
+    name: 'Natural Submission',
+    nameEs: 'Sumisión Natural',
+    clan: 'Northstar',
+    ability: true,
+    rank: '',
+    element: 'genjutsu',
+    cost: 5,
+    enhCost: 0,
+    cast: 'action',
+    range: 9,
+    shape: 'single',
+    save: 'wis',
+    saveHalf: false,
+    special: 'submission',
     vfx: 'aura',
     melee: false,
     loud: true,

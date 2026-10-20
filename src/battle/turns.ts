@@ -5,7 +5,8 @@ import { abilityMod, cannotBeSurprised } from '../rules/checks';
 import { removeEffect, tickRound } from '../rules/effects';
 import { rollDie } from '../rules/rng';
 import type { BattleEvent, BattleState, Unit } from './types';
-import { check, damage, deathSave, nextRng, rollDiceExpr } from './combat';
+import { homeTeam } from './types';
+import { check, damage, deathSave, nextRng, releaseCommand, rollDiceExpr } from './combat';
 import { waterAtPt } from './map';
 import { planEnemy } from './intent';
 
@@ -132,6 +133,11 @@ export function endTurn(s: BattleState, ev: BattleEvent[]): void {
     if (u.cond.hidden !== undefined && !u.cond.crouched) u.cond.hidden = undefined;
     // A warp edge not struck with is gone.
     if (u.cond.warpEdge) u.cond.warpEdge = false;
+    // Its turns under a Northstar's Command run out: back to its own side, where it plans again.
+    if (u.commanded) {
+      u.commanded.rounds -= 1;
+      if (u.commanded.rounds <= 0) releaseCommand(u, ev);
+    }
     // An enemy commits to its next move now, so a Mirai can read it.
     if (u.team === 'enemy') {
       planEnemy(s, u);
@@ -159,11 +165,15 @@ function advance(s: BattleState, ev: BattleEvent[]): void {
   }
 }
 
-/** The battle ends when one side has nobody left standing (or the party fled). */
+/**
+ * The battle ends when one side has nobody left standing (or the party fled). Sides are the ones
+ * units belong to: an enemy fighting for the party under a Command is still to be beaten, and a
+ * beast that joined the party doesn't keep it in the fight on its own.
+ */
 export function checkEnd(s: BattleState, ev: BattleEvent[]): boolean {
   if (s.phase === 'ended') return true;
-  const enemies = Object.values(s.units).filter((u) => u.team === 'enemy' && u.kind !== 'hydra_head');
-  const party = Object.values(s.units).filter((u) => u.team === 'party');
+  const enemies = Object.values(s.units).filter((u) => homeTeam(u) === 'enemy' && u.kind !== 'hydra_head');
+  const party = Object.values(s.units).filter((u) => homeTeam(u) === 'party' && !u.joined);
   let outcome: BattleState['outcome'];
   if (enemies.every((u) => u.down)) outcome = 'victory';
   else if (party.every((u) => u.down)) outcome = party.some((u) => u.down === 'fled') ? 'fled' : 'defeat';

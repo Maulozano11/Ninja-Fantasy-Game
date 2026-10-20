@@ -37,8 +37,11 @@ import {
   BrickWall,
   Locate,
   ArrowLeftRight,
+  Crown,
+  PawPrint,
 } from 'lucide-react';
 import type { AiOrder, BattleState, Unit } from '../../battle/types';
+import { homeTeam } from '../../battle/types';
 import { clanName } from '../../data/shinobiData';
 import type { Lang } from '../../i18n';
 import { T } from './battleText';
@@ -63,6 +66,8 @@ export const ABILITY_ICON: Record<string, React.FC<{ size?: number; className?: 
   koton_wall: BrickWall,
   ryusei_warp: Locate,
   ryusei_swap: ArrowLeftRight,
+  northstar_command: Crown,
+  northstar_submission: PawPrint,
 };
 
 export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {
@@ -123,6 +128,7 @@ function statusOf(u: Unit, lang: Lang): string | null {
   if (u.down === 'dead') return T('dead', undefined, lang);
   if (u.down === 'ko') return T('ko', undefined, lang);
   if (u.down === 'fled') return T('fled', undefined, lang);
+  if (u.commanded) return T('underCommand', undefined, lang);
   if (u.cond.hidden !== undefined) return T('hidden', undefined, lang);
   if (u.cond.crouched) return T('crouched', undefined, lang);
   if (u.cond.warpEdge) return T('reason_behind', undefined, lang);
@@ -135,7 +141,7 @@ export function UnitCard({ u, hp, chakra, lang }: { u: Unit; hp: number; chakra:
   const status = statusOf(u, lang);
   return (
     <div className={`${panel} p-3 flex gap-3 items-center w-[min(280px,calc(100vw-24px))] xl:w-[340px]`}>
-      <Portrait u={u} size={56} ring={u.team === 'party' ? '#38bdf8' : '#f87171'} />
+      <Portrait u={u} size={56} ring={homeTeam(u) === 'party' ? '#38bdf8' : '#f87171'} />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="font-bold text-white truncate">{u.name}</span>
@@ -195,11 +201,13 @@ export function InitiativeBar({ state, turnUnit, round, lang, onPick }: { state:
       <div className="flex gap-1.5">
         {rotated.map((id, i) => {
           const u = state.units[id];
-          const ring = i === 0 ? '#facc15' : u.team === 'party' ? '#38bdf8' : '#f87171';
+          // By the side it belongs to (an enemy under Command is still red).
+          const side = homeTeam(u) === 'party' ? '#38bdf8' : '#f87171';
+          const ring = i === 0 ? '#facc15' : side;
           return (
             <button key={id} type="button" onClick={() => onPick(id)} className="flex flex-col items-center gap-1" title={u.name}>
               <Portrait u={u} size={i === 0 ? 40 : 32} ring={ring} />
-              <span className="h-0.5 w-6 rounded-full" style={{ background: u.team === 'party' ? '#38bdf8' : '#f87171', opacity: u.down ? 0.3 : 1 }} />
+              <span className="h-0.5 w-6 rounded-full" style={{ background: u.commanded ? '#a78bfa' : side, opacity: u.down ? 0.3 : 1 }} />
             </button>
           );
         })}

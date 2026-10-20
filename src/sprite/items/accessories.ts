@@ -967,6 +967,9 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
     desc: 'A thick scarf bunched in folds around the neck and shoulders.',
     colors: [col('main', 'Scarf', '#2c2b35')],
     draw: (g, [c]) => {
+      // The owner's black cloak brings its own mantle round the neck (it reads as a scarf, but it is
+      // the cape): with it on, this scarf is under it.
+      if (g.look.slots.cape?.id === 'cape_shadow' && g.rig.pose !== 'downed') return;
       // Drawn in front of the torso and any cloak collar (capeFront), tucked under
       // the chin, and on top of a cloak's shoulder drape (see the end).
       const L = g.L('capeFront');

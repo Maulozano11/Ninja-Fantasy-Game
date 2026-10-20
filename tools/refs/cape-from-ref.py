@@ -8,6 +8,8 @@ script lifts it out of his pixels:
   back    the part behind the arm and the body: his pixels (cloth and black line), and where his arm
           and sword cover it, the cloth continued from above and beside (so our arm, a little
           elsewhere, never shows a hole)
+  front   the mantle round the neck and over both shoulders, under the chin, that reads as a scarf
+          but is the cape (the owner), with its gold studs
   shoulder the part over the near shoulder, in front of the arm, with his gold stud
 
 and writes, in <out>:
@@ -34,6 +36,9 @@ PHASE = (0.6, 0.7)
 # His near shoulder joint, in his pixels: where our rig's near shoulder (fine pixel 50, 56 at rest)
 # sits on his figure, the two lined up by his sword (ours = his + (10, 24)).
 ANCHOR = (40, 32)
+# The base of his neck: where our rig's neck (fine pixel 63, 51 at rest) sits; the mantle hangs from
+# it, so it follows the head when the body leans.
+NECK = (53, 27)
 # Where the cape is.
 BACK_BOX = (12, 37, 40, 88)  # x0, y0, x1, y1 (exclusive)
 # Below the arm the cloth ends before the shadow between his sword and his coat.
@@ -42,8 +47,11 @@ LOWER_X1 = 36
 # The rows where his sword's pommel sticks out past the cape's edge.
 POMMEL_ROWS = [50, 51, 52, 53, 54]
 SHOULDER_BOX = (32, 26, 44, 40)
-# The shoulder piece ends where the scarf around his neck begins.
+# The shoulder piece ends where the mantle round his neck begins.
 SCARF_X = 43
+# The mantle: from under his chin, between the shoulders, down to his coat.
+FRONT_BOX = (35, 28, 66, 41)
+FRONT_SEED = (50, 32)
 
 
 def native(a):
@@ -86,16 +94,21 @@ def write_ts(meta, path):
         '',
         'export interface PaintedPart {',
         '  rows: string[];',
-        '  /** The cell on the near shoulder joint. */',
+        '  /** The cell on its joint: the near shoulder, or the base of the neck for the mantle. */',
         '  pivot: [number, number];',
         '  colors: Record<string, string>;',
         '}',
         '',
     ]
-    for part, name, doc in (('back', 'OWNER_CAPE_BACK', 'Behind the near arm and the body, to the calf.'), ('shoulder', 'OWNER_CAPE_SHOULDER', 'Over the near shoulder, with his gold stud.')):
+    for part, name, doc in (
+        ('back', 'OWNER_CAPE_BACK', 'Behind the near arm and the body, to the calf.'),
+        ('front', 'OWNER_CAPE_FRONT', 'The mantle round the neck and over both shoulders, under the chin, with its gold studs; it hangs from the base of the neck.'),
+        ('shoulder', 'OWNER_CAPE_SHOULDER', 'Over the near shoulder, with his gold stud.'),
+    ):
         p = meta[part]
         ox, oy = p['origin']
-        out += [f'/** {doc} */', f'export const {name}: PaintedPart = {{', f'  pivot: [{ax - ox}, {ay - oy}],', '  rows: [']
+        jx, jy = meta['neck'] if part == 'front' else (ax, ay)
+        out += [f'/** {doc} */', f'export const {name}: PaintedPart = {{', f'  pivot: [{jx - ox}, {jy - oy}],', '  rows: [']
         out += [f"    '{r}'," for r in p['rows']]
         out += ['  ],', '  colors: {']
         out += [f"    {key(k)}: '{v}'," for k, v in p['palette'].items()]
@@ -122,7 +135,8 @@ def main():
     # His cloth: black to dark grey, neither blue (the coat) nor warm (skin, gold).
     neutral = (np.abs(b - r) < 22) & (np.abs(g - r) < 22) & (L < 110)
     skin = (r > g + 25) & (r > b + 35)
-    gold = skin & (L > 120) & (g > b + 20)
+    # His gold: yellower than skin (more green over blue, less red over green).
+    gold = skin & (L > 120) & (g > b + 45) & (r - g < 50)
     # His coat: deep saturated blue (his sword's dark relief is greyer: more green for its blue).
     navy = (b > r + 25) & (L < 100) & (g < 0.62 * b)
     # The background: the white reached from the picture's edge (his sword's white glints are not).
@@ -174,6 +188,19 @@ def main():
     sbox = inbox(SHOULDER_BOX) & (xs < SCARF_X)
     shoulder = sbox & (neutral | gold) & ~bg
 
+    # The front: the mantle round the neck and over both shoulders, under his chin, that reads as a
+    # scarf but is the cape (the owner, 2026-10-20), with its gold studs: his cloth and line reached
+    # from under the chin without leaving its box (the coat below is blue, the face above warm).
+    front = np.zeros((H, W), bool)
+    fbox = inbox(FRONT_BOX)
+    stack = [(FRONT_SEED[1], FRONT_SEED[0])]
+    while stack:
+        y, x = stack.pop()
+        if not (0 <= y < H and 0 <= x < W) or front[y, x] or not (fbox[y, x] and (neutral[y, x] or gold[y, x]) and not bg[y, x]):
+            continue
+        front[y, x] = True
+        stack += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
+
     def pack(mask, keep_line=True):
         CHARS = 'abcdefhijklmnpqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789'
         grid = np.full((H, W), '.', dtype='<U1')
@@ -201,8 +228,10 @@ def main():
     meta = {
         'source': 'docs/reference/crystal-sword-owner-reference.jpg',
         'anchor': list(ANCHOR),
+        'neck': list(NECK),
         'back': pack(back),
         'shoulder': pack(shoulder),
+        'front': pack(front),
     }
     tmp = os.path.join(out, 'cape.json.tmp')
     with open(tmp, 'w') as f:
@@ -214,7 +243,7 @@ def main():
         write_ts(meta, sys.argv[3])
 
     rgba = np.zeros((H, W, 4), np.uint8)
-    for part in ('back', 'shoulder'):
+    for part in ('back', 'front', 'shoulder'):
         p = meta[part]
         ox, oy = p['origin']
         for j, row in enumerate(p['rows']):

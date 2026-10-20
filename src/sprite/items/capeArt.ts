@@ -3,7 +3,7 @@
 
 export interface PaintedPart {
   rows: string[];
-  /** The cell on the near shoulder joint. */
+  /** The cell on its joint: the near shoulder, or the base of the neck for the mantle. */
   pivot: [number, number];
   colors: Record<string, string>;
 }
@@ -77,6 +77,48 @@ export const OWNER_CAPE_BACK: PaintedPart = {
     k: '#2f3137',
     l: '#323842',
     m: '#3d424b',
+  },
+};
+
+/** The mantle round the neck and over both shoulders, under the chin, with its gold studs; it hangs from the base of the neck. */
+export const OWNER_CAPE_FRONT: PaintedPart = {
+  pivot: [18, -1],
+  rows: [
+    '...aaaaabbcdaaa......abbdaa....',
+    '.aaeeffaabfbchaa.aaaaabadafaa..',
+    '.aeibdbbbaabbbddaaaaaaadbadbaa.',
+    'abjbfaabaklabfbfdmmddddfanlafa.',
+    'afbmmdfaal..aafbbbdmmpffa.kabba',
+    'abdqaaaaabraafabbbfbbbbaabacaaa',
+    'bbaadmmpbaabafbaafbddbaapbaa..a',
+    'bmmmddbbaaastabbfaaaaaammaa...a',
+    'dhbfaaaa..aafdaaaaaaaaddbud....',
+    'faaa.......aabssmmdmmdbfaaa....',
+    'aa..........aabbbfbbbbbaa.av...',
+    'aa...........aaaabbbbaaa..aad..',
+    '................aaaaafba..a.ad.',
+  ],
+  colors: {
+    a: '#030302',
+    b: '#27262b',
+    c: '#34383f',
+    d: '#3c444c',
+    e: '#ad8548',
+    f: '#222126',
+    h: '#454a50',
+    i: '#a78249',
+    j: '#b2884a',
+    k: '#c09a57',
+    l: '#fddb89',
+    m: '#404851',
+    n: '#c49c58',
+    p: '#34353a',
+    q: '#40444e',
+    r: '#9e7b44',
+    s: '#2b2d32',
+    t: '#393d43',
+    u: '#040306',
+    v: '#353d48',
   },
 };
 

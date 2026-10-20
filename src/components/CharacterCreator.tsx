@@ -10,7 +10,9 @@ import {
   clanName,
 } from '../data/shinobiData';
 import { ShinobiSpriteCanvas } from './ShinobiSpriteCanvas';
-import { AppearanceEditor } from './creator/AppearanceEditor';
+import { AppearanceEditor, type AppearanceGroup } from './creator/AppearanceEditor';
+import { renderSpriteCached } from '../sprite/compose';
+import { RES } from '../sprite/raster';
 import { getItem } from '../sprite/catalog';
 import { chakraHex } from '../sprite/chakraInfo';
 import { defaultAppearance, dojutsuToEye, getAppearance } from '../sprite/legacy';
@@ -308,6 +310,8 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const [hover, setHover] = useState<Hover | null>(null);
   const [openSlot, setOpenSlot] = useState<SlotKey | null>(null);
   const [focusStat, setFocusStat] = useState<keyof AbilityScores>('dex');
+  /** The appearance section open: the head brings the camera to the face, as in Baldur's Gate 3. */
+  const [lookGroup, setLookGroup] = useState<AppearanceGroup>('body');
 
   const look = useMemo(() => getAppearance(character), [character]);
   const eye = dojutsuToEye(character.dojutsu);
@@ -528,6 +532,11 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
 
   // --- the stage: the forest, the ninja standing in it, the panels at its sides ---------------
   const wide = view.w >= 1100;
+  /** Where the ninja's head is on its sprite (fine pixels), for the close-up on the face. */
+  const headAt = useMemo(() => {
+    const r = renderSpriteCached(look, 'idle', 0, eye).rig.head;
+    return { x: r.x * RES, y: r.y * RES };
+  }, [look, eye]);
   const ground = forestGround(view.w, view.h);
   /** The ninja's scale: whole steps, as big as fits between the step tabs and the ground. */
   const k = wide ? Math.max(2, Math.min(5, Math.floor((ground - 170) / 110))) : 3;
@@ -745,7 +754,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
         })}
       {step === 'appearance' && (
         <div className="p-1">
-          <AppearanceEditor look={look} eye={eye} character={character} onChange={updateLook} onPreviewStance={setPreviewStance} />
+          <AppearanceEditor look={look} eye={eye} character={character} onChange={updateLook} onPreviewStance={setPreviewStance} onGroup={setLookGroup} />
         </div>
       )}
     </div>
@@ -945,6 +954,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
     };
   })();
 
+  const faceCam = wide && step === 'appearance' && lookGroup === 'head';
   const figure = (
     <ShinobiSpriteCanvas
       character={character}
@@ -1032,6 +1042,20 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
           <div className="absolute left-1/2 top-4 -translate-x-1/2">{tabs}</div>
           <div className="absolute right-6 top-6">{tools}</div>
 
+          {/* The ninja, under the panels (the close-up on the face grows past them). The camera comes in on
+              the face while the head is being edited: the sprite doubles around its head. */}
+          <div
+            className="absolute"
+            style={{
+              left: view.w / 2 - 64 * k,
+              top: ground - 120 * k,
+              transform: faceCam ? 'scale(2)' : 'none',
+              transformOrigin: `${headAt.x * k}px ${headAt.y * k}px`,
+              transition: 'transform 380ms ease-out',
+            }}
+          >
+            {figure}
+          </div>
           <Frame className={`absolute left-6 top-[112px] bottom-[96px] ${step === 'appearance' ? 'w-[min(34vw,560px)]' : 'w-[min(26vw,400px)]'}`} title={leftTitle} sub={T(`stepHint_${step}` as TK)}>
             {list}
           </Frame>
@@ -1041,9 +1065,6 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
 
           <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 132 }}>
             {nameplate}
-          </div>
-          <div className="absolute" style={{ left: view.w / 2 - 64 * k, top: ground - 120 * k }}>
-            {figure}
           </div>
           <div className="absolute left-1/2 -translate-x-1/2" style={{ top: Math.min(ground + 18, view.h - 140) }}>
             {stances}

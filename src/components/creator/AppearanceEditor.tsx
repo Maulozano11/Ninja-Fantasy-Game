@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
 import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
 import type { ItemDef } from '../../sprite/ctx';
 import { EMBLEMS } from '../../sprite/items/headband';
@@ -25,64 +25,91 @@ import { PixelEditor } from './PixelEditor';
 import { L } from './words';
 import { useLang } from '../../i18n';
 import { SpriteThumb } from './SpriteThumb';
+import { serif } from './stage';
 
-type Category =
-  | 'body'
-  | 'face'
+/**
+ * The editor's sections, grouped as Baldur's Gate 3 groups its appearance: everything of the head in
+ * one place (face shape, eyes, hair, marks and masks, headband), the body apart, then clothes, gear,
+ * weapon, chakra and pixel paint. A section with several parts shows them as tabs.
+ */
+export type AppearanceGroup = 'body' | 'head' | 'clothes' | 'gear' | 'weapon' | 'chakra' | 'paint';
+
+type Part =
+  | 'build'
+  | 'shape'
+  | 'eyes'
+  | 'hair'
+  | 'marks'
+  | 'headband'
   | 'top'
   | 'bottom'
-  | 'armor'
   | 'skirt'
   | 'waist'
+  | 'cape'
+  | 'armor'
   | 'hands'
   | 'feet'
-  | 'cape'
-  | 'held'
   | 'gear'
-  | 'headband'
+  | 'held'
   | 'chakra'
   | 'paint';
 
-const CATEGORIES: { id: Category; label: string }[] = [
-  { id: 'body', label: 'Body' },
-  { id: 'face', label: 'Face' },
-  { id: 'top', label: 'Tops' },
-  { id: 'bottom', label: 'Pants' },
-  { id: 'armor', label: 'Armor' },
-  { id: 'skirt', label: 'Skirts' },
-  { id: 'waist', label: 'Belts & Sashes' },
-  { id: 'hands', label: 'Gloves' },
-  { id: 'feet', label: 'Boots' },
-  { id: 'cape', label: 'Capes' },
-  { id: 'held', label: 'Weapon' },
-  { id: 'gear', label: 'Accessories' },
-  { id: 'headband', label: 'Headband' },
-  { id: 'chakra', label: 'Chakra' },
-  { id: 'paint', label: 'Pixel Paint' },
+const GROUPS: { id: AppearanceGroup; label: string; icon: React.ReactNode; parts: { id: Part; label: string }[] }[] = [
+  { id: 'body', label: 'Body', icon: <PersonStanding className="w-5 h-5" />, parts: [{ id: 'build', label: 'Build' }] },
+  {
+    id: 'head',
+    label: 'Head',
+    icon: <ScanFace className="w-5 h-5" />,
+    parts: [
+      { id: 'shape', label: 'Face Shape' },
+      { id: 'eyes', label: 'Eyes' },
+      { id: 'hair', label: 'Hair' },
+      { id: 'marks', label: 'Marks & Masks' },
+      { id: 'headband', label: 'Headband' },
+    ],
+  },
+  {
+    id: 'clothes',
+    label: 'Clothes',
+    icon: <Shirt className="w-5 h-5" />,
+    parts: [
+      { id: 'top', label: 'Tops' },
+      { id: 'bottom', label: 'Pants' },
+      { id: 'skirt', label: 'Skirts' },
+      { id: 'waist', label: 'Belts & Sashes' },
+      { id: 'cape', label: 'Capes' },
+    ],
+  },
+  {
+    id: 'gear',
+    label: 'Gear',
+    icon: <Shield className="w-5 h-5" />,
+    parts: [
+      { id: 'armor', label: 'Armor' },
+      { id: 'hands', label: 'Gloves' },
+      { id: 'feet', label: 'Boots' },
+      { id: 'gear', label: 'Accessories' },
+    ],
+  },
+  { id: 'weapon', label: 'Weapon', icon: <Sword className="w-5 h-5" />, parts: [{ id: 'held', label: 'Weapon' }] },
+  { id: 'chakra', label: 'Chakra', icon: <Flame className="w-5 h-5" />, parts: [{ id: 'chakra', label: 'Chakra' }] },
+  { id: 'paint', label: 'Pixel Paint', icon: <Paintbrush className="w-5 h-5" />, parts: [{ id: 'paint', label: 'Pixel Paint' }] },
 ];
 
-const SLOT_CATEGORIES: Partial<Record<Category, SlotId>> = {
-  top: 'top',
-  bottom: 'bottom',
-  armor: 'armor',
-  skirt: 'skirt',
-  waist: 'waist',
-  hands: 'hands',
-  feet: 'feet',
-  cape: 'cape',
-  held: 'held',
+/** Parts that are one equipment slot, and how their thumbnails are cropped. */
+const SLOT_PARTS: Partial<Record<Part, { slot: SlotId; crop: 'full' | 'head' }>> = {
+  hair: { slot: 'hair', crop: 'head' },
+  marks: { slot: 'face', crop: 'head' },
+  top: { slot: 'top', crop: 'full' },
+  bottom: { slot: 'bottom', crop: 'full' },
+  skirt: { slot: 'skirt', crop: 'full' },
+  waist: { slot: 'waist', crop: 'full' },
+  cape: { slot: 'cape', crop: 'full' },
+  armor: { slot: 'armor', crop: 'full' },
+  hands: { slot: 'hands', crop: 'full' },
+  feet: { slot: 'feet', crop: 'full' },
+  held: { slot: 'held', crop: 'full' },
 };
-
-/** Sub-sections of the Face category. */
-type FaceTab = 'shape' | 'eyes' | 'hair' | 'neck' | 'marks';
-
-const FACE_TABS: { id: FaceTab; label: string }[] = [
-  { id: 'shape', label: 'Shape' },
-  { id: 'eyes', label: 'Eyes' },
-  { id: 'hair', label: 'Hair' },
-  { id: 'neck', label: 'Neck' },
-  { id: 'marks', label: 'Face Marks' },
-];
 
 const BODIES: { id: BodyType; label: string }[] = [
   { id: 'male', label: 'Male' },
@@ -204,11 +231,14 @@ export const AppearanceEditor: React.FC<{
   character: ShinobiCharacter;
   onChange: (look: SpriteAppearance) => void;
   onPreviewStance: (stance: SpritePose) => void;
-}> = ({ look, eye, character, onChange, onPreviewStance }) => {
+  /** Tells the creator which section is open (it brings the camera to the face for the head). */
+  onGroup?: (g: AppearanceGroup) => void;
+}> = ({ look, eye, character, onChange, onPreviewStance, onGroup }) => {
   useLang();
-  const [cat, setCat] = useState<Category>('body');
-  const [faceTab, setFaceTab] = useState<FaceTab>('shape');
-  const slot = SLOT_CATEGORIES[cat];
+  const [group, setGroup] = useState<AppearanceGroup>('body');
+  const [parts, setParts] = useState<Partial<Record<AppearanceGroup, Part>>>({});
+  const g = GROUPS.find((x) => x.id === group)!;
+  const part = parts[group] ?? g.parts[0].id;
 
   const setSlot = (s: SlotId, choice: ItemChoice | null) => {
     soundManager.playSelect();
@@ -217,359 +247,365 @@ export const AppearanceEditor: React.FC<{
     else delete slots[s];
     onChange({ ...look, slots });
   };
+  const openGroup = (id: AppearanceGroup) => {
+    soundManager.playSelect();
+    setGroup(id);
+    onGroup?.(id);
+    if (id === 'chakra') onPreviewStance('charge');
+  };
+  const slotPart = SLOT_PARTS[part];
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap gap-1.5">
-        {CATEGORIES.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => {
-              soundManager.playSelect();
-              setCat(c.id);
-              if (c.id === 'chakra') onPreviewStance('charge');
-            }}
-            className={`px-2.5 py-1 text-xs rounded-full border transition ${
-              cat === c.id
-                ? 'bg-cyan-600 border-cyan-500 text-white font-semibold'
-                : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            {L(c.label)}
-          </button>
-        ))}
-      </div>
-
-      {cat === 'body' && (
-        <div className="space-y-5">
-          <div>
-            <SectionLabel>Body Type</SectionLabel>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {BODIES.map((b) => (
-                <OptionCard
-                  key={b.id}
-                  selected={look.body === b.id}
-                  label={b.label}
-                  onClick={() => {
-                    soundManager.playSelect();
-                    onChange({ ...look, body: b.id });
-                  }}
-                >
-                  <SpriteThumb look={{ ...look, body: b.id }} eye={eye} />
-                </OptionCard>
-              ))}
-            </div>
-          </div>
-          <ColorRow label="Skin Tone" value={look.skin} swatches={SKIN_TONES} onChange={(skin) => onChange({ ...look, skin })} />
-        </div>
-      )}
-
-      {cat === 'face' && (
-        <div className="flex flex-wrap gap-1.5">
-          {FACE_TABS.map((t) => (
+    <div className="flex gap-3 min-h-full">
+      {/* The sections, down the side as in Baldur's Gate 3. */}
+      <nav className="sticky top-0 self-start flex flex-col gap-1 w-[68px] shrink-0" aria-label="Sections">
+        {GROUPS.map((x) => {
+          const on = x.id === group;
+          return (
             <button
-              key={t.id}
+              key={x.id}
               type="button"
-              onClick={() => {
-                soundManager.playSelect();
-                setFaceTab(t.id);
-              }}
-              className={`px-2.5 py-1 text-xs rounded-lg border transition ${
-                faceTab === t.id
-                  ? 'bg-slate-700 border-slate-500 text-white font-semibold'
-                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
+              onClick={() => openGroup(x.id)}
+              className={`group flex flex-col items-center gap-1 py-2 border transition ${
+                on ? 'border-[#c99a4b] bg-[linear-gradient(180deg,rgba(242,196,109,0.16),rgba(242,196,109,0.03))]' : 'border-transparent hover:border-[#5b4426]'
               }`}
             >
-              {L(t.label)}
+              <span className={on ? 'text-[#f2c46d]' : 'text-[#b9a98a] group-hover:text-[#efe3c4]'}>{x.icon}</span>
+              <span style={serif} className={`text-[9px] font-bold uppercase tracking-wider leading-tight text-center ${on ? 'text-[#f2c46d]' : 'text-[#b9a98a]'}`}>
+                {L(x.label)}
+              </span>
             </button>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </nav>
 
-      {cat === 'face' && faceTab === 'shape' && (
-        <div>
-          <SectionLabel>Face Shape</SectionLabel>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {FACE_SHAPES.map((f) => (
-              <OptionCard
-                key={f.id}
-                selected={(look.faceShape || 'tapered') === f.id}
-                label={f.label}
-                sub={f.sub}
-                onClick={() => {
-                  soundManager.playSelect();
-                  onChange({ ...look, faceShape: f.id });
-                }}
-              >
-                <SpriteThumb look={{ ...look, faceShape: f.id }} eye={eye} crop="head" />
-              </OptionCard>
-            ))}
+      <div className="flex-1 min-w-0 space-y-4 pb-2">
+        <div className="border-b border-[#3d3122] pb-2">
+          <div style={serif} className="text-sm font-bold uppercase tracking-[0.18em] text-[#f2c46d]">
+            {L(g.label)}
           </div>
-        </div>
-      )}
-
-      {cat === 'face' && faceTab === 'eyes' && (
-        <div className="space-y-5">
-          <div>
-            <SectionLabel>Eye Shape</SectionLabel>
-            <div className="grid grid-cols-4 gap-2">
-              {EYE_SHAPES.map((e) => (
-                <OptionCard
-                  key={e.id}
-                  selected={look.eyeShape === e.id}
-                  label={e.label}
+          {g.parts.length > 1 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {g.parts.map((pt) => (
+                <button
+                  key={pt.id}
+                  type="button"
                   onClick={() => {
                     soundManager.playSelect();
-                    onChange({ ...look, eyeShape: e.id });
+                    setParts({ ...parts, [group]: pt.id });
                   }}
+                  className={`px-2.5 py-1 text-xs border transition ${
+                    part === pt.id ? 'border-[#c99a4b] text-[#f2c46d] bg-[#3a2a12]' : 'border-[#3d3122] text-[#d9caa6] hover:border-[#8a6a3a]'
+                  }`}
                 >
-                  <SpriteThumb look={{ ...look, eyeShape: e.id }} eye={eye} crop="head" />
-                </OptionCard>
+                  {L(pt.label)}
+                </button>
               ))}
             </div>
-          </div>
-          <ColorRow label="Eye Color" value={look.eyeColor} swatches={EYE_COLORS} onChange={(eyeColor) => onChange({ ...look, eyeColor })} />
-          {eye !== 'none' && (
-            <p className="text-[11px] text-amber-300/90">
-              Your clan's special eyes (chosen in Clan & Identity) override the eye color while active.
-            </p>
           )}
         </div>
-      )}
 
-      {cat === 'face' && faceTab === 'hair' && <SlotPicker slot="hair" look={look} eye={eye} crop="head" setSlot={setSlot} />}
-
-      {cat === 'face' && faceTab === 'neck' && (
-        <div>
-          <SectionLabel>Neck</SectionLabel>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {NECKS.map((n) => (
-              <OptionCard
-                key={n.id}
-                selected={(look.neck || 'slim') === n.id}
-                label={n.label}
-                sub={n.sub}
-                onClick={() => {
-                  soundManager.playSelect();
-                  onChange({ ...look, neck: n.id });
-                }}
-              >
-                <SpriteThumb look={{ ...look, neck: n.id }} eye={eye} crop="head" />
-              </OptionCard>
-            ))}
+        {part === 'build' && (
+          <div className="space-y-5">
+            <div>
+              <SectionLabel>Body Type</SectionLabel>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {BODIES.map((b) => (
+                  <OptionCard
+                    key={b.id}
+                    selected={look.body === b.id}
+                    label={b.label}
+                    onClick={() => {
+                      soundManager.playSelect();
+                      onChange({ ...look, body: b.id });
+                    }}
+                  >
+                    <SpriteThumb look={{ ...look, body: b.id }} eye={eye} />
+                  </OptionCard>
+                ))}
+              </div>
+            </div>
+            <ColorRow label="Skin Tone" value={look.skin} swatches={SKIN_TONES} onChange={(skin) => onChange({ ...look, skin })} />
+            <div>
+              <SectionLabel>Neck</SectionLabel>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {NECKS.map((n) => (
+                  <OptionCard
+                    key={n.id}
+                    selected={(look.neck || 'slim') === n.id}
+                    label={n.label}
+                    sub={n.sub}
+                    onClick={() => {
+                      soundManager.playSelect();
+                      onChange({ ...look, neck: n.id });
+                    }}
+                  >
+                    <SpriteThumb look={{ ...look, neck: n.id }} eye={eye} crop="head" />
+                  </OptionCard>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {cat === 'face' && faceTab === 'marks' && <SlotPicker slot="face" look={look} eye={eye} crop="head" setSlot={setSlot} />}
-
-      {slot && <SlotPicker slot={slot} look={look} eye={eye} crop="full" setSlot={setSlot} />}
-
-      {cat === 'gear' && <AccessoryPicker look={look} eye={eye} onChange={onChange} />}
-
-      {cat === 'headband' && (
-        <div className="space-y-5">
+        {part === 'shape' && (
           <div>
-            <SectionLabel>Placement</SectionLabel>
-            <div className="grid grid-cols-5 gap-2">
-              {HEADBAND_POSITIONS.map((p) => (
+            <SectionLabel>Face Shape</SectionLabel>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {FACE_SHAPES.map((f) => (
                 <OptionCard
-                  key={p.id}
-                  selected={look.headband.position === p.id}
-                  label={p.label}
+                  key={f.id}
+                  selected={(look.faceShape || 'tapered') === f.id}
+                  label={f.label}
+                  sub={f.sub}
                   onClick={() => {
                     soundManager.playSelect();
-                    onChange({ ...look, headband: { ...look.headband, position: p.id } });
+                    onChange({ ...look, faceShape: f.id });
                   }}
                 >
-                  <SpriteThumb look={{ ...look, headband: { ...look.headband, position: p.id } }} eye={eye} />
+                  <SpriteThumb look={{ ...look, faceShape: f.id }} eye={eye} crop="head" />
                 </OptionCard>
               ))}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Toggle
-              label="Slashed (rogue)"
-              value={look.headband.slashed}
-              onChange={(slashed) => onChange({ ...look, headband: { ...look.headband, slashed } })}
-            />
-            <Toggle
-              label="Long cloth tails"
-              value={look.headband.tails}
-              onChange={(tails) => onChange({ ...look, headband: { ...look.headband, tails } })}
-            />
-          </div>
-          <div>
-            <SectionLabel>Emblem</SectionLabel>
-            <div className="flex flex-wrap gap-2">
-              {EMBLEMS.map((e) => (
-                <button
-                  key={e.id}
-                  type="button"
-                  onClick={() => onChange({ ...look, headband: { ...look.headband, emblem: e.id } })}
-                  className={`px-2.5 py-1.5 text-xs rounded-lg border transition ${
-                    look.headband.emblem === e.id
-                      ? 'bg-cyan-600 border-cyan-500 text-white'
-                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {e.name}
-                </button>
-              ))}
-            </div>
-          </div>
-          <ColorRow
-            label="Cloth"
-            value={look.headband.cloth}
-            swatches={CLOTH_COLORS}
-            families={CLOTH_FAMILIES}
-            onChange={(cloth) => onChange({ ...look, headband: { ...look.headband, cloth } })}
-          />
-          <ColorRow
-            label="Plate"
-            value={look.headband.plate}
-            swatches={['#cbd5e1', '#9ca3af', '#d4af37', '#b87333', '#4b5563', '#f8fafc']}
-            onChange={(plate) => onChange({ ...look, headband: { ...look.headband, plate } })}
-          />
-        </div>
-      )}
+        )}
 
-      {cat === 'chakra' && (
-        <div className="space-y-5">
-          <div>
-            <SectionLabel>Chakra Nature & Burst</SectionLabel>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {CHAKRA_CHOICES.map((c) => (
+        {part === 'eyes' && (
+          <div className="space-y-5">
+            <div>
+              <SectionLabel>Eye Shape</SectionLabel>
+              <div className="grid grid-cols-4 gap-2">
+                {EYE_SHAPES.map((e) => (
+                  <OptionCard
+                    key={e.id}
+                    selected={look.eyeShape === e.id}
+                    label={e.label}
+                    onClick={() => {
+                      soundManager.playSelect();
+                      onChange({ ...look, eyeShape: e.id });
+                    }}
+                  >
+                    <SpriteThumb look={{ ...look, eyeShape: e.id }} eye={eye} crop="head" />
+                  </OptionCard>
+                ))}
+              </div>
+            </div>
+            <ColorRow label="Eye Color" value={look.eyeColor} swatches={EYE_COLORS} onChange={(eyeColor) => onChange({ ...look, eyeColor })} />
+            {eye !== 'none' && (
+              <p className="text-[11px] text-amber-300/90">
+                {L("Your clan's special eyes (chosen in the Clan step) override the eye color while active.")}
+              </p>
+            )}
+          </div>
+        )}
+
+        {slotPart && <SlotPicker key={part} slot={slotPart.slot} look={look} eye={eye} crop={slotPart.crop} setSlot={setSlot} />}
+
+        {part === 'gear' && <AccessoryPicker look={look} eye={eye} onChange={onChange} />}
+
+        {part === 'headband' && (
+          <div className="space-y-5">
+            <div>
+              <SectionLabel>Placement</SectionLabel>
+              <div className="grid grid-cols-5 gap-2">
+                {HEADBAND_POSITIONS.map((p) => (
+                  <OptionCard
+                    key={p.id}
+                    selected={look.headband.position === p.id}
+                    label={p.label}
+                    onClick={() => {
+                      soundManager.playSelect();
+                      onChange({ ...look, headband: { ...look.headband, position: p.id } });
+                    }}
+                  >
+                    <SpriteThumb look={{ ...look, headband: { ...look.headband, position: p.id } }} eye={eye} />
+                  </OptionCard>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Toggle
+                label="Slashed (rogue)"
+                value={look.headband.slashed}
+                onChange={(slashed) => onChange({ ...look, headband: { ...look.headband, slashed } })}
+              />
+              <Toggle
+                label="Long cloth tails"
+                value={look.headband.tails}
+                onChange={(tails) => onChange({ ...look, headband: { ...look.headband, tails } })}
+              />
+            </div>
+            <div>
+              <SectionLabel>Emblem</SectionLabel>
+              <div className="flex flex-wrap gap-2">
+                {EMBLEMS.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => onChange({ ...look, headband: { ...look.headband, emblem: e.id } })}
+                    className={`px-2.5 py-1.5 text-xs rounded-lg border transition ${
+                      look.headband.emblem === e.id
+                        ? 'bg-cyan-600 border-cyan-500 text-white'
+                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {e.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <ColorRow
+              label="Cloth"
+              value={look.headband.cloth}
+              swatches={CLOTH_COLORS}
+              families={CLOTH_FAMILIES}
+              onChange={(cloth) => onChange({ ...look, headband: { ...look.headband, cloth } })}
+            />
+            <ColorRow
+              label="Plate"
+              value={look.headband.plate}
+              swatches={['#cbd5e1', '#9ca3af', '#d4af37', '#b87333', '#4b5563', '#f8fafc']}
+              onChange={(plate) => onChange({ ...look, headband: { ...look.headband, plate } })}
+            />
+          </div>
+        )}
+
+        {part === 'chakra' && (
+          <div className="space-y-5">
+            <div>
+              <SectionLabel>Chakra Nature & Burst</SectionLabel>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {CHAKRA_CHOICES.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      soundManager.playChakraSurge();
+                      onChange({ ...look, chakra: { ...look.chakra, color: c.id } });
+                      onPreviewStance('charge');
+                    }}
+                    className={`p-2.5 text-left rounded-xl border transition ${
+                      look.chakra.color === c.id
+                        ? 'bg-slate-800 border-white/70 ring-1 ring-white/40'
+                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-4 h-4 rounded-full border border-white/30"
+                        style={{ backgroundColor: look.chakra.tint ? chakraHex({ color: c.id, tint: look.chakra.tint }) : c.hex }}
+                      />
+                      <span className="text-xs font-semibold text-white">{c.nature}</span>
+                    </div>
+                    <div className="text-[11px] text-cyan-300 mt-1">{c.burst}</div>
+                    <div className="text-[10px] text-slate-500">{c.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <SectionLabel>Chakra Color</SectionLabel>
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
-                  key={c.id}
                   type="button"
                   onClick={() => {
                     soundManager.playChakraSurge();
-                    onChange({ ...look, chakra: { ...look.chakra, color: c.id } });
+                    onChange({ ...look, chakra: { ...look.chakra, tint: undefined } });
                     onPreviewStance('charge');
                   }}
-                  className={`p-2.5 text-left rounded-xl border transition ${
-                    look.chakra.color === c.id
-                      ? 'bg-slate-800 border-white/70 ring-1 ring-white/40'
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-600'
+                  className={`px-2.5 h-7 text-xs rounded-full border transition ${
+                    !look.chakra.tint ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-slate-950/60 border-slate-700 text-slate-300 hover:text-white'
                   }`}
+                  title={L("The burst's own color")}
                 >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="w-4 h-4 rounded-full border border-white/30"
-                      style={{ backgroundColor: look.chakra.tint ? chakraHex({ color: c.id, tint: look.chakra.tint }) : c.hex }}
-                    />
-                    <span className="text-xs font-semibold text-white">{c.nature}</span>
-                  </div>
-                  <div className="text-[11px] text-cyan-300 mt-1">{c.burst}</div>
-                  <div className="text-[10px] text-slate-500">{c.desc}</div>
+                  {L('Natural')}
                 </button>
-              ))}
+                {CHAKRA_CHOICES.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => {
+                      soundManager.playChakraSurge();
+                      onChange({ ...look, chakra: { ...look.chakra, tint: c.id } });
+                      onPreviewStance('charge');
+                    }}
+                    className={`w-7 h-7 rounded-full border-2 transition ${
+                      look.chakra.tint === c.id ? 'border-white scale-110' : 'border-slate-800'
+                    }`}
+                    style={{ backgroundColor: c.hex }}
+                    title={c.name}
+                  />
+                ))}
+                <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title={L('Custom color')}>
+                  <input
+                    type="color"
+                    value={/^#[0-9a-f]{6}$/i.test(look.chakra.tint ?? '') ? look.chakra.tint : chakraHex(look.chakra)}
+                    onChange={(e) => {
+                      onChange({ ...look, chakra: { ...look.chakra, tint: e.target.value } });
+                      onPreviewStance('charge');
+                    }}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                  <span className="absolute inset-1 rounded-full" style={{ backgroundColor: chakraHex(look.chakra) }} />
+                </label>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5">{L('Any nature takes any color: red water, black or blue lightning, green fire…')}</p>
             </div>
-          </div>
-          <div>
-            <SectionLabel>Chakra Color</SectionLabel>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  soundManager.playChakraSurge();
-                  onChange({ ...look, chakra: { ...look.chakra, tint: undefined } });
-                  onPreviewStance('charge');
-                }}
-                className={`px-2.5 h-7 text-xs rounded-full border transition ${
-                  !look.chakra.tint ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-slate-950/60 border-slate-700 text-slate-300 hover:text-white'
-                }`}
-                title={L("The burst's own color")}
-              >
-                Natural
-              </button>
-              {CHAKRA_CHOICES.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => {
-                    soundManager.playChakraSurge();
-                    onChange({ ...look, chakra: { ...look.chakra, tint: c.id } });
+            <div>
+              <SectionLabel>Casting Style</SectionLabel>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {CAST_STYLES.map((s) => (
+                  <OptionCard
+                    key={s}
+                    selected={defaultCastStyle(look) === s}
+                    label={L(CAST_STYLE_INFO[s].label)}
+                    sub={CAST_STYLE_INFO[s].desc}
+                    onClick={() => {
+                      soundManager.playChakraSurge();
+                      onChange({ ...look, cast: { ...(look.cast ?? { style: s }), style: s } });
+                      onPreviewStance('cast');
+                    }}
+                  >
+                    <SpriteThumb look={{ ...look, cast: { ...(look.cast ?? { style: s }), style: s } }} eye={eye} pose="cast" />
+                  </OptionCard>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5">{L('The default for every jutsu. Each jutsu can use its own style in Jutsu Loadout.')}</p>
+            </div>
+            <div>
+              <SectionLabel>Show the burst when…</SectionLabel>
+              <div className="flex flex-wrap gap-2">
+                <Toggle
+                  label="Charging chakra"
+                  value={look.chakra.onCharge}
+                  onChange={(onCharge) => {
+                    onChange({ ...look, chakra: { ...look.chakra, onCharge } });
                     onPreviewStance('charge');
                   }}
-                  className={`w-7 h-7 rounded-full border-2 transition ${
-                    look.chakra.tint === c.id ? 'border-white scale-110' : 'border-slate-800'
-                  }`}
-                  style={{ backgroundColor: c.hex }}
-                  title={c.name}
                 />
-              ))}
-              <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title={L('Custom color')}>
-                <input
-                  type="color"
-                  value={/^#[0-9a-f]{6}$/i.test(look.chakra.tint ?? '') ? look.chakra.tint : chakraHex(look.chakra)}
-                  onChange={(e) => {
-                    onChange({ ...look, chakra: { ...look.chakra, tint: e.target.value } });
-                    onPreviewStance('charge');
-                  }}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
-                <span className="absolute inset-1 rounded-full" style={{ backgroundColor: chakraHex(look.chakra) }} />
-              </label>
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1.5">{L('Any nature takes any color: red water, black or blue lightning, green fire…')}</p>
-          </div>
-          <div>
-            <SectionLabel>Casting Style</SectionLabel>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {CAST_STYLES.map((s) => (
-                <OptionCard
-                  key={s}
-                  selected={defaultCastStyle(look) === s}
-                  label={L(CAST_STYLE_INFO[s].label)}
-                  sub={CAST_STYLE_INFO[s].desc}
-                  onClick={() => {
-                    soundManager.playChakraSurge();
-                    onChange({ ...look, cast: { ...(look.cast ?? { style: s }), style: s } });
+                <Toggle
+                  label="Casting"
+                  value={look.chakra.onCast}
+                  onChange={(onCast) => {
+                    onChange({ ...look, chakra: { ...look.chakra, onCast } });
                     onPreviewStance('cast');
                   }}
-                >
-                  <SpriteThumb look={{ ...look, cast: { ...(look.cast ?? { style: s }), style: s } }} eye={eye} pose="cast" />
-                </OptionCard>
-              ))}
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1.5">{L('The default for every jutsu. Each jutsu can use its own style in Jutsu Loadout.')}</p>
-          </div>
-          <div>
-            <SectionLabel>Show the burst when…</SectionLabel>
-            <div className="flex flex-wrap gap-2">
-              <Toggle
-                label="Charging chakra"
-                value={look.chakra.onCharge}
-                onChange={(onCharge) => {
-                  onChange({ ...look, chakra: { ...look.chakra, onCharge } });
-                  onPreviewStance('charge');
-                }}
-              />
-              <Toggle
-                label="Casting"
-                value={look.chakra.onCast}
-                onChange={(onCast) => {
-                  onChange({ ...look, chakra: { ...look.chakra, onCast } });
-                  onPreviewStance('cast');
-                }}
-              />
-              <Toggle
-                label="Victory pose"
-                value={look.chakra.onVictory}
-                onChange={(onVictory) => {
-                  onChange({ ...look, chakra: { ...look.chakra, onVictory } });
-                  onPreviewStance('victory');
-                }}
-              />
+                />
+                <Toggle
+                  label="Victory pose"
+                  value={look.chakra.onVictory}
+                  onChange={(onVictory) => {
+                    onChange({ ...look, chakra: { ...look.chakra, onVictory } });
+                    onPreviewStance('victory');
+                  }}
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {cat === 'paint' && <PixelEditor look={look} eye={eye} character={character} onChange={onChange} />}
+        {part === 'paint' && <PixelEditor look={look} eye={eye} character={character} onChange={onChange} />}
+      </div>
     </div>
   );
 };
@@ -642,8 +678,8 @@ const SlotPicker: React.FC<{
           <ChevronLeft className="w-4 h-4" />
         </button>
         <div className="flex-1 text-center">
-          <div className="text-sm font-bold text-white">{currentDef?.name ?? 'None'}</div>
-          <div className="text-[11px] text-slate-400">{currentDef?.desc ?? 'Nothing equipped in this slot.'}</div>
+          <div className="text-sm font-bold text-white">{currentDef?.name ?? L('None')}</div>
+          <div className="text-[11px] text-slate-400">{currentDef?.desc ?? L('Nothing equipped in this slot.')}</div>
         </div>
         <button
           type="button"
@@ -681,7 +717,7 @@ const SlotPicker: React.FC<{
           if (def) slots[slot] = { id: def.id, colors: sel && current ? current.colors : [] };
           else delete slots[slot];
           return (
-            <OptionCard key={def?.id ?? 'none'} selected={sel} label={def?.name ?? 'None'} onClick={() => choose(def)}>
+            <OptionCard key={def?.id ?? 'none'} selected={sel} label={def?.name ?? L('None')} onClick={() => choose(def)}>
               <SpriteThumb look={{ ...look, slots }} eye={eye} crop={crop} />
             </OptionCard>
           );

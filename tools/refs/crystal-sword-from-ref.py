@@ -6,7 +6,7 @@ sword hangs from the near hand across the legs, the way our idle pose holds it (
 
 This script takes his pixels back (the median of each block's interior), lifts the sword out of them
 (the crystal blade and guard, the crystal pommel above the fist, his black line around them), puts
-back the grip his fist hides, and sorts his colours into a short palette (darkest to lightest). It
+back the grip his fist hides, and keeps every pixel's exact colour as a palette character. It
 writes, in <out>:
 
   crystal_sword.json   rows (one character per pixel), pivot (the grip cell under the fist), the
@@ -36,7 +36,6 @@ BLADE_BOX = (30, 58, 60, 99)
 PIVOT = (31, 58)
 # The angle our idle pose holds a blade at: the template is drawn at it, so at rest it is his pixels.
 ANGLE = 52
-COLOURS = 8
 SEED = 7
 
 
@@ -77,19 +76,6 @@ def components(m):
                                 lab[qy, qx] = n
                                 st.append((qy, qx))
     return lab, n
-
-
-def kmeans(px, k, iters=40):
-    px = px.astype(np.float64)
-    order = np.argsort(luma(px))
-    c = px[order[np.linspace(0, len(px) - 1, k).astype(int)]].copy()
-    for _ in range(iters):
-        lab = ((px[:, None, :] - c[None]) ** 2).sum(2).argmin(1)
-        for i in range(k):
-            if (lab == i).any():
-                c[i] = np.median(px[lab == i], axis=0)
-    lab = ((px[:, None, :] - c[None]) ** 2).sum(2).argmin(1)
-    return np.round(c).astype(np.int32), lab
 
 
 def save(arr, path, k=8):
@@ -150,52 +136,73 @@ def main():
     ring = (pad[:-2, 1:-1] | pad[2:, 1:-1] | pad[1:-1, :-2] | pad[1:-1, 2:]) & ~shape
     inner = shape & ~grip
 
-    # His colours: everything inside the shape (crystal and his facet lines) sorted dark to light,
-    # his grip, his line.
-    pal, lab_px = kmeans(a[inner], COLOURS)
-    order = np.argsort(luma(pal))
-    rank = np.empty_like(order)
-    rank[order] = np.arange(len(order))
-    chars = '12345678'
-    grid = np.full((H, W), '.', dtype='<U1')
-    grid[inner] = np.array([chars[rank[i]] for i in lab_px])
-    grid[grip] = 'g'
-    grid[ring] = 'o'
-    palette = {chars[rank[i]]: '#%02x%02x%02x' % tuple(pal[i]) for i in range(len(pal))}
-    palette['o'] = '#07060b'
+    # Every pixel keeps his exact colour (the owner, 2026-10-20: "copy the exact colours in the grid";
+    # sorting them into a few tones washed the blade out).
+    kind = np.full((H, W), '.', dtype='<U1')
+    kind[inner] = 'c'
+    kind[grip] = 'g'
+    kind[ring] = 'o'
+    col = a.copy()
+    dark = (luma(a) < 92) & inner
 
-    # The owner's notes (2026-10-20): no black or near-black pixels inside the sword. His black
-    # line between the guard and the blade, and the coat showing through there, become crystal
-    # (the middle of the crystal around them); the darkest blue inside the blade does too.
-    tone = lambda ch: ch in chars
-    for _ in range(2):
+    # His notes before that: no black or near-black pixels inside the sword. His black line between
+    # the guard and the blade, the coat showing through there, and the darkest blue inside the blade
+    # take the exact colour of the crystal next to them, looked for along the blade first, so his
+    # facet stripes run on.
+    order = ((-1, -1), (1, 1), (0, -1), (-1, 0), (1, 0), (0, 1), (-1, 1), (1, -1))
+    for _ in range(3):
         fix = []
         for y in range(1, H - 1):
             for x in range(1, W - 1):
-                ch = grid[y, x]
-                around = [grid[y + dy, x + dx] for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx]
-                tones = sorted(c for c in around if tone(c) and c != '1')
-                # A line pixel with crystal on both sides (along the row or the column, past at most
-                # one more line pixel) is inside the sword, not around it.
+                if kind[y, x] not in 'oc':
+                    continue
+
                 def side(dy, dx):
                     for k in (1, 2):
-                        c = grid[min(H - 1, max(0, y + dy * k)), min(W - 1, max(0, x + dx * k))]
+                        c = kind[y + dy * k, x + dx * k] if 0 <= y + dy * k < H and 0 <= x + dx * k < W else '.'
                         if c != 'o':
-                            return tone(c) or c in 'gG'
+                            return c in 'cg'
                     return False
-                # (A line pixel touching the background is the outside line: it stays.)
-                edge = any(grid[min(H - 1, max(0, y + dy)), min(W - 1, max(0, x + dx))] == '.' for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)))
-                inside = not edge and ((side(0, -1) and side(0, 1)) or (side(-1, 0) and side(1, 0)))
-                if ch == 'o' and inside and tones:
-                    fix.append((y, x, tones[len(tones) // 2]))
-                elif ch == '1' and y > GRIP[1][1] + 1 and tones:
-                    fix.append((y, x, tones[len(tones) // 2]))
+
+                edge = any(kind[y + dy, x + dx] == '.' for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+                inside_line = kind[y, x] == 'o' and not edge and ((side(0, -1) and side(0, 1)) or (side(-1, 0) and side(1, 0)))
+                dark_inside = kind[y, x] == 'c' and dark[y, x] and y > GRIP[1][1] + 1
+                if not (inside_line or dark_inside):
+                    continue
+                for dy, dx in order:
+                    if kind[y + dy, x + dx] == 'c' and not dark[y + dy, x + dx]:
+                        fix.append((y, x, col[y + dy, x + dx]))
+                        break
         for y, x, c in fix:
-            grid[y, x] = c
+            kind[y, x] = 'c'
+            col[y, x] = c
+            dark[y, x] = False
+
+    # His colours as palette characters (one per colour; colours a step apart share one).
+    CHARS = 'abcdefhijklmnpqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-/:;<=>?@[]^_{|}~'
+    grid = np.full((H, W), '.', dtype='<U1')
+    palette = {}
+    seen = []
+    for y in range(H):
+        for x in range(W):
+            if kind[y, x] != 'c':
+                continue
+            c = col[y, x]
+            for ch, ref in seen:
+                if np.abs(ref - c).max() <= 3:
+                    grid[y, x] = ch
+                    break
+            else:
+                ch = CHARS[len(seen)]
+                seen.append((ch, c))
+                palette[ch] = '#%02x%02x%02x' % tuple(int(v) for v in c)
+                grid[y, x] = ch
+    grid[ring & (kind == 'o')] = 'o'
+    palette['o'] = '#07060b'
     # The grip (under the fist, a little of it shows): his crystal blue, wrapped, not black.
     for y in range(H):
         for x in range(W):
-            if grid[y, x] == 'g':
+            if kind[y, x] == 'g':
                 grid[y, x] = 'g' if (x + y) % 2 else 'G'
     palette['g'] = '#3e5f7f'
     palette['G'] = '#6f9fbd'

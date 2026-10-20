@@ -330,11 +330,11 @@ export function initEnd(): Piece {
 const polar = (c: number, a: number, r: number): Pt => [c + Math.cos(a) * r, c + Math.sin(a) * r];
 
 export function minimapRing(): Piece {
-  // Measured on his frame (in art pixels about the centre): map window r 39, a thin muted gold ring
-  // to 40.4, the cool silver band to 46.4, the gold openwork lace to 52; the four cardinal gems sit on
+  // Measured on his frame (in art pixels about the centre): map window r 38, a thin muted gold ring
+  // to 39.5, the cool silver band to 45, the gold openwork lace to 50; the four cardinal gems sit on
   // the band's outer edge in pointed lozenge bezels with side prongs; the four diagonal gems sit
-  // outside the ring in square corner brackets (radius 53), which square off his silhouette.
-  const S = 106, c = 53, RW = 39, RB = 40.4, R0 = 46.4;
+  // outside the ring in square corner brackets (radius 51), which square off his silhouette.
+  const S = 100, c = 50, RW = 38, RB = 39.5, R0 = 45;
   const img = new Img(S, S);
   // --- the gold openwork lace: a running scroll, one 8-pixel tile repeated round the ring ----------
   // (v = 0 is the wire on the band's edge, v = 4 the scalloped outer edge; '#' metal, ':' the dark
@@ -347,7 +347,7 @@ export function minimapRing(): Piece {
     '..##::#.',
     '.....##.',
   ];
-  const N = 38;
+  const N = 37;
   const lmk = new Mask(S, S), lback = new Mask(S, S);
   for (let y = 0; y < S; y++)
     for (let x = 0; x < S; x++) {
@@ -364,24 +364,24 @@ export function minimapRing(): Piece {
   const corners: [number, keyof typeof GEM][] = [[-135, 'green'], [-45, 'green'], [45, 'green'], [135, 'red']];
   for (const [deg] of corners) {
     const a = (deg * Math.PI) / 180, ux = Math.cos(a), uy = Math.sin(a);
-    const gx = Math.floor(c + ux * 53) + 0.5, gy = Math.floor(c + uy * 53) + 0.5;
+    const gx = Math.floor(c + ux * 51) + 0.5, gy = Math.floor(c + uy * 51) + 0.5;
     const sx = Math.sign(ux), sy = Math.sign(uy);
     const mk = new Mask(S, S), back = new Mask(S, S);
     // A square plate with its outer corner drawn to a point, and a scroll on each inner side
     // running back into the ring's lace.
-    const sq = sdRoundRect(gx - 5.6, gy - 5.6, gx + 5.6, gy + 5.6, 2);
-    back.sdf((x, y) => Math.min(sq(x, y), sdLp(gx + sx * 5.4, gy + sy * 5.4, 2.6, 2.6, 1)(x, y)));
+    const sq = sdRoundRect(gx - 5, gy - 5, gx + 5, gy + 5, 2);
+    back.sdf((x, y) => Math.min(sq(x, y), sdLp(gx + sx * 4.8, gy + sy * 4.8, 2.4, 2.4, 1)(x, y)));
     for (let y = 0; y < S; y++)
       for (let x = 0; x < S; x++) {
         const d = -sq(x + 0.5, y + 0.5);
         if (d >= 0 && d < 1.2) mk.set(x, y);
       }
-    mk.disc(gx + sx * 6.4, gy + sy * 6.4, 1.2);
+    mk.disc(gx + sx * 5.8, gy + sy * 5.8, 1.1);
     for (const [px, py] of [[gx - sx * 7.2, gy + sy * 1.5], [gx + sx * 1.5, gy - sy * 7.2]] as Pt[]) {
       mk.taper(spiral(px, py, 2.1, 0.5, Math.atan2(gy - py, gx - px), Math.atan2(gy - py, gx - px) + Math.PI * 1.8, 20), 1.3, 1);
       back.disc(px, py, 2.6);
     }
-    filledLace(img, mk, back, METAL, { base: 5, grow: 0, backColor: METAL[1], crevice: METAL[0] });
+    filledLace(img, mk, back, METAL, { base: 5, grow: 0, backColor: METAL[2], crevice: METAL[1] });
   }
   // --- the cool silver-ivory band with his fine groove ------------------------------------------------
   const fB = sdCircle(c, c, R0 - 0.3);
@@ -396,7 +396,7 @@ export function minimapRing(): Piece {
   // --- gems ------------------------------------------------------------------------------------------
   for (const [deg, col] of corners) {
     const a = (deg * Math.PI) / 180;
-    const gx = Math.floor(c + Math.cos(a) * 53) + 0.5, gy = Math.floor(c + Math.sin(a) * 53) + 0.5;
+    const gx = Math.floor(c + Math.cos(a) * 51) + 0.5, gy = Math.floor(c + Math.sin(a) * 51) + 0.5;
     band(img, sdCircle(gx, gy, 4.2), { from: 0, width: 1.3, ramp: METAL, lo: 2, hi: 7 });
     gem(img, gx, gy, 2.8, GEM[col], false);
   }
@@ -660,7 +660,7 @@ export function medallionActive(): Piece {
   }
   // The arch reaches the big bosses at its two ends.
   for (const sgn of [-1, 1]) {
-    back.disc(cx + sgn * 28.4, cy - 4, 6.3);
+    back.disc(cx + sgn * 28.4, cy - 5, 6.3);
     back.disc(cx + sgn * 24.4, cy - 7.4, 3.4);
   }
   filledLace(img, mk, back, METAL, { base: 5, grow: 0, backColor: METAL[1], crevice: METAL[0] });
@@ -681,7 +681,7 @@ export function medallionActive(): Piece {
     band(img, fs, { from: 0, width: 1.4, ramp: METAL, lo: 2, hi: 7 });
     isoLine(img, fs, -1, METAL[0]);
     img.set(Math.floor(sx), Math.floor(sy), METAL[5]);
-    const bx = cx + sgn * 28.4, by = cy - 4;
+    const bx = cx + sgn * 28.4, by = cy - 5;
     const fb = sdCircle(bx, by, 5.2);
     fillShape(img, fb, 0, PANEL[2]);
     band(img, fb, { from: 0, width: 2, ramp: METAL, lo: 2, hi: 7 });

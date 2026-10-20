@@ -2,7 +2,7 @@
 // striking and casting, damage numbers, effects, banners and sounds. The engine has already
 // decided everything; this only paces it so it can be watched.
 
-import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit, Wall } from '../../battle/types';
+import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit, Wall, WeaponNode } from '../../battle/types';
 import type { SpritePose } from '../../sprite/types';
 import { JUTSU } from '../../battle/jutsu';
 import type { VfxElement, VfxRole } from '../../battle/jutsu';
@@ -219,6 +219,13 @@ export class Playback {
     return out;
   }
 
+  /** Weapon Nodes already gone from the state (a fourth replaced them) whose removal hasn't played yet. */
+  goneNodes(): WeaponNode[] {
+    const out: WeaponNode[] = [];
+    for (const e of this.queue) if (e.t === 'node' && !e.on) out.push(e.node);
+    return out;
+  }
+
   /** A wall by id: standing, or gone with an event still to play. */
   wallOf(id: string, state: BattleState): Wall | undefined {
     return state.walls.find((w) => w.id === id) ?? this.goneWalls().find((w) => w.id === id);
@@ -292,7 +299,8 @@ export class Playback {
         this.fx.push({ kind: 'smoke', element: 'chakra', from: ev.to, to: ev.to, t0: now + 120, dur: 500 });
         v.pos = { ...ev.to };
         v.walk = undefined;
-        return 320;
+        // A Spatial Swap's two jumps happen at once.
+        return this.queue[0]?.t === 'teleport' ? 0 : 320;
       }
       case 'kawarimi': {
         const v = this.view(ev.unit);
@@ -396,6 +404,8 @@ export class Playback {
             return castDelay + 700;
           case 'clone':
           case 'flicker':
+          case 'warp':
+          case 'swap':
             this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 1100, unit: ev.unit });
             linger(1100);
             return castDelay + 400;
@@ -613,6 +623,7 @@ export class Playback {
         this.fx.push({ kind: 'electric', element: 'lightning', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 800 });
         return 300;
       case 'trap':
+      case 'node':
         return 0;
       case 'explode':
         this.fx.push({ kind: 'explosion', element: 'fire', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 800 });

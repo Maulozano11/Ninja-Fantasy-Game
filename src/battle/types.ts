@@ -67,6 +67,8 @@ export interface Conditions {
   waterWalk?: boolean;
   /** Ninja jump ready: climbing and dropping cost little this turn. */
   ninjaJump?: boolean;
+  /** Warped in next to a foe (Ryusei): the next attack this turn comes from behind. */
+  warpEdge?: boolean;
 }
 
 /** What an enemy will do on its next turn (it commits to it; a Mirai can see it). */
@@ -248,6 +250,17 @@ export interface Trap {
   spotted?: boolean;
 }
 
+/**
+ * A Ryusei's Weapon Node: where a kunai or a missed blow landed. Static and seen by both sides; a
+ * Ryusei keeps three at most. (Not `Node`: that name is the DOM's.)
+ */
+export interface WeaponNode {
+  id: string;
+  /** The Ryusei who left it (it stays when the owner falls). */
+  owner: string;
+  pos: Pt;
+}
+
 /** A body left in the stealth phase (it raises the alarm if a guard sees it). */
 export interface Body {
   unit: string;
@@ -330,6 +343,8 @@ export interface BattleState {
   props: PropState[];
   walls: Wall[];
   traps: Trap[];
+  /** The Ryusei's Weapon Nodes, oldest first. */
+  nodes: WeaponNode[];
   bodies: Body[];
   pending?: PendingReaction;
   /** Party units that already acted in this stealth turn. */
@@ -405,6 +420,7 @@ export type BattleEvent =
   | { t: 'prop'; prop: number; state: 'burnt' | 'cut' | 'broken' | 'exploded' }
   | { t: 'electrified'; at: Pt; radius: number }
   | { t: 'trap'; trap: Trap; on: boolean }
+  | { t: 'node'; node: WeaponNode; on: boolean }
   | { t: 'explode'; at: Pt; radius: number }
   | { t: 'kawarimi'; unit: string; from: Pt; to: Pt }
   | { t: 'evade'; unit: string; from: Pt; to: Pt; source?: string }

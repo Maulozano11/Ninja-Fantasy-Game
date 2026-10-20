@@ -12,7 +12,8 @@ import type { AreaShape, DamageType, Pt } from './types';
 export type VfxElement = 'fire' | 'water' | 'wind' | 'lightning' | 'earth' | 'genjutsu' | 'chakra' | 'poison';
 export type VfxRole = 'bolt' | 'beast' | 'stream' | 'breath' | 'sphere' | 'slash' | 'multi' | 'blast' | 'wall' | 'aura' | 'hit';
 
-export type JutsuShape = 'single' | 'circle' | 'selfCircle' | 'cone' | 'line' | 'wall' | 'self' | 'ally' | 'point';
+/** `node`: one of the caster's own Weapon Nodes; `onNode`: a unit standing on one (Ryusei). */
+export type JutsuShape = 'single' | 'circle' | 'selfCircle' | 'cone' | 'line' | 'wall' | 'self' | 'ally' | 'point' | 'node' | 'onNode';
 
 export interface JutsuSpec {
   id: string;
@@ -36,7 +37,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'trap' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall';
+  special?: 'heal' | 'flicker' | 'clone' | 'trap' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -265,6 +266,46 @@ const CLAN_SPECS: JutsuSpec[] = [
     saveHalf: false,
     special: 'metalWall',
     vfx: 'wall',
+    melee: false,
+    loud: true,
+  },
+  // Ryusei. Weapon Nodes are passive (clans.ts): kunai and missed blows leave them.
+  {
+    id: 'ryusei_warp',
+    name: 'Warp Strike',
+    nameEs: 'Warp Strike',
+    clan: 'Ryusei',
+    ability: true,
+    rank: '',
+    element: 'chakra',
+    cost: 2,
+    enhCost: 0,
+    cast: 'bonus',
+    range: 18,
+    shape: 'node',
+    saveHalf: false,
+    special: 'warp',
+    vfx: 'aura',
+    melee: false,
+    loud: false,
+  },
+  {
+    id: 'ryusei_swap',
+    name: 'Spatial Swap',
+    nameEs: 'Intercambio Espacial',
+    clan: 'Ryusei',
+    ability: true,
+    rank: '',
+    element: 'chakra',
+    cost: 3,
+    enhCost: 0,
+    cast: 'action',
+    range: 18,
+    shape: 'onNode',
+    save: 'str',
+    saveHalf: false,
+    special: 'swap',
+    vfx: 'aura',
     melee: false,
     loud: true,
   },

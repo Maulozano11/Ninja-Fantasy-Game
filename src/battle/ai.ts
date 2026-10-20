@@ -13,6 +13,7 @@ import { current } from './turns';
 import { bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, visibleFoes } from './intent';
 import type { Goal } from './intent';
 import { breakable, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from './structures';
+import { edgeFoe, ownNodes, WARP, warpBlocker, warpLanding } from './clans';
 
 /** Whether the battle is waiting on the AI (an AI unit's turn in the fighting). */
 export function aiToAct(s: BattleState): boolean {
@@ -52,7 +53,7 @@ export function aiAction(s: BattleState): Action | null {
   let intent = u.team === 'enemy' && stillValid(s, u, u.intent) ? u.intent : planIntent(s, u);
   if (!stillValid(s, u, intent)) intent = planIntent(s, u);
   if (!intent) return end;
-  return carryOut(s, u, intent) ?? fallback(s, u) ?? end;
+  return bonusBefore(s, u, intent) ?? edgeStrike(s, u, intent) ?? carryOut(s, u, intent) ?? fallback(s, u) ?? end;
 }
 
 function headAction(s: BattleState, u: Unit): Action | null {
@@ -137,6 +138,48 @@ function fallback(s: BattleState, u: Unit): Action | null {
     if (o.intent.kind === 'ranged' && t && dist(u.pos, t.pos) <= KUNAI_LONG && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
   }
   return null;
+}
+
+/** The bonus action, before the plan: a Ryusei warps to a Node beside a foe its feet can't reach this turn. */
+function bonusBefore(s: BattleState, u: Unit, i: Intent): Action | null {
+  if (!u.turn.bonus) return null;
+  return ryuseiWarp(s, u, i);
+}
+
+/** A blow from `p` reaches the target (and no metal wall stands between). */
+const strikesFrom = (s: BattleState, u: Unit, p: Pt, t: Unit): boolean => dist(p, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, p, t.pos);
+
+/**
+ * A Ryusei whose target is beyond a walk and a blow warps to the Node of its own that lands it
+ * nearest the target: for a blow it means to walk in for, near enough to walk the rest; for a kunai
+ * or an advance, right beside the target, to strike from behind at once. A jutsu it casts from
+ * where it stands.
+ */
+function ryuseiWarp(s: BattleState, u: Unit, i: Intent): Action | null {
+  const spec = JUTSU[WARP];
+  if (!u.jutsus.includes(WARP) || effectMods(u.effects).noJutsu || u.chakra < jutsuCost(u, spec, false)) return null;
+  const t = i.target ? s.units[i.target] : undefined;
+  const j = i.kind === 'jutsu' ? JUTSU[i.what] : undefined;
+  const walkIn = i.kind === 'melee' || !!j?.melee;
+  if (!t || t.team === u.team || !(walkIn || i.kind === 'ranged' || i.kind === 'move')) return null;
+  const reach = j?.melee ? j.range + (t.bulk ?? 0) : reachTo(u, t);
+  if (dist(u.pos, t.pos) <= reach + u.turn.move) return null;
+  let best: { at: Pt; d: number } | undefined;
+  for (const n of ownNodes(s, u)) {
+    if (warpBlocker(s, u, n)) continue;
+    const land = warpLanding(s, u, n)!;
+    const d = dist(land, t.pos);
+    if ((walkIn ? d <= reach + u.turn.move : strikesFrom(s, u, land, t)) && (!best || d < best.d)) best = { at: n.pos, d };
+  }
+  return best ? { type: 'jutsu', unit: u.id, jutsu: WARP, at: { ...best.at } } : null;
+}
+
+/** Warped in beside a foe it meant to throw at or close in on: it strikes from behind now. */
+function edgeStrike(s: BattleState, u: Unit, i: Intent): Action | null {
+  if (!u.cond.warpEdge || (i.kind !== 'ranged' && i.kind !== 'move')) return null;
+  const t = i.target ? s.units[i.target] : undefined;
+  const foe = t && t.team !== u.team && standingUnit(t) && strikesFrom(s, u, u.pos, t) ? t : edgeFoe(s, u);
+  return foe ? { type: 'attack', unit: u.id, target: foe.id, knockout: u.team === 'party' } : null;
 }
 
 /** The bonus action, once the action is spent: a Kōton raises a metal block for cover. */

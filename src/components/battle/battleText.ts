@@ -125,6 +125,14 @@ export const T = strings({
     en: 'Action, 4 chakra, 6 m: a 4.5 m metal wall (full cover, blocks movement and sight, 20 HP).',
     es: 'Acción, 4 chakra, 6 m: un muro de metal de 4.5 m (cobertura total, bloquea el paso y la vista, 20 PV).',
   },
+  help_ryusei_warp: {
+    en: 'Bonus action, 2 chakra, 18 m: teleport to one of your Nodes, even through walls. Land next to an enemy and your next attack this turn comes from behind: advantage, and it can’t be blocked.',
+    es: 'Acción adicional, 2 chakra, 18 m: teletranspórtate a uno de tus Nodos, incluso a través de muros. Si caes junto a un enemigo, tu próximo ataque este turno es por la espalda: ventaja, y no se puede bloquear.',
+  },
+  help_ryusei_swap: {
+    en: 'Action, 3 chakra: swap places with anyone standing on one of your Nodes. An enemy resists with STR.',
+    es: 'Acción, 3 chakra: intercambia el lugar con quien esté sobre uno de tus Nodos. Un enemigo resiste con FUE.',
+  },
 
   // aiming
   aimMove: { en: '{m} m', es: '{m} m' },
@@ -138,6 +146,7 @@ export const T = strings({
   aimAllies: { en: '{n} allies in the area!', es: '¡{n} aliados en el área!' },
   aimStructures: { en: '{n}/2 standing', es: '{n}/2 en pie' },
   aimOldest: { en: 'the oldest one crumbles', es: 'la más antigua se derrumba' },
+  aimWarpEdge: { en: 'Next to {name}: next attack from behind', es: 'Junto a {name}: el próximo ataque, por la espalda' },
   cover2: { en: 'Half cover', es: 'Cobertura ½' },
   cover5: { en: '¾ cover', es: 'Cobertura ¾' },
   heightUp: { en: 'High ground +2', es: 'Altura +2' },
@@ -156,6 +165,7 @@ export const T = strings({
   reason_closeEnemy: { en: 'enemy close', es: 'enemigo cerca' },
   reason_targetHidden: { en: 'target hidden', es: 'objetivo oculto' },
   reason_longRange: { en: 'long range', es: 'larga distancia' },
+  reason_behind: { en: 'from behind', es: 'por la espalda' },
   intent: { en: 'Next: {what} → {target}', es: 'Próximo: {what} → {target}' },
   intentNoTarget: { en: 'Next: {what}', es: 'Próximo: {what}' },
   intent_melee: { en: 'strike', es: 'golpe' },
@@ -195,8 +205,11 @@ export const T = strings({
   r_fullChakra: { en: 'Chakra is full.', es: 'El chakra está lleno.' },
   r_notPoisoned: { en: 'Not poisoned.', es: 'No está envenenado.' },
   r_notAtEdge: { en: 'Go to the map edge first.', es: 'Ve primero al borde del mapa.' },
-  r_tooBig: { en: 'Too big to shove.', es: 'Demasiado grande para empujar.' },
+  r_tooBig: { en: 'Too big to move.', es: 'Demasiado grande para moverlo.' },
   r_blocked: { en: 'Blocked.', es: 'Bloqueado.' },
+  r_noNode: { en: 'Pick one of your Nodes.', es: 'Elige uno de tus Nodos.' },
+  r_notOnNode: { en: 'Nobody stands on one of your Nodes.', es: 'Nadie está sobre uno de tus Nodos.' },
+  r_combatOnly: { en: 'Only once the fighting starts.', es: 'Solo cuando empieza el combate.' },
   r_waitingReaction: { en: 'Waiting for a reaction.', es: 'Esperando una reacción.' },
   r_default: { en: 'Can’t do that now.', es: 'No se puede ahora.' },
 
@@ -260,6 +273,8 @@ export const T = strings({
   n_tensionUp: { en: '{name} is shaken (+1 Tension)', es: '{name} se estremece (+1 Tensión)' },
   n_hideFailed: { en: '{name} is spotted', es: '{name} es descubierto' },
   n_shoveBlocked: { en: '{name} doesn’t budge', es: '{name} no se mueve' },
+  n_warpEdge: { en: '{name} strikes from behind', es: '{name} ataca por la espalda' },
+  n_swapResisted: { en: '{name} holds its ground', es: '{name} resiste en su sitio' },
 
   // tips
   tip_move: { en: 'Click a lit tile to move. The number is the distance in meters.', es: 'Haz clic en una casilla iluminada para moverte. El número es la distancia en metros.' },
@@ -276,6 +291,10 @@ export const T = strings({
   tip_koton: {
     en: 'Modular Architecture: a metal block (bonus action) gives half cover; a metal wall (action) gives full cover and blocks sight. Two stand at most.',
     es: 'Arquitectura Modular: un bloque de metal (acción adicional) da media cobertura; un muro de metal (acción) da cobertura total y bloquea la vista. Como máximo, dos en pie.',
+  },
+  tip_ryusei: {
+    en: 'Weapon Nodes: kunai and missed blows leave a Node (three at most). Warp Strike jumps to one, even through walls; Spatial Swap trades places with whoever stands on one.',
+    es: 'Nodos de Armas: los kunai y los golpes fallados dejan un Nodo (tres como máximo). Warp Strike salta a uno, incluso a través de muros; Intercambio Espacial cambia de lugar con quien esté sobre uno.',
   },
   tipGotIt: { en: 'Got it', es: 'Entendido' },
   tipsOff: { en: 'No more tips', es: 'No más consejos' },

@@ -3,7 +3,7 @@
 // (map.ts), take damage from attacks and from the areas that reach them, and are gone at 0 HP.
 // Earth and water walls stay unbreakable.
 
-import { abilityMod } from '../rules/checks';
+import { abilityMod, combineAdvantage } from '../rules/checks';
 import type { Advantage } from '../rules/checks';
 import type { AreaShape, BattleEvent, BattleState, Pt, Unit, Wall } from './types';
 import { BLOCK_HALF, CELL, cellCenter, cellOf, dist, gridFor, idx, inGrid, lineOfSight, segDist, wallCovers } from './map';
@@ -35,6 +35,17 @@ export function closestPoint(w: Wall, p: Pt): Pt {
   return { x: w.a.x + dx * t, z: w.a.z + dz * t };
 }
 
+/** Where a blow or a kunai lands on a structure: the point of its surface facing p. */
+export function faceToward(w: Wall, p: Pt): Pt {
+  if (w.kind === 'metalBlock') {
+    const clamp = (v: number, c: number) => Math.max(c - BLOCK_HALF, Math.min(c + BLOCK_HALF, v));
+    return { x: clamp(p.x, w.a.x), z: clamp(p.z, w.a.z) };
+  }
+  const c = closestPoint(w, p);
+  const d = dist(c, p);
+  return d < 1e-9 ? c : { x: c.x + ((p.x - c.x) / d) * thickness(w), z: c.z + ((p.z - c.z) / d) * thickness(w) };
+}
+
 /** How far a point is from a structure's surface (0 on it). */
 export function structureDist(w: Wall, p: Pt): number {
   if (w.kind === 'metalBlock') return Math.hypot(Math.max(0, Math.abs(p.x - w.a.x) - BLOCK_HALF), Math.max(0, Math.abs(p.z - w.a.z) - BLOCK_HALF));
@@ -53,13 +64,13 @@ export interface StructureAttack {
 
 /**
  * Everything about an attack on a structure before rolling: AC 10, a blade reaches its surface, a
- * kunai flies to it in sight (with disadvantage beyond 9 m).
+ * kunai flies to it in sight (with disadvantage beyond 9 m). A Ryusei's warp edge counts here too.
  */
 export function structureAttack(s: BattleState, u: Unit, w: Wall, ranged: boolean): StructureAttack {
   const at = closestPoint(w, u.pos);
   const d = dist(u.pos, at);
   const mod = u.prof + abilityMod(ranged ? u.stats.dex : u.stats.str);
-  const adv: Advantage = ranged && d > KUNAI.reach ? 'disadvantage' : 'none';
+  const adv: Advantage = combineAdvantage(ranged && d > KUNAI.reach ? 'disadvantage' : 'none', u.cond.warpEdge ? 'advantage' : 'none');
   const inRange = ranged ? d <= KUNAI_LONG + 0.1 : d <= wielded(u).reach + thickness(w) + 0.1;
   // Aimed a hair short of the wall's face, so the wall itself doesn't hide it.
   const k = d > 0.1 ? 0.05 / d : 0;

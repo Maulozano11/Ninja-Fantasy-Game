@@ -6,7 +6,7 @@ import { DEFAULT_CHARACTER } from '../data/shinobiData';
 import { HANA, KENJI } from '../data/missions';
 import { addEffect } from '../rules/effects';
 import type { ShinobiCharacter } from '../types/shinobi';
-import type { Action, BattleEvent, BattleState, Pt, Unit, Wall } from './types';
+import type { Action, BattleEvent, BattleState, Pt, Unit, Wall, WeaponNode } from './types';
 import { applyAction, createBattle } from './engine';
 import type { BattleSetup } from './engine';
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, lineOfSight, waterAtPt } from './map';
@@ -729,6 +729,208 @@ describe('Kōton: Modular Architecture', () => {
     const hit = aiAction(box);
     assert.deepEqual(hit, { type: 'attack', unit: 'raider_0', target: 'wall:east' });
     ok(applyAction(box, hit!));
+  });
+});
+
+describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
+  const ryusei = (over: Partial<ShinobiCharacter> = {}) => hero({ id: 'r', name: 'Solen', clan: 'Ryusei', ...over });
+  /** A Ryusei at (8.25, 10.25) on its turn, the rogue 6 m away at (14.25, 10.25). */
+  const ryuseiTurn = (over: Partial<BattleSetup> = {}): BattleState => turnOf(createBattle(setup({ party: [{ character: ryusei(), pos: { x: 8, z: 10 } }], ...over })).state, 'r');
+  const node = (id: string, pos: Pt, owner = 'r'): WeaponNode => ({ id, owner, pos: { ...pos } });
+  const warp = (s: BattleState, at: Pt, unit = 'r') => applyAction(s, { type: 'jutsu', unit, jutsu: 'ryusei_warp', at });
+  const swap = (s: BattleState, target: string) => applyAction(s, { type: 'jutsu', unit: 'r', jutsu: 'ryusei_swap', at: { ...s.units[target].pos }, target });
+  /** The first seed whose outcome passes `want`. */
+  function seeded(s: BattleState, act: (t: BattleState) => ReturnType<typeof applyAction>, want: (out: ReturnType<typeof applyAction>) => boolean): ReturnType<typeof applyAction> {
+    for (let seed = 1; seed < 80; seed++) {
+      const t = structuredClone(s);
+      t.seed = seed;
+      const out = ok(act(t));
+      if (want(out)) return out;
+    }
+    throw new Error('no seed gives it');
+  }
+  const hit = (out: ReturnType<typeof applyAction>) => out.events.some((e) => e.t === 'attack' && e.roll.success);
+
+  it('Weapon Nodes: every kunai and every missed blow leaves one where the weapon lands; three at most', () => {
+    const s = ryuseiTurn();
+    assert.deepEqual(s.units.r.jutsus.slice(0, 2), ['ryusei_warp', 'ryusei_swap']);
+    const kunai = (t: BattleState) => applyAction(t, { type: 'attack', unit: 'r', target: 'rogue_0', ranged: true });
+    // A kunai, hit or miss: a Node right where the rogue stands.
+    for (const out of [seeded(s, kunai, hit), seeded(s, kunai, (o) => !hit(o))]) {
+      assert.deepEqual(out.state.nodes.map((n) => ({ owner: n.owner, pos: n.pos })), [{ owner: 'r', pos: s.units.rogue_0.pos }]);
+      assert.ok(out.events.some((e) => e.t === 'node' && e.on));
+    }
+    // A blow: a hit leaves none, a miss leaves one.
+    const close = structuredClone(s);
+    place(close, 'rogue_0', { x: 9.75, z: 10.25 });
+    const blow = (t: BattleState) => applyAction(t, { type: 'attack', unit: 'r', target: 'rogue_0' });
+    assert.equal(seeded(close, blow, hit).state.nodes.length, 0);
+    assert.deepEqual(seeded(close, blow, (o) => !hit(o)).state.nodes[0].pos, close.units.rogue_0.pos);
+    // A fourth makes the oldest go.
+    const full = structuredClone(s);
+    full.nodes.push(node('n1', { x: 9, z: 13 }), node('n2', { x: 10, z: 13 }), node('n3', { x: 11, z: 13 }));
+    const fourth = ok(kunai(full));
+    assert.deepEqual(fourth.state.nodes.map((n) => n.id).slice(0, 2), ['n2', 'n3']);
+    assert.equal(fourth.state.nodes.length, 3);
+    assert.ok(fourth.events.some((e) => e.t === 'node' && !e.on && e.node.id === 'n1'));
+    // Only a Ryusei leaves them.
+    const mirai = turnOf(createBattle(setup({ party: [{ character: hero({ id: 'm', clan: 'Mirai' }), pos: { x: 8, z: 10 } }] })).state, 'm');
+    assert.equal(ok(applyAction(mirai, { type: 'attack', unit: 'm', target: 'rogue_0', ranged: true })).state.nodes.length, 0);
+    // A kunai at a metal block: the Node lands on the face toward the thrower, and a warp lands on that side.
+    const blocked = structuredClone(s);
+    blocked.walls.push({ id: 'b1', kind: 'metalBlock', a: { x: 12.25, z: 10.25 }, b: { x: 12.25, z: 10.25 }, hp: 20, maxHp: 20 });
+    const atBlock = ok(applyAction(blocked, { type: 'attack', unit: 'r', target: 'wall:b1', ranged: true })).state;
+    assert.deepEqual(atBlock.nodes[0].pos, { x: 11.5, z: 10.25 });
+    atBlock.units.r.turn.bonus = true;
+    assert.deepEqual(ok(warp(atBlock, atBlock.nodes[0].pos)).state.units.r.pos, { x: 11.25, z: 10.25 });
+  });
+
+  it('Warp Strike: bonus action, 2 chakra, to its own Node within 18 m in sight, even through a metal wall', () => {
+    const s = ryuseiTurn();
+    s.nodes.push(node('n1', { x: 12.25, z: 13.25 }));
+    // A click near the Node is enough.
+    const out = ok(warp(s, { x: 12.5, z: 13 }));
+    const r = out.state.units.r;
+    assert.deepEqual(r.pos, { x: 12.25, z: 13.25 });
+    assert.equal(r.chakra, s.units.r.chakra - 2);
+    assert.equal(r.turn.bonus, false);
+    assert.equal(r.turn.action, true);
+    assert.equal(r.armed, s.units.r.armed);
+    assert.ok(out.events.some((e) => e.t === 'teleport' && e.unit === 'r'));
+    // Using a Node doesn't spend it.
+    assert.equal(out.state.nodes.length, 1);
+    // Someone stands on it: it lands on the nearest free cell, within 1.5 m.
+    const busy = structuredClone(s);
+    busy.nodes = [node('n1', s.units.rogue_0.pos)];
+    const d = dist(ok(warp(busy, s.units.rogue_0.pos)).state.units.r.pos, s.units.rogue_0.pos);
+    assert.ok(d > 0 && d <= 1.5, `landed ${d} m away`);
+    // Beats Kōton: a metal wall between hides nothing from the warp.
+    const walled = structuredClone(s);
+    walled.walls.push({ id: 'w1', kind: 'metal', a: { x: 10.5, z: 11 }, b: { x: 10.5, z: 15.5 }, hp: 20, maxHp: 20, owner: 'rogue_0' });
+    assert.equal(lineOfSight(walled, walled.units.r.pos, { x: 12.25, z: 13.25 }), false);
+    assert.deepEqual(ok(warp(walled, { x: 12.25, z: 13.25 })).state.units.r.pos, { x: 12.25, z: 13.25 });
+    // Refused: no Node of its own there, too far, or a tent in the way.
+    assert.equal(warp(s, { x: 10.25, z: 7.25 }).reason, 'noNode');
+    const theirs = structuredClone(s);
+    theirs.nodes = [node('n1', { x: 12.25, z: 13.25 }, 'rogue_0')];
+    assert.equal(warp(theirs, { x: 12.25, z: 13.25 }).reason, 'noNode');
+    const far = structuredClone(s);
+    far.nodes = [node('n1', { x: 26.75, z: 10.25 })];
+    assert.equal(warp(far, { x: 26.75, z: 10.25 }).reason, 'outOfRange');
+    const tent = turnOf(createBattle(setup({ party: [{ character: ryusei(), pos: { x: 43.25, z: 5.25 } }], enemies: [{ kind: 'rogue', pos: { x: 50, z: 10 } }] })).state, 'r');
+    tent.nodes.push(node('n1', { x: 43.2, z: 0.1 }));
+    assert.equal(warp(tent, { x: 43.2, z: 0.1 }).reason, 'noSight');
+  });
+
+  it('landing beside a foe, the next attack this turn comes from behind: advantage, and nothing blocks it', () => {
+    const s = ryuseiTurn();
+    s.nodes.push(node('n1', s.units.rogue_0.pos));
+    const warped = ok(warp(s, s.units.rogue_0.pos));
+    const r = warped.state.units.r;
+    assert.equal(r.cond.warpEdge, true);
+    assert.ok(warped.events.some((e) => e.t === 'note' && e.key === 'warpEdge'));
+    const pv = attackPreview(warped.state, r, warped.state.units.rogue_0, 'melee');
+    assert.equal(pv.adv, 'advantage');
+    assert.ok(pv.reasons.includes('behind'));
+    // The blow can't be blocked: the rogue (a Mirai) can't step aside, even from a blow that drops it.
+    warped.state.units.rogue_0.hp = 1;
+    const blow = seeded(warped.state, (t) => applyAction(t, { type: 'attack', unit: 'r', target: 'rogue_0' }), hit);
+    assert.ok(!blow.events.some((e) => e.t === 'evade'));
+    assert.ok(blow.state.units.rogue_0.down);
+    // Spent with that attack, or gone at the end of the turn.
+    assert.equal(blow.state.units.r.cond.warpEdge, false);
+    assert.equal(ok(applyAction(warped.state, { type: 'endTurn', unit: 'r' })).state.units.r.cond.warpEdge, false);
+    // Landing with no foe in reach gives no edge.
+    const open = structuredClone(s);
+    open.nodes = [node('n1', { x: 10.25, z: 13.25 })];
+    assert.ok(!ok(warp(open, { x: 10.25, z: 13.25 })).state.units.r.cond.warpEdge);
+  });
+
+  it('a raider\'s blow from behind leaves a player Mirai no Evasion, nor Kawarimi to one who knows it', () => {
+    for (const target of [hero({ id: 't', clan: 'Mirai' }), { ...KENJI, id: 't', effects: [] }]) {
+      const { state } = createBattle(setup({ party: [{ character: target, pos: { x: 8, z: 10 } }], enemies: [{ kind: 'raider', pos: { x: 20, z: 10 } }] }));
+      const s = turnOf(state, 'raider_0');
+      assert.ok(s.units.t.jutsus.includes(target.clan === 'Mirai' ? 'mirai_evasion' : 'substitution_kawarimi'));
+      s.nodes.push(node('n1', s.units.t.pos, 'raider_0'));
+      const warped = ok(warp(s, s.units.t.pos, 'raider_0')).state;
+      assert.equal(warped.units.raider_0.cond.warpEdge, true);
+      const out = seeded(warped, (t) => applyAction(t, { type: 'attack', unit: 'raider_0', target: 't' }), hit);
+      assert.equal(out.state.pending, undefined);
+      assert.ok(out.events.some((e) => e.t === 'damage' && e.unit === 't'));
+      // Walked in instead, the same blow is offered to the reaction.
+      const walked = structuredClone(s);
+      place(walked, 'raider_0', { x: 9.75, z: 10.25 });
+      assert.ok(seeded(walked, (t) => applyAction(t, { type: 'attack', unit: 'raider_0', target: 't' }), hit).state.pending);
+    }
+  });
+
+  it('Spatial Swap: action, 3 chakra, trades places with anyone on its Node; an enemy resists with STR', () => {
+    // An ally: no save.
+    const pair = ryuseiTurn({ party: [
+      { character: ryusei(), pos: { x: 8, z: 10 } },
+      { character: hero({ id: 'b', name: 'Bo' }), pos: { x: 11, z: 13 } },
+    ] });
+    const [rAt, bAt] = [pair.units.r.pos, pair.units.b.pos];
+    pair.nodes.push(node('n1', { x: bAt.x + 0.3, z: bAt.z }));
+    const out = ok(swap(pair, 'b'));
+    assert.deepEqual(out.state.units.r.pos, bAt);
+    assert.deepEqual(out.state.units.b.pos, rAt);
+    assert.equal(out.state.units.r.chakra, pair.units.r.chakra - 3);
+    assert.equal(out.state.units.r.turn.action, false);
+    assert.ok(!out.events.some((e) => e.t === 'save'));
+    assert.equal(out.events.filter((e) => e.t === 'teleport').length, 2);
+    // An enemy: a STR save; it moves only on a failure, and a resisted swap still costs.
+    const s = ryuseiTurn();
+    s.nodes.push(node('n1', s.units.rogue_0.pos));
+    const saved = (o: ReturnType<typeof applyAction>) => o.events.some((e) => e.t === 'save' && e.unit === 'rogue_0' && e.roll.success);
+    const failed = seeded(s, (t) => swap(t, 'rogue_0'), (o) => !saved(o));
+    assert.deepEqual(failed.state.units.r.pos, s.units.rogue_0.pos);
+    assert.deepEqual(failed.state.units.rogue_0.pos, s.units.r.pos);
+    const resisted = seeded(s, (t) => swap(t, 'rogue_0'), saved);
+    assert.deepEqual(resisted.state.units.r.pos, s.units.r.pos);
+    assert.deepEqual(resisted.state.units.rogue_0.pos, s.units.rogue_0.pos);
+    assert.equal(resisted.state.units.r.chakra, s.units.r.chakra - 3);
+    assert.ok(resisted.events.some((e) => e.t === 'note' && e.key === 'swapResisted'));
+    const save = failed.events.find((e) => e.t === 'save');
+    assert.ok(save?.t === 'save' && save.what === 'ryusei_swap' && save.roll.dc === s.units.r.saveDC);
+    // Refused: nobody on a Node, itself, the hydra, or before the fighting.
+    const bare = ryuseiTurn();
+    assert.equal(swap(bare, 'rogue_0').reason, 'notOnNode');
+    assert.equal(swap(s, 'r').reason, 'needTarget');
+    const lair = turnOf(createBattle(setup({ party: [{ character: ryusei(), pos: { x: 10, z: 14 } }], enemies: [{ kind: 'hydra', pos: { x: 16, z: 8 } }] })).state, 'r');
+    const head = Object.values(lair.units).find((u) => u.kind === 'hydra_head')!;
+    lair.nodes.push(node('n1', head.pos));
+    assert.equal(swap(lair, head.id).reason, 'tooBig');
+    const sneaking = createBattle(setup({ stealth: true, party: [{ character: ryusei(), pos: { x: 8, z: 10 } }], enemies: [{ kind: 'rogue', pos: { x: 14, z: 10 }, route: [{ x: 14, z: 10 }] }] })).state;
+    sneaking.nodes.push(node('n1', sneaking.units.rogue_0.pos));
+    assert.equal(swap(sneaking, 'rogue_0').reason, 'combatOnly');
+  });
+
+  it('the AI: a Ryusei its feet can\'t carry into reach warps to a Node beside its target and strikes', () => {
+    const { state } = createBattle(setup({ enemies: [{ kind: 'raider', pos: { x: 22, z: 10 } }] }));
+    const s = turnOf(state, 'raider_0');
+    const r = s.units.raider_0;
+    r.intent = { kind: 'melee', what: r.weapon.name, target: 'a' };
+    assert.ok(dist(r.pos, s.units.a.pos) > r.speed + r.weapon.reach);
+    // No Node: it walks.
+    assert.equal(aiAction(s)?.type, 'move');
+    s.nodes.push(node('n1', { x: 9.75, z: 10.25 }, 'raider_0'), node('n2', { x: 16.25, z: 13.25 }, 'raider_0'));
+    const a = aiAction(s);
+    assert.deepEqual(a, { type: 'jutsu', unit: 'raider_0', jutsu: 'ryusei_warp', at: { x: 9.75, z: 10.25 } });
+    const out = ok(applyAction(s, a!));
+    assert.equal(out.state.units.raider_0.cond.warpEdge, true);
+    const blow = aiAction(out.state);
+    assert.ok(blow?.type === 'attack' && blow.target === 'a', JSON.stringify(blow));
+    ok(applyAction(out.state, blow));
+    // Meaning to throw a kunai, it warps only right beside the target, and strikes from behind with its fists.
+    const thrower = structuredClone(s);
+    thrower.units.raider_0.intent = { kind: 'ranged', what: 'Kunai', target: 'a' };
+    thrower.nodes = [node('n1', { x: 11.25, z: 10.25 }, 'raider_0')];
+    assert.equal(aiAction(thrower)?.type, 'move');
+    thrower.nodes.push(node('n2', { x: 9.75, z: 10.25 }, 'raider_0'));
+    const landed = ok(applyAction(thrower, aiAction(thrower)!)).state;
+    assert.deepEqual(landed.units.raider_0.pos, { x: 9.75, z: 10.25 });
+    assert.deepEqual(aiAction(landed), { type: 'attack', unit: 'raider_0', target: 'a', knockout: false });
   });
 });
 

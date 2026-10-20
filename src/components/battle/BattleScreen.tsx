@@ -16,6 +16,7 @@ import { cellCenter, cellOf, dist, getMap, gridFor, idx, lineOfSight, sameCell }
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
+import { edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, handsFree, wielded } from '../../battle/units';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
@@ -55,7 +56,7 @@ export interface BattleScreenProps {
   onEnd: (result: PartyBattleResult, state: BattleState) => void;
 }
 
-const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra', 'tip_mirai', 'tip_koton'] as const;
+const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra', 'tip_mirai', 'tip_koton', 'tip_ryusei'] as const;
 type TipKey = (typeof TIP_KEYS)[number];
 
 function tipSeen(k: string): boolean {
@@ -380,6 +381,30 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         label = pv.inRange && pv.sight ? T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(actor).dice }) : T('aimNoReach');
         sub = `${structureName(hw, lang)} · ${T('ac', { n: STRUCTURE_AC })}${pv.adv === 'disadvantage' ? ` · ${T('disadv')} · ${T('reason_longRange')}` : ''}`;
       }
+    } else if (mode.k === 'jutsu' && spec && spec.shape === 'node') {
+      // Warp Strike: the Nodes it can jump to light up; the one under the cursor shows where it lands.
+      o.range = { at: actor.pos, radius: spec.range };
+      o.nodes = { valid: ownNodes(s, actor).filter((n) => !warpBlocker(s, actor, n)).map((n) => n.id) };
+      const n = (hu && ownNodeAt(s, actor, hu.pos)) || (hover?.pt && ownNodeAt(s, actor, hover.pt)) || undefined;
+      if (n) {
+        const why = warpBlocker(s, actor, n);
+        const land = why ? null : warpLanding(s, actor, n);
+        const foe = land ? edgeFoe(s, actor, land) : undefined;
+        o.nodes.hover = n.id;
+        o.point = { at: land ?? n.pos, ok: !!land };
+        label = why ? T(`r_${why}` as TKey) : foe ? T('aimWarpEdge', { name: foe.name }) : T('aimMove', { m: dist(actor.pos, land!).toFixed(1) });
+      } else label = T('r_noNode');
+    } else if (mode.k === 'jutsu' && spec && spec.shape === 'onNode') {
+      // Spatial Swap: whoever stands on a Node it can reach; an enemy gets a STR save.
+      o.range = { at: actor.pos, radius: spec.range };
+      o.nodes = { valid: ownNodes(s, actor).filter((n) => dist(actor.pos, n.pos) <= spec.range + 0.1 && nodeInSight(s, actor, n)).map((n) => n.id) };
+      o.targets = Object.values(s.units).filter((x) => !swapBlocker(s, actor, x)).map((x) => x.id);
+      if (hu) {
+        const why = swapBlocker(s, actor, hu);
+        label = why ? T(`r_${why}` as TKey) : jutsuName(spec.id, lang);
+        if (!why) o.nodes.hover = nodeUnder(s, actor, hu)?.id;
+        if (!why && hu.team !== actor.team) sub = T('aimSave', { save: (lang === 'es' ? SAVE_ES : SAVE_EN).str, dc: actor.saveDC });
+      } else if (!o.targets.length) label = T('r_notOnNode');
     } else if (mode.k === 'jutsu' && spec) {
       const self = spec.shape === 'self' || spec.shape === 'selfCircle';
       if (!self) o.range = { at: actor.pos, radius: spec.range };
@@ -662,8 +687,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       case 'jutsu': {
         const sp = JUTSU[mode.id];
         const self = sp.shape === 'self' || sp.shape === 'selfCircle';
-        const target = sp.shape === 'single' || sp.shape === 'ally' ? u?.id : undefined;
-        const at = self ? actor.pos : u ? u.pos : pt;
+        const target = sp.shape === 'single' || sp.shape === 'ally' || sp.shape === 'onNode' ? u?.id : undefined;
+        // A warp goes to the Ryusei's own Node nearest the click (or under the unit clicked).
+        const node = sp.shape === 'node' ? (u && ownNodeAt(s, actor, u.pos)) || (pt && ownNodeAt(s, actor, pt)) || undefined : undefined;
+        const at = self ? actor.pos : node ? node.pos : u ? u.pos : pt;
         if (!at) return;
         act({ type: 'jutsu', unit: actor.id, jutsu: mode.id, at, target, enhanced: mode.enhanced });
         return;
@@ -895,9 +922,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
                   ? 'tip_mirai'
                   : actor?.character?.clan === 'Koton' && !tipSeen('tip_koton')
                     ? 'tip_koton'
-                    : actor && s.round >= 2 && !tipSeen('tip_cover')
-                      ? 'tip_cover'
-                      : null;
+                    : actor?.character?.clan === 'Ryusei' && !tipSeen('tip_ryusei')
+                      ? 'tip_ryusei'
+                      : actor && s.round >= 2 && !tipSeen('tip_cover')
+                        ? 'tip_cover'
+                        : null;
     if (want) setTip(want);
   }, [actor, state, tip]);
 
@@ -1169,6 +1198,8 @@ const SHORT: Record<string, [string, string]> = {
   katon_pursuing_flame: ['Pursuing', 'Persecutoria'],
   koton_block: ['Block', 'Bloque'],
   koton_wall: ['Metal wall', 'Muro metal'],
+  ryusei_warp: ['Warp', 'Warp'],
+  ryusei_swap: ['Swap', 'Intercambio'],
 };
 
 /** A jutsu's short name for its button. */

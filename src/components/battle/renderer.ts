@@ -2,7 +2,7 @@
 // overlays (reach, path, areas, vision cones, intents), jutsu effects, numbers and the night.
 // One world pixel is drawn as `k` device pixels (an integer), so the pixel art stays crisp.
 
-import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wall } from '../../battle/types';
+import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wall, WeaponNode } from '../../battle/types';
 import type { MapDef } from '../../battle/map';
 import { BLOCK_HALF, CELL, cellCenter, dist } from '../../battle/map';
 import { JUTSU, areaOf } from '../../battle/jutsu';
@@ -33,6 +33,8 @@ export interface Overlay {
   point?: { at: Pt; ok: boolean };
   /** Where a Kōton structure would rise, and whether it can. */
   footprint?: { wall: Wall; ok: boolean };
+  /** Aiming a Ryusei ability: the Nodes it can use light up (the others dim), and the one under the cursor. */
+  nodes?: { valid: string[]; hover?: string };
 }
 
 export interface Scene {
@@ -253,6 +255,8 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
   }
   // Traps the party can see.
   for (const t of state.traps) if (t.owner === sc.team || t.spotted) drawTrap(ctx, map, t);
+  // Weapon Nodes, both sides' (each from when its event plays until its removal does).
+  for (const n of [...state.nodes, ...sc.pb.goneNodes()]) if (!sc.pb.queue.some((e) => e.t === 'node' && e.on && e.node.id === n.id)) drawNode(ctx, sc, n);
   // What the Eye of Tomorrow reads, once the screen has caught up with the state.
   if (!sc.pb.busy) for (const [id, it] of Object.entries(sc.foreseen)) drawForesight(ctx, sc, id, it);
   if (o.area) {
@@ -362,6 +366,38 @@ function drawTrap(ctx: CanvasRenderingContext2D, map: MapDef, t: Trap): void {
   groundEllipse(ctx, map, t.pos, t.radius);
   ctx.setLineDash([3, 4]);
   ctx.strokeStyle = 'rgba(248, 113, 113, 0.5)';
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A Ryusei's Weapon Node: a steel diamond stuck in the ground, ringed in its side's colour. */
+function drawNode(ctx: CanvasRenderingContext2D, sc: Scene, n: WeaponNode): void {
+  const { map, state, overlay: o } = sc;
+  const p = project(map, n.pos);
+  const lit = !!o.nodes?.valid.includes(n.id);
+  const party = state.units[n.owner]?.team !== 'enemy';
+  ctx.save();
+  if (o.nodes && !lit) ctx.globalAlpha = 0.45;
+  ctx.beginPath();
+  groundEllipse(ctx, map, n.pos, 0.4);
+  if (lit) {
+    ctx.fillStyle = 'rgba(34, 211, 238, 0.2)';
+    ctx.fill();
+  } else ctx.setLineDash([3, 3]);
+  ctx.lineWidth = lit ? 2 : 1.5;
+  ctx.strokeStyle = o.nodes?.hover === n.id ? 'rgba(255, 255, 255, 0.95)' : party ? 'rgba(34, 211, 238, 0.75)' : 'rgba(251, 113, 133, 0.75)';
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(p.X, p.Y - 9);
+  ctx.lineTo(p.X + 3.5, p.Y - 3.5);
+  ctx.lineTo(p.X, p.Y + 1);
+  ctx.lineTo(p.X - 3.5, p.Y - 3.5);
+  ctx.closePath();
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#0e7490';
   ctx.stroke();
   ctx.restore();
 }

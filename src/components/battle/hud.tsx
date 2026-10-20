@@ -35,6 +35,8 @@ import {
   Skull,
   Box,
   BrickWall,
+  Locate,
+  ArrowLeftRight,
 } from 'lucide-react';
 import type { AiOrder, BattleState, Unit } from '../../battle/types';
 import { clanName } from '../../data/shinobiData';
@@ -59,6 +61,8 @@ export const ABILITY_ICON: Record<string, React.FC<{ size?: number; className?: 
   katon_pursuing_flame: Flame,
   koton_block: Box,
   koton_wall: BrickWall,
+  ryusei_warp: Locate,
+  ryusei_swap: ArrowLeftRight,
 };
 
 export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {
@@ -121,6 +125,7 @@ function statusOf(u: Unit, lang: Lang): string | null {
   if (u.down === 'fled') return T('fled', undefined, lang);
   if (u.cond.hidden !== undefined) return T('hidden', undefined, lang);
   if (u.cond.crouched) return T('crouched', undefined, lang);
+  if (u.cond.warpEdge) return T('reason_behind', undefined, lang);
   return null;
 }
 

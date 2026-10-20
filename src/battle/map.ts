@@ -231,8 +231,11 @@ function circleHitsSegment(c: Pt, r: number, a: Pt, b: Pt): boolean {
   return segDist(c, a, b) < r;
 }
 
-/** Nothing that blocks sight stands between two points (trees, tents, stacked crates, earth and metal walls). */
-export function lineOfSight(s: BattleState, a: Pt, b: Pt): boolean {
+/**
+ * Nothing that blocks sight stands between two points (trees, tents, stacked crates, earth and metal
+ * walls). With `structures: false` the walls don't count (a Ryusei warps past them).
+ */
+export function lineOfSight(s: BattleState, a: Pt, b: Pt, opts: { structures?: boolean } = {}): boolean {
   const map = getMap(s.mapId);
   for (let i = 0; i < map.props.length; i++) {
     const p = map.props[i];
@@ -246,6 +249,7 @@ export function lineOfSight(s: BattleState, a: Pt, b: Pt): boolean {
       if (segmentsCross(a, b, pa, pb)) return false;
     } else if (circleHitsSegment(p, rules.radius * 0.8, a, b)) return false;
   }
+  if (opts.structures === false) return true;
   for (const w of s.walls) if ((w.kind === 'earth' || w.kind === 'metal') && segmentsCross(a, b, w.a, w.b)) return false;
   return true;
 }

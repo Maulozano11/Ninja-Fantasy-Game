@@ -38,8 +38,8 @@ import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
 import { electrify, groundEffects, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
-import { breakable, damageStructure, hitStructuresIn, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker, wallAcross } from './structures';
-import { canEvade, evade } from './clans';
+import { breakable, damageStructure, faceToward, hitStructuresIn, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker, wallAcross } from './structures';
+import { addNode, canEvade, evade, leavesNodes, ownNodeAt, spatialSwap, swapBlocker, warpBlocker, warpLanding, warpStrike } from './clans';
 import { reachTo } from './intent';
 
 // --- setup ---------------------------------------------------------------------------------
@@ -122,6 +122,7 @@ export function createBattle(setup: BattleSetup): { state: BattleState; events: 
     }),
     walls: [],
     traps: [...(setup.traps ?? [])],
+    nodes: [],
     bodies: [],
     stealthDone: [],
     supplies: { ...setup.supplies },
@@ -413,7 +414,9 @@ function doAttack(s: BattleState, u: Unit, targetId: string, ranged: boolean, kn
 /**
  * Rolls a weapon attack and queues its damage. Attacking from hiding, or a guard that hasn't
  * noticed the attacker, gives advantage and 1d6 surprise damage (and no Mirai sees it coming).
- * Returns true if a reaction prompt (Evasion, Kawarimi) paused the battle.
+ * A Ryusei's warp edge is spent on it (nothing blocks the blow), and its kunai and missed blows
+ * leave a Weapon Node where they land. Returns true if a reaction prompt (Evasion, Kawarimi)
+ * paused the battle.
  */
 function weaponAttack(
   s: BattleState,
@@ -430,6 +433,9 @@ function weaponAttack(
   const roll = check(s, 'attack', pv.mod, pv.ac, adv, true);
   if (t.pos.x !== a.pos.x) a.facing = t.pos.x > a.pos.x ? 1 : -1;
   ev.push({ t: 'attack', unit: a.id, target: t.id, what: w.name, roll, ranged });
+  if (leavesNodes(a) && (ranged || !roll.success)) addNode(s, a, t.pos, ev);
+  const edge = !!a.cond.warpEdge;
+  if (edge) a.cond.warpEdge = false;
   const surprise = a.cond.hidden !== undefined || !!o.takedown;
   if (a.cond.hidden !== undefined) {
     a.cond.hidden = undefined;
@@ -443,7 +449,7 @@ function weaponAttack(
     let amount = rollDiceExpr(s, w.dice, roll.crit) + mod + (ranged ? 0 : effectMods(a.effects).meleeDamage);
     if (surprise) amount += rollDiceExpr(s, '1d6', roll.crit);
     if (!ranged && hasEffect(a.effects, 'gates_open')) amount += rollDiceExpr(s, '1d8', roll.crit);
-    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise });
+    hits.push({ unit: t.id, amount: Math.max(1, amount), type: w.type, source: a.id, what: w.name, crit: roll.crit, knockout: o.knockout && !ranged, melee: !ranged, aimed: true, unseen: surprise, unblockable: edge });
   }
   applyHits(s, hits, after, ev);
   return !!s.pending;
@@ -466,8 +472,16 @@ function attackProp(s: BattleState, u: Unit, i: number, ranged: boolean, ev: Bat
   if (ranged && !lineOfSight(s, u.pos, p)) return 'noSight';
   u.turn.action = false;
   const w = ranged ? KUNAI : wielded(u);
-  const roll = check(s, 'attack', u.prof + abilityMod(ranged ? u.stats.dex : u.stats.str), 10, d > KUNAI.reach ? 'disadvantage' : 'none', true);
+  const edge = !!u.cond.warpEdge;
+  if (edge) u.cond.warpEdge = false;
+  const adv = combineAdvantage(d > KUNAI.reach ? 'disadvantage' : 'none', edge ? 'advantage' : 'none');
+  const roll = check(s, 'attack', u.prof + abilityMod(ranged ? u.stats.dex : u.stats.str), 10, adv, true);
   ev.push({ t: 'attack', unit: u.id, target: `prop:${i}`, what: w.name, roll, ranged });
+  if (leavesNodes(u) && (ranged || !roll.success)) {
+    // The Node lands on the prop's side facing the Ryusei.
+    const k = d > 0 ? Math.min(1, rules.radius / d) : 0;
+    addNode(s, u, { x: p.x + (u.pos.x - p.x) * k, z: p.z + (u.pos.z - p.z) * k }, ev);
+  }
   if (!roll.success) return null;
   st.hp -= Math.max(1, rollDiceExpr(s, w.dice, roll.crit));
   if (st.hp > 0) return null;
@@ -490,8 +504,10 @@ function attackStructure(s: BattleState, u: Unit, id: string, ranged: boolean, e
   u.turn.action = false;
   const wpn = ranged ? KUNAI : wielded(u);
   const roll = check(s, 'attack', pv.mod, STRUCTURE_AC, pv.adv, true);
+  if (u.cond.warpEdge) u.cond.warpEdge = false;
   if (pv.at.x !== u.pos.x) u.facing = pv.at.x > u.pos.x ? 1 : -1;
   ev.push({ t: 'attack', unit: u.id, target: `wall:${w.id}`, what: wpn.name, roll, ranged });
+  if (leavesNodes(u) && (ranged || !roll.success)) addNode(s, u, faceToward(w, u.pos), ev);
   if (roll.success) damageStructure(s, w, Math.max(1, rollDiceExpr(s, wpn.dice, roll.crit)), ev, pv.at);
   return null;
 }
@@ -683,6 +699,19 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     case 'line':
       if (d < 0.3) return 'needDirection';
       break;
+    case 'node': {
+      // Warp Strike: one of the Ryusei's own Nodes, landing beside it if someone stands on it.
+      const n = ownNodeAt(s, u, at);
+      const why = warpBlocker(s, u, n);
+      if (why) return why;
+      at = warpLanding(s, u, n!)!;
+      break;
+    }
+    case 'onNode': {
+      const why = swapBlocker(s, u, target);
+      if (why) return why;
+      break;
+    }
   }
   if (spec.special === 'flicker') {
     const c = cellOf(at);
@@ -736,6 +765,12 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     case 'metalWall':
       raiseStructure(s, u, spec, at, ev);
       break;
+    case 'warp':
+      warpStrike(s, u, at, ev);
+      break;
+    case 'swap':
+      spatialSwap(s, u, target!, ev);
+      break;
     default:
       hits.push(...jutsuHits(s, u, spec, target, at, ev));
   }
@@ -753,9 +788,11 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   const amount = spec.dice ? rollDiceExpr(s, spec.dice) : 0;
   // Areas dent the Kōton structures they reach (an illusion doesn't).
   if (area && spec.dmgType && type !== 'Psychic') hitStructuresIn(s, area, amount, ev);
+  // A Ryusei's warp edge goes with its next attack roll: a jutsu that rolls to hit can't be blocked.
+  const edge = !spec.save && victims.length > 0 && !!u.cond.warpEdge;
   const hits: Hit[] = [];
   for (const v of victims) {
-    const extra: Partial<Hit> = { aimed: !area, effect: spec.effect, tension: spec.tension };
+    const extra: Partial<Hit> = { aimed: !area, effect: spec.effect, tension: spec.tension, ...(edge ? { unblockable: true } : {}) };
     if (spec.save) {
       hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv));
       continue;
@@ -765,6 +802,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
     ev.push({ t: 'attack', unit: u.id, target: v.id, what: spec.id, roll, ranged: !spec.melee });
     if (roll.success) hits.push({ unit: v.id, amount: roll.crit && spec.dice ? amount + rollDiceExpr(s, spec.dice) : amount, type, source: u.id, what: spec.id, crit: roll.crit, ...extra });
   }
+  if (edge) u.cond.warpEdge = false;
   // The ground: fire burns, wind cuts the foliage, blasts set off barrels and tags.
   const ground = area ?? { kind: 'circle' as const, center: at, radius: 1 };
   if (spec.dmgType) hits.push(...groundEffects(s, ground, spec.env === 'clearFoliage' ? 'Wind' : type, ev, new Set(), spec.env === 'clearFoliage'));

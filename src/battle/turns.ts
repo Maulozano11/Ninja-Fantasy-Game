@@ -130,6 +130,8 @@ export function endTurn(s: BattleState, ev: BattleEvent[]): void {
     u.effects = tick.effects;
     for (const id of tick.expired) ev.push({ t: 'effect', unit: u.id, effect: id, on: false });
     if (u.cond.hidden !== undefined && !u.cond.crouched) u.cond.hidden = undefined;
+    // A warp edge not struck with is gone.
+    if (u.cond.warpEdge) u.cond.warpEdge = false;
     // An enemy commits to its next move now, so a Mirai can read it.
     if (u.team === 'enemy') {
       planEnemy(s, u);

@@ -137,6 +137,11 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     advs.push('advantage');
     reasons.push('hidden');
   }
+  // A Ryusei that warped in next to its foe strikes from behind.
+  if (a.cond.warpEdge) {
+    advs.push('advantage');
+    reasons.push('behind');
+  }
   if (t.cond.prone) {
     advs.push(kind === 'melee' ? 'advantage' : 'disadvantage');
     reasons.push('prone');

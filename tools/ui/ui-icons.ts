@@ -991,7 +991,7 @@ function buildIcon(spec: IconSpec): Built {
     const smooth = sr > 0 ? bilateral(gbox, ss, sr, 2) : gbox;
     const clean = cleanup(quantize(smooth, pal), pal, smooth, 2, 1, new Set());
     const pt = new Paint(clean.clone(), pal);
-    spec.art?.(pt, { src, ground, specks, box, smooth });
+    if (!process.env.NOART) spec.art?.(pt, { src, ground, specks, box, smooth });
     const q = cleanup(pt.q, pal, smooth, 2, 1, pt.drawn);
     const ours = ixToF(q, pal);
     const sm = smallClusters(q, pt.sparks);
@@ -1423,6 +1423,7 @@ const ICONS: IconSpec[] = [
       { box: [158, 164, 170, 178], lo: 0.88, hi: 0.94, spare: true, by: 'warm', why: 'his peach spark, a dimmer pixel (the spark ends)' },
     ],
     bil44: [0.8, 0.03],
+    flow: process.env.KFLOW ? [2, +process.env.KFLOW] : undefined,
     art: (pt) => (pt.N === 44 ? kirin44(pt) : kirin88(pt)),
     bil88: [0.8, 0.03],
   },
@@ -1622,6 +1623,8 @@ if (DEBUG) {
       savePng(join(DEBUG, `${b.spec.id}-${N}-small-x8.png`), m.scaled(8));
     }
     savePng(join(DEBUG, `${b.spec.id}-88.png`), o88.img);
+    const A = 'abcdefghijklmnopqrstuvwxyz';
+    writeAtomic(join(DEBUG, `${b.spec.id}-44.txt`), b.pal.rgb.map((c, i) => A[i] + ' ' + toHex(c)).join('\n') + '\n\n' + Array.from({ length: 44 }, (_, y) => Array.from({ length: 44 }, (_, x) => A[o44.q.get(x, y)]).join('')).join('\n') + '\n');
     savePng(join(DEBUG, `${b.spec.id}-base44.png`), o44.base.toImg(b.pal));
     savePng(join(DEBUG, `${b.spec.id}-base88.png`), o88.base.toImg(b.pal));
   }

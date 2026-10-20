@@ -1445,7 +1445,7 @@ const ICONS: IconSpec[] = [
     ],
     // The owner (2026-10-20): the cross must be a clean plus sign, turned as his scroll is. His own is
     // skewed with uneven arms, and at 44 it melted into the glowing parchment. A true plus turned 12
-    // degrees anticlockwise, as his rods and rune rows rise (his top edge 14.6, bottom 9.9 degrees),
+    // degrees clockwise (the owner: the other way from anticlockwise, which he saw first),
     // drawn at both sizes where his sits (his x 36-59, y 37-57), on his glow cream, in his gold
     // #fcf79a with his brown outline #926d46.
     art: (pt) => {
@@ -1453,8 +1453,8 @@ const ICONS: IconSpec[] = [
       const [cx, cy] = big ? [46, 44] : [23, 22];
       const a = big ? 2 : 1; // half the arm's width (arms about 5 or 3 wide)
       const half = big ? 12 : 5; // half the plus's span (25 or 11)
-      const tilt = (12 * Math.PI) / 180;
-      const [ux, uy] = [Math.cos(tilt), -Math.sin(tilt)]; // along the scroll, rising to the right
+      const tilt = (-12 * Math.PI) / 180;
+      const [ux, uy] = [Math.cos(tilt), -Math.sin(tilt)]; // along the cross arm, falling to the right
       const inside = (x: number, y: number) => {
         const s = (x - cx) * ux + (y - cy) * uy; // along the scroll
         const t = (x - cx) * -uy + (y - cy) * ux; // across it, downwards

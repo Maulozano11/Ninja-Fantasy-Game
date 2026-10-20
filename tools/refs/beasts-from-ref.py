@@ -1327,8 +1327,9 @@ def drake():
             Image.fromarray(vis).save(os.path.join(DEBUG, f'drake-pieces-{k}.png'))
 
     # His dust (his lunge picture only), in his own colours and opaque, as he painted it: the pile is a solid
-    # mound of cream boulders on dark soil whose flat bottom is his ground; the streaks and specks flying off
-    # it are kept too, and only where they are thinner than a game pixel do they keep a partial alpha.
+    # mound of cream boulders on dark soil standing on his ground (its flat bottom, where his panel cut it, is
+    # closed in rounded puffs below: FOOT_PUFFS); the streaks and specks flying off it are kept too, and only
+    # where they are thinner than a game pixel do they keep a partial alpha.
     crop5, body5, rest5, diff5, off5, _ = keys[5]
     gx5, gy5 = xx + off5[0], yy + off5[1]
     dust = rest5.copy()
@@ -1430,10 +1431,12 @@ def drake():
     # a straight line under it. It ends instead in a row of rounded puffs, as the fire 3/4 wall's ends were
     # closed: each puff is his own pile (two of them are his cream boulders that sat on the cut, rounded off
     # underneath), the soil between them stays a few px further up, and the puffs get smaller and stay further off
-    # the ground toward both ends, so the pile's corners round off too. A puff's bottom is ragged (a few px of
-    # wobble) and thins out over its last FOOT_FADE px into partly clear dust (his partly clear dust colours).
-    # (Done after his palette is sampled, so his dust keeps every colour it had.)
-    FOOT_PUFFS = [  # (his x of its middle, half width, how high the soil beside it stays, its lowest point's height)
+    # the ground toward both ends, so the pile's corners round off too. A puff's bottom is ragged (a slow wobble of
+    # about half a game px) and thins out over its last FOOT_FADE px into partly clear dust (his partly clear dust
+    # colours). It applies to his pile in every frame, so the burst (frames 3-4) and the settling dust (6-7, where
+    # the pile wears down from the top onto these puffs) end the same way. (Done after his palette is sampled, so
+    # his dust keeps every colour it had.)
+    FOOT_PUFFS = [  # (his x of its middle, its half width, how far up its sides curve, its lowest point's height off the ground)
         (1158, 10, 11, 7), (1181, 13, 14, 0), (1207, 11, 12, 5), (1232, 13, 14, 0), (1260, 12, 13, 3),
         (1285, 11, 12, 7), (1311, 14, 15, 1), (1339, 12, 13, 4), (1365, 13, 14, 1), (1392, 12, 13, 5),
         (1417, 11, 12, 2), (1439, 9, 10, 5), (1458, 8, 8, 6), (1475, 6, 7, 6)]

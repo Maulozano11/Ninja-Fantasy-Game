@@ -26,7 +26,10 @@ folders.
   character on the WALL panel (228 px tall against our 96). The drake keeps his dark under-body
   shadow (warmer than his panel), and his dust is kept opaque in his own colours (only streaks and
   specks thinner than a game pixel get a partial alpha); the straight side where his picture's box cut
-  the pile ends along his boulders instead. His loose specks and the clod on the back spike keep only
+  the pile ends along his boulders instead, and the flat bottom where his panel cut it along the ground
+  ends in a row of rounded puffs of his own pile (`FOOT_PUFFS`; two are his cream boulders that sat on
+  the cut), smaller and further off the ground toward both ends, each thinning out over its last few px
+  into his partly clear dust colours. His loose specks and the clod on the back spike keep only
   their own bright pixels (not the dark JPEG ring around them). The in-betweens turn his own legs and
   tail about their joints (the turn eases in from the cut, so each piece stays joined; under them the
   whole body is bent by one smooth field, so whatever a turned piece uncovers along its sides shows his

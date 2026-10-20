@@ -11,6 +11,7 @@ For each icon (named by jutsu id) this writes:
   <out>/ref/<id>@88.png       the crop scaled to 88x88 (Lanczos), for the comparison sheet
   <out>/ref/<id>@44.png       the crop scaled to 44x44 (Lanczos), for the comparison sheet
   <out>/ref/slot_<id>.png     his whole slot, frame included
+  <out>/ref/row.png           his row of four slots, for the comparison sheet
   <out>/ref/study/*-x4.png    crops at 4x (nearest), to study the details
   <out>/ref/crops.json        every box
   <out>/ref/palette.json      the main colours of each icon (k-means) and his frame colours
@@ -37,6 +38,10 @@ ICONS = [
     ('great_fire_annihilation', (537, 276, 738, 482), (518, 256, 758, 501), 'Great Fire Annihilation: a curling wave of fire with embers'),
     ('water_shield_suijinheki', (789, 276, 990, 482), (770, 256, 1010, 501), 'Water Wall: a cresting wave with foam'),
 ]
+
+# His row of four slots (x0, y0, x1, y1), with a few pixels of his background around it.
+ROW = (12, 254, 1012, 503)
+
 
 def save_atomic(img, path):
     tmp = path + '.tmp-%d' % os.getpid()
@@ -140,6 +145,8 @@ def main():
         save_atomic(c.resize((w * 4, h * 4), Image.NEAREST), os.path.join(study, jid + '-x4.png'))
         crops[jid] = {'box': list(box), 'size': [w, h], 'slot': list(slot), 'what': what}
         pal[jid] = kmeans(np.asarray(c), 12)
+    # His whole row of four slots, for the comparison sheet.
+    save_atomic(im.crop(ROW), os.path.join(ref, 'row.png'))
     first = im.crop(ICONS[0][2])
     save_atomic(first.crop((0, 0, 60, 60)).resize((360, 360), Image.NEAREST), os.path.join(study, 'frame-corner-tl-x6.png'))
     save_atomic(first.crop((first.size[0] - 60, first.size[1] - 60, first.size[0], first.size[1])).resize((360, 360), Image.NEAREST), os.path.join(study, 'frame-corner-br-x6.png'))

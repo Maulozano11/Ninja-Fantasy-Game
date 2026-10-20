@@ -16,6 +16,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Img, RGBA, hex, loadPng, savePng, toHex, writeAtomic } from './ui-img';
+import { screenText } from './ui-font';
 
 if (!process.env.UI_OUT) {
   console.error('ui-icons: set UI_OUT to the staging folder (nothing is written to src/ by this tool).');
@@ -906,36 +907,45 @@ function medoidResize(src: F, w: number, h: number): F {
 }
 
 /**
- * Halves an indexed picture by toggle mapping: each 2x2 block keeps its lightest pixel when the
- * block is lighter than its surroundings (a stroke, a tooth, a bolt) and its darkest when it is
- * darker (a gap, a gum line), so thin strokes of the large version survive in the small one.
- * `ring` is the radius (in blocks) of the surroundings.
+ * Halves an indexed picture. Each 2x2 block normally keeps the one of its four pixels nearest to
+ * the block's mean (so the balance of light and dark stays his). When the block holds a stroke
+ * that stands out from its surroundings by more than `strong` in lightness (a bright stroke, a
+ * tooth, a bolt, or a dark gap), it keeps that stroke's pixel instead (toggle mapping: the lightest
+ * if the block is lighter than its surroundings, the darkest if darker), so thin strokes of the
+ * large version survive in the small one.
  */
-function toggleHalf(q: Ix, p: Pal, ring = 1): Ix {
+function halve(q: Ix, p: Pal, strong: number): Ix {
   const w = q.w >> 1, h = q.h >> 1;
   const o = new Ix(w, h);
   const bl = new Float32Array(w * h);
+  const block = (x: number, y: number) => [0, 1, 2, 3].map((k) => q.get(x * 2 + (k & 1), y * 2 + (k >> 1)));
   for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++) {
-      let m = 0;
-      for (let k = 0; k < 4; k++) m += p.lab[q.get(x * 2 + (k & 1), y * 2 + (k >> 1))][0] / 4;
-      bl[y * w + x] = m;
-    }
+    for (let x = 0; x < w; x++) bl[y * w + x] = block(x, y).reduce((a, v) => a + p.lab[v][0] / 4, 0);
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
       let n = 0, c = 0;
-      for (let dy = -ring; dy <= ring; dy++)
-        for (let dx = -ring; dx <= ring; dx++) {
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
           const xx = x + dx, yy = y + dy;
-          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h || (dx === 0 && dy === 0)) continue;
           n += bl[yy * w + xx];
           c++;
         }
-      const lighter = bl[y * w + x] >= n / c;
-      let best = -1;
-      for (let k = 0; k < 4; k++) {
-        const v = q.get(x * 2 + (k & 1), y * 2 + (k >> 1));
-        if (best < 0 || (lighter ? p.lab[v][0] > p.lab[best][0] : p.lab[v][0] < p.lab[best][0])) best = v;
+      const around = n / c;
+      const b = block(x, y);
+      const lighter = bl[y * w + x] >= around;
+      let ext = b[0];
+      for (const v of b) if (lighter ? p.lab[v][0] > p.lab[ext][0] : p.lab[v][0] < p.lab[ext][0]) ext = v;
+      if (Math.abs(p.lab[ext][0] - around) > strong && Math.abs(bl[y * w + x] - around) > strong * 0.35) {
+        o.set(x, y, ext);
+        continue;
+      }
+      const mean: Lab = [0, 0, 0];
+      for (const v of b) for (let k = 0; k < 3; k++) mean[k] += p.lab[v][k] / 4;
+      let best = b[0], bd = Infinity;
+      for (const v of b) {
+        const d = dist(p.lab[v], mean);
+        if (d < bd - 1e-12) (bd = d), (best = v);
       }
       o.set(x, y, best);
     }
@@ -950,10 +960,13 @@ function toggleHalf(q: Ix, p: Pal, ring = 1): Ix {
  * palette entry is used.
  *  - line: a 1-pixel line through the points (pixel-perfect: no doubled corners).
  *  - dots: single pixels.
+ *  - wedge: a tooth, from its base (first point) to its tip (second), `width` pixels wide at the
+ *    base and one at the tip.
  * `sizes` limits it to the 44 or the 88 version.
  */
 interface Feature {
-  kind: 'line' | 'dots';
+  kind: 'line' | 'dots' | 'wedge';
+  width?: number;
   color: string;
   pts: [number, number][];
   sizes?: number[];
@@ -999,7 +1012,20 @@ function drawFeatures(q: Ix, p: Pal, fs: Feature[] | undefined): void {
     });
     const pts = f.pts.map(([x, y]) => toTarget(N, x, y).map(Math.round) as [number, number]);
     if (f.kind === 'dots') for (const [x, y] of pts) q.set(x, y, idx);
-    else
+    else if (f.kind === 'wedge') {
+      const [b, t] = f.pts.map(([x, y]) => toTarget(N, x, y));
+      const len = Math.hypot(t[0] - b[0], t[1] - b[1]);
+      const ux = (t[0] - b[0]) / len, uy = (t[1] - b[1]) / len;
+      const wb = f.width ?? 2;
+      for (let y = Math.floor(Math.min(b[1], t[1])) - 2; y <= Math.ceil(Math.max(b[1], t[1])) + 2; y++)
+        for (let x = Math.floor(Math.min(b[0], t[0])) - 2; x <= Math.ceil(Math.max(b[0], t[0])) + 2; x++) {
+          const vx = x - b[0], vy = y - b[1];
+          const along = vx * ux + vy * uy, across = Math.abs(-vx * uy + vy * ux);
+          if (along < -0.25 || along > len + 0.25) continue;
+          const half = (wb + (1 - wb) * (along / len)) / 2;
+          if (across <= half) q.set(x, y, idx);
+        }
+    } else
       for (let i = 0; i + 1 < pts.length; i++) {
         const seg = linePixels(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
         for (const [x, y] of seg) q.set(x, y, idx);
@@ -1017,10 +1043,19 @@ const KIRIN: Feature[] = [
   // Upper gum line (dark) and the teeth hanging from it.
   { kind: 'line', color: INK, pts: [[104, 99], [124, 95], [140, 97], [160, 101], [176, 104]] },
   { kind: 'dots', color: TOOTH, pts: [[124, 100], [133, 101], [142, 104], [151, 106], [160, 107], [169, 108]], sizes: [44] },
+  ...([[[125, 97], [125, 105]], [[130, 97], [131, 106]], [[137, 98], [137, 107]], [[144, 99], [144, 108]], [[152, 101], [152, 109]], [[159, 102], [160, 109]], [[166, 103], [166, 109]], [[172, 104], [172, 109]]] as [number, number][][]).map(
+    (pts): Feature => ({ kind: 'wedge', color: TOOTH, pts, width: 2, sizes: [88] }),
+  ),
+  ...([[[134, 133], [139, 128]], [[135, 140], [140, 135]], [[137, 147], [142, 142]], [[140, 152], [145, 147]], [[143, 158], [147, 153]]] as [number, number][][]).map(
+    (pts): Feature => ({ kind: 'wedge', color: TOOTH, pts, width: 2, sizes: [88] }),
+  ),
   { kind: 'dots', color: TOOTH, pts: [[124, 104], [142, 108], [160, 111]], sizes: [44] },
+  // The dark gaps between them, so the row reads as teeth at 44.
+  { kind: 'dots', color: INK, pts: [[128, 100], [137, 102], [146, 104], [155, 106], [164, 107]], sizes: [44] },
   // Lower gum line and the teeth standing on it.
-  { kind: 'line', color: INK, pts: [[106, 118], [114, 132], [122, 146], [132, 158], [144, 164]] },
+  { kind: 'line', color: INK, pts: [[106, 118], [114, 132], [122, 146], [132, 158], [144, 164]], sizes: [44] },
   { kind: 'dots', color: TOOTH, pts: [[114, 126], [122, 138], [130, 148], [139, 156]], sizes: [44] },
+  { kind: 'dots', color: INK, pts: [[118, 132], [126, 143], [134, 152]], sizes: [44] },
   // The eye: his dark slit with the lit brow ridge above it.
   { kind: 'line', color: INK, pts: [[156, 85], [161, 86], [166, 90]] },
   { kind: 'line', color: PALE, pts: [[152, 80], [160, 81], [166, 85]], sizes: [44] },
@@ -1058,10 +1093,12 @@ interface IconSpec {
   chroma: number;
   /** How much richer than the cluster means the palette snaps (1 = none). */
   vivid: number;
-  /** Whether the small version's unsharp mask is kept inside his local range (no halos). */
-  clamp44: boolean;
+  /** Smoothing along his strokes before the small version is made: [sigma, length], length 0 = none. */
+  flow44: [number, number];
   /** Hand-placed details drawn over the reduction (see Feature). */
   features?: Feature[];
+  /** Lightness step that makes a stroke worth keeping when the 88 version is halved (see halve). */
+  strong44: number;
   /** Colours of the 44 version (a smaller palette, also sampled from his picture), 0 = the same. */
   colors44: number;
   /** Unsharp mask before each reduction: [sigma in his pixels, amount]; the small one is not clamped. */
@@ -1078,7 +1115,8 @@ const ICONS: IconSpec[] = [
     chroma: 1,
     vivid: 1,
     colors44: 0,
-    clamp44: false,
+    strong44: 0.12,
+    flow44: [2, 0],
     usm44: [3, 1.2],
     usm88: [2, 1],
   },
@@ -1090,7 +1128,8 @@ const ICONS: IconSpec[] = [
     chroma: 1,
     vivid: 1,
     colors44: 0,
-    clamp44: true,
+    strong44: 0.12,
+    flow44: [2, 4],
     features: KIRIN,
     usm44: [3, 2],
     usm88: [2, 1],
@@ -1106,7 +1145,8 @@ const ICONS: IconSpec[] = [
     chroma: 1,
     vivid: 1,
     colors44: 0,
-    clamp44: false,
+    strong44: 0.12,
+    flow44: [2, 0],
     usm44: [3, 1.2],
     usm88: [2, 1],
   },
@@ -1118,7 +1158,8 @@ const ICONS: IconSpec[] = [
     chroma: 2.2,
     vivid: 1.15,
     colors44: 0,
-    clamp44: false,
+    strong44: 0.12,
+    flow44: [2, 0],
     usm44: [3, 1.2],
     usm88: [2, 1],
   },
@@ -1203,12 +1244,145 @@ function buildIcon(spec: IconSpec): Built {
   drawFeatures(q88, pal, spec.features);
   // 44: his picture's area mean at 88 on the palette, halved by toggle mapping (each 2x2 block
   // keeps its lightest or darkest pixel, whichever stands out from its surroundings), cleaned.
-  const q44 = despeckle(toggleHalf(despeckle(quantize(areaResize(ground, 88, 88), pal44), pal44, 1, 0.2), pal44, 1), pal44, 2, 0.2);
+  const g44 = spec.flow44[1] > 0 ? flowSmooth(ground, spec.flow44[0], spec.flow44[1]) : ground;
+  const q44 = despeckle(halve(despeckle(quantize(areaResize(g44, 88, 88), pal44), pal44, 1, 0.2), pal44, spec.strong44), pal44, 2, 0.2);
   stampSpecks(q44, pal44, specks, src.w, src.h);
   drawFeatures(q44, pal44, spec.features);
   const p88 = join(REF, `${spec.id}@88.png`);
   return { spec, pal, pal44, q44, q88, i44: q44.toImg(pal44), i88: q88.toImg(pal), his, his88: existsSync(p88) ? loadPng(p88) : null };
 }
+
+// --- his slot frame -----------------------------------------------------------------------------
+
+/**
+ * His skill slot (56x56, the icon window 44x44 at 6,6), one art pixel per screen pixel like the
+ * icons. From the outside in, as he painted it (his colours, measured on all four slots by
+ * tools/refs/icons-from-ref.py): a black line, the dark steel bar (lit outer edge, then its body),
+ * a dark gap, his thin gold line and a black line before the picture. Each side keeps his own
+ * shade of steel and gold. Over the corners sit his gold brackets: a block holding a steel rivet,
+ * two arms along the bar that end in a 45-degree cut, a small barb on each arm, lit from the top
+ * left. The window is left transparent, so the frame can be drawn over the icon (the brackets
+ * then overlap the icon's corners by a pixel or two, as in his picture) or under it.
+ */
+interface FrameColors {
+  outline: string;
+  steelLight: [string, string, string, string]; // top, right, bottom, left
+  steel: [string, string, string, string];
+  gap: string;
+  gold: [string, string, string, string];
+  inner: string;
+  bracket: { hi: string; light: string; mid: string; dark: string; edge: string };
+  rivet: { hi: string; mid: string; dark: string; rim: string };
+}
+
+const STEEL: FrameColors = {
+  outline: '#05060a',
+  steelLight: ['#626978', '#404858', '#434856', '#484e5c'],
+  steel: ['#2d3444', '#2f3340', '#2d3440', '#2e3544'],
+  gap: '#0e0f13',
+  gold: ['#c2b38d', '#8c765a', '#af9c7e', '#a18a6a'],
+  inner: '#0a0607',
+  bracket: { hi: '#ebd8a9', light: '#cab082', mid: '#a6875b', dark: '#876b46', edge: '#1a1206' },
+  rivet: { hi: '#d2d6de', mid: '#8a909c', dark: '#4c525e', rim: '#15161a' },
+};
+
+// Selected or hovered: the same frame in gold (as the kit's skill_slot_active), the rivets glinting.
+const GOLDEN: FrameColors = {
+  outline: '#05060a',
+  steelLight: ['#f0e2a6', '#bca659', '#bca659', '#dcc87e'],
+  steel: ['#958035', '#806c2a', '#806c2a', '#8a7530'],
+  gap: '#2a1d06',
+  gold: ['#fff6d6', '#e6d08e', '#f6e7b8', '#f0dfa8'],
+  inner: '#0a0607',
+  bracket: { hi: '#fff6d6', light: '#f0e2a6', mid: '#dcc87e', dark: '#bca659', edge: '#2a1d06' },
+  rivet: { hi: '#ffffff', mid: '#b4bac4', dark: '#5e6470', rim: '#15161a' },
+};
+
+const SLOT = 56, RING = 6, SLICE = 16;
+
+/** The top-left bracket's shape (1 = gold), before mirroring into the other corners. */
+function bracketMask(): boolean[][] {
+  const m = Array.from({ length: SLICE }, () => Array(SLICE).fill(false) as boolean[]);
+  // The block that holds the rivet, its inner corner cut at 45 degrees (it stays on the ring).
+  for (let y = 1; y <= 6; y++) for (let x = 1; x <= 6; x++) if (x + y <= 11) m[y][x] = true;
+  // Arms along the bar: two pixels thick, ending in a 45-degree cut.
+  for (let x = 7; x <= 12; x++) m[1][x] = true;
+  for (let x = 7; x <= 11; x++) m[2][x] = true;
+  for (let y = 7; y <= 12; y++) m[y][1] = true;
+  for (let y = 7; y <= 11; y++) m[y][2] = true;
+  // His barb: a small tooth under each arm, past a notch.
+  m[3][9] = true;
+  m[9][3] = true;
+  return m;
+}
+
+/** The rivet: a 4x4 steel ball lit from the top left ('.' leaves the bracket under it). */
+const RIVET = ['.mm.', 'mhmd', 'mmdd', '.dd.'];
+
+function buildFrame(c: FrameColors): Img {
+  const img = new Img(SLOT, SLOT);
+  const side = (x: number, y: number): number => {
+    // Which side of the ring a pixel belongs to (0 top, 1 right, 2 bottom, 3 left), split on the diagonals.
+    const dt = y, db = SLOT - 1 - y, dl = x, dr = SLOT - 1 - x;
+    const m = Math.min(dt, db, dl, dr);
+    return m === dt ? 0 : m === dr ? 1 : m === db ? 2 : 3;
+  };
+  for (let y = 0; y < SLOT; y++)
+    for (let x = 0; x < SLOT; x++) {
+      const d = Math.min(x, y, SLOT - 1 - x, SLOT - 1 - y);
+      if (d >= RING) continue;
+      const sd = side(x, y);
+      const col = [c.outline, c.steelLight[sd], c.steel[sd], c.gap, c.gold[sd], c.inner][d];
+      img.set(x, y, hex(col));
+    }
+  // Brackets: the mask mirrored into each corner, then shaded with the light from the top left.
+  const mk = bracketMask();
+  const gold = (x: number, y: number): boolean => {
+    if (x < 0 || y < 0 || x >= SLOT || y >= SLOT) return false;
+    const mx = x < SLOT / 2 ? x : SLOT - 1 - x, my = y < SLOT / 2 ? y : SLOT - 1 - y;
+    return mx < SLICE && my < SLICE && mk[my][mx];
+  };
+  for (let y = 0; y < SLOT; y++)
+    for (let x = 0; x < SLOT; x++) {
+      if (gold(x, y)) {
+        const up = !gold(x, y - 1), left = !gold(x - 1, y), down = !gold(x, y + 1), right = !gold(x + 1, y);
+        const col = up || left ? (up && left ? c.bracket.hi : up ? c.bracket.hi : c.bracket.light) : down || right ? c.bracket.dark : c.bracket.mid;
+        img.set(x, y, hex(col));
+      }
+    }
+  // A dark edge where the bracket meets the bar, the gold line or the window (not on the outline).
+  for (let y = 1; y < SLOT - 1; y++)
+    for (let x = 1; x < SLOT - 1; x++) {
+      if (gold(x, y)) continue;
+      if (gold(x - 1, y) || gold(x + 1, y) || gold(x, y - 1) || gold(x, y + 1)) img.set(x, y, hex(c.bracket.edge));
+    }
+  // Rivets, each in its corner block, all lit from the top left.
+  const rv: Record<string, string> = { h: c.rivet.hi, m: c.rivet.mid, d: c.rivet.dark };
+  for (const [ox, oy] of [[2, 2], [SLOT - 6, 2], [2, SLOT - 6], [SLOT - 6, SLOT - 6]]) {
+    RIVET.forEach((row, ry) =>
+      [...row].forEach((ch, rx) => {
+        if (ch !== '.') img.set(ox + rx, oy + ry, hex(rv[ch]));
+      }),
+    );
+    // Its shadow rim on the lower right.
+    for (const [dx, dy] of [[4, 1], [4, 2], [1, 4], [2, 4], [3, 3]]) img.set(ox + dx, oy + dy, hex(c.rivet.rim));
+  }
+  return img;
+}
+
+const frame = buildFrame(STEEL);
+const frameActive = buildFrame(GOLDEN);
+
+/** A sliced frame must stretch cleanly: the pixels between the insets repeat along each edge. */
+function checkSlice(img: Img, inset: number): void {
+  for (let a = inset; a < img.w - inset - 1; a++)
+    for (let k = 0; k < img.h; k++) {
+      const p = img.get(a, k), q = img.get(a + 1, k), r = img.get(k, a), t = img.get(k, a + 1);
+      if (p.join() !== q.join() || r.join() !== t.join()) throw new Error(`skill_slot_steel: the centre between the ${inset}-pixel slices does not repeat (at ${a})`);
+    }
+}
+checkSlice(frame, SLICE);
+checkSlice(frameActive, SLICE);
 
 const built = ICONS.map(buildIcon);
 for (const b of built) {
@@ -1216,21 +1390,116 @@ for (const b of built) {
   savePng(join(OUT, `${b.spec.id}@2x.png`), b.i88);
   console.log(b.spec.id, b.pal.rgb.length, b.pal.rgb.map(toHex).join(' '));
 }
+savePng(join(OUT, 'skill_slot_steel.png'), frame);
+savePng(join(OUT, 'skill_slot_steel_active.png'), frameActive);
 
-// --- sheets -------------------------------------------------------------------------------------
+// --- manifest -----------------------------------------------------------------------------------
+
+const manifest = {
+  kit: 'ui_icons',
+  reference: 'docs/reference/icons-owner-reference-1.jpg',
+  screen: [1600, 900],
+  pixel: 'one art pixel per screen pixel (finer than ui_battle, whose art pixels are 2x2): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated',
+  sliceOrder: 'top, right, bottom, left (pixels)',
+  icons: Object.fromEntries(
+    built.map((b) => [
+      b.spec.id,
+      {
+        name: b.spec.name,
+        file: `${b.spec.id}.png`,
+        file2x: `${b.spec.id}@2x.png`,
+        size: [44, 44],
+        size2x: [88, 88],
+        palette: b.pal.rgb.map(toHex),
+        use: 'Hotbar skill icon: fills the 44x44 window of skill_slot_steel (or of ui_battle skill_slot), at 6,6.',
+      },
+    ]),
+  ),
+  pieces: {
+    skill_slot_steel: {
+      file: 'skill_slot_steel.png',
+      size: [SLOT, SLOT],
+      slice: [SLICE, SLICE, SLICE, SLICE],
+      window: { x: RING, y: RING, w: SLOT - 2 * RING, h: SLOT - 2 * RING, shape: 'rect' },
+      layer: 'over the icon (the window is transparent; his gold brackets overlap the icon corners). Drawn under the icon it works too, the brackets are then hidden where the icon covers them.',
+      emptyFill: '#0f1116',
+      use: "His skill slot from the icon picture: dark steel bar with a lit outer edge, his thin gold line inside, gold corner brackets with steel rivets. The skill icon goes in the window.",
+    },
+    skill_slot_steel_active: {
+      file: 'skill_slot_steel_active.png',
+      size: [SLOT, SLOT],
+      slice: [SLICE, SLICE, SLICE, SLICE],
+      window: { x: RING, y: RING, w: SLOT - 2 * RING, h: SLOT - 2 * RING, shape: 'rect' },
+      layer: 'as skill_slot_steel',
+      use: 'The same slot, selected or hovered: the steel turns gold and the rivets glint (as the kit pairs skill_slot with skill_slot_active).',
+    },
+  },
+};
+writeAtomic(join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 1) + '\n');
+
+// --- comparison sheet ---------------------------------------------------------------------------
+
+/** Our four icons in our frame, in a row like his picture (his slots are 18 of his pixels apart, 4 of ours). */
+function slotRow(act = -1): Img {
+  const gap = 4;
+  const row = new Img(built.length * SLOT + (built.length - 1) * gap, SLOT);
+  built.forEach((b, i) => {
+    const x = i * (SLOT + gap);
+    row.draw(b.i44, x + RING, RING);
+    row.draw(i === act ? frameActive : frame, x, 0);
+  });
+  return row;
+}
 
 if (process.env.UI_SHEETS) {
-  const S = 2;
-  const cell = 88 * S, gap = 16;
-  const out = new Img(gap + built.length * (cell * 3 + gap * 3), cell + gap * 2);
-  out.fill(hex('#15171d'));
-  let x = gap;
+  const BG = hex('#15171d'), HEAD = hex('#e9dfc4'), SUB = hex('#9aa3b0');
+  const Z = 2; // the sheet shows everything at 2x
+  const pad = 24, cell = 88 * Z, gap = 20;
+  const parts: { img: Img; x: number; y: number }[] = [];
+  let y = pad;
+  const put = (img: Img, x: number) => parts.push({ img, x, y });
+  const title = screenText('SKILL ICONS 1  -  his icons beside ours (sheet at 2x: every pixel shown 2x2)', 'title', HEAD);
+  put(title, pad);
+  y += title.h + 14;
+  const heads = ['his picture, cropped, at 88', 'ours at 88 (@2x file)', 'ours at 44, shown at 2x', '44 at 1x'];
+  heads.forEach((h, i) => put(screenText(h, 'label', SUB), pad + 200 + i * (cell + gap)));
+  y += 24;
   for (const b of built) {
-    if (b.his88) out.draw(b.his88.scaled(S), x, gap);
-    out.draw(b.i88.scaled(S), x + cell + gap, gap);
-    out.draw(b.i44.scaled(S * 2), x + (cell + gap) * 2, gap);
-    x += cell * 3 + gap * 3;
+    put(screenText(b.spec.name, 'title', HEAD), pad);
+    parts.push({ img: screenText(b.spec.id, 'label', SUB), x: pad, y: y + 22 });
+    if (b.his88) put(b.his88.scaled(Z), pad + 200);
+    put(b.i88.scaled(Z), pad + 200 + (cell + gap));
+    put(b.i44.scaled(2 * Z), pad + 200 + 2 * (cell + gap));
+    put(b.i44.scaled(Z), pad + 200 + 3 * (cell + gap));
+    y += cell + gap;
   }
+  // His row and ours, his slot scaled to our 4x slot (224 pixels).
+  y += 10;
+  put(screenText('In the frame, in a row like his picture. Top: his picture. Below: ours at 4x, then at 1x (true size) and at 2x', 'title', HEAD), pad);
+  y += 34;
+  const hisRowPath = join(REF, 'row.png');
+  if (existsSync(hisRowPath)) {
+    const hr = loadPng(hisRowPath);
+    const k = 224 / 240;
+    put(hr.resized(Math.round(hr.w * k), Math.round(hr.h * k)), pad);
+    y += Math.round(hr.h * k) + 16;
+  }
+  const row = slotRow();
+  put(row.scaled(4), pad);
+  y += row.h * 4 + 16;
+  put(row, pad);
+  put(row.scaled(2), pad + row.w + 40);
+  y += row.h * 2 + 16;
+  put(screenText('Selected or hovered (skill_slot_steel_active), first slot, at 4x and 1x', 'label', SUB), pad);
+  y += 22;
+  const act = slotRow(0);
+  put(act.scaled(4), pad);
+  y += act.h * 4 + 16;
+  put(act, pad);
+  y += act.h + pad;
+  const W = Math.max(...parts.map((p) => p.x + p.img.w)) + pad;
+  const out = new Img(W, y);
+  out.fill(BG);
+  for (const p of parts) out.draw(p.img, p.x, p.y);
   savePng(join(process.env.UI_SHEETS, 'ui-icons-1-compare.png'), out);
 }
-void writeAtomic;

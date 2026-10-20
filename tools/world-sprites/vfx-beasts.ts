@@ -652,8 +652,9 @@ function windCrane(): WorldSprite {
 // line toward his other drawing's tail (his curl opens into the spear before the leap and curls back up
 // as the drake lands, so the tail never swaps shape in one frame), pitching and scaling the body and
 // carrying it along the leap, growing or shrinking his head toward his other drawing's (so both sides of
-// each switch between his drawings show the same head), and growing his dust, then breaking it up as it
-// settles, writing vfx-beasts-ref-earth.ts (its own longer palette alphabet; refFrames reads it the same).
+// each switch between his drawings show the same head), and growing his dust (its bottom, which his panel
+// cut flat along the ground, closed in rounded puffs that thin out), then breaking it up as it settles,
+// writing vfx-beasts-ref-earth.ts (its own longer palette alphabet; refFrames reads it the same).
 
 function stoneDrake(): WorldSprite {
   const f = refFrames(REF_EARTH);

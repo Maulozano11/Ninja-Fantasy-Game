@@ -36,6 +36,7 @@ export const GEM: Record<string, RGBA[]> = {
   blue: ['#07163a', '#13337a', '#2457b8', '#4b8cee', '#a6cdff', '#f4faff'].map(H),
   magenta: ['#260a2a', '#55195c', '#8f3196', '#cf55d6', '#f2a6f6', '#fff2ff'].map(H),
   teal: ['#06201f', '#0f4644', '#1b7a73', '#33aaa0', '#8ee0d6', '#f0fffc'].map(H),
+  pearl: ['#1c221d', '#465046', '#77857a', '#a6b3a3', '#d2dccd', '#f5f9f2'].map(H),
   rose: ['#2a0a16', '#5e1832', '#a03a5e', '#d06a8c', '#f2acc2', '#fff2f6'].map(H),
 };
 /** Initiative rings: allies his muted steel blue, enemies his muted rose. */
@@ -364,6 +365,21 @@ export function gem(img: Img, cx: number, cy: number, r: number, ramp: RGBA[], o
       const z = Math.sqrt(1 - q);
       const l = u * L3[0] + v * L3[1] + z * L3[2];
       // Gems are lit from inside too: the far lower side glows.
+      const back = Math.max(0, u * 0.5 + v * 0.7) * (1 - z) * 1.2;
+      const k = l > 0.93 ? 5 : l > 0.75 ? 4 : l + back * 0.6 > 0.45 ? 3 : l + back > 0.1 ? 2 : 1;
+      img.set(x, y, ramp[k]);
+    }
+}
+
+/** An oval cabochon (radii rx, ry) centred on (cx, cy), shaded like `gem`. */
+export function gemOval(img: Img, cx: number, cy: number, rx: number, ry: number, ramp: RGBA[]): void {
+  for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++)
+    for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++) {
+      const u = (x + 0.5 - cx) / rx, v = (y + 0.5 - cy) / ry;
+      const q = u * u + v * v;
+      if (q > 1) continue;
+      const z = Math.sqrt(1 - q);
+      const l = u * L3[0] + v * L3[1] + z * L3[2];
       const back = Math.max(0, u * 0.5 + v * 0.7) * (1 - z) * 1.2;
       const k = l > 0.93 ? 5 : l > 0.75 ? 4 : l + back * 0.6 > 0.45 ? 3 : l + back > 0.1 ? 2 : 1;
       img.set(x, y, ramp[k]);

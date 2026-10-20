@@ -128,12 +128,15 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
   const med = P('round_medallion');
   const medX = S(380) - med.w / 2, medY = S(65) - med.h / 2;
   put('chain_left', medX + 5 - 72, medY + 40 - 100);
-  put('chain_sag', S(475) - 4, S(80));
-  const endX = S(609) - 27, endY = S(66) - 17;
-  put('chain_right', endX + 44 - 4, endY + 17 - 104);
+  // The sag hangs under the turn row with its ends behind the bells' bases (drawn before them).
+  put('chain_sag', S(475) - 4, S(80) - 6);
+  // His end circle is centred on (609, 66): (952, 104) here.
+  const endW = P('init_end').w;
+  const endX = S(609) - endW / 2, endY = S(66) - endW / 2;
+  put('chain_right', endX + endW - 4, endY + endW / 2 - 111);
   put('round_medallion', medX, medY);
-  textC(out, 'RONDA', 'title', 1, dim, S(380), medY + 21);
-  textC(out, '1', 'big', 2, white, S(380), medY + 33);
+  textC(out, 'RONDA', 'title', 1, dim, S(380), medY + 23);
+  textC(out, '1', 'big', 2, white, S(380), medY + 35);
 
   // Turn order of this battle, read off the HUD screenshot of the same moment (hud.png):
   // Akira (acting), then allies (blue) and enemies (red) at 38 px steps.
@@ -153,6 +156,7 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
     out.draw(face, bx + 4, by + 4);
     put(team === 'ally' ? 'init_ally' : 'init_enemy', bx, by);
   });
+  put('chain_link', 920 - 1, endY + endW / 2 - 5);
   put('init_end', endX, endY);
 
   // --- target bar: the hovered bandit -------------------------------------------------------------------------

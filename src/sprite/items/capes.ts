@@ -342,7 +342,7 @@ function shoulderCap(g: DrawCtx, hex: string, len = 0.5, grow = 1.4, folds = 2, 
   const F = add(A, scale(fall, drop * 0.55));
   const pts = [A, B, C, C2, D, E, H(0.28, -0.7), H(0.5, 0.3), H(0.75, -0.6), H(1, 0.1), F];
   const s0 = r.shoulderN;
-  poly(L, pts, pen, (x, y) => {
+  const shade = (x: number, y: number) => {
     const p = sub(v(x + 0.5, y + 0.5), s0);
     const across = p.x * back.x + p.y * back.y; // + toward the back
     const down = p.x * fall.x + p.y * fall.y;
@@ -350,7 +350,11 @@ function shoulderCap(g: DrawCtx, hex: string, len = 0.5, grow = 1.4, folds = 2, 
     if (tone === 'dark') return lit ? 3 : 2;
     if (lit) return 4;
     return across > R * 0.55 ? 4 : across < -R * 0.45 ? 2 : 3;
-  });
+  };
+  // The cloth wraps the round top of the arm too, so the sleeve never shows above it (the owner's
+  // reference: the cape lies over the whole shoulder).
+  capsule(L, add(s0, scale(fall, -R * 0.25)), s0, R, R, pen, shade);
+  poly(L, pts, pen, shade);
   // Folds falling from the shoulder to the hem.
   for (let k = 0; k < folds; k++) {
     const t = folds === 1 ? 0.5 : 0.2 + (k * 0.6) / (folds - 1);

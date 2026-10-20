@@ -500,37 +500,40 @@ export interface FootArt {
   F: PixelTemplate;
 }
 
-/** Bare feet: ankle bone, lit instep, toes split by dark gaps, big toe on the inside. */
+/**
+ * Bare feet in the shape of the owner's (docs/reference/crystal-sword-owner-reference.jpg): the near
+ * foot from the front widening to the toes, the far foot long and pointing right, toes split in
+ * light and shadow, a darker sole.
+ */
 export const FOOT_BARE: FootArt = {
   N: {
     pivot: [5, 0],
     rows: [
-      '...rstsrq',
-      '...rstsrq',
-      '...rsttrq',
-      '..qrsttrq',
-      '..rssttrq',
-      '.qrssstsr',
-      '.rsttttsq',
-      'rstttttsq',
-      'rsttttrtq',
-      'rsrsrsqts',
-      'qrqrqrqrr',
-      'pqqqqqpqq',
+      '..ssssssqs',
+      '.sssssssss',
+      '.srsssssss',
+      '.sssssssss',
+      'srssssssss',
+      'ssssssssss',
+      'ssssssssss',
+      'rsttttsrrr',
+      'stststrttr',
+      'rsrsrsrsrr',
+      'qqqqqqqqqq',
+      '.qqqqqqqqq',
     ],
   },
   F: {
     pivot: [3, 0],
     rows: [
-      'qrsrq........',
-      'qrssrq.......',
-      'qrssrrq......',
-      'qrsssrrq.....',
-      'qrssssrrqq...',
-      'qrrsssssrrq..',
-      'qqrrsssssrsr.',
-      'pqqrrrrrqrqrq',
-      '.pqqqqqqqqqq.',
+      'sssssssss......',
+      'sssssssssss....',
+      'ssssssssssss...',
+      'ssssssstssssss.',
+      'ssrsssssssqrtrs',
+      'ssssssssssttrss',
+      'qqqqqqqqqqqqqqq',
+      '....qqqqqqqqqq.',
     ],
   },
 };

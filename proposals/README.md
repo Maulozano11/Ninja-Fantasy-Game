@@ -7,4 +7,4 @@ its files here are removed.
 
 | Proposal | Preview | What it changes |
 | --- | --- | --- |
-| feet-and-cape | feet-and-cape.png | The owner's feet for every character, from his crystal sword picture (docs/reference/crystal-sword-owner-reference.jpg): his sandals copied, bare feet, wraps and open-toed shinobi boots in his foot shape. A cape has priority over shoulder guards: they keep their shape under it, in the cape's cloth, with a stud of its clasp metal. |
+| cape-over-shoulders | (pending a new preview) | A cape has priority over shoulder guards: they keep their shape under it, in the cape's cloth, with a stud of its clasp metal (the owner's crystal sword picture). |

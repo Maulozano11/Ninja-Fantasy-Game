@@ -1,0 +1,72 @@
+diff --git a/src/sprite/items/armor.ts b/src/sprite/items/armor.ts
+index a4ec1be..6f4bd90 100644
+--- a/src/sprite/items/armor.ts
++++ b/src/sprite/items/armor.ts
+@@ -16,6 +16,7 @@
+ import { armDepth, armJoints, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
+ import { add, capsule, ellipse, fine, GRID, Layer, lerp, norm, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
+ import { GROUND } from '../rig';
++import { CAPE_ITEMS } from './capes';
+ 
+ 
+ type Kind = 'cloth' | 'leather' | 'metal';
+@@ -299,7 +300,31 @@ interface PauldronOpts {
+   follow?: number;
+ }
+ 
+-/** Segmented shoulder guard: a domed cap plus overlapping curved lames that follow the upper arm. */
++/** How far around the shoulder a guard reaches (for the pixel scan). */
++const pad0 = (o: PauldronOpts) => o.half + (o.flare ?? 0.25) * o.n + o.top + o.capEnd + o.n * o.step;
++
++/**
++ * The cape over the shoulders, if one is worn (a scarf doesn't cover them): its cloth colour and its
++ * clasp metal. As in the owner's crystal sword picture, a cape has priority over the shoulder guards:
++ * they keep their shape under it, in its cloth.
++ */
++function capeOver(g: DrawCtx): { cloth: string; clasp?: string } | null {
++  const c = g.look.slots.cape;
++  if (!c || c.id === 'cape_scarf') return null;
++  const def = CAPE_ITEMS.find((d) => d.id === c.id);
++  if (!def) return null;
++  const at = (key: string) => {
++    const i = def.colors.findIndex((x) => x.key === key);
++    return i < 0 ? undefined : c.colors[i] || def.colors[i].default;
++  };
++  return { cloth: at('main') ?? def.colors[0].default, clasp: at('clasp') ?? at('trim') };
++}
++
++/**
++ * Segmented shoulder guard: a domed cap plus overlapping curved lames that follow the upper arm. Under
++ * a cape it is one smooth cloth-covered dome in the cape's colour, a stud of the cape's clasp metal on
++ * top (the owner's reference).
++ */
+ function pauldron(g: DrawCtx, s: Side, pen: Pen, o: PauldronOpts): void {
+   const L = g.L(armDepth(s, 'armor'));
+   const fh = hangFrame(g, s, o.follow ?? 0.55);
+@@ -312,7 +337,25 @@ function pauldron(g: DrawCtx, s: Side, pen: Pen, o: PauldronOpts): void {
+   const hw = (a: number) => o.half + flare * clamp((a - o.capEnd) / o.step, 0, o.n);
+   /** Lame boundary k (0 = cap / first lame) at across-offset b. */
+   const bound = (k: number, b: number) => o.capEnd + k * o.step + curve * (1 - clamp((b / hw(o.capEnd + k * o.step)) ** 2, 0, 1));
+-  const pad = o.half + flare * o.n + o.top + bottom;
++  const pad = pad0(o);
++  const cape = capeOver(g);
++  if (cape) {
++    // The cape lies over the guard: its outline, but soft cloth on a rounded shoulder (lit on the
++    // upper outer side, a fold where the cloth turns under the guard's lower edge), no plates.
++    const cl = onLimb({ mat: g.m(cape.cloth, 'cloth'), part: pen.part }, s, 'upperArm');
++    lfill(L, f, cl, pad0(o), (a, b) => {
++      const h = hw(a);
++      if (Math.abs(b) > h) return null;
++      if (a < 0 && (a / o.top) ** 2 + (b / o.half) ** 2 > 1) return null;
++      if (a > bound(o.n, b)) return null;
++      const fr = clamp((a + o.top) / (bottom + o.top), 0, 1);
++      const d = limbDot(f, b, h, -1.4 + 2.2 * fr);
++      if (bound(o.n, b) - a < FP) return 1; // the hem turning under
++      return d > 0.62 ? 4 : d > 0.25 ? 3 : d > -0.1 ? 2 : 1;
++    });
++    if (cape.clasp) stud(L, add(f.o, add(scale(f.u, o.capEnd * 0.5), scale(f.w, 0.3))), onLimb({ mat: g.m(cape.clasp, 'metal'), part: pen.part }, s, 'upperArm'), 4);
++    return;
++  }
+   // glint on the cap, up and toward the light
+   const gl = add(f.o, add(scale(f.u, -o.top * 0.45), scale(f.w, o.half * 0.35)));
+   lfill(L, f, p, pad, (a, b) => {

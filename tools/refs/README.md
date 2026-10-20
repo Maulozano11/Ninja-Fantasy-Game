@@ -25,11 +25,12 @@ folders.
   sits on the ground; the anchor is the middle of the prowl's torso. The scale comes from his
   character on the WALL panel (228 px tall against our 96). The drake keeps his dark under-body
   shadow (warmer than his panel), and his dust is kept opaque in his own colours (only streaks and
-  specks thinner than a game pixel get a partial alpha); the straight side where his picture's box cut
-  the pile ends along his boulders instead, and the flat bottom where his panel cut it along the ground
-  ends in a row of rounded puffs of his own pile (`FOOT_PUFFS`; two are his cream boulders that sat on
-  the cut), smaller and further off the ground toward both ends, each thinning out over its last few px
-  into his partly clear dust colours. His loose specks and the clod on the back spike keep only
+  specks thinner than a game pixel get a partial alpha). Where his picture's box cut the pile (a straight
+  left side and a flat bottom along the ground) it ends instead in rounded puffs of his own pile: a column
+  of them up the side (`SIDE_PUFFS`; his top and bottom boulders out on the line, the others further in)
+  and a row along the bottom (`FOOT_PUFFS`; two are his cream boulders that sat on the cut), smaller and
+  further off the ground toward both ends. Each puff thins out over its last few px into his partly clear
+  dust colours, and the burst grows into that shape as his pile is scaled up. His loose specks and the clod on the back spike keep only
   their own bright pixels (not the dark JPEG ring around them). The in-betweens turn his own legs and
   tail about their joints (the turn eases in from the cut, so each piece stays joined; under them the
   whole body is bent by one smooth field, so whatever a turned piece uncovers along its sides shows his

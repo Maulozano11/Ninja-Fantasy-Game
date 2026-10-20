@@ -1336,7 +1336,8 @@ def drake():
     lum5 = crop5 @ np.array([0.3, 0.55, 0.15], np.float32)
     # The pile's left side is a straight line (x 1137) where his picture's box cut it. It ends instead along
     # his boulders there: each cream boulder the line cuts is rounded off, the darker soil between them stays
-    # a few px further in, and the pile's foot spreads out to the line on the ground.
+    # a few px further in, and the pile's foot spreads out to the line on the ground. (This first cut sets his
+    # pile and palette; the side is finished in rounded puffs further down: SIDE_PUFFS.)
     CUT_X = 1137
     PILE_R = 7  # (his px) splash fingers thinner than twice this are spray, not pile
     col = (lum5 > 150) & dust
@@ -1449,8 +1450,26 @@ def drake():
         lift = np.minimum(lift, np.where(u <= 1, b_ + R_ * (1 - np.sqrt(np.clip(1 - u * u, 0, 1))), b_ + R_ + (d_ - hw_) * 1.1))
     lift += 1.2 * np.sin(gxv * 0.31 + 1.1)  # (the ragged wobble)
     foot = np.clip((GROUND + 1 - lift[None, :] - gy5 + 1) / FOOT_FADE, 0.0, 1.0).astype(np.float32)
+    # His pile's left side, closed the same way. The first cut (above) only rounded his box line where it cut a
+    # cream boulder; between those the side stayed one straight line 15 px in, which the burst (frames 3-4, his
+    # pile scaled about the ground) showed as a vertical wipe. Now the whole side is a column of rounded puffs: his
+    # top and bottom boulders out on the line, the boulder between them a puff 15 px in, a small soil puff under
+    # it and one above the foot, the side curling in between them. Each puff thins out over its last FOOT_FADE px
+    # like the bottom's. (It only takes away from the first cut, so his palette and pile split stay as they were,
+    # and the burst grows into frame 5's side as his pile grows.)
+    SIDE_PUFFS = [  # (his y of its middle, its half height, how far in its ends curve, its leftmost point in from his line)
+        (1843, 12, 13, -1.5), (1872, 9, 12, 15), (1892, 6, 8, 17), (1909, 10, 11, -1.5), (1929, 6, 10, 9)]
+    gyv = gy5[:, 0]
+    reach = np.full(CH, 1e3, np.float32)
+    for cy_, hh_, R_, b_ in SIDE_PUFFS:
+        d_ = np.abs(gyv - cy_)
+        u = d_ / hh_
+        reach = np.minimum(reach, np.where(u <= 1, b_ + R_ * (1 - np.sqrt(np.clip(1 - u * u, 0, 1))), b_ + R_ + (d_ - hh_) * 1.5))
+    reach += 1.0 * np.sin(gyv * 0.29 + 0.4)  # (the ragged wobble)
+    side = np.clip((gx5 - CUT_X - reach[:, None] + 1) / FOOT_FADE, 0.0, 1.0).astype(np.float32)
     pile_cut = pile.copy()  # (his pile as his panel cut it: the settling below keeps its boulders and soil tones)
-    pile &= foot > 0
+    pile_th = foot * side  # (how thick his pile is: thinning out at the puffs' edges)
+    pile &= pile_th > 0
     core &= pile
     wcol = wcol * pile
     print('dust: pile px after its bottom is closed', int(pile.sum()))
@@ -1488,7 +1507,7 @@ def drake():
         """His pile at settling stage st (0 his pile, 1 gone): per-pixel opacity and colour (work coordinates)."""
         keep = soil & (lum5 >= soil_lum[min(len(soil_lum) - 1, int(0.9 * st * len(soil_lum)))])
         keep &= p_height <= pile_top * (1.0 - 0.55 * st)
-        op_ = keep * (1.0 - 0.4 * st) * foot
+        op_ = keep * (1.0 - 0.4 * st) * pile_th
         col_ = crop5.copy()
         wc_ = wcol * keep
         gox_ = to_work(5, DUST_ORIGIN)[0]
@@ -1499,6 +1518,8 @@ def drake():
             ddx_ = int(round((b_cent[i][0] - gox_) * 0.12 * st))
             ys_, xs_ = np.nonzero(blab == i)
             ty_, tx_ = ys_, np.clip(xs_ + ddx_, 0, CW - 1)
+            # (A boulder spreading off the pile keeps its own left side: it is already fading as a cluster. It thins
+            # out only along the bottom.)
             op_[ty_, tx_] = np.maximum(op_[ty_, tx_], a_ * foot[ys_, xs_])
             col_[ty_, tx_] = crop5[ys_, xs_]
             wc_[ty_, tx_] = np.maximum(wc_[ty_, tx_], wcol[ys_, xs_] * a_)
@@ -1717,7 +1738,7 @@ def drake():
                 _, Cd = shrink(c5, warp(wcol.astype(np.float32), fx_, fy_), (WAX, WAY), S, size, oanchor)
                 Ac, _ = shrink(crop5, warp(core_f, fx_, fy_), (WAX, WAY), S, size, oanchor)
                 # (how thick his pile is over the pixel: less toward the thinning bottom of its puffs)
-                Afo, _ = shrink(crop5, warp(pile_f * foot, fx_, fy_), (WAX, WAY), S, size, oanchor)
+                Afo, _ = shrink(crop5, warp(pile_f * pile_th, fx_, fy_), (WAX, WAY), S, size, oanchor)
                 thick = np.clip(Afo / np.maximum(Ad, 1e-6), 0.0, 1.0)
                 solid_px = Ad >= 0.5
                 thin_px = (Ad >= 0.22) & ~solid_px & (Ac < 0.1)

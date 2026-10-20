@@ -9,7 +9,7 @@
 import { Img, RGBA, alpha, hex, mixc } from './ui-img';
 import {
   ALLY, BADGE, BROWN, FOE, GEM, GOLD, GREEN, KHAKI, METAL, Mask, OLIVE, PANEL, Pt, RAIL, RED, SILVER, TEAL,
-  band, cbez, emboss, fillShape, filledLace, gem, gemOval, isoLine, lace, orb, qbez, rhombGem, sdCircle, sdLp, sdRoundRect, spiral, stamp, wire, WIRE, WIRE_OUTLINE,
+  band, cbez, emboss, fillShape, filledLace, gem, gemOval, isoLine, orb, qbez, rhombGem, sdCircle, sdLp, sdRoundRect, spiral, stamp, wire, WIRE, WIRE_OUTLINE,
 } from './ui-draw';
 
 export interface Piece {
@@ -375,9 +375,6 @@ export function initEnd(): Piece {
 
 // --- minimap ring --------------------------------------------------------------------------------------------
 
-/** Polar helper: a point at angle a (radians) and radius r about (c, c). */
-const polar = (c: number, a: number, r: number): Pt => [c + Math.cos(a) * r, c + Math.sin(a) * r];
-
 /** His pearly near-white minimap band, dark to light. */
 const PEARL = ['#3e3a33', '#77736a', '#a9a59a', '#cfcbc0', '#e6e2d8', '#f6f3ec'].map((h) => hex(h));
 
@@ -455,13 +452,6 @@ export function minimapRing(): Piece {
 }
 
 // --- action bar contents ------------------------------------------------------------------------------------
-
-/** Chamfered-square ring index: 0 on the outer edge, 1 the next ring in, ...; -1 outside. */
-function chamferRing(x: number, y: number, W: number, H: number, ch: number): number {
-  const dx = Math.min(x, W - 1 - x), dy = Math.min(y, H - 1 - y);
-  const r = Math.min(dx, dy, dx + dy - ch);
-  return r < 0 ? -1 : r;
-}
 
 /** His warm slot gold (skill slot frames), outline to highlight. */
 const SLOT_GOLD = ['#17110a', '#3a2c18', '#5e4a2c', '#86703f', '#a88f5c', '#c8ad78', '#e2cb98', '#f4e6c2'].map((h) => hex(h));
@@ -621,19 +611,6 @@ const CREST_SHOULDER = [
   '..........M....MM..M..........lM................',
   '.MlMlMlMlMlMlMlMlMlMlMlMlMlMlMlMlMlMlMl.........',
 ];
-
-/** A hand-placed lace map: '#' is embossed metal, ':' the dark fill between the curls, '.' empty. */
-function laceMap(rows: string[], flip: boolean): { mk: Mask; back: Mask } {
-  const W = rows[0].length, Hh = rows.length;
-  const mk = new Mask(W, Hh), back = new Mask(W, Hh);
-  for (let y = 0; y < Hh; y++)
-    for (let x = 0; x < W; x++) {
-      const ch = rows[y][flip ? W - 1 - x : x];
-      if (ch === '#') mk.set(x, y);
-      if (ch !== '.') back.set(x, y);
-    }
-  return { mk, back };
-}
 
 export function crestStrip(): Piece {
   // 22 rows: the shoulders rise 6 above the trough; the trough (rows 6..21) sits on the bar's top rail.

@@ -35,7 +35,6 @@ export const GEM: Record<string, RGBA[]> = {
   orange: ['#2e1504', '#6e3a0a', '#b26a14', '#e89a26', '#ffd27a', '#fffbe8'].map(H),
   blue: ['#07163a', '#13337a', '#2457b8', '#4b8cee', '#a6cdff', '#f4faff'].map(H),
   magenta: ['#260a2a', '#55195c', '#8f3196', '#cf55d6', '#f2a6f6', '#fff2ff'].map(H),
-  teal: ['#06201f', '#0f4644', '#1b7a73', '#33aaa0', '#8ee0d6', '#f0fffc'].map(H),
   pearl: ['#1c221d', '#465046', '#77857a', '#a6b3a3', '#d2dccd', '#f5f9f2'].map(H),
   rose: ['#2a0a16', '#5e1832', '#a03a5e', '#d06a8c', '#f2acc2', '#fff2f6'].map(H),
 };

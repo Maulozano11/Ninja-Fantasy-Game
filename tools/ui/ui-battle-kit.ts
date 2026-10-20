@@ -22,7 +22,7 @@ import { join } from 'node:path';
 import { Img, hex, loadPng, savePng, writeAtomic } from './ui-img';
 import { screenText } from './ui-font';
 import { Piece, allPieces } from './ui-battle-pieces';
-import { buildMockup } from './ui-battle-mockup';
+import { buildMockup, nine } from './ui-battle-mockup';
 
 if (!process.env.UI_OUT) {
   console.error('ui-battle-kit: set UI_OUT to the staging folder (nothing is written to src/ by this tool).');
@@ -61,12 +61,41 @@ function slicePeriod(img: Img, a0: number, a1: number, vertical: boolean): numbe
   }
   return null;
 }
+/** The repeat period of each sliced piece's centre, in screen pixels: [columns, rows]. */
+const periods = new Map<string, [number, number]>();
 for (const p of pieces) {
   if (!p.slice) continue;
   const [t, r, b, l] = p.slice;
   const cols = slicePeriod(p.img, l, p.img.w - r, false);
   const rows = t || b ? slicePeriod(p.img, t, p.img.h - b, true) : 1;
   if (!cols || !rows) throw new Error(`${p.name}: the centre between the slices does not repeat every 1 or 2 art pixels (${cols ? 'rows' : 'columns'})`);
+  periods.set(p.name, [cols * K, rows * K]);
+}
+
+/**
+ * CSS `border-image-repeat: repeat` centres the tiles in each run, so a run whose length does not
+ * put the tiles in phase with the corners shows a seam next to them (a doubled dot on a dotted
+ * line). For every sliced placement in the layout this draws the box as CSS would and as tiles
+ * laid from the corners (the seamless reference), and refuses the build if they differ or if a
+ * run is not a whole number of periods.
+ */
+function cssSeamCheck(layout: Record<string, [number, number, number, number][]>): void {
+  const byName = new Map(pieces.map((p) => [p.name, p]));
+  for (const [name, boxes] of Object.entries(layout)) {
+    const p = byName.get(name);
+    if (!p?.slice) continue;
+    const src = p.img.scaled(K), ins = p.slice.map(x2) as [number, number, number, number];
+    const [pc, pr] = periods.get(name)!;
+    for (const [, , w, h] of boxes) {
+      const runW = w - ins[1] - ins[3], runH = h - ins[0] - ins[2];
+      const a = new Img(w, h), b = new Img(w, h);
+      nine(a, src, ins, 0, 0, w, h);
+      nine(b, src, ins, 0, 0, w, h, true);
+      const same = Buffer.compare(Buffer.from(a.px), Buffer.from(b.px)) === 0;
+      if (!same || runW % pc !== 0 || (ins[0] + ins[2] > 0 && runH % pr !== 0))
+        throw new Error(`${name} at ${w}x${h}: CSS repeat would seam next to the corners (centre runs ${runW} x ${runH}, periods ${pc} x ${pr}). For bar_frame keep (width - 48) and (height - 48) multiples of 8.`);
+    }
+  }
 }
 
 // --- kit sheet ---------------------------------------------------------------------------------------------
@@ -133,7 +162,9 @@ function kitSheet(ps: Piece[]): Img {
 const PAIRS: { ref: string; piece: string; note?: string }[] = [
   { ref: 'target_bar', piece: 'target_bar' },
   { ref: 'target_end', piece: 'target_bar' },
+  { ref: 'target_end_right', piece: 'target_bar' },
   { ref: 'chain_left', piece: 'chain_left' },
+  { ref: 'chain_right', piece: 'chain_right' },
   { ref: 'chain_sag', piece: 'chain_sag' },
   { ref: 'round_medallion', piece: 'round_medallion' },
   { ref: 'init_active', piece: 'init_active' },
@@ -154,6 +185,7 @@ const PAIRS: { ref: string; piece: string; note?: string }[] = [
   { ref: 'pips', piece: 'pip_action' },
   { ref: 'move_bar', piece: 'move_trough' },
   { ref: 'lower_end', piece: 'lower_plaque' },
+  { ref: 'lower_end_right', piece: 'lower_plaque' },
   { ref: 'party_frame', piece: 'party_frame' },
   { ref: 'small_button', piece: 'button_small' },
   { ref: 'gem_corner_red', piece: 'gem_red' },
@@ -282,9 +314,10 @@ function main(): void {
     let mock: Img | null = null;
     if (cap && shots && existsSync(join(cap, 'frame.png')) && existsSync(join(cap, 'hud.png')) && existsSync(join(shots, '1-turno.png'))) {
       const m = buildMockup(pieces, cap, shots);
+      cssSeamCheck(m.layout);
       mock = m.img;
       savePng(join(SHEETS, 'ui-battle-mockup.png'), m.img);
-      writeAtomic(join(OUT, 'layout.json'), JSON.stringify({ screen: [1600, 900], note: 'where the mockup put each piece: [x, y, w, h] in screen pixels', pieces: m.layout }, null, 1) + '\n');
+      writeAtomic(join(OUT, 'layout.json'), JSON.stringify({ screen: [1600, 900], note: 'where the mockup put each piece: [x, y, w, h] in screen pixels; sliced pieces are boxes drawn as CSS border-image-repeat: repeat draws them (tiles centred in each run), and the build checks that none of them seams', pieces: m.layout }, null, 1) + '\n');
     } else console.log('ui-battle-kit: UI_CAPTURE / UI_SHOTS missing, mockup skipped');
     const refDir = join(OUT, 'ref');
     if (existsSync(join(refDir, 'crops.json'))) savePng(join(SHEETS, 'ui-battle-compare.png'), compareSheet(pieces, refDir, mock));

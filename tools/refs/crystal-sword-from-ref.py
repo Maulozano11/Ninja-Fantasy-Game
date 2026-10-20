@@ -162,8 +162,43 @@ def main():
     grid[grip] = 'g'
     grid[ring] = 'o'
     palette = {chars[rank[i]]: '#%02x%02x%02x' % tuple(pal[i]) for i in range(len(pal))}
-    palette['g'] = '#2a3348'  # his grip under the fist: the dark blue of the pommel's shadow side
     palette['o'] = '#07060b'
+
+    # The owner's notes (2026-10-20): no black or near-black pixels inside the sword. His black
+    # line between the guard and the blade, and the coat showing through there, become crystal
+    # (the middle of the crystal around them); the darkest blue inside the blade does too.
+    tone = lambda ch: ch in chars
+    for _ in range(2):
+        fix = []
+        for y in range(1, H - 1):
+            for x in range(1, W - 1):
+                ch = grid[y, x]
+                around = [grid[y + dy, x + dx] for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx]
+                tones = sorted(c for c in around if tone(c) and c != '1')
+                # A line pixel with crystal on both sides (along the row or the column, past at most
+                # one more line pixel) is inside the sword, not around it.
+                def side(dy, dx):
+                    for k in (1, 2):
+                        c = grid[min(H - 1, max(0, y + dy * k)), min(W - 1, max(0, x + dx * k))]
+                        if c != 'o':
+                            return tone(c) or c in 'gG'
+                    return False
+                # (A line pixel touching the background is the outside line: it stays.)
+                edge = any(grid[min(H - 1, max(0, y + dy)), min(W - 1, max(0, x + dx))] == '.' for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+                inside = not edge and ((side(0, -1) and side(0, 1)) or (side(-1, 0) and side(1, 0)))
+                if ch == 'o' and inside and tones:
+                    fix.append((y, x, tones[len(tones) // 2]))
+                elif ch == '1' and y > GRIP[1][1] + 1 and tones:
+                    fix.append((y, x, tones[len(tones) // 2]))
+        for y, x, c in fix:
+            grid[y, x] = c
+    # The grip (under the fist, a little of it shows): his crystal blue, wrapped, not black.
+    for y in range(H):
+        for x in range(W):
+            if grid[y, x] == 'g':
+                grid[y, x] = 'g' if (x + y) % 2 else 'G'
+    palette['g'] = '#3e5f7f'
+    palette['G'] = '#6f9fbd'
 
     yy, xx = np.nonzero(grid != '.')
     x0, x1, y0, y1 = xx.min(), xx.max() + 1, yy.min(), yy.max() + 1

@@ -11,6 +11,113 @@ index a3043d4..1142cbd 100644
      case 'held_naginata':
        return W('Naginata', '1d10', 'Slashing', 3, false, true, true);
      case 'held_kunai':
+diff --git a/src/sprite/ctx.ts b/src/sprite/ctx.ts
+index d3fbb65..9241dec 100644
+--- a/src/sprite/ctx.ts
++++ b/src/sprite/ctx.ts
+@@ -296,58 +296,61 @@ export function fillTorso(g: DrawCtx, L: Layer, inflate: number, pen: Pen, opts:
+ 
+ // Hand templates (fine pixels), drawn hanging down with the wrist at the top
+ // and the thumb on the right; rotated to the forearm angle with RotSprite and
+-// mirrored so the thumb faces forward. Sized like the reference: a fist is
+-// about 9-10 px across, fingers are 1 px wide with a dark crease between them.
+-// o outline · D dark · x crease (near-black) · s shadow · b base · l light
++// mirrored so the thumb faces forward. Sized like the owner's crystal sword
++// picture: a fist is about 8-9 px across, smooth light skin shaded along its
++// edges, creases in dark skin.
++// o outline · D dark · x crease (dark skin) · s shadow · b base · l light
+ /**
+  * Fist wrapped around a weapon handle that passes through it (the pommel
+- * shows above-left, the guard below-right): knuckles, a thumb over the grip
+- * split off by a crease, three 1px fingers wrapping the handle with dark
+- * creases between them, and rounded fingertips.
++ * shows above-left, the guard below-right), copied from the owner's crystal
++ * sword picture (docs/reference/crystal-sword-owner-reference.jpg, 2026-10-20):
++ * a broad round fist in smooth light skin, shadow only along its edges, the
++ * fingers wrapped under the grip, no dark creases.
+  */
+ const HAND_GRIP: PixelTemplate = {
+   pivot: [5, 0],
+   rows: [
+-    '..obbbbo..',
+-    '.osbbbbbo.',
+-    'osbbbbbbso',
+-    'olbbbbbxlo',
+-    'oDbbbbbxbo',
+-    'obxbxbxbDo',
+-    'osDsDsDsDo',
+-    '.oDoDoDoo.',
++    '..osbbbo...',
++    '.osbbbbso..',
++    'osbbbbbbDo.',
++    'obbbbbbbbo.',
++    'osbbbbssbo.',
++    '.oosbbDoo..',
++    '...obso....',
++    '....oso....',
++    '.....o.....',
+   ],
+ };
+-/** Small closed fist with a rounded bottom. */
++/** Closed fist, the owner's grip fist without the handle: broad and round, light, edges shaded. */
+ const HAND_FIST: PixelTemplate = {
+   pivot: [4, 0],
+   rows: [
+-    '..obbbo..',
+-    '.osbbbbo.',
+-    'osbbblbso',
+-    'olbbbbbDo',
+-    'obxbxbxDo',
+-    'oDsDsDsso',
+-    '.oDoDoDo.',
++    '.osbbbo..',
++    'osbbbbso.',
++    'osbbbbbDo',
++    'obbbbbbbo',
++    'osbbbbsbo',
++    'oDsbbsDso',
++    '.oDsssDo.',
+     '..ooooo..',
+   ],
+ };
+ /**
+- * The far hand's fist, after the reference's: small and round, knuckles
+- * toward the viewer, one curled-finger crease. Drawn without the far-side
+- * darkening, which would turn its creases into a black blob.
++ * The far hand's fist, copied from the owner's picture: small, on the shaded
++ * side, lit along the thumb, its knuckle creases in dark skin (not black).
++ * Drawn without the far-side darkening.
+  */
+ const HAND_FIST_FAR: PixelTemplate = {
+   pivot: [3, 0],
+   rows: [
+-    '.osbbo..',
++    '.oDbbDo.',
+     'osbbbbo.',
+-    'olbbbbso',
+-    'osbxbbso',
+-    'obbbxsso',
+-    'osDxDsso',
+-    '.osDsso.',
+-    '..oooo..',
++    'oDsDsbDo',
++    'olsDDbso',
++    'olDDDsso',
++    '.oDsbbo.',
++    '..osso..',
++    '...oo...',
+   ],
+ };
+ /** Open palm, fingers spread (casting). */
+@@ -432,7 +435,7 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
+   const pal: TemplatePalette = {
+     o: [pen.mat, 0],
+     D: [pen.mat, 1 + b],
+-    x: [pen.mat, 0], // finger creases are near-black, like the reference
++    x: [pen.mat, 1 + b], // finger creases in dark skin: the owner's hands have no black lines
+     s: [pen.mat, 2 + b],
+     b: [pen.mat, 3 + b],
+     l: [pen.mat, 4 + b],
 diff --git a/src/sprite/grip.ts b/src/sprite/grip.ts
 index d59855f..d886b68 100644
 --- a/src/sprite/grip.ts
@@ -25,7 +132,7 @@ index d59855f..d886b68 100644
  }
  
 diff --git a/src/sprite/items/accessories.ts b/src/sprite/items/accessories.ts
-index 193f42b..0cd2a74 100644
+index 193f42b..026b52b 100644
 --- a/src/sprite/items/accessories.ts
 +++ b/src/sprite/items/accessories.ts
 @@ -6,7 +6,7 @@ import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
@@ -46,9 +153,9 @@ index 193f42b..0cd2a74 100644
 +    slot: 'held',
 +    name: 'Ice Crystal Sword',
 +    desc: 'A faceted blade of ice-blue crystal under a curved crystal guard, painted by the owner.',
-+    colors: [col('blade', 'Crystal', '#74aac4', 'metal'), col('hilt', 'Grip', '#2a3348', 'leather')],
++    colors: [col('blade', 'Crystal', '#74aac4', 'metal'), col('hilt', 'Grip', '#3e5f7f', 'leather')],
 +    draw: (g, [blade, grip]) => {
-+      const tint = { base: '#74aac4', blade, grip, gripBase: '#2a3348' };
++      const tint = { base: '#74aac4', blade, grip, gripBase: '#3e5f7f' };
 +      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_CRYSTAL_SWORD, backGrip(g, 48), 48, tint);
 +      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, tint);
 +      else drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, gripPoint(g), swordAngle(g), tint);
@@ -58,7 +165,7 @@ index 193f42b..0cd2a74 100644
      id: 'held_kunai',
      slot: 'held',
 diff --git a/src/sprite/items/weapons.ts b/src/sprite/items/weapons.ts
-index 68c86b9..1677a67 100644
+index 68c86b9..0fe61bf 100644
 --- a/src/sprite/items/weapons.ts
 +++ b/src/sprite/items/weapons.ts
 @@ -3,9 +3,10 @@
@@ -73,7 +180,7 @@ index 68c86b9..1677a67 100644
  import { PixelTemplate, stampTemplate, TemplatePalette } from '../rotsprite';
  
  export const CRYSTAL_SWORD: PixelTemplate = {
-@@ -29,6 +30,77 @@ export const CRYSTAL_SWORD: PixelTemplate = {
+@@ -29,6 +30,79 @@ export const CRYSTAL_SWORD: PixelTemplate = {
    ],
  };
  
@@ -81,7 +188,8 @@ index 68c86b9..1677a67 100644
 + * The owner's crystal sword (docs/reference/crystal-sword-owner-reference.jpg), his pixels as he drew
 + * them (tools/refs/crystal-sword-from-ref.py): drawn at the angle he drew it, which is the idle
 + * pose's, so at rest the sword is exactly his; other poses turn it with RotSprite. It keeps his own
-+ * colours ('1'-'8' his crystal from dark to light, 'g' the grip under the fist, 'o' his black line).
++ * colours ('1'-'8' his crystal from dark to light, 'g'/'G' the wrapped grip under the fist, 'o' his black
++ * line), cleaned of the dark pixels inside it (the owner's note).
 + */
 +export const ICE_CRYSTAL_SWORD: PixelTemplate & { angle: number; colors: Record<string, string> } = {
 +  pivot: [7, 8],
@@ -93,28 +201,28 @@ index 68c86b9..1677a67 100644
 +    '.o14o.............................',
 +    '..o13o............................',
 +    '...o11o...........................',
-+    '....oggo..........................',
-+    '.....oggo.........................',
-+    '......oggo........................',
-+    '.......oggo....oo.................',
-+    '........oggo..o66o................',
-+    '.........o3goo64o.................',
-+    '..........o3646oo.................',
-+    '.........o26816o4o................',
-+    '........o221525o4o................',
-+    '.......o3566585o5o................',
-+    '.......o4oooo65oo4o...............',
-+    '......o4oo443386o7o...............',
-+    '.......o..oo415oo75o..............',
-+    '...........o2515oo84o.............',
-+    '............oo4174ooo.............',
-+    '.............o2118o75o............',
-+    '..............o4145284o...........',
-+    '...............o515527o...........',
++    '....ogGo..........................',
++    '.....ogGo.........................',
++    '......ogGo........................',
++    '.......ogGo....oo.................',
++    '........ogGo..o66o................',
++    '.........o3Goo64o.................',
++    '..........o36466o.................',
++    '.........o2686654o................',
++    '........o22652554o................',
++    '.......o356658555o................',
++    '.......o4555565564o...............',
++    '......o4oo44338677o...............',
++    '.......o..oo4456775o..............',
++    '...........o25557784o.............',
++    '............oo457477o.............',
++    '.............o2448575o............',
++    '..............o4545284o...........',
++    '...............o555527o...........',
 +    '................o425274o..........',
 +    '................o4226274o.........',
 +    '.................o4277277o........',
-+    '.................o242773oo........',
++    '.................o2427737o........',
 +    '..................o4278736o.......',
 +    '...................o477838o.......',
 +    '...................o7377375o......',
@@ -143,15 +251,16 @@ index 68c86b9..1677a67 100644
 +    '6': '#94d4ea',
 +    '7': '#abebfb',
 +    '8': '#d7f8fe',
-+    'g': '#2a3348',
-+    'o': '#07060b',
++    o: '#07060b',
++    g: '#3e5f7f',
++    G: '#6f9fbd',
 +  },
 +};
 +
  export const KATANA: PixelTemplate = {
    pivot: [6, 5],
    rows: [
-@@ -97,3 +169,37 @@ export function drawWeapon(g: DrawCtx, depth: Depth, t: PixelTemplate, hand: Vec
+@@ -97,3 +171,37 @@ export function drawWeapon(g: DrawCtx, depth: Depth, t: PixelTemplate, hand: Vec
    const a = ((deg % 360) + 540) % 360 - 180;
    stampTemplate(g.L(depth), t, hand, a, weaponPalette(g, c), 'held', { flipY: Math.abs(a) > 90 });
  }
@@ -182,7 +291,7 @@ index 68c86b9..1677a67 100644
 +  const flip = Math.abs(a) > 90;
 +  const pal: TemplatePalette = {};
 +  for (const [ch, hex] of Object.entries(t.colors)) {
-+    const c = ch === 'o' ? hex : ch === 'g' ? retint(hex, tint.gripBase, tint.grip) : retint(hex, tint.base, tint.blade);
++    const c = ch === 'o' ? hex : ch === 'g' || ch === 'G' ? retint(hex, tint.gripBase, tint.grip) : retint(hex, tint.base, tint.blade);
 +    pal[ch] = [g.m(c, 'flat'), 3];
 +  }
 +  // Flipped, the template points at -angle; either way it turns by what is left to reach `a`.

@@ -137,8 +137,11 @@ export function MiniRing({ children }: { children: React.ReactNode }) {
   );
 }
 
-const SKILL = (b: ActionButton) => b.id === 'attack' || b.id === 'throw' || b.id.startsWith('jutsu:') || b.id.startsWith('passive:');
-const iconId = (b: ActionButton) => b.iconId ?? (b.id === 'attack' ? 'weapon_attack' : b.id.replace(/^(jutsu|passive):/, ''));
+/** The owner's icon for a button: by its jutsu id, or the action's own (the attack and throw are weapon_*, End turn end_turn). */
+const ICON_OF: Record<string, string> = { attack: 'weapon_attack', throw: 'weapon_throw', end: 'end_turn' };
+const iconId = (b: ActionButton) => b.iconId ?? ICON_OF[b.id] ?? b.id.replace(/^(jutsu|passive):/, '');
+/** A skill slot (his steel-and-gold frame): the attacks and jutsu, and every action he has painted an icon for. */
+const SKILL = (b: ActionButton) => b.id === 'attack' || b.id === 'throw' || b.id.startsWith('jutsu:') || b.id.startsWith('passive:') || !!iconUrl(iconId(b), false);
 const TINT: Record<string, string> = {
   fire: '#fb923c',
   water: '#38bdf8',
@@ -276,16 +279,17 @@ export function ActionDock({
     setHov(b && x !== undefined ? { id: b.id, x } : null);
     onHover(b);
   };
-  const skills = buttons.filter(SKILL);
   const end = buttons.find((b) => b.id === 'end');
-  const items = buttons.filter((b) => !SKILL(b) && b.id !== 'end');
+  const skills = buttons.filter((b) => SKILL(b) && b !== end);
+  const items = buttons.filter((b) => !SKILL(b) && b !== end);
+  const paintedEnd = !!end && SKILL(end);
   // Laid out from the bar's left edge as in the mockup, then the whole bar centred.
   const s0 = 222;
   const sEnd = s0 + Math.max(skills.length, 1) * 62 - 6;
   const i0 = skills.length ? sEnd + 6 : s0;
   const iEnd = i0 + items.length * 62 - 10;
   const e0 = iEnd + 10;
-  const right = (end ? e0 + 52 : iEnd) + 26;
+  const right = (end ? e0 + (paintedEnd ? 56 : 52) : iEnd) + 26;
   const W = 48 + Math.ceil((Math.max(right, 920) - 48) / 8) * 8;
   const L0 = -Math.round(W / 2) - 2;
   // A long bar moves right of the party frames (as far as the screen allows), its crest with it.
@@ -323,7 +327,7 @@ export function ActionDock({
       {items.map((b, i) => (
         <ItemSlot key={b.id} b={b} x={L + i0 + i * 62} onPress={onPress} onHover={hover} />
       ))}
-      {end && <ItemSlot b={end} x={L + e0} onPress={onPress} onHover={hover} end />}
+      {end && (paintedEnd ? <SkillSlot b={end} x={L + e0} dense={dense} onPress={onPress} onHover={hover} /> : <ItemSlot b={end} x={L + e0} onPress={onPress} onHover={hover} end />)}
 
       <Piece p="crest_strip" x={550 - CX} y={724 - BOTTOM} w={512} h={44} />
       {u && (

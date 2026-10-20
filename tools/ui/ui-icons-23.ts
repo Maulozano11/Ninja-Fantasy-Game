@@ -1443,25 +1443,31 @@ const ICONS: IconSpec[] = [
       { box: [36, 34, 60, 60], lo: 0.85, hi: 1, spare: false, by: 'chroma', only: { hue: [85, 110], minL: 0.8 }, why: 'his gold cross: its saturated gold' },
       { box: [10, 10, 85, 85], lo: 0, hi: 0.04, spare: true, by: 'L', why: 'the dark brown outline of his scroll' },
     ],
-    // At 44 his gold cross melts into the glowing parchment around it (gold on cream, its brown
-    // outline under a pixel wide). Traced on his pixels: the upright arm his x 46-52, y 37-57, the cross
-    // arm his y 45-48, x 36-59, in his gold #fcf79a with his brown outline #926d46.
+    // The owner (2026-10-20): the cross must be a clean upright plus sign. His is tilted with uneven
+    // arms, and at 44 it melted into the glowing parchment. Drawn at both sizes where his sits (his
+    // x 36-59, y 37-57), on his glow cream, in his gold #fcf79a with his brown outline #926d46.
     art: (pt) => {
-      if (pt.N !== 44) return;
-      pt.ascii(16, 16, [
-        '......ooo....',
-        '.....ogggo...',
-        '.....ogggo...',
-        '.....ogggo...',
-        '.ooooogggooo.',
-        'ogggggwwggggo',
-        'ogggggwwggggo',
-        'ogggggggggggo',
-        '.ooooogggooo.',
-        '.....ogggo...',
-        '.....ogggo...',
-        '......ooo....',
-      ], { o: '#926d46', g: '#fcf79a', w: '#fffde0' });
+      const big = pt.N === 88;
+      const [cx, cy] = big ? [46, 44] : [23, 22];
+      const a = big ? 3 : 1; // half the arm's width (arms 7 or 3 wide)
+      const half = big ? 11 : 5; // half the plus's span (23 or 11)
+      const inside = (x: number, y: number) => (Math.abs(x - cx) <= a && Math.abs(y - cy) <= half) || (Math.abs(y - cy) <= a && Math.abs(x - cx) <= half);
+      const r = half + (big ? 3 : 1);
+      // His tilted cross goes under the glow first, so none of it shows round the plus.
+      // His glow round it: brightest near the plus, one step down at the rim.
+      for (let y = cy - r; y <= cy + r; y++)
+        for (let x = cx - r; x <= cx + r; x++) {
+          const d = Math.hypot(x - cx, y - cy);
+          if (d <= r + 0.5) pt.px(x, y, big && d > r - 2 ? '#f0dda1' : '#fbf2a5');
+        }
+      for (let y = cy - half - 1; y <= cy + half + 1; y++)
+        for (let x = cx - half - 1; x <= cx + half + 1; x++) {
+          if (inside(x, y)) {
+            const edge = !inside(x - 1, y) || !inside(x, y - 1);
+            const core = Math.abs(x - cx) <= (big ? 1 : 0) && Math.abs(y - cy) <= (big ? 1 : 0);
+            pt.px(x, y, core ? '#fffde0' : big && edge ? '#fffbd0' : '#fcf79a');
+          } else if (inside(x + 1, y) || inside(x - 1, y) || inside(x, y + 1) || inside(x, y - 1)) pt.px(x, y, '#926d46');
+        }
     },
     marks: [
       // His gold cross and sparkles: bright gold on the light parchment, so kept by their colour.

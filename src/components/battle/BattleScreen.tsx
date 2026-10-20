@@ -934,7 +934,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'dash', label: t('act_dash'), icon: ACTION_ICON.dash, disabled: !can.action, why: noAction, help: t('help_dash') });
       add({ id: 'dodge', label: t('act_dodge'), icon: ACTION_ICON.dodge, disabled: !can.action || stealth, why: noAction ?? t('r_combatOnly'), help: t('help_dodge') });
       add({ id: 'hide', label: t('act_hide'), icon: ACTION_ICON.hide, disabled: !can.action, why: noAction, help: t('help_hide') });
-      if (u.weapon.held) add({ id: 'draw', label: t(u.armed ? 'act_stow' : 'act_draw'), icon: ACTION_ICON.draw, disabled: !!u.turn.interacted && !can.bonus, why: t('r_noBonus'), help: t('help_draw') });
+      if (u.weapon.held) add({ id: 'draw', label: t(u.armed ? 'act_stow' : 'act_draw'), iconId: u.armed ? 'weapon_stow' : 'weapon_draw', icon: ACTION_ICON.draw, disabled: !!u.turn.interacted && !can.bonus, why: t('r_noBonus'), help: t('help_draw') });
       add({ id: 'more', label: t('act_more'), icon: ACTION_ICON.items });
       add({ id: 'end', label: stealth ? t('done') : t('act_end'), icon: ACTION_ICON.end, tone: 'end', help: t('help_end') });
     } else {

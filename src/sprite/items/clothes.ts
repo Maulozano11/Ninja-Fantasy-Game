@@ -183,7 +183,8 @@ const limbPart = (k: LimbKind, s: Side, t: number): PartId =>
 
 /**
  * Covers a limb from `from` to `to` (0 root, 1 middle joint, 2 end) with flat
- * ends, bridging the middle joint with a disc. `inflate` may taper [start, end].
+ * ends, bridging the middle joint with a disc. `inflate` may taper [start, end],
+ * or follow the limb (a function of t).
  */
 export function limb(
   g: DrawCtx,
@@ -192,11 +193,12 @@ export function limb(
   s: Side,
   from: number,
   to: number,
-  inflate: number | [number, number],
+  inflate: number | [number, number] | ((t: number) => number),
   pen: Pen,
   opts: { shade?: number; round0?: boolean; round1?: boolean; light?: LimbLight } = {},
 ): void {
-  const inf = (t: number) => (typeof inflate === 'number' ? inflate : inflate[0] + (inflate[1] - inflate[0]) * ((t - from) / (to - from || 1)));
+  const inf = (t: number) =>
+    typeof inflate === 'number' ? inflate : typeof inflate === 'function' ? inflate(t) : inflate[0] + (inflate[1] - inflate[0]) * ((t - from) / (to - from || 1));
   const cuts = [from, ...PROFILE_CUTS[k].filter((c) => c > from && c < to), to];
   for (let i = 0; i < cuts.length - 1; i++) {
     const t0 = cuts[i];
@@ -407,11 +409,16 @@ function cuff(g: DrawCtx, L: Layer, k: LimbKind, s: Side, t0: number, t1: number
   limb(g, L, k, s, t0, t1, inflate, pen, { light: bandLight(g, k, s, t0, t1) });
 }
 
-/** Sleeves on both arms from 0 (shoulder) to `to` (2 = wrist), with a flat hem. */
+/**
+ * Sleeves on both arms from 0 (shoulder) to `to` (2 = wrist), with a flat hem. Over the shoulder the
+ * cloth lies on the skin and only thickens down the arm, so a shoulder without a guard keeps the
+ * body's own clean round (the owner, 2026-10-20: no extra pixels on the shoulder, more defined).
+ */
 export function sleeves(g: DrawCtx, hex: string, to: number, inflate = 0.5, kind: Kind = 'cloth'): void {
+  const hug = (t: number) => inflate * clamp(t / 0.45, 0, 1);
   for (const s of SIDES) {
     const L = g.L(armDepth(s, 'cloth'));
-    limb(g, L, 'arm', s, 0, to, inflate, clothPen(g, hex, prt('upperArm', s), sb(s), kind), { round0: true });
+    limb(g, L, 'arm', s, 0, to, hug, clothPen(g, hex, prt('upperArm', s), sb(s), kind), { round0: true });
   }
 }
 

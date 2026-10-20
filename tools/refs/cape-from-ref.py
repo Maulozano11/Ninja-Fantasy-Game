@@ -46,7 +46,7 @@ LOWER_FROM = 57
 LOWER_X1 = 36
 # The rows where his sword's pommel sticks out past the cape's edge.
 POMMEL_ROWS = [50, 51, 52, 53, 54]
-SHOULDER_BOX = (32, 26, 44, 40)
+SHOULDER_BOX = (26, 26, 49, 46)
 # The shoulder piece ends where the mantle round his neck begins.
 SCARF_X = 43
 # The mantle: from under his chin, between the shoulders, down to his coat.
@@ -185,8 +185,6 @@ def main():
             cloth[y, x] = True
 
     # The shoulder piece: his cloth over the near shoulder up to the scarf, and the gold stud on it.
-    sbox = inbox(SHOULDER_BOX) & (xs < SCARF_X)
-    shoulder = sbox & (neutral | gold) & ~bg
 
     # The front: the mantle round the neck and over both shoulders, under his chin, that reads as a
     # scarf but is the cape (the owner, 2026-10-20), with its gold studs: his cloth and line reached
@@ -200,6 +198,16 @@ def main():
             continue
         front[y, x] = True
         stack += [(y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)]
+
+    # The near shoulder: all of his cape over it - the mantle, the piece over the shoulder and the top
+    # of the cloth falling behind the arm - goes in front of our arm, so our sleeve never shows
+    # through where his cape covers his (the owner, 2026-10-20: "el hombro derecho"). Only his own
+    # cloth: not his arm, nor the cloth carried on behind it.
+    # The collar rising behind his jaw (left of the chin) is his cape too.
+    his_cloth = (back & neutral) | front | ((neutral | gold) & ~bg & ((xs < SCARF_X) | ((xs < 50) & (ys < 29))))
+    # Below the armpit only the strip outside the arm: the cloth between his arm and his coat stays
+    # behind our arm.
+    shoulder = inbox(SHOULDER_BOX) & his_cloth & (neutral | gold) & ~bg & ~((xs >= 47) & (ys < 27)) & ~((ys >= 40) & (xs >= 34))
 
     def pack(mask, keep_line=True):
         CHARS = 'abcdefhijklmnpqrstuvwxyzABCDEFHIJKLMNOPQRSTUVWXYZ0123456789'

@@ -7,3 +7,4 @@ its files here are removed.
 
 | Proposal | Preview | What it changes |
 | --- | --- | --- |
+| crystal-sword | crystal-sword.png | The owner's ice crystal sword (docs/reference/crystal-sword-owner-reference.jpg) as a new weapon, Ice Crystal Sword: his pixels lifted out by tools/refs/crystal-sword-from-ref.py and drawn at the angle he drew them (the idle pose's), so at rest it is exactly his; other poses turn it with RotSprite. Own colours, recolourable (Crystal, Grip). One-handed, 1d8 slashing. |

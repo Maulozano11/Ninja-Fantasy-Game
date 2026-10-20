@@ -967,10 +967,11 @@ describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
       assert.ok(pv.reasons.includes('aura'), kind);
       assert.equal(pv.adv, 'disadvantage');
     }
-    // On the Northstar's ally too, and on a structure: the roll is two d20, keeping the lower.
+    // Against the Northstar's friends too, and against a structure.
     assert.ok(attackPreview(s, r, s.units.b, 'melee').reasons.includes('aura'));
     const block: Wall = { id: 'b1', kind: 'metalBlock', a: { x: 9.75, z: 11.75 }, b: { x: 9.75, z: 11.75 }, hp: 20, maxHp: 20, owner: 'b' };
     assert.ok(structureAttack({ ...s, walls: [block] }, r, block, false).reasons.includes('aura'));
+    // The roll: two d20, keeping the lower.
     const atk = ok(applyAction(s, { type: 'attack', unit: 'rogue_0', target: 'n' })).events.find((e) => e.t === 'attack');
     assert.ok(atk?.t === 'attack');
     assert.equal(atk.roll.rolls.length, 2);

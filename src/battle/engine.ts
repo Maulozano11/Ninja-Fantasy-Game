@@ -750,12 +750,13 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     const why = structureBlocker(s, structureAt(spec, u.pos, at, u.id, ''));
     if (why) return why;
   }
-  // Command and Natural Submission only take some foes; from level 9, Command takes a second one.
+  // Command and Natural Submission take only some minds; from level 9, Command takes a second one.
   const minds: Unit[] = [];
   if (spec.special === 'command' || spec.special === 'submission') {
     const blocker = spec.special === 'command' ? commandBlocker : submissionBlocker;
-    for (const tid of [targetId, ...(target2Id && target2Id !== targetId ? [target2Id] : [])]) {
-      if (minds.length && (spec.special !== 'command' || u.level < 9)) return 'oneTarget';
+    const ids = target2Id && target2Id !== targetId ? [targetId, target2Id] : [targetId];
+    if (ids.length > 1 && (spec.special !== 'command' || u.level < 9)) return 'oneTarget';
+    for (const tid of ids) {
       const t = tid ? s.units[tid] : undefined;
       const why = blocker(s, u, t);
       if (why) return why;

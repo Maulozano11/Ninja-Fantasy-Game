@@ -413,12 +413,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       const blocker = spec.special === 'command' ? commandBlocker : submissionBlocker;
       o.range = { at: actor.pos, radius: spec.range };
       o.targets = Object.values(s.units).filter((x) => x.id === mode.picked || !blocker(s, actor, x)).map((x) => x.id);
-      if (mode.picked) label = T('aimSecond');
-      else if (hu) {
+      if (hu && hu.id !== mode.picked) {
         const why = blocker(s, actor, hu);
         label = why ? reasonLine(why) : jutsuName(spec.id, lang);
         if (!why) sub = T('aimSave', { save: (lang === 'es' ? SAVE_ES : SAVE_EN).wis, dc: actor.saveDC });
-      }
+      } else if (mode.picked) label = T('aimSecond');
     } else if (mode.k === 'jutsu' && spec) {
       const self = spec.shape === 'self' || spec.shape === 'selfCircle';
       if (!self) o.range = { at: actor.pos, radius: spec.range };

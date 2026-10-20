@@ -281,7 +281,7 @@ export const commandBlocker = (s: BattleState, u: Unit, t: Unit | undefined): st
 export const submissionBlocker = (s: BattleState, u: Unit, t: Unit | undefined): string | null => submissionRefused(s, u, t) ?? mindReach(s, u, t!, SUBMISSION);
 
 /** How many of its own turns a commanded unit fights for the Northstar: one, two from level 9. */
-export const commandTurns = (u: Unit): number => (u.level >= 9 ? 2 : 1);
+const commandTurns = (u: Unit): number => (u.level >= 9 ? 2 : 1);
 
 /**
  * Command: the target makes a WIS save. Failing it, it fights on the Northstar's side until the end

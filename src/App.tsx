@@ -8,10 +8,22 @@ import { CampaignMode } from './components/CampaignMode';
 import { ArenaSandbox } from './components/ArenaSandbox';
 import { MissionMode } from './components/mission/MissionMode';
 import { LangToggle } from './i18n/LangToggle';
+import { strings, useLang } from './i18n';
 import { soundManager } from './utils/audio';
 import { Swords, User, BookOpen, Compass, Shield, Flame } from 'lucide-react';
 
 type AppView = 'creator' | 'campaign' | 'mission' | 'combat' | 'arena';
+
+const T = strings({
+  creator: { en: 'Character Creator', es: 'Creador de personajes' },
+  campaign: { en: 'Campaign Arcs', es: 'Arcos de campaña' },
+  missions: { en: 'Missions', es: 'Misiones' },
+  isNew: { en: 'New', es: 'Nuevo' },
+  combat: { en: 'Tactical Combat', es: 'Combate táctico' },
+  arena: { en: 'Arena & PvP', es: 'Arena y JcJ' },
+  launch: { en: 'Launch Battle', es: 'Iniciar batalla' },
+  footer: { en: 'Shinobi 5e Chronicles · Interactive 2D Tactical Engine with Destructible Environments & D&D Rolls', es: 'Shinobi 5e Chronicles · Motor táctico 2D interactivo con escenarios destructibles y tiradas de D&D' },
+});
 
 const founderPreset = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')?.character;
 
@@ -22,6 +34,7 @@ function encounterFor(type?: 'skirmish' | 'rogue_squad' | 'giant_beast' | 'titan
 }
 
 export default function App() {
+  useLang();
   // A #creator or #missions link opens straight onto that screen.
   const [activeView, setActiveView] = useState<AppView>(() => {
     const hash = typeof window !== 'undefined' ? window.location.hash : '';
@@ -77,7 +90,7 @@ export default function App() {
                 : 'hover:text-slate-200'
             }`}
           >
-            Character Creator
+            {T('creator')}
           </button>
           <button
             type="button"
@@ -91,7 +104,7 @@ export default function App() {
                 : 'hover:text-slate-200'
             }`}
           >
-            Campaign Arcs
+            {T('campaign')}
           </button>
           <button
             type="button"
@@ -105,8 +118,8 @@ export default function App() {
                 : 'hover:text-slate-200'
             }`}
           >
-            Missions
-            <span className="rounded bg-amber-400 px-1 text-[9px] font-black uppercase leading-4 text-slate-950">New</span>
+            {T('missions')}
+            <span className="rounded bg-amber-400 px-1 text-[9px] font-black uppercase leading-4 text-slate-950">{T('isNew')}</span>
           </button>
           <button
             type="button"
@@ -120,7 +133,7 @@ export default function App() {
                 : 'hover:text-slate-200'
             }`}
           >
-            Tactical Combat
+            {T('combat')}
           </button>
           <button
             type="button"
@@ -134,7 +147,7 @@ export default function App() {
                 : 'hover:text-slate-200'
             }`}
           >
-            Arena & PvP
+            {T('arena')}
           </button>
         </nav>
 
@@ -147,7 +160,7 @@ export default function App() {
             className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg hover:from-cyan-400 hover:to-blue-500 shadow-md shadow-cyan-950 transition whitespace-nowrap shrink-0 active:scale-98 cursor-pointer flex items-center gap-1.5"
           >
             <Swords className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">Launch Battle</span>
+            <span className="hidden xl:inline">{T('launch')}</span>
           </button>
         </div>
       </header>
@@ -193,7 +206,7 @@ export default function App() {
 
       {/* Quiet Minimalist Editorial Footer */}
       <footer className="border-t border-slate-900 bg-slate-950 px-6 py-4 text-center text-xs text-slate-500">
-        Shinobi 5e Chronicles · Interactive 2D Tactical Engine with Destructible Environments & D&D Rolls
+        {T('footer')}
       </footer>
     </div>
   );

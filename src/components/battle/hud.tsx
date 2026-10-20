@@ -39,13 +39,16 @@ import {
   ArrowLeftRight,
   Crown,
   PawPrint,
+  Eye,
 } from 'lucide-react';
 import type { AiOrder, BattleState, Unit } from '../../battle/types';
 import { homeTeam } from '../../battle/types';
 import { clanName } from '../../data/shinobiData';
+import { CLASS_ES } from '../../game/ruleText';
 import type { Lang } from '../../i18n';
 import { T } from './battleText';
 import type { TKey } from './battleText';
+import { unitName } from './battleLog';
 import { portraitOf } from './unitArt';
 
 export const ELEMENT_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {
@@ -68,6 +71,7 @@ export const ABILITY_ICON: Record<string, React.FC<{ size?: number; className?: 
   ryusei_swap: ArrowLeftRight,
   northstar_command: Crown,
   northstar_submission: PawPrint,
+  mirai_evasion: Eye,
 };
 
 export const ACTION_ICON: Record<string, React.FC<{ size?: number; className?: string }>> = {
@@ -129,31 +133,38 @@ function statusOf(u: Unit, lang: Lang): string | null {
   if (u.down === 'ko') return T('ko', undefined, lang);
   if (u.down === 'fled') return T('fled', undefined, lang);
   if (u.commanded) return T('underCommand', undefined, lang);
+  if (u.joined) return T('joined', undefined, lang);
   if (u.cond.hidden !== undefined) return T('hidden', undefined, lang);
   if (u.cond.crouched) return T('crouched', undefined, lang);
   if (u.cond.warpEdge) return T('reason_behind', undefined, lang);
   return null;
 }
 
+/** A class's name on a card: short in Spanish ("Bukijutsu"), the first word in English. */
+export const className = (cls: string, lang: Lang): string =>
+  lang === 'es' ? CLASS_ES[cls as keyof typeof CLASS_ES]?.short ?? cls : cls.split(' ')[0];
+
+/** A unit's side colour: the party's blue, an enemy under Command violet, a foe red. */
+const sideRing = (u: Unit): string => (homeTeam(u) === 'party' ? '#38bdf8' : u.commanded ? '#a78bfa' : '#f87171');
+
 /** The acting (or selected) ninja: portrait, HP, chakra, AC and conditions. */
 export function UnitCard({ u, hp, chakra, lang }: { u: Unit; hp: number; chakra: number; lang: Lang }) {
   const c = u.character;
   const status = statusOf(u, lang);
+  // Who it is on one line, how it stands on the next: nothing gets cut off.
+  const who = [c ? clanName(c.clan) : '', c ? className(c.shinobiClass, lang) : '', u.rank ? T(`rank_${u.rank}`, undefined, lang) : ''].filter(Boolean).join(' · ');
+  const how = [T('ac', { n: u.ac }, lang), u.weapon.held ? T(u.armed ? 'drawn' : 'stowed', undefined, lang) : ''].filter(Boolean).join(' · ');
   return (
     <div className={`${panel} p-3 flex gap-3 items-center w-[min(280px,calc(100vw-24px))] xl:w-[340px]`}>
-      <Portrait u={u} size={56} ring={homeTeam(u) === 'party' ? '#38bdf8' : '#f87171'} />
+      <Portrait u={u} size={56} ring={sideRing(u)} />
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
-          <span className="font-bold text-white truncate">{u.name}</span>
-          <span className="text-amber-300 text-xs font-semibold">{T('level', { n: u.level }, lang)}</span>
-          {status && <span className="ml-auto text-[10px] uppercase tracking-wider text-violet-300">{status}</span>}
+          <span className="font-bold text-white truncate">{unitName(u, lang)}</span>
+          <span className="text-amber-300 text-xs font-semibold shrink-0">{T('level', { n: u.level }, lang)}</span>
+          {status && <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wider text-violet-300">{status}</span>}
         </div>
-        <div className="text-[11px] text-slate-400 truncate">
-          {c ? `${clanName(c.clan)} · ${c.shinobiClass} · ` : ''}
-          {u.rank ? `${T(`rank_${u.rank}`, undefined, lang)} · ` : ''}
-          {T('ac', { n: u.ac }, lang)}
-          {u.weapon.held ? ` · ${T(u.armed ? 'drawn' : 'stowed', undefined, lang)}` : ''}
-        </div>
+        {who && <div className="text-[11px] text-slate-400 leading-tight">{who}</div>}
+        <div className="text-[11px] text-slate-400 leading-tight">{how}</div>
         <div className="mt-1.5 flex items-center gap-2">
           <Bar value={hp} max={u.maxHp} color={hpColor(hp / u.maxHp)} />
           <span className="text-[10px] text-slate-300 tabular-nums w-12 text-right">
@@ -205,7 +216,7 @@ export function InitiativeBar({ state, turnUnit, round, lang, onPick }: { state:
           const side = homeTeam(u) === 'party' ? '#38bdf8' : '#f87171';
           const ring = i === 0 ? '#facc15' : side;
           return (
-            <button key={id} type="button" onClick={() => onPick(id)} className="flex flex-col items-center gap-1" title={u.name}>
+            <button key={id} type="button" onClick={() => onPick(id)} className="flex flex-col items-center gap-1" title={unitName(u, lang)}>
               <Portrait u={u} size={i === 0 ? 40 : 32} ring={ring} />
               <span className="h-0.5 w-6 rounded-full" style={{ background: u.commanded ? '#a78bfa' : side, opacity: u.down ? 0.3 : 1 }} />
             </button>
@@ -254,26 +265,30 @@ export function PartyFrames({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <button type="button" onClick={() => onSelect(u.id)} className="text-sm font-semibold text-white truncate text-left">
-                  {u.name}
+                  {unitName(u, lang)}
                 </button>
-                {status && <span className="text-[9px] uppercase tracking-wider text-violet-300 truncate">{status}</span>}
-                <button
-                  type="button"
-                  onClick={() => onController(u.id, u.controller === 'ai' ? 'player' : 'ai')}
-                  title={T(u.controller === 'ai' ? 'aiOn' : 'aiOff', undefined, lang)}
-                  className={`ml-auto shrink-0 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border ${u.controller === 'ai' ? 'border-sky-500/60 text-sky-200 bg-sky-950/60' : 'border-slate-600 text-slate-300'}`}
-                >
-                  {u.controller === 'ai' ? <Bot size={11} /> : <User size={11} />}
-                  <span className="hidden xl:inline">{u.controller === 'ai' ? T('ai', undefined, lang) : T('player', undefined, lang)}</span>
-                </button>
+                {/* A beast that joined fights on its own: nobody takes its reins (D20). */}
+                {!u.joined && (
+                  <button
+                    type="button"
+                    onClick={() => onController(u.id, u.controller === 'ai' ? 'player' : 'ai')}
+                    title={T(u.controller === 'ai' ? 'aiOn' : 'aiOff', undefined, lang)}
+                    className={`ml-auto shrink-0 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border ${u.controller === 'ai' ? 'border-sky-500/60 text-sky-200 bg-sky-950/60' : 'border-slate-600 text-slate-300'}`}
+                  >
+                    {u.controller === 'ai' ? <Bot size={11} /> : <User size={11} />}
+                    <span className="hidden xl:inline">{u.controller === 'ai' ? T('ai', undefined, lang) : T('player', undefined, lang)}</span>
+                  </button>
+                )}
               </div>
+              {/* Its own line, so neither the name nor the status gets cut off. */}
+              {status && <div className="text-[9px] uppercase tracking-wider text-violet-300 leading-tight">{status}</div>}
               <div className="mt-1">
                 <Bar value={hp} max={u.maxHp} color={hpColor(hp / u.maxHp)} height={5} />
               </div>
               <div className="mt-0.5">
                 <Bar value={chakra} max={u.maxChakra} color="#38bdf8" height={3} />
               </div>
-              {u.controller === 'ai' && (
+              {u.controller === 'ai' && !u.joined && (
                 <div className="mt-1 flex gap-1">
                   {ORDERS.map((o) => (
                     <button
@@ -307,6 +322,8 @@ export interface ActionButton {
   help?: string;
   tone?: 'jutsu' | 'item' | 'end' | 'default';
   element?: string;
+  /** A reaction or passive shown for what it is (its help on hover); it can't be pressed. */
+  passive?: boolean;
 }
 
 /** Resources and the buttons of the acting ninja. */
@@ -338,7 +355,7 @@ export function ActionBar({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const fits = Math.max(1, Math.floor((room + 6) / 62));
+  const fits = Math.max(1, Math.floor((room + 6) / 66));
   const rows = room > 0 && buttons.length > fits ? 2 : 1;
   const cols = Math.ceil(buttons.length / rows);
   const dot = (on: boolean, color: string, label: string) => (
@@ -365,24 +382,27 @@ export function ActionBar({
           </span>
         </div>
       </div>
-      <div className="grid gap-1.5 overflow-x-auto pb-0.5 min-w-0" style={{ gridTemplateColumns: `repeat(${cols}, 3.5rem)` }}>
+      <div className="grid gap-1.5 overflow-x-auto pb-0.5 min-w-0" style={{ gridTemplateColumns: `repeat(${cols}, 3.75rem)` }}>
         {buttons.map((b) => {
           const Icon = b.icon;
+          // A long single word gets a size smaller rather than an ellipsis; two words wrap.
+          const long = b.label.split(' ').some((w) => w.length > 9);
           return (
             <button
               key={b.id}
               type="button"
-              disabled={b.disabled}
-              onClick={() => onPress(b.id)}
+              // Not `disabled`: a disabled button gets no hover, and its help says why it is off.
+              aria-disabled={b.disabled || b.passive}
+              onClick={() => !b.disabled && !b.passive && onPress(b.id)}
               onMouseEnter={() => onHover(b)}
               onMouseLeave={() => onHover(null)}
-              className={`relative flex flex-col items-center justify-center w-14 h-14 shrink-0 rounded-lg border text-[9px] leading-tight transition-colors
-                ${b.active ? 'border-amber-400 bg-amber-950/60 text-amber-100' : b.tone === 'jutsu' ? 'border-orange-700/60 bg-orange-950/40 text-orange-100 hover:bg-orange-900/50' : b.tone === 'end' ? 'border-slate-500 bg-slate-800 text-slate-100 hover:bg-slate-700' : 'border-slate-600/70 bg-slate-900/80 text-slate-200 hover:bg-slate-800'}
-                disabled:opacity-35 disabled:cursor-not-allowed`}
+              className={`relative flex flex-col items-center justify-center w-[3.75rem] h-14 shrink-0 rounded-lg border text-[9px] leading-tight transition-colors
+                ${b.active ? 'border-amber-400 bg-amber-950/60 text-amber-100' : b.passive ? 'border-dashed border-orange-500/60 bg-orange-950/20 text-orange-100 cursor-help' : b.tone === 'jutsu' ? 'border-orange-700/60 bg-orange-950/40 text-orange-100 hover:bg-orange-900/50' : b.tone === 'end' ? 'border-slate-500 bg-slate-800 text-slate-100 hover:bg-slate-700' : 'border-slate-600/70 bg-slate-900/80 text-slate-200 hover:bg-slate-800'}
+                ${b.disabled ? 'opacity-35 cursor-not-allowed' : ''}`}
             >
               {b.hotkey && <span className="absolute top-0.5 left-1 text-[8px] text-slate-400">{b.hotkey}</span>}
               <Icon size={18} />
-              <span className="mt-0.5 px-0.5 truncate max-w-full">{b.label}</span>
+              <span className={`mt-0.5 px-0.5 max-w-full text-center leading-[1.05] line-clamp-2 ${long ? 'text-[8px]' : ''}`}>{b.label}</span>
               {b.badge !== undefined && (
                 <span className="absolute -bottom-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-sky-600 text-white text-[9px] font-bold flex items-center justify-center">{b.badge}</span>
               )}
@@ -394,15 +414,21 @@ export function ActionBar({
   );
 }
 
-export function RollToast({ text, sub, ok }: { text: string; sub?: string; ok?: boolean }) {
+/**
+ * The last roll: the die kept on the hexagon, who rolled against whom, the sum, and (when two dice
+ * were rolled, or the blow was stepped away from) a line saying so. Green when it went the party's
+ * way, red when it went against it.
+ */
+export function RollToast({ text, sub, note, die, ok }: { text: string; sub?: string; note?: string; die?: number; ok?: boolean }) {
   return (
     <div className={`${panel} px-3 py-2 flex items-center gap-3 w-[min(236px,calc(100vw-24px))] xl:w-[320px]`}>
       <div className={`w-9 h-9 shrink-0 flex items-center justify-center rounded-md font-black text-sm ${ok ? 'bg-emerald-900/70 text-emerald-200' : 'bg-rose-950/70 text-rose-200'}`} style={{ clipPath: 'polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%)' }}>
-        {text.match(/\d+/)?.[0] ?? '·'}
+        {die ?? '·'}
       </div>
       <div className="min-w-0">
-        <div className="text-xs font-semibold text-white truncate">{text}</div>
-        {sub && <div className={`text-[11px] truncate ${ok ? 'text-emerald-300' : 'text-rose-300'}`}>{sub}</div>}
+        <div className="text-xs font-semibold text-white leading-tight">{text}</div>
+        {sub && <div className={`text-[11px] leading-tight ${ok ? 'text-emerald-300' : 'text-rose-300'}`}>{sub}</div>}
+        {note && <div className="text-[10px] text-amber-200 leading-tight">{note}</div>}
       </div>
     </div>
   );
@@ -433,7 +459,7 @@ export function LogPanel({ lines, onClose, lang }: { lines: { text: string; tone
   );
 }
 
-export function Prompt({ title, text, yes, no, onYes, onNo }: { title: string; text: string; yes: string; no: string; onYes: () => void; onNo: () => void }) {
+export function Prompt({ title, text, yes, no, yesKey = 'Y', noKey = 'N', onYes, onNo }: { title: string; text: string; yes: string; no: string; yesKey?: string; noKey?: string; onYes: () => void; onNo: () => void }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4">
       <div className={`${panel} pointer-events-auto p-4 w-[min(380px,100%)] border-amber-500/60`}>
@@ -441,10 +467,10 @@ export function Prompt({ title, text, yes, no, onYes, onNo }: { title: string; t
         <div className="mt-2 text-sm text-slate-100">{text}</div>
         <div className="mt-4 flex gap-2 justify-end">
           <button type="button" onClick={onNo} className="px-4 py-1.5 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 text-sm">
-            {no} <span className="text-[10px] text-slate-500">N</span>
+            {no} <span className="text-[10px] text-slate-500">{noKey}</span>
           </button>
           <button type="button" onClick={onYes} className="px-4 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 text-sm">
-            {yes} <span className="text-[10px] text-slate-800">Y</span>
+            {yes} <span className="text-[10px] text-slate-800">{yesKey}</span>
           </button>
         </div>
       </div>

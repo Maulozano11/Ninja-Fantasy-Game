@@ -5,7 +5,7 @@
 import type { AreaShape, BattleState, Cell, Intent, PropDef, Pt, Trap, Unit, Wall, WeaponNode } from '../../battle/types';
 import { homeTeam } from '../../battle/types';
 import type { MapDef } from '../../battle/map';
-import { BLOCK_HALF, CELL, cellCenter, dist } from '../../battle/map';
+import { BLOCK_HALF, CELL, cellCenter, dist, segmentsCross } from '../../battle/map';
 import { JUTSU, areaOf } from '../../battle/jutsu';
 import { breakable } from '../../battle/structures';
 import { AURA_RADIUS, sovereign } from '../../battle/combat';
@@ -13,6 +13,9 @@ import { lookOf as guardLook, VISION } from '../../battle/stealth';
 import { worldSprite } from '../world/WorldSpriteView';
 import type { MapArt } from './mapArt';
 import type { Fx, Playback } from './playback';
+import { FALL_MS, RISE_MS } from './playback';
+import type { Lang } from '../../i18n';
+import { unitName } from './battleLog';
 import { bodyCenterDx, FEET, fpsOf, framesOf, lookOf, STRIDE, unitFrame } from './unitArt';
 import { drawAuraBack, drawVfxSprite, drawWallSprite } from './vfxSprites';
 
@@ -56,6 +59,8 @@ export interface Scene {
   foreseen: Record<string, Intent>;
   shake: { x: number; y: number };
   team: 'party' | 'enemy';
+  /** The screen's language (names on the Eye of Tomorrow's marks). */
+  lang?: Lang;
 }
 
 const images = new Map<string, HTMLImageElement>();
@@ -75,6 +80,12 @@ const ready = (img: HTMLImageElement) => img.complete && img.naturalWidth > 0;
 export function project(map: MapDef, p: Pt, level = map.levelAt(p.x, p.z)): { X: number; Y: number } {
   return { X: p.x * map.px.perM, Y: map.px.backY + p.z * map.px.perMDepth - level * map.px.level };
 }
+
+/** An effect drawn on the ground among the standing things (by depth), not over everything. */
+const onGround = (f: Fx): boolean => f.kind === 'electric' && f.sig === 'water';
+
+/** Where an effect is now: with its unit when it follows it (Evasion's eyes), else where it started. */
+export const fxPos = (sc: Scene, f: Fx): Pt => (f.follow && f.unit ? sc.pb.posOf(f.unit, sc.now) : f.from);
 
 /** Screen pixels from a unit's feet to the middle of its drawn body, for centring an aura on it. */
 export function auraDx(sc: Scene, id: string | undefined): number {
@@ -124,8 +135,10 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
     if (st?.destroyed) return;
     items.push({ z: p.sortZ ?? p.z, draw: () => drawProp(ctx, sc, p, i < map.props.length ? i : -1) });
   });
-  // Walls broken by events still playing stand until their moment comes.
+  // Walls broken by events still playing stand until their moment comes; Kōton structures that
+  // went sink back into the ground.
   for (const w of [...state.walls, ...sc.pb.goneWalls()]) items.push({ z: (w.a.z + w.b.z) / 2, draw: () => drawWall(ctx, sc, w) });
+  for (const f of sc.pb.fallen) items.push({ z: (f.wall.a.z + f.wall.b.z) / 2, draw: () => drawFallen(ctx, sc, f.wall, f.t0) });
   const hydra = Object.values(state.units).find((u) => u.kind === 'hydra_body');
   for (const u of Object.values(state.units)) {
     if (u.kind === 'hydra_head') continue;
@@ -140,11 +153,16 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   }
   void hydra;
   // An aura's back layer sits just behind its caster.
-  for (const fx of sc.pb.fx) if (fx.kind === 'aura') items.push({ z: fx.from.z + 0.005, draw: () => drawAuraBack(ctx, sc, fx) });
+  for (const fx of sc.pb.fx) if (fx.kind === 'aura') items.push({ z: fxPos(sc, fx).z + 0.005, draw: () => drawAuraBack(ctx, sc, fx) });
+  // Lightning running along the water lies on the ground: what stands in front of it (a metal wall,
+  // a unit) is drawn over it.
+  for (const fx of sc.pb.fx) if (onGround(fx)) items.push({ z: fx.from.z + 0.005, draw: () => drawFx(ctx, sc, fx) });
   items.sort((a, b) => a.z - b.z);
   for (const it of items) it.draw();
+  // Aiming a Ryusei ability: the Nodes it can use, and where it lands, show over walls and units.
+  if (sc.overlay.nodes) drawNodesOnTop(ctx, sc);
 
-  for (const fx of sc.pb.fx) if (!drawVfxSprite(ctx, sc, fx)) drawFx(ctx, sc, fx);
+  for (const fx of sc.pb.fx) if (!onGround(fx) && !drawVfxSprite(ctx, sc, fx)) drawFx(ctx, sc, fx);
 
   if (state.time === 'night') drawNight(ctx, sc, all);
   if (state.weather === 'Downpour') drawRain(ctx, sc);
@@ -262,11 +280,15 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
       if (!v || !sovereign({ ...u, down: v.down }) || (u.team !== sc.team && v.hidden)) continue;
       ctx.beginPath();
       groundEllipse(ctx, map, sc.pb.posOf(u.id, now), AURA_RADIUS);
-      ctx.fillStyle = 'rgba(167, 139, 250, 0.07)';
+      ctx.fillStyle = 'rgba(167, 139, 250, 0.12)';
       ctx.fill();
-      ctx.setLineDash([6, 5]);
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = 'rgba(167, 139, 250, 0.55)';
+      // A dark edge under the violet dashes, so the ring reads on grass at the tactical zoom.
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = 'rgba(30, 12, 60, 0.35)';
+      ctx.stroke();
+      ctx.setLineDash([7, 5]);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(196, 181, 253, 0.9)';
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -328,46 +350,82 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
 
 /**
  * An enemy's plan on the ground, as a Mirai's Eye of Tomorrow sees it: a dashed line to where it
- * will walk, a ring under the one it means to strike (green for a friend it means to heal), and
- * the area its jutsu will cover.
+ * will walk (ending on a filled marker), from there an arrow to the one it means to strike (green
+ * for a friend it means to heal) with a ring under it, and the area its jutsu will cover. Lines get
+ * a dark edge so they read on grass at the tactical zoom.
  */
 function drawForesight(ctx: CanvasRenderingContext2D, sc: Scene, id: string, it: Intent): void {
   const { map, state, now } = sc;
   const from = sc.pb.posOf(id, now);
   const tgt = it.target ? state.units[it.target] : undefined;
-  const red = 'rgba(239, 68, 68, 0.8)';
+  const red = 'rgba(248, 72, 72, 0.95)';
+  const dark = 'rgba(40, 6, 6, 0.55)';
+  /** A line twice: its dark edge, then its colour. */
+  const twice = (path: () => void, color: string, width: number, dash: number[] = []) => {
+    ctx.setLineDash(dash);
+    ctx.lineWidth = width + 2;
+    ctx.strokeStyle = dark;
+    ctx.beginPath();
+    path();
+    ctx.stroke();
+    ctx.lineWidth = width;
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    path();
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
   ctx.save();
+  ctx.lineCap = 'round';
   // A jutsu is aimed where its target stands when the turn comes (the hydra's venom and roar too).
   const spec = it.kind === 'jutsu' || it.kind === 'spit' || it.kind === 'roar' ? JUTSU[it.what] : undefined;
-  const area = spec ? areaOf(spec, it.to ?? from, tgt?.pos ?? it.at ?? from) : null;
+  const stop = it.to ?? from;
+  const area = spec ? areaOf(spec, stop, tgt ? sc.pb.posOf(tgt.id, now) : it.at ?? from) : null;
   if (area) {
     ctx.beginPath();
     areaPath(ctx, map, area);
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.14)';
     ctx.fill();
   }
   if (it.to) {
     const a = project(map, from);
     const b = project(map, it.to);
-    ctx.setLineDash([5, 5]);
+    twice(() => {
+      ctx.moveTo(a.X, a.Y);
+      ctx.lineTo(b.X, b.Y);
+    }, red, 2.5, [6, 5]);
+    // Where it stops: a filled marker, not a ring (rings are for whom it strikes).
+    ctx.beginPath();
+    groundEllipse(ctx, map, it.to, 0.2);
+    ctx.fillStyle = red;
+    ctx.fill();
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = red;
-    ctx.beginPath();
-    ctx.moveTo(a.X, a.Y);
-    ctx.lineTo(b.X, b.Y);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    groundEllipse(ctx, map, it.to, 0.35);
+    ctx.strokeStyle = dark;
     ctx.stroke();
   }
-  // Advancing isn't striking yet: only a plan to act gets the ring under its target.
+  // Advancing isn't striking yet: only a plan to act links to its target and rings it.
   if (tgt && it.kind !== 'move' && it.kind !== 'defend') {
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = it.kind === 'heal' ? 'rgba(74, 222, 128, 0.8)' : red;
-    ctx.beginPath();
-    groundEllipse(ctx, map, sc.pb.posOf(tgt.id, now), 0.55);
-    ctx.stroke();
+    const color = it.kind === 'heal' ? 'rgba(74, 222, 128, 0.95)' : red;
+    const tp = sc.pb.posOf(tgt.id, now);
+    const a = project(map, stop);
+    const b = project(map, tp);
+    const len = Math.hypot(b.X - a.X, b.Y - a.Y);
+    if (len > 24) {
+      // From where it will stand to the ring's edge, with an arrowhead.
+      const ux = (b.X - a.X) / len;
+      const uy = (b.Y - a.Y) / len;
+      const ex = b.X - ux * 18;
+      const ey = b.Y - uy * 8;
+      twice(() => {
+        ctx.moveTo(a.X + ux * 6, a.Y + uy * 3);
+        ctx.lineTo(ex, ey);
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - ux * 8 - uy * 5, ey - uy * 8 + ux * 5);
+        ctx.moveTo(ex, ey);
+        ctx.lineTo(ex - ux * 8 + uy * 5, ey - uy * 8 - ux * 5);
+      }, color, 2);
+    }
+    twice(() => groundEllipse(ctx, map, tp, 0.55), color, 2.5);
   }
   ctx.restore();
 }
@@ -388,49 +446,84 @@ function drawTrap(ctx: CanvasRenderingContext2D, map: MapDef, t: Trap): void {
   ctx.restore();
 }
 
-/** A Ryusei's Weapon Node: a steel diamond stuck in the ground, ringed in its side's colour. */
-function drawNode(ctx: CanvasRenderingContext2D, sc: Scene, n: WeaponNode): void {
-  const { map, state, overlay: o } = sc;
-  const p = project(map, n.pos);
+/**
+ * A Ryusei's Weapon Node: a steel diamond stuck in the ground, ringed in its side's colour. With
+ * someone standing on it, the ring is wider than their feet and the diamond sits at its front edge,
+ * where the body doesn't hide it.
+ */
+function drawNode(ctx: CanvasRenderingContext2D, sc: Scene, n: WeaponNode, alpha = 1): void {
+  const { map, state, overlay: o, now } = sc;
   const lit = !!o.nodes?.valid.includes(n.id);
   const owner = state.units[n.owner];
   const party = !owner || homeTeam(owner) !== 'enemy';
+  const stood = Object.values(state.units).some((u) => u.kind === 'ninja' && u.down !== 'dead' && u.down !== 'fled' && dist(sc.pb.posOf(u.id, now), n.pos) < 0.5);
+  const ring = stood ? 0.62 : 0.4;
+  const p = project(map, stood ? { x: n.pos.x, z: n.pos.z + ring } : n.pos);
   ctx.save();
-  if (o.nodes && !lit) ctx.globalAlpha = 0.45;
+  ctx.globalAlpha = alpha * (o.nodes && !lit ? 0.45 : 1);
   ctx.beginPath();
-  groundEllipse(ctx, map, n.pos, 0.4);
+  groundEllipse(ctx, map, n.pos, ring);
   if (lit) {
     ctx.fillStyle = 'rgba(34, 211, 238, 0.2)';
     ctx.fill();
   } else ctx.setLineDash([3, 3]);
-  ctx.lineWidth = lit ? 2 : 1.5;
-  ctx.strokeStyle = o.nodes?.hover === n.id ? 'rgba(255, 255, 255, 0.95)' : party ? 'rgba(34, 211, 238, 0.75)' : 'rgba(251, 113, 133, 0.75)';
+  ctx.lineWidth = lit || stood ? 2 : 1.5;
+  ctx.strokeStyle = o.nodes?.hover === n.id ? 'rgba(255, 255, 255, 0.95)' : party ? 'rgba(34, 211, 238, 0.85)' : 'rgba(251, 113, 133, 0.85)';
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.beginPath();
-  ctx.moveTo(p.X, p.Y - 9);
-  ctx.lineTo(p.X + 3.5, p.Y - 3.5);
+  ctx.moveTo(p.X, p.Y - 10);
+  ctx.lineTo(p.X + 4, p.Y - 4);
   ctx.lineTo(p.X, p.Y + 1);
-  ctx.lineTo(p.X - 3.5, p.Y - 3.5);
+  ctx.lineTo(p.X - 4, p.Y - 4);
   ctx.closePath();
-  ctx.fillStyle = '#cbd5e1';
+  ctx.fillStyle = '#e2e8f0';
   ctx.fill();
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = '#0e7490';
+  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = party ? '#0e7490' : '#9f1239';
   ctx.stroke();
   ctx.restore();
+}
+
+/** While a warp or a swap is aimed: its Nodes and the landing spot again, over walls and units. */
+function drawNodesOnTop(ctx: CanvasRenderingContext2D, sc: Scene): void {
+  const o = sc.overlay;
+  for (const n of sc.state.nodes) if (o.nodes?.valid.includes(n.id)) drawNode(ctx, sc, n, 0.85);
+  if (o.point) {
+    ctx.save();
+    ctx.beginPath();
+    groundEllipse(ctx, sc.map, o.point.at, 0.3);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = o.point.ok ? 'rgba(255,255,255,0.9)' : 'rgba(248,113,113,0.9)';
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function drawWall(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): void {
   // Not raised yet: its event is still waiting in the playback queue.
   if (sc.pb.queue.some((e) => e.t === 'wall' && e.on && e.wall.id === w.id)) return;
+  // A Kōton structure grows out of the ground when it is raised (eased out).
+  const born = sc.pb.wallBorn.get(w.id);
+  const t = born === undefined ? 1 : Math.min(1, ((sc.now - born) * sc.pb.speed) / RISE_MS);
+  const rise = 1 - (1 - t) ** 3;
   // A block is always drawn; a wall plays its element's sheet when the game has one.
-  if (w.kind === 'metalBlock') drawSteel(ctx, sc, w);
+  if (w.kind === 'metalBlock') drawSteel(ctx, sc, w, rise);
   else if (!drawWallSprite(ctx, sc, w)) {
-    if (w.kind === 'metal') drawSteel(ctx, sc, w);
+    if (w.kind === 'metal') drawSteel(ctx, sc, w, rise);
     else drawWallShape(ctx, sc, w);
   }
-  drawWallHp(ctx, sc, w);
+  if (rise >= 1) drawWallHp(ctx, sc, w);
+}
+
+/** A Kōton structure that crumbled or broke, sinking into the ground and fading. */
+function drawFallen(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall, t0: number): void {
+  const t = Math.min(1, ((sc.now - t0) * sc.pb.speed) / FALL_MS);
+  if (t >= 1) return;
+  ctx.save();
+  ctx.globalAlpha = 1 - t * 0.6;
+  drawSteel(ctx, sc, w, 1 - t * t);
+  ctx.restore();
 }
 
 /** Heights of the drawn walls (px). */
@@ -493,11 +586,11 @@ function footprint(w: Wall): Pt[] {
  * A steel box as the viewer sees it: the sides turned toward the front (each with how far it faces
  * right, for its shade and its ground length) and the top.
  */
-function steelBox(map: MapDef, w: Wall): { sides: { pts: Px[]; right: number; len: number }[]; top: Px[] } {
+function steelBox(map: MapDef, w: Wall, rise = 1): { sides: { pts: Px[]; right: number; len: number }[]; top: Px[] } {
   const foot = footprint(w);
   const c = { x: foot.reduce((a, p) => a + p.x, 0) / 4, z: foot.reduce((a, p) => a + p.z, 0) / 4 };
   const lvl = map.levelAt(c.x, c.z);
-  const h = WALL_H[w.kind];
+  const h = WALL_H[w.kind] * rise;
   const g = foot.map((p) => project(map, p, lvl));
   const top = g.map((p) => ({ X: p.X, Y: p.Y - h }));
   const sides: { pts: Px[]; right: number; len: number }[] = [];
@@ -521,9 +614,10 @@ const polyPath = (ctx: CanvasRenderingContext2D, pts: Px[]): void => {
  * A Kōton structure in plain steel (a stand-in until its sheet is painted): a block, or a wall of
  * plates with seams, lit from the left and the top.
  */
-function drawSteel(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall): void {
-  const { sides, top } = steelBox(sc.map, w);
-  const h = WALL_H[w.kind];
+function drawSteel(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall, rise = 1): void {
+  if (rise <= 0.01) return;
+  const { sides, top } = steelBox(sc.map, w, rise);
+  const h = WALL_H[w.kind] * rise;
   ctx.save();
   ctx.strokeStyle = '#1f2937';
   ctx.lineWidth = 1.5;
@@ -648,7 +742,9 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     ctx.strokeStyle = sc.overlay.warn?.includes(u.id)
       ? `rgba(251, 191, 36, ${pulse})`
       : sc.overlay.targets?.includes(u.id)
-        ? `rgba(248, 113, 113, ${pulse})`
+        ? homeTeam(u) === 'party'
+          ? `rgba(103, 232, 249, ${pulse})`
+          : `rgba(248, 113, 113, ${pulse})`
         : acting
           ? `rgba(250, 204, 21, ${pulse})`
           : homeTeam(u) === 'party'
@@ -1051,14 +1147,22 @@ function drawFx(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): void {
       ctx.strokeStyle = col[1];
       ctx.lineWidth = 2;
       const seed = Math.floor(now / 50);
+      // Lightning running through the water stays in it and stops at a metal wall (D13).
+      const water = f.sig === 'water';
+      const walls = water ? [...sc.state.walls, ...sc.pb.goneWalls()].filter((w) => w.kind === 'metal') : [];
+      const stops = (a: Pt, b: Pt) => map.waterAt(b.x, b.z) === 'none' || walls.some((w) => segmentsCross(a, b, w.a, w.b));
       for (let i = 0; i < 9; i++) {
         const ang = ((i + seed * 0.37) / 9) * Math.PI * 2;
         ctx.beginPath();
         let x = p.X;
         let y = p.Y - (f.lift?.[0] ?? 0);
         ctx.moveTo(x, y);
+        let prev = f.from;
         for (let k = 1; k <= 5; k++) {
           const rr = (k / 5) * rM;
+          const q = { x: f.from.x + Math.cos(ang) * rr, z: f.from.z + Math.sin(ang) * rr };
+          if (water && stops(prev, q)) break;
+          prev = q;
           x = p.X + Math.cos(ang) * rr * map.px.perM + (((seed * 13 + i * 7 + k * 5) % 9) - 4) * 2;
           y = p.Y - (f.lift?.[0] ?? 0) + Math.sin(ang) * rr * map.px.perMDepth + (((seed * 11 + i * 3 + k * 7) % 7) - 3) * 2;
           ctx.lineTo(x, y);
@@ -1082,7 +1186,7 @@ function drawFx(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): void {
     }
     case 'heal':
     case 'aura': {
-      const p = project(map, f.from);
+      const p = project(map, fxPos(sc, f));
       p.X += auraDx(sc, f.unit);
       ctx.globalAlpha = 1 - t;
       const c = f.kind === 'heal' ? ['#bbf7d0', '#4ade80'] : f.sig === 'eyes' ? ['#fecaca', '#ef4444'] : [col[0], col[2]];
@@ -1273,7 +1377,8 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
     const frac = Math.max(0, Math.min(1, v.hp / u.maxHp));
     ctx.fillStyle = 'rgba(8, 10, 18, 0.8)';
     ctx.fillRect(s.x - w / 2 - 1, s.y - 1, w + 2, h + 2);
-    ctx.fillStyle = homeTeam(u) === 'party' ? (frac > 0.5 ? '#4ade80' : frac > 0.25 ? '#facc15' : '#f87171') : '#ef4444';
+    // An enemy under Command fights for the party for now: violet, not the hostile red.
+    ctx.fillStyle = homeTeam(u) === 'party' ? (frac > 0.5 ? '#4ade80' : frac > 0.25 ? '#facc15' : '#f87171') : sc.pb.commandedNow(u) ? '#a78bfa' : '#ef4444';
     ctx.fillRect(s.x - w / 2, s.y, Math.round(w * frac), h);
     if (v.tempHp > 0) {
       ctx.fillStyle = '#93c5fd';
@@ -1289,7 +1394,7 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
         ctx.fillRect(s.x - w / 2, s.y - f(7), Math.round((w * sus) / 100), f(2));
       }
     }
-    // An enemy under a Northstar's Command: a violet crown over its (still red) bar.
+    // An enemy under a Northstar's Command: a violet crown over its (violet) bar.
     if (sc.pb.commandedNow(u)) {
       ctx.font = `600 ${f(10)}px Inter, system-ui, sans-serif`;
       const tw = f(18);
@@ -1298,11 +1403,13 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
       ctx.fillStyle = '#ede9fe';
       ctx.fillText('♛', s.x, s.y - f(15));
     }
-    // What a Mirai foresees (where and whom is drawn on the ground).
-    const it = sc.foreseen[u.id];
+    // What a Mirai foresees (where and whom is drawn on the ground), once the screen has caught up
+    // with the state: its kind, and whom it means to act on.
+    const it = sc.pb.busy ? undefined : sc.foreseen[u.id];
     if (it) {
       ctx.font = `600 ${f(10)}px Inter, system-ui, sans-serif`;
-      const label = intentIcon(it);
+      const tgt = it.target && it.kind !== 'defend' ? state.units[it.target] : undefined;
+      const label = tgt ? `${intentIcon(it)} ${shortName(unitName(tgt, sc.lang ?? 'en'))}` : intentIcon(it);
       ctx.fillStyle = 'rgba(127, 29, 29, 0.85)';
       const tw = ctx.measureText(label).width + f(8);
       ctx.fillRect(s.x - tw / 2, s.y - f(22), tw, f(14));
@@ -1327,6 +1434,9 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
   }
   ctx.globalAlpha = 1;
 }
+
+/** A name short enough for a mark over a head: the first word, or all of it when numbered ("Rogue 2"). */
+const shortName = (n: string): string => (/\d/.test(n) ? n : n.split(/[ ,]/)[0]);
 
 const INTENT_ICON: Record<string, string> = { melee: '⚔', ranged: '➶', jutsu: '✦', bite: '☠', spit: '☣', roar: '!', heal: '✚', defend: '⛨', move: '➜', command: '♛' };
 export const intentIcon = (i: Intent): string => INTENT_ICON[i.kind] ?? '?';

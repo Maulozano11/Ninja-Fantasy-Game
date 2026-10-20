@@ -4,20 +4,20 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Map as MapIcon, Volume2, VolumeX, Sun, Moon, CloudRain } from 'lucide-react';
-import type { Action, AiOrder, BattleEvent, BattleState, Cell, Pt, Unit } from '../../battle/types';
+import type { Action, AiOrder, BattleEvent, BattleState, Cell, Intent, Pt, RollInfo, Unit } from '../../battle/types';
 import { homeTeam } from '../../battle/types';
 import { applyAction } from '../../battle/engine';
 import { jutsuCost, needsSeals } from '../../battle/engine';
 import { aiAction, aiToAct } from '../../battle/ai';
 import { current } from '../../battle/turns';
-import { attackPreview } from '../../battle/combat';
+import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
 import { JUTSU, areaOf, enhanced as enhancedSpec } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
-import { cellCenter, cellOf, dist, getMap, gridFor, idx, lineOfSight, sameCell } from '../../battle/map';
+import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
-import { commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
+import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
 import { KUNAI, KUNAI_LONG, handsFree, wielded } from '../../battle/units';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
@@ -31,7 +31,7 @@ import { Playback } from './playback';
 import { drawBattle, image, pickGround, pickStructure, pickUnit, project, screenToWorld } from './renderer';
 import type { Camera, Overlay } from './renderer';
 import { playSound, startAmbience } from './battleSound';
-import { floatLabel, jutsuName, logLine, structureName } from './battleLog';
+import { floatLabel, jutsuName, logLine, structureName, unitName } from './battleLog';
 import type { LogLine } from './battleLog';
 import { SAVE_EN, SAVE_ES, T } from './battleText';
 import type { TKey } from './battleText';
@@ -101,7 +101,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
   const [, setUi] = useState(0);
   const [log, setLog] = useState<LogLine[]>([]);
   const [showLog, setShowLog] = useState(false);
-  const [toast, setToast] = useState<{ text: string; sub?: string; ok?: boolean } | null>(null);
+  const [toast, setToast] = useState<{ text: string; sub?: string; note?: string; die?: number; ok?: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [muted, setMuted] = useState(soundManager.getMuted());
   const [more, setMore] = useState(false);
@@ -130,20 +130,33 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       roll: (ev) => {
         const s = stateRef.current;
         const lg = langRef.current;
+        const name = (id: string) => unitName(s.units[id], lg);
+        const vs = T('vs', undefined, lg);
+        // Green when it went the party's way: its own roll succeeding, or a foe's failing.
+        const good = (id: string, success: boolean) => (s.units[id] ? homeTeam(s.units[id]) === 'party' : true) === success;
         if (ev.t === 'attack') {
-          const who = s.units[ev.unit]?.name ?? '';
-          const tgt = ev.target.startsWith('prop:')
-            ? ''
-            : ev.target.startsWith('wall:')
-              ? structureName(pbRef.current?.wallOf(ev.target.slice(5), s), lg)
-              : s.units[ev.target]?.name ?? '';
-          setToast({ text: `${who} → ${tgt}`, sub: `d20 ${ev.roll.d20} ${ev.roll.mod >= 0 ? '+' : '−'} ${Math.abs(ev.roll.mod)} = ${ev.roll.total} vs ${lg === 'es' ? 'CA' : 'AC'} ${ev.roll.dc}`, ok: ev.roll.success });
-        } else if (ev.t === 'save' || ev.t === 'deathSave') {
-          const who = s.units[ev.unit]?.name ?? '';
-          setToast({ text: who, sub: `d20 ${ev.roll.d20} → ${ev.roll.total} vs ${lg === 'es' ? 'CD' : 'DC'} ${ev.roll.dc}`, ok: ev.roll.success });
+          const tgt = ev.target.startsWith('prop:') ? '' : ev.target.startsWith('wall:') ? structureName(pbRef.current?.wallOf(ev.target.slice(5), s), lg) : name(ev.target);
+          setToast({
+            text: `${name(ev.unit)} → ${tgt}`,
+            sub: `d20 ${ev.roll.d20} ${ev.roll.mod >= 0 ? '+' : '−'} ${Math.abs(ev.roll.mod)} = ${ev.roll.total} ${vs} ${T('ac', { n: ev.roll.dc }, lg)}`,
+            note: twoDice(ev.roll, ev.reasons, lg),
+            die: ev.roll.d20,
+            ok: good(ev.unit, ev.roll.success),
+          });
+        } else if (ev.t === 'save') {
+          // Which save, and for what ("salvación de SAB · Command").
+          const save = ev.ab ? T('saveOf', { save: (lg === 'es' ? SAVE_ES : SAVE_EN)[ev.ab] ?? ev.ab }, lg) : '';
+          const what = JUTSU[ev.what] ? jutsuName(ev.what, lg) : '';
+          setToast({ text: [name(ev.unit), save, what].filter(Boolean).join(' · '), sub: `d20 ${ev.roll.d20} → ${ev.roll.total} ${vs} ${lg === 'es' ? 'CD' : 'DC'} ${ev.roll.dc}`, note: twoDice(ev.roll, undefined, lg), die: ev.roll.d20, ok: good(ev.unit, ev.roll.success) });
+        } else if (ev.t === 'deathSave') {
+          setToast({ text: name(ev.unit), sub: `d20 ${ev.roll.d20} → ${ev.roll.total} ${vs} ${lg === 'es' ? 'CD' : 'DC'} ${ev.roll.dc}`, die: ev.roll.d20, ok: good(ev.unit, ev.roll.success) });
         } else if (ev.t === 'check') {
-          const who = s.units[ev.unit]?.name ?? '';
-          setToast({ text: `${who} · ${ev.what}`, sub: `d20 ${ev.roll.d20} → ${ev.roll.total}`, ok: ev.roll.success });
+          const what = T.has(`check_${ev.what}`) ? T(`check_${ev.what}` as TKey, undefined, lg) : ev.what;
+          setToast({ text: `${name(ev.unit)} · ${what}`, sub: `d20 ${ev.roll.d20} → ${ev.roll.total}`, die: ev.roll.d20, ok: good(ev.unit, ev.roll.success) });
+        } else if (ev.t === 'evade' || ev.t === 'kawarimi' || ev.t === 'clone') {
+          // The blow that seemed to land was stepped away from (or struck a log, or a clone).
+          const word = floatLabel(ev, s, lg) ?? '';
+          setToast((t) => (t ? { ...t, note: [word, t.note].filter(Boolean).join(' · '), ok: good(ev.unit, true) } : t));
         }
       },
       focus: (id) => focusUnit(id),
@@ -314,6 +327,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       state: () => stateRef.current,
       act,
       busy: () => pbRef.current?.busy,
+      /** Where a unit is drawn right now (it trails the state while its walk plays). */
+      shownAt: (id: string) => pbRef.current?.posOf(id, performance.now()),
+      /** After a check edits the state in place: the screen takes it up and the views snap to it. */
+      sync: () => {
+        const s = { ...stateRef.current };
+        stateRef.current = s;
+        setState(s);
+        pbRef.current?.sync(s, performance.now());
+      },
       centerOn: (x: number, z: number) => centerOn({ x, z }, true),
       screenOf: (x: number, z: number) => {
         const p = project(map, { x, z });
@@ -341,6 +363,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
 
   const spec: JutsuSpec | undefined = mode.k === 'jutsu' ? (mode.enhanced ? enhancedSpec(JUTSU[mode.id]) : JUTSU[mode.id]) : undefined;
 
+  // What the Eye of Tomorrow reads (the ground marks, and the plan of an enemy under the cursor).
+  const foreseenNow = useMemo(() => foreseen(state), [state]);
+
   const preview = useMemo(() => {
     const o: Overlay = {};
     let label: string | null = null;
@@ -348,15 +373,21 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     if (!actor) return { o, label, sub };
     const s = state;
     const hu = hover?.unit ? s.units[hover.unit] : undefined;
+    // What the Eye of Tomorrow reads of the enemy under the cursor ("Próximo: … → …").
+    const plan = hu ? foreseenNow[hu.id] : undefined;
+    const planLine = plan ? intentText(plan, s, lang) : null;
     if (mode.k === 'move') {
       if (reach) o.reach = { cells: reach.cells, tone: 'move' };
       if (hu && hu.team !== actor.team) {
-        const pv = attackPreview(s, actor, hu, 'melee');
+        // A stowed blade is drawn for free for the blow: preview the blade, not the fists.
+        const striker = drawsFree(actor);
+        const pv = attackPreview(s, striker, hu, 'melee');
         if (pv.inRange) {
           o.targets = [hu.id];
-          label = T('aimChance', { p: Math.round(pv.chance * 100), dice: wielded(actor).dice });
-          sub = reasonsText(pv, lang);
-        }
+          label = pv.blocked ? reasonLine(pv.blocked) : T('aimChance', { p: Math.round(pv.chance * 100), dice: wielded(striker).dice });
+          sub = pv.blocked ? null : reasonsText(pv, lang);
+        } else label = planLine;
+        if (pv.inRange && planLine) sub = sub ? `${sub} · ${planLine}` : planLine;
       } else if (hover?.pt && reach) {
         const c = cellOf(hover.pt);
         const path = pathTo(s, reach.r, c);
@@ -364,17 +395,26 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
           const cost = pathCost(s, actor, path);
           o.path = { pts: [actor.pos, ...path.map(cellCenter)], ok: canStop(s, actor, c) };
           label = T('aimMove', { m: cost.toFixed(1) });
+          // A dash into a Northstar's aura is cut short there (D17).
+          if (actor.turn.dashed) {
+            const pts = [actor.pos, ...path.map(cellCenter)];
+            if (pts.some((p, i) => i > 0 && auraEntered(s, { ...actor, pos: p }, pts[i - 1]))) sub = T('aimAuraDash');
+          }
         }
       }
     } else if (mode.k === 'attack') {
-      const range = mode.ranged ? KUNAI.reach : wielded(actor).reach;
+      const range = mode.ranged ? KUNAI.reach : wielded(drawsFree(actor)).reach;
       o.range = { at: actor.pos, radius: range };
       const hw = !hu && hover?.wall ? s.walls.find((w) => w.id === hover.wall) : undefined;
       if (hu && hu.team !== actor.team) {
-        const pv = attackPreview(s, actor, hu, mode.ranged ? 'ranged' : 'melee');
+        const striker = mode.ranged ? actor : drawsFree(actor);
+        const pv = attackPreview(s, striker, hu, mode.ranged ? 'ranged' : 'melee');
         o.targets = [hu.id];
-        label = pv.inRange ? T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(actor).dice }) : T('aimNoReach');
-        sub = reasonsText(pv, lang);
+        // The engine's refusals first: out of reach, out of sight or walled off, hands busy.
+        const busyHands = mode.ranged && actor.armed && actor.weapon.twoHanded && actor.turn.interacted;
+        label = !pv.inRange ? T('aimNoReach') : pv.blocked ? reasonLine(pv.blocked) : busyHands ? reasonLine('handsBusy') : T('aimChance', { p: Math.round(pv.chance * 100), dice: mode.ranged ? KUNAI.dice : wielded(striker).dice });
+        sub = pv.inRange && !pv.blocked && !busyHands ? reasonsText(pv, lang) : null;
+        if (planLine) sub = sub ? `${sub} · ${planLine}` : planLine;
       } else if (hw) {
         // A Kōton structure: AC 10, like a crate.
         const pv = structureAttack(s, actor, hw, mode.ranged);
@@ -394,7 +434,13 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         const foe = land ? edgeFoe(s, actor, land) : undefined;
         o.nodes.hover = n.id;
         o.point = { at: land ?? n.pos, ok: !!land };
-        label = why ? reasonLine(why) : foe ? T('aimWarpEdge', { name: foe.name }) : T('aimMove', { m: dist(actor.pos, land!).toFixed(1) });
+        label = why ? reasonLine(why) : foe ? T('aimWarpEdge', { name: unitName(foe, lang) }) : T('aimMove', { m: dist(actor.pos, land!).toFixed(1) });
+        if (land) {
+          // Into a Northstar's aura: half the movement left goes, and a foe's aura cancels the edge (D17).
+          const slowed = actor.turn.move > 0 && !!auraEntered(s, { ...actor, pos: land }, actor.pos);
+          const hostile = Object.values(s.units).some((x) => x.team !== actor.team && sovereign(x) && dist(x.pos, land) <= AURA_RADIUS + 0.05);
+          sub = [slowed ? T('aimAuraSlow') : '', foe && hostile ? T('aimAuraEdge') : ''].filter(Boolean).join(' · ') || null;
+        }
       } else label = T('r_noNode');
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'onNode') {
       // Spatial Swap: whoever stands on a Node it can reach; an enemy gets a STR save.
@@ -406,7 +452,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         label = why ? reasonLine(why) : jutsuName(spec.id, lang);
         if (!why) o.nodes.hover = nodeUnder(s, actor, hu)?.id;
         if (!why && hu.team !== actor.team) sub = T('aimSave', { save: (lang === 'es' ? SAVE_ES : SAVE_EN).str, dc: actor.saveDC });
-      } else if (!o.targets.length) label = T('r_notOnNode');
+      } else if (!o.targets.length) label = T('r_noneOnNode');
     } else if (mode.k === 'jutsu' && spec && (spec.special === 'command' || spec.special === 'submission')) {
       // Command and Natural Submission: every mind it can take now lights up; over a unit, its WIS
       // save, or why it can't be taken.
@@ -426,7 +472,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         const area = areaOf(spec, actor.pos, at);
         if (area) {
           o.area = { shape: area, tone: spec.special === 'heal' ? 'heal' : 'enemy' };
-          const hit = Object.values(s.units).filter((u) => !u.down && (u.id !== actor.id || spec.shape === 'circle') && inAreaLoose(area, u));
+          // As the engine reaches them: nobody behind a metal wall from where it bursts (D13).
+          const origin = spec.shape === 'selfCircle' || spec.shape === 'cone' || spec.shape === 'line' ? actor.pos : at;
+          const hit = Object.values(s.units).filter((u) => !u.down && (u.id !== actor.id || spec.shape === 'circle') && inAreaLoose(area, u) && !fullCoverBetween(s, origin, u.pos));
           o.targets = hit.filter((u) => u.team !== actor.team).map((u) => u.id);
           o.warn = hit.filter((u) => u.team === actor.team).map((u) => u.id);
           label = T('aimHits', { n: hit.length });
@@ -442,6 +490,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
           sub = sub ? `${line} · ${sub}` : line;
         }
         if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
+        // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
+        // metal wall between); an area or a point needs to see where it goes.
+        else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : 'noSight');
+        else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at)) label = reasonLine('noSight');
         if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: dist(actor.pos, at) <= spec.range + 0.1 };
         if (spec.special === 'metalBlock' || spec.special === 'metalWall' || spec.special === 'earthWall' || spec.special === 'waterWall') {
           // A wall or a Kōton structure: where it would stand and why it can't (never over anyone);
@@ -453,7 +505,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
           o.point = undefined;
           o.footprint = { wall: w, ok: !why };
           label = why ? reasonLine(why) : koton ? T('aimStructures', { n }) : jutsuName(spec.id, lang);
-          if (koton && n >= MAX_STRUCTURES) sub = T('aimOldest');
+          // Refused, nothing crumbles: no warning about the oldest one then.
+          if (koton && n >= MAX_STRUCTURES && !why) sub = T('aimOldest');
         }
       }
     } else if (mode.k === 'item' && mode.item === 'tag') {
@@ -469,11 +522,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       if (hover?.pt) o.point = { at: hover.pt, ok: true };
     }
     return { o, label, sub };
-  }, [actor, hover, mode, reach, spec, state, lang]);
+  }, [actor, hover, mode, reach, spec, state, lang, foreseenNow]);
 
   // --- render loop ------------------------------------------------------------------------
 
-  const foreseenNow = useMemo(() => foreseen(state), [state]);
   const overlayRef = useRef(preview.o);
   overlayRef.current = preview.o;
   const hoverRef = useRef<string | undefined>(undefined);
@@ -495,9 +547,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       const now = performance.now();
       const s = stateRef.current;
       const p = pbRef.current!;
-      const wasBusy = p.busy;
-      const emptied = p.step(now, s);
-      if (emptied || (wasBusy && !p.busy)) {
+      // The views snap to the state only once everything has played out (the last walk too).
+      if (p.step(now, s)) {
         p.sync(s, now);
         setUi((n) => n + 1);
       } else if ((p.busy || p.banners.length || hadBanners) && now - lastUi > 140) {
@@ -543,6 +594,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         foreseen: foreseenRef.current,
         shake: { x: sh ? (Math.random() - 0.5) * sh : 0, y: sh ? (Math.random() - 0.5) * sh : 0 },
         team: 'party',
+        lang: langRef.current,
       });
       void w;
       void h;
@@ -751,24 +803,53 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     const t = (k: TKey) => T(k, undefined, lang);
     const stealth = state.phase === 'stealth';
     const b: ActionButton[] = [];
-    const add = (x: ActionButton) => b.push(x);
+    // A button that is off says why in its help line (hovering it still shows the help).
+    const add = (x: ActionButton & { why?: string | null }) => {
+      const { why, ...btn } = x;
+      b.push(btn.disabled && why && btn.help ? { ...btn, help: `${btn.help} — ${why}` } : btn);
+    };
     const can = { action: u.turn.action, bonus: u.turn.bonus };
+    const noAction = can.action ? null : t('r_noAction');
     if (!more) {
-      add({ id: 'attack', label: t('act_attack'), icon: ACTION_ICON.attack, disabled: !can.action, active: mode.k === 'attack' && !mode.ranged, help: t('help_attack') });
-      add({ id: 'throw', label: t('act_throw'), icon: ACTION_ICON.throw, disabled: !can.action, active: mode.k === 'attack' && mode.ranged, help: t('help_throw') });
+      add({ id: 'attack', label: t('act_attack'), icon: ACTION_ICON.attack, disabled: !can.action, why: noAction, active: mode.k === 'attack' && !mode.ranged, help: t('help_attack') });
+      add({ id: 'throw', label: t('act_throw'), icon: ACTION_ICON.throw, disabled: !can.action, why: noAction, active: mode.k === 'attack' && mode.ranged, help: t('help_throw') });
       for (const id of u.jutsus) {
         const sp = JUTSU[id];
-        if (!sp || sp.cast === 'reaction') continue;
+        if (!sp) continue;
+        const name = jutsuName(id, lang);
+        const helpKey = `help_${id}`;
+        if (sp.cast === 'reaction') {
+          // A clan reaction (Premonitory Evasion) is shown for what it is: not pressed, offered when
+          // the blow comes; lit while the reaction and the chakra for it are there.
+          if (!sp.ability || !T.has(helpKey)) continue;
+          const ready = u.turn.reaction && u.chakra >= sp.cost;
+          add({
+            id: `passive:${id}`,
+            label: jutsuShort(id, lang),
+            icon: ABILITY_ICON[id] ?? ACTION_ICON.focus,
+            badge: sp.cost,
+            tone: 'jutsu',
+            passive: true,
+            disabled: !ready,
+            why: !u.turn.reaction ? t('why_reaction') : t('r_noChakra'),
+            help: `${name} · ${T(helpKey, undefined, lang)}`,
+          });
+          continue;
+        }
         const cost = jutsuCost(u, sp, false);
         const busyHands = needsSeals(u, sp) && !handsFree(u) && !!u.turn.interacted;
         // Clan abilities with nothing to work on: Command, Submission and Swap before the fighting,
         // Warp and Swap with no Node down, Submission with no beast or summon on the field.
         const idle =
-          (stealth && (sp.special === 'command' || sp.special === 'submission' || sp.special === 'swap')) ||
-          ((sp.special === 'warp' || sp.special === 'swap') && !ownNodes(state, u).length) ||
-          (sp.special === 'submission' && Object.values(state.units).every((x) => submissionRefused(state, u, x)));
-        const name = jutsuName(id, lang);
-        const helpKey = `help_${id}`;
+          stealth && (sp.special === 'command' || sp.special === 'submission' || sp.special === 'swap')
+            ? t('r_combatOnly')
+            : (sp.special === 'warp' || sp.special === 'swap') && !ownNodes(state, u).length
+              ? t('why_noNodes')
+              : sp.special === 'submission' && Object.values(state.units).every((x) => submissionRefused(state, u, x))
+                ? t('why_noBeast')
+                : null;
+        const spent = sp.cast === 'bonus' ? (can.bonus ? null : t('r_noBonus')) : noAction;
+        const why = idle ?? spent ?? (u.chakra < cost ? t('r_noChakra') : busyHands ? t('r_handsBusy') : null);
         add({
           id: `jutsu:${id}`,
           label: jutsuShort(id, lang),
@@ -776,7 +857,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
           badge: cost,
           tone: 'jutsu',
           element: sp.element,
-          disabled: (sp.cast === 'bonus' ? !can.bonus : !can.action) || u.chakra < cost || busyHands || idle,
+          disabled: !!why,
+          why,
           active: mode.k === 'jutsu' && mode.id === id,
           // A clan ability explains itself; a jutsu shows its rank, reach, dice and save.
           help: T.has(helpKey)
@@ -784,10 +866,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
             : `${name} · ${sp.rank} · ${sp.range} m${sp.dice ? ` · ${sp.dice}` : ''}${sp.save ? ` · ${(lang === 'es' ? SAVE_ES : SAVE_EN)[sp.save]}` : ''}`,
         });
       }
-      add({ id: 'dash', label: t('act_dash'), icon: ACTION_ICON.dash, disabled: !can.action, help: t('help_dash') });
-      add({ id: 'dodge', label: t('act_dodge'), icon: ACTION_ICON.dodge, disabled: !can.action || stealth, help: t('help_dodge') });
-      add({ id: 'hide', label: t('act_hide'), icon: ACTION_ICON.hide, disabled: !can.action, help: t('help_hide') });
-      if (u.weapon.held) add({ id: 'draw', label: t(u.armed ? 'act_stow' : 'act_draw'), icon: ACTION_ICON.draw, disabled: !!u.turn.interacted && !can.bonus, help: t('help_draw') });
+      add({ id: 'dash', label: t('act_dash'), icon: ACTION_ICON.dash, disabled: !can.action, why: noAction, help: t('help_dash') });
+      add({ id: 'dodge', label: t('act_dodge'), icon: ACTION_ICON.dodge, disabled: !can.action || stealth, why: noAction ?? t('r_combatOnly'), help: t('help_dodge') });
+      add({ id: 'hide', label: t('act_hide'), icon: ACTION_ICON.hide, disabled: !can.action, why: noAction, help: t('help_hide') });
+      if (u.weapon.held) add({ id: 'draw', label: t(u.armed ? 'act_stow' : 'act_draw'), icon: ACTION_ICON.draw, disabled: !!u.turn.interacted && !can.bonus, why: t('r_noBonus'), help: t('help_draw') });
       add({ id: 'more', label: t('act_more'), icon: ACTION_ICON.items });
       add({ id: 'end', label: stealth ? t('done') : t('act_end'), icon: ACTION_ICON.end, tone: 'end', help: t('help_end') });
     } else {
@@ -811,9 +893,10 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       if (edge) add({ id: 'flee', label: t('act_flee'), icon: ACTION_ICON.flee, disabled: s.phase === 'combat' && !can.action, help: t('help_flee') });
       add({ id: 'more', label: '←', icon: ACTION_ICON.items, active: true });
     }
-    // Number keys: attack, kunai, dash and dodge first (wherever they sit), then the rest in order.
+    // Number keys: attack, kunai, dash and dodge first (wherever they sit), then the rest in order
+    // (a reaction shown for what it is gets none: it isn't pressed).
     const core = ['attack', 'throw', 'dash', 'dodge'];
-    [...b.filter((x) => core.includes(x.id)), ...b.filter((x) => !core.includes(x.id))].slice(0, 9).forEach((x, i) => {
+    [...b.filter((x) => core.includes(x.id)), ...b.filter((x) => !core.includes(x.id) && !x.passive)].slice(0, 9).forEach((x, i) => {
       x.hotkey = String(i + 1);
     });
     return b;
@@ -828,6 +911,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         setMore((m) => !m);
         return;
       }
+      if (id.startsWith('passive:')) return;
       if (id.startsWith('jutsu:')) {
         const jid = id.slice(6);
         const sp = JUTSU[jid];
@@ -898,19 +982,23 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     const down = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      const s = stateRef.current;
+      // A reaction prompt: S (Sí) or Y, or Enter, takes it; N or Esc lets it go. While it is up,
+      // S answers rather than panning the camera.
+      if (s.pending && !pb.busy) {
+        const reactor = s.units[s.pending.reactor];
+        const yes = key === 'y' || key === 'Enter' || (key === 's' && langRef.current === 'es');
+        if (reactor?.controller === 'player' && (yes || key === 'n' || key === 'Escape')) {
+          e.preventDefault();
+          act({ type: 'react', unit: reactor.id, take: yes });
+          return;
+        }
+      }
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'w', 'a', 's', 'd'].includes(key)) {
         keys.current.add(key);
         cam.current.follow = false;
         e.preventDefault();
         return;
-      }
-      const s = stateRef.current;
-      if (s.pending && !pb.busy) {
-        const reactor = s.units[s.pending.reactor];
-        if (reactor?.controller === 'player' && (key === 'y' || key === 'n')) {
-          act({ type: 'react', unit: reactor.id, take: key === 'y' });
-          return;
-        }
       }
       if (key === 'Escape') setMode({ k: 'move' });
       else if (key === 'z') setZoom((z) => (z === 1 ? 2 : 1));
@@ -989,14 +1077,15 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
     if (!pending || !reactor) return null;
     if (pending.kind === 'opportunity') {
       const mover = state.units[pending.mover];
+      // An opportunity attack is struck with what is in hand (nothing is drawn for it).
       const pv = attackPreview(state, reactor, mover, 'melee');
-      return { title: T('oaTitle'), text: T('oaAsk', { mover: mover.name, reactor: reactor.name, p: Math.round(pv.chance * 100) }) };
+      return { title: T('oaTitle'), text: T('oaAsk', { mover: unitName(mover, lang), reactor: unitName(reactor, lang), p: Math.round(pv.chance * 100) }) };
     }
     if (pending.kind === 'evasion') {
-      const by = pending.hit.source ? state.units[pending.hit.source]?.name ?? '' : '';
-      return { title: T('evadeTitle'), text: T('evadeAsk', { name: reactor.name, dmg: pending.hit.amount, by }) };
+      const by = pending.hit.source ? unitName(state.units[pending.hit.source], lang) : '';
+      return { title: T('evadeTitle'), text: T('evadeAsk', { name: unitName(reactor, lang), dmg: pending.hit.amount, by }) };
     }
-    return { title: T('kawaTitle'), text: T('kawaAsk', { name: reactor.name, dmg: pending.hit.amount, c: JUTSU.substitution_kawarimi.cost }) };
+    return { title: T('kawaTitle'), text: T('kawaAsk', { name: unitName(reactor, lang), dmg: pending.hit.amount, c: JUTSU.substitution_kawarimi.cost }) };
   };
   const prompt = askPlayer ? promptText() : null;
 
@@ -1156,7 +1245,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
           {T('supplies', { p: state.supplies.soldierPills, b: state.supplies.bandages, a: state.supplies.antidotes, t: state.supplies.explosiveTags })}
         </div>
         {/* The last roll and the log, under the switches and clear of the action bar. */}
-        {toast && <RollToast text={toast.text} sub={toast.sub} ok={toast.ok} />}
+        {toast && <RollToast text={toast.text} sub={toast.sub} note={toast.note} die={toast.die} ok={toast.ok} />}
         {showLog && <LogPanel lines={log} onClose={() => setShowLog(false)} lang={lang} />}
       </div>
       </div>
@@ -1190,7 +1279,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       })}
 
       {prompt && reactor && (
-        <Prompt title={prompt.title} text={prompt.text} yes={T('yes')} no={T('no')} onYes={() => act({ type: 'react', unit: reactor.id, take: true })} onNo={() => act({ type: 'react', unit: reactor.id, take: false })} />
+        <Prompt title={prompt.title} text={prompt.text} yes={T('yes')} no={T('no')} yesKey={lang === 'es' ? 'S' : 'Y'} onYes={() => act({ type: 'react', unit: reactor.id, take: true })} onNo={() => act({ type: 'react', unit: reactor.id, take: false })} />
       )}
 
       {ended && (
@@ -1245,6 +1334,7 @@ const SHORT: Record<string, [string, string]> = {
   ryusei_swap: ['Swap', 'Cambio'],
   northstar_command: ['Command', 'Command'],
   northstar_submission: ['Submit', 'Sumisión'],
+  mirai_evasion: ['Evasion', 'Evasión'],
 };
 
 /** A jutsu's short name for its button. */
@@ -1263,6 +1353,8 @@ function reasonLine(why: string | undefined): string {
 function reasonsText(pv: ReturnType<typeof attackPreview>, lang: ReturnType<typeof useLang>): string {
   const parts: string[] = [];
   if (pv.adv !== 'none') parts.push(T(pv.adv === 'advantage' ? 'adv' : 'disadv', undefined, lang));
+  // Reasons on both sides with no edge left: say they cancel ("por la espalda · aura de soberanía").
+  else if (pv.reasons.length > 1) parts.push(T('advCancel', undefined, lang));
   for (const r of pv.reasons) {
     const k = `reason_${r}` as TKey;
     if (T.has(k)) parts.push(T(k, undefined, lang));
@@ -1272,6 +1364,24 @@ function reasonsText(pv: ReturnType<typeof attackPreview>, lang: ReturnType<type
   if (pv.height < 0) parts.push(T('heightDown', undefined, lang));
   return parts.join(' · ');
 }
+
+/** Two dice rolled: which way, both of them, the one kept, and why ("Desventaja: 13 y 12, queda el 12 · aura de soberanía"). */
+function twoDice(r: RollInfo, reasons: string[] | undefined, lang: ReturnType<typeof useLang>): string | undefined {
+  if (!r.adv || r.rolls.length < 2) return undefined;
+  const why = (reasons ?? []).map((x) => `reason_${x}`).filter((k): k is TKey => T.has(k)).map((k) => T(k, undefined, lang));
+  return [T('rollKept', { how: T(r.adv === 'advantage' ? 'adv' : 'disadv', undefined, lang), a: r.rolls[0], b: r.rolls[1], k: r.d20 }, lang), ...why].join(' · ');
+}
+
+/** An enemy's next move as the Eye of Tomorrow reads it: "Próximo: Gran Bola de Fuego → Solen". */
+function intentText(it: Intent, s: BattleState, lang: ReturnType<typeof useLang>): string {
+  const named = it.kind === 'jutsu' || it.kind === 'spit' || it.kind === 'roar' || it.kind === 'command';
+  const what = named && JUTSU[it.what] ? jutsuName(it.what, lang) : T(`intent_${it.kind}` as TKey, undefined, lang);
+  const target = it.target && it.kind !== 'defend' ? unitName(s.units[it.target], lang) : '';
+  return target ? T('intent', { what, target }, lang) : T('intentNoTarget', { what }, lang);
+}
+
+/** The unit as it strikes a blow: a stowed blade is drawn for free first (once a turn), as the engine does. */
+const drawsFree = (u: Unit): Unit => (u.weapon.held && !u.armed && !u.turn.interacted ? { ...u, armed: true } : u);
 
 function inAreaLoose(area: ReturnType<typeof areaOf>, u: Unit): boolean {
   if (!area) return false;

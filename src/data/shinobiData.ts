@@ -205,6 +205,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'shadow_clone',
     name: 'Shadow Clone Technique',
+    nameEs: 'Técnica del Clon de Sombra',
     japaneseName: '影分身の術 (Kage Bunshin)',
     rank: 'B',
     category: 'Utility',
@@ -220,6 +221,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'body_flicker',
     name: 'Instant Body Flicker',
+    nameEs: 'Shunshin: Parpadeo Instantáneo',
     japaneseName: '瞬身の術 (Shunshin no Jutsu)',
     rank: 'D',
     category: 'Utility',
@@ -234,6 +236,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'trap_setter_tag',
     name: 'Explosive Tag Ambush',
+    nameEs: 'Emboscada con Sello Explosivo',
     japaneseName: '起爆札の陣 (Kibaku Fuda Trap)',
     rank: 'C',
     category: 'Utility',
@@ -253,6 +256,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'mystical_palm',
     name: 'Mystical Palm Healing',
+    nameEs: 'Palma Mística Curativa',
     japaneseName: '掌仙術 (Shosen Jutsu)',
     rank: 'C',
     category: 'Utility',
@@ -269,6 +273,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'substitution_kawarimi',
     name: 'Body Replacement Technique',
+    nameEs: 'Técnica de Sustitución (Kawarimi)',
     japaneseName: '変わり身の術 (Kawarimi no Jutsu)',
     rank: 'D',
     category: 'Utility',
@@ -286,6 +291,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'fireball_goukakyu',
     name: 'Fire Release: Great Fireball',
+    nameEs: 'Estilo Fuego: Gran Bola de Fuego',
     japaneseName: '火遁・豪火球の術 (Goukakyu no Jutsu)',
     rank: 'C',
     category: 'Elemental',
@@ -307,6 +313,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'dragon_fire_stream',
     name: 'Fire Release: Dragon Fire',
+    nameEs: 'Estilo Fuego: Fuego del Dragón',
     japaneseName: '火遁・龍火の術 (Ryuuka no Jutsu)',
     rank: 'B',
     category: 'Elemental',
@@ -328,6 +335,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'water_dragon_suiryuudan',
     name: 'Water Release: Water Dragon Bullet',
+    nameEs: 'Estilo Agua: Proyectil del Dragón de Agua',
     japaneseName: '水遁・水龍弾の術 (Suiryuudan)',
     rank: 'B',
     category: 'Elemental',
@@ -347,6 +355,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'water_shield_suijinheki',
     name: 'Water Release: Water Formation Wall',
+    nameEs: 'Estilo Agua: Muro de Agua',
     japaneseName: '水遁・水陣壁 (Suijinheki)',
     rank: 'C',
     category: 'Elemental',
@@ -364,6 +373,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'earth_wall_doryuheki',
     name: 'Earth Release: Mud Wall',
+    nameEs: 'Estilo Tierra: Muro de Lodo',
     japaneseName: '土遁・土流壁 (Doryuheki)',
     rank: 'B',
     category: 'Elemental',
@@ -380,6 +390,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'earth_spear_doryuudan',
     name: 'Earth Release: Stone Dragon Spate',
+    nameEs: 'Estilo Tierra: Torrente del Dragón de Piedra',
     japaneseName: '土遁・土龍弾 (Doryuudan)',
     rank: 'B',
     category: 'Elemental',
@@ -399,6 +410,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'wind_blade_daitoppa',
     name: 'Wind Release: Great Breakthrough Blade',
+    nameEs: 'Estilo Viento: Gran Ráfaga Cortante',
     japaneseName: '風遁・大突破 / 烈風掌 (Fuuton Blade)',
     rank: 'C',
     category: 'Elemental',
@@ -420,6 +432,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'chidori_lightning_blade',
     name: 'Lightning Release: Chidori (One Thousand Birds)',
+    nameEs: 'Estilo Rayo: Chidori (Mil Pájaros)',
     japaneseName: '雷遁・千鳥 (Chidori)',
     rank: 'A',
     category: 'Elemental',
@@ -440,6 +453,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'lightning_hound_raidon',
     name: 'Lightning Release: Lightning Hound',
+    nameEs: 'Estilo Rayo: Sabueso del Rayo',
     japaneseName: '雷遁・雷獣追牙 (Raijuu Tsuiga)',
     rank: 'B',
     category: 'Elemental',
@@ -461,6 +475,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'leaf_hurricane_senpuu',
     name: 'Leaf Hurricane (Konoha Senpuu)',
+    nameEs: 'Huracán de la Hoja (Konoha Senpuu)',
     japaneseName: '木ノ葉旋風 (Konoha Senpuu)',
     rank: 'D',
     category: 'Elemental',
@@ -481,6 +496,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'crescent_moon_dance',
     name: 'Dance of the Crescent Moon',
+    nameEs: 'Danza de la Luna Creciente',
     japaneseName: '三日月の舞 (Mikazuki no Mai)',
     rank: 'B',
     category: 'Elemental',
@@ -501,6 +517,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'temple_of_nirvana',
     name: 'Genjutsu: Temple of Nirvana',
+    nameEs: 'Genjutsu: Templo del Nirvana',
     japaneseName: '涅槃精舎の術 (Nehan Shouja)',
     rank: 'A',
     category: 'Elemental',
@@ -523,6 +540,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'dragon_fire_bomb',
     name: 'Mirai Secret: Dragon Flame Annihilation',
+    nameEs: 'Secreto Mirai: Aniquilación de la Llama del Dragón',
     japaneseName: '火遁・龍火の極意 (Ryuuka no Gokui)',
     rank: 'A',
     category: 'Clan',
@@ -544,6 +562,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'wood_dragon_jutsu',
     name: 'Ryusei Secret: Wood Dragon Technique',
+    nameEs: 'Secreto Ryusei: Técnica del Dragón de Madera',
     japaneseName: '木遁・木龍の術 (Mokuton: Mokuryuu)',
     rank: 'A',
     category: 'Clan',
@@ -564,6 +583,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'adamantine_sealing_chains',
     name: 'Kōton Secret: Adamantine Sealing Chains',
+    nameEs: 'Secreto Kōton: Cadenas Selladoras de Adamantio',
     japaneseName: '金剛封鎖 (Kongou Fuusa)',
     rank: 'A',
     category: 'Clan',
@@ -584,6 +604,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'taki_sixtyfour_palms',
     name: 'Northstar Secret: Eight Trigrams 64 Palms',
+    nameEs: 'Secreto Northstar: Ocho Trigramas, 64 Palmas',
     japaneseName: '八卦六十四掌 (Hakke Rokujuuyon Shou)',
     rank: 'A',
     category: 'Clan',
@@ -606,6 +627,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'kirin_thunder',
     name: 'Ultimate S-Rank: Kirin (Thunder Divine Beast)',
+    nameEs: 'Definitiva de rango S: Kirin (Bestia Divina del Trueno)',
     japaneseName: '雷遁・麒麟 (Kirin)',
     rank: 'S',
     category: 'Ultimate',
@@ -627,6 +649,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'rasenshuriken_wind',
     name: 'Ultimate S-Rank: Wind Release Rasenshuriken',
+    nameEs: 'Definitiva de rango S: Rasenshuriken de Viento',
     japaneseName: '風遁・螺旋手裏剣 (Rasenshuriken)',
     rank: 'S',
     category: 'Ultimate',
@@ -648,6 +671,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'great_fire_annihilation',
     name: 'Ultimate S-Rank: Great Fire Annihilation',
+    nameEs: 'Definitiva de rango S: Gran Aniquilación de Fuego',
     japaneseName: '火遁・豪火滅却 (Gouka Mekkyaku)',
     rank: 'S',
     category: 'Ultimate',
@@ -668,6 +692,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'wood_golem_titan',
     name: 'Ultimate S-Rank: Wood Golem Awakening',
+    nameEs: 'Definitiva de rango S: Despertar del Gólem de Madera',
     japaneseName: '木遁・木人の術 (Mokujin no Jutsu)',
     rank: 'S',
     category: 'Ultimate',
@@ -689,6 +714,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'yasaka_magatama',
     name: 'Ultimate S-Rank: Yasaka no Magatama',
+    nameEs: 'Definitiva de rango S: Yasaka no Magatama',
     japaneseName: '八坂ノ勾玉 (Yasaka Magatama)',
     rank: 'S',
     category: 'Ultimate',
@@ -708,6 +734,7 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   {
     id: 'night_guy_dragon',
     name: 'Ultimate S-Rank: Night Guy (Sekizo Dragon)',
+    nameEs: 'Definitiva de rango S: Night Guy (Dragón Sekizo)',
     japaneseName: '夜ガイ・積木龍 (Yagai)',
     rank: 'S',
     category: 'Ultimate',

@@ -760,7 +760,9 @@ describe('Kōton: Modular Architecture', () => {
     assert.equal(raise(hidden, 'koton_block', { x: 11.25, z: 10.25 }).reason, 'noSight');
     const edge = structuredClone(s);
     place(edge, 'k', { x: 1.25, z: 10.25 });
-    assert.equal(raise(edge, 'koton_block', { x: 0.1, z: 10.25 }).reason, 'outOfRange');
+    // Off the map, though well within 6 m: the reason says so (not "out of range").
+    assert.ok(dist(edge.units.k.pos, { x: 0.1, z: 10.25 }) < 6);
+    assert.equal(raise(edge, 'koton_block', { x: 0.1, z: 10.25 }).reason, 'offMap');
     // The hydra's bulk counts as someone.
     const lair = turnOf(createBattle(setup({ party: [{ character: koton(), pos: { x: 11, z: 8 } }], enemies: [{ kind: 'hydra', pos: { x: 16, z: 8 } }] })).state, 'k');
     assert.equal(raise(lair, 'koton_block', { x: 15, z: 8 }).reason, 'occupied');
@@ -928,7 +930,8 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     const warped = ok(warp(s, s.units.rogue_0.pos));
     const r = warped.state.units.r;
     assert.equal(r.cond.warpEdge, true);
-    assert.ok(warped.events.some((e) => e.t === 'note' && e.key === 'warpEdge'));
+    // The log names the foe it is behind (no attack has happened yet).
+    assert.ok(warped.events.some((e) => e.t === 'note' && e.key === 'warpEdge' && e.params?.name === 'Solen' && e.params?.foe === s.units.rogue_0.name));
     const pv = attackPreview(warped.state, r, warped.state.units.rogue_0, 'melee');
     assert.equal(pv.adv, 'advantage');
     assert.ok(pv.reasons.includes('behind'));
@@ -1023,6 +1026,8 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.equal(out.state.units.r.turn.action, false);
     assert.ok(!out.events.some((e) => e.t === 'save'));
     assert.equal(out.events.filter((e) => e.t === 'teleport').length, 2);
+    // The log says who traded places with whom.
+    assert.ok(out.events.some((e) => e.t === 'note' && e.key === 'swapped' && e.params?.name === 'Solen' && e.params?.other === 'Bo'));
     // An enemy: a STR save; it moves only on a failure, and a resisted swap still costs.
     const s = ryuseiTurn();
     s.nodes.push(node('n1', s.units.rogue_0.pos));
@@ -1035,8 +1040,9 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.deepEqual(resisted.state.units.rogue_0.pos, s.units.rogue_0.pos);
     assert.equal(resisted.state.units.r.chakra, s.units.r.chakra - 3);
     assert.ok(resisted.events.some((e) => e.t === 'note' && e.key === 'swapResisted'));
+    assert.ok(!resisted.events.some((e) => e.t === 'note' && e.key === 'swapped'));
     const save = failed.events.find((e) => e.t === 'save');
-    assert.ok(save?.t === 'save' && save.what === 'ryusei_swap' && save.roll.dc === s.units.r.saveDC);
+    assert.ok(save?.t === 'save' && save.what === 'ryusei_swap' && save.roll.dc === s.units.r.saveDC && save.ab === 'str');
     // Refused: nobody on a Node, itself, the hydra, or before the fighting.
     const bare = ryuseiTurn();
     assert.equal(swap(bare, 'rogue_0').reason, 'notOnNode');
@@ -1601,5 +1607,85 @@ describe('items and other actions', () => {
     edge.units.a.pos = cellCenter(cellOf({ x: 0.75, z: 10 }));
     const fled = ok(applyAction(edge, { type: 'flee', unit: 'a' } as Action));
     assert.equal(fled.state.units.a.down, 'fled');
+  });
+});
+
+describe('clan playtest fixes: what the screen shows matches the engine', () => {
+  it('the attack preview refuses what the engine refuses: a kunai out of sight, a blow across a metal wall', () => {
+    const s = turnOf(createBattle(setup({ party: [{ character: hero({ id: 'a' }), pos: { x: 10.25, z: 10.25 } }] })).state, 'a');
+    place(s, 'rogue_0', { x: 11.75, z: 10.25 });
+    // In the open nothing is in the way.
+    assert.equal(attackPreview(s, s.units.a, s.units.rogue_0, 'melee').blocked, undefined);
+    assert.equal(attackPreview(s, s.units.a, s.units.rogue_0, 'ranged').blocked, undefined);
+    // A Kōton metal wall between them: full cover, nothing passes (D13).
+    s.walls.push({ id: 'w1', kind: 'metal', a: { x: 11, z: 8 }, b: { x: 11, z: 12.5 }, hp: 20, maxHp: 20 });
+    const blade = attackPreview(s, s.units.a, s.units.rogue_0, 'melee');
+    const kunai = attackPreview(s, s.units.a, s.units.rogue_0, 'ranged');
+    assert.equal(blade.blocked, 'blocked');
+    assert.equal(kunai.blocked, 'noSight');
+    assert.equal(applyAction(s, { type: 'attack', unit: 'a', target: 'rogue_0' }).reason, blade.blocked);
+    assert.equal(applyAction(s, { type: 'attack', unit: 'a', target: 'rogue_0', ranged: true }).reason, kunai.blocked);
+  });
+
+  it('a bonus-action ability with the bonus action spent is refused as such', () => {
+    const s = turnOf(createBattle(setup({ party: [{ character: hero({ id: 'k', clan: 'Koton' }), pos: { x: 8, z: 10 } }] })).state, 'k');
+    s.units.k.turn.bonus = false;
+    assert.equal(applyAction(s, { type: 'jutsu', unit: 'k', jutsu: 'koton_block', at: { x: 10.25, z: 12.25 } }).reason, 'noBonus');
+    s.units.k.turn.action = false;
+    assert.equal(applyAction(s, { type: 'jutsu', unit: 'k', jutsu: 'koton_wall', at: { x: 11.25, z: 10.25 } }).reason, 'noAction');
+  });
+
+  it('a roll of two dice says which was kept and why; a save says which ability it is made with', () => {
+    // Pursuing Flame: a DEX save with disadvantage.
+    const m = turnOf(createBattle(setup({ party: [{ character: hero({ id: 'm', clan: 'Mirai' }), pos: { x: 8, z: 10 } }], enemies: [{ kind: 'raider', pos: { x: 14, z: 10 } }] })).state, 'm');
+    const flame = ok(applyAction(m, { type: 'jutsu', unit: 'm', jutsu: 'katon_pursuing_flame', at: { ...m.units.raider_0.pos }, target: 'raider_0' }));
+    const save = flame.events.find((e) => e.t === 'save');
+    assert.ok(save?.t === 'save');
+    assert.equal(save.ab, 'dex');
+    assert.equal(save.roll.adv, 'disadvantage');
+    assert.equal(save.roll.rolls.length, 2);
+    // A blow from inside a Northstar's aura: disadvantage, and the aura is named as the reason.
+    const n = turnOf(createBattle(setup({ party: [{ character: hero({ id: 'n', clan: 'Northstar' }), pos: { x: 8, z: 10 } }] })).state, 'rogue_0');
+    place(n, 'rogue_0', { x: 9.75, z: 10.25 });
+    const atk = ok(applyAction(n, { type: 'attack', unit: 'rogue_0', target: 'n' })).events.find((e) => e.t === 'attack');
+    assert.ok(atk?.t === 'attack');
+    assert.equal(atk.roll.adv, 'disadvantage');
+    assert.ok(atk.reasons?.includes('aura'));
+    // A plain blow: one die, nothing to tell.
+    const a = turnOf(createBattle(setup()).state, 'a');
+    place(a, 'rogue_0', { x: 9.5, z: 10 });
+    const plain = ok(applyAction(a, { type: 'attack', unit: 'a', target: 'rogue_0' })).events.find((e) => e.t === 'attack');
+    assert.ok(plain?.t === 'attack');
+    assert.equal(plain.roll.rolls.length, 1);
+    assert.equal(plain.roll.adv, undefined);
+    assert.equal(plain.reasons, undefined);
+  });
+
+  it('a Mirai stepping aside from a jutsu: the evade event says what it stepped away from', () => {
+    for (let seed = 1; seed < 80; seed++) {
+      const s = turnOf(createBattle(setup({ seed, party: [{ character: hero({ id: 'm', clan: 'Mirai' }), pos: { x: 8, z: 10 } }] })).state, 'm');
+      s.units.rogue_0.hp = 3;
+      s.units.m.saveDC = 99;
+      const out = ok(applyAction(s, { type: 'jutsu', unit: 'm', jutsu: 'katon_pursuing_flame', at: { ...s.units.rogue_0.pos }, target: 'rogue_0' }));
+      const ev = out.events.find((e) => e.t === 'evade');
+      if (!ev) continue;
+      assert.ok(ev.t === 'evade' && ev.what === 'katon_pursuing_flame' && ev.source === 'm');
+      return;
+    }
+    assert.fail('no seed makes the rogue step aside');
+  });
+
+  it('enemies have Spanish names for the Spanish screens', () => {
+    const { state } = createBattle(setup({ enemies: [{ kind: 'rogue', pos: { x: 14, z: 10 } }, { kind: 'rogue', pos: { x: 14, z: 13 } }, { kind: 'raider', pos: { x: 16, z: 10 } }, { kind: 'hunter', pos: { x: 16, z: 13 } }, { kind: 'jonin', pos: { x: 18, z: 13 } }] }));
+    const names = (id: string) => [state.units[id].name, state.units[id].nameEs];
+    assert.deepEqual(names('rogue_0'), ['Rogue 1', 'Renegado 1']);
+    assert.deepEqual(names('rogue_1'), ['Rogue 2', 'Renegado 2']);
+    assert.deepEqual(names('raider_0'), ['Raider', 'Asaltante']);
+    assert.equal(state.units.hunter_0.nameEs?.startsWith('Cazador'), true);
+    // A proper name stays as it is.
+    assert.deepEqual(names('jonin_0'), ['Kagero', undefined]);
+    // The jutsu they cast have Spanish names too.
+    assert.equal(JUTSU.fireball_goukakyu.nameEs, 'Estilo Fuego: Gran Bola de Fuego');
+    assert.ok(Object.values(JUTSU).every((j) => j.nameEs), 'every jutsu has a Spanish name');
   });
 });

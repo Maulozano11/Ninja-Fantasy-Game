@@ -84,7 +84,7 @@ export function evade(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void 
   ev.push({ t: 'chakra', unit: t.id, delta: -cost, chakra: t.chakra, reason: EVASION });
   const from = { ...t.pos };
   t.pos = to;
-  ev.push({ t: 'evade', unit: t.id, from, to, source: h.source });
+  ev.push({ t: 'evade', unit: t.id, from, to, source: h.source, what: h.what });
   revealOutOfHiding(s, t, ev);
   const a = h.source ? s.units[h.source] : undefined;
   if (a && h.melee && leavesNodes(a)) addNode(s, a, from, ev);
@@ -180,9 +180,10 @@ export function warpStrike(s: BattleState, u: Unit, to: Pt, ev: BattleEvent[]): 
   ev.push({ t: 'teleport', unit: u.id, from: { ...u.pos }, to: { ...to } });
   u.pos = { ...to };
   revealOutOfHiding(s, u, ev);
-  if (!edgeFoe(s, u)) return;
+  const foe = edgeFoe(s, u);
+  if (!foe) return;
   u.cond.warpEdge = true;
-  ev.push({ t: 'note', key: 'warpEdge', params: { name: u.name } });
+  ev.push({ t: 'note', key: 'warpEdge', params: { name: u.name, foe: foe.name } });
 }
 
 /**
@@ -208,7 +209,7 @@ export function swapBlocker(s: BattleState, u: Unit, t: Unit | undefined): strin
 export function spatialSwap(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
   if (t.team !== u.team) {
     const roll = savingThrow(s, t, 'str', u.saveDC);
-    ev.push({ t: 'save', unit: t.id, what: SWAP, roll });
+    ev.push({ t: 'save', unit: t.id, what: SWAP, roll, ab: 'str' });
     if (roll.success) {
       ev.push({ t: 'note', key: 'swapResisted', params: { name: t.name } });
       return;
@@ -220,6 +221,8 @@ export function spatialSwap(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[])
   ev.push({ t: 'teleport', unit: t.id, from: b, to: a });
   u.pos = { ...b };
   t.pos = { ...a };
+  // The log says who traded places with whom.
+  ev.push({ t: 'note', key: 'swapped', params: { name: u.name, other: t.name } });
   revealOutOfHiding(s, u, ev);
   revealOutOfHiding(s, t, ev);
 }
@@ -296,7 +299,7 @@ const commandTurns = (u: Unit): number => (u.level >= 9 ? 2 : 1);
  */
 export function command(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
   const roll = savingThrow(s, t, 'wis', u.saveDC);
-  ev.push({ t: 'save', unit: t.id, what: COMMAND, roll });
+  ev.push({ t: 'save', unit: t.id, what: COMMAND, roll, ab: 'wis' });
   if (roll.success) return;
   const rounds = commandTurns(u);
   t.commanded = { by: u.id, team: t.team, rounds };
@@ -308,7 +311,7 @@ export function command(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): vo
 /** Natural Submission: a beast or summon that fails a WIS save joins the Northstar's side for the rest of the battle. */
 export function submit(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
   const roll = savingThrow(s, t, 'wis', u.saveDC);
-  ev.push({ t: 'save', unit: t.id, what: SUBMISSION, roll });
+  ev.push({ t: 'save', unit: t.id, what: SUBMISSION, roll, ab: 'wis' });
   if (roll.success) return;
   t.joined = { by: u.id, team: t.team };
   t.team = u.team;

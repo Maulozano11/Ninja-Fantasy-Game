@@ -69,6 +69,8 @@ export interface Fx {
   lift?: [number, number];
   /** The unit an aura surrounds, so it centres on the body rather than the feet. */
   unit?: string;
+  /** It goes where its unit goes (Evasion's eyes as the Mirai darts aside), not where it started. */
+  follow?: boolean;
 }
 
 export interface Banner {
@@ -94,6 +96,9 @@ export type SoundName = 'step' | 'swing' | 'hit' | 'crit' | 'miss' | 'jutsu' | '
 const RUN = 5.5;
 const WALK = 3.2;
 const SNEAK = 2.4;
+/** How long a Kōton structure takes to rise out of the ground, and to sink back when it goes (ms). */
+export const RISE_MS = 320;
+export const FALL_MS = 450;
 
 export class Playback {
   views = new Map<string, UnitView>();
@@ -104,11 +109,18 @@ export class Playback {
   fled = new Map<number, number>();
   /** When each jutsu wall was raised, so it plays its rise before standing. */
   wallBorn = new Map<string, number>();
+  /** Kōton structures that crumbled or broke, sinking out of sight (from when their event played). */
+  fallen: { wall: Wall; t0: number }[] = [];
   /** Whose turn the screen shows (it trails the engine while events play). */
   turnUnit: string | undefined;
   round = 0;
   queue: BattleEvent[] = [];
   busyUntil = 0;
+  /**
+   * The queue has emptied but its last event is still playing (a walk, a dart aside, a blow): the
+   * views snap to the state only once it has, so nothing jumps to where it ends up.
+   */
+  private settling = false;
   /** A big signature still playing: the next turn waits for it to finish. */
   lingerUntil = 0;
   speed = 1;
@@ -148,8 +160,9 @@ export class Playback {
     }
   }
 
+  /** Events are still playing (the last one too, until it has played out). */
   get busy(): boolean {
-    return this.queue.length > 0;
+    return this.queue.length > 0 || this.settling;
   }
 
   push(events: BattleEvent[], now: number): void {
@@ -157,16 +170,18 @@ export class Playback {
     this.queue.push(...events);
   }
 
-  /** Runs the queue up to `now`. Returns true when it just emptied. */
+  /**
+   * Runs the queue up to `now`. Returns true once everything has played out: the last event's own
+   * time, every walk and every one-shot pose (then the views can snap to the state).
+   */
   step(now: number, state: BattleState): boolean {
-    let emptied = false;
     while (this.queue.length && now >= this.busyUntil) {
       const next = this.queue[0].t;
       if ((next === 'turn' || next === 'round' || next === 'end') && now < this.lingerUntil) break;
       const ev = this.queue.shift()!;
       const d = this.apply(ev, now, state);
       this.busyUntil = now + d / this.speed;
-      if (!this.queue.length) emptied = true;
+      if (!this.queue.length) this.settling = true;
     }
     // One-shot poses fall back to rest.
     for (const [id, v] of this.views) {
@@ -187,7 +202,11 @@ export class Playback {
     this.floaters = this.floaters.filter((f) => now < f.t0 + f.dur);
     this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
-    return emptied && now >= this.busyUntil;
+    this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
+    if (!this.settling || this.queue.length || now < this.busyUntil) return false;
+    for (const v of this.views.values()) if (v.walk || (v.poseUntil && now < v.poseUntil)) return false;
+    this.settling = false;
+    return true;
   }
 
   /** Where a unit is drawn right now (meters), following its walk. */
@@ -262,9 +281,11 @@ export class Playback {
   }
 
   private float(text: string, color: string, at: Pt, now: number, o: Partial<Floater> = {}): void {
-    // Numbers on the same spot stack upward.
-    const stack = this.floaters.filter((f) => dist(f.at, at) < 0.6 && now - f.t0 < 500).length;
-    this.floaters.push({ text, color, at: { ...at }, rise: 96 + stack * 16, t0: now, dur: 1100 / this.speed, ...o });
+    // Words and numbers on the same spot stack upward, clear of each other ("Resiste" over "-3").
+    const near = this.floaters.filter((f) => dist(f.at, at) < 0.8 && now - f.t0 < 800 / this.speed);
+    let rise = o.rise ?? 96;
+    while (near.some((f) => Math.abs(f.rise - rise) < 17)) rise += 17;
+    this.floaters.push({ text, color, at: { ...at }, t0: now, dur: 1100 / this.speed, ...o, rise });
   }
 
   /** Applies one event to the view; returns how long (ms) to wait before the next. */
@@ -317,20 +338,23 @@ export class Playback {
         v.pos = { ...ev.to };
         v.walk = undefined;
         if (label) this.float(label, '#e9d8a6', ev.from, now);
+        h.roll(ev);
         h.sound('kawarimi');
         return 650;
       }
       case 'evade': {
-        // Premonitory Evasion: the Mirai's eyes flare and it darts a step aside as the blow lands.
+        // Premonitory Evasion: the Mirai's eyes flare and it darts a step aside as the blow lands;
+        // the flare goes with it, and the word floats where it ends up.
         const v = this.view(ev.unit);
         if (!v) return 0;
         const d = dist(ev.from, ev.to);
-        this.fx.push({ kind: 'aura', element: 'fire', sig: 'eyes', from: ev.from, to: ev.from, t0: now, dur: 700, unit: ev.unit });
+        this.fx.push({ kind: 'aura', element: 'fire', sig: 'eyes', from: ev.from, to: ev.to, t0: now, dur: 700, unit: ev.unit, follow: true });
         v.pos = { ...ev.from };
         v.walk = { path: [{ ...ev.to }], t0: now, speed: 7, pose: 'run', lengths: [d], total: d };
         v.pose = 'run';
         v.poseT0 = now;
-        if (label) this.float(label, '#fecaca', ev.from, now);
+        if (label) this.float(label, '#fecaca', ev.to, now);
+        h.roll(ev);
         h.sound('kawarimi');
         return 420;
       }
@@ -425,11 +449,15 @@ export class Playback {
             linger(1300);
             return castDelay + 700;
           case 'clone':
+            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 1100, unit: ev.unit });
+            linger(1100);
+            return castDelay + 400;
           case 'flicker':
           case 'warp':
           case 'swap':
-            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 1100, unit: ev.unit });
-            linger(1100);
+            // The chakra flares while it gathers, and is gone with the ninja when it vanishes (it
+            // would otherwise burn on at the spot it left, around whoever is swapped in there).
+            this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: castDelay + 400, unit: ev.unit, follow: true });
             return castDelay + 400;
           case 'trap':
             this.fx.push({ ...base, kind: 'seal', from: ev.at, to: ev.at, dur: 1000, sig: 'tag' });
@@ -441,7 +469,8 @@ export class Playback {
             return castDelay;
           case 'metalBlock':
           case 'metalWall':
-            // Steel dust where the structure rises (the earth wall's sheet would hide it otherwise).
+            // Steel dust where the structure rises (the earth wall's sheet would hide it otherwise);
+            // the structure itself grows out of the ground when its event plays (renderer.ts).
             this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200, sig: 'debris' });
             return castDelay;
           case 'command':
@@ -625,9 +654,12 @@ export class Playback {
       case 'wall': {
         if (ev.on) {
           this.wallBorn.set(ev.wall.id, now);
-          return 0;
+          // A Kōton structure rises before anything else happens to it (an oldest one crumbling).
+          return ev.wall.kind === 'metal' || ev.wall.kind === 'metalBlock' ? RISE_MS : 0;
         }
-        // A broken structure falls apart in a cloud of dust (a water barrier just fades).
+        // A broken structure falls apart in a cloud of dust (a water barrier just fades); a Kōton
+        // structure sinks back into the ground as it goes.
+        if (ev.wall.kind === 'metal' || ev.wall.kind === 'metalBlock') this.fallen.push({ wall: ev.wall, t0: now });
         if (!label) return 0;
         const at = midpoint(ev.wall.a, ev.wall.b);
         this.fx.push({ kind: 'wall', element: 'earth', from: at, to: at, t0: now, dur: 900, sig: 'debris' });
@@ -648,10 +680,14 @@ export class Playback {
         return ev.state === 'exploded' ? 250 : 0;
       }
       case 'electrified':
-        this.fx.push({ kind: 'electric', element: 'lightning', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 800 });
+        // Along the water only (and not through a metal wall): renderer.ts clips its rays.
+        this.fx.push({ kind: 'electric', element: 'lightning', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 800, sig: 'water' });
         return 300;
       case 'trap':
+        return 0;
       case 'node':
+        // A Weapon Node lands: a glint where it sticks in the ground.
+        if (ev.on) this.fx.push({ kind: 'burst', element: 'chakra', from: ev.node.pos, to: ev.node.pos, t0: now, dur: 420, lift: [6, 6] });
         return 0;
       case 'explode':
         this.fx.push({ kind: 'explosion', element: 'fire', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 800 });
@@ -660,7 +696,10 @@ export class Playback {
         return 380;
       case 'clone':
         if (ev.on) this.fx.push({ kind: 'aura', element: 'chakra', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 600, unit: ev.unit });
-        else this.fx.push({ kind: 'smoke', element: 'chakra', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 500 });
+        else {
+          this.fx.push({ kind: 'smoke', element: 'chakra', from: this.posOf(ev.unit, now), to: this.posOf(ev.unit, now), t0: now, dur: 500 });
+          h.roll(ev);
+        }
         if (!ev.on && label) this.float(label, '#e9d8a6', this.posOf(ev.unit, now), now);
         return 250;
       case 'sever': {

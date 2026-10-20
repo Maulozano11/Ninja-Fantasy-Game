@@ -10,7 +10,7 @@ import { Rng, rngFor, rollDie } from '../rules/rng';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from './types';
 import { homeTeam } from './types';
-import { coverBetween, dist, fullCoverBetween, hideSpotAt, levelAtPt } from './map';
+import { coverBetween, dist, fullCoverBetween, hideSpotAt, levelAtPt, lineOfSight } from './map';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 
 /** The next dice stream of the battle. */
@@ -71,12 +71,14 @@ export function saveMod(u: Unit, ab: Ability): number {
   return abilityMod(u.stats[ab]) + prof - exh + m.allRolls + m.saves + (ab === 'dex' ? m.dexRolls : 0);
 }
 
-function rollInfo(kind: RollInfo['kind'], o: ReturnType<typeof rollCheck>): RollInfo {
-  return { kind, d20: o.d20, rolls: o.rolls, mod: o.modifier, total: o.total, dc: o.dc, success: o.success, chance: o.chance, crit: o.natural20, fumble: o.natural1 };
+function rollInfo(kind: RollInfo['kind'], o: ReturnType<typeof rollCheck>, adv: Advantage): RollInfo {
+  const info: RollInfo = { kind, d20: o.d20, rolls: o.rolls, mod: o.modifier, total: o.total, dc: o.dc, success: o.success, chance: o.chance, crit: o.natural20, fumble: o.natural1 };
+  // Two dice were rolled: the screen shows both, and which one was kept.
+  return adv !== 'none' && o.rolls.length > 1 ? { ...info, adv } : info;
 }
 
 export function check(s: BattleState, kind: RollInfo['kind'], mod: number, dc: number, adv: Advantage = 'none', attack = false): RollInfo {
-  return rollInfo(kind, rollCheck(nextRng(s), mod, dc, adv, attack));
+  return rollInfo(kind, rollCheck(nextRng(s), mod, dc, adv, attack), adv);
 }
 
 export function savingThrow(s: BattleState, u: Unit, ab: Ability, dc: number, extra: Advantage = 'none'): RollInfo {
@@ -100,6 +102,11 @@ export interface AttackPreview {
   /** Why there is advantage or disadvantage (keys for the screen). */
   reasons: string[];
   inRange: boolean;
+  /**
+   * Why the attack can't be made at all, as the engine refuses it: a kunai with no line of sight
+   * ('noSight'), a blow across a Kōton metal wall ('blocked': full cover, nothing passes).
+   */
+  blocked?: 'noSight' | 'blocked';
 }
 
 function flanked(s: BattleState, attacker: Unit, target: Unit): boolean {
@@ -214,7 +221,10 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
   const adv = combineAdvantage(...advs);
   const ac = t.ac + tm.ac + cover;
   const total = mod + height;
-  return { mod: total, ac, cover, height, adv, chance: hitChance(total, ac, adv), reasons, inRange };
+  const out: AttackPreview = { mod: total, ac, cover, height, adv, chance: hitChance(total, ac, adv), reasons, inRange };
+  // The engine's refusals: a kunai needs the line of sight, a blow can't cross a metal wall.
+  const blocked = kind === 'ranged' ? (lineOfSight(s, a.pos, t.pos) ? undefined : 'noSight') : kind === 'melee' && fullCoverBetween(s, a.pos, t.pos) ? 'blocked' : undefined;
+  return blocked ? { ...out, blocked } : out;
 }
 
 /** The chance an attack roll hits: it hits on a natural 20 and misses on a natural 1. */

@@ -457,7 +457,8 @@ function weaponAttack(
   const adv = o.takedown ? combineAdvantage(pv.adv, 'advantage') : pv.adv;
   const roll = check(s, 'attack', pv.mod, pv.ac, adv, true);
   if (t.pos.x !== a.pos.x) a.facing = t.pos.x > a.pos.x ? 1 : -1;
-  ev.push({ t: 'attack', unit: a.id, target: t.id, what: w.name, roll, ranged });
+  const reasons = o.takedown && !pv.reasons.includes('hidden') ? [...pv.reasons, 'unaware'] : pv.reasons;
+  ev.push({ t: 'attack', unit: a.id, target: t.id, what: w.name, roll, ranged, ...(reasons.length ? { reasons } : {}) });
   if (leavesNodes(a) && (ranged || !roll.success)) addNode(s, a, t.pos, ev);
   const edge = !!a.cond.warpEdge;
   if (edge) a.cond.warpEdge = false;
@@ -497,9 +498,12 @@ function attackProp(s: BattleState, u: Unit, i: number, ranged: boolean, ev: Bat
   const edge = !!u.cond.warpEdge;
   if (edge) u.cond.warpEdge = false;
   // From inside a foe's Aura of Sovereignty, with disadvantage, as against a unit.
-  const adv = combineAdvantage(d > KUNAI.reach ? 'disadvantage' : 'none', edge ? 'advantage' : 'none', hostileAura(s, u) ? 'disadvantage' : 'none');
+  const far = ranged && d > KUNAI.reach;
+  const aura = !!hostileAura(s, u);
+  const adv = combineAdvantage(far ? 'disadvantage' : 'none', edge ? 'advantage' : 'none', aura ? 'disadvantage' : 'none');
   const roll = check(s, 'attack', u.prof + abilityMod(ranged ? u.stats.dex : u.stats.str), 10, adv, true);
-  ev.push({ t: 'attack', unit: u.id, target: `prop:${i}`, what: w.name, roll, ranged });
+  const reasons = [...(far ? ['longRange'] : []), ...(edge ? ['behind'] : []), ...(aura ? ['aura'] : [])];
+  ev.push({ t: 'attack', unit: u.id, target: `prop:${i}`, what: w.name, roll, ranged, ...(reasons.length ? { reasons } : {}) });
   reveal(u, ev);
   if (leavesNodes(u) && (ranged || !roll.success)) {
     // The Node lands on the prop's side facing the Ryusei.
@@ -531,7 +535,7 @@ function attackStructure(s: BattleState, u: Unit, id: string, ranged: boolean, e
   const roll = check(s, 'attack', pv.mod, STRUCTURE_AC, pv.adv, true);
   if (u.cond.warpEdge) u.cond.warpEdge = false;
   if (pv.at.x !== u.pos.x) u.facing = pv.at.x > u.pos.x ? 1 : -1;
-  ev.push({ t: 'attack', unit: u.id, target: `wall:${w.id}`, what: wpn.name, roll, ranged });
+  ev.push({ t: 'attack', unit: u.id, target: `wall:${w.id}`, what: wpn.name, roll, ranged, ...(pv.reasons.length ? { reasons: pv.reasons } : {}) });
   reveal(u, ev);
   if (leavesNodes(u) && (ranged || !roll.success)) addNode(s, u, faceToward(w, u.pos), ev);
   if (roll.success) damageStructure(s, w, Math.max(1, rollDiceExpr(s, wpn.dice, roll.crit)), ev, pv.at);
@@ -696,7 +700,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   const spec = enh ? enhanced(base) : base;
   const cost = jutsuCost(u, base, enh);
   if (u.chakra < cost) return 'noChakra';
-  if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return 'noAction';
+  if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
   // Hand seals need both hands: the weapon is stowed for free (once a turn), or the jutsu waits.
   const seals = needsSeals(u, base);
   if (seals && !handsFree(u) && u.turn.interacted) return 'handsBusy';
@@ -853,7 +857,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
     }
     const pv = attackPreview(s, u, v, 'jutsu', { jutsuRange: spec.range });
     const roll = check(s, 'attack', pv.mod, pv.ac, pv.adv, true);
-    ev.push({ t: 'attack', unit: u.id, target: v.id, what: spec.id, roll, ranged: !spec.melee });
+    ev.push({ t: 'attack', unit: u.id, target: v.id, what: spec.id, roll, ranged: !spec.melee, ...(pv.reasons.length ? { reasons: pv.reasons } : {}) });
     if (roll.success) hits.push({ unit: v.id, amount: roll.crit && spec.dice ? amount + rollDiceExpr(s, spec.dice) : amount, type, source: u.id, what: spec.id, crit: roll.crit, ...extra });
   }
   if (edge) u.cond.warpEdge = false;

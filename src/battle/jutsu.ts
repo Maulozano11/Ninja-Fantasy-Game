@@ -118,6 +118,7 @@ function specOf(j: JutsuDefinition): JutsuSpec {
   const base: JutsuSpec = {
     id: j.id,
     name: j.name,
+    ...(j.nameEs ? { nameEs: j.nameEs } : {}),
     rank: j.rank,
     element: ELEMENT[j.nature] ?? 'chakra',
     cost: j.chakraCost,
@@ -146,6 +147,7 @@ const HYDRA_SPECS: JutsuSpec[] = [
   {
     id: 'hydra_spit',
     name: 'Venom spit',
+    nameEs: 'Escupitajo de veneno',
     rank: 'B',
     element: 'poison',
     cost: 2,
@@ -166,6 +168,7 @@ const HYDRA_SPECS: JutsuSpec[] = [
   {
     id: 'hydra_roar',
     name: 'Roar',
+    nameEs: 'Rugido',
     rank: 'B',
     element: 'wind',
     cost: 3,

@@ -149,6 +149,8 @@ function look(o: Partial<SpriteAppearance>): SpriteAppearance {
 
 interface Template {
   name: string;
+  /** The Spanish name, for the Spanish screens ("Renegado 1"). */
+  nameEs: string;
   title: string;
   level: number;
   clan: ShinobiCharacter['clan'];
@@ -162,6 +164,7 @@ interface Template {
 const TEMPLATES: Record<EnemyKind, Template> = {
   rogue: {
     name: 'Rogue',
+    nameEs: 'Renegado',
     title: 'Rogue ninja',
     level: 3,
     clan: 'Mirai',
@@ -196,6 +199,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
   },
   hunter: {
     name: 'Hunter-nin',
+    nameEs: 'Cazador',
     title: 'Masked hunter-nin',
     level: 4,
     clan: 'Koton',
@@ -233,6 +237,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
   },
   jonin: {
     name: 'Kagero',
+    nameEs: 'Kagero',
     title: 'Rogue jonin',
     level: 6,
     clan: 'Mirai',
@@ -258,6 +263,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
   },
   raider: {
     name: 'Raider',
+    nameEs: 'Asaltante',
     title: 'Night raider',
     level: 3,
     clan: 'Ryusei',
@@ -281,6 +287,9 @@ const TEMPLATES: Record<EnemyKind, Template> = {
   },
 };
 
+/** An enemy's name: its template's, numbered when there can be more than one ("Rogue 2"). */
+const enemyName = (t: Template, n: number, name: string): string => (t.looks.length > 1 || n > 0 ? `${name} ${n + 1}` : name);
+
 /** A character sheet for an enemy (fresh HP and chakra, derived from its build). */
 export function enemyCharacter(kind: EnemyKind, n: number): ShinobiCharacter {
   const t = TEMPLATES[kind];
@@ -291,7 +300,7 @@ export function enemyCharacter(kind: EnemyKind, n: number): ShinobiCharacter {
   const selected = Object.fromEntries(slots.map((s, i) => [s, t.jutsus[i] ?? ''])) as unknown as ShinobiCharacter['selectedJutsus'];
   return {
     id: `${kind}_${n}`,
-    name: t.looks.length > 1 || n > 0 ? `${t.name} ${n + 1}` : t.name,
+    name: enemyName(t, n, t.name),
     title: t.title,
     level: t.level,
     clan: t.clan,
@@ -323,7 +332,9 @@ export function enemyCharacter(kind: EnemyKind, n: number): ShinobiCharacter {
 
 /** An enemy from its template, with the template's rank unless the encounter names another. */
 export function enemyUnit(kind: EnemyKind, n: number, pos: Pt, difficulty: Difficulty, rank?: Rank): Unit {
+  const t = TEMPLATES[kind];
   const u = unitFrom(enemyCharacter(kind, n), { team: 'enemy', pos, power: difficulty === 'story' ? 0.75 : 1, fresh: true });
-  u.rank = rank ?? TEMPLATES[kind].rank;
+  u.rank = rank ?? t.rank;
+  if (t.nameEs !== t.name) u.nameEs = enemyName(t, n, t.nameEs);
   return u;
 }

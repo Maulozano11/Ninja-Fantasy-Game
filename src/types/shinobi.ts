@@ -77,6 +77,8 @@ export type JutsuSlotCategory = 'Utility' | 'Elemental' | 'Clan' | 'Ultimate';
 export interface JutsuDefinition {
   id: string;
   name: string;
+  /** The Spanish name shown on the Spanish screens. */
+  nameEs?: string;
   japaneseName: string;
   rank: JutsuRank;
   category: JutsuSlotCategory;

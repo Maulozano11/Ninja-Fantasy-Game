@@ -85,7 +85,7 @@ export function saveHit(
 ): Hit {
   if (u.head?.severed) return { unit: u.id, amount: 0, type, source, what, ...extra, effect: undefined };
   const roll = savingThrow(s, u, ab, dc, adv);
-  ev.push({ t: 'save', unit: u.id, what, roll });
+  ev.push({ t: 'save', unit: u.id, what, roll, ab });
   const got = roll.success ? (half ? Math.floor(amount / 2) : 0) : amount;
   return { unit: u.id, amount: got, type, source, what, ...extra, effect: roll.success ? undefined : extra.effect };
 }

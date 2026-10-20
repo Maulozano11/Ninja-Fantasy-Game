@@ -125,6 +125,8 @@ export interface HydraHeadState {
 export interface Unit {
   id: string;
   name: string;
+  /** The Spanish name, when it isn't the same (an enemy's "Renegado 1"). */
+  nameEs?: string;
   team: Team;
   kind: UnitKind;
   /** Mission characters keep their sheet here (party members and enemy ninjas). */
@@ -397,6 +399,8 @@ export interface RollInfo {
   chance: number;
   crit?: boolean;
   fumble?: boolean;
+  /** Two d20 were rolled: with advantage (the higher kept) or disadvantage (the lower). */
+  adv?: 'advantage' | 'disadvantage';
 }
 
 /** What happened, in order, for the screens to animate and the log to tell. */
@@ -406,8 +410,10 @@ export type BattleEvent =
   | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number }
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }
   | { t: 'act'; unit: string; act: 'dash' | 'disengage' | 'dodge' | 'focus' | 'crouch' | 'stand' | 'jump' | 'item' | 'stone' }
-  | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean }
-  | { t: 'save'; unit: string; what: string; roll: RollInfo }
+  /** `reasons`: why the roll had advantage or disadvantage (the preview's keys: 'aura', 'behind'…). */
+  | { t: 'attack'; unit: string; target: string; what: string; roll: RollInfo; ranged: boolean; reasons?: string[] }
+  /** `ab`: the ability the save is made with (dex, wis…). */
+  | { t: 'save'; unit: string; what: string; roll: RollInfo; ab?: string }
   | { t: 'check'; unit: string; what: string; roll: RollInfo }
   | { t: 'damage'; unit: string; amount: number; dmgType: DamageType; hp: number; crit?: boolean; source?: string }
   | { t: 'heal'; unit: string; amount: number; hp: number; source?: string }
@@ -435,7 +441,8 @@ export type BattleEvent =
   | { t: 'node'; node: WeaponNode; on: boolean }
   | { t: 'explode'; at: Pt; radius: number }
   | { t: 'kawarimi'; unit: string; from: Pt; to: Pt }
-  | { t: 'evade'; unit: string; from: Pt; to: Pt; source?: string }
+  /** `what`: the blow or jutsu stepped away from. */
+  | { t: 'evade'; unit: string; from: Pt; to: Pt; source?: string; what?: string }
   | { t: 'clone'; unit: string; on: boolean }
   | { t: 'sever'; unit: string }
   | { t: 'seal'; unit: string; how: 'fire' | 'lightning' | 'explosion' }

@@ -7,7 +7,7 @@ import type { Wall } from '../../battle/types';
 import { worldSprite } from '../world/WorldSpriteView';
 import type { Fx } from './playback';
 import type { Scene } from './renderer';
-import { auraDx, project } from './renderer';
+import { auraDx, fxPos, project } from './renderer';
 
 type Sheet = NonNullable<ReturnType<typeof worldSprite>>;
 
@@ -69,7 +69,7 @@ export function drawAuraBack(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): v
   const ms = (sc.now - f.t0) * sc.pb.speed;
   const t = ms / f.dur;
   if (t < 0 || t > 1) return;
-  const p = project(sc.map, f.from);
+  const p = project(sc.map, fxPos(sc, f));
   blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, t > 0.7 ? (1 - t) / 0.3 : 1);
 }
 
@@ -206,7 +206,7 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       if (f.sig === 'eyes') return false;
       const s = sheet(el, 'aura');
       if (!s) return false;
-      const p = project(sc.map, f.from);
+      const p = project(sc.map, fxPos(sc, f));
       blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, t > 0.7 ? (1 - t) / 0.3 : 1);
       return true;
     }

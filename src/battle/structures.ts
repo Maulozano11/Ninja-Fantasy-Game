@@ -159,8 +159,9 @@ export function jutsuWallAt(spec: JutsuSpec, from: Pt, at: Pt, id: string): Wall
 }
 
 /**
- * Why a structure (or a jutsu wall) can't stand there, or null: it would stand on someone (any unit, the hydra's bulk
- * too) or run off the map. Props and terrain under it are no obstacle, as for an earth wall.
+ * Why a structure (or a jutsu wall) can't stand there, or null: it would stand on someone
+ * ('occupied': any unit, the hydra's bulk too) or run off the map ('offMap'). Props and terrain
+ * under it are no obstacle, as for an earth wall.
  */
 export function structureBlocker(s: BattleState, w: Wall): string | null {
   const g = gridFor(s.mapId);
@@ -174,7 +175,7 @@ export function structureBlocker(s: BattleState, w: Wall): string | null {
     for (let col = c0; col <= c1; col++) {
       const c = { c: col, r: row };
       if (!wallCovers(w, cellCenter(c))) continue;
-      if (!inGrid(g, c)) return 'outOfRange';
+      if (!inGrid(g, c)) return 'offMap';
       if (occ.has(idx(g, c))) return 'occupied';
     }
   }

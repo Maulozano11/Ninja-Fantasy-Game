@@ -27,10 +27,10 @@ import type {
 } from './types';
 import { homeTeam } from './types';
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
-import { canStop, freeSpot, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
+import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
-import { JUTSU, areaOf, enhanced } from './jutsu';
+import { JUTSU, MIN_AIM, areaOf, enhanced } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
@@ -342,8 +342,11 @@ function stepHazards(s: BattleState, u: Unit, p: Pt, ev: BattleEvent[]): boolean
   return true;
 }
 
-/** An enemy whose reach the mover leaves with this step (and who can still react). */
-function provoker(s: BattleState, u: Unit, next: Pt, skip: string[]): Unit | undefined {
+/**
+ * An enemy whose reach the mover leaves on the way to the next cell it can stand on (and who can
+ * still react). `hop` is that way: the next cell, and on through cells others stand or lie on.
+ */
+function provoker(s: BattleState, u: Unit, hop: Pt[], skip: string[]): Unit | undefined {
   for (const r of Object.values(s.units)) {
     if (r.team === u.team || r.kind !== 'ninja' || r.down || skip.includes(r.id)) continue;
     if (!r.turn.reaction || r.cond.surprised) continue;
@@ -352,7 +355,7 @@ function provoker(s: BattleState, u: Unit, next: Pt, skip: string[]): Unit | und
     // A hidden mover it can't see slips past.
     if (u.cond.hidden !== undefined && passivePerception(r) < u.cond.hidden) continue;
     const reach = wielded(r).reach + 0.1;
-    if (dist(r.pos, u.pos) <= reach && dist(r.pos, next) > reach) return r;
+    if (dist(r.pos, u.pos) <= reach && hop.some((p) => dist(r.pos, p) > reach)) return r;
   }
   return undefined;
 }
@@ -361,6 +364,10 @@ function provoker(s: BattleState, u: Unit, next: Pt, skip: string[]): Unit | und
  * Walks a path in battle, step by step: leaving an enemy's reach asks for an opportunity attack
  * (the move pauses while a player decides), and traps go off underfoot. Dashing into a Northstar's
  * aura halves the movement left, and the walk ends where it runs out.
+ *
+ * A path may cross cells where others stand or lie (allies, the fallen); the walk never stops on
+ * one. Each such run is crossed in one hop: whether it leaves a foe's reach is asked before the
+ * hop, on the last cell the mover can stand on, and a dash cut short by an aura still finishes it.
  */
 function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEvent[], skip: string[]): void {
   let at = cellOf(u.pos);
@@ -369,15 +376,23 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
     if (pts.length) ev.push({ t: 'move', unit: u.id, path: pts.splice(0), run: !!u.turn.dashed || u.turn.moved > u.speed * 0.75 });
   };
   const rules = { waterWalk: !!u.cond.waterWalk, ninjaJump: !!u.cond.ninjaJump };
+  const g = gridFor(s.mapId);
+  // Who else stands or lies where (nobody else moves while this walk goes on).
+  const others = occupancy({ ...s, units: Object.fromEntries(Object.entries(s.units).filter(([id]) => id !== u.id)) });
+  const taken = (c: Cell) => others.has(idx(g, c));
   for (let i = from; i < path.length; i++) {
     const c = path[i];
     const next = cellCenter(c);
     const cost = stepCost(s, at, c, at.c !== c.c && at.r !== c.r, rules);
-    // Only a dash slowed by an aura can run short of the path it was given.
-    if (u.turn.dashed && cost > u.turn.move + 1e-6) break;
+    const standing = !taken(at);
+    // Only a dash slowed by an aura can run short of the path it was given (never mid-hop).
+    if (standing && u.turn.dashed && cost > u.turn.move + 1e-6) break;
+    // Mid-hop, nothing is asked: it was asked before the hop.
+    const hop: Pt[] = [next];
+    for (let j = i; j + 1 < path.length && taken(path[j]); j++) hop.push(cellCenter(path[j + 1]));
     for (;;) {
-      if (u.cond.disengaged) break;
-      const r = provoker(s, u, next, skip);
+      if (u.cond.disengaged || !standing) break;
+      const r = provoker(s, u, hop, skip);
       if (!r) break;
       flush();
       skip = [...skip, r.id];
@@ -407,6 +422,12 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
     }
   }
   flush();
+  // A trap that went off mid-hop: the mover doesn't stay on someone else's cell.
+  if (!u.down && taken(cellOf(u.pos))) {
+    const was = { ...u.pos };
+    u.pos = freeSpot(s, u, u.pos, 0.4, 3, (p) => -dist(p, was));
+    if (!sameCell(cellOf(u.pos), cellOf(was))) ev.push({ t: 'move', unit: u.id, path: [u.pos], run: false });
+  }
   afterMove(s, u, ev);
 }
 
@@ -749,7 +770,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       break;
     case 'cone':
     case 'line':
-      if (d < 0.3) return 'needDirection';
+      if (d < MIN_AIM) return 'needDirection';
       break;
     case 'node': {
       // Warp Strike: one of the Ryusei's own Nodes, landing beside it if someone stands on it.

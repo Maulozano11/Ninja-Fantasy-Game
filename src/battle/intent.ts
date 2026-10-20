@@ -10,7 +10,7 @@ import type { BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
 import { homeTeam } from './types';
 import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell } from './map';
 import { canStop, occupancy, reachable } from './nav';
-import { JUTSU, areaOf, inArea } from './jutsu';
+import { JUTSU, MIN_AIM, areaOf, inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { passivePerception, saveMod } from './combat';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
@@ -171,9 +171,9 @@ export interface WallCover {
  * at it: `p` hurt (half its HP or less; `advancing`: the Kōton itself, whole, with nothing to strike
  * this turn) and no foe able to strike it where it stands (within 3 m, or its weapon's reach); the
  * wall within 6 m of the Kōton, in its sight and over nobody, across the line to those foes; it
- * must hide `p` from two or more of them, or (not advancing) from every one. The spot that hides it from the most
- * dangerous wins. Null if none does, or the Kōton already has a wall standing (one at a time, so a
- * new one never topples it).
+ * must hide `p` from two or more of them, or (not advancing) from every one. The spot worth the
+ * most wins. Null if none does, or the Kōton already has a wall standing (one at a time, so a new
+ * one never topples it).
  */
 export function wallCover(s: BattleState, u: Unit, p: Unit, advancing = false): WallCover | null {
   const spec = JUTSU[WALL];
@@ -343,7 +343,8 @@ export function headOptions(s: BattleState, u: Unit): Option[] {
   if (!otherRoar && u.chakra >= roar.cost && foes.length) {
     let best: Option | undefined;
     for (const f of foes) {
-      if (dist(u.pos, f.pos) > roar.range) continue;
+      // Aimed at a foe right under the head, the roar would have no direction (the engine refuses it).
+      if (dist(u.pos, f.pos) > roar.range || dist(u.pos, f.pos) < MIN_AIM) continue;
       const n = areaValue(s, u, roar, f);
       if (n >= 2 && (!best || n * 4 > best.value)) best = { intent: { kind: 'roar', what: 'hydra_roar', target: f.id, at: { ...f.pos } }, value: n * 4 };
     }
@@ -481,13 +482,25 @@ export function replanAgainst(s: BattleState, id: string, ev: BattleEvent[]): vo
 /** The Eye of Tomorrow in the party: the Mirai who can read the enemies' next moves. */
 export const miraiSeers = (s: BattleState): Unit[] => Object.values(s.units).filter((u) => u.team === 'party' && !u.down && u.character?.clan === 'Mirai');
 
-/** The enemies' plans a Mirai in the party sees with the Eye of Tomorrow (in range and in sight). */
+/**
+ * An enemy acting on its turn has begun to carry its plan out (it walked, or spent its action or
+ * bonus action): the plan is spent, and the next one is made when its turn ends.
+ */
+export function planSpent(s: BattleState, u: Unit): boolean {
+  if (s.phase !== 'combat' || s.order[s.turn] !== u.id) return false;
+  return u.turn.moved > 0 || !u.turn.action || !u.turn.bonus;
+}
+
+/**
+ * The enemies' plans a Mirai in the party sees with the Eye of Tomorrow (in range and in sight). An
+ * enemy that has started to act on its turn shows none until it plans again (`planSpent`).
+ */
 export function foreseen(s: BattleState): Record<string, Intent> {
   const out: Record<string, Intent> = {};
   const seers = miraiSeers(s);
   if (!seers.length) return out;
   for (const e of Object.values(s.units)) {
-    if (e.team !== 'enemy' || !e.intent || e.down) continue;
+    if (e.team !== 'enemy' || !e.intent || e.down || planSpent(s, e)) continue;
     if (seers.some((m) => dist(m.pos, e.pos) <= FORESIGHT_RANGE && lineOfSight(s, m.pos, e.pos))) out[e.id] = e.intent;
   }
   return out;

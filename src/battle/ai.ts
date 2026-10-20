@@ -6,7 +6,7 @@ import { effectMods } from '../rules/effects';
 import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
 import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross } from './map';
 import { canStop, reachable } from './nav';
-import { JUTSU } from './jutsu';
+import { JUTSU, MIN_AIM } from './jutsu';
 import { KUNAI_LONG, handsFree } from './units';
 import { applyAction, jutsuCost } from './engine';
 import { current } from './turns';
@@ -74,6 +74,8 @@ function headAction(s: BattleState, u: Unit): Action | null {
   if (i && (i.kind === 'spit' || i.kind === 'roar')) {
     const t = s.units[i.target!];
     if (dist(u.pos, t.pos) > JUTSU[i.what].range + 0.1 || !lineOfSight(s, u.pos, t.pos)) i = undefined;
+    // A foe that walked right under the head leaves the roar no direction: pick again.
+    else if (i.kind === 'roar' && dist(u.pos, t.pos) < MIN_AIM) i = undefined;
   }
   i ??= headOptions(s, u)[0]?.intent;
   if (!i) return null;

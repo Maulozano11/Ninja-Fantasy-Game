@@ -137,7 +137,10 @@ elements.
   hit and the chance to hit.
 - **Melee**: move next to the target and attack. Leaving an enemy's reach
   provokes an opportunity attack; flanking gives advantage; characters can
-  shove and knock prone.
+  shove and knock prone. A ninja may walk through an ally's spot or a fallen
+  unit's, but never stops on one: such spots are crossed in one hop, and an
+  opportunity attack for leaving reach on the way is made before the hop,
+  where the mover can stand (2026-10-20).
 - **Enhanced jutsu**: when casting, the player can pay extra chakra for the
   jutsu's enhanced version. It does more damage (one more die; two for rank S)
   and reaches further: circles grow by half (Kirin), cones reach a quarter
@@ -183,10 +186,25 @@ D21 and D24 there):
 - **Enemy clans are mixed**: every fight against ninjas brings two or more
   clans, and a mission's road brings all four, so the party meets each clan's
   abilities and counters. Each encounter fixes the clan of each enemy.
-- **The enemy AI uses the clan abilities more**: Pursuing Flame, kunai that
-  plant Nodes followed by Warp Strike, Kōton blocks and walls for cover, and
-  Command when it has a valid target.
-- **The Northstar's aura slows only its foes**; its allies are spared.
+- **The enemy AI uses the clan abilities more** (built 2026-10-20): an
+  enemy's clan move takes the place of a jutsu that would hit just one foe. A
+  Mirai opens with Pursuing Flame and casts it every other jutsu after; a
+  Ryusei opens with a kunai that leaves a Node at its target, then warps in
+  and strikes from behind; it swaps places only when that clearly helps (a
+  hurt friend out of a foe's reach, a foe pulled in among its friends); a
+  Kōton raises blocks for cover and its wall to shelter itself or a hurt
+  friend, or rather than dash on in the open; a Northstar commands a valid
+  target when it has one (the party gives it none until D18 is answered).
+  Allies on the AI just play their best move. Measurements in D21.
+- **The Northstar's aura slows only its foes**; its allies are spared. The
+  first time an enemy Northstar stands in a fight, a tip explains its violet
+  ring to the player.
+- **What the screen shows** (2026-10-20): an enemy's card shows its clan,
+  class and rank on its turn. The Eye of Tomorrow's marks stay steady through
+  the animations; an enemy that has begun its turn shows no plan until it
+  plans again. Close enemies' marks don't stack, each walk ends in an
+  arrowhead, and the enemy under the cursor has its plan drawn bright while
+  the others dim.
 - **Warp Strike** to a Node someone stands on lands 1 to 1.5 m from them,
   never on top of them.
 
@@ -240,7 +258,13 @@ D21 and D24 there):
   short Spanish names (*Bola de fuego* and *Gran bola de fuego*, *Muro de
   agua*, *Muro de tierra*, *Balas de tierra*; Kirin, Chidori and Rasengan as
   they are) and drop the "Estilo X:" prefix (*Fuego del dragón*, *Gran ráfaga
-  cortante*).
+  cortante*). The enhanced Fireball is called by its own name when cast. The
+  S-rank prefix and the English "X Release:" prefixes went the same way
+  (to be confirmed by the owner: `CLANS_DESIGN.md`, D24).
+- **Names in Spanish sentences**: a generic enemy name takes its article
+  ("Turno del Asaltante", "El Renegado 1 golpea a Akira", "la Sombra"), and a
+  participle agrees with the one it is about ("Hana está desprevenida"); the
+  party's ninjas and named enemies (Kagero) never take an article.
 - **Sound**: forest ambience (river, birds, crickets at night), footsteps, the
   guard's alert, hits and jutsu, generated in the game (no audio files).
 - **Tips**: short tutorial tips the first time each thing appears (moving,

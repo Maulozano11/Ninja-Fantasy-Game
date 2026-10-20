@@ -29,9 +29,9 @@ import { soundManager } from '../../utils/audio';
 import { MAP_ART } from './mapArt';
 import { Playback } from './playback';
 import { drawBattle, image, pickGround, pickStructure, pickUnit, project, screenToWorld } from './renderer';
-import type { Camera, Overlay } from './renderer';
+import type { Camera, Overlay, Rect } from './renderer';
 import { playSound, startAmbience } from './battleSound';
-import { floatLabel, jutsuName, logLine, structureName, unitName } from './battleLog';
+import { floatLabel, jutsuName, logLine, structureName, unitName, unitRef } from './battleLog';
 import type { LogLine } from './battleLog';
 import { SAVE_EN, SAVE_ES, T } from './battleText';
 import type { TKey } from './battleText';
@@ -58,7 +58,7 @@ export interface BattleScreenProps {
   onEnd: (result: PartyBattleResult, state: BattleState) => void;
 }
 
-const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra', 'tip_mirai', 'tip_koton', 'tip_ryusei', 'tip_northstar'] as const;
+const TIP_KEYS = ['tip_move', 'tip_attack', 'tip_jutsu', 'tip_cover', 'tip_stealth', 'tip_hands', 'tip_hydra', 'tip_mirai', 'tip_koton', 'tip_ryusei', 'tip_northstar', 'tip_foeAura'] as const;
 type TipKey = (typeof TIP_KEYS)[number];
 
 function tipSeen(k: string): boolean {
@@ -87,6 +87,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const miniRef = useRef<HTMLCanvasElement | null>(null);
+  /** The columns of HTML panels over the map: floating words keep clear of what they hold. */
+  const panelsRef = useRef<(HTMLDivElement | null)[]>([]);
   const cam = useRef({ x: 0, y: 0, zoom: 1, tx: 0, ty: 0, follow: true });
   const size = useRef({ w: 1280, h: 720, dpr: 1 });
   const shake = useRef({ power: 0, until: 0 });
@@ -434,7 +436,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         const foe = land ? edgeFoe(s, actor, land) : undefined;
         o.nodes.hover = n.id;
         o.point = { at: land ?? n.pos, ok: !!land };
-        label = why ? reasonLine(why) : foe ? T('aimWarpEdge', { name: unitName(foe, lang) }) : T('aimMove', { m: dist(actor.pos, land!).toFixed(1) });
+        label = why ? reasonLine(why) : foe ? T('aimWarpEdge', { name: unitRef(foe, lang) }) : T('aimMove', { m: dist(actor.pos, land!).toFixed(1) });
         if (land) {
           // Into a Northstar's aura: half the movement left goes, and a foe's aura cancels the edge (D17).
           const slowed = actor.turn.move > 0 && !!auraEntered(s, { ...actor, pos: land }, actor.pos);
@@ -595,10 +597,30 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         shake: { x: sh ? (Math.random() - 0.5) * sh : 0, y: sh ? (Math.random() - 0.5) * sh : 0 },
         team: 'party',
         lang: langRef.current,
+        avoid: panelRects(canvas, dpr),
       });
       void w;
       void h;
       drawMinimap(now);
+    };
+    /**
+     * The HTML panels over the canvas, in its device pixels: each column's panels as one block (the
+     * cards and party frames, the turn order, the map and switches, the action bar), so a floating
+     * word is never squeezed into the gap between two of them.
+     */
+    const panelRects = (canvas: HTMLCanvasElement, dpr: number): Rect[] => {
+      const base = canvas.getBoundingClientRect();
+      const out: Rect[] = [];
+      for (const col of panelsRef.current) {
+        let box: { l: number; t: number; r: number; b: number } | null = null;
+        for (const el of Array.from(col?.children ?? [])) {
+          const r = el.getBoundingClientRect();
+          if (r.width <= 0 || r.height <= 0) continue;
+          box = box ? { l: Math.min(box.l, r.left), t: Math.min(box.t, r.top), r: Math.max(box.r, r.right), b: Math.max(box.b, r.bottom) } : { l: r.left, t: r.top, r: r.right, b: r.bottom };
+        }
+        if (box) out.push({ x: (box.l - base.left) * dpr, y: (box.t - base.top) * dpr, w: (box.r - box.l) * dpr, h: (box.b - box.t) * dpr });
+      }
+      return out;
     };
     let lastMini = 0;
     const drawMinimap = (now: number) => {
@@ -1044,7 +1066,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
             ? 'tip_move'
             : actor && s.round >= 1 && !tipSeen('tip_attack')
               ? 'tip_attack'
-              : actor && actor.armed && actor.weapon.held && actor.jutsus.some((j) => JUTSU[j] && needsSeals(actor, JUTSU[j])) && !tipSeen('tip_hands')
+              : actor && s.phase === 'combat' && Object.values(s.units).some((u) => homeTeam(u) === 'enemy' && u.team === 'enemy' && sovereign(u) && u.cond.hidden === undefined) && !tipSeen('tip_foeAura')
+                ? 'tip_foeAura'
+                : actor && actor.armed && actor.weapon.held && actor.jutsus.some((j) => JUTSU[j] && needsSeals(actor, JUTSU[j])) && !tipSeen('tip_hands')
                 ? 'tip_hands'
                 : actor?.character?.clan === 'Mirai' && !tipSeen('tip_mirai')
                   ? 'tip_mirai'
@@ -1079,17 +1103,17 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       const mover = state.units[pending.mover];
       // An opportunity attack is struck with what is in hand (nothing is drawn for it).
       const pv = attackPreview(state, reactor, mover, 'melee');
-      return { title: T('oaTitle'), text: T('oaAsk', { mover: unitName(mover, lang), reactor: unitName(reactor, lang), p: Math.round(pv.chance * 100) }) };
+      return { title: T('oaTitle'), text: T('oaAsk', { mover: unitRef(mover, lang), reactor: unitRef(reactor, lang), p: Math.round(pv.chance * 100) }) };
     }
     if (pending.kind === 'evasion') {
-      const by = pending.hit.source ? unitName(state.units[pending.hit.source], lang) : '';
-      return { title: T('evadeTitle'), text: T('evadeAsk', { name: unitName(reactor, lang), dmg: pending.hit.amount, by }) };
+      const by = pending.hit.source ? unitRef(state.units[pending.hit.source], lang) : '';
+      return { title: T('evadeTitle'), text: T('evadeAsk', { name: unitRef(reactor, lang), dmg: pending.hit.amount, by }) };
     }
-    return { title: T('kawaTitle'), text: T('kawaAsk', { name: unitName(reactor, lang), dmg: pending.hit.amount, c: JUTSU.substitution_kawarimi.cost }) };
+    return { title: T('kawaTitle'), text: T('kawaAsk', { name: unitRef(reactor, lang), dmg: pending.hit.amount, c: JUTSU.substitution_kawarimi.cost }) };
   };
   const prompt = askPlayer ? promptText() : null;
 
-  const helpLine = hoverBtn?.help ?? (mode.k === 'jutsu' && spec ? `${jutsuName(spec.id, lang)}${spec.enhCost ? ` · ${T('enhancedToggle', { n: spec.enhCost })} (E)` : ''}` : null);
+  const helpLine = hoverBtn?.help ?? (mode.k === 'jutsu' && spec ? `${jutsuName(spec.id, lang, mode.k === 'jutsu' && mode.enhanced)}${spec.enhCost ? ` · ${T('enhancedToggle', { n: spec.enhCost })} (E)` : ''}` : null);
   const banners = pb.banners;
   const nowMs = performance.now();
 
@@ -1125,7 +1149,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       {/* The top row: the acting ninja and the party on the left, the turn order in the middle and the
           map with the switches on the right, side by side so they never cover one another. */}
       <div className="absolute top-3 inset-x-3 flex flex-wrap md:flex-nowrap items-start justify-between gap-3 pointer-events-none">
-      <div className="flex flex-col gap-2 shrink-0">
+      <div className="flex flex-col gap-2 shrink-0" ref={(el) => void (panelsRef.current[0] = el)}>
         {cardUnit && cardUnit.kind === 'ninja' && (
           <div className="pointer-events-auto">
             <UnitCard u={cardUnit} hp={cardView?.hp ?? cardUnit.hp} chakra={cardView?.chakra ?? cardUnit.chakra} lang={lang} />
@@ -1147,7 +1171,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 flex flex-col items-center gap-2 pointer-events-auto">
+      <div className="flex-1 min-w-0 flex flex-col items-center gap-2 pointer-events-auto" ref={(el) => void (panelsRef.current[1] = el)}>
         {state.phase === 'stealth' ? (
           <div className="bg-slate-950/80 border border-amber-500/40 rounded-xl px-4 py-2 flex items-center gap-3 shadow-lg">
             <span className="text-amber-200 text-sm font-bold">{T('stealthPhase', { n: state.stealthTurn + 1 })}</span>
@@ -1178,7 +1202,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
         )}
       </div>
 
-      <div className="flex flex-col items-end gap-2 shrink-0 ml-auto pointer-events-auto">
+      <div className="flex flex-col items-end gap-2 shrink-0 ml-auto pointer-events-auto" ref={(el) => void (panelsRef.current[2] = el)}>
         <div className="bg-slate-950/80 border border-slate-600/50 rounded-xl p-1.5 hidden md:block">
           <canvas
             ref={miniRef}
@@ -1251,7 +1275,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, heig
       </div>
 
       {/* Bottom centre: aiming help and the action bar. */}
-      <div className="absolute bottom-3 inset-x-3 flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto">
+      <div className="absolute bottom-3 inset-x-3 flex flex-col items-center gap-2 pointer-events-none [&>*]:pointer-events-auto" ref={(el) => void (panelsRef.current[3] = el)}>
         {error && <div className="px-3 py-1.5 rounded-lg bg-rose-950/90 border border-rose-700/60 text-rose-100 text-xs">{error}</div>}
         {helpLine && actor && <div className="px-3 py-1.5 rounded-lg bg-slate-950/85 border border-slate-600/50 text-slate-100 text-xs max-w-[560px] text-center">{helpLine}</div>}
         {actor && <ActionBar u={actor} move={actor.turn.move} buttons={buttons} lang={lang} onPress={press} onHover={setHoverBtn} />}
@@ -1305,13 +1329,13 @@ const SHORT: Record<string, [string, string]> = {
   trap_setter_tag: ['Trap tag', 'Trampa'],
   mystical_palm: ['Heal palm', 'Palma'],
   substitution_kawarimi: ['Kawarimi', 'Kawarimi'],
-  fireball_goukakyu: ['Fireball', 'Bola fuego'],
-  dragon_fire_stream: ['Dragon fire', 'Llama'],
-  water_dragon_suiryuudan: ['Water dragon', 'Dragón agua'],
-  water_shield_suijinheki: ['Water wall', 'Muro agua'],
-  earth_wall_doryuheki: ['Earth wall', 'Muro tierra'],
-  earth_spear_doryuudan: ['Earth spear', 'Lanza'],
-  wind_blade_daitoppa: ['Wind blade', 'Hoja viento'],
+  fireball_goukakyu: ['Fireball', 'Bola de fuego'],
+  dragon_fire_stream: ['Dragon fire', 'Fuego del dragón'],
+  water_dragon_suiryuudan: ['Water dragon', 'Dragón de agua'],
+  water_shield_suijinheki: ['Water wall', 'Muro de agua'],
+  earth_wall_doryuheki: ['Earth wall', 'Muro de tierra'],
+  earth_spear_doryuudan: ['Earth bullets', 'Balas de tierra'],
+  wind_blade_daitoppa: ['Wind blade', 'Ráfaga cortante'],
   chidori_lightning_blade: ['Chidori', 'Chidori'],
   lightning_hound_raidon: ['Thunder hound', 'Sabueso'],
   leaf_hurricane_senpuu: ['Hurricane', 'Huracán'],

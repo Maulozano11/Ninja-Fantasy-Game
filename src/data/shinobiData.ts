@@ -33,7 +33,7 @@ export const CLANS_DATA: Record<
     name: 'Mirai',
     japaneseName: 'ミライ一族',
     description: 'Masters of time and flame: control of position, inevitability and bending the dice.',
-    lineageTraits: '+2 DEX, +1 INT. Eye of Tomorrow: sees the next move of every enemy within 18 m in sight; the ground shows where it will move and whom it will attack. Premonitory Evasion (reaction, 2 chakra, once a round): against a single-target attack the Mirai saw coming, it steps 1.5 m aside and the attack misses, provoking no opportunity attack. Katon: Pursuing Flame (action, 3 chakra, 12 m): 2d6 fire; the target makes its DEX save with disadvantage and takes half on a success.',
+    lineageTraits: 'Eye of Tomorrow: sees the next move of every enemy within 18 m in sight; the ground shows where it will move and whom it will attack. Premonitory Evasion (reaction, 2 chakra, once a round): against a single-target attack the Mirai saw coming, it steps 1.5 m aside and the attack misses, provoking no opportunity attack. Katon: Pursuing Flame (action, 3 chakra, 12 m): 2d6 fire; the target makes its DEX save with disadvantage and takes half on a success.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
       { stat: 'int', bonus: 1 },
@@ -52,7 +52,7 @@ export const CLANS_DATA: Record<
     name: 'Kōton',
     japaneseName: 'コートン一族',
     description: 'Alchemists of matter: reshaping the map, adaptable weapons and denying ground.',
-    lineageTraits: '+2 CON, +1 INT. Modular Architecture: raises metal structures within 6 m, at most two standing at once (a third makes the oldest crumble), each with 20 HP. Bonus action, 2 chakra: a 1.5 m metal block that gives half cover. Action, 4 chakra: a 4.5 m metal wall that gives full cover and blocks movement and sight.',
+    lineageTraits: 'Modular Architecture: raises metal structures within 6 m, at most two standing at once (a third makes the oldest crumble), each with 20 HP. Bonus action, 2 chakra: a 1.5 m metal block that gives half cover. Action, 4 chakra: a 4.5 m metal wall that gives full cover and blocks movement and sight.',
     statBonuses: [
       { stat: 'con', bonus: 2 },
       { stat: 'int', bonus: 1 },
@@ -65,7 +65,7 @@ export const CLANS_DATA: Record<
     name: 'Ryusei',
     japaneseName: 'リュウセイ一族',
     description: 'Assassins of space: geometric hypermobility, piercing damage and reshaping the board through Nodes.',
-    lineageTraits: '+2 DEX, +1 WIS. Weapon Nodes: every kunai throw, and every melee attack that misses, leaves a Node where the weapon lands (three at most; the oldest goes). Warp Strike (bonus action, 2 chakra, 18 m): teleports to a Node in sight, even with walls in between; landing next to an enemy, the next attack this turn comes from behind (advantage, and it can\'t be blocked). Spatial Swap (action, 3 chakra): swaps places with anyone standing on a Node; an enemy resists with a STR save.',
+    lineageTraits: 'Weapon Nodes: every kunai throw, and every melee attack that misses, leaves a Node where the weapon lands (three at most; the oldest goes). Warp Strike (bonus action, 2 chakra, 18 m): teleports to a Node in sight, even with walls in between; landing next to an enemy, the next attack this turn comes from behind (advantage, and it can\'t be blocked). Spatial Swap (action, 3 chakra): swaps places with anyone standing on a Node; an enemy resists with a STR save.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
       { stat: 'wis', bonus: 1 },
@@ -78,7 +78,7 @@ export const CLANS_DATA: Record<
     name: 'Northstar',
     japaneseName: 'ノーススター一族',
     description: "The Sovereign's eyes: breaking the enemy's action economy, control of summons and psychological disruption.",
-    lineageTraits: '+2 CHA, +1 WIS. Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and enemies who warp or dash into it lose half of their remaining movement (allies are spared). Command (action, 4 chakra, 9 m): a Minion that fails a WIS save fights on the Northstar\'s side for 1 round (Captains too from level 5; from level 9, two targets for 2 rounds); Mirai are immune. Natural Submission (action, 5 chakra): a beast or enemy summon that fails a WIS save joins your side for the rest of the battle; not bosses.',
+    lineageTraits: 'Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and enemies who warp or dash into it lose half of their remaining movement (allies are spared). Command (action, 4 chakra, 9 m): a Minion that fails a WIS save fights on the Northstar\'s side for 1 round (Captains too from level 5; from level 9, two targets for 2 rounds); Mirai are immune. Natural Submission (action, 5 chakra): a beast or enemy summon that fails a WIS save joins your side for the rest of the battle; not bosses.',
     statBonuses: [
       { stat: 'cha', bonus: 2 },
       { stat: 'wis', bonus: 1 },
@@ -291,8 +291,10 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   // Fire
   {
     id: 'fireball_goukakyu',
-    name: 'Fire Release: Great Fireball',
-    nameEs: 'Estilo Fuego: Gran Bola de Fuego',
+    name: 'Fireball',
+    nameEs: 'Bola de fuego',
+    nameEnh: 'Great Fireball',
+    nameEnhEs: 'Gran bola de fuego',
     japaneseName: '火遁・豪火球の術 (Goukakyu no Jutsu)',
     rank: 'C',
     category: 'Elemental',
@@ -313,8 +315,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'dragon_fire_stream',
-    name: 'Fire Release: Dragon Fire',
-    nameEs: 'Estilo Fuego: Fuego del Dragón',
+    name: 'Dragon Fire',
+    nameEs: 'Fuego del dragón',
     japaneseName: '火遁・龍火の術 (Ryuuka no Jutsu)',
     rank: 'B',
     category: 'Elemental',
@@ -335,8 +337,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   // Water
   {
     id: 'water_dragon_suiryuudan',
-    name: 'Water Release: Water Dragon Bullet',
-    nameEs: 'Estilo Agua: Proyectil del Dragón de Agua',
+    name: 'Water Dragon Bullet',
+    nameEs: 'Proyectil del dragón de agua',
     japaneseName: '水遁・水龍弾の術 (Suiryuudan)',
     rank: 'B',
     category: 'Elemental',
@@ -355,8 +357,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'water_shield_suijinheki',
-    name: 'Water Release: Water Formation Wall',
-    nameEs: 'Estilo Agua: Muro de Agua',
+    name: 'Water Wall',
+    nameEs: 'Muro de agua',
     japaneseName: '水遁・水陣壁 (Suijinheki)',
     rank: 'C',
     category: 'Elemental',
@@ -373,8 +375,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   // Earth
   {
     id: 'earth_wall_doryuheki',
-    name: 'Earth Release: Mud Wall',
-    nameEs: 'Estilo Tierra: Muro de Lodo',
+    name: 'Earth Wall',
+    nameEs: 'Muro de tierra',
     japaneseName: '土遁・土流壁 (Doryuheki)',
     rank: 'B',
     category: 'Elemental',
@@ -390,8 +392,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'earth_spear_doryuudan',
-    name: 'Earth Release: Stone Dragon Spate',
-    nameEs: 'Estilo Tierra: Torrente del Dragón de Piedra',
+    name: 'Earth Bullets',
+    nameEs: 'Balas de tierra',
     japaneseName: '土遁・土龍弾 (Doryuudan)',
     rank: 'B',
     category: 'Elemental',
@@ -410,8 +412,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   // Wind
   {
     id: 'wind_blade_daitoppa',
-    name: 'Wind Release: Great Breakthrough Blade',
-    nameEs: 'Estilo Viento: Gran Ráfaga Cortante',
+    name: 'Great Breakthrough Blade',
+    nameEs: 'Gran ráfaga cortante',
     japaneseName: '風遁・大突破 / 烈風掌 (Fuuton Blade)',
     rank: 'C',
     category: 'Elemental',
@@ -432,8 +434,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   // Lightning
   {
     id: 'chidori_lightning_blade',
-    name: 'Lightning Release: Chidori (One Thousand Birds)',
-    nameEs: 'Estilo Rayo: Chidori (Mil Pájaros)',
+    name: 'Chidori',
+    nameEs: 'Chidori',
     japaneseName: '雷遁・千鳥 (Chidori)',
     rank: 'A',
     category: 'Elemental',
@@ -453,8 +455,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'lightning_hound_raidon',
-    name: 'Lightning Release: Lightning Hound',
-    nameEs: 'Estilo Rayo: Sabueso del Rayo',
+    name: 'Lightning Hound',
+    nameEs: 'Sabueso del rayo',
     japaneseName: '雷遁・雷獣追牙 (Raijuu Tsuiga)',
     rank: 'B',
     category: 'Elemental',
@@ -627,8 +629,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   // --- SLOT 5: ULTIMATE SIGNATURE JUTSUS (S-RANK) ---
   {
     id: 'kirin_thunder',
-    name: 'Ultimate S-Rank: Kirin (Thunder Divine Beast)',
-    nameEs: 'Definitiva de rango S: Kirin (Bestia Divina del Trueno)',
+    name: 'Kirin',
+    nameEs: 'Kirin',
     japaneseName: '雷遁・麒麟 (Kirin)',
     rank: 'S',
     category: 'Ultimate',
@@ -649,8 +651,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'rasenshuriken_wind',
-    name: 'Ultimate S-Rank: Wind Release Rasenshuriken',
-    nameEs: 'Definitiva de rango S: Rasenshuriken de Viento',
+    name: 'Wind Rasenshuriken',
+    nameEs: 'Rasenshuriken de viento',
     japaneseName: '風遁・螺旋手裏剣 (Rasenshuriken)',
     rank: 'S',
     category: 'Ultimate',
@@ -671,8 +673,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'great_fire_annihilation',
-    name: 'Ultimate S-Rank: Great Fire Annihilation',
-    nameEs: 'Definitiva de rango S: Gran Aniquilación de Fuego',
+    name: 'Great Fire Annihilation',
+    nameEs: 'Gran aniquilación de fuego',
     japaneseName: '火遁・豪火滅却 (Gouka Mekkyaku)',
     rank: 'S',
     category: 'Ultimate',
@@ -692,8 +694,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'wood_golem_titan',
-    name: 'Ultimate S-Rank: Wood Golem Awakening',
-    nameEs: 'Definitiva de rango S: Despertar del Gólem de Madera',
+    name: 'Wood Golem Awakening',
+    nameEs: 'Despertar del gólem de madera',
     japaneseName: '木遁・木人の術 (Mokujin no Jutsu)',
     rank: 'S',
     category: 'Ultimate',
@@ -714,8 +716,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'yasaka_magatama',
-    name: 'Ultimate S-Rank: Yasaka no Magatama',
-    nameEs: 'Definitiva de rango S: Yasaka no Magatama',
+    name: 'Yasaka no Magatama',
+    nameEs: 'Yasaka no Magatama',
     japaneseName: '八坂ノ勾玉 (Yasaka Magatama)',
     rank: 'S',
     category: 'Ultimate',
@@ -734,8 +736,8 @@ export const JUTSUS_DATA: JutsuDefinition[] = [
   },
   {
     id: 'night_guy_dragon',
-    name: 'Ultimate S-Rank: Night Guy (Sekizo Dragon)',
-    nameEs: 'Definitiva de rango S: Night Guy (Dragón Sekizo)',
+    name: 'Night Guy (Sekizo Dragon)',
+    nameEs: 'Night Guy (Dragón Sekizo)',
     japaneseName: '夜ガイ・積木龍 (Yagai)',
     rank: 'S',
     category: 'Ultimate',

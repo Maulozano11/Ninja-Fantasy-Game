@@ -5,15 +5,15 @@ import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
 import { HANA, KENJI, MISSIONS } from '../data/missions';
 import { addEffect } from '../rules/effects';
-import type { ShinobiCharacter } from '../types/shinobi';
-import type { Action, BattleEvent, BattleState, Pt, Unit, Wall, WeaponNode } from './types';
+import type { ClanType, ShinobiCharacter } from '../types/shinobi';
+import type { Action, BattleEvent, BattleState, Pt, RollInfo, Unit, Wall, WeaponNode } from './types';
 import { applyAction, createBattle } from './engine';
 import type { BattleSetup } from './engine';
 import { cellBlocked, cellCenter, cellOf, coverBetween, dist, lineOfSight, waterAtPt } from './map';
 import { canStop, reachable } from './nav';
 import { attackPreview, damage, saveMod } from './combat';
 import { beginTurn, current, endTurn, startCombat } from './turns';
-import { foreseen, planIntent } from './intent';
+import { foreseen, headOptions, planIntent } from './intent';
 import { aiAction, runAi } from './ai';
 import { battleResult } from './result';
 import { HYDRA_ID } from './hydra';
@@ -23,6 +23,9 @@ import { electrify } from './hazards';
 import { ENCOUNTERS, encounterSetup } from './encounters';
 import type { EncounterId } from './encounters';
 import { auraEntered, commandRefused } from './clans';
+import { enemyNameOf } from './units';
+import { logLine, unitName, unitRef } from '../components/battle/battleLog';
+import { T, spanishArticles } from '../components/battle/battleText';
 
 const hero = (over: Partial<ShinobiCharacter> = {}): ShinobiCharacter => ({ ...DEFAULT_CHARACTER, effects: [], ...over });
 
@@ -177,6 +180,48 @@ describe('attacks and reactions', () => {
     if (!after.state.units.rogue_0.down) assert.ok(dist(after.state.units.rogue_0.pos, { x: 15, z: 10 }) < 1);
   });
 
+  // Found by fuzzing: a walk paused for the prompt while the mover stood on a fallen ally's cell.
+  function crossing(controller: 'player' | 'ai' = 'player') {
+    // Kōton rogues: no Premonitory Evasion to step out of the blow.
+    const { state } = createBattle(setup({ enemies: [{ kind: 'rogue', clan: 'Koton', pos: { x: 14, z: 10 } }, { kind: 'rogue', clan: 'Koton', pos: { x: 16, z: 13 } }] }));
+    const s = turnOf(state, 'rogue_0');
+    s.units.a.pos = { x: 10.25, z: 10.25 };
+    s.units.a.controller = controller;
+    s.units.rogue_0.pos = { x: 11.25, z: 10.25 };
+    // Its fallen friend lies on the next cell, still in Aki's reach; the one after is out of it.
+    Object.assign(s.units.rogue_1, { pos: { x: 11.75, z: 10.25 }, hp: 0, down: 'downed' });
+    return s;
+  }
+  const shared = (s: BattleState): boolean => {
+    const cells = Object.values(s.units).filter((u) => u.down !== 'dead' && u.down !== 'fled').map((u) => JSON.stringify(cellOf(u.pos)));
+    return new Set(cells).size !== cells.length;
+  };
+
+  it('a walk across someone else\'s cell is never paused on it: the prompt comes before the hop', () => {
+    const s = crossing();
+    const out = ok(applyAction(s, { type: 'move', unit: 'rogue_0', to: cellOf({ x: 13.25, z: 10.25 }) }));
+    assert.equal(out.state.pending?.kind, 'opportunity');
+    assert.deepEqual(out.state.units.rogue_0.pos, { x: 11.25, z: 10.25 });
+    assert.equal(shared(out.state), false);
+    const on = ok(applyAction(out.state, { type: 'react', unit: 'a', take: false }));
+    assert.deepEqual(on.state.units.rogue_0.pos, { x: 13.25, z: 10.25 });
+    assert.equal(shared(on.state), false);
+  });
+
+  it('a mover dropped by an opportunity attack falls on its own cell, not on the one it was crossing', () => {
+    for (let seed = 1; seed < 80; seed++) {
+      const s = crossing('ai');
+      s.seed = seed;
+      s.units.rogue_0.hp = 1;
+      const out = ok(applyAction(s, { type: 'move', unit: 'rogue_0', to: cellOf({ x: 13.25, z: 10.25 }) }));
+      if (!out.state.units.rogue_0.down) continue;
+      assert.deepEqual(out.state.units.rogue_0.pos, { x: 11.25, z: 10.25 });
+      assert.equal(shared(out.state), false);
+      return;
+    }
+    assert.fail('no seed drops the mover');
+  });
+
   it('Kawarimi: a player ninja is asked, and the blow strikes a log', () => {
     let hit: ReturnType<typeof applyAction> | undefined;
     for (let seed = 1; seed < 60 && !hit; seed++) {
@@ -316,6 +361,29 @@ describe('the hydra', () => {
     const t = turnOf(s, head(s, 3).id);
     const a = aiAction(t);
     assert.ok(a && (a.type === 'attack' || a.type === 'jutsu'));
+  });
+
+  it('a ninja right under a head leaves its roar no direction: the head picks another move, never a refused one', () => {
+    const { state } = createBattle(setup({
+      party: [
+        { character: hero({ id: 'a' }), pos: { x: 10, z: 14 } },
+        { character: hero({ id: 'b' }), pos: { x: 9, z: 14 } },
+        { character: hero({ id: 'c' }), pos: { x: 9, z: 15 } },
+      ],
+      enemies: [{ kind: 'hydra', pos: { x: 28.4, z: 15.2 } }],
+    }));
+    for (let i = 0; i < 7; i++) {
+      const s = turnOf(state, head(state, i).id);
+      const h = s.units[head(s, i).id];
+      // One right under the head, two in front of it, and the roar it planned aimed at the first.
+      s.units.a.pos = { ...h.pos };
+      s.units.b.pos = { x: h.pos.x - 2, z: h.pos.z };
+      s.units.c.pos = { x: h.pos.x - 2.5, z: h.pos.z + 1 };
+      h.intent = { kind: 'roar', what: 'hydra_roar', target: 'a', at: { ...h.pos } };
+      assert.equal(applyAction(s, { type: 'jutsu', unit: h.id, jutsu: 'hydra_roar', at: { ...h.pos } }).reason, 'needDirection');
+      ok(applyAction(s, aiAction(s)!));
+      assert.ok(headOptions(s, h).every((o) => o.intent.kind !== 'roar' || o.intent.target !== 'a'));
+    }
   });
 });
 
@@ -1861,6 +1929,45 @@ describe('enemy clans are mixed (docs/CLANS_DESIGN.md, D6)', () => {
       }
     }
   });
+
+  it('AI-only battles (D21): the enemies use their clans\' moves on the party, with every action accepted and no stall', () => {
+    const noUlt = (c: ShinobiCharacter): ShinobiCharacter => ({ ...c, effects: [], selectedJutsus: { ...c.selectedJutsus, slot5Ultimate: '' } });
+    const four = [
+      { character: noUlt(hero({ id: 'a', name: 'Aki' })), controller: 'ai' as const },
+      { character: noUlt(HANA), controller: 'ai' as const, aiOrder: 'support' as const },
+      { character: noUlt(KENJI), controller: 'ai' as const },
+      { character: noUlt(hero({ id: 'n', name: 'Shiori', clan: 'Northstar' })), controller: 'ai' as const },
+    ];
+    const runs: [EncounterId, number, typeof four][] = [];
+    for (const id of ['river_patrol', 'cedar_rogues', 'night_raid'] as EncounterId[]) for (const seed of [1, 2, 3, 4]) runs.push([id, seed, four]);
+    // The mission's own party of three gives the enemies longer fights.
+    for (const seed of [1, 2, 3, 4]) runs.push(['night_raid', seed, four.slice(0, 3)]);
+    const seen = new Set<string>();
+    for (const [id, seed, party] of runs) {
+      let s = battleOf(id, seed, party);
+      let last = '';
+      let inTurn = 0;
+      for (let step = 0; s.phase !== 'ended'; step++) {
+        assert.ok(step < 4000, `${id} seed ${seed}: no end`);
+        const a = aiAction(s)!;
+        const u = current(s)!;
+        inTurn = u.id === last ? inTurn + 1 : 0;
+        last = u.id;
+        assert.ok(inTurn <= 12, `${id} seed ${seed}: ${u.id} stalls`);
+        const out = applyAction(s, a);
+        assert.ok(out.ok, `${id} seed ${seed}: ${u.id} sent ${JSON.stringify(a)}, refused: ${out.reason}`);
+        const enemy = (uid: string) => s.units[uid]?.team === 'enemy';
+        for (const e of out.events) {
+          if (e.t === 'jutsu' && enemy(e.unit)) seen.add(e.jutsu);
+          if (e.t === 'evade' && enemy(e.unit)) seen.add('evasion');
+          if (e.t === 'node' && e.on && enemy(e.node.owner)) seen.add('node');
+          if (e.t === 'attack' && enemy(e.unit) && e.reasons?.includes('behind')) seen.add('from behind');
+        }
+        s = out.state;
+      }
+    }
+    for (const k of ['katon_pursuing_flame', 'evasion', 'node', 'ryusei_warp', 'from behind', 'koton_block', 'koton_wall']) assert.ok(seen.has(k), `${k}: ${[...seen].join(', ')}`);
+  });
 });
 
 describe('stealth phase', () => {
@@ -2094,8 +2201,104 @@ describe('clan playtest fixes: what the screen shows matches the engine', () => 
     assert.equal(state.units.hunter_0.nameEs?.startsWith('Cazador'), true);
     // A proper name stays as it is.
     assert.deepEqual(names('jonin_0'), ['Kagero', undefined]);
-    // The jutsu they cast have Spanish names too.
-    assert.equal(JUTSU.fireball_goukakyu.nameEs, 'Estilo Fuego: Gran Bola de Fuego');
+    // The jutsu they cast have Spanish names too: the owner's own short names (D24, 2026-10-20;
+    // this pinned 'Estilo Fuego: Gran Bola de Fuego' before the owner named it).
+    assert.equal(JUTSU.fireball_goukakyu.nameEs, 'Bola de fuego');
     assert.ok(Object.values(JUTSU).every((j) => j.nameEs), 'every jutsu has a Spanish name');
+  });
+
+  it('the base jutsu take the owner’s short Spanish names, and the enhanced Fireball its own (D24)', () => {
+    const es = (id: string) => JUTSU[id].nameEs;
+    assert.equal(es('fireball_goukakyu'), 'Bola de fuego');
+    assert.equal(JUTSU.fireball_goukakyu.nameEnhEs, 'Gran bola de fuego');
+    assert.equal(JUTSU.fireball_goukakyu.nameEnh, 'Great Fireball');
+    assert.equal(es('water_shield_suijinheki'), 'Muro de agua');
+    assert.equal(es('earth_wall_doryuheki'), 'Muro de tierra');
+    assert.equal(es('earth_spear_doryuudan'), 'Balas de tierra');
+    assert.equal(es('dragon_fire_stream'), 'Fuego del dragón');
+    assert.equal(es('wind_blade_daitoppa'), 'Gran ráfaga cortante');
+    assert.equal(es('chidori_lightning_blade'), 'Chidori');
+    assert.equal(es('kirin_thunder'), 'Kirin');
+    // Warp Strike and Command stay in English in both languages.
+    assert.equal(es('ryusei_warp'), 'Warp Strike');
+    assert.equal(es('northstar_command'), 'Command');
+    // No "Estilo X:" prefix is left on any jutsu.
+    assert.ok(Object.values(JUTSU).every((j) => !/^Estilo /.test(j.nameEs ?? '')));
+    // Only the enhanced Fireball has a name of its own; the enhanced spec keeps it.
+    assert.equal(enhanced(JUTSU.fireball_goukakyu).nameEnhEs, 'Gran bola de fuego');
+  });
+});
+
+describe('battle text in Spanish', () => {
+  // The screens' text layer (src/components/battle): plain functions, no DOM.
+  const roll = (success: boolean): RollInfo => ({ kind: 'attack', d20: 15, rolls: [15], mod: 0, total: 15, dc: 12, success, chance: 0.6 });
+  const raid = () =>
+    createBattle(
+      setup({
+        party: [{ character: hero({ id: 'a', name: 'Akira' }), pos: { x: 8, z: 10 } }],
+        enemies: [
+          { kind: 'raider', pos: { x: 14, z: 10 } },
+          { kind: 'rogue', pos: { x: 14, z: 13 } },
+          { kind: 'rogue', pos: { x: 16, z: 13 } },
+          { kind: 'raider', clan: 'Northstar', pos: { x: 16, z: 10 } },
+          { kind: 'jonin', pos: { x: 18, z: 12 } },
+        ],
+      }),
+    ).state;
+
+  it('a generic enemy name takes its article; the party’s proper names never do', () => {
+    const s = raid();
+    const line = (ev: BattleEvent) => logLine(ev, s, 'es')?.text;
+    assert.equal(line({ t: 'turn', unit: 'raider_0', round: 1 }), 'Turno del Asaltante');
+    assert.equal(line({ t: 'turn', unit: 'rogue_0', round: 1 }), 'Turno del Renegado 1');
+    assert.equal(line({ t: 'turn', unit: 'raider_1', round: 1 }), 'Turno de la Sombra');
+    assert.equal(line({ t: 'turn', unit: 'jonin_0', round: 1 }), 'Turno de Kagero');
+    assert.equal(line({ t: 'turn', unit: 'a', round: 1 }), 'Turno de Akira');
+    assert.equal(line({ t: 'attack', unit: 'raider_0', target: 'a', what: 'weapon', roll: roll(true), ranged: false }), 'El Asaltante golpea a Akira (15→15 contra CA 12)');
+    assert.equal(line({ t: 'attack', unit: 'a', target: 'raider_0', what: 'weapon', roll: roll(true), ranged: false }), 'Akira golpea al Asaltante (15→15 contra CA 12)');
+    assert.equal(line({ t: 'attack', unit: 'raider_1', target: 'rogue_1', what: 'weapon', roll: roll(false), ranged: false }), 'La Sombra falla contra el Renegado 2 (15→15 contra CA 12)');
+    assert.equal(line({ t: 'jutsu', unit: 'rogue_0', jutsu: 'fireball_goukakyu', at: { x: 8, z: 10 }, shape: null, enhanced: false }), 'El Renegado 1 lanza Bola de fuego');
+    // An enhanced cast with a name of its own says it; another says "potenciado".
+    assert.equal(line({ t: 'jutsu', unit: 'rogue_0', jutsu: 'fireball_goukakyu', at: { x: 8, z: 10 }, shape: null, enhanced: true }), 'El Renegado 1 lanza Gran bola de fuego');
+    assert.equal(line({ t: 'jutsu', unit: 'jonin_0', jutsu: 'chidori_lightning_blade', at: { x: 8, z: 10 }, shape: null, enhanced: true }), '¡Kagero lanza Chidori potenciado!');
+    assert.equal(line({ t: 'jutsu', unit: 'raider_0', jutsu: 'leaf_hurricane_senpuu', at: { x: 8, z: 10 }, shape: null, enhanced: true })?.startsWith('¡El Asaltante lanza'), true);
+    // The prompts read the same way.
+    assert.equal(T('evadeAsk', { name: unitRef(s.units.a, 'es'), dmg: 5, by: unitRef(s.units.raider_0, 'es') }, 'es').startsWith('Akira vio venir el golpe del Asaltante'), true);
+    assert.equal(T('oaAsk', { mover: unitRef(s.units.raider_1, 'es'), reactor: unitRef(s.units.a, 'es'), p: 60 }, 'es').startsWith('La Sombra sale del alcance de Akira'), true);
+    // Cards and labels keep the bare name, and English is untouched.
+    assert.equal(unitName(s.units.raider_0, 'es'), 'Asaltante');
+    assert.equal(line({ t: 'turn', unit: 'raider_0', round: 1 }), 'Turno del Asaltante');
+    assert.equal(logLine({ t: 'turn', unit: 'raider_0', round: 1 }, s, 'en')?.text, 'Raider’s turn');
+  });
+
+  it('a participle agrees with the one it is about: "la Sombra" and Hana are caught unaware, Akira too', () => {
+    const s = createBattle(
+      setup({
+        party: [
+          { character: hero({ id: 'a', name: 'Akira' }), pos: { x: 8, z: 10 } },
+          { character: { ...HANA, effects: [] }, pos: { x: 8, z: 12 } },
+        ],
+        enemies: [{ kind: 'raider', clan: 'Northstar', pos: { x: 16, z: 10 } }],
+      }),
+    ).state;
+    const note = (name: string) => logLine({ t: 'note', key: 'surprisedSkip', params: { name } }, s, 'es')?.text;
+    assert.equal(note('Shade'), 'La Sombra está desprevenida y pierde el turno');
+    assert.equal(note('Hana'), 'Hana está desprevenida y pierde el turno');
+    assert.equal(note('Akira'), 'Akira está desprevenido y pierde el turno');
+    assert.equal(logLine({ t: 'pushed', unit: 'raider_0', from: { x: 16, z: 10 }, to: { x: 17.5, z: 10 }, fall: 0 }, s, 'es')?.text, 'La Sombra es empujada');
+    assert.equal(logLine({ t: 'note', key: 'surprisedSkip', params: { name: 'Shade' } }, s, 'en')?.text, 'Shade is caught unaware and loses the turn');
+  });
+
+  it('every enemy template and clan variant knows its article; proper names have none', () => {
+    const clans: ClanType[] = ['Mirai', 'Koton', 'Ryusei', 'Northstar'];
+    for (const kind of ['rogue', 'hunter', 'raider'] as const) for (const c of clans) assert.ok(enemyNameOf(kind, c).articleEs, `${kind}/${c}`);
+    assert.equal(enemyNameOf('jonin').articleEs, undefined);
+    const h = createBattle(setup({ enemies: ENCOUNTERS.hydra.enemies })).state;
+    assert.equal(logLine({ t: 'turn', unit: HYDRA_ID, round: 1 }, h, 'es')?.text, 'Turno de la Hidra');
+    assert.equal(logLine({ t: 'turn', unit: `${HYDRA_ID}_head_0`, round: 1 }, h, 'es')?.text, 'Turno de la Cabeza de hidra 1');
+    // Only an article we put there changes: "de él" (the pronoun) and words that merely end in "el" stay.
+    assert.equal(spanishArticles('Turno de el Asaltante'), 'Turno del Asaltante');
+    assert.equal(spanishArticles('el Asaltante golpea a el Renegado 1. el Cazador mira'), 'El Asaltante golpea al Renegado 1. El Cazador mira');
+    assert.equal(spanishArticles('Habla de él con el miel de el panel'), 'Habla de él con el miel del panel');
   });
 });

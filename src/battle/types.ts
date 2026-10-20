@@ -127,6 +127,11 @@ export interface Unit {
   name: string;
   /** The Spanish name, when it isn't the same (an enemy's "Renegado 1"). */
   nameEs?: string;
+  /**
+   * The article a generic name takes in a Spanish sentence ("el Asaltante", "la Sombra"). Proper
+   * names (the party's ninjas, Kagero) have none.
+   */
+  articleEs?: 'el' | 'la';
   team: Team;
   kind: UnitKind;
   /** Mission characters keep their sheet here (party members and enemy ninjas). */

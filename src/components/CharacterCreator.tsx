@@ -600,6 +600,15 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                             <span className="text-xs font-mono text-slate-400">{clan.japaneseName}</span>
                           </div>
                           <p className="text-xs text-slate-300 mb-2 leading-relaxed">{clan.description}</p>
+                          {/* The clan's ability bonus: added to the base scores for every number (saves, AC, attack, DC, HP, chakra, skills). */}
+                          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                            {clan.statBonuses.map((b) => (
+                              <span key={b.stat} className="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/40">
+                                +{b.bonus} {b.stat.toUpperCase()}
+                              </span>
+                            ))}
+                            <span className="text-[10px] text-slate-400">added to your scores · counts in every number</span>
+                          </div>
                           <div className="text-[11px] text-cyan-400 font-mono bg-slate-900/80 p-2 rounded-md border border-slate-800">
                             {clan.lineageTraits}
                           </div>

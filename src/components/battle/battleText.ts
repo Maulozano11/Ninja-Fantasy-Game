@@ -1,9 +1,10 @@
 // Spanish and English for the battle screen: the HUD, actions, the engine's reasons, the log and
 // the tips.
 
-import { strings } from '../../i18n';
+import { getLang, strings } from '../../i18n';
+import type { Lang, Params } from '../../i18n';
 
-export const T = strings({
+const TABLE = strings({
   // HUD
   round: { en: 'Round', es: 'Ronda' },
   yourTurn: { en: 'Your turn', es: 'Tu turno' },
@@ -318,17 +319,17 @@ export const T = strings({
   l_effectOff: { en: '{t}: {e} ends', es: '{t}: termina {e}' },
   l_weaponOn: { en: '{t} draws the weapon', es: '{t} desenvaina' },
   l_weaponOff: { en: '{t} stows the weapon', es: '{t} guarda el arma' },
-  l_pushed: { en: '{t} is shoved', es: '{t} es empujado' },
+  l_pushed: { en: '{t} is shoved', es: '{t} es empujad{o}' },
   l_check: { en: '{t} {what}: {roll}', es: '{t} {what}: {roll}' },
   l_end_victory: { en: 'Victory!', es: '¡Victoria!' },
   l_end_defeat: { en: 'The party has fallen…', es: 'El grupo ha caído…' },
   l_end_fled: { en: 'The party retreats.', es: 'El grupo se retira.' },
   l_prop_burnt: { en: 'It burns!', es: '¡Arde!' },
   l_prop_exploded: { en: 'A barrel explodes!', es: '¡Explota un barril!' },
-  n_surprisedSkip: { en: '{name} is caught unaware and loses the turn', es: '{name} está desprevenido y pierde el turno' },
+  n_surprisedSkip: { en: '{name} is caught unaware and loses the turn', es: '{name} está desprevenid{o} y pierde el turno' },
   n_confusedLoses: { en: '{name} is lost in the illusion', es: '{name} se pierde en la ilusión' },
   n_tensionUp: { en: '{name} is shaken (+1 Tension)', es: '{name} se estremece (+1 Tensión)' },
-  n_hideFailed: { en: '{name} is spotted', es: '{name} es descubierto' },
+  n_hideFailed: { en: '{name} is spotted', es: '{name} es descubiert{o}' },
   n_shoveBlocked: { en: '{name} doesn’t budge', es: '{name} no se mueve' },
   n_warpEdge: { en: '{name} is behind {foe}: the next attack comes from behind', es: '{name} queda a la espalda de {foe}: su próximo ataque, por la espalda' },
   n_swapped: { en: '{name} and {other} trade places', es: '{name} y {other} intercambian lugares' },
@@ -359,6 +360,10 @@ export const T = strings({
     en: 'Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and an enemy who warps or dashes in loses half its movement (your allies are spared). Command turns a Minion to your side for a round. Natural Submission makes an enemy beast or summon join you for the battle.',
     es: 'Aura de Soberanía (4.5 m): los enemigos dentro atacan con desventaja, y el enemigo que entra con un warp o corriendo pierde la mitad de su movimiento (tus aliados no). Command pone a un esbirro de tu lado durante una ronda. Sumisión Natural hace que una bestia o invocación enemiga se una a ti durante la batalla.',
   },
+  tip_foeAura: {
+    en: 'The violet ring is an enemy Northstar’s Aura of Sovereignty (4.5 m): your attacks from inside it have disadvantage, and warping or dashing into it costs you half the movement you have left. Its allies are spared. Strike from outside, or with a jutsu the target must save against.',
+    es: 'El anillo violeta es el Aura de Soberanía de un Northstar enemigo (4.5 m): tus ataques desde dentro tienen desventaja, y entrar con un warp o corriendo te cuesta la mitad del movimiento que te queda. Sus aliados no la sufren. Ataca desde fuera, o con un jutsu de salvación.',
+  },
   tipGotIt: { en: 'Got it', es: 'Entendido' },
   tipsOff: { en: 'No more tips', es: 'No más consejos' },
 
@@ -366,7 +371,28 @@ export const T = strings({
   keysHelp: { en: '1–9 actions · Space end turn · Esc cancel · Z zoom · arrows/WASD camera', es: '1–9 acciones · Espacio fin de turno · Esc cancelar · Z zoom · flechas/WASD cámara' },
 });
 
-export type TKey = Parameters<typeof T>[0];
+/**
+ * Spanish grammar for a generic name that carries its article ("el Asaltante", "la Sombra", from
+ * `unitRef`): "de el" and "a el" contract to "del" and "al", and an article that opens a sentence
+ * takes a capital ("El Asaltante golpea a Akira", "Turno del Asaltante", "¡La Sombra lanza…!").
+ * Proper names carry no article, so nothing changes for them.
+ */
+export function spanishArticles(text: string): string {
+  return text
+    .replace(/(^|[\s¡¿(])(de|De|a|A) el /g, '$1$2l ')
+    .replace(/(^|[¡¿]|[.!?…]\s+)(el|la) /g, (_m, pre: string, art: string) => `${pre}${art[0].toUpperCase()}${art.slice(1)} `);
+}
+
+/** The battle's strings in the language, with the Spanish articles of generic names put right. */
+export const T = Object.assign(
+  (key: Parameters<typeof TABLE>[0], p?: Params, lang: Lang = getLang()): string => {
+    const text = TABLE(key, p, lang);
+    return lang === 'es' && p ? spanishArticles(text) : text;
+  },
+  { has: TABLE.has },
+);
+
+export type TKey = Parameters<typeof TABLE>[0];
 
 export const DMG_ES: Record<string, string> = {
   Fire: 'fuego',

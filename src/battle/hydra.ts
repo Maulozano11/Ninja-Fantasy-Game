@@ -64,10 +64,11 @@ function beast(id: string, name: string, pos: Pt, power: number, o: Partial<Unit
 export function hydraUnits(pos: Pt, difficulty: Difficulty): Unit[] {
   const power = difficulty === 'story' ? 0.75 : 1;
   const hp = (n: number) => Math.round(n * power);
-  const body = beast(HYDRA_ID, 'Hydra', pos, power, { nameEs: 'Hidra', hp: hp(140), maxHp: hp(140), bulk: 2.4, ac: 15 });
+  const body = beast(HYDRA_ID, 'Hydra', pos, power, { nameEs: 'Hidra', articleEs: 'la', hp: hp(140), maxHp: hp(140), bulk: 2.4, ac: 15 });
   const heads = HEAD_OFFSETS.map((o, i) =>
     beast(`${HYDRA_ID}_head_${i}`, `Hydra head ${i + 1}`, { x: pos.x + o.x, z: pos.z + o.z }, power, {
       nameEs: `Cabeza de hidra ${i + 1}`,
+      articleEs: 'la',
       kind: 'hydra_head',
       hp: hp(24),
       maxHp: hp(24),

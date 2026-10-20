@@ -7,13 +7,33 @@ import { JUTSU } from '../../battle/jutsu';
 import { breakable } from '../../battle/structures';
 import { EFFECTS } from '../../rules/effects';
 import { pick } from '../../i18n';
+import { isFemaleBody } from '../../sprite/types';
 import type { Lang } from '../../i18n';
 import { DMG_ES, T } from './battleText';
 import type { TKey } from './battleText';
 
-/** A unit's name in the language ("Renegado 1" on the Spanish screens). */
+/** A unit's name in the language ("Renegado 1" on the Spanish screens), for cards and labels. */
 export const unitName = (u: Unit | undefined, lang: Lang): string => (u ? pick(u.name, u.nameEs, lang) : '');
-const nameOf = (s: BattleState, id: string, lang: Lang): string => (s.units[id] ? unitName(s.units[id], lang) : id);
+/**
+ * A unit's name as a sentence uses it: in Spanish a generic enemy name takes its article ("el
+ * Asaltante", "el Renegado 1", "la Sombra"); the party's proper names (and Kagero) never do. `T`
+ * then contracts "de el"/"a el" and capitalizes an article that opens a sentence.
+ */
+export const unitRef = (u: Unit | undefined, lang: Lang): string => {
+  const name = unitName(u, lang);
+  return lang === 'es' && u?.articleEs ? `${u.articleEs} ${name}` : name;
+};
+const nameOf = (s: BattleState, id: string, lang: Lang): string => (s.units[id] ? unitRef(s.units[id], lang) : id);
+/**
+ * The ending a Spanish participle takes for a unit ("desprevenid{o}"): a generic name agrees with its
+ * noun ("la Sombra" → a), a proper name with the ninja (a woman's body → a).
+ */
+export const genderO = (u: Unit | undefined): 'o' | 'a' => {
+  if (!u) return 'o';
+  if (u.articleEs) return u.articleEs === 'la' ? 'a' : 'o';
+  const body = u.look?.body ?? u.character?.appearance?.body;
+  return body && isFemaleBody(body) ? 'a' : 'o';
+};
 
 /** A note's names (the engine writes the units' own names) in the language. */
 export function localParams(p: Record<string, string | number> | undefined, s: BattleState, lang: Lang): Record<string, string | number> | undefined {
@@ -21,14 +41,17 @@ export function localParams(p: Record<string, string | number> | undefined, s: B
   const out: Record<string, string | number> = {};
   for (const [k, v] of Object.entries(p)) {
     const u = typeof v === 'string' ? Object.values(s.units).find((x) => x.name === v) : undefined;
-    out[k] = u ? unitName(u, lang) : v;
+    out[k] = u ? unitRef(u, lang) : v;
+    // The one the note is about: the ending its participles take in Spanish.
+    if (u && k === 'name') out.o = genderO(u);
   }
   return out;
 }
-/** A jutsu's or clan ability's name in the language. */
-export const jutsuName = (id: string, lang: Lang): string => {
+/** A jutsu's or clan ability's name in the language; enhanced, its own name when it has one ("Gran bola de fuego"). */
+export const jutsuName = (id: string, lang: Lang, enhanced = false): string => {
   const spec = JUTSU[id];
-  return spec ? pick(spec.name, spec.nameEs, lang) : id;
+  if (!spec) return id;
+  return enhanced && spec.nameEnh ? pick(spec.nameEnh, spec.nameEnhEs, lang) : pick(spec.name, spec.nameEs, lang);
 };
 /** What a structure is called ("metal wall"), for the log. */
 export const structureName = (w: Wall | undefined, lang: Lang): string => T(w?.kind === 'metalBlock' ? 'structure_metalBlock' : 'structure_metal', undefined, lang);
@@ -76,7 +99,8 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
     case 'save':
       return { text: t(ev.roll.success ? 'l_saveOk' : 'l_saveFail', { t: nameOf(s, ev.unit, lang), roll: rollText(ev.roll, lang), dc: ev.roll.dc }), tone: 'text-indigo-300' };
     case 'jutsu':
-      return { text: t(ev.enhanced ? 'l_jutsuEnh' : 'l_jutsu', { a: nameOf(s, ev.unit, lang), j: jutsuName(ev.jutsu, lang) }), tone: 'text-orange-300' };
+      // An enhanced cast with a name of its own says it by name ("lanza Gran bola de fuego").
+      return { text: t(ev.enhanced && !JUTSU[ev.jutsu]?.nameEnh ? 'l_jutsuEnh' : 'l_jutsu', { a: nameOf(s, ev.unit, lang), j: jutsuName(ev.jutsu, lang, ev.enhanced) }), tone: 'text-orange-300' };
     case 'down': {
       const k: TKey = ev.state === 'dead' ? 'l_dead' : ev.state === 'ko' ? 'l_ko' : ev.state === 'stable' ? 'l_stable' : ev.state === 'fled' ? 'l_fled' : 'l_down';
       return { text: t(k, { t: nameOf(s, ev.unit, lang) }), tone: 'text-amber-300' };
@@ -141,7 +165,7 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
     case 'weapon':
       return { text: t(ev.armed ? 'l_weaponOn' : 'l_weaponOff', { t: nameOf(s, ev.unit, lang) }), tone: 'text-slate-400' };
     case 'pushed':
-      return { text: t('l_pushed', { t: nameOf(s, ev.unit, lang) }) };
+      return { text: t('l_pushed', { t: nameOf(s, ev.unit, lang), o: genderO(s.units[ev.unit]) }) };
     case 'end':
       return { text: t(`l_end_${ev.outcome}` as TKey), tone: ev.outcome === 'victory' ? 'text-emerald-300 font-bold' : 'text-rose-300 font-bold' };
     case 'prop':
@@ -210,7 +234,7 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
     case 'end':
       return ev.outcome === 'victory' ? t('victory') : ev.outcome === 'fled' ? t('retreat') : t('defeat');
     case 'jutsu':
-      return jutsuName(ev.jutsu, lang);
+      return jutsuName(ev.jutsu, lang, ev.enhanced);
     case 'wall':
       return !ev.on && breakable(ev.wall) ? t(ev.wall.hp > 0 ? 'crumbled' : 'broken') : null;
     case 'note': {

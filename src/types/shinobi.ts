@@ -79,6 +79,9 @@ export interface JutsuDefinition {
   name: string;
   /** The Spanish name shown on the Spanish screens. */
   nameEs?: string;
+  /** What the enhanced cast is called, when it has a name of its own ("Great Fireball"), and in Spanish. */
+  nameEnh?: string;
+  nameEnhEs?: string;
   japaneseName: string;
   rank: JutsuRank;
   category: JutsuSlotCategory;

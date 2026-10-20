@@ -61,6 +61,37 @@ export interface Scene {
   team: 'party' | 'enemy';
   /** The screen's language (names on the Eye of Tomorrow's marks). */
   lang?: Lang;
+  /** The HTML panels over the canvas (device pixels): floating words keep clear of them. */
+  avoid?: Rect[];
+}
+
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * A rect moved the shortest way out of the panels it overlaps (staying on the canvas), so a word
+ * floating over a unit near the screen's edge isn't hidden under a card.
+ */
+export function clearOf(r: Rect, avoid: Rect[], W: number, H: number, pad = 4): Rect {
+  let out = r;
+  for (let pass = 0; pass < 3; pass++) {
+    const a = avoid.find((p) => out.x < p.x + p.w + pad && p.x < out.x + out.w + pad && out.y < p.y + p.h + pad && p.y < out.y + out.h + pad);
+    if (!a) return out;
+    const moves = [
+      { dx: a.x + a.w + pad - out.x, dy: 0 },
+      { dx: a.x - pad - (out.x + out.w), dy: 0 },
+      { dx: 0, dy: a.y + a.h + pad - out.y },
+      { dx: 0, dy: a.y - pad - (out.y + out.h) },
+    ].filter((m) => out.x + m.dx >= 0 && out.x + out.w + m.dx <= W && out.y + m.dy >= 0 && out.y + out.h + m.dy <= H);
+    if (!moves.length) return out;
+    const m = moves.reduce((p, q) => (Math.abs(q.dx) + Math.abs(q.dy) < Math.abs(p.dx) + Math.abs(p.dy) ? q : p));
+    out = { ...out, x: out.x + m.dx, y: out.y + m.dy };
+  }
+  return out;
 }
 
 const images = new Map<string, HTMLImageElement>();
@@ -297,8 +328,12 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const t of state.traps) if (t.owner === sc.team || t.spotted) drawTrap(ctx, map, t);
   // Weapon Nodes, both sides' (each from when its event plays until its removal does).
   for (const n of [...state.nodes, ...sc.pb.goneNodes()]) if (!sc.pb.queue.some((e) => e.t === 'node' && e.on && e.node.id === n.id)) drawNode(ctx, sc, n);
-  // What the Eye of Tomorrow reads, once the screen has caught up with the state.
-  if (!sc.pb.busy) for (const [id, it] of Object.entries(sc.foreseen)) drawForesight(ctx, sc, id, it);
+  // What the Eye of Tomorrow reads. It stays on through the animations (an enemy that has started
+  // to act shows none until it plans again: intent.ts, planSpent). The enemy under the cursor has
+  // its own marks drawn last and bright, the others' dimmed, so close plans can't be mixed up.
+  const focus = sc.hover && sc.foreseen[sc.hover] ? sc.hover : undefined;
+  for (const [id, it] of Object.entries(sc.foreseen)) if (id !== focus) drawForesight(ctx, sc, id, it, focus ? 'dim' : 'plain');
+  if (focus) drawForesight(ctx, sc, focus, sc.foreseen[focus], 'lit');
   if (o.area) {
     ctx.beginPath();
     areaPath(ctx, map, o.area.shape);
@@ -350,25 +385,28 @@ function drawGroundOverlays(ctx: CanvasRenderingContext2D, sc: Scene): void {
 
 /**
  * An enemy's plan on the ground, as a Mirai's Eye of Tomorrow sees it: a dashed line to where it
- * will walk (ending on a filled marker), from there an arrow to the one it means to strike (green
- * for a friend it means to heal) with a ring under it, and the area its jutsu will cover. Lines get
- * a dark edge so they read on grass at the tactical zoom.
+ * will walk, ending in an arrowhead on a filled marker (so two enemies stopping side by side read as
+ * two walks, not one walk with two stops), from there an arrow to the one it means to strike (green
+ * for a friend it means to heal, shelter behind a wall or swap out of danger) with a ring under it,
+ * and the area its jutsu will cover. Lines get a dark edge so they read on grass at the tactical
+ * zoom. `lit`: the enemy under the cursor, drawn bolder; `dim`: the others meanwhile.
  */
-function drawForesight(ctx: CanvasRenderingContext2D, sc: Scene, id: string, it: Intent): void {
+function drawForesight(ctx: CanvasRenderingContext2D, sc: Scene, id: string, it: Intent, look: 'plain' | 'lit' | 'dim' = 'plain'): void {
   const { map, state, now } = sc;
   const from = sc.pb.posOf(id, now);
   const tgt = it.target ? state.units[it.target] : undefined;
-  const red = 'rgba(248, 72, 72, 0.95)';
-  const dark = 'rgba(40, 6, 6, 0.55)';
+  const red = look === 'lit' ? 'rgba(255, 110, 100, 1)' : 'rgba(248, 72, 72, 0.95)';
+  const dark = look === 'lit' ? 'rgba(255, 255, 255, 0.75)' : 'rgba(40, 6, 6, 0.55)';
+  const bold = look === 'lit' ? 1 : 0;
   /** A line twice: its dark edge, then its colour. */
   const twice = (path: () => void, color: string, width: number, dash: number[] = []) => {
     ctx.setLineDash(dash);
-    ctx.lineWidth = width + 2;
+    ctx.lineWidth = width + 2 + bold;
     ctx.strokeStyle = dark;
     ctx.beginPath();
     path();
     ctx.stroke();
-    ctx.lineWidth = width;
+    ctx.lineWidth = width + bold;
     ctx.strokeStyle = color;
     ctx.beginPath();
     path();
@@ -376,6 +414,7 @@ function drawForesight(ctx: CanvasRenderingContext2D, sc: Scene, id: string, it:
     ctx.setLineDash([]);
   };
   ctx.save();
+  if (look === 'dim') ctx.globalAlpha = 0.35;
   ctx.lineCap = 'round';
   // A jutsu is aimed where its target stands when the turn comes (the hydra's venom and roar too).
   const spec = it.kind === 'jutsu' || it.kind === 'spit' || it.kind === 'roar' ? JUTSU[it.what] : undefined;
@@ -390,22 +429,35 @@ function drawForesight(ctx: CanvasRenderingContext2D, sc: Scene, id: string, it:
   if (it.to) {
     const a = project(map, from);
     const b = project(map, it.to);
+    const len = Math.hypot(b.X - a.X, b.Y - a.Y);
+    // The walk ends in an arrowhead on the marker's edge.
+    const ux = len > 0 ? (b.X - a.X) / len : 0;
+    const uy = len > 0 ? (b.Y - a.Y) / len : 0;
+    const edge = Math.hypot(ux * 0.2 * map.px.perM, uy * 0.2 * map.px.perMDepth);
+    const ex = b.X - ux * edge;
+    const ey = b.Y - uy * edge;
     twice(() => {
       ctx.moveTo(a.X, a.Y);
-      ctx.lineTo(b.X, b.Y);
+      ctx.lineTo(ex, ey);
     }, red, 2.5, [6, 5]);
+    if (len > 24)
+      twice(() => {
+        ctx.moveTo(ex - ux * 9 - uy * 5, ey - uy * 9 + ux * 5);
+        ctx.lineTo(ex, ey);
+        ctx.lineTo(ex - ux * 9 + uy * 5, ey - uy * 9 - ux * 5);
+      }, red, 2.5);
     // Where it stops: a filled marker, not a ring (rings are for whom it strikes).
     ctx.beginPath();
     groundEllipse(ctx, map, it.to, 0.2);
     ctx.fillStyle = red;
     ctx.fill();
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.5 + bold;
     ctx.strokeStyle = dark;
     ctx.stroke();
   }
   // Advancing isn't striking yet: only a plan to act links to its target and rings it.
   if (tgt && it.kind !== 'move' && it.kind !== 'defend') {
-    const color = it.kind === 'heal' ? 'rgba(74, 222, 128, 0.95)' : red;
+    const color = it.kind === 'heal' || tgt.team === state.units[id]?.team ? 'rgba(74, 222, 128, 0.95)' : red;
     const tp = sc.pb.posOf(tgt.id, now);
     const a = project(map, stop);
     const b = project(map, tp);
@@ -1352,6 +1404,7 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
+  const badges: Badge[] = [];
   // Health bars over every standing unit (and the hydra's heads).
   for (const u of Object.values(state.units)) {
     const v = sc.pb.views.get(u.id);
@@ -1403,29 +1456,28 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
       ctx.fillStyle = '#ede9fe';
       ctx.fillText('♛', s.x, s.y - f(15));
     }
-    // What a Mirai foresees (where and whom is drawn on the ground), once the screen has caught up
-    // with the state: its kind, and whom it means to act on.
-    const it = sc.pb.busy ? undefined : sc.foreseen[u.id];
-    if (it) {
-      ctx.font = `600 ${f(10)}px Inter, system-ui, sans-serif`;
-      const tgt = it.target && it.kind !== 'defend' ? state.units[it.target] : undefined;
-      const label = tgt ? `${intentIcon(it)} ${shortName(unitName(tgt, sc.lang ?? 'en'))}` : intentIcon(it);
-      ctx.fillStyle = 'rgba(127, 29, 29, 0.85)';
-      const tw = ctx.measureText(label).width + f(8);
-      ctx.fillRect(s.x - tw / 2, s.y - f(22), tw, f(14));
-      ctx.fillStyle = '#fee2e2';
-      ctx.fillText(label, s.x, s.y - f(15));
-    }
+    // What a Mirai foresees (where and whom is drawn on the ground): its kind, and whom it means
+    // to act on. Laid out below, once every unit's place is known, so neighbours' don't stack.
+    const it = sc.foreseen[u.id];
+    if (it) badges.push({ id: u.id, it, x: s.x, y: s.y - f(22) });
   }
+  drawIntentBadges(ctx, sc, badges, f);
 
   // Floating numbers and words.
   for (const fl of sc.pb.floaters) {
     const t = (now - fl.t0) / fl.dur;
     if (t < 0) continue;
     const p = project(map, fl.at);
-    const s = toScreen(p.X, p.Y - fl.rise - t * 26);
+    let s = toScreen(p.X, p.Y - fl.rise - t * 26);
     ctx.globalAlpha = t < 0.75 ? 1 : (1 - t) / 0.25;
     ctx.font = `800 ${f(fl.big ? 20 : 14)}px Inter, system-ui, sans-serif`;
+    if (sc.avoid?.length) {
+      // Clear of the cards and bars over the canvas.
+      const tw = ctx.measureText(fl.text).width + f(6);
+      const th = f(fl.big ? 24 : 18);
+      const r = clearOf({ x: s.x - tw / 2, y: s.y - th / 2, w: tw, h: th }, sc.avoid, sc.W, sc.H, f(4));
+      s = { x: r.x + tw / 2, y: r.y + th / 2 };
+    }
     ctx.lineWidth = f(3);
     ctx.strokeStyle = 'rgba(5, 6, 12, 0.9)';
     ctx.strokeText(fl.text, s.x, s.y);
@@ -1437,6 +1489,91 @@ function drawMarks(ctx: CanvasRenderingContext2D, sc: Scene): void {
 
 /** A name short enough for a mark over a head: the first word, or all of it when numbered ("Rogue 2"). */
 const shortName = (n: string): string => (/\d/.test(n) ? n : n.split(/[ ,]/)[0]);
+
+/** A foreseen plan's mark over its enemy's bar: where it would sit (centre, top edge), in device pixels. */
+interface Badge {
+  id: string;
+  it: Intent;
+  x: number;
+  y: number;
+}
+
+/**
+ * The Eye of Tomorrow's marks over the enemies' heads. Neighbours' marks never overlap: one that
+ * would is lifted above the other, with a thin stem down to its own enemy. The enemy under the
+ * cursor gets a bright edge, like its lines on the ground.
+ */
+function drawIntentBadges(ctx: CanvasRenderingContext2D, sc: Scene, badges: Badge[], f: (px: number) => number): void {
+  if (!badges.length) return;
+  const { state } = sc;
+  ctx.font = `600 ${f(10)}px Inter, system-ui, sans-serif`;
+  const h = f(14);
+  const icon = f(10);
+  const gap = f(2);
+  const laid: { b: Badge; name: string; x0: number; w: number; top: number }[] = [];
+  // Front to back (lower on the screen first), so the nearer enemy keeps its mark in place.
+  for (const b of [...badges].sort((p, q) => q.y - p.y || p.x - q.x)) {
+    const tgt = b.it.target && b.it.kind !== 'defend' ? state.units[b.it.target] : undefined;
+    const name = tgt ? shortName(unitName(tgt, sc.lang ?? 'en')) : '';
+    const w = icon + (name ? f(4) + ctx.measureText(name).width : 0) + f(8);
+    const x0 = b.x - w / 2;
+    let top = b.y;
+    for (let tries = 0; tries < 8; tries++) {
+      const hit = laid.find((o) => x0 < o.x0 + o.w + gap && o.x0 < x0 + w + gap && top < o.top + h + gap && o.top < top + h + gap);
+      if (!hit) break;
+      top = hit.top - h - gap;
+    }
+    laid.push({ b, name, x0, w, top });
+  }
+  // A mark lifted over a neighbour's: a stem down to its own enemy's bar (under the marks).
+  ctx.fillStyle = 'rgba(127, 29, 29, 0.85)';
+  for (const { b, top } of laid) if (top < b.y) ctx.fillRect(Math.round(b.x - f(1) / 2), top + h, f(1), b.y + f(22) - top - h);
+  for (const { b, name, x0, w, top } of laid) {
+    const lit = sc.hover === b.id;
+    ctx.fillStyle = lit ? 'rgba(185, 28, 28, 0.95)' : 'rgba(127, 29, 29, 0.85)';
+    ctx.fillRect(x0, top, w, h);
+    if (lit) {
+      ctx.lineWidth = f(1);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.strokeRect(x0 + 0.5, top + 0.5, w - 1, h - 1);
+    }
+    const ix = x0 + f(4) + icon / 2;
+    const cy = top + h / 2;
+    drawIntentIcon(ctx, b.it, ix, cy, icon, '#fee2e2');
+    if (name) {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#fee2e2';
+      ctx.fillText(name, ix + icon / 2 + f(4), cy + f(1));
+      ctx.textAlign = 'center';
+    }
+  }
+}
+
+/**
+ * A plan's icon. A blow is drawn as a small upright blade (the crossed-swords glyph reads as an "✕"
+ * at the tactical zoom); the others are glyphs.
+ */
+function drawIntentIcon(ctx: CanvasRenderingContext2D, it: Intent, cx: number, cy: number, size: number, color: string): void {
+  ctx.fillStyle = color;
+  if (it.kind === 'melee') {
+    const u = size / 10;
+    const r = (x: number, y: number, w: number, hh: number) => ctx.fillRect(Math.round(cx + x * u), Math.round(cy + y * u), Math.max(1, Math.round(w * u)), Math.max(1, Math.round(hh * u)));
+    // Blade with its point, crossguard, grip and pommel.
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 5.5 * u);
+    ctx.lineTo(cx + 1.5 * u, cy - 3.5 * u);
+    ctx.lineTo(cx + 1.5 * u, cy + 1.5 * u);
+    ctx.lineTo(cx - 1.5 * u, cy + 1.5 * u);
+    ctx.lineTo(cx - 1.5 * u, cy - 3.5 * u);
+    ctx.closePath();
+    ctx.fill();
+    r(-3.5, 1.5, 7, 1.5);
+    r(-0.75, 3, 1.5, 2);
+    r(-1.25, 5, 2.5, 1);
+    return;
+  }
+  ctx.fillText(INTENT_ICON[it.kind] ?? '?', cx, cy + size / 10);
+}
 
 const INTENT_ICON: Record<string, string> = { melee: '⚔', ranged: '➶', jutsu: '✦', bite: '☠', spit: '☣', roar: '!', heal: '✚', defend: '⛨', move: '➜', command: '♛' };
 export const intentIcon = (i: Intent): string => INTENT_ICON[i.kind] ?? '?';

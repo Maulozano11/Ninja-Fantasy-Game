@@ -20,6 +20,9 @@ export interface JutsuSpec {
   name: string;
   /** The Spanish name, when it isn't the same. */
   nameEs?: string;
+  /** The enhanced cast's own name, when it has one (Fireball → Great Fireball), and in Spanish. */
+  nameEnh?: string;
+  nameEnhEs?: string;
   rank: string;
   element: VfxElement;
   cost: number;
@@ -119,6 +122,7 @@ function specOf(j: JutsuDefinition): JutsuSpec {
     id: j.id,
     name: j.name,
     ...(j.nameEs ? { nameEs: j.nameEs } : {}),
+    ...(j.nameEnh ? { nameEnh: j.nameEnh, nameEnhEs: j.nameEnhEs ?? j.nameEnh } : {}),
     rank: j.rank,
     element: ELEMENT[j.nature] ?? 'chakra',
     cost: j.chakraCost,
@@ -378,6 +382,9 @@ export function enhanced(spec: JutsuSpec): JutsuSpec {
 }
 
 const deg = (r: number) => (r * 180) / Math.PI;
+
+/** A cone or a line needs a direction: it is aimed at least this far (m) from its caster. */
+export const MIN_AIM = 0.3;
 
 /** The area a jutsu covers when aimed at `at` from `from`. Null for single-target jutsu. */
 export function areaOf(spec: JutsuSpec, from: Pt, at: Pt): AreaShape | null {

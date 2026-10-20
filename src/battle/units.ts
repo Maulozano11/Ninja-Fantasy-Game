@@ -153,6 +153,8 @@ interface Template {
   name: string;
   /** The Spanish name, for the Spanish screens ("Renegado 1"). */
   nameEs: string;
+  /** The article the Spanish name takes in a sentence ("el Renegado 1"); none for a proper name. */
+  articleEs?: 'el' | 'la';
   title: string;
   level: number;
   clan: ShinobiCharacter['clan'];
@@ -167,6 +169,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
   rogue: {
     name: 'Rogue',
     nameEs: 'Renegado',
+    articleEs: 'el',
     title: 'Rogue ninja',
     level: 3,
     clan: 'Mirai',
@@ -202,6 +205,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
   hunter: {
     name: 'Hunter-nin',
     nameEs: 'Cazador',
+    articleEs: 'el',
     title: 'Masked hunter-nin',
     level: 4,
     clan: 'Koton',
@@ -266,6 +270,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
   raider: {
     name: 'Raider',
     nameEs: 'Asaltante',
+    articleEs: 'el',
     title: 'Night raider',
     level: 3,
     clan: 'Ryusei',
@@ -293,6 +298,8 @@ const TEMPLATES: Record<EnemyKind, Template> = {
 export interface EnemyName {
   name: string;
   nameEs: string;
+  /** The Spanish name's article in a sentence ("el Vigía", "la Sombra"); none for a proper name. */
+  articleEs?: 'el' | 'la';
   title: string;
 }
 
@@ -304,15 +311,15 @@ export interface EnemyName {
 const VARIANTS: Partial<Record<EnemyKind, Partial<Record<ClanType, EnemyName>>>> = {
   rogue: {
     // The Sovereign's eyes, keeping watch for the band.
-    Northstar: { name: 'Lookout', nameEs: 'Vigía', title: 'Rogue lookout' },
+    Northstar: { name: 'Lookout', nameEs: 'Vigía', articleEs: 'el', title: 'Rogue lookout' },
     // An assassin of space: its blades leave Nodes to warp to.
-    Ryusei: { name: 'Stalker', nameEs: 'Acechador', title: 'Rogue stalker' },
+    Ryusei: { name: 'Stalker', nameEs: 'Acechador', articleEs: 'el', title: 'Rogue stalker' },
   },
   raider: {
     // An alchemist of metal who fights with bare fists and raises blocks and walls.
-    Koton: { name: 'Iron Fist', nameEs: 'Puño de hierro', title: 'Iron-fist raider' },
+    Koton: { name: 'Iron Fist', nameEs: 'Puño de hierro', articleEs: 'el', title: 'Iron-fist raider' },
     // Comes out of the dark; its aura slows whoever warps or dashes at it.
-    Northstar: { name: 'Shade', nameEs: 'Sombra', title: 'Shadow raider' },
+    Northstar: { name: 'Shade', nameEs: 'Sombra', articleEs: 'la', title: 'Shadow raider' },
   },
 };
 
@@ -320,7 +327,7 @@ const VARIANTS: Partial<Record<EnemyKind, Partial<Record<ClanType, EnemyName>>>>
 export function enemyNameOf(kind: EnemyKind, clan?: ClanType): EnemyName {
   const t = TEMPLATES[kind];
   const c = clan ?? t.clan;
-  return (c !== t.clan ? VARIANTS[kind]?.[c] : undefined) ?? { name: t.name, nameEs: t.nameEs, title: t.title };
+  return (c !== t.clan ? VARIANTS[kind]?.[c] : undefined) ?? { name: t.name, nameEs: t.nameEs, ...(t.articleEs ? { articleEs: t.articleEs } : {}), title: t.title };
 }
 
 export interface EnemyOptions {
@@ -384,5 +391,6 @@ export function enemyUnit(kind: EnemyKind, n: number, pos: Pt, difficulty: Diffi
   u.rank = o.rank ?? t.rank;
   const nm = enemyNameOf(kind, o.clan);
   if (nm.nameEs !== nm.name) u.nameEs = numbered(nm.nameEs, o.no);
+  if (nm.articleEs) u.articleEs = nm.articleEs;
   return u;
 }

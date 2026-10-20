@@ -9,7 +9,7 @@
 import { Img, RGBA, alpha, hex, mixc } from './ui-img';
 import {
   ALLY, BADGE, BROWN, FOE, GEM, GOLD, GREEN, KHAKI, METAL, Mask, OLIVE, PANEL, Pt, RAIL, RED, SILVER, TEAL,
-  band, cbez, emboss, fillShape, filledLace, gem, isoLine, lace, orb, qbez, rhombGem, sdCircle, sdLp, sdRoundRect, spiral, stamp, wire, WIRE,
+  band, cbez, emboss, fillShape, filledLace, gem, isoLine, lace, orb, qbez, rhombGem, sdCircle, sdLp, sdRoundRect, spiral, stamp, wire, WIRE, WIRE_OUTLINE,
 } from './ui-draw';
 
 export interface Piece {
@@ -35,49 +35,80 @@ function studGem(img: Img, cx: number, cy: number, r: number, color: keyof typeo
   gem(img, cx, cy, r, GEM[color], false);
 }
 
-/** The rail-and-studs border used by the action bar, the crest strip and the plaques. */
+/** The rail-and-studs border of the action bar, from the outside in (his thin rails, lit top and left). */
 function railRows(dir: 'top' | 'bottom'): RGBA[] {
-  // From the outside in: his dim grey-silver rails, lit on the top and left.
+  // His rail is one thin light line (about 3 px on screen) over a darker one, then a dark gap and
+  // the dotted line: outline, light, mid, dark, studs, dark.
   const studs = RAIL[4];
   return dir === 'top'
-    ? [METAL[0], RAIL[5], RAIL[4], RAIL[2], PANEL[0], studs, PANEL[1]]
-    : [METAL[0], RAIL[2], RAIL[3], RAIL[4], PANEL[0], studs, PANEL[1]];
+    ? [METAL[0], RAIL[5], RAIL[2], PANEL[0], studs, PANEL[1]]
+    : [METAL[0], RAIL[4], RAIL[2], PANEL[0], studs, PANEL[1]];
 }
 
 // --- action bar frame (9-slice) ----------------------------------------------------------------------
+
+/**
+ * His lace mount around a corner gem (top-left; flipped for the others): small gold curls that run
+ * from the bezel along the rails, in the outset outside the frame.
+ */
+const GEM_MOUNT = [
+  '........LL..',
+  '.......l..L.',
+  '..........M.',
+];
 
 export function barFrame(): Piece {
   const S = 40, m = 3;
   const img = new Img(S, S);
   const x0 = m, y0 = m, x1 = S - 1 - m, y1 = S - 1 - m;
   img.rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1, PANEL[3]);
-  // Subtle dark vignette inside the studs so the panel reads as a recessed well.
   const top = railRows('top'), bot = railRows('bottom');
   for (let i = 0; i < top.length; i++) {
     for (let x = x0 + i; x <= x1 - i; x++) {
-      const studT = i === 5 ? ((x - x0) % 2 === 0 ? top[i] : PANEL[1]) : top[i];
-      const studB = i === 5 ? ((x - x0) % 2 === 0 ? bot[i] : PANEL[1]) : bot[i];
+      const studT = i === 4 ? ((x - x0) % 2 === 0 ? top[i] : PANEL[1]) : top[i];
+      const studB = i === 4 ? ((x - x0) % 2 === 0 ? bot[i] : PANEL[1]) : bot[i];
       img.set(x, y0 + i, studT);
       img.set(x, y1 - i, studB);
     }
     for (let y = y0 + i; y <= y1 - i; y++) {
-      const studL = i === 5 ? ((y - y0) % 2 === 0 ? top[i] : PANEL[1]) : top[i];
-      const studR = i === 5 ? ((y - y0) % 2 === 0 ? bot[i] : PANEL[1]) : bot[i];
+      const studL = i === 4 ? ((y - y0) % 2 === 0 ? top[i] : PANEL[1]) : top[i];
+      const studR = i === 4 ? ((y - y0) % 2 === 0 ? bot[i] : PANEL[1]) : bot[i];
       img.set(x0 + i, y, studL);
       img.set(x1 - i, y, studR);
     }
   }
   // Panel: one darker row/column under the studs.
-  for (let x = x0 + 7; x <= x1 - 7; x++) img.set(x, y0 + 7, PANEL[2]);
-  for (let y = y0 + 7; y <= y1 - 7; y++) img.set(x0 + 7, y, PANEL[2]);
-  // Corner gems: red on top, green below (his).
+  for (let x = x0 + 6; x <= x1 - 6; x++) img.set(x, y0 + 6, PANEL[2]);
+  for (let y = y0 + 6; y <= y1 - 6; y++) img.set(x0 + 6, y, PANEL[2]);
+  // His gold lace edge down the bar's left and right ends, in the outset: a twisted cord two
+  // pixels wide with a scalloped outer edge (period 2, so the edges repeat cleanly).
+  for (let y = y0 + 1; y <= y1 - 1; y++) {
+    const even = (y - y0) % 2 === 0;
+    img.set(0, y, even ? WIRE_OUTLINE : [0, 0, 0, 0]);
+    img.set(1, y, even ? WIRE.L : WIRE.M);
+    img.set(2, y, even ? WIRE.l : WIRE.H);
+    img.set(S - 1, y, even ? WIRE_OUTLINE : [0, 0, 0, 0]);
+    img.set(S - 2, y, even ? WIRE.l : WIRE.M);
+    img.set(S - 3, y, even ? WIRE.M : WIRE.L);
+  }
+  // Lace mounts around the corner gems, then the gems: red on top, green below (his).
+  const mount = (flipX: boolean, flipY: boolean) => {
+    const rows = flipY ? [...GEM_MOUNT].reverse() : GEM_MOUNT;
+    const sub = new Img(12, 4);
+    wire(sub, rows, { flip: flipX, oy: flipY ? 1 : 0 });
+    img.draw(sub, flipX ? S - 12 : 0, flipY ? S - 4 : 0);
+  };
+  mount(false, false);
+  mount(true, false);
+  mount(false, true);
+  mount(true, true);
   studGem(img, x0 + 2, y0 + 2, 2.6, 'red');
   studGem(img, x1 - 1, y0 + 2, 2.6, 'red');
   studGem(img, x0 + 2, y1 - 1, 2.6, 'green');
   studGem(img, x1 - 1, y1 - 1, 2.6, 'green');
   return {
     name: 'bar_frame', img, group: 'action bar',
-    use: 'Action bar frame: 9-slice. Rails, studded inner line, dark panel; red gems on the top corners, green below.',
+    use: 'Action bar frame: 9-slice. His thin grey-silver rails, the dotted inner line, dark panel; a gold lace cord down both ends and lace mounts around the corner gems (red on top, green below). With CSS repeat, keep (width - 48) and (height - 48) multiples of 8.',
     slice: [12, 12, 12, 12], outset: [m, m, m, m],
   };
 }
@@ -94,40 +125,45 @@ export function gemStud(color: 'red' | 'green'): Piece {
 
 /**
  * His spear-tip finial (left end of the target plaque; mirrored for the right), hand-placed at art
- * resolution: a lozenge tip with a small rose jewel, a narrow neck, an openwork collar of two
- * pierced loops that widens into the plaque, and the cross-bar where the rails begin. '#' metal,
- * ':' dark fill inside the collar, 'r'/'R' the jewel.
+ * resolution and mostly pale silver like his: a pale lozenge tip with a small rose stone at its
+ * base, a knot, and an open lyre of two pale loops (each with a dark eye) around the channel's
+ * pointed end. Keys as in `wire` ('r' / 'R' the rose stone, ':' the dark between the loops).
  */
 const SPEAR_TIP = [
   '................',
   '................',
-  '................',
-  '................',
-  '.........###....',
-  '........#:::#...',
-  '...##...#:.:#...',
-  '..#::#..#:::##..',
-  '.#::::######::#.',
-  '#:rR::::::::::#.',
-  '#:RR::::::::::#.',
-  '.#::::######::#.',
-  '..#::#..#:::##..',
-  '...##...#:.:#...',
-  '........#:::#...',
-  '.........###....',
-  '................',
-  '................',
+  '..........HHL...',
+  '.........HLLLl..',
+  '........HLL:Ll..',
+  '........Ll::lM..',
+  '........Ll:lM...',
+  '....HL..LlM.....',
+  '..HHLLlLLl......',
+  'HHLLrrlLLl......',
+  'llllRRMllM......',
+  '..lllMMlM.......',
+  '....MM..lM......',
+  '........lM:M....',
+  '........lM::M...',
+  '........lMM:MM..',
+  '.........lMMMM..',
+  '..........MMM...',
   '................',
   '................',
 ];
 
+/** The pale silver of his target plaque's finials. */
+const FINIAL: Record<string, RGBA> = {
+  H: hex('#e8dfcf'), L: hex('#cec2ad'), l: hex('#a19480'), M: hex('#756856'),
+  r: hex('#e7a3b1'), R: hex('#b14f68'), ':': hex('#241b11'),
+};
+
 export function targetBar(): Piece {
-  // His plaque: a 14-row body (28 px: outline, a gold line, a dark band, the channel's silver rim
-  // and the 6-row channel, and the same below). Near each end the frame swells into his flared
-  // collar (20 rows at its widest) and narrows onto the spear tip: a pierced knot and a lozenge
-  // with a rose jewel. The channel is a capsule with rounded ends. The centre, between the
-  // 36-pixel caps, is one repeating column, so any width works.
-  const W = 200, Hh = 20, cap = 36, cy = 10, ch0 = 17;
+  // His plaque: a 14-row body (28 px: outline, a light line, a dark band, the channel's rim and
+  // the 6-row channel, and the same below). Near each end the frame swells into his flared
+  // collar and narrows onto the knot; the channel ends in a point (his chevron) inside the lyre
+  // of the finial. The centre, between the 36-pixel caps, is one repeating column.
+  const W = 200, Hh = 20, cap = 36, cy = 10, t0 = 13;
   const img = new Img(W, Hh);
   const ease = (t: number) => (1 - Math.cos(Math.PI * Math.max(0, Math.min(1, t)))) / 2;
   // Frame half-height along the bar: 4.5 at the knot, swelling to 9.6 and settling to 7.
@@ -142,14 +178,22 @@ export function targetBar(): Piece {
     const e = 0.5, sl = (hb(x + e) - hb(x - e)) / (2 * e);
     return (Math.abs(y - cy) - hb(x)) / Math.sqrt(1 + sl * sl);
   };
-  const fC = sdRoundRect(ch0, 6, W - ch0, 14, 4);
+  // The channel: 8 rows (rim and 6-row well) with pointed ends (tip at t0 from each end).
+  const fC = (x: number, y: number): number => {
+    const u = Math.min(x, W - x), v = Math.abs(y - cy);
+    return Math.max(v - 4, (v - (u - t0)) / Math.SQRT2);
+  };
   for (let y = 0; y < Hh; y++)
     for (let x = 0; x < W; x++) {
       const px = x + 0.5, py = y + 0.5, d = -fO(px, py);
-      if (hb(px) < 0 || d < 0) continue;
       const top = py < cy;
-      let c: RGBA = d < 1 ? METAL[0] : d < 2 ? (top ? METAL[6] : METAL[3]) : d < 2.6 && !top ? METAL[2] : PANEL[0];
       const e = -fC(px, py);
+      if (hb(px) < 0 || d < 0) {
+        // Past the frame, only the channel's pointed end (inside the finial's lyre).
+        if (e >= -0.8) img.set(x, y, e < 0.2 ? METAL[0] : e < 1 ? (top ? RAIL[5] : RAIL[3]) : PANEL[2]);
+        continue;
+      }
+      let c: RGBA = d < 1 ? METAL[0] : d < 2 ? (top ? METAL[6] : METAL[3]) : d < 2.6 && !top ? METAL[2] : PANEL[0];
       if (e >= 0) c = e < 1 ? (top ? RAIL[5] : RAIL[3]) : PANEL[2];
       else if (e > -1 && d >= 2) c = PANEL[1];
       img.set(x, y, c);
@@ -158,22 +202,12 @@ export function targetBar(): Piece {
   const curl: Pt[] = [[15, 6], [16, 5], [17, 4], [18, 4], [19, 3], [20, 3], [21, 3], [22, 3], [23, 3], [24, 4], [25, 4], [26, 3], [26, 2]];
   for (const [x, y] of curl)
     for (const [fx, fy] of [[x, y], [W - 1 - x, y], [x, Hh - 1 - y], [W - 1 - x, Hh - 1 - y]]) img.set(fx, fy, fy < cy ? METAL[5] : METAL[4]);
-  for (const flip of [false, true]) {
-    const n = SPEAR_TIP[0].length, ox = flip ? W - n : 0;
-    const { mk, back } = laceMap(SPEAR_TIP, flip);
-    filledLace(img, mk, back, METAL, { base: 5, ox, grow: 0, backColor: PANEL[1], crevice: null });
-    for (let y = 0; y < Hh; y++)
-      for (let x = 0; x < n; x++) {
-        const ch = SPEAR_TIP[y][flip ? n - 1 - x : x];
-        if (ch === 'r') img.set(ox + x, y, GEM.red[4]);
-        if (ch === 'R') img.set(ox + x, y, GEM.red[2]);
-      }
-  }
+  for (const flip of [false, true]) wire(img, SPEAR_TIP, { ox: flip ? W - SPEAR_TIP[0].length : 0, flip, pal: FINIAL });
   return {
     name: 'target_bar', img, group: 'target bar',
-    use: 'Chained plaque for the targeted or hovered enemy (or the boss): 3-slice; each 72-px cap holds his spear tip, the flared collar and the channel\'s rounded end, the centre is one repeating column (any width works). The red fill goes in the window, with its own rounded ends.',
+    use: 'Chained plaque for the targeted or hovered enemy (or the boss): 3-slice; each 72-px cap holds his pale spear tip (lozenge, rose stone, lyre of two loops), the flared collar and the channel\'s pointed end; the centre is one repeating column (any width works). The red fill goes in the window, with its own pointed ends.',
     slice: [0, cap, 0, cap],
-    window: { x: ch0 + 1, y: 7, w: W - 2 * (ch0 + 1), h: 6, shape: 'rect' },
+    window: { x: t0 + 2, y: 7, w: W - 2 * (t0 + 2), h: 6, shape: 'rect' },
   };
 }
 
@@ -433,23 +467,28 @@ function chamferRing(x: number, y: number, W: number, H: number, ch: number): nu
   return r < 0 ? -1 : r;
 }
 
+/** His warm slot gold (skill slot frames), outline to highlight. */
+const SLOT_GOLD = ['#17110a', '#3a2c18', '#5e4a2c', '#86703f', '#a88f5c', '#c8ad78', '#e2cb98', '#f4e6c2'].map((h) => hex(h));
+
 export function skillSlot(active = false): Piece {
-  const R = active ? GOLD : KHAKI;
-  const S = 28, ch = 3;
+  const R = active ? GOLD : SLOT_GOLD;
+  const S = 28;
   const img = new Img(S, S);
-  // His frame: a thin khaki-silver line (gold when active) between dark lines, 45-degree chamfered
-  // corners, a dark well.
+  // His frame: a dark outline and a two-step gold bevel (lit on the top and left, shaded on the
+  // bottom and right), corners rounded; the window inside is open, so the icon shows under the
+  // frame and its small corner curls (a dark backing goes under the icon).
+  const f = sdRoundRect(0, 0, S, S, 3.5);
   for (let y = 0; y < S; y++)
     for (let x = 0; x < S; x++) {
-      const ring = chamferRing(x, y, S, S, ch);
-      if (ring < 0) continue;
+      const d = -f(x + 0.5, y + 0.5);
+      if (d < 0 || d >= 3) continue;
       const lit = x + y < S - 1;
-      img.set(x, y, ring === 0 ? PANEL[0] : ring === 1 ? (lit ? R[6] : R[4]) : ring === 2 ? PANEL[0] : PANEL[1]);
+      img.set(x, y, d < 1 ? R[0] : d < 2 ? (lit ? R[6] : R[4]) : lit ? R[4] : R[2]);
     }
-  // His small curled corner brackets just inside the line (lit up-left, shaded down-right).
-  const curl = ['665', '6.4', '54.'];
-  const lit: Record<string, RGBA> = { '6': R[6], '5': R[5], '4': R[4] };
-  const shade: Record<string, RGBA> = { '6': R[5], '5': R[4], '4': R[3] };
+  // His small curls in the four inner corners (lit up-left, shaded down-right).
+  const curl = ['LL.', 'L.M', '.M.'];
+  const lit: Record<string, RGBA> = { L: R[6], M: R[3] };
+  const shade: Record<string, RGBA> = { L: R[4], M: R[2] };
   stamp(img, 3, 3, curl, lit);
   stamp(img, S - 6, 3, curl, lit, true);
   stamp(img, 3, S - 6, [...curl].reverse(), shade);
@@ -457,9 +496,9 @@ export function skillSlot(active = false): Piece {
   return {
     name: active ? 'skill_slot_active' : 'skill_slot', img, group: 'action bar',
     use: active
-      ? 'Skill slot, selected or hovered: the same frame in gold.'
-      : 'Skill slot frame (his thin khaki-silver line, 45-degree chamfered corners with small curled brackets inside). The skill icon (painted later) goes in the window, over the corner curls.',
-    slice: [6, 6, 6, 6],
+      ? 'Skill slot, selected or hovered: the same frame in bright gold.'
+      : 'Skill slot frame: his warm gold, a two-step bevel lit at the top left, rounded corners and small corner curls. The window is open: put a dark backing (panel #16120c) and the skill icon (painted later) under the frame.',
+    slice: [8, 8, 8, 8],
     window: { x: 3, y: 3, w: 22, h: 22, shape: 'rect' },
   };
 }
@@ -486,8 +525,8 @@ export function skillTag(): Piece {
 export function itemSlot(): Piece {
   const S = 26;
   const img = new Img(S, S);
-  const f = sdRoundRect(0, 0, S, S, 3);
-  const g = sdRoundRect(3, 3, S - 3, S - 3, 2);
+  const f = sdRoundRect(0, 0, S, S, 4.5);
+  const g = sdRoundRect(3, 3, S - 3, S - 3, 3);
   fillShape(img, f, 0, PANEL[2]);
   isoLine(img, f, 0, PANEL[0]);
   isoLine(img, f, 1, PANEL[4]);
@@ -496,7 +535,7 @@ export function itemSlot(): Piece {
   fillShape(img, g, 2, PANEL[1]);
   return {
     name: 'item_slot', img, group: 'action bar',
-    use: 'Item slot, greyed (his): double faint outline, dark well; the icon and label are drawn dim.',
+    use: 'Item slot, greyed (his): double faint outline with rounded corners, dark well; the icon and label are drawn dim.',
     slice: [5, 5, 5, 5],
     window: { x: 3, y: 3, w: 20, h: 20, shape: 'rect' },
   };
@@ -713,22 +752,22 @@ export function medallionActive(): Piece {
  * curls on the bar wire and under the arm. Keys as in `wire`; the background shows between them.
  */
 const LOWER_BRACKET = [
-  '.LL.MlMlMlMlMlMlMlMlMlMlMlMlMlMlMl......',
-  'L..l......ooo...........................',
-  'L.M......occco...L.L.........LL.........',
-  '.M.L....oKcccKo.L.l.L.......L..l........',
-  '....HH...oCCCo...M...L.....L...M........',
-  '....MMHH..............L...L.............',
-  '......MMHH.............L.L..............',
-  '........MMH.............H...............',
-  '..........MLL..........l.L..............',
-  '...........MMLL.......l...L.............',
-  '.............llLL.....l....L..L.........',
-  '...............llLL..l.....L.L.M........',
-  '...............llllLLL......L.M.........',
-  '...................lllLLL...............',
-  '......................lllLLLLLLLLL......',
-  '.........................lllllllll......',
+  '.LL..L....LLL.....LL...........Ll.......',
+  'L..lL.l.LL...LL.....L........Ll.........',
+  'L.M....L...ooo.L....ML......LM..........',
+  '.l.H......occco.LL...ML....LM...........',
+  '...MH....ocKcKco.l....ML..LM............',
+  '....MH...oCCCCCo.M.....MLLM.............',
+  '.....MH...oCCCo.........LLM.............',
+  '......MH...ooo..........LLM.............',
+  '.......MH..............L..L.............',
+  '.......lMHH...........LM..ML............',
+  '......M.MMMHH........LM....ML..l........',
+  '.......M...MMHL.....LM......ML..........',
+  '.............MMLLL..M........l..........',
+  '..............lMllLLLLLL................',
+  '.............M.M..llllllLLLLLLLLLLL.....',
+  '..............M.........lllllllllll.....',
 ];
 
 export function lowerPlaque(): Piece {
@@ -819,6 +858,12 @@ export function menuButton(): Piece {
   const S = 20;
   const img = new Img(S, S);
   squareButton(img, 0, 0, S);
+  // Small khaki curls in the inner corners, like his slot frames.
+  const curl = ['LL', 'L.'];
+  stamp(img, 3, 3, curl, { L: KHAKI[5] });
+  stamp(img, S - 5, 3, curl, { L: KHAKI[5] }, true);
+  stamp(img, 3, S - 5, [...curl].reverse(), { L: KHAKI[4] });
+  stamp(img, S - 5, S - 5, [...curl].reverse(), { L: KHAKI[4] }, true);
   const mk = new Mask(S, S);
   for (const y of [8, 11, 14]) for (let x = 6; x <= 13; x++) mk.set(x, y);
   emboss(img, mk, SILVER, { base: 5 });
@@ -829,7 +874,7 @@ export function menuButton(): Piece {
   gem(img, 10, 2.5, 1.9, GEM.red, false);
   return {
     name: 'menu_button', img, group: 'buttons',
-    use: 'Menu button (top left, replaces the web navigation bar in battle): his thin-rimmed dark square with a red gem set into the top rim, three bars.',
+    use: 'Menu button (top left, replaces the web navigation bar in battle): his thin-rimmed dark square with small corner curls, a red gem set into the top rim, three bars.',
   };
 }
 
@@ -841,9 +886,11 @@ export function smallButton(): Piece {
 }
 
 export function endTurnGem(): Piece {
-  const img = new Img(9, 9);
-  studGem(img, 4.5, 4.5, 2.4, 'red');
-  return { name: 'end_turn_gem', img, group: 'action bar', use: 'Small red gem inside the bar\'s top-right corner (his); a candidate for the end-turn control.' };
+  // His small pink gem, set inside the panel (not on the corner stud): a rose cabochon in a thin bezel.
+  const img = new Img(7, 7);
+  setGem(img, 3.5, 3.5, 1.9, 'rose');
+  isoLine(img, sdCircle(3.5, 3.5, 3.0), -0.6, METAL[0]);
+  return { name: 'end_turn_gem', img, group: 'action bar', use: 'His small pink gem inside the panel, about 10 px down and left of the bar\'s top-right corner gem; a candidate for the end-turn control.' };
 }
 
 // --- glyphs (dim line icons for items, the empty skill placeholder, the party emblem) ---------------------------

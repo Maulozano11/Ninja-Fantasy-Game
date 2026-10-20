@@ -1426,6 +1426,31 @@ def drake():
     SPRAY_A = DUST_A[np.argmin(((DUST_A - spray_mean) ** 2).sum(1))]
     print('dust palette', DUST.astype(int).tolist(), 'spray colours', SPRAY.astype(int).tolist(),
           'his spray mean', np.round(spray_mean).astype(int).tolist(), 'partly clear spray', SPRAY_A.astype(int).tolist())
+    # His pile's bottom. His panel cut the pile off flat along the ground (y 1948), so every frame with dust showed
+    # a straight line under it. It ends instead in a row of rounded puffs, as the fire 3/4 wall's ends were
+    # closed: each puff is his own pile (two of them are his cream boulders that sat on the cut, rounded off
+    # underneath), the soil between them stays a few px further up, and the puffs get smaller and stay further off
+    # the ground toward both ends, so the pile's corners round off too. A puff's bottom is ragged (a few px of
+    # wobble) and thins out over its last FOOT_FADE px into partly clear dust (his partly clear dust colours).
+    # (Done after his palette is sampled, so his dust keeps every colour it had.)
+    FOOT_PUFFS = [  # (his x of its middle, half width, how high the soil beside it stays, its lowest point's height)
+        (1158, 10, 11, 7), (1181, 13, 14, 0), (1207, 11, 12, 5), (1232, 13, 14, 0), (1260, 12, 13, 3),
+        (1285, 11, 12, 7), (1311, 14, 15, 1), (1339, 12, 13, 4), (1365, 13, 14, 1), (1392, 12, 13, 5),
+        (1417, 11, 12, 2), (1439, 9, 10, 5), (1458, 8, 8, 6), (1475, 6, 7, 6)]
+    FOOT_FADE = 5.0
+    gxv = gx5[0]
+    lift = np.full(CW, 1e3, np.float32)
+    for cx_, hw_, R_, b_ in FOOT_PUFFS:
+        d_ = np.abs(gxv - cx_)
+        u = d_ / hw_
+        lift = np.minimum(lift, np.where(u <= 1, b_ + R_ * (1 - np.sqrt(np.clip(1 - u * u, 0, 1))), b_ + R_ + (d_ - hw_) * 1.1))
+    lift += 1.2 * np.sin(gxv * 0.31 + 1.1)  # (the ragged wobble)
+    foot = np.clip((GROUND + 1 - lift[None, :] - gy5 + 1) / FOOT_FADE, 0.0, 1.0).astype(np.float32)
+    pile_cut = pile.copy()  # (his pile as his panel cut it: the settling below keeps its boulders and soil tones)
+    pile &= foot > 0
+    core &= pile
+    wcol = wcol * pile
+    print('dust: pile px after its bottom is closed', int(pile.sum()))
     pile_f, core_f, spray_f, clod_f = (m.astype(np.float32) for m in (pile, core, sbright, clod_core))
     stroke_f, pebble_f = sstroke.astype(np.float32), pebble.astype(np.float32)
     PEBBLE = median_palette(crop5[pebble], 3)  # his pebbles' own pale greys
@@ -1433,7 +1458,9 @@ def drake():
     # The settling dust (frames 6-7) breaks up rather than fading as one sheet: his cream boulders are clusters that
     # spread apart and fade one by one (the small ones first), the darkest soil goes first and the pile wears down
     # from the top. Each boulder cluster takes the shaded rim around it (2 px into the pile).
-    boulders = [np.array(p) for p in components(pile & (lum5 > 150)) if len(p) >= 25]
+    # (The clusters, their order and the soil's tones are his whole pile's, as his panel cut it; the closed bottom
+    # then applies to them like to the rest.)
+    boulders = [np.array(p) for p in components(pile_cut & (lum5 > 150)) if len(p) >= 25]
     blab = -np.ones((CH, CW), np.int32)
     for i, p in enumerate(boulders):
         blab[p[:, 0], p[:, 1]] = i
@@ -1441,12 +1468,13 @@ def drake():
         grow = blab.copy()
         for oy, ox in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             nb = np.roll(np.roll(blab, oy, 0), ox, 1)
-            take = (grow < 0) & (nb >= 0) & pile
+            take = (grow < 0) & (nb >= 0) & pile_cut
             grow[take] = nb[take]
         blab = grow
+    soil_lum = np.sort(lum5[pile_cut & (blab < 0)])
+    blab[~pile] = -1
     soil = pile & (blab < 0)
-    soil_lum = np.sort(lum5[soil])
-    p_height = np.where(pile, GROUND - gy5, 0.0)
+    p_height = np.where(pile_cut, GROUND - gy5, 0.0)
     pile_top = float(p_height.max())
     b_cent = [(float(p[:, 1].mean()), float(p[:, 0].mean())) for p in boulders]
     b_rank = np.argsort(np.argsort([len(p) for p in boulders], kind='stable'), kind='stable')
@@ -1457,7 +1485,7 @@ def drake():
         """His pile at settling stage st (0 his pile, 1 gone): per-pixel opacity and colour (work coordinates)."""
         keep = soil & (lum5 >= soil_lum[min(len(soil_lum) - 1, int(0.9 * st * len(soil_lum)))])
         keep &= p_height <= pile_top * (1.0 - 0.55 * st)
-        op_ = keep * (1.0 - 0.4 * st)
+        op_ = keep * (1.0 - 0.4 * st) * foot
         col_ = crop5.copy()
         wc_ = wcol * keep
         gox_ = to_work(5, DUST_ORIGIN)[0]
@@ -1468,7 +1496,7 @@ def drake():
             ddx_ = int(round((b_cent[i][0] - gox_) * 0.12 * st))
             ys_, xs_ = np.nonzero(blab == i)
             ty_, tx_ = ys_, np.clip(xs_ + ddx_, 0, CW - 1)
-            op_[ty_, tx_] = np.maximum(op_[ty_, tx_], a_)
+            op_[ty_, tx_] = np.maximum(op_[ty_, tx_], a_ * foot[ys_, xs_])
             col_[ty_, tx_] = crop5[ys_, xs_]
             wc_[ty_, tx_] = np.maximum(wc_[ty_, tx_], wcol[ys_, xs_] * a_)
         return op_.astype(np.float32), col_, wc_.astype(np.float32)
@@ -1685,9 +1713,12 @@ def drake():
                 Ad, _ = shrink(crop5, warp(pile_f, fx_, fy_), (WAX, WAY), S, size, oanchor)
                 _, Cd = shrink(c5, warp(wcol.astype(np.float32), fx_, fy_), (WAX, WAY), S, size, oanchor)
                 Ac, _ = shrink(crop5, warp(core_f, fx_, fy_), (WAX, WAY), S, size, oanchor)
+                # (how thick his pile is over the pixel: less toward the thinning bottom of its puffs)
+                Afo, _ = shrink(crop5, warp(pile_f * foot, fx_, fy_), (WAX, WAY), S, size, oanchor)
+                thick = np.clip(Afo / np.maximum(Ad, 1e-6), 0.0, 1.0)
                 solid_px = Ad >= 0.5
                 thin_px = (Ad >= 0.22) & ~solid_px & (Ac < 0.1)
-                lv = levels_of(np.where(solid_px, 1.0, 0.6) * alpha)
+                lv = levels_of(np.where(solid_px, 1.0, 0.6) * thick * alpha)
                 g = (solid_px | thin_px) & (lv > 0)
             out[g, :3] = np.where((lv < 255)[..., None], snap(Cd, DUST_A), snap(Cd, DUST))[g]
             out[g, 3] = lv[g].astype(np.uint8)

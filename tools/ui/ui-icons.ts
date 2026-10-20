@@ -112,6 +112,39 @@ function areaResize(src: F, w: number, h: number): F {
   return o;
 }
 
+/** Lanczos-3 resampling (the kernel widened by the reduction factor), separable, clamped edges. */
+function lanczosResize(src: F, w: number, h: number): F {
+  const pass = (inp: F, ow: number, oh: number, horiz: boolean): F => {
+    const o = new F(ow, oh);
+    const n = horiz ? inp.w : inp.h, m = horiz ? ow : oh;
+    const scale = n / m, sup = 3 * Math.max(1, scale);
+    const sinc = (x: number) => (x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x));
+    for (let j = 0; j < m; j++) {
+      const c = (j + 0.5) * scale - 0.5;
+      const i0 = Math.ceil(c - sup), i1 = Math.floor(c + sup);
+      const ws: number[] = [];
+      let wsum = 0;
+      for (let i = i0; i <= i1; i++) {
+        const t = (i - c) / Math.max(1, scale);
+        const wv = Math.abs(t) < 3 ? sinc(t) * sinc(t / 3) : 0;
+        ws.push(wv);
+        wsum += wv;
+      }
+      const other = horiz ? oh : ow;
+      for (let a = 0; a < other; a++)
+        for (let k = 0; k < 3; k++) {
+          let acc = 0;
+          for (let i = i0; i <= i1; i++) acc += ws[i - i0] * (horiz ? inp.at(i, a, k) : inp.at(a, i, k));
+          const v = acc / wsum;
+          const idx = horiz ? (a * ow + j) * 3 + k : (j * ow + a) * 3 + k;
+          o.d[idx] = Math.max(0, Math.min(255, v));
+        }
+    }
+    return o;
+  };
+  return pass(pass(src, w, src.h, true), w, h, false);
+}
+
 /** Unsharp mask (3x3 blur): gives back the edge contrast the area mean takes away. */
 function sharpen(src: F, amount: number): F {
   const o = new F(src.w, src.h);
@@ -133,26 +166,46 @@ function sharpen(src: F, amount: number): F {
 interface Pal {
   rgb: RGBA[];
   lab: Lab[];
+  /** Entries kept for his specks only (the base picture is never put on them). */
+  spare: boolean[];
 }
 
 /**
- * k-means in OKLab, seeded on lightness quantiles (so every step of his ramps gets a seed), then
- * each centre is replaced by the nearest colour that really occurs in his (median-cleaned) crop,
- * so the palette is sampled from his picture. Sorted dark to light.
+ * k-means in OKLab, then each centre is replaced by the nearest colour that really occurs in his
+ * (median-cleaned) crop, so the palette is sampled from his picture. Sorted dark to light.
+ * Every pixel is weighted by how rare its lightness is (`flat` 0..1), so a big dark background
+ * does not take most of the entries from the bright subject's ramp; the seeds are spread evenly
+ * in lightness for the same reason.
  */
-function makePalette(samples: F, source: F, k: number, extra: RGBA[] = []): Pal {
+function makePalette(samples: F, source: F, k: number, flat = 0.6, chroma = 1, vivid = 1.15, extra: RGBA[] = []): Pal {
+  const kd = (p: Lab, q: Lab): number => {
+    const dl = (p[0] - q[0]) * 1.4, da = (p[1] - q[1]) * chroma, db = (p[2] - q[2]) * chroma;
+    return dl * dl + da * da + db * db;
+  };
   const n = samples.w * samples.h;
   const pts: Lab[] = [];
   for (let i = 0; i < n; i++) pts.push(oklab(samples.d[i * 3], samples.d[i * 3 + 1], samples.d[i * 3 + 2]));
-  const order = pts.map((p, i) => [p[0], i] as [number, number]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const bins = new Float64Array(32);
+  for (const q of pts) bins[Math.max(0, Math.min(31, Math.floor(q[0] * 32)))]++;
+  const wt = pts.map((q) => 1 / Math.pow(bins[Math.max(0, Math.min(31, Math.floor(q[0] * 32)))], flat));
+  const order = pts.map((q, i) => [q[0], i] as [number, number]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const lo = order[Math.floor(n * 0.002)][0], hi = order[Math.min(n - 1, Math.floor(n * 0.998))][0];
   let cen: Lab[] = [];
-  for (let j = 0; j < k; j++) cen.push([...pts[order[Math.floor(((j + 0.5) / k) * n)][1]]] as Lab);
+  for (let j = 0; j < k; j++) {
+    const target = lo + ((hi - lo) * (j + 0.5)) / k;
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < n; i++) {
+      const d = Math.abs(pts[i][0] - target);
+      if (d < bd) (bd = d), (bi = i);
+    }
+    cen.push([...pts[bi]] as Lab);
+  }
   const asg = new Int32Array(n);
-  for (let it = 0; it < 30; it++) {
+  for (let it = 0; it < 40; it++) {
     for (let i = 0; i < n; i++) {
       let best = 0, bd = Infinity;
       for (let j = 0; j < cen.length; j++) {
-        const d = dist(pts[i], cen[j]);
+        const d = kd(pts[i], cen[j]);
         if (d < bd) (bd = d), (best = j);
       }
       asg[i] = best;
@@ -160,10 +213,10 @@ function makePalette(samples: F, source: F, k: number, extra: RGBA[] = []): Pal 
     const sum = cen.map(() => [0, 0, 0, 0]);
     for (let i = 0; i < n; i++) {
       const s = sum[asg[i]];
-      s[0] += pts[i][0];
-      s[1] += pts[i][1];
-      s[2] += pts[i][2];
-      s[3]++;
+      s[0] += pts[i][0] * wt[i];
+      s[1] += pts[i][1] * wt[i];
+      s[2] += pts[i][2] * wt[i];
+      s[3] += wt[i];
     }
     cen = cen.map((c, j) => (sum[j][3] ? ([sum[j][0] / sum[j][3], sum[j][1] / sum[j][3], sum[j][2] / sum[j][3]] as Lab) : c));
   }
@@ -180,7 +233,10 @@ function makePalette(samples: F, source: F, k: number, extra: RGBA[] = []): Pal 
     srcLab.push(oklab(r, g, b));
   }
   const rgb: RGBA[] = [];
-  for (const c of cen) {
+  for (const c0 of cen) {
+    // The mean of a cluster is greyer than the colours in it (and his JPEG greys them a little
+    // more), so the snap aims at a slightly richer colour along the same hue.
+    const c: Lab = [c0[0], c0[1] * vivid, c0[2] * vivid];
     let best = 0, bd = Infinity;
     for (let i = 0; i < srcLab.length; i++) {
       const d = dist(c, srcLab[i]);
@@ -193,7 +249,7 @@ function makePalette(samples: F, source: F, k: number, extra: RGBA[] = []): Pal 
   for (const c of rgb) if (!uniq.some((u) => u[0] === c[0] && u[1] === c[1] && u[2] === c[2])) uniq.push(c);
   const lab = uniq.map((c) => oklab(c[0], c[1], c[2]));
   const idx = uniq.map((_, i) => i).sort((a, b) => lab[a][0] - lab[b][0] || a - b);
-  return { rgb: idx.map((i) => uniq[i]), lab: idx.map((i) => lab[i]) };
+  return { rgb: idx.map((i) => uniq[i]), lab: idx.map((i) => lab[i]), spare: idx.map(() => false) };
 }
 
 // --- indexed images -----------------------------------------------------------------------------
@@ -227,6 +283,7 @@ function quantize(f: F, p: Pal): Ix {
     const c = oklab(f.d[i * 3], f.d[i * 3 + 1], f.d[i * 3 + 2]);
     let best = 0, bd = Infinity;
     for (let j = 0; j < p.lab.length; j++) {
+      if (p.spare[j]) continue;
       const d = dist(c, p.lab[j]);
       if (d < bd) (bd = d), (best = j);
     }
@@ -392,33 +449,39 @@ function modeResize(srcQ: Ix, p: Pal, w: number, h: number, boost: number): Ix {
 
 /**
  * Adds palette entries for colours the k-means left out (small but distinct: the orange sparks in
- * the lightning, the white-hot core): while some pixels sit far from every entry, the worst group
- * of them gets an entry of its own (his nearest real colour).
+ * the lightning): while at least `minCount` pixels sit farther than `far` from every entry, the
+ * densest group of them (pixels within `far` of one another's centre) gets an entry of its own,
+ * his nearest real colour to the group's mean.
  */
-function augment(p: Pal, f: F, source: F, maxAdd: number, far: number): Pal {
+function augment(p: Pal, f: F, source: F, maxAdd: number, far: number, minCount = 6): Pal {
   let pal = p;
+  const all: Lab[] = [];
+  for (let i = 0; i < f.w * f.h; i++) all.push(oklab(f.d[i * 3], f.d[i * 3 + 1], f.d[i * 3 + 2]));
   for (let k = 0; k < maxAdd; k++) {
-    const bad: Lab[] = [];
-    for (let i = 0; i < f.w * f.h; i++) {
-      const c = oklab(f.d[i * 3], f.d[i * 3 + 1], f.d[i * 3 + 2]);
-      let bd = Infinity;
-      for (const q of pal.lab) bd = Math.min(bd, dist(c, q));
-      if (bd > far * far) bad.push(c);
-    }
-    if (bad.length < 6) break;
+    const bad = all.filter((c) => Math.min(...pal.lab.map((q) => dist(c, q))) > far * far);
+    if (bad.length < minCount) break;
+    let best = -1, bc = 0;
+    bad.forEach((c, i) => {
+      let n = 0;
+      for (const d of bad) if (dist(c, d) < far * far) n++;
+      if (n > bc) (bc = n), (best = i);
+    });
+    if (bc < minCount) break;
+    const grp = bad.filter((d) => dist(bad[best], d) < far * far);
     const m: Lab = [0, 0, 0];
-    for (const b of bad) for (let j = 0; j < 3; j++) m[j] += b[j] / bad.length;
-    // His nearest real colour to the group's mean.
-    let best: RGBA = [0, 0, 0, 255], bd = Infinity;
+    for (const g of grp) for (let j = 0; j < 3; j++) m[j] += g[j] / grp.length;
+    let pick: RGBA = [0, 0, 0, 255], bd = Infinity;
     for (let i = 0; i < source.w * source.h; i++) {
       const c = oklab(source.d[i * 3], source.d[i * 3 + 1], source.d[i * 3 + 2]);
       const d = dist(c, m);
-      if (d < bd) (bd = d), (best = [Math.round(source.d[i * 3]), Math.round(source.d[i * 3 + 1]), Math.round(source.d[i * 3 + 2]), 255]);
+      if (d < bd) (bd = d), (pick = [Math.round(source.d[i * 3]), Math.round(source.d[i * 3 + 1]), Math.round(source.d[i * 3 + 2]), 255]);
     }
-    const rgb = [...pal.rgb, best];
+    if (pal.rgb.some((c) => c[0] === pick[0] && c[1] === pick[1] && c[2] === pick[2])) break;
+    const rgb = [...pal.rgb, pick];
+    const spare = [...pal.spare, true];
     const lab = rgb.map((c) => oklab(c[0], c[1], c[2]));
     const idx = rgb.map((_, i) => i).sort((a, b) => lab[a][0] - lab[b][0] || a - b);
-    pal = { rgb: idx.map((i) => rgb[i]), lab: idx.map((i) => lab[i]) };
+    pal = { rgb: idx.map((i) => rgb[i]), lab: idx.map((i) => lab[i]), spare: idx.map((i) => spare[i]) };
   }
   return pal;
 }
@@ -636,6 +699,8 @@ interface Speck {
   bg: number;
   /** Its own lightness at its most extreme third. */
   peak: number;
+  /** Area (his pixels) it needs to be kept in the 44 version. */
+  min44?: number;
 }
 
 /**
@@ -705,6 +770,57 @@ function findSpecks(src: F, r: number, thr: number, minPx: number, maxPx: number
   return out;
 }
 
+/** Warm marks in a cold picture (red above blue by `warm`): his orange sparks among the bolts. */
+function findWarm(src: F, warm: number, minPx: number, maxPx: number): Speck[] {
+  const { w, h } = src;
+  const L = lightness(src);
+  const m = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) m[i] = src.d[i * 3] - src.d[i * 3 + 2] > warm ? 1 : 0;
+  const out: Speck[] = [];
+  const seen = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    if (!m[i] || seen[i]) continue;
+    const comp: number[] = [];
+    const st = [i];
+    seen[i] = 1;
+    while (st.length) {
+      const j = st.pop()!;
+      comp.push(j);
+      const x = j % w, y = (j - x) / w;
+      for (const [dx, dy] of N8) {
+        const xx = x + dx, yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        const k = yy * w + xx;
+        if (m[k] && !seen[k]) (seen[k] = 1), st.push(k);
+      }
+    }
+    if (comp.length < minPx || comp.length > maxPx) continue;
+    let cx = 0, cy = 0;
+    for (const j of comp) (cx += j % w), (cy += Math.floor(j / w));
+    cx /= comp.length;
+    cy /= comp.length;
+    let sxx = 0, sxy = 0, syy = 0;
+    for (const j of comp) {
+      const dx = (j % w) - cx, dy = Math.floor(j / w) - cy;
+      sxx += dx * dx;
+      sxy += dx * dy;
+      syy += dy * dy;
+    }
+    const n = comp.length;
+    (sxx /= n), (sxy /= n), (syy /= n);
+    const tr = sxx + syy, det = sxx * syy - sxy * sxy;
+    const l1 = tr / 2 + Math.sqrt(Math.max(0, (tr * tr) / 4 - det)), l2 = tr / 2 - Math.sqrt(Math.max(0, (tr * tr) / 4 - det));
+    const sorted = [...comp].sort((a, b) => src.d[b * 3] - src.d[b * 3 + 2] - (src.d[a * 3] - src.d[a * 3 + 2]) || a - b);
+    const top = sorted.slice(0, Math.max(1, Math.ceil(n / 3)));
+    const c = [0, 0, 0];
+    for (const j of top) for (let k = 0; k < 3; k++) c[k] += src.d[j * 3 + k] / top.length;
+    let peak = 0;
+    for (const j of top) peak += L[j] / top.length;
+    out.push({ px: comp, cx, cy, color: [Math.round(c[0]), Math.round(c[1]), Math.round(c[2]), 255], bright: true, long: Math.sqrt(12 * l1), across: Math.sqrt(12 * Math.max(0, l2)), angle: 0.5 * Math.atan2(2 * sxy, sxx - syy), bg: 0.3, peak });
+  }
+  return out;
+}
+
 /** His picture with the specks painted out: each takes the mean colour of the ring just around it. */
 function removeSpecks(src: F, specks: Speck[], grow = 1): F {
   const { w, h } = src;
@@ -745,18 +861,267 @@ function removeSpecks(src: F, specks: Speck[], grow = 1): F {
   return out;
 }
 
+/**
+ * Unsharp mask with a Gaussian of `sigma` (his pixels): local contrast that survives the reduction.
+ * Each value is kept inside the range of his pixels within `sigma` of it, so the edges get crisp
+ * without dark or bright halos (which would turn into stray pixels).
+ */
+function usm(src: F, sigma: number, amount: number, clamp = true): F {
+  const { w, h } = src;
+  const out = new F(w, h);
+  const r = Math.max(1, Math.round(sigma));
+  for (let k = 0; k < 3; k++) {
+    const ch = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) ch[i] = src.d[i * 3 + k];
+    const b = gauss(ch, w, h, sigma);
+    const lo = morph(ch, w, h, r, false), hi = morph(ch, w, h, r, true);
+    for (let i = 0; i < w * h; i++) out.d[i * 3 + k] = clamp ? Math.max(lo[i], Math.min(hi[i], ch[i] + (ch[i] - b[i]) * amount)) : Math.max(0, Math.min(255, ch[i] + (ch[i] - b[i]) * amount));
+  }
+  return out;
+}
+
+/**
+ * Reduction that keeps his own colours: each target pixel takes the one pixel of his inside its
+ * cell that is nearest to the cell's mean (a medoid), so strokes keep their contrast instead of
+ * being averaged with their neighbours.
+ */
+function medoidResize(src: F, w: number, h: number): F {
+  const o = new F(w, h);
+  const sx = src.w / w, sy = src.h / h;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const xs: number[] = [];
+      for (let yy = Math.floor(y * sy); yy < Math.ceil((y + 1) * sy); yy++) for (let xx = Math.floor(x * sx); xx < Math.ceil((x + 1) * sx); xx++) xs.push(Math.min(src.h - 1, yy) * src.w + Math.min(src.w - 1, xx));
+      const labs = xs.map((i) => oklab(src.d[i * 3], src.d[i * 3 + 1], src.d[i * 3 + 2]));
+      const m: Lab = [0, 0, 0];
+      for (const l of labs) for (let k = 0; k < 3; k++) m[k] += l[k] / labs.length;
+      let bi = 0, bd = Infinity;
+      labs.forEach((l, j) => {
+        const d = dist(l, m);
+        if (d < bd) (bd = d), (bi = j);
+      });
+      for (let k = 0; k < 3; k++) o.d[(y * w + x) * 3 + k] = src.d[xs[bi] * 3 + k];
+    }
+  return o;
+}
+
+/**
+ * Halves an indexed picture by toggle mapping: each 2x2 block keeps its lightest pixel when the
+ * block is lighter than its surroundings (a stroke, a tooth, a bolt) and its darkest when it is
+ * darker (a gap, a gum line), so thin strokes of the large version survive in the small one.
+ * `ring` is the radius (in blocks) of the surroundings.
+ */
+function toggleHalf(q: Ix, p: Pal, ring = 1): Ix {
+  const w = q.w >> 1, h = q.h >> 1;
+  const o = new Ix(w, h);
+  const bl = new Float32Array(w * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let m = 0;
+      for (let k = 0; k < 4; k++) m += p.lab[q.get(x * 2 + (k & 1), y * 2 + (k >> 1))][0] / 4;
+      bl[y * w + x] = m;
+    }
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let n = 0, c = 0;
+      for (let dy = -ring; dy <= ring; dy++)
+        for (let dx = -ring; dx <= ring; dx++) {
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+          n += bl[yy * w + xx];
+          c++;
+        }
+      const lighter = bl[y * w + x] >= n / c;
+      let best = -1;
+      for (let k = 0; k < 4; k++) {
+        const v = q.get(x * 2 + (k & 1), y * 2 + (k >> 1));
+        if (best < 0 || (lighter ? p.lab[v][0] > p.lab[best][0] : p.lab[v][0] < p.lab[best][0])) best = v;
+      }
+      o.set(x, y, best);
+    }
+  return o;
+}
+
+// --- hand-placed details -----------------------------------------------------------------------
+
+/**
+ * A detail traced on his picture, in the coordinates of his crop (201x206 pixels, before the
+ * 1-pixel trim), drawn after the reduction at either size. `color` is a colour of his; the nearest
+ * palette entry is used.
+ *  - line: a 1-pixel line through the points (pixel-perfect: no doubled corners).
+ *  - dots: single pixels.
+ * `sizes` limits it to the 44 or the 88 version.
+ */
+interface Feature {
+  kind: 'line' | 'dots';
+  color: string;
+  pts: [number, number][];
+  sizes?: number[];
+}
+
+function toTarget(N: number, x: number, y: number): [number, number] {
+  return [((x - 1 + 0.5) * N) / 199 - 0.5, ((y - 1 + 0.5) * N) / 204 - 0.5];
+}
+
+/** A 1-pixel line between two pixels with no doubled corners (each step moves one pixel). */
+function linePixels(x0: number, y0: number, x1: number, y1: number): [number, number][] {
+  const out: [number, number][] = [];
+  const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy, x = x0, y = y0;
+  for (;;) {
+    out.push([x, y]);
+    if (x === x1 && y === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) (err -= dy), (x += sx);
+    if (e2 < dx) (err += dx), (y += sy);
+  }
+  // Drop the inner pixel of every L-shaped corner.
+  const clean: [number, number][] = [];
+  for (let i = 0; i < out.length; i++) {
+    const a = clean[clean.length - 1], b = out[i], c = out[i + 1];
+    if (a && c && a[0] !== c[0] && a[1] !== c[1] && (a[0] === b[0] || a[1] === b[1]) && Math.abs(a[0] - c[0]) === 1 && Math.abs(a[1] - c[1]) === 1) continue;
+    clean.push(b);
+  }
+  return clean;
+}
+
+function drawFeatures(q: Ix, p: Pal, fs: Feature[] | undefined): void {
+  if (!fs) return;
+  const N = q.w;
+  for (const f of fs) {
+    if (f.sizes && !f.sizes.includes(N)) continue;
+    const c = hex(f.color);
+    const lab = oklab(c[0], c[1], c[2]);
+    let idx = 0, bd = Infinity;
+    p.lab.forEach((l, i) => {
+      const d = dist(l, lab);
+      if (d < bd) (bd = d), (idx = i);
+    });
+    const pts = f.pts.map(([x, y]) => toTarget(N, x, y).map(Math.round) as [number, number]);
+    if (f.kind === 'dots') for (const [x, y] of pts) q.set(x, y, idx);
+    else
+      for (let i = 0; i + 1 < pts.length; i++) {
+        const seg = linePixels(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+        for (const [x, y] of seg) q.set(x, y, idx);
+      }
+  }
+}
+
+// His Kirin: the dragon's open jaws, teeth, eye and head outline, traced on his picture. At 44 the
+// reduction alone leaves the head unreadable (his picture is full of fine strokes), so these are
+// drawn over it; at 88 his own pixels show them and only the eye and the gum lines are restated.
+const NAVY = '#1a2453', INK = '#161638', TOOTH = '#d8feff', PALE = '#a1f5fa';
+const KIRIN: Feature[] = [
+  // Outline of the snout, the horn on the nose and the upper jaw tip, just outside his edge.
+  { kind: 'line', color: NAVY, pts: [[142, 66], [158, 70], [164, 70], [167, 58], [172, 60], [179, 72], [184, 84], [186, 96], [183, 105], [178, 111]], sizes: [44] },
+  // Upper gum line (dark) and the teeth hanging from it.
+  { kind: 'line', color: INK, pts: [[104, 99], [124, 95], [140, 97], [160, 101], [176, 104]] },
+  { kind: 'dots', color: TOOTH, pts: [[124, 100], [133, 101], [142, 104], [151, 106], [160, 107], [169, 108]], sizes: [44] },
+  { kind: 'dots', color: TOOTH, pts: [[124, 104], [142, 108], [160, 111]], sizes: [44] },
+  // Lower gum line and the teeth standing on it.
+  { kind: 'line', color: INK, pts: [[106, 118], [114, 132], [122, 146], [132, 158], [144, 164]] },
+  { kind: 'dots', color: TOOTH, pts: [[114, 126], [122, 138], [130, 148], [139, 156]], sizes: [44] },
+  // The eye: his dark slit with the lit brow ridge above it.
+  { kind: 'line', color: INK, pts: [[156, 85], [161, 86], [166, 90]] },
+  { kind: 'line', color: PALE, pts: [[152, 80], [160, 81], [166, 85]], sizes: [44] },
+];
+
 // --- the icons ----------------------------------------------------------------------------------
+
+interface SpeckRule {
+  bright: boolean;
+  /** Found by warmth instead (red minus blue above this): the orange sparks in the lightning. */
+  warm?: number;
+  /** Top-hat radius and contrast (his pixels, OKLab L). */
+  r: number;
+  thr: number;
+  /** The ground must be darker (bright specks) or lighter (dark specks) than this. */
+  bgMax?: number;
+  bgMin?: number;
+  /** Dark specks only: their own darkest third must be darker than this. */
+  peakMax?: number;
+  /** Size limits in his pixels: area, length and width. */
+  minPx: number;
+  maxPx: number;
+  maxLong: number;
+  maxAcross: number;
+  /** Area (his pixels) a speck needs to be kept at 44. */
+  min44: number;
+}
 
 interface IconSpec {
   id: string;
   name: string;
   colors: number;
+  specks: SpeckRule[];
+  /** Weight of hue against lightness when the palette is chosen (1 = as lightness). */
+  chroma: number;
+  /** How much richer than the cluster means the palette snaps (1 = none). */
+  vivid: number;
+  /** Whether the small version's unsharp mask is kept inside his local range (no halos). */
+  clamp44: boolean;
+  /** Hand-placed details drawn over the reduction (see Feature). */
+  features?: Feature[];
+  /** Colours of the 44 version (a smaller palette, also sampled from his picture), 0 = the same. */
+  colors44: number;
+  /** Unsharp mask before each reduction: [sigma in his pixels, amount]; the small one is not clamped. */
+  usm44: [number, number];
+  usm88: [number, number];
 }
+
 const ICONS: IconSpec[] = [
-  { id: 'fireball_goukakyu', name: 'Fireball', colors: 14 },
-  { id: 'kirin_thunder', name: 'Kirin', colors: 14 },
-  { id: 'great_fire_annihilation', name: 'Great Fire Annihilation', colors: 14 },
-  { id: 'water_shield_suijinheki', name: 'Water Wall', colors: 14 },
+  {
+    id: 'fireball_goukakyu',
+    name: 'Fireball',
+    colors: 14,
+    specks: [{ bright: true, r: 4, thr: 0.1, bgMax: 0.42, minPx: 4, maxPx: 400, maxLong: 30, maxAcross: 7, min44: 8 }],
+    chroma: 1,
+    vivid: 1,
+    colors44: 0,
+    clamp44: false,
+    usm44: [3, 1.2],
+    usm88: [2, 1],
+  },
+  {
+    id: 'kirin_thunder',
+    name: 'Kirin',
+    colors: 14,
+    specks: [{ bright: true, warm: 14, r: 0, thr: 0, minPx: 3, maxPx: 300, maxLong: 40, maxAcross: 12, min44: 3 }],
+    chroma: 1,
+    vivid: 1,
+    colors44: 0,
+    clamp44: true,
+    features: KIRIN,
+    usm44: [3, 2],
+    usm88: [2, 1],
+  },
+  {
+    id: 'great_fire_annihilation',
+    name: 'Great Fire Annihilation',
+    colors: 14,
+    specks: [
+      { bright: true, r: 4, thr: 0.1, bgMax: 0.42, minPx: 4, maxPx: 400, maxLong: 30, maxAcross: 7, min44: 8 },
+      { bright: false, r: 4, thr: 0.1, bgMin: 0.28, peakMax: 0.27, minPx: 4, maxPx: 200, maxLong: 16, maxAcross: 6, min44: 8 },
+    ],
+    chroma: 1,
+    vivid: 1,
+    colors44: 0,
+    clamp44: false,
+    usm44: [3, 1.2],
+    usm88: [2, 1],
+  },
+  {
+    id: 'water_shield_suijinheki',
+    name: 'Water Wall',
+    colors: 15,
+    specks: [{ bright: true, r: 4, thr: 0.1, bgMax: 0.42, minPx: 4, maxPx: 400, maxLong: 30, maxAcross: 7, min44: 6 }],
+    chroma: 2.2,
+    vivid: 1.15,
+    colors44: 0,
+    clamp44: false,
+    usm44: [3, 1.2],
+    usm88: [2, 1],
+  },
 ];
 
 function loadHis(id: string): Img {
@@ -765,53 +1130,107 @@ function loadHis(id: string): Img {
   return loadPng(path);
 }
 
-if (process.env.UI_SPECKS) {
-  for (const spec of ICONS) {
-    const his = prep(loadHis(spec.id));
-    const src = median3(F.of(his));
-    const sp = findSpecks(src, 4, 0.1, 4, 400, 7, 'both').filter((s) => (s.bright ? s.bg < 0.42 : s.bg > 0.3 && s.peak < 0.3));
-    const o = F.of(his).toImg().scaled(3);
-    for (const s of sp)
-      for (const j of s.px) {
-        const x = j % src.w, y = (j - x) / src.w;
-        o.rect(x * 3, y * 3, 3, 3, s.bright ? [255, 0, 255, 160] : [0, 255, 0, 160]);
-      }
-    savePng(join(process.env.UI_SPECKS, `specks-${spec.id}.png`), o);
-    console.log(spec.id, sp.length, sp.filter((s) => s.bright).length);
-  }
-  process.exit(0);
-}
-if (process.env.UI_EXPERIMENT) {
-  const rows: Img[][] = [];
-  for (const spec of ICONS) {
-    const his = prep(loadHis(spec.id));
-    const src = median3(F.of(his));
-    const m88 = areaResize(src, 88, 88);
-    let pal = makePalette(m88, src, spec.colors);
-    pal = augment(pal, m88, src, 3, 0.09);
-    const srcQ = quantize(src, pal);
-    const v: Img[] = [];
-    v.push(F.of(his).toImg().resized(88, 88).scaled(4));
-    const a88 = despeckle(quantize(sharpen(m88, 0.5), pal), pal, 2, 0.18);
-    const b88 = despeckle(modeResize(srcQ, pal, 88, 88, 1), pal, 2, 0.18);
-    v.push(a88.toImg(pal).scaled(4), b88.toImg(pal).scaled(4));
-    const m44 = areaResize(src, 44, 44);
-    v.push(despeckle(quantize(sharpen(m44, 0.6), pal), pal, 1, 0.18).toImg(pal).scaled(8));
-    v.push(despeckle(modeResize(srcQ, pal, 44, 44, 0), pal, 1, 0.18).toImg(pal).scaled(8));
-    for (const [sg, ln] of [[2, 4], [3, 6], [3, 9]]) {
-      const fs = flowSmooth(src, sg, ln);
-      v.push(despeckle(quantize(areaResize(fs, 44, 44), pal), pal, 2, 0.2).toImg(pal).scaled(8));
+function specksFor(src: F, rules: SpeckRule[]): Speck[] {
+  const out: Speck[] = [];
+  for (const r of rules) {
+    const found = r.warm !== undefined ? findWarm(src, r.warm, r.minPx, r.maxPx) : findSpecks(src, r.r, r.thr, r.minPx, r.maxPx, r.maxAcross, r.bright ? 'bright' : 'dark');
+    for (const s of found) {
+      if (s.long > r.maxLong) continue;
+      if (r.bgMax !== undefined && s.bg > r.bgMax) continue;
+      if (r.bgMin !== undefined && s.bg < r.bgMin) continue;
+      if (r.peakMax !== undefined && s.peak > r.peakMax) continue;
+      out.push({ ...s, min44: r.min44 });
     }
-    v.push(despeckle(quantize(areaResize(flowSmooth(src, 2, 3), 88, 88), pal), pal, 2, 0.2).toImg(pal).scaled(4));
-    rows.push(v);
-    console.log(spec.id, pal.rgb.length, pal.rgb.map(toHex).join(' '));
   }
-  for (let r = 0; r < rows.length; r++) {
-    const v = rows[r];
-    const o = new Img(v.length * 360, 356);
-    o.fill(hex('#15171d'));
-    v.forEach((im, i) => o.draw(im, i * 360, 2));
-    savePng(join(process.env.UI_EXPERIMENT, `exp-${ICONS[r].id}.png`), o);
-  }
-  process.exit(0);
+  return out;
 }
+
+/** Nearest palette entry to a colour, stepping along the ramp until it stands out from `bgL` by `minC`. */
+function pickContrast(p: Pal, c: RGBA, bgL: number, minC: number): number {
+  const lab = oklab(c[0], c[1], c[2]);
+  const order = p.lab.map((q, i) => [dist(lab, q), i] as [number, number]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  for (const [, i] of order) if (Math.abs(p.lab[i][0] - bgL) >= minC && Math.sign(p.lab[i][0] - bgL) === Math.sign(lab[0] - bgL)) return i;
+  return order[0][1];
+}
+
+/** Puts each speck back as a clean mark: one pixel, or a short 1-pixel dash along its length. */
+function stampSpecks(q: Ix, p: Pal, specks: Speck[], srcW: number, srcH: number): Set<number> {
+  const N = q.w, sx = N / srcW, sy = q.h / srcH;
+  const keep = new Set<number>();
+  for (const s of [...specks].sort((a, b) => a.px.length - b.px.length || a.cx - b.cx)) {
+    if (q.w < 88 && s.px.length < (s.min44 ?? 0)) continue;
+    const cx = (s.cx + 0.5) * sx - 0.5, cy = (s.cy + 0.5) * sy - 0.5;
+    const len = s.long * sx;
+    const bgIdx = q.get(Math.round(cx), Math.round(cy));
+    const bgL = bgIdx >= 0 ? p.lab[bgIdx][0] : 0;
+    const c = pickContrast(p, s.color, bgL, 0.12);
+    const n = Math.max(1, Math.round(len * 0.8));
+    const ux = Math.cos(s.angle), uy = Math.sin(s.angle);
+    for (let k = 0; k < n; k++) {
+      const t = n === 1 ? 0 : k - (n - 1) / 2;
+      const x = Math.round(cx + ux * t), y = Math.round(cy + uy * t);
+      if (x < 0 || y < 0 || x >= q.w || y >= q.h) continue;
+      q.set(x, y, c);
+      keep.add(y * q.w + x);
+    }
+  }
+  return keep;
+}
+
+interface Built {
+  spec: IconSpec;
+  pal: Pal;
+  pal44: Pal;
+  i44: Img;
+  i88: Img;
+  q44: Ix;
+  q88: Ix;
+  his: Img;
+  his88: Img | null;
+}
+
+function buildIcon(spec: IconSpec): Built {
+  const his = loadHis(spec.id);
+  const src = median3(F.of(prep(his)));
+  const specks = specksFor(src, spec.specks);
+  const ground = removeSpecks(src, specks);
+  const m88 = areaResize(src, 88, 88);
+  const pal = augment(makePalette(m88, src, spec.colors, 0.6, spec.chroma, spec.vivid), m88, src, 2, 0.1);
+  const pal44 = spec.colors44 ? augment(makePalette(m88, src, spec.colors44, 0.6, spec.chroma, spec.vivid), m88, src, 2, 0.1) : pal;
+  // 88: his picture sharpened a little (no halos), Lanczos, on the palette, specks cleaned.
+  const q88 = despeckle(quantize(lanczosResize(usm(ground, spec.usm88[0], spec.usm88[1]), 88, 88), pal), pal, 1, 0.2);
+  stampSpecks(q88, pal, specks, src.w, src.h);
+  drawFeatures(q88, pal, spec.features);
+  // 44: his picture's area mean at 88 on the palette, halved by toggle mapping (each 2x2 block
+  // keeps its lightest or darkest pixel, whichever stands out from its surroundings), cleaned.
+  const q44 = despeckle(toggleHalf(despeckle(quantize(areaResize(ground, 88, 88), pal44), pal44, 1, 0.2), pal44, 1), pal44, 2, 0.2);
+  stampSpecks(q44, pal44, specks, src.w, src.h);
+  drawFeatures(q44, pal44, spec.features);
+  const p88 = join(REF, `${spec.id}@88.png`);
+  return { spec, pal, pal44, q44, q88, i44: q44.toImg(pal44), i88: q88.toImg(pal), his, his88: existsSync(p88) ? loadPng(p88) : null };
+}
+
+const built = ICONS.map(buildIcon);
+for (const b of built) {
+  savePng(join(OUT, `${b.spec.id}.png`), b.i44);
+  savePng(join(OUT, `${b.spec.id}@2x.png`), b.i88);
+  console.log(b.spec.id, b.pal.rgb.length, b.pal.rgb.map(toHex).join(' '));
+}
+
+// --- sheets -------------------------------------------------------------------------------------
+
+if (process.env.UI_SHEETS) {
+  const S = 2;
+  const cell = 88 * S, gap = 16;
+  const out = new Img(gap + built.length * (cell * 3 + gap * 3), cell + gap * 2);
+  out.fill(hex('#15171d'));
+  let x = gap;
+  for (const b of built) {
+    if (b.his88) out.draw(b.his88.scaled(S), x, gap);
+    out.draw(b.i88.scaled(S), x + cell + gap, gap);
+    out.draw(b.i44.scaled(S * 2), x + (cell + gap) * 2, gap);
+    x += cell * 3 + gap * 3;
+  }
+  savePng(join(process.env.UI_SHEETS, 'ui-icons-1-compare.png'), out);
+}
+void writeAtomic;

@@ -32,21 +32,28 @@ function textC(out: Img, s: string, font: FontName, scale: 1 | 2, color: RGBA, c
   out.draw(t, Math.round(cx - t.w / 2), y);
 }
 
-/** Draws a 9-slice image into the box (corners as they are, edges and centre repeated). */
-function nine(out: Img, src: Img, ins: [number, number, number, number], x: number, y: number, w: number, h: number): void {
+/**
+ * Draws a 9-slice image into the box as CSS `border-image-repeat: repeat` does: corners as they
+ * are; the edges and the centre tiled with one tile centred in each run, so the tiles meet the
+ * corners at whatever phase the run's length gives. With `fromStart` the tiles start at the
+ * corners instead (the seamless reference the generator compares against).
+ */
+export function nine(out: Img, src: Img, ins: [number, number, number, number], x: number, y: number, w: number, h: number, fromStart = false): void {
   const [t, r, b, l] = ins;
   const cw = src.w - l - r, ch = src.h - t - b;
   const iw = w - l - r, ih = h - t - b;
-  const at = (sx: number, sy: number, dx: number, dy: number) => {
-    const c = src.get(sx, sy);
-    if (c[3]) out.plot(x + dx, y + dy, c);
+  if (iw < 0 || ih < 0) return;
+  const tile = (d: number, run: number, size: number): number => {
+    if (size <= 0) return 0;
+    const off = fromStart ? 0 : (run - size) / 2; // where a tile starts, so one is centred in the run
+    return (((d - off) % size) + size) % size;
   };
   for (let dy = 0; dy < h; dy++) {
-    const sy = dy < t ? dy : dy >= h - b ? src.h - (h - dy) : t + ((dy - t) % Math.max(1, ch));
+    const sy = dy < t ? dy : dy >= h - b ? src.h - (h - dy) : t + tile(dy - t, ih, ch);
     for (let dx = 0; dx < w; dx++) {
-      const sx = dx < l ? dx : dx >= w - r ? src.w - (w - dx) : l + ((dx - l) % Math.max(1, cw));
-      if (iw < 0 || ih < 0) continue;
-      at(sx, sy, dx, dy);
+      const sx = dx < l ? dx : dx >= w - r ? src.w - (w - dx) : l + tile(dx - l, iw, cw);
+      const c = src.get(sx, sy);
+      if (c[3]) out.plot(x + dx, y + dy, c);
     }
   }
 }
@@ -106,7 +113,7 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
     out.draw(im, x, y);
     log(name, x, y, im.w, im.h);
   };
-  /** Draws a sliced piece into a box and records it. */
+  /** Draws a sliced piece into a box (as CSS repeat would) and records it. */
   const put9 = (name: string, x0: number, y0: number, w0: number, h: number) => {
     const x = even(x0), y = even(y0), w = even(w0);
     nine(out, P(name), ins(name), x, y, w, h);
@@ -149,17 +156,18 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
   put('init_end', endX, endY);
 
   // --- target bar: the hovered bandit -------------------------------------------------------------------------
-  // His plaque runs from x 391 to 652 (centre 521.5) with its channel centred on y 31.6.
+  // His plaque runs from x 612 to 1002 here (390 wide) with its channel centred on y 31.6 of his.
   const tb = P('target_bar');
-  const tbX = S(521.5) - tb.w / 2, tbY = S(31.6) - tb.h / 2;
-  put('target_bar', tbX, tbY);
+  const tbX = 612, tbW = 390, tbY = S(31.6) - tb.h / 2;
+  put9('target_bar', tbX, tbY, tbW, tb.h);
   const fill = P('target_fill');
   const hp = 25, hpMax = 25;
   const tw = byName.get('target_bar')!.window!;
-  const chX = tbX + tw.x * K, chW = tw.w * K;
+  const chX = tbX + tw.x * K, chW = tbW - 2 * tw.x * K;
   put9('target_fill', chX, tbY + tw.y * K, Math.round((chW * hp) / hpMax), fill.h);
-  textC(out, 'Bandido - Nv 3', 'title', 2, cream, S(521.5), 4, { shadow: INK.shadow });
-  textC(out, `${hp} / ${hpMax}`, 'label', 2, white, S(521.5), tbY + tw.y * K - 3);
+  textC(out, 'Bandido - Nv 3', 'title', 2, cream, tbX + tbW / 2, 12, { shadow: INK.shadow });
+  // His HP numbers are small: the 1x title font, centred on the channel.
+  textC(out, `${hp} / ${hpMax}`, 'title', 1, white, tbX + tbW / 2, tbY + tw.y * K + fill.h / 2 - 5);
 
   // --- minimap ----------------------------------------------------------------------------------------------------
   const ring = P('minimap_ring');
@@ -191,9 +199,14 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
   put('minimap_ring', rX, rY);
 
   // --- action bar ----------------------------------------------------------------------------------------------------
-  const o = 6; // the frame's outset (corner gems)
-  const barX = S(222) - o, barY = S(492) - o, barW = S(800) - S(222) + 2 * o, barH = S(551) - S(492) + 2 * o;
+  // His bar runs from x 222 to 800 and y 492 to 554 (346..1250 and 768..866 here). The element is
+  // 908 x 100 at (344, 768), so its image area with the 6-px outset is 920 x 112: CSS repeat centres
+  // the tiles, and (920 - 48) and (112 - 48) are multiples of 8, so the dotted lines meet the
+  // corners in phase (the generator checks this for every sliced placement).
+  const o = 6; // the frame's outset (corner gems, lace)
+  const barX = 344 - o, barY = S(492) - o, barW = 908 + 2 * o, barH = 100 + 2 * o;
   put9('bar_frame', barX, barY, barW, barH);
+  const barBottom = barY + barH - o;
 
   // Crest strip (his runs from x 352 to 680, 512 px here), its trough on the bar's top rail; then
   // the acting character medallion over its middle.
@@ -240,24 +253,26 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
   put9('move_trough', mvX, mvY, mvW, trough.h);
   const mf = P('move_fill');
   put9('move_fill', mvX + 4, mvY + 2, mvW - 8, mf.h);
-  out.draw(text('9.0/9 m', 'title', 1, cream), S(334), mvY - 1);
+  out.draw(text('9,0/9 m', 'title', 1, cream), S(334), mvY - 1);
 
   // Numbered skill slots, empty for the icons he will paint (a faint placeholder glyph).
   const slot = P('skill_slot'), tag = P('skill_tag'), ph = P('glyph_placeholder');
   for (let i = 0; i < 6; i++) {
-    const sx = S(358) + i * 62, sy = S(507);
+    // His tags sit 6 px under the dotted line (y 776) and overlap the slot top by 10 px.
+    const sx = S(358) + i * 62, sy = 796;
+    const sw = byName.get('skill_slot')!.window!;
+    out.rect(sx + sw.x * K, sy + sw.y * K, sw.w * K, sw.h * K, PANEL[1]);
     put('skill_slot', sx, sy);
     put('glyph_placeholder', sx + (slot.w - ph.w) / 2, sy + (slot.h - ph.h) / 2);
-    // His shield tag overlaps the slot's top edge by 8 px.
-    put('skill_tag', sx + (slot.w - tag.w) / 2, sy - tag.h + 8);
-    textC(out, String(i + 1), 'label', 2, cream, sx + slot.w / 2, sy - tag.h + 8 + 1, { outline: null });
+    put('skill_tag', sx + (slot.w - tag.w) / 2, sy - tag.h + 10);
+    textC(out, String(i + 1), 'label', 2, cream, sx + slot.w / 2, sy - tag.h + 10 + 1, { outline: null });
   }
 
   // Greyed item slots with dim icons, labels and the blue count badges.
   const item = P('item_slot');
   const items: [string, string, number | null][] = [['glyph_pills', 'Píldoras', 2], ['glyph_bandage', 'Vendas', 3], ['glyph_antidote', 'Antídoto', 1], ['glyph_seal', 'Sello expl.', 2], ['glyph_more', '+', null]];
   items.forEach(([g, label, n], i) => {
-    const ix = S(596) + i * 62, iy = S(508);
+    const ix = S(596) + i * 62, iy = 798;
     put('item_slot', ix, iy);
     const ic = P(g);
     put(g, ix + (item.w - ic.w) / 2, iy + 8);
@@ -267,11 +282,13 @@ export function buildMockup(ps: Piece[], capDir: string, shotsDir: string): Mock
       textC(out, String(n), 'label', 2, hex('#93a6b8'), ix + item.w - 4, iy + item.h - 11, { outline: null });
     }
   });
-  put('end_turn_gem', S(795) - 10, S(500) - 10);
+  // His small pink gem sits inside the panel, about 10 px down and left of the corner gem.
+  const etg = P('end_turn_gem');
+  put('end_turn_gem', barX + barW - 19 - 10 - etg.w / 2, barY + 11 + 10 - etg.h / 2);
 
   // Plaque under the bar.
   const lp = P('lower_plaque');
-  put9('lower_plaque', S(330), S(551), S(700) - S(330), lp.h);
+  put9('lower_plaque', S(330), barBottom, S(700) - S(330), lp.h);
 
   // --- party, bottom left ---------------------------------------------------------------------------------------------
   put('button_small', S(11) - 2, S(500) - 2);

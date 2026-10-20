@@ -36,6 +36,7 @@ export const GEM: Record<string, RGBA[]> = {
   blue: ['#07163a', '#13337a', '#2457b8', '#4b8cee', '#a6cdff', '#f4faff'].map(H),
   magenta: ['#260a2a', '#55195c', '#8f3196', '#cf55d6', '#f2a6f6', '#fff2ff'].map(H),
   teal: ['#06201f', '#0f4644', '#1b7a73', '#33aaa0', '#8ee0d6', '#f0fffc'].map(H),
+  rose: ['#2a0a16', '#5e1832', '#a03a5e', '#d06a8c', '#f2acc2', '#fff2f6'].map(H),
 };
 /** Initiative rings: allies his muted steel blue, enemies his muted rose. */
 export const ALLY = ['#111a21', '#243442', '#395064', '#567087', '#7c94a6', '#aebfca'].map(H);

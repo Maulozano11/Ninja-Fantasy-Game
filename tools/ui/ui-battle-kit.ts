@@ -39,6 +39,36 @@ for (const p of pieces) {
   names.add(p.name);
 }
 
+/**
+ * Every sliced piece must stretch cleanly: its centre (between the insets) has to repeat with a
+ * period of 1 or 2 art pixels (2 or 4 screen pixels) that divides the centre's size, so a box of
+ * any even size shows no seam. The kit refuses to build otherwise.
+ */
+function slicePeriod(img: Img, a0: number, a1: number, vertical: boolean): number | null {
+  const same = (a: number, b: number): boolean => {
+    const n = vertical ? img.w : img.h;
+    for (let k = 0; k < n; k++) {
+      const p = vertical ? img.get(k, a) : img.get(a, k), q = vertical ? img.get(k, b) : img.get(b, k);
+      if (p[0] !== q[0] || p[1] !== q[1] || p[2] !== q[2] || p[3] !== q[3]) return false;
+    }
+    return true;
+  };
+  for (const per of [1, 2]) {
+    if ((a1 - a0) % per !== 0) continue;
+    let ok = true;
+    for (let a = a0; a + per < a1 && ok; a++) ok = same(a, a + per);
+    if (ok) return per;
+  }
+  return null;
+}
+for (const p of pieces) {
+  if (!p.slice) continue;
+  const [t, r, b, l] = p.slice;
+  const cols = slicePeriod(p.img, l, p.img.w - r, false);
+  const rows = t || b ? slicePeriod(p.img, t, p.img.h - b, true) : 1;
+  if (!cols || !rows) throw new Error(`${p.name}: the centre between the slices does not repeat every 1 or 2 art pixels (${cols ? 'rows' : 'columns'})`);
+}
+
 // --- kit sheet ---------------------------------------------------------------------------------------------
 
 function kitSheet(ps: Piece[]): Img {
@@ -102,6 +132,7 @@ function kitSheet(ps: Piece[]): Img {
 /** Which of his crops each piece is compared with, and how our piece is shown for it. */
 const PAIRS: { ref: string; piece: string; note?: string }[] = [
   { ref: 'target_bar', piece: 'target_bar' },
+  { ref: 'target_end', piece: 'target_bar' },
   { ref: 'chain_left', piece: 'chain_left' },
   { ref: 'chain_sag', piece: 'chain_sag' },
   { ref: 'round_medallion', piece: 'round_medallion' },
@@ -112,6 +143,7 @@ const PAIRS: { ref: string; piece: string; note?: string }[] = [
   { ref: 'minimap', piece: 'minimap_ring' },
   { ref: 'bar_left', piece: 'bar_frame' },
   { ref: 'medallion_active', piece: 'medallion_active' },
+  { ref: 'scroll_left', piece: 'crest_strip' },
   { ref: 'hp_strip', piece: 'crest_strip' },
   { ref: 'scroll_right', piece: 'crest_strip' },
   { ref: 'chakra_gems', piece: 'chakra_red' },

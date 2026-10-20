@@ -459,7 +459,7 @@ export function skillSlot(active = false): Piece {
     use: active
       ? 'Skill slot, selected or hovered: the same frame in gold.'
       : 'Skill slot frame (his thin khaki-silver line, 45-degree chamfered corners with small curled brackets inside). The skill icon (painted later) goes in the window, over the corner curls.',
-    slice: [5, 5, 5, 5],
+    slice: [6, 6, 6, 6],
     window: { x: 3, y: 3, w: 22, h: 22, shape: 'rect' },
   };
 }
@@ -516,17 +516,18 @@ export function pip(name: string, color: keyof typeof GEM | 'spent', use: string
 }
 
 export function moveTrough(): Piece {
+  // His movement bar: a capsule trough with rounded ends, a dark well and a thin lit rim.
   const W = 24, Hh = 6;
   const img = new Img(W, Hh);
   stamp(img, 0, 0, [
-    '.oo' + 'o'.repeat(W - 6) + 'oo.',
-    'o4' + '1'.repeat(W - 4) + '3o',
+    '..' + 'o'.repeat(W - 4) + '..',
+    '.o4' + '4'.repeat(W - 6) + '3o.',
     'o3' + '0'.repeat(W - 4) + '2o',
     'o3' + '0'.repeat(W - 4) + '2o',
-    'o2' + '1'.repeat(W - 4) + '2o',
-    '.oo' + 'o'.repeat(W - 6) + 'oo.',
-  ], { o: METAL[0], '0': PANEL[0], '1': PANEL[1], '2': METAL[3], '3': METAL[4], '4': METAL[6] });
-  return { name: 'move_trough', img, group: 'action bar', use: 'Movement bar trough (3-slice); the teal fill goes inside (2 pixels in from each end, 1 from top and bottom).', slice: [0, 3, 0, 3], window: { x: 2, y: 1, w: W - 4, h: 4, shape: 'rect' } };
+    '.o2' + '1'.repeat(W - 6) + '2o.',
+    '..' + 'o'.repeat(W - 4) + '..',
+  ], { o: METAL[0], '0': PANEL[0], '1': PANEL[1], '2': METAL[3], '3': METAL[4], '4': METAL[5] });
+  return { name: 'move_trough', img, group: 'action bar', use: 'Movement bar trough, his capsule (3-slice); the teal fill goes inside (2 pixels in from each end, 1 from top and bottom).', slice: [0, 3, 0, 3], window: { x: 2, y: 1, w: W - 4, h: 4, shape: 'rect' } };
 }
 
 export function chakraGem(color: 'red' | 'orange' | 'blue' | 'empty'): Piece {

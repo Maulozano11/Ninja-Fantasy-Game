@@ -231,25 +231,31 @@ const TEMPLATES: Record<EnemyKind, Template> = {
         slots: {
           hair: it('hair_lowtail', '#18171f'),
           face: it('face_foxmask', '#efe6dd', '#c0312a', '#231726'),
-          bottom: it('bottom_leggings', '#2a2933', '#262833'),
+          bottom: it('bottom_hunter_leggings', '#2a2933'),
           armor: it('armor_shadowops', '#676c82', '#1f1f2b'),
           feet: it('feet_shinobi', '#282830', '#1d1c27'),
           held: it('held_naginata', '#717487', '#513329'),
         },
         headband: { position: 'none', slashed: true, tails: true, emblem: 'crescent', cloth: '#2a2d3a', plate: '#9aa3ad' },
       }),
+      // Cazador 2: the owner's paint-over (docs/reference/cazador2-owner-reference.jpg), in his colours
+      // (each item's default; on the female bodies they are the Cazador 2's own):
+      // her purple ponytail, the half mask with teal stripes and ears, the female version of the
+      // Cazador 1's vest (its under-suit is her shirt), the leggings, the wrapped boots and the kunai, her
+      // skin and her grey-green eyes, no headband.
       look({
         body: 'female',
-        eyeColor: '#1f2a4a',
+        eyeColor: '#7ca396',
+        skin: '#ebc0a0',
         slots: {
-          hair: it('hair_pony', '#3a2a44'),
-          face: it('face_catmask', '#f2eee6', '#1f9e9a', '#1b1420'),
-          top: it('top_highcollar', '#262833', '#1a1b22'),
-          bottom: it('bottom_leggings', '#1a1b22', '#262833'),
-          armor: it('armor_shadowops', '#8c94a1', '#262833'),
-          feet: it('feet_shinobi', '#1a1b22', '#262833'),
-          held: it('held_kunai', '#c9ced6', '#3a2a22'),
+          hair: it('hair_pony'),
+          face: it('face_catmask'),
+          bottom: it('bottom_hunter_leggings'),
+          armor: it('armor_shadowops'),
+          feet: it('feet_shinobi'),
+          held: it('held_kunai'),
         },
+        headband: { position: 'none', slashed: true, tails: true, emblem: 'crescent', cloth: '#2a2d3a', plate: '#9aa3ad' },
       }),
     ],
   },

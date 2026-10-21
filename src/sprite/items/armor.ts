@@ -35,6 +35,7 @@ import {
   PLATE_VAMBRACE_N,
   PLATE_WAIST,
 } from './crimsonPlateArt';
+import { GILDED_TABARD } from './lyraLower';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2843,4 +2844,5 @@ export const SKIRT_ITEMS: ItemDef[] = [
       });
     },
   },
+  GILDED_TABARD,
 ];

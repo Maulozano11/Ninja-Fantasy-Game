@@ -110,6 +110,17 @@ folders.
 
       python3 -I tools/refs/poison-from-ref.py docs/reference/poison-set-owner-reference.jpg tools/world-sprites/vfx-poison-v3-refdata.ts <character.png> [reviewDir]
 
+- `lyra-upper-from-ref.py` → `src/sprite/items/lyraUpperArt.ts`: Lyra's blouse (`top_offshoulder_blouse`)
+  and her corset, pauldron and bracers (`armor_gilded_corset`), cut out of her reduced reference
+  (`heroine_ref.reduced('lyra')`, below) into one painted piece per segment of our female rig, pivot on
+  its joint at idle. Each piece is written in the script as rows of our frame: `*` takes her pixel,
+  other letters are her colours for what her picture hides (the blouse under the corset and the braid,
+  the sleeves under the bracers, the far bracer behind the pouch). It checks that every pixel of these
+  clothes in her picture comes out hers at idle and writes `hers-vs-pieces@8.png` and `pieces@4.png`
+  into `<out>`.
+
+      python3 -I tools/refs/lyra-upper-from-ref.py <out> src/sprite/items/lyraUpperArt.ts
+
 - `heroine_ref.py`, `heroine-study.py`, `heroine_paint.py`, `heroine-proportions.py`,
   `heroine-idle.mts`: the study of the owner's four heroines (`docs/reference/{lyra,elise,saya,aurelia}-owner-reference.jpg`),
   the base every heroine part builds on. His pictures are his own pixel art at 2.2 to 2.8 of his

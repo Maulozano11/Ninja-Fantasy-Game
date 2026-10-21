@@ -366,8 +366,8 @@ const TABLE = strings({
     es: 'Arquitectura Modular: un bloque de metal (acción adicional) da media cobertura; un muro de metal (acción) da cobertura total y bloquea la vista. Como máximo, dos en pie.',
   },
   tip_ryusei: {
-    en: 'Weapon Nodes: kunai and missed blows leave a Node (three at most). Warp Strike jumps to one, even through walls; Spatial Swap trades places with whoever stands on one.',
-    es: 'Nodos de Armas: los kunai y los golpes fallados dejan un Nodo (tres como máximo). Golpe Warp salta a uno, incluso a través de muros; Intercambio Espacial cambia de lugar con quien esté sobre uno.',
+    en: 'Weapon Nodes: kunai and missed blows leave a Node (three at most). Shooting-Star Thrust jumps to one, even through walls; Spatial Swap trades places with whoever stands on one.',
+    es: 'Nodos de Armas: los kunai y los golpes fallados dejan un Nodo (tres como máximo). Estocada Fugaz salta a uno, incluso a través de muros; Intercambio Espacial cambia de lugar con quien esté sobre uno.',
   },
   tip_northstar: {
     en: 'Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and an enemy who warps or dashes in loses half its movement (your allies are spared). Command turns a Minion to your side for a round. Natural Submission makes an enemy beast or summon join you for the battle.',

@@ -221,7 +221,7 @@ export function flightLights(f: Flight, t: WarpTimes, ms: number): FlightLight[]
     const tm = Math.min(ms, t.caught) - k * 30;
     if (tm < t.rel) break;
     const p = bezier(f, warpFlight(tm, t));
-    out.push({ x: p.x, y: p.y, r: k ? 46 : 72, a: heat * (k ? 0.55 - 0.08 * k : 0.85), head: !k });
+    out.push({ x: p.x, y: p.y, r: k ? 44 : 70, a: heat * (k ? 0.5 - 0.08 * k : 0.75), head: !k });
   }
   return out;
 }

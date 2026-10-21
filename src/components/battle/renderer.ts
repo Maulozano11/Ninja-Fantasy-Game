@@ -1916,7 +1916,7 @@ function drawNight(ctx: CanvasRenderingContext2D, sc: Scene, props: PropDef[]): 
     const r = l.r * cam.k;
     const [R, G, B] = PHASE_RAMP[5];
     const gr = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, r);
-    gr.addColorStop(0, `rgba(${R},${G},${B},${0.3 * l.a})`);
+    gr.addColorStop(0, `rgba(${R},${G},${B},${0.5 * l.a})`);
     gr.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = gr;
     ctx.beginPath();

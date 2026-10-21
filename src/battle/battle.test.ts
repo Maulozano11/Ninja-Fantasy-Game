@@ -2246,10 +2246,11 @@ describe('clan playtest fixes: what the screen shows matches the engine', () => 
       assert.match(j.name, /^[A-Z][a-z]+ Technique: /, j.id);
       assert.ok(j.descriptionEs, j.id);
     }
-    // Warp Strike and Command take the owner's Spanish names from his icon sheets (2026-10-21).
-    assert.equal(es('ryusei_warp'), 'Golpe Warp');
+    // Command takes the owner's Spanish name from his icon sheets (2026-10-21); the Ryusei's warp
+    // is his Shooting-Star Thrust, Estocada Fugaz (2026-10-21, once Warp Strike / Golpe Warp).
+    assert.equal(es('ryusei_warp'), 'Estocada Fugaz');
     assert.equal(es('northstar_command'), 'Comando');
-    assert.equal(JUTSU.ryusei_warp.name, 'Warp Strike');
+    assert.equal(JUTSU.ryusei_warp.name, 'Shooting-Star Thrust');
     assert.equal(JUTSU.northstar_command.name, 'Command');
     // No "Estilo X:" prefix is left on any jutsu.
     assert.ok(Object.values(JUTSU).every((j) => !/^Estilo /.test(j.nameEs ?? '')));

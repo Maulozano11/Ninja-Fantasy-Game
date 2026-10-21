@@ -49,7 +49,7 @@ clean.
 |---|---|---|
 | Mirai | +2 DEX +1 INT | Eye of Tomorrow (enemy intents), Premonitory Evasion (reaction), Pursuing Flame |
 | Kōton | +2 CON +1 INT | Modular Architecture: metal Block (bonus action) and Wall (action), with HP, 2 at most |
-| Ryusei | +2 DEX +1 WIS | Weapon Nodes, Warp Strike, Spatial Swap |
+| Ryusei | +2 DEX +1 WIS | Weapon Nodes, Shooting-Star Thrust (Estocada Fugaz, once Warp Strike), Spatial Swap |
 | Northstar | +2 CHA +1 WIS | Aura of Sovereignty, Command, Natural Submission |
 
 Counter cycle Mirai > Northstar > Ryusei > Kōton > Mirai. Enemy ranks Minion, Captain, Sub-boss,
@@ -101,7 +101,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `camp/owner-ref` | `70293ba` | Read, lean and sit camp poses from his picture (`camp-poses-owner-reference.webp` on that branch); touches `rig.ts`, `compose.ts`, `ctx.ts`, `campfx.ts` | **WIP, being redone**: copy his book and both hands exactly; show Aiden reading |
 | `camp/hands-book` | `a3ae184` | Earlier pass, already inside `camp/owner-ref` | Superseded |
 | `ryusei/phase` | `1bd38c9` | Warp Strike and Spatial Swap carry the ninja as a see-through electric-blue light body (`src/sprite/phase.ts` + tests, renderer, playback) | **Waiting for approval.** The Warp Strike choreography is on `ryusei/warp-throw`. Swap stays |
-| `ryusei/warp-throw` | `445c0d5` (WIP); the review fixes on top are not pushed yet | `ryusei/phase` + `poses/throw-pierce` + the Warp Strike choreography (the owner, 2026-10-21): the throw, the weapon flying point first with a trail of sparkles (`src/sprite/thrown.ts` + tests, `components/battle/warpFlight.ts`), the phase starting in his release pose, the landing in the `pierce` thrust. Review fixes: the weapon is first drawn clear of his face; empty hands, a technique in the palm or a stowed weapon throw a kunai from the pouch (the stowed weapon stays on the back, the kunai fades out as light after the thrust); a short warp's weapon hangs in the air for the catch; the frames are made ahead for every Ryusei, Node or not, weapon drawn or stowed. Spatial Swap unchanged | **Waiting for approval** (first GIFs shown to him; new GIFs and the before/after of the fixes to show) |
+| `ryusei/warp-throw` | `bfdea3c` (a WIP backup of the comet); the finished comet and the rename are a local commit on top, not pushed yet | `ryusei/phase` + `poses/throw-pierce` + the Shooting-Star Thrust (Estocada Fugaz, once Warp Strike) choreography (the owner, 2026-10-21): the throw, the weapon flying point first, the phase starting in his release pose, the landing in the `pierce` thrust. Review fixes: the weapon is first drawn clear of his face; empty hands, a technique in the palm or a stowed weapon throw a kunai from the pouch (the stowed weapon stays on the back, the kunai fades out as light after the thrust); a short warp's weapon hangs in the air for the catch; the frames are made ahead for every Ryusei, Node or not, weapon drawn or stowed. Then (2026-10-21, his "shooting star"): the flying weapon is a shooting star, a white-hot head with a twinkling star at its point and a long comet's tail of the phase's blues that tapers along the curve of the flight, sheds sparkles and lights the night (`src/sprite/comet.ts` + tests, `warpFlight.ts`, `renderer.ts` drawNight); and the rename is applied everywhere players see it, with D24. Spatial Swap unchanged | **Waiting for approval** (first GIFs shown to him; new GIFs: the comet before/after and the new name in the hotbar, tooltip and log) |
 | `poses/throw-pierce` | `f722aee` | `throw` (4 frames, release copied from his Warp Strike picture) and `pierce` (5-frame lunge) poses, in the creator stance bar; `src/sprite/strike.test.ts` | **Waiting for approval**; `ryusei/phase` needs it |
 | `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
 | `scarlet/study` | `3b5dfe9` | His new character picture (`scarlet-owner-reference.jpg`) and study scripts `tools/refs/scarlet*`; nothing in `src` | **WIP**. Provisional name "Valen, the Scarlet Duke", no cape: **the owner must choose the name** |
@@ -122,8 +122,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 
 ## 3. Waiting for the owner
 
-- Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the Warp Strike choreography on
-  `ryusei/warp-throw`, the icons on `icons/sheets-8-11`, the camp poses once redone.
+- Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the Shooting-Star Thrust choreography
+  and its comet on `ryusei/warp-throw`, the icons on `icons/sheets-8-11`, the camp poses once redone.
 - Name the Scarlet character (`scarlet/study`).
 - `chakra/nature` (2026-10-21): the chakra type is the nature (his rule, built). Proposed, for his
   approval (`docs/GAMEPLAY_DESIGN.md`, "Chakra type" and Open questions): the burst-to-type table
@@ -132,7 +132,7 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   Shadow, Spirit, Light and Void stay as types and what they may learn. To decide: legends and
   companions saved before the change keep their old burst (a saved Kaien reads Spirit): move them to
   the new type on load (a save change) or leave them.
-- Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
+- Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. **Applied on `ryusei/warp-throw`** (2026-10-21, after `icons/sheets-8-11` was merged): the names in both languages, the hotbar label (*Estocada Fugaz* / *Star thrust*), tooltip and log, the clan texts in the creator and the battle, D24 and `docs/GAMEPLAY_DESIGN.md`. With it, his "shooting star" look for the flying weapon (a comet's tail).
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms
   cast beat, about 115 ms/m for projectiles and 150 ms/m for beasts, longer impacts, the next turn

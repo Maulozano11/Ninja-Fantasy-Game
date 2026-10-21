@@ -22,7 +22,7 @@ import {
   SHIRT_SLEEVE_UPPER_F,
   SHIRT_SLEEVE_UPPER_N,
 } from './nobleShirtArt';
-import { NOBLE_GLOVE_F, NOBLE_GLOVE_LEATHER, NOBLE_GLOVE_N, NOBLE_GLOVE_TONES, NOBLE_HAND_SKIN, NOBLE_KIND } from './nobleBootsGlovesArt';
+import { NOBLE_GLOVE_F, NOBLE_GLOVE_LEATHER, NOBLE_GLOVE_N, NOBLE_GLOVE_TONES, NOBLE_HAND_SKIN, NOBLE_KIND, NOBLE_TIP_TONES } from './nobleBootsGlovesArt';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BELT_AT, BELT_BUCKLE, BELT_CORD, BELT_CROSS, BELT_GOLD, BELT_KIND, BELT_LEATHER, BELT_RED, BELT_STAR, BELT_TONES, PIN_CLOTH, PIN_CLOTH_TONES, PIN_GAP, PIN_LINE, PIN_STRIPE, PIN_STRIPE_TONES } from './scarletLowerArt';
 
@@ -1566,7 +1566,7 @@ function paintHis(g: DrawCtx, L: Layer, mat: number, colour: (i: number, shade: 
 
 /**
  * Whether fine pixel (x, y) lies on one of his pinstripes: lines along the limb segment a -> b,
- * PIN_GAP fine pixels apart, counted from its axis. Each line is one pixel per row (or per column
+ * about PIN_GAP fine pixels apart, counted from its axis. Each line is one pixel per row (or per column
  * where the limb lies flatter than 45 degrees), so it stays a clean line as the limb turns.
  */
 function onPinstripe(a: Vec, b: Vec, x: number, y: number): boolean {
@@ -1576,7 +1576,11 @@ function onPinstripe(a: Vec, b: Vec, x: number, y: number): boolean {
   // across the limb along the row (a steep limb) or the column (a flat one), so each line is one pixel there
   const steep = Math.abs(d.y) >= Math.abs(d.x);
   const u = steep ? px - (a.x + ((py - a.y) * d.x) / d.y) : py - (a.y + ((px - a.x) * d.y) / d.x);
-  return ((Math.floor(u * RES) % PIN_GAP) + PIN_GAP) % PIN_GAP === 0;
+  // counted along the row on a slanted limb the lines come closer across it (a hatch on a thigh bent
+  // to 45 degrees): the count widens to keep them about PIN_GAP apart across the limb (unchanged
+  // within about 30 degrees of upright or level)
+  const gap = Math.max(PIN_GAP, Math.round((PIN_GAP * Math.hypot(d.x, d.y)) / Math.max(Math.abs(steep ? d.y : d.x), 1e-9)));
+  return ((Math.floor(u * RES) % gap) + gap) % gap === 0;
 }
 
 /**
@@ -1975,7 +1979,7 @@ function bareHandOff(g: DrawCtx, s: Side): void {
  * of the way it did in his picture (as our hand pictures hang unturned), turned with RotSprite past
  * that, and mirrored when our hand pictures are (the thumb on the facing side).
  */
-function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: string, hex: string) => string): void {
+function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: string, hex: string) => string, depth: Depth = armDepth(s, 'armor')): void {
   const j = armJoints(g.rig, s);
   const { flipX } = handPose(g, s);
   // Mirrored, his fist points the other way across the vertical.
@@ -1983,7 +1987,7 @@ function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: strin
   const turn = ((segAngle(j.wrist, j.hand) - drawn + 540) % 360) - 180;
   const pal: TemplatePalette = {};
   for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
-  stampTemplate(g.L(armDepth(s, 'armor')), piece, j.wrist, Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  stampTemplate(g.L(depth), piece, j.wrist, Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE });
 }
 
 /**
@@ -2016,10 +2020,11 @@ function hisSkin(hex: string, from: string, skin: string): string {
 
 /**
  * Our hand picture for the pose (open, pointing, relaxed, cradling) in a fingerless glove: the owner's
- * leather tones over the palm and the back of the hand, the fingertips (FINGERTIPS) left to the bare
- * hand drawn under it.
+ * leather tones over the palm and the back of the hand, the fingertips (FINGERTIPS) bare in his skin
+ * tones (line, shadow, base, light) by the picture's shades, over the bare hand drawn under it (whose
+ * skin would read as ours, a redder band).
  */
-function fingerlessHand(g: DrawCtx, s: Side, tones: readonly string[]): void {
+function fingerlessHand(g: DrawCtx, s: Side, tones: readonly string[], tips: readonly string[]): void {
   const { kind, rot, flipX } = handPose(g, s);
   if (kind === 'grip' || kind === 'fist') return;
   const tmp = new Layer();
@@ -2032,6 +2037,7 @@ function fingerlessHand(g: DrawCtx, s: Side, tones: readonly string[]): void {
   const mirror = flipX && kind !== 'cradle';
   const tip = FINGERTIPS[kind];
   const mats = tones.map((t) => g.m(t, 'flat'));
+  const skins = tips.map((t) => g.m(t, 'flat'));
   const L = g.L(armDepth(s, 'armor'));
   for (let i = 0; i < GRID * GRID; i++) {
     if (tmp.mat[i] < 0) continue;
@@ -2040,9 +2046,30 @@ function fingerlessHand(g: DrawCtx, s: Side, tones: readonly string[]): void {
     // back into the picture as drawn: unturned, then unmirrored
     const x = Math.round(dx * Math.cos(r) + dy * Math.sin(r));
     const y = Math.round(-dx * Math.sin(r) + dy * Math.cos(r));
-    if (tip(mirror ? -x : x, y)) continue;
-    L.set(i % GRID, (i / GRID) | 0, mats[Math.max(0, Math.min(tmp.shade[i], mats.length - 1))], 3, prt('hand', s), F_NO_TEXTURE | F_NO_OUTLINE);
+    const tones = tip(mirror ? -x : x, y) ? skins : mats;
+    L.set(i % GRID, (i / GRID) | 0, tones[Math.max(0, Math.min(tmp.shade[i], tones.length - 1))], 3, prt('hand', s), F_NO_TEXTURE | F_NO_OUTLINE);
   }
+}
+
+/**
+ * The wrist of a gloved hand: what of the bare arm still shows between the sleeve and the glove (the
+ * wrist our sleeves leave bare, or a broader figure's wrist past a fist the owner painted) is the
+ * glove's cuff, in his leather by the arm's shades, his black line along the figure's edge.
+ */
+function gloveCuff(g: DrawCtx, s: Side, tones: readonly string[]): void {
+  const body = g.L(armDepth(s, 'body'));
+  const cloth = g.L(armDepth(s, 'cloth'));
+  const L = g.L(armDepth(s, 'armor'));
+  const arm = new Set([partIndex(prt('forearm', s)), partIndex(prt('hand', s))]);
+  const mats = tones.map((t) => g.m(t, 'flat'));
+  const filled = (j: number) => body.mat[j] >= 0 || cloth.mat[j] >= 0 || L.mat[j] >= 0;
+  const cuff: [number, number][] = [];
+  for (let i = GRID; i < GRID * GRID - GRID; i++) {
+    if (body.mat[i] !== g.skin || !arm.has(body.part[i]) || cloth.mat[i] >= 0 || L.mat[i] >= 0) continue;
+    const edge = [i - 1, i + 1, i - GRID, i + GRID].some((j) => !filled(j));
+    cuff.push([i, edge ? 0 : Math.max(1, Math.min(body.shade[i] + sb(s), mats.length - 1))]);
+  }
+  for (const [i, t] of cuff) L.set(i % GRID, (i / GRID) | 0, mats[t], 3, prt('forearm', s), F_NO_TEXTURE | F_NO_OUTLINE);
 }
 
 /** Our hand picture for the pose (open, pointing, relaxed, cradling), in the owner's leather tones. */
@@ -2198,7 +2225,8 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       // tools/refs/scarlet-gloves-boots-from-ref.py), brought down to our scale on our fists. Closed, each
       // hand is his fist in place of ours: the near one round the grip (the same fist closes on nothing),
       // the far one hanging, his skin on the fingertips following the character's. Open, pointing, relaxed
-      // or cradling (hand signs, casts, a book) it is our hand picture in his leather, the fingertips bare.
+      // or cradling (hand signs, casts, a book) it is our hand picture in his leather, the fingertips bare
+      // in his skin. Any wrist left bare between the coat's sleeve and the glove is the glove's cuff.
       // His leather follows the colour slot; his black line stays.
       const tint = (_ch: string, hex: string) => {
         const k = NOBLE_KIND[hex];
@@ -2209,8 +2237,9 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
         const { kind } = handPose(g, s);
         if (kind === 'grip' || kind === 'fist') {
           bareHandOff(g, s);
-          paintedFist(g, s, s === 'N' ? NOBLE_GLOVE_N : NOBLE_GLOVE_F, tint);
-        } else fingerlessHand(g, s, NOBLE_GLOVE_TONES.map((t) => tint('', t)));
+          paintedFist(g, s, s === 'N' ? NOBLE_GLOVE_N : NOBLE_GLOVE_F, tint, s === 'F' && kind === 'fist' ? legDepth('F', 'armor') : armDepth(s, 'armor'));
+        } else fingerlessHand(g, s, NOBLE_GLOVE_TONES.map((t) => tint('', t)), NOBLE_TIP_TONES.map((t) => tint('', t)));
+        gloveCuff(g, s, NOBLE_GLOVE_TONES.map((t) => tint('', t)));
       }
     },
   },

@@ -16,7 +16,7 @@ rig, every pixel one of his colours:
               of the hand, lit on the side the light comes from, his skin on the fingertips (the far
               fist's narrowed to his, MENDS). The fist without a weapon is the same fist; the open,
               pointing, relaxed and cradling hands are our hand pictures in his leather (GLOVE_TONES),
-              the fingertips bare.
+              the fingertips bare in his skin (TIP_TONES).
 
 His legs and hands in the study already stand on ours (his boots cover our feet, his fists our fists),
 so each piece hangs from our joint as it is: at rest every pixel is where the study put it.
@@ -81,6 +81,11 @@ BUCKLES = {
 # in, from its shaded side to the side the light comes from (#252328, #2e2d33, #39383c). A far hand takes
 # them a shade down, as our bare far hand does.
 GLOVE_TONES = 'adjnt'
+
+# His skin for the bare fingertips of those hands, by our hand pictures' shades (line, shadow, base, light),
+# in scarlet_ref.CHARS: his black line, then the three skins of his near fist's fingertips from its
+# shaded side to its lit one (#b27758, #ca9c75, #f2c8aa), so they read as his fingers and not as ours.
+TIP_TONES = 'aQX4'
 
 # Mends by hand, in our frame: (piece, x0, y0, rows); '.' keeps the pixel, any other character is that
 # colour of his. The far fist: the study's shows a whole row of fingers more than his and fingers across
@@ -198,6 +203,7 @@ def main():
 
     # His leather in tones for the hands he did not paint (GLOVE_TONES).
     tones = [R.PALETTE[R.CHARS.index(c)] for c in GLOVE_TONES]
+    tips = [R.PALETTE[R.CHARS.index(c)] for c in TIP_TONES]
 
     kinds = {}
     for name in P:
@@ -223,6 +229,9 @@ def main():
         '',
         "/** His leather for the hands he did not paint, by our hand pictures' shades: line, crease, shadow, base, light. */",
         'export const NOBLE_GLOVE_TONES = [' + ', '.join(f"'{t}'" for t in tones) + '] as const;',
+        '',
+        "/** His skin for the bare fingertips of those hands, by our hand pictures' shades: line, shadow, base, light. */",
+        'export const NOBLE_TIP_TONES = [' + ', '.join(f"'{t}'" for t in tips) + '] as const;',
         '',
         '/** What each colour of his in these pieces is: his black line (it stays), leather, his bronze or skin. */',
         "export const NOBLE_KIND: Record<string, 'line' | 'leather' | 'bronze' | 'skin'> = {",

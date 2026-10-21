@@ -252,8 +252,9 @@ export function boot(g: DrawCtx, hex: string, from: number, art: FootArt, opts: 
  * Takes the leg off below the knee (skin and trousers: the shin and the foot), for boots painted in
  * their own shape that stand where the owner drew them rather than on our leg. The round of the knee
  * above the joint stays, so the thigh still ends round. With `cut` the leg goes below the line through
- * `at` across `down` instead (a boot's top under the knee: the trousers above it stay), and the leg is
- * not outlined along the cut, where the boot's own black line runs (no double line).
+ * `at` across `down` instead (a boot's top under the knee: the trousers above it stay, and so do the
+ * trousers over the knee's round where it reaches below the line), and the leg is not outlined along
+ * the cut, where the boot's own black line runs (no double line).
  */
 function lowerLegOff(g: DrawCtx, s: Side, cut?: { at: Vec; down: Vec }): void {
   const shin = partIndex(`shin${s}`);
@@ -261,6 +262,7 @@ function lowerLegOff(g: DrawCtx, s: Side, cut?: { at: Vec; down: Vec }): void {
   const { knee, ankle } = legJoints(g.rig, s);
   const at = cut?.at ?? knee;
   const dir = cut?.down ?? norm(sub(ankle, knee));
+  const body = g.L(legDepth(s, 'body'));
   for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) {
     const L = g.L(d);
     for (let i = 0; i < GRID * GRID; i++) {
@@ -268,6 +270,9 @@ function lowerLegOff(g: DrawCtx, s: Side, cut?: { at: Vec; down: Vec }): void {
       const below = ((i % GRID) + 0.5) / RES - at.x;
       const down = (Math.floor(i / GRID) + 0.5) / RES - at.y;
       if (L.part[i] !== foot && below * dir.x + down * dir.y <= 0) continue;
+      // On a bent knee the round of the thigh (skin) reaches below the cut: the trousers over it stay,
+      // or the knee would show bare between the trousers and the boot.
+      if (cut && L !== body && body.mat[i] >= 0) continue;
       L.mat[i] = -1;
       if (cut) L.flags[i] |= F_NO_EDGE;
     }

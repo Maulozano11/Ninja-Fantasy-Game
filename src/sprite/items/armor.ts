@@ -14,10 +14,11 @@
 // crests, never stripe patterns.
 
 import { hexToRgb, retintHex } from '../color';
-import { armDepth, armJoints, Depth, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
+import { armDepth, armJoints, Depth, DEPTHS, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
 import { clearArmPast, clearTorsoPast, PaintedPiece, PaintedSheet, pieceCover, segAngle, stampPiece, stampSheet, widenPiece } from '../painted';
-import { add, capsule, ellipse, fine, GRID, Layer, lerp, norm, partIndex, PartId, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
+import { add, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, Layer, lerp, norm, partIndex, PartId, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
 import { drawRig, GROUND, Rig, rigPoseFor } from '../rig';
+import type { BodyType } from '../types';
 import {
   PLATE_CHEST,
   PLATE_ELBOW_N,
@@ -1161,6 +1162,59 @@ const COAT_BULKY: [number, number][] = [
 const COAT_BODY_BULKY = widenPiece(COAT_BODY, COAT_BULKY);
 const COAT_HULL_BULKY = widenPiece(COAT_HULL, COAT_BULKY);
 
+/**
+ * The coat for the female and slender figures, whose far arm hangs about 2 and 3 fine pixels further in
+ * than the male's (behind the male's coat, the far hand would be lost). The far flank comes in as far:
+ * in each row of a piece or sheet, the first `n` pixels of his plain cloth from column `from` on are
+ * taken out (his line, lining, trims and gold stay), or in a row without them the first `n` empty
+ * pixels before what the row still has there (his hem's tail comes in with the rest); rows with
+ * neither (his chest and lapel) are left as they are. Each row is filled out again with empty pixels. Returns the rows and where each lost its cloth.
+ */
+function narrowRows(rows: string[], from: number, n: number, cuts?: number[]): { rows: string[]; cuts: number[] } {
+  const out: number[] = [];
+  const next = rows.map((r, y) => {
+    let at = cuts ? cuts[y] : -1;
+    if (!cuts) {
+      const run = (ch: string) => {
+        for (let x = from; x + n <= r.length; x++) if (r.slice(x, x + n) === ch.repeat(n) && (ch !== '.' || r.slice(x + n).replace(/\./g, ''))) return x;
+        return -1;
+      };
+      // his plain cloth; where a row has none (his hem's tail), the empty pixels before what it has
+      at = run(PLAIN);
+      if (at < 0) at = run('.');
+    }
+    out.push(at);
+    return at < 0 ? r : r.slice(0, at) + r.slice(at + n) + '.'.repeat(n);
+  });
+  return { rows: next, cuts: out };
+}
+
+/** His plain coat cloth (the colour the Coat slot recolours from). */
+const PLAIN = 'f';
+
+const COAT_NARROW: Partial<Record<BodyType, number>> = { female: 2, slender: 3 };
+
+/** The coat's body, its hull and its skirts, brought in on the far side for each narrower figure. */
+const COAT_NARROWED = new Map<BodyType, { body: PaintedPiece; hull: PaintedPiece; skirts: PaintedSheet }>();
+function coatFor(body: BodyType): { body: PaintedPiece; hull: PaintedPiece; skirts: PaintedSheet } {
+  if (body === 'bulky') return { body: COAT_BODY_BULKY, hull: COAT_HULL_BULKY, skirts: COAT_SKIRTS };
+  const n = COAT_NARROW[body];
+  if (!n) return { body: COAT_BODY, hull: COAT_HULL, skirts: COAT_SKIRTS };
+  let c = COAT_NARROWED.get(body);
+  if (!c) {
+    // the body from just past its far lapel (9 fine pixels right of the neck), the skirts from the same
+    // place on our male at rest (where his far front turns back)
+    const b = narrowRows(COAT_BODY.rows, COAT_BODY.pivot[0] + 9, n);
+    c = {
+      body: { ...COAT_BODY, rows: b.rows },
+      hull: { ...COAT_HULL, rows: narrowRows(COAT_HULL.rows, 0, n, b.cuts).rows },
+      skirts: { ...COAT_SKIRTS, rows: narrowRows(COAT_SKIRTS.rows, 26, n).rows },
+    };
+    COAT_NARROWED.set(body, c);
+  }
+  return c;
+}
+
 /** Our male at idle frame 0, where his coat was laid. */
 let REST: Rig | null = null;
 let REST_COLS: Quad[] = [];
@@ -1211,7 +1265,8 @@ function stampHung(g: DrawCtx, depth: Depth, sheet: PaintedSheet, color: (ch: st
  * round the elbow, so a bending elbow opens no gap. The coat then stands for our torso and arms:
  * what of them (or of a shirt under it) would show past its edges where a pose parts them by a pixel
  * or two is taken away (the torso from the waist to the neck outside the coat's body and its opening,
- * the arms outside the sleeves but for the wrist), so the figure's edge is his coat's.
+ * the arms outside the sleeves but for the wrist), so the figure's edge is his coat's; a crack that
+ * opens between a sleeve and the coat's body is closed in its cloth (closeSlits).
  */
 function drawScarletCoat(g: DrawCtx, coat: string, trim: string): void {
   const r = g.rig;
@@ -1221,14 +1276,131 @@ function drawScarletCoat(g: DrawCtx, coat: string, trim: string): void {
   stampHung(g, 'capeBack', COAT_BACK, tint);
   put('farArm.armor', COAT_SLEEVE_FORE_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
   put('farArm.armor', COAT_SLEEVE_UPPER_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
-  stampHung(g, 'torso.armor', COAT_SKIRTS, tint);
-  const bulky = r.body === 'bulky';
-  put('torso.armor', bulky ? COAT_BODY_BULKY : COAT_BODY, r.neck, torso, 'torso');
+  const fit = coatFor(r.body);
+  stampHung(g, 'torso.armor', fit.skirts, tint);
+  // brought in, the skirts can leave a pixel of his lining on its own where they bend: it goes
+  if (fit.skirts !== COAT_SKIRTS) dropLone(g.L('torso.armor'));
+  put('torso.armor', fit.body, r.neck, torso, 'torso');
   put('nearArm.armor', COAT_SLEEVE_FORE_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN');
   put('nearArm.armor', COAT_SLEEVE_UPPER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
-  const hull = pieceCover(bulky ? COAT_HULL_BULKY : COAT_HULL, r.neck, torso);
+  const hull = pieceCover(fit.hull, r.neck, torso);
   clearTorsoPast(g, ['torso.body', 'torso.under', 'torso.top'], (i) => hull[i] === 1, COAT_WAIST);
   for (const s of SIDES) clearArmPast(g, s, g.L(armDepth(s, 'armor')), [armDepth(s, 'body'), armDepth(s, 'cloth')]);
+  closeSlits(g, tint('d', SCARLET_CLOTH_SHADOW));
+}
+
+/** Takes away the pixels of a layer that touch none of its others, even at a corner. */
+function dropLone(L: Layer): void {
+  const lone: number[] = [];
+  for (let y = 1; y < GRID - 1; y++) {
+    for (let x = 1; x < GRID - 1; x++) {
+      const i = y * GRID + x;
+      if (L.mat[i] < 0) continue;
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && L.mat[i + dy * GRID + dx] >= 0) n++;
+      if (!n) lone.push(i);
+    }
+  }
+  for (const i of lone) L.mat[i] = -1;
+}
+
+/** The coat's cloth in shadow (his), for the cracks closeSlits fills. */
+const SCARLET_CLOTH_SHADOW = '#111014';
+
+/** The most pixels a crack closeSlits fills may have, whatever its shape. */
+const CRACK_AREA = 32;
+
+/** Which fine pixels of the frame something is drawn on so far (1), over every depth. */
+function figure(g: DrawCtx): Uint8Array {
+  const out = new Uint8Array(GRID * GRID);
+  for (const d of DEPTHS) {
+    const L = g.L(d);
+    if (!L.used) continue;
+    for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0) out[i] = 1;
+  }
+  return out;
+}
+
+/**
+ * The cracks the background would show through inside the coated figure, where a pose parts a sleeve
+ * from the coat's body by a pixel or two: each is the coat's cloth in shadow, as the fold between them
+ * would be. A crack is empty space between the waist and the neck that the space round the figure does
+ * not reach, of at most CRACK_AREA pixels or at most 5 pixels across (the figure within 3 pixels on
+ * both sides, across or up and down), so a real opening (an arm bent away from the body) stays open.
+ */
+function closeSlits(g: DrawCtx, shadow: string): void {
+  const now = figure(g);
+  const N = GRID * GRID;
+  const out = new Uint8Array(N);
+  const stack: number[] = [];
+  for (let k = 0; k < GRID; k++) {
+    for (const i of [k, (GRID - 1) * GRID + k, k * GRID, k * GRID + GRID - 1]) {
+      if (!now[i] && !out[i]) {
+        out[i] = 1;
+        stack.push(i);
+      }
+    }
+  }
+  const near = (i: number) => {
+    const x = i % GRID;
+    return [i - 1, i + 1, i - GRID, i + GRID].filter((j) => j >= 0 && j < N && (j % GRID === x || Math.floor(j / GRID) === Math.floor(i / GRID)));
+  };
+  while (stack.length) {
+    for (const j of near(stack.pop()!)) {
+      if (now[j] || out[j]) continue;
+      out[j] = 1;
+      stack.push(j);
+    }
+  }
+  const hit = (x: number, y: number, dx: number, dy: number) => {
+    for (let k = 1; k <= 3; k++) {
+      const X = x + dx * k;
+      const Y = y + dy * k;
+      if (X >= 0 && Y >= 0 && X < GRID && Y < GRID && now[Y * GRID + X]) return true;
+    }
+    return false;
+  };
+  const thin = (i: number) => {
+    const x = i % GRID;
+    const y = Math.floor(i / GRID);
+    return (hit(x, y, -1, 0) && hit(x, y, 1, 0)) || (hit(x, y, 0, -1) && hit(x, y, 0, 1));
+  };
+  // only between the sleeves and the coat's body: from just under the waist to the neck (between the
+  // legs, and round the head, he leaves the background showing through)
+  const r = g.rig;
+  const height = (i: number) => (((i % GRID) + 0.5) / RES - r.pelvis.x) * r.up.x + ((Math.floor(i / GRID) + 0.5) / RES - r.pelvis.y) * r.up.y;
+  const neck = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y;
+  const inside = (i: number) => height(i) >= -1 && height(i) <= neck;
+  const L = g.L('torso.armor');
+  const m = g.m(shadow, 'flat');
+  const done = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    if (now[i] || out[i] || done[i]) continue;
+    // one crack: all of it is filled, or none
+    const crack = [i];
+    done[i] = 1;
+    for (let k = 0; k < crack.length; k++) {
+      for (const j of near(crack[k])) {
+        if (now[j] || done[j]) continue;
+        done[j] = 1;
+        crack.push(j);
+      }
+    }
+    if (!crack.every(inside)) continue;
+    if (crack.length <= CRACK_AREA || crack.every(thin)) for (const j of crack) L.set(j % GRID, Math.floor(j / GRID), m, 3, 'torso', F_NO_TEXTURE | F_NO_OUTLINE);
+  }
+  // and the same cracks still open at one end (the hand or the blade drawn later closes them): empty
+  // space there beside the coat, with the figure within 3 pixels on its left and its right
+  {
+    const fill: number[] = [];
+    for (let i = 0; i < N; i++) {
+      if (now[i] || !out[i] || !inside(i) || ![i - 1, i + 1, i - GRID, i + GRID].some((j) => L.mat[j] >= 0)) continue;
+      const x = i % GRID;
+      const y = Math.floor(i / GRID);
+      if (hit(x, y, -1, 0) && hit(x, y, 1, 0)) fill.push(i);
+    }
+    for (const j of fill) L.set(j % GRID, Math.floor(j / GRID), m, 3, 'torso', F_NO_TEXTURE | F_NO_OUTLINE);
+  }
 }
 
 // ---------------------------------------------------------------------------

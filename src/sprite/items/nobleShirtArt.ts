@@ -19,8 +19,8 @@ export const SHIRT_BODY: PaintedPiece = {
   pivot: [15, 2],
   angle: -89.65,
   rows: [
-    '.......iilirl..........c.',
-    '......akkllkcaaaaaaa..i..',
+    '.......iilirl............',
+    '......akkllkcaaaaaaa.....',
     '......akckcckkckkckkaa...',
     '....aa7ckkccuckkckkckka..',
     '.aaa777kkkkukkUzckuckkka.',

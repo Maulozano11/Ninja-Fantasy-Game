@@ -317,6 +317,15 @@ def build_shirt(fig, parts, layers, lay):
     # His shirt, cravat and neck in the coat's opening, and his cravat round his neck under his chin.
     vis = box(*OPENING) & np.isin(tcls, ['W', 'R', 'S'])
     neck = box(*CRAVAT_NECK) & (fcls == 'R') & parts['head']
+    # A red of his there touching none of the rest by a side is a strand of his hair over the collar, not
+    # his cravat: on the shirt it would float free of the hair once the head moves.
+    rest = vis | neck
+    side = np.zeros_like(rest)
+    side[1:] |= rest[:-1]
+    side[:-1] |= rest[1:]
+    side[:, 1:] |= rest[:, :-1]
+    side[:, :-1] |= rest[:, 1:]
+    neck &= side
     idx = np.full((G, G), NONE, np.int32)
     idx[vis] = tor[vis]
     idx[neck] = fig[neck]

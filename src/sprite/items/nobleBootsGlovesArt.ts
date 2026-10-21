@@ -15,6 +15,9 @@ export const NOBLE_HAND_SKIN = '#f8d4b8';
 /** His leather for the hands he did not paint, by our hand pictures' shades: line, crease, shadow, base, light. */
 export const NOBLE_GLOVE_TONES = ['#040405', '#111014', '#252328', '#2e2d33', '#39383c'] as const;
 
+/** His skin for the bare fingertips of those hands, by our hand pictures' shades: line, shadow, base, light. */
+export const NOBLE_TIP_TONES = ['#040405', '#b27758', '#ca9c75', '#f2c8aa'] as const;
+
 /** What each colour of his in these pieces is: his black line (it stays), leather, his bronze or skin. */
 export const NOBLE_KIND: Record<string, 'line' | 'leather' | 'bronze' | 'skin'> = {
   '#040405': 'line',

@@ -4,6 +4,7 @@
 
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
+import { dawnStaffInFarHand } from './items/aureliaStaff';
 import { add, norm, scale, sub, Vec } from './raster';
 
 /** Screen angle of a hand-held blade per pose/frame (degrees, 0 = facing right, + = clockwise/down). */
@@ -90,6 +91,8 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export function gripAngle(g: DrawCtx): number | null {
   if (handsBusy(g) || handsLimp(g)) return null;
   if (g.has('held', 'held_naginata')) return poleAngle(g);
+  // Aurelia's staff is in her far fist at rest (her near hand is empty), in the near one like a pole otherwise.
+  if (g.has('held', 'held_dawn_staff')) return dawnStaffInFarHand(g) ? null : poleAngle(g);
   if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;
 }

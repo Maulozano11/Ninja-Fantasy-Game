@@ -8,7 +8,7 @@ import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, idx,
 import { canStop, reachable } from './nav';
 import { JUTSU, MIN_AIM } from './jutsu';
 import { KUNAI_LONG } from './units';
-import { applyAction, chargeLanding, jutsuCost, mustStow } from './engine';
+import { applyAction, chargeLanding, handsBlocker, jutsuCost } from './engine';
 import { current } from './turns';
 import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
@@ -109,7 +109,7 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
         return c ? { type: 'jutsu', unit: u.id, jutsu: WALL, at: c.at } : null;
       }
       if (i.what === SWAP) return g.ready ? { type: 'jutsu', unit: u.id, jutsu: SWAP, at: { ...t.pos }, target: t.id } : null;
-      if (mustStow(u, j) && u.turn.interacted) return null;
+      if (handsBlocker(u, j)) return null;
       // A charge with no clear run to its target from here: strike or close in another way.
       if (g.ready && j.charge && !chargeLanding(s, u, t)) return null;
       if (g.ready) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined };
@@ -238,7 +238,7 @@ function bonusStrike(s: BattleState, u: Unit): Action | null {
   for (const id of u.jutsus) {
     const j = JUTSU[id];
     if (!j || j.cast !== 'bonus' || j.melee || !offensive(j) || u.chakra < jutsuCost(u, j, false)) continue;
-    if (mustStow(u, j) && u.turn.interacted) continue;
+    if (handsBlocker(u, j)) continue;
     for (const f of visibleFoes(s, u)) {
       const reach = j.range + (f.bulk ?? 0) + (j.shape === 'single' && f.kind === 'hydra_head' ? 2.5 : 0);
       if (dist(u.pos, f.pos) > reach + 0.1 || !lineOfSight(s, u.pos, f.pos) || areaValue(s, u, j, f) <= 0) continue;

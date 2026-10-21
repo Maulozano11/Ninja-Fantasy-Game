@@ -259,17 +259,24 @@ export const fullCoverBetween = (s: BattleState, a: Pt, b: Pt): boolean => s.wal
 
 /**
  * A straight run on the ground from `a` to `b` is clear (a charge): no wall across it and no blocked
- * cell along it (a tree, a rock, a structure). The cells at both ends don't count, the runner's and
- * where it is headed; other units don't block it (a ninja weaves past them).
+ * cell along it (a tree, a rock, a structure), no deep water and no cliff edge (a step of more than
+ * half a level: a run on flat ground, not a climb or a swim). The blocked cells at both ends don't
+ * count, the runner's and where it is headed; other units don't block it (a ninja weaves past them).
  */
 export function clearRun(s: BattleState, a: Pt, b: Pt): boolean {
   if (s.walls.some((w) => w.kind !== 'metalBlock' && segmentsCross(a, b, w.a, w.b))) return false;
   const ca = cellOf(a);
   const cb = cellOf(b);
   const n = Math.ceil(dist(a, b) / (CELL / 2));
-  for (let k = 1; k < n; k++) {
-    const c = cellOf({ x: a.x + ((b.x - a.x) * k) / n, z: a.z + ((b.z - a.z) * k) / n });
-    if (sameCell(c, ca) || sameCell(c, cb)) continue;
+  let level = levelAtPt(s, a);
+  for (let k = 1; k <= n; k++) {
+    const p = { x: a.x + ((b.x - a.x) * k) / n, z: a.z + ((b.z - a.z) * k) / n };
+    const c = cellOf(p);
+    if (waterAtPt(s, p) === 2) return false;
+    const l = levelAtPt(s, p);
+    if (Math.abs(l - level) > 0.5) return false;
+    level = l;
+    if (k === n || sameCell(c, ca) || sameCell(c, cb)) continue;
     if (cellBlocked(s, c)) return false;
   }
   return true;

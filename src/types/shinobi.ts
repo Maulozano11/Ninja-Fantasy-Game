@@ -208,7 +208,34 @@ export interface ShinobiCharacter {
   conviction?: ConvictionValue[];
   /** Skills the ninja is proficient in; older sheets use their class's defaults. */
   skillProficiencies?: SkillId[];
+  /**
+   * The ninja has been made: the creator's Accept saved it (and every sheet loaded from this
+   * device's saves or imported is one). From then on its chakra type, its nature, is fixed (the
+   * owner, 2026-10-21: rules/progression.ts `typeFixed`). Missing on a new ninja and on the presets.
+   */
+  created?: boolean;
+  /**
+   * The tools the ninja carries in its own pouch: they join the party's backpack at the start of
+   * every mission and practice battle (rules/pouch.ts). Today only explosive tags, given to a sheet
+   * that had the explosive tag as its Utility jutsu (it is a consumable item now). Missing: empty.
+   */
+  pouch?: { explosiveTags?: number };
+  /**
+   * The ninja's level-5 choice (the owner, 2026-10-21: "nivel 5 suena bien para segundo elemento o
+   * subir de rango tu elemento principal"): 'element' a second element (in `extraNatures`), 'rank' a
+   * higher rank of its main element (rules/natureGrowth.ts). Missing: not chosen yet (below level 5,
+   * or a ninja that has not chosen). Its chakra type, the main element, never changes.
+   */
+  natureGrowth?: NatureGrowth;
+  /**
+   * The elements the ninja has besides its chakra type: the second (the level-5 choice, or a legend's
+   * own: Kaien Fire, Raiga Earth) and later a third (a special feat). Missing: none.
+   */
+  extraNatures?: ChakraNature[];
 }
+
+/** What a ninja chooses at level 5: a second element, or a higher rank of its main element. */
+export type NatureGrowth = 'element' | 'rank';
 
 export type TileTerrain =
   | 'plain'

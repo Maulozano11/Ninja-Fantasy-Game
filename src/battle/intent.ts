@@ -240,6 +240,8 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     for (const id of u.jutsus) {
       const j = JUTSU[id];
       if (!j || !offensive(j) || u.chakra < j.cost) continue;
+      // A sword art needs a blade (engine.ts handsBlocker: palms and fists hold none).
+      if (j.weapon === 'draw' && u.kind === 'ninja' && !u.weapon.held) continue;
       // A bonus-action jutsu needs the bonus action (planning the next turn, it will have it).
       if (j.cast === 'bonus' && !next && !u.turn.bonus) continue;
       if (d > j.range + u.speed + (f.bulk ?? 0)) continue;

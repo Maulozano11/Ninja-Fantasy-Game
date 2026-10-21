@@ -286,7 +286,7 @@ export function damage(s: BattleState, t: Unit, raw: number, type: DamageType, o
     const how = o.explosion ? 'explosion' : type === 'Fire' ? 'fire' : type === 'Lightning' ? 'lightning' : undefined;
     if (how && !t.head.sealed) {
       t.head.sealed = true;
-      ev.push({ t: 'seal', unit: t.id, how });
+      ev.push({ t: 'seal', unit: t.id, how, source: o.source });
     }
     return;
   }

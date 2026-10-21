@@ -37,7 +37,7 @@ import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
-import { electrify, groundEffects, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
+import { electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
 import {
   addNode,
@@ -731,9 +731,10 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (u.chakra < cost) return 'noChakra';
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
   // Hand seals need both hands, and a tackle is thrown with empty ones: the weapon is stowed for
-  // free (once a turn), or the jutsu waits.
+  // free (once a turn), or the jutsu waits. A sword art needs a blade, drawn for free.
   const stow = mustStow(u, base);
-  if (stow && u.turn.interacted) return 'handsBusy';
+  const hands = handsBlocker(u, base);
+  if (hands) return hands;
   const target = targetId ? s.units[targetId] : undefined;
   let at: Pt = target ? { ...target.pos } : { ...atIn };
   if (spec.shape === 'self' || spec.shape === 'selfCircle') at = { ...u.pos };
@@ -802,8 +803,8 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     if (why) return why;
   }
   if (stow) setArmed(u, false, 'free', ev);
-  // A sword art draws the blade for free, if the free draw of the turn is left (or it strikes with the fists).
-  else if (base.weapon === 'draw' && u.weapon.held && !u.armed && !u.turn.interacted) setArmed(u, true, 'free', ev);
+  // A sword art draws the blade for free (handsBlocker made sure the free draw is left).
+  else if (base.weapon === 'draw' && u.weapon.held && !u.armed) setArmed(u, true, 'free', ev);
   // Pay, and spend the action.
   u.chakra -= cost;
   if (cost) ev.push({ t: 'chakra', unit: u.id, delta: -cost, chakra: u.chakra, reason: id });
@@ -842,12 +843,6 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       u.cond.mantle = true;
       ev.push({ t: 'condition', unit: u.id, cond: 'mantle', on: true });
       break;
-    case 'trap': {
-      const trap: Trap = { id: `trap_${s.tick}_${u.id}`, kind: 'tag', pos: at, owner: u.team, dc: u.saveDC, dice: spec.dice ?? '3d6', radius: spec.radius ?? 1.5 };
-      s.traps.push(trap);
-      ev.push({ t: 'trap', trap, on: true });
-      break;
-    }
     case 'earthWall':
     case 'waterWall':
       raiseWall(s, u, spec, at, ev);
@@ -963,7 +958,8 @@ function chargeTo(s: BattleState, u: Unit, to: Pt, jutsu: string, ev: BattleEven
 
 /** Earth and water walls stand across the caster's line, centered on the point. */
 function raiseWall(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleEvent[]): void {
-  const wall = jutsuWallAt(spec, u.pos, at, `wall_${s.tick}_${u.id}`);
+  // Its owner too: the wall stands in the caster's chakra colour on the screen. It stays unbreakable.
+  const wall = { ...jutsuWallAt(spec, u.pos, at, `wall_${s.tick}_${u.id}`), owner: u.id };
   s.walls.push(wall);
   ev.push({ t: 'wall', wall, on: true });
 }
@@ -978,6 +974,20 @@ export const needsSeals = (u: Unit, spec: JutsuSpec): boolean => u.kind === 'nin
  */
 export const mustStow = (u: Unit, spec: JutsuSpec): boolean =>
   (needsSeals(u, spec) && !handsFree(u)) || (spec.weapon === 'stow' && u.kind === 'ninja' && u.armed && u.weapon.held);
+
+/**
+ * Why the hands can't cast this jutsu now, or null: the weapon must be stowed and the free
+ * interaction is spent ('handsBusy'); a sword art with no blade to strike with ('noBlade': palms
+ * and fists hold none), or with the blade stowed and the free draw spent ('drawFirst').
+ */
+export function handsBlocker(u: Unit, spec: JutsuSpec): string | null {
+  if (mustStow(u, spec) && u.turn.interacted) return 'handsBusy';
+  if (spec.weapon === 'draw' && u.kind === 'ninja') {
+    if (!u.weapon.held) return 'noBlade';
+    if (!u.armed && u.turn.interacted) return 'drawFirst';
+  }
+  return null;
+}
 
 function setArmed(u: Unit, armed: boolean, cost: 'free' | 'bonus', ev: BattleEvent[]): void {
   u.armed = armed;
@@ -1137,7 +1147,7 @@ function pushClear(s: BattleState, from: Pt, to: Pt): boolean {
 
 const near = (u: Unit, t: Unit): boolean => u.id === t.id || dist(u.pos, t.pos) <= 1.6;
 
-function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' | 'tag', targetId: string | undefined, at: Pt | undefined, ev: BattleEvent[]): string | null {
+function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap', targetId: string | undefined, at: Pt | undefined, ev: BattleEvent[]): string | null {
   // The backpack is the party's: a commanded enemy or a beast that joined doesn't get into it.
   if (homeTeam(u) !== 'party' || u.joined) return 'noItems';
   if (item === 'pill') {
@@ -1164,6 +1174,19 @@ function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' |
     s.supplies.explosiveTags -= 1;
     ev.push({ t: 'act', unit: u.id, act: 'item' });
     applyHits(s, throwTag(s, u, at, ev), loud(s, u), ev);
+    return null;
+  }
+  if (item === 'tagTrap') {
+    // An explosive tag hidden on the ground nearby: it goes off when an enemy steps on it. Quiet: it
+    // doesn't give the ninja away in the stealth phase.
+    if (s.supplies.explosiveTags < 1) return 'noneLeft';
+    if (!at || dist(u.pos, at) > TAG.plant + 0.1) return 'outOfRange';
+    if (!lineOfSight(s, u.pos, at)) return 'noSight';
+    if (cellBlocked(s, cellOf(at))) return 'blocked';
+    u.turn.action = false;
+    s.supplies.explosiveTags -= 1;
+    ev.push({ t: 'act', unit: u.id, act: 'item' });
+    plantTag(s, u, at, ev);
     return null;
   }
   const t = targetId ? s.units[targetId] : u;

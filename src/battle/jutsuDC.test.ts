@@ -10,7 +10,7 @@ import type { ShinobiCharacter } from '../types/shinobi';
 import type { BattleEvent, BattleState, Pt } from './types';
 import { applyAction, createBattle } from './engine';
 import type { BattleSetup } from './engine';
-import { cellBlocked, cellCenter, cellOf, dist, propRules, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellOf, clearRun, dist, propRules, waterAtPt } from './map';
 import { canStop } from './nav';
 import { attackPreview, saveMod } from './combat';
 import { beginTurn } from './turns';
@@ -202,7 +202,7 @@ describe('rank D and C jutsu: the data', () => {
 
   it('the screen\'s hooks: three projectile paths, impacts on each one reached, poses, its own white cut', () => {
     for (const id of ['fire_three_embers', 'lightning_jolt', 'earth_pebble_shot']) assert.deepEqual(JUTSU[id].seq?.volley?.paths, ['high', 'straight', 'low'], id);
-    assert.equal(JUTSU.earth_pebble_shot.seq?.impact, 'multi_hit');
+    assert.equal(JUTSU.earth_pebble_shot.vfx, 'multi'); // its impact is earth's multi_hit (the rock-bullet burst)
     assert.ok(JUTSU.earth_pebble_shot.seq?.castAura);
     assert.ok(JUTSU.lightning_spark_fan.seq?.connected && JUTSU.lightning_spark_fan.seq.hitEach);
     assert.equal(JUTSU.earth_spike_crown.pose, 'charge');
@@ -428,10 +428,18 @@ describe('rank D and C jutsu in battle', () => {
     assert.ok(t.units.rogue_0.hp < hp);
     // A miss leaves no wound.
     assert.ok(!seeded(s, (t) => cast(t, 'kenjutsu_bleeding_cut'), (o) => !hits(o)).events.some((e) => e.t === 'effect'));
-    // The free draw already spent: it cuts all the same (with the fists, as any blow then).
+    // A sword art needs the blade: with the free draw already spent it waits for it, and a ninja
+    // with no blade at all (a palm, the fists) can't cast it.
     const spent = structuredClone(s);
     spent.units.a.turn.interacted = true;
+    assert.equal(cast(spent, 'kenjutsu_bleeding_cut').reason, 'drawFirst');
+    spent.units.a.armed = true;
     assert.ok(!ok(cast(spent, 'kenjutsu_bleeding_cut')).events.some((e) => e.t === 'weapon'));
+    const palm = structuredClone(s);
+    palm.units.a.weapon = { ...palm.units.a.weapon, name: 'Lightning palm', held: false };
+    assert.equal(cast(palm, 'kenjutsu_bleeding_cut').reason, 'noBlade');
+    assert.ok(!ninjaOptions(palm, palm.units.a).some((o) => o.intent.kind === 'jutsu' && o.intent.what === 'kenjutsu_bleeding_cut'), 'the AI never plans it');
+    assert.ok(ninjaOptions(s, s.units.a).some((o) => o.intent.kind === 'jutsu' && o.intent.what === 'kenjutsu_bleeding_cut'));
     // Not past 3 m.
     assert.equal(cast(duel('kenjutsu_bleeding_cut', { x: 12.25, z: 10.25 }), 'kenjutsu_bleeding_cut').reason, 'outOfRange');
   });
@@ -479,6 +487,9 @@ describe('rank D and C jutsu in battle', () => {
     const walled = duel('taijutsu_rush', { x: 13.25, z: 10.25 });
     walled.walls.push({ id: 'w', kind: 'earth', a: { x: 10.75, z: 8 }, b: { x: 10.75, z: 12.5 }, hp: 30 });
     assert.equal(cast(walled, 'taijutsu_rush').reason, 'blocked');
+    // Nor across deep water (the river) or a cliff edge: a run on the ground, not a swim or a climb.
+    assert.equal(clearRun(walled, { x: 24.25, z: 12.25 }, { x: 31.75, z: 12.25 }), false);
+    assert.equal(clearRun(walled, { x: 19.25, z: 12.25 }, { x: 24.25, z: 12.25 }), true);
     const busy = duel('taijutsu_rush', { x: 13.25, z: 10.25 });
     busy.units.a.turn.interacted = true;
     assert.equal(cast(busy, 'taijutsu_rush').reason, 'handsBusy');

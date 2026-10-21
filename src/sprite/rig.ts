@@ -648,11 +648,11 @@ const TACKLE: PoseFrame[] = [
   // Set: low over the front foot, the fists tucked in before the chest.
   { lean: 20, sink: 1.5, headDx: 1, headDy: 1.5, footN: v(-0.44, 0.88), footF: v(0.36, 0.88), handN: chest(4, 1.5), handF: chest(5, -0.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
   // Drive: off the back foot, pitched forward, the head down behind the shoulder.
-  { lean: 32, pelvisDx: 2.5, headDx: 4, headDy: 5.5, footN: v(-0.62, 0.8), footF: v(0.3, 0.72), handN: chest(3.5, 2.5), handF: arm(0.42, 0.55), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  { lean: 32, pelvisDx: 2.5, headDx: 1.5, headDy: 6.5, footN: v(-0.62, 0.8), footF: v(0.3, 0.72), handN: chest(3.5, 2.5), handF: arm(0.42, 0.55), shapeN: 'fist', shapeF: 'fist', streamBack: true },
   // IMPACT: shoulder first, the body long, the front knee driving, off the ground.
-  { lean: 38, pelvisDx: 4.5, headDx: 5.5, headDy: 7, lift: 1.5, footN: v(-0.68, 0.74), footF: v(0.2, 0.62), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  { lean: 38, pelvisDx: 4.5, headDx: 1, headDy: 8.5, lift: 1.5, footN: v(-0.68, 0.74), footF: v(0.2, 0.62), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
   // Hold on the hit.
-  { lean: 38, pelvisDx: 5, headDx: 5.5, headDy: 7, lift: 1, chestDy: 0.5, footN: v(-0.68, 0.75), footF: v(0.2, 0.64), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  { lean: 38, pelvisDx: 5, headDx: 1, headDy: 8.5, lift: 1, chestDy: 0.5, footN: v(-0.68, 0.75), footF: v(0.2, 0.64), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
   // Recovery: back onto both feet, guard up.
   { lean: 14, pelvisDx: 2, headDx: 1, headDy: 1, footN: v(-0.42, 0.9), footF: v(0.38, 0.9), handN: chest(4.5, -1.5), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
 ];

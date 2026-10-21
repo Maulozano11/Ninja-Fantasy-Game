@@ -7,7 +7,8 @@ import type { SpritePose } from '../../sprite/types';
 import { JUTSU } from '../../battle/jutsu';
 import type { JutsuSpec, VfxElement, VfxRole } from '../../battle/jutsu';
 import { POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
-import { FAN_ROLL, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
+import { FAN_MS, FAN_ROLL, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
+import { jutsuTint, unitTint } from './vfxTintPlan';
 import { dist } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
@@ -91,9 +92,21 @@ export interface Fx {
   set?: 'neutral';
   /** A cone drawn as one joined fan from the hand (the Spark Fan), reaching these points. */
   joined?: Pt[];
+  /**
+   * The caster's chakra colour (a chakra colour id or '#rrggbb'), for an elemental jutsu's effects:
+   * they play in it, sheets and drawn ones alike (the owner, 2026-10-21). Taken when the jutsu is
+   * cast, so the effect keeps it. Unset: his colours.
+   */
+  tint?: string;
 }
 
 export type VolleyPath = 'high' | 'straight' | 'low';
+
+/** How high the casting hand is in the cast pose (px above the feet), and how far before the body (m). */
+const HAND_LIFT = 62;
+const HAND_DX = 0.6;
+/** Where a cast leaves the hand of a ninja standing at `p` and facing `facing`. */
+const handOf = (p: Pt, facing: number): Pt => ({ x: p.x + facing * HAND_DX, z: p.z });
 
 export interface Banner {
   text: string;
@@ -166,7 +179,7 @@ export class Playback {
    * Units wrapped in a lingering aura while a condition lasts (the Breeze Mantle: its wind stays
    * on the ninja, faint, until its next turn): unit → the aura's element, opacity and start.
    */
-  lingers = new Map<string, { element: VfxElement; alpha: number; t0: number }>();
+  lingers = new Map<string, { element: VfxElement; alpha: number; t0: number; tint?: string }>();
 
   constructor(state: BattleState, private hooks: PlaybackHooks) {
     this.sync(state, 0);
@@ -198,7 +211,7 @@ export class Playback {
       this.views.set(u.id, next);
       const mantle = JUTSU.wind_breeze_mantle;
       if (u.cond.mantle && !u.down && mantle?.seq?.lingerAura) {
-        if (!this.lingers.has(u.id)) this.lingers.set(u.id, { element: mantle.element, alpha: mantle.seq.lingerAura, t0: now - 2000 });
+        if (!this.lingers.has(u.id)) this.lingers.set(u.id, { element: mantle.element, alpha: mantle.seq.lingerAura, t0: now - 2000, tint: jutsuTint(mantle, u) });
       } else this.lingers.delete(u.id);
     }
     if (state.phase === 'combat') {
@@ -262,7 +275,8 @@ export class Playback {
     this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
-    if (!this.settling || this.queue.length || now < this.busyUntil) return false;
+    // The last jutsu's effects play out whole first (the movement overlay and the next order wait for them).
+    if (!this.settling || this.queue.length || now < this.busyUntil || now < this.lingerUntil) return false;
     for (const v of this.views.values()) if (v.walk || v.phase || (v.poseUntil && now < v.poseUntil)) return false;
     this.settling = false;
     return true;
@@ -395,20 +409,23 @@ export class Playback {
    * the white cut, the tackle, the geyser out of the ground, the healing orb. Returns how long to
    * wait before the next event, or null to play the jutsu the usual way.
    */
-  private staged(ev: Extract<BattleEvent, { t: 'jutsu' }>, spec: JutsuSpec, a: UnitView, from: Pt, now: number, label: string | null): number | null {
+  private staged(ev: Extract<BattleEvent, { t: 'jutsu' }>, spec: JutsuSpec, a: UnitView, from: Pt, now: number, label: string | null, tint: string | undefined): number | null {
     const h = this.hooks;
     const seq = spec.seq ?? {};
     const el = spec.element;
     const at = (ms: number) => now + ms / this.speed;
     const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, now + ms / this.speed));
-    const base = { element: el, enhanced: ev.enhanced, role: spec.vfx };
+    // In the caster's chakra colour when it is an elemental jutsu (the owner, 2026-10-21).
+    const base = { element: el, enhanced: ev.enhanced, role: spec.vfx, tint };
+    // What it throws leaves the casting hand (before the body, at chest height), not the head.
+    const hand = handOf(from, a.facing);
     const announce = () => {
       h.sound('jutsu', el);
       if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
     };
     // The cast beat and the flight pace of every jutsu (see the usual way below).
     const CAST = 560;
-    const flight = (to: Pt) => Math.max(500, dist(from, to) * 115);
+    const flight = (to: Pt) => Math.max(500, dist(hand, to) * 115);
 
     if (spec.pose === 'tackle') {
       // The Rush (the owner: the weapon put away, a tackle): straight out of the run into the
@@ -434,11 +451,13 @@ export class Playback {
       // with no element) crosses the target and fades.
       announce();
       this.setPose(a, 'attack', now, 900);
-      const strike = 1000 / POSE_FPS.attack;
-      this.fx.push({ ...base, kind: 'slash', set: 'neutral', from, to: ev.at, t0: at(strike - 30), dur: 560, lift: [58, 58] });
+      // The blade comes down on the attack pose's second frame: the cut follows it, and a miss cuts nothing.
+      const strike = 1000 / POSE_FPS.attack + 30;
       h.sound('swing');
-      linger(strike + 560);
-      return strike + 200;
+      if (this.missedNext(ev.unit)) return strike;
+      this.fx.push({ ...base, kind: 'slash', set: 'neutral', from, to: ev.at, t0: at(strike), dur: 480, lift: [58, 58] });
+      linger(strike + 480);
+      return strike + 120;
     }
 
     if (spec.pose === 'charge') {
@@ -470,11 +489,11 @@ export class Playback {
       const { paths, stagger } = seq.volley;
       let end = 0;
       paths.forEach((path, i) => {
-        const to = miss ? pastTarget(from, ev.at, path) : ev.at;
+        const to = miss ? pastTarget(hand, ev.at, path) : ev.at;
         const fly = flight(ev.at) * VOLLEY[path].pace;
         const t0 = CAST + i * stagger;
-        const lift: [number, number] = [70, miss ? 4 : VOLLEY[path].lands];
-        this.fx.push({ ...base, kind: 'projectile', from, to, t0: at(t0), dur: fly, lift, path, piece: i });
+        const lift: [number, number] = [HAND_LIFT, miss ? 4 : VOLLEY[path].lands];
+        this.fx.push({ ...base, kind: 'projectile', from: hand, to, t0: at(t0), dur: fly, lift, path, piece: i });
         this.fx.push({ ...base, kind: 'burst', from, to, t0: at(t0 + fly), dur: hitMs, lift, path, piece: i });
         end = Math.max(end, t0 + fly);
       });
@@ -489,15 +508,19 @@ export class Playback {
       this.setPose(a, 'cast', now, 900);
       const who = this.reached(ev.unit);
       const pts = who.map((id) => this.posOf(id, now));
-      this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, t0: at(CAST), dur: 1400, lift: [64, 44], joined: pts });
+      this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, t0: at(CAST), dur: FAN_MS, lift: [64, 44], joined: pts });
       const stagger = seq.hitEach?.stagger ?? 80;
       const hitMs = impactMs(el, 'hit', 900);
       const len = ev.shape.length;
+      let end = CAST + FAN_MS;
       pts.forEach((p, i) => {
         const reach = FAN_ROLL * Math.min(1, dist(from, p) / len);
-        this.fx.push({ ...base, kind: 'burst', from, to: p, t0: at(CAST + reach + i * stagger), dur: hitMs, lift: [56, 56], role: 'hit' });
+        const t0 = CAST + reach + i * stagger;
+        this.fx.push({ ...base, kind: 'burst', from, to: p, t0: at(t0), dur: hitMs, lift: [56, 56], role: 'hit' });
+        end = Math.max(end, t0 + hitMs);
       });
-      linger(1400);
+      // The next turn waits for the fan and its last spark.
+      linger(end);
       return CAST + 900;
     }
 
@@ -508,7 +531,8 @@ export class Playback {
       this.setPose(a, 'cast', now, 900);
       const c = ev.shape.center;
       const warn = seq.fromGround.warn;
-      this.fx.push({ ...base, kind: 'burst', from: c, to: c, t0: at(CAST), dur: warn + 200, lift: [26, 26], role: 'hit' });
+      // The splash sits on the ground where it will burst (its middle at the feet), not on the body.
+      this.fx.push({ ...base, kind: 'burst', from: c, to: c, t0: at(CAST), dur: warn + 200, lift: [6, 6], role: 'hit' });
       const boom = blastMs(el, 1200);
       this.fx.push({ ...base, kind: 'area', from: c, to: c, area: ev.shape, t0: at(CAST + warn), dur: boom });
       if (seq.shake) this.shakeAt(now, CAST + warn, seq.shake + (ev.enhanced ? 1 : 0));
@@ -523,7 +547,7 @@ export class Playback {
       const healed = this.healedNext();
       const to = healed ? this.posOf(healed, now) : ev.at;
       const fly = dist(from, to) < 0.3 ? 0 : flight(to);
-      if (fly) this.fx.push({ ...base, kind: 'projectile', from, to, t0: at(CAST), dur: fly, lift: [70, 50], role: 'bolt' });
+      if (fly) this.fx.push({ ...base, kind: 'projectile', from: hand, to, t0: at(CAST), dur: fly, lift: [HAND_LIFT, 50], role: 'bolt' });
       this.fx.push({ ...base, kind: 'aura', from: to, to, t0: at(CAST + fly), dur: seq.healAura, unit: healed });
       linger(CAST + fly + seq.healAura);
       return CAST + fly + 250;
@@ -566,7 +590,7 @@ export class Playback {
         const seq = ev.jutsu ? JUTSU[ev.jutsu]?.seq : undefined;
         const speed = (pose === 'run' ? RUN : pose === 'sneak' ? SNEAK : WALK) * (seq?.fastRun ?? 1);
         const beat = seq?.launchFlash ? 140 : 0;
-        if (seq?.launchFlash) this.fx.push({ kind: 'aura', element: JUTSU[ev.jutsu!].element, from: start, to: start, t0: now, dur: 520, unit: ev.unit });
+        if (seq?.launchFlash) this.fx.push({ kind: 'aura', element: JUTSU[ev.jutsu!].element, from: start, to: start, t0: now, dur: 520, unit: ev.unit, tint: jutsuTint(JUTSU[ev.jutsu!], u) });
         const last = ev.path[ev.path.length - 1];
         if (Math.abs(last.x - start.x) > 0.05) v.facing = last.x > start.x ? 1 : -1;
         v.walk = { path: ev.path.map((p) => ({ ...p })), t0: now + beat / this.speed, speed, pose, lengths, total };
@@ -703,7 +727,7 @@ export class Playback {
           return 90;
         }
         if (spec?.seq || spec?.pose || spec?.vfxSet) {
-          const staged = this.staged(ev, spec, a, from, now, label);
+          const staged = this.staged(ev, spec, a, from, now, label, jutsuTint(spec, caster));
           if (staged !== null) return staged;
         }
         if (!head) this.setPose(a, spec?.melee ? 'attack' : 'cast', now, 900);
@@ -721,7 +745,7 @@ export class Playback {
         h.sound('jutsu', el);
         if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
         const t1 = now + castDelay / this.speed;
-        const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig, role: spec?.vfx };
+        const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig, role: spec?.vfx, tint: jutsuTint(spec, caster) };
         switch (spec?.special) {
           case 'heal':
             this.fx.push({ ...base, kind: 'heal', from: ev.at, to: ev.at, dur: 1300 });
@@ -739,9 +763,6 @@ export class Playback {
             // would otherwise burn on at the spot it left, around whoever is swapped in there).
             this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: castDelay + 400, unit: ev.unit, follow: true });
             return castDelay + 400;
-          case 'trap':
-            this.fx.push({ ...base, kind: 'seal', from: ev.at, to: ev.at, dur: 1000, sig: 'tag' });
-            return castDelay + 500;
           case 'earthWall':
           case 'waterWall':
             this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200 });
@@ -792,7 +813,9 @@ export class Playback {
           this.lingerUntil = Math.max(this.lingerUntil, t1 + sky.total / this.speed);
           return castDelay + sky.hit / this.speed;
         }
-        this.fx.push({ ...base, kind: 'projectile', from, to: ev.at, dur: fly, lift: [head ? 120 : 70, ev.shape ? 30 : 60] });
+        // The rank D and C jutsu (staged by seq) leave the casting hand; the others fly as they always have.
+        const out = spec?.seq && !head ? handOf(from, a.facing) : from;
+        this.fx.push({ ...base, kind: 'projectile', from: out, to: ev.at, dur: fly, lift: [head ? 120 : spec?.seq ? HAND_LIFT : 70, ev.shape ? 30 : 60] });
         if (ev.shape?.kind === 'circle') {
           const boom = blastMs(el, spec?.sig ? 1400 : 1200);
           this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: boom });
@@ -881,7 +904,7 @@ export class Playback {
         if (ev.cond === 'prone' && ev.on) this.setPose(v, 'downed', now, 500);
         if (ev.cond === 'mantle') {
           const seq = JUTSU.wind_breeze_mantle?.seq;
-          if (ev.on && seq?.lingerAura) this.lingers.set(ev.unit, { element: JUTSU.wind_breeze_mantle.element, alpha: seq.lingerAura, t0: now });
+          if (ev.on && seq?.lingerAura) this.lingers.set(ev.unit, { element: JUTSU.wind_breeze_mantle.element, alpha: seq.lingerAura, t0: now, tint: jutsuTint(JUTSU.wind_breeze_mantle, state.units[ev.unit]) });
           else this.lingers.delete(ev.unit);
         }
         if (label) this.float(label, '#c4b5fd', this.posOf(ev.unit, now), now, { rise: 120 });
@@ -967,7 +990,8 @@ export class Playback {
       }
       case 'electrified':
         // Along the water only (and not through a metal wall): renderer.ts clips its rays.
-        this.fx.push({ kind: 'electric', element: 'lightning', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 800, sig: 'water' });
+        // In the chakra colour of whoever's lightning it is.
+        this.fx.push({ kind: 'electric', element: 'lightning', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 800, sig: 'water', tint: unitTint(ev.source ? state.units[ev.source] : undefined) });
         return 300;
       case 'trap':
         return 0;
@@ -1001,7 +1025,9 @@ export class Playback {
       }
       case 'seal': {
         const at = this.posOf(ev.unit, now);
-        this.fx.push({ kind: ev.how === 'lightning' ? 'electric' : 'fire', element: ev.how === 'lightning' ? 'lightning' : 'fire', from: at, to: at, radius: 0.8, t0: now, dur: 900, lift: [140, 140] });
+        // The flare of the fire or lightning that sealed it, in its caster's chakra colour (an explosion has none).
+        const tint = ev.how === 'explosion' ? undefined : unitTint(ev.source ? state.units[ev.source] : undefined);
+        this.fx.push({ kind: ev.how === 'lightning' ? 'electric' : 'fire', element: ev.how === 'lightning' ? 'lightning' : 'fire', from: at, to: at, radius: 0.8, t0: now, dur: 900, lift: [140, 140], tint });
         if (label) this.float(label, '#fdba74', at, now, { rise: 160 });
         return 400;
       }

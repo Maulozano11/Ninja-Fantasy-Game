@@ -18,7 +18,7 @@ import { aiAction, runAi } from './ai';
 import { battleResult } from './result';
 import { HYDRA_ID } from './hydra';
 import { JUTSU, enhanced } from './jutsu';
-import { hitStructuresIn, structureAttack } from './structures';
+import { breakable, hitStructuresIn, ownStructures, structureAttack } from './structures';
 import { electrify } from './hazards';
 import { ENCOUNTERS, encounterSetup } from './encounters';
 import type { EncounterId } from './encounters';
@@ -288,6 +288,12 @@ describe('jutsu', () => {
     for (const jutsu of ['earth_wall_doryuheki', 'water_shield_suijinheki']) {
       const out = ok(applyAction(s, { type: 'jutsu', unit: 'a', jutsu, at: { x: 11.25, z: 10.25 } }));
       assert.equal(out.state.walls.length, 1);
+      // It knows who raised it (it stands in that ninja's chakra colour), and stays unbreakable:
+      // no Kōton structure of theirs, nothing to strike.
+      const w = out.state.walls[0];
+      assert.equal(w.owner, 'a');
+      assert.ok(!breakable(w));
+      assert.deepEqual(ownStructures(out.state, 'a'), []);
       // Over the rogue: refused before paying.
       const over = applyAction(s, { type: 'jutsu', unit: 'a', jutsu, at: { ...s.units.rogue_0.pos } });
       assert.equal(over.reason, 'occupied');
@@ -324,8 +330,10 @@ describe('the hydra', () => {
     const h2 = head(s, 1);
     damage(s, h2, 999, 'Fire', {}, ev);
     assert.ok(h2.head!.severed && !h2.head!.sealed);
-    damage(s, h2, 1, 'Lightning', {}, ev);
+    damage(s, h2, 1, 'Lightning', { source: 'a' }, ev);
     assert.ok(h2.head!.sealed);
+    // The seal names whose lightning it was (its flare plays in their chakra colour).
+    assert.ok(ev.some((e) => e.t === 'seal' && e.unit === h2.id && e.how === 'lightning' && e.source === 'a'));
     const h3 = head(s, 2);
     damage(s, h3, 999, 'Piercing', {}, ev);
     damage(s, h3, 5, 'Bludgeoning', { explosion: true }, ev);
@@ -766,8 +774,11 @@ describe('clans: phase 1 foundation', () => {
       // behind a metal wall.
       const river = createBattle(setup({ enemies: [{ kind: 'rogue', pos: { x: 25.25, z: 11.25 } }, { kind: 'rogue', pos: { x: 25.25, z: 14.75 } }] })).state;
       assert.ok(waterAtPt(river, river.units.rogue_0.pos) && waterAtPt(river, river.units.rogue_1.pos));
-      const zap = (t: BattleState) => electrify(t, [{ x: 25.25, z: 12.25 }], 10, 13, 'a', [], []).map((h) => h.unit);
+      const zapped: BattleEvent[] = [];
+      const zap = (t: BattleState) => electrify(t, [{ x: 25.25, z: 12.25 }], 10, 13, 'a', [], zapped).map((h) => h.unit);
       assert.deepEqual(zap(river), ['rogue_0', 'rogue_1']);
+      // The water lights up in the caster's lightning (its chakra colour on the screen).
+      assert.ok(zapped.some((e) => e.t === 'electrified' && e.source === 'a'));
       river.walls.push({ id: 'w1', kind: 'metal', a: { x: 23.5, z: 13.5 }, b: { x: 27, z: 13.5 }, hp: 20, maxHp: 20 });
       assert.deepEqual(zap(river), ['rogue_0']);
       // A blast reaching two structures dents the near one; the one sheltered behind it is spared.

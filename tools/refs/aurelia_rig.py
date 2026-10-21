@@ -44,7 +44,10 @@ JOINTS = {
 AT = {
     # her collar and bodice: his collar under our chin, as under his
     'bodice': (73, 123),
-    # her sleeves: his bare near shoulder is our female's near shoulder (female-body-from-ref.py), laid
-    # with his cell (44, 29) on our near shoulder joint
-    'sleeves': (73, 122),
+    # her near sleeve and her bare near shoulder over it: his shoulder on our near shoulder (two columns
+    # right of her bodice: our shoulders are narrower than his), so his band sits round our upper arm and
+    # our hand comes out of his cuff's opening
+    'sleeveN': (75, 122),
+    # her far sleeve: its band at our far shoulder, under her bust
+    'sleeveF': (73, 122),
 }

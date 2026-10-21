@@ -9,9 +9,9 @@ one of ours. So nothing is reduced or redrawn: each of his pixels is the middle 
 median), cells he drew in one colour are one colour (cells linked by steps closer than NEAR take
 their mean), and they are laid on our female at idle frame 0 (the second female body, fitted to his
 heroines at our scale) one for one: the collar and bodice at (x + OFFSET[0], y + OFFSET[1]) of our
-256 x 256 frame (his collar just under our chin), the sleeves from our shoulders (SLEEVE_AT: his bare
-near shoulder is the body's own), a few of their repeated rows left out and their lower rows moved a
-column at a time so his cuffs close round our wrists (tools/refs/aurelia_rig.py has the measures).
+256 x 256 frame (his collar just under our chin), the sleeves whole from our shoulders (SLEEVE_AT: the
+near one with his bare near shoulder over its band), a few of their repeated rows left out so his cuffs
+end at our wrists (tools/refs/aurelia_rig.py has the measures).
 
 His Aurelia wears a white sleeveless dress: a high collar edged in gold round the neck with a blue gem
 on a dark cord at the throat and a small keyhole of skin under it, bare shoulders, a bodice
@@ -65,16 +65,14 @@ PITCH = 19.32
 # His pixel (x, y) lies at (x + OFFSET[0], y + OFFSET[1]) of our frame (female, idle frame 0): his collar
 # just under our chin (tools/refs/aurelia_rig.py).
 OFFSET = AT['bodice']
-# The sleeves hang from our shoulders: his bare near shoulder is our female's (his cell (44, 29) on our
-# near shoulder joint), so his bands sit on our upper arms at SLEEVE_AT. Our arms are shorter than his
-# and hang closer in (our near wrist three rows higher and four columns further in than his, the far one
-# three rows higher and one column further out), so below the band a few of his rows that repeat the
-# row above are left out (SLEEVE_DROP) and below each of SLEEVE_SHIFT's rows the sleeve moves a column
-# (toward our wrist): his cuffs then close round our wrists, where our hands (his hands, the female
-# body's) come out, as his do. Every row is one of his.
-SLEEVE_AT = AT['sleeves']
+# The sleeves hang from our shoulders, each laid whole as he drew it (SLEEVE_AT): the near one with his
+# bare near shoulder over its band, on our near shoulder (our shoulders are narrower than his, so it lies
+# two columns right of her bodice), the far one with its band at our far shoulder. Our arms are shorter
+# than his, so below the band a few of his rows that repeat the row above are left out (SLEEVE_DROP):
+# his cuffs then end at our wrists, where our hands (his hands, the female body's) come out of his
+# cuffs' openings. Every row is one of his, in his columns.
+SLEEVE_AT = {'near': AT['sleeveN'], 'far': AT['sleeveF']}
 SLEEVE_DROP = {'near': (37, 44, 46), 'far': (38, 41, 45)}
-SLEEVE_SHIFT = {'near': ((38, 1), (41, 1), (44, 1), (47, 1)), 'far': ((43, 1),)}
 # Cells linked by steps closer than this (RGB distance) are one colour of his: the JPEG moves a cell
 # by up to 8; his three golds lie 20 and more apart.
 NEAR = 9
@@ -89,7 +87,13 @@ BODICE_ROWS = {
 }
 # The bodice's skin: the keyhole under the gem and the armpit by the near arm, in the body's skin.
 SKIN_CELLS = {(55, 30), (56, 30), (56, 31), (45, 32), (46, 32), (45, 33), (46, 33)}
-NEAR_ROWS = {y: (28, 43) for y in range(31, 42)} | {y: (28, 40) for y in range(42, 53)}
+# His bare near shoulder over the near sleeve's band (his rows 26-32, up to the bodice's armpit), in the
+# body's skin as the keyhole: it rides the upper arm with the sleeve.
+SHOULDER_ROWS = {26: (41, 46), 27: (41, 46), 28: (41, 46), 29: (41, 46), 30: (41, 46), 31: (41, 45), 32: (41, 44)}
+SHOULDER_CELLS = {(x, y) for y, (x0, x1) in SHOULDER_ROWS.items() for x in range(x0, x1 + 1)}
+NEAR_ROWS = SHOULDER_ROWS | {y: (28, 43) for y in range(33, 42)} | {y: (28, 40) for y in range(42, 53)}
+for _y in (31, 32):
+    NEAR_ROWS[_y] = (28, SHOULDER_ROWS[_y][1])
 # The far sleeve shows past her bust from his row 35 down to its cuff (row 50; row 51 under it at the
 # outer side); her belt and its hanging end cross it at rows 44-48 (x <= 62).
 FAR_ROWS = {y: (60, 68) for y in range(35, 44)} | {44: (62, 68), 45: (62, 68)} | {y: (63, 68) for y in range(46, 50)} | {50: (60, 68), 51: (63, 63)}
@@ -142,11 +146,9 @@ UNDER = 3
 
 
 def sleeve_at(piece, x, y):
-    """Where his sleeve cell (x, y) lies on our frame: SLEEVE_AT, less his rows left out above it, moved by
-    the columns of the shifts above it."""
-    dx = sum(d for r, d in SLEEVE_SHIFT[piece] if y > r)
+    """Where his sleeve cell (x, y) lies on our frame: SLEEVE_AT, less his rows left out above it."""
     dy = sum(1 for r in SLEEVE_DROP[piece] if y > r)
-    return (x + SLEEVE_AT[0] + dx, y + SLEEVE_AT[1] - dy)
+    return (x + SLEEVE_AT[piece][0], y + SLEEVE_AT[piece][1] - dy)
 
 
 def native():
@@ -183,7 +185,7 @@ def mask(N, rows):
             c = N[y, x]
             if is_line(c) or is_ground(c):
                 continue
-            if is_skin(c) and (x, y) not in SKIN_CELLS:
+            if is_skin(c) and (x, y) not in SKIN_CELLS | SHOULDER_CELLS:
                 continue
             out.add((x, y))
     return out
@@ -270,8 +272,8 @@ def main():
     # letters: by kind, then from light to dark within it
     kind = {}
     for k, g in groups.items():
-        kind[k] = 'skin' if all(p in SKIN_CELLS for p in g) else classify(mean[k])
-    pools = {'cloth': 'abcdefhijlmnopqrstuvwxyz', 'gold': 'ABCDEFHJKLMNOPQRVWXY', 'gem': 'GIZ', 'skin': 'STU'}
+        kind[k] = 'skin' if all(p in SKIN_CELLS | SHOULDER_CELLS for p in g) else classify(mean[k])
+    pools = {'cloth': 'abcdefhijlmnopqrstuvwxyz', 'gold': 'ABCDEFHJKLMNOPQRVWXY', 'gem': 'GIZ', 'skin': 'STU0123'}
     letter = {}
     for kd, pool in pools.items():
         ks = sorted((k for k in groups if kind[k] == kd), key=lambda k: (-sum(mean[k]), mean[k]))
@@ -404,8 +406,9 @@ def main():
         '',
     ]
     # what of our torso the bodice and waist stand for, along the torso below the neck: from under her
-    # near armhole (his row 36) on the near side, from his row 28 on the far side (our bust stands out
-    # past hers there), to the waist's lower edge
+    # near armhole (his row 36) on the near side, from the neck on the far side (his far shoulder is
+    # hidden behind her far hair lock and her bodice's edge, and our bust stands out past hers), to the
+    # waist's lower edge
     def below(y):
         return y + OFFSET[1] - neck[1]
 
@@ -413,25 +416,28 @@ def main():
         '/**',
         ' * Where the bodice and its waist stand for our torso, in fine pixels below the neck along the torso:',
         ' * [near side from, far side from, to]: from under his near armhole (the shoulder above stays bare),',
-        ' * from beside his collar on the far side, to the waist\'s lower edge.',
+        ' * from the neck on the far side (his far shoulder does not show), to the waist\'s lower edge.',
         ' */',
-        f'export const AURELIA_TORSO_SPAN: [number, number, number] = [{below(36):.2f}, {below(28):.2f}, {below(WAIST_BOTTOM + 1):.2f}];',
+        f'export const AURELIA_TORSO_SPAN: [number, number, number] = [{below(36):.2f}, 0.00, {below(WAIST_BOTTOM + 1):.2f}];',
         '',
     ]
     parts.append(piece_ts('AURELIA_BODICE', "The collar, the gem and the bodice to the sash's line (pivot: the base of the neck).", B, neck, torso))
     parts.append(piece_ts('AURELIA_WAIST', 'The bodice on under the sash to the hips (pivot: the base of the neck).', W, neck, torso))
     spans = {}
-    for side, cs, what, band_row in (('N', NS, 'near', 36), ('F', FS, 'far', 31)):
+    for side, cs, what, band_row in (('N', NS, 'near', 26), ('F', FS, 'far', None)):
         upper, fore = split_arm(cs, side)
         sh, el, wr = J['shoulder' + side], J['elbow' + side], J['wrist' + side]
         parts.append(piece_ts(f'AURELIA_SLEEVE_UPPER_{side}', f'The {what} sleeve to the elbow: its gold band (pivot: the shoulder).', upper, sh, seg_angle(sh, el)))
         parts.append(piece_ts(f'AURELIA_SLEEVE_FORE_{side}', f'The {what} sleeve from the elbow to its gold cuff (pivot: the elbow).', fore, el, seg_angle(el, wr)))
-        # what of our arm the sleeve stands for: on the upper arm below its band (his row 36) on the near
-        # side, below its band's top (his row 31) on the far side (our far shoulder stands out past her
-        # bust where his is hidden), down to its cuff's lower edge on the forearm
-        yb = sleeve_at(what, 0, band_row)[1]
-        row = [x + 0.5 for (x, y) in cs if y == yb]
-        t_band = along((sum(row) / len(row), yb), sh, el)
+        # what of our arm the sleeve stands for: on the upper arm below his bare shoulder's top (his row
+        # 26) on the near side, all of it on the far side (his far shoulder is hidden behind her hair and
+        # bodice), down to its cuff's lower edge on the forearm
+        if band_row is None:
+            t_band = -1.0
+        else:
+            yb = sleeve_at(what, 0, band_row)[1]
+            row = [x + 0.5 for (x, y) in cs if y == yb]
+            t_band = along((sum(row) / len(row), yb), sh, el)
         bot = max(y for _, y in cs)
         row = [x + 0.5 for (x, y) in cs if y == bot]
         t_cuff = along((sum(row) / len(row), bot + 1), el, wr)

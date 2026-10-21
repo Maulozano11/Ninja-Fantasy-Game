@@ -73,10 +73,12 @@ const UNDER_SLEEVE = (s: Side): Depth[] => [armDepth(s, 'body'), armDepth(s, 'cl
 /**
  * Takes away what of our torso shows past the bodice: a torso pixel the bodice and its waist do not
  * cover, down to the waist's lower edge (AURELIA_TORSO_SPAN, along the torso), from under his near
- * armhole on the near side and from beside his collar on the far side. Our torso is wider than hers
+ * armhole on the near side and from the neck on the far side. Our torso is wider than hers
  * (our bust stands out past her bodice's far side), so the figure's edge there is her bodice's, with
- * her far sleeve and the gap by her near arm beside it, as he drew her. Above that our shoulders stay
- * bare, as hers are: of our undergarment nothing shows there (its strap over the near shoulder goes).
+ * her far sleeve and the gap by her near arm beside it, as he drew her; his far shoulder is hidden
+ * behind her far hair lock and her bodice's edge, so ours goes too. Above her near armhole our near
+ * shoulder stays bare (his own shoulder rides the near sleeve over it): of our undergarment nothing
+ * shows there (its strap over the near shoulder goes).
  */
 function clearTorso(g: DrawCtx, bodice: Uint8Array): void {
   const r = g.rig;
@@ -103,7 +105,8 @@ function clearTorso(g: DrawCtx, bodice: Uint8Array): void {
 /**
  * Takes away what of our arm on side `s` shows past its sleeve: an upper arm pixel below the band's
  * top, or a forearm pixel above the cuff's lower edge (`span`, along each segment), that the sleeve
- * does not cover. The bare shoulder over the band and the wrist under the cuff stay.
+ * does not cover. Above `span[0]` (the top of his bare near shoulder, which the near sleeve carries; the
+ * whole far upper arm, his being hidden) and the wrist under the cuff stay.
  */
 function clearArm(g: DrawCtx, s: Side, sleeve: Uint8Array, span: [number, number]): void {
   const { shoulder, elbow, wrist } = armJoints(g.rig, s);

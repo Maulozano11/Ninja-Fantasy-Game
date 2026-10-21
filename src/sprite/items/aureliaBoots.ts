@@ -9,11 +9,13 @@ import { retintHex } from '../color';
 import { DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, F_NO_EDGE, GRID, norm, partIndex, RES, sub, v, Vec } from '../raster';
+import { drawRig, type Rig } from '../rig';
 import { rotateTemplate } from '../rotsprite';
 import {
   DAWN_BOOT_CLOTH,
   DAWN_BOOT_CLOTH_CHARS,
   DAWN_BOOT_CUT,
+  DAWN_BOOT_CUT_F,
   DAWN_BOOT_GOLD,
   DAWN_BOOT_GOLD_CHARS,
   DAWN_FOOT_F,
@@ -22,16 +24,15 @@ import {
   DAWN_FOOT_N,
   DAWN_SHIN_F,
   DAWN_SHIN_N,
-  DAWN_THIGH_F,
   DAWN_THIGH_N,
 } from './aureliaBootsArt';
 
 /**
  * Takes our leg (skin and trousers) off below the boot's lace top: the thigh below the line across it
- * DAWN_BOOT_CUT fine pixels above the knee, the shin and the foot whole. The leg is not outlined along
- * the cut, where the lace top's own line runs.
+ * `cut` fine pixels above the knee, the shin and the foot whole. The leg is not outlined along the cut,
+ * where the lace top's own line runs.
  */
-function legOffBelow(g: DrawCtx, s: Side, hip: Vec, knee: Vec): void {
+function legOffBelow(g: DrawCtx, s: Side, hip: Vec, knee: Vec, cut: number): void {
   const down = norm(sub(knee, hip));
   const thigh = partIndex(`thigh${s}`);
   const shin = partIndex(`shin${s}`);
@@ -45,7 +46,7 @@ function legOffBelow(g: DrawCtx, s: Side, hip: Vec, knee: Vec): void {
       if (p === thigh) {
         const dx = ((i % GRID) + 0.5) / RES - knee.x;
         const dy = (Math.floor(i / GRID) + 0.5) / RES - knee.y;
-        if ((dx * down.x + dy * down.y) * RES <= -DAWN_BOOT_CUT) continue;
+        if ((dx * down.x + dy * down.y) * RES <= -cut) continue;
       }
       L.mat[i] = -1;
       L.flags[i] |= F_NO_EDGE;
@@ -54,14 +55,16 @@ function legOffBelow(g: DrawCtx, s: Side, hip: Vec, knee: Vec): void {
 }
 
 /**
- * How far the shoe moves off the ankle when the shin turns `deg` from its angle at rest: the shoe hangs
- * where the shin's piece ends (`join`, fine pixels from the ankle at rest), which turns with the shin.
- * At rest it does not move.
+ * How far the shoe moves off the ankle when the shin turns `deg` from its angle at rest: the shoe follows
+ * where the shin's piece ends (`join`, fine pixels from the ankle at rest), which turns with the shin,
+ * across only: its sole stays as far under the ankle as at rest, as our flat foot's does, so the boot
+ * stands on the ground where our foot does (the shin's piece reaches on under the shoe). At rest it does
+ * not move.
  */
 function shoeShift(join: [number, number], deg: number): Vec {
   const r = (Math.round(deg) * Math.PI) / 180;
   const [x, y] = join;
-  return v((x * Math.cos(r) - y * Math.sin(r) - x) / RES, (x * Math.sin(r) + y * Math.cos(r) - y) / RES);
+  return v((x * Math.cos(r) - y * Math.sin(r) - x) / RES, 0);
 }
 
 /** Marks in `out` the fine pixels a painted piece covers when stampPiece stamps it. */
@@ -100,6 +103,25 @@ function closeKnee(g: DrawCtx, s: Side, boot: Uint8Array, knee: Vec): void {
   for (const i of close) L.mat[i] = line;
 }
 
+/** Our female at idle frame 0, where his boots were laid. */
+let restRig: Rig | null = null;
+const rest = (): Rig => (restRig ??= drawRig('female', 'idle', 0));
+
+/**
+ * Where the far boot is stamped from: our far ankle, moved up as the far foot comes forward in depth. At
+ * rest our far ankle stands higher than the near one (the far foot further back), and his far boot,
+ * laid where he drew it, reaches that much further below it to his far sole. As the far ankle comes
+ * level with the near one, or below it (a lunge, leaning, a stride with the near foot up), the boot rises
+ * as much, so its sole stays on our far sole's ground instead of going through it; with the far foot
+ * further back or lifted higher than at rest (a step), it hangs as at rest.
+ */
+function farBootAt(r: Rig, ankle: Vec): Vec {
+  const r0 = rest();
+  const lift = r0.ankleN.y - r0.ankleF.y;
+  const back = Math.max(0, Math.min(lift, r.ankleN.y - r.ankleF.y));
+  return v(ankle.x, ankle.y - (lift - back));
+}
+
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -119,22 +141,25 @@ export const FEET_DAWN_BOOTS: ItemDef = {
     // On each leg (far first, behind): our leg goes below the lace top; the shin's piece turns with the
     // shin about the ankle, reaching under the shoe and under the thigh's piece; the shoe stays flat,
     // hanging where the shin's piece ends; the lace top and the boot over the knee turn with the thigh
-    // about the knee, on top; and the boot is closed round a bending knee.
+    // about the knee, on top; and the boot is closed round a bending knee. The far boot is his narrow
+    // column beside her front panel, lace top and all, so it rides the far shin whole (no thigh piece),
+    // and our far thigh goes from its lace top down.
     for (const s of ['F', 'N'] as Side[]) {
       const { hip, knee, ankle } = legJoints(g.rig, s);
-      const [thigh, shin, foot, join] = s === 'N' ? [DAWN_THIGH_N, DAWN_SHIN_N, DAWN_FOOT_N, DAWN_FOOT_JOIN_N] : [DAWN_THIGH_F, DAWN_SHIN_F, DAWN_FOOT_F, DAWN_FOOT_JOIN_F];
-      legOffBelow(g, s, hip, knee);
+      const [thigh, shin, foot, join, cut] = s === 'N' ? [DAWN_THIGH_N, DAWN_SHIN_N, DAWN_FOOT_N, DAWN_FOOT_JOIN_N, DAWN_BOOT_CUT] : [null, DAWN_SHIN_F, DAWN_FOOT_F, DAWN_FOOT_JOIN_F, DAWN_BOOT_CUT_F];
+      legOffBelow(g, s, hip, knee, cut);
       const d = legDepth(s, 'feet');
       const shinA = segAngle(knee, ankle);
       const thighA = segAngle(hip, knee);
-      const footAt = add(ankle, shoeShift(join, shinA - shin.angle));
-      stampPiece(g, d, shin, ankle, shinA, `shin${s}`, tint);
+      const at = s === 'F' ? farBootAt(g.rig, ankle) : ankle;
+      const footAt = add(at, shoeShift(join, shinA - shin.angle));
+      stampPiece(g, d, shin, at, shinA, `shin${s}`, tint);
       stampPiece(g, d, foot, footAt, foot.angle, `foot${s}`, tint);
-      stampPiece(g, d, thigh, knee, thighA, `thigh${s}`, tint);
+      if (thigh) stampPiece(g, d, thigh, knee, thighA, `thigh${s}`, tint);
       const boot = new Uint8Array(GRID * GRID);
-      cover(boot, shin, ankle, shinA);
+      cover(boot, shin, at, shinA);
       cover(boot, foot, footAt, foot.angle);
-      cover(boot, thigh, knee, thighA);
+      if (thigh) cover(boot, thigh, knee, thighA);
       closeKnee(g, s, boot, knee);
     }
   },

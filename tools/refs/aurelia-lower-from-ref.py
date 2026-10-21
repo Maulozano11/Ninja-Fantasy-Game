@@ -10,7 +10,7 @@ Where it sits. His pixel (x, y) is ours (x + DX, y + DY) at our female's idle fr
 female body), the same place as her bodice (tools/refs/aurelia_rig.py: his collar under our chin), so
 his sash follows on under his bodice as he drew it and falls on our waist, his belt and front panel
 on our hips and between our legs. From his collar to his soles he is three rows taller than our body
-and his legs stand wider (his near foot six columns further out, his far foot six rows lower), so the
+and his legs stand wider (his near foot six columns further out, his far foot six rows lower than our far foot), so the
 side panels and the lining are fitted to our legs, keeping his pixels:
 
   front    his front panel (the gold border, the lattice under the belt, the white with its grey
@@ -21,11 +21,9 @@ side panels and the lining are fitted to our legs, keeping his pixels:
            below each move one column toward the leg, so its outer edge keeps his steps and its hem
            comes up and in to our shorter leg, which stands further in than his.
   far      his far side panel, the white strip with its gold trim beside the far leg, from its gold
-           edge under the belt (beside the front panel, over the top of the far thigh) down. Its top
-           stays where he drew it; below, each row past a FAR_SHIFT row moves one column further out,
-           FAR_DX in all, so it stands behind our far leg as his does behind his (our far leg slants
-           out more than his). Four rows are left out that are each the same as the row above
-           (FAR_DROP). Its top FAR_FRONT rows are also drawn over the far hip and thigh: there his
+           edge under the belt (beside the front panel, over the top of the far thigh) down, where he
+           drew it, beside his far boot (which stands where he drew it too). Three rows are left out
+           that are each the same as the row above (FAR_DROP), so its hem ends as the front panel's. Its top FAR_FRONT rows are also drawn over the far hip and thigh: there his
            panel hangs over it, and our thigh is wider than his. Behind his far hand the panel is
            continued from his rows under the hand (FAR_HIDDEN), as our far hand hangs further out.
   lining   the pale grey lining behind and between the legs. His shows only between his legs and the
@@ -122,12 +120,11 @@ SEEDS = {
 # outward (near: the rows below then move one column in).
 FRONT_DROP = [60, 62, 65]
 NEAR_DROP = [60, 67, 70]
-FAR_DROP = [69, 77, 81, 85]
-# The far panel stands this many columns further out than his at its hem (our far leg stands so):
-# one more column below each of these rows of his, so its top stays where he drew it.
-FAR_DX = 5
-FAR_SHIFT = [53, 55, 57, 59, 61]
-assert len(FAR_SHIFT) == FAR_DX
+FAR_DROP = [69, 77, 81]
+# The far panel stands where he drew it: his far boot does too, a narrow column between it and the front
+# panel (aurelia-legs-from-ref.py), and our far thigh, which stands further out than his, goes under the
+# boot's lace top. (No column moved: FAR_SHIFT would move it one column out below each of its rows.)
+FAR_SHIFT = []
 # The far panel's rows over the far thigh (his rows 51-56), drawn over the far hip too.
 FAR_FRONT = 6
 # The far panel behind his far hand (his x 64-67, rows 52-55), filled by continuing his panel below

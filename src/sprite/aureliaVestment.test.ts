@@ -65,7 +65,23 @@ describe("Aurelia's vestment", () => {
     const upper = laid(AURELIA_SLEEVE_UPPER_N, f.rig.shoulderN);
     const over = new Set(upper.map(([x, y]) => `${x},${y}`));
     const fore = laid(AURELIA_SLEEVE_FORE_N, f.rig.elbowN).filter(([x, y]) => !over.has(`${x},${y}`));
-    for (const [x, y, c] of [...upper, ...fore]) assert.equal(hexAt(f.rgba, x, y), c, `(${x}, ${y})`);
+    // his bare shoulder over the band is drawn in the body's skin (next test)
+    const skin = new Set(Object.keys(AURELIA_SKIN_SHADES).map((ch) => AURELIA_SLEEVE_UPPER_N.colors[ch]));
+    const his = [...upper, ...fore].filter(([, , c]) => !skin.has(c));
+    assert.ok(his.length > 100);
+    for (const [x, y, c] of his) assert.equal(hexAt(f.rgba, x, y), c, `(${x}, ${y})`);
+  });
+
+  it("draws his bare near shoulder over the band in the player's skin", () => {
+    const shoulder = (skin: string) => {
+      const f = renderSprite(look('female', [], skin), 'idle', 0);
+      const cells = laid(AURELIA_SLEEVE_UPPER_N, f.rig.shoulderN).filter(([, , c]) =>
+        Object.keys(AURELIA_SKIN_SHADES).some((ch) => AURELIA_SLEEVE_UPPER_N.colors[ch] === c),
+      );
+      assert.ok(cells.length > 20);
+      return cells.map(([x, y]) => hexAt(f.rgba, x, y)).join();
+    };
+    assert.notEqual(shoulder('#f9ccaa'), shoulder('#7a4a30'));
   });
 
   it('shows her gem at the throat, and follows the colour slots', () => {

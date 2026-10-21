@@ -77,6 +77,16 @@ function thighBlend(r: Rig, lx: number): number {
 
 type Col = { top: Vec; bot: Vec };
 
+/**
+ * A column end (fine pixels) kept off the floor when she lies down: a lying figure is drawn upright and
+ * laid on its front afterwards (rig.ts layFor: its x becomes the row, lay.groundX the ground line), so
+ * there the floor is a column of x. Her skirt's panels reach no further than her body does (two pixels
+ * past the ground line), as standing they reach no lower than her soles.
+ */
+function floor(r: Rig, q: Vec): Vec {
+  return r.lay ? v(Math.min(q.x, (r.lay.groundX + 1.5) * RES), q.y) : q;
+}
+
 /** A piece's columns at rest (fine pixels). */
 const restCols = (p: DawnPiece): Col[] => p.cols.map(([tx, ty, bx, by]) => ({ top: v(tx, ty), bot: v(bx, by) }));
 
@@ -92,7 +102,7 @@ function poseCols(g: DrawCtx, p: DawnPiece): Col[] {
     return v(P.x * RES, P.y * RES);
   };
   return restCols(p).map(({ top, bot }) => {
-    const T = at(top);
+    const T = floor(r, at(top));
     if (!p.hang) return { top: T, bot: at(bot) };
     const lt = local(R0, v(top.x / RES, top.y / RES));
     const w = thighBlend(R0, lt.x);
@@ -105,7 +115,7 @@ function poseCols(g: DrawCtx, p: DawnPiece): Col[] {
     const c = Math.cos(th);
     const s = Math.sin(th);
     const b = v(a1.x + (d.x * c - d.y * s) * legScale, a1.y + (d.x * s + d.y * c) * legScale);
-    return { top: T, bot: v(b.x * RES, Math.min(b.y, HEM_FLOOR) * RES) };
+    return { top: T, bot: floor(r, v(b.x * RES, Math.min(b.y, HEM_FLOOR) * RES)) };
   });
 }
 
@@ -129,7 +139,11 @@ function invBilinear(q: Vec, p00: Vec, p10: Vec, p01: Vec, p11: Vec): [number, n
     if (Math.abs(du) < 1e-10 && Math.abs(dw) < 1e-10) break;
   }
   const E = 1e-7;
-  return u >= -E && u <= 1 + E && w >= -E && w <= 1 + E ? [u, w] : null;
+  if (!(u >= -E && u <= 1 + E && w >= -E && w <= 1 + E)) return null;
+  // a quad folded flat (lying down, its tops resting on the floor) can leave Newton unsettled: only a
+  // (u, w) that really lands on the point counts
+  const p = lerp2(p00, p10, p01, p11, u, w);
+  return Math.abs(p.x - q.x) + Math.abs(p.y - q.y) < 1e-3 ? [u, w] : null;
 }
 
 const lerp2 = (p00: Vec, p10: Vec, p01: Vec, p11: Vec, u: number, w: number): Vec =>

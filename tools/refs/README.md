@@ -109,3 +109,23 @@ folders.
 - `poison-from-ref.py`: the poison set (`vfx_poison_v3`, all but the beast and the end-on wall, which stays ours) from his poison sheet. It writes `tools/world-sprites/vfx-poison-v3-refdata.ts` (his key frames at game scale, one palette from his pixels, cut into the pieces `vfx-poison-v3.ts` animates; the blast's green light is read straight from his green excess with full alpha and stored apart); the third argument is our character at 1x (kit `characterRef()` saved as a PNG), the optional fourth a review folder (his crops at game scale, before/after previews, `refmap.json`). `poison-v3-review.py <art2> <reviewDir> <character.png>` then makes the compare sheet, the animation strips, the blast, walls and aura GIFs and the border, see-through-stone, flash and light checks.
 
       python3 -I tools/refs/poison-from-ref.py docs/reference/poison-set-owner-reference.jpg tools/world-sprites/vfx-poison-v3-refdata.ts <character.png> [reviewDir]
+
+- `heroine_ref.py`, `heroine-study.py`, `heroine_paint.py`, `heroine-proportions.py`,
+  `heroine-idle.mts`: the study of the owner's four heroines (`docs/reference/{lyra,elise,saya,aurelia}-owner-reference.jpg`),
+  the base every heroine part builds on. His pictures are his own pixel art at 2.2 to 2.8 of his
+  pixels to one of ours (Lyra and Elise: 7.81 picture pixels, one body in one pose, 256 of them
+  tall; Saya: exactly 10, Aurelia: 9.66, 198 tall), in proportions that are not ours (5.1 to 5.4
+  heads tall, ours 4.1). `heroine_ref.py` holds each picture's grid (`native(which)`), its colours
+  (`PALETTES`), her joints and eyes, our female rig at idle frame 0, and how each part of her lands
+  on it (`SEGMENTS[which]`: the head about the eyes, the torso, long hair and coat as columns, the
+  limbs as chains along our limbs, the weapon at her own angle about our hand). `heroine-study.py`
+  cuts her into parts, brings each down in her colours, paints the hand-drawn part
+  (`heroine_paint.py`: everything below the head, the eyes, the weapons) and lays her line round the
+  figure. The result, the reduced reference, is in `tools/refs/data/heroine-<which>-*.npy` and read
+  with `heroine_ref.reduced(which)`, `reduced_parts(which)` (which part each pixel is) and
+  `reduced_layers(which)` (each part alone). `heroine-proportions.py` draws `proporciones.png`: the
+  template at our height beside its reduced reference and our female body, with the measurements.
+
+      npx tsx tools/refs/heroine-idle.mts <out>
+      python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
+      python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png

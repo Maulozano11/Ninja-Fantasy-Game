@@ -222,17 +222,21 @@ const TEMPLATES: Record<EnemyKind, Template> = {
     stats: { str: 11, dex: 15, con: 13, int: 15, wis: 12, cha: 10 },
     jutsus: ['water_dragon_suiryuudan', 'earth_wall_doryuheki', 'substitution_kawarimi'],
     looks: [
+      // Cazador 1: the owner's paint-over (docs/reference/cazador1-owner-reference.jpg), in his
+      // colours, so every pixel is his: his hair, his oni mask, his vest (its under-suit is his shirt),
+      // trousers, boots and naginata, his skin, no headband.
       look({
         eyeColor: '#1f2a4a',
+        skin: '#e7bb98',
         slots: {
-          hair: it('hair_lowtail', '#1a1a22'),
-          face: it('face_foxmask', '#f2eee6', '#cf2a2a', '#1b1420'),
-          top: it('top_highcollar', '#262833', '#1a1b22'),
-          bottom: it('bottom_shinobi', '#1a1b22', '#262833'),
-          armor: it('armor_shadowops', '#8c94a1', '#262833'),
-          feet: it('feet_shinobi', '#1a1b22', '#262833'),
-          held: it('held_naginata', '#c9ced6', '#3a2a22', '#8a2a2a'),
+          hair: it('hair_lowtail', '#18171f'),
+          face: it('face_foxmask', '#efe6dd', '#c0312a', '#231726'),
+          bottom: it('bottom_leggings', '#2a2933', '#262833'),
+          armor: it('armor_shadowops', '#676c82', '#1f1f2b'),
+          feet: it('feet_shinobi', '#282830', '#1d1c27'),
+          held: it('held_naginata', '#717487', '#513329'),
         },
+        headband: { position: 'none', slashed: true, tails: true, emblem: 'crescent', cloth: '#2a2d3a', plate: '#9aa3ad' },
       }),
       look({
         body: 'female',

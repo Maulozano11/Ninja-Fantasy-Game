@@ -26,6 +26,7 @@ import {
 } from './raster';
 import { BodyParams, Rig } from './rig';
 import { gripAngle } from './grip';
+import { HAND_BOOK, HAND_CHIN } from './readArt';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import { isFemaleBody, type BodyType, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
 
@@ -545,10 +546,9 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     return;
   }
   if (kind === 'chin') {
-    // The approved fist turned up at the wrist (flipped, so every pixel stays
-    // as drawn and the light stays upper left): the curled fingers on top,
-    // under the chin.
-    stampTemplate(L, HAND_FIST, j.wrist, 0, pal, pen.part, { flipY: true, flags });
+    // The owner's fist under the chin (readArt.ts), level at the end of the
+    // forearm rising to it.
+    stampTemplate(L, HAND_CHIN, j.wrist, 0, pal, pen.part, { flags });
     return;
   }
   if (kind === 'clasp') {
@@ -556,11 +556,11 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     return;
   }
   if (kind === 'book') {
-    // The cradle hand up the back of a held book, fingers spread over its
-    // cover. It lies in front of the book (campfx.ts), so even the far hand is
-    // drawn in the light.
+    // The owner's hand on the book's right board (readArt.ts). It lies in
+    // front of the book (campfx.ts), so even the far hand is drawn in the
+    // light, shaded as he shaded it.
     const lit: TemplatePalette = { ...pal, D: [pen.mat, 1], x: [pen.mat, 1], s: [pen.mat, 2], b: [pen.mat, 3], l: [pen.mat, 4] };
-    stampTemplate(L, HAND_CRADLE, j.wrist, 0, lit, pen.part, { flags });
+    stampTemplate(L, HAND_BOOK, j.wrist, 0, lit, pen.part, { flags });
     return;
   }
   const t = { open: HAND_OPEN, point: HAND_POINT, relaxed: HAND_RELAXED, grip: HAND_GRIP, fist: HAND_FIST }[kind];

@@ -142,8 +142,8 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
  * fist: closed fist · grip: around a weapon handle, or a fist when empty-handed ·
  * hold: around a weapon handle, or relaxed when empty-handed · relaxed · open · sign ·
  * cradle: under something carried, the fingers curled up over its lower edge ·
- * chin: the fist turned up at the wrist, its knuckles under the chin (thinking) ·
- * book: holding a book up from below, the fingers spread up over its cover ·
+ * chin: the hand under the chin, level at the end of the forearm rising to it (thinking) ·
+ * book: holding a book up by its right board, the fingers up its cover ·
  * clasp: both hands clasped, fingers interlaced (drawn once, by the near hand;
  * the far wrist goes to the far side of the clasp).
  * 'chin', 'book' and 'clasp' are stamped unrotated at the wrist, whatever the forearm angle.
@@ -151,14 +151,15 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
 export type HandShape = 'relaxed' | 'fist' | 'open' | 'sign' | 'grip' | 'hold' | 'point' | 'cradle' | 'chin' | 'book' | 'clasp';
 
 /**
- * Hands stamped unrotated at the wrist: the rig puts the hand point straight
- * above (or below) the wrist too, where their fingers are (for gloves).
+ * Hands stamped unrotated at the wrist: the rig puts the hand point the way
+ * their fingers go from the wrist (for gloves): up the book, below the clasp,
+ * and up and forward to the hand under the chin.
  */
-const HAND_DIR: Partial<Record<HandShape, Vec>> = { chin: v(0, -1), book: v(0, -1), clasp: v(0, 1) };
+const HAND_DIR: Partial<Record<HandShape, Vec>> = { chin: v(0.8, -0.6), book: v(0, -1), clasp: v(0, 1) };
 
 /**
  * Hand targets: relative to a landmark, in arm-length units ('arm') or pixels ('px', design units).
- * 'chin' is the bottom of the head, under the middle of the chin.
+ * 'chin' is the pixel under the middle of the chin (chinPixel).
  */
 interface HandTarget {
   from: 'shoulder' | 'chest' | 'kneeN' | 'kneeF' | 'chin';
@@ -530,31 +531,41 @@ const SIT_BASE: PoseFrame = {
 };
 const SIT = breathe(SIT_BASE, 4);
 
-/** The bottom of the head, under the middle of the chin (design units): what 'chin' hand targets are measured from. */
+/** The bottom of the head, under the middle of the chin (design units). */
 export const chinPoint = (head: Vec, bp: BodyParams): Vec => v(head.x, head.y + bp.headRy * bp.headScale);
+/**
+ * The fine pixel the chin point falls in (its top-left corner, design units): what 'chin' hand targets
+ * and the reading book are measured from, so they always land on the same pixels round the face.
+ */
+export const chinPixel = (head: Vec, bp: BodyParams): Vec => {
+  const c = chinPoint(head, bp);
+  return v(Math.floor(c.x * RES) / RES, Math.floor(c.y * RES) / RES);
+};
 
 /**
  * The read pose after the owner's picture (docs/reference/camp-poses-owner-reference.webp,
- * the first "leer"), in fine pixels from the chin point (chinPoint): where the
- * near wrist goes, under the fist that props up the chin, and where the far
- * wrist goes, under the hand that holds the book up (campfx.ts draws the book
- * there). A quarter pixel past the pixel corner, so rounding never flickers.
+ * the first "leer"), in fine pixels from the chin pixel (chinPixel): where the
+ * near wrist goes, at the end of the forearm rising from the elbow, below the
+ * hand under the chin, and where the far wrist goes, in the palm of the hand
+ * on the book's right board (campfx.ts draws the book there). Half a pixel in,
+ * so they land on whole pixels.
  */
 export const READ_HOLD = {
-  /** The near wrist: the fist stands on it, its knuckles just under the chin. */
-  chin: v(-2.75, 7.6),
-  /** The far wrist, under the hand on the book's right board: the book's pivot (campfx.ts BOOK). */
-  book: v(17.25, 17.35),
+  /** The near wrist: the 'chin' hand reaches up and forward from it to under the chin. */
+  chin: v(-2.5, 4.5),
+  /** The far wrist, in the palm of the hand on the book's right board: the book's pivot (readArt.ts READ_BOOK). */
+  book: v(14.5, 15.5),
 };
 
 /**
  * Read, 12 frames, copied from the owner's picture: seated on the same seat,
- * one arm across the chest with its fist under the chin (thinking), the other
- * hand holding an open book up in front at chest-to-shoulder height, tilted
- * toward the face, the eyes lowered to it (campfx.ts draws the book). Both
- * hands are placed from the chin, so the fist stays on the chin and the book
- * keeps its place before the face as the body breathes. It breathes, and a
- * page turns over at the end of the loop (frames 9-11).
+ * the near forearm rising from the elbow to the hand under the chin
+ * (thinking), the far hand holding his open book up in front at chest
+ * height, tilted toward the face, the eyes lowered to it (campfx.ts draws the
+ * book; readArt.ts holds his book and hands). The far elbow bends down behind
+ * the book. Both hands are placed from the chin, so the hand stays under the
+ * chin and the book keeps its place before the face as the body breathes. It
+ * breathes, and a page turns over at the end of the loop (frames 9-11).
  */
 const chinAt = (p: Vec): HandTarget => ({ from: 'chin', x: p.x / RES, y: p.y / RES, units: 'px', wrist: true });
 const READ_BASE: PoseFrame = {
@@ -566,7 +577,7 @@ const READ_BASE: PoseFrame = {
   headDy: 0.5,
   handN: chinAt(READ_HOLD.chin),
   handF: chinAt(READ_HOLD.book),
-  bendF: -1,
+  bendF: 1,
   shapeN: 'chin',
   shapeF: 'book',
 };
@@ -1010,7 +1021,7 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
     if (t.from === 'kneeN') return add(legN.mid, v(t.x, t.y));
     if (t.from === 'kneeF') return add(legF.mid, v(t.x, t.y));
-    if (t.from === 'chin') return add(chinPoint(head, bp), v(t.x, t.y));
+    if (t.from === 'chin') return add(chinPixel(head, bp), v(t.x, t.y));
     return add(shoulder, scale(v(t.x, t.y), armLen));
   };
   const solveArm = (shoulder: Vec, t: HandTarget, shape: HandShape, bend: 1 | -1 = 1) => {

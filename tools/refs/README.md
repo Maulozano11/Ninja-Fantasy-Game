@@ -109,3 +109,14 @@ folders.
 - `poison-from-ref.py`: the poison set (`vfx_poison_v3`, all but the beast and the end-on wall, which stays ours) from his poison sheet. It writes `tools/world-sprites/vfx-poison-v3-refdata.ts` (his key frames at game scale, one palette from his pixels, cut into the pieces `vfx-poison-v3.ts` animates; the blast's green light is read straight from his green excess with full alpha and stored apart); the third argument is our character at 1x (kit `characterRef()` saved as a PNG), the optional fourth a review folder (his crops at game scale, before/after previews, `refmap.json`). `poison-v3-review.py <art2> <reviewDir> <character.png>` then makes the compare sheet, the animation strips, the blast, walls and aura GIFs and the border, see-through-stone, flash and light checks.
 
       python3 -I tools/refs/poison-from-ref.py docs/reference/poison-set-owner-reference.jpg tools/world-sprites/vfx-poison-v3-refdata.ts <character.png> [reviewDir]
+
+- `camp-read-from-ref.py`: the read pose's open book, its turning pages and the two hands (the fist
+  under the chin, the hand on the book's right board) from the owner's first "leer" in his camp
+  picture. His picture is our 3x progress sheet scaled down (2.148 of his pixels per fine pixel,
+  measured on his figure's legs and feet, which he did not paint), so his pixels are read as the mean
+  of each fine pixel's middle and sorted into his flat colours (k-means over the book's box); the art
+  is that map cleaned of the blur, in his colours (the book) and in our hand shades (the hands, so
+  skin and gloves recolour them). It writes `src/sprite/readArt.ts`; `--study <dir>` prints his map
+  and writes it beside our book at 10x.
+
+      python3 -I tools/refs/camp-read-from-ref.py src/sprite/readArt.ts [--study <dir>]

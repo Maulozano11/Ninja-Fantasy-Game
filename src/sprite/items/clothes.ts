@@ -8,7 +8,7 @@ import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
 import { PaintedPiece, segAngle } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
-import { stampTemplate, TemplatePalette } from '../rotsprite';
+import { PixelTemplate, stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -1691,8 +1691,9 @@ function glove(g: DrawCtx, s: Side, pen: Pen, grow: number, cut: boolean): void 
   const tmp = new Layer();
   handDraw(g, tmp, s, pen, grow);
   const { j, dir, R } = handFrame(g, s);
-  // (a fist turned up under the chin shows its bare fingers and knuckles on top)
-  const lim: Record<string, number> = { fist: 0.42, grip: 0.42, open: 0.5, sign: 0.15, relaxed: 0.45, chin: 0.05 };
+  // (the hand under the chin shows its bare fingers reaching forward; the hand on the book its
+  // bare fingers above the knuckles)
+  const lim: Record<string, number> = { fist: 0.42, grip: 0.42, open: 0.5, sign: 0.15, relaxed: 0.45, chin: 0.05, book: -0.75 };
   const k = lim[j.shape] ?? 0.45;
   stamp(L, tmp, (x, y) => {
     if (!cut) return true;
@@ -1734,6 +1735,37 @@ function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: strin
   for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
   stampTemplate(g.L(armDepth(s, 'armor')), piece, j.wrist, Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE });
 }
+
+/**
+ * His steel and gold on the read pose's hands (readArt.ts HAND_CHIN and HAND_BOOK), over his leather,
+ * so they still read as his gauntlets on the dark book: the steel plate edged in gold over the back of
+ * the near hand under the chin, the steel knuckle edge with its gold rivet across the far hand on the
+ * book. His colours from his gauntlets (GAUNTLET_N, GAUNTLET_F); the pivots are the hands' wrists.
+ * d e f steel (dark to light) · n w v gold (dark to light)
+ */
+const GAUNTLET_READ: Record<'chin' | 'book', PixelTemplate> = {
+  chin: {
+    pivot: [0, 4],
+    rows: [
+      '..............',
+      '....effffw....',
+      '...deeeeefn...',
+      '..nddddddn....',
+    ],
+  },
+  book: {
+    pivot: [3, 6],
+    rows: [
+      '.........',
+      '.........',
+      '.........',
+      '.........',
+      '..effed..',
+      '...w.....',
+    ],
+  },
+};
+const GAUNTLET_READ_COLORS: Record<string, string> = { d: '#6e7995', e: '#99a0b4', f: '#d4dbe5', n: '#ce983c', w: '#ecbf60', v: '#fcde87' };
 
 /** Our hand picture for the pose (open, pointing, relaxed, cradling), in the owner's leather tones. */
 function leatherHand(g: DrawCtx, s: Side, color: (ch: string, hex: string) => string): void {
@@ -1874,6 +1906,11 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
           bareHandOff(g, s);
           paintedFist(g, s, s === 'N' ? GAUNTLET_N : GAUNTLET_F, tint);
         } else leatherHand(g, s, tint);
+        if (kind === 'chin' || kind === 'book') {
+          const pal: TemplatePalette = {};
+          for (const [ch, hex] of Object.entries(GAUNTLET_READ_COLORS)) pal[ch] = [g.m(tint(ch, hex), 'flat'), 3];
+          stampTemplate(g.L(armDepth(s, 'armor')), GAUNTLET_READ[kind], armJoints(g.rig, s).wrist, 0, pal, prt('hand', s), { flags: F_NO_TEXTURE | F_NO_OUTLINE });
+        }
       }
     },
   },

@@ -130,9 +130,10 @@ folders.
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
 
-- `saya-eyes-from-ref.py`: Saya's eyes as the `shade` eye shape (`src/sprite/sayaEyeArt.ts`): each
-  cell of ours at our scale takes the colour of the pixel of hers it stands for, on our face
-  template's eye rows, plus her lash's tip a cell out (near eye) and a row up (far eye); the lowered
+- `saya-eyes-from-ref.py`: Saya's eyes as the `shade` eye shape (`src/sprite/sayaEyeArt.ts`), lifted 1:1
+  from his picture of her at our scale (1024 x 1024, 10.24 picture pixels to one of hers, one of
+  hers = one of ours): her lash, whites and blues in her colours on our face template's eye cells
+  (her lash row on the template's lash row; her skin there drawn in the player's skin); the lowered
   (reading) and closed (knocked out) lids are made of her pixels.
 
-      python3 -I tools/refs/saya-eyes-from-ref.py docs/reference/saya-owner-reference.jpg <out> src/sprite/sayaEyeArt.ts
+      python3 -I tools/refs/saya-eyes-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg <out> src/sprite/sayaEyeArt.ts

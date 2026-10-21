@@ -15,6 +15,7 @@ import { GRID, partIndex, type PartId } from './raster';
 import { buildRig } from './rig';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
+import { ROMAN_KIT_LEG_SHIFT } from './items/bracersSandalsArt';
 import { ROMAN_OFFSET, ROMAN_SKIN_PIXELS } from './romanRefPixels';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
@@ -103,7 +104,9 @@ describe("the owner's skin on the male bodies", () => {
     // painted his (his knees and lower thighs under the skirt, his skin between the laces, his elbows).
     for (const [what, look] of [['his outfit', romanOutfit()], ['bare', bare('male')]] as const) {
       const f = renderSprite(look, 'idle', 0);
-      for (const [region, shift, parts, least] of REGISTERED) {
+      for (const [region, bareShift, parts, least] of REGISTERED) {
+        // In his sandals his legs come whole, the far one reaching down to where he drew it.
+        const shift = what === 'his outfit' && region.startsWith('leg') ? ROMAN_KIT_LEG_SHIFT[region.slice(3) as 'N' | 'F'] : bareShift;
         const { right, wrong } = againstHim(f, region, shift, skin.MALE_SKIN_BASE, parts);
         assert.deepEqual(wrong, [], `${what} ${region}: our skin where he painted his`);
         assert.ok(right >= least, `${what} ${region}: ${right} of his pixels show`);

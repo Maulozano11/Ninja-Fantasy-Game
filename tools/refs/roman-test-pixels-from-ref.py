@@ -11,6 +11,9 @@ pixel (x, y) at (x + OFFSET[0], y + OFFSET[1]) before any limb is registered):
   legN, legF                           his legs from under the skirt to the ankle (between the laces too)
   face                                 his face below the hair, ear to chin (not his eyes)
 
+and every pixel of his legs below the skirt (ROMAN_LEG_PIXELS: legN, legF), knee to sole: his skin, the
+sandals and his black line round them, for the test that his whole legs are in the frame at rest.
+
 The same picture always gives the same bytes. Run from the repo root with python3 -I:
 
   python3 -I tools/refs/roman-test-pixels-from-ref.py docs/reference/roman-owner-reference.jpg src/sprite/romanRefPixels.ts
@@ -35,6 +38,11 @@ REGIONS = {
     'legF': [(54, 67.5), (66, 67.5), (66, 92), (54, 92)],
     'face': [(43, 15), (62, 15), (62, 26), (43, 26)],
 }
+# His legs below the skirt, knee to sole (the skirt's strips end on rows 66 to 68 above them).
+LEGS = {
+    'legN': [(33, 66.5), (51, 66.5), (51, 99.5), (33, 99.5)],
+    'legF': [(53, 67.5), (75, 67.5), (75, 98.5), (53, 98.5)],
+}
 
 
 def main():
@@ -52,6 +60,27 @@ def main():
     ]
     for name, poly in REGIONS.items():
         m = R.inside(poly, *a.shape[:2]) & (K == 'skin')
+        cells = [f"[{x}, {y}, '{R.hexc(a[y, x])}']" for y, x in zip(*np.nonzero(m))]
+        out.append(f'  {name}: [')
+        for i in range(0, len(cells), 6):
+            out.append('    ' + ', '.join(cells[i:i + 6]) + ',')
+        out.append('  ],')
+        print(name, len(cells))
+    out += ['};', '']
+    # His legs below the skirt, whole: his skin, the sandals' leather and his black line round them.
+    bg = R.background(a) | (R.luma(a) > 225)
+    out += [
+        '/**',
+        ' * Every pixel of his legs below the skirt, where he painted it: his skin, his knees\' muscle lines, the',
+        ' * sandals\' straps, laces and soles, and his black line round them (with whatever of the skirt\'s hem line',
+        ' * touches them, which the tests leave to the skirt): [x, y, colour].',
+        ' */',
+        'export const ROMAN_LEG_PIXELS: Record<string, [number, number, string][]> = {',
+    ]
+    for name, poly in LEGS.items():
+        region = R.inside(poly, *a.shape[:2]) & ~bg
+        solid = region & np.isin(K, ('skin', 'leather', 'hair'))
+        m = solid | (region & (K == 'line') & R.near8(solid))
         cells = [f"[{x}, {y}, '{R.hexc(a[y, x])}']" for y, x in zip(*np.nonzero(m))]
         out.append(f'  {name}: [')
         for i in range(0, len(cells), 6):

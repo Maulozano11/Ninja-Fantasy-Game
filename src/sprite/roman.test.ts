@@ -7,8 +7,10 @@ import * as cuirass from './items/bronzeCuirassArt';
 import * as skirt from './items/pterugesArt';
 import * as kit from './items/bracersSandalsArt';
 import { defaultAppearance } from './legacy';
+import { MALE_SKIN_BASE } from './maleSkinArt';
 import type { PaintedPiece } from './painted';
 import { GRID, RES } from './raster';
+import { ROMAN_LEG_PIXELS, ROMAN_OFFSET } from './romanRefPixels';
 import { buildRig, GROUND, rigPoseFor } from './rig';
 import { MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
@@ -30,6 +32,8 @@ const look = (body: BodyType, drapes = 'on', parts: Partial<Record<'armor' | 'sk
 const POSES = [...SPRITE_POSES, ...MOVE_POSES, 'sit'] as SpritePose[];
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
 const opaque = (rgba: Uint8ClampedArray, i: number) => rgba[i * 4 + 3] > 0;
+/** Within the 3 a colour of his may move by when the scripts pack his picture's near colours as one. */
+const near = (a: string, b: string) => [1, 3, 5].every((k) => Math.abs(parseInt(a.slice(k, k + 2), 16) - parseInt(b.slice(k, k + 2), 16)) <= 3);
 
 /** The pixels two frames differ in. */
 function diff(a: Uint8ClampedArray, b: Uint8ClampedArray): number[] {
@@ -107,6 +111,60 @@ describe('the Roman set', () => {
         for (const x of [rest[0] + left - 2, rest[0] + left - 1, rest[0] + right + 1, rest[0] + right + 2]) {
           assert.ok(!skin((rest[1] + j) * GRID + x), `${name} shin, row ${j}: bare skin at x ${x}`);
         }
+      }
+    }
+  });
+
+  it('shows his legs below the skirt at rest as he painted them: every pixel, moved onto ours as the sandals are', () => {
+    // The owner (2026-10-21): "copia la referencia con exactitud en la rodilla izquierda". His knees, his
+    // skin between the laces, his sandals and his black line round them, in the skin he painted over; the
+    // far leg reaches down to where he drew it. Only what the skirt's strips cover in our frame is not
+    // checked (his near knee stands under their hem once moved onto our leg).
+    const l = look('male');
+    l.skin = MALE_SKIN_BASE;
+    const f = renderSprite(l, 'idle', 0);
+    const strips = new Set<number>();
+    const [sx, sy] = skirt.PTERUGES_REST.PTERUGES_FRONT;
+    skirt.PTERUGES_FRONT.rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) if (row[i] !== '.') strips.add((sy + j) * GRID + sx + i);
+    });
+    for (const s of ['N', 'F'] as const) {
+      const [dx, dy] = kit.ROMAN_KIT_LEG_SHIFT[s];
+      const wrong: string[] = [];
+      let hidden = 0;
+      let checked = 0;
+      for (const [x, y, c] of ROMAN_LEG_PIXELS[`leg${s}`]) {
+        // the strips' hem line where it touches his knee is the skirt's, drawn by the skirt where he drew it
+        if (strips.has((y + ROMAN_OFFSET[1]) * GRID + x + ROMAN_OFFSET[0])) continue;
+        const p = (y + ROMAN_OFFSET[1] + dy) * GRID + x + ROMAN_OFFSET[0] + dx;
+        if (strips.has(p)) {
+          hidden++;
+          continue;
+        }
+        checked++;
+        if (!opaque(f.rgba, p) || !near(hex(f.rgba, p), c)) wrong.push(`(${x},${y}) his ${c} ours ${opaque(f.rgba, p) ? hex(f.rgba, p) : 'none'}`);
+      }
+      assert.deepEqual(wrong, [], `leg ${s}: pixels of ours that are not his`);
+      assert.ok(checked > 220, `leg ${s}: ${checked} of his pixels checked`);
+      assert.ok(hidden <= 12, `leg ${s}: ${hidden} of his pixels under the strips`);
+    }
+  });
+
+  it('never stands the far sandal below the near one at rest, in any pose or body', () => {
+    const lowest = kit.ROMAN_KIT_REST.SANDAL_FOOT_N[1] + kit.SANDAL_FOOT_N.rows.length - 1;
+    const farColors = new Set(Object.values(kit.SANDAL_FOOT_F.colors));
+    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+      for (const pose of POSES) {
+        const f = renderSprite(look(body, 'off'), pose, 0);
+        const r = buildRig(body, rigPoseFor(pose), 0);
+        // his far sandal's pixels: those of its colours within its size of our far ankle
+        let low = 0;
+        for (let i = 0; i < GRID * GRID; i++) {
+          if (!opaque(f.rgba, i) || !farColors.has(hex(f.rgba, i))) continue;
+          if (Math.hypot((i % GRID) + 0.5 - r.ankleF.x * RES, Math.floor(i / GRID) + 0.5 - r.ankleF.y * RES) > 22) continue;
+          low = Math.max(low, Math.floor(i / GRID));
+        }
+        assert.ok(low <= lowest, `${body} ${pose}: far sandal down to row ${low}, below the near one at rest (${lowest})`);
       }
     }
   });

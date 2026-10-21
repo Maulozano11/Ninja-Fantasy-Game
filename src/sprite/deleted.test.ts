@@ -14,9 +14,9 @@ import { appearanceFromLegacy, defaultAppearance, DELETED_PIECES, getAppearance,
 import { randomAppearance } from './random';
 import type { SlotId, SpriteAppearance } from './types';
 
-/** The 24 pieces he said to delete (hair_drifter, hair_surge and feet_cowboy stay: they are being redone). */
+/** The 23 pieces he said to delete (hair_drifter, hair_surge, hair_ascended and feet_cowboy stay: they are being redone). */
 const DELETED = [
-  'hair_flash', 'hair_gravity', 'hair_silver', 'hair_founder', 'hair_youth', 'hair_ascended', 'hair_storm2', 'hair_gale', 'hair_charlotte',
+  'hair_flash', 'hair_gravity', 'hair_silver', 'hair_founder', 'hair_youth', 'hair_storm2', 'hair_gale', 'hair_charlotte',
   'face_beast', 'face_sage',
   'armor_desert', 'armor_storm', 'armor_dread', 'armor_oath', 'armor_rose', 'armor_lionheart', 'armor_seraph', 'armor_lioness',
   'feet_greaves', 'hands_gauntlets', 'cape_knight', 'cape_rose', 'held_crystal',
@@ -43,7 +43,7 @@ describe('the deleted pieces', () => {
       const to = DELETED_PIECES[id].to;
       if (to) assert.equal(getItem(to)?.slot, slotOf(id), `${id} -> ${to}`);
     }
-    for (const kept of ['hair_drifter', 'hair_surge', 'feet_cowboy']) assert.ok(getItem(kept), `${kept} stays`);
+    for (const kept of ['hair_drifter', 'hair_surge', 'hair_ascended', 'feet_cowboy']) assert.ok(getItem(kept), `${kept} stays`);
     assert.ok(ALL_ITEMS.every((d) => !DELETED.includes(d.id)));
   });
 
@@ -60,7 +60,7 @@ describe('the deleted pieces', () => {
       assert.equal(to(id), undefined, `${id} comes off`);
     // a hair keeps its colour on the nearest style
     assert.deepEqual(migrateAppearance(wearing('hair_silver', ['#aabbcc'])).slots.hair, { id: 'hair_long', colors: ['#aabbcc'] });
-    assert.deepEqual(to('hair_ascended'), { id: 'hair_surge', colors: ['#e6c020'] });
+    assert.deepEqual(to('hair_storm2'), { id: 'hair_surge', colors: ['#e6c020'] });
   });
 
   it('leave nothing deleted behind, and draw: every one of them in an old save', () => {

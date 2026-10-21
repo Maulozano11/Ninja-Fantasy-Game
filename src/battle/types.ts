@@ -516,8 +516,9 @@ export type BattleEvent =
   /**
    * Wet ground soaks or dries, steam rises or clears, on these cells ("c,r"). `by`: whose water,
    * fire or wind did it (wet ground turned to steam, steam blown away); unset when it ran out of rounds.
+   * `blown`: steam the wind carried off, from this point (it drifts away from it on the screen).
    */
-  | { t: 'ground'; kind: 'wet' | 'steam'; cells: string[]; on: boolean; by?: string }
+  | { t: 'ground'; kind: 'wet' | 'steam'; cells: string[]; on: boolean; by?: string; blown?: Pt }
   /** Lightning runs across a patch of wet ground (these cells), from where it struck: whose it is. */
   | { t: 'conduct'; cells: string[]; at: Pt; source?: string }
   | { t: 'trap'; trap: Trap; on: boolean }

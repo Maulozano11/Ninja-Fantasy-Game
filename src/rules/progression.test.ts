@@ -14,7 +14,7 @@ import { loadHero, loadRoster } from '../game/saves';
 import { OFFERED_TYPES } from '../sprite/chakraNature';
 import type { ChakraNature, ClanType, ShinobiCharacter, ShinobiClassType } from '../types/shinobi';
 import { jutsuFitsClass } from './jutsuClass';
-import { fitLoadout, importedSlots, jutsuChoices, jutsuFitsNature, type JutsuSlot, SLOT_CATEGORY } from './jutsuNature';
+import { fitLoadout, importedSlots, jutsuChoices, jutsuFitsNature, type JutsuSlot, SLOT_CATEGORY, ultimateToElement } from './jutsuNature';
 import { DEFAULT_SUPPLIES, newMission } from './mission';
 import { migrateCharacter, natureOf } from './ninja';
 import { pouchTags, TAG_JUTSU, TAG_JUTSU_POUCH, tagJutsuToItem, withPouches } from './pouch';
@@ -299,5 +299,43 @@ describe('the chakra type is fixed once the ninja is made ("no se puede cambiar 
     const nature: ChakraNature = natureOf(made);
     for (const slot of ['slot2Elemental', 'slot3Elemental'] as JutsuSlot[])
       for (const j of slotChoices(made, slot, nature, made.clan)) assert.ok(jutsuFitsNature(j, nature), `${slot}: ${j.id}`);
+  });
+});
+
+describe('the Devouring Tide moves from the S-rank slot to an Element slot (the owner: "8 si")', () => {
+  const TIDE = 'water_devouring_tide';
+  const tideNinja = (slot2: string, slot3: string): ShinobiCharacter =>
+    JSON.parse(JSON.stringify({ ...DEFAULT_CHARACTER, id: 'ninja_tide', selectedJutsus: { ...DEFAULT_CHARACTER.selectedJutsus, slot2Elemental: slot2, slot3Elemental: slot3, slot5Ultimate: TIDE } }));
+
+  it('it is an Element slot\'s jutsu now, not the S-rank slot\'s', () => {
+    assert.equal(byId(TIDE)!.category, 'Elemental');
+    assert.equal(byId(TIDE)!.rank, 'A');
+  });
+
+  it('into an empty Element slot; the S-rank slot is left empty; once', () => {
+    const now = migrateCharacter(tideNinja('water_geyser', ''));
+    assert.deepEqual(now.selectedJutsus, { ...DEFAULT_CHARACTER.selectedJutsus, slot2Elemental: 'water_geyser', slot3Elemental: TIDE, slot5Ultimate: '' });
+    assert.deepEqual(migrateCharacter(now), now, 'idempotent');
+    assert.equal(migrateCharacter(tideNinja('', 'water_geyser')).selectedJutsus.slot2Elemental, TIDE);
+  });
+
+  it('both Element slots full: it takes the place of the lower rank (the second on a tie)', () => {
+    const a = migrateCharacter(tideNinja('water_geyser', 'water_dragon_suiryuudan')).selectedJutsus;
+    assert.deepEqual([a.slot2Elemental, a.slot3Elemental, a.slot5Ultimate], [TIDE, 'water_dragon_suiryuudan', '']);
+    const b = migrateCharacter(tideNinja('water_dragon_suiryuudan', 'water_geyser')).selectedJutsus;
+    assert.deepEqual([b.slot2Elemental, b.slot3Elemental, b.slot5Ultimate], ['water_dragon_suiryuudan', TIDE, '']);
+    const c = migrateCharacter(tideNinja('water_geyser', 'water_shield_suijinheki')).selectedJutsus;
+    assert.deepEqual([c.slot2Elemental, c.slot3Elemental], ['water_geyser', TIDE]);
+    // Already in an Element slot too: just the S-rank slot empties.
+    const d = migrateCharacter(tideNinja(TIDE, 'water_geyser')).selectedJutsus;
+    assert.deepEqual([d.slot2Elemental, d.slot3Elemental, d.slot5Ultimate], [TIDE, 'water_geyser', '']);
+    // A sheet with a real S-rank jutsu there keeps it.
+    assert.equal(ultimateToElement(DEFAULT_CHARACTER.selectedJutsus), null);
+  });
+
+  it('every load path moves it: the hero, the roster', () => {
+    const old = tideNinja('water_geyser', '');
+    storage({ 'shinobi5e.hero.v1': old, 'shinobi5e.roster.v1': [{ character: old, savedAt: 1 }] });
+    for (const c of [loadHero()!, loadRoster()[0].character]) assert.deepEqual([c.selectedJutsus.slot3Elemental, c.selectedJutsus.slot5Ultimate], [TIDE, '']);
   });
 });

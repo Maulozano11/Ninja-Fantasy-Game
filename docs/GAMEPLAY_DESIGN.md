@@ -1457,12 +1457,20 @@ his approval of the in-game captures**.
 
 - Rank **A**, an **Element** slot's jutsu of Water (no longer the S-rank slot):
   like the other rank A (the Whirlwind Tower, the Dragon Flame Annihilation),
-  5 chakra (+3 enhanced), a **9 m cone**, **5d8** bludgeoning, STR save for half;
-  enhanced 6d8, an 11.25 m cone that opens a third wider. The sweep (3 m), the
-  fall and putting the flames out stay. **Our numbers: confirm or change.**
-- Water has **no rank S jutsu again** (open question below). A new ninja picks
-  rank D and C, so the Tide opens at level 7 like every rank A; the nature filter
-  offers it to a Water ninja's Element slots.
+  a **9 m cone**, **5d8** bludgeoning, STR save for half; enhanced 6d8, an
+  11.25 m cone that opens a third wider. The sweep (3 m), the fall and putting the
+  flames out stay. It costs **8 chakra (+4 enhanced)**, more than the other rank A
+  (his answer: *"mas chakra como 8 minimo"*; the enhanced cost as every 8-chakra
+  jutsu's).
+- Water has **no rank S jutsu, for now** (his answer: *"vacio por ahora"*). A new
+  ninja picks rank D and C, so the Tide opens at level 7 like every rank A; the
+  nature filter offers it to a Water ninja's Element slots.
+- **A sheet saved with the Tide in its S-rank slot** (it was rank S before) gets it
+  in an Element slot when it loads (his answer: *"si"*; `ultimateToElement` in
+  `rules/jutsuNature.ts`, run by `migrateCharacter`): an empty Element slot if
+  there is one; with both full, it takes the place of the **lower-ranked** of the
+  two (the second slot's on a tie), and that jutsu is dropped. The S-rank slot is
+  left empty for the player to fill.
 
 ### The elements on the ground (his dynamic; the numbers are our proposal)
 
@@ -1485,9 +1493,10 @@ cortina de humo que nubla la visión y hace daño por turno si estás en el
   strike: the Healing Dew and the Water Wall soak nothing.
 - **Water soaks the ground it passes over** "por 2 turnos": the cells of the
   water jutsu's area (a single target's 1 m round), not a river or a pond (water
-  already) nor a tree's or a wall's cell. Proposal: **wet for the rest of the
-  round and two more** (it dries as the third new round begins, like the gale),
-  so everyone has at least two turns with it. Soaked again, it starts over.
+  already) nor a tree's or a wall's cell. **Wet for the rest of the round and two
+  more** (it dries as the third new round begins, like the gale; his answer: *"el
+  resto de la ronda y dos mas"*), so everyone has at least two turns with it.
+  Soaked again, it starts over.
 - **Wet ground conducts electricity**: a lightning jutsu that **touches wet
   ground** (its area reaches a wet cell, or it is aimed at someone standing on
   one: hit or miss it lands there, as fire that misses still burns and steams
@@ -1496,29 +1505,53 @@ cortina de humo que nubla la visión y hace daño por turno si estás en el
   separate patch, or dry ground between, stops it). **Everyone else standing on
   that patch** makes a DEX save against **half the lightning's damage, halved
   again on a success** (the same numbers as lightning in a river), friends too,
-  **and the caster himself if he stands on it** (as in a river; open question).
+  **and the caster himself if he stands on it** (as in a river; kept: *"si"*).
   Lightning in a river still reaches 4.5 m through the water, as before.
 - **Fire on wet ground makes steam**: a fire jutsu (or an explosion) whose area
   reaches wet cells turns them to steam (the water is used up there; the rest of
-  the patch stays wet). Proposal for the steam:
-  - it hangs **the rest of the round and two more**;
-  - it **blocks sight like a smoke curtain**: nobody sees into it, out of it or
-    through it, so nobody throws a kunai or aims a single-target jutsu at a
-    ninja in it, nor through it; a blast (a circle) can still be aimed at a
-    point in the cloud (its surface is seen), not past it; cones and lines need
-    no sight and go through. **A blow into it from outside has disadvantage**
-    (the target can't be seen; from inside out, or both inside, it evens out).
-    A ninja in the steam is out of every watcher's sight, so it can Hide there;
+  the patch stays wet). Explosions (tags, barrels) do it too (kept: *"si"*). The
+  steam:
+  - it hangs **the rest of the round and one more** (it thins away as the second
+    new round begins; his answer: *"dura resto de la ronda y 1 mas"*);
+  - **seeing into it** (as built): nobody outside sees a ninja in it (unless right
+    beside it, 1.6 m), nor through it, so nobody throws a kunai or aims a
+    single-target jutsu at a ninja in it, nor through it; a blast (a circle) can
+    still be aimed at a point in the cloud (its surface is seen), not past it.
+    **A blow into it from outside has disadvantage** (the target can't be seen;
+    from inside out, or both inside, it evens out). A ninja in the steam is out
+    of every watcher's sight, so it can Hide there;
+  - **seeing out of it** (his answer: *"mas bien que los enemigos desaparezcan de
+    la vision de ese personaje"*): for a ninja standing in the steam, **the foes
+    outside it vanish from its sight**, as a hidden foe does (`steamHides` in
+    `battle/map.ts`), except one right beside it (1.6 m). It can't aim anything
+    that needs to see its target at them: no kunai, no single-target jutsu, no
+    blast at a point outside. A cone or a line needs no target and can still be
+    sent out blind; it hits whoever is on it. A ninja on the AI in it knows only
+    the plan it had made (an enemy's committed plan goes on); with no plan it
+    walks out first. On the screen, while the acting ninja stands in steam, the
+    foes outside are drawn as a hidden foe is (faint, no health bar, not on the
+    minimap), and aiming at one says "Sin línea de visión: el vapor tapa la
+    vista". A Mirai standing in it foresees nothing out of it either (the Eye of
+    Tomorrow needs sight);
   - **it burns: 1d6 fire, no save, to whoever starts a turn in it** (its burns
     are the fire's caster's);
-  - **wind blows it away**: a wind jutsu's area, or a gale starting to turn,
-    clears the steam it reaches (the design's old line, "wind clears smoke").
+  - **wind blows it away** (his answer: *"puede ser eliminada con ataques
+    elementales de aire"*): **every wind attack** clears the steam its area
+    reaches: a cone's or a line's area and the caster's own cell (so a ninja can
+    blow the steam off from inside it), a circle's area (the Whirlwind Tower, the
+    Rasenshuriken), a gale starting to turn (the Gale Curtain); a single-target
+    one along its path to its target. A wind jutsu that is no attack (the Breeze
+    Mantle) doesn't. On the screen the steam it touched is carried off away from
+    where the wind came from (the caster, or a circle's middle), stretching out,
+    with streaks of wind through it, and thins out in about a second; the log
+    says "El viento se lleva el vapor" ("The wind blows the steam away").
 - **The AI knows**: a ninja on the AI never stops in steam (it may walk
   through); standing in it, it walks out before acting, or, when it can do its
   plan from right there (a blow at a foe beside it), acts first and walks out
   after; with its action spent in it (a charge that landed there) it walks out
   with the movement it has left before ending its turn. It doesn't see a foe lost
-  in the steam (unless right beside it), and weighs lightning on a wet group
+  in the steam, nor, standing in it, a foe outside it (unless right beside it),
+  and weighs lightning on a wet group
   (each foe on the patch it would reach counts half, a friend there against it).
 - **How it looks** (wet ground and steam are never in a chakra colour):
   - wet ground: a dark sheen over the soaked cells, its edge softened, with a
@@ -1565,31 +1598,41 @@ cortina de humo que nubla la visión y hace daño por turno si estás en el
   ("en forma ondulada"): each speeds up and slows, swings in and out and rides up
   and down, at three heights, in front of and behind whoever stands there.
 
-### Open questions on the second round
+### His answers on the second round (2026-10-21)
 
-1. **Water has no rank S jutsu again**: a new proposal for one (with a
-   painted 水 sheet, or from his pieces), or leave it empty for now?
-2. The Tide's rank A numbers (5 chakra, 9 m cone, 5d8, enhanced 6d8 and
-   11.25 m): confirm.
-3. Wet ground "por 2 turnos": the rest of the round and two more rounds, as
-   built? Or exactly two rounds?
-4. The steam: 1d6 fire with no save at the start of a turn, the rest of the
-   round and two more, blocks sight, wind clears it: confirm the numbers.
-5. Lightning across wet ground: half the damage, DEX save for a quarter, friends
-   on the patch too (as lightning in a river): confirm.
-6. Do explosions (tags, barrels) make steam on wet ground like a fire jutsu?
-   Built: yes.
-7. Steam is drawn with the camp's grey smoke (there is no grey smoke in his
-   element sheets). Fine, or will he paint a steam sheet?
-8. A character saved with the Tide in its S-rank slot keeps it there (it
-   still works in battle). Move it to an Element slot when the sheet loads?
-9. The caster standing on the wet patch his own lightning runs across is
-   shocked too (DEX save, as in a river). Keep it, or spare the caster?
-10. A ninja inside the steam can't aim a circle (a point) outside it, but a cone
-    or a line goes out of it (they need no sight). Fine?
-11. During the Whirlwind Tower the saves' dice windows show over the funnel
-    (each die is shown over whoever saves, as for every area jutsu). Leave it, or
-    show the dice to the side for this one?
+To the eleven questions we asked (the Tide's numbers, the ground's numbers, the
+steam), verbatim:
+
+> *"1 vacio por ahora 2 mas chakra como 8 minimo 3 el resto de la ronda y dos
+> mas , 4 dura resto de la ronda y 1 mas puede ser eliminada con ataques
+> elementales de aire 5 si me gusta , 6 si 7 me vale 8 si 9 lo dejamos 10 mas
+> bien que los enemigos desaparezcan de la vision de ese personaje 11 las
+> dejamos"*
+
+So (built on `jutsu/gap-set-2`, the rules above say each one in full):
+
+1. **Water's rank S stays empty for now.**
+2. **The Tide costs 8 chakra (+4 enhanced)**, up from 5 (+3); the rest of its
+   rank A numbers (9 m cone, 5d8, enhanced 6d8 and 11.25 m) as built.
+3. **Wet ground: the rest of the round and two more**, as built.
+4. **Steam: the rest of the round and one more** (was two more), 1d6 fire with
+   no save at the start of a turn as built, and **every wind attack blows it
+   away** (its area, the caster's own cell for a cone or a line, a single
+   target's path, a gale), seen drifting off on the screen, with a log line.
+5. **Lightning across wet ground** (half the damage, DEX save for a quarter,
+   friends on the patch too): kept.
+6. **Explosions make steam on wet ground**: kept.
+7. **Steam drawn with the camp's grey smoke**: kept.
+8. **A sheet with the Tide in its S-rank slot gets it in an Element slot** when it
+   loads (an empty one, else in place of the lower-ranked of the two).
+9. **The caster on his own wet patch is shocked too**: kept.
+10. **From inside the steam, the foes outside vanish from that ninja's sight**
+    (unless right beside it), instead of the old rule (no circle aimed out, cones
+    and lines allowed): nothing that needs to see its target can be aimed at
+    them, the AI knows only the plan it had, and the screen draws them as hidden
+    foes for that ninja. Seeing into the steam stays as it was. A cone or a line
+    can still be sent out blind.
+11. **The saves' dice windows over the Tower**: kept.
 
 ## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
 

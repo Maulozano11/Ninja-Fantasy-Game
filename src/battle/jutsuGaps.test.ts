@@ -105,8 +105,9 @@ const NEW = ['water_devouring_tide', 'wind_whirlwind_tower', 'wind_gale_curtain'
 describe('the gaps\' jutsu: the data', () => {
   it('the five he approved, with their names in both languages ("Técnica de <Elemento>: ..."), rank, nature, slot and chakra', () => {
     const want: Record<string, [string, string, string, string, string, number, number, number]> = {
-      // Rank A since his second round ("ola devoradora es rango a"): an Element slot's.
-      water_devouring_tide: ['Técnica de Agua: Ola devoradora', 'Water Technique: Devouring Tide', 'A', 'Water', 'Elemental', 5, 3, 9],
+      // Rank A since his second round ("ola devoradora es rango a"): an Element slot's; 8 chakra (+4)
+      // since his answer to it ("mas chakra como 8 minimo"), the enhanced cost as every 8-chakra jutsu's.
+      water_devouring_tide: ['Técnica de Agua: Ola devoradora', 'Water Technique: Devouring Tide', 'A', 'Water', 'Elemental', 8, 4, 9],
       wind_whirlwind_tower: ['Técnica de Viento: Torre del torbellino', 'Wind Technique: Whirlwind Tower', 'A', 'Wind', 'Elemental', 5, 3, 9],
       wind_gale_curtain: ['Técnica de Viento: Cortina de vendaval', 'Wind Technique: Gale Curtain', 'C', 'Wind', 'Elemental', 2, 2, 6],
       lightning_thunder_beam: ['Técnica de Rayo: Haz de trueno', 'Lightning Technique: Thunder Beam', 'C', 'Lightning', 'Elemental', 2, 2, 9],

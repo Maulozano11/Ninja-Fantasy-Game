@@ -12,7 +12,7 @@ import { worldSprite } from '../world/WorldSpriteView';
 import type { VfxElement } from '../../battle/jutsu';
 import type { Fx, Held, VolleyPath } from './playback';
 import type { Scene } from './renderer';
-import { ELEMENT_COLORS, auraDx, fxPos, project, tintColors } from './renderer';
+import { ELEMENT_COLORS, auraDx, foeHidden, fxPos, project, tintColors } from './renderer';
 import { WAIT, hurryVfxSheets, tintedSheet } from './vfxTintCache';
 import type { TintedSheet } from './vfxTintCache';
 import { unitTint, wallElement } from './vfxTintPlan';
@@ -278,7 +278,7 @@ export function drawScreenBlood(ctx: CanvasRenderingContext2D, sc: Scene): void 
 export function drawLinger(ctx: CanvasRenderingContext2D, sc: Scene, id: string, l: { element: VfxElement; alpha: number; t0: number; tint?: string }, layer: 'back' | 'front'): void {
   const u = sc.state.units[id];
   const v = sc.pb.views.get(id);
-  if (!u || !v || u.down || (v.hidden && u.team !== sc.team)) return;
+  if (!u || !v || u.down || foeHidden(sc, u, v)) return;
   const s = sheet(l.element, layer === 'back' ? 'aura_back' : 'aura', l.tint);
   if (!s) return;
   const a = s.spec.anims.idle ?? Object.values(s.spec.anims)[0];
@@ -1226,16 +1226,23 @@ const cellHash = (k: string): number => {
   return (h >>> 0) % 1009;
 };
 
+/** How long steam the wind blows away takes to drift off and thin out (ms), and how far it drifts (m). */
+export const BLOW_MS = 1100;
+const BLOW_DRIFT = 2.4;
+
+/** A cell of wet ground or steam on the screen: where, how solid, and (blown away) which way it drifts and how far along. */
+type GroundCell = { k: string; p: Pt; a: number; blow?: { ux: number; uz: number; t: number } };
+
 /**
  * The cells of wet ground or steam shown now, with how solid each is: the state's, less the ones
  * whose event is still to play (unless a wave timed them), plus the ones going whose event is still
  * to play or that are fading.
  */
-function groundShown(sc: Scene, kind: 'wet' | 'steam'): { k: string; p: Pt; a: number }[] {
+function groundShown(sc: Scene, kind: 'wet' | 'steam'): GroundCell[] {
   const { state, pb, now } = sc;
   const born = pb.groundBorn[kind];
   const coming = pb.groundQueued(kind, true);
-  const out: { k: string; p: Pt; a: number }[] = [];
+  const out: GroundCell[] = [];
   const have = state[kind] ?? {};
   for (const k of Object.keys(have)) {
     const b = born.get(k);
@@ -1246,6 +1253,23 @@ function groundShown(sc: Scene, kind: 'wet' | 'steam'): { k: string; p: Pt; a: n
   for (const k of pb.groundQueued(kind, false)) if (!(k in have)) out.push({ k, p: keyCenter(k), a: 1 });
   for (const g of pb.groundGone) {
     if (g.kind !== kind) continue;
+    if (g.blown) {
+      // Blown away (the owner: "puede ser eliminada con ataques elementales de aire"): each cell's
+      // steam is carried off away from where the wind came from, quick at first, thinning as it goes.
+      const t = ((now - g.t0) * pb.speed) / BLOW_MS;
+      if (t >= 1) continue;
+      const ease = 1 - (1 - t) * (1 - t);
+      for (const k of g.cells) {
+        if (k in have) continue;
+        const c = keyCenter(k);
+        const d = Math.hypot(c.x - g.blown.x, c.z - g.blown.z);
+        const [ux, uz] = d > 0.05 ? [(c.x - g.blown.x) / d, (c.z - g.blown.z) / d] : [1, 0];
+        // Nearer the wind, it goes further (a gust pushes what it hits first hardest).
+        const far = BLOW_DRIFT * (1 + 0.6 / (1 + d)) * (0.85 + (cellHash(k) % 7) * 0.05);
+        out.push({ k, p: { x: c.x + ux * far * ease, z: c.z + uz * far * ease }, a: Math.max(0, 1 - t * t * 1.15), blow: { ux, uz, t } });
+      }
+      continue;
+    }
     const a = 1 - ((now - g.t0) * pb.speed) / GROUND_FADE;
     if (a > 0) for (const k of g.cells) if (!(k in have)) out.push({ k, p: keyCenter(k), a });
   }
@@ -1352,7 +1376,8 @@ function steamItems(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
       out.push({ z: z + 0.2, draw: () => {
         const q = project(map, c.p);
         const mirror = (h & 8) !== 0;
-        const wide = 1.9;
+        // Blown away, it stretches out along the wind as it goes.
+        const wide = 1.9 + (c.blow ? c.blow.t * 1.3 * Math.abs(c.blow.ux) : 0);
         const high = s === tall ? 0.62 : 0.9;
         ctx.save();
         // Stretched round the cell's foot (nearest neighbour: his pixels, only scaled).
@@ -1382,6 +1407,29 @@ function steamItems(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
         for (const [a, path] of steps) {
           ctx.globalAlpha = strength * a;
           ctx.fill(path);
+        }
+      }
+      // Blown away: streaks of wind run through it the way it goes, pale wisps torn off its edge.
+      ctx.strokeStyle = '#f4f7fb';
+      ctx.lineWidth = 2;
+      for (const c of row) {
+        if (!c.blow || c.blow.t > 0.8) continue;
+        const h = cellHash(c.k);
+        const q = project(map, c.p);
+        const sx = c.blow.ux * map.px.perM;
+        const sy = c.blow.uz * map.px.perMDepth;
+        const n = Math.hypot(sx, sy) || 1;
+        for (let i = 0; i < 2; i++) {
+          const lift = 20 + ((h >> (i * 3)) % 40);
+          const len = 16 + ((h >> (i * 2)) % 14);
+          const lead = (c.blow.t * 1.6 + i * 0.3) * 30;
+          const x0 = q.X + (sx / n) * lead - 6 + ((h >> i) % 12);
+          const y0 = q.Y - lift + (sy / n) * lead;
+          ctx.globalAlpha = 0.8 * (1 - c.blow.t / 0.8);
+          ctx.beginPath();
+          ctx.moveTo(Math.round(x0), Math.round(y0));
+          ctx.quadraticCurveTo(Math.round(x0 + (sx / n) * len * 0.5), Math.round(y0 - 4), Math.round(x0 + (sx / n) * len), Math.round(y0 + (sy / n) * len));
+          ctx.stroke();
         }
       }
       ctx.restore();

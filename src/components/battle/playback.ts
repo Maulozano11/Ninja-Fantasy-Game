@@ -10,7 +10,7 @@ import type { SpritePose } from '../../sprite/types';
 import { JUTSU, areaEnd, nearSegment } from '../../battle/jutsu';
 import type { JutsuSpec, StageKind, VfxElement, VfxRole } from '../../battle/jutsu';
 import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
-import { CONDUCT_MS, DOUSE_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
+import { BLOW_MS, CONDUCT_MS, DOUSE_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
 import { dist } from '../../battle/map';
@@ -382,7 +382,7 @@ export class Playback {
    * crest goes over them), and the ones drying or thinning away (from when their event played).
    */
   groundBorn = { wet: new Map<string, number>(), steam: new Map<string, number>() };
-  groundGone: { kind: 'wet' | 'steam'; cells: string[]; t0: number }[] = [];
+  groundGone: { kind: 'wet' | 'steam'; cells: string[]; t0: number; blown?: Pt }[] = [];
   /** Kōton structures that crumbled or broke, sinking out of sight (from when their event played). */
   fallen: { wall: Wall; t0: number }[] = [];
   /** Whose turn the screen shows (it trails the engine while events play). */
@@ -662,7 +662,7 @@ export class Playback {
     this.impacts = this.impacts.filter((c) => now < c.t0 + (IMPACT.number + IMPACT.numberLife) / this.speed);
     this.floaters = this.floaters.filter((f) => now < f.t0 + f.dur);
     this.zoneGone = this.zoneGone.filter((z) => now < z.t0 + 1000 / this.speed);
-    this.groundGone = this.groundGone.filter((g) => now < g.t0 + GROUND_FADE / this.speed);
+    this.groundGone = this.groundGone.filter((g) => now < g.t0 + (g.blown ? BLOW_MS : GROUND_FADE) / this.speed);
     this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
@@ -2092,15 +2092,15 @@ export class Playback {
         return 0;
       case 'ground': {
         // Wet ground darkens in (where a wave's crest timed it, as it goes over), steam rises; or they
-        // dry and thin away.
+        // dry and thin away; steam the wind carries off drifts away from it as it goes (a beat to see it).
         const born = this.groundBorn[ev.kind];
         if (ev.on) {
           for (const k of ev.cells) if (!born.has(k)) born.set(k, now);
           return ev.kind === 'steam' ? 450 : 0;
         }
         for (const k of ev.cells) born.delete(k);
-        this.groundGone.push({ kind: ev.kind, cells: ev.cells, t0: now });
-        return 0;
+        this.groundGone.push({ kind: ev.kind, cells: ev.cells, t0: now, ...(ev.blown ? { blown: ev.blown } : {}) });
+        return ev.blown ? 420 : 0;
       }
       case 'conduct':
         // The lightning runs out across the wet patch from where it struck, in its caster's colour.

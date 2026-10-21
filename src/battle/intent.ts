@@ -8,7 +8,7 @@ import { abilityMod, successChance } from '../rules/checks';
 import { effectMods, hasEffect } from '../rules/effects';
 import type { BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
 import { homeTeam } from './types';
-import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell, steamAt } from './map';
+import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell, steamAt, steamHides } from './map';
 import { lightningSeeds, unitsOnPatch, wetPatch } from './ground';
 import { canStop, occupancy, reachable } from './nav';
 import { JUTSU, MIN_AIM, areaOf, inArea } from './jutsu';
@@ -25,7 +25,11 @@ const avg = (dice?: string): number => {
 
 export const standingUnit = (u: Unit): boolean => !u.down && !u.head?.severed;
 
-/** Foes a unit knows about: standing, not hidden from it, and not lost in steam (unless right beside it). */
+/**
+ * Foes a unit knows about: standing, not hidden from it, and no steam between them: not lost in it,
+ * nor outside it while the unit stands in it (unless right beside it, steamHides). An enemy in the
+ * steam still remembers the plan it made (its intent) and goes on with it, or walks out (ai.ts).
+ */
 export function visibleFoes(s: BattleState, u: Unit): Unit[] {
   return Object.values(s.units).filter(
     (f) =>
@@ -33,7 +37,7 @@ export function visibleFoes(s: BattleState, u: Unit): Unit[] {
       standingUnit(f) &&
       f.kind !== 'hydra_body' &&
       (f.cond.hidden === undefined || passivePerception(u) >= f.cond.hidden) &&
-      !(steamAt(s, f.pos) && dist(f.pos, u.pos) > 1.6),
+      !steamHides(s, u.pos, f.pos),
   );
 }
 

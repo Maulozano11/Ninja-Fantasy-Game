@@ -41,7 +41,7 @@ import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
 import { conduct, electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
-import { blowSteam, soak } from './ground';
+import { blowSteam, pathArea, soak } from './ground';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
 import {
   addNode,
@@ -1029,7 +1029,12 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   if (spec.dmgType) hits.push(...groundEffects(s, ground, spec.env === 'clearFoliage' ? 'Wind' : type, ev, new Set(), spec.env === 'clearFoliage', u.id));
   // Water soaks the ground it passes over, wind blows steam away (the owner, 2026-10-21; ground.ts).
   if (spec.elemental && spec.element === 'water' && spec.dmgType) soak(s, ground, u.id, ev);
-  if (spec.elemental && spec.element === 'wind' && area) blowSteam(s, area, u.id, ev);
+  // Every wind attack does (his "puede ser eliminada con ataques elementales de aire"): over its area,
+  // and from the caster's own cell for a cone or a line; a single-target one along its path, hit or miss.
+  if (spec.elemental && spec.element === 'wind' && spec.dmgType) {
+    if (!area) blowSteam(s, pathArea(u.pos, at), u.id, ev, u.pos, [u.pos, at]);
+    else blowSteam(s, area, u.id, ev, area.kind === 'circle' ? area.center : u.pos, area.kind === 'circle' ? [] : [u.pos]);
+  }
   // Lightning in the water runs through it, and across the wet ground it touches.
   if (type === 'Lightning') {
     const points = victims.map((v) => v.pos);

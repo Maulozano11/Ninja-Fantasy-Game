@@ -13,7 +13,7 @@ import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
 import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
-import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell, steamBetween } from '../../battle/map';
+import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell, steamAt, steamBetween, steamHides } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
@@ -621,6 +621,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   selectedRef.current = selected;
   const foreseenRef = useRef(foreseenNow);
   foreseenRef.current = foreseenNow;
+  // The acting ninja stands in steam: the foes outside it vanish from its sight (the owner:
+  // "que los enemigos desaparezcan de la visión de ese personaje"), drawn as a hidden foe is.
+  const unseen = useMemo(() => {
+    if (!actor || !steamAt(state, actor.pos)) return undefined;
+    return new Set(Object.values(state.units).filter((u) => u.team !== actor.team && steamHides(state, actor.pos, u.pos)).map((u) => u.id));
+  }, [actor, state]);
+  const unseenRef = useRef(unseen);
+  unseenRef.current = unseen;
 
   useEffect(() => {
     let raf = 0;
@@ -683,6 +691,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         team: 'party',
         lang: langRef.current,
         avoid: panelRects(canvas, dpr),
+        unseen: unseenRef.current,
       });
       // The dice over the fight: the quick d20s, the big window, a critical's impact.
       drawDiceLayer(ctx, {
@@ -749,7 +758,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       if (gr.complete && gr.naturalWidth) g.drawImage(gr, 0, 0);
       for (const u of Object.values(s.units)) {
         if (u.down === 'dead' || u.down === 'fled' || u.kind === 'hydra_head') continue;
-        if (u.team === 'enemy' && u.cond.hidden !== undefined) continue;
+        if (u.team === 'enemy' && (u.cond.hidden !== undefined || unseenRef.current?.has(u.id))) continue;
         const p = project(map, pbRef.current!.posOf(u.id, now));
         g.fillStyle = homeTeam(u) === 'party' ? '#38bdf8' : '#f87171';
         g.beginPath();

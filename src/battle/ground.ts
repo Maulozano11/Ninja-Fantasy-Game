@@ -11,12 +11,16 @@ import { damage, rollDiceExpr } from './combat';
 
 /**
  * How long wet ground stays wet: the rest of the round and two more (it dries as the third new round
- * begins), so everyone has at least two turns with it, the owner's "por 2 turnos" (our numbers).
+ * begins), so everyone has at least two turns with it, the owner's "por 2 turnos" (he kept it:
+ * "el resto de la ronda y dos mas").
  */
 export const WET_ROUNDS = 3;
-/** How long steam hangs: the same (our proposal: "2 rounds"). */
-export const STEAM_ROUNDS = 3;
-/** What steam does to whoever starts a turn in it (our proposal). */
+/**
+ * How long steam hangs: the rest of the round and one more (it thins away as the second new round
+ * begins). The owner: "dura resto de la ronda y 1 mas".
+ */
+export const STEAM_ROUNDS = 2;
+/** What steam does to whoever starts a turn in it (our proposal, which he kept). */
 export const STEAM_DICE = '1d6';
 
 /** The cells (inside the map) whose middle lies in an area. */
@@ -75,16 +79,31 @@ export function steamUp(s: BattleState, area: AreaShape, by: string, ev: BattleE
   return cells;
 }
 
-/** Wind blows the steam it reaches away (a wind jutsu's area, a gale starting to turn). */
-export function blowSteam(s: BattleState, area: AreaShape, by: string, ev: BattleEvent[]): string[] {
+/**
+ * Wind blows the steam it reaches away (the owner: "puede ser eliminada con ataques elementales de
+ * aire"): every wind attack, over its area (a cone, a line, a circle, a gale starting to turn) or, a
+ * single-target one, along its path to the target; plus the cells at `also` (the caster's own, which
+ * a cone or a line starts beside). It drifts off away from `from` (the caster, or a circle's middle).
+ */
+export function blowSteam(s: BattleState, area: AreaShape, by: string, ev: BattleEvent[], from: Pt = areaFrom(area), also: Pt[] = []): string[] {
   if (!s.steam) return [];
-  const cells = cellsInArea(s, area).map(cellKey).filter((k) => k in s.steam!);
+  const keys = new Set(cellsInArea(s, area).map(cellKey));
+  for (const p of also) keys.add(cellKey(cellOf(p)));
+  const cells = [...keys].filter((k) => k in s.steam!);
   if (!cells.length) return [];
   s.steam = { ...s.steam };
   for (const k of cells) delete s.steam[k];
-  ev.push({ t: 'ground', kind: 'steam', cells, on: false, by });
+  ev.push({ t: 'ground', kind: 'steam', cells, on: false, by, blown: { ...from } });
   ev.push({ t: 'note', key: 'steamBlown', params: {} });
   return cells;
+}
+
+/** Where an area's wind blows from: a circle's middle, a cone's or a line's origin. */
+const areaFrom = (area: AreaShape): Pt => (area.kind === 'circle' ? area.center : area.origin);
+
+/** The path of a single-target jutsu, from the caster to its target, as a 1 m wide line. */
+export function pathArea(from: Pt, to: Pt): AreaShape {
+  return { kind: 'line', origin: from, dir: (Math.atan2(to.z - from.z, to.x - from.x) * 180) / Math.PI, length: Math.hypot(to.x - from.x, to.z - from.z), width: 1 };
 }
 
 /** The wet cells joined to `seeds` (8 ways round: a diagonal touch carries it too). */

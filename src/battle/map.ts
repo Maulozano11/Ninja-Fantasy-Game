@@ -119,6 +119,16 @@ export const wetAt = (s: BattleState, p: Pt): boolean => !!s.wet && cellKey(cell
 /** Steam hangs over a point (fire met wet ground there). */
 export const steamAt = (s: BattleState, p: Pt): boolean => !!s.steam && cellKey(cellOf(p)) in s.steam;
 
+/** How near (m) a unit in steam, or one looking into it, still makes out the other: side by side. */
+export const STEAM_SEE = 1.6;
+
+/**
+ * Steam hides one ninja from another: one of them stands in it and they aren't side by side. Into it,
+ * nobody sees who is inside ("nubla la visión"); from inside, the foes outside vanish from that
+ * ninja's sight (the owner, 2026-10-21: "que los enemigos desaparezcan de la visión de ese personaje").
+ */
+export const steamHides = (s: BattleState, viewer: Pt, other: Pt): boolean => (steamAt(s, viewer) || steamAt(s, other)) && dist(viewer, other) > STEAM_SEE;
+
 /**
  * Steam lies anywhere on the segment from a to b, its ends included: nobody sees into it, out of it
  * or through it (the owner: "nubla la visión"). With `into`, the cloud the point b lies in doesn't

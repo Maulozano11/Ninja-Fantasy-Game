@@ -11,7 +11,7 @@ import type { ShinobiCharacter } from '../types/shinobi';
 import type { BattleEvent, BattleState, Pt } from './types';
 import { applyAction, createBattle } from './engine';
 import type { BattleSetup } from './engine';
-import { cellBlocked, cellCenter, cellKey, cellOf, dampAt, getMap, lineOfSight, propRules, steamAt, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellKey, cellOf, dampAt, getMap, lineOfSight, propRules, steamAt, steamHides, waterAtPt } from './map';
 import { canStop } from './nav';
 import { JUTSU, areaOf } from './jutsu';
 import { STEAM_ROUNDS, WET_ROUNDS, cellsInArea, tickGround, wetPatch } from './ground';
@@ -126,15 +126,15 @@ function passRounds(s: BattleState, n: number): BattleState {
 }
 
 describe('the Devouring Tide is rank A now ("ola devoradora es rango a")', () => {
-  it('an Element slot\'s jutsu of Water, 5 chakra, a 9 m cone, 5d8: Water has no S-rank again', () => {
+  it('an Element slot\'s jutsu of Water, 8 chakra (+4: "mas chakra como 8 minimo"), a 9 m cone, 5d8: Water has no S-rank ("vacio por ahora")', () => {
     const j = JUTSUS_DATA.find((x) => x.id === 'water_devouring_tide')!;
-    assert.deepEqual([j.rank, j.category, j.nature, j.chakraCost, j.enhancementChakraCost, j.damageDice], ['A', 'Elemental', 'Water', 5, 3, '5d8']);
+    assert.deepEqual([j.rank, j.category, j.nature, j.chakraCost, j.enhancementChakraCost, j.damageDice], ['A', 'Elemental', 'Water', 8, 4, '5d8']);
     assert.deepEqual([JUTSU.water_devouring_tide.length, JUTSU.water_devouring_tide.angle], [9, 60]);
     // The nature filter offers it to a Water ninja's Element slots, not to the S-rank slot.
     for (const slot of ['slot2Elemental', 'slot3Elemental'] as const) assert.ok(jutsuChoices(slot, 'Water', 'Mirai').some((x) => x.id === j.id), slot);
     assert.ok(!jutsuChoices('slot5Ultimate', 'Water', 'Mirai').some((x) => x.id === j.id));
     assert.ok(!jutsuChoices('slot2Elemental', 'Fire', 'Mirai').some((x) => x.id === j.id), 'only Water');
-    assert.ok(!JUTSUS_DATA.some((x) => x.nature === 'Water' && x.rank === 'S'), 'Water has no S-rank (open question)');
+    assert.ok(!JUTSUS_DATA.some((x) => x.nature === 'Water' && x.rank === 'S'), 'Water has no S-rank, for now');
     // A new ninja picks D and C (and its clan's): the Tide opens at level 7, like every rank A.
     assert.ok(!creatorChoices('slot2Elemental', 'Water', 'Mirai', 'Ninjutsu Specialist').some((x) => x.id === j.id), 'not for a new ninja');
     assert.ok(creatorChoices('slot2Elemental', 'Water', 'Mirai', 'Ninjutsu Specialist', { ...NO_GROWTH, level: 7 }).some((x) => x.id === j.id), 'at level 7');
@@ -337,6 +337,75 @@ describe('fire on wet ground makes steam ("vapor que es como una cortina de humo
     assert.ok(out.events.some((e) => e.t === 'note' && e.key === 'steamBlown'));
     const g = ok(cast(structuredClone(s), 'wind_gale_curtain', s.units.rogue_0.pos));
     assert.ok(Object.keys(g.state.steam!).length < Object.keys(s.steam).length, 'the gale blew it');
+  });
+
+  it('it hangs the rest of the round and one more ("dura resto de la ronda y 1 mas")', () => {
+    assert.equal(STEAM_ROUNDS, 2);
+    const s = scene([]);
+    s.steam = {};
+    for (const c of cellsInArea(s, { kind: 'circle', center: s.units.rogue_0.pos, radius: 1 })) s.steam[cellKey(c)] = { rounds: STEAM_ROUNDS, by: 'a' };
+    assert.ok(Object.keys(passRounds(s, 1).steam ?? {}).length > 0, 'still there through the next round');
+    assert.equal(Object.keys(passRounds(s, 2).steam ?? {}).length, 0, 'gone as the second new round begins');
+  });
+
+  it('every wind attack blows it away ("puede ser eliminada con ataques elementales de aire"): a line from inside it, a circle, with where it blew from', () => {
+    // Aki stands in a cloud and blows it off with the Daitoppa (a line): her own cell and the line's.
+    const s = scene(['wind_blade_daitoppa', 'rasenshuriken_wind']);
+    s.steam = {};
+    for (const c of cellsInArea(s, { kind: 'circle', center: s.units.a.pos, radius: 1.5 })) s.steam[cellKey(c)] = { rounds: STEAM_ROUNDS, by: 'a' };
+    const line = seeded(s, (t) => cast(t, 'wind_blade_daitoppa', t.units.rogue_0.pos));
+    assert.ok(!steamAt(line.state, line.state.units.a.pos), 'her own cell is clear');
+    const area = areaOf(JUTSU.wind_blade_daitoppa, s.units.a.pos, s.units.rogue_0.pos)!;
+    for (const c of cellsInArea(s, area)) assert.ok(!(cellKey(c) in line.state.steam!), `${cellKey(c)} on the line`);
+    assert.ok(Object.keys(line.state.steam!).length > 0, 'the cloud off the line stays');
+    const blown = groundEv(line.events, 'steam', false)[0];
+    assert.deepEqual([blown.by, blown.blown], ['a', s.units.a.pos], 'it drifts away from her');
+    const note = line.events.find((e) => e.t === 'note' && e.key === 'steamBlown')!;
+    assert.equal(logLine(note, line.state, 'es')!.text, 'El viento se lleva el vapor');
+    assert.equal(logLine(note, line.state, 'en')!.text, 'The wind blows the steam away');
+    // A circle (the Rasenshuriken, aimed into the cloud: its surface is seen) blows it out from its middle.
+    const c = scene(['rasenshuriken_wind']);
+    c.steam = {};
+    for (const x of cellsInArea(c, { kind: 'circle', center: c.units.rogue_0.pos, radius: 1 })) c.steam[cellKey(x)] = { rounds: STEAM_ROUNDS, by: 'a' };
+    const ring = seeded(c, (t) => cast(t, 'rasenshuriken_wind', t.units.rogue_0.pos));
+    assert.equal(Object.keys(ring.state.steam!).length, 0);
+    assert.deepEqual(groundEv(ring.events, 'steam', false)[0].blown, c.units.rogue_0.pos);
+    // A wind jutsu that is no attack (the Breeze Mantle) leaves it.
+    const m = scene(['wind_breeze_mantle']);
+    m.steam = {};
+    for (const x of cellsInArea(m, { kind: 'circle', center: m.units.a.pos, radius: 1 })) m.steam[cellKey(x)] = { rounds: STEAM_ROUNDS, by: 'a' };
+    const mantle = ok(cast(m, 'wind_breeze_mantle', m.units.a.pos));
+    assert.ok(steamAt(mantle.state, mantle.state.units.a.pos));
+  });
+
+  it('from inside it, the foes outside vanish from sight ("que los enemigos desaparezcan de la visión"), unless side by side', () => {
+    const s = scene(['lightning_jolt', 'wind_blade_daitoppa'], [{ x: 9, z: 10 }, { x: 13, z: 10 }, { x: 30, z: 4 }]);
+    s.steam = { [cellKey(cellOf(s.units.a.pos))]: { rounds: STEAM_ROUNDS, by: 'a' } };
+    assert.ok(steamAt(s, s.units.a.pos) && !steamAt(s, s.units.rogue_1.pos));
+    const seen = visibleFoes(s, s.units.a).map((f) => f.id);
+    assert.ok(seen.includes('rogue_0'), 'the one beside her');
+    assert.ok(!seen.includes('rogue_1') && !seen.includes('rogue_2'), 'the ones further off');
+    assert.equal(steamHides(s, s.units.a.pos, s.units.rogue_1.pos), true);
+    assert.equal(steamHides(s, s.units.a.pos, s.units.rogue_0.pos), false);
+    // Nothing that needs to see its target: no kunai, no aimed jutsu, no blast out of it.
+    assert.equal(applyAction(structuredClone(s), { type: 'attack', unit: 'a', target: 'rogue_1', ranged: true }).reason, 'noSight');
+    assert.equal(cast(structuredClone(s), 'lightning_jolt', s.units.rogue_1.pos, { target: 'rogue_1' }).reason, 'noSight');
+    // A line needs no target: blown out blind, it still hits whoever is on it (and clears her cell).
+    assert.ok(cast(structuredClone(s), 'wind_blade_daitoppa', s.units.rogue_1.pos).ok);
+    // An AI ninja in the steam with no plan doesn't know where the foes are: it walks out first.
+    const r = structuredClone(s);
+    r.turn = r.order.indexOf('rogue_1');
+    const u = r.units.rogue_1;
+    u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
+    u.intent = undefined;
+    r.steam = {};
+    for (const c of cellsInArea(r, { kind: 'circle', center: u.pos, radius: 1.2 })) r.steam[cellKey(c)] = { rounds: STEAM_ROUNDS, by: 'a' };
+    r.units.rogue_0.pos = { x: 4, z: 14 };
+    place(r, 'rogue_0', { x: 4, z: 14 });
+    assert.ok(!visibleFoes(r, u).length, 'Aki is out of its sight');
+    const a = aiAction(r)!;
+    assert.equal(a.type, 'move');
+    if (a.type === 'move') assert.ok(!(cellKey(a.to) in r.steam), 'out of the steam');
   });
 });
 

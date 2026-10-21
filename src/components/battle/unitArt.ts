@@ -189,6 +189,9 @@ export interface ThrownCanvas {
   /** The pixel of both canvases the weapon is anchored on (where the fist held it). */
   gx: number;
   gy: number;
+  /** How far the weapon reaches behind the anchor (its pommel) and ahead of it (its point), along its angle (pixels). */
+  back: number;
+  front: number;
 }
 
 const thrown = new Map<string, ThrownCanvas>();
@@ -216,10 +219,22 @@ export function thrownFrame(look: SpriteAppearance, angle: number): ThrownCanvas
     const cv = document.createElement('canvas');
     cv.width = box.w;
     cv.height = box.h;
-    cv.getContext('2d')!.putImageData(new ImageData(rgba, GRID, GRID), -box.x, -box.y, box.x, box.y, box.w, box.h);
+    cv.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(rgba), GRID, GRID), -box.x, -box.y, box.x, box.y, box.w, box.h);
     return cv;
   };
-  c = { canvas: cut(t.rgba), glow: cut(light), gx: t.grip.x - box.x, gy: t.grip.y - box.y };
+  // Its reach along its angle, from the anchor: where a trail starts behind it and a glint at its point.
+  const ux = Math.cos((Math.round(angle) * Math.PI) / 180);
+  const uy = Math.sin((Math.round(angle) * Math.PI) / 180);
+  let back = 0;
+  let front = 0;
+  for (let y = box.y; y < box.y + box.h; y++)
+    for (let x = box.x; x < box.x + box.w; x++) {
+      if (t.rgba[(y * GRID + x) * 4 + 3] < 128) continue;
+      const along = (x + 0.5 - t.grip.x) * ux + (y + 0.5 - t.grip.y) * uy;
+      if (-along > back) back = -along;
+      if (along > front) front = along;
+    }
+  c = { canvas: cut(t.rgba), glow: cut(light), gx: t.grip.x - box.x, gy: t.grip.y - box.y, back, front };
   thrown.set(key, c);
   if (thrown.size > THROWN_MAX) thrown.delete(thrown.keys().next().value as string);
   return c;

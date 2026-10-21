@@ -18,7 +18,7 @@ import { FALL_MS, PHASE_DASH, PHASE_IN, PHASE_OUT, phaseDash, RISE_MS, WARP_FRAM
 import type { Lang } from '../../i18n';
 import { unitName } from './battleLog';
 import { bodyCenterDx, catchLookOf, FEET, fpsOf, framesOf, hasPhaseFrame, hasThrownFrame, hasUnitFrame, lookOf, phaseFrameOf, STRIDE, thrownFrame, unitFrame } from './unitArt';
-import { drawThrown, drawTrail, flightNow, warpFlightOf } from './warpFlight';
+import { drawThrown, drawTrail, flightNow, reachOf, warpFlightOf } from './warpFlight';
 import type { Flight, XY } from './warpFlight';
 import { THROW_RELEASE_FRAME } from '../../sprite/rig';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
@@ -189,7 +189,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
       continue;
     }
     const pos = sc.pb.posOf(u.id, sc.now);
-    items.push({ z: pos.z + 0.01, draw: () => drawUnit(ctx, sc, u, pos) });
+    // A Warp Striker thrusting at the foe beside it is drawn over it, so the thrust shows.
+    items.push({ z: pos.z + (v.warp ? 0.03 : 0.01), draw: () => drawUnit(ctx, sc, u, pos) });
   }
   void hydra;
   // An aura's back layer sits just behind its caster.
@@ -1223,7 +1224,7 @@ function drawWarpFlights(ctx: CanvasRenderingContext2D, sc: Scene): void {
     const f = flightOf(sc, u, look, v.warp);
     const alpha = unitAlpha(sc, u, v);
     if (alpha <= 0) continue;
-    drawTrail(ctx, f, t, ms, alpha);
+    drawTrail(ctx, f, t, ms, alpha, reachOf(look, f));
     const now = flightNow(f, t, ms);
     if (now) drawThrown(ctx, look, f, now, alpha);
   }

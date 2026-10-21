@@ -11,7 +11,8 @@ import { catchLook, thrownItem } from '../../sprite/thrown';
 import { FEET } from '../../sprite/rig';
 import type { WarpTimes } from './playback';
 import { warpFlight } from './playback';
-import { thrownFrame } from './unitArt';
+import { hasThrownFrame, thrownFrame } from './unitArt';
+import type { ThrownCanvas } from './unitArt';
 
 export interface XY {
   x: number;
@@ -52,9 +53,10 @@ export interface Flight {
 /**
  * The flight of a Warp Strike's weapon. `from` and `to`: the map pixels of the ninja's feet where it
  * throws and where it lands; `face` the way it throws, `land` the way it faces when it lands. `foe`:
- * the map pixels of the feet of the foe it lands beside: the weapon flies in point first at it. The
- * weapon leaves level from the fist of the throw and arrives, arcing down a little, in the hand of
- * the thrust's chamber ('pierce' 1), which it is turned to as the ninja appears.
+ * the map pixels of the feet of the foe it lands beside. The weapon leaves level from the fist of the
+ * throw and arrives, dipping a little, in the hand of the thrust's chamber ('pierce' 1); when the foe
+ * is ahead of it, it comes in point first at the foe. A foe behind the landing (the ninja turns round
+ * to strike) is not flown round: the weapon arrives the way it was going and turns in the hand.
  */
 export function warpFlightOf(look: SpriteAppearance, from: XY, to: XY, face: 1 | -1, land: 1 | -1, foe?: XY): Flight {
   const body: BodyType = look.body;
@@ -64,19 +66,22 @@ export function warpFlightOf(look: SpriteAppearance, from: XY, to: XY, face: 1 |
   const E = framePixel(to.x, to.y, hold.at, land);
   const h0 = headingOf(rel.weaponAngle, face);
   const hCatch = headingOf(hold.angle, land);
-  // Coming in at the foe's chest, but no steeper than 20 degrees off level.
-  let hEnd = hCatch;
-  if (foe) {
-    const aim = (Math.atan2(foe.y - 46 - E.y, foe.x - E.x) * 180) / Math.PI;
-    const level = land > 0 ? 0 : 180;
-    hEnd = level + Math.max(-20, Math.min(20, wrap(aim - level)));
-  }
   const span = Math.hypot(E.x - S.x, E.y - S.y);
-  const L = Math.max(20, Math.min(220, span * 0.38));
+  // The way it is going as it arrives: straight from the hand to the catch, levelled off a little.
+  const level = E.x >= S.x ? 0 : 180;
+  const way = (Math.atan2(E.y - S.y, E.x - S.x) * 180) / Math.PI;
+  let hEnd = level + Math.max(-25, Math.min(25, wrap(way - level))) * 0.6 + (level === 0 ? 4 : -4);
+  if (foe && land === face) {
+    // Coming in at the foe's chest, but no steeper than 20 degrees off level.
+    const aim = (Math.atan2(foe.y - 46 - E.y, foe.x - E.x) * 180) / Math.PI;
+    const lv = land > 0 ? 0 : 180;
+    hEnd = lv + Math.max(-20, Math.min(20, wrap(aim - lv)));
+  }
+  const L = Math.max(16, Math.min(200, span * 0.36));
   const d0 = dirOf(h0);
   const d1 = dirOf(hEnd);
   // It leaves level (as it left the hand) and drops into the catch from a little above.
-  const lift = Math.min(28, span * 0.07);
+  const lift = Math.min(24, span * 0.06);
   const f: Flight = {
     S,
     E,
@@ -104,12 +109,19 @@ function bezier(f: Flight, t: number): XY {
   return { x: a * f.S.x + b * f.P1.x + c * f.P2.x + d * f.E.x, y: a * f.S.y + b * f.P1.y + c * f.P2.y + d * f.E.y };
 }
 
+/** The curve's tangent at t (pixels per unit of t). */
+function tangent(f: Flight, t: number): XY {
+  const u = 1 - t;
+  return {
+    x: 3 * u * u * (f.P1.x - f.S.x) + 6 * u * t * (f.P2.x - f.P1.x) + 3 * t * t * (f.E.x - f.P2.x),
+    y: 3 * u * u * (f.P1.y - f.S.y) + 6 * u * t * (f.P2.y - f.P1.y) + 3 * t * t * (f.E.y - f.P2.y),
+  };
+}
+
 /** The curve's heading at t (degrees): the way the point faces, point first. */
 function headingAlong(f: Flight, t: number): number {
-  const u = 1 - t;
-  const dx = 3 * u * u * (f.P1.x - f.S.x) + 6 * u * t * (f.P2.x - f.P1.x) + 3 * t * t * (f.E.x - f.P2.x);
-  const dy = 3 * u * u * (f.P1.y - f.S.y) + 6 * u * t * (f.P2.y - f.P1.y) + 3 * t * t * (f.E.y - f.P2.y);
-  return Math.hypot(dx, dy) < 1e-6 ? f.h0 : (Math.atan2(dy, dx) * 180) / Math.PI;
+  const d = tangent(f, t);
+  return Math.hypot(d.x, d.y) < 1e-6 ? f.h0 : (Math.atan2(d.y, d.x) * 180) / Math.PI;
 }
 
 /**
@@ -151,6 +163,23 @@ export function flightNow(f: Flight, t: WarpTimes, ms: number): FlightNow | null
   return { at: f.E, heading, alpha };
 }
 
+/**
+ * The weapon's canvas for a heading: made beforehand (the screen makes a flight's angles while the
+ * ninja winds up, renderer.ts warmPhases); if one is still missing, the nearest made angle stands in
+ * for that screen frame rather than stopping the flight to make it.
+ */
+function canvasFor(look: SpriteAppearance, angle: number): ThrownCanvas {
+  if (hasThrownFrame(look, angle)) return thrownFrame(look, angle);
+  for (const d of [1, -1, 2, -2, 3, -3, 4, -4]) if (hasThrownFrame(look, angle + d)) return thrownFrame(look, angle + d);
+  return thrownFrame(look, angle);
+}
+
+/** How far the weapon reaches behind its grip and ahead of it as it flies (its art at the angle it is flung at). */
+export function reachOf(look: SpriteAppearance, f: Flight): WeaponReach {
+  const c = canvasFor(look, canvasAngle(f, f.h0).angle);
+  return { back: c.back, front: c.front };
+}
+
 /** How strongly the flying weapon's blue light is added round it. */
 const GLOW = 0.75;
 
@@ -161,7 +190,7 @@ const GLOW = 0.75;
 export function drawThrown(ctx: CanvasRenderingContext2D, look: SpriteAppearance, f: Flight, now: FlightNow, alpha: number): void {
   if (now.alpha <= 0.01) return;
   const { angle, mirror } = canvasAngle(f, now.heading);
-  const c = thrownFrame(look, angle);
+  const c = canvasFor(look, angle);
   const X = Math.round(now.at.x);
   const Y = Math.round(now.at.y);
   ctx.save();
@@ -180,8 +209,7 @@ export function drawThrown(ctx: CanvasRenderingContext2D, look: SpriteAppearance
 
 // --- the trail -----------------------------------------------------------------------------
 
-const rgb = (i: number): string => `rgb(${PHASE_RAMP[i][0]}, ${PHASE_RAMP[i][1]}, ${PHASE_RAMP[i][2]})`;
-const RAMP = PHASE_RAMP.map((_, i) => rgb(i));
+const RAMP = PHASE_RAMP.map((c) => `rgb(${c[0]}, ${c[1]}, ${c[2]})`);
 /** A steady pseudo-random 0..1 for particle `i`, value `k` (the trail looks the same every time it plays). */
 const hash = (i: number, k: number): number => {
   let h = (i * 374761393 + k * 668265263) | 0;
@@ -189,97 +217,146 @@ const hash = (i: number, k: number): number => {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 };
 
-/** How many sparkles a flight leaves, and how long the last of them lasts after it lands. */
-const SPARKS = 64;
-export const TRAIL_AFTER = 420;
+/** Sparkles a flight sheds per ms of it, and how long the last of them lasts after the weapon stops. */
+const SHED = 0.5;
+export const TRAIL_AFTER = 520;
+/** How long the comet streak behind the weapon takes to catch up with it once it stops. */
+const STREAK_OUT = 90;
+
+/** How far the weapon's art reaches behind its grip and ahead of it, along its heading (pixels). */
+export interface WeaponReach {
+  back: number;
+  front: number;
+}
+
+/** One pixel of light. */
+function dot(ctx: CanvasRenderingContext2D, x: number, y: number, a: number, step: number, s = 1): void {
+  if (a <= 0.01) return;
+  ctx.globalAlpha = Math.min(1, a);
+  ctx.fillStyle = RAMP[step];
+  ctx.fillRect(Math.round(x), Math.round(y), s, s);
+}
 
 /**
- * The trail behind the flying weapon, `ms` into the Warp Strike: glittering sparkles shed from its
- * back end as it goes (1 and 2 px specks and a few four-pointed glints, near-white when new, fading
- * through the phase's blues as they drift back and down, twinkling), short streaks of light
- * following it along its curve, and a small burst where it stops.
+ * A four-pointed glint: a white heart with arms of light `r` pixels long each way, fading toward
+ * their tips (the sparkle of a blade catching the light).
  */
-export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes, ms: number, alpha: number): void {
+function glint(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, a: number): void {
+  if (a <= 0.01 || r < 0) return;
+  const X = Math.round(x);
+  const Y = Math.round(y);
+  for (let k = r; k >= 1; k--) {
+    const t = k / (r + 1);
+    const step = t < 0.34 ? 7 : t < 0.67 ? 6 : 5;
+    const ak = a * (1 - t * 0.75);
+    dot(ctx, X - k, Y, ak, step);
+    dot(ctx, X + k, Y, ak, step);
+    dot(ctx, X, Y - k, ak, step);
+    dot(ctx, X, Y + k, ak, step);
+  }
+  dot(ctx, X, Y, a, 8);
+}
+
+/**
+ * The trail behind the flying weapon, `ms` into the Warp Strike: a comet streak of light on the way
+ * the weapon's back end just went (three pixels wide at the weapon, white at its heart, thinning to
+ * one and fading through the phase's blues; long enough to bridge the weapon's jump between screen
+ * frames), the glittering sparkles it sheds as it goes (1 and 2 px specks and four-pointed glints,
+ * white when new and fading through the blues, twinkling as they drift back and settle), a glint at
+ * the hand as it leaves and one where it stops.
+ */
+export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes, ms: number, alpha: number, reach: WeaponReach): void {
   if (ms < t.rel || ms > t.caught + TRAIL_AFTER) return;
   const fly = t.caught - t.rel;
+  const back = reach.back;
   ctx.save();
-  // The streaks: the curve just behind the weapon's back end, a pixel at a time, brightest at the
-  // weapon and fading back along it; a long one down the middle and two short ones at its sides.
-  if (ms <= t.caught + 80) {
-    const fade = ms <= t.caught ? 1 : 1 - (ms - t.caught) / 80;
+
+  // The comet streak: walked back along the curve from the weapon's back end, a pixel at a time.
+  if (ms < t.caught + STREAK_OUT) {
     const head = Math.min(ms, t.caught);
-    for (const [off, len, k, side] of [
-      [0, 95, 1, false],
-      [-3, 55, 0.75, true],
-      [3, 55, 0.75, true],
-    ] as const) {
-      const tail = Math.max(t.rel, head - len);
-      if (head - tail < 4) continue;
-      let last = '';
-      for (let tm = head; tm >= tail; tm -= 0.5) {
-        const w = warpFlight(tm, t);
-        const p = bezier(f, w);
-        const d = dirOf(headingAlong(f, w));
-        // Behind the grip (the weapon's back end) and off to its side.
-        const X = Math.round(p.x - d.x * 7 - d.y * off);
-        const Y = Math.round(p.y - d.y * 7 + d.x * off);
-        const key = `${X},${Y}`;
-        if (key === last) continue;
+    const wh = warpFlight(head, t);
+    // As long as the way the weapon went in the last 45 ms (so the streak bridges a frame's jump),
+    // 14 to 56 pixels; it shrinks into the weapon once it stops.
+    const p0 = bezier(f, wh);
+    const p1 = bezier(f, warpFlight(Math.max(t.rel, head - 45), t));
+    const out = ms <= t.caught ? 1 : 1 - (ms - t.caught) / STREAK_OUT;
+    const len = Math.max(14, Math.min(56, Math.hypot(p0.x - p1.x, p0.y - p1.y))) * out;
+    let s = 0;
+    let w = wh;
+    let last = '';
+    while (s <= len && w >= 0) {
+      const p = bezier(f, w);
+      const tg = tangent(f, w);
+      const m = Math.max(1e-3, Math.hypot(tg.x, tg.y));
+      const d = { x: tg.x / m, y: tg.y / m };
+      const x = p.x - d.x * back;
+      const y = p.y - d.y * back;
+      const key = `${Math.round(x)},${Math.round(y)}`;
+      if (key !== last) {
         last = key;
-        const along = (head - tm) / len;
-        ctx.globalAlpha = alpha * fade * k * (1 - along) ** 1.3;
-        // The middle one white turning pale blue, the side ones the phase's stronger blues.
-        ctx.fillStyle = RAMP[side ? (along < 0.35 ? 6 : 4) : along < 0.25 ? 8 : along < 0.6 ? 7 : 5];
-        ctx.fillRect(X, Y, 1, 1);
+        const along = s / Math.max(1, len);
+        const a = alpha * (1 - along) ** 1.1;
+        // The sides first, the heart over them: five pixels wide just behind the weapon, then three.
+        if (along < 0.2) {
+          dot(ctx, x - 2 * d.y, y + 2 * d.x, a * 0.35, 5);
+          dot(ctx, x + 2 * d.y, y - 2 * d.x, a * 0.35, 5);
+        }
+        if (along < 0.6) {
+          const side = along < 0.25 ? 7 : along < 0.45 ? 6 : 5;
+          dot(ctx, x - d.y, y + d.x, a * 0.8, side);
+          dot(ctx, x + d.y, y - d.x, a * 0.8, side);
+        }
+        dot(ctx, x, y, a, along < 0.22 ? 8 : along < 0.5 ? 7 : along < 0.8 ? 6 : 5);
       }
+      // About half a pixel further back each step.
+      w -= 0.5 / m;
+      s += 0.5;
     }
   }
-  // The sparkles, each shed at its moment of the flight.
-  for (let i = 0; i < SPARKS; i++) {
-    const born = t.rel + (fly * (i + hash(i, 1) * 0.8)) / SPARKS;
-    const life = 220 + 200 * hash(i, 2);
-    const age = (ms - born) / life;
+
+  // The sparkles, each shed at its moment of the flight from about the weapon's back end.
+  const n = Math.max(24, Math.round(fly * SHED));
+  for (let i = 0; i < n; i++) {
+    const born = t.rel + (fly * (i + hash(i, 1))) / n;
+    const life = 230 + 280 * hash(i, 2);
+    const el = ms - born;
+    const age = el / life;
     if (age < 0 || age >= 1) continue;
     const w = warpFlight(born, t);
     const p = bezier(f, w);
     const d = dirOf(headingAlong(f, w));
-    const side = (hash(i, 3) - 0.5) * 8;
-    const back = 5 + 6 * hash(i, 4);
-    // Shed behind the weapon, drifting back along its way and settling down a little.
-    const drift = (6 + 12 * hash(i, 5)) * age;
-    const x = p.x - d.x * (back + drift) - d.y * side * (1 + age);
-    const y = p.y - d.y * (back + drift) + d.x * side * (1 + age) + 5 * age * age;
-    const twinkle = (Math.floor((ms - born) / 45 + hash(i, 6) * 2) + i) % 2 ? 1 : 0.45;
-    const a = alpha * twinkle * (1 - age) ** 0.8;
-    const step = age < 0.3 ? 8 : age < 0.6 ? 7 : age < 0.8 ? 6 : 5;
+    const side = (hash(i, 3) - 0.5) * 7;
+    const off = back * (0.3 + 0.9 * hash(i, 4)) + 1;
+    // Drifting back along the way it went, spreading out from it and settling down a little.
+    const drift = (0.01 + 0.025 * hash(i, 5)) * el;
+    const spread = side * (1 + 0.004 * el);
+    const x = p.x - d.x * (off + drift) - d.y * spread;
+    const y = p.y - d.y * (off + drift) + d.x * spread + 0.00004 * el * el;
+    // Twinkling: each flickers between bright and dim at its own pace.
+    const on = Math.floor((el + hash(i, 6) * 80) / (40 + 40 * hash(i, 8))) % 2 === 0;
+    const a = alpha * (on ? 1 : 0.4) * (1 - age) ** 0.75;
+    const step = age < 0.25 ? 8 : age < 0.5 ? 7 : age < 0.75 ? 6 : 5;
     const kind = hash(i, 7);
-    const X = Math.round(x);
-    const Y = Math.round(y);
-    ctx.globalAlpha = a;
-    if (kind < 0.18 && age < 0.65) {
-      // A glint: a white heart with four short points of blue.
-      const r = age < 0.3 ? 2 : 1;
-      ctx.fillStyle = RAMP[6];
-      ctx.fillRect(X - r, Y, 2 * r + 1, 1);
-      ctx.fillRect(X, Y - r, 1, 2 * r + 1);
-      ctx.fillStyle = RAMP[8];
-      ctx.fillRect(X, Y, 1, 1);
-    } else {
-      const s = kind < 0.45 && age < 0.5 ? 2 : 1;
-      ctx.fillStyle = RAMP[step];
-      ctx.fillRect(X, Y, s, s);
-    }
+    if (kind < 0.16 && age < 0.7) glint(ctx, x, y, on && age < 0.35 ? 2 : 1, a);
+    else if (kind < 0.42 && age < 0.5) dot(ctx, x, y, a, step, 2);
+    else dot(ctx, x, y, a, step);
   }
-  // Where it stops: a small burst of light round the weapon's back end.
-  if (ms >= t.caught && ms < t.caught + 220) {
-    const k = (ms - t.caught) / 220;
+
+  // A glint at the hand as the weapon leaves it.
+  if (ms < t.rel + 140) {
+    const k = (ms - t.rel) / 140;
+    glint(ctx, f.S.x, f.S.y, Math.round(5 * (1 - k)), alpha * (1 - k * k));
+  }
+  // Where it stops: a glint at its point, and a ring of specks flying out.
+  if (ms >= t.caught && ms < t.caught + 240) {
+    const k = (ms - t.caught) / 240;
     const d = dirOf(headingAlong(f, 1));
-    for (let i = 0; i < 8; i++) {
-      const ang = (i / 8) * Math.PI * 2 + hash(i, 9);
-      const r = 3 + 14 * k * (0.6 + 0.4 * hash(i, 10));
-      ctx.globalAlpha = alpha * (1 - k) * (i % 2 ? 1 : 0.6);
-      ctx.fillStyle = RAMP[k < 0.4 ? 8 : 6];
-      ctx.fillRect(Math.round(f.E.x - d.x * 4 + Math.cos(ang) * r), Math.round(f.E.y - d.y * 4 + Math.sin(ang) * r * 0.7), 1, 1);
+    const tip = { x: f.E.x + d.x * reach.front * 0.85, y: f.E.y + d.y * reach.front * 0.85 };
+    glint(ctx, tip.x, tip.y, Math.round(7 * (1 - k) ** 0.7), alpha * (1 - k));
+    for (let i = 0; i < 10; i++) {
+      const ang = (i / 10) * Math.PI * 2 + hash(i, 9);
+      const r = 3 + 16 * k * (0.6 + 0.4 * hash(i, 10));
+      dot(ctx, tip.x + Math.cos(ang) * r, tip.y + Math.sin(ang) * r * 0.7, alpha * (1 - k) * (i % 2 ? 1 : 0.6), k < 0.4 ? 8 : 6);
     }
   }
   ctx.restore();

@@ -100,7 +100,8 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `icons/sheet-12`, `icons/sheet-12-fix` | `cd8e07b`, `b8dd15c` | Sabueso rayo, Luna creciente, Nirvana | Merged (`8dfd107`) |
 | `camp/owner-ref` | `70293ba` | Read, lean and sit camp poses from his picture (`camp-poses-owner-reference.webp` on that branch); touches `rig.ts`, `compose.ts`, `ctx.ts`, `campfx.ts` | **WIP, being redone**: copy his book and both hands exactly; show Aiden reading |
 | `camp/hands-book` | `a3ae184` | Earlier pass, already inside `camp/owner-ref` | Superseded |
-| `ryusei/phase` | `1bd38c9` | Warp Strike and Spatial Swap carry the ninja as a see-through electric-blue light body (`src/sprite/phase.ts` + tests, renderer, playback) | **Waiting for approval.** Next: Warp Strike choreography (throw the weapon in his throw pose, it flies to the target with sparkle trails, the ninja phases and reappears with a piercing thrust). Swap stays |
+| `ryusei/phase` | `1bd38c9` | Warp Strike and Spatial Swap carry the ninja as a see-through electric-blue light body (`src/sprite/phase.ts` + tests, renderer, playback) | **Waiting for approval.** The Warp Strike choreography is on `ryusei/warp-throw`. Swap stays |
+| `ryusei/warp-throw` | not pushed yet | `ryusei/phase` + `poses/throw-pierce` + the Warp Strike choreography (the owner, 2026-10-21): the throw, the weapon flying point first with a trail of sparkles (`src/sprite/thrown.ts` + tests, `components/battle/warpFlight.ts`), the phase starting in his release pose, the landing in the `pierce` thrust. Spatial Swap unchanged | **Waiting for approval** (GIFs shown to him) |
 | `poses/throw-pierce` | `f722aee` | `throw` (4 frames, release copied from his Warp Strike picture) and `pierce` (5-frame lunge) poses, in the creator stance bar; `src/sprite/strike.test.ts` | **Waiting for approval**; `ryusei/phase` needs it |
 | `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
 | `scarlet/study` | `3b5dfe9` | His new character picture (`scarlet-owner-reference.jpg`) and study scripts `tools/refs/scarlet*`; nothing in `src` | **WIP**. Provisional name "Valen, the Scarlet Duke", no cape: **the owner must choose the name** |
@@ -121,8 +122,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 
 ## 3. Waiting for the owner
 
-- Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the icons on `icons/sheets-8-11`, the
-  camp poses once redone.
+- Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the Warp Strike choreography on
+  `ryusei/warp-throw`, the icons on `icons/sheets-8-11`, the camp poses once redone.
 - Name the Scarlet character (`scarlet/study`).
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms

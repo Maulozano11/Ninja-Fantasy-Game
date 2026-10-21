@@ -7,12 +7,22 @@ hand when a reference changes. Use `python3 -I`, and keep the references outside
 folders.
 
 - `female-body-from-ref.py`: the female body's art from his heroines drawn at our scale
-  (`docs/reference/{lyra,aurelia,saya}-game-scale-owner-reference.jpg`): his skin ramp, the small
-  hands (Aurelia's near hand as he drew it; the other hand shapes are his crystal-sword hands with
-  their most repeated rows and columns left out) and the bare feet (his boots' silhouettes filled
-  with his skin). It writes `src/sprite/femaleBodyArt.ts`; `--show` prints every piece as text.
+  (`docs/reference/{lyra,aurelia,saya}-game-scale-owner-reference.jpg`): his skin ramp, his hands
+  (Aurelia's near hand relaxed, Lyra's far hand, Lyra's near hand on her sword's grip, Saya's far
+  fist, each cut 1:1; the open, pointing and cradling hands, which he has not drawn at this size,
+  are his crystal-sword hands with their most repeated rows and columns left out) and Aurelia's
+  bare near shoulder. It writes `src/sprite/femaleBodyArt.ts`; `--show` prints every piece as text.
+  The female feet are not lifted here (he drew none bare): `src/sprite/ctx.ts` `shortFoot` makes
+  every foot template shorter for the female bodies' lower ankles.
 
       python3 -I tools/refs/female-body-from-ref.py
+
+- `saya-game-scale-clean.py`: Saya at our game scale without her bugged swords and scabbard (the
+  owner: "quita lo que esta bugeado"): outside her and between her legs the weapon pixels go, over
+  her legs and hip her armour is continued with her own colours. A 100x100 PNG for comparisons and
+  for the Saya part jobs; her sword comes back from her big picture there.
+
+      python3 -I tools/refs/saya-game-scale-clean.py OUT.png [ZOOM.png]
 
 - `beasts-from-ref.py`: the phoenix and the raijū for `vfx_beasts`. It writes
   `tools/world-sprites/vfx-beasts-ref-fire.ts` and `vfx-beasts-ref-lightning.ts`.

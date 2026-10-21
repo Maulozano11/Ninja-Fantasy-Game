@@ -11,8 +11,8 @@ export const FEMALE_SKIN = {
   base: '#f6c6a5',
 };
 
-/** The female hands, about 7x7 with the line (legend as ctx.ts: o line, D dark, x crease, s shadow, b base, l light). */
-export const FEMALE_HANDS: Record<'relaxed' | 'grip' | 'fist' | 'fistFar' | 'open' | 'point' | 'cradle', PixelTemplate> = {
+/** The female hands, his at our scale (legend as ctx.ts: o line, D deep, s shadow, b base, l light). */
+export const FEMALE_HANDS: Record<'relaxed' | 'relaxedFar' | 'grip' | 'fist' | 'fistFar' | 'open' | 'point' | 'cradle', PixelTemplate> = {
   relaxed: {
     pivot: [3, 0],
     rows: [
@@ -20,106 +20,100 @@ export const FEMALE_HANDS: Record<'relaxed' | 'grip' | 'fist' | 'fistFar' | 'ope
       'osbbsbo',
       'oDbsobo',
       'oDDsooo',
-      '.oDsoo.',
+      '.oDso..',
       '..oo...',
     ],
   },
-  grip: {
-    pivot: [4, 2],
+  relaxedFar: {
+    pivot: [2, 0],
     rows: [
-      '...obbso',
-      '...obDo.',
-      '..osbDo.',
-      '.osbbso.',
-      'osbbbsbo',
-      'oDsbDoDo',
-      '.oDbo.o.',
-      '..oDo...',
-      '...o....',
+      'ossDo',
+      'osDso',
+      '.oDso',
+      '.oDso',
+      '.oDso',
+      '..oo.',
+    ],
+  },
+  grip: {
+    pivot: [3, -1],
+    rows: [
+      'oboobbso',
+      'obbbbsso',
+      'osbbsoo.',
+      '.osbo...',
+      '..oo....',
     ],
   },
   fist: {
     pivot: [3, 0],
     rows: [
-      '.osbo..',
-      'osbbso.',
-      'osbbbDo',
-      'oDsbDso',
-      '.oDsDo.',
-      '..ooo..',
+      'oboobbso',
+      'obbbbsso',
+      'osbbsoo.',
+      '.osbo...',
+      '..oo....',
     ],
   },
   fistFar: {
-    pivot: [3, 0],
+    pivot: [2, 0],
     rows: [
-      '.oDbo.',
-      'oDsDDo',
-      'olDDso',
-      '.oDso.',
-      '..oo..',
-      '...o..',
+      'oosoo..',
+      'oDsoso.',
+      'oDoDDso',
+      '.osDso.',
+      '.oooo..',
     ],
   },
   open: {
     pivot: [3, 0],
     rows: [
-      '..obbo...',
-      '.osbbbo..',
-      'osbbbbso.',
-      'olbbbbbso',
-      'osbbbsDoo',
-      'osDbDso..',
-      '.obobo...',
-      '..o.o....',
+      '..ob...',
+      '.osbo..',
+      'osbbso.',
+      'olbbbso',
+      'osbbDoo',
+      'osDbo..',
+      '.ooo...',
     ],
   },
   point: {
-    pivot: [4, 0],
+    pivot: [3, 0],
     rows: [
-      '..obbo..',
-      '.osbbbo.',
-      'osbbbbso',
-      'obxbxbbo',
-      'oDsDsbso',
-      '.oDoDbso',
-      '..ooobo.',
-      '.....o..',
+      '..obo..',
+      '.osbbo.',
+      'osbbbso',
+      'obxxbbo',
+      'oDssbso',
+      '.oDDbso',
+      '..oobo.',
+      '....o..',
     ],
   },
   cradle: {
-    pivot: [4, 6],
+    pivot: [3, 5],
     rows: [
-      '.o.o.o.o.',
-      'obobobobo',
-      'obDbDbDbo',
-      'osDsDsDso',
-      'osbbbbbso',
-      '.osbbbso.',
-      '..ooooo..',
+      '.o...o.',
+      'obooobo',
+      'osDDDso',
+      'osbbbso',
+      '.osbso.',
+      '..ooo..',
     ],
   },
 };
 
-/** The female bare feet (legend as ctx.ts FOOT_BARE: q sole, r shadow, s base), the pivot on the ankle. */
-export const FEMALE_FEET: { N: PixelTemplate; F: PixelTemplate } = {
-  N: {
-    pivot: [4, 0],
-    rows: [
-      '.sssssrs.',
-      'sssssssrs',
-      'sssssssrs',
-      'srrrrrrrs',
-      '.sssssss.',
-    ],
-  },
-  F: {
-    pivot: [4, 0],
-    rows: [
-      'ssssssssrs....',
-      'sssssssssrsss.',
-      'srrrrrssssssrs',
-      '.sssssrrrrrrrs',
-      '......ssssssss',
-    ],
-  },
+/** Aurelia's bare near shoulder (same legend), its pivot on the shoulder joint; `angle` is her upper arm's on screen. */
+export const FEMALE_SHOULDER_N: PixelTemplate & { angle: number } = {
+  pivot: [5, 4],
+  rows: [
+    '.....ooo..',
+    '...oossso.',
+    '..osbbbbso',
+    '.osbbbbbbo',
+    '.osbbbbbbo',
+    'oobbbbbsbo',
+    'ossbbbsDso',
+  ],
+  angle: 112,
 };

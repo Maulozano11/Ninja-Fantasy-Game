@@ -19,6 +19,15 @@ export const ANKLE_N = GROUND - 4;
 export const FAR_LIFT = 2;
 const FAR_HIP_LIFT = 1.5;
 
+/**
+ * How much lower than our usual ankles a body's ankle stands on side `s`, in design units: the near
+ * ankle by BodyParams.ankleLift, the far one (higher on screen, its foot shorter) by half of it.
+ */
+export function ankleLiftOf(bp: BodyParams, s: 'N' | 'F'): number {
+  const a = bp.ankleLift || 0;
+  return s === 'N' ? a : a / 2;
+}
+
 export interface BodyParams {
   torsoLen: number;
   shoulderHalf: number;
@@ -48,10 +57,18 @@ export interface BodyParams {
   /** The head group (head, face, hair, masks, forehead gear) is drawn in head-local units and shrunk by this factor. */
   headScale: number;
   /**
-   * How much lower than ANKLE_N the ankles stand, in design units. The female bodies stand on the
-   * owner's small feet (5 rows high, his game-scale heroines), so their ankles sit near the ground.
+   * How much lower than ANKLE_N the near ankle stands, in design units (the far ankle half as much,
+   * see ankleLiftOf). The female bodies stand on the owner's small feet (his game-scale heroines:
+   * about 8 rows from the ankle to the sole, against our 12), so their ankles sit nearer the ground
+   * and every foot template is drawn that many rows shorter (ctx.ts footDraw).
    */
   ankleLift?: number;
+  /**
+   * Where the waist (the narrowest point of the torso shape) sits above the hips, in torso-local
+   * units; 5.4 when not given. The female bodies' long torso takes its waist higher, as the owner
+   * draws it, so the waist curves in under the bust and the hips flare below it.
+   */
+  waistY?: number;
 }
 
 export const BODY_PARAMS: Record<BodyType, BodyParams> = {
@@ -78,19 +95,21 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
   },
   // The female bodies follow the owner's heroines drawn at our scale (docs/reference/
   // *-game-scale-owner-reference.jpg, 2026-10-21): 92 px tall, a longer torso and neck, narrow
-  // shoulders, slim legs with long shins, small hands and feet (ctx.ts FEMALE_HANDS, FOOT_BARE_F).
+  // shoulders, slim legs, small hands and feet (femaleBodyArt.ts FEMALE_HANDS; feet: ctx.ts
+  // footDraw). Leg radii [thigh top, knee, calf, ankle]: a slim knee under a full thigh, a calf a
+  // little fuller than the knee and a fine ankle, so the leg does not read as one tube.
   female: {
     torsoLen: 18.0,
     shoulderHalf: 5.1,
     chestHalf: 5.3,
-    waistHalf: 3.5,
+    waistHalf: 3.2,
     hipHalf: 6.4,
     upperArm: 6.0,
     forearm: 5.2,
     thigh: 7.1,
-    shin: 9.4,
+    shin: 8.0,
     armR: [1.85, 1.55, 1.75, 1.18],
-    legR: [2.9, 1.9, 1.75, 1.05],
+    legR: [2.9, 1.65, 1.9, 1.0],
     headRx: 6,
     headRy: 7,
     neckW: 1.35,
@@ -99,7 +118,8 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     bust: 1.5,
     crotch: -1.9,
     headScale: 0.7,
-    ankleLift: 3.5,
+    ankleLift: 2,
+    waistY: 8.5,
   },
   // Slimmer and curvier than 'female': narrow shoulders and waist, fuller bust
   // and hips, slender arms and long legs with a full thigh and fine ankles.
@@ -107,14 +127,14 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     torsoLen: 18.0,
     shoulderHalf: 4.7,
     chestHalf: 5.0,
-    waistHalf: 2.9,
-    hipHalf: 6.4,
+    waistHalf: 2.7,
+    hipHalf: 6.9,
     upperArm: 6.0,
     forearm: 5.2,
-    thigh: 7.1,
-    shin: 9.4,
+    thigh: 7.3,
+    shin: 7.8,
     armR: [1.7, 1.4, 1.6, 1.05],
-    legR: [2.8, 1.7, 1.6, 0.95],
+    legR: [3.05, 1.55, 1.85, 0.95],
     headRx: 6,
     headRy: 7,
     neckW: 1.15,
@@ -123,7 +143,8 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     bust: 2.2,
     crotch: -1.7,
     headScale: 0.7,
-    ankleLift: 3.5,
+    ankleLift: 2,
+    waistY: 8.5,
   },
   bulky: {
     torsoLen: 15.2,
@@ -942,7 +963,7 @@ function layFor(r: Rig): Lay {
   const b = r.bp;
   const groundX = r.pelvis.x + b.chestHalf * 0.62 + b.bust * 0.4 + 2.2;
   const top = r.head.y - b.headRy * b.headScale - 2.4;
-  const bottom = ANKLE_N + (b.ankleLift || 0) + 6;
+  const bottom = ANKLE_N + ankleLiftOf(b, 'N') + 6;
   const mid = (top + bottom) / 2;
   const dx = Math.round(FRAME_MID * RES - mid * RES);
   const dy = Math.round(GROUND * RES - 1 - groundX * RES);
@@ -1040,10 +1061,14 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   // by `hip`); `lift` raises the whole body off it.
   const footDrop = (f.hip ?? Math.max(f.footN.y, f.footF.y)) * legLen;
   const jitter = f.jitter ? (frame % 2 === 0 ? -f.jitter : f.jitter) * 0.5 : 0;
-  // A seated pose keeps its hips on the seat; the lower ankles of a body with `ankleLift` reach
-  // down to the ground from there (footLow below).
-  const ankle = ANKLE_N + (f.seat ? 0 : bp.ankleLift || 0);
-  const footLow = f.seat ? v(0, bp.ankleLift || 0) : v(0, 0);
+  // A seated pose keeps its hips on the seat and the lower ankles of a body with `ankleLift` reach
+  // down to the ground from there; standing, the whole body stands lower on its near ankle and the
+  // far ankle comes back up by the difference (footLowN/F).
+  const liftN = ankleLiftOf(bp, 'N');
+  const liftF = ankleLiftOf(bp, 'F');
+  const ankle = ANKLE_N + (f.seat ? 0 : liftN);
+  const footLowN = v(0, f.seat ? liftN : 0);
+  const footLowF = v(0, f.seat ? liftF : liftF - liftN);
   const stand = v(FEET_X - 0.5 + (f.pelvisDx || 0) + jitter, ankle - footDrop - (f.lift || 0));
   // `sink` and `snap` lower the pelvis while the feet stay where the pose puts
   // them (the knees take it up), `snap` onto the fine pixel grid.
@@ -1068,8 +1093,16 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     fromN = add(hipN, back);
     fromF = add(hipF, back);
   }
-  const legN = solve2(hipN, add(add(fromN, scale(f.footN, legLen)), footLow), bp.thigh, bp.shin, -1);
-  const legF = solve2(hipF, add(add(fromF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), footLow), bp.thigh, bp.shin, -1);
+  // Seated, a foot the leg cannot reach (a body with shorter legs than the seat was set for) slides
+  // back toward the seat along the ground instead of hanging above it.
+  const onGround = (hip: Vec, t: Vec): Vec => {
+    const reach = bp.thigh + bp.shin - 0.05;
+    const dy = t.y - hip.y;
+    if (!f.seat || Math.hypot(t.x - hip.x, dy) <= reach || Math.abs(dy) >= reach) return t;
+    return v(hip.x + Math.sign(t.x - hip.x) * Math.sqrt(reach * reach - dy * dy), t.y);
+  };
+  const legN = solve2(hipN, onGround(hipN, add(add(fromN, scale(f.footN, legLen)), footLowN)), bp.thigh, bp.shin, -1);
+  const legF = solve2(hipF, onGround(hipF, add(add(fromF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), footLowF)), bp.thigh, bp.shin, -1);
 
   const chestDy = f.chestDy || 0;
   const neck = add(T(0.6, bp.torsoLen), v(0, chestDy));

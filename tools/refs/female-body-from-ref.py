@@ -7,13 +7,20 @@ pixels each, phase 0. This script samples every cell at its centre and lifts, as
 
 - his skin ramp: the line, deep shadow, shadow and base he paints bare skin with (median of each
   tone over every bare-skin pixel of the three pictures);
-- the female hands, about 7x7 with the line: each one cut out of one of his hands, every pixel his
-  (skin tone or line); his sleeve, cuff and weapon pixels next to it are left out, and where the
-  weapon or cuff covered a pixel of the hand the hand's own row is continued;
-- the female bare feet: his near and far foot silhouettes (5 rows near, 3 far, from his boots: he
-  drew no bare feet) filled with his skin tones the way he shades his skin (lit toward the upper
-  left, one shadow band, the sole dark);
-- the near shoulder: Aurelia's bare near shoulder as a painted piece riding the upper arm.
+- the female hands, each cut out of one of his hands, every pixel his (skin tone or line): the near
+  relaxed hand is Aurelia's near hand, the far relaxed hand Lyra's far hand, the near fist round a
+  weapon's grip Lyra's near hand on her sword, the far fist Saya's far hand. His sleeve, cuff and
+  weapon pixels next to them are left out; where his weapon or cuff covered a pixel of the hand the
+  hand's own row is continued, and where his line is open onto his dress it is closed. A few of his
+  far-hand pixels are darker than his deep shadow; they take the deep shadow (the ramp has no room
+  below it but the line). He drew no open, pointing or cradling hand at this size, so those three
+  are his crystal-sword hands (src/sprite/ctx.ts) brought down to his heroines' size by leaving out
+  the rows and columns that repeat a neighbour most: every pixel left is one of his, none blended;
+- the near shoulder: Aurelia's bare near shoulder (her rows 26-31), a painted piece riding the top
+  of the upper arm (src/sprite/body.ts), in his skin tones so it follows the player's skin colour.
+
+Bare feet are not lifted here: he drew none bare. The female feet are our feet from his
+crystal-sword picture made shorter at runtime (src/sprite/ctx.ts shortFoot).
 
 Run from the repo root:
     python3 -I tools/refs/female-body-from-ref.py            # writes src/sprite/femaleBodyArt.ts
@@ -103,8 +110,10 @@ def tone(c):
 
 def cut(name, y0, y1, x0, x1, keep=None, fix=None):
     """His pixels in rows y0..y1-1, cols x0..x1-1 as tone letters ('.' where not skin or line).
-    `keep` limits the cut to a mask of (row, col) offsets given as strings ('#' keeps); `fix` maps
-    (row, col) offsets to a letter for a pixel his weapon or cuff covered, continuing his row."""
+    `keep` limits the cut to a mask of rows given as strings ('#' keeps); `fix` maps (row, col)
+    offsets to a letter for a pixel his weapon, cuff or dress covered (continuing his row), for a
+    far-hand pixel darker than his deep shadow ('D'), or for his line closed where it opens onto his
+    dress ('o')."""
     a = N[name]
     rows = []
     for j, y in enumerate(range(y0, y1)):
@@ -126,24 +135,48 @@ def show(title, rows):
         print('   ', r)
 
 
-
-
-def inside_mask(name, y0, y1, x0, x1):
-    """The inside of his outline in a window: figure pixels whose four neighbours are figure too
-    (his boot's inner detail lines count as inside; only the outer line is left out)."""
-    fig = N[name].min(2) <= 235
-    pad = np.pad(fig, 1)
-    ins = fig & pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:]
-    return ins[y0:y1, x0:x1]
-
-
 # ---------------------------------------------------------------------------
-# Hands. His heroines' hands are about 7x7 with the line, against our 9x9 (whose pictures are his
-# too: the crystal-sword hands in src/sprite/ctx.ts). The relaxed hand is Aurelia's near hand,
-# pixel for pixel. The other shapes (grip, fist, open, point, cradle) he has not drawn bare at this
-# size, so his crystal-sword hands are brought down to the heroines' size by leaving out the rows
-# and columns that repeat a neighbour most: every pixel left is one of his, none is blended.
+# Hands, each about 5-7 px with the line, as he draws them at our scale.
 # ---------------------------------------------------------------------------
+
+# Aurelia's near hand (her rows 53-58, cols 31-37), relaxed at her side, palm in, fingers down, the
+# thumb in front. Her gold cuff's line over the wrist (row 53, col 32) becomes the shadow beside it;
+# her dress line right of rows 57-58 is not hand; the fingertip's line on row 57, open onto her
+# dress, is closed.
+RELAXED = cut('aurelia', 53, 59, 31, 38,
+              keep=['#######', '#######', '#######', '#######', '######.', '######.'],
+              fix={(0, 1): 's', (4, 4): 'o'})
+
+# Lyra's far hand (her rows 56-61, cols 65-69), hanging at her side seen edge-on: thin, in shade.
+# Her sleeve beside rows 58-60 is left out; her three darkest skin pixels take the deep shadow.
+RELAXED_FAR = cut('lyra', 56, 62, 65, 70,
+                  keep=['#####', '#####', '.####', '.####', '.####', '..##.'],
+                  fix={(0, 3): 'D', (1, 2): 'D', (2, 2): 'D', (3, 2): 'D', (4, 2): 'D'})
+
+# Lyra's near hand round her sword's grip (her rows 55-59, cols 30-37): the grip came in at the top
+# left (row 55, col 30: her line goes on there) and her sword's gold guard sat below right (rows
+# 57-58: left out); the fist closes on her row 59.
+GRIP = cut('lyra', 55, 60, 30, 38,
+           keep=['########', '########', '#######.', '.####...', '........'],
+           fix={(0, 0): 'o', (4, 2): 'o', (4, 3): 'o'})
+
+# Saya's far hand (her rows 58-62, cols 65-71), a fist in shade at her far hip; her armour beside
+# row 61 is left out and her three darkest skin pixels take the deep shadow.
+FIST_FAR = cut('saya', 58, 63, 65, 72,
+               keep=['#####..', '######.', '#######', '.#####.', '.####..'],
+               fix={(2, 3): 'D', (2, 4): 'D', (3, 3): 'D'})
+
+# Pivots: the wrist (the middle of the hand's top row). The grip hangs one row lower so a weapon's
+# handle (grip.ts gripPoint, about 4 px below the wrist) passes through the middle of the fist.
+HANDS = {
+    'relaxed': ([3, 0], RELAXED),
+    'relaxedFar': ([2, 0], RELAXED_FAR),
+    'grip': ([3, -1], GRIP),
+    'fist': ([3, 0], GRIP),
+    'fistFar': ([2, 0], FIST_FAR),
+}
+
+# The shapes he has not drawn at this size: his crystal-sword hands (ctx.ts) brought down.
 CTX = open(os.path.join(REPO, 'src', 'sprite', 'ctx.ts')).read()
 
 
@@ -224,71 +257,41 @@ def shut(rows):
     return [''.join(r) for r in out]
 
 
-# Aurelia's near hand (his rows 53-58, cols 31-37), relaxed at her side, palm in, fingers down.
-# Her dress line right of rows 57-58 is not hand and is left out; her gold cuff line over the
-# wrist (row 53, col 32) becomes the shadow beside it, and the fingertip's line on row 57 that
-# her dress hid is closed.
-RELAXED_F = cut('aurelia', 53, 59, 31, 38,
-                keep=['#######', '#######', '#######', '#######', '######.', '######.'],
-                fix={(0, 1): 's', (4, 4): 'o', (4, 5): 'o'})
+def fingers(rows, n):
+    """The last n rows of an open hand's spread fingers (one pixel each, his line between) read as
+    claws at this size: they are left out and the row above closes the hand."""
+    rows = rows[:len(rows) - n]
+    last = rows[-1]
+    rows[-1] = ''.join('o' if c not in '.o' else c for c in last)
+    return rows
 
-HANDS = {'relaxed': ([3, 0], RELAXED_F)}
-for key, name, w, h in (('grip', 'HAND_GRIP', 8, 9), ('fist', 'HAND_FIST', 7, 6), ('fistFar', 'HAND_FIST_FAR', 6, 6),
-                        ('open', 'HAND_OPEN', 9, 8), ('point', 'HAND_POINT', 8, 8), ('cradle', 'HAND_CRADLE', 9, 7)):
+
+for key, name, w, h in (('open', 'HAND_OPEN', 7, 8), ('point', 'HAND_POINT', 7, 8), ('cradle', 'HAND_CRADLE', 7, 6)):
     HANDS[key] = shrink(*ctx_template(name), w, h)
+HANDS['open'] = (HANDS['open'][0], fingers(HANDS['open'][1], 1))
 
 # ---------------------------------------------------------------------------
-# Bare feet: the inside of his boots' outline (he drew no bare feet), the near foot from Lyra (his
-# rows 93-96, toes toward us), the far foot from Lyra (rows 91-94, pointing right). Filled with his
-# skin the way he paints it: the base, the shadow on the side away from the light (right) and
-# along the sole. Legend as ctx.ts FOOT_BARE: q-t skin shades 1-4 (r shadow, s base, q sole).
+# Aurelia's bare near shoulder (her rows 25-31, cols 39-48): the round of the shoulder with his line
+# over its top (row 25, where her hair ends beside it), his shadow just inside the line all round
+# and his base inside. Her gold strap on row 31 (col 40) continues her shadow; below row 31 her
+# sleeve starts, so the piece ends there and our upper arm goes on. The pivot is the middle of the
+# round, where our shoulder joint is; her upper arm points down and a little back (112 degrees on
+# screen).
 # ---------------------------------------------------------------------------
+SHOULDER = cut('aurelia', 25, 32, 39, 49,
+               keep=['.....###..'] + ['##########'] * 6,
+               fix={(6, 1): 's', (6, 7): 'D'})
+SHOULDER_PIVOT = [5, 4]
+SHOULDER_ANGLE = 112
 
 
-def foot(name, y0, y1, x0, x1, ankle_x):
-    """His foot's whole silhouette, his line included: the layer's outline pass turns its edge into
-    the line again, so the foot keeps his size. Inside it his skin: the base, and the shadow next to
-    the line on the side away from the light (right) and along the sole."""
-    fig = N[name].min(2) <= 235
-    m = fig[y0:y1, x0:x1].copy()
-    ys, xs = np.nonzero(m)
-    m = m[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-    h, w = m.shape
-    for j in range(h):
-        xs_j = np.nonzero(m[j])[0]
-        if len(xs_j):
-            m[j, xs_j.min():xs_j.max() + 1] = True
-
-    def at(j, i):
-        return 0 <= j < h and 0 <= i < w and m[j, i]
-
-    def edge(j, i):
-        return at(j, i) and not (at(j, i + 1) and at(j, i - 1) and at(j + 1, i) and (j == 0 or at(j - 1, i)))
-
-    rows = []
-    for j in range(h):
-        r = ''
-        for i in range(w):
-            if not m[j, i]:
-                r += '.'
-            elif not edge(j, i) and (edge(j, i + 1) or edge(j + 1, i)):
-                r += 'r'
-            else:
-                r += 's'
-        rows.append(r)
-    return [int(ankle_x - (x0 + xs.min())), 0], rows
-
-
-FEET = {
-    'N': foot('lyra', 93, 98, 34, 44, 38),
-    'F': foot('lyra', 91, 96, 55, 70, 60),
-}
-
-
-def ts_template(p, rows, indent='  '):
+def ts_template(p, rows, indent='  ', extra=''):
     lines = [f'{indent}{{', f'{indent}  pivot: [{p[0]}, {p[1]}],', f'{indent}  rows: [']
     lines += [f"{indent}    '{r}'," for r in rows]
-    lines += [f'{indent}  ],', f'{indent}}}']
+    lines += [f'{indent}  ],']
+    if extra:
+        lines.append(f'{indent}  {extra}')
+    lines += [f'{indent}}}']
     return '\n'.join(lines)
 
 
@@ -296,8 +299,7 @@ if '--show' in sys.argv:
     print('ramp', RAMP)
     for k, (p, rows) in HANDS.items():
         show(f'hand {k} pivot {p}', rows)
-    for k, (p, rows) in FEET.items():
-        show(f'foot {k} pivot {p}', rows)
+    show(f'shoulder pivot {SHOULDER_PIVOT}', SHOULDER)
     sys.exit(0)
 
 out = ['// Generated by tools/refs/female-body-from-ref.py from the owner\'s heroines drawn at our scale',
@@ -310,15 +312,13 @@ out = ['// Generated by tools/refs/female-body-from-ref.py from the owner\'s her
 for k, v in RAMP.items():
     out.append(f"  {k}: '{v}',")
 out += ['};', '',
-        '/** The female hands, about 7x7 with the line (legend as ctx.ts: o line, D dark, x crease, s shadow, b base, l light). */',
-        'export const FEMALE_HANDS: Record<\'relaxed\' | \'grip\' | \'fist\' | \'fistFar\' | \'open\' | \'point\' | \'cradle\', PixelTemplate> = {']
+        '/** The female hands, his at our scale (legend as ctx.ts: o line, D deep, s shadow, b base, l light). */',
+        'export const FEMALE_HANDS: Record<\'relaxed\' | \'relaxedFar\' | \'grip\' | \'fist\' | \'fistFar\' | \'open\' | \'point\' | \'cradle\', PixelTemplate> = {']
 for k, (p, rows) in HANDS.items():
     out.append(f'  {k}: ' + ts_template(p, rows).lstrip() + ',')
 out += ['};', '',
-        '/** The female bare feet (legend as ctx.ts FOOT_BARE: q sole, r shadow, s base), the pivot on the ankle. */',
-        'export const FEMALE_FEET: { N: PixelTemplate; F: PixelTemplate } = {']
-for k, (p, rows) in FEET.items():
-    out.append(f'  {k}: ' + ts_template(p, rows).lstrip() + ',')
-out += ['};', '']
+        '/** Aurelia\'s bare near shoulder (same legend), its pivot on the shoulder joint; `angle` is her upper arm\'s on screen. */',
+        'export const FEMALE_SHOULDER_N: PixelTemplate & { angle: number } = ' + ts_template(SHOULDER_PIVOT, SHOULDER, '', f'angle: {SHOULDER_ANGLE},').lstrip() + ';',
+        '']
 open(OUT, 'w').write('\n'.join(out))
 print('wrote', os.path.relpath(OUT, REPO))

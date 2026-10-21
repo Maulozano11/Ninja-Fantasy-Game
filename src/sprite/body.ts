@@ -6,10 +6,12 @@
 // fine pixels (RES per design unit) for 128x128 detail.
 
 import { hexToRgb, hslToHex, makeRamp, mixHex, retintHex, rgbToHsl } from './color';
-import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
+import { armJoints, armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
+import { FEMALE_SHOULDER_N } from './femaleBodyArt';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
-import { stampPiece } from './painted';
+import { segAngle, stampPiece } from './painted';
+import { stampTemplate, type TemplatePalette } from './rotsprite';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { isFemaleBody, type FaceShape } from './types';
 
@@ -33,15 +35,18 @@ export function drawBody(g: DrawCtx): void {
     const shin = skin(s === 'N' ? 'shinN' : 'shinF', bias);
     legSpan(g, L, s, 0, 1, 0, thigh, 'skin');
     legSpan(g, L, s, 1, 2, 0, shin, 'skin');
-    // His heroines' legs: flat skin with a shadow just inside the line, away from the light.
+    // His heroines' legs: flat skin with a shadow rim just inside the line (see flatSkin).
     if (isFemaleBody(r.body)) flatSkin(L, g.skin, s === 'F' ? 2 : 3);
-    footDraw(g, L, s, FOOT_BARE);
+    // Every footwear item draws its own foot (sandals and wraps with the toes in skin), so the
+    // female bodies' short bare foot is left out under it rather than poking out past a boot's toe.
+    if (!(isFemaleBody(r.body) && g.has('feet'))) footDraw(g, L, s, FOOT_BARE);
   }
 
   // Torso + neck
   const torso = g.L('torso.body');
   fillTorso(g, torso, 0, skin('torso'));
-  if (b.bust > 0) sculptTorso(g, torso, g.skin, 'skin');
+  if (isFemaleBody(r.body)) flatTorso(g, torso);
+  else if (b.bust > 0) sculptTorso(g, torso, g.skin, 'skin');
   const neckTop = v(r.head.x + 0.4 * b.headScale, r.head.y + 4 * b.headScale);
   capsule(torso, r.neck, neckTop, b.neckW, b.neckW * 0.95, skin('torso'), (x) => (x < r.neck.x - 0.6 ? 3 : 2));
   // Nape: the back of the neck, from under the skull down to the shoulders.
@@ -214,8 +219,15 @@ function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
   // muscle just below the elbow, on the side facing the light; a shadow line
   // under the forearm crest and at the inner elbow.
   if (isFemaleBody(g.rig.body)) {
-    // The owner paints his heroines' arms flat: no muscle lines (see flatSkin).
+    // The owner paints his heroines' arms flat: no muscle lines (see flatSkin). The near shoulder
+    // is his: Aurelia's bare shoulder (femaleBodyArt.ts), turned with the upper arm.
     flatSkin(L, upper.mat, s === 'F' ? 2 : 3);
+    if (s === 'N') {
+      const j = armJoints(g.rig, s);
+      const P = FEMALE_SHOULDER_N;
+      const pal: TemplatePalette = { o: [upper.mat, 0], D: [upper.mat, 1], s: [upper.mat, 2], b: [upper.mat, 3] };
+      stampTemplate(L, P, j.shoulder, segAngle(j.shoulder, j.elbow) - P.angle, pal, upper.part, { flags: F_NO_OUTLINE | F_NO_TEXTURE });
+    }
     return;
   }
   muscleLine(g, L, s, upper.mat, 0.22, 0.72, 0.42, 1);
@@ -224,13 +236,13 @@ function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
 }
 
 /**
- * Skin painted the way the owner paints his heroines (his game-scale pictures): one flat tone
- * (`base`) with a shadow one shade darker along the side away from the light, the right and the
- * underside, just inside the line. A pixel on the silhouette's edge becomes the line in the
- * layer's outline pass, so the shadow is the pixel next to it. Hands, feet and other templates
+ * Skin painted the way the owner paints his heroines (his game-scale pictures: Aurelia's and Saya's
+ * bare shoulders, Lyra's thighs): one flat tone (`base`) inside a rim one shade darker, the pixel
+ * just inside the line all round. A pixel on the silhouette's edge becomes the line in the layer's
+ * outline pass, so the rim is the pixel next to it. Hands, feet and his painted pieces
  * (F_NO_TEXTURE) keep their own pixels.
  */
-function flatSkin(L: Layer, mat: number, base: number, rim = 1): void {
+function flatSkin(L: Layer, mat: number, base: number): void {
   const own = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && L.mat[y * GRID + x] === mat;
   const edge = (x: number, y: number) => own(x, y) && !(own(x + 1, y) && own(x - 1, y) && own(x, y + 1) && own(x, y - 1));
   const out: [number, number][] = [];
@@ -238,12 +250,36 @@ function flatSkin(L: Layer, mat: number, base: number, rim = 1): void {
     for (let x = 0; x < GRID; x++) {
       const i = y * GRID + x;
       if (L.mat[i] !== mat || L.shade[i] === 0 || L.flags[i] & F_NO_TEXTURE || edge(x, y)) continue;
-      let sh = base;
-      for (let k = 1; k <= rim; k++) if (edge(x + k, y) || edge(x, y + k) || edge(x + k, y + k)) sh = base - 1;
-      out.push([i, sh]);
+      const rim = edge(x + 1, y) || edge(x - 1, y) || edge(x, y + 1) || edge(x, y - 1);
+      out.push([i, rim ? base - 1 : base]);
     }
   }
   for (const [i, sh] of out) L.shade[i] = sh;
+}
+
+/**
+ * The female torso's bare skin, the owner's way (see flatSkin): flat, with his shadow only where a
+ * form turns under: a soft crease under the bust and the navel.
+ */
+function flatTorso(g: DrawCtx, L: Layer): void {
+  flatSkin(L, g.skin, 3);
+  const { forms } = bustForms(g);
+  for (let fy = 0; fy < GRID; fy++) {
+    for (let fx = 0; fx < GRID; fx++) {
+      const i = fy * GRID + fx;
+      if (L.mat[i] !== g.skin || L.shade[i] === 0) continue;
+      const [lx, ly] = torsoLocal(g, (fx + 0.5) / RES, (fy + 0.5) / RES);
+      const under = forms.some(([cx, cy, rx, ry]) => {
+        const u = (lx - cx) / rx;
+        return Math.abs(u) < 0.8 && Math.abs(ly - (cy - ry * 0.95 + 0.9 * u * u)) < 0.3;
+      });
+      if (under) L.reshade(fx, fy, 2);
+    }
+  }
+  const n = g.rig.T(1.5, (g.bp.waistY ?? 5.4) - 1.2);
+  const nx = Math.floor(n.x * RES);
+  const ny = Math.floor(n.y * RES);
+  if (L.has(nx, ny) && L.mat[ny * GRID + nx] === g.skin) L.reshade(nx, ny, 2);
 }
 
 /**

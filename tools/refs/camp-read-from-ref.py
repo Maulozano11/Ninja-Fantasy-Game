@@ -23,14 +23,25 @@ From that map, cleaned of the blur by hand:
                  does. Its pivot is the far wrist, under his hand on the right board.
   READ_PAGE_TURN a page of the right half turning over to the left in three steps, in his page colours
                  and drawn over his book from the same pivot.
-  HAND_CHIN      his fist under the chin, the forearm rising to it from the elbow (the rig draws the
-                 forearm; the fist is stamped on the wrist).
-  HAND_BOOK      his hand on the book's right board: the back of the hand, fingers up the cover.
+  HAND_CHIN      his hand under the chin, his pixels: two rows of lit skin lying level under the jaw,
+                 outlined, from the wrist to the fingers' ends past the chin.
+  FOREARM_CHIN   his forearm rising to it, his pixels: a broad block from the elbow (its lower left,
+                 where the sleeve ends) up to the book's top left corner, lit along its right side with
+                 a pale rim, in shadow along its top left edge; the wrist turns up from its top corner
+                 to the hand.
+  HAND_BOOK      his hand on the book's right board, his pixels: three fingers up the cover a pixel
+                 apart with the board between them and a short one on the outside, the back of the
+                 hand below them, in the darker, redder skin of a hand in shadow.
 
-The hands are written in our hand shades (o D s b l: line, dark, shadow, base, light), so they take the
-character's skin and gloves like every hand of ours. Everything is in his picture's places: in our frame
-his pixel (x, y) is (x, y + 1) (our face is one row lower than his), measured from the chin pixel
-(rig.ts chinPixel, (120, 159) on the male).
+The hands and the forearm are his pixels at his size, read at each fine pixel's middle and sorted by
+their brightness into his flat skin steps (o D s b l h on the near arm: line, dark, shadow, base, light,
+rim; o k d m t on the book hand: line, darkest, dark, mid, lit), each step his colour: the mean of his
+samples of it (inside cells; the line from its darker half, an edge step from its lighter half, the
+rest being the webp's blur into what they border). `--study` writes his picture at our grid beside them.
+A character's skin moves his colours as far as READ_SKIN (his base) is from it; gloves and sleeves take
+his steps as their own shades (READ_STEPS). Everything is in his picture's places: in our frame his pixel
+(x, y) is (x, y + 1) (our face is one row lower than his), measured from the chin pixel (rig.ts
+chinPixel, (120, 159) on the male).
 
     python3 -I tools/refs/camp-read-from-ref.py src/sprite/readArt.ts [--study <dir>]
 """
@@ -91,37 +102,80 @@ GUTTER = (131, 164)
 # the left half. The V's own arms are at about 34 and 165 degrees.
 TURN = [(58, 8.5), (92, 6.0), (128, 8.5)]
 
-# His hand under the chin (rows from x = 117): the forearm rises to the wrist at its lower left and the
-# hand lies level under the jaw, its fingers reaching forward past the chin, lit on top, their ends in
-# dark skin. Pivot on the wrist (117, 162).
-CHIN_X0, CHIN_Y0 = 117, 158
-CHIN = [
-    '....ooooooo...',
-    '..oobllllllbo.',
-    '.osbbllllbbsDo',
-    'osbbbbbbsDDoo.',
-    'os.ooooooo....',
-]
+# His near arm and his hand on the book, as (x0, y0, rows) in his picture's pixels, one letter per fine
+# pixel: his samples sorted by brightness into his steps (the Y thresholds in STEP_Y), cleaned of the
+# webp's blur (a line under the jaw where the chin's line and the hand's top blur together; the edge
+# cells that fall between two steps taken to the one the cells beside them are in).
+# His hand under the chin: two rows of skin lying level under the jaw from the wrist to the fingers' ends
+# past the chin, lit (the rim of light on top in the middle), its ends in shadow, outlined.
+CHIN_HAND = (119, 158, [
+    'oooooooo',
+    'oDDbhlbso',
+    'obbllllbDo',
+    '.Doooooooo',
+])
+# His forearm: a broad block from the elbow at its lower left (where the sleeve ends, his line closing
+# it) up to the book's top left corner, the lit side toward the book with a pale rim along it, the top
+# left edge in shadow; the wrist turns up from its top corner to the hand under the chin. The line down
+# its right side is the book's left edge (the book is drawn over it).
+CHIN_FORE = (108, 160, [
+    '..........o',
+    '.........oDs',
+    '........oDo',
+    '......ooDbo',
+    '....ooDshbo',
+    '..ooDDbhhbo',
+    '..osssllhbo',
+    '.osbbbllho',
+    'ossbblllho',
+    'oosbblllho',
+    '.oDsbllhDo',
+    '..oDsbbbo',
+    '...oDsDso',
+    '....ooooo',
+])
+# His hand on the right board: three fingers up the cover a pixel apart with the board between them and a
+# short one on the outside, lit at the tips of two; the back of the hand below them, lit toward the
+# book's edge, outlined below and down its outer side.
+BOOK_HAND = (131, 170, [
+    '...d.t.d',
+    '...m.m.d',
+    '.d.t.d.d',
+    'odmmmmdd',
+    'okmmmtto',
+    '.okdmmko',
+    '.okdmko',
+    '.ooooo',
+])
+# Brightness (Y) below which a sample is each step: the near arm, the book hand.
+STEP_Y = {'arm': [(75, 'o'), (150, 'D'), (175, 's'), (195, 'b'), (205.5, 'l'), (999, 'h')],
+          'book': [(70, 'o'), (112, 'k'), (128, 'd'), (150, 'm'), (999, 't')]}
+# His colours for the steps (the means `--study` prints, to within a unit).
+ARM_COLORS = {
+    'o': '#27150f',  # line
+    'D': '#9c7a68',  # dark
+    's': '#ce9b86',  # shadow
+    'b': '#e4ad93',  # base
+    'l': '#f1bb9d',  # light
+    'h': '#f4c4aa',  # rim
+}
+BOOK_HAND_COLORS = {
+    'o': '#20120e',  # line
+    'k': '#8c5e52',  # darkest
+    'd': '#9d6f66',  # dark
+    'm': '#bb786b',  # mid
+    't': '#c48f87',  # lit
+}
+# His base skin, which a character's skin replaces.
+SKIN = ARM_COLORS['b']
+# His steps as our ramp shades (for gloves, sleeves and bracers on his shapes).
+STEPS = {'o': 0, 'D': 1, 's': 2, 'b': 3, 'l': 4, 'h': 4, 'k': 1, 'd': 2, 'm': 3, 't': 4}
+# The wrists (the rig's: chin pixel + READ_HOLD), his pixels: the pivots.
 CHIN_WRIST = (117, 162)
-# His hand on the right board (rows from x = 130), as his picture shows it at its own resolution: four
-# fingers up the cover a pixel apart with the board between them, the outer one shortest, their tips
-# lit; the back of the hand broad below them, lit in the middle, narrowing to the wrist; its outer
-# side on the board's edge. Pivot on the wrist (134, 173), in the palm, so the forearm behind it
-# stays hidden.
-HAND_X0, HAND_Y0 = 130, 168
-HAND = [
-    '.....o.o..',
-    '...o.l.lo.',
-    '.o.l.b.bo.',
-    '.l.b.b.bo.',
-    'obsbsbssDo',
-    'osbbllbsDo',
-    '.obbbbbsDo',
-    '..osbbsDo.',
-    '...ossDo..',
-    '....ooo...',
-]
 HAND_WRIST = (134, 173)
+# Under a glove that leaves the fingers bare: the hand under the chin up to its knuckles (this many
+# pixels right of the wrist), the hand on the book below its fingers (this many rows below the wrist).
+KNUCKLES = {'chin': 6, 'book': 0}
 
 
 def page(deg, length):
@@ -217,33 +271,55 @@ def write(path):
         out += ['  {', f'    pivot: [{pv[0]}, {pv[1]}],', '    rows: [']
         out += [f"      '{r}'," for r in rows]
         out += ['    ],', '    colors: READ_BOOK_COLORS,', '  },']
+    def piece(name, spec, wrist, colors, doc):
+        x0, y0, rows = spec
+        return ['/**'] + [f' * {d}' for d in doc] + [' */', f'export const {name}: PaintedProp = {{',
+                f'  pivot: [{wrist[0] - x0}, {wrist[1] - y0}],', '  rows: [', ts_rows(rows), '  ],',
+                f'  colors: {colors},', '};', '']
+
+    hexes = lambda d: '\n'.join(f"  {k}: '{v}'," for k, v in d.items())
     out += [
         '];',
         '',
-        '/**',
-        ' * His fist under the chin: the hand at the end of the forearm rising from the elbow turns level',
-        ' * under the chin, the back of the curled fingers lit on top where the chin rests on them, the',
-        ' * finger ends below. In our hand shades (o D s b l), stamped unrotated, the pivot on the wrist at',
-        ' * its lower left.',
-        ' */',
-        'export const HAND_CHIN: PixelTemplate = {',
-        f'  pivot: [{CHIN_WRIST[0] - CHIN_X0}, {CHIN_WRIST[1] - CHIN_Y0}],',
-        '  rows: [',
-        ts_rows(CHIN),
-        '  ],',
+        '/** His skin on the read pose\'s hands and forearm (his base, the \'b\' step): a character\'s skin moves them as far. */',
+        f"export const READ_SKIN = '{SKIN}';",
+        '',
+        '/** His colours for the near arm\'s steps: line, dark, shadow, base, light, the pale rim. */',
+        'export const READ_ARM_COLORS: Record<string, string> = {',
+        hexes(ARM_COLORS),
         '};',
         '',
-        '/**',
-        ' * His hand holding the book up by its right board: the back of the hand over the cover, the fingers',
-        ' * up the board with dark skin between them, the light on their tips and knuckles. In our hand',
-        ' * shades, stamped unrotated, the pivot on the wrist under it.',
-        ' */',
-        'export const HAND_BOOK: PixelTemplate = {',
-        f'  pivot: [{HAND_WRIST[0] - HAND_X0}, {HAND_WRIST[1] - HAND_Y0}],',
-        '  rows: [',
-        ts_rows(HAND),
-        '  ],',
+        '/** His colours for the hand on the book (a hand in shadow, darker and redder): line, darkest, dark, mid, lit. */',
+        'export const READ_BOOK_HAND_COLORS: Record<string, string> = {',
+        hexes(BOOK_HAND_COLORS),
         '};',
+        '',
+        '/** His steps as our ramp shades, for gloves, sleeves and bracers drawn on his shapes. */',
+        'export const READ_STEPS: Record<string, number> = {',
+        hexes(STEPS).replace("'", ''),
+        '};',
+        '',
+    ]
+    out += piece('HAND_CHIN', CHIN_HAND, CHIN_WRIST, 'READ_ARM_COLORS', [
+        'His hand under the chin, his pixels at his size: two rows of skin lying level under the jaw from the',
+        'wrist to the fingers\' ends past the chin, lit, its ends in shadow, outlined. Stamped unrotated, the',
+        'pivot on the near wrist (its lower left, where the forearm\'s wrist turns up to it).'])
+    out += piece('FOREARM_CHIN', CHIN_FORE, CHIN_WRIST, 'READ_ARM_COLORS', [
+        'His forearm rising to the hand under the chin, his pixels at his size: a broad block from the elbow',
+        'at its lower left (where the sleeve ends, closed by his line) up to the book\'s top left corner, lit',
+        'toward the book with a pale rim, its top left edge in shadow; the wrist turns up from its top corner',
+        'to the hand. The line down its right side is the book\'s left edge. Same pivot as HAND_CHIN.'])
+    out += piece('HAND_BOOK', BOOK_HAND, HAND_WRIST, 'READ_BOOK_HAND_COLORS', [
+        'His hand holding the book up by its right board, his pixels at his size: three fingers up the cover a',
+        'pixel apart with the board between them and a short one on the outside, the back of the hand below',
+        'them, outlined below and down its outer side. Stamped unrotated, the pivot on the far wrist (the',
+        'book\'s pivot).'])
+    out += [
+        '/**',
+        ' * Under a glove that leaves the fingers bare: the hand under the chin up to its knuckles (pixels right',
+        ' * of the wrist), the hand on the book below its fingers (rows below the wrist).',
+        ' */',
+        f"export const READ_KNUCKLES = {{ chin: {KNUCKLES['chin']}, book: {KNUCKLES['book']} }};",
         '',
     ]
     with open(path, 'w') as f:
@@ -305,6 +381,87 @@ def study(outdir):
     im.paste(left, (0, 0))
     im.paste(right, (69 * k + 10, 0))
     im.save(os.path.join(outdir, 'camp-read-study.png'))
+    study_hands(a, outdir)
+
+
+def study_hands(a, outdir):
+    """His near arm and book hand at our grid: his steps by brightness, the means per step, and his
+    picture beside the cleaned maps in his colours (12x)."""
+    import os
+
+    import numpy as np
+    from PIL import Image, ImageDraw
+
+    def bil(x, y):
+        x0, y0 = int(np.floor(x)), int(np.floor(y))
+        fx, fy = x - x0, y - y0
+        return (a[y0, x0] * (1 - fx) * (1 - fy) + a[y0, x0 + 1] * fx * (1 - fy)
+                + a[y0 + 1, x0] * (1 - fx) * fy + a[y0 + 1, x0 + 1] * fx * fy)
+
+    def fine(sx, sy, r=0.25):
+        """Our sprite pixel (sx, sy) of the sheet: his samples over its middle (+-r of a fine pixel)."""
+        cx = U + (sx - SHEET[0] + 0.5) * PITCH - 0.5
+        cy = V + (sy - SHEET[1] + 0.5) * PITCH - 0.5
+        return np.mean([bil(xx, yy) for yy in np.linspace(cy - r * PITCH, cy + r * PITCH, 3)
+                        for xx in np.linspace(cx - r * PITCH, cx + r * PITCH, 3)], 0)
+
+    lum = lambda c: 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+    for name, (x0, y0, x1, y1), steps in (('near arm', (106, 156, 130, 175), STEP_Y['arm']),
+                                          ('book hand', (129, 168, 141, 179), STEP_Y['book'])):
+        print(f'his {name}, steps by brightness (x from {x0}):')
+        for y in range(y0, y1):
+            row = ''
+            for x in range(x0, x1):
+                c = fine(x, y)
+                warm = c[0] - c[2] > 25 and c[0] > 90
+                Y = lum(c)
+                row += 'o' if Y < steps[0][0] else ('.' if not warm else next(ch for t, ch in steps if Y < t))
+            print('%4d ' % y + row)
+
+    def cells(spec):
+        x0, y0, rows = spec
+        return {(x0 + i, y0 + j): ch for j, r in enumerate(rows) for i, ch in enumerate(r) if ch != '.'}
+
+    arm = {**cells(CHIN_FORE), **cells(CHIN_HAND)}
+    book = cells(BOOK_HAND)
+    for name, cs in (('near arm', arm), ('book hand', book)):
+        print(f'his {name}, mean per step:')
+        by = {}
+        for (x, y), ch in cs.items():
+            inner = all(cs.get((x + dx, y + dy), '.') not in '.o' for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+            d = by.setdefault(ch, ([], []))
+            d[1].append(fine(x, y))
+            if inner:
+                d[0].append(fine(x, y))
+        for ch, (inner, every) in by.items():
+            s = sorted(every, key=lambda c: c.sum())
+            if ch == 'o':
+                m = np.mean(s[:max(1, len(s) // 2)], 0)
+            elif len(inner) >= 2:
+                m = np.mean(inner, 0)
+            else:
+                m = np.mean(s[len(s) // 2:], 0)
+            print(' ', ch, '#%02x%02x%02x' % tuple(int(round(v)) for v in m))
+    k = 12
+    x0, y0, x1, y1 = 104, 154, 142, 180
+    W, H = (x1 - x0) * k, (y1 - y0) * k
+    left = Image.new('RGB', (W, H))
+    right = Image.new('RGB', (W, H))
+    dl, dr = ImageDraw.Draw(left), ImageDraw.Draw(right)
+    box = lambda x, y: [(x - x0) * k, (y - y0) * k, (x - x0 + 1) * k - 1, (y - y0 + 1) * k - 1]
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            c = tuple(int(round(v)) for v in fine(x, y))
+            dl.rectangle(box(x, y), fill=c)
+            dr.rectangle(box(x, y), fill=c)
+    hexrgb = lambda h: tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+    for cs, pal in ((arm, ARM_COLORS), (book, BOOK_HAND_COLORS)):
+        for (x, y), ch in cs.items():
+            dr.rectangle(box(x, y), fill=hexrgb(pal[ch]))
+    im = Image.new('RGB', (W * 2 + 10, H))
+    im.paste(left, (0, 0))
+    im.paste(right, (W + 10, 0))
+    im.save(os.path.join(outdir, 'camp-read-hands-study.png'))
 
 
 if __name__ == '__main__':

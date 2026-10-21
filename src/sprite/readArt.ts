@@ -110,40 +110,108 @@ export const READ_PAGE_TURN: PaintedProp[] = [
   },
 ];
 
-/**
- * His fist under the chin: the hand at the end of the forearm rising from the elbow turns level
- * under the chin, the back of the curled fingers lit on top where the chin rests on them, the
- * finger ends below. In our hand shades (o D s b l), stamped unrotated, the pivot on the wrist at
- * its lower left.
- */
-export const HAND_CHIN: PixelTemplate = {
-  pivot: [0, 4],
-  rows: [
-    '....ooooooo...',
-    '..oobllllllbo.',
-    '.osbbllllbbsDo',
-    'osbbbbbbsDDoo.',
-    'os.ooooooo....',
-  ],
+/** His skin on the read pose's hands and forearm (his base, the 'b' step): a character's skin moves them as far. */
+export const READ_SKIN = '#e4ad93';
+
+/** His colours for the near arm's steps: line, dark, shadow, base, light, the pale rim. */
+export const READ_ARM_COLORS: Record<string, string> = {
+  o: '#27150f',
+  D: '#9c7a68',
+  s: '#ce9b86',
+  b: '#e4ad93',
+  l: '#f1bb9d',
+  h: '#f4c4aa',
+};
+
+/** His colours for the hand on the book (a hand in shadow, darker and redder): line, darkest, dark, mid, lit. */
+export const READ_BOOK_HAND_COLORS: Record<string, string> = {
+  o: '#20120e',
+  k: '#8c5e52',
+  d: '#9d6f66',
+  m: '#bb786b',
+  t: '#c48f87',
+};
+
+/** His steps as our ramp shades, for gloves, sleeves and bracers drawn on his shapes. */
+export const READ_STEPS: Record<string, number> = {
+  o: 0,
+  D: 1,
+  s: 2,
+  b: 3,
+  l: 4,
+  h: 4,
+  k: 1,
+  d: 2,
+  m: 3,
+  t: 4,
 };
 
 /**
- * His hand holding the book up by its right board: the back of the hand over the cover, the fingers
- * up the board with dark skin between them, the light on their tips and knuckles. In our hand
- * shades, stamped unrotated, the pivot on the wrist under it.
+ * His hand under the chin, his pixels at his size: two rows of skin lying level under the jaw from the
+ * wrist to the fingers' ends past the chin, lit, its ends in shadow, outlined. Stamped unrotated, the
+ * pivot on the near wrist (its lower left, where the forearm's wrist turns up to it).
  */
-export const HAND_BOOK: PixelTemplate = {
-  pivot: [4, 5],
+export const HAND_CHIN: PaintedProp = {
+  pivot: [-2, 4],
   rows: [
-    '.....o.o..',
-    '...o.l.lo.',
-    '.o.l.b.bo.',
-    '.l.b.b.bo.',
-    'obsbsbssDo',
-    'osbbllbsDo',
-    '.obbbbbsDo',
-    '..osbbsDo.',
-    '...ossDo..',
-    '....ooo...',
+    'oooooooo',
+    'oDDbhlbso',
+    'obbllllbDo',
+    '.Doooooooo',
   ],
+  colors: READ_ARM_COLORS,
 };
+
+/**
+ * His forearm rising to the hand under the chin, his pixels at his size: a broad block from the elbow
+ * at its lower left (where the sleeve ends, closed by his line) up to the book's top left corner, lit
+ * toward the book with a pale rim, its top left edge in shadow; the wrist turns up from its top corner
+ * to the hand. The line down its right side is the book's left edge. Same pivot as HAND_CHIN.
+ */
+export const FOREARM_CHIN: PaintedProp = {
+  pivot: [9, 2],
+  rows: [
+    '..........o',
+    '.........oDs',
+    '........oDo',
+    '......ooDbo',
+    '....ooDshbo',
+    '..ooDDbhhbo',
+    '..osssllhbo',
+    '.osbbbllho',
+    'ossbblllho',
+    'oosbblllho',
+    '.oDsbllhDo',
+    '..oDsbbbo',
+    '...oDsDso',
+    '....ooooo',
+  ],
+  colors: READ_ARM_COLORS,
+};
+
+/**
+ * His hand holding the book up by its right board, his pixels at his size: three fingers up the cover a
+ * pixel apart with the board between them and a short one on the outside, the back of the hand below
+ * them, outlined below and down its outer side. Stamped unrotated, the pivot on the far wrist (the
+ * book's pivot).
+ */
+export const HAND_BOOK: PaintedProp = {
+  pivot: [3, 3],
+  rows: [
+    '...d.t.d',
+    '...m.m.d',
+    '.d.t.d.d',
+    'odmmmmdd',
+    'okmmmtto',
+    '.okdmmko',
+    '.okdmko',
+    '.ooooo',
+  ],
+  colors: READ_BOOK_HAND_COLORS,
+};
+
+/**
+ * Under a glove that leaves the fingers bare: the hand under the chin up to its knuckles (pixels right
+ * of the wrist), the hand on the book below its fingers (rows below the wrist).
+ */
+export const READ_KNUCKLES = { chin: 6, book: 0 };

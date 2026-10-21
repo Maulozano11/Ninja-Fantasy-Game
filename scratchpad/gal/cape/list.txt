@@ -1,0 +1,6 @@
+cape_shadow|Shadow Half-Cloak
+cape_haori|White Battle Haori
+cape_knight|Crimson Knight Cape
+cape_rogue|Rogue Storm Cloak
+cape_traveler|Traveler's Cape
+cape_scarf|Long Scarf

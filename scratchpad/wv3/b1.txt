@@ -1,0 +1,16 @@
+8352ebec92e7786ecfe095baa6841273  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/aura.png
+f887cb12c1b2f462bb61bc4da1291c2c  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/aura_back.png
+9e55b23af2e97bc99fad986bda2947f4  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/beast.png
+87a544d9ee8f5041ac4095668951e927  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/blast.png
+04307eb17bf206ac9c618a10bb400c8f  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/bolt.png
+5f9d237407e65f472830ef45833dbee9  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/breath.png
+b73f1e4b98fdbc4a4c58753180aaf6ef  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/hit.png
+7a10c4fbb434093d2f0687d5d332b93c  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/manifest.json
+1ae2b94ee3fc41a916b8b3a71888c359  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/multi.png
+d386822c33dea1868069838a798d11bd  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/slash.png
+25585c8f179938de85a8168d99779e01  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/sphere.png
+903ab8c97aa5788d890fb4afc1336ddd  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/stream.png
+c026d8ee56d1bcde3a45a538667abb35  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/stream_head.png
+6600c58600041d6dfba1d33a873b5145  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/wall.png
+50ed02b78ab3d7aaf5d383112f520fb0  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/wall_depth.png
+a78946aa6c45b9e427caec0d0db6f885  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/vfx_wind_v3/wall_diag.png

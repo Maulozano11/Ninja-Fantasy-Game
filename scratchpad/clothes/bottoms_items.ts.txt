@@ -1,0 +1,141 @@
+export const BOTTOM_ITEMS: ItemDef[] = liftMain([
+  {
+    id: 'bottom_shinobi',
+    slot: 'bottom',
+    name: 'Shinobi Pants',
+    desc: 'Fitted trousers with bandage wraps at the ankles.',
+    colors: [col('main', 'Pants', '#2b3346'), col('wrap', 'Wraps', '#e7e1d1')],
+    draw: (g, [c, w]) => {
+      trousers(g, c, 1.8, 0.55);
+      waistband(g, 3);
+      for (const s of SIDES) {
+        const L = g.L(legDepth(s, 'cloth'));
+        legFolds(g, L, s, 0.5, 1.5);
+        // a long crease down the front of the thigh
+        fold(L, along(legPoint(g, s, 0.15), legPoint(g, s, 0.7), 0.2, 0.9), along(legPoint(g, s, 0.15), legPoint(g, s, 0.7), 1, 1.3));
+        // ankle wraps: a cylinder band, lit at the top, wound in diagonal turns
+        lifted(w, () => {
+          const wp = clothPen(g, w, prt('shin', s), sb(s));
+          across(g, L, 'leg', s, 1.53, 0.6, -1);
+          limb(g, L, 'leg', s, 1.56, 1.97, [0.5, 0.35], wp, { light: bandLight(g, 'leg', s, 1.56, 1.97) });
+          wrapStripes(L, legPoint(g, s, 1.6), legPoint(g, s, 1.95), limbR(g, 'leg', 1.6) + 1, 1.1, -1, 0.7);
+        });
+      }
+    },
+  },
+  {
+    id: 'bottom_shorts',
+    slot: 'bottom',
+    name: 'Training Shorts',
+    desc: 'Loose knee-length shorts with a drawstring waist and contrasting rolled hem.',
+    colors: [col('main', 'Shorts', '#3b4a6b'), col('hem', 'Hem', '#28324a')],
+    draw: (g, [c, h]) => {
+      for (const s of SIDES) {
+        const L = g.L(legDepth(s, 'cloth'));
+        limb(g, L, 'leg', s, 0, 0.74, [0.6, 1.2], clothPen(g, c, prt('thigh', s), sb(s)), { round0: true, light: legLight(s) });
+        // loose cloth pulling from the crotch toward the outer hem
+        const a = legPoint(g, s, 0.12);
+        const b = legPoint(g, s, 0.62);
+        fold(L, along(a, b, 0.1, -limbR(g, 'leg', 0.15) * 0.5), along(a, b, 1, limbR(g, 'leg', 0.6) * 0.5), 1);
+        fold(L, along(a, b, 0.45, -limbR(g, 'leg', 0.4) - 0.6), along(a, b, 0.95, -limbR(g, 'leg', 0.6) * 0.2), 1);
+        lifted(h, () => cuff(g, L, 'leg', s, 0.62, 0.76, 1.35, clothPen(g, h, prt('thigh', s), sb(s)), 1.2));
+      }
+      seat(g, c, (t) => 0.6 + (0.6 * t) / 0.74, 3);
+      waistband(g, 3);
+    },
+  },
+  {
+    id: 'bottom_hakama',
+    slot: 'bottom',
+    name: 'Wide Hakama',
+    desc: 'Pleated wide-legged trousers that fall almost like a skirt, tied high at the waist.',
+    colors: [col('main', 'Hakama', '#2c3043'), col('ties', 'Ties', '#cfc8b6')],
+    draw: (g, [c, t]) => {
+      const b = g.bp;
+      for (const s of SIDES) {
+        const L = g.L(legDepth(s, 'cloth'));
+        const pen = clothPen(g, c, prt('thigh', s), sb(s));
+        limb(g, L, 'leg', s, 0, 1.9, 1.2, pen, { round0: true, light: legLight(s) });
+        // each leg is its own wide panel, falling nearly straight from the hip, with deep knife pleats
+        const pts = widePanel(g, L, s, b.legR[0] + 0.4, b.legR[0] + 1.5, 1.95, pen, s === 'F' ? 0.14 : 0.04);
+        for (const k of [0.22, 0.5, 0.78]) fold(L, lerp(pts[0], pts[1], k), lerp(pts[3], pts[2], k - 0.03), 2, 4);
+        // the hem: a lit turn above the bottom edge
+        mark(L, add(pts[3], v(0.6, -1.0)), add(pts[2], v(-0.6, -1.0)), (s2) => Math.min(4, s2 + 1));
+      }
+      // seat with the split between the legs, tied high at the waist
+      seat(g, c, () => 1.2, 4.8);
+      const TL = g.L('torso.bottom');
+      lifted(t, () => hemBand(g, TL, 3.6, 4.8, 0.9, clothPen(g, t, 'torso'), { tuck: false }));
+      tmark(g, TL, -b.hipHalf - 1, 3.4, b.hipHalf + 1, 3.4, (s) => s - 1);
+    },
+  },
+  {
+    id: 'bottom_cargo',
+    slot: 'bottom',
+    name: 'Baggy Cargo Pants',
+    desc: 'Roomy work trousers bloused at the ankle, with a strapped thigh pouch.',
+    colors: [col('main', 'Pants', '#55603f'), col('pouch', 'Pouch', '#6e5a3c', 'leather')],
+    draw: (g, [c, p]) => {
+      trousers(g, c, 1.86, 1.05, 3.2);
+      waistband(g, 3.2);
+      for (const s of SIDES) {
+        const L = g.L(legDepth(s, 'cloth'));
+        const R = g.bp.legR;
+        const pen = clothPen(g, c, prt('shin', s), sb(s));
+        // bloused cuff: the cloth balloons over a gathered band
+        limb(g, L, 'leg', s, 1.58, 1.8, [1.0, 1.2], pen, { light: legLight(s) });
+        legFolds(g, L, s, 1.05, 1.74);
+        cuff(g, L, 'leg', s, 1.8, 1.97, 0.5, pen, 1.2);
+        fold(L, along(legPoint(g, s, 0.2), legPoint(g, s, 0.8), 0.1, 1.4), along(legPoint(g, s, 0.2), legPoint(g, s, 0.8), 0.9, 1.9));
+        if (s === 'F') continue;
+        // Thigh pouch (own layer so it gets its own outline) with a buttoned flap and a leg strap
+        lifted(p, () => {
+          const P = g.L(legDepth(s, 'armor'));
+          const a = legPoint(g, s, 0.36);
+          const bb = legPoint(g, s, 0.78);
+          const d = norm(sub(bb, a));
+          const off = -(R[0] * 0.3);
+          const w = 1.8;
+          const pp = clothPen(g, p, prt('thigh', s), sb(s), 'leather');
+          limb(g, P, 'leg', s, 0.18, 0.26, 1.15, pp, { light: bandLight(g, 'leg', s, 0.18, 0.26) });
+          poly(P, [along(a, bb, 0, off - w), along(a, bb, 0, off + w), along(a, bb, 1, off + w * 0.9), along(a, bb, 1, off - w * 0.9)], pp, (x, y) => {
+            const o = ((x + 0.5 - a.x) * -d.y + (y + 0.5 - a.y) * d.x - off) / w;
+            return tone(cylLight(clamp(o, -1, 1), perp(d)) - 0.1);
+          });
+          // flap: lit top edge, dark shadow under it
+          poly(P, [along(a, bb, -0.04, off - w - 0.2), along(a, bb, -0.04, off + w + 0.2), along(a, bb, 0.36, off + w + 0.1), along(a, bb, 0.36, off - w - 0.1)], pp, (x, y) => {
+            const o = ((x + 0.5 - a.x) * -d.y + (y + 0.5 - a.y) * d.x - off) / w;
+            return tone(cylLight(clamp(o, -1, 1), perp(d)) + 0.25);
+          });
+          seam(P, along(a, bb, 0.39, off - w), along(a, bb, 0.39, off + w), -2);
+          fpx(P, along(a, bb, 0.26, off), g.m('#b9c0c8', 'metal'), prt('thigh', s), 4);
+        });
+      }
+    },
+  },
+  {
+    id: 'bottom_leggings',
+    slot: 'bottom',
+    name: 'Fitted Leggings',
+    desc: 'Snug stretch leggings with a contrasting side seam.',
+    colors: [col('main', 'Leggings', '#2a2433'), col('seam', 'Side Seam', '#7a68a0')],
+    draw: (g, [c, sc]) => {
+      trousers(g, c, 1.96, 0.18, 3.4);
+      waistband(g, 3.4);
+      for (const s of SIDES) {
+        const L = g.L(legDepth(s, 'cloth'));
+        const sp = clothPen(g, sc, prt('thigh', s), sb(s));
+        const hip = legPoint(g, s, 0.06);
+        const knee = legPoint(g, s, 1);
+        const ank = legPoint(g, s, 1.94);
+        // stretch cloth only creases softly behind the knee
+        const side = bendSide(g, 'leg', s, 1);
+        const r = limbR(g, 'leg', 1) + 0.18;
+        fold(L, along(hip, knee, 0.86, side * r * 0.9), along(knee, ank, 0.04, side * r * 0.1));
+        // side seam: two fine lines along the outer side of the leg
+        stitch(L, along(hip, knee, 0, -g.bp.legR[0] * 0.25), along(hip, knee, 1, -g.bp.legR[1] * 0.35), sp, 3, 0);
+        stitch(L, along(knee, ank, 0, -g.bp.legR[1] * 0.35), along(knee, ank, 1, -g.bp.legR[3] * 0.3), { ...sp, part: prt('shin', s) }, 3, 0);
+        across(g, L, 'leg', s, 1.9, 0.2, -1);
+      }
+    },
+  },

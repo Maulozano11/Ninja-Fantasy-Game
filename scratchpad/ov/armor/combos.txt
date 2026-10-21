@@ -1,0 +1,1 @@
+male-idle0 female-idle0 bulky-idle0 male-attack1 male-attack2 male-cast0 female-victory0 bulky-charge0

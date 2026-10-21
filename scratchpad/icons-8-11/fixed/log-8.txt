@@ -1,0 +1,19 @@
+ryusei_swap 41 #12102e #1a1c38 #25283f #3e3036 #2c3548 #3f2086 #184061 #394450 #552ea2 #4d447d #3a586c #623cbf #6251aa #835a56 #446e8a #6846e0 #7c43d7 #4866c2 #2b7d90 #6860da #2c7fa4 #677caa #984ee8 #8c62de #608892 #5e89dd #817ce6 #5299ac #bc7c66 #4498dc #33adcc #90a8fc #34c4dc #6bbcf6 #52c6f0 #90c2ff #4ad6ea #82d3e9 #4fe7f2 #16f6f3 #86f5fe
+   88 is the area mean of his 139x127 pixels
+   covered: #817ce6 #835a56 #82d3e9 #4d447d #8c62de #90a8fc #4866c2 #2c7fa4 #3e3036 #6251aa #184061 #677caa #4498dc #16f6f3 #90c2ff #52c6f0 #2b7d90 #6846e0
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":1.07,"lowFreqBoxOnPalette":0.62,"ssim":0.749,"ssimBox":0.803,"hue":219,"hueHis":219,"colours":37,"thinRun":[8,"row",8]}
+   88 {"small":17,"smallHis":17,"smallDrawn":0,"smallOther":0,"lowFreq":0.93,"lowFreqBoxOnPalette":0.5,"ssim":0.928,"ssimBox":1,"hue":219,"hueHis":219,"colours":41,"thinRun":[15,"col",59]}
+northstar_command 41 #0f061e #200a21 #380511 #3c0e27 #4c031e #4d0818 #640918 #6a0418 #661130 #730918 #83091a #852218 #920f1c #8c223d #a0001e #a4161e #83485a #b71824 #bc2d4d #cc1c29 #b15466 #dc112d #e12638 #a46c7c #d94c2e #f6243a #fe1020 #bc7486 #fa5e6e #fb7e8d #c89fb1 #f49250 #ff8a61 #ff9dad #d6c3cc #ffb4bc #fdb6c2 #ffc5c8 #ffcdd6 #ffe6ea #fefdfe
+   88 is the area mean of his 127x127 pixels
+   edit: his sharingan (392 of his pixels: the dark ring, three tomoe with their tips, the pupil and their dark red edges) painted out with his own iris colour at each distance from the centre (his bright red out to radius 14.5, under his lid's shade his shaded iris colour of that row): a plain radiant red iris for the compass rose
+   covered: #83485a #3c0e27 #8c223d #852218 #fb7e8d #a46c7c #d6c3cc #f49250 #d94c2e #bc2d4d #b15466 #661130
+   44 {"small":5,"smallHis":0,"smallDrawn":5,"smallOther":0,"lowFreq":1.28,"lowFreqBoxOnPalette":0.56,"ssim":0.754,"ssimBox":0.833,"hue":23,"hueHis":22,"colours":37,"thinRun":[12,"row",38]}
+   88 {"small":14,"smallHis":11,"smallDrawn":3,"smallOther":0,"lowFreq":1.05,"lowFreqBoxOnPalette":0.48,"ssim":0.907,"ssimBox":1,"hue":23,"hueHis":22,"colours":41,"thinRun":[15,"row",77]}
+northstar_submission 34 #100921 #2a0424 #3b0928 #3f0a2a #3c0e44 #54092a #540e4d #601242 #700524 #741348 #8a102a #702975 #881550 #7f2268 #a21148 #a0135a #ac0524 #b01c38 #9c3a99 #a03b9d #c32346 #d00d2c #d82944 #e40e2e #d54b5f #f02c52 #e94e2a #f44e56 #ee6c58 #f27584 #ff8848 #ec88e2 #fc98a2 #ffbbc5
+   88 is the area mean of his 127x127 pixels
+   covered: #702975 #3c0e44 #ee6c58 #a21148 #d54b5f #7f2268 #e94e2a #540e4d
+   44 {"small":2,"smallHis":2,"smallDrawn":0,"smallOther":0,"lowFreq":1.1,"lowFreqBoxOnPalette":0.45,"ssim":0.734,"ssimBox":0.822,"hue":348,"hueHis":348,"colours":25,"thinRun":[8,"row",41]}
+   88 {"small":19,"smallHis":19,"smallDrawn":0,"smallOther":0,"lowFreq":0.64,"lowFreqBoxOnPalette":0.35,"ssim":0.92,"ssimBox":1,"hue":348,"hueHis":348,"colours":32,"thinRun":[17,"row",82]}
+   marks at 44: the skin round his ninjas' eyes and their fists: 9; the near-black outlines of his two ninjas: 0; the light strands of his vortex and wind: 128
+   marks at 44: his glowing ring, his flare and his embers: 52; the dark lines of his lids and lashes: 30
+   marks at 44: his violet chains: 40; the lit links of his chains and his embers (not his star): 17; the dark links of his chains: 97

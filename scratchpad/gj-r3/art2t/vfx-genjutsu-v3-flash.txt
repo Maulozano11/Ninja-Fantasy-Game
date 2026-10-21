@@ -1,0 +1,19 @@
+mean alpha x brightness per frame (x1000); "max step" is the biggest change between neighbouring frames, as a share of the anim's peak; "changed" is how many pixels change between neighbours
+bolt        fly    8f@10 max step   5.1%  |  101 102 107 107 102 102 98 98  |  changed 370 633 401 661 331 632 368
+beast       fly    6f@12 max step   5.3%  |  54 53 52 50 53 54  |  changed 3230 2520 2831 2904 2456  (another artist's, copied through)
+stream      fly    8f@10 max step   0.0%  |  146 146 146 146 146 146 146 146  |  changed 2181 2181 2181 2181 2181 2181 2181
+stream_head fly    8f@10 max step   8.9%  |  172 179 179 176 160 155 165 175  |  changed 1172 1236 1290 1099 1042 1218 1178
+breath      fly    8f@10 max step   1.2%  |  124 125 125 126 126 125 124 124  |  changed 2388 2310 1997 1716 2045 2379 2029
+sphere      fly    8f@10 max step   3.0%  |  180 180 186 182 178 180 176 175  |  changed 492 641 470 600 514 566 467
+slash       fly    8f@10 max step   0.6%  |  101 101 102 101 101 101 101 101  |  changed 551 535 494 407 356 368 446
+multi       fly    8f@10 max step   2.9%  |  93 95 92 92 92 95 96 95  |  changed 982 1015 520 946 990 1058 600
+hit         hit   12f@12 max step  35.4%  |  29 72 122 139 135 141 143 134 107 77 55 28  |  changed 903 1477 2094 1106 1259 1743 1762 2038 2201 2329 1929
+blast       blast 16f@12 max step  28.9%  |  12 44 86 121 146 144 144 136 120 113 98 79 65 46 29 16  |  changed 6256 12669 18446 20931 9416 10536 14180 17277 13099 12658 14835 12903 15105 15730 15400
+wall        rise  12f@12 max step  24.0%  |  2 16 51 106 166 212 235 246 248 249 251 252  |  changed 1227 3584 7820 12736 17119 20561 15527 12667 6214 2347 452
+wall        idle   8f@10 max step   0.8%  |  252 254 253 254 253 253 254 253  |  changed 514 989 1156 1183 1170 1140 1099
+aura        idle  12f@10 max step   5.5%  |  46 49 51 51 51 49 47 46 44 44 44 45  |  changed 272 239 102 263 160 360 362 190 259 124 253
+aura_back   idle  12f@10 max step   1.5%  |  137 139 139 137 139 139 140 139 138 137 139 139  |  changed 2496 2727 2774 2521 2223 1117 1143 2187 2468 2544 2579
+wall_diag   rise  12f@12 max step  24.7%  |  1 9 32 72 112 137 152 159 162 164 164 164  |  changed 1541 5134 11982 17610 18786 18346 18711 16610 10690 4920 306
+wall_diag   idle   8f@10 max step   0.7%  |  164 164 166 166 166 165 164 164  |  changed 393 1237 1833 2096 1903 1040 254
+wall_depth  rise  12f@12 max step  14.3%  |  17 38 61 85 105 122 134 146 154 159 163 162  |  changed 2410 3931 5739 7613 8477 9567 10533 10815 10772 10030 7688
+wall_depth  idle   8f@10 max step   0.9%  |  162 163 164 164 166 166 164 163  |  changed 374 695 934 1275 1527 1267 859

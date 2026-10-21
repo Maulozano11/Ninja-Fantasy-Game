@@ -1,0 +1,8 @@
+[
+ {"key":"male_katana","body":"male","held":"held_katana","pose":"attack"},
+ {"key":"male_naginata","body":"male","held":"held_naginata","pose":"attack"},
+ {"key":"male_katana","body":"male","held":"held_katana","pose":"run"},
+ {"key":"male_katana","body":"male","held":"held_katana","pose":"cast"},
+ {"key":"male_katana","body":"male","held":"held_katana","pose":"charge"},
+ {"key":"male_katana","body":"male","held":"held_katana","pose":"idle","frames":[0]}
+]

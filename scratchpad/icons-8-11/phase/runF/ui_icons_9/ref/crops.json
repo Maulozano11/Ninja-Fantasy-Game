@@ -1,0 +1,164 @@
+{
+ "grid": {
+  "9": {
+   "pitch": [
+    4.166666666666667,
+    4.164179104477612
+   ],
+   "spectrumPitch": [
+    4.1679,
+    4.1668
+   ],
+   "phase": [
+    0.5,
+    0.65
+   ],
+   "edgeRatio": [
+    1.896,
+    2.178
+   ],
+   "blockSpread": 1.1,
+   "source": "icons-owner-reference-9.jpg",
+   "row": [
+    25,
+    312,
+    1975,
+    779
+   ],
+   "rowScale": {
+    "1x": 0.10757946210268948,
+    "4x": 0.43031784841075793
+   }
+  }
+ },
+ "icons": {
+  "mirai_evasion": {
+   "sheet": "9",
+   "box": [
+    14,
+    83,
+    112,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    8,
+    77,
+    118,
+    185
+   ],
+   "sheetBox": [
+    58,
+    346,
+    467,
+    746
+   ],
+   "sheetSlot": [
+    33,
+    321,
+    492,
+    771
+   ],
+   "what": "Premonition (Premonicion): a red eye over a ninja dodging, his ghost after-image with a sword behind"
+  },
+  "koton_block": {
+   "sheet": "9",
+   "box": [
+    132,
+    83,
+    230,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    126,
+    77,
+    236,
+    185
+   ],
+   "sheetBox": [
+    550,
+    346,
+    958,
+    746
+   ],
+   "sheetSlot": [
+    525,
+    321,
+    983,
+    771
+   ],
+   "what": "Koton Block (Bloque Koton): a steel cube with glowing cyan circuits smashing into the ground"
+  },
+  "koton_wall": {
+   "sheet": "9",
+   "box": [
+    250,
+    83,
+    348,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    244,
+    77,
+    354,
+    185
+   ],
+   "sheetBox": [
+    1042,
+    346,
+    1450,
+    746
+   ],
+   "sheetSlot": [
+    1017,
+    321,
+    1475,
+    771
+   ],
+   "what": "Koton Wall (Muro Koton): a riveted steel wall rising, sparks where a block slots in"
+  },
+  "ryusei_warp": {
+   "sheet": "9",
+   "box": [
+    368,
+    83,
+    466,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    362,
+    77,
+    472,
+    185
+   ],
+   "sheetBox": [
+    1533,
+    346,
+    1942,
+    746
+   ],
+   "sheetSlot": [
+    1508,
+    321,
+    1967,
+    771
+   ],
+   "what": "Warp Strike (Golpe Warp): a ninja bursting out of a blue portal behind his thrown kunai, on violet"
+  }
+ }
+}

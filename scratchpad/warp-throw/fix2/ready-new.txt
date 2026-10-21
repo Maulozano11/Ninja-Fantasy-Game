@@ -1,0 +1,6 @@
+Ryusei on the field: preset_founder (party, weapon held), companion_kenji (party, weapon none), raider_0 (enemy, weapon none)
+his turn, no Node, after 0 ms: {"armed":true,"stowed":false,"missing":["pierce 2","pierce 3","pierce 4","release clear"]} {"armed":false,"stowed":true,"missing":["throw 0","throw 1","throw 2","throw 3","light throw 3","light throw 4","light pierce 1","pierce 1","pierce 2","pierce 3","pierce 4","pierce 4 (kunai fading)","release clear"]}
+his turn, no Node, after 1000 ms: {"armed":true,"stowed":false,"missing":[]} {"armed":false,"stowed":true,"missing":["throw 0","throw 1","throw 2","throw 3","light throw 3","light throw 4","light pierce 1","pierce 1","pierce 2","pierce 3","pierce 4","pierce 4 (kunai fading)","release clear"]}
+his turn, no Node, after 3000 ms: {"armed":true,"stowed":false,"missing":[]} {"armed":false,"stowed":true,"missing":["release clear"]}
+his turn, no Node, after 6000 ms: {"armed":true,"stowed":false,"missing":[]} {"armed":false,"stowed":true,"missing":[]}
+stowed: {"ok1":true,"armed":false} at the cast: {"armed":false,"stowed":true,"missing":[]}

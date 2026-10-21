@@ -1,0 +1,1198 @@
+
+> react-example@0.0.0 test
+> tsx --test src/rules/*.test.ts src/game/*.test.ts src/battle/*.test.ts src/sprite/*.test.ts
+
+TAP version 13
+# Subtest: battle setup
+    # Subtest: rolls initiative for everyone and starts the first turn
+    ok 1 - rolls initiative for everyone and starts the first turn
+      ---
+      duration_ms: 44.532335
+      type: 'test'
+      ...
+    # Subtest: is plain data: it survives JSON and replays exactly
+    ok 2 - is plain data: it survives JSON and replays exactly
+      ---
+      duration_ms: 12.619144
+      type: 'test'
+      ...
+    # Subtest: a state from before the clans (an older save or peer, with no Weapon Nodes) plays on
+    ok 3 - a state from before the clans (an older save or peer, with no Weapon Nodes) plays on
+      ---
+      duration_ms: 21.802402
+      type: 'test'
+      ...
+    # Subtest: a party caught at night loses its first turn, whatever the clan; Watchful still saves
+    ok 4 - a party caught at night loses its first turn, whatever the clan; Watchful still saves
+      ---
+      duration_ms: 1.655448
+      type: 'test'
+      ...
+    1..4
+ok 1 - battle setup
+  ---
+  duration_ms: 81.611089
+  type: 'suite'
+  ...
+# Subtest: movement
+    # Subtest: walks within its movement and pays for it
+    ok 1 - walks within its movement and pays for it
+      ---
+      duration_ms: 21.792889
+      type: 'test'
+      ...
+    # Subtest: can't go further than its movement, nor act out of turn
+    ok 2 - can't go further than its movement, nor act out of turn
+      ---
+      duration_ms: 18.433212
+      type: 'test'
+      ...
+    # Subtest: deep water costs double, or 2 chakra to walk on it
+    ok 3 - deep water costs double, or 2 chakra to walk on it
+      ---
+      duration_ms: 80.704584
+      type: 'test'
+      ...
+    1..3
+ok 2 - movement
+  ---
+  duration_ms: 121.386233
+  type: 'suite'
+  ...
+# Subtest: attacks and reactions
+    # Subtest: shows the chance before rolling and resolves the hit
+    ok 1 - shows the chance before rolling and resolves the hit
+      ---
+      duration_ms: 6.81357
+      type: 'test'
+      ...
+    # Subtest: leaving a player ninja's reach asks for an opportunity attack
+    ok 2 - leaving a player ninja's reach asks for an opportunity attack
+      ---
+      duration_ms: 23.756513
+      type: 'test'
+      ...
+    # Subtest: a walk across someone else's cell is never paused on it: the prompt comes before the hop
+    ok 3 - a walk across someone else's cell is never paused on it: the prompt comes before the hop
+      ---
+      duration_ms: 15.062137
+      type: 'test'
+      ...
+    # Subtest: a mover dropped by an opportunity attack falls on its own cell, not on the one it was crossing
+    ok 4 - a mover dropped by an opportunity attack falls on its own cell, not on the one it was crossing
+      ---
+      duration_ms: 7.396384
+      type: 'test'
+      ...
+    # Subtest: Kawarimi: a player ninja is asked, and the blow strikes a log
+    ok 5 - Kawarimi: a player ninja is asked, and the blow strikes a log
+      ---
+      duration_ms: 33.633095
+      type: 'test'
+      ...
+    # Subtest: a melee blow can knock an enemy out instead of killing it
+    ok 6 - a melee blow can knock an enemy out instead of killing it
+      ---
+      duration_ms: 0.893426
+      type: 'test'
+      ...
+    1..6
+ok 3 - attacks and reactions
+  ---
+  duration_ms: 88.482437
+  type: 'suite'
+  ...
+# Subtest: jutsu
+    # Subtest: pays chakra, hits everyone in the area (allies too) and burns the bushes
+    ok 1 - pays chakra, hits everyone in the area (allies too) and burns the bushes
+      ---
+      duration_ms: 1.492274
+      type: 'test'
+      ...
+    # Subtest: enhanced reaches further: a longer, wider cone and a bigger circle
+    ok 2 - enhanced reaches further: a longer, wider cone and a bigger circle
+      ---
+      duration_ms: 0.367608
+      type: 'test'
+      ...
+    # Subtest: enhanced costs more and adds a die
+    ok 3 - enhanced costs more and adds a die
+      ---
+      duration_ms: 1.654454
+      type: 'test'
+      ...
+    # Subtest: an earth wall or a water barrier never rises over anyone
+    ok 4 - an earth wall or a water barrier never rises over anyone
+      ---
+      duration_ms: 2.607768
+      type: 'test'
+      ...
+    1..4
+ok 4 - jutsu
+  ---
+  duration_ms: 6.323557
+  type: 'suite'
+  ...
+# Subtest: the hydra
+    # Subtest: has seven heads acting right after the body
+    ok 1 - has seven heads acting right after the body
+      ---
+      duration_ms: 1.531441
+      type: 'test'
+      ...
+    # Subtest: a cut head grows back after two of its turns unless its stump is sealed
+    ok 2 - a cut head grows back after two of its turns unless its stump is sealed
+      ---
+      duration_ms: 8.947447
+      type: 'test'
+      ...
+    # Subtest: dies when every head is cut at once, or its body falls
+    ok 3 - dies when every head is cut at once, or its body falls
+      ---
+      duration_ms: 1.0888
+      type: 'test'
+      ...
+    # Subtest: the AI heads bite, spit or roar on their turns
+    ok 4 - the AI heads bite, spit or roar on their turns
+      ---
+      duration_ms: 0.967477
+      type: 'test'
+      ...
+    # Subtest: a ninja right under a head leaves its roar no direction: the head picks another move, never a refused one
+    ok 5 - a ninja right under a head leaves its roar no direction: the head picks another move, never a refused one
+      ---
+      duration_ms: 21.481952
+      type: 'test'
+      ...
+    1..5
+ok 5 - the hydra
+  ---
+  duration_ms: 34.329394
+  type: 'suite'
+  ...
+# Subtest: Mirai: Eye of Tomorrow, Premonitory Evasion, Pursuing Flame
+    # Subtest: reads what each enemy in sight will do next
+    ok 1 - reads what each enemy in sight will do next
+      ---
+      duration_ms: 1.086712
+      type: 'test'
+      ...
+    # Subtest: enemies follow the plan the Mirai saw, if it still makes sense
+    ok 2 - enemies follow the plan the Mirai saw, if it still makes sense
+      ---
+      duration_ms: 0.726324
+      type: 'test'
+      ...
+    # Subtest: the plan says where the enemy will walk, and it walks exactly there
+    ok 3 - the plan says where the enemy will walk, and it walks exactly there
+      ---
+      duration_ms: 157.778134
+      type: 'test'
+      ...
+    # Subtest: Premonitory Evasion: a player Mirai is asked, steps aside and the blow misses
+    ok 4 - Premonitory Evasion: a player Mirai is asked, steps aside and the blow misses
+      ---
+      duration_ms: 25.64421
+      type: 'test'
+      ...
+    # Subtest: letting Evasion go offers Kawarimi for the same blow
+    ok 5 - letting Evasion go offers Kawarimi for the same blow
+      ---
+      duration_ms: 18.263791
+      type: 'test'
+      ...
+    # Subtest: is not offered against an area, a blow from hiding, or once the reaction is spent
+    ok 6 - is not offered against an area, a blow from hiding, or once the reaction is spent
+      ---
+      duration_ms: 19.876359
+      type: 'test'
+      ...
+    # Subtest: an enemy Mirai steps aside on its own from a blow that would drop it
+    ok 7 - an enemy Mirai steps aside on its own from a blow that would drop it
+      ---
+      duration_ms: 3.12082
+      type: 'test'
+      ...
+    # Subtest: the AI: a Fireball that would now catch a friend gives way to Pursuing Flame
+    ok 8 - the AI: a Fireball that would now catch a friend gives way to Pursuing Flame
+      ---
+      duration_ms: 14.958214
+      type: 'test'
+      ...
+    # Subtest: the AI (D21): an enemy Mirai opens with Pursuing Flame, then casts it every other jutsu in place of one up to 2.5 flames
+    ok 9 - the AI (D21): an enemy Mirai opens with Pursuing Flame, then casts it every other jutsu in place of one up to 2.5 flames
+      ---
+      duration_ms: 10.830146
+      type: 'test'
+      ...
+    # Subtest: Katon: Pursuing Flame: Mirai only, 3 chakra, 12 m, a DEX save with disadvantage for half
+    ok 10 - Katon: Pursuing Flame: Mirai only, 3 chakra, 12 m, a DEX save with disadvantage for half
+      ---
+      duration_ms: 114.965062
+      type: 'test'
+      ...
+    1..10
+ok 6 - Mirai: Eye of Tomorrow, Premonitory Evasion, Pursuing Flame
+  ---
+  duration_ms: 367.89156
+  type: 'suite'
+  ...
+# Subtest: clans: phase 1 foundation
+    # Subtest: the old clan abilities are gone
+    ok 1 - the old clan abilities are gone
+      ---
+      duration_ms: 6.5328
+      type: 'test'
+      ...
+    # Subtest: the clan's ability bonus counts in battle: the scores a unit fights with, its saves and its numbers (D2)
+    ok 2 - the clan's ability bonus counts in battle: the scores a unit fights with, its saves and its numbers (D2)
+      ---
+      duration_ms: 0.447728
+      type: 'test'
+      ...
+    # Subtest: enemies have ranks
+    ok 3 - enemies have ranks
+      ---
+      duration_ms: 8.338696
+      type: 'test'
+      ...
+    # Subtest: metal structures
+        # Subtest: a metal wall blocks the way, sight, blows across it and areas from the far side
+        ok 1 - a metal wall blocks the way, sight, blows across it and areas from the far side
+          ---
+          duration_ms: 5.711062
+          type: 'test'
+          ...
+        # Subtest: a metal block fills its 3 × 3 cells and gives half cover without hiding anyone
+        ok 2 - a metal block fills its 3 × 3 cells and gives half cover without hiding anyone
+          ---
+          duration_ms: 1.522301
+          type: 'test'
+          ...
+        # Subtest: can be struck down: AC 10, the weapon's dice, gone at 0 HP
+        ok 3 - can be struck down: AC 10, the weapon's dice, gone at 0 HP
+          ---
+          duration_ms: 4.697231
+          type: 'test'
+          ...
+        # Subtest: nothing passes it: no shove through it, no lightning along the water, no blast from behind another
+        ok 4 - nothing passes it: no shove through it, no lightning along the water, no blast from behind another
+          ---
+          duration_ms: 119.248773
+          type: 'test'
+          ...
+        # Subtest: a blade doesn't reach a structure across another metal wall, and striking one gives a hidden ninja away
+        ok 5 - a blade doesn't reach a structure across another metal wall, and striking one gives a hidden ninja away
+          ---
+          duration_ms: 1.468487
+          type: 'test'
+          ...
+        1..5
+    ok 4 - metal structures
+      ---
+      duration_ms: 133.002533
+      type: 'suite'
+      ...
+    1..4
+ok 7 - clans: phase 1 foundation
+  ---
+  duration_ms: 148.556109
+  type: 'suite'
+  ...
+# Subtest: Kōton: Modular Architecture
+    # Subtest: a block: bonus action, 2 chakra, a 1.5 m square of 20 HP that gives half cover and hides nobody
+    ok 1 - a block: bonus action, 2 chakra, a 1.5 m square of 20 HP that gives half cover and hides nobody
+      ---
+      duration_ms: 2.79515
+      type: 'test'
+      ...
+    # Subtest: a wall: action, 4 chakra, 4.5 m across the line it is cast along; it blocks sight
+    ok 2 - a wall: action, 4 chakra, 4.5 m across the line it is cast along; it blocks sight
+      ---
+      duration_ms: 1.125472
+      type: 'test'
+      ...
+    # Subtest: beats Mirai: a metal wall hides the enemy's next move from the Eye of Tomorrow
+    ok 3 - beats Mirai: a metal wall hides the enemy's next move from the Eye of Tomorrow
+      ---
+      duration_ms: 1.273965
+      type: 'test'
+      ...
+    # Subtest: two stand at most: raising a third makes the oldest crumble
+    ok 4 - two stand at most: raising a third makes the oldest crumble
+      ---
+      duration_ms: 2.020526
+      type: 'test'
+      ...
+    # Subtest: is refused over anyone, beyond 6 m, out of sight, off the map, or to another clan
+    ok 5 - is refused over anyone, beyond 6 m, out of sight, off the map, or to another clan
+      ---
+      duration_ms: 16.855208
+      type: 'test'
+      ...
+    # Subtest: is loud: raised in the stealth phase, it starts the fight
+    ok 6 - is loud: raised in the stealth phase, it starts the fight
+      ---
+      duration_ms: 1.065934
+      type: 'test'
+      ...
+    # Subtest: the AI: a Kōton in the open raises a block in front of itself, against the foe that sees it
+    ok 7 - the AI: a Kōton in the open raises a block in front of itself, against the foe that sees it
+      ---
+      duration_ms: 2.426354
+      type: 'test'
+      ...
+    # Subtest: the AI (D21): a hurt Kōton raises its wall against the foes shooting at it, or for a hurt friend
+    ok 8 - the AI (D21): a hurt Kōton raises its wall against the foes shooting at it, or for a hurt friend
+      ---
+      duration_ms: 48.450414
+      type: 'test'
+      ...
+    # Subtest: the AI (D21): a Kōton that walked and has nothing to strike raises its wall rather than dash on in the open
+    ok 9 - the AI (D21): a Kōton that walked and has nothing to strike raises its wall rather than dash on in the open
+      ---
+      duration_ms: 30.243536
+      type: 'test'
+      ...
+    # Subtest: the AI goes around a metal wall, and breaks through when walled off
+    ok 10 - the AI goes around a metal wall, and breaks through when walled off
+      ---
+      duration_ms: 95.810031
+      type: 'test'
+      ...
+    # Subtest: the AI breaks through a wall it can swing at, never one behind another metal wall (the engine refuses that blow)
+    ok 11 - the AI breaks through a wall it can swing at, never one behind another metal wall (the engine refuses that blow)
+      ---
+      duration_ms: 2.819704
+      type: 'test'
+      ...
+    1..11
+ok 8 - Kōton: Modular Architecture
+  ---
+  duration_ms: 205.533844
+  type: 'suite'
+  ...
+# Subtest: Ryusei: Weapon Nodes, Warp Strike, Spatial Swap
+    # Subtest: Weapon Nodes: every kunai and every missed blow leaves one where the weapon lands; three at most
+    ok 1 - Weapon Nodes: every kunai and every missed blow leaves one where the weapon lands; three at most
+      ---
+      duration_ms: 99.974036
+      type: 'test'
+      ...
+    # Subtest: Warp Strike: bonus action, 2 chakra, to its own Node within 18 m in sight, even through a metal wall
+    ok 2 - Warp Strike: bonus action, 2 chakra, to its own Node within 18 m in sight, even through a metal wall
+      ---
+      duration_ms: 6.10459
+      type: 'test'
+      ...
+    # Subtest: Warp Strike lands at least 1 m from whoever stands on the Node, within 1.5 m of it (D15)
+    ok 3 - Warp Strike lands at least 1 m from whoever stands on the Node, within 1.5 m of it (D15)
+      ---
+      duration_ms: 7.225032
+      type: 'test'
+      ...
+    # Subtest: landing beside a foe, the next attack this turn comes from behind: advantage, and nothing blocks it
+    ok 4 - landing beside a foe, the next attack this turn comes from behind: advantage, and nothing blocks it
+      ---
+      duration_ms: 8.107924
+      type: 'test'
+      ...
+    # Subtest: the edge lasts the turn it was won in: a stealth turn too, and it never goes into the fight
+    ok 5 - the edge lasts the turn it was won in: a stealth turn too, and it never goes into the fight
+      ---
+      duration_ms: 2.492211
+      type: 'test'
+      ...
+    # Subtest: a hidden ninja teleported out into the open is seen at once; onto a hiding place it stays hidden
+    ok 6 - a hidden ninja teleported out into the open is seen at once; onto a hiding place it stays hidden
+      ---
+      duration_ms: 3.466677
+      type: 'test'
+      ...
+    # Subtest: a raider's blow from behind leaves a player Mirai no Evasion, nor Kawarimi to one who knows it
+    ok 7 - a raider's blow from behind leaves a player Mirai no Evasion, nor Kawarimi to one who knows it
+      ---
+      duration_ms: 55.232521
+      type: 'test'
+      ...
+    # Subtest: Spatial Swap: action, 3 chakra, trades places with anyone on its Node; an enemy resists with STR
+    ok 8 - Spatial Swap: action, 3 chakra, trades places with anyone on its Node; an enemy resists with STR
+      ---
+      duration_ms: 14.53757
+      type: 'test'
+      ...
+    # Subtest: the AI: a Ryusei its feet can't carry into reach warps to a Node beside its target and strikes
+    ok 9 - the AI: a Ryusei its feet can't carry into reach warps to a Node beside its target and strikes
+      ---
+      duration_ms: 65.376051
+      type: 'test'
+      ...
+    # Subtest: the AI (D21): an enemy Ryusei opens with a kunai that leaves a Node at its target, then warps in and strikes from behind
+    ok 10 - the AI (D21): an enemy Ryusei opens with a kunai that leaves a Node at its target, then warps in and strikes from behind
+      ---
+      duration_ms: 7.388198
+      type: 'test'
+      ...
+    # Subtest: the AI (D21): Spatial Swap only when it clearly helps: a hurt friend out of a foe's reach, a foe in among its friends
+    ok 11 - the AI (D21): Spatial Swap only when it clearly helps: a hurt friend out of a foe's reach, a foe in among its friends
+      ---
+      duration_ms: 64.062581
+      type: 'test'
+      ...
+    1..11
+ok 9 - Ryusei: Weapon Nodes, Warp Strike, Spatial Swap
+  ---
+  duration_ms: 335.104643
+  type: 'suite'
+  ...
+# Subtest: Northstar: Aura of Sovereignty, Command, Natural Submission
+    # Subtest: the aura: a foe inside it (4.5 m) attacks with plain disadvantage; outside it, or a friend, does not
+    ok 1 - the aura: a foe inside it (4.5 m) attacks with plain disadvantage; outside it, or a friend, does not
+      ---
+      duration_ms: 6.53649
+      type: 'test'
+      ...
+    # Subtest: the aura: a foe who dashes or warps into it on its own turn loses half the movement left; a friend does not
+    ok 2 - the aura: a foe who dashes or warps into it on its own turn loses half the movement left; a friend does not
+      ---
+      duration_ms: 174.117319
+      type: 'test'
+      ...
+    # Subtest: Command: a Minion that fails a WIS save fights for the Northstar until the end of its next turn
+    ok 3 - Command: a Minion that fails a WIS save fights for the Northstar until the end of its next turn
+      ---
+      duration_ms: 20.874822
+      type: 'test'
+      ...
+    # Subtest: Command is refused before paying: a Captain below level 5, a boss, a Mirai, the party, one already taken
+    ok 4 - Command is refused before paying: a Captain below level 5, a boss, a Mirai, the party, one already taken
+      ---
+      duration_ms: 26.726527
+      type: 'test'
+      ...
+    # Subtest: a commanded enemy is still an enemy: no victory while it stands, and the result counts it as one
+    ok 5 - a commanded enemy is still an enemy: no victory while it stands, and the result counts it as one
+      ---
+      duration_ms: 2.749648
+      type: 'test'
+      ...
+    # Subtest: a unit that changes sides changes the plans aimed at it: no enemy goes on to strike its own side
+    ok 6 - a unit that changes sides changes the plans aimed at it: no enemy goes on to strike its own side
+      ---
+      duration_ms: 3.414224
+      type: 'test'
+      ...
+    # Subtest: a Minion caught by surprise spends its Command on the turn it loses
+    ok 7 - a Minion caught by surprise spends its Command on the turn it loses
+      ---
+      duration_ms: 2.446926
+      type: 'test'
+      ...
+    # Subtest: from level 9 Command takes two Minions, each with its own save, for two of their turns
+    ok 8 - from level 9 Command takes two Minions, each with its own save, for two of their turns
+      ---
+      duration_ms: 4.09425
+      type: 'test'
+      ...
+    # Subtest: Natural Submission: a beast or summon that fails a WIS save joins for the rest of the battle; never a boss
+    ok 9 - Natural Submission: a beast or summon that fails a WIS save joins for the rest of the battle; never a boss
+      ---
+      duration_ms: 4.399124
+      type: 'test'
+      ...
+    # Subtest: the AI: a Northstar facing a lone Minion of weak will commands it
+    ok 10 - the AI: a Northstar facing a lone Minion of weak will commands it
+      ---
+      duration_ms: 12.517837
+      type: 'test'
+      ...
+    # Subtest: the AI (D21): an enemy Northstar commands a valid target in place of an attack on one foe; the party gives it none (D18)
+    ok 11 - the AI (D21): an enemy Northstar commands a valid target in place of an attack on one foe; the party gives it none (D18)
+      ---
+      duration_ms: 3.233314
+      type: 'test'
+      ...
+    1..11
+ok 10 - Northstar: Aura of Sovereignty, Command, Natural Submission
+  ---
+  duration_ms: 261.774178
+  type: 'suite'
+  ...
+# Subtest: the counter cycle (docs/CLANS_DESIGN.md)
+    # Subtest: Mirai beats Northstar: a Mirai's mind can't be commanded
+    ok 1 - Mirai beats Northstar: a Mirai's mind can't be commanded
+      ---
+      duration_ms: 0.924703
+      type: 'test'
+      ...
+    # Subtest: Kōton beats Mirai: a metal wall hides the enemy's next move from the Eye of Tomorrow
+    ok 2 - Kōton beats Mirai: a metal wall hides the enemy's next move from the Eye of Tomorrow
+      ---
+      duration_ms: 3.355343
+      type: 'test'
+      ...
+    # Subtest: Ryusei beats Kōton: Warp Strike goes through a metal wall
+    ok 3 - Ryusei beats Kōton: Warp Strike goes through a metal wall
+      ---
+      duration_ms: 1.224996
+      type: 'test'
+      ...
+    # Subtest: Northstar beats Ryusei: warping into its aura costs half the movement, and the blow from behind loses its edge
+    ok 4 - Northstar beats Ryusei: warping into its aura costs half the movement, and the blow from behind loses its edge
+      ---
+      duration_ms: 1.03573
+      type: 'test'
+      ...
+    # Subtest: and Warp Strike's blow can't be evaded by a Mirai
+    ok 5 - and Warp Strike's blow can't be evaded by a Mirai
+      ---
+      duration_ms: 1.546685
+      type: 'test'
+      ...
+    1..5
+ok 11 - the counter cycle (docs/CLANS_DESIGN.md)
+  ---
+  duration_ms: 8.324093
+  type: 'suite'
+  ...
+# Subtest: enemy clans are mixed (docs/CLANS_DESIGN.md, D6)
+    # Subtest: every shipped fight against ninjas brings more than one clan; a mission's road brings all four
+    ok 1 - every shipped fight against ninjas brings more than one clan; a mission's road brings all four
+      ---
+      duration_ms: 377.161502
+      type: 'test'
+      ...
+    # Subtest: each slot keeps its clan, its template's look and a name of its own, whatever the seed
+    ok 2 - each slot keeps its clan, its template's look and a name of its own, whatever the seed
+      ---
+      duration_ms: 185.325493
+      type: 'test'
+      ...
+    # Subtest: each fights with its clan: the clan's abilities and ability bonus, and the template's own jutsu
+    ok 3 - each fights with its clan: the clan's abilities and ability bonus, and the template's own jutsu
+      ---
+      duration_ms: 42.711953
+      type: 'test'
+      ...
+    # Subtest: an enemy Northstar: its aura works on the party, and Command can't take the party's ninjas (D18)
+    ok 4 - an enemy Northstar: its aura works on the party, and Command can't take the party's ninjas (D18)
+      ---
+      duration_ms: 72.509648
+      type: 'test'
+      ...
+    # Subtest: AI-only battles on every shipped encounter end, and every action the AI sends is accepted
+    ok 5 - AI-only battles on every shipped encounter end, and every action the AI sends is accepted
+      ---
+      duration_ms: 1532.080355
+      type: 'test'
+      ...
+    # Subtest: AI-only battles (D21): the enemies use their clans' moves on the party, with every action accepted and no stall
+    ok 6 - AI-only battles (D21): the enemies use their clans' moves on the party, with every action accepted and no stall
+      ---
+      duration_ms: 7612.66217
+      type: 'test'
+      ...
+    1..6
+ok 12 - enemy clans are mixed (docs/CLANS_DESIGN.md, D6)
+  ---
+  duration_ms: 9822.884438
+  type: 'suite'
+  ...
+# Subtest: stealth phase
+    # Subtest: starts hidden from the guards, with no initiative yet
+    ok 1 - starts hidden from the guards, with no initiative yet
+      ---
+      duration_ms: 0.429715
+      type: 'test'
+      ...
+    # Subtest: walking into a vision cone raises suspicion; at 100 the alarm starts the fight
+    ok 2 - walking into a vision cone raises suspicion; at 100 the alarm starts the fight
+      ---
+      duration_ms: 4.411499
+      type: 'test'
+      ...
+    # Subtest: a thrown stone draws a guard to look
+    ok 3 - a thrown stone draws a guard to look
+      ---
+      duration_ms: 0.657524
+      type: 'test'
+      ...
+    # Subtest: a silent takedown leaves a body; a loud jutsu starts the fight with the guards surprised
+    ok 4 - a silent takedown leaves a body; a loud jutsu starts the fight with the guards surprised
+      ---
+      duration_ms: 2.101335
+      type: 'test'
+      ...
+    1..4
+ok 13 - stealth phase
+  ---
+  duration_ms: 7.832098
+  type: 'suite'
+  ...
+# Subtest: the AI
+    # Subtest: fights a whole battle by itself to an end
+    ok 1 - fights a whole battle by itself to an end
+      ---
+      duration_ms: 138.460826
+      type: 'test'
+      ...
+    # Subtest: a prone enemy stands up and walks in with the half of its movement that is left
+    ok 2 - a prone enemy stands up and walks in with the half of its movement that is left
+      ---
+      duration_ms: 17.026457
+      type: 'test'
+      ...
+    # Subtest: stops for the player: their turn, or their reaction
+    ok 3 - stops for the player: their turn, or their reaction
+      ---
+      duration_ms: 1.153256
+      type: 'test'
+      ...
+    1..3
+ok 14 - the AI
+  ---
+  duration_ms: 156.833877
+  type: 'suite'
+  ...
+# Subtest: hands for seals
+    # Subtest: casting stows the blade for free once a turn; then it takes the bonus action to draw it again
+    ok 1 - casting stows the blade for free once a turn; then it takes the bonus action to draw it again
+      ---
+      duration_ms: 1.230182
+      type: 'test'
+      ...
+    # Subtest: with the blade drawn and the interaction spent, seals wait; One-Handed Seals casts anyway
+    ok 2 - with the blade drawn and the interaction spent, seals wait; One-Handed Seals casts anyway
+      ---
+      duration_ms: 2.020456
+      type: 'test'
+      ...
+    # Subtest: Kawarimi needs free hands; a stowed blade strikes with the fists in a reaction
+    ok 3 - Kawarimi needs free hands; a stowed blade strikes with the fists in a reaction
+      ---
+      duration_ms: 19.248124
+      type: 'test'
+      ...
+    1..3
+ok 15 - hands for seals
+  ---
+  duration_ms: 22.665103
+  type: 'suite'
+  ...
+# Subtest: items and other actions
+    # Subtest: soldier pill, bandage, explosive tag and fleeing by the edge
+    ok 1 - soldier pill, bandage, explosive tag and fleeing by the edge
+      ---
+      duration_ms: 2.56418
+      type: 'test'
+      ...
+    1..1
+ok 16 - items and other actions
+  ---
+  duration_ms: 2.657126
+  type: 'suite'
+  ...
+# Subtest: clan playtest fixes: what the screen shows matches the engine
+    # Subtest: the attack preview refuses what the engine refuses: a kunai out of sight, a blow across a metal wall
+    ok 1 - the attack preview refuses what the engine refuses: a kunai out of sight, a blow across a metal wall
+      ---
+      duration_ms: 1.488415
+      type: 'test'
+      ...
+    # Subtest: a bonus-action ability with the bonus action spent is refused as such
+    ok 2 - a bonus-action ability with the bonus action spent is refused as such
+      ---
+      duration_ms: 1.573853
+      type: 'test'
+      ...
+    # Subtest: a roll of two dice says which was kept and why; a save says which ability it is made with
+    ok 3 - a roll of two dice says which was kept and why; a save says which ability it is made with
+      ---
+      duration_ms: 3.661739
+      type: 'test'
+      ...
+    # Subtest: a Mirai stepping aside from a jutsu: the evade event says what it stepped away from
+    ok 4 - a Mirai stepping aside from a jutsu: the evade event says what it stepped away from
+      ---
+      duration_ms: 2.910491
+      type: 'test'
+      ...
+    # Subtest: enemies have Spanish names for the Spanish screens
+    ok 5 - enemies have Spanish names for the Spanish screens
+      ---
+      duration_ms: 4.775328
+      type: 'test'
+      ...
+    # Subtest: every jutsu is "Técnica de <Elemento>: <the owner’s name>", the enhanced Fireball its own (D24)
+    ok 6 - every jutsu is "Técnica de <Elemento>: <the owner’s name>", the enhanced Fireball its own (D24)
+      ---
+      duration_ms: 0.62156
+      type: 'test'
+      ...
+    1..6
+ok 17 - clan playtest fixes: what the screen shows matches the engine
+  ---
+  duration_ms: 15.29893
+  type: 'suite'
+  ...
+# Subtest: battle text in Spanish
+    # Subtest: a generic enemy name takes its article; the party’s proper names never do
+    ok 1 - a generic enemy name takes its article; the party’s proper names never do
+      ---
+      duration_ms: 8.250237
+      type: 'test'
+      ...
+    # Subtest: a participle agrees with the one it is about: "la Sombra" and Hana are caught unaware, Akira too
+    ok 2 - a participle agrees with the one it is about: "la Sombra" and Hana are caught unaware, Akira too
+      ---
+      duration_ms: 4.280759
+      type: 'test'
+      ...
+    # Subtest: every enemy template and clan variant knows its article; proper names have none
+    ok 3 - every enemy template and clan variant knows its article; proper names have none
+      ---
+      duration_ms: 0.419761
+      type: 'test'
+      ...
+    1..3
+ok 18 - battle text in Spanish
+  ---
+  duration_ms: 13.160302
+  type: 'suite'
+  ...
+# Subtest: mission flow
+    # Subtest: starts at the first node with its battle on the map
+    ok 1 - starts at the first node with its battle on the map
+      ---
+      duration_ms: 3.565122
+      type: 'test'
+      ...
+    # Subtest: a victory folds in the whole party; the node is done
+    ok 2 - a victory folds in the whole party; the node is done
+      ---
+      duration_ms: 4.459804
+      type: 'test'
+      ...
+    # Subtest: a fallen ally wakes after the victory with 1 HP and Fall aftermath
+    ok 3 - a fallen ally wakes after the victory with 1 HP and Fall aftermath
+      ---
+      duration_ms: 1.244798
+      type: 'test'
+      ...
+    # Subtest: supplies used in battle are spent, and pills leave Crash
+    ok 4 - supplies used in battle are spent, and pills leave Crash
+      ---
+      duration_ms: 1.650876
+      type: 'test'
+      ...
+    # Subtest: Normal: when everyone falls the battle starts over from the node
+    ok 5 - Normal: when everyone falls the battle starts over from the node
+      ---
+      duration_ms: 1.682163
+      type: 'test'
+      ...
+    # Subtest: Legend: when everyone falls, death saves; survivors go on, or the game is over
+    ok 6 - Legend: when everyone falls, death saves; survivors go on, or the game is over
+      ---
+      duration_ms: 5.712048
+      type: 'test'
+      ...
+    # Subtest: the road: zone end, short stop, next zone, camp, ambush and an interrupted morning
+    ok 7 - the road: zone end, short stop, next zone, camp, ambush and an interrupted morning
+      ---
+      duration_ms: 5.274435
+      type: 'test'
+      ...
+    # Subtest: the objective ends the mission
+    ok 8 - the objective ends the mission
+      ---
+      duration_ms: 0.625501
+      type: 'test'
+      ...
+    # Subtest: a retreat gives up the node, or the mission at the objective
+    ok 9 - a retreat gives up the node, or the mission at the objective
+      ---
+      duration_ms: 2.565623
+      type: 'test'
+      ...
+    # Subtest: Legend: losing the objective fails the mission
+    ok 10 - Legend: losing the objective fails the mission
+      ---
+      duration_ms: 1.001181
+      type: 'test'
+      ...
+    # Subtest: a run saved with the old clans loads with the new ones; only an old clan bonus built into the numbers goes
+    ok 11 - a run saved with the old clans loads with the new ones; only an old clan bonus built into the numbers goes
+      ---
+      duration_ms: 1.929105
+      type: 'test'
+      ...
+    # Subtest: a run saved before the clan bonus counted loads with it counted, once (D2)
+    ok 12 - a run saved before the clan bonus counted loads with it counted, once (D2)
+      ---
+      duration_ms: 3.846554
+      type: 'test'
+      ...
+    1..12
+ok 19 - mission flow
+  ---
+  duration_ms: 38.563624
+  type: 'suite'
+  ...
+# Subtest: dice
+    # Subtest: parses notation with its bonus (the old parser dropped it)
+    ok 1 - parses notation with its bonus (the old parser dropped it)
+      ---
+      duration_ms: 2.397865
+      type: 'test'
+      ...
+    # Subtest: rolls the same with the same seed and keys, and differently with other keys
+    ok 2 - rolls the same with the same seed and keys, and differently with other keys
+      ---
+      duration_ms: 0.523285
+      type: 'test'
+      ...
+    # Subtest: keeps every die in range
+    ok 3 - keeps every die in range
+      ---
+      duration_ms: 3.676855
+      type: 'test'
+      ...
+    1..3
+ok 20 - dice
+  ---
+  duration_ms: 7.579093
+  type: 'suite'
+  ...
+# Subtest: checks
+    # Subtest: knows the chance before rolling
+    ok 1 - knows the chance before rolling
+      ---
+      duration_ms: 0.22152
+      type: 'test'
+      ...
+    # Subtest: counts the d20 as 10 in the no-randomness mode
+    ok 2 - counts the d20 as 10 in the no-randomness mode
+      ---
+      duration_ms: 0.177405
+      type: 'test'
+      ...
+    # Subtest: gives proficiency by level
+    ok 3 - gives proficiency by level
+      ---
+      duration_ms: 0.11254
+      type: 'test'
+      ...
+    # Subtest: takes Exhaustion and effects into account
+    ok 4 - takes Exhaustion and effects into account
+      ---
+      duration_ms: 0.732078
+      type: 'test'
+      ...
+    1..4
+ok 21 - checks
+  ---
+  duration_ms: 1.71223
+  type: 'suite'
+  ...
+# Subtest: derived stats
+    # Subtest: match the old creator formula at levels 1–4 and use proficiency by level after
+    ok 1 - match the old creator formula at levels 1–4 and use proficiency by level after
+      ---
+      duration_ms: 0.382065
+      type: 'test'
+      ...
+    1..1
+ok 22 - derived stats
+  ---
+  duration_ms: 0.609733
+  type: 'suite'
+  ...
+# Subtest: clans
+    # Subtest: old clan names load as the new ones
+    ok 1 - old clan names load as the new ones
+      ---
+      duration_ms: 1.392936
+      type: 'test'
+      ...
+    # Subtest: derived stats carry no old clan bonus; only the clan's ability bonus moves them
+    ok 2 - derived stats carry no old clan bonus; only the clan's ability bonus moves them
+      ---
+      duration_ms: 1.191924
+      type: 'test'
+      ...
+    # Subtest: the clan's ability bonus counts in every number, on top of the base scores the sheet keeps (D2)
+    ok 3 - the clan's ability bonus counts in every number, on top of the base scores the sheet keeps (D2)
+      ---
+      duration_ms: 1.122462
+      type: 'test'
+      ...
+    # Subtest: a sheet saved before the bonus counted gets it counted once; today's sheets are left alone
+    ok 4 - a sheet saved before the bonus counted gets it counted once; today's sheets are left alone
+      ---
+      duration_ms: 0.850796
+      type: 'test'
+      ...
+    # Subtest: the presets keep the owner's hand-made numbers plus exactly what their clan's bonus adds
+    ok 5 - the presets keep the owner's hand-made numbers plus exactly what their clan's bonus adds
+      ---
+      duration_ms: 0.523365
+      type: 'test'
+      ...
+    # Subtest: only Watchful prevents surprise
+    ok 6 - only Watchful prevents surprise
+      ---
+      duration_ms: 0.11357
+      type: 'test'
+      ...
+    1..6
+ok 23 - clans
+  ---
+  duration_ms: 5.471676
+  type: 'suite'
+  ...
+# Subtest: effects
+    # Subtest: refresh instead of stacking
+    ok 1 - refresh instead of stacking
+      ---
+      duration_ms: 0.262532
+      type: 'test'
+      ...
+    # Subtest: run out by rounds, battles, zones and camps
+    ok 2 - run out by rounds, battles, zones and camps
+      ---
+      duration_ms: 0.297232
+      type: 'test'
+      ...
+    # Subtest: are cured by the right treatment and sum their numbers
+    ok 3 - are cured by the right treatment and sum their numbers
+      ---
+      duration_ms: 0.214714
+      type: 'test'
+      ...
+    1..3
+ok 24 - effects
+  ---
+  duration_ms: 0.884848
+  type: 'suite'
+  ...
+# Subtest: tension and exhaustion
+    # Subtest: Encouraged takes 1 off the next gain and is used up
+    ok 1 - Encouraged takes 1 off the next gain and is used up
+      ---
+      duration_ms: 1.970778
+      type: 'test'
+      ...
+    # Subtest: at 10, a WIS save gives Breakdown or Awakening and Tension goes back to 5
+    ok 2 - at 10, a WIS save gives Breakdown or Awakening and Tension goes back to 5
+      ---
+      duration_ms: 0.544366
+      type: 'test'
+      ...
+    # Subtest: reaching 10 again gives Exhaustion instead, never past 5 this way
+    ok 3 - reaching 10 again gives Exhaustion instead, never past 5 this way
+      ---
+      duration_ms: 0.227084
+      type: 'test'
+      ...
+    # Subtest: Exhaustion 6 knocks the ninja out
+    ok 4 - Exhaustion 6 knocks the ninja out
+      ---
+      duration_ms: 0.103185
+      type: 'test'
+      ...
+    1..4
+ok 25 - tension and exhaustion
+  ---
+  duration_ms: 3.006
+  type: 'suite'
+  ...
+# Subtest: camp
+    # Subtest: works through the steps and shows the moon %
+    ok 1 - works through the steps and shows the moon %
+      ---
+      duration_ms: 1.616378
+      type: 'test'
+      ...
+    # Subtest: spends incense and refuses what a ninja cannot do
+    ok 2 - spends incense and refuses what a ninja cannot do
+      ---
+      duration_ms: 0.335312
+      type: 'test'
+      ...
+    # Subtest: meditation, bandages and talks do what the tables say
+    ok 3 - meditation, bandages and talks do what the tables say
+      ---
+      duration_ms: 0.603427
+      type: 'test'
+      ...
+    # Subtest: feeds the party, rolls the night and recovers in the morning
+    ok 4 - feeds the party, rolls the night and recovers in the morning
+      ---
+      duration_ms: 1.007249
+      type: 'test'
+      ...
+    # Subtest: a night without food or fire hurts
+    ok 5 - a night without food or fire hurts
+      ---
+      duration_ms: 0.291645
+      type: 'test'
+      ...
+    # Subtest: an untreated wound turns into Fever in the morning, and Fever blocks HP from rests
+    ok 6 - an untreated wound turns into Fever in the morning, and Fever blocks HP from rests
+      ---
+      duration_ms: 0.379303
+      type: 'test'
+      ...
+    # Subtest: counts the ambush in the no-randomness mode
+    ok 7 - counts the ambush in the no-randomness mode
+      ---
+      duration_ms: 0.29753
+      type: 'test'
+      ...
+    1..7
+ok 26 - camp
+  ---
+  duration_ms: 4.769176
+  type: 'suite'
+  ...
+# Subtest: short stop and the road
+    # Subtest: one stop per zone; Hit Dice heal; bandage at the stop
+    ok 1 - one stop per zone; Hit Dice heal; bandage at the stop
+      ---
+      duration_ms: 0.499906
+      type: 'test'
+      ...
+    # Subtest: bleeding hurts on the road and hours raise the night danger
+    ok 2 - bleeding hurts on the road and hours raise the night danger
+      ---
+      duration_ms: 0.422641
+      type: 'test'
+      ...
+    1..2
+ok 27 - short stop and the road
+  ---
+  duration_ms: 1.083659
+  type: 'suite'
+  ...
+# Subtest: battle results and the village
+    # Subtest: fold HP, Tension, falls and pills back into the party
+    ok 1 - fold HP, Tension, falls and pills back into the party
+      ---
+      duration_ms: 1.088108
+      type: 'test'
+      ...
+    # Subtest: rolls death saves to the end
+    ok 2 - rolls death saves to the end
+      ---
+      duration_ms: 0.269454
+      type: 'test'
+      ...
+    # Subtest: Legend: when the whole party falls, death saves decide; the dead leave and the leader passes on
+    ok 3 - Legend: when the whole party falls, death saves decide; the dead leave and the leader passes on
+      ---
+      duration_ms: 1.158781
+      type: 'test'
+      ...
+    # Subtest: Story and Normal: a lost ambush wakes everyone up and costs half of the supplies
+    ok 4 - Story and Normal: a lost ambush wakes everyone up and costs half of the supplies
+      ---
+      duration_ms: 0.409271
+      type: 'test'
+      ...
+    # Subtest: battle-reported effects replace the old ones; companions on the flank never drop below 1 HP
+    ok 5 - battle-reported effects replace the old ones; companions on the flank never drop below 1 HP
+      ---
+      duration_ms: 0.58077
+      type: 'test'
+      ...
+    # Subtest: a soldier pill gives 2d6 chakra and leaves Crash after the battle
+    ok 6 - a soldier pill gives 2d6 chakra and leaves Crash after the battle
+      ---
+      duration_ms: 0.4172
+      type: 'test'
+      ...
+    # Subtest: the village restores everything and turns a Breakdown into a trait
+    ok 7 - the village restores everything and turns a Breakdown into a trait
+      ---
+      duration_ms: 0.24766
+      type: 'test'
+      ...
+    # Subtest: cleans mission fields from an imported sheet
+    ok 8 - cleans mission fields from an imported sheet
+      ---
+      duration_ms: 0.420449
+      type: 'test'
+      ...
+    1..8
+ok 28 - battle results and the village
+  ---
+  duration_ms: 5.770359
+  type: 'suite'
+  ...
+# Subtest: katana parts
+    # Subtest: offers three versions of steel, blade, guard and hilt
+    ok 1 - offers three versions of steel, blade, guard and hilt
+      ---
+      duration_ms: 2.251393
+      type: 'test'
+      ...
+    # Subtest: builds all 81 katanas as whole pictures: even rows, every character coloured, the pivot on the grip
+    ok 2 - builds all 81 katanas as whole pictures: even rows, every character coloured, the pivot on the grip
+      ---
+      duration_ms: 125.37176
+      type: 'test'
+      ...
+    # Subtest: gives each version of a part its own pixels
+    ok 3 - gives each version of a part its own pixels
+      ---
+      duration_ms: 0.911269
+      type: 'test'
+      ...
+    # Subtest: colours only a nichirin blade with the chakra
+    ok 4 - colours only a nichirin blade with the chakra
+      ---
+      duration_ms: 0.209299
+      type: 'test'
+      ...
+    # Subtest: takes the classic version for missing or unknown parts
+    ok 5 - takes the classic version for missing or unknown parts
+      ---
+      duration_ms: 0.166068
+      type: 'test'
+      ...
+    1..5
+ok 29 - katana parts
+  ---
+  duration_ms: 151.407106
+  type: 'suite'
+  ...
+# Subtest: item parts
+    # Subtest: fills in every part, keeping known versions and defaulting the rest
+    ok 1 - fills in every part, keeping known versions and defaulting the rest
+      ---
+      duration_ms: 0.309025
+      type: 'test'
+      ...
+    # Subtest: draws the parts that were picked, in hand and stowed
+    ok 2 - draws the parts that were picked, in hand and stowed
+      ---
+      duration_ms: 1489.710981
+      type: 'test'
+      ...
+    1..2
+ok 30 - item parts
+  ---
+  duration_ms: 1490.611051
+  type: 'suite'
+  ...
+1..30
+# tests 161
+# suites 31
+# pass 161
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12545.347574
+test exit 0

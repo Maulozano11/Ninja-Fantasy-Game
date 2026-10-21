@@ -1,0 +1,14 @@
+bolt         80x70   8 frames  ok
+stream       64x64   8 frames  ok
+stream_head  79x64   8 frames  ok
+breath      112x119  8 frames  ok
+sphere       83x82   8 frames  ok
+slash        70x79   8 frames  ok
+multi        78x70   8 frames  ok
+hit          91x91  12 frames  ok
+blast       312x292 16 frames  ok
+wall        304x131 20 frames  ok
+wall_diag   302x247 20 frames  ok
+wall_depth  100x310 20 frames  ok
+aura         91x135 12 frames  ok
+frames with art on the border: 0

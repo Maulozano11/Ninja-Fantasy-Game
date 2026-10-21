@@ -1,0 +1,12 @@
+p0-male-none-read-0
+p0-female-none-read-0
+p0-bulky-none-read-0
+p0-slender-none-read-0
+p1-male-none-read-0
+p1-female-none-read-0
+p1-bulky-none-read-0
+p1-slender-none-read-0
+p2-male-none-read-0
+p2-female-none-read-0
+p2-bulky-none-read-0
+p2-slender-none-read-0

@@ -1,0 +1,374 @@
+{
+ "group": "vfx_wind",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bolt": {
+   "label": "Wind bolt (vortex disc)",
+   "file": "bolt.png",
+   "frameW": 68,
+   "frameH": 64,
+   "anchor": [
+    36,
+    32
+   ],
+   "meters": [
+    1.19,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "beast": {
+   "label": "Wind beast (crane)",
+   "file": "beast.png",
+   "frameW": 128,
+   "frameH": 100,
+   "anchor": [
+    64,
+    50
+   ],
+   "meters": [
+    2.25,
+    1.75
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream": {
+   "label": "Wind stream (blade line, tileable 64 px)",
+   "file": "stream.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream_head": {
+   "label": "Wind stream head",
+   "file": "stream_head.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "breath": {
+   "label": "Wind breath (gust cone, origin left middle)",
+   "file": "breath.png",
+   "frameW": 96,
+   "frameH": 64,
+   "anchor": [
+    48,
+    32
+   ],
+   "meters": [
+    1.68,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "sphere": {
+   "label": "Wind sphere (compressed air ball)",
+   "file": "sphere.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "slash": {
+   "label": "Wind slash (twin crescent blades)",
+   "file": "slash.png",
+   "frameW": 64,
+   "frameH": 68,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.19
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "multi": {
+   "label": "Wind multi (leaf blades)",
+   "file": "multi.png",
+   "frameW": 68,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.19,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "hit": {
+   "label": "Wind hit (cutting burst)",
+   "file": "hit.png",
+   "frameW": 72,
+   "frameH": 78,
+   "anchor": [
+    36,
+    36
+   ],
+   "meters": [
+    1.26,
+    1.37
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "blast": {
+   "label": "Wind blast (tornado, 3 m)",
+   "file": "blast.png",
+   "frameW": 176,
+   "frameH": 140,
+   "anchor": [
+    88,
+    84
+   ],
+   "meters": [
+    3.09,
+    2.46
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "wall": {
+   "label": "Wind wall (4.5 m x 1.8 m)",
+   "file": "wall.png",
+   "frameW": 300,
+   "frameH": 120,
+   "anchor": [
+    150,
+    112
+   ],
+   "meters": [
+    5.26,
+    2.11
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "wall_diag": {
+   "label": "Wind wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)",
+   "file": "wall_diag.png",
+   "frameW": 236,
+   "frameH": 255,
+   "anchor": [
+    118,
+    179
+   ],
+   "meters": [
+    4.14,
+    4.47
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "wall_depth": {
+   "label": "Wind wall, end-on (4.5 m x 1.8 m, running into the screen)",
+   "file": "wall_depth.png",
+   "frameW": 60,
+   "frameH": 298,
+   "anchor": [
+    30,
+    200
+   ],
+   "meters": [
+    1.05,
+    5.23
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "aura": {
+   "label": "Wind aura (charge / buff)",
+   "file": "aura.png",
+   "frameW": 80,
+   "frameH": 128,
+   "anchor": [
+    40,
+    112
+   ],
+   "meters": [
+    1.4,
+    2.25
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  }
+ }
+}

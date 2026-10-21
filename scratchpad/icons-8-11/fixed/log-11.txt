@@ -1,0 +1,18 @@
+shadow_clone 33 #06031c #0d0826 #191432 #232036 #371e2c #261e52 #2d235f #313042 #512a2c #403457 #383c4a #483284 #563c48 #4e4b5a #704848 #5b4b7d #5e5767 #624e99 #6c6272 #7c68a2 #7e7088 #86798e #9f7269 #918496 #9b8e9c #9e8eba #a598aa #c8988c #b4a7b2 #c2b7c0 #d0c4bf #cfc4c7 #e3d0ff
+   88 is the area mean of his 130x130 pixels
+   covered: #5b4b7d #9f7269 #7c68a2 #704848 #c8988c #371e2c #9e8eba #403457 #624e99 #563c48
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":0.87,"lowFreqBoxOnPalette":0.49,"ssim":0.765,"ssimBox":0.833,"hue":288,"hueHis":287,"colours":28,"thinRun":[6,"row",38]}
+   88 {"small":14,"smallHis":14,"smallDrawn":0,"smallOther":0,"lowFreq":0.61,"lowFreqBoxOnPalette":0.46,"ssim":0.934,"ssimBox":1,"hue":287,"hueHis":287,"colours":31,"thinRun":[11,"row",70]}
+dragon_fire_stream 32 #330614 #301b1e #520a18 #40262a #562623 #621c22 #7a1714 #7b340a #90150e #a41c0c #994023 #b8250c #a15918 #cc1e08 #ae5214 #da2c08 #cd4f08 #e43d12 #f43d04 #f84f08 #da7c2c #f86c14 #fa8212 #e0953e #fc9212 #fca61a #e7b25f #feb726 #feca40 #fbd478 #fedc50 #fff062
+   88 is the area mean of his 130x130 pixels
+   covered: #ae5214 #e0953e #7b340a #cd4f08 #fbd478 #a15918 #562623 #da7c2c #994023 #e7b25f
+   44 {"small":5,"smallHis":5,"smallDrawn":0,"smallOther":0,"lowFreq":0.99,"lowFreqBoxOnPalette":0.57,"ssim":0.75,"ssimBox":0.806,"hue":31,"hueHis":31,"colours":30,"thinRun":[5,"row",20]}
+   88 {"small":28,"smallHis":28,"smallDrawn":0,"smallOther":0,"lowFreq":0.67,"lowFreqBoxOnPalette":0.48,"ssim":0.948,"ssimBox":1,"hue":31,"hueHis":30,"colours":32,"thinRun":[7,"row",72]}
+water_dragon_suiryuudan 28 #0a1c36 #082449 #082a57 #163248 #0e3269 #103b76 #124683 #145190 #345779 #185c9c #1e68a8 #2673b2 #5d778a #4678a5 #2e7ebc #368bc6 #3e97cf #6796b6 #46a5da #52b2de #5ebfe9 #6fcbef #9fc8d9 #82d6f6 #9be3f9 #b2f0fb #cefbfe #eefdfe
+   88 is the area mean of his 130x130 pixels
+   covered: #345779 #6796b6 #9fc8d9 #5d778a #163248 #4678a5
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":2.07,"lowFreqBoxOnPalette":0.73,"ssim":0.657,"ssimBox":0.73,"hue":249,"hueHis":251,"colours":28,"thinRun":[7,"row",22]}
+   88 {"small":60,"smallHis":60,"smallDrawn":0,"smallOther":0,"lowFreq":1.69,"lowFreqBoxOnPalette":0.46,"ssim":0.892,"ssimBox":1,"hue":255,"hueHis":253,"colours":28,"thinRun":[7,"row",43]}
+   marks at 44: the skin of his ninjas' hands making the sign: 17; the near-black outlines of his ninja and the clone: 60; his stars and the light edges of the smoke: 23
+   marks at 44: his teeth (his box colour kept): 9; the dark mouth, teeth gaps and outline of his dragon head: 10; his teeth, eye and the brightest flame tongues: 48
+   marks at 44: his whitest foam and spray: 133; his white foam, spray and the light crests of the water: 162; the dark lines between his water bands: 163

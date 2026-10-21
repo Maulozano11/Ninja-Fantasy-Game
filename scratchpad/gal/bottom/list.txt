@@ -1,0 +1,5 @@
+bottom_shinobi|Shinobi Pants
+bottom_shorts|Training Shorts
+bottom_hakama|Wide Hakama
+bottom_cargo|Baggy Cargo Pants
+bottom_leggings|Fitted Leggings

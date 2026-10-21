@@ -1,0 +1,208 @@
+{
+ "totals": {
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "battles": 400
+ },
+ "river_patrol": {
+  "N": 100,
+  "rounds": 3.35,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "Pursuing Flame": 101,
+    "Evasion": 138,
+    "bigger jutsu (Mirai)": 30,
+    "Kōton Wall": 52,
+    "Kōton Block": 99,
+    "kunai (Ryusei)": 47,
+    "Node planted": 47
+   },
+   "battles": {
+    "Pursuing Flame": 100,
+    "Evasion": 100,
+    "bigger jutsu (Mirai)": 30,
+    "Kōton Wall": 52,
+    "Kōton Block": 84,
+    "kunai (Ryusei)": 47,
+    "Node planted": 47
+   }
+  },
+  "party": {
+   "uses": {
+    "kunai (Ryusei)": 80,
+    "Node planted": 80,
+    "Kōton Block": 65,
+    "attack w/ aura disadv.": 7,
+    "Spatial Swap": 1
+   },
+   "battles": {
+    "kunai (Ryusei)": 56,
+    "Node planted": 56,
+    "Kōton Block": 61,
+    "attack w/ aura disadv.": 6,
+    "Spatial Swap": 1
+   }
+  },
+  "enemies": [
+   "Acechador (Ryusei)",
+   "Renegado (Mirai)",
+   "Cazador (Koton)"
+  ]
+ },
+ "cedar_rogues": {
+  "N": 100,
+  "rounds": 2.89,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "Evasion": 200,
+    "kunai (Ryusei)": 98,
+    "Node planted": 136,
+    "Pursuing Flame": 93,
+    "Warp Strike": 27,
+    "Warp edge won": 27,
+    "blow from behind": 27,
+    "bigger jutsu (Mirai)": 50,
+    "attack w/ aura disadv.": 20
+   },
+   "battles": {
+    "Evasion": 100,
+    "kunai (Ryusei)": 98,
+    "Node planted": 98,
+    "Pursuing Flame": 84,
+    "Warp Strike": 27,
+    "Warp edge won": 27,
+    "blow from behind": 27,
+    "bigger jutsu (Mirai)": 43,
+    "attack w/ aura disadv.": 20
+   }
+  },
+  "party": {
+   "uses": {
+    "Kōton Block": 87,
+    "attack w/ aura disadv.": 29,
+    "kunai (Ryusei)": 1,
+    "Node planted": 2
+   },
+   "battles": {
+    "Kōton Block": 78,
+    "attack w/ aura disadv.": 24,
+    "kunai (Ryusei)": 1,
+    "Node planted": 2
+   }
+  },
+  "enemies": [
+   "Renegado (Mirai)",
+   "Vigía (Northstar)",
+   "Asaltante (Ryusei)"
+  ]
+ },
+ "night_raid": {
+  "N": 100,
+  "rounds": 4.11,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "Pursuing Flame": 142,
+    "kunai (Ryusei)": 108,
+    "Node planted": 124,
+    "Evasion": 185,
+    "bigger jutsu (Mirai)": 95,
+    "Kōton Block": 42,
+    "attack w/ aura disadv.": 33,
+    "Warp Strike": 33,
+    "Warp edge won": 32,
+    "blow from behind": 29,
+    "Kōton Wall": 4
+   },
+   "battles": {
+    "Pursuing Flame": 100,
+    "kunai (Ryusei)": 93,
+    "Node planted": 93,
+    "Evasion": 94,
+    "bigger jutsu (Mirai)": 86,
+    "Kōton Block": 40,
+    "attack w/ aura disadv.": 24,
+    "Warp Strike": 32,
+    "Warp edge won": 31,
+    "blow from behind": 29,
+    "Kōton Wall": 4
+   }
+  },
+  "party": {
+   "uses": {
+    "attack w/ aura disadv.": 196,
+    "Kōton Block": 105,
+    "aura slowed a foe": 17,
+    "Node planted": 22
+   },
+   "battles": {
+    "attack w/ aura disadv.": 76,
+    "Kōton Block": 99,
+    "aura slowed a foe": 16,
+    "Node planted": 21
+   }
+  },
+  "enemies": [
+   "Asaltante (Ryusei)",
+   "Puño de hierro (Koton)",
+   "Sombra (Northstar)",
+   "Kagero (Mirai)"
+  ]
+ },
+ "hydra": {
+  "N": 100,
+  "rounds": 6.51,
+  "outcomes": {
+   "victory": 76,
+   "defeat": 24
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {},
+   "battles": {}
+  },
+  "party": {
+   "uses": {
+    "Kōton Block": 137,
+    "attack w/ aura disadv.": 191,
+    "kunai (Ryusei)": 75,
+    "Node planted": 94,
+    "Warp Strike": 22,
+    "Warp edge won": 22,
+    "blow from behind": 19,
+    "Spatial Swap": 1
+   },
+   "battles": {
+    "Kōton Block": 97,
+    "attack w/ aura disadv.": 48,
+    "kunai (Ryusei)": 22,
+    "Node planted": 24,
+    "Warp Strike": 20,
+    "Warp edge won": 20,
+    "blow from behind": 18,
+    "Spatial Swap": 1
+   }
+  },
+  "enemies": []
+ }
+}

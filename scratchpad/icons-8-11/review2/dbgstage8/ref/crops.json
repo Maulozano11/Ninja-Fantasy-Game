@@ -1,0 +1,153 @@
+{
+ "grid": {
+  "8": {
+   "pitch": [
+    4.166666666666667,
+    4.164179104477612
+   ],
+   "spectrumPitch": [
+    4.1668,
+    4.1615
+   ],
+   "phase": [
+    0.35,
+    0.45
+   ],
+   "edgeRatio": [
+    1.605,
+    2.05
+   ],
+   "blockSpread": 1.48,
+   "source": "icons-owner-reference-8.jpg",
+   "row": [
+    25,
+    233,
+    1975,
+    833
+   ],
+   "rowScale": {
+    "1x": 0.07599309153713299,
+    "4x": 0.30397236614853196
+   }
+  }
+ },
+ "icons": {
+  "ryusei_swap": {
+   "sheet": "8",
+   "box": [
+    17,
+    64,
+    156,
+    191
+   ],
+   "size": [
+    139,
+    127
+   ],
+   "slot": [
+    8,
+    58,
+    165,
+    198
+   ],
+   "sheetBox": [
+    71,
+    266,
+    650,
+    795
+   ],
+   "sheetSlot": [
+    33,
+    241,
+    687,
+    824
+   ],
+   "what": "Swap (Intercambio): two ninjas trading places through a violet and cyan vortex, on cyan",
+   "window": [
+    14,
+    64,
+    158,
+    191
+   ],
+   "open": [
+    "right"
+   ]
+  },
+  "northstar_command": {
+   "sheet": "8",
+   "box": [
+    180,
+    64,
+    307,
+    191
+   ],
+   "size": [
+    127,
+    127
+   ],
+   "slot": [
+    172,
+    58,
+    313,
+    198
+   ],
+   "sheetBox": [
+    750,
+    266,
+    1279,
+    795
+   ],
+   "sheetSlot": [
+    717,
+    241,
+    1304,
+    824
+   ],
+   "what": "Command (Comando): a glowing red eye in a red ring with a four-pointed flare, embers, on deep red",
+   "window": [
+    179,
+    64,
+    307,
+    191
+   ]
+  },
+  "northstar_submission": {
+   "sheet": "8",
+   "box": [
+    335,
+    64,
+    462,
+    191
+   ],
+   "size": [
+    127,
+    127
+   ],
+   "slot": [
+    324,
+    58,
+    472,
+    198
+   ],
+   "sheetBox": [
+    1396,
+    266,
+    1925,
+    795
+   ],
+   "sheetSlot": [
+    1350,
+    241,
+    1967,
+    824
+   ],
+   "what": "Submission (Sumision): a red four-pointed star over a kneeling figure bound by chains, on crimson",
+   "window": [
+    331,
+    64,
+    466,
+    191
+   ]
+  }
+ }
+}

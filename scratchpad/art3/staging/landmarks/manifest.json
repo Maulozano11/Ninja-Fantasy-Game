@@ -1,0 +1,250 @@
+{
+ "group": "landmarks",
+ "pxPerMeter": 57,
+ "sprites": {
+  "stone_lantern": {
+   "label": "Stone Lantern",
+   "file": "stone_lantern.png",
+   "frameW": 44,
+   "frameH": 99,
+   "anchor": [
+    22,
+    97
+   ],
+   "meters": [
+    0.7,
+    1.7
+   ],
+   "tags": [
+    "light-source",
+    "cover-half",
+    "interactable"
+   ],
+   "anims": {
+    "lit": {
+     "row": 0,
+     "frames": 6,
+     "fps": 8,
+     "loop": true
+    },
+    "unlit": {
+     "row": 1,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "signpost": {
+   "label": "Signpost",
+   "file": "signpost.png",
+   "frameW": 57,
+   "frameH": 113,
+   "anchor": [
+    29,
+    111
+   ],
+   "meters": [
+    0.95,
+    1.9
+   ],
+   "tags": [
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 8,
+     "loop": true
+    }
+   }
+  },
+  "fence": {
+   "label": "Wooden Fence",
+   "file": "fence.png",
+   "frameW": 128,
+   "frameH": 61,
+   "anchor": [
+    64,
+    59
+   ],
+   "meters": [
+    2,
+    1
+   ],
+   "tags": [
+    "cover-half",
+    "destructible"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "broken": {
+     "row": 1,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "fence_bamboo": {
+   "label": "Bamboo Fence",
+   "file": "fence_bamboo.png",
+   "frameW": 128,
+   "frameH": 71,
+   "anchor": [
+    64,
+    69
+   ],
+   "meters": [
+    2,
+    1.2
+   ],
+   "tags": [
+    "cover-half",
+    "blocks-sight",
+    "destructible"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "boulder": {
+   "label": "Mossy Boulder",
+   "file": "boulder.png",
+   "frameW": 100,
+   "frameH": 77,
+   "anchor": [
+    47,
+    75
+   ],
+   "meters": [
+    1.6,
+    1.3
+   ],
+   "tags": [
+    "cover-3q",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "rock": {
+   "label": "Rock",
+   "file": "rock.png",
+   "frameW": 51,
+   "frameH": 36,
+   "anchor": [
+    25,
+    34
+   ],
+   "meters": [
+    0.9,
+    0.6
+   ],
+   "tags": [
+    "cover-half"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "rocks_small": {
+   "label": "Pebbles",
+   "file": "rocks_small.png",
+   "frameW": 37,
+   "frameH": 22,
+   "anchor": [
+    19,
+    20
+   ],
+   "meters": [
+    0.6,
+    0.25
+   ],
+   "tags": [
+    "ambient"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "river_stones": {
+   "label": "Stepping Stones",
+   "file": "river_stones.png",
+   "frameW": 93,
+   "frameH": 39,
+   "anchor": [
+    47,
+    33
+   ],
+   "meters": [
+    1.4,
+    0.15
+   ],
+   "tags": [
+    "water",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 5,
+     "loop": true
+    }
+   }
+  },
+  "hokora": {
+   "label": "Roadside Shrine",
+   "file": "hokora.png",
+   "frameW": 40,
+   "frameH": 71,
+   "anchor": [
+    20,
+    69
+   ],
+   "meters": [
+    0.65,
+    1.3
+   ],
+   "tags": [
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  }
+ }
+}

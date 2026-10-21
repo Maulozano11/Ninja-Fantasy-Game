@@ -1,0 +1,24 @@
+import { open, helpers, out, turnOf } from './lib.mjs';
+const locale = process.argv[2] ?? 'en-US';
+const L = locale.slice(0, 2);
+const es = L === 'es';
+const { browser, page, errs } = await open(locale, { hash: '#creator' });
+const h = helpers(page);
+await page.getByText('Shiori, the Gentle Fist').click(); await page.waitForTimeout(300);
+await page.getByText('ENTER BATTLEFIELD').click(); await page.waitForTimeout(800);
+const labelText = () => page.evaluate(() => [...document.querySelectorAll('div.font-semibold')].map((d) => d.parentElement?.innerText.replace(/\n/g, ' | ')).filter(Boolean).join(' // '));
+const res = [];
+// stealth first: the patrol
+await page.getByText(es ? 'Patrulla en el cruce' : 'Patrol at the crossing').click();
+await h.idle(); await page.waitForTimeout(1500);
+const sb = await page.evaluate(() => [...document.querySelectorAll('button')].filter((b) => /Command|Submit|Sumisi/.test(b.innerText)).map((b) => ({ t: b.innerText.replace(/\n/g, ' '), disabled: b.disabled })));
+res.push({ stealthButtons: sb });
+await page.locator('button', { hasText: 'Command' }).first().click(); await page.waitForTimeout(300);
+const g = await page.evaluate(() => Object.values(window.__battle.state().units).find((u) => u.team === 'enemy').pos);
+await page.evaluate(([x, z]) => window.__battle.centerOn(x, z), [g.x, g.z]); await page.waitForTimeout(1200);
+let p = await h.at(g.x, g.z); await page.mouse.move(p.x, p.y - 25); await page.waitForTimeout(500);
+res.push({ stealthCommandHover: await labelText() });
+await page.screenshot({ path: `${out}/n2-stealth-command-${L}.png` });
+await browser.close();
+console.log(JSON.stringify(res, null, 1));
+console.log('errors', JSON.stringify(errs));

@@ -1,0 +1,69 @@
+{
+ "source": "docs/reference/scarlet-owner-reference.jpg",
+ "origin": [
+  113,
+  126
+ ],
+ "pivot": [
+  10,
+  13
+ ],
+ "front": [
+  "............cccc...........",
+  "..........ccwwrwcc.........",
+  "......ccccAAwwrlwwcc..c....",
+  "...c..cwGAAAAAlAlwllcc.....",
+  "....ccwGGLLLAAwwwwllwrc....",
+  ".....cAAGGLAwGwAAAlwlwc....",
+  "...ccrrlAGGAAwGAGAAAwGAc...",
+  "..cclllrGAwGAwGGGAAwrAGGc..",
+  "....crlAAAAGGGGAGGGiiwwGc..",
+  "...cwwllAArAAGAAGGl..cwlc..",
+  ".ccwwllwAwrAAAAAlGl..clrlc.",
+  "c..clwArwwAAwll.lwl...clc..",
+  "..crAAiiAAAArw..rrr...cic..",
+  ".ccwiirAlAArr....rl....ilc.",
+  "c..ccrliiwAwc....l.....licc",
+  "..ccwlirwrAw..........clc..",
+  "...cwilrwlrw...........c...",
+  "...cciilrwlll..........c...",
+  "..cc.clilrwl..........icc..",
+  "....ciiilirl..........c....",
+  "........ll...........i....."
+ ],
+ "back": [
+  "............cccc...........",
+  "..........ccwwrwcc.........",
+  "......ccccAAwwrlwwcc..c....",
+  "...c..cwGAAAAAlAlwllcc.....",
+  "....ccwGGLLLAAwwwwllwrc....",
+  ".....cAAGGLAwGwAAAlwlwc....",
+  "...ccrrlAGGAAwGAGAAAwGAc...",
+  "..cclllrGAwGAwGGGAAwrAGGc..",
+  "....crlAAAAGGGGAGGGiiwwGc..",
+  "...cwwllAArAAGAAGGliicwlc..",
+  ".ccwwllwAwrAAAAAlGliiclrlc.",
+  "c..clwArwwAAwllAlwliiwclc..",
+  "..crAAiiAAAArwlArrriiwcic..",
+  ".ccwiirAlAArrwlArrliiwlilc.",
+  "c..ccrliiwAwciiiiliiiiilicc",
+  "..ccwlirwrAwiiiiiiiiiiclc..",
+  "...cwilrwlrwiiiiiiiiiiic...",
+  "...cciilrwllliiiiiiiiiic...",
+  "..cc.clilrwliiiiiiiiiiicc..",
+  "....ciiilirliiiiiiiiiic....",
+  "........ll...........i....."
+ ],
+ "palette": {
+  "c": "#26060d",
+  "i": "#3a0f1e",
+  "l": "#4e172a",
+  "r": "#601f35",
+  "w": "#70273e",
+  "A": "#87324c",
+  "G": "#9a3e58",
+  "L": "#ac5068"
+ },
+ "line": "c",
+ "base": "#87324c"
+}

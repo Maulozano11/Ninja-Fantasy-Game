@@ -1,0 +1,2 @@
+Border check (opaque pixels on the frame border; stream tiles exempt): earth: 92 frames, genjutsu: 94 frames, chakra: 94 frames, poison: 94 frames
+no frame touches its border

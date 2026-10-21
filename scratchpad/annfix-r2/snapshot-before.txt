@@ -1,0 +1,2 @@
+62ad8a9706e2b835a5473fd6ce1c4ec35d0292eb  tools/world-sprites/vfx-a-fire-s.ts
+279010a5674d313e87c12ece685b7f32266c0ddb  tools/world-sprites/vfx-a-ref.ts

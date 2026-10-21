@@ -1,0 +1,11 @@
+import { writeFileSync } from 'fs';
+import { renderSpriteCached } from '../../../../../../home/user/Ninja-Fantasy-Game/src/sprite/compose';
+import { getAppearance, dojutsuToEye } from '../../../../../../home/user/Ninja-Fantasy-Game/src/sprite/legacy';
+import { LEGENDARY_PRESETS } from '../../../../../../home/user/Ninja-Fantasy-Game/src/data/shinobiData';
+const [out, name, pose = 'idle', frame = '0', armor = 'keep'] = process.argv.slice(2);
+const c = LEGENDARY_PRESETS[0].character;
+const base = getAppearance(c);
+const s: any = { ...base.slots, held: { id: 'held_ice_crystal', colors: [] }, cape: { id: 'cape_shadow', colors: ['#1c1b22', '#b8913a'] } };
+if (armor === 'none') delete s.armor;
+const f = renderSpriteCached({ ...base, slots: s } as any, pose as any, +frame, dojutsuToEye(c.dojutsu));
+writeFileSync(`${out}/${name}.rgba`, Buffer.from(f.rgba));

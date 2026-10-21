@@ -1,0 +1,268 @@
+export interface Option {
+  intent: Intent;
+  value: number;
+  /** A jutsu that reaches just one foe (the clan's own move can take its place). */
+  single?: boolean;
+}
+
+/** How much a unit wants to hit a foe, by its order: the weakest, or the closest threat. */
+function focus(u: Unit, f: Unit): number {
+  const hurt = 1 - f.hp / Math.max(1, f.maxHp);
+  const near = 1 / (1 + dist(u.pos, f.pos) / 6);
+  if (u.aiOrder === 'aggressive') return 1 + hurt;
+  return 1 + near * 0.8 + hurt * 0.3;
+}
+
+/** Foes and friends an area would hit (1 for a jutsu with no area). */
+export function areaValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit): number {
+  const area = areaOf(j, u.pos, at.pos);
+  if (!area) return 1;
+  let v = 0;
+  for (const o of Object.values(s.units)) {
+    if (!standingUnit(o) || o.kind === 'hydra_body') continue;
+    if (o.id === u.id && (j.shape === 'selfCircle' || j.shape === 'cone' || j.shape === 'line')) continue;
+    if (!inArea(area, o.pos)) continue;
+    // Friends caught in the blast weigh more than foes: the AI only risks it for a crowd.
+    v += o.team === u.team ? -2.5 : 1;
+  }
+  return v;
+}
+
+// --- the clans' own moves (docs/CLANS_DESIGN.md, D21) ---------------------------------------
+
+/** Pursuing Flame, the Mirai's own Katon. */
+export const FLAME = 'katon_pursuing_flame';
+/** Modular Architecture's wall (Kōton). */
+export const WALL = 'koton_wall';
+/** A blow from behind (Warp Strike): advantage, and nothing blocks it. Worth half again a plain blow. */
+const EDGE = 1.5;
+
+/** Chakra sealed: no jutsu, no clan ability. */
+const noJutsu = (u: Unit): boolean => effectMods(u.effects).noJutsu;
+
+/** About what a unit deals on its turn: its best blow, kunai or affordable jutsu on one foe, on average. */
+export function threat(u: Unit): number {
+  const strMod = abilityMod(u.stats.str);
+  const dexMod = abilityMod(u.stats.dex);
+  const w = wielded(u);
+  let best = Math.max((avg(w.dice) + (w.finesse ? Math.max(strMod, dexMod) : strMod)) * 0.65, (avg(KUNAI.dice) + dexMod) * 0.55);
+  if (!noJutsu(u)) {
+    for (const id of u.jutsus) {
+      const j = JUTSU[id];
+      if (j && offensive(j) && u.chakra >= j.cost) best = Math.max(best, avg(j.dice) * (j.save ? 0.75 : 0.65));
+    }
+  }
+  return best;
+}
+
+/**
+ * A Ryusei can Warp Strike on its turn: it has the ability, its chakra isn't sealed, 2 chakra and,
+ * planning the turn it is in, its bonus action left (`next`: planning its next turn, fresh).
+ */
+export const canWarp = (u: Unit, next = false): boolean =>
+  u.jutsus.includes(WARP) && !noJutsu(u) && u.chakra >= JUTSU[WARP].cost && (next || u.turn.bonus);
+
+/**
+ * Where a Ryusei's Warp Strike lands to strike `t` from behind at once: the landing nearest `t` of
+ * its own Nodes (within 18 m and in sight) that has `t` in reach with no metal wall between. Null
+ * if none does (or it is in reach already: it just strikes).
+ */
+export function warpStrikeAt(s: BattleState, u: Unit, t: Unit): Pt | null {
+  const reach = reachTo(u, t) + 0.1;
+  if (dist(u.pos, t.pos) <= reach && !fullCoverBetween(s, u.pos, t.pos)) return null;
+  let best: { at: Pt; d: number } | undefined;
+  for (const n of ownNodes(s, u)) {
+    if (warpBlocker(s, u, n)) continue;
+    const land = warpLanding(s, u, n)!;
+    const d = dist(land, t.pos);
+    if (d > reach || fullCoverBetween(s, land, t.pos)) continue;
+    if (!best || d < best.d) best = { at: land, d };
+  }
+  return best?.at ?? null;
+}
+
+/** Foes of a side still standing (not the hydra's body, which nobody fights directly). */
+const foesOf = (s: BattleState, u: Unit): Unit[] => Object.values(s.units).filter((o) => o.team !== u.team && standingUnit(o) && o.kind !== 'hydra_body');
+
+/**
+ * What a Spatial Swap with `t` (on one of the Ryusei's Nodes, within reach of the swap) is worth;
+ * 0 when it doesn't clearly help. It helps a hurt friend that a foe can strike, when the Ryusei is
+ * healthy and out of every foe's reach: the friend goes to safety and the Ryusei takes its place. It
+ * helps against a foe that likely fails its STR save, pulled in among two or more of the Ryusei's
+ * friends with none of its own near.
+ */
+export function swapValue(s: BattleState, u: Unit, t: Unit | undefined): number {
+  if (!t || !standingUnit(t) || !u.jutsus.includes(SWAP) || noJutsu(u) || u.chakra < JUTSU[SWAP].cost || swapBlocker(s, u, t)) return 0;
+  const foes = foesOf(s, u);
+  const struck = (p: Pt) => foes.some((f) => f.id !== t.id && dist(f.pos, p) <= wielded(f).reach + 0.6);
+  if (t.team === u.team) {
+    if (t.hp > t.maxHp * 0.5 || u.hp < u.maxHp * 0.5 || !struck(t.pos) || struck(u.pos)) return 0;
+    return 6 + 10 * (1 - t.hp / t.maxHp);
+  }
+  const mine = Object.values(s.units).filter((o) => o.id !== u.id && o.team === u.team && o.kind === 'ninja' && standingUnit(o) && dist(o.pos, u.pos) <= 2.5);
+  const theirs = Object.values(s.units).filter((o) => o.id !== t.id && o.team === t.team && standingUnit(o) && dist(o.pos, u.pos) <= 3);
+  const fails = 1 - successChance(saveMod(t, 'str'), u.saveDC);
+  if (mine.length < 2 || theirs.length || fails < 0.5) return 0;
+  return fails * mine.reduce((v, o) => v + threat(o), 0);
+}
+
+/** A friend is hurt enough to shelter: half its HP or less. */
+const hurtFriend = (o: Unit): boolean => o.kind === 'ninja' && standingUnit(o) && o.hp <= o.maxHp * 0.5;
+
+export interface WallCover {
+  /** Where the wall is raised (its centre). */
+  at: Pt;
+  /** The foes it hides the friend from. */
+  hidden: string[];
+}
+
+/**
+ * Where a Kōton's metal wall shelters `p` (itself, or a hurt friend) from the foes that can shoot
+ * at it: `p` hurt (half its HP or less) with no foe within 3 m; the wall within 6 m of the Kōton, in
+ * its sight and over nobody, across the line to those foes; it must hide `p` from two or more of
+ * them, or from every one. The spot that hides it from the most dangerous wins. Null if none does,
+ * or the Kōton already has a wall standing (one at a time, so a new one never topples it).
+ */
+export function wallCover(s: BattleState, u: Unit, p: Unit): WallCover | null {
+  const spec = JUTSU[WALL];
+  if (!u.jutsus.includes(WALL) || noJutsu(u) || u.chakra < spec.cost || !hurtFriend(p) || p.team !== u.team) return null;
+  if (ownStructures(s, u.id).some((w) => w.kind === 'metal')) return null;
+  const foes = foesOf(s, u);
+  if (foes.some((f) => dist(f.pos, p.pos) < 3)) return null;
+  const shooters = foes.filter((f) => dist(f.pos, p.pos) <= KUNAI_LONG && lineOfSight(s, f.pos, p.pos));
+  if (!shooters.length) return null;
+  // Toward each of them, and toward all of them at once, a little way out from the friend.
+  const dirs = shooters.map((f) => ({ x: f.pos.x - p.pos.x, z: f.pos.z - p.pos.z }));
+  dirs.push(dirs.reduce((a, b) => ({ x: a.x + b.x / Math.hypot(b.x, b.z), z: a.z + b.z / Math.hypot(b.x, b.z) }), { x: 0, z: 0 }));
+  let best: { at: Pt; hidden: Unit[]; v: number } | undefined;
+  for (const dv of dirs) {
+    const l = Math.hypot(dv.x, dv.z);
+    if (l < 1e-6) continue;
+    for (const r of [1.25, 2, 2.75]) {
+      const at = { x: p.pos.x + (dv.x / l) * r, z: p.pos.z + (dv.z / l) * r };
+      if (dist(u.pos, at) > spec.range || dist(u.pos, at) < 0.5 || !lineOfSight(s, u.pos, at)) continue;
+      const w = structureAt(spec, u.pos, at, u.id, '');
+      if (structureBlocker(s, w)) continue;
+      const after = { ...s, walls: [...s.walls, w] };
+      const hidden = shooters.filter((f) => !lineOfSight(after, f.pos, p.pos));
+      if (hidden.length < 2 && hidden.length < shooters.length) continue;
+      const v = hidden.reduce((x, f) => x + threat(f), 0) - r * 0.01;
+      if (!best || v > best.v) best = { at, hidden, v };
+    }
+  }
+  return best ? { at: best.at, hidden: best.hidden.map((f) => f.id) } : null;
+}
+
+/** Every reasonable thing a ninja (enemy, or an ally on AI) could do this turn (`next`: on its next turn), best first. */
+export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
+  const out: Option[] = [];
+  const foes = visibleFoes(s, u);
+  const friends = Object.values(s.units).filter((o) => o.team === u.team && o.kind === 'ninja' && o.down !== 'dead' && o.down !== 'fled' && o.down !== 'ko');
+  const strMod = abilityMod(u.stats.str);
+  const dexMod = abilityMod(u.stats.dex);
+  const wMod = u.weapon.finesse ? Math.max(strMod, dexMod) : strMod;
+  const sealed = hasEffect(u.effects, 'chakra_sealed');
+  const warps = canWarp(u, next);
+  // A kunai leaves a Node to warp to on the next turn (2 chakra left for it).
+  const plants = u.jutsus.includes(WARP) && !noJutsu(u) && u.chakra >= JUTSU[WARP].cost;
+  for (const f of foes) {
+    const d = dist(u.pos, f.pos);
+    const fx = focus(u, f);
+    const blow = (avg(u.weapon.dice) + wMod) * 0.65 * fx;
+    // A Ryusei with a Node beside the foe warps in and strikes from behind, however far it is.
+    const warpIn = warps ? warpStrikeAt(s, u, f) : null;
+    if (d <= u.speed + reachTo(u, f) + 0.1 || warpIn) out.push({ intent: { kind: 'melee', what: u.weapon.name, target: f.id }, value: blow * (warpIn ? EDGE : 1) });
+    if (d <= KUNAI_LONG + u.speed) {
+      // With no Node near the foe yet (and the foe out of reach), the kunai leaves one: half a blow from behind more.
+      const plant = plants && !warpIn && d > reachTo(u, f) + 0.1;
+      const v = (avg(KUNAI.dice) + dexMod) * 0.55 * fx * (d > KUNAI.reach + u.speed ? 0.5 : 1) + (plant ? blow * EDGE * 0.5 : 0);
+      out.push({ intent: { kind: 'ranged', what: KUNAI.name, target: f.id }, value: v });
+    }
+    if (sealed) continue;
+    for (const id of u.jutsus) {
+      const j = JUTSU[id];
+      if (!j || !offensive(j) || u.chakra < j.cost) continue;
+      if (d > j.range + u.speed + (f.bulk ?? 0)) continue;
+      const hits = areaValue(s, u, j, f);
+      if (hits <= 0) continue;
+      const thrift = u.chakra >= j.cost * 2 ? 1 : 0.85;
+      // A save made with disadvantage (Pursuing Flame) fails more often.
+      const lands = j.save ? (j.saveAdv === 'disadvantage' ? 0.85 : 0.75) : 0.65;
+      out.push({ intent: { kind: 'jutsu', what: id, target: f.id, at: { ...f.pos } }, value: avg(j.dice) * lands * hits * fx * thrift, single: hits < 2 });
+    }
+    // A Northstar takes a foe's mind (Command) or a beast's (Natural Submission): if the WIS save
+    // fails, the foe neither strikes the Northstar's side nor holds back from its own: twice its harm.
+    for (const [id, refused] of [[COMMAND, commandRefused], [SUBMISSION, submissionRefused]] as const) {
+      const j = JUTSU[id];
+      if (!u.jutsus.includes(id) || noJutsu(u) || u.chakra < j.cost || d > j.range + u.speed || refused(s, u, f)) continue;
+      const fails = 1 - successChance(saveMod(f, 'wis'), u.saveDC);
+      out.push({ intent: { kind: 'command', what: id, target: f.id }, value: fails * 2 * threat(f) * fx });
+    }
+  }
+  // Helping: healing a hurt friend, getting a fallen one back up.
+  const support = u.aiOrder === 'support' ? 1.6 : u.aiOrder === 'defensive' ? 1.1 : 0.8;
+  for (const f of friends) {
+    const hurt = f.down === 'downed' || f.down === 'stable' || f.hp < f.maxHp * 0.5;
+    if (!hurt) continue;
+    if (!sealed && u.jutsus.includes('mystical_palm') && u.chakra >= JUTSU.mystical_palm.cost && dist(u.pos, f.pos) <= u.speed + 1.6) {
+      out.push({ intent: { kind: 'heal', what: 'mystical_palm', target: f.id }, value: avg(JUTSU.mystical_palm.dice) * support * (f.down ? 2 : 1) });
+    }
+    if (homeTeam(u) === 'party' && !u.joined && f.down === 'downed' && dist(u.pos, f.pos) <= u.speed + 1.6) {
+      const bandage = s.supplies.bandages > 0;
+      out.push({ intent: { kind: 'heal', what: bandage ? 'bandage' : 'stabilize', target: f.id }, value: (bandage ? 9 : 6) * support });
+    }
+    // A Kōton shelters a hurt friend (or itself) behind a metal wall, from the foes shooting at it.
+    const cover = wallCover(s, u, f);
+    if (cover) out.push({ intent: { kind: 'jutsu', what: WALL, target: f.id, at: cover.at }, value: cover.hidden.reduce((v, id) => v + threat(s.units[id]), 0) });
+  }
+  // A Ryusei swaps places with whoever stands on one of its Nodes, when that clearly helps.
+  if (u.jutsus.includes(SWAP)) {
+    for (const o of Object.values(s.units)) {
+      const v = o.id === u.id ? 0 : swapValue(s, u, o);
+      if (v > 0) out.push({ intent: { kind: 'jutsu', what: SWAP, target: o.id, at: { ...o.pos } }, value: v });
+    }
+  }
+  // Hurt and in reach of a foe: dodge.
+  const threatened = foes.some((f) => dist(u.pos, f.pos) <= wielded(f).reach + 0.5);
+  if (threatened && u.hp < u.maxHp * 0.3) out.push({ intent: { kind: 'defend', what: 'dodge' }, value: u.aiOrder === 'defensive' ? 9 : 4 });
+  clanWays(s, u, out);
+  return out.sort((a, b) => b.value - a.value);
+}
+
+/**
+ * Each clan fights its own way (docs/CLANS_DESIGN.md, D21): its move takes the place of a jutsu
+ * that would reach just one foe, taking that jutsu's worth (a jutsu that catches two foes or more
+ * still comes first).
+ * - A Mirai casts Pursuing Flame at that foe on its first jutsu of the fight and every other one
+ *   after (its jutsu cast so far is even), if the flame reaches it.
+ * - A Ryusei warps in beside that foe and strikes from behind, when a Node of its own lets it; and
+ *   with no Node of its own yet, it opens by throwing a kunai at that foe, to leave one.
+ * - A Northstar commands a foe whose WIS save fails at least half the time, in place of any attack
+ *   or jutsu on one foe, while nobody is under its command.
+ */
+function clanWays(s: BattleState, u: Unit, out: Option[]): void {
+  const single = (o: Option) => o.single || o.intent.kind === 'melee' || o.intent.kind === 'ranged';
+  const bestOn = (id: string): number => Math.max(0, ...out.filter((o) => o.single && o.intent.target === id).map((o) => o.value));
+  const flame = JUTSU[FLAME];
+  if (u.jutsus.includes(FLAME) && !noJutsu(u) && u.chakra >= flame.cost && u.stats2.jutsuCast % 2 === 0) {
+    for (const o of out) {
+      const t = o.single && o.intent.what !== FLAME ? s.units[o.intent.target!] : undefined;
+      if (t && dist(u.pos, t.pos) <= flame.range + u.speed + (t.bulk ?? 0)) o.intent = { kind: 'jutsu', what: FLAME, target: t.id, at: { ...t.pos } };
+    }
+  }
+  if (u.jutsus.includes(WARP)) {
+    const opening = !ownNodes(s, u).length;
+    for (const o of out) {
+      const t = o.intent.target;
+      const way = o.intent.kind === 'melee' ? o.value > 0 && !!t && warpStrikeAt(s, u, s.units[t]) !== null : o.intent.kind === 'ranged' && opening;
+      if (way && t) o.value = Math.max(o.value, bestOn(t) + 0.01);
+    }
+  }
+  if (u.jutsus.includes(COMMAND) && !Object.values(s.units).some((o) => o.commanded?.by === u.id)) {
+    const best = Math.max(0, ...out.filter(single).map((o) => o.value));
+    for (const o of out) {
+      const t = o.intent.kind === 'command' && o.intent.what === COMMAND ? s.units[o.intent.target!] : undefined;
+      if (t && 1 - successChance(saveMod(t, 'wis'), u.saveDC) >= 0.5) o.value = Math.max(o.value, best + o.value * 0.001);
+    }
+  }
+}

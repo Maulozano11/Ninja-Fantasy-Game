@@ -1,0 +1,210 @@
+===== vfx_water ['bolt', 'beast', 'stream', 'stream_head', 'breath', 'sphere', 'slash', 'multi', 'hit', 'blast', 'wall', 'aura']
+bolt img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x2-49 y18-49 px=909 semi=13 faint=0 iso=0 edges[]
+  fly f1: bbox x0-49 y17-51 px=946 semi=16 faint=0 iso=0 edges[L3] diff=397
+  fly f2: bbox x0-49 y18-48 px=903 semi=11 faint=0 iso=0 edges[L7] diff=418
+  fly f3: bbox x0-49 y17-47 px=939 semi=16 faint=0 iso=0 edges[L3] diff=425
+stream img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x0-63 y12-51 px=1837 semi=0 faint=0 iso=0 edges[L29 R29]
+  fly f1: bbox x0-63 y12-51 px=1837 semi=0 faint=0 iso=0 edges[L25 R26] diff=1242
+  fly f2: bbox x0-63 y12-51 px=1837 semi=0 faint=0 iso=0 edges[L30 R29] diff=1242
+  fly f3: bbox x0-63 y12-51 px=1837 semi=0 faint=0 iso=0 edges[L25 R27] diff=1242
+stream_head img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x0-61 y7-60 px=1610 semi=0 faint=0 iso=0 edges[L25]
+  fly f1: bbox x0-63 y9-52 px=1623 semi=0 faint=0 iso=0 edges[L25 R4] diff=807
+  fly f2: bbox x0-63 y7-55 px=1633 semi=0 faint=0 iso=0 edges[L25 R3] diff=787
+  fly f3: bbox x0-63 y9-58 px=1608 semi=0 faint=0 iso=0 edges[L25 R6] diff=729
+breath img 384 x 64 frame 96 64 anchor [48, 32] m [1.68, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x0-90 y4-63 px=2240 semi=0 faint=0 iso=0 edges[L8 B2]
+  fly f1: bbox x0-87 y2-62 px=2243 semi=0 faint=0 iso=0 edges[L9] diff=1851
+  fly f2: bbox x0-85 y3-63 px=2259 semi=0 faint=0 iso=0 edges[L8 B6] diff=1846
+  fly f3: bbox x0-93 y3-63 px=2253 semi=0 faint=0 iso=0 edges[L9 B4] diff=1834
+sphere img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x4-63 y11-52 px=1504 semi=0 faint=0 iso=0 edges[R2]
+  fly f1: bbox x3-61 y11-52 px=1507 semi=0 faint=0 iso=0 edges[] diff=835
+  fly f2: bbox x4-63 y11-52 px=1512 semi=0 faint=0 iso=0 edges[R2] diff=882
+  fly f3: bbox x2-61 y11-52 px=1501 semi=0 faint=0 iso=0 edges[] diff=857
+slash img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x5-56 y0-61 px=1421 semi=24 faint=0 iso=0 edges[T11]
+  fly f1: bbox x5-57 y0-61 px=1435 semi=23 faint=0 iso=0 edges[T7] diff=600
+  fly f2: bbox x5-58 y0-61 px=1474 semi=24 faint=0 iso=0 edges[T8] diff=580
+  fly f3: bbox x5-58 y0-61 px=1450 semi=24 faint=0 iso=0 edges[T10] diff=574
+multi img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x12-63 y10-54 px=973 semi=114 faint=0 iso=0 edges[R3]
+  fly f1: bbox x12-63 y10-55 px=976 semi=116 faint=0 iso=0 edges[R3] diff=98
+  fly f2: bbox x12-63 y10-55 px=974 semi=113 faint=0 iso=0 edges[R3] diff=100
+  fly f3: bbox x12-63 y10-54 px=971 semi=112 faint=0 iso=0 edges[R3] diff=101
+hit img 384 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'hit': (0, 6, 12, False)}
+  hit f0: bbox x19-44 y20-43 px=320 semi=0 faint=0 iso=0 edges[]
+  hit f1: bbox x11-50 y14-52 px=961 semi=81 faint=0 iso=0 edges[] diff=892
+  hit f2: bbox x4-59 y7-58 px=1736 semi=87 faint=0 iso=0 edges[] diff=1369
+  hit f3: bbox x2-63 y5-63 px=954 semi=279 faint=0 iso=0 edges[R5 B6] diff=2132
+  hit f4: bbox x0-58 y6-63 px=380 semi=2 faint=0 iso=0 edges[L3 B16] diff=1142
+  hit f5: bbox x2-61 y8-60 px=225 semi=2 faint=0 iso=0 edges[] diff=549
+blast img 1408 x 128 frame 176 128 anchor [88, 72] m [3.09, 2.25] {'blast': (0, 8, 12, False)}
+  blast f0: bbox x66-109 y55-86 px=974 semi=0 faint=0 iso=0 edges[]
+  blast f1: bbox x50-125 y31-96 px=2231 semi=0 faint=0 iso=0 edges[] diff=2297
+  blast f2: bbox x34-141 y0-107 px=4675 semi=0 faint=0 iso=0 edges[T6] diff=4858
+  blast f3: bbox x16-160 y0-119 px=6807 semi=0 faint=0 iso=0 edges[T38] diff=7052
+  blast f4: bbox x2-173 y13-127 px=7842 semi=0 faint=0 iso=0 edges[B34] diff=10498
+  blast f5: bbox x2-173 y15-127 px=11456 semi=3172 faint=0 iso=0 edges[B34] diff=10767
+  blast f6: bbox x4-171 y16-127 px=9675 semi=4631 faint=0 iso=0 edges[B10] diff=9837
+  blast f7: bbox x11-164 y21-122 px=7223 semi=4802 faint=0 iso=0 edges[] diff=6756
+wall img 1584 x 240 frame 264 120 anchor [132, 112] m [4.63, 2.11] {'rise': (0, 6, 12, False), 'idle': (1, 4, 12, True)}
+  rise f0: bbox x3-260 y96-117 px=4035 semi=195 faint=0 iso=0 edges[]
+  rise f1: bbox x0-263 y75-117 px=8405 semi=2282 faint=0 iso=0 edges[L2 R3] diff=7447
+  rise f2: bbox x2-263 y49-117 px=14155 semi=7528 faint=0 iso=0 edges[R2] diff=10872
+  rise f3: bbox x1-263 y23-117 px=20300 semi=13546 faint=0 iso=0 edges[R5] diff=14085
+  rise f4: bbox x0-263 y0-117 px=25145 semi=18315 faint=0 iso=0 edges[L2 R3 T13] diff=15462
+  rise f5: bbox x2-263 y7-117 px=23652 semi=16972 faint=0 iso=0 edges[R2] diff=12651
+  idle f0: bbox x1-263 y5-117 px=23787 semi=17163 faint=0 iso=0 edges[R5]
+  idle f1: bbox x1-263 y5-117 px=23835 semi=16963 faint=0 iso=0 edges[R1] diff=12617
+  idle f2: bbox x1-263 y7-117 px=23725 semi=16839 faint=0 iso=0 edges[R5] diff=12239
+  idle f3: bbox x1-263 y7-117 px=23611 semi=16877 faint=0 iso=0 edges[R1] diff=11903
+aura img 480 x 120 frame 80 120 anchor [40, 112] m [1.4, 2.11] {'idle': (0, 6, 12, True)}
+  idle f0: bbox x0-79 y4-119 px=3388 semi=1587 faint=0 iso=0 edges[L2 R3 B30]
+  idle f1: bbox x0-79 y3-119 px=3386 semi=1567 faint=0 iso=0 edges[L5 R6 B30] diff=1626
+  idle f2: bbox x4-73 y3-119 px=3403 semi=1618 faint=0 iso=0 edges[B30] diff=1670
+  idle f3: bbox x2-74 y4-119 px=3417 semi=1623 faint=0 iso=0 edges[B30] diff=1588
+  idle f4: bbox x3-76 y4-119 px=3398 semi=1587 faint=0 iso=0 edges[B30] diff=1637
+  idle f5: bbox x2-78 y4-119 px=3383 semi=1591 faint=0 iso=0 edges[B30] diff=1636
+===== vfx_wind ['bolt', 'beast', 'stream', 'stream_head', 'breath', 'sphere', 'slash', 'multi', 'hit', 'blast', 'wall', 'aura']
+bolt img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x1-52 y13-50 px=1139 semi=1091 faint=0 iso=0 edges[]
+  fly f1: bbox x0-52 y13-50 px=1133 semi=1087 faint=0 iso=0 edges[L2] diff=454
+  fly f2: bbox x0-52 y13-50 px=1152 semi=1104 faint=0 iso=0 edges[L2] diff=477
+  fly f3: bbox x0-52 y13-52 px=1139 semi=1093 faint=0 iso=0 edges[L1] diff=482
+stream img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x0-63 y15-48 px=904 semi=904 faint=0 iso=0 edges[L5 R5]
+  fly f1: bbox x0-63 y15-48 px=904 semi=904 faint=0 iso=0 edges[L10 R9] diff=1459
+  fly f2: bbox x0-63 y15-48 px=904 semi=904 faint=0 iso=0 edges[L8 R7] diff=1459
+  fly f3: bbox x0-63 y15-48 px=904 semi=904 faint=0 iso=0 edges[L8 R8] diff=1459
+stream_head img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x0-49 y4-59 px=1108 semi=1108 faint=0 iso=0 edges[L5]
+  fly f1: bbox x0-50 y4-59 px=1123 semi=1123 faint=0 iso=0 edges[L10] diff=1185
+  fly f2: bbox x0-49 y4-59 px=1143 semi=1143 faint=0 iso=0 edges[L8] diff=1228
+  fly f3: bbox x0-48 y4-59 px=1113 semi=1113 faint=0 iso=0 edges[L8] diff=1226
+breath img 384 x 64 frame 96 64 anchor [48, 32] m [1.68, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x4-79 y4-59 px=1540 semi=1409 faint=0 iso=0 edges[]
+  fly f1: bbox x8-79 y3-60 px=1582 semi=1454 faint=0 iso=0 edges[] diff=2014
+  fly f2: bbox x12-82 y1-62 px=1727 semi=1594 faint=0 iso=0 edges[] diff=2150
+  fly f3: bbox x12-85 y0-63 px=1822 semi=1693 faint=0 iso=0 edges[T1 B1] diff=2290
+sphere img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x1-61 y9-53 px=1588 semi=1481 faint=0 iso=0 edges[]
+  fly f1: bbox x1-57 y9-53 px=1593 semi=1485 faint=0 iso=0 edges[] diff=1236
+  fly f2: bbox x1-54 y10-54 px=1588 semi=1482 faint=0 iso=0 edges[] diff=1223
+  fly f3: bbox x1-59 y10-54 px=1593 semi=1486 faint=0 iso=0 edges[] diff=1233
+slash img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x2-56 y4-63 px=1006 semi=1006 faint=0 iso=0 edges[B2]
+  fly f1: bbox x1-56 y4-63 px=1003 semi=1003 faint=0 iso=0 edges[B2] diff=366
+  fly f2: bbox x0-56 y4-63 px=1005 semi=1005 faint=0 iso=0 edges[L1 B2] diff=372
+  fly f3: bbox x4-56 y4-63 px=1000 semi=1000 faint=0 iso=0 edges[B2] diff=391
+multi img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x16-60 y10-53 px=835 semi=460 faint=0 iso=0 edges[]
+  fly f1: bbox x17-63 y6-59 px=873 semi=485 faint=0 iso=0 edges[R1] diff=876
+  fly f2: bbox x17-62 y10-53 px=835 semi=457 faint=0 iso=0 edges[] diff=877
+  fly f3: bbox x17-60 y8-57 px=889 semi=504 faint=0 iso=0 edges[] diff=897
+hit img 384 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'hit': (0, 6, 12, False)}
+  hit f0: bbox x23-40 y24-39 px=158 semi=158 faint=0 iso=0 edges[]
+  hit f1: bbox x12-51 y15-48 px=594 semi=593 faint=0 iso=0 edges[] diff=580
+  hit f2: bbox x10-53 y13-50 px=925 semi=738 faint=0 iso=0 edges[] diff=783
+  hit f3: bbox x7-55 y10-58 px=1088 semi=920 faint=0 iso=0 edges[] diff=1261
+  hit f4: bbox x5-58 y5-61 px=1003 semi=825 faint=0 iso=0 edges[] diff=1631
+  hit f5: bbox x0-63 y1-63 px=857 semi=701 faint=0 iso=0 edges[L1 R2 B3] diff=1689
+blast img 1408 x 128 frame 176 128 anchor [88, 72] m [3.09, 2.25] {'blast': (0, 8, 12, False)}
+  blast f0: bbox x62-114 y43-85 px=1379 semi=1379 faint=0 iso=0 edges[]
+  blast f1: bbox x50-130 y29-95 px=2676 semi=2338 faint=0 iso=0 edges[] diff=3066
+  blast f2: bbox x32-147 y14-108 px=4154 semi=3790 faint=0 iso=0 edges[] diff=5250
+  blast f3: bbox x15-161 y2-123 px=5248 semi=4872 faint=0 iso=0 edges[] diff=7088
+  blast f4: bbox x11-163 y0-126 px=5911 semi=5531 faint=0 iso=0 edges[T53] diff=7163
+  blast f5: bbox x10-161 y0-123 px=5805 semi=5417 faint=0 iso=0 edges[T40] diff=7070
+  blast f6: bbox x6-162 y8-123 px=5310 semi=4942 faint=0 iso=0 edges[] diff=7221
+  blast f7: bbox x20-152 y26-113 px=3545 semi=3545 faint=0 iso=0 edges[] diff=6940
+wall img 1584 x 240 frame 264 120 anchor [132, 112] m [4.63, 2.11] {'rise': (0, 6, 12, False), 'idle': (1, 4, 12, True)}
+  rise f0: bbox x4-259 y101-113 px=2263 semi=2263 faint=1795 iso=0 edges[]
+  rise f1: bbox x4-259 y78-115 px=7031 semi=6998 faint=1272 iso=0 edges[] diff=6390
+  rise f2: bbox x4-262 y56-115 px=12007 semi=11819 faint=3053 iso=0 edges[] diff=10676
+  rise f3: bbox x0-263 y30-115 px=17542 semi=17268 faint=6584 iso=0 edges[L6 R21] diff=14555
+  rise f4: bbox x0-263 y11-115 px=22151 semi=21903 faint=10715 iso=0 edges[L7 R28] diff=16232
+  rise f5: bbox x0-263 y13-115 px=21073 semi=20778 faint=9653 iso=0 edges[L7 R18] diff=14280
+  idle f0: bbox x0-263 y10-115 px=20882 semi=20563 faint=9339 iso=0 edges[L6 R9]
+  idle f1: bbox x0-263 y9-115 px=20529 semi=20256 faint=9594 iso=0 edges[L3 R9] diff=14170
+  idle f2: bbox x0-263 y13-115 px=21067 semi=20792 faint=9453 iso=0 edges[L6 R22] diff=13871
+  idle f3: bbox x0-263 y14-115 px=20985 semi=20683 faint=9607 iso=0 edges[L8 R25] diff=14353
+aura img 480 x 120 frame 80 120 anchor [40, 112] m [1.4, 2.11] {'idle': (0, 6, 12, True)}
+  idle f0: bbox x0-79 y6-119 px=2735 semi=2604 faint=0 iso=0 edges[L1 R1 B18]
+  idle f1: bbox x0-79 y3-119 px=2570 semi=2447 faint=0 iso=0 edges[L1 R1 B17] diff=2580
+  idle f2: bbox x0-79 y5-118 px=2378 semi=2247 faint=0 iso=0 edges[L1 R1] diff=2547
+  idle f3: bbox x0-79 y7-118 px=2341 semi=2206 faint=0 iso=0 edges[L1 R1] diff=2541
+  idle f4: bbox x0-79 y2-119 px=2673 semi=2553 faint=0 iso=0 edges[L1 R1 B18] diff=2596
+  idle f5: bbox x0-79 y1-119 px=2839 semi=2725 faint=0 iso=0 edges[L1 R1 B41] diff=2715
+===== vfx_lightning ['bolt', 'beast', 'stream', 'stream_head', 'breath', 'sphere', 'slash', 'multi', 'hit', 'blast', 'wall', 'aura']
+bolt img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x0-61 y11-54 px=1605 semi=601 faint=0 iso=0 edges[L12]
+  fly f1: bbox x0-63 y10-56 px=1510 semi=548 faint=0 iso=0 edges[L11 R2] diff=1426
+  fly f2: bbox x0-60 y12-57 px=1474 semi=524 faint=0 iso=0 edges[L9] diff=1387
+  fly f3: bbox x0-62 y10-56 px=1506 semi=601 faint=0 iso=0 edges[L10] diff=1503
+stream img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x0-63 y15-49 px=1686 semi=396 faint=0 iso=0 edges[L20 R21]
+  fly f1: bbox x0-63 y13-49 px=1470 semi=410 faint=0 iso=0 edges[L18 R18] diff=1251
+  fly f2: bbox x0-63 y14-51 px=1636 semi=437 faint=0 iso=0 edges[L20 R22] diff=1324
+  fly f3: bbox x0-63 y13-49 px=1558 semi=411 faint=0 iso=1 edges[L19 R21] diff=1051
+stream_head img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x0-63 y10-54 px=1912 semi=489 faint=0 iso=0 edges[L20 R13]
+  fly f1: bbox x0-63 y8-54 px=1795 semi=487 faint=0 iso=0 edges[L18 R3] diff=1422
+  fly f2: bbox x0-63 y9-53 px=1860 semi=517 faint=0 iso=0 edges[L20 R12] diff=1458
+  fly f3: bbox x0-61 y5-54 px=1833 semi=526 faint=0 iso=0 edges[L18] diff=1377
+breath img 384 x 64 frame 96 64 anchor [48, 32] m [1.68, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x0-86 y0-63 px=3853 semi=1061 faint=0 iso=0 edges[L19 T45 B13]
+  fly f1: bbox x0-83 y0-59 px=3413 semi=813 faint=0 iso=0 edges[L16 T59] diff=3504
+  fly f2: bbox x0-78 y0-63 px=4038 semi=1059 faint=0 iso=0 edges[L16 T50 B28] diff=3752
+  fly f3: bbox x0-82 y0-63 px=4057 semi=1026 faint=0 iso=0 edges[L22 T25 B29] diff=3741
+sphere img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x0-59 y7-62 px=1651 semi=779 faint=0 iso=0 edges[L2]
+  fly f1: bbox x6-59 y0-57 px=1687 semi=800 faint=0 iso=0 edges[T5] diff=1803
+  fly f2: bbox x2-60 y4-55 px=1544 semi=703 faint=0 iso=0 edges[] diff=1662
+  fly f3: bbox x10-63 y2-63 px=1498 semi=685 faint=0 iso=0 edges[R3 B3] diff=1517
+slash img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x3-50 y1-62 px=1336 semi=430 faint=0 iso=0 edges[]
+  fly f1: bbox x1-50 y1-62 px=1280 semi=399 faint=0 iso=0 edges[] diff=498
+  fly f2: bbox x7-51 y1-62 px=1296 semi=398 faint=0 iso=0 edges[] diff=479
+  fly f3: bbox x17-50 y0-62 px=1282 semi=395 faint=0 iso=0 edges[T2] diff=500
+multi img 256 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'fly': (0, 4, 12, True)}
+  fly f0: bbox x4-63 y6-59 px=1796 semi=709 faint=0 iso=0 edges[R10]
+  fly f1: bbox x6-63 y6-60 px=1907 semi=774 faint=0 iso=0 edges[R10] diff=1028
+  fly f2: bbox x9-63 y6-59 px=1800 semi=701 faint=0 iso=0 edges[R10] diff=1045
+  fly f3: bbox x4-63 y6-59 px=1719 semi=673 faint=0 iso=0 edges[R10] diff=933
+hit img 384 x 64 frame 64 64 anchor [32, 32] m [1.12, 1.12] {'hit': (0, 6, 12, False)}
+  hit f0: bbox x18-44 y20-44 px=309 semi=171 faint=0 iso=0 edges[]
+  hit f1: bbox x10-53 y11-53 px=1200 semi=397 faint=0 iso=0 edges[] diff=1188
+  hit f2: bbox x2-61 y2-59 px=2088 semi=676 faint=0 iso=0 edges[] diff=1895
+  hit f3: bbox x1-63 y0-63 px=1323 semi=710 faint=0 iso=0 edges[R2 T1 B1] diff=2189
+  hit f4: bbox x4-61 y5-59 px=1165 semi=636 faint=0 iso=0 edges[] diff=1446
+  hit f5: bbox x3-63 y11-56 px=50 semi=34 faint=0 iso=0 edges[R1] diff=1203
+blast img 1408 x 128 frame 176 128 anchor [88, 72] m [3.09, 2.25] {'blast': (0, 8, 12, False)}
+  blast f0: bbox x76-111 y0-80 px=1476 semi=628 faint=0 iso=0 edges[T13]
+  blast f1: bbox x48-127 y0-101 px=4553 semi=2021 faint=0 iso=0 edges[T24] diff=4691
+  blast f2: bbox x28-148 y0-113 px=6031 semi=2312 faint=0 iso=0 edges[T20] diff=5715
+  blast f3: bbox x5-173 y0-127 px=9234 semi=4053 faint=0 iso=0 edges[T18 B6] diff=11145
+  blast f4: bbox x1-175 y0-127 px=9175 semi=4088 faint=0 iso=0 edges[R5 T16 B20] diff=11819
+  blast f5: bbox x2-175 y2-127 px=4755 semi=3206 faint=0 iso=0 edges[R8 B37] diff=10202
+  blast f6: bbox x9-166 y18-127 px=4544 semi=3248 faint=0 iso=0 edges[B8] diff=5150
+  blast f7: bbox x53-143 y32-115 px=1754 semi=1730 faint=0 iso=0 edges[] diff=2921
+wall img 1584 x 240 frame 264 120 anchor [132, 112] m [4.63, 2.11] {'rise': (0, 6, 12, False), 'idle': (1, 4, 12, True)}
+  rise f0: bbox x3-260 y91-118 px=3017 semi=717 faint=0 iso=0 edges[]
+  rise f1: bbox x2-263 y61-118 px=5649 semi=1686 faint=0 iso=0 edges[R10] diff=4086
+  rise f2: bbox x3-263 y26-118 px=9338 semi=3220 faint=0 iso=0 edges[R33] diff=8213
+  rise f3: bbox x3-263 y1-118 px=14597 semi=5258 faint=0 iso=0 edges[R31] diff=14042
+  rise f4: bbox x2-263 y4-118 px=16617 semi=6013 faint=0 iso=0 edges[R12] diff=16643
+  rise f5: bbox x0-263 y6-118 px=13946 semi=4962 faint=0 iso=0 edges[L24 R44] diff=17019
+  idle f0: bbox x0-262 y6-118 px=17394 semi=6295 faint=0 iso=0 edges[L48]
+  idle f1: bbox x0-261 y5-118 px=15858 semi=5835 faint=0 iso=0 edges[L12] diff=17716
+  idle f2: bbox x0-263 y6-118 px=14711 semi=5208 faint=0 iso=0 edges[L12 R39] diff=15476
+  idle f3: bbox x0-263 y6-118 px=15523 semi=5630 faint=0 iso=0 edges[L12 R12] diff=16043
+aura img 480 x 120 frame 80 120 anchor [40, 112] m [1.4, 2.11] {'idle': (0, 6, 12, True)}
+  idle f0: bbox x1-78 y7-117 px=4008 semi=1832 faint=0 iso=0 edges[]
+  idle f1: bbox x2-76 y10-119 px=3592 semi=1725 faint=0 iso=0 edges[B45] diff=3957
+  idle f2: bbox x1-78 y7-119 px=3774 semi=1683 faint=0 iso=0 edges[B34] diff=3146
+  idle f3: bbox x1-77 y10-119 px=3646 semi=1781 faint=0 iso=0 edges[B43] diff=3833
+  idle f4: bbox x2-76 y10-119 px=3807 semi=1765 faint=0 iso=0 edges[B35] diff=3220
+  idle f5: bbox x4-77 y10-118 px=3610 semi=1782 faint=0 iso=0 edges[] diff=3710

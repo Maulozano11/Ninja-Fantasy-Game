@@ -1,0 +1,56 @@
+{
+ "group": "vfx_genjutsu_v3",
+ "pxPerMeter": 57,
+ "sprites": {
+  "beast": {
+   "label": "Genjutsu beast: crow swarm",
+   "file": "beast.png",
+   "frameW": 128,
+   "frameH": 96,
+   "anchor": [
+    64,
+    48
+   ],
+   "meters": [
+    2.25,
+    1.68
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "blast": {
+   "label": "Genjutsu blast: column of violet light out of a swirling vortex, with crow feathers",
+   "file": "blast.png",
+   "frameW": 274,
+   "frameH": 181,
+   "anchor": [
+    132,
+    137
+   ],
+   "meters": [
+    4.81,
+    3.18
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 16,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  }
+ }
+}

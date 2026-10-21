@@ -1,0 +1,23 @@
+Chakra type review fixes: the clan no longer changes an old ninja's nature
+
+- Changing clan in the creator no longer writes the clan's colour into
+  palette.chakraAuraColor. A sheet older than the sprite look draws its
+  burst from that colour, so a clan change switched its chakra type (a
+  Northstar hero went from Agua to Fuego or Viento). The type is now only
+  the player's choice in Appearance > Chakra.
+- The pose bar stays between the side panels and wraps when there is no
+  room. At 1600x900 it covered the end of the burst description (and,
+  before that, the colour row); the fix holds for every section.
+- A burst id the game does not know is described as Rising Tide, as it is
+  drawn and as its nature reads (chakraChoice in chakraInfo.ts), not as
+  the first burst (Pyre Crown). Test added.
+- The creator says the chakra type will soon decide the elemental jutsu:
+  the gating is not built yet.
+- GAMEPLAY_DESIGN "Chakra type": only the owner's rule is marked decided;
+  the burst-to-type table, the Earth burst, the four types without an
+  element and the legends' new types are marked as proposals waiting for
+  his approval. Saved legends and companions keep their old burst: added
+  to Open questions and STATUS as a decision for him.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01E1PN8FTpA19jzx1FNkVfPu

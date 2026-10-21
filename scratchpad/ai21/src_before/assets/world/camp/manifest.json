@@ -1,0 +1,293 @@
+{
+ "group": "camp",
+ "pxPerMeter": 57,
+ "sprites": {
+  "campfire": {
+   "label": "Campfire",
+   "file": "campfire.png",
+   "frameW": 58,
+   "frameH": 82,
+   "anchor": [
+    30,
+    80
+   ],
+   "meters": [
+    1,
+    0.8
+   ],
+   "tags": [
+    "light-source",
+    "interactable"
+   ],
+   "anims": {
+    "burning": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "smoldering": {
+     "row": 1,
+     "frames": 6,
+     "fps": 6,
+     "loop": true
+    },
+    "out": {
+     "row": 2,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "smoke": {
+   "label": "Smoke Column",
+   "file": "smoke.png",
+   "frameW": 37,
+   "frameH": 114,
+   "anchor": [
+    7,
+    112
+   ],
+   "meters": [
+    0.6,
+    2
+   ],
+   "tags": [
+    "ambient"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 8,
+     "loop": true
+    }
+   }
+  },
+  "tent": {
+   "label": "Canvas Tent",
+   "file": "tent.png",
+   "frameW": 206,
+   "frameH": 183,
+   "anchor": [
+    103,
+    181
+   ],
+   "meters": [
+    3,
+    2
+   ],
+   "tags": [
+    "cover-3q",
+    "blocks-sight",
+    "flammable",
+    "destructible",
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 4,
+     "loop": true
+    },
+    "burnt": {
+     "row": 1,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "barrel": {
+   "label": "Barrel",
+   "file": "barrel.png",
+   "frameW": 90,
+   "frameH": 101,
+   "anchor": [
+    49,
+    82
+   ],
+   "meters": [
+    0.6,
+    0.9
+   ],
+   "tags": [
+    "cover-half",
+    "destructible"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "hit": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": false
+    },
+    "broken": {
+     "row": 2,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "barrel_explosive": {
+   "label": "Explosive Barrel",
+   "file": "barrel_explosive.png",
+   "frameW": 203,
+   "frameH": 196,
+   "anchor": [
+    102,
+    164
+   ],
+   "meters": [
+    0.6,
+    0.9
+   ],
+   "tags": [
+    "cover-half",
+    "destructible",
+    "explosive"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "lit": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    },
+    "explode": {
+     "row": 2,
+     "frames": 10,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "crate": {
+   "label": "Wooden Crate",
+   "file": "crate.png",
+   "frameW": 110,
+   "frameH": 95,
+   "anchor": [
+    54,
+    88
+   ],
+   "meters": [
+    0.8,
+    0.8
+   ],
+   "tags": [
+    "cover-half",
+    "destructible",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    },
+    "broken": {
+     "row": 1,
+     "frames": 7,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "crate_stack": {
+   "label": "Stacked Crates",
+   "file": "crate_stack.png",
+   "frameW": 112,
+   "frameH": 136,
+   "anchor": [
+    56,
+    134
+   ],
+   "meters": [
+    1.75,
+    1.6
+   ],
+   "tags": [
+    "cover-3q",
+    "blocks-sight",
+    "destructible",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "sacks": {
+   "label": "Rice Sacks",
+   "file": "sacks.png",
+   "frameW": 73,
+   "frameH": 48,
+   "anchor": [
+    36,
+    46
+   ],
+   "meters": [
+    1.2,
+    0.6
+   ],
+   "tags": [
+    "cover-half"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "weapon_rack": {
+   "label": "Weapon Rack",
+   "file": "weapon_rack.png",
+   "frameW": 80,
+   "frameH": 103,
+   "anchor": [
+    41,
+    101
+   ],
+   "meters": [
+    1.3,
+    1.6
+   ],
+   "tags": [
+    "interactable",
+    "destructible"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,274 @@
+{
+ "totals": {
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "battles": 400
+ },
+ "river_patrol": {
+  "N": 100,
+  "rounds": 5.86,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "kunai (Ryusei)": 91,
+    "Node planted": 102,
+    "Pursuing Flame": 112,
+    "Evasion": 170,
+    "bigger jutsu (Mirai)": 90,
+    "Kōton Block": 101,
+    "Warp Strike": 9,
+    "Warp edge won": 9,
+    "Kōton Wall": 9,
+    "blow from behind": 6,
+    "Spatial Swap": 1
+   },
+   "battles": {
+    "kunai (Ryusei)": 89,
+    "Node planted": 90,
+    "Pursuing Flame": 100,
+    "Evasion": 96,
+    "bigger jutsu (Mirai)": 73,
+    "Kōton Block": 82,
+    "Warp Strike": 9,
+    "Warp edge won": 9,
+    "Kōton Wall": 9,
+    "blow from behind": 6,
+    "Spatial Swap": 1
+   }
+  },
+  "party": {
+   "uses": {
+    "kunai (Ryusei)": 247,
+    "Node planted": 259,
+    "Command": 510,
+    "Kōton Block": 113,
+    "Warp Strike": 105,
+    "Warp edge won": 105,
+    "Command taken": 279,
+    "Kōton Wall": 28,
+    "attack w/ aura disadv.": 9,
+    "Spatial Swap": 5,
+    "aura slowed a foe": 2
+   },
+   "battles": {
+    "kunai (Ryusei)": 100,
+    "Node planted": 100,
+    "Command": 100,
+    "Kōton Block": 90,
+    "Warp Strike": 68,
+    "Warp edge won": 68,
+    "Command taken": 98,
+    "Kōton Wall": 28,
+    "attack w/ aura disadv.": 9,
+    "Spatial Swap": 5,
+    "aura slowed a foe": 2
+   }
+  },
+  "enemies": [
+   "Acechador (Ryusei)",
+   "Renegado (Mirai)",
+   "Cazador (Koton)"
+  ]
+ },
+ "cedar_rogues": {
+  "N": 100,
+  "rounds": 5.17,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "kunai (Ryusei)": 173,
+    "Node planted": 233,
+    "Pursuing Flame": 120,
+    "Evasion": 195,
+    "Command": 100,
+    "Warp Strike": 38,
+    "Warp edge won": 38,
+    "blow from behind": 36,
+    "bigger jutsu (Mirai)": 100,
+    "Command taken": 45,
+    "aura slowed a foe": 26,
+    "attack w/ aura disadv.": 3,
+    "Spatial Swap": 2
+   },
+   "battles": {
+    "kunai (Ryusei)": 100,
+    "Node planted": 100,
+    "Pursuing Flame": 100,
+    "Evasion": 100,
+    "Command": 61,
+    "Warp Strike": 36,
+    "Warp edge won": 36,
+    "blow from behind": 35,
+    "bigger jutsu (Mirai)": 71,
+    "Command taken": 38,
+    "aura slowed a foe": 21,
+    "attack w/ aura disadv.": 3,
+    "Spatial Swap": 2
+   }
+  },
+  "party": {
+   "uses": {
+    "kunai (Ryusei)": 200,
+    "Node planted": 201,
+    "Command": 446,
+    "Warp Strike": 124,
+    "Warp edge won": 124,
+    "Command taken": 291,
+    "Kōton Block": 99,
+    "aura slowed a foe": 6,
+    "attack w/ aura disadv.": 34,
+    "Kōton Wall": 4,
+    "Spatial Swap": 3
+   },
+   "battles": {
+    "kunai (Ryusei)": 100,
+    "Node planted": 100,
+    "Command": 100,
+    "Warp Strike": 73,
+    "Warp edge won": 73,
+    "Command taken": 96,
+    "Kōton Block": 73,
+    "aura slowed a foe": 6,
+    "attack w/ aura disadv.": 19,
+    "Kōton Wall": 4,
+    "Spatial Swap": 3
+   }
+  },
+  "enemies": [
+   "Renegado (Mirai)",
+   "Vigía (Northstar)",
+   "Asaltante (Ryusei)"
+  ]
+ },
+ "night_raid": {
+  "N": 100,
+  "rounds": 6.74,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "Pursuing Flame": 233,
+    "kunai (Ryusei)": 176,
+    "Node planted": 220,
+    "attack w/ aura disadv.": 107,
+    "Kōton Wall": 31,
+    "bigger jutsu (Mirai)": 179,
+    "Evasion": 211,
+    "Kōton Block": 96,
+    "Command": 55,
+    "Command taken": 31,
+    "aura slowed a foe": 13,
+    "Spatial Swap": 5,
+    "Warp Strike": 70,
+    "Warp edge won": 68,
+    "blow from behind": 50
+   },
+   "battles": {
+    "Pursuing Flame": 100,
+    "kunai (Ryusei)": 99,
+    "Node planted": 99,
+    "attack w/ aura disadv.": 59,
+    "Kōton Wall": 31,
+    "bigger jutsu (Mirai)": 100,
+    "Evasion": 97,
+    "Kōton Block": 70,
+    "Command": 37,
+    "Command taken": 24,
+    "aura slowed a foe": 13,
+    "Spatial Swap": 4,
+    "Warp Strike": 57,
+    "Warp edge won": 57,
+    "blow from behind": 45
+   }
+  },
+  "party": {
+   "uses": {
+    "kunai (Ryusei)": 210,
+    "Node planted": 243,
+    "attack w/ aura disadv.": 336,
+    "Command": 519,
+    "Command taken": 356,
+    "Kōton Block": 104,
+    "Warp Strike": 62,
+    "Warp edge won": 62,
+    "Kōton Wall": 16,
+    "aura slowed a foe": 49,
+    "blow from behind": 3,
+    "Spatial Swap": 1
+   },
+   "battles": {
+    "kunai (Ryusei)": 100,
+    "Node planted": 100,
+    "attack w/ aura disadv.": 96,
+    "Command": 100,
+    "Command taken": 99,
+    "Kōton Block": 99,
+    "Warp Strike": 42,
+    "Warp edge won": 42,
+    "Kōton Wall": 15,
+    "aura slowed a foe": 45,
+    "blow from behind": 3,
+    "Spatial Swap": 1
+   }
+  },
+  "enemies": [
+   "Asaltante (Ryusei)",
+   "Puño de hierro (Koton)",
+   "Sombra (Northstar)",
+   "Kagero (Mirai)"
+  ]
+ },
+ "hydra": {
+  "N": 100,
+  "rounds": 8.29,
+  "outcomes": {
+   "victory": 44,
+   "defeat": 56
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {},
+   "battles": {}
+  },
+  "party": {
+   "uses": {
+    "kunai (Ryusei)": 227,
+    "Node planted": 289,
+    "Kōton Block": 122,
+    "Warp Strike": 212,
+    "Warp edge won": 212,
+    "Kōton Wall": 61,
+    "attack w/ aura disadv.": 379,
+    "blow from behind": 20
+   },
+   "battles": {
+    "kunai (Ryusei)": 100,
+    "Node planted": 100,
+    "Kōton Block": 100,
+    "Warp Strike": 95,
+    "Warp edge won": 95,
+    "Kōton Wall": 59,
+    "attack w/ aura disadv.": 74,
+    "blow from behind": 18
+   }
+  },
+  "enemies": []
+ }
+}

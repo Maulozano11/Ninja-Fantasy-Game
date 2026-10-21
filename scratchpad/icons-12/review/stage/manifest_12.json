@@ -1,0 +1,471 @@
+{
+ "kit": "ui_icons_12",
+ "references": [
+  "docs/reference/icons-owner-reference-12.jpg"
+ ],
+ "round": 1,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "frame": {
+  "from": "ui_icons (sheet 1), read only: skill_slot_steel.png and skill_slot_steel_active.png, 56x56, the icon window 44x44 at 6,6; see ui_icons/manifest.json for its slices",
+  "window": {
+   "x": 6,
+   "y": 6,
+   "w": 44,
+   "h": 44
+  }
+ },
+ "method": "his sheet is pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-12.py, with the grid of icons-from-ref-23.py). His windows are wider than tall (144x115, 128x115, 135x115 of his pixels): each icon is the square of his full height (115x115) that holds his whole subject, so his proportions stay as he drew them (the columns left out are listed per icon). 88 and 44: area mean of his pixels, except his thin lines and strongest specks (and, per icon, his dark silhouettes and the gaps between his feather barbs), which keep their own colour one pixel wide (115 of his pixels are too many for the 88 to keep them one to one: dropping 27 columns and rows breaks his one-pixel lines); palette sampled from his pixels; nearest palette entry, 1-2 pixel areas merged where the picture does not stand out there; then hand-fixes only where that still loses his picture (listed per icon; see tools/ui/ui-icons-12.ts)",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (the picture stands out there, or one of his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]",
+ "icons": {
+  "lightning_hound_raidon": {
+   "name": "Thunder Hound",
+   "label": "SABUESO RAYO",
+   "sheet": "docs/reference/icons-owner-reference-12.jpg",
+   "file": "lightning_hound_raidon.png",
+   "file2x": "lightning_hound_raidon@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "hisWindow": [
+    144,
+    115
+   ],
+   "hisWindowBox": [
+    14,
+    64,
+    158,
+    179
+   ],
+   "square": {
+    "box": [
+     43,
+     64,
+     158,
+     179
+    ],
+    "columnsInWindow": [
+     29,
+     143
+    ],
+    "cutColumns": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28
+    ],
+    "cornerTipsFilled": [
+     [
+      114,
+      0
+     ],
+     [
+      113,
+      0
+     ],
+     [
+      114,
+      1
+     ],
+     [
+      114,
+      114
+     ]
+    ]
+   },
+   "reduced88": "area mean of his 115x115 pixels to 88, his marks kept",
+   "marks": {
+    "44": [
+     "the white cores of his lightning and the wolf's outline",
+     "the dark navy inside the wolf (the open mouth, under the eye, between the legs)"
+    ],
+    "88": [
+     "the white cores of his lightning and the wolf's outline",
+     "his thinner cyan strands"
+    ]
+   },
+   "palette": [
+    "#252758",
+    "#282e6e",
+    "#303683",
+    "#3f3b90",
+    "#2e46a4",
+    "#4e47ae",
+    "#2e58bb",
+    "#5e55c8",
+    "#3769cc",
+    "#7262e0",
+    "#3a7cd8",
+    "#3e8ce1",
+    "#44a0e8",
+    "#58b2e9",
+    "#a6a2f5",
+    "#65c0ef",
+    "#6ad0f6",
+    "#7cdef7",
+    "#88edfc",
+    "#aef2fb",
+    "#cafcff",
+    "#eefeff"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "handFixes": [
+    "44: his eye, the white slit between his brow streak and the cyan outline of the snout (his pixels 91..95, 47..49): his white #f3fffe at 35,18 and his blue #1c88e6 at 36,18"
+   ],
+   "checks": {
+    "44": {
+     "small": 2,
+     "smallHis": 0,
+     "smallDrawn": 2,
+     "smallOther": 0,
+     "lowFreq": 1.78,
+     "lowFreqBoxOnPalette": 1.57,
+     "ssim": 0.737,
+     "ssimBox": 0.795,
+     "hue": 275,
+     "hueHis": 271,
+     "colours": 22,
+     "thinRun": [
+      5,
+      "row",
+      29
+     ]
+    },
+    "88": {
+     "small": 1387,
+     "smallHis": 1387,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 2.31,
+     "lowFreqBoxOnPalette": 1.09,
+     "ssim": 0.914,
+     "ssimBox": 1,
+     "hue": 275,
+     "hueHis": 273,
+     "colours": 22,
+     "thinRun": [
+      7,
+      "row",
+      51
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "crescent_moon_dance": {
+   "name": "Crescent Moon Dance",
+   "label": "LUNA CRECIENTE",
+   "sheet": "docs/reference/icons-owner-reference-12.jpg",
+   "file": "crescent_moon_dance.png",
+   "file2x": "crescent_moon_dance@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "hisWindow": [
+    128,
+    115
+   ],
+   "hisWindowBox": [
+    179,
+    64,
+    307,
+    179
+   ],
+   "square": {
+    "box": [
+     185,
+     64,
+     300,
+     179
+    ],
+    "columnsInWindow": [
+     6,
+     120
+    ],
+    "cutColumns": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     121,
+     122,
+     123,
+     124,
+     125,
+     126,
+     127
+    ],
+    "cornerTipsFilled": []
+   },
+   "reduced88": "area mean of his 115x115 pixels to 88, his marks kept",
+   "marks": {
+    "44": [
+     "his golden dots and sparkles",
+     "the dark silhouettes of his ninjas"
+    ],
+    "88": [
+     "his golden dots, sparkles and the ninjas' eyes",
+     "the dark silhouettes of his ninjas"
+    ]
+   },
+   "palette": [
+    "#201636",
+    "#2d2143",
+    "#392658",
+    "#4a3546",
+    "#4b3269",
+    "#5c3e6f",
+    "#694c4e",
+    "#6e4a77",
+    "#805876",
+    "#8a6252",
+    "#916778",
+    "#a2746d",
+    "#b48464",
+    "#c09289",
+    "#cc9a64",
+    "#daaa96",
+    "#e4b878",
+    "#f3c68e",
+    "#f7daac",
+    "#fedd84",
+    "#fff0a6",
+    "#fefdda"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "handFixes": [],
+   "checks": {
+    "44": {
+     "small": 7,
+     "smallHis": 7,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.24,
+     "lowFreqBoxOnPalette": 0.71,
+     "ssim": 0.755,
+     "ssimBox": 0.83,
+     "hue": 299,
+     "hueHis": 299,
+     "colours": 22,
+     "thinRun": [
+      7,
+      "row",
+      17
+     ]
+    },
+    "88": {
+     "small": 666,
+     "smallHis": 666,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.04,
+     "lowFreqBoxOnPalette": 0.63,
+     "ssim": 0.907,
+     "ssimBox": 1,
+     "hue": 299,
+     "hueHis": 298,
+     "colours": 22,
+     "thinRun": [
+      13,
+      "col",
+      25
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "temple_of_nirvana": {
+   "name": "Temple of Nirvana",
+   "label": "NIRVANA",
+   "sheet": "docs/reference/icons-owner-reference-12.jpg",
+   "file": "temple_of_nirvana.png",
+   "file2x": "temple_of_nirvana@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "hisWindow": [
+    135,
+    115
+   ],
+   "hisWindowBox": [
+    331,
+    64,
+    466,
+    179
+   ],
+   "square": {
+    "box": [
+     340,
+     64,
+     455,
+     179
+    ],
+    "columnsInWindow": [
+     9,
+     123
+    ],
+    "cutColumns": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     124,
+     125,
+     126,
+     127,
+     128,
+     129,
+     130,
+     131,
+     132,
+     133,
+     134
+    ],
+    "cornerTipsFilled": []
+   },
+   "reduced88": "area mean of his 115x115 pixels to 88, his marks kept",
+   "marks": {
+    "44": [
+     "his sparkles and specks",
+     "the white quills of his feathers",
+     "the light blue gaps between the barbs of his feathers"
+    ],
+    "88": [
+     "his sparkles, specks and the tips of his quills",
+     "the light blue gaps between the barbs of his feathers"
+    ]
+   },
+   "palette": [
+    "#3e3568",
+    "#453e72",
+    "#4c4980",
+    "#54528c",
+    "#5c569c",
+    "#5c629a",
+    "#685fae",
+    "#6871ab",
+    "#7269be",
+    "#7378ba",
+    "#8070d4",
+    "#7e7bce",
+    "#7a8fc6",
+    "#9182e6",
+    "#888adf",
+    "#9f94e2",
+    "#76a9cc",
+    "#9f93f6",
+    "#80a0f2",
+    "#afa1ee",
+    "#9aaaee",
+    "#bbaef3",
+    "#a7c0ec",
+    "#c1befa",
+    "#b2caf8",
+    "#ced2f8",
+    "#c0daf6",
+    "#d2ecfa",
+    "#e0e7fd",
+    "#e2f8fc",
+    "#f8fdfe"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [
+    "the teal of his haze at the bottom",
+    "the blue glow round his feathers",
+    "the light blue between the barbs of his feathers"
+   ],
+   "handFixes": [],
+   "checks": {
+    "44": {
+     "small": 165,
+     "smallHis": 165,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.93,
+     "lowFreqBoxOnPalette": 0.57,
+     "ssim": 0.813,
+     "ssimBox": 0.88,
+     "hue": 285,
+     "hueHis": 284,
+     "colours": 31,
+     "thinRun": [
+      6,
+      "col",
+      38
+     ]
+    },
+    "88": {
+     "small": 443,
+     "smallHis": 443,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.81,
+     "lowFreqBoxOnPalette": 0.53,
+     "ssim": 0.924,
+     "ssimBox": 1,
+     "hue": 285,
+     "hueHis": 285,
+     "colours": 31,
+     "thinRun": [
+      9,
+      "col",
+      12
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  }
+ }
+}

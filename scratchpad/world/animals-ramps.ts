@@ -1,0 +1,17 @@
+import { ramp, MATERIALS, toHex, mix, hex } from '/home/user/Ninja-Fantasy-Game/tools/world-sprites/kit';
+const blend = (a: string, b: string, t: number): string => toHex(mix(hex(a), hex(b), t));
+const show = (n: string, r: ReturnType<typeof ramp>) => console.log(n.padEnd(10), r.map(toHex).join(' '));
+const r = ramp(blend(MATERIALS.charred, '#2a2d4f', 0.55), { shift: 6, spread: 0.85 });
+r[4] = mix(r[4], hex('#4b5794'), 0.65);
+r[5] = mix(r[5], hex('#7f8cc4'), 0.6);
+show('crow', r);
+show('beak', ramp(blend(MATERIALS.charred, MATERIALS.iron, 0.4), { shift: 6 }));
+show('wood', ramp(MATERIALS.wood));
+show('stone', ramp(MATERIALS.stone));
+show('paper', ramp(MATERIALS.paper));
+show('fire', ramp(MATERIALS.fire));
+show('red', ramp(MATERIALS.red));
+show('leafL', ramp(MATERIALS.leafLight));
+show('leaf', ramp(MATERIALS.leaf));
+show('water', ramp(MATERIALS.water));
+show('iron', ramp(MATERIALS.iron));

@@ -1,0 +1,4 @@
+[{"label":"attack katana","cells":[["male_katana_attack_0.png","f0"],["male_katana_attack_1.png","f1"],["male_katana_attack_2.png","f2"]]},
+{"label":"attack naginata","cells":[["male_naginata_attack_0.png","f0"],["male_naginata_attack_1.png","f1"],["male_naginata_attack_2.png","f2"]]},
+{"label":"run","cells":[["male_katana_run_0.png","f0"],["male_katana_run_1.png","f1"],["male_katana_run_2.png","f2"],["male_katana_run_3.png","f3"],["male_katana_run_4.png","f4"],["male_katana_run_5.png","f5"]]},
+{"label":"cast/charge/idle","cells":[["male_katana_cast_0.png","cast0"],["male_katana_cast_1.png","cast1"],["male_katana_charge_0.png","charge"],["male_katana_idle_0.png","idle"]]}]

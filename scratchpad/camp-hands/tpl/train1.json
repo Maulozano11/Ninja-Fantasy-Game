@@ -1,0 +1,7 @@
+[
+  { "name": "f1a", "index": 1, "frame": {} },
+  { "name": "f1b", "index": 1, "frame": { "bendN": -1 } },
+  { "name": "f6a", "index": 6, "frame": { "handN": { "from": "shoulder", "x": 0.86, "y": 0.0, "units": "arm" } } },
+  { "name": "f6b", "index": 6, "frame": { "handN": { "from": "shoulder", "x": 0.8, "y": 0.2, "units": "arm" } } },
+  { "name": "f6c", "index": 6, "frame": { "handN": { "from": "shoulder", "x": 0.2, "y": -0.88, "units": "arm" }, "bendN": -1 } }
+]

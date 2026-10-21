@@ -1,0 +1,96 @@
+function drawTube(L: Ix, t: Tube): void {
+  const P0 = t.pts;
+  const segs: { ax: number; ay: number; bx: number; by: number; len: number; s0: number }[] = [];
+  let S = 0;
+  for (let i = 0; i + 1 < P0.length; i++) {
+    const [ax, ay] = P0[i], [bx, by] = P0[i + 1];
+    const len = Math.hypot(bx - ax, by - ay);
+    if (len < 1e-6) continue;
+    segs.push({ ax, ay, bx, by, len, s0: S });
+    S += len;
+  }
+  if (!segs.length) return;
+  const rAt = (s: number): number => {
+    let r = lerp(t.r0, t.r1, s / S) + (t.flare ?? 0) * Math.exp(-s / (t.flareLen ?? 10));
+    if (t.point && s > S - t.point) r *= Math.max(0.1, (S - s) / t.point);
+    return r;
+  };
+  const rmax = Math.max(t.r0, t.r1) + (t.flare ?? 0) + 1;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [x, y] of P0) {
+    x0 = Math.min(x0, x);
+    y0 = Math.min(y0, y);
+    x1 = Math.max(x1, x);
+    y1 = Math.max(y1, y);
+  }
+  x0 = Math.floor(x0 - rmax);
+  y0 = Math.floor(y0 - rmax);
+  const M = new Mask(x0, y0, Math.ceil(x1 + rmax) - x0 + 1, Math.ceil(y1 + rmax) - y0 + 1);
+  const info = new Float32Array(M.w * M.h * 6);
+  for (let y = y0; y < y0 + M.h; y++) {
+    if (t.clipY !== undefined && y > t.clipY) continue;
+    for (let x = x0; x < x0 + M.w; x++) {
+      const px = x + 0.5, py = y + 0.5;
+      let best = 1e9, bs = 0, bcx = 0, bcy = 0, bux = 0, buy = 0, br = 1;
+      for (const g of segs) {
+        if (px < Math.min(g.ax, g.bx) - rmax || px > Math.max(g.ax, g.bx) + rmax || py < Math.min(g.ay, g.by) - rmax || py > Math.max(g.ay, g.by) + rmax) continue;
+        const ux = (g.bx - g.ax) / g.len, uy = (g.by - g.ay) / g.len;
+        const tt = clamp((px - g.ax) * ux + (py - g.ay) * uy, 0, g.len);
+        const cx = g.ax + ux * tt, cy = g.ay + uy * tt;
+        const d = Math.hypot(px - cx, py - cy);
+        const r = rAt(g.s0 + tt);
+        if (d - r < best) {
+          best = d - r;
+          bs = g.s0 + tt;
+          bcx = cx;
+          bcy = cy;
+          bux = ux;
+          buy = uy;
+          br = r;
+        }
+      }
+      if (best > 0) continue;
+      M.add(x, y);
+      const nx = (px - bcx) / br, ny = (py - bcy) / br;
+      const off = (px - bcx) * -buy + (py - bcy) * bux;
+      const k = ((y - y0) * M.w + (x - x0)) * 6;
+      info[k] = bs;
+      info[k + 1] = clamp(off / br, -1, 1);
+      info[k + 2] = nx;
+      info[k + 3] = ny;
+      info[k + 4] = Math.sqrt(Math.max(0, 1 - nx * nx - ny * ny));
+      info[k + 5] = br;
+    }
+  }
+  const at = (x: number, y: number) => ((y - y0) * M.w + (x - x0)) * 6;
+  stamp(
+    L,
+    M,
+    (x, y) => {
+      const k = at(x, y);
+      const s = info[k], u = info[k + 1], r = info[k + 5];
+      const Lv = lambert(info[k + 2], info[k + 3], info[k + 4]) * (t.dim ? t.dim(x, y) : 1) + (t.bias ?? 0);
+      return barkStep(t, Lv, Math.asin(u) * r, s, r);
+    },
+    {
+      line: (x, y, qx, qy) => L.pal(qx, qy) !== t.pal || info[at(x, y)] > (t.lineFrom ?? 0),
+      linePal: t.tex === 'charred' ? P.charred : t.pal,
+    },
+  );
+}
+
+/** Recursive branching: each branch forks into two thinner ones that lean outward and up. */
+function grow(out: Tube[], p: Pt, ang: number, len: number, r: number, depth: number, seed: number, base: Partial<Tube> & { pal: number; tex: Tex }): void {
+  const bend = (hash(seed, 1, 7) - 0.5) * 0.6;
+  const mid: Pt = [p[0] + Math.cos(ang + bend * 0.4) * len * 0.5, p[1] + Math.sin(ang + bend * 0.4) * len * 0.5];
+  const end: Pt = [p[0] + Math.cos(ang + bend) * len, p[1] + Math.sin(ang + bend) * len];
+  out.push({ ...base, pts: spline([p, mid, end]), r0: r, r1: Math.max(0.7, r * 0.62), seed, lineFrom: r * 2.2, depth });
+  if (depth <= 0) return;
+  for (let k = 0; k < 2; k++) {
+    const side = k === 0 ? -1 : 1;
+    let a2 = ang + bend + side * (0.32 + 0.35 * hash(seed, k, 11));
+    a2 = lerp(a2, -Math.PI / 2, 0.15);
+    grow(out, end, a2, len * (0.6 + 0.18 * hash(seed, k, 12)), r * 0.64, depth - 1, seed * 3 + k + 1, base);
+  }
+}
+

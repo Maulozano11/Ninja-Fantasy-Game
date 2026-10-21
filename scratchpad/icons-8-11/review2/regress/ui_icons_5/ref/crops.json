@@ -1,0 +1,164 @@
+{
+ "grid": {
+  "5": {
+   "pitch": [
+    2.1333333333333333,
+    2.1343283582089554
+   ],
+   "spectrumPitch": [
+    2.1331,
+    2.1364
+   ],
+   "phase": [
+    0.5,
+    0.6
+   ],
+   "edgeRatio": [
+    1.138,
+    1.211
+   ],
+   "blockSpread": 3.491,
+   "source": "icons-owner-reference-5.jpg",
+   "row": [
+    26,
+    167,
+    998,
+    403
+   ],
+   "rowScale": {
+    "1x": 0.22,
+    "4x": 0.88
+   }
+  }
+ },
+ "icons": {
+  "dash": {
+   "sheet": "5",
+   "box": [
+    20,
+    86,
+    114,
+    181
+   ],
+   "size": [
+    94,
+    95
+   ],
+   "slot": [
+    14,
+    80,
+    120,
+    187
+   ],
+   "sheetBox": [
+    43,
+    184,
+    243,
+    386
+   ],
+   "sheetSlot": [
+    30,
+    171,
+    256,
+    399
+   ],
+   "what": "Dash: a ninja sprinting with speed lines and an afterimage, on teal"
+  },
+  "hide": {
+   "sheet": "5",
+   "box": [
+    135,
+    86,
+    229,
+    181
+   ],
+   "size": [
+    94,
+    95
+   ],
+   "slot": [
+    129,
+    80,
+    235,
+    187
+   ],
+   "sheetBox": [
+    288,
+    184,
+    489,
+    386
+   ],
+   "sheetSlot": [
+    275,
+    171,
+    501,
+    399
+   ],
+   "what": "Hide: a ninja with red eyes melting into violet smoke"
+  },
+  "more": {
+   "sheet": "5",
+   "box": [
+    251,
+    86,
+    344,
+    181
+   ],
+   "size": [
+    93,
+    95
+   ],
+   "slot": [
+    245,
+    80,
+    350,
+    187
+   ],
+   "sheetBox": [
+    535,
+    184,
+    734,
+    386
+   ],
+   "sheetSlot": [
+    523,
+    171,
+    747,
+    399
+   ],
+   "what": "More actions: a glowing scroll with a gold cross and runes, on green"
+  },
+  "end_turn": {
+   "sheet": "5",
+   "box": [
+    367,
+    86,
+    460,
+    181
+   ],
+   "size": [
+    93,
+    95
+   ],
+   "slot": [
+    361,
+    80,
+    466,
+    187
+   ],
+   "sheetBox": [
+    783,
+    184,
+    981,
+    386
+   ],
+   "sheetSlot": [
+    770,
+    171,
+    994,
+    399
+   ],
+   "what": "End turn: an hourglass of red sand among embers"
+  }
+ }
+}

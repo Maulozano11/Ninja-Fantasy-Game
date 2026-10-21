@@ -1,0 +1,82 @@
+a #070822
+b #0a122c
+c #241721
+d #062222
+e #161c32
+f #22273d
+g #4c221a
+h #2c3344
+i #193b51
+j #38424e
+k #584246
+l #3e5354
+m #0a5678
+n #7a4a42
+o #04678a
+p #266a6f
+q #027393
+r #7c6456
+s #028280
+t #03819b
+u #098fa3
+v #0e9e90
+w #b17a70
+x #0a9db2
+y #14adba
+z #18b79a
+A #1cbfc9
+B #35c683
+C #26cea4
+D #e2a28c
+E #22d5dd
+F #ecbea2
+G #54f2a0
+H #32edea
+I #3ef2c5
+J #5cf98b
+K #3afafd
+
+ooooooouuutoooooqooooooooooooooooooquuqooooo
+oooooouuutooooqqCqqqsssvvvvoooooooooquuqoooo
+ooooouuutooqzzzqqqCCGGGGGvvooooooooooquuqooo
+ooooouuoooqBzqqzCGGCCvvvvvvorrrooommooquuooo
+ooootutooqBBrqzGGCvvvCCCCCCvlrrrohhimoqquooo
+ooooututotBrrrzGCvCvvuuuuzzzlrwwwhhiioquuuoo
+oqqqttvqtBrrrrGuxCxxxxyyxuuulrrrwkhiooouuuoo
+oqqoqvvqtrBwrpuuxxxxxxxxyyyyulkkkhkqtqoquuuo
+oqooqCqqfBwrrpuuuuxyyyyxxxyyyyuuvvttqqoquuuo
+quoqvCqifwrwrpuuAAAHHHHHEyxxAyyxuvvtzzqoouuu
+quoqCvqiiffrxxyAHHHHjiijyEExyAyyxuGztzuqoouu
+quovGvqtiirExyAHEEHjijjfjHHHAAAyyxuGGuGuoouu
+uuovGvtyGGEyyAHAEHEfjjffjHHHHyyyyxxuGGGGooqu
+tuovGvtyGyEyAHAEHHEfjjffjHHHynntxyxppGGGuoqu
+tzuGGvtyGyyyHAAHHHEfjjjfeffyynnttyxprrrGuqtu
+tzzGGvtyGyyAAAHHHHEhrrrfehfhhehhtyyxlrrrutut
+uuzGGvtyyyyEAAHHHHjehhhefheheeehyyylrrrrtuut
+uquGqttuyyyEAEHHHjieehebeheehfhyyyyylrhhhuAt
+yqqqwwnuyyyEAEHHjijieebbhhppfffyyyyyylfhhiyt
+yqqlwwnnuyyEAEHHeeehhheeffHHppAAAAyyyGlfhiyt
+yuqlwwnnwyyEAEHHiihehhhfhfHHHHAyHyyyyCGlfiyt
+yutllljwnxyEAEHHihibehehhhHHHHyAHyyyyCJGttyt
+uyqtjjjwixyEAyHHHhihbhheeAHHHyyHyyyCCvJJutyt
+tttqqfffixxyEyHHHhihbeeeeAAEEyHyyyyICvJJutyo
+tttqqqfisxxyEyyHHbjhbaaeeheeyEyyyxyItvJututo
+uuttqqqsssyxyyyymbhjebaahheiiiixyxIytGJutuqo
+uutzGqqsyuyxxyymbbjhebbbhehhjjjsxIIttGGttqoo
+uutGzzqquyuyxxxmbbbeebeeeeehhhhsIIxttGttqooo
+quutGzzqquuuyymiibbhhebbbeeeffhsIxttGGtqooot
+quutxGGzqquyHyijjhbhhbeyyHeeffhHHxtyGttqooot
+oqtttxzHHHHHyeijjhbffjHHHyhfffHHHHHHyttqooto
+oottxHHHEEHHehhjhhhffjyyyyfhhHHxHHHyHHHtqtto
+qotxHHuuHHEteheeehojjnjEEEffhxxHHHyHttHHytoo
+qqyHyttuuuthheeehoojjnjoofffxHHttttttttyHyoo
+qyHytAuHHthhfffoooomnnjooffhhhtHtqHxHyHHyHyo
+qyHtAAqHtfffoHoooooommooohhffhtHtqxHyyyHqHyo
+qyHqAAqHihffoHHHooooooooooouuHHtqqHxyyyyqHyo
+muHAqqqiihfoooqHHHHHHHHHHHHHHutqtHHqqqqqyHto
+mouHHuuihffyHEEqqqqHHHHHHqqqquHHHyyHHttHHtom
+mmouHHuuuHHHyyEqooEHHuuHHHooqHHHHHHyttHHtomm
+mmmoouHHHuuuHEooooEHHuuHHHooooHHHyyHHHtqmmmm
+mmmmmoouuHHHHxxxoEEEEuuHHHHoyyyHHHHyqqqmmmmm
+mmmmmmooqqqxxHHHHHHHHHHHHHHHHHHyqqqqqmmmmmmm
+mmmmmmmmmoooooooqqqqqqqqqqqqooooooommmmmmmmm

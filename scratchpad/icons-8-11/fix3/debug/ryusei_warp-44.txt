@@ -1,0 +1,96 @@
+a #050e22
+b #00035a
+c #1a123a
+d #1f1843
+e #241d51
+f #12265d
+g #041384
+h #2c2163
+i #342978
+j #11249b
+k #303c52
+l #462c85
+m #4a3378
+n #1d35ba
+o #374884
+p #36449d
+q #6438a6
+r #265697
+s #2d49cf
+t #3e5e8e
+u #53549d
+v #3e56b4
+w #466a7e
+x #7c4acb
+y #765ab0
+z #415fdc
+A #6d5eca
+B #4a74ad
+C #9444d5
+D #90725c
+E #5f7ad5
+F #5a7ae8
+G #9864de
+H #6d81c9
+I #9870d3
+J #4699cc
+K #589ce0
+L #9490ec
+M #799bf8
+N #7ba7d1
+O #4eb0d6
+P #66c1e6
+Q #99bbff
+R #6ad3f4
+S #9fd0ff
+T #95dbec
+U #6be5f7
+V #e5c0ff
+W #76f5fa
+X #c4e3ff
+Y #e4ffff
+
+dddddddddddddddddddddddddeeiiifffhhheehlheee
+ddddddddddddddddeedddddeeeieefrBBBBBhhehliee
+ddddddddddddddddeeddddeeeiieirllBBBBBlheilee
+dddddeedddddddddeddddeeeiieirlrKUUUUUBlheiee
+dddddeeeddddddddddeeeeehiierlrKUUUUREREleeee
+dddddeeddddeddddeeieeeehiepppRUKxxqqREREleee
+dddddddddeeeeeeeeiieeehiieBBBRKxllqqqRERAeee
+dddddddelleeeeeeeeeeeeeiiBBrBRxlilqqEEEAEhee
+dddddhlleeeeeeeeeeeeeeiBBBrBPPxliideqOOAEEhe
+dddoooheeeheeeeeeeeeiooiiRrPWTQQQdddeqWOxEhe
+deeooheeehheeeeeeeeooieiBRRWUQssQjccceWOxxhe
+eeeeeeeeheeeeeheeooeeeiBRRRWQssnjHcceuOWxxqe
+eeeeeeeeeeeeeeehoeeeeoRRBBRWQsnzjHuuuuuWOqxl
+eeeeeeeeeeeeehhheeeoRRooRHWWQggzsQQQQQuWOqql
+eeeeeeeeeeeeheeeeoPPooRRHvWWQsszzFFnzKuOWOll
+eeeeeeeeeeeeeeeePPooPRvvvHWQzzsFFEznzMuOWOll
+eeeeeeeeeeeeeeqqihoPoiiivTQzzFMzszsFneeuWRll
+eeeehhhhhhhhlqihhiihhiivTQsszsnvMszFeccxWRll
+ehhhhhhhhhilliiiihhhiivTQssnEsnEFsFmcccxURql
+hhhhhhhhhiiilllliiiiuvTQzsvzNnnFzvFmcccxRUEq
+hhhhhhhiiiillqqllluuuuQnEFWWRQFEpKMmmccxRUEq
+hhhhhhiiiliiilqlluullRQMFMWRRQEzzKFQQocxRUEq
+hhhhhilllllqillqqlluJQQEMMWWQEMFMMzzMQyxRREq
+hhhilllIllqllqqBOJJJUTQPPBTWQnnzzvsnnEyRWOEq
+hiillllllqqqxqBBkOUUvvPBBBTQzsEEKsnnnsyRWOOq
+llllllllqCqxxNNkOkOvPPBlBBTQsvnMFFzznzyUWOUh
+llllllllCRRRNDDkkkRRvllBBBQssnFJooFQKzyUUOUh
+lllllllCROoooDDDkRRulvvilQQssFUoccoBttyUKKUh
+llllllxRROOTooTTRqquuliiltQzUUqpccctctRUHHKh
+lllllxMTOTTeeTRqqqqliiiiltPUUJpqhhcctxRRHKKh
+llllxMTTTkekkRqlqliilolitPPrJJqpxhhhxxUHpPhh
+lllxMTTkkkkRRyqyllllolotrrrPPUJxpihxxUUHpPhh
+llxMTkkkPRRyyqyqliillllhhhhrPUJxpiixxUUppPhh
+llxxkPPPqqqqlllllimmhhhhhhPPJJUJxxxxUUIppphh
+llxPPqqqlllllllllimhhhhhhtPJppJUPPUUUUIlOllh
+llllllllllllllllihhhhhhhtteqpppJUPPttIllllhd
+lllllllllllllliihhhhhhttheeeqqJJtttqIqilihdc
+lllllllllllllhhhhhhhtthhheeeqqqqqtqIqiiihdcc
+llllllllllllhhhhhhhtheeehellhhqqqqqqihihdccc
+lllllllllihhhhheehheeeeehleeeehhiiiihiheeccc
+lllllllhhihhhhehheeeeeehheeeeeehhhheeeedeccc
+lllllhhhhiihheheeeeeeeeeeeeeeeeeeeheeeddedcc
+llllhhhhhhheheeeeeeeeeeeeeeeeeeeeeeeccccdccc
+hhhhhhhhheeeeeeeeeeeeeeeeeeeeeeeeccccccccccc

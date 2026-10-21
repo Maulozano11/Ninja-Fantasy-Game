@@ -1,0 +1,4 @@
+[
+ {"key":"wanderer","body":"male","held":"held_katana","pose":"throw","slots":{"armor":{"id":"armor_wanderer"}},"frames":[2,3,4]},
+ {"key":"wanderer-knight","body":"female","held":"held_katana","pose":"throw","slots":{"armor":{"id":"armor_wanderer"},"cape":{"id":"cape_knight"}},"frames":[2,3,4]}
+]

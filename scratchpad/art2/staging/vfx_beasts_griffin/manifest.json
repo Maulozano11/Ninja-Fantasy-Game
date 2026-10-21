@@ -1,0 +1,31 @@
+{
+ "group": "vfx_beasts_griffin",
+ "pxPerMeter": 57,
+ "sprites": {
+  "chakra": {
+   "label": "Chakra griffin",
+   "file": "chakra.png",
+   "frameW": 130,
+   "frameH": 94,
+   "anchor": [
+    79,
+    59
+   ],
+   "meters": [
+    2.3,
+    1.6
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

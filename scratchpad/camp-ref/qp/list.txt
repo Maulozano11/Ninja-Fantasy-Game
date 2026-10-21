@@ -1,0 +1,9 @@
+p0-male-pole-read-0
+p0-male-pole-lean-0
+p0-male-pole-sit-0
+p1-male-pole-read-0
+p1-male-pole-lean-0
+p1-male-pole-sit-0
+p2-male-pole-read-0
+p2-male-pole-lean-0
+p2-male-pole-sit-0

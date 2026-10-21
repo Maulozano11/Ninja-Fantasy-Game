@@ -1,0 +1,753 @@
+[
+ {
+  "id": "preset_founder",
+  "look": {
+   "version": 1,
+   "body": "male",
+   "skin": "#f3c39c",
+   "eyeShape": "sharp",
+   "eyeColor": "#d81b2a",
+   "slots": {
+    "hair": {
+     "id": "hair_midnight",
+     "colors": [
+      "#2f3c54"
+     ]
+    },
+    "top": {
+     "id": "top_royalcoat",
+     "colors": [
+      "#1f2a4a",
+      "#e2b04a",
+      "#131a30"
+     ]
+    },
+    "bottom": {
+     "id": "bottom_shinobi",
+     "colors": [
+      "#1f2a4a",
+      "#1f2a4a"
+     ]
+    },
+    "armor": {
+     "id": "armor_legion",
+     "colors": [
+      "#8e98a6",
+      "#a51f29",
+      "#c49a3a"
+     ]
+    },
+    "skirt": {
+     "id": "skirt_imperial",
+     "colors": [
+      "#b3202a",
+      "#6b4226",
+      "#d4a531"
+     ]
+    },
+    "feet": {
+     "id": "feet_sandals",
+     "colors": [
+      "#1f1e26",
+      "#c9a46c"
+     ]
+    },
+    "cape": {
+     "id": "cape_shadow",
+     "colors": [
+      "#2e2d35",
+      "#d9a93a"
+     ]
+    },
+    "held": {
+     "id": "held_crystal",
+     "colors": []
+    }
+   },
+   "accessories": [
+    {
+     "id": "acc_scarf",
+     "colors": [
+      "#1f1e26"
+     ]
+    },
+    {
+     "id": "acc_chest_strap",
+     "colors": []
+    }
+   ],
+   "headband": {
+    "position": "none",
+    "slashed": false,
+    "tails": false,
+    "emblem": "crescent",
+    "cloth": "#1e3a8a",
+    "plate": "#cbd5e1"
+   },
+   "chakra": {
+    "color": "red",
+    "onCharge": true,
+    "onCast": true,
+    "onVictory": true
+   },
+   "pixelEdits": []
+  },
+  "eye": "none"
+ },
+ {
+  "id": "preset_ember",
+  "look": {
+   "version": 1,
+   "body": "male",
+   "skin": "#f0c4a0",
+   "eyeShape": "sharp",
+   "eyeColor": "#3b82f6",
+   "slots": {
+    "hair": {
+     "id": "hair_lion",
+     "colors": [
+      "#16141d"
+     ]
+    },
+    "top": {
+     "id": "top_longsleeve",
+     "colors": [
+      "#2b2420",
+      "#1b1512"
+     ]
+    },
+    "bottom": {
+     "id": "bottom_shinobi",
+     "colors": [
+      "#2b2420",
+      "#3a2c22"
+     ]
+    },
+    "armor": {
+     "id": "armor_leather",
+     "colors": [
+      "#4d3528",
+      "#a2a7ae",
+      "#c0502c"
+     ]
+    },
+    "skirt": {
+     "id": "skirt_tassets",
+     "colors": [
+      "#4d3528",
+      "#1d1c26"
+     ]
+    },
+    "feet": {
+     "id": "feet_leather",
+     "colors": [
+      "#3a2a22",
+      "#1a120e"
+     ]
+    },
+    "hands": {
+     "id": "hands_bracers",
+     "colors": [
+      "#4d3528",
+      "#2a1a12"
+     ]
+    },
+    "held": {
+     "id": "held_katana",
+     "colors": []
+    }
+   },
+   "accessories": [],
+   "headband": {
+    "position": "none",
+    "slashed": false,
+    "tails": false,
+    "emblem": "crescent",
+    "cloth": "#1e3a8a",
+    "plate": "#cbd5e1"
+   },
+   "chakra": {
+    "color": "orange",
+    "onCharge": true,
+    "onCast": true,
+    "onVictory": false
+   },
+   "pixelEdits": []
+  },
+  "eye": "tomoe3"
+ },
+ {
+  "id": "preset_reference_aiden",
+  "look": {
+   "version": 1,
+   "body": "male",
+   "skin": "#f8d3b6",
+   "eyeShape": "standard",
+   "eyeColor": "#3b82f6",
+   "slots": {
+    "hair": {
+     "id": "hair_scholar",
+     "colors": [
+      "#7a3f1d"
+     ]
+    },
+    "top": {
+     "id": "top_longsleeve",
+     "colors": [
+      "#151a2e",
+      "#0d1020"
+     ]
+    },
+    "bottom": {
+     "id": "bottom_shinobi",
+     "colors": [
+      "#151a2e",
+      "#151a2e"
+     ]
+    },
+    "armor": {
+     "id": "armor_dread",
+     "colors": [
+      "#c4ccd6",
+      "#d9a92e"
+     ]
+    },
+    "feet": {
+     "id": "feet_greaves",
+     "colors": [
+      "#c4ccd6",
+      "#3a2d27"
+     ]
+    },
+    "cape": {
+     "id": "cape_knight",
+     "colors": [
+      "#a51d2d",
+      "#d9a93a"
+     ]
+    },
+    "held": {
+     "id": "held_katana",
+     "colors": []
+    }
+   },
+   "accessories": [],
+   "headband": {
+    "position": "none",
+    "slashed": false,
+    "tails": false,
+    "emblem": "crescent",
+    "cloth": "#1e3a8a",
+    "plate": "#cbd5e1"
+   },
+   "chakra": {
+    "color": "red",
+    "onCharge": true,
+    "onCast": true,
+    "onVictory": true
+   },
+   "pixelEdits": []
+  },
+  "eye": "tomoe3"
+ },
+ {
+  "id": "preset_storm",
+  "look": {
+   "version": 1,
+   "body": "male",
+   "skin": "#f2c7a0",
+   "eyeShape": "standard",
+   "eyeColor": "#3b82f6",
+   "slots": {
+    "hair": {
+     "id": "hair_raven",
+     "colors": [
+      "#1a1d33"
+     ]
+    },
+    "top": {
+     "id": "top_kimono",
+     "colors": [
+      "#e9e5da",
+      "#2b3557"
+     ]
+    },
+    "bottom": {
+     "id": "bottom_hakama",
+     "colors": [
+      "#2c3043",
+      "#cfc8b6"
+     ]
+    },
+    "skirt": {
+     "id": "skirt_apron",
+     "colors": [
+      "#27365c",
+      "#1a2340"
+     ]
+    },
+    "waist": {
+     "id": "waist_rope",
+     "colors": [
+      "#8b6fc9",
+      "#4c2f7a"
+     ]
+    },
+    "feet": {
+     "id": "feet_shinobi",
+     "colors": [
+      "#2a2f3d",
+      "#141821"
+     ]
+    },
+    "held": {
+     "id": "held_lightning",
+     "colors": []
+    }
+   },
+   "accessories": [],
+   "headband": {
+    "position": "forehead",
+    "slashed": true,
+    "tails": false,
+    "emblem": "bolt",
+    "cloth": "#1e293b",
+    "plate": "#cbd5e1"
+   },
+   "chakra": {
+    "color": "violet",
+    "onCharge": true,
+    "onCast": true,
+    "onVictory": false
+   },
+   "pixelEdits": []
+  },
+  "eye": "tomoe3"
+ },
+ {
+  "id": "preset_sunburst",
+  "look": {
+   "version": 1,
+   "body": "male",
+   "skin": "#f2c7a0",
+   "eyeShape": "round",
+   "eyeColor": "#38bdf8",
+   "slots": {
+    "hair": {
+     "id": "hair_sunburst",
+     "colors": [
+      "#f5c518"
+     ]
+    },
+    "top": {
+     "id": "top_jacket",
+     "colors": [
+      "#ec7a24",
+      "#24252d",
+      "#c9ced6"
+     ]
+    },
+    "bottom": {
+     "id": "bottom_shinobi",
+     "colors": [
+      "#ec7a24",
+      "#e7e1d1"
+     ]
+    },
+    "feet": {
+     "id": "feet_shinobi",
+     "colors": [
+      "#2f5fa8",
+      "#1d2433"
+     ]
+    },
+    "face": {
+     "id": "face_beast",
+     "colors": []
+    },
+    "held": {
+     "id": "held_spiral",
+     "colors": []
+    }
+   },
+   "accessories": [
+    {
+     "id": "acc_kunai_leg",
+     "colors": []
+    }
+   ],
+   "headband": {
+    "position": "forehead",
+    "slashed": false,
+    "tails": true,
+    "emblem": "spiral",
+    "cloth": "#1e3a8a",
+    "plate": "#cbd5e1"
+   },
+   "chakra": {
+    "color": "orange",
+    "onCharge": true,
+    "onCast": true,
+    "onVictory": true
+   },
+   "pixelEdits": []
+  },
+  "eye": "sage"
+ },
+ {
+  "id": "preset_warlord",
+  "look": {
+   "version": 1,
+   "body": "male",
+   "skin": "#f2c7a0",
+   "eyeShape": "sharp",
+   "eyeColor": "#3b82f6",
+   "slots": {
+    "hair": {
+     "id": "hair_warlord",
+     "colors": [
+      "#16141d"
+     ]
+    },
+    "top": {
+     "id": "top_longsleeve",
+     "colors": [
+      "#262038",
+      "#18142a"
+     ]
+    },
+    "bottom": {
+     "id": "bottom_hakama",
+     "colors": [
+      "#262038",
+      "#cfc8b6"
+     ]
+    },
+    "armor": {
+     "id": "armor_lamellar",
+     "colors": [
+      "#9b1c24",
+      "#1d1c26",
+      "#d0a63c"
+     ]
+    },
+    "skirt": {
+     "id": "skirt_tassets",
+     "colors": [
+      "#9b1c24",
+      "#1d1c26"
+     ]
+    },
+    "feet": {
+     "id": "feet_sandals",
+     "colors": [
+      "#1f1e26",
+      "#c9a46c"
+     ]
+    },
+    "held": {
+     "id": "held_naginata",
+     "colors": []
+    }
+   },
+   "accessories": [
+    {
+     "id": "acc_back_katana",
+     "colors": []
+    }
+   ],
+   "headband": {
+    "position": "none",
+    "slashed": false,
+    "tails": false,
+    "emblem": "crescent",
+    "cloth": "#1e3a8a",
+    "plate": "#cbd5e1"
+   },
+   "chakra": {
+    "color": "violet",
+    "onCharge": true,
+    "onCast": true,
+    "onVictory": true
+   },
+   "pixelEdits": []
+  },
+  "eye": "pinwheel"
+ },
+ {
+  "id": "preset_gentle",
+  "look": {
+   "version": 1,
+   "body": "female",
+   "skin": "#ffe6d2",
+   "eyeShape": "calm",
+   "eyeColor": "#3b82f6",
+   "slots": {
+    "hair": {
+     "id": "hair_long",
+     "colors": [
+      "#1d1a2e"
+     ]
+    },
+    "top": {
+     "id": "top_kimono",
+     "colors": [
+      "#dcd6ee",
+      "#3b3561"
+     ]
+    },
+    "bottom": {
+     "id": "bottom_leggings",
+     "colors": [
+      "#2a2433",
+      "#7a68a0"
+     ]
+    },
+    "waist": {
+     "id": "waist_sash",
+     "colors": [
+      "#4a3f7a",
+      "#2c2550"
+     ]
+    },
+    "feet": {
+     "id": "feet_sandals",
+     "colors": [
+      "#2a2433",
+      "#c9a46c"
+     ]
+    },
+    "held": {
+     "id": "held_palm",
+     "colors": []
+    }
+   },
+   "accessories": [],
+   "headband": {
+    "position": "neck",
+    "slashed": false,
+    "tails": false,
+    "emblem": "sun",
+    "cloth": "#1e3a8a",
+    "plate": "#cbd5e1"
+   },
+   "chakra": {
+    "color": "blue",
+    "onCharge": true,
+    "onCast": true,
+    "onVictory": false
+   },
+   "pixelEdits": []
+  },
+  "eye": "paleVeins"
+ },
+ {
+  "id": "preset_night",
+  "look": {
+   "version": 1,
+   "body": "male",
+   "skin": "#f2c7a0",
+   "eyeShape": "standard",
+   "eyeColor": "#38bdf8",
+   "slots": {
+    "hair": {
+     "id": "hair_midnight",
+     "colors": [
+      "#2a3448"
+     ]
+    },
+    "top": {
+     "id": "top_royalcoat",
+     "colors": [
+      "#17181f",
+      "#9aa3b2",
+      "#0d0e14"
+     ]
+    },
+    "bottom": {
+     "id": "bottom_shinobi",
+     "colors": [
+      "#17181f",
+      "#17181f"
+     ]
+    },
+    "feet": {
+     "id": "feet_leather",
+     "colors": [
+      "#1b1b22",
+      "#0d0d12"
+     ]
+    },
+    "hands": {
+     "id": "hands_fingerless",
+     "colors": [
+      "#1b1b22",
+      "#9aa4b0"
+     ]
+    },
+    "held": {
+     "id": "held_katana",
+     "colors": []
+    }
+   },
+   "accessories": [],
+   "headband": {
+    "position": "none",
+    "slashed": false,
+    "tails": false,
+    "emblem": "crescent",
+    "cloth": "#1e3a8a",
+    "plate": "#cbd5e1"
+   },
+   "chakra": {
+    "color": "blue",
+    "onCharge": true,
+    "onCast": true,
+    "onVictory": true
+   },
+   "pixelEdits": []
+  },
+  "eye": "none"
+ },
+ {
+  "id": "companion_hana",
+  "look": {
+   "version": 1,
+   "body": "female",
+   "skin": "#f6d3b8",
+   "eyeShape": "calm",
+   "eyeColor": "#2f8f6a",
+   "slots": {
+    "hair": {
+     "id": "hair_pony",
+     "colors": [
+      "#4a2f22"
+     ]
+    },
+    "top": {
+     "id": "top_kimono",
+     "colors": [
+      "#e8eee8",
+      "#2f7d5b"
+     ]
+    },
+    "bottom": {
+     "id": "bottom_leggings",
+     "colors": [
+      "#26323a",
+      "#2f7d5b"
+     ]
+    },
+    "waist": {
+     "id": "waist_pouches",
+     "colors": [
+      "#6b4f2e",
+      "#3b2c1c",
+      "#c9a46c"
+     ]
+    },
+    "feet": {
+     "id": "feet_sandals",
+     "colors": [
+      "#26323a",
+      "#c9a46c"
+     ]
+    },
+    "held": {
+     "id": "held_palm",
+     "colors": [
+      "#7ef0b8"
+     ]
+    }
+   },
+   "accessories": [],
+   "headband": {
+    "position": "forehead",
+    "slashed": false,
+    "tails": true,
+    "emblem": "wave",
+    "cloth": "#2f7d5b",
+    "plate": "#cbd5e1"
+   },
+   "chakra": {
+    "color": "green",
+    "onCharge": true,
+    "onCast": true,
+    "onVictory": false
+   },
+   "pixelEdits": []
+  },
+  "eye": "none"
+ },
+ {
+  "id": "companion_kenji",
+  "look": {
+   "version": 1,
+   "body": "male",
+   "skin": "#e8b98f",
+   "eyeShape": "piercing",
+   "eyeColor": "#8b5cf6",
+   "slots": {
+    "hair": {
+     "id": "hair_lowtail",
+     "colors": [
+      "#1c1830"
+     ]
+    },
+    "top": {
+     "id": "top_highcollar",
+     "colors": [
+      "#3b2f5c",
+      "#1c1830"
+     ]
+    },
+    "bottom": {
+     "id": "bottom_hakama",
+     "colors": [
+      "#1c1830",
+      "#3b2f5c"
+     ]
+    },
+    "waist": {
+     "id": "waist_rope",
+     "colors": [
+      "#c9a46c",
+      "#8a6a3a"
+     ]
+    },
+    "feet": {
+     "id": "feet_shinobi",
+     "colors": [
+      "#1c1830",
+      "#3b2f5c"
+     ]
+    },
+    "cape": {
+     "id": "cape_haori",
+     "colors": [
+      "#6d4fa3",
+      "#1c1830",
+      "#c9a46c"
+     ]
+    }
+   },
+   "accessories": [],
+   "headband": {
+    "position": "arm",
+    "slashed": false,
+    "tails": false,
+    "emblem": "spiral",
+    "cloth": "#3b2f5c",
+    "plate": "#cbd5e1"
+   },
+   "chakra": {
+    "color": "violet",
+    "onCharge": true,
+    "onCast": true,
+    "onVictory": false
+   },
+   "pixelEdits": []
+  },
+  "eye": "none"
+ }
+]

@@ -1,0 +1,32 @@
+import { open, helpers, out, turnOf } from './lib.mjs';
+const { browser, page, errs } = await open('es-MX');
+const h = helpers(page);
+await page.getByText('Renegados en el claro').click();
+await h.idle(); await h.playerTurn();
+await turnOf(page, 'preset_ember');
+const P = await page.evaluate(() => { const s = window.__battle.state(); s.units.companion_kenji.pos = { x: 14, z: 16 }; s.units.rogue_0.pos = { x: 5.75, z: 8.75 }; return { me: s.units.preset_ember.pos, r: s.units.rogue_0.pos }; });
+await page.evaluate(() => window.__battle.act({ type: 'crouch', unit: 'preset_ember' })); await h.idle();
+await page.evaluate(() => window.__battle.act({ type: 'crouch', unit: 'preset_ember' })); await h.idle();
+await page.evaluate(() => { const u = window.__battle.state().units.preset_ember; u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 }; window.__battle.act({ type: 'setController', unit: 'preset_ember', controller: 'player' }); });
+await page.waitForTimeout(1500);
+console.log(JSON.stringify(P));
+await page.locator('button', { hasText: 'Persecut' }).first().click(); await page.waitForTimeout(300);
+const p = await h.at(P.r.x, P.r.z);
+console.log('screen', JSON.stringify(p));
+const res = [];
+for (const dy of [0, -15, -30, -45, -60]) {
+  await page.mouse.move(p.x, p.y + dy); await page.waitForTimeout(400);
+  await page.screenshot({ path: `${out}/flame2-${-dy}.png` });
+  res.push(dy);
+}
+await page.mouse.move(p.x, p.y - 30); await page.waitForTimeout(400);
+await page.mouse.down(); await page.mouse.up();
+await page.waitForTimeout(300);
+await page.screenshot({ path: `${out}/flame2-click.png` });
+await h.idle();
+const after = await page.evaluate(() => { const s = window.__battle.state(); return { ch: s.units.preset_ember.chakra, act: s.units.preset_ember.turn.action, hp: s.units.rogue_0.hp, log: (s.log ?? []).slice(-3) }; });
+console.log(JSON.stringify(after));
+const err = await page.evaluate(() => document.body.innerText.split('\n').filter((l) => /vista|alcance|objetivo|Nodo|ahí/.test(l)));
+console.log('texts', JSON.stringify(err));
+console.log('errors', JSON.stringify(errs));
+await browser.close();

@@ -1,0 +1,40 @@
+// Level 9 Command on screen: a click picks the first target, Enter sends it alone.
+import { chromium } from '/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/pw/node_modules/playwright/index.mjs';
+const out = process.argv[2];
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, locale: 'en-US' });
+const errs = [];
+page.on('pageerror', (e) => errs.push(String(e)));
+await page.goto('http://127.0.0.1:5351/', { waitUntil: 'networkidle' });
+await page.evaluate(() => { localStorage.clear(); localStorage.setItem('shinobi.tips.off', '1'); });
+await page.reload({ waitUntil: 'networkidle' });
+await page.getByText('Rogues in the clearing').click();
+const idle = () => page.waitForFunction(() => window.__battle && !window.__battle.busy(), null, { timeout: 120000 });
+await idle();
+await page.waitForFunction(() => { const s = window.__battle.state(); const u = s.units[s.order[s.turn]]; return !window.__battle.busy() && u?.team === 'party' && u.controller === 'player'; }, null, { timeout: 120000 });
+const info = await page.evaluate(() => {
+  const s = window.__battle.state(); const u = s.units[s.order[s.turn]];
+  u.character = { ...u.character, clan: 'Northstar' }; u.level = 9;
+  u.jutsus = ['northstar_command', 'northstar_submission'];
+  const r = s.units.raider_0; r.pos = { x: u.pos.x + 5.5, z: u.pos.z + 0.5 };
+  return { id: u.id, pos: u.pos, raider: r.pos };
+});
+for (let i = 0; i < 2; i++) { await page.evaluate((id) => window.__battle.act({ type: 'crouch', unit: id }), info.id); await idle(); }
+await page.evaluate((id) => { const s = window.__battle.state(); const u = s.units[id]; u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 }; window.__battle.act({ type: 'setController', unit: id, controller: 'player' }); }, info.id);
+await page.waitForTimeout(300);
+await page.evaluate(([x, z]) => window.__battle.centerOn(x, z), [info.pos.x + 3, info.pos.z]);
+await page.waitForTimeout(1200);
+await page.keyboard.press('3');
+await page.waitForTimeout(250);
+const p = await page.evaluate(([x, z]) => window.__battle.screenOf(x, z), [info.raider.x, info.raider.z]);
+await page.mouse.move(p.x, p.y - 40);
+await page.waitForTimeout(300);
+await page.mouse.down(); await page.mouse.up();
+await page.waitForTimeout(400);
+await page.screenshot({ path: `${out}/lv9-picked.png` });
+await page.keyboard.press('Enter');
+await page.waitForTimeout(300);
+await idle();
+const r = await page.evaluate(() => { const s = window.__battle.state(); return { raider: s.units.raider_0.commanded ?? s.units.raider_0.team, turn: s.units[s.order[s.turn]].id }; });
+console.log(JSON.stringify(r), JSON.stringify(errs));
+await browser.close();

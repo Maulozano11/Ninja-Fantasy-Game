@@ -1,0 +1,17 @@
+03baab1710165c44bc58b73763238779  aura.png
+4a13aca66f7ffcecdc5bfbf79ee35899  aura_back.png
+31ad567a06f085d3a00e53f1abbf466a  beast.png
+a1c09bf53ed78769d2805a974545a4ad  blast.png
+f215acecef256ec56f3dd8a3f289fb24  bolt.png
+ee7e879598654dfa81093c7d09ca138b  breath.png
+e88aaf5f890382c53be9d5949f6f8826  hit.png
+5345cc2440b824f68205d980983a0045  manifest.json
+2c1a82a900a17252aa319f67de4060dc  multi.png
+f5174d5a9c8ff209c2c7708ed61c2aa4  multi_hit.png
+fa9e6be9b37e8d9bb74630abd8cb2787  slash.png
+fa3005616e40ebccb6057d201fde5910  sphere.png
+ef6c017ccd31899ff03945538365f327  stream.png
+7bba63435f6a845daeaad96007edad13  stream_head.png
+b0fe805e01c6c1e25ef068279836bba6  wall.png
+f4dc1432a4e53637f88083b831f3986d  wall_depth.png
+24da61c8133e919e98d17164023bd029  wall_diag.png

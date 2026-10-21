@@ -1,0 +1,99 @@
+  {
+    id: 'armor_lamellar',
+    slot: 'armor',
+    name: 'Ronin Lamellar Armor',
+    desc: 'Rows of lacquered plates laced together, with broad square shoulder plates (+4 AC).',
+    colors: [col('plate', 'Lacquer', '#b0242c'), col('lace', 'Laces', '#1d1c26'), col('trim', 'Trim', '#d0a63c', 'metal')],
+    statsArmor: 'Samurai O-Yoroi',
+    draw: (g, [pc, lc, tc]) => {
+      const b = g.bp;
+      const L = g.L('torso.armor');
+      const plate = armorPen(g, pc);
+      const lace = armorPen(g, lc);
+      const trim = armorPen(g, tc, 'metal');
+      const top = chestTop(g);
+      const rows0 = 0.8;
+      const rowsTop = top - 4.2;
+      const rh = LAM_ROW;
+      // laced plate rows
+      tfill(
+        g,
+        L,
+        1.2,
+        plate,
+        (lx, ly, t) => {
+          if (ly >= rowsTop) return null;
+          const k = lamRow(ly - rows0, rh);
+          if (k === 'lace') return laceCol(lx) ? null : clamp(tside(t) - 2, 1, 2);
+          return clamp(tside(t) + (k === 'rim' ? 1 : 0), 1, 5);
+        },
+        { top: rowsTop, bottom: rows0 },
+      );
+      tfill(
+        g,
+        L,
+        1.2,
+        lace,
+        (lx, ly, t) => (ly < rowsTop && lamRow(ly - rows0, rh) === 'lace' && laceCol(lx) ? clamp(tside(t), 2, 4) : null),
+        { top: rowsTop, bottom: rows0 },
+      );
+      // breast plate (muna-ita): dark board with a gold rim and corner fittings
+      tfill(
+        g,
+        L,
+        1.2,
+        lace,
+        (_lx, ly, t) => {
+          if (ly - rowsTop < FP * 2) return null;
+          return clamp(tside(t) + (ly > top - 0.2 - FP * 2 ? 2 : 1), 2, 5);
+        },
+        { top: top - 0.2, bottom: rowsTop },
+      );
+      tfill(g, L, 1.2, trim, (_lx, ly, t) => (ly - rowsTop < FP * 2 ? clamp(tside(t) + (ly - rowsTop < FP ? 0 : 1), 2, 5) : null), { top: rowsTop + FP * 2, bottom: rowsTop });
+      tstud(g, L, -b.chestHalf * 0.5, rowsTop + 1.4, trim, 4);
+      tstud(g, L, b.chestHalf * 0.4, rowsTop + 1.4, trim, 3);
+      // big rectangular shoulder plates (sode), hanging from the shoulder
+      for (const s of SIDES) {
+        const f0 = armFrame(g, s, 0);
+        const u = norm(add(scale(g.rig.up, -0.45), scale(f0.u, 0.55)));
+        const f: LimbFrame = { ...f0, u, w: scale(perp(u), s === 'N' ? 1 : -1) };
+        const A = g.L(armDepth(s, 'armor'));
+        const R = b.armR[0];
+        const p = onLimb(plate, s, 'upperArm');
+        const lp = onLimb(lace, s, 'upperArm');
+        const tp = onLimb(trim, s, 'upperArm');
+        const a0 = -2.0;
+        const board = 1.3;
+        const a1 = b.upperArm * 0.9;
+        const bIn = -R - 0.5;
+        const bOut = R + 1.9;
+        const rect = (a: number, bb: number) => {
+          const aa = a + bb * 0.12 - a0;
+          return aa >= 0 && aa <= a1 - a0 && bb >= bIn && bb <= bOut ? aa : -1;
+        };
+        lfill(A, f, p, R + 6, (a, bb) => {
+          const aa = rect(a, bb);
+          if (aa < board) return null;
+          const k = lamRow(a1 - a0 - aa, rh);
+          const base = limbShade(f, bb, bOut, -0.4);
+          if (k === 'lace') return laceCol(bb) ? null : clamp(base - 2, 1, 2);
+          return clamp(base + (k === 'rim' ? 1 : 0), 1, 5);
+        });
+        lfill(A, f, lp, R + 6, (a, bb) => {
+          const aa = rect(a, bb);
+          if (aa < 0) return null;
+          if (aa < board - FP) return limbShade(f, bb, bOut, -0.8) + 1; // top board (kanmuri-ita)
+          if (aa < board) return null;
+          return lamRow(a1 - a0 - aa, rh) === 'lace' && laceCol(bb) ? limbShade(f, bb, bOut, 0) : null;
+        });
+        lfill(A, f, tp, R + 6, (a, bb) => {
+          const aa = rect(a, bb);
+          return aa >= board - FP && aa < board ? limbShade(f, bb, bOut, -0.5) + 1 : null;
+        });
+      }
+      // gold-rimmed collar
+      collar(g, lace, 1.6, 1.0, trim);
+    },
+  },
+
+  // -------------------------------------------------------------------------

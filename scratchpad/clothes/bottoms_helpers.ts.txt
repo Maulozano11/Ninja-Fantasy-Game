@@ -1,0 +1,37 @@
+/**
+ * Wide panel per leg from hip to hem (hakama): it starts as wide as the hip and
+ * falls nearly straight to a horizontal hem, shaded as cloth rounding over the
+ * leg (lit toward the light, dark on the far side).
+ */
+function widePanel(g: DrawCtx, L: Layer, s: Side, wHip: number, wHem: number, hemT: number, pen: Pen, lift = 0): Vec[] {
+  const hip = legJoints(g.rig, s).hip;
+  const hem = legPoint(g, s, hemT);
+  const pts = [v(hip.x - wHip, hip.y - 1), v(hip.x + wHip, hip.y - 1), v(hem.x + wHem + 0.6, hem.y), v(hem.x - wHem, hem.y)];
+  poly(L, pts, pen, (x, y) => {
+    const f = clamp((y + 0.5 - pts[0].y) / Math.max(1, pts[3].y - pts[0].y), 0, 1);
+    const xl = pts[0].x + (pts[3].x - pts[0].x) * f;
+    const xr = pts[1].x + (pts[2].x - pts[1].x) * f;
+    const u = (2 * (x + 0.5 - xl)) / Math.max(1, xr - xl) - 1;
+    return tone(hangLight(u) + lift + wob(y * 1.4, 29) * 0.12);
+  });
+  return pts;
+}
+
+/** Waistband on the seat of a pair of trousers: a lit band edge over a dark seam. */
+function waistband(g: DrawCtx, top: number): void {
+  const L = g.L('torso.bottom');
+  const hh = g.bp.hipHalf + 1.5;
+  tmark(g, L, -hh, top - 1.2, hh, top - 1.2, (s) => s - 1);
+  tmark(g, L, -hh, top - 0.6, hh, top - 0.6, (s) => Math.min(4, s + 1));
+}
+
+/** Folds at the knee and the cloth bunching at the ankle (or above a cuff) on one trouser leg. */
+function legFolds(g: DrawCtx, L: Layer, s: Side, inflate: number, ankle = 1.62): void {
+  jointFolds(g, L, 'leg', s, inflate);
+  const a = legPoint(g, s, ankle - 0.22);
+  const b = legPoint(g, s, ankle);
+  const r = limbR(g, 'leg', ankle) + inflate;
+  fold(L, along(a, b, 0.2, r * 0.9), along(a, b, 0.55, -r * 0.5));
+  fold(L, along(a, b, 0.75, -r * 0.9), along(a, b, 1.0, r * 0.3));
+}
+

@@ -1,0 +1,4 @@
+skirt_imperial|Imperial War Skirt
+skirt_apron|Battle Apron
+skirt_tassets|Lamellar Tassets
+skirt_kilt|Pleated Kilt

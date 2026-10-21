@@ -1,0 +1,349 @@
+{
+ "group": "vfx_lightning_v3",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bolt": {
+   "label": "Lightning bolt (spark ball)",
+   "file": "bolt.png",
+   "frameW": 80,
+   "frameH": 70,
+   "anchor": [
+    46,
+    35
+   ],
+   "meters": [
+    1.4,
+    1.23
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream": {
+   "label": "Lightning stream (beam, tileable 64 px)",
+   "file": "stream.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream_head": {
+   "label": "Lightning stream head",
+   "file": "stream_head.png",
+   "frameW": 79,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.39,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "breath": {
+   "label": "Lightning breath (forked cone, origin left middle)",
+   "file": "breath.png",
+   "frameW": 112,
+   "frameH": 119,
+   "anchor": [
+    61,
+    59
+   ],
+   "meters": [
+    1.96,
+    2.09
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "sphere": {
+   "label": "Lightning sphere (thunder sphere)",
+   "file": "sphere.png",
+   "frameW": 83,
+   "frameH": 82,
+   "anchor": [
+    41,
+    41
+   ],
+   "meters": [
+    1.46,
+    1.44
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "slash": {
+   "label": "Lightning slash (electric crescent)",
+   "file": "slash.png",
+   "frameW": 70,
+   "frameH": 79,
+   "anchor": [
+    35,
+    39
+   ],
+   "meters": [
+    1.23,
+    1.39
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "multi": {
+   "label": "Lightning multi (thunder needles)",
+   "file": "multi.png",
+   "frameW": 78,
+   "frameH": 70,
+   "anchor": [
+    35,
+    35
+   ],
+   "meters": [
+    1.37,
+    1.23
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "hit": {
+   "label": "Lightning hit (spark burst)",
+   "file": "hit.png",
+   "frameW": 83,
+   "frameH": 83,
+   "anchor": [
+    40,
+    40
+   ],
+   "meters": [
+    1.46,
+    1.46
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "blast": {
+   "label": "Lightning blast (thunder strike from the sky)",
+   "file": "blast.png",
+   "frameW": 312,
+   "frameH": 292,
+   "anchor": [
+    141,
+    218
+   ],
+   "meters": [
+    5.47,
+    5.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "wall": {
+   "label": "Lightning wall (fence, 4.5 m x 1.8 m)",
+   "file": "wall.png",
+   "frameW": 304,
+   "frameH": 131,
+   "anchor": [
+    148,
+    120
+   ],
+   "meters": [
+    5.33,
+    2.3
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "wall_diag": {
+   "label": "Lightning wall, 3/4 (fence, 4.5 m x 1.8 m, turned 45 degrees)",
+   "file": "wall_diag.png",
+   "frameW": 302,
+   "frameH": 247,
+   "anchor": [
+    120,
+    188
+   ],
+   "meters": [
+    5.3,
+    4.33
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "wall_depth": {
+   "label": "Lightning wall, end-on (fence, 4.5 m x 1.8 m, running into the screen)",
+   "file": "wall_depth.png",
+   "frameW": 100,
+   "frameH": 310,
+   "anchor": [
+    38,
+    209
+   ],
+   "meters": [
+    1.75,
+    5.44
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "aura": {
+   "label": "Lightning aura (charge / buff)",
+   "file": "aura.png",
+   "frameW": 91,
+   "frameH": 135,
+   "anchor": [
+    45,
+    117
+   ],
+   "meters": [
+    1.6,
+    2.37
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  }
+ }
+}

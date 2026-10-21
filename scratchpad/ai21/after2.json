@@ -1,0 +1,214 @@
+{
+ "totals": {
+  "refused": 1,
+  "stalls": 0,
+  "unfinished": 0,
+  "battles": 400
+ },
+ "river_patrol": {
+  "N": 100,
+  "rounds": 2.94,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "Pursuing Flame": 101,
+    "Evasion": 139,
+    "bigger jutsu (Mirai)": 33,
+    "Kōton Block": 81,
+    "kunai (Ryusei)": 47,
+    "Node planted": 47,
+    "Kōton Wall": 4
+   },
+   "battles": {
+    "Pursuing Flame": 100,
+    "Evasion": 100,
+    "bigger jutsu (Mirai)": 32,
+    "Kōton Block": 60,
+    "kunai (Ryusei)": 47,
+    "Node planted": 47,
+    "Kōton Wall": 4
+   }
+  },
+  "party": {
+   "uses": {
+    "kunai (Ryusei)": 66,
+    "Node planted": 66,
+    "Kōton Block": 71,
+    "Kōton Wall": 10,
+    "attack w/ aura disadv.": 8
+   },
+   "battles": {
+    "kunai (Ryusei)": 46,
+    "Node planted": 46,
+    "Kōton Block": 66,
+    "Kōton Wall": 10,
+    "attack w/ aura disadv.": 6
+   }
+  },
+  "enemies": [
+   "Acechador (Ryusei)",
+   "Renegado (Mirai)",
+   "Cazador (Koton)"
+  ]
+ },
+ "cedar_rogues": {
+  "N": 100,
+  "rounds": 2.9,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "Evasion": 201,
+    "kunai (Ryusei)": 98,
+    "Node planted": 136,
+    "Pursuing Flame": 93,
+    "Warp Strike": 27,
+    "Warp edge won": 27,
+    "blow from behind": 27,
+    "bigger jutsu (Mirai)": 50,
+    "attack w/ aura disadv.": 20
+   },
+   "battles": {
+    "Evasion": 100,
+    "kunai (Ryusei)": 98,
+    "Node planted": 98,
+    "Pursuing Flame": 84,
+    "Warp Strike": 27,
+    "Warp edge won": 27,
+    "blow from behind": 27,
+    "bigger jutsu (Mirai)": 43,
+    "attack w/ aura disadv.": 20
+   }
+  },
+  "party": {
+   "uses": {
+    "Kōton Block": 86,
+    "Kōton Wall": 6,
+    "attack w/ aura disadv.": 29,
+    "kunai (Ryusei)": 1,
+    "Node planted": 2
+   },
+   "battles": {
+    "Kōton Block": 78,
+    "Kōton Wall": 6,
+    "attack w/ aura disadv.": 23,
+    "kunai (Ryusei)": 1,
+    "Node planted": 2
+   }
+  },
+  "enemies": [
+   "Renegado (Mirai)",
+   "Vigía (Northstar)",
+   "Asaltante (Ryusei)"
+  ]
+ },
+ "night_raid": {
+  "N": 100,
+  "rounds": 4.11,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 1,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "Pursuing Flame": 142,
+    "kunai (Ryusei)": 108,
+    "Node planted": 124,
+    "Evasion": 185,
+    "bigger jutsu (Mirai)": 96,
+    "Kōton Block": 42,
+    "attack w/ aura disadv.": 33,
+    "Warp Strike": 33,
+    "Warp edge won": 32,
+    "blow from behind": 29,
+    "Kōton Wall": 3
+   },
+   "battles": {
+    "Pursuing Flame": 100,
+    "kunai (Ryusei)": 93,
+    "Node planted": 93,
+    "Evasion": 94,
+    "bigger jutsu (Mirai)": 86,
+    "Kōton Block": 40,
+    "attack w/ aura disadv.": 24,
+    "Warp Strike": 32,
+    "Warp edge won": 31,
+    "blow from behind": 29,
+    "Kōton Wall": 3
+   }
+  },
+  "party": {
+   "uses": {
+    "attack w/ aura disadv.": 195,
+    "Kōton Block": 105,
+    "aura slowed a foe": 17,
+    "Node planted": 22,
+    "Kōton Wall": 3
+   },
+   "battles": {
+    "attack w/ aura disadv.": 76,
+    "Kōton Block": 99,
+    "aura slowed a foe": 16,
+    "Node planted": 21,
+    "Kōton Wall": 3
+   }
+  },
+  "enemies": [
+   "Asaltante (Ryusei)",
+   "Puño de hierro (Koton)",
+   "Sombra (Northstar)",
+   "Kagero (Mirai)"
+  ]
+ },
+ "hydra": {
+  "N": 100,
+  "rounds": 7.3,
+  "outcomes": {
+   "victory": 64,
+   "defeat": 36
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {},
+   "battles": {}
+  },
+  "party": {
+   "uses": {
+    "Kōton Block": 117,
+    "attack w/ aura disadv.": 273,
+    "Kōton Wall": 59,
+    "kunai (Ryusei)": 73,
+    "Node planted": 119,
+    "Warp Strike": 34,
+    "Warp edge won": 34,
+    "blow from behind": 31,
+    "Spatial Swap": 1
+   },
+   "battles": {
+    "Kōton Block": 97,
+    "attack w/ aura disadv.": 61,
+    "Kōton Wall": 54,
+    "kunai (Ryusei)": 38,
+    "Node planted": 40,
+    "Warp Strike": 31,
+    "Warp edge won": 31,
+    "blow from behind": 28,
+    "Spatial Swap": 1
+   }
+  },
+  "enemies": []
+ }
+}

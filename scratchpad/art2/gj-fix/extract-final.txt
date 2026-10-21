@@ -1,0 +1,15 @@
+bolt         67x64  anchor  49,32  pieces main,smoke,orb                           border px 0
+stream       64x64  anchor   0,32  pieces main                                     border px 73
+stream_head  67x64  anchor  32,32  pieces main,sparks,spiral                       border px 37
+breath      112x110 anchor   8,54  pieces main,smoke,orb,eyes,orbs                 border px 0
+sphere       69x66  anchor  36,33  pieces main,core                                border px 0
+slash        65x64  anchor  33,32  pieces main,smoke                               border px 0
+multi        67x64  anchor  35,32  pieces d0,d1,d2                                 border px 0
+hit          66x67  anchor  34,33  pieces main                                     border px 0
+blast       270x177 anchor 130,135 pieces main,smoke,column,pool                   border px 0
+wall        286x129 anchor 142,122 pieces main,bits,vines                          border px 0
+aura_back    87x130 anchor  45,114 pieces main,smoke                               border px 0
+aura         87x130 anchor  45,114 pieces main,smoke,petals                        border px 0
+wall_diag   310x227 anchor 116,167 pieces main,stain,bits                          border px 0
+wall_depth  113x253 anchor  52,178 pieces main,smoke,column,bits                   border px 0
+palette 230 entries: outline 1, body 182, weed 5, dark 6, smoke 4, glow 20, ground 12

@@ -1,0 +1,164 @@
+{
+ "grid": {
+  "6": {
+   "pitch": [
+    2.1333333333333333,
+    2.1343283582089554
+   ],
+   "spectrumPitch": [
+    2.1336,
+    2.1364
+   ],
+   "phase": [
+    0.5,
+    0.5
+   ],
+   "edgeRatio": [
+    1.225,
+    1.239
+   ],
+   "blockSpread": 3.235,
+   "source": "icons-owner-reference-6.jpg",
+   "row": [
+    13,
+    158,
+    1011,
+    399
+   ],
+   "rowScale": {
+    "1x": 0.21052631578947367,
+    "4x": 0.8421052631578947
+   }
+  }
+ },
+ "icons": {
+  "disengage": {
+   "sheet": "6",
+   "box": [
+    14,
+    82,
+    112,
+    179
+   ],
+   "size": [
+    98,
+    97
+   ],
+   "slot": [
+    8,
+    76,
+    118,
+    185
+   ],
+   "sheetBox": [
+    30,
+    175,
+    239,
+    382
+   ],
+   "sheetSlot": [
+    17,
+    162,
+    252,
+    395
+   ],
+   "what": "Disengage: a ninja leaping back from a sword slash, a white crescent, on teal"
+  },
+  "crouch": {
+   "sheet": "6",
+   "box": [
+    132,
+    82,
+    230,
+    179
+   ],
+   "size": [
+    98,
+    97
+   ],
+   "slot": [
+    126,
+    76,
+    236,
+    185
+   ],
+   "sheetBox": [
+    282,
+    175,
+    491,
+    382
+   ],
+   "sheetSlot": [
+    269,
+    162,
+    503,
+    395
+   ],
+   "what": "Crouch: a ninja crouched low, a hand on the ground, in brown dust"
+  },
+  "jump": {
+   "sheet": "6",
+   "box": [
+    250,
+    82,
+    348,
+    179
+   ],
+   "size": [
+    98,
+    97
+   ],
+   "slot": [
+    244,
+    76,
+    354,
+    185
+   ],
+   "sheetBox": [
+    533,
+    175,
+    742,
+    382
+   ],
+   "sheetSlot": [
+    521,
+    162,
+    755,
+    395
+   ],
+   "what": "Jump: a ninja leaping high against a bright blue sky"
+  },
+  "focus": {
+   "sheet": "6",
+   "box": [
+    368,
+    82,
+    466,
+    179
+   ],
+   "size": [
+    98,
+    97
+   ],
+   "slot": [
+    362,
+    76,
+    472,
+    185
+   ],
+   "sheetBox": [
+    785,
+    175,
+    994,
+    382
+   ],
+   "sheetSlot": [
+    772,
+    162,
+    1007,
+    395
+   ],
+   "what": "Focus: a ninja meditating cross-legged in a violet aura with stars"
+  }
+ }
+}

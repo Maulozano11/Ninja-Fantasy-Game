@@ -1,0 +1,21 @@
+const OUT = '/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/chakra-nature/review';
+const { chromium } = await import('/opt/node-tools/node_modules/playwright/index.mjs');
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const lang = process.argv[2] || 'es';
+const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+page.on('pageerror', (e) => console.log('ERR', e.message));
+page.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE', m.text()); });
+await page.addInitScript((lang) => {
+  localStorage.setItem('shinobi.lang', lang);
+  localStorage.setItem('shinobi.tips.off', '1');
+}, lang);
+await page.goto('http://127.0.0.1:5296/#creator');
+await page.waitForTimeout(1500);
+await page.getByText(lang === 'es' ? 'Apariencia' : 'Appearance').first().click();
+await page.waitForTimeout(500);
+await page.getByText('Chakra', { exact: true }).first().click();
+await page.waitForTimeout(1500);
+await page.screenshot({ path: `${OUT}/ui-${lang}-chakra.png` });
+const txt = await page.locator('[data-nature]').first().innerText();
+console.log('SECTION', JSON.stringify(txt));
+await browser.close();

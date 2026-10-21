@@ -1,0 +1,17 @@
+4344f461e36fb674d7c1201f1ad22c6a  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/fireball_goukakyu.png
+959350970780d54882b5dde798540f5b  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/fireball_goukakyu@44.png
+57c3f6b6ef8a360c24006c05715b8d05  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/fireball_goukakyu@88.png
+c39362aae936a3d89560f802fc3d7985  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/great_fire_annihilation.png
+1151431138634a3cfe6cb997174d9d27  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/great_fire_annihilation@44.png
+af053cb51f31b2ee6916a0937dfb35d7  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/great_fire_annihilation@88.png
+d795b9449260aa2032ad962397fcdc51  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/kirin_thunder.png
+528dba4813f858047ce8975c1b06787b  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/kirin_thunder@44.png
+97e8bd298c9dcd82dab95c8cb127581e  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/kirin_thunder@88.png
+7bfd2656839c2c6f361ebbcd4ac00053  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/row.png
+224362a6efa53ac991ce53988393f32c  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/slot_fireball_goukakyu.png
+58bb98f3b7d48a8ec995d7f519e28c34  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/slot_great_fire_annihilation.png
+7f70aae41ce460d4ef03d0b353819c4e  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/slot_kirin_thunder.png
+2cd8cd8c302dfbd6424416afc617b09f  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/slot_water_shield_suijinheki.png
+d45151b8f96b3e9b8f582540b80e2a95  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/water_shield_suijinheki.png
+19198b5a5dcd28cfbc1bd11e3ed2fc14  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/water_shield_suijinheki@44.png
+d3ffb28694ef4a5a3380c380edf020b7  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/ref/water_shield_suijinheki@88.png

@@ -1,0 +1,374 @@
+{
+ "group": "vfx_water",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bolt": {
+   "label": "Water bolt (water bullet)",
+   "file": "bolt.png",
+   "frameW": 68,
+   "frameH": 64,
+   "anchor": [
+    36,
+    32
+   ],
+   "meters": [
+    1.19,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "beast": {
+   "label": "Water beast (water dragon)",
+   "file": "beast.png",
+   "frameW": 128,
+   "frameH": 80,
+   "anchor": [
+    64,
+    40
+   ],
+   "meters": [
+    2.25,
+    1.4
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream": {
+   "label": "Water stream (torrent, tileable 64 px)",
+   "file": "stream.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream_head": {
+   "label": "Water stream head",
+   "file": "stream_head.png",
+   "frameW": 72,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.26,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "breath": {
+   "label": "Water breath (spray cone, origin left middle)",
+   "file": "breath.png",
+   "frameW": 100,
+   "frameH": 64,
+   "anchor": [
+    52,
+    32
+   ],
+   "meters": [
+    1.75,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "sphere": {
+   "label": "Water sphere (water bomb)",
+   "file": "sphere.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "slash": {
+   "label": "Water slash (curling crest wave)",
+   "file": "slash.png",
+   "frameW": 64,
+   "frameH": 68,
+   "anchor": [
+    32,
+    36
+   ],
+   "meters": [
+    1.12,
+    1.19
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "multi": {
+   "label": "Water multi (ice shards)",
+   "file": "multi.png",
+   "frameW": 68,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.19,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "hit": {
+   "label": "Water hit (splash)",
+   "file": "hit.png",
+   "frameW": 72,
+   "frameH": 72,
+   "anchor": [
+    36,
+    36
+   ],
+   "meters": [
+    1.26,
+    1.26
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "blast": {
+   "label": "Water blast (geyser, 3 m)",
+   "file": "blast.png",
+   "frameW": 176,
+   "frameH": 150,
+   "anchor": [
+    88,
+    88
+   ],
+   "meters": [
+    3.09,
+    2.63
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "wall": {
+   "label": "Water wall (4.5 m x 1.8 m)",
+   "file": "wall.png",
+   "frameW": 280,
+   "frameH": 128,
+   "anchor": [
+    140,
+    120
+   ],
+   "meters": [
+    4.91,
+    2.25
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "wall_diag": {
+   "label": "Water wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)",
+   "file": "wall_diag.png",
+   "frameW": 221,
+   "frameH": 266,
+   "anchor": [
+    110,
+    191
+   ],
+   "meters": [
+    3.88,
+    4.67
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "wall_depth": {
+   "label": "Water wall, end-on (4.5 m x 1.8 m, running into the screen)",
+   "file": "wall_depth.png",
+   "frameW": 46,
+   "frameH": 306,
+   "anchor": [
+    23,
+    210
+   ],
+   "meters": [
+    0.81,
+    5.37
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "aura": {
+   "label": "Water aura (charge / buff)",
+   "file": "aura.png",
+   "frameW": 80,
+   "frameH": 128,
+   "anchor": [
+    40,
+    112
+   ],
+   "meters": [
+    1.4,
+    2.25
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  }
+ }
+}

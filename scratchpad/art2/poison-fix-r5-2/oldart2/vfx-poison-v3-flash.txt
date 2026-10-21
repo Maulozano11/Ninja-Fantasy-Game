@@ -1,0 +1,24 @@
+flash check: light per frame = mean of alpha x brightness (x1000); max step between neighbours as % of the peak (loops include the wrap)
+  bolt        fly    8f  max step  2.2 %  no pop  [171.9 169.1 168.1 165.2 164.8 166.8 166.9 170.7]
+  stream      fly    8f  max step  0.0 %  no pop  [137.9 137.9 137.9 137.9 137.9 137.9 137.9 137.9]
+  stream_head fly    8f  max step  5.0 %  no pop  [191.8 182.3 179.6 185.1 182.5 180.5 181.5 185.6]
+  breath      fly    8f  max step  0.7 %  no pop  [203.4 203.1 203.2 203.6 202.4 201.6 201.3 202.7]
+  sphere      fly    8f  max step  1.7 %  no pop  [126.1 123.9 123.2 124.1 125.8 124.1 124.5 124.3]
+  slash       fly    8f  max step  1.1 %  no pop  [210.3 209.4 208.0 208.0 210.3 212.4 212.2 211.4]
+  multi       fly    8f  max step  1.2 %  no pop  [125.0 124.1 122.7 121.8 122.3 121.4 122.6 123.5]
+  hit         hit   12f  max step 25.8 %  no pop  [27.9 57.6 86.2 115.0 115.0 115.1 103.2 87.7 73.0 52.6 31.1 10.6]
+  blast       blast 16f  max step 22.3 %  no pop  [45.9 87.8 133.1 172.9 201.4 201.9 203.6 194.7 186.6 169.8 147.2 122.6 91.6 56.7 28.1 9.3]
+  wall        rise  12f  max step 14.5 %  no pop  [11.9 32.3 62.4 106.7 139.1 167.0 195.2 225.1 255.7 293.3 302.4 305.3]
+  wall        idle   8f  max step  2.2 %  no pop  [305.3 306.9 307.6 313.5 312.6 311.8 310.9 304.1]
+  aura        idle  12f  max step  3.8 %  no pop  [33.3 34.6 34.6 33.3 32.2 32.2 33.3 34.5 34.5 33.2 32.1 32.2]
+  aura_back   idle  12f  max step  0.6 %  no pop  [226.7 227.4 227.6 227.7 227.6 227.2 226.7 225.9 225.8 225.2 224.0 225.5]
+  wall_diag   rise  12f  max step 14.6 %  no pop  [9.7 22.1 32.1 38.0 55.8 85.2 113.7 142.8 172.2 205.0 221.8 224.5]
+  wall_diag   idle   8f  max step  1.6 %  no pop  [224.5 224.8 225.0 228.3 228.1 228.1 227.9 224.3]
+  wall_depth  rise  12f  max step 23.0 %  no pop  [16.6 39.0 55.4 68.5 75.8 83.1 88.4 91.0 93.9 97.4 97.5 96.9]
+  wall_depth  idle   8f  max step  2.2 %  no pop  [95.2 94.8 96.7 98.8 98.9 98.1 97.0 96.6]
+  loops: worst step 5.0 % of the peak
+light check (blast key frame vs his, green excess G - 33, 5066 px of his light outside his character and its shadow): mean |diff| 2.53, 90th percentile 4.9 (target: mean under 8)
+blast light holes (pixels darker than half the light within 3 px, light colour #6ce957):
+  blast      blast [2, 25, 36, 40, 0, 14, 19, 35, 32, 41, 65, 91, 86, 45, 0, 0]
+  his own picture where it stands (frame 4's own pixels, at the same place): [0, 0, 2, 1, 21, 21, 21, 18, 14, 0, 0, 0, 0, 0, 0, 0]
+  13 blast frames have holes in the light

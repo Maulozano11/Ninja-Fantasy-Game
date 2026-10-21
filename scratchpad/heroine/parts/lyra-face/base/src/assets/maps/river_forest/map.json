@@ -1,0 +1,17 @@
+{
+ "width": 3456,
+ "height": 1200,
+ "pxPerM": 57,
+ "pxPerMDepth": 38,
+ "levelPx": 86,
+ "backY": 360,
+ "frontY": 1120,
+ "bridge": {
+  "x0": 1390.6119883411438,
+  "x1": 1804.7169883411439,
+  "yTop": 629.8,
+  "yBot": 721.0,
+  "anchorX": 1391,
+  "anchorY": 720
+ }
+}

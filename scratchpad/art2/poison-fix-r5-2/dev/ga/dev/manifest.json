@@ -1,0 +1,56 @@
+{
+ "group": "dev",
+ "pxPerMeter": 57,
+ "sprites": {
+  "aura": {
+   "label": "Poison aura, front layer (draw OVER the character): venom tint and the near pool",
+   "file": "aura.png",
+   "frameW": 94,
+   "frameH": 145,
+   "anchor": [
+    47,
+    123
+   ],
+   "meters": [
+    1.65,
+    2.54
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 12,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "aura_back": {
+   "label": "Poison aura, back layer (draw BEHIND the character): violet flames and green light",
+   "file": "aura_back.png",
+   "frameW": 94,
+   "frameH": 145,
+   "anchor": [
+    47,
+    123
+   ],
+   "meters": [
+    1.65,
+    2.54
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 12,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

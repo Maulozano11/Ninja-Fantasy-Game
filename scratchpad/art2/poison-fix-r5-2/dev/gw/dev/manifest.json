@@ -1,0 +1,68 @@
+{
+ "group": "dev",
+ "pxPerMeter": 57,
+ "sprites": {
+  "wall": {
+   "label": "wall",
+   "file": "wall.png",
+   "frameW": 292,
+   "frameH": 141,
+   "anchor": [
+    145,
+    129
+   ],
+   "meters": [
+    5.12,
+    2.47
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "wall_diag": {
+   "label": "wall_diag",
+   "file": "wall_diag.png",
+   "frameW": 272,
+   "frameH": 284,
+   "anchor": [
+    120,
+    217
+   ],
+   "meters": [
+    4.77,
+    4.98
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

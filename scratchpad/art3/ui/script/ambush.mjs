@@ -1,0 +1,13 @@
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { readFileSync } from 'node:fs';
+const [OUT, PREFIX, W = '1360'] = process.argv.slice(2);
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await browser.newContext({ viewport: { width: Number(W), height: 1000 } });
+await ctx.addInitScript((run) => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('shinobi5e.mission.v1', run); localStorage.setItem('shinobi.lang', 'es'); sessionStorage.setItem('seeded', '1'); } }, readFileSync(`${OUT}/camp-ambush.json`, 'utf8'));
+const p = await ctx.newPage();
+const errors = []; p.on('pageerror', (e) => errors.push(e.message));
+await p.goto('http://127.0.0.1:5231/#missions'); await p.waitForTimeout(1500);
+const top = await p.evaluate(() => [...document.querySelectorAll('h2')].at(-1).getBoundingClientRect().top + scrollY - 40);
+await p.screenshot({ path: `${OUT}/${PREFIX}-ambush.png`, fullPage: true, clip: { x: 0, y: top, width: Number(W), height: 900 } });
+console.log('errors', errors);
+await browser.close();

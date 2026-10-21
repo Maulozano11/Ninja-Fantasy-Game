@@ -1,0 +1,858 @@
+{
+ "looks": {
+  "sw": {
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    },
+    "held": {
+     "id": "held_flame_sword",
+     "colors": []
+    }
+   }
+  },
+  "bare": {
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    }
+   }
+  },
+  "c_book": {
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    },
+    "held": {
+     "id": "held_flame_sword",
+     "colors": []
+    }
+   },
+   "cast": {
+    "style": "book"
+   }
+  },
+  "c_sphere": {
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    },
+    "held": {
+     "id": "held_flame_sword",
+     "colors": []
+    }
+   },
+   "cast": {
+    "style": "sphere"
+   }
+  },
+  "c_lightning": {
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    },
+    "held": {
+     "id": "held_flame_sword",
+     "colors": []
+    }
+   },
+   "cast": {
+    "style": "lightning"
+   }
+  },
+  "c_wave": {
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    },
+    "held": {
+     "id": "held_flame_sword",
+     "colors": []
+    }
+   },
+   "cast": {
+    "style": "wave"
+   }
+  },
+  "c_flash": {
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    },
+    "held": {
+     "id": "held_flame_sword",
+     "colors": []
+    }
+   },
+   "cast": {
+    "style": "flash"
+   }
+  },
+  "c_script": {
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    },
+    "held": {
+     "id": "held_flame_sword",
+     "colors": []
+    }
+   },
+   "cast": {
+    "style": "script"
+   }
+  },
+  "c_signs": {
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    },
+    "held": {
+     "id": "held_flame_sword",
+     "colors": []
+    }
+   },
+   "cast": {
+    "style": "signs"
+   }
+  },
+  "female": {
+   "body": "female",
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    },
+    "held": {
+     "id": "held_flame_sword",
+     "colors": []
+    }
+   }
+  },
+  "bulky": {
+   "body": "bulky",
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    },
+    "held": {
+     "id": "held_flame_sword",
+     "colors": []
+    }
+   }
+  },
+  "slender": {
+   "body": "slender",
+   "slots": {
+    "hands": {
+     "id": "hands_noble_fingerless",
+     "colors": []
+    },
+    "feet": {
+     "id": "feet_noble_boots",
+     "colors": []
+    },
+    "held": {
+     "id": "held_flame_sword",
+     "colors": []
+    }
+   }
+  }
+ },
+ "shots": [
+  [
+   "sw",
+   "idle",
+   0
+  ],
+  [
+   "sw",
+   "handsigns",
+   0
+  ],
+  [
+   "sw",
+   "handsigns",
+   1
+  ],
+  [
+   "sw",
+   "handsigns",
+   2
+  ],
+  [
+   "sw",
+   "attack",
+   0
+  ],
+  [
+   "sw",
+   "attack",
+   1
+  ],
+  [
+   "sw",
+   "attack",
+   2
+  ],
+  [
+   "sw",
+   "cast",
+   0
+  ],
+  [
+   "sw",
+   "cast",
+   1
+  ],
+  [
+   "sw",
+   "hurt",
+   0
+  ],
+  [
+   "sw",
+   "hurt",
+   1
+  ],
+  [
+   "sw",
+   "victory",
+   0
+  ],
+  [
+   "sw",
+   "victory",
+   1
+  ],
+  [
+   "sw",
+   "charge",
+   0
+  ],
+  [
+   "sw",
+   "charge",
+   1
+  ],
+  [
+   "sw",
+   "walk",
+   0
+  ],
+  [
+   "sw",
+   "walk",
+   1
+  ],
+  [
+   "sw",
+   "walk",
+   2
+  ],
+  [
+   "sw",
+   "walk",
+   3
+  ],
+  [
+   "sw",
+   "walk",
+   4
+  ],
+  [
+   "sw",
+   "walk",
+   5
+  ],
+  [
+   "sw",
+   "walk",
+   6
+  ],
+  [
+   "sw",
+   "walk",
+   7
+  ],
+  [
+   "sw",
+   "run",
+   0
+  ],
+  [
+   "sw",
+   "run",
+   1
+  ],
+  [
+   "sw",
+   "run",
+   2
+  ],
+  [
+   "sw",
+   "run",
+   3
+  ],
+  [
+   "sw",
+   "run",
+   4
+  ],
+  [
+   "sw",
+   "run",
+   5
+  ],
+  [
+   "sw",
+   "crouch",
+   0
+  ],
+  [
+   "sw",
+   "crouch",
+   1
+  ],
+  [
+   "sw",
+   "sneak",
+   0
+  ],
+  [
+   "sw",
+   "sneak",
+   1
+  ],
+  [
+   "sw",
+   "sneak",
+   2
+  ],
+  [
+   "sw",
+   "sneak",
+   3
+  ],
+  [
+   "sw",
+   "sneak",
+   4
+  ],
+  [
+   "sw",
+   "sneak",
+   5
+  ],
+  [
+   "sw",
+   "downed",
+   0
+  ],
+  [
+   "sw",
+   "downed",
+   1
+  ],
+  [
+   "sw",
+   "lean",
+   0
+  ],
+  [
+   "sw",
+   "lean",
+   1
+  ],
+  [
+   "sw",
+   "lean",
+   2
+  ],
+  [
+   "sw",
+   "lean",
+   3
+  ],
+  [
+   "sw",
+   "sit",
+   0
+  ],
+  [
+   "sw",
+   "sit",
+   1
+  ],
+  [
+   "sw",
+   "sit",
+   2
+  ],
+  [
+   "sw",
+   "sit",
+   3
+  ],
+  [
+   "sw",
+   "read",
+   0
+  ],
+  [
+   "sw",
+   "read",
+   1
+  ],
+  [
+   "sw",
+   "read",
+   2
+  ],
+  [
+   "sw",
+   "read",
+   3
+  ],
+  [
+   "sw",
+   "read",
+   4
+  ],
+  [
+   "sw",
+   "read",
+   5
+  ],
+  [
+   "sw",
+   "read",
+   6
+  ],
+  [
+   "sw",
+   "read",
+   7
+  ],
+  [
+   "sw",
+   "read",
+   8
+  ],
+  [
+   "sw",
+   "read",
+   9
+  ],
+  [
+   "sw",
+   "read",
+   10
+  ],
+  [
+   "sw",
+   "read",
+   11
+  ],
+  [
+   "sw",
+   "train",
+   0
+  ],
+  [
+   "sw",
+   "train",
+   1
+  ],
+  [
+   "sw",
+   "train",
+   2
+  ],
+  [
+   "sw",
+   "train",
+   3
+  ],
+  [
+   "sw",
+   "train",
+   4
+  ],
+  [
+   "sw",
+   "train",
+   5
+  ],
+  [
+   "sw",
+   "train",
+   6
+  ],
+  [
+   "sw",
+   "train",
+   7
+  ],
+  [
+   "bare",
+   "idle",
+   0
+  ],
+  [
+   "bare",
+   "train",
+   0
+  ],
+  [
+   "bare",
+   "train",
+   1
+  ],
+  [
+   "bare",
+   "train",
+   2
+  ],
+  [
+   "bare",
+   "train",
+   3
+  ],
+  [
+   "bare",
+   "train",
+   4
+  ],
+  [
+   "bare",
+   "train",
+   5
+  ],
+  [
+   "bare",
+   "train",
+   6
+  ],
+  [
+   "bare",
+   "train",
+   7
+  ],
+  [
+   "bare",
+   "handsigns",
+   0
+  ],
+  [
+   "bare",
+   "handsigns",
+   1
+  ],
+  [
+   "bare",
+   "handsigns",
+   2
+  ],
+  [
+   "bare",
+   "cast",
+   0
+  ],
+  [
+   "bare",
+   "cast",
+   1
+  ],
+  [
+   "bare",
+   "read",
+   0
+  ],
+  [
+   "bare",
+   "read",
+   1
+  ],
+  [
+   "bare",
+   "read",
+   2
+  ],
+  [
+   "c_book",
+   "cast",
+   0
+  ],
+  [
+   "c_book",
+   "cast",
+   1
+  ],
+  [
+   "c_sphere",
+   "cast",
+   0
+  ],
+  [
+   "c_sphere",
+   "cast",
+   1
+  ],
+  [
+   "c_lightning",
+   "cast",
+   0
+  ],
+  [
+   "c_lightning",
+   "cast",
+   1
+  ],
+  [
+   "c_wave",
+   "cast",
+   0
+  ],
+  [
+   "c_wave",
+   "cast",
+   1
+  ],
+  [
+   "c_flash",
+   "cast",
+   0
+  ],
+  [
+   "c_flash",
+   "cast",
+   1
+  ],
+  [
+   "c_script",
+   "cast",
+   0
+  ],
+  [
+   "c_script",
+   "cast",
+   1
+  ],
+  [
+   "c_signs",
+   "cast",
+   0
+  ],
+  [
+   "c_signs",
+   "cast",
+   1
+  ],
+  [
+   "female",
+   "idle",
+   0
+  ],
+  [
+   "female",
+   "walk",
+   2
+  ],
+  [
+   "female",
+   "walk",
+   6
+  ],
+  [
+   "female",
+   "run",
+   2
+  ],
+  [
+   "female",
+   "attack",
+   1
+  ],
+  [
+   "female",
+   "crouch",
+   0
+  ],
+  [
+   "female",
+   "sit",
+   0
+  ],
+  [
+   "female",
+   "cast",
+   0
+  ],
+  [
+   "female",
+   "handsigns",
+   0
+  ],
+  [
+   "female",
+   "downed",
+   0
+  ],
+  [
+   "bulky",
+   "idle",
+   0
+  ],
+  [
+   "bulky",
+   "walk",
+   2
+  ],
+  [
+   "bulky",
+   "walk",
+   6
+  ],
+  [
+   "bulky",
+   "run",
+   2
+  ],
+  [
+   "bulky",
+   "attack",
+   1
+  ],
+  [
+   "bulky",
+   "crouch",
+   0
+  ],
+  [
+   "bulky",
+   "sit",
+   0
+  ],
+  [
+   "bulky",
+   "cast",
+   0
+  ],
+  [
+   "bulky",
+   "handsigns",
+   0
+  ],
+  [
+   "bulky",
+   "downed",
+   0
+  ],
+  [
+   "slender",
+   "idle",
+   0
+  ],
+  [
+   "slender",
+   "walk",
+   2
+  ],
+  [
+   "slender",
+   "walk",
+   6
+  ],
+  [
+   "slender",
+   "run",
+   2
+  ],
+  [
+   "slender",
+   "attack",
+   1
+  ],
+  [
+   "slender",
+   "crouch",
+   0
+  ],
+  [
+   "slender",
+   "sit",
+   0
+  ],
+  [
+   "slender",
+   "cast",
+   0
+  ],
+  [
+   "slender",
+   "handsigns",
+   0
+  ],
+  [
+   "slender",
+   "downed",
+   0
+  ]
+ ]
+}

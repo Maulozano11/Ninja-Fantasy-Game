@@ -1,0 +1,10 @@
+border check: 168 frames of 14 sprites (beast is the approved cobra copied through unchanged; stream tiles wrap; stream_head left = joint)
+  OK: no pixel with any alpha on any frame border
+holes check: enclosed see-through pixels (alpha < 128, not reachable from outside) per frame
+  wall       rise [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  wall       idle [0, 0, 0, 0, 0, 0, 0, 0]
+  wall_diag  rise [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  wall_diag  idle [0, 0, 0, 0, 0, 0, 0, 0]
+  wall_depth rise [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]
+  wall_depth idle [10, 5, 5, 5, 10, 6, 10, 8]
+  9 frames have see-through pixels

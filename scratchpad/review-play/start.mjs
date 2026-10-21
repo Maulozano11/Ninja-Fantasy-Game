@@ -1,0 +1,14 @@
+import { open, helpers, out } from './lib.mjs';
+const locale = process.argv[2] ?? 'es-MX';
+const { browser, page, errs } = await open(locale, { tips: true });
+const h = helpers(page);
+await page.screenshot({ path: `${out}/practice-${locale}.png` });
+await page.getByText(locale.startsWith('es') ? 'Renegados en el claro' : 'Rogues in the clearing').click();
+await h.idle();
+await h.playerTurn();
+await page.waitForTimeout(800);
+const info = await h.st(() => { const s = window.__battle.state(); return { order: s.order, turn: s.turn, phase: s.phase, units: Object.values(s.units).map((u) => ({ id: u.id, name: u.name, team: u.team, kind: u.kind, clan: u.character?.clan, rank: u.rank, lvl: u.level, hp: u.hp, ch: u.chakra, pos: u.pos, jutsus: u.jutsus, ctrl: u.controller, speed: u.speed })) }; });
+console.log(JSON.stringify(info, null, 0));
+await page.screenshot({ path: `${out}/battle-start-${locale}.png` });
+console.log('errors', JSON.stringify(errs));
+await browser.close();

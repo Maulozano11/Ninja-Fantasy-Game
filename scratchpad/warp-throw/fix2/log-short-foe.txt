@@ -1,0 +1,4 @@
+setup {"r":"preset_founder","foe":"rogue_0","from":{"x":10.25,"z":10.25},"node":{"x":11.25,"z":10.25},"foePos":{"x":12.25,"z":10.25},"waterFrom":0,"waterNode":0,"held":"held_crystal","armed":true,"weaponHeld":true}
+acted true
+after {"pos":{"x":11.25,"z":10.25},"facing":1,"edge":true,"busy":false}
+busy false at frame 50 ms 1000

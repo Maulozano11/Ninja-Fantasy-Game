@@ -1,0 +1,35 @@
+Sheet 12 icons: review fixes (squares, wolf tone, jaw and tongue, hand-fix text)
+
+Finishes the stopped WIP commit before this one; all from the scripts
+(tools/refs/icons-from-ref-12.py, tools/ui/ui-icons-12.ts), rebuilt
+from scratch to the same bytes.
+
+- Squares placed by count: of the 115x115 squares that keep his whole
+  subject, the one leaving out the fewest of his bright pixels
+  (crops.json and the manifest list the count for every placement and
+  each bright pixel still left out).
+  - lightning_hound_raidon: columns 25..139 (was 29..143). The snout
+    and paws end at 139, so 25 is as far left as a square goes; left
+    out 792 of his 3871 bright pixels (20.5%, was 900, 23.2%).
+  - crescent_moon_dance: columns 4..118 (was 6..120), 11 left out
+    (was 14): faint golden dots at columns 119..125.
+  - temple_of_nirvana: columns 11..125 (was 9..123), 59 left out
+    (was 82): the sparkle at 9,30 and a small light at the left edge,
+    the lilac dot at 130,20, a barb tip at 127,50 and dots at the
+    right.
+- Wolf @2x back to his tone: only his main white lines are kept, in
+  full only where they cover most of their pixel, their light counted
+  once; 1-2 px spots of a line join the near shade beside it (join88).
+  8x8 blocks: mean lightness +1.89 -> +0.38 (OKLab L x100), 63 -> 4
+  blocks at +2 or more, colour difference 2.32 -> 1.23 (plain box on
+  the palette 1.10); 1-2 px areas 1387 -> 625, spots lighter than all
+  around 452 -> 278; his main-line pixels still white (844 of 910).
+- Wolf 44: his navy jaw line (#1d3084 sampled from it, hue weighed
+  up) instead of the sky violet #3f3b90; his royal blue tongue
+  #305ce6 at 38,23 instead of cyan.
+- manifest_12.json: hand-fixes are written from the pixels in the
+  files (colour at each pixel, his colour asked for beside it).
+- docs/reference/README.md: row for sheet 12.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01E1PN8FTpA19jzx1FNkVfPu

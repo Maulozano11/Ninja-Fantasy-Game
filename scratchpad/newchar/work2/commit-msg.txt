@@ -1,0 +1,21 @@
+Scarlet study: the owner's picture brought down to our scale
+
+The base every Scarlet part builds on (docs/reference/scarlet-owner-reference.jpg):
+
+- tools/refs/scarlet_ref.py: his pixel grid (pitch 5.3285 x 5.313 picture pixels from 0.45, 1.07,
+  each boundary snapped to his edges; 147 x 219 of his pixels), his 58 colours, his joints and our
+  male idle's, and how each part of him lands on our rig at our scale (head 0.68 with his eyes on
+  ours; coat 0.57 across, 0.62 / 0.49 down; legs 0.5 down and 0.6 to 0.8 across; arms along our
+  arms at 0.7 across, our far arm wearing his near sleeve; gloves 0.68; the sword turned a quarter
+  turn to our weapons' 35 degrees, at 0.6). His preset's body is male: our slender body is a
+  woman's and bulky is broader than he is.
+- tools/refs/scarlet-study.py: the reduced reference, his figure on our male idle without the cape,
+  every pixel one of his colours: reduced by area means in his palette (his gold laid on forward,
+  his hair one sample a pixel, his blade the commonest colour along it), and drawn by hand after
+  his where the reduction loses him or his picture hides him (eyes, chest and lapel embroidery,
+  gloves on our fists, skirts and trims, trousers' pinstripes, boots, the hilt). Writes previews
+  and tools/refs/data/scarlet-reduced*.npy (the figure, which part each pixel is, each part alone),
+  read with scarlet_ref.reduced(), reduced_parts() and reduced_layers().
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01E1PN8FTpA19jzx1FNkVfPu

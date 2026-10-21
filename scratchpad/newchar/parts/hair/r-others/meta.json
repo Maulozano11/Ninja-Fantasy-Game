@@ -1,0 +1,35 @@
+{
+ "valiant-on-tapered_idle0": {
+  "head": [
+   126,
+   138
+  ],
+  "k": 0.78,
+  "anchor": [
+   123,
+   139
+  ]
+ },
+ "bald-tapered_idle0": {
+  "head": [
+   126,
+   138
+  ],
+  "k": 0.78,
+  "anchor": [
+   123,
+   139
+  ]
+ },
+ "scarlet-on-tapered_idle0": {
+  "head": [
+   126,
+   138
+  ],
+  "k": 0.78,
+  "anchor": [
+   123,
+   139
+  ]
+ }
+}

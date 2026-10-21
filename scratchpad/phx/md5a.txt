@@ -1,0 +1,3 @@
+ddbbf8a189c1e7e84e7de21a43e9936e  fire.png
+94b0930d8fa3e6ffe5bc2b5dbe12baa8  lightning.png
+d78298fc0c41680b2da388582682d825  manifest.json

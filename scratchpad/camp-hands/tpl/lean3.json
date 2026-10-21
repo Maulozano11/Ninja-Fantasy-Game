@@ -1,0 +1,4 @@
+[
+  { "name": "H", "frame": { "handN": { "from": "chest", "x": 3, "y": 1.5, "units": "px" }, "shapeN": "fist", "handF": { "from": "chest", "x": -6.5, "y": 4, "units": "px" }, "bendF": -1, "shapeF": "fist", "farArmFront": true, "farHandOver": true } },
+  { "name": "I", "frame": { "handN": { "from": "chest", "x": 3, "y": 1, "units": "px" }, "shapeN": "fist", "handF": { "from": "chest", "x": -6, "y": 4.5, "units": "px" }, "bendF": -1, "shapeF": "fist", "farArmFront": true, "farHandOver": true } }
+]

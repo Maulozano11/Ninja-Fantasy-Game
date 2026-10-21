@@ -1,0 +1,17 @@
+written to /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/icons-8-11/fix4/out
+wrote /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/icons-8-11/fix4/out/phase-ninjas.png (1910, 1036)
+reference figure         n=15055 L<.5  60% | .5-.75  26% | .75-.9   9% | >=.9   4% | med L 0.44 C 0.160 | mean #394fb2
+swap 88 figure           n= 1379 L<.5  60% | .5-.75  24% | .75-.9   1% | >=.9  15% | med L 0.48 C 0.179 | mean #4965cd
+   rim 402/1379 (29%); interior L 0.48 C 0.185 #324dc3; rim L 0.71; ring L 0.78 #5fc3e7; ground L 0.74 #50b7dd
+swap 44 figure           n=  329 L<.5  51% | .5-.75  22% | .75-.9  27% | >=.9   0% | med L 0.49 C 0.179 | mean #506cd5
+   rim 158/329 (48%); interior L 0.48 C 0.186 #344ec5; rim L 0.66; ring L 0.76 #54bfe4; ground L 0.72 #4eb0db
+warp 88 figure           n=  632 L<.5  52% | .5-.75  38% | .75-.9   5% | >=.9   5% | med L 0.48 C 0.170 | mean #496cd4
+   rim 139/632 (22%); interior L 0.55 C 0.173 #4666d3; rim L 0.62; ring L 0.59 #5a7cc3; ground L 0.58 #5c7eb2
+warp 44 figure           n=  172 L<.5  34% | .5-.75  45% | .75-.9  21% | >=.9   0% | med L 0.54 C 0.170 | mean #5472dd
+   rim 65/172 (38%); interior L 0.52 C 0.185 #3e5bd1; rim L 0.70; ring L 0.66 #6495c9; ground L 0.56 #4f73b0
+contact-10.png
+contact-11.png
+contact-8.png
+contact-9.png
+phase-ninjas.png
+slots.png

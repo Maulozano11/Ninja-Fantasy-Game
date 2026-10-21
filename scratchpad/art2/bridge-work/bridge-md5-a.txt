@@ -1,0 +1,4 @@
+ee2061a6d7af55bacff9b65b45bf46ca  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/bridge/bridge.json
+33f5c3cf8b865841e55dad01fb872cce  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/bridge/bridge.png
+3c0c6b6600d469bf59341d7e69fc69c5  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/bridge/bridge_rail_front.png
+ca327b2f010d1cc03da06d77efbbb681  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/bridge/manifest.json

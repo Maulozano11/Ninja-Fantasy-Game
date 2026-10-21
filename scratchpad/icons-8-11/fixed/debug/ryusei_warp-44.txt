@@ -1,0 +1,87 @@
+a #08091e
+b #10102a
+c #1a121e
+d #1e173e
+e #241e52
+f #162e54
+g #2e2468
+h #19306e
+i #323645
+j #223e52
+k #442a83
+l #503c43
+m #463b7a
+n #3b428f
+o #6238a4
+p #425c92
+q #5a48b8
+r #466a7e
+s #7946c6
+t #765ab0
+u #4c6eba
+v #526acc
+w #9444d5
+x #6b66ca
+y #90725c
+z #4a84bc
+A #945fe0
+B #4b98ca
+C #8186dc
+D #549bb6
+E #9d78e3
+F #4da6d7
+G #84a4f0
+H #b19bce
+I #56b8df
+J #88bfec
+K #60cceb
+L #dabca3
+M #6fdff2
+N #e6c3ff
+O #6ef4fc
+P #aef1fe
+
+dddddddddddddddddddddddddeekkhffffggeegkgeee
+ddddddddddddddddeedddddeeekhehnpuuuuggegkgee
+ddddddddddddddddeeddddeeekhehnkkppuuukgegkee
+dddddeedddddddddedddeeeekkehnknMMMMMMukgegee
+ddddeeeeddddddddddeeeeeekkenknMMMMMMKKzkeeee
+dddddeeddddeeddeeeeeeeegkennnMMxssooKzKzkeee
+dddddddddeeeeeeeeeeeeegggeuuIMxsokoooKzKxeee
+dddddddggggeeeeeeeeeeeegguupIMxkkooozzzxxeee
+dddddkkkgeeeeeeeeeeeeeguuupuIIkkkkddoFFxxxee
+ddennnkeeegeeeeeeeeegnnggKpIIFFFkddddoOFsxee
+deenneeeegeeeeeeeeenngeguKKOIjiiiidddfOFssee
+eeeeeeeegeeeeeheenneeeguKKKOpjjididdfgFOssoe
+eeeeeeeeeeeeeeehheeeenKKuuKOpiiddiffddgOKosk
+eegeeeeeeeeeeggeeeemKKnnKuMOpplldcfdddgOKook
+eggeeeeeeeeegeeeenKKmmKKutOMdlllcccdbbgKOKkk
+eeeeeeeeeeeeeeeeKKnmKKuuttMdddlccdddbggKOKkk
+eeeeeeeeeeeeeeookgnKmggktIddidcddddggddsOKkk
+eeeegggeeeeekogggkggggktIdiidiiddddgdddsOKkk
+eggggeeeegkkkkgkkgggkktIiiiddiiddddedddsOKok
+gggeeeeegkkkkkkkggkkptIidiiKididdddedddsKMxo
+geeeeegkggkkkokkkkppppidcdKKKddddbbedddsMMxo
+eeeeegggkkkkkkokkppnnicczzOKKddddbbbbddsMMxo
+eegggkkkkkktkkkooknpBiiizzOOidbbbbddbdksMMxo
+eeggkkkEkktkkooxIBBBMJzJJzKKiddddddffbkKOIxo
+ekkkkkkkkotoAoxxiIMMqqJzzpKiiidbbdfiibkKOIIo
+kkkkkkkkowoAAIIiIiIqJJunupKiiddbffddidkKOIMg
+kkkkkkkkwKKKIyyiiiMMpnnuuupiiibjjjjdddkOKBMg
+kkkkkkkwKKiiiyyyiMMonppkkuiiiiBjddjjddsOBBMg
+kkkkkksKMIIMiiKKKooppkkkkupiKBojdddjdsKOBBBg
+kkkkksGMIMMffKKqoookkkkkkpKKKBooddddjsKKBBBg
+kkkksGMMMifjjKqkokkkkmkkpKKpBBoosgggssOKnKgg
+kkksGMGjiijMMtqtkkkkmkmppppKKMBsokgkssOqnKgg
+kksGMjjjJJMttqtkkkkkkkmggggpKMFskgkssOMqnKgg
+kkssjJJJooookkkkkkkkkgggggKKFFMFssssMMKqqqgg
+kksJJoookkkkkkkkkkkggkgggpKqnnFMKKMMKKqmIkkg
+kkkkkkkkkkkkkkkkgggggggpppmqnnnFMKKooEmmnked
+kkkkkkkkkkkkkkkgggggggppgeemqqFFqqooEognkedd
+kkkkkkkkkkkkkgggggggppgggeeemqoooqoEognkeddd
+kkkkkkkkkkkgggggegmmgeeeeemmggoooqqoggggdddd
+kkkkkkkkkggggggeemgeeeeegmeeeegggggggggeeddd
+kkkkkkkggggggeeggeeeeeeggeeeeeeeggeeeeededdd
+kkkkkgggggggeegeeeeeeeeeeeeeeeeeeegeeeddeddd
+kkkkgggggggegeeeeeeeeeeeeeeeeeeeeeeedddddddd
+ggggggggeeeeeeeeeeeeeeeeeeeeeeeedddddddddddd

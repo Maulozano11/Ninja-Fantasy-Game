@@ -1,0 +1,9 @@
+fa9b1f27bfdcb6a5d2cd3aefc3878930  chakra.png
+edf7e43e8fa3cbdfc2b2222b297e7889  earth.png
+ddbbf8a189c1e7e84e7de21a43e9936e  fire.png
+2b0f0806287747670de06ef89e3f53fb  genjutsu.png
+94b0930d8fa3e6ffe5bc2b5dbe12baa8  lightning.png
+eb488f403ae8747688de651ce43adefb  manifest.json
+d26ae06810502566767144cee7d59d1e  poison.png
+4331c5ff42be97148e3af6825843224b  water.png
+09ff91c59507a566749739d091af6584  wind.png

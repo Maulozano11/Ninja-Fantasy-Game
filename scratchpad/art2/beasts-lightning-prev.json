@@ -1,0 +1,1 @@
+{"label": "Thunder hound (Raiton)", "file": "lightning.png", "frameW": 156, "frameH": 89, "anchor": [80, 42], "meters": [2.5, 1.7], "tags": ["vfx"], "anims": {"fly": {"row": 0, "frames": 6, "fps": 12, "loop": true}}}

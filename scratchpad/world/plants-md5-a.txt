@@ -1,0 +1,10 @@
+6a9742ae5c688b44843c6ef691657ac3  src/assets/world/plants/bush_flower.png
+d7c612d54ea95661e145f8cddb18bf61  src/assets/world/plants/bush_round.png
+ac3bff3ec7bee31daefdb52045871bcf  src/assets/world/plants/bush_wide.png
+0163214f542147df3cac8e41fca87951  src/assets/world/plants/fern.png
+fccf5efdebeb6f66ea3c9c2fb6fb9dd9  src/assets/world/plants/flowers.png
+21a021a0cac5b43ce2d7be846825194c  src/assets/world/plants/lily_pads.png
+16f714d193a9aff27ac81cd5c4de4696  src/assets/world/plants/manifest.json
+1ace9c554410792310e1c1a53d675db0  src/assets/world/plants/mushroom_log.png
+11ed9d43b2ab1597456dd29555d0d6d6  src/assets/world/plants/reeds.png
+f84af666918a81460bba8559ef93b35b  src/assets/world/plants/tall_grass.png

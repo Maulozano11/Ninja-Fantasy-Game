@@ -1,0 +1,6 @@
+{
+  "extends": "/home/user/Ninja-Fantasy-Game/tsconfig.json",
+  "compilerOptions": { "noEmit": true },
+  "include": ["/home/user/Ninja-Fantasy-Game/tools/world-sprites/vfx-beast-griffin.ts", "/home/user/Ninja-Fantasy-Game/tools/world-sprites/vfx-beasts-ref-chakra.ts"],
+  "files": []
+}

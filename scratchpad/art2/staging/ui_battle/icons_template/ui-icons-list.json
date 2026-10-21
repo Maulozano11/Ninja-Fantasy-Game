@@ -1,0 +1,1018 @@
+{
+ "template": "ui-icons-template.png",
+ "size": [
+  1944,
+  4666
+ ],
+ "scale": 3,
+ "icon": [
+  44,
+  44
+ ],
+ "frame": "skill_slot.png of the kit",
+ "counts": {
+  "basic": 21,
+  "items": 4,
+  "jutsu": 27,
+  "clans": 11
+ },
+ "entries": [
+  {
+   "id": "attack",
+   "es": "Atacar",
+   "en": "Attack",
+   "group": "basic",
+   "row": "Barra",
+   "use": "action",
+   "window": [
+    278,
+    270,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "throw",
+   "es": "Kunai",
+   "en": "Kunai",
+   "group": "basic",
+   "row": "Barra",
+   "use": "action",
+   "note": "Throws a kunai (button id \"throw\").",
+   "window": [
+    486,
+    270,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "dash",
+   "es": "Correr",
+   "en": "Dash",
+   "group": "basic",
+   "row": "Barra",
+   "use": "action",
+   "window": [
+    694,
+    270,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "dodge",
+   "es": "Esquivar",
+   "en": "Dodge",
+   "group": "basic",
+   "row": "Barra",
+   "use": "action",
+   "window": [
+    902,
+    270,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "hide",
+   "es": "Esconderse",
+   "en": "Hide",
+   "group": "basic",
+   "row": "Barra",
+   "use": "action",
+   "window": [
+    1110,
+    270,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "draw",
+   "es": "Desenvainar",
+   "en": "Draw weapon",
+   "group": "basic",
+   "row": "Barra",
+   "use": "free once a turn, then bonus action",
+   "note": "The \"draw\" button while the weapon is stowed.",
+   "window": [
+    1318,
+    270,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "stow",
+   "es": "Guardar arma",
+   "en": "Stow weapon",
+   "group": "basic",
+   "row": "Barra",
+   "use": "free once a turn, then bonus action",
+   "note": "The same \"draw\" button while the weapon is drawn.",
+   "window": [
+    1526,
+    270,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "end",
+   "es": "Fin",
+   "en": "End turn",
+   "group": "basic",
+   "row": "Barra",
+   "use": "button",
+   "note": "Ends the turn; in the stealth phase it reads \"Listo\" (Done).",
+   "window": [
+    1734,
+    270,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "disengage",
+   "es": "Retirarse",
+   "en": "Disengage",
+   "group": "basic",
+   "row": "Menú Más",
+   "use": "action",
+   "window": [
+    278,
+    528,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "crouch",
+   "es": "Agacharse",
+   "en": "Crouch",
+   "group": "basic",
+   "row": "Menú Más",
+   "use": "bonus action",
+   "window": [
+    486,
+    528,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "stand",
+   "es": "Levantarse",
+   "en": "Stand",
+   "group": "basic",
+   "row": "Menú Más",
+   "use": "free",
+   "note": "The same \"crouch\" button while crouched.",
+   "window": [
+    694,
+    528,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "jump",
+   "es": "Salto ninja",
+   "en": "Ninja jump",
+   "group": "basic",
+   "row": "Menú Más",
+   "use": "bonus action",
+   "window": [
+    902,
+    528,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "shove",
+   "es": "Empujar",
+   "en": "Shove",
+   "group": "basic",
+   "row": "Menú Más",
+   "use": "action",
+   "window": [
+    1110,
+    528,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "trip",
+   "es": "Derribar",
+   "en": "Trip",
+   "group": "basic",
+   "row": "Menú Más",
+   "use": "action",
+   "window": [
+    1318,
+    528,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "focus",
+   "es": "Concentrar chakra",
+   "en": "Focus chakra",
+   "group": "basic",
+   "row": "Menú Más",
+   "use": "action",
+   "note": "The button shows \"Concentr...\" (truncated).",
+   "window": [
+    1526,
+    528,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "stabilize",
+   "es": "Estabilizar",
+   "en": "Stabilize",
+   "group": "basic",
+   "row": "Menú Más",
+   "use": "action",
+   "note": "Only with a downed ally next to you.",
+   "window": [
+    1734,
+    528,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "stone",
+   "es": "Lanzar piedra",
+   "en": "Throw a stone",
+   "group": "basic",
+   "row": "Sigilo, borde y menú",
+   "use": "action",
+   "note": "Stealth phase only.",
+   "window": [
+    278,
+    786,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "drag",
+   "es": "Arrastrar cuerpo",
+   "en": "Drag body",
+   "group": "basic",
+   "row": "Sigilo, borde y menú",
+   "use": "movement",
+   "note": "Stealth phase only, next to a body (button id \"drag:<unit>\").",
+   "window": [
+    486,
+    786,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "flee",
+   "es": "Huir",
+   "en": "Flee",
+   "group": "basic",
+   "row": "Sigilo, borde y menú",
+   "use": "action in combat",
+   "note": "Only at an exit edge of the map.",
+   "window": [
+    694,
+    786,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "more",
+   "es": "Más",
+   "en": "More",
+   "group": "basic",
+   "row": "Sigilo, borde y menú",
+   "use": "button",
+   "note": "Opens the \"Más\" menu.",
+   "window": [
+    902,
+    786,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "back",
+   "es": "Volver",
+   "en": "Back",
+   "group": "basic",
+   "row": "Sigilo, borde y menú",
+   "use": "button",
+   "note": "Closes the \"Más\" menu (the game shows \"←\" on the same \"more\" button).",
+   "window": [
+    1110,
+    786,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "pill",
+   "es": "Píldora de soldado",
+   "en": "Soldier pill",
+   "group": "items",
+   "row": "Menú Más",
+   "use": "bonus action",
+   "note": "Consumable with a count badge; the button shows \"Píldora d...\" (truncated).",
+   "window": [
+    278,
+    1104,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "bandage",
+   "es": "Venda",
+   "en": "Bandage",
+   "group": "items",
+   "row": "Menú Más",
+   "use": "action",
+   "note": "Consumable with a count badge.",
+   "window": [
+    486,
+    1104,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "antidote",
+   "es": "Antídoto",
+   "en": "Antidote",
+   "group": "items",
+   "row": "Menú Más",
+   "use": "action",
+   "note": "Consumable with a count badge.",
+   "window": [
+    694,
+    1104,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "tag",
+   "es": "Sello explosivo",
+   "en": "Explosive tag",
+   "group": "items",
+   "row": "Menú Más",
+   "use": "action",
+   "note": "Consumable with a count badge; the button shows \"Sello expl...\" (truncated).",
+   "window": [
+    902,
+    1104,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "trap_setter_tag",
+   "es": "Trampa",
+   "en": "Explosive Tag Ambush",
+   "group": "jutsu",
+   "row": "Fuego",
+   "use": "rank C, action, 2 chakra",
+   "note": "Button \"Trampa\" (EN \"Trap tag\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    278,
+    1422,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "fireball_goukakyu",
+   "es": "Bola fuego",
+   "en": "Fire Release: Great Fireball",
+   "group": "jutsu",
+   "row": "Fuego",
+   "use": "rank C, action, 3 chakra",
+   "note": "Button \"Bola fuego\" (EN \"Fireball\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    486,
+    1422,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "dragon_fire_stream",
+   "es": "Llama",
+   "en": "Fire Release: Dragon Fire",
+   "group": "jutsu",
+   "row": "Fuego",
+   "use": "rank B, action, 4 chakra",
+   "note": "Button \"Llama\" (EN \"Dragon fire\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    694,
+    1422,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "dragon_fire_bomb",
+   "es": "Bomba",
+   "en": "Mirai Secret: Dragon Flame Annihilation",
+   "group": "jutsu",
+   "row": "Fuego",
+   "use": "rank A, action, 5 chakra",
+   "note": "Button \"Bomba\" (EN \"Dragon bomb\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    902,
+    1422,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "great_fire_annihilation",
+   "es": "Aniquilación",
+   "en": "Ultimate S-Rank: Great Fire Annihilation",
+   "group": "jutsu",
+   "row": "Fuego",
+   "use": "rank S, action, 8 chakra",
+   "note": "Button \"Aniquilación\" (EN \"Annihilation\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    1110,
+    1422,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "mystical_palm",
+   "es": "Palma",
+   "en": "Mystical Palm Healing",
+   "group": "jutsu",
+   "row": "Agua",
+   "use": "rank C, action, 3 chakra",
+   "note": "Button \"Palma\" (EN \"Heal palm\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    278,
+    1656,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "water_shield_suijinheki",
+   "es": "Muro agua",
+   "en": "Water Release: Water Formation Wall",
+   "group": "jutsu",
+   "row": "Agua",
+   "use": "rank C, action, 3 chakra",
+   "note": "Button \"Muro agua\" (EN \"Water wall\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    486,
+    1656,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "water_dragon_suiryuudan",
+   "es": "Dragón agua",
+   "en": "Water Release: Water Dragon Bullet",
+   "group": "jutsu",
+   "row": "Agua",
+   "use": "rank B, action, 4 chakra",
+   "note": "Button \"Dragón agua\" (EN \"Water dragon\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    694,
+    1656,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "wind_blade_daitoppa",
+   "es": "Hoja viento",
+   "en": "Wind Release: Great Breakthrough Blade",
+   "group": "jutsu",
+   "row": "Viento",
+   "use": "rank C, action, 3 chakra",
+   "note": "Button \"Hoja viento\" (EN \"Wind blade\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    278,
+    1890,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "crescent_moon_dance",
+   "es": "Luna",
+   "en": "Dance of the Crescent Moon",
+   "group": "jutsu",
+   "row": "Viento",
+   "use": "rank B, action, 3 chakra",
+   "note": "Button \"Luna\" (EN \"Crescent\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    486,
+    1890,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "rasenshuriken_wind",
+   "es": "Rasenshuriken",
+   "en": "Ultimate S-Rank: Wind Release Rasenshuriken",
+   "group": "jutsu",
+   "row": "Viento",
+   "use": "rank S, action, 8 chakra",
+   "note": "Button \"Rasenshuriken\" (EN \"Rasenshuriken\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    694,
+    1890,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "lightning_hound_raidon",
+   "es": "Sabueso",
+   "en": "Lightning Release: Lightning Hound",
+   "group": "jutsu",
+   "row": "Rayo",
+   "use": "rank B, action, 4 chakra",
+   "note": "Button \"Sabueso\" (EN \"Thunder hound\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    278,
+    2124,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "chidori_lightning_blade",
+   "es": "Chidori",
+   "en": "Lightning Release: Chidori (One Thousand Birds)",
+   "group": "jutsu",
+   "row": "Rayo",
+   "use": "rank A, action, 5 chakra",
+   "note": "Button \"Chidori\" (EN \"Chidori\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    486,
+    2124,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "kirin_thunder",
+   "es": "Kirin",
+   "en": "Ultimate S-Rank: Kirin (Thunder Divine Beast)",
+   "group": "jutsu",
+   "row": "Rayo",
+   "use": "rank S, action, 8 chakra",
+   "note": "Button \"Kirin\" (EN \"Kirin\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    694,
+    2124,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "earth_wall_doryuheki",
+   "es": "Muro tierra",
+   "en": "Earth Release: Mud Wall",
+   "group": "jutsu",
+   "row": "Tierra",
+   "use": "rank B, action, 3 chakra",
+   "note": "Button \"Muro tierra\" (EN \"Earth wall\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    278,
+    2358,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "earth_spear_doryuudan",
+   "es": "Lanza",
+   "en": "Earth Release: Stone Dragon Spate",
+   "group": "jutsu",
+   "row": "Tierra",
+   "use": "rank B, action, 4 chakra",
+   "note": "Button \"Lanza\" (EN \"Earth spear\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    486,
+    2358,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "wood_dragon_jutsu",
+   "es": "Dragón madera",
+   "en": "Ryusei Secret: Wood Dragon Technique",
+   "group": "jutsu",
+   "row": "Tierra",
+   "use": "rank A, action, 5 chakra",
+   "note": "Button \"Dragón madera\" (EN \"Wood dragon\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    694,
+    2358,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "wood_golem_titan",
+   "es": "Gólem",
+   "en": "Ultimate S-Rank: Wood Golem Awakening",
+   "group": "jutsu",
+   "row": "Tierra",
+   "use": "rank S, action, 8 chakra",
+   "note": "Button \"Gólem\" (EN \"Golem\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    902,
+    2358,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "temple_of_nirvana",
+   "es": "Nirvana",
+   "en": "Genjutsu: Temple of Nirvana",
+   "group": "jutsu",
+   "row": "Genjutsu",
+   "use": "rank A, action, 4 chakra",
+   "note": "Button \"Nirvana\" (EN \"Nirvana\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    278,
+    2592,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "body_flicker",
+   "es": "Shunshin",
+   "en": "Instant Body Flicker",
+   "group": "jutsu",
+   "row": "Chakra (taijutsu y sellos)",
+   "use": "rank D, bonus action, 2 chakra",
+   "note": "Button \"Shunshin\" (EN \"Flicker\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    278,
+    2850,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "substitution_kawarimi",
+   "es": "Kawarimi",
+   "en": "Body Replacement Technique",
+   "group": "jutsu",
+   "row": "Chakra (taijutsu y sellos)",
+   "use": "rank D, reaction, 2 chakra",
+   "tag": "reacción",
+   "note": "Button \"Kawarimi\" (EN \"Kawarimi\"); no Spanish full name in the game, the tooltip shows the English one. A reaction: not on the bar, offered when it can be used.",
+   "window": [
+    486,
+    2850,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "leaf_hurricane_senpuu",
+   "es": "Huracán",
+   "en": "Leaf Hurricane (Konoha Senpuu)",
+   "group": "jutsu",
+   "row": "Chakra (taijutsu y sellos)",
+   "use": "rank D, action, 1 chakra",
+   "note": "Button \"Huracán\" (EN \"Hurricane\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    694,
+    2850,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "shadow_clone",
+   "es": "Clon",
+   "en": "Shadow Clone Technique",
+   "group": "jutsu",
+   "row": "Chakra (taijutsu y sellos)",
+   "use": "rank B, bonus action, 3 chakra",
+   "note": "Button \"Clon\" (EN \"Clone\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    902,
+    2850,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "adamantine_sealing_chains",
+   "es": "Cadenas",
+   "en": "Kōton Secret: Adamantine Sealing Chains",
+   "group": "jutsu",
+   "row": "Chakra (taijutsu y sellos)",
+   "use": "rank A, action, 5 chakra",
+   "note": "Button \"Cadenas\" (EN \"Chains\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    1110,
+    2850,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "taki_sixtyfour_palms",
+   "es": "64 palmas",
+   "en": "Northstar Secret: Eight Trigrams 64 Palms",
+   "group": "jutsu",
+   "row": "Chakra (taijutsu y sellos)",
+   "use": "rank A, action, 5 chakra",
+   "note": "Button \"64 palmas\" (EN \"64 palms\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    1318,
+    2850,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "yasaka_magatama",
+   "es": "Magatama",
+   "en": "Ultimate S-Rank: Yasaka no Magatama",
+   "group": "jutsu",
+   "row": "Chakra (taijutsu y sellos)",
+   "use": "rank S, action, 8 chakra",
+   "note": "Button \"Magatama\" (EN \"Magatama\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    1526,
+    2850,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "night_guy_dragon",
+   "es": "Dragón noche",
+   "en": "Ultimate S-Rank: Night Guy (Sekizo Dragon)",
+   "group": "jutsu",
+   "row": "Chakra (taijutsu y sellos)",
+   "use": "rank S, action, 8 chakra",
+   "note": "Button \"Dragón noche\" (EN \"Night dragon\"); no Spanish full name in the game, the tooltip shows the English one.",
+   "window": [
+    1734,
+    2850,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "mirai_eye_of_tomorrow",
+   "es": "Ojo del Mañana",
+   "en": "Eye of Tomorrow",
+   "group": "clans",
+   "row": "Mirai",
+   "use": "passive",
+   "tag": "pasiva (antes Visión del Futuro)",
+   "note": "Passive, no button (proposed id). The current screenshots still show it as the \"Visión del Futuro\" (Future Foresight) button; phase 1 makes it passive, so one icon serves both.",
+   "window": [
+    278,
+    3192,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "mirai_evasion",
+   "es": "Evasión Premonitoria",
+   "en": "Premonitory Evasion",
+   "group": "clans",
+   "row": "Mirai",
+   "use": "reaction, 2 chakra",
+   "tag": "reacción",
+   "note": "A reaction: not on the bar, offered when it can be used.",
+   "window": [
+    486,
+    3192,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "katon_pursuing_flame",
+   "es": "Katon: Llama Persecutoria",
+   "esButton": "Persigue",
+   "en": "Katon: Pursuing Flame",
+   "group": "clans",
+   "row": "Mirai",
+   "use": "action, 3 chakra",
+   "window": [
+    694,
+    3192,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "koton_block",
+   "es": "Arquitectura Modular: Bloque",
+   "esButton": "Bloque",
+   "en": "Modular Architecture: Block",
+   "group": "clans",
+   "row": "Kōton",
+   "use": "bonus action, 2 chakra",
+   "window": [
+    278,
+    3474,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "koton_wall",
+   "es": "Arquitectura Modular: Muro",
+   "esButton": "Muro metal",
+   "en": "Modular Architecture: Wall",
+   "group": "clans",
+   "row": "Kōton",
+   "use": "action, 4 chakra",
+   "window": [
+    486,
+    3474,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "ryusei_weapon_nodes",
+   "es": "Nodos de Armas",
+   "en": "Weapon Nodes",
+   "group": "clans",
+   "row": "Ryusei",
+   "use": "passive",
+   "tag": "pasiva, sin botón",
+   "note": "Passive, no button (proposed id): kunai and missed blows leave a Node.",
+   "window": [
+    278,
+    3732,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "ryusei_warp",
+   "es": "Warp Strike",
+   "esButton": "Warp",
+   "en": "Warp Strike",
+   "group": "clans",
+   "row": "Ryusei",
+   "use": "bonus action, 2 chakra",
+   "window": [
+    486,
+    3732,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "ryusei_swap",
+   "es": "Intercambio Espacial",
+   "esButton": "Cambio",
+   "en": "Spatial Swap",
+   "group": "clans",
+   "row": "Ryusei",
+   "use": "action, 3 chakra",
+   "window": [
+    694,
+    3732,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "northstar_aura",
+   "es": "Aura de Soberanía",
+   "en": "Aura of Sovereignty",
+   "group": "clans",
+   "row": "Northstar",
+   "use": "passive",
+   "tag": "pasiva, sin botón",
+   "note": "Passive, no button (proposed id): 4.5 m around the Northstar.",
+   "window": [
+    278,
+    3990,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "northstar_command",
+   "es": "Command",
+   "en": "Command",
+   "group": "clans",
+   "row": "Northstar",
+   "use": "action, 4 chakra",
+   "window": [
+    486,
+    3990,
+    132,
+    132
+   ]
+  },
+  {
+   "id": "northstar_submission",
+   "es": "Sumisión Natural",
+   "esButton": "Sumisión",
+   "en": "Natural Submission",
+   "group": "clans",
+   "row": "Northstar",
+   "use": "action, 5 chakra",
+   "window": [
+    694,
+    3990,
+    132,
+    132
+   ]
+  }
+ ],
+ "ownerIcons": [
+  {
+   "pos": 1,
+   "tag": "1",
+   "likely": "dash",
+   "alt": [
+    "body_flicker"
+   ],
+   "why": "A ninja silhouette sprinting over an orange burst: running."
+  },
+  {
+   "pos": 2,
+   "tag": "2",
+   "likely": "hide",
+   "alt": [
+    "crouch"
+   ],
+   "why": "A dark ninja silhouette low in a wide crouch on gold, the usual \"hide\" pose."
+  },
+  {
+   "pos": 3,
+   "tag": "3",
+   "likely": "attack",
+   "alt": [],
+   "why": "A long sword on a golden starburst: the weapon attack."
+  },
+  {
+   "pos": 4,
+   "tag": "5",
+   "likely": "jump",
+   "alt": [
+    "disengage",
+    "dash"
+   ],
+   "why": "A pair of boots in a green glow: a movement action that is not the sprint of icon 1."
+  },
+  {
+   "pos": 5,
+   "tag": "4",
+   "likely": "throw",
+   "alt": [
+    "dodge",
+    "crescent_moon_dance"
+   ],
+   "why": "Crossed blades with cyan motion streaks, one with a fletched tail: a thrown weapon (the kunai)."
+  },
+  {
+   "pos": 6,
+   "tag": "9",
+   "likely": "temple_of_nirvana",
+   "alt": [
+    "northstar_command",
+    "northstar_submission"
+   ],
+   "why": "A magenta pillar of light (the game's genjutsu colour, like the genjutsu blast) with a figure slumping at its foot: the genjutsu that drops its targets."
+  }
+ ]
+}

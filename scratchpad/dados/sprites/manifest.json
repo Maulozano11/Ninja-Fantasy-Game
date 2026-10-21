@@ -1,0 +1,2411 @@
+{
+ "generator": "tools/ui/dice-d20.ts (rerun it to change these files; never edit them by hand)",
+ "status": "New art waiting for the owner's approval (branch ui/dice-d20).",
+ "styles": [
+  "gem",
+  "ivory",
+  "obsidian"
+ ],
+ "defaultStyle": "ivory",
+ "names": {
+  "gem": {
+   "es": "Gema",
+   "en": "Gem"
+  },
+  "ivory": {
+   "es": "Marfil y oro",
+   "en": "Ivory and gold"
+  },
+  "obsidian": {
+   "es": "Obsidiana rúnica",
+   "en": "Runic obsidian"
+  }
+ },
+ "screenScale": {
+  "dice": 2,
+  "readout": 2,
+  "banner": 3,
+  "damage": 3,
+  "burst": 1
+ },
+ "numbers": {
+  "faces": [
+   7,
+   15,
+   16,
+   10,
+   2,
+   17,
+   8,
+   3,
+   1,
+   9,
+   20,
+   11,
+   5,
+   13,
+   19,
+   6,
+   18,
+   12,
+   4,
+   14
+  ],
+  "note": "The number on each face (opposite faces sum to 21)."
+ },
+ "sizes": {
+  "small": {
+   "box": 36,
+   "R": 15,
+   "fx": 64
+  },
+  "big": {
+   "box": 88,
+   "R": 38,
+   "fx": 160
+  }
+ },
+ "diceSheet": {
+  "file": "dice_<style>_<size>.png",
+  "rowOfResult": "result - 1",
+  "rollColumns": [
+   0,
+   17
+  ],
+  "restColumn": 17,
+  "clickFrame": 15,
+  "popColumns": [
+   18,
+   20
+  ],
+  "dimColumn": 21,
+  "popMs": [
+   50,
+   60,
+   90
+  ],
+  "popDy": [
+   -1,
+   0,
+   0
+  ]
+ },
+ "throw": {
+  "note": "Where the die is in each throw frame, from where it lands (art pixels), for results thrown from the left. The results in fromRight come from the right: negate dx. A frame with contact > 0 hits the ground (dust_<contact>_0..3 there, a click sound); trail frames draw the previous frame behind at 35% alpha; ground picks the shadow (shadow_<round(ground*5)>). The last frame holds.",
+  "fromRight": [
+   2,
+   4,
+   6,
+   8,
+   10,
+   12,
+   14,
+   16,
+   18,
+   20
+  ],
+  "small": [
+   {
+    "dx": -36,
+    "dy": -24,
+    "ms": 34,
+    "contact": 0,
+    "trail": true,
+    "ground": 0.2
+   },
+   {
+    "dx": -32,
+    "dy": -26,
+    "ms": 34,
+    "contact": 0,
+    "trail": true,
+    "ground": 0.13
+   },
+   {
+    "dx": -28,
+    "dy": -22,
+    "ms": 34,
+    "contact": 0,
+    "trail": true,
+    "ground": 0.27
+   },
+   {
+    "dx": -25,
+    "dy": -15,
+    "ms": 34,
+    "contact": 0,
+    "trail": true,
+    "ground": 0.5
+   },
+   {
+    "dx": -22,
+    "dy": -7,
+    "ms": 34,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.77
+   },
+   {
+    "dx": -19,
+    "dy": 0,
+    "ms": 42,
+    "contact": 3,
+    "trail": false,
+    "ground": 1
+   },
+   {
+    "dx": -16,
+    "dy": -8,
+    "ms": 38,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.73
+   },
+   {
+    "dx": -13,
+    "dy": -11,
+    "ms": 38,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.63
+   },
+   {
+    "dx": -10,
+    "dy": -10,
+    "ms": 38,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.67
+   },
+   {
+    "dx": -8,
+    "dy": -6,
+    "ms": 38,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.8
+   },
+   {
+    "dx": -6,
+    "dy": 0,
+    "ms": 42,
+    "contact": 2,
+    "trail": false,
+    "ground": 1
+   },
+   {
+    "dx": -4,
+    "dy": -4,
+    "ms": 40,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.87
+   },
+   {
+    "dx": -3,
+    "dy": -4,
+    "ms": 40,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.87
+   },
+   {
+    "dx": -2,
+    "dy": 0,
+    "ms": 45,
+    "contact": 1,
+    "trail": false,
+    "ground": 1
+   },
+   {
+    "dx": -1,
+    "dy": -1,
+    "ms": 45,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.97
+   },
+   {
+    "dx": 0,
+    "dy": 0,
+    "ms": 60,
+    "contact": 0,
+    "trail": false,
+    "ground": 1
+   },
+   {
+    "dx": 0,
+    "dy": 0,
+    "ms": 70,
+    "contact": 0,
+    "trail": false,
+    "ground": 1
+   },
+   {
+    "dx": 0,
+    "dy": 0,
+    "ms": 0,
+    "contact": 0,
+    "trail": false,
+    "ground": 1
+   }
+  ],
+  "big": [
+   {
+    "dx": -90,
+    "dy": -60,
+    "ms": 34,
+    "contact": 0,
+    "trail": true,
+    "ground": 0.2
+   },
+   {
+    "dx": -80,
+    "dy": -65,
+    "ms": 34,
+    "contact": 0,
+    "trail": true,
+    "ground": 0.13
+   },
+   {
+    "dx": -70,
+    "dy": -55,
+    "ms": 34,
+    "contact": 0,
+    "trail": true,
+    "ground": 0.27
+   },
+   {
+    "dx": -62,
+    "dy": -37,
+    "ms": 34,
+    "contact": 0,
+    "trail": true,
+    "ground": 0.5
+   },
+   {
+    "dx": -55,
+    "dy": -17,
+    "ms": 34,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.77
+   },
+   {
+    "dx": -47,
+    "dy": 0,
+    "ms": 42,
+    "contact": 3,
+    "trail": false,
+    "ground": 1
+   },
+   {
+    "dx": -40,
+    "dy": -20,
+    "ms": 38,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.73
+   },
+   {
+    "dx": -32,
+    "dy": -27,
+    "ms": 38,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.63
+   },
+   {
+    "dx": -25,
+    "dy": -25,
+    "ms": 38,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.67
+   },
+   {
+    "dx": -20,
+    "dy": -15,
+    "ms": 38,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.8
+   },
+   {
+    "dx": -15,
+    "dy": 0,
+    "ms": 42,
+    "contact": 2,
+    "trail": false,
+    "ground": 1
+   },
+   {
+    "dx": -10,
+    "dy": -10,
+    "ms": 40,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.87
+   },
+   {
+    "dx": -7,
+    "dy": -10,
+    "ms": 40,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.87
+   },
+   {
+    "dx": -5,
+    "dy": 0,
+    "ms": 45,
+    "contact": 1,
+    "trail": false,
+    "ground": 1
+   },
+   {
+    "dx": -2,
+    "dy": -2,
+    "ms": 45,
+    "contact": 0,
+    "trail": false,
+    "ground": 0.97
+   },
+   {
+    "dx": 0,
+    "dy": 0,
+    "ms": 60,
+    "contact": 0,
+    "trail": false,
+    "ground": 1
+   },
+   {
+    "dx": 0,
+    "dy": 0,
+    "ms": 70,
+    "contact": 0,
+    "trail": false,
+    "ground": 1
+   },
+   {
+    "dx": 0,
+    "dy": 0,
+    "ms": 0,
+    "contact": 0,
+    "trail": false,
+    "ground": 1
+   }
+  ]
+ },
+ "fx": {
+  "file": "dice_<style>_<size>_fx.png",
+  "note": "Row 0: the natural 20 (gold flash, rays, sparkles, shine; the last frame holds with the 20 in gold). Row 1: the natural 1 (dull red, crack, chips; dx is the shake). Cells are fx x fx with the die centred.",
+  "frames": {
+   "gem_small": {
+    "nat20": [
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 60
+     },
+     {
+      "ms": 70
+     },
+     {
+      "ms": 80
+     },
+     {
+      "ms": 0
+     }
+    ],
+    "nat1": [
+     {
+      "ms": 50,
+      "dx": 1
+     },
+     {
+      "ms": 50,
+      "dx": -1
+     },
+     {
+      "ms": 50,
+      "dx": 1
+     },
+     {
+      "ms": 60,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 80,
+      "dx": 0
+     },
+     {
+      "ms": 0,
+      "dx": 0
+     }
+    ]
+   },
+   "gem_big": {
+    "nat20": [
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 60
+     },
+     {
+      "ms": 70
+     },
+     {
+      "ms": 80
+     },
+     {
+      "ms": 0
+     }
+    ],
+    "nat1": [
+     {
+      "ms": 50,
+      "dx": 2
+     },
+     {
+      "ms": 50,
+      "dx": -2
+     },
+     {
+      "ms": 50,
+      "dx": 2
+     },
+     {
+      "ms": 60,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 80,
+      "dx": 0
+     },
+     {
+      "ms": 0,
+      "dx": 0
+     }
+    ]
+   },
+   "ivory_small": {
+    "nat20": [
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 60
+     },
+     {
+      "ms": 70
+     },
+     {
+      "ms": 80
+     },
+     {
+      "ms": 0
+     }
+    ],
+    "nat1": [
+     {
+      "ms": 50,
+      "dx": 1
+     },
+     {
+      "ms": 50,
+      "dx": -1
+     },
+     {
+      "ms": 50,
+      "dx": 1
+     },
+     {
+      "ms": 60,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 80,
+      "dx": 0
+     },
+     {
+      "ms": 0,
+      "dx": 0
+     }
+    ]
+   },
+   "ivory_big": {
+    "nat20": [
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 60
+     },
+     {
+      "ms": 70
+     },
+     {
+      "ms": 80
+     },
+     {
+      "ms": 0
+     }
+    ],
+    "nat1": [
+     {
+      "ms": 50,
+      "dx": 2
+     },
+     {
+      "ms": 50,
+      "dx": -2
+     },
+     {
+      "ms": 50,
+      "dx": 2
+     },
+     {
+      "ms": 60,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 80,
+      "dx": 0
+     },
+     {
+      "ms": 0,
+      "dx": 0
+     }
+    ]
+   },
+   "obsidian_small": {
+    "nat20": [
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 60
+     },
+     {
+      "ms": 70
+     },
+     {
+      "ms": 80
+     },
+     {
+      "ms": 0
+     }
+    ],
+    "nat1": [
+     {
+      "ms": 50,
+      "dx": 1
+     },
+     {
+      "ms": 50,
+      "dx": -1
+     },
+     {
+      "ms": 50,
+      "dx": 1
+     },
+     {
+      "ms": 60,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 80,
+      "dx": 0
+     },
+     {
+      "ms": 0,
+      "dx": 0
+     }
+    ]
+   },
+   "obsidian_big": {
+    "nat20": [
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 50
+     },
+     {
+      "ms": 60
+     },
+     {
+      "ms": 70
+     },
+     {
+      "ms": 80
+     },
+     {
+      "ms": 0
+     }
+    ],
+    "nat1": [
+     {
+      "ms": 50,
+      "dx": 2
+     },
+     {
+      "ms": 50,
+      "dx": -2
+     },
+     {
+      "ms": 50,
+      "dx": 2
+     },
+     {
+      "ms": 60,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 70,
+      "dx": 0
+     },
+     {
+      "ms": 80,
+      "dx": 0
+     },
+     {
+      "ms": 0,
+      "dx": 0
+     }
+    ]
+   }
+  }
+ },
+ "shared": {
+  "file": "dice_shared_<size>.png",
+  "note": "halo_<style|gold>_<0..3> under a landed die (0 strongest); shadow_<0..5>; dust_<strength 1..3>_<frame 0..3> at a contact (40 ms a frame).",
+  "rects": {
+   "small": {
+    "halo_gem_0": [
+     0,
+     0,
+     48,
+     48
+    ],
+    "halo_gem_1": [
+     49,
+     0,
+     48,
+     48
+    ],
+    "halo_gem_2": [
+     98,
+     0,
+     48,
+     48
+    ],
+    "halo_gem_3": [
+     147,
+     0,
+     48,
+     48
+    ],
+    "halo_ivory_0": [
+     196,
+     0,
+     48,
+     48
+    ],
+    "halo_ivory_1": [
+     245,
+     0,
+     48,
+     48
+    ],
+    "halo_ivory_2": [
+     294,
+     0,
+     48,
+     48
+    ],
+    "halo_ivory_3": [
+     343,
+     0,
+     48,
+     48
+    ],
+    "halo_obsidian_0": [
+     0,
+     49,
+     48,
+     48
+    ],
+    "halo_obsidian_1": [
+     49,
+     49,
+     48,
+     48
+    ],
+    "halo_obsidian_2": [
+     98,
+     49,
+     48,
+     48
+    ],
+    "halo_obsidian_3": [
+     147,
+     49,
+     48,
+     48
+    ],
+    "halo_gold_0": [
+     196,
+     49,
+     48,
+     48
+    ],
+    "halo_gold_1": [
+     245,
+     49,
+     48,
+     48
+    ],
+    "halo_gold_2": [
+     294,
+     49,
+     48,
+     48
+    ],
+    "halo_gold_3": [
+     343,
+     49,
+     48,
+     48
+    ],
+    "shadow_0": [
+     0,
+     98,
+     14,
+     4
+    ],
+    "shadow_1": [
+     15,
+     98,
+     17,
+     4
+    ],
+    "shadow_2": [
+     33,
+     98,
+     19,
+     5
+    ],
+    "shadow_3": [
+     53,
+     98,
+     22,
+     6
+    ],
+    "shadow_4": [
+     76,
+     98,
+     24,
+     6
+    ],
+    "shadow_5": [
+     101,
+     98,
+     26,
+     7
+    ],
+    "dust_1_0": [
+     128,
+     98,
+     40,
+     12
+    ],
+    "dust_1_1": [
+     169,
+     98,
+     40,
+     12
+    ],
+    "dust_1_2": [
+     210,
+     98,
+     40,
+     12
+    ],
+    "dust_1_3": [
+     251,
+     98,
+     40,
+     12
+    ],
+    "dust_2_0": [
+     292,
+     98,
+     40,
+     12
+    ],
+    "dust_2_1": [
+     333,
+     98,
+     40,
+     12
+    ],
+    "dust_2_2": [
+     0,
+     111,
+     40,
+     12
+    ],
+    "dust_2_3": [
+     41,
+     111,
+     40,
+     12
+    ],
+    "dust_3_0": [
+     82,
+     111,
+     40,
+     12
+    ],
+    "dust_3_1": [
+     123,
+     111,
+     40,
+     12
+    ],
+    "dust_3_2": [
+     164,
+     111,
+     40,
+     12
+    ],
+    "dust_3_3": [
+     205,
+     111,
+     40,
+     12
+    ]
+   },
+   "big": {
+    "halo_gem_0": [
+     0,
+     0,
+     122,
+     122
+    ],
+    "halo_gem_1": [
+     123,
+     0,
+     122,
+     122
+    ],
+    "halo_gem_2": [
+     246,
+     0,
+     122,
+     122
+    ],
+    "halo_gem_3": [
+     369,
+     0,
+     122,
+     122
+    ],
+    "halo_ivory_0": [
+     492,
+     0,
+     122,
+     122
+    ],
+    "halo_ivory_1": [
+     615,
+     0,
+     122,
+     122
+    ],
+    "halo_ivory_2": [
+     738,
+     0,
+     122,
+     122
+    ],
+    "halo_ivory_3": [
+     0,
+     123,
+     122,
+     122
+    ],
+    "halo_obsidian_0": [
+     123,
+     123,
+     122,
+     122
+    ],
+    "halo_obsidian_1": [
+     246,
+     123,
+     122,
+     122
+    ],
+    "halo_obsidian_2": [
+     369,
+     123,
+     122,
+     122
+    ],
+    "halo_obsidian_3": [
+     492,
+     123,
+     122,
+     122
+    ],
+    "halo_gold_0": [
+     615,
+     123,
+     122,
+     122
+    ],
+    "halo_gold_1": [
+     738,
+     123,
+     122,
+     122
+    ],
+    "halo_gold_2": [
+     0,
+     246,
+     122,
+     122
+    ],
+    "halo_gold_3": [
+     123,
+     246,
+     122,
+     122
+    ],
+    "shadow_0": [
+     246,
+     246,
+     36,
+     9
+    ],
+    "shadow_1": [
+     283,
+     246,
+     42,
+     11
+    ],
+    "shadow_2": [
+     326,
+     246,
+     48,
+     12
+    ],
+    "shadow_3": [
+     375,
+     246,
+     55,
+     14
+    ],
+    "shadow_4": [
+     431,
+     246,
+     61,
+     15
+    ],
+    "shadow_5": [
+     493,
+     246,
+     65,
+     16
+    ],
+    "dust_1_0": [
+     559,
+     246,
+     100,
+     30
+    ],
+    "dust_1_1": [
+     660,
+     246,
+     100,
+     30
+    ],
+    "dust_1_2": [
+     761,
+     246,
+     100,
+     30
+    ],
+    "dust_1_3": [
+     0,
+     369,
+     100,
+     30
+    ],
+    "dust_2_0": [
+     101,
+     369,
+     100,
+     30
+    ],
+    "dust_2_1": [
+     202,
+     369,
+     100,
+     30
+    ],
+    "dust_2_2": [
+     303,
+     369,
+     100,
+     30
+    ],
+    "dust_2_3": [
+     404,
+     369,
+     100,
+     30
+    ],
+    "dust_3_0": [
+     505,
+     369,
+     100,
+     30
+    ],
+    "dust_3_1": [
+     606,
+     369,
+     100,
+     30
+    ],
+    "dust_3_2": [
+     707,
+     369,
+     100,
+     30
+    ],
+    "dust_3_3": [
+     0,
+     400,
+     100,
+     30
+    ]
+   }
+  }
+ },
+ "crit": {
+  "file": "crit.png",
+  "rects": {
+   "banner_es_0": [
+    0,
+    0,
+    130,
+    26
+   ],
+   "banner_es_1": [
+    131,
+    0,
+    130,
+    26
+   ],
+   "banner_es_2": [
+    262,
+    0,
+    130,
+    26
+   ],
+   "banner_es_3": [
+    393,
+    0,
+    130,
+    26
+   ],
+   "banner_es_4": [
+    524,
+    0,
+    130,
+    26
+   ],
+   "banner_es_5": [
+    655,
+    0,
+    130,
+    26
+   ],
+   "banner_es_6": [
+    786,
+    0,
+    130,
+    26
+   ],
+   "banner_es_7": [
+    917,
+    0,
+    130,
+    26
+   ],
+   "banner_es_8": [
+    1048,
+    0,
+    130,
+    26
+   ],
+   "banner_es_9": [
+    0,
+    27,
+    130,
+    26
+   ],
+   "banner_en_0": [
+    131,
+    27,
+    136,
+    26
+   ],
+   "banner_en_1": [
+    268,
+    27,
+    136,
+    26
+   ],
+   "banner_en_2": [
+    405,
+    27,
+    136,
+    26
+   ],
+   "banner_en_3": [
+    542,
+    27,
+    136,
+    26
+   ],
+   "banner_en_4": [
+    679,
+    27,
+    136,
+    26
+   ],
+   "banner_en_5": [
+    816,
+    27,
+    136,
+    26
+   ],
+   "banner_en_6": [
+    953,
+    27,
+    136,
+    26
+   ],
+   "banner_en_7": [
+    0,
+    54,
+    136,
+    26
+   ],
+   "banner_en_8": [
+    137,
+    54,
+    136,
+    26
+   ],
+   "banner_en_9": [
+    274,
+    54,
+    136,
+    26
+   ],
+   "burst_0": [
+    411,
+    54,
+    128,
+    128
+   ],
+   "burst_1": [
+    540,
+    54,
+    128,
+    128
+   ],
+   "burst_2": [
+    669,
+    54,
+    128,
+    128
+   ],
+   "burst_3": [
+    798,
+    54,
+    128,
+    128
+   ],
+   "burst_4": [
+    927,
+    54,
+    128,
+    128
+   ],
+   "burst_5": [
+    1056,
+    54,
+    128,
+    128
+   ],
+   "burst_6": [
+    0,
+    183,
+    128,
+    128
+   ],
+   "burst_7": [
+    129,
+    183,
+    128,
+    128
+   ],
+   "dmg_gold_0": [
+    258,
+    183,
+    10,
+    15
+   ],
+   "dmg_gold_1": [
+    269,
+    183,
+    10,
+    15
+   ],
+   "dmg_gold_2": [
+    280,
+    183,
+    10,
+    15
+   ],
+   "dmg_gold_3": [
+    291,
+    183,
+    10,
+    15
+   ],
+   "dmg_gold_4": [
+    302,
+    183,
+    10,
+    15
+   ],
+   "dmg_gold_5": [
+    313,
+    183,
+    10,
+    15
+   ],
+   "dmg_gold_6": [
+    324,
+    183,
+    10,
+    15
+   ],
+   "dmg_gold_7": [
+    335,
+    183,
+    10,
+    15
+   ],
+   "dmg_gold_8": [
+    346,
+    183,
+    10,
+    15
+   ],
+   "dmg_gold_9": [
+    357,
+    183,
+    10,
+    15
+   ],
+   "dmg_white_0": [
+    368,
+    183,
+    10,
+    15
+   ],
+   "dmg_white_1": [
+    379,
+    183,
+    10,
+    15
+   ],
+   "dmg_white_2": [
+    390,
+    183,
+    10,
+    15
+   ],
+   "dmg_white_3": [
+    401,
+    183,
+    10,
+    15
+   ],
+   "dmg_white_4": [
+    412,
+    183,
+    10,
+    15
+   ],
+   "dmg_white_5": [
+    423,
+    183,
+    10,
+    15
+   ],
+   "dmg_white_6": [
+    434,
+    183,
+    10,
+    15
+   ],
+   "dmg_white_7": [
+    445,
+    183,
+    10,
+    15
+   ],
+   "dmg_white_8": [
+    456,
+    183,
+    10,
+    15
+   ],
+   "dmg_white_9": [
+    467,
+    183,
+    10,
+    15
+   ],
+   "max_es": [
+    478,
+    183,
+    25,
+    14
+   ],
+   "max_en": [
+    504,
+    183,
+    25,
+    14
+   ]
+  },
+  "banner": {
+   "es": {
+    "ms": [
+     40,
+     40,
+     40,
+     50,
+     50,
+     50,
+     50,
+     420,
+     40,
+     40
+    ],
+    "hold": 7
+   },
+   "en": {
+    "ms": [
+     40,
+     40,
+     40,
+     50,
+     50,
+     50,
+     50,
+     420,
+     40,
+     40
+    ],
+    "hold": 7
+   }
+  },
+  "burstMs": [
+   50,
+   50,
+   50,
+   60,
+   60,
+   70,
+   80,
+   90
+  ],
+  "note": "A natural 20 on an attack: automatic critical, maximum damage. See timeline (ms at speed 1; the battle speed divides them; a click skips to the end).",
+  "timeline": [
+   {
+    "at": 0,
+    "what": "die",
+    "detail": "The die lands on 20 and plays its natural-20 row (about 0.6 s; the throw before it is not counted here)."
+   },
+   {
+    "at": 0,
+    "what": "swing",
+    "detail": "The attack plays as now; the beats below start on the frame the blow lands."
+   },
+   {
+    "at": 0,
+    "what": "hitStop",
+    "ms": 110,
+    "detail": "Everything holds still on the impact frame; the target flashes white."
+   },
+   {
+    "at": 0,
+    "what": "flash",
+    "ms": 90,
+    "detail": "Full-screen gold-white flash: 55% then 25% alpha (#fff6d6)."
+   },
+   {
+    "at": 0,
+    "what": "sound",
+    "detail": "The critical sting (see sound)."
+   },
+   {
+    "at": 40,
+    "what": "burst",
+    "detail": "burst_0..7 on the target, centred on its chest (world pixels)."
+   },
+   {
+    "at": 40,
+    "what": "shake",
+    "ms": 260,
+    "px": 6,
+    "detail": "The camera kicks 6 px toward the target and shakes, easing out."
+   },
+   {
+    "at": 110,
+    "what": "banner",
+    "detail": "banner_<lang>_0..9 in the banner slot (top third, centred, 3x): holds on frame 7 until 900 ms, then closes."
+   },
+   {
+    "at": 150,
+    "what": "damage",
+    "detail": "The maximum damage over the target: dmg_white digits for 60 ms at 4x, then dmg_gold at 3x with max_<lang> beside it; it rises 24 px and fades out by 1200 ms."
+   },
+   {
+    "at": 1050,
+    "what": "end",
+    "detail": "The next event plays."
+   }
+  ],
+  "sound": "tools/ui/dice-d20-sound.ts writes the sting as a WAV; the recipe there is the one to port to WebAudio."
+ },
+ "readout": {
+  "file": "readout.png",
+  "rects": {
+   "t_cream_0": [
+    0,
+    0,
+    7,
+    12
+   ],
+   "t_cream_1": [
+    8,
+    0,
+    7,
+    12
+   ],
+   "t_cream_2": [
+    16,
+    0,
+    7,
+    12
+   ],
+   "t_cream_3": [
+    24,
+    0,
+    7,
+    12
+   ],
+   "t_cream_4": [
+    32,
+    0,
+    7,
+    12
+   ],
+   "t_cream_5": [
+    40,
+    0,
+    7,
+    12
+   ],
+   "t_cream_6": [
+    48,
+    0,
+    7,
+    12
+   ],
+   "t_cream_7": [
+    56,
+    0,
+    7,
+    12
+   ],
+   "t_cream_8": [
+    64,
+    0,
+    7,
+    12
+   ],
+   "t_cream_9": [
+    72,
+    0,
+    7,
+    12
+   ],
+   "t_cream_+": [
+    80,
+    0,
+    7,
+    12
+   ],
+   "t_cream_-": [
+    88,
+    0,
+    6,
+    12
+   ],
+   "t_cream_=": [
+    95,
+    0,
+    6,
+    12
+   ],
+   "t_dim_0": [
+    102,
+    0,
+    7,
+    12
+   ],
+   "t_dim_1": [
+    110,
+    0,
+    7,
+    12
+   ],
+   "t_dim_2": [
+    118,
+    0,
+    7,
+    12
+   ],
+   "t_dim_3": [
+    126,
+    0,
+    7,
+    12
+   ],
+   "t_dim_4": [
+    134,
+    0,
+    7,
+    12
+   ],
+   "t_dim_5": [
+    142,
+    0,
+    7,
+    12
+   ],
+   "t_dim_6": [
+    150,
+    0,
+    7,
+    12
+   ],
+   "t_dim_7": [
+    158,
+    0,
+    7,
+    12
+   ],
+   "t_dim_8": [
+    166,
+    0,
+    7,
+    12
+   ],
+   "t_dim_9": [
+    174,
+    0,
+    7,
+    12
+   ],
+   "t_dim_+": [
+    182,
+    0,
+    7,
+    12
+   ],
+   "t_dim_-": [
+    190,
+    0,
+    6,
+    12
+   ],
+   "t_dim_=": [
+    197,
+    0,
+    6,
+    12
+   ],
+   "t_gold_0": [
+    204,
+    0,
+    7,
+    12
+   ],
+   "t_gold_1": [
+    212,
+    0,
+    7,
+    12
+   ],
+   "t_gold_2": [
+    220,
+    0,
+    7,
+    12
+   ],
+   "t_gold_3": [
+    228,
+    0,
+    7,
+    12
+   ],
+   "t_gold_4": [
+    236,
+    0,
+    7,
+    12
+   ],
+   "t_gold_5": [
+    244,
+    0,
+    7,
+    12
+   ],
+   "t_gold_6": [
+    252,
+    0,
+    7,
+    12
+   ],
+   "t_gold_7": [
+    260,
+    0,
+    7,
+    12
+   ],
+   "t_gold_8": [
+    268,
+    0,
+    7,
+    12
+   ],
+   "t_gold_9": [
+    276,
+    0,
+    7,
+    12
+   ],
+   "t_gold_+": [
+    284,
+    0,
+    7,
+    12
+   ],
+   "t_gold_-": [
+    292,
+    0,
+    6,
+    12
+   ],
+   "t_gold_=": [
+    299,
+    0,
+    6,
+    12
+   ],
+   "t_dull_0": [
+    306,
+    0,
+    7,
+    12
+   ],
+   "t_dull_1": [
+    314,
+    0,
+    7,
+    12
+   ],
+   "t_dull_2": [
+    322,
+    0,
+    7,
+    12
+   ],
+   "t_dull_3": [
+    330,
+    0,
+    7,
+    12
+   ],
+   "t_dull_4": [
+    338,
+    0,
+    7,
+    12
+   ],
+   "t_dull_5": [
+    346,
+    0,
+    7,
+    12
+   ],
+   "t_dull_6": [
+    354,
+    0,
+    7,
+    12
+   ],
+   "t_dull_7": [
+    362,
+    0,
+    7,
+    12
+   ],
+   "t_dull_8": [
+    370,
+    0,
+    7,
+    12
+   ],
+   "t_dull_9": [
+    378,
+    0,
+    7,
+    12
+   ],
+   "t_dull_+": [
+    386,
+    0,
+    7,
+    12
+   ],
+   "t_dull_-": [
+    394,
+    0,
+    6,
+    12
+   ],
+   "t_dull_=": [
+    0,
+    13,
+    6,
+    12
+   ],
+   "big_good_0": [
+    7,
+    13,
+    8,
+    13
+   ],
+   "big_good_1": [
+    16,
+    13,
+    8,
+    13
+   ],
+   "big_good_2": [
+    25,
+    13,
+    8,
+    13
+   ],
+   "big_good_3": [
+    34,
+    13,
+    8,
+    13
+   ],
+   "big_good_4": [
+    43,
+    13,
+    8,
+    13
+   ],
+   "big_good_5": [
+    52,
+    13,
+    8,
+    13
+   ],
+   "big_good_6": [
+    61,
+    13,
+    8,
+    13
+   ],
+   "big_good_7": [
+    70,
+    13,
+    8,
+    13
+   ],
+   "big_good_8": [
+    79,
+    13,
+    8,
+    13
+   ],
+   "big_good_9": [
+    88,
+    13,
+    8,
+    13
+   ],
+   "big_bad_0": [
+    97,
+    13,
+    8,
+    13
+   ],
+   "big_bad_1": [
+    106,
+    13,
+    8,
+    13
+   ],
+   "big_bad_2": [
+    115,
+    13,
+    8,
+    13
+   ],
+   "big_bad_3": [
+    124,
+    13,
+    8,
+    13
+   ],
+   "big_bad_4": [
+    133,
+    13,
+    8,
+    13
+   ],
+   "big_bad_5": [
+    142,
+    13,
+    8,
+    13
+   ],
+   "big_bad_6": [
+    151,
+    13,
+    8,
+    13
+   ],
+   "big_bad_7": [
+    160,
+    13,
+    8,
+    13
+   ],
+   "big_bad_8": [
+    169,
+    13,
+    8,
+    13
+   ],
+   "big_bad_9": [
+    178,
+    13,
+    8,
+    13
+   ],
+   "big_gold_0": [
+    187,
+    13,
+    8,
+    13
+   ],
+   "big_gold_1": [
+    196,
+    13,
+    8,
+    13
+   ],
+   "big_gold_2": [
+    205,
+    13,
+    8,
+    13
+   ],
+   "big_gold_3": [
+    214,
+    13,
+    8,
+    13
+   ],
+   "big_gold_4": [
+    223,
+    13,
+    8,
+    13
+   ],
+   "big_gold_5": [
+    232,
+    13,
+    8,
+    13
+   ],
+   "big_gold_6": [
+    241,
+    13,
+    8,
+    13
+   ],
+   "big_gold_7": [
+    250,
+    13,
+    8,
+    13
+   ],
+   "big_gold_8": [
+    259,
+    13,
+    8,
+    13
+   ],
+   "big_gold_9": [
+    268,
+    13,
+    8,
+    13
+   ],
+   "label_CA": [
+    277,
+    13,
+    11,
+    11
+   ],
+   "label_CD": [
+    289,
+    13,
+    11,
+    11
+   ],
+   "label_AC": [
+    301,
+    13,
+    11,
+    11
+   ],
+   "label_DC": [
+    313,
+    13,
+    11,
+    11
+   ],
+   "l_dim_0": [
+    325,
+    13,
+    6,
+    11
+   ],
+   "l_dim_1": [
+    332,
+    13,
+    5,
+    11
+   ],
+   "l_dim_2": [
+    338,
+    13,
+    6,
+    11
+   ],
+   "l_dim_3": [
+    345,
+    13,
+    6,
+    11
+   ],
+   "l_dim_4": [
+    352,
+    13,
+    6,
+    11
+   ],
+   "l_dim_5": [
+    359,
+    13,
+    6,
+    11
+   ],
+   "l_dim_6": [
+    366,
+    13,
+    6,
+    11
+   ],
+   "l_dim_7": [
+    373,
+    13,
+    6,
+    11
+   ],
+   "l_dim_8": [
+    380,
+    13,
+    6,
+    11
+   ],
+   "l_dim_9": [
+    387,
+    13,
+    6,
+    11
+   ],
+   "mark_ok": [
+    0,
+    27,
+    9,
+    9
+   ],
+   "mark_fail": [
+    10,
+    27,
+    9,
+    9
+   ],
+   "adv_es": [
+    20,
+    27,
+    45,
+    11
+   ],
+   "dis_es": [
+    66,
+    27,
+    60,
+    11
+   ],
+   "adv_en": [
+    127,
+    27,
+    55,
+    11
+   ],
+   "dis_en": [
+    183,
+    27,
+    69,
+    11
+   ]
+  },
+  "note": "t_<ink>_<char> (title font; inks cream, dim, gold for a natural 20, dull for a natural 1), big_<good|bad|gold>_<digit> (the total), label_<CA|CD|AC|DC>, l_dim_<digit>, mark_ok/mark_fail, adv_/dis_<lang>. Layout: die number, sign, bonus, =, total, mark, label and target, on a dark plaque (PANEL #16120c at 92%, rim #6e5d40 lit #b3a383, outline #140c05), 18 art pixels tall."
+ },
+ "gem": {
+  "keyTint": "blue",
+  "keys": [
+   "#08122d",
+   "#0a2560",
+   "#113f90",
+   "#1858c0",
+   "#277cd8",
+   "#36a0f0",
+   "#63c0f8",
+   "#90e0ff",
+   "#fffffe"
+  ],
+  "note": "gem sheets are drawn in these key colours; swap each for the same step of diceGemRamp(caster tint) (src/sprite/diceGem.ts). Every chakra colour id and any #rrggbb work.",
+  "ramps": {
+   "red": [
+    "#29080f",
+    "#5c0b16",
+    "#881119",
+    "#b3161c",
+    "#d0281c",
+    "#ec3a1c",
+    "#f66a25",
+    "#ff9a2e",
+    "#ffeb8a"
+   ],
+   "orange": [
+    "#281009",
+    "#5a1e06",
+    "#873109",
+    "#b4440c",
+    "#d36012",
+    "#f27c18",
+    "#f99d2a",
+    "#ffbe3c",
+    "#fff4b8"
+   ],
+   "yellow": [
+    "#221707",
+    "#4a3000",
+    "#795200",
+    "#a87400",
+    "#cc9e0c",
+    "#f0c818",
+    "#f8dd49",
+    "#fff27a",
+    "#ffffff"
+   ],
+   "green": [
+    "#091b13",
+    "#0b3a1e",
+    "#145a29",
+    "#1d7a34",
+    "#2d9b3e",
+    "#3dbc48",
+    "#6ed659",
+    "#9ef06a",
+    "#eaffd2"
+   ],
+   "blue": [
+    "#08122d",
+    "#0a2560",
+    "#113f90",
+    "#1858c0",
+    "#277cd8",
+    "#36a0f0",
+    "#63c0f8",
+    "#90e0ff",
+    "#ffffff"
+   ],
+   "indigo": [
+    "#0b081b",
+    "#120c34",
+    "#1e1754",
+    "#2a2174",
+    "#3a3092",
+    "#4a3eb0",
+    "#6559ca",
+    "#7f74e4",
+    "#c8c0ff"
+   ],
+   "violet": [
+    "#150822",
+    "#2a0a44",
+    "#46156f",
+    "#62209a",
+    "#8436bd",
+    "#a54ce0",
+    "#bf71f0",
+    "#d996ff",
+    "#f8e6ff"
+   ],
+   "white": [
+    "#302816",
+    "#6e5a26",
+    "#997e39",
+    "#c4a24c",
+    "#dac280",
+    "#efe2b4",
+    "#f7efce",
+    "#fffbe8",
+    "#ffffff"
+   ],
+   "black": [
+    "#040407",
+    "#000000",
+    "#07030a",
+    "#0e0614",
+    "#2c0d42",
+    "#4a1470",
+    "#7626b0",
+    "#a238f0",
+    "#ff2c50"
+   ],
+   "brown": [
+    "#130c0b",
+    "#24160b",
+    "#3f2814",
+    "#5a3a1c",
+    "#7a5229",
+    "#9a6a36",
+    "#b7874d",
+    "#d4a464",
+    "#f6e3b4"
+   ]
+  }
+ },
+ "goldColours": [
+  "#1a1004",
+  "#3e2c0c",
+  "#6b5420",
+  "#958035",
+  "#bca659",
+  "#dcc87e",
+  "#f0e2a6",
+  "#fff6d6",
+  "#ffffff"
+ ]
+}

@@ -1,0 +1,37 @@
+{
+ "group": "vfx_beasts_crows",
+ "pxPerMeter": 57,
+ "sprites": {
+  "genjutsu": {
+   "label": "Crow swarm (genjutsu)",
+   "file": "genjutsu.png",
+   "frameW": 221,
+   "frameH": 170,
+   "anchor": [
+    116,
+    90
+   ],
+   "meters": [
+    3.9,
+    3
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    },
+    "summon": {
+     "row": 1,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  }
+ }
+}

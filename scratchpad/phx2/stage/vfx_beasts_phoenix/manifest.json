@@ -1,0 +1,43 @@
+{
+ "group": "vfx_beasts_phoenix",
+ "pxPerMeter": 57,
+ "sprites": {
+  "fire": {
+   "label": "Phoenix (fire)",
+   "file": "fire.png",
+   "frameW": 127,
+   "frameH": 105,
+   "anchor": [
+    82,
+    63
+   ],
+   "meters": [
+    2,
+    1.7
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    },
+    "dive": {
+     "row": 1,
+     "frames": 5,
+     "fps": 10,
+     "loop": true
+    },
+    "attack": {
+     "row": 2,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,8 @@
+top_tee|Training Tee
+top_highcollar|High-Collar Shirt
+top_longsleeve|Long-Sleeve Tunic
+top_mesh|Mesh Undershirt
+top_jacket|Track Jacket
+top_kimono|Wrap Kimono
+top_sleeveless|Sleeveless Tunic
+top_royalcoat|Royal Long Coat

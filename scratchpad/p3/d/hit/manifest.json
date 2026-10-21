@@ -1,0 +1,31 @@
+{
+ "group": "hit",
+ "pxPerMeter": 57,
+ "sprites": {
+  "hit": {
+   "label": "Poison hit: spiky green splat with drops",
+   "file": "hit.png",
+   "frameW": 84,
+   "frameH": 81,
+   "anchor": [
+    43,
+    41
+   ],
+   "meters": [
+    1.47,
+    1.42
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  }
+ }
+}

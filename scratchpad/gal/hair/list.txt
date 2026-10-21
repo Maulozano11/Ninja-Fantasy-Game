@@ -1,0 +1,20 @@
+hair_sunburst|Sunburst Spikes
+hair_raven|Raven Fringe
+hair_warlord|Warlord Mane
+hair_flash|Flash Fringe
+hair_tousled|Tousled Crown
+hair_scholar|Scholar Waves
+hair_gravity|Gravity Defier
+hair_lowtail|Low Tail
+hair_storm|Storm Spikes
+hair_silver|Silver Cascade
+hair_lion|Lion Fringe
+hair_crest|Wild Crest
+hair_midnight|Midnight Tousle
+hair_founder|Founder's Locks
+hair_helm|Pointed Knight Helm
+hair_long|Long Straight
+hair_pony|High Ponytail
+hair_buns|Twin Buns
+hair_bob|Short Bob
+hair_crop|Short Crop

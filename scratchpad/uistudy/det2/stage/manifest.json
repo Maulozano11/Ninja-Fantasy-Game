@@ -1,0 +1,641 @@
+{
+ "kit": "ui_battle",
+ "reference": "docs/reference/ui-battle-owner-reference.jpg",
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "every art pixel is 2x2 screen pixels; draw with image-rendering: pixelated",
+ "sliceOrder": "top, right, bottom, left (screen pixels)",
+ "pieces": {
+  "menu_button": {
+   "file": "menu_button.png",
+   "group": "buttons",
+   "size": [
+    40,
+    44
+   ],
+   "use": "Menu button (top left, replaces the web navigation bar in battle): bronze square, red gem, three bars."
+  },
+  "button_small": {
+   "file": "button_small.png",
+   "group": "buttons",
+   "size": [
+    24,
+    24
+   ],
+   "slice": [
+    8,
+    8,
+    8,
+    8
+   ],
+   "window": {
+    "x": 6,
+    "y": 6,
+    "w": 12,
+    "h": 12,
+    "shape": "rect"
+   },
+   "use": "Small square button (his, above the party frames); 9-slice; an emblem goes inside."
+  },
+  "target_bar": {
+   "file": "target_bar.png",
+   "group": "target bar",
+   "size": [
+    400,
+    32
+   ],
+   "slice": [
+    0,
+    40,
+    0,
+    40
+   ],
+   "window": {
+    "x": 38,
+    "y": 10,
+    "w": 324,
+    "h": 12,
+    "shape": "rect"
+   },
+   "use": "Chained plaque for the targeted or hovered enemy (or the boss): 3-slice; the red fill goes in the channel."
+  },
+  "target_fill": {
+   "file": "target_fill.png",
+   "group": "target bar",
+   "size": [
+    32,
+    12
+   ],
+   "slice": [
+    0,
+    4,
+    0,
+    4
+   ],
+   "use": "Red fill for the target plaque channel (3-slice, stretch to the HP fraction)."
+  },
+  "chain_left": {
+   "file": "chain_left.png",
+   "group": "turn row",
+   "size": [
+    76,
+    108
+   ],
+   "use": "Chain from the top edge down to the round medallion's left gem."
+  },
+  "chain_right": {
+   "file": "chain_right.png",
+   "group": "turn row",
+   "size": [
+    92,
+    112
+   ],
+   "use": "Chain from the top edge down to the end circle of the turn row."
+  },
+  "chain_sag": {
+   "file": "chain_sag.png",
+   "group": "turn row",
+   "size": [
+    116,
+    36
+   ],
+   "use": "Chain hanging under the turn row."
+  },
+  "round_medallion": {
+   "file": "round_medallion.png",
+   "group": "turn row",
+   "size": [
+    72,
+    80
+   ],
+   "window": {
+    "x": 16,
+    "y": 20,
+    "w": 40,
+    "h": 40,
+    "shape": "rect"
+   },
+   "use": "Round counter medallion (\"RONDA\" over the number); four gem tips. The chains hang from its left gem."
+  },
+  "init_active": {
+   "file": "init_active.png",
+   "group": "turn row",
+   "size": [
+    44,
+    44
+   ],
+   "window": {
+    "x": 6,
+    "y": 6,
+    "w": 32,
+    "h": 32,
+    "shape": "rect"
+   },
+   "use": "Turn row: the acting unit, a gold square frame (portrait in the window)."
+  },
+  "init_ally": {
+   "file": "init_ally.png",
+   "group": "turn row",
+   "size": [
+    36,
+    42
+   ],
+   "window": {
+    "x": 4,
+    "y": 4,
+    "w": 28,
+    "h": 28,
+    "shape": "circle"
+   },
+   "use": "Turn row: an ally (round window, blue base)."
+  },
+  "init_enemy": {
+   "file": "init_enemy.png",
+   "group": "turn row",
+   "size": [
+    36,
+    42
+   ],
+   "window": {
+    "x": 4,
+    "y": 4,
+    "w": 28,
+    "h": 28,
+    "shape": "circle"
+   },
+   "use": "Turn row: an enemy (round window, red base)."
+  },
+  "init_end": {
+   "file": "init_end.png",
+   "group": "turn row",
+   "size": [
+    44,
+    34
+   ],
+   "window": {
+    "x": 16,
+    "y": 6,
+    "w": 22,
+    "h": 22,
+    "shape": "circle"
+   },
+   "use": "Turn row: the empty circle that closes the round, with its link."
+  },
+  "minimap_ring": {
+   "file": "minimap_ring.png",
+   "group": "minimap",
+   "size": [
+    196,
+    196
+   ],
+   "window": {
+    "x": 24,
+    "y": 24,
+    "w": 148,
+    "h": 148,
+    "shape": "circle"
+   },
+   "use": "Round minimap frame: lace rim, ivory band, gold inner ring, eight gems. The map shows through the round window."
+  },
+  "bar_frame": {
+   "file": "bar_frame.png",
+   "group": "action bar",
+   "size": [
+    80,
+    80
+   ],
+   "slice": [
+    24,
+    24,
+    24,
+    24
+   ],
+   "outset": [
+    6,
+    6,
+    6,
+    6
+   ],
+   "use": "Action bar frame: 9-slice. Rails, studded inner line, dark panel; red gems on the top corners, green below."
+  },
+  "gem_red": {
+   "file": "gem_red.png",
+   "group": "ornaments",
+   "size": [
+    22,
+    22
+   ],
+   "use": "Loose red gem stud in a gold bezel (corners, medallions)."
+  },
+  "gem_green": {
+   "file": "gem_green.png",
+   "group": "ornaments",
+   "size": [
+    22,
+    22
+   ],
+   "use": "Loose green gem stud in a gold bezel (corners, medallions)."
+  },
+  "end_turn_gem": {
+   "file": "end_turn_gem.png",
+   "group": "action bar",
+   "size": [
+    18,
+    18
+   ],
+   "use": "Small red gem inside the bar's top-right corner (his); a candidate for the end-turn control."
+  },
+  "crest_strip": {
+   "file": "crest_strip.png",
+   "group": "crest",
+   "size": [
+    144,
+    52
+   ],
+   "slice": [
+    0,
+    60,
+    0,
+    60
+   ],
+   "window": {
+    "x": 56,
+    "y": 30,
+    "w": 32,
+    "h": 14,
+    "shape": "rect"
+   },
+   "use": "Raised strip over the action bar (3-slice): the HP bar sits in its left half, the chakra gems in its right half; the acting character medallion covers the middle. Scrollwork at both ends."
+  },
+  "medallion_active": {
+   "file": "medallion_active.png",
+   "group": "crest",
+   "size": [
+    124,
+    104
+   ],
+   "window": {
+    "x": 29,
+    "y": 21,
+    "w": 66,
+    "h": 66,
+    "shape": "circle"
+   },
+   "use": "Acting character medallion: the portrait shows through the round window. Sits on the middle of the crest strip."
+  },
+  "hp_fill": {
+   "file": "hp_fill.png",
+   "group": "crest",
+   "size": [
+    32,
+    10
+   ],
+   "slice": [
+    0,
+    4,
+    0,
+    4
+   ],
+   "use": "Red HP fill in the crest strip's left half (3-slice)."
+  },
+  "chakra_red": {
+   "file": "chakra_red.png",
+   "group": "crest",
+   "size": [
+    18,
+    22
+   ],
+   "use": "Chakra gem (red)."
+  },
+  "chakra_orange": {
+   "file": "chakra_orange.png",
+   "group": "crest",
+   "size": [
+    18,
+    22
+   ],
+   "use": "Chakra gem (orange)."
+  },
+  "chakra_blue": {
+   "file": "chakra_blue.png",
+   "group": "crest",
+   "size": [
+    18,
+    22
+   ],
+   "use": "Chakra gem (blue)."
+  },
+  "chakra_empty": {
+   "file": "chakra_empty.png",
+   "group": "crest",
+   "size": [
+    18,
+    22
+   ],
+   "use": "Spent chakra gem (socket)."
+  },
+  "pip_action": {
+   "file": "pip_action.png",
+   "group": "action bar",
+   "size": [
+    22,
+    22
+   ],
+   "use": "Action pip (green); \"spent\" when used."
+  },
+  "pip_bonus": {
+   "file": "pip_bonus.png",
+   "group": "action bar",
+   "size": [
+    22,
+    22
+   ],
+   "use": "Bonus action pip (orange)."
+  },
+  "pip_reaction": {
+   "file": "pip_reaction.png",
+   "group": "action bar",
+   "size": [
+    22,
+    22
+   ],
+   "use": "Reaction pip (magenta)."
+  },
+  "pip_spent": {
+   "file": "pip_spent.png",
+   "group": "action bar",
+   "size": [
+    22,
+    22
+   ],
+   "use": "A used pip (dark socket)."
+  },
+  "move_trough": {
+   "file": "move_trough.png",
+   "group": "action bar",
+   "size": [
+    48,
+    12
+   ],
+   "slice": [
+    0,
+    6,
+    0,
+    6
+   ],
+   "window": {
+    "x": 4,
+    "y": 2,
+    "w": 40,
+    "h": 8,
+    "shape": "rect"
+   },
+   "use": "Movement bar trough (3-slice); the teal fill goes inside (2 pixels in from each end, 1 from top and bottom)."
+  },
+  "move_fill": {
+   "file": "move_fill.png",
+   "group": "action bar",
+   "size": [
+    32,
+    8
+   ],
+   "slice": [
+    0,
+    4,
+    0,
+    4
+   ],
+   "use": "Teal movement fill (3-slice)."
+  },
+  "skill_slot": {
+   "file": "skill_slot.png",
+   "group": "action bar",
+   "size": [
+    56,
+    56
+   ],
+   "slice": [
+    10,
+    10,
+    10,
+    10
+   ],
+   "window": {
+    "x": 6,
+    "y": 6,
+    "w": 44,
+    "h": 44,
+    "shape": "rect"
+   },
+   "use": "Skill slot frame (his chamfered bronze square). The skill icon (painted later) goes in the window."
+  },
+  "skill_slot_active": {
+   "file": "skill_slot_active.png",
+   "group": "action bar",
+   "size": [
+    56,
+    56
+   ],
+   "slice": [
+    10,
+    10,
+    10,
+    10
+   ],
+   "window": {
+    "x": 6,
+    "y": 6,
+    "w": 44,
+    "h": 44,
+    "shape": "rect"
+   },
+   "use": "Skill slot, selected or hovered: the same frame in bright gold."
+  },
+  "skill_tag": {
+   "file": "skill_tag.png",
+   "group": "action bar",
+   "size": [
+    22,
+    20
+   ],
+   "window": {
+    "x": 4,
+    "y": 4,
+    "w": 14,
+    "h": 12,
+    "shape": "rect"
+   },
+   "use": "Number tag over a skill slot (the slot number in the label font)."
+  },
+  "item_slot": {
+   "file": "item_slot.png",
+   "group": "action bar",
+   "size": [
+    52,
+    52
+   ],
+   "slice": [
+    10,
+    10,
+    10,
+    10
+   ],
+   "window": {
+    "x": 6,
+    "y": 6,
+    "w": 40,
+    "h": 40,
+    "shape": "rect"
+   },
+   "use": "Item slot, greyed (his): double faint outline, dark well; the icon and label are drawn dim."
+  },
+  "item_badge": {
+   "file": "item_badge.png",
+   "group": "action bar",
+   "size": [
+    20,
+    20
+   ],
+   "use": "Blue count badge on an item slot (the count in the label font, white)."
+  },
+  "lower_plaque": {
+   "file": "lower_plaque.png",
+   "group": "action bar",
+   "size": [
+    160,
+    32
+   ],
+   "slice": [
+    0,
+    60,
+    0,
+    60
+   ],
+   "window": {
+    "x": 52,
+    "y": 6,
+    "w": 56,
+    "h": 20,
+    "shape": "rect"
+   },
+   "use": "Dark plaque under the action bar with corner brackets (3-slice); for the hint line or the combat log."
+  },
+  "party_frame": {
+   "file": "party_frame.png",
+   "group": "party",
+   "size": [
+    60,
+    80
+   ],
+   "slice": [
+    10,
+    10,
+    26,
+    10
+   ],
+   "window": {
+    "x": 6,
+    "y": 6,
+    "w": 48,
+    "h": 50,
+    "shape": "rect"
+   },
+   "use": "Party portrait frame (9-slice): portrait window on top, two bar wells below (red HP, then green)."
+  },
+  "party_hp_fill": {
+   "file": "party_hp_fill.png",
+   "group": "party",
+   "size": [
+    32,
+    8
+   ],
+   "slice": [
+    0,
+    4,
+    0,
+    4
+   ],
+   "use": "Party frame HP fill (red, 3-slice)."
+  },
+  "party_ch_fill": {
+   "file": "party_ch_fill.png",
+   "group": "party",
+   "size": [
+    32,
+    6
+   ],
+   "slice": [
+    0,
+    4,
+    0,
+    4
+   ],
+   "use": "Party frame second bar (his green; chakra), 3-slice."
+  },
+  "glyph_placeholder": {
+   "file": "glyph_placeholder.png",
+   "group": "glyphs",
+   "size": [
+    22,
+    22
+   ],
+   "use": "Faint placeholder in an empty skill slot until the owner paints the icons."
+  },
+  "glyph_pills": {
+   "file": "glyph_pills.png",
+   "group": "glyphs",
+   "size": [
+    18,
+    18
+   ],
+   "use": "Item icon: pills (dim)."
+  },
+  "glyph_bandage": {
+   "file": "glyph_bandage.png",
+   "group": "glyphs",
+   "size": [
+    18,
+    18
+   ],
+   "use": "Item icon: bandages (dim)."
+  },
+  "glyph_antidote": {
+   "file": "glyph_antidote.png",
+   "group": "glyphs",
+   "size": [
+    18,
+    18
+   ],
+   "use": "Item icon: antidote (dim)."
+  },
+  "glyph_seal": {
+   "file": "glyph_seal.png",
+   "group": "glyphs",
+   "size": [
+    18,
+    18
+   ],
+   "use": "Item icon: explosive seal (dim)."
+  },
+  "glyph_more": {
+   "file": "glyph_more.png",
+   "group": "glyphs",
+   "size": [
+    18,
+    18
+   ],
+   "use": "Item icon: more (dim)."
+  },
+  "glyph_emblem": {
+   "file": "glyph_emblem.png",
+   "group": "glyphs",
+   "size": [
+    14,
+    12
+   ],
+   "use": "Small gold emblem for the small button."
+  }
+ }
+}

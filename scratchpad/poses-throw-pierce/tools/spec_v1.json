@@ -1,0 +1,8 @@
+[
+ {"key":"male_katana","body":"male","held":"held_katana","pose":"throw"},
+ {"key":"male_naginata","body":"male","held":"held_naginata","pose":"throw"},
+ {"key":"male_none","body":"male","held":null,"pose":"throw"},
+ {"key":"male_katana","body":"male","held":"held_katana","pose":"pierce"},
+ {"key":"male_naginata","body":"male","held":"held_naginata","pose":"pierce"},
+ {"key":"male_none","body":"male","held":null,"pose":"pierce"}
+]

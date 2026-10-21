@@ -1,0 +1,374 @@
+{
+ "group": "vfx_chakra",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bolt": {
+   "label": "Chakra bolt: swirling vortex orb",
+   "file": "bolt.png",
+   "frameW": 80,
+   "frameH": 80,
+   "anchor": [
+    40,
+    40
+   ],
+   "meters": [
+    1.4,
+    1.4
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream": {
+   "label": "Chakra stream: beam threaded with seal rings (tileable 64 px)",
+   "file": "stream.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    0,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream_head": {
+   "label": "Chakra stream head: starburst orb",
+   "file": "stream_head.png",
+   "frameW": 81,
+   "frameH": 71,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.42,
+    1.25
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "breath": {
+   "label": "Chakra breath: open-hand cone of chakra (origin at the anchor)",
+   "file": "breath.png",
+   "frameW": 118,
+   "frameH": 108,
+   "anchor": [
+    9,
+    54
+   ],
+   "meters": [
+    2.07,
+    1.89
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "sphere": {
+   "label": "Chakra sphere: spiral sphere in a gold ring",
+   "file": "sphere.png",
+   "frameW": 71,
+   "frameH": 70,
+   "anchor": [
+    35,
+    31
+   ],
+   "meters": [
+    1.25,
+    1.23
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "slash": {
+   "label": "Chakra slash: glowing crescent",
+   "file": "slash.png",
+   "frameW": 66,
+   "frameH": 71,
+   "anchor": [
+    34,
+    35
+   ],
+   "meters": [
+    1.16,
+    1.25
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "multi": {
+   "label": "Chakra multi: three seal orbs",
+   "file": "multi.png",
+   "frameW": 62,
+   "frameH": 64,
+   "anchor": [
+    30,
+    32
+   ],
+   "meters": [
+    1.09,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "hit": {
+   "label": "Chakra hit: starburst round a gold seal",
+   "file": "hit.png",
+   "frameW": 88,
+   "frameH": 89,
+   "anchor": [
+    44,
+    44
+   ],
+   "meters": [
+    1.54,
+    1.56
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "blast": {
+   "label": "Chakra blast: pillar of light over a gold seal circle",
+   "file": "blast.png",
+   "frameW": 190,
+   "frameH": 200,
+   "anchor": [
+    93,
+    138
+   ],
+   "meters": [
+    3.33,
+    3.51
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 16,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "wall": {
+   "label": "Chakra wall: hexagon barrier in a gold frame (4.5 m x 1.8 m)",
+   "file": "wall.png",
+   "frameW": 279,
+   "frameH": 124,
+   "anchor": [
+    138,
+    117
+   ],
+   "meters": [
+    4.89,
+    2.18
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "aura": {
+   "label": "Chakra aura, front layer (draw OVER the character): near half of the seal ring and sparkles",
+   "file": "aura.png",
+   "frameW": 90,
+   "frameH": 132,
+   "anchor": [
+    45,
+    115
+   ],
+   "meters": [
+    1.58,
+    2.32
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 12,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "wall_diag": {
+   "label": "Chakra wall (3/4): hexagon barrier in a gold frame, with its shadow",
+   "file": "wall_diag.png",
+   "frameW": 295,
+   "frameH": 274,
+   "anchor": [
+    114,
+    190
+   ],
+   "meters": [
+    5.18,
+    4.81
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "wall_depth": {
+   "label": "Chakra wall (depth): seal barrier (ours, kept)",
+   "file": "wall_depth.png",
+   "frameW": 112,
+   "frameH": 304,
+   "anchor": [
+    56,
+    206
+   ],
+   "meters": [
+    1.96,
+    5.33
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "aura_back": {
+   "label": "Chakra aura, back layer (draw BEHIND the character): chakra flames and gold glow",
+   "file": "aura_back.png",
+   "frameW": 90,
+   "frameH": 132,
+   "anchor": [
+    45,
+    115
+   ],
+   "meters": [
+    1.58,
+    2.32
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 12,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

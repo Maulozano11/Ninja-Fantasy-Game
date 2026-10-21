@@ -1,0 +1,92 @@
+{
+ "group": "vfx_lightning_sig",
+ "pxPerMeter": 57,
+ "sprites": {
+  "kirin": {
+   "label": "Kirin: storm, thunder kanji and a great bolt (3 m)",
+   "file": "kirin.png",
+   "frameW": 640,
+   "frameH": 860,
+   "anchor": [
+    320,
+    720
+   ],
+   "meters": [
+    11.23,
+    15.09
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "gather": {
+     "row": 0,
+     "frames": 10,
+     "fps": 12,
+     "loop": false
+    },
+    "strike": {
+     "row": 1,
+     "frames": 8,
+     "fps": 16,
+     "loop": false
+    },
+    "impact": {
+     "row": 2,
+     "frames": 8,
+     "fps": 14,
+     "loop": false
+    },
+    "fade": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "kirin_enh": {
+   "label": "Kirin, enhanced: lightning dragon from the storm (4.5 m)",
+   "file": "kirin_enh.png",
+   "frameW": 768,
+   "frameH": 960,
+   "anchor": [
+    384,
+    750
+   ],
+   "meters": [
+    13.47,
+    16.84
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "gather": {
+     "row": 0,
+     "frames": 10,
+     "fps": 12,
+     "loop": false
+    },
+    "strike": {
+     "row": 1,
+     "frames": 8,
+     "fps": 16,
+     "loop": false
+    },
+    "impact": {
+     "row": 2,
+     "frames": 8,
+     "fps": 14,
+     "loop": false
+    },
+    "fade": {
+     "row": 3,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  }
+ }
+}

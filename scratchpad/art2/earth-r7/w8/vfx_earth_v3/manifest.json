@@ -1,0 +1,424 @@
+{
+ "group": "vfx_earth_v3",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bolt": {
+   "label": "Earth bolt: tumbling boulder with a dust trail",
+   "file": "bolt.png",
+   "frameW": 125,
+   "frameH": 72,
+   "anchor": [
+    100,
+    38
+   ],
+   "meters": [
+    2.19,
+    1.26
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "beast": {
+   "label": "Earth beast: stone serpent",
+   "file": "beast.png",
+   "frameW": 136,
+   "frameH": 96,
+   "anchor": [
+    64,
+    48
+   ],
+   "meters": [
+    2.39,
+    1.68
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream": {
+   "label": "Earth stream: golden spike row over rubble (tileable 64 px)",
+   "file": "stream.png",
+   "frameW": 64,
+   "frameH": 83,
+   "anchor": [
+    0,
+    63
+   ],
+   "meters": [
+    1.12,
+    1.46
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream_head": {
+   "label": "Earth stream head: bigger spikes, dust haze and flying chunks (anchor = joint with the last tile)",
+   "file": "stream_head.png",
+   "frameW": 159,
+   "frameH": 83,
+   "anchor": [
+    32,
+    63
+   ],
+   "meters": [
+    2.79,
+    1.46
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "breath": {
+   "label": "Earth breath: cone of dust with tumbling rocks (anchor = cone origin)",
+   "file": "breath.png",
+   "frameW": 139,
+   "frameH": 106,
+   "anchor": [
+    6,
+    54
+   ],
+   "meters": [
+    2.44,
+    1.86
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "sphere": {
+   "label": "Earth sphere: striped boulder-planet with a dusty orbit ring",
+   "file": "sphere.png",
+   "frameW": 130,
+   "frameH": 79,
+   "anchor": [
+    64,
+    45
+   ],
+   "meters": [
+    2.28,
+    1.39
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "slash": {
+   "label": "Earth slash: crescent of rock and dirt with a golden edge",
+   "file": "slash.png",
+   "frameW": 88,
+   "frameH": 103,
+   "anchor": [
+    50,
+    51
+   ],
+   "meters": [
+    1.54,
+    1.81
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "multi": {
+   "label": "Earth multi: three rock bullets with dust trails",
+   "file": "multi.png",
+   "frameW": 119,
+   "frameH": 79,
+   "anchor": [
+    64,
+    41
+   ],
+   "meters": [
+    2.09,
+    1.39
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "multi_hit": {
+   "label": "Earth multi impact: rock bullet burst (anchor = impact point; dust kicks back left, chunks fly right)",
+   "file": "multi_hit.png",
+   "frameW": 95,
+   "frameH": 98,
+   "anchor": [
+    72,
+    51
+   ],
+   "meters": [
+    1.67,
+    1.72
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "hit": {
+   "label": "Earth hit: rock explosion (dusty core, rocks, golden rays)",
+   "file": "hit.png",
+   "frameW": 129,
+   "frameH": 124,
+   "anchor": [
+    67,
+    60
+   ],
+   "meters": [
+    2.26,
+    2.18
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "blast": {
+   "label": "Earth blast: crystal spikes erupting in a dust cloud (anchor = ground centre)",
+   "file": "blast.png",
+   "frameW": 229,
+   "frameH": 162,
+   "anchor": [
+    122,
+    134
+   ],
+   "meters": [
+    4.02,
+    2.84
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 16,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "wall": {
+   "label": "Earth wall: fitted stone slabs with moss, grass and rubble (4.5 m)",
+   "file": "wall.png",
+   "frameW": 303,
+   "frameH": 148,
+   "anchor": [
+    146,
+    120
+   ],
+   "meters": [
+    5.32,
+    2.6
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "aura": {
+   "label": "Earth aura, front layer (draw OVER the character): dust ring near arc, pebbles at the feet",
+   "file": "aura.png",
+   "frameW": 108,
+   "frameH": 134,
+   "anchor": [
+    58,
+    119
+   ],
+   "meters": [
+    1.89,
+    2.35
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 12,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "aura_back": {
+   "label": "Earth aura, back layer (draw BEHIND the character): rock columns and the dust ring",
+   "file": "aura_back.png",
+   "frameW": 108,
+   "frameH": 134,
+   "anchor": [
+    58,
+    119
+   ],
+   "meters": [
+    1.89,
+    2.35
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 12,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "wall_diag": {
+   "label": "Earth wall (3/4): stone slabs along the diagonal, vines and rubble",
+   "file": "wall_diag.png",
+   "frameW": 256,
+   "frameH": 252,
+   "anchor": [
+    135,
+    178
+   ],
+   "meters": [
+    4.49,
+    4.42
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "wall_depth": {
+   "label": "Earth wall (end-on): overgrown stone pillar running into the screen",
+   "file": "wall_depth.png",
+   "frameW": 132,
+   "frameH": 266,
+   "anchor": [
+    48,
+    162
+   ],
+   "meters": [
+    2.32,
+    4.67
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,15 @@
+shadow_clone 23 #06031c #0d0826 #191432 #232036 #261e52 #2d235f #313042 #512a2c #383c4a #483284 #4e4b5a #5e5767 #6c6272 #7e7088 #86798e #918496 #9b8e9c #a598aa #b4a7b2 #c2b7c0 #d0c4bf #cfc4c7 #e3d0ff
+   88 is the area mean of his 130x130 pixels
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":0.95,"lowFreqBoxOnPalette":0.61,"ssim":0.762,"ssimBox":0.833,"hue":287,"hueHis":287,"colours":21,"thinRun":[6,"row",38]}
+   88 {"small":14,"smallHis":14,"smallDrawn":0,"smallOther":0,"lowFreq":0.67,"lowFreqBoxOnPalette":0.52,"ssim":0.926,"ssimBox":1,"hue":287,"hueHis":287,"colours":22,"thinRun":[11,"row",70]}
+dragon_fire_stream 22 #330614 #301b1e #520a18 #40262a #621c22 #7a1714 #90150e #a41c0c #b8250c #cc1e08 #da2c08 #e43d12 #f43d04 #f84f08 #f86c14 #fa8212 #fc9212 #fca61a #feb726 #feca40 #fedc50 #fff062
+   88 is the area mean of his 130x130 pixels
+   44 {"small":1,"smallHis":1,"smallDrawn":0,"smallOther":0,"lowFreq":1.2,"lowFreqBoxOnPalette":0.94,"ssim":0.746,"ssimBox":0.806,"hue":31,"hueHis":31,"colours":22,"thinRun":[6,"row",36]}
+   88 {"small":15,"smallHis":15,"smallDrawn":0,"smallOther":0,"lowFreq":0.71,"lowFreqBoxOnPalette":0.65,"ssim":0.947,"ssimBox":1,"hue":31,"hueHis":30,"colours":22,"thinRun":[7,"row",72]}
+water_dragon_suiryuudan 22 #0a1c36 #082449 #082a57 #0e3269 #103b76 #124683 #145190 #185c9c #1e68a8 #2673b2 #2e7ebc #368bc6 #3e97cf #46a5da #52b2de #5ebfe9 #6fcbef #82d6f6 #9be3f9 #b2f0fb #cefbfe #eefdfe
+   88 is the area mean of his 130x130 pixels
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":2.2,"lowFreqBoxOnPalette":1.64,"ssim":0.66,"ssimBox":0.73,"hue":253,"hueHis":251,"colours":22,"thinRun":[7,"row",22]}
+   88 {"small":64,"smallHis":64,"smallDrawn":0,"smallOther":0,"lowFreq":1.47,"lowFreqBoxOnPalette":1,"ssim":0.9,"ssimBox":1,"hue":255,"hueHis":253,"colours":22,"thinRun":[7,"row",43]}
+   marks at 44: the skin of his ninjas' hands making the sign: 14; the near-black outlines of his ninja and the clone: 60; his stars and the light edges of the smoke: 23
+   marks at 44: the dark mouth, teeth gaps and outline of his dragon head: 10; his teeth, eye and the brightest flame tongues: 49
+   marks at 44: his white foam, spray and the light crests of the water: 227; the dark lines between his water bands: 164

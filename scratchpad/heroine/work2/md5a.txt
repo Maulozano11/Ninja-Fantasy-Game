@@ -1,0 +1,12 @@
+d32ef4fd285bac9daffc1834a1921767  tools/refs/data/heroine-aurelia-layers.npy
+2deb67c048b26715a7b1a621d3a66583  tools/refs/data/heroine-aurelia-parts.npy
+6b355b3c4d70a832fe8ebe69a67f8981  tools/refs/data/heroine-aurelia-reduced.npy
+56ae153bbc227871ae44bb8acf939331  tools/refs/data/heroine-elise-layers.npy
+4ca6daf5970fae6d1a511d813c8ba0f3  tools/refs/data/heroine-elise-parts.npy
+51a4c08f3d53473311b14746039b6f8d  tools/refs/data/heroine-elise-reduced.npy
+2ba9624cda8dda7c9dfa8e4edbd21ee5  tools/refs/data/heroine-lyra-layers.npy
+294fbe3b927ce4fa54acc38a73e71c16  tools/refs/data/heroine-lyra-parts.npy
+7c8e1193f7a14fec14cdaadcb18f3404  tools/refs/data/heroine-lyra-reduced.npy
+96a0374fce0fce805aafa02d12409308  tools/refs/data/heroine-saya-layers.npy
+3bd44bb835af384e35f3a6cef22f95f4  tools/refs/data/heroine-saya-parts.npy
+bb7f4b9d0eb7b7169ad1e28af6086611  tools/refs/data/heroine-saya-reduced.npy

@@ -1,0 +1,81 @@
+a #220412
+b #190a1f
+c #320816
+d #380a04
+e #360f2b
+f #40121f
+g #50131e
+h #611823
+i #652414
+j #701a20
+k #7f2122
+l #902724
+m #a12e22
+n #855625
+o #924e3d
+p #b23326
+q #c13c28
+r #d0432a
+s #c25e3d
+t #de5228
+u #ed5929
+v #e06f36
+w #f66828
+x #e08640
+y #f87d22
+z #de9a89
+A #f8912c
+B #fca236
+C #e2b05c
+D #fbb937
+E #f9cd47
+F #f4ceae
+G #ffe666
+H #ffed3c
+I #fef58a
+J #fff9b6
+
+ffffhffffffffffffffffffffffffffffffffgffffff
+fffhhfffffhhhffffffggggfffffffffffffgjffffff
+fffhhjjgffhhfffffgghhchgghhhfffggffgjgffffgf
+fhrjhjjgfffgffffghhhcchhjjjhfffgfffjjfgfffgg
+hrmhjjjjgggffffhhhhhfchhhhffhfhhgffffgffffgg
+rhhmujjffgggffhhhhffhcccgglhfhjjhgfffffjjfgg
+hhmuujgfgggghhhhhhfffhmlllgcccjjjhgghfffjjfg
+uuButjfggffgjhhrrppllmljjgcchhjjhhhhhjffjjff
+uuBtjffggffgjjhrrrpplmmljgccchjjjjjjjhffllff
+uuBtqfgppgjjjjhjjjlllmmmllllhcccjjCjphfflflo
+AAAqfqppggjjljjrrrrrrmmggghhfcccjjjjphfhlffo
+ABAqqwwpggllkkjkjrAAErrmpgffcfffkjjjphhlwlfo
+BBBAAwwpjjmkjjkkljAEGGppmgggfcffkkjjkpjwwwow
+GGBBBwtjjjmjjjkkljADGGppkmgcffkkkkjkkjjmAAwA
+GIGBwBttjmwjjkgglllDDppkccchhgfffkkpppmmmBAB
+GGGkkAtAiiwlklggmglttkkcggghhgfffkrrppwmBBBB
+pppkkAAAiiwllglgmgttkkcggjjgjgfffkkwrpwnBBEG
+ppjpjEEihippgpkkmggpkhfhkkjjjfffkkkrwwAnjEEG
+pppjjjEghffgpkkppgppphfhkkkjjffffkkfrwAsjEGG
+ggggggghfkgpkcccgpgghtfhllkjjffmffffpADsjCGA
+ggggggghkkppfffgggttttfhklljfffmmfhfpnGnjkGA
+gjlhhhkppffkfffccggtttfklkkjffffmhfhpgngkxAg
+gjllfkkpfflkkkfgfcfggfflppkkffffmqfhpggkkxxg
+jjjffkffpplkkffggfffffppppkgfcfffqllplgkkxxg
+kjhqkqqpmmllffjjjjfgfprrrlpgcgclllqllpkkgggg
+lkhqqmmmpmlmmmjjjjgfpttwtllcggmclhhqlpkpffgk
+lkghggmpBBlqmkkkljgftwwtllcgkllmmmqhllplffkk
+lkgggkmBBGqqqjklllfgttwwlffggkpllppgggglfkkk
+lllllkksBqqjjqrrllftwwwurfgjkjkpllppqqleekkk
+lllqllksBllggltrllgwwwwurgfpjjpplppqptqefmmk
+lllqqlklsrgllfrtrlgwwwuwrrgrppfflEppttqfkmkm
+llllqkkllrglllfytgwwwBwwrgpprrpfmCCpBfffkkkD
+ttllllklrgglllfytgwBEBwwwgpmrtrfgmEEBkfkllqq
+gttlllkggglllllwytABBEBwAmmmrttmgmBBmfkkllqj
+gttlllllllllllwywtBABEEwAmmwwttmglppmfkllljf
+ghtllllllqqlllyBwwBBADGAwtrwAvvmgplmmklmmjjf
+hghtllmmlqvlltBBwwDDDGGAtrtwAvrmgplmflmmmjjf
+ghhljfimllvvltBGwwDDGIAAtrtwAyrkggpfflmmmjff
+ffhjlffillvvltBGBwwGIGAAAAwDDyrkgkffllmmkkfs
+fffjllfillGvttvBEEwGIGADAAADyyBrkkllrrlkhfks
+ffffjlliilvGGvvDEEEEIIDDAEDAyyBrrrrAGrlhgfsf
+ffffffililvGIGvDEIIEGIGEEGDAABBBwwAGArhhgfff
+ffgggffiwwAAGIEDEEIGEGIIEIGDEIEBwwEAiihhgfff
+fffgffffwAGAGGIIEEIIIGIIIIIGIEwwwEIACihhffff

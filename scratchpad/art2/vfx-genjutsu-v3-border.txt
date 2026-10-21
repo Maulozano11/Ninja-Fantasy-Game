@@ -1,0 +1,16 @@
+bolt         67x64   8 frames  ok
+beast       128x96   6 frames  ok  (copied through unchanged from vfx_genjutsu; another artist's)
+stream       64x64   8 frames  ok
+stream_head  67x64   8 frames  ok
+breath      112x110  8 frames  ok
+sphere       69x66   8 frames  ok
+slash        65x64   8 frames  ok
+multi        67x64   8 frames  ok
+hit          66x67  12 frames  ok
+blast       274x181 16 frames  ok
+wall        290x133 20 frames  ok
+aura         91x134 12 frames  ok
+aura_back    91x134 12 frames  ok
+wall_diag   312x231 20 frames  ok
+wall_depth  117x257 20 frames  ok
+frames checked: 174; frames of this set with opaque pixels on the border: 0 (stream sides and the head's left joint exempt)

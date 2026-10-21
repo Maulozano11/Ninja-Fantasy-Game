@@ -1,0 +1,31 @@
+// Close-up of Weapon Nodes on open ground: the party's and an enemy's, then lit and dimmed while aiming a warp.
+import { chromium } from '/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/pw/node_modules/playwright/index.mjs';
+const out = process.argv[2];
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1, locale: 'en-US' });
+await page.goto('http://127.0.0.1:5340/', { waitUntil: 'networkidle' });
+await page.evaluate(() => { localStorage.clear(); localStorage.setItem('shinobi.tips.off', '1'); });
+await page.reload({ waitUntil: 'networkidle' });
+await page.getByText('Rogues in the clearing').click();
+await page.waitForFunction(() => { const b = window.__battle; if (!b || b.busy()) return false; const s = b.state(); const u = s.units[s.order[s.turn]]; return u?.team === 'party' && u.controller === 'player'; }, null, { timeout: 120000 });
+const me = await page.evaluate(() => {
+  const b = window.__battle; const s = b.state(); const u = s.units[s.order[s.turn]];
+  u.character = { ...u.character, clan: 'Ryusei' };
+  u.jutsus = ['ryusei_warp', 'ryusei_swap', ...u.jutsus.filter((j) => !/^(mirai_|katon_|koton_|ryusei_)/.test(j))];
+  s.nodes.push({ id: 'p1', owner: u.id, pos: { x: u.pos.x + 3, z: u.pos.z + 1 } }, { id: 'p2', owner: u.id, pos: { x: u.pos.x + 5, z: u.pos.z - 1.5 } }, { id: 'p3', owner: u.id, pos: { x: u.pos.x + 25, z: u.pos.z } });
+  s.nodes.push({ id: 'e1', owner: 'raider_0', pos: { x: u.pos.x + 4, z: u.pos.z + 3 } });
+  b.act({ type: 'setController', unit: u.id, controller: 'player' });
+  b.centerOn(u.pos.x + 4, u.pos.z + 1);
+  return u.pos;
+});
+await page.keyboard.press('z');
+await page.waitForTimeout(300);
+await page.evaluate(([x, z]) => window.__battle.centerOn(x, z), [me.x + 4, me.z + 1]);
+await page.waitForTimeout(900);
+await page.screenshot({ path: `${out}/n1-nodes.png` });
+await page.keyboard.press('3');
+const p = await page.evaluate(([x, z]) => window.__battle.screenOf(x, z), [me.x + 5, me.z - 1.5]);
+await page.mouse.move(p.x, p.y);
+await page.waitForTimeout(500);
+await page.screenshot({ path: `${out}/n2-aim.png` });
+await browser.close();

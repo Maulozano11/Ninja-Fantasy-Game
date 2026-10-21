@@ -1,0 +1,81 @@
+{
+ "source": "icons-owner-reference-1.jpg",
+ "icons": {
+  "fireball_goukakyu": {
+   "box": [
+    33,
+    276,
+    234,
+    482
+   ],
+   "size": [
+    201,
+    206
+   ],
+   "slot": [
+    14,
+    256,
+    254,
+    501
+   ],
+   "what": "Fireball: a fire spiral with a white-hot core and sparks"
+  },
+  "kirin_thunder": {
+   "box": [
+    285,
+    276,
+    486,
+    482
+   ],
+   "size": [
+    201,
+    206
+   ],
+   "slot": [
+    266,
+    256,
+    506,
+    501
+   ],
+   "what": "Kirin: a roaring lightning dragon head, bolts all around"
+  },
+  "great_fire_annihilation": {
+   "box": [
+    537,
+    276,
+    738,
+    482
+   ],
+   "size": [
+    201,
+    206
+   ],
+   "slot": [
+    518,
+    256,
+    758,
+    501
+   ],
+   "what": "Great Fire Annihilation: a curling wave of fire with embers"
+  },
+  "water_shield_suijinheki": {
+   "box": [
+    789,
+    276,
+    990,
+    482
+   ],
+   "size": [
+    201,
+    206
+   ],
+   "slot": [
+    770,
+    256,
+    1010,
+    501
+   ],
+   "what": "Water Wall: a cresting wave with foam"
+  }
+ }
+}

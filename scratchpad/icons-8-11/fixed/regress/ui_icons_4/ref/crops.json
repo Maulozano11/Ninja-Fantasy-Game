@@ -1,0 +1,164 @@
+{
+ "grid": {
+  "4": {
+   "pitch": [
+    4.166666666666667,
+    4.164179104477612
+   ],
+   "spectrumPitch": [
+    4.1679,
+    4.1668
+   ],
+   "phase": [
+    0.5,
+    0.7
+   ],
+   "edgeRatio": [
+    1.849,
+    2.083
+   ],
+   "blockSpread": 1.375,
+   "source": "icons-owner-reference-4.jpg",
+   "row": [
+    25,
+    313,
+    1975,
+    779
+   ],
+   "rowScale": {
+    "1x": 0.10757946210268948,
+    "4x": 0.43031784841075793
+   }
+  }
+ },
+ "icons": {
+  "weapon_throw": {
+   "sheet": "4",
+   "box": [
+    14,
+    83,
+    112,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    8,
+    77,
+    118,
+    185
+   ],
+   "sheetBox": [
+    58,
+    346,
+    467,
+    746
+   ],
+   "sheetSlot": [
+    33,
+    321,
+    492,
+    771
+   ],
+   "what": "Throw: two kunai, a shuriken and a lit explosive tag over flames"
+  },
+  "dodge": {
+   "sheet": "4",
+   "box": [
+    132,
+    83,
+    230,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    126,
+    77,
+    236,
+    185
+   ],
+   "sheetBox": [
+    550,
+    346,
+    958,
+    746
+   ],
+   "sheetSlot": [
+    525,
+    321,
+    983,
+    771
+   ],
+   "what": "Dodge: a ninja leaping aside, a blue crescent trail, violet smoke"
+  },
+  "weapon_stow": {
+   "sheet": "4",
+   "box": [
+    250,
+    83,
+    348,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    244,
+    77,
+    354,
+    185
+   ],
+   "sheetBox": [
+    1042,
+    346,
+    1450,
+    746
+   ],
+   "sheetSlot": [
+    1017,
+    321,
+    1475,
+    771
+   ],
+   "what": "Stow weapon: a masked ninja sheathing his katana, a spark at the scabbard mouth"
+  },
+  "weapon_draw": {
+   "sheet": "4",
+   "box": [
+    368,
+    83,
+    466,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    362,
+    77,
+    472,
+    185
+   ],
+   "sheetBox": [
+    1533,
+    346,
+    1942,
+    746
+   ],
+   "sheetSlot": [
+    1508,
+    321,
+    1967,
+    771
+   ],
+   "what": "Draw weapon: two hands drawing a katana in a burst of light"
+  }
+ }
+}

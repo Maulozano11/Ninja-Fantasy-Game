@@ -1,0 +1,270 @@
+{
+ "group": "plants",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bush_round": {
+   "label": "Round Bush",
+   "file": "bush_round.png",
+   "frameW": 80,
+   "frameH": 83,
+   "anchor": [
+    41,
+    81
+   ],
+   "meters": [
+    1.3,
+    1.1
+   ],
+   "tags": [
+    "hide-spot",
+    "cover-half",
+    "flammable",
+    "destructible"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 4,
+     "loop": true
+    },
+    "rustle": {
+     "row": 1,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "bush_wide": {
+   "label": "Wide Shrub",
+   "file": "bush_wide.png",
+   "frameW": 119,
+   "frameH": 71,
+   "anchor": [
+    62,
+    69
+   ],
+   "meters": [
+    2,
+    0.9
+   ],
+   "tags": [
+    "hide-spot",
+    "cover-half",
+    "flammable",
+    "destructible"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 4,
+     "loop": true
+    },
+    "rustle": {
+     "row": 1,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "bush_flower": {
+   "label": "Azalea Bush",
+   "file": "bush_flower.png",
+   "frameW": 86,
+   "frameH": 77,
+   "anchor": [
+    44,
+    75
+   ],
+   "meters": [
+    1.4,
+    1
+   ],
+   "tags": [
+    "hide-spot",
+    "cover-half",
+    "flammable",
+    "destructible"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 4,
+     "loop": true
+    },
+    "rustle": {
+     "row": 1,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "tall_grass": {
+   "label": "Tall Grass",
+   "file": "tall_grass.png",
+   "frameW": 69,
+   "frameH": 64,
+   "anchor": [
+    37,
+    62
+   ],
+   "meters": [
+    1,
+    0.8
+   ],
+   "tags": [
+    "hide-spot",
+    "flammable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 5,
+     "loop": true
+    },
+    "rustle": {
+     "row": 1,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "reeds": {
+   "label": "Cattail Reeds",
+   "file": "reeds.png",
+   "frameW": 54,
+   "frameH": 90,
+   "anchor": [
+    26,
+    88
+   ],
+   "meters": [
+    0.8,
+    1.5
+   ],
+   "tags": [
+    "hide-spot",
+    "water",
+    "flammable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 5,
+     "loop": true
+    }
+   }
+  },
+  "fern": {
+   "label": "Fern",
+   "file": "fern.png",
+   "frameW": 56,
+   "frameH": 36,
+   "anchor": [
+    27,
+    34
+   ],
+   "meters": [
+    0.9,
+    0.6
+   ],
+   "tags": [
+    "ambient"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 5,
+     "loop": true
+    }
+   }
+  },
+  "flowers": {
+   "label": "Wildflowers",
+   "file": "flowers.png",
+   "frameW": 48,
+   "frameH": 21,
+   "anchor": [
+    24,
+    19
+   ],
+   "meters": [
+    0.8,
+    0.3
+   ],
+   "tags": [
+    "ambient"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 5,
+     "loop": true
+    }
+   }
+  },
+  "lily_pads": {
+   "label": "Lily Pads",
+   "file": "lily_pads.png",
+   "frameW": 90,
+   "frameH": 61,
+   "anchor": [
+    45,
+    46
+   ],
+   "meters": [
+    1.2,
+    0.15
+   ],
+   "tags": [
+    "water",
+    "ambient"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 4,
+     "loop": true
+    }
+   }
+  },
+  "mushroom_log": {
+   "label": "Mossy Log with Mushrooms",
+   "file": "mushroom_log.png",
+   "frameW": 117,
+   "frameH": 56,
+   "anchor": [
+    59,
+    54
+   ],
+   "meters": [
+    2,
+    0.6
+   ],
+   "tags": [
+    "cover-half",
+    "climbable",
+    "flammable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 5,
+     "loop": true
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,11 @@
+[
+ {"key":"male","body":"male","held":"held_katana","pose":"throw"},
+ {"key":"female","body":"female","held":"held_katana","pose":"throw"},
+ {"key":"bulky","body":"bulky","held":"held_crystal","pose":"throw"},
+ {"key":"slender","body":"slender","held":"held_flame_sword","pose":"throw"},
+ {"key":"naginata","body":"male","held":"held_naginata","pose":"throw"},
+ {"key":"unarmed","body":"male","held":null,"pose":"throw"},
+ {"key":"Aiden","preset":"Aiden","pose":"throw"},
+ {"key":"Solen","preset":"Solen","pose":"throw"},
+ {"key":"Akira","preset":"Akira","pose":"throw"}
+]

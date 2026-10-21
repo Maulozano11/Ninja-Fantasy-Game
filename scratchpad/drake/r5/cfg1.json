@@ -1,0 +1,7 @@
+{"pairs": [[2,3],[7,0],[1,2],[3,4],[6,7]], "img": "/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/drake/r5/tune-a.png",
+ "fly": {
+  "2": {"legs": {"nf": 16, "ff": -8, "nh": 16, "fh": 12, "tail": -12, "tip": -40}},
+  "3": {"legs": {"nf": -2, "ff": 2, "nh": -12, "fh": -10, "tail": 10, "tip": 30}},
+  "6": {"legs": {"nf": -12, "ff": -10, "nh": -16, "fh": -12, "tail": 10, "tip": 20}},
+  "7": {"legs": {"nf": -16, "ff": -14, "nh": -22, "fh": -18, "tail": 20, "tip": 45}}
+ }}

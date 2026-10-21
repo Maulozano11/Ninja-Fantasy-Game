@@ -1,0 +1,9 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+const src = readFileSync('/root/.claude/projects/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/workflows/scripts/world-sprites-wf_8ccf18e3-279.js', 'utf8');
+const body = src.slice(src.indexOf('const REPO'), src.indexOf('const DESIGN_SCHEMA'));
+const mod = new Function(body + '; return { COMMON, GROUPS };')();
+for (const g of mod.GROUPS) {
+  const text = `# World sprite brief: ${g.g}\n\n${mod.COMMON(g.g)}\n\n${g.spec}\n\n## Art-direction checklist (judge every sprite and frame against it before you finish)\n- Proportions: measure bounds() heights against m(meters) and against the 100 px character; fix anything off by more than about 10%.\n- Light from the upper left on every sprite; value budget (mostly steps 1-3); clusters, not speckle; no pillow shading, no banding, no flat unshaded areas.\n- Silhouette: appealing and readable at 1x and 2x; no orphan pixels or jaggies; continuous outline; dark inner lines where parts overlap.\n- Material reads clearly (wood grain and plank seams, stone facets and chips, leaf clumps, fur tufts, flame shapes).\n- Palette coherent with MATERIALS and across the group.\n- Animation: smooth, seamless loops (compare the last frame with the first), rooted bases fixed, no whole-sprite jitter; one-shots have anticipation, impact and settle.\n- Technical: one canvas size and one anchor per sprite, anchor on the ground row, sensible tags, manifest correct, deterministic.\n\n## Battle-map context\nThe map now uses a steep camera: 57 px per meter across, 38 px per meter of depth (so ground ellipses such as shadows, lily pads, stone rings and tops of stumps are about 2/3 as tall as wide, not paper-thin). The sprites stand on a painted, misty green forest stage.\n`;
+  writeFileSync(`BRIEF-${g.g}.md`, text);
+}
+console.log('ok');

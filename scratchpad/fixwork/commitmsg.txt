@@ -1,0 +1,34 @@
+Throw pose review fixes: a real throw, his low head, capes along the back
+
+'throw' is now 5 frames at 8 fps: coil, cock, THROW, RELEASE (the owner's
+reference, where the phase starts), follow-through. The new throw frame whips
+the arm forward under the chin and flings the weapon level at the target while
+the body pitches halfway (lean 9 -> 21 -> 32, the head moving in two even
+steps), so the weapon visibly leaves the hand instead of vanishing from a still
+raised one. throwRelease() now starts the flight where that frame holds the
+weapon (the flame longsword at its own grip, the hand joint) at the angle it
+was flung at (blades 4, naginata 2: point first at the target);
+THROW_RELEASE_FRAME is 3.
+
+Release frame closer to his picture: the head hangs ahead of the chest below
+the shoulder line (31 degrees below level from the neck; his 33). The free arm
+is swept back and down behind the torso instead of showing a fist under the
+throwing elbow (our three-quarter front view puts his far-side arm behind the
+back). The naginata is raised nearly upright beside the head on the cock frame
+instead of across the hair.
+
+Capes on the pitched frames are hung from the body standing upright and turned
+forward with it (compose.ts drawPitchedCape): the cloth lies along the back
+from the shoulders and streams out behind, a coat's front panel (White Battle
+Haori, Rogue Storm Cloak) follows the torso instead of hanging to the ankle,
+and what would hang between the legs is cut. Blades and the naginata stowed on
+the back turn with the pitched body on 'throw' and 'pierce', so no tip shows
+under the chin.
+
+Minor: types.ts points at grip.ts throwRelease; the stance button is
+"Arrojar arma" so it is not confused with the cast's "Lanzar". New tests for
+all of it; every frame of the 16 existing poses is pixel-identical (2439
+frames).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01E1PN8FTpA19jzx1FNkVfPu

@@ -1,0 +1,37 @@
+{
+ "group": "wall",
+ "pxPerMeter": 57,
+ "sprites": {
+  "wall": {
+   "label": "wall",
+   "file": "wall.png",
+   "frameW": 292,
+   "frameH": 141,
+   "anchor": [
+    145,
+    129
+   ],
+   "meters": [
+    5.12,
+    2.47
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

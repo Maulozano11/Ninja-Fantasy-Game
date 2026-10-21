@@ -1,0 +1,20 @@
+dragon_fire_bomb 39 #220412 #190a1f #280600 #320816 #360f2b #4a0100 #40121f #3a1c1f #50131e #4c1c0d #611823 #701a20 #7f2122 #802f0a #902724 #a12e22 #924e3d #b23326 #a64a46 #c13c28 #d0432a #c6603c #de5228 #ed5929 #f66828 #e17d38 #f87d22 #e49854 #f8912c #e6987c #fca236 #fbb937 #f5c872 #f9cd47 #f4ceae #ffe666 #ffed3c #fef58a #fff9b6
+   88 drops columns 1,6,12,18,27,36,52,60,84,93 rows 2,8,17,28,44,75,84,94
+   covered: #c6603c #4c1c0d #924e3d #f4ceae #e49854 #fff9b6 #e6987c #190a1f #802f0a #e17d38 #f5c872 #280600 #a64a46 #3a1c1f #360f2b #4a0100
+   44 {"small":22,"smallHis":22,"smallDrawn":0,"smallOther":0,"lowFreq":1.96,"lowFreqBoxOnPalette":0.7,"ssim":0.681,"ssimBox":0.773,"hue":25,"hueHis":27,"colours":31,"thinRun":[5,"col",22]}
+   88 {"small":1582,"smallHis":1582,"smallDrawn":0,"smallOther":0,"lowFreq":1.98,"lowFreqBoxOnPalette":0.57,"ssim":0.356,"ssimBox":1,"hue":26,"hueHis":28,"colours":39,"thinRun":[7,"col",11]}
+wood_dragon_jutsu 31 #0a0c10 #121514 #28181c #0c2417 #3a1b09 #342424 #183426 #223233 #323022 #183914 #442e2a #124533 #144b34 #583d33 #1c593a #4c5036 #6c4c3a #22663c #715e42 #406f4d #367340 #835c40 #58743e #308850 #987050 #5a9144 #309e58 #b0855a #71ae49 #c89861 #daac64
+   88 drops columns 1,7,15,20,59,64,77,85,91,96 rows 2,8,39,45,53,76,82,88
+   covered: #4c5036 #58743e #5a9144 #323022 #183914 #715e42 #3a1b09 #223233 #406f4d
+   44 {"small":2,"smallHis":2,"smallDrawn":0,"smallOther":0,"lowFreq":1.86,"lowFreqBoxOnPalette":0.6,"ssim":0.641,"ssimBox":0.735,"hue":153,"hueHis":152,"colours":26,"thinRun":[6,"row",7]}
+   88 {"small":1457,"smallHis":1457,"smallDrawn":0,"smallOther":0,"lowFreq":1.25,"lowFreqBoxOnPalette":0.49,"ssim":0.395,"ssimBox":1,"hue":151,"hueHis":153,"colours":31,"thinRun":[9,"row",56]}
+adamantine_sealing_chains 42 #18000a #3d1035 #460c28 #501812 #5a1241 #681a1c #67155e #7c1947 #7c243c #88322a #7c4132 #882472 #921884 #a22144 #aa3a2d #a2502e #ac3d73 #bb3246 #ac5158 #b6643e #be3ed0 #d54d4a #d64870 #d03ec6 #e26443 #bc8548 #d27842 #d27286 #de8c52 #f0998a #fe87ba #f0a066 #fca546 #dfba98 #f3ba6b #ffa5fe #ffd06f #fbcad4 #ffe878 #fff25d #ffeec5 #fef6b2
+   88 drops columns 1,6,18,40,49,59,70,81,91,96 rows 2,14,26,36,46,78,88,94
+   covered: #ac5158 #bc8548 #ffa5fe #e26443 #921884 #7c4132 #ac3d73 #dfba98 #d64870 #7c243c #fca546 #f0998a #67155e #aa3a2d #501812 #fff25d #ffeec5 #3d1035 #be3ed0 #d27286
+   44 {"small":1,"smallHis":1,"smallDrawn":0,"smallOther":0,"lowFreq":1.64,"lowFreqBoxOnPalette":0.69,"ssim":0.723,"ssimBox":0.816,"hue":84,"hueHis":66,"colours":31,"thinRun":[5,"col",7]}
+   88 {"small":1006,"smallHis":1006,"smallDrawn":0,"smallOther":0,"lowFreq":1.48,"lowFreqBoxOnPalette":0.65,"ssim":0.68,"ssimBox":1,"hue":98,"hueHis":79,"colours":42,"thinRun":[14,"col",81]}
+taki_sixtyfour_palms 38 #070822 #0a122c #241721 #161c32 #0e2b28 #22273d #4c221a #2c3344 #193b51 #38424e #1c4f4b #584246 #4e504a #0a5678 #7a4a42 #04678a #266a6f #027393 #7c6456 #028280 #03819b #098fa3 #0e9e90 #b17a70 #0a9db2 #14adba #18b79a #1cbfc9 #35c683 #26cea4 #e2a28c #22d5dd #ecbea2 #54f2a0 #32edea #3ef2c5 #5cf98b #3afafd
+   88 drops columns 1,6,33,41,52,60,74,86,91,96 rows 1,19,27,36,48,62,78,94
+   covered: #0e9e90 #266a6f #584246 #0e2b28 #193b51 #7c6456 #241721 #3ef2c5 #028280 #4c221a #35c683 #1c4f4b #ecbea2 #18b79a #5cf98b #4e504a
+   44 {"small":2,"smallHis":2,"smallDrawn":0,"smallOther":0,"lowFreq":1.68,"lowFreqBoxOnPalette":0.63,"ssim":0.73,"ssimBox":0.788,"hue":212,"hueHis":216,"colours":31,"thinRun":[10,"row",42]}
+   88 {"small":929,"smallHis":929,"smallDrawn":0,"smallOther":0,"lowFreq":1.71,"lowFreqBoxOnPalette":0.59,"ssim":0.614,"ssimBox":1,"hue":219,"hueHis":219,"colours":38,"thinRun":[26,"row",85]}

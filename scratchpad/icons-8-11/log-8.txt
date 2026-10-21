@@ -1,0 +1,16 @@
+ryusei_swap 23 #12102e #1a1c38 #25283f #2c3548 #3f2086 #394450 #552ea2 #3a586c #623cbf #446e8a #7c43d7 #6860da #984ee8 #608892 #5e89dd #5299ac #bc7c66 #33adcc #34c4dc #6bbcf6 #4ad6ea #4fe7f2 #86f5fe
+   88 is the area mean of his 139x127 pixels
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":1.17,"lowFreqBoxOnPalette":0.79,"ssim":0.747,"ssimBox":0.803,"hue":219,"hueHis":219,"colours":23,"thinRun":[8,"row",8]}
+   88 {"small":14,"smallHis":14,"smallDrawn":0,"smallOther":0,"lowFreq":1,"lowFreqBoxOnPalette":0.62,"ssim":0.928,"ssimBox":1,"hue":219,"hueHis":219,"colours":23,"thinRun":[15,"col",59]}
+northstar_command 28 #0f061e #200a21 #380511 #4c031e #4d0818 #660a18 #6e021e #7a091a #8c0e1c #a1161e #a60626 #b41824 #cb1829 #ca3d43 #e32236 #f6283e #be7c88 #f86071 #fa5e6e #c89fb1 #ff8a61 #ff9dad #fea4ae #fdb6c2 #ffc5c8 #ffcdd6 #ffe6ea #fefdfe
+   88 is the area mean of his 127x127 pixels
+   edit: his sharingan (275 of his pixels: the dark ring, three tomoe and the pupil) painted out with his own iris colour at each distance from the centre (under his lid's shade, his shaded iris colour of that row)
+   44 {"small":1,"smallHis":0,"smallDrawn":1,"smallOther":0,"lowFreq":1.42,"lowFreqBoxOnPalette":0.79,"ssim":0.748,"ssimBox":0.833,"hue":22,"hueHis":22,"colours":28,"thinRun":[9,"col",2]}
+   88 {"small":14,"smallHis":14,"smallDrawn":0,"smallOther":0,"lowFreq":1.06,"lowFreqBoxOnPalette":0.59,"ssim":0.909,"ssimBox":1,"hue":22,"hueHis":22,"colours":28,"thinRun":[16,"row",7]}
+northstar_submission 22 #100921 #2a0424 #3b0928 #3f0a2a #54092a #601242 #700524 #741348 #8a102a #881550 #a0135a #b01c38 #a03b9d #c32346 #d82944 #f02c52 #f44e56 #f27584 #ff8848 #ec88e2 #fc98a2 #ffbbc5
+   88 is the area mean of his 127x127 pixels
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":1.18,"lowFreqBoxOnPalette":0.55,"ssim":0.74,"ssimBox":0.822,"hue":348,"hueHis":348,"colours":15,"thinRun":[8,"row",41]}
+   88 {"small":15,"smallHis":15,"smallDrawn":0,"smallOther":0,"lowFreq":0.79,"lowFreqBoxOnPalette":0.52,"ssim":0.928,"ssimBox":1,"hue":348,"hueHis":348,"colours":20,"thinRun":[17,"row",82]}
+   marks at 44: the skin round his ninjas' eyes and their fists: 7; the near-black outlines of his two ninjas: 0; the light strands of his vortex and wind: 128
+   marks at 44: his glowing ring, his flare and his embers: 52; the dark lines of his lids and lashes: 30
+   marks at 44: his star, the lit links of his chains and his embers: 21; the dark links of his chains: 117

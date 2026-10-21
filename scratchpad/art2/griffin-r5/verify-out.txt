@@ -1,0 +1,37 @@
+sheet 1040x94, frame 130x94, anchor [79, 59], fly 8 frames @ 10 fps loop=True
+row width 1040 (< 8192) True
+border: frames with a pixel on the edge: none
+light (mean alpha x luma): 0.267 0.258 0.238 0.220 0.204 0.217 0.236 0.256
+steps k->k+1: x0.97 x0.92 x0.92 x0.93 x1.07 x1.08 x1.08 x1.04 | largest step 7.6% of the peak
+piece map aligned at (4, 11) | all 8 staged frames equal the converter frames: True
+far wing (as it shows): frame, top-edge rise to the tip (deg, + = rises), top-3-rows width, left-3-columns height
+  f0: rise   20.1  top3 width   6  left3 height  12  tip at x=53
+  f1: rise   21.0  top3 width   6  left3 height  12  tip at x=53
+  f2: rise   17.9  top3 width   6  left3 height  12  tip at x=53
+  f3: rise  -13.4  top3 width  19  left3 height   6  tip at x=50
+  f4: rise  -23.5  top3 width  13  left3 height   5  tip at x=51
+  f5: rise  -13.4  top3 width  19  left3 height   6  tip at x=50
+  f6: rise   17.9  top3 width   6  left3 height  12  tip at x=53
+  f7: rise   21.0  top3 width   6  left3 height  12  tip at x=53
+tail px showing / tuft shown (its last 14 columns as drawn in f0 ... measured per frame on what shows):
+  tail px [335, 330, 147, 160, 252, 184, 142, 326]
+near wing tip (visible): [(15, 2), (12, 13), (9, 32), (12, 54), (21, 73), (15, 64), (9, 48), (8, 25)]
+  travel k->k+1 px: [11.4, 19.2, 22.2, 21.0, 10.8, 17.1, 23.0, 24.0] | max 24.0
+head shift per frame (px, - = up): [0, 0, -1, -1, -2, -2, -1, -1]
+  frames where the head reverses its step at once (twitch): none
+claw tips (reviewer points, shifted +3 px to the new anchor):
+  (127,71) ours (153, 170, 172)  | his (175, 180, 186)
+  (127,72) ours (119, 132, 134)  | his (107, 114, 124)
+  (123,74) ours (119, 132, 134)  | his (123, 139, 155)
+  (124,74) ours (84, 113, 128)  | his (102, 119, 135)
+  (115,79) ours (84, 113, 128)  | his (94, 105, 111)
+  (114,78) ours (172, 172, 148)  | his (167, 170, 161)
+  blue rim px touching a pale claw tip, all frames: 0
+semi-transparent alpha levels per frame: [[50, 78, 85, 108, 112, 142, 178, 215], [50, 78, 85, 108, 112, 142, 178, 215], [50, 78, 85, 108, 112, 142, 178, 215]] ...
+  f1: near-wing #384042/#594c37 px within 2 px of background/tail: 0; 1 px teeth on the near wing: 0
+  f2: near-wing #384042/#594c37 px within 2 px of background/tail: 0; 1 px teeth on the near wing: 0
+  f3: near-wing #384042/#594c37 px within 2 px of background/tail: 0; 1 px teeth on the near wing: 0
+  f4: near-wing #384042/#594c37 px within 2 px of background/tail: 0; 1 px teeth on the near wing: 0
+  f5: near-wing #384042/#594c37 px within 2 px of background/tail: 0; 1 px teeth on the near wing: 0
+  f6: near-wing #384042/#594c37 px within 2 px of background/tail: 0; 1 px teeth on the near wing: 0
+  f7: near-wing #384042/#594c37 px within 2 px of background/tail: 0; 1 px teeth on the near wing: 0

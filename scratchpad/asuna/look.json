@@ -1,0 +1,54 @@
+{
+ "version": 1,
+ "body": "female",
+ "skin": "#f3c9a8",
+ "eyeShape": "bright",
+ "eyeColor": "#7a4a2a",
+ "slots": {
+  "hair": {
+   "id": "hair_ribbon",
+   "colors": []
+  },
+  "top": {
+   "id": "top_longsleeve",
+   "colors": [
+    "#ecebf2",
+    "#cfcdd8"
+   ]
+  },
+  "bottom": {
+   "id": "bottom_shinobi",
+   "colors": [
+    "#ecebf2",
+    "#ecebf2"
+   ]
+  },
+  "armor": {
+   "id": "armor_seraph",
+   "colors": []
+  },
+  "feet": {
+   "id": "feet_leather",
+   "colors": [
+    "#ecebf2",
+    "#9a2a30"
+   ]
+  }
+ },
+ "accessories": [],
+ "headband": {
+  "position": "none",
+  "slashed": false,
+  "tails": false,
+  "emblem": "crescent",
+  "cloth": "#1e3a8a",
+  "plate": "#cbd5e1"
+ },
+ "chakra": {
+  "color": "red",
+  "onCharge": true,
+  "onCast": true,
+  "onVictory": true
+ },
+ "pixelEdits": []
+}

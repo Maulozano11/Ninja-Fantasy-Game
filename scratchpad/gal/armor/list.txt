@@ -1,0 +1,10 @@
+armor_flak|Field Flak Vest
+armor_shadowops|Shadow Ops Chestguard
+armor_legion|Legion Shinobi Plate
+armor_lamellar|Ronin Lamellar Armor
+armor_leather|Ember Leather Armor
+armor_desert|Desert Wrap Vest
+armor_storm|Storm Flak
+armor_bronze|Bronze Cuirass
+armor_wanderer|Wanderer Mantle
+armor_dread|Dread Plate

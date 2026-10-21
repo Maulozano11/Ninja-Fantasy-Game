@@ -1,0 +1,27 @@
+drake: his character 228 px tall, scale 0.4211 panel bg [34, 34, 44]
+key 0 body px 103530 rest px 85 shadow px 4883
+key 5 body px 71206 rest px 31134 shadow px 1950
+drake palette 50 outline [25, 21, 25] shadow [39, 33, 38] horn highlight [162, 157, 153] eye amber [200, 149, 74] far eye [175, 176, 81] (168 px)
+drake canvas (327, 196) anchor (180, 94)
+dust: boulders cut by his frame line at y [(1833, 1858), (1901, 1918)]
+dust: specks 23 halo px dropped 842
+dust palette [[226, 181, 121], [217, 177, 121], [199, 157, 107], [176, 130, 83], [166, 116, 68], [153, 114, 76], [136, 96, 62], [97, 70, 51], [93, 62, 44], [86, 55, 35]] pile px 23958 dust px 28267
+  frame 0: closed gaps (px) [1, 1, 20]
+  frame 1: closed gaps (px) [1, 20]
+  frame 2: closed gaps (px) [1, 21, 1, 18]
+  frame 3: closed gaps (px) []
+  frame 4: closed gaps (px) []
+  frame 5: closed gaps (px) []
+  frame 6: closed gaps (px) []
+  frame 7: closed gaps (px) [2, 2, 7]
+drake: feet line (lowest claw of frame 0) at y 175 of 196 ; anchor (180, 94)
+  frame 0: eye (273.5, 104.9); lowest solid y 175, lowest any y 175; clear margin L68 T32 R23 B20
+  frame 1: eye (274.0, 98.5); lowest solid y 172, lowest any y 172; clear margin L69 T28 R22 B23
+  frame 2: eye (274.4, 92.0); lowest solid y 171, lowest any y 171; clear margin L70 T23 R21 B24
+  frame 3: eye (273.0, 91.0); lowest solid y 175, lowest any y 175; clear margin L62 T24 R29 B20
+  frame 4: eye (273.2, 86.5); lowest solid y 175, lowest any y 175; clear margin L60 T21 R29 B20
+  frame 5: eye (273.5, 82.6); lowest solid y 175, lowest any y 175; clear margin L49 T19 R28 B20
+  frame 6: eye (272.6, 92.5); lowest solid y 143, lowest any y 175; clear margin L41 T23 R30 B20
+  frame 7: eye (271.9, 102.7); lowest solid y 146, lowest any y 175; clear margin L32 T31 R31 B20
+  eye steps 0->1 -6.5, 1->2 -6.5, 2->3 -0.9, 3->4 -4.5, 4->5 -3.9, 5->6 +9.9, 6->7 +10.2, 7->0 +2.2
+colors 78 bytes 151072

@@ -1,0 +1,14 @@
+fire       199x121 frames checked 19, smallest clear margin 1 px
+water      156x86 frames checked 8, smallest clear margin 1 px
+wind       166x123 frames checked 6, smallest clear margin 1 px
+lightning  171x96 frames checked 8, smallest clear margin 1 px
+earth      284x167 frames checked 8, smallest clear margin 3 px
+genjutsu   144x121 frames checked 6, smallest clear margin 1 px
+chakra     155x98 frames checked 6, smallest clear margin 1 px
+poison     156x93 frames checked 8, smallest clear margin 1 px
+border problems: 0
+earth mean lum of opaque px [75.4, 75.4, 75.4, 82.8, 84.7, 87.4, 84.9, 79.5]
+earth mean alpha x lum [29.4, 28.9, 28.6, 31.4, 31.3, 31.9, 31.3, 29.7]
+steps lum % [0.1, 0.0, 9.8, 2.3, 3.2, 2.9, 6.3, 5.2]
+steps alpha x lum % [1.7, 1.2, 9.8, 0.4, 2.1, 2.0, 5.2, 1.0]
+earth distinct colours (RGBA, alpha > 0): 87 ; distinct RGB: 72

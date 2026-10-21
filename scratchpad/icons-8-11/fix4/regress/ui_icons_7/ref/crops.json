@@ -1,0 +1,164 @@
+{
+ "grid": {
+  "7": {
+   "pitch": [
+    4.166666666666667,
+    4.164179104477612
+   ],
+   "spectrumPitch": [
+    4.1679,
+    4.1626
+   ],
+   "phase": [
+    0.5,
+    0.55
+   ],
+   "edgeRatio": [
+    2.003,
+    2.061
+   ],
+   "blockSpread": 1.033,
+   "source": "icons-owner-reference-7.jpg",
+   "row": [
+    25,
+    312,
+    1975,
+    779
+   ],
+   "rowScale": {
+    "1x": 0.10757946210268948,
+    "4x": 0.43031784841075793
+   }
+  }
+ },
+ "icons": {
+  "shove": {
+   "sheet": "7",
+   "box": [
+    14,
+    83,
+    112,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    8,
+    77,
+    118,
+    185
+   ],
+   "sheetBox": [
+    58,
+    346,
+    467,
+    745
+   ],
+   "sheetSlot": [
+    33,
+    321,
+    492,
+    770
+   ],
+   "what": "Shove: a ninja shoving a foe, a burst of impact, on orange"
+  },
+  "trip": {
+   "sheet": "7",
+   "box": [
+    132,
+    83,
+    230,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    126,
+    77,
+    236,
+    185
+   ],
+   "sheetBox": [
+    550,
+    346,
+    958,
+    745
+   ],
+   "sheetSlot": [
+    525,
+    321,
+    983,
+    770
+   ],
+   "what": "Trip: a ninja sweeping a kick that throws a foe off his feet, in dust"
+  },
+  "stabilize": {
+   "sheet": "7",
+   "box": [
+    250,
+    83,
+    348,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    244,
+    77,
+    354,
+    185
+   ],
+   "sheetBox": [
+    1042,
+    346,
+    1450,
+    745
+   ],
+   "sheetSlot": [
+    1017,
+    321,
+    1475,
+    770
+   ],
+   "what": "Heal: a ninja healing a fallen ally with green chakra"
+  },
+  "flee": {
+   "sheet": "7",
+   "box": [
+    368,
+    83,
+    466,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    362,
+    77,
+    472,
+    185
+   ],
+   "sheetBox": [
+    1533,
+    346,
+    1942,
+    745
+   ],
+   "sheetSlot": [
+    1508,
+    321,
+    1967,
+    770
+   ],
+   "what": "Escape: a ninja running into a bright doorway of light, on blue"
+  }
+ }
+}

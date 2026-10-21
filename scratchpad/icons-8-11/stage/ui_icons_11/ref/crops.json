@@ -1,0 +1,150 @@
+{
+ "grid": {
+  "11": {
+   "pitch": [
+    4.166666666666667,
+    4.164179104477612
+   ],
+   "spectrumPitch": [
+    4.1658,
+    4.1679
+   ],
+   "phase": [
+    0.5,
+    0.5
+   ],
+   "edgeRatio": [
+    1.595,
+    1.848
+   ],
+   "blockSpread": 1.933,
+   "source": "icons-owner-reference-11.jpg",
+   "row": [
+    29,
+    217,
+    1971,
+    833
+   ],
+   "rowScale": {
+    "1x": 0.08118081180811808,
+    "4x": 0.3247232472324723
+   }
+  }
+ },
+ "icons": {
+  "shadow_clone": {
+   "sheet": "11",
+   "box": [
+    18,
+    61,
+    148,
+    191
+   ],
+   "size": [
+    130,
+    130
+   ],
+   "slot": [
+    9,
+    54,
+    157,
+    198
+   ],
+   "sheetBox": [
+    75,
+    254,
+    617,
+    795
+   ],
+   "sheetSlot": [
+    38,
+    225,
+    654,
+    825
+   ],
+   "what": "Shadow Clone (Clon Sombra): a ninja making the hand sign, his clone stepping out of smoke, on violet",
+   "window": [
+    16,
+    61,
+    150,
+    191
+   ]
+  },
+  "dragon_fire_stream": {
+   "sheet": "11",
+   "box": [
+    175,
+    61,
+    305,
+    191
+   ],
+   "size": [
+    130,
+    130
+   ],
+   "slot": [
+    166,
+    54,
+    314,
+    198
+   ],
+   "sheetBox": [
+    729,
+    254,
+    1271,
+    795
+   ],
+   "sheetSlot": [
+    692,
+    225,
+    1308,
+    825
+   ],
+   "what": "Dragon Fire (Fuego Dragon): a roaring dragon head of fire, flames and dark smoke",
+   "window": [
+    173,
+    61,
+    307,
+    191
+   ]
+  },
+  "water_dragon_suiryuudan": {
+   "sheet": "11",
+   "box": [
+    332,
+    61,
+    462,
+    191
+   ],
+   "size": [
+    130,
+    130
+   ],
+   "slot": [
+    323,
+    54,
+    471,
+    198
+   ],
+   "sheetBox": [
+    1383,
+    254,
+    1925,
+    795
+   ],
+   "sheetSlot": [
+    1346,
+    225,
+    1963,
+    825
+   ],
+   "what": "Water Dragon (Dragon Agua): a dragon of water rising in an S out of the waves, on navy",
+   "window": [
+    330,
+    61,
+    464,
+    191
+   ]
+  }
+ }
+}

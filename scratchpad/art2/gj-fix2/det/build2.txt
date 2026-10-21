@@ -1,0 +1,15 @@
+bolt         67x64    anchor 49,32    fly 8f@10
+stream       64x64    anchor 0,32     fly 8f@10
+stream_head  67x64    anchor 32,32    fly 8f@10
+breath       112x110  anchor 8,54     fly 8f@10
+sphere       69x66    anchor 36,33    fly 8f@10
+slash        65x64    anchor 33,32    fly 8f@10
+multi        67x64    anchor 35,32    fly 8f@10
+hit          66x67    anchor 34,33    hit 12f@12
+blast        274x181  anchor 132,137  blast 16f@12
+wall         290x133  anchor 144,124  rise 12f@12, idle 8f@10
+aura         91x134   anchor 47,116   idle 12f@10
+aura_back    91x134   anchor 47,116   idle 12f@10
+wall_diag    312x231  anchor 118,169  rise 12f@12, idle 8f@10
+wall_depth   117x257  anchor 54,180   rise 12f@12, idle 8f@10
+wrote 14 sprites + beast (copied) to /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/gj-fix2/det/out2/vfx_genjutsu_v3

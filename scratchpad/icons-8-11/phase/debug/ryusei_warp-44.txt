@@ -1,0 +1,95 @@
+a #050e22
+b #00035a
+c #1a123a
+d #1f1844
+e #251e53
+f #14265a
+g #041384
+h #242e42
+i #30246a
+j #11249b
+k #462a84
+l #38328e
+m #254184
+n #4c377e
+o #344d60
+p #1d35ba
+q #43468c
+r #3349ac
+s #2d49cf
+t #6c3bb4
+u #466a7e
+v #4761bb
+w #6459bf
+x #3870a2
+y #415fdc
+z #9242d1
+A #805cbe
+B #4574c8
+C #7a58e0
+D #90725c
+E #8c57d7
+F #5a7ae8
+G #6a86c8
+H #548ccf
+I #ab76ea
+J #46a3d0
+K #2eaabf
+L #9490ec
+M #78a4bc
+N #799bf8
+O #6ca2eb
+P #4fbee6
+Q #88bfec
+R #99bbff
+S #64daf8
+T #94d4e6
+U #e6c3ff
+V #60f2fa
+W #c4e3ff
+X #e4ffff
+
+dddddddddddddddddddddddddeekkiffffiieeikieee
+ddddddddddddddddeedddddeeekieivvBBBxiieikiee
+ddddddddddddddddeeddddeeekieivkkvvBxxlieikee
+dddddeeddddddddddddddeeekkeirkrOSSSSSxlieiee
+dddddeeedddddddddddeeeeekkerkrOSSSSSHSHleeee
+dddddeeddddeddddeeeeeeeikekrrSSOCCqqSHSHleee
+dddddddddeeeeeeeeeeeeeeiiexxOSOCnknnqSHSweee
+ddddddddiieeeeeeeeeeeeeiixBrOSCkknqqHHHwBeee
+dddddittieeeeeeeeeeeeeixxBrBOOrrkkddqJJwBBee
+dddqttieeeieeeeeeeeeimmiiSrSSHXXrddddqVJwBee
+deeqqieeeieeeeeeeeemmieiBSSSOXFFXrcccdVJwwke
+eeeeeeeeieeeeeieemmeeeiBSSBOXFyyWFccdrJVwtke
+eeeeeeeeeeeeeeeiieeeeqSSBBSOXyyRWFrrrrrVJttk
+eeieeeeeeeeeeiieeeeqSSqqSBSOXFRRFXXXXXrVJttk
+eiieeeeeeeeeieeeeqPPqqSSBBSOXFFFRRRvWWrJVJkk
+eeeeeeeeeeeeeeeePPqqPSqqBBOXFFFRRRRvWWrJVJkk
+eeeeeeeeeeeeeeqqkiqPqiikBBXFFRRRBBvWvlctVSnn
+eeeeiieeeeeekqiiikiiiikBBXFyFvsBRvWvccctVSnn
+eiiiieeeeikkkiiikiiiikBBXByFWvsRRBWlccctVStn
+iiieeeeeikkkkkkkiikkBBBXByWWWvsRBBWlccctSStt
+ieeeeeiiiikkkqkkkknBlrXBWWOOvXRRBRWllcctSSFt
+eeeeeiiikkkkkkqkqtnllHXWWBSSvXRRRRRXXtctSSFt
+eeiiiikkkkntkkkqtnnJHXWWWBSOXRRRRRRRRXttSSFt
+eeiikkkIkktnkttxPtJJVHXBBGSOXBBRNvvrrWtSVPFt
+iikkkkkkkttnEtxxhPVVvvBGGvHXOBRNNvrrrWtSVPFt
+kkkkkkkktztEEPPhPhPvSSvqvvHXBvvWWWWWrWtSVPSi
+kkkkkkkkzTTTPDMhhhSSvqqvvvXBBvWBllrXWWtSSHSi
+kkkkkkkzTToooDDDhSSrqvvkkvXBWWBlcclrrrtSHHSi
+kkkkkkzTTPPTooTTTttrrkkkkvXWJBnncccqcqQSHHPi
+kkkkkzNTPTThhTTttqqkkkkkkvBBPBnnccccqCQSHPHi
+kkkktNTTThhhhTtkqkkkkqkkvJJrBPnnviiiCCSQqPif
+kkktNTThhhhTTEttkkkkqkqvrrrJPVJvniiiCCStqPif
+kktNTthhQTTEEttkkkkkkkqiiiirJVJvniiwCSStqPff
+kkEEtQQQttttkkkkkkkkiiiiiiPPJJVJwwwwSSFtqqfe
+kkEQQttkkkkkkkkkkkkiiiiiiqPJqqJSSSSSSSFnPkke
+kkkkkkkkkkkkkkkkiiiiiiiqqqntqqqJSSSFFFnnqked
+kkkkkkkkkkkkkkiiiiiiiiqqieenttJrrrrrFriqkedc
+kkkkkkkkkkkkkiiiiiiiqqiieeeenttnnrrFriqkedcc
+kkkkkkkkkkkiiiiieeiqieeeeekniinttttriiiidccc
+kkkkkkkkkiiiiieeeieeeeeeikkeeeiiiiiiiiiddccc
+kkkkkkkiiiiiieeiieeeeeeiieeeeeeeiieeeeeddccc
+kkkkkiiiiiiieeieeeeeeeeeeeeeeeeeeeidedddddcc
+kkkkiiiiiieeieeeeeeeeeeeeeeeeeeeeeeedcccdccc
+iiiiiiiieeeeeeeeeeeeeeeeeeeeeeeeeccccccccccc

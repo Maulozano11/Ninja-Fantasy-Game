@@ -1,0 +1,16 @@
+import { writeFileSync } from 'node:fs';
+import { LEGENDARY_PRESETS } from '/home/user/Ninja-Fantasy-Game/src/data/shinobiData';
+import { HANA, KENJI, RIVER_FOREST_PATROL } from '/home/user/Ninja-Fantasy-Game/src/data/missions';
+import { chooseFire, doActivity, startCamp } from '/home/user/Ninja-Fantasy-Game/src/rules/rest';
+import { applyOutcome, continueRoad, intoNextZone, MissionRun, resolveBattle, startRun } from '/home/user/Ninja-Fantasy-Game/src/game/missionRun';
+const hero = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_founder')!.character;
+const ok = (o: any) => { if (!o.ok) throw new Error(o.reason); return o; };
+const rep = (r: MissionRun, hp: number): MissionRun => ({ ...r, battle: { ...r.battle!, phase: 'fighting', report: { victory: true, members: [{ id: r.battle!.fighterId, hp, chakra: 10 }] } } });
+let r = startRun(RIVER_FOREST_PATROL, hero.id, [hero, HANA, KENJI], { seed: 5, leaderId: hero.id, difficulty: 'normal', noRandomness: false });
+r = continueRoad(resolveBattle(rep(r, 30)));
+r = intoNextZone(r);
+r = continueRoad(resolveBattle(rep(r, 25)));
+r = applyOutcome(r, ok(startCamp(r.party, { nodeId: 'shrine_clearing', zoneDanger: 30, shrine: true })), (x, camp) => ({ ...x, camp, stats: { ...x.stats, camps: 1 } }), { en: 'Camp at Shrine Clearing', es: 'Campamento en Claro del santuario' });
+
+
+writeFileSync(process.argv[2], JSON.stringify(r));

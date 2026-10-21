@@ -1,0 +1,332 @@
+{
+ "kit": "ui_icons_8",
+ "references": [
+  "docs/reference/icons-owner-reference-8.jpg"
+ ],
+ "round": 1,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "frame": {
+  "from": "ui_icons (sheet 1), read only: skill_slot_steel.png and skill_slot_steel_active.png, 56x56, the icon window 44x44 at 6,6; see ui_icons/manifest.json for its slices",
+  "window": {
+   "x": 6,
+   "y": 6,
+   "w": 44,
+   "h": 44
+  }
+ },
+ "method": "his sheets are pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-23.py). 88: his own pixels one to one (his 90x90 or 93x91 window with the columns and rows that show least dropped), on a palette sampled from his pixels, 1-2 pixel areas merged only where his own pixels do not stand out. 44: area mean of his pixels, except his thin lines and strongest specks, which keep their own colour one pixel wide; a light bilateral filter, nearest palette entry, 1-2 pixel areas merged; then hand-fixes only where that still loses his picture (see tools/ui/ui-icons-23.ts). Sheets 8 to 11 use no bilateral filter (it lightened his dark figures into his ground). Sheets 8 and 11 have bigger windows (127 to 139 of his pixels across, not square): the icon is the square part of his window (cropInWindow; Swap keeps 139x127 and is squeezed 9% across so his two ninjas stay whole), and its 88 is made as its 44 (area mean of his pixels with his thin lines and specks kept, palette, clean-up: method88). Edits the owner asked for are listed per icon under edits: made on his window first, then drawn again crisp at 88 and 44",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (at 88 his pixel stands out there; at 44 his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]",
+ "icons": {
+  "ryusei_swap": {
+   "name": "Swap",
+   "sheet": "docs/reference/icons-owner-reference-8.jpg",
+   "file": "ryusei_swap.png",
+   "file2x": "ryusei_swap@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "INTERCAMBIO",
+   "hisWindow": [
+    139,
+    127
+   ],
+   "hisWholeWindow": [
+    144,
+    127
+   ],
+   "cropInWindow": [
+    3,
+    0,
+    142,
+    127
+   ],
+   "method88": "area mean of his 139x127 pixels (too many to keep one to one), his thin lines and specks kept in their own colour, as the 44",
+   "palette": [
+    "#12102e",
+    "#1a1c38",
+    "#25283f",
+    "#2c3548",
+    "#3f2086",
+    "#394450",
+    "#552ea2",
+    "#3a586c",
+    "#623cbf",
+    "#446e8a",
+    "#7c43d7",
+    "#6860da",
+    "#984ee8",
+    "#608892",
+    "#5e89dd",
+    "#5299ac",
+    "#bc7c66",
+    "#33adcc",
+    "#34c4dc",
+    "#6bbcf6",
+    "#4ad6ea",
+    "#4fe7f2",
+    "#86f5fe"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [
+    "the skin round his ninjas' eyes and their fists"
+   ],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.17,
+     "lowFreqBoxOnPalette": 0.79,
+     "ssim": 0.747,
+     "ssimBox": 0.803,
+     "hue": 219,
+     "hueHis": 219,
+     "colours": 23,
+     "thinRun": [
+      8,
+      "row",
+      8
+     ]
+    },
+    "88": {
+     "small": 14,
+     "smallHis": 14,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1,
+     "lowFreqBoxOnPalette": 0.62,
+     "ssim": 0.928,
+     "ssimBox": 1,
+     "hue": 219,
+     "hueHis": 219,
+     "colours": 23,
+     "thinRun": [
+      15,
+      "col",
+      59
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "northstar_command": {
+   "name": "Command",
+   "sheet": "docs/reference/icons-owner-reference-8.jpg",
+   "file": "northstar_command.png",
+   "file2x": "northstar_command@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "COMANDO",
+   "hisWindow": [
+    127,
+    127
+   ],
+   "hisWholeWindow": [
+    128,
+    127
+   ],
+   "cropInWindow": [
+    1,
+    0,
+    128,
+    127
+   ],
+   "method88": "area mean of his 127x127 pixels (too many to keep one to one), his thin lines and specks kept in their own colour, as the 44",
+   "edits": [
+    {
+     "by": "the owner",
+     "date": "2026-10-21",
+     "asked": "Comando ponlo con un ojo con una brujula de los signos cardinales asi como en la imagen de sumision quita el sharingan y el de premonicion pon solo un ojo rojo radiante sin simbolo para evitar el copyright de naruto",
+     "why": "to keep clear of Naruto's eyes (copyright)",
+     "onHisWindow": "his sharingan (275 of his pixels: the dark ring, three tomoe and the pupil) painted out with his own iris colour at each distance from the centre (under his lid's shade, his shaded iris colour of that row)",
+     "atEachSize": "the compass rose drawn at each size in the iris, centred on it: at 88 four long points reaching the iris's dark rim (the north one running under his lid as the iris does) and four short ones between, each split into a lit and a shaded facet (light from his upper left), his Submission star's colours, a dark maroon outline; at 44 by hand (CMD_STAR44: a 2x2 heart of his palest pink, four faceted points two pixels across narrowing to one, a pixel for each short point, no outline)",
+     "colours": [
+      "his Submission star's colours, for the compass rose: #ffc5c8 #fea4ae #f86071 #a60626 #6e021e #4c031e"
+     ]
+    }
+   ],
+   "palette": [
+    "#0f061e",
+    "#200a21",
+    "#380511",
+    "#4c031e",
+    "#4d0818",
+    "#660a18",
+    "#6e021e",
+    "#7a091a",
+    "#8c0e1c",
+    "#a1161e",
+    "#a60626",
+    "#b41824",
+    "#cb1829",
+    "#ca3d43",
+    "#e32236",
+    "#f6283e",
+    "#be7c88",
+    "#f86071",
+    "#fa5e6e",
+    "#c89fb1",
+    "#ff8a61",
+    "#ff9dad",
+    "#fea4ae",
+    "#fdb6c2",
+    "#ffc5c8",
+    "#ffcdd6",
+    "#ffe6ea",
+    "#fefdfe"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 1,
+     "smallHis": 0,
+     "smallDrawn": 1,
+     "smallOther": 0,
+     "lowFreq": 1.42,
+     "lowFreqBoxOnPalette": 0.79,
+     "ssim": 0.748,
+     "ssimBox": 0.833,
+     "hue": 22,
+     "hueHis": 22,
+     "colours": 28,
+     "thinRun": [
+      9,
+      "col",
+      2
+     ]
+    },
+    "88": {
+     "small": 14,
+     "smallHis": 14,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.06,
+     "lowFreqBoxOnPalette": 0.59,
+     "ssim": 0.909,
+     "ssimBox": 1,
+     "hue": 22,
+     "hueHis": 22,
+     "colours": 28,
+     "thinRun": [
+      16,
+      "row",
+      7
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "northstar_submission": {
+   "name": "Submission",
+   "sheet": "docs/reference/icons-owner-reference-8.jpg",
+   "file": "northstar_submission.png",
+   "file2x": "northstar_submission@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "SUMISION",
+   "hisWindow": [
+    127,
+    127
+   ],
+   "hisWholeWindow": [
+    135,
+    127
+   ],
+   "cropInWindow": [
+    4,
+    0,
+    131,
+    127
+   ],
+   "method88": "area mean of his 127x127 pixels (too many to keep one to one), his thin lines and specks kept in their own colour, as the 44",
+   "palette": [
+    "#100921",
+    "#2a0424",
+    "#3b0928",
+    "#3f0a2a",
+    "#54092a",
+    "#601242",
+    "#700524",
+    "#741348",
+    "#8a102a",
+    "#881550",
+    "#a0135a",
+    "#b01c38",
+    "#a03b9d",
+    "#c32346",
+    "#d82944",
+    "#f02c52",
+    "#f44e56",
+    "#f27584",
+    "#ff8848",
+    "#ec88e2",
+    "#fc98a2",
+    "#ffbbc5"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.18,
+     "lowFreqBoxOnPalette": 0.55,
+     "ssim": 0.74,
+     "ssimBox": 0.822,
+     "hue": 348,
+     "hueHis": 348,
+     "colours": 15,
+     "thinRun": [
+      8,
+      "row",
+      41
+     ]
+    },
+    "88": {
+     "small": 15,
+     "smallHis": 15,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.79,
+     "lowFreqBoxOnPalette": 0.52,
+     "ssim": 0.928,
+     "ssimBox": 1,
+     "hue": 348,
+     "hueHis": 348,
+     "colours": 20,
+     "thinRun": [
+      17,
+      "row",
+      82
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  }
+ }
+}

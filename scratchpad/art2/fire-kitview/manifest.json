@@ -1,0 +1,399 @@
+{
+ "group": "vfx_fire",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bolt": {
+   "label": "Fire bolt (spiralling fireball)",
+   "file": "bolt.png",
+   "frameW": 75,
+   "frameH": 73,
+   "anchor": [
+    52,
+    33
+   ],
+   "meters": [
+    1.32,
+    1.28
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "beast": {
+   "label": "Fire beast (phoenix)",
+   "file": "beast.png",
+   "frameW": 128,
+   "frameH": 104,
+   "anchor": [
+    64,
+    52
+   ],
+   "meters": [
+    2.25,
+    1.82
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream": {
+   "label": "Fire stream (fire jet, tileable 64 px)",
+   "file": "stream.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream_head": {
+   "label": "Fire stream head",
+   "file": "stream_head.png",
+   "frameW": 74,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.3,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "breath": {
+   "label": "Fire breath (flame cone wrapped in smoke, origin left middle)",
+   "file": "breath.png",
+   "frameW": 102,
+   "frameH": 75,
+   "anchor": [
+    56,
+    34
+   ],
+   "meters": [
+    1.79,
+    1.32
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "sphere": {
+   "label": "Fire sphere (burning orb with orbiting rings)",
+   "file": "sphere.png",
+   "frameW": 75,
+   "frameH": 73,
+   "anchor": [
+    37,
+    33
+   ],
+   "meters": [
+    1.32,
+    1.28
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "slash": {
+   "label": "Fire slash (thick crescent of flame)",
+   "file": "slash.png",
+   "frameW": 75,
+   "frameH": 76,
+   "anchor": [
+    37,
+    38
+   ],
+   "meters": [
+    1.32,
+    1.33
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "multi": {
+   "label": "Fire multi (three comet flames in a volley)",
+   "file": "multi.png",
+   "frameW": 75,
+   "frameH": 76,
+   "anchor": [
+    37,
+    38
+   ],
+   "meters": [
+    1.32,
+    1.33
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "hit": {
+   "label": "Fire hit (starburst of flame spikes)",
+   "file": "hit.png",
+   "frameW": 96,
+   "frameH": 80,
+   "anchor": [
+    45,
+    40
+   ],
+   "meters": [
+    1.68,
+    1.4
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "blast": {
+   "label": "Fire blast (mushroom-cloud explosion, 3 m)",
+   "file": "blast.png",
+   "frameW": 220,
+   "frameH": 170,
+   "anchor": [
+    110,
+    128
+   ],
+   "meters": [
+    3.86,
+    2.98
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 16,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "wall": {
+   "label": "Fire wall (4.5 m x 1.8 m)",
+   "file": "wall.png",
+   "frameW": 339,
+   "frameH": 161,
+   "anchor": [
+    163,
+    133
+   ],
+   "meters": [
+    5.95,
+    2.82
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "wall_diag": {
+   "label": "Fire wall, 3/4 (4.5 m x 1.8 m, turned 45 degrees)",
+   "file": "wall_diag.png",
+   "frameW": 285,
+   "frameH": 196,
+   "anchor": [
+    146,
+    112
+   ],
+   "meters": [
+    5,
+    3.44
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "wall_depth": {
+   "label": "Fire wall, end-on (4.5 m x 1.8 m, running into the screen)",
+   "file": "wall_depth.png",
+   "frameW": 140,
+   "frameH": 255,
+   "anchor": [
+    33,
+    186
+   ],
+   "meters": [
+    2.46,
+    4.47
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "aura": {
+   "label": "Fire aura, front layer (draw OVER the character)",
+   "file": "aura.png",
+   "frameW": 115,
+   "frameH": 160,
+   "anchor": [
+    55,
+    139
+   ],
+   "meters": [
+    2.02,
+    2.81
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 12,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "aura_back": {
+   "label": "Fire aura, back layer (draw BEHIND the character)",
+   "file": "aura_back.png",
+   "frameW": 115,
+   "frameH": 160,
+   "anchor": [
+    55,
+    139
+   ],
+   "meters": [
+    2.02,
+    2.81
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 12,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

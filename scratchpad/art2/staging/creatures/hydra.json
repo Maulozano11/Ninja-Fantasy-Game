@@ -1,0 +1,212 @@
+{
+ "body": "hydra_body",
+ "stump": "hydra_stump",
+ "venom": "hydra_venom",
+ "splash": "hydra_splash",
+ "heads": [
+  {
+   "sprite": "hydra_neck_1",
+   "attach": [
+    8,
+    -179
+   ],
+   "layer": "back",
+   "head": [
+    -4,
+    -153
+   ],
+   "mouth": [
+    21,
+    -140
+   ]
+  },
+  {
+   "sprite": "hydra_neck_2",
+   "attach": [
+    -22,
+    -175
+   ],
+   "layer": "back",
+   "head": [
+    -62,
+    -119
+   ],
+   "mouth": [
+    -35,
+    -111
+   ]
+  },
+  {
+   "sprite": "hydra_neck_3",
+   "attach": [
+    36,
+    -173
+   ],
+   "layer": "back",
+   "head": [
+    63,
+    -126
+   ],
+   "mouth": [
+    89,
+    -114
+   ]
+  },
+  {
+   "sprite": "hydra_neck_4",
+   "attach": [
+    -40,
+    -165
+   ],
+   "layer": "back",
+   "head": [
+    -82,
+    -78
+   ],
+   "mouth": [
+    -54,
+    -75
+   ]
+  },
+  {
+   "sprite": "hydra_neck_5",
+   "attach": [
+    52,
+    -163
+   ],
+   "layer": "back",
+   "head": [
+    77,
+    -77
+   ],
+   "mouth": [
+    100,
+    -60
+   ]
+  },
+  {
+   "sprite": "hydra_neck_6",
+   "attach": [
+    -30,
+    -125
+   ],
+   "layer": "front",
+   "head": [
+    -38,
+    -73
+   ],
+   "mouth": [
+    -11,
+    -66
+   ]
+  },
+  {
+   "sprite": "hydra_neck_7",
+   "attach": [
+    42,
+    -123
+   ],
+   "layer": "front",
+   "head": [
+    57,
+    -58
+   ],
+   "mouth": [
+    78,
+    -38
+   ]
+  }
+ ],
+ "follow": {
+  "idle": [
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    0,
+    -1
+   ],
+   [
+    0,
+    0
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    1
+   ],
+   [
+    0,
+    1
+   ]
+  ],
+  "hurt": [
+   [
+    -4,
+    0
+   ],
+   [
+    -6,
+    3
+   ],
+   [
+    -2,
+    0
+   ]
+  ],
+  "death": [
+   [
+    -8,
+    -4
+   ],
+   [
+    -13,
+    -7
+   ],
+   [
+    4,
+    2
+   ],
+   [
+    20,
+    23
+   ],
+   [
+    42,
+    55
+   ],
+   [
+    52,
+    67
+   ],
+   [
+    51,
+    66
+   ],
+   [
+    52,
+    67
+   ],
+   [
+    52,
+    67
+   ],
+   [
+    52,
+    68
+   ]
+  ]
+ }
+}

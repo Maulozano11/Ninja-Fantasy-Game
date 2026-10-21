@@ -1,0 +1,178 @@
+{
+ "male-tapered_idle0": {
+  "head": [
+   126,
+   138
+  ],
+  "k": 0.78,
+  "anchor": [
+   123,
+   139
+  ]
+ },
+ "male-soft_idle0": {
+  "head": [
+   126,
+   138
+  ],
+  "k": 0.78,
+  "anchor": [
+   123,
+   139
+  ]
+ },
+ "male-square_idle0": {
+  "head": [
+   126,
+   138
+  ],
+  "k": 0.78,
+  "anchor": [
+   123,
+   139
+  ]
+ },
+ "male-valiant_idle0": {
+  "head": [
+   126,
+   138
+  ],
+  "k": 0.78,
+  "anchor": [
+   123,
+   139
+  ]
+ },
+ "female-tapered_idle0": {
+  "head": [
+   126,
+   140
+  ],
+  "k": 0.76,
+  "anchor": [
+   123,
+   141
+  ]
+ },
+ "female-soft_idle0": {
+  "head": [
+   126,
+   140
+  ],
+  "k": 0.76,
+  "anchor": [
+   123,
+   141
+  ]
+ },
+ "female-square_idle0": {
+  "head": [
+   126,
+   140
+  ],
+  "k": 0.76,
+  "anchor": [
+   123,
+   141
+  ]
+ },
+ "female-valiant_idle0": {
+  "head": [
+   126,
+   140
+  ],
+  "k": 0.76,
+  "anchor": [
+   123,
+   141
+  ]
+ },
+ "bulky-tapered_idle0": {
+  "head": [
+   126,
+   138
+  ],
+  "k": 0.8,
+  "anchor": [
+   122,
+   139
+  ]
+ },
+ "bulky-soft_idle0": {
+  "head": [
+   126,
+   138
+  ],
+  "k": 0.8,
+  "anchor": [
+   122,
+   139
+  ]
+ },
+ "bulky-square_idle0": {
+  "head": [
+   126,
+   138
+  ],
+  "k": 0.8,
+  "anchor": [
+   122,
+   139
+  ]
+ },
+ "bulky-valiant_idle0": {
+  "head": [
+   126,
+   138
+  ],
+  "k": 0.8,
+  "anchor": [
+   122,
+   139
+  ]
+ },
+ "slender-tapered_idle0": {
+  "head": [
+   126,
+   140
+  ],
+  "k": 0.76,
+  "anchor": [
+   123,
+   141
+  ]
+ },
+ "slender-soft_idle0": {
+  "head": [
+   126,
+   140
+  ],
+  "k": 0.76,
+  "anchor": [
+   123,
+   141
+  ]
+ },
+ "slender-square_idle0": {
+  "head": [
+   126,
+   140
+  ],
+  "k": 0.76,
+  "anchor": [
+   123,
+   141
+  ]
+ },
+ "slender-valiant_idle0": {
+  "head": [
+   126,
+   140
+  ],
+  "k": 0.76,
+  "anchor": [
+   123,
+   141
+  ]
+ }
+}

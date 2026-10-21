@@ -1,0 +1,39 @@
+D1 shadow_clone: skin pixels (front hands | clone hands | whole)
+  88  his: 26 | 18 | 64 | base: 0 | 0 | 0 | ui_icons: 30 | 14 | 63
+  44  his: 5 | 4 | 12 | base: 0 | 0 | 0 | ui_icons: 7 | 4 | 11
+D2 northstar_submission: violet % (hue 300-345, C>=0.08, L>=0.3)
+  88  his: 2.21% | base: 0.00% | ui_icons: 1.83%
+  44  his: 3.05% | base: 0.00% | ui_icons: 2.27%
+D3 northstar_submission: star (L>=0.45 in 88-box 26,2,64,31): pale-pink share (L>=0.7, C<=0.17) | crimson share (L 0.45-0.62, C>=0.19, hue 20-32) | raspberry share (hue 8-19.99, C>=0.15)
+  88  his: 13% / 47% / 23% | base: 26% / 0% / 77% | ui_icons: 13% / 25% / 25%
+  44  his: 6% / 33% / 46% | base: 22% / 0% / 78% | ui_icons: 7% / 37% / 22%
+D4 ryusei_warp: skin / lavender pixels in eye slit (88: 55-63,24-29) | hand (40-47,40-47) | kunai grip (22-30,49-61)
+  88  his: 3/7 | 4/12 | 10/33 | base: 0/24 | 0/15 | 0/44 | ui_icons: 3/14 | 5/6 | 7/33
+  44  his: 0/1 | 1/3 | 1/10 | base: 0/7 | 0/8 | 0/13 | ui_icons: 0/5 | 0/8 | 4/12
+D5 ryusei_swap: faces: skin / blue-grey pixels, left slit (88: 9-17,24-28) | right slit (88: 72-80,24-28)
+  88  his: 6/1 | 11/0 | base: 0/10 | 10/0 | ui_icons: 8/1 | 11/0
+  44  his: 1/0 | 3/0 | base: 0/0 | 4/0 | ui_icons: 0/0 | 5/0
+D6 northstar_command 88: rose (pink, L>=0.6 C<=0.2 hue 0-20) pixels above row 32 in x 36-48 | columns 36-48 with an unbroken dark lid pixel (L<0.2) in rows 26-31
+  88  his: rose above lid 0, dark lid in 13/13 cols | base: rose above lid 2, dark lid in 12/13 cols | ui_icons: rose above lid 0, dark lid in 13/13 cols
+D7 northstar_command: inside the iris disc, pale pink (L>=0.72) | salmon (#f86071-like: L 0.62-0.75, hue 10-22, C>=0.14) | crimson (L 0.45-0.62, C>=0.19, hue 20-32)
+  88  his: 0 | 0 | 116 | base: 43 | 38 | 45 | ui_icons: 16 | 0 | 98
+  44  his: 0 | 0 | 29 | base: 13 | 12 | 18 | ui_icons: 6 | 0 | 23
+D8 northstar_command: bright-red pixels inside the iris disc (L>=0.55, C>=0.21, hue 15-40)
+  88  his: 135 | base: 54 | ui_icons: 185
+  44  his: 24 | base: 7 | ui_icons: 43
+D9 koton_block: on his slate faces (his reduction L 0.2-0.5, C<0.06, in the cube box): teal share (hue 190-245, C>=0.045) | mean colour
+  88  his: 14% teal, mean #3a4148 (n=2048) | base: 27% teal, mean #48595f (n=2048) | ui_icons: 24% teal, mean #48595d (n=2048)
+  44  his: 15% teal, mean #3f464d (n=477) | base: 34% teal, mean #3c474f (n=477) | ui_icons: 19% teal, mean #3f464b (n=477)
+D10 water_dragon_suiryuudan: near-white % (L>=0.92, C<=0.04) | his spray area (44: 5-10,5-17) mean colour and chroma
+  88  his: 5.01% | #223b54 C=0.054 | base: 3.22% | #1e3a58 C=0.062 | ui_icons: 6.16% | #233c56 C=0.055
+  44  his: 2.01% | #243d56 C=0.054 | base: 1.24% | #1d3e61 C=0.073 | ui_icons: 2.01% | #223c55 C=0.054
+D11 taki_sixtyfour_palms 88: the hood at (41-44,27): colours, max chroma
+  88  his: 36464e 35454d 35444c 353e4c maxC=0.027 | base: 0a5678 0a5678 0a5678 0a5678 maxC=0.087 | ui_icons: 4e504a 4e504a 4e504a 4e504a maxC=0.010
+D12 dragon_fire_stream 44: teeth (38-40,17-19): tan-tooth pixels (L 0.55-0.85, C 0.05-0.14, hue 50-85) | colours
+  44  his: 4 | d4974d d47b38 bc5c2d ae7447 5a1715 c5954b 480610 490610 a44625 | base: 0 | f86c14 f86c14 e43d12 b8250c 520a18 f86c14 520a18 520a18 520a18 | ui_icons: 2 | e0953e da7c2c cd4f08 a15918 520a18 e0953e 520a18 520a18 520a18
+D13 dragon_fire_bomb 44: the left head mouth core (9,27) and its 3x3: yellow (L>=0.85, hue 85-115) count | centre colour
+  44  his: 1 | #feee49 | base: 0 | #fca236 | ui_icons: 3 | #ffed3c
+D14 northstar_command 44: sparkle core (7,33) colour | salmon (#f86071-like) pixels in (6-8,33-35)
+  44  his: #fdcdd6 | 4 | base: #f86071 | 7 | ui_icons: #ffcdd6 | 4
+D15 mirai_evasion 44: the ember (36,38) colour and lightness
+  44  his: #f6c3a0 L=0.85 | base: #862b3f L=0.43 | ui_icons: #ffd8b9 L=0.91

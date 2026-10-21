@@ -1,0 +1,25 @@
+const OUT = '/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/chakra-nature/review';
+const { chromium } = await import('/opt/node-tools/node_modules/playwright/index.mjs');
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+page.on('pageerror', (e) => console.log('ERR', e.message));
+page.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE', m.text()); });
+await page.addInitScript(() => { localStorage.setItem('shinobi.lang', 'es'); localStorage.setItem('shinobi.battleSpeed', '1'); localStorage.setItem('shinobi.tips.off', '1'); });
+await page.goto('http://127.0.0.1:5296/#combat');
+await page.waitForTimeout(1500);
+await page.getByText('Pelear').first().click();
+await page.waitForFunction(() => typeof window.__battle === 'object', null, { timeout: 30000 });
+await page.waitForTimeout(2500);
+const info = await page.evaluate(() => { const s = window.__battle.state(); const us = Array.isArray(s.units) ? s.units : Object.values(s.units); return us.map((u) => `${u.team}:${u.name}:${u.look?.chakra ? JSON.stringify(u.look.chakra) : (u.character?.appearance?.chakra ? JSON.stringify(u.character.appearance.chakra) : '-')}`); });
+console.log(info.join('\n'));
+await page.screenshot({ path: `${OUT}/battle.png` });
+// Jutsu step in the creator for a legend
+await page.goto('http://127.0.0.1:5296/#creator');
+await page.waitForTimeout(1500);
+await page.getByText('Kaien').first().click();
+await page.waitForTimeout(400);
+await page.getByText('Jutsus', { exact: true }).first().click();
+await page.waitForTimeout(800);
+await page.screenshot({ path: `${OUT}/creator-jutsus-kaien.png` });
+console.log('side', await page.getByText('Naturaleza', { exact: true }).last().locator('..').innerText());
+await browser.close();

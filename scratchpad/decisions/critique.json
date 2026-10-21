@@ -1,0 +1,272 @@
+[
+ {
+  "quote": "Cada ninja hace **1** actividad, sin gastar incienso.",
+  "problem": "Short rests have no limit (2.1: 'El alto se puede hacer en cualquier nodo ya despejado') and cost only 1 hour, and hours only matter in missions with a deadline (Q16b: only some). So in most missions the party can stop at every cleared node, and each ninja gets a free activity every time: Meditar (+25 % chakra), Sueño apacible (−3 Tensión), Estiramientos (−1 Agotamiento), and Vendar (1d8 + SAB, which uses no bandage item). Curar con jutsu then becomes unlimited, because Meditar refills the chakra it costs. This breaks 'Descansar nunca es gratis' and makes camps, food and fire pointless. It also contradicts Q2b, which says 'altos cortos entre zonas', not at any node.",
+  "fix": "In 2.1 replace the alto sentence with: «El alto se hace entre zona y zona, como máximo uno por zona.» In 2.4 replace the activity bullet with: «Cada ninja puede hacer 1 actividad de 1 varita que no recupere PG, chakra, Tensión ni Agotamiento (por ejemplo Afilar hojas, Explorar o Vendar). Meditar, Sueño apacible, Estiramientos, Cirugía de campaña y Charla junto al fuego son solo de campamento.» In the 2.7 Vendar row add «gasta 1 venda».",
+  "severity": "high"
+ },
+ {
+  "quote": "La IA vota por los aliados sin jugador.",
+  "problem": "The owner decided that controllers can mix in one party. With 1 human and 3 AI allies, or 2 humans and 2 AI allies, the AI votes (which follow each character's convicción) can outvote the humans and decide story branches against every player. The brief also never says who the 'líder de la misión' who breaks ties is, or how that leader is chosen.",
+  "fix": "Replace with: «Solo votan los personajes que lleva un jugador. Los aliados de la IA muestran su postura (a favor, en contra o con dudas), como en Solo, y solo cuentan para desempatar, antes que el líder. El líder de la misión se elige en la aldea al formar el equipo.» Apply the same rule in 2.14 and Q5a, and in the Persuasión bullet change «cambia el voto de un aliado de la IA» to «cambia la postura de un aliado de la IA».",
+  "severity": "high"
+ },
+ {
+  "quote": "descansar (unas 3 h) solo se puede a la sombra o en una base tomada",
+  "problem": "This is a factual error. The GWBW research says only that guides advise resting in the shade rather than in the sun, which is advice and not a rule. The 3 h figure is for digging for water, not for resting. Section 2.1 repeats the error: 'igual que en GWBW solo se descansaba a la sombra o en una base tomada'.",
+  "fix": "In section 1 write: «descansar conviene hacerlo a la sombra y no al sol, y cavar en busca de agua cuesta 3 h». In 2.1 write: «El campamento solo se monta en nodos marcados con una fogata (claro, cueva, ruina); en GWBW las guías aconsejan descansar a la sombra.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "**Rodearla.** Cuesta horas.",
+  "problem": "Hours only cost something in missions with a deadline (2.1 and Q16b). In every other mission, going around a trap is free, so it always beats the other options. For the same reason the 'Perdido: −2 horas' effect of the Sello de genjutsu does nothing, and the hours spent on altos and camps cost nothing either.",
+  "fix": "Give time a cost in every mission. Add to 2.1: «En misiones sin plazo, cada 4 horas gastadas suben un 5 % el peligro nocturno del siguiente campamento.» Alternatively, change the bullet to: «**Rodearla.** Cuesta horas y +1 Agotamiento a todos.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "3. **Comida.** Un nivel para todo el grupo (2.6).",
+  "problem": "The order of the camp steps doesn't work. The food level is chosen in step 3, but the Festín needs a hunt, which is a Supervivencia check made in step 4 (Actividades) and can fail. The Hoguera is chosen in step 2, but the Mirai's Fuego Katon that makes it is also a step-4 activity. In local and online play, fire and food are voted on while activities are chosen in secret, so the vote can depend on an activity nobody has committed to. It is also unclear whether the Festín needs fire or rations, and whether the Hoguera's effect 'Comida caliente…' gives hot food for free.",
+  "fix": "Reorder 2.5 as: 1 Montar, 2 Actividades (incluidas cazar y Fuego Katon), 3 Fuego, 4 Comida, 5 La noche, 6 La mañana. Add: «Si la caza falla, el Festín no se puede elegir.» In 2.6 write «Festín | 1 ración por ninja + la caza, y hace falta fuego» and, in the Hoguera row, «Permite la comida caliente y da −1 Tensión extra a todos».",
+  "severity": "medium"
+ },
+ {
+  "quote": "**Fuego, comida y guardias**",
+  "problem": "'Hacer guardia' is a per-ninja activity (2 varitas, 'Vigilar y poner trampas también son actividades') that each player picks in secret, yet 2.14 and Q5 also put guards to a group vote. It is not said whose varitas pay for a voted guard, or what happens if the vote says 'guard' and nobody picks the activity.",
+  "fix": "Remove «y guardias» from the 2.14 row and from Q5. Add under 2.14: «Quién vigila se habla antes de elegir; la guardia es una actividad más y la paga quien la elige.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "Cada personaje tiene una **convicción**: unos valores que define el guionista.",
+  "problem": "Player ninjas are made by the players in the character creator, so a scriptwriter cannot define their values. Yet several rules depend on every character having a convicción: AI votes, the +1 Tensión for decisions against it, Persuasión, and the 'Desconocido herido' curio.",
+  "fix": "Replace with: «Cada personaje tiene una **convicción**. Los PNJ tienen la que les da el guionista. Cada ninja del jugador elige 1 o 2 valores de una lista cerrada en el creador (por ejemplo: proteger a inocentes, lealtad a la aldea, cumplir la misión, honor del clan).»",
+  "severity": "medium"
+ },
+ {
+  "quote": "Tira CAR (Persuasión) contra la convicción del objetivo.",
+  "problem": "A convicción is a set of values, not a number, so there is no DC to roll against. 'O de un indeciso' also overlaps with 'aliado de la IA', because only AI allies can be shown as undecided.",
+  "fix": "Replace with: «Tira CAR (Persuasión) contra una CD: 10 si la opción no toca la convicción del objetivo, 15 si va contra ella y 20 si va contra su valor principal. Si gana, el aliado de la IA cambia de postura.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "Antes de cerrar el voto, cada jugador puede gastar **un argumento**.",
+  "problem": "With secret votes on a shared device, nobody knows who to persuade. Showing an argument to a player who has already voted behind the cover screen means passing the device back to them. The order of debate, persuasion and secret vote is never stated.",
+  "fix": "Replace with: «El voto va en dos pasos: 1) debate a la vista de todos, donde cada jugador puede gastar **un argumento**; 2) voto secreto. Los argumentos se juegan en el paso 1, así que cada jugador ve los que le afectan antes de votar.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "**Quien vota en contra** no pierde nada como jugador. Su personaje dice una frase, y si la decisión va contra su convicción recibe un efecto del sistema de descanso (por ejemplo, +1 de Tensión, 2.9).",
+  "problem": "In Solo nobody votes, so it is unclear whether allies get the +1 Tensión. Section 2.9 applies it to any 'decisión que va contra su convicción' whether or not the character voted. A player who votes for an option that goes against their own character's convicción also escapes the penalty.",
+  "fix": "Replace with: «En todos los modos, cada personaje cuya convicción vaya contra la opción elegida recibe +1 Tensión (2.9), haya votado o no. Votar en contra solo añade su frase y queda en la Crónica.» Retitle Q17 «Personajes en desacuerdo».",
+  "severity": "medium"
+ },
+ {
+  "quote": "prueba: Atletismo CD 12",
+  "problem": "The script never says which character rolls a check: the leader, the ninja with the best modifier, the one the chooser picks, or the whole party as a 5e group check. This matters in Solo and in multiplayer, and for effects that hit 'grupo'.",
+  "fix": "Add a field to the `prueba` command in 3.4: «`prueba: Atletismo CD 12 quien: elegido|mejor|grupo|LIDER`. Si no se indica, tira el ninja con mejor modificador; `grupo` es la prueba de grupo de 5e: pasa si la supera al menos la mitad.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "La semilla de los dados va en el guardado, así que repetir una tirada da el mismo resultado.",
+  "problem": "If rolls come from one sequential stream, a player in Historia or Normal can choose one option, see the d20 (for example 17), reload, and pick a different option knowing the next roll will be 17. The saved seed leaks results across options.",
+  "fix": "Add: «Cada tirada sale de la semilla + el id de la decisión + el id de la opción + el número de tirada. Repetir la misma opción da el mismo resultado, pero otra opción da un número que no se puede prever.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "Todos votan a la vez, con 30–60 s.",
+  "problem": "Online votes always have a clock, which contradicts 3.2 ('Temporizador, solo si la escena lo pide') and Q19b ('Solo en escenas de presión'). The numbers also disagree: 2.14 says 30 s, while 3.5 says 30–60 s. Nothing says what happens when time runs out, or whether one player's Accessibility setting removes the timer for everyone online.",
+  "fix": "Use one value in 2.14 and 3.5: «Plazo de voto en línea: 60 s; al acabar, la IA vota por quien no votó; el anfitrión lo puede quitar.» Add to 3.2 and Q19: «El plazo del voto en línea es aparte de la mecha de la escena.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "en multijugador cada jugador hace una acción por turno, en orden de iniciativa.",
+  "problem": "The rule doesn't say how many actions a Solo player gets per turn (one for the group, as in GWBW, or one per character). If multiplayer gives one action per player, a 4-player party gets four times the actions of a solo player in the same 8–12 turn scene. AI-controlled allies are not covered either.",
+  "fix": "Replace with: «Cada turno, cada personaje del grupo hace una acción con coste, sea quien sea su controlador: en solo las eliges tú todas, y los de la IA eligen solos. Los turnos y los medidores se ajustan a 4 personajes y se escalan si hay menos.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "Caducan los efectos que duran «hasta el campamento».",
+  "problem": "In step 6 (the morning) every effect lasting until camp expires. That would also wipe the buffs just bought at this same camp, such as Bien alimentado from the Festín, Chakra centrado from Entrenar and Bendición del santuario. It is also unclear whether old debuffs (Envenenado, Bajón) still apply during the night ambush.",
+  "fix": "Replace with: «Caducan los efectos «C» que el grupo traía de antes del campamento. Los efectos «C» ganados en este campamento duran hasta el siguiente.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "Cada actividad cuesta 1–3 varitas y se hace una sola vez por campamento.",
+  "problem": "No activity in the tables costs 3. The clan and class table gives no cost at all, even for the strongest activities: Guardia del Byakugan (ambush at 0 %), Sueño apacible (−3 Tensión) and Refugio de madera (−15 %). The chakra cost of the Barrera de sellos is not given. 'Una sola vez' doesn't say whether it is per ninja or per group, for example whether two guards divide the ambush % by four.",
+  "fix": "Add a «Varitas» column to the clan and class table, for example: Guardia del Byakugan 3, Refugio de madera 2, Ilusión de campamento 2, Sueño apacible 2, Barrera de sellos 0 varitas + 10 de chakra, Cirugía de campaña 2, Estiramientos 1. Add: «Cada ninja hace cada actividad una vez; la guardia solo cuenta una vez aunque vigilen dos.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "El campamento devuelve la mitad de los gastados; la aldea, todos",
+  "problem": "This is neither 5e rule and is not flagged as a deliberate change. In 5e (2014) a long rest restores up to half of the total Hit Dice (minimum 1); in 5e (2024) it restores all spent ones. There is also no rounding rule: a level-1 ninja who spent 1 die would get back half a die, or 0.",
+  "fix": "Replace with: «El campamento devuelve la mitad de los gastados, redondeando hacia arriba (mínimo 1). Es más duro que 5e a propósito: en 5e (2024) el descanso largo los devuelve todos. La aldea los devuelve todos.»",
+  "severity": "medium"
+ },
+ {
+  "quote": "El grupo puede preparar esa salvación: «Bendición del santuario» da ventaja y «Ánimo» reduce la Tensión que entra.",
+  "problem": "No activity or item gives the buff «Ánimo». Other catalog entries have no source either: «Sello protector (Akkai)» and «Piel de madera (Uddo)». «Herida grave» and «Fiebre» have no trigger, and Fiebre has no cure. Antídotos are sold in the village but have no effect.",
+  "fix": "Add to 2.7: «Dar ánimo | 1 | buff «Ánimo» a otro ninja»; the Akkai activity «Sello protector» and the Uddo activity «Piel de madera». Add to 2.12: «Herida grave: al caer a 0 PG por un crítico»; «Fiebre: al acampar con «Sangrando» sin vendar; se cura con Cirugía de campaña»; «Antídoto (objeto): quita «Envenenado»».",
+  "severity": "low"
+ },
+ {
+  "quote": "| Sangrando | R | 1d4 por ronda hasta que lo venden |",
+  "problem": "R means rounds, so the effect should end with the battle. But Vendar and Cerrar tenketsu remove it at camp, which implies it carries over after the battle, and outside battle 'por ronda' has no meaning.",
+  "fix": "Use: «| Sangrando | Hasta tratarlo | 1d4 por ronda en batalla y 1d4 por cada tramo del camino |»",
+  "severity": "low"
+ },
+ {
+  "quote": "| Píldora de soldado | 1B | +2d6 de chakra |",
+  "problem": "Section 2.3 describes the pill as an instant +2d6 chakra (bonus action). As a buff lasting 1 battle it reads as temporary chakra that disappears when the battle ends. The two sections disagree.",
+  "fix": "Remove the row from the buff table (the «Bajón» debuff already covers the after-effect), or write «+2d6 de chakra temporal que se pierde al terminar la batalla» in both 2.3 and 2.12.",
+  "severity": "low"
+ },
+ {
+  "quote": "el grupo empieza **sorprendido**",
+  "problem": "Neither the brief nor GAMEPLAY_DESIGN.md defines 'sorprendido'. In 5e (2014) a surprised creature loses its first turn and can't react; in 5e (2024) it rolls Initiative with disadvantage. The brief follows 2024 for Agotamiento. It also doesn't say whether the night ambush has the stealth phase that GAMEPLAY_DESIGN.md says every battle opens with.",
+  "fix": "Add to 2.8: «Sorprendido: no actúa ni reacciona en su primer turno (regla de 5e 2014, elegida a propósito). La emboscada empieza sin fase de sigilo: los enemigos llegan ya en iniciativa.»",
+  "severity": "low"
+ },
+ {
+  "quote": "En el nivel 6 el ninja queda **caído** (en 5e moriría; aquí solo muere en el modo Leyenda).",
+  "problem": "In GAMEPLAY_DESIGN.md 'caído' means 0 PG with death saving throws and allies can revive. A ninja healed in battle would still be at exhaustion level 6 and fall again at once, and it isn't said whether they make death saves.",
+  "fix": "Replace with: «En el nivel 6 el ninja queda inconsciente y no puede actuar hasta bajar al nivel 5; no tira salvaciones de muerte ni se levanta con curación. En el modo Leyenda muere.»",
+  "severity": "low"
+ },
+ {
+  "quote": "como la dote «Iniciado de las Ocho Puertas». Al terminar, +1 Agotamiento.",
+  "problem": "The existing feat `eight_gates_initiate` (shinobiData.ts) gives +2 tiles of movement and +1d8 damage for 2 turns, with no Exhaustion. Adding +1 Agotamiento here and in 2.10 quietly weakens a feat players can already pick, and the brief doesn't say it is a change.",
+  "fix": "Add: «(Nuevo: la dote actual no da Agotamiento; esto la cambia.)» Or drop the Exhaustion.",
+  "severity": "low"
+ },
+ {
+  "quote": "Después la Tensión vuelve a 5.",
+  "problem": "It isn't said what happens if a ninja already in Quiebre or Despertar reaches 10 again. Elsewhere, 'Un ninja en Quiebre puede negarse a una actividad' has no rule for when the refusal happens.",
+  "fix": "Add: «Si ya está en Quiebre o Despertar, al llegar otra vez a 10 no hay nueva salvación: gana 1 nivel de Agotamiento y vuelve a 5. Un ninja en Quiebre rechaza una actividad al azar, que sale tachada antes de elegir.»",
+  "severity": "low"
+ },
+ {
+  "quote": "Para que sea justo, cada enemigo puede verla con su Percepción contra la CD de la trampa.",
+  "problem": "The DC of traps the party places is never defined, and neither is the DC of the DES saving throw against the explosive seal.",
+  "fix": "Add: «La CD de las trampas del grupo es 8 + competencia + DES de quien la puso, y sirve también para la salvación de DES del sello.»",
+  "severity": "low"
+ },
+ {
+  "quote": "Voto secreto: la pantalla dice «Pasa el dispositivo a Jugador 2» y se queda tapada mientras vota.",
+  "problem": "The Spanish is unclear: it reads as if the screen stays covered while the player votes, so they couldn't see the options.",
+  "fix": "Replace with: «Voto secreto: entre un jugador y otro aparece una pantalla tapada («Pasa el dispositivo a Jugador 2»). Al tocarla, ese jugador ve las cartas y vota a solas, y la pantalla se vuelve a tapar.»",
+  "severity": "low"
+ },
+ {
+  "quote": "b) d20 con el % visible antes de tirar, y un modo opcional sin azar (como el Puzzle de GWBW). ★",
+  "problem": "Option b bundles two separate decisions, and the obvious option 'd20 with the % shown, but no random-free mode' is missing. The random-free mode is never defined for a d20 game: does a check use 10 + modifier? Does it apply in battle? It also overlaps Q6c, which already offers the GWBW Puzzle modes.",
+  "fix": "Split it. Q15: «a) Dados sin %; b) d20 con el % visible ★; c) Sin dados fuera de batalla.» New question: «Modo sin azar: a) No; b) Sí, fuera de batalla: cada prueba vale 10 + modificador ★; c) Sí, también en batalla.» In Q6c keep only «Original / Narrativo», or note the overlap.",
+  "severity": "low"
+ },
+ {
+  "quote": "c) Nunca, para que sorprenda.",
+  "problem": "Q20 options b and c both mean 'no notice'. Option c also clashes with the Crónica, which already shows consequences, so it isn't really different from b.",
+  "fix": "Use: «c) Ni aviso ni Crónica: las consecuencias solo se ven en la historia.»",
+  "severity": "low"
+ },
+ {
+  "quote": "a) No hay: solo PG, chakra y Agotamiento.",
+  "problem": "The questions depend on each other without saying so. Answering 1a makes 14b and 17b (+1 Tensión) and many rest rules (food, fire, Charla, Rezar, Sueño apacible) meaningless. Q7b assumes the difficulty modes of Q6b.",
+  "fix": "Add under Q1: «Si eliges a, en la 14 y la 17 la Tensión se cambia por −1 de Lazo.» Add under Q7: «Si en la 6 no eliges b, la b de aquí dice: sí, salvo con muerte permanente.»",
+  "severity": "low"
+ },
+ {
+  "quote": "c) Lo de b, más las Heridas graves y la Fiebre sin curar, que hay que tratar en la aldea.",
+  "problem": "Section 2.12 gives Herida grave the duration 'Hasta la aldea', so it already ends on return. Section 1 promises 'la aldea lo recupera todo sin pagar semanas'. Option c doesn't say what treating it in the village costs.",
+  "fix": "Use: «c) Lo de b, y además las Heridas graves y la Fiebre siguen al volver y cuestan dinero o perderse la siguiente misión para curarlas (va contra «la aldea lo recupera todo»).»",
+  "severity": "low"
+ },
+ {
+  "quote": "Nunca hay que repetir una misión entera.",
+  "problem": "Saves happen only at the start of each camp and around decisions. Nothing covers a party wipe in a normal battle, and the ambush 'nunca es un game over' doesn't say what happens instead. With one camp and few decisions, a wipe in the last battle replays most of the mission, which breaks this promise.",
+  "fix": "Add to 2.1 and 3.6: «También se guarda al entrar en cada nodo del camino (en Leyenda, en la misma ranura). Si todo el grupo cae, en Historia y Normal se repite desde ese nodo. Si cae en la emboscada, despierta con «Secuelas de caída» y pierde la mitad de los suministros.»",
+  "severity": "low"
+ },
+ {
+  "quote": "**Leyenda:** una sola ranura, que se sobrescribe al votar.",
+  "problem": "In Solo nobody votes, so the rule doesn't say when the slot is overwritten. Fase 7 repeats the same wording.",
+  "fix": "Replace with: «**Leyenda:** una sola ranura, que se sobrescribe al confirmar cada decisión (o al cerrarse el voto).» Change Fase 7 the same way.",
+  "severity": "low"
+ },
+ {
+  "quote": "**Fase 2. Módulos de reglas**",
+  "problem": "The owner's plan and GAMEPLAY_DESIGN.md use 'phase 2' for networking, and the brief itself writes 'En línea (fase 2 de la red)'. Calling this block 'Fase 2' confuses the two plans.",
+  "fix": "Rename the build stages in section 4 «Paso 1» to «Paso 7» (or «Bloque A» to «Bloque G») and keep «fase 2» only for the network.",
+  "severity": "low"
+ },
+ {
+  "quote": "dentro del encargo #44, que sigue en curso.",
+  "problem": "tools/world-sprites/README.md says the art is paused (2026-10-13) and that the owner asked to rebuild the whole camp set (campfire, smoke, tent) in the landmarks style, calling the tent the weakest piece. These are not final assets.",
+  "fix": "Replace with: «dentro del encargo #44, ahora en pausa. El dueño pidió rehacer todo el set del campamento con el estilo de los landmarks, conservando las llamas, el humo y las tres animaciones de la fogata.»",
+  "severity": "low"
+ },
+ {
+  "quote": "órdenes `medidor` y `turnos` en el guion",
+  "problem": "The command table in 3.4 doesn't list `medidor` or `turnos`, although 2.15 says these scenes are written in the same script.",
+  "fix": "Add a row to the 3.4 table: «| `medidor`, `turnos` | Crear una barra (objetivo, fallo o doble filo) y fijar el número de turnos (2.15) |»",
+  "severity": "low"
+ },
+ {
+  "quote": "Cada `eleccion` guarda sola lo elegido (`prueba.ruta = vado`).",
+  "problem": "Options have no id, so the stored value is the jump label, and two options that jump to the same label can't be told apart. The example also names the choice 'prueba.ruta' although `prueba` is the command for d20 checks.",
+  "fix": "Give each option an id, for example `opcion vado \"Por el vado\" prueba: Atletismo CD 12 -> vado`, and rename the example to `ejemplo.ruta` and `escena ejemplo_cruce`.",
+  "severity": "low"
+ },
+ {
+  "quote": "si matas a Abraham, el soldado cojo que frena la marcha en el capítulo 5, desertan dos soldados",
+  "problem": "The research marks this point as conflicting [C]. One source says the march becomes 'twice as easy', another that two soldiers desert, and another that if left alive he may kill himself after a rest. The brief states one version as fact.",
+  "fix": "Write: «si matas a Abraham…, según una fuente desertan dos soldados (otras no lo mencionan)».",
+  "severity": "low"
+ },
+ {
+  "quote": "hasta un 75 % de Virtud con la mejor combinación",
+  "problem": "The numbers are wrong. The DD research gives a 25 % base chance plus up to 45 % from trinkets and quirks, which makes 70 %, not 75 %.",
+  "fix": "Write «hasta un 70 % de Virtud con la mejor combinación».",
+  "severity": "low"
+ },
+ {
+  "quote": "Algunos capítulos completos duraban cerca de una hora.",
+  "problem": "This understates the source: the research says a stage can last 'well over an hour'.",
+  "fix": "Write «Algunos capítulos duraban más de una hora.»",
+  "severity": "low"
+ },
+ {
+  "quote": "DD2 no tiene campamentos",
+  "problem": "The research says DD2's Kingdoms mode does have camps (up to 50 % HP and −1 stress per day). The claim only holds for the main campaign.",
+  "fix": "Write «La campaña principal de DD2 no tiene campamentos (el modo Kingdoms sí)».",
+  "severity": "low"
+ },
+ {
+  "quote": "Desde la segunda noche del capítulo 2, Liam (todavía compañero de Burden en Xenolifer)",
+  "problem": "The research says only 'each night, Liam smuggles in one of three items'. 'Segunda noche' and Liam's allegiance at that point have no source, and the allegiance is plot-twist territory that may be wrong.",
+  "fix": "Write «Cada noche del capítulo 2, Liam entra a escondidas y trae una sola cosa…»",
+  "severity": "low"
+ },
+ {
+  "quote": "Se hace clic en el suelo para moverse",
+  "problem": "The research describes only clicking a character or object to get a short list of actions. There is no source for free movement by clicking the ground.",
+  "fix": "Delete «Se hace clic en el suelo para moverse y» and write «Se hace clic en un personaje para hablarle o darle órdenes.»",
+  "severity": "low"
+ },
+ {
+  "quote": "Las poses sentado, dormido y caído también las usa el campamento.",
+  "problem": "The recommended first prototype builds a full camp with only the priority-1 poses, but the camp screen (2.13) shows the party sitting, and 'sentado' and 'dormido' are priority 2.",
+  "fix": "Move «sentado» to priority 1 in the 3.3 table, or add: «En el prototipo, el campamento usa la pose quieto.»",
+  "severity": "low"
+ },
+ {
+  "quote": "Con un Lazo alto, la pareja recibe el buff «Lazo de camaradas».",
+  "problem": "Lazo has no scale or threshold, so 'alto' means nothing. It also isn't said whether the 'M' buff comes back each mission.",
+  "fix": "Replace with: «El Lazo va de 0 a 10 y empieza en 0. Desde 5, la pareja tiene «Lazo de camaradas» en cada misión.»",
+  "severity": "low"
+ },
+ {
+  "quote": "Botones Auto, Avance rápido (solo el texto ya leído) y Saltar.",
+  "problem": "It isn't said whether Saltar also skips unread text (section 1 promises only 'lo ya leído'). It also isn't said who advances or skips the dialogue in local and online play, where one player could skip it for everyone.",
+  "fix": "Add: «Saltar también salta lo no leído, pidiendo confirmación. En línea, cada pantalla avanza su propio texto y la decisión se abre cuando todos llegan, o a los 60 s.»",
+  "severity": "low"
+ }
+]

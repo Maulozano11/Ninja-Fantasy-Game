@@ -1,0 +1,148 @@
+{
+ "joints": {
+  "head": [
+   126,
+   138
+  ],
+  "neck": [
+   127.18020368870988,
+   147.6499084549994
+  ],
+  "shoulderN": [
+   114.00588540507422,
+   152.512647781908
+  ],
+  "shoulderF": [
+   134.26953381371342,
+   151.80502558676807
+  ],
+  "elbowN": [
+   110.13053736352366,
+   164.50187951529483
+  ],
+  "elbowF": [
+   137.0940700803704,
+   164.0843576076208
+  ],
+  "wristN": [
+   107.62170470134109,
+   175.21195695073692
+  ],
+  "wristF": [
+   142.52265199381395,
+   173.65151488703424
+  ],
+  "handN": [
+   106.8006321937177,
+   178.71707320233614
+  ],
+  "handF": [
+   144.29927880185002,
+   176.782584542115
+  ],
+  "pelvis": [
+   127,
+   176.874
+  ],
+  "hipN": [
+   121.58234983607538,
+   176.46282278598204
+  ],
+  "hipF": [
+   131.5122970933371,
+   173.116061386746
+  ],
+  "kneeN": [
+   122.17131071158374,
+   192.6521132301961
+  ],
+  "kneeF": [
+   138.2328849990635,
+   187.8562682442295
+  ],
+  "ankleN": [
+   118.42234983607538,
+   207.58882278598205
+  ],
+  "ankleF": [
+   135.93629709333712,
+   203.084061386746
+  ]
+ },
+ "look": {
+  "version": 1,
+  "body": "male",
+  "skin": "#f8d3b6",
+  "eyeShape": "standard",
+  "eyeColor": "#3b82f6",
+  "slots": {
+   "hair": {
+    "id": "hair_scholar",
+    "colors": [
+     "#7a3f1d"
+    ]
+   },
+   "top": {
+    "id": "top_longsleeve",
+    "colors": [
+     "#151a2e",
+     "#0d1020"
+    ]
+   },
+   "bottom": {
+    "id": "bottom_shinobi",
+    "colors": [
+     "#151a2e",
+     "#151a2e"
+    ]
+   },
+   "armor": {
+    "id": "armor_dread",
+    "colors": [
+     "#c4ccd6",
+     "#d9a92e"
+    ]
+   },
+   "feet": {
+    "id": "feet_greaves",
+    "colors": [
+     "#c4ccd6",
+     "#3a2d27"
+    ]
+   },
+   "cape": {
+    "id": "cape_knight",
+    "colors": [
+     "#a51d2d",
+     "#d9a93a"
+    ]
+   },
+   "held": {
+    "id": "held_katana",
+    "colors": [],
+    "parts": {
+     "steel": "c",
+     "blade": "c",
+     "guard": "b",
+     "hilt": "a"
+    }
+   }
+  },
+  "accessories": [],
+  "headband": {
+   "position": "none",
+   "slashed": false,
+   "tails": false,
+   "emblem": "crescent",
+   "cloth": "#1e3a8a",
+   "plate": "#cbd5e1"
+  },
+  "chakra": {
+   "color": "red",
+   "onCharge": true,
+   "onCast": true,
+   "onVictory": true
+  },
+  "pixelEdits": []
+ }
+}

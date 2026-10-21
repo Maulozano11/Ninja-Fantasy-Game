@@ -1,0 +1,31 @@
+{
+ "group": "dev",
+ "pxPerMeter": 57,
+ "sprites": {
+  "blast": {
+   "label": "Poison blast: gushing pillar of slime into a bubbling pool",
+   "file": "blast.png",
+   "frameW": 266,
+   "frameH": 173,
+   "anchor": [
+    102,
+    122
+   ],
+   "meters": [
+    4.67,
+    3.04
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 16,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  }
+ }
+}

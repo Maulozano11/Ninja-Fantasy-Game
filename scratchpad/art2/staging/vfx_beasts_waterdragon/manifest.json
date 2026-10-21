@@ -1,0 +1,31 @@
+{
+ "group": "vfx_beasts_waterdragon",
+ "pxPerMeter": 57,
+ "sprites": {
+  "water": {
+   "label": "Water dragon",
+   "file": "water.png",
+   "frameW": 178,
+   "frameH": 95,
+   "anchor": [
+    99,
+    51
+   ],
+   "meters": [
+    3,
+    1.6
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

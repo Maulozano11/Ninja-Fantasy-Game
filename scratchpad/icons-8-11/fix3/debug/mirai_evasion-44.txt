@@ -1,0 +1,81 @@
+a #12030c
+b #26030c
+c #0c1222
+d #1b0e27
+e #370d28
+f #4a0c21
+g #2c2a3a
+h #580412
+i #561232
+j #422836
+k #6e162f
+l #79081c
+m #752838
+n #663a43
+o #862b3f
+p #7c3c59
+q #aa1630
+r #ab1731
+s #963a4e
+t #c31e39
+u #aa465e
+v #cb1f38
+w #9c5966
+x #dc1a32
+y #c2506a
+z #d94968
+A #f21c33
+B #d0687e
+C #e3687a
+D #d47c8a
+E #e28f98
+F #f098a2
+G #eea0a8
+H #fab1b6
+I #fbb5b7
+J #ffd8b9
+
+eeeeeeeiiiiiiiikkkkkkkkkkkkkkkiiiiiiifeeeeee
+eeeeeeiiiiiiikkkkooqqqqqqookkkkiiiiiiifeeeee
+eeeeefiiiiiikklqqqqolllloqqqlkkiiiiiiifeeeee
+eeeeeffiiiiiklqqkkklttqlhhllqqkkiiiiiiieeeee
+eeeefiiiiiiklqqkBkqtxxxtqhlqlqqkkiiiiiieeeee
+eeeeffiiiiklqooBGktxAAAxtlhFymmqkiiiiiiieese
+eeeeffiiiilqooBGwqxAICCAtlhyFymmqkiiiiiiesue
+eeeffiikllqooBGIwqxACaaAtlhyHFymmqkimiiisuse
+eeefeiiikkoqoBGIwltxAaaxqhhyHFymqoiimmisusse
+eeeeeiiiiikoqoBIIhqtxxxtlhhHFymqokiimmsusufe
+eeeiiiiiiiikoqoqEEhlqqqlhhFFqoqokiiiiuusufee
+eeesiiiiiiikkmqqmEhhhhhhhhFmqqokkiiissuufeee
+eeeisiiiiiooomkmqqmhhhhhhqqqmmkkiiissuukeeee
+eeeeisiiiooooomkmmqqrrrrrqqmkkkkiisswuokeeee
+eeeeeiiimmmmmookkkkmmmmmmmkkmkkiisswsiokeeee
+eeeeeiiimmmmkookkkkkkkkkkkkmmmiiuswsiiooeeee
+eeeeeeiimssskoooooooooomkkkkkimuswpiifioeeee
+ieeeeeeimmmmkmoooooomomommkkomuswpiifefieeee
+iieeeeeeiomkmmommoommmmmmmmoouswpiiieeeeeeee
+eiieeeeioommkkommmoosomoooomooupiiiifeeeeeee
+eeeieeioomoommoosooossoooossoosuumiifeeeeeee
+eeeeeemmmmmoooosongggjjjosuussoggmmffeeeeeee
+eeeeemmmmoomoooossnnngggggssuuggggmfeffeeeee
+eeeemommmomkoomooossssogdgggdgdgggmeeeeeeeee
+eeeeooomkkkkooommmmooosusddggdddjmmeeeeeeeee
+eeeooomkmmmookmommmoooosugdggdddjjmeeeeeieee
+eeeoommmkeemmmkmoomoossupdgggddggmeeeeeiidee
+eeeeoookeeefmmkkosmdddppddggddgdgmeeeeeiedee
+eeeeeeeeeeefmmkkossssgdddgggggddggmeeeeeedee
+eeeeeeeeeffemmkkmueeeeggddedegdggemeeeeedeee
+deeeekkkefeeemmmkuuugdggdddeoooeeemeeeeddeed
+deeeeekkfeeeemmmmuujgddggdggjoeiiimeeedddeed
+deeeeeeeeeeeemssuujggddddddggjkeeeeeeeddeedd
+deeeeeeeeeeeeessggjgggdmmedgggjkeeeeeedeeedd
+ddeGeeeeekkkoosggggddgmmmmeddggkeeeddedeeddd
+ddeeddeeeeeekooeggddmmmmmeddgggkeeddddeedddd
+dddeddddeeeekkeeddgmmmeddeeeegkeedddeeeedddd
+ddeeeeddfkkkkeeeimmmmmdemmmmmkeeeedeoJeedddd
+dddeeeeddfkggeiieemmkmdmeeeeeeeeddeoJoeddddd
+dddddeeeefkggieedddekkkmmeeeeedddeeeeedddddd
+ddddddeeekggieeeeeeeeemmmkeeddeeeeeedddddddd
+dddddddeekddddddeeeeeeekkkeeeedddeeddddddddd
+dddddddddddddddddddddddeeedddddddddddddddddd
+dddddddddddddddddddddddddddddddddddddddddddd

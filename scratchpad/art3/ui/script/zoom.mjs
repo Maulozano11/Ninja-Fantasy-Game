@@ -1,0 +1,16 @@
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { readFileSync } from 'node:fs';
+const [OUT, PREFIX] = process.argv.slice(2);
+const camp = readFileSync('/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/i18n/camp.json', 'utf8');
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await browser.newContext({ viewport: { width: 1360, height: 1000 }, deviceScaleFactor: 2 });
+await ctx.addInitScript((run) => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('shinobi5e.mission.v1', run); localStorage.setItem('shinobi.lang', 'es'); sessionStorage.setItem('seeded', '1'); } }, camp);
+const p = await ctx.newPage();
+await p.goto('http://127.0.0.1:5231/#missions'); await p.waitForTimeout(1800);
+const clip = async (name, x, y, w, h) => p.screenshot({ path: `${OUT}/${PREFIX}-${name}.png`, clip: { x, y, width: w, height: h }, fullPage: true });
+await clip('gauge', 1100, 440, 200, 140);
+await clip('corner', 50, 430, 140, 90);
+await clip('party', 950, 835, 350, 430);
+await clip('dinner', 560, 1590, 390, 160);
+await clip('cards', 60, 880, 450, 200);
+await browser.close();

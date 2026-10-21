@@ -1,0 +1,76 @@
+{
+ "version": 1,
+ "body": "male",
+ "skin": "#f8d3b6",
+ "eyeShape": "standard",
+ "eyeColor": "#3b82f6",
+ "slots": {
+  "hair": {
+   "id": "hair_scholar",
+   "colors": [
+    "#7a3f1d"
+   ]
+  },
+  "top": {
+   "id": "top_longsleeve",
+   "colors": [
+    "#151a2e",
+    "#0d1020"
+   ]
+  },
+  "bottom": {
+   "id": "bottom_shinobi",
+   "colors": [
+    "#151a2e",
+    "#151a2e"
+   ]
+  },
+  "armor": {
+   "id": "armor_dread",
+   "colors": [
+    "#c4ccd6",
+    "#d9a92e"
+   ]
+  },
+  "feet": {
+   "id": "feet_greaves",
+   "colors": [
+    "#c4ccd6",
+    "#3a2d27"
+   ]
+  },
+  "cape": {
+   "id": "cape_knight",
+   "colors": [
+    "#a51d2d",
+    "#d9a93a"
+   ]
+  },
+  "held": {
+   "id": "held_katana",
+   "colors": [],
+   "parts": {
+    "steel": "c",
+    "blade": "c",
+    "guard": "b",
+    "hilt": "a"
+   }
+  }
+ },
+ "accessories": [],
+ "headband": {
+  "position": "none",
+  "slashed": false,
+  "tails": false,
+  "emblem": "crescent",
+  "cloth": "#1e3a8a",
+  "plate": "#cbd5e1"
+ },
+ "chakra": {
+  "color": "red",
+  "onCharge": true,
+  "onCast": true,
+  "onVictory": true
+ },
+ "pixelEdits": []
+}

@@ -1,0 +1,760 @@
+{
+ "kit": "ui_icons_23",
+ "references": [
+  "docs/reference/icons-owner-reference-2.jpg",
+  "docs/reference/icons-owner-reference-3.jpg"
+ ],
+ "round": 1,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "frame": {
+  "from": "ui_icons (sheet 1), read only: skill_slot_steel.png and skill_slot_steel_active.png, 56x56, the icon window 44x44 at 6,6; see ui_icons/manifest.json for its slices",
+  "window": {
+   "x": 6,
+   "y": 6,
+   "w": 44,
+   "h": 44
+  }
+ },
+ "method": "his sheets are pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-23.py). 88: his own pixels one to one (his 90x90 or 93x91 window with the columns and rows that show least dropped), on a palette sampled from his pixels, 1-2 pixel areas merged only where his own pixels do not stand out. 44: area mean of his pixels, except his thin lines and strongest specks, which keep their own colour one pixel wide; a light bilateral filter, nearest palette entry, 1-2 pixel areas merged; then hand-fixes only where that still loses his picture (see tools/ui/ui-icons-23.ts)",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (at 88 his pixel stands out there; at 44 his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]",
+ "icons": {
+  "chidori_lightning_blade": {
+   "name": "Chidori",
+   "sheet": "docs/reference/icons-owner-reference-2.jpg",
+   "file": "chidori_lightning_blade.png",
+   "file2x": "chidori_lightning_blade@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "hisWindow": [
+    90,
+    90
+   ],
+   "dropped88": {
+    "columns": [
+     3,
+     36
+    ],
+    "rows": [
+     2,
+     67
+    ]
+   },
+   "palette": [
+    "#010c3e",
+    "#001455",
+    "#011c6c",
+    "#002683",
+    "#00309c",
+    "#003cb4",
+    "#024ac8",
+    "#025adc",
+    "#046ee9",
+    "#0e81ee",
+    "#1b94ee",
+    "#18aaf0",
+    "#18bef2",
+    "#2ad0f4",
+    "#46e4f8",
+    "#72f4fb",
+    "#b1fcff",
+    "#ecffff"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.8,
+     "lowFreqBoxOnPalette": 1.5,
+     "ssim": 0.754,
+     "ssimBox": 0.823,
+     "hue": 262,
+     "hueHis": 258,
+     "colours": 18,
+     "thinRun": [
+      4,
+      "row",
+      34
+     ]
+    },
+    "88": {
+     "small": 1062,
+     "smallHis": 1062,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.67,
+     "lowFreqBoxOnPalette": 0.98,
+     "ssim": 0.739,
+     "ssimBox": 1,
+     "hue": 262,
+     "hueHis": 260,
+     "colours": 18,
+     "thinRun": [
+      9,
+      "row",
+      60
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "rasengan": {
+   "name": "Rasengan",
+   "sheet": "docs/reference/icons-owner-reference-2.jpg",
+   "file": "rasengan.png",
+   "file2x": "rasengan@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "hisWindow": [
+    90,
+    90
+   ],
+   "dropped88": {
+    "columns": [
+     2,
+     88
+    ],
+    "rows": [
+     1,
+     88
+    ]
+   },
+   "palette": [
+    "#08122f",
+    "#051b4a",
+    "#022464",
+    "#002f7d",
+    "#003b98",
+    "#0045b0",
+    "#004eca",
+    "#065ed8",
+    "#0070e3",
+    "#0084ed",
+    "#0797f4",
+    "#1cabf4",
+    "#1bc0fa",
+    "#2ad4fa",
+    "#4ee7fc",
+    "#72f5fc",
+    "#b2fdff",
+    "#edffff"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.23,
+     "lowFreqBoxOnPalette": 1.09,
+     "ssim": 0.772,
+     "ssimBox": 0.822,
+     "hue": 260,
+     "hueHis": 257,
+     "colours": 18,
+     "thinRun": [
+      8,
+      "row",
+      6
+     ]
+    },
+    "88": {
+     "small": 1050,
+     "smallHis": 1050,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.74,
+     "lowFreqBoxOnPalette": 0.72,
+     "ssim": 0.67,
+     "ssimBox": 1,
+     "hue": 261,
+     "hueHis": 259,
+     "colours": 18,
+     "thinRun": [
+      12,
+      "col",
+      12
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "venom_surge": {
+   "name": "Venom Surge",
+   "sheet": "docs/reference/icons-owner-reference-2.jpg",
+   "file": "venom_surge.png",
+   "file2x": "venom_surge@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "hisWindow": [
+    90,
+    90
+   ],
+   "dropped88": {
+    "columns": [
+     9,
+     41
+    ],
+    "rows": [
+     2,
+     87
+    ]
+   },
+   "palette": [
+    "#22152d",
+    "#2d123f",
+    "#352746",
+    "#303d35",
+    "#403d52",
+    "#583e66",
+    "#475b4f",
+    "#59705a",
+    "#02802d",
+    "#029124",
+    "#7e8a74",
+    "#1ca708",
+    "#2fb90a",
+    "#8bb477",
+    "#42cc0f",
+    "#5add00",
+    "#73ea25",
+    "#84fa14",
+    "#c3f6a7",
+    "#d5ffa5"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.25,
+     "lowFreqBoxOnPalette": 0.75,
+     "ssim": 0.745,
+     "ssimBox": 0.822,
+     "hue": 145,
+     "hueHis": 142,
+     "colours": 19,
+     "thinRun": [
+      8,
+      "row",
+      22
+     ]
+    },
+    "88": {
+     "small": 533,
+     "smallHis": 533,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.38,
+     "lowFreqBoxOnPalette": 0.64,
+     "ssim": 0.784,
+     "ssimBox": 1,
+     "hue": 145,
+     "hueHis": 143,
+     "colours": 20,
+     "thinRun": [
+      19,
+      "row",
+      32
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "earth_wall_doryuheki": {
+   "name": "Earth Wall",
+   "sheet": "docs/reference/icons-owner-reference-2.jpg",
+   "file": "earth_wall_doryuheki.png",
+   "file2x": "earth_wall_doryuheki@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "hisWindow": [
+    90,
+    90
+   ],
+   "dropped88": {
+    "columns": [
+     1,
+     88
+    ],
+    "rows": [
+     1,
+     62
+    ]
+   },
+   "palette": [
+    "#16161e",
+    "#261617",
+    "#301f23",
+    "#38282a",
+    "#413032",
+    "#46353a",
+    "#514038",
+    "#5d483e",
+    "#6b5242",
+    "#745843",
+    "#7c624d",
+    "#897052",
+    "#967a5c",
+    "#a28662",
+    "#7e9e46",
+    "#b0946e",
+    "#c2a37a",
+    "#d4b488"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.96,
+     "lowFreqBoxOnPalette": 0.75,
+     "ssim": 0.713,
+     "ssimBox": 0.777,
+     "hue": 58,
+     "hueHis": 69,
+     "colours": 15,
+     "thinRun": [
+      7,
+      "col",
+      13
+     ]
+    },
+    "88": {
+     "small": 859,
+     "smallHis": 859,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.96,
+     "lowFreqBoxOnPalette": 0.68,
+     "ssim": 0.735,
+     "ssimBox": 1,
+     "hue": 68,
+     "hueHis": 71,
+     "colours": 18,
+     "thinRun": [
+      9,
+      "col",
+      41
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "earth_spear_doryuudan": {
+   "name": "Earth Bullets",
+   "sheet": "docs/reference/icons-owner-reference-3.jpg",
+   "file": "earth_spear_doryuudan.png",
+   "file2x": "earth_spear_doryuudan@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "hisWindow": [
+    93,
+    91
+   ],
+   "dropped88": {
+    "columns": [
+     1,
+     26,
+     35,
+     57,
+     91
+    ],
+    "rows": [
+     1,
+     33,
+     88
+    ]
+   },
+   "palette": [
+    "#070202",
+    "#0f0808",
+    "#1b1213",
+    "#1e2224",
+    "#272e2a",
+    "#31382a",
+    "#423e2c",
+    "#514434",
+    "#5e4e3d",
+    "#6e5a48",
+    "#7c6754",
+    "#8c735e",
+    "#9b8065",
+    "#aa8b6d",
+    "#b89874",
+    "#c2a580",
+    "#d1b48a",
+    "#ddc292"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.89,
+     "lowFreqBoxOnPalette": 0.66,
+     "ssim": 0.733,
+     "ssimBox": 0.804,
+     "hue": 70,
+     "hueHis": 71,
+     "colours": 15,
+     "thinRun": [
+      6,
+      "col",
+      2
+     ]
+    },
+    "88": {
+     "small": 712,
+     "smallHis": 712,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.24,
+     "lowFreqBoxOnPalette": 0.61,
+     "ssim": 0.705,
+     "ssimBox": 1,
+     "hue": 73,
+     "hueHis": 72,
+     "colours": 18,
+     "thinRun": [
+      11,
+      "row",
+      4
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "great_fireball": {
+   "name": "Great Fireball",
+   "sheet": "docs/reference/icons-owner-reference-3.jpg",
+   "file": "great_fireball.png",
+   "file2x": "great_fireball@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "hisWindow": [
+    93,
+    91
+   ],
+   "dropped88": {
+    "columns": [
+     1,
+     25,
+     34,
+     51,
+     91
+    ],
+    "rows": [
+     8,
+     50,
+     64
+    ]
+   },
+   "palette": [
+    "#260c0f",
+    "#480d0f",
+    "#5c0c0c",
+    "#503236",
+    "#7a0404",
+    "#920a06",
+    "#a61208",
+    "#bc1a0a",
+    "#d61d02",
+    "#e8360c",
+    "#f84c02",
+    "#fb6e06",
+    "#fb8a06",
+    "#fda207",
+    "#fcb711",
+    "#fcd022",
+    "#fee84d",
+    "#fffcae"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.08,
+     "lowFreqBoxOnPalette": 0.81,
+     "ssim": 0.734,
+     "ssimBox": 0.825,
+     "hue": 29,
+     "hueHis": 30,
+     "colours": 18,
+     "thinRun": [
+      5,
+      "row",
+      8
+     ]
+    },
+    "88": {
+     "small": 538,
+     "smallHis": 538,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.12,
+     "lowFreqBoxOnPalette": 0.65,
+     "ssim": 0.781,
+     "ssimBox": 1,
+     "hue": 29,
+     "hueHis": 30,
+     "colours": 18,
+     "thinRun": [
+      9,
+      "col",
+      6
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "water_stream": {
+   "name": "Water Stream",
+   "sheet": "docs/reference/icons-owner-reference-3.jpg",
+   "file": "water_stream.png",
+   "file2x": "water_stream@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "hisWindow": [
+    93,
+    91
+   ],
+   "dropped88": {
+    "columns": [
+     3,
+     16,
+     28,
+     37,
+     54
+    ],
+    "rows": [
+     2,
+     16,
+     89
+    ]
+   },
+   "palette": [
+    "#0a1f46",
+    "#0b3257",
+    "#0f3a64",
+    "#144473",
+    "#175385",
+    "#1659b0",
+    "#1c699d",
+    "#2170c0",
+    "#247ecc",
+    "#2e90d6",
+    "#3aa1df",
+    "#46b1e9",
+    "#4fbeef",
+    "#68cbf6",
+    "#83daf8",
+    "#9fe7fd",
+    "#baf3fc",
+    "#dffdfe"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.23,
+     "lowFreqBoxOnPalette": 1,
+     "ssim": 0.721,
+     "ssimBox": 0.796,
+     "hue": 251,
+     "hueHis": 249,
+     "colours": 18,
+     "thinRun": [
+      8,
+      "row",
+      36
+     ]
+    },
+    "88": {
+     "small": 566,
+     "smallHis": 566,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.43,
+     "lowFreqBoxOnPalette": 0.64,
+     "ssim": 0.63,
+     "ssimBox": 1,
+     "hue": 251,
+     "hueHis": 250,
+     "colours": 18,
+     "thinRun": [
+      10,
+      "row",
+      42
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "weapon_attack": {
+   "name": "Weapon Attack",
+   "sheet": "docs/reference/icons-owner-reference-3.jpg",
+   "file": "weapon_attack.png",
+   "file2x": "weapon_attack@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "hisWindow": [
+    93,
+    91
+   ],
+   "dropped88": {
+    "columns": [
+     5,
+     16,
+     33,
+     70,
+     91
+    ],
+    "rows": [
+     1,
+     56,
+     89
+    ]
+   },
+   "palette": [
+    "#1e152a",
+    "#2a1f38",
+    "#382738",
+    "#2d3154",
+    "#3b4060",
+    "#5e464e",
+    "#3e5475",
+    "#6e5858",
+    "#4c6894",
+    "#6f769a",
+    "#9e7255",
+    "#4a8fa8",
+    "#828cb2",
+    "#b09472",
+    "#9da9af",
+    "#66b6d0",
+    "#d0ac80",
+    "#80d2dd",
+    "#eace9e",
+    "#b4eeee",
+    "#fbe8a2",
+    "#f8fff3"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.26,
+     "lowFreqBoxOnPalette": 0.86,
+     "ssim": 0.74,
+     "ssimBox": 0.8,
+     "hue": 277,
+     "hueHis": 273,
+     "colours": 22,
+     "thinRun": [
+      7,
+      "row",
+      40
+     ]
+    },
+    "88": {
+     "small": 590,
+     "smallHis": 590,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.73,
+     "lowFreqBoxOnPalette": 0.73,
+     "ssim": 0.698,
+     "ssimBox": 1,
+     "hue": 277,
+     "hueHis": 274,
+     "colours": 22,
+     "thinRun": [
+      13,
+      "col",
+      3
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  }
+ }
+}

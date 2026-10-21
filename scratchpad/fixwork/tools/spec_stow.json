@@ -1,0 +1,12 @@
+[
+ {"key":"m-crystal","body":"male","held":"held_crystal","pose":"throw","look":{"stowed":true}},
+ {"key":"m-ice","body":"male","held":"held_ice_crystal","pose":"throw","look":{"stowed":true}},
+ {"key":"m-flame","body":"male","held":"held_flame_sword","pose":"throw","look":{"stowed":true}},
+ {"key":"m-nag","body":"male","held":"held_naginata","pose":"throw","look":{"stowed":true}},
+ {"key":"f-crystal","body":"female","held":"held_crystal","pose":"throw","look":{"stowed":true}},
+ {"key":"b-ice","body":"bulky","held":"held_ice_crystal","pose":"throw","look":{"stowed":true}},
+ {"key":"m-katana","body":"male","held":"held_katana","pose":"throw","look":{"stowed":true}},
+ {"key":"m-kunai","body":"male","held":"held_kunai","pose":"throw","look":{"stowed":true}},
+ {"key":"p-crystal","body":"male","held":"held_crystal","pose":"pierce","look":{"stowed":true}},
+ {"key":"p-nag","body":"male","held":"held_naginata","pose":"pierce","look":{"stowed":true}}
+]

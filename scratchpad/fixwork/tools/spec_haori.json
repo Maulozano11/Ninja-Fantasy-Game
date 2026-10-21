@@ -1,0 +1,7 @@
+[
+ {"key":"m-haori","body":"male","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_haori"}},"frames":[3,4]},
+ {"key":"f-haori","body":"female","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_haori"}},"frames":[3,4]},
+ {"key":"s-haori","body":"slender","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_haori"}},"frames":[3,4]},
+ {"key":"f-rogue","body":"female","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_rogue"}},"frames":[3,4]},
+ {"key":"b-rogue","body":"bulky","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_rogue"}},"frames":[3,4]}
+]

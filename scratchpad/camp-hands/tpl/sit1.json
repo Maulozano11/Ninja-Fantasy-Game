@@ -1,0 +1,6 @@
+[
+  { "name": "J", "frame": { "handN": { "from": "kneeN", "x": 0.6, "y": -1.4, "units": "px" }, "shapeN": "relaxed", "handF": { "from": "kneeF", "x": 1, "y": -1.5, "units": "px" }, "shapeF": "relaxed", "farArmFront": true } },
+  { "name": "K", "frame": { "handN": { "from": "kneeN", "x": 1.5, "y": -1, "units": "px" }, "shapeN": "relaxed", "handF": { "from": "kneeF", "x": 1.5, "y": -1, "units": "px" }, "shapeF": "relaxed", "farHandFront": true } },
+  { "name": "L", "frame": { "lean": 20, "handN": { "from": "kneeN", "x": 0.5, "y": -1.2, "units": "px" }, "shapeN": "relaxed", "handF": { "from": "kneeF", "x": 0.5, "y": -1.5, "units": "px" }, "shapeF": "relaxed", "bendF": -1, "farArmFront": true } },
+  { "name": "M", "frame": { "lean": 20, "handN": { "from": "kneeN", "x": 0.5, "y": -1.2, "units": "px" }, "shapeN": "relaxed", "handF": { "from": "kneeF", "x": -2, "y": -2.5, "units": "px" }, "shapeF": "relaxed", "farHandFront": true } }
+]

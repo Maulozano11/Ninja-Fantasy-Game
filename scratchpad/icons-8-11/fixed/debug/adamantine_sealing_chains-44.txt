@@ -1,0 +1,87 @@
+a #18000a
+b #3d1035
+c #460c28
+d #501812
+e #5a1241
+f #681a1c
+g #67155e
+h #7c1947
+i #7c243c
+j #88322a
+k #7c4132
+l #882472
+m #921884
+n #a22144
+o #aa3a2d
+p #a2502e
+q #ac3d73
+r #bb3246
+s #ac5158
+t #b6643e
+u #be3ed0
+v #d54d4a
+w #d64870
+x #d03ec6
+y #e26443
+z #bc8548
+A #d27842
+B #d27286
+C #de8c52
+D #f0998a
+E #fe87ba
+F #f0a066
+G #fca546
+H #dfba98
+I #f3ba6b
+J #ffa5fe
+K #ffd06f
+L #fbcad4
+M #ffe878
+N #fff25d
+O #ffeec5
+P #fef6b2
+
+epptkeeeeeeeeeeeeeeeeeeeeeeeeeebbbbbccccttCi
+epeetkeeeeeeemmeeeeeeeeeeeeeggeeebbbbccttiii
+epjekteeeeeemmmmeeehhheeeeeeggeeeebbbbttoioi
+eepjzteeeeeeemmheehooonhheeeeeeeeeeeeetKtoic
+eeejjzkIkeeeeehhhhhoNNKnhhhheeeeneenKKKtoicb
+eeeegjzkIkeeehhhhhhtNoKKnhhhheehnnnKKKItiecb
+eeeegtkffIkehhhhhhhtNooKnhhhhhhhnnKKttIFtecb
+eeeeegtkfkIhhhhhhhhtNoKInhhhhhhhhtKFtIFthecb
+eeeeeeetkzkhhhhhhhntNKInnhhhhhhhhtKKFFnhheec
+eeeeeehetkzkIjhhhnnvKrFInnnnnhhpIIttFnheeeec
+eeeeeehhhhkzkIjnnnnvKrrFFnnnnnpIttnnnhheeeee
+eeeeehhhhhkkjjIpnnnvvnnrrnnnnpIiipnhhhheeeee
+eeeehhhhhhipjjpInnnnnnnnnnnnjIiipphhhhuheeee
+eeeehhhhhhhipptpnnnnnnnnnnnjjpCpphhhhuuueeee
+eeeehhhhhhnnipittKsnnnnnnnpCpCiiiihhhhuheeee
+eeehhhhhhhnnnniiKtKsnnnnnnCpCinnvvihhhhhheee
+eeehhhhhhnnnnnnppotKsnnnktnnppnnvvnihhhhheee
+eehhhsnhnnnnnrrnpoozKnnntkknpinnnnnrnhnnhhee
+eehhsKsnIInnnrnnnppzznzttIkpinnnnnrKrnKKhhhe
+ehhhhsKsIInnnnnnnnpizzztIjkinnnnnnrKrrKKhhhe
+ehhhhhKsIKnnnnnnnnniizfIjjnnnnnnnnrvKKKKnhhe
+eehhhnKsIKnnnnnnnnnnzjffjnnnnnnnnnvKKvKKnhhe
+eehhnKKsIKnnnnnnnnjjjzipffnnnnnnnnvKvKKKnhhe
+eehhnKvsKKnnnnnnnnKpziijppKonnnnnnvvKvKKnhhe
+eehhhnvvKKnnnnnnKKnpinnjppoKonnnnnvvvnKrhhhe
+eehhhhnnvvnnnnnKKnnppnnjpjooKonnnnnnnhrrhhee
+eehhhhhhnrrnnnnnKpppnnnnjtottnnnnnnnnhhhhhee
+eeehhhhhhrwrrzzzzppinnnnnjtoInnnnnnnnnhhhhee
+eeehhhhhhirwMMzziiinnnnnnnjjjIIItnnnhhhhheee
+eeehhnnhhiwMMtttnnnnnnnnnnnnjootItnhhhhhheee
+eeeehhnhhiBMtsttnnnnnnnnnnnnnIootInhhhhhlgee
+eeeehhhhhiBKtstnnnnnnnnnnnnnnoIoIInhhhhluuge
+eeeeghhhhBBKstinnnnnrrrrnnnooniIossnnhhluuge
+egggehhKhKKiiinnnnnryyKKrnnoonniioKssKhggeee
+eegeehKPKKihinnnnnnyMyvKKrnnnnnnhioKKMhgeeee
+eeeeghPPFthhhinnnnnyMyyvrnnnnnnhhhitKMhhgeee
+eeeggFPFptthhhhnnnnyMvKvrnnnnhhhhhtitKMggeee
+eeeggPFptddhhhhllhnyMrvKKnihhhhhhhhittMMggee
+eeggMMpedhhhhhluulhyMrrKrihhhhnnhhhheetMggee
+eegeMpeeeehhhhlulhhrKrKrihhhhhhnhhheeeetMgge
+eegeegeeeeehhhhhhhhnrKrihhhhhhhhhheeeeegggee
+eeeggeeeeeheehhhhhhhnnhhhhhhhhhheeeeeeeegeee
+eeeeeeeeeeeeeeehhhhhhhhhhhhhhheeeeeeeeeeeeee
+eeeeeeeeeeeeeeeeeehhhhhhhhhheeeeeeeeeeeeeeee

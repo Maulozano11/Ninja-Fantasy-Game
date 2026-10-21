@@ -1,0 +1,6 @@
+p0-male-held-bare-read-0
+p0-male-held-hands_fingerless-read-0
+p0-male-held-hands_bracers-read-0
+p0-male-held-hands_gauntlets-read-0
+p0-male-held-hands_wraps-read-0
+p0-male-held-hands_crimson_gauntlets-read-0

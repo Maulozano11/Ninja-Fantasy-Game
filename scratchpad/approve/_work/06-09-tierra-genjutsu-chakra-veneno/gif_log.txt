@@ -1,0 +1,52 @@
+/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/approve/06-tierra.gif 1.02 MB (832, 420) frames 16 total ms 1000 reserved 29 of 119 unique 388
+   bolt         fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   sphere       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   slash        fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   multi        fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   hit          hit0=70, hit1=70, hit2=60, hit3=70, hit4=70, hit5=660
+   breath       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   stream       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   stream_head  fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/approve/06-tierra-explosion-muro-aura.gif 4.25 MB (1268, 404) frames 47 total ms 2400 reserved 216 of 227 unique 786
+   blast        blast0=90, blast1=80, blast2=80, blast3=90, blast4=80, blast5=80, blast6=90, blast7=610, blast0=90, blast1=80, blast2=80, blast3=90, blast4=80, blast5=80, blast6=90, blast7=610
+   wall         rise0=90, rise1=80, rise2=80, rise3=90, rise4=80, rise5=80, idle0=130, idle1=120, idle2=130, idle3=120, idle4=130, idle5=120, idle0=140, idle1=110, idle2=140, idle3=110, idle4=130, idle5=120, idle0=130, idle1=120, idle2=150
+   aura         idle0=110, idle1=90, idle2=100, idle3=100, idle4=100, idle5=110, idle0=90, idle1=100, idle2=100, idle3=100, idle4=100, idle5=100, idle0=110, idle1=100, idle2=90, idle3=100, idle4=100, idle5=110, idle0=90, idle1=100, idle2=100, idle3=100, idle4=100, idle5=100
+/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/approve/07-genjutsu.gif 1.07 MB (832, 420) frames 16 total ms 1000 reserved 135 of 225 unique 1140
+   bolt         fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   sphere       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   slash        fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   multi        fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   hit          hit0=70, hit1=70, hit2=60, hit3=70, hit4=70, hit5=660
+   breath       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   stream       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   stream_head  fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/approve/07-genjutsu-explosion-muro-aura.gif 5.20 MB (1268, 404) frames 47 total ms 2400 reserved 181 of 181 unique 2535
+   blast        blast0=90, blast1=80, blast2=80, blast3=90, blast4=80, blast5=80, blast6=90, blast7=610, blast0=90, blast1=80, blast2=80, blast3=90, blast4=80, blast5=80, blast6=90, blast7=610
+   wall         rise0=90, rise1=80, rise2=80, rise3=90, rise4=80, rise5=80, idle0=130, idle1=120, idle2=130, idle3=120, idle4=130, idle5=120, idle0=140, idle1=110, idle2=140, idle3=110, idle4=130, idle5=120, idle0=130, idle1=120, idle2=150
+   aura         idle0=110, idle1=90, idle2=100, idle3=100, idle4=100, idle5=110, idle0=90, idle1=100, idle2=100, idle3=100, idle4=100, idle5=100, idle0=110, idle1=100, idle2=90, idle3=100, idle4=100, idle5=110, idle0=90, idle1=100, idle2=100, idle3=100, idle4=100, idle5=100
+/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/approve/08-chakra.gif 1.04 MB (832, 420) frames 16 total ms 1000 reserved 34 of 124 unique 621
+   bolt         fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   sphere       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   slash        fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   multi        fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   hit          hit0=70, hit1=70, hit2=60, hit3=70, hit4=70, hit5=660
+   breath       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   stream       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   stream_head  fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/approve/08-chakra-explosion-muro-aura.gif 5.05 MB (1268, 404) frames 47 total ms 2400 reserved 152 of 152 unique 3272
+   blast        blast0=90, blast1=80, blast2=80, blast3=90, blast4=80, blast5=80, blast6=90, blast7=610, blast0=90, blast1=80, blast2=80, blast3=90, blast4=80, blast5=80, blast6=90, blast7=610
+   wall         rise0=90, rise1=80, rise2=80, rise3=90, rise4=80, rise5=80, idle0=130, idle1=120, idle2=130, idle3=120, idle4=130, idle5=120, idle0=140, idle1=110, idle2=140, idle3=110, idle4=130, idle5=120, idle0=130, idle1=120, idle2=150
+   aura         idle0=110, idle1=90, idle2=100, idle3=100, idle4=100, idle5=110, idle0=90, idle1=100, idle2=100, idle3=100, idle4=100, idle5=100, idle0=110, idle1=100, idle2=90, idle3=100, idle4=100, idle5=110, idle0=90, idle1=100, idle2=100, idle3=100, idle4=100, idle5=100
+/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/approve/09-veneno.gif 1.02 MB (832, 420) frames 16 total ms 1000 reserved 105 of 195 unique 791
+   bolt         fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   sphere       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   slash        fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   multi        fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   hit          hit0=70, hit1=70, hit2=60, hit3=70, hit4=70, hit5=660
+   breath       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   stream       fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+   stream_head  fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80, fly0=90, fly1=80, fly2=80, fly3=90, fly4=80, fly5=80
+/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/approve/09-veneno-explosion-muro-aura.gif 4.81 MB (1268, 404) frames 47 total ms 2400 reserved 179 of 179 unique 1377
+   blast        blast0=90, blast1=80, blast2=80, blast3=90, blast4=80, blast5=80, blast6=90, blast7=610, blast0=90, blast1=80, blast2=80, blast3=90, blast4=80, blast5=80, blast6=90, blast7=610
+   wall         rise0=90, rise1=80, rise2=80, rise3=90, rise4=80, rise5=80, idle0=130, idle1=120, idle2=130, idle3=120, idle4=130, idle5=120, idle0=140, idle1=110, idle2=140, idle3=110, idle4=130, idle5=120, idle0=130, idle1=120, idle2=150
+   aura         idle0=110, idle1=90, idle2=100, idle3=100, idle4=100, idle5=110, idle0=90, idle1=100, idle2=100, idle3=100, idle4=100, idle5=100, idle0=110, idle1=100, idle2=90, idle3=100, idle4=100, idle5=110, idle0=90, idle1=100, idle2=100, idle3=100, idle4=100, idle5=100

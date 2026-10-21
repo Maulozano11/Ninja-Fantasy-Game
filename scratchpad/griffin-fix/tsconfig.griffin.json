@@ -1,0 +1,3 @@
+{ "extends": "/home/user/Ninja-Fantasy-Game/tsconfig.json",
+  "compilerOptions": { "types": ["node"], "typeRoots": ["/home/user/Ninja-Fantasy-Game/node_modules/@types"] },
+  "include": [], "files": ["/home/user/Ninja-Fantasy-Game/tools/world-sprites/vfx-beast-griffin.ts"] }

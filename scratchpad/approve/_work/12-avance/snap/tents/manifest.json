@@ -1,0 +1,382 @@
+{
+ "group": "campsite",
+ "pxPerMeter": 57,
+ "sprites": {
+  "tent_large": {
+   "label": "Large Canvas Tent",
+   "file": "tent_large.png",
+   "frameW": 212,
+   "frameH": 237,
+   "anchor": [
+    106,
+    235
+   ],
+   "meters": [
+    3.4,
+    2.3
+   ],
+   "tags": [
+    "cover-3q",
+    "blocks-sight",
+    "flammable",
+    "destructible",
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 4,
+     "loop": true
+    }
+   }
+  },
+  "tent_small": {
+   "label": "Small Canvas Tent",
+   "file": "tent_small.png",
+   "frameW": 147,
+   "frameH": 168,
+   "anchor": [
+    73,
+    166
+   ],
+   "meters": [
+    2.4,
+    1.6
+   ],
+   "tags": [
+    "cover-3q",
+    "blocks-sight",
+    "flammable",
+    "destructible",
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 4,
+     "loop": true
+    }
+   }
+  },
+  "torii": {
+   "label": "Torii Gate",
+   "file": "torii.png",
+   "frameW": 160,
+   "frameH": 174,
+   "anchor": [
+    80,
+    167
+   ],
+   "meters": [
+    2.8,
+    3.2
+   ],
+   "tags": [
+    "blocks-sight",
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "backpack": {
+   "label": "Travel Pack",
+   "file": "backpack.png",
+   "frameW": 52,
+   "frameH": 67,
+   "anchor": [
+    25,
+    60
+   ],
+   "meters": [
+    0.75,
+    0.8
+   ],
+   "tags": [
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "bedroll": {
+   "label": "Bedroll",
+   "file": "bedroll.png",
+   "frameW": 60,
+   "frameH": 33,
+   "anchor": [
+    30,
+    25
+   ],
+   "meters": [
+    1,
+    0.3
+   ],
+   "tags": [
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "sword_stuck": {
+   "label": "Sword in the Ground",
+   "file": "sword_stuck.png",
+   "frameW": 17,
+   "frameH": 54,
+   "anchor": [
+    6,
+    51
+   ],
+   "meters": [
+    0.2,
+    0.85
+   ],
+   "tags": [
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "swords_pair": {
+   "label": "Two Swords in the Ground",
+   "file": "swords_pair.png",
+   "frameW": 30,
+   "frameH": 55,
+   "anchor": [
+    13,
+    52
+   ],
+   "meters": [
+    0.45,
+    0.85
+   ],
+   "tags": [
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "stump_axe": {
+   "label": "Stump with Axe",
+   "file": "stump_axe.png",
+   "frameW": 50,
+   "frameH": 74,
+   "anchor": [
+    22,
+    59
+   ],
+   "meters": [
+    0.6,
+    0.95
+   ],
+   "tags": [
+    "cover-half",
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "log_seat": {
+   "label": "Log Seat",
+   "file": "log_seat.png",
+   "frameW": 98,
+   "frameH": 44,
+   "anchor": [
+    48,
+    34
+   ],
+   "meters": [
+    1.6,
+    0.45
+   ],
+   "tags": [
+    "cover-half",
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "cooking_tripod": {
+   "label": "Cooking Tripod",
+   "file": "cooking_tripod.png",
+   "frameW": 67,
+   "frameH": 108,
+   "anchor": [
+    34,
+    93
+   ],
+   "meters": [
+    1.1,
+    1.45
+   ],
+   "tags": [
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 6,
+     "loop": true
+    }
+   }
+  },
+  "firewood": {
+   "label": "Firewood Stack",
+   "file": "firewood.png",
+   "frameW": 55,
+   "frameH": 53,
+   "anchor": [
+    28,
+    39
+   ],
+   "meters": [
+    0.85,
+    0.5
+   ],
+   "tags": [
+    "flammable",
+    "interactable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "fern_clump": {
+   "label": "Fern Clump",
+   "file": "fern_clump.png",
+   "frameW": 60,
+   "frameH": 31,
+   "anchor": [
+    29,
+    22
+   ],
+   "meters": [
+    0.95,
+    0.55
+   ],
+   "tags": [
+    "ambient",
+    "hide-spot"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 5,
+     "loop": true
+    }
+   }
+  },
+  "campfire_large": {
+   "label": "Large Campfire",
+   "file": "campfire_large.png",
+   "frameW": 89,
+   "frameH": 134,
+   "anchor": [
+    45,
+    104
+   ],
+   "meters": [
+    1.4,
+    1.5
+   ],
+   "tags": [
+    "light-source",
+    "interactable"
+   ],
+   "anims": {
+    "burning": {
+     "row": 0,
+     "frames": 10,
+     "fps": 12,
+     "loop": true
+    },
+    "smoldering": {
+     "row": 1,
+     "frames": 6,
+     "fps": 6,
+     "loop": true
+    },
+    "out": {
+     "row": 2,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "smoke_tall": {
+   "label": "Tall Smoke Column",
+   "file": "smoke_tall.png",
+   "frameW": 58,
+   "frameH": 206,
+   "anchor": [
+    8,
+    204
+   ],
+   "meters": [
+    1.1,
+    3.6
+   ],
+   "tags": [
+    "ambient"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 10,
+     "fps": 8,
+     "loop": true
+    }
+   }
+  }
+ }
+}

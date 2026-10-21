@@ -1,0 +1,11 @@
+import { open, out } from './lib.mjs';
+const { browser, page, errs } = await open('es-MX', { hash: '#missions' });
+await page.waitForTimeout(1200);
+await page.screenshot({ path: `${out}/missions-es.png`, fullPage: true });
+const txt = await page.evaluate(() => document.body.innerText);
+const lines = txt.split('\n').filter((l) => /Mirai|Kōton|Koton|Ryusei|Northstar|Taki|Akkai|Uddo/.test(l));
+console.log(JSON.stringify(lines.slice(0, 20)));
+const keys = await page.evaluate(() => Object.keys(localStorage));
+console.log('keys', JSON.stringify(keys));
+console.log('errors', JSON.stringify(errs));
+await browser.close();

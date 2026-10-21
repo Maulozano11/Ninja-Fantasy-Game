@@ -1,0 +1,75 @@
+
+== river_patrol: 100 battles, avg rounds 5.9, outcomes {"victory":100}
+   enemies: Acechador (Ryusei), Renegado (Mirai), Cazador (Koton)
+   refused 0, stalls 0, unfinished 0
+   ability                    enemy: battles / uses     party: battles / uses
+   Pursuing Flame               100 / 112            0 / 0
+   bigger jutsu (Mirai)          73 / 90             0 / 0
+   Evasion                       96 / 170            0 / 0
+   kunai (Ryusei)                89 / 91           100 / 247
+   Node planted                  90 / 102          100 / 259
+   Warp Strike                    9 / 9             68 / 105
+   Warp edge won                  9 / 9             68 / 105
+   blow from behind               6 / 6              0 / 0
+   Spatial Swap                   1 / 1              5 / 5
+   Kōton Block                   82 / 101           90 / 113
+   Kōton Wall                     9 / 9             28 / 28
+   Command                        0 / 0            100 / 510
+   Command taken                  0 / 0             98 / 279
+   aura slowed a foe              0 / 0              2 / 2
+   attack w/ aura disadv.         0 / 0              9 / 9
+
+== cedar_rogues: 100 battles, avg rounds 5.2, outcomes {"victory":100}
+   enemies: Renegado (Mirai), Vigía (Northstar), Asaltante (Ryusei)
+   refused 0, stalls 0, unfinished 0
+   ability                    enemy: battles / uses     party: battles / uses
+   Pursuing Flame               100 / 120            0 / 0
+   bigger jutsu (Mirai)          71 / 100            0 / 0
+   Evasion                      100 / 195            0 / 0
+   kunai (Ryusei)               100 / 173          100 / 200
+   Node planted                 100 / 233          100 / 201
+   Warp Strike                   36 / 38            73 / 124
+   Warp edge won                 36 / 38            73 / 124
+   blow from behind              35 / 36             0 / 0
+   Spatial Swap                   2 / 2              3 / 3
+   Kōton Block                    0 / 0             73 / 99
+   Kōton Wall                     0 / 0              4 / 4
+   Command                       61 / 100          100 / 446
+   Command taken                 38 / 45            96 / 291
+   aura slowed a foe             21 / 26             6 / 6
+   attack w/ aura disadv.         3 / 3             19 / 34
+
+== night_raid: 100 battles, avg rounds 6.7, outcomes {"victory":100}
+   enemies: Asaltante (Ryusei), Puño de hierro (Koton), Sombra (Northstar), Kagero (Mirai)
+   refused 0, stalls 0, unfinished 0
+   ability                    enemy: battles / uses     party: battles / uses
+   Pursuing Flame               100 / 233            0 / 0
+   bigger jutsu (Mirai)         100 / 179            0 / 0
+   Evasion                       97 / 211            0 / 0
+   kunai (Ryusei)                99 / 176          100 / 210
+   Node planted                  99 / 220          100 / 243
+   Warp Strike                   57 / 70            42 / 62
+   Warp edge won                 57 / 68            42 / 62
+   blow from behind              45 / 50             3 / 3
+   Spatial Swap                   4 / 5              1 / 1
+   Kōton Block                   70 / 96            99 / 104
+   Kōton Wall                    31 / 31            15 / 16
+   Command                       37 / 55           100 / 519
+   Command taken                 24 / 31            99 / 356
+   aura slowed a foe             13 / 13            45 / 49
+   attack w/ aura disadv.        59 / 107           96 / 336
+
+== hydra: 100 battles, avg rounds 8.3, outcomes {"victory":44,"defeat":56}
+   enemies: the hydra
+   refused 0, stalls 0, unfinished 0
+   ability                    enemy: battles / uses     party: battles / uses
+   kunai (Ryusei)                 0 / 0            100 / 227
+   Node planted                   0 / 0            100 / 289
+   Warp Strike                    0 / 0             95 / 212
+   Warp edge won                  0 / 0             95 / 212
+   blow from behind               0 / 0             18 / 20
+   Kōton Block                    0 / 0            100 / 122
+   Kōton Wall                     0 / 0             59 / 61
+   attack w/ aura disadv.         0 / 0             74 / 379
+
+TOTAL 400 battles: refused 0, stalls 0, unfinished 0

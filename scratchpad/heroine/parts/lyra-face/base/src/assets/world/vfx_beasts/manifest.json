@@ -1,0 +1,224 @@
+{
+ "group": "vfx_beasts",
+ "pxPerMeter": 57,
+ "sprites": {
+  "water": {
+   "label": "Water dragon",
+   "file": "water.png",
+   "frameW": 178,
+   "frameH": 95,
+   "anchor": [
+    99,
+    51
+   ],
+   "meters": [
+    3,
+    1.6
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "earth": {
+   "label": "Stone drake (earth)",
+   "file": "earth.png",
+   "frameW": 284,
+   "frameH": 167,
+   "anchor": [
+    157,
+    82
+   ],
+   "meters": [
+    4.1,
+    2.5
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "genjutsu": {
+   "label": "Crow swarm (genjutsu)",
+   "file": "genjutsu.png",
+   "frameW": 212,
+   "frameH": 167,
+   "anchor": [
+    116,
+    82
+   ],
+   "meters": [
+    3.7,
+    2.9
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    },
+    "summon": {
+     "row": 1,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "poison": {
+   "label": "Venom cobra (poison)",
+   "file": "poison.png",
+   "frameW": 176,
+   "frameH": 105,
+   "anchor": [
+    98,
+    58
+   ],
+   "meters": [
+    3.1,
+    1.8
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "fire": {
+   "label": "Phoenix (fire)",
+   "file": "fire.png",
+   "frameW": 127,
+   "frameH": 105,
+   "anchor": [
+    82,
+    63
+   ],
+   "meters": [
+    2,
+    1.7
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    },
+    "dive": {
+     "row": 1,
+     "frames": 5,
+     "fps": 10,
+     "loop": true
+    },
+    "attack": {
+     "row": 2,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    }
+   }
+  },
+  "lightning": {
+   "label": "Raiju (lightning)",
+   "file": "lightning.png",
+   "frameW": 171,
+   "frameH": 96,
+   "anchor": [
+    95,
+    56
+   ],
+   "meters": [
+    3,
+    1.5
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "wind": {
+   "label": "Wind crane",
+   "file": "wind.png",
+   "frameW": 166,
+   "frameH": 123,
+   "anchor": [
+    95,
+    69
+   ],
+   "meters": [
+    2.6,
+    2
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "chakra": {
+   "label": "Chakra griffin",
+   "file": "chakra.png",
+   "frameW": 130,
+   "frameH": 94,
+   "anchor": [
+    79,
+    59
+   ],
+   "meters": [
+    2.3,
+    1.6
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

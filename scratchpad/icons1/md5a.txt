@@ -1,0 +1,12 @@
+48d81ef1ff0b43bbcb964c3109cd58e8  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/fireball_goukakyu.png
+450a3b4adcb1478f3f30f707e89569b6  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/fireball_goukakyu@2x.png
+ffcc184a81368415c3bddffbe5f5afaa  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/great_fire_annihilation.png
+10a5636ed8e04831a3118dadc0d82d5e  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/great_fire_annihilation@2x.png
+d81b1bca1b232e151b9c6017571ccc1a  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/kirin_thunder.png
+fa2af15a24bc28be8fb0e9b00a7ba235  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/kirin_thunder@2x.png
+3acc8e544b4d4ab0fee339e414156110  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/skill_slot_steel.png
+15cd9c8b1a98c07998e46aff1faa6bcd  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/skill_slot_steel_active.png
+754ea043b2b184ac10535292964c601c  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/water_shield_suijinheki.png
+ca14f114cc6a6c57e90f85d7118cc9eb  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/water_shield_suijinheki@2x.png
+5cf93d8747c4782c7ecbdf7a5082097f  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/staging/ui_icons/manifest.json
+accd3aaad21a94e997f0cc1b88fe1941  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/ui-icons-1-compare.png

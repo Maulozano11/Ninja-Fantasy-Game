@@ -1,0 +1,13 @@
+import { ALL_ITEMS } from '/home/user/Ninja-Fantasy-Game/src/sprite/catalog';
+import { JUTSUS_DATA, LEGENDARY_PRESETS, HAIRSTYLES } from '/home/user/Ninja-Fantasy-Game/src/data/shinobiData';
+const by: Record<string, string[]> = {};
+for (const d of ALL_ITEMS as any[]) (by[d.slot] ??= []).push(`${d.id}${d.hidden ? '(hidden)' : ''}`);
+for (const [k, v] of Object.entries(by)) console.log(k, v.length, v.join(', '));
+console.log('jutsus', JUTSUS_DATA.length);
+const nat: Record<string, number> = {};
+for (const j of JUTSUS_DATA as any[]) nat[j.nature] = (nat[j.nature] ?? 0) + 1;
+console.log(nat);
+const rk: Record<string, number> = {};
+for (const j of JUTSUS_DATA as any[]) rk[j.rank] = (rk[j.rank] ?? 0) + 1;
+console.log(rk);
+console.log(LEGENDARY_PRESETS.map(p => p.name).join(' | '));

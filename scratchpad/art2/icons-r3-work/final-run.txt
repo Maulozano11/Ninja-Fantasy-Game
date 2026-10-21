@@ -1,0 +1,12 @@
+fireball_goukakyu 16 #170e16 #271016 #361314 #521914 #712116 #8b2916 #a0321a #b73f19 #cf5218 #e56a26 #f38a2f #f7ab3b #f9ce5d #fded8e #fdf7ab #fdfde2
+   44 {"small":18,"smallSparks":18,"smallDrawn":0,"smallOther":0,"listedPx":18,"lowFreq":3.7,"lowFreqBoxOnPalette":0.6,"hue":56,"hueHis":36,"colours":16,"thinRun":[8,"row",41]}
+   88 {"small":37,"smallSparks":37,"smallDrawn":0,"smallOther":0,"listedPx":40,"lowFreq":3.83,"lowFreqBoxOnPalette":0.56,"hue":72,"hueHis":35,"colours":16,"thinRun":[13,"col",15]}
+kirin_thunder 19 #181639 #1a2351 #1a3269 #1d3f82 #1d4f91 #225da1 #296fad #2f7fbc #328fc8 #3ea0cf #48b2da #ca9d9a* #56c3e2 #5ed5ea #77e6f2 #f5c6be* #96f3f8 #d3fbfb #feffff*
+   44 {"small":31,"smallSparks":7,"smallDrawn":24,"smallOther":0,"listedPx":10,"lowFreq":4.86,"lowFreqBoxOnPalette":1.34,"hue":240,"hueHis":241,"colours":18,"thinRun":[7,"row",24]}
+   88 {"small":36,"smallSparks":7,"smallDrawn":29,"smallOther":0,"listedPx":18,"lowFreq":2.18,"lowFreqBoxOnPalette":1.32,"hue":245,"hueHis":242,"colours":18,"thinRun":[12,"row",38]}
+great_fire_annihilation 17 #361f27 #452b2c #67191c #5c3532 #6e3730 #7c3127 #9a311d #b74320 #a3633b #d2541a #e2691f #ee8029 #f49933 #f8b148 #f9c659 #fcdb73 #fff2a2
+   44 {"small":15,"smallSparks":13,"smallDrawn":2,"smallOther":0,"listedPx":22,"lowFreq":1.41,"lowFreqBoxOnPalette":0.93,"hue":37,"hueHis":35,"colours":17,"thinRun":[5,"row",9]}
+   88 {"small":17,"smallSparks":14,"smallDrawn":3,"smallOther":0,"listedPx":70,"lowFreq":1.45,"lowFreqBoxOnPalette":0.96,"hue":37,"hueHis":35,"colours":17,"thinRun":[8,"row",19]}
+water_shield_suijinheki 16 #192538 #233850 #0a3a64 #164c71 #1b5c7c #1c6d8b #267d98 #3090a4 #11a0a6 #37a2b3 #21b3b2 #4eb8c3 #79cad4 #99d6de #ade7ec #ccf5f8
+   44 {"small":11,"smallSparks":8,"smallDrawn":3,"smallOther":0,"listedPx":9,"lowFreq":1.82,"lowFreqBoxOnPalette":1,"hue":228,"hueHis":229,"colours":16,"thinRun":[6,"col",18]}
+   88 {"small":11,"smallSparks":6,"smallDrawn":5,"smallOther":0,"listedPx":22,"lowFreq":1.92,"lowFreqBoxOnPalette":0.89,"hue":228,"hueHis":229,"colours":16,"thinRun":[12,"col",42]}

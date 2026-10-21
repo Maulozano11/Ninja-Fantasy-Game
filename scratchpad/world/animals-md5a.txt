@@ -1,0 +1,4 @@
+9046a9f60e0267a7eda0c0025542ebdd  src/assets/world/animals/crow.png
+74ab8442d7cdb20b9af8571d1542b22d  src/assets/world/animals/deer.png
+eedd8cc2aa069ccd126539c0f34204e8  src/assets/world/animals/rabbit.png
+419440b4fc21fc972d0cf488bebe5bd6  src/assets/world/animals/sparrow.png

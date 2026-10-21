@@ -1,0 +1,399 @@
+{
+ "group": "vfx_poison_v3",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bolt": {
+   "label": "Poison bolt: swirling slime glob in a venom splash",
+   "file": "bolt.png",
+   "frameW": 74,
+   "frameH": 72,
+   "anchor": [
+    49,
+    33
+   ],
+   "meters": [
+    1.3,
+    1.26
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "beast": {
+   "label": "Poison beast: venom cobra",
+   "file": "beast.png",
+   "frameW": 136,
+   "frameH": 96,
+   "anchor": [
+    64,
+    48
+   ],
+   "meters": [
+    2.39,
+    1.68
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream": {
+   "label": "Poison stream: green slime beam with spatter (tileable 64 px)",
+   "file": "stream.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    0,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "stream_head": {
+   "label": "Poison stream head: splashing burst of slime",
+   "file": "stream_head.png",
+   "frameW": 70,
+   "frameH": 72,
+   "anchor": [
+    32,
+    36
+   ],
+   "meters": [
+    1.23,
+    1.26
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "breath": {
+   "label": "Poison breath: cone of acid with bubbles and venom mist (origin at the anchor)",
+   "file": "breath.png",
+   "frameW": 123,
+   "frameH": 114,
+   "anchor": [
+    11,
+    56
+   ],
+   "meters": [
+    2.16,
+    2
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "sphere": {
+   "label": "Poison sphere: green orb in a swirling venom ring",
+   "file": "sphere.png",
+   "frameW": 73,
+   "frameH": 66,
+   "anchor": [
+    38,
+    29
+   ],
+   "meters": [
+    1.28,
+    1.16
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "slash": {
+   "label": "Poison slash: green crescent with bone-white fang edges",
+   "file": "slash.png",
+   "frameW": 64,
+   "frameH": 74,
+   "anchor": [
+    33,
+    36
+   ],
+   "meters": [
+    1.12,
+    1.3
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "multi": {
+   "label": "Poison multi: three glob darts with trails",
+   "file": "multi.png",
+   "frameW": 75,
+   "frameH": 63,
+   "anchor": [
+    37,
+    31
+   ],
+   "meters": [
+    1.32,
+    1.11
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "hit": {
+   "label": "Poison hit: spiky green splat with drops",
+   "file": "hit.png",
+   "frameW": 84,
+   "frameH": 81,
+   "anchor": [
+    43,
+    41
+   ],
+   "meters": [
+    1.47,
+    1.42
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "blast": {
+   "label": "Poison blast: gushing pillar of slime into a bubbling pool",
+   "file": "blast.png",
+   "frameW": 291,
+   "frameH": 173,
+   "anchor": [
+    102,
+    122
+   ],
+   "meters": [
+    5.11,
+    3.04
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 16,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "wall": {
+   "label": "Poison wall: slime barrier of hexagon cells in a stone frame with runes",
+   "file": "wall.png",
+   "frameW": 292,
+   "frameH": 141,
+   "anchor": [
+    145,
+    129
+   ],
+   "meters": [
+    5.12,
+    2.47
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "aura": {
+   "label": "Poison aura, front layer (draw OVER the character): venom tint and the near pool",
+   "file": "aura.png",
+   "frameW": 94,
+   "frameH": 145,
+   "anchor": [
+    47,
+    123
+   ],
+   "meters": [
+    1.65,
+    2.54
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 12,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "aura_back": {
+   "label": "Poison aura, back layer (draw BEHIND the character): violet flames and green light",
+   "file": "aura_back.png",
+   "frameW": 94,
+   "frameH": 145,
+   "anchor": [
+    47,
+    123
+   ],
+   "meters": [
+    1.65,
+    2.54
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 12,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "wall_diag": {
+   "label": "Poison wall (3/4): framed slime barrier on its lit ground",
+   "file": "wall_diag.png",
+   "frameW": 272,
+   "frameH": 284,
+   "anchor": [
+    120,
+    217
+   ],
+   "meters": [
+    4.77,
+    4.98
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "wall_depth": {
+   "label": "Poison wall (depth): mist curtain (ours, kept)",
+   "file": "wall_depth.png",
+   "frameW": 112,
+   "frameH": 304,
+   "anchor": [
+    56,
+    206
+   ],
+   "meters": [
+    1.96,
+    5.33
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 12,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,68 @@
+def filled_vortex():
+    """His vortex (sheet pixels, premultiplied) with the parts his crows and feathers hid filled by his own
+    vortex turned rigidly about its eye: a spiral turned is still the same spiral, so his arms run on through
+    the filled part instead of stacking up as rings. For each hidden part the turn is the one whose pixels best
+    match his own all round its edge (so his stripes meet at the seam), among the turns that cover most of it
+    with pixels he painted; what that turn leaves (its source hidden too) takes the next best turn, and so on.
+    Only what no turn reaches (round the dark eye he hid almost entirely) takes the ring's own median."""
+    L = LAY['L']
+    rgb, alpha = L['veil']
+    pm = premul(rgb, alpha).astype(np.float32)
+    H, W = alpha.shape
+    hidden = np.zeros((H, W), bool)
+    for it in L['crows'] + L['feathers']:
+        hidden |= it['mask']
+    yy, xx = np.mgrid[0:H, 0:W]
+    dxa, dya = (xx - VCX).astype(np.float32), (yy - VCY).astype(np.float32)
+    rad = np.hypot(dxa, dya)
+    zone = hidden & (rad < RMAX)
+    out = pm.copy()
+    good = ~zone  # pixels whose colour is known (his, or filled already)
+    for pts in sorted(components(zone), key=lambda P: (-len(P), P[0])):
+        P = np.array(pts)
+        hole = np.zeros((H, W), bool)
+        hole[P[:, 0], P[:, 1]] = True
+        rim = dilate(hole, 4) & ~hole & ~hidden
+        ry, rx = np.nonzero(rim)
+        for _ in range(4):
+            hy, hx = np.nonzero(hole & ~good)
+            if not len(hy):
+                break
+            best = None
+            for d in TURNS:
+                sx, sy = turned_src(dxa[hy, hx], dya[hy, hx], d)
+                ok = (sx >= 0) & (sx < W) & (sy >= 0) & (sy < H)
+                ok[ok] = good[sy[ok], sx[ok]]
+                cover = float(ok.mean())
+                if cover < 0.25:
+                    continue
+                tx, ty = turned_src(dxa[ry, rx], dya[ry, rx], d)
+                tok = (tx >= 0) & (tx < W) & (ty >= 0) & (ty < H)
+                tok[tok] = good[ty[tok], tx[tok]]
+                if tok.sum() < 8:
+                    continue
+                err = float(np.abs(out[ry[tok], rx[tok]] - out[ty[tok], tx[tok]]).mean())
+                score = err + 40.0 * (1.0 - cover)
+                if best is None or score < best[0]:
+                    best = (score, d)
+            if best is None:
+                break
+            sx, sy = turned_src(dxa[hy, hx], dya[hy, hx], best[1])
+            ok = (sx >= 0) & (sx < W) & (sy >= 0) & (sy < H)
+            ok[ok] = good[sy[ok], sx[ok]]
+            out[hy[ok], hx[ok]] = out[sy[ok], sx[ok]]
+            good[hy[ok], hx[ok]] = True
+    left = zone & ~good
+    if left.any():
+        ri = np.round(rad).astype(int)
+        for r_ in np.unique(ri[left]):
+            ring = (ri == r_) & ~zone
+            near = r_
+            while not ring.any() and near > 0:  # a ring he hid all of takes the nearest ring inside it he painted
+                near -= 1
+                ring = (ri == near) & ~zone
+            out[left & (ri == r_)] = np.median(out[ring], 0) if ring.any() else 0
+    return out
+
+
+def polar_vortex():

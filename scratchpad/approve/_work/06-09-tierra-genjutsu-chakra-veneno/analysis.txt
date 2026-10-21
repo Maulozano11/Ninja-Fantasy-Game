@@ -1,0 +1,396 @@
+===== earth
+bolt         fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(19), np.int64(53), np.int64(47)) size_m=(0.95x0.51)
+     f0 px=735 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f1 px=739 edges={'T': 0, 'B': 0, 'L': 5, 'R': 0} iso=0 semi=0 EDGE
+     f2 px=741 edges={'T': 0, 'B': 0, 'L': 4, 'R': 0} iso=0 semi=0 EDGE
+     f3 px=750 edges={'T': 0, 'B': 0, 'L': 7, 'R': 0} iso=0 semi=0 EDGE
+     f4 px=749 edges={'T': 0, 'B': 0, 'L': 8, 'R': 0} iso=0 semi=0 EDGE
+     f5 px=737 edges={'T': 0, 'B': 0, 'L': 5, 'R': 0} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [192, 182, 183, 229, 230, 236]
+stream       fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(0), np.int64(63), np.int64(48)) size_m=(1.12x0.86)
+     f0 px=1188 edges={'T': 4, 'B': 0, 'L': 14, 'R': 24} iso=0 semi=0 EDGE
+     f1 px=1247 edges={'T': 4, 'B': 0, 'L': 14, 'R': 21} iso=0 semi=0 EDGE
+     f2 px=1205 edges={'T': 7, 'B': 0, 'L': 13, 'R': 18} iso=0 semi=0 EDGE
+     f3 px=1186 edges={'T': 7, 'B': 0, 'L': 13, 'R': 12} iso=0 semi=0 EDGE
+     f4 px=1218 edges={'T': 7, 'B': 0, 'L': 13, 'R': 11} iso=0 semi=0 EDGE
+     f5 px=1178 edges={'T': 4, 'B': 0, 'L': 13, 'R': 17} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [385, 314, 231, 370, 314, 226]
+stream_head  fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(0), np.int64(63), np.int64(48)) size_m=(1.12x0.86)
+     f0 px=1444 edges={'T': 3, 'B': 0, 'L': 6, 'R': 6} iso=0 semi=0 EDGE
+     f1 px=1451 edges={'T': 3, 'B': 0, 'L': 6, 'R': 6} iso=0 semi=0 EDGE
+     f2 px=1441 edges={'T': 1, 'B': 0, 'L': 6, 'R': 6} iso=0 semi=0 EDGE
+     f3 px=1454 edges={'T': 3, 'B': 0, 'L': 6, 'R': 6} iso=0 semi=0 EDGE
+     f4 px=1444 edges={'T': 0, 'B': 0, 'L': 6, 'R': 6} iso=0 semi=0 EDGE
+     f5 px=1470 edges={'T': 5, 'B': 0, 'L': 6, 'R': 6} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [247, 210, 229, 224, 216, 244]
+breath       fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(0), np.int64(95), np.int64(63)) size_m=(1.68x1.12)
+     f0 px=3506 edges={'T': 24, 'B': 32, 'L': 12, 'R': 11} iso=0 semi=0 EDGE
+     f1 px=3523 edges={'T': 28, 'B': 25, 'L': 12, 'R': 15} iso=0 semi=0 EDGE
+     f2 px=3443 edges={'T': 24, 'B': 25, 'L': 12, 'R': 10} iso=0 semi=0 EDGE
+     f3 px=3390 edges={'T': 16, 'B': 29, 'L': 12, 'R': 11} iso=0 semi=0 EDGE
+     f4 px=3379 edges={'T': 16, 'B': 14, 'L': 12, 'R': 17} iso=0 semi=0 EDGE
+     f5 px=3462 edges={'T': 14, 'B': 15, 'L': 12, 'R': 15} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [1133, 1252, 1255, 1167, 1165, 1066]
+sphere       fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(13), np.int64(54), np.int64(55)) size_m=(0.96x0.75)
+     f0 px=1269 edges={'T': 0, 'B': 0, 'L': 9, 'R': 0} iso=0 semi=0 EDGE
+     f1 px=1273 edges={'T': 0, 'B': 0, 'L': 14, 'R': 0} iso=0 semi=0 EDGE
+     f2 px=1265 edges={'T': 0, 'B': 0, 'L': 10, 'R': 0} iso=0 semi=0 EDGE
+     f3 px=1267 edges={'T': 0, 'B': 0, 'L': 15, 'R': 0} iso=0 semi=0 EDGE
+     f4 px=1238 edges={'T': 0, 'B': 0, 'L': 11, 'R': 0} iso=0 semi=0 EDGE
+     f5 px=1270 edges={'T': 0, 'B': 0, 'L': 14, 'R': 0} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [158, 174, 176, 183, 176, 193]
+slash        fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(4), np.int64(44), np.int64(59)) size_m=(0.79x0.98)
+     f0 px=1071 edges={'T': 0, 'B': 0, 'L': 4, 'R': 0} iso=0 semi=0 EDGE
+     f1 px=1059 edges={'T': 0, 'B': 0, 'L': 5, 'R': 0} iso=1 semi=0 EDGE
+     f2 px=1062 edges={'T': 0, 'B': 0, 'L': 7, 'R': 0} iso=0 semi=0 EDGE
+     f3 px=1051 edges={'T': 0, 'B': 0, 'L': 6, 'R': 0} iso=0 semi=0 EDGE
+     f4 px=1033 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f5 px=1023 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     mask diffs consecutive (last->first at end): [96, 99, 91, 92, 104, 144]
+multi        fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(11), np.int64(60), np.int64(51)) size_m=(1.07x0.72)
+     f0 px=747 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f1 px=732 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f2 px=723 edges={'T': 0, 'B': 0, 'L': 1, 'R': 0} iso=0 semi=0 EDGE
+     f3 px=724 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f4 px=718 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f5 px=734 edges={'T': 0, 'B': 0, 'L': 1, 'R': 0} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [151, 151, 147, 166, 166, 153]
+hit          hit    alpha=[np.uint8(0), np.uint8(180), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(1), np.int64(63), np.int64(63)) size_m=(1.12x1.11)
+     f0 px=280 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f1 px=742 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f2 px=1164 edges={'T': 0, 'B': 1, 'L': 0, 'R': 1} iso=0 semi=0 EDGE
+     f3 px=1348 edges={'T': 0, 'B': 5, 'L': 0, 'R': 0} iso=0 semi=0 EDGE
+     f4 px=1151 edges={'T': 0, 'B': 7, 'L': 0, 'R': 0} iso=0 semi=0 EDGE
+     f5 px=642 edges={'T': 0, 'B': 4, 'L': 4, 'R': 4} iso=0 semi=402 EDGE
+     mask diffs consecutive (last->first at end): [462, 586, 654, 727, 725, 812]
+blast        blast  alpha=[np.uint8(0), np.uint8(160), np.uint8(170), np.uint8(180), np.uint8(190), np.uint8(210)]... extra=0 union_bbox=(np.int64(5), np.int64(5), np.int64(173), np.int64(139)) size_m=(2.96x2.37)
+     f0 px=1684 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=165
+     f1 px=7171 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=307
+     f2 px=10048 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=399
+     f3 px=11446 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=337
+     f4 px=11281 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=341
+     f5 px=10052 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=346
+     f6 px=7763 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=631
+     f7 px=5979 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=2557
+     mask diffs consecutive (last->first at end): [5519, 3259, 1598, 1839, 2599, 3181, 2354, 4951]
+wall         rise   alpha=[np.uint8(0), np.uint8(210), np.uint8(220), np.uint8(255)] extra=0 union_bbox=(np.int64(1), np.int64(10), np.int64(267), np.int64(125)) size_m=(4.68x2.04)
+     f0 px=4192 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f1 px=12734 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f2 px=20664 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f3 px=26237 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f4 px=25803 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f5 px=25778 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=17
+     mask diffs consecutive (last->first at end): [9162, 8364, 7417, 1770, 25, 22230]
+wall         idle   alpha=[np.uint8(0), np.uint8(210), np.uint8(220), np.uint8(255)] extra=0 union_bbox=(np.int64(8), np.int64(17), np.int64(264), np.int64(123)) size_m=(4.51x1.88)
+     f0 px=25771 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=10
+     f1 px=25769 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=8
+     f2 px=25761 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f3 px=25774 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=13
+     f4 px=25763 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=2
+     f5 px=25761 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     mask diffs consecutive (last->first at end): [12, 8, 13, 11, 2, 10]
+aura         idle   alpha=[np.uint8(0), np.uint8(150), np.uint8(255)] extra=0 union_bbox=(np.int64(1), np.int64(8), np.int64(78), np.int64(119)) size_m=(1.37x1.96)
+     f0 px=2348 edges={'T': 0, 'B': 15, 'L': 0, 'R': 0} iso=0 semi=151 EDGE
+     f1 px=2276 edges={'T': 0, 'B': 15, 'L': 0, 'R': 0} iso=0 semi=168 EDGE
+     f2 px=2295 edges={'T': 0, 'B': 15, 'L': 0, 'R': 0} iso=0 semi=159 EDGE
+     f3 px=2323 edges={'T': 0, 'B': 15, 'L': 0, 'R': 0} iso=0 semi=162 EDGE
+     f4 px=2327 edges={'T': 0, 'B': 15, 'L': 0, 'R': 0} iso=0 semi=158 EDGE
+     f5 px=2368 edges={'T': 0, 'B': 15, 'L': 0, 'R': 0} iso=0 semi=154 EDGE
+     mask diffs consecutive (last->first at end): [898, 865, 866, 862, 789, 980]
+===== genjutsu
+bolt         fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(18), np.int64(51), np.int64(48)) size_m=(0.91x0.54)
+     f0 px=690 edges={'T': 0, 'B': 0, 'L': 7, 'R': 0} iso=0 semi=0 EDGE
+     f1 px=671 edges={'T': 0, 'B': 0, 'L': 11, 'R': 0} iso=0 semi=0 EDGE
+     f2 px=674 edges={'T': 0, 'B': 0, 'L': 6, 'R': 0} iso=0 semi=0 EDGE
+     f3 px=685 edges={'T': 0, 'B': 0, 'L': 4, 'R': 0} iso=0 semi=0 EDGE
+     f4 px=694 edges={'T': 0, 'B': 0, 'L': 3, 'R': 0} iso=0 semi=0 EDGE
+     f5 px=680 edges={'T': 0, 'B': 0, 'L': 6, 'R': 0} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [225, 193, 197, 205, 174, 218]
+stream       fly    alpha=[np.uint8(0), np.uint8(210), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(15), np.int64(63), np.int64(48)) size_m=(1.12x0.60)
+     f0 px=1179 edges={'T': 0, 'B': 0, 'L': 14, 'R': 14} iso=0 semi=73 EDGE
+     f1 px=1186 edges={'T': 0, 'B': 0, 'L': 17, 'R': 16} iso=0 semi=74 EDGE
+     f2 px=1174 edges={'T': 0, 'B': 0, 'L': 17, 'R': 17} iso=0 semi=67 EDGE
+     f3 px=1180 edges={'T': 0, 'B': 0, 'L': 12, 'R': 15} iso=0 semi=73 EDGE
+     f4 px=1183 edges={'T': 0, 'B': 0, 'L': 21, 'R': 21} iso=0 semi=74 EDGE
+     f5 px=1173 edges={'T': 0, 'B': 0, 'L': 23, 'R': 23} iso=0 semi=67 EDGE
+     mask diffs consecutive (last->first at end): [983, 978, 964, 981, 990, 984]
+stream_head  fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(5), np.int64(62), np.int64(58)) size_m=(1.11x0.95)
+     f0 px=1544 edges={'T': 0, 'B': 0, 'L': 12, 'R': 0} iso=0 semi=0 EDGE
+     f1 px=1517 edges={'T': 0, 'B': 0, 'L': 16, 'R': 0} iso=0 semi=0 EDGE
+     f2 px=1469 edges={'T': 0, 'B': 0, 'L': 16, 'R': 0} iso=0 semi=0 EDGE
+     f3 px=1460 edges={'T': 0, 'B': 0, 'L': 10, 'R': 0} iso=0 semi=0 EDGE
+     f4 px=1458 edges={'T': 0, 'B': 0, 'L': 20, 'R': 0} iso=0 semi=0 EDGE
+     f5 px=1539 edges={'T': 0, 'B': 0, 'L': 22, 'R': 0} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [505, 500, 533, 554, 511, 495]
+breath       fly    alpha=[np.uint8(0), np.uint8(150), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(0), np.int64(95), np.int64(63)) size_m=(1.68x1.12)
+     f0 px=3602 edges={'T': 31, 'B': 30, 'L': 10, 'R': 64} iso=0 semi=575 EDGE
+     f1 px=3464 edges={'T': 24, 'B': 24, 'L': 10, 'R': 18} iso=0 semi=630 EDGE
+     f2 px=3554 edges={'T': 28, 'B': 29, 'L': 10, 'R': 50} iso=0 semi=533 EDGE
+     f3 px=3664 edges={'T': 29, 'B': 32, 'L': 10, 'R': 52} iso=0 semi=585 EDGE
+     f4 px=3561 edges={'T': 26, 'B': 32, 'L': 10, 'R': 64} iso=0 semi=516 EDGE
+     f5 px=3634 edges={'T': 30, 'B': 31, 'L': 10, 'R': 64} iso=0 semi=587 EDGE
+     mask diffs consecutive (last->first at end): [1060, 1198, 970, 881, 979, 952]
+sphere       fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(15), np.int64(61), np.int64(49)) size_m=(1.09x0.61)
+     f0 px=1289 edges={'T': 0, 'B': 0, 'L': 5, 'R': 0} iso=0 semi=0 EDGE
+     f1 px=1278 edges={'T': 0, 'B': 0, 'L': 12, 'R': 0} iso=0 semi=0 EDGE
+     f2 px=1262 edges={'T': 0, 'B': 0, 'L': 7, 'R': 0} iso=0 semi=0 EDGE
+     f3 px=1260 edges={'T': 0, 'B': 0, 'L': 12, 'R': 0} iso=0 semi=0 EDGE
+     f4 px=1246 edges={'T': 0, 'B': 0, 'L': 5, 'R': 0} iso=0 semi=0 EDGE
+     f5 px=1248 edges={'T': 0, 'B': 0, 'L': 2, 'R': 0} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [115, 100, 108, 118, 126, 139]
+slash        fly    alpha=[np.uint8(0), np.uint8(100), np.uint8(161), np.uint8(180), np.uint8(209), np.uint8(220)]... extra=0 union_bbox=(np.int64(0), np.int64(6), np.int64(45), np.int64(57)) size_m=(0.81x0.91)
+     f0 px=1147 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=691
+     f1 px=1150 edges={'T': 0, 'B': 0, 'L': 2, 'R': 0} iso=0 semi=697 EDGE
+     f2 px=1137 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=683
+     f3 px=1144 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=688
+     f4 px=1150 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=697
+     f5 px=1157 edges={'T': 0, 'B': 0, 'L': 2, 'R': 0} iso=0 semi=703 EDGE
+     mask diffs consecutive (last->first at end): [35, 43, 33, 38, 45, 56]
+multi        fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(3), np.int64(11), np.int64(58), np.int64(52)) size_m=(0.98x0.74)
+     f0 px=781 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f1 px=778 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f2 px=782 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f3 px=775 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f4 px=781 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f5 px=780 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     mask diffs consecutive (last->first at end): [109, 118, 131, 118, 115, 95]
+hit          hit    alpha=[np.uint8(0), np.uint8(166), np.uint8(170), np.uint8(180), np.uint8(200), np.uint8(220)]... extra=0 union_bbox=(np.int64(1), np.int64(5), np.int64(57), np.int64(63)) size_m=(1.00x1.04)
+     f0 px=308 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f1 px=849 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=153
+     f2 px=1255 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=467
+     f3 px=1150 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=427
+     f4 px=779 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=383
+     f5 px=424 edges={'T': 0, 'B': 4, 'L': 0, 'R': 0} iso=0 semi=424 EDGE
+     mask diffs consecutive (last->first at end): [541, 490, 977, 823, 699, 732]
+blast        blast  alpha=[np.uint8(0), np.uint8(90), np.uint8(130), np.uint8(170), np.uint8(200), np.uint8(219)]... extra=0 union_bbox=(np.int64(9), np.int64(0), np.int64(166), np.int64(140)) size_m=(2.77x2.47)
+     f0 px=1107 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f1 px=4711 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f2 px=8695 edges={'T': 7, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=5847 EDGE
+     f3 px=9446 edges={'T': 34, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=5586 EDGE
+     f4 px=9272 edges={'T': 24, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=5434 EDGE
+     f5 px=8246 edges={'T': 6, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=5670 EDGE
+     f6 px=6977 edges={'T': 2, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=5358 EDGE
+     f7 px=6243 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=6243
+     mask diffs consecutive (last->first at end): [4644, 9830, 2621, 2852, 4202, 4637, 3760, 6368]
+wall         rise   alpha=[np.uint8(0), np.uint8(165), np.uint8(190), np.uint8(205), np.uint8(215), np.uint8(230)]... extra=0 union_bbox=(np.int64(1), np.int64(16), np.int64(271), np.int64(126)) size_m=(4.75x1.95)
+     f0 px=2695 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=2422
+     f1 px=7956 edges={'T': 0, 'B': 0, 'L': 0, 'R': 5} iso=0 semi=7650 EDGE
+     f2 px=14052 edges={'T': 0, 'B': 0, 'L': 0, 'R': 9} iso=0 semi=13696 EDGE
+     f3 px=20642 edges={'T': 0, 'B': 0, 'L': 0, 'R': 11} iso=0 semi=20282 EDGE
+     f4 px=23640 edges={'T': 0, 'B': 0, 'L': 0, 'R': 12} iso=0 semi=23279 EDGE
+     f5 px=23861 edges={'T': 0, 'B': 0, 'L': 0, 'R': 11} iso=0 semi=23489 EDGE
+     mask diffs consecutive (last->first at end): [5809, 6428, 6944, 3444, 451, 21344]
+wall         idle   alpha=[np.uint8(0), np.uint8(165), np.uint8(190), np.uint8(205), np.uint8(215), np.uint8(230)]... extra=0 union_bbox=(np.int64(1), np.int64(19), np.int64(271), np.int64(127)) size_m=(4.75x1.91)
+     f0 px=23964 edges={'T': 0, 'B': 3, 'L': 0, 'R': 7} iso=0 semi=23825 EDGE
+     f1 px=23862 edges={'T': 0, 'B': 0, 'L': 0, 'R': 7} iso=0 semi=23717 EDGE
+     f2 px=23834 edges={'T': 0, 'B': 0, 'L': 0, 'R': 9} iso=0 semi=23609 EDGE
+     f3 px=23870 edges={'T': 0, 'B': 0, 'L': 0, 'R': 11} iso=0 semi=23679 EDGE
+     f4 px=23828 edges={'T': 0, 'B': 0, 'L': 0, 'R': 12} iso=0 semi=23596 EDGE
+     f5 px=23811 edges={'T': 0, 'B': 0, 'L': 0, 'R': 11} iso=0 semi=23589 EDGE
+     mask diffs consecutive (last->first at end): [206, 248, 276, 240, 209, 405]
+aura         idle   alpha=[np.uint8(0), np.uint8(200), np.uint8(240), np.uint8(255)] extra=0 union_bbox=(np.int64(1), np.int64(9), np.int64(78), np.int64(119)) size_m=(1.37x1.95)
+     f0 px=3047 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=2286 EDGE
+     f1 px=2859 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=2155 EDGE
+     f2 px=2715 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=1989 EDGE
+     f3 px=2869 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=2080 EDGE
+     f4 px=2840 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=2127 EDGE
+     f5 px=2987 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=2271 EDGE
+     mask diffs consecutive (last->first at end): [1576, 1514, 1496, 1463, 1359, 1468]
+===== chakra
+bolt         fly    alpha=[np.uint8(0), np.uint8(110), np.uint8(120), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(11), np.int64(54), np.int64(53)) size_m=(0.96x0.75)
+     f0 px=617 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=2 semi=136
+     f1 px=619 edges={'T': 0, 'B': 0, 'L': 1, 'R': 0} iso=3 semi=135 EDGE
+     f2 px=638 edges={'T': 0, 'B': 0, 'L': 1, 'R': 0} iso=1 semi=137 EDGE
+     f3 px=635 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=137
+     f4 px=615 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=1 semi=139
+     f5 px=622 edges={'T': 0, 'B': 0, 'L': 1, 'R': 0} iso=1 semi=146 EDGE
+     mask diffs consecutive (last->first at end): [334, 335, 345, 358, 319, 347]
+stream       fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(18), np.int64(63), np.int64(46)) size_m=(1.12x0.51)
+     f0 px=937 edges={'T': 0, 'B': 0, 'L': 14, 'R': 14} iso=0 semi=0 EDGE
+     f1 px=930 edges={'T': 0, 'B': 0, 'L': 18, 'R': 14} iso=0 semi=0 EDGE
+     f2 px=938 edges={'T': 0, 'B': 0, 'L': 11, 'R': 13} iso=0 semi=0 EDGE
+     f3 px=932 edges={'T': 0, 'B': 0, 'L': 15, 'R': 14} iso=0 semi=0 EDGE
+     f4 px=938 edges={'T': 0, 'B': 0, 'L': 18, 'R': 18} iso=0 semi=0 EDGE
+     f5 px=938 edges={'T': 0, 'B': 0, 'L': 14, 'R': 14} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [205, 230, 208, 208, 238, 213]
+stream_head  fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(22), np.int64(63), np.int64(42)) size_m=(1.12x0.37)
+     f0 px=821 edges={'T': 0, 'B': 0, 'L': 14, 'R': 0} iso=1 semi=0 EDGE
+     f1 px=829 edges={'T': 0, 'B': 0, 'L': 14, 'R': 1} iso=1 semi=0 EDGE
+     f2 px=819 edges={'T': 0, 'B': 0, 'L': 14, 'R': 1} iso=2 semi=0 EDGE
+     f3 px=824 edges={'T': 0, 'B': 0, 'L': 14, 'R': 0} iso=1 semi=0 EDGE
+     f4 px=824 edges={'T': 0, 'B': 0, 'L': 14, 'R': 1} iso=1 semi=0 EDGE
+     f5 px=817 edges={'T': 0, 'B': 0, 'L': 14, 'R': 1} iso=2 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [30, 24, 23, 24, 23, 20]
+breath       fly    alpha=[np.uint8(0), np.uint8(170), np.uint8(190), np.uint8(225), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(0), np.int64(94), np.int64(63)) size_m=(1.67x1.12)
+     f0 px=3871 edges={'T': 28, 'B': 28, 'L': 12, 'R': 0} iso=0 semi=2392 EDGE
+     f1 px=3872 edges={'T': 26, 'B': 26, 'L': 12, 'R': 0} iso=0 semi=2362 EDGE
+     f2 px=3866 edges={'T': 24, 'B': 24, 'L': 12, 'R': 0} iso=0 semi=2236 EDGE
+     f3 px=3878 edges={'T': 22, 'B': 22, 'L': 12, 'R': 0} iso=0 semi=2193 EDGE
+     f4 px=3875 edges={'T': 20, 'B': 20, 'L': 12, 'R': 0} iso=0 semi=2515 EDGE
+     f5 px=3893 edges={'T': 29, 'B': 29, 'L': 12, 'R': 0} iso=0 semi=2499 EDGE
+     mask diffs consecutive (last->first at end): [109, 112, 108, 109, 126, 98]
+sphere       fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(9), np.int64(59), np.int64(54)) size_m=(1.05x0.81)
+     f0 px=999 edges={'T': 0, 'B': 0, 'L': 1, 'R': 0} iso=0 semi=0 EDGE
+     f1 px=998 edges={'T': 0, 'B': 0, 'L': 2, 'R': 0} iso=0 semi=0 EDGE
+     f2 px=1004 edges={'T': 0, 'B': 0, 'L': 2, 'R': 0} iso=0 semi=0 EDGE
+     f3 px=991 edges={'T': 0, 'B': 0, 'L': 2, 'R': 0} iso=0 semi=0 EDGE
+     f4 px=976 edges={'T': 0, 'B': 0, 'L': 1, 'R': 0} iso=0 semi=0 EDGE
+     f5 px=982 edges={'T': 0, 'B': 0, 'L': 2, 'R': 0} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [101, 104, 113, 129, 122, 117]
+slash        fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(10), np.int64(5), np.int64(44), np.int64(58)) size_m=(0.61x0.95)
+     f0 px=790 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f1 px=791 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=1 semi=0
+     f2 px=800 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f3 px=803 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f4 px=808 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f5 px=801 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     mask diffs consecutive (last->first at end): [77, 83, 83, 79, 71, 81]
+multi        fly    alpha=[np.uint8(0), np.uint8(200), np.uint8(215), np.uint8(255)] extra=0 union_bbox=(np.int64(5), np.int64(6), np.int64(57), np.int64(57)) size_m=(0.93x0.91)
+     f0 px=1152 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=340
+     f1 px=1152 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=340
+     f2 px=1151 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=339
+     f3 px=1151 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=339
+     f4 px=1151 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=339
+     f5 px=1151 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=339
+     mask diffs consecutive (last->first at end): [40, 39, 38, 38, 38, 35]
+hit          hit    alpha=[np.uint8(0), np.uint8(150), np.uint8(160), np.uint8(180), np.uint8(210), np.uint8(224)]... extra=0 union_bbox=(np.int64(0), np.int64(0), np.int64(63), np.int64(63)) size_m=(1.12x1.12)
+     f0 px=476 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f1 px=840 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f2 px=1436 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=295
+     f3 px=1771 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=453
+     f4 px=1802 edges={'T': 0, 'B': 1, 'L': 1, 'R': 4} iso=0 semi=1232 EDGE
+     f5 px=576 edges={'T': 12, 'B': 13, 'L': 12, 'R': 12} iso=4 semi=572 EDGE
+     mask diffs consecutive (last->first at end): [364, 728, 1327, 1233, 1964, 1052]
+blast        blast  alpha=[np.uint8(0), np.uint8(110), np.uint8(160), np.uint8(170), np.uint8(173), np.uint8(200)]... extra=0 union_bbox=(np.int64(9), np.int64(0), np.int64(166), np.int64(140)) size_m=(2.77x2.47)
+     f0 px=1462 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f1 px=5487 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f2 px=8876 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f3 px=9598 edges={'T': 24, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=4623 EDGE
+     f4 px=9173 edges={'T': 23, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=4820 EDGE
+     f5 px=7863 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=5154
+     f6 px=7010 edges={'T': 3, 'B': 0, 'L': 0, 'R': 0} iso=2 semi=5991 EDGE
+     f7 px=6271 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=6271
+     mask diffs consecutive (last->first at end): [4225, 4771, 2430, 2173, 3072, 2949, 3003, 4997]
+wall         rise   alpha=[np.uint8(0), np.uint8(98), np.uint8(99), np.uint8(100), np.uint8(101), np.uint8(102)]... extra=0 union_bbox=(np.int64(7), np.int64(11), np.int64(265), np.int64(127)) size_m=(4.54x2.05)
+     f0 px=4509 edges={'T': 0, 'B': 14, 'L': 0, 'R': 0} iso=0 semi=1515 EDGE
+     f1 px=11070 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=7515
+     f2 px=17701 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=13746
+     f3 px=23841 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=19497
+     f4 px=27133 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=22578
+     f5 px=27146 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=22595
+     mask diffs consecutive (last->first at end): [6769, 6631, 6140, 3292, 593, 22845]
+wall         idle   alpha=[np.uint8(0), np.uint8(98), np.uint8(99), np.uint8(100), np.uint8(101), np.uint8(102)]... extra=0 union_bbox=(np.int64(7), np.int64(12), np.int64(265), np.int64(121)) size_m=(4.54x1.93)
+     f0 px=27020 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=22532
+     f1 px=26916 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=22428
+     f2 px=26964 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=22476
+     f3 px=26955 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=22467
+     f4 px=27076 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=22588
+     f5 px=27100 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=22612
+     mask diffs consecutive (last->first at end): [552, 532, 575, 473, 538, 550]
+aura         idle   alpha=[np.uint8(0), np.uint8(210), np.uint8(245), np.uint8(255)] extra=0 union_bbox=(np.int64(2), np.int64(7), np.int64(77), np.int64(119)) size_m=(1.33x1.98)
+     f0 px=2738 edges={'T': 0, 'B': 32, 'L': 0, 'R': 0} iso=1 semi=2357 EDGE
+     f1 px=2698 edges={'T': 0, 'B': 30, 'L': 0, 'R': 0} iso=2 semi=2326 EDGE
+     f2 px=2601 edges={'T': 0, 'B': 30, 'L': 0, 'R': 0} iso=5 semi=2244 EDGE
+     f3 px=2596 edges={'T': 0, 'B': 32, 'L': 0, 'R': 0} iso=3 semi=2213 EDGE
+     f4 px=2637 edges={'T': 0, 'B': 30, 'L': 0, 'R': 0} iso=1 semi=2256 EDGE
+     f5 px=2702 edges={'T': 0, 'B': 30, 'L': 0, 'R': 0} iso=1 semi=2317 EDGE
+     mask diffs consecutive (last->first at end): [1324, 1399, 1437, 1355, 1227, 1226]
+===== poison
+bolt         fly    alpha=[np.uint8(0), np.uint8(220), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(16), np.int64(50), np.int64(60)) size_m=(0.89x0.79)
+     f0 px=908 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=149
+     f1 px=896 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=137
+     f2 px=863 edges={'T': 0, 'B': 0, 'L': 2, 'R': 0} iso=0 semi=123 EDGE
+     f3 px=878 edges={'T': 0, 'B': 0, 'L': 4, 'R': 0} iso=0 semi=121 EDGE
+     f4 px=866 edges={'T': 0, 'B': 0, 'L': 5, 'R': 0} iso=0 semi=111 EDGE
+     f5 px=866 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=99
+     mask diffs consecutive (last->first at end): [256, 209, 209, 228, 226, 302]
+stream       fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(13), np.int64(63), np.int64(50)) size_m=(1.12x0.67)
+     f0 px=986 edges={'T': 0, 'B': 0, 'L': 15, 'R': 14} iso=0 semi=0 EDGE
+     f1 px=992 edges={'T': 0, 'B': 0, 'L': 19, 'R': 12} iso=0 semi=0 EDGE
+     f2 px=996 edges={'T': 0, 'B': 0, 'L': 10, 'R': 10} iso=0 semi=0 EDGE
+     f3 px=988 edges={'T': 0, 'B': 0, 'L': 13, 'R': 16} iso=0 semi=0 EDGE
+     f4 px=1006 edges={'T': 0, 'B': 0, 'L': 16, 'R': 18} iso=0 semi=0 EDGE
+     f5 px=998 edges={'T': 0, 'B': 0, 'L': 17, 'R': 19} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [308, 306, 308, 316, 312, 302]
+stream_head  fly    alpha=[np.uint8(0), np.uint8(210), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(7), np.int64(63), np.int64(58)) size_m=(1.12x0.91)
+     f0 px=1271 edges={'T': 0, 'B': 0, 'L': 15, 'R': 1} iso=0 semi=80 EDGE
+     f1 px=1276 edges={'T': 0, 'B': 0, 'L': 13, 'R': 8} iso=0 semi=81 EDGE
+     f2 px=1287 edges={'T': 0, 'B': 0, 'L': 10, 'R': 13} iso=0 semi=78 EDGE
+     f3 px=1252 edges={'T': 0, 'B': 0, 'L': 13, 'R': 6} iso=0 semi=72 EDGE
+     f4 px=1238 edges={'T': 0, 'B': 0, 'L': 16, 'R': 0} iso=0 semi=80 EDGE
+     f5 px=1290 edges={'T': 0, 'B': 0, 'L': 17, 'R': 1} iso=0 semi=74 EDGE
+     mask diffs consecutive (last->first at end): [317, 265, 335, 256, 330, 371]
+breath       fly    alpha=[np.uint8(0), np.uint8(230), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(8), np.int64(91), np.int64(62)) size_m=(1.61x0.96)
+     f0 px=2033 edges={'T': 0, 'B': 0, 'L': 10, 'R': 0} iso=0 semi=1717 EDGE
+     f1 px=2103 edges={'T': 0, 'B': 0, 'L': 10, 'R': 0} iso=0 semi=1787 EDGE
+     f2 px=2098 edges={'T': 0, 'B': 0, 'L': 10, 'R': 0} iso=0 semi=1782 EDGE
+     f3 px=2036 edges={'T': 0, 'B': 0, 'L': 10, 'R': 0} iso=0 semi=1724 EDGE
+     f4 px=2012 edges={'T': 0, 'B': 0, 'L': 10, 'R': 0} iso=0 semi=1697 EDGE
+     f5 px=2002 edges={'T': 0, 'B': 0, 'L': 10, 'R': 0} iso=0 semi=1682 EDGE
+     mask diffs consecutive (last->first at end): [266, 217, 288, 298, 318, 355]
+sphere       fly    alpha=[np.uint8(0), np.uint8(120), np.uint8(220), np.uint8(235), np.uint8(242), np.uint8(253)]... extra=0 union_bbox=(np.int64(0), np.int64(14), np.int64(51), np.int64(62)) size_m=(0.91x0.86)
+     f0 px=1086 edges={'T': 0, 'B': 0, 'L': 5, 'R': 0} iso=0 semi=591 EDGE
+     f1 px=1089 edges={'T': 0, 'B': 0, 'L': 6, 'R': 0} iso=0 semi=590 EDGE
+     f2 px=1060 edges={'T': 0, 'B': 0, 'L': 5, 'R': 0} iso=0 semi=569 EDGE
+     f3 px=1048 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=552
+     f4 px=1045 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=551
+     f5 px=1044 edges={'T': 0, 'B': 0, 'L': 2, 'R': 0} iso=0 semi=542 EDGE
+     mask diffs consecutive (last->first at end): [97, 159, 112, 95, 103, 152]
+slash        fly    alpha=[np.uint8(0), np.uint8(215), np.uint8(245), np.uint8(255)] extra=0 union_bbox=(np.int64(8), np.int64(4), np.int64(48), np.int64(58)) size_m=(0.72x0.96)
+     f0 px=1181 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=1 semi=322
+     f1 px=1189 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=309
+     f2 px=1183 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=324
+     f3 px=1174 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=319
+     f4 px=1181 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=322
+     f5 px=1183 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=1 semi=310
+     mask diffs consecutive (last->first at end): [206, 140, 197, 203, 128, 210]
+multi        fly    alpha=[np.uint8(0), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(10), np.int64(53), np.int64(53)) size_m=(0.95x0.77)
+     f0 px=749 edges={'T': 0, 'B': 0, 'L': 3, 'R': 0} iso=0 semi=0 EDGE
+     f1 px=746 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f2 px=746 edges={'T': 0, 'B': 0, 'L': 4, 'R': 0} iso=0 semi=0 EDGE
+     f3 px=741 edges={'T': 0, 'B': 0, 'L': 3, 'R': 0} iso=0 semi=0 EDGE
+     f4 px=744 edges={'T': 0, 'B': 0, 'L': 2, 'R': 0} iso=0 semi=0 EDGE
+     f5 px=727 edges={'T': 0, 'B': 0, 'L': 7, 'R': 0} iso=0 semi=0 EDGE
+     mask diffs consecutive (last->first at end): [233, 254, 241, 231, 199, 242]
+hit          hit    alpha=[np.uint8(0), np.uint8(180), np.uint8(190), np.uint8(235), np.uint8(255)] extra=0 union_bbox=(np.int64(0), np.int64(2), np.int64(63), np.int64(63)) size_m=(1.12x1.09)
+     f0 px=247 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f1 px=834 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=0
+     f2 px=1034 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=4
+     f3 px=873 edges={'T': 0, 'B': 9, 'L': 0, 'R': 0} iso=0 semi=51 EDGE
+     f4 px=698 edges={'T': 0, 'B': 3, 'L': 8, 'R': 6} iso=0 semi=123 EDGE
+     f5 px=480 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=445
+     mask diffs consecutive (last->first at end): [587, 470, 543, 491, 396, 233]
+blast        blast  alpha=[np.uint8(0), np.uint8(190), np.uint8(200), np.uint8(215), np.uint8(240), np.uint8(241)]... extra=0 union_bbox=(np.int64(3), np.int64(1), np.int64(170), np.int64(135)) size_m=(2.95x2.37)
+     f0 px=1373 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=309
+     f1 px=4754 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=2780
+     f2 px=9259 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=6590
+     f3 px=11907 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=9047
+     f4 px=13366 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=10818
+     f5 px=13620 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=11409
+     f6 px=12596 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=11477
+     f7 px=11019 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=10335
+     mask diffs consecutive (last->first at end): [3385, 4579, 3066, 2039, 358, 1488, 1725, 9646]
+wall         rise   alpha=[np.uint8(0), np.uint8(165), np.uint8(235), np.uint8(248), np.uint8(255)] extra=0 union_bbox=(np.int64(11), np.int64(18), np.int64(261), np.int64(123)) size_m=(4.40x1.86)
+     f0 px=5468 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=5275
+     f1 px=9858 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=9662
+     f2 px=14401 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=14188
+     f3 px=18689 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=18493
+     f4 px=20717 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=20534
+     f5 px=20273 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=20085
+     mask diffs consecutive (last->first at end): [4408, 4561, 4324, 2174, 1266, 14805]
+wall         idle   alpha=[np.uint8(0), np.uint8(165), np.uint8(235), np.uint8(248), np.uint8(255)] extra=0 union_bbox=(np.int64(11), np.int64(29), np.int64(261), np.int64(123)) size_m=(4.40x1.67)
+     f0 px=20140 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=19916
+     f1 px=20229 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=20008
+     f2 px=20190 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=19960
+     f3 px=20204 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=19972
+     f4 px=20232 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=20010
+     f5 px=20229 edges={'T': 0, 'B': 0, 'L': 0, 'R': 0} iso=0 semi=20003
+     mask diffs consecutive (last->first at end): [1049, 983, 960, 1048, 1105, 1151]
+aura         idle   alpha=[np.uint8(0), np.uint8(205), np.uint8(220), np.uint8(240), np.uint8(248), np.uint8(253)]... extra=0 union_bbox=(np.int64(1), np.int64(12), np.int64(78), np.int64(119)) size_m=(1.37x1.89)
+     f0 px=2945 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=2263 EDGE
+     f1 px=2937 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=2263 EDGE
+     f2 px=2775 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=2094 EDGE
+     f3 px=2820 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=2145 EDGE
+     f4 px=2932 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=2251 EDGE
+     f5 px=3040 edges={'T': 0, 'B': 38, 'L': 0, 'R': 0} iso=0 semi=2352 EDGE
+     mask diffs consecutive (last->first at end): [1420, 1540, 1395, 1258, 1250, 1313]

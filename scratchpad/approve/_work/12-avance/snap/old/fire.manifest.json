@@ -1,0 +1,448 @@
+{
+ "group": "vfx_fire",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bolt": {
+   "label": "Fire bolt (fireball)",
+   "file": "bolt.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "beast": {
+   "label": "Fire beast (phoenix)",
+   "file": "beast.png",
+   "frameW": 128,
+   "frameH": 104,
+   "anchor": [
+    64,
+    52
+   ],
+   "meters": [
+    2.25,
+    1.82
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream": {
+   "label": "Fire stream (fire jet, tileable 64 px)",
+   "file": "stream.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream_head": {
+   "label": "Fire stream head",
+   "file": "stream_head.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "breath": {
+   "label": "Fire breath (flame cone, origin left middle)",
+   "file": "breath.png",
+   "frameW": 96,
+   "frameH": 64,
+   "anchor": [
+    48,
+    32
+   ],
+   "meters": [
+    1.68,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "sphere": {
+   "label": "Fire sphere (molten core)",
+   "file": "sphere.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "slash": {
+   "label": "Fire slash (flame crescent)",
+   "file": "slash.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "multi": {
+   "label": "Fire multi (phoenix-flower fireballs)",
+   "file": "multi.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "hit": {
+   "label": "Fire hit (flame burst)",
+   "file": "hit.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "blast": {
+   "label": "Fire blast (explosion, 3 m)",
+   "file": "blast.png",
+   "frameW": 176,
+   "frameH": 128,
+   "anchor": [
+    88,
+    72
+   ],
+   "meters": [
+    3.09,
+    2.25
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "wall": {
+   "label": "Fire wall (4.5 m x 1.8 m)",
+   "file": "wall.png",
+   "frameW": 264,
+   "frameH": 120,
+   "anchor": [
+    132,
+    112
+   ],
+   "meters": [
+    4.63,
+    2.11
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "aura": {
+   "label": "Fire aura (charge / buff)",
+   "file": "aura.png",
+   "frameW": 80,
+   "frameH": 120,
+   "anchor": [
+    40,
+    112
+   ],
+   "meters": [
+    1.4,
+    2.11
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "fireball": {
+   "label": "Great Fireball (radius 1.5 m)",
+   "file": "fireball.png",
+   "frameW": 176,
+   "frameH": 128,
+   "anchor": [
+    88,
+    72
+   ],
+   "meters": [
+    3.09,
+    2.25
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    },
+    "burst": {
+     "row": 1,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "fireball_great": {
+   "label": "Great Fireball, enhanced (radius 2.25 m)",
+   "file": "fireball_great.png",
+   "frameW": 272,
+   "frameH": 224,
+   "anchor": [
+    136,
+    124
+   ],
+   "meters": [
+    4.77,
+    3.93
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    },
+    "burst": {
+     "row": 1,
+     "frames": 10,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "annihilation": {
+   "label": "Great Fire Annihilation (cone 12 m, 60 deg)",
+   "file": "annihilation.png",
+   "frameW": 744,
+   "frameH": 424,
+   "anchor": [
+    12,
+    334
+   ],
+   "meters": [
+    13.05,
+    7.44
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "surge": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    },
+    "burn": {
+     "row": 1,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    },
+    "fade": {
+     "row": 2,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "annihilation_enh": {
+   "label": "Great Fire Annihilation, enhanced (cone 15 m, 60 deg)",
+   "file": "annihilation_enh.png",
+   "frameW": 920,
+   "frameH": 536,
+   "anchor": [
+    12,
+    431
+   ],
+   "meters": [
+    16.14,
+    9.4
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "surge": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    },
+    "burn": {
+     "row": 1,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    },
+    "fade": {
+     "row": 2,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  }
+ }
+}

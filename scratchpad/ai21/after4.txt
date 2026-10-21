@@ -1,0 +1,61 @@
+
+== river_patrol: 100 battles, avg rounds 3.4, outcomes {"victory":100}
+   enemies: Acechador (Ryusei), Renegado (Mirai), Cazador (Koton)
+   refused 0, stalls 0, unfinished 0
+   ability                    enemy: battles / uses     party: battles / uses
+   Pursuing Flame               100 / 101            0 / 0
+   bigger jutsu (Mirai)          30 / 30             0 / 0
+   Evasion                      100 / 138            0 / 0
+   kunai (Ryusei)                47 / 47            56 / 80
+   Node planted                  47 / 47            56 / 80
+   Spatial Swap                   0 / 0              1 / 1
+   Kōton Block                   84 / 99            61 / 65
+   Kōton Wall                    52 / 52             0 / 0
+   attack w/ aura disadv.         0 / 0              6 / 7
+
+== cedar_rogues: 100 battles, avg rounds 2.9, outcomes {"victory":100}
+   enemies: Renegado (Mirai), Vigía (Northstar), Asaltante (Ryusei)
+   refused 0, stalls 0, unfinished 0
+   ability                    enemy: battles / uses     party: battles / uses
+   Pursuing Flame                84 / 93             0 / 0
+   bigger jutsu (Mirai)          43 / 50             0 / 0
+   Evasion                      100 / 200            0 / 0
+   kunai (Ryusei)                98 / 98             1 / 1
+   Node planted                  98 / 136            2 / 2
+   Warp Strike                   27 / 27             0 / 0
+   Warp edge won                 27 / 27             0 / 0
+   blow from behind              27 / 27             0 / 0
+   Kōton Block                    0 / 0             78 / 87
+   attack w/ aura disadv.        20 / 20            24 / 29
+
+== night_raid: 100 battles, avg rounds 4.1, outcomes {"victory":100}
+   enemies: Asaltante (Ryusei), Puño de hierro (Koton), Sombra (Northstar), Kagero (Mirai)
+   refused 0, stalls 0, unfinished 0
+   ability                    enemy: battles / uses     party: battles / uses
+   Pursuing Flame               100 / 142            0 / 0
+   bigger jutsu (Mirai)          86 / 95             0 / 0
+   Evasion                       94 / 185            0 / 0
+   kunai (Ryusei)                93 / 108            0 / 0
+   Node planted                  93 / 124           21 / 22
+   Warp Strike                   32 / 33             0 / 0
+   Warp edge won                 31 / 32             0 / 0
+   blow from behind              29 / 29             0 / 0
+   Kōton Block                   40 / 42            99 / 105
+   Kōton Wall                     4 / 4              0 / 0
+   aura slowed a foe              0 / 0             16 / 17
+   attack w/ aura disadv.        24 / 33            76 / 196
+
+== hydra: 100 battles, avg rounds 6.5, outcomes {"victory":76,"defeat":24}
+   enemies: the hydra
+   refused 0, stalls 0, unfinished 0
+   ability                    enemy: battles / uses     party: battles / uses
+   kunai (Ryusei)                 0 / 0             22 / 75
+   Node planted                   0 / 0             24 / 94
+   Warp Strike                    0 / 0             20 / 22
+   Warp edge won                  0 / 0             20 / 22
+   blow from behind               0 / 0             18 / 19
+   Spatial Swap                   0 / 0              1 / 1
+   Kōton Block                    0 / 0             97 / 137
+   attack w/ aura disadv.         0 / 0             48 / 191
+
+TOTAL 400 battles: refused 0, stalls 0, unfinished 0

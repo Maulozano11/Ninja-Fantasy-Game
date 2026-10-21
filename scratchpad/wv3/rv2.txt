@@ -1,0 +1,5 @@
+5be240470a5a52a894fddba83622e772  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/vfx-wind-v3-anims.png
+d464a5e6242000928047465b999504eb  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/vfx-wind-v3-compare.png
+fb034a006491f84d8f63bc720ccdbb17  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/vfx-wind-v3.png
+f3c673cc9b2991e8948050ffd4801d68  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/vfx-wind-v3-blast.gif
+b4cfe497c62ffaf9c49ec58f216493b3  /tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/art2/vfx-wind-v3-walls.gif

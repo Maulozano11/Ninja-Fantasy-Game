@@ -1,0 +1,123 @@
+/**
+ * His dust (or shadow) faded with no dither: each pixel steps `cool` colours down his dust ramp and
+ * loses round(dim x w(x, y)) alpha steps, where w is a smooth field (more at the cloud's rim, less
+ * at its heart, with soft lumps). The dust thins from its edges inward in soft bands one alpha step
+ * apart that move a little each frame, never as a per-pixel speckle; a pixel whose alpha runs out
+ * goes, so the cloud also shrinks from its edges.
+ */
+const fadeSoft = (L: Layer, cool: number, dim: number, w: (x: number, y: number) => number): Layer =>
+  cool <= 0 && dim <= 0 ? L.clone() : L.map((v, x, y) => L.pal.dim(L.pal.cool(v, cool), dim > 0 ? Math.round(dim * w(x, y)) : 0));
+/** A fade field for fadeSoft: 1.45 at the cloud's rim down to 0.55 at its heart (`heart` 0..1), with soft lumps of `cell` px. */
+const fadeField = (heart: (x: number, y: number) => number, seed: number, cell = 9) =>
+  (x: number, y: number): number => 1.45 - 0.9 * heart(x, y) + 0.4 * (pnoise(x, y, cell, 0, 0, seed) - 0.5);
+/**
+ * The last of the dust breaking into wisps: a dust pixel goes once a coherent noise (lumps of a few
+ * px, so the dust parts in soft wisps, not grain), nudged by `heart` (0..1, the heart goes last),
+ * drops under `level` (0 keeps all, 1 drops all). Only the last frame or two of a one-shot use it.
+ */
+const thinWisps = (L: Layer, level: number, seed: number, heart: (x: number, y: number) => number = () => 0.5): Layer =>
+  level <= 0 ? L : L.filter((v, x, y) => L.pal.kind(v) !== 'dust' || pnoise(x, y, 4, 0, 0, seed) * 0.55 + pnoise(x, y, 11, 0, 0, seed + 1) * 0.2 + heart(x, y) * 0.25 > level);
+
+/**
+ * Rock moved and crumbling away, piece by piece (pieces of the unmoved layer, so each rock keeps its
+ * identity and its timing from frame to frame): move(k, cx, cy, n) gives a piece's offset (null
+ * drops it), level(k, cx, cy, n) how far it has crumbled (0 = whole, 1 = gone).
+ *   - A rock wears away from its outline inward: the pixels nearest its edge go first, a little
+ *     unevenly (a noise in the rock's own coordinates, so its edge breaks up the same way from frame
+ *     to frame and travels with it), and every new edge pixel takes his rim. It shrinks as one
+ *     outlined stone with his cracks inside: never a sponge with holes, never a web of crack lines.
+ *     Its area falls about linearly with the level, so no frame takes much more than another.
+ *   - A few chips break off its edge as it goes (each at a level of its own) and fall away,
+ *     tumbling outward, for about two frames (`step` is the level a frame adds).
+ *   - A pebble too small to wear drops a little and goes whole once the level passes its own point.
+ * A piece that would reach the frame's edge is dropped.
+ */
+function moveCrumble(L: Layer, move: (k: number, cx: number, cy: number, n: number) => [number, number] | null,
+  level: (k: number, cx: number, cy: number, n: number) => number, seed: number, step = 0.28): Layer {
+  const out = L.empty();
+  const { w } = L;
+  const rim = L.pal.rim;
+  const fits = (px: number[], dx: number, dy: number) => !px.some((i) => {
+    const x = (i % w) + dx, y = ((i / w) | 0) + dy;
+    return x < 1 || y < 1 || x > L.w - 2 || y > L.h - 2;
+  });
+  // (its body pixels on its own edge take his rim, so whatever is left is an outlined stone)
+  const outlined = (px: number[]): number[] => {
+    const s = new Set(px);
+    return px.map((i) => (L.pal.kind(L.v[i]) === 'body' && [i - 1, i + 1, i - w, i + w].some((j) => !s.has(j)) ? rim : L.v[i]));
+  };
+  const place = (px: number[], vals: number[], dx: number, dy: number) => {
+    if (fits(px, dx, dy)) px.forEach((i, j) => out.set((i % w) + dx, ((i / w) | 0) + dy, vals[j]));
+  };
+  pieces(L).forEach((pc, k) => {
+    const [pcx, pcy] = centre(L, pc);
+    const n = pc.length;
+    const m = move(k, pcx, pcy, n);
+    if (!m) return;
+    const mx = Math.round(m[0]), my = Math.round(m[1]);
+    const c = clamp(level(k, pcx, pcy, n), 0, 1);
+    if (c <= 0) return place(pc, pc.map((i) => L.v[i]), mx, my);
+    if (n < 10) {
+      if (c < 1 && c < 0.25 + 0.6 * rr(seed, k, 0, 1)) place(pc, pc.map((i) => L.v[i]), mx, my + Math.round(3 * c * c));
+      return;
+    }
+    const inPc = new Set(pc);
+    // Depth from the rock's edge (4-way).
+    const depth = new Map<number, number>();
+    let front: number[] = [];
+    for (const i of pc) if ([i - 1, i + 1, i - w, i + w].some((j) => !inPc.has(j))) {
+      depth.set(i, 0);
+      front.push(i);
+    }
+    let D = 0;
+    while (front.length) {
+      const next: number[] = [];
+      for (const i of front) for (const j of [i - 1, i + 1, i - w, i + w]) if (inPc.has(j) && !depth.has(j)) {
+        depth.set(j, depth.get(i)! + 1);
+        D = Math.max(D, depth.get(i)! + 1);
+        next.push(j);
+      }
+      front = next;
+    }
+    const xs = pc.map((i) => i % w), ys = pc.map((i) => (i / w) | 0);
+    const bx = Math.min(...xs), by = Math.min(...ys);
+    // Chips: small bits of its edge (a blob round an edge pixel, at angles of their own round the
+    // rock), each breaking off at its own level and falling for about two frames.
+    const nc = n < 24 ? 0 : clamp(Math.round(n / 70), 1, 3);
+    const edge = pc.filter((i) => depth.get(i) === 0);
+    const chipOf = new Map<number, number>();
+    const chips: { px: number[]; at: number; dir: number }[] = [];
+    for (let j = 0; j < nc; j++) {
+      const a = rr(seed + 3, k * 5 + j, 0, TAU);
+      let best = edge[0], bd = -Infinity;
+      for (const i of edge) {
+        const d = Math.cos(Math.atan2(((i / w) | 0) - pcy, (i % w) - pcx) - a);
+        if (d > bd) {
+          bd = d;
+          best = i;
+        }
+      }
+      const r = n > 120 ? 2 : 1;
+      const sx = best % w, sy = (best / w) | 0;
+      const px = pc.filter((i) => !chipOf.has(i) && Math.abs((i % w) - sx) <= r && Math.abs(((i / w) | 0) - sy) <= r && depth.get(i)! <= 2 * r);
+      if (px.length < 3) continue;
+      for (const i of px) chipOf.set(i, chips.length);
+      chips.push({ px, at: 0.08 + (j / nc) * 0.55 + rr(seed + 4, k * 5 + j, 0, 0.12), dir: Math.sign(sx - pcx) || 1 });
+    }
+    // Worn from the outside in: the area left goes down about linearly with c.
+    const e = (D + 1) * (1 - Math.sqrt(1 - c));
+    const kept = c >= 1 ? [] : pc.filter((i) => {
+      const ch = chipOf.get(i);
+      if (ch !== undefined && c >= chips[ch].at) return false;
+      return depth.get(i)! + pnoise((i % w) - bx, ((i / w) | 0) - by, 2.5, 0, 0, seed + 9 + k) * 0.95 >= e;
+    });
+    if (kept.length >= 3) place(kept, outlined(kept), mx, my);
+    for (const ch of chips) {
+      const age = (c - ch.at) / step;
+      if (age < 0 || age >= 2.2) continue;
+      const dx = Math.round(ch.dir * (1 + 1.5 * age)), dy = Math.round(1 + 2 * age + 1.5 * age * age);
+      place(ch.px, outlined(ch.px), mx + dx, my + dy);
+    }
+  });
+  return out;
+}

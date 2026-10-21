@@ -1,0 +1,552 @@
+{
+ "source": "origin/claude/eloquent-noether-ix51z1 a3cf7ec",
+ "abilities": [
+  {
+   "id": "shadow_clone",
+   "es": "Técnica de Taijutsu: Clon de sombra",
+   "en": "Shadow Clone",
+   "who": "player",
+   "what": "bonus, self; 1 clone absorbs 1 attack (+flank)",
+   "now": "cast pose 900ms; chakra aura (front+back) on caster 1100ms; clone event: chakra aura 600ms; clone pops: drawn grey smoke 500ms. NO clone figure is ever drawn",
+   "sheets_used": [
+    "vfx_chakra/aura",
+    "vfx_chakra/aura_back"
+   ],
+   "fit": "no",
+   "why": "icon shows a 2nd ninja from smoke; in battle the clone is invisible",
+   "icon": "src/assets/ui_icons/shadow_clone.png"
+  },
+  {
+   "id": "body_flicker",
+   "es": "Técnica de Taijutsu: Shunshin (parpadeo instantáneo)",
+   "en": "Body Flicker",
+   "who": "player+enemy (Rogue, Kagero)",
+   "what": "bonus, point 7.5 m teleport",
+   "now": "cast pose; chakra aura following caster 960ms; teleport: drawn grey smoke at start and end (500ms), unit snaps",
+   "sheets_used": [
+    "vfx_chakra/aura",
+    "vfx_chakra/aura_back"
+   ],
+   "fit": "partial",
+   "why": "generic aura + placeholder smoke",
+   "icon": null
+  },
+  {
+   "id": "trap_setter_tag",
+   "es": "Técnica de Fuego: Emboscada con sello explosivo",
+   "en": "Explosive Tag Ambush",
+   "who": "player",
+   "what": "action, point 4.5 m; hidden tag, 3d6 fire r1.5 m on step",
+   "now": "cast pose; drawn little white rectangle rising 1000ms; tag drawn on ground; detonation: DRAWN gradient explosion 800ms + shake 6 (fire blast sheet not used)",
+   "sheets_used": [],
+   "fit": "partial",
+   "why": "all placeholder drawing",
+   "icon": null
+  },
+  {
+   "id": "mystical_palm",
+   "es": "Técnica de Agua: Palma mística curativa",
+   "en": "Mystical Palm Healing",
+   "who": "player",
+   "what": "action, ally 1.6 m, heal 2d8+3",
+   "now": "cast pose; DRAWN green ellipse ring + rising 2px green dots on the ally 1300ms; +HP float",
+   "sheets_used": [],
+   "fit": "partial",
+   "why": "placeholder drawing, no sheet",
+   "icon": null
+  },
+  {
+   "id": "substitution_kawarimi",
+   "es": "Técnica de Taijutsu: Sustitución (Kawarimi)",
+   "en": "Body Replacement",
+   "who": "player+enemy (Hunter-nin, Kagero)",
+   "what": "reaction, self; negates a hit, moves away",
+   "now": "kawarimi event: drawn smoke 700ms + DRAWN brown 40x14 log rectangle spinning/falling 1100ms + drawn smoke at arrival",
+   "sheets_used": [],
+   "fit": "partial",
+   "why": "placeholder drawing (log is a rectangle)",
+   "icon": null
+  },
+  {
+   "id": "fireball_goukakyu",
+   "es": "Técnica de Fuego: Bola de fuego (pot.: Gran bola de fuego)",
+   "en": "Fireball / Great Fireball",
+   "who": "player+enemy (Rogue)",
+   "what": "action, circle r1.5 m at 9 m, 3d8 fire DEX half, burning, ignites",
+   "now": "cast pose 560ms; his fireball sheet flies (fly loop) in an arc ~115ms/m; at target fireball \"burst\" 1400ms + shake 3/5; enhanced uses fireball_great",
+   "sheets_used": [
+    "vfx_fire/fireball",
+    "vfx_fire/fireball_great"
+   ],
+   "fit": "yes",
+   "why": "his own signature",
+   "icon": "src/assets/ui_icons/fireball_goukakyu.png",
+   "icon_enh": "src/assets/ui_icons/great_fireball.png"
+  },
+  {
+   "id": "dragon_fire_stream",
+   "es": "Técnica de Fuego: Fuego del dragón",
+   "en": "Dragon Fire",
+   "who": "player",
+   "what": "action, line 10.5 m x1.5, 4d6 fire DEX half, burning",
+   "now": "cast pose 560ms; fire stream tiles + stream_head grow from caster to the AIMED POINT (full at 55%), 1300ms, fade last 20%",
+   "sheets_used": [
+    "vfx_fire/stream",
+    "vfx_fire/stream_head"
+   ],
+   "fit": "no",
+   "why": "name and icon = roaring fire dragon head; screen = plain jet",
+   "icon": "src/assets/ui_icons/dragon_fire_stream.png"
+  },
+  {
+   "id": "water_dragon_suiryuudan",
+   "es": "Técnica de Agua: Proyectil del dragón de agua",
+   "en": "Water Dragon Bullet",
+   "who": "player+enemy (Hunter-nin)",
+   "what": "action, single 9 m, 4d8 cold STR half",
+   "now": "cast pose; water drake (vfx_beasts/water, 4-legged, fly loop) flies the arc ~150ms/m (min 900); water hit 1000ms",
+   "sheets_used": [
+    "vfx_beasts/water",
+    "vfx_water/hit"
+   ],
+   "fit": "partial",
+   "why": "icon is a serpentine water dragon; beast is the 4-legged drake",
+   "icon": "src/assets/ui_icons/water_dragon_suiryuudan.png"
+  },
+  {
+   "id": "water_shield_suijinheki",
+   "es": "Técnica de Agua: Muro de agua",
+   "en": "Water Wall",
+   "who": "player",
+   "what": "action, wall 4.5 m at 6 m",
+   "now": "cast pose; water wall sheet rises 1000ms then idles (wall / wall_diag / wall_depth by angle)",
+   "sheets_used": [
+    "vfx_water/wall",
+    "vfx_water/wall_diag",
+    "vfx_water/wall_depth"
+   ],
+   "fit": "yes",
+   "why": "matches icon (wave)",
+   "icon": "src/assets/ui_icons/water_shield_suijinheki.png"
+  },
+  {
+   "id": "earth_wall_doryuheki",
+   "es": "Técnica de Tierra: Muro de tierra",
+   "en": "Earth Wall",
+   "who": "player+enemy (Hunter-nin)",
+   "what": "action, wall 4.5 m at 6 m",
+   "now": "cast pose; earth wall sheet rises 1000ms then idles (3 orientations)",
+   "sheets_used": [
+    "vfx_earth/wall",
+    "vfx_earth/wall_diag",
+    "vfx_earth/wall_depth"
+   ],
+   "fit": "yes",
+   "why": "matches icon",
+   "icon": "src/assets/ui_icons/earth_wall_doryuheki.png"
+  },
+  {
+   "id": "earth_spear_doryuudan",
+   "es": "Técnica de Tierra: Balas de tierra",
+   "en": "Earth Bullets",
+   "who": "player",
+   "what": "action, line 9 m x1.2, 3d10 bludgeoning DEX half",
+   "now": "cast pose; earth stream (golden spike row over rubble) + stream_head spikes grow to aimed point, 1300ms",
+   "sheets_used": [
+    "vfx_earth/stream",
+    "vfx_earth/stream_head"
+   ],
+   "fit": "no",
+   "why": "name/icon = flying boulders; screen = spike row. earth multi (3 rock bullets) + multi_hit (his \"impact of the rock bullets\") unused",
+   "icon": "src/assets/ui_icons/earth_spear_doryuudan.png"
+  },
+  {
+   "id": "wind_blade_daitoppa",
+   "es": "Técnica de Viento: Gran ráfaga cortante",
+   "en": "Great Breakthrough Blade",
+   "who": "player",
+   "what": "action, line 9 m, 3d6+2 slashing DEX half, clears foliage",
+   "now": "cast pose; wind stream (braided jet with crescent rings) + head (big crescents) to aimed point, 1300ms. role \"slash\" ignored",
+   "sheets_used": [
+    "vfx_wind/stream",
+    "vfx_wind/stream_head"
+   ],
+   "fit": "partial",
+   "why": "crescents present but it reads as a jet, not flying blades",
+   "icon": null
+  },
+  {
+   "id": "chidori_lightning_blade",
+   "es": "Técnica de Rayo: Chidori (pot.: Raikiri)",
+   "en": "Chidori",
+   "who": "player+enemy (Kagero)",
+   "what": "action, melee single 4.5 m (dash in), 5d8 lightning CON half",
+   "now": "run dash to target; ATTACK pose (weapon swing) 900ms, no cast aura; lightning hit (spark burst) on target 1000ms",
+   "sheets_used": [
+    "vfx_lightning/hit"
+   ],
+   "fit": "partial",
+   "why": "no lightning in the hand / no thrust; just a hit spark. Naruto name",
+   "icon": "src/assets/ui_icons/chidori_lightning_blade.png"
+  },
+  {
+   "id": "lightning_hound_raidon",
+   "es": "Técnica de Rayo: Sabueso del rayo",
+   "en": "Lightning Hound",
+   "who": "player+enemy (Kagero)",
+   "what": "action, single 9 m, 4d6+3 lightning DEX half",
+   "now": "cast pose; raiju (vfx_beasts/lightning, yellow pouncing beast) flies the arc ~150ms/m; lightning hit 1000ms",
+   "sheets_used": [
+    "vfx_beasts/lightning",
+    "vfx_lightning/hit"
+   ],
+   "fit": "yes",
+   "why": "beast fits (icon wolf is blue, raiju yellow)",
+   "icon": "src/assets/ui_icons/lightning_hound_raidon.png"
+  },
+  {
+   "id": "leaf_hurricane_senpuu",
+   "es": "Técnica de Taijutsu: Huracán de la hoja",
+   "en": "Leaf Hurricane",
+   "who": "player+enemy (Raider)",
+   "what": "action, circle r1.5 m around self, 2d6+3 bludgeoning STR half",
+   "now": "ATTACK pose 900ms; chakra hit (starburst round a gold seal) drawn ON THE CASTER chest 1000ms; no spin, no wind",
+   "sheets_used": [
+    "vfx_chakra/hit"
+   ],
+   "fit": "no",
+   "why": "spinning-kick whirlwind shown as a starburst on himself",
+   "icon": null
+  },
+  {
+   "id": "crescent_moon_dance",
+   "es": "Técnica de Kenjutsu: Danza de la luna creciente",
+   "en": "Dance of the Crescent Moon",
+   "who": "player",
+   "what": "action, melee single 3 m (dash), 3d8+3 slashing DEX half",
+   "now": "run dash; ATTACK pose; WIND hit (X cross of wind blades, leaves) on target 1000ms",
+   "sheets_used": [
+    "vfx_wind/hit"
+   ],
+   "fit": "no",
+   "why": "icon = 3 golden crescents + moon + ninjas; screen = wind X",
+   "icon": "src/assets/ui_icons/crescent_moon_dance.png"
+  },
+  {
+   "id": "temple_of_nirvana",
+   "es": "Técnica de Genjutsu: Templo del Nirvana",
+   "en": "Temple of Nirvana",
+   "who": "player",
+   "what": "action, circle r3 m at 7.5 m, 2d10 psychic WIS negates, confused",
+   "now": "cast pose; genjutsu BOLT (watching-eye orb) flies (blast sheet has no fly); genjutsu blast (violet pillar from vortex, crow feathers) 1333ms",
+   "sheets_used": [
+    "vfx_genjutsu/bolt",
+    "vfx_genjutsu/blast"
+   ],
+   "fit": "partial",
+   "why": "icon = white feathers raining; screen shoots an eye orb first",
+   "icon": "src/assets/ui_icons/temple_of_nirvana.png"
+  },
+  {
+   "id": "dragon_fire_bomb",
+   "es": "Técnica de Fuego: Aniquilación de la llama del dragón (su etiqueta: \"Llama Dragon\")",
+   "en": "Dragon Flame Annihilation",
+   "who": "player (Mirai clan secret, fixed slot)",
+   "what": "action, cone 9 m 60deg, 5d8 fire DEX half, burning",
+   "now": "cast pose; fire BREATH sheet (flame cone in smoke) stamped at 6 points along the cone AXIS only, popping one after another over ~770ms (looks like fire shots), all loop, 1400ms, fade last 20%",
+   "sheets_used": [
+    "vfx_fire/breath"
+   ],
+   "fit": "no",
+   "why": "HIS EXAMPLE. icon = three fire dragon heads; no dragon on screen. Dragon head exists in annihilation_enh",
+   "icon": "src/assets/ui_icons/dragon_fire_bomb.png"
+  },
+  {
+   "id": "wood_dragon_jutsu",
+   "es": "Técnica de Tierra: Dragón de madera",
+   "en": "Wood Dragon",
+   "who": "player (Ryusei clan secret)",
+   "what": "action, single 9 m, 5d8 bludgeoning STR half",
+   "now": "cast pose; STONE DRAKE (vfx_beasts/earth) leaps the arc; earth hit (rock explosion) 1000ms",
+   "sheets_used": [
+    "vfx_beasts/earth",
+    "vfx_earth/hit"
+   ],
+   "fit": "no",
+   "why": "icon = green wooden serpent dragon; screen = stone drake. Real fix needs new art",
+   "icon": "src/assets/ui_icons/wood_dragon_jutsu.png"
+  },
+  {
+   "id": "adamantine_sealing_chains",
+   "es": "Técnica de Agua: Cadenas selladoras de adamantio",
+   "en": "Adamantine Sealing Chains",
+   "who": "player (Kōton clan secret)",
+   "what": "action, single 9 m, 4d10 force STR half, chakra sealed",
+   "now": "cast pose; the chakra STREAM TILE (64px piece of his seal-chain beam) flies as a projectile in an arc; chakra hit 1000ms",
+   "sheets_used": [
+    "vfx_chakra/stream",
+    "vfx_chakra/hit"
+   ],
+   "fit": "no",
+   "why": "icon = crossed gold chains; his chakra stream IS a seal-chain beam but it is thrown as a flying chunk",
+   "icon": "src/assets/ui_icons/adamantine_sealing_chains.png"
+  },
+  {
+   "id": "taki_sixtyfour_palms",
+   "es": "Técnica de Taijutsu: Ocho trigramas, 64 palmas",
+   "en": "Eight Trigrams 64 Palms",
+   "who": "player (Northstar clan secret)",
+   "what": "action, melee single 1.5 m, 6d6+6 force CON half",
+   "now": "run dash; ATTACK pose 900ms; ONE chakra hit (role multi but chakra has no multi_hit) 1000ms",
+   "sheets_used": [
+    "vfx_chakra/hit"
+   ],
+   "fit": "no",
+   "why": "icon = ninja, many palms, cyan trigram circle; screen = one starburst. Naruto name",
+   "icon": "src/assets/ui_icons/taki_sixtyfour_palms.png"
+  },
+  {
+   "id": "kirin_thunder",
+   "es": "Técnica de Rayo: Kirin",
+   "en": "Kirin",
+   "who": "player",
+   "what": "action, circle r3 m at 12 m, 8d10 lightning DEX half",
+   "now": "cast pose; no projectile; his kirin sheet over the target: gather 833 / strike 500 / impact 571 / sustain 1000 / fade 667 = 3571ms, hit at 1333ms, shake 6/8; enhanced = kirin_enh (lightning dragon)",
+   "sheets_used": [
+    "vfx_lightning/kirin",
+    "vfx_lightning/kirin_enh"
+   ],
+   "fit": "partial",
+   "why": "his design; the beast/dragon only shows when enhanced (icon = dragon head). Naruto name",
+   "icon": "src/assets/ui_icons/kirin_thunder.png"
+  },
+  {
+   "id": "rasenshuriken_wind",
+   "es": "Técnica de Viento: Rasenshuriken",
+   "en": "Rasenshuriken",
+   "who": "player",
+   "what": "action, circle r3 m at 10.5 m, 8d10 slashing CON half",
+   "now": "cast pose; wind SPHERE (ball with orbit rings) flies; wind blast (tornado over wind rings) 1333ms",
+   "sheets_used": [
+    "vfx_wind/sphere",
+    "vfx_wind/blast"
+   ],
+   "fit": "partial",
+   "why": "no shuriken shape / blade burst. Naruto name",
+   "icon": null
+  },
+  {
+   "id": "great_fire_annihilation",
+   "es": "Técnica de Fuego: Gran aniquilación",
+   "en": "Great Annihilation",
+   "who": "player",
+   "what": "action, cone 12 m 60deg (enh 15 m), 7d12 fire DEX half, burning",
+   "now": "cast pose; his annihilation sheet at caster feet (wall of fire + kanji 火): surge 1667 (hit) + burn x2 1000 + fade 667 = 3333ms, shake 5/7; enhanced = annihilation_enh (+ Eastern fire dragon breathing a jet, smoke). Only mirrored, not turned to the aim",
+   "sheets_used": [
+    "vfx_fire/annihilation",
+    "vfx_fire/annihilation_enh"
+   ],
+   "fit": "yes",
+   "why": "his S-rank standard",
+   "icon": "src/assets/ui_icons/great_fire_annihilation.png"
+  },
+  {
+   "id": "wood_golem_titan",
+   "es": "Técnica de Tierra: Despertar del gólem de madera",
+   "en": "Wood Golem Awakening",
+   "who": "player",
+   "what": "action, circle r3 m at 9 m, 8d10 bludgeoning STR half",
+   "now": "cast pose; earth BOLT (tumbling boulder) flies; earth blast (crystal spikes in dust) 1333ms",
+   "sheets_used": [
+    "vfx_earth/bolt",
+    "vfx_earth/blast"
+   ],
+   "fit": "no",
+   "why": "no golem, crystals not wood. Needs new art",
+   "icon": null
+  },
+  {
+   "id": "yasaka_magatama",
+   "es": "Técnica de Genjutsu: Yasaka no Magatama",
+   "en": "Yasaka Magatama",
+   "who": "player",
+   "what": "action, line 12 m x1.5, 8d10 force DEX half",
+   "now": "cast pose; chakra stream (seal-ring beam) + starburst head to aimed point 1300ms; role multi ignored",
+   "sheets_used": [
+    "vfx_chakra/stream",
+    "vfx_chakra/stream_head"
+   ],
+   "fit": "no",
+   "why": "jewels hurled as projectiles -> shown as a beam. Naruto name (Susanoo in text)",
+   "icon": null
+  },
+  {
+   "id": "night_guy_dragon",
+   "es": "Técnica de Taijutsu: Night Guy (dragón Sekizo)",
+   "en": "Night Guy",
+   "who": "player",
+   "what": "action, melee single 9 m (dash), 10d10 force DEX half",
+   "now": "run dash; ATTACK pose; ONE chakra hit 1000ms. The beast role is skipped because melee is checked first (chakra beast = griffin)",
+   "sheets_used": [
+    "vfx_chakra/hit"
+   ],
+   "fit": "no",
+   "why": "\"crimson dragon\" S-rank shown as a normal hit. Naruto name",
+   "icon": null
+  },
+  {
+   "id": "mirai_evasion",
+   "es": "Evasión Premonitoria",
+   "en": "Premonitory Evasion",
+   "who": "player+enemy (Mirai)",
+   "what": "reaction 2 chakra, step 1.5 m aside, attack misses",
+   "now": "evade event: DRAWN red ring + rising red dots following the unit 700ms; unit runs aside at 7 m/s; word float",
+   "sheets_used": [],
+   "fit": "partial",
+   "why": "icon = radiant red eye + afterimage; screen = small drawn ring (clan eyes: wait for him)",
+   "icon": "src/assets/ui_icons/mirai_evasion.png"
+  },
+  {
+   "id": "katon_pursuing_flame",
+   "es": "Técnica de Fuego: Llama persecutoria",
+   "en": "Pursuing Flame",
+   "who": "player+enemy (Mirai)",
+   "what": "action, single 12 m, 2d6 fire DEX half with disadvantage",
+   "now": "cast pose; fire bolt (spiralling fireball) flies the usual arc; fire hit 1000ms",
+   "sheets_used": [
+    "vfx_fire/bolt",
+    "vfx_fire/hit"
+   ],
+   "fit": "partial",
+   "why": "nothing \"pursues\": same arc as any bolt",
+   "icon": null
+  },
+  {
+   "id": "koton_block",
+   "es": "Arquitectura Modular: Bloque",
+   "en": "Modular Architecture: Block",
+   "who": "player+enemy (Kōton)",
+   "what": "bonus 2 chakra, 1.5 m metal block at 6 m, 20 HP, half cover",
+   "now": "cast pose; DRAWN grey dust squares 1200ms; DRAWN grey gradient box rises 320ms; sinks 450ms when it goes",
+   "sheets_used": [],
+   "fit": "no",
+   "why": "icon = cube with glowing cyan circuitry; screen = flat grey box. Needs new art (his icon as the bar)",
+   "icon": "src/assets/ui_icons/koton_block.png"
+  },
+  {
+   "id": "koton_wall",
+   "es": "Arquitectura Modular: Muro",
+   "en": "Modular Architecture: Wall",
+   "who": "player+enemy (Kōton)",
+   "what": "action 4 chakra, 4.5 m metal wall at 6 m, 20 HP, full cover",
+   "now": "cast pose; drawn dust; DRAWN grey box with two seams rises 320ms",
+   "sheets_used": [],
+   "fit": "no",
+   "why": "icon = steel plates with sparks; screen = flat grey box. Needs new art",
+   "icon": "src/assets/ui_icons/koton_wall.png"
+  },
+  {
+   "id": "ryusei_warp",
+   "es": "Golpe Warp (decidido renombrar: Estocada Fugaz)",
+   "en": "Warp Strike (-> Shooting-Star Thrust)",
+   "who": "player+enemy (Ryusei)",
+   "what": "bonus 2 chakra, teleport to own Node 18 m; next attack advantage, unblockable",
+   "now": "name float 90ms, no pose; phase: unit turns to his blue light body, dashes, solid again (150+300+210 = 660ms)",
+   "sheets_used": [],
+   "fit": "partial",
+   "why": "approved phase; full choreography (throw, flying weapon, phase, pierce) is WIP on ryusei/warp-throw: leave out",
+   "icon": "src/assets/ui_icons/ryusei_warp.png"
+  },
+  {
+   "id": "ryusei_swap",
+   "es": "Intercambio Espacial",
+   "en": "Spatial Swap",
+   "who": "player+enemy (Ryusei)",
+   "what": "action 3 chakra, swap with whoever stands on a Node 18 m; enemy STR save",
+   "now": "both units phase at once (660ms); resisted: chakra aura on caster",
+   "sheets_used": [],
+   "fit": "yes",
+   "why": "his phase; icon also has a purple vortex",
+   "icon": "src/assets/ui_icons/ryusei_swap.png"
+  },
+  {
+   "id": "northstar_command",
+   "es": "Comando",
+   "en": "Command",
+   "who": "player+enemy (Northstar)",
+   "what": "action 4 chakra, single 9 m, WIS save; minion fights for you 1 round",
+   "now": "cast pose; genjutsu aura on caster 900ms; on fail: genjutsu aura on target 900ms + word; violet crown glyph (text) over its bar while commanded",
+   "sheets_used": [
+    "vfx_genjutsu/aura",
+    "vfx_genjutsu/aura_back"
+   ],
+   "fit": "partial",
+   "why": "nothing travels caster->target; icon is red (eye with compass rose), screen violet",
+   "icon": "src/assets/ui_icons/northstar_command.png"
+  },
+  {
+   "id": "northstar_submission",
+   "es": "Sumisión Natural",
+   "en": "Natural Submission",
+   "who": "player+enemy (Northstar)",
+   "what": "action 5 chakra, single 9 m, beast/summon WIS save; joins you for the battle",
+   "now": "cast pose; genjutsu aura on caster 900ms; on fail: genjutsu aura on target + word",
+   "sheets_used": [
+    "vfx_genjutsu/aura",
+    "vfx_genjutsu/aura_back"
+   ],
+   "fit": "no",
+   "why": "icon = red star over a figure in chains; screen = same generic aura as Command",
+   "icon": "src/assets/ui_icons/northstar_submission.png"
+  },
+  {
+   "id": "hydra_spit",
+   "es": "Escupitajo de veneno",
+   "en": "Venom spit",
+   "who": "enemy (hydra heads)",
+   "what": "action, circle r1 m at 9 m, 2d6 poison DEX half, poisoned",
+   "now": "head spit anim, 150ms; poison bolt flies from head height; poison blast 1333ms + shake",
+   "sheets_used": [
+    "vfx_poison/bolt",
+    "vfx_poison/blast"
+   ],
+   "fit": "yes",
+   "why": "fits",
+   "icon": null
+  },
+  {
+   "id": "hydra_roar",
+   "es": "Rugido",
+   "en": "Roar",
+   "who": "enemy (hydra heads)",
+   "what": "action, cone 9 m 90deg, WIS save, adds Tension",
+   "now": "head roar anim + roar sound; wind BREATH sheet stamped 6x along the cone axis 1400ms",
+   "sheets_used": [
+    "vfx_wind/breath"
+   ],
+   "fit": "partial",
+   "why": "reads as wind gusts, not a sound shockwave",
+   "icon": null
+  }
+ ],
+ "unused_sheets": {
+  "beasts": [
+   "vfx_beasts/fire (phoenix: fly, dive, attack)",
+   "vfx_beasts/wind (crane)",
+   "vfx_beasts/genjutsu (crow swarm: fly, summon)",
+   "vfx_beasts/chakra (griffin)",
+   "vfx_beasts/poison (cobra)"
+  ],
+  "slash": "all 8 elements",
+  "multi": "all 8 elements (+ earth multi_hit)",
+  "sphere": "all but wind",
+  "breath": "water, lightning, earth, genjutsu, chakra, poison",
+  "stream+head": "water, lightning, genjutsu, poison",
+  "bolt": "water, wind, lightning, chakra",
+  "blast": "fire, water, lightning, chakra",
+  "hit": "genjutsu, poison",
+  "aura (front+back)": "fire, water, wind, lightning, earth, poison",
+  "wall (3 orientations)": "fire, wind, lightning, genjutsu, chakra, poison",
+  "parts of signatures": "annihilation_enh dragon (only in enhanced Great Annihilation), kirin_enh lightning dragon (only enhanced Kirin), kanji 火 / 雷"
+ }
+}

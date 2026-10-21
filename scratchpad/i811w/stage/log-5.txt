@@ -1,0 +1,16 @@
+dash 22 #020413 #0a0919 #101424 #182030 #212d3c #0b3f4d #1f4a52 #195861 #19636a #1b6f76 #147c7f #198a87 #2c9695 #2aa5a1 #2bb6ad #76b6b6 #2ec9bb #3ddaca #8acfce #7de4da #a4f0e9 #caf9f9
+   88 drops columns 3,23,55,68,79,90 rows 4,12,58,65,73,82,90
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":1.32,"lowFreqBoxOnPalette":0.97,"ssim":0.73,"ssimBox":0.821,"hue":198,"hueHis":199,"colours":21,"thinRun":[11,"row",39]}
+   88 {"small":579,"smallHis":579,"smallDrawn":0,"smallOther":0,"lowFreq":2.26,"lowFreqBoxOnPalette":0.88,"ssim":0.612,"ssimBox":1,"hue":198,"hueHis":199,"colours":22,"thinRun":[20,"row",4]}
+hide 22 #0c071a #110c21 #181028 #1e162e #23133c #241c35 #2a203f #311b5c #302646 #382c52 #3a256b #40287e #42375e #4b3574 #4b2f8c #5a3c87 #62419a #7545a8 #7d59a4 #8e4cca #bb5a5a #f8a19c
+   88 drops columns 2,15,43,62,83,91 rows 4,11,41,62,71,83,91
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":0.76,"lowFreqBoxOnPalette":0.56,"ssim":0.771,"ssimBox":0.869,"hue":297,"hueHis":296,"colours":19,"thinRun":[6,"row",41]}
+   88 {"small":244,"smallHis":244,"smallDrawn":0,"smallOther":0,"lowFreq":0.85,"lowFreqBoxOnPalette":0.49,"ssim":0.796,"ssimBox":1,"hue":297,"hueHis":296,"colours":22,"thinRun":[7,"row",12]}
+more 24 #10120a #0a2a2a #3a1a1a #2b2916* #0a3b31 #543629 #0d4a38 #1a583d #246940 #76523c #2a7a48 #926850 #3a905c #a67c5c #48aa6b #b8906c #c4a277 #c7b488 #d2c094 #e5ce9a #f0dda1 #fbf2a5 #fdf692 #fbf4d3
+   88 drops columns 2,11,39,56,91 rows 2,9,16,31,40,47,92
+   44 {"small":1,"smallHis":0,"smallDrawn":1,"smallOther":0,"lowFreq":1.24,"lowFreqBoxOnPalette":0.78,"ssim":0.696,"ssimBox":0.84,"hue":154,"hueHis":153,"colours":22,"thinRun":[7,"row",12]}
+   88 {"small":378,"smallHis":376,"smallDrawn":2,"smallOther":0,"lowFreq":2.13,"lowFreqBoxOnPalette":0.66,"ssim":0.583,"ssimBox":1,"hue":153,"hueHis":153,"colours":23,"thinRun":[26,"row",12]}
+end_turn 22 #1c040c #2c0819 #3e0c1c #4e1322 #601221 #741324 #593a40 #861528 #9a1f30 #7a4e4f #b32436 #8c6463 #c62f47 #e03c3c #a67480 #ee5859 #c08c80 #f47c69 #d0a082 #e4ae94 #ecc69f #d9e2e9
+   88 drops columns 0,9,19,78,89 rows 4,23,31,39,47,60,91
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":1.2,"lowFreqBoxOnPalette":0.85,"ssim":0.748,"ssimBox":0.846,"hue":18,"hueHis":18,"colours":17,"thinRun":[5,"row",37]}
+   88 {"small":501,"smallHis":501,"smallDrawn":0,"smallOther":0,"lowFreq":1.17,"lowFreqBoxOnPalette":0.76,"ssim":0.691,"ssimBox":1,"hue":18,"hueHis":18,"colours":22,"thinRun":[8,"row",6]}

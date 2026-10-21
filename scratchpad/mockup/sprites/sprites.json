@@ -1,0 +1,74 @@
+{
+ "charlotte": {
+  "feetX": 62,
+  "feetY": 120,
+  "headX": 62,
+  "headY": 44
+ },
+ "charlotte_walk": {
+  "feetX": 62,
+  "feetY": 120,
+  "headX": 62,
+  "headY": 44
+ },
+ "charlotte_cast": {
+  "feetX": 70,
+  "feetY": 120,
+  "headX": 70,
+  "headY": 46
+ },
+ "solen": {
+  "feetX": 62,
+  "feetY": 120,
+  "headX": 62,
+  "headY": 42
+ },
+ "saber": {
+  "feetX": 62,
+  "feetY": 120,
+  "headX": 62,
+  "headY": 44
+ },
+ "ren": {
+  "feetX": 62,
+  "feetY": 120,
+  "headX": 62,
+  "headY": 44
+ },
+ "rogue1": {
+  "feetX": 62,
+  "feetY": 120,
+  "headX": 62,
+  "headY": 42
+ },
+ "rogue2": {
+  "feetX": 62,
+  "feetY": 120,
+  "headX": 62,
+  "headY": 42
+ },
+ "brute": {
+  "feetX": 62,
+  "feetY": 120,
+  "headX": 62,
+  "headY": 42
+ },
+ "rogue3": {
+  "feetX": 62,
+  "feetY": 120,
+  "headX": 62,
+  "headY": 44
+ },
+ "solen_sign": {
+  "feetX": 64,
+  "feetY": 120,
+  "headX": 64,
+  "headY": 42
+ },
+ "ren_crouch": {
+  "feetX": 66,
+  "feetY": 120,
+  "headX": 66,
+  "headY": 48
+ }
+}

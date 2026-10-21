@@ -1,0 +1,33 @@
+manifest_8 same
+  northstar_command.png same
+  northstar_command@2x.png same
+  northstar_submission.png same
+  northstar_submission@2x.png same
+  ryusei_swap.png same
+  ryusei_swap@2x.png same
+manifest_9 same
+  koton_block.png same
+  koton_block@2x.png same
+  koton_wall.png same
+  koton_wall@2x.png same
+  mirai_evasion.png same
+  mirai_evasion@2x.png same
+  ryusei_warp.png same
+  ryusei_warp@2x.png same
+manifest_10 same
+  adamantine_sealing_chains.png same
+  adamantine_sealing_chains@2x.png same
+  dragon_fire_bomb.png same
+  dragon_fire_bomb@2x.png same
+  taki_sixtyfour_palms.png same
+  taki_sixtyfour_palms@2x.png same
+  wood_dragon_jutsu.png same
+  wood_dragon_jutsu@2x.png same
+manifest_11 same
+  dragon_fire_stream.png same
+  dragon_fire_stream@2x.png same
+  shadow_clone.png same
+  shadow_clone@2x.png same
+  water_dragon_suiryuudan.png same
+  water_dragon_suiryuudan@2x.png same
+exit 0

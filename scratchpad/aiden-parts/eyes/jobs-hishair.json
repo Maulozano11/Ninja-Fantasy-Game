@@ -1,0 +1,4 @@
+[
+  {"name": "cmp-hishair", "look": {"skin": "#f6bb96", "faceShape": "valiant", "eyeShape": "valiant", "eyeColor": "#d81b2a", "slots": {"hair": {"id": "hair_valiant", "colors": ["#76391b"]}}}},
+  {"name": "cmp-hishair-std", "look": {"skin": "#f6bb96", "faceShape": "valiant", "eyeShape": "standard", "eyeColor": "#d81b2a", "slots": {"hair": {"id": "hair_valiant", "colors": ["#76391b"]}}}}
+]

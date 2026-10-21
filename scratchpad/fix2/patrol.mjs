@@ -1,0 +1,14 @@
+import { open, helpers, out } from './lib.mjs';
+const locale = process.argv[2] ?? 'es-MX';
+const es = locale.startsWith('es');
+const { browser, page, errs } = await open(locale);
+const h = helpers(page);
+await page.getByText(es ? 'Patrulla en el cruce' : 'Patrol at the crossing').click();
+await page.waitForTimeout(2500);
+const info = await page.evaluate(() => { const s = window.__battle.state(); return { phase: s.phase, party: Object.values(s.units).filter((u) => u.team === 'party').map((u) => [u.id, u.character?.clan, u.jutsus.slice(0, 3)]) }; });
+console.log(JSON.stringify(info));
+const bar = async () => page.evaluate(() => [...document.querySelectorAll('button')].map((b) => ({ t: b.innerText.replace(/\n/g, '|'), d: b.disabled })).filter((b) => /\|/.test(b.t) && b.t.length < 40 && !/NEW/.test(b.t)));
+console.log('BAR', JSON.stringify(await bar()));
+await page.screenshot({ path: `${out}/patrol-${locale}.png` });
+console.log('errors', JSON.stringify(errs));
+await browser.close();

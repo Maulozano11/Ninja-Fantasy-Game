@@ -1,0 +1,86 @@
+a #00035a
+b #0c2b46
+c #041384
+d #11249b
+e #3f2086
+f #542ba1
+g #1d35ba
+h #3e42a5
+i #2946b6
+j #2d49cf
+k #703fc8
+l #3659c9
+m #297490
+n #415fdc
+o #4d6cb6
+p #6259e1
+q #456dd2
+r #8052de
+s #9b4ee8
+t #776cda
+u #5a7ae8
+v #5384d9
+w #906ee4
+x #3997d6
+y #8192df
+z #2fadcd
+A #65a2de
+B #6f9eed
+C #799bf8
+D #33bcdd
+E #36c8e0
+F #6ebef0
+G #99bbff
+H #48d6ef
+I #95cafc
+J #4ce4f1
+K #95e2fd
+L #6af0fa
+M #c4e3ff
+N #8ef6fe
+O #e4ffff
+
+zzzzzzzzzzzzzzzzzzzzzzzzzzEzzzzzzzzzzzzzzzzz
+zzzzzzzzzzzzzzzzzzHHHHHzzzEEzzzzzzzzzzzzzzzz
+zzzzzzzzzzzzzzzzzzzzzHHHHzzzEzzzzzzzzzzzzzzz
+zzzzzzzzzzzzzzzzzzzzzzEHHHDzzLzzzDzzzzzzzzzz
+zzzzzzzzzzzzzzENEEDDDEEEEHHDzLDzzDzzzzzzzzzz
+zzzzzDDDDDDLLLEENNNNEBBEEEHHDzLDzDDzzzzzzzzz
+zzzzzzDDDDDDDDDDENNNNNHBBEEHHzDLzzDzzzzzzzzz
+zzHzzzzzzzDDDDLLNNHyyHHLLwEEHJDLHzDDzzzzzzzz
+zzzHHxxxxxDLLLNNHyyHHHHHLEwEHHJHLzzDzxxzzzzz
+zzzzxOOOOOxDLLJHyHHBsssswLwwHDHJLJzDxOOvxzzz
+zzzxOuuqqMBDDJJHHHBkkeeekwLwHHDJJLzxOqqOOxzz
+zzFFOuuqMvNNNNNJHBkkksskekwwHHDEJLzxOqqMvzzz
+zzzvOuGGqOvzzJJJHkkwwBBskekHwHEExBBOIqqMvzzz
+zzzvOuGvqqOvzzKKwkwIIBBBteewwHEBOOOvIIIMvzzz
+DDzvOqqvvqqvvvKKswIrrrrtBtewwHBOBlvqvvvIOvzz
+DDxOqqquqqqqqvvssIrooeektBffwBOBBlvqvvIIMvzz
+DvOnFquuqqqqvqvsIsooefkekBufwBOMMllqvvvIqOvz
+vOnFFnunqqqqKKHvIsHfffrkkBufrCBBBOlqvGvMIqOv
+OnnMMMnuuqMqKHHHsHseefkrkuufrCBBBOqqGvMxOqqO
+vOMvxvOqquuoKHHHsHkefptrkuufrCCBBOGGGvMqxOMM
+DxxzzxvOGquloHHHsFkeptppkuufrCuOOqqGvMxzzxvv
+DDzzvvvOGGloovHBBFkeptkpkuufrJqOqqGGGMxzzzzz
+zzzvOOOvGqlllvHBFFfetokpkqqfrJuOvqvGvGOvzzzz
+zzzvOqqvqqqqlMBBHyfetokpkqfftJGOvqvvGGqOvzzz
+zzxOnnlqvqqqqvvBHyfeooekfqftJpOvOvvGGnnqOvzz
+zzvOnllMMMMqvvvvHyfeoEeeffftJpOvOvMMMqqnqOxz
+zzvOnlMAxAvOvqxvHysefoEeeftJtuqOqMxxCOqqnMxz
+zzvOnqMxEEAOqqxvHHseefEEuuJtpOxqMxLLFOqnMvzz
+zzxOMnqOvAExqqxvHHsffffuEurrpOxMxLLLFOMqMvzz
+zzzvvOqMvEHLxqxvvJysekkfffkruqMxLNLLxOqMvzzz
+zzvvvOqMxHLLNxqvvJyykekkkkrpOMMxLNLLxOqMxzzz
+zzzzzxOMxHHHLNNFvJHHykeffffqOxxLNNLzvOMxzzzz
+zzzzzzxOxAHHHNFFxxJyHykkfqqOxLLNNLLzxOvzzzzz
+zzzzzzxOAHHHHLNNNxLHyIIIvOOxLLNNLLzzvOvzzzzz
+zzzzDDDxEJJJLLNNNAxLHyIBOMxLLINLJDzzHvzzzzzz
+zzzzzzzzzEHHHHLNNNAALHttOMBIILLJDzzHHzzzzzzz
+zzzzzzzLLLEEHLLLNNAAHLLFtttILLJDzzJHzzzzzzzz
+zzzzDLLzzzzzzHHHHNLALLLFFFJLHHDzJJzzzzzzzzzz
+zzzDDDzzzzzzzDHHzzLLLLLLJJJHDDJJJzzzzzzzzzzz
+zzzDzzzzzzzzzzDHHzzzzHHHLLLLHJDDzzzzzzzzzzzz
+zzzzzzzzzzzzzzzDHJHzzzzzzzzzzzzzzzzzzzzzzzzz
+zzzzzzzzzzzzzzzzzHJJHEEEEJJJzzzzzzzzzzzzzzzz
+zzzzzzzzzzzzzzzzzzzEEHHHEEzzzzzzzzzzzzzzzzzz
+zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz

@@ -1,0 +1,36 @@
+bolt         67x64   8 frames  ok
+beast       128x96   6 frames  ok  (copied through unchanged from vfx_genjutsu; another artist's)
+stream       64x64   8 frames  ok
+stream_head  67x64   8 frames  ok
+breath      112x110  8 frames  ok
+sphere       69x66   8 frames  ok
+slash        65x64   8 frames  ok
+multi        67x64   8 frames  ok
+hit          66x67  12 frames  ok
+blast       274x181 16 frames  ok
+wall        290x133 20 frames  ok
+aura         91x134 12 frames  ok
+aura_back    91x134 12 frames  ok
+wall_diag   312x231 20 frames  ok
+wall_depth  117x257 20 frames  ok
+frames checked: 174; frames of this set with opaque pixels on the border: 0 (stream sides and the head's left joint exempt)
+mean alpha x brightness per frame (x1000); "max step" is the biggest change between neighbouring frames, as a share of the anim's peak; "changed" is how many pixels change between neighbours
+bolt        fly    8f@10 max step   5.3%  |  98 97 102 102 97 97 93 93  |  changed 560 751 501 757 382 676 471
+beast       fly    6f@12 max step   5.3%  |  54 53 52 50 53 54  |  changed 3230 2520 2831 2904 2456  (another artist's, copied through)
+stream      fly    8f@10 max step   0.0%  |  160 160 160 160 160 160 160 160  |  changed 2291 2291 2291 2291 2291 2291 2291
+stream_head fly    8f@10 max step   7.1%  |  171 174 161 164 156 157 151 162  |  changed 1657 1677 1714 1590 1543 1660 1686
+breath      fly    8f@10 max step   1.5%  |  126 125 125 126 126 125 123 124  |  changed 2122 2352 2064 1849 2138 2387 2120
+sphere      fly    8f@10 max step   5.0%  |  180 180 190 187 178 180 173 173  |  changed 476 747 479 724 509 663 470
+slash       fly    8f@10 max step   0.5%  |  101 101 101 101 101 100 100 101  |  changed 549 527 487 399 339 364 446
+multi       fly    8f@10 max step   3.1%  |  92 94 91 92 92 94 95 94  |  changed 970 1010 517 942 985 1057 583
+hit         hit   12f@12 max step  35.4%  |  29 71 122 139 135 141 143 134 106 76 55 29  |  changed 908 1483 2088 1065 1216 1681 1744 2064 2239 2309 1923
+blast       blast 16f@12 max step  29.7%  |  11 42 84 121 142 138 136 132 113 107 92 74 60 40 22 10  |  changed 6407 12847 18926 20733 10981 11883 13632 16899 12047 11671 13369 12119 14526 13035 11693
+wall        rise  12f@12 max step  18.9%  |  2 15 45 92 137 182 212 234 244 250 252 252  |  changed 1213 3499 7391 11916 14698 17762 12684 10559 5367 2311 67
+wall        idle   8f@10 max step   0.4%  |  252 253 252 252 252 252 253 253  |  changed 1188 1255 2032 1869 1858 2109 1566
+aura        idle  12f@10 max step   6.2%  |  33 35 36 36 36 35 33 31 31 30 31 31  |  changed 276 250 100 261 159 366 375 200 261 113 267
+aura_back   idle  12f@10 max step   1.4%  |  133 133 133 133 133 134 134 134 132 133 133 133  |  changed 1494 1528 1508 1393 1271 678 727 1256 1386 1400 1387
+wall_diag   rise  12f@12 max step  22.7%  |  1 8 29 66 98 125 144 154 158 159 162 162  |  changed 1541 4814 11765 14276 18732 20137 20400 17708 9896 5606 248
+wall_diag   idle   8f@10 max step   0.8%  |  162 162 162 164 165 165 164 163  |  changed 22 38 630 1614 2020 1638 827
+wall_depth  rise  12f@12 max step  11.0%  |  10 22 36 52 69 87 103 119 132 144 156 162  |  changed 1911 2466 3870 4871 6357 7527 7806 8907 9924 10929 11331
+wall_depth  idle   8f@10 max step   1.7%  |  162 162 162 163 164 164 165 165  |  changed 651 591 911 1144 1419 1702 1652
+review images written

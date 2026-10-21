@@ -1,0 +1,83 @@
+a #070822
+b #0a122c
+c #241721
+d #161c32
+e #0e2b28
+f #22273d
+g #4c221a
+h #2c3344
+i #193b51
+j #38424e
+k #1c4f4b
+l #584246
+m #4e504a
+n #0a5678
+o #7a4a42
+p #04678a
+q #266a6f
+r #027393
+s #7c6456
+t #028280
+u #03819b
+v #098fa3
+w #0e9e90
+x #b17a70
+y #0a9db2
+z #14adba
+A #18b79a
+B #1cbfc9
+C #35c683
+D #26cea4
+E #e2a28c
+F #22d5dd
+G #ecbea2
+H #54f2a0
+I #32edea
+J #3ef2c5
+K #5cf98b
+L #3afafd
+
+pppppppvvvuppppprpppppppppppppppppprvvrppppp
+ppppppvvvupppprrDrrrtttwwwwppppppppprvvrpppp
+pppppvvvupprAAArrrDDHHHHHwwpppppppppprvvrppp
+pppppvvppprCArrADHHDDwwwwwwpssspppnnpprvvppp
+ppppuvupprCCsrAHHDwwwDDDDDDwosssphhinprrvppp
+ppppvuvupuCsssAHDwDwwvvvvAAAmoxxxhhiiprvvvpp
+prrruuwruCssssHvyDyyyyzzyvvvmoooxlhipppvvvpp
+prrprwwrusCxsqvvyyyyyyyyzzzzvmlllhlrurprvvvp
+prpprDrrfCxssqvvvvyzzzzyyyzzzzvvwwuurrprvvvp
+rvprwDrifxsxsqvvBBBIIIIIFzyyBzzyvwwuAArppvvv
+rvprDwriiffsyyzBIIIIjiijzFFyzBzzyvHAuAvrppvv
+rvpwHwruiisFyzBIFFIjijjfjIIIBBBzzyvHHvHvppvv
+vvpwHwuzHHFzzBIBFIFfjjffjIIIIzzzzyyvHHHHpprv
+uvpwHwuzHzFzBIBFIIFfjjffjIIIzoouyzyqqHHHvprv
+uAvHHwuzHzzzIBBIIIFfjjjfdffzzoouuzyqsssHvruv
+uAAHHwuzHzzBBBIIIIFhsssfdhfhhdhhuzzymsssvuvu
+vvAHHwuzzzzFBBIIIIjdhhhdfhdhdddhzzzmssssuvvu
+vrvHruuvzzzFBFIIIjiddhdbdhddhfhzzzzzmshhhvBu
+zrrrxxovzzzFBFIIjijiddbbhhqqfffzzzzzzmfhhizu
+zrrmxxoovzzFBFIIdddhhhddffIIqqBBBBzzzHmfhizu
+zvrmxxooxzzFBFIIiihdhhhfhfIIIIBzIzzzzDHmfizu
+zvummmjxoyzFBFIIihibdhdhhhIIIIzBIzzzzDKHuuzu
+vzrujjjxiyzFBzIIIhihbhhddBIIIzzIzzzDDwKKvuzu
+uuurrfffiyyzFzIIIhihbddddBBFFzIzzzzJDwKKvuzp
+uuurrrfityyzFzzIIbjhbaaddhddzFzzzyzJuwKvuvup
+vvuurrrtttzyzzzznbhjdbaahhdiiiiyzyJzuHKvuvrp
+vvuAHrrtzvzyyzznbbjhdbbbhdhhjjjtyJJuuHHuurpp
+vvuHAArrvzvzyyynbbbddbdddddhhhhtJJyuuHuurppp
+rvvuHAArrvvvzzniibbhhdbbbdddffhtJyuuHHurpppu
+rvvuyHHArrvzIzijjhbhhbdzzIddffhIIyuzHuurpppu
+pruuuyAIIIIIzdijjhbffjIIIzhfffIIIIIIzuurppup
+ppuuyIIIFFIIdhhjhhhffjzzzzfhhIIyIIIzIIIuruup
+rpuyIIvvIIFudhdddhpjjojFFFffhyyIIIzIuuIIzupp
+rrzIzuuvvvuhhdddhppjjojppfffyIIuuuuuuuuzIzpp
+rzIzuBvIIuhhfffppppnoojppffhhhuIurIyIzIIzIzp
+rzIuBBrIufffpIppppppnnppphhffhuIuryIzzzIrIzp
+rzIrBBrIihffpIIIpppppppppppvvIIurrIyzzzzrIzp
+nvIBrrriihfppprIIIIIIIIIIIIIIvuruIIrrrrrzIup
+npvIIvvihffzIFFrrrrIIIIIIrrrrvIIIzzIIuuIIupn
+nnpvIIvvvIIIzzFrppFIIvvIIIpprIIIIIIzuuIIupnn
+nnnppvIIIvvvIFppppFIIvvIIIppppIIIzzIIIurnnnn
+nnnnnppvvIIIIyyypFFFFvvIIIIpzzzIIIIzrrrnnnnn
+nnnnnnpprrryyIIIIIIIIIIIIIIIIIIzrrrrrnnnnnnn
+nnnnnnnnnppppppprrrrrrrrrrrrpppppppnnnnnnnnn

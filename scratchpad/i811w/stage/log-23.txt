@@ -1,0 +1,32 @@
+chidori_lightning_blade 20 #010c3f #001351 #001a66 #01237c #002d94 #0038ac #0043c2 #0452d4 #0c61e2 #0073ea #0a84f0 #1292ec #0ca4f0 #08b4f2 #0ec6f4 #30d8f4 #52eaf8 #7ef8fb #bdfeff #f0fefe
+   88 drops columns 3,36 rows 2,67
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":2.69,"lowFreqBoxOnPalette":1.53,"ssim":0.719,"ssimBox":0.823,"hue":262,"hueHis":258,"colours":20,"thinRun":[5,"col",41]}
+   88 {"small":1157,"smallHis":1157,"smallDrawn":0,"smallOther":0,"lowFreq":1.66,"lowFreqBoxOnPalette":0.99,"ssim":0.738,"ssimBox":1,"hue":262,"hueHis":260,"colours":20,"thinRun":[7,"row",60]}
+rasengan 19 #08122f #051b4a #022464 #002f7d #003b98 #0045b0 #004eca #065ed8 #0070e3 #0084ed #0797f4 #1cabf4 #1bc0fa #2ad4fa #4ee7fc #72f5fc #b2fdff #edffff #ffffff
+   88 drops columns 2,88 rows 1,88
+   44 {"small":4,"smallHis":0,"smallDrawn":4,"smallOther":0,"lowFreq":1.62,"lowFreqBoxOnPalette":1.07,"ssim":0.759,"ssimBox":0.822,"hue":260,"hueHis":257,"colours":19,"thinRun":[9,"row",33]}
+   88 {"small":1050,"smallHis":1050,"smallDrawn":0,"smallOther":0,"lowFreq":1.73,"lowFreqBoxOnPalette":0.68,"ssim":0.67,"ssimBox":1,"hue":261,"hueHis":259,"colours":19,"thinRun":[12,"col",12]}
+venom_surge 20 #22152d #2d123f #352746 #303d35 #403d52 #583e66 #475b4f #59705a #02802d #029124 #7e8a74 #1ca708 #2fb90a #8bb477 #42cc0f #5add00 #73ea25 #84fa14 #c3f6a7 #d5ffa5
+   88 drops columns 9,41 rows 2,87
+   44 {"small":37,"smallHis":20,"smallDrawn":17,"smallOther":0,"lowFreq":1.91,"lowFreqBoxOnPalette":0.75,"ssim":0.716,"ssimBox":0.822,"hue":145,"hueHis":142,"colours":19,"thinRun":[10,"row",17]}
+   88 {"small":533,"smallHis":533,"smallDrawn":0,"smallOther":0,"lowFreq":1.38,"lowFreqBoxOnPalette":0.64,"ssim":0.784,"ssimBox":1,"hue":145,"hueHis":143,"colours":20,"thinRun":[19,"row",32]}
+earth_wall_doryuheki 21 #16161e #261617 #301f23 #38282a #413032 #46353a #5a3628 #514038 #5d483e #6b5242 #745843 #7c624d #8c5e3e #897052 #708a2a #967a5c #a28662 #7e9e46 #b0946e #c2a37a #d4b488
+   88 drops columns 1,88 rows 1,62
+   44 {"small":10,"smallHis":0,"smallDrawn":10,"smallOther":0,"lowFreq":1.6,"lowFreqBoxOnPalette":0.68,"ssim":0.661,"ssimBox":0.777,"hue":58,"hueHis":69,"colours":18,"thinRun":[9,"col",20]}
+   88 {"small":876,"smallHis":876,"smallDrawn":0,"smallOther":0,"lowFreq":0.92,"lowFreqBoxOnPalette":0.61,"ssim":0.736,"ssimBox":1,"hue":60,"hueHis":71,"colours":21,"thinRun":[10,"col",56]}
+earth_spear_doryuudan 20 #070202 #0f0808 #1b1213 #1e2224 #2e222a #272e2a #31382a #423e2c #514434 #54423a #5e4e3d #6e5a48 #7c6754 #8c735e #9b8065 #aa8b6d #b89874 #c2a580 #d1b48a #ddc292
+   88 drops columns 1,26,35,57,91 rows 1,33,88
+   44 {"small":3,"smallHis":0,"smallDrawn":3,"smallOther":0,"lowFreq":1.75,"lowFreqBoxOnPalette":0.58,"ssim":0.709,"ssimBox":0.804,"hue":70,"hueHis":71,"colours":17,"thinRun":[8,"row",22]}
+   88 {"small":715,"smallHis":715,"smallDrawn":0,"smallOther":0,"lowFreq":1.17,"lowFreqBoxOnPalette":0.51,"ssim":0.708,"ssimBox":1,"hue":73,"hueHis":72,"colours":20,"thinRun":[11,"row",4]}
+great_fireball 19 #260c0f #480d0f #5c0c0c #503236 #7a0404 #920a06 #a61208 #bc1a0a #d61d02 #e8360c #f84c02 #fb6e06 #fb8a06 #fda207 #fcb711 #fcd022 #fee84d #fffcae #fffed7
+   88 drops columns 1,25,34,51,91 rows 8,50,64
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":1.45,"lowFreqBoxOnPalette":0.81,"ssim":0.725,"ssimBox":0.825,"hue":30,"hueHis":30,"colours":19,"thinRun":[5,"row",17]}
+   88 {"small":540,"smallHis":540,"smallDrawn":0,"smallOther":0,"lowFreq":1.11,"lowFreqBoxOnPalette":0.64,"ssim":0.78,"ssimBox":1,"hue":29,"hueHis":30,"colours":19,"thinRun":[9,"col",6]}
+water_stream 18 #0a1f46 #0b3257 #0f3a64 #144473 #175385 #1659b0 #1c699d #2170c0 #247ecc #2e90d6 #3aa1df #46b1e9 #4fbeef #68cbf6 #83daf8 #9fe7fd #baf3fc #dffdfe
+   88 drops columns 3,16,28,37,54 rows 2,16,89
+   44 {"small":39,"smallHis":39,"smallDrawn":0,"smallOther":0,"lowFreq":1.81,"lowFreqBoxOnPalette":1,"ssim":0.704,"ssimBox":0.796,"hue":251,"hueHis":249,"colours":18,"thinRun":[10,"row",21]}
+   88 {"small":566,"smallHis":566,"smallDrawn":0,"smallOther":0,"lowFreq":1.43,"lowFreqBoxOnPalette":0.64,"ssim":0.63,"ssimBox":1,"hue":251,"hueHis":250,"colours":18,"thinRun":[10,"row",42]}
+weapon_attack 28 #1e152a #1f1e48* #2a1f38 #382738 #2d3154 #3b4060 #5e464e #3e5475 #6e5858 #206ba0 #4c6894 #546eb6 #6f769a #9e7255 #4a8fa8 #8e8891* #828cb2 #2b9ec6 #1caab4* #b09472 #9da9af #66b6d0 #d0ac80 #80d2dd #eace9e #b4eeee #fbe8a2 #f8fff3
+   88 drops columns 5,16,33,70,91 rows 1,56,89
+   44 {"small":29,"smallHis":0,"smallDrawn":29,"smallOther":0,"lowFreq":2.34,"lowFreqBoxOnPalette":0.86,"ssim":0.65,"ssimBox":0.8,"hue":277,"hueHis":273,"colours":27,"thinRun":[6,"row",40]}
+   88 {"small":618,"smallHis":618,"smallDrawn":0,"smallOther":0,"lowFreq":1.7,"lowFreqBoxOnPalette":0.72,"ssim":0.698,"ssimBox":1,"hue":277,"hueHis":274,"colours":25,"thinRun":[13,"col",3]}

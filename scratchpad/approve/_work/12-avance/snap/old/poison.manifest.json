@@ -1,0 +1,312 @@
+{
+ "group": "vfx_poison",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bolt": {
+   "label": "Poison bolt: acid gob",
+   "file": "bolt.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "beast": {
+   "label": "Poison beast: venom cobra",
+   "file": "beast.png",
+   "frameW": 128,
+   "frameH": 96,
+   "anchor": [
+    64,
+    48
+   ],
+   "meters": [
+    2.25,
+    1.68
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream": {
+   "label": "Poison stream: acid jet (tileable)",
+   "file": "stream.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    0,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream_head": {
+   "label": "Poison stream head: acid splash",
+   "file": "stream_head.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "breath": {
+   "label": "Poison breath: toxic cloud",
+   "file": "breath.png",
+   "frameW": 96,
+   "frameH": 64,
+   "anchor": [
+    0,
+    32
+   ],
+   "meters": [
+    1.68,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "sphere": {
+   "label": "Poison sphere: acid bubble",
+   "file": "sphere.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "slash": {
+   "label": "Poison slash: fang strike",
+   "file": "slash.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "multi": {
+   "label": "Poison multi: venom drops",
+   "file": "multi.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "hit": {
+   "label": "Poison hit: acid splat",
+   "file": "hit.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 6,
+     "fps": 15,
+     "loop": false
+    }
+   }
+  },
+  "blast": {
+   "label": "Poison blast: hydra venom geyser",
+   "file": "blast.png",
+   "frameW": 176,
+   "frameH": 144,
+   "anchor": [
+    88,
+    88
+   ],
+   "meters": [
+    3.09,
+    2.53
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "wall": {
+   "label": "Poison wall: mist curtain",
+   "file": "wall.png",
+   "frameW": 272,
+   "frameH": 128,
+   "anchor": [
+    136,
+    120
+   ],
+   "meters": [
+    4.77,
+    2.25
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 6,
+     "fps": 8,
+     "loop": true
+    }
+   }
+  },
+  "aura": {
+   "label": "Poison aura: toxic fumes",
+   "file": "aura.png",
+   "frameW": 80,
+   "frameH": 120,
+   "anchor": [
+    40,
+    112
+   ],
+   "meters": [
+    1.4,
+    2.11
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

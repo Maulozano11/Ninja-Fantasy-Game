@@ -1,0 +1,244 @@
+{
+ "name": "camp_night",
+ "size": [
+  960,
+  420
+ ],
+ "pxPerMeter": 57,
+ "pxPerMeterDepth": 38,
+ "groundTop": 234,
+ "layers": {
+  "back": [
+   "sky.png",
+   "forest_far.png",
+   "forest_mid.png",
+   "ground.png",
+   "frame_back.png"
+  ],
+  "front": [
+   "frame_front.png"
+  ],
+  "groundNoFire": "ground_nofire.png"
+ },
+ "fire": {
+  "x": 480,
+  "y": 338,
+  "flameY": 306,
+  "lightRadiusM": 3.9
+ },
+ "moon": {
+  "x": 618,
+  "y": 70,
+  "r": 24
+ },
+ "spots": [
+  {
+   "x": 404,
+   "y": 356,
+   "facing": "right",
+   "pose": "sit",
+   "support": "seat_log",
+   "note": "left of the fire"
+  },
+  {
+   "x": 562,
+   "y": 358,
+   "facing": "left",
+   "pose": "read",
+   "support": "seat_rock",
+   "note": "right of the fire"
+  },
+  {
+   "x": 448,
+   "y": 300,
+   "facing": "right",
+   "pose": "lean",
+   "support": "lean_rock",
+   "note": "behind the fire, left, against a rock"
+  },
+  {
+   "x": 728,
+   "y": 394,
+   "facing": "left",
+   "pose": "train",
+   "note": "open ground, front right"
+  }
+ ],
+ "partySpots": [
+  {
+   "x": 404,
+   "y": 356,
+   "facing": "right",
+   "pose": "sit",
+   "support": "seat_log",
+   "note": "left of the fire"
+  },
+  {
+   "x": 562,
+   "y": 358,
+   "facing": "left",
+   "pose": "read",
+   "support": "seat_rock",
+   "note": "right of the fire"
+  },
+  {
+   "x": 448,
+   "y": 300,
+   "facing": "right",
+   "pose": "lean",
+   "support": "lean_rock",
+   "note": "behind the fire, left, against a rock"
+  }
+ ],
+ "props": [
+  {
+   "group": "campsite",
+   "name": "tent_large",
+   "x": 238,
+   "y": 316
+  },
+  {
+   "group": "campsite",
+   "name": "stump_axe",
+   "x": 174,
+   "y": 382
+  },
+  {
+   "group": "campsite",
+   "name": "sword_stuck",
+   "x": 206,
+   "y": 366
+  },
+  {
+   "group": "campsite",
+   "name": "bedroll",
+   "x": 316,
+   "y": 348
+  },
+  {
+   "group": "campsite",
+   "name": "backpack",
+   "x": 350,
+   "y": 330
+  },
+  {
+   "group": "campsite",
+   "name": "firewood",
+   "x": 286,
+   "y": 390
+  },
+  {
+   "group": "campsite",
+   "name": "campfire_large",
+   "x": 480,
+   "y": 338,
+   "anim": "burning",
+   "note": "anchor = centre of the ring"
+  },
+  {
+   "group": "campsite",
+   "name": "smoke_tall",
+   "x": 482,
+   "y": 286,
+   "z": 52.5,
+   "note": "foot at the flame tips"
+  },
+  {
+   "group": "campsite",
+   "name": "cooking_tripod",
+   "x": 480,
+   "y": 338,
+   "z": 1,
+   "note": "anchor = ground under the pot"
+  },
+  {
+   "group": "campsite",
+   "name": "log_seat",
+   "x": 632,
+   "y": 410
+  },
+  {
+   "group": "campsite",
+   "name": "torii",
+   "x": 838,
+   "y": 304
+  },
+  {
+   "group": "campsite",
+   "name": "tent_small",
+   "x": 694,
+   "y": 308,
+   "flip": true
+  },
+  {
+   "group": "campsite",
+   "name": "swords_pair",
+   "x": 640,
+   "y": 338
+  },
+  {
+   "group": "landmarks",
+   "name": "hokora",
+   "x": 846,
+   "y": 296,
+   "shrine": true
+  },
+  {
+   "group": "landmarks",
+   "name": "stone_lantern",
+   "x": 786,
+   "y": 352,
+   "anim": "lit",
+   "shrine": true
+  },
+  {
+   "group": "campsite",
+   "name": "fern_clump",
+   "x": 900,
+   "y": 318
+  },
+  {
+   "group": "campsite",
+   "name": "fern_clump",
+   "x": 760,
+   "y": 356,
+   "flip": true
+  },
+  {
+   "group": "campsite",
+   "name": "fern_clump",
+   "x": 128,
+   "y": 400
+  }
+ ],
+ "grade": {
+  "note": "How day-lit sprites are lit in this scene (tools/scenes/camp_preview.py grade()): multiply by the moon and add its ambient; firelight by distance from the flames (57 px/m across, 38 px/m deep), quantised to 4 levels through the warm tint; a warm rim on silhouette edges facing the fire, a faint cool rim on edges facing the upper right. Flames stay as they are.",
+  "moonMul": [
+   0.33,
+   0.41,
+   0.6
+  ],
+  "moonAdd": [
+   4,
+   8,
+   20
+  ],
+  "fireTint": [
+   1.9,
+   1.4,
+   0.92
+  ],
+  "fireAdd": [
+   58,
+   34,
+   14
+  ],
+  "fireLevels": [
+   0,
+   0.32,
+   0.62,
+   0.95
+  ],
+  "fireFalloff": "w = 1.4 / (1 + (d / 1.8)^2) - 0.1, d in metres"
+ }
+}

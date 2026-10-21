@@ -1,0 +1,481 @@
+{
+ "kit": "ui_icons_9",
+ "references": [
+  "docs/reference/icons-owner-reference-9.jpg"
+ ],
+ "round": 1,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "frame": {
+  "from": "ui_icons (sheet 1), read only: skill_slot_steel.png and skill_slot_steel_active.png, 56x56, the icon window 44x44 at 6,6; see ui_icons/manifest.json for its slices",
+  "window": {
+   "x": 6,
+   "y": 6,
+   "w": 44,
+   "h": 44
+  }
+ },
+ "method": "his sheets are pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-23.py). 88: his own pixels one to one (his 90x90 or 93x91 window with the columns and rows that show least dropped), on a palette sampled from his pixels, 1-2 pixel areas merged only where his own pixels do not stand out. 44: area mean of his pixels, except his thin lines and strongest specks, which keep their own colour one pixel wide; a light bilateral filter, nearest palette entry, 1-2 pixel areas merged; then hand-fixes only where that still loses his picture (see tools/ui/ui-icons-23.ts). Sheets 8 to 11 use no bilateral filter (it lightened his dark figures into his ground). Edits the owner asked for are listed per icon under edits: made on his window first, then drawn again crisp at 88 and 44",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (at 88 his pixel stands out there; at 44 his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]",
+ "icons": {
+  "mirai_evasion": {
+   "name": "Premonition",
+   "sheet": "docs/reference/icons-owner-reference-9.jpg",
+   "file": "mirai_evasion.png",
+   "file2x": "mirai_evasion@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "PREMONICION",
+   "hisWindow": [
+    98,
+    96
+   ],
+   "dropped88": {
+    "columns": [
+     1,
+     6,
+     11,
+     17,
+     22,
+     44,
+     49,
+     85,
+     91,
+     96
+    ],
+    "rows": [
+     1,
+     16,
+     31,
+     39,
+     54,
+     72,
+     88,
+     94
+    ]
+   },
+   "edits": [
+    {
+     "by": "the owner",
+     "date": "2026-10-21",
+     "asked": "Comando ponlo con un ojo con una brujula de los signos cardinales asi como en la imagen de sumision quita el sharingan y el de premonicion pon solo un ojo rojo radiante sin simbolo para evitar el copyright de naruto",
+     "why": "to keep clear of Naruto's eyes (copyright)",
+     "onHisWindow": "his eye's pattern (a dark ring with three tomoe round the pupil: 340 of his pixels inside the iris's dark rim) replaced by a plain radiant red iris in his reds (#580412 #79081c #aa1630 #c31e39 #dc1a32 #f21c33 #e3687a #f098a2), darkest at the rim and lower right, lighter toward the highlight; a round dark pupil (#12030c, radius 3.3 of his pixels) and a highlight of his palest pink (#fbb5b7) at its upper left. His rim, sclera, lids and glow stay his.",
+     "atEachSize": "the pupil and the highlight drawn again at each size so they stay round and clean: at 88 a disc of radius 3.1 and a 2x2 highlight at its upper left; at 44 the iris redrawn in the same ramp, a 2x2 pupil and a one-pixel highlight at its upper left",
+     "colours": [
+      "his reds, his darkest and his palest pink, for the radiant eye: #580412 #79081c #aa1630 #c31e39 #dc1a32 #f21c33 #e3687a #f098a2 #12030c #fbb5b7"
+     ]
+    }
+   ],
+   "palette": [
+    "#12030c",
+    "#26030c",
+    "#1b0e27",
+    "#370d28",
+    "#4a0c21",
+    "#2c2a3a",
+    "#580412",
+    "#561232",
+    "#6e162f",
+    "#79081c",
+    "#752838",
+    "#862b3f",
+    "#aa1630",
+    "#ab1731",
+    "#963a4e",
+    "#c31e39",
+    "#aa465e",
+    "#cb1f38",
+    "#dc1a32",
+    "#c2506a",
+    "#f21c33",
+    "#d0687e",
+    "#e3687a",
+    "#d47c8a",
+    "#e28f98",
+    "#f098a2",
+    "#eea0a8",
+    "#fab1b6",
+    "#fbb5b7",
+    "#ffd8b9"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 13,
+     "smallHis": 1,
+     "smallDrawn": 12,
+     "smallOther": 0,
+     "lowFreq": 1.31,
+     "lowFreqBoxOnPalette": 0.76,
+     "ssim": 0.742,
+     "ssimBox": 0.838,
+     "hue": 306,
+     "hueHis": 307,
+     "colours": 26,
+     "thinRun": [
+      7,
+      "row",
+      14
+     ]
+    },
+    "88": {
+     "small": 465,
+     "smallHis": 465,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.52,
+     "lowFreqBoxOnPalette": 0.63,
+     "ssim": 0.535,
+     "ssimBox": 1,
+     "hue": 306,
+     "hueHis": 306,
+     "colours": 30,
+     "thinRun": [
+      11,
+      "row",
+      1
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "koton_block": {
+   "name": "Koton Block",
+   "sheet": "docs/reference/icons-owner-reference-9.jpg",
+   "file": "koton_block.png",
+   "file2x": "koton_block@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "BLOQUE KOTON",
+   "hisWindow": [
+    98,
+    96
+   ],
+   "dropped88": {
+    "columns": [
+     2,
+     7,
+     12,
+     24,
+     48,
+     55,
+     74,
+     86,
+     91,
+     96
+    ],
+    "rows": [
+     0,
+     6,
+     12,
+     40,
+     56,
+     77,
+     88,
+     94
+    ]
+   },
+   "palette": [
+    "#0b0812",
+    "#101220",
+    "#1d212c",
+    "#282e38",
+    "#2c3d4d",
+    "#503c30",
+    "#304e5f",
+    "#5d5142",
+    "#41697d",
+    "#71604e",
+    "#837061",
+    "#687e92",
+    "#998270",
+    "#7697a8",
+    "#b19580",
+    "#7cb0b8",
+    "#c3a68f",
+    "#76d6dc",
+    "#e3bc96",
+    "#c8c8d5",
+    "#8af0f4",
+    "#fcdaa4",
+    "#eef6fa"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [
+    "his cube's light steel (the lit edges at its near corner)"
+   ],
+   "checks": {
+    "44": {
+     "small": 3,
+     "smallHis": 3,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.71,
+     "lowFreqBoxOnPalette": 0.92,
+     "ssim": 0.677,
+     "ssimBox": 0.739,
+     "hue": 73,
+     "hueHis": 83,
+     "colours": 20,
+     "thinRun": [
+      7,
+      "col",
+      6
+     ]
+    },
+    "88": {
+     "small": 933,
+     "smallHis": 933,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.59,
+     "lowFreqBoxOnPalette": 0.69,
+     "ssim": 0.384,
+     "ssimBox": 1,
+     "hue": 79,
+     "hueHis": 83,
+     "colours": 23,
+     "thinRun": [
+      11,
+      "col",
+      28
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "koton_wall": {
+   "name": "Koton Wall",
+   "sheet": "docs/reference/icons-owner-reference-9.jpg",
+   "file": "koton_wall.png",
+   "file2x": "koton_wall@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "MURO KOTON",
+   "hisWindow": [
+    98,
+    96
+   ],
+   "dropped88": {
+    "columns": [
+     1,
+     6,
+     19,
+     27,
+     32,
+     37,
+     56,
+     73,
+     91,
+     96
+    ],
+    "rows": [
+     0,
+     6,
+     23,
+     43,
+     50,
+     60,
+     72,
+     94
+    ]
+   },
+   "palette": [
+    "#080a1d",
+    "#0f1227",
+    "#1a1e32",
+    "#23283c",
+    "#2c3346",
+    "#333b4e",
+    "#394356",
+    "#414c60",
+    "#46586c",
+    "#4a637a",
+    "#5a7186",
+    "#6e7e90",
+    "#987c69",
+    "#8091a4",
+    "#91a2b6",
+    "#bf9a6c",
+    "#a4b6c7",
+    "#e0b58a",
+    "#bccee2",
+    "#f0d29b",
+    "#d3e5f6",
+    "#faf8c8"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 2,
+     "smallHis": 2,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.64,
+     "lowFreqBoxOnPalette": 0.53,
+     "ssim": 0.673,
+     "ssimBox": 0.743,
+     "hue": 262,
+     "hueHis": 258,
+     "colours": 22,
+     "thinRun": [
+      9,
+      "col",
+      28
+     ]
+    },
+    "88": {
+     "small": 853,
+     "smallHis": 853,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.93,
+     "lowFreqBoxOnPalette": 0.46,
+     "ssim": 0.539,
+     "ssimBox": 1,
+     "hue": 262,
+     "hueHis": 256,
+     "colours": 22,
+     "thinRun": [
+      16,
+      "col",
+      12
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "ryusei_warp": {
+   "name": "Warp Strike",
+   "sheet": "docs/reference/icons-owner-reference-9.jpg",
+   "file": "ryusei_warp.png",
+   "file2x": "ryusei_warp@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "GOLPE WARP",
+   "hisWindow": [
+    98,
+    96
+   ],
+   "dropped88": {
+    "columns": [
+     1,
+     6,
+     11,
+     20,
+     26,
+     31,
+     36,
+     45,
+     73,
+     96
+    ],
+    "rows": [
+     1,
+     12,
+     25,
+     33,
+     40,
+     81,
+     87,
+     94
+    ]
+   },
+   "palette": [
+    "#08091e",
+    "#10102a",
+    "#1e173e",
+    "#241e52",
+    "#2e2468",
+    "#323645",
+    "#442a83",
+    "#3b428f",
+    "#6238a4",
+    "#425c92",
+    "#7946c6",
+    "#4c6eba",
+    "#4a84bc",
+    "#945fe0",
+    "#4b98ca",
+    "#4da6d7",
+    "#b19bce",
+    "#56b8df",
+    "#60cceb",
+    "#6fdff2",
+    "#e6c3ff",
+    "#6ef4fc"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 2,
+     "smallHis": 2,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.54,
+     "lowFreqBoxOnPalette": 0.96,
+     "ssim": 0.728,
+     "ssimBox": 0.808,
+     "hue": 284,
+     "hueHis": 286,
+     "colours": 20,
+     "thinRun": [
+      9,
+      "col",
+      39
+     ]
+    },
+    "88": {
+     "small": 763,
+     "smallHis": 763,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 2.24,
+     "lowFreqBoxOnPalette": 0.85,
+     "ssim": 0.438,
+     "ssimBox": 1,
+     "hue": 284,
+     "hueHis": 286,
+     "colours": 22,
+     "thinRun": [
+      11,
+      "row",
+      6
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  }
+ }
+}

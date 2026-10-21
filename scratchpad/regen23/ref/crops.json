@@ -1,0 +1,322 @@
+{
+ "grid": {
+  "2": {
+   "pitch": [
+    4.166666666666667,
+    4.164179104477612
+   ],
+   "spectrumPitch": [
+    4.1668,
+    4.1658
+   ],
+   "phase": [
+    0.35,
+    0.65
+   ],
+   "edgeRatio": [
+    2.229,
+    2.341
+   ],
+   "blockSpread": 0.969,
+   "source": "icons-owner-reference-2.jpg",
+   "row": [
+    58,
+    308,
+    1942,
+    771
+   ],
+   "rowScale": {
+    "1x": 0.11733333333333333,
+    "4x": 0.4693333333333333
+   }
+  },
+  "3": {
+   "pitch": [
+    4.166666666666667,
+    4.164179104477612
+   ],
+   "spectrumPitch": [
+    4.169,
+    4.1679
+   ],
+   "phase": [
+    0.5,
+    0.45
+   ],
+   "edgeRatio": [
+    1.708,
+    2.278
+   ],
+   "blockSpread": 1.074,
+   "source": "icons-owner-reference-3.jpg",
+   "row": [
+    29,
+    300,
+    1971,
+    766
+   ],
+   "rowScale": {
+    "1x": 0.1134020618556701,
+    "4x": 0.4536082474226804
+   }
+  }
+ },
+ "icons": {
+  "chidori_lightning_blade": {
+   "sheet": "2",
+   "box": [
+    24,
+    84,
+    114,
+    174
+   ],
+   "size": [
+    90,
+    90
+   ],
+   "slot": [
+    16,
+    76,
+    122,
+    183
+   ],
+   "sheetBox": [
+    100,
+    350,
+    475,
+    725
+   ],
+   "sheetSlot": [
+    67,
+    317,
+    508,
+    762
+   ],
+   "what": "Chidori: a white-blue lightning burst, jagged bolts from a white-hot centre"
+  },
+  "rasengan": {
+   "sheet": "2",
+   "box": [
+    138,
+    84,
+    228,
+    174
+   ],
+   "size": [
+    90,
+    90
+   ],
+   "slot": [
+    130,
+    76,
+    236,
+    183
+   ],
+   "sheetBox": [
+    575,
+    350,
+    950,
+    725
+   ],
+   "sheetSlot": [
+    542,
+    317,
+    983,
+    762
+   ],
+   "what": "Rasengan: a blue spiral sphere of chakra with a white core"
+  },
+  "venom_surge": {
+   "sheet": "2",
+   "box": [
+    252,
+    84,
+    342,
+    174
+   ],
+   "size": [
+    90,
+    90
+   ],
+   "slot": [
+    244,
+    76,
+    350,
+    183
+   ],
+   "sheetBox": [
+    1050,
+    350,
+    1425,
+    725
+   ],
+   "sheetSlot": [
+    1017,
+    317,
+    1458,
+    762
+   ],
+   "what": "Venom Surge: a green slime stream with drops, in purple smoke"
+  },
+  "earth_wall_doryuheki": {
+   "sheet": "2",
+   "box": [
+    366,
+    84,
+    456,
+    174
+   ],
+   "size": [
+    90,
+    90
+   ],
+   "slot": [
+    358,
+    76,
+    464,
+    183
+   ],
+   "sheetBox": [
+    1525,
+    350,
+    1900,
+    725
+   ],
+   "sheetSlot": [
+    1492,
+    317,
+    1933,
+    762
+   ],
+   "what": "Earth Wall: a cracked stone wall with roots, grass and dust"
+  },
+  "earth_spear_doryuudan": {
+   "sheet": "3",
+   "box": [
+    18,
+    83,
+    111,
+    174
+   ],
+   "size": [
+    93,
+    91
+   ],
+   "slot": [
+    9,
+    74,
+    120,
+    182
+   ],
+   "sheetBox": [
+    75,
+    346,
+    463,
+    725
+   ],
+   "sheetSlot": [
+    38,
+    308,
+    500,
+    758
+   ],
+   "what": "Earth Bullets: boulders flying with dust trails"
+  },
+  "great_fireball": {
+   "sheet": "3",
+   "box": [
+    135,
+    83,
+    228,
+    174
+   ],
+   "size": [
+    93,
+    91
+   ],
+   "slot": [
+    126,
+    74,
+    237,
+    182
+   ],
+   "sheetBox": [
+    563,
+    346,
+    950,
+    725
+   ],
+   "sheetSlot": [
+    525,
+    308,
+    988,
+    758
+   ],
+   "what": "Great Fireball: a huge fireball of flame tongues, smoke and embers"
+  },
+  "water_stream": {
+   "sheet": "3",
+   "box": [
+    252,
+    83,
+    345,
+    174
+   ],
+   "size": [
+    93,
+    91
+   ],
+   "slot": [
+    243,
+    74,
+    354,
+    182
+   ],
+   "sheetBox": [
+    1050,
+    346,
+    1438,
+    725
+   ],
+   "sheetSlot": [
+    1013,
+    308,
+    1475,
+    758
+   ],
+   "what": "Water Stream: a jet of water ending in spray"
+  },
+  "weapon_attack": {
+   "sheet": "3",
+   "box": [
+    369,
+    83,
+    462,
+    174
+   ],
+   "size": [
+    93,
+    91
+   ],
+   "slot": [
+    360,
+    74,
+    471,
+    182
+   ],
+   "sheetBox": [
+    1538,
+    346,
+    1925,
+    725
+   ],
+   "sheetSlot": [
+    1500,
+    308,
+    1963,
+    758
+   ],
+   "what": "Weapon Attack: a sword with a gold slash crescent and sparkles"
+  }
+ }
+}

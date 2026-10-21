@@ -1,0 +1,218 @@
+{
+ "group": "vfx_beasts",
+ "pxPerMeter": 57,
+ "sprites": {
+  "fire": {
+   "label": "Phoenix (fire)",
+   "file": "fire.png",
+   "frameW": 199,
+   "frameH": 121,
+   "anchor": [
+    109,
+    68
+   ],
+   "meters": [
+    2.2,
+    2
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    },
+    "dive": {
+     "row": 1,
+     "frames": 5,
+     "fps": 12,
+     "loop": true
+    },
+    "attack": {
+     "row": 2,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "water": {
+   "label": "Water dragon (Suiryudan)",
+   "file": "water.png",
+   "frameW": 156,
+   "frameH": 86,
+   "anchor": [
+    89,
+    42
+   ],
+   "meters": [
+    2.8,
+    1.9
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "wind": {
+   "label": "Wind crane",
+   "file": "wind.png",
+   "frameW": 166,
+   "frameH": 123,
+   "anchor": [
+    95,
+    69
+   ],
+   "meters": [
+    2.6,
+    2
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "lightning": {
+   "label": "Raiju (lightning)",
+   "file": "lightning.png",
+   "frameW": 171,
+   "frameH": 96,
+   "anchor": [
+    95,
+    56
+   ],
+   "meters": [
+    3,
+    1.5
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "earth": {
+   "label": "Stone drake (earth)",
+   "file": "earth.png",
+   "frameW": 275,
+   "frameH": 180,
+   "anchor": [
+    149,
+    82
+   ],
+   "meters": [
+    4.1,
+    2.5
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "genjutsu": {
+   "label": "Illusion crow (genjutsu)",
+   "file": "genjutsu.png",
+   "frameW": 144,
+   "frameH": 121,
+   "anchor": [
+    93,
+    69
+   ],
+   "meters": [
+    2.6,
+    2
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "chakra": {
+   "label": "Chakra fox",
+   "file": "chakra.png",
+   "frameW": 155,
+   "frameH": 98,
+   "anchor": [
+    87,
+    58
+   ],
+   "meters": [
+    2.6,
+    1.9
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "poison": {
+   "label": "Venom cobra (poison)",
+   "file": "poison.png",
+   "frameW": 156,
+   "frameH": 93,
+   "anchor": [
+    95,
+    32
+   ],
+   "meters": [
+    2.6,
+    1.8
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  }
+ }
+}

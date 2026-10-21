@@ -1,0 +1,188 @@
+{
+ "totals": {
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "battles": 400
+ },
+ "river_patrol": {
+  "N": 100,
+  "rounds": 3.12,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "bigger jutsu (Mirai)": 132,
+    "Evasion": 138,
+    "Kōton Block": 89
+   },
+   "battles": {
+    "bigger jutsu (Mirai)": 99,
+    "Evasion": 100,
+    "Kōton Block": 73
+   }
+  },
+  "party": {
+   "uses": {
+    "kunai (Ryusei)": 64,
+    "Node planted": 64,
+    "Kōton Block": 95,
+    "attack w/ aura disadv.": 6
+   },
+   "battles": {
+    "kunai (Ryusei)": 51,
+    "Node planted": 51,
+    "Kōton Block": 86,
+    "attack w/ aura disadv.": 6
+   }
+  },
+  "enemies": [
+   "Acechador (Ryusei)",
+   "Renegado (Mirai)",
+   "Cazador (Koton)"
+  ]
+ },
+ "cedar_rogues": {
+  "N": 100,
+  "rounds": 2.67,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "Evasion": 181,
+    "kunai (Ryusei)": 98,
+    "Node planted": 133,
+    "bigger jutsu (Mirai)": 118,
+    "Warp Strike": 46,
+    "Warp edge won": 46,
+    "blow from behind": 38,
+    "attack w/ aura disadv.": 10
+   },
+   "battles": {
+    "Evasion": 100,
+    "kunai (Ryusei)": 98,
+    "Node planted": 98,
+    "bigger jutsu (Mirai)": 83,
+    "Warp Strike": 45,
+    "Warp edge won": 45,
+    "blow from behind": 38,
+    "attack w/ aura disadv.": 10
+   }
+  },
+  "party": {
+   "uses": {
+    "Kōton Block": 85,
+    "attack w/ aura disadv.": 41
+   },
+   "battles": {
+    "Kōton Block": 82,
+    "attack w/ aura disadv.": 34
+   }
+  },
+  "enemies": [
+   "Renegado (Mirai)",
+   "Vigía (Northstar)",
+   "Asaltante (Ryusei)"
+  ]
+ },
+ "night_raid": {
+  "N": 100,
+  "rounds": 4.44,
+  "outcomes": {
+   "victory": 100
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "bigger jutsu (Mirai)": 308,
+    "Node planted": 90,
+    "Evasion": 190,
+    "Kōton Block": 43,
+    "attack w/ aura disadv.": 37,
+    "kunai (Ryusei)": 16,
+    "Warp Strike": 9,
+    "Warp edge won": 9,
+    "blow from behind": 8
+   },
+   "battles": {
+    "bigger jutsu (Mirai)": 99,
+    "Node planted": 77,
+    "Evasion": 92,
+    "Kōton Block": 42,
+    "attack w/ aura disadv.": 30,
+    "kunai (Ryusei)": 16,
+    "Warp Strike": 9,
+    "Warp edge won": 9,
+    "blow from behind": 8
+   }
+  },
+  "party": {
+   "uses": {
+    "attack w/ aura disadv.": 266,
+    "Kōton Block": 78,
+    "Node planted": 23,
+    "aura slowed a foe": 37,
+    "kunai (Ryusei)": 1,
+    "Warp Strike": 1,
+    "Warp edge won": 1,
+    "blow from behind": 1
+   },
+   "battles": {
+    "attack w/ aura disadv.": 91,
+    "Kōton Block": 77,
+    "Node planted": 18,
+    "aura slowed a foe": 35,
+    "kunai (Ryusei)": 1,
+    "Warp Strike": 1,
+    "Warp edge won": 1,
+    "blow from behind": 1
+   }
+  },
+  "enemies": [
+   "Asaltante (Ryusei)",
+   "Puño de hierro (Koton)",
+   "Sombra (Northstar)",
+   "Kagero (Mirai)"
+  ]
+ },
+ "hydra": {
+  "N": 100,
+  "rounds": 6.24,
+  "outcomes": {
+   "victory": 77,
+   "defeat": 23
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {},
+   "battles": {}
+  },
+  "party": {
+   "uses": {
+    "Kōton Block": 137,
+    "attack w/ aura disadv.": 188,
+    "Node planted": 42,
+    "kunai (Ryusei)": 2
+   },
+   "battles": {
+    "Kōton Block": 97,
+    "attack w/ aura disadv.": 48,
+    "Node planted": 19,
+    "kunai (Ryusei)": 2
+   }
+  },
+  "enemies": []
+ }
+}

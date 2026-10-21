@@ -1,0 +1,21 @@
+mirai_evasion 30 #12030c #26030c #1b0e27 #370d28 #4a0c21 #2c2a3a #580412 #561232 #6e162f #79081c #752838 #862b3f #aa1630 #ab1731 #963a4e #c31e39 #aa465e #cb1f38 #dc1a32 #c2506a #f21c33 #d0687e #e3687a #d47c8a #e28f98 #f098a2 #eea0a8 #fab1b6 #fbb5b7 #ffd8b9
+   88 drops columns 1,6,11,17,22,44,49,85,91,96 rows 1,16,31,39,54,72,88,94
+   edit: his eye's pattern (a dark ring with three tomoe round the pupil: 340 of his pixels inside the iris's dark rim) replaced by a plain radiant red iris in his reds (#580412 #79081c #aa1630 #c31e39 #dc1a32 #f21c33 #e3687a #f098a2), darkest at the rim and lower right, lighter toward the highlight; a round dark pupil (#12030c, radius 3.3 of his pixels) and a highlight of his palest pink (#fbb5b7) at its upper left. His rim, sclera, lids and glow stay his.
+   44 {"small":13,"smallHis":1,"smallDrawn":12,"smallOther":0,"lowFreq":1.31,"lowFreqBoxOnPalette":0.76,"ssim":0.742,"ssimBox":0.838,"hue":306,"hueHis":307,"colours":26,"thinRun":[7,"row",14]}
+   88 {"small":465,"smallHis":465,"smallDrawn":0,"smallOther":0,"lowFreq":1.52,"lowFreqBoxOnPalette":0.63,"ssim":0.535,"ssimBox":1,"hue":306,"hueHis":306,"colours":30,"thinRun":[11,"row",1]}
+koton_block 23 #0b0812 #101220 #1d212c #282e38 #2c3d4d #503c30 #304e5f #5d5142 #41697d #71604e #837061 #687e92 #998270 #7697a8 #b19580 #7cb0b8 #c3a68f #76d6dc #e3bc96 #c8c8d5 #8af0f4 #fcdaa4 #eef6fa
+   88 drops columns 2,7,12,24,48,55,74,86,91,96 rows 0,6,12,40,56,77,88,94
+   44 {"small":3,"smallHis":3,"smallDrawn":0,"smallOther":0,"lowFreq":1.71,"lowFreqBoxOnPalette":0.92,"ssim":0.677,"ssimBox":0.739,"hue":73,"hueHis":83,"colours":20,"thinRun":[7,"col",6]}
+   88 {"small":933,"smallHis":933,"smallDrawn":0,"smallOther":0,"lowFreq":1.59,"lowFreqBoxOnPalette":0.69,"ssim":0.384,"ssimBox":1,"hue":79,"hueHis":83,"colours":23,"thinRun":[11,"col",28]}
+koton_wall 22 #080a1d #0f1227 #1a1e32 #23283c #2c3346 #333b4e #394356 #414c60 #46586c #4a637a #5a7186 #6e7e90 #987c69 #8091a4 #91a2b6 #bf9a6c #a4b6c7 #e0b58a #bccee2 #f0d29b #d3e5f6 #faf8c8
+   88 drops columns 1,6,19,27,32,37,56,73,91,96 rows 0,6,23,43,50,60,72,94
+   44 {"small":2,"smallHis":2,"smallDrawn":0,"smallOther":0,"lowFreq":1.64,"lowFreqBoxOnPalette":0.53,"ssim":0.673,"ssimBox":0.743,"hue":262,"hueHis":258,"colours":22,"thinRun":[9,"col",28]}
+   88 {"small":853,"smallHis":853,"smallDrawn":0,"smallOther":0,"lowFreq":0.93,"lowFreqBoxOnPalette":0.46,"ssim":0.539,"ssimBox":1,"hue":262,"hueHis":256,"colours":22,"thinRun":[16,"col",12]}
+ryusei_warp 22 #08091e #10102a #1e173e #241e52 #2e2468 #323645 #442a83 #3b428f #6238a4 #425c92 #7946c6 #4c6eba #4a84bc #945fe0 #4b98ca #4da6d7 #b19bce #56b8df #60cceb #6fdff2 #e6c3ff #6ef4fc
+   88 drops columns 1,6,11,20,26,31,36,45,73,96 rows 1,12,25,33,40,81,87,94
+   44 {"small":2,"smallHis":2,"smallDrawn":0,"smallOther":0,"lowFreq":1.54,"lowFreqBoxOnPalette":0.96,"ssim":0.728,"ssimBox":0.808,"hue":284,"hueHis":286,"colours":20,"thinRun":[9,"col",39]}
+   88 {"small":763,"smallHis":763,"smallDrawn":0,"smallOther":0,"lowFreq":2.24,"lowFreqBoxOnPalette":0.85,"ssim":0.438,"ssimBox":1,"hue":284,"hueHis":286,"colours":22,"thinRun":[11,"row",6]}
+   marks at 44: the near-black outline of his ninja: 0; his embers and the glowing edge of the ghost: 17
+   marks at 44: his golden sparks at the impact: 47; his glowing cyan circuits, half toward the box mean: 229; the dark seams of his cube and the flying debris: 57
+   marks at 44: the dark joints between his steel blocks: 335; his sparks and the lit block edges: 81
+   marks at 44: the near-black outlines of his ninja and his kunai: 23; his portal rings, speed lines and stars: 144

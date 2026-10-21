@@ -1,0 +1,19 @@
+bolt        fly    8f@12 loop  light: 112 113 108 105 101 102 107 112 | max step 4.9% of peak
+beast       fly    6f@12 loop  light: 144 144 142 142 146 144 | max step 2.4% of peak
+stream      fly    8f@12 loop  light: 104 104 100 101 99 100 103 104 | max step 3.9% of peak
+stream_head fly    8f@12 loop  light: 139 141 139 145 141 135 135 138 | max step 4.6% of peak
+breath      fly    8f@12 loop  light: 243 243 243 244 245 245 244 244 | max step 0.7% of peak
+sphere      fly    8f@12 loop  light: 204 201 203 201 200 201 199 201 | max step 1.2% of peak
+slash       fly    8f@12 loop  light: 178 174 176 180 173 165 169 176 | max step 4.3% of peak
+multi       fly    8f@12 loop  light: 157 156 152 151 149 149 151 157 | max step 4.0% of peak
+hit         hit   12f@12 once  light: 29 67 100 117 124 127 111 94 72 45 25 13 | max step 29.6% of peak
+blast       blast 16f@12 once  light: 58 133 207 257 286 286 287 281 271 223 187 134 89 51 23 5 | max step 25.9% of peak
+wall        rise  12f@12 once  light: 44 57 65 86 129 166 204 237 270 306 329 353 | max step 12.3% of peak
+wall        idle   8f@10 loop  light: 353 355 356 356 356 357 356 352 | max step 0.9% of peak
+aura        idle  12f@10 loop  light: 12 12 12 9 9 7 10 10 12 12 12 12 | max step 24.3% of peak
+wall_diag   rise  12f@12 once  light: 19 30 40 56 80 96 112 126 139 151 173 186 | max step 12.8% of peak
+wall_diag   idle   8f@10 loop  light: 186 186 188 188 187 188 185 185 | max step 1.1% of peak
+wall_depth  rise  12f@12 once  light: 115 112 119 125 133 140 147 155 157 160 159 158 | max step 5.5% of peak
+wall_depth  idle   8f@10 loop  light: 160 160 159 159 162 162 159 158 | max step 1.8% of peak
+aura_back   idle  12f@10 loop  light: 142 142 140 145 149 147 142 142 143 143 143 142 | max step 3.1% of peak
+frames checked 174 with art on border 0

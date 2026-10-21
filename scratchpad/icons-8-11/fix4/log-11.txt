@@ -1,0 +1,15 @@
+shadow_clone 33 #06031c #0d0826 #191432 #232036 #371e2c #261e52 #2d235f #313042 #512a2c #403457 #383c4a #483284 #563c48 #4e4b5a #704848 #5b4b7d #5e5767 #624e99 #6c6272 #7c68a2 #7e7088 #86798e #9f7269 #918496 #9b8e9c #9e8eba #a598aa #c8988c #b4a7b2 #c2b7c0 #d0c4bf #cfc4c7 #e3d0ff
+   88 is the area mean of his 130x130 pixels
+   covered: #5b4b7d #9f7269 #7c68a2 #704848 #c8988c #371e2c #9e8eba #403457 #624e99 #563c48
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":0.88,"lowFreqBoxOnPalette":0.47,"ssim":0.761,"ssimBox":0.833,"hue":287,"hueHis":287,"colours":27,"thinRun":[6,"row",38]}
+   88 {"small":13,"smallHis":13,"smallDrawn":0,"smallOther":0,"lowFreq":0.6,"lowFreqBoxOnPalette":0.44,"ssim":0.933,"ssimBox":1,"hue":287,"hueHis":287,"colours":31,"thinRun":[11,"row",70]}
+dragon_fire_stream 32 #330614 #301b1e #520a18 #40262a #562623 #621c22 #7a1714 #7b340a #90150e #a41c0c #994023 #b8250c #a15918 #cc1e08 #ae5214 #da2c08 #cd4f08 #e43d12 #f43d04 #f84f08 #da7c2c #f86c14 #fa8212 #e0953e #fc9212 #fca61a #e7b25f #feb726 #feca40 #fbd478 #fedc50 #fff062
+   88 is the area mean of his 130x130 pixels
+   covered: #ae5214 #e0953e #7b340a #cd4f08 #fbd478 #a15918 #562623 #da7c2c #994023 #e7b25f
+   44 {"small":5,"smallHis":5,"smallDrawn":0,"smallOther":0,"lowFreq":0.99,"lowFreqBoxOnPalette":0.57,"ssim":0.75,"ssimBox":0.806,"hue":31,"hueHis":31,"colours":30,"thinRun":[5,"row",20]}
+   88 {"small":28,"smallHis":28,"smallDrawn":0,"smallOther":0,"lowFreq":0.67,"lowFreqBoxOnPalette":0.48,"ssim":0.948,"ssimBox":1,"hue":31,"hueHis":30,"colours":32,"thinRun":[7,"row",72]}
+water_dragon_suiryuudan 29 #0a1c36 #082449 #082a57 #0e3269 #1c3f60 #103b76 #124683 #145190 #185c9c #426680 #1e68a8 #2673b2 #497ca8 #2e7ebc #6d7e8a #368bc6 #5497b5 #3e97cf #46a5da #7ca0bc #52b2de #5ebfe9 #6fcbef #82d6f6 #aad1df #9be3f9 #b2f0fb #cefbfe #eefdfe
+   88 is the area mean of his 130x130 pixels
+   covered: #426680 #7ca0bc #1c3f60 #497ca8 #aad1df #6d7e8a #5497b5
+   44 {"small":0,"smallHis":0,"smallDrawn":0,"smallOther":0,"lowFreq":2.08,"lowFreqBoxOnPalette":0.67,"ssim":0.658,"ssimBox":0.73,"hue":249,"hueHis":251,"colours":28,"thinRun":[7,"row",22]}
+   88 {"small":14,"smallHis":14,"smallDrawn":0,"smallOther":0,"lowFreq":0.93,"lowFreqBoxOnPalette":0.43,"ssim":0.924,"ssimBox":1,"hue":253,"hueHis":253,"colours":29,"thinRun":[7,"row",43]}

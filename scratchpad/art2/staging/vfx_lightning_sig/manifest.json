@@ -1,0 +1,104 @@
+{
+ "group": "vfx_lightning_sig",
+ "pxPerMeter": 57,
+ "sprites": {
+  "kirin": {
+   "label": "Kirin: lightning annihilation (3 m)",
+   "file": "kirin.png",
+   "frameW": 596,
+   "frameH": 651,
+   "anchor": [
+    339,
+    541
+   ],
+   "meters": [
+    10.46,
+    11.42
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "gather": {
+     "row": 0,
+     "frames": 10,
+     "fps": 12,
+     "loop": false
+    },
+    "strike": {
+     "row": 1,
+     "frames": 8,
+     "fps": 16,
+     "loop": false
+    },
+    "impact": {
+     "row": 2,
+     "frames": 8,
+     "fps": 14,
+     "loop": false
+    },
+    "sustain": {
+     "row": 3,
+     "frames": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "fade": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "kirin_enh": {
+   "label": "Kirin, enhanced: lightning dragon annihilation (4.5 m)",
+   "file": "kirin_enh.png",
+   "frameW": 678,
+   "frameH": 820,
+   "anchor": [
+    435,
+    705
+   ],
+   "meters": [
+    11.89,
+    14.39
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "gather": {
+     "row": 0,
+     "frames": 10,
+     "fps": 12,
+     "loop": false
+    },
+    "strike": {
+     "row": 1,
+     "frames": 8,
+     "fps": 16,
+     "loop": false
+    },
+    "impact": {
+     "row": 2,
+     "frames": 8,
+     "fps": 14,
+     "loop": false
+    },
+    "sustain": {
+     "row": 3,
+     "frames": 12,
+     "fps": 12,
+     "loop": true
+    },
+    "fade": {
+     "row": 4,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,14 @@
+[
+ {"key":"Solen","preset":"Solen","pose":"throw"},
+ {"key":"Akira","preset":"Akira","pose":"throw"},
+ {"key":"Aiden","preset":"Aiden","pose":"throw"},
+ {"key":"female","body":"female","held":"held_katana","pose":"throw"},
+ {"key":"bulky","body":"bulky","held":"held_katana","pose":"throw"},
+ {"key":"slender","body":"slender","held":"held_katana","pose":"throw"},
+ {"key":"Solen","preset":"Solen","pose":"pierce"},
+ {"key":"Akira","preset":"Akira","pose":"pierce"},
+ {"key":"Aiden","preset":"Aiden","pose":"pierce"},
+ {"key":"female","body":"female","held":"held_kunai","pose":"pierce"},
+ {"key":"bulky","body":"bulky","held":"held_ice_crystal","pose":"pierce"},
+ {"key":"slender","body":"slender","held":"held_naginata","pose":"pierce"}
+]

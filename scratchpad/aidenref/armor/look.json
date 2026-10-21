@@ -1,0 +1,60 @@
+{
+ "version": 1,
+ "body": "male",
+ "skin": "#f6bb96",
+ "eyeShape": "standard",
+ "eyeColor": "#3b82f6",
+ "slots": {
+  "hair": {
+   "id": "hair_valiant",
+   "colors": []
+  },
+  "top": {
+   "id": "top_longsleeve",
+   "colors": [
+    "#151a2e",
+    "#0d1020"
+   ]
+  },
+  "bottom": {
+   "id": "bottom_shinobi",
+   "colors": [
+    "#151a2e",
+    "#151a2e"
+   ]
+  },
+  "armor": {
+   "id": "armor_crimson_plate",
+   "colors": []
+  },
+  "feet": {
+   "id": "feet_greaves",
+   "colors": [
+    "#c4ccd6",
+    "#3a2d27"
+   ]
+  },
+  "cape": null,
+  "held": {
+   "id": "held_none",
+   "colors": []
+  }
+ },
+ "accessories": [],
+ "headband": {
+  "position": "none",
+  "slashed": false,
+  "tails": false,
+  "emblem": "crescent",
+  "cloth": "#1e3a8a",
+  "plate": "#cbd5e1"
+ },
+ "chakra": {
+  "color": "red",
+  "onCharge": true,
+  "onCast": true,
+  "onVictory": true
+ },
+ "pixelEdits": [],
+ "faceShape": "valiant"
+}

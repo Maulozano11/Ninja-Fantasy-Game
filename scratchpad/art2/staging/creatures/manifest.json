@@ -1,0 +1,560 @@
+{
+ "group": "creatures",
+ "pxPerMeter": 57,
+ "sprites": {
+  "hydra_body": {
+   "label": "Hydra Body",
+   "file": "hydra_body.png",
+   "frameW": 334,
+   "frameH": 212,
+   "anchor": [
+    184,
+    204
+   ],
+   "meters": [
+    5.5,
+    2.6
+   ],
+   "tags": [
+    "creature",
+    "boss"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 6,
+     "loop": true
+    },
+    "hurt": {
+     "row": 1,
+     "frames": 3,
+     "fps": 10,
+     "loop": false
+    },
+    "death": {
+     "row": 2,
+     "frames": 10,
+     "fps": 8,
+     "loop": false
+    }
+   }
+  },
+  "hydra_neck_1": {
+   "label": "Hydra Head 1",
+   "file": "hydra_neck_1.png",
+   "frameW": 238,
+   "frameH": 343,
+   "anchor": [
+    77,
+    197
+   ],
+   "meters": [
+    1.4,
+    3.89
+   ],
+   "tags": [
+    "creature",
+    "boss"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 6,
+     "loop": true
+    },
+    "bite": {
+     "row": 1,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "spit": {
+     "row": 2,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "roar": {
+     "row": 3,
+     "frames": 6,
+     "fps": 8,
+     "loop": false
+    },
+    "hurt": {
+     "row": 4,
+     "frames": 3,
+     "fps": 10,
+     "loop": false
+    },
+    "sever": {
+     "row": 5,
+     "frames": 8,
+     "fps": 10,
+     "loop": false
+    },
+    "regrow": {
+     "row": 6,
+     "frames": 8,
+     "fps": 8,
+     "loop": false
+    }
+   }
+  },
+  "hydra_neck_2": {
+   "label": "Hydra Head 2",
+   "file": "hydra_neck_2.png",
+   "frameW": 202,
+   "frameH": 303,
+   "anchor": [
+    156,
+    166
+   ],
+   "meters": [
+    2.4,
+    3.12
+   ],
+   "tags": [
+    "creature",
+    "boss"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 6,
+     "loop": true
+    },
+    "bite": {
+     "row": 1,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "spit": {
+     "row": 2,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "roar": {
+     "row": 3,
+     "frames": 6,
+     "fps": 8,
+     "loop": false
+    },
+    "hurt": {
+     "row": 4,
+     "frames": 3,
+     "fps": 10,
+     "loop": false
+    },
+    "sever": {
+     "row": 5,
+     "frames": 8,
+     "fps": 10,
+     "loop": false
+    },
+    "regrow": {
+     "row": 6,
+     "frames": 8,
+     "fps": 8,
+     "loop": false
+    }
+   }
+  },
+  "hydra_neck_3": {
+   "label": "Hydra Head 3",
+   "file": "hydra_neck_3.png",
+   "frameW": 197,
+   "frameH": 308,
+   "anchor": [
+    31,
+    170
+   ],
+   "meters": [
+    2.07,
+    3.4
+   ],
+   "tags": [
+    "creature",
+    "boss"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 6,
+     "loop": true
+    },
+    "bite": {
+     "row": 1,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "spit": {
+     "row": 2,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "roar": {
+     "row": 3,
+     "frames": 6,
+     "fps": 8,
+     "loop": false
+    },
+    "hurt": {
+     "row": 4,
+     "frames": 3,
+     "fps": 10,
+     "loop": false
+    },
+    "sever": {
+     "row": 5,
+     "frames": 8,
+     "fps": 10,
+     "loop": false
+    },
+    "regrow": {
+     "row": 6,
+     "frames": 8,
+     "fps": 8,
+     "loop": false
+    }
+   }
+  },
+  "hydra_neck_4": {
+   "label": "Hydra Head 4",
+   "file": "hydra_neck_4.png",
+   "frameW": 193,
+   "frameH": 253,
+   "anchor": [
+    161,
+    128
+   ],
+   "meters": [
+    2.75,
+    2.28
+   ],
+   "tags": [
+    "creature",
+    "boss"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 6,
+     "loop": true
+    },
+    "bite": {
+     "row": 1,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "spit": {
+     "row": 2,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "roar": {
+     "row": 3,
+     "frames": 6,
+     "fps": 8,
+     "loop": false
+    },
+    "hurt": {
+     "row": 4,
+     "frames": 3,
+     "fps": 10,
+     "loop": false
+    },
+    "sever": {
+     "row": 5,
+     "frames": 8,
+     "fps": 10,
+     "loop": false
+    },
+    "regrow": {
+     "row": 6,
+     "frames": 8,
+     "fps": 8,
+     "loop": false
+    }
+   }
+  },
+  "hydra_neck_5": {
+   "label": "Hydra Head 5",
+   "file": "hydra_neck_5.png",
+   "frameW": 208,
+   "frameH": 255,
+   "anchor": [
+    31,
+    128
+   ],
+   "meters": [
+    2.28,
+    2.61
+   ],
+   "tags": [
+    "creature",
+    "boss"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 6,
+     "loop": true
+    },
+    "bite": {
+     "row": 1,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "spit": {
+     "row": 2,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "roar": {
+     "row": 3,
+     "frames": 6,
+     "fps": 8,
+     "loop": false
+    },
+    "hurt": {
+     "row": 4,
+     "frames": 3,
+     "fps": 10,
+     "loop": false
+    },
+    "sever": {
+     "row": 5,
+     "frames": 8,
+     "fps": 10,
+     "loop": false
+    },
+    "regrow": {
+     "row": 6,
+     "frames": 8,
+     "fps": 8,
+     "loop": false
+    }
+   }
+  },
+  "hydra_neck_6": {
+   "label": "Hydra Head 6",
+   "file": "hydra_neck_6.png",
+   "frameW": 193,
+   "frameH": 230,
+   "anchor": [
+    124,
+    119
+   ],
+   "meters": [
+    1.95,
+    2.32
+   ],
+   "tags": [
+    "creature",
+    "boss"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 6,
+     "loop": true
+    },
+    "bite": {
+     "row": 1,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "spit": {
+     "row": 2,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "roar": {
+     "row": 3,
+     "frames": 6,
+     "fps": 8,
+     "loop": false
+    },
+    "hurt": {
+     "row": 4,
+     "frames": 3,
+     "fps": 10,
+     "loop": false
+    },
+    "sever": {
+     "row": 5,
+     "frames": 8,
+     "fps": 10,
+     "loop": false
+    },
+    "regrow": {
+     "row": 6,
+     "frames": 8,
+     "fps": 8,
+     "loop": false
+    }
+   }
+  },
+  "hydra_neck_7": {
+   "label": "Hydra Head 7",
+   "file": "hydra_neck_7.png",
+   "frameW": 186,
+   "frameH": 222,
+   "anchor": [
+    31,
+    111
+   ],
+   "meters": [
+    1.93,
+    2.3
+   ],
+   "tags": [
+    "creature",
+    "boss"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 6,
+     "loop": true
+    },
+    "bite": {
+     "row": 1,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "spit": {
+     "row": 2,
+     "frames": 6,
+     "fps": 10,
+     "loop": false
+    },
+    "roar": {
+     "row": 3,
+     "frames": 6,
+     "fps": 8,
+     "loop": false
+    },
+    "hurt": {
+     "row": 4,
+     "frames": 3,
+     "fps": 10,
+     "loop": false
+    },
+    "sever": {
+     "row": 5,
+     "frames": 8,
+     "fps": 10,
+     "loop": false
+    },
+    "regrow": {
+     "row": 6,
+     "frames": 8,
+     "fps": 8,
+     "loop": false
+    }
+   }
+  },
+  "hydra_stump": {
+   "label": "Severed Stump",
+   "file": "hydra_stump.png",
+   "frameW": 46,
+   "frameH": 87,
+   "anchor": [
+    23,
+    67
+   ],
+   "meters": [
+    0.7,
+    0.6
+   ],
+   "tags": [
+    "creature",
+    "boss"
+   ],
+   "anims": {
+    "raw": {
+     "row": 0,
+     "frames": 4,
+     "fps": 6,
+     "loop": true
+    },
+    "burnt": {
+     "row": 1,
+     "frames": 4,
+     "fps": 6,
+     "loop": true
+    }
+   }
+  },
+  "hydra_venom": {
+   "label": "Venom Gob",
+   "file": "hydra_venom.png",
+   "frameW": 32,
+   "frameH": 24,
+   "anchor": [
+    20,
+    12
+   ],
+   "meters": [
+    0.4,
+    0.4
+   ],
+   "tags": [
+    "ambient"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 4,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "hydra_splash": {
+   "label": "Venom Splash",
+   "file": "hydra_splash.png",
+   "frameW": 107,
+   "frameH": 72,
+   "anchor": [
+    52,
+    44
+   ],
+   "meters": [
+    1.5,
+    0.6
+   ],
+   "tags": [
+    "ambient"
+   ],
+   "anims": {
+    "splash": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  }
+ }
+}

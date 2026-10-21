@@ -1,0 +1,55 @@
+{
+ "totals": {
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "battles": 20
+ },
+ "cedar_rogues": {
+  "N": 20,
+  "rounds": 2.7,
+  "outcomes": {
+   "victory": 20
+  },
+  "refused": 0,
+  "stalls": 0,
+  "unfinished": 0,
+  "enemy": {
+   "uses": {
+    "Evasion": 41,
+    "kunai (Ryusei)": 20,
+    "Node planted": 29,
+    "bigger jutsu (Mirai)": 28,
+    "Warp Strike": 7,
+    "Warp edge won": 7,
+    "blow from behind": 7,
+    "attack w/ aura disadv.": 3
+   },
+   "battles": {
+    "Evasion": 20,
+    "kunai (Ryusei)": 20,
+    "Node planted": 20,
+    "bigger jutsu (Mirai)": 18,
+    "Warp Strike": 7,
+    "Warp edge won": 7,
+    "blow from behind": 7,
+    "attack w/ aura disadv.": 3
+   }
+  },
+  "party": {
+   "uses": {
+    "Kōton Block": 19,
+    "attack w/ aura disadv.": 7
+   },
+   "battles": {
+    "Kōton Block": 18,
+    "attack w/ aura disadv.": 6
+   }
+  },
+  "enemies": [
+   "Renegado (Mirai)",
+   "Vigía (Northstar)",
+   "Asaltante (Ryusei)"
+  ]
+ }
+}

@@ -1,0 +1,399 @@
+{
+ "group": "vfx_genjutsu_v3",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bolt": {
+   "label": "Genjutsu bolt: watching-eye orb with streaming tendrils",
+   "file": "bolt.png",
+   "frameW": 67,
+   "frameH": 64,
+   "anchor": [
+    49,
+    32
+   ],
+   "meters": [
+    1.18,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "beast": {
+   "label": "Genjutsu beast: crow swarm",
+   "file": "beast.png",
+   "frameW": 128,
+   "frameH": 96,
+   "anchor": [
+    64,
+    48
+   ],
+   "meters": [
+    2.25,
+    1.68
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream": {
+   "label": "Genjutsu stream: braided magenta ribbons (tileable 64 px)",
+   "file": "stream.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    0,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream_head": {
+   "label": "Genjutsu stream head: spiral vortex",
+   "file": "stream_head.png",
+   "frameW": 67,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.18,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "breath": {
+   "label": "Genjutsu breath: ripples of watching eyes from a glowing orb (origin at the anchor)",
+   "file": "breath.png",
+   "frameW": 112,
+   "frameH": 110,
+   "anchor": [
+    8,
+    54
+   ],
+   "meters": [
+    1.96,
+    1.93
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "sphere": {
+   "label": "Genjutsu sphere: eye orb with an orbit ring and magenta spikes",
+   "file": "sphere.png",
+   "frameW": 69,
+   "frameH": 66,
+   "anchor": [
+    36,
+    33
+   ],
+   "meters": [
+    1.21,
+    1.16
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "slash": {
+   "label": "Genjutsu slash: violet crescent of swept blades",
+   "file": "slash.png",
+   "frameW": 65,
+   "frameH": 64,
+   "anchor": [
+    33,
+    32
+   ],
+   "meters": [
+    1.14,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "multi": {
+   "label": "Genjutsu multi: three feather darts with magenta streaks",
+   "file": "multi.png",
+   "frameW": 67,
+   "frameH": 64,
+   "anchor": [
+    35,
+    32
+   ],
+   "meters": [
+    1.18,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "hit": {
+   "label": "Genjutsu hit: violet and magenta star-burst",
+   "file": "hit.png",
+   "frameW": 73,
+   "frameH": 73,
+   "anchor": [
+    37,
+    36
+   ],
+   "meters": [
+    1.28,
+    1.28
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 6,
+     "fps": 15,
+     "loop": false
+    }
+   }
+  },
+  "blast": {
+   "label": "Genjutsu blast: column of violet light out of a swirling vortex, with crow feathers",
+   "file": "blast.png",
+   "frameW": 274,
+   "frameH": 181,
+   "anchor": [
+    132,
+    137
+   ],
+   "meters": [
+    4.81,
+    3.18
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "wall": {
+   "label": "Genjutsu wall: amethyst crystal pillars in black thorns (4.5 m x 1.8 m)",
+   "file": "wall.png",
+   "frameW": 290,
+   "frameH": 133,
+   "anchor": [
+    144,
+    124
+   ],
+   "meters": [
+    5.09,
+    2.33
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 6,
+     "fps": 8,
+     "loop": true
+    }
+   }
+  },
+  "aura": {
+   "label": "Genjutsu aura, front layer (draw OVER the character): the violet veil over the body, petals, feathers, the ring at the feet",
+   "file": "aura.png",
+   "frameW": 95,
+   "frameH": 141,
+   "anchor": [
+    53,
+    123
+   ],
+   "meters": [
+    1.67,
+    2.47
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "aura_back": {
+   "label": "Genjutsu aura, back layer (draw BEHIND the character): dark violet flames and smoke",
+   "file": "aura_back.png",
+   "frameW": 95,
+   "frameH": 141,
+   "anchor": [
+    53,
+    123
+   ],
+   "meters": [
+    1.67,
+    2.47
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "wall_diag": {
+   "label": "Genjutsu wall, 3/4: crystal pillars, brambles and a long shadow (4.5 m x 1.8 m, turned 45 degrees)",
+   "file": "wall_diag.png",
+   "frameW": 312,
+   "frameH": 231,
+   "anchor": [
+    118,
+    169
+   ],
+   "meters": [
+    5.47,
+    4.05
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 8,
+     "loop": true
+    }
+   }
+  },
+  "wall_depth": {
+   "label": "Genjutsu wall, end-on: crystal column with shards, feathers and orbs (running into the screen)",
+   "file": "wall_depth.png",
+   "frameW": 117,
+   "frameH": 257,
+   "anchor": [
+    54,
+    180
+   ],
+   "meters": [
+    2.05,
+    4.51
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 8,
+     "loop": true
+    }
+   }
+  }
+ }
+}

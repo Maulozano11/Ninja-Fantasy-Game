@@ -1,0 +1,15 @@
+[
+ {"key":"katana","body":"male","held":"held_katana","pose":"pierce"},
+ {"key":"crystal","body":"male","held":"held_crystal","pose":"pierce"},
+ {"key":"ice","body":"male","held":"held_ice_crystal","pose":"pierce"},
+ {"key":"flame","body":"male","held":"held_flame_sword","pose":"pierce"},
+ {"key":"kunai","body":"male","held":"held_kunai","pose":"pierce"},
+ {"key":"naginata","body":"male","held":"held_naginata","pose":"pierce"},
+ {"key":"unarmed","body":"male","held":null,"pose":"pierce"},
+ {"key":"female","body":"female","held":"held_katana","pose":"pierce"},
+ {"key":"bulky","body":"bulky","held":"held_katana","pose":"pierce"},
+ {"key":"slender","body":"slender","held":"held_katana","pose":"pierce"},
+ {"key":"Solen","preset":"Solen","pose":"pierce"},
+ {"key":"Akira","preset":"Akira","pose":"pierce"},
+ {"key":"Aiden","preset":"Aiden","pose":"pierce"}
+]

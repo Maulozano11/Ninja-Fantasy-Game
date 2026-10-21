@@ -1,0 +1,53 @@
+manifest_23.json identical
+  chidori_lightning_blade.png identical
+  chidori_lightning_blade@2x.png identical
+  earth_spear_doryuudan.png identical
+  earth_spear_doryuudan@2x.png identical
+  earth_wall_doryuheki.png identical
+  earth_wall_doryuheki@2x.png identical
+  great_fireball.png identical
+  great_fireball@2x.png identical
+  rasengan.png identical
+  rasengan@2x.png identical
+  venom_surge.png identical
+  venom_surge@2x.png identical
+  water_stream.png identical
+  water_stream@2x.png identical
+  weapon_attack.png identical
+  weapon_attack@2x.png identical
+manifest_4.json identical
+  dodge.png identical
+  dodge@2x.png identical
+  weapon_draw.png identical
+  weapon_draw@2x.png identical
+  weapon_stow.png identical
+  weapon_stow@2x.png identical
+  weapon_throw.png identical
+  weapon_throw@2x.png identical
+manifest_5.json identical
+  dash.png identical
+  dash@2x.png identical
+  end_turn.png identical
+  end_turn@2x.png identical
+  hide.png identical
+  hide@2x.png identical
+  more.png identical
+  more@2x.png identical
+manifest_6.json identical
+  crouch.png identical
+  crouch@2x.png identical
+  disengage.png identical
+  disengage@2x.png identical
+  focus.png identical
+  focus@2x.png identical
+  jump.png identical
+  jump@2x.png identical
+manifest_7.json identical
+  flee.png identical
+  flee@2x.png identical
+  shove.png identical
+  shove@2x.png identical
+  stabilize.png identical
+  stabilize@2x.png identical
+  trip.png identical
+  trip@2x.png identical

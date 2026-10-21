@@ -1,0 +1,20 @@
+flash check: light per frame = mean of alpha x brightness (x1000); max step between neighbours as % of the peak (loops include the wrap)
+  bolt        fly    8f  max step  2.2 %  no pop  [171.9 169.1 168.1 165.2 164.8 166.8 166.9 170.7]
+  stream      fly    8f  max step  0.0 %  no pop  [137.9 137.9 137.9 137.9 137.9 137.9 137.9 137.9]
+  stream_head fly    8f  max step  5.0 %  no pop  [191.8 182.3 179.6 185.1 182.5 180.5 181.5 185.6]
+  breath      fly    8f  max step  0.7 %  no pop  [203.4 203.1 203.2 203.6 202.4 201.6 201.3 202.7]
+  sphere      fly    8f  max step  1.7 %  no pop  [126.1 123.9 123.2 124.1 125.8 124.1 124.5 124.3]
+  slash       fly    8f  max step  1.1 %  no pop  [210.3 210.0 208.1 209.4 210.7 213.1 212.6 210.8]
+  multi       fly    8f  max step  1.2 %  no pop  [125.0 124.1 122.7 121.8 122.3 121.4 122.6 123.5]
+  hit         hit   12f  max step 26.3 %  no pop  [39.4 69.6 99.4 115.0 115.0 114.3 112.6 104.4 93.4 72.0 51.8 27.3]
+  blast       blast 16f  max step 23.5 %  no pop  [43.2 88.4 136.1 176.3 201.5 201.9 203.4 200.0 193.5 173.3 146.0 120.2 92.0 61.0 32.7 13.0]
+  wall        rise  12f  max step 14.8 %  no pop  [9.2 26.1 57.6 102.9 136.6 165.1 193.8 223.7 254.9 293.4 302.6 305.3]
+  wall        idle   8f  max step  2.1 %  no pop  [305.3 306.9 307.6 313.6 312.6 311.7 310.9 304.2]
+  aura        idle  12f  max step  3.8 %  no pop  [33.6 34.9 35.0 33.7 32.6 32.6 33.6 34.9 34.8 33.6 32.4 32.5]
+  aura_back   idle  12f  max step  0.6 %  no pop  [224.9 225.4 225.0 224.3 223.9 223.7 223.8 223.7 224.1 223.9 222.5 223.6]
+  wall_diag   rise  12f  max step 13.7 %  no pop  [10.3 19.3 31.3 42.9 65.2 95.1 121.0 147.0 174.5 205.2 221.8 224.5]
+  wall_diag   idle   8f  max step  1.6 %  no pop  [224.5 224.7 224.8 228.2 227.9 228.0 227.8 224.2]
+  wall_depth  rise  12f  max step 24.7 %  no pop  [7.7 31.8 53.0 75.8 79.9 83.1 86.9 91.0 94.6 97.4 97.5 96.9]
+  wall_depth  idle   8f  max step  2.2 %  no pop  [95.2 94.8 96.7 98.8 98.9 98.1 97.0 96.6]
+  loops: worst step 5.0 % of the peak
+light check (blast key frame vs his, green excess G - 33, 5228 px of his light outside his character and its shadow): mean |diff| 2.65, 90th percentile 5.6 (target: mean under 8)

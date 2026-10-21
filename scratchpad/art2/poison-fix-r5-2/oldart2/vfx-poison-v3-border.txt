@@ -1,0 +1,22 @@
+border check: 168 frames of 14 sprites (beast is the approved cobra copied through unchanged; stream tiles wrap; stream_head left = joint)
+  OK: no pixel with any alpha on any frame border
+holes check: enclosed see-through pixels (alpha < 128, not reachable from outside) per frame
+  wall       rise [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  wall       idle [0, 0, 0, 0, 0, 0, 0, 0]
+  wall_diag  rise [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  wall_diag  idle [0, 0, 0, 0, 0, 0, 0, 0]
+  OK: no see-through pixel in the stone on any frame of wall and wall_diag
+  blast      blast [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  blast      blast [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]  (alpha under 98 % of the frame's strongest)
+  OK: no enclosed see-through pixel on any blast frame
+  wall_depth rise [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0]  (ours, not stone: thin mist pinholes, as in our old frames)
+  wall_depth idle [10, 5, 5, 5, 10, 6, 10, 8]  (ours, not stone: thin mist pinholes, as in our old frames)
+aura pockets: enclosed see-through px (alpha 60 or less) in back + front, per frame: [0, 0, 19, 0, 37, 0, 0, 6, 4, 5, 0, 0]
+  highlight at 77,57 (8 px): whole on frames 1/12 [8, 7, 4, 3, 2, 3, 4, 3, 3, 4, 5, 5]
+  highlight at 46,58 (7 px): whole on frames 2/12 [7, 3, 4, 3, 3, 5, 4, 5, 5, 5, 5, 7]
+wall rise: the rising slime top (x 44-248)
+  rise 3: top rows range 5 px, line-fit deviation 0.8 px, longest flat run 19 px
+  rise 4: top rows range 6 px, line-fit deviation 1.0 px, longest flat run 23 px
+  rise 5: top rows range 7 px, line-fit deviation 0.8 px, longest flat run 20 px
+  rise 6: top rows range 7 px, line-fit deviation 1.0 px, longest flat run 13 px
+  rise 7: top rows range 6 px, line-fit deviation 0.6 px, longest flat run 24 px

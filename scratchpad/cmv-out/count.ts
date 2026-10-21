@@ -1,0 +1,10 @@
+import { ALL_ITEMS } from '/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/claude-md-verify/src/sprite/catalog';
+import * as D from '/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/claude-md-verify/src/data/shinobiData';
+import * as T from '/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/claude-md-verify/src/sprite/types';
+const by: Record<string, string[]> = {};
+for (const d of ALL_ITEMS) (by[d.slot] ??= []).push(d.id);
+for (const [k, v] of Object.entries(by)) console.log(k, v.length, v.filter(i=>i.endsWith('_none')).length, k==='held'||k==='accessory'||k==='face' ? v.join(',') : '');
+console.log('presets', D.LEGENDARY_PRESETS.length, D.LEGENDARY_PRESETS.map(p=>p.character.id+':'+p.character.name).join(' | '));
+console.log('jutsu', Object.keys(D.JUTSUS_DATA ?? {}).length, Array.isArray(D.JUTSUS_DATA) ? D.JUTSUS_DATA.length : '');
+console.log('exports', Object.keys(D).join(','));
+console.log('cast', (T as any).CAST_STYLES?.length, JSON.stringify((T as any).CAST_STYLES));

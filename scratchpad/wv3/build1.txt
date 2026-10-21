@@ -1,0 +1,34 @@
+vfx_wind_v3 bolt         73x62 anchor 42,30 fly:8@10
+vfx_wind_v3 stream       64x64 anchor 32,32 fly:8@10
+vfx_wind_v3 stream_head  91x66 anchor 32,33 fly:8@10
+vfx_wind_v3 breath       97x69 anchor 48,33 fly:8@10
+vfx_wind_v3 sphere       72x65 anchor 37,33 fly:8@10
+vfx_wind_v3 slash        64x68 anchor 31,31 fly:8@10
+vfx_wind_v3 multi        67x69 anchor 31,33 fly:8@10
+vfx_wind_v3 hit          87x96 anchor 40,41 hit:12@12 once
+vfx_wind_v3 blast        213x156 anchor 113,125 blast:16@12 once
+vfx_wind_v3 wall         293x117 anchor 146,109 rise:12@12 once idle:8@10
+vfx_wind_v3 wall_diag    226x250 anchor 119,177 rise:12@12 once idle:8@10
+vfx_wind_v3 wall_depth   86x287 anchor 30,195 rise:12@12 once idle:8@10
+vfx_wind_v3 aura         101x124 anchor 51,113 idle:12@10
+vfx_wind_v3 aura_back    101x124 anchor 51,113 idle:12@10
+border check: no pixel on any frame border (stream tiles and the head joint excepted)
+flash check (each frame's mean alpha x brightness, % of the brightest frame):
+bolt         fly    8f@10  brightness 100 99 99 99 99 100 100 99  biggest step 1%
+stream       fly    8f@10  brightness 100 100 100 100 100 100 100 100  biggest step 0%
+stream_head  fly    8f@10  brightness 98 98 100 99 96 96 99 100  biggest step 3%
+breath       fly    8f@10  brightness 100 100 100 100 100 100 100 100  biggest step 0%
+sphere       fly    8f@10  brightness 100 100 99 100 100 100 100 100  biggest step 0%
+slash        fly    8f@10  brightness 100 100 100 100 100 100 100 100  biggest step 0%
+multi        fly    8f@10  brightness 100 97 98 98 100 100 100 100  biggest step 3%
+hit          hit    12f@12  brightness 18 45 72 100 97 98 91 79 64 50 34 19  biggest step 28%
+blast        blast  16f@12  brightness 3 9 31 55 78 100 98 97 91 84 76 66 55 43 32 21  biggest step 24%
+wall         rise   12f@12  brightness 13 23 34 47 57 64 71 77 82 88 94 100  biggest step 12%
+wall         idle   8f@10  brightness 100 100 100 100 100 100 100 100  biggest step 0%
+wall_diag    rise   12f@12  brightness 27 41 48 53 59 65 71 76 82 89 94 100  biggest step 14%
+wall_diag    idle   8f@10  brightness 100 100 100 100 100 99 99 100  biggest step 0%
+wall_depth   rise   12f@12  brightness 7 16 25 35 45 56 66 74 81 88 93 100  biggest step 11%
+wall_depth   idle   8f@10  brightness 100 100 99 99 99 99 99 100  biggest step 1%
+aura         idle   12f@10  brightness 99 100 100 100 100 99 99 99 98 98 98 99  biggest step 1%
+aura_back    idle   12f@10  brightness 87 94 98 100 98 94 87 80 76 74 76 80  biggest step 7%
+flash check: biggest step between neighbouring frames 28% of the brightest frame

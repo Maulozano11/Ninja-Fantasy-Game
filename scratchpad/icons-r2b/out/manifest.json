@@ -1,0 +1,302 @@
+{
+ "kit": "ui_icons",
+ "reference": "docs/reference/icons-owner-reference-1.jpg",
+ "round": 2,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (finer than ui_battle, whose art pixels are 2x2): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "sliceOrder": "top, right, bottom, left (pixels)",
+ "method": "his crop area-averaged (box) straight to the size, a light bilateral filter, nearest palette entry with no dither, every 1- or 2-pixel area of one colour merged into its neighbours, then the details traced on his picture and his sparks drawn on top (see tools/ui/ui-icons.ts)",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels (smallUnlisted: those that are not his sparks, embers or flecks); lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; hue = OKLab median hue in degrees (hueHis: his box reduction)",
+ "icons": {
+  "fireball_goukakyu": {
+   "name": "Fireball",
+   "file": "fireball_goukakyu.png",
+   "file2x": "fireball_goukakyu@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "palette": [
+    "#170e16",
+    "#271016",
+    "#361314",
+    "#521914",
+    "#712116",
+    "#8b2916",
+    "#a0321a",
+    "#b73f19",
+    "#cf5218",
+    "#e56a26",
+    "#f38a2f",
+    "#f7ab3b",
+    "#f9ce5d",
+    "#fded8e",
+    "#fdf7ab",
+    "#fdfde2"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [
+    "his core edge: the step between his pale yellow and his white",
+    "his vignette: one more dark step, so the rim fades as his"
+   ],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallUnlisted": 0,
+     "listedPx": 0,
+     "lowFreq": 1.22,
+     "lowFreqBoxOnPalette": 0.6,
+     "hue": 37,
+     "hueHis": 36,
+     "colours": 16
+    },
+    "88": {
+     "small": 0,
+     "smallUnlisted": 0,
+     "listedPx": 0,
+     "lowFreq": 1.12,
+     "lowFreqBoxOnPalette": 0.56,
+     "hue": 37,
+     "hueHis": 35,
+     "colours": 16
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (or of ui_battle skill_slot), at 6,6."
+  },
+  "kirin_thunder": {
+   "name": "Kirin",
+   "file": "kirin_thunder.png",
+   "file2x": "kirin_thunder@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "palette": [
+    "#181639",
+    "#192452",
+    "#1a3269",
+    "#1b3f80",
+    "#1a4d91",
+    "#205ba0",
+    "#266dad",
+    "#2f7fbc",
+    "#3091c9",
+    "#43a4ce",
+    "#49b5d9",
+    "#ca9d9a",
+    "#53c6e3",
+    "#66d7eb",
+    "#f5c6be",
+    "#79e8f2",
+    "#a0f4f8",
+    "#d8fafa"
+   ],
+   "paletteDetailOnly": [
+    "#ca9d9a",
+    "#f5c6be"
+   ],
+   "sampled": [
+    "his peach spark, its warmest bright pixel (the spark cores)",
+    "his peach spark, a dimmer pixel (the spark ends)"
+   ],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallUnlisted": 0,
+     "listedPx": 0,
+     "lowFreq": 1.68,
+     "lowFreqBoxOnPalette": 1.37,
+     "hue": 239,
+     "hueHis": 241,
+     "colours": 16
+    },
+    "88": {
+     "small": 0,
+     "smallUnlisted": 0,
+     "listedPx": 0,
+     "lowFreq": 1.44,
+     "lowFreqBoxOnPalette": 1.33,
+     "hue": 239,
+     "hueHis": 242,
+     "colours": 16
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (or of ui_battle skill_slot), at 6,6."
+  },
+  "great_fire_annihilation": {
+   "name": "Great Fire Annihilation",
+   "file": "great_fire_annihilation.png",
+   "file2x": "great_fire_annihilation@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "palette": [
+    "#361f27",
+    "#452b2c",
+    "#67191c",
+    "#5c3532",
+    "#7c3127",
+    "#9a311d",
+    "#b74320",
+    "#a3633b",
+    "#d2541a",
+    "#e2691f",
+    "#ee8029",
+    "#f49933",
+    "#f8b148",
+    "#f9c659",
+    "#fcdb73",
+    "#fff2a2"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallUnlisted": 0,
+     "listedPx": 0,
+     "lowFreq": 1.33,
+     "lowFreqBoxOnPalette": 1,
+     "hue": 37,
+     "hueHis": 35,
+     "colours": 15
+    },
+    "88": {
+     "small": 0,
+     "smallUnlisted": 0,
+     "listedPx": 0,
+     "lowFreq": 1.3,
+     "lowFreqBoxOnPalette": 1.05,
+     "hue": 37,
+     "hueHis": 35,
+     "colours": 16
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (or of ui_battle skill_slot), at 6,6."
+  },
+  "water_shield_suijinheki": {
+   "name": "Water Wall",
+   "file": "water_shield_suijinheki.png",
+   "file2x": "water_shield_suijinheki@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "palette": [
+    "#192538",
+    "#233850",
+    "#0a3a64",
+    "#164c71",
+    "#1b5c7c",
+    "#1c6d8b",
+    "#267d98",
+    "#3090a4",
+    "#11a0a6",
+    "#37a2b3",
+    "#21b3b2",
+    "#79adbb",
+    "#4eb8c3",
+    "#79cad4",
+    "#99d6de",
+    "#ade7ec",
+    "#ccf5f8"
+   ],
+   "paletteDetailOnly": [],
+   "sampled": [
+    "his inner curl, its greenest turquoise (the bright band round the barrel)",
+    "his inner curl, its mid turquoise"
+   ],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallUnlisted": 0,
+     "listedPx": 0,
+     "lowFreq": 1.52,
+     "lowFreqBoxOnPalette": 0.95,
+     "hue": 228,
+     "hueHis": 229,
+     "colours": 17
+    },
+    "88": {
+     "small": 0,
+     "smallUnlisted": 0,
+     "listedPx": 0,
+     "lowFreq": 1.33,
+     "lowFreqBoxOnPalette": 0.87,
+     "hue": 228,
+     "hueHis": 229,
+     "colours": 17
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (or of ui_battle skill_slot), at 6,6."
+  }
+ },
+ "pieces": {
+  "skill_slot_steel": {
+   "file": "skill_slot_steel.png",
+   "size": [
+    56,
+    56
+   ],
+   "slice": [
+    16,
+    16,
+    16,
+    16
+   ],
+   "window": {
+    "x": 6,
+    "y": 6,
+    "w": 44,
+    "h": 44,
+    "shape": "rect"
+   },
+   "layer": "over the icon (the window is transparent; his gold brackets overlap the icon corners). Drawn under the icon it works too, the brackets are then hidden where the icon covers them.",
+   "emptyFill": "#0f1116",
+   "at2x": "on a 2x screen: the frame doubled (nearest, 112x112, slices 32) and the @2x icon in its 88x88 window at 12,12",
+   "use": "His skill slot from the icon picture: dark steel bar with a lit outer edge, his thin gold line inside, gold corner brackets (arms 10 px, 45-degree ends) with steel rivets. The skill icon goes in the window."
+  },
+  "skill_slot_steel_active": {
+   "file": "skill_slot_steel_active.png",
+   "size": [
+    56,
+    56
+   ],
+   "slice": [
+    16,
+    16,
+    16,
+    16
+   ],
+   "window": {
+    "x": 6,
+    "y": 6,
+    "w": 44,
+    "h": 44,
+    "shape": "rect"
+   },
+   "layer": "as skill_slot_steel",
+   "use": "The same slot, selected or hovered: the steel bar stays, his gold line and the brackets are one step brighter, the rivets glint, and the outer line turns into a 1-pixel warm glow."
+  }
+ }
+}

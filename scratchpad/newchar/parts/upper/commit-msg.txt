@@ -1,0 +1,29 @@
+Scarlet upper clothes: his shirt and cravat, and his gold-trimmed greatcoat
+
+The owner's Scarlet's upper clothes as two new items, cut out of the
+study's reduced reference (his picture brought down to our scale, in his
+colours), without the cape:
+
+- top_noble_shirt "Noble Shirt and Cravat" (top): his white shirt, red
+  cravat and open collar in the coat's opening; under the coat, and its
+  sleeves, our body's shape in his whites. Colours: Shirt (#cfc9c8),
+  Cravat (#7c1e2c); the neck's skin follows the skin tone.
+- armor_scarlet_coat "Duke's Greatcoat" (armor, Samurai O-Yoroi stats as
+  the leather armour): high collar, lapels with the gold checker,
+  gold-edged fronts, gold-trimmed cuffs, skirts to the calves with the
+  tattered hem and the lining between the legs. Colours: Coat (#1a191e),
+  Trim (#846542, metal).
+
+Body and sleeves turn with their segment (stampPiece); the skirts and the
+back between the legs hang from the waist in columns like our skirts and
+bend with the legs (new stampSheet in painted.ts). In idle frame 0 every
+pixel is the reduced reference's (only his belt, the trousers' part,
+differs). Past their edges our torso and arms are taken away
+(clearTorsoPast / clearArmPast), so a turned piece never shows skin; the
+bulky body gets the coat body and the shirt widened.
+
+tools/refs/scarlet-upper-from-ref.py writes the two art modules;
+tools/refs/scarlet-body-map.mts maps our idle body for it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01E1PN8FTpA19jzx1FNkVfPu

@@ -1,0 +1,24 @@
+import { Img, hex, savePng } from '/home/user/Ninja-Fantasy-Game/.claude/worktrees/wf_65856863-7c3-2/tools/ui/ui-img';
+import { bannerFrames, burstFrames, damageNumber, maxTag, readout, advTag, markIcon } from '/home/user/Ninja-Fantasy-Game/.claude/worktrees/wf_65856863-7c3-2/tools/ui/dice-d20-crit';
+
+const out = new Img(1500, 1300);
+out.fill(hex('#3a5a35'));
+const b = bannerFrames('¡CRÍTICO!');
+b.frames.forEach((f, i) => out.draw(f.img.scaled(3), (i % 3) * 470, Math.floor(i / 3) * 90));
+const be = bannerFrames('CRITICAL!');
+out.draw(be.frames[7].img.scaled(3), 470, 360);
+const bu = burstFrames();
+bu.forEach((f, i) => out.draw(f.img, (i % 8) * 140, 460));
+out.draw(damageNumber(27).scaled(3), 10, 620);
+out.draw(damageNumber(27, 'white').scaled(3), 200, 620);
+out.draw(maxTag('MÁX').scaled(3), 400, 630);
+out.draw(maxTag('MAX').scaled(3), 520, 630);
+out.draw(readout({ d20: 17, mod: 5, total: 22, vsLabel: 'CA', vs: 14, ok: true }).scaled(3), 10, 720);
+out.draw(readout({ d20: 6, mod: 3, total: 9, vsLabel: 'CD', vs: 15, ok: false }).scaled(3), 10, 800);
+out.draw(readout({ d20: 20, mod: 5, total: 25, vsLabel: 'CA', vs: 14, ok: true, nat: 20 }).scaled(3), 10, 880);
+out.draw(readout({ d20: 1, mod: 5, total: 6, vsLabel: 'AC', vs: 14, ok: false, nat: 1 }).scaled(3), 10, 960);
+out.draw(advTag('VENTAJA', true).scaled(3), 10, 1060);
+out.draw(advTag('DESVENTAJA', false).scaled(3), 300, 1060);
+out.draw(markIcon(true).scaled(4), 700, 1060);
+out.draw(markIcon(false).scaled(4), 760, 1060);
+savePng(process.argv[2], out);

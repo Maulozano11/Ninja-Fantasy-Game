@@ -1,0 +1,6 @@
+[
+  {"name": "cmp-bald", "look": {"skin": "#f6bb96", "faceShape": "valiant", "eyeShape": "valiant", "eyeColor": "#d81b2a", "slots": {"hair": null}}},
+  {"name": "cmp-scholar", "look": {"skin": "#f6bb96", "faceShape": "valiant", "eyeShape": "valiant", "eyeColor": "#d81b2a"}},
+  {"name": "cmp-std", "look": {"skin": "#f6bb96", "faceShape": "valiant", "eyeShape": "standard", "eyeColor": "#d81b2a", "slots": {"hair": null}}},
+  {"name": "cmp-tomoe3", "look": {"skin": "#f6bb96", "faceShape": "valiant", "eyeShape": "valiant", "eyeColor": "#3b82f6", "slots": {"hair": null}}, "special": "tomoe3"}
+]

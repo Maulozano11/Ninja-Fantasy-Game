@@ -1,0 +1,185 @@
+{
+ "kit": "ui_icons",
+ "reference": "docs/reference/icons-owner-reference-1.jpg",
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (finer than ui_battle, whose art pixels are 2x2): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "sliceOrder": "top, right, bottom, left (pixels)",
+ "icons": {
+  "fireball_goukakyu": {
+   "name": "Fireball",
+   "file": "fireball_goukakyu.png",
+   "file2x": "fireball_goukakyu@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "palette": [
+    "#160e16",
+    "#331315",
+    "#4e1814",
+    "#6a1f14",
+    "#882917",
+    "#a43519",
+    "#bf441f",
+    "#d75a20",
+    "#eb7126",
+    "#f69032",
+    "#f9b142",
+    "#fad35e",
+    "#fdf092",
+    "#fefee6"
+   ],
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (or of ui_battle skill_slot), at 6,6."
+  },
+  "kirin_thunder": {
+   "name": "Kirin",
+   "file": "kirin_thunder.png",
+   "file2x": "kirin_thunder@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "palette": [
+    "#161638",
+    "#1a2453",
+    "#183270",
+    "#1a4386",
+    "#17559e",
+    "#2169ab",
+    "#267cbc",
+    "#8a7f9d",
+    "#3091c9",
+    "#3fa5d6",
+    "#4ebbe2",
+    "#56d2ed",
+    "#d9c3c0",
+    "#6fe8f5",
+    "#a1f5fa",
+    "#d8feff"
+   ],
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (or of ui_battle skill_slot), at 6,6."
+  },
+  "great_fire_annihilation": {
+   "name": "Great Fire Annihilation",
+   "file": "great_fire_annihilation.png",
+   "file2x": "great_fire_annihilation@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "palette": [
+    "#400918",
+    "#332529",
+    "#50302f",
+    "#6b181a",
+    "#71382f",
+    "#8c291e",
+    "#a5371c",
+    "#be471f",
+    "#d35b24",
+    "#e66d25",
+    "#f2842d",
+    "#f99a35",
+    "#fab148",
+    "#fcc85d",
+    "#fee27a",
+    "#fff9a9"
+   ],
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (or of ui_battle skill_slot), at 6,6."
+  },
+  "water_shield_suijinheki": {
+   "name": "Water Wall",
+   "file": "water_shield_suijinheki.png",
+   "file2x": "water_shield_suijinheki@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "palette": [
+    "#17263d",
+    "#003866",
+    "#22425d",
+    "#014b79",
+    "#005c83",
+    "#056d90",
+    "#01809e",
+    "#1293a9",
+    "#18a7b8",
+    "#6da6b9",
+    "#3abcca",
+    "#70ccd7",
+    "#8fdde6",
+    "#abeef4",
+    "#cffafd"
+   ],
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (or of ui_battle skill_slot), at 6,6."
+  }
+ },
+ "pieces": {
+  "skill_slot_steel": {
+   "file": "skill_slot_steel.png",
+   "size": [
+    56,
+    56
+   ],
+   "slice": [
+    16,
+    16,
+    16,
+    16
+   ],
+   "window": {
+    "x": 6,
+    "y": 6,
+    "w": 44,
+    "h": 44,
+    "shape": "rect"
+   },
+   "layer": "over the icon (the window is transparent; his gold brackets overlap the icon corners). Drawn under the icon it works too, the brackets are then hidden where the icon covers them.",
+   "emptyFill": "#0f1116",
+   "at2x": "on a 2x screen: the frame doubled (nearest, 112x112, slices 32) and the @2x icon in its 88x88 window at 12,12",
+   "use": "His skill slot from the icon picture: dark steel bar with a lit outer edge, his thin gold line inside, gold corner brackets with steel rivets. The skill icon goes in the window."
+  },
+  "skill_slot_steel_active": {
+   "file": "skill_slot_steel_active.png",
+   "size": [
+    56,
+    56
+   ],
+   "slice": [
+    16,
+    16,
+    16,
+    16
+   ],
+   "window": {
+    "x": 6,
+    "y": 6,
+    "w": 44,
+    "h": 44,
+    "shape": "rect"
+   },
+   "layer": "as skill_slot_steel",
+   "use": "The same slot, selected or hovered: the steel turns gold and the rivets glint (as the kit pairs skill_slot with skill_slot_active)."
+  }
+ }
+}

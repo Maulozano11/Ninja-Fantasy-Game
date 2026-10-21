@@ -1,0 +1,8 @@
+  frame 0: eye (243.9, 101.2)  right x 274  change to next: body 7.3%, with dust 7.3%
+  frame 1: eye (243.2, 97.2)  right x 272  change to next: body 7.9%, with dust 7.9%
+  frame 2: eye (242.4, 93.3)  right x 270  change to next: body 14.8%, with dust 17.8%
+  frame 3: eye (241.8, 91.7)  right x 269  change to next: body 10.5%, with dust 15.8%
+  frame 4: eye (240.9, 88.9)  right x 266  change to next: body 10.7%, with dust 15.1%
+  frame 5: eye (240.0, 86.9)  right x 265  change to next: body 17.0%, with dust 16.5%
+  frame 6: eye (241.7, 92.7)  right x 268  change to next: body 14.8%, with dust 25.7%
+  frame 7: eye (242.3, 95.0)  right x 270  change to next: body 14.4%, with dust 14.4%

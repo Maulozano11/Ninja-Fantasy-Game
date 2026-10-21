@@ -1,0 +1,27 @@
+{
+ "ref": "water-set-owner-reference.jpg",
+ "scale": 0.9411764705882353,
+ "panel": [
+  332,
+  712,
+  690,
+  822
+ ],
+ "split": 503,
+ "keys": {
+  "stride": {
+   "anchor": [
+    419.0,
+    772.0
+   ],
+   "frame": 0
+  },
+  "leap": {
+   "anchor": [
+    601.0,
+    769.0
+   ],
+   "frame": 5
+  }
+ }
+}

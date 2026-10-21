@@ -1,0 +1,41 @@
+border: 174 frames, 0 with art on the border
+widest sheet row: (3540, 'wall_diag')
+| sprite | anim | frames@fps | light per frame (per mille) | max step | motion min/max vs mean |
+| bolt | fly | 8@12 | 117 115 112 115 115 118 117 117 | 2.8% | -6% / +3% |
+| stream | fly | 8@12 | 105 104 104 102 103 103 105 105 | 2.1% | -1% / +1% |
+| stream_head | fly | 8@12 | 143 141 137 139 141 135 138 141 | 4.6% | -12% / +20% |
+| breath | fly | 8@12 | 255 253 253 254 258 258 257 256 | 1.4% | -11% / +8% |
+| sphere | fly | 8@12 | 204 204 203 204 203 203 206 203 | 1.4% | -13% / +10% |
+| slash | fly | 8@12 | 180 182 177 172 171 177 176 176 | 3.1% | -21% / +26% |
+| multi | fly | 8@12 | 158 156 154 151 154 156 157 156 | 1.6% | -17% / +14% |
+| hit | hit | 12@12 | 30 69 103 120 127 130 123 107 88 58 34 17 | 29.8% |  |
+| blast | blast | 16@12 | 58 120 194 259 290 291 293 286 270 243 209 151 102 60 28 6 | 25.3% |  |
+| wall | rise | 12@12 | 39 51 58 79 124 167 206 244 284 321 346 370 | 12.2% |  |
+| wall | idle | 8@10 | 371 372 374 375 375 377 375 371 | 1.0% | -58% / +34% |
+| aura | idle | 12@10 | 12 12 12 10 9 9 9 10 10 12 12 12 | 17.7% | -100% / +145% |
+| wall_diag | rise | 12@12 | 18 28 37 53 77 95 112 128 143 157 178 191 | 12.6% |  |
+| wall_diag | idle | 8@10 | 191 192 194 194 193 194 192 191 | 1.1% | -75% / +70% |
+| wall_depth | rise | 12@12 | 53 108 115 120 127 133 139 145 148 150 149 148 | 36.6% |  |
+| wall_depth | idle | 8@10 | 150 150 149 150 150 151 149 148 | 1.2% | -49% / +86% |
+| aura_back | idle | 12@10 | 147 148 149 153 159 156 151 149 149 148 148 148 | 3.6% | -14% / +29% |
+key bolt.fly[0] px differing from previous build: 0
+key stream.fly[0] px differing from previous build: 0
+key stream_head.fly[0] px differing from previous build: 0
+key breath.fly[0] px differing from previous build: 0
+key sphere.fly[0] px differing from previous build: 0
+key slash.fly[0] px differing from previous build: 0
+key multi.fly[0] px differing from previous build: 0
+key hit.hit[3] px differing from previous build: 0
+key blast.blast[4] px differing from previous build: 0
+key wall.idle[0] px differing from previous build: 0
+key wall_diag.idle[0] px differing from previous build: 0
+key aura.idle[0] px differing from previous build: 0
+key aura_back.idle[0] px differing from previous build: 0
+changed vs previous: bolt.fly [0, 1737, 1958, 1964, 2047, 2074, 2391, 2318]
+changed vs previous: sphere.fly [0, 532, 632, 640, 641, 660, 757, 789]
+changed vs previous: hit.hit [0, 0, 0, 0, 8, 53, 0, 0, 0, 0, 0, 0]
+changed vs previous: blast.blast [40, 173, 595, 96, 0, 0, 4, 26, 925, 955, 0, 0, 0, 0, 0, 0]
+changed vs previous: wall.rise [0, 0, 0, 2, 15, 20, 20, 29, 48, 48, 21, 0]
+changed vs previous: wall.idle [0, 11, 31, 42, 37, 35, 19, 3]
+changed vs previous: wall_diag.rise [0, 0, 13, 42, 57, 73, 91, 116, 147, 211, 82, 0]
+changed vs previous: wall_diag.idle [0, 21, 75, 120, 140, 127, 92, 50]

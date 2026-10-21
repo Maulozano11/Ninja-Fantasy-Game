@@ -1,0 +1,86 @@
+a #0f061e
+b #200a21
+c #380511
+d #3c0e27
+e #4c031e
+f #4d0818
+g #640918
+h #6a0418
+i #661130
+j #730918
+k #83091a
+l #852218
+m #920f1c
+n #8c223d
+o #a0001e
+p #a4161e
+q #83485a
+r #b71824
+s #bc2d4d
+t #cc1c29
+u #b15466
+v #dc112d
+w #e12638
+x #a46c7c
+y #d94c2e
+z #f6243a
+A #fe1020
+B #bc7486
+C #fa5e6e
+D #fb7e8d
+E #c89fb1
+F #f49250
+G #ff8a61
+H #ff9dad
+I #d6c3cc
+J #ffb4bc
+K #fdb6c2
+L #ffc5c8
+M #ffcdd6
+N #ffe6ea
+O #fefdfe
+
+cccccccccccfffhhhhhhhhhhhgggffffffccccccccjc
+cccccccccchhhhhjjjkkkkkkkkhhhhfcccccgcccjjcc
+ccccjcccghkhhhjmppprrrrrrrpkkggfcccggcfjjccc
+cccjjcfghkkkkrrmmkkkkkkkkkkppkgffffcffjwjccc
+cccjcfggghkttrmjjjjjjjbbbbbbfggbbbcffwwjcccc
+ccccfhhhhmtmmmjjjjddbbbbbbbbffkrrccvwMwccfcc
+ccccchhkttmjjjeedddddddddjjjjjkrvvvwMwggfccc
+cfcfhhkttmjjeeddjjjjjmmtttpkkjjkvDDMwkgggfff
+ccfhhkttmjjebeiidddjjkkmppwwrkjkvwMDwkkgkrrf
+ccfhktCmjgbbiieddjjjkmmmmmmrwwkkwDwDwkkkrrff
+cfhhsCsggbbiieejjjmmmppppppmrwwwDttwDwkkjggg
+chfhCsgbbbieeejjjjgggjjjjjjjjrwDtootwwwkjggg
+cffCHgbbbiiehhhhhjpppttttooojjjttooptCwkkjgg
+fcfHCbbbipjjhcchttwwwwwwwtoddppjomoopCwpkkgg
+fckHhbbipjjhcmmtttccccccbbadpppjoommpwCwpkjg
+kckzohhjpjhcmrrmaaaaabbbbaaaaaajoojjpwHwpkjj
+kkHzohjoohckrmaaaggggggggfEEaaaaaajppwHwpkjh
+ktHzojkohckkbaaagmmmmmmmmgfEEEuaaaggggwHvkkh
+ktHzokkohkkbbnngAAhAJAhvvvfEEEEuaaaaaozJvkkh
+ktHtkkokkhbbBIgnAAAoJoAAAAjEOEEEuaaborzJvpkj
+otHtkkkkkbbBIOgpovJJLohheAjEOOOEuaboprzJvpkj
+otHtkkmmbbBIOOgpAAAoohAAAAjEOOOElbppprzJtppj
+otJtkmpmbxIOOOppAAhAoAhAAAjOOOOlblppptzJtpkg
+otJzmpmcxxOOOOOmvAAAhAAAArjOOOBbdplpptzJtkjg
+trJzppccrmxOOOOvmvAAeAAArjIOOBddpjppptJzrkjg
+rrzzrprrrpmmOOOOvmvvAArrjIOOBddpjrrpptJzrkjg
+krzzwrppprppmmpOOEgggggrOOIlfljjrwppptHrkkjg
+kkrHwrpppwpmmppmppEEEEEBrhhhlflrwpoppHtrkggg
+kkrwHrppptwrmmmpppmmmmmrrkhfflrwrpoopHtkkfgg
+gkkrHwpppptwrpmkkkkmkkkkkkkprrwrppopCCmkffgg
+gkkpwHtpptwwwrpppkkkkkkppppprwrrpoowCwmhffgf
+ggkppwwttzwrrwrppppppppppppvwrrppopzwmhghgfc
+ggkkpwzzDzrmmrwwppppppppprvvrpppppzzrgghhccc
+cfgkptzMDzrmmmmpwwvvvvwwwrrppppppwzrgffccccc
+cgfgktDDDzomjjmmmmrrrrrrppppmmmowzrgffcfcccc
+cfcftzzwwwwojjjjkkkkkkkkkppmjjowwogfcccccccc
+cccfzzkhjjowrjjjjjjjjjjkjjjjmttoogfcccccllcc
+ccfzzkgghjjorrrkkjjjjjjjjjjptmmggccccccllgcc
+ccoohhkgghhhhkkppppppppppppjhhgccpccccgggccc
+coocchhhhkhhhhhhhhmmmmmmjjjhhcccppcccccccccc
+coccccchkkhhhhgghhhhhhhhhhcccccccccccccccccc
+cccccccceehhhghhhhggggeeeccccccccccccccccccc
+cccccccecccchffffgccccccccccgggccccccccccccc
+ccccccccccccfcccccccccccccggcccccccccccccccc

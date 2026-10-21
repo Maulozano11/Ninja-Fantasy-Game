@@ -1,0 +1,84 @@
+a #220412
+b #190a1f
+c #280600
+d #320816
+e #360f2b
+f #4a0100
+g #40121f
+h #3a1c1f
+i #50131e
+j #4c1c0d
+k #611823
+l #701a20
+m #7f2122
+n #802f0a
+o #902724
+p #a12e22
+q #924e3d
+r #b23326
+s #a64a46
+t #c13c28
+u #d0432a
+v #c6603c
+w #de5228
+x #ed5929
+y #f66828
+z #e17d38
+A #f87d22
+B #e49854
+C #f8912c
+D #e6987c
+E #fca236
+F #fbb937
+G #f5c872
+H #f9cd47
+I #f4ceae
+J #ffe666
+K #ffed3c
+L #fef58a
+M #fff9b6
+
+ggggkggggggggggggggggggggggggggggggggigggggg
+gggkkgggggkkkggggggiiiigggggggggggggilgggggg
+gggkklliggkkgggggiikkdkiikkkgggiiggiliggggig
+gkulklligggiggggikkkddkklllkgggigggllgigggii
+kupklllliiiggggkkkkkgdkkkkggkgkkiggggiggggii
+ukkpxllggiiiggkkkkggkdddiiokgkllkigggggllgii
+kkpxxligiiiikkkkkkgggkpoooidddlllkiikgggllgi
+xxExwlgiiggilkkuurroopolliddkkllkkkkklggllgg
+xxEwlggiiggillkuuurroppplidddklllllllkggoogg
+xxEwtgirrillllklllooopppppppkdddllElrkggogoq
+CCCtgtrriillolluuuuuuppiiikkgdddllllrkgkoggq
+CECttyyriioommlmluCCJKrpriggdgggmlllrkkoyogq
+JEECCyyrllpmllmmolCJJJrrpiiigdggmmllmrlyyyqy
+HLEEEywlllplllmmolCKKJrrmpidggmmmmlmmllpCCyC
+JJLEyEwwlpyllmiioooCCrrmdddkkigggmmrrrpppECE
+JLJlkCwCllyomoiipjoCCmmdiiikkigggmuurrypEEEE
+rrrlkJCCklyooioipjrrmmdiilliligggmmyurykkEJJ
+rrlrkJJkklrrirmmpjjrmkgkmmlllgggmmmuyyCkkJJJ
+rrrlllJikggirmmrrirrrkgkmmmllggggmmguyCkkJJJ
+iiiiiiikgmirmdddiriikwgkoomllggpggggrCJklJJJ
+iiiiiiikmmrrgggiiiwwwwgkmoolgggppgkgriJklJJJ
+ilokkkmssggmgggddiiwwwgmommlggggpkgkriLilJJi
+iloogmmsggommmgigdgiiggorrmmggggptgkriillJvi
+lllggmggspommggiigggggrrrrmigdgggtooroimjvvi
+mlktmttpppooggllllgigruuuorididoootoormmjjii
+omkttpppypoppplllligrwwywoodiipdokktormrggim
+omikiipyyKotpmmmoligwyywoodimooppptkooroggmm
+omiiimpyCKtttlmooogiwwyyoggiimroorriiiiogmmm
+ooooommvCKtlltuuoogwyyyxugilmlmroorrttoeemmm
+oootoomvCooiiowuooiyyyyxuigrllrrorrtrwtegppm
+ooottomnvuiooguwuoiyyyxyuuiurrggoKqrwwtgmpmp
+ooootmmnnuiooogAwiyyyEyyuirruurgpqJqFgggmmmF
+wwoooomnuiiooogAwiyEEEyyyirpuwugipKKFmgmooss
+iwwooomiiioooooyAwCEEJEyCpppuwwpipJFpgmmoosk
+iwwoooooooooooyAywECEJEyCppyywwpipsspgmoookk
+ikwoooooovvoooAEyyEECEJCywuyCyypispppmoppklg
+kikwnnppovCoowEEyyFFJLLCwuwyCttpisppgoppplkg
+ikknlgnpooCwowEJyyFFJLCCwuwyCAtmiisggoppplgg
+ghklnggnooCwowEJEyyLLLCCCCyFFAumimggooppnngn
+hghlnngmooLCwwzEHHyLLLCFCCCFAAEummoouuokkgnn
+hgghlnmkkoyLLzzFHJJLLLFFCJFCAAEuuuuBJuokignh
+gghhggkmmoyLLLzFHLLJLLLFFJFCCLEEyyBJBukkiggh
+ggjjhhgkyyCCHLJFHLLJJLLLLLLFLLJEyyLBllkkighg
+gggjhhhkyJLCHLLLHHLLLLLLLLLLLLyyyLLBElkkhhhg

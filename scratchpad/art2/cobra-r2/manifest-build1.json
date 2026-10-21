@@ -1,0 +1,31 @@
+{
+ "group": "vfx_beasts_cobra",
+ "pxPerMeter": 57,
+ "sprites": {
+  "poison": {
+   "label": "Venom cobra (poison)",
+   "file": "poison.png",
+   "frameW": 172,
+   "frameH": 107,
+   "anchor": [
+    96,
+    58
+   ],
+   "meters": [
+    3,
+    1.9
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 8,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  }
+ }
+}

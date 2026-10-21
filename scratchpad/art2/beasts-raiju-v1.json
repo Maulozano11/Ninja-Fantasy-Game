@@ -1,0 +1,1 @@
+{"label": "Raiju (lightning)", "file": "lightning.png", "frameW": 149, "frameH": 80, "anchor": [82, 46], "meters": [2.6, 1.8], "tags": ["vfx"], "anims": {"fly": {"row": 0, "frames": 8, "fps": 12, "loop": true}}}

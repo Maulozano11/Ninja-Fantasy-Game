@@ -1,0 +1,158 @@
+===== WIP
+lightning_hound_raidon
+  square: [25, 139]
+  brightTotal: 3870
+  brightLost: 791
+  brightLostShare: 20.4
+  whiteLost(L>=0.86): 625
+  whiteTotal: 2808
+  lostLeftCols: [0, 24, 775]
+  lostRightCols: [140, 143, 16]
+  88:
+    blockDE: 1.22
+    blockDEplain: 1.1
+    meanDL: 0.43
+    meanDLplain: 0.08
+    meanDLbelowRow11: 0.55
+    blocksDL>=2: 4
+    blocksDL>=2plain: 0
+    maxDL: 2.7
+    small1-2: 1362
+    small1-2plain: 2160
+    brightSpots>=0.05: 645
+    brightSpots>=0.05plain: 785
+    brightSpots>=0.1: 503
+    brightSpots>=0.1plain: 538
+    spotsNotHis: 25
+    spotsNotHisPlain: 0
+    mainLineCells(cover>=0.5): 910
+    mainLineCellsWhite(L>=0.9): 845
+    mainLineCellsMeanL: 0.96
+    mainLineCellsHisBoxMeanL: 0.912
+    restMeanDL: -0.15
+    dL x100 per 8x8 block (rows top to bottom):
+       -0.3   0.3   0.1  -0.2  -0.8  -0.5  -0.6  -0.1  -0.1  -0.3  -0.1
+        1.0  -0.2   1.2   1.1  -0.4  -0.5  -0.4  -0.6  -0.2  -0.2  -0.3
+       -0.0  -0.1  -0.4  -0.0   0.8  -0.5  -0.4   0.5  -0.3  -0.2   0.5
+        0.3   0.5  -0.1   0.7   1.4   0.3   0.3   2.5   1.3  -0.2  -0.8
+        0.1   2.7   0.9   0.2   1.4   0.7   0.4   0.3   0.3   0.7  -0.6
+       -0.1   1.2   0.8   1.1  -0.1   1.0   0.7   1.4   0.3   1.1   2.2
+        1.1   1.3   0.4   0.4  -0.0   0.9   0.2   0.2  -0.8  -0.8   0.4
+        0.3   1.7   0.2   0.9   1.0   1.1   0.9   1.4   1.4   1.1  -0.3
+        1.2   0.5  -0.1   0.3   2.1   1.7  -0.5   1.5  -0.7   0.9   1.4
+        0.5  -0.0   1.2   1.9  -0.9   0.8   0.5   0.1   0.1   1.1   1.4
+        0.1   1.4   0.8   1.2   0.6  -0.8  -0.8   0.2   0.1   0.5   0.4
+  44:
+    blockDE: 1.97
+    blockDEplain: 1.65
+    meanDL: 0.19
+    meanDLplain: 0.09
+    meanDLbelowRow11: 0.28
+    blocksDL>=2: 18
+    blocksDL>=2plain: 0
+    maxDL: 4.9
+    small1-2: 5
+    small1-2plain: 778
+    brightSpots>=0.05: 3
+    brightSpots>=0.05plain: 326
+    brightSpots>=0.1: 3
+    brightSpots>=0.1plain: 237
+    spotsNotHis: 0
+    spotsNotHisPlain: 0
+  handFixCheck: ['44@35,18 text #7cdef7 file #7cdef7 OK', '44@36,18 text #aef2fb file #aef2fb OK', '44@37,18 text #effefe file #effefe OK', '44@38,18 text #3e8ce1 file #3e8ce1 OK', '44@38,23 text #305ce6 file #305ce6 OK']
+crescent_moon_dance
+  square: [4, 118]
+  brightTotal: 2370
+  brightLost: 11
+  brightLostShare: 0.5
+  whiteLost(L>=0.86): 2
+  whiteTotal: 1889
+  lostLeftCols: [0, 3, 0]
+  lostRightCols: [119, 127, 11]
+  88:
+    blockDE: 1.13
+    blockDEplain: 0.71
+    meanDL: 0.56
+    meanDLplain: 0.05
+    meanDLbelowRow11: 0.64
+    blocksDL>=2: 8
+    blocksDL>=2plain: 0
+    maxDL: 3.0
+    small1-2: 613
+    small1-2plain: 993
+    brightSpots>=0.05: 367
+    brightSpots>=0.05plain: 378
+    brightSpots>=0.1: 259
+    brightSpots>=0.1plain: 213
+    spotsNotHis: 9
+    spotsNotHisPlain: 0
+  44:
+    blockDE: 1.52
+    blockDEplain: 0.8
+    meanDL: 0.27
+    meanDLplain: 0.06
+    meanDLbelowRow11: 0.3
+    blocksDL>=2: 10
+    blocksDL>=2plain: 0
+    maxDL: 4.8
+    small1-2: 7
+    small1-2plain: 424
+    brightSpots>=0.05: 6
+    brightSpots>=0.05plain: 164
+    brightSpots>=0.1: 6
+    brightSpots>=0.1plain: 88
+    spotsNotHis: 0
+    spotsNotHisPlain: 0
+  handFixCheck: []
+temple_of_nirvana
+  square: [11, 125]
+  brightTotal: 2379
+  brightLost: 59
+  brightLostShare: 2.5
+  whiteLost(L>=0.86): 26
+  whiteTotal: 2182
+  lostLeftCols: [0, 10, 41]
+  lostRightCols: [126, 134, 18]
+  88:
+    blockDE: 0.74
+    blockDEplain: 0.57
+    meanDL: 0.25
+    meanDLplain: -0.01
+    meanDLbelowRow11: 0.27
+    blocksDL>=2: 1
+    blocksDL>=2plain: 0
+    maxDL: 2.0
+    small1-2: 410
+    small1-2plain: 990
+    brightSpots>=0.05: 234
+    brightSpots>=0.05plain: 234
+    brightSpots>=0.1: 157
+    brightSpots>=0.1plain: 94
+    spotsNotHis: 10
+    spotsNotHisPlain: 0
+  44:
+    blockDE: 0.97
+    blockDEplain: 0.65
+    meanDL: 0.16
+    meanDLplain: 0.04
+    meanDLbelowRow11: 0.16
+    blocksDL>=2: 5
+    blocksDL>=2plain: 0
+    maxDL: 3.0
+    small1-2: 156
+    small1-2plain: 567
+    brightSpots>=0.05: 113
+    brightSpots>=0.05plain: 149
+    brightSpots>=0.1: 76
+    brightSpots>=0.1plain: 52
+    spotsNotHis: 0
+    spotsNotHisPlain: 0
+  handFixCheck: []
+jaw/mouth at 44 (x, our colour, share of his navy, share of his royal blue) where his navy or royal blue >= 0.3:
+  row 18: 31 #2c48a4 n0.78 r0.11, 32 #2c48a4 n0.75 r0.00, 33 #326ccc n0.33 r0.00
+  row 19: 28 #1d3084 n0.50 r0.00, 32 #2c48a4 n0.50 r0.12, 33 #1d3084 n0.92 r0.00, 35 #326ccc n0.12 r0.31, 36 #326ccc n0.33 r0.00
+  row 20: 31 #2c48a4 n0.44 r0.00, 32 #1d3084 n0.75 r0.00, 33 #1d3084 n0.89 r0.00, 34 #1d3084 n0.58 r0.08, 35 #1d3084 n0.83 r0.08, 36 #1d3084 n0.78 r0.00, 37 #1d3084 n0.58 r0.00, 38 #1d3084 n0.44 r0.11, 43 #5e56c8 n0.00 r0.33
+  row 21: 28 #aef2fb n0.42 r0.00, 32 #3e8ce1 n0.44 r0.06, 33 #1d3084 n0.92 r0.00, 34 #1d3084 n0.75 r0.00, 39 #1d3084 n0.44 r0.00, 40 #2c5abc n0.38 r0.00, 41 #2c5abc n0.42 r0.00
+  row 22: 28 #1d3084 n1.00 r0.00, 29 #1d3084 n0.88 r0.00, 33 #1d3084 n0.58 r0.17, 34 #1d3084 n0.50 r0.06, 38 #44a0e8 n0.00 r0.50, 43 #3a7cd8 n0.00 r0.33
+  row 23: 28 #1d3084 n0.78 r0.00, 38 #305ce6 n0.00 r0.78, 39 #44a0e8 n0.00 r0.58
+  row 24: 39 #44a0e8 n0.00 r0.50, 40 #5e56c8 n0.00 r0.44

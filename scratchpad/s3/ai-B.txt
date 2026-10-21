@@ -1,0 +1,61 @@
+
+== river_patrol: 100 battles, 4.3 rounds on average, {"victory":98,"defeat":2}
+   enemies: Stalker (Ryusei), Rogue (Mirai), Hunter-nin (Koton)
+   refused 0, stalls 0, unfinished 0
+   move                      enemy: battles / uses    party: battles / uses
+   Pursuing Flame               100 / 107              0 / 0
+   other Mirai jutsu             63 / 69               0 / 0
+   Premonitory Evasion          100 / 166              0 / 0
+   Ryusei kunai                  54 / 54              30 / 34
+   Node left                     54 / 54              30 / 34
+   Warp Strike                    0 / 0                1 / 1
+   blow from behind               0 / 0                1 / 1
+   Kōton Block                   50 / 57              65 / 71
+   Kōton Wall                    10 / 10               0 / 0
+
+== cedar_rogues: 100 battles, 3.9 rounds on average, {"victory":96,"defeat":4}
+   enemies: Rogue (Mirai), Lookout (Northstar), Raider (Ryusei)
+   refused 0, stalls 0, unfinished 0
+   move                      enemy: battles / uses    party: battles / uses
+   Pursuing Flame                93 / 135              0 / 0
+   other Mirai jutsu             65 / 92               0 / 0
+   Premonitory Evasion          100 / 252              0 / 0
+   Ryusei kunai                 100 / 104              0 / 0
+   Node left                    100 / 159              0 / 0
+   Warp Strike                   48 / 49               0 / 0
+   blow from behind              48 / 49               0 / 0
+   Kōton Block                    0 / 0               75 / 96
+   attack in a foe's aura         3 / 3                0 / 0
+
+== night_raid: 100 battles, 8.3 rounds on average, {"victory":50,"defeat":50}
+   enemies: Raider (Ryusei), Iron Fist (Koton), Shade (Northstar), Kagero (Mirai)
+   refused 0, stalls 0, unfinished 0
+   move                      enemy: battles / uses    party: battles / uses
+   Pursuing Flame               100 / 121              0 / 0
+   other Mirai jutsu            100 / 522              0 / 0
+   Premonitory Evasion           88 / 269              0 / 0
+   Ryusei kunai                  97 / 126             33 / 40
+   Node left                     97 / 158             76 / 177
+   Warp Strike                   57 / 62              12 / 12
+   blow from behind              49 / 51               9 / 9
+   Spatial Swap                   0 / 0                1 / 1
+   Kōton Block                   50 / 58             100 / 107
+   Kōton Wall                    19 / 19               0 / 0
+   attack in a foe's aura        37 / 59               0 / 0
+
+== hydra: 100 battles, 11.7 rounds on average, {"defeat":82,"victory":18}
+   enemies: the hydra
+   refused 0, stalls 0, unfinished 0
+   move                      enemy: battles / uses    party: battles / uses
+   Ryusei kunai                   0 / 0               92 / 225
+   Node left                      0 / 0               92 / 288
+   Warp Strike                    0 / 0               87 / 94
+   blow from behind               0 / 0               84 / 88
+   Kōton Block                    0 / 0              100 / 167
+   Kōton Wall                     0 / 0                1 / 1
+
+All: refused 0, stalls 0, unfinished 0
+
+real	1m43.618s
+user	1m44.763s
+sys	0m0.856s

@@ -1,0 +1,19 @@
+drake: his character 228 px tall, scale 0.4211 panel bg [34, 34, 44]
+key 0 body px 103530 rest px 85 shadow px 4883
+key 5 body px 71206 rest px 31134 shadow px 1950
+drake landmarks {0: {'snout': (1086, 1805), 'horn': (1002, 1649)}, 5: {'snout': (1728, 1747), 'horn': (1655, 1617)}} prowl head / lunge head 1.196 turned 2.16 deg fit residual (his px) [3.6, 2.0]
+drake palette 50 outline [25, 21, 25] shadow [39, 33, 38] horn highlight [162, 157, 153] eye amber [200, 149, 74] far eye [195, 194, 85] (98 px) horn greys [[155, 150, 146], [139, 134, 130], [131, 126, 122], [122, 117, 113], [114, 108, 105], [99, 95, 93], [74, 69, 69], [41, 33, 29]]
+drake canvas (327, 196) anchor (180, 94)
+dust: boulders cut by his frame line at y [(1833, 1858), (1901, 1918)]
+dust: pile px 21969 spray px 6949 bright spray px 1565 clod px 191
+dust palette [[222, 179, 120], [204, 160, 107], [170, 122, 74], [154, 113, 72], [145, 102, 63], [119, 81, 50], [94, 66, 47], [93, 63, 45], [93, 61, 42], [86, 55, 34]] spray colours [[222, 179, 120], [204, 160, 107], [170, 122, 74], [154, 113, 72], [145, 102, 63]] his spray mean [181, 140, 97] partly clear spray [170, 122, 74]
+start 0.3683 [0.296, 0.283, 0.29] [np.float64(-22.3), np.float64(-12.7), -1, 0.0]
+    36s 0.3661 [0.293, 0.279, 0.294] [np.float64(-22.3), np.float64(-13.2), -2, 0.0] f7 e7 -2
+   100s 0.3649 [0.293, 0.278, 0.292] [np.float64(-22.3), np.float64(-13.2), -2, 0.0] f7 ff -22
+   116s 0.3647 [0.291, 0.279, 0.293] [np.float64(-22.3), np.float64(-13.2), -2, 0.0] f7 nh -40
+   124s 0.3644 [0.291, 0.279, 0.293] [np.float64(-22.3), np.float64(-13.2), -2, 0.0] f7 fh 12
+   238s 0.3636 [0.292, 0.278, 0.29] [np.float64(-22.3), np.float64(-13.2), -2, 0.0] f7 ff -28
+   410s 0.3618 [0.286, 0.286, 0.29] [np.float64(-22.3), np.float64(-14.2), -2, 0.0] f7 t6 0.4
+   434s 0.3597 [0.287, 0.287, 0.288] [np.float64(-22.3), np.float64(-14.2), -2, 0.0] f7 nf -1.0
+   460s 0.3596 [0.287, 0.287, 0.288] [np.float64(-22.3), np.float64(-14.2), -2, 0.0] f7 fh 15.0
+BEST {"f7": {"pitch": 7, "e7": -2, "t6": 0.4, "scale": 1.14, "nf": -1.0, "ff": -28, "nh": -40, "fh": 15.0, "tail": 20}} 0.3596 [0.287, 0.287, 0.288] [np.float64(-22.3), np.float64(-14.2), -2, 0.0]

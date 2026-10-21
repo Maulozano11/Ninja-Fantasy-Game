@@ -1,0 +1,68 @@
+{
+ "feet": {
+  "x": 128,
+  "y": 216
+ },
+ "grid": 256,
+ "poses": {
+  "aiden_idle": {
+   "n": 4,
+   "fps": 3
+  },
+  "aiden_cast": {
+   "n": 2,
+   "fps": 5
+  },
+  "aiden_attack": {
+   "n": 3,
+   "fps": 6
+  },
+  "aiden_pierce": {
+   "n": 5,
+   "fps": 8
+  },
+  "aiden_run": {
+   "n": 6,
+   "fps": 12
+  },
+  "aiden_throw": {
+   "n": 5,
+   "fps": 8
+  },
+  "aiden_hurt": {
+   "n": 2,
+   "fps": 4
+  },
+  "aiden_charge": {
+   "n": 2,
+   "fps": 10
+  },
+  "aidenstow_cast": {
+   "n": 2,
+   "fps": 5
+  },
+  "aidenlight_cast": {
+   "n": 2,
+   "fps": 5
+  },
+  "rogue_idle": {
+   "n": 4,
+   "fps": 3
+  },
+  "rogue_hurt": {
+   "n": 2,
+   "fps": 4
+  },
+  "aidenstow_idle": {
+   "n": 4,
+   "fps": 3
+  }
+ },
+ "burst": {
+  "color": "red",
+  "onCast": true,
+  "loop": 24,
+  "tickMs": 83,
+  "castFrames": 2
+ }
+}

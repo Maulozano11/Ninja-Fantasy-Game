@@ -1,0 +1,374 @@
+{
+ "group": "vfx_earth",
+ "pxPerMeter": 57,
+ "sprites": {
+  "bolt": {
+   "label": "Earth bolt: tumbling rock",
+   "file": "bolt.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "beast": {
+   "label": "Earth beast: stone serpent",
+   "file": "beast.png",
+   "frameW": 136,
+   "frameH": 96,
+   "anchor": [
+    64,
+    48
+   ],
+   "meters": [
+    2.39,
+    1.68
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream": {
+   "label": "Earth stream: spike row (tileable)",
+   "file": "stream.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    0,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "stream_head": {
+   "label": "Earth stream head: spike eruption",
+   "file": "stream_head.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "breath": {
+   "label": "Earth breath: gravel blast",
+   "file": "breath.png",
+   "frameW": 112,
+   "frameH": 104,
+   "anchor": [
+    8,
+    52
+   ],
+   "meters": [
+    1.96,
+    1.82
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "sphere": {
+   "label": "Earth sphere: rolling boulder",
+   "file": "sphere.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "slash": {
+   "label": "Earth slash: stone crescent",
+   "file": "slash.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "multi": {
+   "label": "Earth multi: rock bullets",
+   "file": "multi.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "fly": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "hit": {
+   "label": "Earth hit: rubble burst",
+   "file": "hit.png",
+   "frameW": 64,
+   "frameH": 64,
+   "anchor": [
+    32,
+    32
+   ],
+   "meters": [
+    1.12,
+    1.12
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "hit": {
+     "row": 0,
+     "frames": 6,
+     "fps": 15,
+     "loop": false
+    }
+   }
+  },
+  "blast": {
+   "label": "Earth blast: split ground, slab rim and spike crown",
+   "file": "blast.png",
+   "frameW": 176,
+   "frameH": 144,
+   "anchor": [
+    88,
+    88
+   ],
+   "meters": [
+    3.09,
+    2.53
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "blast": {
+     "row": 0,
+     "frames": 8,
+     "fps": 12,
+     "loop": false
+    }
+   }
+  },
+  "wall": {
+   "label": "Earth wall: fitted stone slabs",
+   "file": "wall.png",
+   "frameW": 288,
+   "frameH": 152,
+   "anchor": [
+    144,
+    128
+   ],
+   "meters": [
+    5.05,
+    2.67
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 8,
+     "loop": true
+    }
+   }
+  },
+  "aura": {
+   "label": "Earth aura: sand vortex and levitating stones",
+   "file": "aura.png",
+   "frameW": 80,
+   "frameH": 128,
+   "anchor": [
+    40,
+    112
+   ],
+   "meters": [
+    1.4,
+    2.25
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 6,
+     "fps": 10,
+     "loop": true
+    }
+   }
+  },
+  "wall_diag": {
+   "label": "Earth wall (3/4): fitted stone slabs",
+   "file": "wall_diag.png",
+   "frameW": 240,
+   "frameH": 272,
+   "anchor": [
+    120,
+    188
+   ],
+   "meters": [
+    4.21,
+    4.77
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 8,
+     "loop": true
+    }
+   }
+  },
+  "wall_depth": {
+   "label": "Earth wall (depth): fitted stone slabs",
+   "file": "wall_depth.png",
+   "frameW": 112,
+   "frameH": 304,
+   "anchor": [
+    56,
+    206
+   ],
+   "meters": [
+    1.96,
+    5.33
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "rise": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": false
+    },
+    "idle": {
+     "row": 1,
+     "frames": 4,
+     "fps": 8,
+     "loop": true
+    }
+   }
+  }
+ }
+}

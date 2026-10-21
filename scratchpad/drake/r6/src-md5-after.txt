@@ -1,0 +1,12 @@
+7a17eb3bfcbe59ba29af9b172b52d483  tools/world-sprites/vfx-beasts-ref-chakra.ts
+897232cde0b7bd385bc848f67c4bee44  tools/world-sprites/vfx-beasts-ref-earth.ts
+1678eea3a67eb406e8d78aece92c452a  tools/world-sprites/vfx-beasts-ref-fire.ts
+23cc87b989641e3973cf0e0218045c4e  tools/world-sprites/vfx-beasts-ref-genjutsu.ts
+b2f41ce97393884706a5a4b9b33768a2  tools/world-sprites/vfx-beasts-ref-lightning.ts
+73ee32ce5bd0e76d7b5688ad1b90bbec  tools/world-sprites/vfx-beasts-ref-poison.ts
+abeef31c1241c0a2aa8dce9c1634d941  tools/world-sprites/vfx-beasts-ref-wind.ts
+94b521d5052ede9e52abbc7c7feec52d  tools/world-sprites/vfx-beasts.ts
+b46588e18f78016db82bf863420218e1  tools/world-sprites/vfx-beast-cobra.ts
+89ab2b03d290ffbef6d0cfa1e6a3e008  tools/world-sprites/vfx-beast-crows.ts
+9d175f59c09820e69401a34a3836afab  tools/world-sprites/vfx-beast-griffin.ts
+25f5be2360a2c99120607248917e24fe  tools/world-sprites/kit.ts

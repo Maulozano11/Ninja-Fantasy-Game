@@ -1,0 +1,40 @@
+drake: his character 228 px tall, scale 0.4211 panel bg [34, 34, 44]
+key 0 body px 103530 rest px 85 shadow px 4883
+key 5 body px 71206 rest px 31134 shadow px 1950
+drake landmarks {0: {'snout': (1086, 1805), 'horn': (1002, 1649)}, 5: {'snout': (1728, 1747), 'horn': (1655, 1617)}} prowl head / lunge head 1.196 turned 2.16 deg fit residual (his px) [3.6, 2.0]
+drake palette 53 outline [25, 21, 25] shadow [39, 33, 38] horn highlight [162, 157, 153] eye amber [200, 149, 74] far eye [228, 224, 86] (98 px) horn greys [[167, 161, 146], [154, 147, 133], [146, 136, 121], [131, 125, 113], [110, 103, 95], [90, 87, 81], [76, 70, 68], [41, 33, 29]] eye socket [102, 70, 26] {0: 59, 5: 29}
+drake canvas (327, 196) anchor (180, 94)
+dust: boulders cut by his frame line at y [(1833, 1858), (1901, 1918)]
+dust: pile px 21969 spray px 6949 bright spray px 1562 stroke px 2240 pebble px 99 clod px 191
+dust palette [[222, 179, 120], [204, 160, 107], [170, 122, 74], [154, 113, 72], [145, 102, 63], [119, 81, 50], [94, 66, 47], [93, 63, 45], [93, 61, 42], [86, 55, 34]] spray colours [[222, 179, 120], [204, 160, 107], [170, 122, 74], [154, 113, 72], [145, 102, 63]] his spray mean [181, 140, 97] partly clear spray [170, 122, 74]
+dust: pile px after its bottom is closed 19511
+dust: boulder clusters 10 soil px 13439 pile height 121
+drake far eye: bright [217, 214, 90] shaded [160, 160, 69] rim [126, 124, 59] {0: ((287, 89, 291, 96), [4, 7, 11]), 5: ((284, 69, 287, 74), [0, 5, 7])}
+  frame 0: bob +0.0 tx +0.0 (game px); closed gaps (px) [1, 1, 20]
+  frame 1: bob -3.4 tx -1.0 (game px); closed gaps (px) [2, 20, 7, 4, 2]
+  frame 2: bob -6.7 tx -1.7 (game px); closed gaps (px) [2, 27, 19]
+  frame 3: bob +4.0 tx +0.1 (game px); closed gaps (px) [32]
+  frame 4: bob +1.9 tx +0.0 (game px); closed gaps (px) []
+  frame 5: bob +0.0 tx +0.0 (game px); closed gaps (px) []
+  frame 6: bob +5.2 tx +0.4 (game px); closed gaps (px) [1]
+  frame 7: bob +14.7 tx +1.1 (game px); closed gaps (px) [1, 1, 3, 5, 12, 4]
+drake: feet line (lowest claw of frame 0) at y 175 of 196 ; anchor (180, 94)
+  frame 0: eye (273.5, 104.9); lowest solid y 175, lowest any y 175; clear margin L68 T32 R23 B20
+  frame 1: eye (273.5, 97.1); lowest solid y 175, lowest any y 175; clear margin L53 T29 R24 B20
+  frame 2: eye (273.5, 89.2); lowest solid y 175, lowest any y 175; clear margin L45 T26 R25 B20
+  frame 3: eye (273.5, 87.5); lowest solid y 174, lowest any y 175; clear margin L47 T15 R26 B20
+  frame 4: eye (273.5, 85.0); lowest solid y 174, lowest any y 175; clear margin L59 T17 R27 B20
+  frame 5: eye (273.5, 82.6); lowest solid y 174, lowest any y 175; clear margin L49 T19 R28 B20
+  frame 6: eye (273.5, 91.1); lowest solid y 173, lowest any y 175; clear margin L37 T20 R26 B20
+  frame 7: eye (273.5, 103.9); lowest solid y 156, lowest any y 175; clear margin L26 T24 R24 B20
+  eye steps 0->1 -7.8, 1->2 -7.9, 2->3 -1.7, 3->4 -2.5, 4->5 -2.4, 5->6 +8.5, 6->7 +12.8, 7->0 +1.0
+  frame 0: eye (273.5, 104.9), snout (303.9, 115.0), horn (268.5, 49.2), tail (91.2, 67.1); to frame 1: eye 7.8, snout 8.6, horn 5.4, tail 42.2
+  frame 1: eye (273.5, 97.1), snout (302.6, 106.4), horn (268.2, 43.8), tail (54.0, 86.9); to frame 2: eye 7.9, snout 8.7, horn 5.5, tail 45.1
+  frame 2: eye (273.5, 89.2), snout (301.4, 97.8), horn (268.0, 38.3), tail (47.3, 131.5); to frame 3: eye 1.7, snout 1.8, horn 2.3, tail 2.0
+  frame 3: eye (273.5, 87.5), snout (300.1, 96.6), horn (267.5, 36.1), tail (48.4, 133.2); to frame 4: eye 2.5, snout 3.3, horn 0.3, tail 10.6
+  frame 4: eye (273.5, 85.0), snout (299.0, 93.5), horn (267.3, 35.9), tail (58.0, 137.6); to frame 5: eye 2.4, snout 3.2, horn 0.3, tail 13.3
+  frame 5: eye (273.5, 82.6), snout (298.0, 90.5), horn (267.1, 35.7), tail (71.3, 138.2); to frame 6: eye 8.5, snout 10.0, horn 4.0, tail 58.3
+  frame 6: eye (273.5, 91.1), snout (300.1, 100.2), horn (267.5, 39.7), tail (60.3, 80.9); to frame 7: eye 12.8, snout 14.4, horn 7.9, tail 32.5
+  frame 7: eye (273.5, 103.9), snout (302.4, 114.4), horn (267.9, 47.6), tail (88.3, 64.5); to frame 0: eye 1.0, snout 1.6, horn 1.7, tail 3.9
+drake colours 87 by alpha {95: 8, 160: 7, 255: 72}
+colors 87 bytes 157570

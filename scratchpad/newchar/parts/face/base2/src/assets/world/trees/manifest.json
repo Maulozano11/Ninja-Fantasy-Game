@@ -1,0 +1,172 @@
+{
+ "group": "trees",
+ "pxPerMeter": 57,
+ "sprites": {
+  "oak": {
+   "label": "Broadleaf Tree",
+   "file": "oak.png",
+   "frameW": 333,
+   "frameH": 547,
+   "anchor": [
+    160,
+    545
+   ],
+   "meters": [
+    5.5,
+    7.5
+   ],
+   "tags": [
+    "cover-half",
+    "blocks-sight",
+    "flammable",
+    "destructible",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 5,
+     "loop": true
+    },
+    "burning": {
+     "row": 1,
+     "frames": 8,
+     "fps": 11,
+     "loop": true
+    },
+    "burnt": {
+     "row": 2,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "pine": {
+   "label": "Cedar Pine",
+   "file": "pine.png",
+   "frameW": 172,
+   "frameH": 521,
+   "anchor": [
+    92,
+    519
+   ],
+   "meters": [
+    3,
+    9
+   ],
+   "tags": [
+    "cover-half",
+    "blocks-sight",
+    "flammable",
+    "destructible",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 5,
+     "loop": true
+    },
+    "burnt": {
+     "row": 1,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "maple": {
+   "label": "Red Maple",
+   "file": "maple.png",
+   "frameW": 340,
+   "frameH": 284,
+   "anchor": [
+    165,
+    281
+   ],
+   "meters": [
+    4.4,
+    5
+   ],
+   "tags": [
+    "cover-half",
+    "blocks-sight",
+    "flammable",
+    "destructible",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 5,
+     "loop": true
+    },
+    "burnt": {
+     "row": 1,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  },
+  "bamboo": {
+   "label": "Bamboo Grove",
+   "file": "bamboo.png",
+   "frameW": 207,
+   "frameH": 361,
+   "anchor": [
+    107,
+    359
+   ],
+   "meters": [
+    2.2,
+    6
+   ],
+   "tags": [
+    "cover-half",
+    "blocks-sight",
+    "hide-spot",
+    "flammable",
+    "destructible"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 8,
+     "fps": 5,
+     "loop": true
+    }
+   }
+  },
+  "stump": {
+   "label": "Tree Stump",
+   "file": "stump.png",
+   "frameW": 62,
+   "frameH": 59,
+   "anchor": [
+    35,
+    57
+   ],
+   "meters": [
+    0.75,
+    0.5
+   ],
+   "tags": [
+    "cover-half",
+    "climbable"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 1,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  }
+ }
+}

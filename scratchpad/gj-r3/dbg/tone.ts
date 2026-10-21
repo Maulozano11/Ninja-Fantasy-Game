@@ -1,0 +1,10 @@
+import { __gjDebug as D } from '/home/user/Ninja-Fantasy-Game/tools/world-sprites/vfx-genjutsu-v3';
+const t = D.toneMap(1), td = D.toneMap(-1);
+const idx = D.PAL.findIndex((c) => c[0] === 70 && c[1] === 55 && c[2] === 88);
+console.log('target', idx, D.KIND[idx], D.LAB[idx].map((v) => v.toFixed(1)));
+D.PAL.forEach((c, i) => { if (t[i] === idx && i !== idx) console.log('from', i, c, D.KIND[i], D.LAB[i].map((v) => v.toFixed(1))); });
+const k = D.key('sphere');
+const m = D.piece(k, 'main');
+const cnt = new Map<number, number>();
+m.d.forEach((v) => { if (v && t[v - 1] === idx) cnt.set(v - 1, (cnt.get(v - 1) ?? 0) + 1); });
+console.log('in sphere main', [...cnt]);

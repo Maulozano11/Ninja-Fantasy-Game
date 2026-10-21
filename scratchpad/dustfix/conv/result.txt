@@ -1,0 +1,3 @@
+fire identical
+lightning identical
+wind identical

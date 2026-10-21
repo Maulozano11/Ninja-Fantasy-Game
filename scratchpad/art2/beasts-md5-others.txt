@@ -1,0 +1,6 @@
+4331c5ff42be97148e3af6825843224b  water.png
+f8e1dfc76b69313bd6c63113f18398cc  wind.png
+a870cfb1c7088f0472626cbd360e69e4  earth.png
+2b0f0806287747670de06ef89e3f53fb  genjutsu.png
+fa9b1f27bfdcb6a5d2cd3aefc3878930  chakra.png
+d26ae06810502566767144cee7d59d1e  poison.png

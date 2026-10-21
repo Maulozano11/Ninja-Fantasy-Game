@@ -1,0 +1,371 @@
+{
+ "kit": "ui_icons_11",
+ "references": [
+  "docs/reference/icons-owner-reference-11.jpg"
+ ],
+ "round": 1,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "frame": {
+  "from": "ui_icons (sheet 1), read only: skill_slot_steel.png and skill_slot_steel_active.png, 56x56, the icon window 44x44 at 6,6; see ui_icons/manifest.json for its slices",
+  "window": {
+   "x": 6,
+   "y": 6,
+   "w": 44,
+   "h": 44
+  }
+ },
+ "method": "his sheets are pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-23.py). 88: his own pixels one to one (his 90x90 or 93x91 window with the columns and rows that show least dropped), on a palette sampled from his pixels, 1-2 pixel areas merged only where his own pixels do not stand out. 44: area mean of his pixels, except his thin lines and strongest specks, which keep their own colour one pixel wide; a light bilateral filter, nearest palette entry, 1-2 pixel areas merged; then hand-fixes only where that still loses his picture (see tools/ui/ui-icons-23.ts). Sheets 8 to 11 use no bilateral filter (it lightened his dark figures into his ground), and their palettes give his rare colours a slot each: after the k-means, every colour of the 44's and the 88's pictures still far from the palette in hue (his skin, his violet chains, a dragon's teeth, his greys and whites) is grouped and the group missed most gets its own entry, his nearest real colour, up to 20 (paletteCovered); his thin marks of one colour (skin, violet chains, embers, teeth, mouth cores, foam) are kept by colour rules. Sheets 8 and 11 have bigger windows (127 to 139 of his pixels across, not square): the icon is the square part of his window (cropInWindow; Swap keeps 139x127 and is squeezed 9% across so his two ninjas stay whole), and its 88 is made as its 44 (area mean of his pixels with his thin lines and specks kept, palette, clean-up: method88)",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (at 88 his pixel stands out there; at 44 his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]",
+ "icons": {
+  "shadow_clone": {
+   "name": "Shadow Clone",
+   "sheet": "docs/reference/icons-owner-reference-11.jpg",
+   "file": "shadow_clone.png",
+   "file2x": "shadow_clone@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "CLON SOMBRA",
+   "hisWindow": [
+    130,
+    130
+   ],
+   "hisWholeWindow": [
+    134,
+    130
+   ],
+   "cropInWindow": [
+    2,
+    0,
+    132,
+    130
+   ],
+   "method88": "area mean of his 130x130 pixels (too many to keep one to one), his thin lines and specks kept in their own colour, as the 44",
+   "palette": [
+    "#06031c",
+    "#0d0826",
+    "#191432",
+    "#232036",
+    "#371e2c",
+    "#261e52",
+    "#2d235f",
+    "#313042",
+    "#512a2c",
+    "#403457",
+    "#383c4a",
+    "#483284",
+    "#563c48",
+    "#4e4b5a",
+    "#704848",
+    "#5b4b7d",
+    "#5e5767",
+    "#624e99",
+    "#6c6272",
+    "#7c68a2",
+    "#7e7088",
+    "#86798e",
+    "#9f7269",
+    "#918496",
+    "#9b8e9c",
+    "#9e8eba",
+    "#a598aa",
+    "#c8988c",
+    "#b4a7b2",
+    "#c2b7c0",
+    "#d0c4bf",
+    "#cfc4c7",
+    "#e3d0ff"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#5b4b7d",
+    "#9f7269",
+    "#7c68a2",
+    "#704848",
+    "#c8988c",
+    "#371e2c",
+    "#9e8eba",
+    "#403457",
+    "#624e99",
+    "#563c48"
+   ],
+   "sampled": [
+    "the skin of his ninjas' hands making the sign"
+   ],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.87,
+     "lowFreqBoxOnPalette": 0.49,
+     "ssim": 0.765,
+     "ssimBox": 0.833,
+     "hue": 288,
+     "hueHis": 287,
+     "colours": 28,
+     "thinRun": [
+      6,
+      "row",
+      38
+     ]
+    },
+    "88": {
+     "small": 14,
+     "smallHis": 14,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.61,
+     "lowFreqBoxOnPalette": 0.46,
+     "ssim": 0.934,
+     "ssimBox": 1,
+     "hue": 287,
+     "hueHis": 287,
+     "colours": 31,
+     "thinRun": [
+      11,
+      "row",
+      70
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "dragon_fire_stream": {
+   "name": "Dragon Fire",
+   "sheet": "docs/reference/icons-owner-reference-11.jpg",
+   "file": "dragon_fire_stream.png",
+   "file2x": "dragon_fire_stream@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "FUEGO DRAGON",
+   "hisWindow": [
+    130,
+    130
+   ],
+   "hisWholeWindow": [
+    134,
+    130
+   ],
+   "cropInWindow": [
+    2,
+    0,
+    132,
+    130
+   ],
+   "method88": "area mean of his 130x130 pixels (too many to keep one to one), his thin lines and specks kept in their own colour, as the 44",
+   "palette": [
+    "#330614",
+    "#301b1e",
+    "#520a18",
+    "#40262a",
+    "#562623",
+    "#621c22",
+    "#7a1714",
+    "#7b340a",
+    "#90150e",
+    "#a41c0c",
+    "#994023",
+    "#b8250c",
+    "#a15918",
+    "#cc1e08",
+    "#ae5214",
+    "#da2c08",
+    "#cd4f08",
+    "#e43d12",
+    "#f43d04",
+    "#f84f08",
+    "#da7c2c",
+    "#f86c14",
+    "#fa8212",
+    "#e0953e",
+    "#fc9212",
+    "#fca61a",
+    "#e7b25f",
+    "#feb726",
+    "#feca40",
+    "#fbd478",
+    "#fedc50",
+    "#fff062"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#ae5214",
+    "#e0953e",
+    "#7b340a",
+    "#cd4f08",
+    "#fbd478",
+    "#a15918",
+    "#562623",
+    "#da7c2c",
+    "#994023",
+    "#e7b25f"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 5,
+     "smallHis": 5,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.99,
+     "lowFreqBoxOnPalette": 0.57,
+     "ssim": 0.75,
+     "ssimBox": 0.806,
+     "hue": 31,
+     "hueHis": 31,
+     "colours": 30,
+     "thinRun": [
+      5,
+      "row",
+      20
+     ]
+    },
+    "88": {
+     "small": 28,
+     "smallHis": 28,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 0.67,
+     "lowFreqBoxOnPalette": 0.48,
+     "ssim": 0.948,
+     "ssimBox": 1,
+     "hue": 31,
+     "hueHis": 30,
+     "colours": 32,
+     "thinRun": [
+      7,
+      "row",
+      72
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "water_dragon_suiryuudan": {
+   "name": "Water Dragon",
+   "sheet": "docs/reference/icons-owner-reference-11.jpg",
+   "file": "water_dragon_suiryuudan.png",
+   "file2x": "water_dragon_suiryuudan@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "DRAGON AGUA",
+   "hisWindow": [
+    130,
+    130
+   ],
+   "hisWholeWindow": [
+    134,
+    130
+   ],
+   "cropInWindow": [
+    2,
+    0,
+    132,
+    130
+   ],
+   "method88": "area mean of his 130x130 pixels (too many to keep one to one), his thin lines and specks kept in their own colour, as the 44",
+   "palette": [
+    "#0a1c36",
+    "#082449",
+    "#082a57",
+    "#163248",
+    "#0e3269",
+    "#103b76",
+    "#124683",
+    "#145190",
+    "#345779",
+    "#185c9c",
+    "#1e68a8",
+    "#2673b2",
+    "#5d778a",
+    "#4678a5",
+    "#2e7ebc",
+    "#368bc6",
+    "#3e97cf",
+    "#6796b6",
+    "#46a5da",
+    "#52b2de",
+    "#5ebfe9",
+    "#6fcbef",
+    "#9fc8d9",
+    "#82d6f6",
+    "#9be3f9",
+    "#b2f0fb",
+    "#cefbfe",
+    "#eefdfe"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#345779",
+    "#6796b6",
+    "#9fc8d9",
+    "#5d778a",
+    "#163248",
+    "#4678a5"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 0,
+     "smallHis": 0,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 2.07,
+     "lowFreqBoxOnPalette": 0.73,
+     "ssim": 0.657,
+     "ssimBox": 0.73,
+     "hue": 249,
+     "hueHis": 251,
+     "colours": 28,
+     "thinRun": [
+      7,
+      "row",
+      22
+     ]
+    },
+    "88": {
+     "small": 60,
+     "smallHis": 60,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.69,
+     "lowFreqBoxOnPalette": 0.46,
+     "ssim": 0.892,
+     "ssimBox": 1,
+     "hue": 255,
+     "hueHis": 253,
+     "colours": 28,
+     "thinRun": [
+      7,
+      "row",
+      43
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  }
+ }
+}

@@ -1,0 +1,43 @@
+[
+ {"name": "grip", "rows": [
+  "..obbbbo..",
+  ".osbbbbbo.",
+  "osbbbbbbso",
+  "olbbbbbxlo",
+  "oDbbbbbxbo",
+  "obxbxbxbDo",
+  "osxsxsxsDo",
+  "oDoDoDoDo.",
+  ".o.o.o.o.."]},
+ {"name": "fist", "rows": [
+  "..obbbo..",
+  ".osbbbbo.",
+  "osbbblbso",
+  "olbbbbbDo",
+  "obxbxbxDo",
+  "oDsDsDsso",
+  ".oDoDoDo.",
+  "..ooooo.."]},
+ {"name": "relaxed", "rows": [
+  ".obbbbo..",
+  "osbbbbbo.",
+  "osbbbbbso",
+  "olbbbbbbo",
+  "osbbbbbDo",
+  "obDbDbDDo",
+  "osbsbsbo.",
+  ".oDsDsDo.",
+  "..oo.oo.."]},
+ {"name": "open", "rows": [
+  "..obbbbo...",
+  ".osbbbbbo..",
+  "osbbbbbbso.",
+  "olbbbbbbbsoo",
+  "olbbbbbbsDbo",
+  "osbbbbbsDobo",
+  "osDbDbDbo...",
+  "obDbDbDbo...",
+  "osDbDbDso...",
+  ".obobobo....",
+  "..o.o.o....."]}
+]

@@ -1,0 +1,110 @@
+// ---------------------------------------------------------------------------
+// BROWN - Shattered Earth: the ground cracks open under the feet, chakra glows
+// in the seams, and rocks tear loose to float up around the body
+// ---------------------------------------------------------------------------
+
+/** Rock chunks lit from the upper left (0 edge .. 4 highlight), from big to small. */
+const ROCKS: string[][] = [
+  ['..0000..', '.033320.', '03443210', '03332110', '.0221100', '..0000..'],
+  ['.0000.', '034320', '033210', '022110', '.0000.'],
+  ['000..', '0340.', '03210', '02110', '.0000'],
+  ['.00.', '0320', '0210', '.00.'],
+  ['30', '10'],
+];
+
+function rock(c: Ctx, layer: Lay, x: number, y: number, size: number): void {
+  stamp(c.fx, layer, c.pal, x, y, ROCKS[clamp(size, 0, ROCKS.length - 1)]);
+}
+
+/** A crack in the ground along `pts`: a dark split with chakra glowing up from inside it. */
+function seam(c: Ctx, layer: Lay, pts: P[], glow: number): void {
+  for (let k = 1; k < pts.length; k++)
+    bres(pts[k - 1].x, pts[k - 1].y, pts[k].x, pts[k].y, (x, y) => {
+      c.fx.put(layer, x, y, c.pal[0]);
+      c.fx.put(layer, x, y + 1, c.pal[glow > 0.5 ? 4 : 3], 230);
+      c.fx.put(layer, x, y - 1, c.pal[2], 200);
+    });
+}
+
+function brownBurst(c: Ctx, s: Src, L: number): void {
+  const { fx, t } = c;
+  if (s.point) {
+    // a clod of rock packed in the palm, its seams glowing, stones circling it
+    fillOrb(c, s, [3, 2, 1]);
+    const ax = s.anchor.x;
+    const ay = s.anchor.y;
+    seam(c, 1, [{ x: ax - s.r * 0.6, y: ay - 1 }, { x: ax, y: ay + 1 }, { x: ax + s.r * 0.5, y: ay - 2 }], pulse(t, 6));
+    const n = 3 + Math.round(2 * L);
+    for (let k = 0; k < n; k++) {
+      const a = TAU * (t / 12 + k / n);
+      const R = s.r + (3 + L) * S;
+      rock(c, Math.sin(a) > 0 ? 1 : 0, ax + Math.cos(a) * R, ay + Math.sin(a) * R * 0.6, k === 0 ? 2 : 3);
+    }
+    return;
+  }
+  const gx = s.cx;
+  const gy = s.y1 + 0.5;
+  const rx = (12 + 7 * L) * S;
+  const ry = Math.max(2 * S, rx * 0.28);
+  // the broken ground: a ragged plate of earth around the feet (behind them above, before them below)
+  for (let y = Math.floor(gy - ry); y <= gy + ry; y++)
+    for (let x = Math.floor(gx - rx); x <= gx + rx; x++) {
+      const e = ((x + 0.5 - gx) / rx) ** 2 + ((y + 0.5 - gy) / ry) ** 2;
+      const rag = 0.72 + 0.28 * hash(Math.floor(x / (2 * S)), Math.floor(y / S), c.seed);
+      if (e > rag) continue;
+      const n = hash(Math.floor(x / S), Math.floor(y / S), c.seed + 1);
+      fx.put(y >= gy ? 1 : 0, x, y, c.pal[e > rag - 0.12 ? 2 : n > 0.7 ? 2 : 1], e > rag - 0.12 ? 230 : 200);
+    }
+  // cracks running out from the feet, chakra glowing in them on the beat
+  const nc = Math.round(5 + 3 * L);
+  for (let k = 0; k < nc; k++) {
+    const r = rng(c.seed + 200 + k * 17);
+    const a = (k / nc) * TAU + r() * 0.5;
+    const r0 = 3 * S;
+    const r1 = rx * (0.7 + r() * 0.3);
+    const pts: P[] = [];
+    for (let j = 0; j <= 4; j++) {
+      const d = r0 + ((r1 - r0) * j) / 4;
+      const aa = a + (j ? (r() - 0.5) * 0.35 : 0);
+      pts.push({ x: gx + Math.cos(aa) * d, y: gy + Math.sin(aa) * d * 0.28 });
+    }
+    seam(c, Math.sin(a) > 0 ? 1 : 0, pts, pulse(t, 12, k / nc));
+  }
+  // rocks tearing loose: they rise from the ground, hang a moment and crumble
+  const nr = Math.round(5 + 7 * L);
+  for (let k = 0; k < nr; k++) {
+    const [age, cyc] = cycle(t, k, 12, c.seed + 5);
+    const r = rng(c.seed + 300 + k * 41 + cyc * 13);
+    const a = r() * TAU;
+    const d = halfW(s, s.y1 - 3 * S) + (2 + r() * 7) * S;
+    const x0 = gx + Math.cos(a) * d;
+    const y0 = gy + Math.sin(a) * d * 0.28;
+    const front = Math.sin(a) > 0;
+    const u = age / 12;
+    const h = (10 + r() * (12 + 18 * L)) * S;
+    const rise = h * (1 - (1 - Math.min(1, u / 0.7)) ** 2);
+    const size = r() < 0.25 ? 1 : r() < 0.6 ? 2 : 3;
+    const x = x0 + Math.sin(TAU * (t / 12) + k) * 0.6 * S;
+    const y = y0 - rise + (u > 0.7 ? Math.sin(TAU * (t / 6) + k) * 0.5 * S : 0);
+    rock(c, front ? 1 : 0, x, y, u > 0.85 ? 4 : size);
+    // the dust it kicks up as it tears loose
+    if (age < 3)
+      for (let j = 0; j < 3; j++) {
+        const dx = (j - 1) * (2 + age) * S * 0.6;
+        stamp(fx, front ? 1 : 0, c.pal, x0 + dx, y0 - age * 0.5 * S, age < 2 ? ['23', '12'] : ['2.', '.1'], 210);
+      }
+  }
+  // grit hopping off the ground
+  const ng = Math.round(4 + 6 * L);
+  for (let k = 0; k < ng; k++) {
+    const [age, cyc] = cycle(t, k, 8, c.seed + 9);
+    const r = rng(c.seed + 700 + k * 23 + cyc * 7);
+    const a = r() * TAU;
+    const d = rx * (0.3 + r() * 0.6);
+    const vx = Math.cos(a) * (0.5 + r()) * S;
+    const x = gx + Math.cos(a) * d + vx * age;
+    const y = gy + Math.sin(a) * d * 0.28 - (2.4 * age - 0.3 * age * age) * S;
+    fx.put(Math.sin(a) > 0 ? 1 : 0, x, y, c.pal[age < 4 ? 3 : 2]);
+  }
+}
+

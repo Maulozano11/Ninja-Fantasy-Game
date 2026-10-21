@@ -1,0 +1,21 @@
+import { chromium } from '/opt/node-tools/node_modules/playwright/index.mjs';
+const OUT = '/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/warp-throw/review/cap';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const page = await browser.newPage({ viewport: { width: 1280, height: 760 } });
+page.on('pageerror', (e) => console.log('pageerror:', e.message));
+await page.addInitScript(() => { localStorage.setItem('shinobi.lang', 'es'); localStorage.setItem('shinobi.tips.off', '1'); localStorage.setItem('shinobi.battleSpeed', '1'); });
+await page.goto('http://127.0.0.1:5293/#combat');
+await page.waitForTimeout(3000);
+const btns = await page.locator('button').allTextContents();
+console.log(btns.join(' | '));
+await page.locator('button', { hasText: 'Renegados en el claro' }).click();
+await page.waitForFunction(() => !!window.__battle, null, { timeout: 60000 });
+await page.waitForTimeout(2000);
+const info = await page.evaluate(async () => {
+  const s = window.__battle.state();
+  const { getMap } = await import('/src/battle/map.ts').catch(() => ({}));
+  return { map: s.mapId ?? s.map, phase: s.phase, units: Object.values(s.units).map((u) => ({ id: u.id, name: u.name, team: u.team, clan: u.character?.clan, kind: u.kind, pos: u.pos, held: (u.look ?? u.character?.appearance)?.slots?.held?.id, armed: u.armed, hidden: u.cond.hidden })), keys: Object.keys(s) };
+});
+console.log(JSON.stringify(info, null, 1));
+await page.screenshot({ path: `${OUT}/explore.png` });
+await browser.close();

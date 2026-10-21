@@ -1,0 +1,63 @@
+vfx_fire/beast fly#0: top
+vfx_fire/stream fly#0: left,right(y 18-42)
+vfx_fire/stream fly#1: left,right(y 21-41)
+vfx_fire/stream fly#2: left,right(y 18-43)
+vfx_fire/stream fly#3: left,right(y 21-41)
+vfx_fire/stream fly#4: left,right(y 24-44)
+vfx_fire/stream fly#5: left,right(y 19-42)
+vfx_fire/stream fly#6: left,right(y 18-42)
+vfx_fire/stream fly#7: left,right(y 19-41)
+vfx_fire/stream_head fly#0: left
+vfx_fire/stream_head fly#1: left
+vfx_fire/stream_head fly#2: left
+vfx_fire/stream_head fly#3: left
+vfx_fire/stream_head fly#4: left
+vfx_fire/stream_head fly#5: left
+vfx_fire/stream_head fly#6: left
+vfx_fire/stream_head fly#7: left
+vfx_fire/annihilation_enh surge3#2: right(y 445-554)
+vfx_fire/annihilation_enh surge3#3: right(y 442-549)
+vfx_fire/annihilation_enh burn#0: right(y 424-534)
+vfx_fire/annihilation_enh burn#1: right(y 423-561)
+vfx_fire/annihilation_enh burn#2: right(y 423-533)
+vfx_fire/annihilation_enh burn#3: right(y 423-533)
+vfx_fire/annihilation_enh burn#4: right(y 427-545)
+vfx_fire/annihilation_enh burn#5: right(y 425-531)
+vfx_fire/annihilation_enh fade#0: right(y 424-534)
+vfx_water/beast fly#0: left
+vfx_water/beast fly#1: left
+vfx_water/beast fly#2: left
+vfx_water/beast fly#3: left
+vfx_water/beast fly#4: left
+vfx_water/beast fly#5: left
+vfx_water/stream fly#0: left,right(y 15-43)
+vfx_water/stream fly#1: left,right(y 14-44)
+vfx_water/stream fly#2: left,right(y 17-45)
+vfx_water/stream fly#3: left,right(y 18-44)
+vfx_water/stream_head fly#0: left
+vfx_water/stream_head fly#1: left
+vfx_water/stream_head fly#2: left
+vfx_water/stream_head fly#3: left
+vfx_wind/beast fly#0: top,left
+vfx_wind/beast fly#1: left
+vfx_wind/beast fly#2: left
+vfx_wind/beast fly#3: left
+vfx_wind/beast fly#4: left
+vfx_wind/beast fly#5: left
+vfx_wind/stream fly#0: left,right(y 21-25)
+vfx_wind/stream fly#1: left,right(y 19-43)
+vfx_wind/stream fly#2: left,right(y 37-43)
+vfx_wind/stream fly#3: left,right(y 27-34)
+vfx_wind/stream_head fly#0: left
+vfx_wind/stream_head fly#1: left
+vfx_wind/stream_head fly#2: left
+vfx_wind/stream_head fly#3: left
+vfx_lightning/stream fly#0: left,right(y 23-43)
+vfx_lightning/stream fly#1: left,right(y 23-40)
+vfx_lightning/stream fly#2: left,right(y 16-40)
+vfx_lightning/stream fly#3: left,right(y 23-49)
+vfx_lightning/stream_head fly#0: left
+vfx_lightning/stream_head fly#1: left
+vfx_lightning/stream_head fly#2: left
+vfx_lightning/stream_head fly#3: left
+-- 528 frames checked, 62 touch the border

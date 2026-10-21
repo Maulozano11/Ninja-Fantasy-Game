@@ -1,0 +1,12 @@
+[
+ {"key":"haori","body":"bulky","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_haori"}}},
+ {"key":"rogue","body":"male","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_rogue"}}},
+ {"key":"crimson","body":"female","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_crimson"}}},
+ {"key":"knight","body":"slender","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_knight"}}},
+ {"key":"rose","body":"slender","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_rose"}}},
+ {"key":"shadow","body":"male","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_shadow"}}},
+ {"key":"traveler","body":"female","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_traveler"}}},
+ {"key":"scarf","body":"bulky","held":"held_katana","pose":"throw","slots":{"cape":{"id":"cape_scarf"}}},
+ {"key":"Aiden","preset":"Aiden","pose":"throw"},
+ {"key":"Solen","preset":"Solen","pose":"throw"}
+]

@@ -1,0 +1,35 @@
+bolt        74x72  anchor  49,33  solid  1862 rim  115 glow   315
+breath     123x114 anchor  11,56  solid  5383 rim  277 glow   711
+sphere      73x66  anchor  38,29  solid  1482 rim   95 glow   334
+slash       64x74  anchor  33,36  solid  1654 rim  124 glow   323
+multi       75x63  anchor  37,31  solid   995 rim  127 glow   266
+hit         84x81  anchor  43,41  solid  1757 rim  176 glow   499
+blast      raw light: colour [108. 233.  87.], residual [2.3 0.  2.2], zone 15066 px, filled 7999 px, peak alpha 0.72
+blast      266x173 anchor 102,122 solid 15845 rim  391 glow  1234
+wall       292x141 anchor 145,129 solid 27848 rim 1223 glow   641
+wall_diag  272x284 anchor 120,217 solid 29799 rim 1214 glow  9005
+aura        94x145 anchor  47,123 solid  6756 rim  544 glow   979
+stream     134x72  anchor  64,36  solid  2770 rim  281 glow   554
+aura veil: figure mean [85.8 76.8 79.9] plain [77.8 65.1 72.3] violet [109.  61. 132.] green [150. 217. 107.] a 0.143
+green 52 colours from 36000 px
+purple 14 colours from 30000 px
+neutral 24 colours from 36000 px
+rim green from [30. 76. 25.] -> [16. 40. 13.]
+rim purple from [67. 42. 81.] -> [37. 24. 45.]
+rim neutral from [46. 45. 52.] -> [25. 31. 27.]
+palette 233
+wall       sealed 400 see-through px
+wall_diag  sealed 706 see-through px
+bolt         74x72  anchor  49,33  pieces main,drops,glow,mist
+breath      123x114 anchor  11,56  pieces main,drops,glow,mist
+sphere       73x66  anchor  38,29  pieces main,drops,glow,ring
+slash        64x74  anchor  33,36  pieces main,glow,dashes
+multi        75x63  anchor  37,31  pieces main,drops,glow
+hit          84x81  anchor  43,41  pieces main,drops,glow,streaks
+blast       266x173 anchor 102,122 pieces main,drops,glow,mist,pool
+wall        292x141 anchor 145,129 pieces main,drops,glow,frame0,frame1,frame2
+wall_diag   272x284 anchor 120,217 pieces main,drops,glow,frame0,frame1,frame2
+aura_back    94x145 anchor  47,123 pieces main,drops,glow
+aura         94x145 anchor  47,123 pieces main
+stream       64x64  anchor   0,32  pieces main,drops,glow
+stream_head  70x72  anchor  32,36  pieces main,drops,glow,mist

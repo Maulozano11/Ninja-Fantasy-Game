@@ -1,0 +1,4 @@
+setup {"r":"preset_founder","foe":"rogue_0","from":{"x":29.25,"z":2.25},"node":{"x":23.25,"z":3.25},"foePos":{"x":38.25,"z":4.25},"waterFrom":2,"waterNode":0,"held":"held_katana","armed":true,"weaponHeld":true}
+acted true
+after {"pos":{"x":23.25,"z":3.25},"facing":-1,"busy":false}
+busy false at frame 52 ms 1040

@@ -1,0 +1,148 @@
+{
+ "ref": "genjutsu-set-owner-reference.jpg",
+ "scale": 0.7741935483870968,
+ "hisCharacter": {
+  "blast": [
+   124,
+   [
+    286,
+    409
+   ]
+  ],
+  "wall": [
+   124,
+   [
+    525,
+    648
+   ]
+  ],
+  "wall_depth": [
+   120,
+   [
+    877,
+    996
+   ]
+  ],
+  "wall_diag": [
+   132,
+   [
+    598,
+    729
+   ]
+  ]
+ },
+ "pictures": {
+  "L": [
+   262,
+   798,
+   522,
+   1009
+  ],
+  "R": [
+   522,
+   798,
+   785,
+   1009
+  ]
+ },
+ "panel": [
+  261,
+  796,
+  786,
+  1010
+ ],
+ "anchors": {
+  "L": [
+   384.6756796988399,
+   905.5343924683434
+  ],
+  "R": [
+   665.1502695565949,
+   902.600258826489
+  ]
+ },
+ "frame": [
+  221,
+  170
+ ],
+ "anchor": [
+  116,
+  90
+ ],
+ "vortex": [
+  383.0,
+  933.0,
+  72.0
+ ],
+ "stats": {
+  "fly": [
+   {
+    "opaque": 14829,
+    "enclosed": 0,
+    "specks": 0
+   },
+   {
+    "opaque": 12713,
+    "enclosed": 0,
+    "specks": 0
+   },
+   {
+    "opaque": 11425,
+    "enclosed": 0,
+    "specks": 0
+   },
+   {
+    "opaque": 9357,
+    "enclosed": 0,
+    "specks": 0
+   },
+   {
+    "opaque": 9999,
+    "enclosed": 0,
+    "specks": 0
+   },
+   {
+    "opaque": 12342,
+    "enclosed": 0,
+    "specks": 0
+   }
+  ],
+  "summon": [
+   {
+    "opaque": 1140,
+    "enclosed": 0,
+    "specks": 0
+   },
+   {
+    "opaque": 5780,
+    "enclosed": 0,
+    "specks": 0
+   },
+   {
+    "opaque": 9857,
+    "enclosed": 0,
+    "specks": 0
+   },
+   {
+    "opaque": 11765,
+    "enclosed": 0,
+    "specks": 0
+   },
+   {
+    "opaque": 14364,
+    "enclosed": 0,
+    "specks": 0
+   },
+   {
+    "opaque": 14829,
+    "enclosed": 0,
+    "specks": 0
+   }
+  ]
+ },
+ "outline": [
+  17.0,
+  13.0,
+  30.0
+ ]
+}

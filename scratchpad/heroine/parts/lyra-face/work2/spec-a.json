@@ -1,0 +1,5 @@
+[
+ {"out": "/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/heroine/parts/lyra-face/work2/std.png", "look": {"eyeShape": "standard", "eyeColor": "#4eb570", "skin": "#fdceb0"}, "alpha": true},
+ {"out": "/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/heroine/parts/lyra-face/work2/keen.png", "look": {"eyeShape": "keen", "eyeColor": "#4eb570", "skin": "#fdceb0"}, "alpha": true},
+ {"out": "/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/heroine/parts/lyra-face/work2/keen-soft.png", "look": {"eyeShape": "keen", "eyeColor": "#4eb570", "skin": "#fdceb0", "faceShape": "soft"}, "alpha": true}
+]

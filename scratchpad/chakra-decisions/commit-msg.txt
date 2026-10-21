@@ -1,0 +1,32 @@
+Chakra types: the owner's four answers, and the nature gates the elemental jutsu
+
+The owner (2026-10-21): "1 si 2 actualiza 3 sombra se quedara pendiente y
+espiritu tambien quitalos de la seleccion y luz y vacio hay que hacerles
+justsus pero dejalo pendiente [...] 4 si".
+
+- Saved legends ("actualiza"): a copy of Kaien, Ren, Hiro, Raiga, Hana or
+  Kenji (hero, roster, a mission under way, an import; matched by id) that
+  still has its old burst loads with the legend's burst of today, in the
+  colour it showed. updateLegendChakra in migrateCharacter, from
+  LEGEND_OLD_BURST; once; a copy with another burst is left alone.
+- Shadow and Spirit are pending: out of the creator's type tiles and the
+  random ninja (CHAKRA_TYPES `pending`, OFFERED_TYPES). A ninja that has one
+  keeps it, draws it and reads it; the creator shows its tile marked
+  "Pendiente" and lets the player switch away. Light and Void stay; a hint
+  says their own jutsu come later.
+- The nature gates the elemental jutsu (src/rules/jutsuNature.ts): the
+  Element I, Element II and S-rank slots offer only jutsu of the ninja's
+  element plus the ones with no element; Utility and the clan secret are
+  not gated; Light and Void get no elemental jutsu yet. Changing the type
+  swaps the jutsu of another element (own element, lowest rank first) and a
+  note says which. A sheet's own off-nature jutsu (Kaien's Fireball, Raiga's
+  Earth Wall, older sheets) stay, marked "no es de tu naturaleza". The
+  random ninja picks jutsu of its nature and its clan's secret. Enemies and
+  battles are untouched; the rank cap for a new ninja is not built (his call).
+- Tests: the saved-copy update for hero, roster and mission run, copies
+  left alone, pending types, the gate per nature and slot, the swaps, the
+  legends' second-element jutsu. Docs: GAMEPLAY_DESIGN "Chakra type" (his
+  answers as decided) and Open questions, STATUS.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01E1PN8FTpA19jzx1FNkVfPu

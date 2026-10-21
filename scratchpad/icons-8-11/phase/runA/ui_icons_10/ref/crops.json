@@ -1,0 +1,164 @@
+{
+ "grid": {
+  "10": {
+   "pitch": [
+    4.166666666666667,
+    4.164179104477612
+   ],
+   "spectrumPitch": [
+    4.1668,
+    4.1647
+   ],
+   "phase": [
+    0.5,
+    0.65
+   ],
+   "edgeRatio": [
+    1.879,
+    2.064
+   ],
+   "blockSpread": 1.394,
+   "source": "icons-owner-reference-10.jpg",
+   "row": [
+    25,
+    312,
+    1975,
+    779
+   ],
+   "rowScale": {
+    "1x": 0.10757946210268948,
+    "4x": 0.43031784841075793
+   }
+  }
+ },
+ "icons": {
+  "dragon_fire_bomb": {
+   "sheet": "10",
+   "box": [
+    14,
+    83,
+    112,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    8,
+    77,
+    118,
+    185
+   ],
+   "sheetBox": [
+    58,
+    346,
+    467,
+    746
+   ],
+   "sheetSlot": [
+    33,
+    321,
+    492,
+    771
+   ],
+   "what": "Dragon Flame (Llama Dragon): three fire dragon heads roaring in flames"
+  },
+  "wood_dragon_jutsu": {
+   "sheet": "10",
+   "box": [
+    132,
+    83,
+    230,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    126,
+    77,
+    236,
+    185
+   ],
+   "sheetBox": [
+    550,
+    346,
+    958,
+    746
+   ],
+   "sheetSlot": [
+    525,
+    321,
+    983,
+    771
+   ],
+   "what": "Wood Dragon (Dragon Madera): a dragon of twisted wood and leaves, on green"
+  },
+  "adamantine_sealing_chains": {
+   "sheet": "10",
+   "box": [
+    250,
+    83,
+    348,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    244,
+    77,
+    354,
+    185
+   ],
+   "sheetBox": [
+    1042,
+    346,
+    1450,
+    746
+   ],
+   "sheetSlot": [
+    1017,
+    321,
+    1475,
+    771
+   ],
+   "what": "Chains (Cadenas): two crossed gold chains with spear tips and gold runes, on magenta"
+  },
+  "taki_sixtyfour_palms": {
+   "sheet": "10",
+   "box": [
+    368,
+    83,
+    466,
+    179
+   ],
+   "size": [
+    98,
+    96
+   ],
+   "slot": [
+    362,
+    77,
+    472,
+    185
+   ],
+   "sheetBox": [
+    1533,
+    346,
+    1942,
+    746
+   ],
+   "sheetSlot": [
+    1508,
+    321,
+    1967,
+    771
+   ],
+   "what": "64 Palms (64 Palmas): a ninja in stance on a glowing trigram circle, open palms whirling round him"
+  }
+ }
+}

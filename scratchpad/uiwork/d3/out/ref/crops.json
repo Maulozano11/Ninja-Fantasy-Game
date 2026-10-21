@@ -1,0 +1,825 @@
+{
+ "source": "ui-battle-owner-reference.jpg",
+ "scale": 1.5625,
+ "crops": {
+  "top_centre": {
+   "box": [
+    290,
+    0,
+    720,
+    100
+   ],
+   "size": [
+    430,
+    100
+   ],
+   "ours": [
+    672,
+    156
+   ],
+   "oursAt": [
+    453,
+    0
+   ],
+   "what": "top centre: chains, target plaque, round medallion, turn row"
+  },
+  "target_bar": {
+   "box": [
+    386,
+    18,
+    652,
+    46
+   ],
+   "size": [
+    266,
+    28
+   ],
+   "ours": [
+    416,
+    44
+   ],
+   "oursAt": [
+    603,
+    28
+   ],
+   "what": "chained target plaque with the red bar"
+  },
+  "target_end": {
+   "box": [
+    386,
+    18,
+    420,
+    46
+   ],
+   "size": [
+    34,
+    28
+   ],
+   "ours": [
+    53,
+    44
+   ],
+   "oursAt": [
+    603,
+    28
+   ],
+   "what": "left end of the target plaque"
+  },
+  "target_end_right": {
+   "box": [
+    618,
+    18,
+    656,
+    46
+   ],
+   "size": [
+    38,
+    28
+   ],
+   "ours": [
+    59,
+    44
+   ],
+   "oursAt": [
+    966,
+    28
+   ],
+   "what": "right end of the target plaque (pointed channel end, spear tip)"
+  },
+  "target_name": {
+   "box": [
+    430,
+    6,
+    606,
+    25
+   ],
+   "size": [
+    176,
+    19
+   ],
+   "ours": [
+    275,
+    30
+   ],
+   "oursAt": [
+    672,
+    9
+   ],
+   "what": "target name over the plaque"
+  },
+  "chain_left": {
+   "box": [
+    302,
+    0,
+    364,
+    72
+   ],
+   "size": [
+    62,
+    72
+   ],
+   "ours": [
+    97,
+    112
+   ],
+   "oursAt": [
+    472,
+    0
+   ],
+   "what": "chain from the top edge to the round medallion"
+  },
+  "chain_right": {
+   "box": [
+    612,
+    0,
+    686,
+    74
+   ],
+   "size": [
+    74,
+    74
+   ],
+   "ours": [
+    116,
+    116
+   ],
+   "oursAt": [
+    956,
+    0
+   ],
+   "what": "chain from the top edge to the end of the turn row"
+  },
+  "chain_sag": {
+   "box": [
+    462,
+    74,
+    560,
+    100
+   ],
+   "size": [
+    98,
+    26
+   ],
+   "ours": [
+    153,
+    41
+   ],
+   "oursAt": [
+    722,
+    116
+   ],
+   "what": "chain hanging under the turn row"
+  },
+  "round_medallion": {
+   "box": [
+    354,
+    38,
+    407,
+    95
+   ],
+   "size": [
+    53,
+    57
+   ],
+   "ours": [
+    83,
+    89
+   ],
+   "oursAt": [
+    553,
+    59
+   ],
+   "what": "RONDA medallion with four gems"
+  },
+  "init_active": {
+   "box": [
+    406,
+    49,
+    441,
+    83
+   ],
+   "size": [
+    35,
+    34
+   ],
+   "ours": [
+    55,
+    53
+   ],
+   "oursAt": [
+    634,
+    77
+   ],
+   "what": "turn row: the acting unit (gold square)"
+  },
+  "init_ally": {
+   "box": [
+    438,
+    49,
+    463,
+    81
+   ],
+   "size": [
+    25,
+    32
+   ],
+   "ours": [
+    39,
+    50
+   ],
+   "oursAt": [
+    684,
+    77
+   ],
+   "what": "turn row: an ally (blue base)"
+  },
+  "init_enemy": {
+   "box": [
+    540,
+    49,
+    565,
+    81
+   ],
+   "size": [
+    25,
+    32
+   ],
+   "ours": [
+    39,
+    50
+   ],
+   "oursAt": [
+    844,
+    77
+   ],
+   "what": "turn row: an enemy (red base)"
+  },
+  "init_end": {
+   "box": [
+    588,
+    53,
+    624,
+    80
+   ],
+   "size": [
+    36,
+    27
+   ],
+   "ours": [
+    56,
+    42
+   ],
+   "oursAt": [
+    919,
+    83
+   ],
+   "what": "turn row: link and the empty end circle"
+  },
+  "minimap": {
+   "box": [
+    897,
+    0,
+    1024,
+    132
+   ],
+   "size": [
+    127,
+    132
+   ],
+   "ours": [
+    198,
+    206
+   ],
+   "oursAt": [
+    1402,
+    0
+   ],
+   "what": "round minimap frame"
+  },
+  "bar_left": {
+   "box": [
+    215,
+    485,
+    263,
+    558
+   ],
+   "size": [
+    48,
+    73
+   ],
+   "ours": [
+    75,
+    114
+   ],
+   "oursAt": [
+    336,
+    758
+   ],
+   "what": "action bar: left end with gem studs"
+  },
+  "bar_right": {
+   "box": [
+    768,
+    485,
+    808,
+    558
+   ],
+   "size": [
+    40,
+    73
+   ],
+   "ours": [
+    62,
+    114
+   ],
+   "oursAt": [
+    1200,
+    758
+   ],
+   "what": "action bar: right end"
+  },
+  "bar": {
+   "box": [
+    215,
+    428,
+    808,
+    576
+   ],
+   "size": [
+    593,
+    148
+   ],
+   "ours": [
+    927,
+    231
+   ],
+   "oursAt": [
+    336,
+    669
+   ],
+   "what": "action bar, whole"
+  },
+  "crest": {
+   "box": [
+    372,
+    428,
+    692,
+    495
+   ],
+   "size": [
+    320,
+    67
+   ],
+   "ours": [
+    500,
+    105
+   ],
+   "oursAt": [
+    581,
+    669
+   ],
+   "what": "raised crest: medallion, HP strip, chakra strip, scrolls"
+  },
+  "medallion_active": {
+   "box": [
+    478,
+    428,
+    556,
+    495
+   ],
+   "size": [
+    78,
+    67
+   ],
+   "ours": [
+    122,
+    105
+   ],
+   "oursAt": [
+    747,
+    669
+   ],
+   "what": "acting character medallion"
+  },
+  "hp_strip": {
+   "box": [
+    398,
+    466,
+    506,
+    492
+   ],
+   "size": [
+    108,
+    26
+   ],
+   "ours": [
+    169,
+    41
+   ],
+   "oursAt": [
+    622,
+    728
+   ],
+   "what": "HP strip (red bar) left of the medallion"
+  },
+  "chakra_strip": {
+   "box": [
+    536,
+    466,
+    642,
+    492
+   ],
+   "size": [
+    106,
+    26
+   ],
+   "ours": [
+    166,
+    41
+   ],
+   "oursAt": [
+    838,
+    728
+   ],
+   "what": "chakra strip (gems) right of the medallion"
+  },
+  "scroll_left": {
+   "box": [
+    370,
+    452,
+    414,
+    494
+   ],
+   "size": [
+    44,
+    42
+   ],
+   "ours": [
+    69,
+    66
+   ],
+   "oursAt": [
+    578,
+    706
+   ],
+   "what": "scrollwork at the left end of the crest"
+  },
+  "scroll_right": {
+   "box": [
+    620,
+    452,
+    692,
+    494
+   ],
+   "size": [
+    72,
+    42
+   ],
+   "ours": [
+    112,
+    66
+   ],
+   "oursAt": [
+    969,
+    706
+   ],
+   "what": "scrollwork at the right end of the crest"
+  },
+  "chakra_gems": {
+   "box": [
+    554,
+    472,
+    613,
+    491
+   ],
+   "size": [
+    59,
+    19
+   ],
+   "ours": [
+    92,
+    30
+   ],
+   "oursAt": [
+    866,
+    738
+   ],
+   "what": "chakra gems red, orange, blue"
+  },
+  "skill_slot": {
+   "box": [
+    354,
+    497,
+    397,
+    548
+   ],
+   "size": [
+    43,
+    51
+   ],
+   "ours": [
+    67,
+    80
+   ],
+   "oursAt": [
+    553,
+    777
+   ],
+   "what": "skill slot with its number tag"
+  },
+  "skill_tag": {
+   "box": [
+    364,
+    498,
+    380,
+    512
+   ],
+   "size": [
+    16,
+    14
+   ],
+   "ours": [
+    25,
+    22
+   ],
+   "oursAt": [
+    569,
+    778
+   ],
+   "what": "number tag"
+  },
+  "item_slot": {
+   "box": [
+    592,
+    503,
+    636,
+    548
+   ],
+   "size": [
+    44,
+    45
+   ],
+   "ours": [
+    69,
+    70
+   ],
+   "oursAt": [
+    925,
+    786
+   ],
+   "what": "greyed item slot with label and count"
+  },
+  "item_badge": {
+   "box": [
+    621,
+    532,
+    637,
+    548
+   ],
+   "size": [
+    16,
+    16
+   ],
+   "ours": [
+    25,
+    25
+   ],
+   "oursAt": [
+    970,
+    831
+   ],
+   "what": "blue count badge"
+  },
+  "pips": {
+   "box": [
+    236,
+    505,
+    322,
+    531
+   ],
+   "size": [
+    86,
+    26
+   ],
+   "ours": [
+    134,
+    41
+   ],
+   "oursAt": [
+    369,
+    789
+   ],
+   "what": "action / bonus / reaction pips"
+  },
+  "move_bar": {
+   "box": [
+    230,
+    529,
+    364,
+    545
+   ],
+   "size": [
+    134,
+    16
+   ],
+   "ours": [
+    209,
+    25
+   ],
+   "oursAt": [
+    359,
+    827
+   ],
+   "what": "movement bar and its numbers"
+  },
+  "lower_plaque": {
+   "box": [
+    325,
+    549,
+    707,
+    576
+   ],
+   "size": [
+    382,
+    27
+   ],
+   "ours": [
+    597,
+    42
+   ],
+   "oursAt": [
+    508,
+    858
+   ],
+   "what": "plaque under the bar with corner brackets"
+  },
+  "lower_end": {
+   "box": [
+    325,
+    549,
+    380,
+    576
+   ],
+   "size": [
+    55,
+    27
+   ],
+   "ours": [
+    86,
+    42
+   ],
+   "oursAt": [
+    508,
+    858
+   ],
+   "what": "left bracket of the lower plaque"
+  },
+  "lower_end_right": {
+   "box": [
+    652,
+    549,
+    707,
+    576
+   ],
+   "size": [
+    55,
+    27
+   ],
+   "ours": [
+    86,
+    42
+   ],
+   "oursAt": [
+    1019,
+    858
+   ],
+   "what": "right bracket of the lower plaque"
+  },
+  "party_frame": {
+   "box": [
+    5,
+    518,
+    48,
+    574
+   ],
+   "size": [
+    43,
+    56
+   ],
+   "ours": [
+    67,
+    88
+   ],
+   "oursAt": [
+    8,
+    809
+   ],
+   "what": "party portrait frame with HP and second bar"
+  },
+  "party_frames": {
+   "box": [
+    3,
+    494,
+    172,
+    576
+   ],
+   "size": [
+    169,
+    82
+   ],
+   "ours": [
+    264,
+    128
+   ],
+   "oursAt": [
+    5,
+    772
+   ],
+   "what": "all four party frames and the small button"
+  },
+  "small_button": {
+   "box": [
+    8,
+    497,
+    28,
+    517
+   ],
+   "size": [
+    20,
+    20
+   ],
+   "ours": [
+    31,
+    31
+   ],
+   "oursAt": [
+    12,
+    777
+   ],
+   "what": "small square button above the party"
+  },
+  "gem_corner_red": {
+   "box": [
+    217,
+    484,
+    234,
+    501
+   ],
+   "size": [
+    17,
+    17
+   ],
+   "ours": [
+    27,
+    27
+   ],
+   "oursAt": [
+    339,
+    756
+   ],
+   "what": "red gem stud on the bar corner"
+  },
+  "gem_corner_green": {
+   "box": [
+    217,
+    542,
+    234,
+    559
+   ],
+   "size": [
+    17,
+    17
+   ],
+   "ours": [
+    27,
+    27
+   ],
+   "oursAt": [
+    339,
+    847
+   ],
+   "what": "green gem stud on the bar corner"
+  },
+  "bar_end_gem": {
+   "box": [
+    784,
+    484,
+    808,
+    510
+   ],
+   "size": [
+    24,
+    26
+   ],
+   "ours": [
+    38,
+    41
+   ],
+   "oursAt": [
+    1225,
+    756
+   ],
+   "what": "red gems at the bar top right"
+  }
+ }
+}

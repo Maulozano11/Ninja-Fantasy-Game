@@ -1,0 +1,6 @@
+p0-male-held-own-read-0
+p0-male-held-own-read-10
+p1-male-held-own-read-0
+p1-male-held-own-read-10
+p2-male-held-own-read-0
+p2-male-held-own-read-10

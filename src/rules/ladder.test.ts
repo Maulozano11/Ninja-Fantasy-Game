@@ -81,8 +81,8 @@ describe('the ladder: rank A at level 7, rank S at level 10, for every ninja ("a
     const lightning = (level: number, more: Partial<ShinobiCharacter> = {}) => ids(slotChoices(ninja(level, more), 'slot2Elemental', 'Lightning', 'Ryusei'));
     assert.ok(!lightning(6).includes('chidori_lightning_blade'), 'level 6');
     assert.ok(lightning(7).includes('chidori_lightning_blade'), 'level 7');
-    // A Lightning ninja's Element slots: locked below 7 (its jutsu are B and A), they open at 7.
-    assert.equal(slotOpensAt('slot2Elemental', 'Lightning', 'Ryusei', 'Ninjutsu Specialist', growthOf(ninja(6), 'Lightning')), 7);
+    // A Lightning ninja's Element slots are open from the start: the rank D and C set gives it Jolt and the Spark Fan.
+    assert.equal(slotOpensAt('slot2Elemental', 'Lightning', 'Ryusei', 'Ninjutsu Specialist', growthOf(ninja(6), 'Lightning')), undefined);
     // A Fire ninja with Lightning as its second element gets Chidori at 7 (D, C and A of its elements).
     const fireLightning = (level: number) => ids(slotChoices(ninja(level, { natureGrowth: 'element', extraNatures: ['Lightning'] }), 'slot2Elemental', 'Fire', 'Ryusei'));
     assert.ok(!fireLightning(6).includes('chidori_lightning_blade'));

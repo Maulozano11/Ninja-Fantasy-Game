@@ -428,8 +428,8 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // The owner's eyes (src/sprite/eyeArt.ts), a row lower than ours and heavy-lidded: his brow (B) on
   // the row above the lash line, a single row of white and red iris under it. Drawn in his pixels.
   valiant: { near: VALIANT_EYES.open.near.letters, far: VALIANT_EYES.open.far.letters },
-  // The owner's Lyra's eyes (src/sprite/lyraEyeArt.ts) on our own cells and rows: her black-and-navy
-  // lash down the outer corner, her shaded white, a big iris dark over green; the far eye's fleck of white.
+  // The owner's Lyra's eyes (src/sprite/lyraEyeArt.ts), his pixels from his picture at our scale: two
+  // rows like his Aiden's, her black lash over a single row of white and green iris; her brows right over it.
   keen: { near: KEEN_EYES.open.near.letters, far: KEEN_EYES.open.far.letters },
 };
 
@@ -590,11 +590,9 @@ function drawFace(g: DrawCtx): void {
     stamp(his.far, fx);
   }
   if (hers) {
-    // Her pixels over the template's eye cells: her iris (and the white shaded by it, as our shaded
-    // white takes the iris's tint) moves the way the eye colour moves her green; pale special eyes take
-    // our pale tones. Her lash and white stay hers.
-    const tone = (letter: string, hex: string) =>
-      letter === 'd' || letter === 'i' ? (pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, KEEN_IRIS, iris)) : letter === 'h' ? retintHex(hex, KEEN_IRIS, iris) : hex;
+    // Her pixels over the template's eye cells: her iris moves the way the eye colour moves her green;
+    // pale special eyes take our pale tones. Her lash and white stay his.
+    const tone = (letter: string, hex: string) => (letter === 'd' || letter === 'i' ? (pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, KEEN_IRIS, iris)) : hex);
     const stamp = (eye: PaintedEye, x0: number) =>
       eye.rows.forEach((row, r) => {
         for (let c = 0; c < row.length; c++) if (row[c] !== '.') L.set(x0 + c, ny + r, flat(tone(eye.letters[r][c], KEEN_EYE_COLORS[row[c]])), 3, 'head', F_NO_OUTLINE);
@@ -607,19 +605,27 @@ function drawFace(g: DrawCtx): void {
   // ours (his lash line is the template's second row): what sits on the open eye follows them.
   const set = (x: number, y: number, hex: string) => F.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
   const lash = his ? ny + 1 : ny;
-  if (female && (closed || lowered)) {
+  if (hers) {
+    // her lashes are his pixels: no flick at the corners, open or shut
+  } else if (female && (closed || lowered)) {
     // the lashes of the closed or lowered lids
     set(ex - 1, ny + 1, EYELINE);
     set(ex - 1, ny + 2, EYELINE);
   } else if (female) {
-    // longer lashes at the outer corners (Lyra's near lash runs down its outer corner, not up)
-    if (!hers) set(ex - 1, lash - 1, EYELINE);
+    // longer lashes at the outer corners
+    set(ex - 1, lash - 1, EYELINE);
     set(ex - 1, lash, EYELINE);
     set(fx + 3, lash, EYELINE);
   }
   // Special eye patterns (pupil marks on the red iris, veins, sage pigment); closed eyes show none.
   if (closed || lowered) {
     // nothing to see under the lids
+  } else if ((sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') && hers) {
+    // Lyra's iris is a single row under her lash (her green, then its dark): the marks go on it, the
+    // far eye's dark green past one tomoe.
+    set(ex + 2, ny + 1, '#14040a');
+    if (sp !== 'tomoe1') set(fx + 1, ny + 1, '#14040a');
+    if (sp === 'pinwheel') set(ex + 3, ny + 1, '#14040a');
   } else if ((sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') && his) {
     // His iris is a single row under the lash: the marks go on his dark red, the near eye's first and
     // past one tomoe the far eye's too, so the near eye's red still shows.
@@ -629,8 +635,7 @@ function drawFace(g: DrawCtx): void {
     set(ex + 2, ny + 1, '#14040a');
     if (sp !== 'tomoe1') set(ex + 3, ny + 2, '#14040a');
     if (sp === 'pinwheel') set(ex + 3, ny + 1, '#14040a');
-    // (Lyra's far eye shows a single cell of iris under her fleck of white: it keeps its colour)
-    if (!hers) set(fx, ny + 1, '#14040a');
+    set(fx, ny + 1, '#14040a');
   }
   if (sp === 'paleVeins' && !closed && !lowered) {
     for (const [x, y] of [
@@ -647,9 +652,11 @@ function drawFace(g: DrawCtx): void {
     for (let x = -1; x <= 4; x++) set(ex + x, lash - 1, '#c2410c');
     for (let x = 0; x <= (his ? 2 : 3); x++) set(fx + x, lash - 1, '#c2410c');
     if (!closed && !lowered) {
-      // the bar pupil (on his two-pixel iris only its dark half, so the gold still shows)
-      set(ex + 2, ny + 2, '#120c18');
-      if (!his) set(ex + 3, ny + 2, '#120c18');
+      // the bar pupil (on his two-pixel iris only its dark half, so the gold still shows; on Lyra's
+      // single row of iris, her dark green's cell)
+      if (hers) set(ex + 3, ny + 1, '#120c18');
+      else set(ex + 2, ny + 2, '#120c18');
+      if (!his && !hers) set(ex + 3, ny + 2, '#120c18');
     }
   }
 

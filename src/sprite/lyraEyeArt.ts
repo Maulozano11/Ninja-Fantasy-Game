@@ -1,70 +1,69 @@
-// The owner's Lyra's eyes, her colours (tools/refs/lyra-eyes-from-ref.py from
-// docs/reference/lyra-owner-reference.jpg, brought down to our scale). Generated: rerun the script to change it.
+// The owner's Lyra's eyes, his pixels and colours (tools/refs/lyra-eyes-from-ref.py from
+// docs/reference/lyra-game-scale-owner-reference.jpg, drawn at our scale). Generated: rerun the script to change it.
 
 import type { PaintedEye } from './eyeArt';
 
-/** Her colours, one character each. */
+/** His colours, one character each. */
 export const KEEN_EYE_COLORS: Record<string, string> = {
-  a: '#04101c',
-  b: '#04010d',
-  c: '#badac6',
-  d: '#133c3b',
-  e: '#fbfdfd',
-  f: '#4eb570',
-  h: '#7ebe90',
-  i: '#844440',
-  j: '#489b62',
-  k: '#300918',
-  l: '#691f24',
-  m: '#3b0d21',
-  n: '#590f26',
+  a: '#010101',
+  b: '#88594e',
+  c: '#fefefd',
+  e: '#45b476',
+  f: '#01573c',
+  g: '#7e2e20',
+  h: '#0d6849',
+  j: '#6f231d',
+  k: '#5d221b',
+  m: '#852e1a',
+  n: '#68251d',
+  p: '#76281e',
 };
 
 /** Her eyes in each lid state: open, lowered (reading) and closed (knocked out), on the template's own eye cells and rows. */
 export const KEEN_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedEye; far: PaintedEye }> = {
-  /** Her eyes at our scale: the lash black over navy, down the outer corner and turning down at the inner one, her mint-shaded white and white, the iris dark teal over bright and light green; the far eye's fleck of white over its green. */
+  /** His pixels: her black lash over a row of her lash's brown corner, white, green and dark green; the far eye's brown and black lash over its white and dark green, closed by his face line. */
   open: {
     near: {
-      letters: ['LLLLb', 'LhddL', 'swiil'],
-      rows: ['abaa.', 'acddb', '.efh.'],
+      letters: ['LLLLs', 'Lwidb', 'sbbbb'],
+      rows: ['aaaa.', 'bcef.', '.....'],
     },
     far: {
-      letters: ['LLL', 'wLL', 'iLo'],
-      rows: ['ibb', 'eaa', 'ja.'],
+      letters: ['LLL', 'wdL', 'bso'],
+      rows: ['gaa', 'cha', '...'],
     },
   },
-  /** Reading: her lash comes down a row over the eye; under it the eye's lower row. */
+  /** Reading: her lash comes down a row, over where the white and iris were; skin above it. */
   lowered: {
     near: {
-      letters: ['bbbbb', 'LLLLb', 'swiil'],
-      rows: ['.....', 'abaa.', '.efh.'],
+      letters: ['ssssb', 'LLLLs', 'sbbbb'],
+      rows: ['.....', 'aaaa.', '.....'],
     },
     far: {
-      letters: ['bbb', 'LLL', 'iLo'],
-      rows: ['...', 'ibb', 'ja.'],
+      letters: ['bbb', 'LLL', 'bso'],
+      rows: ['...', 'gaa', '...'],
     },
   },
-  /** Knocked out: her lash comes down a row across the shut eye; skin above and under it. */
+  /** Knocked out: her lash comes down a row, its brown corner turning down under its outer end. */
   closed: {
     near: {
-      letters: ['bbbbb', 'LLLLb', 'sbbbl'],
-      rows: ['.....', 'abaa.', '.....'],
+      letters: ['ssssb', 'LLLLs', 'Lbbbb'],
+      rows: ['.....', 'aaaa.', 'b....'],
     },
     far: {
-      letters: ['bbb', 'LLL', 'bbo'],
-      rows: ['...', 'ibb', '...'],
+      letters: ['bbb', 'LLL', 'bso'],
+      rows: ['...', 'gaa', '...'],
     },
   },
 };
 
-/** Her brows, in her hair's reds: from `at` (columns, rows) off each eye's first cell and the lash row, her pixels ('.' none). */
+/** Her brows, his pixels in her hair's reds: from `at` (columns, rows) off each eye's first cell and the lash row ('.' none). */
 export const KEEN_BROWS: Record<'near' | 'far', { at: readonly [number, number]; rows: string[] }> = {
-  near: { at: [0, -2], rows: ['kll..', '...mn'] },
-  far: { at: [1, -1], rows: ['ik'] },
+  near: { at: [1, -1], rows: ['jkmn'] },
+  far: { at: [1, -1], rows: ['p'] },
 };
 
-/** Her lit iris green, the colour her iris follows: the player's eye colour moves her iris as far. */
-export const KEEN_IRIS = '#4eb570';
+/** Her green, the colour her iris follows: the player's eye colour moves her iris as far. */
+export const KEEN_IRIS = '#45b476';
 
 /** Her hair's mid red, which her brows are drawn in the reds of: the hair colour moves them as far. */
-export const KEEN_BROW_HAIR = '#a6442d';
+export const KEEN_BROW_HAIR = '#a33e27';

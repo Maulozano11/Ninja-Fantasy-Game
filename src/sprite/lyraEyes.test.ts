@@ -73,12 +73,12 @@ describe("Lyra's eyes (keen)", () => {
     const k = f.rig.bp.headScale;
     const nx = Math.floor((f.rig.head.x - 1.9 * k) * RES);
     const ny = Math.floor((f.rig.head.y + 1.0 * k) * RES);
-    const lit = hexToRgb(hexAt(f.rgba, nx + 2, ny + 2));
-    assert.ok(lit[2] > lit[1] && lit[2] > lit[0], `blue iris, got ${hexAt(f.rgba, nx + 2, ny + 2)}`);
+    const lit = hexToRgb(hexAt(f.rgba, nx + 2, ny + 1));
+    assert.ok(lit[2] > lit[1] && lit[2] > lit[0], `blue iris, got ${hexAt(f.rgba, nx + 2, ny + 1)}`);
     // her lash stays hers
     assert.equal(hexAt(f.rgba, nx + 1, ny), KEEN_EYE_COLORS[KEEN_EYES.open.near.rows[0][1]]);
-    const brow = hexToRgb(hexAt(f.rgba, nx + 1, ny - 2));
-    const hers = hexToRgb(KEEN_EYE_COLORS[KEEN_BROWS.near.rows[0][1]]);
+    const brow = hexToRgb(hexAt(f.rgba, nx + 1, ny - 1));
+    const hers = hexToRgb(KEEN_EYE_COLORS[KEEN_BROWS.near.rows[0][0]]);
     assert.ok(brow[0] < hers[0], 'darker brows for black hair');
   });
 });

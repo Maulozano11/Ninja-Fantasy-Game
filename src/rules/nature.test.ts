@@ -227,7 +227,8 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
         const old = savedOld(id, tint);
         const was = chakraHex(old.appearance!.chakra);
         storage({ 'shinobi5e.hero.v1': old, 'shinobi5e.roster.v1': [{ character: old, savedAt: 1 }] });
-        const want = withChakra(old, NEW[id][1], tint ?? LEGEND_BURST_CHANGE[id].old);
+        // (a saved sheet loads as a ninja that has been made: its type is fixed, rules/progression.ts)
+        const want = { ...withChakra(old, NEW[id][1], tint ?? LEGEND_BURST_CHANGE[id].old), created: true };
         for (const [where, now] of [['hero', loadHero()!], ['roster', loadRoster()[0].character]] as const) {
           assert.deepEqual(now, want, `${id} in ${tint} (${where})`);
           assert.equal(natureOf(now), NEW[id][0], `${id} (${where}): its new type`);
@@ -277,7 +278,7 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
     }
     const ownSpirit = { ...saved(chakra('violet')), id: 'ninja_abc' };
     storage({ 'shinobi5e.hero.v1': ownSpirit });
-    assert.deepEqual(loadHero(), ownSpirit);
+    assert.deepEqual(loadHero(), { ...ownSpirit, created: true });
     assert.equal(natureOf(loadHero()!), 'Spirit');
     // The legends whose burst did not change are not touched either.
     for (const id of ['preset_founder', 'preset_ember', 'preset_reference_aiden', 'preset_gentle']) {
@@ -307,10 +308,11 @@ describe('saved copies of the legends move to their new type (the owner, 2026-10
     for (const [what, c] of cases) {
       assert.equal(c.appearance!.chakra.color, LEGEND_BURST_CHANGE[c.id].old, `${what}: the legend's old burst`);
       storage({ 'shinobi5e.hero.v1': c, 'shinobi5e.roster.v1': [{ character: c, savedAt: 1 }] });
-      assert.deepEqual(loadHero(), c, `${what} (hero)`);
-      assert.deepEqual(loadRoster()[0].character, c, `${what} (roster)`);
+      const made = { ...c, created: true };
+      assert.deepEqual(loadHero(), made, `${what} (hero)`);
+      assert.deepEqual(loadRoster()[0].character, made, `${what} (roster)`);
       storage({ 'shinobi5e.hero.v1': loadHero() });
-      assert.deepEqual(loadHero(), c, `${what}: saved and loaded again`);
+      assert.deepEqual(loadHero(), made, `${what}: saved and loaded again`);
     }
     assert.equal(natureOf(loadHero()!), 'Wind');
     assert.equal(natureOf(migrateCharacter(picked('preset_night', 'Water', 'blue'))), 'Water');

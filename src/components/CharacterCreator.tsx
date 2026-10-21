@@ -168,6 +168,7 @@ const T = strings({
   tagName: { en: 'Explosive tag', es: 'Sello explosivo' },
   tagSub: { en: 'Consumable item · not a jutsu', es: 'Objeto consumible · no es un jutsu' },
   tagPouch: { en: '×{n} in its pouch', es: '×{n} en su bolsa' },
+  tagReach: { en: 'Throw 9 m · hide 4.5 m', es: 'Lanzar 9 m · esconder 4,5 m' },
   tagText: {
     en: 'A tool, not a jutsu: the party\'s backpack carries explosive tags (2 for each mission), and anyone can use them from the battle\'s item slots. Throw one (up to 9 m: it blows up where it lands) or hide one on the ground (up to 4.5 m: it blows up when an enemy steps on it). Either way, 3d6 fire in 1.5 m, DEX save DC 13 for half. It costs no chakra and needs no hand seals.',
     es: 'Una herramienta, no un jutsu: la mochila del grupo lleva sellos explosivos (2 por misión) y cualquiera los usa desde las ranuras de objetos de la batalla. Lanza uno (hasta 9 m: estalla donde cae) o escóndelo en el suelo (hasta 4,5 m: estalla cuando un enemigo lo pisa). En los dos casos, 3d6 de fuego en 1,5 m, salvación de DES CD 13 para la mitad. No gasta chakra ni necesita sellos de manos.',
@@ -256,6 +257,7 @@ type Hover =
   | { kind: 'feat'; id: string }
   | { kind: 'jutsu'; id: string }
   | { kind: 'tool' }
+  | { kind: 'locked'; slot: string }
   | { kind: 'look' };
 
 const jutsuName = (j: { name: string; nameEs?: string }) => pick(j.name, j.nameEs);
@@ -621,7 +623,10 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   // legend's second element, an older sheet) stays until the slot or the type is changed.
   const nature = natureOf(character);
   const offNature = new Set(offNatureJutsus(character.selectedJutsus, nature));
-  const jutsuTitle = (id: string) => jutsuParts(JUTSUS_DATA.find((j) => j.id === id) ?? { name: id })[0];
+  // A new ninja learns rank D and C jutsu and its clan's (rules/progression.ts); a sheet's own jutsu of
+  // a higher rank (a legend's, an older sheet's) stay, marked.
+  const highRank = new Set(aboveRank(character.selectedJutsus, character.clan));
+  const jutsuTitle = (id: string) => (id ? jutsuParts(JUTSUS_DATA.find((j) => j.id === id) ?? { name: id })[0] : T('slotEmptied'));
   // Only the swaps the player has not changed since: a slot picked again drops out of the note.
   const swapsKept = natureSwaps && natureSwaps.nature === nature ? natureSwaps.swaps.filter((x) => character.selectedJutsus[x.slot] === x.to) : [];
   const natureSwapText = swapsKept.length
@@ -670,11 +675,11 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const hoverOn = (h: Hover) => (on: boolean) => setHover(on ? h : null);
 
   const slots: { key: SlotKey; label: string; list: typeof JUTSUS_DATA; fixed?: boolean }[] = [
-    { key: 'slot1Utility', label: T('slotUtility'), list: jutsuChoices('slot1Utility', nature, character.clan) },
-    { key: 'slot2Elemental', label: T('slotElementA'), list: jutsuChoices('slot2Elemental', nature, character.clan) },
-    { key: 'slot3Elemental', label: T('slotElementB'), list: jutsuChoices('slot3Elemental', nature, character.clan) },
-    { key: 'slot4Clan', label: T('slotClan'), list: jutsuChoices('slot4Clan', nature, character.clan), fixed: true },
-    { key: 'slot5Ultimate', label: T('slotUltimate'), list: jutsuChoices('slot5Ultimate', nature, character.clan) },
+    { key: 'slot1Utility', label: T('slotUtility'), list: creatorChoices('slot1Utility', nature, character.clan) },
+    { key: 'slot2Elemental', label: T('slotElementA'), list: creatorChoices('slot2Elemental', nature, character.clan) },
+    { key: 'slot3Elemental', label: T('slotElementB'), list: creatorChoices('slot3Elemental', nature, character.clan) },
+    { key: 'slot4Clan', label: T('slotClan'), list: creatorChoices('slot4Clan', nature, character.clan), fixed: true },
+    { key: 'slot5Ultimate', label: T('slotUltimate'), list: creatorChoices('slot5Ultimate', nature, character.clan) },
   ];
 
   const leftTitle = { origin: T('pickOrigin'), clan: T('pickClan'), class: T('pickClass'), appearance: T('stepAppearance'), abilities: T('pickAbilities'), jutsus: T('pickJutsus') }[step];
@@ -821,6 +826,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       {step === 'jutsus' && (
         <div className="px-3 pb-2 space-y-1.5">
           <p className="text-[12px] leading-snug text-[#b9a98a]">{T(chakraType(nature).elemental ? 'natureRule' : 'natureRuleNone', { n: L(nature) })}</p>
+          <p className="text-[12px] leading-snug text-[#b9a98a]">{T('rankRule')}</p>
           {natureSwapText && <p className="text-[12px] leading-snug text-[#f2c46d] border border-[#6b5434] bg-[#3a2a12]/60 px-2 py-1">{natureSwapText}</p>}
         </div>
       )}
@@ -828,6 +834,23 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
         slots.map((slot) => {
           const chosen = JUTSUS_DATA.find((j) => j.id === character.selectedJutsus[slot.key]);
           const open = openSlot === slot.key;
+          // Nothing to offer a new ninja here (the S-rank slot): shown locked, in its place.
+          if (!chosen && !slot.list.length)
+            return (
+              <Row
+                key={slot.key}
+                onClick={() => undefined}
+                onHover={hoverOn({ kind: 'locked', slot: slot.label })}
+                icon={
+                  <span className="grid place-items-center border border-[#6b5434] bg-[radial-gradient(circle,#2a2016,#0e0b08)] text-[#8a7a5c]" style={{ width: 38, height: 38 }}>
+                    <Lock className="w-4 h-4" />
+                  </span>
+                }
+                title={T('slotLocked')}
+                sub={T('slotLockedSub', { slot: slot.label })}
+              />
+            );
+          const mark = chosen && offNature.has(chosen.id) ? T('offNature') : chosen && highRank.has(chosen.id) ? T('aboveRank', { r: chosen.rank }) : null;
           return (
             <React.Fragment key={slot.key}>
               <Row
@@ -840,11 +863,11 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                 icon={<JutsuIcon id={chosen?.id} nature={chosen?.nature} />}
                 title={chosen ? jutsuParts(chosen)[0] : '—'}
                 sub={
-                  chosen && offNature.has(chosen.id) ? (
+                  chosen && mark ? (
                     // the mark on a line of its own, so a narrow panel never cuts it off
                     <>
                       <span className="block truncate">{`${slot.label} · ${jutsuParts(chosen)[1]}`}</span>
-                      <span className="block truncate text-[#e8956a]">{T('offNature')}</span>
+                      <span className="block truncate text-[#e8956a]">{mark}</span>
                     </>
                   ) : chosen ? (
                     `${slot.label} · ${jutsuParts(chosen)[1]}`
@@ -872,12 +895,33 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                     sub={`${jutsuParts(j)[1] ? `${jutsuParts(j)[1]} · ` : ''}${T('rank', { r: j.rank })} · ${T('chakra', { n: j.chakraCost })}${j.damageDice ? ` · ${j.damageDice}` : ''}`}
                   />
                 ))}
+              {/* A legend's S-rank jutsu: kept, with nothing a new ninja may pick in its place. */}
+              {open && !slot.list.length && <p className="pl-8 pr-3 py-1.5 text-[12px] text-[#b9a98a]">{T('slotLocked')}</p>}
             </React.Fragment>
           );
         })}
+      {/* The explosive tag is a consumable item, not a jutsu (the owner, 2026-10-21): it is shown with
+          the jutsu as the tool every ninja can use, and what this ninja carries in its own pouch. */}
+      {step === 'jutsus' && (
+        <>
+          <Heading>{T('tools')}</Heading>
+          <Row
+            onClick={() => soundManager.playSelect()}
+            onHover={hoverOn({ kind: 'tool' })}
+            icon={
+              <span className="grid place-items-center border border-[#6b5434] bg-[radial-gradient(circle,#3a2a12,#14110d)] text-[#f2c46d]" style={{ width: 38, height: 38 }}>
+                <Bomb className="w-5 h-5" />
+              </span>
+            }
+            title={T('tagName')}
+            sub={T('tagSub')}
+            right={pouchTags(character) ? <span className="text-[11px] text-[#f2c46d]">{T('tagPouch', { n: pouchTags(character) })}</span> : undefined}
+          />
+        </>
+      )}
       {step === 'appearance' && (
         <div className="p-1">
-          <AppearanceEditor look={look} eye={eye} character={character} onChange={updateLook} onPreviewStance={setPreviewStance} onGroup={setLookGroup} chakraNote={natureSwapText} />
+          <AppearanceEditor look={look} eye={eye} character={character} onChange={updateLook} onPreviewStance={setPreviewStance} onGroup={setLookGroup} chakraNote={natureSwapText} typeFixed={typeFixed(character)} />
         </div>
       )}
     </div>
@@ -1012,6 +1056,31 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       const f = SHINOBI_FEATS.find((x) => x.id === h.id)!;
       return { title: pick(f.name, f.nameEs), sub: T('feat'), body: <Parchment>{pick(f.description, f.descriptionEs)}</Parchment> };
     }
+    if (h.kind === 'tool')
+      return {
+        title: T('tagName'),
+        sub: T('tagSub'),
+        body: (
+          <>
+            <div className="flex justify-center pt-3">
+              <span className="grid place-items-center border border-[#6b5434] bg-[radial-gradient(circle,#3a2a12,#14110d)] text-[#f2c46d]" style={{ width: 88, height: 88 }}>
+                <Bomb className="w-10 h-10" />
+              </span>
+            </div>
+            <div className="flex flex-wrap justify-center gap-1.5 px-3 pt-3">
+              <Chip>3d6</Chip>
+              <Chip tone="dark">{T('save', { s: pick('DEX', 'DES') })}</Chip>
+              <Chip tone="dark">{T('tagReach')}</Chip>
+            </div>
+            <div className="p-3">
+              <Parchment>{T('tagText')}</Parchment>
+            </div>
+            {pouchTags(character) > 0 && <p className="px-3 text-[13px] leading-relaxed text-[#f2c46d]">{T('tagPouchText', { n: pouchTags(character) })}</p>}
+          </>
+        ),
+      };
+    if (h.kind === 'locked')
+      return { title: h.slot, sub: T('slotLocked'), body: <Parchment>{T('rankRule')}</Parchment> };
     if (h.kind === 'jutsu') {
       const j = JUTSUS_DATA.find((x) => x.id === h.id);
       if (!j) return { title: '—', body: null };

@@ -11,8 +11,10 @@ import { MALE_SKIN_BASE } from './maleSkinArt';
 import type { PaintedPiece } from './painted';
 import { GRID, RES } from './raster';
 import { ROMAN_LEG_PIXELS, ROMAN_OFFSET } from './romanRefPixels';
-import { buildRig, GROUND, rigPoseFor } from './rig';
-import { MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
+import { buildRig, drawRig, frameCount, GROUND, rigPoseFor } from './rig';
+import type { TemplatePalette } from './rotsprite';
+import { clothHole, drapeLayer } from './items/armor';
+import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
 const look = (body: BodyType, drapes = 'on', parts: Partial<Record<'armor' | 'skirt' | 'hands' | 'feet', boolean>> = {}): SpriteAppearance => {
   const l = defaultAppearance();
@@ -30,6 +32,7 @@ const look = (body: BodyType, drapes = 'on', parts: Partial<Record<'armor' | 'sk
 };
 
 const POSES = [...SPRITE_POSES, ...MOVE_POSES, 'sit'] as SpritePose[];
+const ALL_POSES = [...new Set([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])] as SpritePose[];
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
 const opaque = (rgba: Uint8ClampedArray, i: number) => rgba[i * 4 + 3] > 0;
 /** Within the 3 a colour of his may move by when the scripts pack his picture's near colours as one. */
@@ -199,9 +202,8 @@ describe('the Roman set', () => {
     }
   });
 
-  it('never lets the drape hang lower than at rest, nor stand up off a body knocked out', () => {
-    const hem = skirt.PTERUGES_REST.PTERUGES_DRAPE[1] + skirt.PTERUGES_DRAPE.rows.length - 1;
-    assert.ok(hem < GROUND * RES);
+  it('never lets the drape go into the ground, nor stand up off a body knocked out', () => {
+    const hem = GROUND * RES - 1;
     for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
       for (const pose of POSES) {
         const on = renderSprite(look(body), pose, 0);
@@ -214,7 +216,74 @@ describe('the Roman set', () => {
           for (const i of px) assert.ok(Math.floor(i / GRID) >= top - 1, `${body} downed: drape above the body at row ${Math.floor(i / GRID)}`);
           continue;
         }
-        for (const i of px) assert.ok(Math.floor(i / GRID) <= hem, `${body} ${pose}: drape at row ${Math.floor(i / GRID)}, below its hem at rest (${hem})`);
+        for (const i of px) assert.ok(Math.floor(i / GRID) <= hem, `${body} ${pose}: drape at row ${Math.floor(i / GRID)}, below the ground line (${hem})`);
+      }
+    }
+  });
+
+  it('draws his drape at rest exactly as he drew it, in every idle frame of every body', () => {
+    // Each colour of his as its own pen: the drape's own layer holds his cell, and nothing else, at each place.
+    const pal: TemplatePalette = {};
+    Object.keys(skirt.PTERUGES_DRAPE.colors).forEach((ch, k) => (pal[ch] = [k, 3]));
+    const index = Object.fromEntries(Object.keys(skirt.PTERUGES_DRAPE.colors).map((ch, k) => [ch, k]));
+    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+      for (let f = 0; f < frameCount('idle'); f++) {
+        const r = drawRig(body, 'idle', f);
+        const L = drapeLayer(r, pal);
+        // his drape hangs from the pelvis: on each body as far from it as on our male
+        const male = drawRig('male', 'idle', 0);
+        const ox = skirt.PTERUGES_REST.PTERUGES_DRAPE[0] + Math.floor(r.pelvis.x * RES) - Math.floor(male.pelvis.x * RES);
+        const oy = skirt.PTERUGES_REST.PTERUGES_DRAPE[1] + Math.floor(r.pelvis.y * RES) - Math.floor(male.pelvis.y * RES);
+        const want = new Map<number, number>();
+        skirt.PTERUGES_DRAPE.rows.forEach((row, j) => {
+          for (let i = 0; i < row.length; i++) if (row[i] !== '.') want.set((oy + j) * GRID + ox + i, index[row[i]]);
+        });
+        let wrong = 0;
+        for (let p = 0; p < GRID * GRID; p++) if ((L.mat[p] >= 0 ? L.mat[p] : undefined) !== want.get(p)) wrong++;
+        assert.equal(wrong, 0, `${body} idle ${f}: ${wrong} pixels of the drape not his`);
+      }
+    }
+  });
+
+  it('hangs the drape on the legs as a skirt in every pose and frame: never trailing like a cape, never holed', () => {
+    // The skirt's bones: each thigh from hip to knee, the hips, and the cloth hanging from each knee as far
+    // as his hem hangs below our knee at rest. Every pixel of the drape stays as near them as the farthest
+    // of his at rest (his flap behind the near leg), and never further behind the legs than at rest.
+    const pal: TemplatePalette = {};
+    Object.keys(skirt.PTERUGES_DRAPE.colors).forEach((ch, k) => (pal[ch] = [k, 3]));
+    const hang = skirt.PTERUGES_REST.PTERUGES_DRAPE[1] + skirt.PTERUGES_DRAPE.rows.length - 1 - drawRig('male', 'idle', 0).kneeN.y * RES;
+    const measure = (body: BodyType, pose: SpritePose, f: number) => {
+      const r = drawRig(body, rigPoseFor(pose), f);
+      const L = drapeLayer(r, pal);
+      const at = (p: { x: number; y: number }) => ({ x: p.x * RES, y: p.y * RES });
+      const [hN, kN, hF, kF] = [r.hipN, r.kneeN, r.hipF, r.kneeF].map(at);
+      const bones = [[hN, kN], [hF, kF], [hN, hF], [kN, { x: kN.x, y: kN.y + hang }], [kF, { x: kF.x, y: kF.y + hang }]];
+      const back = Math.min(hN.x, kN.x, hF.x, kF.x);
+      let far = 0;
+      let behind = -GRID;
+      let holes = 0;
+      for (let p = 0; p < GRID * GRID; p++) {
+        const x = p % GRID;
+        const y = Math.floor(p / GRID);
+        if (clothHole(L, x, y)) holes++;
+        if (L.mat[p] < 0) continue;
+        const q = { x: x + 0.5, y: y + 0.5 };
+        far = Math.max(far, Math.min(...bones.map(([a, b]) => toSegment(q, a, b))));
+        behind = Math.max(behind, back - q.x);
+      }
+      return { far, behind, holes };
+    };
+    for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
+      const rest = measure(body, 'idle', 0);
+      assert.equal(rest.holes, 0, `${body} idle: holes in his drape`);
+      for (const pose of ALL_POSES) {
+        if (pose === 'downed') continue;
+        for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+          const m = measure(body, pose, f);
+          assert.ok(m.far <= rest.far + 1, `${body} ${pose} ${f}: drape ${m.far.toFixed(1)} px from the legs (at rest ${rest.far.toFixed(1)})`);
+          assert.ok(m.behind <= rest.behind + 1, `${body} ${pose} ${f}: drape ${m.behind.toFixed(1)} px behind the legs (at rest ${rest.behind.toFixed(1)})`);
+          assert.equal(m.holes, 0, `${body} ${pose} ${f}: ${m.holes} holes in the drape`);
+        }
       }
     }
   });

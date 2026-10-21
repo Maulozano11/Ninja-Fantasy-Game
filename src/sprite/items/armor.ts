@@ -37,7 +37,7 @@ import {
 } from './crimsonPlateArt';
 import { CUIRASS_BRONZE, CUIRASS_CHEST, CUIRASS_GUARD_F, CUIRASS_GUARD_N, CUIRASS_KIND, CUIRASS_LEATHER } from './bronzeCuirassArt';
 import { PTERUGES_DRAPE, PTERUGES_FRONT, PTERUGES_KIND, PTERUGES_LEATHER, PTERUGES_REST, PTERUGES_STUD, PTERUGES_TUNIC } from './pterugesArt';
-import { capeWind } from './capes';
+import { stampTemplate, type TemplatePalette } from '../rotsprite';
 import { isFemaleBody, type BodyType } from '../types';
 
 
@@ -1308,31 +1308,158 @@ function drawBronzeCuirass(g: DrawCtx, bc: string, sc: string): void {
   stampPiece(g, 'nearArm.armor', CUIRASS_GUARD_N, guardAt(r, 'N', torso), guardAngle(CUIRASS_GUARD_N, torso, segAngle(r.shoulderN, r.elbowN)), 'upperArmN', leather);
 }
 
-/** How far above the ground line the drape's hem hangs at rest (fine pixels; the male figure, idle). */
-const DRAPE_HEM_ABOVE_GROUND = GROUND * RES - (PTERUGES_REST.PTERUGES_DRAPE[1] + PTERUGES_DRAPE.rows.length - 1);
-/** A cloth from the waist swings this much of what a cape from the shoulders does. */
-const DRAPE_SWAY = 0.5;
+/**
+ * His drape in panels, cut down his leg lines (columns of PTERUGES_DRAPE, the legs as they cover it at
+ * rest): the flap behind the near leg with the cloth under that leg (to column 29, his near leg's front
+ * edge), the cloth between the legs (to column 33, where his far leg begins), and the cloth under the far
+ * leg with the flap past it. Each lies on its thigh, or between both, down to its knee and hangs from
+ * there (see drapeStamps).
+ */
+const DRAPE_PANELS: { x0: number; x1: number; on: Side | 'both' }[] = [
+  { x0: 34, x1: 49, on: 'F' },
+  { x0: 30, x1: 33, on: 'both' },
+  { x0: 0, x1: 29, on: 'N' },
+];
+/** How much a panel follows its thigh swung forward (all of it: it lies on the thigh), and swung back. */
+const DRAPE_FORWARD = 1;
+const DRAPE_BACK = 0.3;
+/** How much of the thigh's turn the cloth below the knee keeps (it hangs, nearly straight down). */
+const DRAPE_HANG = 0.25;
+/** The rows round the knee swept through the bend, so the cloth folds there without a gap. */
+const DRAPE_FOLD = 2;
+/** How many columns each panel reaches under its neighbours, so their seams never open. */
+const DRAPE_SEAM = 1;
+
+/** A piece of his drape where the skirt stamps it. */
+export interface DrapeStamp {
+  piece: PaintedPiece;
+  at: Vec;
+  deg: number;
+  on: Side | 'both';
+  name: 'upper' | 'lower' | 'fold' | 'sweep';
+}
+
+const DRAPE_CUTS = new Map<string, PaintedPiece>();
+/** His drape's cells in columns x0..x1 and rows y0..y1, turned about the cell `pivot`. */
+function drapeCut(x0: number, x1: number, y0: number, y1: number, pivot: [number, number]): PaintedPiece {
+  const key = [x0, x1, y0, y1, ...pivot].join(',');
+  let p = DRAPE_CUTS.get(key);
+  if (!p) {
+    const rows = PTERUGES_DRAPE.rows.map((row, y) => [...row].map((ch, x) => (x >= x0 && x <= x1 && y >= y0 && y <= y1 ? ch : '.')).join(''));
+    DRAPE_CUTS.set(key, (p = { ...PTERUGES_DRAPE, rows, pivot }));
+  }
+  return p;
+}
+
+/** A point `d` fine pixels from the fine pixel `at`, turned `deg`: as design units at that pixel's middle. */
+function turnedCell(at: [number, number], d: [number, number], deg: number): Vec {
+  const t = (deg * Math.PI) / 180;
+  const x = at[0] + Math.round(d[0] * Math.cos(t) - d[1] * Math.sin(t));
+  const y = at[1] + Math.round(d[0] * Math.sin(t) + d[1] * Math.cos(t));
+  return v((x + 0.5) / RES, (y + 0.5) / RES);
+}
 
 /**
- * His red drape (capeBack), hung from the pelvis and hanging straight down whatever the torso does: his
- * pixels pushed back by the wind with the steps and strikes as the capes are (half as much). Its hem
- * never hangs lower than at rest: crouched or seated, the cloth that would reach the ground lies folded
- * behind the legs, so it ends there on his black line (his folds above stay as he drew them). Knocked
- * out (drawn upright, then laid down) only the cloth within a few pixels of the body's back is kept,
- * with his line along the cut, as the crimson cape does.
+ * His drape as the skirt's cloth, back to front (as Ren's skirt is): each panel hangs from the waist and
+ * turns with its thigh about the hip (the cloth between the legs about the pelvis, halfway between both,
+ * and swept from one thigh's turn to the other's so no gap opens down the seams) down to its knee, lying
+ * on the thigh as it swings forward and only a little as it swings back, and below the knee hangs nearly
+ * straight down from the knee, his rows round the knee swept through the fold between. Nothing trails
+ * behind like a cape. Every piece is his pixels, turned whole; at rest every pixel is where he drew it.
+ */
+export function drapeStamps(r: Rig): DrapeStamp[] {
+  const rest = drawRig('male', 'idle', 0);
+  const home = drawRig(r.body, 'idle', 0);
+  const P = PTERUGES_DRAPE;
+  // the drape's first cell at rest (male idle)
+  const ox = Math.floor(rest.pelvis.x * RES) - P.pivot[0];
+  const oy = Math.floor(rest.pelvis.y * RES) - P.pivot[1];
+  const cell = (p: Vec): [number, number] => [Math.floor(p.x * RES) - ox, Math.floor(p.y * RES) - oy];
+  const knees = { N: cell(legJoints(rest, 'N').knee), F: cell(legJoints(rest, 'F').knee) };
+  const thighTurn = (s: Side) => {
+    const now = legJoints(r, s);
+    const was = legJoints(home, s);
+    const t = segAngle(now.hip, now.knee) - segAngle(was.hip, was.knee);
+    const w = ((((t + 180) % 360) + 360) % 360) - 180;
+    return w < 0 ? w * DRAPE_FORWARD : w * DRAPE_BACK;
+  };
+  const out: DrapeStamp[] = [];
+  const last = P.rows.length - 1;
+  const panel = (x0: number, x1: number, on: Side | 'both', turn: number, sweep = false): void => {
+    // the panel turns about its hip (between the legs, about the pelvis), at our hip in this pose: his
+    // hip's cell from our pelvis's, moved as far as our hip has moved about the pelvis since rest (so on
+    // every body the panels keep his spacing, and at rest every cell is where it was drawn)
+    const pivot: [number, number] = on === 'both' ? [P.pivot[0], P.pivot[1]] : cell(legJoints(rest, on).hip);
+    const moved = on === 'both' ? v(0, 0) : sub(sub(legJoints(r, on).hip, r.pelvis), sub(legJoints(home, on).hip, home.pelvis));
+    const at: [number, number] = [
+      Math.floor(r.pelvis.x * RES) + pivot[0] - P.pivot[0] + Math.round(moved.x * RES),
+      Math.floor(r.pelvis.y * RES) + pivot[1] - P.pivot[1] + Math.round(moved.y * RES),
+    ];
+    // where the thigh's cloth ends: on its knee (between the legs, halfway between both knees)
+    const hinge: [number, number] = on === 'both' ? [Math.round((x0 + x1) / 2), Math.round((knees.N[1] + knees.F[1]) / 2)] : knees[on];
+    const hingeAt = turnedCell(at, [hinge[0] - pivot[0], hinge[1] - pivot[1]], turn);
+    const hang = turn * DRAPE_HANG;
+    const fold = hang - turn;
+    // the rows round the knee swept through the fold (at least once, so no row opens between the thigh's
+    // cloth and the cloth hanging from the knee); each panel reaches a column under its neighbours
+    const n = Math.abs(fold) < 0.5 ? 0 : Math.max(2, Math.ceil(Math.abs(fold) / 5));
+    const knee = hinge[1];
+    const [c0, c1] = [x0 - DRAPE_SEAM, x1 + DRAPE_SEAM];
+    for (let k = 1; k < n; k++) out.push({ piece: drapeCut(c0, c1, knee - DRAPE_FOLD, knee + DRAPE_FOLD - 1, hinge), at: hingeAt, deg: P.angle + turn + (fold * k) / n, on, name: sweep ? 'sweep' : 'fold' });
+    out.push({ piece: drapeCut(c0, c1, knee - 1, last, hinge), at: hingeAt, deg: P.angle + hang, on, name: sweep ? 'sweep' : 'lower' });
+    out.push({ piece: drapeCut(c0, c1, 0, knee - 1, pivot), at: v((at[0] + 0.5) / RES, (at[1] + 0.5) / RES), deg: P.angle + turn, on, name: sweep ? 'sweep' : 'upper' });
+  };
+  // The legs apart, the cloth between them is swept from one thigh's turn to the other's behind the
+  // others, so it spans the gap between them as a skirt does (no gap opens down the seams).
+  const [tN, tF] = [thighTurn('N'), thighTurn('F')];
+  const mid = DRAPE_PANELS.find((p) => p.on === 'both')!;
+  const m = Math.ceil(Math.abs(tN - tF) / 5);
+  for (let k = 0; k <= m; k++) if (m > 0) panel(mid.x0, mid.x1, 'both', tF + ((tN - tF) * k) / m, true);
+  for (const { x0, x1, on } of DRAPE_PANELS) panel(x0, x1, on, on === 'both' ? (tN + tF) / 2 : on === 'N' ? tN : tF);
+  return out;
+}
+
+/** An empty cell of `L` walled in by its cloth (both sides and above and below, or three corners too): a hole. */
+export function clothHole(L: Layer, x: number, y: number): boolean {
+  const on = (a: number, b: number) => a >= 0 && b >= 0 && a < GRID && b < GRID && L.mat[b * GRID + a] >= 0;
+  if (on(x, y)) return false;
+  const across = on(x - 1, y) && (on(x + 1, y) || on(x + 2, y));
+  const down = on(x, y - 1) && (on(x, y + 1) || on(x, y + 2));
+  if (across && down) return true;
+  return (across || down) && [on(x - 1, y - 1), on(x + 1, y - 1), on(x - 1, y + 1), on(x + 1, y + 1)].filter(Boolean).length >= 3;
+}
+
+/**
+ * His drape's panels stamped into a layer of their own (drapeStamps). Where turning his pixels leaves a
+ * cell open between them, the cloth above it (or beside it) continues into it, so nothing opens.
+ */
+export function drapeLayer(r: Rig, pal: TemplatePalette): Layer {
+  const L = new Layer();
+  for (const t of drapeStamps(r)) stampTemplate(L, t.piece, t.at, t.deg - PTERUGES_DRAPE.angle, pal, 'pelvis', { flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  for (let pass = 0; pass < 12; pass++) {
+    const fill: [number, number][] = [];
+    for (let i = 0; i < GRID * GRID; i++) if (clothHole(L, i % GRID, (i / GRID) | 0)) fill.push([i, L.mat[i - GRID] >= 0 ? i - GRID : L.mat[i - 1] >= 0 ? i - 1 : L.mat[i + 1] >= 0 ? i + 1 : i + GRID]);
+    if (!fill.length) break;
+    for (const [i, from] of fill) L.set(i % GRID, (i / GRID) | 0, L.mat[from], 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
+  }
+  return L;
+}
+
+/**
+ * His red drape (capeBack), the skirt's cloth behind the legs, in panels on the thighs (drapeStamps).
+ * It never goes into the ground: crouched or kneeling, the cloth that would reach below the soles lies on
+ * the ground, so it ends on the ground line on his black line. Knocked out (drawn upright, then laid
+ * down) only the cloth within a few pixels of the body's back is kept, with his line along the cut, as
+ * the crimson cape does.
  */
 function drawDrape(g: DrawCtx, color: (ch: string, hex: string) => string): void {
   const p = PTERUGES_DRAPE;
   const L = g.L('capeBack');
   const r = g.rig;
-  const w = capeWind(g);
-  const ax = Math.floor(r.pelvis.x * RES) - p.pivot[0];
-  const ay = Math.floor(r.pelvis.y * RES) - p.pivot[1];
-  const n = p.rows.length;
-  const lift = w.lift * 1.4 * RES * DRAPE_SWAY;
-  const hemY = r.lay ? GRID : GROUND * RES - DRAPE_HEM_ABOVE_GROUND;
-  const pens: Record<string, number> = {};
-  for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
+  const pal: TemplatePalette = {};
+  for (const [ch, hex] of Object.entries(p.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
+  const tmp = drapeLayer(r, pal);
+  const hemY = GROUND * RES - 1;
   const back = new Map<number, number>();
   if (r.lay) {
     for (const d of ['torso.body', 'torso.under', 'nearLeg.body', 'farLeg.body'] as const) {
@@ -1345,29 +1472,16 @@ function drawDrape(g: DrawCtx, color: (ch: string, hex: string) => string): void
     }
   }
   const front = r.lay ? Math.floor(r.lay.groundX * RES) : GRID;
-  const keep = (x: number, y: number) => y <= hemY && (!r.lay || (back.has(y) && x >= back.get(y)! - 3 && x < front));
-  const placed = new Set<number>();
-  p.rows.forEach((row, j) => {
-    const k = j / Math.max(1, n - 1);
-    const dx = Math.round((w.dx + w.wave) * RES * DRAPE_SWAY * k ** 1.3);
-    const dy = -Math.round(lift * k * k);
-    for (let i = 0; i < row.length; i++) {
-      const ch = row[i];
-      if (ch === '.') continue;
-      const x = ax + i + dx;
-      const y = ay + j + dy;
-      if (x < 0 || y < 0 || x >= GRID || y >= GRID) continue;
-      placed.add(y * GRID + x);
-      if (keep(x, y)) L.set(x, y, pens[ch], 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
-    }
-  });
-  const line = pens[Object.keys(p.colors).find((ch) => PTERUGES_KIND[p.colors[ch]] === 'line')!];
-  const cut: number[] = [];
-  for (const i of placed) {
-    if (!keep(i % GRID, (i / GRID) | 0)) continue;
-    if ([i - 1, i + 1, i - GRID, i + GRID].some((q) => placed.has(q) && !keep(q % GRID, (q / GRID) | 0))) cut.push(i);
+  const keep = (x: number, y: number) => (r.lay ? back.has(y) && x >= back.get(y)! - 3 && x < front : y <= hemY);
+  const line = pal[Object.keys(p.colors).find((ch) => PTERUGES_KIND[p.colors[ch]] === 'line')!][0];
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (tmp.mat[i] < 0) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    if (!keep(x, y)) continue;
+    const cut = [i - 1, i + 1, i - GRID, i + GRID].some((q) => q >= 0 && q < GRID * GRID && tmp.mat[q] >= 0 && !keep(q % GRID, (q / GRID) | 0));
+    L.set(x, y, cut ? line : tmp.mat[i], 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
   }
-  for (const i of cut) L.set(i % GRID, (i / GRID) | 0, line, 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
 }
 
 /**

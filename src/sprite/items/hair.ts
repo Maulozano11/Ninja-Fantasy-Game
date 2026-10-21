@@ -19,6 +19,7 @@ import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { BASE_HAIR, BASE_HAIR_BASE, BASE_HAIR_LINE, BASE_HAIR_SKULL } from './baseHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 import { AURELIA_HAIR_BACK, AURELIA_HAIR_BASE, AURELIA_HAIR_FRONT, AURELIA_HAIR_LINE, AURELIA_HAIR_ORNAMENT, AURELIA_HAIR_SKIN, AURELIA_ORNAMENT_BASE, AURELIA_SKIN_BASE } from './aureliaHairArt';
 
@@ -1843,6 +1844,20 @@ export const HAIR_ITEMS: ItemDef[] = [
       paintedHair(g, g.L('hairBack'), AURELIA_HAIR_BACK, tint);
       paintedHair(g, g.L('hairFront'), AURELIA_HAIR_FRONT, tint);
       trimSkull(g, AURELIA_HAIR_BACK);
+    },
+  },
+  {
+    id: 'hair_messy_ponytail',
+    slot: 'hair',
+    name: 'Messy Ponytail',
+    desc: 'Black hair in tufts over the crown, tied high in a messy tail at the back, a fringe swept over the far eye and a lock before the near cheek.',
+    colors: hairColor(BASE_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's bare female body's hair (2026-10-21), every pixel his over the head as he drew it
+      // on his woman; the head under it is trimmed to his head, so nothing of our skull shows past it.
+      const tint = (ch: string, hex: string) => (BASE_HAIR_LINE.includes(ch) ? hex : retintHex(hex, BASE_HAIR_BASE, c));
+      paintedHair(g, g.L('hairFront'), BASE_HAIR, tint);
+      trimSkull(g, BASE_HAIR_SKULL);
     },
   },
 ];

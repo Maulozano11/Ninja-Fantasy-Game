@@ -56,6 +56,7 @@ const AMP: Record<RampKind, number> = {
   skinF: 0,
   glow: 0,
   flat: 0,
+  painted: 0,
 };
 
 export interface PartFrameLite {

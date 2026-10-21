@@ -207,6 +207,12 @@ const ES: Record<string, string> = {
   "Silk cord crossed over white ray skin, a gold ornament under the middle diamond.": "Cordón de seda cruzado sobre piel de raya blanca, con un adorno de oro bajo el rombo central.",
   "The bare white ray skin of a court sword, gold fittings and a red silk tassel.": "La piel de raya blanca de una espada de la corte, herrajes de oro y una borla de seda roja.",
   "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
+  // Saya's skirt, belts and scabbard (items/sayaLower.ts)
+  Stripe: 'Franja',
+  'Shade Pleated Skirt': 'Falda plisada de la Sombra',
+  'Shade Belts and Scabbard': 'Cinturones y vaina de la Sombra',
+  'A short navy skirt in pleats striped in red, with a red hem. Women only.': 'Una falda corta azul marino plisada con franjas rojas y bajo rojo. Solo mujeres.',
+  'Two brown leather belts slung across the hips with steel buckles, a pouch on the hip, and a black scabbard with gold fittings hanging behind the leg. Women only.': 'Dos cinturones de cuero marrón cruzados sobre las caderas con hebillas de acero, una bolsa en la cadera y una vaina negra con herrajes de oro colgando detrás de la pierna. Solo mujeres.',
 };
 
 /** An editor label in the screen's language. */

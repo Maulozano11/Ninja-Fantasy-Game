@@ -109,3 +109,19 @@ folders.
 - `poison-from-ref.py`: the poison set (`vfx_poison_v3`, all but the beast and the end-on wall, which stays ours) from his poison sheet. It writes `tools/world-sprites/vfx-poison-v3-refdata.ts` (his key frames at game scale, one palette from his pixels, cut into the pieces `vfx-poison-v3.ts` animates; the blast's green light is read straight from his green excess with full alpha and stored apart); the third argument is our character at 1x (kit `characterRef()` saved as a PNG), the optional fourth a review folder (his crops at game scale, before/after previews, `refmap.json`). `poison-v3-review.py <art2> <reviewDir> <character.png>` then makes the compare sheet, the animation strips, the blast, walls and aura GIFs and the border, see-through-stone, flash and light checks.
 
       python3 -I tools/refs/poison-from-ref.py docs/reference/poison-set-owner-reference.jpg tools/world-sprites/vfx-poison-v3-refdata.ts <character.png> [reviewDir]
+
+- `scarlet_ref.py`, `scarlet-study.py`, `scarlet-idle.mts`: the study of the owner's Scarlet
+  (`docs/reference/scarlet-owner-reference.jpg`), the base every Scarlet part builds on. His picture
+  is his own pixel art at about 1.8 of his pixels to one of ours (his pixel is 5.33 x 5.31 picture
+  pixels; 147 x 219 of them), so his parts are brought down to our scale and fitted to our male rig
+  at idle frame 0 part by part (`scarlet_ref.SEGMENTS`: the head at 0.68 with his eyes on ours, the
+  coat at 0.57 across, the legs, the arms along our arms, the sword turned a quarter turn to our
+  weapons' angle), without his cape, in his colours (`scarlet_ref.PALETTE`). What that reduction
+  loses or his picture hides (eyes, chest, gloves, skirts, trousers, boots, the sword's hilt) is
+  drawn by hand after his, in his colours. The result, the reduced reference, is in
+  `tools/refs/data/scarlet-reduced*.npy` and read with `scarlet_ref.reduced()`, `reduced_parts()`
+  (which part each pixel is) and `reduced_layers()` (each part alone, with what the parts in front
+  hide).
+
+      npx tsx tools/refs/scarlet-idle.mts <out>
+      python3 -I tools/refs/scarlet-study.py <out> <out>/male-idle.png --write

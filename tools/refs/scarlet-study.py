@@ -1,31 +1,47 @@
 """The owner's Scarlet brought down to our scale: the reduced reference every Scarlet part copies.
 
 His picture (docs/reference/scarlet-owner-reference.jpg, tools/refs/scarlet_ref.py) is his own pixel
-art at about 1.79 of his pixels to one of ours, in proportions that are not ours. This script cuts his
-figure into parts (LAYERS: polygons in his pixels), leaves his cape out (the owner did not want it),
-lays each part on our male rig at idle frame 0 as scarlet_ref.SEGMENTS says, and brings it down to
-our pixels: each of our pixels takes the colour of his that covers most of it (4 x 4 samples), his
-gold, his eye colours and his reds counted more (WEIGHT) so his one-pixel trims and highlights live
-through the reduction. Every pixel is one of his colours (scarlet_ref.PALETTE). Then his black line
-is laid round the figure and the PATCHES (by hand, in our pixels) mend what the reduction broke.
+art at 1.8 of his pixels to one of ours, in proportions that are not ours. This script:
 
-The sword is turned a quarter turn counterclockwise before it is reduced: his blade points down-left
-from his near fist, ours point down-right across the legs at rest, and the quarter turn lays his at
-our flame longsword's angle. It is drawn under our near fist.
+1. cuts his figure into parts (polygons in his pixels, PARTS) and leaves his cape out (the owner did
+   not want it): the cape is whatever of him no part takes;
+2. mends in his pixels what the cape hid (MEND): it lay over his near shoulder, its gold edge across
+   his upper arm, which becomes his sleeve's cloth (the coat's shoulder runs on into the sleeve); his
+   far sleeve is a sliver beside his coat, so our far arm (which hangs clear of the body) wears his
+   near sleeve;
+3. lays each part on our male rig at idle frame 0 by its map (scarlet_ref.SEGMENTS) and brings it
+   down: each of our pixels takes the mean of his colours under it (5 x 5 samples) and then the
+   nearest colour of his (scarlet_ref.PALETTE); his gold trims are laid on forward, pixel by pixel,
+   so his one-pixel lines stay unbroken lines (and do not muddy the cloth beside them); his hair
+   takes one sample a pixel, his blade the commonest colour along it;
+4. draws by hand, at our scale and after his, in his colours, what that reduction loses or what his
+   picture hides (LAYER_PATCHES): his eyes and their glints, his smile, his chest (collar, lapels and
+   their embroidery, cravat, shirt, buckle), the coat's near shoulder, his gloves on our fists, his
+   coat's skirts and their trims (his near skirt lay behind the sword and the cape), his belt's cross
+   and tassel, his trousers' pinstripes (two of our pixels apart: his are finer than our pixel), his
+   boots, his sword's hilt (his grip lay under his glove and cuff); then lays his black line round
+   the figure and between his parts, and the PATCHES (by hand, on the finished figure).
+
+Every pixel is one of his colours. Back to front: far arm, the coat's lining between his legs, the
+legs, the coat, near arm, the sword (blade, then hilt), the near glove over the grip, the head.
 
 It writes, in <out>:
 
   reduced@1.png   the reduced reference in our 256 x 256 frame's box (REDUCED_BOX) at 1x
   reduced@8.png   the same at 8x
-  overlay@8.png   on our male idle (dimmed) with our joints marked
+  overlay@8.png   on our male idle (dimmed) with our joints marked, and our body's pixels he leaves
+                  bare (other than his face, neck and fingers) in magenta
   compare@4.png   his figure (without the cape) beside the reduced one at the same height
   native@4.png    his pixels at 4x
+  parts@4.png     his parts, each in its own tint (the cape and what MEND changed left plain)
   palette.png     his colours, those the reduced reference uses marked
 
 and, with --write, tools/refs/data/scarlet-reduced.npy (PALETTE indices over REDUCED_BOX, 255 where
-he is not) that scarlet_ref.reduced() reads. <idle> is our male at idle frame 0 with no items (a
-256 x 256 PNG, tools/refs/scarlet-idle.mts writes it). The same picture always gives the same bytes.
-Run from the repository root with python3 -I:
+he is not; its last row holds the box's x0, y0), scarlet-reduced-parts.npy (which part each pixel
+came from) and scarlet-reduced-layers.npy (each part alone, what the parts in front hide included),
+that scarlet_ref.reduced(), reduced_parts() and reduced_layers() read. <idle> is our male at idle frame 0
+with no items (a 256 x 256 PNG, tools/refs/scarlet-idle.mts writes it). The same picture always gives
+the same bytes. Run from the repository root with python3 -I:
 
   npx tsx tools/refs/scarlet-idle.mts <out>
   python3 -I tools/refs/scarlet-study.py <out> <out>/male-idle.png [--write]
@@ -45,50 +61,354 @@ import scarlet_ref as R  # noqa: E402
 # The reduced reference's box in our frame (x0, y0, x1, y1): the figure and the sword fit in it.
 REDUCED_BOX = (88, 116, 168, 224)
 
-# His parts, in his pixels (x, y of pixel corners; a pixel is in when its centre is). A pixel goes to
-# the first part that has it: the sword, then the head, the arms, the legs below the coat's hem, and
-# the rest of him is the torso. Pixels inside CAPE (left of his near sleeve and coat) are dropped.
-CAPE = [(0, 60), (44, 78), (47.4, 80.5), (46.9, 100), (46.4, 110), (50, 111), (50, 123.5), (46, 127), (46, 156), (0, 170)]
-HEAD = [(54, 16), (102, 16), (102, 50), (97, 53), (93, 55), (89, 56), (86, 57.5), (84, 58.5), (78, 58.5), (75, 56),
-        (72, 55), (68, 54.5), (64, 55.5), (60, 57.5), (56, 56), (54, 52)]
-# the coat's near shoulder (outside the lapel's gold edge), the sleeve, the cuff and the glove
-ARM_N = [(62.5, 56.5), (59, 59), (54, 65), (50, 72), (47.5, 80), (47, 100), (46.5, 110), (50, 111), (50, 123.5),
-         (57, 124), (60, 119), (61.5, 108), (62, 96), (62, 86), (64, 78), (66.5, 73.5), (66, 66)]
-HAND_N = [(50, 110.5), (58.5, 110.5), (58.5, 124), (50, 124)]
-# the coat's far shoulder (outside its far front edge), the sleeve, the cuff and the glove
-ARM_F = [(91.5, 56.5), (94.5, 58), (98, 64), (101, 72), (103, 80), (105, 90), (107, 97), (109.5, 108), (109, 117),
-         (108, 124), (101.5, 124.5), (101, 114), (99.5, 104), (98.5, 92), (97.5, 80), (96.5, 70), (93.5, 61)]
-# the coat and all on it: his figure right of the cape and above the boots
-TORSO = [(46, 50), (110, 50), (110, 160), (46, 160)]
-# the trousers below the coat's hem and the boots
-LEG_N = [(59, 148), (76, 146), (77, 194), (50, 194), (52, 157), (58, 155)]
-LEG_F = [(81, 146), (97, 146), (98, 154), (107, 174), (107, 194), (81, 194)]
-# the sword: thick lines (from, to, half width) along the grip and pommel, the cross-guard and the
-# blade; in them only his sword's own colours count (his black line, his steel greys, his reds), not
-# the cape's dark greys and purples behind it, and not his glove (HAND_N)
-SWORD = [((63.5, 101.5), (48, 121.5), 2.2), ((37.5, 112.5), (58.5, 133.5), 2.3), ((48, 123), (8.5, 180.5), 4.6)]
+# His parts, in his pixels (x, y of pixel corners; a pixel is in when its centre is). Where two
+# overlap the first listed has it. What no part takes is the cape (and the white round him).
+PARTS = {
+    # hair, face and chin (his neck below the chin goes with the coat, round the cravat, and so does
+    # his collar's white-edged tip under his hair's near ends)
+    'head': [(54, 16), (102, 16), (102, 50), (97, 53), (93, 55), (89, 56), (86, 57.5), (84, 58.5), (78, 58.5), (75, 56),
+             (72, 54), (68, 52), (65, 51.5), (61, 52), (57, 51), (54, 49)],
+    # the near glove, below the cuff, and the grip in it
+    'handN': [(48.5, 109.5), (59.5, 109.5), (59.5, 118), (58, 123.5), (50, 123.5), (48.5, 118)],
+    # the near sleeve, from under the cape's edge (the shoulder above it is the cape's, mended into
+    # the coat's own shoulder) to the cuff
+    'armN': [(63, 56.5), (59, 58.5), (55, 61.5), (51.5, 66), (49, 72), (47.5, 80), (47, 90), (47.5, 100), (48, 109.5),
+             (59.5, 109.5), (60.5, 104), (61.5, 96), (62.5, 90), (64.5, 82), (65.5, 74), (66.5, 66), (66.5, 58)],
+    # the far glove (his far sleeve is a sliver; our far arm wears his near one, MEND)
+    'handF': [(101, 108.5), (107.5, 108.5), (108.5, 115), (108, 123.5), (101.5, 123.5), (101, 116)],
+    # the gold cross and the small gold piece hanging from his belt over his near leg, and the red
+    # tassel at his far hip: they hang on the coat's layer, over the trousers
+    'ornaments': [(73, 102), (80, 102), (80, 119), (73, 119)],
+    'tassel': [(92, 103.5), (96, 103.5), (96, 114.5), (92, 114.5)],
+    'ornament2': [(70.5, 115), (75, 115), (75, 120.5), (70.5, 120.5)],
+    # his trousers in the coat's opening and his boots
+    'legN': [(68.5, 103.5), (79.5, 103.5), (80.5, 118), (78.5, 130), (77.5, 140), (75, 150), (74.5, 156), (73, 165),
+             (69.5, 172), (70, 180), (70.5, 186), (68, 190.5), (55, 190.5), (54.5, 184), (57, 176), (58.5, 165),
+             (59.5, 155), (61, 148), (61.5, 140), (63.5, 130), (66, 120), (68, 110)],
+    'legF': [(80.5, 103.5), (97.5, 103.5), (97.5, 125), (97, 140), (97.5, 150), (101, 165), (103.5, 178), (103, 186.5),
+             (83, 186.5), (83.5, 170), (83, 155), (82.5, 147), (84.5, 140), (84.5, 125), (81, 120)],
+    # the back of his coat between his legs: its purple lining
+    'lining': [(77, 118), (88, 118), (88, 149), (77, 149)],
+    # the coat: collar, lapels, body, shirt and cravat, belt, the skirts to their tattered hems
+    'torso': [(60, 50), (100, 50), (97, 56), (96, 62), (95.5, 80), (96, 96), (98.5, 104), (101.5, 108.5), (101.5, 124),
+              (106, 125), (110, 129), (111, 150), (110, 160), (96, 160), (96, 150), (64, 150), (62, 160), (44, 160),
+              (43.5, 150), (45, 138), (47, 126), (48, 110), (60, 110), (61.5, 96), (64.5, 82), (66.5, 66), (64, 57)],
+}
+# Back to front.
+ORDER = ['armF', 'handF', 'lining', 'legF', 'legN', 'torso', 'armN', 'blade', 'hilt', 'handN', 'head']
+# Which of his parts each of ours is cut from ('armF' wears his near sleeve; the ornaments ride the
+# coat's layer).
+SOURCE = {'armF': ['armN'], 'torso': ['torso', 'ornaments', 'tassel', 'ornament2']}
 
-# How much each of his colours counts when a pixel of ours covers several: his gold trim, his amber
-# eyes and his reds more, so his thin lines and highlights are not lost.
-GOLD = ['#947650', '#a8865d', '#846542', '#70583c', '#5e4a33', '#be8867']
-EYES = ['#c88038', '#9c5e1a']
-REDS = ['#84141f', '#a11a24', '#a9292f', '#c72b32', '#d83c44', '#e85056', '#f47278', '#ffa7a7', '#7c1e2c', '#5d0e1a']
-WEIGHT = {**{h: 3.0 for h in EYES}, **{h: 1.5 for h in REDS}, '#040405': 1.25}
-COVER = 0.45  # a pixel of ours is his when this much of it is
-# The parts whose gold is laid on forward, pixel by pixel (splat), over the reduced part: his trims
-# are lines one pixel wide that a pixel of ours would mostly miss.
-SPLAT = {'torso', 'armN', 'armF', 'legN', 'legF'}
-# Samples per side for each of our pixels (4 x 4 by default); the sword takes the one colour of his
-# under each pixel's middle, so its black line, steel edge and red core stay apart.
-SAMPLES = {'sword': 1}
+# His sword's blade (polygon, his pixels): from the cross-guard to the point, its black line round it.
+# The hilt (pommel, grip, cross-guard) is drawn by hand at our scale (LAYER_PATCHES['hilt']): at 0.6
+# it is a few pixels each, his grip is hidden under his glove and his cuff, and his guard lies on
+# his coat and cape, so it is drawn as he drew it rather than cut out of them.
+BLADE = [(37.5, 122.5), (44.5, 122.5), (50.5, 126.5), (50, 130.5), (47, 135.5), (43, 140.5), (36, 150.5), (28, 160.5),
+         (21, 170.5), (16, 175.5), (12, 180), (9, 180), (9.5, 176), (10.5, 174), (13, 169.5), (19.5, 159.5),
+         (25.5, 149.5), (32.5, 139.5), (34.5, 134.5), (37, 129.5)]
+# His cross-guard and pommel, to keep them out of the coat and the cape (and in his figure beside
+# ours, compare@4).
+HILT = [((64.5, 101.5), (57, 112.5), 2.6), ((37.5, 112.5), (58.5, 134), 2.2), ((50, 120), (45.5, 127), 3.0)]
+
+# Mends in his pixels, before anything is cut: (polygon, from colours, to colour). In the polygon,
+# his pixels of the `from` colours (characters of scarlet_ref.CHARS; '*' any) become `to`: the cape's
+# gold edge across his near upper arm, and its black shadow under it, become his sleeve's greys.
+MEND = [
+    ([(68, 71), (69, 74), (52, 87), (48, 86), (48, 82)], 'mvyFJOSa', 'j'),
+    ([(68, 71), (69, 74), (52, 87), (48, 86), (48, 82)], 'bd', 'f'),
+]
+# His gold: his trims are laid on forward, and the mean that picks a cloth pixel's colour leaves it
+# out. His belt's ornaments are what of them is his gold, his dark golds and his reds (and the black
+# line round them).
+GOLD = ['#947650', '#a8865d', '#846542', '#70583c', '#be8867']
+DARK_GOLD = ['#5e4a33', '#4e3c2b', '#332a1e']
+REDS = ['#5d0e1a', '#84141f', '#7c1e2c', '#a11a24', '#a9292f', '#9e3b41', '#c72b32', '#d83c44', '#e85056']
+COVER = 0.5  # a pixel of ours is a part's when this much of it is
+# His hair takes the one colour of his under each pixel's middle: the dark lines between his strands
+# and his strands' thin ends stay (a mean greys them out and drops the ends).
+ONE_SAMPLE = {'head'}
+SAMPLES = 5
+# The parts whose gold is laid on forward.
+SPLAT = {'torso', 'armN', 'armF'}
+# The blade takes, for each of our pixels, his commonest colour along the blade through the point
+# under its middle (5 of his pixels along, one across): his black line, his steel edges and his red
+# core stay apart, each an unbroken band, and his JPEG speckle along them goes.
+NEAREST = {'blade', 'hilt'}
+ALONG = 2
 
 # His black line round the figure; his hair's own dark red where the hair is the edge.
 LINE = '#040405'
 HAIR_LINE = '#26060d'
+HAIR = ['#26060d', '#3a0f1e', '#4e172a', '#601f35', '#70273e', '#87324c', '#9a3e58', '#ac5068']
+# Where his coat is hidden in his picture and ours shows (our arms hang clear of the body, our far
+# hand further out): the coat's layer carried on outward, row by row, to a column of ours, in his
+# cloth (side, first row, last row + 1, to x, colour).
+UNDER = {'torso': [('L', 148, 170, 115, '#252328'), ('L', 170, 186, 111, '#1a191e'), ('R', 172, 194, 141, '#1a191e')]}
 
 # Mends by hand, in our frame: (x0, y0, rows); '.' keeps the pixel, '_' clears it, any other
-# character is that colour of his (scarlet_ref.CHARS).
-PATCHES = []
+# character is that colour of his (scarlet_ref.CHARS). LAYER_PATCHES go on one part's own layer
+# (scarlet_ref.reduced_layers(): what of it the parts in front hide too); PATCHES on the finished
+# figure, after his black line.
+LAYER_PATCHES = {
+    # his legs on ours, drawn at our scale after his: his trousers with his pinstripes (two of our
+    # pixels apart: his are finer than our pixel), lit on the near side, the near knee's fold; his tall
+    # boots: the cuff at the top with his strap across it, his shine down the shin and over the toe,
+    # the black sole; the near toe a little to the side as his, the far one forward as his
+    'legN': [(110, 174, [
+        '________tjtjnfndja',
+        '________tjtjnfndja',
+        '________tjtjnfndja',
+        '________tjtjnfndja',
+        '________tjtjnfndja',
+        '________tjtjnfndja',
+        '________tjtjnfndja',
+        '________tjtjnfndja',
+        '________tjtjnfndja',
+        '________tjtjnfndja',
+        '________tjtjnfndja',
+        '________tjtjnfndja',
+        '_______jtjtfnfjdb_',
+        '_______jtjtfnfjdb_',
+        '_______jtjtfnfjdb_',
+        '_______jtjtfnfjdb_',
+        '_______jtjnfjdb___',
+        '_______jtjnfjdb___',
+        '_______jtjnfjdb___',
+        '______dfdfdfdfd___',
+        '______tjtfnfjdb___',
+        '______tjtfnfjdb___',
+        '______aaaaaaaaa___',
+        '______ajntnjfda___',
+        '______aBHNHBtna___',
+        '______afjnjfdda___',
+        '______ajnBnfda____',
+        '______afnHnfda____',
+        '______afjBnfda____',
+        '______afjHjfda____',
+        '______adjBjfda____',
+        '______adnBjdda____',
+        '______afnHjdda____',
+        '____adfjBtfda_____',
+        '____afjnHjfda_____',
+        '____afjBtjfda_____',
+        '___aajnHjffdda____',
+        '___afnBtjfddda____',
+        '___ajBHnjfddda____',
+        '__afnHVnjffdda____',
+        '__ajBVHtjffdda____',
+        '__anHBtjffddda____',
+        '__atBtjffddda_____',
+        '__ajtjffdddba_____',
+        '___aaaaaaaaaa_____',
+    ])],
+    'legF': [(126, 172, [
+        '_nfnfjdjdfbf__________',
+        '_nfnfjdjdfbf__________',
+        '_nfnfjdjdfbf__________',
+        '_nfnfjdjdfbf__________',
+        '_nfnfjdjdfbf__________',
+        '_nfnfjdjdfbf__________',
+        '__fnfndjdfbf__________',
+        '__fnfndjdfbf__________',
+        '__fnfnfjdjdfbf________',
+        '__fnfnfjdjdfbf________',
+        '__fnfnfjdjdfbf________',
+        '__fnfnfjdjdfbf________',
+        '_____afnfjdfbf________',
+        '_____afnfjdfbf________',
+        '_____afnfjdjbfb_______',
+        '_____afnfjdjbfb_______',
+        '_____afnfjdjbfb_______',
+        '_____aaaaaaaaaa_______',
+        '______afjntnjfa_______',
+        '______atBHNHBta_______',
+        '______adfjnjfda_______',
+        '_______afjBnfda_______',
+        '_______afjHnfda_______',
+        '_______adjBjfda_______',
+        '_______adjHjfda_______',
+        '_______adjBjfda_______',
+        '_______adnHjfda_______',
+        '_______adnBjfda_______',
+        '_______adnHjfda_______',
+        '_______adjBjfdda______',
+        '_______adjtBjfdda_____',
+        '______addjjtBjfdaa____',
+        '______addjjntBHjfda___',
+        '______addfjjntBHjfdda_',
+        '______addfjjnntBVHjfda',
+        '______addffjjnntBVHjda',
+        '______abddffjjnntBHjda',
+        '______aabddffjjjnttjda',
+        '__________aaaaaaaaaa__',
+    ])],
+    # his chest, drawn at our scale after his: the high collar (gold-edged, his white glint at the near
+    # tip), the cravat's knot round the neck and its tail down the middle of the shirt, the open
+    # collar's skin, the near lapel (his gold edge, his gold embroidery, its black inner edge), the far
+    # lapel (gold edge and embroidery), the coat's near front edge in his dark gold, the shirt's white
+    # and greys to his belt, and his gold buckle ring
+    'torso': [(116, 147, [
+        '.azfda.........afJa.....',
+        '.aJSfjak......kbjJfa....',
+        '.afShfaukk...kucaJfa....',
+        '.jfSOhfakuZXukcaJFda....',
+        '.jfOhSfackUkuukaSyfa....',
+        '.nfOJfSaakurukcaJvfd....',
+        '.njSfOJSackuukcaOyfd....',
+        '.njOJfSFSa7ikuk5aJfd....',
+        '.jfSfSOfJa75kuc3aSyf....',
+        '.jfdSJfOJa75ukc0aJvf....',
+        '.jfdSfOJfa73kuiYaOyf....',
+        '.ffdjSfJOa53kuc0aJvf....',
+        '.ffdjSOfJa70kucYaSyf....',
+        '.fddfjSJfa53ckuVaJvf....',
+        '.fddfjSfOa70ikuYaOyf....',
+        '.fddffjSJa53kuk0aJvf....',
+        '.fddffjSfa70ckiVaSyf....',
+        '.fddffjjSa53Ykc0aJvf....',
+        '.fddffjjSa703iYVaOyf....',
+        '.fddffjjSa70330YaJvf....',
+        '.fddffjjya5303YVaSyf....',
+        '.fddffjjya7053YVaJvf....',
+        '.fddffjjva3503YRaOyf....',
+        '.fddffjjyaV03YVNaJvf....',
+        '.fddffjjvaRVYVNRayff....',
+        '.ddajnjnyaaaaJOSayad....',
+        '...adfjfdvdhOadXJadd....',
+        '...adffddyddSddSFadf....',
+        '...aedddavadJOSvaadf....',
+    ]),
+              # his coat's skirts below the belt: the near one (his dark gold trim down its front edge and its
+              # outer edge, its cloth lit toward the front, a fold, his tattered hem), the far one (the purple
+              # lining inside its front edge, his trim, the shaded cloth, the hem); his gold cross and the small
+              # gold piece hanging from the belt over the near thigh, his red tassel at the far hip
+              (104, 176, [
+        '_______ddffjjjjya_____J_______J__vfffdd_____',
+        '_______ddffjjjjva____JSJ______k__yfffdd_____',
+        '_______ddffjjjjya___JOSOJ_____s__vfffdd_____',
+        '_______ddffjjjjya____aOa______k__vfffdd_____',
+        '_______ddffjjjjva_____J_______s__yffffdd____',
+        '_______ddffjjjya______O_______k__vffffdd____',
+        '_______ddffjjjya__FJ__J__________vffffdd____',
+        '_______ddffjjjva__JO__F_________ehyfffdd____',
+        '_______ddfffjjya________________ehvfffdd____',
+        '_______ddfffjjya________________ehvffffdd___',
+        '______vdfffjjva_________________ehyffffdd___',
+        '______vdfffjjya_________________ehvffffdd___',
+        '______vdfffjjya__________________ehvfffdd___',
+        '______vdfffjjva__________________ehyfffdd___',
+        '_____vdfffjjjya__________________ehvffffdd__',
+        '_____vdfffjjya___________________ehvffffdd__',
+        '_____vdfffjjva___________________ehyffffdd__',
+        '_____vdfffjjya____________________ehvfffdd__',
+        '____vdfffjjjya____________________ehvfffdd__',
+        '____vdfffjjjva____________________ehyffffdd_',
+        '____vdfffjjjya____________________ehvffffdd_',
+        '____vdfffjjjya____________________ehvffffdd_',
+        '____vdfd_fjjy_____________________ehyffffdd_',
+        '____vd____jy______________________ehvffffdd_',
+        '____d______v_______________________hvff_ddd_',
+        '_____________________________________fd__d__',
+        '_____________________________________d___d__',
+        '____________________________________________',
+        '____________________________________________',
+        '____________________________________________',
+              ])],
+    # his fingerless gloves on our fists (his near one round a grip that, turned, runs the other way,
+    # so drawn by hand): his black leather lit on the side the light comes from, his skin on the
+    # fingers, in our fists' own finger shading; the near fist round the grip, the far one hanging
+    'handN': [(102, 174, [
+        '__________',
+        '__antjfaa_',
+        '_antBnjfa_',
+        '_ajntnjfda',
+        '_ajnnjffda',
+        '_afjjffdaa',
+        '_a4Q4Q4QQa',
+        '_aX4X4X4a_',
+        '__aQXQXQa_',
+        '___aa_aa__',
+        '__________',
+    ])],
+    'handF': [(138, 171, [
+        '_________',
+        '_________',
+        '_aafnnfa_',
+        '_ajntnja_',
+        '_afjfjnfa',
+        '_aXqXqXUa',
+        'aaUQUQUQa',
+        '__aQUXXa_',
+        '___aUUa__',
+        '____aa___',
+        '_________',
+    ])],
+    # the coat's near shoulder (the cape lay over his) rounded out over our broad shoulder, in his
+    # sleeve's lit greys
+    'armN': [(106, 147, [
+        '......hhhhhh.',
+        '....hhjttnnn.',
+        '...hjtt......',
+        '..hjtn.......',
+        '..hjtn.......',
+        '.hjjtn.......',
+        '.hjjnj.......',
+        '.hjjh........',
+        '.hjjh........',
+        '.hjh.........',
+        '.hh..........',
+    ])],
+    # his face: his eyes on ours (his lashes, his white, his amber iris and its glint; the far one his
+    # dark amber and glint), the shade under his bangs, the hair strand between his eyes, his nose's
+    # shade, his small smile, his jaw and chin
+    'head': [(119, 139, [
+        'rAlrArrMJMUrl44M..',
+        'liiwAwcbbbQl4qaab.',
+        'irwrAGZ3TI66zI5bc.',
+        'lrwlrwM4z7666QZXb.',
+        'ilrwlAl466666422b.',
+        'lilrwl466666UXZb..',
+        'iilirl466666UZXb..',
+        '....zQ262MU66ZXi..',
+        '....Mz466662XZv_..',
+        '....cUJq2662Fa_...',
+        '......UMqqZ6c_....',
+    ])],
+    # his hilt, turned with his blade: his pommel (steel cap, red gem with his pink glint, dark ring),
+    # his grip (dark steel, under our fist) and his cross-guard (light steel on the side the light
+    # comes from, his red gem where the blade leaves it), in his black line
+    'hilt': [(96, 170, [
+        '..........................',
+        '.aaa......................',
+        'aHBta.....................',
+        'at1Ka.................aa..',
+        '.aCsraa..............aNta.',
+        '..aaiBBaa...........aRBa..',
+        '......atBaa........aNta...',
+        '.......aatBa......aRBa....',
+        '.........aataa...aNta.....',
+        '...........aBta.aRBa......',
+        '............aaBaNta.......',
+        '..............aKCa........',
+        '.............aNsa.........',
+        '............aRBa..........',
+        '...........aNta...........',
+        '..........aRBa............',
+        '.........aNta.............',
+        '........aRBa..............',
+        '.......aVta...............',
+        '.......aaa................',
+        '..........................',
+    ])],
+}
+PATCHES = [
+    # his hair's strands on the near side end drooping, not straight out
+    (115, 132, ['_', 'c']),
+    (113, 136, ['_', 'c']),
+    (113, 139, ['_', 'c']),
+    (114, 142, ['_']),
+]
 
 
 def inside(poly, xs, ys):
@@ -113,205 +433,140 @@ def capsule(a, b, hw, xs, ys):
     return np.hypot(xs - a[0] - t * d[0], ys - a[1] - t * d[1]) <= hw
 
 
-def layers(N, Q, fig):
-    """His pixels split into parts: a dict of (H, W) bool masks."""
+def ci(h):
+    return R.PALETTE.index(h)
+
+
+def his():
+    """His pixels, mended (MEND): (N rgb, Q palette indices, N0 and Q0 as he drew them, for
+    the sword, and the parts' masks). His white round him is no part's; nor is the cape."""
+    N0 = R.native()
+    fig = ~R.background(N0)
+    Q0 = R.quantize(N0)
+    N, Q = N0.copy(), Q0.copy()
     H, W = Q.shape
     yy, xx = np.mgrid[0:H, 0:W]
     cx, cy = xx + 0.5, yy + 0.5
     P = R.rgb()
-    L = R.luma(N)
-    red = (N[..., 0] - N[..., 1] > 35)
-    skin = np.isin(Q, [R.PALETTE.index(h) for h in ('#f8d4b8', '#f2c8aa', '#eabb9d', '#e2af8c', '#ca9c75', '#be8867', '#b27758', '#9e654b')])
-    taken = ~fig | inside(CAPE, cx, cy)
-    out = {}
-    sw = np.zeros((H, W), bool)
-    for a, b, hw in SWORD:
-        sw |= capsule(a, b, hw, cx, cy)
-    sw &= ~inside(HAND_N, cx, cy) & ~skin & ((L < 16) | (L > 50) | red)
-    sw &= fig
-    out['sword'] = sw
-    taken = taken & ~sw
-    taken |= sw
-    for name, poly in (('head', HEAD), ('armN', ARM_N), ('armF', ARM_F), ('legN', LEG_N), ('legF', LEG_F)):
-        m = inside(poly, cx, cy) & ~taken
-        out[name] = m
+    # the sword, as he drew it (the mends paint over where it was)
+    skin = np.isin(Q0, [ci(h) for h in ('#f8d4b8', '#f2c8aa', '#eabb9d', '#e2af8c', '#ca9c75', '#be8867', '#b27758', '#9e654b')])
+    M = {}
+    hilt = np.zeros((H, W), bool)
+    for a, b, hw in HILT:
+        hilt |= capsule(a, b, hw, cx, cy)
+    M['hilt'] = hilt & ~skin & fig & ~inside(PARTS['handN'], cx, cy) & ~inside(PARTS['armN'], cx, cy)
+    M['blade'] = inside(BLADE, cx, cy) & fig & ~M['hilt']
+    taken = ~fig | M['hilt'] | M['blade']
+    for poly, frm, to in MEND:
+        m = inside(poly, cx, cy) & fig
+        if frm != '*':
+            m &= np.isin(Q, [R.CHARS.index(c) for c in frm])
+        Q[m] = R.CHARS.index(to)
+        N[m] = P[R.CHARS.index(to)]
+    shine = np.isin(Q, [ci(h) for h in GOLD + DARK_GOLD + REDS])
+    pad = np.pad(shine, 1)
+    near = shine | pad[:-2, 1:-1] | pad[2:, 1:-1] | pad[1:-1, :-2] | pad[1:-1, 2:]
+    for name in ('head', 'handN', 'armN', 'handF', 'ornaments', 'tassel', 'ornament2', 'legN', 'legF', 'lining', 'torso'):
+        m = inside(PARTS[name], cx, cy) & ~taken
+        if name in ('ornaments', 'tassel', 'ornament2'):
+            m &= near
+        M[name] = m
         taken |= m
-    out['torso'] = ~taken & inside(TORSO, cx, cy)
-    del P
-    return out
+    return N, Q, N0, Q0, M
 
 
-def _chain(seg, q):
-    """Backward map along a chain of runs: our points (N, 2) -> his points (N, 2). Each of our points
-    goes by the run nearest to it."""
-    hj = [np.asarray(p, float) for p in seg['his']]
-    oj = [np.asarray(p, float) for p in seg['our']]
-    w = seg['width']
-    best_d = np.full(len(q), np.inf)
-    his = np.zeros_like(q)
-    for k in range(len(hj) - 1):
-        a, b = oj[k], oj[k + 1]
-        ha, hb = hj[k], hj[k + 1]
-        d = b - a
-        t = ((q - a) @ d) / (d @ d)
-        n = np.array([-d[1], d[0]]) / np.hypot(*d)
-        hd = hb - ha
-        hn = np.array([-hd[1], hd[0]]) / np.hypot(*hd)
-        off = (q - a) @ n
-        lo = -np.inf if k == 0 else 0.0
-        hi = np.inf if k == len(hj) - 2 else 1.0
-        tc = np.clip(t, max(lo, -1e9), min(hi, 1e9))
-        dist = np.hypot(*(q - (a + np.clip(tc, 0, 1)[:, None] * d)).T)
-        p = ha + t[:, None] * hd + (off / w)[:, None] * hn
-        better = dist < best_d - 1e-9
-        his[better] = p[better]
-        best_d = np.where(better, dist, best_d)
-    # past the last point: the end piece about it, unturned
-    e = seg.get('end')
-    if e:
-        a, b = oj[-2], oj[-1]
-        d = b - a
-        past = ((q - b) @ d) / (d @ d) > 0
-        his[past] = np.asarray(e['his'], float) + (q[past] - np.asarray(e['our'], float)) / e['s']
-    return his
-
-
-def backward(seg, q):
-    """Our points (N, 2) -> his points (N, 2) for a segment of scarlet_ref.SEGMENTS."""
-    if seg['kind'] == 'sim':
-        return np.asarray(seg['his'], float) + (q - np.asarray(seg['our'], float)) / seg['s']
-    if seg['kind'] == 'torso':
-        hx0, ox0 = seg['x0']
-        hk = np.array([k[0] for k in seg['knots']], float)
-        ok = np.array([k[1] for k in seg['knots']], float)
-        x = hx0 + (q[:, 0] - ox0) / seg['sx']
-        y = np.interp(q[:, 1], ok, hk)
-        lo, hi = q[:, 1] < ok[0], q[:, 1] > ok[-1]
-        y[lo] = hk[0] + (q[lo, 1] - ok[0]) * (hk[1] - hk[0]) / (ok[1] - ok[0])
-        y[hi] = hk[-1] + (q[hi, 1] - ok[-1]) * (hk[-1] - hk[-2]) / (ok[-1] - ok[-2])
-        return np.stack([x, y], 1)
-    return _chain(seg, q)
-
-
-def forward(seg, p):
-    """His points (N, 2) -> our points (N, 2) for a segment (the inverse of backward)."""
-    if seg['kind'] == 'sim':
-        return np.asarray(seg['our'], float) + (p - np.asarray(seg['his'], float)) * seg['s']
-    if seg['kind'] == 'torso':
-        hx0, ox0 = seg['x0']
-        hk = np.array([k[0] for k in seg['knots']], float)
-        ok = np.array([k[1] for k in seg['knots']], float)
-        x = ox0 + (p[:, 0] - hx0) * seg['sx']
-        y = np.interp(p[:, 1], hk, ok)
-        lo, hi = p[:, 1] < hk[0], p[:, 1] > hk[-1]
-        y[lo] = ok[0] + (p[lo, 1] - hk[0]) * (ok[1] - ok[0]) / (hk[1] - hk[0])
-        y[hi] = ok[-1] + (p[hi, 1] - hk[-1]) * (ok[-1] - ok[-2]) / (hk[-1] - hk[-2])
-        return np.stack([x, y], 1)
-    hj = [np.asarray(v, float) for v in seg['his']]
-    oj = [np.asarray(v, float) for v in seg['our']]
-    w = seg['width']
-    best_d = np.full(len(p), np.inf)
-    our = np.zeros_like(p)
-    for k in range(len(hj) - 1):
-        a, b = hj[k], hj[k + 1]
-        oa, ob = oj[k], oj[k + 1]
-        d = b - a
-        t = ((p - a) @ d) / (d @ d)
-        n = np.array([-d[1], d[0]]) / np.hypot(*d)
-        od = ob - oa
-        on = np.array([-od[1], od[0]]) / np.hypot(*od)
-        off = (p - a) @ n
-        dist = np.hypot(*(p - (a + np.clip(t, 0, 1)[:, None] * d)).T)
-        q = oa + t[:, None] * od + (off * w)[:, None] * on
-        better = dist < best_d - 1e-9
-        our[better] = q[better]
-        best_d = np.where(better, dist, best_d)
-    e = seg.get('end')
-    if e:
-        a, b = hj[-2], hj[-1]
-        d = b - a
-        past = ((p - b) @ d) / (d @ d) > 0
-        our[past] = np.asarray(e['our'], float) + (p[past] - np.asarray(e['his'], float)) * e['s']
-    return our
-
-
-def splat(seg, Q, mask, keep, box):
-    """His pixels of the colours `keep` laid forward onto our box, each on the pixel of ours its
-    middle lands in: his thin lines stay unbroken (one of ours is 1.8 of his). (h, w) indices, -1
-    elsewhere; where several of his land on one of ours the commonest wins."""
-    x0, y0, x1, y1 = box
-    ys, xs = np.nonzero(mask & np.isin(Q, list(keep)))
-    out = np.full((y1 - y0, x1 - x0), -1)
-    if not len(xs):
-        return out
-    q = forward(seg, np.stack([xs + 0.5, ys + 0.5], 1).astype(float))
-    u = np.floor(q[:, 0]).astype(int) - x0
-    v = np.floor(q[:, 1]).astype(int) - y0
-    votes = {}
-    for i, j, c in zip(u, v, Q[ys, xs]):
-        if 0 <= i < x1 - x0 and 0 <= j < y1 - y0:
-            votes.setdefault((j, i), []).append(int(c))
-    for (j, i), cs in votes.items():
-        out[j, i] = max(set(cs), key=lambda c: (cs.count(c), -c))
-    return out
-
-
-def reduce_layer(seg, Q, mask, weight, box, ss=4):
+def reduce_part(name, seg, N, Q, mask, box, gold):
     """One part of him brought down onto our box: (h, w) PALETTE indices, -1 where he is not."""
     x0, y0, x1, y1 = box
     h, w = y1 - y0, x1 - x0
     H, W = Q.shape
-    offs = (np.arange(ss) + 0.5) / ss
+    S = 1 if name in NEAREST or name in ONE_SAMPLE else SAMPLES
+    offs = (np.arange(S) + 0.5) / S
     oy, ox = np.meshgrid(offs, offs, indexing='ij')
     yy, xx = np.mgrid[y0:y1, x0:x1]
     q = np.stack([(xx[..., None, None] + ox).ravel(), (yy[..., None, None] + oy).ravel()], 1)
-    p = backward(seg, q)
+    p = R.backward(seg, q)
     px = np.floor(p[:, 0]).astype(int)
     py = np.floor(p[:, 1]).astype(int)
     ok = (px >= 0) & (px < W) & (py >= 0) & (py < H)
     hit = np.zeros(len(q), bool)
     hit[ok] = mask[py[ok], px[ok]]
-    idx = np.full(len(q), -1)
-    idx[hit] = Q[py[hit], px[hit]]
-    idx = idx.reshape(h, w, ss * ss)
-    cover = (idx >= 0).mean(-1)
+    cols = np.zeros((len(q), 3))
+    cols[hit] = N[py[hit], px[hit]]
+    isg = np.zeros(len(q), bool)
+    isg[hit] = np.isin(Q[py[hit], px[hit]], list(gold))
+    hit = hit.reshape(h, w, S * S)
+    cols = cols.reshape(h, w, S * S, 3)
+    isg = isg.reshape(h, w, S * S)
+    cover = hit.mean(-1)
     out = np.full((h, w), -1)
-    nP = len(R.PALETTE)
-    for j in range(h):
-        for i in range(w):
-            if cover[j, i] < COVER:
-                continue
-            v = idx[j, i][idx[j, i] >= 0]
-            score = np.bincount(v, minlength=nP) * weight
-            out[j, i] = int(score.argmax())
+    on = cover >= (COVER if S > 1 else 0.5)
+    # the mean of his colours under the pixel, his gold left out where it is not all gold
+    use = hit & ~isg
+    none = use.sum(-1) == 0
+    use[none] = hit[none]
+    n = np.maximum(use.sum(-1), 1)
+    mean = (cols * use[..., None]).sum(2) / n[..., None]
+    if on.any():
+        out[on] = R.quantize(mean[on])
     return out
 
 
-def turn(Q, mask, k):
-    """His pixels turned k quarter turns counterclockwise, exactly (scarlet_ref.turned for points)."""
-    return np.rot90(Q, k), np.rot90(mask, k)
+def splat(seg, Q, mask, keep, box):
+    """His pixels of the colours `keep` laid forward onto our box, each on the pixel of ours its
+    middle lands in: his thin lines stay unbroken (one of ours is 1.8 of his). (h, w) indices, -1
+    elsewhere; where several of his land on one of ours the brightest wins."""
+    x0, y0, x1, y1 = box
+    ys, xs = np.nonzero(mask & np.isin(Q, list(keep)))
+    out = np.full((y1 - y0, x1 - x0), -1)
+    if not len(xs):
+        return out
+    q = R.forward(seg, np.stack([xs + 0.5, ys + 0.5], 1).astype(float))
+    u = np.floor(q[:, 0]).astype(int) - x0
+    v = np.floor(q[:, 1]).astype(int) - y0
+    L = R.luma(R.rgb())
+    for i, j, c in sorted(zip(u, v, Q[ys, xs]), key=lambda t: (L[t[2]], t[0], t[1])):
+        if 0 <= i < x1 - x0 and 0 <= j < y1 - y0:
+            out[j, i] = int(c)
+    return out
 
 
-def outline(idx, part, box):
-    """His black line round the figure: every pixel on its edge that is not already as dark."""
-    P = R.rgb()
-    L = R.luma(P)
-    line, hair = R.PALETTE.index(LINE), R.PALETTE.index(HAIR_LINE)
-    hairish = {R.PALETTE.index(c) for c in ('#26060d', '#3a0f1e', '#4e172a', '#601f35', '#70273e', '#87324c', '#9a3e58', '#ac5068')}
+def turn(a, k):
+    return np.rot90(a, k)
+
+
+def outline(idx, part):
+    """His black line round the figure: every pixel on its edge that is not already as dark; his hair
+    keeps its own dark red edge. And where his near sleeve lies on his coat (black on black): the
+    sleeve's edge."""
+    L = R.luma(R.rgb())
+    line, hairline = ci(LINE), ci(HAIR_LINE)
+    hairish = {ci(c) for c in HAIR}
     op = idx >= 0
-    edge = op & ~(np.pad(op, 1)[:-2, 1:-1] & np.pad(op, 1)[2:, 1:-1] & np.pad(op, 1)[1:-1, :-2] & np.pad(op, 1)[1:-1, 2:])
+    pad = np.pad(op, 1)
+    edge = op & ~(pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:])
     out = idx.copy()
     for j, i in zip(*np.nonzero(edge)):
         v = idx[j, i]
-        if L[v] <= 22:
+        if L[v] <= 12:
             continue
-        out[j, i] = hair if (part[j, i] == 'head' and v in hairish) else line
+        out[j, i] = hairline if (part[j, i] == 'head' and v in hairish) else line
+    # the near sleeve's edge where it lies on the coat
+    h, w = idx.shape
+    for j in range(h):
+        for i in range(w):
+            if part[j, i] != 'armN' or L[out[j, i]] <= 12:
+                continue
+            nb = [part[jj, ii] for jj, ii in ((j - 1, i), (j + 1, i), (j, i - 1), (j, i + 1)) if 0 <= jj < h and 0 <= ii < w]
+            if 'torso' in nb:
+                out[j, i] = line
     return out
 
 
-def patch(idx, box):
+def patch(idx, box, patches):
     x0, y0 = box[:2]
-    for px, py, rows in PATCHES:
+    idx = idx.copy()
+    for px, py, rows in patches:
         for dy, row in enumerate(rows):
             for dx, ch in enumerate(row):
                 if ch == '.':
@@ -320,39 +575,101 @@ def patch(idx, box):
     return idx
 
 
-def build():
-    N = R.native()
-    bg = R.background(N)
-    fig = ~bg
-    Q = R.quantize(N)
-    Q[bg] = -1
-    M = layers(N, Q, fig)
-    weight = np.ones(len(R.PALETTE))
-    for hexc, wv in WEIGHT.items():
-        weight[R.PALETTE.index(hexc)] = wv
+def blade_layer(seg, Q, mask, box):
+    """The blade on our box: for each of our pixels, his commonest colour along the blade (ALONG of
+    his pixels either way) through the point under its middle; -1 off the blade."""
+    x0, y0, x1, y1 = box
+    H, W = Q.shape
+    yy, xx = np.mgrid[y0:y1, x0:x1]
+    p = R.backward(seg, np.stack([xx.ravel() + 0.5, yy.ravel() + 0.5], 1))
+    a, b = (np.asarray(v, float) for v in seg['his'][:2])
+    u = (b - a) / np.hypot(*(b - a))
+    out = np.full(len(p), -1)
+    for i, (px, py) in enumerate(p):
+        ix, iy = int(np.floor(px)), int(np.floor(py))
+        if not (0 <= ix < W and 0 <= iy < H and mask[iy, ix]):
+            continue
+        votes = []
+        for k in range(-ALONG, ALONG + 1):
+            jx, jy = int(np.floor(px + k * u[0])), int(np.floor(py + k * u[1]))
+            if 0 <= jx < W and 0 <= jy < H and mask[jy, jx]:
+                votes.append(int(Q[jy, jx]))
+        out[i] = max(sorted(set(votes)), key=lambda c: (votes.count(c), c == Q[iy, ix]))
+    return out.reshape(y1 - y0, x1 - x0)
+
+
+def layers(mended=None):
+    """Each part of him on our box, alone (what the parts in front of it hide included): a dict of
+    (h, w) PALETTE indices, -1 where it is not. `mended` is his() when it is already at hand."""
+    N, Q, N0, Q0, M = mended or his()
+    box = REDUCED_BOX
+    h, w = box[3] - box[1], box[2] - box[0]
+    gold = {ci(c) for c in GOLD}
+    out = {}
+    for name in ORDER:
+        seg = R.SEGMENTS[name]
+        mask = np.zeros(Q.shape, bool)
+        for src in SOURCE.get(name, [name]):
+            mask |= M[src]
+        n, q = (N0, Q0) if name in NEAREST else (N, Q)
+        if seg.get('quarter_turns'):
+            k = seg['quarter_turns']
+            n, q, mask = turn(n, k), turn(q, k), turn(mask, k)
+        if name == 'hilt':
+            r = np.full((h, w), -1)
+        elif name == 'blade':
+            r = blade_layer(seg, q, mask, box)
+        else:
+            r = reduce_part(name, seg, n, q, mask, box, gold)
+        if name in SPLAT:
+            sp = splat(seg, q, mask, gold, box)
+            on = (sp >= 0) & (r >= 0)
+            r[on] = sp[on]
+        for side, ya, yb, to, c in UNDER.get(name, []):
+            r = extend(r, box, side, ya, yb, to, ci(c))
+        out[name] = patch(r, box, LAYER_PATCHES.get(name, []))
+    return out
+
+
+def extend(r, box, side, ya, yb, to, c):
+    """A layer carried on outward (side 'L' or 'R') to column `to` of our frame, in colour c, on rows
+    ya..yb-1."""
+    r = r.copy()
+    x0, y0 = box[:2]
+    for y in range(ya, yb):
+        row = r[y - y0]
+        xs = np.nonzero(row >= 0)[0]
+        if not len(xs):
+            continue
+        if side == 'L':
+            row[to - x0:xs[0]] = np.where(row[to - x0:xs[0]] < 0, c, row[to - x0:xs[0]])
+        else:
+            row[xs[-1] + 1:to - x0 + 1] = np.where(row[xs[-1] + 1:to - x0 + 1] < 0, c, row[xs[-1] + 1:to - x0 + 1])
+    return r
+
+
+def compose(lay):
+    """The parts back to front, his black line and the PATCHES: (idx, part)."""
     box = REDUCED_BOX
     h, w = box[3] - box[1], box[2] - box[0]
     idx = np.full((h, w), -1)
     part = np.full((h, w), '', dtype='<U6')
-    order = ['armF', 'legF', 'legN', 'torso', 'sword', 'armN', 'head']
-    gold = {R.PALETTE.index(h) for h in GOLD}
-    for name in order:
-        seg = R.SEGMENTS[name]
-        q, m = Q, M[name]
-        if seg.get('quarter_turns'):
-            q, m = turn(Q, m, seg['quarter_turns'])
-        q = np.where(q < 0, 0, q)
-        r = reduce_layer(seg, q, m, weight, box, ss=SAMPLES.get(name, 4))
-        if name in SPLAT:
-            s = splat(seg, q, m, gold, box)
-            on = (s >= 0) & (r >= 0)
-            r[on] = s[on]
-        put = r >= 0
-        idx[put] = r[put]
+    for name in ORDER:
+        put = lay[name] >= 0
+        idx[put] = lay[name][put]
         part[put] = name
-    idx = outline(idx, part, box)
-    idx = patch(idx, box)
-    return N, bg, Q, M, idx, part
+    idx = outline(idx, part)
+    idx = patch(idx, box, PATCHES)
+    part[idx < 0] = ''
+    return idx, part
+
+
+def build(with_layers=False):
+    mended = his()
+    N, Q, N0, Q0, M = mended
+    lay = layers(mended)
+    idx, part = compose(lay)
+    return (N, Q, M, idx, part, lay) if with_layers else (N, Q, M, idx, part)
 
 
 def to_rgba(idx):
@@ -375,12 +692,27 @@ def big(a, k, bgc=(236, 236, 240)):
     return im.resize((im.width * k, im.height * k), Image.NEAREST)
 
 
-def write_outputs(out, idle_path, N, bg, Q, M, idx):
+def bare(idle, idx, part):
+    """Our body's pixels he leaves bare, other than his face, neck and fingers: (h, w) bool."""
+    x0, y0, x1, y1 = REDUCED_BOX
+    sub = idle[y0:y1, x0:x1]
+    body = sub[..., 3] > 0
+    yy, xx = np.mgrid[y0:y1, x0:x1]
+    hx, hy = R.OUR_JOINTS['head']
+    face = (np.hypot(xx - hx, (yy - hy) * 0.9) < 11.5) | ((yy < 151) & (np.abs(xx - 127) < 5))
+    hands = np.zeros_like(face)
+    for j in ('handN', 'handF'):
+        jx, jy = R.OUR_JOINTS[j]
+        hands |= np.hypot(xx - jx, yy - jy) < 4.5
+    return body & (idx < 0) & ~face & ~hands
+
+
+def write_outputs(out, idle_path, N, Q, M, idx, part):
     box = REDUCED_BOX
     rgba = to_rgba(idx)
     Image.fromarray(rgba, 'RGBA').save(os.path.join(out, 'reduced@1.png'))
     big(rgba, 8).save(os.path.join(out, 'reduced@8.png'))
-    R.save(N, os.path.join(out, 'native@4.png'), 4)
+    R.save(R.native(), os.path.join(out, 'native@4.png'), 4)
     # palette: every colour of his, the ones the reduced reference uses underlined
     used = set(np.unique(idx[idx >= 0]).tolist())
     k = 24
@@ -391,7 +723,7 @@ def write_outputs(out, idle_path, N, bg, Q, M, idx):
         if i in used:
             d.rectangle((i * k, k + 1, i * k + k - 2, k + 4), fill=(0, 0, 0))
     pal.save(os.path.join(out, 'palette.png'))
-    # overlay on our male idle, joints marked
+    # overlay on our male idle, joints marked, our body he leaves bare in magenta
     k = 8
     idle = np.asarray(Image.open(idle_path).convert('RGBA')).astype(np.float64)
     x0, y0, x1, y1 = box
@@ -401,6 +733,7 @@ def write_outputs(out, idle_path, N, bg, Q, M, idx):
     base = base * (1 - al) + (sub[..., :3] * 0.55 + 236 * 0.45) * al
     ra = rgba[..., 3:4] / 255 * 0.72
     comp = base * (1 - ra) + rgba[..., :3] * ra
+    comp[bare(idle, idx, part)] = (255, 0, 255)
     im = Image.fromarray(comp.astype(np.uint8)).resize(((x1 - x0) * k, (y1 - y0) * k), Image.NEAREST)
     d = ImageDraw.Draw(im)
     for name, (jx, jy) in R.OUR_JOINTS.items():
@@ -412,36 +745,67 @@ def write_outputs(out, idle_path, N, bg, Q, M, idx):
     keep = np.zeros(Q.shape, bool)
     for m in M.values():
         keep |= m
-    his = np.zeros(N.shape[:2] + (4,), np.uint8)
-    his[keep, :3] = N[keep]
-    his[keep, 3] = 255
+    hisf = np.zeros(N.shape[:2] + (4,), np.uint8)
+    hisf[keep, :3] = N[keep]
+    hisf[keep, 3] = 255
     yy, xx = np.nonzero(keep)
-    his = his[yy.min():yy.max() + 1, xx.min():xx.max() + 1]
+    hisf = hisf[yy.min():yy.max() + 1, xx.min():xx.max() + 1]
     oy, ox = np.nonzero(idx >= 0)
     ours = rgba[oy.min():oy.max() + 1, ox.min():ox.max() + 1]
     kk = 4
     hh = ours.shape[0] * kk
-    a = big(his, 1)
+    a = big(hisf, 1)
     a = a.resize((round(a.width * hh / a.height), hh), Image.NEAREST)
     b = big(ours, kk)
     c = Image.new('RGB', (a.width + b.width + 16, hh), (255, 255, 255))
     c.paste(a, (0, 0))
     c.paste(b, (a.width + 16, 0))
     c.save(os.path.join(out, 'compare@4.png'))
-    # his parts, each in its own tint over his pixels (the cape and the white left grey)
-    tint = {'sword': (255, 60, 60), 'head': (255, 200, 0), 'armN': (0, 140, 255), 'armF': (230, 40, 200),
-            'legN': (0, 200, 120), 'legF': (120, 220, 0), 'torso': (255, 255, 255)}
+    # his parts, each in its own tint over his (mended) pixels; the cape and the white left grey
+    tint = {'blade': (255, 60, 60), 'hilt': (255, 140, 60), 'head': (255, 200, 0), 'armN': (0, 140, 255),
+            'handN': (0, 220, 255), 'handF': (230, 40, 200), 'legN': (0, 200, 120), 'legF': (120, 220, 0),
+            'lining': (150, 60, 255), 'torso': (255, 255, 255), 'ornaments': (255, 255, 0),
+            'tassel': (255, 255, 0), 'ornament2': (255, 255, 0)}
     show = (N * 0.25 + 150).astype(np.uint8)
     for name, m in M.items():
         show[m] = (N[m] * 0.55 + np.array(tint[name]) * 0.45).astype(np.uint8)
     R.save(show, os.path.join(out, 'parts@4.png'), 4)
 
 
-def write_npy(idx):
+def write_npy(idx, part, lay):
+    """The reduced reference, which part each pixel came from, and each part's own layer, as small
+    .npy files beside scarlet_ref.py (PALETTE indices, 255 where empty; each array's last row holds
+    the box's x0, y0 in our frame)."""
     os.makedirs(os.path.dirname(R.REDUCED), exist_ok=True)
+    x0, y0 = REDUCED_BOX[:2]
     a = np.where(idx >= 0, idx, 255).astype(np.uint8)
+    a = np.vstack([a, np.zeros((1, a.shape[1]), np.uint8)])
+    a[-1, :2] = (x0, y0)
     with open(R.REDUCED, 'wb') as f:
         np.save(f, a, allow_pickle=False)
+    lab = np.full(idx.shape, 255, np.uint8)
+    for i, name in enumerate(R.PART_NAMES):
+        lab[part == name] = i
+    lab = np.vstack([lab, np.zeros((1, lab.shape[1]), np.uint8)])
+    lab[-1, :2] = (x0, y0)
+    with open(R.REDUCED.replace('.npy', '-parts.npy'), 'wb') as f:
+        np.save(f, lab, allow_pickle=False)
+    stack = np.full((len(R.PART_NAMES),) + (idx.shape[0] + 1, idx.shape[1]), 255, np.uint8)
+    for i, name in enumerate(R.PART_NAMES):
+        stack[i, :-1] = np.where(lay[name] >= 0, lay[name], 255)
+        stack[i, -1, :2] = (x0, y0)
+    with open(R.REDUCED.replace('.npy', '-layers.npy'), 'wb') as f:
+        np.save(f, stack, allow_pickle=False)
+
+
+def rows(idx, x0, y0, x1, y1):
+    """The reduced reference over a box of our frame as rows of his colours' characters (for
+    PATCHES)."""
+    bx, by = REDUCED_BOX[:2]
+    out = []
+    for y in range(y0, y1):
+        out.append(''.join('.' if idx[y - by, x - bx] < 0 else R.CHARS[idx[y - by, x - bx]] for x in range(x0, x1)))
+    return out
 
 
 def palette():
@@ -480,10 +844,14 @@ def main():
             print(h)
         return
     out, idle = sys.argv[1], sys.argv[2]
-    N, bg, Q, M, idx, part = build()
-    write_outputs(out, idle, N, bg, Q, M, idx)
+    N, Q, M, idx, part, lay = build(with_layers=True)
+    write_outputs(out, idle, N, Q, M, idx, part)
+    if '--rows' in sys.argv[3:]:
+        x0, y0, x1, y1 = map(int, sys.argv[sys.argv.index('--rows') + 1:sys.argv.index('--rows') + 5])
+        for r in rows(idx, x0, y0, x1, y1):
+            print(r)
     if '--write' in sys.argv[3:]:
-        write_npy(idx)
+        write_npy(idx, part, lay)
 
 
 if __name__ == '__main__':

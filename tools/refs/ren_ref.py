@@ -233,8 +233,11 @@ REGIONS = {
 }
 KATANA_DARK = [
     [(22, 49.5), (27, 49.5), (31, 53), (31, 57), (28, 57), (22, 53)],
-    [(35.5, 57.5), (43.5, 57.5), (46, 60), (46, 63), (42, 67), (35, 67), (35, 62)],
+    [(35.5, 57.5), (43.5, 57.5), (45, 59), (45, 63), (42, 67), (35, 67), (35, 62)],
 ]
+# The blade's line (from the guard to the point) and how far from it its pixels lie.
+KATANA_BLADE = ((41.0, 63.0), (80.0, 93.5))
+KATANA_BLADE_HALF = 3.2
 TAKES = {
     'glove_n': ('dark', 'silver', 'skin'),
     'glove_f': ('dark', 'silver', 'skin'),
@@ -291,7 +294,13 @@ def gaps(a):
         if len(comp) >= 6:
             for q, p in comp:
                 out[q, p] = True
+    # and the one white pixel he left between the grip and the near fist
+    for x, y in GAP_PIXELS:
+        out[y, x] = True
     return out
+
+
+GAP_PIXELS = [(30, 53)]
 
 
 def segment(a):
@@ -307,6 +316,12 @@ def segment(a):
         if n == 'katana':
             for q in KATANA_DARK:
                 m |= inside(q, H, W) & ~owned & ~bg & (K != 'line')
+            # Only the sword itself: past the guard its silver and white are the blade's within
+            # KATANA_BLADE_HALF of the blade's line (a stud of the skirt beside it is the skirt's), and
+            # loose pixels are not the sword's.
+            hilt = np.logical_or.reduce([inside(q, H, W) for q in KATANA_DARK])
+            m &= hilt | ~np.isin(K, ('silver', 'white')) | band(*KATANA_BLADE, KATANA_BLADE_HALF)
+            m = patches(m, 8)
         owned |= m
         masks[n] = m
     out = near4(bg)
@@ -338,6 +353,33 @@ def segment(a):
                 masks[n][y, x] = True
                 break
     return masks, K, bg
+
+
+def patches(m, least):
+    """The 8-connected patches of a mask of at least `least` cells."""
+    H, W = m.shape
+    seen = np.zeros((H, W), int)
+    out = np.zeros((H, W), bool)
+    k = 0
+    for y, x in zip(*np.nonzero(m)):
+        if seen[y, x]:
+            continue
+        k += 1
+        comp, stack = [], [(y, x)]
+        seen[y, x] = k
+        while stack:
+            q, p = stack.pop()
+            comp.append((q, p))
+            for dq in (-1, 0, 1):
+                for dp in (-1, 0, 1):
+                    a, b = q + dq, p + dp
+                    if 0 <= a < H and 0 <= b < W and m[a, b] and not seen[a, b]:
+                        seen[a, b] = k
+                        stack.append((a, b))
+        if len(comp) >= least:
+            for q, p in comp:
+                out[q, p] = True
+    return out
 
 
 def near8_at(m, y, x):

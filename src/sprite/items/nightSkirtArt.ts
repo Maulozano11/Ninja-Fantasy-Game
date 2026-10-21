@@ -4,8 +4,8 @@
 import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
-export const NIGHT_SKIRT_BASE = '#2c2c35';
-export const NIGHT_STUDS = '#aab2bd';
+export const NIGHT_SKIRT_BASE = '#2c2c36';
+export const NIGHT_STUDS = '#b5bdc8';
 
 /** What each of his colours is, as the script sorts them (tools/refs/ren_ref.py kind). */
 export const NIGHT_SKIRT_KIND: Record<string, 'dark' | 'line' | 'silver'> = {
@@ -41,6 +41,7 @@ export const NIGHT_SKIRT_KIND: Record<string, 'dark' | 'line' | 'silver'> = {
   '#b5bdc8': 'silver',
   '#bac3cd': 'silver',
   '#bec6cf': 'silver',
+  '#c6cdd8': 'silver',
 };
 
 /** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
@@ -59,24 +60,24 @@ export const NIGHT_SKIRT: PaintedPiece = {
     '.aibbbpaqaaiblhabrbakskabrbabbjha.',
     '.atbbhllbbtafljadubahkhaabjibliha.',
     '.adevwlbbbcqllafddbanhhaajjidbjha.',
-    '.abhbvfkbcialwadddaawhlaqqrhabdaa.',
-    '.albbbllbblillqdxdaalydazauubqjp..',
-    '.albbhllbbtclhqdfdaadbwazabibaia..',
+    '.abhbvfkbcaalwadddaawhlaqqrhabdaa.',
+    '.albbbllbballlqdxdaalydazauubqjp..',
+    '.albbhllbbpllhqdfdaadbwazabibaia..',
     '.adevwlbbbcadadddhaaddwazabidajq..',
     '.abhbvfkbcijqpdldqzawdwazzahmbanp.',
-    '.adbbbllbblillpddqzalAdazzphbbaha.',
-    'qadbbhllbbtclhjqdazaludazBahhlaha.',
+    '.ambbbllbbllllpmdqzalAdazzphbbaha.',
+    'qadbbhllbbtllhjqdazaludazBahhlaha.',
     'addeaaaabbcfdlddapBadddazzzaaaaha.',
     '.paabvflacijlwdlddaadddaBzzahwdbjq',
-    '..qbbbllbalillhdddzqdAlpBCzaDllbha',
+    '..qbbbllballllhmddzqdClpBDzaEllbha',
     '.ppbbhllbdqqlhjdddzlaplazzzzallbhq',
-    '.qbevwlhbwllpldddhBzddaazCzzpbbbua',
-    '.qbhhbbellllhpalddzzdddqzECzallba.',
-    '..aphwlebbllhbdqddzddAlappEEqaaq..',
-    '...aqqahllffFbbuadzuaaa...aCCaa...',
-    '...azBBaaallblllfqaa.......qpGa...',
-    '..avBEBBzzaaaqaaaq...........aq...',
-    '..aBcCCEEEBBHa....................',
+    '.qbevwlhbwllpldddhBzddaazDzzpbbbua',
+    '.qbhhbbellllhpalddzzdddqzFDzallba.',
+    '..aphwlebbllhbdqddzddClappFFqaaq..',
+    '...aqqahllffGbbuadzuaaa...aDDaa...',
+    '...azBBaaallblllfqaa.......qpHa...',
+    '..avBFBBzzaaaqaaaq...........aq...',
+    '..aBcDDFFFBBIa....................',
     '.............p....................',
   ],
   colors: {
@@ -106,11 +107,12 @@ export const NIGHT_SKIRT: PaintedPiece = {
     z: '#181928',
     A: '#bec6cf',
     B: '#191a2c',
-    C: '#2a2d3e',
-    D: '#292832',
-    E: '#2c2f42',
-    F: '#181823',
-    G: '#1e2134',
-    H: '#191a30',
+    C: '#c6cdd8',
+    D: '#2a2d3e',
+    E: '#292832',
+    F: '#2c2f42',
+    G: '#181823',
+    H: '#1e2134',
+    I: '#191a30',
   },
 };

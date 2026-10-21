@@ -66,7 +66,12 @@ const ES: Record<string, string> = {
   // the chakra types (the ninja's nature) and their bursts
   'Chakra Type': 'Tipo de chakra',
   Nature: 'Naturaleza',
-  'Your chakra type is your elemental nature (soon it will decide your elemental jutsu).': 'Tu tipo de chakra es tu naturaleza elemental (pronto decidirá tus jutsus elementales).',
+  'Your chakra type is your elemental nature: it decides your elemental jutsu.': 'Tu tipo de chakra es tu naturaleza elemental: decide tus jutsus elementales.',
+  Pending: 'Pendiente',
+  'Light and Void: their own jutsu will come later. For now they learn no elemental jutsu.':
+    'Luz y Vacío: sus jutsus llegarán más adelante. Por ahora no aprenden jutsus elementales.',
+  'This type is pending: it can no longer be picked. Your ninja keeps it until you choose another one.':
+    'Este tipo está pendiente: ya no se puede elegir. Tu ninja lo conserva hasta que elijas otro.',
   Elements: 'Elementos',
   'No element': 'Sin elemento',
   Burst: 'Estallido',

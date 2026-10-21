@@ -6,13 +6,15 @@ import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
 import { retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
-import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
+import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { faceAnchor } from '../body';
 import type { PaintedPart } from './capeArt';
 import { paintedHair } from './hair';
 import { NAGINATA, NAGINATA_KIND, NAGINATA_STEEL, NAGINATA_WOOD } from './naginataArt';
 import { ONI_EYES, ONI_HORNS, ONI_MASK, ONI_MASK_KIND, ONI_PAINT, ONI_PORCELAIN } from './oniMaskArt';
+import { KUNAI_ART, KUNAI_KIND, KUNAI_STEEL, KUNAI_WRAP } from './kunaiArt';
+import { LYNX_EARS, LYNX_MASK, LYNX_MASK_KIND, LYNX_PAINT, LYNX_PORCELAIN } from './lynxMaskArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
@@ -231,9 +233,9 @@ function droppedGrip(g: DrawCtx, at: number, off = 1.2): Vec {
   return v(x, lerp(r.pelvis, r.ankleN, at).y);
 }
 
-/** Hands without a weapon winding up a throw (or that caught the kunai they threw) hold a kunai from the pouch (see throwsKunai), in the Kunai item's colours. */
+/** Hands without a weapon winding up a throw (or that caught the kunai they threw) hold a kunai from the pouch (see throwsKunai): the owner's kunai, in his colours. */
 export function drawThrowKunai(g: DrawCtx): void {
-  if (throwsKunai(g)) drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), { blade: '#aab4c2', grip: '#3a3346', guard: '#aab4c2', wrap: '#e2dccb' });
+  if (throwsKunai(g)) drawPaintedWeapon(g, 'nearArm.held', KUNAI_ART, gripPoint(g), swordAngle(g));
 }
 
 /**
@@ -327,13 +329,21 @@ export const HELD_ITEMS: ItemDef[] = [
     id: 'held_kunai',
     slot: 'held',
     name: 'Kunai',
-    desc: 'A throwing knife with a ring pommel and wrapped grip.',
-    colors: [col('blade', 'Blade', '#aab4c2', 'metal'), col('wrap', 'Wrap', '#3a3346')],
+    desc: 'A throwing knife with a ring pommel and a wrapped grip, held point down.',
+    colors: [col('blade', 'Blade', KUNAI_STEEL, 'metal'), col('wrap', 'Wrap', KUNAI_WRAP)],
     draw: (g, [blade, wrap]) => {
-      const c = { blade, grip: wrap, guard: blade, wrap: '#e2dccb' };
-      if (handsBusy(g)) drawWeapon(g, 'waist', KUNAI, g.rig.T(-g.bp.hipHalf * 0.55, 3.6), 100, c);
-      else if (handsLimp(g)) drawWeapon(g, 'nearArm.held', KUNAI, droppedGrip(g, 0.15, 0.9), -80, c);
-      else if (!handsReleased(g)) drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), c);
+      // The owner's kunai on his Cazador 2, his pixels (2026-10-21; tools/refs/cazador2-kunai-from-ref.py):
+      // held at the grip, at rest at the angle she holds it (grip.ts swordAngle), so it is every pixel
+      // his. His steel follows Blade, the ring and grip Wrap (the old default colours now mean his).
+      const steel = blade.toLowerCase() === '#aab4c2' ? KUNAI_STEEL : blade;
+      const grip = wrap.toLowerCase() === '#3a3346' ? KUNAI_WRAP : wrap;
+      const tint = (_ch: string, hex: string): string => {
+        const k = KUNAI_KIND[hex];
+        return k === 'blade' ? retintHex(hex, KUNAI_STEEL, steel) : k === 'wrap' ? retintHex(hex, KUNAI_WRAP, grip) : hex;
+      };
+      if (handsBusy(g)) drawPaintedWeapon(g, 'waist', KUNAI_ART, g.rig.T(-g.bp.hipHalf * 0.55, 3.6), 100, tint);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', KUNAI_ART, droppedGrip(g, 0.15, 0.9), -80, tint);
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', KUNAI_ART, gripPoint(g), swordAngle(g), tint);
     },
   },
   {
@@ -662,10 +672,25 @@ export const FACE_ITEMS: ItemDef[] = [
   {
     id: 'face_catmask',
     slot: 'face',
-    name: 'Cat Mask',
-    desc: 'A white porcelain cat mask with teal painted markings.',
-    colors: [col('base', 'Porcelain', '#f2eee6'), col('paint', 'Paint', '#1f9e9a'), col('eyes', 'Eye Holes', '#1b1420', 'flat')],
-    draw: (g, [base, paint, eyes]) => animalMask(g, { base, paint, eyes }, 'cat'),
+    name: 'Lynx Mask',
+    desc: 'A white half mask over the lower face with teal stripes, and two small teal ears in the hair.',
+    colors: [col('base', 'Porcelain', LYNX_PORCELAIN), col('paint', 'Paint', LYNX_PAINT)],
+    draw: (g, [base, paint]) => {
+      // The owner's half mask on his Cazador 2, his pixels (2026-10-21, his redesign of the old cat mask;
+      // tools/refs/cazador2-mask-from-ref.py): the mask over the lower face and the ears over the hair,
+      // both on the face anchor. His white and teal follow the slots; his black line stays. The cat
+      // mask's old default colours now mean his.
+      const old: Record<string, string> = { '#f2eee6': LYNX_PORCELAIN, '#1f9e9a': LYNX_PAINT };
+      const to = { porcelain: old[base.toLowerCase()] ?? base, paint: old[paint.toLowerCase()] ?? paint };
+      const from = { porcelain: LYNX_PORCELAIN, paint: LYNX_PAINT };
+      const tint = (_ch: string, hex: string) => {
+        const k = LYNX_MASK_KIND[hex];
+        return k === 'line' ? hex : retintHex(hex, from[k], to[k]);
+      };
+      paintedHair(g, g.L('head.mask'), LYNX_MASK, tint);
+      paintedHair(g, g.L('head.gear'), LYNX_EARS, tint);
+      jawOff(g, LYNX_MASK);
+    },
   },
 ];
 

@@ -41,6 +41,20 @@ import { capeWind } from './capes';
 import { isFemaleBody, type BodyType } from '../types';
 import { bareHandOff, paintedFist } from './clothes';
 import { SHADOW_FIST_F, SHADOW_FIST_N, SHADOW_FORE_F, SHADOW_FORE_N, SHADOW_GUARD_N, SHADOW_KIND, SHADOW_PLATE, SHADOW_SKIN, SHADOW_SUIT, SHADOW_UPPER_F, SHADOW_UPPER_N, SHADOW_VEST } from './shadowOpsArt';
+import {
+  SHADOW_F_FIST_F,
+  SHADOW_F_FIST_N,
+  SHADOW_F_FORE_F,
+  SHADOW_F_FORE_N,
+  SHADOW_F_GUARD_N,
+  SHADOW_F_KIND,
+  SHADOW_F_PLATE,
+  SHADOW_F_SKIN,
+  SHADOW_F_SUIT,
+  SHADOW_F_UPPER_F,
+  SHADOW_F_UPPER_N,
+  SHADOW_F_VEST,
+} from './shadowOpsFemaleArt';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -1396,60 +1410,185 @@ function drawPteruges(g: DrawCtx, tc: string, lc: string, sc: string, drapes: bo
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// The owner's Shadow Ops Chestguard: his pixels from his Cazador 1, his paint-over of our first
-// Hunter-nin (docs/reference/cazador1-owner-reference.jpg, lifted out by
-// tools/refs/cazador1-vest-from-ref.py). In our idle pose every pixel is his, his bare arms and fists
-// too; in other poses each piece follows its segment.
+// The owner's Shadow Ops Chestguard: his pixels from his Hunter-nin paint-overs, the Cazador 1 for the
+// male bodies (docs/reference/cazador1-owner-reference.jpg, tools/refs/cazador1-vest-from-ref.py) and its
+// female version on the Cazador 2 for the female ones ("mismo pechera que la de hombre pero version
+// femenina", docs/reference/cazador2-owner-reference.jpg, tools/refs/cazador2-vest-from-ref.py). In our
+// idle pose every pixel is his, his bare arms and fists too; in other poses each piece follows its
+// segment.
 // ---------------------------------------------------------------------------
 
-/**
- * The colours this item had before his art, which the creator saved with every character that wore
- * them: those colours now mean his.
- */
-const SHADOW_OLD_DEFAULTS: Record<string, string> = { '#8c94a1': SHADOW_PLATE, '#262833': SHADOW_SUIT };
+/** One of his chestguards: his colours the slots recolour from, what each colour is, and the pieces. */
+interface ShadowArt {
+  plate: string;
+  suit: string;
+  skin: string;
+  kind: Record<string, string>;
+  vest: PaintedPiece;
+  guardN: PaintedPiece;
+  upperN: PaintedPiece;
+  foreN: PaintedPiece;
+  fistN: PaintedPiece;
+  upperF: PaintedPiece;
+  foreF: PaintedPiece;
+  fistF: PaintedPiece;
+}
+
+const SHADOW_MALE: ShadowArt = {
+  plate: SHADOW_PLATE,
+  suit: SHADOW_SUIT,
+  skin: SHADOW_SKIN,
+  kind: SHADOW_KIND,
+  vest: SHADOW_VEST,
+  guardN: SHADOW_GUARD_N,
+  upperN: SHADOW_UPPER_N,
+  foreN: SHADOW_FORE_N,
+  fistN: SHADOW_FIST_N,
+  upperF: SHADOW_UPPER_F,
+  foreF: SHADOW_FORE_F,
+  fistF: SHADOW_FIST_F,
+};
 
 /**
  * His vest for the bulky body, whose shoulders stand about 3 px further out on the near side and 2 on
  * the far: his under-suit's dark column beside each side line repeated, so the vest reaches the arms
  * and his plates stay as he drew them.
  */
-const SHADOW_VEST_BULKY = widened(widened(SHADOW_VEST, 2, 3), SHADOW_VEST.rows[0].length, 2);
+const SHADOW_BULKY: ShadowArt = { ...SHADOW_MALE, vest: widened(widened(SHADOW_VEST, 2, 3), SHADOW_VEST.rows[0].length, 2) };
+
+const SHADOW_FEMALE: ShadowArt = {
+  plate: SHADOW_F_PLATE,
+  suit: SHADOW_F_SUIT,
+  skin: SHADOW_F_SKIN,
+  kind: SHADOW_F_KIND,
+  vest: SHADOW_F_VEST,
+  guardN: SHADOW_F_GUARD_N,
+  upperN: SHADOW_F_UPPER_N,
+  foreN: SHADOW_F_FORE_N,
+  fistN: SHADOW_F_FIST_N,
+  upperF: SHADOW_F_UPPER_F,
+  foreF: SHADOW_F_FORE_F,
+  fistF: SHADOW_F_FIST_F,
+};
 
 /**
- * Draws his vest: on the far arm his sleeve and skin, his arm guard and his fist (behind the body), the
- * vest over the torso, then on the near arm his skin, arm guard, fist and the layered shoulder guard.
- * His plates follow Plates, his under-suit Under-suit and his skin the character's; his black line
- * stays. His fists take the place of our hand when it is closed (holding a weapon or not) and no
- * gloves are worn.
+ * The colours this item had before his art, which the creator saved with every character that wore
+ * them, and its default now (the Cazador 1's): at these each of his chestguards keeps its own colours.
  */
-function drawShadowOps(g: DrawCtx, pc: string, sc: string): void {
-  const plate = SHADOW_OLD_DEFAULTS[pc.toLowerCase()] ?? pc;
-  const suit = SHADOW_OLD_DEFAULTS[sc.toLowerCase()] ?? sc;
+const SHADOW_HIS: Record<string, 'plate' | 'suit'> = { '#8c94a1': 'plate', '#262833': 'suit', [SHADOW_PLATE]: 'plate', [SHADOW_SUIT]: 'suit' };
+
+/**
+ * Draws his vest: on the far arm his sleeve or bare skin, his arm guard and his fist (behind the body),
+ * the vest over the torso, then on the near arm his skin, arm guard, fist and the layered shoulder
+ * guard. His plates follow Plates, his under-suit Under-suit and his skin the character's; his black
+ * line stays. His fists take the place of our hand when it is closed (holding a weapon or not) and no
+ * gloves are worn. The guard turns partway with the torso, as his other guards do.
+ */
+function drawShadowOps(g: DrawCtx, art: ShadowArt, pc: string, sc: string): void {
+  const plate = SHADOW_HIS[pc.toLowerCase()] === 'plate' ? art.plate : pc;
+  const suit = SHADOW_HIS[sc.toLowerCase()] === 'suit' ? art.suit : sc;
   const tint = (_ch: string, hex: string): string => {
-    const k = SHADOW_KIND[hex];
+    const k = art.kind[hex];
     if (k === 'line') return hex;
-    if (k === 'skin') return retintHex(hex, SHADOW_SKIN, g.look.skin);
-    return k === 'suit' ? retintHex(hex, SHADOW_SUIT, suit) : retintHex(hex, SHADOW_PLATE, plate);
+    if (k === 'skin') return retintHex(hex, art.skin, g.look.skin);
+    return k === 'suit' ? retintHex(hex, art.suit, suit) : retintHex(hex, art.plate, plate);
   };
   const r = g.rig;
   const torso = segAngle(r.pelvis, r.neck);
   const upperN = segAngle(r.shoulderN, r.elbowN);
-  stampPiece(g, 'farArm.armor', SHADOW_UPPER_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF', tint);
-  stampPiece(g, 'farArm.armor', SHADOW_FORE_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF', tint);
-  stampLeaning(g, 'torso.armor', r.body === 'bulky' ? SHADOW_VEST_BULKY : SHADOW_VEST, r.neck, torso, 'torso', tint);
-  stampPiece(g, 'nearArm.armor', SHADOW_UPPER_N, r.shoulderN, upperN, 'upperArmN', tint);
-  stampPiece(g, 'nearArm.armor', SHADOW_FORE_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN', tint);
+  stampPiece(g, 'farArm.armor', art.upperF, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF', tint);
+  stampPiece(g, 'farArm.armor', art.foreF, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF', tint);
+  stampLeaning(g, 'torso.armor', art.vest, r.neck, torso, 'torso', tint);
+  stampPiece(g, 'nearArm.armor', art.upperN, r.shoulderN, upperN, 'upperArmN', tint);
+  stampPiece(g, 'nearArm.armor', art.foreN, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN', tint);
   if (!g.has('hands')) {
     for (const s of ['F', 'N'] as Side[]) {
       const { kind } = handPose(g, s);
       if (kind !== 'grip' && kind !== 'fist') continue;
       bareHandOff(g, s);
-      paintedFist(g, s, s === 'N' ? SHADOW_FIST_N : SHADOW_FIST_F, tint);
+      paintedFist(g, s, s === 'N' ? art.fistN : art.fistF, tint);
     }
   }
-  stampPiece(g, 'nearArm.armor', SHADOW_GUARD_N, guardAt(r, 'N', torso), guardAngle(SHADOW_GUARD_N, torso, upperN), 'upperArmN', tint);
+  // At rest the guard is at his angle (the torso at the vest's): it follows the upper arm 0.45 of the way.
+  const rest = art.guardN.angle - art.vest.angle;
+  const guard = torso + rest + 0.45 * (((upperN - torso - rest + 540) % 360) - 180);
+  stampPiece(g, 'nearArm.armor', art.guardN, guardAt(r, 'N', torso), guard, 'upperArmN', tint);
   armUnderOff(g);
+  torsoUnderOff(g, g.m(suit, 'flat'));
+  vestGapFill(g, g.m(suit, 'flat'));
 }
+
+/**
+ * His vest is the torso from the collar to the waist: our torso (the body and what is worn under the
+ * vest) gives way beside it, so no edge of ours shows past his (the female waist he drew is narrower
+ * than ours). Where a torso of other proportions than his leaves a gap between the vest and the waist
+ * band, it takes his under-suit, `suit`. Below the waist the trousers decide.
+ */
+function torsoUnderOff(g: DrawCtx, suit: number): void {
+  const r = g.rig;
+  const vest = g.L('torso.armor');
+  const band = g.L('torso.bottom');
+  const neck = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y;
+  // Each row's reach of the vest, or of a waist band under it.
+  const span: [number, number][] = [];
+  for (let y = 0; y < GRID; y++) {
+    let lo = GRID;
+    let hi = -1;
+    for (let x = 0; x < GRID; x++) {
+      if (vest.mat[y * GRID + x] >= 0 || band.mat[y * GRID + x] >= 0) {
+        lo = Math.min(lo, x);
+        hi = Math.max(hi, x);
+      }
+    }
+    // A row with neither (where a longer torso than his parts the vest from the band) takes the
+    // reach of the row above.
+    span.push(hi < 0 && y > 0 ? span[y - 1] : [lo, hi]);
+  }
+  const covered = (i: number) => vest.mat[i] >= 0 || band.mat[i] >= 0;
+  for (const d of ['torso.body', 'torso.under', 'torso.top'] as Depth[]) {
+    const L = g.L(d);
+    if (!L.used) continue;
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (L.mat[i] < 0 || vest.mat[i] >= 0) continue;
+      const x = ((i % GRID) + 0.5) / RES - r.pelvis.x;
+      const y = (Math.floor(i / GRID) + 0.5) / RES - r.pelvis.y;
+      const up = x * r.up.x + y * r.up.y;
+      if (up <= WAIST_UP || up >= neck - 1) continue;
+      const [lo, hi] = span[Math.floor(i / GRID)];
+      const x0 = i % GRID;
+      if (x0 > lo && x0 < hi && !covered(i)) {
+        L.mat[i] = suit;
+        L.shade[i] = 3;
+        L.flags[i] |= F_NO_TEXTURE;
+      } else L.mat[i] = -1;
+    }
+  }
+}
+/**
+ * Closes the gap a torso longer than his leaves between his vest and the waist band under it: in each
+ * column the rows between the vest's last pixel and the band's first take his under-suit, `suit`.
+ */
+function vestGapFill(g: DrawCtx, suit: number): void {
+  const vest = g.L('torso.armor');
+  const band = g.L('torso.bottom');
+  const L = g.L('torso.under');
+  for (let x = 0; x < GRID; x++) {
+    let low = -1;
+    for (let y = 0; y < GRID; y++) if (vest.mat[y * GRID + x] >= 0) low = y;
+    if (low < 0) continue;
+    let top = -1;
+    for (let y = low + 1; y < Math.min(GRID, low + 6); y++) {
+      if (band.mat[y * GRID + x] >= 0) {
+        top = y;
+        break;
+      }
+    }
+    for (let y = low + 1; y < top; y++) L.set(x, y, suit, 3, 'torso', F_NO_TEXTURE | F_NO_OUTLINE);
+  }
+}
+
+/** Design units above the pelvis (along the torso) from which the vest is the torso. */
+const WAIST_UP = 2.2;
 
 /**
  * His forearms (and the far upper arm) are his pixels from elbow to wrist: our bare arm under them
@@ -1457,7 +1596,7 @@ function drawShadowOps(g: DrawCtx, pc: string, sc: string): void {
  */
 function armUnderOff(g: DrawCtx): void {
   for (const [s, parts] of [
-    ['N', ['forearmN']],
+    ['N', ['upperArmN', 'forearmN']],
     ['F', ['upperArmF', 'forearmF']],
   ] as [Side, PartId[]][]) {
     const body = g.L(armDepth(s, 'body'));
@@ -1465,89 +1604,6 @@ function armUnderOff(g: DrawCtx): void {
     const idx = parts.map((p) => partIndex(p));
     for (let i = 0; i < GRID * GRID; i++) if (body.mat[i] >= 0 && idx.includes(body.part[i]) && his.mat[i] < 0) body.mat[i] = -1;
   }
-}
-
-/** The procedural chestguard, for the female bodies (his art is a male chest). */
-function drawShadowOpsFitted(g: DrawCtx, pc: string, sc: string): void {
-  const b = g.bp;
-  const L = g.L('torso.armor');
-  const pl = armorPen(g, pc, 'metal');
-  const suit = armorPen(g, sc);
-  const top = chestTop(g);
-  const cx = 1.2;
-  const backX = -b.chestHalf * 0.55;
-  const pTop = top - 0.6;
-  const pBot = top - 6.8;
-  const front = b.chestHalf * 0.62 + 1.9 + b.bust * 0.4;
-  // under-suit: lit at the back, darker toward the front and under the chest plate
-  tfill(g, L, 0.6, suit, (_lx, ly, t) => (Math.abs(ly - pBot + 0.3) < FP ? 1 : t < 0.3 ? 3 : t < 0.75 ? 2 : 1), { top: top + 0.2, bottom: 0.8 });
-  // chest plate (front two-thirds): a lit back plane and a shadowed front
-  // plane meeting at a sternum ridge
-  tfill(
-    g,
-    L,
-    1.1,
-    pl,
-    (lx, ly) => {
-      const back = backX + (pTop - ly) * 0.15;
-      if (lx < back) return null;
-      if (ly > pTop - 1.2 && lx < -1.2) return null; // neck opening
-      const vv = clamp((pTop - ly) / (pTop - pBot), 0, 1);
-      if (ly - pBot < FP) return 1; // lower seam
-      if (lx <= cx) {
-        // lit plane: rolled rims, a diagonal sheen, a darker underside
-        const u = clamp((lx - back) / (cx - back), 0, 1);
-        if (pTop - ly < FP) return Math.abs(lx - (cx - 1.9)) < FP * 0.5 ? 5 : 4;
-        if (lx - back < FP) return vv < 0.6 ? 4 : 3;
-        if (cx - lx < FP) return vv < 0.72 ? 4 : 3; // ridge crest
-        if (vv > 0.86) return 1;
-        if (vv > 0.7) return 2;
-        if (Math.abs(u * 0.7 + vv - 0.62) < 0.09) return 4;
-        return u > 0.62 && vv > 0.5 ? 2 : 3;
-      }
-      // front plane turning away: shadow, deep shadow below, reflected light at the edge
-      const u = clamp((lx - cx) / (front - cx), 0, 1);
-      if (pTop - ly < FP) return u < 0.45 ? 3 : 2;
-      if (vv > 0.66) return u > 0.84 && vv < 0.86 ? 2 : 1;
-      if (u > 0.84) return 2;
-      return u < 0.5 ? 2 : 1;
-    },
-    { top: pTop, bottom: pBot },
-  );
-  // segmented abdomen bands, bowed with the body; each has a lit top rim,
-  // a darker lower half and a seam, and the chest plate shadows the first
-  const aTop = pBot - 0.5;
-  const aBot = 1.0;
-  const na = Math.max(2, Math.round((aTop - aBot) / 2.2));
-  const ah = (aTop - aBot) / na;
-  const aBack = -b.waistHalf * 0.55;
-  const aFront = b.waistHalf * 0.64 + 1.6;
-  tfill(
-    g,
-    L,
-    0.9,
-    pl,
-    (lx, ly) => {
-      if (lx < aBack) return null;
-      const u = clamp((lx - aBack) / (aFront - aBack), 0, 1);
-      const yy = ly + 0.4 * (1 - (u * 2 - 1) ** 2) - aBot;
-      const k = Math.floor(yy / ah);
-      const d = yy - k * ah;
-      if (d < FP) return 1;
-      if (aTop - ly < FP * 1.5) return u < 0.5 ? 2 : 1; // shadow under the chest plate
-      if (d > ah - FP) return Math.abs(lx - (aBack + 1.2)) < FP * 0.5 ? 5 : u < 0.32 ? 4 : u < 0.7 ? 3 : 2;
-      if (lx - aBack < FP) return 3;
-      const lower = d < ah * 0.5;
-      if (u > 0.5) return lower ? 1 : 2;
-      return lower ? 2 : 3;
-    },
-    { top: aTop, bottom: aBot },
-  );
-  // one shoulder guard (near side) and forearm guards
-  pauldron(g, 'N', pl, { top: 2.4, capEnd: 1.0, step: 1.7, n: 2, half: b.armR[0] + 1.1, flare: 0.2, curve: 0.6 });
-  bracer(g, pl, { from: 0.18, to: 0.88, grow: 0.5, lines: [0.52] });
-  // dark high neck of the suit
-  collar(g, suit, 2.6, 0.8);
 }
 
 export const ARMOR_ITEMS: ItemDef[] = [
@@ -1657,7 +1713,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     desc: 'A dark grey armoured vest with a banded belly over a black under-suit, a layered guard on one shoulder and grey forearm guards (+3 AC).',
     colors: [col('plate', 'Plates', SHADOW_PLATE, 'metal'), col('suit', 'Under-suit', SHADOW_SUIT)],
     statsArmor: 'ANBU Spec-Ops',
-    draw: (g, [pc, sc]) => (isFemaleBody(g.rig.body) ? drawShadowOpsFitted(g, pc, sc) : drawShadowOps(g, pc, sc)),
+    draw: (g, [pc, sc]) => drawShadowOps(g, isFemaleBody(g.rig.body) ? SHADOW_FEMALE : g.rig.body === 'bulky' ? SHADOW_BULKY : SHADOW_MALE, pc, sc),
   },
 
   // -------------------------------------------------------------------------

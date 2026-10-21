@@ -5,12 +5,14 @@
 
 import { retintHex } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
-import { segAngle, stampPiece } from '../painted';
-import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
+import { hisLeg, segAngle, stampPiece } from '../painted';
+import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v, type Vec } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
+import { isFemaleBody } from '../types';
 import { BOOT_CLOTH, BOOT_FOOT_F, BOOT_FOOT_N, BOOT_KIND, BOOT_SHIN_F, BOOT_SHIN_N, BOOT_SKIN, BOOT_SOLE, BOOT_SOLE_F, BOOT_SOLE_N } from './shinobiBootsArt';
+import { BOOT_F_CLOTH, BOOT_F_FOOT_F, BOOT_F_FOOT_N, BOOT_F_KIND, BOOT_F_LEGS, BOOT_F_SHIN_F, BOOT_F_SHIN_N, BOOT_F_SKIN } from './shinobiBootsFemaleArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'leather') => ({ key, label, default: def, kind });
@@ -271,14 +273,16 @@ function lowerLegOff(g: DrawCtx, s: Side): void {
 }
 
 /**
- * Takes our leg away from `above` design units over the ankle (up the shin) down, foot and all: a boot
- * the owner painted takes its place there. Trousers drawn on the leg go too.
+ * Takes our leg away from `above` design units over the ankle (`from`, the boot's own ankle, or ours;
+ * up the shin) down, foot and all: a boot the owner painted takes its place there. Trousers drawn on the
+ * leg go too.
  */
-function legBelowOff(g: DrawCtx, s: Side, above: number): void {
+function legBelowOff(g: DrawCtx, s: Side, above: number, from?: Vec): void {
   const shin = partIndex(`shin${s}`);
   const foot = partIndex(`foot${s}`);
-  const { knee, ankle } = legJoints(g.rig, s);
-  const dir = norm(sub(ankle, knee));
+  const { knee, ankle: ours } = legJoints(g.rig, s);
+  const ankle = from ?? ours;
+  const dir = norm(sub(ours, knee));
   for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) {
     const L = g.L(d);
     for (let i = 0; i < GRID * GRID; i++) {
@@ -335,27 +339,34 @@ export const FEET_ITEMS: ItemDef[] = [
     desc: 'Shin-high open-toed ninja boots with a covered heel and a thin sole.',
     colors: [col('main', 'Boot', BOOT_CLOTH, 'cloth'), col('sole', 'Sole', BOOT_SOLE)],
     draw: (g, [c, sole]) => {
-      // The owner's open-toe boots on his Cazador 1, his pixels (2026-10-21; tools/refs/
-      // cazador1-boots-from-ref.py): on each leg the shaft turns with the shin about the ankle and the
-      // foot stays flat on the ground like our feet; our leg below the boot's top and our foot are taken
-      // away. At rest every pixel is his and where he drew it. His cloth follows Boot, the foot's last
-      // row Sole, his toes the character's skin; his black line stays.
-      const skinTint = (hex: string) => retintHex(hex, BOOT_SKIN, g.look.skin);
+      // The owner's open-toe boots (2026-10-21), his pixels: on the male bodies his Cazador 1's
+      // (tools/refs/cazador1-boots-from-ref.py), on the female ones the wrapped shin boots of his
+      // Cazador 2 (tools/refs/cazador2-boots-from-ref.py). On each leg the shaft turns with the shin
+      // about the ankle and the foot stays flat on the ground like our feet; our leg below the boot's top
+      // and our foot are taken away. At rest every pixel is his and where he drew it. His cloth follows
+      // Boot (at its default each pair keeps its own black), the Cazador 1's last row Sole, the toes the
+      // character's skin; his black line stays.
+      const female = isFemaleBody(g.rig.body);
+      const base = female ? BOOT_F_CLOTH : BOOT_CLOTH;
+      const kinds: Record<string, string> = female ? BOOT_F_KIND : BOOT_KIND;
+      const cloth = c.toLowerCase() === BOOT_CLOTH ? base : c;
       const boot = (_ch: string, hex: string) => {
-        const k = BOOT_KIND[hex];
-        return k === 'line' ? hex : k === 'skin' ? skinTint(hex) : retintHex(hex, BOOT_CLOTH, c);
+        const k = kinds[hex];
+        return k === 'line' ? hex : k === 'skin' ? retintHex(hex, female ? BOOT_F_SKIN : BOOT_SKIN, g.look.skin) : retintHex(hex, base, cloth);
       };
       const soled = (_ch: string, hex: string) => (BOOT_KIND[hex] === 'line' ? hex : retintHex(hex, BOOT_SOLE, sole));
       for (const s of SIDES) {
         const { knee, ankle } = legJoints(g.rig, s);
-        const shin = s === 'N' ? BOOT_SHIN_N : BOOT_SHIN_F;
-        const foot = s === 'N' ? BOOT_FOOT_N : BOOT_FOOT_F;
+        const shin = female ? (s === 'N' ? BOOT_F_SHIN_N : BOOT_F_SHIN_F) : s === 'N' ? BOOT_SHIN_N : BOOT_SHIN_F;
+        const foot = female ? (s === 'N' ? BOOT_F_FOOT_N : BOOT_F_FOOT_F) : s === 'N' ? BOOT_FOOT_N : BOOT_FOOT_F;
         // His boot's top row is the shaft's first: the leg goes from a pixel under it (the cut runs
         // across our slanting shin, his top straight across).
-        legBelowOff(g, s, (shin.pivot[1] - 1) / RES);
-        stampPiece(g, legDepth(s, 'feet'), shin, ankle, segAngle(knee, ankle), `shin${s}`, boot);
-        stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, boot);
-        stampPiece(g, legDepth(s, 'feet'), s === 'N' ? BOOT_SOLE_N : BOOT_SOLE_F, ankle, foot.angle, `foot${s}`, soled);
+        // Her legs are longer than our female body's: her boots hang from her own ankle (painted.ts hisLeg).
+        const at = female ? hisLeg(g.rig, BOOT_F_LEGS[s], s).ankle : ankle;
+        legBelowOff(g, s, (shin.pivot[1] - 1) / RES, at);
+        stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, boot);
+        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle, `foot${s}`, boot);
+        if (!female) stampPiece(g, legDepth(s, 'feet'), s === 'N' ? BOOT_SOLE_N : BOOT_SOLE_F, ankle, foot.angle, `foot${s}`, soled);
       }
     },
   },

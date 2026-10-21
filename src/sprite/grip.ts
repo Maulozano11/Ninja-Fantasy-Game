@@ -4,6 +4,7 @@
 
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
+import { KUNAI_ART } from './items/kunaiArt';
 import { NAGINATA } from './items/naginataArt';
 import { add, norm, RES, scale, sub, Vec } from './raster';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
@@ -65,7 +66,8 @@ export function swordAngle(g: DrawCtx): number {
     default:
       // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
       // longsword hangs at the angle he painted it (35), so at rest it is every pixel his.
-      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : 52;
+      // The owner's Cazador 2 holds her kunai point down at the angle he painted it (items/kunaiArt.ts).
+      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_kunai') ? KUNAI_ART.angle : 52;
   }
 }
 

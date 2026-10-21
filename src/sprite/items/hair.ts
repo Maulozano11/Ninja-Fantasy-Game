@@ -20,7 +20,9 @@ import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } f
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
 import { HUNTER_HAIR, HUNTER_HAIR_BASE, HUNTER_HAIR_KIND, HUNTER_HAIR_SKIN } from './hunterHairArt';
+import { LYNX_MASK } from './lynxMaskArt';
 import { ONI_MASK } from './oniMaskArt';
+import { PONY_HAIR, PONY_HAIR_BASE, PONY_HAIR_KIND, PONY_HAIR_SKIN } from './ponyHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
@@ -1615,6 +1617,23 @@ function trimSkull(g: DrawCtx, p: PaintedPart, face?: PaintedPart): void {
 }
 
 /**
+ * Behind the face, below the eyes, our head and nape give way to his hair where it hangs: the locks he
+ * drew down the side of the face end on his line, with no edge of ours past them.
+ */
+function trimNape(g: DrawCtx, p: PaintedPart): void {
+  const { nx, ny } = faceAnchor(g);
+  const ax = nx - p.pivot[0];
+  const ay = ny - p.pivot[1];
+  for (const L of [g.L('head.body'), g.L('torso.body')]) {
+    for (let y = ny; y < ny + 12; y++) {
+      for (let x = Math.max(0, nx - 16); x < nx - 2; x++) {
+        if (L.has(x, y) && (p.rows[y - ay]?.[x - ax] ?? '.') === '.') L.clear(x, y);
+      }
+    }
+  }
+}
+
+/**
  * His hair on the Cazador 1 recoloured: his black line stays, his blacks and blue-grey glints move the
  * way his mid black does, and the pixel of ear he left showing takes the character's skin.
  */
@@ -1707,14 +1726,26 @@ export const HAIR_ITEMS: ItemDef[] = [
   hairStyle('hair_long', 'Long Straight', 'Blunt bangs, chin-length side locks and straight hair to mid-back.', '#3a2433', (g, P) => {
     curtain(g, g.L('hairBack'), P.t, { ty: g.bp.torsoLen - 9, out: 0.6, spread: 1.2, n: 3, w: 5.5, tipW: 4.5, bulge: 0, hold: 0.9, top: -4, front: -1.5, back: -4.2, gloss: [0.12, 0.3] });
   }),
-  hairStyle('hair_pony', 'High Ponytail', 'Pulled up into a high, swinging ponytail.', '#9c4a2c', (g, P) => {
-    const sw = sway(g, 0.3);
-    const pen: Pen = { ...P.b, part: 'back' };
-    locks(g, g.L('hairBack'), [
-      [[-4.5, -7.5, -13, -10, -11 + sw, 8], 4.6, { hold: 0.45, tipW: 1.2, clumps: 3.2, seed: 3, sheen: [0.2, 0.32] }],
-      [[-5, -7, -10.5, -6, -8.5 + sw, 6], 3.4, { hold: 0.4, tipW: 1, clumps: 3.2, seed: 8 }],
-    ], pen, [-8, -6]);
-  }),
+  {
+    id: 'hair_pony',
+    slot: 'hair',
+    name: 'High Ponytail',
+    desc: 'Messy hair pulled up into a high, bursting ponytail, with strands over the brow and down the sides of the face.',
+    colors: hairColor(PONY_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his Cazador 2, his pixels (2026-10-21; tools/refs/cazador2-hair-from-ref.py):
+      // one piece over the head on the face anchor, as his other hair is. The old default colour now
+      // means his.
+      const hair = c.toLowerCase() === '#9c4a2c' ? PONY_HAIR_BASE : c;
+      const tint = (_ch: string, hex: string): string => {
+        const k = PONY_HAIR_KIND[hex];
+        return k === 'line' ? hex : k === 'skin' ? retintHex(hex, PONY_HAIR_SKIN, g.look.skin) : retintHex(hex, PONY_HAIR_BASE, hair);
+      };
+      paintedHair(g, g.L('hairFront'), PONY_HAIR, tint);
+      trimSkull(g, PONY_HAIR, LYNX_MASK);
+      trimNape(g, PONY_HAIR);
+    },
+  },
   hairStyle('hair_buns', 'Twin Buns', 'Two neat buns on top, with soft bangs.', '#e58fb1'),
   hairStyle('hair_bob', 'Short Bob', 'A rounded, chin-length bob with a soft fringe.', '#8a4b2e'),
   hairStyle('hair_crop', 'Short Crop', 'A short, neat cut with a little lift at the front.', '#3a2a22'),

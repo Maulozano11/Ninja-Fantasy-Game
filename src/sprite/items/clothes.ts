@@ -11,6 +11,12 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
+import { isFemaleBody } from '../types';
+import { drawAscendedHakama, drawAscendedKimono, drawAscendedSash, drawAscendedWraps } from './ascended';
+import { HAKAMA_CLOTH } from './hakamaArt';
+import { KIMONO_CLOTH, KIMONO_COLLAR } from './kimonoArt';
+import { SASH_EDGE, SASH_MAIN } from './sashArt';
+import { WRAPS_CLOTH } from './wrapsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1012,8 +1018,14 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
     slot: 'top',
     name: 'Wrap Kimono',
     desc: 'Crossed-collar wrap top with wide, open sleeves that end at the elbow.',
-    colors: [col('main', 'Kimono', '#ded8ca'), col('collar', 'Collar', '#2b3557')],
+    colors: [col('main', 'Kimono', KIMONO_CLOTH), col('collar', 'Collar', KIMONO_COLLAR)],
     draw: (g, [c, k]) => {
+      // The owner's kimono on the male bodies (his Ascended paint-over, ascended.ts); the female bodies,
+      // being redrawn, keep the drawn kimono until he paints one for them.
+      if (!isFemaleBody(g.rig.body)) {
+        drawAscendedKimono(g, c, k);
+        return;
+      }
       const L = g.L('torso.top');
       const Lt = g.bp.torsoLen;
       const pen = clothPen(g, c, 'torso');
@@ -1345,8 +1357,14 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     slot: 'bottom',
     name: 'Wide Hakama',
     desc: 'Pleated wide-legged trousers that fall almost like a skirt, tied high at the waist.',
-    colors: [col('main', 'Hakama', '#2c3043'), col('ties', 'Ties', '#cfc8b6')],
+    colors: [col('main', 'Hakama', HAKAMA_CLOTH), col('ties', 'Ties', '#cfc8b6')],
     draw: (g, [c, t]) => {
+      // The owner's hakama on the male bodies (his Ascended paint-over, ascended.ts: its ties lie under
+      // the sash there); the female bodies, being redrawn, keep the drawn hakama.
+      if (!isFemaleBody(g.rig.body)) {
+        drawAscendedHakama(g, c);
+        return;
+      }
       const b = g.bp;
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'cloth'));
@@ -1534,8 +1552,14 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
     slot: 'waist',
     name: 'Cloth Sash',
     desc: 'Wide wrapped sash knotted at the hip, with a broad panel draped diagonally down the thigh to the knee.',
-    colors: [col('main', 'Sash', '#2f62b5'), col('edge', 'Edge', '#1d3f80')],
+    colors: [col('main', 'Sash', SASH_MAIN), col('edge', 'Edge', SASH_EDGE)],
     draw: (g, [c, e]) => {
+      // The owner's sash on the male bodies (his Ascended paint-over, ascended.ts); the female bodies,
+      // being redrawn, keep the drawn sash.
+      if (!isFemaleBody(g.rig.body)) {
+        drawAscendedSash(g, c, e);
+        return;
+      }
       const L = g.L('waist');
       const b = g.bp;
       const pen = clothPen(g, c, 'torso');
@@ -1832,8 +1856,14 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
     slot: 'hands',
     name: 'Bandage Wraps',
     desc: 'Cloth bandages wound around the forearms and knuckles.',
-    colors: [col('main', 'Bandage', '#e9e3d3')],
+    colors: [col('main', 'Bandage', WRAPS_CLOTH)],
     draw: (g, [c]) => {
+      // The owner's bandaged forearms and fists on the male bodies (his Ascended paint-over, ascended.ts);
+      // the female bodies, being redrawn, keep the drawn wraps.
+      if (!isFemaleBody(g.rig.body)) {
+        drawAscendedWraps(g, c);
+        return;
+      }
       for (const s of SIDES) {
         const L = g.L(armDepth(s, 'armor'));
         const pen = clothPen(g, c, prt('forearm', s), sb(s));

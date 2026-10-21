@@ -10,6 +10,20 @@ import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID
 import { GROUND } from '../rig';
 import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_PLATE, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
 import { CRIMSON_CAPE_BACK, CRIMSON_CAPE_BASE, CRIMSON_CAPE_EDGE, CRIMSON_CAPE_FAR, CRIMSON_CAPE_LINE, CRIMSON_CAPE_NEAR } from './crimsonCapeArt';
+import { isFemaleBody } from '../types';
+import {
+  CLOAK_BACK,
+  CLOAK_CLOTH,
+  CLOAK_COLLAR,
+  CLOAK_FRONT,
+  CLOAK_KIND,
+  CLOAK_LINE,
+  CLOAK_LINING,
+  CLOAK_REST,
+  CLOAK_SHOULDER_F,
+  CLOAK_SHOULDER_N,
+  CLOAK_TRIM,
+} from './rogueCloakArt';
 
 const col = (key: string, label: string, def: string, kind: 'cloth' | 'leather' | 'metal' = 'cloth') => ({ key, label, default: def, kind });
 
@@ -488,15 +502,14 @@ const crimsonCapeColor = (cloth: string) => (ch: string, hex: string) => (CRIMSO
 const CRIMSON_HEM_ABOVE_GROUND = 5;
 
 /**
- * The back of his red cape (capeBack), hung from the base of the neck: his pixels pushed by the wind
+ * The back of a painted cape (capeBack), hung from the base of the neck: his pixels pushed by the wind
  * as paintedPart does, but the hem never hangs lower than at rest (crouched or seated the cloth gathers
  * up behind instead of passing through the ground: the lower rows ride up over the ones above, so his
  * hem stays whole). Knocked out (drawn upright, then laid down) it lies along the back: only the
  * cloth within a few pixels of the body's back is kept (the flaps would stand up in the air once the
- * figure is laid down, or sink into the ground in front), with his line along the cut.
+ * figure is laid down, or sink into the ground in front), with his line (`edgeCh`) along the cut.
  */
-function crimsonBack(g: DrawCtx, color: (ch: string, hex: string) => string): void {
-  const p = CRIMSON_CAPE_BACK;
+function hungBack(g: DrawCtx, p: PaintedPart, hemAboveGround: number, edgeCh: string, color: (ch: string, hex: string) => string): void {
   const L = g.L('capeBack');
   const r = g.rig;
   const w = capeWind(g);
@@ -504,7 +517,7 @@ function crimsonBack(g: DrawCtx, color: (ch: string, hex: string) => string): vo
   const ay = Math.floor(r.neck.y * RES) - p.pivot[1];
   const n = p.rows.length;
   const lift = w.lift * 1.4 * RES;
-  const over = r.lay ? 0 : Math.max(0, ay + n - 1 - Math.round(lift) - (GROUND * RES - CRIMSON_HEM_ABOVE_GROUND));
+  const over = r.lay ? 0 : Math.max(0, ay + n - 1 - Math.round(lift) - (GROUND * RES - hemAboveGround));
   const pens: Record<string, number> = {};
   for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
   // Laid down: the body's back row by row (the cape is drawn before the clothes, over the bare body),
@@ -539,7 +552,7 @@ function crimsonBack(g: DrawCtx, color: (ch: string, hex: string) => string): vo
   });
   if (!r.lay) return;
   // His line along the cut: kept pixels next to cloth that was cut away.
-  const edge = pens[CRIMSON_CAPE_EDGE];
+  const edge = pens[edgeCh];
   const cut: number[] = [];
   for (const i of placed) {
     const x = i % GRID;
@@ -548,6 +561,72 @@ function crimsonBack(g: DrawCtx, color: (ch: string, hex: string) => string): vo
     if ([i - 1, i + 1, i - GRID, i + GRID].some((q) => placed.has(q) && !keep(q % GRID, (q / GRID) | 0))) cut.push(i);
   }
   for (const i of cut) L.set(i % GRID, (i / GRID) | 0, edge, 3, 'back', F_NO_TEXTURE | F_NO_OUTLINE);
+}
+
+// ---------------------------------------------------------------------------
+// The owner's torn black cloak (Rogue Storm Cloak): his pixels from his Ascended paint-over
+// (docs/reference/ascended-owner-reference.jpg, lifted out by tools/refs/ascended-cloak-from-ref.py).
+// ---------------------------------------------------------------------------
+
+/** How far above the ground line a piece of his hangs at rest (fine pixels; the male figure, idle). */
+const hemAbove = (p: PaintedPart, rest: [number, number]) => GROUND * RES - (rest[1] + p.rows.length - 1);
+const CLOAK_BACK_HEM = hemAbove(CLOAK_BACK, CLOAK_REST.CLOAK_BACK);
+const CLOAK_FRONT_HEM = hemAbove(CLOAK_FRONT, CLOAK_REST.CLOAK_FRONT);
+/** His black line's character in the back, drawn along the cut when the cloak lies along a fallen body. */
+const CLOAK_EDGE = Object.keys(CLOAK_BACK.colors).find((ch) => CLOAK_BACK.colors[ch] === CLOAK_LINE)!;
+
+/**
+ * The colours this cloak had before his art, which the creator saved with every character that wore
+ * it: those colours now mean his, so characters that kept the old defaults wear his colours.
+ */
+const ROGUE_OLD_DEFAULTS: Record<string, string> = { '#1e1d24': CLOAK_CLOTH, '#c8192e': CLOAK_TRIM, '#6e1020': CLOAK_LINING };
+const rogueSlot = (hex: string): string => ROGUE_OLD_DEFAULTS[hex.toLowerCase()] ?? hex;
+
+/** His cloak recoloured: his line stays; his black follows Cloak, his bright tatters Flame Trim, his dark red Lining. */
+const rogueCloakColor = (cloth: string, trim: string, lining: string) => (_ch: string, hex: string): string => {
+  const k = CLOAK_KIND[hex];
+  if (k === 'line') return hex;
+  if (k === 'trim') return retintHex(hex, CLOAK_TRIM, trim);
+  return k === 'lining' ? retintHex(hex, CLOAK_LINING, lining) : retintHex(hex, CLOAK_CLOTH, cloth);
+};
+
+/**
+ * A long painted piece hanging in front (capeFront) from `at`: pushed by the wind as paintedPart does,
+ * its hem never lower than at rest (crouched, the cloth gathers up instead of passing through the
+ * ground), as hungBack does for the back.
+ */
+function hungFront(g: DrawCtx, L: Layer, p: PaintedPart, at: Vec, part: PartId, color: (ch: string, hex: string) => string, hemAboveGround: number): void {
+  const w = capeWind(g);
+  const ax = Math.floor(at.x * RES) - p.pivot[0];
+  const ay = Math.floor(at.y * RES) - p.pivot[1];
+  const n = p.rows.length;
+  const lift = w.lift * 1.4 * RES;
+  const over = g.rig.lay ? 0 : Math.max(0, ay + n - 1 - Math.round(lift) - (GROUND * RES - hemAboveGround));
+  const pens: Record<string, number> = {};
+  for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
+  p.rows.forEach((row, j) => {
+    const k = j / Math.max(1, n - 1);
+    const dx = Math.round((w.dx + w.wave) * RES * k ** 1.3);
+    const dy = -Math.round((lift + over) * k * k);
+    for (let i = 0; i < row.length; i++) if (row[i] !== '.') L.set(ax + i + dx, ay + j + dy, pens[row[i]], 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
+  });
+}
+
+/**
+ * The owner's cloak, his pixels (the new standard, 2026-10-21): the back hanging from the base of the
+ * neck behind the body to its torn hem, swaying in the wind; the scarf and collar round the neck, under
+ * the chin; the front edge falling from the near shoulder in front of the near leg, behind the near arm;
+ * the cloak over each shoulder (over the near arm, and over the far one in front of the torso).
+ */
+function drawRogueCloak(g: DrawCtx, tint: (ch: string, hex: string) => string): void {
+  const r = g.rig;
+  hungBack(g, CLOAK_BACK, CLOAK_BACK_HEM, CLOAK_EDGE, tint);
+  const F = g.L('capeFront');
+  paintedPart(g, F, CLOAK_COLLAR, 'torso', tint, false, r.neck);
+  hungFront(g, F, CLOAK_FRONT, r.shoulderN, 'torso', tint, CLOAK_FRONT_HEM);
+  tuckUnderChin(g, F);
+  paintedPart(g, g.L('torso.acc'), CLOAK_SHOULDER_F, 'upperArmF', tint, false, r.shoulderF);
+  paintedPart(g, g.L('nearArm.over'), CLOAK_SHOULDER_N, 'upperArmN', tint, false);
 }
 
 export const CAPE_ITEMS: ItemDef[] = [
@@ -608,7 +687,7 @@ export const CAPE_ITEMS: ItemDef[] = [
       // so a pauldron (drawn after) sits over it as his does (armor.ts lets pauldrons show over this
       // cape).
       const tint = crimsonCapeColor(c);
-      crimsonBack(g, tint);
+      hungBack(g, CRIMSON_CAPE_BACK, CRIMSON_HEM_ABOVE_GROUND, CRIMSON_CAPE_EDGE, tint);
       paintedPart(g, g.L('torso.acc'), CRIMSON_CAPE_FAR, 'upperArmF', tint, false, g.rig.shoulderF);
       const N = g.L('nearArm.armor');
       paintedPart(g, N, CRIMSON_CAPE_NEAR, 'upperArmN', tint, false);
@@ -680,9 +759,16 @@ export const CAPE_ITEMS: ItemDef[] = [
     id: 'cape_rogue',
     slot: 'cape',
     name: 'Rogue Storm Cloak',
-    desc: 'A high-collared black cloak whose hem and front edges burn with crimson flame trim.',
-    colors: [col('main', 'Cloak', '#1e1d24'), col('trim', 'Flame Trim', '#c8192e'), col('lining', 'Lining', '#6e1020')],
-    draw: (g, [c, trim, lining]) => {
+    desc: 'A torn black cloak: a high scarf wound round the neck, falling over both shoulders and down the near side in front of the leg, a dark red lining and bright red tatters at its torn hem.',
+    colors: [col('main', 'Cloak', CLOAK_CLOTH), col('trim', 'Flame Trim', CLOAK_TRIM), col('lining', 'Lining', CLOAK_LINING)],
+    draw: (g, [c0, trim0, lining0]) => {
+      const [c, trim, lining] = [c0, trim0, lining0].map(rogueSlot);
+      // The owner's cloak on the male bodies (his Ascended paint-over); the female bodies, being redrawn,
+      // keep the drawn cloak until he paints one for them.
+      if (!isFemaleBody(g.rig.body)) {
+        drawRogueCloak(g, rogueCloakColor(c, trim, lining));
+        return;
+      }
       const b = g.bp;
       const Lt = b.torsoLen;
       const top = topPt(g);

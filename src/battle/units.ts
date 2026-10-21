@@ -268,7 +268,7 @@ const TEMPLATES: Record<EnemyKind, Template> = {
           bottom: it('bottom_shinobi', '#14161c', '#20232c'),
           armor: it('armor_flak', '#3d4a3a', '#33402f'),
           feet: it('feet_shinobi', '#14161c', '#20232c'),
-          cape: it('cape_rogue', '#1a1b22', '#7a1f2a', '#c9a46c'),
+          cape: it('cape_rogue', '#1a1b22', '#7a1f2a', '#5c0b21'),
           held: it('held_lightning', '#8fd3ff', '#ffffff'),
         },
         chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },

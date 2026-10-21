@@ -19,6 +19,7 @@ import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { ASCENDED_HAIR_BACK, ASCENDED_HAIR_BASE, ASCENDED_HAIR_FRONT, ASCENDED_HAIR_KIND } from './ascendedHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
@@ -1364,42 +1365,6 @@ const TPL: Record<string, HairTpl> = {
       '........000.......................',
     ],
   },
-  hair_ascended: {
-    fa: [17, 26],
-    f: [
-      '.............0...................',
-      '............00...................',
-      '...........010...000000..........',
-      '..........0110..0111110..........',
-      '.........01410..015510...........',
-      '.........0151100555510...........',
-      '........0115111155510............',
-      '........0155111155410..0000000000',
-      '.......0155522335441100115554410.',
-      '.......015552233444111155555440..',
-      '......013555224442555555554310...',
-      '......01355522222255555531110....',
-      '.....011444522222555554431110....',
-      '.....011444433344444432222110....',
-      '....011144444344444444222221100..',
-      '...01122222422244422245555541110.',
-      '..0355544445522255522233555555110',
-      '001355544445552255555233455555510',
-      '011111442444551111555511111115510',
-      '.00112311333110011133311113111110',
-      '...01231133310..00113301133311010',
-      '...01111222210....0010.0113310.00',
-      '..01111122220.......00..011310...',
-      '.012221122210.......00...01210...',
-      '..0122211220..............0110...',
-      '...012211000...............010...',
-      '....01220110................00...',
-      '.....010110......................',
-      '......00110......................',
-      '.......0110......................',
-      '.......000.......................',
-    ],
-  },
   hair_storm2: {
     fa: [19, 25],
     f: [
@@ -1645,6 +1610,11 @@ function trimSkull(g: DrawCtx, p: PaintedPart): void {
 /** His hair recoloured: his black line stays, his browns move the way his mid brown does. */
 const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, VALIANT_HAIR_BASE, hair));
 
+/** His golden spikes recoloured: his dark line stays, his golds move the way his middle gold does. */
+const ascendedHairColor = (hair: string) => (_ch: string, hex: string) => (ASCENDED_HAIR_KIND[hex] === 'line' ? hex : retintHex(hex, ASCENDED_HAIR_BASE, hair));
+/** The default gold the style had before his art (saved with characters that kept it) now means his. */
+const ASCENDED_OLD_DEFAULT: Record<string, string> = { '#e6c020': ASCENDED_HAIR_BASE };
+
 export const HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_none',
@@ -1735,7 +1705,23 @@ export const HAIR_ITEMS: ItemDef[] = [
   hairStyle('hair_drifter', "Drifter's Part", 'Straight lilac hair parted in the middle, falling over the ears with bangs to the eyes.', '#938fc0'),
   hairStyle('hair_surge', 'Golden Surge', 'Blazing golden hair standing straight up in sharp spikes.', '#f8ac01'),
   hairStyle('hair_youth', 'Wild Youth', 'Short, messy black spikes that fall over the forehead.', '#33333d'),
-  hairStyle('hair_ascended', 'Ascended Spikes', 'Golden spikes swept up and back, with one lone lock over the brow.', '#e6c020'),
+  {
+    id: 'hair_ascended',
+    slot: 'hair',
+    name: 'Ascended Spikes',
+    desc: 'Golden spikes standing up and swept back, locks falling over the brow and a sideburn lock before each ear.',
+    colors: hairColor(ASCENDED_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his Ascended paint-over, his pixels (the new standard, 2026-10-21): every
+      // spike and lock of his over the head, pinned by his eyes on our face anchor; behind the head the
+      // same hair with what his forehead and ear hide filled in. Where his picture shows his face, ours
+      // shows. The old saved default gold now means his.
+      const tint = ascendedHairColor(ASCENDED_OLD_DEFAULT[c.toLowerCase()] ?? c);
+      paintedHair(g, g.L('hairBack'), ASCENDED_HAIR_BACK, tint);
+      paintedHair(g, g.L('hairFront'), ASCENDED_HAIR_FRONT, tint);
+      trimSkull(g, ASCENDED_HAIR_BACK);
+    },
+  },
   hairStyle('hair_storm2', 'Storm Ascension', 'Taller, sharper golden spikes crackling upward, with a lock over the brow.', '#e6c020'),
   hairStyle('hair_gale', 'Gale Prodigy', 'Short, messy black spikes with a tall cowlick and ragged bangs falling between the eyes.', '#23232f'),
   {

@@ -1,0 +1,121 @@
+// The owner's blue sash on his Ascended paint-over, his pixels
+// (tools/refs/ascended-sash-from-ref.py from docs/reference/ascended-owner-reference.jpg).
+// Generated: rerun the script to change it.
+
+import type { PaintedPiece } from '../painted';
+
+/** His colours the colour slots recolour from (at these, every pixel is his). */
+export const SASH_MAIN = '#2871bf';
+export const SASH_EDGE = '#162f6f';
+
+/** What each colour of his is, as the script sorts them; his black line is never tinted. */
+export const SASH_KIND: Record<string, 'line' | 'main' | 'edge'> = {
+  '#000000': 'line',
+  '#030307': 'line',
+  '#03050b': 'line',
+  '#080812': 'line',
+  '#0b0a18': 'line',
+  '#0b0d1c': 'edge',
+  '#0c0f22': 'edge',
+  '#0c1026': 'edge',
+  '#0d122a': 'edge',
+  '#101c44': 'edge',
+  '#14214e': 'edge',
+  '#172d69': 'edge',
+  '#173275': 'edge',
+  '#183170': 'edge',
+  '#1f4a94': 'main',
+  '#1f56a4': 'main',
+  '#225eae': 'main',
+  '#2364b3': 'main',
+  '#2568b9': 'main',
+  '#256dc0': 'main',
+  '#265ea9': 'main',
+  '#2669b5': 'main',
+  '#2761ae': 'main',
+  '#2772c5': 'main',
+  '#286ebc': 'main',
+  '#296db8': 'main',
+  '#2971c1': 'main',
+  '#2976c2': 'main',
+  '#2976c8': 'main',
+  '#49a0e2': 'main',
+  '#4c9dde': 'main',
+  '#4da3e5': 'main',
+  '#4e9fe2': 'main',
+  '#51a6e6': 'main',
+  '#52a2e3': 'main',
+};
+
+/** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
+export const SASH_REST: Record<string, [number, number]> = {
+  SASH_BAND: [120, 166],
+};
+
+/** The band round the waist and its panel across the far thigh: it rides the torso about the pelvis. */
+export const SASH_BAND: PaintedPiece = {
+  pivot: [7, 10],
+  angle: -89.65,
+  rows: [
+    'abcbbbbbddbdedbfa......',
+    'ahhiiiijiiiklllha......',
+    'ahhfffhminpnkmhfa......',
+    'ahkkknnlqqfhhfkka......',
+    'ahfhhhrsnnllnthua......',
+    'avwvbcbxxyxxexxzva.....',
+    'aAABfkhhhhhhhhrhCa.....',
+    'aaaahjlhDihhknllEa.....',
+    '....atlkzklthhCEiha....',
+    '....aftpkfknnshhhha....',
+    '.....azklkhhsnFtffha...',
+    '......aCkpsfhknGnkia...',
+    '......ahknlthhhCFpna...',
+    '.......ahCnFChhzhsrla..',
+    '........aCkFGrhqqfrCa..',
+    '........azCCGnkhHHhhha.',
+    '........aahICpkCfHqhha.',
+    '..........azCCGrCzqJhhw',
+    '...........ahCrFCCfJHHa',
+    '............ahrFFCraHJa',
+    '.............azkKfaaaaa',
+    '.............azCaa.....',
+    '..............aa.......',
+  ],
+  colors: {
+    a: '#000000',
+    b: '#0b0a18',
+    c: '#080812',
+    d: '#0b0d1c',
+    e: '#0c0f22',
+    f: '#172d69',
+    h: '#183170',
+    i: '#2976c2',
+    j: '#2976c8',
+    k: '#2971c1',
+    l: '#49a0e2',
+    m: '#1f56a4',
+    n: '#4da3e5',
+    p: '#51a6e6',
+    q: '#2364b3',
+    r: '#2669b5',
+    s: '#2568b9',
+    t: '#256dc0',
+    u: '#14214e',
+    v: '#03050b',
+    w: '#030307',
+    x: '#0d122a',
+    y: '#0c1026',
+    z: '#173275',
+    A: '#1f4a94',
+    B: '#101c44',
+    C: '#286ebc',
+    D: '#225eae',
+    E: '#2772c5',
+    F: '#52a2e3',
+    G: '#4e9fe2',
+    H: '#2761ae',
+    I: '#296db8',
+    J: '#265ea9',
+    K: '#4c9dde',
+  },
+};

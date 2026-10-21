@@ -9,6 +9,9 @@ import { segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
+import { isFemaleBody } from '../types';
+import { drawAscendedFootWraps } from './ascended';
+import { FOOTWRAPS_CLOTH } from './footWrapsArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -415,8 +418,14 @@ export const FEET_ITEMS: ItemDef[] = [
     slot: 'feet',
     name: 'Foot Wraps',
     desc: 'Cloth bandages wound around the ankles and arches; toes and heels stay bare.',
-    colors: [col('main', 'Bandage', '#ddd5c2', 'cloth')],
+    colors: [col('main', 'Bandage', FOOTWRAPS_CLOTH, 'cloth')],
     draw: (g, [c]) => {
+      // The owner's bandaged shins and feet on the male bodies (his Ascended paint-over, ascended.ts); the
+      // female bodies, being redrawn, keep the drawn wraps.
+      if (!isFemaleBody(g.rig.body)) {
+        drawAscendedFootWraps(g, c);
+        return;
+      }
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'feet'));
         const wp = bootPen(g, c, s, 'shin', 'cloth');

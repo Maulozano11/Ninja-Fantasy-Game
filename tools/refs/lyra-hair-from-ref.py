@@ -12,7 +12,8 @@ of one colour merged into the commonest of them). Three pieces, each a set of hi
          gold pin (a ring on a stick) and the small black bow at the back of the head, and her ear
          (drawn in the player's skin). Not his face: forehead, brows, eyes, cheek and jaw are ours.
   LONG   behind the body (hairBack): her wavy hair to the waist, the lit outer lock with its curled
-         tip, and the hair seen between her arm and her body. What his shoulder, scarf, blouse and
+         tip (its lit auburns, which the head does not have, are hair too: is_auburn), and the hair
+         seen between her arm and her body. What his shoulder, scarf, blouse and
          sleeve hide is filled by running each of his strands on down (a hidden pixel takes the
          colour of the nearest hair pixel above it); the filled mass gets his dark line on its outer
          side and at its foot.
@@ -29,6 +30,13 @@ far lock then sits beside our far eye as it sits beside his. Each piece rides ou
 BRAID also turn with the torso (their angle is our idle torso's). The colour slots: his mid auburn
 moves every auburn of his (his line stays), the bow's greys follow the ribbon colour and the pin's
 golds the ornament colour.
+
+Her own face (face shape 'fine', lyra-face-from-ref.py) is his, as narrow as he drew it: over it the
+head goes in unmoved, HEAD_FINE, every pixel where he drew it. With her long neck (src/sprite/neck.ts,
+which carries the head two pixels higher and two further forward) the face anchor is at (125, 139) at
+idle, so all three pieces land on his picture laid at (x + 74, y + 121), where her clothes are. On his
+row 27 the slim neck leaves his hair under the jaw showing, past column 48 and one pixel past the
+neck's far side: LONG takes it (LONG_NAPE, LONG_PAST_NECK).
 
 Writes, in <out>: pieces@8.png (the three pieces on his crop, side by side, at 8x) and with a second
 argument the game's module (src/sprite/items/lyraHairArt.ts). The same picture always gives the same
@@ -71,6 +79,10 @@ LONG_ROWS = {20: 36, 21: 36, 22: 36, 23: 36, 24: 35, 25: 34, 26: 33, 27: 32, 28:
              32: 29, 33: 28, 34: 28, 35: 28, 36: 28, 37: 28, 38: 29, 39: 30, 40: 30, 41: 26, 42: 26, 43: 27,
              44: 28, 45: 31, 46: 31, 47: 33, 48: 35, 49: 37, 50: 38, 51: 39}
 LONG_RIGHT = 48
+# ... but on his row 27, under the jaw, his hair shows past column 48 up to his slim neck, and one
+# pixel of it past the neck's far side (the long neck, src/sprite/neck.ts, leaves them showing).
+LONG_NAPE = {27: 50}
+LONG_PAST_NECK = {(55, 27)}
 # BRAID: his rows 28-39, the columns of each (inclusive).
 BRAID_ROWS = {28: (46, 51), 29: (47, 51), 30: (47, 52), 31: (47, 52), 32: (46, 51), 33: (50, 52), 34: (50, 53),
               35: (50, 53), 36: (50, 53), 37: (50, 53), 38: (50, 53), 39: (51, 52)}
@@ -114,6 +126,7 @@ def palette(nat):
 luma = lambda c: 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
 is_line = lambda c: c is not None and luma(c) < LINE_LUMA
 is_grey = lambda c: c is not None and not is_line(c) and abs(c[0] - c[1]) < 25 and abs(c[1] - c[2]) < 25 and c[2] >= c[0] - 5
+is_auburn = lambda c: c is not None and luma(c) < 130 and c[0] > 2 * c[1] and c[1] >= c[2]
 is_gold = lambda c: c is not None and c[0] > 150 and c[1] > 100 and c[2] < 100 and c[1] / c[0] > 0.55
 
 
@@ -127,6 +140,9 @@ def lift():
             if col[x, y] is not None and not fa <= x <= fb:
                 head[x, y] = col[x, y]
     hair = {c for p, c in head.items() if p not in EAR and not is_line(c) and not is_grey(c) and not is_gold(c)}
+    # ... and the auburns only the long hair has: the lit outer lock over her near shoulder (dark,
+    # red well over green, not the scarf's crimson nor the skin's or the blouse's light tones).
+    hair |= {c for y, a in LONG_ROWS.items() for x in range(a, LONG_RIGHT + 1) if is_auburn(c := col[x, y])}
 
     def run_down(piece, region, keep):
         """His pixels of the region that `keep` keeps; the rest of the region (but the white around
@@ -153,7 +169,7 @@ def lift():
 
     # LONG: his hair and the line between and round his strands (not the line round his sleeve).
     long_ = {}
-    region = {(x, y) for y, a in LONG_ROWS.items() for x in range(a, LONG_RIGHT + 1)}
+    region = {(x, y) for y, a in LONG_ROWS.items() for x in range(a, LONG_NAPE.get(y, LONG_RIGHT) + 1)} | LONG_PAST_NECK
     filled = run_down(long_, region, lambda x, y, c: c in hair or (is_line(c) and not touches_cloth(x, y)))
     line = next(c for c in head.values() if is_line(c))
     for (x, y) in sorted(filled):
@@ -187,7 +203,8 @@ def main():
     col, head, long_, braid, hair = lift()
     ear = {head[p] for p in EAR}
     H, L, B = place(head, True), place(long_), place(braid)
-    used = sorted({c for p in (H, L, B) for c in p.values()}, key=lambda c: (luma(c), c))
+    HF = place(head)
+    used = sorted({c for p in (H, HF, L, B) for c in p.values()}, key=lambda c: (luma(c), c))
     assert len(used) <= len(CHARS)
     line = [c for c in used if is_line(c)]
     used = line + [c for c in used if c not in line]
@@ -204,7 +221,7 @@ def main():
         # her ear in our skin ramp's shades (body.ts: 1 dark, 2 shade, 3 base, 4 light)
         'ear': {ch[c]: (3 if luma(c) > 190 else 2 if luma(c) > 140 else 1) for c in sorted(ear)},
         'base': {'hair': hexs(common(hair, head)), 'ribbon': hexs(common(set(grey), head)), 'ornament': hexs(common(set(gold), head))},
-        'pieces': {name: rows_of(p, ch) for name, p in (('HEAD', H), ('LONG', L), ('BRAID', B))},
+        'pieces': {name: rows_of(p, ch) for name, p in (('HEAD', H), ('HEAD_FINE', HF), ('LONG', L), ('BRAID', B))},
     }
     out = sys.argv[1]
     os.makedirs(out, exist_ok=True)
@@ -261,6 +278,7 @@ def module(meta):
     out += ['};', '']
     docs = {
         'HEAD': ('LYRA_HAIR_HEAD', 'Over the head (hairFront): crown, fringe, far lock, the back of the head, the pin, the bow and her ear. Its pivot is the cell on our face anchor.', None),
+        'HEAD_FINE': ('LYRA_HAIR_HEAD_FINE', "The same over her own face (face shape 'fine', lyraFaceArt.ts): his pixels where he drew them, the far side not moved out.", None),
         'LONG': ('LYRA_HAIR_LONG', "Behind the body (hairBack): her wavy hair to the waist. Pivot on our face anchor; it turns with the torso (angle: our idle torso's).", TORSO_ANGLE),
         'BRAID': ('LYRA_HAIR_BRAID', 'Over the near shoulder onto the chest (hairFront, behind the near arm): her braid. Pivot on our face anchor; it turns with the torso.', TORSO_ANGLE),
     }

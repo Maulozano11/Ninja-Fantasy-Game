@@ -87,14 +87,16 @@ J = {
 # are filled.
 #   T/t blouse torso   S/s near sleeve   U/u near cuff and fitted sleeve   F/f far sleeve
 #   C/c corset         P/p pauldron      B/b near bracer                    D/d far bracer
+#   K   the bare top of the near shoulder, his skin and line round it (in the near sleeve piece)
+#   V   the skin in the V of the neckline (in the blouse's body)
 OWN = {
     147: [('P', 132, 133)],
-    148: [('P', 130, 134)],
-    149: [('P', 130, 135)],
-    150: [('P', 131, 136)],
-    151: [('P', 131, 137)],
-    152: [('P', 131, 137), ('f', 133, 135)],
-    153: [('S', 113, 120), ('T', 121, 127), ('T', 132, 133), ('P', 134, 138), ('f', 132, 135)],
+    148: [('K', 117, 119), ('P', 130, 134)],
+    149: [('K', 116, 119), ('P', 130, 135)],
+    150: [('K', 115, 120), ('P', 127, 136)],
+    151: [('K', 114, 120), ('P', 127, 137)],
+    152: [('K', 114, 118), ('P', 127, 128), ('V', 129, 130), ('P', 131, 137), ('f', 133, 135)],
+    153: [('S', 113, 120), ('T', 121, 127), ('V', 128, 131), ('T', 132, 133), ('P', 134, 138), ('f', 132, 135)],
     154: [('S', 113, 120), ('T', 121, 134), ('P', 135, 138), ('f', 133, 135)],
     155: [('S', 113, 119), ('T', 121, 133), ('F', 134, 134), ('P', 137, 138)],
     156: [('S', 113, 119), ('T', 121, 123), ('t', 124, 127), ('T', 128, 133), ('F', 134, 136)],
@@ -118,7 +120,7 @@ OWN = {
     174: [('U', 105, 111), ('u', 112, 113)],
     175: [('U', 105, 111), ('u', 112, 112)],
 }
-PIECE_OF = {'T': 'BLOUSE_TORSO', 'S': 'BLOUSE_SLEEVE_N', 'U': 'BLOUSE_FOREARM_N', 'F': 'BLOUSE_SLEEVE_F',
+PIECE_OF = {'T': 'BLOUSE_TORSO', 'S': 'BLOUSE_SLEEVE_N', 'K': 'BLOUSE_SLEEVE_N', 'V': 'BLOUSE_TORSO', 'U': 'BLOUSE_FOREARM_N', 'F': 'BLOUSE_SLEEVE_F',
             'G': 'BLOUSE_FOREARM_F', 'C': 'CORSET', 'P': 'CORSET_PAULDRON',
             'B': 'CORSET_BRACER_N', 'D': 'CORSET_BRACER_F'}
 
@@ -135,14 +137,14 @@ BODY_FAR = 134
 CORSET_LINE_X = {160: 118, 161: 117, 162: 117, 163: 117, 164: 117, 165: 117, 166: 116, 167: 116, 168: 116}
 
 DOCS = {
-    'BLOUSE_TORSO': 'The blouse: the red V edged in gold, the red scarf across the chest, the cream bust and the body to the waist (pivot: the base of the neck).',
-    'BLOUSE_SLEEVE_N': 'The near sleeve: the red scarf band round the shoulder, the puff, its leather band with a steel buckle (pivot: the near shoulder).',
+    'BLOUSE_TORSO': 'The blouse: the red V edged in gold and the skin in it (in the player\'s skin), the red scarf across the chest, the cream bust and the body to the waist (pivot: the base of the neck).',
+    'BLOUSE_SLEEVE_N': 'The near sleeve: the bare top of the shoulder above it (in the player\'s skin), the red scarf band round the shoulder, the puff, its leather band with a steel buckle (pivot: the near shoulder).',
     'BLOUSE_FOREARM_N': 'The near fitted sleeve under the bracer and its cream cuff at the wrist (pivot: the near elbow).',
     'BLOUSE_SLEEVE_F': 'The far puff, its top under the pauldron (pivot: the far shoulder).',
     'BLOUSE_SIDE_F': "The far puff's columns by the corset, drawn over the body's edge under the blouse; it moves with the far arm (pivot: the far shoulder).",
     'BLOUSE_FOREARM_F': 'The far fitted sleeve and its cuff, behind the pouch at her hip (pivot: the far elbow).',
     'CORSET': 'The corset: gold bands and filigree, steel buckles (pivot: the base of the neck).',
-    'CORSET_PAULDRON': 'The gold pauldron on the far shoulder and its strap (pivot: the far shoulder).',
+    'CORSET_PAULDRON': 'The gold pauldron on the far shoulder and its strap, down across the chest to the braid (pivot: the far shoulder).',
     'CORSET_BRACER_N': 'The near bracer: leather with gold studs (pivot: the near elbow).',
     'CORSET_BRACER_F': "The far bracer, in his near bracer's pattern, behind the pouch at her hip (pivot: the far elbow).",
 }
@@ -391,9 +393,24 @@ def kind_of(c):
     return 'leather'
 
 
+SKIN = {(PIECE_OF[ch], x, y) for y, spans in OWN.items() for ch, a, b in spans if ch in 'KV' for x in range(a, b + 1)}
+
+
+def skin_of(out):
+    """His skin colours: those of the bare shoulder (K) and the V (V) that no other cell uses (his
+    line is in the clothes, and his light on the shoulder snaps to the blouse's light cream, which
+    stays the blouse's)."""
+    on = {v for name, cells in out.items() for (x, y), v in cells.items() if (name, x, y) in SKIN}
+    off = {v for name, cells in out.items() for (x, y), v in cells.items() if (name, x, y) not in SKIN}
+    return on - off
+
+
 def write_ts(out, h, path):
     used = sorted({v for cells in out.values() for v in cells.values()})
     kinds = {v: kind_of(h.reps[v]) for v in used}
+    # His skin is the player's skin, not a slot's: it is only on the bare shoulder.
+    for v in skin_of(out):
+        kinds[v] = 'skin'
     lines = [
         "// Lyra's blouse, corset, pauldron and bracers: the owner's pixels from his picture of her at our game's",
         '// scale (docs/reference/lyra-game-scale-owner-reference.jpg, one of his pixels is one of ours), cut by',
@@ -431,6 +448,14 @@ def write_ts(out, h, path):
         lines.append(f'/** {docs[kind]} */')
         lines.append(f"export const LYRA_{kind.upper()} = [{', '.join(repr(h.hex(v)) for v in vs)}];".replace('"', "'"))
         lines.append('')
+    vs = sorted([v for v in used if kinds[v] == 'skin'], key=lambda v: (-lum(h.reps[v]), v))
+    cnt = {v: sum(1 for cells in out.values() for c in cells.values() if c == v) for v in vs}
+    main = max(vs, key=lambda v: (cnt[v], -v))
+    vs.remove(main)
+    vs.insert(0, main)
+    lines.append("/** His skin on the bare top of the near shoulder and in the V, the one he used most first: the player's skin moves them from the first. */")
+    lines.append(f"export const LYRA_SKIN = [{', '.join(repr(h.hex(v)) for v in vs)}];".replace('"', "'"))
+    lines.append('')
     line = [v for v in used if kinds[v] == 'line']
     lines.append('/** His black line and his near-blacks: no slot moves them. */')
     lines.append(f"export const LYRA_LINE = [{', '.join(repr(h.hex(v)) for v in line)}];".replace('"', "'"))

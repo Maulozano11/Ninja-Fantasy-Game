@@ -52,7 +52,7 @@ describe("Lyra's blouse and corset", () => {
   });
 
   it('has every piece as a whole picture in her colours only', () => {
-    const hers = new Set([...ART.LYRA_LINE, ...ART.LYRA_BLOUSE, ...ART.LYRA_LINING, ...ART.LYRA_GOLD, ...ART.LYRA_LEATHER, ...ART.LYRA_STEEL]);
+    const hers = new Set([...ART.LYRA_LINE, ...ART.LYRA_BLOUSE, ...ART.LYRA_LINING, ...ART.LYRA_GOLD, ...ART.LYRA_LEATHER, ...ART.LYRA_STEEL, ...ART.LYRA_SKIN]);
     assert.equal(Object.keys(PIECES).length, 10);
     for (const [name, p] of Object.entries(PIECES)) {
       const w = p.rows[0].length;
@@ -102,6 +102,15 @@ describe("Lyra's blouse and corset", () => {
     assert.notEqual(hexAt(f, 133, 149), '#fbbc57');
     assert.notEqual(hexAt(f, 113, 162), '#f2e2c0');
     assert.equal(hexAt(f, 134, 161), LINE);
+  });
+
+  it('shows her bare near shoulder and the skin in the V in the character\'s skin, his pixels in his', () => {
+    const his = { ...look('female'), skin: '#fbc9aa' };
+    const f = renderSprite(his, 'idle', 0).rgba;
+    assert.equal(hexAt(f, 117, 151), ART.LYRA_SKIN[0]);
+    assert.equal(hexAt(f, 130, 152), ART.LYRA_SKIN[0]);
+    const dark = renderSprite({ ...his, skin: '#7a4a32' }, 'idle', 0).rgba;
+    for (const [x, y] of [[117, 151], [130, 152]]) assert.ok(!ART.LYRA_SKIN.includes(hexAt(dark, x, y)), `${x},${y} ${hexAt(dark, x, y)}`);
   });
 
   it('draws on the female and slender bodies in every pose', () => {

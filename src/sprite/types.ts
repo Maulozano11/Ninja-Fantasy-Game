@@ -54,14 +54,15 @@ export interface CastChoice {
 /** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels; keen is his Lyra's, in her colours at our scale. */
 export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'keen';
 
-/** Back of the neck behind the jaw: slender (default) or thick. */
-export type NeckType = 'slim' | 'strong';
+/** Back of the neck behind the jaw: slender (default) or thick; long is the owner's heroines' (neck.ts). */
+export type NeckType = 'slim' | 'strong' | 'long';
 
 /**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
- * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels).
+ * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels); or his Lyra's
+ * face (fine: her narrower face, mouth and chin in his pixels, under our skull).
  */
-export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant';
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant' | 'fine';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =

@@ -126,11 +126,13 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'soft', label: 'Soft', sub: 'Fuller cheeks' },
   { id: 'square', label: 'Square', sub: 'Strong jaw' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
+  { id: 'fine', label: 'Fine', sub: "Lyra's face" },
 ];
 
 const NECKS: { id: NeckType; label: string; sub: string }[] = [
   { id: 'slim', label: 'Slim', sub: 'Slender' },
   { id: 'strong', label: 'Strong', sub: 'Thick, muscular' },
+  { id: 'long', label: 'Long', sub: "Lyra's neck" },
 ];
 
 const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [

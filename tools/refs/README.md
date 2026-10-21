@@ -115,7 +115,8 @@ folders.
   at our game's scale (`docs/reference/lyra-game-scale-owner-reference.jpg`: 19.32 picture pixels to one of
   ours, phase 0; his pixel (x, y) is our (x + 74, y + 121)). `OWN` says per row which of his pixels each
   piece takes; the parts his picture hides (under the braid, the blouse under the corset, the sleeves under
-  the bracers, the far forearm behind the pouch) continue his pixels. One painted piece per segment of our
+  the bracers, the far forearm behind the pouch) continue his pixels. The bare top of the near shoulder and
+  the skin in the V (`K`, `V`) are his skin, drawn in the player's (`LYRA_SKIN`). One painted piece per segment of our
   female rig, pivot on its joint at idle, so at idle every pixel of his is where he drew it. It checks that,
   and writes `hers-vs-pieces@8.png` into `<out>`.
 
@@ -156,7 +157,41 @@ folders.
   tips, gold collar and shell and cyan gem, his cyan blade (every cyan pixel within 2.6 px of its
   fitted line, with the black beside it) and his sparkles (the cyan further out, twinkling in the
   game). The grip his hand hides is his pommel's steel carried on; our fist is bigger than his, so the
-  grip is made 3 px longer under it (the pommel stays where he drew it, the rest moves down the line).
+  grip is made 3 px longer under it (the pommel stays where he drew it, the rest moves down the line),
+  and the blade gives those 3 px back in its middle (`TIP_CUT`), so its tip and sparkles end where his do.
   Drawn at his blade's angle (42.7) at rest. Writes `his@8.png` and `kinds@8.png` into `<out>`.
 
       python3 -I tools/refs/lyra-sword-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraSwordArt.ts
+
+- `lyra-hair-from-ref.py` → `src/sprite/items/lyraHairArt.ts`: Lyra's hair (`hair_copper_braid`), lifted
+  1:1 from his picture of her at our scale (same grid and colour merge as her face, lower body): `HEAD`
+  over the head (crown, fringe, far lock, pin, bow, her ear in the player's skin), `HEAD_FINE` the same
+  unmoved for her own face (face shape `fine`; `HEAD` moves its far side 2 px out for our wider face
+  template), `LONG` behind the body (hidden strands run on down) and `BRAID` over the near shoulder. The
+  pieces ride the face anchor; with her long neck (`src/sprite/neck.ts`) they land on his picture laid
+  at (x + 74, y + 121). Writes `pieces@8.png`.
+
+      python3 -I tools/refs/lyra-hair-from-ref.py <out> src/sprite/items/lyraHairArt.ts
+
+- `lyra-face-from-ref.py` → `src/sprite/lyraFaceArt.ts`: Lyra's face as the face shape `fine`
+  (`src/sprite/lyraFace.ts`): his forehead, cheeks, nose shade, mouth, chin and line, narrower than our
+  face template (his far eye 6 columns after the near one, ours 9), with the skin under his eyes and
+  brows run on from below (the eye shapes draw those). Drawn in the player's skin (his colours in his
+  skin). Writes `face@12.png` (his crop | the piece | the piece with his eyes back on).
+
+      python3 -I tools/refs/lyra-face-from-ref.py <out> src/sprite/lyraFaceArt.ts
+
+- `lyra-lower-from-ref.py` → `src/sprite/items/lyraLowerArt.ts`: Lyra's skirt (`bottom_striped_pleats`),
+  tabard (`skirt_gilded_tabard`) and belt with pouch (`waist_pouch_belt`), his pixels laid at
+  (x + 74, y + 121) with her blouse and boots; what his tabard, hand and sword hide is run on from his
+  pixels. `src/sprite/items/lyraLower.ts` drapes them onto any pose (above the attach line on the torso,
+  below it hanging as our skirts do, never past her soles). Writes `pieces@8.png`.
+
+      python3 -I tools/refs/lyra-lower-from-ref.py <out> src/sprite/items/lyraLowerArt.ts
+
+- `lyra-boots-from-ref.py` → `src/sprite/items/lyraBootsArt.ts`: Lyra's thigh-high boots
+  (`feet_gilded_thigh_boots`) and the bare thigh above them, his pixels at (x + 74, y + 121) riding a
+  leg of his proportions from our hip (`src/sprite/items/lyraBoots.ts`); what her sword hides continues
+  his gold and leather. Writes `hers-vs-pieces@8.png`.
+
+      python3 -I tools/refs/lyra-boots-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraBootsArt.ts

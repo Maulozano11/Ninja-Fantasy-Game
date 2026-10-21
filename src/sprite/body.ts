@@ -10,6 +10,9 @@ import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, 
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { KEEN_BROW_HAIR, KEEN_BROWS, KEEN_EYE_COLORS, KEEN_EYES, KEEN_IRIS } from './lyraEyeArt';
+import { LONG_NAPE, LONG_NECK_BACK, LONG_NECK_W } from './neck';
+import { LYRA_FACE_FAR_LINE, lyraFaceCells, stampLyraFace } from './lyraFace';
+import { LYRA_FACE_FAR_EYE } from './lyraFaceArt';
 import { stampPiece } from './painted';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { isFemaleBody, type FaceShape } from './types';
@@ -41,8 +44,12 @@ export function drawBody(g: DrawCtx): void {
   const torso = g.L('torso.body');
   fillTorso(g, torso, 0, skin('torso'));
   if (b.bust > 0) sculptTorso(g, torso, g.skin, 'skin');
-  const neckTop = v(r.head.x + 0.4 * b.headScale, r.head.y + 4 * b.headScale);
-  capsule(torso, r.neck, neckTop, b.neckW, b.neckW * 0.95, skin('torso'), (x) => (x < r.neck.x - 0.6 ? 3 : 2));
+  // The long neck (neck.ts) is the owner's heroines': slimmer, and set back under the chin as he drew it.
+  const long = g.look.neck === 'long';
+  const neckTop = v(r.head.x + 0.4 * b.headScale - (long ? LONG_NECK_BACK : 0), r.head.y + 4 * b.headScale);
+  const neckW = long ? Math.min(b.neckW, LONG_NECK_W) : b.neckW;
+  // (his is lit but for its far edge: a shade lighter, so it is lit where the chin's shadow falls on it)
+  capsule(torso, r.neck, neckTop, neckW, neckW * 0.95, skin('torso'), long ? (x) => (x < r.neck.x + 0.2 ? 4 : 3) : (x) => (x < r.neck.x - 0.6 ? 3 : 2));
   // Nape: the back of the neck, from under the skull down to the shoulders.
   // It fills the gap behind the tapered jaw when the hair doesn't hang there;
   // hair drawn over the head still covers it. 'slim' (default) starts well
@@ -50,12 +57,12 @@ export function drawBody(g: DrawCtx): void {
   // neck flush with the back of the skull, with a lit nape.
   const fa = faceAnchor(g);
   const strong = g.look.neck === 'strong';
-  const napeX = (fa.nx - (strong ? 5.5 : 3.5)) / RES;
+  const napeX = (fa.nx - (strong ? 5.5 : long ? LONG_NAPE : 3.5)) / RES;
   poly(
     torso,
     [v(napeX, (fa.ny + 1) / RES), v(napeX, r.neck.y + 0.2), v(napeX - 0.8, r.neck.y + 1.2), v(r.neck.x, r.neck.y + 1.2), v(neckTop.x, (fa.ny + 1) / RES)],
     skin('torso'),
-    strong ? (x) => (x < napeX + 1 ? 3 : 2) : 2,
+    strong ? (x) => (x < napeX + 1 ? 3 : 2) : long ? 4 : 2,
   );
 
   // Simple form shading only (no muscle lines): a soft chest shadow and collarbone light.
@@ -317,6 +324,9 @@ function drawHead(g: DrawCtx): void {
   // Everything from the eye line down is the hand-drawn face template.
   const { nx, ny } = faceAnchor(g);
   for (let i = ny * GRID; i < GRID * GRID; i++) L.mat[i] = -1;
+  // Lyra's face ('fine') is narrower than the template: the skull stops short of his far face line, so
+  // its outline runs on up from his line.
+  if (g.look.faceShape === 'fine') for (let y = 0; y < ny; y++) for (let x = nx + LYRA_FACE_FAR_LINE; x < GRID; x++) L.mat[y * GRID + x] = -1;
   drawFace(g);
 }
 
@@ -363,7 +373,7 @@ function skinTone(hex: string, skin: string): string {
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant, the owner's head, is his pixels whole: see drawValiantHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'fine'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -371,7 +381,8 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant'>, string[]> = {
 
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
-  return (s && s !== 'valiant' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  // (Lyra's face, 'fine', has the default near cheek under her hair)
+  return (s && s !== 'valiant' && s !== 'fine' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 const FACE_MAIN: Record<string, string[]> = {
@@ -486,6 +497,11 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
   faceLeft(g).forEach((row, r) => {
     for (let c = skipBack; c < row.length; c++) if (row[c] !== '.') add(nx - 7 + c, ny + r);
   });
+  if (g.look.faceShape === 'fine') {
+    // Lyra's face from the lash row down, over the template's near cheek.
+    for (const c of lyraFaceCells(nx, ny)) if (c.y >= ny) add(c.x, c.y);
+    return out;
+  }
   main.forEach((row, r) => {
     for (let c = 0; c < row.length; c++) if (row[c] !== '.') add(nx + c, ny + r);
   });
@@ -503,7 +519,9 @@ export function faceAnchor(g: DrawCtx): { nx: number; ny: number; ex: number; fx
   const nx = Math.floor((g.rig.head.x - 1.9 * k) * RES);
   const ny = Math.floor((g.rig.head.y + 1.0 * k) * RES);
   const valiant = g.look.faceShape === 'valiant';
-  return { nx, ny, ex: valiant ? nx + 1 : nx, fx: valiant ? nx + 8 : nx + 9, fy: ny };
+  // (Lyra's face, 'fine': her far eye where he drew it, closer in on her narrower face)
+  const far = g.look.faceShape === 'fine' ? LYRA_FACE_FAR_EYE : 9;
+  return { nx, ny, ex: valiant ? nx + 1 : nx, fx: valiant ? nx + 8 : nx + far, fy: ny };
 }
 
 function drawFace(g: DrawCtx): void {
@@ -563,6 +581,16 @@ function drawFace(g: DrawCtx): void {
     main.forEach((row, r) => {
       for (let c = 0; c < row.length; c++) if (row[c] === 'm' || row[c] === 'M') put(ex + c, ny + r, row[c]);
     });
+  } else if (g.look.faceShape === 'fine') {
+    // Lyra's face (lyraFace.ts): the template's near cheek where her hair hides hers, her pixels over
+    // it, and only the eyes from the template (her mouth is her own).
+    faceLeft(g).forEach((row, r) => {
+      for (let c = 0; c < row.length; c++) put(nx - 7 + c, ny + r, row[c]);
+    });
+    stampLyraFace(g, L, nx, ny);
+    for (const [side, x0] of [['near', ex], ['far', fx]] as const) {
+      eyes[side].forEach((row, r) => [...row].forEach((ch, c) => !(ch in skinShade) && put(x0 + c, ny + r, ch)));
+    }
   } else {
     faceLeft(g).forEach((row, r) => {
       for (let c = 0; c < row.length; c++) put(nx - 7 + c, ny + r, row[c]);

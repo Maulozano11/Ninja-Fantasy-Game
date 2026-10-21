@@ -7,6 +7,7 @@ import { retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
 import { PaintedPiece, segAngle } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId } from '../raster';
+import { LONG_NECK_AHEAD } from '../neck';
 import type { Rig } from '../rig';
 import { rotateTemplate } from '../rotsprite';
 import type { PaintedPart } from './capeArt';
@@ -16,6 +17,7 @@ import {
   LYRA_HAIR_BRAID,
   LYRA_HAIR_EAR,
   LYRA_HAIR_HEAD,
+  LYRA_HAIR_HEAD_FINE,
   LYRA_HAIR_LINE,
   LYRA_HAIR_LONG,
   LYRA_HAIR_PIN,
@@ -71,18 +73,22 @@ function trimSkull(g: DrawCtx, p: PaintedPart): void {
  * Pitched far forward (the throw, rig.ts THROW) her head is carried out ahead of her neck, and long
  * hair turned only with the torso would hang down over her chest and between her legs: for each
  * design unit the head is ahead of the neck past HEAD_AHEAD, the long hair swings back by HEAD_TURN
- * degrees, up to HEAD_TURN_MAX, so it streams out along her back as a cape does. No other pose
- * carries the head that far forward. (The same rule as Elise's hair.)
+ * degrees, up to HEAD_TURN_MAX, so it falls along her back. (Past 30 degrees it no longer lies on
+ * her back but stands up from her shoulders over the raised arm, like a wedge floating up.) No other pose
+ * carries the head that far forward. (The rule of Elise's hair, with a smaller turn.)
  */
 const HEAD_AHEAD = 1;
 const HEAD_TURN = 18;
-const HEAD_TURN_MAX = 60;
+const HEAD_TURN_MAX = 30;
 
-/** How far the head sits ahead of the neck, along the shoulder line (design units). */
-const headAhead = (r: Rig): number => (r.head.x - r.neck.x) * r.right.x + (r.head.y - r.neck.y) * r.right.y;
+/**
+ * How far the head sits ahead of the neck, along the shoulder line (design units); the long neck's
+ * own carry forward (neck.ts) is not counted, so the hair swings in the same poses on every neck.
+ */
+const headAhead = (r: Rig, long: boolean): number => (r.head.x - r.neck.x) * r.right.x + (r.head.y - r.neck.y) * r.right.y - (long ? LONG_NECK_AHEAD : 0);
 
 /** The extra turn of the long hair (degrees, with the clock) when the head is pitched far forward. */
-const swingBack = (r: Rig): number => (r.lay ? 0 : Math.min(HEAD_TURN_MAX, HEAD_TURN * Math.max(0, headAhead(r) - HEAD_AHEAD)));
+const swingBack = (r: Rig, long: boolean): number => (r.lay ? 0 : Math.min(HEAD_TURN_MAX, HEAD_TURN * Math.max(0, headAhead(r, long) - HEAD_AHEAD)));
 
 export const HAIR_COPPER_BRAID: ItemDef = {
   id: 'hair_copper_braid',
@@ -105,10 +111,13 @@ export const HAIR_COPPER_BRAID: ItemDef = {
     };
     const r = g.rig;
     const tilt = segAngle(r.pelvis, r.neck) - LYRA_HAIR_LONG.angle;
-    stamp(g, g.L('hairBack'), LYRA_HAIR_LONG, tilt + swingBack(r), 'back', color);
+    stamp(g, g.L('hairBack'), LYRA_HAIR_LONG, tilt + swingBack(r, g.look.neck === 'long'), 'back', color);
     const F = g.L('hairFront');
-    stamp(g, F, LYRA_HAIR_HEAD, 0, 'head', color);
+    // Over her own face (face shape 'fine') the head is his as he drew it; over our wider face its far
+    // side is moved out to the face's edge.
+    const head = g.look.faceShape === 'fine' ? LYRA_HAIR_HEAD_FINE : LYRA_HAIR_HEAD;
+    stamp(g, F, head, 0, 'head', color);
     stamp(g, F, LYRA_HAIR_BRAID, tilt, 'back', color);
-    trimSkull(g, LYRA_HAIR_HEAD);
+    trimSkull(g, head);
   },
 };

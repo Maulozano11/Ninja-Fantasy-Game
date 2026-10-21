@@ -24,8 +24,10 @@ import {
   LYRA_GOLD,
   LYRA_LEATHER,
   LYRA_LINING,
+  LYRA_SKIN,
   LYRA_STEEL,
 } from './lyraUpperArt';
+import { hisSkinTone } from '../lyraFace';
 
 /** The colour each slot replaces (its default): his cream, red, leather, gold and steel. */
 const BLOUSE = LYRA_BLOUSE[0];
@@ -64,10 +66,12 @@ function pauldronAngle(torso: number, arm: number): number {
  */
 function drawBlouse(g: DrawCtx, blouse: string, lining: string): void {
   const r = g.rig;
-  const tint = recolour([
+  const cloth = recolour([
     [LYRA_BLOUSE, BLOUSE, blouse],
     [LYRA_LINING, LINING, lining],
   ]);
+  // (the bare top of the near shoulder, above the puff, is his skin: in the character's skin)
+  const tint = (ch: string, hex: string) => (LYRA_SKIN.includes(hex) ? hisSkinTone(hex, LYRA_SKIN[0], g.look.skin) : cloth(ch, hex));
   const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
   put('farArm.cloth', BLOUSE_FOREARM_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
   put('farArm.cloth', BLOUSE_SLEEVE_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');

@@ -26,11 +26,12 @@ lyra-hair-from-ref.py, so the pieces share its colours). Four pieces:
           on the near side, the small gold-edged flap under them at the front, and the red pouch
           with its steel cap at the far hip.
 
-Placing: his pixel (x, y) goes to (x + 72, y + 123) of our 256 x 256 frame at the female idle frame 0,
-the same place as his hair (lyra-hair-from-ref.py): his near eye on our face anchor, his waist on
-ours. Our hips are wider than his on the far side (our far leg stands further out), so his far side
-(his columns FAR_FROM and on) goes FAR_SHIFT pixels further right, and the skirt's pleat before
-FAR_FROM is repeated to fill the gap, as his hair's far side is moved. src/sprite/items/lyraLower.ts
+Placing: his pixel (x, y) goes to (x + 74, y + 121) of our 256 x 256 frame at the female idle frame 0,
+where her blouse, corset and boots are (lyra-upper-from-ref.py, lyra-boots-from-ref.py) and where her
+hair and face are with her long neck (src/sprite/neck.ts): his belt under his corset, his tabard's
+hems over his boots. Our hips are wider than his on the far side (our far leg stands further out), so
+his far side (his columns FAR_FROM and on) goes FAR_SHIFT pixels further right, and the skirt's pleat
+before FAR_FROM is repeated to fill the gap. src/sprite/items/lyraLower.ts
 carries the pieces onto any body and pose (drape()).
 
 Writes, in <out>: pieces@8.png (his crop beside the four pieces, at 8x) and, with a second argument,
@@ -52,9 +53,9 @@ PITCH = 19.32
 PHASE = (-0.14, 0.05)
 N = 100
 MERGE = 10
-OFFSET = (72, 123)
+OFFSET = (74, 121)
 # His columns from FAR_FROM on go FAR_SHIFT further right (our far hip is wider than his).
-FAR_FROM, FAR_SHIFT = 59, 4
+FAR_FROM, FAR_SHIFT = 59, 0
 # A pleat of his skirt, in columns: the run-on of a hidden pleat, and the pleat repeated at FAR_FROM.
 PLEAT = 6
 # A fold of his lining, in columns (between his legs: dark, light, dark): the run-on of its hidden folds.

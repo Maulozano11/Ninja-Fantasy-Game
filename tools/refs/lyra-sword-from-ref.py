@@ -23,7 +23,9 @@ cyan sparkles round it. What is his and what is filled:
     the cut x + y = CUT (the cross, the shell, the blade, the sparkles and the bow's lower half) moves
     STRETCH pixels down along the blade's line, and the two diagonals before the cut (the grip and the
     bow) are repeated to fill the gap. The pommel stays where he drew it above the fist, and the cross
-    and gem show below the fist as his show below his.
+    and gem show below the fist as his show below his. So that the sword is as long as his, the blade
+    gives those STRETCH diagonals back in its middle (before TIP_CUT, where it is three even lines of
+    glow): from TIP_CUT on, the blade, its tip and its sparkles are where he drew them.
 
 The template is drawn at his blade's angle (the fitted line of his blade, which our idle holds it at:
 grip.ts) and pivots on the grip cell under our fist (grip.ts gripPoint at our female idle), so at rest
@@ -97,6 +99,8 @@ BAND = 2.6          # how far from the blade's line (pixels) his cyan is blade, 
 EDGE_SPARKS = {(131, 196), (134, 205)}
 CUT = 284           # cells with x + y >= CUT move down the line
 STRETCH = 3         # by this many diagonal steps
+TIP_CUT = 326       # ... and from here on (mid-blade) they stay where he drew them: the blade loses the
+                    # STRETCH diagonals before it, so its tip and sparkles end where his do
 
 CHARS = 'abcdefhijklmnpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 
@@ -199,10 +203,17 @@ def build(px):
     for c, src in GRIP.items():
         col[c], kind[c] = snap[px[src]], 'grip'
     # Stretch the grip under the fist: past the cut, down the line; the two diagonals before it again.
+    # From TIP_CUT on the blade is where he drew it again: the blade's STRETCH diagonals before it go
+    # (his blade is the same three lines of glow there), so his tip and sparkles are his, where he drew
+    # them; a sparkle beside the cut-out stretch stays with the blade above it.
     out, okind = {}, {}
     for (x, y), k in kind.items():
         s = x + y
-        if s >= CUT:
+        if s >= TIP_CUT and (k != 'spark' or s >= TIP_CUT + 2 * STRETCH):
+            out[(x, y)], okind[(x, y)] = col[(x, y)], k
+        elif s >= TIP_CUT - 2 * STRETCH and k != 'spark':
+            continue
+        elif s >= CUT:
             out[(x + STRETCH, y + STRETCH)], okind[(x + STRETCH, y + STRETCH)] = col[(x, y)], k
         else:
             out[(x, y)], okind[(x, y)] = col[(x, y)], k
@@ -273,9 +284,10 @@ def ts_module(out, okind, angle):
         '',
         '/**',
         ' * The sword as he drew it in her near fist, hanging across the legs: drawn at his blade\'s angle and',
-        ' * pivoting on the grip under our fist. At rest the pommel is where he drew it and the rest of his',
-        ' * pixels lie three pixels further down the blade\'s line, so our fist (bigger than his) holds the',
-        ' * grip and his cross, gem and shell show below it.',
+        ' * pivoting on the grip under our fist. At rest the pommel is where he drew it, his cross, gem, shell',
+        ' * and the blade\'s upper half lie three pixels further down the blade\'s line, so our fist (bigger',
+        ' * than his) holds the grip and his cross shows below it, and the blade\'s lower half and tip are where',
+        ' * he drew them (the blade is three diagonals shorter in its middle).',
         ' */',
         'export const LYRA_RAPIER: LyraSword = {',
         f'  pivot: [{px}, {py}],',

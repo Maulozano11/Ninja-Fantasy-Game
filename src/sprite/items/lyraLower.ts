@@ -63,8 +63,8 @@ const BELT_FIT: Fit = { top: -99, k: 0 };
 
 /** How much a hanging panel follows its thigh (armor.ts HANG_FOLLOW): skirts hang nearly straight down. */
 const FOLLOW = 0.22;
-/** Lowest a hanging hem goes (armor.ts HEM_FLOOR): crouched, the cloth gathers on the ground. */
-const FLOOR = GROUND + 1.5;
+/** Lowest a hanging hem goes: crouched or lunging, the cloth gathers on the ground line, not past it. */
+const FLOOR = GROUND;
 
 /** Her pieces were drawn on our female body at idle frame 0. */
 let REF: Rig | null = null;
@@ -209,6 +209,26 @@ function behindFarArm(g: DrawCtx): (x: number, y: number) => boolean {
   return (x, y) => !arm.some((A) => A.has(x, y));
 }
 
+/**
+ * The lowest row of her legs and feet (boots and all, drawn before the tabard): the tabard's tails
+ * never hang past her soles, however far a lunge carries their hang toward the ground.
+ */
+function soleRow(g: DrawCtx): number {
+  let low = 0;
+  for (const d of ['nearLeg.body', 'farLeg.body', 'nearLeg.feet', 'farLeg.feet', 'nearLeg.armor', 'farLeg.armor'] as const) {
+    const L = g.L(d);
+    for (let y = GRID - 1; y > low; y--) {
+      let hit = false;
+      for (let x = 0; x < GRID && !hit; x++) hit = L.has(x, y);
+      if (hit) {
+        low = y;
+        break;
+      }
+    }
+  }
+  return low;
+}
+
 export const STRIPED_PLEATS: ItemDef = {
   id: 'bottom_striped_pleats',
   slot: 'bottom',
@@ -233,12 +253,14 @@ export const GILDED_TABARD: ItemDef = {
   id: 'skirt_gilded_tabard',
   slot: 'skirt',
   name: 'Gilded Tabard',
-  desc: 'Long cream coat tails open at the front, from the belt to the calves: edged in red and gold, lined in grey-brown, the hems cut to a point.',
+  desc: 'Long cream coat tails open at the front, from the belt to the calves: edged in red and gold, lined in grey-brown, the hems cut to a point. Women only.',
   colors: [
     { key: 'cloth', label: 'Cloth', default: LYRA_TABARD_CLOTH_BASE },
     { key: 'trim', label: 'Trim', default: LYRA_TABARD_TRIM_BASE },
     { key: 'gold', label: 'Gold', default: LYRA_TABARD_GOLD_BASE, kind: 'metal' },
   ],
+  // cut for her hips, as her skirt is: on the male and bulky bodies it would sit off them
+  bodies: ['female', 'slender'],
   draw: (g, [cloth, trim, gold]) => {
     const t = tint([
       [LYRA_TABARD_CLOTH, LYRA_TABARD_CLOTH_BASE, cloth],
@@ -247,8 +269,10 @@ export const GILDED_TABARD: ItemDef = {
     ]);
     // the lining and the far tail behind the legs and the far arm; the near panel and the far
     // panel's top over the skirt and the near leg, as he drew them (behind the far arm)
-    drape(g, 'backGear', LYRA_BACK, 'back', TABARD_FIT, t);
-    drape(g, 'skirt', LYRA_FRONT, 'pelvis', TABARD_FIT, t, behindFarArm(g));
+    const sole = soleRow(g);
+    const arm = behindFarArm(g);
+    drape(g, 'backGear', LYRA_BACK, 'back', TABARD_FIT, t, (_x, y) => y <= sole);
+    drape(g, 'skirt', LYRA_FRONT, 'pelvis', TABARD_FIT, t, (x, y) => y <= sole && arm(x, y));
   },
 };
 
@@ -256,13 +280,15 @@ export const POUCH_BELT: ItemDef = {
   id: 'waist_pouch_belt',
   slot: 'waist',
   name: 'Buckled Belt and Pouch',
-  desc: 'Dark leather belts slung across the hips with a steel buckle, a small gold-edged flap at the front and a red leather pouch capped in steel at the far hip.',
+  desc: 'Dark leather belts slung across the hips with a steel buckle, a small gold-edged flap at the front and a red leather pouch capped in steel at the far hip. Women only.',
   colors: [
     { key: 'leather', label: 'Leather', default: LYRA_BELT_LEATHER_BASE, kind: 'leather' },
     { key: 'steel', label: 'Steel', default: LYRA_BELT_STEEL_BASE, kind: 'metal' },
     { key: 'pouch', label: 'Pouch', default: LYRA_BELT_POUCH_BASE, kind: 'leather' },
     { key: 'gold', label: 'Gold', default: LYRA_BELT_GOLD_BASE, kind: 'metal' },
   ],
+  // cut for her hips (on the bulky body it stopped short of the far hip)
+  bodies: ['female', 'slender'],
   draw: (g, [leather, steel, pouch, gold]) => {
     const t = tint([
       [LYRA_BELT_LEATHER, LYRA_BELT_LEATHER_BASE, leather],

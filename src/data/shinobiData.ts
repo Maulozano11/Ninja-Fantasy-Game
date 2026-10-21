@@ -247,6 +247,17 @@ export const SHINOBI_FEATS: ShinobiFeat[] = [
     nameEs: 'Golpe de bloqueo de tenketsu',
     descriptionEs: 'Con un crítico de Taijutsu o de jutsu de clan, el objetivo no puede lanzar jutsus durante 1 turno.',
   },
+  // The owner's third-element feat ("feat del tercer elemento opcion a", 2026-10-21): rules/feats.ts.
+  {
+    id: 'triple_nature',
+    name: 'Triple Nature',
+    description:
+      'Gain a third element: its jutsu open in your Element slots as your second element\'s do (rank D and C; rank A from level 7). Once per long rest, a jutsu of one of your elements costs 1 chakra less when the previous jutsu you cast that battle was of another of your elements.',
+    nameEs: 'Tres naturalezas',
+    descriptionEs:
+      'Ganas un tercer elemento: sus jutsus se abren en tus ranuras de Elemento como los de tu segundo elemento (rango D y C; rango A desde el nivel 7). Una vez por descanso largo, un jutsu de uno de tus elementos cuesta 1 de chakra menos si el jutsu anterior que lanzaste en esa batalla era de otro de tus elementos.',
+    requires: { level: 9, secondElement: true },
+  },
 ];
 
 export const JUTSUS_DATA: JutsuDefinition[] = [

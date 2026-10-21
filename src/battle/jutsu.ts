@@ -24,6 +24,8 @@ export interface JutsuSpec {
   nameEnh?: string;
   nameEnhEs?: string;
   rank: string;
+  /** The jutsu's nature as its data says it (Fire, Taijutsu…); the hydra's attacks and the clan abilities have none. */
+  nature?: string;
   element: VfxElement;
   cost: number;
   enhCost: number;
@@ -132,6 +134,7 @@ function specOf(j: JutsuDefinition): JutsuSpec {
     ...(j.nameEs ? { nameEs: j.nameEs } : {}),
     ...(j.nameEnh ? { nameEnh: j.nameEnh, nameEnhEs: j.nameEnhEs ?? j.nameEnh } : {}),
     rank: j.rank,
+    nature: j.nature,
     element: ELEMENT[j.nature] ?? 'chakra',
     cost: j.chakraCost,
     enhCost: j.enhancementChakraCost,

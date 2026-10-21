@@ -354,6 +354,8 @@ const TABLE = strings({
   n_swapped: { en: '{name} and {other} trade places', es: '{name} y {other} intercambian lugares' },
   f_warpEdge: { en: 'Behind {foe}', es: 'A la espalda de {foe}' },
   n_swapResisted: { en: '{name} holds its ground', es: '{name} resiste en su sitio' },
+  n_tripleNature: { en: '{name} weaves its natures: 1 chakra less (Triple Nature)', es: '{name} entrelaza sus naturalezas: 1 de chakra menos (Tres naturalezas)' },
+  f_tripleNature: { en: 'Triple Nature: −1 chakra', es: 'Tres naturalezas: −1 chakra' },
 
   // tips
   tip_move: { en: 'Click a lit tile to move. The number is the distance in meters.', es: 'Haz clic en una casilla iluminada para moverte. El número es la distancia en metros.' },

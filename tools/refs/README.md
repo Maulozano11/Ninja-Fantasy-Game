@@ -130,3 +130,27 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `trunks_ref.py` + `trunks-*-from-ref.py`: the owner's two Trunks paint-overs (`docs/reference/trunks2-owner-reference.jpg`,
+  `trunks3-owner-reference.jpg`; 2000x2000, his pixels exactly 20 picture pixels from the corner, our male idle frame 0 at
+  offset (75, 119) and (75, 117)), copied like Aiden and the Roman set. `trunks_ref.T2` / `T3` cut his figure into pieces
+  by region polygons and colour kinds (`kind()`: line, skin, hue classes) in a claiming order, keeping only the black
+  line next to each piece's own colours; `trunks2()` / `trunks3()` then fill what his sword, cape, belt or sleeves hide by
+  continuing his pixels up or down their columns (`fill()`, closed by his line; the white gaps he left between the legs
+  stay gaps) and cut the result into the pieces that ride the rig. Every piece is pinned to our joint where it lies in
+  his picture (its pivot is the cell our joint falls on at rest; his legs are a little shorter and wider than ours and
+  his far arm hangs where ours does give or take a pixel, so no piece is moved: at rest every pixel is his, where he
+  drew it). Each module exports its pieces, the colours its slots recolour from, `<PREFIX>_SLOT` (his colours by slot;
+  `line` stays) and `<PREFIX>_REST` (where each piece lands at rest), which `src/sprite/trunks.test.ts` checks. One script
+  per part:
+
+      python3 -I tools/refs/trunks-drifter-hair-from-ref.py src/sprite/items/drifterHairArt.ts [study]
+      python3 -I tools/refs/trunks-surge-hair-from-ref.py src/sprite/items/surgeHairArt.ts [study]
+      python3 -I tools/refs/trunks-traveler-cape-from-ref.py src/sprite/items/travelerCapeArt.ts [study]
+      python3 -I tools/refs/trunks-highcollar-from-ref.py src/sprite/items/shortSleeveShirtArt.ts [study]
+      python3 -I tools/refs/trunks-belt-from-ref.py src/sprite/items/beltArt.ts [study]
+      python3 -I tools/refs/trunks-traveler-gloves-from-ref.py src/sprite/items/travelerGlovesArt.ts [study]
+      python3 -I tools/refs/trunks-cargo-from-ref.py src/sprite/items/cargoPantsArt.ts [study]
+      python3 -I tools/refs/trunks-leather-boots-from-ref.py src/sprite/items/leatherBootsArt.ts [study]
+      python3 -I tools/refs/trunks-bomber-from-ref.py src/sprite/items/bomberJacketArt.ts [study]
+      python3 -I tools/refs/trunks-leggings-from-ref.py src/sprite/items/leggingsArt.ts [study]
+      python3 -I tools/refs/trunks-cowboy-from-ref.py src/sprite/items/openToeBootsArt.ts [study]

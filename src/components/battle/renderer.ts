@@ -25,7 +25,7 @@ import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { edgeFoe, leavesNodes, nodeUnder, WARP, warpLanding } from '../../battle/clans';
 import { GRID, RES } from '../../sprite/raster';
-import { depthFx, drawAuraBack, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
+import { depthFx, drawAuraBack, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 
 export interface Camera {
@@ -172,6 +172,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   const ground = image(art.ground);
   if (ready(ground)) ctx.drawImage(ground, 0, 0);
 
+  // Wet ground lies on the ground itself, under the aiming overlays.
+  drawWetGround(ctx, sc);
   drawGroundOverlays(ctx, sc);
   warmPhases(sc);
 

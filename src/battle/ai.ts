@@ -4,7 +4,7 @@
 
 import { effectMods } from '../rules/effects';
 import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
-import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross } from './map';
+import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross, steamAt } from './map';
 import { canStop, reachable } from './nav';
 import { JUTSU, MIN_AIM } from './jutsu';
 import { KUNAI_LONG } from './units';
@@ -65,6 +65,9 @@ export function aiAction(s: BattleState): Action | null {
   // Enemies follow the plan they committed to (what a Mirai saw); allies plan each turn.
   let intent = u.team === 'enemy' && stillValid(s, u, u.intent) ? u.intent : planIntent(s, u);
   if (!stillValid(s, u, intent)) intent = planIntent(s, u);
+  // In the steam, it gets out first (it burns and blinds): toward its plan's target if it has one.
+  const out = leaveSteam(s, u, intent);
+  if (out) return out;
   if (!intent) return end;
   return bonusBefore(s, u, intent) ?? edgeStrike(s, u, intent) ?? carryOut(s, u, intent) ?? fallback(s, u) ?? end;
 }
@@ -86,6 +89,14 @@ function headAction(s: BattleState, u: Unit): Action | null {
   if (i.kind === 'bite') return { type: 'attack', unit: u.id, target: t.id };
   // Spit and roar are aimed at a point (a splash, a cone).
   return { type: 'jutsu', unit: u.id, jutsu: i.what, at: { ...t.pos } };
+}
+
+/** A unit standing in steam walks out of it, to the nearest clear cell, the one toward its target first. */
+function leaveSteam(s: BattleState, u: Unit, i: Intent | undefined): Action | null {
+  if (!steamAt(s, u.pos) || walkBudget(u) < 0.5 || u.speed <= 0) return null;
+  const t = i?.target ? s.units[i.target] : undefined;
+  const cell = bestCell(s, u, (p) => !steamAt(s, p), (p) => (t ? dist(p, t.pos) * 0.5 : 0), walkBudget(u));
+  return cell ? { type: 'move', unit: u.id, to: cell } : null;
 }
 
 /** One step toward the plan: act if in reach, otherwise move into reach (where it planned to go). */

@@ -12,13 +12,13 @@ import { worldSprite } from '../world/WorldSpriteView';
 import type { VfxElement } from '../../battle/jutsu';
 import type { Fx, Held, VolleyPath } from './playback';
 import type { Scene } from './renderer';
-import { auraDx, fxPos, project } from './renderer';
+import { ELEMENT_COLORS, auraDx, fxPos, project, tintColors } from './renderer';
 import { WAIT, hurryVfxSheets, tintedSheet } from './vfxTintCache';
 import type { TintedSheet } from './vfxTintCache';
 import { unitTint, wallElement } from './vfxTintPlan';
 import { keepAbove, wanderHeading, wanderPoint } from './paths';
 import type { Bend, XY } from './paths';
-import { dist } from '../../battle/map';
+import { cellCenter, dist, keyCell } from '../../battle/map';
 import { BLOOD_GROUP, screenSplats, splatAt } from './bloodPlan';
 
 /** A sheet, and its copy in a chakra colour when it plays in one. */
@@ -360,9 +360,11 @@ function sheetsOf(f: Fx): { name: string; beast: boolean; group?: string }[] {
     case 'aura':
       return named('aura', 'aura_back');
     case 'wave':
-      return named('wall_depth', 'wall', 'breath');
+      return named('wall', 'wall_depth', 'breath', 'blast');
     case 'tower':
       return named('wall_depth', 'multi');
+    case 'conduct':
+      return named('hit');
     case 'swirl':
       return named('bolt');
     default:
@@ -814,6 +816,7 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
       return f.set === 'neutral' && drawNeutralSlash(ctx, sc, f, ms, t);
     case 'wave':
     case 'tower':
+    case 'conduct':
       // Drawn among the units by depth (depthFx), so the ninjas stand in front of or behind them.
       return true;
     case 'swirl': {
@@ -965,17 +968,19 @@ export interface DepthItem {
 export const WAVE_CREST = (d: number, len: number): number => Math.max(0, Math.min(1, (d - WAVE_START) / Math.max(0.1, len - WAVE_START)));
 /** Where the crest sets off, in front of the caster (m). */
 const WAVE_START = 0.8;
-/** How long the wave stays at the end of its run, fading, while the last ones it reached are swept (ms). */
-export const WAVE_HOLD = 700;
-/** Metres between the rows of columns behind the crest, and how see-through each row is. */
-const WAVE_ROW = 1.1;
-const WAVE_ALPHA = [1, 0.55, 0.3, 0.18];
+/** How long the wave breaks at the end of its run (his water sinking, his spouts bursting), while the last ones it reached are swept (ms). */
+export const WAVE_HOLD = 900;
+/** Metres between the lanes of his water wall laid across the cone, and his wall's own length (m). */
+const WAVE_LANE = 0.85;
+const WALL_LEN = 4.6;
 
 /** The Whirlwind Tower's column: its rise (his rise row, 12 frames at 12 fps), its spin and its fade (ms). */
 export const TOWER_RISE = 1000;
-const TOWER_SPIN = 900;
-const TOWER_FADE = 400;
+const TOWER_SPIN = 1300;
+const TOWER_FADE = 450;
 export const TOWER_MS = TOWER_RISE + TOWER_SPIN + TOWER_FADE;
+/** How much wider his tornado is at its top than at its foot (a funnel: the owner, "mediante se va más arriba más ancho"). */
+const TOWER_WIDEN = 2.6;
 
 /**
  * Draws one column of a wall_depth sheet standing on a ground point (the sheet is a wall running
@@ -986,70 +991,167 @@ function blitColumn(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame
   blit(ctx, s, anim, frame, p.X - (s.spec.frameW / 2 - ax), p.Y - (s.spec.frameH - 2 - ay), false, alpha);
 }
 
+/** A canvas to cut a frame into strips (the tornado's funnel). */
+let strips: HTMLCanvasElement | null = null;
+
 /**
- * The Devouring Tide's wave (the owner's option A): a row of his water columns (wall_depth, his
- * wall seen from the front) across the cone at its crest, running out along it and spreading as the
- * cone opens, with fainter rows behind and his spray (breath) before it. Pointed mostly into the
- * depth, the wave is seen from the side: his water wall (wall) along the crest instead.
+ * One column of a wall_depth sheet standing on a ground point, widened toward its top (his tornado
+ * as a funnel): his frame cut into 2 px strips, each stretched across by how high it is, from 1 at
+ * the foot to `widen` at the top (nearest neighbour, his pixels only moved and scaled). `mirror`
+ * turns it round (a second turn of the wind behind the first).
+ */
+function blitFunnel(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame: number, p: { X: number; Y: number }, alpha: number, widen: number, mirror = false): void {
+  if (typeof document === 'undefined') return;
+  const W = s.spec.frameW;
+  const H = s.spec.frameH;
+  strips ??= document.createElement('canvas');
+  if (strips.width !== W || strips.height !== H) {
+    strips.width = W;
+    strips.height = H;
+  }
+  const g = strips.getContext('2d');
+  if (!g) return;
+  g.clearRect(0, 0, W, H);
+  g.imageSmoothingEnabled = false;
+  const [ax, ay] = s.spec.anchor;
+  blit(g as unknown as CanvasRenderingContext2D, s, anim, frame, mirror ? W - ax : ax, ay, mirror);
+  const foot = H - 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.imageSmoothingEnabled = false;
+  for (let y = 0; y < H; y += 2) {
+    const k = Math.max(0, Math.min(1, (foot - y) / foot));
+    const w = Math.round(W * (1 + (widen - 1) * k ** 1.25));
+    ctx.drawImage(strips, 0, y, W, 2, Math.round(p.X - w / 2), Math.round(p.Y - foot + y), w, 2);
+  }
+  ctx.restore();
+}
+
+/**
+ * The Devouring Tide's wave (the owner's second round: "más ancho y bonita", his horizontal water
+ * wall, "combinar los dos muros para hacer algo más contundente"): his water wall (wall, the one
+ * that runs across the screen) laid along the run in lanes across the whole width of the cone, a
+ * wide body of water rolling forward with its front at the crest; his water columns (wall_depth)
+ * standing along the crest as its face, his spray (breath) before it; at the end of the cone the
+ * water sinks back (his rise played backwards) and his spouts (blast) burst along the crest as it
+ * breaks. Pointed mostly into the depth, the two swap: his wall stands along the crest as its face
+ * and his columns trail behind it as its body.
  */
 function waveItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[] {
   const ms = (sc.now - f.t0) * sc.pb.speed;
-  // Its run, then it holds at the end of the cone and fades (WAVE_HOLD).
   const runMs = Math.max(1, f.dur - WAVE_HOLD);
-  const t = Math.min(1, ms / runMs);
   if (ms < 0 || ms > f.dur || !f.area || f.area.kind !== 'cone') return [];
+  const t = Math.min(1, ms / runMs);
   const cone = f.area;
   const rad = (cone.dir * Math.PI) / 180;
   const ux = Math.cos(rad);
   const uz = Math.sin(rad);
-  const half = (cone.angle * Math.PI) / 360;
+  const tan = Math.tan((cone.angle * Math.PI) / 360);
   const side = Math.abs(uz) > Math.abs(ux) * 1.2;
-  const col = sheet(f.element, side ? 'wall' : 'wall_depth', f.tint);
-  if (!col) return [];
-  const crest = WAVE_START + (cone.length - WAVE_START) * t;
-  const fade = ms > runMs ? Math.max(0, (f.dur - ms) / WAVE_HOLD) : 1;
-  const out: DepthItem[] = [];
+  const wall = sheet(f.element, 'wall', f.tint);
+  const col = sheet(f.element, 'wall_depth', f.tint);
+  if (!wall || !col) return [];
+  // The crest runs out fast and slows as the water spends itself.
+  const crest = WAVE_START + (cone.length - WAVE_START) * (1 - (1 - t) ** 1.6);
+  const hold = Math.max(0, ms - runMs);
+  const fade = hold > 0 ? Math.max(0, 1 - hold / WAVE_HOLD) : 1;
   const at = (d: number, off: number): Pt => ({ x: cone.origin.x + ux * d - uz * off, z: cone.origin.z + uz * d + ux * off });
-  // Each column comes up out of the water fast as the wave sets off (his rise, at three times its pace).
-  const rising = col.spec.anims.rise ? Math.min(11, Math.floor((ms * 3 * 12) / 1000)) : 11;
-  for (let k = 0; k < (f.rows ?? 3); k++) {
-    const d = crest - k * WAVE_ROW;
-    if (d < WAVE_START) break;
-    const alpha = (WAVE_ALPHA[k] ?? 0.15) * fade;
-    const w = d * Math.tan(half);
-    // Columns about a metre apart across the cone (his column is 1.2 m wide); seen from the side,
-    // walls of 4.6 m laid along the crest.
-    const n = side ? Math.max(1, Math.ceil((2 * w) / 4.6)) : Math.max(2, Math.round((2 * w) / 1.0) + 1);
+  // His rise at three times its pace as the wave sets off; at the end, the same played backwards (it sinks).
+  const rising = Math.min(11, Math.floor((ms * 3 * 12) / 1000));
+  const sinking = hold > 0 ? Math.max(0, 11 - Math.floor((hold / WAVE_HOLD) * 12)) : -1;
+  const pose = (s: Sheet, phase: number): [string, number] =>
+    sinking >= 0 ? ['rise', sinking] : rising < 11 ? ['rise', rising] : ['idle', frameAt(s, 'idle', ms + phase)];
+  const out: DepthItem[] = [];
+  const place = (p: Pt, z: number, draw: (q: { X: number; Y: number }) => void) => out.push({ z, draw: () => draw(project(sc.map, p)) });
+  const w = Math.max(0.6, crest * tan);
+  if (!side) {
+    // The body: lanes of his wall across the cone, each with its front at the crest.
+    const mid = Math.max(WAVE_START + 0.4, crest - WALL_LEN / 2 + 0.4);
+    const wm = Math.max(0.5, mid * tan);
+    const lanes = Math.max(2, Math.round((2 * wm) / WAVE_LANE) + 1);
+    const mirror = ux < 0;
+    for (let i = 0; i < lanes; i++) {
+      const off = -wm + (2 * wm * i) / (lanes - 1);
+      const p = at(mid, off);
+      const [anim, frame] = pose(wall, i * 131);
+      place(p, p.z, (q) => blit(ctx, wall, anim, frame, q.X, q.Y, (i % 2 === 1) !== mirror, 0.95 * fade));
+      // What it leaves behind settles low (his rise held half up), fading.
+      const back = mid - WALL_LEN * 0.9;
+      if (back > WAVE_START + 0.6 && i % 2 === 0) {
+        const b = at(back, off * (back / mid));
+        place(b, b.z, (q) => blit(ctx, wall, 'rise', sinking >= 0 ? Math.min(5, sinking) : 5, q.X, q.Y, mirror, 0.5 * fade));
+      }
+    }
+    // The face: his columns standing along the crest, on its near half only (the far ones would
+    // stack up the screen into one tall bar over the body).
+    const n = Math.max(2, Math.round((2 * w) / 1.1) + 1);
+    const mz = at(crest, 0).z;
     for (let i = 0; i < n; i++) {
-      const off = side ? -w + (2 * w * (i + 0.5)) / n : -w + (2 * w * i) / (n - 1);
-      const p = at(d, off);
-      const anim = rising < 11 ? 'rise' : 'idle';
-      const frame = rising < 11 ? rising : frameAt(col, 'idle', ms + i * 97 + k * 53);
-      out.push({ z: p.z, draw: () => (side ? blit(ctx, col, anim, frame, project(sc.map, p).X, project(sc.map, p).Y, false, alpha) : blitColumn(ctx, col, anim, frame, project(sc.map, p), alpha)) });
+      const p = at(crest, -w + (2 * w * i) / (n - 1));
+      if (p.z < mz - 0.3) continue;
+      const [anim, frame] = pose(col, i * 97);
+      place(p, p.z + 0.02, (q) => blitColumn(ctx, col, anim, frame, q, fade));
+    }
+  } else {
+    // Into the depth: his wall along the crest is the face (two rows, the front one solid) ...
+    for (const [k, alpha] of [[0, 1], [0.9, 0.7]] as const) {
+      const d = crest - k;
+      if (d < WAVE_START) continue;
+      const wd = Math.max(0.6, d * tan);
+      const n = Math.max(1, Math.ceil((2 * wd) / 4.4));
+      for (let i = 0; i < n; i++) {
+        const p = at(d, -wd + (2 * wd * (i + 0.5)) / n);
+        const [anim, frame] = pose(wall, i * 113 + k * 300);
+        place(p, p.z, (q) => blit(ctx, wall, anim, frame, q.X, q.Y, i % 2 === 1, alpha * fade));
+      }
+    }
+    // ... and his columns are its body, trailing behind it across its width.
+    for (const [k, alpha] of [[1.7, 0.85], [3.2, 0.45]] as const) {
+      const d = crest - k;
+      if (d < WAVE_START) continue;
+      const wd = Math.max(0.6, d * tan);
+      const n = Math.max(2, Math.round((2 * wd) / 1.3) + 1);
+      for (let i = 0; i < n; i++) {
+        const p = at(d, -wd + (2 * wd * i) / (n - 1));
+        const [anim, frame] = pose(col, i * 89 + k * 200);
+        place(p, p.z, (q) => blitColumn(ctx, col, anim, frame, q, alpha * fade));
+      }
     }
   }
-  // His spray before the crest (the cone runs across the screen).
+  // His spray before the crest while it runs (across the screen).
   const foam = side ? undefined : sheet(f.element, 'breath', f.tint);
-  if (foam) {
+  if (foam && t < 1) {
     const d = crest + 0.7;
-    const w = Math.min(d, cone.length) * Math.tan(half);
-    const mirror = ux < 0;
-    for (const off of [-w * 0.6, 0, w * 0.6]) {
+    const wd = Math.min(d, cone.length) * tan;
+    for (const k of [-0.7, -0.25, 0.25, 0.7]) {
       if (d > cone.length + 0.5) break;
-      const p = at(d, off);
-      out.push({ z: p.z + 0.01, draw: () => {
-        const q = project(sc.map, p);
-        blit(ctx, foam, 'fly', frameAt(foam, 'fly', ms + off * 40), q.X, q.Y - 40, mirror, 0.85 * fade);
-      } });
+      const p = at(d, wd * k);
+      place(p, p.z + 0.01, (q) => blit(ctx, foam, 'fly', frameAt(foam, 'fly', ms + k * 400), q.X, q.Y - 40, ux < 0, 0.85));
+    }
+  }
+  // The break: his spouts burst along the crest at the end of the cone.
+  const spout = sheet(f.element, 'blast', f.tint);
+  const burst = ms - runMs * 0.92;
+  if (spout && burst > 0) {
+    const we = cone.length * tan;
+    const n = Math.max(3, Math.round((2 * we) / 1.6) + 1);
+    for (let i = 0; i < n; i++) {
+      const p = at(cone.length - 0.3, -we * 0.9 + (1.8 * we * i) / (n - 1));
+      const late = burst - i * 45;
+      if (late < 0) continue;
+      place(p, p.z + 0.03, (q) => blit(ctx, spout, 'blast', frameAt(spout, 'blast', late), q.X, q.Y, i % 2 === 1, 0.95));
     }
   }
   return out;
 }
 
 /**
- * The Whirlwind Tower (the owner's option A): his tornado column (wind wall_depth, his wind wall seen
- * from the front) rises at the point, turns with his small whirlwinds (multi) circling it, two
- * behind and two in front of whoever stands there, and fades.
+ * The Whirlwind Tower (the owner's second round: "más contundente", "el torbellino central más
+ * ancho mediante se va más arriba", the small winds "que corran alrededor en forma ondulada"): his
+ * tornado column (wind wall_depth) rises at the point as a funnel, wider the higher it goes, with a
+ * second turn of it behind, mirrored and fainter; his small whirlwinds (multi) spread out from it
+ * and run round it on wavy paths at three heights, in front of and behind whoever stands there, and
+ * it fades.
  */
 function towerItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[] {
   const ms = (sc.now - f.t0) * sc.pb.speed;
@@ -1060,23 +1162,257 @@ function towerItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[
   const r = f.area.radius;
   const alpha = ms > f.dur - TOWER_FADE ? Math.max(0, (f.dur - ms) / TOWER_FADE) : 1;
   const out: DepthItem[] = [];
+  // It opens into its funnel as it rises; a bigger tower (enhanced) opens wider.
+  const widen = 1 + (TOWER_WIDEN * Math.min(1.35, r / 3) - 1) * Math.min(1, ms / TOWER_RISE);
   out.push({ z: c.z, draw: () => {
     const p = project(sc.map, c);
-    if (ms < TOWER_RISE) blitColumn(ctx, col, 'rise', frameAt(col, 'rise', ms), p, alpha);
-    else blitColumn(ctx, col, 'idle', frameAt(col, 'idle', ms - TOWER_RISE), p, alpha);
+    const [anim, k] = ms < TOWER_RISE ? ['rise', ms] : ['idle', ms - TOWER_RISE];
+    blitFunnel(ctx, col, anim, frameAt(col, anim, k + 450), p, alpha * 0.5, widen * 1.08, true);
+    blitFunnel(ctx, col, anim, frameAt(col, anim, k), p, alpha, widen);
   } });
   const mini = sheet(f.element, 'multi', f.tint);
-  const spin = ms - TOWER_RISE * 0.7;
+  const spin = ms - TOWER_RISE * 0.6;
   if (mini && spin > 0) {
-    const n = f.minis ?? 4;
+    const n = f.minis ?? 6;
     const fadeIn = Math.min(1, spin / 250);
+    // They come off the column and spread out, then keep running round it.
+    const sep = 1 - (1 - Math.min(1, spin / 650)) ** 2;
     for (let i = 0; i < n; i++) {
-      const a = (i * 2 * Math.PI) / n + (spin / 1000) * 2.6;
-      const p = { x: c.x + Math.cos(a) * r * 0.75, z: c.z + Math.sin(a) * r * 0.75 };
-      // Going round: the ones in front run one way, the ones behind the other.
+      const level = i % 3;
+      // Gusts: each runs faster and slower, and rides up and down, on its own wave.
+      const a = (i * 2 * Math.PI) / n + (spin / 1000) * 2.3 + 0.45 * Math.sin(spin / 380 + i * 1.9);
+      const R = r * (0.3 + 0.62 * sep) * (1 + 0.17 * Math.sin(3 * a + i * 1.7)) + level * 0.3;
+      const lift = 16 + level * 48 + 16 * Math.sin(2 * a + spin / 240 + i);
+      const p = { x: c.x + Math.cos(a) * R, z: c.z + Math.sin(a) * R * 0.85 };
       out.push({ z: p.z, draw: () => {
         const q = project(sc.map, p);
-        blit(ctx, mini, 'fly', frameAt(mini, 'fly', ms + i * 120), q.X, q.Y - 36, Math.sin(a) > 0, alpha * fadeIn);
+        blit(ctx, mini, 'fly', frameAt(mini, 'fly', ms + i * 120), q.X, q.Y - lift, Math.sin(a) > 0, alpha * fadeIn);
+      } });
+    }
+  }
+  return out;
+}
+
+// --- the elements on the ground: wet ground, steam, lightning across the wet -----------------------
+
+/** A ground cell's middle ("c,r"). */
+export const keyCenter = (k: string): Pt => cellCenter(keyCell(k));
+/** How long wet ground and steam take to fade in, and to dry or thin away (ms). */
+export const GROUND_FADE = 700;
+const GROUND_IN = 420;
+/** How long lightning runs across a wet patch, and how fast its front goes (m/s). */
+export const CONDUCT_MS = 1100;
+const CONDUCT_SPEED = 16;
+
+/** A small fixed number per cell, to vary what is drawn on it. */
+const cellHash = (k: string): number => {
+  let h = 2166136261;
+  for (let i = 0; i < k.length; i++) h = Math.imul(h ^ k.charCodeAt(i), 16777619);
+  return (h >>> 0) % 1009;
+};
+
+/**
+ * The cells of wet ground or steam shown now, with how solid each is: the state's, less the ones
+ * whose event is still to play (unless a wave timed them), plus the ones going whose event is still
+ * to play or that are fading.
+ */
+function groundShown(sc: Scene, kind: 'wet' | 'steam'): { k: string; p: Pt; a: number }[] {
+  const { state, pb, now } = sc;
+  const born = pb.groundBorn[kind];
+  const coming = pb.groundQueued(kind, true);
+  const out: { k: string; p: Pt; a: number }[] = [];
+  const have = state[kind] ?? {};
+  for (const k of Object.keys(have)) {
+    const b = born.get(k);
+    if (b === undefined && coming.has(k)) continue;
+    const a = b === undefined ? 1 : Math.max(0, Math.min(1, ((now - b) * pb.speed) / GROUND_IN));
+    if (a > 0) out.push({ k, p: keyCenter(k), a });
+  }
+  for (const k of pb.groundQueued(kind, false)) if (!(k in have)) out.push({ k, p: keyCenter(k), a: 1 });
+  for (const g of pb.groundGone) {
+    if (g.kind !== kind) continue;
+    const a = 1 - ((now - g.t0) * pb.speed) / GROUND_FADE;
+    if (a > 0) for (const k of g.cells) if (!(k in have)) out.push({ k, p: keyCenter(k), a });
+  }
+  return out;
+}
+
+/**
+ * Wet ground (the owner: "pone el suelo donde pasa mojado"): a dark sheen over the soaked cells,
+ * their outline rounded, with a few glints of light on the water; brighter while lightning runs
+ * across it. Not in a chakra colour: wet ground is wet ground. Drawn on the ground, under everything.
+ */
+export function drawWetGround(ctx: CanvasRenderingContext2D, sc: Scene): void {
+  const cells = groundShown(sc, 'wet');
+  if (!cells.length) return;
+  const { map } = sc;
+  const rx = 0.37 * map.px.perM;
+  const rz = 0.37 * map.px.perMDepth;
+  ctx.save();
+  // One path per step of solidity, so overlapping cells darken once; a wider, fainter pass first
+  // softens the edge of the patch.
+  ctx.fillStyle = '#0f2b4c';
+  for (const [grow, strength] of [[1.6, 0.13], [1, 0.27]] as const) {
+    const steps = new Map<number, Path2D>();
+    for (const c of cells) {
+      const a = Math.ceil(c.a * 6) / 6;
+      const path = steps.get(a) ?? new Path2D();
+      const q = project(map, c.p);
+      path.ellipse(Math.round(q.X), Math.round(q.Y), rx * grow, rz * grow, 0, 0, Math.PI * 2);
+      steps.set(a, path);
+    }
+    for (const [a, path] of steps) {
+      ctx.globalAlpha = strength * a;
+      ctx.fill(path);
+    }
+  }
+  // Glints: a short line of light on one cell in seven, coming and going.
+  ctx.fillStyle = '#d6ecff';
+  for (const c of cells) {
+    const h = cellHash(c.k);
+    if (h % 5) continue;
+    const tw = 0.5 + 0.5 * Math.sin(sc.now / 420 + h);
+    ctx.globalAlpha = 0.55 * c.a * tw;
+    const q = project(map, c.p);
+    ctx.fillRect(Math.round(q.X - 4 + (h % 5)), Math.round(q.Y - 1 + ((h >> 3) % 3)), 5, 1);
+  }
+  // Lightning running across it lights the water up.
+  for (const f of sc.pb.fx) {
+    if (f.kind !== 'conduct' || !f.cells) continue;
+    const ms = (sc.now - f.t0) * sc.pb.speed;
+    if (ms < 0 || ms > f.dur) continue;
+    const col = (tintColors('lightning', f.tint) ?? ELEMENT_COLORS.lightning)[1];
+    const path = new Path2D();
+    for (const k of f.cells) {
+      const p = keyCenter(k);
+      if ((dist(p, f.from) / CONDUCT_SPEED) * 1000 > ms) continue;
+      const q = project(map, p);
+      path.ellipse(Math.round(q.X), Math.round(q.Y), rx, rz, 0, 0, Math.PI * 2);
+    }
+    ctx.fillStyle = col;
+    ctx.globalAlpha = 0.28 * (0.6 + 0.4 * Math.sin(sc.now / 40)) * Math.min(1, (f.dur - ms) / 300);
+    ctx.fill(path);
+  }
+  ctx.restore();
+}
+
+type WorldSheet = NonNullable<ReturnType<typeof worldSprite>>;
+
+/** A world sheet that is loaded (the camp's smoke), or nothing. */
+function worldSheet(group: string, name: string): WorldSheet | undefined {
+  const s = worldSprite(group, name);
+  return s && ready(s) ? s : undefined;
+}
+
+/**
+ * Steam (the owner: "como una cortina de humo que nubla la visión"): the camp's smoke, his tall
+ * column and his small puff (no element sheet has grey smoke), layered over the steaming cells at
+ * different frames, some turned round, rising in when it forms; and a white veil over each cell, in
+ * front of whoever stands in it, so the ninjas inside are hard to make out. Not in a chakra colour.
+ */
+function steamItems(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
+  const cells = groundShown(sc, 'steam');
+  if (!cells.length) return [];
+  const tall = worldSheet('campsite', 'smoke_tall');
+  const puff = worldSheet('camp', 'smoke');
+  const out: DepthItem[] = [];
+  const { map } = sc;
+  for (const c of cells) {
+    const h = cellHash(c.k);
+    const rise = (1 - c.a) * 18;
+    out.push({ z: c.p.z + 0.2, draw: () => {
+      const q = project(map, c.p);
+      ctx.save();
+      ctx.fillStyle = '#e8edf3';
+      for (const [lift, rad] of [[12, 20], [38, 19], [62, 15]] as const) {
+        ctx.globalAlpha = 0.16 * c.a;
+        ctx.beginPath();
+        ctx.arc(Math.round(q.X + ((h >> (lift % 5)) % 9) - 4), Math.round(q.Y - lift + rise), rad, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    } });
+    const s = h % 3 === 0 ? tall : h % 3 === 1 ? puff : undefined;
+    if (!s) continue;
+    const [ax] = s.spec.anchor;
+    out.push({ z: c.p.z + 0.21, draw: () => {
+      const q = project(map, c.p);
+      const mirror = (h & 8) !== 0;
+      // His smoke leans from its anchor at the foot: put its middle over the cell instead.
+      const x = q.X + (mirror ? 1 : -1) * (s.spec.frameW / 2 - ax) + ((h >> 2) % 11) - 5;
+      blit(ctx, s as Sheet, 'idle', frameAt(s as Sheet, 'idle', sc.now + h * 37), x, q.Y + 4 + rise, mirror, 0.82 * c.a);
+    } });
+  }
+  return out;
+}
+
+/** The order lightning runs across a wet patch: each point from the nearest one it already reached. */
+const conductPlans = new WeakMap<Fx, { pts: Pt[]; from: number[]; when: number[] }>();
+
+function conductPlan(f: Fx): { pts: Pt[]; from: number[]; when: number[] } {
+  let plan = conductPlans.get(f);
+  if (plan) return plan;
+  const all = (f.cells ?? []).map(keyCenter).sort((a, b) => dist(a, f.from) - dist(b, f.from));
+  // A big patch: every other cell or so is enough for the arcs.
+  const step = Math.max(1, Math.floor(all.length / 70));
+  const pts = [{ ...f.from }, ...all.filter((_, i) => i % step === 0)];
+  const from = pts.map((p, i) => {
+    let best = 0;
+    for (let j = 1; j < i; j++) if (dist(pts[j], p) < dist(pts[best], p)) best = j;
+    return best;
+  });
+  const when = pts.map((p) => (dist(p, f.from) / CONDUCT_SPEED) * 1000);
+  plan = { pts, from, when };
+  conductPlans.set(f, plan);
+  return plan;
+}
+
+/**
+ * Lightning running across a wet patch (the owner: "conduce electricidad"): jagged arcs on the
+ * ground run out from where it struck to every wet cell, flickering, in the caster's chakra colour,
+ * and his lightning spark (hit) bursts here and there as the front gets there.
+ */
+function conductItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[] {
+  const ms = (sc.now - f.t0) * sc.pb.speed;
+  if (ms < 0 || ms > f.dur || !f.cells?.length) return [];
+  const { pts, from, when } = conductPlan(f);
+  const cols = tintColors('lightning', f.tint) ?? ELEMENT_COLORS.lightning;
+  const alpha = Math.min(1, (f.dur - ms) / 300);
+  const back = Math.min(...pts.map((p) => p.z));
+  const out: DepthItem[] = [];
+  out.push({ z: back - 0.05, draw: () => {
+    ctx.save();
+    const seed = Math.floor(sc.now / 60);
+    for (const [w, c] of [[3, cols[2]], [1, cols[0]]] as const) {
+      ctx.strokeStyle = c;
+      ctx.lineWidth = w;
+      ctx.globalAlpha = alpha * (w > 1 ? 0.7 : 1);
+      ctx.beginPath();
+      for (let i = 1; i < pts.length; i++) {
+        if (when[i] > ms) continue;
+        const a = project(sc.map, pts[from[i]]);
+        const b = project(sc.map, pts[i]);
+        ctx.moveTo(Math.round(a.X), Math.round(a.Y - 3));
+        for (let k = 1; k <= 3; k++) {
+          const j = (((seed * 7 + i * 13 + k * 5) % 9) - 4) * 1.6;
+          ctx.lineTo(Math.round(a.X + ((b.X - a.X) * k) / 4 + j), Math.round(a.Y - 3 + ((b.Y - a.Y) * k) / 4 - j * 0.6));
+        }
+        ctx.lineTo(Math.round(b.X), Math.round(b.Y - 3));
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  } });
+  const spark = sheet('lightning', 'hit', f.tint);
+  if (spark) {
+    const every = Math.max(1, Math.round(pts.length / 9));
+    for (let i = 0; i < pts.length; i += every) {
+      const late = ms - when[i];
+      if (late < 0) continue;
+      const p = pts[i];
+      out.push({ z: p.z + 0.02, draw: () => {
+        const q = project(sc.map, p);
+        blit(ctx, spark, 'hit', frameAt(spark, 'hit', late), q.X, q.Y - 12, i % 2 === 1, alpha);
       } });
     }
   }
@@ -1131,7 +1467,7 @@ function galeItems(ctx: CanvasRenderingContext2D, sc: Scene, z: GaleZone, fadeT0
 
 /**
  * Everything of the gaps' jutsu that stands among the units (renderer.ts sorts it in by depth): the
- * waves and towers playing, and the gales on the ground (a gale whose start is still to play is not
+ * waves and towers playing, lightning running across wet ground, the steam, and the gales on the ground (a gale whose start is still to play is not
  * there yet; one gone from the state whose end is still to play, or that is fading, still turns).
  */
 export function depthFx(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
@@ -1139,7 +1475,9 @@ export function depthFx(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
   for (const f of sc.pb.fx) {
     if (f.kind === 'wave') out.push(...waveItems(ctx, sc, f));
     else if (f.kind === 'tower') out.push(...towerItems(ctx, sc, f));
+    else if (f.kind === 'conduct') out.push(...conductItems(ctx, sc, f));
   }
+  out.push(...steamItems(ctx, sc));
   const pending = (id: string) => sc.pb.queue.some((e) => e.t === 'zone' && e.on && e.zone.id === id);
   for (const z of [...(sc.state.zones ?? []), ...sc.pb.goneZones()]) if (!pending(z.id)) out.push(...galeItems(ctx, sc, z));
   for (const g of sc.pb.zoneGone) out.push(...galeItems(ctx, sc, g.zone, g.t0));

@@ -287,6 +287,16 @@ export interface GaleZone {
   rounds: number;
 }
 
+/**
+ * Steam over wet ground (the owner, 2026-10-21: fire on wet ground makes steam, "como una cortina de
+ * humo que nubla la visión y hace daño por turno"): the rounds it still hangs there, and whose fire
+ * made it (its burns are that ninja's).
+ */
+export interface SteamCell {
+  rounds: number;
+  by: string;
+}
+
 /** A trap on the ground (explosive tag, camp perimeter trap). */
 export interface Trap {
   id: string;
@@ -403,6 +413,14 @@ export interface BattleState {
   walls: Wall[];
   /** Gales turning on the ground (the Gale Curtain); none in a battle saved before they existed. */
   zones?: GaleZone[];
+  /**
+   * Ground a water jutsu soaked (the owner, 2026-10-21: "pone el suelo donde pasa mojado por 2
+   * turnos"): navigation cell ("c,r") → rounds it stays wet. Wet ground puts out flames and carries
+   * lightning; fire on it makes steam. None in a battle saved before it existed.
+   */
+  wet?: Record<string, number>;
+  /** Steam hanging over the cells ("c,r") where fire met wet ground: it blocks sight and burns. */
+  steam?: Record<string, SteamCell>;
   traps: Trap[];
   /** The Ryusei's Weapon Nodes, oldest first. */
   nodes: WeaponNode[];
@@ -495,6 +513,13 @@ export type BattleEvent =
   | { t: 'prop'; prop: number; state: 'burnt' | 'cut' | 'broken' | 'exploded' }
   /** `source`: whose lightning it is (its rays take that ninja's chakra colour on the screen). */
   | { t: 'electrified'; at: Pt; radius: number; source?: string }
+  /**
+   * Wet ground soaks or dries, steam rises or clears, on these cells ("c,r"). `by`: whose water,
+   * fire or wind did it (wet ground turned to steam, steam blown away); unset when it ran out of rounds.
+   */
+  | { t: 'ground'; kind: 'wet' | 'steam'; cells: string[]; on: boolean; by?: string }
+  /** Lightning runs across a patch of wet ground (these cells), from where it struck: whose it is. */
+  | { t: 'conduct'; cells: string[]; at: Pt; source?: string }
   | { t: 'trap'; trap: Trap; on: boolean }
   | { t: 'node'; node: WeaponNode; on: boolean }
   | { t: 'explode'; at: Pt; radius: number }

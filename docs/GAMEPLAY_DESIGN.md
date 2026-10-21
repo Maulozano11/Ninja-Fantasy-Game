@@ -1077,6 +1077,8 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   **Answered 2026-10-21** ("Jutsu for the gaps" below): the Devouring Tide is
   Water's rank S; Wind gets the Gale Curtain (C) and the Whirlwind Tower (A).
   Still open there: two per gap or two in all, the 水 kanji, the gaps left.
+  **His second round the same day** ("The gaps' jutsu, second round" below):
+  the Devouring Tide is **rank A**, so **Water has no rank S again** (open).
 - **The elemental beasts as summons** (his rule, 2026-10-21: *"todos los
   elementales seran invocaciones que te ayudaran en el combate no ataques"*):
   how a summon works is to design (what it does on the field, how long it
@@ -1296,7 +1298,7 @@ franchise names.
 
 | jutsu (id) | nature, rank, slot | use | effect | enhanced |
 |---|---|---|---|---|
-| **Ola devoradora** / Devouring Tide (`water_devouring_tide`) | Water, **S**, S-rank slot | action, 8 chakra, **12 m cone** (past the 9 m cap of other cones, like the Great Fire Annihilation) | STR save, half on a success: 7d12 bludgeoning to everyone in the cone, friends too; on a failure the wave **sweeps the target 3 m away from the caster** and **knocks it down**; it **puts out the flames** of everyone it reaches, saved or not | +4: 9d12, the cone reaches 15 m and opens wider |
+| **Ola devoradora** / Devouring Tide (`water_devouring_tide`) | Water, **A**, Element (rank S and the S-rank slot until his second round: see below) | action, 5 chakra, **9 m cone** | STR save, half on a success: 5d8 bludgeoning to everyone in the cone, friends too; on a failure the wave **sweeps the target 3 m away from the caster** and **knocks it down**; it **puts out the flames** of everyone it reaches, saved or not, and **soaks the ground** it runs over | +3: 6d8, the cone reaches 11.25 m and opens wider |
 | **Torre del torbellino** / Whirlwind Tower (`wind_whirlwind_tower`) | Wind, **A**, Element | action, 5 chakra, a 3 m circle up to 9 m away | STR save, half on a success: 5d8 bludgeoning to everyone in the circle, friends too; on a failure the tornado **drags the target 1.5 m toward its middle** (never past it) and **knocks it down**; it cuts the grass and bushes | +3: 6d8, 4.5 m |
 | **Cortina de vendaval** / Gale Curtain (`wind_gale_curtain`) | Wind, **C**, Element | action, 2 chakra, a gale **2.25 m round** up to 6 m away | no save, no damage, silent: a **gale on the ground** (see below) that **fans the fire jutsu passing through it** | +2: 3.4 m round |
 | **Haz de trueno** / Thunder Beam (`lightning_thunder_beam`) | Lightning, **C**, Element | action, 2 chakra, **9 m line** | DEX save, half on a success: 2d8 lightning to everyone in the line, friends too; lightning in water runs through it | +2: 3d8, the line reaches 11.25 m and runs wider |
@@ -1423,6 +1425,146 @@ Each plays in its caster's chakra colour, like every elemental jutsu.
     potenciado!" for every enhanced jutsu (a shared line, pinned by tests on
     the integration branch): change it to "potenciada" (agreeing with
     "Técnica") for all of them?
+
+## The gaps' jutsu, second round (the owner's answer of 2026-10-21; built on `jutsu/gap-set-2`)
+
+He saw the Tide, the Tower and the Gale Curtain in the game and answered
+(verbatim):
+
+> *"ola devoradora es rango a hay que agregarle mas animacion como en el muro
+> horizontal para que se vea mas ancho y bonita la animacion el sprite de el
+> muro horizantal se ve muy bien entonces piensa como puedes combinar los dos
+> muros para hacer algo mas contundente , y ahora va ver una dinamica como asi
+> el viento potencia el fuego con el muro y el agua apaga el fuego , el agua
+> tambien pone el suelo donde pasa mojado por 2 turnos que conduce electricidad
+> y si se usa un jutsu de fuego se genera vapor que es como una cortina de humo
+> que nubla la vision y hace daño por turno si estas en el area , Torre de
+> torbellino me gusta pero tambien hay que hacerlo mas contundente pon el
+> torbellino central mas ancho mediante se va mas arriba mas ancho esta el
+> torbellino y pon alguna animacion que se separe un poco los vientos que
+> pusiste alrededor para que corran alrededor en forma ondulada como el
+> viento"*
+
+So: the Devouring Tide is **rank A** with a wider, prettier wave that combines
+his two water walls; a **new dynamic of the elements on the ground** (below);
+and a more forceful Whirlwind Tower. Built on `jutsu/gap-set-2`, **waiting for
+his approval of the in-game captures**.
+
+### The Devouring Tide is rank A (his decision)
+
+- Rank **A**, an **Element** slot's jutsu of Water (no longer the S-rank slot):
+  like the other rank A (the Whirlwind Tower, the Dragon Flame Annihilation),
+  5 chakra (+3 enhanced), a **9 m cone**, **5d8** bludgeoning, STR save for half;
+  enhanced 6d8, an 11.25 m cone that opens a third wider. The sweep (3 m), the
+  fall and putting the flames out stay. **Our numbers: confirm or change.**
+- Water has **no rank S jutsu again** (open question below). A new ninja picks
+  rank D and C, so the Tide opens at level 7 like every rank A; the nature filter
+  offers it to a Water ninja's Element slots.
+
+### The elements on the ground (his dynamic; the numbers are our proposal)
+
+His words: *"el viento potencia el fuego con el muro y el agua apaga el fuego,
+el agua también pone el suelo donde pasa mojado por 2 turnos que conduce
+electricidad y si se usa un jutsu de fuego se genera vapor que es como una
+cortina de humo que nubla la visión y hace daño por turno si estás en el
+área"*. In the engine: `src/battle/ground.ts` (pure and seeded); the state keeps
+`wet` and `steam` by navigation cell (0.5 m).
+
+- **Wind fans fire**: the gale on the ground (the Gale Curtain, above), kept as
+  built.
+- **Water puts out fire**: **every water jutsu that strikes** (the Tide, the
+  Geyser, the Water Dragon Bullet) takes *Burning* off everyone it reaches,
+  saved or not; and **wet ground puts flames out like a river**: a ninja who
+  starts a turn on it stops burning, a fire jutsu's *Burning* doesn't catch on
+  someone standing on it, bushes on it don't burn. (There is no burning ground
+  in the game: fire burns bushes and trees away at once.) A heal or a wall is no
+  strike: the Healing Dew and the Water Wall soak nothing.
+- **Water soaks the ground it passes over** "por 2 turnos": the cells of the
+  water jutsu's area (a single target's 1 m round), not a river or a pond (water
+  already) nor a tree's or a wall's cell. Proposal: **wet for the rest of the
+  round and two more** (it dries as the third new round begins, like the gale),
+  so everyone has at least two turns with it. Soaked again, it starts over.
+- **Wet ground conducts electricity**: a lightning jutsu that **touches wet
+  ground** (its area reaches a wet cell, or it strikes someone standing on one;
+  a bolt that misses its one target strikes no ground) runs across **the whole
+  wet patch it touched** (the wet cells joined to it, diagonals included; a
+  separate patch, or dry ground between, stops it). **Everyone else standing on
+  that patch** makes a DEX save against **half the lightning's damage, halved
+  again on a success** (the same numbers as lightning in a river), friends too.
+  Lightning in a river still reaches 4.5 m through the water, as before.
+- **Fire on wet ground makes steam**: a fire jutsu (or an explosion) whose area
+  reaches wet cells turns them to steam (the water is used up there; the rest of
+  the patch stays wet). Proposal for the steam:
+  - it hangs **the rest of the round and two more**;
+  - it **blocks sight like a smoke curtain**: nobody sees into it, out of it or
+    through it, so nobody throws a kunai or aims a single-target jutsu at a
+    ninja in it, nor through it; a blast (a circle) can still be aimed at a
+    point in the cloud (its surface is seen), not past it; cones and lines need
+    no sight and go through. **A blow into it from outside has disadvantage**
+    (the target can't be seen; from inside out, or both inside, it evens out).
+    A ninja in the steam is out of every watcher's sight, so it can Hide there;
+  - **it burns: 1d6 fire, no save, to whoever starts a turn in it** (its burns
+    are the fire's caster's);
+  - **wind blows it away**: a wind jutsu's area, or a gale starting to turn,
+    clears the steam it reaches (the design's old line, "wind clears smoke").
+- **The AI knows**: a ninja on the AI walks out of steam before acting and never
+  means to stop in it, doesn't see a foe lost in the steam (unless right beside
+  it), and weighs lightning on a wet group (each foe on the patch it would reach
+  counts half, a friend there against it).
+- **How it looks** (wet ground and steam are never in a chakra colour):
+  - wet ground: a dark sheen over the soaked cells, its edge softened, with a
+    few glints of light; under the Tide it darkens as the crest goes over;
+  - the lightning across it: jagged arcs run out over the patch from where it
+    struck, in the caster's chakra colour, his lightning spark (`hit`) bursting
+    along it, the water lit up;
+  - steam: the camp's smoke (`campsite/smoke_tall`, `camp/smoke`: no element
+    sheet has grey smoke) layered over the cells at different frames, some
+    turned round, rising in as it forms, and a white veil in front of whoever
+    stands in it;
+  - the log: "El suelo queda mojado", "¡El rayo corre por el suelo mojado!",
+    "Fuego sobre suelo mojado: sube vapor y ciega a quien esté dentro", "El
+    vapor quema a …", "El viento se lleva el vapor", "El vapor se disipa", "El
+    suelo mojado se seca"; a blow into the steam says "dentro del vapor".
+
+### How they look now (his pieces moved, scaled, layered and timed; nothing redrawn)
+
+- **Devouring Tide** ("combinar los dos muros"): his horizontal water wall
+  (`wall`, the one he likes) laid along the run in lanes across the whole
+  width of the cone, a wide body of water with its front at the crest, rising
+  as it sets off; his water columns (`wall_depth`) stand along the near half of
+  the crest as its face, his spray (`breath`) before it; what it leaves behind
+  settles low and fades; at the end of the cone the water sinks back (his rise
+  played backwards) and his spouts (`blast`) burst along the crest as it breaks.
+  Pointed into the depth, the two swap: his wall stands along the crest as the
+  face (two rows) and his columns trail behind it as the body. The wet ground
+  darkens under it as the crest goes over.
+- **Whirlwind Tower** ("más ancho mediante se va más arriba"): his tornado
+  column (wind `wall_depth`) rises as a **funnel**: his frame cut into 2 px
+  strips, each stretched across by how high it is, from as wide as his column at
+  the foot to 2.6 times as wide at the top (wider for the enhanced tower), with a
+  second turn of it behind, mirrored and fainter; **six** of his small
+  whirlwinds (`multi`) come off it, spread out and **run round it on wavy paths**
+  ("en forma ondulada"): each speeds up and slows, swings in and out and rides up
+  and down, at three heights, in front of and behind whoever stands there.
+
+### Open questions on the second round
+
+1. **Water has no rank S jutsu again**: a new proposal for one (with a
+   painted 水 sheet, or from his pieces), or leave it empty for now?
+2. The Tide's rank A numbers (5 chakra, 9 m cone, 5d8, enhanced 6d8 and
+   11.25 m): confirm.
+3. Wet ground "por 2 turnos": the rest of the round and two more rounds, as
+   built? Or exactly two rounds?
+4. The steam: 1d6 fire with no save at the start of a turn, the rest of the
+   round and two more, blocks sight, wind clears it: confirm the numbers.
+5. Lightning across wet ground: half the damage, DEX save for a quarter, friends
+   on the patch too (as lightning in a river): confirm.
+6. Do explosions (tags, barrels) make steam on wet ground like a fire jutsu?
+   Built: yes.
+7. Steam is drawn with the camp's grey smoke (there is no grey smoke in his
+   element sheets). Fine, or will he paint a steam sheet?
+8. A character saved with the Tide in its S-rank slot keeps it there (it
+   still works in battle). Move it to an Element slot when the sheet loads?
 
 ## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
 

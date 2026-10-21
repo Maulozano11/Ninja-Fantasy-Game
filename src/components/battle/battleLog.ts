@@ -176,6 +176,12 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return { text: t('l_pushed', { t: nameOf(s, ev.unit, lang), o: genderO(s.units[ev.unit]) }) };
     case 'zone':
       return { text: t(ev.on ? 'l_zone' : 'l_zoneEnd'), tone: 'text-emerald-300' };
+    case 'ground':
+      // Steam rising has its own note (n_steamRises); the wet that turned to steam says nothing.
+      if (ev.kind === 'wet') return ev.on ? { text: t('l_wet'), tone: 'text-sky-300' } : ev.by ? null : { text: t('l_dry'), tone: 'text-slate-400' };
+      return ev.on || ev.by !== undefined ? null : { text: t('l_steamEnd'), tone: 'text-slate-400' };
+    case 'conduct':
+      return { text: t('l_conduct'), tone: 'text-sky-300' };
     case 'end':
       return { text: t(`l_end_${ev.outcome}` as TKey), tone: ev.outcome === 'victory' ? 'text-emerald-300 font-bold' : 'text-rose-300 font-bold' };
     case 'prop':

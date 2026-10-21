@@ -571,14 +571,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
         // metal wall between); an area or a point needs to see where it goes.
         else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) || (!!spec.charge && !chargeLanding(s, actor, hu)) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : 'noSight');
-        else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at)) label = reasonLine('noSight');
+        else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at, { into: true })) label = reasonLine('noSight');
         if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: dist(actor.pos, at) <= spec.range + 0.1 };
         if (spec.special === 'metalBlock' || spec.special === 'metalWall' || spec.special === 'earthWall' || spec.special === 'waterWall') {
           // A wall or a Kōton structure: where it would stand and why it can't (never over anyone);
           // for a Kōton, how many already stand.
           const koton = spec.special === 'metalBlock' || spec.special === 'metalWall';
           const w = koton ? structureAt(spec, actor.pos, at, actor.id, 'preview') : jutsuWallAt(spec, actor.pos, at, 'preview');
-          const why = dist(actor.pos, at) > spec.range + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at) ? 'noSight' : structureBlocker(s, w);
+          const why = dist(actor.pos, at) > spec.range + 0.1 ? 'outOfRange' : !lineOfSight(s, actor.pos, at, { into: true }) ? 'noSight' : structureBlocker(s, w);
           const n = ownStructures(s, actor.id).length;
           o.point = undefined;
           o.footprint = { wall: w, ok: !why };
@@ -597,7 +597,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         const ok = dist(actor.pos, hover.pt) <= TAG.plant + 0.1;
         o.point = { at: hover.pt, ok };
         o.area = { shape: { kind: 'circle', center: hover.pt, radius: TAG.radius }, tone: 'enemy' };
-        label = ok ? (lineOfSight(s, actor.pos, hover.pt) ? T('aimTagTrap') : reasonLine('noSight')) : T('aimNoReach');
+        label = ok ? (lineOfSight(s, actor.pos, hover.pt, { into: true }) ? T('aimTagTrap') : reasonLine('noSight')) : T('aimNoReach');
       }
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };

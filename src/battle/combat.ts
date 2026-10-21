@@ -10,7 +10,7 @@ import { Rng, rngFor, rollDie } from '../rules/rng';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
 import type { BattleEvent, BattleState, DamageType, Pt, RollInfo, Unit } from './types';
 import { homeTeam } from './types';
-import { coverBetween, dist, fullCoverBetween, hideSpotAt, levelAtPt, lineOfSight } from './map';
+import { coverBetween, dist, fullCoverBetween, hideSpotAt, levelAtPt, lineOfSight, steamAt } from './map';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 
 /** The next dice stream of the battle. */
@@ -227,6 +227,12 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
   if (!close && hostileWithin(s, a, 1.5)) {
     advs.push('disadvantage');
     reasons.push('closeEnemy');
+  }
+  // A blow into steam from outside it: the target can't be seen (the steam blinds the attacker inside
+  // it too, but neither then sees the other, which evens out).
+  if (steamAt(s, t.pos) && !steamAt(s, a.pos)) {
+    advs.push('disadvantage');
+    reasons.push('obscured');
   }
   if (t.cond.hidden !== undefined && passivePerception(a) < t.cond.hidden) {
     advs.push('disadvantage');

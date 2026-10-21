@@ -8,7 +8,8 @@ import { abilityMod, successChance } from '../rules/checks';
 import { effectMods, hasEffect } from '../rules/effects';
 import type { BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
 import { homeTeam } from './types';
-import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell } from './map';
+import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell, steamAt } from './map';
+import { lightningSeeds, unitsOnPatch, wetPatch } from './ground';
 import { canStop, occupancy, reachable } from './nav';
 import { JUTSU, MIN_AIM, areaOf, inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
@@ -24,10 +25,15 @@ const avg = (dice?: string): number => {
 
 export const standingUnit = (u: Unit): boolean => !u.down && !u.head?.severed;
 
-/** Foes a unit knows about: standing, and not hidden from it. */
+/** Foes a unit knows about: standing, not hidden from it, and not lost in steam (unless right beside it). */
 export function visibleFoes(s: BattleState, u: Unit): Unit[] {
   return Object.values(s.units).filter(
-    (f) => f.team !== u.team && standingUnit(f) && f.kind !== 'hydra_body' && (f.cond.hidden === undefined || passivePerception(u) >= f.cond.hidden),
+    (f) =>
+      f.team !== u.team &&
+      standingUnit(f) &&
+      f.kind !== 'hydra_body' &&
+      (f.cond.hidden === undefined || passivePerception(u) >= f.cond.hidden) &&
+      !(steamAt(s, f.pos) && dist(f.pos, u.pos) > 1.6),
   );
 }
 
@@ -58,7 +64,7 @@ function focus(u: Unit, f: Unit): number {
 /** Foes and friends an area would hit (1 for a jutsu with no area). */
 export function areaValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit): number {
   const area = areaOf(j, u.pos, at.pos);
-  if (!area) return 1;
+  if (!area) return 1 + conductValue(s, u, j, at, null);
   let v = 0;
   for (const o of Object.values(s.units)) {
     if (!standingUnit(o) || o.kind === 'hydra_body') continue;
@@ -66,6 +72,22 @@ export function areaValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit): numb
     if (!inArea(area, o.pos)) continue;
     // Friends caught in the blast weigh more than foes: the AI only risks it for a crowd.
     v += o.team === u.team ? -2.5 : 1;
+  }
+  return v + conductValue(s, u, j, at, area);
+}
+
+/**
+ * Lightning on wet ground (ground.ts): what the wet patch it touches adds, half a foe for each one
+ * standing on it (they take half, and may save for less), a friend there counting against it.
+ */
+function conductValue(s: BattleState, u: Unit, j: JutsuSpec, at: Unit, area: ReturnType<typeof areaOf>): number {
+  if (j.dmgType !== 'Lightning' || !s.wet) return 0;
+  const struck = area ? Object.values(s.units).filter((o) => standingUnit(o) && o.id !== u.id && inArea(area, o.pos)) : [at];
+  const patch = wetPatch(s, lightningSeeds(s, area, [...struck.map((o) => o.pos), ...(area?.kind === 'circle' ? [area.center] : [])]));
+  let v = 0;
+  for (const o of unitsOnPatch(s, patch, [...struck.map((x) => x.id)])) {
+    if (!standingUnit(o) || o.kind === 'hydra_body') continue;
+    v += o.team === u.team ? -1.25 : 0.5;
   }
   return v;
 }
@@ -422,7 +444,8 @@ export function bestCell(s: BattleState, u: Unit, good: (p: Pt) => boolean, scor
     const c = { c: i % g.cols, r: Math.floor(i / g.cols) };
     const p = cellCenter(c);
     if (!good(p) || !canStop(s, u, c, occ)) continue;
-    const v = cost * 0.3 + score(p);
+    // Nobody means to stop in steam (it burns and blinds).
+    const v = cost * 0.3 + score(p) + (steamAt(s, p) ? 8 : 0);
     if (v < bestV) {
       best = c;
       bestV = v;

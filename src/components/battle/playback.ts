@@ -10,7 +10,7 @@ import type { SpritePose } from '../../sprite/types';
 import { JUTSU, areaEnd, nearSegment } from '../../battle/jutsu';
 import type { JutsuSpec, StageKind, VfxElement, VfxRole } from '../../battle/jutsu';
 import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
-import { FAN_MS, FAN_ROLL, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
+import { CONDUCT_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
 import { dist } from '../../battle/map';
@@ -95,7 +95,7 @@ export interface Floater {
   big?: boolean;
 }
 
-export type FxKind = 'projectile' | 'kunai' | 'area' | 'cone' | 'line' | 'burst' | 'explosion' | 'electric' | 'smoke' | 'heal' | 'aura' | 'noise' | 'slash' | 'wall' | 'seal' | 'fire' | 'sprite' | 'wave' | 'tower' | 'swirl';
+export type FxKind = 'projectile' | 'kunai' | 'area' | 'cone' | 'line' | 'burst' | 'explosion' | 'electric' | 'smoke' | 'heal' | 'aura' | 'noise' | 'slash' | 'wall' | 'seal' | 'fire' | 'sprite' | 'wave' | 'tower' | 'swirl' | 'conduct';
 
 export interface Fx {
   kind: FxKind;
@@ -177,6 +177,8 @@ export interface Fx {
   /** A wave's rows of columns (the Devouring Tide); a tower's small whirlwinds (the Whirlwind Tower). */
   rows?: number;
   minis?: number;
+  /** Lightning running across a wet patch: its cells ("c,r"), from `from` outward. */
+  cells?: string[];
 }
 
 /**
@@ -372,6 +374,12 @@ export class Playback {
   /** When each gale on the ground started turning, and the ones dying down (from when their event played). */
   zoneBorn = new Map<string, number>();
   zoneGone: { zone: GaleZone; t0: number }[] = [];
+  /**
+   * When each wet cell and each steam cell ("c,r") showed up on the screen (the wave's cells as its
+   * crest goes over them), and the ones drying or thinning away (from when their event played).
+   */
+  groundBorn = { wet: new Map<string, number>(), steam: new Map<string, number>() };
+  groundGone: { kind: 'wet' | 'steam'; cells: string[]; t0: number }[] = [];
   /** Kōton structures that crumbled or broke, sinking out of sight (from when their event played). */
   fallen: { wall: Wall; t0: number }[] = [];
   /** Whose turn the screen shows (it trails the engine while events play). */
@@ -464,6 +472,11 @@ export class Playback {
     if (state.phase === 'combat') {
       this.turnUnit = state.order[state.turn];
       this.round = state.round;
+    }
+    // Ground that is gone from the state needs no start time any more.
+    for (const kind of ['wet', 'steam'] as const) {
+      const have = state[kind] ?? {};
+      for (const k of this.groundBorn[kind].keys()) if (!(k in have)) this.groundBorn[kind].delete(k);
     }
   }
 
@@ -636,6 +649,7 @@ export class Playback {
     this.impacts = this.impacts.filter((c) => now < c.t0 + (IMPACT.number + IMPACT.numberLife) / this.speed);
     this.floaters = this.floaters.filter((f) => now < f.t0 + f.dur);
     this.zoneGone = this.zoneGone.filter((z) => now < z.t0 + 1000 / this.speed);
+    this.groundGone = this.groundGone.filter((g) => now < g.t0 + GROUND_FADE / this.speed);
     this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
@@ -683,6 +697,16 @@ export class Playback {
   goneWalls(): Wall[] {
     const out: Wall[] = [];
     for (const e of this.queue) if (e.t === 'wall' && !e.on) out.push(e.wall);
+    return out;
+  }
+
+  /**
+   * Ground cells whose event is still to play: the ones coming (`on`, not shown yet unless the
+   * wave already timed them) and the ones going (still shown).
+   */
+  groundQueued(kind: 'wet' | 'steam', on: boolean): Set<string> {
+    const out = new Set<string>();
+    for (const e of this.queue) if (e.t === 'ground' && e.kind === kind && e.on === on) for (const k of e.cells) out.add(k);
     return out;
   }
 
@@ -943,6 +967,9 @@ export class Playback {
       const run = seq.wave.ms;
       // The water stays a moment at the end of its run (WAVE_HOLD), while the last ones are swept.
       this.fx.push({ ...base, kind: 'wave', from: cone.origin, to: ev.at, area: cone, t0: at(gather), dur: run + WAVE_HOLD, rows: seq.wave.rows });
+      // The ground it soaks darkens as the crest goes over each cell (its event plays later).
+      const soaked = this.queue.find((e) => e.t === 'ground' && e.kind === 'wet' && e.on && e.by === ev.unit);
+      if (soaked && soaked.t === 'ground') for (const k of soaked.cells) this.groundBorn.wet.set(k, at(gather + run * WAVE_CREST(dist(cone.origin, keyCenter(k)), cone.length)));
       const hitMs = impactMs(el, 'hit', 900);
       // Nearest first: each one's save, damage, sweep and fall play as the crest goes over them.
       const crest = (id: string) => gather + run * WAVE_CREST(dist(cone.origin, this.posOf(id, now)), cone.length);
@@ -2034,6 +2061,23 @@ export class Playback {
         if (ev.on) this.zoneBorn.set(ev.zone.id, now);
         else this.zoneGone.push({ zone: ev.zone, t0: now });
         return 0;
+      case 'ground': {
+        // Wet ground darkens in (where a wave's crest timed it, as it goes over), steam rises; or they
+        // dry and thin away.
+        const born = this.groundBorn[ev.kind];
+        if (ev.on) {
+          for (const k of ev.cells) if (!born.has(k)) born.set(k, now);
+          return ev.kind === 'steam' ? 450 : 0;
+        }
+        for (const k of ev.cells) born.delete(k);
+        this.groundGone.push({ kind: ev.kind, cells: ev.cells, t0: now });
+        return 0;
+      }
+      case 'conduct':
+        // The lightning runs out across the wet patch from where it struck, in its caster's colour.
+        this.fx.push({ kind: 'conduct', element: 'lightning', from: ev.at, to: ev.at, cells: ev.cells, t0: now, dur: CONDUCT_MS, tint: unitTint(ev.source ? state.units[ev.source] : undefined) });
+        h.sound('hit');
+        return 420;
       case 'wallHit':
         this.float(`-${ev.amount}`, '#cbd5e1', ev.at, now, { rise: 70 });
         this.fx.push({ kind: 'burst', element: 'earth', from: ev.at, to: ev.at, t0: now, dur: 400, lift: [40, 40] });

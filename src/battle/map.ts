@@ -108,6 +108,38 @@ export const cellCenter = (c: Cell): Pt => ({ x: (c.c + 0.5) * CELL, z: (c.r + 0
 export const cellOf = (p: Pt): Cell => ({ c: Math.floor(p.x / CELL), r: Math.floor(p.z / CELL) });
 export const sameCell = (a: Cell, b: Cell): boolean => a.c === b.c && a.r === b.r;
 export const dist = (a: Pt, b: Pt): number => Math.hypot(a.x - b.x, a.z - b.z);
+/** A navigation cell as a key ("c,r"): wet ground and steam are kept by it (plain data, saved with the battle). */
+export const cellKey = (c: Cell): string => `${c.c},${c.r}`;
+export const keyCell = (k: string): Cell => {
+  const [c, r] = k.split(',').map(Number);
+  return { c, r };
+};
+/** Ground a water jutsu soaked is wet at a point (battle/ground.ts). */
+export const wetAt = (s: BattleState, p: Pt): boolean => !!s.wet && cellKey(cellOf(p)) in s.wet;
+/** Steam hangs over a point (fire met wet ground there). */
+export const steamAt = (s: BattleState, p: Pt): boolean => !!s.steam && cellKey(cellOf(p)) in s.steam;
+
+/**
+ * Steam lies anywhere on the segment from a to b, its ends included: nobody sees into it, out of it
+ * or through it (the owner: "nubla la visión"). With `into`, the cloud the point b lies in doesn't
+ * count: a point in it can still be aimed at (a blast, a gust), only not seen past.
+ */
+export function steamBetween(s: BattleState, a: Pt, b: Pt, into = false): boolean {
+  if (!s.steam) return false;
+  let any = false;
+  for (const _ in s.steam) {
+    any = true;
+    break;
+  }
+  if (!any) return false;
+  const n = Math.max(1, Math.ceil(dist(a, b) / (CELL / 2)));
+  const at = (k: number) => steamAt(s, { x: a.x + ((b.x - a.x) * k) / n, z: a.z + ((b.z - a.z) * k) / n });
+  // Aimed `into` it, the cloud the point lies in is seen from outside: only steam before it blocks.
+  let end = n;
+  if (into) while (end > 0 && at(end)) end--;
+  for (let k = 0; k <= end; k++) if (at(k)) return true;
+  return false;
+}
 
 /** Distance from p to the segment a-b (meters). */
 export function segDist(p: Pt, a: Pt, b: Pt): number {
@@ -188,6 +220,9 @@ export const waterAtPt = (s: BattleState, p: Pt): 0 | 1 | 2 => {
   return inGrid(g, c) ? (g.water[idx(g, c)] as 0 | 1 | 2) : 0;
 };
 
+/** Water puts out flames here: a river, a pond or soaked ground. */
+export const dampAt = (s: BattleState, p: Pt): boolean => waterAtPt(s, p) > 0 || wetAt(s, p);
+
 /** The hide-spot prop at a point (a bush, tall grass, reeds), or -1. */
 export function hideSpotAt(s: BattleState, p: Pt): number {
   const g = gridFor(s.mapId);
@@ -233,9 +268,11 @@ function circleHitsSegment(c: Pt, r: number, a: Pt, b: Pt): boolean {
 
 /**
  * Nothing that blocks sight stands between two points (trees, tents, stacked crates, earth and metal
- * walls). With `structures: false` the walls don't count (a Ryusei warps past them).
+ * walls, steam, which also blinds whoever stands in it). `into`: b is a point aimed at, which may lie
+ * in steam (steamBetween). With `structures: false` the walls don't count (a Ryusei warps past them).
  */
-export function lineOfSight(s: BattleState, a: Pt, b: Pt, opts: { structures?: boolean } = {}): boolean {
+export function lineOfSight(s: BattleState, a: Pt, b: Pt, opts: { structures?: boolean; into?: boolean } = {}): boolean {
+  if (steamBetween(s, a, b, opts.into)) return false;
   const map = getMap(s.mapId);
   for (let i = 0; i < map.props.length; i++) {
     const p = map.props[i];

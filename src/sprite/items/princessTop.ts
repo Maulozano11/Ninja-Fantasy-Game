@@ -7,7 +7,11 @@
 import { retintHex } from '../color';
 import type { Depth, DrawCtx, ItemDef } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
-import { add, RES, v, type PartId, type Vec } from '../raster';
+import { gripAngle, throwsKunai } from '../grip';
+import { add, Layer, partIndex, RES, v, type PartId, type Vec } from '../raster';
+import { stampTemplate, type TemplatePalette } from '../rotsprite';
+import { bareHandOff } from './clothes';
+import { PRINCESS_HAND_N, PRINCESS_HAND_N_SKIN, PRINCESS_HAND_SKIN_BASE } from './princessHandsArt';
 import {
   PRINCESS_BODICE,
   PRINCESS_BODICE_SIDE_F,
@@ -26,7 +30,7 @@ import {
 /**
  * Where the far lilac sleeve's pivot (his pixel (60, 44), its inner end) lies off his far hand (his joint
  * (73, 46.5)), in rig units: with her sceptre at rest her far arm is raised and her far hand is where he drew it
- * (rig.ts IDLE_SCEPTRE), and the sleeve goes on by the hand at his angle, so it is his pixels where he drew them.
+ * (rig.ts IDLE_SCEPTRE, SCEPTRE_CARRY), and the sleeve goes on by the hand at his angle, so it is his pixels where he drew them.
  */
 const CUFF_F_OFF_HAND = v((60.5 - 73) / RES, (44.5 - 46.5) / RES);
 
@@ -56,19 +60,44 @@ function drawBodice(g: DrawCtx, pink: string, lilac: string, gold: string): void
   };
   const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
   const torso = segAngle(r.pelvis, r.neck);
-  // With her sceptre at rest (rig pose idleSceptre) the far arm is raised and he drew its sleeve in front of the
-  // skirt: it goes on over the gown, his pixels at his angle. Otherwise it lies along our forearm behind the body.
-  if (r.pose === 'idleSceptre') put('torso.armor', PRINCESS_CUFF_F, add(r.handF, CUFF_F_OFF_HAND), PRINCESS_CUFF_F.angle, 'forearmF');
+  // With her sceptre up in her far fist (rig.sceptreUp) the far arm is raised and he drew its sleeve in front of
+  // the skirt: it goes on over the gown, his pixels at his angle. Otherwise it lies along our forearm behind the body.
+  if (r.sceptreUp) put('torso.armor', PRINCESS_CUFF_F, add(r.handF, CUFF_F_OFF_HAND), PRINCESS_CUFF_F.angle, 'forearmF');
   else put('farArm.cloth', PRINCESS_CUFF_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
-  put('farArm.cloth', PRINCESS_SLEEVE_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
+  // With the sceptre up the far arm is held as he drew it, so the far puff is too: unturned, every pixel his.
+  const puffF = r.sceptreUp ? PRINCESS_SLEEVE_F.angle : segAngle(r.shoulderF, r.elbowF);
+  put('farArm.cloth', PRINCESS_SLEEVE_F, r.shoulderF, puffF, 'upperArmF');
   // our torso is drawn over the far arm and reaches under the far puff: its columns by the bodice go again over it,
   // over the bodice's far side (seen when the far arm moves away)
   put('torso.top', PRINCESS_BODICE_SIDE_F, r.neck, torso, 'torso');
-  put('torso.top', PRINCESS_SLEEVE_F_SIDE, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
+  put('torso.top', PRINCESS_SLEEVE_F_SIDE, r.shoulderF, puffF, 'upperArmF');
   put('torso.top', PRINCESS_BODICE, r.neck, torso, 'torso');
   if (!g.has('armor')) put('torso.over', PRINCESS_BODICE_TIP, r.neck, torso, 'torso');
+  // His open near hand on the skirt in place of ours where ours hangs open (shape 'hold': at rest and walking) and
+  // holds nothing; it rides the cuff (its pivot and angle), under it. Gloves keep their own hand.
+  if (r.shapeN === 'hold' && gripAngle(g) === null && !throwsKunai(g) && !g.has('hands')) {
+    bareHandOff(g, 'N');
+    stampPiece(g, 'nearArm.cloth', PRINCESS_HAND_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'handN', (ch, hex) =>
+      PRINCESS_HAND_N_SKIN.includes(ch) ? retintHex(hex, PRINCESS_HAND_SKIN_BASE, g.look.skin) : hex,
+    );
+  }
   put('nearArm.cloth', PRINCESS_CUFF_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN');
   put('nearArm.cloth', PRINCESS_SLEEVE_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
+  trimUnder(g, 'nearArm.body', 'upperArmN', PRINCESS_SLEEVE_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN));
+}
+
+/**
+ * Our upper arm is a little fuller than his bare shoulder and puff: what of it his sleeve does not cover is taken
+ * off, or it (and its outline) pokes out past his line into his back hair.
+ */
+function trimUnder(g: DrawCtx, depth: Depth, part: PartId, p: PaintedPiece, at: Vec, deg: number): void {
+  const mask = new Layer();
+  const pal: TemplatePalette = {};
+  for (const ch of Object.keys(p.colors)) pal[ch] = [0, 3];
+  stampTemplate(mask, p, at, deg - p.angle, pal, part);
+  const L = g.L(depth);
+  const k = partIndex(part);
+  for (let i = 0; i < L.mat.length; i++) if (L.mat[i] >= 0 && L.part[i] === k && mask.mat[i] < 0) L.mat[i] = -1;
 }
 
 /** The princess's bodice (slot top), women only: cut for the female figure. */

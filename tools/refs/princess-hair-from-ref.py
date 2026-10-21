@@ -57,8 +57,10 @@ BOLD = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
 # faceAnchor (ex, ny), which is the lash row under it): the cell (49, 19) is each face piece's pivot. That is
 # princess_ref.PART_OFFSET['hair_front'] (74, 122) at our female idle frame 0.
 FACE_PIVOT = (49, 19)
-# His eyes: the near lash starts at column 49, the far one at 58 (row 18), 9 apart as on our standard face.
-EYES_APART = 9
+# His eyes: the near lash starts at column 49, the far one at 57 (row 18; tools/refs/princess-eyes-from-ref.py
+# EX, FX), 8 apart as on her own face shape ('noble', body.ts faceAnchor fx = nx + 8), so on her face the far
+# side stays where he drew it; on our standard faces (9 apart) it moves out one column.
+EYES_APART = 8
 # Where the far side of the face pieces moves out (or in) when our eyes are further apart (or closer) than
 # his: from his row 13 down (the forehead between the bangs), his columns from 56 on (past the nose).
 FAR_FROM, FAR_COL = 13, 56

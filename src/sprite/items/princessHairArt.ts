@@ -194,7 +194,7 @@ export const PRINCESS_HAIR_EAR: Record<string, number> = { E: 3 };
 /** The hair colour slot's default: his commonest pink. */
 export const PRINCESS_HAIR_BASE = '#ca7b90';
 /** His eyes are this far apart (lash start to lash start); where ours are not, the far side of the face pieces follows our far eye. */
-export const PRINCESS_EYES_APART = 9;
+export const PRINCESS_EYES_APART = 8;
 /** A face piece's pixels this many rows from its pivot on down, this many columns right of it on, are its far side. */
 export const PRINCESS_FAR_FROM = -6;
 export const PRINCESS_FAR_COL = 7;

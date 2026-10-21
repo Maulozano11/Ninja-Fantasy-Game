@@ -122,10 +122,12 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export const handsReleased = (g: DrawCtx): boolean => g.rig.released && !handsBusy(g);
 
 /**
- * Bare hands in the wind-up of 'throw' (no weapon in the hand: none held, or it is stowed) throw a
- * kunai from the pouch: the near fist holds one, like the Kunai item, until the release.
+ * Bare hands in the wind-up of 'throw' (no weapon in the near hand: none held, it is stowed, or it is the
+ * princess's sceptre, up in her far fist) throw a kunai from the pouch: the near fist holds one, like the
+ * Kunai item, until the release.
  */
-export const throwsKunai = (g: DrawCtx): boolean => g.rig.pose === 'throw' && !g.rig.released && (!!g.look.stowed || !g.has('held') || g.has('held', 'held_none'));
+export const throwsKunai = (g: DrawCtx): boolean =>
+  g.rig.pose === 'throw' && !g.rig.released && (!!g.look.stowed || !g.has('held') || g.has('held', 'held_none') || !!g.rig.sceptreUp);
 
 /** Angle of the handle the near hand wraps, or null when it holds nothing with a handle. */
 export function gripAngle(g: DrawCtx): number | null {
@@ -177,7 +179,9 @@ export function throwRelease(body: BodyType, held?: string): ThrowRelease {
   const before = drawRig(body, 'throw', THROW_RELEASE_FRAME - 1);
   const fist = (r: typeof at): Vec => add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
   const d = norm(sub(at.handN, at.wristN));
-  const pole = held === 'held_naginata' || held === 'held_rose_sceptre';
+  // The princess keeps her sceptre up in her far fist and throws a kunai from the pouch (rig.ts SCEPTRE_CARRY).
+  if (held === 'held_rose_sceptre') held = undefined;
+  const pole = held === 'held_naginata';
   // The flame longsword is held by its own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
   const grip = held === 'held_flame_sword' ? before.handN : fist(before);
   return {

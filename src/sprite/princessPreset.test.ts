@@ -8,6 +8,7 @@ import { faceAnchor } from './body';
 import { renderSprite } from './compose';
 import type { DrawCtx } from './ctx';
 import { PRINCESS_HAIR_BASE } from './items/princessHairArt';
+import { PRINCESS_FIST_F, PRINCESS_HAND_N } from './items/princessHandsArt';
 import { PRINCESS_SKIRT } from './items/princessSkirtArt';
 import { PRINCESS_SHOE_F } from './items/princessShoesArt';
 import { NOBLE_BROWS, NOBLE_EYE_COLORS } from './princessEyeArt';
@@ -42,6 +43,22 @@ describe('the princess put together', () => {
     // the near arm and the legs are the idle's
     const idle = drawRig('female', 'idle', 0);
     for (const j of ['handN', 'elbowN', 'ankleN', 'ankleF', 'head'] as const) assert.deepEqual(r[j], idle[j], j);
+  });
+
+  it('has his hands at rest: his open near hand on the skirt and his fist round the sceptre, every pixel his', () => {
+    const f = renderSprite(look, 'idle', 0);
+    // his pixel (x, y) is the frame's (x + 74, y + 122) at rest; the pieces' cell (0, 0) is his (29, 53) and (70, 42)
+    for (const [p, [ox, oy]] of [[PRINCESS_HAND_N, [29, 53]], [PRINCESS_FIST_F, [70, 42]]] as const) {
+      let n = 0;
+      p.rows.forEach((row, j) =>
+        [...row].forEach((ch, i) => {
+          if (ch === '.') return;
+          n++;
+          assert.equal(hexAt(f.rgba, (oy + j + 122) * GRID + ox + i + 74), p.colors[ch], `his (${ox + i}, ${oy + j})`);
+        }),
+      );
+      assert.ok(n > 30);
+    }
   });
 
   it('sets her face a row above the head row, so it meets her hair and collar as he drew them', () => {

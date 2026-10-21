@@ -33,7 +33,9 @@ const look = (body: BodyType, hair?: string[], tiara?: string[] | null): SpriteA
   version: 1,
   body,
   skin: '#f6c7a6',
-  eyeShape: 'standard',
+  // her own face shape ('noble'): its eyes are as far apart as his, so the hair's far side is where he drew it
+  eyeShape: 'noble',
+  faceShape: 'noble',
   eyeColor: '#2f9e6a',
   slots: { hair: { id: 'hair_rose_dawn', colors: hair ?? defaults('hair_rose_dawn') } },
   accessories: tiara === null ? [] : ([{ id: 'acc_rose_tiara', colors: tiara ?? defaults('acc_rose_tiara') }] as ItemChoice[]),

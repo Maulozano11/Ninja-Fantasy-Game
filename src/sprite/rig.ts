@@ -245,6 +245,15 @@ const SCEPTRE_HAND_F = arm(0.5, 0.62);
 const IDLE_SCEPTRE: PoseFrame[] = [0, 0, 1, 1].map((dy) => ({ ...IDLE, chestDy: dy || undefined, handF: SCEPTRE_HAND_F }));
 
 /**
+ * The poses in which she keeps her sceptre up in her far fist as he drew it (drawRig's `sceptre`): the far
+ * hand stays where it is at rest (SCEPTRE_HAND_F, from the far shoulder) while the near arm and the legs do
+ * the pose, so the sceptre never changes hands between rest and an action. The near hand strikes, casts and
+ * throws (a kunai from the pouch) empty. Hand signs, the two-handed casts and the camp poses stow it; downed
+ * drops it; the training drill swings it in the near hand (rigPoseFor: trainPole).
+ */
+const SCEPTRE_CARRY = new Set<RigPose>(['idle', 'idleSceptre', 'attack', 'cast', 'hurt', 'victory', 'charge', 'throw', 'pierce', 'walk', 'run', 'crouch', 'sneak']);
+
+/**
  * Rig poses: the sprite poses plus one cast pose per cast style ('cast' itself
  * is the runes pose) and one training drill per kind of weapon ('train' itself
  * is the blade kata).
@@ -870,6 +879,8 @@ export interface Rig {
   farHandFront: boolean;
   /** See PoseFrame.released: the held weapon has been thrown and is not in the hand. */
   released: boolean;
+  /** The far fist holds the princess's sceptre up where he drew it (drawRig's `sceptre`, SCEPTRE_CARRY). */
+  sceptreUp?: boolean;
   /** See PoseFrame.streamBack. */
   streamBack: boolean;
   /** Torso-local point: x along the shoulder line (+ toward facing side), y up from the pelvis. */
@@ -923,10 +934,14 @@ export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
 }
 
 /** The upright rig every layer is drawn with (compose.ts lays a 'downed' figure down afterwards). */
-export function drawRig(body: BodyType, pose: RigPose, frame: number): Rig {
+export function drawRig(body: BodyType, pose: RigPose, frame: number, sceptre = false): Rig {
   const frames = POSES[pose] || POSES.idle;
-  const f = frames[((frame % frames.length) + frames.length) % frames.length];
+  let f = frames[((frame % frames.length) + frames.length) % frames.length];
+  // With the princess's sceptre (held_rose_sceptre, not stowed) the far fist keeps it up where he drew it.
+  const carry = pose === 'idleSceptre' || (sceptre && SCEPTRE_CARRY.has(pose));
+  if (carry) f = { ...f, handF: SCEPTRE_HAND_F, shapeF: 'fist', farHandFront: false };
   const r = solveRig(body, pose, frame, f);
+  if (carry) r.sceptreUp = true;
   if (f.lie) r.lay = layFor(solveRig(body, pose, 0, frames[0]));
   return r;
 }

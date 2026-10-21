@@ -7,7 +7,8 @@ import { renderSprite } from './compose';
 import { PRINCESS_SCEPTRE_GEM, PRINCESS_SCEPTRE_GOLD, ROSE_SCEPTRE, ROSE_SCEPTRE_STRAIGHT } from './items/princessSceptreArt';
 import { defaultAppearance } from './legacy';
 import { GRID, partIndex } from './raster';
-import { THROW_RELEASE_FRAME } from './rig';
+import { throwRelease } from './grip';
+import { frameCount, rigPoseFor, THROW_RELEASE_FRAME, type Rig } from './rig';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
 import { weaponOf } from '../battle/units';
 import type { BodyType, SpriteAppearance, SpritePose } from './types';
@@ -67,9 +68,27 @@ describe('princess rose sceptre', () => {
     assert.notDeepEqual(a, renderSprite(look([PRINCESS_SCEPTRE_GOLD, '#3070c0']), 'idle', 0).rgba);
   });
 
-  it('leaves the hand when it is thrown', () => {
+  it('stays up in her far fist when she throws: she throws a kunai from the pouch', () => {
     assert.ok(heldPixels(look(), 'throw', THROW_RELEASE_FRAME - 1) > 40);
-    assert.equal(heldPixels(look(), 'throw', THROW_RELEASE_FRAME), 0);
+    assert.ok(heldPixels(look(), 'throw', THROW_RELEASE_FRAME) > 40);
+    for (const body of ['female', 'male'] as const) assert.equal(throwRelease(body, 'held_rose_sceptre').thrown, 'held_kunai');
+  });
+
+  it('never changes hands: up in her far fist where he drew it, at rest and in every action', () => {
+    const at = (r: Rig) => [r.handF.x - r.shoulderF.x, r.handF.y - r.shoulderF.y].map((n) => Math.round(n * 100));
+    for (const body of ['female', 'male', 'bulky', 'slender'] as const) {
+      const rest = renderSprite(look([], body), 'idle', 0).rig;
+      assert.ok(rest.sceptreUp, `${body} at rest`);
+      for (const pose of ['attack', 'cast', 'hurt', 'victory', 'charge', 'throw', 'pierce', 'walk', 'run', 'crouch', 'sneak'] as const) {
+        for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+          const r = renderSprite(look([], body), pose, f).rig;
+          assert.ok(r.sceptreUp, `${body} ${pose} ${f}`);
+          assert.deepEqual(at(r), at(rest), `${body} ${pose} ${f}: the far hand where it is at rest`);
+        }
+      }
+      // put away for hand signs and at camp, dropped when downed, swung in the near fist only in the drill
+      for (const pose of ['handsigns', 'sit', 'downed', 'train'] as const) assert.ok(!renderSprite(look([], body), pose, 0).rig.sceptreUp, `${body} ${pose}`);
+    }
   });
 
   it('fights as a sceptre (a light mace)', () => {

@@ -10,7 +10,7 @@
 
 import { retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
-import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, lerp, RES, scale, sub, v, Vec } from '../raster';
+import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, lerp, partIndex, RES, scale, sub, v, Vec } from '../raster';
 import { BodyParams, drawRig, GROUND, Rig } from '../rig';
 import {
   type GownPiece,
@@ -210,6 +210,27 @@ function drawGown(g: DrawCtx, color: (ch: string, hex: string) => string): void 
   const back = new Set<number>();
   for (const [idx, ch] of placeGown(g.rig, PRINCESS_SKIRT, GOWN_FIT, back)) {
     (back.has(idx) ? B : L).set(idx % GRID, Math.floor(idx / GRID), pens[ch], 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
+  }
+  // Her thighs and knees are always under the floor-length gown: where a lunge swings a thigh past its edge
+  // (throwing, running) or a bent knee pokes out of its front (sitting), it would show beside the gown, so they are
+  // taken off: the thighs, and the round top of each shin above its knee.
+  const r = g.rig;
+  const thighs = new Set([partIndex('thighN'), partIndex('thighF')]);
+  const shins: [number, Vec, Vec][] = [
+    [partIndex('shinN'), r.kneeN, sub(r.ankleN, r.kneeN)],
+    [partIndex('shinF'), r.kneeF, sub(r.ankleF, r.kneeF)],
+  ];
+  for (const d of ['farLeg.body', 'farLeg.cloth', 'nearLeg.body', 'nearLeg.cloth'] as const) {
+    const T = g.L(d);
+    for (let i = 0; i < T.mat.length; i++) {
+      if (T.mat[i] < 0) continue;
+      if (thighs.has(T.part[i])) T.mat[i] = -1;
+      for (const [k, knee, down] of shins) {
+        if (T.part[i] !== k) continue;
+        const p = v(((i % GRID) + 0.5) / RES - knee.x, (Math.floor(i / GRID) + 0.5) / RES - knee.y);
+        if (p.x * down.x + p.y * down.y < 0) T.mat[i] = -1;
+      }
+    }
   }
 }
 

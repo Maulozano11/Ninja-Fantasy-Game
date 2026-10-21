@@ -250,7 +250,8 @@ export function renderSprite(
   eyeSpecial: EyeSpecial = 'none',
   opts: { skipEdits?: boolean } = {},
 ): SpriteFrame {
-  const rig = drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame);
+  const held = look.stowed ? undefined : look.slots.held?.id;
+  const rig = drawRig(look.body, rigPoseFor(pose, look.cast?.style, held), frame, held === 'held_rose_sceptre');
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();

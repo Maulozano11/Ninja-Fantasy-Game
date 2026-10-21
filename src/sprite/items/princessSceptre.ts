@@ -3,9 +3,12 @@
 // round its head twinkling while it is held.
 
 import type { Depth, DrawCtx } from '../ctx';
+import { stampPiece } from '../painted';
 import type { Vec } from '../raster';
 import { retintHex } from '../color';
+import { bareHandOff } from './clothes';
 import { drawPaintedWeapon } from './weapons';
+import { PRINCESS_FIST_F, PRINCESS_FIST_F_GOLD, PRINCESS_FIST_F_SKIN, PRINCESS_HAND_SKIN_BASE } from './princessHandsArt';
 import { PRINCESS_SCEPTRE_GEM, PRINCESS_SCEPTRE_GOLD, ROSE_SCEPTRE, ROSE_SCEPTRE_STRAIGHT, type RoseSceptre } from './princessSceptreArt';
 
 /** His golds turned from his gold, the gem (and his pink sparkles) from his gem colour; his line stays his. */
@@ -37,10 +40,26 @@ function sparkTemplate(piece: RoseSceptre, frame: number): RoseSceptre {
 }
 
 /**
- * At rest she holds it as he drew it, up in her far fist leaning right (her near hand is empty);
- * every other pose holds it in the near fist like a pole.
+ * She holds it as he drew it, up in her far fist leaning right, at rest and in every action (rig.ts
+ * SCEPTRE_CARRY: the far hand stays where he drew it while the near arm and the legs do the pose), so it never
+ * changes hands; her near hand strikes, casts and throws empty. The training drill swings it in the near fist
+ * like a pole.
  */
-export const roseSceptreInFarHand = (g: DrawCtx): boolean => g.rig.pose === 'idle' || g.rig.pose === 'idleSceptre';
+export const roseSceptreInFarHand = (g: DrawCtx): boolean => !!g.rig.sceptreUp;
+
+/**
+ * Up in her far fist: the sceptre over the gown at his angle (its shaft runs down over the skirt as he drew
+ * it), and his fist round it in place of ours (his skin following the player's, the shaft he shows between the
+ * fingers the gold); gloves on the hands keep their own fist.
+ */
+export function drawRoseSceptreUp(g: DrawCtx, gold: string, gem: string): void {
+  drawRoseSceptre(g, 'torso.armor', g.rig.handF, ROSE_SCEPTRE.angle, gold, gem, true);
+  if (g.has('hands')) return;
+  bareHandOff(g, 'F');
+  stampPiece(g, 'torso.over', PRINCESS_FIST_F, g.rig.handF, ROSE_SCEPTRE.angle, 'handF', (ch, hex) =>
+    PRINCESS_FIST_F_SKIN.includes(ch) ? retintHex(hex, PRINCESS_HAND_SKIN_BASE, g.look.skin) : PRINCESS_FIST_F_GOLD.includes(ch) ? retintHex(hex, PRINCESS_SCEPTRE_GOLD, gold) : hex,
+  );
+}
 
 /**
  * Draws her sceptre with its grip at `at` (rig units), its shaft pointing along `deg`; `sparks` adds his

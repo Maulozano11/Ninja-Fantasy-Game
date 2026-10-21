@@ -9,7 +9,7 @@ import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { PRINCESS_SCEPTRE_GEM, PRINCESS_SCEPTRE_GOLD, ROSE_SCEPTRE } from './princessSceptreArt';
-import { drawRoseSceptre, roseSceptreInFarHand } from './princessSceptre';
+import { drawRoseSceptre, drawRoseSceptreUp, roseSceptreInFarHand } from './princessSceptre';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { ACC_ROSE_TIARA } from './princessHair';
 import { chakraHex } from '../chakraInfo';
@@ -403,13 +403,14 @@ export const HELD_ITEMS: ItemDef[] = [
     id: 'held_rose_sceptre',
     slot: 'held',
     name: 'Rose Dawn Sceptre',
-    desc: 'A slender gold sceptre crowned with a gold cage round a mauve-and-pink gem that sheds sparkles: the owner drew it for the princess.',
+    desc: 'A slender gold sceptre crowned with a gold cage round a mauve-and-pink gem that sheds sparkles.',
     colors: [col('gold', 'Gold', PRINCESS_SCEPTRE_GOLD, 'metal'), col('gem', 'Gem', PRINCESS_SCEPTRE_GEM, 'glow')],
     draw: (g, [gold, gem]) => {
-      if (handsBusy(g)) drawRoseSceptre(g, 'backGear', backGrip(g, -62), backAngle(g, -62), gold, gem, false);
+      // Put away, it is tucked upright in her sash on the far hip, at his angle (on her back her hair and gown hide it).
+      if (handsBusy(g)) drawRoseSceptre(g, 'waist', stowAt(g, g.bp.hipHalf * 0.75, 2.2), ROSE_SCEPTRE.angle, gold, gem, false);
       else if (handsLimp(g)) drawRoseSceptre(g, 'nearArm.held', droppedGrip(g, 0.6, 0.8), -88, gold, gem, false);
-      // At rest it is up in her far fist at his angle, every pixel his; otherwise the near fist holds it like a pole.
-      else if (roseSceptreInFarHand(g)) drawRoseSceptre(g, 'farArm.held', g.rig.handF, ROSE_SCEPTRE.angle, gold, gem, true);
+      // Up in her far fist at his angle, every pixel his, at rest and in her actions; the drill swings it like a pole.
+      else if (roseSceptreInFarHand(g)) drawRoseSceptreUp(g, gold, gem);
       else if (!handsReleased(g)) drawRoseSceptre(g, 'nearArm.held', gripPoint(g), poleAngle(g), gold, gem, true);
     },
   },

@@ -1707,7 +1707,7 @@ function glove(g: DrawCtx, s: Side, pen: Pen, grow: number, cut: boolean): void 
  * Takes the bare hand off, for a glove painted in its own shape that replaces it: the forearm's last
  * span is drawn again under it, so the wrist the hand was drawn over stays.
  */
-function bareHandOff(g: DrawCtx, s: Side): void {
+export function bareHandOff(g: DrawCtx, s: Side): void {
   const L = g.L(armDepth(s, 'body'));
   const hand = partIndex(prt('hand', s));
   const fore = new Layer();

@@ -56,7 +56,7 @@ export function randomAppearance(): SpriteAppearance {
     body,
     skin: pick(SKIN_TONES.slice(0, 9)),
     eyeShape: pick<EyeShape>(['standard', 'sharp', 'round', 'calm', 'fierce', 'bright', 'piercing', 'valiant', 'noble']),
-    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant']),
+    faceShape: pick<FaceShape>(['tapered', 'tapered', 'soft', 'square', 'valiant', 'noble']),
     neck: pick<NeckType>(['slim', 'slim', 'strong']),
     cast: { style: pick(CAST_STYLES) },
     eyeColor: pick(EYE_COLORS),

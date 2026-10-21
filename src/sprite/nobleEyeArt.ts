@@ -16,10 +16,9 @@ export const NOBLE_EYE_COLORS: Record<string, string> = {
   j: '#9c5e1a',
   k: '#6f442a',
   l: '#ebe6e4',
-  m: '#332a1e',
-  n: '#512619',
-  p: '#040405',
-  q: '#dcd6d4',
+  m: '#512619',
+  n: '#040405',
+  p: '#dcd6d4',
 };
 
 /** His eyes in each lid state: open, lowered (reading) and closed (knocked out). The near eye is six cells wide and four rows tall, the far one three and three. */
@@ -31,8 +30,8 @@ export const NOBLE_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedEy
       rows: ['..abac', '.deeef', '..hij.', '.a.kl.'],
     },
     far: {
-      letters: ['bBL', 'LLL', 'dwL'],
-      rows: ['.am', 'npp', 'jqe'],
+      letters: ['bbB', 'LLL', 'dwL'],
+      rows: ['..a', 'mnn', 'jpe'],
     },
   },
   /** Reading: the lash comes down a row (the lid's skin above it) over his white and iris, without the glint. */
@@ -42,25 +41,22 @@ export const NOBLE_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedEy
       rows: ['..abac', '......', '.deeef', '.ahij.'],
     },
     far: {
-      letters: ['bBL', 'bbL', 'LLL'],
-      rows: ['.am', '..p', 'npe'],
+      letters: ['bbB', 'bbL', 'LLL'],
+      rows: ['..a', '..n', 'mne'],
     },
   },
-  /** Knocked out: under the lash line the eye is shut (skin); the far eye keeps the face's edge. */
+  /** Knocked out: under the lash line the eye is shut (skin); the far eye keeps its lash's dark outer end. */
   closed: {
     near: {
       letters: ['sbBBBB', 'sLLLLB', 'ssbbbb', 'sbbbbb'],
       rows: ['..abac', '.deeef', '......', '......'],
     },
     far: {
-      letters: ['bBL', 'LLL', 'bbL'],
-      rows: ['.am', 'npp', '..e'],
+      letters: ['bbB', 'LLL', 'bbL'],
+      rows: ['..a', 'mnn', '..e'],
     },
   },
 };
 
 /** His amber, the lit iris: the player's eye colour moves his iris as far. */
 export const NOBLE_IRIS = '#c88038';
-
-/** His skin, the lit face: the line over his lashes is in its browns, so the skin tone moves it as far. */
-export const NOBLE_SKIN = '#f8d4b8';

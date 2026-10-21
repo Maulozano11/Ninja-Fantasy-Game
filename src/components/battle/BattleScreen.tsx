@@ -1472,9 +1472,9 @@ const SHORT: Record<string, [string, string]> = {
   katon_pursuing_flame: ['Pursuing', 'Persigue'],
   koton_block: ['Block', 'Bloque'],
   koton_wall: ['Metal wall', 'Muro metal'],
-  ryusei_warp: ['Warp', 'Warp'],
+  ryusei_warp: ['Warp', 'Golpe Warp'],
   ryusei_swap: ['Swap', 'Cambio'],
-  northstar_command: ['Command', 'Command'],
+  northstar_command: ['Command', 'Comando'],
   northstar_submission: ['Submit', 'Sumisión'],
   mirai_evasion: ['Evasion', 'Evasión'],
 };

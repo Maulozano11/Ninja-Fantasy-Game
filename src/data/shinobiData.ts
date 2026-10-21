@@ -73,7 +73,7 @@ export const CLANS_DATA: Record<
     japaneseName: 'リュウセイ一族',
     description: 'Assassins of space: geometric hypermobility, piercing damage and reshaping the board through Nodes.',
     descriptionEs: 'Asesinos del espacio: hipermovilidad geométrica, daño perforante y un tablero que rehacen con sus Nodos.',
-    lineageTraitsEs: 'Nodos de Armas: cada kunai lanzado, y cada ataque cuerpo a cuerpo que falla, deja un Nodo donde cae el arma (tres como máximo; el más antiguo se va). Warp Strike (acción adicional, 2 chakra, 18 m): se teletransporta a un Nodo a la vista, incluso con muros en medio; si cae junto a un enemigo, el próximo ataque de este turno llega por la espalda (ventaja, y no se puede bloquear). Intercambio Espacial (acción, 3 chakra): cambia de lugar con quien esté sobre un Nodo; un enemigo se resiste con una salvación de FUE.',
+    lineageTraitsEs: 'Nodos de Armas: cada kunai lanzado, y cada ataque cuerpo a cuerpo que falla, deja un Nodo donde cae el arma (tres como máximo; el más antiguo se va). Golpe Warp (acción adicional, 2 chakra, 18 m): se teletransporta a un Nodo a la vista, incluso con muros en medio; si cae junto a un enemigo, el próximo ataque de este turno llega por la espalda (ventaja, y no se puede bloquear). Intercambio Espacial (acción, 3 chakra): cambia de lugar con quien esté sobre un Nodo; un enemigo se resiste con una salvación de FUE.',
     lineageTraits: 'Weapon Nodes: every kunai throw, and every melee attack that misses, leaves a Node where the weapon lands (three at most; the oldest goes). Warp Strike (bonus action, 2 chakra, 18 m): teleports to a Node in sight, even with walls in between; landing next to an enemy, the next attack this turn comes from behind (advantage, and it can\'t be blocked). Spatial Swap (action, 3 chakra): swaps places with anyone standing on a Node; an enemy resists with a STR save.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
@@ -88,7 +88,7 @@ export const CLANS_DATA: Record<
     japaneseName: 'ノーススター一族',
     description: "The Sovereign's eyes: breaking the enemy's action economy, control of summons and psychological disruption.",
     descriptionEs: 'Los ojos del Soberano: rompen la economía de acciones del enemigo, controlan las invocaciones y perturban la mente.',
-    lineageTraitsEs: 'Aura de Soberanía (4.5 m): los enemigos dentro atacan con desventaja, y los que entran con un warp o corriendo pierden la mitad del movimiento que les queda (los aliados no). Command (acción, 4 chakra, 9 m): un esbirro que falla una salvación de SAB pelea del lado del Northstar durante 1 ronda (también los capitanes desde el nivel 5; desde el nivel 9, dos objetivos durante 2 rondas); los Mirai son inmunes. Sumisión Natural (acción, 5 chakra): una bestia o invocación enemiga que falla una salvación de SAB se une a tu bando el resto de la batalla; los jefes no.',
+    lineageTraitsEs: 'Aura de Soberanía (4.5 m): los enemigos dentro atacan con desventaja, y los que entran con un warp o corriendo pierden la mitad del movimiento que les queda (los aliados no). Comando (acción, 4 chakra, 9 m): un esbirro que falla una salvación de SAB pelea del lado del Northstar durante 1 ronda (también los capitanes desde el nivel 5; desde el nivel 9, dos objetivos durante 2 rondas); los Mirai son inmunes. Sumisión Natural (acción, 5 chakra): una bestia o invocación enemiga que falla una salvación de SAB se une a tu bando el resto de la batalla; los jefes no.',
     lineageTraits: 'Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and enemies who warp or dash into it lose half of their remaining movement (allies are spared). Command (action, 4 chakra, 9 m): a Minion that fails a WIS save fights on the Northstar\'s side for 1 round (Captains too from level 5; from level 9, two targets for 2 rounds); Mirai are immune. Natural Submission (action, 5 chakra): a beast or enemy summon that fails a WIS save joins your side for the rest of the battle; not bosses.',
     statBonuses: [
       { stat: 'cha', bonus: 2 },
@@ -1218,7 +1218,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           held: it('held_lightning'),
         },
         headband: { position: 'forehead', slashed: true, tails: false, emblem: 'bolt', cloth: '#1e293b', plate: '#cbd5e1' },
-        chakra: { color: 'violet', onCharge: true, onCast: true, onVictory: false },
+        chakra: { color: 'yellow', tint: 'violet', onCharge: true, onCast: true, onVictory: false }, // Lightning like his jutsu, in his violet
       }),
     },
   },
@@ -1283,7 +1283,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         },
         accessories: [it('acc_kunai_leg')],
         headband: { position: 'forehead', slashed: false, tails: true, emblem: 'spiral', cloth: '#1e3a8a', plate: '#cbd5e1' },
-        chakra: { color: 'orange', onCharge: true, onCast: true, onVictory: true },
+        chakra: { color: 'green', tint: 'orange', onCharge: true, onCast: true, onVictory: true }, // Wind like his jutsu, in his orange
       }),
     },
   },
@@ -1346,7 +1346,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           held: it('held_naginata'),
         },
         accessories: [it('acc_back_katana')],
-        chakra: { color: 'violet', onCharge: true, onCast: true, onVictory: true },
+        chakra: { color: 'red', tint: 'violet', onCharge: true, onCast: true, onVictory: true }, // Fire like his jutsu, in his violet
       }),
     },
   },
@@ -1471,7 +1471,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           hands: it('hands_fingerless', '#1b1b22', '#9aa4b0'),
           held: { ...it('held_katana'), parts: { steel: 'c', blade: 'a', guard: 'c', hilt: 'a' } },
         },
-        chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: true },
+        chakra: { color: 'yellow', tint: 'blue', onCharge: true, onCast: true, onVictory: true }, // Lightning like his jutsu, in his blue
       }),
     },
   },

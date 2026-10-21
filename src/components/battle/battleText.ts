@@ -367,11 +367,11 @@ const TABLE = strings({
   },
   tip_ryusei: {
     en: 'Weapon Nodes: kunai and missed blows leave a Node (three at most). Warp Strike jumps to one, even through walls; Spatial Swap trades places with whoever stands on one.',
-    es: 'Nodos de Armas: los kunai y los golpes fallados dejan un Nodo (tres como máximo). Warp Strike salta a uno, incluso a través de muros; Intercambio Espacial cambia de lugar con quien esté sobre uno.',
+    es: 'Nodos de Armas: los kunai y los golpes fallados dejan un Nodo (tres como máximo). Golpe Warp salta a uno, incluso a través de muros; Intercambio Espacial cambia de lugar con quien esté sobre uno.',
   },
   tip_northstar: {
     en: 'Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and an enemy who warps or dashes in loses half its movement (your allies are spared). Command turns a Minion to your side for a round. Natural Submission makes an enemy beast or summon join you for the battle.',
-    es: 'Aura de Soberanía (4.5 m): los enemigos dentro atacan con desventaja, y el enemigo que entra con un warp o corriendo pierde la mitad de su movimiento (tus aliados no). Command pone a un esbirro de tu lado durante una ronda. Sumisión Natural hace que una bestia o invocación enemiga se una a ti durante la batalla.',
+    es: 'Aura de Soberanía (4.5 m): los enemigos dentro atacan con desventaja, y el enemigo que entra con un warp o corriendo pierde la mitad de su movimiento (tus aliados no). Comando pone a un esbirro de tu lado durante una ronda. Sumisión Natural hace que una bestia o invocación enemiga se una a ti durante la batalla.',
   },
   tip_foeAura: {
     en: 'The violet ring is an enemy Northstar’s Aura of Sovereignty (4.5 m): your attacks from inside it have disadvantage, and warping or dashing into it costs you half the movement you have left. Its allies are spared. Strike from outside, or with a jutsu the target must save against.',

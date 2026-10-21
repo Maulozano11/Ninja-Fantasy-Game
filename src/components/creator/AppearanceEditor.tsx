@@ -3,7 +3,8 @@ import { ChevronLeft, ChevronRight, Flame, Paintbrush, PersonStanding, ScanFace,
 import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
 import { EMBLEMS } from '../../sprite/items/headband';
-import { CHAKRA_CHOICES, chakraHex } from '../../sprite/chakraInfo';
+import { CHAKRA_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
+import { CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../../sprite/chakraNature';
 import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
 import { CAST_STYLES } from '../../sprite/types';
 import { CLOTH_COLORS, CLOTH_FAMILIES, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from '../../sprite/palettes';
@@ -25,6 +26,7 @@ import { PixelEditor } from './PixelEditor';
 import { L } from './words';
 import { useLang } from '../../i18n';
 import { SpriteThumb } from './SpriteThumb';
+import { BurstThumb } from './BurstThumb';
 import { PartThumb } from './PartThumb';
 import { serif } from './stage';
 
@@ -237,7 +239,9 @@ export const AppearanceEditor: React.FC<{
   onPreviewStance: (stance: SpritePose) => void;
   /** Tells the creator which section is open (it brings the camera to the face for the head). */
   onGroup?: (g: AppearanceGroup) => void;
-}> = ({ look, eye, character, onChange, onPreviewStance, onGroup }) => {
+  /** What the last change of chakra type did to the jutsu (already in the screen's language). */
+  chakraNote?: string;
+}> = ({ look, eye, character, onChange, onPreviewStance, onGroup, chakraNote }) => {
   useLang();
   const [group, setGroup] = useState<AppearanceGroup>('body');
   const [parts, setParts] = useState<Partial<Record<AppearanceGroup, Part>>>({});
@@ -258,6 +262,9 @@ export const AppearanceEditor: React.FC<{
     if (id === 'chakra') onPreviewStance('charge');
   };
   const slotPart = SLOT_PARTS[part];
+  /** The chakra's type (the ninja's nature) and the burst drawn for it. */
+  const nature = chakraNature(look.chakra);
+  const burstInfo = chakraChoice(look.chakra.color);
 
   return (
     <div className="flex gap-3 min-h-full">
@@ -477,36 +484,60 @@ export const AppearanceEditor: React.FC<{
 
         {part === 'chakra' && (
           <div className="space-y-5">
-            <div>
-              <SectionLabel>Chakra Nature & Burst</SectionLabel>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {CHAKRA_CHOICES.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      soundManager.playChakraSurge();
-                      onChange({ ...look, chakra: { ...look.chakra, color: c.id } });
-                      onPreviewStance('charge');
-                    }}
-                    className={`p-2.5 text-left rounded-xl border transition ${
-                      look.chakra.color === c.id
-                        ? 'bg-slate-800 border-white/70 ring-1 ring-white/40'
-                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-600'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="w-4 h-4 rounded-full border border-white/30"
-                        style={{ backgroundColor: look.chakra.tint ? chakraHex({ color: c.id, tint: look.chakra.tint }) : c.hex }}
-                      />
-                      <span className="text-xs font-semibold text-white">{c.nature}</span>
-                    </div>
-                    <div className="text-[11px] text-cyan-300 mt-1">{c.burst}</div>
-                    <div className="text-[10px] text-slate-500">{c.desc}</div>
-                  </button>
-                ))}
+            {/* The chakra type is the ninja's elemental nature (the owner, 2026-10-21); the color below is only a look. */}
+            <div data-nature={nature}>
+              <div className="flex items-baseline justify-between gap-2">
+                <SectionLabel>Chakra Type</SectionLabel>
+                <div className="text-xs text-slate-400 mb-2">
+                  {L('Nature')}: <span style={serif} className="text-sm font-bold text-[#f2c46d]">{L(nature)}</span>
+                </div>
               </div>
+              <p className="text-[11px] text-slate-500 -mt-1 mb-2">{L('Your chakra type is your elemental nature: it decides your elemental jutsu.')}</p>
+              {[true, false].map((elemental) => (
+                <div key={String(elemental)} className="mb-2">
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{L(elemental ? 'Elements' : 'No element')}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {/* A pending type (Shadow, Spirit) is not offered; a ninja that has it sees its own tile, marked, until it picks another. */}
+                    {CHAKRA_TYPES.filter((t) => t.elemental === elemental && (!t.pending || t.nature === nature)).map((t) => {
+                      const on = t.nature === nature;
+                      const burst = on ? look.chakra.color : t.bursts[0];
+                      return (
+                        <button
+                          key={t.nature}
+                          type="button"
+                          onClick={() => {
+                            soundManager.playChakraSurge();
+                            onChange({ ...look, chakra: withNature(look.chakra, t.nature) });
+                            onPreviewStance('charge');
+                          }}
+                          className={`flex flex-col items-center w-[80px] pt-1 pb-1.5 border transition ${
+                            on ? 'border-[#f2c46d] bg-[#3a2a12]/70 ring-1 ring-[#f2c46d]/50' : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'
+                          }`}
+                        >
+                          <BurstThumb look={look} burst={burst} eye={eye} />
+                          <span style={serif} className={`text-[13px] font-bold leading-tight ${on ? 'text-[#f2c46d]' : 'text-slate-200'}`}>
+                            {L(t.nature)}
+                          </span>
+                          {t.pending && <span className="text-[10px] uppercase tracking-wider text-amber-400/90 leading-tight">{L('Pending')}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* The owner (2026-10-21): Light and Void stay; their own jutsu come later. */}
+                  {!elemental && <p className="text-[11px] text-slate-400 mt-1">{L('Light and Void: their own jutsu will come later. For now they learn no elemental jutsu.')}</p>}
+                </div>
+              ))}
+              {chakraType(nature).pending && (
+                <p className="text-[11px] text-amber-300/90 border border-amber-900/60 bg-amber-950/30 px-2 py-1.5">
+                  {L('This type is pending: it can no longer be picked. Your ninja keeps it until you choose another one.')}
+                </p>
+              )}
+              {/* Sticks to the bottom of the panel while it is below the fold (a short screen), so the swap is seen right after the click. */}
+              {chakraNote && (
+                <p className="sticky bottom-0 z-10 mt-1.5 text-[11px] text-[#f2c46d] border border-[#6b5434] bg-[#2b1f0d] shadow-[0_-8px_16px_rgba(0,0,0,0.55)] px-2 py-1.5">
+                  {chakraNote}
+                </p>
+              )}
             </div>
             <div>
               <SectionLabel>Chakra Color</SectionLabel>
@@ -538,7 +569,7 @@ export const AppearanceEditor: React.FC<{
                       look.chakra.tint === c.id ? 'border-white scale-110' : 'border-slate-800'
                     }`}
                     style={{ backgroundColor: c.hex }}
-                    title={c.name}
+                    title={L(c.name)}
                   />
                 ))}
                 <label className="relative w-7 h-7 rounded-full border-2 border-dashed border-slate-500 overflow-hidden cursor-pointer" title={L('Custom color')}>
@@ -554,7 +585,36 @@ export const AppearanceEditor: React.FC<{
                   <span className="absolute inset-1 rounded-full" style={{ backgroundColor: chakraHex(look.chakra) }} />
                 </label>
               </div>
-              <p className="text-[11px] text-slate-500 mt-1.5">{L('Any nature takes any color: red water, black or blue lightning, green fire…')}</p>
+              <p className="text-[11px] text-slate-500 mt-1.5">
+                {L('Only a look: the color never changes the nature. Green fire is still Fire; black lightning is still Lightning.')}
+              </p>
+            </div>
+            <div className="border border-slate-800 bg-slate-950/60 px-2.5 py-2">
+              <div className="text-xs font-semibold text-white">
+                {L(nature)} · <span className="text-cyan-300">{L(burstInfo.burst)}</span>
+              </div>
+              <div className="text-[11px] text-slate-400">{L(burstInfo.desc)}</div>
+              {chakraType(nature).bursts.length > 1 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500">{L('Burst')}</span>
+                  {chakraType(nature).bursts.map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => {
+                        soundManager.playChakraSurge();
+                        onChange({ ...look, chakra: { ...look.chakra, color: b } });
+                        onPreviewStance('charge');
+                      }}
+                      className={`px-2.5 py-1 text-xs border transition ${
+                        look.chakra.color === b ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-slate-950/60 border-slate-700 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {L(CHAKRA_CHOICES.find((c) => c.id === b)?.burst ?? b)}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <SectionLabel>Casting Style</SectionLabel>

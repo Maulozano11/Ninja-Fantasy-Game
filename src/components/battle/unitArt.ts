@@ -8,6 +8,7 @@ import { dojutsuToEye, getAppearance } from '../../sprite/legacy';
 import { FEET, frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
 import type { Rig } from '../../sprite/rig';
 import { GRID, opaqueBox, RES } from '../../sprite/raster';
+import { phaseFrame } from '../../sprite/phase';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { Unit } from '../../battle/types';
 
@@ -132,6 +133,37 @@ export function unitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, fra
   frames.set(key, c);
   if (frames.size > MAX) frames.delete(frames.keys().next().value as string);
   return c;
+}
+
+const phases = new Map<string, Cached>();
+const PHASE_MAX = 120;
+
+/**
+ * One frame of a unit's sprite as its Ryusei phase body (sprite/phase.ts): the frame turned into
+ * blue light, with its glow. Made once per look, pose and frame, like the frames themselves.
+ */
+export function phaseFrameOf(u: Unit, look: SpriteAppearance, pose: SpritePose, frame: number): Cached {
+  const n = framesOf(look, pose);
+  const f = ((frame % n) + n) % n;
+  const eye = dojutsuToEye(u.character?.dojutsu);
+  const key = `${idOf(look)}|${eye}|${pose}|${f}`;
+  let c = phases.get(key);
+  if (c) {
+    phases.delete(key);
+    phases.set(key, c);
+    return c;
+  }
+  const spr = renderSpriteCached(look, pose, f, eye);
+  c = { ...toCanvas(phaseFrame(spr)), rig: spr.rig };
+  phases.set(key, c);
+  if (phases.size > PHASE_MAX) phases.delete(phases.keys().next().value as string);
+  return c;
+}
+
+/** Whether a unit's phase frame is made already (the screen makes the missing ones a few at a time, ahead of need). */
+export function hasPhaseFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, frame: number): boolean {
+  const n = framesOf(look, pose);
+  return phases.has(`${idOf(look)}|${dojutsuToEye(u.character?.dojutsu)}|${pose}|${((frame % n) + n) % n}`);
 }
 
 const portraits = new Map<string, { src: object; sig: string; url: string }>();

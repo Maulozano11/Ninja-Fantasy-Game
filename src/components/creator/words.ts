@@ -209,6 +209,8 @@ const ES: Record<string, string> = {
   "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
   // Saya's hair (hair_sun_fall)
   'Sunfall Tresses': 'Cascada de Sol',
+  'Long straight blonde hair down the back: side-swept bangs with a strand between the eyes, a gold checker ornament on the crown, a lock down each cheek, the near one over the chest, and the rest falling behind the near shoulder.':
+    'Pelo largo, lacio y rubio por la espalda: flequillo de lado con un mechón entre los ojos, un adorno de oro a cuadros en la coronilla, un mechón por cada mejilla, el cercano sobre el pecho, y el resto cayendo tras el hombro cercano.',
   Ornament: 'Adorno',
 };
 

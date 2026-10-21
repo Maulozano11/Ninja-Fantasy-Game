@@ -28,6 +28,10 @@ const hex = (rgba: Uint8ClampedArray, x: number, y: number): string => {
   return '#' + [0, 1, 2].map((c) => rgba[i + c].toString(16).padStart(2, '0')).join('');
 };
 
+/** The front's columns on the near eye in row j (the far side moves out with our wider-set far eye). */
+const near = (j: number): number =>
+  j < SAYA_HAIR_FRONT.farFrom ? Infinity : (SAYA_HAIR_FRONT.farCols[j - SAYA_HAIR_FRONT.farFrom] ?? Infinity);
+
 describe('Saya hair', () => {
   it('is a hairstyle with her hair and her gold as the default colours', () => {
     const def = getItem('hair_sun_fall')!;
@@ -39,6 +43,7 @@ describe('Saya hair', () => {
   });
 
   it('has whole pictures: even rows, every character coloured', () => {
+    for (const p of [SAYA_HAIR_FRONT, SAYA_HAIR_BACK]) assert.equal(p.farFrom + p.farCols.length, p.rows.length);
     for (const p of [SAYA_HAIR_FRONT, SAYA_HAIR_BACK, SAYA_HAIR_LONG]) {
       const w = p.rows[0].length;
       assert.ok(p.rows.every((r) => r.length === w));
@@ -46,16 +51,16 @@ describe('Saya hair', () => {
     }
   });
 
-  it('draws her pixels as she has them on the female body at idle', () => {
+  it('draws his pixels as he has them on the female body at idle', () => {
     const f = renderSprite(look('female'), 'idle', 0);
     // the anchor the front part is stamped on, from the same rig
     const g = { rig: f.rig, bp: f.rig.bp, look: look('female') } as unknown as Parameters<typeof faceAnchor>[0];
-    const { nx, ny } = faceAnchor(g);
+    const { ex: nx, ny } = faceAnchor(g);
     let same = 0;
     let all = 0;
     SAYA_HAIR_FRONT.rows.forEach((row, j) => {
       for (let i = 0; i < row.length; i++) {
-        if (row[i] === '.') continue;
+        if (row[i] === '.' || near(j) <= i) continue;
         all++;
         if (hex(f.rgba, nx - SAYA_HAIR_FRONT.pivot[0] + i, ny - SAYA_HAIR_FRONT.pivot[1] + j) === SAYA_HAIR_FRONT.colors[row[i]]) same++;
       }
@@ -63,15 +68,15 @@ describe('Saya hair', () => {
     assert.ok(same / all > 0.97, `${same} of ${all} front pixels are hers`);
   });
 
-  it('recolours her hair and her ornament apart, keeping her line', () => {
+  it('recolours his hair and his ornament apart, keeping his line', () => {
     const f = renderSprite(look('female', ['#2a2230', '#c0c0c8']), 'idle', 0);
     const g = { rig: f.rig, bp: f.rig.bp, look: look('female') } as unknown as Parameters<typeof faceAnchor>[0];
-    const { nx, ny } = faceAnchor(g);
+    const { ex: nx, ny } = faceAnchor(g);
     const seen = { line: 0, hair: 0, orn: 0 };
     SAYA_HAIR_FRONT.rows.forEach((row, j) => {
       for (let i = 0; i < row.length; i++) {
         const ch = row[i];
-        if (ch === '.') continue;
+        if (ch === '.' || near(j) <= i) continue;
         const got = hex(f.rgba, nx - SAYA_HAIR_FRONT.pivot[0] + i, ny - SAYA_HAIR_FRONT.pivot[1] + j);
         const own = SAYA_HAIR_FRONT.colors[ch];
         if (ch === SAYA_HAIR_LINE) seen.line += +(got === own);
@@ -79,7 +84,7 @@ describe('Saya hair', () => {
         else seen.hair += +(got === retintHex(own, SAYA_HAIR_BASE, '#2a2230'));
       }
     });
-    assert.ok(seen.line > 20 && seen.hair > 300 && seen.orn > 10, JSON.stringify(seen));
+    assert.ok(seen.line > 20 && seen.hair > 200 && seen.orn > 6, JSON.stringify(seen));
   });
 
   it('draws on every body, standing, moving, seated and knocked out', () => {

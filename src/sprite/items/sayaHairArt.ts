@@ -1,175 +1,157 @@
-// The owner's hair on his Saya, brought down to our scale in her colours
-// (tools/refs/saya-hair-from-ref.py from docs/reference/saya-owner-reference.jpg).
+// The owner's hair on his Saya, copied 1:1 from his picture at our game's scale
+// (tools/refs/saya-hair-from-ref.py from docs/reference/saya-game-scale-owner-reference.jpg).
 // Generated: rerun the script to change it.
 
 import type { PaintedPiece } from '../painted';
 import type { PaintedPart } from './capeArt';
 
-/** One character per colour of hers (all three parts share them). */
+/** A part on the face: its far side rides the far eye, from row `farFrom` down, from column `farCols[row - farFrom]` on. */
+export interface SayaFacePart extends PaintedPart {
+  farFrom: number;
+  farCols: number[];
+}
+
+/** One character per colour of his (all three parts share them). */
 const SAYA_HAIR_COLORS: Record<string, string> = {
-  k: '#02010d',
-  q: '#704336',
-  t: '#7d4c37',
-  y: '#85543e',
-  E: '#9d6e44',
-  J: '#b6834e',
-  P: '#c69151',
-  S: '#d4a35d',
-  X: '#e2b668',
-  o: '#e6c486',
-  h: '#f6d886',
-  H: '#fbe499',
-  W: '#feeeb5',
-  g: '#302525',
-  M: '#c48e42',
-  T: '#d8a84c',
-  Y: '#e8ba58',
-  '1': '#f7c962',
+  k: '#020101',
+  z: '#683c31',
+  t: '#734b29',
+  q: '#754930',
+  y: '#7e4f35',
+  E: '#905e3a',
+  J: '#aa7640',
+  P: '#be8e4e',
+  S: '#cfa359',
+  X: '#d8ae60',
+  T: '#edc653',
+  o: '#e7c26c',
+  h: '#f5d679',
+  H: '#f6e190',
+  W: '#f9edb6',
 };
 
-/** Over the head: the crown, the bangs, the ornament, the near side hair round the ear, the side lock down over the chest and the far lock. Its pivot is the cell on our face anchor (the near eye's lash start). */
-export const SAYA_HAIR_FRONT: PaintedPart = {
-  pivot: [17, 15],
+/** Over the head: his hair above the chin (crown, bangs, ornament, the near side hair round the ear) and the two locks in front of the face below it. Its pivot is the cell on our face anchor (the near eye's start). */
+export const SAYA_HAIR_FRONT: SayaFacePart = {
+  pivot: [11, 13],
+  farFrom: 9,
+  farCols: [16, 16, 20, 19, 19, 19, 19, 19, 19, 19, 18, 18, 19, 20, 20, 21, 21, 21, 22, 21],
   rows: [
-    '..............kkkkkkkk...........',
-    '...........kkkhhhSSyPhkkk........',
-    '.........kkHHhhhhhhhhPPhhkk......',
-    '........kSWHhhhhhhhhhhhSSShk.....',
-    '.......kJhWWhhhhhhhhhhhhhSShk....',
-    '......kXhhhhWhhhhhhhhhhhhhXhhq...',
-    '......kXhhhhhhhWhhShhhhhhWHhhhq..',
-    '......khShhShhWWWHShhhhWhWHShHq..',
-    '.....khShgghhhhhhyhWyhWhyWhyhHHq.',
-    '.....kShg1YgTghhhyhhyhhyhhyqShHq.',
-    '.....kShgYTMYTgShyhSyhhyShyyShSq.',
-    '.....kShhgMgMMgSyhSyhhySJySSPhSq.',
-    '.....kShhSgSgghJySJ..SS.J.JSPSPq.',
-    '.....kShhShSEhhhy.....E......ShPq',
-    '.....kShhSS.EhSy.............ShPq',
-    '.....kShhhS.EhSy..............hPq',
-    '....kSShShJ.EhSy.............ShPq',
-    '....kSShSHytyhhXy...........JSt..',
-    '...kPSShSoyyyhhXt...........JSt..',
-    '...kShSSHyPyyhhSt...........JSt..',
-    '..qSShSSHtJtyhhSt...........JSt..',
-    '..qShShhhtJtyhhXt..........JSt...',
-    '.qSShSWHXtJqyyHSt..........JSt...',
-    '.qShhSWWyJqtytHSt..........JSt...',
-    'qSyhSWhPyJqttqhWt..........JPSt..',
-    '..............tHSt...............',
-    '..............tWSt...............',
-    '..............qHSt...............',
-    '..............qhSq...............',
-    '..............qSSq...............',
-    '...............qSq...............',
-    '................q................',
+    '........kkkkkkkkk........',
+    '......kkhhhhhPPhhkk......',
+    '.....kXhhJhhhhhShhXk.....',
+    '....kShhEhEJhhhhhhhSk....',
+    '...kXhhEhyhhhhhhhhhhXk...',
+    '..kXhhyhEhhhhhhhhhhhhSk..',
+    '..kXhyoyohhXhhWhhWhXhhk..',
+    '..kXtTyhtHPWhWWXhWWyhWk..',
+    '.kXoPtTthhqhhWhPhWhyhWok.',
+    '.kXotTtTtXyXhhXyhhhyyhok.',
+    '.kXyTtEthyXXXXyyXhhyyXok.',
+    '.kXhqXyhhyXXyy.yXoy.yXok.',
+    '.kXhJyyhhyyyy..yXy.yyXok.',
+    'kXXhz.yhhy....yXy..kyXEk.',
+    'kXhhz.yhhy....yy...kyXk..',
+    'kXhhq.yhhy.........kyk...',
+    'XXhhEyyhhy.........kyk...',
+    'XhhXEEyhhy.........kXk...',
+    'XhhEEEyhhy.........kXk...',
+    'hhXEEkyhhy........yyXk...',
+    '......yhhPk.......kyXhk..',
+    '......yhhPkk.......kXhk..',
+    '.......yhhq.........khhk.',
+    '.......yXhy.........kShk.',
+    '........qhy..........khyk',
+    '........yhy..........khyk',
+    '.......kyhy..........khyk',
+    '........ySz...........yyk',
+    '........yy...........ky..',
   ],
   colors: SAYA_HAIR_COLORS,
 };
 
-/** Behind the head: the front's outline filled in (her strands run on behind the forehead, her shade below the eyes) and her hair behind the far shoulder; also the head's outline at the top. Pivot on the face anchor. */
-export const SAYA_HAIR_BACK: PaintedPart = {
-  pivot: [17, 15],
+/** Behind the head: the front's outline filled in to the chin (his strands run on behind the forehead, his shade below), also the head's outline at the top. Pivot on the face anchor. */
+export const SAYA_HAIR_BACK: SayaFacePart = {
+  pivot: [11, 13],
+  farFrom: 9,
+  farCols: [16, 16, 20, 19, 19, 19, 19, 19, 19, 19, 18, 18, 19, 20, 20, 21, 21, 21, 22, 21],
   rows: [
-    '..............kkkkkkkk...........',
-    '...........kkkhhhSSyPhkkk........',
-    '.........kkHHhhhhhhhhPPhhkk......',
-    '........kSWHhhhhhhhhhhhSSShk.....',
-    '.......kJhWWhhhhhhhhhhhhhSShk....',
-    '......kXhhhhWhhhhhhhhhhhhhXhhq...',
-    '......kXhhhhhhhWhhShhhhhhWHhhhq..',
-    '......khShhShhWWWHShhhhWhWHShHq..',
-    '.....khShgghhhhhhyhWyhWhyWhyhHHq.',
-    '.....kShg1YgTghhhyhhyhhyhhyqShHq.',
-    '.....kShgYTMYTgShyhSyhhyShyyShSq.',
-    '.....kShhgMgMMgSyhSyhhySJySSPhSq.',
-    '.....kShhSgSgghJySJyhSSSJyJSPSPq.',
-    '.....kShhShSEhhhyJJJJJEJJJJJJShPq',
-    '.....kShhSSJEhSyJJJJJJJJJJJJJShPq',
-    '.....kShhhSJEhSyJJJJJJJJJJJJJJhPq',
-    '....kSShShJJEhSyJJJJJJJJJJJJJShPq',
-    '....kSShSHytyhhXyJJJJJJJJJJJJSt..',
-    '...kPSShSoyyyhhXtJJJJJJJJJJJJSt..',
-    '...kShSSHyPyyhhStJJJJJJJJJJJJSt..',
-    '..qSShSSHtJtyhhStJJJJJJJJJJJJSt..',
-    '..qShShhhtJtyhhXtJJJJJJJJJJJSt...',
-    '.qSShSWHXtJqyyHStJJJJJJJJJJJSt...',
-    '.qShhSWWyJqtytHStJJJJJJJJJJJSt...',
-    'qSyhSWhPyJqttqhWtJJJJJJJJJJJPSt..',
-    '..............tHSt........yPhSq..',
-    '..............tWSt.........PhSq..',
-    '..............qHSt.........JSPq..',
-    '..............qhSq.........JSq...',
-    '..............qSSq.........tPq...',
-    '...............qSq..........Jq...',
-    '................q...........q....',
+    '........kkkkkkkkk........',
+    '......kkhhhhhPPhhkk......',
+    '.....kXhhJhhhhhShhXk.....',
+    '....kShhEhEJhhhhhhhSk....',
+    '...kXhhEhyhhhhhhhhhhXk...',
+    '..kXhhyhEhhhhhhhhhhhhSk..',
+    '..kXhyoyohhXhhWhhWhXhhk..',
+    '..kXtTyhtHPWhWWXhWWyhWk..',
+    '.kXoPtTthhqhhWhPhWhyhWok.',
+    '.kXotTtTtXyXhhXyhhhyyhok.',
+    '.kXyTtEthyXXXXyyXhhyyXok.',
+    '.kXhqXyhhyXXyyyyXoyyyXok.',
+    '.kXhJyyhhyyyyyyyXyyyyXok.',
+    'kXXhzEyhhyEEEEyXyEEkyXEk.',
+    'kXhhzEyhhyEEEEyyEEEkyXk..',
+    'kXhhqEyhhyEEEEEEEEEkyk...',
+    'XXhhEyyhhyEEEEEEEEEkyk...',
+    'XhhXEEyhhyEEEEEEEEEkXk...',
+    'XhhEEEyhhyEEEEEEEEEkXk...',
+    'hhXEEkyhhyEEEEEEEEyyXk...',
+    '......yhhPkEEEEEEEkyXhk..',
+    '......yhhPkk.......kXhk..',
+    '.......yhhq.........khhk.',
+    '.......yXhy.........kShk.',
+    '........qhy..........khyk',
+    '........yhy..........khyk',
+    '.......kyhy..........khyk',
+    '........ySz...........yyk',
+    '........yy...........ky..',
   ],
   colors: SAYA_HAIR_COLORS,
 };
 
-/** Down the back from the near side of the head to the waist, behind the body: its pivot is the cell on the neck, its angle the torso's (neck to pelvis) at idle. */
+/** Down the back from the near side of the head, behind the body: its pivot is the cell on the neck, its angle the torso's (neck to pelvis) at idle. */
 export const SAYA_HAIR_LONG: PaintedPiece = {
-  pivot: [29, 11],
+  pivot: [26, 7],
   angle: 90.50,
   rows: [
-    '..............qShhShSEhh',
-    '..............qShhShSEhh',
-    '..............qShhSSJEhS',
-    '..............qShhhSJEhS',
-    '.............qSShShJEyhS',
-    '.............qSShSHyEyhS',
-    '............qPSShSoyEyhh',
-    '............qShSSHyPyyhh',
-    '...........qSShSSHtJtyhh',
-    '...........qShShhhtJtyhh',
-    '..........qSShSWHXtJqyyh',
-    '.........qShhSWWyJqtyhSt',
-    '........qSyhSWhPyJqtEtJt',
-    '......qXSPhhSHHyhSEtJEtt',
-    '....tXXtqhhShhHhSyhJEtEt',
-    '..qhSq.qhhSSWhhShyhJEtEt',
-    '.qhq..qXhShhhWhShyhJEtEt',
-    'qht...qohPhhhWhShyhJEtEt',
-    'qX..qXhShhXhhShhyhJEtEtt',
-    'qS.qXWShhSyhhShhyhJEyEtt',
-    'qSqXhSPhhtShhPShyhJEyEtt',
-    '.qShSPhhtShSPShyPJJEyEtt',
-    '.qPShtPhPyJPJEyJJEyEEtyt',
-    '.qPSStPSPyJPJEyJJEyEEtyt',
-    '.qPSStPSPyJPJEyJJEyEEtyt',
-    '.qPSq.qSPyJPJEyJJEyEEtyt',
-    '.qPSq.qPPyJPJEyJEEyEEtyt',
-    '.qPPq.qSPyJPJEyJEEyEEtyt',
-    '..qPq.qSPyJPJEyJEEyEEtyt',
-    '..qJq.qPPyJPJEyJEEyEEtyt',
-    '...q..qPPyJPJEyJEEyEEtyt',
-    '......qPJyJPJEyJEEyEEtyt',
-    '......qJJyJPJEyJEEyEEtyt',
-    '......qJqyJPJEyJEEyEEtyt',
-    '.......q.qJPJEyJEEyEEtyt',
-    '.........qJPJEyJEEyEEtyq',
-    '..........qPJqyJEEyEEtq.',
-    '..........qJq.qJEEyEEtq.',
-    '...........q..qJEyqEEq..',
-    '..............qJEq.qEq..',
-    '..............qJq..qq...',
-    '...............q........',
+    '...........kXhhzEyh',
+    '...........kXhhqEyh',
+    '..........kXXhhEyyh',
+    '.........kyXhhXEEyh',
+    '.........khXhhEEEyh',
+    '........khXhhXEEkyh',
+    '......kkhXhhXyyEEyh',
+    '.....khhPhhhEEyEEyh',
+    '....khhJhhXyEEyEEqk',
+    '...khhJhhhEyEEyEEqk',
+    '...khEhhhEEyEEyEEqk',
+    '..khhPhhEEEyEEyEEqk',
+    '..khJhhEEEEyEEyEEqk',
+    '.khhJhEEEEEyEEyEEqk',
+    '.khhJhEEyEEyEEyEEqk',
+    'kXhyXXEEyEEyEEyEqk.',
+    'kXXyXXEEyEEyEEyEqk.',
+    'kXyyXXyEyEEyEEyEqk.',
+    'kXkyXXEEyEEyEEyEqk.',
+    'kXkyXXkEyEEyEEyqk..',
+    'kX.kXXkEyEEyEEqk...',
+    '.k.kXkkkEEqkEqk....',
+    '....k...kqk.k......',
+    '.........k.........',
   ],
   colors: SAYA_HAIR_COLORS,
 };
 
-/** Her black line: kept as she has it when the hair is recoloured. */
+/** His far eye's distance from his near one (fx - ex in our face anchor's terms). */
+export const SAYA_HAIR_EYES = 7;
+
+/** His black line: kept as he has it when the hair is recoloured, and laid along hair cut away when she lies down. */
 export const SAYA_HAIR_LINE = 'k';
 
-/** Her darkest brown, her line down the sides and round the long hair: the line along hair cut away when she lies down. */
-export const SAYA_HAIR_EDGE = 'q';
+/** His gold ornament's characters: they take the ornament's colour, not the hair's. */
+export const SAYA_HAIR_ORNAMENT = 'Tt';
 
-/** Her gold ornament's characters: they take the ornament's colour, not the hair's (its dark line stays). */
-export const SAYA_HAIR_ORNAMENT = 'gnMTY1';
-export const SAYA_HAIR_ORNAMENT_LINE = 'g';
+/** His hair's lit face, most of the crown: the hair slot's default; his other hair colours follow it. */
+export const SAYA_HAIR_BASE = '#f5d679';
 
-/** Her hair's lit face, most of the crown: the hair slot's default; her other hair colours follow it. */
-export const SAYA_HAIR_BASE = '#f6d886';
-
-/** Her ornament's gold: the ornament slot's default. */
-export const SAYA_HAIR_ORNAMENT_BASE = '#d8a84c';
+/** His ornament's gold: the ornament slot's default. */
+export const SAYA_HAIR_ORNAMENT_BASE = '#edc653';

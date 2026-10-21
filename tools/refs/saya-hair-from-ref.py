@@ -1,41 +1,39 @@
-"""The owner's hair on his Saya (docs/reference/saya-owner-reference.jpg) as a hairstyle.
+"""The owner's hair on his Saya as a hairstyle, copied 1:1 from his picture at our game's scale.
 
-His picture is his own pixel art at 10 picture pixels to one of hers, and she is about 2.2 of her
-pixels to one of ours (heroine_ref.py), so her hair is not copied 1:1: it is brought down to our scale
-with the study's maps (heroine_ref.SEGMENTS['saya']: her head at 0.65 across and 0.62 down about her
-eyes, which land on ours; her long hair down the 'hair' column below her chin) and finished by hand at
-our scale, in her colours only (KEY: every one is in heroine_ref.PALETTES['saya']), inside her line:
-black over the crown, her darkest brown down the sides and round the long hair, as she has it.
+His picture (docs/reference/saya-game-scale-owner-reference.jpg, "tus referencias perfectas") is his
+pixel art drawn at our sprite's scale: 1024 picture pixels for 100 of his, so 10.24 picture pixels to
+one of his and one of his to one of ours. His pixels are read straight off it (the median of each
+cell's inside) and snapped to his colours; nothing is scaled. The bigger picture
+(saya-owner-reference.jpg) only helped to read what his small pixels show.
 
-Her hair is long, straight and blonde: a round crown lit from the upper left with a band of light
-across it, side-swept bangs over the brow in strands parted by brown lines, one strand longer between
-the eyes, a gold knot of an ornament on the near side of the crown, a side lock in front of the near
-cheek with the ear showing behind it, falling on down in front of the shoulder to the chest, a lock
-down the far cheek to the neck, and the rest of it falling behind the near shoulder and down the back
-to the waist, blown back a little, with a loose strand curling out at the shoulder. The parts:
+Her hair is long, straight and blonde: a round crown in his black line, side-swept bangs in strands
+parted by brown lines with one strand between the eyes, his gold checker ornament on the near side of
+the crown, the ear showing between the near side hair and a side lock that falls in front of the near
+cheek down over the scarf, a lock down the far cheek to the far shoulder, and the rest falling behind
+the near shoulder down the back. The parts, in his cells (x across, y down):
 
-  front   over the head (hairFront), on our face anchor (the near eye's lash start): the crown, the
-          bangs, the ornament, the near side hair with the ear between it and the side lock, the side
-          lock on down over the chest, the far lock. Where her picture shows skin, our head shows.
-  back    behind the head (hairBack), on the face anchor: the front's outline filled in (what her face
-          hides takes the colour of the nearest strand above it, so her strands run on down, and her
-          shade, J, from her eyes down) and her hair behind the far shoulder. It is also the head's
-          outline at the top (the game trims our skull to it).
+  front   over the head (hairFront), on our face anchor: everything of his hair above his chin (row
+          25; from row 22 only from x 39 on, the hair further out already belongs to the long part),
+          and below it the two locks in front of the face (x 44 on). His skin and eyes are left
+          out, so our face shows there. The far side (from row 15, the run of each row that reaches
+          its far end, from x 55 at most) is stamped on our far eye:
+          his far eye is 7 pixels from his near one and ours 9, so the far lock moves out with it
+          (one row more each row from row 15, his strands repeated across the gap) and frames our
+          face as it frames his instead of covering our far eye.
+  back    behind the head (hairBack), on the face anchor: the front's outline filled in from the
+          crown to the chin (behind the forehead each pixel takes the strand above it, below it his
+          shade), so no gap shows round the head; it is also the head's top outline (the game trims
+          our skull to it).
   long    behind the head and the body (hairBack), on the neck, turned with the torso: the hair from
-          the near side of the head down the back to the waist. Her picture hides it behind the near
-          arm and the scarf; it is continued from what shows (her strands to the left of the arm and
-          between the arm and the body).
-
-The hand-finished rows are below (FRONT, BACK_MORE, LONG), in our frame on the female body at idle
-frame 0 (where heroine_ref.reduced('saya') lies). The automatic reduction they were drawn from is
-written beside them (study/auto@8.png), with her picture's head at the same size (study/hers@8.png).
+          the near side of the head down the back. His picture hides it behind the near arm and the
+          scarf's end from x 37 on; it is continued from what shows (his shade E with his strand
+          lines y every third column, his darkest brown q by the body, ending in tips like his).
 
 It writes, in <out>:
 
-  hair.json             rows and palette, pivots, her line's characters and the base colours
-  study/front@8.png, study/back@8.png, study/long@8.png   the parts at 8x
-  study/auto@8.png      the automatic reduction of her hair at our scale
-  study/hers@8.png      her picture's hair (her pixels), scaled to the same height
+  hair.json                 rows, palette, pivots
+  study/his@10.png          his hair as read off the picture (his pixels), 10x
+  study/parts@10.png        front, back and long side by side, filled pixels marked
 
 and, with a third argument, the game's module (src/sprite/items/sayaHairArt.ts). The same picture
 always gives the same bytes. Run from the repo root with python3 -I:
@@ -55,32 +53,89 @@ from PIL import Image  # noqa: E402
 
 import heroine_ref as R  # noqa: E402
 
-WHICH = 'saya'
-# Her colours, one character each (all of them in R.PALETTES['saya']).
-KEY = {
-    # her line: black over the crown and the near side
-    'k': '#02010d',
-    # her hair, darkest first: her darkest brown is also her line down the sides and round the long hair
-    'q': '#704336', 't': '#7d4c37', 'y': '#85543e', 'E': '#9d6e44', 'J': '#b6834e', 'P': '#c69151',
-    'S': '#d4a35d', 'X': '#e2b668', 'o': '#e6c486', 'h': '#f6d886', 'H': '#fbe499', 'W': '#feeeb5',
-    # her gold ornament: its dark line, its shade and its golds
-    'g': '#302525', 'n': '#453631', 'M': '#c48e42', 'T': '#d8a84c', 'Y': '#e8ba58', '1': '#f7c962',
+SRC = 'docs/reference/saya-game-scale-owner-reference.jpg'
+# His grid: 100 x 100 cells over the 1024 x 1024 picture, starting at its corner.
+PITCH = 10.24
+CELLS = 100
+
+# Every colour of his picture round her head, to snap each cell to (the nearest one). The hair's
+# characters are his hair's colours, darkest first; their hex values here are only where the snapping
+# starts: each is then set to the mean of his cells snapped to it.
+SNAP = {
+    '.': '#ffffff', 'k': '#020101',
+    'q': '#74462b', 'y': '#7e5034', 'E': '#94603c', 'J': '#ab7840', 'P': '#bf8e4f', 'S': '#cc9e58',
+    'X': '#d8ae60', 'o': '#e7c26c', 'G': '#edc653', 'h': '#f5d679', 'H': '#f6e190', 'W': '#f9edb6',
+    'z': '#6b3831',
+    # not hair: his skin, scarf, top, eyes, chest plate
+    's': '#f3bf9d', 'r': '#d58d76', 'R': '#d0856f', 'f': '#f6ccab',
+    'a': '#441526', 'b': '#621b2a', 'c': '#72242e', 'd': '#b13134', 'n': '#222339', 'm': '#384060',
+    'u': '#1b487a', 'v': '#3877a1', 'w': '#ebe5d7', 'g': '#bfb1a7', 'Z': '#523c48',
 }
+HAIR = 'qyEJPSXoGhHWz'
 LINE = 'k'
-# Her darkest brown, her line down the sides and round the long hair: also the line the game lays along
-# the hair it cuts away when she is knocked out.
-EDGE = 'q'
-ORNAMENT = 'gnMTY1'
-ORNAMENT_LINE = 'g'
-# Her hair's lit face, most of her crown: the hair colour slot's default (her other hair colours move
-# the way it does; her black line stays).
+# His gold checker ornament on the near side of the crown (x 42-48, rows 12-16): its gold (G there)
+# becomes T and its dark squares (q there) t, so they take the ornament's colour, not the hair's.
+ORNAMENT_BOX = (42, 12, 49, 17)
+ORNAMENT = 'Tt'
+# His hair's lit face, most of the crown: the hair colour slot's default (his other hair colours move
+# the way it does; his black line stays). His ornament's gold: the ornament slot's default.
 BASE = 'h'
-# Her ornament's gold: the ornament slot's default (its dark line stays).
 ORNAMENT_BASE = 'T'
 
-# Our female body at idle frame 0 (heroine_ref.OUR_JOINTS, fine pixels): the face anchor (body.ts
-# faceAnchor: floor((head.x - 1.9 k) RES), floor((head.y + k) RES), female head scale k 0.76), the neck
-# cell the long hair hangs from and the torso's angle (neck to pelvis) the long hair is drawn at.
+# His near eye: the cell our face anchor (body.ts faceAnchor ex, ny: the near eye's white under its
+# lash) falls on, x 50 on his lash row 19. His far iris (fx) is 7 cells further on; ours is 9.
+HIS_ANCHOR = (50, 19)
+HIS_EYES = 7
+# The far side, from this row down: in each row the run of the front's pixels that reaches its far
+# end, starting no nearer than FAR_MIN (on the crown, where the row is whole, at FAR_MIN).
+FAR_FROM, FAR_MIN = 15, 55
+
+# The front: his hair above the chin, the locks in front of the face below it.
+FRONT_BOX = (26, 6, 67, 35)
+CHIN = 25
+LOCKS_FROM_X = 44
+# Below the ear (row 21) the hair left of x 39 already falls behind the shoulder: it is the long
+# part's alone, so it turns with the torso and leaves no stub at the head when the body leans.
+SIDE_FROM_Y, SIDE_FROM_X = 22, 39
+# His eyes' black and his mouth, which lie inside the hair's outline: our face draws its own.
+NOT_HAIR = {(49, 19), (50, 19), (51, 19), (52, 19), (57, 19), (49, 20), (51, 27)}
+# The back's filled outline: to his chin; behind the forehead (to this row) the strand above.
+BACK_TO = 26
+FOREHEAD_TO = 18
+SHADE = 'E'
+
+# The long hair, x 26-46 from row 20: '*' is his pixel there, any other character is a pixel filled
+# in his colours where his picture hides the hair (behind the scarf's end and the near arm).
+LONG = (26, 20, [
+    '.............*****E**',
+    '.............*****E**',
+    '............*********',
+    '...........**********',
+    '...........**********',
+    '..........***********',
+    '........********yEE**',
+    '.......*******EEyEE**',
+    '......*******yEEyEEqk',
+    '.....*******EyEEyEEqk',
+    '.....******EEyEEyEEqk',
+    '....*******EEyEEyEEqk',
+    '....*******EEyEEyEEqk',
+    '...********EEyEEyEEqk',
+    '...*******yEEyEEyEEqk',
+    '..********yEEyEEyEqk.',
+    '..*******EyEEyEEyEqk.',
+    '..*******EyEEyEEyEqk.',
+    '..*******EyEEyEEyEqk.',
+    '..*******EyEEyEEyqk..',
+    '..**.****EyEEyEEqk...',
+    '...*.****kEEqkEqk....',
+    '......*...kqk.k......',
+    '...........k.........',
+])
+
+# Our female body at idle frame 0 (heroine_ref.OUR_JOINTS): the face anchor (body.ts faceAnchor:
+# floor((head.x - 1.9 k) RES), floor((head.y + k) RES), female head scale k 0.76), the neck cell the
+# long hair hangs from and the torso's angle (neck to pelvis) it is drawn at.
 HEAD_SCALE = 0.76
 RES = 2
 ANCHOR = (int(math.floor(R.OUR_JOINTS['head'][0] - 1.9 * HEAD_SCALE * RES)),
@@ -88,144 +143,63 @@ ANCHOR = (int(math.floor(R.OUR_JOINTS['head'][0] - 1.9 * HEAD_SCALE * RES)),
 NECK = tuple(int(math.floor(v)) for v in R.OUR_JOINTS['neck'])
 TORSO_ANGLE = math.degrees(math.atan2(R.OUR_JOINTS['pelvis'][1] - R.OUR_JOINTS['neck'][1],
                                       R.OUR_JOINTS['pelvis'][0] - R.OUR_JOINTS['neck'][0]))
-
-# Over the head, x 104-139 from row 126. Her line over the crown (k), her highlights in a band across
-# it (W, H), the gold knot at x 114-120 rows 134-138 in its dark line (g), the bangs parted by brown
-# lines (y) with their tips over the brow (row 138) and the long strand between the eyes (x 128, row
-# 139), the ear (x 117, rows 140-142) between the near side hair and the side lock (x 118-122, edged in
-# y/t on the face side), which falls on over the chest to row 157, and the far lock (x 132-138), light
-# against the face and outside our far eye, then down the jaw.
-FRONT = (104, 126, [
-    '................kkkkkkkk............',
-    '.............kkkhhhSSyPhkkk.........',
-    '...........kkHHhhhhhhhhPPhhkk.......',
-    '..........kSWHhhhhhhhhhhhSSShk......',
-    '.........kJhWWhhhhhhhhhhhhhSShk.....',
-    '........kXhhhhWhhhhhhhhhhhhhXhhq....',
-    '........kXhhhhhhhWhhShhhhhhWHhhhq...',
-    '........khShhShhWWWHShhhhWhWHShHq...',
-    '.......khShgghhhhhhyhWyhWhyWhyhHHq..',
-    '.......kShg1YgTghhhyhhyhhyhhyqShHq..',
-    '.......kShgYTMYTgShyhSyhhyShyyShSq..',
-    '.......kShhgMgMMgSyhSyhhySJySSPhSq..',
-    '.......kShhSgSgghJySJ..SS.J.JSPSPq..',
-    '.......kShhShSEhhhy.....E......ShPq.',
-    '.......kShhSS.EhSy.............ShPq.',
-    '.......kShhhS.EhSy..............hPq.',
-    '......kSShShJ.EhSy.............ShPq.',
-    '......kSShSHytyhhXy...........JSt...',
-    '.....kPSShSoyyyhhXt...........JSt...',
-    '.....kShSSHyPyyhhSt...........JSt...',
-    '....qSShSSHtJtyhhSt...........JSt...',
-    '....qShShhhtJtyhhXt..........JSt....',
-    '...qSShSWHXtJqyyHSt..........JSt....',
-    '...qShhSWWyJqtytHSt..........JSt....',
-    '..qSyhSWhPyJqttqhWt..........JPSt...',
-    '................tHSt................',
-    '................tWSt................',
-    '................qHSt................',
-    '................qhSq................',
-    '................qSSq................',
-    '.................qSq................',
-    '..................q.................',
-])
-
-# Behind the head, besides the front's outline filled in: her hair behind the far shoulder, to row 157.
-BACK_MORE = (132, 151, [
-    'yPhSq',
-    '.PhSq',
-    '.JSPq',
-    '.JSq.',
-    '.tPq.',
-    '..Jq.',
-    '..q..',
-])
-# The front's outline is filled from the crown down to this row (her chin).
-BACK_TO = 150
-# Behind the forehead each hidden pixel takes the colour of the nearest strand above it; from her eyes
-# (this row) down, her hair behind the face is in shade.
-FOREHEAD_TO = 138
-SHADE = 'J'
-
-# Down the back, x 96-121 from row 138: from the near side of the head (under the front and back parts,
-# so no gap opens when the head moves on the neck) behind the near shoulder, flowing down to the left;
-# the loose strand curling out at the shoulder (x 98-103, rows 152-158); her lit strands to the left of
-# the arm (P, S parted by t), the outer one apart from the rest (x 99-102, ending at row 168) as hers
-# are; behind the arm and the body her hair in shade (J, E parted by y) to the tips at the waist (row
-# 179).
-LONG = (96, 138, [
-    '................qShhShSEhh',
-    '................qShhShSEhh',
-    '................qShhSSJEhS',
-    '................qShhhSJEhS',
-    '...............qSShShJEyhS',
-    '...............qSShSHyEyhS',
-    '..............qPSShSoyEyhh',
-    '..............qShSSHyPyyhh',
-    '.............qSShSSHtJtyhh',
-    '.............qShShhhtJtyhh',
-    '............qSShSWHXtJqyyh',
-    '...........qShhSWWyJqtyhSt',
-    '..........qSyhSWhPyJqtEtJt',
-    '........qXSPhhSHHyhSEtJEtt',
-    '......tXXtqhhShhHhSyhJEtEt',
-    '....qhSq.qhhSSWhhShyhJEtEt',
-    '...qhq..qXhShhhWhShyhJEtEt',
-    '..qht...qohPhhhWhShyhJEtEt',
-    '..qX..qXhShhXhhShhyhJEtEtt',
-    '..qS.qXWShhSyhhShhyhJEyEtt',
-    '..qSqXhSPhhtShhPShyhJEyEtt',
-    '...qShSPhhtShSPShyPJJEyEtt',
-    '...qPShtPhPyJPJEyJJEyEEtyt',
-    '...qPSStPSPyJPJEyJJEyEEtyt',
-    '...qPSStPSPyJPJEyJJEyEEtyt',
-    '...qPSq.qSPyJPJEyJJEyEEtyt',
-    '...qPSq.qPPyJPJEyJEEyEEtyt',
-    '...qPPq.qSPyJPJEyJEEyEEtyt',
-    '....qPq.qSPyJPJEyJEEyEEtyt',
-    '....qJq.qPPyJPJEyJEEyEEtyt',
-    '.....q..qPPyJPJEyJEEyEEtyt',
-    '........qPJyJPJEyJEEyEEtyt',
-    '........qJJyJPJEyJEEyEEtyt',
-    '........qJqyJPJEyJEEyEEtyt',
-    '.........q.qJPJEyJEEyEEtyt',
-    '...........qJPJEyJEEyEEtyq',
-    '............qPJqyJEEyEEtq.',
-    '............qJq.qJEEyEEtq.',
-    '.............q..qJEyqEEq..',
-    '................qJEq.qEq..',
-    '................qJq..qq...',
-    '.................q........',
-])
+# His cell -> our frame at idle (his near eye on ours).
+OFF = (ANCHOR[0] - HIS_ANCHOR[0], ANCHOR[1] - HIS_ANCHOR[1])
 
 
-def grid(part):
-    """A part's rows in our frame: (GRID, GRID) array of KEY characters ('' empty)."""
-    x0, y0, rows = part
-    assert len({len(r) for r in rows}) == 1, 'ragged rows'
-    out = np.full((R.GRID, R.GRID), '', dtype='<U1')
-    for j, row in enumerate(rows):
-        for i, ch in enumerate(row):
-            if ch != '.':
-                assert ch in KEY, f'not one of her colours: {ch!r}'
-                out[y0 + j, x0 + i] = ch
+def hexrgb(h):
+    return np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)])
+
+
+def native():
+    """His pixels: the median of each cell's inside (6 x 6 picture pixels), (CELLS, CELLS, 3)."""
+    a = np.asarray(Image.open(SRC).convert('RGB')).astype(int)
+    assert a.shape[:2] == (1024, 1024), a.shape
+    out = np.zeros((CELLS, CELLS, 3), int)
+    for j in range(CELLS):
+        for i in range(CELLS):
+            x0 = int(round(i * PITCH + 2.5))
+            y0 = int(round(j * PITCH + 2.5))
+            out[j, i] = np.median(a[y0:y0 + 6, x0:x0 + 6].reshape(-1, 3), 0)
     return out
 
 
-def build():
-    """The three parts in our frame, and the mask of the back's filled-in pixels."""
-    pal = set(R.PALETTES[WHICH])
-    for ch, hexv in KEY.items():
-        assert hexv in pal, f'{ch} {hexv} is not one of her colours'
-    front = grid(FRONT)
-    long_ = grid(LONG)
+def snapped(N):
+    keys = list(SNAP)
+    P = np.array([hexrgb(SNAP[k]) for k in keys])
+    d = np.abs(N[:, :, None, :] - P[None, None]).sum(3)
+    ch = np.array(keys)[d.argmin(2)]
+    x0, y0, x1, y1 = ORNAMENT_BOX
+    box = ch[y0:y1, x0:x1]
+    box[box == 'G'] = 'T'
+    box[box == 'q'] = 't'
+    return ch
+
+
+def front_mask(ch):
+    m = np.zeros(ch.shape, bool)
+    x0, y0, x1, y1 = FRONT_BOX
+    ok = lambda x, y: (y <= CHIN or x >= LOCKS_FROM_X) and (y < SIDE_FROM_Y or x >= SIDE_FROM_X)  # noqa: E731
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            if ch[y, x] in HAIR + ORNAMENT and ok(x, y) and (x, y) not in NOT_HAIR:
+                m[y, x] = True
+    # his black line round it
+    line = np.zeros_like(m)
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            if ch[y, x] == LINE and ok(x, y) and (x, y) not in NOT_HAIR and m[y - 1:y + 2, x - 1:x + 2].any():
+                line[y, x] = True
+    return m | line
+
+
+def build(ch):
+    """The parts as (CELLS, CELLS) arrays of characters ('' empty), in his cells, and the back's
+    and the long hair's filled pixels."""
+    front = np.where(front_mask(ch), ch, '')
     back = front.copy()
-    # the far shoulder's hair
-    more = grid(BACK_MORE)
-    back[more != ''] = more[more != '']
-    # the front's outline filled in, crown to chin: between its first and last pixel in each row
-    filled = np.zeros(back.shape, bool)
-    y_top = FRONT[1]
+    filled = np.zeros(ch.shape, bool)
+    y_top = FRONT_BOX[1]
     for y in range(y_top, BACK_TO + 1):
         cols = np.nonzero(front[y] != '')[0]
         if not len(cols):
@@ -242,12 +216,51 @@ def build():
                         src = c
                         break
             back[y, x] = src
-    return front, back, long_, filled
+    x0, y0, rows = LONG
+    assert len({len(r) for r in rows}) == 1, 'ragged rows'
+    long_ = np.full(ch.shape, '', '<U1')
+    lfill = np.zeros(ch.shape, bool)
+    for j, row in enumerate(rows):
+        for i, c in enumerate(row):
+            x, y = x0 + i, y0 + j
+            if c == '*':
+                assert ch[y, x] in HAIR + LINE, f'not his hair at {x},{y}: {ch[y, x]}'
+                long_[y, x] = ch[y, x]
+            elif c != '.':
+                assert c in HAIR + LINE, c
+                long_[y, x] = c
+                lfill[y, x] = True
+    return front, back, long_, filled, lfill
 
 
-def rows_of(a, box):
-    x0, y0, x1, y1 = box
-    return [''.join(c if c else '.' for c in a[y, x0:x1]) for y in range(y0, y1)]
+def palette(N, parts):
+    """Each character's colour: the mean of his cells snapped to it in the parts (rounded)."""
+    used = {}
+    for a in parts:
+        for (y, x) in zip(*np.nonzero(a != '')):
+            used.setdefault(a[y, x], set()).add((y, x))
+    pal = {}
+    for c in sorted(used, key=lambda c: hexrgb(SNAP['G' if c == 'T' else 'q' if c == 't' else c]).sum()):
+        cells = sorted(used[c])
+        # only his own cells set a colour (filled pixels reuse his colours)
+        his = [N[y, x] for (y, x) in cells if CH[y, x] == c]
+        assert his, f'{c} is used but none of his cells has it'
+        m = np.mean(his, 0)
+        pal[c] = '#%02x%02x%02x' % tuple(int(round(v)) for v in m)
+    return pal
+
+
+def far_cols(front):
+    """Each row's first far-side column, from FAR_FROM down to the front's last row."""
+    rows = np.nonzero((front != '').any(1))[0]
+    cols = []
+    for y in range(FAR_FROM, int(rows.max()) + 1):
+        xs = np.nonzero(front[y] != '')[0]
+        x = int(xs.max())
+        while x - 1 >= FAR_MIN and front[y, x - 1] != '':
+            x -= 1
+        cols.append(x)
+    return cols
 
 
 def bbox(a):
@@ -255,99 +268,47 @@ def bbox(a):
     return (int(xx.min()), int(yy.min()), int(xx.max()) + 1, int(yy.max()) + 1)
 
 
-def rgba(a, box, mark=None):
+def rows_of(a, box):
     x0, y0, x1, y1 = box
-    im = np.zeros((y1 - y0, x1 - x0, 4), np.uint8)
+    return [''.join(c if c else '.' for c in a[y, x0:x1]) for y in range(y0, y1)]
+
+
+def picture(a, pal, box, k, mark=None):
+    x0, y0, x1, y1 = box
+    im = np.full((y1 - y0, x1 - x0, 3), 255, np.uint8)
     for y in range(y0, y1):
         for x in range(x0, x1):
             c = a[y, x]
             if c:
-                h = KEY[c]
-                im[y - y0, x - x0] = [int(h[1:3], 16), int(h[3:5], 16), int(h[5:7], 16), 255]
+                im[y - y0, x - x0] = hexrgb(pal[c])
                 if mark is not None and mark[y, x] and (x + y) % 2:
-                    im[y - y0, x - x0] = [0, 200, 255, 255]
-    return im
+                    im[y - y0, x - x0] = (0, 200, 255)
+    return Image.fromarray(im).resize(((x1 - x0) * k, (y1 - y0) * k), Image.NEAREST)
 
 
-def auto(box):
-    """Her hair brought down to our box automatically (the start of the hand-finished rows): over her
-    chin the head's map, below it the long hair's; in each of our pixels her commonest kind of pixel
-    under it (her hair or ornament, her line, her skin, her clothes) and, for her hair, the middle one
-    of its colours by lightness. Her hair, ornament and line only (RGBA)."""
-    N = R.native(WHICH)
-    fig = R.figure(WHICH)
-    Q = R.quantize(N, WHICH)
-    pal = R.PALETTES[WHICH]
-    P = R.rgb(WHICH)
-    lum = R.luma(P)
-    hair = {pal.index(KEY[c]) for c in KEY if c not in ORNAMENT and c != LINE}
-    orn = {pal.index(KEY[c]) for c in ORNAMENT}
-    line = {pal.index(h) for h in ('#02010d', '#050416', '#14101f')}
-    x0, y0, x1, y1 = box
-    chin = 150
-    S = 6
-    offs = (np.arange(S) + 0.5) / S
-    out = np.zeros((y1 - y0, x1 - x0, 4), np.uint8)
-    for y in range(y0, y1):
-        seg = R.SEGMENTS[WHICH]['head' if y < chin else 'hair']
-        for x in range(x0, x1):
-            q = np.array([[x + ox, y + oy] for oy in offs for ox in offs])
-            p = R.backward(seg, q)
-            px, py = np.floor(p[:, 0]).astype(int), np.floor(p[:, 1]).astype(int)
-            ok = (px >= 0) & (px < N.shape[1]) & (py >= 0) & (py < N.shape[0])
-            cs = np.full(len(q), -1)
-            cs[ok] = np.where(fig[py[ok], px[ok]], Q[py[ok], px[ok]], -1)
-            if (cs < 0).sum() * 2 > len(cs):
-                continue
-            cs = cs[cs >= 0]
-            kinds = {'hair': [c for c in cs if c in hair], 'orn': [c for c in cs if c in orn],
-                     'line': [c for c in cs if c in line]}
-            n_other = len(cs) - sum(len(v) for v in kinds.values())
-            kind, vals = max(kinds.items(), key=lambda kv: len(kv[1]))
-            # not her hair: her clothes, or the line round them with no hair under it
-            if len(vals) < n_other or not (kinds['hair'] or kinds['orn']):
-                continue
-            if kind == 'line' and len(vals) < 0.4 * len(cs) and (kinds['hair'] or kinds['orn']):
-                kind = 'hair' if len(kinds['hair']) >= len(kinds['orn']) else 'orn'
-                vals = kinds[kind]
-            v = sorted(vals, key=lambda c: lum[c])[len(vals) // 2]
-            out[y - y0, x - x0] = [*P[v], 255]
-    return out
-
-
-def hers(box):
-    """Her picture's hair region (her pixels on white), the part of her the box covers by the head's
-    map (her head) and the long hair's."""
-    N = R.native(WHICH).astype(np.uint8)
-    seg_h, seg_l = R.SEGMENTS[WHICH]['head'], R.SEGMENTS[WHICH]['hair']
-    x0, y0, x1, y1 = box
-    a = R.backward(seg_h, np.array([[x0, y0]]))[0]
-    b = R.backward(seg_l, np.array([[x1, y1]]))[0]
-    c = R.backward(seg_l, np.array([[x0, y1]]))[0]
-    hx0 = int(max(0, min(a[0], c[0])))
-    hy0 = int(max(0, a[1]))
-    hx1 = int(min(N.shape[1], b[0]))
-    hy1 = int(min(N.shape[0], b[1]))
-    return N[hy0:hy1, hx0:hx1]
+CH = None
 
 
 def main():
+    global CH
     out = sys.argv[1]
     os.makedirs(os.path.join(out, 'study'), exist_ok=True)
-    front, back, long_, filled = build()
-    meta = {'source': R.REFS[WHICH], 'anchor': list(ANCHOR), 'neck': list(NECK), 'torsoAngle': round(TORSO_ANGLE, 2)}
-    used = set()
+    N = native()
+    CH = snapped(N)
+    front, back, long_, filled, lfill = build(CH)
+    pal = palette(N, (front, back, long_))
+    assert BASE in pal and ORNAMENT_BASE in pal
+    nx, ny = NECK[0] - OFF[0], NECK[1] - OFF[1]
+    meta = {'source': SRC, 'pitch': PITCH, 'anchor': list(HIS_ANCHOR), 'neck': [nx, ny],
+            'torsoAngle': round(TORSO_ANGLE, 2), 'hisEyes': HIS_EYES, 'farFrom': FAR_FROM, 'farCols': far_cols(front)}
     for name, a in (('front', front), ('back', back), ('long', long_)):
         box = bbox(a)
         meta[name] = {'origin': list(box[:2]), 'rows': rows_of(a, box)}
-        used |= set(a[a != ''].tolist())
-    meta['palette'] = {c: KEY[c] for c in KEY if c in used}
+    meta['palette'] = pal
     meta['line'] = LINE
-    meta['edge'] = EDGE
-    meta['ornament'] = ORNAMENT
-    meta['ornamentLine'] = ORNAMENT_LINE
-    meta['base'] = KEY[BASE]
-    meta['ornamentBase'] = KEY[ORNAMENT_BASE]
+    meta['ornament'] = ''.join(c for c in ORNAMENT if c in pal)
+    meta['base'] = pal[BASE]
+    meta['ornamentBase'] = pal[ORNAMENT_BASE]
     tmp = os.path.join(out, 'hair.json.tmp')
     with open(tmp, 'w') as f:
         json.dump(meta, f, indent=1)
@@ -356,18 +317,20 @@ def main():
     if len(sys.argv) > 2:
         write_ts(meta, sys.argv[2])
 
-    view = (94, 124, 142, 184)
-    R.save(rgba(front, view), os.path.join(out, 'study', 'front@8.png'))
-    R.save(rgba(back, view, filled), os.path.join(out, 'study', 'back@8.png'))
-    R.save(rgba(long_, view), os.path.join(out, 'study', 'long@8.png'))
-    R.save(auto(view), os.path.join(out, 'study', 'auto@8.png'))
-    h = hers(view)
-    k = 8 * (view[3] - view[1]) / h.shape[0]
-    img = Image.fromarray(h).resize((round(h.shape[1] * k), round(h.shape[0] * k)), Image.NEAREST)
-    img.save(os.path.join(out, 'study', 'hers@8.png'))
+    view = (24, 4, 68, 46)
+    x0, y0, x1, y1 = view
+    his = Image.fromarray(N[y0:y1, x0:x1].astype(np.uint8)).resize(((x1 - x0) * 10, (y1 - y0) * 10), Image.NEAREST)
+    his.save(os.path.join(out, 'study', 'his@10.png'))
+    ims = [picture(front, pal, view, 10), picture(back, pal, view, 10, filled), picture(long_, pal, view, 10, lfill)]
+    sheet = Image.new('RGB', (sum(i.size[0] for i in ims) + 20, ims[0].size[1]), (200, 200, 210))
+    x = 0
+    for i in ims:
+        sheet.paste(i, (x, 0))
+        x += i.size[0] + 10
+    sheet.save(os.path.join(out, 'study', 'parts@10.png'))
     print('front', int((front != '').sum()), 'px; back', int((back != '').sum()), 'px (', int(filled.sum()),
-          'filled); long', int((long_ != '').sum()), 'px;', len(meta['palette']), 'colours; anchor', ANCHOR,
-          'neck', NECK, 'torso', round(TORSO_ANGLE, 2))
+          'filled); long', int((long_ != '').sum()), 'px (', int(lfill.sum()), 'filled);', len(pal),
+          'colours; offset', OFF, 'neck', (nx, ny), 'torso', round(TORSO_ANGLE, 2))
 
 
 def write_ts(meta, path):
@@ -375,29 +338,38 @@ def write_ts(meta, path):
     ax, ay = meta['anchor']
     nx, ny = meta['neck']
     out = [
-        "// The owner's hair on his Saya, brought down to our scale in her colours",
-        '// (tools/refs/saya-hair-from-ref.py from docs/reference/saya-owner-reference.jpg).',
+        "// The owner's hair on his Saya, copied 1:1 from his picture at our game's scale",
+        '// (tools/refs/saya-hair-from-ref.py from docs/reference/saya-game-scale-owner-reference.jpg).',
         '// Generated: rerun the script to change it.',
         '',
         "import type { PaintedPiece } from '../painted';",
         "import type { PaintedPart } from './capeArt';",
         '',
-        '/** One character per colour of hers (all three parts share them). */',
+        '/** A part on the face: its far side rides the far eye, from row `farFrom` down, from column `farCols[row - farFrom]` on. */',
+        'export interface SayaFacePart extends PaintedPart {',
+        '  farFrom: number;',
+        '  farCols: number[];',
+        '}',
+        '',
+        '/** One character per colour of his (all three parts share them). */',
         'const SAYA_HAIR_COLORS: Record<string, string> = {',
     ]
-    out += [f"  {k if k.isalpha() else repr(k)}: '{v}'," for k, v in meta['palette'].items()]
+    out += [f"  {k}: '{v}'," for k, v in meta['palette'].items()]
     out += ['};', '']
     for part, name, doc in (
-        ('front', 'SAYA_HAIR_FRONT', 'Over the head: the crown, the bangs, the ornament, the near side hair round the ear, the side lock down over the chest and the far lock. Its pivot is the cell on our face anchor (the near eye\'s lash start).'),
-        ('back', 'SAYA_HAIR_BACK', 'Behind the head: the front\'s outline filled in (her strands run on behind the forehead, her shade below the eyes) and her hair behind the far shoulder; also the head\'s outline at the top. Pivot on the face anchor.'),
+        ('front', 'SAYA_HAIR_FRONT', 'Over the head: his hair above the chin (crown, bangs, ornament, the near side hair round the ear) and the two locks in front of the face below it. Its pivot is the cell on our face anchor (the near eye\'s start).'),
+        ('back', 'SAYA_HAIR_BACK', 'Behind the head: the front\'s outline filled in to the chin (his strands run on behind the forehead, his shade below), also the head\'s outline at the top. Pivot on the face anchor.'),
     ):
         ox, oy = meta[part]['origin']
-        out += [f'/** {doc} */', f'export const {name}: PaintedPart = {{', f'  pivot: [{ax - ox}, {ay - oy}],', '  rows: [']
+        n = len(meta[part]['rows'])
+        cols = [c - ox for c in meta['farCols']][:n - (meta['farFrom'] - oy)]
+        out += [f'/** {doc} */', f'export const {name}: SayaFacePart = {{', f'  pivot: [{ax - ox}, {ay - oy}],',
+                f"  farFrom: {meta['farFrom'] - oy},", f"  farCols: [{', '.join(map(str, cols))}],", '  rows: [']
         out += [f"    '{rw}'," for rw in meta[part]['rows']]
         out += ['  ],', '  colors: SAYA_HAIR_COLORS,', '};', '']
     ox, oy = meta['long']['origin']
     out += [
-        '/** Down the back from the near side of the head to the waist, behind the body: its pivot is the cell on the neck, its angle the torso\'s (neck to pelvis) at idle. */',
+        '/** Down the back from the near side of the head, behind the body: its pivot is the cell on the neck, its angle the torso\'s (neck to pelvis) at idle. */',
         'export const SAYA_HAIR_LONG: PaintedPiece = {',
         f'  pivot: [{nx - ox}, {ny - oy}],',
         f"  angle: {meta['torsoAngle']:.2f},",
@@ -406,20 +378,19 @@ def write_ts(meta, path):
     out += [f"    '{rw}'," for rw in meta['long']['rows']]
     out += ['  ],', '  colors: SAYA_HAIR_COLORS,', '};', '']
     out += [
-        '/** Her black line: kept as she has it when the hair is recoloured. */',
+        "/** His far eye's distance from his near one (fx - ex in our face anchor's terms). */",
+        f"export const SAYA_HAIR_EYES = {meta['hisEyes']};",
+        '',
+        '/** His black line: kept as he has it when the hair is recoloured, and laid along hair cut away when she lies down. */',
         f"export const SAYA_HAIR_LINE = '{meta['line']}';",
         '',
-        '/** Her darkest brown, her line down the sides and round the long hair: the line along hair cut away when she lies down. */',
-        f"export const SAYA_HAIR_EDGE = '{meta['edge']}';",
-        '',
-        "/** Her gold ornament's characters: they take the ornament's colour, not the hair's (its dark line stays). */",
+        "/** His gold ornament's characters: they take the ornament's colour, not the hair's. */",
         f"export const SAYA_HAIR_ORNAMENT = '{meta['ornament']}';",
-        f"export const SAYA_HAIR_ORNAMENT_LINE = '{meta['ornamentLine']}';",
         '',
-        "/** Her hair's lit face, most of the crown: the hair slot's default; her other hair colours follow it. */",
+        "/** His hair's lit face, most of the crown: the hair slot's default; his other hair colours follow it. */",
         f"export const SAYA_HAIR_BASE = '{meta['base']}';",
         '',
-        "/** Her ornament's gold: the ornament slot's default. */",
+        "/** His ornament's gold: the ornament slot's default. */",
         f"export const SAYA_HAIR_ORNAMENT_BASE = '{meta['ornamentBase']}';",
         '',
     ]

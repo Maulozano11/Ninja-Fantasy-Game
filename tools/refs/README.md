@@ -114,3 +114,19 @@ folders.
 
       python3 -I tools/refs/wood-dragon-from-ref.py docs/reference/icons-owner-reference-10.jpg tools/world-sprites/vfx-wood-refdata.ts [check.png]
       WORLD_OUT=<staging dir> npx tsx tools/world-sprites/vfx-new-r1.ts
+- `roman_ref.py` + `roman-cuirass-from-ref.py`, `roman-skirt-from-ref.py`, `roman-bracers-sandals-from-ref.py`: the
+  owner's Roman paint-over (`docs/reference/roman-owner-reference.jpg`, pitch 10.24, our male idle frame 0 at
+  offset (74, 120)), copied like Aiden: each script writes painted pieces (`src/sprite/painted.ts`) that ride the
+  rig. `roman_ref.pieces()` cuts his figure into pieces by region polygons (`REGIONS`) and colour kinds, keeps only
+  the black line next to each piece's own colours, continues the chest under the near shoulder guard and fills the
+  red drape behind each of his legs by cloning the visible inside of the drape next to it (one shift per leg, so
+  his folds run on), closed by his black line on a hem drawn across the leg. He tucked the far arm in, so the far
+  bracer is moved `FAR_ARM_IN` (3) px out onto our forearm; the sandals are moved onto our legs. His JPEG has many
+  near colours, so the modules use a longer palette alphabet (Latin-1, Greek, Cyrillic letters). Each module also
+  exports what every colour of his is (`*_KIND`: line, skin, red, stud, bronze, leather), which the items use to
+  follow the colour slots, and where each piece lands in our idle (`*_REST`), which `src/sprite/roman.test.ts`
+  checks. With a second argument, a folder, each writes his figure beside the pieces at 8x.
+
+      python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
+      python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
+      python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]

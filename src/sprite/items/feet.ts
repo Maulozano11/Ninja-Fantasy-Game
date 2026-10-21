@@ -8,6 +8,7 @@ import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Sid
 import { segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
+import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -268,6 +269,15 @@ function lowerLegOff(g: DrawCtx, s: Side): void {
   }
 }
 
+/** Takes our bare foot away (a sandal the owner painted takes its place); the shin stays. */
+function bareFootOff(g: DrawCtx, s: Side): void {
+  const foot = partIndex(`foot${s}`);
+  for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) {
+    const L = g.L(d);
+    for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === foot) L.mat[i] = -1;
+  }
+}
+
 export const FEET_ITEMS: ItemDef[] = [
   {
     id: 'feet_leather',
@@ -444,6 +454,33 @@ export const FEET_ITEMS: ItemDef[] = [
         const foot = s === 'N' ? SABATON_FOOT_N : SABATON_FOOT_F;
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint);
         stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle, `foot${s}`, tint);
+      }
+    },
+  },
+  {
+    id: 'feet_gladiator_sandals',
+    slot: 'feet',
+    name: 'Gladiator Sandals',
+    desc: 'Leather sandals laced up the shins to a strap under the knee; the toes stay bare.',
+    colors: [col('main', 'Leather', SANDAL_LEATHER, 'leather')],
+    draw: (g, [leather]) => {
+      // The owner's sandals, his pixels from his Roman picture (2026-10-21; tools/refs/
+      // roman-bracers-sandals-from-ref.py): on each leg the laced shin turns with the shin about the
+      // ankle and the sandal stays flat on the ground like our feet, our bare foot under it taken away.
+      // His legs stand wider than ours, so each is moved onto our leg (his sole on ours). His skin
+      // between the laces follows the character's skin, his leather the slot; his black line stays.
+      const tint = (_ch: string, hex: string) => {
+        const k = ROMAN_KIT_KIND[hex];
+        if (k === 'line') return hex;
+        return k === 'skin' ? retintHex(hex, SANDAL_SKIN, g.look.skin) : retintHex(hex, SANDAL_LEATHER, leather);
+      };
+      for (const s of SIDES) {
+        const { knee, ankle } = legJoints(g.rig, s);
+        bareFootOff(g, s);
+        const shin = s === 'N' ? SANDAL_SHIN_N : SANDAL_SHIN_F;
+        const foot = s === 'N' ? SANDAL_FOOT_N : SANDAL_FOOT_F;
+        stampPiece(g, legDepth(s, 'feet'), shin, ankle, segAngle(knee, ankle), `shin${s}`, tint);
+        stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, tint);
       }
     },
   },

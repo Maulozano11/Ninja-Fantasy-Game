@@ -200,6 +200,8 @@ const ES: Record<string, string> = {
   'Tank Top': 'Camiseta',
   Swirl: 'Remolino',
   Strips: 'Tiras',
+  Drapes: 'Paños',
+  'No drapes': 'Sin paños',
   Stitching: 'Costuras',
   Spur: 'Espuela',
   Sparks: 'Chispas',

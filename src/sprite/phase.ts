@@ -1,9 +1,9 @@
 // The Ryusei's phase (the owner's picture, docs/reference/ryusei-phase-owner-reference.jpg): a
 // ninja's own sprite frame turned into a body of electric-blue light, the way a Warp Strike or a
-// Spatial Swap carries it across the field. The fill is a see-through blue that brightens where
-// the sprite is lit and toward the silhouette; the silhouette, the lines the sprite draws inside
-// it (an arm over the body, the clothes' folds, the face) and the edges between light and shade
-// turn into near-white lines; the hair burns white-blue; a soft blue glow surrounds it all.
+// Spatial Swap carries it across the field. Like his picture, it is mostly a strong electric blue
+// in four steps by the sprite's light and shade, brighter toward the silhouette; thin near-white
+// lines run round the silhouette and where a limb lies over the body; the sprite's own inner lines
+// stay as darker blue creases; the hair burns white-blue; a soft blue glow surrounds it all.
 // Pure pixels, no canvas: the battle turns each frame into a canvas once and keeps it.
 
 import { GRID } from './raster';
@@ -20,23 +20,41 @@ export const PHASE_RAMP: readonly (readonly [number, number, number])[] = [
   [212, 238, 254],
   [240, 254, 255],
 ];
-const RIM = 8;
-const LINE = 6;
 
-/** How far the glow reaches outside the silhouette (pixels): its alpha at each step out. */
+/**
+ * The light body is drawn twice: laid over the ground (source-over), then added to it as light
+ * ('lighter') at this share. Its pixels are made so the two together give the owner's colours
+ * exactly over black, while over grass or water the ground shows through the core under the blue
+ * (`phaseOver` is the same sum; renderer.ts draws it so).
+ */
+export const PHASE_ADD = 0.4;
+
+/** How far the glow reaches outside the silhouette (pixels): its strength at each step out (over black, that share of its colour). */
 export const GLOW = [0, 150, 96, 58, 30, 12] as const;
 
+/**
+ * The fill's four... five steps of blue by rank of the sprite's light (the darkest 8% take step 0,
+ * the next 20% step 1, and so on): the share his picture has of each, so a dark outfit and a light
+ * one both come out mostly the main electric blue.
+ */
+const FILL_CDF = [0.08, 0.28, 0.52, 0.78] as const;
+/** The hair's steps by rank of its own light: white-blue, wispy, with its darker strands blue. */
+const HAIR_STEPS = [4, 4, 5, 5, 6, 7] as const;
+/** How opaque each kind of pixel is laid over the ground (0..1): the core is clearest. */
+const COVER = { rim: 1, seam: 0.92, hair: 0.86, d2: 0.8, d3: 0.72, core: 0.6 } as const;
+
 export interface PhaseOptions {
-  /** Body part per pixel (the sprite's part map): where one part meets another, a line is drawn. */
+  /** Body part per pixel (the sprite's part map): where a limb's outline lies over another part, a line of light is drawn. */
   part?: Uint8Array;
   /** One bit per pixel: the hair, lit white-blue. */
   hair?: Uint8Array;
 }
 
 /**
- * A sprite frame (w x h RGBA) as its phase body, the same size: see-through where the fill is,
- * opaque on the lines, and a stepped glow round the outside (the frame needs that much empty room
- * round the figure, which every sprite frame has). Only the figure's box is worked on.
+ * A sprite frame (w x h RGBA) as its phase body, the same size: see-through blue where the fill
+ * is, opaque on the lines, and a stepped glow round the outside (the frame needs that much empty
+ * room round the figure, which every sprite frame has). Only the figure's box is worked on. Drawn
+ * as `phaseOver` says, it shows the owner's colours.
  */
 export function phaseBody(rgba: Uint8ClampedArray, w: number, h: number, opts: PhaseOptions = {}): Uint8ClampedArray {
   const out = new Uint8ClampedArray(w * h * 4);
@@ -71,6 +89,8 @@ export function phaseBody(rgba: Uint8ClampedArray, w: number, h: number, opts: P
       inside[k] = 1;
       lum[k] = 0.299 * rgba[s] + 0.587 * rgba[s + 1] + 0.114 * rgba[s + 2];
     }
+  const { part, hair } = opts;
+  const isHair = (src: number): boolean => !!hair && (hair[src >> 3] & (1 << (src & 7))) !== 0;
 
   // Steps from the silhouette: inside, 1 on the silhouette up to 4 deep; outside, 1 just out up
   // to R away (the glow). 255 = farther.
@@ -94,10 +114,10 @@ export function phaseBody(rgba: Uint8ClampedArray, w: number, h: number, opts: P
   grow(ring, inside, 0, RW, RH, R, true);
 
   // Light and shade, smoothed over 3x3 so the sprite's texture reads as forms rather than noise,
-  // and stretched over the frame's own range so a dark outfit and a light one both get the ramp.
+  // ranked over the frame (and over its hair on its own) so every outfit gets the whole ramp.
   const soft = new Float32Array(n);
   const hist = new Uint32Array(256);
-  let count = 0;
+  const hairHist = new Uint32Array(256);
   for (let ry = 1; ry < RH - 1; ry++)
     for (let rx = 1; rx < RW - 1; rx++) {
       const k = ry * RW + rx;
@@ -111,33 +131,38 @@ export function phaseBody(rgba: Uint8ClampedArray, w: number, h: number, opts: P
             c++;
           }
       soft[k] = s / c;
-      hist[Math.min(255, Math.round(soft[k]))]++;
-      count++;
+      const v = Math.min(255, Math.round(soft[k]));
+      if (isHair((ry + Y0) * w + rx + X0)) hairHist[v]++;
+      else hist[v]++;
     }
-  const lo = percentile(hist, count, 0.06);
-  const hi = Math.max(lo + 1, percentile(hist, count, 0.96));
+  const rank = cdf(hist);
+  const hairRank = cdf(hairHist);
 
-  const { part, hair } = opts;
+  const ADD = 1 + PHASE_ADD;
+  /** Puts a pixel that shows `step` over black, laid over the ground at `cover`. */
+  const light = (src: number, step: number, cover: number): void => {
+    const c = PHASE_RAMP[step];
+    // Bright steps need more cover to be that bright (the pixel can't be brighter than white).
+    const a = Math.min(1, Math.max(cover, Math.max(c[0], c[1], c[2]) / (255 * ADD)));
+    out[src * 4] = Math.round(c[0] / (a * ADD));
+    out[src * 4 + 1] = Math.round(c[1] / (a * ADD));
+    out[src * 4 + 2] = Math.round(c[2] / (a * ADD));
+    out[src * 4 + 3] = Math.round(a * 255);
+  };
+
   for (let ry = 1; ry < RH - 1; ry++)
     for (let rx = 1; rx < RW - 1; rx++) {
       const k = ry * RW + rx;
       if (!inside[k]) continue;
       const src = (ry + Y0) * w + rx + X0;
-      const t = Math.min(1, Math.max(0, (soft[k] - lo) / (hi - lo)));
-      // The fill: four steps of blue by how lit the sprite is there, see-through.
-      let step = 1 + Math.min(4, Math.floor(t ** 1.2 * 5));
-      let alpha = 200 + Math.round(t * 40);
-      // Toward the silhouette the body brightens, as round forms do in his picture.
       const d = depth[k];
-      if (d === 2) step = Math.max(step, 4);
-      // Deep inside, the body is clearer: the ground shows through its core more than its edges.
-      else if (d === 255) alpha -= 28;
-      if (hair && hair[src >> 3] & (1 << (src & 7))) {
-        step = Math.max(step + 2, 6);
-        alpha += 45;
+      // The silhouette: a thin near-white line, whitest along the top of each form.
+      if (d === 1) {
+        light(src, inside[k - RW] ? 6 : 7, COVER.rim);
+        continue;
       }
-      // The lines the sprite draws inside the figure (darker than what is round them), the seams
-      // where one body part lies over another, and the lit side of a turn from light into shade.
+      const v = Math.min(255, Math.round(soft[k]));
+      // The sprite's own lines inside the figure: a pixel darker than what is round it.
       let around = 0;
       let c = 0;
       let seam = false;
@@ -151,21 +176,37 @@ export function phaseBody(rgba: Uint8ClampedArray, w: number, h: number, opts: P
           if (dx === 0 || dy === 0) {
             const pj = part?.[(ry + Y0 + dy / RW) * w + rx + X0 + dx];
             const pk = part?.[src];
-            if (pj && pk && pj > pk) seam = true;
+            if (pj && pk && pj !== pk) seam = true;
             if (soft[k] - soft[j] > turn) turn = soft[k] - soft[j];
           }
         }
-      if (d === 1) {
-        step = RIM;
-        alpha = 255;
-      } else if (seam || (c > 0 && lum[k] + 26 < around / c && lum[k] < 110)) {
-        step = LINE;
-        alpha = 240;
-      } else if (turn > 34) {
-        step = Math.max(step, 5);
-        alpha = Math.max(alpha, 215);
+      const ink = c > 0 && lum[k] + 26 < around / c && lum[k] < 110;
+      if (isHair(src)) {
+        const t = hairRank[v];
+        light(src, ink ? 4 : HAIR_STEPS[Math.min(HAIR_STEPS.length - 1, Math.floor(t * HAIR_STEPS.length))], COVER.hair);
+        continue;
       }
-      put(out, src, PHASE_RAMP[step], Math.min(255, alpha));
+      // Where a limb's outline lies over the body (or one leg over the other): a line of light.
+      if (ink && seam) {
+        light(src, 6, COVER.seam);
+        continue;
+      }
+      const t = rank[v];
+      let step = t < FILL_CDF[0] ? 0 : t < FILL_CDF[1] ? 1 : t < FILL_CDF[2] ? 2 : t < FILL_CDF[3] ? 3 : 4;
+      // The sprite's other lines (clothes, straps, the face) stay, as darker blue creases.
+      if (ink) step = Math.min(step, 1);
+      // The lit side of a turn from light into shade catches the light.
+      else if (turn > 40) step = Math.max(step, 5);
+      // Toward the silhouette the body brightens, as round forms do in his picture.
+      let cover: number = COVER.core;
+      if (d === 2) {
+        step = Math.min(5, Math.max(step + 1, 3));
+        cover = COVER.d2;
+      } else if (d === 3) {
+        step = Math.max(step, 2);
+        cover = COVER.d3;
+      }
+      light(src, step, cover);
     }
 
   // The glow: steps of blue light round the outside, fading out.
@@ -173,21 +214,46 @@ export function phaseBody(rgba: Uint8ClampedArray, w: number, h: number, opts: P
     for (let rx = 0; rx < RW; rx++) {
       const g = ring[ry * RW + rx];
       if (g === 255 || g === 0 || g > R) continue;
-      put(out, (ry + Y0) * w + rx + X0, PHASE_RAMP[g <= 2 ? 4 : 3], GLOW[g]);
+      const i = ((ry + Y0) * w + rx + X0) * 4;
+      const c = PHASE_RAMP[g <= 2 ? 4 : 3];
+      out[i] = c[0];
+      out[i + 1] = c[1];
+      out[i + 2] = c[2];
+      out[i + 3] = Math.round(GLOW[g] / ADD);
     }
   return out;
 }
 
-/** A sprite frame's phase body (GRID x GRID): its part map draws the seams, its hair mask the hair. */
+/** A sprite frame's phase body (GRID x GRID): its part map draws the lines, its hair mask the hair. */
 export function phaseFrame(f: { rgba: Uint8ClampedArray; part: Uint8Array; hair?: Uint8Array }): Uint8ClampedArray {
   return phaseBody(f.rgba, GRID, GRID, { part: f.part, hair: f.hair });
 }
 
-function put(out: Uint8ClampedArray, i: number, c: readonly [number, number, number], a: number): void {
-  out[i * 4] = c[0];
-  out[i * 4 + 1] = c[1];
-  out[i * 4 + 2] = c[2];
-  out[i * 4 + 3] = a;
+/**
+ * A phase body over a ground as the battle draws it (laid over at `k`, then added as light at
+ * k * PHASE_ADD): `ground` is one colour or a w x h RGB(A) picture. For tests and pictures.
+ */
+export function phaseOver(body: Uint8ClampedArray, ground: readonly [number, number, number], k = 1): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(body.length);
+  for (let i = 0; i < body.length; i += 4) {
+    const a = (body[i + 3] / 255) * k;
+    for (let c = 0; c < 3; c++) out[i + c] = ground[c] * (1 - a) + body[i + c] * a * (1 + PHASE_ADD);
+    out[i + 3] = 255;
+  }
+  return out;
+}
+
+/** For each value 0..255, the share of the counted values below it (half of its own): its rank, 0..1. */
+function cdf(hist: Uint32Array): Float32Array {
+  let total = 0;
+  for (let v = 0; v < 256; v++) total += hist[v];
+  const out = new Float32Array(256);
+  let acc = 0;
+  for (let v = 0; v < 256; v++) {
+    out[v] = total ? (acc + hist[v] / 2) / total : 0.5;
+    acc += hist[v];
+  }
+  return out;
 }
 
 /**
@@ -213,14 +279,4 @@ function grow(steps: Uint8Array, mask: Uint8Array, on: number, W: number, H: num
           steps[k] = s;
       }
   }
-}
-
-function percentile(hist: Uint32Array, count: number, q: number): number {
-  const want = count * q;
-  let acc = 0;
-  for (let v = 0; v < 256; v++) {
-    acc += hist[v];
-    if (acc > want) return v;
-  }
-  return 255;
 }

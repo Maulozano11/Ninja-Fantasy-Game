@@ -1,11 +1,11 @@
 // The owner's skin on our male bodies (male and bulky), from his Roman paint-over: his darker shadow
-// tone in the skin ramp, and his skin on the upper arms, hands and thighs as painted pieces
+// tone in the skin ramp, and his skin on the upper arms, fists, thighs and shins as painted pieces
 // (maleSkinArt.ts) that turn with each limb. Approved by the owner on 2026-10-21 ("si" to the proposal):
 // the body's shape and joints stay ours, so his pixels only recolour our own limb's skin.
 
-import { retintSkin } from './color';
+import { retintSkinLifted } from './color';
 import { armJoints, Depth, DrawCtx, handPose, Side } from './ctx';
-import { MALE_SKIN_BASE, MALE_SKIN_DARK, MALE_SKIN_JOINT, SKIN_HAND_F, SKIN_HAND_N, SKIN_THIGH_F, SKIN_THIGH_N, SKIN_UPPER_ARM_F, SKIN_UPPER_ARM_N } from './maleSkinArt';
+import { MALE_SKIN_BASE, MALE_SKIN_DARK, MALE_SKIN_JOINT, SKIN_HAND_F, SKIN_HAND_N, SKIN_SHIN_F, SKIN_SHIN_N, SKIN_THIGH_F, SKIN_THIGH_N, SKIN_UPPER_ARM_F, SKIN_UPPER_ARM_N } from './maleSkinArt';
 import { segAngle, type PaintedPiece } from './painted';
 import { F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, partIndex, RES, Vec } from './raster';
 import { BODY_PARAMS, type Rig } from './rig';
@@ -15,7 +15,7 @@ import { isFemaleBody } from './types';
 /** Male bodies take his skin; the female bodies (female, slender) keep theirs exactly. */
 export const takesMaleSkin = (body: string): boolean => !isFemaleBody(body);
 
-type Joint = 'shoulderN' | 'shoulderF' | 'elbowN' | 'elbowF' | 'wristN' | 'wristF' | 'handN' | 'handF' | 'hipN' | 'hipF' | 'kneeN' | 'kneeF';
+type Joint = 'shoulderN' | 'shoulderF' | 'elbowN' | 'elbowF' | 'wristN' | 'wristF' | 'handN' | 'handF' | 'hipN' | 'hipF' | 'kneeN' | 'kneeF' | 'ankleN' | 'ankleF';
 
 interface Limb {
   name: string;
@@ -28,15 +28,23 @@ interface Limb {
   hand?: Side;
   /** Which radius the bulky body widens it by: the limb's root radius, of the arm or the leg. */
   widen?: 'arm' | 'leg';
+  /**
+   * The next limb's part it also recolours round their joint (within the joint's radius): his upper arm
+   * runs down to his elbow, which our forearm's top covers. No other piece of his is there (his forearms
+   * are under the bracers).
+   */
+  joint?: { part: PartId; at: Joint };
 }
 
 const LIMBS: Limb[] = [
-  { name: 'SKIN_UPPER_ARM_N', piece: SKIN_UPPER_ARM_N, part: 'upperArmN', from: 'shoulderN', to: 'elbowN', widen: 'arm' },
-  { name: 'SKIN_UPPER_ARM_F', piece: SKIN_UPPER_ARM_F, part: 'upperArmF', from: 'shoulderF', to: 'elbowF', widen: 'arm' },
+  { name: 'SKIN_UPPER_ARM_N', piece: SKIN_UPPER_ARM_N, part: 'upperArmN', from: 'shoulderN', to: 'elbowN', widen: 'arm', joint: { part: 'forearmN', at: 'elbowN' } },
+  { name: 'SKIN_UPPER_ARM_F', piece: SKIN_UPPER_ARM_F, part: 'upperArmF', from: 'shoulderF', to: 'elbowF', widen: 'arm', joint: { part: 'forearmF', at: 'elbowF' } },
   { name: 'SKIN_HAND_N', piece: SKIN_HAND_N, part: 'handN', from: 'wristN', to: 'handN', hand: 'N' },
   { name: 'SKIN_HAND_F', piece: SKIN_HAND_F, part: 'handF', from: 'wristF', to: 'handF', hand: 'F' },
   { name: 'SKIN_THIGH_N', piece: SKIN_THIGH_N, part: 'thighN', from: 'hipN', to: 'kneeN', widen: 'leg' },
   { name: 'SKIN_THIGH_F', piece: SKIN_THIGH_F, part: 'thighF', from: 'hipF', to: 'kneeF', widen: 'leg' },
+  { name: 'SKIN_SHIN_N', piece: SKIN_SHIN_N, part: 'shinN', from: 'kneeN', to: 'ankleN', widen: 'leg' },
+  { name: 'SKIN_SHIN_F', piece: SKIN_SHIN_F, part: 'shinF', from: 'kneeF', to: 'ankleF', widen: 'leg' },
 ];
 
 /**
@@ -45,10 +53,10 @@ const LIMBS: Limb[] = [
  */
 export function maleSkinRamp(g: DrawCtx): void {
   if (!takesMaleSkin(g.rig.body)) return;
-  g.mats.ramps[g.skin][1] = retintSkin(MALE_SKIN_DARK, MALE_SKIN_BASE, g.look.skin);
+  g.mats.ramps[g.skin][1] = retintSkinLifted(MALE_SKIN_DARK, MALE_SKIN_BASE, g.look.skin);
 }
 
-const widened = new Map<string, PaintedPiece>();
+const widened = new Map<PaintedPiece, Map<number, PaintedPiece>>();
 
 /**
  * His piece for a wider limb (the bulky body): `n` of his columns repeated, spread evenly across it, so
@@ -56,8 +64,9 @@ const widened = new Map<string, PaintedPiece>();
  */
 export function widenPiece(p: PaintedPiece, n: number): PaintedPiece {
   if (n <= 0) return p;
-  const key = `${p.rows.join('|')}@${n}`;
-  const hit = widened.get(key);
+  let byN = widened.get(p);
+  if (!byN) widened.set(p, (byN = new Map()));
+  const hit = byN.get(n);
   if (hit) return hit;
   const w = Math.max(...p.rows.map((r) => r.length));
   const cols = Array.from({ length: n }, (_, k) => Math.round((w * (k + 1)) / (n + 1)) - 1);
@@ -68,7 +77,7 @@ export function widenPiece(p: PaintedPiece, n: number): PaintedPiece {
     return out;
   });
   const out: PaintedPiece = { ...p, rows, pivot: [p.pivot[0] + cols.filter((c) => c < p.pivot[0]).length, p.pivot[1]] };
-  widened.set(key, out);
+  byN.set(n, out);
   return out;
 }
 
@@ -107,7 +116,7 @@ export function paintMaleSkin(g: DrawCtx, layers: Map<Depth, Layer>): void {
   const mat = (hex: string) => {
     let m = tone.get(hex);
     if (m === undefined) {
-      m = g.m(retintSkin(hex, MALE_SKIN_BASE, g.look.skin), 'flat');
+      m = g.m(retintSkinLifted(hex, MALE_SKIN_BASE, g.look.skin), 'flat');
       tone.set(hex, m);
     }
     return m;
@@ -119,16 +128,18 @@ export function paintMaleSkin(g: DrawCtx, layers: Map<Depth, Layer>): void {
     let deg = segAngle(r[limb.from], r[limb.to]) - piece.angle;
     let flipX = false;
     if (limb.hand) {
+      // His hands are fists (painted over our idle hands, which hang loosely curled): they go on our
+      // closed hands only (a fist, a hand gripping a weapon, a hand hanging or holding at rest), never on
+      // an open palm, a pointing hand, a hand sign or a hand cradling a book, which keep ours.
       // As our hand pictures (and his painted fists, clothes.ts paintedFist): unturned within 30 degrees,
       // mirrored with them, his hand then pointing the other way across the vertical.
-      // A cradling hand (holding a book from below) is our picture with the fingers up above the wrist,
-      // never mirrored: his hand is turned fingers up with it.
       const j = armJoints(r, limb.hand);
       const hp = handPose(g, limb.hand);
-      flipX = hp.kind !== 'cradle' && hp.flipX;
+      if (hp.kind !== 'fist' && hp.kind !== 'grip' && !(hp.kind === 'relaxed' && j.shape !== 'sign')) continue;
+      flipX = hp.flipX;
       const drawn = flipX ? 180 - piece.angle : piece.angle;
       const turn = ((segAngle(j.wrist, j.hand) - drawn + 540) % 360) - 180;
-      deg = hp.kind === 'cradle' ? 180 : Math.abs(turn) <= 30 ? 0 : turn;
+      deg = Math.abs(turn) <= 30 ? 0 : turn;
     }
     let t = piece;
     if (flipX) {
@@ -146,9 +157,16 @@ export function paintMaleSkin(g: DrawCtx, layers: Map<Depth, Layer>): void {
       his.set(y * GRID + x, mat(piece.colors[p.ch]));
     }
     const part = partIndex(limb.part);
+    // Round the joint with the next limb, that limb's pixels too (within the joint's radius).
+    const next = limb.joint ? partIndex(limb.joint.part) : -1;
+    const jx = limb.joint ? r[limb.joint.at].x * RES : 0;
+    const jy = limb.joint ? r[limb.joint.at].y * RES : 0;
+    const jr = BODY_PARAMS[r.body].armR[1] * RES + 0.5;
+    const near = (i: number) => Math.hypot((i % GRID) + 0.5 - jx, ((i / GRID) | 0) + 0.5 - jy) <= jr;
     for (const L of all) {
       for (const [i, m] of his) {
-        if (L.mat[i] !== g.skin || L.part[i] !== part || L.shade[i] === 0 || isEdge(L, i)) continue;
+        if (L.mat[i] !== g.skin || L.shade[i] === 0 || isEdge(L, i)) continue;
+        if (L.part[i] !== part && !(L.part[i] === next && near(i))) continue;
         L.mat[i] = m;
         L.shade[i] = 3;
         L.flags[i] |= F_NO_TEXTURE;

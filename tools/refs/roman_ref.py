@@ -70,6 +70,13 @@ OUR_SOLES = {'N': 98, 'F': 90}
 FAR_ARM_IN = 3
 
 
+def sandal_pivot(masks, s):
+    """The cell of his that lands on our ankle on leg `s` ('N' or 'F'), as his sandals are registered on our
+    legs (masks from pieces()): his ankle across, and as far above his sole as our ankle is above our sole."""
+    sole = int(np.nonzero(masks['foot_' + s.lower()].any(axis=1))[0].max())
+    return (HIS_ANKLES[s][0], sole - (OUR_SOLES[s] - JOINTS['ankle' + s][1]))
+
+
 def native(path=REF):
     """His pixels: the median of each block's interior, as an (H, W, 3) int array."""
     a = np.asarray(Image.open(path).convert('RGB')).astype(np.int32)

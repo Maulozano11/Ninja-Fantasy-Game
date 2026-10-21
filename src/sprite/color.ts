@@ -211,3 +211,27 @@ export function retintSkin(hex: string, from: string, to: string): string {
   const lt = l <= l0 ? (l * l1) / l0 : l1 + ((l - l0) * (1 - l1)) / (1 - l0);
   return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), lt);
 }
+
+/**
+ * retintSkin for his skin where it is mostly in shadow (his limbs and his Roman face): on a skin darker
+ * than the one he painted on, his darks are lifted (the lightness ratio taken to a power under 1, nearer
+ * 1 the nearer the skin is to his) so his mid-tones and creases stay apart from each other and from the
+ * black line instead of all sinking toward it; his lights rise as far above the new skin as our skin ramp's
+ * lights do (makeRamp: up to 0.4). His black line is never tinted. In his own skin, his colour.
+ */
+export function retintSkinLifted(hex: string, from: string, to: string): string {
+  if (to.toLowerCase() === from.toLowerCase() || isLine(hex)) return hex;
+  const [h, s, l] = rgbToHsl(...hexToRgb(hex));
+  const [h0, s0, l0] = rgbToHsl(...hexToRgb(from));
+  const [h1, s1, l1] = rgbToHsl(...hexToRgb(to));
+  const gamma = l1 < l0 ? 1 - 0.5 * (1 - l1 / l0) : 1;
+  const up = (b: number) => Math.min(1 - b, 0.4);
+  const lt = l <= l0 ? l1 * Math.pow(l / l0, gamma) : l1 + ((l - l0) * up(l1)) / up(l0);
+  return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), Math.min(0.98, lt));
+}
+
+/** His black line (as the tools/refs scripts sort his colours): it keeps its colour in every skin. */
+export function isLine(hex: string): boolean {
+  const [r, g, b] = hexToRgb(hex);
+  return r < 30 && g < 30 && b < 40;
+}

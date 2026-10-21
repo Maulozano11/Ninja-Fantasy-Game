@@ -3,12 +3,13 @@
 // are pixel templates in 3/4 front view (see FootArt in ctx.ts): the near foot
 // faces the viewer, the far foot points right and is authored a shade darker.
 
-import { retintHex } from '../color';
+import { retintHex, retintSkinLifted } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
 import { segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
-import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
+import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N } from './bracersSandalsArt';
+import { MALE_SKIN_BASE } from '../maleSkinArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -468,11 +469,13 @@ export const FEET_ITEMS: ItemDef[] = [
       // roman-bracers-sandals-from-ref.py): on each leg the laced shin turns with the shin about the
       // ankle and the sandal stays flat on the ground like our feet, our bare foot under it taken away.
       // His legs stand wider than ours, so each is moved onto our leg (his sole on ours). His skin
-      // between the laces follows the character's skin, his leather the slot; his black line stays.
+      // between the laces follows the character's skin as his skin on the male limbs does (maleSkin.ts),
+      // from the skin he painted on, so in that skin it is his pixels and it meets the knee above it; his
+      // leather follows the slot; his black line stays.
       const tint = (_ch: string, hex: string) => {
         const k = ROMAN_KIT_KIND[hex];
         if (k === 'line') return hex;
-        return k === 'skin' ? retintHex(hex, SANDAL_SKIN, g.look.skin) : retintHex(hex, SANDAL_LEATHER, leather);
+        return k === 'skin' ? retintSkinLifted(hex, MALE_SKIN_BASE, g.look.skin) : retintHex(hex, SANDAL_LEATHER, leather);
       };
       for (const s of SIDES) {
         const { knee, ankle } = legJoints(g.rig, s);

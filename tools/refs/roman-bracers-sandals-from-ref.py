@@ -46,9 +46,8 @@ def main():
 
     def sandal_pivot(s):
         # The cell that lands on our ankle: his ankle across, and as far above his sole as our ankle is
-        # above our sole.
-        sole = int(np.nonzero(masks['foot_' + s.lower()].any(axis=1))[0].max())
-        return (R.HIS_ANKLES[s][0], sole - (R.OUR_SOLES[s] - J['ankle' + s][1]))
+        # above our sole (the skin script registers his legs' skin the same way).
+        return R.sandal_pivot(masks, s)
 
     # He drew the far arm tucked in, its forearm FAR_ARM_IN px nearer the body than ours: the far bracer's
     # pivot is his elbow, so it lands on our forearm (moved that far out) and turns about our elbow.

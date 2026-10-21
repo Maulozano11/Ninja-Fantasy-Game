@@ -6,23 +6,29 @@ turning with each limb, plus his darker shadow tone in the skin ramp; the male b
 stay ours (Aiden's fit depends on them). This script lifts his skin, limb by limb, out of his pixels
 (tools/refs/roman_ref.py has the grid and our male rig's joints in his pixels):
 
-  upper arms   near: rows 35-44 under his shoulder guard, down to the bracer; far: the strip of the far
-               upper arm he shows beside the chest (his far arm is drawn FAR_ARM_IN nearer the body)
-  hands        both, under the bracers
-  thighs       the lower thighs he shows under the skirt, down to the sandals' top strap
+  upper arms   near: rows 35-44 under his shoulder guard, down to the bracer (his elbow above it too);
+               far: the strip of the far upper arm and elbow he shows beside the chest (his far arm is
+               drawn FAR_ARM_IN nearer the body)
+  hands        both, under the bracers (his fists)
+  legs         each leg whole, from under the skirt to the ankle: his lower thigh and knee above the
+               sandal's strap, and his shin's skin between the laces; one piece for our thigh, one for
+               our shin, cut from the same pixels
 
 His skin there is every pixel of his skin colours inside the limb's region, and the dark pixels inside it
 that touch his skin on two sides (his finger creases and muscle lines); not his black line, which our
-outline draws. His forearms are under his bracers and his shins under the sandals' laces, so there is
-no skin of his to lift there: our forearms and shins keep our shading, with his darker tone.
+outline draws, nor the sandal's straps and laces. His forearms are under his bracers, so there is no skin
+of his to lift there: our forearms keep our shading, with his darker tone.
 
-Each limb is registered on ours (SHIFTS): his upper arms and hands are moved onto ours as the bracers
-were, his thighs so that his knee lands on our knee (his legs stand wider and reach lower than ours).
-Where our limb reaches past what he shows (the upper arm under his shoulder guard, the thigh under his
-skirt, the ends at the joints) his pixels are continued along the limb: each such pixel takes the colour
-of his nearest skin pixel along the limb's axis, so his shading runs on down the limb as a cylinder's
-does. The game recolours only our own limb's pixels with them (src/sprite/maleSkin.ts), so the body's
-shape is ours.
+Each limb is registered on ours: his upper arms and hands are moved onto ours as the bracers were, his
+legs as his sandals were (roman_ref.sandal_pivot: his ankle on ours across, his sole on ours up and down),
+so his skin meets his laces and at rest every pixel of his that lands on our limb is where he painted it.
+Under the laces each pixel of a lace takes his skin from beside it in its row (between_laces), so the
+shading across his shin runs on under it. Where our limb reaches past what he shows (the upper arm under
+his shoulder guard, the thigh under his skirt, the ends at the joints) his pixels are continued along the
+limb: each
+such pixel takes the colour of his nearest skin pixel along the limb's axis, so his shading runs on down
+the limb as a cylinder's does. The game recolours only our own limb's pixels with them (and an upper
+arm's piece the forearm's next to the elbow; src/sprite/maleSkin.ts), so the body's shape is ours.
 
 Writes, in <out>:
 
@@ -49,25 +55,24 @@ import roman_ref as R  # noqa: E402
 # The skin of the sprite he painted over: a character in it shows his pixels exactly.
 MALE_SKIN_BASE = R.PAINTED_SKIN
 
-# His knees, read off his picture: the row of his last thigh skin above the sandal's top strap.
-HIS_KNEE_ROW = {'N': 77.5, 'F': 77.5}
-
 # Our male's limb radii (src/sprite/rig.ts BODY_PARAMS.male, armR and legR), in fine pixels: at the
 # limb's root and at its far joint. His pixels are continued along the limb within these (and a pixel).
 ARM_R = (4.7, 4.0)
 LEG_R = (5.3, 4.0)
-# Our male's thigh, hip to knee, in fine pixels (the same in every pose).
-THIGH_LEN = 16.2
+SHIN_R = (4.0, 2.8)
 # Past the ends of what he shows, his pixels are continued from this far inside it, so the shadows his
 # guard and skirt cast on the skin are not carried along the limb.
 SKIP = 2
 
+# His legs, from under the skirt to the ankle (the sandal's foot is not skin of his to lift).
+LEG_N = [(34, 66.5), (50, 66.5), (50, 92), (34, 92)]
+LEG_F = [(54, 67.5), (66, 67.5), (66, 92), (54, 92)]
+
 # name: (his region (polygon in his pixel corners), how it is registered on ours, our joints a -> b (the
 #        limb's direction), radii to continue his pixels within, or None for no continuing).
 # Registered 'shift': his limb moved onto ours by whole pixels, the pivot on our joint a, turned as our
-# limb turns from its rest angle (at rest every pixel is his). Registered 'knee': his lower thigh on ours,
-# his knee on our knee (b), turned from his thigh's own angle to ours (his legs stand wider and reach lower
-# than ours, so his thigh is turned onto ours even at rest).
+# limb turns from its rest angle (at rest every pixel is his). Registered 'sandal': the same, the whole
+# pixels those his sandal on that leg is moved by (roman_ref.sandal_pivot).
 LIMBS = {
     # His near arm is drawn 2 px further out than ours (the middle of his upper arm against ours, rows
     # 36 to 40); his near hand 2 px further in and a row higher than ours.
@@ -75,36 +80,31 @@ LIMBS = {
     'UPPER_ARM_F': ([(61, 37.5), (66, 37.5), (66, 46), (61, 46)], ('shift', (R.FAR_ARM_IN, 0)), 'shoulderF', 'elbowF', ARM_R),
     'HAND_N': ([(31, 53.5), (42, 53.5), (42, 61), (31, 61)], ('shift', (-2, 1)), 'wristN', 'handN', None),
     'HAND_F': ([(62, 52.5), (70, 52.5), (70, 59), (62, 59)], ('shift', (R.FAR_ARM_IN, 0)), 'wristF', 'handF', None),
-    'THIGH_N': ([(37, 66.5), (48, 66.5), (48, 79), (37, 79)], ('knee', 'N'), 'hipN', 'kneeN', LEG_R),
-    'THIGH_F': ([(55, 67.5), (64, 67.5), (64, 79), (55, 79)], ('knee', 'F'), 'hipF', 'kneeF', LEG_R),
+    'THIGH_N': (LEG_N, ('sandal', 'N'), 'hipN', 'kneeN', LEG_R),
+    'THIGH_F': (LEG_F, ('sandal', 'F'), 'hipF', 'kneeF', LEG_R),
+    'SHIN_N': (LEG_N, ('sandal', 'N'), 'kneeN', 'ankleN', SHIN_R),
+    'SHIN_F': (LEG_F, ('sandal', 'F'), 'kneeF', 'ankleF', SHIN_R),
 }
 DOCS = {
-    'UPPER_ARM_N': 'His near upper arm: his skin under the shoulder guard, continued up to the shoulder. Pivot on our near shoulder.',
-    'UPPER_ARM_F': 'His far upper arm: the strip he shows beside the chest, continued up and down the limb. Pivot on our far shoulder.',
-    'HAND_N': 'His near hand, under the bracer. Pivot on our near wrist.',
-    'HAND_F': 'His far hand, under the bracer. Pivot on our far wrist.',
-    'THIGH_N': 'His near lower thigh, continued up to the hip; its angle is his thigh\'s. Pivot (his knee) on our near knee.',
-    'THIGH_F': 'His far lower thigh, continued up to the hip; its angle is his thigh\'s. Pivot (his knee) on our far knee.',
+    'UPPER_ARM_N': 'His near upper arm: his skin under the shoulder guard down to his elbow, continued up to the shoulder. Pivot on our near shoulder.',
+    'UPPER_ARM_F': 'His far upper arm: the strip he shows beside the chest down to his elbow, continued up and down the limb. Pivot on our far shoulder.',
+    'HAND_N': 'His near fist, under the bracer. Pivot on our near wrist.',
+    'HAND_F': 'His far fist, under the bracer. Pivot on our far wrist.',
+    'THIGH_N': 'His near leg for our thigh: his lower thigh and knee under the skirt, continued up to the hip. Pivot on our near hip.',
+    'THIGH_F': 'His far leg for our thigh: his lower thigh and knee under the skirt, continued up to the hip. Pivot on our far hip.',
+    'SHIN_N': 'His near leg for our shin: his knee, and his skin between the laces with the laces taken off (each row\'s skin carried across them). Pivot on our near knee.',
+    'SHIN_F': 'His far leg for our shin: his knee, and his skin between the laces with the laces taken off (each row\'s skin carried across them). Pivot on our far knee.',
 }
 
 
-def thigh_axis(mask):
-    """His thigh's axis through what he shows: a line fitted through the middle of each row of his thigh
-    skin; returns his knee (on that line at HIS_KNEE_ROW) and the axis's angle (screen degrees, hip to knee)."""
-    ys, xs = np.nonzero(mask)
-    rows = sorted(set(ys.tolist()))
-    mid = np.array([[(xs[ys == y].min() + xs[ys == y].max() + 1) / 2, y + 0.5] for y in rows])
-    k, c = np.polyfit(mid[:, 1], mid[:, 0], 1)  # x = k * y + c
-    return k, c
-
-
-def skin_of(a, K, region):
-    """His skin inside a region: his skin colours, and the dark pixels touching his skin on two sides."""
+def skin_of(a, K, region, other=None):
+    """His skin inside a region: his skin colours, and the dark pixels touching his skin on two sides (not
+    those of `other`, a mask of what is not his skin there: the sandals' straps and laces, the skirt)."""
     H, W, _ = a.shape
     m = region & (K == 'skin')
     out = m.copy()
     for y, x in zip(*np.nonzero(region & ~m)):
-        if K[y, x] in ('line', 'hair', 'stud'):
+        if K[y, x] in ('line', 'hair', 'stud') or (other is not None and other[y, x]):
             continue
         r, g = int(a[y, x][0]), int(a[y, x][1])
         nb = sum(1 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)) if 0 <= y + dy < H and 0 <= x + dx < W and m[y + dy, x + dx])
@@ -114,6 +114,7 @@ def skin_of(a, K, region):
 
 
 def continued(a, mask, ja, jb, length, radii):
+    # `a`: his colours (with any laces already taken off)
     """His skin continued along the limb (axis from ja toward jb, `length` long, his pixels): every pixel
     within the radius of the limb, from the root's ball to the far joint, that is not his skin takes the
     colour of his nearest skin pixel along the axis (SKIP pixels further in, where his skin goes on)."""
@@ -152,39 +153,69 @@ def continued(a, mask, ja, jb, length, radii):
     return m, col
 
 
+def between_laces(a, mask, lace):
+    """His shin's skin with the laces taken off: each pixel of a lace (or of its black line) with his skin on
+    both sides of it in its row takes the colour of the nearest of them (the left one when both are as near),
+    so the shading across his shin, lit side to shadowed side, runs on under the lace."""
+    H, W, _ = a.shape
+    col = a.copy()
+    m = mask.copy()
+    for y, x in zip(*np.nonzero(lace & ~mask)):
+        left = next((k for k in range(1, 6) if x - k >= 0 and mask[y, x - k]), None)
+        right = next((k for k in range(1, 6) if x + k < W and mask[y, x + k]), None)
+        if left is None or right is None:
+            continue
+        q = x - left if left <= right else x + right
+        col[y, x] = a[y, q]
+        m[y, x] = True
+    return m, col
+
+
+def sandal_shift(masks, s):
+    """The whole pixels his sandal on leg `s` is moved by onto ours (as roman_ref.module places it)."""
+    px, py = R.sandal_pivot(masks, s)
+    ax, ay = R.JOINTS['ankle' + s]
+    return (int(np.floor(ax)) - int(np.floor(px)), int(np.floor(ay)) - int(np.floor(py)))
+
+
 def lift(a):
     """Each limb's piece: {name: (mask, colours, pivot in his pixels, angle, joint the pivot lands on, his
-    pixel -> our fine pixel at rest when unturned)}."""
+    pixel -> our fine pixel at rest)}."""
     K = np.array([[R.kind(a[y, x]) for x in range(a.shape[1])] for y in range(a.shape[0])])
+    masks, _cols = R.pieces(a)
+    # Not his skin on the legs: the sandals' straps and laces, and the skirt's strips and drapes.
+    other = np.zeros(K.shape, bool)
+    for n in ('shin_n', 'shin_f', 'foot_n', 'foot_f'):
+        other |= masks[n] & (K != 'skin')
+    other |= masks['front'] | masks['drape']
     out = {}
     for name, (poly, (how, arg), ja, jb, radii) in LIMBS.items():
-        mask = skin_of(a, K, R.inside(poly, *a.shape[:2]))
+        sx, sy = arg if how == 'shift' else sandal_shift(masks, arg)
+        mask = skin_of(a, K, R.inside(poly, *a.shape[:2]), other if how == 'sandal' else None)
         col = a.copy()
-        if how == 'shift':
-            sx, sy = arg
-            # his limb's own axis: our joints less the shift that moves his limb onto ours
-            his = lambda j: (R.JOINTS[j][0] - sx, R.JOINTS[j][1] - sy)
-            if radii:
-                (x0, y0), (x1, y1) = his(ja), his(jb)
-                mask, col = continued(a, mask, his(ja), his(jb), float(np.hypot(x1 - x0, y1 - y0)), radii)
-            out[name] = (mask, col, his(ja), R.angle(ja, jb), ja, (sx, sy))
-        else:
-            k, c = thigh_axis(mask)
-            ky = HIS_KNEE_ROW[arg]
-            knee = (k * ky + c, ky)
-            ang = float(np.degrees(np.arctan2(1.0, k)))  # down the thigh, hip to knee
-            ux, uy = np.cos(np.radians(ang)), np.sin(np.radians(ang))
-            hip = (knee[0] - ux * THIGH_LEN, knee[1] - uy * THIGH_LEN)
-            mask, col = continued(a, mask, hip, knee, THIGH_LEN, radii)
-            kx, kyy = R.JOINTS[jb]
-            out[name] = (mask, col, knee, ang, jb, (int(np.floor(kx)) - int(np.floor(knee[0])), int(np.floor(kyy)) - int(np.floor(knee[1]))))
+        if how == 'sandal':
+            mask, col = between_laces(a, mask, masks['shin_' + arg.lower()] & (K != 'skin'))
+        # his limb's own axis: our joints less the shift that moves his limb onto ours
+        his = lambda j: (R.JOINTS[j][0] - sx, R.JOINTS[j][1] - sy)
+        if radii:
+            (x0, y0), (x1, y1) = his(ja), his(jb)
+            mask, col = continued(col, mask, his(ja), his(jb), float(np.hypot(x1 - x0, y1 - y0)), radii)
+        out[name] = (mask, col, his(ja), R.angle(ja, jb), ja, (sx, sy))
     return out, K
 
 
+# Where his darker tone is read: his bare skin, the upper arms, hands and the legs above the sandals' straps
+# (not the skin between the laces, shaded by them).
+DARK_REGIONS = [LIMBS[n][0] for n in ('UPPER_ARM_N', 'UPPER_ARM_F', 'HAND_N', 'HAND_F')] + [
+    [(37, 66.5), (48, 66.5), (48, 79), (37, 79)],
+    [(55, 67.5), (64, 67.5), (64, 79), (55, 79)],
+]
+
+
 def dark_tone(a, K):
-    """His darker shadow tone: the colour a tenth of the way up his limbs' skin, darkest first."""
+    """His darker shadow tone: the colour a tenth of the way up his limbs' bare skin, darkest first."""
     found = []
-    for name, (poly, *_rest) in LIMBS.items():
+    for poly in DARK_REGIONS:
         m = skin_of(a, K, R.inside(poly, *a.shape[:2])) & (K == 'skin')
         for y, x in zip(*np.nonzero(m)):
             found.append((float(R.luma(a[y, x])), R.hexc(a[y, x])))

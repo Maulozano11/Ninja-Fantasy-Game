@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { describe, it } from 'node:test';
 import { faceAnchor } from './body';
-import { makeRamp, retintSkin } from './color';
+import { hexToRgb, isLine, makeRamp, retintSkinLifted, rgbToHsl } from './color';
 import { renderSprite } from './compose';
 import type { DrawCtx } from './ctx';
 import { defaultAppearance } from './legacy';
@@ -15,9 +15,12 @@ import { GRID, partIndex, type PartId } from './raster';
 import { buildRig } from './rig';
 import { ROMAN_EYE_COLORS, ROMAN_EYES, ROMAN_IRIS } from './romanEyeArt';
 import { ROMAN_HEAD, ROMAN_SKIN } from './romanHeadArt';
+import { ROMAN_OFFSET, ROMAN_SKIN_PIXELS } from './romanRefPixels';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
 const POSES = [...new Set([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])] as SpritePose[];
+/** Our hand shapes his fists are not laid on. */
+const OPEN_HANDS = ['open', 'point', 'sign', 'cradle'];
 const hex = (rgba: Uint8ClampedArray, i: number) => '#' + [0, 1, 2].map((k) => rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
 
 /** A bare body (only the undergarments), in a skin. */
@@ -37,28 +40,74 @@ const LIMBS: [string, PaintedPiece, PartId][] = [
   ['SKIN_HAND_F', skin.SKIN_HAND_F, 'handF'],
   ['SKIN_THIGH_N', skin.SKIN_THIGH_N, 'thighN'],
   ['SKIN_THIGH_F', skin.SKIN_THIGH_F, 'thighF'],
+  ['SKIN_SHIN_N', skin.SKIN_SHIN_N, 'shinN'],
+  ['SKIN_SHIN_F', skin.SKIN_SHIN_F, 'shinF'],
+];
+
+/** The outfit he painted over: the Bronze Cuirass, the Imperial War Skirt, the bracers and the sandals. */
+const romanOutfit = (body: BodyType = 'male'): SpriteAppearance => {
+  const l = bare(body);
+  l.slots = {
+    armor: { id: 'armor_bronze', colors: [] },
+    skirt: { id: 'skirt_imperial', colors: [] },
+    hands: { id: 'hands_bronze_bracers', colors: [] },
+    feet: { id: 'feet_gladiator_sandals', colors: [] },
+  };
+  return l;
+};
+
+/** Within the 3 a colour of his may move by when the scripts pack his picture's near colours as one. */
+const near = (a: string, b: string) => {
+  const x = hexToRgb(a);
+  const y = hexToRgb(b);
+  return x.every((v, k) => Math.abs(v - y[k]) <= 3);
+};
+
+/**
+ * His picture against a frame: each of his skin pixels in a region, moved as that limb is registered on
+ * ours, is `right` where the frame shows his colour there, `wrong` where it shows skin that is not his
+ * (our own skin ramp, or another colour of his) on that limb's parts, and neither where something covers
+ * it (a strap, the bracer, the skirt, the outline) or it falls past our limb (on the chest, say).
+ */
+function againstHim(f: { rgba: Uint8ClampedArray; part: Uint8Array }, region: string, shift: [number, number], skinHex: string, parts: PartId[], skip: string[] = []) {
+  const rgba = f.rgba;
+  const on = new Set(parts.map(partIndex));
+  const all = Object.values(ROMAN_SKIN_PIXELS).flat();
+  const skinColours = new Set([...makeRamp(skinHex, 'skin'), skin.MALE_SKIN_DARK, ...all.map((c) => c[2])]);
+  let right = 0;
+  const wrong: string[] = [];
+  for (const [x, y, c] of ROMAN_SKIN_PIXELS[region]) {
+    const p = (y + ROMAN_OFFSET[1] + shift[1]) * GRID + x + ROMAN_OFFSET[0] + shift[0];
+    if (!rgba[p * 4 + 3] || !on.has(f.part[p]) || skip.includes(`${x},${y}`)) continue;
+    const ours = hex(rgba, p);
+    if (near(ours, c)) right++;
+    else if (skinColours.has(ours)) wrong.push(`(${x},${y}) his ${c} ours ${ours}`);
+  }
+  return { right, wrong };
+}
+
+// How each limb of his is registered on ours (tools/refs/roman-skin-from-ref.py): his near arm 2 px out, his
+// far arm 3 px out (he tucked it in), his near hand 2 px in and a row down, his legs as his sandals are.
+const REGISTERED: [string, [number, number], PartId[], number][] = [
+  ['upperArmN', [2, 0], ['upperArmN', 'forearmN'], 45],
+  ['upperArmF', [3, 0], ['upperArmF', 'forearmF'], 12],
+  ['handN', [-2, 1], ['handN'], 30],
+  ['handF', [3, 0], ['handF'], 15],
+  ['legN', [6, 0], ['thighN', 'shinN'], 70],
+  ['legF', [2, -6], ['thighF', 'shinF'], 25],
 ];
 
 describe("the owner's skin on the male bodies", () => {
-  it('shows his exact pixels at rest in the skin he painted over (the unturned pieces)', () => {
-    const f = renderSprite(bare('male'), 'idle', 0);
-    // The upper arms and hands are unturned at rest; the thighs are turned from his thigh's angle to ours.
-    for (const [name, piece, part] of LIMBS.slice(0, 4)) {
-      const [rx, ry] = skin.MALE_SKIN_REST[name];
-      const own = new Set(Object.values(piece.colors));
-      let hit = 0;
-      let wrong = 0;
-      piece.rows.forEach((row, j) => {
-        for (let i = 0; i < row.length; i++) {
-          if (row[i] === '.') continue;
-          const p = (ry + j) * GRID + rx + i;
-          if (f.part[p] !== partIndex(part) || !f.rgba[p * 4 + 3] || !own.has(hex(f.rgba, p))) continue;
-          if (hex(f.rgba, p) === piece.colors[row[i]]) hit++;
-          else wrong++;
-        }
-      });
-      assert.equal(wrong, 0, `${name}: a pixel of his is not where he painted it`);
-      assert.ok(hit >= 10, `${name}: only ${hit} of his pixels show`);
+  it('is his picture at rest, in his outfit and bare, in the skin he painted over', () => {
+    // Every pixel of his skin that lands on our skin shows his colour: our own skin never shows where he
+    // painted his (his knees and lower thighs under the skirt, his skin between the laces, his elbows).
+    for (const [what, look] of [['his outfit', romanOutfit()], ['bare', bare('male')]] as const) {
+      const f = renderSprite(look, 'idle', 0);
+      for (const [region, shift, parts, least] of REGISTERED) {
+        const { right, wrong } = againstHim(f, region, shift, skin.MALE_SKIN_BASE, parts);
+        assert.deepEqual(wrong, [], `${what} ${region}: our skin where he painted his`);
+        assert.ok(right >= least, `${what} ${region}: ${right} of his pixels show`);
+      }
     }
   });
 
@@ -81,6 +130,10 @@ describe("the owner's skin on the male bodies", () => {
           }
           // Only limbs that show enough to judge (a far limb behind the body shows a sliver).
           if (limb < 25) continue;
+          // His fists go on our closed hands only (not an open palm, a pointing hand, a hand sign or a hand
+          // cradling a book: those are tested below).
+          const shape = part === 'handN' ? f.rig.shapeN : part === 'handF' ? f.rig.shapeF : undefined;
+          if (shape && OPEN_HANDS.includes(shape)) continue;
           // His far hand is small (19 pixels) and his far upper arm the strip he shows beside the chest, so
           // where our far limbs show whole (leaning, casting) most of them is ours.
           const least = { SKIN_UPPER_ARM_F: 0.1, SKIN_HAND_F: 0.25, SKIN_HAND_N: 0.4 }[name] ?? 0.5;
@@ -116,7 +169,7 @@ describe("the owner's skin on the male bodies", () => {
     const f = renderSprite(bare('male', dark), 'idle', 0);
     const [name, piece, part] = LIMBS[0];
     const [rx, ry] = skin.MALE_SKIN_REST[name];
-    const moved = new Set(Object.values(piece.colors).map((c) => retintSkin(c, skin.MALE_SKIN_BASE, dark)));
+    const moved = new Set(Object.values(piece.colors).map((c) => retintSkinLifted(c, skin.MALE_SKIN_BASE, dark)));
     let hit = 0;
     piece.rows.forEach((row, j) => {
       for (let i = 0; i < row.length; i++) {
@@ -137,6 +190,37 @@ describe("the owner's skin on the male bodies", () => {
     const female = renderSprite(bare('female'), 'idle', 0).rgba;
     assert.ok(has(male, skin.MALE_SKIN_DARK) && !has(male, ours));
     assert.ok(has(female, ours) && !has(female, skin.MALE_SKIN_DARK));
+  });
+
+  it('keeps his shading apart from the black line on a dark skin', () => {
+    // On a very dark skin his darks are lifted (retintSkinLifted): none sinks below our own skin ramp's
+    // darkest shade, toward the black line, and his tones stay apart from each other.
+    const dark = '#3d2216';
+    const L = (c: string) => rgbToHsl(...hexToRgb(c))[2];
+    const moved = Object.values(skin.SKIN_UPPER_ARM_N.colors).filter((c) => !isLine(c)).map((c) => retintSkinLifted(c, skin.MALE_SKIN_BASE, dark));
+    assert.ok(Math.min(...moved.map(L)) >= L(makeRamp(dark, 'skin')[1]), `darkest ${Math.min(...moved.map(L))}`);
+    assert.ok(new Set(moved).size >= 8, `${new Set(moved).size} tones`);
+    assert.equal(retintSkinLifted('#07060b', skin.MALE_SKIN_BASE, dark), '#07060b');
+    assert.equal(retintSkinLifted('#904f4b', skin.MALE_SKIN_BASE, skin.MALE_SKIN_BASE), '#904f4b');
+  });
+
+  it('lays his fists only on our closed hands', () => {
+    const fist = new Set([...Object.values(skin.SKIN_HAND_N.colors), ...Object.values(skin.SKIN_HAND_F.colors)]);
+    for (const c of makeRamp(skin.MALE_SKIN_BASE, 'skin')) fist.delete(c);
+    fist.delete(skin.MALE_SKIN_DARK);
+    let open = 0;
+    for (const pose of POSES) {
+      for (const frame of [0, 1, 2]) {
+        const f = renderSprite(bare('male'), pose, frame);
+        for (const [side, part] of [['N', 'handN'], ['F', 'handF']] as const) {
+          if (!OPEN_HANDS.includes(side === 'N' ? f.rig.shapeN : f.rig.shapeF)) continue;
+          open++;
+          for (let p = 0; p < GRID * GRID; p++)
+            if (f.part[p] === partIndex(part) && f.rgba[p * 4 + 3] && fist.has(hex(f.rgba, p))) assert.fail(`${pose} ${frame}: his fist on our ${side === 'N' ? f.rig.shapeN : f.rig.shapeF} hand`);
+        }
+      }
+    }
+    assert.ok(open >= 5, `${open} open hands checked`);
   });
 
   it('widens his pieces for the bulky body by repeating his own columns', () => {
@@ -189,7 +273,47 @@ describe("the owner's Roman face", () => {
     return l;
   };
 
-  it('is his face, pixel for pixel, on a bald male in the skin he painted over', () => {
+  it('is his picture: his face skin where he painted it (3 px lower), on a bald male', () => {
+    const f = renderSprite(roman('male', false), 'idle', 0);
+    // Not the shadow his bangs cast on his forehead, which the bald skull leaves out (it read as a scar).
+    const { right, wrong } = againstHim(f, 'face', [0, 3], ROMAN_SKIN, ['head'], ['52,15', '50,16']);
+    assert.deepEqual(wrong, []);
+    assert.ok(right / ROMAN_SKIN_PIXELS.face.length > 0.9, `${right} of ${ROMAN_SKIN_PIXELS.face.length}`);
+  });
+
+  it('has a clean bald skull: no shadow of his hair on the forehead, no seam behind the ear', () => {
+    const l = roman('male', false);
+    const f = renderSprite(l, 'idle', 0);
+    const r = buildRig('male', 'idle', 0);
+    const { nx, ny } = faceAnchor({ rig: r, bp: r.bp, look: l } as unknown as DrawCtx);
+    // The forehead above the brow, from the temple to the far brow, is his skull's base skin only (the row
+    // over the brow is his own forehead between the bangs).
+    const forehead = new Set<string>();
+    for (let y = ny - 6; y < ny - 1; y++) for (let x = nx - 2; x <= nx + 6; x++) forehead.add(hex(f.rgba, y * GRID + x));
+    assert.equal(forehead.size, 1, [...forehead].join(' '));
+    // Behind the ear, down to its lobe, no skin pixel of the head between two pixels of black line in a
+    // row (a seam: his ear's line inside the skull's).
+    let seams = 0;
+    for (let y = ny - 12; y < ny + 4; y++)
+      for (let x = nx - 9; x < nx - 3; x++) {
+        const p = y * GRID + x;
+        const dark = (q: number) => f.rgba[q * 4 + 3] > 0 && isLine(hex(f.rgba, q));
+        if (f.part[p] === partIndex('head') && !dark(p) && dark(p - 1) && dark(p + 1)) seams++;
+      }
+    assert.equal(seams, 0);
+  });
+
+  it('keeps his black line black in every skin', () => {
+    const l = { ...roman('male', false), skin: '#7fbf6a' };
+    const f = renderSprite(l, 'idle', 0);
+    const lines = Object.values(ROMAN_HEAD.colors).filter(isLine);
+    const seen = new Set<string>();
+    for (let p = 0; p < GRID * GRID; p++) if (f.part[p] === partIndex('head') && f.rgba[p * 4 + 3]) seen.add(hex(f.rgba, p));
+    // (the eyes cover some of his line cells)
+    assert.ok(lines.filter((c) => seen.has(c)).length >= lines.length / 2, `${lines.filter((c) => seen.has(c)).length} of ${lines.length} of his line colours`);
+  });
+
+  it('is the module lifted for it, pixel for pixel, on a bald male in the skin he painted over', () => {
     const l = roman('male', false);
     const f = renderSprite(l, 'idle', 0);
     const r = buildRig('male', 'idle', 0);
@@ -234,9 +358,32 @@ describe("the owner's Roman face", () => {
   });
 
   it('keeps the other faces as they were', () => {
-    const l = roman('male');
-    const a = renderSprite({ ...l, faceShape: 'tapered', eyeShape: 'sharp' }, 'idle', 0);
-    const b = renderSprite(l, 'idle', 0);
-    assert.notDeepEqual(a.rgba, b.rgba);
+    // The other face and eye shapes on the female and slender bodies (where the male skin does not
+    // reach), as the integration branch drew them before his Roman face (421b9f6); his Aiden head in the
+    // skin he painted it in.
+    const was: Record<string, string> = {
+      'female tapered sharp': '97e1cf96e344970a',
+      'female tapered valiant': 'a0decd31b3d725d0',
+      'female soft sharp': 'b7a785d83b4a1666',
+      'female soft valiant': '840e7d300d4e0f34',
+      'female square sharp': 'c7294669412887c7',
+      'female square valiant': '7740ce7375a28eb3',
+      'female valiant sharp': '7c1c575c756f6907',
+      'female valiant valiant': '439579fad6bf660a',
+      'slender tapered sharp': 'b5d2f2ec5aaebf3c',
+      'slender soft valiant': 'c39edf8b338e256f',
+      'slender square sharp': '49bd580d4abe655e',
+      'slender valiant valiant': '5b5ff7065013120e',
+    };
+    for (const [key, sum] of Object.entries(was)) {
+      const [body, face, eye] = key.split(' ');
+      const l = defaultAppearance();
+      l.body = body as BodyType;
+      l.faceShape = face as SpriteAppearance['faceShape'];
+      l.eyeShape = eye as SpriteAppearance['eyeShape'];
+      if (face === 'valiant') l.skin = '#f6bb96';
+      const f = renderSprite(l, 'idle', 0);
+      assert.equal(createHash('sha1').update(f.rgba).digest('hex').slice(0, 16), sum, key);
+    }
   });
 });

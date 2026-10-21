@@ -5,7 +5,7 @@
 // Geometry is in design units (64 space); face details are placed as single
 // fine pixels (RES per design unit) for 128x128 detail.
 
-import { makeRamp, mixHex, retintHex, retintSkin } from './color';
+import { isLine, makeRamp, mixHex, retintHex, retintSkin, retintSkinLifted } from './color';
 import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
@@ -19,12 +19,13 @@ const SCLERA = '#f4f1ee';
 
 /**
  * The owner's heads, his pixels (the face shapes made from his pictures): the head stamped on the face
- * anchor, the skin he painted it on, and whether the face template draws the mouth on it (his Aiden head
- * had its mouth taken out; his Roman face keeps his own).
+ * anchor, the skin he painted it on, whether the face template draws the mouth on it (his Aiden head
+ * had its mouth taken out; his Roman face keeps his own), and how his skin follows the character's (his
+ * Roman face as his skin on the male limbs does, so they match).
  */
-const PAINTED_HEADS: Partial<Record<FaceShape, { piece: PaintedPiece; skin: string; mouth: boolean }>> = {
-  valiant: { piece: VALIANT_HEAD, skin: VALIANT_SKIN, mouth: true },
-  roman: { piece: ROMAN_HEAD, skin: ROMAN_SKIN, mouth: false },
+const PAINTED_HEADS: Partial<Record<FaceShape, { piece: PaintedPiece; skin: string; mouth: boolean; tint: (hex: string, from: string, to: string) => string }>> = {
+  valiant: { piece: VALIANT_HEAD, skin: VALIANT_SKIN, mouth: true, tint: retintSkin },
+  roman: { piece: ROMAN_HEAD, skin: ROMAN_SKIN, mouth: false, tint: retintSkinLifted },
 };
 
 /** The owner's eyes, his pixels (the eye shapes made from his pictures), with the colours they follow. */
@@ -297,7 +298,7 @@ export function headAt(g: DrawCtx, dx: number, dy: number): Vec {
 function drawHead(g: DrawCtx): void {
   const painted = paintedHead(g);
   if (painted) {
-    drawPaintedHead(g, painted.piece, painted.skin);
+    drawPaintedHead(g, painted);
     drawFace(g);
     return;
   }
@@ -347,10 +348,11 @@ function drawHead(g: DrawCtx): void {
  * does not touch them; the eye options draw the eyes on them (and the face template the mouth on his
  * Aiden head), and the hair covers the skull as it covers ours.
  */
-function drawPaintedHead(g: DrawCtx, piece: PaintedPiece, skin: string): void {
+function drawPaintedHead(g: DrawCtx, { piece, skin, tint }: { piece: PaintedPiece; skin: string; tint: (hex: string, from: string, to: string) => string }): void {
   const { nx, ny } = faceAnchor(g);
   const at = v((nx + 0.5) / RES, (ny + 0.5) / RES);
-  stampPiece(g, 'head.body', piece, at, piece.angle, 'head', (_ch, hex) => retintSkin(hex, skin, g.look.skin));
+  // His black line keeps its colour in every skin.
+  stampPiece(g, 'head.body', piece, at, piece.angle, 'head', (_ch, hex) => (isLine(hex) ? hex : tint(hex, skin, g.look.skin)));
 }
 
 // ---------------------------------------------------------------------------

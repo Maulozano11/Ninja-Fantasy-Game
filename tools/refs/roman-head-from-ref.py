@@ -16,7 +16,9 @@ This script lifts the head out of his pixels, cell by cell (MAP):
   his hair     covers his skull: there the head is continued in his skin, in our male skull's outline
                (the same cells as the 'valiant' head's skull, round the face anchor), so every hairstyle
                covers it as it covers our head; inside it his base skin, his cheek shadow next to the line
-               at the sides, his black line round it
+               at the sides, his black line round it. The shadow his bangs cast on his forehead is not
+               kept (on a bald head it read as a scar), and behind the ear the skull's line runs into his
+               ear's own line (no strip of skull between two black lines)
   his eyes     the brow-and-lash line, the whites and the irises (and the strands of his hair and
                sideburn that cross the forehead and temple) are taken out and his skin carried over them
                from below, so the head is whole: the eyes are drawn by the eye options on top of it (his
@@ -64,14 +66,14 @@ MAP = [
     '.osssssssssssssssso.',  # 10
     '.osssssssssssssssso.',  # 11
     '.osssssssssssssssso.',  # 12
-    '.osssssssssssHsssso.',  # 13  his forehead between the bangs
-    '.ossssssssssHHsssHo.',  # 14
-    '.ossHHsssssHHHssHHo.',  # 15  the top of his ear
-    '.osHHHHssHHeeHeHHeH.',  # 16  his ear; strands of hair over the forehead; his face's far line
-    '.osHHHHeHeeeeeHHeeH.',  # 17  the brow-and-lash line over both eyes; the sideburn at the temple
-    '.osHHHHeeHeeeHHHeeH.',  # 18  the whites and irises; the sideburn in front of the ear
-    '..oHHHHHeHHHHHHHHHH.',  # 19  the ear lobe; a strand on the cheek
-    '......HHHHHHHHHHHHH.',  # 20  under the ear his jaw line starts; his nose shadow
+    '.osssssssssssssssso.',  # 13  his forehead: skull skin where his bangs cast their shadow
+    '.osssssssssssssssHo.',  # 14
+    '..ooHHssssssHHssHHo.',  # 15  the top of his ear; the skull's line runs into it
+    '...HHHHsssseeHeHHeH.',  # 16  his ear (its back line the head's); strands of hair over the forehead; his face's far line
+    '...HHHHeHeeeeeHHeeH.',  # 17  the brow-and-lash line over both eyes; the sideburn at the temple
+    '...HHHHeeHeeeHHHeeH.',  # 18  the whites and irises; the sideburn in front of the ear
+    '...HHHHHeHHHHHHHHHH.',  # 19  the ear lobe; a strand on the cheek
+    '.....HHHHHHHHHHHHHH.',  # 20  his line under the ear lobe; his jaw line starts; his nose shadow
     '......HHHHHHHHHHHHH.',  # 21
     '.....HHHHHHHHHHHHH..',  # 22  his mouth; the neck's shadow behind the jaw
     '.....HHHHHHHHHHHHH..',  # 23

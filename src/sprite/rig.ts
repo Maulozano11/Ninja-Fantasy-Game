@@ -1116,7 +1116,7 @@ export function turnRig(r: Rig, deg: number): Rig {
 
 function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): Rig {
   const bp = BODY_PARAMS[body];
-  if (bp.fit) return solveFit(body, pose, frame, f, bp.fit);
+  if (bp.fit) return solveFit(body, bp, pose, frame, f, bp.fit);
 
   const leanRad = (f.lean * Math.PI) / 180;
   const up = v(Math.sin(leanRad), -Math.cos(leanRad));
@@ -1301,11 +1301,19 @@ function foldable(hip: Vec, t: Vec, thigh: number, shin: number): Vec {
  * he drew them in the torso) and his limb lengths on each side: his far leg and arm are drawn shorter
  * on screen, so the far foot stands a little higher without a lift of its own. Standing, the lower ankle
  * reaches his ankle's height; seated, the hips sit on the camp seat and the feet reach the ground.
+ *
+ * `bp` may be a look's own params on the body's (longer forearms): a forearm longer than the body's
+ * by `forearm` (the far one by `farLonger` more) is that much longer than his, at idle too, its wrist
+ * further along his forearm (body.ts draws his forearm piece on along it).
  */
-function solveFit(body: BodyType, pose: RigPose, frame: number, f: PoseFrame, fit: BodyFit): Rig {
-  const bp = BODY_PARAMS[body];
+function solveFit(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, f: PoseFrame, fit: BodyFit): Rig {
   const loc = fitLocal(fit);
+  const base = BODY_PARAMS[body];
+  const extraN = bp.forearm - base.forearm;
+  const extraF = extraN + (bp.farLonger ?? 0) - (base.farLonger ?? 0);
   const len = fitLen(fit);
+  len.forearmN += extraN;
+  len.forearmF += extraF;
   const leanRad = (f.lean * Math.PI) / 180;
   const up = v(Math.sin(leanRad), -Math.cos(leanRad));
   const right = v(Math.cos(leanRad), Math.sin(leanRad));
@@ -1316,7 +1324,9 @@ function solveFit(body: BodyType, pose: RigPose, frame: number, f: PoseFrame, fi
 
   if (pose === 'idle') {
     // His joints, the upper body carried by the breath.
-    const at = (k: FitJoint) => add(fit[k], breath);
+    // a longer forearm reaches further along his
+    const longer = (e: FitJoint, w: FitJoint, extra: number) => add(fit[w], scale(norm(sub(fit[w], fit[e])), extra));
+    const at = (k: FitJoint) => add(k === 'wristN' ? longer('elbowN', 'wristN', extraN) : k === 'wristF' ? longer('elbowF', 'wristF', extraF) : fit[k], breath);
     const T = (x: number, y: number): Vec => add(fit.pelvis, add(scale(right, x), scale(up, y)));
     const hand = (e: Vec, w: Vec) => add(w, scale(norm(sub(w, e)), bp.handR * 0.9));
     return {

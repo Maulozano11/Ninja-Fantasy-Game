@@ -1,0 +1,97 @@
+// Tests for which colour a jutsu's effects take in battle and which sheets that needs (vfxTintPlan.ts): npm test.
+
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { describe, it } from 'node:test';
+import { JUTSU } from '../../battle/jutsu';
+import type { Unit } from '../../battle/types';
+import type { ChakraChoice, SpriteAppearance } from '../../sprite/types';
+import { cropFrame, jutsuTint, tintSheetsOf, unitTint, unitTintSheets, wallElement } from './vfxTintPlan';
+
+/** A unit with a chakra (its burst `color`, its colour `tint`) and these jutsu. */
+function ninja(chakra: Partial<ChakraChoice> | undefined, jutsus: string[] = [], where: 'look' | 'character' = 'look'): Pick<Unit, 'look' | 'character' | 'jutsus'> {
+  const look = chakra ? ({ chakra: { color: 'red', onCharge: true, onCast: true, onVictory: false, ...chakra } } as SpriteAppearance) : undefined;
+  return where === 'look' ? { look, jutsus } : { character: { appearance: look } as Unit['character'], jutsus };
+}
+
+const manifest = (group: string): Record<string, unknown> => JSON.parse(readFileSync(new URL(`../../assets/world/${group}/manifest.json`, import.meta.url), 'utf8')).sprites;
+
+describe('jutsu effects in the caster\'s chakra colour', () => {
+  it('the elemental jutsu are fire, water, wind, lightning and earth by nature; sword arts, chakra and clan powers are not', () => {
+    const elemental = Object.values(JUTSU).filter((j) => j.elemental).map((j) => j.id).sort();
+    for (const id of ['fireball_goukakyu', 'dragon_fire_stream', 'dragon_fire_bomb', 'great_fire_annihilation', 'katon_pursuing_flame', 'water_dragon_suiryuudan', 'water_shield_suijinheki', 'earth_wall_doryuheki', 'earth_spear_doryuudan', 'wood_dragon_jutsu', 'wood_golem_titan', 'wind_blade_daitoppa', 'rasenshuriken_wind', 'chidori_lightning_blade', 'lightning_hound_raidon', 'kirin_thunder'])
+      assert.ok(elemental.includes(id), `${id} is elemental`);
+    for (const id of ['crescent_moon_dance', 'adamantine_sealing_chains', 'temple_of_nirvana', 'yasaka_magatama', 'night_guy_dragon', 'shadow_clone', 'body_flicker', 'hydra_spit', 'hydra_roar', 'mirai_evasion', 'koton_block', 'koton_wall', 'ryusei_warp', 'northstar_command'])
+      assert.ok(!elemental.includes(id), `${id} is not elemental`);
+    for (const id of elemental) assert.ok(['fire', 'water', 'wind', 'lightning', 'earth'].includes(JUTSU[id].element), id);
+  });
+
+  it('an elemental jutsu takes its caster\'s chakra colour; Natural, enemies without one and other jutsu keep his', () => {
+    const fire = JUTSU.fireball_goukakyu;
+    assert.equal(jutsuTint(fire, ninja({ tint: 'green' })), 'green');
+    assert.equal(jutsuTint(fire, ninja({ color: 'blue', tint: '#ff00aa' })), '#ff00aa');
+    // The sheet's own copy (a saved character keeps its chakra there).
+    assert.equal(jutsuTint(fire, ninja({ tint: 'black' }, [], 'character')), 'black');
+    // The burst alone is the chakra's type, not its colour.
+    assert.equal(jutsuTint(fire, ninja({ color: 'yellow' })), undefined);
+    assert.equal(jutsuTint(fire, ninja(undefined)), undefined);
+    assert.equal(jutsuTint(fire, undefined), undefined);
+    assert.equal(jutsuTint(JUTSU.temple_of_nirvana, ninja({ tint: 'green' })), undefined);
+    assert.equal(jutsuTint(JUTSU.crescent_moon_dance, ninja({ tint: 'green' })), undefined);
+    assert.equal(jutsuTint(undefined, ninja({ tint: 'green' })), undefined);
+    assert.equal(unitTint(ninja({ tint: 'violet' })), 'violet');
+    assert.equal(wallElement('earth'), 'earth');
+    assert.equal(wallElement('water'), 'water');
+    assert.equal(wallElement('metal'), undefined);
+    assert.equal(wallElement('metalBlock'), undefined);
+  });
+
+  it('names the sheets each elemental jutsu plays, the beast first, every one of them in the game', () => {
+    const names = (id: string) => tintSheetsOf(JUTSU[id]).map((r) => `${r.group}/${r.name}`);
+    assert.deepEqual(names('fireball_goukakyu'), ['vfx_fire/fireball', 'vfx_fire/fireball_great', 'vfx_fire/sphere', 'vfx_fire/bolt', 'vfx_fire/blast']);
+    assert.deepEqual(names('great_fire_annihilation'), ['vfx_fire/annihilation', 'vfx_fire/annihilation_enh']);
+    assert.deepEqual(names('dragon_fire_bomb'), ['vfx_fire/breath']);
+    assert.deepEqual(names('dragon_fire_stream'), ['vfx_fire/stream', 'vfx_fire/stream_head']);
+    assert.deepEqual(names('water_dragon_suiryuudan'), ['vfx_beasts/water', 'vfx_water/bolt', 'vfx_water/hit']);
+    assert.ok(tintSheetsOf(JUTSU.wood_dragon_jutsu)[0].beast, 'the stone drake is the beast');
+    assert.deepEqual(names('earth_wall_doryuheki'), ['vfx_earth/wall', 'vfx_earth/wall_diag', 'vfx_earth/wall_depth']);
+    assert.deepEqual(names('chidori_lightning_blade'), ['vfx_lightning/hit']);
+    assert.ok(names('kirin_thunder').slice(0, 2).join() === 'vfx_lightning/kirin,vfx_lightning/kirin_enh');
+    assert.deepEqual(names('katon_pursuing_flame'), ['vfx_fire/bolt', 'vfx_fire/hit']);
+    for (const id of ['temple_of_nirvana', 'crescent_moon_dance', 'adamantine_sealing_chains', 'hydra_spit']) assert.deepEqual(names(id), [], id);
+    for (const spec of Object.values(JUTSU))
+      for (const r of tintSheetsOf(spec)) assert.ok(manifest(r.group)[r.name], `${spec.id}: ${r.group}/${r.name} is in the game`);
+  });
+
+  it('a unit\'s sheets to recolour: none when Natural or in the sheet\'s own colour, each sheet once', () => {
+    const specOf = (id: string) => JUTSU[id];
+    assert.deepEqual(unitTintSheets(ninja(undefined, ['fireball_goukakyu']), specOf), []);
+    assert.deepEqual(unitTintSheets(ninja({ tint: 'red' }, ['fireball_goukakyu', 'great_fire_annihilation']), specOf), []);
+    // Brown is earth's own colour: its walls and its drake stay his, its fire takes it.
+    const brown = unitTintSheets(ninja({ tint: 'brown' }, ['earth_wall_doryuheki', 'wood_dragon_jutsu', 'katon_pursuing_flame']), specOf);
+    assert.deepEqual(brown.map((s) => `${s.ref.group}/${s.ref.name}`), ['vfx_fire/bolt', 'vfx_fire/hit']);
+    // Yellow is the raiju's own colour, not the lightning set's.
+    const yellow = unitTintSheets(ninja({ tint: 'yellow' }, ['lightning_hound_raidon']), specOf).map((s) => `${s.ref.group}/${s.ref.name}`);
+    assert.deepEqual(yellow, ['vfx_lightning/bolt', 'vfx_lightning/hit']);
+    const green = unitTintSheets(ninja({ tint: 'green' }, ['fireball_goukakyu', 'katon_pursuing_flame', 'temple_of_nirvana']), specOf);
+    const keys = green.map((s) => `${s.ref.group}/${s.ref.name}`);
+    assert.equal(new Set(keys).size, keys.length);
+    assert.ok(keys.includes('vfx_fire/fireball') && keys.includes('vfx_fire/hit') && !keys.some((k) => k.startsWith('vfx_genjutsu')));
+    assert.ok(green.every((s) => s.color === 'green'));
+  });
+
+  it('cuts a frame down to its pixels, exactly', () => {
+    const w = 5;
+    const h = 4;
+    const px = new Uint8ClampedArray(w * h * 4);
+    assert.equal(cropFrame(px, w, h), null);
+    const put = (x: number, y: number, v: number) => px.set([v, v + 1, v + 2, v + 3], (y * w + x) * 4);
+    put(1, 1, 10);
+    put(3, 2, 20);
+    const c = cropFrame(px, w, h)!;
+    assert.deepEqual([c.x, c.y, c.w, c.h], [1, 1, 3, 2]);
+    assert.deepEqual([...c.rgba.subarray(0, 4)], [10, 11, 12, 13]);
+    assert.deepEqual([...c.rgba.subarray((1 * 3 + 2) * 4, (1 * 3 + 2) * 4 + 4)], [20, 21, 22, 23]);
+    assert.equal(c.rgba.filter((_, i) => i % 4 === 3 && c.rgba[i] !== 0).length, 2);
+  });
+});

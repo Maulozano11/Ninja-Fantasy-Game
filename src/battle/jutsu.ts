@@ -45,6 +45,12 @@ export interface JutsuSpec {
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
   sig?: string;
+  /**
+   * A fire, water, wind, lightning or earth jutsu (by its nature, and its effects are that
+   * element's): the screen plays its effects, its beast and its wall in the caster's chakra colour
+   * (the owner, 2026-10-21). A sword art that borrows the wind's slash is not one.
+   */
+  elemental?: boolean;
   /** Taijutsu and kenjutsu strikes are delivered in person (the caster dashes in). */
   melee: boolean;
   /** Loud: casting it in the stealth phase starts the battle. */
@@ -78,6 +84,7 @@ const ELEMENT: Record<string, VfxElement> = {
   Taijutsu: 'chakra',
   Kenjutsu: 'wind',
 };
+const ELEMENTAL_NATURES = ['Fire', 'Water', 'Wind', 'Lightning', 'Earth'];
 
 /** Per-jutsu touches the data can't say (the screen's effect, special behavior). */
 const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
@@ -143,7 +150,10 @@ function specOf(j: JutsuDefinition): JutsuSpec {
     loud: true,
     env: j.environmentalEffect === 'Ignites Wood' ? 'ignite' : j.environmentalEffect === 'Electrifies Water' ? 'electrify' : j.environmentalEffect === 'Clears Foliage' ? 'clearFoliage' : undefined,
   };
-  return { ...base, ...OVERRIDE[j.id] };
+  const spec = { ...base, ...OVERRIDE[j.id] };
+  // Elemental by nature, and still drawn as that element (the Adamantine Chains are Water but chakra).
+  if (ELEMENTAL_NATURES.includes(j.nature) && spec.element === ELEMENT[j.nature]) spec.elemental = true;
+  return spec;
 }
 
 /** The hydra heads' own attacks (not in the jutsu list a ninja learns from). */
@@ -232,6 +242,7 @@ const CLAN_SPECS: JutsuSpec[] = [
     saveHalf: true,
     saveAdv: 'disadvantage',
     vfx: 'bolt',
+    elemental: true,
     melee: false,
     loud: true,
   },

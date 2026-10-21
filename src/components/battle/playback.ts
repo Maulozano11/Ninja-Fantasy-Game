@@ -7,6 +7,7 @@ import type { SpritePose } from '../../sprite/types';
 import { JUTSU } from '../../battle/jutsu';
 import type { VfxElement, VfxRole } from '../../battle/jutsu';
 import { blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
+import { jutsuTint, unitTint } from './vfxTintPlan';
 import { dist } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
@@ -77,6 +78,12 @@ export interface Fx {
   unit?: string;
   /** It goes where its unit goes (Evasion's eyes as the Mirai darts aside), not where it started. */
   follow?: boolean;
+  /**
+   * The caster's chakra colour (a chakra colour id or '#rrggbb'), for an elemental jutsu's effects:
+   * they play in it, sheets and drawn ones alike (the owner, 2026-10-21). Taken when the jutsu is
+   * cast, so the effect keeps it. Unset: his colours.
+   */
+  tint?: string;
 }
 
 export interface Banner {
@@ -498,7 +505,7 @@ export class Playback {
         h.sound('jutsu', el);
         if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
         const t1 = now + castDelay / this.speed;
-        const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig, role: spec?.vfx };
+        const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig, role: spec?.vfx, tint: jutsuTint(spec, caster) };
         switch (spec?.special) {
           case 'heal':
             this.fx.push({ ...base, kind: 'heal', from: ev.at, to: ev.at, dur: 1300 });
@@ -737,7 +744,8 @@ export class Playback {
       }
       case 'electrified':
         // Along the water only (and not through a metal wall): renderer.ts clips its rays.
-        this.fx.push({ kind: 'electric', element: 'lightning', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 800, sig: 'water' });
+        // In the chakra colour of whoever's lightning it is.
+        this.fx.push({ kind: 'electric', element: 'lightning', from: ev.at, to: ev.at, radius: ev.radius, t0: now, dur: 800, sig: 'water', tint: unitTint(ev.source ? state.units[ev.source] : undefined) });
         return 300;
       case 'trap':
         return 0;
@@ -771,7 +779,9 @@ export class Playback {
       }
       case 'seal': {
         const at = this.posOf(ev.unit, now);
-        this.fx.push({ kind: ev.how === 'lightning' ? 'electric' : 'fire', element: ev.how === 'lightning' ? 'lightning' : 'fire', from: at, to: at, radius: 0.8, t0: now, dur: 900, lift: [140, 140] });
+        // The flare of the fire or lightning that sealed it, in its caster's chakra colour (an explosion has none).
+        const tint = ev.how === 'explosion' ? undefined : unitTint(ev.source ? state.units[ev.source] : undefined);
+        this.fx.push({ kind: ev.how === 'lightning' ? 'electric' : 'fire', element: ev.how === 'lightning' ? 'lightning' : 'fire', from: at, to: at, radius: 0.8, t0: now, dur: 900, lift: [140, 140], tint });
         if (label) this.float(label, '#fdba74', at, now, { rise: 160 });
         return 400;
       }

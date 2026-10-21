@@ -917,7 +917,8 @@ function dashTo(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
 
 /** Earth and water walls stand across the caster's line, centered on the point. */
 function raiseWall(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleEvent[]): void {
-  const wall = jutsuWallAt(spec, u.pos, at, `wall_${s.tick}_${u.id}`);
+  // Its owner too: the wall stands in the caster's chakra colour on the screen. It stays unbreakable.
+  const wall = { ...jutsuWallAt(spec, u.pos, at, `wall_${s.tick}_${u.id}`), owner: u.id };
   s.walls.push(wall);
   ev.push({ t: 'wall', wall, on: true });
 }

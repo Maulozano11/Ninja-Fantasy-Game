@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import { inflateSync } from 'node:zlib';
 import { tintPal } from './chakra';
 import { rgbToHsl } from './color';
-import { isTintElement, tintVfx, TINT_ELEMENTS, vfxTintIsNatural, vfxTintOf } from './vfxTint';
+import { isTintElement, tintVfx, TINT_ELEMENTS, vfxTintColors, vfxTintIsNatural, vfxTintOf } from './vfxTint';
 import type { TintElement } from './vfxTint';
 
 /** Decodes an 8-bit RGBA, non-interlaced PNG (what the sheet tools write). */
@@ -389,5 +389,46 @@ describe('elemental jutsu in a chakra colour', () => {
       }
       assert.ok(n > 5000 && off / n < 30, `Kirin cloud ${c}: ${n} pixels, ${(off / n).toFixed(1)} off on average`);
     }
+  });
+
+  it('a sheet recoloured a frame at a time, in any order, is the sheet recoloured whole (the battle goes frame by frame)', () => {
+    for (const [el, name] of [['water', 'hit'], ['fire', 'wall'], ['earth', 'wall_diag'], ['lightning', 'bolt']] as const) {
+      const m = JSON.parse(readFileSync(new URL(`../assets/world/vfx_${el}/manifest.json`, import.meta.url), 'utf8')).sprites[name];
+      const s = sheet(el, name);
+      const { frameW: w, frameH: h } = m;
+      const cells: [string, number][] = Object.entries(m.anims as Record<string, { frames: number }>).flatMap(([anim, a]) => Array.from({ length: a.frames }, (_, f) => [anim, f] as [string, number]));
+      for (const c of ['green', 'black', 'white', '#ff00aa']) {
+        const whole = tintVfx(s.rgba, el, c, { width: s.w, height: s.h, frameW: w, frameH: h, sprite: name });
+        // Backwards, then the first again: what one frame met before never changes another.
+        for (const [anim, f] of [...cells.slice().reverse(), cells[0]]) {
+          const one = frame(el, name, anim, f);
+          const out = tintVfx(one.rgba, el, c, { width: w, height: h, sprite: name });
+          const row = m.anims[anim].row;
+          let off = 0;
+          for (let y = 0; y < h; y++)
+            for (let x = 0; x < w * 4; x++) if (out[y * w * 4 + x] !== whole[((row * h + y) * s.w + f * w) * 4 + x]) off++;
+          assert.equal(off, 0, `${el}/${name} ${c} ${anim} ${f}: ${off} bytes differ`);
+        }
+      }
+    }
+  });
+
+  it('the drawn stand-in effects take the same colour, and keep theirs when Natural', () => {
+    for (const el of TINT_ELEMENTS) for (const c of [undefined, ...NATURAL[el].set]) assert.equal(vfxTintColors(el, c), undefined, `${el} ${c}`);
+    const isHex = (x: string) => /^#[0-9a-f]{6}$/.test(x);
+    const hsl = (x: string) => rgbToHsl(parseInt(x.slice(1, 3), 16), parseInt(x.slice(3, 5), 16), parseInt(x.slice(5, 7), 16));
+    for (const el of TINT_ELEMENTS)
+      for (const c of [...changing(el, 'bolt'), '#ff00aa']) {
+        const col = vfxTintColors(el, c)!;
+        assert.ok(col && col.length === 4 && col.every(isHex), `${el} ${c}: ${col}`);
+        assert.ok(vfxTintColors(el, c) === col, `${el} ${c}: worked out once`);
+        // Core to dark: the light comes first (black's red-hot or violet core over its dark body).
+        assert.ok(hsl(col[0])[2] > hsl(col[3])[2], `${el} ${c}: ${col}`);
+      }
+    // Green fire is green in the middle; black stays dark at the edge; white water is a pale silver.
+    assert.ok(hueGap(hsl(vfxTintColors('fire', 'green')![2])[0], 125) < 30);
+    assert.ok(hsl(vfxTintColors('lightning', 'black')![3])[2] < 0.2);
+    const [, s1, l1] = hsl(vfxTintColors('water', 'white')![1]);
+    assert.ok(s1 < 0.3 && l1 > 0.6);
   });
 });

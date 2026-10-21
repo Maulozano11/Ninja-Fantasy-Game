@@ -248,6 +248,18 @@ interface Scheme {
   rim: RGB;
   band: RGB;
   core: RGB;
+  /** How each of his colours turns out, by 0xrrggbb, kept: a sheet's frames share most of their colours. */
+  looks: Map<number, Look>;
+}
+
+/** Schemes by family and colour id, so the looks worked out for one frame serve the next ones. */
+const schemes = new Map<Family, Map<string, Scheme>>();
+function schemeFor(fam: Family, id: string): Scheme {
+  let byId = schemes.get(fam);
+  if (!byId) schemes.set(fam, (byId = new Map()));
+  let s = byId.get(id);
+  if (!s) byId.set(id, (s = schemeOf(fam, id)));
+  return s;
 }
 
 function schemeOf(fam: Family, id: string): Scheme {
@@ -277,12 +289,12 @@ function schemeOf(fam: Family, id: string): Scheme {
     });
   }
   const lines = lineSet(fam);
-  if (!dark) return { fam, lines, tones, hue, white, dark, darkHue: 0, darkSat: 0, rim: WHITE, band: WHITE, core: WHITE };
+  if (!dark) return { fam, lines, tones, hue, white, dark, darkHue: 0, darkSat: 0, rim: WHITE, band: WHITE, core: WHITE, looks: new Map() };
   // Black: the black chakra's own violet and red; a dark custom colour: its own hue, lit.
   const black = id === 'black';
   const rim: RGB = black ? raw[3] : hslRgb(h2, Math.min(1, s2 * 1.2), 0.52);
   const core: RGB = fam.hot ? (black ? raw[4] : hslRgb(h2, s2 * 0.8, 0.74)) : mix(rim, WHITE, 0.45);
-  return { fam, lines, tones, white, dark, darkHue: h2, darkSat: Math.min(0.38, s2), rim, band: mix(raw[2], rim, 0.35), core };
+  return { fam, lines, tones, white, dark, darkHue: h2, darkSat: Math.min(0.38, s2), rim, band: mix(raw[2], rim, 0.35), core, looks: new Map() };
 }
 
 function lookOf(s: Scheme, r: number, g: number, b: number): Look {
@@ -333,7 +345,7 @@ export function tintVfx<T extends Uint8Array | Uint8ClampedArray>(rgba: T, eleme
   const { width: W, height: H } = sheet;
   if (rgba.length !== W * H * 4) throw new RangeError(`tintVfx: ${rgba.length} bytes is not ${W} x ${H} RGBA`);
   const fam = familyOf(element, sheet)!;
-  const s = schemeOf(fam, resolve(color)!);
+  const s = schemeFor(fam, resolve(color)!);
   const n = W * H;
   const out = rgba.slice() as T;
   // Each colour is worked out once: `at` holds each pixel's entry in `list` (-1: empty air).
@@ -350,7 +362,9 @@ export function tintVfx<T extends Uint8Array | Uint8ClampedArray>(rgba: T, eleme
       let k = index.get(c);
       if (k === undefined) {
         index.set(c, (k = list.length));
-        list.push(lookOf(s, rgba[o], rgba[o + 1], rgba[o + 2]));
+        let lk = s.looks.get(c);
+        if (!lk) s.looks.set(c, (lk = lookOf(s, rgba[o], rgba[o + 1], rgba[o + 2])));
+        list.push(lk);
       }
       lastC = c;
       lastK = k;
@@ -371,6 +385,36 @@ export function tintVfx<T extends Uint8Array | Uint8ClampedArray>(rgba: T, eleme
     return out;
   }
   darkPass(rgba, out, at, list, s, sheet);
+  return out;
+}
+
+const hex = (c: RGB): string => `#${c.map((v) => Math.round(Math.min(255, Math.max(0, v))).toString(16).padStart(2, '0')).join('')}`;
+const standIns = new Map<string, readonly [string, string, string, string] | undefined>();
+
+/**
+ * The four colours of an element's drawn stand-in effects (core, light, middle, dark, as '#rrggbb':
+ * the battle draws them while a sheet loads, and for the effects that have no sheet) in a chakra
+ * colour, from the same tones its sheets take. Undefined when the colour leaves the element's
+ * effects as he drew them: the stand-ins keep their own colours then.
+ */
+export function vfxTintColors(element: TintElement, color: string | undefined): readonly [string, string, string, string] | undefined {
+  if (vfxTintIsNatural(element, color)) return undefined;
+  const k = `${element}|${color}`;
+  if (standIns.has(k)) return standIns.get(k);
+  const fam = FAMILIES[element].set;
+  const s = schemeFor(fam, resolve(color)!);
+  let out: readonly [string, string, string, string];
+  if (s.dark) out = [hex(s.core), hex(s.rim), hex(s.band), hex(hslRgb(s.darkHue, s.darkSat, 0.12))];
+  else {
+    // Earth stays rock: its tones are muted as its sheets' are.
+    const t = s.tones.map((c) => {
+      if (fam.vivid >= 1) return c;
+      const [h, sat, l] = rgbToHsl(c[0], c[1], c[2]);
+      return hslRgb(h, sat * fam.vivid, l);
+    });
+    out = [hex(t[4]), hex(t[3]), hex(t[2]), hex(t[1])];
+  }
+  standIns.set(k, out);
   return out;
 }
 
@@ -477,22 +521,35 @@ function darkPass(rgba: Uint8Array | Uint8ClampedArray, out: Uint8Array | Uint8C
     if (!fam.hot) return mix(low, s.rim, t * 0.6);
     return t < 0.45 ? mix(low, s.rim, t / 0.45) : t < 0.8 ? s.rim : mix(s.rim, s.core, (t - 0.8) / 0.2);
   };
+  // A pixel's colour depends only on its own colour and its place (a speck, a glow, the rim, its
+  // band, the body; bright or not): each pair is worked out once (16 places per colour).
+  const memo = new Float64Array(list.length * 16 * 3);
+  const done = new Uint8Array(list.length * 16);
   for (let i = 0; i < n; i++) {
     const k = kind[i];
     if (k & AIR) continue;
-    const lk = list[at[i]];
+    const li = at[i];
+    const lk = list[li];
     if (lk.keep || (fam.earth && rgba[i * 4 + 3] < 255)) continue;
-    const yn = clamp01((lk.y - s0) / (s3 - s0));
-    let c = k & BRIGHT ? hotOf(lk.y) : lk.c;
-    if (speck[i]) c = mix(glowDim, s.rim, 0.5 + 0.5 * yn);
-    else if (!(k & SOLID)) {
-      if (near[i]) c = mix(glowDim, s.rim, yn);
-    } else if (!(k & BRIGHT) && rim[i] === 1) c = s.rim;
-    else if (!(k & BRIGHT) && rim[i] === 2) c = mix(c, s.band, 0.55);
+    const place = (speck[i] ? 1 : !(k & SOLID) ? (near[i] ? 2 : 3) : !(k & BRIGHT) && rim[i] === 1 ? 4 : !(k & BRIGHT) && rim[i] === 2 ? 5 : 6) | (k & BRIGHT ? 8 : 0);
+    const m = li * 16 + place;
     const o = i * 4;
-    const v = lk.w >= 1 ? c : mix([rgba[o], rgba[o + 1], rgba[o + 2]], c, lk.w);
-    out[o] = Math.round(v[0]);
-    out[o + 1] = Math.round(v[1]);
-    out[o + 2] = Math.round(v[2]);
+    if (!done[m]) {
+      const yn = clamp01((lk.y - s0) / (s3 - s0));
+      let c = k & BRIGHT ? hotOf(lk.y) : lk.c;
+      if (speck[i]) c = mix(glowDim, s.rim, 0.5 + 0.5 * yn);
+      else if (!(k & SOLID)) {
+        if (near[i]) c = mix(glowDim, s.rim, yn);
+      } else if (!(k & BRIGHT) && rim[i] === 1) c = s.rim;
+      else if (!(k & BRIGHT) && rim[i] === 2) c = mix(c, s.band, 0.55);
+      const v = lk.w >= 1 ? c : mix([rgba[o], rgba[o + 1], rgba[o + 2]], c, lk.w);
+      memo[m * 3] = Math.round(v[0]);
+      memo[m * 3 + 1] = Math.round(v[1]);
+      memo[m * 3 + 2] = Math.round(v[2]);
+      done[m] = 1;
+    }
+    out[o] = memo[m * 3];
+    out[o + 1] = memo[m * 3 + 1];
+    out[o + 2] = memo[m * 3 + 2];
   }
 }

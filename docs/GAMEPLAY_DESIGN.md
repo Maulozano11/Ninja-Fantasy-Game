@@ -340,7 +340,7 @@ by the builder; his answers settle the rows marked so, the rest is still
 | Water (Agua) | Rising Tide | blue | Proposed (Hana is Water: his answer 1, on this table) |
 | Wind (Viento) | Leafwind Spiral | green | Proposed (Hiro is Wind: his answer 1, on this table) |
 | Lightning (Rayo) | Storm Lash | yellow | His rule |
-| Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up) | brown | Kenji Earth: his answer 1. The burst is **new art, waiting for his approval** |
+| Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up) | brown | Kenji Earth: his answer 1. The burst art is **approved** (2026-10-21: "me gusta tierra quebrada") |
 | Shadow (Sombra), no element | Nightveil Mist | indigo | **Pending** (answer 3): not offered; jutsu later, demonic |
 | Spirit (Espíritu), no element | Spectral Guardian | violet | **Pending** (answer 3): not offered; jutsu later, demonic |
 | Light (Luz), no element | Heaven Pillar | white | The type stays (answer 3), its jutsu later: deity, angel and god. The burst: proposed |
@@ -516,7 +516,6 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
 ## Open questions
 
-- The Earth burst (Shattered Earth, "Chakra type" above): approve or redo it.
   It was drawn because Earth had none; Kenji is Earth (his answer 1), but the
   art itself waits for his yes.
 - The burst-to-type table ("Chakra type" above): approve or change the rows

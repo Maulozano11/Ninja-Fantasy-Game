@@ -134,7 +134,7 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   copies of the legends and companions move to their new type when they load; Shadow and Spirit
   are pending (out of the creator and the random ninja), Light and Void stay with their jutsu pending
   (Light: deity, angel and god; Void, Shadow and Spirit: demonic); Cinder Nova stays as a second Fire
-  burst. **Still his** (as built, proposed): approve or redo the Earth burst art (Shattered Earth);
+  burst. **Still his** (as built, proposed): (the Earth burst art, Shattered Earth, is approved: "me gusta tierra quebrada");
   the burst-to-type rows his answers did not settle (Water = Rising Tide, Wind = Leafwind Spiral,
   the Light and Void bursts); saved legend copies are moved only while they carry the legend's own
   jutsu (so a player's own Ren as Water stays); the jutsu gate itself (S-rank gated, Utility and

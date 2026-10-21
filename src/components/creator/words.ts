@@ -259,6 +259,13 @@ const ES: Record<string, string> = {
   "Silk cord crossed over white ray skin, a gold ornament under the middle diamond.": "Cordón de seda cruzado sobre piel de raya blanca, con un adorno de oro bajo el rombo central.",
   "The bare white ray skin of a court sword, gold fittings and a red silk tassel.": "La piel de raya blanca de una espada de la corte, herrajes de oro y una borla de seda roja.",
   "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
+  // the princess's gown skirt (items/princessSkirt.ts)
+  'Rose Dawn Gown Skirt': 'Falda de gala del Alba Rosa',
+  'A ball-gown skirt to the floor: a pink overskirt open at the front, its hems embroidered in lilac and gold, over a lilac underskirt with a gold hem band and a dark purple petticoat. Women only.':
+    'Una falda de gala hasta el suelo: una sobrefalda rosa abierta por delante, con los bajos bordados en lila y oro, sobre una falda interior lila con una banda de oro en el bajo y una enagua morado oscuro. Solo mujeres.',
+  Underskirt: 'Falda interior',
+  Embroidery: 'Bordado',
+  Petticoat: 'Enagua',
 };
 
 /** An editor label in the screen's language. */

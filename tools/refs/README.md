@@ -115,3 +115,7 @@ folders.
       npx tsx tools/refs/princess-idle.ts <dir>/female-idle
       python3 -I tools/refs/princess-study.py <dir> <dir>/female-idle     # native@4, parts@4, overlay@4, palette
       python3 -I tools/refs/princess-study.py --palette                   # reprints PALETTE_HEX
+
+- `princess-skirt-from-ref.py`: her gown skirt (`skirt_rose_gown`) as one piece, the open pink overskirt, the lilac underskirt and the petticoat, his pixels one for one at `PART_OFFSET['overskirt']` on our female at idle frame 0 → `src/sprite/items/princessSkirtArt.ts` (`princessSkirt.ts` drapes it on the rig). What her sleeves, near hand, bodice point, sceptre and shoes hide is filled by carrying his pixels on (down his folds at the hips, mirrored along the row at the hem), with his line round it:
+
+      python3 -I tools/refs/princess-skirt-from-ref.py <dir> src/sprite/items/princessSkirtArt.ts   # <dir>/skirt-his@8.png

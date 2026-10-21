@@ -70,6 +70,14 @@ export type ShinobiClassType =
 
 export type ElementalNature = 'Fire' | 'Water' | 'Earth' | 'Wind' | 'Lightning' | 'Taijutsu' | 'Kenjutsu' | 'Genjutsu';
 
+/**
+ * A ninja's chakra type, picked in the creator's Chakra section: the ninja's elemental nature in the
+ * rules, whatever colour the chakra shows (the owner, 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Chakra
+ * type"). The five elements, then four types that are no element (their bursts show shadow, a
+ * spirit, light and the void). It is read from the look's burst: rules/ninja.ts `natureOf`.
+ */
+export type ChakraNature = 'Fire' | 'Water' | 'Wind' | 'Lightning' | 'Earth' | 'Shadow' | 'Spirit' | 'Light' | 'Void';
+
 export type JutsuRank = 'D' | 'C' | 'B' | 'A' | 'S';
 
 export type JutsuSlotCategory = 'Utility' | 'Elemental' | 'Clan' | 'Ultimate';

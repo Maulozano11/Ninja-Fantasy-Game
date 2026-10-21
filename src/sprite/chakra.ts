@@ -21,24 +21,29 @@ export type ChakraMode = 'aura' | 'charge' | 'cast' | 'victory';
 
 export interface ChakraInfo {
   id: ChakraColorId;
+  /** The burst's natural color, by name (the color pickers' word for it). */
   name: string;
   hex: string;
   burst: string;
-  /** The element the burst shows (fire, water...). Any color can be applied to it. */
-  nature: string;
+  /**
+   * What the burst shows (fire, embers, water...): the cast effects key their emblem, orb and word on
+   * it. Its nature in the rules is in chakraNature.ts. Any color can be applied to it.
+   */
+  motif: string;
   desc: string;
 }
 
 export const CHAKRA_COLORS: ChakraInfo[] = [
-  { id: 'red', name: 'Crimson', hex: '#e8321e', burst: 'Pyre Crown', nature: 'Fire', desc: 'Tongues of flame lick upward from the whole body.' },
-  { id: 'orange', name: 'Ember', hex: '#f27c18', burst: 'Cinder Nova', nature: 'Embers', desc: 'Embers explode outward as a shockwave rolls out from the feet.' },
-  { id: 'yellow', name: 'Thunder', hex: '#f0c818', burst: 'Storm Lash', nature: 'Lightning', desc: 'Jagged bolts crackle and arc around the body.' },
-  { id: 'green', name: 'Gale', hex: '#3dbc48', burst: 'Leafwind Spiral', nature: 'Wind', desc: 'A rising whirlwind of wind and leaves wraps the body.' },
-  { id: 'blue', name: 'Tide', hex: '#36a0f0', burst: 'Rising Tide', nature: 'Water', desc: 'Rings of water climb the body, shedding droplets.' },
-  { id: 'indigo', name: 'Dusk', hex: '#4a3eb0', burst: 'Nightveil Mist', nature: 'Shadow', desc: 'Shadow smoke streams backward in curling tendrils.' },
-  { id: 'violet', name: 'Phantom', hex: '#a54ce0', burst: 'Spectral Guardian', nature: 'Spirit', desc: 'A towering ghost warrior looms behind the user.' },
-  { id: 'white', name: 'Radiant', hex: '#f4f1e4', burst: 'Heaven Pillar', nature: 'Light', desc: 'A pillar of light falls while rays fan out from the heart.' },
-  { id: 'black', name: 'Void', hex: '#1a0b22', burst: 'Abyss Orbit', nature: 'Void', desc: 'Black orbs orbit the body as space cracks open around it.' },
+  { id: 'red', name: 'Red', hex: '#e8321e', burst: 'Pyre Crown', motif: 'Fire', desc: 'Tongues of flame lick upward from the whole body.' },
+  { id: 'orange', name: 'Orange', hex: '#f27c18', burst: 'Cinder Nova', motif: 'Embers', desc: 'Embers explode outward as a shockwave rolls out from the feet.' },
+  { id: 'yellow', name: 'Yellow', hex: '#f0c818', burst: 'Storm Lash', motif: 'Lightning', desc: 'Jagged bolts crackle and arc around the body.' },
+  { id: 'green', name: 'Green', hex: '#3dbc48', burst: 'Leafwind Spiral', motif: 'Wind', desc: 'A rising whirlwind of wind and leaves wraps the body.' },
+  { id: 'blue', name: 'Blue', hex: '#36a0f0', burst: 'Rising Tide', motif: 'Water', desc: 'Rings of water climb the body, shedding droplets.' },
+  { id: 'indigo', name: 'Indigo', hex: '#4a3eb0', burst: 'Nightveil Mist', motif: 'Shadow', desc: 'Shadow smoke streams backward in curling tendrils.' },
+  { id: 'violet', name: 'Violet', hex: '#a54ce0', burst: 'Spectral Guardian', motif: 'Spirit', desc: 'A towering ghost warrior looms behind the user.' },
+  { id: 'white', name: 'White', hex: '#f4f1e4', burst: 'Heaven Pillar', motif: 'Light', desc: 'A pillar of light falls while rays fan out from the heart.' },
+  { id: 'black', name: 'Black', hex: '#1a0b22', burst: 'Abyss Orbit', motif: 'Void', desc: 'Black orbs orbit the body as space cracks open around it.' },
+  { id: 'brown', name: 'Brown', hex: '#9a6a36', burst: 'Shattered Earth', motif: 'Earth', desc: 'The ground cracks open and rocks tear loose to float around the body.' },
 ];
 
 /** Number of ticks in one animation loop (the caller advances tick at ~12 fps). */
@@ -70,6 +75,7 @@ const PALS: Record<ChakraColorId, Pal> = {
   violet: pal('#2a0a44', '#62209a', '#a54ce0', '#d996ff', '#f8e6ff'),
   white: pal('#6e5a26', '#c4a24c', '#efe2b4', '#fffbe8', '#ffffff'),
   black: pal('#000000', '#0e0614', '#4a1470', '#a238f0', '#ff2c50'),
+  brown: pal('#24160b', '#5a3a1c', '#9a6a36', '#d4a464', '#f6e3b4'),
 };
 
 /**
@@ -108,6 +114,7 @@ const SEEDS: Record<ChakraColorId, number> = {
   violet: 701,
   white: 809,
   black: 907,
+  brown: 1009,
 };
 
 function hash(a: number, b = 0, c = 0, d = 0): number {
@@ -1595,6 +1602,174 @@ function blackBurst(c: Ctx, s: Src, L: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// BROWN - Shattered Earth: the ground cracks open under the feet, chakra glows
+// in the cracks, stone spikes burst up around them and rocks tear loose to
+// float up around the body
+// ---------------------------------------------------------------------------
+
+/**
+ * An angular rock of radius `R` (a 5 to 7 sided polygon from `seed`), lit from the upper left:
+ * a dark edge, faces shaded by the way they turn, a lit top and a bright upper-left rim.
+ */
+function boulder(c: Ctx, layer: Lay, x: number, y: number, R: number, seed: number): void {
+  const r = rng(seed);
+  const nv = 5 + Math.floor(r() * 3);
+  const rot = r() * TAU;
+  const rad = Array.from({ length: nv }, () => 0.72 + r() * 0.36);
+  const cx = Math.floor(x);
+  const cy = Math.floor(y);
+  const B = Math.ceil(R * 1.1) + 1;
+  for (let oy = -B; oy <= B; oy++)
+    for (let ox = -B; ox <= B; ox++) {
+      const px = ox + 0.5;
+      const py = oy + 0.5;
+      const d = Math.hypot(px, py);
+      const a = Math.atan2(py, px);
+      const u = mod((a - rot) / TAU, 1) * nv;
+      const i = Math.floor(u);
+      const f = u - i;
+      // straight-ish edges between the corners: the reach dips between them
+      const e = R * (rad[i] * (1 - f) + rad[(i + 1) % nv] * f) * (1 - 0.14 * Math.sin(Math.PI * f));
+      if (d > e) continue;
+      let tone: number;
+      if (d > e - 1) tone = 0;
+      else {
+        const mid = rot + ((i + 0.5) * TAU) / nv;
+        const lit = -(Math.cos(mid) + Math.sin(mid)) / Math.SQRT2; // 1 = facing the light
+        if (d < e * 0.42) tone = 3;
+        else tone = lit > 0.45 ? 3 : lit > -0.25 ? 2 : 1;
+        if (lit > 0.55 && d > e - 2) tone = 4;
+      }
+      c.fx.put(layer, cx + ox, cy + oy, c.pal[tone]);
+    }
+}
+
+/** A stone spike bursting out of the ground: base `w` wide at (x, y), tip `h` above, leaning by `lean`. */
+function spike(c: Ctx, layer: Lay, x: number, y: number, w: number, h: number, lean: number): void {
+  if (h < 2) return;
+  for (let j = 0; j <= h; j++) {
+    const u = j / h; // 0 base .. 1 tip
+    const half = (w / 2) * (1 - u);
+    const mx = x + lean * u;
+    const yy = Math.floor(y - j);
+    for (let xx = Math.floor(mx - half); xx <= mx + half; xx++) {
+      const edge = xx < mx - half + 1 || xx > mx + half - 1 || j === 0;
+      const tone = edge ? 0 : xx < mx - 0.5 ? (u > 0.6 ? 4 : 3) : xx < mx + half * 0.5 ? 2 : 1;
+      c.fx.put(layer, xx, yy, c.pal[tone]);
+    }
+  }
+}
+
+/** A crack along `pts`: dark edges with chakra glowing inside, brighter on the beat. */
+function seam(c: Ctx, layer: Lay, pts: P[], glow: number): void {
+  for (let k = 1; k < pts.length; k++)
+    bres(pts[k - 1].x, pts[k - 1].y, pts[k].x, pts[k].y, (x, y) => {
+      c.fx.put(layer, x, y - 1, c.pal[0]);
+      c.fx.put(layer, x, y, c.pal[glow > 0.55 ? 4 : 3]);
+      c.fx.put(layer, x, y + 1, c.pal[0], 220);
+    });
+}
+
+function brownBurst(c: Ctx, s: Src, L: number): void {
+  const { fx, t } = c;
+  if (s.point) {
+    // a clod of rock packed in the palm, a glowing crack across it, stones circling it
+    boulder(c, 1, s.anchor.x, s.anchor.y, s.r + 2, c.seed + 11);
+    seam(c, 1, [{ x: s.anchor.x - s.r * 0.7, y: s.anchor.y }, { x: s.anchor.x + 1, y: s.anchor.y + 1 }, { x: s.anchor.x + s.r * 0.6, y: s.anchor.y - 1 }], pulse(t, 6));
+    const n = 3 + Math.round(2 * L);
+    for (let k = 0; k < n; k++) {
+      const a = TAU * (t / 12 + k / n);
+      const R = s.r + (4 + L) * S;
+      boulder(c, Math.sin(a) > 0 ? 1 : 0, s.anchor.x + Math.cos(a) * R, s.anchor.y + Math.sin(a) * R * 0.6, (k === 0 ? 1.6 : 1.1) * S, c.seed + 40 + k);
+    }
+    return;
+  }
+  const gx = s.cx;
+  const gy = s.y1 + 0.5;
+  const rx = (13 + 7 * L) * S;
+  const ry = Math.max(2 * S, rx * 0.3);
+  const lay = (y: number): Lay => (y >= gy ? 1 : 0);
+  // the broken ground: a plate of dark earth around the feet with a lit lip (behind them above, before them below)
+  for (let y = Math.floor(gy - ry - 1); y <= gy + ry + 1; y++)
+    for (let x = Math.floor(gx - rx - 1); x <= gx + rx + 1; x++) {
+      const e = ((x + 0.5 - gx) / rx) ** 2 + ((y + 0.5 - gy) / ry) ** 2;
+      const rag = 0.86 + 0.14 * hash(Math.floor(x / (2 * S)), 1, c.seed);
+      if (e > rag) continue;
+      const lip = e > rag - 0.16;
+      fx.put(lay(y), x, y, c.pal[lip ? (y < gy ? 3 : 2) : 1], lip ? 255 : 235);
+    }
+  // cracks running out from the feet, chakra glowing in them
+  const nc = Math.round(6 + 3 * L);
+  for (let k = 0; k < nc; k++) {
+    const r = rng(c.seed + 200 + k * 17);
+    const a = (k / nc) * TAU + r() * 0.4;
+    const r1 = rx * (0.75 + r() * 0.2);
+    const pts: P[] = [];
+    for (let j = 0; j <= 4; j++) {
+      const d = 2 * S + ((r1 - 2 * S) * j) / 4;
+      const aa = a + (j ? (r() - 0.5) * 0.4 : 0);
+      pts.push({ x: gx + Math.cos(aa) * d, y: gy + Math.sin(aa) * d * 0.3 });
+    }
+    seam(c, lay(pts[4].y), pts, pulse(t, 12, k / nc));
+  }
+  // stone spikes bursting up round the edge of the plate, a new ring every 12 ticks
+  const ns = Math.round(3 + 4 * L);
+  const ph = mod(t, 12);
+  const grow = ph < 3 ? (ph + 1) / 3 : ph < 9 ? 1 : 1 - (ph - 8) / 4;
+  const cyc = Math.floor(t / 12);
+  for (let k = 0; k < ns; k++) {
+    const r = rng(c.seed + 500 + k * 29 + cyc * 3);
+    const a = ((k + 0.5) / ns) * TAU + (r() - 0.5) * 0.6;
+    const x = gx + Math.cos(a) * rx * (0.82 + r() * 0.12);
+    const y = gy + Math.sin(a) * ry * (0.82 + r() * 0.12);
+    const h = (6 + r() * (5 + 7 * L)) * S * grow;
+    spike(c, lay(y), x, y, (4 + r() * 2.5) * S, h, Math.cos(a) * 2 * S);
+  }
+  // rocks tearing loose: they rise from the ground, hang a moment and crumble
+  const nr = Math.round(5 + 6 * L);
+  for (let k = 0; k < nr; k++) {
+    const [age, cy] = cycle(t, k, 12, c.seed + 5);
+    const r = rng(c.seed + 300 + k * 41 + cy * 13);
+    // from the ground beside the ninja, so the rocks frame the body instead of covering it
+    const a = (r() < 0.5 ? 0 : Math.PI) + (r() - 0.5) * 1.6;
+    const d = halfW(s, s.y1 - 3 * S) + (2 + r() * 8) * S;
+    const x0 = gx + Math.cos(a) * d;
+    const y0 = gy + Math.sin(a) * d * 0.3;
+    const front = Math.sin(a) > 0;
+    const u = age / 12;
+    const h = (14 + r() * (14 + 26 * L)) * S;
+    const rise = h * (1 - (1 - Math.min(1, u / 0.7)) ** 2);
+    const R = (k === 0 && L > 0.6 ? 4.6 : r() < 0.3 ? 3.4 : r() < 0.7 ? 2.4 : 1.7) * S;
+    const x = x0 + Math.sin(TAU * (t / 12) + k) * 0.6 * S;
+    const y = y0 - rise - R * 0.5;
+    if (u < 0.85) boulder(c, front ? 1 : 0, x, y, R, c.seed + 1000 + k * 7 + cy);
+    else
+      for (let j = 0; j < 3; j++) boulder(c, front ? 1 : 0, x + (j - 1) * R * 0.8, y + (age - 10) * S + (j % 2) * S, R * 0.35, c.seed + 1100 + k * 5 + j);
+    // the dust it kicks up as it tears loose
+    if (age < 4) {
+      const pr = (1.2 + age * 0.8) * S;
+      for (let oy = -pr; oy <= pr; oy++)
+        for (let ox = -pr * 1.6; ox <= pr * 1.6; ox++)
+          if ((ox / 1.6) ** 2 + oy * oy <= pr * pr && hash(ox, oy, k + age) > 0.35)
+            fx.put(front ? 1 : 0, x0 + ox, y0 + oy - age * 0.6 * S, c.pal[age < 2 ? 3 : 2], age < 2 ? 200 : 150);
+    }
+  }
+  // grit hopping off the ground
+  const ng = Math.round(4 + 6 * L);
+  for (let k = 0; k < ng; k++) {
+    const [age, cy] = cycle(t, k, 8, c.seed + 9);
+    const r = rng(c.seed + 700 + k * 23 + cy * 7);
+    const a = r() * TAU;
+    const d = rx * (0.3 + r() * 0.6);
+    const x = gx + Math.cos(a) * d + Math.cos(a) * (0.5 + r()) * S * age;
+    const y = gy + Math.sin(a) * d * 0.3 - (2.4 * age - 0.3 * age * age) * S;
+    const tone = age < 4 ? 3 : 2;
+    fx.put(lay(gy + Math.sin(a)), x, y, c.pal[tone]);
+    fx.put(lay(gy + Math.sin(a)), x + 1, y, c.pal[tone - 1]);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Idle aura: pulsing rim + a few color-flavored motes
 // ---------------------------------------------------------------------------
 
@@ -1634,6 +1809,10 @@ function auraMotes(c: Ctx, id: ChakraColorId, s: Src): void {
       case 'black':
         orb(c, 1, x0 - age * 0.3 * side * S, y0 - age * 0.5 * S, 1.5 * S);
         break;
+      case 'brown':
+        // a pebble lifting off and drifting up
+        if (age < 9) boulder(c, 1, x0, y0 - age * 0.7 * S, (age < 6 ? 1.1 : 0.7) * S, c.seed + k * 13 + cyc);
+        break;
     }
   }
 }
@@ -1670,6 +1849,7 @@ const BURSTS: Record<ChakraColorId, BurstFn> = {
   violet: violetBurst,
   white: whiteBurst,
   black: blackBurst,
+  brown: brownBurst,
 };
 
 /**

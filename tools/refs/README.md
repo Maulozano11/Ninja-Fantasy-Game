@@ -115,3 +115,6 @@ folders.
       npx tsx tools/refs/princess-idle.ts <dir>/female-idle
       python3 -I tools/refs/princess-study.py <dir> <dir>/female-idle     # native@4, parts@4, overlay@4, palette
       python3 -I tools/refs/princess-study.py --palette                   # reprints PALETTE_HEX
+- `princess-top-from-ref.py` → `src/sprite/items/princessTopArt.ts`: her bodice and sleeves (`top_rose_bodice`, "Corpiño del Alba Rosa"), drawn by `src/sprite/items/princessTop.ts`. His pixels one for one at her hair's and face's offset (his (x, y) at our (x + 74, y + 122)), his colours from `princess_ref.quantize`; colour slots Dress (pink), Lilac and Gold, her skin follows the player's. Pieces: BODICE (collar, skin under it, bodice to its pointed waist, its pink sides) on the neck, BODICE_TIP (its V, again over the skirt when no armour is worn), BODICE_SIDE_F (the far side under the far puff), SLEEVE_N (bare shoulder and pink puff) and CUFF_N (lilac sleeve and gold cuff) on the near arm, SLEEVE_F (+ SLEEVE_F_SIDE over the body's edge) and CUFF_F (his raised far sleeve, turned down along our forearm). What the hair, the arms and the raised sleeve hide is filled by continuing his pixels. Writes `pieces@8.png` (Spanish labels):
+
+      python3 -I tools/refs/princess-top-from-ref.py <dir> src/sprite/items/princessTopArt.ts

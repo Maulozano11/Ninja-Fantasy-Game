@@ -259,6 +259,11 @@ const ES: Record<string, string> = {
   "Silk cord crossed over white ray skin, a gold ornament under the middle diamond.": "Cordón de seda cruzado sobre piel de raya blanca, con un adorno de oro bajo el rombo central.",
   "The bare white ray skin of a court sword, gold fittings and a red silk tassel.": "La piel de raya blanca de una espada de la corte, herrajes de oro y una borla de seda roja.",
   "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
+  // The princess's bodice and sleeves (top_rose_bodice)
+  'Rose Dawn Bodice': 'Corpiño del Alba Rosa',
+  "The princess's gown bodice: a high lilac collar edged in gold over bare shoulders, a gold-embroidered lilac bodice with a pointed waist and pink sides, pink puffed sleeves with gold bands over big lilac puffed sleeves with gold cuffs. Women only.":
+    'El corpiño del vestido de la princesa: un cuello alto lila ribeteado en oro sobre los hombros al aire, un corpiño lila bordado en oro con la cintura en punta y los costados rosas, mangas abullonadas rosas con bandas de oro sobre grandes mangas abullonadas lilas con puños de oro. Solo para mujeres.',
+  Lilac: 'Lila',
 };
 
 /** An editor label in the screen's language. */

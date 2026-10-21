@@ -9,6 +9,7 @@ import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, h
 import { PaintedPiece, segAngle } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
+import { PRINCESS_BODICE_ITEM } from './princessTop';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -1250,6 +1251,8 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       highCollar(g, c, 4, 1.2);
     },
   },
+  // The princess's bodice and sleeves, the owner's pixels (items/princessTop.ts)
+  PRINCESS_BODICE_ITEM,
 ]);
 
 // ---------------------------------------------------------------------------

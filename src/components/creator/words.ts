@@ -212,6 +212,7 @@ const ES: Record<string, string> = {
   // the owner's Elise's hair
   'Golden Fall': 'Cascada Dorada',
   Ornament: 'Adorno',
+  'Thigh-high white steel boots: brown leather cuffs rimmed in gold, round knee cops, gold-rimmed ankle guards and white sabatons.': 'Botas altas de acero blanco hasta el muslo: puños de cuero marrón con borde de oro, rodilleras redondas, tobilleras con borde de oro y escarpes blancos.',
 };
 
 /** An editor label in the screen's language. */

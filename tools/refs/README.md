@@ -20,6 +20,14 @@ folders.
 
       python3 -I tools/refs/female-base-body-from-ref.py
 
+- `female-base-hair-from-ref.py`: the same woman's hair, his pixels, for the hair option 'Messy
+  Ponytail' (`items/hair.ts`): every non-skin pixel of his over the head, the lock before the near
+  cheek and the fringe over the far eye (not his near eye, his face's line or his ear), on our face
+  anchor where it sits at idle (his pixel (50, 19)), and his head above the eyes for trimming our
+  skull to it. It writes `src/sprite/items/baseHairArt.ts`.
+
+      python3 -I tools/refs/female-base-hair-from-ref.py
+
 - `female-body-from-ref.py`: his heroines' small hands, from his heroines drawn at our scale
   (`docs/reference/{lyra,aurelia,saya}-game-scale-owner-reference.jpg`; the female body itself is
   `female-base-body-from-ref.py` now, the hands here hold a weapon, point, open and cradle on it, and

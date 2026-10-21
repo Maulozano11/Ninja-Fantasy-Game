@@ -530,10 +530,14 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     const H = FEMALE_HANDS;
     const far: TemplatePalette = { ...pal, D: [pen.mat, 1], s: [pen.mat, Math.max(1, 2 + b)], b: [pen.mat, 3 + b], l: [pen.mat, 3 + b] };
     const own: TemplatePalette = { ...pal, D: [pen.mat, 1], s: [pen.mat, 2], b: [pen.mat, 3], l: [pen.mat, 3] };
+    // Turned by an odd angle his 5-7 px hands lose rows (the open hand flung back at the throw's
+    // release came out a cut-off stub), so a hand that is not round a weapon's grip turns by a
+    // quarter turn at a time, which moves every pixel and loses none.
+    const turn = kind === 'grip' ? rot : Math.round(rot / 90) * 90;
     if (kind === 'cradle') stampTemplate(L, H.cradle, j.wrist, 0, s === 'F' ? far : pal, pen.part, { flags });
-    else if (s === 'F' && kind === 'fist') stampTemplate(L, H.fistFar, j.wrist, rot, own, pen.part, { flipX, flags });
-    else if (s === 'F' && kind === 'relaxed') stampTemplate(L, H.relaxedFar, j.wrist, rot, own, pen.part, { flipX, flags });
-    else stampTemplate(L, H[kind], j.wrist, rot, s === 'F' ? far : pal, pen.part, { flipX, flags });
+    else if (s === 'F' && kind === 'fist') stampTemplate(L, H.fistFar, j.wrist, turn, own, pen.part, { flipX, flags });
+    else if (s === 'F' && kind === 'relaxed') stampTemplate(L, H.relaxedFar, j.wrist, turn, own, pen.part, { flipX, flags });
+    else stampTemplate(L, H[kind], j.wrist, turn, s === 'F' ? far : pal, pen.part, { flipX, flags });
     return;
   }
   if (kind === 'cradle') {

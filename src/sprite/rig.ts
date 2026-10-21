@@ -69,6 +69,29 @@ export interface BodyParams {
    * draws it, so the waist curves in under the bust and the hips flare below it.
    */
   waistY?: number;
+  /**
+   * How much longer the far arm's forearm is than the near one's, in design units. The owner's
+   * heroines at our scale (docs/reference/{lyra,aurelia,saya}-game-scale-owner-reference.jpg) hang
+   * the far fist lower than the near one, beside the far hip.
+   */
+  farLonger?: number;
+  /**
+   * How many degrees further out from the body a hanging arm hangs, [near, far]: his heroines' free
+   * hands hang clear of the hips (see hangsDown).
+   */
+  hangOut?: [number, number];
+}
+
+/**
+ * Whether a hand target is a hanging arm (BodyParams.hangOut): aimed from the shoulder within
+ * HANG_SPREAD degrees of straight down and at least HANG_REACH of the arm's length away, nearly
+ * straight. A fist drawn up to a guard, a punch or an arm swung far back is not.
+ */
+const HANG_SPREAD = 35;
+const HANG_REACH = 0.85;
+function hangsDown(t: HandTarget): boolean {
+  if (t.from !== 'shoulder' || Math.hypot(t.x, t.y) < HANG_REACH) return false;
+  return Math.abs((Math.atan2(t.y, t.x) * 180) / Math.PI - 90) <= HANG_SPREAD;
 }
 
 export const BODY_PARAMS: Record<BodyType, BodyParams> = {
@@ -104,8 +127,8 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     chestHalf: 5.3,
     waistHalf: 3.2,
     hipHalf: 6.4,
-    upperArm: 6.0,
-    forearm: 5.2,
+    upperArm: 7.8,
+    forearm: 4.1,
     thigh: 7.1,
     shin: 8.0,
     armR: [1.85, 1.55, 1.75, 1.18],
@@ -120,6 +143,8 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     headScale: 0.7,
     ankleLift: 2,
     waistY: 8.5,
+    farLonger: 1.0,
+    hangOut: [8, 0],
   },
   // Slimmer and curvier than 'female': narrow shoulders and waist, fuller bust
   // and hips, slender arms and long legs with a full thigh and fine ankles.
@@ -129,8 +154,8 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     chestHalf: 5.0,
     waistHalf: 2.7,
     hipHalf: 6.9,
-    upperArm: 6.0,
-    forearm: 5.2,
+    upperArm: 7.8,
+    forearm: 4.1,
     thigh: 7.3,
     shin: 7.8,
     armR: [1.7, 1.4, 1.6, 1.05],
@@ -145,6 +170,8 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     headScale: 0.7,
     ankleLift: 2,
     waistY: 8.5,
+    farLonger: 1.0,
+    hangOut: [8, 0],
   },
   bulky: {
     torsoLen: 15.2,
@@ -522,6 +549,8 @@ const LEAN = breathe(LEAN_BASE, 4);
  * flames. Gentle breathing.
  */
 const SEAT_HIP = 0.74;
+/** How much of a body's ankleLift its hips sink into the camp seat (see solveRig). */
+const SEAT_SINK = 0.7;
 const SIT_LEGS = { seat: true, hip: SEAT_HIP, footN: v(0.5, groundY(SEAT_HIP, 0.5)), footF: v(0.47, groundY(SEAT_HIP, 0.47)) };
 const SIT_BASE: PoseFrame = {
   lean: 14,
@@ -1066,9 +1095,12 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   // far ankle comes back up by the difference (footLowN/F).
   const liftN = ankleLiftOf(bp, 'N');
   const liftF = ankleLiftOf(bp, 'F');
-  const ankle = ANKLE_N + (f.seat ? 0 : liftN);
-  const footLowN = v(0, f.seat ? liftN : 0);
-  const footLowF = v(0, f.seat ? liftF : liftF - liftN);
+  // Seated, those hips settle SEAT_SINK of the lift into the seat, so the shorter legs reach the ground
+  // with the knees still forward (sitting, not standing against the seat).
+  const seatSink = liftN * SEAT_SINK;
+  const ankle = ANKLE_N + (f.seat ? seatSink : liftN);
+  const footLowN = v(0, f.seat ? liftN - seatSink : 0);
+  const footLowF = v(0, f.seat ? liftF - seatSink : liftF - liftN);
   const stand = v(FEET_X - 0.5 + (f.pelvisDx || 0) + jitter, ankle - footDrop - (f.lift || 0));
   // `sink` and `snap` lower the pelvis while the feet stay where the pose puts
   // them (the knees take it up), `snap` onto the fine pixel grid.
@@ -1110,24 +1142,30 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   const shoulderF = add(T(bp.shoulderHalf * 0.55, bp.torsoLen - 2.2), v(0, chestDy));
   const chestFront = add(T(bp.chestHalf * 0.5, bp.torsoLen - 6), v(0, chestDy));
 
-  const armLen = bp.upperArm + bp.forearm + bp.handR;
-  const resolve = (t: HandTarget, shoulder: Vec): Vec => {
+  const resolve = (t: HandTarget, shoulder: Vec, armLen: number): Vec => {
     if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
     if (t.from === 'kneeN') return add(legN.mid, v(t.x, t.y));
     if (t.from === 'kneeF') return add(legF.mid, v(t.x, t.y));
     return add(shoulder, scale(v(t.x, t.y), armLen));
   };
-  const solveArm = (shoulder: Vec, t: HandTarget, bend: 1 | -1 = 1) => {
-    const target = resolve(t, shoulder);
+  const solveArm = (shoulder: Vec, t: HandTarget, bend: 1 | -1, fore: number, out: number) => {
+    // A hanging arm turned further out from the body (BodyParams.hangOut; out > 0 turns it clockwise on screen).
+    let aim = t;
+    if (out && hangsDown(t)) {
+      const a = (out * Math.PI) / 180;
+      aim = { ...t, x: t.x * Math.cos(a) - t.y * Math.sin(a), y: t.x * Math.sin(a) + t.y * Math.cos(a) };
+    }
+    const target = resolve(aim, shoulder, bp.upperArm + fore + bp.handR);
     // Aim the wrist a little short of the target so the hand lands on it.
     const toT = sub(target, shoulder);
     const wristTarget = sub(target, scale(norm(toT), bp.handR * 0.8));
-    const r = solve2(shoulder, wristTarget, bp.upperArm, bp.forearm, bend);
+    const r = solve2(shoulder, wristTarget, bp.upperArm, fore, bend);
     const dir = norm(sub(r.end, r.mid));
     return { elbow: r.mid, wrist: r.end, hand: add(r.end, scale(dir, bp.handR * 0.9)) };
   };
-  const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1);
-  const aF = solveArm(shoulderF, f.handF);
+  const [outN, outF] = bp.hangOut ?? [0, 0];
+  const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1, bp.forearm, outN);
+  const aF = solveArm(shoulderF, f.handF, 1, bp.forearm + (bp.farLonger ?? 0), -outF);
 
   const headY = neck.y - 5.9 * bp.headScale + (f.headDy || 0);
   const headX = neck.x - 0.4 + (f.headDx || 0);

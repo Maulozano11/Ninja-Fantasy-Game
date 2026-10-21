@@ -99,4 +99,22 @@ describe('hair_golden_fall', () => {
       }
     }
   });
+
+  it('streams back along her back when she is pitched forward, not down between her legs', () => {
+    // The throw from the fling on, head carried out ahead: nothing the hair adds is well below the
+    // hips and forward of them, where the legs are.
+    for (const body of ['female', 'slender'] as BodyType[]) {
+      for (const frame of [2, 3, 4]) {
+        const f = renderSpriteCached(look(body), 'throw', frame);
+        const bald = renderSpriteCached({ ...look(body), slots: {} }, 'throw', frame).rgba;
+        const [hx, hy] = [Math.round(f.rig.pelvis.x * RES), Math.round(f.rig.pelvis.y * RES)];
+        let under = 0;
+        for (let i = 0; i < GRID * GRID; i++) {
+          const added = f.rgba[i * 4 + 3] && f.rgba.subarray(i * 4, i * 4 + 4).some((c, k) => c !== bald[i * 4 + k]);
+          if (added && ((i / GRID) | 0) > hy + 6 && i % GRID >= hx) under++;
+        }
+        assert.equal(under, 0, `${body} ${frame}: hair pixels under the body`);
+      }
+    }
+  });
 });

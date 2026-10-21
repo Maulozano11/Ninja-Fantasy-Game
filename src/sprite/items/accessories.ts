@@ -382,7 +382,7 @@ export const HELD_ITEMS: ItemDef[] = [
       if (handsBusy(g)) drawEliseRapier(g, 'backGear', backGrip(g, 48), 48, blade, guard, false);
       else if (handsLimp(g)) drawEliseRapier(g, 'nearArm.held', droppedGrip(g, 0.7), -86, blade, guard, false);
       // Its grip crosses the fist at the hand joint, as the flame longsword's does.
-      else drawEliseRapier(g, 'nearArm.held', g.rig.handN, swordAngle(g), blade, guard, true);
+      else if (!handsReleased(g)) drawEliseRapier(g, 'nearArm.held', g.rig.handN, swordAngle(g), blade, guard, true);
     },
   },
   {

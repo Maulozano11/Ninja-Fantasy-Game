@@ -8,6 +8,7 @@ import { retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
 import { stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, RES, v } from '../raster';
+import type { Rig } from '../rig';
 import type { PaintedPart } from './capeArt';
 import {
   ELISE_HAIR_BACK,
@@ -64,6 +65,20 @@ function trimSkull(g: DrawCtx, p: PaintedPart): void {
 const LIE_TURN = -24;
 
 /**
+ * Pitched far forward (the throw, rig.ts THROW) her head is carried out ahead of her neck, and a fall
+ * turned only with the torso would hang down between her legs: for each design unit the head is
+ * ahead of the neck past HEAD_AHEAD, the fall swings back by HEAD_TURN degrees (with the clock), up
+ * to HEAD_TURN_MAX, so it streams out along her back as the cape does. No other pose carries the
+ * head that far forward.
+ */
+const HEAD_AHEAD = 1;
+const HEAD_TURN = 18;
+const HEAD_TURN_MAX = 60;
+
+/** How far the head sits ahead of the neck, along the shoulder line (design units). */
+const headAhead = (r: Rig): number => (r.head.x - r.neck.x) * r.right.x + (r.head.y - r.neck.y) * r.right.y;
+
+/**
  * The long fall, behind the body: its pivot hangs from the back of the head (a fixed step from the
  * face anchor) and it turns as the torso turns from its angle at idle, so it trails behind when she
  * leans in and stays along her back when she leans back or lies down.
@@ -71,7 +86,7 @@ const LIE_TURN = -24;
 function fall(g: DrawCtx, color: (ch: string, hex: string) => string): void {
   const { nx, ny } = faceAnchor(g);
   const at = v((nx + ELISE_HAIR_FALL_AT[0] + 0.5) / RES, (ny + ELISE_HAIR_FALL_AT[1] + 0.5) / RES);
-  const deg = (Math.atan2(g.rig.up.y, g.rig.up.x) * 180) / Math.PI + (g.rig.lay ? LIE_TURN : 0);
+  const deg = (Math.atan2(g.rig.up.y, g.rig.up.x) * 180) / Math.PI + (g.rig.lay ? LIE_TURN : 0) + (g.rig.lay ? 0 : Math.min(HEAD_TURN_MAX, HEAD_TURN * Math.max(0, headAhead(g.rig) - HEAD_AHEAD)));
   g.L('hairBack').noFray = true;
   stampPiece(g, 'hairBack', ELISE_HAIR_FALL, at, deg, 'back', color);
   // the loose strand would stand up off her back when she lies down

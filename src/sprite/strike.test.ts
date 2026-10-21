@@ -10,7 +10,7 @@ import { drawRig, frameCount, POSE_FPS, rigPoseFor, THROW_RELEASE_FRAME } from '
 import { SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
 const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
-const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai', 'held_naginata'];
+const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_azure_rapier', 'held_kunai', 'held_naginata'];
 
 const look = (body: BodyType, held?: string, stowed = false, cape?: string): SpriteAppearance => {
   const l = defaultAppearance();

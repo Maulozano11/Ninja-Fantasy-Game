@@ -1,0 +1,116 @@
+// The owner's studded skirt on his Ren, his pixels (tools/refs/ren-belt-skirt-from-ref.py from
+// docs/reference/ren-owner-reference.jpg). Generated: rerun the script to change it.
+
+import type { PaintedPiece } from '../painted';
+
+/** His colours the colour slots recolour from (at these, every pixel is his). */
+export const NIGHT_SKIRT_BASE = '#2c2c35';
+export const NIGHT_STUDS = '#aab2bd';
+
+/** What each of his colours is, as the script sorts them (tools/refs/ren_ref.py kind). */
+export const NIGHT_SKIRT_KIND: Record<string, 'dark' | 'line' | 'silver'> = {
+  '#00020e': 'line',
+  '#010312': 'line',
+  '#010316': 'line',
+  '#08091a': 'dark',
+  '#10101f': 'dark',
+  '#151421': 'dark',
+  '#181823': 'dark',
+  '#181928': 'dark',
+  '#191a2c': 'dark',
+  '#191a30': 'dark',
+  '#1d1b26': 'dark',
+  '#1e2134': 'dark',
+  '#201f27': 'dark',
+  '#22202b': 'dark',
+  '#26262e': 'dark',
+  '#292832': 'dark',
+  '#2a2d3e': 'dark',
+  '#2c2f42': 'dark',
+  '#2d2d37': 'dark',
+  '#303139': 'dark',
+  '#34343e': 'dark',
+  '#3a3a43': 'dark',
+  '#40404a': 'dark',
+  '#44444e': 'dark',
+  '#464652': 'dark',
+  '#504f52': 'dark',
+  '#99a0ae': 'silver',
+  '#9da5b0': 'silver',
+  '#aab2bd': 'silver',
+  '#b5bdc8': 'silver',
+  '#bac3cd': 'silver',
+  '#bec6cf': 'silver',
+};
+
+/** Where each piece lands in our male idle frame 0, unturned: the fine pixel of its first row's first cell. */
+export const NIGHT_SKIRT_REST: Record<string, [number, number]> = {
+  NIGHT_SKIRT: [109, 174],
+};
+
+/** The long skirt of black panels with silver studs, from the belt to below the knees: it rides the pelvis, leaning with the torso. */
+export const NIGHT_SKIRT: PaintedPiece = {
+  pivot: [18, 2],
+  angle: -89.65,
+  rows: [
+    '.aaa..aabbcccaaaaaaaaaaaabaaaaaaa.',
+    '.ade..abbbcfchhabbbabbbabbaidbjha.',
+    '.abhb.akbcijblhabbbabbbabbbambdna.',
+    '.aibbbpaqaaiblhabrbakskabrbabbjha.',
+    '.atbbhllbbtafljadubahkhaabjibliha.',
+    '.adevwlbbbcqllafddbanhhaajjidbjha.',
+    '.abhbvfkbcialwadddaawhlaqqrhabdaa.',
+    '.albbbllbblillqdxdaalydazauubqjp..',
+    '.albbhllbbtclhqdfdaadbwazabibaia..',
+    '.adevwlbbbcadadddhaaddwazabidajq..',
+    '.abhbvfkbcijqpdldqzawdwazzahmbanp.',
+    '.adbbbllbblillpddqzalAdazzphbbaha.',
+    'qadbbhllbbtclhjqdazaludazBahhlaha.',
+    'addeaaaabbcfdlddapBadddazzzaaaaha.',
+    '.paabvflacijlwdlddaadddaBzzahwdbjq',
+    '..qbbbllbalillhdddzqdAlpBCzaDllbha',
+    '.ppbbhllbdqqlhjdddzlaplazzzzallbhq',
+    '.qbevwlhbwllpldddhBzddaazCzzpbbbua',
+    '.qbhhbbellllhpalddzzdddqzECzallba.',
+    '..aphwlebbllhbdqddzddAlappEEqaaq..',
+    '...aqqahllffFbbuadzuaaa...aCCaa...',
+    '...azBBaaallblllfqaa.......qpGa...',
+    '..avBEBBzzaaaqaaaq...........aq...',
+    '..aBcCCEEEBBHa....................',
+    '.............p....................',
+  ],
+  colors: {
+    a: '#010312',
+    b: '#201f27',
+    c: '#08091a',
+    d: '#40404a',
+    e: '#151421',
+    f: '#26262e',
+    h: '#2d2d37',
+    i: '#3a3a43',
+    j: '#34343e',
+    k: '#1d1b26',
+    l: '#464652',
+    m: '#b5bdc8',
+    n: '#303139',
+    p: '#010316',
+    q: '#00020e',
+    r: '#9da5b0',
+    s: '#99a0ae',
+    t: '#504f52',
+    u: '#22202b',
+    v: '#10101f',
+    w: '#44444e',
+    x: '#aab2bd',
+    y: '#bac3cd',
+    z: '#181928',
+    A: '#bec6cf',
+    B: '#191a2c',
+    C: '#2a2d3e',
+    D: '#292832',
+    E: '#2c2f42',
+    F: '#181823',
+    G: '#1e2134',
+    H: '#191a30',
+  },
+};

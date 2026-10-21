@@ -53,7 +53,9 @@
 //     and the icon keeps his overall tone. Then (when an icon asks for it; none does now) a
 //     light edge-preserving smoothing of the rest, nearest palette entry, and the clean-up: a 1- or
 //     2-pixel area of one colour joins the neighbouring colour nearest to the picture, except where
-//     the picture there stands out from its ring (his mark) or it is one of his kept specks.
+//     the picture there stands out from its ring (his mark) or it is one of his kept specks; with
+//     `join88` (at 88) such a mark still joins a neighbouring colour within `join88` of the picture
+//     there (a line drawn in two near shades becomes one line instead of a row of 1-pixel spots).
 //  4. Hand-fixes, per icon, only for what that reduction still loses (see each icon's comment),
 //     traced on his pixels. These pixels are protected; the clean-up runs again on the rest.
 //  5. Checks (printed and written to the manifest), as for sheets 2 to 7: small clusters (his marks,
@@ -450,9 +452,12 @@ function components(q: Ix): { lab: Int32Array; size: number[] } {
  * The clean-up: every area of one colour of at most `maxSize` pixels (8-connected) that is not
  * protected joins one of the colours around it: the one nearest to the picture `ref` over the area
  * (so the merge keeps his light), ties going to the colour that borders it most. `stays(px)` may keep
- * an area (his own mark, at 88). One area at a time, in reading order, until nothing changes.
+ * an area (his own mark, at 88). (Sheet 12) With `join`, an area that stays still joins a colour
+ * around it that is within `join` (OKLab, lightness weighted as in `dist`) of the picture over the
+ * area: one of his lines drawn in two near shades of the palette becomes one line instead of a row
+ * of 1-pixel spots. One area at a time, in reading order, until nothing changes.
  */
-function cleanup(q: Ix, p: Pal, ref: F, maxSize: number, protect: Set<number>, stays?: (px: number[]) => boolean, rounds = 12): Ix {
+function cleanup(q: Ix, p: Pal, ref: F, maxSize: number, protect: Set<number>, stays?: (px: number[]) => boolean, rounds = 12, join?: number): Ix {
   const cur = q.clone();
   const { w, h } = cur;
   for (let r = 0; r < rounds; r++) {
@@ -468,7 +473,8 @@ function cleanup(q: Ix, p: Pal, ref: F, maxSize: number, protect: Set<number>, s
     for (const [, px] of [...members.entries()].sort((a, b) => a[0] - b[0])) {
       const col = cur.d[px[0]];
       if (px.some((i) => cur.d[i] !== col)) continue;
-      if (stays && stays(px)) continue;
+      const kept = !!stays && stays(px);
+      if (kept && join === undefined) continue;
       const border = new Map<number, number>();
       const rm: Lab = [0, 0, 0];
       let grown = false;
@@ -493,6 +499,7 @@ function cleanup(q: Ix, p: Pal, ref: F, maxSize: number, protect: Set<number>, s
         const s = dist(rm, p.lab[v], p.cw) - n * 1e-6;
         if (s < bs) (bs = s), (best = v);
       }
+      if (kept && Math.sqrt(Math.max(0, bs)) > join!) continue;
       for (const i of px) cur.d[i] = best;
       changed++;
     }
@@ -1035,6 +1042,8 @@ interface IconSpec {
   /** How far (OKLab) the picture must stand out from its ring for a 1- or 2-pixel area to stay as his mark: at 88, and at 44 when given. */
   mark88: number;
   mark44?: number;
+  /** At 88: a 1- or 2-pixel area that stays as his mark still joins a colour around it within this of the picture there (see cleanup's `join`). */
+  join88?: number;
   /** The hand-fixes, at either size (drawn with Paint.fix, so the manifest lists them as they are in the files). */
   art?: (pt: Paint, ctx: Ctx) => void;
 }
@@ -1083,7 +1092,8 @@ function buildIcon(spec: IconSpec): Built {
     const minDiff = N === 88 ? spec.mark88 : spec.mark44;
     const stays = minDiff !== undefined ? hisMark(ref, minDiff) : undefined;
     const clean = N === 44 ? spec.clean44 ?? 2 : 2;
-    const q0 = cleanup(quantize(ref, pal), pal, ref, clean, prot, stays);
+    const join = N === 88 ? spec.join88 : undefined;
+    const q0 = cleanup(quantize(ref, pal), pal, ref, clean, prot, stays, 12, join);
     const pt = new Paint(q0.clone(), pal);
     for (let i = 0; i < N * N; i++) {
       if (red.speck[i]) pt.keep(i % N, Math.floor(i / N));
@@ -1092,7 +1102,7 @@ function buildIcon(spec: IconSpec): Built {
       if (ink) pt.px(i % N, Math.floor(i / N), ink);
     }
     if (!process.env.UI_NOART) spec.art?.(pt, { W, red, ref });
-    const q = cleanup(pt.q, pal, ref, clean, pt.drawn, stays);
+    const q = cleanup(pt.q, pal, ref, clean, pt.drawn, stays, 12, join);
     // The small areas that stayed because the picture stands out there are his own marks.
     const hisSet = new Set(pt.his);
     if (stays) {
@@ -1200,9 +1210,13 @@ const ICONS: IconSpec[] = [
     // light counted once (own88). Kept all, with his thinner cyan strands and lone sparks, in full
     // white, they made the whole 88 lighter than his picture (blocks of 8x8 +1.9 OKLab L x100 on
     // average, block colour difference 2.32 against 1.14 for his box reduction on the palette; now
-    // +0.4, and 1.22 against 1.09).
+    // +0.4, and 1.23 against 1.09). Those partly covered pixels come out in several near whites, so
+    // his lines and strands broke into rows of 1-pixel spots (1362 areas of 1 or 2 pixels, 503 of
+    // them lighter than all around); join88: such a spot joins the colour beside it when that is
+    // within 0.08 of his picture there, so they stay whole lines (625 and 278).
     marks88: [{ kind: 'bright', what: 'the main white lines of his lightning and of the wolf', r: 1, thr: 0.05, minL: 0.9, minPx: 12, share: 0.3, cover: 0.75 }],
     own88: true,
+    join88: 0.08,
     // At 44 only his longest white cores, softened: kept all and in full, they turned the wolf into
     // a white web (one of his pixels is a third of a pixel here).
     marks44: [
@@ -1375,7 +1389,7 @@ const manifest = {
     window: { x: RING, y: RING, w: SLOT - 2 * RING, h: SLOT - 2 * RING },
   },
   method:
-    'his sheet is pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-12.py, with the grid of icons-from-ref-23.py). His windows are wider than tall (144x115, 128x115, 135x115 of his pixels): each icon is a square of his full height (115x115), so his proportions stay as he drew them, placed where it keeps his whole subject and leaves out the fewest of his bright pixels (square.placement: the count for every placement, and the bright pixels still left out). 88 and 44: area mean of his pixels, except his thin lines and strongest specks (and, per icon, his dark silhouettes and the gaps between his feather barbs), which keep their own colour one pixel wide (115 of his pixels are too many for the 88 to keep them one to one: dropping 27 columns and rows breaks his one-pixel lines); for the wolf at 88 only his main white lines, in full only where they cover most of their pixel and with their light counted once, so the icon keeps his tone; palette sampled from his pixels; nearest palette entry, 1-2 pixel areas merged where the picture does not stand out there; then hand-fixes only where that still loses his picture (listed per icon; see tools/ui/ui-icons-12.ts)',
+    'his sheet is pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-12.py, with the grid of icons-from-ref-23.py). His windows are wider than tall (144x115, 128x115, 135x115 of his pixels): each icon is a square of his full height (115x115), so his proportions stay as he drew them, placed where it keeps his whole subject and leaves out the fewest of his bright pixels (square.placement: the count for every placement, and the bright pixels still left out). 88 and 44: area mean of his pixels, except his thin lines and strongest specks (and, per icon, his dark silhouettes and the gaps between his feather barbs), which keep their own colour one pixel wide (115 of his pixels are too many for the 88 to keep them one to one: dropping 27 columns and rows breaks his one-pixel lines); for the wolf at 88 only his main white lines, in full only where they cover most of their pixel and with their light counted once, so the icon keeps his tone, and a 1-2 pixel spot of his lines joins the colour beside it when that is within 0.08 of his picture there, so his lines stay whole instead of rows of spots; palette sampled from his pixels; nearest palette entry, 1-2 pixel areas merged where the picture does not stand out there; then hand-fixes only where that still loses his picture (listed per icon; see tools/ui/ui-icons-12.ts)',
   checks:
     'small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (the picture stands out there, or one of his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]; blockDiff = mean OKLab difference x100 of the colour of every block of size/11 pixels (8x8 at 88, 4x4 at 44) to the same block of his pixels box-reduced to this size, lightBias = the mean lightness difference of those blocks (OKLab L x100, positive = ours lighter), each beside the same for his box reduction on our palette (BoxOnPalette); brightSpots = 1- or 2-pixel areas lighter than the pixels around them by 0.1 OKLab L or more (brightSpotsBoxOnPalette: the same in his box reduction on our palette), smallBoxOnPalette = small for his box reduction on our palette',
   icons: Object.fromEntries(

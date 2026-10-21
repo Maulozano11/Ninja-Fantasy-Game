@@ -18,7 +18,7 @@
    "h": 44
   }
  },
- "method": "his sheet is pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-12.py, with the grid of icons-from-ref-23.py). His windows are wider than tall (144x115, 128x115, 135x115 of his pixels): each icon is a square of his full height (115x115), so his proportions stay as he drew them, placed where it keeps his whole subject and leaves out the fewest of his bright pixels (square.placement: the count for every placement, and the bright pixels still left out). 88 and 44: area mean of his pixels, except his thin lines and strongest specks (and, per icon, his dark silhouettes and the gaps between his feather barbs), which keep their own colour one pixel wide (115 of his pixels are too many for the 88 to keep them one to one: dropping 27 columns and rows breaks his one-pixel lines); for the wolf at 88 only his main white lines, in full only where they cover most of their pixel and with their light counted once, so the icon keeps his tone; palette sampled from his pixels; nearest palette entry, 1-2 pixel areas merged where the picture does not stand out there; then hand-fixes only where that still loses his picture (listed per icon; see tools/ui/ui-icons-12.ts)",
+ "method": "his sheet is pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-12.py, with the grid of icons-from-ref-23.py). His windows are wider than tall (144x115, 128x115, 135x115 of his pixels): each icon is a square of his full height (115x115), so his proportions stay as he drew them, placed where it keeps his whole subject and leaves out the fewest of his bright pixels (square.placement: the count for every placement, and the bright pixels still left out). 88 and 44: area mean of his pixels, except his thin lines and strongest specks (and, per icon, his dark silhouettes and the gaps between his feather barbs), which keep their own colour one pixel wide (115 of his pixels are too many for the 88 to keep them one to one: dropping 27 columns and rows breaks his one-pixel lines); for the wolf at 88 only his main white lines, in full only where they cover most of their pixel and with their light counted once, so the icon keeps his tone, and a 1-2 pixel spot of his lines joins the colour beside it when that is within 0.08 of his picture there, so his lines stay whole instead of rows of spots; palette sampled from his pixels; nearest palette entry, 1-2 pixel areas merged where the picture does not stand out there; then hand-fixes only where that still loses his picture (listed per icon; see tools/ui/ui-icons-12.ts)",
  "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (the picture stands out there, or one of his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]; blockDiff = mean OKLab difference x100 of the colour of every block of size/11 pixels (8x8 at 88, 4x4 at 44) to the same block of his pixels box-reduced to this size, lightBias = the mean lightness difference of those blocks (OKLab L x100, positive = ours lighter), each beside the same for his box reduction on our palette (BoxOnPalette); brightSpots = 1- or 2-pixel areas lighter than the pixels around them by 0.1 OKLab L or more (brightSpotsBoxOnPalette: the same in his box reduction on our palette), smallBoxOnPalette = small for his box reduction on our palette",
  "icons": {
   "lightning_hound_raidon": {
@@ -3381,28 +3381,28 @@
      ]
     },
     "88": {
-     "small": 1362,
-     "smallHis": 1362,
+     "small": 625,
+     "smallHis": 625,
      "smallDrawn": 0,
      "smallOther": 0,
-     "lowFreq": 1.17,
+     "lowFreq": 1.15,
      "lowFreqBoxOnPalette": 1.04,
-     "blockDiff": 1.22,
+     "blockDiff": 1.23,
      "blockDiffBoxOnPalette": 1.09,
-     "lightBias": 0.43,
+     "lightBias": 0.38,
      "lightBiasBoxOnPalette": 0.1,
      "smallBoxOnPalette": 2107,
-     "brightSpots": 503,
+     "brightSpots": 278,
      "brightSpotsBoxOnPalette": 522,
-     "ssim": 0.949,
+     "ssim": 0.946,
      "ssimBox": 1,
      "hue": 275,
      "hueHis": 271,
      "colours": 24,
      "thinRun": [
-      6,
+      9,
       "row",
-      12
+      20
      ]
     }
    },

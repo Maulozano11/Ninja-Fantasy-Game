@@ -401,7 +401,7 @@ elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
    for a new ninja (a new game, a copy made from a legend, the random ninja)
    is fitted to that: a jutsu above C is swapped for one it may learn, lowest
    rank first. **The S-rank slot** has nothing to offer a new ninja, so it is
-   shown **locked, in its place** ("Se desbloquea más adelante · Rango S · no
+   shown **locked, in its place** ("Se desbloquea al nivel 10 · Rango S · no
    es para un ninja nuevo", with a lock), and the slot is empty on the sheet
    (in battle the ninja simply has no S-rank jutsu). *As built (the builder's
    choice):* locked rather than removed, so the approved Jutsu layout keeps its
@@ -417,8 +417,8 @@ elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
    clan, and the ones of another class are swapped as a class change does).
    Since his level-5 answer ("Level 5" below) a made ninja is offered the same
    ranks as every ninja of its level, no longer every rank: ranks above C are
-   earned at level 5 (the builder's reading, for his approval). When the S-rank
-   slot opens (a level, a mission) is not decided (Open questions).
+   earned at level 5 (the builder's reading, for his approval). The S-rank slot
+   opens at level 10, rank A at 7 (his answer: "The ladder" below).
 2. **The gaps** (Water has no S-rank jutsu, Wind one Element jutsu): he wants
    **proposals** ("propuestas"). A separate job.
 3. **The explosive tag is an item** ("sello explosivo es un item o herramienta
@@ -457,15 +457,17 @@ elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
    **His rule:** a ninja gets a **second element at a higher level** ("tener
    2ndo elemento en nivel mas alto"), and a **third element only with a special
    feat** ("3 elementos si tienes el feat especial para eso"). The level is
-   decided (level 5, "Level 5" below); the feat is still to choose.
+   decided (level 5, "Level 5" below), and so is the feat (Tres naturalezas,
+   "The ladder" below).
 
 **Jutsu of a class: his answer** (2026-10-21, later still), to "¿quién aprende
 los de Genjutsu, Kenjutsu y Taijutsu?": *"9 los que elijan de clase genjutsu
 kenjutsu o taijutsu"*. The jutsu with no element in the Element and S-rank
 slots belong to a class: only a ninja of that class learns them. Built:
 
-- **The game's classes, mapped** (*as built, the builder's mapping, for his
-  approval*; the nearest class, nothing wider):
+- **The game's classes, mapped** (the builder's mapping; the nearest class,
+  nothing wider). **Kenjutsu to the Maestro de Bukijutsu is confirmed** (his
+  answer, 2026-10-21, later still: *"si bukijutsu sera kenjutsu"*):
 
   | Kind of jutsu | Class that learns it | Jutsu today |
   |---|---|---|
@@ -501,7 +503,7 @@ slots belong to a class: only a ninja of that class learns them. Built:
 - **An empty slot** (as built): a slot with nothing for the nature and class
   shows "Nada que aprender aún · nada para tu naturaleza y clase" with a lock;
   the S-rank slot of a new ninja whose nature and class do have S-rank jutsu
-  still shows "Se desbloquea más adelante". When only one jutsu fits the two
+  still shows "Se desbloquea al nivel 10". When only one jutsu fits the two
   Element slots, the second is left empty rather than holding the same jutsu
   twice (until the rank D and C set on its own branch is merged, a Fire
   Bukijutsu Master's Element II, for one, is empty).
@@ -518,12 +520,12 @@ de rango tu elemento principal proponme el feat ok con kaien y raiga"*.
   principal"). The chakra type, the main element, never changes.
 - **A third element** comes only with a special feat ("3 elementos si tienes el
   feat especial para eso"); he asked for **proposals** for the feat ("proponme
-  el feat"). Not built: the proposals are in Open questions.
+  el feat") and chose option A, **Tres naturalezas** ("The ladder" below).
 - **Kaien is Rayo + Fuego and Raiga Fuego + Tierra** ("ok con kaien y raiga"):
   a formal second nature, so their Fireball and Earth Wall are their nature.
 
-**As built** (the builder's choices, each **proposed and waiting for his
-approval**):
+**As built, approved by the owner** (*"nivel 5 esta bien"*, 2026-10-21, later
+still; see "The ladder" below):
 
 - **What each choice opens.** *Second element:* one of the other four elements
   (any; Light and Void ninjas don't get the choice, below); its **rank D and C**
@@ -533,8 +535,9 @@ approval**):
   its own branch). *Higher rank:* the main element's **rank B** jutsu open in
   the Element slots: Fuego: Fuego del dragón; Agua: Proyectil del dragón de agua; Tierra:
   Muro de tierra and Balas de tierra; Rayo: Sabueso del rayo; Viento: none yet.
-  Neither opens the S-rank slot, rank A, the rank B jutsu of a class (Danza de
-  la luna creciente) or of Utility (Clon de sombra).
+  Neither opens the S-rank slot, rank A (those come with the level: "The
+  ladder" below), the rank B jutsu of a class (Danza de la luna creciente) or of
+  Utility (Clon de sombra).
 - **For good.** The choice is made once: while the ninja is created or edited
   it can change (the jutsu it no longer opens are swapped, as on a type change,
   and a note says which), and once the ninja is made with it, it is fixed
@@ -573,6 +576,99 @@ approval**):
   are ("rango B: se queda en su hoja").
 - **Battles and enemies** are not touched: the second element is the creator's
   (which jutsu a ninja may learn).
+
+**The ladder: levels 5, 7, 9 and 10 (decided 2026-10-21, later still).** His
+answer to the level-5 proposal and the third-element feat
+(`feat-propuesta.md`), verbatim: *"si bukijutsu sera kenjutsu feat del tercer
+elemento opcion a nivel 5 esta bien al subir al nivel 7 te un rango A y al 10 un
+rango S"*.
+
+**Decided by the owner:**
+
+- **Kenjutsu belongs to the Maestro de Bukijutsu** ("si bukijutsu sera
+  kenjutsu"), as built.
+- **Level 5 is approved as built** ("nivel 5 esta bien"): a second element (its
+  rank D and C jutsu) or a higher rank of the main element (its rank B jutsu).
+- **Level 7: rank A. Level 10: rank S** ("al subir al nivel 7 te un rango A y al
+  10 un rango S"), for every ninja.
+- **The third element's feat is option A, "Tres naturalezas" / "Triple
+  Nature"** ("feat del tercer elemento opcion a"), as proposed: it needs **level
+  9 and a second element** chosen at level 5; it gives **a third element**, whose
+  rank D and C jutsu open in the Element slots as the second's do; and **once per
+  long rest** a jutsu of one of the ninja's elements costs **1 chakra less** when
+  the previous jutsu it cast that battle was of another of its elements.
+
+So the ladder, one step per level:
+
+| Level | What opens |
+|---|---|
+| 1 | Rank D and C jutsu of its chakra type (and of its class's kind), and its clan's |
+| 5 | One, for good: a second element (its D and C) or a higher rank of the main element (its B) |
+| 7 | Rank A jutsu |
+| 9 | The feat Tres naturalezas, for a ninja with a second element: a third element |
+| 10 | The S-rank slot: rank S jutsu |
+
+**As built** (the builder's reading where his words leave room, for his
+approval):
+
+- **Rank A and S are of the ninja's elements and of its class's kind**: what the
+  nature and class gates already allow (rules/jutsuNature.ts, rules/jutsuClass.ts),
+  now at every rank its level opens. So at level 7 a Lightning ninja learns
+  Chidori, a Genjutsu Adept Templo del Nirvana; at level 10 a Fire ninja Gran
+  aniquilación, a Genjutsu Adept also Yasaka no Magatama. A second (and third)
+  element's rank A and S open too ("de sus elementos"). The level opens no rank
+  B: those stay the level-5 higher rank's (the main element's). No count limit:
+  "un rango A" is read as "the rank A", not "one rank A jutsu".
+- **Every ninja** (a new one, a legend picked as a starting point, a made one) is
+  offered what its level opens. The legends are levels 4 to 6, so none of them
+  reaches 7 today: their own rank A and S jutsu stay on their sheets, marked
+  "rango S: se queda en su hoja", as before.
+- **The creator** says the ladder under the rank line ("Rango A al nivel 7; la
+  ranura de Rango S, al nivel 10."; from level 7 "Desde el nivel 7, también
+  rango A..."), and a locked slot names the level that opens it ("Se desbloquea
+  al nivel 10" for the S-rank slot; "al nivel 7" for the Element slots of a type
+  whose jutsu are all above C, such as Lightning).
+- **Tres naturalezas in the creator:** the feat list shows "Requiere nivel 9 y
+  un segundo elemento" under it (orange while unmet, with a lock) and won't take
+  it until both are met; its panel says what is missing ("Le falta: nivel 9").
+  Taken, the Jutsu step's **"Nivel 9: tercer elemento"** block offers the three
+  other elements, each with what it opens ("Abre: Muro de agua"); the first is
+  picked for the player. Like the level-5 choice it is fixed once the ninja is
+  made with it (the feat too). Leaving the second element for the higher rank
+  drops the feat and its third element (their jutsu are swapped, with a note); an
+  imported sheet that doesn't meet the requirements loses the feat. Below level
+  9 the block says what comes ("Al nivel 9, la dote Tres naturalezas ... le da
+  un tercer elemento a quien tiene un segundo.").
+- **The third element's jutsu** open as the second element's: D and C, and A
+  from level 7 (a ninja with the feat is level 9). The feat's text says so.
+- **The discount in battle** is automatic: the first jutsu of one of its
+  elements cast right after a jutsu of another of its elements costs 1 chakra
+  less (never below 0; not when the Centered chakra discount already made it
+  free), the log says "Raiden entrelaza sus naturalezas: 1 de chakra menos (Tres
+  naturalezas)", and the hotbar shows the lower cost. "The previous jutsu" is
+  the last jutsu the ninja cast that battle, a Kawarimi included; a jutsu with
+  no element (taijutsu) or of another element breaks the chain; clan abilities
+  don't count. "Once per long rest": spent, it stays spent through the
+  mission's next battles until a camp's morning (also an interrupted one) or the
+  return to the village. In practice battles it is ready in every battle.
+- **Saves and enemies.** Nothing saved changes, so there is no migration: saved
+  heroes, the roster and a mission under way load as they were. Enemies are not
+  built in the creator and keep their kits (the jonin's Chidori); the ladder
+  gates the player's choices only.
+- **No level-up screen yet**: a ninja's level is its sheet's, so in play today
+  only an imported sheet reaches level 7, 9 or 10.
+
+**In the code**: `RANK_A_LEVEL`, `RANK_S_LEVEL`, `levelRanks`, `rankOpen(j, clan,
+rankUp, level)` and `slotOpensAt` in `src/rules/progression.ts` (`Growth.level`
+carries the level); the feat is `triple_nature` in `SHINOBI_FEATS` with
+`requires: { level: 9, secondElement: true }`; `src/rules/feats.ts` (`featNeeds`,
+`featOpen`, `keepEarnedFeats`, `tripleNatureDiscount`); the third element is
+`thirdElementOpen`, `hasSecondElement`, `chooseThirdElement`, `fitThirdElement`
+in `src/rules/natureGrowth.ts`. In battle a unit has `tripleNature` (its
+elements, spent) and `lastNature`; `jutsuCostParts` in `src/battle/engine.ts`
+applies it; the battle result's `tripleNatureSpent` sets the sheet's
+`tripleNatureSpent` (cleared in `morning`, `src/rules/rest.ts`, and
+`returnToVillage`).
 
 **In the code** there is one source: the look's burst
 (`appearance.chakra.color`, an id named after the colour the bursts were first
@@ -626,6 +722,14 @@ para las bestias elementales"*.
 - With no colour picked (Natural), or the effect's own colour, his pixels play
   exactly as he drew them. Recolouring never redraws: alpha, his dark line,
   smoke, dust, rock debris, moss and the stone drake's eyes stay his.
+- **His answer on the review** (2026-10-21, later still), verbatim: *"kirin
+  negro dejar asi rosa y violeta y como se vea en otros colores dejalo asi se ve
+  muy bien la curacion siempre se vera verde"*. So: **the black Kirin stays as it
+  is**, with its pink and violet kanji ("kirin negro dejar asi rosa y violeta");
+  **the other colours stay as they look** ("como se vea en otros colores dejalo
+  asi se ve muy bien"); and **a heal is always green** ("la curacion siempre se
+  vera verde"), whatever the caster's chakra colour. (The green heal is built on
+  its own branch, `jutsu/d-c-set`.)
 
 **As built** (the builder's reading, not his decisions):
 
@@ -642,8 +746,7 @@ para las bestias elementales"*.
   chakra) keep their colours; Pursuing Flame (Mirai, a Katon jutsu) takes it.
   Mystical Palm (Water, drawn as a green heal) and the explosive tag (Fire,
   drawn as a paper tag and its blast) have nothing drawn in their element, so
-  they keep their colours too. **Open question for the owner:** should a heal
-  of an elemental nature glow in the chakra colour?
+  they keep their colours too. (A heal stays green: his answer below.)
 - The flare when fire or lightning seals a hydra stump and the lightning that
   runs through water take the caster's colour too.
 - White is a cool silver on water, wind, lightning and earth, a faint gold on
@@ -801,9 +904,17 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   - **the random ninja** takes Element I from its own element when there is
     one, and its clan's secret.
 - The ranks a new ninja may take (his answer 1, built): the S-rank slot is
-  shown locked in its place ("Se desbloquea más adelante") rather than
-  removed. Confirm. **When does it open** (a level, a mission, a teacher)? And
-  when may a ninja learn rank B and A jutsu?
+  shown locked in its place ("Se desbloquea al nivel 10") rather than removed.
+  Confirm. (When it opens is decided: level 10, rank A at 7: "The ladder".)
+- **The ladder as built** ("The ladder" above): rank A and S open for the
+  ninja's elements **and its class's kind** (Templo del Nirvana at 7 and Yasaka
+  no Magatama at 10 for a Genjutsu Adept, Night Guy for a Taijutsu Master), and
+  for its second and third elements too; **no count limit** ("un rango A" read
+  as the rank, not one jutsu of it). Rank B still opens only with the level-5
+  higher rank, so a ninja that took a second element never learns its main
+  element's B (nor anyone the class B Danza de la luna creciente or the Utility
+  B Clon de sombra), though it learns A at 7. Confirm, or say when B opens for
+  the rest.
 - **Editing a legend** (his answer 1): a legend picked in the creator keeps its
   sheet, so a player can pick one, rename it, change its look and stats, accept,
   and play it with its rank B and S jutsu. Should a legend that is changed
@@ -821,34 +932,20 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   and the refill (or should the pouch's tags be spent for good?). Should tags be
   bought or found later (a shop, loot)? The hidden tag's save is the hider's
   jutsu DC, as the jutsu's was; a thrown one stays DC 13: confirm.
-- **Level 5** (his answer: "nivel 5 suena bien para segundo elemento o subir de
-  rango tu elemento principal"), as built ("Level 5" above): confirm **what each
-  choice opens** (a second element: its rank D and C jutsu; a higher rank: the
-  main element's rank B jutsu; neither opens S or A), that the choice is **for
-  good** once the ninja is made, and that **Light and Void** ninjas don't get
-  it until their own jutsu exist (or may they take a second element?).
+- **Level 5** is approved as built ("nivel 5 esta bien"). Still open from it:
+  **Light and Void** ninjas don't get the choice until their own jutsu exist
+  (or may they take a second element?).
 - **A new ninja's level**: the creator has no level picker, so a new ninja has
   the level of the sheet it is made from (Solen's, 6) and can make the level-5
   choice while it is created, so a new ninja that takes the higher rank learns
   its element's rank B jutsu (his answer 1 said D and C). Should a new ninja
   start at a lower level (1, or 4), or make the choice only in play once a
   level-up screen exists?
-- **The third element's feat** (his rule: "3 elementos si tienes el feat
-  especial para eso"; he asked for proposals): three options, the recommended
-  one first (in Spanish, for him, in the builder's notes). *Recommended:*
-  **"Tres naturalezas" / "Triple Nature"**: prerequisite level 9 and a second
-  element; you gain a third element (its rank D and C jutsu open to your Element
-  slots), and once per long rest a jutsu of one of your elements costs 1 chakra
-  less when the previous jutsu you cast that battle was of another of your
-  elements. *Option 2:* **"Tejedor de naturalezas" / "Nature Weaver"**, the
-  next step of the existing feat Tejedor elemental (prerequisite: Tejedor
-  elemental, a second element, level 7): a third element, and Tejedor
-  elemental's change of damage type works twice per encounter, into any of the
-  ninja's three elements. *Option 3:* **"Afinidad prohibida" / "Forbidden
-  Affinity"** (prerequisite: a second element, level 5): a third element, but
-  its jutsu cost 1 chakra more (a price instead of a high level). The feat is
-  not in the feat list yet; the code has its hook (`THIRD_ELEMENT_FEAT`), and
-  feats have no level prerequisites today (the creator would need them).
+- **Tres naturalezas as built** (he chose option A: "The ladder"): the third
+  element is fixed once the ninja is made with it, and the feat with it; the
+  discount is automatic, a Kawarimi counts as "the previous jutsu", and it is
+  ready again at a camp's morning (an interrupted one too) or back at the
+  village. Confirm.
 - Kaien and Raiga's second natures (his "ok", built): **Kaien's Fuego comes
   before level 5** (he is level 4), as a legend's own exception, and counts as
   his level-5 choice; Raiga's Tierra is his level-5 choice. A second element
@@ -863,8 +960,8 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   (demonic): to design when he says.
 - **Jutsu of a class** (his answer: "los que elijan de clase genjutsu kenjutsu
   o taijutsu"), as built: **kenjutsu goes to the Maestro de Bukijutsu** (there
-  is no kenjutsu class; Bukijutsu is the weapon class). Confirm, or add a
-  kenjutsu class. **Especialista en Ninjutsu and Especialista médico** learn
+  is no kenjutsu class; Bukijutsu is the weapon class): **confirmed** ("si
+  bukijutsu sera kenjutsu"). **Especialista en Ninjutsu and Especialista médico** learn
   none of the three: confirm. Consequences to decide: a **Light or Void** ninja
   of those two classes has nothing at all for its Element and S-rank slots
   until Light and Void get their jutsu; a ninja with one fitting jutsu for two

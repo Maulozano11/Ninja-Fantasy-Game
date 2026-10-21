@@ -1491,7 +1491,7 @@ data for the screen (`JutsuSeq.stage`) and the Leaf Hurricane stowing the
 weapon, which is a rule: with the free interaction spent and a weapon in hand it
 waits, like a jutsu with seals.
 
-### The Chidori becomes an activated state (decided 2026-10-21; the rules are open)
+### The Chidori becomes an activated state (decided 2026-10-21; built on `jutsu/chidori-active`, waiting for his yes)
 
 The owner, after sending his silver-haired paint-over (a tactical vest shown with
 and without the long coat, and lightning crackling in the near hand): *"quiero que
@@ -1517,6 +1517,46 @@ alrededor y cuando camina el personaje se va rompiendo el piso )"*.
   3. While charged: his lightning hand, an aura, small lightning sprites around
      the ninja, and the ground cracking under each step.
   4. The cracked ground is difficult terrain for 1 turn.
+
+How it is built (`jutsu/chidori-active`, waiting for his approval; `src/battle/charged.ts`, generic
+for any jutsu with `handCharge`, so the Rasengan can use it as it is):
+
+- **Activating** (`chidori_lightning_blade`, now a *Bonus Action*): pays its chakra (5; enhanced, as
+  Raikiri, 8 and one more damage die on the blow), puts the weapon away for free (the hand holds the
+  lightning), and charges the hand. One charge at a time. It is loud (it starts the fight in the
+  stealth phase). Already within reach of a foe, the blow goes off at once.
+- **The blow**: one melee jutsu attack, an attack roll (jutsu attack bonus against AC; it used to be
+  a CON save for half), 5d8 lightning, lightning through the water as before. It goes off the moment
+  one of the ninja's own moves (a walk, a dash, a flash-in, a Shooting-Star Thrust or a swap landing
+  it there; the AI's moves too) brings it within reach (1.5 m; a hydra's head 2.5 m more) of a foe it
+  knows about (not hidden from it, no metal wall between): the nearest, ties to the first id. The
+  walk stops there (on a cell it can stand on), the movement not walked is kept, and the action stays
+  free (a weapon blow can follow). A foe walking up to the charged ninja does not set it off, nor
+  does being pushed.
+- **How long**: the activation turn is the first of its 3 rounds; at the start of the ninja's third
+  turn after it, the charge fades unused.
+- **What ends it early** (the builders' choice): the ninja falls (any 0 HP state); its chakra is
+  sealed; it lets the hand go, by weaving hand seals for another jutsu (Kawarimi too) or by drawing
+  the weapon. Each end is told in the log.
+- **Cracked ground**: every 0.5 m cell the charged ninja steps on in the fight cracks (not water).
+  It is difficult terrain (a step into it costs double), for everyone, the ninja too, until the
+  start of the ninja's next turn, so every other unit has one turn with it (a round later in any
+  case, should the ninja take no more turns). Kept as `cracks` on the battle state, by cell "c,r".
+  The elements on the ground being built on `jutsu/gap-set-2` (wet ground, steam) are kept the same
+  way (`wet`, `steam`): merged, the two can share map.ts's `cellKey` and its 'ground' event.
+- **The AI**: charges the hand when a foe is within this turn's walk plus reach, then walks into
+  reach (dashing when the walk runs out); while charged it neither throws kunai nor weaves seals
+  (both are worth little then), and a long weapon's reach doesn't stop it short of the hand's.
+- **On the screen**: his lightning in the near hand, copied from both paint-overs
+  (`tools/refs/chidori-hand-from-ref.py` → `vfx_charged/chidori_hand`, flickering between the vest's
+  ring and bolts and the coat's burst, mirrored when the ninja faces left), the lightning aura round
+  the ninja, Battle Static's small bolts crackling on and round the body (in the charge's colour,
+  whatever the ninja's own burst), and a crack under each step (`vfx_charged/ground_crack`, new art,
+  four variants). All in the caster's chakra colour but the cracks; his colours at the default.
+  The blow is his thrust of round 1 (answer 11) with the charged hand.
+- **Open for him**: the attack roll in place of the old save; whether the cracks slow the ninja who
+  made them; whether a foe walking into the charged ninja's reach should set it off too; the HUD's
+  button charges it plain (enhanced through the engine only, for now).
 
 The vest and coat in the same picture are not a new character: *"el chaleco no es
 de jonin parece mas como tactico militar solo cambiale los colores y no lo hagas

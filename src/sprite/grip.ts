@@ -4,6 +4,7 @@
 
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
+import { KATANA_V2 } from './items/katanaV2Art';
 import { add, norm, RES, scale, sub, Vec } from './raster';
 import { drawRig, THROW_RELEASE_FRAME } from './rig';
 import type { BodyType } from './types';
@@ -63,8 +64,9 @@ export function swordAngle(g: DrawCtx): number {
       return [-38, -165, 30, 64, 145, 12, -40, -42][f % 8];
     default:
       // Matches the reference: blade hangs across the legs at about 50 degrees. The owner's flame
-      // longsword hangs at the angle he painted it (35), so at rest it is every pixel his.
-      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : 52;
+      // longsword and his Katana v2 hang at the angles he painted them (35, 37), so at rest they are
+      // every pixel his.
+      return g.has('held', 'held_flame_sword') ? FLAME_LONGSWORD.angle : g.has('held', 'held_katana_v2') ? KATANA_V2.angle : 52;
   }
 }
 
@@ -124,8 +126,11 @@ export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.lo
 export const handsReleased = (g: DrawCtx): boolean => g.rig.released && !handsBusy(g);
 
 /** The held items that are weapons, with a handle the fist holds; the others are empty hands or a technique held in the palm. */
-const WEAPONS = new Set(['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai', 'held_naginata']);
+const WEAPONS = new Set(['held_katana', 'held_katana_v2', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai', 'held_naginata']);
 export const isWeapon = (held: string | undefined): boolean => !!held && WEAPONS.has(held);
+
+/** The owner's painted swords are held by their own grip at the hand joint (items/accessories.ts), the others at the fist's middle. */
+export const heldAtHandJoint = (held: string | undefined): boolean => held === 'held_flame_sword' || held === 'held_katana_v2';
 
 /**
  * A kunai from the pouch in the near fist, like the Kunai item: in the wind-up of 'throw' with no
@@ -141,7 +146,7 @@ export function gripAngle(g: DrawCtx): number | null {
   if (throwsKunai(g)) return swordAngle(g);
   if (handsBusy(g) || handsLimp(g) || handsReleased(g)) return null;
   if (g.has('held', 'held_naginata')) return poleAngle(g);
-  if (g.has('held', 'held_katana') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
+  if (g.has('held', 'held_katana') || g.has('held', 'held_katana_v2') || g.has('held', 'held_crystal') || g.has('held', 'held_ice_crystal') || g.has('held', 'held_flame_sword') || g.has('held', 'held_kunai')) return swordAngle(g);
   return null;
 }
 
@@ -185,8 +190,8 @@ export function throwRelease(body: BodyType, held?: string): ThrowRelease {
   const fist = (r: typeof at): Vec => add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
   const d = norm(sub(at.handN, at.wristN));
   const pole = held === 'held_naginata';
-  // The flame longsword is held by its own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
-  const grip = held === 'held_flame_sword' ? before.handN : fist(before);
+  // The owner's painted swords are held by their own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
+  const grip = heldAtHandJoint(held) ? before.handN : fist(before);
   return {
     frame: THROW_RELEASE_FRAME,
     hand: scale(fist(at), RES),
@@ -208,5 +213,5 @@ export function heldAt(body: BodyType, pose: 'throw' | 'pierce', frame: number, 
   const pole = held === 'held_naginata';
   const table = pose === 'throw' ? (pole ? THROW_POLE : THROW_BLADE) : pole ? PIERCE_POLE : PIERCE_BLADE;
   const fist = add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
-  return { at: scale(held === 'held_flame_sword' ? r.handN : fist, RES), angle: table[((frame % table.length) + table.length) % table.length] };
+  return { at: scale(heldAtHandJoint(held) ? r.handN : fist, RES), angle: table[((frame % table.length) + table.length) % table.length] };
 }

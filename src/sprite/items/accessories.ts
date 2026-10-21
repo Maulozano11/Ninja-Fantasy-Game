@@ -9,6 +9,9 @@ import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
+import { KATANA_V2, KATANA_V2_BLADE, KATANA_V2_CHAKRA, KATANA_V2_GOLD, KATANA_V2_WRAP } from './katanaV2Art';
+import type { PartSlot, PartsPreview } from '../ctx';
+import type { SpriteAppearance } from '../types';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
 
@@ -306,6 +309,45 @@ const flameSwordTint =
   (ch: string, hex: string): string =>
     FLAME_LONGSWORD.flame.includes(ch) ? retintHex(hex, FLAME_SWORD_FLAME, flame) : FLAME_LONGSWORD.gold.includes(ch) ? retintHex(hex, FLAME_SWORD_GOLD, gold) : hex;
 
+/**
+ * The Katana v2's one part with versions: his blade is painted in Ren's chakra blue, so it can follow
+ * the wielder's chakra as the nichirin katana does, or keep the colour picked for it. (His guard and
+ * grip he painted one way each: their colour slots move them.)
+ */
+export const KATANA_V2_PARTS: PartSlot[] = [
+  {
+    key: 'steel',
+    label: 'Steel',
+    options: [
+      { id: 'a', label: 'Nichirin', desc: "The blade takes the colour of its wielder's chakra, strongest toward the edge." },
+      { id: 'b', label: 'Painted', desc: 'The blade keeps the colour picked for it.' },
+    ],
+  },
+];
+
+/**
+ * The Katana v2's colours: his blade from his blue to the chakra colour (nichirin) or to the Blade
+ * slot, his gold to the Guard slot, his wrap to the Wrap slot; his steel and black line stay. With
+ * Ren's chakra blue and the slots' defaults every pixel is his.
+ */
+function katanaV2Tint(parts: Record<string, string>, chakra: string, [blade, gold, wrap]: string[]) {
+  const nichirin = parts.steel !== 'b';
+  return (ch: string, hex: string): string => {
+    if (KATANA_V2.blade.includes(ch)) return nichirin ? retintHex(hex, KATANA_V2_CHAKRA, chakra) : retintHex(hex, KATANA_V2_BLADE, blade);
+    if (KATANA_V2.gold.includes(ch)) return retintHex(hex, KATANA_V2_GOLD, gold);
+    if (KATANA_V2.wrap.includes(ch)) return retintHex(hex, KATANA_V2_WRAP, wrap);
+    return hex;
+  };
+}
+
+/** The Katana v2 on its own (the part pickers' thumbnails), in the look's chakra and colours. */
+function katanaV2Preview(look: SpriteAppearance, parts: Record<string, string>): PartsPreview {
+  const held = look.slots.held;
+  const colors = held?.id === 'held_katana_v2' && held.colors.length === 3 ? held.colors : [KATANA_V2_BLADE, KATANA_V2_GOLD, KATANA_V2_WRAP];
+  const tint = katanaV2Tint(parts, chakraHex(look.chakra), colors);
+  return { rows: KATANA_V2.rows, colors: Object.fromEntries(Object.entries(KATANA_V2.colors).map(([ch, hex]) => [ch, tint(ch, hex)])) };
+}
+
 export const HELD_ITEMS: ItemDef[] = [
   {
     id: 'held_none',
@@ -331,6 +373,24 @@ export const HELD_ITEMS: ItemDef[] = [
         stowKatanaAtHip(g, hilt, guard);
       } else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', t, droppedGrip(g, 0.55), -86);
       else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', t, gripPoint(g), swordAngle(g));
+    },
+  },
+  {
+    id: 'held_katana_v2',
+    slot: 'held',
+    name: 'Katana v2',
+    desc: "The owner's katana in the new style: a gold pommel cap, a grip wrapped in blue, a gold cross-guard and a long blue blade that takes the colour of the chakra.",
+    colors: [col('blade', 'Blade', KATANA_V2_BLADE, 'metal'), col('guard', 'Guard', KATANA_V2_GOLD, 'metal'), col('wrap', 'Wrap', KATANA_V2_WRAP)],
+    parts: KATANA_V2_PARTS,
+    partsPreview: katanaV2Preview,
+    draw: (g, colors, parts) => {
+      // His katana from his Ren picture (2026-10-21: "el arma tambien es la katana nuevo estilo v2";
+      // tools/refs/ren-katana-from-ref.py): held by its grip at the hand joint, as he painted it in
+      // Ren's fist, so at rest every pixel is his; stowed at the hip as the katana is.
+      const tint = katanaV2Tint(parts, chakraHex(g.look.chakra), colors);
+      if (handsBusy(g)) stowKatanaAtHip(g, colors[2], colors[1]);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', KATANA_V2, droppedGrip(g, 0.55), -86, tint);
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', KATANA_V2, g.rig.handN, swordAngle(g), tint);
     },
   },
   {

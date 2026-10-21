@@ -16,6 +16,9 @@ import { auraDx, fxPos, project } from './renderer';
 import { WAIT, hurryVfxSheets, tintedSheet } from './vfxTintCache';
 import type { TintedSheet } from './vfxTintCache';
 import { unitTint, wallElement } from './vfxTintPlan';
+import { wanderHeading, wanderPoint } from './paths';
+import type { XY } from './paths';
+import { dist } from '../../battle/map';
 
 /** A sheet, and its copy in a chakra colour when it plays in one. */
 type Sheet = NonNullable<ReturnType<typeof worldSprite>> & { tinted?: TintedSheet };
@@ -283,6 +286,10 @@ function sheetsOf(f: Fx): { name: string; beast: boolean; group?: string }[] {
   const sig = f.sig && f.sig !== 'eyes' && f.sig !== 'tag' && f.sig !== 'log' ? sigSheetName(el, f.sig, !!f.enhanced) : undefined;
   const named = (...n: string[]) => n.map((name) => ({ name, beast: false }));
   if (sig) return named(sig, 'blast', 'bolt');
+  if (f.kind === 'sprite' && f.run) return [{ group: f.run.group, name: f.run.name, beast: false }];
+  if (f.kind === 'projectile' && f.trail) return [{ group: 'vfx_dragon', name: 'water_head', beast: false }, ...named('stream')];
+  if (f.kind === 'projectile' && f.route && f.piece !== undefined) return [{ group: 'vfx_dc', name: `${el}_multi_${f.piece}`, beast: false }];
+  if (f.kind === 'line' && f.beam?.noHead) return named('stream');
   switch (f.kind) {
     case 'projectile':
       // One projectile of a volley flies from its own turned sheet (vfx_dc).
@@ -301,6 +308,241 @@ function sheetsOf(f: Fx): { name: string; beast: boolean; group?: string }[] {
     default:
       return [];
   }
+}
+
+
+// --- the owner's first round of effect answers (2026-10-21): pieces P1, P2, P4 ------------------
+
+/** The sheet a piece plays: its group's, in the effect's chakra colour when it is an elemental one's. */
+function runSheet(f: Fx): Sheet | undefined {
+  const r = f.run!;
+  const s = worldSprite(r.group, r.name);
+  if (!s || !ready(s)) return undefined;
+  return inTint(s, f.element, r.name, f.tint);
+}
+
+/** Where a piece is (screen px) `ms` into it: between its path's keyframes, straight. */
+function runPoint(sc: Scene, f: Fx, ms: number): { x: number; y: number } {
+  const r = f.run!;
+  const k = r.path?.length ? r.path : [{ ms: 0, dy: 0 }];
+  const sx = r.mirror ? -1 : 1;
+  const at = (p: (typeof k)[number]) => {
+    const g = project(sc.map, p.at ?? f.from);
+    return { x: g.X + sx * (p.dx ?? 0), y: g.Y + p.dy };
+  };
+  if (ms <= k[0].ms) return at(k[0]);
+  for (let i = 1; i < k.length; i++) {
+    if (ms <= k[i].ms) {
+      const a = at(k[i - 1]);
+      const b = at(k[i]);
+      const t = (ms - k[i - 1].ms) / Math.max(1, k[i].ms - k[i - 1].ms);
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    }
+  }
+  return at(k[k.length - 1]);
+}
+
+/**
+ * A piece of a sheet (P1): its rows in turn at its point. A row's own frames play at its pace (the
+ * last one held), backwards when asked, or just the frames listed, spread over the row's time.
+ */
+function drawRun(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number): boolean {
+  const r = f.run!;
+  const s = runSheet(f);
+  if (!s) return false;
+  let acc = 0;
+  let anim = r.rows[0].anim;
+  let frame = 0;
+  for (let i = 0; i < r.rows.length; i++) {
+    const row = r.rows[i];
+    if (ms < acc + row.ms || i === r.rows.length - 1) {
+      const local = Math.max(0, ms - acc);
+      anim = row.anim;
+      const a = s.spec.anims[anim];
+      if (row.frames?.length) frame = row.frames[Math.min(row.frames.length - 1, Math.floor((local / Math.max(1, row.ms)) * row.frames.length))];
+      else {
+        frame = frameAt(s, anim, local);
+        if (row.back && a) frame = a.frames - 1 - frame;
+      }
+      break;
+    }
+    acc += row.ms;
+  }
+  const p = runPoint(sc, f, ms);
+  const alpha = r.fade && ms > f.dur - r.fade ? Math.max(0, (f.dur - ms) / r.fade) : 1;
+  if (r.clip === undefined) {
+    blit(ctx, s, anim, frame, p.x, p.y, !!r.mirror, alpha);
+    return true;
+  }
+  // Out of a wall: nothing below the line `clip` px over its ground point.
+  const g = project(sc.map, r.path?.[0]?.at ?? f.from);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(p.x - 4000, g.Y - r.clip - 8000, 8000, 8000);
+  ctx.clip();
+  blit(ctx, s, anim, frame, p.x, p.y, !!r.mirror, alpha);
+  ctx.restore();
+  return true;
+}
+
+/**
+ * A stream from (x0, y0) running (dx, dy) on the screen (facing left when `left`), as the line
+ * jutsu lays it: tiles stepped back from the head, sheared onto a shallow slope or turned onto a
+ * steep one; without a head when `head` is null (the tiles are cut off at the end instead).
+ */
+function layStream(ctx: CanvasRenderingContext2D, tile: Sheet, head: Sheet | null, x0: number, y0: number, dx: number, dy: number, left: boolean, frame: number, alpha: number): void {
+  const run = left ? -dx : dx;
+  const shear = run > 0 && Math.abs(dy) <= run;
+  const L = shear ? run : Math.hypot(dx, dy);
+  const w = tile.spec.frameW;
+  ctx.save();
+  ctx.translate(x0, y0);
+  if (left) ctx.scale(-1, 1);
+  if (shear) ctx.transform(1, dy / run, 0, 1, 0, 0);
+  else ctx.rotate(Math.atan2(dy, run));
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, -1e4, head ? 1e5 : L, 2e4);
+  ctx.clip();
+  for (let k = Math.max(1, Math.ceil(L / w)); k >= (head ? 1 : 0); k--) blit(ctx, tile, 'fly', frame, L - w * k, 0, false, alpha);
+  ctx.restore();
+  if (head) blit(ctx, head, 'fly', frame, L, 0, false, alpha);
+  ctx.restore();
+}
+
+/**
+ * A beam (P4) from its start to its end, each at its own height: it reaches the end in `grow` ms,
+ * stays, and fades over its last `fade` ms (the Dragon Fire's stream from the mouth to the end of
+ * its line, the Sealing Chains held taut).
+ */
+function drawBeam(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number): boolean {
+  const b = f.beam!;
+  const tile = sheet(f.element, 'stream', f.tint);
+  const head = b.noHead ? null : sheet(f.element, 'stream_head', f.tint);
+  if (!tile || (!b.noHead && !head)) return false;
+  const a = project(sc.map, f.from);
+  const e = project(sc.map, f.to);
+  const [l0, l1] = f.lift ?? [60, 50];
+  const reach = Math.min(1, ms / Math.max(1, b.grow));
+  const alpha = ms > f.dur - b.fade ? Math.max(0, (f.dur - ms) / b.fade) : 1;
+  const x0 = a.X;
+  const y0 = a.Y - l0;
+  layStream(ctx, tile, head ?? null, x0, y0, (e.X - x0) * reach, (e.Y - l1 - y0) * reach, f.to.x < f.from.x - 0.01, frameAt(tile, 'fly', ms), alpha);
+  return true;
+}
+
+/** A route's points on the screen (px), and the length of its legs on the ground (m), for wanderPoint. */
+function routeOf(sc: Scene, f: Fx): { pts: XY[]; pace: number[] } {
+  const r = f.route!;
+  const pts = r.map((p) => {
+    const g = project(sc.map, p.at);
+    return { x: g.X, y: g.Y - p.lift };
+  });
+  const pace = r.slice(1).map((p, i) => Math.max(0.05, dist(r[i].at, p.at)));
+  return { pts, pace };
+}
+
+/** One of his frames as a picture to cut columns from: where its pixels are, and where they sit in the frame. */
+function frameSource(s: Sheet, anim: string, frame: number): { img: CanvasImageSource; sx: number; sy: number; w: number; h: number; ox: number; oy: number } | null {
+  const a = s.spec.anims[anim] ?? Object.values(s.spec.anims)[0];
+  if (!a) return null;
+  const f = Math.max(0, Math.min(a.frames - 1, frame));
+  const tf = s.tinted?.frame(a.row, f);
+  if (tf === null) return null;
+  if (tf === WAIT) {
+    waiting = true;
+    return null;
+  }
+  if (tf) return { img: tf.img, sx: 0, sy: 0, w: tf.img.width, h: tf.img.height, ox: tf.x, oy: tf.y };
+  return { img: s.img, sx: f * s.spec.frameW, sy: a.row * s.spec.frameH, w: s.spec.frameW, h: s.spec.frameH, ox: 0, oy: 0 };
+}
+
+/** How wide (px) each slice of a body laid along a curve is. */
+const SLICE = 4;
+
+/**
+ * The water dragon's body: his water stream without its head, laid along the path the head has
+ * flown (from the hand to `t`), slice by slice turned along it, so it follows every bend.
+ */
+function drawTrail(ctx: CanvasRenderingContext2D, pts: XY[], bends: Fx['bends'], pace: number[], t: number, tile: Sheet, frame: number, alpha: number): void {
+  const src = frameSource(tile, 'fly', frame);
+  if (!src || t <= 0) return;
+  // The path sampled finely, then walked a slice at a time.
+  const N = Math.max(8, Math.ceil(t * 160));
+  const line: XY[] = [];
+  for (let i = 0; i <= N; i++) line.push(wanderPoint(pts, bends ?? [], (t * i) / N, pace));
+  const w = tile.spec.frameW;
+  const ay = tile.spec.anchor[1];
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  let s = 0;
+  let seg = 0;
+  let into = 0;
+  for (;;) {
+    while (seg < line.length - 1) {
+      const l = Math.hypot(line[seg + 1].x - line[seg].x, line[seg + 1].y - line[seg].y);
+      if (into < l) break;
+      into -= l;
+      seg++;
+    }
+    if (seg >= line.length - 1) break;
+    const p = line[seg];
+    const q = line[seg + 1];
+    const l = Math.max(1e-6, Math.hypot(q.x - p.x, q.y - p.y));
+    const x = p.x + ((q.x - p.x) * into) / l;
+    const y = p.y + ((q.y - p.y) * into) / l;
+    const col = s % w;
+    const cx = col - src.ox;
+    if (cx >= 0 && cx < src.w) {
+      ctx.save();
+      ctx.translate(Math.round(x), Math.round(y));
+      if (q.x < p.x) {
+        ctx.scale(-1, 1);
+        ctx.rotate(Math.atan2(q.y - p.y, p.x - q.x));
+      } else ctx.rotate(Math.atan2(q.y - p.y, q.x - p.x));
+      // One column over, so the slices meet without a seam.
+      const cw = Math.min(SLICE + 1, src.w - cx);
+      ctx.drawImage(src.img, src.sx + cx, src.sy, cw, src.h, 0, src.oy - ay, cw, src.h);
+      ctx.restore();
+    }
+    s += SLICE;
+    into += SLICE;
+  }
+  ctx.restore();
+}
+
+/**
+ * A projectile on a varied path (paths.ts): one of a volley's pieces (vfx_dc, turned along it), or
+ * the water dragon's head (vfx_dragon/water_head, turned along it) with its body behind it.
+ */
+function drawRoute(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number): boolean {
+  const { pts, pace } = routeOf(sc, f);
+  const bends = f.bends ?? [];
+  if (f.trail) {
+    const head = worldSprite('vfx_dragon', 'water_head');
+    const tile = sheet(f.element, 'stream', f.tint);
+    if (!head || !ready(head) || !tile) return false;
+    const h = inTint(head, f.element, 'water_head', f.tint);
+    const arrive = f.trail.arrive;
+    const t = Math.min(1, ms / arrive);
+    const alpha = ms > arrive ? Math.max(0, 1 - (ms - arrive) / Math.max(1, f.dur - arrive)) : 1;
+    drawTrail(ctx, pts, bends, pace, t, tile, frameAt(tile, 'fly', ms), alpha);
+    if (ms < arrive) {
+      const p = wanderPoint(pts, bends, t, pace);
+      const d = wanderHeading(pts, bends, t, pace);
+      const r = turnedRow(h, d.x, d.y, 10);
+      blit(ctx, h, r.anim, 0, p.x, p.y, r.mirror);
+    }
+    return true;
+  }
+  const s = f.piece !== undefined ? ownSheet('vfx_dc', `${f.element}_multi_${f.piece}`, f.element, f.tint) : undefined;
+  if (!s) return false;
+  const t = Math.min(1, ms / f.dur);
+  const p = wanderPoint(pts, bends, t, pace);
+  const d = wanderHeading(pts, bends, t, pace);
+  const r = turnedRow(s, d.x, d.y, 6);
+  blit(ctx, s, r.anim, frameAt(s, r.anim, ms), p.x, p.y, r.mirror);
+  return true;
 }
 
 function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolean {
@@ -324,6 +566,9 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
   if (t > 1) return true;
   const left = f.to.x < f.from.x - 0.01;
   const sig = f.sig && f.sig !== 'eyes' && f.sig !== 'tag' && f.sig !== 'log' ? sigSheetName(el, f.sig, !!f.enhanced) : undefined;
+  if (f.kind === 'sprite' && f.run) return drawRun(ctx, sc, f, ms);
+  if (f.kind === 'line' && f.beam) return drawBeam(ctx, sc, f, ms);
+  if (f.kind === 'projectile' && f.route) return drawRoute(ctx, sc, f, ms);
   switch (f.kind) {
     case 'projectile': {
       // One projectile of a volley, on its own path (Three Embers, Jolt, Pebble Shot).

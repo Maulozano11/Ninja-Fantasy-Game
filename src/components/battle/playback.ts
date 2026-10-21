@@ -5,13 +5,15 @@
 import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit, Wall, WeaponNode } from '../../battle/types';
 import type { SpritePose } from '../../sprite/types';
 import { JUTSU } from '../../battle/jutsu';
-import type { JutsuSpec, VfxElement, VfxRole } from '../../battle/jutsu';
-import { POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
+import type { JutsuSpec, StageKind, VfxElement, VfxRole } from '../../battle/jutsu';
+import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
 import { FAN_MS, FAN_ROLL, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { dist } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
+import type { Bend } from './paths';
+import { bendsOf, seedOf } from './paths';
 
 export interface UnitView {
   pos: Pt;
@@ -58,7 +60,7 @@ export interface Floater {
   big?: boolean;
 }
 
-export type FxKind = 'projectile' | 'kunai' | 'area' | 'cone' | 'line' | 'burst' | 'explosion' | 'electric' | 'smoke' | 'heal' | 'aura' | 'noise' | 'slash' | 'wall' | 'seal' | 'fire';
+export type FxKind = 'projectile' | 'kunai' | 'area' | 'cone' | 'line' | 'burst' | 'explosion' | 'electric' | 'smoke' | 'heal' | 'aura' | 'noise' | 'slash' | 'wall' | 'seal' | 'fire' | 'sprite';
 
 export interface Fx {
   kind: FxKind;
@@ -98,6 +100,50 @@ export interface Fx {
    * cast, so the effect keeps it. Unset: his colours.
    */
   tint?: string;
+  /**
+   * Drawn among what stands, at this depth (m), so what stands nearer is drawn over it: a wall and
+   * a dragon behind the caster, a seal circle under the target's feet (piece P6 of the owner's first
+   * round). Unset: over everything.
+   */
+  depth?: number;
+  /** A piece of a sheet held and moved at a point ('sprite', piece P1): see SpriteRun. */
+  run?: SpriteRun;
+  /**
+   * A beam ('line', piece P4) that reaches its end in `grow` ms, stays, and fades over its last
+   * `fade` ms, from the height `lift[0]` at its start to `lift[1]` at its end; `noHead`: the stream
+   * without its head (a chain).
+   */
+  beam?: { grow: number; fade: number; noHead?: boolean };
+  /**
+   * A projectile on a varied path (paths.ts): through these points (m, and px above the ground),
+   * each leg bowed by its bend, paced by the legs' length on the ground.
+   */
+  route?: { at: Pt; lift: number }[];
+  bends?: Bend[];
+  /**
+   * The water dragon: its head (vfx_dragon/water_head, turned along its path) flies for `arrive` ms
+   * with its body of water (the stream without its head) laid behind it all the way from the hand;
+   * the body fades whole in the rest of the effect's time.
+   */
+  trail?: { arrive: number };
+}
+
+/**
+ * A piece of one of his sheets played at a point: its rows one after another, each for `ms` (its
+ * frames at the sheet's pace, the last held; `back`: backwards; `frames`: just these frames,
+ * spread over `ms`), moved along `path` (keyframes: a ground point, else the effect's `from`, plus
+ * px; straight between them). Mirrored with `mirror` (px offsets too). `clip`: nothing of it is
+ * drawn lower than this many px above its ground point (it rises out of a wall); `fade`: it fades
+ * over its last ms.
+ */
+export interface SpriteRun {
+  group: string;
+  name: string;
+  rows: { anim: string; ms: number; back?: boolean; frames?: number[] }[];
+  path?: { ms: number; at?: Pt; dx?: number; dy: number }[];
+  mirror?: boolean;
+  clip?: number;
+  fade?: number;
 }
 
 export type VolleyPath = 'high' | 'straight' | 'low';
@@ -180,6 +226,10 @@ export class Playback {
    * on the ninja, faint, until its next turn): unit → the aura's element, opacity and start.
    */
   lingers = new Map<string, { element: VfxElement; alpha: number; t0: number; tint?: string }>();
+  /** What a staged jutsu does later in its own time (piece P5: the next blow of a combo). */
+  private timers: { at: number; run: (now: number) => void }[] = [];
+  /** Casts played so far: part of the seed of their varied paths, so two casts never fly alike. */
+  private casts = 0;
 
   constructor(state: BattleState, private hooks: PlaybackHooks) {
     this.sync(state, 0);
@@ -243,6 +293,11 @@ export class Playback {
       this.busyUntil = now + d / this.speed;
       if (!this.queue.length) this.settling = true;
     }
+    if (this.timers.length) {
+      const due = this.timers.filter((x) => now >= x.at);
+      this.timers = this.timers.filter((x) => now < x.at);
+      for (const x of due) x.run(now);
+    }
     if (this.shakes.length) {
       for (const sh of this.shakes) if (now >= sh.at) this.hooks.shake(sh.power);
       this.shakes = this.shakes.filter((sh) => now < sh.at);
@@ -276,7 +331,7 @@ export class Playback {
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
     // The last jutsu's effects play out whole first (the movement overlay and the next order wait for them).
-    if (!this.settling || this.queue.length || now < this.busyUntil || now < this.lingerUntil) return false;
+    if (!this.settling || this.queue.length || this.timers.length || now < this.busyUntil || now < this.lingerUntil) return false;
     for (const v of this.views.values()) if (v.walk || v.phase || (v.poseUntil && now < v.poseUntil)) return false;
     this.settling = false;
     return true;
@@ -389,6 +444,11 @@ export class Playback {
     this.shakes.push({ at: now + ms / this.speed, power });
   }
 
+  /** Runs `run` `ms` (at speed 1) from now. */
+  private later(now: number, ms: number, run: (now: number) => void): void {
+    this.timers.push({ at: now + ms / this.speed, run });
+  }
+
   private setPose(v: UnitView, pose: SpritePose, now: number, dur?: number): void {
     v.pose = pose;
     v.poseT0 = now;
@@ -426,6 +486,7 @@ export class Playback {
     // The cast beat and the flight pace of every jutsu (see the usual way below).
     const CAST = 560;
     const flight = (to: Pt) => Math.max(500, dist(hand, to) * 115);
+    if (seq.stage) return this.round1(seq.stage, ev, spec, a, from, now, label, tint);
 
     if (spec.pose === 'tackle') {
       // The Rush (the owner: the weapon put away, a tackle): straight out of the run into the
@@ -554,6 +615,267 @@ export class Playback {
       return CAST + fly + 250;
     }
     return null;
+  }
+
+  /**
+   * The jutsu staged with the pieces of the owner's first round of effect answers (2026-10-21;
+   * docs/GAMEPLAY_DESIGN.md, "Jutsu effects, round 1"), all from his sheets. Times are ms after the
+   * jutsu's event at speed 1 (for a melee one, the moment the ninja reaches its target). Returns how
+   * long to wait before the next event (the damage shows then).
+   */
+  private round1(stage: StageKind, ev: Extract<BattleEvent, { t: 'jutsu' }>, spec: JutsuSpec, a: UnitView, from: Pt, now: number, label: string | null, tint: string | undefined): number {
+    const h = this.hooks;
+    const el = spec.element;
+    const at = (ms: number) => now + ms / this.speed;
+    const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, now + ms / this.speed));
+    const base = { element: el, enhanced: ev.enhanced, tint };
+    const f = a.facing;
+    const CAST = 560;
+    const seed = seedOf(`${ev.unit}|${ev.jutsu}|${ev.at.x.toFixed(2)}|${ev.at.z.toFixed(2)}|${this.casts++}`);
+    const announce = (rise = 128) => {
+      h.sound('jutsu', el);
+      if (label) this.float(label, '#fde68a', from, now, { rise, dur: 1400 });
+    };
+    const burst = (element: VfxElement, to: Pt, t0: number, lift: number, role: VfxRole = 'hit', tintOf = tint) => {
+      const dur = impactMs(element, role, 800);
+      this.fx.push({ element, tint: tintOf, kind: 'burst', from, to, t0: at(t0), dur, lift: [lift, lift], role });
+      return t0 + dur;
+    };
+    /** A piece of a sheet (P1) starting `t0` ms from now: its rows, path and the rest (SpriteRun). */
+    const piece = (o: Omit<SpriteRun, 'mirror'> & { t0: number; from: Pt; element?: VfxElement; tint?: string; depth?: number }) => {
+      const dur = o.rows.reduce((n, r) => n + r.ms, 0);
+      const { t0, from: p, element, tint: tt, depth, ...run } = o;
+      this.fx.push({ kind: 'sprite', element: element ?? el, tint: element && element !== el ? undefined : tt ?? tint, from: p, to: p, t0: at(t0), dur, depth, run: { ...run, mirror: f < 0 } });
+      return t0 + dur;
+    };
+    const who = this.reached(ev.unit);
+    const pts = who.map((id) => this.posOf(id, now));
+    const ahead = (dx: number, dz = 0): Pt => ({ x: from.x + f * dx, z: from.z + dz });
+
+    switch (stage) {
+      case 'dragonHead': {
+        // 1A: his flame wall rises behind the ninja, his dragon head of the Great Annihilation rises
+        // out of it with a fireball in its mouth and spits a fan of fireballs over the cone, each
+        // bursting on the one it reaches (or at the cone's end); the head burns and sinks as in his
+        // Annihilation, and the wall goes down with its own frames backwards.
+        announce(380);
+        this.setPose(a, 'cast', now, 900);
+        const cone = ev.shape?.kind === 'cone' ? ev.shape : null;
+        const wallAt = ahead(-3.3, -0.37);
+        const mouth = ahead(-0.7, -0.37);
+        const UP = 151;
+        piece({ group: 'vfx_fire', name: 'wall', element: 'fire', t0: CAST, from: wallAt, depth: wallAt.z, rows: [{ anim: 'rise', ms: 1000 }, { anim: 'idle', ms: 900 }, { anim: 'rise', ms: 1000, back: true }] });
+        const headPath = [{ ms: 0, dy: -UP + 260 }, { ms: 400, dy: -UP }, { ms: 750, dy: -UP }, { ms: 1417, dy: -UP + 200 }];
+        piece({ group: 'vfx_dragon', name: 'fire_head', element: 'fire', t0: 950, from: mouth, depth: wallAt.z - 0.002, clip: 0, path: headPath, rows: [{ anim: 'idle', ms: 750 }, { anim: 'fade', ms: 667 }] });
+        // The fireball in its mouth until it spits.
+        piece({ group: 'vfx_fire', name: 'bolt', element: 'fire', t0: 1150, from: mouth, depth: wallAt.z - 0.001, path: [{ ms: 0, dy: -UP }], rows: [{ anim: 'fly', ms: 200 }] });
+        const n = ev.enhanced ? 7 : 5;
+        const dir = ((cone?.dir ?? (f > 0 ? 0 : 180)) * Math.PI) / 180;
+        const spread = ((cone?.angle ?? 60) * Math.PI) / 180;
+        const len = cone?.length ?? 9;
+        // The fan's angles; each one reached takes the ball nearest its own angle, the rest burst at the cone's end.
+        const angles = Array.from({ length: n }, (_, i) => dir - spread / 2 + (spread * (i + 0.5)) / n);
+        const dest: { to: Pt; foe: boolean }[] = angles.map((ang) => ({ to: { x: from.x + Math.cos(ang) * len, z: from.z + Math.sin(ang) * len }, foe: false }));
+        const free = new Set(angles.map((_, i) => i));
+        for (const p of pts) {
+          const ang = Math.atan2(p.z - from.z, p.x - from.x);
+          let best = -1;
+          for (const i of free) if (best < 0 || Math.abs(angles[i] - ang) < Math.abs(angles[best] - ang)) best = i;
+          if (best < 0) break;
+          free.delete(best);
+          dest[best] = { to: p, foe: true };
+        }
+        let first = Infinity;
+        let end = 3460;
+        dest.forEach((d, i) => {
+          const t0 = 1350 + (i * 400) / Math.max(1, n - 1);
+          const fly = Math.max(350, dist(mouth, d.to) * 75);
+          this.fx.push({ ...base, kind: 'projectile', role: 'bolt', from: mouth, to: d.to, t0: at(t0), dur: fly, lift: [UP, d.foe ? 50 : 24] });
+          end = Math.max(end, burst(el, d.to, t0 + fly, d.foe ? 50 : 24));
+          if (d.foe) first = Math.min(first, t0 + fly);
+        });
+        if (Number.isFinite(first)) this.shakeAt(now, first, 3);
+        linger(end);
+        return Number.isFinite(first) ? first : 1750;
+      }
+      case 'dragonStream': {
+        // 2A: the half-size wall and head behind the ninja; the stream leaves the mouth and reaches
+        // the END of the line in 400 ms, a hit on each one as it gets there; the head burns.
+        announce(260);
+        this.setPose(a, 'cast', now, 900);
+        const line = ev.shape?.kind === 'line' ? ev.shape : null;
+        const wallAt = ahead(-1.6, -0.32);
+        const mouth = ahead(-0.5, -0.32);
+        const UP = 106;
+        piece({ group: 'vfx_dragon', name: 'fire_wall_half', element: 'fire', t0: CAST, from: wallAt, depth: wallAt.z, rows: [{ anim: 'rise', ms: 1000 }, { anim: 'idle', ms: 590 }, { anim: 'rise', ms: 1000, back: true }] });
+        piece({ group: 'vfx_dragon', name: 'fire_head_half', element: 'fire', t0: 800, from: mouth, depth: wallAt.z - 0.002, clip: 0, path: [{ ms: 0, dy: -UP + 130 }, { ms: 300, dy: -UP }, { ms: 1200, dy: -UP }, { ms: 1867, dy: -UP + 100 }], rows: [{ anim: 'idle', ms: 1200 }, { anim: 'fade', ms: 667 }] });
+        const rad = ((line?.dir ?? (f > 0 ? 0 : 180)) * Math.PI) / 180;
+        const length = line?.length ?? spec.length ?? 10.5;
+        const o = line?.origin ?? from;
+        const endAt = { x: o.x + Math.cos(rad) * length, z: o.z + Math.sin(rad) * length };
+        const GROW = 400;
+        this.fx.push({ ...base, kind: 'line', from: mouth, to: endAt, t0: at(1100), dur: 1200, lift: [UP, 50], beam: { grow: GROW, fade: 300 } });
+        let first = Infinity;
+        let end = 3150;
+        pts.forEach((p) => {
+          const t0 = 1100 + GROW * Math.min(1, dist(mouth, p) / Math.max(0.1, dist(mouth, endAt)));
+          first = Math.min(first, t0);
+          end = Math.max(end, burst(el, p, t0, 50));
+        });
+        linger(end);
+        return Number.isFinite(first) ? first : 1500;
+      }
+      case 'waterDragon': {
+        // 7: no beast (the owner: the elemental beasts will be summons). His dragon head in water
+        // leaves the hands on the tip of his stream, flies a varied path that bends before it hits,
+        // its body of water laid behind it; it splashes, and the body fades whole.
+        announce();
+        this.setPose(a, 'cast', now, 900);
+        const hand = handOf(from, f);
+        const miss = this.missedNext(ev.unit);
+        const to = miss ? pastTarget(hand, ev.at, 'straight') : ev.at;
+        const fly = Math.max(800, dist(hand, to) * 130);
+        const route = [{ at: hand, lift: HAND_LIFT }, { at: to, lift: miss ? 12 : 56 }];
+        this.fx.push({ ...base, kind: 'projectile', from: hand, to, t0: at(CAST), dur: fly + 300, route, bends: bendsOf(seed, 1, 34, 80, 0.5), trail: { arrive: fly } });
+        const end = burst(el, to, CAST + fly, miss ? 12 : 56);
+        if (!miss) this.shakeAt(now, CAST + fly, 2);
+        linger(Math.max(end, CAST + fly + 300));
+        return CAST + fly;
+      }
+      case 'rockVolleys': {
+        // 8A: the ground bursts 1.5 m before the ninja (his rock explosion), and three volleys of his
+        // rock bullets (three each) fly out of it down the whole line, each bullet on its own varied
+        // path through the ones it reaches; his bullet burst on each one as a volley passes it, and
+        // the last volley breaks at the line's end.
+        announce();
+        this.setPose(a, 'cast', now, 900);
+        const line = ev.shape?.kind === 'line' ? ev.shape : null;
+        const rad = ((line?.dir ?? (f > 0 ? 0 : 180)) * Math.PI) / 180;
+        const length = line?.length ?? spec.length ?? 9;
+        const o = line?.origin ?? from;
+        const along = (d: number): Pt => ({ x: o.x + Math.cos(rad) * d, z: o.z + Math.sin(rad) * d });
+        const start = along(1.5);
+        const endAt = along(length);
+        burst(el, start, CAST, 30);
+        this.shakeAt(now, CAST, 2);
+        // The ones it reaches, nearest first, by how far down the line they stand.
+        const on = pts.map((p) => ({ p, d: (p.x - o.x) * Math.cos(rad) + (p.z - o.z) * Math.sin(rad) })).filter((x) => x.d > 1.5).sort((x, y) => x.d - y.d);
+        const route = [{ at: start, lift: 30 }, ...on.map((x) => ({ at: x.p, lift: 50 })), { at: endAt, lift: 26 }];
+        const legs = route.slice(1).map((r, i) => Math.max(0.05, dist(route[i].at, r.at)));
+        const total = legs.reduce((n, l) => n + l, 0);
+        const FLY = 900;
+        let first = Infinity;
+        let end = 0;
+        [700, 850, 1000].forEach((vt, v) => {
+          for (let k = 0; k < 3; k++) {
+            const t0 = vt + k * 45;
+            this.fx.push({ ...base, role: 'multi', kind: 'projectile', from: start, to: endAt, t0: at(t0), dur: FLY, piece: k, route, bends: bendsOf(seed + v * 7 + k, route.length - 1, 8, 30) });
+          }
+          let acc = 0;
+          on.forEach((x, i) => {
+            acc += legs[i];
+            const t = vt + FLY * (acc / total);
+            first = Math.min(first, t);
+            end = Math.max(end, burst(el, x.p, t, 50, 'multi'));
+          });
+        });
+        end = Math.max(end, burst(el, endAt, 1000 + 2 * 45 + FLY, 26, 'multi'));
+        linger(end);
+        return Number.isFinite(first) ? first : 1200;
+      }
+      case 'sealChain': {
+        // 5A: his chain leaves the ninja's chest and stretches to the target in 400 ms; his chakra
+        // star hits it and his gold seal circle opens under its feet (only the frames where it opens
+        // and closes, no pillar: the target stays in sight); the chain stays taut, then fades.
+        announce();
+        this.setPose(a, 'cast', now, 900);
+        const chest = ahead(0.25);
+        const miss = this.missedNext(ev.unit);
+        const to = miss ? pastTarget(chest, ev.at, 'straight') : ev.at;
+        this.fx.push({ ...base, kind: 'line', from: chest, to, t0: at(CAST), dur: 1640, lift: [60, miss ? 20 : 56], beam: { grow: 400, fade: 300, noHead: true } });
+        if (miss) {
+          linger(CAST + 1640);
+          return CAST + 400;
+        }
+        const end = burst(el, to, 960, 56);
+        piece({ group: 'vfx_chakra', name: 'blast', t0: 960, from: to, depth: to.z - 0.01, rows: [{ anim: 'blast', ms: 170, frames: [0, 1] }, { anim: 'blast', ms: 800, frames: [11] }, { anim: 'blast', ms: 270, frames: [12, 13, 14, 15] }] });
+        linger(Math.max(end, 2200));
+        return 1060;
+      }
+      case 'crescents': {
+        // 9A: three blows in a row, each sending his chakra crescent (white and blue with gold
+        // motes, like moonlight) out of the blade through the target and 1 m on (high, middle,
+        // low); his chakra star to finish. Enhanced: five.
+        announce();
+        const n = ev.enhanced ? 5 : 3;
+        const miss = this.missedNext(ev.unit);
+        const d = Math.max(0.01, dist(from, ev.at));
+        const ux = (ev.at.x - from.x) / d;
+        const uz = (ev.at.z - from.z) / d;
+        const blade = { x: from.x + ux * 0.6, z: from.z + uz * 0.6 };
+        const past = { x: ev.at.x + ux * 1, z: ev.at.z + uz * 1 };
+        const STRIKE = 130;
+        for (let i = 0; i < n; i++) {
+          const t = i * 220;
+          const lift = n === 3 ? [74, 56, 38][i] : 80 - (i * 50) / (n - 1);
+          if (i === 0) this.setPose(a, 'attack', now, 480);
+          else this.later(now, t, (tn) => this.setPose(a, 'attack', tn, 480));
+          this.later(now, t, () => h.sound('swing'));
+          piece({ group: 'vfx_chakra', name: 'slash', element: 'chakra', t0: t + STRIKE, from: blade, path: [{ ms: 0, at: blade, dy: -lift }, { ms: 300, at: past, dy: -lift }], rows: [{ anim: 'fly', ms: 360 }], fade: 90 });
+        }
+        if (miss) {
+          linger(n * 220 + 400);
+          return STRIKE + 150;
+        }
+        const end = burst('chakra', ev.at, n * 220 + 60, 56, 'hit', undefined);
+        linger(end);
+        return STRIKE + 170;
+      }
+      case 'crowDive': {
+        // 10A: his vortex opens up to one side of the circle and his crows come out of it (his summon
+        // row), the flock dives on a diagonal to the middle, his pillar with feathers rises there,
+        // and his genjutsu hit lands on each one in it.
+        announce();
+        this.setPose(a, 'cast', now, 900);
+        const c = ev.shape?.kind === 'circle' ? ev.shape.center : ev.at;
+        const r = ev.shape?.kind === 'circle' ? ev.shape.radius : 3;
+        const vortex = { x: c.x - f * (r + 1.2), z: c.z };
+        const UP = 170;
+        piece({ group: 'vfx_beasts', name: 'genjutsu', element: 'genjutsu', t0: CAST, from: vortex, path: [{ ms: 0, dy: -UP }], rows: [{ anim: 'summon', ms: 500 }, { anim: 'summon', ms: 400, frames: [1, 0] }], fade: 300 });
+        piece({ group: 'vfx_beasts', name: 'genjutsu', element: 'genjutsu', t0: 1060, from: vortex, path: [{ ms: 0, at: vortex, dy: -UP }, { ms: 600, at: c, dy: -40 }], rows: [{ anim: 'fly', ms: 640 }], fade: 120 });
+        const boom = blastMs(el, 1200);
+        this.fx.push({ ...base, kind: 'area', from: c, to: c, area: ev.shape, t0: at(1660), dur: boom });
+        let end = 1660 + boom;
+        pts.forEach((p) => (end = Math.max(end, burst(el, p, 1990, 56))));
+        linger(end);
+        return 1990;
+      }
+      case 'hurricane': {
+        // 12A and the owner's unarmed combo: the weapon put away, a jab, a cross, the spin into a
+        // spinning back kick, a finishing kick; with each half turn and kick one of his wind
+        // crescents goes out to one of them, and his wind X with leaves bursts on it.
+        h.sound('swing');
+        if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+        const ms = (k: number) => (k * 1000) / POSE_FPS.combo;
+        this.setPose(a, 'combo', now, ms(8));
+        const slots = [ms(COMBO_KICKS[0]), ms(COMBO_KICKS[1]), ms(COMBO_TURNED[0]), ms(5)];
+        // The ones in front take the kicks first, then the ones behind.
+        const order = pts.map((p, i) => ({ p, i, front: (p.x - from.x) * f >= 0 })).sort((x, y) => Number(y.front) - Number(x.front));
+        let first = Infinity;
+        let end = ms(8);
+        order.forEach((x, j) => {
+          const t0 = slots[j % slots.length] + Math.floor(j / slots.length) * 90;
+          const fly = Math.max(140, dist(from, x.p) * 60);
+          const away = x.p.x < from.x - 0.01;
+          this.fx.push({ kind: 'sprite', element: 'wind', from, to: x.p, t0: at(t0), dur: fly + 60, run: { group: 'vfx_wind', name: 'slash', mirror: away, rows: [{ anim: 'fly', ms: fly + 60 }], path: [{ ms: 0, at: from, dy: -54 }, { ms: fly, at: x.p, dy: -54 }], fade: 60 } });
+          first = Math.min(first, t0 + fly);
+          end = Math.max(end, burst('wind', x.p, t0 + fly, 56, 'hit', undefined));
+          this.later(now, t0, () => h.sound('swing'));
+        });
+        linger(end);
+        return Number.isFinite(first) ? first : ms(6);
+      }
+    }
   }
 
   /** Who the jutsu just played heals (its heal event, if it comes before anything else happens). */

@@ -45,6 +45,7 @@ export const enhancedSig = (sig: string): string => (sig === 'fireball' ? 'fireb
 export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vfx' | 'sig' | 'shape' | 'special' | 'melee' | 'seq'>): TintSheetRef[] {
   if (!spec.elemental || !isTintElement(spec.element)) return [];
   const el = spec.element;
+  if (spec.seq?.stage) return stageSheets(spec.seq.stage, el);
   // The rank D and C set's own sheets (vfx_dc): a volley's projectiles cut apart, the joined fan.
   const own: TintSheetRef[] = [];
   const names: string[] = [];
@@ -79,6 +80,29 @@ export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vf
   const out: TintSheetRef[] = [...own, ...names.map((name) => ({ group: `vfx_${el}`, name, element: el }))];
   if (spec.vfx === 'beast' && !spec.sig && !spec.special) out.unshift({ group: 'vfx_beasts', name: el, element: el, beast: true });
   return out;
+}
+
+/**
+ * The sheets a jutsu staged with the owner's first round of effect pieces plays (playback.ts
+ * round1), in the order they play: his flame wall and dragon head (vfx_dragon) and the fireballs,
+ * the half wall and head and the stream, the water dragon's head and its body of water, the rock
+ * bullets cut apart (vfx_dc) and their bursts. The others are not elemental.
+ */
+function stageSheets(stage: NonNullable<NonNullable<JutsuSpec['seq']>['stage']>, el: TintElement): TintSheetRef[] {
+  const own = (name: string) => ({ group: `vfx_${el}`, name, element: el });
+  const dragon = (name: string) => ({ group: 'vfx_dragon', name, element: el });
+  switch (stage) {
+    case 'dragonHead':
+      return [own('wall'), dragon('fire_head'), own('bolt'), own('hit')];
+    case 'dragonStream':
+      return [dragon('fire_wall_half'), dragon('fire_head_half'), own('stream'), own('stream_head'), own('hit')];
+    case 'waterDragon':
+      return [dragon('water_head'), own('stream'), own('hit')];
+    case 'rockVolleys':
+      return [0, 1, 2].map((i) => ({ group: 'vfx_dc', name: `${el}_multi_${i}`, element: el })).concat([own('hit'), own('multi_hit')]);
+    default:
+      return [];
+  }
 }
 
 /** The sheets to recolour for a unit's jutsu, in its chakra colour (none when Natural or his colour already). */

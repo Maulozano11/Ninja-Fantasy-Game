@@ -51,9 +51,12 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.deepEqual(names('fireball_goukakyu'), ['vfx_fire/fireball', 'vfx_fire/fireball_great', 'vfx_fire/bolt', 'vfx_fire/blast']);
     assert.deepEqual(names('rasenshuriken_wind'), ['vfx_wind/sphere', 'vfx_wind/bolt', 'vfx_wind/blast']);
     assert.deepEqual(names('great_fire_annihilation'), ['vfx_fire/annihilation', 'vfx_fire/annihilation_enh']);
-    assert.deepEqual(names('dragon_fire_bomb'), ['vfx_fire/breath']);
-    assert.deepEqual(names('dragon_fire_stream'), ['vfx_fire/stream', 'vfx_fire/stream_head']);
-    assert.deepEqual(names('water_dragon_suiryuudan'), ['vfx_beasts/water', 'vfx_water/bolt', 'vfx_water/hit']);
+    // The owner's first round of effect answers: his dragon head and wall, the water dragon's head
+    // on his stream (no beast), the rock bullets cut apart.
+    assert.deepEqual(names('dragon_fire_bomb'), ['vfx_fire/wall', 'vfx_dragon/fire_head', 'vfx_fire/bolt', 'vfx_fire/hit']);
+    assert.deepEqual(names('dragon_fire_stream'), ['vfx_dragon/fire_wall_half', 'vfx_dragon/fire_head_half', 'vfx_fire/stream', 'vfx_fire/stream_head', 'vfx_fire/hit']);
+    assert.deepEqual(names('water_dragon_suiryuudan'), ['vfx_dragon/water_head', 'vfx_water/stream', 'vfx_water/hit']);
+    assert.deepEqual(names('earth_spear_doryuudan'), ['vfx_dc/earth_multi_0', 'vfx_dc/earth_multi_1', 'vfx_dc/earth_multi_2', 'vfx_earth/hit', 'vfx_earth/multi_hit']);
     assert.ok(tintSheetsOf(JUTSU.wood_dragon_jutsu)[0].beast, 'the stone drake is the beast');
     assert.deepEqual(names('earth_wall_doryuheki'), ['vfx_earth/wall', 'vfx_earth/wall_diag', 'vfx_earth/wall_depth']);
     assert.deepEqual(names('chidori_lightning_blade'), ['vfx_lightning/hit']);

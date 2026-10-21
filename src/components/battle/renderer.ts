@@ -21,6 +21,7 @@ import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { leavesNodes, nodeUnder } from '../../battle/clans';
 import { GRID } from '../../sprite/raster';
+import { COMBO_TURNED } from '../../sprite/rig';
 import { drawAuraBack, drawLinger, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 
@@ -203,13 +204,16 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   // Lightning running along the water lies on the ground: what stands in front of it (a metal wall,
   // a unit) is drawn over it.
   for (const fx of sc.pb.fx) if (onGround(fx)) items.push({ z: fx.from.z + 0.005, draw: () => drawFx(ctx, sc, fx) });
+  // An effect with a depth of its own stands among them (a dragon's wall behind its caster, a seal
+  // circle under its target's feet): what stands nearer is drawn over it.
+  for (const fx of sc.pb.fx) if (fx.depth !== undefined && !onGround(fx)) items.push({ z: fx.depth, draw: () => void (drawVfxSprite(ctx, sc, fx) || drawFx(ctx, sc, fx)) });
   items.sort((a, b) => a.z - b.z);
   for (const it of items) it.draw();
   // Aiming a Ryusei ability: the Nodes it can use, and where it lands, show over walls and units.
   if (sc.overlay.nodes) drawNodesOnTop(ctx, sc);
 
   for (const [id, l] of sc.pb.lingers) drawLinger(ctx, sc, id, l, 'front');
-  for (const fx of sc.pb.fx) if (!onGround(fx) && !drawVfxSprite(ctx, sc, fx)) drawFx(ctx, sc, fx);
+  for (const fx of sc.pb.fx) if (!onGround(fx) && fx.depth === undefined && !drawVfxSprite(ctx, sc, fx)) drawFx(ctx, sc, fx);
 
   if (state.time === 'night') drawNight(ctx, sc, all);
   if (state.weather === 'Downpour') drawRain(ctx, sc);
@@ -838,7 +842,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   else {
     const n = framesOf(look, v.pose);
     const elapsed = ((now - v.poseT0) * sc.pb.speed) / 1000;
-    const oneShot = v.pose === 'attack' || v.pose === 'hurt' || v.pose === 'cast' || v.pose === 'tackle';
+    const oneShot = v.pose === 'attack' || v.pose === 'hurt' || v.pose === 'cast' || v.pose === 'tackle' || v.pose === 'combo';
     frame = Math.floor(elapsed * fpsOf(v.pose));
     if (oneShot) frame = Math.min(frame, n - 1);
   }
@@ -873,7 +877,8 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     ctx.restore();
   };
   if (phase) drawPhase(ctx, sc, u, v, look, phase, alpha, solid);
-  else solid(1);
+  // The combo's spin shows the ninja turned away from its target for a moment.
+  else solid(1, v.pose === 'combo' && COMBO_TURNED.includes(frame) ? (-v.facing as 1 | -1) : v.facing);
   if (water !== 'none' && v.pose !== 'downed' && phase?.stage !== 'dash') {
     // Ripples where the body meets the water.
     ctx.save();

@@ -44,7 +44,19 @@ export interface JutsuSeq {
   lingerAura?: number;
   /** The element's aura wraps whoever is healed, for `ms`, once the heal lands. */
   healAura?: number;
+  /**
+   * Staged its own way with the effect pieces of the owner's first round of answers (2026-10-21;
+   * docs/GAMEPLAY_DESIGN.md, "Jutsu effects, round 1"): his fire dragon head spitting fireballs over
+   * the cone ('dragonHead'), the half head spitting the stream to the line's end ('dragonStream'),
+   * the water dragon's head on its stream on a varied path ('waterDragon'), three volleys of rock
+   * bullets on varied paths along the line ('rockVolleys'), the chain and the seal circle
+   * ('sealChain'), three crescents of chakra ('crescents'), the crows out of the vortex
+   * ('crowDive'), the unarmed combo with wind crescents ('hurricane').
+   */
+  stage?: StageKind;
 }
+
+export type StageKind = 'dragonHead' | 'dragonStream' | 'waterDragon' | 'rockVolleys' | 'sealChain' | 'crescents' | 'crowDive' | 'hurricane';
 
 export interface JutsuSpec {
   id: string;
@@ -150,20 +162,24 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false, seq: { healAura: 800 } },
   substitution_kawarimi: { shape: 'self', special: 'kawarimi', cast: 'reaction', vfx: 'hit', loud: false },
   fireball_goukakyu: { vfx: 'sphere', effect: 'burning', sig: 'fireball' },
-  dragon_fire_stream: { vfx: 'stream', effect: 'burning' },
-  water_dragon_suiryuudan: { vfx: 'beast' },
+  // The owner's first round of effect answers (2026-10-21; docs/GAMEPLAY_DESIGN.md, "Jutsu effects,
+  // round 1"): data for the screen only.
+  dragon_fire_stream: { vfx: 'stream', effect: 'burning', seq: { stage: 'dragonStream' } },
+  // No beast (the owner: the elemental beasts will be summons): his dragon head in water on his stream.
+  water_dragon_suiryuudan: { vfx: 'stream', seq: { stage: 'waterDragon' } },
   water_shield_suijinheki: { shape: 'wall', special: 'waterWall', vfx: 'wall', length: 4.5 },
   earth_wall_doryuheki: { shape: 'wall', special: 'earthWall', vfx: 'wall', length: 4.5 },
-  earth_spear_doryuudan: { shape: 'line', width: 1.2, vfx: 'stream' },
+  earth_spear_doryuudan: { shape: 'line', width: 1.2, vfx: 'multi', seq: { stage: 'rockVolleys' } },
   wind_blade_daitoppa: { vfx: 'slash' },
   chidori_lightning_blade: { vfx: 'hit', melee: true },
   lightning_hound_raidon: { vfx: 'beast' },
-  leaf_hurricane_senpuu: { shape: 'selfCircle', vfx: 'aura', melee: true },
-  crescent_moon_dance: { vfx: 'slash', melee: true },
-  temple_of_nirvana: { special: 'confuse', vfx: 'blast', saveHalf: false, effect: 'confused' },
-  dragon_fire_bomb: { vfx: 'breath', effect: 'burning' },
+  // Not a weapon attack (the owner): the weapon is put away for an unarmed combo.
+  leaf_hurricane_senpuu: { shape: 'selfCircle', vfx: 'slash', melee: true, weapon: 'stow', seq: { stage: 'hurricane' } },
+  crescent_moon_dance: { vfx: 'slash', melee: true, seq: { stage: 'crescents' } },
+  temple_of_nirvana: { special: 'confuse', vfx: 'blast', saveHalf: false, effect: 'confused', seq: { stage: 'crowDive' } },
+  dragon_fire_bomb: { vfx: 'breath', effect: 'burning', seq: { stage: 'dragonHead' } },
   wood_dragon_jutsu: { element: 'earth', vfx: 'beast' },
-  adamantine_sealing_chains: { element: 'chakra', special: 'seal', vfx: 'stream', effect: 'chakra_sealed' },
+  adamantine_sealing_chains: { element: 'chakra', special: 'seal', vfx: 'stream', effect: 'chakra_sealed', seq: { stage: 'sealChain' } },
   taki_sixtyfour_palms: { vfx: 'multi', melee: true },
   kirin_thunder: { vfx: 'blast', sig: 'kirin' },
   rasenshuriken_wind: { vfx: 'sphere' },

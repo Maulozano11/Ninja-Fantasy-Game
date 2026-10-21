@@ -120,3 +120,7 @@ folders.
 
       python3 -I tools/refs/princess-face-from-ref.py docs/reference/princess-owner-reference.jpg <out> src/sprite/princessHeadArt.ts   # head@8, hers@8
       python3 -I tools/refs/princess-eyes-from-ref.py docs/reference/princess-owner-reference.jpg <out> src/sprite/princessEyeArt.ts   # eyes@16, hers@16
+
+- `princess-hair-from-ref.py` → `src/sprite/items/princessHairArt.ts`: her hair (`hair_rose_dawn`, "Ondas del Alba Rosa") and her tiara as a separate accessory (`acc_rose_tiara`, "Tiara del Alba Rosa"), both drawn by `src/sprite/items/princessHair.ts`. His pixels one for one, his colours from `princess_ref.quantize` (the gem's reds are his own medians). Five hair pieces: HEAD (crown, bangs, locks, ear) and BACK (fill behind the face and neck) on the face anchor, LONG (the wavy mass, its hidden part carried on) and STRAND (the near lock on the chest) hung from the neck and turned with the torso, and BARE (the crown without the tiara's shadow). The crown under the tiara is filled by running his strands up under a dome that continues his line. Writes `pieces@8.png` (Spanish labels):
+
+      python3 -I tools/refs/princess-hair-from-ref.py <dir> src/sprite/items/princessHairArt.ts

@@ -9,6 +9,7 @@ import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
+import { ACC_ROSE_TIARA } from './princessHair';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
 
@@ -1146,4 +1147,6 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
       for (const t of [0.55, 0.72]) stud(L, lerp(a, z, t), gp, 0.55);
     },
   },
+  // The princess's tiara, after the owner's princess picture (princessHair.ts).
+  ACC_ROSE_TIARA,
 ];

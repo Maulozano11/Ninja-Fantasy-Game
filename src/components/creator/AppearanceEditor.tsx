@@ -489,7 +489,7 @@ export const AppearanceEditor: React.FC<{
                   {L('Nature')}: <span style={serif} className="text-sm font-bold text-[#f2c46d]">{L(nature)}</span>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500 -mt-1 mb-2">{L('Your chakra type is your elemental nature: it decides the elemental jutsu you can learn.')}</p>
+              <p className="text-[11px] text-slate-500 -mt-1 mb-2">{L('Your chakra type is your elemental nature: it decides your elemental jutsu.')}</p>
               {[true, false].map((elemental) => (
                 <div key={String(elemental)} className="mb-2">
                   <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{L(elemental ? 'Elements' : 'No element')}</div>
@@ -520,33 +520,6 @@ export const AppearanceEditor: React.FC<{
                   </div>
                 </div>
               ))}
-              <div className="border border-slate-800 bg-slate-950/60 px-2.5 py-2">
-                <div className="text-xs font-semibold text-white">
-                  {L(nature)} · <span className="text-cyan-300">{L(burstInfo.burst)}</span>
-                </div>
-                <div className="text-[11px] text-slate-400">{L(burstInfo.desc)}</div>
-                {chakraType(nature).bursts.length > 1 && (
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-500">{L('Burst')}</span>
-                    {chakraType(nature).bursts.map((b) => (
-                      <button
-                        key={b}
-                        type="button"
-                        onClick={() => {
-                          soundManager.playChakraSurge();
-                          onChange({ ...look, chakra: { ...look.chakra, color: b } });
-                          onPreviewStance('charge');
-                        }}
-                        className={`px-2.5 py-1 text-xs border transition ${
-                          look.chakra.color === b ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-slate-950/60 border-slate-700 text-slate-300 hover:text-white'
-                        }`}
-                      >
-                        {L(CHAKRA_CHOICES.find((c) => c.id === b)?.burst ?? b)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
             <div>
               <SectionLabel>Chakra Color</SectionLabel>
@@ -597,6 +570,33 @@ export const AppearanceEditor: React.FC<{
               <p className="text-[11px] text-slate-500 mt-1.5">
                 {L('Only a look: the color never changes the nature. Green fire is still Fire; black lightning is still Lightning.')}
               </p>
+            </div>
+            <div className="border border-slate-800 bg-slate-950/60 px-2.5 py-2">
+              <div className="text-xs font-semibold text-white">
+                {L(nature)} · <span className="text-cyan-300">{L(burstInfo.burst)}</span>
+              </div>
+              <div className="text-[11px] text-slate-400">{L(burstInfo.desc)}</div>
+              {chakraType(nature).bursts.length > 1 && (
+                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500">{L('Burst')}</span>
+                  {chakraType(nature).bursts.map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => {
+                        soundManager.playChakraSurge();
+                        onChange({ ...look, chakra: { ...look.chakra, color: b } });
+                        onPreviewStance('charge');
+                      }}
+                      className={`px-2.5 py-1 text-xs border transition ${
+                        look.chakra.color === b ? 'bg-cyan-600 border-cyan-500 text-white' : 'bg-slate-950/60 border-slate-700 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {L(CHAKRA_CHOICES.find((c) => c.id === b)?.burst ?? b)}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <SectionLabel>Casting Style</SectionLabel>

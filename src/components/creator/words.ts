@@ -66,8 +66,7 @@ const ES: Record<string, string> = {
   // the chakra types (the ninja's nature) and their bursts
   'Chakra Type': 'Tipo de chakra',
   Nature: 'Naturaleza',
-  'Your chakra type is your elemental nature: it decides the elemental jutsu you can learn.':
-    'Tu tipo de chakra es tu naturaleza elemental: decide los jutsus elementales que puedes aprender.',
+  'Your chakra type is your elemental nature: it decides your elemental jutsu.': 'Tu tipo de chakra es tu naturaleza elemental: decide tus jutsus elementales.',
   Elements: 'Elementos',
   'No element': 'Sin elemento',
   Burst: 'Estallido',
@@ -91,6 +90,7 @@ const ES: Record<string, string> = {
   'Spectral Guardian': 'Guardián espectral',
   'Heaven Pillar': 'Pilar celestial',
   'Abyss Orbit': 'Órbita del abismo',
+  'Shattered Earth': 'Tierra quebrada',
   'Tongues of flame lick upward from the whole body.': 'Lenguas de fuego suben por todo el cuerpo.',
   'Embers explode outward as a shockwave rolls out from the feet.': 'Las brasas estallan mientras una onda expansiva sale de los pies.',
   'Jagged bolts crackle and arc around the body.': 'Rayos quebrados crepitan y saltan alrededor del cuerpo.',
@@ -100,6 +100,7 @@ const ES: Record<string, string> = {
   'A towering ghost warrior looms behind the user.': 'Un enorme guerrero fantasma se alza a su espalda.',
   'A pillar of light falls while rays fan out from the heart.': 'Cae un pilar de luz mientras los rayos se abren desde el pecho.',
   'Black orbs orbit the body as space cracks open around it.': 'Orbes negros giran alrededor del cuerpo mientras el espacio se resquebraja.',
+  'The ground cracks open and rocks tear loose to float around the body.': 'El suelo se agrieta y las rocas se desprenden para flotar alrededor del cuerpo.',
   // the chakra colors
   Red: 'Rojo',
   Orange: 'Naranja',
@@ -110,6 +111,7 @@ const ES: Record<string, string> = {
   Violet: 'Violeta',
   White: 'Blanco',
   Black: 'Negro',
+  Brown: 'Marrón',
   'Casting Style': 'Estilo de lanzamiento',
   'Show the burst when…': 'Mostrar el estallido al…',
   'Charging chakra': 'Cargar chakra',

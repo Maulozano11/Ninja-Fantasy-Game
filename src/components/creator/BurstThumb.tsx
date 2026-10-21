@@ -7,7 +7,7 @@ import { blendOver } from '../ShinobiSpriteCanvas';
 
 /** The crop (fine pixels) around the ninja: its body and the burst close around it. */
 const W = 74;
-const H = 104;
+const H = 96;
 
 /**
  * The ninja charging chakra with one burst, as a still: a chakra type's card in the creator. It
@@ -27,7 +27,7 @@ export const BurstThumb: React.FC<{ look: SpriteAppearance; burst: ChakraColorId
     const box = opaqueBox(spr.rgba);
     const cx = Math.round(spr.rig.pelvis.x * RES);
     const x0 = Math.max(0, Math.min(GRID - W, cx - W / 2));
-    const y0 = Math.max(0, Math.min(GRID - H, (box?.y ?? 0) - 8));
+    const y0 = Math.max(0, Math.min(GRID - H, (box?.y ?? 0) - 3));
     ctx.clearRect(0, 0, W, H);
     ctx.putImageData(new ImageData(out, GRID, GRID), -x0, -y0, x0, y0, W, H);
   }, [look, burst, eye]);

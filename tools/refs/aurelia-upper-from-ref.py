@@ -8,10 +8,11 @@ picture's corner; every cell is flat but for the JPEG's few levels of noise), an
 one of ours. So nothing is reduced or redrawn: each of his pixels is the middle of its cell (its
 median), cells he drew in one colour are one colour (cells linked by steps closer than NEAR take
 their mean), and they are laid on our female at idle frame 0 (the second female body, fitted to his
-heroines at our scale) one for one: the collar and bodice at (x + OFFSET[0], y + OFFSET[1]) of our
-256 x 256 frame (his collar just under our chin), the sleeves whole from our shoulders (SLEEVE_AT: the
-near one with his bare near shoulder over its band), a few of their repeated rows left out so his cuffs
-end at our wrists (tools/refs/aurelia_rig.py has the measures).
+heroines at our scale) one for one, all of her at one place (tools/refs/aurelia_rig.py AT: his soles
+on ours, his collar just under our chin): the collar and bodice at (x + OFFSET[0], y + OFFSET[1]) of our
+256 x 256 frame, the sleeves whole where he drew them (SLEEVE_AT: the near one with his bare near
+shoulder over its band), none of their rows left out: our arms hang where his do (the female standard,
+docs/SPRITE_STYLE_GUIDE.md), so his cuffs end at our wrists.
 
 His Aurelia wears a white sleeveless dress: a high collar edged in gold round the neck with a blue gem
 on a dark cord at the throat and a small keyhole of skin under it, bare shoulders, a bodice
@@ -62,17 +63,16 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 PICTURE = os.path.join(ROOT, 'docs', 'reference', 'aurelia-escala-juego-owner-reference.jpg')
 # One of his pixels in picture pixels; his grid starts at the picture's corner.
 PITCH = 19.32
-# His pixel (x, y) lies at (x + OFFSET[0], y + OFFSET[1]) of our frame (female, idle frame 0): his collar
-# just under our chin (tools/refs/aurelia_rig.py).
+# His pixel (x, y) lies at (x + OFFSET[0], y + OFFSET[1]) of our frame (female, idle frame 0): where all
+# of her lies (tools/refs/aurelia_rig.py).
 OFFSET = AT['bodice']
-# The sleeves hang from our shoulders, each laid whole as he drew it (SLEEVE_AT): the near one with his
-# bare near shoulder over its band, on our near shoulder (our shoulders are narrower than his, so it lies
-# two columns right of her bodice), the far one with its band at our far shoulder. Our arms are shorter
-# than his, so below the band a few of his rows that repeat the row above are left out (SLEEVE_DROP):
-# his cuffs then end at our wrists, where our hands (his hands, the female body's) come out of his
-# cuffs' openings. Every row is one of his, in his columns.
+# The sleeves hang from our shoulders, each laid whole where he drew it (SLEEVE_AT): the near one with
+# his bare near shoulder over its band, the far one with its band at our far shoulder. Our arms hang
+# where his do (the female standard), so none of his rows is left out (SLEEVE_DROP, the earlier layout's
+# shortening): his cuffs end at our wrists, where our hands (his hands, the female body's) come out of his
+# cuffs' openings.
 SLEEVE_AT = {'near': AT['sleeveN'], 'far': AT['sleeveF']}
-SLEEVE_DROP = {'near': (37, 44, 46), 'far': (38, 41, 45)}
+SLEEVE_DROP = {'near': (), 'far': ()}
 # Cells linked by steps closer than this (RGB distance) are one colour of his: the JPEG moves a cell
 # by up to 8; his three golds lie 20 and more apart.
 NEAR = 9

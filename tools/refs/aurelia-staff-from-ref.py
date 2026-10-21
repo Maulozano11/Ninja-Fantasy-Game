@@ -18,6 +18,11 @@ lighter than the ground test lets through) and his sparkles (SPARKS, kept apart 
 What his picture hides, filled by continuing his pixels: the shaft inside her fist, his one grey pixel
 in his line run on up through the fist to a capped end (SHAFT_FILL). The pivot is in the fist.
 
+At rest the staff lies where he drew it with the rest of her (tools/refs/aurelia_rig.py AT), from our far
+fist's joint (DAWN_STAFF_REST), and his far fist round it (DAWN_FAR_FIST: his skin cells in FIST_BOX and
+his line round them, drawn in the body's skin) stands for our far fist, so the fist, the shaft and her
+cuff are his picture.
+
 Colour kinds (the item's colour slots): his golds ('gold'), the orb's pale colours and the sparkles
 ('orb'); the shaft, the collar and the orb's dark setting keep his colours ('steel'); his black line
 is never tinted.
@@ -37,6 +42,9 @@ import sys
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from aurelia_rig import AT, JOINTS  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PICTURE = os.path.join(ROOT, 'docs', 'reference', 'aurelia-escala-juego-owner-reference.jpg')
@@ -87,6 +95,38 @@ def is_line(c):
 
 def is_ground(c):
     return min(c) > 246
+
+
+# Her far fist round the shaft at rest (his box, inclusive): his skin cells in it and his line round them.
+FIST_BOX = (63, 51, 69, 56)
+
+
+def skin_tone(c):
+    """One of his skin cells as a hand letter (the female hands' legend, src/sprite/femaleBodyArt.ts): D his
+    deep shadow, s his shadow, b his base; None when it is not skin."""
+    r, g, b = (int(v) for v in c)
+    if not (r > 180 and 90 < b < 190 and r - g > 30):
+        return None
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    return 'D' if lum < 150 else 's' if lum < 195 else 'b'
+
+
+def far_fist(N):
+    """Her far fist as he drew it round the staff: {(x, y): letter} of his cells ('o' his line)."""
+    x0, y0, x1, y1 = FIST_BOX
+    out = {}
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            t = skin_tone(N[y, x])
+            if t:
+                out[(x, y)] = t
+    for (x, y) in list(out):
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                q = (x + dx, y + dy)
+                if q not in out and is_line(N[q[1], q[0]]):
+                    out[q] = 'o'
+    return out
 
 
 def kind_of(p, c):
@@ -196,7 +236,17 @@ def main():
     gold_base, orb_base = commonest('gold'), commonest('orb')
     gold_chars = ''.join(sorted(letter[k] for k in groups if kind[k] == 'gold'))
     orb_chars = ''.join(sorted(letter[k] for k in groups if kind[k] == 'orb'))
-    write_ts(path, rows, pivot, angle, hexes, gold_chars, orb_chars, sparks, gold_base, orb_base)
+    # At rest the grip lies where he drew it, with the rest of her (aurelia_rig.AT): fine pixels from our far
+    # fist's joint (its pixel) at idle frame 0.
+    hx, hy = JOINTS['handF']
+    rest = (PIVOT[0] + AT['staff'][0] - math.floor(hx), PIVOT[1] + AT['staff'][1] - math.floor(hy))
+    # her far fist round it at rest, his pixels, its top-left from the same fist joint
+    fist = far_fist(N)
+    fx0, fy0 = min(x for x, _ in fist), min(y for _, y in fist)
+    fx1, fy1 = max(x for x, _ in fist), max(y for _, y in fist)
+    fist_rows = [''.join(fist.get((x, y), '.') for x in range(fx0, fx1 + 1)) for y in range(fy0, fy1 + 1)]
+    fist_at = (fx0 + AT['staff'][0] - math.floor(hx), fy0 + AT['staff'][1] - math.floor(hy))
+    write_ts(path, rows, pivot, angle, hexes, gold_chars, orb_chars, sparks, gold_base, orb_base, rest, fist_rows, fist_at)
     print(len(rows), 'rows x', len(rows[0]), 'origin', (bx0, by0), 'pivot', pivot, 'angle %.2f' % angle,
           'colours', len(hexes), 'sparks', len(sparks), 'bases', gold_base, orb_base)
 
@@ -226,7 +276,7 @@ def main():
         sheet.save(os.path.join(preview, 'staff@12.png'))
 
 
-def write_ts(path, rows, pivot, angle, palette, gold, orb, sparks, gold_base, orb_base):
+def write_ts(path, rows, pivot, angle, palette, gold, orb, sparks, gold_base, orb_base, rest, fist_rows, fist_at):
     """The staff as the game's module (src/sprite/items/aureliaStaffArt.ts)."""
 
     def key(k):
@@ -253,6 +303,19 @@ def write_ts(path, rows, pivot, angle, palette, gold, orb, sparks, gold_base, or
         '/** His commonest gold and orb colour: the colours the two colour slots turn his from. */',
         f"export const AURELIA_STAFF_GOLD = '{gold_base}';",
         f"export const AURELIA_STAFF_ORB = '{orb_base}';",
+        "/** At rest, where the grip lies from the far fist's joint (fine pixels): where he drew it with the rest of her. */",
+        f'export const DAWN_STAFF_REST: [number, number] = [{rest[0]}, {rest[1]}];',
+        '/**',
+        " * Her far fist round the staff at rest, his pixels (legend as the female hands: o his line, D, s, b his",
+        " * skin's deep shadow, shadow and base, drawn in the body's skin), its top-left `at` fine pixels from the far",
+        " * fist's joint. It stands for our far fist at rest (ours hangs a little lower and further out).",
+        ' */',
+        'export const DAWN_FAR_FIST: { rows: string[]; at: [number, number] } = {',
+        '  rows: [',
+    ] + [f'    {lit(r)},' for r in fist_rows] + [
+        '  ],',
+        f'  at: [{fist_at[0]}, {fist_at[1]}],',
+        '};',
         '',
         '/**',
         ' * The staff as he drew it hanging from her far fist down to the right: drawn at his angle (the grip',

@@ -7,33 +7,31 @@ colours (KEY: the medians of his cells, each cell the nearest of them). The big 
 (aurelia-owner-reference.jpg) only helped to read them.
 
 Where it sits. His pixel (x, y) is ours (x + DX, y + DY) at our female's idle frame 0 (the second
-female body), the same place as her bodice (tools/refs/aurelia_rig.py: his collar under our chin), so
-his sash follows on under his bodice as he drew it and falls on our waist, his belt and front panel
-on our hips and between our legs. From his collar to his soles he is three rows taller than our body
-and his legs stand wider (his near foot six columns further out, his far foot six rows lower than our far foot), so the
-side panels and the lining are fitted to our legs, keeping his pixels:
+female body), where all of her lies (tools/refs/aurelia_rig.py AT: his soles on ours), so his sash falls
+on our waist, his belt and front panel on our hips and between our legs, his hems where he drew them
+over his boots. None of his rows is left out (the owner, 2026-10-21: "tienes errores de pixeles
+diferentes en faja cinturon y bolsa, en falda la pierna derecha y la capa estan mal unos pixeles esta
+haciendo que la pierna se vea deforme": the rows the first layout left out bent his panels):
 
   front    his front panel (the gold border, the lattice under the belt, the white with its grey
-           stripe, the tree over the point). Three of his rows are left out, each one the same as the
-           row above it (FRONT_DROP), so its point ends above our ankles as his does above his.
+           stripe, the tree over the point).
   near     his near side panel, flaring back from the hip behind the near leg, with the bit of skirt
-           under the pouch. Three rows of its slanting stretch are left out (NEAR_DROP) and the rows
-           below each move one column toward the leg, so its outer edge keeps his steps and its hem
-           comes up and in to our shorter leg, which stands further in than his.
+           under the pouch. Its top NEAR_FRONT rows are also drawn over the near thigh: there his panel
+           hangs over it, so only his slit shows the thigh.
   far      his far side panel, the white strip with its gold trim beside the far leg, from its gold
            edge under the belt (beside the front panel, over the top of the far thigh) down, where he
-           drew it, beside his far boot (which stands where he drew it too). Three rows are left out
-           that are each the same as the row above (FAR_DROP), so its hem ends as the front panel's. Its top FAR_FRONT rows are also drawn over the far hip and thigh: there his
-           panel hangs over it, and our thigh is wider than his. Behind his far hand the panel is
-           continued from his rows under the hand (FAR_HIDDEN), as our far hand hangs further out.
+           drew it, beside his far boot (which stands where he drew it too). Its top FAR_FRONT rows are
+           also drawn over the far hip and thigh: there his panel hangs over it, and our thigh is wider
+           than his. Behind his far hand the panel is continued from his rows under the hand
+           (FAR_HIDDEN), for poses where our far hand is elsewhere.
   lining   the pale grey lining behind and between the legs. His shows only between his legs and the
            panels (three strips); the rest is behind his legs and is continued from his strips row by
            row (each hidden cell the nearest of his lining cells in its row, each strip moved as the
-           panel beside it), from under the belt down to its hem, his line under it. Its rows follow
-           the front panel's.
+           panel beside it), from under the belt down to its hem, his line under it; where his picture
+           shows white ground or his line, so does the lining. Its rows follow the front panel's.
   waist    his gold sash band, the brown belt with its steel buckle, the pouch on the near hip, the
-           red charm on its gold cord and the gold sash end draped round the near hip. Behind his far
-           sleeve the belt is continued (his last brown repeated) to our waist's far edge.
+           red charm on its gold cord and the gold sash end draped round the near hip, ending at his
+           far sleeve as he drew it.
 
 What is not his skirt is left out: his legs and boots, the bare thighs in the slits (ours show
 there), his hands, sleeves and staff.
@@ -84,11 +82,10 @@ KEY = {
 LINE = 'k'
 SKIN = 'jsv'
 
-# His pixel (x, y) is ours (x + DX, y + DY): as his bodice (tools/refs/aurelia_rig.py), so his sash
-# follows on under it as he drew it and falls on our waist.
+# His pixel (x, y) is ours (x + DX, y + DY): where all of her lies (tools/refs/aurelia_rig.py).
 from aurelia_rig import AT  # noqa: E402
 
-DX, DY = AT['bodice']
+DX, DY = AT['lower']
 
 # What each colour is, for the item's colour slots (his line and the charm's red keep his).
 _GOLD = {c: 'gold' for c in 'pPOogGYyzZx'}
@@ -116,17 +113,20 @@ SEEDS = {
     # the sash band, the belt and its buckle, the pouch, the charm, the far belt, the drape
     'waist': ([(52, 43), (58, 42), (47, 43), (49, 44), (54, 46), (57, 47), (45, 46), (47, 49), (50, 50), (63, 47), (44, 55)], (36, 41, 66, 58)),
 }
-# His rows left out, each the same as the one above it (front, far) or as it moved one column
-# outward (near: the rows below then move one column in).
-FRONT_DROP = [60, 62, 65]
-NEAR_DROP = [60, 67, 70]
-FAR_DROP = [69, 77, 81]
+# His rows left out (front, far: each the same as the one above it; near: the rows below then move one
+# column in). None: every row of his is laid where he drew it.
+FRONT_DROP = []
+NEAR_DROP = []
+FAR_DROP = []
 # The far panel stands where he drew it: his far boot does too, a narrow column between it and the front
 # panel (aurelia-legs-from-ref.py), and our far thigh, which stands further out than his, goes under the
 # boot's lace top. (No column moved: FAR_SHIFT would move it one column out below each of its rows.)
 FAR_SHIFT = []
-# The far panel's rows over the far thigh (his rows 51-56), drawn over the far hip too.
-FAR_FRONT = 6
+# The far panel's rows over the far thigh (his rows 49-61), drawn over the far hip and thigh too.
+FAR_FRONT = 13
+# The near panel's rows over the near thigh, drawn in front of it: his panel hangs over the top of the
+# thigh by the hip, so only the slit below shows the thigh, where he drew it.
+NEAR_FRONT = 13
 # The far panel behind his far hand (his x 64-67, rows 52-55), filled by continuing his panel below
 # the hand (his rows 57-60: its white, the shade by its outer line 'c', his line): our far hand hangs
 # further out than his, so the panel shows there. His line round the hand stays (row 51 over it, row
@@ -136,8 +136,9 @@ for _y in range(52, 56):
     FAR_HIDDEN.update({(64, _y): 'w', (65, _y): 'w', (66, _y): 'c', (67, _y): LINE})
 # The lining: from this row of his (under the belt and the pouch) down to its hem.
 LINING_TOP = 51
-# The belt behind his far sleeve runs on to this column of ours (our waist's far edge).
-BELT_TO = 136
+# The belt behind his far sleeve could run on to a column of ours (BELT_TO); our far arm now hangs where
+# his does, so his belt ends at his far sleeve, where he drew it (None: not run on).
+BELT_TO = None
 BELT_ROWS = (44, 49)
 
 
@@ -193,13 +194,43 @@ def with_line(C, m, box):
     return out
 
 
+# Where his skirt and sash are (x0, y0, x1, y1, inclusive): a cell of his cloth, gold or leather here that
+# no piece's flood reaches (a strip of gold shut in by his line, as beside the near slit) goes to the piece
+# whose cells are nearest (ORPHAN_REACH), so at rest no pixel of his is missing.
+ORPHAN_BOX = (36, 41, 72, 92)
+ORPHAN_REACH = 2
+# The pieces that take them (not the near panel, whose inner edge sets where the lining starts).
+ORPHAN_TO = ('front', 'far', 'waist')
+
+
 def his_pieces(C):
     allow = set(KEY) - set(SKIN) - {LINE, '.'}
     out = {}
+    fills = {}
     for name, (seeds, box) in SEEDS.items():
-        m = flood(C, seeds, box, allow)
+        fills[name] = flood(C, seeds, box, allow)
+    # his cells no flood reached go to the nearest piece of ORPHAN_TO
+    claimed = np.zeros(C.shape, bool)
+    for name, (_, box) in SEEDS.items():
+        claimed |= fills[name] if name == 'lining' else with_line(C, fills[name], box)
+    x0, y0, x1, y1 = ORPHAN_BOX
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            if claimed[y, x] or C[y, x] not in allow:
+                continue
+            best = None
+            for name in ORPHAN_TO:
+                ys, xs = np.nonzero(fills[name][max(0, y - ORPHAN_REACH):y + ORPHAN_REACH + 1, max(0, x - ORPHAN_REACH):x + ORPHAN_REACH + 1])
+                if len(ys):
+                    d = int(np.min(np.maximum(np.abs(ys + max(0, y - ORPHAN_REACH) - y), np.abs(xs + max(0, x - ORPHAN_REACH) - x))))
+                    if best is None or d < best[0]:
+                        best = (d, name)
+            if best:
+                fills[best[1]][y, x] = True
+    for name, (seeds, box) in SEEDS.items():
+        m = fills[name]
         if name != 'lining':
-            m = with_line(C, m, box)
+            m = with_line(C, m, (min(box[0], x0), min(box[1], y0), max(box[2], x1), max(box[3], y1)))
         out[name] = m
     return out
 
@@ -244,7 +275,7 @@ def build():
     P['waist'] = place(C, H['waist'], [], lambda y: 0)
     # the belt runs on behind his far sleeve: each of its rows' last colour before his line, repeated
     w = P['waist']
-    for y in range(BELT_ROWS[0] + DY, BELT_ROWS[1] + DY + 1):
+    for y in range(BELT_ROWS[0] + DY, BELT_ROWS[1] + DY + 1) if BELT_TO is not None else ():
         xs = [x for (x, yy) in w if yy == y]
         x_end = max(xs)
         body = [x for x in xs if w[(x, y)] != LINE]
@@ -305,6 +336,15 @@ def lining(C, H, P):
             del out[(x, y)]
     for x in cols:
         out[(x, hem[x] + 1)] = LINE
+    # where his picture shows the lining's place (not hidden behind his legs or panels), it is his: his
+    # white ground stays empty and his line is his line (the continued hem ends where he drew it)
+    for (x, y) in list(out):
+        hx, hy = x - DX, y - DY
+        if 0 <= hx < C.shape[1] and 0 <= hy < C.shape[0]:
+            if C[hy, hx] == '.':
+                del out[(x, y)]
+            elif C[hy, hx] == LINE:
+                out[(x, y)] = LINE
     return out
 
 
@@ -394,7 +434,7 @@ def ts_module(ps):
         '  hang: boolean;',
         '  /** Rows at the top whose edges have no line of his (they go under the belt). */',
         '  openTop: number;',
-        '  /** Rows at the top also drawn in front of the far leg (over the far thigh). */',
+        '  /** Rows at the top also drawn in front of their leg (the far panel over the far thigh, the near one over the near thigh). */',
         '  front: number;',
         '  /** His colour of each character. */',
         '  colors: Record<string, string>;',
@@ -424,7 +464,7 @@ def ts_module(ps):
         out.append('  cols: [' + ', '.join(f'[{a}, {b}, {c}, {d}]' for a, b, c, d in columns(name, (ox, oy), rows)) + '],')
         out.append(f"  hang: {'true' if HANG[name] else 'false'},")
         out.append(f'  openTop: {OPEN_TOP[name]},')
-        out.append(f"  front: {FAR_FRONT if name == 'far' else 0},")
+        out.append(f"  front: {FAR_FRONT if name == 'far' else NEAR_FRONT if name == 'near' else 0},")
         out.append('  colors: { ' + ', '.join(f"{c}: '{KEY[c]}'" for c in used) + ' },')
         roles = {c: ROLE[name][c] for c in used if c in ROLE[name]}
         out.append('  roles: { ' + ', '.join(f"{c}: '{v}'" for c, v in roles.items()) + ' },')

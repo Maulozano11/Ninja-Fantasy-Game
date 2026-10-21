@@ -6,7 +6,7 @@
 // his. Her skirt from the sash down is another item.
 
 import { retintHex } from '../color';
-import { armDepth, armJoints, Depth, DrawCtx, ItemDef, Side } from '../ctx';
+import { armDepth, armJoints, Depth, DEPTHS, DrawCtx, ItemDef, Side } from '../ctx';
 import { PaintedPiece, segAngle } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, PartId, RES, Vec } from '../raster';
 import { rotateTemplate, stampTemplate, TemplatePalette } from '../rotsprite';
@@ -166,6 +166,32 @@ function closeElbow(g: DrawCtx, d: Depth, sleeve: Uint8Array, elbow: Vec): void 
 }
 
 /**
+ * Closes a piece's edge left open when it turns: a pixel of the piece (`cover`) that is not her line and has
+ * an empty neighbour (nothing of the figure drawn there) takes his line (`lineHex`), as his line runs round
+ * her bodice, sleeves and boots (turned, his bare shoulder on the near sleeve's band came out with its
+ * round cut open, and a hand with its wrist out of the cuff). At rest his own line closes every piece, so
+ * it is only called on a turned piece.
+ */
+export function closeOpen(g: DrawCtx, d: Depth, cover: Uint8Array, lineHex = AURELIA_LINE, skinLine = false): void {
+  const L = g.L(d);
+  const line = g.m(lineHex, 'flat');
+  const layers = DEPTHS.map((x) => g.L(x)).filter((l) => l.used);
+  const filled = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && layers.some((l) => l.mat[y * GRID + x] >= 0);
+  const close: number[] = [];
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (!cover[i] || L.mat[i] < 0 || L.mat[i] === line || (skinLine && L.shade[i] === 0)) continue;
+    const x = i % GRID;
+    const y = (i - x) / GRID;
+    if (!filled(x + 1, y) || !filled(x - 1, y) || !filled(x, y + 1) || !filled(x, y - 1)) close.push(i);
+  }
+  // (a hand's own line is its skin's darkest shade)
+  for (const i of close) {
+    if (skinLine) L.shade[i] = 0;
+    else L.mat[i] = line;
+  }
+}
+
+/**
  * Draws her vestment. The far sleeve goes behind the torso (over the far leg); the bodice's waist under the skirts (her
  * sash and skirt cover it; without them it closes the dress at the hips); the bodice over the torso;
  * the near sleeve over all. In each sleeve the forearm's piece goes under the upper arm's, reaching on
@@ -183,6 +209,7 @@ function drawDawnVestment(g: DrawCtx, cloth: string, gold: string, gem: string):
     ['N', AURELIA_SLEEVE_UPPER_N, AURELIA_SLEEVE_FORE_N, AURELIA_SLEEVE_SPAN_N],
   ];
   const covers: Uint8Array[] = [];
+  const turned: [Depth, Uint8Array][] = [];
   const bodice = new Uint8Array(GRID * GRID);
   for (const [s, upper, fore] of sleeves) {
     const { shoulder, elbow, wrist } = armJoints(r, s);
@@ -196,17 +223,38 @@ function drawDawnVestment(g: DrawCtx, cloth: string, gold: string, gem: string):
       put('torso.armor', AURELIA_BODICE, r.neck, torso, 'torso');
       cover(bodice, AURELIA_WAIST, r.neck, torso);
       cover(bodice, AURELIA_BODICE, r.neck, torso);
+      if (Math.abs(torso - AURELIA_BODICE.angle) >= 0.5) {
+        const b = new Uint8Array(GRID * GRID);
+        cover(b, AURELIA_BODICE, r.neck, torso);
+        turned.push(['torso.armor', b]);
+      }
     }
     put(d, fore, elbow, down, `forearm${s}`);
     put(d, upper, shoulder, up, `upperArm${s}`);
     const c = new Uint8Array(GRID * GRID);
     cover(c, fore, elbow, down);
     cover(c, upper, shoulder, up);
-    closeElbow(g, d, c, elbow);
+    // At rest both pieces lie as he drew them and his own line closes the sleeve: nothing to close (the
+    // sleeve's edge where her belt crosses it is not an open edge).
+    if (Math.abs(up - upper.angle) >= 0.5 || Math.abs(down - fore.angle) >= 0.5) {
+      closeElbow(g, d, c, elbow);
+      turned.push([d, c]);
+    }
     covers.push(c);
   }
   clearTorso(g, bodice);
   sleeves.forEach(([s, , , span], k) => clearArm(g, s, covers[k], span));
+  for (const [d, c] of turned) closeOpen(g, d, c);
+  // her hands come out of the cuffs: turned, a wrist the cuff no longer covers is closed in his line
+  for (const s of ['N', 'F'] as Side[]) {
+    if (!turned.some(([d]) => d === (s === 'F' ? 'farLeg.armor' : armDepth(s, 'armor')))) continue;
+    const d = armDepth(s, 'body');
+    const L = g.L(d);
+    const hand = partIndex(`hand${s}` as PartId);
+    const c = new Uint8Array(GRID * GRID);
+    for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === hand && L.shade[i] > 0) c[i] = 1;
+    closeOpen(g, d, c, AURELIA_LINE, true);
+  }
 }
 
 type Kind = 'cloth' | 'leather' | 'metal';

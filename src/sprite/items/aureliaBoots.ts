@@ -6,11 +6,11 @@
 // is where the script lays it.
 
 import { retintHex } from '../color';
-import { DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
-import { PaintedPiece, segAngle, stampPiece } from '../painted';
-import { add, F_NO_EDGE, GRID, norm, partIndex, RES, sub, v, Vec } from '../raster';
+import { type Depth, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
+import { PaintedPiece, segAngle } from '../painted';
+import { add, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, norm, type PartId, partIndex, RES, sub, v, Vec } from '../raster';
 import { drawRig, type Rig } from '../rig';
-import { rotateTemplate } from '../rotsprite';
+import { rotateTemplate, stampTemplate, type TemplatePalette } from '../rotsprite';
 import {
   DAWN_BOOT_CLOTH,
   DAWN_BOOT_CLOTH_CHARS,
@@ -18,14 +18,17 @@ import {
   DAWN_BOOT_CUT_F,
   DAWN_BOOT_GOLD,
   DAWN_BOOT_GOLD_CHARS,
+  DAWN_BOOT_SKIN,
   DAWN_FOOT_F,
   DAWN_FOOT_JOIN_F,
   DAWN_FOOT_JOIN_N,
   DAWN_FOOT_N,
   DAWN_SHIN_F,
   DAWN_SHIN_N,
+  DAWN_THIGH_F,
   DAWN_THIGH_N,
 } from './aureliaBootsArt';
+import { closeOpen } from './aureliaVestment';
 
 /**
  * Takes our leg (skin and trousers) off below the boot's lace top: the thigh below the line across it
@@ -51,6 +54,30 @@ function legOffBelow(g: DrawCtx, s: Side, hip: Vec, knee: Vec, cut: number): voi
       L.mat[i] = -1;
       L.flags[i] |= F_NO_EDGE;
     }
+  }
+}
+
+/**
+ * Stamps a piece as stampPiece does (at its angle every pixel is his), but his bare thigh in the slits
+ * (DAWN_BOOT_SKIN letters) in the body's own skin at his shades, so it follows the player's skin.
+ */
+function stampBoot(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color: (ch: string, hex: string) => string): void {
+  const pal: TemplatePalette = {};
+  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = ch in DAWN_BOOT_SKIN ? [g.skin, DAWN_BOOT_SKIN[ch]] : [g.m(color(ch, hex), 'flat'), 3];
+  stampTemplate(g.L(depth), piece, at, deg - piece.angle, pal, part, { flags: F_NO_TEXTURE | F_NO_OUTLINE });
+}
+
+/**
+ * Takes our torso's skin away where a boot lies: the torso is drawn over the legs, and between the
+ * thighs its lowest skin would cover his lace top and his bare thigh in the slit. Not outlined there.
+ */
+function torsoOffBoot(g: DrawCtx, boot: Uint8Array): void {
+  const L = g.L('torso.body');
+  if (!L.used) return;
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (!boot[i] || L.mat[i] !== g.skin) continue;
+    L.mat[i] = -1;
+    L.flags[i] |= F_NO_EDGE;
   }
 }
 
@@ -142,25 +169,29 @@ export const FEET_DAWN_BOOTS: ItemDef = {
     // shin about the ankle, reaching under the shoe and under the thigh's piece; the shoe stays flat,
     // hanging where the shin's piece ends; the lace top and the boot over the knee turn with the thigh
     // about the knee, on top; and the boot is closed round a bending knee. The far boot is his narrow
-    // column beside her front panel, lace top and all, so it rides the far shin whole (no thigh piece),
-    // and our far thigh goes from its lace top down.
+    // column beside her front panel, laid where he drew it: its lace top rides the far thigh, the rest
+    // the far shin, and our far thigh goes from its lace top down.
     for (const s of ['F', 'N'] as Side[]) {
       const { hip, knee, ankle } = legJoints(g.rig, s);
-      const [thigh, shin, foot, join, cut] = s === 'N' ? [DAWN_THIGH_N, DAWN_SHIN_N, DAWN_FOOT_N, DAWN_FOOT_JOIN_N, DAWN_BOOT_CUT] : [null, DAWN_SHIN_F, DAWN_FOOT_F, DAWN_FOOT_JOIN_F, DAWN_BOOT_CUT_F];
+      const [thigh, shin, foot, join, cut] = s === 'N' ? [DAWN_THIGH_N, DAWN_SHIN_N, DAWN_FOOT_N, DAWN_FOOT_JOIN_N, DAWN_BOOT_CUT] : [DAWN_THIGH_F, DAWN_SHIN_F, DAWN_FOOT_F, DAWN_FOOT_JOIN_F, DAWN_BOOT_CUT_F];
       legOffBelow(g, s, hip, knee, cut);
       const d = legDepth(s, 'feet');
       const shinA = segAngle(knee, ankle);
       const thighA = segAngle(hip, knee);
       const at = s === 'F' ? farBootAt(g.rig, ankle) : ankle;
       const footAt = add(at, shoeShift(join, shinA - shin.angle));
-      stampPiece(g, d, shin, at, shinA, `shin${s}`, tint);
-      stampPiece(g, d, foot, footAt, foot.angle, `foot${s}`, tint);
-      if (thigh) stampPiece(g, d, thigh, knee, thighA, `thigh${s}`, tint);
+      stampBoot(g, d, shin, at, shinA, `shin${s}`, tint);
+      stampBoot(g, d, foot, footAt, foot.angle, `foot${s}`, tint);
+      if (thigh) stampBoot(g, d, thigh, knee, thighA, `thigh${s}`, tint);
       const boot = new Uint8Array(GRID * GRID);
       cover(boot, shin, at, shinA);
       cover(boot, foot, footAt, foot.angle);
       if (thigh) cover(boot, thigh, knee, thighA);
       closeKnee(g, s, boot, knee);
+      torsoOffBoot(g, boot);
+      // turned, an edge of his boot left open is closed in his line (at rest his line closes it)
+      const turned = Math.abs(shinA - shin.angle) >= 0.5 || (thigh && Math.abs(thighA - thigh.angle) >= 0.5) || footAt.x !== at.x;
+      if (turned) closeOpen(g, d, boot, DAWN_THIGH_N.colors.k);
     }
   },
 };

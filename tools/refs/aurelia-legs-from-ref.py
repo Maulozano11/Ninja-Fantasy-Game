@@ -12,27 +12,28 @@ over the knee and down the shin with a thin gold seam down its front (brown-gold
 shade falls on it), lit cream again at the ankle, and gold shoes: the near one seen from the front (a
 gold toe cap on a brown sole), the far one in profile with its brown heel.
 
-His legs are longer than ours and stand wider, so his pixels are laid on our female at idle frame 0
-(the second female body; its joints in tools/refs/aurelia_rig.py) with as little moved as possible:
-  - near boot: his rows 62-98 at his x + 75 (two columns right of his dress, so the lace top sits on
-    our thigh, which stands further in than his); the knee and the lace top at his y + 123 like the
-    rest of her, and three of the
-    shin's rows that repeat the row above (DROP) left out so his sole lands on our near sole (our row
-    218). Every pixel is his.
+His pixels are laid on our female at idle frame 0 (the second female body; its joints in
+tools/refs/aurelia_rig.py) where he drew them, none moved; his bare thighs in the skirt's slits above
+the lace tops (SLIT_N, SLIT_F) ride the boots in the body's own skin, so the slits are his too:
+  - near boot: his rows 62-98 where he drew them, with the rest of her (tools/refs/aurelia_rig.py AT:
+    his soles on ours, his sole on our near sole, our row 218), none of his rows left out. Every
+    pixel is his.
   - far boot: all of it shows in his picture, a narrow column between her front panel and the
     lining (his rows 62-96: the lace top under his far hand, the shin with its gold seam, the shoe in
     profile), and it is laid where he drew it, at his (x + 73, y + 120): beside the front panel's
     lower rows, his far sole two rows above his near one. Every pixel is his. Our far leg stands
     further out than his (its thigh slants out to a knee six columns past his column) and its ankle
-    stands higher (six rows above the near one), so the whole far boot rides our far shin, lace top
-    too (pivot: the far ankle), and our far thigh goes from the lace top's top edge down (CUT_F): at
+    stands higher (six rows above the near one); its lace top rides our far thigh and the rest our far
+    shin, as the near boot's, and our far thigh goes from the lace top's top edge down (CUT_F): at
     rest his column is all that shows of the far leg. Where our far foot comes forward to the near
     one's depth the item raises the boot by as much (farBootAt in aureliaBoots.ts).
 
 The pieces, each pivoting on our joint (its angle our segment's at idle, so at rest it is stamped as
 laid; in other poses it turns with its segment):
-  - THIGH  the near lace top and the boot down to our knee (pivot: the knee; turns with the thigh)
-  - SHIN   the near boot from the knee to the ankle (the far: the whole far boot above the shoe),
+  - THIGH  the lace top and the boot down to our knee (pivot: the knee; turns with the thigh; on the
+           far leg too: carried whole on the far shin, its lace top swung out past the body in a deep
+           bend, the throw's release)
+  - SHIN   the boot from the knee to the ankle,
            reaching UNDER_KNEE rows up under the thigh's piece
            and UNDER rows down under the shoe's, so a bending knee or ankle opens no gap (pivot: the
            ankle); where a hard bend still shows the boot's open edge at the knee, the item closes it
@@ -60,7 +61,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 from PIL import Image  # noqa: E402
 
-from aurelia_rig import JOINTS as J  # noqa: E402
+from aurelia_rig import AT, JOINTS as J  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PICTURE = os.path.join(ROOT, 'docs', 'reference', 'aurelia-escala-juego-owner-reference.jpg')
@@ -81,13 +82,9 @@ NEAR_ROWS = {
     91: (35, 40), 92: (34, 40), 93: (34, 40), 94: (34, 40), 95: (34, 40), 96: (34, 40), 97: (34, 40),
     98: (35, 39),
 }
-# Shin rows that repeat the row above (the same line, seam and outline columns), left out.
-DROP = (78, 82, 87)
-NEAR_DX = 75
-# How far up each stretch of his near boot is laid (his y + this = our row): the lace top and knee at
-# her own offset (123), and a row less below each dropped row.
-def near_dy(y):
-    return 123 - sum(1 for d in DROP if y > d)
+# Both boots are laid where he drew them, with the rest of her (aurelia_rig.AT): his soles on ours, his
+# lace tops on our thighs, none of his rows left out.
+NEAR_DX, NEAR_DY = AT['boots']
 
 # ---- the far boot: all of it shows in his picture, a narrow column between her front panel and the
 # lining: the lace top under his far hand (his rows 62-66, the line over it and his gold), the shin with
@@ -97,12 +94,33 @@ FAR_ROWS = {62: (59, 62)} | {y: (59, 62) for y in range(63, 72)} | {y: (59, 61) 
     86: (57, 61), 87: (57, 62), 88: (57, 62), 89: (56, 63), 90: (56, 63), 91: (56, 64), 92: (56, 66),
     93: (57, 67), 94: (57, 68), 95: (57, 68), 96: (62, 68),
 }
-# Laid where he drew it: beside her front panel (its lower rows, which are at his y + 120: three of its
-# rows above are left out) with his far sole two rows above his near one, as he drew them. Our far leg
-# stands further out and its ankle higher than his (the female's far ankle is six rows above the near
-# one), so the whole far boot rides our far shin (pivot: our far ankle), the lace top too, and our far
+# Laid where he drew it: beside her front panel with his far sole two rows above his near one, as he
+# drew them. Our far leg stands further out and its ankle higher than his (the female's far ankle is six
+# rows above the near one); its lace top rides our far thigh (pivot: the far knee), the rest our far shin
+# (pivot: the far ankle), and our far
 # thigh goes below the lace top's top edge (CUT_F): at rest his column is all that shows of the far leg.
-FAR_DX, FAR_DY = 73, 120
+FAR_DX, FAR_DY = AT['boots']
+
+# His bare thighs in the skirt's slits above the lace tops (his boxes, inclusive): his skin cells there ride
+# the boots (near: the thigh's piece; far: the shin's, with its lace top), drawn in the body's own skin at
+# his shades (SKIN_TONE), so at rest the slits are his and our thigh under them does not show.
+SLIT_N = (41, 54, 50, 62)
+SLIT_F = (58, 55, 67, 60)
+# His skin's tones as letters (the body's skin shades): his base, shadow and deep shadow, split by
+# lightness as the female body's script splits them (tools/refs/female-body-from-ref.py).
+SKIN_TONE = {'+': 3, '=': 2, '-': 1}
+
+
+def skin_letter(c):
+    lum = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+    return '-' if lum < 150 else '=' if lum < 195 else '+'
+
+
+def slit_cells(N, box):
+    x0, y0, x1, y1 = box
+    # (his light golds pass is_skin; his skin's green stays near its blue, a gold's well above it)
+    return [(x, y) for y in range(y0, y1 + 1) for x in range(x0, x1 + 1) if is_skin(N[y, x]) and int(N[y, x][1]) - int(N[y, x][2]) < 50]
+
 
 # Where the shoe begins, his rows: near (front view: the cream ankle, the gold toe cap, the brown
 # sole) and far (profile: the heel and the shoe).
@@ -179,9 +197,7 @@ def main():
     # ---- lay his cells on our frame: our (X, Y) -> (his cell, is it the shoe's)
     near = {}
     for (x, y) in boot_cells(N, NEAR_ROWS):
-        if y in DROP:
-            continue
-        near[(x + NEAR_DX, y + near_dy(y))] = ((x, y), y >= NEAR_FOOT_FROM)
+        near[(x + NEAR_DX, y + NEAR_DY)] = ((x, y), y >= NEAR_FOOT_FROM)
     far = {}
     # (no skin by the far boot: its pale lit gold at his row 78 reads as skin to is_skin)
     for (x, y) in boot_cells(N, FAR_ROWS, skin=False):
@@ -243,6 +259,15 @@ def main():
 
     NL = chars(near)
     FL = chars(far)
+    # his bare thighs in the slits, in skin letters (the item draws them in the body's skin)
+    skin_hex = {}
+    for cs, box, dx, dy in ((NL, SLIT_N, NEAR_DX, NEAR_DY), (FL, SLIT_F, FAR_DX, FAR_DY)):
+        for (x, y) in slit_cells(N, box):
+            ch = skin_letter(N[y, x])
+            cs[(x + dx, y + dy)] = ch
+            skin_hex.setdefault(ch, []).append(N[y, x])
+    for ch, cs in skin_hex.items():
+        hexes[ch] = '#%02x%02x%02x' % tuple(int(v) for v in np.round(np.mean(cs, axis=0)))
 
     # ---- the pieces: our joints at idle frame 0
     def seg_angle(a, b):
@@ -261,7 +286,7 @@ def main():
     for side, cs in (('N', NL), ('F', FL)):
         hip, knee, ankle = J['hip' + side], J['knee' + side], J['ankle' + side]
         ut = unit(hip, knee)
-        foot_row = (NEAR_FOOT_FROM + near_dy(NEAR_FOOT_FROM)) if side == 'N' else FAR_FOOT_FROM + FAR_DY
+        foot_row = (NEAR_FOOT_FROM + NEAR_DY) if side == 'N' else FAR_FOOT_FROM + FAR_DY
         thigh, shin, foot = {}, {}, {}
         for p, c in cs.items():
             s = along(p, knee, ut)
@@ -270,10 +295,7 @@ def main():
                 if p[1] < foot_row + UNDER:
                     shin[p] = c
                 continue
-            if side == 'F':
-                # the far boot rides the far shin whole (its lace top too)
-                shin[p] = c
-            elif s < 0:
+            if s < 0:
                 thigh[p] = c
                 if s >= -UNDER_KNEE:
                     shin[p] = c
@@ -286,7 +308,7 @@ def main():
         (`thigh_top`, his row of it), as a distance above the knee along the thigh."""
         kn, ut = J['knee' + side], unit(J['hip' + side], J['knee' + side])
         cs = NL if side == 'N' else FL
-        y = thigh_top + (near_dy(thigh_top) if side == 'N' else FAR_DY)
+        y = thigh_top + (NEAR_DY if side == 'N' else FAR_DY)
         xs = [x for (x, yy) in cs if yy == y]
         top = ((min(xs) + max(xs) + 1) / 2, y)
         return -((top[0] - kn[0]) * ut[0] + (top[1] - kn[1]) * ut[1])
@@ -314,7 +336,7 @@ def main():
         return hexes[c]
 
     base = {'cloth': nearest('cloth', (245, 237, 220)), 'gold': nearest('gold', (243, 190, 74))}
-    order = 'k' + pools['cloth'] + pools['gold'] + pools['brown']
+    order = 'k' + pools['cloth'] + pools['gold'] + pools['brown'] + ''.join(SKIN_TONE)
 
     def piece_ts(name, doc, cs, joint, angle):
         xs = [x for x, _ in cs]
@@ -326,7 +348,7 @@ def main():
         out = [f'/** {doc} */', f'export const {name}: PaintedPiece = {{', f'  pivot: [{px}, {py}],', f'  angle: {angle:.2f},', '  rows: [']
         out += [f"    '{r}'," for r in rows]
         out += ['  ],', '  colors: {']
-        out += [f"    {c}: '{hexes[c]}'," for c in used]
+        out += [f"    {c if c.isalnum() else repr(c)}: '{hexes[c]}'," for c in used]
         out += ['  },', '};', '']
         return '\n'.join(out)
 
@@ -344,6 +366,8 @@ def main():
         f"export const DAWN_BOOT_GOLD = '{base['gold']}';",
         f"export const DAWN_BOOT_CLOTH_CHARS = '{cloth_chars}';",
         f"export const DAWN_BOOT_GOLD_CHARS = '{gold_chars}';",
+        "/** His bare thighs in the slits: these letters are drawn in the body's skin, at these shades of it (their colours are his, for reference). */",
+        'export const DAWN_BOOT_SKIN: Record<string, number> = { ' + ', '.join(f"'{c}': {v}" for c, v in SKIN_TONE.items()) + ' };',
         '/** Where our leg goes: fine pixels above the knee along the thigh (the lace top\'s top edge). */',
         f'export const DAWN_BOOT_CUT = {cut:.2f};',
         '/** The same on the far leg: the far boot shows whole beside her front panel, so our far thigh goes from the lace top\'s top edge down. */',
@@ -354,9 +378,8 @@ def main():
     for side in 'NF':
         thigh, shin, foot = pieces[side]
         hip, knee, ankle = J['hip' + side], J['knee' + side], J['ankle' + side]
-        if side == 'N':
-            parts.append(piece_ts('DAWN_THIGH_N', 'The near lace top and the boot down to the knee (pivot: the knee).', thigh, knee, seg_angle(hip, knee)))
-        shin_doc = 'The near boot from the knee to the ankle (pivot: the ankle).' if side == 'N' else 'The far boot from its lace top to the ankle, all on the far shin (pivot: the ankle).'
+        parts.append(piece_ts(f'DAWN_THIGH_{side}', f'The {what[side]} lace top and the boot down to the knee (pivot: the knee).', thigh, knee, seg_angle(hip, knee)))
+        shin_doc = f'The {what[side]} boot from the knee to the ankle (pivot: the ankle).'
         parts.append(piece_ts(f'DAWN_SHIN_{side}', shin_doc, shin, ankle, seg_angle(knee, ankle)))
         parts.append(piece_ts(f'DAWN_FOOT_{side}', f'The {what[side]} ankle and shoe, flat (pivot: the ankle).', foot, ankle, 0.0))
         # where the shoe meets the shin: the middle of the shoe's top row, from our ankle (fine pixels)
@@ -376,7 +399,7 @@ def main():
         os.makedirs(preview, exist_ok=True)
         k = 8
         hx0, hy0, hx1, hy1 = 28, 58, 72, 100
-        ox0, oy0 = hx0 + NEAR_DX, hy0 + 123
+        ox0, oy0 = hx0 + NEAR_DX, hy0 + NEAR_DY
         w, h = hx1 - hx0, hy1 - hy0
         img = np.full((h * k, w * 2 * k + 16, 3), 255, np.uint8)
         for y in range(hy0, hy1):

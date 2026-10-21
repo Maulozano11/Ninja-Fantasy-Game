@@ -9,7 +9,7 @@ import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { AURELIA_STAFF_GOLD, AURELIA_STAFF_ORB, DAWN_STAFF } from './aureliaStaffArt';
-import { dawnStaffInFarHand, drawDawnStaff } from './aureliaStaff';
+import { dawnStaffInFarHand, dawnStaffRest, drawDawnFarFist, drawDawnStaff } from './aureliaStaff';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
@@ -410,7 +410,10 @@ export const HELD_ITEMS: ItemDef[] = [
       if (handsBusy(g)) drawDawnStaff(g, 'backGear', backGrip(g, -62), -62, gold, orb, false);
       else if (handsLimp(g)) drawDawnStaff(g, 'nearArm.held', droppedGrip(g, 1.5, 4.5), 88, gold, orb, false);
       // At rest it hangs from her far fist at his angle, every pixel his; otherwise the near fist holds it like a pole.
-      else if (dawnStaffInFarHand(g)) drawDawnStaff(g, 'farArm.held', g.rig.handF, DAWN_STAFF.angle, gold, orb, true);
+      else if (dawnStaffInFarHand(g)) {
+        drawDawnStaff(g, 'farArm.held', dawnStaffRest(g), DAWN_STAFF.angle, gold, orb, true);
+        drawDawnFarFist(g);
+      }
       else if (!handsReleased(g)) drawDawnStaff(g, 'nearArm.held', gripPoint(g), poleAngle(g), gold, orb, true);
     },
   },

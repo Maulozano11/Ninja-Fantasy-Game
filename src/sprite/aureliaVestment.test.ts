@@ -6,7 +6,9 @@ import { describe, it } from 'node:test';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import type { PaintedPiece } from './painted';
-import { GRID, partIndex, RES } from './raster';
+import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { GRID, PARTS, partIndex, RES } from './raster';
+import { frameCount } from './rig';
 import {
   AURELIA_BODICE,
   AURELIA_CLOTH,
@@ -16,7 +18,7 @@ import {
   AURELIA_SLEEVE_FORE_N,
   AURELIA_SLEEVE_UPPER_N,
 } from './items/aureliaVestmentArt';
-import type { BodyType, SpriteAppearance } from './types';
+import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
 const look = (body: BodyType, armor?: string[], skin = '#f9ccaa'): SpriteAppearance => ({
   version: 1,
@@ -91,7 +93,9 @@ describe("Aurelia's vestment", () => {
       assert.ok(gem.length > 0);
       return gem.map(([x, y]) => hexAt(f.rgba, x, y));
     };
-    assert.ok(at([]).every((c) => c === AURELIA_GEM));
+    // her collar lies just under our chin, as his under his: the gem's top pixels can go under the chin
+    const gem = at([]);
+    assert.ok(gem.filter((c) => c === AURELIA_GEM).length >= Math.ceil(gem.length / 2), `gem ${gem.join()}`);
     assert.ok(at(['', '', '#c8202c']).every((c) => c !== AURELIA_GEM));
   });
 
@@ -126,6 +130,28 @@ describe("Aurelia's vestment", () => {
   it('is not drawn on the men', () => {
     for (const body of ['male', 'bulky'] as BodyType[]) {
       assert.deepEqual(renderSprite(look(body, []), 'idle', 0).rgba, renderSprite(look(body), 'idle', 0).rgba);
+    }
+  });
+  it('keeps her edges closed in every pose: no pixel of her clothes or body left open on the figure', () => {
+    // The owner's review: "unos pixeles de la espalda se ven cortados", "la mano en arrojada se ve
+    // cortada". A pixel on the figure's edge is his line, never cloth or skin left open (her head, whose
+    // hair has its own lit edge, and her staff's glow aside; the cast effect's runes sit over the hands).
+    const look0 = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_aurelia')!.character.appearance!;
+    const skip = new Set(['head', 'held', 'none']);
+    for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[]) {
+      if (pose === 'cast') continue;
+      for (let fr = 0; fr < frameCount(pose); fr++) {
+        const f = renderSprite(look0, pose, fr);
+        const op = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && f.rgba[(y * GRID + x) * 4 + 3] > 0;
+        const open: string[] = [];
+        for (let y = 0; y < GRID; y++)
+          for (let x = 0; x < GRID; x++) {
+            const i = y * GRID + x;
+            if (!op(x, y) || skip.has(PARTS[f.part[i]]) || Math.max(f.rgba[i * 4], f.rgba[i * 4 + 1], f.rgba[i * 4 + 2]) < 70) continue;
+            if (!op(x + 1, y) || !op(x - 1, y) || !op(x, y + 1) || !op(x, y - 1)) open.push(`${x},${y}`);
+          }
+        assert.ok(open.length <= 2, `${pose} ${fr}: ${open.join(' ')}`);
+      }
     }
   });
 });

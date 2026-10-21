@@ -279,6 +279,7 @@ export const SKIRT_DAWN_PANELS: ItemDef = {
     drawPiece(g, 'backGear', 'thighF', DAWN_FAR, tint);
     drawPiece(g, 'skirt', 'thighF', DAWN_FAR, tint, DAWN_FAR.front);
     drawPiece(g, 'farLeg.armor', 'thighN', DAWN_NEAR, tint);
+    drawPiece(g, 'skirt', 'thighN', DAWN_NEAR, tint, DAWN_NEAR.front);
     drawPiece(g, 'skirt', 'pelvis', DAWN_FRONT, tint);
   },
 };

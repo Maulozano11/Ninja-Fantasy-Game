@@ -10,10 +10,12 @@ import { renderSprite } from './compose';
 import {
   DAWN_BOOT_CLOTH,
   DAWN_BOOT_GOLD,
+  DAWN_BOOT_SKIN,
   DAWN_FOOT_F,
   DAWN_FOOT_N,
   DAWN_SHIN_F,
   DAWN_SHIN_N,
+  DAWN_THIGH_F,
   DAWN_THIGH_N,
 } from './items/aureliaBootsArt';
 import type { PaintedPiece } from './painted';
@@ -31,13 +33,13 @@ function look(colors: string[] = []): SpriteAppearance {
   return { ...base, body: 'female', slots: { feet: { id: 'feet_dawn_boots', colors } }, pixelEdits: [] };
 }
 
-/** Each pixel of a piece as laid at rest (its pivot on the joint): [x, y, his colour]. */
+/** Each pixel of a piece as laid at rest (its pivot on the joint): [x, y, his colour]; his bare thigh in the slits (in the body's skin) left out. */
 function laid(p: PaintedPiece, at: Vec, keep: (x: number, y: number) => boolean = () => true): [number, number, string][] {
   const ax = Math.floor(at.x * RES) - p.pivot[0];
   const ay = Math.floor(at.y * RES) - p.pivot[1];
   const out: [number, number, string][] = [];
   p.rows.forEach((row, j) => [...row].forEach((ch, i) => {
-    if (ch !== '.' && keep(ax + i, ay + j)) out.push([ax + i, ay + j, p.colors[ch]]);
+    if (ch !== '.' && !(ch in DAWN_BOOT_SKIN) && keep(ax + i, ay + j)) out.push([ax + i, ay + j, p.colors[ch]]);
   }));
   return out;
 }
@@ -54,11 +56,13 @@ describe('Dawn Boots', () => {
     const f = renderSprite(look(), 'idle', 0);
     const r = buildRig('female', 'idle', 0);
     const pixels = [
-      ...laid(DAWN_THIGH_N, r.kneeN),
+      // his near lace top lies where he drew it, its top rows by the hip: there the body's shorts cover it when no skirt is worn
+      ...laid(DAWN_THIGH_N, r.kneeN, (_x, y) => y > Math.floor(r.hipN.y * RES) + 6),
       ...laid(DAWN_SHIN_N, r.ankleN),
       ...laid(DAWN_FOOT_N, r.ankleN),
       ...laid(DAWN_FOOT_F, r.ankleF),
       // the far lace top's top rows go under the hips: there the body's shorts cover it when no skirt is worn
+      ...laid(DAWN_THIGH_F, r.kneeF, (_x, y) => y > Math.floor(r.hipF.y * RES) + 6),
       ...laid(DAWN_SHIN_F, r.ankleF, (_x, y) => y > Math.floor(r.hipF.y * RES) + 6),
     ];
     assert.ok(pixels.length > 400);

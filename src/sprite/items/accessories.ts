@@ -10,7 +10,7 @@ import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI 
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
-import { gripPoint, handsBusy, handsLimp, poleAngle, swordAngle } from '../grip';
+import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -271,6 +271,14 @@ function backGrip(g: DrawCtx, deg: number): Vec {
 }
 
 /**
+ * The angle a weapon stowed on the back is drawn at (`deg`: the one it rides at standing). The
+ * weapon techniques pitch the body far forward (the release of 'throw', the lunge of 'pierce'): the
+ * weapon turns with the back there, so its blade stays behind the body instead of sticking out
+ * under the chin. Every other pose keeps it at `deg`.
+ */
+const backAngle = (g: DrawCtx, deg: number): number => (g.rig.pose === 'throw' || g.rig.pose === 'pierce' ? deg + g.rig.lean : deg);
+
+/**
  * Knocked out, a weapon lies dropped on the ground in front of the body. The
  * figure is drawn upright and laid down afterwards (Rig.lay), so the ground is
  * the upright line x = lay.groundX: a weapon drawn pointing up along it ends up
@@ -281,6 +289,11 @@ function droppedGrip(g: DrawCtx, at: number, off = 1.2): Vec {
   const r = g.rig;
   const x = (r.lay?.groundX ?? r.pelvis.x + 4) - off;
   return v(x, lerp(r.pelvis, r.ankleN, at).y);
+}
+
+/** Bare hands winding up a throw hold a kunai from the pouch (see throwsKunai), in the Kunai item's colours. */
+export function drawThrowKunai(g: DrawCtx): void {
+  if (throwsKunai(g)) drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), { blade: '#aab4c2', grip: '#3a3346', guard: '#aab4c2', wrap: '#e2dccb' });
 }
 
 /** The flame longsword's colours: its blade and jewels turned from his flame red, its gold from his gold. */
@@ -313,7 +326,7 @@ export const HELD_ITEMS: ItemDef[] = [
         const { hilt, guard } = katanaHipColors(parts);
         stowKatanaAtHip(g, hilt, guard);
       } else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', t, droppedGrip(g, 0.55), -86);
-      else drawPaintedWeapon(g, 'nearArm.held', t, gripPoint(g), swordAngle(g));
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', t, gripPoint(g), swordAngle(g));
     },
   },
   {
@@ -322,12 +335,12 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Crystal Greatsword',
     desc: 'A huge blade of pale-blue crystal that glitters with every swing.',
     colors: [col('blade', 'Crystal', '#8ccbe8', 'metal'), col('hilt', 'Grip', '#2a3348', 'leather'), col('guard', 'Guard', '#6f97c0', 'metal')],
-    draw: (g, [blade, hilt, guard]) =>
-      handsBusy(g)
-        ? drawWeapon(g, 'backGear', CRYSTAL_SWORD, backGrip(g, 48), 48, { blade, grip: hilt, guard, wrap: '#8a9bb8' })
-        : handsLimp(g)
-          ? drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, { blade, grip: hilt, guard, wrap: '#8a9bb8' })
-          : drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, gripPoint(g), swordAngle(g), { blade, grip: hilt, guard, wrap: '#8a9bb8' }),
+    draw: (g, [blade, hilt, guard]) => {
+      const c = { blade, grip: hilt, guard, wrap: '#8a9bb8' };
+      if (handsBusy(g)) drawWeapon(g, 'backGear', CRYSTAL_SWORD, backGrip(g, 48), backAngle(g, 48), c);
+      else if (handsLimp(g)) drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, c);
+      else if (!handsReleased(g)) drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, gripPoint(g), swordAngle(g), c);
+    },
   },
   {
     id: 'held_ice_crystal',
@@ -337,9 +350,9 @@ export const HELD_ITEMS: ItemDef[] = [
     colors: [col('blade', 'Crystal', '#74aac4', 'metal'), col('hilt', 'Grip', '#3e5f7f', 'leather')],
     draw: (g, [blade, grip]) => {
       const tint = { base: '#74aac4', blade, grip, gripBase: '#3e5f7f' };
-      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_CRYSTAL_SWORD, backGrip(g, 48), 48, tint);
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_CRYSTAL_SWORD, backGrip(g, 48), backAngle(g, 48), tint);
       else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, tint);
-      else drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, gripPoint(g), swordAngle(g), tint);
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, gripPoint(g), swordAngle(g), tint);
     },
   },
   {
@@ -350,11 +363,11 @@ export const HELD_ITEMS: ItemDef[] = [
     colors: [col('blade', 'Flame', FLAME_SWORD_FLAME, 'glow'), col('guard', 'Guard', FLAME_SWORD_GOLD, 'metal')],
     draw: (g, [flame, gold]) => {
       const tint = flameSwordTint(flame, gold);
-      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', FLAME_LONGSWORD, backGrip(g, 48), 48, tint);
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', FLAME_LONGSWORD, backGrip(g, 48), backAngle(g, 48), tint);
       else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, droppedGrip(g, 0.7), -86, tint);
       // His grip crosses his fist at the hand joint (higher in the fist than our other blades' grip
       // point): held there, at rest every pixel is his and his gauntlet's place is our fist's.
-      else drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, g.rig.handN, swordAngle(g), tint);
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, g.rig.handN, swordAngle(g), tint);
     },
   },
   {
@@ -363,12 +376,12 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Kunai',
     desc: 'A throwing knife with a ring pommel and wrapped grip.',
     colors: [col('blade', 'Blade', '#aab4c2', 'metal'), col('wrap', 'Wrap', '#3a3346')],
-    draw: (g, [blade, wrap]) =>
-      handsBusy(g)
-        ? drawWeapon(g, 'waist', KUNAI, g.rig.T(-g.bp.hipHalf * 0.55, 3.6), 100, { blade, grip: wrap, guard: blade, wrap: '#e2dccb' })
-        : handsLimp(g)
-          ? drawWeapon(g, 'nearArm.held', KUNAI, droppedGrip(g, 0.15, 0.9), -80, { blade, grip: wrap, guard: blade, wrap: '#e2dccb' })
-          : drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), { blade, grip: wrap, guard: blade, wrap: '#e2dccb' }),
+    draw: (g, [blade, wrap]) => {
+      const c = { blade, grip: wrap, guard: blade, wrap: '#e2dccb' };
+      if (handsBusy(g)) drawWeapon(g, 'waist', KUNAI, g.rig.T(-g.bp.hipHalf * 0.55, 3.6), 100, c);
+      else if (handsLimp(g)) drawWeapon(g, 'nearArm.held', KUNAI, droppedGrip(g, 0.15, 0.9), -80, c);
+      else if (!handsReleased(g)) drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), c);
+    },
   },
   {
     id: 'held_naginata',
@@ -376,12 +389,12 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Naginata',
     desc: 'A long polearm topped with a curved blade.',
     colors: [col('blade', 'Blade', '#d4dbe4', 'metal'), col('shaft', 'Shaft', '#5a3622', 'leather'), col('fit', 'Fittings', '#c9a227', 'metal')],
-    draw: (g, [blade, shaft, fittings]) =>
-      handsBusy(g)
-        ? drawNaginata(g, { ...gripOf(g, -62), hand: backGrip(g, -62), room: 99 }, { blade, shaft, fittings }, 'backGear')
-        : handsLimp(g)
-          ? drawNaginata(g, { ...gripOf(g, -88), hand: droppedGrip(g, 0.6, 0.8), room: 99 }, { blade, shaft, fittings })
-          : drawNaginata(g, { ...gripOf(g, poleAngle(g)), hand: gripPoint(g) }, { blade, shaft, fittings }),
+    draw: (g, [blade, shaft, fittings]) => {
+      const c = { blade, shaft, fittings };
+      if (handsBusy(g)) drawNaginata(g, { ...gripOf(g, backAngle(g, -62)), hand: backGrip(g, -62), room: 99 }, c, 'backGear');
+      else if (handsLimp(g)) drawNaginata(g, { ...gripOf(g, -88), hand: droppedGrip(g, 0.6, 0.8), room: 99 }, c);
+      else if (!handsReleased(g)) drawNaginata(g, { ...gripOf(g, poleAngle(g)), hand: gripPoint(g) }, c);
+    },
   },
   {
     id: 'held_spiral',
@@ -389,7 +402,7 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Spiral Orb',
     desc: 'A swirling sphere of compressed chakra held in the palm.',
     colors: [col('core', 'Core', '#4aa8ff', 'glow'), col('swirl', 'Swirl', '#d8f1ff', 'glow')],
-    draw: (g, [core, swirl]) => !handsBusy(g) && !handsLimp(g) && drawSpiralOrb(g, { core, swirl }),
+    draw: (g, [core, swirl]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && drawSpiralOrb(g, { core, swirl }),
   },
   {
     id: 'held_lightning',
@@ -397,7 +410,7 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Lightning Hand',
     desc: 'Crackling white-blue sparks dance around the hand.',
     colors: [col('spark', 'Sparks', '#d6f0ff', 'glow'), col('core', 'Glow', '#5cb8ff', 'glow')],
-    draw: (g, [spark, core]) => !handsBusy(g) && !handsLimp(g) && drawLightning(g, { spark, core }),
+    draw: (g, [spark, core]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && drawLightning(g, { spark, core }),
   },
   {
     id: 'held_palm',
@@ -405,7 +418,7 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Palm Glow',
     desc: 'A calm pale-cyan glow gathered in the palm.',
     colors: [col('glow', 'Glow', '#8ff0ea', 'glow')],
-    draw: (g, [glow]) => !handsBusy(g) && !handsLimp(g) && drawPalmGlow(g, { glow }),
+    draw: (g, [glow]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && drawPalmGlow(g, { glow }),
   },
 ];
 
@@ -1007,7 +1020,8 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
       const Lt = b.torsoLen;
       const top = topPt(g);
       const pen: Pen = { mat: g.m(c, 'cloth'), part: 'torso' };
-      const w = g.rig.pose === 'attack' || g.rig.pose === 'hurt' || g.rig.pose === 'run' ? -1.2 : g.rig.frame % 4 >= 2 ? -0.4 : 0;
+      const p = g.rig.pose;
+      const w = p === 'attack' || p === 'throw' || p === 'pierce' || p === 'hurt' || p === 'run' ? -1.2 : g.rig.frame % 4 >= 2 ? -0.4 : 0;
       // Hanging end over the near shoulder blade (behind the main wrap).
       poly(L, [top(-sh * 0.55, Lt - 0.5), top(-sh * 0.2, Lt - 1.6), add(top(-sh * 0.45, Lt - 6.2), v(w, 0)), add(top(-sh * 0.8, Lt - 5.4), v(w * 1.4, 0))], pen, 2);
       seam(L, top(-sh * 0.42, Lt - 1.4), add(top(-sh * 0.6, Lt - 5.6), v(w, 0)), -1);

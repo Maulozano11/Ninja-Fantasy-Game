@@ -144,7 +144,7 @@ const lerp2 = (p00: Vec, p10: Vec, p01: Vec, p11: Vec, u: number, w: number): Ve
  * round the edge again (an edge pixel of hers pulled inside takes the colour inside it, an edge pixel
  * of the moved piece is her line, except along the open top).
  */
-export function placePiece(g: DrawCtx, p: DawnPiece): Map<number, string> {
+export function placePiece(g: DrawCtx, p: DawnPiece, rowsTo = Infinity): Map<number, string> {
   const R = restCols(p);
   const P = poseCols(g, p);
   const [ox, oy] = p.origin;
@@ -158,7 +158,7 @@ export function placePiece(g: DrawCtx, p: DawnPiece): Map<number, string> {
         const ch = p.rows[j][i];
         const x = ox + i;
         const y = oy + j;
-        if (ch !== '.' && x >= 0 && y >= 0 && x < GRID && y < GRID) out.set(y * GRID + x, ch);
+        if (ch !== '.' && j < rowsTo && x >= 0 && y >= 0 && x < GRID && y < GRID) out.set(y * GRID + x, ch);
       }
     return out;
   }
@@ -193,6 +193,8 @@ export function placePiece(g: DrawCtx, p: DawnPiece): Map<number, string> {
     const y = (idx - x) / GRID;
     const edge = [idx - 1, idx + 1, idx - GRID, idx + GRID].some((n) => !out.has(n)) || x === 0 || x === GRID - 1;
     const [i, j] = src.get(idx)!;
+    // only the rows asked for, her line where the whole piece has its edge (the cut goes on unseen)
+    if (j >= rowsTo) continue;
     if (edge && j >= p.openTop) fixed.set(idx, 'k');
     else if (!edge && p.fill[j][i] !== '.') fixed.set(idx, p.fill[j][i]);
     else fixed.set(idx, ch);
@@ -200,8 +202,8 @@ export function placePiece(g: DrawCtx, p: DawnPiece): Map<number, string> {
   return fixed;
 }
 
-/** Stamps a piece into a depth in her colours (`tint` recolours a colour of a slot). */
-function drawPiece(g: DrawCtx, depth: Depth, part: PartId, p: DawnPiece, tint: (role: string, hex: string) => string): void {
+/** Stamps a piece (its rows above `rowsTo`) into a depth in her colours (`tint` recolours a colour of a slot). */
+function drawPiece(g: DrawCtx, depth: Depth, part: PartId, p: DawnPiece, tint: (role: string, hex: string) => string, rowsTo = Infinity): void {
   const L = g.L(depth);
   const mats = new Map<string, number>();
   const mat = (ch: string): number => {
@@ -214,7 +216,7 @@ function drawPiece(g: DrawCtx, depth: Depth, part: PartId, p: DawnPiece, tint: (
     }
     return m;
   };
-  for (const [idx, ch] of placePiece(g, p)) L.set(idx % GRID, Math.floor(idx / GRID), mat(ch), 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
+  for (const [idx, ch] of placePiece(g, p, rowsTo)) L.set(idx % GRID, Math.floor(idx / GRID), mat(ch), 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
 }
 
 /** The base body's shorts (body.ts undergarments): her skirt is open at the sides, her thighs show bare. */
@@ -257,9 +259,11 @@ export const SKIRT_DAWN_PANELS: ItemDef = {
   draw: (g, [cloth, gold, lining]) => {
     const tint = tinter({ cloth, gold, lining });
     bareThighs(g);
-    // the lining and the far panel behind the legs and the far arm, the near panel behind the near leg
+    // the lining and the far panel behind the legs and the far arm, the near panel behind the near leg;
+    // the far panel's top over the far thigh (his panel hangs over it there; ours is wider than his)
     drawPiece(g, 'backGear', 'pelvis', DAWN_LINING, tint);
     drawPiece(g, 'backGear', 'thighF', DAWN_FAR, tint);
+    drawPiece(g, 'skirt', 'thighF', DAWN_FAR, tint, DAWN_FAR.front);
     drawPiece(g, 'farLeg.armor', 'thighN', DAWN_NEAR, tint);
     drawPiece(g, 'skirt', 'pelvis', DAWN_FRONT, tint);
   },

@@ -19,9 +19,14 @@ lower), so the side panels and the lining are fitted to our legs, keeping his pi
            under the pouch. Four rows of its slanting stretch are left out (NEAR_DROP) and the rows
            below each move one column toward the leg, so its outer edge keeps his steps and its hem
            comes up and in to our shorter leg, which stands further in than his.
-  far      his far side panel, the white strip with its gold trim beside the far leg, moved FAR_DX
-           columns out to stand behind our far leg as his does behind his, with six rows left out
-           that are each the same as the row above (FAR_DROP).
+  far      his far side panel, the white strip with its gold trim beside the far leg, from its gold
+           edge under the belt (beside the front panel, over the top of the far thigh) down. Its top
+           stays where he drew it; below, each row past a FAR_SHIFT row moves one column further out,
+           FAR_DX in all, so it stands behind our far leg as his does behind his (our far leg slants
+           out more than his). Six rows are left out that are each the same as the row above
+           (FAR_DROP). Its top FAR_FRONT rows are also drawn over the far hip and thigh: there his
+           panel hangs over it, and our thigh is wider than his. Behind his far hand the panel is
+           continued from his rows under the hand (FAR_HIDDEN), as our far hand hangs further out.
   lining   the pale grey lining behind and between the legs. His shows only between his legs and the
            panels (three strips); the rest is behind his legs and is continued from his strips row by
            row (each hidden cell the nearest of his lining cells in its row, each strip moved as the
@@ -102,7 +107,8 @@ SEEDS = {
     'front': ([(54, 60)], (49, 47, 61, 84)),
     # the panel, and the skirt under the pouch
     'near': ([(30, 70), (44, 52)], (20, 50, 47, 91)),
-    'far': ([(67, 70)], (62, 54, 72, 91)),
+    # the panel and the bits of its gold edge under the belt (his line breaks them)
+    'far': ([(67, 70), (61, 52), (61, 54), (63, 54)], (60, 51, 72, 91)),
     # the strips between his near leg and the panel, between his legs, between his far leg and the panel
     'lining': ([(35, 75), (47, 80), (64, 75)], (30, 60, 70, 90)),
     # the sash band, the belt and its buckle, the pouch, the charm, the far belt, the drape
@@ -113,8 +119,20 @@ SEEDS = {
 FRONT_DROP = [59, 60, 62, 65, 67]
 NEAR_DROP = [60, 61, 67, 70]
 FAR_DROP = [65, 69, 73, 77, 81, 85]
-# The far panel stands this many columns further out than his (our far leg stands so).
+# The far panel stands this many columns further out than his at its hem (our far leg stands so):
+# one more column below each of these rows of his, so its top stays where he drew it.
 FAR_DX = 5
+FAR_SHIFT = [53, 55, 57, 59, 61]
+assert len(FAR_SHIFT) == FAR_DX
+# The far panel's rows over the far thigh (his rows 51-56), drawn over the far hip too.
+FAR_FRONT = 6
+# The far panel behind his far hand (his x 64-67, rows 52-55), filled by continuing his panel below
+# the hand (his rows 57-60: its white, the shade by its outer line 'c', his line): our far hand hangs
+# further out than his, so the panel shows there. His line round the hand stays (row 51 over it, row
+# 56 under it, column 63 by its gold edge).
+FAR_HIDDEN = {}
+for _y in range(52, 56):
+    FAR_HIDDEN.update({(64, _y): 'w', (65, _y): 'w', (66, _y): 'c', (67, _y): LINE})
 # The lining: from this row of his (under the belt and the pouch) down to its hem.
 LINING_TOP = 51
 # The belt behind his far sleeve runs on to this column of ours (our waist's far edge).
@@ -206,15 +224,22 @@ def near_dx(y):
     return sum(1 for d in NEAR_DROP if y > d)
 
 
+def far_dx(y):
+    return sum(1 for d in FAR_SHIFT if y > d)
+
+
 def build():
     N = native()
     C, dist = classify(N)
+    for (x, y), ch in FAR_HIDDEN.items():
+        C[y, x] = ch
+        dist[y, x] = 0
     H = his_pieces(C)
     worst = max(int(dist[m & (C != LINE)].max()) for m in H.values())
     P = {}
     P['front'] = place(C, H['front'], FRONT_DROP, lambda y: 0)
     P['near'] = place(C, H['near'], NEAR_DROP, near_dx)
-    P['far'] = place(C, H['far'], FAR_DROP, lambda y: FAR_DX)
+    P['far'] = place(C, H['far'], FAR_DROP, far_dx)
     P['waist'] = place(C, H['waist'], [], lambda y: 0)
     # the belt runs on behind his far sleeve: each of its rows' last colour before his line, repeated
     w = P['waist']
@@ -243,7 +268,7 @@ def lining(C, H, P):
     for y in range(int(ys.min()), int(ys.max()) + 1):
         for x in np.nonzero(m[y])[0]:
             x = int(x)
-            mx = x + DX + (near_dx(y) if near_strip(x) else FAR_DX if far_strip(x) else 0)
+            mx = x + DX + (near_dx(y) if near_strip(x) else far_dx(y) if far_strip(x) else 0)
             vis.setdefault(y, []).append((mx, str(C[y, x])))
     # his hem: per strip, the first row under its lowest cell
     hem_his = {}
@@ -368,6 +393,8 @@ def ts_module(ps):
         '  hang: boolean;',
         '  /** Rows at the top whose edges have no line of his (they go under the belt). */',
         '  openTop: number;',
+        '  /** Rows at the top also drawn in front of the far leg (over the far thigh). */',
+        '  front: number;',
         '  /** His colour of each character. */',
         '  colors: Record<string, string>;',
         "  /** The colour slot each character's colour belongs to (missing: his always, as his line and the charm's red). */",
@@ -396,6 +423,7 @@ def ts_module(ps):
         out.append('  cols: [' + ', '.join(f'[{a}, {b}, {c}, {d}]' for a, b, c, d in columns(name, (ox, oy), rows)) + '],')
         out.append(f"  hang: {'true' if HANG[name] else 'false'},")
         out.append(f'  openTop: {OPEN_TOP[name]},')
+        out.append(f"  front: {FAR_FRONT if name == 'far' else 0},")
         out.append('  colors: { ' + ', '.join(f"{c}: '{KEY[c]}'" for c in used) + ' },')
         roles = {c: ROLE[name][c] for c in used if c in ROLE[name]}
         out.append('  roles: { ' + ', '.join(f"{c}: '{v}'" for c, v in roles.items()) + ' },')

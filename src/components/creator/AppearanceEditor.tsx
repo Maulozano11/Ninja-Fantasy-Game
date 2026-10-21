@@ -745,8 +745,8 @@ const SlotPicker: React.FC<{
           <ChevronLeft className="w-4 h-4" />
         </button>
         <div className="flex-1 text-center">
-          <div className="text-sm font-bold text-white">{currentDef?.name ?? L('None')}</div>
-          <div className="text-[11px] text-slate-400">{currentDef?.desc ?? L('Nothing equipped in this slot.')}</div>
+          <div className="text-sm font-bold text-white">{currentDef ? L(currentDef.name) : L('None')}</div>
+          <div className="text-[11px] text-slate-400">{currentDef ? L(currentDef.desc) : L('Nothing equipped in this slot.')}</div>
         </div>
         <button
           type="button"

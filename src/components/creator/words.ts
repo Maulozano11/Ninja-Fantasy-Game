@@ -223,6 +223,8 @@ const ES: Record<string, string> = {
   'Shade Belts and Scabbard': 'Cinturones y vaina de la Sombra',
   'A short navy skirt in pleats striped in red, with a red hem. Women only.': 'Una falda corta azul marino plisada con franjas rojas y bajo rojo. Solo mujeres.',
   'Two brown leather belts slung across the hips with steel buckles, a pouch on the hip, and a black scabbard with gold fittings hanging behind the leg. Women only.': 'Dos cinturones de cuero marrón cruzados sobre las caderas con hebillas de acero, una bolsa en la cadera y una vaina negra con herrajes de oro colgando detrás de la pierna. Solo mujeres.',
+  // Saya's leggings (feet_shade_wraps)
+  'Thigh-high navy leggings wound with red bands, round knee pads rimmed in red, and armoured navy shoes with red trim.': 'Medias altas azul marino hasta el muslo envueltas en bandas rojas, rodilleras redondas con borde rojo y zapatos acorazados azul marino con ribete rojo.',
 };
 
 /** An editor label in the screen's language. */

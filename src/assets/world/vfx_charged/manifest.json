@@ -1,0 +1,56 @@
+{
+ "group": "vfx_charged",
+ "pxPerMeter": 57,
+ "sprites": {
+  "chidori_hand": {
+   "label": "The activated Chidori's lightning in the near hand: his two paint-overs' lightning (the vest's ring and bolts, the coat's burst) flickering ('charged'); anchor: his fist",
+   "file": "chidori_hand.png",
+   "frameW": 28,
+   "frameH": 27,
+   "anchor": [
+    13,
+    15
+   ],
+   "meters": [
+    0.49,
+    0.47
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "charged": {
+     "row": 0,
+     "frames": 6,
+     "fps": 12,
+     "loop": true
+    }
+   }
+  },
+  "ground_crack": {
+   "label": "Ground cracked under a charged ninja's step (difficult terrain while it shows): four variants in 'idle', one per cell; anchor: its middle on the ground",
+   "file": "ground_crack.png",
+   "frameW": 30,
+   "frameH": 16,
+   "anchor": [
+    15,
+    8
+   ],
+   "meters": [
+    0.53,
+    0.28
+   ],
+   "tags": [
+    "vfx"
+   ],
+   "anims": {
+    "idle": {
+     "row": 0,
+     "frames": 4,
+     "fps": 0,
+     "loop": true
+    }
+   }
+  }
+ }
+}

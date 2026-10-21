@@ -1091,9 +1091,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
   },
   {
     name: 'Aiden, the Crimson Knight',
-    tag: 'Dread Plate · Crimson Cape',
+    tag: 'Crimson Knight Plate · Flame Longsword',
     nameEs: 'Aiden, el Caballero Carmesí',
-    tagEs: 'Placas del terror · Capa carmesí',
+    tagEs: 'Placas del caballero carmesí · Espada larga flamígera',
     character: {
       id: 'preset_reference_aiden',
       name: 'Aiden',
@@ -1138,16 +1138,22 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       speed: 6,
       jutsuSaveDC: 16,
       jutsuAttackBonus: 9,
+      // The owner's own Aiden (docs/reference/aiden-owner-reference.jpg, 2026-10-21): his head shape,
+      // eyes, hair, plate, cape and flame longsword, every one lifted from his pixels; his clan's tomoe
+      // eyes stay over his eyes (the owner: "con marcas").
       appearance: spriteLook({
-        skin: '#f8d3b6',
+        skin: '#f6bb96',
+        faceShape: 'valiant',
+        eyeShape: 'valiant',
+        eyeColor: '#d81b2a',
         slots: {
-          hair: it('hair_scholar', '#7a3f1d'),
+          hair: it('hair_valiant'),
           top: it('top_longsleeve', '#151a2e', '#0d1020'),
           bottom: it('bottom_shinobi', '#151a2e', '#151a2e'),
-          armor: it('armor_dread', '#c4ccd6', '#d9a92e'),
+          armor: it('armor_crimson_plate'),
           feet: it('feet_greaves', '#c4ccd6', '#3a2d27'),
-          cape: it('cape_knight', '#a51d2d', '#d9a93a'),
-          held: { ...it('held_katana'), parts: { steel: 'c', blade: 'c', guard: 'b', hilt: 'a' } },
+          cape: it('cape_crimson'),
+          held: it('held_flame_sword'),
         },
         chakra: { color: 'red', onCharge: true, onCast: true, onVictory: true },
       }),

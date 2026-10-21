@@ -10,6 +10,7 @@ import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID
 import { GROUND } from '../rig';
 import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_PLATE, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
 import { CRIMSON_CAPE_BACK, CRIMSON_CAPE_BASE, CRIMSON_CAPE_EDGE, CRIMSON_CAPE_FAR, CRIMSON_CAPE_LINE, CRIMSON_CAPE_NEAR } from './crimsonCapeArt';
+import { TRAVELER_BACK, TRAVELER_BROWN, TRAVELER_HOOD, TRAVELER_REST, TRAVELER_SHOULDER, TRAVELER_SLOT } from './travelerCapeArt';
 
 const col = (key: string, label: string, def: string, kind: 'cloth' | 'leather' | 'metal' = 'cloth') => ({ key, label, default: def, kind });
 
@@ -550,6 +551,33 @@ function crimsonBack(g: DrawCtx, color: (ch: string, hex: string) => string): vo
   for (const i of cut) L.set(i % GRID, (i / GRID) | 0, edge, 3, 'back', F_NO_TEXTURE | F_NO_OUTLINE);
 }
 
+/** How far above the ground line his traveller's cape's hem hangs at rest (fine pixels; the male figure, idle). */
+const TRAVELER_HEM_ABOVE_GROUND = GROUND * RES - (TRAVELER_REST.TRAVELER_BACK[1] + TRAVELER_BACK.rows.length - 1);
+
+/**
+ * The back of a painted cape (capeBack) hung from `at`: his pixels pushed by the wind as paintedPart does,
+ * but the hem never hangs lower than at rest (crouched or seated the cloth gathers up behind instead of
+ * passing through the ground: the lower rows ride up over the ones above, so his hem stays whole), as
+ * the crimson cape's back does.
+ */
+function hemmedBack(g: DrawCtx, p: PaintedPart, at: Vec, hemAbove: number, color: (ch: string, hex: string) => string): void {
+  const L = g.L('capeBack');
+  const w = capeWind(g);
+  const ax = Math.floor(at.x * RES) - p.pivot[0];
+  const ay = Math.floor(at.y * RES) - p.pivot[1];
+  const n = p.rows.length;
+  const lift = w.lift * 1.4 * RES;
+  const over = Math.max(0, ay + n - 1 - Math.round(lift) - (GROUND * RES - hemAbove));
+  const pens: Record<string, number> = {};
+  for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
+  p.rows.forEach((row, j) => {
+    const k = j / Math.max(1, n - 1);
+    const dx = Math.round((w.dx + w.wave) * RES * k ** 1.3);
+    const dy = -Math.round((lift + over) * k * k);
+    for (let i = 0; i < row.length; i++) if (row[i] !== '.') L.set(ax + i + dx, ay + j + dy, pens[row[i]], 3, 'back', F_NO_TEXTURE | F_NO_OUTLINE);
+  });
+}
+
 export const CAPE_ITEMS: ItemDef[] = [
   {
     id: 'cape_shadow',
@@ -717,9 +745,25 @@ export const CAPE_ITEMS: ItemDef[] = [
     id: 'cape_traveler',
     slot: 'cape',
     name: "Traveler's Cape",
-    desc: 'A weathered, hip-length brown cape with its hood bunched around the neck.',
-    colors: [col('main', 'Cape', '#7d5b3b'), col('hood', 'Hood', '#5f4530')],
-    draw: (g, [c, hood]) => {
+    desc: 'A weathered brown hood-cape: the hood bunched round the neck and across the chest, the cloth over the near shoulder and hanging behind the arm to the calf.',
+    colors: [col('main', 'Cape', TRAVELER_BROWN)],
+    draw: (g, [c0]) => {
+      // The owner's cape from his Trunks 2 picture (2026-10-21; tools/refs/trunks-traveler-cape-from-ref.py):
+      // the cloth behind the near arm hangs from the near shoulder and swings in the wind as his other
+      // capes do; the hood rides the torso about the neck, in front of the chest and behind the arms; the
+      // cloth over the near shoulder rides it, over the arm. At rest every pixel is his, where he drew it.
+      // His browns follow the slot (the old default means his); his line stays. Knocked out, the drawn
+      // cape lies along the body instead.
+      const c = c0.toLowerCase() === '#7d5b3b' ? TRAVELER_BROWN : c0;
+      if (g.rig.pose !== 'downed') {
+        const tint = (_ch: string, hex: string) => (TRAVELER_SLOT[hex] === 'main' ? retintHex(hex, TRAVELER_BROWN, c) : hex);
+        hemmedBack(g, TRAVELER_BACK, g.rig.shoulderN, TRAVELER_HEM_ABOVE_GROUND, tint);
+        paintedPart(g, g.L('capeFront'), TRAVELER_HOOD, 'torso', tint, false, g.rig.neck);
+        paintedPart(g, g.L('nearArm.over'), TRAVELER_SHOULDER, 'upperArmN', tint, false);
+        return;
+      }
+      // the drawn cape's hood, a shade darker than its cloth
+      const hood = retintHex('#5f4530', '#7d5b3b', c);
       const b = g.bp;
       const Lt = b.torsoLen;
       const top = topPt(g);

@@ -11,6 +11,45 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
+import { CARGO_GREEN, CARGO_SEAT, CARGO_SHIN_F, CARGO_SHIN_N, CARGO_SLOT, CARGO_THIGH_F, CARGO_THIGH_N } from './cargoPantsArt';
+import { partsOff, savedAsHis, slotTint, stretchedPiece } from './trunksKit';
+import { TRAVELER_GLOVE_BLACK, TRAVELER_GLOVE_F, TRAVELER_GLOVE_N, TRAVELER_GLOVE_SLOT, TRAVELER_GLOVE_TONES } from './travelerGlovesArt';
+import { BELT, BELT_BUCKLE, BELT_LEATHER, BELT_SLOT } from './beltArt';
+import {
+  SHIRT_ARM_FORE_F,
+  SHIRT_ARM_FORE_N,
+  SHIRT_ARM_UP_F,
+  SHIRT_ARM_UP_N,
+  SHIRT_BLUE,
+  SHIRT_BODY,
+  SHIRT_SLEEVE_F,
+  SHIRT_SLEEVE_N,
+  SHIRT_SLOT,
+  SHIRT_TRIM,
+} from './shortSleeveShirtArt';
+import {
+  BOMBER_BLUE,
+  BOMBER_BODY,
+  BOMBER_FIST_F,
+  BOMBER_FIST_N,
+  BOMBER_SHIRT,
+  BOMBER_SLEEVE_FORE_F,
+  BOMBER_SLEEVE_FORE_N,
+  BOMBER_SLEEVE_UP_F,
+  BOMBER_SLEEVE_UP_N,
+  BOMBER_SLOT,
+} from './bomberJacketArt';
+import {
+  LEGGINGS_CREST,
+  LEGGINGS_PURPLE,
+  LEGGINGS_SEAT,
+  LEGGINGS_SHIN_F,
+  LEGGINGS_SHIN_N,
+  LEGGINGS_SLOT,
+  LEGGINGS_THIGH_F,
+  LEGGINGS_THIGH_N,
+} from './leggingsArt';
+import { isFemaleBody } from '../types';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -879,10 +918,19 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
   {
     id: 'top_highcollar',
     slot: 'top',
-    name: 'High-Collar Shirt',
-    desc: 'Short-sleeved shirt with a tall wrapped collar and contrasting hem and cuffs.',
-    colors: [col('main', 'Shirt', '#1e2a4a'), col('trim', 'Trim', '#e5e7eb')],
-    draw: (g, [c, t]) => {
+    name: 'Short-Sleeved Shirt',
+    desc: 'A dark-blue shirt with short sleeves and a round neck, its hem and cuffs a greyer blue.',
+    colors: [col('main', 'Shirt', SHIRT_BLUE), col('trim', 'Trim', SHIRT_TRIM)],
+    draw: (g, [c0, t0]) => {
+      // The owner's shirt from his Trunks 2 picture (2026-10-21; tools/refs/trunks-highcollar-from-ref.py):
+      // he drew it with no collar (his hood covers the neck), so it is a short-sleeved shirt now. The
+      // female bodies keep the drawn shirt (his is a man's chest).
+      const c = savedAsHis(c0, '#1e2a4a', SHIRT_BLUE);
+      const t = savedAsHis(t0, '#e5e7eb', SHIRT_TRIM);
+      if (!isFemaleBody(g.rig.body)) {
+        drawShortShirt(g, c, t);
+        return;
+      }
       const L = g.L('torso.top');
       const Lt = g.bp.torsoLen;
       const pen = clothPen(g, c, 'torso');
@@ -1209,9 +1257,17 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
     id: 'top_bomber',
     slot: 'top',
     name: 'Open Bomber Jacket',
-    desc: 'Cropped jacket with a popped collar and long sleeves, worn open over a dark tank top.',
-    colors: [col('main', 'Jacket', '#1f4f8f'), col('under', 'Tank Top', '#2b2a33')],
-    draw: (g, [c, u]) => {
+    desc: 'A blue jacket with a high collar and long sleeves, worn open over a dark-grey shirt.',
+    colors: [col('main', 'Jacket', BOMBER_BLUE), col('under', 'Tank Top', BOMBER_SHIRT)],
+    draw: (g, [c0, u0]) => {
+      // The owner's jacket from his Trunks 3 picture (2026-10-21; tools/refs/trunks-bomber-from-ref.py).
+      // The female bodies keep the drawn jacket (his is a man's chest and arms).
+      const c = savedAsHis(c0, '#1f4f8f', BOMBER_BLUE);
+      const u = savedAsHis(u0, '#2b2a33', BOMBER_SHIRT);
+      if (!isFemaleBody(g.rig.body)) {
+        drawBomber(g, c, u);
+        return;
+      }
       const L = g.L('torso.top');
       const Lt = g.bp.torsoLen;
       const pen = clothPen(g, c, 'torso');
@@ -1294,6 +1350,115 @@ function legFolds(g: DrawCtx, L: Layer, s: Side, inflate: number, ankle = 1.62):
   fold(L, along(a, b, 0.75, -r * 0.9), along(a, b, 1.0, r * 0.3));
 }
 
+/**
+ * The owner's cargo trousers (his Trunks 2 picture, cargoPantsArt.ts): on each leg the thigh turns with
+ * the thigh about the hip and the shin with the shin about the knee, the far leg behind the near one;
+ * the seat rides the pelvis over both. At rest every pixel is his, where he drew it. The bulky body's
+ * broader legs and hips get his pieces broadened (a few of his columns doubled).
+ */
+function drawCargo(g: DrawCtx, green: string): void {
+  const tint = slotTint(g, CARGO_SLOT, { main: CARGO_GREEN }, { main: green });
+  paintedTrousers(g, { seat: CARGO_SEAT, thighN: CARGO_THIGH_N, shinN: CARGO_SHIN_N, thighF: CARGO_THIGH_F, shinF: CARGO_SHIN_F }, tint, CARGO_HEM);
+}
+
+/** How far down the shin (from the knee) the owner's trousers reach at rest: the cargo bloused low, his
+ * Trunks 3 trousers just under the knee (where his boots start). */
+const CARGO_HEM = 0.5;
+const LEGGINGS_HEM = 0.25;
+
+/** Takes our bare thigh, and our bare shin down to `t` of its length from the knee, away. */
+function bareLegOffAbove(g: DrawCtx, s: Side, t: number): void {
+  const thigh = partIndex(prt('thigh', s));
+  const shin = partIndex(prt('shin', s));
+  const { knee, ankle } = legJoints(g.rig, s);
+  const d = sub(ankle, knee);
+  const l2 = d.x * d.x + d.y * d.y || 1;
+  const L = g.L(legDepth(s, 'body'));
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || (L.part[i] !== thigh && L.part[i] !== shin)) continue;
+    const x = ((i % GRID) + 0.5) / RES - knee.x;
+    const y = (Math.floor(i / GRID) + 0.5) / RES - knee.y;
+    if (L.part[i] === thigh || (x * d.x + y * d.y) / l2 < t) L.mat[i] = -1;
+  }
+}
+
+/** A pair of the owner's painted trousers: his seat, thighs and shins (see drawCargo). */
+function paintedTrousers(
+  g: DrawCtx,
+  p: { seat: PaintedPiece; thighN: PaintedPiece; shinN: PaintedPiece; thighF: PaintedPiece; shinF: PaintedPiece },
+  tint: (ch: string, hex: string) => string,
+  hem: number,
+): void {
+  const r = g.rig;
+  const big = r.body === 'bulky';
+  const fit = (q: PaintedPiece, l: number, rt: number) => (big ? stretchedPiece(q, l, rt, 0) : q);
+  for (const s of SIDES) {
+    const { hip, knee, ankle } = legJoints(r, s);
+    const [thigh, shin] = s === 'N' ? [p.thighN, p.shinN] : [p.thighF, p.shinF];
+    // Our bare leg under his trousers is taken away down to his hem, so it never shows past his
+    // narrower legs or between them (below the hem our shin stays, for shoes that leave it bare).
+    bareLegOffAbove(g, s, hem);
+    stampPiece(g, legDepth(s, 'cloth'), fit(shin, 1, 1), knee, segAngle(knee, ankle), prt('shin', s), tint);
+    stampPiece(g, legDepth(s, 'cloth'), fit(thigh, 2, 2), hip, segAngle(hip, knee), prt('thigh', s), tint);
+  }
+  stampPiece(g, 'torso.bottom', fit(p.seat, 3, 3), r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint);
+}
+
+/**
+ * The owner's open jacket (his Trunks 3 picture, bomberJacketArt.ts): the body rides the torso about the
+ * neck, each sleeve's upper part its upper arm about the shoulder and its forearm part (with the cuff)
+ * its forearm about the elbow, over our arms (taken away under them, so at rest every pixel of the arms
+ * is his, where he drew it). A closed hand is his bare fist under the cuff, in the character's skin. The
+ * bulky body keeps its big hands, his jacket and sleeves broadened over its broader torso and arms.
+ */
+function drawBomber(g: DrawCtx, blue: string, grey: string): void {
+  const r = g.rig;
+  const tint = slotTint(g, BOMBER_SLOT, { main: BOMBER_BLUE, under: BOMBER_SHIRT }, { main: blue, under: grey });
+  const big = r.body === 'bulky';
+  for (const s of SIDES) {
+    const j = armJoints(r, s);
+    partsOff(g, [armDepth(s, 'body')], [prt('upperArm', s), prt('forearm', s)]);
+    const [up, fore, fist] = s === 'N' ? [BOMBER_SLEEVE_UP_N, BOMBER_SLEEVE_FORE_N, BOMBER_FIST_N] : [BOMBER_SLEEVE_UP_F, BOMBER_SLEEVE_FORE_F, BOMBER_FIST_F];
+    const fit = (q: PaintedPiece) => (big ? stretchedPiece(q, 2, 2, 0) : q);
+    stampPiece(g, armDepth(s, 'cloth'), fit(fore), j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
+    stampPiece(g, armDepth(s, 'cloth'), fit(up), j.shoulder, segAngle(j.shoulder, j.elbow), prt('upperArm', s), tint);
+    const { kind } = handPose(g, s);
+    // (With gloves on, the gloves draw the hands.)
+    if (!big && !g.has('hands') && (kind === 'grip' || kind === 'fist')) {
+      bareHandOff(g, s);
+      paintedFist(g, s, fist, tint);
+    }
+  }
+  stampPiece(g, 'torso.top', big ? stretchedPiece(BOMBER_BODY, 4, 5, 1) : BOMBER_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
+}
+
+/**
+ * The owner's short-sleeved shirt (his Trunks 2 picture, shortSleeveShirtArt.ts): the body rides the torso
+ * about the neck, each sleeve its upper arm about the shoulder. On the male body his bare arms come with
+ * it, in the character's skin (he drew them broader than ours, and they are part of his figure): each
+ * upper arm and forearm turns with ours about the shoulder and the elbow, and our arm under them is taken
+ * away, so at rest every pixel of the arms is his, where he drew it. The bulky body keeps its own big
+ * arms, his shirt and sleeves broadened over them.
+ */
+function drawShortShirt(g: DrawCtx, blue: string, trim: string): void {
+  const r = g.rig;
+  const tint = slotTint(g, SHIRT_SLOT, { main: SHIRT_BLUE, trim: SHIRT_TRIM }, { main: blue, trim });
+  const big = r.body === 'bulky';
+  for (const s of SIDES) {
+    const j = armJoints(r, s);
+    const up = segAngle(j.shoulder, j.elbow);
+    if (!big) {
+      partsOff(g, [armDepth(s, 'body')], [prt('upperArm', s), prt('forearm', s)]);
+      const [arm, fore] = s === 'N' ? [SHIRT_ARM_UP_N, SHIRT_ARM_FORE_N] : [SHIRT_ARM_UP_F, SHIRT_ARM_FORE_F];
+      stampPiece(g, armDepth(s, 'body'), fore, j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
+      stampPiece(g, armDepth(s, 'body'), arm, j.shoulder, up, prt('upperArm', s), tint);
+    }
+    const sleeve = s === 'N' ? SHIRT_SLEEVE_N : SHIRT_SLEEVE_F;
+    stampPiece(g, armDepth(s, 'cloth'), big ? stretchedPiece(sleeve, 1, 1, 0) : sleeve, j.shoulder, up, prt('upperArm', s), tint);
+  }
+  stampPiece(g, 'torso.top', big ? stretchedPiece(SHIRT_BODY, 4, 5, 1) : SHIRT_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
+}
+
 export const BOTTOM_ITEMS: ItemDef[] = liftMain([
   {
     id: 'bottom_shinobi',
@@ -1370,9 +1535,15 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     id: 'bottom_cargo',
     slot: 'bottom',
     name: 'Baggy Cargo Pants',
-    desc: 'Roomy work trousers bloused at the ankle, with a strapped thigh pouch.',
-    colors: [col('main', 'Pants', '#55603f'), col('pouch', 'Pouch', '#6e5a3c', 'leather')],
+    desc: 'Roomy green work trousers, baggy over the thighs and bloused over the boots.',
+    colors: [col('main', 'Pants', CARGO_GREEN), col('pouch', 'Pouch', '#6e5a3c', 'leather')],
     draw: (g, [c, p]) => {
+      // The owner's trousers from his Trunks 2 picture (2026-10-21; tools/refs/trunks-cargo-from-ref.py).
+      // The female bodies keep the drawn trousers with the thigh pouch (his are a man's legs).
+      if (!isFemaleBody(g.rig.body)) {
+        drawCargo(g, savedAsHis(c, '#55603f', CARGO_GREEN));
+        return;
+      }
       trousers(g, c, 1.86, 1.05, 3.2);
       waistband(g, 3.2);
       for (const s of SIDES) {
@@ -1413,10 +1584,20 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
   {
     id: 'bottom_leggings',
     slot: 'bottom',
-    name: 'Fitted Leggings',
-    desc: 'Snug stretch leggings with a contrasting side seam.',
-    colors: [col('main', 'Leggings', '#2a2433'), col('seam', 'Side Seam', '#7a68a0')],
-    draw: (g, [c, sc]) => {
+    name: 'Belted Trousers',
+    desc: 'Dark purple trousers, straight to the boots, light crests down the sides, a belt with a grey buckle.',
+    colors: [col('main', 'Pants', LEGGINGS_PURPLE), col('seam', 'Side Seam', LEGGINGS_CREST)],
+    draw: (g, [c0, sc0]) => {
+      // The owner's trousers from his Trunks 3 picture (2026-10-21; tools/refs/trunks-leggings-from-ref.py):
+      // he drew them as straight belted trousers, so they are no longer leggings. The female bodies keep
+      // the drawn leggings (his are a man's legs). The old default colours mean his.
+      const c = savedAsHis(c0, '#2a2433', LEGGINGS_PURPLE);
+      const sc = savedAsHis(sc0, '#7a68a0', LEGGINGS_CREST);
+      if (!isFemaleBody(g.rig.body)) {
+        const tint = slotTint(g, LEGGINGS_SLOT, { main: LEGGINGS_PURPLE, seam: LEGGINGS_CREST }, { main: c, seam: sc });
+        paintedTrousers(g, { seat: LEGGINGS_SEAT, thighN: LEGGINGS_THIGH_N, shinN: LEGGINGS_SHIN_N, thighF: LEGGINGS_THIGH_F, shinF: LEGGINGS_SHIN_F }, tint, LEGGINGS_HEM);
+        return;
+      }
       trousers(g, c, 1.96, 0.18, 3.4);
       waistband(g, 3.4);
       for (const s of SIDES) {
@@ -1509,9 +1690,20 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
     id: 'waist_belt',
     slot: 'waist',
     name: 'Leather Belt',
-    desc: 'Stitched leather belt with a square metal buckle.',
-    colors: [col('main', 'Leather', '#4a3122', 'leather'), col('buckle', 'Buckle', '#c9b27a', 'metal')],
-    draw: (g, [c, bk]) => {
+    desc: 'A brown leather belt with a brass H buckle, a flapped pouch on the near hip and a strap on the far one.',
+    colors: [col('main', 'Leather', BELT_LEATHER, 'leather'), col('buckle', 'Buckle', BELT_BUCKLE, 'metal')],
+    draw: (g, [c0, bk0]) => {
+      // The owner's belt from his Trunks 2 picture (2026-10-21; tools/refs/trunks-belt-from-ref.py), riding
+      // the pelvis where he drew it: at rest every pixel is his. The bulky body's broader waist gets it
+      // broadened; the female bodies keep the drawn belt (his is cut for a man's waist).
+      const c = savedAsHis(c0, '#4a3122', BELT_LEATHER);
+      const bk = savedAsHis(bk0, '#c9b27a', BELT_BUCKLE);
+      if (!isFemaleBody(g.rig.body)) {
+        const r = g.rig;
+        const tint = slotTint(g, BELT_SLOT, { main: BELT_LEATHER, buckle: BELT_BUCKLE }, { main: c, buckle: bk });
+        stampPiece(g, 'waist', r.body === 'bulky' ? stretchedPiece(BELT, 3, 4, 0) : BELT, r.pelvis, segAngle(r.pelvis, r.neck), 'torso', tint);
+        return;
+      }
       const L = g.L('waist');
       const hh = g.bp.hipHalf;
       const lp = clothPen(g, c, 'torso', 0, 'leather');
@@ -1746,6 +1938,17 @@ function leatherHand(g: DrawCtx, s: Side, color: (ch: string, hex: string) => st
   }
 }
 
+/** Our hand picture for the pose (open, pointing, relaxed, cradling) in these tones, by its shades. */
+function toneHand(g: DrawCtx, s: Side, tones: readonly string[]): void {
+  const tmp = new Layer();
+  handDraw(g, tmp, s, { mat: 0, part: prt('hand', s) });
+  const mats = tones.map((t) => g.m(t, 'flat'));
+  const L = g.L(armDepth(s, 'armor'));
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (tmp.mat[i] >= 0) L.set(i % GRID, (i / GRID) | 0, mats[Math.min(tmp.shade[i], mats.length - 1)], 3, prt('hand', s), F_NO_TEXTURE | F_NO_OUTLINE);
+  }
+}
+
 export const HAND_ITEMS: ItemDef[] = liftMain([
   {
     id: 'hands_fingerless',
@@ -1891,6 +2094,30 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       for (const s of SIDES) {
         const j = armJoints(g.rig, s);
         stampPiece(g, armDepth(s, 'armor'), s === 'N' ? BRACER_N : BRACER_F, j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
+      }
+    },
+  },
+  {
+    id: 'hands_traveler_gloves',
+    slot: 'hands',
+    name: "Traveler's Gloves",
+    desc: 'Black fingerless gloves to the wrist, the fingertips bare.',
+    colors: [col('main', 'Glove', TRAVELER_GLOVE_BLACK)],
+    draw: (g, [c]) => {
+      // The owner's gloves from his Trunks 2 picture (2026-10-21; tools/refs/trunks-fingerless-from-ref.py),
+      // a new item beside the Fingerless Gloves (those became his Ren's gloves). Closed, each hand is his
+      // fist in place of ours, pinned to the wrist where he drew it: the near one round the grip (which
+      // shows through it where it does in his picture; the same fist closes on nothing), the far one
+      // hanging, his fingertips in the character's skin. Open, pointing or relaxed it is our hand
+      // picture in his glove's greys. His greys follow the slot; his black line stays.
+      const tint = slotTint(g, TRAVELER_GLOVE_SLOT, { main: TRAVELER_GLOVE_BLACK }, { main: c });
+      const tones = TRAVELER_GLOVE_TONES.map((t) => tint('', t));
+      for (const s of SIDES) {
+        const { kind } = handPose(g, s);
+        if (kind === 'grip' || kind === 'fist') {
+          bareHandOff(g, s);
+          paintedFist(g, s, s === 'N' ? TRAVELER_GLOVE_N : TRAVELER_GLOVE_F, tint);
+        } else toneHand(g, s, tones);
       }
     },
   },

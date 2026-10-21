@@ -10,6 +10,9 @@ import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } fr
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
+import { BOOT_FOOT_F, BOOT_FOOT_N, BOOT_SHAFT_F, BOOT_SHAFT_N, LEATHER_BOOT_BROWN, LEATHER_BOOT_SLOT } from './leatherBootsArt';
+import { OPEN_BOOT_FOOT_F, OPEN_BOOT_FOOT_N, OPEN_BOOT_SHAFT_F, OPEN_BOOT_SHAFT_N, OPEN_BOOT_SLOT, OPEN_BOOT_TAN } from './openToeBootsArt';
+import { savedAsHis, slotTint } from './trunksKit';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'leather') => ({ key, label, default: def, kind });
@@ -269,6 +272,31 @@ function lowerLegOff(g: DrawCtx, s: Side): void {
   }
 }
 
+/**
+ * Takes our foot and our shin below `t` of its length from the knee away (a boot the owner painted takes
+ * their place; above his boot's top our shin stays, so legs without trousers keep their knees).
+ */
+function shinOffBelow(g: DrawCtx, s: Side, t: number): void {
+  const shin = partIndex(`shin${s}`);
+  const foot = partIndex(`foot${s}`);
+  const { knee, ankle } = legJoints(g.rig, s);
+  const d = sub(ankle, knee);
+  const l2 = d.x * d.x + d.y * d.y || 1;
+  // Only the bare leg: trousers (their own layer) stay, bloused over his boot as he drew them.
+  const L = g.L(legDepth(s, 'body'));
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || (L.part[i] !== shin && L.part[i] !== foot)) continue;
+    const x = ((i % GRID) + 0.5) / RES - knee.x;
+    const y = (Math.floor(i / GRID) + 0.5) / RES - knee.y;
+    if (L.part[i] === foot || (x * d.x + y * d.y) / l2 > t) L.mat[i] = -1;
+  }
+}
+
+/** How far down the shin (from the knee) his laced boots' shafts start at rest, a little under it. */
+const LEATHER_BOOT_TOP = 0.45;
+/** The same for his open-toed boots, whose shafts start just under the knee. */
+const OPEN_BOOT_TOP = 0.2;
+
 /** Takes our bare foot away (a sandal the owner painted takes its place); the shin stays. */
 function bareFootOff(g: DrawCtx, s: Side): void {
   const foot = partIndex(`foot${s}`);
@@ -283,27 +311,21 @@ export const FEET_ITEMS: ItemDef[] = [
     id: 'feet_leather',
     slot: 'feet',
     name: 'Leather Boots',
-    desc: 'Knee-high brown leather boots with a folded cuff and a strapped ankle.',
-    colors: [col('main', 'Leather', '#6b4226'), col('sole', 'Sole', '#2a1a12')],
-    draw: (g, [c, sole]) => {
-      boot(g, c, 1.24, BOOT, { sole, grow: 0.6 });
+    desc: 'Brown laced leather boots to mid-shin, worn and creased, on a dark sole.',
+    colors: [col('main', 'Leather', LEATHER_BOOT_BROWN)],
+    draw: (g, [c]) => {
+      // The owner's boots from his Trunks 2 picture (2026-10-21; tools/refs/trunks-leather-boots-from-ref.py):
+      // on each leg the laced shaft turns with the shin about the ankle and the foot stays flat on the
+      // ground, our shin under the shaft and our foot taken away. At rest every pixel is his, where he drew
+      // it. His browns follow the slot (the old default means his); his black line stays.
+      const brown = savedAsHis(c, '#6b4226', LEATHER_BOOT_BROWN);
+      const tint = slotTint(g, LEATHER_BOOT_SLOT, { main: LEATHER_BOOT_BROWN }, { main: brown });
       for (const s of SIDES) {
-        const L = g.L(legDepth(s, 'feet'));
-        const sp = bootPen(g, c, s, 'shin');
-        // folded cuff: a wider band with a dark line under it and a lit edge
-        limb(g, L, 'leg', s, 1.12, 1.34, 1.0, sp);
-        across(g, L, 'leg', s, 1.33, 1.0, -1);
-        const c0 = legPoint(g, s, 1.13);
-        const c1 = legPoint(g, s, 1.33);
-        seam(L, along(c0, c1, 0, -limbR(g, 'leg', 1.13) - 0.4), along(c0, c1, 1, -limbR(g, 'leg', 1.33) - 0.4), 1);
-        // shaft highlight and ankle wrinkles
-        const a = legPoint(g, s, 1.4);
-        const b = legPoint(g, s, 1.86);
-        seam(L, along(a, b, 0, -limbR(g, 'leg', 1.4) * 0.45), along(a, b, 1, -limbR(g, 'leg', 1.86) * 0.4), 1);
-        crease(L, along(a, b, 0.78, -0.6), along(a, b, 0.92, 1.2));
-        // ankle strap with a small brass buckle
-        limb(g, L, 'leg', s, 1.8, 1.87, 0.75, bootPen(g, sole, s, 'shin'));
-        stud(L, along(legPoint(g, s, 1.8), legPoint(g, s, 1.87), 0.5, 0.6), g.m('#b8913a', 'metal'), `shin${s}` as Pen['part'], s === 'N');
+        const { knee, ankle } = legJoints(g.rig, s);
+        shinOffBelow(g, s, LEATHER_BOOT_TOP);
+        const [shaft, foot] = s === 'N' ? [BOOT_SHAFT_N, BOOT_FOOT_N] : [BOOT_SHAFT_F, BOOT_FOOT_F];
+        stampPiece(g, legDepth(s, 'feet'), shaft, ankle, segAngle(knee, ankle), `shin${s}`, tint);
+        stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, tint);
       }
     },
   },
@@ -333,33 +355,21 @@ export const FEET_ITEMS: ItemDef[] = [
   {
     id: 'feet_cowboy',
     slot: 'feet',
-    name: 'Cowboy Boots',
-    desc: 'Stitched riding boots with a pointed toe, a raised heel and a spur.',
-    colors: [col('main', 'Leather', '#8b5a2f'), col('stitch', 'Stitching', '#e2bf7a'), col('spur', 'Spur', '#c8ced6', 'metal')],
-    draw: (g, [c, st, sp]) => {
-      boot(g, c, 1.3, COWBOY, { grow: 0.7, sole: '#2a1a12', third: st, thirdKind: 'cloth' });
+    name: 'Open-Toed Boots',
+    desc: 'Tan leather boots to mid-shin, scuffed and creased, open at the front over the bare toes.',
+    colors: [col('main', 'Leather', OPEN_BOOT_TAN)],
+    draw: (g, [c]) => {
+      // The owner's boots from his Trunks 3 picture (2026-10-21; tools/refs/trunks-cowboy-from-ref.py): he
+      // drew this slot's boots (the Cowboy Boots) open over the toes, so they are open-toed boots now.
+      // Drawn as his leather boots are (feet_leather); his toes follow the character's skin.
+      const tan = savedAsHis(c, '#8b5a2f', OPEN_BOOT_TAN);
+      const tint = slotTint(g, OPEN_BOOT_SLOT, { main: OPEN_BOOT_TAN }, { main: tan });
       for (const s of SIDES) {
-        const L = g.L(legDepth(s, 'feet'));
-        const a = legJoints(g.rig, s).ankle;
-        const shin = bootPen(g, c, s, 'shin');
-        // pull loop at the top of the shaft
-        const top = legPoint(g, s, 1.3);
-        tube(L, add(top, v(-0.6, 0)), add(top, v(-0.8, -1.3)), 0.55, 0.55, shin, 3);
-        // decorative stitching on the shaft
-        const stp: Pen = { mat: g.m(st, 'cloth'), part: `shin${s}` as Pen['part'], bias: sb(s) };
-        const p0 = legPoint(g, s, 1.42);
-        const p1 = legPoint(g, s, 1.86);
-        const r = limbR(g, 'leg', 1.6);
-        stitch(L, along(p0, p1, 0, -r * 0.1), along(p0, p1, 0.5, r * 0.45), stp, 3, 0);
-        stitch(L, along(p0, p1, 0.5, r * 0.45), along(p0, p1, 1, 0), stp, 3, 0);
-        seam(L, along(p0, p1, 0, -r * 0.7), along(p0, p1, 1, -r * 0.6), 1);
-        // spur: shank and a glinting rowel behind the heel
-        const A = g.L(legDepth(s, 'armor'));
-        const spm: Pen = { mat: g.m(sp, 'metal'), part: `foot${s}` as Pen['part'], bias: sb(s) };
-        const heel = s === 'F' ? v(a.x - 2.0, a.y + 3.0) : v(a.x - 2.4, a.y + 2.2);
-        tube(A, heel, add(heel, v(-1.2, -0.2)), 0.45, 0.45, spm, 3);
-        ellipse(A, heel.x - 1.6, heel.y - 0.2, 0.8, 0.8, spm, 4);
-        fpx(A, v(heel.x - 1.8, heel.y - 0.5), spm.mat, `foot${s}` as Pen['part'], 5 + sb(s));
+        const { knee, ankle } = legJoints(g.rig, s);
+        shinOffBelow(g, s, OPEN_BOOT_TOP);
+        const [shaft, foot] = s === 'N' ? [OPEN_BOOT_SHAFT_N, OPEN_BOOT_FOOT_N] : [OPEN_BOOT_SHAFT_F, OPEN_BOOT_FOOT_F];
+        stampPiece(g, legDepth(s, 'feet'), shaft, ankle, segAngle(knee, ankle), `shin${s}`, tint);
+        stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, tint);
       }
     },
   },

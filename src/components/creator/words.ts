@@ -207,6 +207,11 @@ const ES: Record<string, string> = {
   "Silk cord crossed over white ray skin, a gold ornament under the middle diamond.": "Cordón de seda cruzado sobre piel de raya blanca, con un adorno de oro bajo el rombo central.",
   "The bare white ray skin of a court sword, gold fittings and a red silk tassel.": "La piel de raya blanca de una espada de la corte, herrajes de oro y una borla de seda roja.",
   "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
+  // Aurelia's skirt and sash (items/aureliaLower.ts)
+  'Dawn Priestess Skirt': 'Falda de la Sacerdotisa del Alba',
+  'Dawn Priestess Sash': 'Fajín de la Sacerdotisa del Alba',
+  'A long white skirt open at the sides: an embroidered front panel with a gold border, side panels flaring back over a pale grey lining, gold scrolls along the hems. Women only.': 'Una falda blanca larga abierta por los lados: un panel delantero bordado con ribete de oro, paneles laterales que se abren hacia atrás sobre un forro gris pálido y volutas de oro en los bajos. Solo mujeres.',
+  'A wide gold sash over a brown belt with a steel buckle, a leather pouch with a gold stud on the hip, a red charm and the sash end draped over the hip. Women only.': 'Un fajín ancho de oro sobre un cinturón marrón con hebilla de acero, una bolsa de cuero con un remache de oro en la cadera, un amuleto rojo y la punta del fajín caída sobre la cadera. Solo mujeres.',
 };
 
 /** An editor label in the screen's language. */

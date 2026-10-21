@@ -57,7 +57,7 @@ function tails(g: DrawCtx, L: Layer, knot: Vec, pen: Pen, long: boolean): void {
   const sway = [0, 1, 1, 0][g.rig.frame % 4];
   const pose = g.rig.pose;
   const trail =
-    pose === 'attack' || pose === 'hurt' || pose === 'charge' || pose === 'run'
+    pose === 'attack' || pose === 'throw' || pose === 'pierce' || pose === 'hurt' || pose === 'charge' || pose === 'run'
       ? 3
       : pose === 'train' || pose === 'trainPole' || pose === 'trainFist'
         ? 2

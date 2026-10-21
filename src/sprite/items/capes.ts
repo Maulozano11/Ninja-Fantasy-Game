@@ -34,12 +34,34 @@ const TRAIN_WIND: Wind[] = [
   { dx: -1, lift: 0, wave: 0 },
 ];
 
+/** Throw: coiled, rising, swung back by the throw, then flung out behind by the leap of the release and its follow-through. */
+const THROW_WIND: Wind[] = [
+  { dx: -2, lift: 1, wave: 0 },
+  { dx: -3, lift: 1, wave: 1 },
+  { dx: -6, lift: 3, wave: 0 },
+  { dx: -9, lift: 6, wave: 1 },
+  { dx: -10, lift: 7, wave: 0 },
+];
+
+/** Pierce: still in the guard and the chamber, streaming back on the lunge and its hold, settling on the recoil. */
+const PIERCE_WIND: Wind[] = [
+  { dx: -1, lift: 0, wave: 0 },
+  { dx: -1, lift: 0, wave: 1 },
+  { dx: -9, lift: 6, wave: 0 },
+  { dx: -8, lift: 5, wave: 1 },
+  { dx: -4, lift: 2, wave: 0 },
+];
+
 /** Pose-dependent wind so capes trail in attacks and sway in idle. */
 export function capeWind(g: DrawCtx): Wind {
   const f = g.rig.frame;
   switch (g.rig.pose) {
     case 'attack':
       return f % 3 === 0 ? { dx: -2, lift: 1, wave: 1 } : f % 3 === 1 ? { dx: -9, lift: 7, wave: 0 } : { dx: -7, lift: 5, wave: 1 };
+    case 'throw':
+      return THROW_WIND[f % THROW_WIND.length];
+    case 'pierce':
+      return PIERCE_WIND[f % PIERCE_WIND.length];
     case 'hurt':
       return { dx: -6, lift: 4, wave: f % 2 ? 1 : 0 };
     case 'charge':

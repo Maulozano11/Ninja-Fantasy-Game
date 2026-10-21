@@ -1296,9 +1296,9 @@ function spriteLook(o: Partial<SpriteAppearance>): SpriteAppearance {
 export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; tagEs?: string; character: ShinobiCharacter }[] = [
   {
     name: 'Solen, the Founder King',
-    tag: 'Legion Plate · Crystal Greatsword',
+    tag: 'Legion Plate · Ice Crystal Sword',
     nameEs: 'Solen, el Rey Fundador',
-    tagEs: 'Placas de legión · Mandoble de cristal',
+    tagEs: 'Placas de legión · Espada de hielo',
     character: {
       id: 'preset_founder',
       name: 'Solen Valcaire',
@@ -1354,9 +1354,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           armor: it('armor_legion', '#8e98a6', '#a51f29', '#c49a3a'),
           // No red drapes behind his black cloak (the owner's Roman skirt has them on by default).
           skirt: { ...it('skirt_imperial', '#b3202a', '#6b4226', '#d4a531'), parts: { drapes: 'off' } },
-          feet: it('feet_sandals', '#1f1e26', '#c9a46c'),
+          feet: it('feet_gladiator_sandals'),
           cape: it('cape_shadow', '#2e2d35', '#d9a93a'),
-          held: it('held_crystal'),
+          held: it('held_ice_crystal'),
         },
         accessories: [it('acc_scarf', '#1f1e26'), it('acc_chest_strap')],
         chakra: { color: 'red', onCharge: true, onCast: true, onVictory: true },
@@ -1500,9 +1500,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
   },
   {
     name: 'Kaien, the Storm Avenger',
-    tag: 'Lightning Hand · Rogue Headband',
+    tag: 'Lightning Hand · Raven Fringe',
     nameEs: 'Kaien, el Vengador de la Tormenta',
-    tagEs: 'Mano de rayo · Bandana de renegado',
+    tagEs: 'Mano de rayo · Flequillo de cuervo',
     character: {
       id: 'preset_storm',
       name: 'Kaien',
@@ -1558,16 +1558,15 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           feet: it('feet_shinobi', '#2a2f3d', '#141821'),
           held: it('held_lightning'),
         },
-        headband: { position: 'forehead', slashed: true, tails: false, emblem: 'bolt', cloth: '#1e293b', plate: '#cbd5e1' },
         chakra: { color: 'yellow', tint: 'violet', onCharge: true, onCast: true, onVictory: false }, // Lightning like his jutsu, in his violet
       }),
     },
   },
   {
     name: 'Hiro, the Sunburst Hero',
-    tag: 'Spiral Orb · Fluttering Headband',
+    tag: 'Spiral Orb · Sunburst Spikes',
     nameEs: 'Hiro, el Héroe del Sol Radiante',
-    tagEs: 'Orbe espiral · Bandana al viento',
+    tagEs: 'Orbe espiral · Puntas solares',
     character: {
       id: 'preset_sunburst',
       name: 'Hiro',
@@ -1619,11 +1618,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           top: it('top_jacket', '#ec7a24', '#24252d', '#c9ced6'),
           bottom: it('bottom_shinobi', '#ec7a24', '#e7e1d1'),
           feet: it('feet_shinobi', '#2f5fa8', '#1d2433'),
-          face: it('face_beast'),
           held: it('held_spiral'),
         },
         accessories: [it('acc_kunai_leg')],
-        headband: { position: 'forehead', slashed: false, tails: true, emblem: 'spiral', cloth: '#1e3a8a', plate: '#cbd5e1' },
         chakra: { color: 'green', tint: 'orange', onCharge: true, onCast: true, onVictory: true }, // Wind like his jutsu, in his orange
       }),
     },
@@ -1753,7 +1750,6 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           feet: it('feet_sandals', '#2a2433', '#c9a46c'),
           held: it('held_palm'),
         },
-        headband: { position: 'neck', slashed: false, tails: false, emblem: 'sun', cloth: '#1e3a8a', plate: '#cbd5e1' },
         chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
       }),
     },

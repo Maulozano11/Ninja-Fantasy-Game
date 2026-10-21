@@ -6,7 +6,7 @@ import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
 import { retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
-import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
+import { drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
@@ -334,19 +334,6 @@ export const HELD_ITEMS: ItemDef[] = [
     },
   },
   {
-    id: 'held_crystal',
-    slot: 'held',
-    name: 'Crystal Greatsword',
-    desc: 'A huge blade of pale-blue crystal that glitters with every swing.',
-    colors: [col('blade', 'Crystal', '#8ccbe8', 'metal'), col('hilt', 'Grip', '#2a3348', 'leather'), col('guard', 'Guard', '#6f97c0', 'metal')],
-    draw: (g, [blade, hilt, guard]) => {
-      const c = { blade, grip: hilt, guard, wrap: '#8a9bb8' };
-      if (handsBusy(g)) drawWeapon(g, 'backGear', CRYSTAL_SWORD, backGrip(g, 48), backAngle(g, 48), c);
-      else if (handsLimp(g)) drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, c);
-      else if (!handsReleased(g)) drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, gripPoint(g), swordAngle(g), c);
-    },
-  },
-  {
     id: 'held_ice_crystal',
     slot: 'held',
     name: 'Ice Crystal Sword',
@@ -545,26 +532,6 @@ function animalMask(g: DrawCtx, c: { base: string; paint: string; eyes: string }
 
 export const FACE_ITEMS: ItemDef[] = [
   {
-    id: 'face_beast',
-    slot: 'face',
-    name: 'Beast Marks',
-    desc: 'Three whisker-like marks on each cheek.',
-    colors: [col('mark', 'Marks', '#3b2a2e', 'flat')],
-    draw: (g, [c]) => {
-      const L = g.L('head.mask');
-      const p = flatPen(g, c);
-      // Near cheek (between the ear and the nose) and the far cheek.
-      for (const [k, y] of [
-        [0, 3.6],
-        [1, 4.4],
-        [2, 5.2],
-      ]) {
-        hline(g, L, -2.2 + k * 0.3, y - 0.3 + k * 0.1, 0, y + (k - 1) * 0.3, p);
-        hline(g, L, 4.6, y + (k - 1) * 0.3, 6, y - 0.1 + k * 0.1, p);
-      }
-    },
-  },
-  {
     id: 'face_scar',
     slot: 'face',
     name: 'Battle Scar',
@@ -590,32 +557,6 @@ export const FACE_ITEMS: ItemDef[] = [
         px(L, q.x - 0.5, q.y - 0.5, p);
         px(L, q.x + 0.5, q.y + 0.5, p);
       }
-    },
-  },
-  {
-    id: 'face_sage',
-    slot: 'face',
-    name: 'Sage Markings',
-    desc: 'Orange pigment painted around the eyes, a sign of nature energy.',
-    colors: [col('pigment', 'Pigment', '#e8701a', 'flat')],
-    draw: (g, [c]) => {
-      const L = g.L('head.mask');
-      const p = flatPen(g, c);
-      const hx = g.rig.head.x;
-      const hy = g.rig.head.y;
-      const P = (x: number, y: number) => px(L, hx + x, hy + y, p);
-      // Pigment over the lids (between brow and lashes) sweeping out past the corners.
-      for (let x = -2.5; x <= 1.5; x += 0.5) P(x, -0.5);
-      P(-3, 0);
-      P(-3, 0.5);
-      P(-2.5, 0);
-      for (let x = 2.5; x <= 5.5; x += 0.5) P(x, -0.5);
-      P(5.5, 0);
-      P(5.5, 0.5);
-      // Crescents under the eyes
-      for (let x = -1.5; x <= 1; x += 0.5) P(x, 3.5);
-      P(-2, 3);
-      for (let x = 3; x <= 4.5; x += 0.5) P(x, 3);
     },
   },
   {

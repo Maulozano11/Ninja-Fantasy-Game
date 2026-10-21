@@ -95,43 +95,6 @@ const COWBOY: FootArt = {
   },
 };
 
-/** Boot with a riveted steel toe cap (third material). */
-const GREAVE_BOOT: FootArt = {
-  N: {
-    pivot: [6, 0],
-    rows: [
-      '...1234321..',
-      '...1234321..',
-      '...1234321..',
-      '...1233221..',
-      '..123443321.',
-      '.12344443321',
-      '.1vwwwwwwv21',
-      'vwxyyxxxwwwv',
-      'vxyzzyxxxwwv',
-      'vwxyyxxxwwwv',
-      '0vwwwwwwwwv0',
-      'bcdddddddddb',
-      'abbbbbbbbbba',
-    ],
-  },
-  F: {
-    pivot: [4, 0],
-    rows: [
-      '.12321........',
-      '.123221.......',
-      '.1233221......',
-      '.12333211.....',
-      '.12333vww.....',
-      '112233vwxwww..',
-      '1122333vwxyxwv',
-      '0112222vwwxwwv',
-      'abcccccccccccb',
-      '.aaaa.....aaa.',
-    ],
-  },
-};
-
 /** Open-toed shinobi boot in the owner's foot shape: heel and instep covered, bare toes, a sole. */
 const SHINOBI: FootArt = {
   N: {
@@ -376,37 +339,6 @@ export const FEET_ITEMS: ItemDef[] = [
         limb(g, L, 'leg', s, 1.8, 1.97, [0.5, 0.45], bootPen(g, c, s, 'shin', 'cloth'));
         wrapStripes(L, legPoint(g, s, 1.8), legPoint(g, s, 1.97), limbR(g, 'leg', 1.8) + 1, 0.8, 1, 0.6);
         footDraw(g, L, s, SANDAL, { main: g.m(c, 'cloth'), second: g.m(sole, 'leather') });
-      }
-    },
-  },
-  {
-    id: 'feet_greaves',
-    slot: 'feet',
-    name: 'Armored Greaves',
-    desc: 'Riveted steel shin plates, knee guards and toe caps strapped over sturdy boots.',
-    colors: [col('main', 'Steel', '#a7b0bb', 'metal'), col('boot', 'Boots', '#3a2d27')],
-    draw: (g, [c, bt]) => {
-      boot(g, bt, 1.5, GREAVE_BOOT, { grow: 0.65, sole: '#1a1412', third: c });
-      for (const s of SIDES) {
-        const L = g.L(legDepth(s, 'feet'));
-        const mp = bootPen(g, c, s, 'shin', 'metal');
-        const R = g.bp.legR;
-        // shin plate with a lit ridge and a dark far edge
-        limb(g, L, 'leg', s, 1.08, 1.86, [1.0, 0.85], mp);
-        const a = legPoint(g, s, 1.1);
-        const b = legPoint(g, s, 1.84);
-        seam(L, along(a, b, 0.04, -R[2] * 0.3), along(a, b, 1, -R[3] * 0.3), 2);
-        seam(L, along(a, b, 0.04, R[2] * 0.6), along(a, b, 1, R[3] * 0.6), -1);
-        // leather strap with a buckle, rivets top and bottom
-        limb(g, L, 'leg', s, 1.5, 1.57, 1.1, bootPen(g, bt, s, 'shin'));
-        stud(L, along(legPoint(g, s, 1.5), legPoint(g, s, 1.57), 0.5, -0.3), mp.mat, `shin${s}` as Pen['part'], s === 'N');
-        for (const t of [1.16, 1.78]) stud(L, along(legPoint(g, s, t), legPoint(g, s, t + 0.02), 0, -R[2] * 0.15), mp.mat, `shin${s}` as Pen['part'], false, true);
-        // knee guard
-        const k = legJoints(g.rig, s).knee;
-        const kp = { ...mp, part: `thigh${s}` as Pen['part'] };
-        ellipse(L, k.x + 0.5, k.y + 0.2, R[1] + 1.2, R[1] + 1.0, kp);
-        seam(L, v(k.x - R[1] + 0.2, k.y + 0.8), v(k.x + R[1] + 1.0, k.y + 0.8), -1);
-        fpx(L, v(k.x - 0.6, k.y - 0.8), kp.mat, `thigh${s}` as Pen['part'], 5 + sb(s));
       }
     },
   },

@@ -10,7 +10,7 @@ import { COMBO_KICKS, COMBO_TURNED, drawRig, frameCount, POSE_FPS, rigPoseFor, T
 import { SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
 const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
-const WEAPONS = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai', 'held_naginata'];
+const WEAPONS = ['held_katana', 'held_ice_crystal', 'held_flame_sword', 'held_kunai', 'held_naginata'];
 
 const look = (body: BodyType, held?: string, stowed = false, cape?: string): SpriteAppearance => {
   const l = defaultAppearance();
@@ -105,7 +105,7 @@ describe('throw and pierce poses', () => {
   });
 
   it('keeps a stowed weapon where it is, and gives bare hands a kunai to throw', () => {
-    assert.ok(heldBox(look('male', 'held_crystal', true), 'throw', THROW_RELEASE_FRAME), 'stowed on the back');
+    assert.ok(heldBox(look('male', 'held_ice_crystal', true), 'throw', THROW_RELEASE_FRAME), 'stowed on the back');
     assert.ok(heldBox(look('male'), 'throw', 1), 'a kunai in the bare hand');
     assert.ok(heldBox(look('male'), 'throw', THROW_RELEASE_FRAME - 1), 'the kunai flung');
     assert.equal(heldBox(look('male'), 'throw', THROW_RELEASE_FRAME), null, 'thrown');
@@ -113,7 +113,7 @@ describe('throw and pierce poses', () => {
 
   it('keeps a blade stowed on the back behind the body when it pitches forward', () => {
     for (const body of BODIES) {
-      for (const held of ['held_crystal', 'held_ice_crystal', 'held_flame_sword']) {
+      for (const held of ['held_ice_crystal', 'held_flame_sword']) {
         for (const f of [THROW_RELEASE_FRAME, THROW_RELEASE_FRAME + 1]) {
           const b = heldBox(look(body, held, true), 'throw', f)!;
           const neck = drawRig(body, 'throw', f).neck;
@@ -126,7 +126,7 @@ describe('throw and pierce poses', () => {
   it('streams a cape back along the back on the pitched frames, not down between the legs', () => {
     const back = partIndex('back');
     for (const body of BODIES) {
-      for (const cape of ['cape_knight', 'cape_rose', 'cape_crimson', 'cape_shadow']) {
+      for (const cape of ['cape_crimson', 'cape_shadow', 'cape_traveler']) {
         const s = renderSprite(look(body, 'held_katana', false, cape), 'throw', THROW_RELEASE_FRAME);
         const r = s.rig;
         const b = r.bp;

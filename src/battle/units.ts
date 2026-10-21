@@ -26,8 +26,6 @@ export function weaponOf(c: ShinobiCharacter): Weapon {
   switch (held) {
     case 'held_katana':
       return W('Katana', '1d8', 'Slashing', 1.5, true, true);
-    case 'held_crystal':
-      return W('Crystal blade', '1d10', 'Slashing', 1.5, false, true, true);
     case 'held_ice_crystal':
       return W('Ice crystal sword', '1d8', 'Slashing', 1.5, false, true);
     case 'held_flame_sword':
@@ -150,7 +148,7 @@ function look(o: Partial<SpriteAppearance>): SpriteAppearance {
     eyeColor: '#7a1f2a',
     slots: {},
     accessories: [],
-    headband: { position: 'forehead', slashed: true, tails: true, emblem: 'crescent', cloth: '#2a2d3a', plate: '#9aa3ad' },
+    headband: { position: 'none', slashed: false, tails: false, emblem: 'crescent', cloth: '#2a2d3a', plate: '#9aa3ad' },
     chakra: { color: 'red', onCharge: true, onCast: true, onVictory: false },
     pixelEdits: [],
     ...o,

@@ -3,41 +3,41 @@
 // keep working.
 
 import { rgbToHsl, hexToRgb } from './color';
-import type { ChakraColorId, EyeSpecial, ItemChoice, SpriteAppearance } from './types';
+import { NO_HEADBAND, type ChakraColorId, type EyeSpecial, type ItemChoice, type SlotId, type SpriteAppearance } from './types';
 import type { ShinobiCharacter } from '../types/shinobi';
 
 const HAIR: Record<string, string> = {
   'Naruto Spike': 'hair_sunburst',
   'Sasuke Rogue Fringe': 'hair_raven',
-  'Minato Winged Flare': 'hair_flash',
-  'Kakashi Tilt': 'hair_gravity',
+  'Minato Winged Flare': 'hair_sunburst',
+  'Kakashi Tilt': 'hair_bristle',
   'Madara Wild Cascade': 'hair_warlord',
   'Itachi Low Ribbon': 'hair_lowtail',
   'Cloud Chocobo Spikes': 'hair_storm',
-  'Sephiroth Parted Flow': 'hair_silver',
+  'Sephiroth Parted Flow': 'hair_long',
   'Squall Modern Fringe': 'hair_lion',
   'Knight Pointed Helm': 'hair_helm',
-  'Somnus Caelum': 'hair_founder',
+  'Somnus Caelum': 'hair_warlord',
   'Noctis Caelum': 'hair_midnight',
 };
 
 const ARMOR: Record<string, string> = {
   'Leaf Chunin Flak': 'armor_flak',
-  'Sand Wind Guard': 'armor_desert',
-  'Mist Storm Vest': 'armor_storm',
+  'Sand Wind Guard': 'armor_flak',
+  'Mist Storm Vest': 'armor_flak',
   'Samurai O-Yoroi': 'armor_lamellar',
   'Roman Legionary Segmentata': 'armor_legion',
   'Greek Hoplite Cuirass': 'armor_bronze',
   'Ronin Wanderer Cloak': 'armor_wanderer',
   'ANBU Spec-Ops': 'armor_shadowops',
-  'Dark Knight Plate': 'armor_dread',
+  'Dark Knight Plate': 'armor_crimson_plate',
 };
 
 const CAPE: Record<string, string> = {
   'Hokage White Haori': 'cape_haori',
   'Akatsuki Black Cloak': 'cape_rogue',
   'Ronin Traveler Cape': 'cape_traveler',
-  'Crimson Billowing Knight Cape': 'cape_knight',
+  'Crimson Billowing Knight Cape': 'cape_crimson',
 };
 
 const HELD: Record<string, string> = {
@@ -91,7 +91,7 @@ export function defaultAppearance(): SpriteAppearance {
       feet: choice('feet_shinobi'),
     },
     accessories: [],
-    headband: { position: 'forehead', slashed: false, tails: false, emblem: 'crescent', cloth: '#1e3a8a', plate: '#cbd5e1' },
+    headband: { ...NO_HEADBAND },
     chakra: { color: 'blue', onCharge: true, onCast: true, onVictory: false },
     pixelEdits: [],
   };
@@ -117,7 +117,7 @@ export function appearanceFromLegacy(c: ShinobiCharacter): SpriteAppearance {
   if (held) look.slots.held = choice(held);
   switch (c.lowerStyle) {
     case 'Armored Greaves':
-      look.slots.feet = choice('feet_greaves');
+      look.slots.feet = choice('feet_crimson_sabatons');
       break;
     case 'Open Sandals':
       look.slots.feet = choice('feet_sandals');
@@ -129,20 +129,76 @@ export function appearanceFromLegacy(c: ShinobiCharacter): SpriteAppearance {
       look.slots.feet = choice('feet_shinobi');
       look.accessories = [choice('acc_kunai_leg')];
   }
-  const pos = c.headbandPosition;
-  look.headband = {
-    position: pos === 'Rogue Scratched' ? 'forehead' : pos ? (pos.toLowerCase() as SpriteAppearance['headband']['position']) : 'none',
-    slashed: pos === 'Rogue Scratched',
-    tails: c.ribbonStyle === 'Long Fluttering',
-    emblem: 'crescent',
-    cloth: p.headbandCloth || '#1e3a8a',
-    plate: p.headbandPlate || '#cbd5e1',
-  };
+  // (Its headbandPosition, ribbonStyle and headband colours are no longer drawn: the headband was removed.)
   look.chakra = { color: hexToChakraId(p.chakraAuraColor), onCharge: true, onCast: true, onVictory: false };
-  return look;
+  // Like a saved look (it names no deleted piece now, but a later deletion needs only DELETED_PIECES).
+  return migrateAppearance(look);
 }
 
 /** The appearance to draw for a character (new format if present, else converted). */
 export function getAppearance(c: ShinobiCharacter): SpriteAppearance {
   return c.appearance ?? appearanceFromLegacy(c);
+}
+
+/**
+ * Pieces deleted from the creator (the owner, 2026-10-21: "borrar piezas marcadas", the clothes
+ * inventory) and what a look that still wears one gets instead: the nearest piece that is left, or
+ * nothing (`to: null`). `colors` makes the new piece's colours from the old ones; without it the new
+ * piece keeps its own (the owner's pixels where it is his).
+ */
+export const DELETED_PIECES: Record<string, { to: string | null; colors?: (old: string[]) => string[] }> = {
+  // hairstyles copied from other series or duplicated: the nearest kept style, in the same hair colour
+  hair_flash: { to: 'hair_sunburst', colors: hairOf('#fde047') },
+  hair_gravity: { to: 'hair_bristle', colors: hairOf('#c9ccd6') },
+  hair_silver: { to: 'hair_long', colors: hairOf('#dfe3ee') },
+  hair_founder: { to: 'hair_warlord', colors: hairOf('#191620') },
+  hair_youth: { to: 'hair_midnight', colors: hairOf('#33333d') },
+  hair_gale: { to: 'hair_midnight', colors: hairOf('#23232f') },
+  hair_ascended: { to: 'hair_surge', colors: hairOf('#e6c020') },
+  hair_storm2: { to: 'hair_surge', colors: hairOf('#e6c020') },
+  hair_charlotte: { to: 'hair_ribbon', colors: hairOf('#f2cb52') },
+  // face marks copied from Naruto
+  face_beast: { to: null },
+  face_sage: { to: null },
+  // the Leaf, Mist and Sand vests: the field vest
+  armor_desert: { to: 'armor_flak' },
+  armor_storm: { to: 'armor_flak' },
+  // the black plate: the owner's plate in the dread plate's black steel and gold
+  armor_dread: { to: 'armor_crimson_plate', colors: (old) => [old[0] ?? '#565a6b', old[1] ?? '#d0a12e'] },
+  // the female armours ("muy probablemente las borremos")
+  armor_oath: { to: null },
+  armor_rose: { to: null },
+  armor_lionheart: { to: null },
+  armor_seraph: { to: null },
+  armor_lioness: { to: null },
+  // duplicates of the owner's pieces: his
+  feet_greaves: { to: 'feet_crimson_sabatons' },
+  hands_gauntlets: { to: 'hands_crimson_gauntlets' },
+  cape_knight: { to: 'cape_crimson' },
+  cape_rose: { to: null },
+  held_crystal: { to: 'held_ice_crystal' },
+};
+
+function hairOf(def: string): (old: string[]) => string[] {
+  return (old) => [old[0] ?? def];
+}
+
+/**
+ * A saved look as today's creator draws it: a deleted piece swapped for its replacement
+ * (DELETED_PIECES), and the old headband taken off (removed, "quitar bandanas"). A look with
+ * neither comes back as it is.
+ */
+export function migrateAppearance(look: SpriteAppearance): SpriteAppearance {
+  let slots = look.slots;
+  for (const slot of Object.keys(look.slots) as SlotId[]) {
+    const was = look.slots[slot];
+    if (!was || !Object.hasOwn(DELETED_PIECES, was.id)) continue;
+    const r = DELETED_PIECES[was.id];
+    if (slots === look.slots) slots = { ...look.slots };
+    if (r.to) slots[slot] = { id: r.to, colors: r.colors ? r.colors(was.colors ?? []) : [] };
+    else delete slots[slot];
+  }
+  const headband = !look.headband ? { ...NO_HEADBAND } : look.headband.position !== 'none' ? { ...look.headband, position: 'none' as const } : look.headband;
+  if (slots === look.slots && headband === look.headband) return look;
+  return { ...look, slots, headband };
 }

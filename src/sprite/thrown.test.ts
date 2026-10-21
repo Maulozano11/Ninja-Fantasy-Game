@@ -11,7 +11,7 @@ import { catchLook, RELEASE_MARGIN, releaseClear, releaseStart, renderThrown, TH
 import type { BodyType, SpriteAppearance } from './types';
 
 const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
-const BLADES = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai'];
+const BLADES = ['held_katana', 'held_ice_crystal', 'held_flame_sword', 'held_kunai'];
 /** Techniques held in the palm: not weapons, so a throw flings a kunai from the pouch instead. */
 const TECHNIQUES = ['held_spiral', 'held_lightning', 'held_palm'];
 
@@ -53,10 +53,10 @@ function overlay(frame: { rgba: Uint8ClampedArray; part: Uint8Array }, th: { rgb
 
 describe('the Shooting-Star Thrust thrown weapon', () => {
   it('throws the held weapon, or a kunai from empty or busy hands or a technique in the palm', () => {
-    assert.equal(thrownItem(look('male', 'held_crystal')), 'held_crystal');
+    assert.equal(thrownItem(look('male', 'held_ice_crystal')), 'held_ice_crystal');
     assert.equal(thrownItem(look('male')), 'held_kunai');
     assert.equal(thrownItem(look('male', 'held_none')), 'held_kunai');
-    assert.equal(thrownItem(look('male', 'held_crystal', true)), 'held_kunai');
+    assert.equal(thrownItem(look('male', 'held_ice_crystal', true)), 'held_kunai');
     for (const held of TECHNIQUES) {
       assert.equal(thrownItem(look('male', held)), 'held_kunai', held);
       assert.equal(throwRelease('male', held).thrown, 'held_kunai', held);
@@ -69,9 +69,9 @@ describe('the Shooting-Star Thrust thrown weapon', () => {
     const bare = catchLook(look('male'));
     assert.ok(bare.pouchKunai);
     assert.equal(bare.slots.held, undefined);
-    const stowed = catchLook(look('male', 'held_crystal', true));
+    const stowed = catchLook(look('male', 'held_ice_crystal', true));
     assert.ok(stowed.pouchKunai);
-    assert.equal(stowed.slots.held?.id, 'held_crystal');
+    assert.equal(stowed.slots.held?.id, 'held_ice_crystal');
     assert.ok(stowed.stowed, 'the stowed weapon stays put away');
   });
 
@@ -90,7 +90,7 @@ describe('the Shooting-Star Thrust thrown weapon', () => {
 
   it('a stowed weapon stays where it is put away while the caught kunai is in the hand', () => {
     for (const body of BODIES) {
-      const l = look(body, 'held_crystal', true);
+      const l = look(body, 'held_ice_crystal', true);
       const c = catchLook(l);
       for (const f of [1, 4]) {
         const own = renderSprite(l, 'pierce', f);
@@ -183,7 +183,7 @@ describe('the Shooting-Star Thrust thrown weapon', () => {
   });
 
   it('turns crisp to any angle of its flight: every pixel opaque and of the weapon', () => {
-    const l = look('male', 'held_crystal');
+    const l = look('male', 'held_ice_crystal');
     const base = renderThrown(l, 0);
     let n0 = 0;
     for (let i = 3; i < base.rgba.length; i += 4) if (base.rgba[i]) n0++;

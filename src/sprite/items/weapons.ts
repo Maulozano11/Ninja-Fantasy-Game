@@ -9,27 +9,6 @@ import { Vec } from '../raster';
 import { F_NO_OUTLINE, F_NO_TEXTURE } from '../raster';
 import { PixelTemplate, stampTemplate, TemplatePalette } from '../rotsprite';
 
-export const CRYSTAL_SWORD: PixelTemplate = {
-  // Slim, tapered blade (lit bevel, centre ridge, shadowed lower half, sparse
-  // facets) with a long grip, so the pommel shows past the fist and the
-  // crossguard just below it, like the reference.
-  pivot: [10, 5],
-  rows: [
-    '...................c.....................................',
-    '.................acc.....................................',
-    '.................bd......................................',
-    '.................bcb33333333334333333334333333333........',
-    '.c.kkkkkkkkkkkkkkbcb5555555535555555535555555535555555...',
-    'cdbKwKKwKKwKKwKKwbdb4444443444444443444444443444444443444',
-    'bcbwKKwKKwKKwKKwKbbb333323333333323333333323333333323333.',
-    '.a.kkkkkkkkkkkkkkbbb221222222221222222221222222221222....',
-    '.................bbb111111111111111111111111111..........',
-    '.................bb......................................',
-    '.................aba.....................................',
-    '...................a.....................................',
-  ],
-};
-
 /**
  * The owner's crystal sword (docs/reference/crystal-sword-owner-reference.jpg), his pixels as he drew
  * them (tools/refs/crystal-sword-from-ref.py): drawn at the angle he drew it, which is the idle

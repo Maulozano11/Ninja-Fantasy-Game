@@ -1798,36 +1798,6 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
     },
   },
   {
-    id: 'hands_gauntlets',
-    slot: 'hands',
-    name: 'Steel Gauntlets',
-    desc: 'Plated steel gauntlets with flared cuffs, strap and articulated knuckles.',
-    colors: [col('main', 'Steel', '#8e98a6', 'metal'), col('under', 'Strap', '#3b2a22', 'leather')],
-    draw: (g, [c, u]) => {
-      for (const s of SIDES) {
-        const L = g.L(armDepth(s, 'armor'));
-        const mp = clothPen(g, c, prt('forearm', s), sb(s), 'metal');
-        // flared cuff at the elbow end, then lames down to the wrist
-        // (hugs the forearm: the arm itself is already full, like the reference)
-        limb(g, L, 'arm', s, 1.12, 1.4, [0.95, 0.6], mp);
-        limb(g, L, 'arm', s, 1.4, 1.97, [0.5, 0.42], mp);
-        across(g, L, 'arm', s, 1.4, 0.6, -1);
-        across(g, L, 'arm', s, 1.68, 0.5, -1);
-        const a = armPoint(g, s, 1.18);
-        const bb = armPoint(g, s, 1.92);
-        seam(L, along(a, bb, 0, -limbR(g, 'arm', 1.2) * 0.4), along(a, bb, 1, -limbR(g, 'arm', 1.9) * 0.4), 2);
-        // leather strap
-        limb(g, L, 'arm', s, 1.52, 1.6, 0.6, clothPen(g, u, prt('forearm', s), sb(s), 'leather'));
-        stud(L, along(armPoint(g, s, 1.52), armPoint(g, s, 1.6), 0.5, -0.2), mp.mat, prt('forearm', s), s === 'N');
-        // plated hand with knuckle ridge
-        glove(g, s, clothPen(g, c, prt('hand', s), sb(s), 'metal'), 0.25, false);
-        const { at } = handFrame(g, s, 0.25);
-        seam(L, at(-0.45, -0.9), at(-0.45, 0.6), 1);
-        seam(L, at(-0.55, -0.9), at(-0.55, 0.6), -1);
-      }
-    },
-  },
-  {
     id: 'hands_wraps',
     slot: 'hands',
     name: 'Bandage Wraps',

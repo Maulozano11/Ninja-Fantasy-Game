@@ -4,7 +4,7 @@
 import type { ChakraNature, ClanType, ShinobiCharacter } from '../types/shinobi';
 import { CLANS_DATA, DEFAULT_CHARACTER, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
 import { chakraNature } from '../sprite/chakraNature';
-import { getAppearance } from '../sprite/legacy';
+import { getAppearance, migrateAppearance } from '../sprite/legacy';
 import type { ChakraColorId } from '../sprite/types';
 import type { BreakdownKind, ConvictionValue, EffectId, RuleEvent, SkillId } from '../types/mission';
 import { savingThrow, SKILL_ABILITY } from './checks';
@@ -298,6 +298,13 @@ export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
   };
 }
 
+/** A sheet whose look still wears a deleted piece or the old headband, with today's look (the same sheet if none). */
+function withTodaysLook(c: ShinobiCharacter): ShinobiCharacter {
+  if (!c.appearance) return c;
+  const look = migrateAppearance(c.appearance);
+  return look === c.appearance ? c : { ...c, appearance: look };
+}
+
 /**
  * A sheet from an older save or an import, as today's rules read it:
  * - the explosive tag, a jutsu no more, swapped for the starting sheet's Utility jutsu and two tags
@@ -309,12 +316,14 @@ export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
  *   the creator's formula (its AC and jutsu DC and attack still match it) and its old clan built a
  *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is
  *   kept under the new maxima;
- * - the clan's ability bonus counted in its numbers, once (countClanBonus).
+ * - the clan's ability bonus counted in its numbers, once (countClanBonus);
+ * - its look without the pieces deleted from the creator (each swapped for its replacement) and
+ *   without the old headband (sprite/legacy.ts, migrateAppearance).
  * Hand-made numbers (the presets) keep their hand-made part; the other jutsu stay as they are, and of
- * the look only that old burst changes. A sheet that is already today's comes back as it is.
+ * the look only that old burst, the deleted pieces and the headband change. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
-  const c = addLegendNatures(updateLegendChakra(tagJutsuToItem(saved)));
+  const c = addLegendNatures(updateLegendChakra(tagJutsuToItem(withTodaysLook(saved))));
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

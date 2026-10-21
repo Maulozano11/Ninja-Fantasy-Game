@@ -1414,14 +1414,17 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         skin: '#f0c4a0',
         eyeShape: 'sharp',
         slots: {
-          hair: it('hair_lion', '#16141d'),
+          // The owner's paint-over of Akira (docs/reference/akira-owner-reference.jpg, 2026-10-21, the
+          // new standard): his hair, armour, arm guards, tassets, legs, boot and sandal and katana, in
+          // his own colours (each item's default).
+          hair: it('hair_lion'),
           top: it('top_longsleeve', '#2b2420', '#1b1512'),
-          bottom: it('bottom_shinobi', '#2b2420', '#3a2c22'),
-          armor: it('armor_leather', '#4d3528', '#a2a7ae', '#c0502c'),
-          skirt: it('skirt_tassets', '#4d3528', '#1d1c26'),
-          feet: it('feet_leather', '#3a2a22', '#1a120e'),
-          hands: it('hands_bracers', '#4d3528', '#2a1a12'),
-          held: { ...it('held_katana'), parts: { steel: 'a', blade: 'b', guard: 'a', hilt: 'b' } },
+          bottom: it('bottom_ember_leggings'),
+          armor: it('armor_leather'),
+          skirt: it('skirt_tassets'),
+          feet: it('feet_ember'),
+          hands: it('hands_bracers'),
+          held: it('held_ember_katana'),
         },
         chakra: { color: 'orange', onCharge: true, onCast: true, onVictory: false },
       }),

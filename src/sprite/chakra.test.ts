@@ -11,13 +11,14 @@ import { renderSpriteCached } from './compose';
 import { hexToRgb } from './color';
 import { defaultAppearance } from './legacy';
 import { GRID } from './raster';
+import { FEET, frameCount, rigPoseFor } from './rig';
 import { CAMP_POSES, CAST_STYLES, MOVE_POSES, SPRITE_POSES, type BodyType, type CastStyle, type ChakraColorId, type SpriteAppearance, type SpritePose } from './types';
 
 const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
 const MODES: ChakraMode[] = ['aura', 'charge', 'cast', 'victory'];
 const POSES: SpritePose[] = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES];
-/** Its natural colours: the owner's lightning set (deep blue edge, cyan, white-hot core). */
-const NATURAL = ['#0e1c5e', '#1c3aa8', '#3cc8e8', '#90dff5', '#eaffff'];
+/** Its natural colours, all five found in the owner's lightning set (src/assets/world/vfx_lightning): navy edge, deep blue, his mid blue, pale cyan, white-hot core. */
+const NATURAL = ['#10132e', '#1c3aa8', '#4297de', '#90dff5', '#eaffff'];
 const VIOLET = ['#2a0a44', '#62209a', '#a54ce0', '#d996ff', '#f8e6ff'];
 
 const look = (body: BodyType, tint?: string, burst: ChakraColorId = 'cyan', style?: CastStyle): SpriteAppearance => {
@@ -84,7 +85,7 @@ describe('Battle Static, the second Lightning burst', () => {
     const sparks = look('male').chakra;
     assert.equal(withNature(sparks, 'Lightning').color, 'cyan');
     assert.equal(withNature(withNature(sparks, 'Fire'), 'Lightning').color, 'yellow');
-    assert.equal(chakraHex(sparks), '#3cc8e8');
+    assert.equal(chakraHex(sparks), '#4297de');
     // its cyan is not one more swatch in every type's colour row (it sat beside the water blue)
     assert.ok(!TINT_CHOICES.some((c) => c.id === 'cyan'));
     assert.equal(TINT_CHOICES.length, 10);
@@ -133,23 +134,31 @@ describe('Battle Static, the second Lightning burst', () => {
           assert.ok(shows(renderChakra('cyan', mode, busiest, spr.rgba, spr.rig)), `${body} ${p} ${mode} ${busiest}: no bolt drawn`);
         }
       }
-      // in the pose each mode plays in, plain and empowered, every tick draws bolts (one may find no clear spot, never all)
+      // in the pose each mode plays in, every frame of it, plain and empowered, every tick draws bolts (one may find no clear spot, never all)
       for (const empowered of [false, true])
         for (const mode of MODES) {
-          const spr = renderSpriteCached(l, pose(mode), 0);
-          const lit = ticks(mode).filter((t) => t % (body === 'male' ? 2 : 6) === 0);
-          const drawn = lit.filter((t) => shows(renderChakra('cyan', mode, t, spr.rgba, spr.rig, undefined, empowered))).length;
-          assert.equal(drawn, lit.length, `${body} ${mode} ${empowered}: ${drawn} of ${lit.length} ticks drawn`);
+          const p = pose(mode);
+          const n = frameCount(rigPoseFor(p, l.cast?.style));
+          for (let f = 0; f < n; f++) {
+            const spr = renderSpriteCached(l, p, f);
+            const lit = ticks(mode).filter((t) => t % (body === 'male' ? 3 : 9) === f % 3);
+            const drawn = lit.filter((t) => shows(renderChakra('cyan', mode, t, spr.rgba, spr.rig, undefined, empowered))).length;
+            assert.equal(drawn, lit.length, `${body} ${mode} ${f} ${empowered}: ${drawn} of ${lit.length} ticks drawn`);
+          }
         }
     }
   });
 
-  it('never draws a bolt over the face, whatever the cast style', () => {
+  it('never draws a bolt over or in front of the face, whatever the cast style', () => {
+    // a lit pixel that shows (in front, or behind but off the body) on the face or just in front of it
     const faceHits = (l: SpriteAppearance, p: SpritePose, mode: ChakraMode, t: number, empowered = false) => {
-      const spr = renderSpriteCached(l, p, 0);
+      const spr = renderSpriteCached(l, p, t % frameCount(rigPoseFor(p, l.cast?.style)));
       const fx = renderChakra('cyan', mode, t, spr.rgba, spr.rig, undefined, empowered);
       let n = 0;
-      for (let i = 0; i < GRID * GRID; i++) if (fx.front[i * 4 + 3] && spr.rgba[i * 4 + 3] && inFace(spr.rig, { x: i % GRID, y: Math.floor(i / GRID) })) n++;
+      for (let i = 0; i < GRID * GRID; i++) {
+        const seen = fx.front[i * 4 + 3] || (fx.back[i * 4 + 3] && !spr.rgba[i * 4 + 3]);
+        if (seen && inFace(spr.rig, { x: i % GRID, y: Math.floor(i / GRID) })) n++;
+      }
       return n;
     };
     for (const style of CAST_STYLES)
@@ -197,10 +206,11 @@ describe('Battle Static, the second Lightning burst', () => {
       for (const mode of MODES) {
         const name = `${mode}${empowered ? ' empowered' : ''}`;
         const counts = ticks(mode).map((t) => sparkCount(mode, t, empowered));
-        // never a tick without lightning: two bolts at least (three in a charge or a cast), and a cap
-        const least = mode === 'victory' && !empowered ? 2 : 3;
+        // never a tick without lightning: four bolts at least in a charge or a cast (three in a victory),
+        // six empowered (five in a victory, four in the aura), and a cap
+        const least = empowered ? (mode === 'aura' ? 4 : mode === 'victory' ? 5 : 6) : mode === 'victory' ? 3 : 4;
         assert.ok(Math.min(...counts) >= least, `${name}: ${counts}`);
-        const cap = empowered || mode === 'aura' ? 7 : 4;
+        const cap = empowered ? 7 : mode === 'aura' ? 6 : 5;
         assert.ok(Math.max(...counts.slice(mode === 'victory' ? 4 : 0)) <= cap, `${name}: ${counts}`);
         for (const body of BODIES)
           ticks(mode).forEach((t) => {
@@ -215,6 +225,41 @@ describe('Battle Static, the second Lightning burst', () => {
     assert.ok(sparkCount('victory', 1, true) >= 9, 'a bigger one empowered');
     // the test sees an outline when there is one: Storm Lash's aura wraps the body in a glowing rim
     assert.ok(burst(look('male', undefined, 'yellow'), 'idle', 'aura', 0).outline > 0.5);
+  });
+
+  it('keeps off the ground and the health bar, and its bolts behind the body show', () => {
+    let back = 0;
+    let hidden = 0;
+    for (const body of BODIES)
+      for (const empowered of [false, true])
+        for (const mode of MODES) {
+          const l = look(body);
+          const p = pose(mode);
+          const n = frameCount(rigPoseFor(p));
+          for (let t = 0; t < SPARK_LOOP; t += body === 'male' ? 3 : 11) {
+            const spr = renderSpriteCached(l, p, t % n);
+            const fx = renderChakra('cyan', mode, t, spr.rgba, spr.rig, undefined, empowered);
+            let sole = 0;
+            for (let i = 0; i < GRID * GRID; i++) if (spr.rgba[i * 4 + 3]) sole = Math.floor(i / GRID);
+            for (let i = 0; i < GRID * GRID; i++) {
+              const x = i % GRID;
+              const y = Math.floor(i / GRID);
+              const on = spr.rgba[i * 4 + 3] > 0;
+              if (fx.back[i * 4 + 3]) {
+                back++;
+                if (on && !fx.front[i * 4 + 3]) hidden++;
+              }
+              if (!fx.front[i * 4 + 3] && !(fx.back[i * 4 + 3] && !on)) continue;
+              const name = `${body} ${mode}${empowered ? '+' : ''} ${t} (${x}, ${y})`;
+              // never into the ground under the soles (the glow and fringe at most 2 px past them)
+              assert.ok(y <= sole + 2, `${name}: below the soles at ${sole}`);
+              // never up into the battle's health bar (renderer.ts: 34 px wide, 102 to 109 px over the feet)
+              assert.ok(!(y < FEET.y - 102 && Math.abs(x - FEET.x) < 18), `${name}: in the health bar`);
+            }
+          }
+        }
+    // the far side's bolts are drawn behind the body, but mostly where they show
+    assert.ok(hidden < back * 0.3, `${hidden} of ${back} back-layer pixels hidden by the body`);
   });
 
   it('crackles harder empowered: more bolts, longer, and the aura (only played empowered) at that strength', () => {

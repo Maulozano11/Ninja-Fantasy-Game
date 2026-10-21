@@ -92,6 +92,8 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
     return castStyle ? { ...base, cast: { ...(base.cast ?? { style: castStyle }), style: castStyle } } : base;
   }, [appearance, character, castStyle]);
   const eye = dojutsuToEye(character.dojutsu);
+  // when Battle Static's loop started: kept across appearance edits, so only a new stance or burst restarts it
+  const fxStart = useRef({ key: '', t0: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -109,12 +111,13 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
       else if (isEnhanced) mode = 'aura';
     }
     let lastKey = '';
-    // the burst's loop starts when the stance does, so a victory opens with its burst of bolts
-    let t0 = -1;
+    // Battle Static's loop starts when the stance does, so a victory opens with its burst of bolts;
+    // the other bursts keep running on the shared tick as before
+    const startKey = c.color === 'cyan' && mode ? `${stance}|${mode}|${isEnhanced}` : '';
     return subscribeTick((tick) => {
       const frame = Math.floor((tick * POSE_FPS[stance]) / TICK_FPS) % frameCount(rigPoseFor(stance, look.cast?.style));
-      if (t0 < 0) t0 = tick;
-      const fxTick = (tick - t0) % chakraLoop(c.color);
+      if (fxStart.current.key !== startKey) fxStart.current = { key: startKey, t0: tick };
+      const fxTick = (startKey ? tick - fxStart.current.t0 : tick) % chakraLoop(c.color);
       const key = mode ? `${frame}|${fxTick}` : `${frame}`;
       if (key === lastKey) return;
       lastKey = key;

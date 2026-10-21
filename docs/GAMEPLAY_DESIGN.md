@@ -349,24 +349,29 @@ by the builder; his answers settle the rows marked so, the rest is still
 - **Lightning's second burst** (the owner, 2026-10-21: *"hazle una segunda
   aura a electricidad [...] sin el aura solo los rayos ocacionales"*, and by
   aura he means the ki burst round the body: *"sin eso"*). **Its name is his:
-  *Estática de batalla*** (English *Battle Static*; id `cyan`, natural colour
-  the cyan and white of his lightning set). Seeing the first version (then
+  *Estática de batalla*** (English *Battle Static*; id `cyan`, natural colours
+  all five taken from his lightning set: navy, deep blue, his mid blue, pale
+  cyan and white). Seeing the first version (then
   *Chispas vivas*, bolts now and then) he asked for more: *"quiero que se vea
   mas rayos, lo de ocacionalmente quitalo y ponlo mas regularmente y mas en
   potenciado que se vea mas"*. As built now: no rim, no halo and nothing
   rising round the body in any mode, only small, sharp, jagged bolts that
   crackle for two to four frames on the hair, the shoulders, the arms or
   round the legs, with a pinpoint flicker where one strikes, and **never a
-  frame without them**: at least three on the body in a charge or a cast (up
-  to four), two in a victory after its opening burst of bolts all over the
-  body. **Empowered (potenciado)** it crackles harder: five to seven bolts in
-  a charge, five or six in a cast (more of them off the palm), four to six in
-  a victory, each about a third longer and forking more. Empowered means an
+  frame without them**: at least four on the body in a charge or a cast (up
+  to five), three or four in a victory after its opening burst of bolts all
+  over the body. **Empowered (potenciado)** it crackles harder: six or seven
+  bolts in a charge, six or seven in a cast (more of them off the palm), five
+  to seven in a victory, each about a third longer and forking more. Empowered means an
   enhanced jutsu in battle (the cast plays empowered) and the creator's chakra
   aura switched on (the idle aura, which only plays empowered, and the
   charge, cast and victory with it on). The other bursts look the same either
-  way. In a cast the bolts jump along the casting arm and off its palm (never
-  over the face, and behind the body when that arm is). Its loop is 10 s (the
+  way. In a cast the bolts jump along the casting arm and off its palm, behind the
+  body when that arm is. Where a bolt may go: never on or in front of the
+  face, never below the soles, never up into the battle's health bar (the
+  hair's bolts crackle off its sides, short, never across the top of the
+  head), and a bolt behind the body mostly shows, so the bolts counted are
+  bolts seen. Its loop is 10 s (the
   other bursts loop every 2 s), so the bolts don't come back in the same
   places. It takes any colour (black: a black bolt in a thin bright edge) and
   reuses Lightning's grimoire emblem, orb and word. Its cyan is not added to

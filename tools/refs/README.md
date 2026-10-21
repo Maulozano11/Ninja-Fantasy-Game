@@ -148,6 +148,12 @@ folders.
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
 
+- `saya_rig.py`: our female body (the second one, from his game-scale heroines) at idle frame 0, which
+  every Saya script lays her pieces on: its joints, her picture's place on our frame (her soles on ours)
+  and how her picture stands against it (her hips where ours are; our neck, shoulders and arms three or
+  four rows higher, so her pieces from the neck up are moved up onto them and her top is longer by her own
+  rows). Change it when the female rig changes, then rerun the Saya scripts.
+
 - `saya-hair-from-ref.py`: Saya's hair (`hair_sun_fall`) copied 1:1 from his picture at our game's
   scale (`saya-game-scale-owner-reference.jpg`, 10.24 picture pixels to one of his, which is one of
   ours), in his colours: the front over the head and the back behind it on the face anchor (his

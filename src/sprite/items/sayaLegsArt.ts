@@ -24,8 +24,8 @@ export const SHADE_KIND: Record<string, 'cloth' | 'band' | 'skin'> = {
 
 /** Her near bare thigh between her skirt and her leggings (drawn into the body's layer; her skin follows ours). */
 export const SHADE_SKIN_N: PaintedPiece = {
-  pivot: [7, 8],
-  angle: 87.96,
+  pivot: [8, 11],
+  angle: 87.21,
   rows: [
     'kzzzzzzzzzzzzzk',
     'kzzzzzzSSSSzzzk',
@@ -41,8 +41,8 @@ export const SHADE_SKIN_N: PaintedPiece = {
 
 /** Her near legging above the knee: her darkest navy band at the top. */
 export const SHADE_THIGH_N: PaintedPiece = {
-  pivot: [7, 5],
-  angle: 87.96,
+  pivot: [8, 8],
+  angle: 87.21,
   rows: [
     '..........KKKkk',
     'kKKKKKKKKKKKguuk',
@@ -68,8 +68,8 @@ export const SHADE_THIGH_N: PaintedPiece = {
 
 /** Her near round knee pad rimmed in red and her wrapped shin, red bands across. */
 export const SHADE_SHIN_N: PaintedPiece = {
-  pivot: [5, 16],
-  angle: 104.16,
+  pivot: [6, 20],
+  angle: 103.41,
   rows: [
     '....kkqkkkk',
     '...kkrUeeeuk',
@@ -106,8 +106,8 @@ export const SHADE_SHIN_N: PaintedPiece = {
 
 /** Her near armoured shoe: red trim over the instep, her brown sole. */
 export const SHADE_FOOT_N: PaintedPiece = {
-  pivot: [6, -6],
-  angle: 104.16,
+  pivot: [7, -2],
+  angle: 103.41,
   rows: [
     '.krkkkkruk',
     '.kkueeukrk',
@@ -127,8 +127,8 @@ export const SHADE_FOOT_N: PaintedPiece = {
 
 /** Her far bare thigh between her skirt and her leggings (drawn into the body's layer; her skin follows ours). */
 export const SHADE_SKIN_F: PaintedPiece = {
-  pivot: [9, 3],
-  angle: 98.82,
+  pivot: [11, 4],
+  angle: 106.19,
   rows: [
     'kzzzzzzzzk',
     'kzzzzzzSzzk',
@@ -144,8 +144,8 @@ export const SHADE_SKIN_F: PaintedPiece = {
 
 /** Her far legging above the knee: her darkest navy band at the top. */
 export const SHADE_THIGH_F: PaintedPiece = {
-  pivot: [9, 0],
-  angle: 98.82,
+  pivot: [11, 1],
+  angle: 106.19,
   rows: [
     '........KKk',
     'kkKKKKKKgkkk',
@@ -170,8 +170,8 @@ export const SHADE_THIGH_F: PaintedPiece = {
 
 /** Her far round knee pad rimmed in red and her wrapped shin, red bands across. */
 export const SHADE_SHIN_F: PaintedPiece = {
-  pivot: [6, 14],
-  angle: 98.82,
+  pivot: [5, 16],
+  angle: 106.19,
   rows: [
     '........kkk',
     '.......krrk',
@@ -200,8 +200,8 @@ export const SHADE_SHIN_F: PaintedPiece = {
 
 /** Her far armoured shoe: red trim over the instep, her brown sole. */
 export const SHADE_FOOT_F: PaintedPiece = {
-  pivot: [5, 0],
-  angle: 98.82,
+  pivot: [4, 2],
+  angle: 106.19,
   rows: [
     'kkukkrueek',
     'knkkrueerrk',

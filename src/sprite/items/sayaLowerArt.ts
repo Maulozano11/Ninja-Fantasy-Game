@@ -43,8 +43,8 @@ export const SHADE_KIND: Record<string, keyof typeof SHADE_BASE> = {
 
 /** The skirt: her navy pleats, red stripes and red hem; the top under her belts and the near-left pleat filled. */
 export const SHADE_SKIRT: PaintedPiece = {
-  pivot: [14, -1],
-  angle: -89.50,
+  pivot: [14, 4],
+  angle: -90.10,
   rows: [
     '..................22..........',
     '.002222222222222222c220000620.',
@@ -71,8 +71,8 @@ export const SHADE_SKIRT: PaintedPiece = {
 
 /** The belts: two slung brown belts with steel buckles and the pouch on the near hip. */
 export const SHADE_BELTS: PaintedPiece = {
-  pivot: [13, 7],
-  angle: -89.50,
+  pivot: [13, 12],
+  angle: -90.10,
   rows: [
     '...00055000..........050..',
     '..0000555ee000......05500.',
@@ -98,8 +98,8 @@ export const SHADE_BELTS: PaintedPiece = {
 
 /** The scabbard: black-navy, lit along its upper side, a gold chape at the tip and a gold throat ring. */
 export const SHADE_SCABBARD: PaintedPiece = {
-  pivot: [29, -3],
-  angle: -89.50,
+  pivot: [29, 2],
+  angle: -90.10,
   rows: [
     '......................0000..',
     '.....................0efg0..',

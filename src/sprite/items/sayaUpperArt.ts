@@ -31,10 +31,10 @@ export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate' | 'skin'> = {
   '#f3bf9c': 'skin',
 };
 
-/** The top: her plate, her navy and red pipings; under her scarf, hair and belts, filled. */
+/** The top: her collar, plate, navy and red pipings down to her waist; under her scarf and hair, filled. */
 export const SAYA_TOP: PaintedPiece = {
-  pivot: [11, -2],
-  angle: -89.50,
+  pivot: [10, -2],
+  angle: -90.10,
   rows: [
     '...000000000000000.....',
     '....02ccccccccccc20....',
@@ -49,6 +49,35 @@ export const SAYA_TOP: PaintedPiece = {
     '..200d2BBBBBBkkkkkBBB0.',
     '..00a2b2BBBkk00000kBB0.',
     '..00222b2kk00229220k0..',
+    '...0222ab0022cci2c20...',
+    '....0dd0092eccci2cci0..',
+    '....00022922icci2cii0..',
+    '....0022c2ic2ici2i2i0..',
+    '...0002222iccc2222ci0..',
+    '..000022c2icccci2cc0...',
+  ],
+  colors: {
+    '0': '#020102',
+    '2': '#222338',
+    '9': '#6e212c',
+    'a': '#6f2f32',
+    'b': '#772930',
+    'c': '#374061',
+    'd': '#7e3232',
+    'e': '#63483b',
+    'i': '#a73234',
+    'k': '#8e5b3a',
+    'n': '#825e50',
+    'B': '#bfb2a7',
+    'M': '#ebe5d7',
+  },
+};
+
+/** The top from her waist down to her hips, under her belts: her navy and red pipings as he drew them over her hips. */
+export const SAYA_TOP_LOW: PaintedPiece = {
+  pivot: [11, 18],
+  angle: -90.10,
+  rows: [
     '...0222ab0022cci2c20...',
     '....0dd0092eccci2cci0..',
     '....00022922icci2cii0..',
@@ -78,17 +107,13 @@ export const SAYA_TOP: PaintedPiece = {
     'd': '#7e3232',
     'e': '#63483b',
     'i': '#a73234',
-    'k': '#8e5b3a',
-    'n': '#825e50',
-    'B': '#bfb2a7',
-    'M': '#ebe5d7',
   },
 };
 
 /** The near shoulder, bare: her round light skin, its shadow down the far side, in her black line. */
 export const SAYA_SHOULDER_N: PaintedPiece = {
-  pivot: [3, 2],
-  angle: 107.97,
+  pivot: [4, 2],
+  angle: 107.95,
   rows: [
     '..000....',
     '00vHH00..',
@@ -107,8 +132,8 @@ export const SAYA_SHOULDER_N: PaintedPiece = {
 
 /** The near upper arm guard: navy, the red band slanting round it, red inside, the red elbow band. */
 export const SAYA_UPPER_N: PaintedPiece = {
-  pivot: [8, -3],
-  angle: 107.97,
+  pivot: [9, -3],
+  angle: 107.95,
   rows: [
     '....0200...',
     '....06cc00.',
@@ -133,7 +158,7 @@ export const SAYA_UPPER_N: PaintedPiece = {
 
 /** The near forearm guard: the red at the elbow, navy with a red stripe, the red cuff. */
 export const SAYA_FORE_N: PaintedPiece = {
-  pivot: [6, 0],
+  pivot: [7, 0],
   angle: 103.11,
   rows: [
     '..0200ii00',
@@ -164,8 +189,8 @@ export const SAYA_FORE_N: PaintedPiece = {
 
 /** The far upper arm guard: navy, the red band, the red elbow band. */
 export const SAYA_UPPER_F: PaintedPiece = {
-  pivot: [1, -4],
-  angle: 77.78,
+  pivot: [1, -5],
+  angle: 79.34,
   rows: [
     '..0000..',
     '..0220..',
@@ -186,8 +211,8 @@ export const SAYA_UPPER_F: PaintedPiece = {
 
 /** The far forearm guard: the red elbow band, navy with its red stripe outside, the red cuff. */
 export const SAYA_FORE_F: PaintedPiece = {
-  pivot: [3, -1],
-  angle: 59.54,
+  pivot: [2, -1],
+  angle: 57.69,
   rows: [
     '09bb0000....',
     '090022000...',
@@ -217,8 +242,8 @@ export const SAYA_FORE_F: PaintedPiece = {
  * 'skin' paints them in her skin (the player's skin moves it).
  */
 export const SAYA_GLOVE_ZONES: Record<'N' | 'F', [number, 'strap' | 'back' | 'band' | 'skin' | null][]> = {
-  N: [[0.5, 'strap'], [1.5, 'back'], [5.5, 'band'], [6.5, null]],
-  F: [[0.5, 'strap'], [2.5, 'skin']],
+  N: [[0.5, 'strap'], [1.5, 'back'], [3.5, 'band'], [4.5, null]],
+  F: [[0.5, 'strap'], [1.5, 'skin']],
 };
 
 /** Her tones for our hand pictures' shades (line, crease, shadow, base, light), per zone and side. */

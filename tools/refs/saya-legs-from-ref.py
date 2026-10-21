@@ -23,9 +23,10 @@ band and dark line like the near shin's). The far thigh's left side is under her
 filled with his skin. Everything else is his (check_his() checks it).
 
 The pieces ride our rig as the owner's sabatons do (src/sprite/items/feet.ts): his legs stand where
-ours do at idle frame 0 when his picture is moved by OFFSET (the near leg to our ground at row 218). Our
-far leg is shorter than his (our far foot stands at row 210, six rows above his, and our far knee is
-under her skirt): his far thigh, its bare skin under the skirt's hem, the legging's dark top band and
+ours do at idle frame 0 when his picture is moved by OFFSET (the near leg to our ground at row 218; on our
+female body, tools/refs/saya_rig.py, his near knee pad falls on our knee and his shoe on our foot below
+the lower ankle). Our far leg is shorter than his (our far foot stands at row 210, six rows above his,
+and our far knee is under her skirt): his far thigh, its bare skin under the skirt's hem, the legging's dark top band and
 the knee pad stay where he drew them under the hem (OFFSET), and six rows of the far shin (LIFT: rows
 77-82, under the blade, filled) are left out so the rest of the shin and the shoe come up to our far
 foot. On the near leg the bare thigh (drawn into the body's layer, so trousers cover it) and the legging
@@ -45,6 +46,9 @@ import sys
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import saya_rig  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PICTURE = os.path.join(ROOT, 'docs', 'reference', 'saya-game-scale-owner-reference.jpg')
@@ -161,11 +165,8 @@ HIDDEN = {
     ],
 }
 
-# Our female's joints at idle frame 0 in fine pixels (tools/refs/heroine-idle.mts prints them).
-OUR = {
-    'hipN': (119.88, 177.11), 'kneeN': (120.45, 193.10), 'ankleN': (116.78, 207.65),
-    'hipF': (132.94, 173.66), 'kneeF': (139.58, 188.21), 'ankleF': (137.28, 203.04),
-}
+# Our female's joints at idle frame 0 in fine pixels (tools/refs/saya_rig.py).
+OUR = {j: saya_rig.JOINTS[j] for j in ('hipN', 'kneeN', 'ankleN', 'hipF', 'kneeF', 'ankleF')}
 
 
 def piece_of(s, x, y):

@@ -22,9 +22,9 @@ shows above our fist as hers does above her glove; the bow passes outside the fi
 the blade leaves the fist. The grip hidden in her glove is drawn in her grip's browns.
 
 The template is drawn at 45 degrees (the study's reduced blade lies at 44) and pivots on the grip cell
-under our near hand joint at rest (heroine_ref.OUR_JOINTS handN), so held at rest every pixel lies as
-drawn here. Cells are placed by (u, v): u = x + y - 288 runs along the blade (two per pixel step), v =
-x - y + 70 across it (positive toward the upper right, the lit edge); the hand joint's cell is u = v = 0.
+under our near hand joint at rest (tools/refs/saya_rig.py handN), so held at rest every pixel lies as
+drawn here. Cells are placed by (u, v): u = x + y - 284 runs along the blade (two per pixel step), v =
+x - y + 64 across it (positive toward the upper right, the lit edge); the hand joint's cell is u = v = 0.
 The same sword is also drawn level (SAYA_SABER_LEVEL, build_flat): turned from 45 degrees to near level
 or upright, a blade one line of steel thick breaks its line, so the game turns whichever drawing is
 nearer a quarter turn (src/sprite/items/sayaSword.ts).
@@ -53,6 +53,7 @@ import numpy as np  # noqa: E402
 from PIL import Image, ImageDraw  # noqa: E402
 
 import heroine_ref as R  # noqa: E402
+import saya_rig  # noqa: E402
 
 WHICH = 'saya'
 # Her colours used here, all from PALETTES['saya'].
@@ -64,14 +65,17 @@ GRIP_DK, GRIP, GRIP_LT = '#302525', '#453631', '#604f46'
 SPARK_HI, SPARK, SPARK_GOLD = '#fef6d8', '#feeeb5', '#f7c962'
 
 # Our female's near hand joint at idle frame 0, and its cell: the grip passes through it.
-HAND = R.OUR_JOINTS['handN']
+HAND = saya_rig.JOINTS['handN']
 HX, HY = int(np.floor(HAND[0])), int(np.floor(HAND[1]))
 
-# Along the blade (u, two per pixel step): the pommel, the grip, the guard cup, the blade, the tip.
-POMMEL_U = -16
-GRIP_U = (-12, 9)
-CUP_U = (10, 12)
-BLADE_U = (13, 74)
+# Along the blade (u, two per pixel step): the pommel, the grip, the guard cup, the blade, the tip. Our
+# female's grip fist (his small hand, tools/refs/female-body-from-ref.py) covers the grip from u -2 to 4:
+# the pommel's collar rests on its upper end and the cup on its lower, as hers do on her glove, so no
+# grip shows between them.
+POMMEL_U = -10
+GRIP_U = (-8, 5)
+CUP_U = (6, 8)
+BLADE_U = (9, 70)
 
 
 def uv(x, y):
@@ -109,7 +113,7 @@ def build():
                 col = STEEL_MID
             elif v == 0:
                 # Her gold dots down the middle; the root (the ricasso) gold through.
-                col = GOLD if (u < u0 + 4 or u % 6 == 0) else STEEL_LT
+                col = GOLD if (u < u0 + 4 or (u - u0) % 6 == 5) else STEEL_LT
             else:
                 col = STEEL_LT
             put(x, y, 'dot' if col == GOLD else 'blade', col)
@@ -166,11 +170,13 @@ def build():
 
     # Her sparkles round the blade: single glints and one four-point star, near both edges.
     sparks = []
-    for u, v, c in ((22, 6, SPARK_HI), (30, -6, SPARK), (36, 8, SPARK_GOLD), (44, -8, SPARK_HI), (52, 6, SPARK),
-                    (58, -6, SPARK_GOLD), (66, 6, SPARK_HI), (74, -4, SPARK)):
-        x, y = xy(u, v)
+    # (along the blade from its root, as she has them)
+    b0 = BLADE_U[0]
+    for u, v, c in ((9, 6, SPARK_HI), (17, -6, SPARK), (23, 8, SPARK_GOLD), (31, -8, SPARK_HI), (39, 6, SPARK),
+                    (45, -6, SPARK_GOLD), (53, 6, SPARK_HI), (61, -4, SPARK)):
+        x, y = xy(b0 + u, v)
         sparks.append((x, y, c))
-    sx, sy = xy(48, -10)
+    sx, sy = xy(b0 + 35, -10)
     sparks += [(sx, sy, SPARK_HI), (sx - 1, sy, SPARK_GOLD), (sx + 1, sy, SPARK_GOLD), (sx, sy - 1, SPARK_GOLD), (sx, sy + 1, SPARK_GOLD)]
     for x, y, _ in sparks:
         assert (x, y) not in cells, ('sparkle on the sword', x, y)
@@ -189,10 +195,10 @@ def outline(cells):
 # The same sword drawn level (pointing right), for the poses that hold it near level or upright: turned
 # from 45 degrees there, a blade this thin breaks its line, while a quarter turn of either drawing is
 # exact. Along it s (pixels from the hand joint's cell), across it w (pixels, up positive: the lit edge).
-FLAT_POMMEL_S = -11
-FLAT_GRIP_S = (-8, 6)
-FLAT_CUP_S = (7, 9)
-FLAT_BLADE_S = (10, 52)
+FLAT_POMMEL_S = -7
+FLAT_GRIP_S = (-4, 4)
+FLAT_CUP_S = (5, 7)
+FLAT_BLADE_S = (8, 50)
 
 
 def build_flat():
@@ -233,10 +239,10 @@ def build_flat():
     outline(cells)
     cells.setdefault((b1 + 1, 0), ('line', LINE))
     sparks = []
-    for s, w, c in ((16, 4, SPARK_HI), (21, -4, SPARK), (25, 5, SPARK_GOLD), (31, -5, SPARK_HI), (37, 4, SPARK),
-                    (41, -4, SPARK_GOLD), (47, 4, SPARK_HI), (53, -3, SPARK)):
-        sparks.append((s, -w, c))
-    sx, sy = 34, 7
+    for s, w, c in ((6, 4, SPARK_HI), (11, -4, SPARK), (15, 5, SPARK_GOLD), (21, -5, SPARK_HI), (27, 4, SPARK),
+                    (31, -4, SPARK_GOLD), (37, 4, SPARK_HI), (43, -3, SPARK)):
+        sparks.append((b0 + s, -w, c))
+    sx, sy = b0 + 24, 7
     sparks += [(sx, sy, SPARK_HI), (sx - 1, sy, SPARK_GOLD), (sx + 1, sy, SPARK_GOLD), (sx, sy - 1, SPARK_GOLD), (sx, sy + 1, SPARK_GOLD)]
     for x, y, _ in sparks:
         assert (x, y) not in cells, ('sparkle on the sword', x, y)

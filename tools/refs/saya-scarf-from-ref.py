@@ -26,10 +26,10 @@ long hair. The parts:
 
 The tail's rows are below (TAIL), in our frame on the female body at idle frame 0. His cell (x, y) of
 the wrap lands on our fine pixel (x + OFF[0], y + OFF[1]): his chin line (row 28, x 52-55) on the chin
-of her own face (the 'shade' face shape, saya-face-from-ref.py: row 150, x 127-130). The stretch over
-the shoulder lands at SHOULDER_OFF instead, a pixel further out: on her top's and her bare shoulder's
-cells (saya-upper-from-ref.py lays her body on ours at x + 76), so its line sits on her shoulder's
-line as he drew it.
+of her own face (the 'shade' face shape, saya-face-from-ref.py: row 148, x 127-130). The stretch over
+the shoulder lands at SHOULDER_OFF instead: on her bare shoulder's cells (saya-upper-from-ref.py lays
+her near arm on ours four rows higher than his picture, NEAR_ARM), so its
+line sits on her shoulder's line as he drew it; the tail hangs behind that shoulder, moved with it.
 
 It writes, in <out>:
 
@@ -55,6 +55,7 @@ import numpy as np  # noqa: E402
 from PIL import Image, ImageDraw  # noqa: E402
 
 import heroine_ref as R  # noqa: E402
+import saya_rig  # noqa: E402
 
 SRC = 'docs/reference/saya-game-scale-owner-reference.jpg'
 # His grid: 100 x 100 cells over the 1024 x 1024 picture, starting at its corner.
@@ -107,19 +108,20 @@ HIDDEN = {
 }
 # His cell -> our fine pixel at idle frame 0: the wrap (on her face's chin) and the shoulder stretch (on
 # her body's shoulder).
-OFF = (75, 122)
-SHOULDER_OFF = (76, 122)
+OFF = (75, 120)
+SHOULDER_MOVE = (0, -4)
+SHOULDER_OFF = (76 + SHOULDER_MOVE[0], 122 + SHOULDER_MOVE[1])
 # The wrap's pixels up to this x of his (the stretch over the near shoulder, nearer than his side lock)
 # are the shoulder piece: the game draws it over the near arm, as it lies on top of the shoulder.
 SHOULDER_TO = 44
 
-# Our female body at idle frame 0 (heroine_ref.OUR_JOINTS, fine pixels): the neck cell both parts hang
+# Our female body at idle frame 0 (tools/refs/saya_rig.py, fine pixels): the neck cell both parts hang
 # from and the torso's angle (neck to pelvis) the wrap is drawn at.
-NECK = tuple(int(math.floor(v)) for v in R.OUR_JOINTS['neck'])
-TORSO_ANGLE = math.degrees(math.atan2(R.OUR_JOINTS['pelvis'][1] - R.OUR_JOINTS['neck'][1],
-                                      R.OUR_JOINTS['pelvis'][0] - R.OUR_JOINTS['neck'][0]))
+J = saya_rig.JOINTS
+NECK = tuple(int(math.floor(v)) for v in J['neck'])
+TORSO_ANGLE = math.degrees(math.atan2(J['pelvis'][1] - J['neck'][1], J['pelvis'][0] - J['neck'][0]))
 
-# The end, x 108-117 from row 149, hanging from behind the near shoulder (where his wrap goes behind
+# The end, x 108-117 from row 149 (moved by SHOULDER_MOVE with the shoulder), hanging from behind the near shoulder (where his wrap goes behind
 # the hair) down her back to a point, in his reds: its lit face (d) with the crease (c) beside it as on
 # his rolls, its dark underside (b, a) showing where it turns once halfway down, his line all round.
 TAIL = (108, 149, [
@@ -245,7 +247,7 @@ def main():
     shoulder = to_ours(scarf, SHOULDER_OFF)
     shoulder[:, SHOULDER_TO + SHOULDER_OFF[0] + 1:] = ''
     wrap[:, :SHOULDER_TO + OFF[0] + 1] = ''
-    tail = grid_of(TAIL)
+    tail = grid_of((TAIL[0] + SHOULDER_MOVE[0], TAIL[1] + SHOULDER_MOVE[1], TAIL[2]))
     nx, ny = NECK
     meta = {'source': SRC, 'neck': [nx, ny], 'torsoAngle': round(TORSO_ANGLE, 2), 'free': FREE}
     used = set()
@@ -254,7 +256,7 @@ def main():
         meta[name] = {'origin': list(box[:2]), 'rows': rows_of(a, box)}
         used |= set(a[a != ''].tolist())
     ox, oy = meta['tail']['origin']
-    meta['spine'] = [[round(x - ox, 2), round(y - oy, 2)] for x, y in SPINE]
+    meta['spine'] = [[round(x + SHOULDER_MOVE[0] - ox, 2), round(y + SHOULDER_MOVE[1] - oy, 2)] for x, y in SPINE]
     meta['palette'] = {c: pal[c] for c in SCARF if c in used}
     meta['line'] = LINE
     meta['base'] = pal[BASE]

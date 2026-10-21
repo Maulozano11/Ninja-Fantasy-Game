@@ -17,6 +17,7 @@ import {
   SAYA_SHOULDER_N,
   SAYA_SKIN,
   SAYA_TOP,
+  SAYA_TOP_LOW,
   SAYA_TRIM,
   SAYA_UPPER_F,
   SAYA_UPPER_N,
@@ -40,8 +41,8 @@ const shadeColor = (cloth: string, trim: string, plate: string, skin: string) =>
 
 /**
  * Draws her top and arm guards. Within a depth the pieces go back to front: the far forearm guard,
- * then the far upper guard over its top; the top over the torso (under a skirt or a belt, which go
- * over its hem); the near forearm guard, her bare near shoulder, then the near upper guard over their tops, so a bent elbow
+ * then the far upper guard over its top; the top over the torso, its part on the hips first (under a
+ * skirt or a belt, which go over its hem); the near forearm guard, her bare near shoulder, then the near upper guard over their tops, so a bent elbow
  * shows the forearm guard under the elbow band and never the skin.
  */
 function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string): void {
@@ -50,6 +51,9 @@ function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string):
   const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
   put('farArm.armor', SAYA_FORE_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
   put('farArm.armor', SAYA_UPPER_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
+  // the top in two pieces: over the hips (on the pelvis, under her belts) and from the collar to the
+  // waist (on the neck) over it; between them our longer torso shows more of her pipings
+  put('torso.top', SAYA_TOP_LOW, r.pelvis, segAngle(r.pelvis, r.neck), 'torso');
   put('torso.top', SAYA_TOP, r.neck, segAngle(r.pelvis, r.neck), 'torso');
   put('nearArm.armor', SAYA_FORE_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN');
   // her bare near shoulder (light skin in her line), then the upper guard over its foot

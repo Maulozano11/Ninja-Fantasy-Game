@@ -2,11 +2,13 @@
 
 His game-scale Saya (docs/reference/saya-game-scale-owner-reference.jpg, "aquí hay otra": the picture he
 drew at our sprite scale) is 1024 x 1024 picture pixels for 100 x 100 of hers, the grid from the
-picture's corner: one of her pixels is 10.24 picture pixels and one of ours. Her eyes land on our female's
-eyes when her picture is laid on our 256 x 256 frame at (+76, +122) (her lash row 19 on our row 141, her
-soles on ours), so every row below is written in our frame's coordinates and, at idle frame 0, sits
-where he drew it. (The weapons in that picture are the bugged ones he mentioned; none of their pixels is
-used here.)
+picture's corner: one of her pixels is 10.24 picture pixels and one of ours. Her picture is laid on our
+256 x 256 frame at (+76, +122), her soles on ours (tools/refs/saya_rig.py), so every row below is written
+in our frame's coordinates as he drew it. On our female body her hips are where ours are, while our neck,
+shoulders and arms stand three or four rows higher than hers (our torso is longer): each piece is laid
+on its joint by how far her picture is moved there (UPPER, NEAR_ARM, FAR_ARM below), so at idle frame 0
+every piece is his pixels, unturned. (The weapons in that picture are the bugged ones he mentioned; none
+of their pixels is used here.)
 
 Her pixels: each cell's colour is the median of its middle (a JPEG), and her colours are the cells'
 colours gathered into tones (one tone per colour of hers: colours within 14 of each other in every
@@ -16,12 +18,16 @@ pixel there, except the cells listed by the script as filled (fill() below; the 
 what her hair, her scarf, her belts and her skin hide, continued from her pixels, and the few cells
 where our body is a pixel wider than hers.
 
-  the top          SAYA_TOP rides the torso about the neck. Her cream chest plate with its gold-brown rim,
-                   the dark navy of her top with its two red pipings down the front and the red piping
-                   at the near armhole; the near shoulder stays bare, as hers. Filled:
-                   a navy high collar under her scarf (rows 151-155) and the plate's top under it, the
-                   top's near side under her hair lock, and the top under her belts down to the hips
-                   (navy, its two pipings continued straight down) with a dark hem.
+  the top          two pieces, both turned with the torso. SAYA_TOP rides the neck, UPPER rows higher than
+                   he drew it: her cream chest plate with its gold-brown rim, the dark navy of her top
+                   with its two red pipings down the front and the red piping at the near armhole, down
+                   to her row 169; the near shoulder stays bare, as hers. SAYA_TOP_LOW rides the pelvis
+                   where he drew it: her rows 164-180, the navy and pipings over her hips under her
+                   belts. At rest the upper piece lies over the lower one's first rows, so her rows
+                   167-169 show twice: that is how our longer torso is covered, with her rows and no
+                   new ones. Filled: a navy high collar under her scarf (rows 151-155) and the plate's
+                   top under it, the top's near side under her hair lock, and the top under her belts
+                   down to the hips (navy, its two pipings continued straight down) with a dark hem.
   the near arm     SAYA_SHOULDER_N rides the upper arm about the shoulder: her bare shoulder, a round
                    patch of her light skin with its shadow down the far side, in her black line (our
                    body's shoulder is shaded darker and its line falls elsewhere). Her skin follows the
@@ -29,18 +35,19 @@ where our body is a pixel wider than hers.
                    SAYA_UPPER_N rides the upper arm about the shoulder: her guard's navy top, the red
                    band slanting round the arm, the red on its inner side and the red elbow band.
                    SAYA_FORE_N rides the forearm about the elbow: the red at the elbow, the navy guard
-                   with its red stripe, the red cuff. Both are where he drew them (her near arm is on
-                   our near arm).
+                   with its red stripe, the red cuff. All three are four rows higher than he drew them
+                   (NEAR_ARM), on our near arm.
   the far arm      SAYA_UPPER_F and SAYA_FORE_F: her far arm hangs about four pixels further out than
                    ours, so both pieces are laid with her elbow (139, 166) on ours. Her forearm is two
                    rows longer than ours: two of its middle rows (171 and 173, the same as their
                    neighbours) are left out so her cuff ends at our wrist.
   the gloves       our hand pictures for every pose (grip, fist, open, pointing, relaxed, cradling),
                    painted in her glove by how far each pixel lies from the wrist along the hand, as
-                   she wears it: on the near hand a dark strap row, four rows of navy and the red band
-                   over the knuckles, the fingers bare (her rows 177-183 under her near wrist); on the
-                   far hand two rows of brown strap, then her fist bare in her own skin, lit on its
-                   knuckles (her rows 178-181: the red row over the strap is the forearm guard's cuff).
+                   she wears it: on the near hand a dark strap row, navy and the red band over the
+                   knuckles, the fingers bare (her rows 177-183 under her near wrist, on our smaller
+                   hand two of her four navy rows); on the far hand the brown strap, then her fist
+                   bare in her own skin, lit on its knuckles (her rows 178-183: the red row over the
+                   strap is the forearm guard's cuff).
                    Each picture shade is one of her tones (GLOVE_TONES); her skin follows the player's.
 
 The navy, the red and the cream are the item's colour slots (Cloth, Trim, Plate; KIND says which tone is
@@ -63,27 +70,36 @@ import sys
 import numpy as np
 from PIL import Image, ImageDraw
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import saya_rig  # noqa: E402
+
 # Her grid: one of her pixels in picture pixels, her grid's size, and where her picture lies on our frame.
 PITCH = 10.24
 SIZE = 100
-AT = (76, 122)
+AT = saya_rig.AT
 # Tones: colours within TH in every channel are one tone; a tone of fewer than MIN cells is dropped.
 TH, MIN = 14, 4
 CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-# Our female rig at idle frame 0 (tools/refs/heroine_ref.py OUR_JOINTS), fine pixels.
-JOINTS = {
-    'neck': (127.24, 149.84), 'pelvis': (127.00, 177.47),
-    'shoulderN': (116.52, 154.62), 'elbowN': (112.82, 166.03), 'wristN': (110.46, 176.16),
-    'shoulderF': (132.68, 154.05), 'elbowF': (135.22, 165.78), 'wristF': (140.49, 174.74),
-}
+# Our female rig at idle frame 0 (tools/refs/saya_rig.py), fine pixels.
+JOINTS = saya_rig.JOINTS
+
+# How far each part of her picture is moved to land on our rig (tools/refs/saya_rig.py). Our neck and
+# shoulders stand UPPER rows higher than hers (her top rides the neck, so its plate stays under her
+# scarf), and our near arm four rows higher (her near guards on our near arm as she drew them on hers,
+# her bare shoulder's line on our shoulder's). Her far arm hangs about four pixels further out than ours, so its
+# guards are laid with her elbow on ours. Her skirt, belts and the top under them stay where she drew
+# them, on our hips.
+UPPER = 3
+NEAR_ARM = (0, -4)
+FAR_ARM = (-5, -4)
 
 # The pieces: name, what it is, the joint it hangs from, the limb whose idle angle is its angle, the
 # frame position (x, y) of its first row's first cell, how far her picture is moved to land on our rig,
 # the rows of her picture left out (frame rows), and the rows (one per frame row, from y).
 PIECES = [
-    ('SAYA_TOP', 'The top: her plate, her navy and red pipings; under her scarf, hair and belts, filled.',
-     'neck', ('pelvis', 'neck'), (116, 151), (0, 0), (), [
+    ('SAYA_TOP', 'The top: her collar, plate, navy and red pipings down to her waist; under her scarf and hair, filled.',
+     'neck', ('pelvis', 'neck'), (116, 151), (0, -UPPER), (), [
          # x 116.................138
          '...000000000000000.....',  # 151 the collar's top (under her scarf)
          '....02ccccccccccc20....',  # 152
@@ -104,6 +120,16 @@ PIECES = [
          '....0022c2ic2ici2i2i0..',  # 167
          '...0002222iccc2222ci0..',  # 168
          '..000022c2icccci2cc0...',  # 169
+     ]),
+    ('SAYA_TOP_LOW', 'The top from her waist down to her hips, under her belts: her navy and red pipings as he drew them over her hips.',
+     'pelvis', ('pelvis', 'neck'), (116, 164), (0, 0), (), [
+         # x 116.................138
+         '...0222ab0022cci2c20...',  # 164 x 119-120: under her hair lock
+         '....0dd0092eccci2cci0..',  # 165
+         '....00022922icci2cii0..',  # 166
+         '....0022c2ic2ici2i2i0..',  # 167
+         '...0002222iccc2222ci0..',  # 168
+         '..000022c2icccci2cc0...',  # 169
          '.0000222cc6iccci2ci0...',  # 170 x 120-124 and on: under her belts
          '.2cccccccccc2ici2icc2..',  # 171
          '2ccccccccccc2ici2ic22..',  # 172
@@ -117,7 +143,7 @@ PIECES = [
          '....00000000000........',  # 180
      ]),
     ('SAYA_SHOULDER_N', 'The near shoulder, bare: her round light skin, its shadow down the far side, in her black line.',
-     'shoulderN', ('shoulderN', 'elbowN'), (113, 152), (0, 0), (), [
+     'shoulderN', ('shoulderN', 'elbowN'), (113, 152), NEAR_ARM, (), [
          # x 113...121
          '..000....',  # 152 the line over it (her scarf's end beside it)
          '00vHH00..',  # 153
@@ -128,7 +154,7 @@ PIECES = [
          '.....Hv..',  # 158
      ]),
     ('SAYA_UPPER_N', 'The near upper arm guard: navy, the red band slanting round it, red inside, the red elbow band.',
-     'shoulderN', ('shoulderN', 'elbowN'), (108, 157), (0, 0), (), [
+     'shoulderN', ('shoulderN', 'elbowN'), (108, 157), NEAR_ARM, (), [
          # x 108......118
          '....0200...',  # 157
          '....06cc00.',  # 158
@@ -141,7 +167,7 @@ PIECES = [
          '00iii0220..',  # 165
      ]),
     ('SAYA_FORE_N', 'The near forearm guard: the red at the elbow, navy with a red stripe, the red cuff.',
-     'elbowN', ('elbowN', 'wristN'), (106, 166), (0, 0), (), [
+     'elbowN', ('elbowN', 'wristN'), (106, 166), NEAR_ARM, (), [
          # x 106.....115
          '..0200ii00',  # 166
          '.0000c0b90',  # 167
@@ -157,7 +183,7 @@ PIECES = [
          '00000i90..',  # 177
      ]),
     ('SAYA_UPPER_F', 'The far upper arm guard: navy, the red band, the red elbow band.',
-     'shoulderF', ('shoulderF', 'elbowF'), (135, 159), (-4, -1), (), [
+     'shoulderF', ('shoulderF', 'elbowF'), (135, 159), FAR_ARM, (), [
          # x 135..142
          '..0000..',  # 159
          '..0220..',  # 160
@@ -169,7 +195,7 @@ PIECES = [
          '.0000990',  # 166
      ]),
     ('SAYA_FORE_F', 'The far forearm guard: the red elbow band, navy with its red stripe outside, the red cuff.',
-     'elbowF', ('elbowF', 'wristF'), (136, 167), (-4, -1), (171, 173), [
+     'elbowF', ('elbowF', 'wristF'), (136, 167), FAR_ARM, (171, 173), [
          # x 136.......147
          '09bb0000....',  # 167
          '090022000...',  # 168
@@ -187,12 +213,16 @@ PIECES = [
 
 # The gloves, per hand: from `from` fine pixels along the hand (from the middle of the hand picture's
 # wrist cell toward the fingers) each zone takes over; None leaves the fingers bare. Her near glove under
-# her wrist (176): row 177 her dark strap, rows 178-181 navy, row 182 the red band, the fingers from 183.
-# Her far glove under her wrist (177): rows 178-179 the brown strap, then her fist in her skin (rows
-# 180-183: her lit tone D on the knuckles, her shadow v round them), so it is drawn in her skin ('skin').
+# her wrist (176): row 177 her dark strap, rows 178-181 navy, row 182 the red band, the fingers from 183,
+# on a hand seven rows long. Our female's hands are his small ones (tools/refs/female-body-from-ref.py),
+# the fist five rows: her strap row, two of her navy rows, her red band and the fingers below it, in her
+# order. Her far glove under her wrist (177): rows 178-179 the brown strap, then her fist in her skin
+# (rows 180-183: her lit tone D on the knuckles, her shadow v round them), so it is drawn in her skin
+# ('skin'); on our far hand, four or five pixels long, one strap row and the fist below it, as her fist
+# is twice as long as her strap.
 GLOVE_ZONES = {
-    'N': [(0.5, 'strap'), (1.5, 'back'), (5.5, 'band'), (6.5, None)],
-    'F': [(0.5, 'strap'), (2.5, 'skin')],
+    'N': [(0.5, 'strap'), (1.5, 'back'), (3.5, 'band'), (4.5, None)],
+    'F': [(0.5, 'strap'), (1.5, 'skin')],
 }
 # Her tones for each shade of our hand pictures: line, crease, shadow, base, light.
 GLOVE_TONES = {

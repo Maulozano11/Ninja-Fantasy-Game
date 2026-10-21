@@ -55,19 +55,20 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import heroine_ref as R  # noqa: E402
+import saya_rig  # noqa: E402
 
 # Her grid: one of her pixels in picture pixels, her grid's size, and where her picture lies on our frame.
 PITCH = 10.24
 SIZE = 100
-AT = (76, 122)
+AT = saya_rig.AT
 # Tones: colours within TH in every channel are one tone; a tone of fewer than MIN cells is dropped.
 TH, MIN = 14, 4
 CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-# Our female's pelvis at idle frame 0 (tools/refs/heroine_ref.py OUR_JOINTS), fine pixels: every piece
-# hangs from it.
-PELVIS = (127.00, 177.47)
-NECK = (127.24, 149.84)
+# Our female's pelvis at idle frame 0 (tools/refs/saya_rig.py), fine pixels: every piece hangs from it.
+# Our hips are where he drew hers, so the skirt and the belts lie where he drew them.
+PELVIS = saya_rig.JOINTS['pelvis']
+NECK = saya_rig.JOINTS['neck']
 
 # The pieces from his game-scale picture: name, what it is, the frame position (x, y) of its first row's
 # first cell, and the rows (one per frame row, from y), in his tones.

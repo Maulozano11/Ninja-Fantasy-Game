@@ -5,7 +5,8 @@ import { describe, it } from 'node:test';
 import { fitsBody, getItem } from './catalog';
 import { renderSprite } from './compose';
 import { frameCount, rigPoseFor } from './rig';
-import { SAYA_FORE_F, SAYA_FORE_N, SAYA_PLATE, SAYA_TOP, SAYA_UPPER_F, SAYA_UPPER_N } from './items/sayaUpperArt';
+import { SAYA_FORE_F, SAYA_FORE_N, SAYA_PLATE, SAYA_TOP, SAYA_TOP_LOW, SAYA_UPPER_F, SAYA_UPPER_N } from './items/sayaUpperArt';
+import { RES } from './raster';
 import type { BodyType, SlotId, SpriteAppearance, SpritePose } from './types';
 
 const look = (body: BodyType, slots: Partial<Record<SlotId, { id: string; colors: string[] }>>): SpriteAppearance => ({
@@ -42,7 +43,7 @@ describe("Saya's top, arm guards and gloves", () => {
   });
 
   it('keeps every piece a whole picture: even rows, every character one of her colours', () => {
-    for (const p of [SAYA_TOP, SAYA_UPPER_N, SAYA_FORE_N, SAYA_UPPER_F, SAYA_FORE_F]) {
+    for (const p of [SAYA_TOP, SAYA_TOP_LOW, SAYA_UPPER_N, SAYA_FORE_N, SAYA_UPPER_F, SAYA_FORE_F]) {
       const w = p.rows[0].length;
       assert.ok(p.rows.every((r) => r.length === w));
       for (const r of p.rows) for (const ch of r) if (ch !== '.') assert.match(p.colors[ch] ?? '', /^#[0-9a-f]{6}$/);
@@ -54,6 +55,17 @@ describe("Saya's top, arm guards and gloves", () => {
     assert.ok(count(base, SAYA_PLATE) > 40, 'her cream shows on the chest');
     const recoloured = renderSprite(look('female', { ...SAYA, armor: { id: 'armor_crimson_shade', colors: ['', '', '#d0d6e0'] } }), 'idle', 0).rgba;
     assert.equal(count(recoloured, SAYA_PLATE), 0);
+  });
+
+  it('covers the long torso: the top on the neck reaches down over the top on the hips', () => {
+    // At rest the two pieces are not turned: the upper one's last row lies at or below the lower one's
+    // first, so no skin shows between her collar and her belts.
+    for (const body of ['female', 'slender'] as BodyType[]) {
+      const { rig } = renderSprite(look(body, SAYA), 'idle', 0);
+      const bottom = Math.floor(rig.neck.y * RES) - SAYA_TOP.pivot[1] + SAYA_TOP.rows.length - 1;
+      const top = Math.floor(rig.pelvis.y * RES) - SAYA_TOP_LOW.pivot[1];
+      assert.ok(bottom >= top + 1, `${body}: upper piece ends at ${bottom}, lower starts at ${top}`);
+    }
   });
 
   it('renders every pose on the female and slender bodies, and the gloves alone on the male and bulky', () => {

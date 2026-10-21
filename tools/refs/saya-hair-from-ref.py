@@ -53,6 +53,7 @@ import numpy as np  # noqa: E402
 from PIL import Image  # noqa: E402
 
 import heroine_ref as R  # noqa: E402
+import saya_rig  # noqa: E402
 
 SRC = 'docs/reference/saya-game-scale-owner-reference.jpg'
 # His grid: 100 x 100 cells over the 1024 x 1024 picture, starting at its corner.
@@ -148,16 +149,16 @@ LONG = (26, 20, [
     '...............***...',
 ])
 
-# Our female body at idle frame 0 (heroine_ref.OUR_JOINTS): the face anchor (body.ts faceAnchor:
-# floor((head.x - 1.9 k) RES), floor((head.y + k) RES), female head scale k 0.76), the neck cell the
-# long hair hangs from and the torso's angle (neck to pelvis) it is drawn at.
-HEAD_SCALE = 0.76
+# Our female body at idle frame 0 (tools/refs/saya_rig.py): the face anchor (body.ts faceAnchor:
+# floor((head.x - 1.9 k) RES), floor((head.y + k) RES), female head scale k), the neck cell the long
+# hair hangs from and the torso's angle (neck to pelvis) it is drawn at.
+J = saya_rig.JOINTS
+HEAD_SCALE = saya_rig.HEAD_SCALE
 RES = 2
-ANCHOR = (int(math.floor(R.OUR_JOINTS['head'][0] - 1.9 * HEAD_SCALE * RES)),
-          int(math.floor(R.OUR_JOINTS['head'][1] + 1.0 * HEAD_SCALE * RES)))
-NECK = tuple(int(math.floor(v)) for v in R.OUR_JOINTS['neck'])
-TORSO_ANGLE = math.degrees(math.atan2(R.OUR_JOINTS['pelvis'][1] - R.OUR_JOINTS['neck'][1],
-                                      R.OUR_JOINTS['pelvis'][0] - R.OUR_JOINTS['neck'][0]))
+ANCHOR = (int(math.floor(J['head'][0] - 1.9 * HEAD_SCALE * RES)),
+          int(math.floor(J['head'][1] + 1.0 * HEAD_SCALE * RES)))
+NECK = tuple(int(math.floor(v)) for v in J['neck'])
+TORSO_ANGLE = math.degrees(math.atan2(J['pelvis'][1] - J['neck'][1], J['pelvis'][0] - J['neck'][0]))
 # His cell -> our frame at idle (his near eye on ours).
 OFF = (ANCHOR[0] - HIS_ANCHOR[0], ANCHOR[1] - HIS_ANCHOR[1])
 

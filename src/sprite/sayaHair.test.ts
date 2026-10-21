@@ -87,6 +87,18 @@ describe('Saya hair', () => {
     assert.ok(seen.line > 20 && seen.hair > 200 && seen.orn > 6, JSON.stringify(seen));
   });
 
+  it("frames her own eyes ('shade') as he drew them: none of their blue is under the hair", () => {
+    const blues = (rgba: Uint8ClampedArray) => {
+      let n = 0;
+      for (let y = 0; y < GRID; y++) for (let x = 0; x < GRID; x++) if (['#3778a4', '#1b487b'].includes(hex(rgba, x, y))) n++;
+      return n;
+    };
+    const shade = { ...look('female'), eyeShape: 'shade' as const, eyeColor: '#3778a4' };
+    const bare = blues(renderSprite({ ...shade, slots: {} }, 'idle', 0).rgba);
+    assert.ok(bare >= 5, `${bare} blue pixels`);
+    assert.equal(blues(renderSprite(shade, 'idle', 0).rgba), bare);
+  });
+
   it('draws on every body, standing, moving, seated and knocked out', () => {
     const poses: SpritePose[] = ['idle', 'attack', 'hurt', 'run', 'crouch', 'downed', 'sit'];
     for (const body of ['female', 'slender', 'male', 'bulky'] as BodyType[]) {

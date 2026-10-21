@@ -17,9 +17,10 @@ the near shoulder down the back. The parts, in his cells (x across, y down):
           and below it the two locks in front of the face (x 44 on). His skin and eyes are left
           out, so our face shows there. The far side (from row 15, the run of each row that reaches
           its far end, from x 55 at most) is stamped on our far eye:
-          his far eye is 7 pixels from his near one and ours 9, so the far lock moves out with it
-          (one row more each row from row 15, his strands repeated across the gap) and frames our
-          face as it frames his instead of covering our far eye.
+          on our standard faces his far eye lies where ours does (9 from the anchor); on a face
+          whose far eye is further off (or nearer) the far lock moves out with it (one row more
+          each row from row 15, his strands repeated across the gap) and frames our face as it
+          frames his instead of covering our far eye.
   back    behind the head (hairBack), on the face anchor: the front's outline filled in from the
           crown to the chin (behind the forehead each pixel takes the strand above it, below it his
           shade), so no gap shows round the head; it is also the head's top outline (the game trims
@@ -82,10 +83,13 @@ ORNAMENT = 'Tt'
 BASE = 'h'
 ORNAMENT_BASE = 'T'
 
-# His near eye: the cell our face anchor (body.ts faceAnchor ex, ny: the near eye's white under its
-# lash) falls on, x 50 on his lash row 19. His far iris (fx) is 7 cells further on; ours is 9.
-HIS_ANCHOR = (50, 19)
-HIS_EYES = 7
+# His near eye on ours: the cell our face anchor (body.ts faceAnchor ex, ny: the start of the near
+# eye's lash row) falls on, x 48 on his lash row 19. Her own eyes (the 'shade' eye shape,
+# sayaEyeArt.ts) draw her lash from one cell in (ex + 1), as his starts at x 49, so her lash, whites
+# and blues sit under his bangs exactly as he drew them, his strand between the eyes beside her iris
+# and not over it. His far iris (fx) is then 9 cells further on, as ours is.
+HIS_ANCHOR = (48, 19)
+HIS_EYES = 9
 # The far side, from this row down: in each row the run of the front's pixels that reaches its far
 # end, starting no nearer than FAR_MIN (on the crown, where the row is whole, at FAR_MIN).
 FAR_FROM, FAR_MIN = 15, 55

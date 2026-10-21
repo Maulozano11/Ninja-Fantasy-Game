@@ -32,7 +32,7 @@ const SAYA_HAIR_COLORS: Record<string, string> = {
 
 /** Over the head: his hair above the chin (crown, bangs, ornament, the near side hair round the ear) and the two locks in front of the face below it. Its pivot is the cell on our face anchor (the near eye's start). */
 export const SAYA_HAIR_FRONT: SayaFacePart = {
-  pivot: [11, 13],
+  pivot: [9, 13],
   farFrom: 9,
   farCols: [16, 16, 20, 19, 19, 19, 19, 19, 19, 19, 18, 18, 19, 20, 20, 21, 21, 21, 22, 21],
   rows: [
@@ -71,7 +71,7 @@ export const SAYA_HAIR_FRONT: SayaFacePart = {
 
 /** Behind the head: the front's outline filled in to the chin (his strands run on behind the forehead, his shade below), also the head's outline at the top. Pivot on the face anchor. */
 export const SAYA_HAIR_BACK: SayaFacePart = {
-  pivot: [11, 13],
+  pivot: [9, 13],
   farFrom: 9,
   farCols: [16, 16, 20, 19, 19, 19, 19, 19, 19, 19, 18, 18, 19, 20, 20, 21, 21, 21, 22, 21],
   rows: [
@@ -110,7 +110,7 @@ export const SAYA_HAIR_BACK: SayaFacePart = {
 
 /** Down the back from the near side of the head, behind the body: its pivot is the cell on the neck, its angle the torso's (neck to pelvis) at idle. */
 export const SAYA_HAIR_LONG: PaintedPiece = {
-  pivot: [26, 7],
+  pivot: [24, 7],
   angle: 90.50,
   rows: [
     '...........kXhhzEyh',
@@ -142,7 +142,7 @@ export const SAYA_HAIR_LONG: PaintedPiece = {
 };
 
 /** His far eye's distance from his near one (fx - ex in our face anchor's terms). */
-export const SAYA_HAIR_EYES = 7;
+export const SAYA_HAIR_EYES = 9;
 
 /** His black line: kept as he has it when the hair is recoloured, and laid along hair cut away when she lies down. */
 export const SAYA_HAIR_LINE = 'k';

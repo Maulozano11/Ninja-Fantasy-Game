@@ -132,8 +132,9 @@ folders.
 
 - `saya-hair-from-ref.py`: Saya's hair (`hair_sun_fall`) copied 1:1 from his picture at our game's
   scale (`saya-game-scale-owner-reference.jpg`, 10.24 picture pixels to one of his, which is one of
-  ours), in his colours: the front over the head and the back behind it on the face anchor (the far
-  lock moves out with our wider-set far eye), and the long hair down the back on the neck, turned
+  ours), in his colours: the front over the head and the back behind it on the face anchor (his
+  lash on the lash of her own eyes, the `shade` shape, so his bangs and strands sit round them as he
+  drew them; the far lock moves out with a far eye set wider than his), and the long hair down the back on the neck, turned
   with the torso, continued behind his arm. Writes `src/sprite/items/sayaHairArt.ts`, and in
   `<out>/study/` his hair and the three parts at 10x.
 

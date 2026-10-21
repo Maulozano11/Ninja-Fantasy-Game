@@ -75,14 +75,16 @@ const pensOf = (g: DrawCtx, colors: Record<string, string>, tint: Tint): Record<
 
 /**
  * A face part's pixels in the frame, its pivot on the face anchor (the near eye), so it frames the
- * eyes as he has it on every body and in every pose. His far eye is SAYA_HAIR_EYES from his near one;
+ * eyes as he has it on every body and in every pose. His far iris is SAYA_HAIR_EYES from the anchor;
  * where ours is further off (9 on our standard faces), the part's far side (in each row from
  * `farCols` on) moves out with it, one pixel more each row from `farFrom`, and the strand just inside
  * repeats across the gap where the crown is whole. So the far lock frames our far eye instead of covering it.
  */
 function facePixels(g: DrawCtx, p: SayaFacePart): { x: number; y: number; ch: string }[] {
   const { ex, fx, ny } = faceAnchor(g);
-  const d = Math.max(-2, Math.min(3, fx - ex - SAYA_HAIR_EYES));
+  // Her own eyes ('shade') draw the far iris a cell past the template's far eye: the lock frames it there.
+  const iris = fx + (g.look.eyeShape === 'shade' ? 1 : 0);
+  const d = Math.max(-2, Math.min(3, iris - ex - SAYA_HAIR_EYES));
   const ax = ex - p.pivot[0];
   const ay = ny - p.pivot[1];
   const hair = (ch: string | undefined) => ch !== undefined && ch !== '.' && ch !== SAYA_HAIR_LINE;
@@ -96,6 +98,10 @@ function facePixels(g: DrawCtx, p: SayaFacePart): { x: number; y: number; ch: st
     const s = Math.sign(d) * Math.min(Math.abs(d), j - p.farFrom + 1);
     for (let i = 0; i < row.length; i++) if (row[i] !== '.') out.push({ x: ax + i + (i >= fc ? s : 0), y: ay + j, ch: row[i] });
     if (s > 0 && hair(row[fc - 1]) && hair(row[fc])) for (let t = 0; t < s; t++) out.push({ x: ax + fc + t, y: ay + j, ch: row[fc - 1] });
+    // Below the eyes, where the far lock's line leaves our jaw, his line spans the gap so no
+    // background shows between the cheek and the lock (he has them touching).
+    else if (s > 0 && j >= p.pivot[1] + 3 && row[fc] === SAYA_HAIR_LINE && !hair(row[fc - 1]))
+      for (let t = 0; t < s; t++) out.push({ x: ax + fc + t, y: ay + j, ch: SAYA_HAIR_LINE });
   });
   return out;
 }

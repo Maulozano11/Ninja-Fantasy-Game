@@ -164,7 +164,13 @@ SKIN_HEX = '#facdac'
 # hers: one short muted rose line. Her black line is not moved by the skin tone.
 FACE_TONES = {'o': '#080613', 'D': '#d68271', 's': '#e59580', 'b': '#facdac', 'l': '#facdac'}
 MOUTH = {'m': '#d68271', 'M': '#b76660'}
-for _h in list(FACE_TONES.values()) + list(MOUTH.values()):
+# Her skin's shades for the whole body (our skin ramp's six shades, darkest to lightest: line, dark,
+# shadow, base, light, highlight), so her shoulders, arms, thighs and the forehead under her bangs are
+# shaded in her tones and not in the ramp we would work out from her base: her black line, her
+# deeper rose shadow where a limb turns away, her rose shadow, and her base for the lit side (she has
+# no skin lighter than it).
+BODY_SKIN = ['#080613', '#c67169', '#e59580', '#facdac', '#facdac', '#facdac']
+for _h in list(FACE_TONES.values()) + list(MOUTH.values()) + BODY_SKIN:
     assert _h in R.PALETTES[WHICH], _h
 
 
@@ -274,7 +280,9 @@ def write_ts(path, states, seen):
             "/** The face template's skin shades (line, crease, shadow, base, light) in her face's tones: the skin tone moves them as far (her black line stays). */",
             'export const AZURE_FACE: Record<string, string> = { ' + ', '.join(f"{k}: '{v}'" for k, v in FACE_TONES.items()) + ' };', '',
             "/** Her mouth for the template's lip and crease: one short muted rose line (the skin tone moves it as far). */",
-            'export const AZURE_MOUTH: Record<string, string> = { ' + ', '.join(f"{k}: '{v}'" for k, v in MOUTH.items()) + ' };', '']
+            'export const AZURE_MOUTH: Record<string, string> = { ' + ', '.join(f"{k}: '{v}'" for k, v in MOUTH.items()) + ' };', '',
+            "/** Her skin's six shades for the body (line, dark, shadow, base, light, highlight): with her skin colour the body is shaded in these instead of our worked-out ramp. */",
+            'export const AZURE_SKIN_RAMP: readonly string[] = [' + ', '.join(f"'{h}'" for h in BODY_SKIN) + '];', '']
     src = '\n'.join(out)
     tmp = path + '.tmp'
     with open(tmp, 'w') as f:

@@ -87,3 +87,6 @@ export const AZURE_FACE: Record<string, string> = { o: '#080613', D: '#d68271', 
 
 /** Her mouth for the template's lip and crease: one short muted rose line (the skin tone moves it as far). */
 export const AZURE_MOUTH: Record<string, string> = { m: '#d68271', M: '#b76660' };
+
+/** Her skin's six shades for the body (line, dark, shadow, base, light, highlight): with her skin colour the body is shaded in these instead of our worked-out ramp. */
+export const AZURE_SKIN_RAMP: readonly string[] = ['#080613', '#c67169', '#e59580', '#facdac', '#facdac', '#facdac'];

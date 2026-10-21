@@ -20,6 +20,9 @@ export const ELISE_HAND_SKIN = '#facdac';
 /** Her glove blues for the hands she did not paint, by our hand pictures' shades: line, crease, shadow, base, light. */
 export const ELISE_GLOVE_TONES = ['#080613', '#1b2858', '#1b2858', '#2d5090', '#345ea9'] as const;
 
+/** The leather strap round her gloves' cuffs, where the glove meets the sleeve. */
+export const ELISE_GLOVE_STRAP = '#865339';
+
 /** Her fingers' skin for the bare fingertips of the hands she did not paint, by the same shades. */
 export const ELISE_FINGER_TONES = ['#d68271', '#d68271', '#e59580', '#facdac', '#facdac'] as const;
 
@@ -233,7 +236,7 @@ export const ELISE_GLOVE_N: PaintedPiece = {
 
 /** The far hand hanging: her glove over the palm, her fingers bare. */
 export const ELISE_GLOVE_F: PaintedPiece = {
-  pivot: [3, 0],
+  pivot: [1, 0],
   angle: 59.53,
   rows: [
     'k5551k..',

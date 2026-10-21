@@ -379,7 +379,7 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: "A long slender blade glowing gold under a gold swept hilt, sparkles round it: the owner painted it for Elise.",
     colors: [col('blade', 'Blade glow', ELISE_SWORD_BLADE, 'glow'), col('guard', 'Guard', ELISE_SWORD_GUARD, 'metal')],
     draw: (g, [blade, guard]) => {
-      if (handsBusy(g)) drawEliseRapier(g, 'backGear', backGrip(g, 48), 48, blade, guard, false);
+      if (handsBusy(g)) drawEliseRapier(g, 'backGear', backGrip(g, 48), backAngle(g, 48), blade, guard, false);
       else if (handsLimp(g)) drawEliseRapier(g, 'nearArm.held', droppedGrip(g, 0.7), -86, blade, guard, false);
       // Its grip crosses the fist at the hand joint, as the flame longsword's does.
       else if (!handsReleased(g)) drawEliseRapier(g, 'nearArm.held', g.rig.handN, swordAngle(g), blade, guard, true);

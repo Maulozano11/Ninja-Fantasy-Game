@@ -23,6 +23,7 @@ import {
   ELISE_GLOVE,
   ELISE_GLOVE_F,
   ELISE_GLOVE_N,
+  ELISE_GLOVE_STRAP,
   ELISE_GLOVE_TONES,
   ELISE_HAND_SKIN,
   ELISE_KIND,
@@ -326,6 +327,41 @@ function handAndForearm(g: DrawCtx, s: Side): Uint8Array {
 }
 
 /**
+ * Her gloves' cuffs: what of our forearm still shows near the wrist past a sleeve (her far sleeve's
+ * guard ends short of the wrist, and seated or reaching a gap opens under the near one) is her glove,
+ * in her glove blues by the skin's shades, with one row of her leather strap where it starts, so no
+ * bare wrist shows between the sleeve and the glove. Bare arms get the same cuff over the wrist.
+ */
+const CUFF_FROM = 0.55;
+function gloveCuff(g: DrawCtx, s: Side, tones: string[]): void {
+  const { elbow, wrist } = armJoints(g.rig, s);
+  const fore = partIndex(prt('forearm', s));
+  const body = g.L(armDepth(s, 'body'));
+  const over = g.L(armDepth(s, 'armor'));
+  const dx = wrist.x - elbow.x;
+  const dy = wrist.y - elbow.y;
+  const len2 = dx * dx + dy * dy || 1;
+  const along = (i: number) => ((((i % GRID) + 0.5) / RES - elbow.x) * dx + ((((i / GRID) | 0) + 0.5) / RES - elbow.y) * dy) / len2;
+  const shown: [number, number][] = [];
+  let first = Infinity;
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (body.mat[i] < 0 || body.part[i] !== fore || over.mat[i] >= 0) continue;
+    const t = along(i);
+    if (t < CUFF_FROM) continue;
+    shown.push([i, t]);
+    first = Math.min(first, t);
+  }
+  // the strap: the shown pixels within about a fine pixel of where the cuff starts
+  const strapTo = first + 1.2 / (Math.sqrt(len2) * RES);
+  const strap = g.m(ELISE_GLOVE_STRAP, 'flat');
+  const mats = tones.map((t) => g.m(t, 'flat'));
+  for (const [i, t] of shown) {
+    const pen = t <= strapTo ? strap : mats[Math.max(0, Math.min(body.shade[i], mats.length - 1))];
+    over.set(i % GRID, (i / GRID) | 0, pen, 3, prt('forearm', s), FLAGS);
+  }
+}
+
+/**
  * Where our hand pictures' fingertips are, in pixels from the wrist as the picture is drawn, hanging and
  * unmirrored (the cradling hand upright): a fingerless glove leaves them bare.
  */
@@ -453,7 +489,7 @@ export const AZURE_FINGERLESS: ItemDef = {
   id: 'hands_azure_fingerless',
   slot: 'hands',
   name: 'Azure Fingerless Gloves',
-  desc: 'Royal-blue gloves that leave the fingers bare.',
+  desc: 'Royal-blue gloves that leave the fingers bare, a leather strap round each cuff.',
   colors: [col('main', 'Glove', ELISE_GLOVE)],
   draw: (g, [glove]) => {
     // The owner's Elise (2026-10-21), her gloves at our scale. Closed, each hand is her hand in place of
@@ -473,6 +509,7 @@ export const AZURE_FINGERLESS: ItemDef = {
         bareHandOff(g, s);
         paintedFist(g, s, s === 'N' ? ELISE_GLOVE_N : ELISE_GLOVE_F, tint, ours);
       } else fingerlessHand(g, s, ELISE_GLOVE_TONES.map((t) => tint('', t)), ELISE_FINGER_TONES.map((t) => tint('', t)));
+      gloveCuff(g, s, ELISE_GLOVE_TONES.map((t) => tint('', t)));
     }
   },
 };

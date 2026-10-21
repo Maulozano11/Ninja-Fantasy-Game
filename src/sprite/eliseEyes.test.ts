@@ -3,8 +3,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { renderSprite } from './compose';
-import { AZURE_EYE_AT, AZURE_EYE_COLORS, AZURE_EYES, AZURE_FACE, AZURE_IRIS, AZURE_MOUTH, AZURE_SKIN } from './eliseEyeArt';
-import { GRID, partIndex, RES } from './raster';
+import { makeRamp } from './color';
+import { AZURE_EYE_AT, AZURE_EYE_COLORS, AZURE_EYES, AZURE_FACE, AZURE_IRIS, AZURE_MOUTH, AZURE_SKIN, AZURE_SKIN_RAMP } from './eliseEyeArt';
+import { LEGENDARY_PRESETS } from '../data/shinobiData';
+import { getAppearance } from './legacy';
+import { GRID, MaterialTable, partIndex, RES } from './raster';
 import type { SpritePose, SpriteAppearance } from './types';
 
 const look = (over: Partial<SpriteAppearance> = {}): SpriteAppearance => ({
@@ -102,5 +105,22 @@ describe("Elise's eyes (azure)", () => {
     const lips = new Set<string>();
     for (let i = 0; i < GRID * GRID; i++) if (other.part[i] === head) lips.add(at(other.rgba, i % GRID, (i / GRID) | 0) ?? '');
     assert.ok(lips.has('#c4566c'), 'our lips on our eyes');
+  });
+
+  it('shades her whole body in her own skin tones: her line and her rose shadows, none of the ramp we would work out', () => {
+    assert.deepEqual(makeRamp(AZURE_SKIN, 'skin'), [...AZURE_SKIN_RAMP]);
+    const mats = new MaterialTable();
+    assert.equal(mats.ramps[mats.get(AZURE_SKIN, 'skin')][0], '#080613', 'her line, not pulled toward our ink');
+    // What our ramp made of her skin before (its line, dark and shadow): seen at her far temple
+    // through a gap in her hair, on her forehead, her shoulder, her thighs and her wrist.
+    const ours = ['#18090e', '#ae4946', '#e08a72'];
+    const elise = getAppearance(LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_elise')!.character);
+    for (const [pose, frame] of [['idle', 0], ['walk', 1], ['sit', 0], ['attack', 1], ['crouch', 0]] as const) {
+      const f = renderSprite(elise, pose, frame).rgba;
+      for (let i = 0; i < GRID * GRID; i++) {
+        const h = at(f, i % GRID, (i / GRID) | 0);
+        assert.ok(!h || !ours.includes(h), `${pose} ${frame}: ${h} at ${i % GRID}, ${(i / GRID) | 0}`);
+      }
+    }
   });
 });

@@ -298,7 +298,9 @@ def belt():
 # the near wrist, which is its pivot): her blue glove over the wrist and the back of the hand, lit
 # along its top, her fingers bare under it with her darker skin between them. The far hand hanging
 # open at her side (our far fist's place, the far wrist its pivot): the glove over the palm, her
-# fingers bare below it.
+# fingers bare below it. Our hips are wider than hers and our skirt hides our far hand all but its
+# outer edge, so the far hand is set two pixels further out from the wrist (GLOVE_F_OUT), where hers
+# shows beside the hip: her blue glove and her bare fingers past the skirt.
 GLOVE_N = (104, 173, [
     '....k55k...',
     '...k5555k..',
@@ -312,7 +314,8 @@ GLOVE_N = (104, 173, [
     '.kzkzkzk...',
     '..k.k.k....',
 ])
-GLOVE_F = (137, 174, [
+GLOVE_F_OUT = 2
+GLOVE_F = (137 + GLOVE_F_OUT, 174, [
     'k5551k..',
     'k55111k.',
     'k51111k.',
@@ -333,6 +336,11 @@ HAND_SKIN = '#facdac'
 # The bare fingertips of our hand pictures in her glove, by the same shades: her fingers' skin (the
 # shadow between her fingers, its lighter tone, her base), so no colour of ours shows past her glove.
 FINGER_TONES = ['#d68271', '#d68271', '#e59580', '#facdac', '#facdac']
+# The leather strap round each glove's cuff, between the sleeve's guard and the glove (her far wrist
+# is browns there, her near wrist a greyer brown under a gold edge): one row of her leather brown on
+# whatever of our forearm shows past the sleeve.
+GLOVE_STRAP = '#865339'
+assert GLOVE_STRAP in PALETTE
 for t in FINGER_TONES:
     assert t in PALETTE, t
 
@@ -450,6 +458,9 @@ def main():
         '',
         "/** Her glove blues for the hands she did not paint, by our hand pictures' shades: line, crease, shadow, base, light. */",
         'export const ELISE_GLOVE_TONES = [' + ', '.join(f"'{t}'" for t in GLOVE_TONES) + '] as const;',
+        '',
+        "/** The leather strap round her gloves' cuffs, where the glove meets the sleeve. */",
+        f"export const ELISE_GLOVE_STRAP = '{GLOVE_STRAP}';",
         '',
         "/** Her fingers' skin for the bare fingertips of the hands she did not paint, by the same shades. */",
         'export const ELISE_FINGER_TONES = [' + ', '.join(f"'{t}'" for t in FINGER_TONES) + '] as const;',

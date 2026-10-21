@@ -4,6 +4,8 @@
 // Shadows drift toward cool hues and highlights toward warm hues, which is
 // what gives 16-bit sprites their depth instead of flat darken/lighten.
 
+import { paintedSkinRamp } from './paintedSkin';
+
 export type RampKind = 'skin' | 'hair' | 'cloth' | 'metal' | 'leather' | 'glow' | 'flat';
 export type Ramp = [string, string, string, string, string, string];
 
@@ -68,6 +70,14 @@ export function makeRamp(hex: string, kind: RampKind = 'cloth'): Ramp {
   const key = `${hex}|${kind}`;
   const cached = rampCache.get(key);
   if (cached) return cached;
+
+  // A skin the owner painted with his own shades (paintedSkin.ts) is shaded in them.
+  const painted = kind === 'skin' ? paintedSkinRamp(hex) : undefined;
+  if (painted) {
+    const own = [...painted] as Ramp;
+    rampCache.set(key, own);
+    return own;
+  }
 
   const [r, g, b] = hexToRgb(hex);
   let [h, s, l] = rgbToHsl(r, g, b);

@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { renderSpriteCached } from './compose';
 import { hangPixels } from './items/eliseLower';
-import { ELISE_BELT, ELISE_COAT_BACK, ELISE_FINGER_TONES, ELISE_KIND, ELISE_SKIRT } from './items/eliseLowerArt';
+import { ELISE_BELT, ELISE_COAT_BACK, ELISE_FINGER_TONES, ELISE_GLOVE_STRAP, ELISE_KIND, ELISE_SKIRT } from './items/eliseLowerArt';
 import { getAppearance } from './legacy';
 import { GRID, partIndex } from './raster';
 import { rotateTemplate, type RotatedPixel } from './rotsprite';
@@ -92,5 +92,35 @@ describe('Elise lower clothes', () => {
       const [wx, wy] = hem(whole);
       assert.ok(Math.abs(Math.atan2(hx, hy)) < Math.abs(Math.atan2(wx, wy)), `${turn}: hem at ${hx}, ${hy} vs ${wx}, ${wy}`);
     }
+  });
+
+  it('shows no bare wrist between the sleeve and the glove: her glove cuff and its leather strap', () => {
+    const skin = new Set(['#facdac', '#f3ae92', '#e59580', '#d78876', '#d68271', '#c67169', '#9b5754']);
+    const fore = new Set([partIndex('forearmN'), partIndex('forearmF')]);
+    let strap = 0;
+    for (const [pose, frame] of [['idle', 0], ['sit', 0], ['walk', 1], ['read', 0], ['lean', 0], ['attack', 1]] as const) {
+      const f = renderSpriteCached(look(), pose, frame);
+      for (let i = 0; i < GRID * GRID; i++) {
+        if (!f.rgba[i * 4 + 3] || !fore.has(f.part[i])) continue;
+        const h = hexAt(f.rgba, i);
+        assert.ok(!skin.has(h), `${pose} ${frame}: bare wrist ${h} at ${i % GRID}, ${(i / GRID) | 0}`);
+        if (h === ELISE_GLOVE_STRAP) strap++;
+      }
+    }
+    assert.ok(strap > 0, 'her strap shows where the cuff meets the sleeve');
+  });
+
+  it('shows her far glove and fingers beside the hip at idle, past the skirt', () => {
+    const f = renderSpriteCached(look(), 'idle', 0);
+    const hand = partIndex('handF');
+    let glove = 0;
+    let fingers = 0;
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (!f.rgba[i * 4 + 3] || f.part[i] !== hand) continue;
+      const k = ELISE_KIND[hexAt(f.rgba, i)];
+      if (k === 'glove' || k === 'coat') glove++; // her glove blues (her navy is also her coat's)
+      if (k === 'skin') fingers++;
+    }
+    assert.ok(glove >= 4 && fingers >= 4, `glove ${glove}, fingers ${fingers}`);
   });
 });

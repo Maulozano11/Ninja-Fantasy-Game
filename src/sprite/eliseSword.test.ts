@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
+import { GRID } from './raster';
 import { ELISE_RAPIER, ELISE_SWORD_BLADE, ELISE_SWORD_GUARD } from './items/eliseSwordArt';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
 import type { SpriteAppearance } from './types';
@@ -35,5 +36,39 @@ describe('Elise azure rapier', () => {
     const a = renderSprite(look(), 'idle', 0).rgba;
     const b = renderSprite(look(['#40c0ff', ELISE_SWORD_GUARD]), 'idle', 0).rgba;
     assert.notDeepEqual(a, b);
+  });
+
+  it('stowed on her back, turns with her as the other back swords do: no blade pokes out in front when she lunges or throws', () => {
+    // How far right a stowed sword reaches: the pixels that change when it is put on her back.
+    const reach = (held: string, pose: 'pierce' | 'throw', frame: number): number => {
+      const base = { ...look(), stowed: true };
+      const a = renderSprite({ ...base, slots: { held: { id: held, colors: [] } } }, pose, frame).rgba;
+      const b = renderSprite({ ...base, slots: {} }, pose, frame).rgba;
+      let x = -1;
+      for (let i = 0; i < GRID * GRID; i++) {
+        const differs = a[i * 4 + 3] && (!b[i * 4 + 3] || a[i * 4] !== b[i * 4] || a[i * 4 + 1] !== b[i * 4 + 1] || a[i * 4 + 2] !== b[i * 4 + 2]);
+        if (differs) x = Math.max(x, i % GRID);
+      }
+      return x;
+    };
+    for (const [pose, frames] of [['pierce', 5], ['throw', 4]] as const) {
+      for (let f = 0; f < frames; f++) {
+        const ours = reach('held_azure_rapier', pose, f);
+        const flame = reach('held_flame_sword', pose, f);
+        assert.ok(ours <= flame + 1, `${pose} ${f}: reaches x ${ours}, the flame longsword ${flame}`);
+      }
+    }
+  });
+
+  it('keeps the knuckle bow close round the fist, and the dropped sword no lower than the flame longsword', () => {
+    // the bow is a thin bar a pixel off the glove, not a hoop wider than the hand
+    assert.ok(ELISE_RAPIER.pivot[0] <= 11, `the hilt reaches ${ELISE_RAPIER.pivot[0]} px left of the grip`);
+    const lowest = (held: string): number => {
+      const a = renderSprite({ ...look(), slots: { held: { id: held, colors: [] } } }, 'downed', 0).rgba;
+      let y = -1;
+      for (let i = 0; i < GRID * GRID; i++) if (a[i * 4 + 3]) y = Math.max(y, (i / GRID) | 0);
+      return y;
+    };
+    assert.ok(lowest('held_azure_rapier') <= lowest('held_flame_sword'));
   });
 });

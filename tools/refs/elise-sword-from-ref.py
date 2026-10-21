@@ -11,8 +11,8 @@ female idle in her own colours (reduced_layers('elise')['blade'] and ['glow']); 
 there. Her hilt is too small at our scale to reduce by machine (about 11 x 12 of our pixels, its
 bow and bar one pixel wide) and our fist is bigger than her glove, so it is drawn here pixel by
 pixel (HILT, BOW) after her picture, in her colours only, on the blade's own line: the pommel shows
-above our fist as hers shows above her glove, the bow sweeps out round the outside of the fist as a
-ring with a gap before the glove, the shell and the cross-bar sit where the blade leaves the fist. The grip hidden in her glove is drawn
+above our fist as hers shows above her glove, the bow is a thin bar close round the outside of the
+fist with a pixel's gap before the glove, the shell and the cross-bar sit where the blade leaves the fist. The grip hidden in her glove is drawn
 in her grip's browns.
 
 The template is drawn at her angle (the blade's line, about 51 degrees, which our idle pose holds
@@ -98,15 +98,15 @@ HILT = [
     '..........#od#',  # 189  the cross-bar's lower end, a gold finial
     '...........##',  # 190
 ]
-# Her knuckle bow (x, row, colour), her gold lit at the top and darker below: from the pommel's collar
-# it sweeps out to the left of the fist and down round below it into the shell, a ring about ten
-# pixels across with her background showing between it and the glove, as the reduced reference has
-# it (our fist is bigger than her glove, so a bow hugging it would read as part of the fist). Her line
-# runs along both its sides (BOW_LINE: every side of a bow pixel the hilt leaves empty).
+# Her knuckle bow (x, row, colour), her gold lit at the top and darker below: a thin bar that leaves
+# the pommel's collar and sweeps down close round the outside of the fist into the shell, as hers
+# hugs her glove, with one pixel of background between its line and the glove so it does not read as
+# part of our (bigger) fist. Her line runs along both its sides (BOW_LINE: every side of a bow pixel
+# the hilt leaves empty).
 BOW = [
-    (100, 171, 'k'), (99, 172, 'k'), (98, 173, 'k'), (98, 174, 'k'), (97, 175, 'o'), (97, 176, 'o'), (97, 177, 'o'),
-    (97, 178, 'o'), (97, 179, 'o'), (98, 180, 'd'), (98, 181, 'd'), (99, 182, 'd'), (100, 183, 'd'),
-    (101, 184, 'd'), (102, 184, 'd'), (103, 185, 'd'), (104, 185, 'd'),
+    (100, 172, 'k'), (100, 173, 'k'), (101, 174, 'k'), (101, 175, 'o'), (101, 176, 'o'), (101, 177, 'o'),
+    (101, 178, 'o'), (101, 179, 'o'), (101, 180, 'd'), (101, 181, 'd'), (101, 182, 'd'), (102, 183, 'd'),
+    (103, 184, 'd'), (104, 185, 'd'),
 ]
 BOW_LINE = '#'
 

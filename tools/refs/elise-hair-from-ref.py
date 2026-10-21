@@ -111,6 +111,9 @@ def rows_from(spec, x0, x1):
 
 
 # Her head's hair in our frame (x 104-139, rows 126-156): the reduced reference's, cleaned by hand.
+# Above the far eye (x 132-133, rows 135-139) her forehead shows between two strands, but there our
+# head is narrower than hers and only its dark edge would show: the strand and her dark brown line
+# beside it are carried down over it instead.
 HEAD = rows_from({
     126: (117, 'KKkkkkkkkkkK'),
     127: (115, 'KkqqqppoqqoGmpkK'),
@@ -121,11 +124,11 @@ HEAD = rows_from({
     132: (111, 'kpoqqqqqesrrpqqqqprqrgpppk'),
     133: (111, 'kppp111qrrrresqrorsqs7qrqk'),
     134: (110, 'Kppp18963qqqeqosrpsqqrbbsok'),
-    135: (110, 'kppq162361qqeqqpopqdqp jlprk'),
-    136: (110, 'kppq1582561flopmeqcdqb  jrsk'),
-    137: (110, 'klqqp14531qjmmljlmjdjl  jppk'),
-    138: (110, 'klqqlqjiqoqll j  j  jd  djllk'),
-    139: (110, 'klqqlmdnqoqdb         j djlbk'),
+    135: (110, 'kppq162361qqeqqpopqdqpJjlprk'),
+    136: (110, 'kppq1582561flopmeqcdqbJnjrsk'),
+    137: (110, 'klqqp14531qjmmljlmjdjlJnjppk'),
+    138: (110, 'klqqlqjiqoqll j  j  jdkndjllk'),
+    139: (110, 'klqqlmdnqoqdb         jndjlbk'),
     140: (110, 'klqppo cqpqd            dlqk'),
     141: (109, 'Kllqpre  qlqd            dlqk'),
     142: (109, 'kllqlre  qqpe            dlqk'),
@@ -201,22 +204,22 @@ FALL = rows_from({
 }, 94, 126)
 
 # A loose strand at the top of the fall, outside the mass (its own piece: it rides with the fall, but
-# is left out when she lies down, where it would stand up off her back). It leaves the mass at its
-# top and arcs out and down, a step at a time with each pixel sharing a side with the next (so the
-# turn with the torso cannot break it into loose bits), and keeps two pixels or more off the mass to
-# its tip, the gap between them opening downward as both edges step out (so it never closes a
-# sliver of background against it).
+# is left out when she lies down, where it would stand up off her back), as her flyaway lock: a
+# strand of her golds, lit on its outer side, in her dark brown line all round. It leaves the mass at
+# its top as a widening of the mass, splits from it under one short run of line, arcs out and down
+# and curves back in toward the mass at its tip, a step at a time with each pixel sharing a side with
+# the next (so the turn with the torso cannot break it into loose bits); its line keeps two pixels
+# off the mass at the tip, the gap opening downward (so it never closes a pocket of background
+# against the mass).
 WISP = rows_from({
-    149: (101, 'lllo'),
-    150: (100, 'll'),
-    151: (99, 'll'),
-    152: (98, 'll'),
-    153: (97, 'll'),
-    154: (96, 'lj'),
-    155: (96, 'j'),
-    156: (95, 'jj'),
-    157: (95, '7'),
-}, 94, 126)
+    148: (102, '777'),
+    149: (100, '77lmm'),
+    150: (99, '7lljj'),
+    151: (98, '7lj7'),
+    152: (97, '7lj7'),
+    153: (96, '7J7'),
+    154: (96, '7'),
+}, 90, 126)
 
 
 # Behind our near arm (hidden at idle, shown when the arm swings) her hair is in the arm's shade: her

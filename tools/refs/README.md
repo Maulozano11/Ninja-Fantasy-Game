@@ -129,3 +129,12 @@ folders.
       npx tsx tools/refs/heroine-idle.mts <out>
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
+
+- `elise-upper-from-ref.py`: Elise's coat and sleeves (`armor_azure_coat`), cut out of her reduced
+  reference into pieces that ride our female rig (`src/sprite/items/eliseUpperArt.ts`, drawn by
+  `src/sprite/items/eliseUpper.ts`): the coat body to the belt (pivot: the neck) and each sleeve's
+  upper arm and forearm (pivots: the shoulder and the elbow), each laid as the reduced reference has
+  it at idle frame 0. What her figure hides of a piece comes from the study's own hand-drawn part
+  (`heroine_paint.PAINT`). Her belt, pouch and coat tails are the lower part's.
+
+      python3 -I tools/refs/elise-upper-from-ref.py <out> src/sprite/items/eliseUpperArt.ts

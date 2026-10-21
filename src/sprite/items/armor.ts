@@ -35,6 +35,7 @@ import {
   PLATE_VAMBRACE_N,
   PLATE_WAIST,
 } from './crimsonPlateArt';
+import { AZURE_COAT } from './eliseUpper';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2611,6 +2612,7 @@ export const ARMOR_ITEMS: ItemDef[] = [
     statsArmor: 'Dark Knight Plate',
     draw: (g, [steel, trim]) => drawCrimsonPlate(g, steel, trim),
   },
+  AZURE_COAT,
 ];
 
 // ---------------------------------------------------------------------------

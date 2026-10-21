@@ -12,7 +12,7 @@ import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 import { EMBER_BRACER_F, EMBER_BRACER_KIND, EMBER_BRACER_LEATHER, EMBER_BRACER_N, EMBER_BRACER_SKIN, EMBER_BRACER_STRAP, EMBER_FIST_F, EMBER_FIST_N } from './emberBracersArt';
-import { armAtRest, EMBER_LEGS_ID, emberFarArm, emberLegOut, fitArm, fitLegs } from './ember';
+import { EMBER_LEGS_ID, emberFarArm, emberLegOut, fitArm, fitLegs } from './ember';
 import { handsBusy, handsLimp, handsReleased } from '../grip';
 import { LEG_KIND, LEG_LEATHER, LEG_SHIN_F, LEG_SHIN_N, LEG_STUD, LEG_THIGH_F, LEG_THIGH_N } from './emberLegsArt';
 import { isFemaleBody } from '../types';
@@ -1793,10 +1793,9 @@ const EMBER_BRACER_OLD: Record<string, string> = {
 
 /**
  * His leather arm guards (his Akira picture): the near one rides the near forearm about the elbow; the
- * far one keeps the straighter hang he drew the far arm in (ember.ts). While the arms hang as he drew
- * them his fists (his skin, following the character's) take our hands' place: the far one under its
- * cuff, the near one round the grip of his katana; otherwise our hands show (the far one carried to
- * his cuff). Leather follows Leather, his darkest browns (the seams between the lames) follow Straps;
+ * far one keeps the straighter hang he drew the far arm in (ember.ts). His fists (his skin, following
+ * the character's) take our hands' place in every pose: the far one under its cuff, the near one round
+ * the grip of his katana (with the hand empty, his far fist). Leather follows Leather, his darkest browns (the seams between the lames) follow Straps;
  * his black line stays.
  */
 function drawEmberBracers(g: DrawCtx, c: string, st: string): void {
@@ -1810,17 +1809,19 @@ function drawEmberBracers(g: DrawCtx, c: string, st: string): void {
     return k === 'strap' ? retintHex(hex, EMBER_BRACER_STRAP, strap) : retintHex(hex, EMBER_BRACER_LEATHER, leather);
   };
   const r = g.rig;
-  // the far arm: his fist and guard at his hang while the arm hangs about as he drew it
+  // In every pose his guard and fist are the forearm and hand, turned whole about our elbow (the owner:
+  // the arms in the poses must be his design, 2026-10-21). The far arm keeps his hang near rest.
   const far = emberFarArm(g);
-  const farFist = far.w > 0.5;
-  fitArm(g, 'F', farFist ? null : far.hand);
-  if (farFist) stampPiece(g, 'farArm.armor', EMBER_FIST_F, r.elbowF, far.deg, 'handF', tint);
+  fitArm(g, 'F');
+  stampPiece(g, 'farArm.armor', EMBER_FIST_F, r.elbowF, far.deg, 'handF', tint);
   stampPiece(g, 'farArm.armor', EMBER_BRACER_F, r.elbowF, far.deg, 'forearmF', tint);
-  // the near arm: his fist round the grip of his katana while the arm hangs about as he drew it
+  // the near arm: his fist round the grip of his katana while he holds it; with the hand empty his
+  // fist as he drew the far one (the only fist he drew whole), on the near forearm
   const fore = segAngle(r.elbowN, r.wristN);
-  const nearFist = armAtRest(g, 'N') > 0.5 && g.has('held', 'held_ember_katana') && !handsBusy(g) && !handsLimp(g) && !handsReleased(g);
-  fitArm(g, 'N', nearFist ? null : { x: 0, y: 0 });
-  if (nearFist) stampPiece(g, 'nearArm.armor', EMBER_FIST_N, r.elbowN, fore, 'handN', tint);
+  const grips = g.has('held', 'held_ember_katana') && !handsBusy(g) && !handsLimp(g) && !handsReleased(g);
+  fitArm(g, 'N');
+  if (grips) stampPiece(g, 'nearArm.armor', EMBER_FIST_N, r.elbowN, fore, 'handN', tint);
+  else stampPiece(g, 'nearArm.armor', EMBER_FIST_F, r.elbowN, fore, 'handN', tint);
   stampPiece(g, 'nearArm.armor', EMBER_BRACER_N, r.elbowN, fore, 'forearmN', tint);
 }
 

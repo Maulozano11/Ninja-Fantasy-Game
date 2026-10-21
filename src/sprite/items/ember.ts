@@ -8,7 +8,7 @@ import { segAngle } from '../painted';
 import { GRID, Layer, partIndex, type PartId, RES, v, Vec } from '../raster';
 import { drawRig, Rig } from '../rig';
 import type { BodyType } from '../types';
-import { EMBER_BRACER_F, EMBER_BRACER_FIST } from './emberBracersArt';
+import { EMBER_BRACER_F } from './emberBracersArt';
 import { LEG_SHIFT } from './emberLegsArt';
 
 export const EMBER_LEGS_ID = 'bottom_ember_leggings';
@@ -23,10 +23,6 @@ const idleRig = (b: BodyType): Rig => {
 
 /** An angle wrapped into -180..180 degrees. */
 const wrapDeg = (a: number) => ((a + 540) % 360) - 180;
-const turnBy = (p: Vec, d: number): Vec => {
-  const a = (d * Math.PI) / 180;
-  return v(p.x * Math.cos(a) - p.y * Math.sin(a), p.x * Math.sin(a) + p.y * Math.cos(a));
-};
 /** How much of his own hang a limb keeps: all of it within `near` degrees of rest, none past `far`. */
 const keep = (off: number, near: number, far: number) => Math.max(0, Math.min(1, (far - off) / (far - near)));
 
@@ -60,8 +56,6 @@ export interface FarArm {
   w: number;
   /** The far forearm guard's angle (degrees): his angle at rest, our forearm's once the arm reaches out. */
   deg: number;
-  /** How far our far hand is carried to his fist (rig units). */
-  hand: Vec;
 }
 
 /**
@@ -81,9 +75,9 @@ export function armAtRest(g: DrawCtx, s: Side): number {
 
 /**
  * His far arm against ours. While our far arm hangs about as it does at rest (armAtRest), his far
- * forearm keeps its own hang: the guard turns with our forearm but stays as much straighter as he drew
- * it, and our far hand is carried to his fist. As the arm reaches further both come back onto our
- * forearm and hand, so hands that meet still meet.
+ * forearm keeps its own hang: the guard and his fist turn with our forearm but stay as much straighter
+ * as he drew them. As the arm reaches further they come onto our forearm, his fist on our hand, so
+ * hands that meet still meet (his forearm to the fist is as long as ours to the hand).
  */
 export function emberFarArm(g: DrawCtx): FarArm {
   const r = g.rig;
@@ -91,32 +85,22 @@ export function emberFarArm(g: DrawCtx): FarArm {
   const fore = segAngle(r.elbowF, r.wristF);
   const fore0 = segAngle(i.elbowF, i.wristF);
   const w = armAtRest(g, 'F');
-  const deg = fore + w * wrapDeg(EMBER_BRACER_F.angle - fore0);
-  // his fist from the elbow, carried round with the guard; our hand from the elbow, with the forearm
-  const fist = v(EMBER_BRACER_FIST[0] + 0.5 - i.elbowF.x * RES, EMBER_BRACER_FIST[1] + 0.5 - i.elbowF.y * RES);
-  const our = v((i.handF.x - i.elbowF.x) * RES, (i.handF.y - i.elbowF.y) * RES);
-  const target = turnBy(fist, deg - EMBER_BRACER_F.angle);
-  const ours = turnBy(our, fore - fore0);
-  return { w, deg, hand: v((w * (target.x - ours.x)) / RES, (w * (target.y - ours.y)) / RES) };
+  return { w, deg: fore + w * wrapDeg(EMBER_BRACER_F.angle - fore0) };
 }
 
 const ARM_DEPTHS: Record<Side, Depth[]> = { N: ['nearArm.body', 'nearArm.cloth'], F: ['farArm.body', 'farArm.cloth'] };
 
 /**
- * Our forearm under his arm guard taken away (his guard is the forearm, so ours never shows past it
- * where he drew the arm otherwise), and our hand carried by `hand` (rig units), or taken away for his
- * own fist.
+ * Our forearm and hand taken away under his arm guard and fist: his guard is the forearm and his fist
+ * the hand, in every pose, so ours never show beside them.
  */
-export function fitArm(g: DrawCtx, s: Side, hand: Vec | null): void {
-  const dx = hand ? Math.round(hand.x * RES) : 0;
-  const dy = hand ? Math.round(hand.y * RES) : 0;
+export function fitArm(g: DrawCtx, s: Side): void {
   const fore = partIndex(`forearm${s}`);
   const fist = partIndex(`hand${s}`);
   for (const d of ARM_DEPTHS[s]) {
     const L = g.L(d);
     if (!L.used) continue;
-    if (hand) moveParts(L, [fist], dx, dy);
-    for (let i = 0; i < GRID * GRID; i++) if (L.part[i] === fore || (!hand && L.part[i] === fist)) L.mat[i] = -1;
+    for (let i = 0; i < GRID * GRID; i++) if (L.part[i] === fore || L.part[i] === fist) L.mat[i] = -1;
   }
 }
 

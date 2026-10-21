@@ -9,13 +9,14 @@ one fine pixel of our sprites). This script lifts out of it, every pixel in his 
                    it rides our forearm about the elbow, where he drew it.
   the far guard    the far forearm's guard, down to the cuff over the back of his far fist. He drew
                    the far forearm hanging straighter than ours (his fist nearer the body and lower,
-                   FAR_FIST): the guard keeps his angle and his place, pinned at our elbow, and the
-                   game carries our far hand to his fist (src/sprite/items/emberArm.ts).
+                   FAR_FIST): the guard keeps his angle and his place near rest, pinned at our
+                   elbow (src/sprite/items/ember.ts), and turns onto our forearm as the arm moves.
 
   the fists      his far fist under its cuff and his near fist round the katana's grip, in his skin
                  (it follows the character's skin from our Akira's, PAINTED_SKIN). The game draws them
-                 over our hands while the arms hang as he drew them, and our hands otherwise. It writes the pieces as TypeScript
-(src/sprite/items/emberBracersArt.ts) and, in <study>, his figure beside the pieces at 8x. The same
+                 in place of our hands in every pose, turned whole with the guards about our elbows
+                 (his far fist also on the near arm when that hand is empty). It writes the pieces as
+                 TypeScript (src/sprite/items/emberBracersArt.ts) and, in <study>, his figure beside the pieces at 8x. The same
 picture always gives the same bytes:
 
   python3 -I tools/refs/akira-bracers-from-ref.py src/sprite/items/emberBracersArt.ts [study]
@@ -70,7 +71,7 @@ def main():
     far = math.degrees(math.atan2(R.FAR_FIST[1] - J['elbowF'][1], R.FAR_FIST[0] - J['elbowF'][0]))
     fist = [int(math.floor(R.FAR_FIST[i] + R.OFFSET[i])) for i in (0, 1)]
     extra = (
-        '/** The middle of his far fist in our male idle frame 0 (fine pixels): our far hand is carried there. */\n'
+        '/** The middle of his far fist in our male idle frame 0 (fine pixels). */\n'
         f'export const EMBER_BRACER_FIST: [number, number] = [{fist[0]}, {fist[1]}];'
     )
     consts = [

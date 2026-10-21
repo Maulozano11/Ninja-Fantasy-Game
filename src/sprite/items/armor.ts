@@ -40,7 +40,7 @@ import { PTERUGES_DRAPE, PTERUGES_FRONT, PTERUGES_KIND, PTERUGES_LEATHER, PTERUG
 import { capeWind } from './capes';
 import { EMBER_CHEST, EMBER_FLAME, EMBER_KIND, EMBER_LEATHER, EMBER_PAULDRON_F, EMBER_PAULDRON_N, EMBER_STEEL } from './emberLeatherArt';
 import { TASSET_FRONT, TASSET_KIND, TASSET_LACE, TASSET_LEATHER } from './emberTassetsArt';
-import { armAtRest, trimUnder } from './ember';
+import { trimUnder } from './ember';
 import { isFemaleBody, type BodyType } from '../types';
 
 
@@ -1430,11 +1430,13 @@ function drawEmberLeather(g: DrawCtx, lc: string, sc: string, ec: string): void 
   clearUnderCuirass(g);
   const r = g.rig;
   const torso = segAngle(r.pelvis, r.neck);
-  stampPiece(g, 'farArm.armor', EMBER_PAULDRON_F, guardAt(r, 'F', torso), guardAngle(EMBER_PAULDRON_F, torso, segAngle(r.shoulderF, r.elbowF)), 'upperArmF', tint);
+  // His shoulder guards with the dark band under them are his whole upper arms: in every pose each is
+  // turned whole about our shoulder with our upper arm (the owner: the arms in the poses must be his
+  // design, 2026-10-21), and ours never shows past it.
+  stampPiece(g, 'farArm.armor', EMBER_PAULDRON_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF', tint);
   stampLeaning(g, 'torso.armor', r.body === 'bulky' ? EMBER_CHEST_BULKY : EMBER_CHEST, r.neck, torso, 'torso', tint);
-  stampPiece(g, 'nearArm.armor', EMBER_PAULDRON_N, guardAt(r, 'N', torso), guardAngle(EMBER_PAULDRON_N, torso, segAngle(r.shoulderN, r.elbowN)), 'upperArmN', tint);
-  // while an arm hangs as he drew it, its guard is the upper arm: ours never shows past it
-  for (const s of SIDES) if (armAtRest(g, s) > 0.5) trimUnder(g, s, 'upperArm');
+  stampPiece(g, 'nearArm.armor', EMBER_PAULDRON_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN', tint);
+  for (const s of SIDES) trimUnder(g, s, 'upperArm');
 }
 
 /**

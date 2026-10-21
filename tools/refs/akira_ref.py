@@ -506,7 +506,7 @@ def hex_luma(h):
 LEG_SHIFT = {'N': (5, 0), 'F': (4, -4)}
 # His far arm hangs straighter than ours: his elbow is ours, his fist (the middle of his far fist) is
 # nearer the body and lower than our far hand. His far arm guard is drawn at his angle and pinned at
-# our elbow, and our far hand is carried to his fist (turned with the forearm in other poses).
+# our elbow, his far fist with it in place of our far hand (turned with the forearm in other poses).
 FAR_FIST = (67.5, 58.0)
 # The skin of the figure he painted over (our Akira's): his skin pixels are for this skin colour, and
 # follow the character's skin from it.

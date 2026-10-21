@@ -13,7 +13,7 @@ import * as armor from './items/emberLeatherArt';
 import * as legs from './items/emberLegsArt';
 import * as tassets from './items/emberTassetsArt';
 import type { PaintedPiece } from './painted';
-import { GRID, RES } from './raster';
+import { GRID, partIndex, type PartId, RES } from './raster';
 import { drawRig, frameCount, rigPoseFor } from './rig';
 import type { BodyType, SpriteAppearance, SpritePose } from './types';
 
@@ -181,6 +181,73 @@ describe("the owner's Akira", () => {
           }
         }
       }
+  });
+
+  it('draws his arms in every pose: his shoulder guards, arm guards and fists, never ours', () => {
+    // The owner: in the poses the arms must be his design (2026-10-21). Every pixel the figure shows of
+    // an upper arm, forearm or hand is one of his pieces' colours (his skin is Akira's, so his fists'
+    // colours are his own). The chakra drawn at the hand (the cast's runes) is told apart by drawing
+    // the frame again in another chakra colour: only it changes.
+    const his = new Set<string>();
+    for (const p of [armor.EMBER_PAULDRON_N, armor.EMBER_PAULDRON_F, bracers.EMBER_BRACER_N, bracers.EMBER_BRACER_F, bracers.EMBER_FIST_N, bracers.EMBER_FIST_F, katana.EMBER_KATANA])
+      for (const h of Object.values(p.colors)) his.add(h);
+    const arm = new Set(['handN', 'handF', 'forearmN', 'forearmF', 'upperArmN', 'upperArmF'].map((n) => partIndex(n as PartId)));
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      const l = look(body);
+      const other = look(body);
+      other.chakra = { ...other.chakra, color: other.chakra.color === 'blue' ? 'orange' : 'blue' };
+      for (const pose of POSES) {
+        const n = frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id));
+        for (let fr = 0; fr < n; fr++) {
+          const f = renderSprite(l, pose, fr);
+          const g = renderSprite(other, pose, fr);
+          let ours = 0;
+          for (let i = 0; i < GRID * GRID; i++) {
+            if (!arm.has(f.part[i]) || !opaque(f.rgba, i)) continue;
+            if ([0, 1, 2, 3].some((k) => f.rgba[i * 4 + k] !== g.rgba[i * 4 + k])) continue;
+            const hex = '#' + [0, 1, 2].map((k) => f.rgba[i * 4 + k].toString(16).padStart(2, '0')).join('');
+            if (!his.has(hex)) ours++;
+          }
+          assert.equal(ours, 0, `${body} ${pose} ${fr}: ${ours} arm pixels not his`);
+        }
+      }
+    }
+  });
+
+  it('turns his arm pieces whole about our joints, so hands that meet still meet', () => {
+    // his fist is as far from the elbow as our hand: rigid about the elbow, it lands on our hand
+    for (const [piece, fist] of [
+      [bracers.EMBER_FIST_F, 'F'],
+      [bracers.EMBER_FIST_N, 'N'],
+    ] as [PaintedPiece, 'N' | 'F'][]) {
+      const r = drawRig('male', 'idle', 0);
+      const elbow = fist === 'N' ? r.elbowN : r.elbowF;
+      const hand = fist === 'N' ? r.handN : r.handF;
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      piece.rows.forEach((row, j) => {
+        for (let i = 0; i < row.length; i++) if (row[i] !== '.') (sx += i - piece.pivot[0]), (sy += j - piece.pivot[1]), n++;
+      });
+      const his = Math.hypot(sx / n, sy / n);
+      const ours = Math.hypot(hand.x - elbow.x, hand.y - elbow.y) * RES;
+      assert.ok(Math.abs(his - ours) < 3.5, `${fist}: his fist ${his.toFixed(1)} px from the elbow, our hand ${ours.toFixed(1)}`);
+    }
+    // in the hand signs both of his fists meet where our hands meet
+    const l = look();
+    for (let fr = 0; fr < frameCount(rigPoseFor('handsigns')); fr++) {
+      const r = drawRig('male', rigPoseFor('handsigns'), fr);
+      assert.ok(Math.hypot(r.handN.x - r.handF.x, r.handN.y - r.handF.y) * RES < 12, `handsigns ${fr}: our hands meet`);
+      const f = renderSprite(l, 'handsigns', fr);
+      for (const s of ['N', 'F'] as const) {
+        const hand = s === 'N' ? r.handN : r.handF;
+        const want = partIndex(`hand${s}`);
+        let near = 0;
+        for (let dy = -4; dy <= 4; dy++)
+          for (let dx = -4; dx <= 4; dx++) if (f.part[(Math.round(hand.y * RES) + dy) * GRID + Math.round(hand.x * RES) + dx] === want) near++;
+        assert.ok(near > 0, `handsigns ${fr}: his ${s} fist on our hand`);
+      }
+    }
   });
 
   it('draws a saved Akira, with the old items and colours, in every pose', () => {

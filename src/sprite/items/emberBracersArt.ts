@@ -8,7 +8,7 @@ export const EMBER_BRACER_LEATHER = '#482a23';
 export const EMBER_BRACER_STRAP = '#331a15';
 export const EMBER_BRACER_SKIN = '#f0c4a0';
 
-/** The middle of his far fist in our male idle frame 0 (fine pixels): our far hand is carried there. */
+/** The middle of his far fist in our male idle frame 0 (fine pixels). */
 export const EMBER_BRACER_FIST: [number, number] = [140, 178];
 
 /** What each of his colours is, as the script sorts them. */

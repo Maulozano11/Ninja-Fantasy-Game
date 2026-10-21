@@ -4,7 +4,7 @@
 
 import { SHOULDER_TURN } from '../body';
 import { retintHex } from '../color';
-import { armDepth, armJoints, Depth, DrawCtx, handDraw, handPose, ItemDef, Side } from '../ctx';
+import { armDepth, armJoints, Depth, DEPTHS, DrawCtx, handDraw, handPose, ItemDef, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, partIndex, PartId, RES, v, Vec } from '../raster';
 import { isFemaleBody } from '../types';
@@ -144,15 +144,23 @@ function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string):
   const upperN = segAngle(r.shoulderN, r.elbowN);
   const turnN = wrapDeg(upperN - SAYA_SHOULDER_N.angle);
   const capped = Math.max(-SHOULDER_TURN, Math.min(SHOULDER_TURN, turnN));
+  const A = g.L('nearArm.armor');
+  const under = A.mat.slice();
   put('nearArm.armor', SAYA_SHOULDER_N, r.shoulderN, capped === turnN ? upperN : SAYA_SHOULDER_N.angle + capped, 'upperArmN');
   put('nearArm.armor', SAYA_UPPER_N, r.shoulderN, upperN, 'upperArmN');
   paintBodySkin(g, cloth, out.x !== 0 || out.y !== 0);
-  if (capped !== turnN) offBandeau(g);
+  if (capped !== turnN) {
+    offBandeau(g);
+    lineOpenEdge(g, A, under);
+  }
 }
 
 /**
  * Takes away the body's bandeau (its undergarment above the shorts, torso.under): under her top it does
  * not show; where her top leaves the torso bare (a raised arm's shoulder and side) the body's skin does.
+ * Where the bandeau's edge was the figure's, the skin's edge is now. The body's bare skin on the torso
+ * and the near arm, which a raised arm leaves on the figure's edge, takes her line there: her flat skin
+ * tones (paintBodySkin) have no darker shade for the layers' outline pass to give it.
  */
 function offBandeau(g: DrawCtx): void {
   const r = g.rig;
@@ -165,6 +173,32 @@ function offBandeau(g: DrawCtx): void {
     const dy = (((i / GRID) | 0) + 0.5) / RES - r.pelvis.y;
     if (dx * r.up.x + dy * r.up.y > 3) U.mat[i] = -1;
   }
+  const line = g.m(SAYA_LINE, 'flat');
+  const bare = new Set([g.m(g.look.skin || SAYA_SKIN, 'flat'), g.m(retintHex(SAYA_SKIN_SHADOW, SAYA_SKIN, g.look.skin || SAYA_SKIN), 'flat')]);
+  for (const d of ['torso.body', 'nearArm.body'] as Depth[]) {
+    const L = g.L(d);
+    const edge = outlinedEdge(L);
+    for (let i = 0; i < GRID * GRID; i++) if (edge[i] && bare.has(L.mat[i])) L.mat[i] = line;
+  }
+}
+
+/**
+ * Her shoulder held on the shoulder (drawShadeArmor) can stand on the figure's edge where her own line
+ * does not run: a pixel of it beside nothing drawn in any layer takes her line. `under` is the layer
+ * before the shoulder was stamped (the pixels that changed are the shoulder's).
+ */
+function lineOpenEdge(g: DrawCtx, A: Layer, under: Int16Array): void {
+  const line = g.m(SAYA_LINE, 'flat');
+  const layers = DEPTHS.map((d) => g.L(d)).filter((L) => L.used);
+  const open = (x: number, y: number) => x < 0 || y < 0 || x >= GRID || y >= GRID || layers.every((L) => L.mat[y * GRID + x] < 0);
+  const set: number[] = [];
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (A.mat[i] < 0 || A.mat[i] === under[i] || A.mat[i] === line) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    if (open(x - 1, y) || open(x + 1, y) || open(x, y - 1) || open(x, y + 1)) set.push(i);
+  }
+  for (const i of set) A.mat[i] = line;
 }
 
 /** Our body's layers that hold its own skin. */
@@ -196,6 +230,21 @@ function paintBodySkin(g: DrawCtx, cloth: string, farOut: boolean): void {
       L.mat[i] = sh <= 0 ? line : fore.includes(L.part[i]) ? sleeve : sh <= 2 ? shadow : base;
     }
   }
+}
+
+/** The pixels a layer's outline pass will darken (Layer.applyOutline): its edge, next to an empty pixel. */
+function outlinedEdge(L: Layer): Uint8Array {
+  const edge = new Uint8Array(GRID * GRID);
+  if (!L.outline) return edge;
+  const empty = (x: number, y: number) => x < 0 || y < 0 || x >= GRID || y >= GRID || (L.mat[y * GRID + x] < 0 && !(L.flags[y * GRID + x] & F_NO_EDGE));
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const i = y * GRID + x;
+      if (L.mat[i] < 0 || L.flags[i] & F_NO_OUTLINE) continue;
+      if (empty(x, y - 1) || empty(x - 1, y) || empty(x + 1, y) || empty(x, y + 1)) edge[i] = 1;
+    }
+  }
+  return edge;
 }
 
 type Zone = 'strap' | 'back' | 'band' | 'skin';

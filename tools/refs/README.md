@@ -130,3 +130,20 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `tactical_ref.py` + `tactical-vest-from-ref.py`, `tactical-coat-from-ref.py`, `tactical-boots-glove-from-ref.py`:
+  the owner's tactical paint-over (`docs/reference/tactical-coat-owner-reference.jpg`, 2000x2000, pitch 20 from the
+  corner, our male idle frame 0 at offset (75, 120), as his Ren picture), clothing for the sets, not a character. His
+  vest-only picture (`tactical-vest-owner-reference.jpg`) is at another scale (about 18 picture px a cell) and is not
+  lifted. `tactical_ref.pieces()` cuts his figure by cell boxes and colour kinds (`kind()`/`kinds()`: in `BOLT_BOX`
+  his whites, blue-lit colours and warm greys are the lightning and the near arm, never the coat). It continues
+  what his picture hides from his own pixels: the vest under the coat's near lapel (his pads one pad over, closed at
+  x 43); the coat's front panel under the sleeve, the lightning and the near arm (his black cloth run up its
+  columns from below, closed on a straight edge `FRONT_EDGE`); the coat's back behind the trousers (his commonest
+  coat black, his lining laid across each row at the hem); the near boot's shaft under the coat (his two rows
+  above the foot, up to `BOOT_N_TOP`). His hair, face and lightning are not copied. The modules export `*_KIND`
+  and `*_REST`, which `src/sprite/tactical.test.ts` checks; the items are in `src/sprite/items/tactical.ts`. With a
+  second argument, a folder, each writes his figure beside the pieces at 8x.
+
+      python3 -I tools/refs/tactical-vest-from-ref.py src/sprite/items/tacticalVestArt.ts [studyDir]
+      python3 -I tools/refs/tactical-coat-from-ref.py src/sprite/items/tacticalCoatArt.ts [studyDir]
+      python3 -I tools/refs/tactical-boots-glove-from-ref.py src/sprite/items/tacticalBootsGloveArt.ts [studyDir]

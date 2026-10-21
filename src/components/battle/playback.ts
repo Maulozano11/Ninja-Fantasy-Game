@@ -505,6 +505,7 @@ export class Playback {
             linger(1300);
             return castDelay + 700;
           case 'clone':
+          case 'mantle':
             this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 1100, unit: ev.unit });
             linger(1100);
             return castDelay + 400;

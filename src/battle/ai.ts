@@ -7,8 +7,8 @@ import type { Action, BattleEvent, BattleState, Cell, Intent, Pt, Unit } from '.
 import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, idx, lineOfSight, sameCell, segmentsCross } from './map';
 import { canStop, reachable } from './nav';
 import { JUTSU, MIN_AIM } from './jutsu';
-import { KUNAI_LONG, handsFree } from './units';
-import { applyAction, jutsuCost } from './engine';
+import { KUNAI_LONG } from './units';
+import { applyAction, chargeLanding, jutsuCost, mustStow } from './engine';
 import { current } from './turns';
 import { areaValue, bestCell, goalOf, headOptions, ninjaOptions, offensive, planIntent, reachTo, standingUnit, stepToward, swapValue, visibleFoes, WALL, wallCover } from './intent';
 import type { Goal } from './intent';
@@ -38,6 +38,9 @@ function stillValid(s: BattleState, u: Unit, i: Intent | undefined): i is Intent
   }
   if (t && (i.kind === 'heal') !== (t.team === u.team)) return false;
   if ((i.kind === 'jutsu' || i.kind === 'spit' || i.kind === 'roar' || i.kind === 'command') && u.chakra < (JUTSU[i.what]?.cost ?? 0)) return false;
+  // A bonus-action jutsu already cast (or the bonus action gone): the plan is done, and the action
+  // left is planned again (the proposal's piece P7).
+  if (i.kind === 'jutsu' && JUTSU[i.what]?.cast === 'bonus' && !u.turn.bonus) return false;
   // Friends who walked into where the blast would go: not worth it any more.
   if (i.kind === 'jutsu' && t && JUTSU[i.what] && areaValue(s, u, JUTSU[i.what], t) <= 0) return false;
   if (i.kind === 'command' && (i.what === COMMAND ? commandRefused : submissionRefused)(s, u, t)) return false;
@@ -106,7 +109,9 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
         return c ? { type: 'jutsu', unit: u.id, jutsu: WALL, at: c.at } : null;
       }
       if (i.what === SWAP) return g.ready ? { type: 'jutsu', unit: u.id, jutsu: SWAP, at: { ...t.pos }, target: t.id } : null;
-      if (!j.melee && !handsFree(u) && u.turn.interacted) return null;
+      if (mustStow(u, j) && u.turn.interacted) return null;
+      // A charge with no clear run to its target from here: strike or close in another way.
+      if (g.ready && j.charge && !chargeLanding(s, u, t)) return null;
       if (g.ready) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined };
       return moveToward(s, u, g, i.to) ?? (j.melee ? breakThrough(s, u, t) : null);
     }
@@ -214,10 +219,34 @@ function edgeStrike(s: BattleState, u: Unit, i: Intent): Action | null {
   return foe ? { type: 'attack', unit: u.id, target: foe.id, knockout: u.team === 'party' } : null;
 }
 
-/** The bonus action, once the action is spent: a Kōton raises a metal block for cover. */
+/**
+ * The bonus action, once the action is spent: a Kōton raises a metal block for cover; a ninja with a
+ * damage jutsu cast as a bonus action (Pebble Shot) casts it at a foe.
+ */
 function bonusAfter(s: BattleState, u: Unit): Action | null {
   if (!u.turn.bonus) return null;
-  return kotonCover(s, u);
+  return kotonCover(s, u) ?? bonusStrike(s, u);
+}
+
+/**
+ * A damage jutsu cast as a bonus action, from where the ninja stands: at the foe in reach and in
+ * sight with the least HP left, if it can be cast now (chakra, hands) and catches no friend.
+ */
+function bonusStrike(s: BattleState, u: Unit): Action | null {
+  if (effectMods(u.effects).noJutsu) return null;
+  let best: { a: Action; v: number } | undefined;
+  for (const id of u.jutsus) {
+    const j = JUTSU[id];
+    if (!j || j.cast !== 'bonus' || j.melee || !offensive(j) || u.chakra < jutsuCost(u, j, false)) continue;
+    if (mustStow(u, j) && u.turn.interacted) continue;
+    for (const f of visibleFoes(s, u)) {
+      const reach = j.range + (f.bulk ?? 0) + (j.shape === 'single' && f.kind === 'hydra_head' ? 2.5 : 0);
+      if (dist(u.pos, f.pos) > reach + 0.1 || !lineOfSight(s, u.pos, f.pos) || areaValue(s, u, j, f) <= 0) continue;
+      const v = 1 - f.hp / Math.max(1, f.maxHp);
+      if (!best || v > best.v) best = { a: { type: 'jutsu', unit: u.id, jutsu: id, at: { ...f.pos }, target: j.shape === 'single' ? f.id : undefined }, v };
+    }
+  }
+  return best?.a ?? null;
 }
 
 const BLOCK = 'koton_block';

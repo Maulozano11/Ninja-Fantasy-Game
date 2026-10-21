@@ -8,7 +8,7 @@ import { abilityMod, successChance } from '../rules/checks';
 import { effectMods, hasEffect } from '../rules/effects';
 import type { BattleEvent, BattleState, Cell, Intent, Pt, Unit } from './types';
 import { homeTeam } from './types';
-import { cellCenter, cellOf, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell } from './map';
+import { cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, gridFor, levelAtPt, lineOfSight, sameCell } from './map';
 import { canStop, occupancy, reachable } from './nav';
 import { JUTSU, MIN_AIM, areaOf, inArea } from './jutsu';
 import type { JutsuSpec } from './jutsu';
@@ -240,6 +240,8 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     for (const id of u.jutsus) {
       const j = JUTSU[id];
       if (!j || !offensive(j) || u.chakra < j.cost) continue;
+      // A bonus-action jutsu needs the bonus action (planning the next turn, it will have it).
+      if (j.cast === 'bonus' && !next && !u.turn.bonus) continue;
       if (d > j.range + u.speed + (f.bulk ?? 0)) continue;
       const hits = areaValue(s, u, j, f);
       if (hits <= 0) continue;
@@ -393,7 +395,8 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
       if (i.what === WALL) return { at: u.pos, good: () => false, ready: !!wallCover(s, u, t) };
       if (i.what === SWAP) return { at: u.pos, good: () => false, ready: swapValue(s, u, t) > 0 };
       const reach = j.range + (t.bulk ?? 0) + (j.shape === 'single' && t.kind === 'hydra_head' ? 2.5 : 0);
-      return goal((p) => dist(p, t.pos) <= reach && (j.melee ? !fullCoverBetween(s, p, t.pos) : lineOfSight(s, p, t.pos)), t);
+      // A charge needs a clear straight run to its target.
+      return goal((p) => dist(p, t.pos) <= reach && (j.melee ? !fullCoverBetween(s, p, t.pos) && (!j.charge || clearRun(s, p, t.pos)) : lineOfSight(s, p, t.pos)), t);
     }
     case 'heal':
       return goal((p) => dist(p, t.pos) <= 1.6, undefined);

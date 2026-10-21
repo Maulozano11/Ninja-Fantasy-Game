@@ -15,6 +15,39 @@ export type VfxRole = 'bolt' | 'beast' | 'stream' | 'breath' | 'sphere' | 'slash
 /** `node`: one of the caster's own Weapon Nodes; `onNode`: a unit standing on one (Ryusei). */
 export type JutsuShape = 'single' | 'circle' | 'selfCircle' | 'cone' | 'line' | 'wall' | 'self' | 'ally' | 'point' | 'node' | 'onNode';
 
+/**
+ * How the screen stages a jutsu around its effect: the proposal's piece P3 (an aura before, an impact
+ * on each one reached, a slower flight, a faster run...) and P4, with the owner's answers of
+ * 2026-10-21 (docs/GAMEPLAY_DESIGN.md, "Rank D and C jutsu"). Data for the screen only: the engine
+ * never reads it.
+ */
+export interface JutsuSeq {
+  /** Its projectiles fly one by one, each on its own path to the target (a high arc, a straight line, a low curve) and with its own impact, `stagger` ms apart. */
+  volley?: { paths: ('high' | 'straight' | 'low')[]; stagger: number };
+  /** The caster's element aura (aura and aura_back) rises while it casts, for `ms`. */
+  castAura?: number;
+  /** The element's impact sheet when it isn't 'hit' (earth's 'multi_hit'). */
+  impact?: string;
+  /** An impact on every unit the jutsu reaches, one after another, `stagger` ms apart. */
+  hitEach?: { stagger: number };
+  /** A cone's bolts are drawn joined, from the hand to each one reached: one branching fan. */
+  connected?: boolean;
+  /** The flight takes this many times as long (a dream's drift). */
+  slowFlight?: number;
+  /** The run in (a flash-in or a charge) goes this many times as fast. */
+  fastRun?: number;
+  /** A flash of the element's aura where the caster sets off. */
+  launchFlash?: boolean;
+  /** No projectile: the effect rises from the ground at the point (P4, like the Kirin's storm), after a warning splash of `warn` ms. */
+  fromGround?: { warn: number };
+  /** The screen shakes as it lands (strength). */
+  shake?: number;
+  /** The aura stays on the caster, at this opacity, for as long as its condition lasts (the Breeze Mantle's 'mantle'). */
+  lingerAura?: number;
+  /** The element's aura wraps whoever is healed, for `ms`, once the heal lands. */
+  healAura?: number;
+}
+
 export interface JutsuSpec {
   id: string;
   name: string;
@@ -40,13 +73,33 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'trap' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission';
+  special?: 'heal' | 'flicker' | 'clone' | 'trap' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
   sig?: string;
+  /**
+   * The effect set it is drawn from when not its element's: 'neutral', the white wind cut of a
+   * sword art with no element (the owner, 2026-10-21: the Bleeding Cut).
+   */
+  vfxSet?: 'neutral';
+  /** The pose the caster strikes it in, when not the usual one (cast, or attack for melee): the charge pose's stomp, a shoulder tackle. */
+  pose?: 'charge' | 'tackle';
+  /** How the screen stages it (data for the screen only). */
+  seq?: JutsuSeq;
   /** Taijutsu and kenjutsu strikes are delivered in person (the caster dashes in). */
   melee: boolean;
+  /**
+   * A melee strike that charges in a straight line to its target (up to its range) instead of
+   * flashing in: nothing may stand in the way (a wall, a tree), and it provokes no opportunity
+   * attacks (the Rush).
+   */
+  charge?: boolean;
+  /**
+   * What the caster's hands do with a held weapon: a sword art draws it, a tackle stows it (free,
+   * once a turn, like stowing it for hand seals).
+   */
+  weapon?: 'draw' | 'stow';
   /** Loud: casting it in the stealth phase starts the battle. */
   loud: boolean;
   /** Left on a failed save (or a hit). */
@@ -108,6 +161,23 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   wood_golem_titan: { element: 'earth', vfx: 'blast' },
   yasaka_magatama: { element: 'chakra', vfx: 'multi', width: 1.5 },
   night_guy_dragon: { element: 'chakra', vfx: 'beast', melee: true },
+  // The rank D and C jutsu (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Rank D and C
+  // jutsu"). The projectiles fly apart, on three paths, to reach the target from different angles.
+  fire_three_embers: { vfx: 'multi', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 } } },
+  wind_whirl: { vfx: 'bolt' },
+  wind_breeze_mantle: { shape: 'self', special: 'mantle', vfx: 'aura', loud: false, seq: { lingerAura: 0.4 } },
+  lightning_jolt: { vfx: 'multi', effect: 'numb', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 } } },
+  lightning_spark_fan: { vfx: 'breath', seq: { connected: true, hitEach: { stagger: 80 } } },
+  earth_pebble_shot: { vfx: 'multi', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 }, castAura: 560, impact: 'multi_hit' } },
+  // A stomp, no seals: the weapon stays in hand.
+  earth_spike_crown: { vfx: 'hit', melee: true, pose: 'charge', seq: { castAura: 400, hitEach: { stagger: 80 } } },
+  water_healing_dew: { shape: 'ally', special: 'heal', vfx: 'bolt', loud: false, seq: { healAura: 800 } },
+  water_geyser: { vfx: 'blast', seq: { fromGround: { warn: 300 }, shake: 2 } },
+  genjutsu_mirage: { vfx: 'sphere', effect: 'confused', seq: { slowFlight: 1.5 } },
+  // A sword art with no element: its own cut, the wind's crescent in white (the owner).
+  kenjutsu_bleeding_cut: { vfx: 'slash', vfxSet: 'neutral', melee: true, effect: 'bleeding' },
+  // A shoulder tackle with the weapon put away (the owner): a straight run in, then the blow.
+  taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', seq: { launchFlash: true, fastRun: 2 } },
 };
 
 function specOf(j: JutsuDefinition): JutsuSpec {
@@ -140,6 +210,8 @@ function specOf(j: JutsuDefinition): JutsuSpec {
     saveHalf: j.saveEffect !== 'Negates' && j.saveEffect !== 'Break Illusion',
     vfx: shape === 'circle' ? 'sphere' : shape === 'cone' ? 'breath' : shape === 'line' ? 'stream' : 'bolt',
     melee: false,
+    // Sword arts draw the blade by themselves (the proposal's piece P8).
+    ...(j.nature === 'Kenjutsu' ? { weapon: 'draw' as const } : {}),
     loud: true,
     env: j.environmentalEffect === 'Ignites Wood' ? 'ignite' : j.environmentalEffect === 'Electrifies Water' ? 'electrify' : j.environmentalEffect === 'Clears Foliage' ? 'clearFoliage' : undefined,
   };

@@ -100,7 +100,7 @@ export interface JutsuDefinition {
   areaOfEffect?: 'Single' | 'Line' | 'Cone' | 'Sphere' | 'Wall';
   aoeRadius?: number; // tiles
   damageDice?: string; // e.g. "3d6"
-  damageType?: 'Fire' | 'Cold' | 'Bludgeoning' | 'Slashing' | 'Lightning' | 'Psychic' | 'Force' | 'Healing';
+  damageType?: 'Fire' | 'Cold' | 'Bludgeoning' | 'Slashing' | 'Piercing' | 'Lightning' | 'Psychic' | 'Force' | 'Healing';
   savingThrow?: 'DEX' | 'CON' | 'WIS' | 'STR';
   saveEffect?: 'Half Damage' | 'Negates' | 'Break Illusion';
   enhancementChakraCost: number; // cost to upcast/empower

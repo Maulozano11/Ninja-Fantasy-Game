@@ -104,6 +104,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `poses/throw-pierce` | `f722aee` | `throw` (4 frames, release copied from his Warp Strike picture) and `pierce` (5-frame lunge) poses, in the creator stance bar; `src/sprite/strike.test.ts` | **Waiting for approval**; `ryusei/phase` needs it |
 | `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
 | `scarlet/study` | `3b5dfe9` | His new character picture (`scarlet-owner-reference.jpg`) and study scripts `tools/refs/scarlet*`; nothing in `src` | **WIP**. Provisional name "Valen, the Scarlet Duke", no cape: **the owner must choose the name** |
+| `jutsu/d-c-set` | not pushed yet | 12 rank D and C jutsu (data, rules, AI, log; `docs/GAMEPLAY_DESIGN.md`, "Rank D and C jutsu"), then their effects (three projectile paths, the joined Spark Fan, the white Bleeding Cut, the Rush's tackle pose) | **Waiting for approval** of the in-game captures. Merging with `chakra/decisions` needs its pinned offer lists (`src/rules/jutsuNature.test.ts`) updated: every element gains D/C jutsu |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -124,6 +125,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the icons on `icons/sheets-8-11`, the
   camp poses once redone.
 - Name the Scarlet character (`scarlet/study`).
+- `jutsu/d-c-set` (2026-10-21): the 12 rank D and C jutsu he asked for, built with his answers and
+  the proposal's defaults for the questions he didn't answer (`docs/GAMEPLAY_DESIGN.md`, "Rank D and
+  C jutsu": Numb until camp, Rush 6 m, Mirage and Bleeding Cut loud, Palm unchanged). Approve the
+  in-game captures (new art: the tackle pose and the white cut).
 - `chakra/nature` (2026-10-21): the chakra type is the nature (his rule, built). Proposed, for his
   approval (`docs/GAMEPLAY_DESIGN.md`, "Chakra type" and Open questions): the burst-to-type table
   (Cinder Nova as a second Fire burst); the new Earth burst (Shattered Earth); the legends whose burst

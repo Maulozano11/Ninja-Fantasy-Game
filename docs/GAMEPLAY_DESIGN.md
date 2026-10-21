@@ -480,3 +480,92 @@ in the creator like any jutsu of their nature. Ranges convert at
 
 Visuals: Rasengan uses the chakra sphere, Venom Surge the poison stream,
 Water Stream the water stream.
+
+## Rank D and C jutsu (proposed 2026-10-21; the owner's answer the same day)
+
+Twelve low-rank jutsu for the creator, all drawn with the owner's approved
+element sets. The Spanish proposal (with its previews) was shown to him; he
+answered (verbatim): *"en 1 , 4 , 6 que son proyectiles separa los proyectiles
+y dales 3 trayectorias diferentes para que lleguen al objetivo de diferentes
+angulos 5 me gustaria conectar los rayos mejor para que se vea mejor el
+abanico, tajo sangrante sea va ser su propio vfx para que salga el corte de
+viento pero en blanco como si no tuviera elemento porque se supone que es asi
+, embestida haz que guarde el arma y que sea como una takleada y haz todos los
+cambios recomendados en todas las demas y enseñamelos"*. Built on the branch
+`jutsu/d-c-set` (rules and engine, then the effects), **waiting for his
+approval of the in-game captures**: nothing is merged before he says yes.
+
+Ranges convert at 1 square = 1.5 m. D costs 1 chakra, C costs 2 (the Dew is
+a D that costs 2, because it gets a fallen friend up from 6 m). Enhancing
+adds one die and grows the area (the general rule above).
+
+| jutsu (id) | nature, rank, slot | use | effect | enhanced |
+|---|---|---|---|---|
+| **Tres brasas** / Three Embers (`fire_three_embers`) | Fire, D, Element | action, 1 chakra, one target at 9 m | jutsu attack roll: 2d6 fire; like all fire it burns the bushes and sets off barrels and tags within 1 m of the target, even on a miss | +1 chakra: 3d6 |
+| **Remolino** / Whirl (`wind_whirl`) | Wind, D, Element | action, 1 chakra, one target at 9 m | STR save, half on a success: 1d8 bludgeoning; cuts the grass and bushes around the target (no hiding there any more) | +1: 2d8 |
+| **Manto de brisa** / Breeze Mantle (`wind_breeze_mantle`) | Wind, D, Utility | bonus action, 1 chakra, on yourself | until the start of your next turn, attacks against you have disadvantage (the Dodge action as a bonus action); no help against jutsu with a save; silent | cannot be enhanced |
+| **Calambre** / Jolt (`lightning_jolt`) | Lightning, D, Element | action, 1 chakra, one target at 7.5 m | CON save, nothing on a success; on a failure 1d6 lightning and **Numb** (−2 to DEX rolls: DEX saves, ranged attacks, DEX checks and Stealth); lightning runs through water | +1: 2d6 |
+| **Abanico de chispas** / Spark Fan (`lightning_spark_fan`) | Lightning, C, Element | action, 2 chakra, 4.5 m cone | DEX save, half on a success: 2d8 lightning to everyone in the cone, friends too | +2: 3d8, the cone reaches 5.6 m and opens wider |
+| **Guijarros** / Pebble Shot (`earth_pebble_shot`) | Earth, D, Element | **bonus action**, 1 chakra, one target at 9 m | jutsu attack roll: 1d6 bludgeoning. Strike first and it still flies (the blade is stowed for free); cast it first and the weapon stays stowed (drawing it again takes the bonus action, already spent) | +1: 2d6 |
+| **Corona de púas** / Spike Crown (`earth_spike_crown`) | Earth, C, Element | action, 2 chakra, everyone within 3 m of you | DEX save, half on a success: 2d8 piercing to all within 3 m, friends too, not the caster; a stomp: no seals, the weapon stays in hand | +2: 3d8 within 4.5 m |
+| **Rocío sanador** / Healing Dew (`water_healing_dew`) | Water, D, Utility | action, 2 chakra, a friend within 6 m or yourself | heals 1d8, and a fallen friend gets back up; no Medic bonus (as the Mystical Palm); silent; the AI doesn't use it (its healing is the Palm) | +1: 2d8 |
+| **Géiser** / Geyser (`water_geyser`) | Water, C, Element | action, 2 chakra, 1.5 m circle at 9 m | STR save, half on a success: 3d6 bludgeoning to everyone in the circle, friends too | +2: 4d6, 2.25 m |
+| **Espejismo** / Mirage (`genjutsu_mirage`) | Genjutsu, C, Element | action, 2 chakra, one target at 9 m | WIS save, nothing on a success; on a failure 2d6 psychic and **Confused** for 2 rounds (one turn in four lost); loud | +2: 3d6 |
+| **Tajo sangrante** / Bleeding Cut (`kenjutsu_bleeding_cut`) | Kenjutsu, D, Element | action, 1 chakra, melee, leaps in from up to 3 m | the blade is drawn for free; jutsu attack roll struck as a blow: 1d8 slashing and **Bleeding** on a hit (1d4 a turn until bandaged; 1d4 a road leg); loud | +1: 2d8 |
+| **Embestida** / Rush (`taijutsu_rush`) | Taijutsu, C, Element | action, 2 chakra, melee, charges up to 6 m | **the weapon is stowed** (free, like for seals) and the ninja **tackles**: a straight run to the target (nothing may stand in the way: a wall, a tree, a structure), no opportunity attacks, no movement spent, then a jutsu attack roll struck as a blow: 2d8 bludgeoning. You end up beside the foe | +2: 3d8 |
+
+Rules that came with them (2026-10-21):
+- **A melee jutsu with an attack roll is struck as a blow** (Bleeding Cut,
+  Rush): the caster's jutsu attack bonus, but no cover, no disadvantage for a
+  foe close by, advantage against a prone target, flanking counts.
+- **Sword arts draw the blade** by themselves (free, once a turn; with the
+  free draw spent they strike with the fists). This also fixes the Dance of the
+  Crescent Moon, which used to strike with the fists after a jutsu stowed the
+  blade.
+- **The Rush stows the weapon** (free, once a turn; with that spent and the
+  weapon in hand, it waits, like a jutsu with seals).
+- **The AI plans again after a bonus action**: after Pebble Shot it still
+  uses its action; with the action spent, a ninja that knows a damage jutsu
+  cast as a bonus action casts it at a foe in reach.
+- Enemies only cast what their template gives them; none of the shipped
+  enemies has these jutsu yet.
+
+How they look (the owner's answers; the screen reads them from each jutsu's
+`seq`, `pose` and `vfxSet` in `src/battle/jutsu.ts`):
+- **Three Embers, Jolt, Pebble Shot**: the projectiles fly apart, each one on
+  its own path (a high arc, a straight line, a low curve), so they reach the
+  target from different angles, a little apart in time, each with its own
+  impact. Pebble Shot also raises the earth aura during the cast beat and hits
+  with the rock-bullet impact.
+- **Spark Fan**: the bolts join from the hand to each one reached, one
+  branching fan; a spark on each one hit, 80 ms apart.
+- **Bleeding Cut**: its own effect, the wind's crescent cut in white, as a
+  sword art has no element (`vfx_neutral`).
+- **Rush**: a flash of chakra where the ninja sets off, a run at twice the
+  speed and a shoulder tackle (a new pose).
+- The others, the proposal's recommended option A: the Breeze Mantle's aura
+  stays faint (40 %) around the ninja until its next turn (its own mark,
+  `mantle`, so a plain Dodge shows no wind); Spike Crown in the charge pose with
+  the earth aura for 0.4 s, then a rock burst on each one reached; Healing Dew
+  flies the water orb to the friend and wraps it in the water aura for 0.8 s;
+  Geyser rises from the ground with no projectile (a 0.3 s warning splash, a
+  light shake); Mirage flies the eye-sphere half again as slow; Whirl as it was.
+
+Open questions of the proposal the owner didn't answer, with the default the
+proposal gave (to confirm with him):
+1. Which ones go in: all twelve (he asked for all of them to be done).
+2. Names: as proposed.
+3. Animation: as above (his answers, and option A for the rest).
+4. Jolt: **Numb lasts until camp** (the existing effect, data only). A
+   two-round Numb (piece P5) is not built.
+5. Rush: **6 m** (4.5 m was the other choice).
+6. Healing Dew: the Mystical Palm keeps its own look (the water aura on the
+   Palm would be a separate yes).
+7. Pebble Shot looking more like "earth bullets" than *Balas de tierra*: kept.
+8. Mirage and Bleeding Cut: **loud**, like every damage jutsu (a silent one
+   with damage, piece P6, is not built).
+9. Who learns the Genjutsu, Kenjutsu and Taijutsu ones once the nature decides
+   the jutsu: for later; today anyone may (they have no element, so the nature
+   doesn't gate them).
+Also not built (optional in the proposal): a style of cast per jutsu (P1), and
+the Geyser putting out burning units in its circle.

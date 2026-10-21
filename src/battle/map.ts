@@ -257,6 +257,24 @@ export function lineOfSight(s: BattleState, a: Pt, b: Pt, opts: { structures?: b
 /** Full cover: a Kōton metal wall stands between two points, and nothing gets past it. */
 export const fullCoverBetween = (s: BattleState, a: Pt, b: Pt): boolean => s.walls.some((w) => w.kind === 'metal' && segmentsCross(a, b, w.a, w.b));
 
+/**
+ * A straight run on the ground from `a` to `b` is clear (a charge): no wall across it and no blocked
+ * cell along it (a tree, a rock, a structure). The cells at both ends don't count, the runner's and
+ * where it is headed; other units don't block it (a ninja weaves past them).
+ */
+export function clearRun(s: BattleState, a: Pt, b: Pt): boolean {
+  if (s.walls.some((w) => w.kind !== 'metalBlock' && segmentsCross(a, b, w.a, w.b))) return false;
+  const ca = cellOf(a);
+  const cb = cellOf(b);
+  const n = Math.ceil(dist(a, b) / (CELL / 2));
+  for (let k = 1; k < n; k++) {
+    const c = cellOf({ x: a.x + ((b.x - a.x) * k) / n, z: a.z + ((b.z - a.z) * k) / n });
+    if (sameCell(c, ca) || sameCell(c, cb)) continue;
+    if (cellBlocked(s, c)) return false;
+  }
+  return true;
+}
+
 export function segmentsCross(a: Pt, b: Pt, c: Pt, d: Pt): boolean {
   const o = (p: Pt, q: Pt, r: Pt) => (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x);
   const o1 = o(a, b, c);

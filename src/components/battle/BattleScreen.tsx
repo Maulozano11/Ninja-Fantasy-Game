@@ -7,7 +7,7 @@ import { Volume2, VolumeX, Sun, Moon, CloudRain, ScrollText } from 'lucide-react
 import type { Action, AiOrder, BattleEvent, BattleState, Cell, Intent, Pt, RollInfo, Unit } from '../../battle/types';
 import { homeTeam } from '../../battle/types';
 import { applyAction } from '../../battle/engine';
-import { jutsuCost, needsSeals } from '../../battle/engine';
+import { chargeLanding, jutsuCost, mustStow, needsSeals } from '../../battle/engine';
 import { aiAction, aiToAct } from '../../battle/ai';
 import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
@@ -18,7 +18,7 @@ import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/na
 import { foreseen } from '../../battle/intent';
 import { MAX_STRUCTURES, STRUCTURE_AC, breakable, jutsuWallAt, ownStructures, structureAt, structureAttack, structureBlocker, structureDist } from '../../battle/structures';
 import { auraEntered, commandBlocker, edgeFoe, nodeInSight, nodeUnder, ownNodeAt, ownNodes, submissionBlocker, submissionRefused, swapBlocker, warpBlocker, warpLanding } from '../../battle/clans';
-import { KUNAI, KUNAI_LONG, handsFree, wielded } from '../../battle/units';
+import { KUNAI, KUNAI_LONG, wielded } from '../../battle/units';
 import { STONE_RANGE } from '../../battle/stealth';
 import { TAG } from '../../battle/hazards';
 import { battleResult } from '../../battle/result';
@@ -524,7 +524,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
         // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
         // metal wall between); an area or a point needs to see where it goes.
-        else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : 'noSight');
+        else if (spec.shape === 'single' && hu && (spec.melee ? fullCoverBetween(s, actor.pos, hu.pos) || (!!spec.charge && !chargeLanding(s, actor, hu)) : !lineOfSight(s, actor.pos, hu.pos))) label = reasonLine(spec.melee ? 'blocked' : 'noSight');
         else if ((spec.shape === 'circle' || spec.shape === 'point' || spec.shape === 'wall') && !lineOfSight(s, actor.pos, at)) label = reasonLine('noSight');
         if (spec.shape === 'point' || spec.shape === 'wall') o.point = { at, ok: dist(actor.pos, at) <= spec.range + 0.1 };
         if (spec.special === 'metalBlock' || spec.special === 'metalWall' || spec.special === 'earthWall' || spec.special === 'waterWall') {
@@ -899,7 +899,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           continue;
         }
         const cost = jutsuCost(u, sp, false);
-        const busyHands = needsSeals(u, sp) && !handsFree(u) && !!u.turn.interacted;
+        const busyHands = mustStow(u, sp) && !!u.turn.interacted;
         // Clan abilities with nothing to work on: Command, Submission and Swap before the fighting,
         // Warp and Swap with no Node down, Submission with no beast or summon on the field.
         const idle =
@@ -1477,6 +1477,18 @@ const SHORT: Record<string, [string, string]> = {
   northstar_command: ['Command', 'Comando'],
   northstar_submission: ['Submit', 'Sumisión'],
   mirai_evasion: ['Evasion', 'Evasión'],
+  fire_three_embers: ['Embers', 'Brasas'],
+  wind_whirl: ['Whirl', 'Remolino'],
+  wind_breeze_mantle: ['Mantle', 'Manto'],
+  lightning_jolt: ['Jolt', 'Calambre'],
+  lightning_spark_fan: ['Spark fan', 'Abanico'],
+  earth_pebble_shot: ['Pebbles', 'Guijarros'],
+  earth_spike_crown: ['Spike crown', 'Corona'],
+  water_healing_dew: ['Dew', 'Rocío'],
+  water_geyser: ['Geyser', 'Géiser'],
+  genjutsu_mirage: ['Mirage', 'Espejismo'],
+  kenjutsu_bleeding_cut: ['Bleeding cut', 'Tajo'],
+  taijutsu_rush: ['Rush', 'Embestida'],
 };
 
 const fmtM = (m: number, lang: ReturnType<typeof useLang>): string => (Math.round(m * 10) / 10).toString().replace('.', lang === 'es' ? ',' : '.');

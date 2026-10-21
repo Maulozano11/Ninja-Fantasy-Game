@@ -26,7 +26,7 @@ import type {
   Unit,
 } from './types';
 import { homeTeam } from './types';
-import { cellBlocked, cellCenter, cellOf, coverBetween, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
@@ -730,9 +730,10 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   const cost = jutsuCost(u, base, enh);
   if (u.chakra < cost) return 'noChakra';
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
-  // Hand seals need both hands: the weapon is stowed for free (once a turn), or the jutsu waits.
-  const seals = needsSeals(u, base);
-  if (seals && !handsFree(u) && u.turn.interacted) return 'handsBusy';
+  // Hand seals need both hands, and a tackle is thrown with empty ones: the weapon is stowed for
+  // free (once a turn), or the jutsu waits.
+  const stow = mustStow(u, base);
+  if (stow && u.turn.interacted) return 'handsBusy';
   const target = targetId ? s.units[targetId] : undefined;
   let at: Pt = target ? { ...target.pos } : { ...atIn };
   if (spec.shape === 'self' || spec.shape === 'selfCircle') at = { ...u.pos };
@@ -751,12 +752,15 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       minds.push(t!);
     }
   }
+  // Where a charge stops, beside its target (it needs a clear run there).
+  let land: Pt | null = null;
   switch (spec.shape) {
     case 'single':
       if (!target || !targetable(target)) return 'needTarget';
       if (d > spec.range + 0.1 + (target.bulk ?? 0) + (target.kind === 'hydra_head' ? 2.5 : 0)) return 'outOfRange';
       if (!spec.melee && !lineOfSight(s, u.pos, target.pos)) return 'noSight';
       if (spec.melee && fullCoverBetween(s, u.pos, target.pos)) return 'blocked';
+      if (spec.charge && !(land = chargeLanding(s, u, target))) return 'blocked';
       break;
     case 'ally':
       if (!target || target.team !== u.team || !targetable(target)) return 'needAlly';
@@ -797,7 +801,9 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     const why = structureBlocker(s, w);
     if (why) return why;
   }
-  if (seals && !handsFree(u)) setArmed(u, false, 'free', ev);
+  if (stow) setArmed(u, false, 'free', ev);
+  // A sword art draws the blade for free, if the free draw of the turn is left (or it strikes with the fists).
+  else if (base.weapon === 'draw' && u.weapon.held && !u.armed && !u.turn.interacted) setArmed(u, true, 'free', ev);
   // Pay, and spend the action.
   u.chakra -= cost;
   if (cost) ev.push({ t: 'chakra', unit: u.id, delta: -cost, chakra: u.chakra, reason: id });
@@ -805,7 +811,10 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (base.cast === 'bonus') u.turn.bonus = false;
   else u.turn.action = false;
   if (spec.loud) reveal(u, ev);
-  if (spec.melee && spec.shape === 'single' && target) dashTo(s, u, target, ev);
+  if (spec.melee && spec.shape === 'single' && target) {
+    if (land) chargeTo(s, u, land, id, ev);
+    else dashTo(s, u, target, id, ev);
+  }
   if (at.x !== u.pos.x) u.facing = at.x > u.pos.x ? 1 : -1;
   const area = areaOf(spec, u.pos, at);
   ev.push({ t: 'jutsu', unit: u.id, jutsu: id, at, shape: area, enhanced: enh });
@@ -825,6 +834,13 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
     case 'clone':
       u.cond.clone = true;
       ev.push({ t: 'clone', unit: u.id, on: true });
+      break;
+    case 'mantle':
+      // The Breeze Mantle: a dodge cast as a bonus action (attacks against the ninja have
+      // disadvantage until its next turn; saves are not helped), with its own mark for the screen.
+      u.cond.dodging = true;
+      u.cond.mantle = true;
+      ev.push({ t: 'condition', unit: u.id, cond: 'mantle', on: true });
       break;
     case 'trap': {
       const trap: Trap = { id: `trap_${s.tick}_${u.id}`, kind: 'tag', pos: at, owner: u.team, dc: u.saveDC, dice: spec.dice ?? '3d6', radius: spec.radius ?? 1.5 };
@@ -884,7 +900,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
       hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv));
       continue;
     }
-    const pv = attackPreview(s, u, v, 'jutsu', { jutsuRange: spec.range });
+    const pv = attackPreview(s, u, v, 'jutsu', { jutsuRange: spec.range, melee: spec.melee });
     const roll = check(s, 'attack', pv.mod, pv.ac, pv.adv, true);
     ev.push({ t: 'attack', unit: u.id, target: v.id, what: spec.id, roll, ranged: !spec.melee, ...(pv.reasons.length ? { reasons: pv.reasons } : {}) });
     if (roll.success) hits.push({ unit: v.id, amount: roll.crit && spec.dice ? amount + rollDiceExpr(s, spec.dice) : amount, type, source: u.id, what: spec.id, crit: roll.crit, ...extra });
@@ -903,15 +919,45 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
 }
 
 /** Taijutsu and kenjutsu strikes: the caster flashes in next to the target. */
-function dashTo(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[]): void {
+function dashTo(s: BattleState, u: Unit, t: Unit, jutsu: string, ev: BattleEvent[]): void {
   const reach = reachTo(u, t);
   if (dist(u.pos, t.pos) <= reach + 0.1) return;
   const from = { ...u.pos };
   const to = freeSpot(s, u, t.pos, 0.4, reach, (p) => -dist(p, from));
   if (to === t.pos) return;
   u.pos = to;
-  ev.push({ t: 'move', unit: u.id, path: [to], run: true });
+  ev.push({ t: 'move', unit: u.id, path: [to], run: true, jutsu });
   // A flash-in is a dash: into a Northstar's aura, it costs half the movement left.
+  enteredAura(s, u, from, ev);
+}
+
+/** A charge ends shoulder to shoulder with its target, whatever the weapon's reach (the weapon is put away). */
+const chargeReach = (t: Unit): number => 1.5 + (t.kind === 'hydra_head' ? 2.5 : 0) + (t.bulk ?? 0);
+
+/**
+ * Where a charge at `t` stops (the Rush): the free spot beside it nearest the caster, with a clear
+ * straight run to it (`clearRun`: no wall, tree or structure in the way). The caster's own spot
+ * when it is already there; null if no clear run reaches the target.
+ */
+export function chargeLanding(s: BattleState, u: Unit, t: Unit): Pt | null {
+  const reach = chargeReach(t);
+  if (dist(u.pos, t.pos) <= reach + 0.1) return { ...u.pos };
+  const from = { ...u.pos };
+  const to = freeSpot(s, u, t.pos, 0.4, reach, (p) => (clearRun(s, from, p) ? -dist(p, from) : -Infinity));
+  return to === t.pos ? null : to;
+}
+
+/**
+ * The charge itself: a straight run to `to` (no opportunity attacks, no movement spent, like a
+ * flash-in), told as a run the screen plays as the tackle's run-up.
+ */
+function chargeTo(s: BattleState, u: Unit, to: Pt, jutsu: string, ev: BattleEvent[]): void {
+  if (sameCell(cellOf(to), cellOf(u.pos))) return;
+  const from = { ...u.pos };
+  u.pos = to;
+  if (to.x !== from.x) u.facing = to.x > from.x ? 1 : -1;
+  ev.push({ t: 'move', unit: u.id, path: [to], run: true, jutsu });
+  // Into a Northstar's aura, it costs half the movement left (as any dash).
   enteredAura(s, u, from, ev);
 }
 
@@ -924,6 +970,14 @@ function raiseWall(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleE
 
 /** Ninjutsu and genjutsu are woven with hand seals; taijutsu, sword arts and bloodline abilities are not. */
 export const needsSeals = (u: Unit, spec: JutsuSpec): boolean => u.kind === 'ninja' && !spec.melee && !spec.ability;
+
+/**
+ * The weapon in hand has to be put away before this jutsu: for hand seals (unless One-Handed Seals
+ * keep a one-handed weapon in hand), or for a tackle (the owner: the weapon is stowed). Free once a
+ * turn; with the free interaction spent, the jutsu waits ('handsBusy').
+ */
+export const mustStow = (u: Unit, spec: JutsuSpec): boolean =>
+  (needsSeals(u, spec) && !handsFree(u)) || (spec.weapon === 'stow' && u.kind === 'ninja' && u.armed && u.weapon.held);
 
 function setArmed(u: Unit, armed: boolean, cost: 'free' | 'bonus', ev: BattleEvent[]): void {
   u.armed = armed;

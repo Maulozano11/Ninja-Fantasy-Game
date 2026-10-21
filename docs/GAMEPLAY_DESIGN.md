@@ -56,6 +56,79 @@ elements.
 - **Dice**: every roll shows as a quick d20 over the acting character, with a
   button to speed it up. The big dice window is kept for criticals and
   important checks. Checks and attacks show their % before rolling.
+  - The dice are a real d20 (20 faces, opposite faces sum to 21) in three
+    styles the player picks in the main menu (owner's decision): A "Gema" (a
+    crystal in the caster's chakra colour, the default), B "Marfil y oro"
+    (ivory with gold), C "Obsidiana rúnica" (black glass with glowing
+    numbers). The dice only show the roll the engine already made and land on
+    that number. Art: `tools/ui/dice-d20.ts` → `src/assets/ui_dice/`.
+    The owner (2026-10-21): "me gustan los estilos el por defecto va ser el
+    del color del chakra"; the Gema taking the chakra colour: "si"; the
+    natural-20 extras of the checks: no changes "por ahora". The critical
+    animation is waiting for his second look.
+  - How it plays (built on `ui/dice-d20`, the look waiting for his approval):
+    the quick die is thrown over whoever rolls (the attacker; the one saving,
+    at the target; the one checking) and lands on the engine's exact d20; with
+    advantage or disadvantage both dice land and the one not kept dims. A
+    readout beside it says "17 + 5 = 22 ✓ CA 14". The action plays when the die
+    clicks onto its face; everyone a blast reaches saves at once, and both sides
+    of a shove roll together. The saves against a jutsu are thrown while it
+    flies, so they land as it hits and the damage shows with the blast. Dice
+    thrown together spread out so none covers another or a head, a bar or a
+    mark; one moved off its ninja has a thin gold stem down to them, and each
+    readout goes on the side where it covers nothing. The battle speed
+    (1×/2×/3×) speeds the dice too, and a "Saltar dados" button (or Space) lands
+    them at once; a Space or Enter pressed within 0.7 s after the dice only
+    skips, so a late press never ends the turn. The big window
+    opens for a natural 20 on an attack ("¡CRÍTICO!"), a natural 1 on a save
+    ("¡FALLO CRÍTICO!") and a natural 20 on a save, a check or a death save
+    ("¡20 NATURAL!"). Sounds: the throw (whoosh, bounces, the click on the face),
+    a chime for a 20, a thud and crack for a 1, the critical's sting; they
+    follow the game's mute switch. Mission checks (camp) throw the same die
+    beside their line in the log.
+  - **A natural 20 on an attack roll is an automatic critical hit with maximum
+    damage** (owner's decision: "un 20 en dado haria impacto critico
+    automatico y el daño maximo y deberiamos ponerle una animacion de extra
+    cuando suceda eso"): every damage die counts as its highest face,
+    including the extra dice the critical adds (2d6+3 → 4×6+3 = 27; a katana's
+    1d8+3 → 8+8+3 = 19), the bonus once. This covers weapon blows, kunai,
+    opportunity attacks, the hydra's bite, props and Kōton walls, and any jutsu
+    that rolls to hit. A natural 1 on an attack still always misses. The log
+    says "¡20 natural! ¡X asesta un crítico a Y!" and "¡Crítico! Daño máximo:
+    19 de cortante a Y". The extra animation: the big window with the gold d20
+    and the "¡CRÍTICO!" banner; on the blow a short hit-stop, a white-gold bloom
+    of light on the target, an impact burst, a camera kick, and the damage in
+    big gold digits marked "MÁX", with its own sound sting. (A critical's
+    other effects stay: two death-save failures on a downed ninja, Tension,
+    Grave wounds, Legend's massive damage.)
+  - **Saving throws** (owner's rule, his answer "a3, b3"): **a natural 20
+    resists completely**: automatic success, no damage at all (not even the
+    half a save usually leaves) and none of the jutsu's effect on that target.
+    **A natural 1 fails and takes it as a critical**: automatic failure,
+    maximum damage exactly like an attack's critical (every damage die at its
+    highest, doubled; a Fireball's 4d6 → 48) and the full effect; it plays the
+    same critical animation at the target ("¡FALLO CRÍTICO!", "MÁX"). This is
+    how jutsu get their critical moment, since every damaging jutsu uses a
+    save. It also covers explosions (tags, barrels, traps) and electrified
+    water (half of the maximum). A save with no damage (Spatial Swap, Command,
+    Natural Submission) just succeeds or fails on the natural. The Tension
+    save at 10 Tension follows the automatic success and failure too.
+  - **Ability checks** (owner's rule, his answer "c3"): a natural 20 is an
+    automatic success **with an extra**, a natural 1 an automatic failure.
+    The checks in battle and their extras:
+
+    | Check | Natural 20 extra |
+    |---|---|
+    | Hide (Stealth) | A perfect hide: no one can find the ninja until its next turn, crouched or not (attacking or leaving cover still gives it away) |
+    | Shove (Athletics) | It knocks the target prone **and** pushes it (3 m when pushing, 1.5 m when knocking down) |
+    | Resisting a shove (Athletics/Acrobatics) | The shove fails and the shover falls prone |
+    | Stabilize (Medicine, DC 10) | The ally does more than stabilize: it gets back up with 1 HP |
+
+    In a contest (a shove) a natural 20 wins and a natural 1 loses; if both
+    sides roll a natural 20 the one resisting keeps its ground. Mission checks
+    are in `docs/MISSION_DESIGN.md`. **Death saves are not checks** and stay as
+    they were (a 20 brings the ninja back at 1 HP, a 1 counts as two failures);
+    initiative only counts its total.
 - **Chakra in battle** does not come back by itself:
   - **Focus chakra** (action): recover 1d6 + casting modifier; attacks against
     you have advantage until your next turn.

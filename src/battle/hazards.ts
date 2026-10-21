@@ -8,6 +8,7 @@ import type { AreaShape, BattleEvent, BattleState, DamageType, Hit, Pt, Trap, Un
 import { dist, fullCoverBetween, getMap, propRules, waterAtPt } from './map';
 import { inArea } from './jutsu';
 import { rollDiceExpr, savingThrow } from './combat';
+import { maxCritDamage } from '../rules/dice';
 import { hitStructuresIn } from './structures';
 
 /** Explosive barrels and tags: 3d6 fire in 1.5 m, DEX save for half. */
@@ -63,7 +64,7 @@ export function explode(s: BattleState, at: Pt, radius: number, dice: string, dc
   const area: AreaShape = { kind: 'circle', center: at, radius };
   const amount = rollDiceExpr(s, dice);
   const hits: Hit[] = [];
-  for (const u of unitsInArea(s, area, [], at)) hits.push(saveHit(s, u, 'dex', dc, amount, 'Fire', true, source, 'explosion', { explosion: true }, ev));
+  for (const u of unitsInArea(s, area, [], at)) hits.push(saveHit(s, u, 'dex', dc, amount, 'Fire', true, source, 'explosion', { explosion: true }, ev, 'none', maxCritDamage(dice)));
   hitStructuresIn(s, area, amount, ev);
   hits.push(...groundEffects(s, area, 'Fire', ev, seen));
   return hits;
@@ -86,10 +87,16 @@ export function saveHit(
   extra: Partial<Hit>,
   ev: BattleEvent[],
   adv: Advantage = 'none',
+  maxAmount?: number,
 ): Hit {
   if (u.head?.severed) return { unit: u.id, amount: 0, type, source, what, ...extra, effect: undefined };
   const roll = savingThrow(s, u, ab, dc, adv);
   ev.push({ t: 'save', unit: u.id, what, roll, ab });
+  // The owner's rule (A3): a natural 20 resists it completely, no damage even where a save halves.
+  if (roll.crit) return { unit: u.id, amount: 0, type, source, what, ...extra, effect: undefined, tension: undefined };
+  // (B3): a natural 1 takes it as a critical, maximum damage (`maxAmount`, the dice at their
+  // highest, doubled) and the whole effect.
+  if (roll.fumble && maxAmount !== undefined) return { unit: u.id, amount: maxAmount, type, source, what, ...extra, crit: true };
   const got = roll.success ? (half ? Math.floor(amount / 2) : 0) : amount;
   return { unit: u.id, amount: got, type, source, what, ...extra, effect: roll.success ? undefined : extra.effect };
 }
@@ -138,7 +145,7 @@ export function groundEffects(s: BattleState, area: AreaShape, type: DamageType 
  * Lightning that lands in water runs through it: everyone else standing in water nearby makes a
  * DEX save against half the damage (not behind a metal wall from where it landed).
  */
-export function electrify(s: BattleState, points: Pt[], amount: number, dc: number, source: string, already: string[], ev: BattleEvent[]): Hit[] {
+export function electrify(s: BattleState, points: Pt[], amount: number, dc: number, source: string, already: string[], ev: BattleEvent[], dice?: string): Hit[] {
   const wet = points.filter((p) => waterAtPt(s, p) > 0);
   if (!wet.length || amount <= 0) return [];
   for (const p of wet) ev.push({ t: 'electrified', at: p, radius: ELECTRIFY_RADIUS, source });
@@ -146,7 +153,7 @@ export function electrify(s: BattleState, points: Pt[], amount: number, dc: numb
   for (const u of onMapUnits(s)) {
     if (already.includes(u.id) || waterAtPt(s, u.pos) === 0) continue;
     if (!wet.some((p) => dist(p, u.pos) <= ELECTRIFY_RADIUS + (u.bulk ?? 0) && !fullCoverBetween(s, p, u.pos))) continue;
-    hits.push(saveHit(s, u, 'dex', dc, Math.floor(amount / 2), 'Lightning', true, source, 'electrified water', {}, ev));
+    hits.push(saveHit(s, u, 'dex', dc, Math.floor(amount / 2), 'Lightning', true, source, 'electrified water', {}, ev, 'none', dice ? Math.floor(maxCritDamage(dice) / 2) : undefined));
   }
   return hits;
 }

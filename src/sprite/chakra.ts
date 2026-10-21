@@ -12,7 +12,7 @@
 // the resolution changes, while 1-fine-pixel details (sparks, bolt cores,
 // rims) use the extra resolution.
 
-import { hexToRgb, hslToHex, rgbToHsl } from './color';
+import { hexToRgb, hslToHex, rgbToHex, rgbToHsl } from './color';
 import { GRID, RES } from './raster';
 import type { Rig } from './rig';
 import type { ChakraColorId } from './types';
@@ -102,6 +102,11 @@ export function tintPal(tint: string): Pal {
     hslToHex(h, s * 0.95, Math.min(0.86, l + 0.2)),
     hslToHex(h, s * 0.6, Math.min(0.97, l + 0.42)),
   );
+}
+
+/** The 5 tones of a tint as '#rrggbb' (0 darkest .. 4 core): what the gem dice are tinted with. */
+export function chakraTones(tint: string): string[] {
+  return tintPal(tint).map(([r, g, b]) => rgbToHex(r, g, b));
 }
 
 const SEEDS: Record<ChakraColorId, number> = {

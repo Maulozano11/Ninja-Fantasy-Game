@@ -100,7 +100,7 @@ function describeEn(e: RuleEvent, name: (id: string) => string): { text: string;
       const dice = o.rolls.length > 1 ? `d20 ${o.d20} (${o.rolls.join(' / ')})` : `d20 ${o.d20}`;
       const pct = Math.round(o.chance * 100);
       return {
-        text: `${name(e.who)} · ${e.what}: ${dice} ${o.modifier >= 0 ? '+' : '−'} ${Math.abs(o.modifier)} = ${o.total} vs DC ${o.dc} → ${o.success ? 'success' : 'failure'} (${pct} % chance)`,
+        text: `${name(e.who)} · ${e.what}: ${dice} ${o.modifier >= 0 ? '+' : '−'} ${Math.abs(o.modifier)} = ${o.total} vs DC ${o.dc} → ${o.natural20 ? 'natural 20, automatic success!' : o.natural1 ? 'natural 1, automatic failure' : o.success ? 'success' : 'failure'} (${pct} % chance)`,
         tone: 'roll',
       };
     }
@@ -163,7 +163,7 @@ function describeEs(e: RuleEvent, name: (id: string) => string): { text: string;
       const dice = o.rolls.length > 1 ? `d20 ${o.d20} (${o.rolls.join(' / ')})` : `d20 ${o.d20}`;
       const pct = Math.round(o.chance * 100);
       return {
-        text: `${name(e.who)} · ${r(e.what)}: ${dice} ${o.modifier >= 0 ? '+' : '−'} ${Math.abs(o.modifier)} = ${o.total} contra CD ${o.dc} → ${o.success ? 'éxito' : 'fallo'} (${pct} % de probabilidad)`,
+        text: `${name(e.who)} · ${r(e.what)}: ${dice} ${o.modifier >= 0 ? '+' : '−'} ${Math.abs(o.modifier)} = ${o.total} contra CD ${o.dc} → ${o.natural20 ? '¡20 natural, éxito automático!' : o.natural1 ? '1 natural, fallo automático' : o.success ? 'éxito' : 'fallo'} (${pct} % de probabilidad)`,
         tone: 'roll',
       };
     }

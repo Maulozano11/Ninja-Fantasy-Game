@@ -9,6 +9,9 @@ import { loadRoster, forgetNinja, type SavedNinja } from '../game/saves';
 import { loadRun, missionOf } from '../game/missionRun';
 import { characterFromImport } from './CharacterCreator';
 import { clanName } from '../data/shinobiData';
+import { DicePreview } from './dice/DicePreview';
+import { DICE_STYLES, setDiceStyle, useDiceStyle } from './dice/diceStyle';
+import { diceSound } from './dice/diceSound';
 
 // The game opens here: the owner's burning forest, the title, and Start game / New game / Load
 // game, as a game's own main menu (the web navigation is gone). The practice modes stay one step
@@ -48,6 +51,18 @@ const T = strings({
   importBad: { en: 'That text is not a ninja sheet.', es: 'Ese texto no es la hoja de un ninja.' },
   close: { en: 'Close', es: 'Cerrar' },
   level: { en: 'Level {n}', es: 'Nivel {n}' },
+  options: { en: 'Options', es: 'Opciones' },
+  optionsSub: { en: 'Your dice', es: 'Tus dados' },
+  diceHead: { en: 'Dice style', es: 'Estilo de dados' },
+  diceHint: { en: 'Every roll in battle is a d20 thrown on screen, landing on the number the rules rolled. A natural 20 on an attack is a critical with maximum damage.', es: 'Cada tirada en batalla es un d20 que se lanza en pantalla y cae en el número que sacó la regla. Un 20 natural en un ataque es un crítico con daño máximo.' },
+  dice_gem: { en: 'Gem', es: 'Gema' },
+  dice_gemSub: { en: 'Clear crystal in the chakra colour of whoever rolls.', es: 'Cristal translúcido del color del chakra de quien tira.' },
+  dice_ivory: { en: 'Ivory and gold', es: 'Marfil y oro' },
+  dice_ivorySub: { en: 'Old ivory with gold edges and engraved numbers, like the battle frames.', es: 'Marfil antiguo con aristas y números grabados en oro, como los marcos de la batalla.' },
+  dice_obsidian: { en: 'Runic obsidian', es: 'Obsidiana rúnica' },
+  dice_obsidianSub: { en: 'Black glass with carved runes and glowing numbers.', es: 'Vidrio negro con runas talladas y números que brillan.' },
+  chosen: { en: 'Chosen', es: 'Elegido' },
+  choose: { en: 'Choose', es: 'Elegir' },
 });
 
 const serif: React.CSSProperties = { fontFamily: "'Cinzel', 'Trajan Pro', Georgia, 'Times New Roman', serif" };
@@ -107,6 +122,44 @@ function Panel({ title, onClose, children }: { title: string; onClose: () => voi
 
 const quiet = 'px-3 py-1 text-xs rounded-sm border border-[#5c4a2e] text-[#efe3c4] hover:bg-[#2a2116] hover:border-[#8a6a3a] transition';
 const loud = 'px-3 py-1 text-xs font-bold rounded-sm border border-[#f2c46d] bg-[#3a2a12] text-[#f2c46d] hover:bg-[#4d3816] transition';
+
+/** The options: the dice style, each with its die thrown in a little preview. */
+function OptionsPanel({ onClose }: { onClose: () => void }) {
+  useLang();
+  const chosen = useDiceStyle();
+  return (
+    <Panel title={T('options')} onClose={onClose}>
+      <h3 style={{ ...serif, color: ink }} className="text-base font-semibold tracking-wide">
+        {T('diceHead')}
+      </h3>
+      <p className="mt-1 mb-3 text-xs leading-relaxed text-[#b9a98a]">{T('diceHint')}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {DICE_STYLES.map((s) => {
+          const on = s === chosen;
+          return (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={on}
+              onClick={() => {
+                setDiceStyle(s);
+                diceSound('throw');
+              }}
+              className={`flex flex-col items-center rounded-sm border p-1.5 text-center transition ${on ? 'border-[#f2c46d] bg-[#2a1f10]' : 'border-[#3d2e1b] bg-black/30 hover:border-[#8a6a3a]'}`}
+            >
+              <DicePreview style={s} width={150} height={128} />
+              <span style={{ ...serif, color: on ? gold : ink }} className="mt-1 text-sm font-semibold">
+                {T(`dice_${s}`)}
+              </span>
+              <span className="mt-0.5 text-[11px] leading-snug text-[#b9a98a]">{T(`dice_${s}Sub`)}</span>
+              <span className={`mt-1.5 ${on ? loud : quiet}`}>{on ? T('chosen') : T('choose')}</span>
+            </button>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
 
 function LoadPanel({ onClose, onStart, onPickNinja }: { onClose: () => void; onStart: () => void; onPickNinja: TitleScreenProps['onPickNinja'] }) {
   useLang();
@@ -222,7 +275,7 @@ function LoadPanel({ onClose, onStart, onPickNinja }: { onClose: () => void; onS
 
 export function TitleScreen({ hero, onStart, onNewGame, onPickNinja, onPractice }: TitleScreenProps) {
   useLang();
-  const [panel, setPanel] = useState<'none' | 'load' | 'practice' | 'sure'>('none');
+  const [panel, setPanel] = useState<'none' | 'load' | 'practice' | 'sure' | 'options'>('none');
   const run = loadRun();
   const runHero = run?.party.members.find((m) => m.id === run.heroId) ?? run?.party.members[0];
   const startSub = run && runHero
@@ -271,9 +324,11 @@ export function TitleScreen({ hero, onStart, onNewGame, onPickNinja, onPractice 
                 ))}
               </div>
             )}
+            <MenuItem label={T('options')} sub={T('optionsSub')} active={panel === 'options'} onClick={() => setPanel(panel === 'options' ? 'none' : 'options')} />
           </nav>
 
           {panel === 'load' && <LoadPanel onClose={() => setPanel('none')} onStart={onStart} onPickNinja={onPickNinja} />}
+          {panel === 'options' && <OptionsPanel onClose={() => setPanel('none')} />}
         </div>
 
         <footer className="flex items-end justify-between gap-4">

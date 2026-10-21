@@ -3,6 +3,9 @@
 // decided everything; this only paces it so it can be watched.
 
 import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit, Wall, WeaponNode } from '../../battle/types';
+import type { RollInfo } from '../../battle/types';
+import { CLICK_MS, IMPACT, WINDOW, dieLife } from '../dice/diceData';
+import type { WindowKind } from '../dice/diceData';
 import type { SpritePose } from '../../sprite/types';
 import { JUTSU } from '../../battle/jutsu';
 import type { JutsuSpec, VfxElement, VfxRole } from '../../battle/jutsu';
@@ -126,6 +129,54 @@ export interface Banner {
   tone: 'neutral' | 'good' | 'bad' | 'alarm';
 }
 
+/**
+ * A d20 on screen: the roll the engine already made, thrown over the one who rolls it (the
+ * attacker, the one saving, the one checking) and landing on its exact number. `t0` is when it was
+ * thrown; its own clock runs at the battle speed.
+ */
+export interface DieShow {
+  unit: string;
+  roll: RollInfo;
+  kind: 'attack' | 'save' | 'check' | 'death';
+  t0: number;
+  /** It went on into the big window, which shows it from then on. */
+  windowed?: boolean;
+}
+
+/** The big window of a critical or an important roll (opened `t0`, once the small die has landed). */
+export interface DiceWindow {
+  die: DieShow;
+  kind: WindowKind;
+  t0: number;
+}
+
+/** A critical's blow landing on its target: the bloom, the burst and the maximum damage. */
+export interface CritImpact {
+  unit: string;
+  amount: number;
+  t0: number;
+}
+
+/** Which events roll a d20 the screen shows (initiative is not shown). */
+const diceKind = (ev: BattleEvent): DieShow['kind'] | null =>
+  ev.t === 'attack' ? 'attack' : ev.t === 'save' ? 'save' : ev.t === 'check' ? 'check' : ev.t === 'deathSave' ? 'death' : null;
+
+/**
+ * Which rolls open the big window (the owner's rules, docs/GAMEPLAY_DESIGN.md "Dice"): a natural
+ * 20 on an attack (the critical), a natural 1 on a save (it takes the critical), and a natural 20
+ * on a save, a check or a death save.
+ */
+export function windowOf(ev: BattleEvent): WindowKind | null {
+  const k = diceKind(ev);
+  if (!k || !('roll' in ev)) return null;
+  if (k === 'attack') return ev.roll.crit ? 'crit' : null;
+  if (k === 'save' && ev.roll.fumble) return 'fumble';
+  return ev.roll.d20 === 20 ? 'nat20' : null;
+}
+
+/** A natural 20 or 1, for the die's own effect. */
+export const natOf = (r: RollInfo): 20 | 1 | undefined => (r.d20 === 20 ? 20 : r.d20 === 1 ? 1 : undefined);
+
 /** Hooks the screen gives the player: sounds, the log, the roll toast, the camera. */
 export interface PlaybackHooks {
   sound(name: SoundName, detail?: string): void;
@@ -136,7 +187,9 @@ export interface PlaybackHooks {
   label(ev: BattleEvent): string | null;
 }
 
-export type SoundName = 'step' | 'swing' | 'hit' | 'crit' | 'miss' | 'jutsu' | 'explosion' | 'heal' | 'down' | 'alarm' | 'kawarimi' | 'turn' | 'victory' | 'defeat' | 'roar' | 'splash' | 'bells' | 'stone' | 'draw';
+export type SoundName =
+  | 'step' | 'swing' | 'hit' | 'crit' | 'miss' | 'jutsu' | 'explosion' | 'heal' | 'down' | 'alarm' | 'kawarimi' | 'turn' | 'victory' | 'defeat' | 'roar' | 'splash' | 'bells' | 'stone' | 'draw'
+  | 'diceThrow' | 'dicePop' | 'diceNat20' | 'diceNat1' | 'critSting';
 
 const RUN = 5.5;
 const WALK = 3.2;
@@ -249,6 +302,25 @@ export class Playback {
   lingers = new Map<string, { element: VfxElement; alpha: number; t0: number; tint?: string }>();
   /** Sounds due later in something already playing (a Shooting-Star Thrust's throw and catch). */
   private cues: { at: number; name: SoundName }[] = [];
+  /** The d20s on screen, the big window (one at a time) and the criticals landing. */
+  dice: DieShow[] = [];
+  diceWindow: DiceWindow | null = null;
+  impacts: CritImpact[] = [];
+  /** Throw the dice for every roll (off for tools that only want the events paced). */
+  diceOn = true;
+  /** The roll events whose dice are already thrown (the event itself plays once they land). */
+  private thrown = new WeakSet<BattleEvent>();
+  /** Until when the queue waits for dice to land (the skip button cuts it short). */
+  private diceWait = 0;
+  /** Dice sounds still to come (the throw, the click of each die, the natural's chime), at screen time. */
+  private sounds: { at: number; name: SoundName; detail?: string }[] = [];
+  /**
+   * When the jutsu being played reaches its targets (screen time; 0 when not known): the saves
+   * against it are thrown so they land then, not after the blast has played out.
+   */
+  private hitAt = 0;
+  /** The skip button never plays a roll before this (the jutsu it answers has not hit yet). */
+  private diceFloor = 0;
 
   constructor(state: BattleState, private hooks: PlaybackHooks) {
     this.sync(state, 0);
@@ -300,6 +372,63 @@ export class Playback {
   }
 
   /**
+   * Throws the dice of the roll at the head of the queue, and of the rolls right after it that
+   * happen at the same moment (everyone a blast reaches saves at once; a shove is a contest), each
+   * over the one who rolls it. Opens the big window for a critical or an important natural.
+   * Returns how long (ms at speed 1) the queue waits before the roll's event plays.
+   */
+  private throwDice(now: number, real = now): number {
+    const first = this.queue[0];
+    const group: BattleEvent[] = [first];
+    if (first.t === 'save' || first.t === 'check')
+      for (let i = 1; i < this.queue.length && group.length < 8 && this.queue[i].t === first.t; i++) group.push(this.queue[i]);
+    let windowed: DieShow | null = null;
+    let kind: WindowKind | null = null;
+    let fumble = false;
+    for (const ev of group) {
+      this.thrown.add(ev);
+      const k = diceKind(ev);
+      if (!k || !('roll' in ev) || !('unit' in ev)) continue;
+      const die: DieShow = { unit: ev.unit, roll: ev.roll, kind: k, t0: now };
+      this.dice = this.dice.filter((d) => d.unit !== ev.unit);
+      this.dice.push(die);
+      const w = windowOf(ev);
+      if (w && !windowed) {
+        windowed = die;
+        die.windowed = true;
+        kind = w;
+      }
+      if (ev.roll.d20 === 1) fumble = true;
+    }
+    const click = now + CLICK_MS / this.speed;
+    // Dice thrown ahead (while a jutsu flies) make their sound when they leave the hand.
+    if (now > real) this.sounds.push({ at: now, name: 'diceThrow', detail: String(this.speed) });
+    else this.hooks.sound('diceThrow', String(this.speed));
+    if (windowed && kind) {
+      this.diceWindow = { die: windowed, kind, t0: now + (CLICK_MS + WINDOW.open) / this.speed };
+      this.sounds.push({ at: click, name: kind === 'fumble' ? 'diceNat1' : 'diceNat20' });
+      return CLICK_MS + WINDOW.go;
+    }
+    this.sounds.push({ at: click, name: fumble ? 'diceNat1' : 'dicePop' });
+    // A natural 1 shows its crack before the action goes on.
+    return CLICK_MS + (fumble ? 260 : 90);
+  }
+
+  /** Dice are still in the air or the big window is open: the skip button shows. */
+  diceRolling(now: number): boolean {
+    return now < this.diceWait || (!!this.diceWindow && now < this.diceWindow.t0 + (WINDOW.go - WINDOW.open) / this.speed);
+  }
+
+  /** The skip button: the dice land at once, the window closes, and the roll's event plays. */
+  skipDice(now: number): void {
+    for (const d of this.dice) d.t0 = Math.min(d.t0, now - dieLife(natOf(d.roll)) / this.speed + 300 / this.speed);
+    this.diceWindow = null;
+    this.sounds = [];
+    if (this.busyUntil === this.diceWait && now < this.busyUntil) this.busyUntil = Math.max(now, this.diceFloor);
+    this.diceWait = 0;
+  }
+
+  /**
    * Runs the queue up to `now`. Returns true once everything has played out: the last event's own
    * time, every walk and every one-shot pose (then the views can snap to the state).
    */
@@ -307,9 +436,26 @@ export class Playback {
     while (this.queue.length && now >= this.busyUntil) {
       const next = this.queue[0].t;
       if ((next === 'turn' || next === 'round' || next === 'end') && now < this.lingerUntil) break;
+      // A roll: its dice are thrown first, and the event plays once they land.
+      if (this.diceOn && diceKind(this.queue[0]) && !this.thrown.has(this.queue[0])) {
+        this.busyUntil = this.diceWait = now + this.throwDice(now) / this.speed;
+        continue;
+      }
       const ev = this.queue.shift()!;
+      this.hitAt = 0;
       const d = this.apply(ev, now, state);
       this.busyUntil = now + d / this.speed;
+      this.diceFloor = 0;
+      // A jutsu its targets save against: their dice are thrown while it flies and land as it hits,
+      // and the saves (and the damage) play from there (thrown after the blast had played out, the
+      // damage came a second after the explosion).
+      const nx = this.queue[0];
+      if (this.diceOn && ev.t === 'jutsu' && nx?.t === 'save' && !this.thrown.has(nx)) {
+        const hit = Math.max(now, Math.min(this.hitAt || this.busyUntil, this.busyUntil));
+        const t0 = Math.max(now, hit - CLICK_MS / this.speed);
+        this.busyUntil = this.diceWait = Math.max(hit, t0 + this.throwDice(t0, now) / this.speed);
+        this.diceFloor = hit;
+      }
       if (!this.queue.length) this.settling = true;
     }
     if (this.shakes.length) {
@@ -351,6 +497,11 @@ export class Playback {
         }
       }
     }
+    for (const s of this.sounds) if (now >= s.at) this.hooks.sound(s.name, s.detail);
+    this.sounds = this.sounds.filter((s) => now < s.at);
+    this.dice = this.dice.filter((d) => now < d.t0 + dieLife(natOf(d.roll)) / this.speed + 260);
+    if (this.diceWindow && now > this.diceWindow.t0 + (WINDOW.go - WINDOW.open + WINDOW.fade) / this.speed) this.diceWindow = null;
+    this.impacts = this.impacts.filter((c) => now < c.t0 + (IMPACT.number + IMPACT.numberLife) / this.speed);
     this.floaters = this.floaters.filter((f) => now < f.t0 + f.dur);
     this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
@@ -905,6 +1056,7 @@ export class Playback {
           }
           h.shake(ev.enhanced ? 7 : 5);
           this.lingerUntil = Math.max(this.lingerUntil, t1 + long.total / this.speed);
+          this.hitAt = t1 + long.hit / this.speed;
           return castDelay + long.hit;
         }
         if (ev.shape?.kind === 'line') {
@@ -929,6 +1081,7 @@ export class Playback {
         // The rank D and C jutsu (staged by seq) leave the casting hand; the others fly as they always have.
         const out = spec?.seq && !head ? handOf(from, a.facing) : from;
         this.fx.push({ ...base, kind: 'projectile', from: out, to: ev.at, dur: fly, lift: [head ? 120 : spec?.seq ? HAND_LIFT : 70, ev.shape ? 30 : 60] });
+        this.hitAt = t1 + fly / this.speed;
         if (ev.shape?.kind === 'circle') {
           const boom = blastMs(el, spec?.sig ? 1400 : 1200);
           this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: boom });
@@ -959,9 +1112,16 @@ export class Playback {
         const hit = state.units[ev.unit];
         if (hit && (hit.kind === 'hydra_head' || hit.kind === 'hydra_body') && !v.severed && ev.hp > 0) v.creature = { anim: 'hurt', t0: now };
         const at = this.posOf(ev.unit, now);
-        this.float(`${ev.amount}`, ev.crit ? '#fde047' : '#f87171', at, now, { big: ev.crit, dur: 1200 });
-        h.sound(ev.crit ? 'crit' : 'hit');
-        if (ev.crit) h.shake(4);
+        if (ev.crit) {
+          // A critical (always maximum damage): a hit-stop, a bloom of light and a burst on the
+          // target, the number in big gold digits marked "MÁX", a camera kick and the sting.
+          this.impacts.push({ unit: ev.unit, amount: ev.amount, t0: now });
+          h.sound('critSting');
+          h.shake(6);
+          return 110 + IMPACT.hitStop + 300;
+        }
+        this.float(`${ev.amount}`, '#f87171', at, now, { dur: 1200 });
+        h.sound('hit');
         return 110;
       }
       case 'heal': {
@@ -1030,7 +1190,8 @@ export class Playback {
       case 'deathSave': {
         h.roll(ev);
         if (label) this.float(label, ev.roll.success ? '#86efac' : '#fca5a5', this.posOf(ev.unit, now), now, { rise: 60 });
-        return 600;
+        // The die over the ninja already took its time.
+        return this.diceOn ? 300 : 600;
       }
       case 'turn': {
         this.turnUnit = ev.unit;

@@ -8,6 +8,7 @@ import { effectiveMaxHp } from '../../rules/derived';
 import { chakraDiceLeft, exhaustionOf, hitDiceLeft, isUnconscious, tensionOf } from '../../rules/ninja';
 import { ShinobiSpriteCanvas } from '../ShinobiSpriteCanvas';
 import { breakdownLabel, lineText, LogLine, supplyLabel, Tone } from '../../game/eventText';
+import { DieIcon } from '../dice/DieIcon';
 import { CLASS_ES, ELEMENT_ES } from '../../game/ruleText';
 import { pick, useLang } from '../../i18n';
 import { INK, OrnatePanel, Parchment, ParchmentTitle } from '../ui/Ornate';
@@ -289,6 +290,8 @@ export function LogLines({ lines, className = '', ink }: { lines: LogLine[]; cla
     <ul className={`space-y-0.5 text-[11px] leading-snug ${className}`}>
       {lines.map((l) => (
         <li key={l.id} className={(ink ? INK_TONE : TONE)[l.tone]}>
+          {/* A check's d20, thrown on the line as it appears (the number is in the line's text). */}
+          {l.tone === 'roll' && /d20 (\d+)/.test(l.text) && <DieIcon result={Number(/d20 (\d+)/.exec(l.text)![1])} size={20} />}
           {lineText(l, lang)}
         </li>
       ))}

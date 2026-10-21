@@ -87,11 +87,13 @@ export function saveHit(
   ev: BattleEvent[],
   adv: Advantage = 'none',
 ): Hit {
-  if (u.head?.severed) return { unit: u.id, amount: 0, type, source, what, ...extra, effect: undefined };
+  if (u.head?.severed) return { unit: u.id, amount: 0, type, source, what, ...extra, effect: undefined, prone: undefined, push: undefined };
   const roll = savingThrow(s, u, ab, dc, adv);
   ev.push({ t: 'save', unit: u.id, what, roll, ab });
   const got = roll.success ? (half ? Math.floor(amount / 2) : 0) : amount;
-  return { unit: u.id, amount: got, type, source, what, ...extra, effect: roll.success ? undefined : extra.effect };
+  // What a failed save brings (an effect, a fall, a push) doesn't happen to one who saves.
+  if (roll.success) return { unit: u.id, amount: got, type, source, what, ...extra, effect: undefined, prone: undefined, push: undefined };
+  return { unit: u.id, amount: got, type, source, what, ...extra };
 }
 
 /**

@@ -178,6 +178,14 @@ function advance(s: BattleState, ev: BattleEvent[]): void {
       ev.push({ t: 'wall', wall: w, on: false });
       return false;
     });
+    // Gales on the ground die down.
+    if (s.zones?.length)
+      s.zones = s.zones.filter((z) => {
+        z.rounds -= 1;
+        if (z.rounds > 0) return true;
+        ev.push({ t: 'zone', zone: z, on: false });
+        return false;
+      });
   }
 }
 

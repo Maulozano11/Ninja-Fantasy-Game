@@ -44,6 +44,19 @@ export interface JutsuSeq {
   lingerAura?: number;
   /** The element's aura wraps whoever is healed, for `ms`, once the heal lands. */
   healAura?: number;
+  /**
+   * The Devouring Tide: a wave runs out along the cone, a row of the element's water columns
+   * (wall_depth; its wall seen from the side when the cone points into the depth) with `rows` rows
+   * fading behind its crest and the element's breath as foam before it, in `ms`.
+   */
+  wave?: { rows: number; ms: number };
+  /**
+   * The Whirlwind Tower: a warning impact at the point, then the element's column (wall_depth)
+   * rises there, turns with `minis` small whirlwinds (multi) circling it, and fades.
+   */
+  tower?: { warn: number; minis: number };
+  /** A cone's breath laid along it (the Rubble Gust's dust), for `ms`. */
+  breathMs?: number;
 }
 
 export interface JutsuSpec {
@@ -71,7 +84,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle';
+  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission' | 'mantle' | 'galeZone';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -112,6 +125,15 @@ export interface JutsuSpec {
   loud: boolean;
   /** Left on a failed save (or a hit). */
   effect?: EffectId;
+  /** A failed save knocks the target down (a ninja; big creatures don't fall). */
+  prone?: boolean;
+  /**
+   * A failed save moves the target `m` meters: away from the caster (a wave), or toward the
+   * circle's middle (a tornado). A ninja; big creatures don't move.
+   */
+  push?: { m: number; toward?: boolean };
+  /** Water that puts out the flames on everyone it reaches. */
+  douse?: boolean;
   /** What it does to the ground around it. */
   env?: 'ignite' | 'electrify' | 'clearFoliage';
   /** A failed save adds Tension (the hydra's roar). */
@@ -189,6 +211,19 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   kenjutsu_bleeding_cut: { vfx: 'slash', vfxSet: 'neutral', melee: true, effect: 'bleeding', loud: false },
   // A shoulder tackle with the weapon put away (the owner): a straight run in, then the blow.
   taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', seq: { launchFlash: true, fastRun: 2 } },
+  // The gaps in the elements (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Jutsu for
+  // the gaps"). Water's rank S: a 12 m cone (past the 9 m cap of other cones, like the Great Fire
+  // Annihilation) that sweeps the ones who fail 3 m away, knocks them down and puts their fire out.
+  water_devouring_tide: { vfx: 'breath', length: 12, push: { m: 3 }, prone: true, douse: true, seq: { castAura: 560, wave: { rows: 3, ms: 1800 }, hitEach: { stagger: 90 }, shake: 6 } },
+  // Wind's rank A: a tornado that drags the ones who fail 1.5 m toward its middle and knocks them down.
+  wind_whirlwind_tower: { vfx: 'blast', push: { m: 1.5, toward: true }, prone: true, seq: { tower: { warn: 300, minis: 4 }, shake: 2 } },
+  // The Gale Curtain, made an area by the owner: a gale on the ground that fans the fire jutsu
+  // crossing it (fannedBy below). It hurts nobody and is silent.
+  wind_gale_curtain: { special: 'galeZone', vfx: 'wall', loud: false },
+  // A straight bolt along the line, a spark on each one it runs through.
+  lightning_thunder_beam: { vfx: 'stream', width: 1.2, seq: { hitEach: { stagger: 80 } } },
+  // Dust and stones along the cone: whoever fails ends up on the ground.
+  earth_rubble_gust: { vfx: 'breath', prone: true, seq: { castAura: 560, breathMs: 1400, hitEach: { stagger: 80 } } },
 };
 
 function specOf(j: JutsuDefinition): JutsuSpec {
@@ -506,4 +541,55 @@ export function inArea(area: AreaShape, p: Pt, pad = 0.25): boolean {
   let diff = Math.abs(deg(Math.atan2(dz, dx)) - area.dir) % 360;
   if (diff > 180) diff = 360 - diff;
   return diff <= area.angle / 2 + deg(Math.atan2(pad, Math.max(d, 0.5)));
+}
+
+// --- the Gale Curtain: fire through the wind ---------------------------------------------------
+
+/** How near (m) a point is to the segment from a to b, and where along it (0..1) the nearest point is. */
+export function nearSegment(a: Pt, b: Pt, p: Pt): { d: number; t: number; at: Pt } {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const L2 = dx * dx + dz * dz;
+  const t = L2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / L2)) : 0;
+  const at = { x: a.x + dx * t, z: a.z + dz * t };
+  return { d: Math.hypot(p.x - at.x, p.z - at.z), t, at };
+}
+
+/** An area reaches into a circle on the ground (sampled over the circle: its middle, two rings). */
+export function areaTouchesCircle(area: AreaShape, center: Pt, radius: number): boolean {
+  if (area.kind === 'circle') return Math.hypot(area.center.x - center.x, area.center.z - center.z) <= area.radius + radius;
+  const pts: Pt[] = [center];
+  for (const [k, n] of [[0.5, 8], [1, 16]] as const)
+    for (let i = 0; i < n; i++) pts.push({ x: center.x + Math.cos((i * 2 * Math.PI) / n) * radius * k, z: center.z + Math.sin((i * 2 * Math.PI) / n) * radius * k });
+  return pts.some((p) => inArea(area, p, 0));
+}
+
+/**
+ * The gale a fire jutsu goes through on its way, if any (the Gale Curtain, the owner's answer of
+ * 2026-10-21: "que potencie las técnicas de fuego que pasen por ahí"), and where the fire meets the
+ * wind. Whoever casts the fire, a friend or a foe of the gale's maker, the wind doesn't choose. The
+ * fire's path is its flight from the caster to its target or point (a single target, a ball that
+ * bursts in a circle), and its area (a cone, a line, a circle). The first gale it meets counts; two
+ * gales fan it once.
+ */
+export function fannedBy(spec: JutsuSpec, from: Pt, at: Pt, zones: readonly { id: string; center: Pt; radius: number }[]): { zone: string; at: Pt } | null {
+  if (spec.dmgType !== 'Fire' || spec.special || !zones.length) return null;
+  const area = areaOf(spec, from, at);
+  let best: { zone: string; at: Pt; t: number } | null = null;
+  for (const z of zones) {
+    // Its flight: from the caster to where it lands (the cones and lines start at the caster).
+    const n = nearSegment(from, area?.kind === 'circle' ? area.center : at, z.center);
+    if (n.d <= z.radius) {
+      if (!best || n.t < best.t) best = { zone: z.id, at: n.at, t: n.t };
+      continue;
+    }
+    if (area && areaTouchesCircle(area, z.center, z.radius) && !best) best = { zone: z.id, at: { ...z.center }, t: 1 };
+  }
+  return best && { zone: best.zone, at: best.at };
+}
+
+/** A fanned fire burns harder: one more damage die (two for rank S), the area as it was aimed. */
+export function fanned(spec: JutsuSpec): JutsuSpec {
+  const more = spec.rank === 'S' ? 2 : 1;
+  return { ...spec, dice: spec.dice?.replace(/^(\d+)d/, (_, n) => `${Number(n) + more}d`) };
 }

@@ -17,6 +17,7 @@ import type {
   BattleState,
   BattleSupplies,
   Cell,
+  GaleZone,
   Hit,
   Outcome,
   Pt,
@@ -30,7 +31,7 @@ import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dist, fullCove
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
 import { attackPreview, check, damage, heal, hostileAura, passivePerception, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
-import { JUTSU, MIN_AIM, areaOf, enhanced } from './jutsu';
+import { JUTSU, MIN_AIM, areaOf, enhanced, fanned, fannedBy } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
@@ -146,6 +147,7 @@ export function createBattle(setup: BattleSetup): { state: BattleState; events: 
       return hp === undefined ? { def } : { def, hp };
     }),
     walls: [],
+    zones: [],
     traps: [...(setup.traps ?? [])],
     nodes: [],
     bodies: [],
@@ -646,6 +648,57 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
     t.stats2.tension += 1;
     ev.push({ t: 'note', key: 'tensionUp', params: { name: t.name } });
   }
+  // Water puts the flames out on whoever it reaches.
+  if (h.douse && hasEffect(t.effects, 'burning')) {
+    t.effects = removeEffect(t.effects, 'burning');
+    ev.push({ t: 'effect', unit: t.id, effect: 'burning', on: false });
+  }
+  // A wave sweeps it off, a tornado drags it in, and down it goes (ninjas: big creatures stand firm).
+  if (t.kind !== 'ninja') return;
+  if (h.push) sweep(s, t, h, ev);
+  if (h.prone && !t.down && !t.cond.prone) {
+    t.cond.prone = true;
+    ev.push({ t: 'condition', unit: t.id, cond: 'prone', on: true });
+    ev.push({ t: 'note', key: 'knockedDown', params: { name: t.name } });
+  }
+}
+
+/**
+ * A jutsu moves a unit that failed its save (the Devouring Tide, the Whirlwind Tower): 1.5 m at a
+ * time, away from `push.from` or toward it (never past it), until it has gone `push.m` or something
+ * stops it (a wall, a tree, a structure, another unit, the edge of the map): it stays where it hits.
+ * Swept off a ledge it falls (1d6 a level, and prone); swept into water its flames go out.
+ */
+function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
+  const p = h.push!;
+  const from = { ...t.pos };
+  let left = p.m;
+  while (left > 0.05) {
+    const d = dist(t.pos, p.from);
+    if (d < 0.05) break;
+    const step = Math.min(1.5, left, p.toward ? d : 1.5);
+    const k = (p.toward ? step : -step) / d;
+    const dest = { x: t.pos.x + (p.from.x - t.pos.x) * k, z: t.pos.z + (p.from.z - t.pos.z) * k };
+    const c = cellOf(dest);
+    if (!inGrid(gridFor(s.mapId), c) || sameCell(c, cellOf(t.pos)) || !pushClear(s, t.pos, cellCenter(c)) || !canStop(s, t, c)) break;
+    t.pos = cellCenter(c);
+    left -= step;
+  }
+  if (sameCell(cellOf(from), cellOf(t.pos))) {
+    t.pos = from;
+    return;
+  }
+  const drop = levelAtPt(s, from) - levelAtPt(s, t.pos);
+  if (t.pos.x !== from.x) t.facing = from.x > t.pos.x ? 1 : -1;
+  ev.push({ t: 'pushed', unit: t.id, from, to: { ...t.pos }, fall: Math.max(0, Math.round(drop)), what: h.what });
+  if (drop >= 0.9) {
+    t.cond.prone = true;
+    landHit(s, t, { unit: t.id, amount: rollDiceExpr(s, `${Math.round(drop)}d6`), type: 'Bludgeoning', source: h.source, what: 'fall' }, ev);
+  }
+  if (waterAtPt(s, t.pos) > 0 && hasEffect(t.effects, 'burning')) {
+    t.effects = removeEffect(t.effects, 'burning');
+    ev.push({ t: 'effect', unit: t.id, effect: 'burning', on: false });
+  }
 }
 
 /** Kawarimi: the blow strikes a log and the ninja reappears a few meters away, away from danger. */
@@ -818,7 +871,10 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   }
   if (at.x !== u.pos.x) u.facing = at.x > u.pos.x ? 1 : -1;
   const area = areaOf(spec, u.pos, at);
-  ev.push({ t: 'jutsu', unit: u.id, jutsu: id, at, shape: area, enhanced: enh });
+  // A fire jutsu through a gale on the ground burns harder (the Gale Curtain).
+  const fan = fannedBy(spec, u.pos, at, s.zones ?? []);
+  ev.push({ t: 'jutsu', unit: u.id, jutsu: id, at, shape: area, enhanced: enh, ...(fan ? { fanned: fan } : {}) });
+  if (fan) ev.push({ t: 'note', key: 'fanned', params: { name: u.name } });
   const hits: Hit[] = [];
   switch (spec.special) {
     case 'heal':
@@ -869,8 +925,11 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
         if (t.team === u.team) replanAgainst(s, t.id, ev);
       }
       break;
+    case 'galeZone':
+      raiseGale(s, u, spec, at, ev);
+      break;
     default:
-      hits.push(...jutsuHits(s, u, spec, target, at, ev));
+      hits.push(...jutsuHits(s, u, fan ? fanned(spec) : spec, target, at, ev));
   }
   if (spec.loud && s.phase === 'combat') scareAnimalsNear(s, at, 6, ev);
   applyHits(s, hits, spec.loud ? loud(s, u) : silentAttack(s, u, spec, target, ev), ev);
@@ -908,6 +967,10 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   const hits: Hit[] = [];
   for (const v of victims) {
     const extra: Partial<Hit> = { aimed: !area, effect: spec.effect, tension: spec.tension, ...(edge ? { unblockable: true } : {}) };
+    // A wave sweeps away from its caster, a tornado drags toward its middle; either knocks down.
+    if (spec.push) extra.push = { from: spec.push.toward ? { ...at } : { ...u.pos }, m: spec.push.m, toward: spec.push.toward };
+    if (spec.prone) extra.prone = true;
+    if (spec.douse) extra.douse = true;
     if (spec.save) {
       hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv));
       continue;
@@ -979,6 +1042,17 @@ function raiseWall(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleE
   const wall = { ...jutsuWallAt(spec, u.pos, at, `wall_${s.tick}_${u.id}`), owner: u.id };
   s.walls.push(wall);
   ev.push({ t: 'wall', wall, on: true });
+}
+
+/**
+ * The Gale Curtain: a gale starts turning on the ground at the point. It lasts the rest of this round
+ * and two more (like a water barrier, it fades as a new round begins), and fans the fire jutsu that
+ * go through it (fannedBy).
+ */
+function raiseGale(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleEvent[]): void {
+  const zone: GaleZone = { id: `gale_${s.tick}_${u.id}_${(s.zones ?? []).length}`, center: { ...at }, radius: spec.radius ?? 2.25, owner: u.id, rounds: 3 };
+  s.zones = [...(s.zones ?? []), zone];
+  ev.push({ t: 'zone', zone, on: true });
 }
 
 /** Ninjutsu and genjutsu are woven with hand seals; taijutsu, sword arts and bloodline abilities are not. */

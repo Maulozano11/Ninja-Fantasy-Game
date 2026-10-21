@@ -149,11 +149,12 @@ describe('changing class in the creator swaps the jutsu of another class, as a t
     const r = fitToClass(shiori, natureOf(shiori), 'Genjutsu Adept');
     assert.deepEqual(r.swaps, [
       { slot: 'slot3Elemental', from: 'leaf_hurricane_senpuu', to: 'water_geyser' },
-      { slot: 'slot5Ultimate', from: 'night_guy_dragon', to: 'yasaka_magatama' },
+      // Water's own S-rank first (the Devouring Tide, the owner's answer of 2026-10-21).
+      { slot: 'slot5Ultimate', from: 'night_guy_dragon', to: 'water_devouring_tide' },
     ]);
     const made = asMade({ ...shiori, id: 'ninja_made' });
     assert.deepEqual(fitToClass(made, natureOf(made), 'Genjutsu Adept'), r, 'a made ninja: the same');
-    // Ninjutsu: no Water S-rank and no genjutsu or taijutsu for this class: the S-rank slot is emptied.
-    assert.equal(fitToClass(shiori, natureOf(shiori), 'Ninjutsu Specialist').loadout.slot5Ultimate, '');
+    // Ninjutsu: no genjutsu or taijutsu for this class, but Water has its S-rank now.
+    assert.equal(fitToClass(shiori, natureOf(shiori), 'Ninjutsu Specialist').loadout.slot5Ultimate, 'water_devouring_tide');
   });
 });

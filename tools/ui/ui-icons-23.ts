@@ -28,6 +28,9 @@
 //     so a big dark ground does not take most of the entries), each centre replaced by the nearest
 //     colour that really occurs in his pixels; plus a few entries sampled from given places of his
 //     picture (his whitest core, a spark). One palette per icon, used at both sizes. No dither.
+//     Sheets 8 to 11 add his rare colours (coverPalette): the k-means follows how much of the picture
+//     a colour covers, so a small part of another hue (his ninjas' skin, his violet chains, a dragon's
+//     teeth, the white of his spray) went to the nearest entry in lightness, of the wrong hue.
 //  3. 88 (the @2x file): his own pixels. His window is 90 (or 93x91) of his pixels, so the 88 keeps
 //     his pixels one to one and drops the 2 (or 5 and 3) columns and rows that show least: a column
 //     whose pixels match their neighbour's is dropped without a trace (chosen by dynamic programming,
@@ -62,8 +65,10 @@
 // palette, clean-up; no bilateral filter on sheets 8 to 11). Two icons carry an edit the owner asked
 // for (2026-10-21, to keep clear of Naruto's eyes), made on his window before anything else and then
 // drawn crisp at both sizes (`edit` and `art`, recorded in the manifest under `edits`):
-//  - Command (northstar_command): the sharingan in his eye's iris goes; in its place a compass rose
-//    of the four cardinal points, drawn as the red star of his Submission icon is drawn.
+//  - Command (northstar_command): the sharingan in his eye's iris goes (the iris is his radiant red
+//    all over, as round the sharingan); on it a compass rose of the four cardinal points, drawn as the
+//    red star of his Submission icon is drawn (crimson facets, pale pink only as thin strokes), under
+//    his upper lid.
 //  - Premonition (mirai_evasion): his eye becomes a plain radiant red eye, no symbol: his reds
 //    lighter toward a highlight, a round dark pupil and the highlight.
 
@@ -381,15 +386,24 @@ function sampleAt(src: F, his: { rgb: RGBA[]; lab: Lab[] }, box: [number, number
  * how much of the picture a colour covers, so a colour of a small part (his ninjas' skin, his violet
  * chains, a dragon's teeth, a spray's white) found no entry and went to the nearest one in lightness,
  * of another hue (skin to lavender, violet to maroon). Here every pixel that is to be put on the
- * palette (the 44's and the 88's pictures, `targets`, each pixel weighted) whose nearest entry is
- * farther than `thr` (OKLab, hue weighted `cw`, so a wrong hue counts more than a wrong lightness) is
- * lost; the densest group of lost colours (radius `thr`), if it weighs at least `minMass`, gives a new
- * entry: its mean, snapped to his nearest real colour. Again until no group is left or the palette
- * has `max` entries. Returns the entries added, in the order they were found.
+ * palette (the 44's and the 88's pictures, `targets`, each pixel weighted) is lost when its nearest
+ * entry is farther than `thr`, in OKLab with hue and chroma weighted `cw` and lightness `wl` (a wrong
+ * hue counts more than a step of lightness, which the ramp already has). The group of lost colours
+ * (all within `thr` of one of them) that is missed most (the sum over its pixels of how far beyond
+ * `thr` each is, times its weight: a small part missed by a whole hue beats a big area a little off)
+ * gives a new entry, if it weighs at least `minMass`: its mean, snapped to his nearest real colour.
+ * Again until no such group is left or `add` entries were added. Returns them in the order found.
  */
-function coverPalette(rgb: RGBA[], his: { rgb: RGBA[]; lab: Lab[] }, targets: { f: F; weight: number }[], opt: { thr: number; minMass: number; max: number; cw: number }): RGBA[] {
+interface Cover {
+  thr: number;
+  minMass: number;
+  add: number;
+  cw: number;
+  wl: number;
+}
+function coverPalette(rgb: RGBA[], his: { rgb: RGBA[]; lab: Lab[] }, targets: { f: F; weight: number }[], opt: Cover): RGBA[] {
   const cd = (p: Lab, q: Lab): number => {
-    const dl = p[0] - q[0], da = (p[1] - q[1]) * opt.cw, db = (p[2] - q[2]) * opt.cw;
+    const dl = (p[0] - q[0]) * opt.wl, da = (p[1] - q[1]) * opt.cw, db = (p[2] - q[2]) * opt.cw;
     return Math.sqrt(dl * dl + da * da + db * db);
   };
   const pts: Lab[] = [], wts: number[] = [];
@@ -402,17 +416,21 @@ function coverPalette(rgb: RGBA[], his: { rgb: RGBA[]; lab: Lab[] }, targets: { 
   const err = pts.map((p) => Math.min(...pal.map((q) => cd(p, q))));
   const added: RGBA[] = [];
   const done = new Uint8Array(pts.length);
-  while (rgb.length + added.length < opt.max) {
+  while (added.length < opt.add) {
     const lost: number[] = [];
     for (let i = 0; i < pts.length; i++) if (err[i] > opt.thr && !done[i]) lost.push(i);
     if (!lost.length) break;
-    let best = -1, bm = 0;
+    let best = -1, bs = 0;
     for (const i of lost) {
-      let m = 0;
-      for (const j of lost) if (cd(pts[i], pts[j]) <= opt.thr) m += wts[j];
-      if (m > bm + 1e-9) (bm = m), (best = i);
+      let mass = 0, score = 0;
+      for (const j of lost)
+        if (cd(pts[i], pts[j]) <= opt.thr) {
+          mass += wts[j];
+          score += wts[j] * (err[j] - opt.thr);
+        }
+      if (mass >= opt.minMass && score > bs + 1e-9) (bs = score), (best = i);
     }
-    if (bm < opt.minMass) break;
+    if (best < 0) break;
     const grp = lost.filter((j) => cd(pts[best], pts[j]) <= opt.thr);
     const mean: Lab = [0, 0, 0];
     let tw = 0;
@@ -738,6 +756,10 @@ interface MarkRule {
   share: number;
   mix?: number;
   where?: (x: number, y: number) => boolean;
+  /** The pixels it marks are kept out of the clean-up as his own (his embers, his teeth: a pixel or two each, which the clean-up merged into their ground). */
+  keep?: boolean;
+  /** Only his pixels (his window's coordinates) where this holds count (sheets 8 to 11: a rule kept off one part of his picture at both sizes). */
+  win?: (x: number, y: number) => boolean;
   /** Only his pixels whose own lightness (OKLab L) is within [minL, maxL] count (the lightning's white cores, the near-black outlines). */
   minL?: number;
   maxL?: number;
@@ -793,7 +815,7 @@ function reduceKeep(W: F, N: number, rules: MarkRule[]): Reduced {
     const t = rule.kind === 'colour' ? C.map((c) => c + 1e-3) : L.map((v, i) => (bright ? v - op[i] : op[i] - v));
     const inHue = (i: number) => !rule.hue || (rule.hue[0] <= rule.hue[1] ? Hd[i] >= rule.hue[0] && Hd[i] <= rule.hue[1] : Hd[i] >= rule.hue[0] || Hd[i] <= rule.hue[1]);
     const m = new Uint8Array(w * h);
-    for (let i = 0; i < w * h; i++) m[i] = t[i] > rule.thr && L[i] >= (rule.minL ?? 0) && L[i] <= (rule.maxL ?? 1) && C[i] >= (rule.minC ?? 0) && inHue(i) ? 1 : 0;
+    for (let i = 0; i < w * h; i++) m[i] = t[i] > rule.thr && L[i] >= (rule.minL ?? 0) && L[i] <= (rule.maxL ?? 1) && C[i] >= (rule.minC ?? 0) && inHue(i) && (!rule.win || rule.win(i % w, (i - (i % w)) / w)) ? 1 : 0;
     const keep = new Uint8Array(w * h);
     for (const g of groups(m, w, h)) {
       const peak = Math.max(...g.map((i) => t[i]));
@@ -823,7 +845,7 @@ function reduceKeep(W: F, N: number, rules: MarkRule[]): Reduced {
       out.d[c * 3 + k] = box.d[c * 3 + k] + (col - box.d[c * 3 + k]) * mix;
     }
     mark[c] = pick + 1;
-    speck[c] = lone[pick][c];
+    speck[c] = rules[pick].keep ? 1 : lone[pick][c];
   }
   return { img: out, box, mark, speck, masks };
 }
@@ -1056,6 +1078,8 @@ interface IconSpec {
   qChroma?: number;
   /** Extra palette entries sampled from places of his picture (his pixels; see sampleAt). `spare`: for the details only. */
   extra?: { box: [number, number, number, number]; lo: number; hi: number; spare: boolean; by?: 'L' | 'warm' | 'chroma'; only?: { hue?: [number, number]; minL?: number; maxL?: number }; why: string }[];
+  /** Sheets 8 to 11: his rare colours get a palette slot each (see coverPalette). */
+  cover?: Cover;
   /** His thin marks kept at 44 (see MarkRule). */
   marks?: MarkRule[];
   /** Bilateral smoothing of the box mean at 44: [sigma space (px), sigma colour (OKLab)]; [0, 0] = none. */
@@ -1080,6 +1104,8 @@ interface Built {
   area88: boolean;
   /** What the owner's edit did to his window. */
   edited: string | null;
+  /** The palette entries added for his rare colours (sheets 8 to 11, coverPalette). */
+  covered: RGBA[];
   hisLanczos88: Img | null;
 }
 
@@ -1193,7 +1219,7 @@ function buildIcon(spec: IconSpec): Built {
     };
   }
   const p88 = join(REF, `${spec.id}@88.png`);
-  return { spec, pal, out, red, W, cols: h88.cols, rows: h88.rows, area88, edited, hisLanczos88: existsSync(p88) ? loadPng(p88) : null };
+  return { spec, pal, out, red, W, cols: h88.cols, rows: h88.rows, area88, edited, covered, hisLanczos88: existsSync(p88) ? loadPng(p88) : null };
 }
 
 /** His window with the owner's edit as a whole (the edit, and what is drawn only at each size drawn at his scale). */
@@ -1365,20 +1391,22 @@ function setW(W: F, x: number, y: number, col: string): void {
   for (let k = 0; k < 3; k++) W.d[(y * W.w + x) * 3 + k] = c[k];
 }
 
-type StarKey = 'pale' | 'light' | 'bright' | 'dark' | 'centre' | 'ink';
+type StarKey = 'ridge' | 'pale' | 'light' | 'bright' | 'dark' | 'centre' | 'ink';
 /**
  * A compass rose of the four cardinal points, drawn as his Submission star is: four long points
- * (north, east, south, west: length `L`, `w` to each side of the axis where they meet) and four short
- * thin ones between them (`l`, `wl`), each point split along its axis into two facets lit from his upper
- * left, the centre his palest. Pixel centres at any size: a pixel is the star's when at least half of
- * a 4x4 grid of samples in it is; its facet is the one most of them fall in. `ink` is the dark
- * outline round it (4-neighbours), so it stands on the red iris as his sharingan's dark lines did.
+ * (north, east, south, west: length `L`, the north one `Ln`, `w` to each side of the axis where they
+ * meet) and four short thin ones between them (`l`, `wl`), each point split along its axis into two
+ * facets lit from his upper left. Pixel centres at any size: a pixel is the star's when at least half
+ * of a 4x4 grid of samples in it is; its facet is the one most of them fall in. `ridge` is the axis of
+ * the two long points turned to his light (north and west), from next to the centre to 1.5 short of
+ * the tip: his star's thin pale stroke. `ink` is the dark outline round it (4-neighbours), so the
+ * crimson rose stands on the bright red iris as his sharingan's dark lines did.
  */
-function compassPixels(cx: number, cy: number, L: number, w: number, l: number, wl: number, centre: number): { x: number; y: number; k: StarKey }[] {
+function compassPixels(cx: number, cy: number, L: number, w: number, l: number, wl: number, centre: number, Ln = L): { x: number; y: number; k: StarKey }[] {
   const light: [number, number] = [-Math.SQRT1_2, -Math.SQRT1_2];
-  const arms: { u: [number, number]; len: number; hw: number }[] = [];
-  for (const [ux, uy] of [[0, -1], [1, 0], [0, 1], [-1, 0]] as [number, number][]) arms.push({ u: [ux, uy], len: L, hw: w });
-  for (const [ux, uy] of [[1, -1], [1, 1], [-1, 1], [-1, -1]] as [number, number][]) arms.push({ u: [ux * Math.SQRT1_2, uy * Math.SQRT1_2], len: l, hw: wl });
+  const arms: { u: [number, number]; len: number; hw: number; long: boolean }[] = [];
+  for (const [ux, uy] of [[0, -1], [1, 0], [0, 1], [-1, 0]] as [number, number][]) arms.push({ u: [ux, uy], len: uy < 0 ? Ln : L, hw: w, long: true });
+  for (const [ux, uy] of [[1, -1], [1, 1], [-1, 1], [-1, -1]] as [number, number][]) arms.push({ u: [ux * Math.SQRT1_2, uy * Math.SQRT1_2], len: l, hw: wl, long: false });
   const level = (b: number): StarKey => (b >= 0.5 ? 'pale' : b >= 0 ? 'light' : b >= -0.5 ? 'bright' : 'dark');
   const sample = (px: number, py: number): StarKey | null => {
     const dx = px - cx, dy = py - cy;
@@ -1399,7 +1427,7 @@ function compassPixels(cx: number, cy: number, L: number, w: number, l: number, 
     return best;
   };
   const out = new Map<string, { x: number; y: number; k: StarKey }>();
-  const R = Math.ceil(Math.max(L, l) + 1);
+  const R = Math.ceil(Math.max(L, Ln, l) + 1);
   for (let y = Math.floor(cy - R); y <= Math.ceil(cy + R); y++)
     for (let x = Math.floor(cx - R); x <= Math.ceil(cx + R); x++) {
       const n = new Map<StarKey, number>();
@@ -1416,6 +1444,13 @@ function compassPixels(cx: number, cy: number, L: number, w: number, l: number, 
       for (const key of ['centre', 'pale', 'light', 'bright', 'dark'] as StarKey[]) if ((n.get(key) ?? 0) > kn) (kn = n.get(key) ?? 0), (k = key);
       out.set(`${x},${y}`, { x, y, k });
     }
+  for (const a of arms) {
+    if (!a.long || a.u[0] * light[0] + a.u[1] * light[1] <= 0) continue;
+    for (let s = 1; s <= a.len - 1.5; s++) {
+      const p = out.get(`${Math.floor(cx + a.u[0] * s)},${Math.floor(cy + a.u[1] * s)}`);
+      if (p && p.k !== 'centre') p.k = 'ridge';
+    }
+  }
   for (const p of [...out.values()])
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const key = `${p.x + dx},${p.y + dy}`;
@@ -1427,31 +1462,39 @@ function compassPixels(cx: number, cy: number, L: number, w: number, l: number, 
 // His Command eye (his window as cropped, 127x127; continuous coordinates, a pixel's centre at +0.5):
 // the iris is a circle about (60, 59), its dark rim at radius 17 to 19; his upper lid covers it above
 // y 45 and shades it down to y 52. His sharingan inside: a dark ring at radius 10.5 with three tomoe
-// on it and a round pupil, on his bright red.
-const CMD = { cx: 60, cy: 59, inner: 16.5, pattern: 13.5, shade: 52 };
-// The compass at his scale fills the iris as a compass rose fills its dial: long points of 16 of his
-// pixels reach his iris's dark rim (the north one runs under his upper lid as the iris does), the
-// short ones 9.5. Colours: his Submission star's own (his palest pink for the centre and the lit
-// facets, his light red, his dark reds for the shaded facets, his dark maroon outline); his bright
-// red would vanish on his bright iris, so the facets turned from the light take his darker reds.
-const CMD_STAR = { L: 16, w: 4.6, l: 9.5, wl: 2.2, centre: 1.4 };
-const STAR_INK: Record<StarKey, string> = { centre: '#ffc5c8', pale: '#fea4ae', light: '#f86071', bright: '#a60626', dark: '#6e021e', ink: '#4c031e' };
+// on it (their tips reach radius 15) and a round pupil (radius 4). Round them his iris is his bright
+// red (#fe1020 and the like, OKLab L 0.6 to 0.63) from the pupil out to radius 14, darker from 15 to
+// his dark rim.
+const CMD = { cx: 60, cy: 59, inner: 16.5, pattern: 15.5, bright: 14.5, shade: 52 };
+// The compass rose, at 88 (his scale x 127/88 for the comparison sheet): long points of 8.5 pixels
+// (the north one ends under his lid's dark line, as the iris does), short ones 4.5. Colours: his
+// Submission star's own: his lit crimson (#e80c28) on the facets toward his light, his shaded crimson
+// (#a0001e) and his deep red (#6a0418) on the others, his pale pink (#ffb4bc) only as the thin stroke
+// along the north and west points, his palest (#ffc5c8) at the heart, his dark maroon (#4c031e) as
+// the outline that sets it off his bright iris.
+const CMD_STAR = { L: 10, Ln: 8.5, w: 3.8, l: 5.5, wl: 2, centre: 0.7 };
+const STAR_INK: Record<StarKey, string> = { centre: '#ffc5c8', ridge: '#ffb4bc', pale: '#dc112d', light: '#dc112d', bright: '#a0001e', dark: '#6a0418', ink: '#4c031e' };
+/** His iris's bright red (his pixels round the pupil). */
+const CMD_IRIS = '#fe1020';
 
 /**
- * His Command eye without the sharingan: inside the iris every pixel of his pattern (his dark ring,
- * tomoe and pupil, and their dark red edges in the bright middle) takes his iris's own colour at
- * that distance from the centre (the median of his iris pixels there that are not the pattern),
- * and under his lid's shade (above y 52) his shaded iris colour of that row; then the compass rose.
+ * His Command eye without the sharingan, a plain radiant red iris: every pixel of his pattern (his
+ * dark ring, tomoe and pupil with their dark red edges: inside radius 14.5 everything darker than his
+ * bright iris, out to 15.5 his tomoe tips) takes his iris's own colour at that distance from the
+ * centre: the median of his iris pixels there that are not the pattern, his bright ones only inside
+ * radius 14.5 (the pupil takes his bright red next to it), and under his lid's shade (above y 52)
+ * his shaded iris colour of that row. The compass rose is drawn at each size (commandArt).
  */
 function commandEdit(W: F): string {
-  const { cx, cy, inner, pattern, shade } = CMD;
+  const { cx, cy, inner, pattern, bright, shade } = CMD;
   const L = (x: number, y: number) => W.lab(y * W.w + x)[0];
   const r = (x: number, y: number) => Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
   const isPattern = (x: number, y: number): boolean => {
     const d = r(x, y);
     if (d >= pattern || y + 0.5 < cy - pattern) return false;
-    // Dark: his ring, tomoe and pupil, with their dark red edges (his iris round them is lighter).
-    return L(x, y) < (d < 12.5 ? 0.43 : 0.33);
+    // Under his lid's shade his iris is dark itself: only his pattern's darkest there.
+    if (y < shade) return L(x, y) < (d < 12.5 ? 0.43 : 0.33);
+    return L(x, y) < (d < bright ? 0.56 : 0.36);
   };
   const bins = new Map<number, number[][]>(), rowsShade = new Map<number, number[][]>();
   for (let y = 0; y < W.h; y++)
@@ -1468,57 +1511,78 @@ function commandEdit(W: F): string {
     const v = cs.map((c) => c[k]).sort((a, b) => a - b);
     return v[v.length >> 1];
   });
+  // The nearest bin with his iris there, out first (the pupil takes the bright ring round it).
+  const binAt = (d: number): number[][] | undefined => {
+    const b0 = Math.floor(d);
+    for (let k = 0; k < inner + 2; k++) for (const b of [b0 + k, b0 - k]) if (bins.has(b)) return bins.get(b);
+    return undefined;
+  };
   let n = 0;
   for (let y = 0; y < W.h; y++)
     for (let x = 0; x < W.w; x++) {
       if (!isPattern(x, y)) continue;
-      let cs: number[][] | undefined;
-      if (y < shade) cs = rowsShade.get(y);
-      for (let b = Math.floor(r(x, y)); !cs && b < inner + 2; b++) cs = bins.get(b);
+      const cs = y < shade ? rowsShade.get(y) : binAt(r(x, y));
       if (!cs) continue;
       const m = median(cs);
       for (let k = 0; k < 3; k++) W.d[(y * W.w + x) * 3 + k] = m[k];
       n++;
     }
-  return `his sharingan (${n} of his pixels: the dark ring, three tomoe and the pupil) painted out with his own iris colour at each distance from the centre (under his lid's shade, his shaded iris colour of that row)`;
+  return `his sharingan (${n} of his pixels: the dark ring, three tomoe with their tips, the pupil and their dark red edges) painted out with his own iris colour at each distance from the centre (his bright red out to radius ${bright}, under his lid's shade his shaded iris colour of that row): a plain radiant red iris for the compass rose`;
 }
 
 /** His window with the compass drawn at his scale (for the comparison sheets: the edit as a whole, in his pixels). */
 function commandPreview(W: F): void {
-  const s = CMD_STAR;
-  for (const p of compassPixels(CMD.cx, CMD.cy, s.L, s.w, s.l, s.wl, s.centre)) setW(W, p.x, p.y, STAR_INK[p.k]);
+  const s = CMD_STAR, k = W.w / 88;
+  for (const p of compassPixels(CMD.cx, CMD.cy, s.L * k, s.w * k, s.l * k, s.wl * k, s.centre * k, s.Ln * k)) setW(W, p.x, p.y, STAR_INK[p.k]);
 }
 
-// The compass at 44, drawn by hand: at 44 the iris shows 11 by 10 pixels under his lid, too few for
-// the shape above to keep its facets. A 2x2 heart of his palest pink, four points of two pixels
-// across (each his lit colour on the side toward his light, his shaded one on the other) narrowing
-// to one, a pixel for each of the short points between them. No outline: the facets alone stand
-// on his red iris. Origin: four pixels up and left of the heart.
-const CMD_STAR44 = [
-  '....v.....',
-  '....vk....',
-  '..r.vk.k..',
-  '...vvkk...',
-  'vvvvxxrrrr',
-  'kkkkxvgggg',
-  '...krgg...',
-  '..k.rg.g..',
-  '....rg....',
-  '.....g....',
-];
+// The compass at 44: the same shape at that size (long points of 4.5 pixels, the north one 3.5 so it
+// ends under his lid's dark line, short ones 2.6), round the pixel that holds his iris's centre.
+const CMD_STAR44 = { L: 4.5, Ln: 3.5, w: 1.8, l: 2.6, wl: 0.9, centre: 0.5 };
 
-/** The compass at 88 (the shape above with its dark outline) and at 44 (by hand), on his iris without the sharingan. */
+/**
+ * His iris round the rose in his own bright red: his iris is one flat bright red (#fe1020) from the
+ * pupil out to radius 14.5 below his lid's shade, and the reduction spreads it over the palette's
+ * neighbouring reds (one of them the rose's lit crimson); there it is put back on his red.
+ */
+function irisRadiant(pt: Paint, ctx: Ctx): void {
+  const [mx, my] = ctx.map(CMD.cx, CMD.cy);
+  const k = pt.N / ctx.W.w, R = CMD.bright * k, top = CMD.shade * k;
+  const red = pt.c(CMD_IRIS);
+  for (let y = Math.floor(my - R); y <= Math.ceil(my + R); y++)
+    for (let x = Math.floor(mx - R); x <= Math.ceil(mx + R); x++) {
+      if (y < top || Math.hypot(x + 0.5 - mx, y + 0.5 - my) > R) continue;
+      const v = pt.at(x, y), c = pt.p.lab[v];
+      // His bright reds only (not the darker rim band or a dark line).
+      if (c[0] >= 0.55 && Math.hypot(c[1], c[2]) >= 0.2 && hueDeg(c) < 40) pt.q.set(x, y, red);
+    }
+}
+
+/** The compass at 88 (the shape above with its dark outline) and at 44 (by hand), on his radiant iris; at 44 also his lower-left sparkle's white core. */
 function commandArt(pt: Paint, ctx: Ctx): void {
   const [mx, my] = ctx.map(CMD.cx, CMD.cy);
   if (pt.N === 44) {
-    // The heart's top-left pixel nearest his iris centre, kept on the part of the iris under his lid.
-    const ax = Math.round(mx) - 1, ay = Math.round(my + 0.5) - 1;
-    pt.ascii(ax - 4, ay - 4, CMD_STAR44, { x: STAR_INK.centre, v: STAR_INK.pale, r: STAR_INK.light, k: STAR_INK.dark, g: STAR_INK.ink });
+    const ax = Math.floor(mx), ay = Math.floor(my);
+    irisRadiant(pt, ctx);
+    drawRose(pt, ax + 0.5, ay + 0.5, CMD_STAR44);
+    // His lower-left sparkle (his pixels 17-26, 89-100): at 44 his box keeps its white core at (7, 33)
+    // and his pinks round it, where the palette's nearest was a flat pink square.
+    pt.ascii(6, 32, ['.r.', 'rwp', '.p.'], { w: '#ffced2', p: '#f8848e', r: '#f43d4e' });
     return;
   }
-  const k = pt.N / ctx.W.w, s = CMD_STAR;
+  const k = pt.N / 88, s = CMD_STAR;
   const cx = Math.floor(mx) + 0.5, cy = Math.floor(my) + 0.5;
-  for (const p of compassPixels(cx, cy, s.L * k, s.w * k, s.l * k, s.wl * k, Math.max(0.5, s.centre * k))) pt.px(p.x, p.y, STAR_INK[p.k]);
+  irisRadiant(pt, ctx);
+  drawRose(pt, cx, cy, { L: s.L * k, Ln: s.Ln * k, w: s.w * k, l: s.l * k, wl: s.wl * k, centre: Math.max(0.5, s.centre * k) });
+}
+
+/** The compass rose at one size, in his star's colours; its outline only where it sets the rose off something lighter (not on his lid's dark line). */
+function drawRose(pt: Paint, cx: number, cy: number, s: typeof CMD_STAR): void {
+  const inkL = pt.p.lab[pt.c(STAR_INK.ink)][0];
+  for (const p of compassPixels(cx, cy, s.L, s.w, s.l, s.wl, s.centre, s.Ln)) {
+    if (p.k === 'ink' && pt.L(p.x, p.y) <= inkL + 0.02) continue;
+    pt.px(p.x, p.y, STAR_INK[p.k]);
+  }
 }
 
 // His Premonition eye (his window, 98x96): the iris a circle about (49, 16.5), its dark rim at
@@ -1580,6 +1644,13 @@ function miraiArt(pt: Paint, ctx: Ctx): void {
   const hx = Math.floor(mx - rp * 0.75), hy = Math.floor(my - rp * 0.75);
   for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) pt.px(hx + dx, hy + dy, MIRAI_SHINE);
 }
+
+/** Sheets 8 to 11: the palette's coverage of his rare colours (see coverPalette). */
+// A colour is lost when its nearest entry is 0.06 away (OKLab, hue and chroma counted twice, lightness
+// 0.6: the k-means ramp has the lightness steps, what it misses is hues); a group needs the weight of six
+// 88 pixels (a 44 pixel counts four); up to 20 entries. Each icon's entries are listed in its manifest
+// (paletteCovered).
+const COVER: Cover = { thr: 0.06, minMass: 6, add: 20, cw: 2, wl: 0.6 };
 
 const ICONS: IconSpec[] = [
   {
@@ -1994,12 +2065,13 @@ const ICONS: IconSpec[] = [
     name: 'Swap',
     label: 'INTERCAMBIO',
     sheet: '8',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
     extra: [{ box: [10, 30, 130, 52], lo: 0.5, hi: 0.9, spare: false, by: 'L', only: { hue: [25, 75], minL: 0.5 }, why: "the skin round his ninjas' eyes and their fists" }],
     marks: [
-      { kind: 'colour', what: "the skin round his ninjas' eyes and their fists", r: 0, thr: 0, hue: [25, 75], minC: 0.04, minL: 0.5, minPx: 2, share: 0.3, mix: 1, pick: 'peak' },
+      { kind: 'colour', what: "the skin round his ninjas' eyes and their fists", r: 0, thr: 0, hue: [25, 75], minC: 0.04, minL: 0.45, minPx: 2, share: 0.25, mix: 0.6 },
       { kind: 'dark', what: 'the near-black outlines of his two ninjas', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
       { kind: 'bright', what: 'the light strands of his vortex and wind', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
     ],
@@ -2011,13 +2083,17 @@ const ICONS: IconSpec[] = [
     name: 'Command',
     label: 'COMANDO',
     sheet: '8',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
     edit: commandEdit,
-    editArt: "the compass rose drawn at each size in the iris, centred on it: at 88 four long points reaching the iris's dark rim (the north one running under his lid as the iris does) and four short ones between, each split into a lit and a shaded facet (light from his upper left), his Submission star's colours, a dark maroon outline; at 44 by hand (CMD_STAR44: a 2x2 heart of his palest pink, four faceted points two pixels across narrowing to one, a pixel for each short point, no outline)",
+    editArt: "at each size his iris put back on his own bright red (#fe1020) where the reduction spread it over the neighbouring reds, then the compass rose drawn on it, centred on the iris: four long points (at 88 8.5 pixels long, at 44 4.5; the north one shorter, 8.5 and 3.5, so it ends under his lid's dark line) and four short ones between, each split into a lit facet (his crimson #dc112d) and a shaded one (his #a0001e and #6a0418), his pale pink #ffb4bc only as the thin stroke along the north and west points, his palest #ffc5c8 at the heart, his dark maroon #4c031e as the outline (not drawn over his darker lid line); at 44 also his lower-left sparkle's white core (#ffced2) with his pinks round it",
     preview: commandPreview,
-    inks: [{ hex: Object.values(STAR_INK), why: "his Submission star's colours, for the compass rose" }],
+    inks: [
+      { hex: [...new Set(Object.values(STAR_INK))], why: "his Submission star's colours, for the compass rose" },
+      { hex: [CMD_IRIS], why: "his iris's bright red, for the radiant iris round the rose" },
+    ],
     art: commandArt,
     marks: [
       { kind: 'bright', what: 'his glowing ring, his flare and his embers', r: 1, thr: 0.08, minL: 0.7, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
@@ -2031,11 +2107,24 @@ const ICONS: IconSpec[] = [
     name: 'Submission',
     label: 'SUMISION',
     sheet: '8',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
+    qChroma: 1.6,
+    // His star is crimson (#e80c28 lit, #a0001e shaded) with his pale pink only as thin strokes; his
+    // violet chains (#8e3293) are a hue of their own. Neither had an entry: the star came out
+    // raspberry and pale, the violet chains maroon.
+    extra: [
+      { box: [37, 3, 92, 45], lo: 0.5, hi: 0.95, spare: false, by: 'chroma', only: { hue: [20, 32], minL: 0.5, maxL: 0.62 }, why: "his star's crimson body" },
+      { box: [37, 3, 92, 45], lo: 0.5, hi: 0.95, spare: false, by: 'chroma', only: { hue: [20, 32], minL: 0.5, maxL: 0.56 }, why: "his star's crimson, a step darker" },
+      { box: [37, 3, 92, 45], lo: 0.5, hi: 0.95, spare: false, by: 'chroma', only: { hue: [18, 32], minL: 0.4, maxL: 0.5 }, why: "his star's shaded crimson" },
+      { box: [79, 55, 121, 101], lo: 0.6, hi: 1, spare: false, by: 'chroma', only: { hue: [305, 336], minL: 0.35 }, why: 'his violet chains' },
+    ],
     marks: [
-      { kind: 'bright', what: 'his star, the lit links of his chains and his embers', r: 1, thr: 0.08, minL: 0.62, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+      { kind: 'colour', what: 'his violet chains', r: 0, thr: 0, hue: [305, 336], minC: 0.12, minL: 0.35, minPx: 4, share: 0.15, mix: 0.7 },
+      // Not on his star: kept in their own colour at 88 and 44 his thin pale strokes grew into pale facets.
+      { kind: 'bright', what: 'the lit links of his chains and his embers (not his star)', r: 1, thr: 0.08, minL: 0.62, minPx: 3, speck: 0.15, share: 0.2, mix: 0.75, win: (x, y) => !(x >= 35 && x < 95 && y < 48) },
       { kind: 'dark', what: 'the dark links of his chains', r: 1, thr: 0.08, maxL: 0.25, minPx: 6, share: 0.3, mix: 0.6 },
     ],
     bil44: [0, 0],
@@ -2046,6 +2135,7 @@ const ICONS: IconSpec[] = [
     name: 'Premonition',
     label: 'PREMONICION',
     sheet: '9',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
@@ -2054,6 +2144,8 @@ const ICONS: IconSpec[] = [
     inks: [{ hex: [...MIRAI_RAMP, MIRAI_PUPIL, MIRAI_SHINE], why: 'his reds, his darkest and his palest pink, for the radiant eye' }],
     art: miraiArt,
     marks: [
+      // His embers are thin pale orange streaks (#ffdaa8): a 44 pixel holding a fifth of one is his ember.
+      { kind: 'colour', what: 'his pale orange embers', r: 0, thr: 0, hue: [45, 85], minC: 0.04, minL: 0.75, minPx: 2, share: 0.2, mix: 1, pick: 'peak', keep: true },
       { kind: 'dark', what: 'the near-black outline of his ninja', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
       { kind: 'bright', what: 'his embers and the glowing edge of the ghost', r: 1, thr: 0.08, minL: 0.7, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
     ],
@@ -2065,6 +2157,7 @@ const ICONS: IconSpec[] = [
     name: 'Koton Block',
     label: 'BLOQUE KOTON',
     sheet: '9',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
@@ -2085,6 +2178,7 @@ const ICONS: IconSpec[] = [
     name: 'Koton Wall',
     label: 'MURO KOTON',
     sheet: '9',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
@@ -2100,10 +2194,14 @@ const ICONS: IconSpec[] = [
     name: 'Warp Strike',
     label: 'GOLPE WARP',
     sheet: '9',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
     marks: [
+      // The tan wrap of his kunai's grip (#c4a491, #a07f61; his pixels 22-40, 54-70): at 44 it went to
+      // the palette's blue-grey.
+      { kind: 'colour', what: "the tan wrap of his kunai's grip", r: 0, thr: 0, hue: [40, 85], minC: 0.03, minL: 0.4, minPx: 2, share: 0.35, mix: 0.7, keep: true, win: (x, y) => x >= 22 && x < 40 && y >= 54 && y < 70 },
       { kind: 'dark', what: 'the near-black outlines of his ninja and his kunai', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
       { kind: 'bright', what: 'his portal rings, speed lines and stars', r: 1, thr: 0.08, minL: 0.72, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
     ],
@@ -2115,11 +2213,16 @@ const ICONS: IconSpec[] = [
     name: 'Dragon Flame',
     label: 'LLAMA DRAGON',
     sheet: '10',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
+    // The yellow-white cores of his heads' mouths (#fbe832, #ffed3c): at 44 a pixel each, which the
+    // palette's orange and the clean-up took; his dark jaw lines round them a little stronger.
+    extra: [{ box: [15, 54, 26, 64], lo: 0.6, hi: 1, spare: false, by: 'L', only: { hue: [95, 112] }, why: "the yellow core of his left head's mouth" }],
     marks: [
-      { kind: 'dark', what: 'the dark outlines of his three dragon heads', r: 1, thr: 0.1, maxL: 0.25, minPx: 6, share: 0.3, mix: 0.6 },
+      { kind: 'colour', what: "the yellow cores of his heads' mouths", r: 0, thr: 0, hue: [95, 112], minC: 0.12, minL: 0.88, minPx: 2, share: 0.2, mix: 1, pick: 'peak', keep: true },
+      { kind: 'dark', what: 'the dark outlines of his three dragon heads', r: 1, thr: 0.1, maxL: 0.25, minPx: 6, share: 0.25, mix: 0.6 },
       { kind: 'bright', what: 'his fire in the mouths, the teeth and the embers', r: 1, thr: 0.08, minL: 0.8, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
     ],
     bil44: [0, 0],
@@ -2130,6 +2233,7 @@ const ICONS: IconSpec[] = [
     name: 'Wood Dragon',
     label: 'DRAGON MADERA',
     sheet: '10',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
@@ -2145,6 +2249,7 @@ const ICONS: IconSpec[] = [
     name: 'Chains',
     label: 'CADENAS',
     sheet: '10',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
@@ -2160,6 +2265,7 @@ const ICONS: IconSpec[] = [
     name: '64 Palms',
     label: '64 PALMAS',
     sheet: '10',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
@@ -2175,12 +2281,13 @@ const ICONS: IconSpec[] = [
     name: 'Shadow Clone',
     label: 'CLON SOMBRA',
     sheet: '11',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
     extra: [{ box: [20, 30, 115, 65], lo: 0.5, hi: 0.9, spare: false, by: 'L', only: { hue: [25, 75], minL: 0.55 }, why: "the skin of his ninjas' hands making the sign" }],
     marks: [
-      { kind: 'colour', what: "the skin of his ninjas' hands making the sign", r: 0, thr: 0, hue: [25, 75], minC: 0.04, minL: 0.55, minPx: 2, share: 0.3, mix: 1, pick: 'peak' },
+      { kind: 'colour', what: "the skin of his ninjas' hands making the sign", r: 0, thr: 0, hue: [25, 75], minC: 0.04, minL: 0.45, minPx: 2, share: 0.25, mix: 0.6, win: (x, y) => y >= 30 && y < 62 && ((x >= 15 && x < 45) || (x >= 95 && x < 125)) },
       { kind: 'dark', what: 'the near-black outlines of his ninja and the clone', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
       { kind: 'bright', what: 'his stars and the light edges of the smoke', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
     ],
@@ -2192,10 +2299,15 @@ const ICONS: IconSpec[] = [
     name: 'Dragon Fire',
     label: 'FUEGO DRAGON',
     sheet: '11',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
     marks: [
+      // His teeth: pale yellow (#fffa94) in his dark mouth; at 44 his box makes them tan (#d4974d), where
+      // the dark rule darkened them and the palette took them to flame orange. In the jaws (his pixels
+      // 95-127, 38-66) a 44 pixel with a fifth of it tooth keeps his box colour and stays.
+      { kind: 'colour', what: 'his teeth (his box colour kept)', r: 0, thr: 0, hue: [85, 112], minC: 0.08, minL: 0.85, minPx: 2, share: 0.2, mix: 0, keep: true, win: (x, y) => x >= 95 && y >= 38 && y < 66 },
       { kind: 'dark', what: 'the dark mouth, teeth gaps and outline of his dragon head', r: 1, thr: 0.1, maxL: 0.3, minPx: 6, share: 0.3, mix: 0.6 },
       { kind: 'bright', what: 'his teeth, eye and the brightest flame tongues', r: 1, thr: 0.08, minL: 0.85, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
     ],
@@ -2207,10 +2319,16 @@ const ICONS: IconSpec[] = [
     name: 'Water Dragon',
     label: 'DRAGON AGUA',
     sheet: '11',
+    cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
+    // His spray and foam are near-white specks on his navy: his box makes them muted grey-blue, which
+    // the palette's saturated blues took (a blue halo where his spray is). Hue weighed more, and his
+    // whitest foam kept white.
+    qChroma: 1.6,
     marks: [
+      { kind: 'colour', what: 'his whitest foam and spray', r: 0, thr: 0, minL: 0.93, minPx: 2, share: 0.5, mix: 1, pick: 'peak' },
       { kind: 'bright', what: 'his white foam, spray and the light crests of the water', r: 1, thr: 0.08, minL: 0.8, minPx: 3, speck: 0.15, share: 0.35, mix: 0.8 },
       { kind: 'dark', what: 'the dark lines between his water bands', r: 1, thr: 0.07, maxL: 0.35, minPx: 6, share: 0.3, mix: 0.6 },
     ],
@@ -2245,6 +2363,7 @@ for (const b of built) {
   if (b.area88) console.log(`   88 is the area mean of his ${b.W.w}x${b.W.h} pixels`);
   else console.log('   88 drops columns', [...Array(b.W.w).keys()].filter((i) => !b.cols.includes(i)).join(','), 'rows', [...Array(b.W.h).keys()].filter((i) => !b.rows.includes(i)).join(','));
   if (b.edited) console.log('   edit:', b.edited);
+  if (b.covered.length) console.log('   covered:', b.covered.map(toHex).join(' '));
   for (const N of [44, 88]) console.log('  ', N, JSON.stringify(b.out[N].checks));
 }
 
@@ -2325,7 +2444,9 @@ const manifest = {
   },
   method:
     'his sheets are pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-23.py). 88: his own pixels one to one (his 90x90 or 93x91 window with the columns and rows that show least dropped), on a palette sampled from his pixels, 1-2 pixel areas merged only where his own pixels do not stand out. 44: area mean of his pixels, except his thin lines and strongest specks, which keep their own colour one pixel wide; a light bilateral filter, nearest palette entry, 1-2 pixel areas merged; then hand-fixes only where that still loses his picture (see tools/ui/ui-icons-23.ts)' +
-    (built.some((b) => +b.spec.sheet >= 8) ? '. Sheets 8 to 11 use no bilateral filter (it lightened his dark figures into his ground)' : '') +
+    (built.some((b) => +b.spec.sheet >= 8)
+      ? ". Sheets 8 to 11 use no bilateral filter (it lightened his dark figures into his ground), and their palettes give his rare colours a slot each: after the k-means, every colour of the 44's and the 88's pictures still far from the palette in hue (his skin, his violet chains, a dragon's teeth, his greys and whites) is grouped and the group missed most gets its own entry, his nearest real colour, up to 20 (paletteCovered); his thin marks of one colour (skin, violet chains, embers, teeth, mouth cores, foam) are kept by colour rules"
+      : '') +
     (built.some((b) => b.area88)
       ? '. Sheets 8 and 11 have bigger windows (127 to 139 of his pixels across, not square): the icon is the square part of his window (cropInWindow; Swap keeps 139x127 and is squeezed 9% across so his two ninjas stay whole), and its 88 is made as its 44 (area mean of his pixels with his thin lines and specks kept, palette, clean-up: method88)'
       : '') +
@@ -2367,6 +2488,7 @@ const manifest = {
           : {}),
         palette: b.pal.rgb.map(toHex),
         paletteDetailOnly: b.pal.rgb.filter((_, i) => b.pal.spare[i]).map(toHex),
+        ...(b.spec.cover ? { paletteCovered: b.covered.map(toHex) } : {}),
         sampled: (b.spec.extra ?? []).map((e) => e.why),
         checks: { '44': b.out[44].checks, '88': b.out[88].checks },
         use: 'Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6.',

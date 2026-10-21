@@ -6,6 +6,8 @@ import { describe, it } from 'node:test';
 import { enemyCharacter } from '../battle/units';
 import { renderSprite } from './compose';
 import * as boots from './items/shinobiBootsFemaleArt';
+import * as eyes from './huntressEyeArt';
+import * as face from './huntressHeadArt';
 import * as hair from './items/ponyHairArt';
 import * as kunai from './items/kunaiArt';
 import * as legs from './items/huntressLeggingsArt';
@@ -124,5 +126,46 @@ describe('the Cazador 2', () => {
     let d = 0;
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
     assert.equal(d, 0);
+  });
+
+  // The face anchor at idle frame 0: where the hair's pivot cell lands.
+  const anchor = (): [number, number] => [hair.PONY_HAIR_REST.PONY_HAIR[0] + hair.PONY_HAIR.pivot[0], hair.PONY_HAIR_REST.PONY_HAIR[1] + hair.PONY_HAIR.pivot[1]];
+  /** Each cell where her face shows between her strands, as fine pixels of the idle frame. */
+  const gaps = (): [number, number][] => {
+    const [nx, ny] = anchor();
+    const g = hair.PONY_FACE_GAPS;
+    const out: [number, number][] = [];
+    g.rows.forEach((row, j) => [...row].forEach((ch, i) => ch === '#' && out.push([nx - g.pivot[0] + i, ny - g.pivot[1] + j])));
+    return out;
+  };
+
+  it('shows her face between her strands and over the mask in his pixels, her eyes open on it', () => {
+    const f = renderSprite(cazador2(), 'idle', 0).rgba;
+    const [nx, ny] = anchor();
+    const at = (p: { rows: string[]; colors: Record<string, string> }, x0: number, y0: number, x: number, y: number) => {
+      const ch = p.rows[y - y0]?.[x - x0];
+      return ch && ch !== '.' ? p.colors[ch] : undefined;
+    };
+    const head = face.HUNTRESS_HEAD;
+    const open = eyes.HUNTRESS_EYES.open;
+    const eye = (x: number, y: number) =>
+      at({ rows: open.near.rows, colors: eyes.HUNTRESS_EYE_COLORS }, nx, ny, x, y) ?? at({ rows: open.far.rows, colors: eyes.HUNTRESS_EYE_COLORS }, nx + 8, ny, x, y);
+    for (const [x, y] of gaps()) {
+      // (His line beside her eye is also the hair's, within 3 of it.)
+      const want = (eye(x, y) ?? at(head, nx - head.pivot[0], ny - head.pivot[1], x, y))!;
+      const i = y * GRID + x;
+      assert.ok(opaque(f, i) && [0, 1, 2].every((k) => Math.abs(f[i * 4 + k] - parseInt(want.slice(1 + 2 * k, 3 + 2 * k), 16)) <= 3), `${x},${y}: ${hex(f, i)}, his ${want}`);
+    }
+  });
+
+  it('keeps the forehead between her strands on any face', () => {
+    // (The slender body's face anchor at rest is the female one's.)
+    for (const body of ['female', 'slender'] as BodyType[]) {
+      const l = cazador2(body);
+      l.faceShape = 'tapered';
+      l.eyeShape = 'sharp';
+      const f = renderSprite(l, 'idle', 0).rgba;
+      for (const [x, y] of gaps()) assert.ok(opaque(f, y * GRID + x), `${body} ${x},${y}`);
+    }
   });
 });

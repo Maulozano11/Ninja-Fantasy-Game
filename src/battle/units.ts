@@ -242,9 +242,11 @@ const TEMPLATES: Record<EnemyKind, Template> = {
       // (each item's default; on the female bodies they are the Cazador 2's own):
       // her purple ponytail, the half mask with teal stripes and ears, the female version of the
       // Cazador 1's vest (its under-suit is her shirt), the leggings, the wrapped boots and the kunai, her
-      // skin and her grey-green eyes, no headband.
+      // skin, her face and her grey-green eyes (the 'huntress' face and eye shapes, his pixels), no headband.
       look({
         body: 'female',
+        faceShape: 'huntress',
+        eyeShape: 'huntress',
         eyeColor: '#7ca396',
         skin: '#ebc0a0',
         slots: {

@@ -22,7 +22,7 @@ import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hair
 import { HUNTER_HAIR, HUNTER_HAIR_BASE, HUNTER_HAIR_KIND, HUNTER_HAIR_SKIN } from './hunterHairArt';
 import { LYNX_MASK } from './lynxMaskArt';
 import { ONI_MASK } from './oniMaskArt';
-import { PONY_HAIR, PONY_HAIR_BASE, PONY_HAIR_KIND, PONY_HAIR_SKIN } from './ponyHairArt';
+import { PONY_FACE_GAPS, PONY_HAIR, PONY_HAIR_BASE, PONY_HAIR_KIND, PONY_HAIR_SKIN } from './ponyHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
@@ -1604,30 +1604,31 @@ export function paintedHair(g: DrawCtx, L: Layer, p: PaintedPart, color: (ch: st
  * his face hides filled in), so no edge of ours shows past his hair, such as in the notch between the
  * two spikes on his crown.
  */
-function trimSkull(g: DrawCtx, p: PaintedPart, face?: PaintedPart): void {
+function trimSkull(g: DrawCtx, p: PaintedPart, ...keep: Pick<PaintedPart, 'rows' | 'pivot'>[]): void {
   const H = g.L('head.body');
   const { nx, ny } = faceAnchor(g);
-  // `face`: a part over the face whose place the skull keeps too (the forehead under a mask's brow).
-  const at = (q: PaintedPart, x: number, y: number) => q.rows[y - (ny - q.pivot[1])]?.[x - (nx - q.pivot[0])] ?? '.';
+  // `keep`: places the skull keeps too (the forehead under a mask's brow, the face he shows between
+  // the strands).
+  const at = (q: Pick<PaintedPart, 'rows' | 'pivot'>, x: number, y: number) => q.rows[y - (ny - q.pivot[1])]?.[x - (nx - q.pivot[0])] ?? '.';
   for (let y = Math.max(0, ny - 32); y < ny; y++) {
     for (let x = Math.max(0, nx - 32); x < Math.min(GRID, nx + 32); x++) {
-      if (H.has(x, y) && at(p, x, y) === '.' && (!face || at(face, x, y) === '.')) H.clear(x, y);
+      if (H.has(x, y) && at(p, x, y) === '.' && keep.every((q) => at(q, x, y) === '.')) H.clear(x, y);
     }
   }
 }
 
 /**
  * Behind the face, below the eyes, our head and nape give way to his hair where it hangs: the locks he
- * drew down the side of the face end on his line, with no edge of ours past them.
+ * drew down the side of the face end on his line, with no edge of ours past them. `keep`: places the
+ * head keeps too (the cheek he shows between the locks).
  */
-function trimNape(g: DrawCtx, p: PaintedPart): void {
+function trimNape(g: DrawCtx, p: PaintedPart, keep?: Pick<PaintedPart, 'rows' | 'pivot'>): void {
   const { nx, ny } = faceAnchor(g);
-  const ax = nx - p.pivot[0];
-  const ay = ny - p.pivot[1];
+  const at = (q: Pick<PaintedPart, 'rows' | 'pivot'>, x: number, y: number) => q.rows[y - (ny - q.pivot[1])]?.[x - (nx - q.pivot[0])] ?? '.';
   for (const L of [g.L('head.body'), g.L('torso.body')]) {
     for (let y = ny; y < ny + 12; y++) {
       for (let x = Math.max(0, nx - 16); x < nx - 2; x++) {
-        if (L.has(x, y) && (p.rows[y - ay]?.[x - ax] ?? '.') === '.') L.clear(x, y);
+        if (L.has(x, y) && at(p, x, y) === '.' && !(keep && L === g.L('head.body') && at(keep, x, y) !== '.')) L.clear(x, y);
       }
     }
   }
@@ -1742,8 +1743,9 @@ export const HAIR_ITEMS: ItemDef[] = [
         return k === 'line' ? hex : k === 'skin' ? retintHex(hex, PONY_HAIR_SKIN, g.look.skin) : retintHex(hex, PONY_HAIR_BASE, hair);
       };
       paintedHair(g, g.L('hairFront'), PONY_HAIR, tint);
-      trimSkull(g, PONY_HAIR, LYNX_MASK);
-      trimNape(g, PONY_HAIR);
+      // Her forehead shows between her strands, as he painted it (PONY_FACE_GAPS).
+      trimSkull(g, PONY_HAIR, LYNX_MASK, PONY_FACE_GAPS);
+      trimNape(g, PONY_HAIR, PONY_FACE_GAPS);
     },
   },
   hairStyle('hair_buns', 'Twin Buns', 'Two neat buns on top, with soft bangs.', '#e58fb1'),

@@ -9,6 +9,7 @@ import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, h
 import { PaintedPiece, segAngle } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
+import { AZURE_BELT, AZURE_FINGERLESS } from './eliseLower';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -1668,6 +1669,7 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
       tseam(g, L, CX - 0.3, 3.6, CX - 0.3, 0.9, 1);
     },
   },
+  AZURE_BELT,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1876,4 +1878,5 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       }
     },
   },
+  AZURE_FINGERLESS,
 ]);

@@ -10,7 +10,7 @@ import { frameCount, rigPoseFor } from './rig';
 import { SAYA_GLOVE_N, SAYA_HAND_F, SAYA_FORE_F, SAYA_FORE_N, SAYA_PLATE, SAYA_TOP, SAYA_TOP_LOW, SAYA_UPPER_F, SAYA_UPPER_N } from './items/sayaUpperArt';
 import { SAYA_SWORD_GUARD } from './items/sayaSwordArt';
 import { segAngle } from './painted';
-import { GRID, RES } from './raster';
+import { GRID, partIndex, RES } from './raster';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES } from './types';
 import type { BodyType, SlotId, SpriteAppearance, SpritePose } from './types';
 
@@ -98,7 +98,54 @@ describe("Saya's top, arm guards and gloves", () => {
     for (const x of [108, 109, 110]) assert.equal(hexAt(f, x, 178), '#a73234', `near glove's red band at ${x}`);
     assert.equal(hexAt(f, 109, 176), '#374061'); // the glove's navy over the grip's middle
     assert.equal(hexAt(f, 105, 172), SAYA_SWORD_GUARD); // the pommel above the fist
-    assert.equal(hexAt(f, 140, 174), '#63483b'); // the far fist's strap, over the skirt's flare
+    assert.equal(hexAt(f, 145, 175), '#63483b'); // the far fist's strap where he drew it (three rows higher, as her top), over the skirt's flare
+  });
+
+  it('hangs her far arm where he drew it at rest: her bare far shoulder beside her plate, her guards further out', () => {
+    // His far arm, three rows higher than he drew it (as her top is): his bare shoulder at x 138-139,
+    // its line over it and the guard's top line under it, the red elbow band and the cuff further out.
+    const f = renderSprite(look('female', SAYA), 'idle', 0).rgba;
+    const shadow = retintHex('#d28771', '#f3bf9c', '#f6c7a6');
+    for (const [x, y] of [[138, 154], [139, 154], [138, 155], [139, 155], [139, 153]]) assert.equal(hexAt(f, x, y), shadow, `bare far shoulder at ${x},${y}`);
+    for (const x of [137, 138, 139, 140]) assert.equal(hexAt(f, x, 156), '#020102', `the guard's top line at ${x}`);
+    for (const [x, y] of [[138, 159], [139, 159], [140, 159]]) assert.match(hexAt(f, x, y), /^#(6e212c|a73234)$/, `the red band at ${x},${y}`);
+    assert.equal(hexAt(f, 145, 172), '#a73234'); // the forearm guard's red stripe, out where he drew it
+  });
+
+  it('keeps her far arm on the body in every pose of both female bodies: no far-arm piece floats off', () => {
+    // Every patch of far upper arm and forearm that shows touches the rest of the figure (the far hand
+    // goes with them; a jutsu's glow drawn round the hand is the hand's part too, so it is not counted).
+    const arm = new Set([partIndex('upperArmF'), partIndex('forearmF')]);
+    const poses = [...new Set<SpritePose>([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])];
+    for (const body of ['female', 'slender'] as BodyType[]) {
+      const a = look(body, SAYA);
+      for (const pose of poses) {
+        const n = frameCount(rigPoseFor(pose, 'runes', 'held_katana'));
+        for (let fr = 0; fr < n; fr++) {
+          const { rgba, part } = renderSprite(a, pose, fr);
+          const seen = new Uint8Array(GRID * GRID);
+          for (let i = 0; i < GRID * GRID; i++) {
+            if (seen[i] || !rgba[i * 4 + 3] || !arm.has(part[i])) continue;
+            let touches = false;
+            const stack = [i];
+            seen[i] = 1;
+            while (stack.length) {
+              const j = stack.pop()!;
+              const x = j % GRID;
+              for (const k of [j - 1, j + 1, j - GRID, j + GRID]) {
+                if (k < 0 || k >= GRID * GRID || Math.abs((k % GRID) - x) > 1 || !rgba[k * 4 + 3]) continue;
+                if (!arm.has(part[k])) touches = true;
+                else if (!seen[k]) {
+                  seen[k] = 1;
+                  stack.push(k);
+                }
+              }
+            }
+            assert.ok(touches, `${body} ${pose} ${fr}: far arm at ${i % GRID},${(i / GRID) | 0} floats off the body`);
+          }
+        }
+      }
+    }
   });
 
   it("paints our body's own skin in her two tones", () => {

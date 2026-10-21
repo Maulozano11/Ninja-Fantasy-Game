@@ -37,10 +37,17 @@ where our body is a pixel wider than hers.
                    SAYA_FORE_N rides the forearm about the elbow: the red at the elbow, the navy guard
                    with its red stripe, the red cuff. All three are four rows higher than he drew them
                    (NEAR_ARM), on our near arm.
-  the far arm      SAYA_UPPER_F and SAYA_FORE_F: her far arm hangs about four pixels further out than
-                   ours, so both pieces are laid with her elbow (139, 166) on ours. Her forearm is two
-                   rows longer than ours and is kept whole: her cuff ends two rows below our wrist, so
-                   her far arm is as long as she drew it.
+  the far arm      SAYA_UPPER_F rides the upper arm about the shoulder: her bare far shoulder (rows
+                   155-158: her skin in its shadow, two pixels wide, in her black line, beside her
+                   plate's edge), then her guard's navy top, the red band and the red elbow band.
+                   SAYA_FORE_F rides the forearm about the elbow: the red elbow band, the navy guard
+                   with its red stripe outside, the red cuff. Both are UPPER rows higher than he drew
+                   them, as her top is, so her bare shoulder meets her plate as he drew it. He drew her
+                   far arm further from the body than our far arm hangs: the pieces are pinned to our
+                   far arm's joints moved FAR_OUT, so at rest every pixel of it is his, where he drew
+                   it (her forearm, two rows longer than ours, kept whole), and it turns as our far arm
+                   turns (src/sprite/items/sayaUpper.ts sayaFarOut). Below her far forearm her top's
+                   side shows as he drew it (SAYA_TOP_LOW, x 139-140).
   the fists        her own fists, her pixels, on the female bodies, riding the forearm under its cuff:
                    SAYA_GLOVE_N, her near glove (rows 178-183: the dark navy row under the cuff, three
                    navy rows, the red band over the knuckles, her line under it), the fist that holds
@@ -98,12 +105,24 @@ JOINTS = saya_rig.JOINTS
 # How far each part of her picture is moved to land on our rig (tools/refs/saya_rig.py). Our neck and
 # shoulders stand UPPER rows higher than hers (her top rides the neck, so its plate stays under her
 # scarf), and our near arm four rows higher (her near guards on our near arm as she drew them on hers,
-# her bare shoulder's line on our shoulder's). Her far arm hangs about four pixels further out than ours, so its
-# guards are laid with her elbow on ours. Her skirt, belts and the top under them stay where she drew
-# them, on our hips.
+# her bare shoulder's line on our shoulder's). Her far arm is moved as her top is (UPPER rows), so her
+# bare far shoulder meets her plate as he drew it. Her skirt, belts and the top under them stay where
+# she drew them, on our hips.
 UPPER = 3
 NEAR_ARM = (0, -4)
-FAR_ARM = (-5, -4)
+FAR_ARM = (0, -UPPER)
+# Her far elbow in her picture (the middle of her far elbow band, between her upper and forearm guards).
+# Her far pieces are pinned to our far arm's joints: at rest every piece lands where he drew it, whatever
+# our joints, and turns about them as our far arm turns. When our far elbow (saya_rig.JOINTS, moved as
+# her far arm is) is not where hers is, they turn about our joints moved FAR_OUT (fine pixels), so they
+# turn about her own elbow and shoulder; src/sprite/items/sayaUpper.ts (SAYA_FAR_OUT) hangs them there
+# and our far hand with them. On our female body of 2026-10-21 her far arm hangs about six pixels
+# further out than ours: FAR_OUT is (6, 1). Once our far arm hangs where hers does (the female body's
+# far arm laid where his heroines draw it), rerun tools/refs/heroine-idle.mts into saya_rig.JOINTS and
+# this script: FAR_OUT comes out (0, 0), and her pieces ride our far arm's joints as they are.
+HER_ELBOW_F = (139.5, 166.5)
+FAR_OUT = tuple(int(round(h + m - j)) for h, m, j in zip(HER_ELBOW_F, FAR_ARM, JOINTS['elbowF']))
+FAR_PIECES = ('SAYA_UPPER_F', 'SAYA_FORE_F', 'SAYA_HAND_F')
 
 # The pieces: name, what it is, the joint it hangs from, the limb whose idle angle is its angle, the
 # frame position (x, y) of its first row's first cell, how far her picture is moved to land on our rig,
@@ -134,24 +153,24 @@ PIECES = [
      ]),
     ('SAYA_TOP_LOW', 'The top from her waist down to her hips, under her belts: her navy and red pipings as he drew them over her hips.',
      'pelvis', ('pelvis', 'neck'), (116, 164), (0, 0), (), [
-         # x 116.................138
-         '...0222ab0022cci2c20...',  # 164 x 119-120: under her hair lock
-         '....0dd0092eccci2cci0..',  # 165
-         '....00022922icci2cii0..',  # 166
-         '....0022c2ic2ici2i2i0..',  # 167
-         '...0002222iccc2222ci0..',  # 168
-         '..000022c2icccci2cc0...',  # 169
-         '.0000222cc6iccci2ci0...',  # 170 x 120-124 and on: under her belts
-         '.2cccccccccc2ici2icc2..',  # 171
-         '2ccccccccccc2ici2ic22..',  # 172
-         '2ccccccccccc2ici2ic2222',  # 173
-         '2ccccccccccc2ici2ic2222',  # 174
-         '2ccccccccccc2ici2ic2222',  # 175
-         '2ccccccccccc2ici2ic2222',  # 176
-         '2ccccccccccc2ici2ic2222',  # 177
-         '2ccccccccccc2ici2ic2222',  # 178
-         '0000000000000000000....',  # 179 the hem
-         '....00000000000........',  # 180
+         # x 116...................140
+         '...0222ab0022cci2c20.....',  # 164 x 119-120: under her hair lock
+         '....0dd0092eccci2cci0....',  # 165
+         '....00022922icci2cii0....',  # 166
+         '....0022c2ic2ici2i2i0....',  # 167
+         '...0002222iccc2222ci0....',  # 168
+         '..000022c2icccci2cc00....',  # 169 x 136: her line behind her far arm
+         '.0000222cc6iccci2ci0.....',  # 170 x 120-124 and on: under her belts
+         '.2cccccccccc2ici2icc2....',  # 171
+         '2ccccccccccc2ici2ic22....',  # 172
+         '2ccccccccccc2ici2ic22222.',  # 173 x 139-140, rows 173-178: her top's side behind her far arm, her pixels there
+         '2ccccccccccc2ici2ic2222..',  # 174
+         '2ccccccccccc2ici2ic2222.2',  # 175
+         '2ccccccccccc2ici2ic222220',  # 176
+         '2ccccccccccc2ici2ic222260',  # 177
+         '2ccccccccccc2ici2ic222260',  # 178
+         '0000000000000000000......',  # 179 the hem
+         '....00000000000..........',  # 180
      ]),
     ('SAYA_SHOULDER_N', 'The near shoulder, bare: her round light skin, its shadow down the far side, in her black line.',
      'shoulderN', ('shoulderN', 'elbowN'), (113, 152), NEAR_ARM, (), [
@@ -193,10 +212,14 @@ PIECES = [
          '0biii420..',  # 176
          '00000i90..',  # 177
      ]),
-    ('SAYA_UPPER_F', 'The far upper arm guard: navy, the red band, the red elbow band.',
-     'shoulderF', ('shoulderF', 'elbowF'), (135, 159), FAR_ARM, (), [
+    ('SAYA_UPPER_F', 'The far shoulder, bare, and the far upper arm guard: her skin in its shadow in her black line, then navy, the red band, the red elbow band.',
+     'shoulderF', ('shoulderF', 'elbowF'), (135, 155), FAR_ARM, (), [
          # x 135..142
-         '..0000..',  # 159
+         '....00..',  # 155 the line over her shoulder (her hair lock's tip beside it)
+         '...vv0..',  # 156 her bare shoulder, in her skin's shadow
+         '..0vv0..',  # 157
+         '..0vv0..',  # 158
+         '..0000..',  # 159 the guard's top
          '..0220..',  # 160
          '..00000.',  # 161
          '..09i90.',  # 162
@@ -386,10 +409,11 @@ def angle(limb):
 
 
 def pivot(piece):
-    """The pivot cell in the piece: the joint's cell, moved onto her picture."""
-    _name, _doc, joint, _limb, (x0, y0), (mx, my), _drop, _rows = piece
+    """The pivot cell in the piece: the joint's cell (moved FAR_OUT for her far arm), moved onto her picture."""
+    name, _doc, joint, _limb, (x0, y0), (mx, my), _drop, _rows = piece
     jx, jy = JOINTS[joint]
-    return math.floor(jx) - mx - x0, math.floor(jy) - my - y0
+    ox, oy = FAR_OUT if name in FAR_PIECES else (0, 0)
+    return math.floor(jx) + ox - mx - x0, math.floor(jy) + oy - my - y0
 
 
 def ts_piece(piece, key):
@@ -418,7 +442,9 @@ def write_ts(path, key):
              f"export const SAYA_LINE = '{LINE}';",
              f"export const SAYA_SKIN_SHADOW = '{SKIN_SHADOW}';",
              "/** Her guards' darkest navy: what shows of our forearm beside her forearm guards is painted in it. */",
-             f"export const SAYA_SLEEVE = '{SLEEVE}';", '',
+             f"export const SAYA_SLEEVE = '{SLEEVE}';",
+             "/** How far her far arm hangs from ours at rest (fine pixels): her far pieces hang from our far arm's joints moved this far. */",
+             f'export const SAYA_FAR_OUT: [number, number] = [{FAR_OUT[0]}, {FAR_OUT[1]}];', '',
              '/** Which slot recolours each of her colours (her line, the gold-brown rim and the strap stay; her skin follows the skin). */',
              "export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate' | 'skin'> = {"]
     for slot, hexes in SLOT_OF.items():

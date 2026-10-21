@@ -5,10 +5,11 @@
 import { retintHex } from '../color';
 import { armDepth, armJoints, Depth, DrawCtx, handDraw, handPose, ItemDef, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
-import { F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, partIndex, PartId, RES, v, Vec } from '../raster';
+import { add, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, partIndex, PartId, RES, v, Vec } from '../raster';
 import { isFemaleBody } from '../types';
 import {
   SAYA_CLOTH,
+  SAYA_FAR_OUT,
   SAYA_FORE_F,
   SAYA_FORE_N,
   SAYA_GLOVE_N,
@@ -46,6 +47,65 @@ const shadeColor = (cloth: string, trim: string, plate: string, skin: string) =>
   return hex;
 };
 
+const ARMOR_ID = 'armor_crimson_shade';
+
+/** An angle wrapped into -180..180 degrees. */
+const wrapDeg = (a: number) => ((a + 540) % 360) - 180;
+
+/**
+ * How far her far arm hangs from ours (rig units). He drew her far arm further from the body than our
+ * far arm hangs: her bare shoulder at her plate's edge, her elbow and fist about six pixels further
+ * out (SAYA_FAR_OUT). So while she wears her top and our far arm hangs about as hers does (standing,
+ * walking, hurt, down: its upper arm and forearm within 30 degrees of how he drew them, the torso's
+ * turn taken off), her far pieces and our far hand hang that much further out, turned with the
+ * torso, and at rest every pixel of them is his. As the far arm reaches further from that (45
+ * degrees) they come back onto our far arm's joints, where a far hand meets the other hand, a book
+ * or a jutsu: moving in, they slide under her top, never off it. SAYA_FAR_OUT is how far our far arm
+ * hangs from hers at rest (tools/refs/saya-upper-from-ref.py): once our female body's far arm hangs
+ * where his heroines' does, it is zero and her pieces ride our far arm's joints as they are.
+ */
+export function sayaFarOut(g: DrawCtx): Vec {
+  const r = g.rig;
+  if (!g.has('armor', ARMOR_ID)) return v(0, 0);
+  const t = segAngle(r.pelvis, r.neck) - SAYA_TOP.angle;
+  const du = Math.abs(wrapDeg(segAngle(r.shoulderF, r.elbowF) - t - SAYA_UPPER_F.angle));
+  const df = Math.abs(wrapDeg(segAngle(r.elbowF, r.wristF) - t - SAYA_FORE_F.angle));
+  const w = Math.max(0, Math.min(1, (45 - Math.max(du, df)) / 15));
+  if (w === 0) return v(0, 0);
+  const a = (t * Math.PI) / 180;
+  const [dx, dy] = SAYA_FAR_OUT;
+  return v((w * (dx * Math.cos(a) - dy * Math.sin(a))) / RES, (w * (dx * Math.sin(a) + dy * Math.cos(a))) / RES);
+}
+
+/**
+ * Our far hand in a layer, when her far arm hangs further out (`out`, rig units): it goes with her arm,
+ * moved by `out` in whole fine pixels, under her glove. Our far upper arm and forearm stay where they
+ * hang, between her torso and her far arm: behind her pieces, they only show in the gap between
+ * them, painted in her guards' darkest navy (paintBodySkin), so the arm never comes off the body.
+ */
+function moveFarHand(L: Layer, out: Vec): void {
+  const ox = Math.round(out.x * RES);
+  const oy = Math.round(out.y * RES);
+  if ((!ox && !oy) || !L.used) return;
+  const hand = partIndex('handF');
+  const moved: [number, number, number, number, number][] = [];
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || L.part[i] !== hand) continue;
+    moved.push([i, L.mat[i], L.shade[i], L.part[i], L.flags[i]]);
+    L.mat[i] = -1;
+  }
+  for (const [i, mat, shade, part, flags] of moved) {
+    const x = (i % GRID) + ox;
+    const y = ((i / GRID) | 0) + oy;
+    if (x < 0 || y < 0 || x >= GRID || y >= GRID) continue;
+    const j = y * GRID + x;
+    L.mat[j] = mat;
+    L.shade[j] = shade;
+    L.part[j] = part;
+    L.flags[j] = flags;
+  }
+}
+
 /**
  * Draws her top and arm guards. Within a depth the pieces go back to front: the far forearm guard,
  * then the far upper guard over its top; the top over the torso, its part on the hips first (under a
@@ -56,8 +116,11 @@ function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string):
   const r = g.rig;
   const tint = shadeColor(cloth, trim, plate, g.look.skin || SAYA_SKIN);
   const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
-  put('farArm.armor', SAYA_FORE_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
-  put('farArm.armor', SAYA_UPPER_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
+  // her far arm hangs where he drew it, further out than ours (our far hand goes with it)
+  const out = sayaFarOut(g);
+  for (const d of ['farArm.body', 'farArm.cloth'] as Depth[]) moveFarHand(g.L(d), out);
+  put('farArm.armor', SAYA_FORE_F, add(r.elbowF, out), segAngle(r.elbowF, r.wristF), 'forearmF');
+  put('farArm.armor', SAYA_UPPER_F, add(r.shoulderF, out), segAngle(r.shoulderF, r.elbowF), 'upperArmF');
   // the top in two pieces: over the hips (on the pelvis, under her belts) and from the collar to the
   // waist (on the neck) over it; between them our longer torso shows more of her pipings
   put('torso.top', SAYA_TOP_LOW, r.pelvis, segAngle(r.pelvis, r.neck), 'torso');
@@ -66,7 +129,7 @@ function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string):
   // her bare near shoulder (light skin in her line), then the upper guard over its foot
   put('nearArm.armor', SAYA_SHOULDER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
   put('nearArm.armor', SAYA_UPPER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
-  paintBodySkin(g, cloth);
+  paintBodySkin(g, cloth, out.x !== 0 || out.y !== 0);
 }
 
 /** Our body's layers that hold its own skin. */
@@ -78,15 +141,17 @@ const SKIN_DEPTHS: Depth[] = ['farArm.body', 'nearArm.body', 'torso.body', 'neck
  * body shades skin in a line, a deep shadow and a shadow of its own. So its line becomes hers and both
  * its shadows her one shadow (moved as far as the player moved her skin). Her forearms are sleeved in
  * her guards, which lie a pixel or two off our forearms: what shows of our forearm beside them is
- * painted in the guard's darkest navy, never as bare skin.
+ * painted in the guard's darkest navy, never as bare skin. So is our far upper arm while her far arm
+ * hangs further out (`farOut`): his bare far shoulder is in her piece, and what shows of ours is the
+ * gap between her far arm and her torso.
  */
-function paintBodySkin(g: DrawCtx, cloth: string): void {
+function paintBodySkin(g: DrawCtx, cloth: string, farOut: boolean): void {
   const skin = g.look.skin || SAYA_SKIN;
   const line = g.m(SAYA_LINE, 'flat');
   const shadow = g.m(retintHex(SAYA_SKIN_SHADOW, SAYA_SKIN, skin), 'flat');
   const base = g.m(skin, 'flat');
   const sleeve = g.m(retintHex(SAYA_SLEEVE, SAYA_CLOTH, cloth), 'flat');
-  const fore = [partIndex('forearmN'), partIndex('forearmF')];
+  const fore = [partIndex('forearmN'), partIndex('forearmF'), ...(farOut ? [partIndex('upperArmF')] : [])];
   for (const d of SKIN_DEPTHS) {
     const L = g.L(d);
     if (!L.used) continue;
@@ -159,21 +224,25 @@ function drawShadeGloves(g: DrawCtx, glove: string, trim: string, skin: string):
         }
       }
       const { elbow, wrist } = armJoints(g.rig, s);
-      // Our far arm hangs about five pixels nearer the body than hers, so her far fist, hanging at
-      // rest, would fall behind her skirt's flare: it is drawn over it, whole, as she shows it.
+      // Her far fist, hanging at rest, lies over her skirt's flare: it is drawn over it, whole, as she shows it.
       const deg = segAngle(elbow, wrist);
       const atRest = s === 'F' && handPose(g, s).rot === 0 && deg > 45 && deg < 135;
-      stampPiece(g, atRest ? 'farHand.front' : armDepth(s, 'armor'), fist, elbow, deg, part, shadeColor(glove, trim, SAYA_PLATE, skin));
+      const at = s === 'F' ? add(elbow, sayaFarOut(g)) : elbow;
+      stampPiece(g, atRest ? 'farHand.front' : armDepth(s, 'armor'), fist, at, deg, part, shadeColor(glove, trim, SAYA_PLATE, skin));
       continue;
     }
     const tmp = new Layer();
     handDraw(g, tmp, s, { mat: 0, part });
+    // the far hand goes where her far arm hangs (sayaFarOut), as our far arm under it
+    const out = s === 'F' ? sayaFarOut(g) : v(0, 0);
+    const ox = Math.round(out.x * RES);
+    const oy = Math.round(out.y * RES);
     const { kind, rot } = handPose(g, s);
     // an open or pointing near hand on a female body (his small hands) keeps its fingers bare below the band
     const zones = SAYA_GLOVE_ZONES[s === 'N' && isFemaleBody(g.rig.body) && (kind === 'open' || kind === 'point') ? 'Nopen' : s];
     const w = armJoints(g.rig, s).wrist;
-    const wx = Math.floor(w.x * RES) + 0.5;
-    const wy = Math.floor(w.y * RES) + 0.5;
+    const wx = Math.floor(w.x * RES) + ox + 0.5;
+    const wy = Math.floor(w.y * RES) + oy + 0.5;
     // Our hand pictures hang from the wrist (turned by `rot`); the cradling hand stands on it.
     const a = (rot * Math.PI) / 180;
     const [dx, dy] = kind === 'cradle' ? [0, -1] : [-Math.sin(a), Math.cos(a)];
@@ -187,8 +256,8 @@ function drawShadeGloves(g: DrawCtx, glove: string, trim: string, skin: string):
     const L = g.L(armDepth(s, 'armor'));
     for (let i = 0; i < GRID * GRID; i++) {
       if (tmp.mat[i] < 0) continue;
-      const x = i % GRID;
-      const y = (i / GRID) | 0;
+      const x = (i % GRID) + ox;
+      const y = ((i / GRID) | 0) + oy;
       const zone = gloveZone(zones, (x + 0.5 - wx) * dx + (y + 0.5 - wy) * dy);
       if (!zone) continue;
       L.set(x, y, tones[zone][Math.min(tmp.shade[i], 4)], 3, part, F_NO_TEXTURE | F_NO_OUTLINE);

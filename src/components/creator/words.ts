@@ -286,6 +286,8 @@ const ES: Record<string, string> = {
   'Gold heeled shoes over lilac stockings to the knee, gold ribbons wound round the ankles. Women only.':
     'Zapatos de tacón de oro sobre medias lilas hasta la rodilla, con cintas de oro enrolladas en los tobillos. Solo mujeres.',
   Stocking: 'Media',
+  // The princess's sceptre
+  'Rose Dawn Sceptre': 'Cetro del Alba Rosa',
 };
 
 /** An editor label in the screen's language. */

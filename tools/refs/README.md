@@ -136,3 +136,7 @@ folders.
 - `princess-shoes-from-ref.py`: her heeled shoes (`feet_rose_heels`), his pixels one for one at `PART_OFFSET['shoes']` on our female at idle frame 0 → `src/sprite/items/princessShoesArt.ts`: the far heeled shoe with the ribbons round its ankle, the near toe under the hem, and above it (hidden by the hem) the far ankle's ribbons. `princessShoes.ts` draws the lilac stocking from our knee to his ankle in the pose, his colours inside his line, and stands the shoes flat at its foot:
 
       python3 -I tools/refs/princess-shoes-from-ref.py <dir> src/sprite/items/princessShoesArt.ts   # <dir>/tu-dibujo-vs-piezas@8.png
+
+- `princess-sceptre-from-ref.py`: her sceptre (the creator's `held_rose_sceptre`, `src/sprite/items/princessSceptre.ts`) into `src/sprite/items/princessSceptreArt.ts`, his pixels one for one: `ROSE_SCEPTRE` as he drew it (held at rest in the far fist at his angle) and `ROSE_SCEPTRE_STRAIGHT` (the same pixels with the shaft rows moved to an upright shaft, for the poses that turn it), the shaft inside her fist continued from his, his sparkles apart so they twinkle. Colour slots: his golds (`gold`) and the gem's mauves and pinks (`gem`). `--preview` writes his crop beside both templates (`sceptre@12.png`):
+
+      python3 -I tools/refs/princess-sceptre-from-ref.py src/sprite/items/princessSceptreArt.ts [--preview <dir>]

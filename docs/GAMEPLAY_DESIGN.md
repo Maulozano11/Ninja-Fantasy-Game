@@ -1005,3 +1005,64 @@ built:
    gated like the others).
 Also not built (optional in the proposal): a style of cast per jutsu (P1), and
 the Geyser putting out burning units in its circle.
+
+## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
+
+The owner asked for the effects of the jutsu already in the game to fit what
+each one is, mostly by combining his VFX pieces (*"por ejemplo al jutsu que son
+llama del dragon puede salir una cabeza de dragon como la de fire annihiliation
+y disparar los proyectiles de fuego ... tu dandome ideas y opciones y yo
+aprovandolas"*). A Spanish proposal with options for 12 jutsu was shown to him.
+His answer (verbatim):
+
+> *"1 a 2a3 pendiente 4 vamos a crear un nuevo vfx para este 5a 6 vamos a crear
+> una animacion de personaje para este pendiente 7  no quiero usar la bestia
+> elemental quiero agarrar la cabeza de dragon del fuego o del kirin para
+> cambiarla a agua y ponerla en la punta del chorro y que sea como los otros
+> proyectiles que sigue una trayectoria aletoria el proyectil antes de pegar al
+> objetivo haz lo mismo con este 8a 9 a 9 a 11 vamos a crear un nuevo vfx para
+> que sea en la mano como en el casting de chidori y que haga una estocada con
+> este 12 a y hay que agregar animacion al personaje porque este ataque no es
+> con arma es un combo cuerpo a cuerpo que debeberia tener animacion"*
+
+In the same message, about new jutsu: *"todos los elemtantales seran
+invocaciones que te ayudaran en el combate no ataques"*: the elemental beasts
+(water dragon, stone drake, wind crane, lightning beast, phoenix...) are to
+become summons that help in battle, not attack effects. So no beast is added to
+an attack here, and the Water Dragon no longer flies the water beast.
+
+How his answer was read (he can correct it): 1 A, 2 A, 5 A, 8 A, 9 A, 12 A; he
+wrote "9 a" twice and no 10, read as 10 A (the recommended one); 3 (Night Guy)
+and 6 (64 palms, a character animation later) pending; 4 (Wood Dragon) and 11
+(a new effect in the hand, as the lightning cast style, with a thrust) need new
+art, not built yet; "haz lo mismo con este" after 7 read as 8's bullets flying
+varied paths too.
+
+Built on `vfx/ideas-round1` (on top of `jutsu/d-c-set`), **waiting for his
+approval of the in-game captures**. Only his pixels: his sheets moved, scaled,
+turned, layered, timed and recoloured (`tools/world-sprites/vfx-round1.ts`
+makes the new group `vfx_dragon`). The fire and water and earth ones still take
+the caster's chakra colour.
+
+| nº | jutsu (id) | what plays |
+|---|---|---|
+| 1 | Llama Dragón (`dragon_fire_bomb`) | His flame wall rises behind the ninja (0.56 s); his Great Annihilation dragon head (his pixels, 1x) rises out of it with a fireball in its mouth (0.95 s) and spits 5 fireballs (7 enhanced) in a fan over the cone (1.35–1.75 s), each bursting on the one it reaches or at the cone's end; the head burns away with the Annihilation's own burn (1.7 s) and the wall goes down with its frames backwards. The name floats above the head. |
+| 2 | Fuego del dragón (`dragon_fire_stream`) | His wall and head at half size behind the ninja; his stream leaves the mouth (1.1 s) and reaches the **end of the line** in 0.4 s (not the clicked point), his fire hit on each one as it gets there; the head burns at 2 s. |
+| 5 | Cadenas selladoras (`adamantine_sealing_chains`) | His chain (the chakra stream without its head) leaves the chest and stretches to the target in 0.4 s; his chakra star on it (0.96 s) and his gold seal circle opens under its feet (only its opening and closing frames, no pillar, drawn under the target); the chain stays taut to 1.9 s, then fades. |
+| 7 | Dragón de agua (`water_dragon_suiryuudan`) | No beast. His fire dragon head (no neck), in his water colours (each of his colours placed by brightness among his water stream's), at half size, turned along its flight, on the tip of his water stream: it leaves the hands and flies a varied path (seeded, bending before it hits), the stream laid behind it all the way as its body; his splash on the hit, and the body fades whole in 0.3 s. |
+| 8 | Balas de tierra (`earth_spear_doryuudan`) | His rock explosion bursts 1.5 m before the ninja; three volleys of his rock bullets (three each, 0.7 / 0.85 / 1 s) fly the whole line in 0.9 s, each bullet on its own varied path through the ones it reaches; his bullet burst on each one as a volley passes, the last volley breaking at the line's end. |
+| 9 | Danza de la luna creciente (`crescent_moon_dance`) | Three blows (L, L+0.22, L+0.44 s; L = arriving), each sending his chakra crescent out of the blade through the target and 1 m on, high, middle and low; his chakra star at L+0.72 s. Enhanced: five. |
+| 10 | Templo del Nirvana (`temple_of_nirvana`) | His vortex opens up to one side of the circle and his crows come out of it (his summon row, never seen before); the flock dives on a diagonal to the middle (1.06–1.66 s), his pillar with feathers rises there, his genjutsu hit on each one at 1.99 s. The eye orb no longer flies. |
+| 12 | Huracán de la hoja (`leaf_hurricane_senpuu`) | Not a weapon attack: the weapon is put away (like the Rush) and the ninja throws an unarmed combo, a new pose (`combo`, 8 frames: guard, jab, cross, the spin shown turned away, a spinning back kick, coming round, a finishing kick, guard); on each kick and half turn one of his wind crescents goes out to one of those it reaches, and his wind X with leaves bursts on it. |
+
+The pieces this needed (the proposal's P1–P6), all in the screen
+(`playback.ts`, `vfxSprites.ts`, `renderer.ts`, `paths.ts`): a piece of a sheet
+held and moved at a point, rising out of a wall (P1); effects that start from any
+point, as the dragon's mouth (P2); volleys of projectiles each with its own time
+and path (P3, the varied paths seeded per cast); a beam that grows to its end
+and stays (P4, and a line's beam reaching the line's end); blows and effects
+timed after a melee jutsu arrives (P5); and an effect drawn behind or in front
+of a unit by depth (P6). The battle engine is not touched, only each jutsu's
+data for the screen (`JutsuSeq.stage`) and the Leaf Hurricane stowing the
+weapon, which is a rule: with the free interaction spent and a weapon in hand it
+waits, like a jutsu with seals.

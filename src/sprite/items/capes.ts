@@ -33,12 +33,13 @@ const TRAIN_WIND: Wind[] = [
   { dx: -1, lift: 0, wave: 0 },
 ];
 
-/** Throw: coiled, rising, then flung out behind by the leap of the release and its follow-through. */
+/** Throw: coiled, rising, swung back by the throw, then flung out behind by the leap of the release and its follow-through. */
 const THROW_WIND: Wind[] = [
   { dx: -2, lift: 1, wave: 0 },
   { dx: -3, lift: 1, wave: 1 },
-  { dx: -9, lift: 6, wave: 0 },
-  { dx: -10, lift: 7, wave: 1 },
+  { dx: -6, lift: 3, wave: 0 },
+  { dx: -9, lift: 6, wave: 1 },
+  { dx: -10, lift: 7, wave: 0 },
 ];
 
 /** Pierce: still in the guard and the chamber, streaming back on the lunge and its hold, settling on the recoil. */

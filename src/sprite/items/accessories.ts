@@ -271,6 +271,14 @@ function backGrip(g: DrawCtx, deg: number): Vec {
 }
 
 /**
+ * The angle a weapon stowed on the back is drawn at (`deg`: the one it rides at standing). The
+ * weapon techniques pitch the body far forward (the release of 'throw', the lunge of 'pierce'): the
+ * weapon turns with the back there, so its blade stays behind the body instead of sticking out
+ * under the chin. Every other pose keeps it at `deg`.
+ */
+const backAngle = (g: DrawCtx, deg: number): number => (g.rig.pose === 'throw' || g.rig.pose === 'pierce' ? deg + g.rig.lean : deg);
+
+/**
  * Knocked out, a weapon lies dropped on the ground in front of the body. The
  * figure is drawn upright and laid down afterwards (Rig.lay), so the ground is
  * the upright line x = lay.groundX: a weapon drawn pointing up along it ends up
@@ -329,7 +337,7 @@ export const HELD_ITEMS: ItemDef[] = [
     colors: [col('blade', 'Crystal', '#8ccbe8', 'metal'), col('hilt', 'Grip', '#2a3348', 'leather'), col('guard', 'Guard', '#6f97c0', 'metal')],
     draw: (g, [blade, hilt, guard]) => {
       const c = { blade, grip: hilt, guard, wrap: '#8a9bb8' };
-      if (handsBusy(g)) drawWeapon(g, 'backGear', CRYSTAL_SWORD, backGrip(g, 48), 48, c);
+      if (handsBusy(g)) drawWeapon(g, 'backGear', CRYSTAL_SWORD, backGrip(g, 48), backAngle(g, 48), c);
       else if (handsLimp(g)) drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, c);
       else if (!handsReleased(g)) drawWeapon(g, 'nearArm.held', CRYSTAL_SWORD, gripPoint(g), swordAngle(g), c);
     },
@@ -342,7 +350,7 @@ export const HELD_ITEMS: ItemDef[] = [
     colors: [col('blade', 'Crystal', '#74aac4', 'metal'), col('hilt', 'Grip', '#3e5f7f', 'leather')],
     draw: (g, [blade, grip]) => {
       const tint = { base: '#74aac4', blade, grip, gripBase: '#3e5f7f' };
-      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_CRYSTAL_SWORD, backGrip(g, 48), 48, tint);
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', ICE_CRYSTAL_SWORD, backGrip(g, 48), backAngle(g, 48), tint);
       else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, droppedGrip(g, 0.7), -86, tint);
       else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', ICE_CRYSTAL_SWORD, gripPoint(g), swordAngle(g), tint);
     },
@@ -355,7 +363,7 @@ export const HELD_ITEMS: ItemDef[] = [
     colors: [col('blade', 'Flame', FLAME_SWORD_FLAME, 'glow'), col('guard', 'Guard', FLAME_SWORD_GOLD, 'metal')],
     draw: (g, [flame, gold]) => {
       const tint = flameSwordTint(flame, gold);
-      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', FLAME_LONGSWORD, backGrip(g, 48), 48, tint);
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', FLAME_LONGSWORD, backGrip(g, 48), backAngle(g, 48), tint);
       else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, droppedGrip(g, 0.7), -86, tint);
       // His grip crosses his fist at the hand joint (higher in the fist than our other blades' grip
       // point): held there, at rest every pixel is his and his gauntlet's place is our fist's.
@@ -383,7 +391,7 @@ export const HELD_ITEMS: ItemDef[] = [
     colors: [col('blade', 'Blade', '#d4dbe4', 'metal'), col('shaft', 'Shaft', '#5a3622', 'leather'), col('fit', 'Fittings', '#c9a227', 'metal')],
     draw: (g, [blade, shaft, fittings]) => {
       const c = { blade, shaft, fittings };
-      if (handsBusy(g)) drawNaginata(g, { ...gripOf(g, -62), hand: backGrip(g, -62), room: 99 }, c, 'backGear');
+      if (handsBusy(g)) drawNaginata(g, { ...gripOf(g, backAngle(g, -62)), hand: backGrip(g, -62), room: 99 }, c, 'backGear');
       else if (handsLimp(g)) drawNaginata(g, { ...gripOf(g, -88), hand: droppedGrip(g, 0.6, 0.8), room: 99 }, c);
       else if (!handsReleased(g)) drawNaginata(g, { ...gripOf(g, poleAngle(g)), hand: gripPoint(g) }, c);
     },

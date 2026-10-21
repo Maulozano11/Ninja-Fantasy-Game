@@ -178,8 +178,9 @@ interface PoseFrame {
    */
   released?: boolean;
   /**
-   * The body is pitched so far forward that a cape cannot hang behind the legs: it streams back
-   * from the shoulders behind the back (compose.ts cuts what would show in front of the back).
+   * The body is pitched so far forward that a cape cannot hang straight down from the shoulders:
+   * it is hung from the body standing upright and turned forward with it, so it lies along the back
+   * and streams out behind (compose.ts drawPitchedCape).
    */
   streamBack?: boolean;
   /**
@@ -577,31 +578,41 @@ const TRAIN_FIST: PoseFrame[] = [
 // ---------------------------------------------------------------------------
 
 /**
- * Throw, 4 frames: a short wind-up (coiled low with the weapon drawn back at the hip, then the
- * weapon raised behind the head while the free hand points at the target), THE RELEASE, and a
- * follow-through into the leap. The release is the owner's reference
- * (docs/reference/poses/warp-throw-owner-reference.jpg, a figure of blue light leaping as it throws),
- * its angles measured on his picture: the body pitched forward 32 degrees (pelvis to neck), the
- * head pushed ahead of the shoulders and down; the throwing arm flung up and back behind the head
- * (upper arm 53 degrees above level, forearm 33, the elbow a little high); the free arm swept back
- * at shoulder height (31 degrees above level); the front knee driven forward (thigh 34 degrees
- * below level) with its shin folded back under the body (46 degrees); the back leg stretched out
- * straight behind (56 degrees below level), pushing off. The weapon leaves the hand there
- * (PoseFrame.released): the hand opens and the battle draws the weapon in flight from
- * throwRelease() (grip.ts). Bare hands throw a kunai from the pouch (grip.ts throwsKunai).
+ * Throw, 5 frames: a short wind-up (coiled low with the weapon drawn back at the hip, then the
+ * weapon raised behind the head while the free hand points at the target), THE THROW (the arm
+ * whips forward and flings the weapon level at the target, the body pitching after it), THE
+ * RELEASE, where the phase starts, and a follow-through into the leap. The release is the owner's
+ * reference (docs/reference/poses/warp-throw-owner-reference.jpg, a figure of blue light leaping
+ * as it throws), its angles measured on his picture: the body pitched forward 32 degrees (pelvis to
+ * neck), the head hung ahead of the chest and below the shoulders (31 degrees below level from the
+ * neck; his 33); the throwing arm flung up and back behind the head, the hand open (upper arm 50
+ * degrees above level, forearm 30); the front knee driven forward (thigh 31 degrees below level)
+ * with its shin folded back under the body; the back leg stretched out behind, pushing off. His
+ * free arm is swept back on the far side of his back, which our three-quarter front view puts
+ * behind the torso: it is swept back and down out of sight there (a hand showing behind the back
+ * would sit under the throwing elbow, like a second hand on that arm). From the release on the
+ * weapon is out of the hand (PoseFrame.released): the battle draws it in flight from where the
+ * throw flung it (throwRelease() in grip.ts). Bare hands throw a kunai from the pouch (grip.ts
+ * throwsKunai).
  */
 const THROW: PoseFrame[] = [
   // Coil: crouched over the front foot, the weapon drawn back low behind the hip, the free hand out at the target.
   { lean: 14, pelvisDx: -1, sink: 1.5, footN: v(-0.42, 0.9), footF: v(0.4, 0.9), handN: arm(-0.62, 0.52), handF: arm(0.86, 0.24), shapeN: 'grip', shapeF: 'point' },
   // Cock: rising, the weapon raised behind the head with the elbow back, the free hand pointing the way.
   { lean: 9, footN: v(-0.46, 0.91), footF: v(0.4, 0.88), handN: arm(-0.42, -0.6), bendN: -1, handF: arm(0.96, -0.1), shapeN: 'grip', shapeF: 'point' },
-  // RELEASE: the owner's reference.
-  { lean: 32, pelvisDx: 2, headDx: 3.5, headDy: 3.5, footN: v(-0.56, 0.83), footF: v(0.087, 0.637), handN: arm(-0.73, -0.62), handF: arm(-0.86, -0.5), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
+  // Throw: the arm whips forward under the chin and flings the weapon level at the target, the body
+  // pitching after it halfway to the release, the free arm swinging back.
+  { lean: 21, pelvisDx: 1.5, headDx: 3, headDy: 4.5, footN: v(-0.52, 0.87), footF: v(0.25, 0.8), handN: arm(0.78, 0.68), handF: arm(-0.55, 0.5), shapeN: 'grip', shapeF: 'fist' },
+  // RELEASE: the owner's reference; the phase starts here.
+  { lean: 32, pelvisDx: 2, headDx: 6, headDy: 8, footN: v(-0.56, 0.83), footF: v(0.087, 0.637), handN: arm(-0.73, -0.62), handF: arm(-0.62, 0.55), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
   // Follow-through: carried on into the leap, both feet leaving the ground.
-  { lean: 34, pelvisDx: 2.5, headDx: 3.5, headDy: 3.5, lift: 1.5, footN: v(-0.6, 0.78), footF: v(0.1, 0.6), handN: arm(-0.77, -0.6), handF: arm(-0.9, -0.4), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
+  { lean: 34, pelvisDx: 2.5, headDx: 6, headDy: 8, lift: 1.5, footN: v(-0.6, 0.78), footF: v(0.1, 0.6), handN: arm(-0.77, -0.6), handF: arm(-0.66, 0.5), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
 ];
 
-/** The 'throw' frame where the weapon leaves the hand: the owner's reference pose. */
+/**
+ * The first 'throw' frame without the weapon in the hand: the owner's reference pose, where the
+ * phase starts. The frame before it flings the weapon.
+ */
 export const THROW_RELEASE_FRAME = THROW.findIndex((f) => f.released);
 
 /**
@@ -804,7 +815,7 @@ export const POSE_FPS: Record<SpritePose, number> = {
   hurt: 4,
   victory: 3,
   charge: 10,
-  throw: 6,
+  throw: 8,
   pierce: 8,
   walk: 10,
   run: 12,
@@ -954,6 +965,54 @@ export function layRig(r: Rig): Rig {
     ankleN: P(r.ankleN),
     ankleF: P(r.ankleF),
     T: (x: number, y: number) => P(r.T(x, y)),
+  };
+}
+
+/**
+ * Turns a point `deg` degrees around `about` (screen degrees: + turns clockwise on screen, the
+ * way a positive lean pitches the body forward).
+ */
+export function turnPoint(p: Vec, about: Vec, deg: number): Vec {
+  const a = (deg * Math.PI) / 180;
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+  const d = sub(p, about);
+  return add(about, v(d.x * c - d.y * s, d.x * s + d.y * c));
+}
+
+/**
+ * The whole rig turned `deg` degrees around its pelvis (see turnPoint): turnRig(r, -r.lean) is the
+ * body standing upright, its torso exactly as drawn but not pitched (compose.ts hangs a cape from
+ * it on the pitched frames, then turns the cloth back with the body).
+ */
+export function turnRig(r: Rig, deg: number): Rig {
+  const o = r.pelvis;
+  const P = (p: Vec): Vec => turnPoint(p, o, deg);
+  const D = (d: Vec): Vec => sub(turnPoint(add(o, d), o, deg), o);
+  const up = D(r.up);
+  const right = D(r.right);
+  return {
+    ...r,
+    lean: r.lean + deg,
+    neck: P(r.neck),
+    up,
+    right,
+    head: P(r.head),
+    shoulderN: P(r.shoulderN),
+    shoulderF: P(r.shoulderF),
+    elbowN: P(r.elbowN),
+    elbowF: P(r.elbowF),
+    wristN: P(r.wristN),
+    wristF: P(r.wristF),
+    handN: P(r.handN),
+    handF: P(r.handF),
+    hipN: P(r.hipN),
+    hipF: P(r.hipF),
+    kneeN: P(r.kneeN),
+    kneeF: P(r.kneeF),
+    ankleN: P(r.ankleN),
+    ankleF: P(r.ankleF),
+    T: (x: number, y: number) => add(o, add(scale(right, x), scale(up, y))),
   };
 }
 

@@ -11,8 +11,8 @@ export const isFemaleBody = (b: BodyType | string): boolean => b === 'female' ||
 export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge' | StrikePose | MovePose | CampPose;
 
 /**
- * Weapon techniques: 'throw' hurls the held weapon (it leaves the hand at the release frame, see
- * rig.ts throwRelease; the battle draws it in flight), 'pierce' is a lunging thrust.
+ * Weapon techniques: 'throw' hurls the held weapon (it is out of the hand from the release frame on,
+ * see grip.ts throwRelease; the battle draws it in flight), 'pierce' is a lunging thrust.
  */
 export type StrikePose = 'throw' | 'pierce';
 

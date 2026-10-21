@@ -1,11 +1,11 @@
-// Aurelia's skirt and sash, after the owner's fourth heroine (docs/reference/aurelia-owner-reference.jpg):
-// her long white skirt open at the sides (the front panel, the side panels and the grey lining behind
-// her legs) and her gold sash with the belt, the pouch and the charm. The pieces are drawn at our scale
-// in her colours by tools/refs/aurelia-lower-from-ref.py (aureliaLowerArt.ts), each on our female at
-// idle frame 0; here they ride the rig. Each piece hangs between columns: their tops ride the torso,
-// their bottoms hang below the hips and swing a little with the thighs, as the other long skirts do
-// (armor.ts hang()), so the panels move with the legs in walk, run, sit and crouch. The piece is
-// sampled between its columns: at rest every pixel is hers as drawn, moved it keeps her line round it.
+// Aurelia's skirt and sash, the owner's pixels from his Aurelia at our scale
+// (docs/reference/aurelia-game-scale-owner-reference.jpg): her long white skirt open at the sides (the
+// front panel, the side panels and the grey lining behind her legs) and her gold sash with the belt, the
+// pouch and the charm. tools/refs/aurelia-lower-from-ref.py copies his pixels onto our female at idle
+// frame 0 (aureliaLowerArt.ts); here they ride the rig. Each piece hangs between columns: their tops ride
+// the torso, their bottoms hang below the hips and swing a little with the thighs, as the other long
+// skirts do (armor.ts hang()), so the panels move with the legs in walk, run, sit and crouch. The piece
+// is sampled between its columns: at rest every pixel is his as drawn, moved it keeps his line round it.
 
 import { retintHex } from '../color';
 import type { Depth, DrawCtx, ItemDef } from '../ctx';
@@ -16,6 +16,8 @@ import { DAWN_BASE, DAWN_FAR, DAWN_FRONT, DAWN_LINE, DAWN_LINING, DAWN_NEAR, DAW
 
 /** How much a hanging piece follows its thigh (as armor.ts HANG_FOLLOW: skirts never bell out). */
 const FOLLOW = 0.22;
+/** The far panel is a narrow strip: it follows its thigh less, so it hangs down behind the far shin when the thigh swings out instead of jutting past it. */
+const FAR_FOLLOW = 0.06;
 /** Lowest a hem hangs (design y): the soles' row, so in a deep crouch it rests on the ground. */
 const HEM_FLOOR = GROUND + 1.5;
 /** Torso-local height of the line the bottoms hang from (as armor.ts hang()). */
@@ -57,12 +59,12 @@ function fitLocal(body: BodyType, p: Vec): Vec {
 }
 
 /** The angle (radians) a piece hangs at, `w` of the way from the near thigh to the far one. */
-function hangAngle(r: Rig, w: number): number {
+function hangAngle(r: Rig, w: number, follow = FOLLOW): number {
   const tN = sub(r.kneeN, r.hipN);
   const tF = sub(r.kneeF, r.hipF);
   const t = v(tN.x + (tF.x - tN.x) * w, tN.y + (tF.y - tN.y) * w);
   const l = Math.hypot(t.x, t.y);
-  const d = v(t.x * FOLLOW, l + (t.y - l) * FOLLOW);
+  const d = v(t.x * follow, l + (t.y - l) * follow);
   return Math.atan2(d.y, d.x);
 }
 
@@ -98,7 +100,8 @@ function poseCols(g: DrawCtx, p: DawnPiece): Col[] {
     const lf = fitLocal(body, v(lt.x, HANG_Y));
     const a1 = r.T(lf.x, lf.y);
     const d = sub(v(bot.x / RES, bot.y / RES), a0);
-    const th = hangAngle(r, thighBlend(r, lf.x)) - hangAngle(R0, w);
+    const f = p === DAWN_FAR ? FAR_FOLLOW : FOLLOW;
+    const th = hangAngle(r, thighBlend(r, lf.x), f) - hangAngle(R0, w, f);
     const c = Math.cos(th);
     const s = Math.sin(th);
     const b = v(a1.x + (d.x * c - d.y * s) * legScale, a1.y + (d.x * s + d.y * c) * legScale);

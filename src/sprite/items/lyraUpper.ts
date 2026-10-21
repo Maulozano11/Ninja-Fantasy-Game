@@ -1,9 +1,9 @@
-// Lyra's blouse and her corset, pauldron and bracers: the owner's pixels from his heroine picture
-// (docs/reference/lyra-owner-reference.jpg, 2026-10-21: "copialo lo mas igual que puedas", the new
-// standard for women), brought down to our scale on the female body by the heroine study and cut into
-// painted pieces that ride the rig (items/lyraUpperArt.ts, tools/refs/lyra-upper-from-ref.py). In our
-// female idle every pixel of these clothes that his picture shows is his; in other poses each piece
-// turns with its segment. His colours are the colour slots' defaults: kept, his pixels stay his.
+// Lyra's blouse and her corset, pauldron and bracers: the owner's pixels from his picture of her at our
+// game's scale (docs/reference/lyra-game-scale-owner-reference.jpg, 2026-10-21: "tus referencias
+// perfectas del modelo de mujer"; one of his pixels is one of ours), cut into painted pieces that ride
+// the rig (items/lyraUpperArt.ts, tools/refs/lyra-upper-from-ref.py). In our female idle every pixel of
+// these clothes that his picture shows is his, where he drew it; in other poses each piece turns with
+// its segment. His colours are the colour slots' defaults: kept, his pixels stay his.
 
 import { retintHex } from '../color';
 import type { Depth, DrawCtx, ItemDef } from '../ctx';
@@ -28,11 +28,11 @@ import {
 } from './lyraUpperArt';
 
 /** The colour each slot replaces (its default): his cream, red, leather, gold and steel. */
-const BLOUSE = LYRA_BLOUSE[1];
+const BLOUSE = LYRA_BLOUSE[0];
 const LINING = LYRA_LINING[0];
-const LEATHER = LYRA_LEATHER[1];
-const GOLD = LYRA_GOLD[1];
-const STEEL = LYRA_STEEL[1];
+const LEATHER = LYRA_LEATHER[0];
+const GOLD = LYRA_GOLD[0];
+const STEEL = LYRA_STEEL[0];
 
 /**
  * His pixels recoloured: each of his tones of a kind moves the way its slot moved from his colour
@@ -58,11 +58,9 @@ function pauldronAngle(torso: number, arm: number): number {
 }
 
 /**
- * The blouse, back to front: the far fitted sleeve and the far puff behind the body, the body of the
- * blouse with its neckline, then the near fitted sleeve and the near puff over it. Each sleeve reaches
- * up under the puff, so the elbow opens no gap when it bends. Our torso is a little wider than hers:
- * where it reaches over her far puff, that edge of the puff is drawn over the body (under the blouse)
- * and moves with the arm.
+ * The blouse, back to front: the far fitted sleeve and the far puff behind the body, the far puff's
+ * columns by the corset again over the body's edge (our torso is drawn over the far arm, and reaches
+ * over them), the body of the blouse with its neckline, then the near fitted sleeve and the near puff.
  */
 function drawBlouse(g: DrawCtx, blouse: string, lining: string): void {
   const r = g.rig;
@@ -100,7 +98,7 @@ export const LYRA_BLOUSE_ITEM: ItemDef = {
   id: 'top_offshoulder_blouse',
   slot: 'top',
   name: 'Off-Shoulder Blouse',
-  desc: "Lyra's cream blouse worn off the shoulders: puffed sleeves with a red scarf band, a red V at the neckline edged in gold, long fitted sleeves to a cuff. Women only.",
+  desc: "Lyra's cream blouse worn off the shoulders: puffed sleeves, a red scarf band round the near shoulder and across the chest, a red V at the neckline edged in gold, long fitted sleeves to a cuff. Women only.",
   colors: [col('blouse', 'Blouse', BLOUSE), col('lining', 'Lining', LINING)],
   bodies: ['female', 'slender'],
   draw: (g, [blouse, lining]) => drawBlouse(g, blouse, lining),

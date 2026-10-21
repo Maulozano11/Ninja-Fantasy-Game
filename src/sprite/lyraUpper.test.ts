@@ -12,7 +12,7 @@ import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppeara
 
 const BLOUSE = 'top_offshoulder_blouse';
 const CORSET = 'armor_gilded_corset';
-const LINE = '#04010d';
+const LINE = '#010101';
 
 const look = (body: BodyType, top: string[] = [], armor: string[] = []): SpriteAppearance => ({
   version: 1,
@@ -47,12 +47,12 @@ describe("Lyra's blouse and corset", () => {
       assert.ok(fitsBody(d, 'female') && fitsBody(d, 'slender'), d.id);
       assert.ok(!fitsBody(d, 'male') && !fitsBody(d, 'bulky'), d.id);
     }
-    assert.deepEqual(blouse.colors.map((c) => c.default), [ART.LYRA_BLOUSE[1], ART.LYRA_LINING[0]]);
-    assert.deepEqual(corset.colors.map((c) => c.default), [ART.LYRA_LEATHER[1], ART.LYRA_GOLD[1], ART.LYRA_STEEL[1]]);
+    assert.deepEqual(blouse.colors.map((c) => c.default), [ART.LYRA_BLOUSE[0], ART.LYRA_LINING[0]]);
+    assert.deepEqual(corset.colors.map((c) => c.default), [ART.LYRA_LEATHER[0], ART.LYRA_GOLD[0], ART.LYRA_STEEL[0]]);
   });
 
   it('has every piece as a whole picture in her colours only', () => {
-    const hers = new Set([LINE, ...ART.LYRA_BLOUSE, ...ART.LYRA_LINING, ...ART.LYRA_GOLD, ...ART.LYRA_LEATHER, ...ART.LYRA_STEEL]);
+    const hers = new Set([...ART.LYRA_LINE, ...ART.LYRA_BLOUSE, ...ART.LYRA_LINING, ...ART.LYRA_GOLD, ...ART.LYRA_LEATHER, ...ART.LYRA_STEEL]);
     assert.equal(Object.keys(PIECES).length, 10);
     for (const [name, p] of Object.entries(PIECES)) {
       const w = p.rows[0].length;
@@ -85,21 +85,23 @@ describe("Lyra's blouse and corset", () => {
     for (const [name, deg] of Object.entries(want)) assert.ok(Math.abs(PIECES[name].angle - deg) < 0.5, `${name} ${PIECES[name].angle} vs ${deg}`);
   });
 
-  it('shows her pixels at idle by default: the red V, a buckle, the pauldron, a stud on the bracer, her line', () => {
+  it('shows his pixels where he drew them at idle: the red V, a buckle, the pauldron, a stud on the bracer, the near puff, his line', () => {
     const f = renderSprite(look('female'), 'idle', 0).rgba;
-    assert.equal(hexAt(f, 126, 155), '#8c1c35');
-    assert.equal(hexAt(f, 129, 161), '#d4e4ea');
-    assert.equal(hexAt(f, 133, 151), '#fed982');
-    assert.equal(hexAt(f, 111, 168), '#ce9242');
-    assert.equal(hexAt(f, 135, 160), LINE);
+    assert.equal(hexAt(f, 129, 155), '#81152c');
+    assert.equal(hexAt(f, 130, 163), '#8b8a90');
+    assert.equal(hexAt(f, 133, 149), '#fbbc57');
+    assert.equal(hexAt(f, 111, 169), '#db9b41');
+    assert.equal(hexAt(f, 113, 162), '#f2e2c0');
+    assert.equal(hexAt(f, 134, 161), LINE);
   });
 
   it('moves her colours with the colour slots and keeps her line', () => {
     const f = renderSprite(look('female', ['#3a4f8f', '#d9a520'], ['#2b2b33', '#c0c6d0', '#e0b040']), 'idle', 0).rgba;
-    assert.notEqual(hexAt(f, 126, 155), '#8c1c35');
-    assert.notEqual(hexAt(f, 129, 161), '#d4e4ea');
-    assert.notEqual(hexAt(f, 133, 151), '#fed982');
-    assert.equal(hexAt(f, 135, 160), LINE);
+    assert.notEqual(hexAt(f, 129, 155), '#81152c');
+    assert.notEqual(hexAt(f, 130, 163), '#8b8a90');
+    assert.notEqual(hexAt(f, 133, 149), '#fbbc57');
+    assert.notEqual(hexAt(f, 113, 162), '#f2e2c0');
+    assert.equal(hexAt(f, 134, 161), LINE);
   });
 
   it('draws on the female and slender bodies in every pose', () => {

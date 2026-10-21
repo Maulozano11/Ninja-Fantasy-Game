@@ -111,15 +111,15 @@ folders.
       python3 -I tools/refs/poison-from-ref.py docs/reference/poison-set-owner-reference.jpg tools/world-sprites/vfx-poison-v3-refdata.ts <character.png> [reviewDir]
 
 - `lyra-upper-from-ref.py` → `src/sprite/items/lyraUpperArt.ts`: Lyra's blouse (`top_offshoulder_blouse`)
-  and her corset, pauldron and bracers (`armor_gilded_corset`), cut out of her reduced reference
-  (`heroine_ref.reduced('lyra')`, below) into one painted piece per segment of our female rig, pivot on
-  its joint at idle. Each piece is written in the script as rows of our frame: `*` takes her pixel,
-  other letters are her colours for what her picture hides (the blouse under the corset and the braid,
-  the sleeves under the bracers, the far bracer behind the pouch). It checks that every pixel of these
-  clothes in her picture comes out hers at idle and writes `hers-vs-pieces@8.png` and `pieces@4.png`
-  into `<out>`.
+  and her corset, pauldron and bracers (`armor_gilded_corset`), lifted 1:1 from the owner's picture of her
+  at our game's scale (`docs/reference/lyra-game-scale-owner-reference.jpg`: 19.32 picture pixels to one of
+  ours, phase 0; his pixel (x, y) is our (x + 74, y + 121)). `OWN` says per row which of his pixels each
+  piece takes; the parts his picture hides (under the braid, the blouse under the corset, the sleeves under
+  the bracers, the far forearm behind the pouch) continue his pixels. One painted piece per segment of our
+  female rig, pivot on its joint at idle, so at idle every pixel of his is where he drew it. It checks that,
+  and writes `hers-vs-pieces@8.png` into `<out>`.
 
-      python3 -I tools/refs/lyra-upper-from-ref.py <out> src/sprite/items/lyraUpperArt.ts
+      python3 -I tools/refs/lyra-upper-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraUpperArt.ts
 
 - `heroine_ref.py`, `heroine-study.py`, `heroine_paint.py`, `heroine-proportions.py`,
   `heroine-idle.mts`: the study of the owner's four heroines (`docs/reference/{lyra,elise,saya,aurelia}-owner-reference.jpg`),

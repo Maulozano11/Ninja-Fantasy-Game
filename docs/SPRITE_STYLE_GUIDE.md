@@ -18,7 +18,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 | Height | About 94 px from the top of the hair to the soles, like the reference. |
 | View | 3/4, facing right. The near arm and leg (screen-left) are drawn in front; the far ones are behind and one shade darker. |
 | Head | Shrunk by `headScale` (about 0.78). The face from the lash row down is a fixed pixel template. |
-| Bodies | Male, female, bulky. Every item must work on all three. |
+| Bodies | Male, female, bulky, slender. Every item must work on all of them. The female and slender bodies follow the owner's heroines drawn at our scale (proposal on `body/female-v2`, waiting for his approval): 92 px tall without hair, a longer torso and neck with the waist higher (`waistY`), narrow shoulders, a slim knee and fuller calf, his hands (5-7 px, cut 1:1 from his pictures) and Aurelia's bare shoulder (`femaleBodyArt.ts`), feet 4 rows shorter (the ankles stand lower, `ankleLift`; every foot template and boot is shortened by `shortFoot`), flat skin with a one-pixel shadow rim inside his near-black line (`skinF` ramp, `flatSkin`). Slender keeps narrower shoulders and waist and fuller hips. |
 | Poses | idle, handsigns, attack (3 frames), cast, hurt, victory, charge. Every item must work in all of them. |
 | Posture | Upright: chest slightly out, head over the shoulders. Never hunched. In idle the legs are straight under the hips and the arms hang relaxed and nearly straight, fists at hip height. |
 | Depth | 3/4 front ground plane: the near foot stands lower on screen, the far hip and foot sit higher (`ANKLE_N`, `FAR_LIFT` in `rig.ts`). |

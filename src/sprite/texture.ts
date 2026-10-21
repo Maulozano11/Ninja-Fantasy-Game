@@ -53,6 +53,7 @@ const AMP: Record<RampKind, number> = {
   leather: 0.15,
   metal: 0.05,
   skin: 0,
+  skinF: 0,
   glow: 0,
   flat: 0,
 };

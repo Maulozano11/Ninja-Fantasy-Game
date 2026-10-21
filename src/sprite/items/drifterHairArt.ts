@@ -1,0 +1,125 @@
+// The owner's lilac hair on his Trunks 2, his pixels (tools/refs/trunks-drifter-hair-from-ref.py from
+// docs/reference/trunks2-owner-reference.jpg). Generated: rerun the script to change it.
+
+import type { PaintedPart } from './capeArt';
+
+/** One character per colour of his (both parts share them). */
+const DRIFTER_HAIR_COLORS: Record<string, string> = {
+  a: '#1a162e',
+  b: '#5d4f8a',
+  c: '#60528f',
+  d: '#372d61',
+  e: '#675a94',
+  f: '#635792',
+  h: '#cdc5e4',
+  i: '#c9bee2',
+  j: '#9c93c1',
+  k: '#322a5c',
+  l: '#1c1932',
+  m: '#8a80b4',
+  n: '#9f97c0',
+  p: '#b0a6cf',
+  q: '#aba3cc',
+  r: '#73689c',
+  s: '#695e95',
+  t: '#b6acd1',
+  u: '#8076aa',
+  v: '#938aba',
+  w: '#63568d',
+  x: '#b2aad1',
+  y: '#4e437d',
+  z: '#9b8fc0',
+  A: '#9a91bc',
+  B: '#a499c3',
+  C: '#1e1839',
+  D: '#6f6299',
+  E: '#29224d',
+  F: '#3e3667',
+  G: '#18142a',
+  H: '#675a90',
+  I: '#453d71',
+  J: '#40386b',
+  K: '#796ca4',
+  L: '#3a3264',
+  M: '#2d2650',
+  N: '#8477aa',
+  O: '#584e84',
+  P: '#7e71a7',
+  Q: '#4c4277',
+  R: '#524980',
+  S: '#382f5d',
+  T: '#20192b',
+  U: '#9289b6',
+  V: '#030303',
+  W: '#131025',
+  X: '#0b090d',
+  Y: '#07070a',
+};
+
+/** Every pixel of his hair, over the head: his colours and his line. Its pivot is the cell on our face anchor (the near eye's lash start). */
+export const DRIFTER_HAIR_FRONT: PaintedPart = {
+  pivot: [10, 17],
+  rows: [
+    '.........aaaaaaaa.........',
+    '........abcbdeffea........',
+    '.....aaahijbckcjjjaaa.....',
+    '....lmiijnjnjjdejpqqra....',
+    '...ajhijjjnfccfkjestpul...',
+    '..avihjiijwjjjeskenjxtea..',
+    '..aiijhhjjiinjnjcybbcbja..',
+    '..aijjijnhizihjjjkbnjjcAl.',
+    '.ajhjhieihBincnhnkjjjinsa.',
+    'aejnjinsijhBcCiiCDEEeBhFrG',
+    'aHnejjInjijblJiKlLMGIDBrya',
+    'afjenjIjnifa.FhF....ayNnya',
+    'aefeBeIjjnfa.FBF....lybjya',
+    'awOfjelwjDa..FPF.....abvya',
+    'awLefflHjQa...wF.....abARa',
+    'GaFeFaawBaROb.FF....yGbARa',
+    '.GFFG.Sfnl..OO.......GRvRa',
+    '..GFa..Rza...........TyUa.',
+    '.VGFa..G..............RUG.',
+    '...Wl.................Ra..',
+    '...WdGa...............Qa..',
+    '...XYFa...............G...',
+    '.....VL...................',
+  ],
+  colors: DRIFTER_HAIR_COLORS,
+};
+
+/** His hair with what his face hides filled in, drawn behind the head; also his head's outline at the top. */
+export const DRIFTER_HAIR_BACK: PaintedPart = {
+  pivot: [10, 17],
+  rows: [
+    '.........aaaaaaaa.........',
+    '........abcbdeffea........',
+    '.....aaahijbckcjjjaaa.....',
+    '....lmiijnjnjjdejpqqra....',
+    '...ajhijjjnfccfkjestpul...',
+    '..avihjiijwjjjeskenjxtea..',
+    '..aiijhhjjiinjnjcybbcbja..',
+    '..aijjijnhizihjjjkbnjjcAl.',
+    '.ajhjhieihBincnhnkjjjinsa.',
+    'aejnjinsijhBcCiiCDEEeBhFrG',
+    'aHnejjInjijblJiKlLMGIDBrya',
+    'afjenjIjnifalFhFlLMGayNnya',
+    'aefeBeIjjnfalFBFlLMGlybjya',
+    'awOfjelwjDaalFPFlLMGlabvya',
+    'awLefflHjQaalFwFlLMGlabARa',
+    'GaFeFaawBaRObFFFlLMGyGbARa',
+    '.GFFGaSfnlROOOFFlLMGyGRvRa',
+    '..GFaaSRzaROOOFFlLMGyTyUa.',
+    '.VGFaaSG..............RUG.',
+    '...WlaSG..............Ra..',
+    '...WdGaG..............Qa..',
+    '...XYFaG..............G...',
+    '.....VL...................',
+  ],
+  colors: DRIFTER_HAIR_COLORS,
+};
+
+/** His line's characters (his darkest colours): they keep their colour when the hair is recoloured. */
+export const DRIFTER_HAIR_LINE = 'CEGMTVWXYal';
+
+/** His colour of middle lightness: the colour slot's default; his other colours follow it. */
+export const DRIFTER_HAIR_BASE = '#938aba';

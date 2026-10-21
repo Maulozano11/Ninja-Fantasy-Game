@@ -20,6 +20,8 @@ import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } f
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
+import { DRIFTER_HAIR_BACK, DRIFTER_HAIR_BASE, DRIFTER_HAIR_FRONT, DRIFTER_HAIR_LINE } from './drifterHairArt';
+import { SURGE_HAIR_BACK, SURGE_HAIR_BASE, SURGE_HAIR_FRONT, SURGE_HAIR_LINE } from './surgeHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -1645,6 +1647,26 @@ function trimSkull(g: DrawCtx, p: PaintedPart): void {
 /** His hair recoloured: his black line stays, his browns move the way his mid brown does. */
 const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, VALIANT_HAIR_BASE, hair));
 
+/**
+ * A hairstyle the owner painted: his front over the head and his back behind it, our skull trimmed to his
+ * hair; his line stays, his other colours move the way his base does. `old` is the colour the style had
+ * before his art, which characters saved: it now means his base.
+ */
+const paintedStyle = (id: string, name: string, desc: string, old: string, base: string, back: PaintedPart, front: PaintedPart, line: string): ItemDef => ({
+  id,
+  slot: 'hair',
+  name,
+  desc,
+  colors: hairColor(base),
+  draw: (g, [c]) => {
+    const to = c.toLowerCase() === old ? base : c;
+    const tint = (ch: string, hex: string) => (line.includes(ch) ? hex : retintHex(hex, base, to));
+    paintedHair(g, g.L('hairBack'), back, tint);
+    paintedHair(g, g.L('hairFront'), front, tint);
+    trimSkull(g, back);
+  },
+});
+
 export const HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_none',
@@ -1732,8 +1754,12 @@ export const HAIR_ITEMS: ItemDef[] = [
   hairStyle('hair_bowl', 'Polished Bowl', 'A glossy, perfectly round bowl cut with a blunt fringe over bold brows.', '#171a24'),
   hairStyle('hair_exile', "Exile's Sweep", 'Auburn hair swept back in soft waves, with a loose strand falling over the brow.', '#9a5a32'),
   hairStyle('hair_chosen', 'Chosen Waves', 'Shoulder-length brown waves, parted at the crown and framing the face.', '#6b4528'),
-  hairStyle('hair_drifter', "Drifter's Part", 'Straight lilac hair parted in the middle, falling over the ears with bangs to the eyes.', '#938fc0'),
-  hairStyle('hair_surge', 'Golden Surge', 'Blazing golden hair standing straight up in sharp spikes.', '#f8ac01'),
+  // The owner's hair from his two Trunks pictures (2026-10-21; tools/refs/trunks-drifter-hair-from-ref.py,
+  // trunks-surge-hair-from-ref.py), drawn as hair_valiant is: his pixels over the head and, behind it,
+  // the same hair with what his face hides filled in. The colour that was the default before his art
+  // now means his.
+  paintedStyle('hair_drifter', "Drifter's Part", 'Thick lilac hair falling over the ears and the nape, with long strands over the brow to the eyes.', '#938fc0', DRIFTER_HAIR_BASE, DRIFTER_HAIR_BACK, DRIFTER_HAIR_FRONT, DRIFTER_HAIR_LINE),
+  paintedStyle('hair_surge', 'Golden Surge', 'Blazing golden hair standing up in sharp spikes all round the head, a fringe of spiky strands to the eyes and a lock before the ear.', '#f8ac01', SURGE_HAIR_BASE, SURGE_HAIR_BACK, SURGE_HAIR_FRONT, SURGE_HAIR_LINE),
   hairStyle('hair_youth', 'Wild Youth', 'Short, messy black spikes that fall over the forehead.', '#33333d'),
   hairStyle('hair_ascended', 'Ascended Spikes', 'Golden spikes swept up and back, with one lone lock over the brow.', '#e6c020'),
   hairStyle('hair_storm2', 'Storm Ascension', 'Taller, sharper golden spikes crackling upward, with a lock over the brow.', '#e6c020'),

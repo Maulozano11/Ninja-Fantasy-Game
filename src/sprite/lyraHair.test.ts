@@ -1,11 +1,11 @@
-// Tests for Lyra's hair (hair_copper_braid), after the owner's first heroine picture: npm test.
+// Tests for Lyra's hair (hair_copper_braid), from the owner's picture of her at our game scale: npm test.
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { faceAnchor } from './body';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
-import { LYRA_HAIR_BRAID, LYRA_HAIR_COLORS, LYRA_HAIR_HEAD, LYRA_HAIR_LONG } from './items/lyraHairArt';
+import { LYRA_HAIR_BASE, LYRA_HAIR_BRAID, LYRA_HAIR_COLORS, LYRA_HAIR_HEAD, LYRA_HAIR_LINE, LYRA_HAIR_LONG, LYRA_HAIR_PIN, LYRA_PIN_BASE, LYRA_RIBBON_BASE } from './items/lyraHairArt';
 import { GRID } from './raster';
 import { drawRig, rigPoseFor } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
@@ -49,7 +49,7 @@ describe("Lyra's hair", () => {
     assert.deepEqual(def.colors.map((c) => [c.key, c.kind]), [['hair', 'hair'], ['ribbon', 'cloth'], ['ornament', 'metal']]);
   });
 
-  it("has whole pieces: even rows, every character one of her colours, the head piece's pivot on the face", () => {
+  it("has whole pieces: even rows, every character one of his colours, the head piece's pivot on the face", () => {
     for (const p of [LYRA_HAIR_HEAD, LYRA_HAIR_LONG, LYRA_HAIR_BRAID]) {
       const w = p.rows[0].length;
       assert.ok(p.rows.every((r) => r.length === w));
@@ -67,9 +67,9 @@ describe("Lyra's hair", () => {
   });
 
   it('keeps her line and pin when the hair is recoloured, and moves her auburns', () => {
-    const rgba = renderSprite(look('female', ['#e3c25a', '#404049', '#ce9242']), 'idle', 0).rgba;
+    const rgba = renderSprite(look('female', ['#e3c25a', LYRA_RIBBON_BASE, LYRA_PIN_BASE]), 'idle', 0).rgba;
     for (const [x, y, ch] of crown('female')) {
-      if (ch === 'k' || 'OoYGy'.includes(ch)) assert.equal(hex(rgba, x, y), LYRA_HAIR_COLORS[ch], `(${x}, ${y})`);
+      if (LYRA_HAIR_LINE.includes(ch) || LYRA_HAIR_PIN.includes(ch)) assert.equal(hex(rgba, x, y), LYRA_HAIR_COLORS[ch], `(${x}, ${y})`);
       else assert.notEqual(hex(rgba, x, y), LYRA_HAIR_COLORS[ch], `(${x}, ${y})`);
     }
   });
@@ -80,8 +80,8 @@ describe("Lyra's hair", () => {
         for (const frame of [0, 1, 2, 3]) {
           const rgba = renderSprite(look(body), pose, frame).rgba;
           let line = 0;
-          for (let i = 0; i < GRID * GRID; i++) if (rgba[i * 4 + 3] && hex(rgba, i % GRID, (i / GRID) | 0) === LYRA_HAIR_COLORS.H) line++;
-          assert.ok(line > 0, `${body} ${pose} ${frame}: her highlights show`);
+          for (let i = 0; i < GRID * GRID; i++) if (rgba[i * 4 + 3] && hex(rgba, i % GRID, (i / GRID) | 0) === LYRA_HAIR_BASE) line++;
+          assert.ok(line > 0, `${body} ${pose} ${frame}: his auburn shows`);
         }
       }
     }

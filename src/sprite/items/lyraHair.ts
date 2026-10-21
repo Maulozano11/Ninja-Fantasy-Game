@@ -1,12 +1,12 @@
-// Lyra's hair, after the owner's first heroine picture (docs/reference/lyra-owner-reference.jpg):
-// her pixels brought down to our scale (lyraHairArt.ts). Every piece rides the face anchor, so the
-// three move as one with the head; the long hair and the braid also turn with the torso.
+// Lyra's hair, the owner's picture of her at our game scale (docs/reference/lyra-game-scale-owner-reference.jpg):
+// his pixels one for one (lyraHairArt.ts). Every piece rides the face anchor, so the three move as
+// one with the head; the long hair and the braid also turn with the torso.
 
 import { faceAnchor } from '../body';
 import { retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
 import { PaintedPiece, segAngle } from '../painted';
-import { F_NO_OUTLINE, F_NO_TEXTURE, Layer, PartId } from '../raster';
+import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId } from '../raster';
 import { rotateTemplate } from '../rotsprite';
 import type { PaintedPart } from './capeArt';
 import {
@@ -47,6 +47,25 @@ function stamp(g: DrawCtx, L: Layer, p: PaintedPart | PaintedPiece, tilt: number
   for (const q of rotateTemplate(p, tilt)) put(nx + q.dx, ny + q.dy, q.ch);
 }
 
+/**
+ * Our skull takes his head's outline above the eyes: a pixel of it left or right of the head piece's
+ * row (or above its top) goes, so no bald edge shows past his hair.
+ */
+function trimSkull(g: DrawCtx, p: PaintedPart): void {
+  const H = g.L('head.body');
+  const { nx, ny } = faceAnchor(g);
+  const ax = nx - p.pivot[0];
+  const ay = ny - p.pivot[1];
+  for (let y = Math.max(0, ny - 32); y < ny; y++) {
+    const row = p.rows[y - ay];
+    const a = row ? row.search(/[^.]/) : -1;
+    const b = row ? row.length - 1 - [...row].reverse().join('').search(/[^.]/) : -1;
+    for (let x = Math.max(0, nx - 32); x < Math.min(GRID, nx + 32); x++) {
+      if (H.has(x, y) && (a < 0 || x - ax < a || x - ax > b)) H.clear(x, y);
+    }
+  }
+}
+
 export const HAIR_COPPER_BRAID: ItemDef = {
   id: 'hair_copper_braid',
   slot: 'hair',
@@ -72,5 +91,6 @@ export const HAIR_COPPER_BRAID: ItemDef = {
     const F = g.L('hairFront');
     stamp(g, F, LYRA_HAIR_HEAD, 0, 'head', color);
     stamp(g, F, LYRA_HAIR_BRAID, tilt, 'back', color);
+    trimSkull(g, LYRA_HAIR_HEAD);
   },
 };

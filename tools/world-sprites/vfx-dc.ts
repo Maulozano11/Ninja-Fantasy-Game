@@ -185,7 +185,7 @@ function scale2x(src: Uint32Array, w: number, h: number): Uint32Array {
  */
 function rotSprite(c: Canvas, pivot: [number, number], deg: number): { dx: number; dy: number; c: [number, number, number, number] }[] {
   const S = 8;
-  let g = new Uint32Array(c.w * c.h);
+  let g: Uint32Array = new Uint32Array(c.w * c.h);
   for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++) g[y * c.w + x] = key(c.get(x, y));
   let w = c.w, h = c.h;
   for (let k = 0; k < 3; k++) {
@@ -289,13 +289,13 @@ function writeCheck(dir: string, el: string, src: Canvas[], labels: Int16Array[]
 
 /**
  * Where each element's projectiles have their heads in his multi (frame pixels), and which of them
- * fly. Lightning's multi has four needles and the owner asked for three paths: the inner needle's
- * head (from x `drop` on) is left out and its trail, the crackling knot in the middle, goes with
- * the middle needle (`merge`), whose own trail runs into it.
+ * fly. Lightning's multi has four needles and the owner asked for three paths: the top and bottom
+ * needles fly with their trails, and the inner one with the crackling knot it trails; the fourth
+ * needle (the front one, second) is only a head, its trail lost in that knot, and is left out.
  */
-const MULTI: Record<string, { heads: [number, number][]; keep: number[]; merge?: { from: number; into: number; drop: number }; label: string }> = {
+const MULTI: Record<string, { heads: [number, number][]; keep: number[]; label: string }> = {
   fire: { heads: [[49, 18], [59, 38], [42, 54]], keep: [0, 1, 2], label: 'comet flame' },
-  lightning: { heads: [[48, 16], [59, 27], [46, 41], [51, 55]], keep: [0, 1, 3], merge: { from: 2, into: 1, drop: 39 }, label: 'thunder needle' },
+  lightning: { heads: [[48, 16], [59, 27], [46, 41], [51, 55]], keep: [0, 2, 3], label: 'thunder needle' },
   earth: { heads: [[60, 9], [82, 37], [58, 66]], keep: [0, 1, 2], label: 'rock bullet' },
 };
 
@@ -315,10 +315,6 @@ function volley(): WorldSprite[] {
     const { frames: raw, fps } = frames(`vfx_${el}`, 'multi');
     const src = raw.map(unmarked);
     const labels = src.map((f) => cut(f, m.heads));
-    if (m.merge) {
-      const { from, into, drop } = m.merge;
-      for (const [i, l] of labels.entries()) l.forEach((k, p) => k === from && (l[p] = p % src[i].w >= drop ? -1 : into));
-    }
     if (process.env.VFX_DC_CHECK) writeCheck(process.env.VFX_DC_CHECK, el, src, labels);
     m.keep.forEach((k, n) => {
       const piece = src.map((f, i) => {

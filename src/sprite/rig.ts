@@ -636,6 +636,30 @@ const PIERCE: PoseFrame[] = [
   { lean: 8, pelvisDx: 1, footN: v(-0.42, 0.9), footF: v(0.42, 0.91), handN: arm(0.7, 0.4), handF: chest(3, 0), shapeN: 'grip', shapeF: 'fist' },
 ];
 
+/**
+ * Tackle, 5 frames: the Rush (Taijutsu Technique: Rush; the owner, 2026-10-21: the weapon is put
+ * away and the ninja tackles). Set (dropped low, fists tucked before the chest), the drive
+ * (pitched forward off the back foot, the head tucked down behind the leading shoulder, the arms
+ * braced in), THE IMPACT (shoulder first, the body at its longest, the front knee driving, both feet
+ * off the ground), a hold on it, and the recovery back onto both feet. The hands are busy (grip.ts):
+ * a held weapon is drawn stowed.
+ */
+const TACKLE: PoseFrame[] = [
+  // Set: low over the front foot, the fists tucked in before the chest.
+  { lean: 20, sink: 1.5, headDx: 1, headDy: 1.5, footN: v(-0.44, 0.88), footF: v(0.36, 0.88), handN: chest(4, 1.5), handF: chest(5, -0.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Drive: off the back foot, pitched forward, the head down behind the shoulder.
+  { lean: 32, pelvisDx: 2.5, headDx: 4, headDy: 5.5, footN: v(-0.62, 0.8), footF: v(0.3, 0.72), handN: chest(3.5, 2.5), handF: arm(0.42, 0.55), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  // IMPACT: shoulder first, the body long, the front knee driving, off the ground.
+  { lean: 38, pelvisDx: 4.5, headDx: 5.5, headDy: 7, lift: 1.5, footN: v(-0.68, 0.74), footF: v(0.2, 0.62), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  // Hold on the hit.
+  { lean: 38, pelvisDx: 5, headDx: 5.5, headDy: 7, lift: 1, chestDy: 0.5, footN: v(-0.68, 0.75), footF: v(0.2, 0.64), handN: chest(3, 3), handF: arm(0.36, 0.6), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  // Recovery: back onto both feet, guard up.
+  { lean: 14, pelvisDx: 2, headDx: 1, headDy: 1, footN: v(-0.42, 0.9), footF: v(0.38, 0.9), handN: chest(4.5, -1.5), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+];
+
+/** The tackle's frame where the shoulder hits (the battle lands the blow on it). */
+export const TACKLE_IMPACT_FRAME = 2;
+
 export const POSES: Record<RigPose, PoseFrame[]> = {
   idle: [IDLE, IDLE, { ...IDLE, chestDy: 1 }, { ...IDLE, chestDy: 1 }],
   handsigns: [
@@ -792,6 +816,7 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
   // Weapon techniques.
   throw: THROW,
   pierce: PIERCE,
+  tackle: TACKLE,
   // Battle-map movement poses.
   walk: WALK,
   run: RUN,
@@ -817,6 +842,7 @@ export const POSE_FPS: Record<SpritePose, number> = {
   charge: 10,
   throw: 8,
   pierce: 8,
+  tackle: 10,
   walk: 10,
   run: 12,
   crouch: 3,

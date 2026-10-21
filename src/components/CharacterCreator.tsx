@@ -170,6 +170,7 @@ const T = strings({
   pose_attack: { en: 'Attack', es: 'Ataque' },
   pose_throw: { en: 'Throw weapon', es: 'Arrojar arma' },
   pose_pierce: { en: 'Thrust', es: 'Estocada' },
+  pose_tackle: { en: 'Tackle', es: 'Embestida' },
   pose_cast: { en: 'Cast', es: 'Lanzar' },
   pose_hurt: { en: 'Hurt', es: 'Herido' },
   pose_victory: { en: 'Victory', es: 'Victoria' },

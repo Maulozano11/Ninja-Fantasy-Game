@@ -272,11 +272,11 @@ function backGrip(g: DrawCtx, deg: number): Vec {
 
 /**
  * The angle a weapon stowed on the back is drawn at (`deg`: the one it rides at standing). The
- * weapon techniques pitch the body far forward (the release of 'throw', the lunge of 'pierce'): the
- * weapon turns with the back there, so its blade stays behind the body instead of sticking out
- * under the chin. Every other pose keeps it at `deg`.
+ * weapon techniques pitch the body far forward (the release of 'throw', the lunge of 'pierce', the
+ * shoulder of 'tackle'): the weapon turns with the back there, so its blade stays behind the body
+ * instead of sticking out under the chin. Every other pose keeps it at `deg`.
  */
-const backAngle = (g: DrawCtx, deg: number): number => (g.rig.pose === 'throw' || g.rig.pose === 'pierce' ? deg + g.rig.lean : deg);
+const backAngle = (g: DrawCtx, deg: number): number => (g.rig.pose === 'throw' || g.rig.pose === 'pierce' || g.rig.pose === 'tackle' ? deg + g.rig.lean : deg);
 
 /**
  * Knocked out, a weapon lies dropped on the ground in front of the body. The

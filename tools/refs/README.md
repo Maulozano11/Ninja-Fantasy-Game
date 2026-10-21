@@ -131,3 +131,13 @@ folders.
   filled in, like the Aiden hair). It writes `src/sprite/items/scarletHairArt.ts`.
 
       python3 -I tools/refs/scarlet-hair-from-ref.py <out> src/sprite/items/scarletHairArt.ts
+
+- `scarlet-head-from-ref.py`, `scarlet-eyes-from-ref.py`: his face as the `noble` face shape and his
+  eyes as the `noble` eye shape, lifted out of the reduced reference in his colours. The head is his
+  face below the eyes (his warm shading, his smile, his brown jaw line and pointed chin) and his far
+  temple, on our male skull's outline where his hair hides his head; the eyes are his line over the
+  lash, his lash, his white, amber iris, lower line and glints, with the lowered and shut lids made
+  of his pixels. They write `src/sprite/nobleHeadArt.ts` and `src/sprite/nobleEyeArt.ts`.
+
+      python3 -I tools/refs/scarlet-head-from-ref.py docs/reference/scarlet-owner-reference.jpg <out> src/sprite/nobleHeadArt.ts
+      python3 -I tools/refs/scarlet-eyes-from-ref.py docs/reference/scarlet-owner-reference.jpg <out> src/sprite/nobleEyeArt.ts

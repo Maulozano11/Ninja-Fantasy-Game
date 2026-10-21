@@ -126,7 +126,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `chakra/jutsu-tint` | not pushed (local) | Elemental jutsu, their beasts and walls in the caster's chakra colour (`src/sprite/vfxTint.ts`, `src/components/battle/vfxTint*.ts`; `docs/GAMEPLAY_DESIGN.md`, "The chakra colour colours the elemental jutsu") | **The owner approved the colours** (2026-10-21); wired into the battle (checked in the browser), review fixes done (no recolouring on the screen's thread, memory capped); **open question**: should a heal of an elemental nature (Mystical Palm) glow in the chakra colour; not merged |
 | `chakra/decisions` | not pushed (local) | The owner's four answers on the chakra types (saved legends updated, Shadow and Spirit pending, Cinder Nova kept) and the nature gating the elemental jutsu in the creator | **For review** |
 | `chakra/progression` | `51b44c0` on origin (WIP); the finished work is local, not pushed | His jutsu answers: D/C + clan for a new ninja (S-rank slot locked), the explosive tag as an item (throw / hide, save migration), the chakra type fixed once made; the taijutsu, kenjutsu and genjutsu jutsu gated by class; level 5: a second element or a higher rank, Kaien and Raiga's second natures | **For review** |
-| `jutsu/d-c-set` | not pushed yet (merged with the integration branch at `26371c4`) | 12 rank D and C jutsu (data, rules, AI, log; `docs/GAMEPLAY_DESIGN.md`, "Rank D and C jutsu"), then their effects (three projectile paths, the joined Spark Fan, the white Bleeding Cut, the Rush's tackle pose), in the caster's chakra colour; review fixes (sword arts need a blade, charges stop at deep water and cliffs) | **Waiting for approval** of the in-game captures. Every element gains D/C jutsu in the nature filter's and the class gate's offers (their tests updated) |
+| `jutsu/d-c-set` | not pushed yet (merged with the integration branch at `26371c4`) | 12 rank D and C jutsu (data, rules, AI, log; `docs/GAMEPLAY_DESIGN.md`, "Rank D and C jutsu"), then their effects (three projectile paths, the joined Spark Fan, the white Bleeding Cut, the Rush's tackle pose), in the caster's chakra colour; review fixes (sword arts need a blade, charges stop at deep water and cliffs); his answers 4–8 (Numb 2 rounds, silent Mirage and Bleeding Cut, the water aura on the Mystical Palm) | **Waiting for approval** of the in-game captures. Every element gains D/C jutsu in the nature filter's and the class gate's offers (their tests updated) |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -150,8 +150,9 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - `jutsu/d-c-set` (2026-10-21): the 12 rank D and C jutsu he asked for, built with his answers and
   the proposal's defaults (`docs/GAMEPLAY_DESIGN.md`, "Rank D and C jutsu"). Approve the in-game
   captures (new art: the tackle pose, the white cut, the turned projectiles). His later answers to
-  questions 4, 6 and 8 are recorded there and **not built yet**: Numb for 2 rounds (P5), the water
-  aura on the Mystical Palm, the Mirage and the Bleeding Cut silent (P6).
+  questions 4 to 9 are built too: Numb for 2 rounds (P5), the Rush at 6 m, the water aura on the
+  Mystical Palm (in the chakra colour), Pebble Shot as it is, the Mirage and the Bleeding Cut silent
+  (P6); the class gate (9) is on the integration branch.
 - Chakra types (`docs/GAMEPLAY_DESIGN.md`, "Chakra type" and Open questions). **Decided
   2026-10-21** (his answers, built on `chakra/decisions`): the legends keep their new types; saved
   copies of the legends and companions move to their new type when they load; Shadow and Spirit

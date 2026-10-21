@@ -60,8 +60,10 @@ export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vf
     add('hit');
   } else if (spec.special === 'earthWall' || spec.special === 'waterWall') add('wall', 'wall_diag', 'wall_depth');
   else if (spec.special) {
-    // Heals, traps and the like are drawn in code; an aura of the element would play its sheets.
-    if (spec.vfx === 'aura') add('aura', 'aura_back');
+    // Heals, traps and the like are drawn in code; an aura of the element would play its sheets. A
+    // heal in the element's aura (the Healing Dew, the Mystical Palm) flies its orb first, if it has one.
+    if (spec.special === 'heal' && spec.seq?.healAura && spec.vfx !== 'aura') add(spec.vfx);
+    if (spec.vfx === 'aura' || spec.seq?.healAura) add('aura', 'aura_back');
   } else if (spec.shape === 'cone') add(...(spec.sig ? [spec.sig, enhancedSig(spec.sig)] : ['breath']));
   else if (spec.shape === 'line') add('stream', 'stream_head');
   else if (spec.melee) add(...(spec.vfx === 'multi' ? ['multi_hit'] : []), 'hit');

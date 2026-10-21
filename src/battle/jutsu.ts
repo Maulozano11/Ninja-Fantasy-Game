@@ -104,7 +104,11 @@ export interface JutsuSpec {
    * once a turn, like stowing it for hand seals).
    */
   weapon?: 'draw' | 'stow';
-  /** Loud: casting it in the stealth phase starts the battle. */
+  /**
+   * Loud: casting it in the stealth phase starts the battle. A silent one that wounds a foe counts
+   * as an attack there instead (the proposal's piece P6): the target that lives shouts, one that
+   * falls unseen leaves a body.
+   */
   loud: boolean;
   /** Left on a failed save (or a hit). */
   effect?: EffectId;
@@ -141,9 +145,9 @@ const ELEMENTAL_NATURES = ['Fire', 'Water', 'Wind', 'Lightning', 'Earth'];
 const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   shadow_clone: { shape: 'self', special: 'clone', vfx: 'aura', loud: false },
   body_flicker: { shape: 'point', special: 'flicker', vfx: 'aura', loud: false },
-  // Water by nature, but drawn as the green glow of a heal: nothing of it is drawn in the element,
-  // so the chakra colour has nothing to colour.
-  mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false, elemental: false },
+  // Water by nature, and drawn in it: the water aura wraps the friend as it heals (the owner: the
+  // Healing Dew's aura goes on the Palm too), in the caster's chakra colour like every elemental jutsu.
+  mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false, seq: { healAura: 800 } },
   substitution_kawarimi: { shape: 'self', special: 'kawarimi', cast: 'reaction', vfx: 'hit', loud: false },
   fireball_goukakyu: { vfx: 'sphere', effect: 'burning', sig: 'fireball' },
   dragon_fire_stream: { vfx: 'stream', effect: 'burning' },
@@ -172,16 +176,17 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   fire_three_embers: { vfx: 'multi', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 } } },
   wind_whirl: { vfx: 'bolt' },
   wind_breeze_mantle: { shape: 'self', special: 'mantle', vfx: 'aura', loud: false, seq: { lingerAura: 0.4 } },
-  lightning_jolt: { vfx: 'multi', effect: 'numb', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 } } },
+  lightning_jolt: { vfx: 'multi', effect: 'jolted', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 } } },
   lightning_spark_fan: { vfx: 'breath', seq: { connected: true, hitEach: { stagger: 80 } } },
   earth_pebble_shot: { vfx: 'multi', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 }, castAura: 560 } },
   // A stomp, no seals: the weapon stays in hand.
   earth_spike_crown: { vfx: 'hit', melee: true, pose: 'charge', seq: { castAura: 400, hitEach: { stagger: 80 } } },
   water_healing_dew: { shape: 'ally', special: 'heal', vfx: 'bolt', loud: false, seq: { healAura: 800 } },
   water_geyser: { vfx: 'blast', seq: { fromGround: { warn: 300 }, shake: 2 } },
-  genjutsu_mirage: { vfx: 'sphere', effect: 'confused', seq: { slowFlight: 1.5 } },
+  // Silent (the owner): a silent jutsu that wounds counts as an attack in the stealth phase (P6).
+  genjutsu_mirage: { vfx: 'sphere', effect: 'confused', loud: false, seq: { slowFlight: 1.5 } },
   // A sword art with no element: its own cut, the wind's crescent in white (the owner).
-  kenjutsu_bleeding_cut: { vfx: 'slash', vfxSet: 'neutral', melee: true, effect: 'bleeding' },
+  kenjutsu_bleeding_cut: { vfx: 'slash', vfxSet: 'neutral', melee: true, effect: 'bleeding', loud: false },
   // A shoulder tackle with the weapon put away (the owner): a straight run in, then the blow.
   taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', seq: { launchFlash: true, fastRun: 2 } },
 };

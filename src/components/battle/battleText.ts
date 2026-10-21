@@ -63,6 +63,8 @@ const TABLE = strings({
   regrowIn: { en: 'Grows back in {n}', es: 'Vuelve a crecer en {n}' },
   stowed: { en: 'Weapon stowed', es: 'Arma guardada' },
   drawn: { en: 'Weapon drawn', es: 'Arma en mano' },
+  effectRounds: { en: '{e}: {n} rounds left', es: '{e}: quedan {n} rondas' },
+  effectRound: { en: '{e}: 1 round left', es: '{e}: queda 1 ronda' },
   rank_minion: { en: 'Minion', es: 'Esbirro' },
   rank_captain: { en: 'Captain', es: 'Capitán' },
   rank_subboss: { en: 'Sub-boss', es: 'Subjefe' },

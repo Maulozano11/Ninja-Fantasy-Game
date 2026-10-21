@@ -542,11 +542,12 @@ export class Playback {
 
     if (seq.healAura && spec.special === 'heal') {
       // The Healing Dew: the element's orb flies to the ally and its aura wraps them as they heal.
+      // The Mystical Palm heals by touch: no orb, only the aura (the owner: the Dew's aura on it too).
       announce();
       this.setPose(a, 'cast', now, 900);
       const healed = this.healedNext();
       const to = healed ? this.posOf(healed, now) : ev.at;
-      const fly = dist(from, to) < 0.3 ? 0 : flight(to);
+      const fly = spec.vfx === 'aura' || dist(from, to) < 0.3 ? 0 : flight(to);
       if (fly) this.fx.push({ ...base, kind: 'projectile', from: hand, to, t0: at(CAST), dur: fly, lift: [HAND_LIFT, 50], role: 'bolt' });
       this.fx.push({ ...base, kind: 'aura', from: to, to, t0: at(CAST + fly), dur: seq.healAura, unit: healed });
       linger(CAST + fly + seq.healAura);

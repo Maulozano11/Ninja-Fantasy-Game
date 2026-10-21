@@ -13,11 +13,13 @@ import type { BattleSetup } from './engine';
 import { cellBlocked, cellCenter, cellOf, clearRun, dist, propRules, waterAtPt } from './map';
 import { canStop } from './nav';
 import { attackPreview, saveMod } from './combat';
-import { beginTurn } from './turns';
+import { beginTurn, endTurn } from './turns';
 import { ninjaOptions, offensive } from './intent';
 import { aiAction, runAi } from './ai';
 import { JUTSU, enhanced } from './jutsu';
 import { logLine } from '../components/battle/battleLog';
+import { EFFECT_DESC_ES } from '../components/mission/partyText';
+import { EFFECTS, effectMods, endBattle } from '../rules/effects';
 
 const hero = (over: Partial<ShinobiCharacter> = {}): ShinobiCharacter => ({ ...DEFAULT_CHARACTER, effects: [], ...over });
 
@@ -159,14 +161,15 @@ describe('rank D and C jutsu: the data', () => {
     assert.deepEqual(s('fire_three_embers'), ['single', '2d6', 'Fire', 'attack', '', '', 'ignite', false, true]);
     assert.deepEqual(s('wind_whirl'), ['single', '1d8', 'Bludgeoning', 'str', 'half', '', 'clearFoliage', false, true]);
     assert.deepEqual(s('wind_breeze_mantle'), ['self', '', '', 'attack', '', '', '', false, false]);
-    assert.deepEqual(s('lightning_jolt'), ['single', '1d6', 'Lightning', 'con', 'none', 'numb', 'electrify', false, true]);
+    assert.deepEqual(s('lightning_jolt'), ['single', '1d6', 'Lightning', 'con', 'none', 'jolted', 'electrify', false, true]);
     assert.deepEqual(s('lightning_spark_fan'), ['cone', '2d8', 'Lightning', 'dex', 'half', '', 'electrify', false, true]);
     assert.deepEqual(s('earth_pebble_shot'), ['single', '1d6', 'Bludgeoning', 'attack', '', '', '', false, true]);
     assert.deepEqual(s('earth_spike_crown'), ['selfCircle', '2d8', 'Piercing', 'dex', 'half', '', '', true, true]);
     assert.deepEqual(s('water_healing_dew'), ['ally', '1d8', '', 'attack', '', '', '', false, false]);
     assert.deepEqual(s('water_geyser'), ['circle', '3d6', 'Bludgeoning', 'str', 'half', '', '', false, true]);
-    assert.deepEqual(s('genjutsu_mirage'), ['single', '2d6', 'Psychic', 'wis', 'none', 'confused', '', false, true]);
-    assert.deepEqual(s('kenjutsu_bleeding_cut'), ['single', '1d8', 'Slashing', 'attack', '', 'bleeding', '', true, true]);
+    // Silent (the owner's answer 8).
+    assert.deepEqual(s('genjutsu_mirage'), ['single', '2d6', 'Psychic', 'wis', 'none', 'confused', '', false, false]);
+    assert.deepEqual(s('kenjutsu_bleeding_cut'), ['single', '1d8', 'Slashing', 'attack', '', 'bleeding', '', true, false]);
     assert.deepEqual(s('taijutsu_rush'), ['single', '2d8', 'Bludgeoning', 'attack', '', '', '', true, true]);
     assert.equal(JUTSU.wind_breeze_mantle.special, 'mantle');
     assert.equal(JUTSU.water_healing_dew.special, 'heal');
@@ -211,6 +214,11 @@ describe('rank D and C jutsu: the data', () => {
     assert.equal(JUTSU.genjutsu_mirage.vfx, 'sphere');
     assert.equal(JUTSU.genjutsu_mirage.seq?.slowFlight, 1.5);
     assert.equal(JUTSU.water_healing_dew.seq?.healAura, 800);
+    // The owner's answer 6: the Dew's water aura on the Mystical Palm too, in the chakra colour.
+    assert.equal(JUTSU.mystical_palm.seq?.healAura, 800);
+    assert.equal(JUTSU.mystical_palm.vfx, 'aura');
+    assert.equal(JUTSU.mystical_palm.element, 'water');
+    assert.equal(JUTSU.mystical_palm.elemental, true);
     assert.equal(JUTSU.wind_breeze_mantle.seq?.lingerAura, 0.4);
     assert.equal(JUTSU.kenjutsu_bleeding_cut.vfxSet, 'neutral');
     assert.equal(JUTSU.kenjutsu_bleeding_cut.vfx, 'slash');
@@ -253,13 +261,26 @@ describe('rank D and C jutsu in battle', () => {
     assert.ok(out.events.some((e) => e.t === 'prop' && e.prop === g && e.state === 'cut'));
   });
 
-  it('Jolt: a CON save at 7.5 m; failed, 1d6 lightning and Numb (−2 to DEX saves); passed, nothing at all', () => {
+  it('Jolt: a CON save at 7.5 m; failed, 1d6 lightning and Numb (−2 to DEX saves) for 2 rounds; passed, nothing at all', () => {
     const s = duel('lightning_jolt', { x: 14, z: 10 });
     s.units.a.saveDC = 40;
     const fail = ok(cast(s, 'lightning_jolt'));
     assert.equal(damageTo(fail.events, 'rogue_0').length, 1);
-    assert.ok(effectOn(fail.events, 'rogue_0', 'numb'));
+    assert.ok(effectOn(fail.events, 'rogue_0', 'jolted'));
+    assert.deepEqual(fail.state.units.rogue_0.effects.find((e) => e.id === 'jolted'), { id: 'jolted', remaining: 2, source: 'Lightning Technique: Jolt' });
     assert.equal(saveMod(fail.state.units.rogue_0, 'dex'), saveMod(s.units.rogue_0, 'dex') - 2);
+    // It wears off at the end of the rogue's second turn (the owner's answer 4: 2 rounds).
+    let t = structuredClone(fail.state);
+    for (const left of [1, 0]) {
+      t.turn = t.order.indexOf('rogue_0');
+      const ev: BattleEvent[] = [];
+      endTurn(t, ev);
+      const e = t.units.rogue_0.effects.find((x) => x.id === 'jolted');
+      assert.equal(e?.remaining ?? 0, left);
+      assert.equal(ev.some((x) => x.t === 'effect' && x.unit === 'rogue_0' && x.effect === 'jolted' && !x.on), left === 0);
+      t = structuredClone(t);
+    }
+    assert.equal(saveMod(t.units.rogue_0, 'dex'), saveMod(s.units.rogue_0, 'dex'));
     s.units.a.saveDC = -40;
     const pass = ok(cast(s, 'lightning_jolt'));
     assert.equal(damageTo(pass.events, 'rogue_0').length, 0);
@@ -391,6 +412,16 @@ describe('rank D and C jutsu in battle', () => {
     assert.equal(cast(s, 'water_geyser', { at: { x: at.x + 2, z: at.z }, target: null }).reason, 'outOfRange');
   });
 
+  it('Jolt\'s Numb: its name and text in both languages, never past the battle, and not stacked on a cold night\'s Numb', () => {
+    const d = EFFECTS.jolted;
+    assert.deepEqual([d.name, d.nameEs, d.kind, d.duration, d.count, d.mods], ['Numb', 'Entumecido', 'debuff', 'rounds', 2, { dexRolls: -2 }]);
+    assert.match(d.description, /2 rounds/);
+    assert.match(EFFECT_DESC_ES.jolted, /2 rondas/);
+    assert.deepEqual(endBattle([{ id: 'jolted', remaining: 2 }]).effects, []);
+    assert.equal(effectMods([{ id: 'jolted', remaining: 2 }]).dexRolls, -2);
+    assert.equal(effectMods([{ id: 'numb', sinceCamp: 0 }, { id: 'jolted', remaining: 2 }]).dexRolls, -2);
+  });
+
   it('Mirage: a WIS save; failed, 2d6 psychic and Confused for 2 rounds; passed, nothing', () => {
     const s = duel('genjutsu_mirage');
     s.units.a.saveDC = 40;
@@ -478,6 +509,52 @@ describe('rank D and C jutsu in battle', () => {
     assert.ok(atk?.t === 'attack' && atk.what === 'taijutsu_rush' && !(atk.reasons ?? []).includes('closeEnemy'));
     assert.ok(damageTo(out.events, 'rogue_0').every((e) => e.t === 'damage' && e.dmgType === 'Bludgeoning'));
     assert.equal(damageTo(out.events, 'rogue_0').length, 1);
+  });
+
+  it('Mirage and Bleeding Cut are silent (the proposal\'s piece P6): in the stealth phase they count as an attack', () => {
+    const sneak = (id: string, at: Pt) => {
+      // A second guard far off, looking away, so one falling doesn't end the battle.
+      const s = createBattle(setup({ stealth: true, enemies: [{ kind: 'rogue', pos: { x: 20, z: 10 }, look: 180, route: [{ x: 20, z: 10 }] }, { kind: 'rogue', pos: { x: 3, z: 18 }, look: 180, route: [{ x: 3, z: 18 }] }] })).state;
+      s.units.a.jutsus = [id];
+      s.units.a.chakra = 30;
+      for (const g of ['rogue_0', 'rogue_1']) s.units[g].jutsus = [];
+      place(s, 'a', at);
+      return s;
+    };
+    // A guard that falls unseen leaves a body, and the stealth phase goes on.
+    const kill = sneak('genjutsu_mirage', { x: 13.25, z: 10.25 });
+    kill.units.a.saveDC = 40;
+    kill.units.rogue_0.hp = 1;
+    const k = ok(cast(kill, 'genjutsu_mirage'));
+    assert.equal(k.state.phase, 'stealth');
+    assert.equal(k.state.bodies.length, 1);
+    // One that lives shouts: the fight begins, as after a blade that didn't kill.
+    const live = sneak('genjutsu_mirage', { x: 13.25, z: 10.25 });
+    live.units.a.saveDC = 40;
+    live.units.rogue_0.hp = live.units.rogue_0.maxHp = 60;
+    const l = ok(cast(live, 'genjutsu_mirage'));
+    assert.equal(l.state.phase, 'combat');
+    assert.ok(l.events.some((e) => e.t === 'alert' && e.guard === 'rogue_0'));
+    // A save passed: no wound, but the guard saw it coming all the same.
+    live.units.a.saveDC = -40;
+    assert.equal(ok(cast(live, 'genjutsu_mirage')).state.phase, 'combat');
+    // The Bleeding Cut, struck from behind: a silent kill too.
+    const cut = sneak('kenjutsu_bleeding_cut', { x: 21.25, z: 10.25 });
+    cut.units.rogue_0.hp = 1;
+    const c = seeded(cut, (t) => cast(t, 'kenjutsu_bleeding_cut'), hits);
+    assert.equal(c.state.phase, 'stealth');
+    assert.equal(c.state.bodies.length, 1);
+    // A loud jutsu that kills starts the fight all the same (Three Embers).
+    const fire = sneak('fire_three_embers', { x: 13.25, z: 10.25 });
+    fire.units.rogue_0.hp = 1;
+    const f = seeded(fire, (t) => cast(t, 'fire_three_embers'), hits);
+    assert.equal(f.state.phase, 'combat');
+    // Like a blow, it gives a hidden caster away once it has struck; a silent heal doesn't (the Dew's test).
+    const hid = duel('genjutsu_mirage');
+    hid.units.a.cond.hidden = 15;
+    const h = ok(cast(hid, 'genjutsu_mirage'));
+    assert.equal(h.state.units.a.cond.hidden, undefined);
+    assert.ok(h.events.some((e) => e.t === 'condition' && e.unit === 'a' && e.cond === 'hidden' && !e.on));
   });
 
   it('Rush: not past 6 m, not through a wall, and not with the free interaction spent and the weapon in hand', () => {
@@ -607,6 +684,7 @@ describe('rank D and C jutsu in the log', () => {
     jolt.units.a.saveDC = 40;
     const j = ok(cast(jolt, 'lightning_jolt'));
     assert.ok(lines(j, 'es').includes('El Renegado: Entumecido'), lines(j, 'es').join(' | '));
+    assert.ok(j.events.some((e) => e.t === 'effect' && e.effect === 'jolted'));
     assert.ok(lines(j, 'en').includes('Rogue: Numb'));
     assert.ok(lines(j, 'es').some((l) => /^El Renegado recibe \d+ de rayo$/.test(l!)));
     const c = seeded(duel('kenjutsu_bleeding_cut', { x: 9.75, z: 10.25 }), (t) => cast(t, 'kenjutsu_bleeding_cut'), hits);

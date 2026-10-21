@@ -873,8 +873,25 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       hits.push(...jutsuHits(s, u, spec, target, at, ev));
   }
   if (spec.loud && s.phase === 'combat') scareAnimalsNear(s, at, 6, ev);
-  applyHits(s, hits, spec.loud ? loud(s, u) : {}, ev);
+  applyHits(s, hits, spec.loud ? loud(s, u) : silentAttack(s, u, spec, target, ev), ev);
   return null;
+}
+
+/**
+ * A silent jutsu that wounds a foe counts as an attack (the proposal's piece P6, the owner's answer
+ * for the Mirage and the Bleeding Cut): the caster gives itself away once it has struck, as with a
+ * blade, and in the stealth phase the target that survives shouts while one that falls unseen
+ * leaves a body. A silent jutsu that reaches several foes is loud there.
+ */
+function silentAttack(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | undefined, ev: BattleEvent[]): AfterHits {
+  if (spec.special || !spec.dmgType) return {};
+  reveal(u, ev);
+  if (spec.shape !== 'single' || !target || target.team === u.team) return loud(s, u);
+  if (s.phase !== 'stealth') {
+    scareAnimalsNear(s, target.pos, 4, ev);
+    return {};
+  }
+  return { stealthAttack: { attacker: u.id, target: target.id } };
 }
 
 /** Saves (or attack rolls) for everyone the jutsu reaches, plus what it does to the ground. */

@@ -19,9 +19,9 @@ const manifest = (group: string): Record<string, unknown> => JSON.parse(readFile
 describe('jutsu effects in the caster\'s chakra colour', () => {
   it('the elemental jutsu are fire, water, wind, lightning and earth by nature; sword arts, chakra and clan powers are not', () => {
     const elemental = Object.values(JUTSU).filter((j) => j.elemental).map((j) => j.id).sort();
-    for (const id of ['fireball_goukakyu', 'dragon_fire_stream', 'dragon_fire_bomb', 'great_fire_annihilation', 'katon_pursuing_flame', 'water_dragon_suiryuudan', 'water_shield_suijinheki', 'earth_wall_doryuheki', 'earth_spear_doryuudan', 'wood_dragon_jutsu', 'wood_golem_titan', 'wind_blade_daitoppa', 'rasenshuriken_wind', 'chidori_lightning_blade', 'lightning_hound_raidon', 'kirin_thunder'])
+    for (const id of ['fireball_goukakyu', 'dragon_fire_stream', 'dragon_fire_bomb', 'great_fire_annihilation', 'katon_pursuing_flame', 'water_dragon_suiryuudan', 'water_shield_suijinheki', 'earth_wall_doryuheki', 'earth_spear_doryuudan', 'wood_dragon_jutsu', 'wood_golem_titan', 'wind_blade_daitoppa', 'rasenshuriken_wind', 'chidori_lightning_blade', 'lightning_hound_raidon', 'kirin_thunder', 'mystical_palm'])
       assert.ok(elemental.includes(id), `${id} is elemental`);
-    for (const id of ['crescent_moon_dance', 'adamantine_sealing_chains', 'temple_of_nirvana', 'yasaka_magatama', 'night_guy_dragon', 'shadow_clone', 'body_flicker', 'hydra_spit', 'hydra_roar', 'mirai_evasion', 'koton_block', 'koton_wall', 'ryusei_warp', 'northstar_command', 'mystical_palm'])
+    for (const id of ['crescent_moon_dance', 'adamantine_sealing_chains', 'temple_of_nirvana', 'yasaka_magatama', 'night_guy_dragon', 'shadow_clone', 'body_flicker', 'hydra_spit', 'hydra_roar', 'mirai_evasion', 'koton_block', 'koton_wall', 'ryusei_warp', 'northstar_command'])
       assert.ok(!elemental.includes(id), `${id} is not elemental`);
     for (const id of elemental) assert.ok(['fire', 'water', 'wind', 'lightning', 'earth'].includes(JUTSU[id].element), id);
   });
@@ -64,7 +64,10 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.deepEqual(names('earth_pebble_shot'), ['vfx_dc/earth_multi_0', 'vfx_dc/earth_multi_1', 'vfx_dc/earth_multi_2', 'vfx_earth/multi_hit', 'vfx_earth/hit']);
     assert.deepEqual(names('lightning_spark_fan'), ['vfx_dc/lightning_fan', 'vfx_lightning/hit']);
     assert.deepEqual(names('kenjutsu_bleeding_cut'), [], 'the white cut has no element');
-    for (const id of ['temple_of_nirvana', 'crescent_moon_dance', 'adamantine_sealing_chains', 'hydra_spit', 'mystical_palm']) assert.deepEqual(names(id), [], id);
+    // The heals in the water aura (the owner: the Dew's aura on the Palm too): the Dew's orb, then the aura.
+    assert.deepEqual(names('water_healing_dew'), ['vfx_water/bolt', 'vfx_water/aura', 'vfx_water/aura_back']);
+    assert.deepEqual(names('mystical_palm'), ['vfx_water/aura', 'vfx_water/aura_back']);
+    for (const id of ['temple_of_nirvana', 'crescent_moon_dance', 'adamantine_sealing_chains', 'hydra_spit']) assert.deepEqual(names(id), [], id);
     for (const spec of Object.values(JUTSU))
       for (const r of tintSheetsOf(spec)) assert.ok(manifest(r.group)[r.name], `${spec.id}: ${r.group}/${r.name} is in the game`);
   });

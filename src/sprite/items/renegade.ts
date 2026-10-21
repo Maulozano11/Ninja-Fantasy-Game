@@ -6,14 +6,18 @@
 // piece with its limb (RotSprite), a lean of the torso shears it (armor.ts stampLeaning).
 //
 // His colours follow the colour slots (retintHex: at his base colour every pixel stays his), his skin
-// follows the character's skin and his black line never changes. These are male pieces: the items
-// keep their own drawing on the other bodies.
+// follows the character's skin and his black line never changes. He drew them on the male body; on the
+// bulky body (his broad man, body/bulky-v2) the same pieces are fitted to it, every pixel still his, by
+// leaving out or repeating whole columns and rows of his (fit.ts), and its own arms (his broad man's)
+// stay. The other bodies keep the items' own drawing.
 
 import { faceAnchor } from '../body';
 import { retintHex } from '../color';
 import { armDepth, armJoints, Depth, DrawCtx, handPose, legDepth, legJoints, Side } from '../ctx';
+import { centered, refit, uprightPiece } from '../fit';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
-import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, partIndex, PartId, Vec } from '../raster';
+import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, partIndex, PartId, RES, Vec } from '../raster';
+import { BODY_PARAMS, type BodyParams } from '../rig';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { stampLeaning } from './armor';
 import { BELT_BAND, BELT_ENDS, BELT_ENDS_PIECE, BELT_KIND, BELT_ROPE } from './ropeBeltArt';
@@ -38,8 +42,42 @@ function tint(kinds: Record<string, string>, to: Record<string, [string, string]
 
 const torsoAngle = (g: DrawCtx): number => segAngle(g.rig.pelvis, g.rig.neck);
 
-/** The Renegade's pieces are drawn on the male body, the one he painted. */
-export const renegadeFits = (g: DrawCtx): boolean => g.rig.body === 'male';
+/** The Renegade's pieces are drawn on the male body, the one he painted, and fitted to the bulky body. */
+export const renegadeFits = (g: DrawCtx): boolean => g.rig.body === 'male' || g.rig.body === 'bulky';
+
+const MALE = BODY_PARAMS.male;
+const ratio = (g: DrawCtx, f: (b: BodyParams) => number): number => f(g.bp) / f(MALE);
+
+/**
+ * A piece riding the torso fitted to this body: as much wider on each side of its pivot (and longer below
+ * it) as this body's torso is than the male's. On the male body, his piece as he drew it.
+ */
+function torsoFit(g: DrawCtx, p: PaintedPiece, key: string, f: { left: (b: BodyParams) => number; right: (b: BodyParams) => number; down?: (b: BodyParams) => number }): PaintedPiece {
+  if (g.rig.body === 'male') return p;
+  return refit(p, { left: ratio(g, f.left), right: ratio(g, f.right), down: f.down ? ratio(g, f.down) : 1 }, `RENEGADE_${key}@${g.rig.body}`);
+}
+
+/**
+ * A limb piece fitted to this body: turned upright, as much wider as this body's limb is there, as much
+ * longer (below the joint, or above it for a piece hanging from the ankle) as its bone, centred on the limb.
+ */
+function limbFit(g: DrawCtx, p: PaintedPiece, key: string, width: (b: BodyParams) => number, length?: (b: BodyParams) => number, above = false): PaintedPiece {
+  if (g.rig.body === 'male') return p;
+  const w = ratio(g, width);
+  const l = length ? ratio(g, length) : 1;
+  return centered(refit(uprightPiece(p), { left: w, right: w, ...(above ? { up: l } : { down: l }) }, `RENEGADE_${key}@${g.rig.body}`));
+}
+
+const tunicOn = (g: DrawCtx) => torsoFit(g, TUNIC_BODY, 'TUNIC', { left: (b) => b.shoulderHalf, right: (b) => b.chestHalf, down: (b) => b.torsoLen });
+const beltOn = (g: DrawCtx) => torsoFit(g, BELT_BAND, 'BELT', { left: (b) => b.waistHalf, right: (b) => b.waistHalf });
+const thighOn = (g: DrawCtx, s: Side) => limbFit(g, s === 'N' ? CARGO_THIGH_N : CARGO_THIGH_F, `THIGH_${s}`, (b) => b.legR[0], (b) => b.thigh);
+
+/** The belt's hanging ends, moved out with the waist on a broader body (they hang from its side). */
+function beltEndsOn(g: DrawCtx): PaintedPiece {
+  if (g.rig.body === 'male') return BELT_ENDS_PIECE;
+  const dx = Math.round((g.bp.waistHalf - MALE.waistHalf) * RES);
+  return refit(BELT_ENDS_PIECE, { shift: [dx, 0] }, `RENEGADE_BELT_ENDS@${g.rig.body}`);
+}
 
 /**
  * Stamps a piece of his head (the mask) with its pivot on our face anchor, unscaled and unturned like
@@ -91,8 +129,8 @@ const black = () => '#000000';
  */
 function trimTorso(g: DrawCtx): void {
   const r = g.rig;
-  const tunic = footprint(g, (on) => stampLeaning(on, 'torso.top', TUNIC_BODY, r.neck, torsoAngle(g), 'torso', black));
-  const belt = footprint(g, (on) => stampLeaning(on, 'waist', BELT_BAND, r.pelvis, torsoAngle(g), 'torso', black));
+  const tunic = footprint(g, (on) => stampLeaning(on, 'torso.top', tunicOn(g), r.neck, torsoAngle(g), 'torso', black));
+  const belt = footprint(g, (on) => stampLeaning(on, 'waist', beltOn(g), r.pelvis, torsoAngle(g), 'torso', black));
   const far = new Int16Array(GRID).fill(-1);
   const low = new Int16Array(GRID).fill(-1);
   for (let i = 0; i < GRID * GRID; i++) {
@@ -122,7 +160,7 @@ function trimTorso(g: DrawCtx): void {
  */
 function trimFarThigh(g: DrawCtx): void {
   const { hip, knee } = legJoints(g.rig, 'F');
-  const leg = footprint(g, (on) => stampPiece(on, 'farLeg.cloth', CARGO_THIGH_F, hip, segAngle(hip, knee), 'thighF', black));
+  const leg = footprint(g, (on) => stampPiece(on, 'farLeg.cloth', thighOn(g, 'F'), hip, segAngle(hip, knee), 'thighF', black));
   const top = new Int16Array(GRID).fill(-1);
   for (let i = GRID * GRID - 1; i >= 0; i--) if (leg.mat[i] >= 0) top[i % GRID] = Math.floor(i / GRID);
   const thigh = partIndex('thighF');
@@ -134,13 +172,15 @@ function trimFarThigh(g: DrawCtx): void {
 
 /**
  * His sleeveless tunic over the torso and his bare arms: each upper arm about its shoulder, each
- * forearm about its elbow, each fist about its wrist. His skin follows the character's.
+ * forearm about its elbow, each fist about its wrist. His skin follows the character's. The bulky body
+ * keeps its own arms (his broad man's).
  */
 export function drawTunicPieces(g: DrawCtx, cloth: string): void {
   const r = g.rig;
   const color = tint(TUNIC_KIND, { cloth: [TUNIC_CLOTH, cloth], skin: [TUNIC_SKIN, g.look.skin] });
   trimTorso(g);
-  stampLeaning(g, 'torso.top', TUNIC_BODY, r.neck, torsoAngle(g), 'torso', color);
+  stampLeaning(g, 'torso.top', tunicOn(g), r.neck, torsoAngle(g), 'torso', color);
+  if (r.body !== 'male') return;
   const arms: [Side, PaintedPiece, PaintedPiece, PaintedPiece][] = [
     ['F', TUNIC_UPPER_F, TUNIC_FORE_F, TUNIC_FIST_F],
     ['N', TUNIC_UPPER_N, TUNIC_FORE_N, TUNIC_FIST_N],
@@ -156,8 +196,8 @@ export function drawTunicPieces(g: DrawCtx, cloth: string): void {
 /** His woven rope band round the waist and the knot's hanging ends, riding the torso. */
 export function drawRopeBeltPieces(g: DrawCtx, rope: string, ends: string): void {
   const r = g.rig;
-  stampLeaning(g, 'waist', BELT_ENDS_PIECE, r.pelvis, torsoAngle(g), 'torso', tint(BELT_KIND, { cloth: [BELT_ENDS, ends] }));
-  stampLeaning(g, 'waist', BELT_BAND, r.pelvis, torsoAngle(g), 'torso', tint(BELT_KIND, { cloth: [BELT_ROPE, rope] }));
+  stampLeaning(g, 'waist', beltEndsOn(g), r.pelvis, torsoAngle(g), 'torso', tint(BELT_KIND, { cloth: [BELT_ENDS, ends] }));
+  stampLeaning(g, 'waist', beltOn(g), r.pelvis, torsoAngle(g), 'torso', tint(BELT_KIND, { cloth: [BELT_ROPE, rope] }));
 }
 
 /** His cargo trousers: the seat riding the torso, each thigh about its hip and each shin about its knee. */
@@ -165,16 +205,14 @@ export function drawCargoPieces(g: DrawCtx, cloth: string): void {
   const r = g.rig;
   const color = tint(CARGO_KIND, { cloth: [CARGO_CLOTH, cloth] });
   trimFarThigh(g);
-  const legs: [Side, PaintedPiece, PaintedPiece][] = [
-    ['F', CARGO_THIGH_F, CARGO_SHIN_F],
-    ['N', CARGO_THIGH_N, CARGO_SHIN_N],
-  ];
-  for (const [s, thigh, shin] of legs) {
+  for (const s of ['F', 'N'] as Side[]) {
     const { hip, knee, ankle } = legJoints(r, s);
-    stampPiece(g, legDepth(s, 'cloth'), thigh, hip, segAngle(hip, knee), `thigh${s}` as PartId, color);
+    const shin = limbFit(g, s === 'N' ? CARGO_SHIN_N : CARGO_SHIN_F, `SHIN_${s}`, (b) => b.legR[2], (b) => b.shin);
+    stampPiece(g, legDepth(s, 'cloth'), thighOn(g, s), hip, segAngle(hip, knee), `thigh${s}` as PartId, color);
     stampPiece(g, legDepth(s, 'cloth'), shin, knee, segAngle(knee, ankle), `shin${s}` as PartId, color);
   }
-  stampLeaning(g, 'torso.bottom', CARGO_SEAT, r.pelvis, torsoAngle(g), 'pelvis', color);
+  const seat = torsoFit(g, CARGO_SEAT, 'SEAT', { left: (b) => b.hipHalf, right: (b) => b.hipHalf });
+  stampLeaning(g, 'torso.bottom', seat, r.pelvis, torsoAngle(g), 'pelvis', color);
 }
 
 /** His wrapped sandals: each shin's wraps turn with the shin about the ankle, each sandal stays flat on the ground. */
@@ -184,8 +222,11 @@ export function drawWrapSandalPieces(g: DrawCtx, wrap: string): void {
     ['F', WRAP_SHIN_F, WRAP_FOOT_F],
     ['N', WRAP_SHIN_N, WRAP_FOOT_N],
   ];
-  for (const [s, shin, foot] of legs) {
+  for (const [s, shin0, foot0] of legs) {
     const { knee, ankle } = legJoints(g.rig, s);
+    const shin = limbFit(g, shin0, `WRAP_SHIN_${s}`, (b) => b.legR[2], undefined, true);
+    // The sandal stays flat on the ground: as much broader as this body's foot is longer.
+    const foot = g.rig.body === 'male' ? foot0 : refit(foot0, { left: ratio(g, (b) => b.footLen), right: ratio(g, (b) => b.footLen) }, `RENEGADE_WRAP_FOOT_${s}@${g.rig.body}`);
     stampPiece(g, legDepth(s, 'feet'), shin, ankle, segAngle(knee, ankle), `shin${s}` as PartId, color);
     stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}` as PartId, color);
   }

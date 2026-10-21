@@ -139,7 +139,8 @@ folders.
   the belt) goes with each piece it borders. Where a piece is hidden in his picture and shows in other poses, it is filled from his pixels: the
   hair behind the forehead, the belt's ends behind the fist, the kunai's handle in the fist. Each module exports the colours its slots recolour
   from (`*_CLOTH`, `TUNIC_SKIN`...), what each colour of his is (`*_KIND`) and where each piece lands at rest (`*_REST`, checked by
-  `src/sprite/renegade.test.ts`); the items draw them in `src/sprite/items/renegade.ts`. The same picture always gives the same bytes.
+  `src/sprite/renegade.test.ts`); the items draw them in `src/sprite/items/renegade.ts`, on the bulky body fitted to it with `src/sprite/fit.ts`
+  (whole columns and rows of his left out or repeated; the bulky body keeps its own arms). The same picture always gives the same bytes.
 
       python3 -I tools/refs/renegade-hair-from-ref.py src/sprite/items/renegadeHairArt.ts [studyDir]
       python3 -I tools/refs/renegade-mask-from-ref.py src/sprite/items/clothMaskArt.ts [studyDir]

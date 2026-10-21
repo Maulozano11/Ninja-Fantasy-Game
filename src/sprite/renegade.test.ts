@@ -92,6 +92,17 @@ describe('the Renegade', () => {
     }
   });
 
+  it('dresses the bulky body in the same pieces, fitted to it (his colours, the bulky arms its own)', () => {
+    const f = renderSprite(renegade('bulky'), 'idle', 0);
+    const seen = new Set<string>();
+    for (let i = 0; i < GRID * GRID; i++) if (f.rgba[i * 4 + 3] > 0) seen.add('#' + [0, 1, 2].map((k) => f.rgba[i * 4 + k].toString(16).padStart(2, '0')).join(''));
+    for (const [name, piece] of [['tunic', tunic.TUNIC_BODY], ['belt', belt.BELT_BAND], ['trousers', cargo.CARGO_THIGH_F], ['wraps', wraps.WRAP_SHIN_F], ['mask', mask.CLOTH_MASK]] as [string, PaintedPiece][]) {
+      const his = Object.values(piece.colors);
+      const shown = his.filter((h) => seen.has(h)).length;
+      assert.ok(shown >= his.length * 0.8, `${name}: ${shown} of his ${his.length} colours on the bulky body`);
+    }
+  });
+
   it('keeps every part on the body in every pose: nothing comes loose, the kunai stays in the fist', () => {
     // (cast draws its runes apart from the body)
     const poses = [...SPRITE_POSES, ...MOVE_POSES].filter((p) => p !== 'cast') as SpritePose[];

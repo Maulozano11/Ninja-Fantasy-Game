@@ -53,7 +53,8 @@ describe('female bodies at the owner\'s game scale', () => {
         const male = rows('male', pose, f)[1];
         for (const body of ['female', 'slender'] as BodyType[]) {
           const m = drawRig('male', pose, f).pelvis.y;
-          assert.ok(Math.abs(drawRig(body, pose, f).pelvis.y - m) * RES < 3, `${body} ${pose} ${f} hips`);
+          // the female hips settle up to two pixels further into the seat (rig.ts SEAT_SINK)
+          assert.ok(Math.abs(drawRig(body, pose, f).pelvis.y - m) * RES <= 4, `${body} ${pose} ${f} hips`);
           assert.ok(Math.abs(rows(body, pose, f)[1] - male) <= 1, `${body} ${pose} ${f} soles`);
         }
       }
@@ -99,24 +100,26 @@ describe('female bodies at the owner\'s game scale', () => {
     }
   });
 
-  it('hangs the far arm where his heroines draw it: the elbow out from the body, the fist lower', () => {
-    // His far arms (Lyra, Aurelia, Saya at our scale, docs/reference/*-game-scale-owner-reference.jpg)
-    // hang nearly straight, the elbow out from the waist and the fist's lowest row 178-181.
+  it('hangs both arms where his heroines draw them', () => {
+    // His heroines at our scale (docs/reference/*-game-scale-owner-reference.jpg, his pixel (x, y) at
+    // our (x + 73, y + 120)): Lyra's elbows at (110, 165.5) and (136, 166), the elbow at the waist;
+    // Lyra's and Aurelia's near hands about (107, 175); the far fists of all three about (140, 176.5).
+    const near = (a: { x: number; y: number }, x: number, y: number, d: number) => Math.hypot(a.x * RES - x, a.y * RES - y) <= d;
     for (const body of ['female', 'slender'] as BodyType[]) {
       const r = drawRig(body, 'idle', 0);
-      const male = drawRig('male', 'idle', 0);
-      // the elbow lies on the outer side of the line from the shoulder to the wrist
-      const cross = (r.wristF.x - r.shoulderF.x) * (r.elbowF.y - r.shoulderF.y) - (r.wristF.y - r.shoulderF.y) * (r.elbowF.x - r.shoulderF.x);
-      assert.ok(cross < 0, `${body}: the far elbow bends out`);
-      assert.ok((r.elbowF.x - r.shoulderF.x) * RES >= 5, `${body}: the far elbow ${(r.elbowF.x - r.shoulderF.x) * RES} px out`);
+      assert.ok(near(r.elbowN, 110, 165.5, 2), `${body}: near elbow ${r.elbowN.x * RES}, ${r.elbowN.y * RES}`);
+      assert.ok(near(r.elbowF, 136, 166, 2), `${body}: far elbow ${r.elbowF.x * RES}, ${r.elbowF.y * RES}`);
+      assert.ok(near(r.handN, 107, 175, 2), `${body}: near hand ${r.handN.x * RES}, ${r.handN.y * RES}`);
+      assert.ok(near(r.handF, 140, 176.5, 2.5), `${body}: far hand ${r.handF.x * RES}, ${r.handF.y * RES}`);
       const f = renderSprite(bare(body), 'idle', 0);
       const hand = partIndex('handF');
       let low = -1;
       for (let i = 0; i < GRID * GRID; i++) if (f.rgba[i * 4 + 3] && f.part[i] === hand) low = Math.max(low, (i / GRID) | 0);
-      assert.ok(low >= 177 && low <= 181, `${body}: far fist's lowest row ${low}`);
-      // the male rig keeps its far arm
-      assert.ok(Math.abs(male.elbowF.x - male.shoulderF.x) * RES < 4);
+      assert.ok(low >= 176 && low <= 181, `${body}: far fist's lowest row ${low}`);
     }
+    // the male rig keeps its arms
+    const male = drawRig('male', 'idle', 0);
+    assert.ok(Math.abs(male.elbowF.x - male.shoulderF.x) * RES < 4);
   });
 
   it('keeps every bare hand whole and the near shoulder lined in every pose and frame', () => {

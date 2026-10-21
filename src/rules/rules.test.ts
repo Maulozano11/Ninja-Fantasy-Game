@@ -203,6 +203,8 @@ describe('clans', () => {
       preset_warlord: [42, 36, 17, 16, 8],
       preset_gentle: [38, 32, 16, 15, 7],
       preset_night: [44, 38, 16, 16, 8],
+      // The heroines are not his hand-made numbers: the creator's formula for their sheets.
+      preset_elise: [44, 36, 18, 15, 7],
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(owner).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {

@@ -157,8 +157,8 @@ folders.
 - `scarlet-lower-from-ref.py`: his pinstripe trousers (`bottom_pinstripe`) and his belt
   (`waist_noble_belt`). The trousers keep our cloth's shape and take his colours by the tone our light
   gives each pixel, his stripes running along each thigh and shin; the belt is a strap in his blacks
-  under the coat, with his ring buckle, gold cross and red tassel where the reduced reference has
-  them. It writes `src/sprite/items/scarletLowerArt.ts`.
+  under the coat, with his ring buckle, gold cross, red tassel and the small gold star inside the
+  coat's near edge where the reduced reference has them. It writes `src/sprite/items/scarletLowerArt.ts`.
 
       python3 -I tools/refs/scarlet-lower-from-ref.py src/sprite/items/scarletLowerArt.ts <study>
 

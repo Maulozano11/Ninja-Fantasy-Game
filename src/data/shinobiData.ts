@@ -954,7 +954,8 @@ function spriteLook(o: Partial<SpriteAppearance>): SpriteAppearance {
  * The legendary presets. Their numbers are hand-made by the owner, with the clan's ability bonus
  * counted in (docs/CLANS_DESIGN.md, D2): each number is his plus exactly what the bonus adds to the
  * creator's formula (Solen, Akira, Aiden and Ren +1 AC, jutsu DC and attack; Kaien and Raiga +1 AC;
- * Hiro +4 max HP and +1 max chakra; Shiori nothing). rules.test.ts pins his numbers.
+ * Hiro +4 max HP and +1 max chakra; Shiori nothing). rules.test.ts pins his numbers. Valen's are
+ * the creator's formula as it stands (he has given none yet).
  */
 export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; tagEs?: string; character: ShinobiCharacter }[] = [
   {
@@ -1157,6 +1158,78 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           held: it('held_flame_sword'),
         },
         chakra: { color: 'red', onCharge: true, onCast: true, onVictory: true },
+      }),
+    },
+  },
+  {
+    // Provisional name and title: the owner will rename him (the id does not carry the name).
+    name: 'Valen, the Scarlet Duke',
+    tag: "Duke's Greatcoat · Scarlet Edge",
+    nameEs: 'Valen, el Duque Escarlata',
+    tagEs: 'Abrigo del duque · Filo escarlata',
+    character: {
+      id: 'preset_reference_scarlet',
+      name: 'Valen',
+      title: 'The Scarlet Duke',
+      level: 5,
+      clan: 'Ryusei',
+      shinobiClass: 'Bukijutsu Master',
+      stats: { str: 14, dex: 16, con: 14, int: 14, wis: 12, cha: 16 },
+      palette: {
+        skinTone: '#f8d4b8',
+        hairColor: '#87324c',
+        eyeColor: '#c88038',
+        armorPrimary: '#1a191e',
+        armorSecondary: '#7c1e2c',
+        clothColor: '#252328',
+        headbandCloth: '#1e293b',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#ef4444',
+        accentColor: '#846542',
+      },
+      hairstyle: 'Squall Modern Fringe',
+      armorStyle: 'Samurai O-Yoroi',
+      headbandPosition: 'Neck',
+      weaponStyle: 'Katana Blade',
+      capeStyle: 'None',
+      dojutsu: 'None',
+      selectedFeats: ['one_handed_seals', 'sharingan_precog'],
+      selectedJutsus: {
+        slot1Utility: 'substitution_kawarimi',
+        slot2Elemental: 'crescent_moon_dance',
+        slot3Elemental: 'dragon_fire_stream',
+        slot4Clan: 'wood_dragon_jutsu',
+        slot5Ultimate: 'great_fire_annihilation',
+      },
+      sheetVersion: 2,
+      maxHp: 44,
+      currentHp: 44,
+      maxChakra: 32,
+      currentChakra: 32,
+      armorClass: 18,
+      speed: 6,
+      jutsuSaveDC: 15,
+      jutsuAttackBonus: 7,
+      // The owner's Scarlet (docs/reference/scarlet-owner-reference.jpg, 2026-10-21), brought down to
+      // our scale part by part: his face and eyes, hair, shirt and cravat, greatcoat, pinstripe
+      // trousers, belt, gloves, boots and sword, in his colours. No cape (the owner did not want it)
+      // and no chakra burst on him (the owner: no ki burst). His numbers are the creator's formula.
+      appearance: spriteLook({
+        skin: '#f8d4b8',
+        faceShape: 'noble',
+        eyeShape: 'noble',
+        eyeColor: '#c88038',
+        slots: {
+          hair: it('hair_scarlet'),
+          top: it('top_noble_shirt'),
+          bottom: it('bottom_pinstripe'),
+          armor: it('armor_scarlet_coat'),
+          waist: it('waist_noble_belt'),
+          hands: it('hands_noble_fingerless'),
+          feet: it('feet_noble_boots'),
+          held: it('held_scarlet_sword'),
+        },
+        chakra: { color: 'red', onCharge: false, onCast: false, onVictory: false },
       }),
     },
   },

@@ -5,7 +5,7 @@ import { describe, it } from 'node:test';
 import { rgbToHex } from './color';
 import { renderSprite } from './compose';
 import { PARTS } from './raster';
-import { BELT_BUCKLE, BELT_CORD, BELT_CROSS, PIN_CLOTH_TONES, PIN_LINE, PIN_STRIPE_TONES } from './items/scarletLowerArt';
+import { BELT_BUCKLE, BELT_CORD, BELT_CROSS, BELT_STAR, PIN_CLOTH_TONES, PIN_LINE, PIN_STRIPE_TONES } from './items/scarletLowerArt';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
 const look = (body: BodyType, slots: SpriteAppearance['slots']): SpriteAppearance => ({
@@ -64,13 +64,14 @@ describe('pinstripe trousers', () => {
 });
 
 describe('noble belt', () => {
-  it("puts his ring buckle, cross and tassel where the reduced reference has them at rest", () => {
+  it("puts his ring buckle, cross, tassel and star where the reduced reference has them at rest", () => {
     const f = renderSprite(look('male', LOWER), 'idle', 0);
     // their boxes' top left corners in the reduced reference (tools/refs/scarlet-lower-from-ref.py)
     for (const [piece, x0, y0] of [
       [BELT_BUCKLE, 128, 172],
       [BELT_CROSS, 124, 176],
       [BELT_CORD, 134, 176],
+      [BELT_STAR, 122, 182],
     ] as const)
       piece.rows.forEach((row, dy) =>
         [...row].forEach((ch, dx) => {

@@ -198,6 +198,7 @@ describe('clans', () => {
       preset_founder: [56, 44, 19, 17, 9],
       preset_ember: [38, 30, 18, 15, 7],
       preset_reference_aiden: [48, 34, 18, 15, 8],
+      preset_reference_scarlet: [44, 32, 17, 14, 6], // the formula's: the owner has given none yet
       preset_storm: [32, 28, 15, 15, 7],
       preset_sunburst: [44, 42, 14, 14, 6],
       preset_warlord: [42, 36, 17, 16, 8],

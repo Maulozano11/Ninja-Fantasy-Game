@@ -24,7 +24,7 @@ import {
 } from './nobleShirtArt';
 import { NOBLE_GLOVE_F, NOBLE_GLOVE_LEATHER, NOBLE_GLOVE_N, NOBLE_GLOVE_TONES, NOBLE_HAND_SKIN, NOBLE_KIND } from './nobleBootsGlovesArt';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
-import { BELT_AT, BELT_BUCKLE, BELT_CORD, BELT_CROSS, BELT_GOLD, BELT_KIND, BELT_LEATHER, BELT_RED, BELT_TONES, PIN_CLOTH, PIN_CLOTH_TONES, PIN_GAP, PIN_LINE, PIN_STRIPE, PIN_STRIPE_TONES } from './scarletLowerArt';
+import { BELT_AT, BELT_BUCKLE, BELT_CORD, BELT_CROSS, BELT_GOLD, BELT_KIND, BELT_LEATHER, BELT_RED, BELT_STAR, BELT_TONES, PIN_CLOTH, PIN_CLOTH_TONES, PIN_GAP, PIN_LINE, PIN_STRIPE, PIN_STRIPE_TONES } from './scarletLowerArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1885,9 +1885,9 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
 /**
  * His belt (his colours laid on as on his trousers): a slim strap round the waist, drawn at the
  * skirts' depth, over the shirt and under a coat (torso.armor), so with his coat on it shows only in
- * the coat's opening as in his picture. His ring buckle sits on the front; his cross and his tassel
- * hang straight down from where they are tied on. At rest every ornament pixel is where the reduced
- * reference has it.
+ * the coat's opening as in his picture. His ring buckle sits on the front; his cross, his tassel
+ * and the small star inside the coat's near edge hang straight down from where they are tied on. At
+ * rest every ornament pixel is where the reduced reference has it.
  */
 function drawNobleBelt(g: DrawCtx, leather: string, gold: string, tassel: string): void {
   const L = g.L('skirt');
@@ -1914,6 +1914,7 @@ function drawNobleBelt(g: DrawCtx, leather: string, gold: string, tassel: string
     [BELT_BUCKLE, BELT_AT.buckle],
     [BELT_CROSS, BELT_AT.cross],
     [BELT_CORD, BELT_AT.tassel],
+    [BELT_STAR, BELT_AT.star],
   ] as const) {
     const pal: TemplatePalette = {};
     for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(tint(ch, hex), 'flat'), 3];

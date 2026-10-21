@@ -45,6 +45,7 @@ export const BELT_AT = {
   buckle: [1.8077, 1.6229],
   cross: [-0.2434, 0.1936],
   tassel: [3.7542, 0.0540],
+  star: [-2.3469, -2.7348],
 } as const;
 
 /** His ring buckle on the front of the belt, its dark hole inside. */
@@ -109,5 +110,20 @@ export const BELT_CORD: PaintedPiece = {
     u: '#7c1e2c',
     D: '#9e3b41',
     J: '#846542',
+  },
+};
+
+/** His small gold star hanging just inside the coat's near edge. */
+export const BELT_STAR: PaintedPiece = {
+  pivot: [0, 0],
+  angle: 0.00,
+  rows: [
+    'FJ',
+    'JO',
+  ],
+  colors: {
+    F: '#70583c',
+    J: '#846542',
+    O: '#947650',
   },
 };

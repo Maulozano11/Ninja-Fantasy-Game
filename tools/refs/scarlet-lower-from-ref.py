@@ -14,14 +14,14 @@ so nothing here is his pixels 1:1. What it lifts out, every colour one of his (P
                 the ring buckle on the front, the cross hanging over the near thigh, and the far
                 tassel under its gold knot. The tassel's reds are his: the study's block medians mix
                 his thin red cord with the black round it, so each of its 5 rows takes the commonest
-                red of the matching fifth of his cord, top to bottom, in his picture.
+                red of the matching fifth of his cord, top to bottom, in his picture. And the small
+                gold star just inside his coat's near edge (his pixels 70-74, 116-119): it hangs over
+                the trousers, a pixel clear of the coat's trim, so the coat leaves it out
+                (scarlet-upper-from-ref.py, BELT_HANG) and the belt carries it.
   the anchors   where each ornament hangs, in our torso's own frame (design units from the pelvis
                 along rig.right and rig.up), found on our male at idle (scarlet_ref.OUR_JOINTS, his
                 torso leaning IDLE_LEAN): at rest every ornament pixel is where the reduced reference
                 has it.
-
-The small gold star just inside his coat's near edge (his pixels 70-74, 116-119) touches his coat's
-trim and is the coat's, like the two above it on the lapel: it is not taken here.
 
 It writes the TypeScript module (src/sprite/items/scarletLowerArt.ts) and, in <study>, the ornaments
 at 8x next to the reduced reference's waist. The same picture always gives the same bytes:
@@ -77,6 +77,7 @@ ORNAMENTS = {
     'buckle': ((128, 172, 132, 175), (130, 173)),
     'cross': ((124, 176, 128, 183), (126, 176)),
     'tassel': ((134, 176, 134, 181), (134, 176)),
+    'star': ((122, 182, 123, 183), (122, 182)),
 }
 GOLD = 'FJOSXvy'
 DARK = 'ad'
@@ -224,8 +225,9 @@ def main(out_ts, study):
         'buckle': 'His ring buckle on the front of the belt, its dark hole inside.',
         'cross': 'His gold cross hanging from the belt over the near thigh: a small cross on the big one, the long stem.',
         'tassel': 'His far gold knot and the red tassel under it.',
+        'star': "His small gold star hanging just inside the coat's near edge.",
     }
-    names = {'buckle': 'BELT_BUCKLE', 'cross': 'BELT_CROSS', 'tassel': 'BELT_CORD'}
+    names = {'buckle': 'BELT_BUCKLE', 'cross': 'BELT_CROSS', 'tassel': 'BELT_CORD', 'star': 'BELT_STAR'}
     for name, (rows, origin, colors, pivot) in pieces.items():
         out.append(ts_piece(names[name], docs[name], rows, origin, colors, pivot, 0))
     text = '\n'.join(out).rstrip('\n') + '\n'

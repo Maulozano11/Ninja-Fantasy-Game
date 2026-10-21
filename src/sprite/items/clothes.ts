@@ -10,6 +10,7 @@ import { PaintedPiece, segAngle } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
+import { LYRA_BLOUSE_ITEM } from './lyraUpper';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1250,6 +1251,8 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       highCollar(g, c, 4, 1.2);
     },
   },
+  // Lyra's blouse, the owner's pixels (items/lyraUpper.ts)
+  LYRA_BLOUSE_ITEM,
 ]);
 
 // ---------------------------------------------------------------------------

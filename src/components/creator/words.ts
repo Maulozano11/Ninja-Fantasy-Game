@@ -107,6 +107,7 @@ const ES: Record<string, string> = {
   Studs: 'Tachas',
   Sole: 'Suela',
   Lining: 'Forro',
+  Blouse: 'Blusa',
   Gold: 'Oro',
   Dress: 'Vestido',
   Cape: 'Capa',

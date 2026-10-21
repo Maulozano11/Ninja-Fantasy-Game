@@ -35,6 +35,7 @@ import {
   PLATE_VAMBRACE_N,
   PLATE_WAIST,
 } from './crimsonPlateArt';
+import { LYRA_CORSET_ITEM } from './lyraUpper';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2611,6 +2612,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
     statsArmor: 'Dark Knight Plate',
     draw: (g, [steel, trim]) => drawCrimsonPlate(g, steel, trim),
   },
+  // Lyra's corset, pauldron and bracers, the owner's pixels (items/lyraUpper.ts)
+  LYRA_CORSET_ITEM,
 ];
 
 // ---------------------------------------------------------------------------

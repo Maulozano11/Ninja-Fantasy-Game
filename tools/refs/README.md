@@ -110,6 +110,17 @@ folders.
 
       python3 -I tools/refs/poison-from-ref.py docs/reference/poison-set-owner-reference.jpg tools/world-sprites/vfx-poison-v3-refdata.ts <character.png> [reviewDir]
 
+- `lyra-upper-from-ref.py` → `src/sprite/items/lyraUpperArt.ts`: Lyra's blouse (`top_offshoulder_blouse`)
+  and her corset, pauldron and bracers (`armor_gilded_corset`), lifted 1:1 from the owner's picture of her
+  at our game's scale (`docs/reference/lyra-game-scale-owner-reference.jpg`: 19.32 picture pixels to one of
+  ours, phase 0; his pixel (x, y) is our (x + 74, y + 121)). `OWN` says per row which of his pixels each
+  piece takes; the parts his picture hides (under the braid, the blouse under the corset, the sleeves under
+  the bracers, the far forearm behind the pouch) continue his pixels. One painted piece per segment of our
+  female rig, pivot on its joint at idle, so at idle every pixel of his is where he drew it. It checks that,
+  and writes `hers-vs-pieces@8.png` into `<out>`.
+
+      python3 -I tools/refs/lyra-upper-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraUpperArt.ts
+
 - `heroine_ref.py`, `heroine-study.py`, `heroine_paint.py`, `heroine-proportions.py`,
   `heroine-idle.mts`: the study of the owner's four heroines (`docs/reference/{lyra,elise,saya,aurelia}-owner-reference.jpg`),
   the base every heroine part builds on. His pictures are his own pixel art at 2.2 to 2.8 of his

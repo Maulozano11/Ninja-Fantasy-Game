@@ -4,9 +4,12 @@
 // turns rigidly about our joint as our limb turns.
 
 import { retintHex } from '../color';
-import type { Depth, DrawCtx } from '../ctx';
-import type { PaintedPiece } from '../painted';
-import { GRID, partIndex, type PartId } from '../raster';
+import { armJoints, legJoints, type Depth, type DrawCtx, type Side } from '../ctx';
+import { type PaintedPiece, segAngle } from '../painted';
+import { GRID, partIndex, type PartId, RES, type Vec } from '../raster';
+import { rotateTemplate } from '../rotsprite';
+import { drawRig, type Rig } from '../rig';
+import type { BodyType } from '../types';
 
 /** The skin he painted over (Solen's, which our render wore): in it, his skin pixels are his. */
 export const YOUTH_SKIN = '#f3c39c';
@@ -69,4 +72,54 @@ export function broadened(p: PaintedPiece, left: number, right: number, down = 0
   let py = p.pivot[1];
   for (const j of rows) if (j < p.pivot[1]) py++;
   return { ...p, rows: out, pivot: [px, py] };
+}
+
+const IDLE = new Map<BodyType, Rig>();
+const idleRig = (body: BodyType): Rig => {
+  let r = IDLE.get(body);
+  if (!r) IDLE.set(body, (r = drawRig(body, 'idle', 0)));
+  return r;
+};
+
+/** An angle wrapped into -180..180 degrees. */
+const wrap180 = (a: number) => ((((a + 180) % 360) + 360) % 360) - 180;
+
+/**
+ * How far an arm bends past the way he drew it (degrees, the torso's turn taken off): `shoulder` turns its
+ * upper arm back to where it hangs at rest, `elbow` turns its upper arm on about the elbow until the elbow
+ * is bent as at rest (what stampBent sweeps his cells through).
+ */
+export function wildArmBends(r: Rig, s: Side): { shoulder: number; elbow: number } {
+  const idle = idleRig(r.body);
+  const t = segAngle(r.pelvis, r.neck) - segAngle(idle.pelvis, idle.neck);
+  const j = armJoints(r, s);
+  const j0 = armJoints(idle, s);
+  const upper = segAngle(j.shoulder, j.elbow);
+  const upper0 = segAngle(j0.shoulder, j0.elbow);
+  return {
+    shoulder: wrap180(upper0 + t - upper),
+    elbow: wrap180(segAngle(j.elbow, j.wrist) - upper - (segAngle(j0.elbow, j0.wrist) - upper0)),
+  };
+}
+
+/**
+ * How far a leg bends past the way he drew it (degrees): `hip` turns its thigh back to where it stands at
+ * rest, `knee` turns its thigh on about the knee until the knee is bent as at rest (see stampBent).
+ */
+export function youthLegBends(r: Rig, s: Side): { hip: number; knee: number } {
+  const idle = idleRig(r.body);
+  const j = legJoints(r, s);
+  const j0 = legJoints(idle, s);
+  const thigh = segAngle(j.hip, j.knee);
+  const thigh0 = segAngle(j0.hip, j0.knee);
+  return { hip: wrap180(thigh0 - thigh), knee: wrap180(segAngle(j.knee, j.ankle) - thigh - (segAngle(j0.knee, j0.ankle) - thigh0)) };
+}
+
+/** The fine pixels (y * GRID + x) a piece stamped at `at` along `deg` covers (stampPiece). */
+export function stampCells(piece: PaintedPiece, at: Vec, deg: number): Set<number> {
+  const ax = Math.floor(at.x * RES);
+  const ay = Math.floor(at.y * RES);
+  const out = new Set<number>();
+  for (const p of rotateTemplate(piece, deg - piece.angle)) out.add((ay + p.dy) * GRID + ax + p.dx);
+  return out;
 }

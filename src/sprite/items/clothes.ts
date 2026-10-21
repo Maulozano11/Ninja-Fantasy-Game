@@ -6,7 +6,7 @@
 
 import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
-import { PaintedPiece, segAngle, stampPiece } from '../painted';
+import { PaintedPiece, segAngle, stampBent, stampPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
@@ -22,19 +22,9 @@ import {
   SHINOBI_PANTS_THIGH_N,
   SHINOBI_PANTS_WRAP,
 } from './shinobiPantsArt';
-import {
-  WILD_FIST_F,
-  WILD_FIST_N,
-  WILD_JACKET_BLUE,
-  WILD_JACKET_BODY,
-  WILD_JACKET_SHIRT,
-  WILD_JACKET_SLOT,
-  WILD_SLEEVE_FORE_F,
-  WILD_SLEEVE_FORE_N,
-  WILD_SLEEVE_UP_F,
-  WILD_SLEEVE_UP_N,
-} from './wildJacketArt';
-import { broadened, partsOff, savedAsHis, slotTint } from './youthKit';
+import { WILD_JACKET_BLUE, WILD_JACKET_BODY, WILD_JACKET_SHIRT, WILD_JACKET_SLOT } from './wildJacketArt';
+import { drawWildArm } from './wildArms';
+import { broadened, savedAsHis, slotTint, stampCells, youthLegBends } from './youthKit';
 import { isFemaleBody } from '../types';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -1312,12 +1302,12 @@ function torsoOff(g: DrawCtx): void {
 
 /**
  * The owner's open jacket from his Joven salvaje paint-over (2026-10-21; wildJacketArt.ts,
- * tools/refs/youth-jacket-from-ref.py): the body rides the torso about the neck, each sleeve's upper part
- * its upper arm about the shoulder and its forearm part (with the cuff) its forearm about the elbow, over
- * our arms (taken away under them: in every pose the arms are his sleeves, at his thickness, turned
- * rigidly about our joints). A closed hand is his bare fist under the cuff, in the character's skin (with
- * gloves on, the gloves draw the hands). The bulky body gets his jacket and sleeves broadened over its
- * broader torso and arms, and keeps its own big hands.
+ * tools/refs/youth-jacket-from-ref.py): the body rides the torso about the neck; each arm is his sleeves
+ * and his bare fist turned whole about our joints, our arm taken away under them (wildArms.ts
+ * drawWildArm: in every pose the arms are his sleeves at his thickness, folding round the elbow and the
+ * shoulder, and every hand but an open one is his fist, in the character's skin; with gloves on, the
+ * gloves draw the hands). The bulky body gets his jacket, sleeves and fists broadened over its broader
+ * torso and arms.
  */
 /** How far under our neck joint (design units) his shirt's neckline is, at rest. */
 const WILD_NECKLINE = 2.5;
@@ -1326,22 +1316,8 @@ function drawWildJacket(g: DrawCtx, blue: string, grey: string): void {
   const r = g.rig;
   const tint = slotTint(g, WILD_JACKET_SLOT, { main: WILD_JACKET_BLUE, under: WILD_JACKET_SHIRT }, { main: blue, under: grey });
   const big = r.body === 'bulky';
-  const fit = (q: PaintedPiece) => (big ? broadened(q, 2, 2) : q);
   torsoOff(g);
-  for (const s of SIDES) {
-    const j = armJoints(r, s);
-    partsOff(g, [armDepth(s, 'body')], [prt('upperArm', s), prt('forearm', s)]);
-    const [up, fore, fist] = s === 'N' ? [WILD_SLEEVE_UP_N, WILD_SLEEVE_FORE_N, WILD_FIST_N] : [WILD_SLEEVE_UP_F, WILD_SLEEVE_FORE_F, WILD_FIST_F];
-    stampPiece(g, armDepth(s, 'cloth'), fit(fore), j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
-    stampPiece(g, armDepth(s, 'cloth'), fit(up), j.shoulder, segAngle(j.shoulder, j.elbow), prt('upperArm', s), tint);
-    // His fists are closed and empty: a hand that grips, makes a fist or hangs closed ('hold', as in
-    // idle) is his; an open, pointing, relaxed or cradling hand is our hand picture in the skin.
-    const { kind } = handPose(g, s);
-    if (!big && !g.has('hands') && (kind === 'grip' || kind === 'fist' || j.shape === 'hold')) {
-      bareHandOff(g, s);
-      paintedFist(g, s, fist, tint);
-    }
-  }
+  for (const s of SIDES) drawWildArm(g, s, tint);
   stampPiece(g, 'torso.top', big ? broadened(WILD_JACKET_BODY, 4, 5, 1) : WILD_JACKET_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
 }
 
@@ -1366,6 +1342,8 @@ function bareLegOffAbove(g: DrawCtx, s: Side, t: number): void {
 
 /** How far down the shin (from the knee) his trousers and wraps reach at rest. */
 const SHINOBI_PANTS_HEM = 0.85;
+/** How near the knee and the hip (fine pixels) his trouser cells turn with the joint when it bends. */
+const PANTS_JOINT_R = 5;
 
 /**
  * The owner's trousers from his Joven salvaje paint-over (2026-10-21; shinobiPantsArt.ts,
@@ -1384,8 +1362,27 @@ function drawShinobiPants(g: DrawCtx, slate: string, wrap: string): void {
     const { hip, knee, ankle } = legJoints(r, s);
     const [thigh, shin] = s === 'N' ? [SHINOBI_PANTS_THIGH_N, SHINOBI_PANTS_SHIN_N] : [SHINOBI_PANTS_THIGH_F, SHINOBI_PANTS_SHIN_F];
     bareLegOffAbove(g, s, SHINOBI_PANTS_HEM);
-    stampPiece(g, legDepth(s, 'cloth'), fit(shin, 1, 1), knee, segAngle(knee, ankle), prt('shin', s), tint);
-    stampPiece(g, legDepth(s, 'cloth'), fit(thigh, 2, 2), hip, segAngle(hip, knee), prt('thigh', s), tint);
+    const sp = fit(shin, 1, 1);
+    stampPiece(g, legDepth(s, 'cloth'), sp, knee, segAngle(knee, ankle), prt('shin', s), tint);
+    // Where the knee and the hip bend past the way he drew them, his trouser cells next to the joint fill
+    // the bend (the thigh's end rides the shin), so the outline runs round the knee without a step.
+    const under = stampCells(sp, knee, segAngle(knee, ankle));
+    const bend = youthLegBends(r, s);
+    stampBent(
+      g,
+      legDepth(s, 'cloth'),
+      fit(thigh, 2, 2),
+      hip,
+      segAngle(hip, knee),
+      prt('thigh', s),
+      [
+        { about: knee, r: PANTS_JOINT_R, bend: bend.knee, carry: true },
+        { about: hip, r: PANTS_JOINT_R, bend: bend.hip },
+      ],
+      (h) => SHINOBI_PANTS_SLOT[h] === 'line',
+      tint,
+      (x, y) => under.has(y * GRID + x),
+    );
   }
   stampPiece(g, 'torso.bottom', fit(SHINOBI_PANTS_SEAT, 3, 3), r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint);
 }

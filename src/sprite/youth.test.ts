@@ -5,9 +5,12 @@ import { describe, it } from 'node:test';
 import { renderSprite } from './compose';
 import { getItem } from './catalog';
 import { defaultAppearance } from './legacy';
+import type { Side } from './ctx';
 import type { PaintedPiece } from './painted';
-import { GRID, RES } from './raster';
-import { frameCount, GROUND, rigPoseFor } from './rig';
+import { GRID, MaterialTable, partIndex, RES } from './raster';
+import { drawRig, frameCount, GROUND, rigPoseFor } from './rig';
+import { rotateTemplate } from './rotsprite';
+import { wildArmStamps, wildPalm } from './items/wildArms';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SlotId, type SpriteAppearance, type SpritePose } from './types';
 import * as jacket from './items/wildJacketArt';
 import * as pants from './items/shinobiPantsArt';
@@ -46,6 +49,67 @@ function atRest(rgba: Uint8ClampedArray, piece: PaintedPiece, rest: [number, num
     }
   });
   return hit / n;
+}
+
+/** The cells a piece has. */
+const cells = (p: PaintedPiece) => p.rows.join('').replace(/\./g, '').length;
+
+/** How many pieces (8 ways) a piece turned by `turn` falls into. */
+function parts(p: PaintedPiece, turn: number): number {
+  const at = new Set(rotateTemplate(p, turn).map(({ dx, dy }) => `${dx},${dy}`));
+  const seen = new Set<string>();
+  let n = 0;
+  for (const k0 of at) {
+    if (seen.has(k0)) continue;
+    n++;
+    seen.add(k0);
+    const stack = [k0.split(',').map(Number)];
+    while (stack.length) {
+      const [x, y] = stack.pop()!;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const k = `${x + dx},${y + dy}`;
+          if (at.has(k) && !seen.has(k)) {
+            seen.add(k);
+            stack.push([x + dx, y + dy]);
+          }
+        }
+    }
+  }
+  return n;
+}
+
+/**
+ * Whether a piece turned by `turn` is whole: in no more pieces than he drew it in, and no smaller than 80%
+ * of his (a turned 1 px line is shorter across the diagonal; a cut-off piece loses far more).
+ */
+function whole(p: PaintedPiece, turn: number): string | null {
+  const n = rotateTemplate(p, turn).length;
+  if (parts(p, turn) > parts(p, 0)) return `in ${parts(p, turn)} pieces, his in ${parts(p, 0)}`;
+  return n >= 0.8 * cells(p) ? null : `${n} of ${cells(p)} cells`;
+}
+
+/** The mean width of a turned piece across its line (`deg`), from `a0` to `a1` fine pixels along it from the pivot. */
+function widthAcross(p: PaintedPiece, turn: number, deg: number, a0: number, a1: number): number {
+  const u = [Math.cos((deg * Math.PI) / 180), Math.sin((deg * Math.PI) / 180)];
+  const span = new Map<number, [number, number]>();
+  for (const { dx, dy } of rotateTemplate(p, turn)) {
+    const a = Math.round(dx * u[0] + dy * u[1]);
+    const w = -dx * u[1] + dy * u[0];
+    if (a < a0 || a > a1) continue;
+    const [lo, hi] = span.get(a) ?? [w, w];
+    span.set(a, [Math.min(lo, w), Math.max(hi, w)]);
+  }
+  const ws = [...span.values()].map(([lo, hi]) => hi - lo + 1);
+  return ws.reduce((x, y) => x + y, 0) / ws.length;
+}
+
+/** Every pose and frame of a body, with the rig it is drawn on. */
+function* everyFrame(body: BodyType) {
+  for (const pose of POSES) {
+    const rp = rigPoseFor(pose);
+    for (let f = 0; f < frameCount(rp); f++) yield { pose, f, rig: drawRig(body, rp, f) };
+  }
 }
 
 /** The lowest opaque row of a frame. */
@@ -121,6 +185,69 @@ describe("the owner's Joven salvaje", () => {
           const got = skinPixels(body, pose, fr);
           assert.ok(got <= rest * 1.25 + 10, `${body} ${pose} ${fr}: ${got} skin pixels (${rest} at rest)`);
         }
+      }
+    }
+  });
+
+  it('turns his sleeves and fists whole about our joints in every pose, the forearm as wide as at rest', () => {
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (const { pose, f, rig } of everyFrame(body)) {
+        for (const s of ['N', 'F'] as Side[]) {
+          const where = `${body} ${pose} ${f} ${s}`;
+          const stamps = wildArmStamps(rig, s);
+          for (const t of stamps) {
+            const bad = whole(t.piece, t.deg - t.piece.angle);
+            assert.equal(bad, null, `${where} ${t.name}: ${bad}`);
+          }
+          const fore = stamps.find((t) => t.name === 'fore')!;
+          const w0 = widthAcross(fore.piece, 0, fore.piece.angle, 2, 7);
+          const w = widthAcross(fore.piece, fore.deg - fore.piece.angle, fore.deg, 2, 7);
+          assert.ok(Math.abs(w - w0) <= 1, `${where}: the forearm is ${w.toFixed(1)} px wide, ${w0.toFixed(1)} at rest`);
+          // His fist on the wrist, turned with the hand (our hand never turns apart from the forearm), unless
+          // the pose opens the hand.
+          const fist = stamps.find((t) => t.name === 'fist');
+          assert.equal(!fist, wildPalm(rig, s), `${where}: fist`);
+          if (fist) assert.ok(Math.abs(((fist.deg - fore.deg + 540) % 360) - 180) < 1, `${where}: the fist leaves the forearm`);
+        }
+      }
+    }
+  });
+
+  it('reaches the far arm out at the breadth of his far forearm', () => {
+    // Away from rest the far upper sleeve is his strip continued under the jacket's side.
+    const w = (p: PaintedPiece) => widthAcross(p, 0, p.angle, 7, 13);
+    const full = jacket.WILD_SLEEVE_UP_F_FULL;
+    const strip = jacket.WILD_SLEEVE_UP_F;
+    assert.ok(w(full) >= w(jacket.WILD_SLEEVE_FORE_F) - 1, `${w(full)} vs ${w(jacket.WILD_SLEEVE_FORE_F)}`);
+    assert.ok(w(strip) < w(full) - 2, `${w(strip)} vs ${w(full)}`);
+    // At rest his strip as he drew it; reaching out (the cast), the whole sleeve.
+    assert.equal(wildArmStamps(drawRig('male', 'idle', 0), 'F').find((t) => t.name === 'upper')!.piece, strip);
+    assert.equal(wildArmStamps(drawRig('male', 'cast', 0), 'F').find((t) => t.name === 'upper')!.piece, full);
+    // Every cell he drew of the strip is still his (only his line beside the jacket goes).
+    strip.rows.forEach((row, y) =>
+      [...row].forEach((ch, x) => {
+        if (ch === '.' || jacket.WILD_JACKET_SLOT[strip.colors[ch]] === 'line') return;
+        assert.equal(full.colors[full.rows[y][x]], strip.colors[ch], `row ${y} col ${x}`);
+      }),
+    );
+  });
+
+  it('draws his sleeves and fists in every pose and frame, never our arm beside or instead of them', () => {
+    const l = { ...look(SET), eyeShape: 'wild' as const };
+    // Our arm's skin, as the body under his sleeves would show it.
+    const mats = new MaterialTable();
+    const ours = new Set(mats.ramps[mats.get(l.skin, 'skin')].slice(1).map((c) => c.toLowerCase()));
+    const arms = (['upperArmN', 'upperArmF', 'forearmN', 'forearmF'] as const).map((p) => partIndex(p));
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      const lb = { ...l, body };
+      for (const { pose, f, rig } of everyFrame(body)) {
+        const fr = renderSprite(lb, pose, f);
+        // His fist closes every hand but an open one (our hand pictures in the skin).
+        const fists = (['N', 'F'] as Side[]).filter((s) => !wildPalm(rig, s)).map((s) => partIndex(s === 'N' ? 'handN' : 'handF'));
+        const mine = new Set([...arms, ...fists]);
+        let n = 0;
+        for (let i = 0; i < GRID * GRID; i++) if (opaque(fr.rgba, i) && mine.has(fr.part[i]) && ours.has(hex(fr.rgba, i))) n++;
+        assert.equal(n, 0, `${body} ${pose} ${f}: ${n} pixels of our arm`);
       }
     }
   });

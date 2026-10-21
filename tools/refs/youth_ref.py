@@ -215,7 +215,7 @@ def slot_by_kind(table, default):
     return slot_of
 
 
-def module(doc, pieces, prefix, base_names, quantile=None):
+def module(doc, pieces, prefix, base_names, quantile=None, uncounted=()):
     """A generated TypeScript module of one part's pieces.
 
     `pieces`: (CONST, mask, colours, doc, joint, rest angle, slot_of[, shift]): the piece hangs from the
@@ -227,7 +227,8 @@ def module(doc, pieces, prefix, base_names, quantile=None):
 
     It exports, for each slot in `base_names` (slot -> constant name), his colour the slot recolours from:
     his colour of middle lightness among that slot's pixels (or at `quantile[slot]`), counting only his own
-    pixels, not those continued where a piece is hidden; with the slot at that colour every pixel is his.
+    pixels, not those continued where a piece is hidden, nor those of the pieces named in `uncounted` (another
+    cut of pixels already counted); with the slot at that colour every pixel is his.
     Then <prefix>_SLOT (each colour -> its slot) and <prefix>_REST (where each piece's first row's first
     cell lands in our male idle frame 0, unturned), which the tests check.
     """
@@ -243,7 +244,7 @@ def module(doc, pieces, prefix, base_names, quantile=None):
             assert slots.get(h, sl) == sl, f'{h} is in two slots'
             slots[h] = sl
         for y, x in zip(*np.nonzero(mask)):
-            if (col[y, x] == a[y, x]).all():
+            if const not in uncounted and (col[y, x] == a[y, x]).all():
                 found.setdefault(slot_of(hexc(col[y, x])), []).append((float(luma(col[y, x])), hexc(col[y, x])))
         sx, sy = shift[0] if shift else (0, 0)
         jx, jy = J[joint]
@@ -275,9 +276,9 @@ def module(doc, pieces, prefix, base_names, quantile=None):
     return '\n'.join(out), bases
 
 
-def run(out_ts, doc, pieces, prefix, base_names, quantile=None, extra=''):
+def run(out_ts, doc, pieces, prefix, base_names, quantile=None, extra='', uncounted=()):
     """Writes the module (when `out_ts`; `extra` is more TypeScript put after the bases), prints the bases."""
-    text, bases = module(doc, pieces, prefix, base_names, quantile)
+    text, bases = module(doc, pieces, prefix, base_names, quantile, uncounted)
     if extra:
         i = text.index('/** Which colour slot')
         text = text[:i] + extra + '\n' + text[i:]
@@ -356,6 +357,12 @@ KNEE = {'N': 72, 'F': 68}      # the shins start 2 rows above this row; the thig
                                # leg's shift (so at rest, the shin hung lower, they overlap by 4 rows)
 ANKLE = {'N': 88, 'F': 85}     # the sandal's straps end 1 row under this row, its foot starts here
 JACKET_HEM = 57                # the jacket and shirt, continued under the belt, end on this row
+# The far upper sleeve as the arm reaches out from behind the body: he drew only its outside, a strip beside
+# the jacket's side panel; the rest of the arm lies under that panel. FAR_UNDER is the part of it hidden there
+# (with his line between them), FAR_UNDER_EDGE the column of the arm's inner edge on each row (where his line
+# closes it), so the far upper arm is as broad as his far forearm.
+FAR_UNDER = [box(59, 39, 63, 45), box(60, 45, 62, 49)]
+FAR_UNDER_EDGE = {**{y: 58 for y in range(39, 45)}, **{y: 59 for y in range(45, 49)}}
 
 
 def label_map(a):
@@ -374,6 +381,31 @@ def label_map(a):
         masks[n] = m | line
         claimed |= m
     return K, bg, masks
+
+
+def far_sleeve_full(m, a, K, black):
+    """His far upper sleeve continued under the jacket's side (FAR_UNDER): each hidden pixel, and his line
+    between the strip and the jacket there, takes the colour of the nearest of the strip's own pixels in its
+    row (his folds run on across the arm), and the arm's inner edge (FAR_UNDER_EDGE) is closed by his line.
+    Above and below, his pixels as he drew them."""
+    H, W = m.shape
+    lin = K == 'line'
+    hidden = region(FAR_UNDER)
+    out = a.copy()
+    full = m.copy()
+    for y in range(H):
+        xs = [x for x in range(W) if hidden[y, x]]
+        if not xs:
+            continue
+        own = [x for x in range(W) if m[y, x] and not lin[y, x] and not hidden[y, x]]
+        for x in xs:
+            src = min(own, key=lambda q: (abs(q - x), q))
+            out[y, x] = a[y, src]
+            full[y, x] = True
+        e = FAR_UNDER_EDGE[y]
+        out[y, e] = black
+        full[y, e] = True
+    return full, out
 
 
 def youth():
@@ -408,6 +440,7 @@ def youth():
         e = ELBOW[s.upper()]
         P['sleeve_up_' + s] = (split(m, box(0, 0, 100, e + 1)), a)
         P['sleeve_fore_' + s] = (split(m, box(0, e - 2, 100, 100)), a)
+    P['sleeve_up_f_full'] = far_sleeve_full(P['sleeve_up_f'][0], a, K, black)
     # The trousers: each leg's side of his inseam, filled in under the belt (up from below, so his folds
     # run on up), then cut into the seat, the thighs and the shins; each wrap joins its shin.
     # (The pouches' outlines, which the trousers' region holds, are the belt's: the trousers run on under.)

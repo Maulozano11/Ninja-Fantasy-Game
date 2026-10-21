@@ -27,6 +27,26 @@ import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
+/**
+ * A hairstyle the owner painted (his Trunks hair): his front over the head and his back behind it, our
+ * skull trimmed to his hair (paintedHair, trimSkull); his line stays, his other colours move the way his
+ * base does. `old` is the colour the style had before his art, which characters saved: it now means his.
+ */
+const paintedStyle = (id: string, name: string, desc: string, old: string, base: string, back: PaintedPart, front: PaintedPart, line: string): ItemDef => ({
+  id,
+  slot: 'hair',
+  name,
+  desc,
+  colors: hairColor(base),
+  draw: (g, [c]) => {
+    const to = c.toLowerCase() === old ? base : c;
+    const tint = (ch: string, hex: string) => (line.includes(ch) ? hex : retintHex(hex, base, to));
+    paintedHair(g, g.L('hairBack'), back, tint);
+    paintedHair(g, g.L('hairFront'), front, tint);
+    trimSkull(g, back);
+  },
+});
+
 interface HairPens {
   /** Front pen (over the head). */
   f: Pen;
@@ -1648,26 +1668,6 @@ function trimSkull(g: DrawCtx, p: PaintedPart): void {
 
 /** His hair recoloured: his black line stays, his browns move the way his mid brown does. */
 const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, VALIANT_HAIR_BASE, hair));
-
-/**
- * A hairstyle the owner painted: his front over the head and his back behind it, our skull trimmed to his
- * hair; his line stays, his other colours move the way his base does. `old` is the colour the style had
- * before his art, which characters saved: it now means his base.
- */
-const paintedStyle = (id: string, name: string, desc: string, old: string, base: string, back: PaintedPart, front: PaintedPart, line: string): ItemDef => ({
-  id,
-  slot: 'hair',
-  name,
-  desc,
-  colors: hairColor(base),
-  draw: (g, [c]) => {
-    const to = c.toLowerCase() === old ? base : c;
-    const tint = (ch: string, hex: string) => (line.includes(ch) ? hex : retintHex(hex, base, to));
-    paintedHair(g, g.L('hairBack'), back, tint);
-    paintedHair(g, g.L('hairFront'), front, tint);
-    trimSkull(g, back);
-  },
-});
 
 export const HAIR_ITEMS: ItemDef[] = [
   {

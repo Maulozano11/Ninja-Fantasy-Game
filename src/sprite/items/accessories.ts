@@ -8,6 +8,8 @@ import { retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
+import { AURELIA_STAFF_GOLD, AURELIA_STAFF_ORB, DAWN_STAFF } from './aureliaStaffArt';
+import { dawnStaffInFarHand, drawDawnStaff } from './aureliaStaff';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, poleAngle, swordAngle } from '../grip';
@@ -382,6 +384,20 @@ export const HELD_ITEMS: ItemDef[] = [
         : handsLimp(g)
           ? drawNaginata(g, { ...gripOf(g, -88), hand: droppedGrip(g, 0.6, 0.8), room: 99 }, { blade, shaft, fittings })
           : drawNaginata(g, { ...gripOf(g, poleAngle(g)), hand: gripPoint(g) }, { blade, shaft, fittings }),
+  },
+  {
+    id: 'held_dawn_staff',
+    slot: 'held',
+    name: 'Dawn Staff',
+    desc: 'A short gold staff with winged arms round a glowing pearl orb that sheds golden sparkles: the owner drew it for Aurelia.',
+    colors: [col('gold', 'Gold', AURELIA_STAFF_GOLD, 'metal'), col('orb', 'Orb', AURELIA_STAFF_ORB, 'glow')],
+    draw: (g, [gold, orb]) => {
+      if (handsBusy(g)) drawDawnStaff(g, 'backGear', backGrip(g, -62), -62, gold, orb, false);
+      else if (handsLimp(g)) drawDawnStaff(g, 'nearArm.held', droppedGrip(g, 1.5, 4.5), 88, gold, orb, false);
+      // At rest it hangs from her far fist at his angle, every pixel his; otherwise the near fist holds it like a pole.
+      else if (dawnStaffInFarHand(g)) drawDawnStaff(g, 'farArm.held', g.rig.handF, DAWN_STAFF.angle, gold, orb, true);
+      else drawDawnStaff(g, 'nearArm.held', gripPoint(g), poleAngle(g), gold, orb, true);
+    },
   },
   {
     id: 'held_spiral',

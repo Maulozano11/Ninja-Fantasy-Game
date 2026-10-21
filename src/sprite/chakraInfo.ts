@@ -31,6 +31,12 @@ export const CHAKRA_CHOICES: ChakraChoice[] = CHAKRA_COLORS.map((c) => ({
 }));
 
 /**
+ * The colours offered as swatches for any type. Living Sparks' cyan is left out: it sits next to the
+ * water burst's blue, and Lightning's own colour is already there (its natural look is "Natural").
+ */
+export const TINT_CHOICES: ChakraChoice[] = CHAKRA_CHOICES.filter((c) => c.id !== 'cyan');
+
+/**
  * A burst's entry. A burst the game does not know (a hand-edited or imported sheet) is drawn as the
  * water burst (chakra.ts, renderChakra) and reads as Water (chakraNature.ts), so it is described as
  * that one too.

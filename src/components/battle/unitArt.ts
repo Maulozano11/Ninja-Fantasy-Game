@@ -2,7 +2,7 @@
 // chakra aura while casting, and small head portraits for the HUD.
 
 import { renderSpriteCached } from '../../sprite/compose';
-import { CHAKRA_LOOP, renderChakra } from '../../sprite/chakra';
+import { chakraLoop, renderChakra } from '../../sprite/chakra';
 import type { ChakraMode } from '../../sprite/chakra';
 import { dojutsuToEye, getAppearance } from '../../sprite/legacy';
 import { FEET, frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
@@ -119,7 +119,7 @@ export function unitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, fra
   const f = ((frame % n) + n) % n;
   const eye = dojutsuToEye(u.character?.dojutsu);
   const wantAura = aura && ((aura.mode === 'cast' && look.chakra.onCast) || (aura.mode === 'charge' && look.chakra.onCharge) || aura.mode === 'aura');
-  const fxTick = wantAura ? aura!.tick % CHAKRA_LOOP : -1;
+  const fxTick = wantAura ? aura!.tick % chakraLoop(look.chakra.color) : -1;
   const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${fxTick}` : ''}`;
   let c = frames.get(key);
   if (c) {

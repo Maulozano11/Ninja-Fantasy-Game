@@ -310,16 +310,20 @@ choices, not his decisions; see Open questions):
   Earth emblem, orb and word for the grimoire casts). It is new art and waits
   for his approval; without it Earth can't be picked.
 - **Lightning's second burst** (the owner, 2026-10-21: *"hazle una segunda
-  aura a electricidad [...] sin el aura solo los rayos ocasionales"*, and by
+  aura a electricidad [...] sin el aura solo los rayos ocacionales"*, and by
   aura he means the ki burst round the body: *"sin eso"*). Living Sparks (id
   `cyan`, natural colour the cyan and white of his lightning set): no rim, no
   halo and nothing rising round the body in any mode, only small, sharp,
   jagged bolts that crackle for one to three frames on the hair, the
   shoulders, the arms or round the legs, with a pinpoint flicker where one
-  strikes. Rare while empowered, frequent in a charge, down the casting arm in
-  a cast, a burst of bolts all over the body in a victory. It takes any colour
-  (black: a dark core in a bright edge) and reuses Lightning's grimoire emblem,
-  orb and word. Lightning offers both bursts in the creator, like Fire. Names
+  strikes. Its loop is 10 s (the other bursts loop every 2 s), so the bolts
+  don't come back in the same places. Rare while empowered, frequent in a
+  charge, loose bolts off the casting arm and palm in a cast (never over the
+  face, and behind the body when that arm is), a burst of bolts all over the
+  body once at the start of a victory. It takes any colour (black: a black
+  bolt in a thin bright edge) and reuses Lightning's grimoire emblem, orb and
+  word. Its cyan is not added to the colour swatches (it sat beside the water
+  blue). Lightning offers both bursts in the creator, like Fire. Names
   proposed for him to choose: *Chispas vivas* / Living Sparks (used for now),
   *Relámpago latente* / Latent Lightning, *Estática salvaje* / Wild Static. New
   art: waits for his approval.

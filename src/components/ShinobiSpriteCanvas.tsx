@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { ShinobiCharacter } from '../types/shinobi';
 import { renderSpriteCached } from '../sprite/compose';
-import { CHAKRA_LOOP, ChakraMode, renderChakra } from '../sprite/chakra';
+import { ChakraMode, chakraLoop, renderChakra } from '../sprite/chakra';
 import { dojutsuToEye, getAppearance } from '../sprite/legacy';
 import { frameCount, GROUND, POSE_FPS, rigPoseFor } from '../sprite/rig';
 import { BOX, GRID, RES } from '../sprite/raster';
@@ -109,9 +109,12 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
       else if (isEnhanced) mode = 'aura';
     }
     let lastKey = '';
+    // the burst's loop starts when the stance does, so a victory opens with its burst of bolts
+    let t0 = -1;
     return subscribeTick((tick) => {
       const frame = Math.floor((tick * POSE_FPS[stance]) / TICK_FPS) % frameCount(rigPoseFor(stance, look.cast?.style));
-      const fxTick = tick % CHAKRA_LOOP;
+      if (t0 < 0) t0 = tick;
+      const fxTick = (tick - t0) % chakraLoop(c.color);
       const key = mode ? `${frame}|${fxTick}` : `${frame}`;
       if (key === lastKey) return;
       lastKey = key;

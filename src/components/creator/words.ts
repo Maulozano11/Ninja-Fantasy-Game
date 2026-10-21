@@ -132,6 +132,7 @@ const ES: Record<string, string> = {
   Fittings: 'Herrajes',
   'Eye Holes': 'Ojos',
   Coat: 'Abrigo',
+  Cravat: 'Corbatín',
   Cloak: 'Manto',
   Clasps: 'Broches',
   Bandage: 'Venda',

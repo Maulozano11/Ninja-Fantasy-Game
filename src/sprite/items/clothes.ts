@@ -4,11 +4,24 @@
 // parameters); primitives rasterize at the fine 128x128 resolution, so seams,
 // stitching and buttons can be a single fine pixel.
 
-import { hexToRgb, retintHex } from '../color';
-import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
-import { PaintedPiece, segAngle } from '../painted';
+import { hexToRgb, hslToHex, retintHex, rgbToHsl } from '../color';
+import { armDepth, armJoints, armPoint, armSpan, Depth, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
+import { clearArmPast, clearTorsoPast, PaintedPiece, segAngle, stampPiece, widenPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
+import {
+  NOBLE_CRAVAT,
+  NOBLE_NECK_SKIN,
+  NOBLE_RED_CHARS,
+  NOBLE_SHIRT,
+  NOBLE_SKIN_CHARS,
+  NOBLE_WHITE_CHARS,
+  SHIRT_BODY,
+  SHIRT_SLEEVE_FORE_F,
+  SHIRT_SLEEVE_FORE_N,
+  SHIRT_SLEEVE_UPPER_F,
+  SHIRT_SLEEVE_UPPER_N,
+} from './nobleShirtArt';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -845,6 +858,66 @@ function crewNeck(g: DrawCtx, L: Layer): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// The owner's Scarlet's shirt and cravat (items/nobleShirtArt.ts, by tools/refs/scarlet-upper-from-ref.py
+// from docs/reference/scarlet-owner-reference.jpg): his shirt, cravat and open collar in the coat's
+// opening as the reduced reference has them (his picture brought down to our scale), and under the
+// coat our body's shape in his whites. Each piece turns with its segment; at rest every pixel is his.
+// ---------------------------------------------------------------------------
+
+/**
+ * A colour of the owner's skin in the character's skin: the hue turned and the saturation scaled from
+ * the skin he painted it in (`from`), the lightness scaled so that his skin lands exactly on the
+ * character's, his shadows staying as far below it and his lights as far above (as body.ts turns his
+ * painted head). In his own skin, his colour.
+ */
+function inSkin(hex: string, from: string, skin: string): string {
+  if (skin.toLowerCase() === from) return hex;
+  const [h, s, l] = rgbToHsl(...hexToRgb(hex));
+  const [h0, s0, l0] = rgbToHsl(...hexToRgb(from));
+  const [h1, s1, l1] = rgbToHsl(...hexToRgb(skin));
+  const lt = l <= l0 ? (l * l1) / l0 : l1 + ((l - l0) * (1 - l1)) / (1 - l0);
+  return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), lt);
+}
+
+/** The shirt for the bulky figure, as broad as its torso: his whites carried on across each side. */
+const SHIRT_BODY_BULKY = widenPiece(SHIRT_BODY, [
+  [-10, 4],
+  [7, 2],
+]);
+
+/** The shirt's tucked-in hem as torso-local height: the row under its last on our male at rest (172). */
+const SHIRT_HEM = 2.4;
+
+/**
+ * Draws his shirt: the far sleeve behind the torso, the shirt with its cravat, the near sleeve; within
+ * a sleeve the upper arm's piece over the forearm's, each running on under the other round the elbow.
+ * His whites follow Shirt and his reds Cravat, each shade as far from the slot's colour as his was
+ * from his; his neck in the open collar follows the skin tone; his black line stays.
+ */
+function drawNobleShirt(g: DrawCtx, shirt: string, cravat: string): void {
+  const r = g.rig;
+  const tint = (ch: string, hex: string): string =>
+    NOBLE_WHITE_CHARS.includes(ch)
+      ? retintHex(hex, NOBLE_SHIRT, shirt)
+      : NOBLE_RED_CHARS.includes(ch)
+        ? retintHex(hex, NOBLE_CRAVAT, cravat)
+        : NOBLE_SKIN_CHARS.includes(ch)
+          ? inSkin(hex, NOBLE_NECK_SKIN, g.look.skin)
+          : hex;
+  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
+  put('farArm.cloth', SHIRT_SLEEVE_FORE_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
+  put('farArm.cloth', SHIRT_SLEEVE_UPPER_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
+  put('torso.top', r.body === 'bulky' ? SHIRT_BODY_BULKY : SHIRT_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso');
+  put('nearArm.cloth', SHIRT_SLEEVE_FORE_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN');
+  put('nearArm.cloth', SHIRT_SLEEVE_UPPER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
+  // It stands for our torso (from its tucked-in hem to the neck) and arms (but for the wrist): our skin
+  // past its edges, where a pose parts them by a pixel, is taken away.
+  const top = g.L('torso.top');
+  clearTorsoPast(g, ['torso.body', 'torso.under'], (i) => top.mat[i] >= 0, SHIRT_HEM);
+  for (const s of SIDES) clearArmPast(g, s, g.L(armDepth(s, 'cloth')), [armDepth(s, 'body')]);
+}
+
 export const TOP_ITEMS: ItemDef[] = liftMain([
   {
     id: 'top_tee',
@@ -1249,6 +1322,15 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       }
       highCollar(g, c, 4, 1.2);
     },
+  },
+  // The owner's Scarlet's shirt (2026-10-21), his picture brought down to our scale in his colours
+  {
+    id: 'top_noble_shirt',
+    slot: 'top',
+    name: 'Noble Shirt and Cravat',
+    desc: 'A white shirt open at the collar, a red cravat knotted round the neck with its ends hanging down the chest, and long sleeves buttoned at the cuff.',
+    colors: [col('shirt', 'Shirt', NOBLE_SHIRT), col('cravat', 'Cravat', NOBLE_CRAVAT)],
+    draw: (g, [shirt, cravat]) => drawNobleShirt(g, shirt, cravat),
   },
 ]);
 

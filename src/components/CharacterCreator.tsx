@@ -23,7 +23,7 @@ import { CAST_STYLE_INFO, defaultCastStyle } from '../sprite/castInfo';
 import { soundManager } from '../utils/audio';
 import { deriveStats } from '../rules/derived';
 import { clanBonus } from '../rules/checks';
-import { migrateCharacter, sanitizeMissionFields } from '../rules/ninja';
+import { migrateCharacter, natureOf, sanitizeMissionFields } from '../rules/ninja';
 import { Dice5, Download, Shield, Zap, Eye, Swords, BookOpen, UserCheck, Sparkles } from 'lucide-react';
 import { ForestScene, forestGround } from './scene/ForestScene';
 import { BigButton, Chip, Frame, Heading, IronButton, Parchment, Row, StepTabs, serif } from './creator/stage';
@@ -118,6 +118,7 @@ const T = strings({
   sheet: { en: 'Your sheet', es: 'Tu hoja' },
   hp: { en: 'HP', es: 'PG' },
   chakraMax: { en: 'Chakra', es: 'Chakra' },
+  nature: { en: 'Nature', es: 'Naturaleza' },
   ac: { en: 'AC', es: 'CA' },
   dc: { en: 'Jutsu DC', es: 'CD jutsu' },
   atk: { en: 'Attack', es: 'Ataque' },
@@ -780,6 +781,13 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
           </div>
         </div>
       ))}
+      {/* The chakra type picked in Appearance > Chakra is the ninja's elemental nature. */}
+      <div className="col-span-3 flex items-baseline justify-center gap-2 border border-[#3d3122] bg-black/30 px-1 py-1.5">
+        <span className="text-[10px] uppercase tracking-wider text-[#b9a98a]">{T('nature')}</span>
+        <span style={serif} className="text-base font-bold text-[#f2c46d]">
+          {L(natureOf(character))}
+        </span>
+      </div>
     </div>
   );
 

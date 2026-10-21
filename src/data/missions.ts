@@ -235,7 +235,7 @@ export const HANA: ShinobiCharacter = companion(presetById('preset_gentle'), {
       held: item('held_palm', '#7ef0b8'),
     },
     headband: { position: 'forehead', slashed: false, tails: true, emblem: 'wave', cloth: '#2f7d5b', plate: '#cbd5e1' },
-    chakra: { color: 'green', onCharge: true, onCast: true, onVictory: false },
+    chakra: { color: 'blue', tint: 'green', onCharge: true, onCast: true, onVictory: false }, // Water like her jutsu, in her green
   }),
 });
 

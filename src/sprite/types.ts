@@ -103,11 +103,16 @@ export interface HeadbandChoice {
 export type ChakraColorId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet' | 'white' | 'black';
 
 export interface ChakraChoice {
-  /** The burst: its element and shape (fire, water, lightning...) and natural color. */
+  /**
+   * The burst, by id: its shape (flames, bolts, water rings...) and natural color. It is the chakra's
+   * TYPE: the burst's nature (chakraNature.ts, BURST_NATURE) is the ninja's elemental nature in the
+   * rules. The ids are color words because the bursts were first picked by color; the color the
+   * chakra shows is `tint`, and it never changes the nature.
+   */
   color: ChakraColorId;
   /**
    * Optional recolor of the burst: another chakra color id (its palette) or any
-   * '#rrggbb'. Missing = the burst's natural color.
+   * '#rrggbb'. Missing = the burst's natural color. Only a look: any type takes any color.
    */
   tint?: string;
   onCharge: boolean;

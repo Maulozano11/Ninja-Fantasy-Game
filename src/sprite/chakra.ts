@@ -21,24 +21,28 @@ export type ChakraMode = 'aura' | 'charge' | 'cast' | 'victory';
 
 export interface ChakraInfo {
   id: ChakraColorId;
+  /** The burst's natural color, by name (the color pickers' word for it). */
   name: string;
   hex: string;
   burst: string;
-  /** The element the burst shows (fire, water...). Any color can be applied to it. */
-  nature: string;
+  /**
+   * What the burst shows (fire, embers, water...): the cast effects key their emblem, orb and word on
+   * it. Its nature in the rules is in chakraNature.ts. Any color can be applied to it.
+   */
+  motif: string;
   desc: string;
 }
 
 export const CHAKRA_COLORS: ChakraInfo[] = [
-  { id: 'red', name: 'Crimson', hex: '#e8321e', burst: 'Pyre Crown', nature: 'Fire', desc: 'Tongues of flame lick upward from the whole body.' },
-  { id: 'orange', name: 'Ember', hex: '#f27c18', burst: 'Cinder Nova', nature: 'Embers', desc: 'Embers explode outward as a shockwave rolls out from the feet.' },
-  { id: 'yellow', name: 'Thunder', hex: '#f0c818', burst: 'Storm Lash', nature: 'Lightning', desc: 'Jagged bolts crackle and arc around the body.' },
-  { id: 'green', name: 'Gale', hex: '#3dbc48', burst: 'Leafwind Spiral', nature: 'Wind', desc: 'A rising whirlwind of wind and leaves wraps the body.' },
-  { id: 'blue', name: 'Tide', hex: '#36a0f0', burst: 'Rising Tide', nature: 'Water', desc: 'Rings of water climb the body, shedding droplets.' },
-  { id: 'indigo', name: 'Dusk', hex: '#4a3eb0', burst: 'Nightveil Mist', nature: 'Shadow', desc: 'Shadow smoke streams backward in curling tendrils.' },
-  { id: 'violet', name: 'Phantom', hex: '#a54ce0', burst: 'Spectral Guardian', nature: 'Spirit', desc: 'A towering ghost warrior looms behind the user.' },
-  { id: 'white', name: 'Radiant', hex: '#f4f1e4', burst: 'Heaven Pillar', nature: 'Light', desc: 'A pillar of light falls while rays fan out from the heart.' },
-  { id: 'black', name: 'Void', hex: '#1a0b22', burst: 'Abyss Orbit', nature: 'Void', desc: 'Black orbs orbit the body as space cracks open around it.' },
+  { id: 'red', name: 'Red', hex: '#e8321e', burst: 'Pyre Crown', motif: 'Fire', desc: 'Tongues of flame lick upward from the whole body.' },
+  { id: 'orange', name: 'Orange', hex: '#f27c18', burst: 'Cinder Nova', motif: 'Embers', desc: 'Embers explode outward as a shockwave rolls out from the feet.' },
+  { id: 'yellow', name: 'Yellow', hex: '#f0c818', burst: 'Storm Lash', motif: 'Lightning', desc: 'Jagged bolts crackle and arc around the body.' },
+  { id: 'green', name: 'Green', hex: '#3dbc48', burst: 'Leafwind Spiral', motif: 'Wind', desc: 'A rising whirlwind of wind and leaves wraps the body.' },
+  { id: 'blue', name: 'Blue', hex: '#36a0f0', burst: 'Rising Tide', motif: 'Water', desc: 'Rings of water climb the body, shedding droplets.' },
+  { id: 'indigo', name: 'Indigo', hex: '#4a3eb0', burst: 'Nightveil Mist', motif: 'Shadow', desc: 'Shadow smoke streams backward in curling tendrils.' },
+  { id: 'violet', name: 'Violet', hex: '#a54ce0', burst: 'Spectral Guardian', motif: 'Spirit', desc: 'A towering ghost warrior looms behind the user.' },
+  { id: 'white', name: 'White', hex: '#f4f1e4', burst: 'Heaven Pillar', motif: 'Light', desc: 'A pillar of light falls while rays fan out from the heart.' },
+  { id: 'black', name: 'Black', hex: '#1a0b22', burst: 'Abyss Orbit', motif: 'Void', desc: 'Black orbs orbit the body as space cracks open around it.' },
 ];
 
 /** Number of ticks in one animation loop (the caller advances tick at ~12 fps). */

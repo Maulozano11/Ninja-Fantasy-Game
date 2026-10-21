@@ -270,6 +270,47 @@ D21 and D24 there):
 - The panels are the owner's iron, bronze and parchment look (his mockup);
   his own banner, card and rune-bar art from the mockup is the next step.
 
+## Chakra type: the elemental nature (decided 2026-10-21)
+
+The owner: *"lo de la naturaleza elemental significa el tipo de chakra que
+eligen los jugadores [...] si es chakra tipo fuego no importa el color que
+eligan es naturaleza fuego si eligen el electrico entonces son naturaleza
+rayo"*.
+
+- **One choice.** In Appearance > Chakra the player picks the **chakra type**
+  (Fuego, Agua, Viento, Rayo...). That type is the ninja's **elemental nature**
+  in the rules: it will decide which elemental jutsu the ninja can learn
+  (backlog 4c). There is no other nature picker.
+- **The colour is only a look.** Any type takes any colour (its natural one,
+  another chakra colour or any hex): green fire is still Fire, black or blue
+  lightning is still Lightning. The colour never changes the nature.
+- **The types are the bursts.** Each burst belongs to one type:
+
+| Type | Burst(s) | Natural colour |
+|---|---|---|
+| Fire (Fuego) | Pyre Crown (flames), Cinder Nova (embers and a fiery shockwave) | red, orange |
+| Water (Agua) | Rising Tide | blue |
+| Wind (Viento) | Leafwind Spiral | green |
+| Lightning (Rayo) | Storm Lash | yellow |
+| Shadow (Sombra), no element | Nightveil Mist | indigo |
+| Spirit (Espíritu), no element | Spectral Guardian | violet |
+| Light (Luz), no element | Heaven Pillar | white |
+| Void (Vacío), no element | Abyss Orbit | black |
+
+  Earth (Tierra) has no burst yet, so it cannot be picked yet. The four types
+  without an element are kept because their bursts were approved; no jutsu has
+  their nature (see Open questions).
+- **The legends follow their jutsu**, in the colour they always had: Kaien and
+  Ren are Lightning (violet, blue), Hiro is Wind (orange), Raiga is Fire
+  (violet); Hana is Water (green). Solen, Akira, Aiden and Shiori already
+  matched.
+- **In the code** there is one source: the look's burst
+  (`appearance.chakra.color`, an id named after the colour the bursts were
+  first picked by) gives the nature through `BURST_NATURE`
+  (`src/sprite/chakraNature.ts`); the rules read it with `natureOf(character)`
+  (`src/rules/ninja.ts`). The colour is `appearance.chakra.tint`. Saves did not
+  change: an old ninja keeps the nature of the burst it has.
+
 ## Language, sound and tips
 
 - Battle, missions, camp, the title screen and the character creator in
@@ -384,7 +425,11 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
 ## Open questions
 
-- None for now.
+- Chakra types without an element (Shadow, Spirit, Light, Void): which jutsu
+  may they learn once the nature gates the jutsu (all non-elemental ones only?
+  Shadow as Genjutsu, Spirit or Light as pure chakra?), or should they go?
+- Legends with a jutsu of a second element (Kaien's Fireball, Raiga's Earth
+  Wall): allowed as legends, or changed, once the nature gates the jutsu?
 
 ## Three new jutsu (agreed 2026-10-20)
 

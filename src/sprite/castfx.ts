@@ -141,7 +141,7 @@ function grimoire(g: DrawCtx, hex: string): void {
   stampTemplate(L, GRIMOIRE, at, 0, pal, 'held');
   const ox = fine(at.x) - GRIMOIRE.pivot[0];
   const oy = fine(at.y) - GRIMOIRE.pivot[1];
-  const nature = CHAKRA_CHOICES.find((c) => c.id === g.look.chakra.color)?.nature ?? 'Water';
+  const nature = CHAKRA_CHOICES.find((c) => c.id === g.look.chakra.color)?.motif ?? 'Water';
   (EMBLEMS[nature] ?? EMBLEMS.Water).forEach((row, r) =>
     [...row].forEach((ch, c) => ch !== '.' && L.set(ox + 18 + c, oy + 8 + r, glow, ch === 'E' ? 5 : 3, 'held', F_NO_OUTLINE)),
   );
@@ -582,7 +582,7 @@ function voidOrb(g: DrawCtx, hex: string): void {
 
 /** Grimoire I: the orb of the chakra's nature gathered before the pointing finger. */
 function natureOrb(g: DrawCtx, hex: string): void {
-  const nature = CHAKRA_CHOICES.find((c) => c.id === g.look.chakra.color)?.nature ?? 'Water';
+  const nature = CHAKRA_CHOICES.find((c) => c.id === g.look.chakra.color)?.motif ?? 'Water';
   const draw: Record<string, (g: DrawCtx, hex: string) => void> = {
     Wind: windWhirl,
     Fire: fireOrb,
@@ -836,7 +836,7 @@ function scriptLetters(g: DrawCtx, hex: string): void {
   const T = g.L('top');
   const ink = g.m('#1d1724', 'cloth');
   const m = fxMats(g, hex, '#ffffff');
-  const nature = CHAKRA_CHOICES.find((c) => c.id === g.look.chakra.color)?.nature ?? 'Water';
+  const nature = CHAKRA_CHOICES.find((c) => c.id === g.look.chakra.color)?.motif ?? 'Water';
   const word = WORDS[nature] ?? WORDS.Water;
   const s = 1.45;
   const half = (16 * s + 1) / RES;

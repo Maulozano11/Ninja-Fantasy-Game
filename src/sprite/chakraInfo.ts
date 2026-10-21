@@ -1,15 +1,22 @@
-// Chakra colors offered in the creator, taken from the burst effects so the
-// names always match what plays on screen.
+// Chakra bursts and colors offered in the creator, taken from the burst effects so the names always
+// match what plays on screen. Each burst is of one chakra type (its nature: chakraNature.ts); each
+// burst's natural color is also offered as a color for any type.
 
+import type { ChakraNature } from '../types/shinobi';
 import { CHAKRA_COLORS } from './chakra';
+import { BURST_NATURE } from './chakraNature';
 import type { ChakraColorId, ChakraChoice as ChakraSetting } from './types';
 
 export interface ChakraChoice {
   id: ChakraColorId;
+  /** The natural color's name. */
   name: string;
   hex: string;
   burst: string;
-  nature: string;
+  /** What the burst shows (the cast effects' key). */
+  motif: string;
+  /** The burst's type: the ninja's nature in the rules. */
+  nature: ChakraNature;
   desc: string;
 }
 
@@ -18,7 +25,8 @@ export const CHAKRA_CHOICES: ChakraChoice[] = CHAKRA_COLORS.map((c) => ({
   name: c.name,
   hex: c.hex,
   burst: c.burst,
-  nature: c.nature,
+  motif: c.motif,
+  nature: BURST_NATURE[c.id],
   desc: c.desc,
 }));
 

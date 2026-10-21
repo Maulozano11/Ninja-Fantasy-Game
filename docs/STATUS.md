@@ -40,7 +40,7 @@ clean.
 | Held | 9 (plus `held_none`): katana built from parts, crystal, ice crystal, flame longsword, kunai, naginata, spiral, lightning, palm |
 | Accessories | 13 |
 | Headband | 5 positions, 7 emblems, slashed or not, tails or not |
-| Chakra | 9 colours plus any tint; 8 cast styles ("eye" hidden) |
+| Chakra | 8 types, which are the ninja's elemental nature (Fire with 2 bursts, Water, Wind, Lightning; Shadow, Spirit, Light, Void without element), any colour for any type; 8 cast styles ("eye" hidden) |
 | Poses | 7 creator, 5 moving, 4 camp |
 
 **Clans** (phase 1; source of truth `docs/CLANS_DESIGN.md`)
@@ -199,8 +199,12 @@ Designed in `docs/GAMEPLAY_DESIGN.md` ("Three new jutsu", 2026-10-20), icons on 
 `JUTSUS_DATA`. `ElementalNature` needs Chakra and Poison first.
 
 ### 4c. Elemental nature gates jutsu
-Not in the code (an owner's session listed it as in progress: ask before starting). Goal: a
-ninja's nature decides which elemental jutsu they can learn; a new ninja starts with low ranks.
+The nature exists (2026-10-21, `chakra/nature`): it is the chakra type picked in Appearance >
+Chakra, read with `natureOf` (`src/rules/ninja.ts`); the colour never changes it
+(`docs/GAMEPLAY_DESIGN.md`, "Chakra type"). The gating itself is not built (an owner's session
+listed it as in progress: ask before starting). Goal: a ninja's nature decides which elemental
+jutsu they can learn; a new ninja starts with low ranks. Open: Earth has no chakra burst yet; what
+the types without element may learn; legends with a second element (Kaien, Raiga).
 
 ### 4d. Missions (not built)
 Branching road, road traps and curios, votes, cinematics and decisions, the AI choosing camp

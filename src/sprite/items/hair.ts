@@ -1823,7 +1823,7 @@ export const HAIR_ITEMS: ItemDef[] = [
     },
   },
   {
-    id: 'hair_founder',
+    id: 'hair_founder_spikes',
     slot: 'hair',
     name: "Founder's Spikes",
     desc: 'Spiky dark slate hair: short spikes all round the crown, locks over the brow with a long one between the eyes, a sideburn before the ear and locks beside the far cheek. Painted by the owner for Solen.',

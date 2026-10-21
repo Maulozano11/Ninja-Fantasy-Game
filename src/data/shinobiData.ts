@@ -1351,7 +1351,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         // The owner's Solen (docs/reference/solen-owner-reference.jpg, 2026-10-21: "es el nuevo estandar"):
         // every piece his pixels, in his colours (each item's defaults are his).
         slots: {
-          hair: it('hair_founder'),
+          hair: it('hair_founder_spikes'),
           top: it('top_founder'),
           bottom: it('bottom_founder'),
           armor: it('armor_founder'),

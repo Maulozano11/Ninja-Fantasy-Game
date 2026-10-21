@@ -91,7 +91,7 @@ describe("the owner's Solen", () => {
 
   it('wears his hair, his face and his colours', () => {
     const l = look();
-    assert.equal(l.slots.hair?.id, 'hair_founder');
+    assert.equal(l.slots.hair?.id, 'hair_founder_spikes');
     assert.equal(l.faceShape, 'founder');
     assert.equal(l.slots.held?.id, 'held_ice_crystal');
     assert.equal(l.slots.feet?.id, 'feet_gladiator_sandals');

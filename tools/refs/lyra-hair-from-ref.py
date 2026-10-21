@@ -18,7 +18,8 @@ of one colour merged into the commonest of them). Three pieces, each a set of hi
          colour of the nearest hair pixel above it); the filled mass gets his dark line on its outer
          side and at its foot.
   BRAID  over the near shoulder onto the chest (hairFront, behind the near arm): the dark braid from
-         behind the ear to the neckline. Where the pauldron strap and the neckline cross it, it runs
+         behind the ear to the neckline, and the hair over its root (his row 27) that our female
+         body's higher shoulders would hide. Where the pauldron strap and the neckline cross it, it runs
          on, with his line down its sides.
 
 Placing: his pixel (x, y) goes to (x + 72, y + 123) of our 256 x 256 frame at the female idle frame 0:
@@ -59,9 +60,11 @@ N = 100
 # His pixel (x, y) is our (x + 72, y + 123); his columns from FAR_FROM on go FAR_SHIFT further right.
 OFFSET = (72, 123)
 FAR_FROM, FAR_SHIFT = 56, 2
-# Our face anchor and our torso's angle (pelvis to neck, screen degrees) at the female idle frame 0.
+# Our face anchor and our torso's angle (pelvis to neck, screen degrees) at the female idle frame 0
+# (the anchor without the long neck; the female body rebuilt from his heroines at our scale,
+# tools/refs/female-body-from-ref.py, stands its torso a little past upright).
 ANCHOR = (123, 141)
-TORSO_ANGLE = -89.5
+TORSO_ANGLE = -90.1
 # Two of his colours within this (per channel) are one colour (his JPEG's shades of it).
 MERGE = 10
 LINE_LUMA = 22
@@ -83,8 +86,10 @@ LONG_RIGHT = 48
 # pixel of it past the neck's far side (the long neck, src/sprite/neck.ts, leaves them showing).
 LONG_NAPE = {27: 50}
 LONG_PAST_NECK = {(55, 27)}
-# BRAID: his rows 28-39, the columns of each (inclusive).
-BRAID_ROWS = {28: (46, 51), 29: (47, 51), 30: (47, 52), 31: (47, 52), 32: (46, 51), 33: (50, 52), 34: (50, 53),
+# BRAID: his rows 28-39, the columns of each (inclusive), and the hair over its root on his row 27:
+# our female body's shoulders stand two rows higher than his, so its torso comes up behind it there
+# (in LONG, behind the body, it would be hidden).
+BRAID_ROWS = {27: (46, 50), 28: (46, 51), 29: (47, 51), 30: (47, 52), 31: (47, 52), 32: (46, 51), 33: (50, 52), 34: (50, 53),
               35: (50, 53), 36: (50, 53), 37: (50, 53), 38: (50, 53), 39: (51, 52)}
 
 CHARS = 'kabcdefghijlmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'

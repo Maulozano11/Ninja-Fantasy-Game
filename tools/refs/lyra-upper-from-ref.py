@@ -71,16 +71,18 @@ OFFSET = (74, 121)  # his pixel (x, y) is our (x + 74, y + 121)
 PAL_BOX = (100, 144, 146, 186)
 PAL_TOL = 12
 
-# Our female rig at idle frame 0, fine pixels (tools/refs/heroine_ref.py OUR_JOINTS).
+# Our female rig at idle frame 0, fine pixels: the female body rebuilt from his heroines at our scale
+# (tools/refs/female-body-from-ref.py; printed by `npx tsx tools/refs/heroine-idle.mts <out>`). His
+# picture laid at OFFSET stands on it: his shoulders, waist, knees and soles on ours.
 J = {
-    'neck': (127.24, 149.84),
-    'shoulderN': (116.52, 154.62),
-    'shoulderF': (132.68, 154.05),
-    'elbowN': (112.82, 166.03),
-    'elbowF': (135.22, 165.78),
-    'wristN': (110.46, 176.16),
-    'wristF': (140.49, 174.74),
-    'pelvis': (127.00, 177.47),
+    'neck': (126.94, 146.23),
+    'shoulderN': (117.54, 150.96),
+    'shoulderF': (131.50, 150.48),
+    'elbowN': (113.84, 162.38),
+    'elbowF': (133.72, 162.27),
+    'wristN': (111.48, 172.51),
+    'wristF': (139.28, 171.06),
+    'pelvis': (127.00, 182.25),
 }
 
 # Which piece takes what, per row: (letter, x0, x1) inclusive. Capitals take his pixel, small letters
@@ -110,22 +112,34 @@ OWN = {
     164: [('S', 108, 116), ('c', 118, 122), ('C', 123, 134), ('F', 135, 137)],
     165: [('S', 109, 116), ('c', 118, 121), ('C', 122, 134), ('F', 135, 137)],
     166: [('B', 109, 111), ('S', 112, 115), ('c', 117, 124), ('C', 125, 134), ('D', 135, 137)],
-    167: [('B', 108, 113), ('b', 114, 115), ('c', 117, 120), ('C', 121, 134), ('D', 135, 138)],
-    168: [('B', 107, 112), ('b', 113, 115), ('c', 117, 118), ('C', 119, 134), ('D', 135, 138)],
-    169: [('B', 108, 112), ('b', 113, 115), ('T', 120, 122)],
-    170: [('B', 107, 112), ('b', 113, 114)],
-    171: [('B', 107, 111), ('b', 112, 114)],
-    172: [('B', 107, 111), ('b', 112, 113)],
-    173: [('U', 106, 110), ('u', 111, 113)],
-    174: [('U', 105, 111), ('u', 112, 113)],
-    175: [('U', 105, 111), ('u', 112, 112)],
+    167: [('B', 108, 113), ('c', 117, 120), ('C', 121, 134), ('D', 135, 138)],
+    168: [('B', 107, 112), ('c', 117, 118), ('C', 119, 134), ('D', 135, 138)],
+    169: [('B', 108, 112), ('T', 120, 122)],
+    170: [('B', 107, 112)],
+    171: [('B', 107, 111)],
+    172: [('B', 107, 111)],
+    173: [('U', 106, 110)],
+    174: [('U', 105, 111)],
+    175: [('U', 105, 111)],
 }
 PIECE_OF = {'T': 'BLOUSE_TORSO', 'S': 'BLOUSE_SLEEVE_N', 'K': 'BLOUSE_SLEEVE_N', 'V': 'BLOUSE_TORSO', 'U': 'BLOUSE_FOREARM_N', 'F': 'BLOUSE_SLEEVE_F',
             'G': 'BLOUSE_FOREARM_F', 'C': 'CORSET', 'P': 'CORSET_PAULDRON',
             'B': 'CORSET_BRACER_N', 'D': 'CORSET_BRACER_F'}
 
-# The far forearm, which his pouch hides (our far forearm at idle, rows and spans): the far bracer
-# over it in his near bracer's pattern, the cuff under it.
+# His joints (fine pixels in our frame, his picture laid at OFFSET) where our female body's arm joints
+# do not stand: his near shoulder's top (his bare shoulder's line) is two rows lower than ours, and his
+# elbows (the top of each bracer, where his puff ends) three or four rows lower: our upper arms are
+# shorter than his and hang more upright. The pieces riding those joints are laid on ours as he drew
+# them on his (moved by ours minus his, whole pixels): the near sleeve with his bare shoulder on our
+# near shoulder, and each forearm piece (bracer, fitted sleeve and cuff) on our elbow, so the cuff ends
+# at our wrist and our fist (his own near hand, src/sprite/femaleBodyArt.ts) comes out of it. The
+# bracers are drawn over the puffs' lower rows; the far puff stays where he drew it.
+HIS_JOINT = {'shoulderN': (117.5, 153.0), 'elbowN': (110.0, 165.5), 'elbowF': (136.0, 166.0)}
+MOVED = {'BLOUSE_SLEEVE_N': 'shoulderN', 'BLOUSE_FOREARM_N': 'elbowN', 'CORSET_BRACER_N': 'elbowN',
+         'BLOUSE_FOREARM_F': 'elbowF', 'CORSET_BRACER_F': 'elbowF'}
+
+# The far forearm, which his pouch hides (our old far forearm at idle, rows and spans, before the move
+# above): the far bracer over it in his near bracer's pattern, the cuff under it.
 FAR_BRACER = {169: (136, 140), 170: (137, 141), 171: (137, 141), 172: (137, 141)}
 FAR_CUFF = {173: (139, 143), 174: (139, 144)}
 # The blouse's body under the corset: rows, and the near edge per row (our torso's edge, a column out).
@@ -331,7 +345,19 @@ def build(h):
     # Our torso's edge is drawn over the far arm: the far puff's columns there are drawn again over the
     # body, under the blouse (BLOUSE_SIDE_F), so they show; it moves with the far arm.
     out['BLOUSE_SIDE_F'] = {(x, y): v for (x, y), v in f.items() if x <= SIDE_TO and y >= 155}
+    # The near sleeve and the forearm pieces onto our joints (HIS_JOINT).
+    for name, joint in MOVED.items():
+        dx, dy = shift_of(joint)
+        out[name] = {(x + dx, y + dy): v for (x, y), v in out[name].items()}
+        taken[name] = {(x + dx, y + dy) for (x, y) in taken[name]}
     return out, taken, line
+
+
+def shift_of(joint):
+    """How far a piece riding `joint` is moved from where he drew it: our joint minus his, whole pixels."""
+    ox, oy = J[joint]
+    hx, hy = HIS_JOINT[joint]
+    return int(round(ox - hx)), int(round(oy - hy))
 
 
 def stack(out):
@@ -342,12 +368,16 @@ def stack(out):
 
 
 def check(out, taken):
-    """Every pixel taken from him comes out his at idle."""
+    """Every pixel taken from him comes out his at idle, but where a piece moved onto our joints and
+    another overlap (a bracer over a puff's lower rows, the far bracer's top behind the far puff's
+    side): there the one in front shows."""
     top = stack(out)
+    moved_names = set(MOVED)
+    moved = {c for n in moved_names for c in out[n]}
     bad = []
     for name, cells in taken.items():
         for c in cells:
-            if top.get(c) != out[name][c]:
+            if top.get(c) != out[name][c] and name not in moved_names and c not in moved:
                 bad.append((name, c))
     return bad
 
@@ -393,7 +423,20 @@ def kind_of(c):
     return 'leather'
 
 
-SKIN = {(PIECE_OF[ch], x, y) for y, spans in OWN.items() for ch, a, b in spans if ch in 'KV' for x in range(a, b + 1)}
+def _skin_cells():
+    """The K and V cells as (piece, x, y) where the pieces are laid (a moved piece's cells moved with it)."""
+    out = set()
+    for y, spans in OWN.items():
+        for ch, a, b in spans:
+            if ch not in 'KV':
+                continue
+            name = PIECE_OF[ch]
+            dx, dy = shift_of(MOVED[name]) if name in MOVED else (0, 0)
+            out |= {(name, x + dx, y + dy) for x in range(a, b + 1)}
+    return out
+
+
+SKIN = _skin_cells()
 
 
 def skin_of(out):

@@ -164,11 +164,13 @@ CUTS = {
     'N': {'thigh': (181, 196), 'shin': (194, 213), 'foot': (211, 218)},
     'F': {'thigh': (182, 197), 'shin': (195, 211), 'foot': (210, 216)},
 }
-# Our female rig at idle frame 0, fine pixels (tools/refs/heroine_ref.py OUR_JOINTS): the hip and the
-# ankle of each leg.
+# Our female rig at idle frame 0, fine pixels: the hip and the ankle of each leg of the female body
+# rebuilt from his heroines at our scale (tools/refs/female-body-from-ref.py; printed by
+# `npx tsx tools/refs/heroine-idle.mts <out>`). Its near ankle is a row below his, its far ankle four
+# rows above his (his far leg is straight).
 OUR = {
-    'N': {'hip': (119.88, 177.11), 'ankle': (116.78, 207.65)},
-    'F': {'hip': (132.94, 173.66), 'ankle': (137.28, 203.04)},
+    'N': {'hip': (120.58, 181.88), 'ankle': (117.56, 211.62)},
+    'F': {'hip': (132.35, 178.47), 'ankle': (136.58, 205.06)},
 }
 # His knee and ankle on each leg (fine pixels in our frame): the ankle in the middle of the shaft above
 # the strap, the knee by the knee guard, a little in front of the line from our hip to his ankle (so

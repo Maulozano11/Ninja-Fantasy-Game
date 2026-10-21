@@ -135,8 +135,13 @@ folders.
   piece takes; the parts his picture hides (under the braid, the blouse under the corset, the sleeves under
   the bracers, the far forearm behind the pouch) continue his pixels. The bare top of the near shoulder and
   the skin in the V (`K`, `V`) are his skin, drawn in the player's (`LYRA_SKIN`). One painted piece per segment of our
-  female rig, pivot on its joint at idle, so at idle every pixel of his is where he drew it. It checks that,
-  and writes `hers-vs-pieces@8.png` into `<out>`.
+  female rig (the body rebuilt from his heroines, `female-body-from-ref.py`), pivot on its joint at idle.
+  The torso pieces and the far puff and pauldron are where he drew them; the female body's arms are
+  shorter and hang more upright than his, so the pieces riding them are laid on our joints as he drew
+  them on his (`HIS_JOINT`, `MOVED`): the near sleeve with his bare shoulder 2 px up on our shoulder, each
+  bracer, fitted sleeve and cuff on our elbow (near +4, -3; far -2, -4), so our fist (his own hand) comes out
+  of his cuff. It checks that every other pixel of his is where he drew it at idle, and writes
+  `hers-vs-pieces@8.png` into `<out>`.
 
       python3 -I tools/refs/lyra-upper-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraUpperArt.ts
 
@@ -174,10 +179,11 @@ folders.
   pixel (x, y) at our (x + 74, y + 121)): his steel pommel, knuckle bow and cross-guard with gold
   tips, gold collar and shell and cyan gem, his cyan blade (every cyan pixel within 2.6 px of its
   fitted line, with the black beside it) and his sparkles (the cyan further out, twinkling in the
-  game). The grip his hand hides is his pommel's steel carried on; our fist is bigger than his, so the
-  grip is made 3 px longer under it (the pommel stays where he drew it, the rest moves down the line),
-  and the blade gives those 3 px back in its middle (`TIP_CUT`), so its tip and sparkles end where his do.
-  Drawn at his blade's angle (42.7) at rest. Writes `his@8.png` and `kinds@8.png` into `<out>`.
+  game). The grip his hand hides is his pommel's steel carried on. The female body's fist round a grip
+  is his own near hand on this sword, so the sword is his as he drew it, no pixel moved (`STRETCH` 0); it
+  pivots on the grip cell under his fist that our grip point falls on with our fist laid on his
+  (`HAND_SHIFT`: at our idle our fist stands 4 px right and 3 px up from his). Drawn at his blade's angle
+  (42.7) at rest. Writes `his@8.png` and `kinds@8.png` into `<out>`.
 
       python3 -I tools/refs/lyra-sword-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraSwordArt.ts
 
@@ -185,9 +191,10 @@ folders.
   1:1 from his picture of her at our scale (same grid and colour merge as her face, lower body): `HEAD`
   over the head (crown, fringe, far lock, pin, bow, her ear in the player's skin), `HEAD_FINE` the same
   unmoved for her own face (face shape `fine`; `HEAD` moves its far side 2 px out for our wider face
-  template), `LONG` behind the body (hidden strands run on down) and `BRAID` over the near shoulder. The
-  pieces ride the face anchor; with her long neck (`src/sprite/neck.ts`) they land on his picture laid
-  at (x + 74, y + 121). Writes `pieces@8.png`.
+  template), `LONG` behind the body (hidden strands run on down) and `BRAID` over the near shoulder (with
+  the hair over its root, his row 27, which the female body's higher shoulders would hide). The pieces
+  ride the face anchor; with her long neck (`src/sprite/neck.ts`, on the female bodies one unit forward)
+  they land on his picture laid at (x + 74, y + 121). Writes `pieces@8.png`.
 
       python3 -I tools/refs/lyra-hair-from-ref.py <out> src/sprite/items/lyraHairArt.ts
 
@@ -209,7 +216,8 @@ folders.
 
 - `lyra-boots-from-ref.py` → `src/sprite/items/lyraBootsArt.ts`: Lyra's thigh-high boots
   (`feet_gilded_thigh_boots`) and the bare thigh above them, his pixels at (x + 74, y + 121) riding a
-  leg of his proportions from our hip (`src/sprite/items/lyraBoots.ts`); what her sword hides continues
-  his gold and leather. Writes `hers-vs-pieces@8.png`.
+  leg of his proportions from our hip to our ankle (`src/sprite/items/lyraBoots.ts`; `OUR` holds the
+  female body's hips and ankles at idle); what her sword hides continues his gold and leather. Writes
+  `hers-vs-pieces@8.png`.
 
       python3 -I tools/refs/lyra-boots-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraBootsArt.ts

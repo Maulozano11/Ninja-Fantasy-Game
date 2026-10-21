@@ -28,10 +28,16 @@ const lowest = (rgba: Uint8ClampedArray) => {
 };
 
 describe('Lyra on our body', () => {
-  it('carries her head on the long neck one unit higher and one forward, and only on the long neck', () => {
-    const r = drawRig('female', 'idle', 0);
-    assert.deepEqual(carryHead(r, 'long').head, { x: r.head.x + 1, y: r.head.y - 1 });
-    for (const n of [undefined, 'slim', 'strong'] as const) assert.equal(carryHead(r, n), r);
+  it('carries her head on the long neck one unit forward (and on the male bodies one higher), and only on the long neck', () => {
+    for (const body of ['female', 'slender'] as const) {
+      const r = drawRig(body, 'idle', 0);
+      assert.deepEqual(carryHead(r, 'long').head, { x: r.head.x + 1, y: r.head.y }, body);
+      for (const n of [undefined, 'slim', 'strong'] as const) assert.equal(carryHead(r, n), r);
+    }
+    for (const body of ['male', 'bulky'] as const) {
+      const r = drawRig(body, 'idle', 0);
+      assert.deepEqual(carryHead(r, 'long').head, { x: r.head.x + 1, y: r.head.y - 1 }, body);
+    }
   });
 
   it('puts her face anchor on his near eye with her long neck: his lash start (51, 18) at (125, 139)', () => {

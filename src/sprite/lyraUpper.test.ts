@@ -85,13 +85,14 @@ describe("Lyra's blouse and corset", () => {
     for (const [name, deg] of Object.entries(want)) assert.ok(Math.abs(PIECES[name].angle - deg) < 0.5, `${name} ${PIECES[name].angle} vs ${deg}`);
   });
 
-  it('shows his pixels where he drew them at idle: the red V, a buckle, the pauldron, a stud on the bracer, the near puff, his line', () => {
+  it('shows his pixels at idle: the red V, a buckle, the pauldron where he drew them; a stud on the bracer and the near puff on our arm', () => {
     const f = renderSprite(look('female'), 'idle', 0).rgba;
     assert.equal(hexAt(f, 129, 155), '#81152c');
     assert.equal(hexAt(f, 130, 163), '#8b8a90');
     assert.equal(hexAt(f, 133, 149), '#fbbc57');
-    assert.equal(hexAt(f, 111, 169), '#db9b41');
-    assert.equal(hexAt(f, 113, 162), '#f2e2c0');
+    // his (111, 169) and (113, 162), laid on our elbow (+4, -3) and our shoulder (0, -2)
+    assert.equal(hexAt(f, 115, 166), '#db9b41');
+    assert.equal(hexAt(f, 113, 160), '#f2e2c0');
     assert.equal(hexAt(f, 134, 161), LINE);
   });
 
@@ -100,17 +101,17 @@ describe("Lyra's blouse and corset", () => {
     assert.notEqual(hexAt(f, 129, 155), '#81152c');
     assert.notEqual(hexAt(f, 130, 163), '#8b8a90');
     assert.notEqual(hexAt(f, 133, 149), '#fbbc57');
-    assert.notEqual(hexAt(f, 113, 162), '#f2e2c0');
+    assert.notEqual(hexAt(f, 113, 160), '#f2e2c0');
     assert.equal(hexAt(f, 134, 161), LINE);
   });
 
   it('shows her bare near shoulder and the skin in the V in the character\'s skin, his pixels in his', () => {
     const his = { ...look('female'), skin: '#fbc9aa' };
     const f = renderSprite(his, 'idle', 0).rgba;
-    assert.equal(hexAt(f, 117, 151), ART.LYRA_SKIN[0]);
+    assert.equal(hexAt(f, 117, 149), ART.LYRA_SKIN[0]);
     assert.equal(hexAt(f, 130, 152), ART.LYRA_SKIN[0]);
     const dark = renderSprite({ ...his, skin: '#7a4a32' }, 'idle', 0).rgba;
-    for (const [x, y] of [[117, 151], [130, 152]]) assert.ok(!ART.LYRA_SKIN.includes(hexAt(dark, x, y)), `${x},${y} ${hexAt(dark, x, y)}`);
+    for (const [x, y] of [[117, 149], [130, 152]]) assert.ok(!ART.LYRA_SKIN.includes(hexAt(dark, x, y)), `${x},${y} ${hexAt(dark, x, y)}`);
   });
 
   it('draws on the female and slender bodies in every pose', () => {

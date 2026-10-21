@@ -92,7 +92,7 @@ export const LYRA_HAIR_HEAD_FINE: PaintedPart = {
 /** Behind the body (hairBack): her wavy hair to the waist. Pivot on our face anchor; it turns with the torso (angle: our idle torso's). */
 export const LYRA_HAIR_LONG: PaintedPiece = {
   pivot: [24, -2],
-  angle: -89.5,
+  angle: -90.1,
   rows: [
     '..............hndnddeo.......',
     '..............hndnndnd.......',
@@ -132,9 +132,10 @@ export const LYRA_HAIR_LONG: PaintedPiece = {
 
 /** Over the near shoulder onto the chest (hairFront, behind the near arm): her braid. Pivot on our face anchor; it turns with the torso. */
 export const LYRA_HAIR_BRAID: PaintedPiece = {
-  pivot: [5, -10],
-  angle: -89.5,
+  pivot: [5, -9],
+  angle: -90.1,
   rows: [
+    'gnngd...',
     'ddgdnd..',
     '.cnnhd..',
     '.cchdob.',

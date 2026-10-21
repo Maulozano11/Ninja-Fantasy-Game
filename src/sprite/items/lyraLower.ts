@@ -79,9 +79,9 @@ function local(r: Rig, p: Vec): [number, number] {
   return [dx * r.right.x + dy * r.right.y, dx * r.up.x + dy * r.up.y];
 }
 
-/** The torso's near and far edges at local height `ly` (ctx.ts torsoPoly: the waist at 5.4, the hips at 1.6). */
+/** The torso's near and far edges at local height `ly` (ctx.ts torsoPoly: the waist at the body's waistY or 5.4, the hips at 1.6). */
 function edges(b: BodyParams, ly: number): [number, number] {
-  const t = clamp((ly - 1.6) / (5.4 - 1.6), 0, 1);
+  const t = clamp((ly - 1.6) / ((b.waistY ?? 5.4) - 1.6), 0, 1);
   const hipN = -(b.hipHalf * 0.5 + b.legR[0] * 0.96);
   const hipF = b.hipHalf * 0.42 + b.legR[0] * 0.9;
   return [hipN + (-b.waistHalf * 0.86 - hipN) * t, hipF + (b.waistHalf * 0.64 + 0.7 - hipF) * t];

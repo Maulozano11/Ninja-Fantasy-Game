@@ -37,14 +37,14 @@ export const LYRA_BOOT_KIND: Record<string, 'line' | 'skin' | 'leather' | 'gold'
  * boots ride a leg from our hip to his knee and his ankle (src/sprite/items/lyraBoots.ts).
  */
 export const LYRA_BOOT_LEGS = {
-  N: { hip: [119.88, 177.11], ankle: [116.78, 207.65], hisKnee: [117.5, 195.5], hisAnkle: [112.5, 210.5] },
-  F: { hip: [132.94, 173.66], ankle: [137.28, 203.04], hisKnee: [134.5, 195.5], hisAnkle: [133.5, 209.5] },
+  N: { hip: [120.58, 181.88], ankle: [117.56, 211.62], hisKnee: [117.5, 195.5], hisAnkle: [112.5, 210.5] },
+  F: { hip: [132.35, 178.47], ankle: [136.58, 205.06], hisKnee: [134.5, 195.5], hisAnkle: [133.5, 209.5] },
 } as const;
 
 /** The near bare thigh, the gold cuff and the shaft to below the knee guard: they turn with her thigh about her knee. */
 export const LYRA_BOOT_THIGH_N: PaintedPiece = {
   pivot: [3, 14],
-  angle: 97.3741,
+  angle: 102.7424,
   rows: [
     '....0ddddd0..',
     '....0ddddd0..',
@@ -144,7 +144,7 @@ export const LYRA_BOOT_FOOT_N: PaintedPiece = {
 /** The far bare thigh, the gold cuff and the shaft to below the knee guard: they turn with her thigh about her knee. */
 export const LYRA_BOOT_THIGH_F: PaintedPiece = {
   pivot: [6, 13],
-  angle: 85.9144,
+  angle: 82.8046,
   rows: [
     '0dddddddd0.',
     '0dddddddd0.',

@@ -18,18 +18,16 @@ cyan sparkles round it. What is his and what is filled:
     beside it in the same row; the sparkles are his cyan pixels further out.
   - The grip his hand hides is filled with his pommel's steel: its dark core and light edges carried on
     along the grip's line under the fist.
-  - Our fist is bigger than his (the study: our hands are bigger), so held where he drew it ours would
-    cover his collar, shell and gem. The grip is made longer under the fist instead: everything past
-    the cut x + y = CUT (the cross, the shell, the blade, the sparkles and the bow's lower half) moves
-    STRETCH pixels down along the blade's line, and the two diagonals before the cut (the grip and the
-    bow) are repeated to fill the gap. The pommel stays where he drew it above the fist, and the cross
-    and gem show below the fist as his show below his. So that the sword is as long as his, the blade
-    gives those STRETCH diagonals back in its middle (before TIP_CUT, where it is three even lines of
-    glow): from TIP_CUT on, the blade, its tip and its sparkles are where he drew them.
+  - Our female body's fist round a grip is his own near hand on this sword, cut 1:1
+    (tools/refs/female-body-from-ref.py GRIP), so the sword is his as he drew it, as long as his: no
+    pixel is moved or repeated (STRETCH 0; the old body's bigger fist needed the grip three diagonals
+    longer). The body's arm is shorter and hangs more upright than his, so at our idle its fist stands
+    HAND_SHIFT from where he drew his: the sword goes with it.
 
 The template is drawn at his blade's angle (the fitted line of his blade, which our idle holds it at:
-grip.ts) and pivots on the grip cell under our fist (grip.ts gripPoint at our female idle), so at rest
-the pommel is every pixel his where he drew it and the rest his pixels STRETCH further down the line.
+grip.ts) and pivots on the grip cell under his fist that our grip point (grip.ts gripPoint at our
+female idle) falls on once our fist is laid on his, so at rest every pixel of the sword is his, held in
+our fist as in his, HAND_SHIFT from where he drew it.
 
 It writes, in <out>:
 
@@ -56,8 +54,11 @@ INSET = 4           # picture pixels left out round each block (JPEG bleed)
 PAL_TOL = 12        # medians this close (each channel) are one colour of his
 BOX = (96, 150, 166, 216)  # our frame: x0, x1, y0, y1 (exclusive) round the sword
 
-# Our female idle, frame 0 (src/sprite/grip.ts gripPoint, fine pixels): the template's pivot.
-GRIP_POINT = (109.34, 180.98)
+# Our female idle, frame 0 (src/sprite/grip.ts gripPoint, fine pixels), and where our fist (his near
+# hand, the body's grip template) stands there from where he drew his hand: the top left of the hand's
+# cut, his (104, 176), is our (108, 173). The template pivots on GRIP_POINT - HAND_SHIFT.
+GRIP_POINT = (110.50, 176.72)
+HAND_SHIFT = (4, -3)
 
 # His hilt, our frame at his place: row -> columns taken (every cell, his black line with it).
 POMMEL = {  # the pommel and the top of the knuckle bow: stays where he drew it
@@ -97,8 +98,8 @@ BLADE_ROWS = (184, 212)
 BAND = 2.6          # how far from the blade's line (pixels) his cyan is blade, not sparkle
 # His two sparkles that touch the blade's edge (one above, one below it): sparkles, not blade.
 EDGE_SPARKS = {(131, 196), (134, 205)}
-CUT = 284           # cells with x + y >= CUT move down the line
-STRETCH = 3         # by this many diagonal steps
+CUT = 284           # cells with x + y >= CUT would move down the line
+STRETCH = 0         # by this many diagonal steps: none, our fist is his
 TIP_CUT = 326       # ... and from here on (mid-blade) they stay where he drew them: the blade loses the
                     # STRETCH diagonals before it, so its tip and sparkles end where his do
 
@@ -253,7 +254,8 @@ def ts_module(out, okind, angle):
     x0, x1, y0, y1 = min(xs), max(xs) + 1, min(ys), max(ys) + 1
     rows = [''.join(ch[body[(x, y)]] if (x, y) in body else '.' for x in range(x0, x1)) for y in range(y0, y1)]
     sparks = sorted((x - x0, y - y0, ch[v]) for (x, y), v in out.items() if okind[(x, y)] == 'spark')
-    px, py = int(math.floor(GRIP_POINT[0])) - x0, int(math.floor(GRIP_POINT[1])) - y0
+    px = int(math.floor(GRIP_POINT[0])) - HAND_SHIFT[0] - x0
+    py = int(math.floor(GRIP_POINT[1])) - HAND_SHIFT[1] - y0
     assert rows[py][px] != '.', 'the pivot must be on the grip'
     count = {}
     for c, v in body.items():
@@ -284,10 +286,8 @@ def ts_module(out, okind, angle):
         '',
         '/**',
         ' * The sword as he drew it in her near fist, hanging across the legs: drawn at his blade\'s angle and',
-        ' * pivoting on the grip under our fist. At rest the pommel is where he drew it, his cross, gem, shell',
-        ' * and the blade\'s upper half lie three pixels further down the blade\'s line, so our fist (bigger',
-        ' * than his) holds the grip and his cross shows below it, and the blade\'s lower half and tip are where',
-        ' * he drew them (the blade is three diagonals shorter in its middle).',
+        ' * pivoting on the grip under our fist, which is his hand. At rest every pixel is his, held as he',
+        ' * held it, where our fist stands.',
         ' */',
         'export const LYRA_RAPIER: LyraSword = {',
         f'  pivot: [{px}, {py}],',

@@ -1302,6 +1302,23 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.equal(swap(sneaking, 'rogue_0').reason, 'combatOnly');
   });
 
+  it('a Warp Strike and a Spatial Swap are played as a phase (the owner, 2026-10-21); a Body Flicker is not', () => {
+    const s = ryuseiTurn({ party: [
+      { character: ryusei(), pos: { x: 8, z: 10 } },
+      { character: hero({ id: 'b', name: 'Bo' }), pos: { x: 11, z: 13 } },
+    ] });
+    const jumps = (o: ReturnType<typeof applyAction>) => ok(o).events.flatMap((e) => (e.t === 'teleport' ? [[e.unit, e.how]] : []));
+    const warped = structuredClone(s);
+    warped.nodes.push(node('n1', { x: 12.25, z: 7.25 }));
+    assert.deepEqual(jumps(warp(warped, { x: 12.25, z: 7.25 })), [['r', 'phase']]);
+    // Both of a Spatial Swap's ninjas phase.
+    const swapped = structuredClone(s);
+    swapped.nodes.push(node('n1', s.units.b.pos));
+    assert.deepEqual(jumps(swap(swapped, 'b')), [['r', 'phase'], ['b', 'phase']]);
+    // Body Flicker keeps its chakra smoke.
+    assert.deepEqual(jumps(applyAction(s, { type: 'jutsu', unit: 'r', jutsu: 'body_flicker', at: { x: 11.25, z: 7.25 } })), [['r', undefined]]);
+  });
+
   it('the AI: a Ryusei its feet can\'t carry into reach warps to a Node beside its target and strikes', () => {
     const { state } = createBattle(setup({ enemies: [{ kind: 'raider', pos: { x: 22, z: 10 } }] }));
     const s = turnOf(state, 'raider_0');
@@ -2229,9 +2246,11 @@ describe('clan playtest fixes: what the screen shows matches the engine', () => 
       assert.match(j.name, /^[A-Z][a-z]+ Technique: /, j.id);
       assert.ok(j.descriptionEs, j.id);
     }
-    // Warp Strike and Command stay in English in both languages.
-    assert.equal(es('ryusei_warp'), 'Warp Strike');
-    assert.equal(es('northstar_command'), 'Command');
+    // Warp Strike and Command take the owner's Spanish names from his icon sheets (2026-10-21).
+    assert.equal(es('ryusei_warp'), 'Golpe Warp');
+    assert.equal(es('northstar_command'), 'Comando');
+    assert.equal(JUTSU.ryusei_warp.name, 'Warp Strike');
+    assert.equal(JUTSU.northstar_command.name, 'Command');
     // No "Estilo X:" prefix is left on any jutsu.
     assert.ok(Object.values(JUTSU).every((j) => !/^Estilo /.test(j.nameEs ?? '')));
     // Only the enhanced Fireball has a name of its own; the enhanced spec keeps it.

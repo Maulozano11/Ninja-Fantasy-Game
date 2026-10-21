@@ -44,6 +44,7 @@ export const CHAKRA_COLORS: ChakraInfo[] = [
   { id: 'white', name: 'White', hex: '#f4f1e4', burst: 'Heaven Pillar', motif: 'Light', desc: 'A pillar of light falls while rays fan out from the heart.' },
   { id: 'black', name: 'Black', hex: '#1a0b22', burst: 'Abyss Orbit', motif: 'Void', desc: 'Black orbs orbit the body as space cracks open around it.' },
   { id: 'brown', name: 'Brown', hex: '#9a6a36', burst: 'Shattered Earth', motif: 'Earth', desc: 'The ground cracks open and rocks tear loose to float around the body.' },
+  { id: 'cyan', name: 'Cyan', hex: '#3cc8e8', burst: 'Living Sparks', motif: 'Lightning', desc: 'No glow: now and then small jagged bolts crackle on and around the body.' },
 ];
 
 /** Number of ticks in one animation loop (the caller advances tick at ~12 fps). */
@@ -76,6 +77,8 @@ const PALS: Record<ChakraColorId, Pal> = {
   white: pal('#6e5a26', '#c4a24c', '#efe2b4', '#fffbe8', '#ffffff'),
   black: pal('#000000', '#0e0614', '#4a1470', '#a238f0', '#ff2c50'),
   brown: pal('#24160b', '#5a3a1c', '#9a6a36', '#d4a464', '#f6e3b4'),
+  // the owner's lightning set (vfx_lightning): deep blue edge, pale cyan, white-hot core
+  cyan: pal('#0e1c5e', '#1c3aa8', '#3cc8e8', '#90dff5', '#eaffff'),
 };
 
 /**
@@ -115,6 +118,7 @@ const SEEDS: Record<ChakraColorId, number> = {
   white: 809,
   black: 907,
   brown: 1009,
+  cyan: 1103,
 };
 
 function hash(a: number, b = 0, c = 0, d = 0): number {
@@ -1770,6 +1774,314 @@ function brownBurst(c: Ctx, s: Src, L: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// CYAN - Living Sparks: no glow and nothing wrapping the body, only small,
+// sharp, jagged bolts that crackle on and around it now and then (the hair,
+// the shoulders, the arms, round the legs), each for one to three frames
+// ---------------------------------------------------------------------------
+
+/** Where a spark crackles: a part of the body, or (casting) down the casting arm and off its palm. */
+type SparkAt = 'hair' | 'shoulderN' | 'shoulderF' | 'armN' | 'armF' | 'legN' | 'legF' | 'arm' | 'palm';
+
+/**
+ * When the sparks crackle, per mode: [first tick, frames shown, where]. Timed by hand so the rhythm
+ * is irregular (one, a pause, two close together, a longer pause) and loops every CHAKRA_LOOP ticks.
+ * While empowered they are rare; a charge crackles often; a cast runs bolts down the casting arm; a
+ * victory opens with a burst of bolts all over the body.
+ */
+const SPARK_CHART: Record<ChakraMode, [number, number, SparkAt][]> = {
+  aura: [
+    [3, 2, 'hair'],
+    [10, 1, 'armN'],
+    [15, 2, 'legN'],
+    [21, 1, 'shoulderF'],
+  ],
+  charge: [
+    [0, 2, 'hair'],
+    [2, 1, 'legF'],
+    [3, 2, 'armN'],
+    [6, 2, 'shoulderF'],
+    [6, 1, 'legN'],
+    [9, 1, 'hair'],
+    [11, 2, 'shoulderN'],
+    [12, 1, 'armF'],
+    [14, 2, 'hair'],
+    [15, 1, 'legN'],
+    [17, 3, 'legF'],
+    [19, 1, 'shoulderN'],
+    [20, 2, 'armN'],
+    [23, 1, 'hair'],
+  ],
+  cast: [
+    [0, 2, 'arm'],
+    [2, 1, 'palm'],
+    [4, 2, 'arm'],
+    [7, 1, 'hair'],
+    [9, 2, 'arm'],
+    [10, 1, 'palm'],
+    [13, 2, 'arm'],
+    [16, 1, 'arm'],
+    [17, 1, 'palm'],
+    [19, 2, 'arm'],
+    [22, 1, 'shoulderN'],
+  ],
+  victory: [
+    [0, 3, 'hair'],
+    [0, 2, 'armN'],
+    [0, 2, 'legF'],
+    [1, 2, 'shoulderF'],
+    [1, 3, 'legN'],
+    [1, 2, 'armF'],
+    [7, 1, 'shoulderN'],
+    [11, 2, 'hair'],
+    [12, 1, 'armN'],
+    [13, 2, 'legF'],
+    [18, 1, 'legN'],
+    [21, 2, 'hair'],
+  ],
+};
+
+/** How many of Living Sparks' bolts show at a tick of a mode (each place counts once). */
+export function sparkCount(mode: ChakraMode, tick: number): number {
+  const t = mod(Math.floor(tick), CHAKRA_LOOP);
+  return SPARK_CHART[mode].filter(([at, life]) => mod(t - at, CHAKRA_LOOP) < life).length;
+}
+
+const unit = (x: number, y: number, fallback: P): P => {
+  const l = Math.hypot(x, y);
+  return l > 1e-6 ? { x: x / l, y: y / l } : fallback;
+};
+
+/** The point of the segment a-b nearest to p. */
+function nearestOn(p: P, a: P, b: P): P {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const l2 = dx * dx + dy * dy;
+  const u = l2 ? clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / l2, 0, 1) : 0;
+  return { x: a.x + dx * u, y: a.y + dy * u };
+}
+
+/**
+ * A bolt from a to b with sharp kinks swinging from side to side (a drawn zigzag, not noise), `amp`
+ * px out from the line, the whole of it bowed out by `bow` at the middle.
+ */
+function zigzag(a: P, b: P, kinks: number, amp: number, bow: P, r: () => number): P[] {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const n = unit(-dy, dx, { x: 0, y: -1 });
+  const pts: P[] = [a];
+  let side = r() < 0.5 ? 1 : -1;
+  for (let i = 1; i <= kinks; i++) {
+    const u = (i + (r() - 0.5) * 0.5) / (kinks + 1);
+    const o = side * amp * (0.45 + r() * 0.75);
+    const w = 4 * u * (1 - u);
+    pts.push({ x: a.x + dx * u + n.x * o + bow.x * w, y: a.y + dy * u + n.y * o + bow.y * w });
+    side = -side;
+  }
+  pts.push(b);
+  return pts;
+}
+
+/** A dark chakra color (black, or any very dark tint): its sparks are drawn as a dark core inside a bright edge. */
+function darkPal(p: Pal): boolean {
+  return p === PALS.black || rgbToHsl(p[2][0], p[2][1], p[2][2])[2] < 0.22;
+}
+
+/**
+ * One spark along `pts`: a 1 px white-hot core, a 1 px glow beside it and a dimmer one in the
+ * corners, nothing more (no outline, like the lightning set). Its first frame burns brighter; its
+ * last, when it lasts longer, is dimmer and breaking up. A dark color is drawn the other way round,
+ * a dark core in a bright edge.
+ */
+function spark(c: Ctx, layer: Lay, pts: P[], fresh: boolean, fading: boolean, dark: boolean): void {
+  const core: number[] = [];
+  const inCore = new Set<number>();
+  for (let k = 1; k < pts.length; k++)
+    bres(pts[k - 1].x, pts[k - 1].y, pts[k].x, pts[k].y, (x, y) => {
+      if (x < 0 || y < 0 || x >= N || y >= N) return;
+      const i = y * N + x;
+      if (inCore.has(i)) return;
+      inCore.add(i);
+      core.push(i);
+    });
+  const tCore = dark ? (fading ? 1 : 0) : fading ? 3 : 4;
+  // a dark color keeps a bright edge: the void palette's purple (its red is for the strike), else the lightest tone
+  const edge = c.pal === PALS.black ? 3 : 4;
+  const tGlow = dark ? (fading ? edge - 1 : edge) : fresh ? 3 : fading ? 1 : 2;
+  const a = fading ? 170 : 255;
+  const shown = core.filter((_, k) => !(fading && k % 4 === 2));
+  for (const i of shown) {
+    const x = i % N;
+    const y = (i - x) / N;
+    for (const [ox, oy] of DIAG) if (!inCore.has((y + oy) * N + x + ox)) c.fx.put(layer, x + ox, y + oy, c.pal[Math.max(1, tGlow - 1)], fading ? 90 : 150);
+    for (const [ox, oy] of N4) if (!inCore.has((y + oy) * N + x + ox)) c.fx.put(layer, x + ox, y + oy, c.pal[tGlow], a);
+  }
+  for (const i of shown) c.fx.put(layer, i % N, Math.floor(i / N), c.pal[tCore]);
+}
+
+const DIAG: [number, number][] = [
+  [1, 1],
+  [-1, 1],
+  [1, -1],
+  [-1, -1],
+];
+
+/** The flicker of light where a spark strikes, on its first frame only: a pinpoint twinkle, no glow. */
+function strikeFlash(c: Ctx, layer: Lay, p: P): void {
+  sparkle(c, layer, p.x, p.y, 2, true);
+}
+
+/** A body part's bone in fine px, and how far from it (fine px) the outline counts as that part. */
+function sparkBone(rig: Rig, at: SparkAt): { a: P; b: P; reach: number } {
+  const hr = rig.bp.headRy * rig.bp.headScale;
+  switch (at) {
+    case 'hair':
+      return { a: F(rig.head), b: F({ x: rig.head.x + rig.up.x * hr, y: rig.head.y + rig.up.y * hr }), reach: (hr + 3) * S };
+    case 'shoulderN':
+      return { a: F(rig.shoulderN), b: F(rig.shoulderN), reach: 4.5 * S };
+    case 'shoulderF':
+      return { a: F(rig.shoulderF), b: F(rig.shoulderF), reach: 4.5 * S };
+    case 'armN':
+      return { a: F(rig.elbowN), b: F(rig.handN), reach: 3 * S };
+    case 'legN':
+      return { a: F(rig.kneeN), b: F(rig.ankleN), reach: 3.5 * S };
+    case 'legF':
+      return { a: F(rig.kneeF), b: F(rig.ankleF), reach: 3.5 * S };
+    default:
+      return { a: F(rig.elbowF), b: F(rig.handF), reach: 3 * S };
+  }
+}
+
+/**
+ * A spark on a part of the body: it leaps off the outline, or jumps from one point of the part to
+ * another (now and then across it). Where it strikes stays put for all its frames; its shape is
+ * drawn anew each frame, so it flickers.
+ */
+function bodySpark(c: Ctx, s: Src, at: SparkAt, id: number, age: number, life: number, size: number, dark: boolean): void {
+  const { rig } = c;
+  const bone = sparkBone(rig, at);
+  const head = F(rig.head);
+  const up = unit(rig.up.x, rig.up.y, { x: 0, y: -1 });
+  const hr = rig.bp.headRy * rig.bp.headScale * S;
+  const pool: P[] = [];
+  for (const i of s.rim) {
+    const p = { x: i % N, y: Math.floor(i / N) };
+    const q = nearestOn(p, bone.a, bone.b);
+    if (Math.hypot(p.x - q.x, p.y - q.y) > bone.reach) continue;
+    // the hair: the top of the head, not the face
+    if (at === 'hair' && (p.x - head.x) * up.x + (p.y - head.y) * up.y < 0.25 * hr) continue;
+    pool.push(p);
+  }
+  const r = rng(c.seed + 31 + id * 977);
+  const z = rng(c.seed + 57 + id * 977 + age * 131);
+  const at0 = pool.length ? pool[Math.floor(r() * pool.length)] : bone.b;
+  const base = nearestOn(at0, bone.a, bone.b);
+  const out = unit(at0.x - base.x, at0.y - base.y, unit(at0.x - s.cx, at0.y - s.cy, up));
+  // the far side's sparks are mostly behind the body
+  const far = at === 'shoulderF' || at === 'armF' || at === 'legF';
+  const layer: Lay = far && r() < 0.6 ? 0 : 1;
+  const fresh = age === 0;
+  const fading = life > 1 && age === life - 1;
+  const span = (6 + r() * 4) * S * size;
+  let pts: P[] | null = null;
+  if (r() < 0.5) {
+    // a jump from one point of the part to another, bowed out (a quarter of them across the part)
+    const ends = pool.filter((q) => {
+      const d = Math.hypot(q.x - at0.x, q.y - at0.y);
+      return d > span * 0.6 && d < span * 1.2;
+    });
+    if (ends.length) {
+      const to = ends[Math.floor(r() * ends.length)];
+      const mid = { x: (at0.x + to.x) / 2, y: (at0.y + to.y) / 2 };
+      const mb = nearestOn(mid, bone.a, bone.b);
+      const o = unit(mid.x - mb.x, mid.y - mb.y, out);
+      const bow = (r() < 0.25 ? -1 : 1) * (1.5 + r() * 2) * S;
+      const d = Math.hypot(to.x - at0.x, to.y - at0.y);
+      pts = zigzag(at0, to, Math.max(2, Math.round(d / 5)), (1.2 + r() * 0.8) * S, { x: o.x * bow, y: o.y * bow }, z);
+    }
+  }
+  if (!pts) {
+    // a leap off the outline, rooted a little inside it
+    const ang = Math.atan2(out.y, out.x) + (r() - 0.5) * 1.4;
+    const from = { x: at0.x - out.x * 3, y: at0.y - out.y * 3 };
+    const to = { x: at0.x + Math.cos(ang) * span, y: at0.y + Math.sin(ang) * span };
+    pts = zigzag(from, to, Math.max(2, Math.round(span / 5)), (1.2 + z() * 1) * S, { x: 0, y: 0 }, z);
+    // now and then a short fork off one of its kinks
+    if (span > 6 * S && r() < 0.5) {
+      const k = 1 + Math.floor(z() * (pts.length - 2));
+      const fa = ang + (z() < 0.5 ? -1 : 1) * (0.6 + z() * 0.5);
+      const fl = (2 + z() * 2) * S;
+      const p = pts[k];
+      spark(c, layer, zigzag(p, { x: p.x + Math.cos(fa) * fl, y: p.y + Math.sin(fa) * fl }, 1, 0.8 * S, { x: 0, y: 0 }, z), fresh, fading, dark);
+    }
+  }
+  spark(c, layer, pts, fresh, fading, dark);
+  if (fresh) strikeFlash(c, layer, pts[0]);
+}
+
+/** Casting: a bolt running down the casting arm over the sleeve, past the fingertips. */
+function armSpark(c: Ctx, id: number, age: number, life: number, dark: boolean): void {
+  const { rig } = c;
+  const chain = [F(rig.shoulderF), F(rig.elbowF), F(rig.wristF), F(rig.handF)];
+  const lens = chain.slice(1).map((p, k) => Math.hypot(p.x - chain[k].x, p.y - chain[k].y));
+  const total = lens.reduce((a, b) => a + b, 0);
+  const r = rng(c.seed + 31 + id * 977);
+  const z = rng(c.seed + 57 + id * 977 + age * 131);
+  const pts: P[] = [];
+  let side = z() < 0.5 ? 1 : -1;
+  for (let d = r() * 0.45 * total; d < total; d += (1.6 + z() * 0.8) * S) {
+    let k = 0;
+    let rest = d;
+    while (k < lens.length - 1 && rest > lens[k]) rest -= lens[k++];
+    const a = chain[k];
+    const b = chain[k + 1];
+    const dir = unit(b.x - a.x, b.y - a.y, { x: 1, y: 0 });
+    const u = lens[k] ? rest / lens[k] : 0;
+    const o = side * (0.6 + z() * 1) * S;
+    pts.push({ x: a.x + (b.x - a.x) * u - dir.y * o, y: a.y + (b.y - a.y) * u + dir.x * o });
+    side = -side;
+  }
+  const hand = chain[3];
+  const dir = unit(hand.x - chain[2].x, hand.y - chain[2].y, { x: 1, y: 0 });
+  const tip = { x: hand.x + dir.x * (2 + z() * 3) * S, y: hand.y + dir.y * (2 + z() * 3) * S };
+  pts.push(tip);
+  spark(c, 1, pts, age === 0, life > 1 && age === life - 1, dark);
+  if (age === 0) strikeFlash(c, 1, tip);
+}
+
+/** Casting: a short bolt or two leaping off the casting palm. */
+function palmSpark(c: Ctx, id: number, age: number, life: number, dark: boolean): void {
+  const { rig } = c;
+  const hand = F(rig.handF);
+  const wrist = F(rig.wristF);
+  const dir = unit(hand.x - wrist.x, hand.y - wrist.y, { x: 1, y: 0 });
+  const r = rng(c.seed + 31 + id * 977);
+  const z = rng(c.seed + 57 + id * 977 + age * 131);
+  const n = r() < 0.5 ? 1 : 2;
+  for (let k = 0; k < n; k++) {
+    const ang = Math.atan2(dir.y, dir.x) + (r() - 0.5) * 2.4;
+    const len = (4 + r() * 3) * S;
+    const from = { x: hand.x + dir.x * S, y: hand.y + dir.y * S };
+    const to = { x: from.x + Math.cos(ang) * len, y: from.y + Math.sin(ang) * len };
+    spark(c, 1, zigzag(from, to, 2, 0.9 * S, { x: 0, y: 0 }, z), age === 0, life > 1 && age === life - 1, dark);
+  }
+  if (age === 0) strikeFlash(c, 1, hand);
+}
+
+/** Living Sparks in a mode: only the bolts of its timing chart. It has no rim or aura in any mode. */
+function cyanSparks(c: Ctx, s: Src, mode: ChakraMode): void {
+  const dark = darkPal(c.pal);
+  const size = mode === 'aura' ? 0.75 : 1;
+  const ids = { aura: 0, charge: 100, cast: 200, victory: 300 }[mode];
+  SPARK_CHART[mode].forEach(([at, life, where], k) => {
+    const age = mod(c.t - at, CHAKRA_LOOP);
+    if (age >= life) return;
+    if (where === 'arm') armSpark(c, ids + k, age, life, dark);
+    else if (where === 'palm') palmSpark(c, ids + k, age, life, dark);
+    else bodySpark(c, s, where, ids + k, age, life, size, dark);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Idle aura: pulsing rim + a few color-flavored motes
 // ---------------------------------------------------------------------------
 
@@ -1839,7 +2151,8 @@ function auraRim(c: Ctx, id: ChakraColorId, s: Src, level: number): void {
 
 type BurstFn = (c: Ctx, s: Src, L: number) => void;
 
-const BURSTS: Record<ChakraColorId, BurstFn> = {
+/** The bursts drawn through the modes below; Living Sparks (cyan) draws its own (cyanSparks). */
+const BURSTS: Record<Exclude<ChakraColorId, 'cyan'>, BurstFn> = {
   red: redBurst,
   orange: orangeBurst,
   yellow: yellowBurst,
@@ -1885,6 +2198,11 @@ export function renderChakra(
     accent: voidPal ? VOID_RED : p[4],
     accentDark: voidPal ? VOID_DARKRED : p[1],
   };
+  if (id === 'cyan') {
+    // no rim and no aura in any mode: only its bolts
+    cyanSparks(c, body, mode);
+    return { back: fx.back, front: fx.front };
+  }
   const burst = BURSTS[id];
   switch (mode) {
     case 'aura':

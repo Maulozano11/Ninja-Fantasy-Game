@@ -299,7 +299,7 @@ choices, not his decisions; see Open questions):
 | Fire (Fuego) | Pyre Crown (flames), Cinder Nova (embers and a fiery shockwave) | red, orange | Pyre Crown: his rule. Cinder Nova as a second Fire burst: proposed |
 | Water (Agua) | Rising Tide | blue | Proposed |
 | Wind (Viento) | Leafwind Spiral | green | Proposed |
-| Lightning (Rayo) | Storm Lash | yellow | His rule |
+| Lightning (Rayo) | Storm Lash; Living Sparks (no aura and no glow, only small jagged bolts now and then on the hair, shoulders, arms and round the legs) | yellow, cyan | Storm Lash: his rule. A second burst: his request (2026-10-21); Living Sparks is **new art**, its name provisional |
 | Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up) | brown | **New art**, proposed |
 | Shadow (Sombra), no element | Nightveil Mist | indigo | Proposed |
 | Spirit (Espíritu), no element | Spectral Guardian | violet | Proposed |
@@ -309,6 +309,20 @@ choices, not his decisions; see Open questions):
 - **Earth** had no burst, so one was drawn for it (Shattered Earth, with an
   Earth emblem, orb and word for the grimoire casts). It is new art and waits
   for his approval; without it Earth can't be picked.
+- **Lightning's second burst** (the owner, 2026-10-21: *"hazle una segunda
+  aura a electricidad [...] sin el aura solo los rayos ocasionales"*, and by
+  aura he means the ki burst round the body: *"sin eso"*). Living Sparks (id
+  `cyan`, natural colour the cyan and white of his lightning set): no rim, no
+  halo and nothing rising round the body in any mode, only small, sharp,
+  jagged bolts that crackle for one to three frames on the hair, the
+  shoulders, the arms or round the legs, with a pinpoint flicker where one
+  strikes. Rare while empowered, frequent in a charge, down the casting arm in
+  a cast, a burst of bolts all over the body in a victory. It takes any colour
+  (black: a dark core in a bright edge) and reuses Lightning's grimoire emblem,
+  orb and word. Lightning offers both bursts in the creator, like Fire. Names
+  proposed for him to choose: *Chispas vivas* / Living Sparks (used for now),
+  *Relámpago latente* / Latent Lightning, *Estática salvaje* / Wild Static. New
+  art: waits for his approval.
 - **The four types without an element** (Shadow, Spirit, Light, Void) are kept
   because their bursts were approved as bursts; whether they stay as natures,
   and what they may learn, is his call. No jutsu has their nature.
@@ -451,6 +465,9 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 - Chakra types ("Chakra type" above): approve or change the burst-to-type
   table (is Cinder Nova a second Fire burst?), and approve or redo the Earth
   burst (Shattered Earth), drawn because Earth had none.
+- Lightning's second burst (Living Sparks, his request of 2026-10-21): approve
+  or redo the art, and choose its name (*Chispas vivas*, *Relámpago latente*
+  or *Estática salvaje*, or his own).
 - Chakra types without an element (Shadow, Spirit, Light, Void): keep them as
   natures or not, and which jutsu may they learn once the nature gates the
   jutsu (all non-elemental ones only? Shadow as Genjutsu, Spirit or Light as

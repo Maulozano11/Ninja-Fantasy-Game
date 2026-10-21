@@ -91,6 +91,7 @@ const ES: Record<string, string> = {
   'Heaven Pillar': 'Pilar celestial',
   'Abyss Orbit': 'Órbita del abismo',
   'Shattered Earth': 'Tierra quebrada',
+  'Living Sparks': 'Chispas vivas',
   'Tongues of flame lick upward from the whole body.': 'Lenguas de fuego suben por todo el cuerpo.',
   'Embers explode outward as a shockwave rolls out from the feet.': 'Las brasas estallan mientras una onda expansiva sale de los pies.',
   'Jagged bolts crackle and arc around the body.': 'Rayos quebrados crepitan y saltan alrededor del cuerpo.',
@@ -101,6 +102,7 @@ const ES: Record<string, string> = {
   'A pillar of light falls while rays fan out from the heart.': 'Cae un pilar de luz mientras los rayos se abren desde el pecho.',
   'Black orbs orbit the body as space cracks open around it.': 'Orbes negros giran alrededor del cuerpo mientras el espacio se resquebraja.',
   'The ground cracks open and rocks tear loose to float around the body.': 'El suelo se agrieta y las rocas se desprenden para flotar alrededor del cuerpo.',
+  'No glow: now and then small jagged bolts crackle on and around the body.': 'Sin resplandor: de vez en cuando, pequeños rayos quebrados chisporrotean sobre el cuerpo y a su alrededor.',
   // the chakra colors
   Red: 'Rojo',
   Orange: 'Naranja',
@@ -112,6 +114,7 @@ const ES: Record<string, string> = {
   White: 'Blanco',
   Black: 'Negro',
   Brown: 'Marrón',
+  Cyan: 'Cian',
   'Casting Style': 'Estilo de lanzamiento',
   'Show the burst when…': 'Mostrar el estallido al…',
   'Charging chakra': 'Cargar chakra',

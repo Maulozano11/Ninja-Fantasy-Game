@@ -57,6 +57,7 @@ describe('chakra types', () => {
   it('the bursts stand for what they show: fire is Fire, the electric one is Lightning', () => {
     for (const [id, nature] of Object.entries(OLD_COLOURS)) assert.equal(chakraNature(chakra(id)), nature, id);
     assert.equal(chakraNature(chakra('brown')), 'Earth', 'the Earth burst (new: no old save has it)');
+    assert.equal(chakraNature(chakra('cyan')), 'Lightning', 'the second Lightning burst (new: no old save has it)');
   });
 
   it('the colour never changes the nature: green fire is Fire, black lightning is Lightning', () => {

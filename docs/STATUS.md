@@ -40,7 +40,7 @@ clean.
 | Held | 9 (plus `held_none`): katana built from parts, crystal, ice crystal, flame longsword, kunai, naginata, spiral, lightning, palm |
 | Accessories | 13 |
 | Headband | 5 positions, 7 emblems, slashed or not, tails or not |
-| Chakra | 9 types, which are the ninja's elemental nature (Fire with 2 bursts, Water, Wind, Lightning, Earth; Shadow, Spirit, Light, Void without element), any colour for any type; 8 cast styles ("eye" hidden) |
+| Chakra | 9 types, which are the ninja's elemental nature (Fire and Lightning with 2 bursts each, Water, Wind, Earth; Shadow, Spirit, Light, Void without element), any colour for any type; 8 cast styles ("eye" hidden) |
 | Poses | 7 creator, 5 moving, 4 camp |
 
 **Clans** (phase 1; source of truth `docs/CLANS_DESIGN.md`)
@@ -104,6 +104,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `poses/throw-pierce` | `f722aee` | `throw` (4 frames, release copied from his Warp Strike picture) and `pierce` (5-frame lunge) poses, in the creator stance bar; `src/sprite/strike.test.ts` | **Waiting for approval**; `ryusei/phase` needs it |
 | `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
 | `scarlet/study` | `3b5dfe9` | His new character picture (`scarlet-owner-reference.jpg`) and study scripts `tools/refs/scarlet*`; nothing in `src` | **WIP**. Provisional name "Valen, the Scarlet Duke", no cape: **the owner must choose the name** |
+| `chakra/lightning-crackle` | not pushed yet | Lightning's second burst, Living Sparks (provisional name; id `cyan`): only occasional small bolts, no aura (`src/sprite/chakra.ts`, `chakraNature.ts`, `src/sprite/chakra.test.ts`) | **Waiting for approval** (new art, the owner's request) |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -124,6 +125,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the icons on `icons/sheets-8-11`, the
   camp poses once redone.
 - Name the Scarlet character (`scarlet/study`).
+- `chakra/lightning-crackle` (2026-10-21, his request): approve Lightning's second burst (only the
+  occasional bolts, no aura) and choose its name: *Chispas vivas* / Living Sparks (used for now),
+  *Relámpago latente* / Latent Lightning or *Estática salvaje* / Wild Static
+  (`docs/GAMEPLAY_DESIGN.md`, "Chakra type").
 - `chakra/nature` (2026-10-21): the chakra type is the nature (his rule, built). Proposed, for his
   approval (`docs/GAMEPLAY_DESIGN.md`, "Chakra type" and Open questions): the burst-to-type table
   (Cinder Nova as a second Fire burst); the new Earth burst (Shattered Earth); the legends whose burst

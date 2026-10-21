@@ -16,7 +16,7 @@ export interface DawnStaff extends PaintedPiece {
 export const AURELIA_STAFF_GOLD = '#fac856';
 export const AURELIA_STAFF_ORB = '#fedfa0';
 /** At rest, where the grip lies from the far fist's joint (fine pixels): where he drew it with the rest of her. */
-export const DAWN_STAFF_REST: [number, number] = [-3, -2];
+export const DAWN_STAFF_REST: [number, number] = [-1, -2];
 /**
  * Her far fist round the staff at rest, his pixels (legend as the female hands: o his line, D, s, b his
  * skin's deep shadow, shadow and base, drawn in the body's skin), its top-left `at` fine pixels from the far
@@ -31,7 +31,7 @@ export const DAWN_FAR_FIST: { rows: string[]; at: [number, number] } = {
     '.osooo',
     '.ooo..',
   ],
-  at: [-5, -5],
+  at: [-3, -5],
 };
 
 /**

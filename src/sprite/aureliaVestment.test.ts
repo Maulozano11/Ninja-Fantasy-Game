@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
+import { FEMALE_BASE } from './femaleBaseArt';
 import type { PaintedPiece } from './painted';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { GRID, PARTS, partIndex, RES } from './raster';
@@ -114,8 +115,9 @@ describe("Aurelia's vestment", () => {
   });
 
   it('lets none of our undergarment show past her bodice above the hips', () => {
-    // our body's bandeau and shorts on the torso (#3b3a46 and its shades): the bare body shows them there
-    const under = new Set(['#3b3a46', '#201f29', '#0d0d12', '#5e5c66', '#0a090f']);
+    // the body's sports top (his bare woman's, femaleBaseArt.ts): the bare body shows it there
+    const chest = FEMALE_BASE.chest;
+    const under = new Set([...chest.cloth].map((ch) => chest.colors[ch]));
     const torso = partIndex('torso');
     const shown = (armor?: string[]) => {
       const f = renderSprite(look('female', armor), 'idle', 0);

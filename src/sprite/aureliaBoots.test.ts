@@ -10,7 +10,6 @@ import { renderSprite } from './compose';
 import {
   DAWN_BOOT_CLOTH,
   DAWN_BOOT_GOLD,
-  DAWN_BOOT_SKIN,
   DAWN_FOOT_F,
   DAWN_FOOT_N,
   DAWN_SHIN_F,
@@ -39,7 +38,7 @@ function laid(p: PaintedPiece, at: Vec, keep: (x: number, y: number) => boolean 
   const ay = Math.floor(at.y * RES) - p.pivot[1];
   const out: [number, number, string][] = [];
   p.rows.forEach((row, j) => [...row].forEach((ch, i) => {
-    if (ch !== '.' && !(ch in DAWN_BOOT_SKIN) && keep(ax + i, ay + j)) out.push([ax + i, ay + j, p.colors[ch]]);
+    if (ch !== '.' && keep(ax + i, ay + j)) out.push([ax + i, ay + j, p.colors[ch]]);
   }));
   return out;
 }

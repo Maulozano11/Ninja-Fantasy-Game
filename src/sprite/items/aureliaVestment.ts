@@ -245,9 +245,10 @@ function drawDawnVestment(g: DrawCtx, cloth: string, gold: string, gem: string):
   clearTorso(g, bodice);
   sleeves.forEach(([s, , , span], k) => clearArm(g, s, covers[k], span));
   for (const [d, c] of turned) closeOpen(g, d, c);
-  // her hands come out of the cuffs: turned, a wrist the cuff no longer covers is closed in his line
+  // her hands come out of the cuffs: a wrist the cuff does not cover is closed in his line (his bare
+  // woman's fists, the female body's hands, are bigger than the hands he drew her with, so even at rest
+  // the fist's top shows past the cuff)
   for (const s of ['N', 'F'] as Side[]) {
-    if (!turned.some(([d]) => d === (s === 'F' ? 'farLeg.armor' : armDepth(s, 'armor')))) continue;
     const d = armDepth(s, 'body');
     const L = g.L(d);
     const hand = partIndex(`hand${s}` as PartId);

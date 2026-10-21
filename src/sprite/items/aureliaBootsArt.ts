@@ -11,39 +11,29 @@ export const DAWN_BOOT_CLOTH = '#f6eedc';
 export const DAWN_BOOT_GOLD = '#f2bd49';
 export const DAWN_BOOT_CLOTH_CHARS = 'abc';
 export const DAWN_BOOT_GOLD_CHARS = 'ABCDEFGHIJLMNOPQ';
-/** His bare thighs in the slits: these letters are drawn in the body's skin, at these shades of it (their colours are his, for reference). */
-export const DAWN_BOOT_SKIN: Record<string, number> = { '+': 3, '=': 2, '-': 1 };
 /** Where our leg goes: fine pixels above the knee along the thigh (the lace top's top edge). */
-export const DAWN_BOOT_CUT = 13.13;
-/** The same on the far leg: the far boot shows whole beside her front panel, so our far thigh goes from the lace top's top edge down. */
-export const DAWN_BOOT_CUT_F = 10.40;
+export const DAWN_BOOT_CUT = 11.75;
+/** The same on the far leg. */
+export const DAWN_BOOT_CUT_F = 12.01;
 
 /** The near lace top and the boot down to the knee (pivot: the knee). */
 export const DAWN_THIGH_N: PaintedPiece = {
-  pivot: [11, 20],
-  angle: 87.21,
+  pivot: [6, 12],
+  angle: 99.25,
   rows: [
-    '............=.',
-    '............=.',
-    '...........==.',
-    '..........=+=.',
-    '.........=++=.',
-    '........=+++=.',
-    '......kkk+++=.',
-    '.....kQNCkkkkk',
-    '.....kNCCCCNNk',
-    '....kNCCCCNNk.',
-    '...kNNNCCCNNk.',
-    '...kNbaNCNNk..',
-    '...kbaaaJaPk..',
-    '...kbaaaHak...',
-    '...kbaaHabk...',
-    '..kccaaHack...',
-    '..kccbFabk....',
-    '.kcbccOcck....',
-    '.kcbcOcck.....',
-    'kcbbbOcck.....',
-    'kc............',
+    '.....kkk.....',
+    '....kQNCkkkkk',
+    '....kNCCCCNNk',
+    '...kNCCCCNNk.',
+    '..kNNNCCCNNk.',
+    '..kNbaNCNNk..',
+    '..kbaaaJaPk..',
+    '..kbaaaHak...',
+    '..kbaaHabk...',
+    '.kccaaHack...',
+    '.kccbFabk....',
+    'kcbccOcck....',
+    '......ck.....',
   ],
   colors: {
     k: '#030517',
@@ -58,17 +48,17 @@ export const DAWN_THIGH_N: PaintedPiece = {
     O: '#915f30',
     P: '#785031',
     Q: '#553325',
-    '+': '#f5c5a3',
-    '=': '#dd937c',
   },
 };
 
 /** The near boot from the knee to the ankle (pivot: the ankle). */
 export const DAWN_SHIN_N: PaintedPiece = {
-  pivot: [10, 18],
-  angle: 103.41,
+  pivot: [6, 18],
+  angle: 105.42,
   rows: [
-    '.....cbccOcck',
+    '.....kccaa...',
+    '.....kccbFabk',
+    '....kcbccOcck',
     '....kcbcOcck.',
     '...kcbbbOcck.',
     '...kcbbbObk..',
@@ -95,13 +85,14 @@ export const DAWN_SHIN_N: PaintedPiece = {
     b: '#cdbcab',
     c: '#9b857e',
     C: '#f2bd49',
+    F: '#cfa056',
     O: '#915f30',
   },
 };
 
 /** The near ankle and shoe, flat (pivot: the ankle). */
 export const DAWN_FOOT_N: PaintedPiece = {
-  pivot: [10, 1],
+  pivot: [6, -1],
   angle: 0.00,
   rows: [
     '.kbCack',
@@ -128,34 +119,25 @@ export const DAWN_FOOT_N: PaintedPiece = {
 };
 
 /** Where the near shoe meets the shin, from the ankle at rest (fine pixels): the shoe follows it. */
-export const DAWN_FOOT_JOIN_N: [number, number] = [-6.56, -1.62];
+export const DAWN_FOOT_JOIN_N: [number, number] = [-2.00, 1.00];
 
 /** The far lace top and the boot down to the knee (pivot: the knee). */
 export const DAWN_THIGH_F: PaintedPiece = {
-  pivot: [9, 14],
-  angle: 52.27,
+  pivot: [1, 12],
+  angle: 91.36,
   rows: [
-    '......=.',
-    '.=......',
-    '.=....=.',
-    '.==....=',
-    '.=+.....',
-    '.=+.....',
-    '........',
-    'kkkk....',
-    'kNCk....',
-    'kNCk....',
-    'kNCk....',
-    'kNNk....',
-    'kbbk....',
-    'kbbk....',
-    'kbbk....',
-    'kbbk....',
-    'kcbk....',
-    'kck.....',
-    'kck.....',
-    'kck.....',
-    'kc......',
+    'kkkk',
+    'kNCk',
+    'kNCk',
+    'kNCk',
+    'kNNk',
+    'kbbk',
+    'kbbk',
+    'kbbk',
+    'kbbk',
+    'kcbk',
+    'kck.',
+    'kck.',
   ],
   colors: {
     k: '#030517',
@@ -163,19 +145,16 @@ export const DAWN_THIGH_F: PaintedPiece = {
     c: '#9b857e',
     C: '#f2bd49',
     N: '#9f6b2e',
-    '+': '#f5c5a3',
-    '=': '#dd937c',
   },
 };
 
 /** The far boot from the knee to the ankle (pivot: the ankle). */
 export const DAWN_SHIN_F: PaintedPiece = {
-  pivot: [7, 15],
-  angle: 106.19,
+  pivot: [5, 17],
+  angle: 88.03,
   rows: [
-    '......k..',
-    '.....bk..',
-    '....ck...',
+    '...kcbk..',
+    '...kck...',
     '...kck...',
     '...kck...',
     '...kck...',
@@ -213,7 +192,7 @@ export const DAWN_SHIN_F: PaintedPiece = {
 
 /** The far ankle and shoe, flat (pivot: the ankle). */
 export const DAWN_FOOT_F: PaintedPiece = {
-  pivot: [7, -4],
+  pivot: [5, -1],
   angle: 0.00,
   rows: [
     'k1cbbaIk.....',
@@ -243,4 +222,4 @@ export const DAWN_FOOT_F: PaintedPiece = {
 };
 
 /** Where the far shoe meets the shin, from the ankle at rest (fine pixels): the shoe follows it. */
-export const DAWN_FOOT_JOIN_F: [number, number] = [-3.58, 3.94];
+export const DAWN_FOOT_JOIN_F: [number, number] = [-1.00, 0.50];

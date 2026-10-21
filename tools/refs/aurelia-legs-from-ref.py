@@ -12,21 +12,20 @@ over the knee and down the shin with a thin gold seam down its front (brown-gold
 shade falls on it), lit cream again at the ankle, and gold shoes: the near one seen from the front (a
 gold toe cap on a brown sole), the far one in profile with its brown heel.
 
-His pixels are laid on our female at idle frame 0 (the second female body; its joints in
-tools/refs/aurelia_rig.py) where he drew them, none moved; his bare thighs in the skirt's slits above
-the lace tops (SLIT_N, SLIT_F) ride the boots in the body's own skin, so the slits are his too:
+His pixels are laid on our female at idle frame 0 (the owner's bare female body; its joints in
+tools/refs/aurelia_rig.py) where he drew them, none moved. His bare thighs in the skirt's slits above the
+lace tops are not the boots': our thighs show there, his bare woman's (a thigh painted on the boot rode
+the shin and showed as a third leg when she sat: the owner, 2026-10-21, "estas poniendo 3 piernas o 3
+botas"):
   - near boot: his rows 62-98 where he drew them, with the rest of her (tools/refs/aurelia_rig.py AT:
     his soles on ours, his sole on our near sole, our row 218), none of his rows left out. Every
     pixel is his.
   - far boot: all of it shows in his picture, a narrow column between her front panel and the
     lining (his rows 62-96: the lace top under his far hand, the shin with its gold seam, the shoe in
     profile), and it is laid where he drew it, at his (x + 73, y + 120): beside the front panel's
-    lower rows, his far sole two rows above his near one. Every pixel is his. Our far leg stands
-    further out than his (its thigh slants out to a knee six columns past his column) and its ankle
-    stands higher (six rows above the near one); its lace top rides our far thigh and the rest our far
-    shin, as the near boot's, and our far thigh goes from the lace top's top edge down (CUT_F): at
-    rest his column is all that shows of the far leg. Where our far foot comes forward to the near
-    one's depth the item raises the boot by as much (farBootAt in aureliaBoots.ts).
+    lower rows, his far sole two rows above his near one. Every pixel is his. His bare woman's far leg
+    is the same straight column, so the boot is on it: its lace top rides our far thigh and the rest our
+    far shin, as the near boot's, and our far leg goes from the lace top's top edge down (CUT_F).
 
 The pieces, each pivoting on our joint (its angle our segment's at idle, so at rest it is stamped as
 laid; in other poses it turns with its segment):
@@ -100,27 +99,6 @@ FAR_ROWS = {62: (59, 62)} | {y: (59, 62) for y in range(63, 72)} | {y: (59, 61) 
 # (pivot: the far ankle), and our far
 # thigh goes below the lace top's top edge (CUT_F): at rest his column is all that shows of the far leg.
 FAR_DX, FAR_DY = AT['boots']
-
-# His bare thighs in the skirt's slits above the lace tops (his boxes, inclusive): his skin cells there ride
-# the boots (near: the thigh's piece; far: the shin's, with its lace top), drawn in the body's own skin at
-# his shades (SKIN_TONE), so at rest the slits are his and our thigh under them does not show.
-SLIT_N = (41, 54, 50, 62)
-SLIT_F = (58, 55, 67, 60)
-# His skin's tones as letters (the body's skin shades): his base, shadow and deep shadow, split by
-# lightness as the female body's script splits them (tools/refs/female-body-from-ref.py).
-SKIN_TONE = {'+': 3, '=': 2, '-': 1}
-
-
-def skin_letter(c):
-    lum = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
-    return '-' if lum < 150 else '=' if lum < 195 else '+'
-
-
-def slit_cells(N, box):
-    x0, y0, x1, y1 = box
-    # (his light golds pass is_skin; his skin's green stays near its blue, a gold's well above it)
-    return [(x, y) for y in range(y0, y1 + 1) for x in range(x0, x1 + 1) if is_skin(N[y, x]) and int(N[y, x][1]) - int(N[y, x][2]) < 50]
-
 
 # Where the shoe begins, his rows: near (front view: the cream ankle, the gold toe cap, the brown
 # sole) and far (profile: the heel and the shoe).
@@ -259,15 +237,6 @@ def main():
 
     NL = chars(near)
     FL = chars(far)
-    # his bare thighs in the slits, in skin letters (the item draws them in the body's skin)
-    skin_hex = {}
-    for cs, box, dx, dy in ((NL, SLIT_N, NEAR_DX, NEAR_DY), (FL, SLIT_F, FAR_DX, FAR_DY)):
-        for (x, y) in slit_cells(N, box):
-            ch = skin_letter(N[y, x])
-            cs[(x + dx, y + dy)] = ch
-            skin_hex.setdefault(ch, []).append(N[y, x])
-    for ch, cs in skin_hex.items():
-        hexes[ch] = '#%02x%02x%02x' % tuple(int(v) for v in np.round(np.mean(cs, axis=0)))
 
     # ---- the pieces: our joints at idle frame 0
     def seg_angle(a, b):
@@ -336,7 +305,7 @@ def main():
         return hexes[c]
 
     base = {'cloth': nearest('cloth', (245, 237, 220)), 'gold': nearest('gold', (243, 190, 74))}
-    order = 'k' + pools['cloth'] + pools['gold'] + pools['brown'] + ''.join(SKIN_TONE)
+    order = 'k' + pools['cloth'] + pools['gold'] + pools['brown']
 
     def piece_ts(name, doc, cs, joint, angle):
         xs = [x for x, _ in cs]
@@ -366,11 +335,9 @@ def main():
         f"export const DAWN_BOOT_GOLD = '{base['gold']}';",
         f"export const DAWN_BOOT_CLOTH_CHARS = '{cloth_chars}';",
         f"export const DAWN_BOOT_GOLD_CHARS = '{gold_chars}';",
-        "/** His bare thighs in the slits: these letters are drawn in the body's skin, at these shades of it (their colours are his, for reference). */",
-        'export const DAWN_BOOT_SKIN: Record<string, number> = { ' + ', '.join(f"'{c}': {v}" for c, v in SKIN_TONE.items()) + ' };',
         '/** Where our leg goes: fine pixels above the knee along the thigh (the lace top\'s top edge). */',
         f'export const DAWN_BOOT_CUT = {cut:.2f};',
-        '/** The same on the far leg: the far boot shows whole beside her front panel, so our far thigh goes from the lace top\'s top edge down. */',
+        '/** The same on the far leg. */',
         f'export const DAWN_BOOT_CUT_F = {cut_f:.2f};',
         '',
     ]

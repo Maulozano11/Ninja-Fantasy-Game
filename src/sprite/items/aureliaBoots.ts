@@ -18,7 +18,6 @@ import {
   DAWN_BOOT_CUT_F,
   DAWN_BOOT_GOLD,
   DAWN_BOOT_GOLD_CHARS,
-  DAWN_BOOT_SKIN,
   DAWN_FOOT_F,
   DAWN_FOOT_JOIN_F,
   DAWN_FOOT_JOIN_N,
@@ -57,13 +56,10 @@ function legOffBelow(g: DrawCtx, s: Side, hip: Vec, knee: Vec, cut: number): voi
   }
 }
 
-/**
- * Stamps a piece as stampPiece does (at its angle every pixel is his), but his bare thigh in the slits
- * (DAWN_BOOT_SKIN letters) in the body's own skin at his shades, so it follows the player's skin.
- */
+/** Stamps a piece as stampPiece does: at its angle every pixel is his. */
 function stampBoot(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color: (ch: string, hex: string) => string): void {
   const pal: TemplatePalette = {};
-  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = ch in DAWN_BOOT_SKIN ? [g.skin, DAWN_BOOT_SKIN[ch]] : [g.m(color(ch, hex), 'flat'), 3];
+  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
   stampTemplate(g.L(depth), piece, at, deg - piece.angle, pal, part, { flags: F_NO_TEXTURE | F_NO_OUTLINE });
 }
 
@@ -130,25 +126,6 @@ function closeKnee(g: DrawCtx, s: Side, boot: Uint8Array, knee: Vec): void {
   for (const i of close) L.mat[i] = line;
 }
 
-/** Our female at idle frame 0, where his boots were laid. */
-let restRig: Rig | null = null;
-const rest = (): Rig => (restRig ??= drawRig('female', 'idle', 0));
-
-/**
- * Where the far boot is stamped from: our far ankle, moved up as the far foot comes forward in depth. At
- * rest our far ankle stands higher than the near one (the far foot further back), and his far boot,
- * laid where he drew it, reaches that much further below it to his far sole. As the far ankle comes
- * level with the near one, or below it (a lunge, leaning, a stride with the near foot up), the boot rises
- * as much, so its sole stays on our far sole's ground instead of going through it; with the far foot
- * further back or lifted higher than at rest (a step), it hangs as at rest.
- */
-function farBootAt(r: Rig, ankle: Vec): Vec {
-  const r0 = rest();
-  const lift = r0.ankleN.y - r0.ankleF.y;
-  const back = Math.max(0, Math.min(lift, r.ankleN.y - r.ankleF.y));
-  return v(ankle.x, ankle.y - (lift - back));
-}
-
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -169,8 +146,9 @@ export const FEET_DAWN_BOOTS: ItemDef = {
     // shin about the ankle, reaching under the shoe and under the thigh's piece; the shoe stays flat,
     // hanging where the shin's piece ends; the lace top and the boot over the knee turn with the thigh
     // about the knee, on top; and the boot is closed round a bending knee. The far boot is his narrow
-    // column beside her front panel, laid where he drew it: its lace top rides the far thigh, the rest
-    // the far shin, and our far thigh goes from its lace top down.
+    // column beside her front panel, laid where he drew it, on his bare woman's far leg (the same
+    // column): its lace top rides the far thigh, the rest the far shin. Each boot is drawn once, on its
+    // own leg: our leg below the lace top is the boot's.
     for (const s of ['F', 'N'] as Side[]) {
       const { hip, knee, ankle } = legJoints(g.rig, s);
       const [thigh, shin, foot, join, cut] = s === 'N' ? [DAWN_THIGH_N, DAWN_SHIN_N, DAWN_FOOT_N, DAWN_FOOT_JOIN_N, DAWN_BOOT_CUT] : [DAWN_THIGH_F, DAWN_SHIN_F, DAWN_FOOT_F, DAWN_FOOT_JOIN_F, DAWN_BOOT_CUT_F];
@@ -178,7 +156,7 @@ export const FEET_DAWN_BOOTS: ItemDef = {
       const d = legDepth(s, 'feet');
       const shinA = segAngle(knee, ankle);
       const thighA = segAngle(hip, knee);
-      const at = s === 'F' ? farBootAt(g.rig, ankle) : ankle;
+      const at = ankle;
       const footAt = add(at, shoeShift(join, shinA - shin.angle));
       stampBoot(g, d, shin, at, shinA, `shin${s}`, tint);
       stampBoot(g, d, foot, footAt, foot.angle, `foot${s}`, tint);

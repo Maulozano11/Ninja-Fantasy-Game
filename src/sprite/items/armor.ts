@@ -35,6 +35,7 @@ import {
   PLATE_VAMBRACE_N,
   PLATE_WAIST,
 } from './crimsonPlateArt';
+import { ROSE_GOWN_SKIRT } from './princessSkirt';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2843,4 +2844,6 @@ export const SKIRT_ITEMS: ItemDef[] = [
       });
     },
   },
+  // the owner's princess (princessSkirt.ts)
+  ROSE_GOWN_SKIRT,
 ];

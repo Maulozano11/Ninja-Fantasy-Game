@@ -274,6 +274,13 @@ const ES: Record<string, string> = {
   "The princess's gown bodice: a high lilac collar edged in gold over bare shoulders, a gold-embroidered lilac bodice with a pointed waist and pink sides, pink puffed sleeves with gold bands over big lilac puffed sleeves with gold cuffs. Women only.":
     'El corpiño del vestido de la princesa: un cuello alto lila ribeteado en oro sobre los hombros al aire, un corpiño lila bordado en oro con la cintura en punta y los costados rosas, mangas abullonadas rosas con bandas de oro sobre grandes mangas abullonadas lilas con puños de oro. Solo para mujeres.',
   Lilac: 'Lila',
+  // the princess's gown skirt (items/princessSkirt.ts)
+  'Rose Dawn Gown Skirt': 'Falda de gala del Alba Rosa',
+  'A ball-gown skirt to the floor: a pink overskirt open at the front, its hems embroidered in lilac and gold, over a lilac underskirt with a gold hem band and a dark purple petticoat. Women only.':
+    'Una falda de gala hasta el suelo: una sobrefalda rosa abierta por delante, con los bajos bordados en lila y oro, sobre una falda interior lila con una banda de oro en el bajo y una enagua morado oscuro. Solo mujeres.',
+  Underskirt: 'Falda interior',
+  Embroidery: 'Bordado',
+  Petticoat: 'Enagua',
 };
 
 /** An editor label in the screen's language. */

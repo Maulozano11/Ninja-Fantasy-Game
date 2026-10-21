@@ -130,3 +130,25 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `cazador1_ref.py` + `cazador1-hair-from-ref.py`, `cazador1-mask-from-ref.py`, `cazador1-vest-from-ref.py`,
+  `cazador1-trousers-from-ref.py`, `cazador1-boots-from-ref.py`, `cazador1-naginata-from-ref.py`: the owner's Cazador 1
+  (`docs/reference/cazador1-owner-reference.jpg`, his paint-over of our first Hunter-nin; pitch 20, phase 0, a 100 x 100
+  grid; our male idle frame 0 at offset (74, 118)), copied like Aiden and the Roman set: each script writes painted pieces
+  (`src/sprite/painted.ts`) pinned with their pivot on our joint, so at rest every pixel lands where he drew it (the idle
+  frame of the Cazador 1 differs from his picture in 0 pixels, within 3 per channel of his JPEG's colours).
+  `cazador1_ref.REGIONS` cuts his figure by region (polygons, row spans, a band along the shaft) and colour kind, in claim
+  order; his black line goes to every piece it bounds. What his picture hides is continued from his pixels: the vest under
+  the shoulder guard (column by column from below, its left line run up to the collar), the far sleeve and arm guard behind
+  the vest (along each row, to our far arm's width, closed by his line), the legs and boots behind the naginata (down or up
+  each column), the hair under the horns, the mask under the hair's strands, the shaft behind the near fist (his upper run
+  carried down the shaft), and the trouser shins under the boots (his last rows repeated down our shin, hemmed by his line).
+  Each module exports the colours its slots recolour from, what each of his colours is (`*_KIND`) and where each piece lands
+  at rest (`*_REST`), which `src/sprite/cazador1.test.ts` checks. With a second argument, a folder, each writes its pieces
+  at 8x (continued cells crossed). `python3 -I tools/refs/cazador1_ref.py <debug.png>` draws the regions over his picture.
+
+      python3 -I tools/refs/cazador1-hair-from-ref.py src/sprite/items/hunterHairArt.ts [studyDir]
+      python3 -I tools/refs/cazador1-mask-from-ref.py src/sprite/items/oniMaskArt.ts [studyDir]
+      python3 -I tools/refs/cazador1-vest-from-ref.py src/sprite/items/shadowOpsArt.ts [studyDir]
+      python3 -I tools/refs/cazador1-trousers-from-ref.py src/sprite/items/hunterTrousersArt.ts [studyDir]
+      python3 -I tools/refs/cazador1-boots-from-ref.py src/sprite/items/shinobiBootsArt.ts [studyDir]
+      python3 -I tools/refs/cazador1-naginata-from-ref.py src/sprite/items/naginataArt.ts [studyDir]

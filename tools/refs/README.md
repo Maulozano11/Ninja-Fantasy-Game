@@ -141,7 +141,11 @@ folders.
   below) and cuts the sleeves at the elbow and the legs at the knee. His legs are shorter than ours
   (`LEG_SHIFT`: near 5 px, far 3 px): the shins, wraps and sandals hang that much lower so his soles stand on our
   ground, and the thighs run on down over the shins in his own trousers. The far sleeve's top takes his jacket's
-  far shoulder, so a far arm swung forward is a whole sleeve. Each module exports the colour slots' bases (his
+  far shoulder, so a far arm swung forward is a whole sleeve; he drew only the outside of the far upper arm (a strip
+  beside the jacket's side panel), so `far_sleeve_full()` also writes `WILD_SLEEVE_UP_F_FULL`, that strip continued
+  across under the panel (`FAR_UNDER`, row by row from his strip's own pixels) to the breadth of his far forearm,
+  which the jacket uses once the far arm moves out from behind the body (it is not counted for the colour bases).
+  Each module exports the colour slots' bases (his
   colours), which slot each colour follows (`*_SLOT`: line, skin, main, ...) and where each piece lands at rest
   (`*_REST`), which `src/sprite/youth.test.ts` checks. The eyes script writes the `wild` eye shape
   (`src/sprite/wildEyeArt.ts`: his brow, lash, whites and irises over our face template's eye cells, a column

@@ -47,6 +47,24 @@ export interface UnitView {
    * draws it).
    */
   phase?: { from: Pt; to: Pt; t0: number };
+  /** The one frame a one-shot pose holds while it is set (the Chidori's hand drawn back as it gathers). */
+  holdFrame?: number;
+  /** What crackles in the near hand, drawn at the hand in every pose (the Chidori's lightning). */
+  held?: Held;
+}
+
+/**
+ * A piece of a sheet held in the near hand (renderer.ts draws it where the rig puts the hand): its
+ * rows one after another from `t0`, each for `ms` (the last loops until `end`).
+ */
+export interface Held {
+  group: string;
+  name: string;
+  element: VfxElement;
+  tint?: string;
+  t0: number;
+  end: number;
+  rows: { anim: string; ms: number }[];
 }
 
 export interface Floater {
@@ -150,6 +168,8 @@ export type VolleyPath = 'high' | 'straight' | 'low';
 
 /** How high the casting hand is in the cast pose (px above the feet), and how far before the body (m). */
 const HAND_LIFT = 62;
+/** How long the Chidori's lightning gathers in the hand before the ninja moves (ms at speed 1). */
+const HAND_GATHER = 760;
 const HAND_DX = 0.6;
 /** Where a cast leaves the hand of a ninja standing at `p` and facing `facing`. */
 const handOf = (p: Pt, facing: number): Pt => ({ x: p.x + facing * HAND_DX, z: p.z });
@@ -309,7 +329,9 @@ export class Playback {
         v.poseUntil = undefined;
         v.pose = u ? restPoseView(u, v) : 'idle';
         v.poseT0 = now;
+        v.holdFrame = undefined;
       }
+      if (v.held && now >= v.held.end) v.held = undefined;
       if (v.phase && now >= v.phase.t0 + PHASE_MS / this.speed) {
         v.phase = undefined;
         const u = state.units[id];
@@ -452,6 +474,7 @@ export class Playback {
   private setPose(v: UnitView, pose: SpritePose, now: number, dur?: number): void {
     v.pose = pose;
     v.poseT0 = now;
+    v.holdFrame = undefined;
     v.poseUntil = dur ? now + dur / this.speed : undefined;
   }
 
@@ -850,6 +873,88 @@ export class Playback {
         linger(end);
         return 1990;
       }
+      case 'woodDragon': {
+        // 4 (new art from his icon): roots (his coil, arching) break out of the ground in a row from
+        // the ninja to the target; his wood dragon rises out of the ground just behind the target,
+        // facing it, sways, rears and brings its head down on it; his rock burst and his leaves fly
+        // there; the dragon falls apart. Enhanced (it constricts and drains): it holds on longer.
+        announce();
+        this.setPose(a, 'cast', now, 900);
+        const miss = this.missedNext(ev.unit);
+        const to = ev.at;
+        const d = Math.max(0.01, dist(from, to));
+        const ux = (to.x - from.x) / d;
+        const uz = (to.z - from.z) / d;
+        const n = Math.max(1, Math.min(6, Math.floor((d - 1.2) / 1.2)));
+        for (let i = 0; i < n; i++) {
+          const k = n === 1 ? 0.5 : i / (n - 1);
+          const at0 = { x: from.x + ux * (0.9 + k * Math.max(0, d - 2.1)), z: from.z + uz * (0.9 + k * Math.max(0, d - 2.1)) };
+          piece({ group: 'vfx_wood', name: 'wood_root', t0: CAST + i * 90, from: at0, depth: at0.z, clip: 0, path: [{ ms: 0, dy: 32 }, { ms: 160, dy: 0 }, { ms: 520, dy: 0 }, { ms: 820, dy: 34 }], rows: [{ anim: 'idle', ms: 820 }] });
+        }
+        // His drawing faces left: behind the target as the caster sees it, turned to face it.
+        const behind = { x: to.x + (f > 0 ? 1 : -1) * 1.1, z: to.z };
+        const rise = CAST + n * 90 + 80;
+        const RISE = 450;
+        const HOLD = 350;
+        const STRIKE = 4 * (1000 / 14);
+        const grip = ev.enhanced ? 600 : 160;
+        const BREAK = 5 * (1000 / 12);
+        piece({ group: 'vfx_wood', name: 'wood_leaves', t0: rise, from: behind, depth: to.z + 0.001, rows: [{ anim: 'burst', ms: 714 }] });
+        const end0 = piece({
+          group: 'vfx_wood',
+          name: 'wood_dragon',
+          t0: rise,
+          from: behind,
+          depth: to.z - 0.02,
+          clip: 0,
+          path: [{ ms: 0, dy: 160 }, { ms: RISE, dy: 0 }],
+          rows: [{ anim: 'sway', ms: RISE + HOLD }, { anim: 'strike', ms: STRIKE + grip }, { anim: 'break', ms: BREAK + 120 }],
+          fade: 120,
+        });
+        const hit = rise + RISE + HOLD + 3 * (1000 / 14);
+        this.later(now, rise, () => h.sound('jutsu', el));
+        if (miss) {
+          linger(end0);
+          return hit;
+        }
+        let end = Math.max(end0, burst(el, to, hit, 40, 'multi'));
+        end = Math.max(end, burst(el, to, hit + 60, 20));
+        piece({ group: 'vfx_wood', name: 'wood_leaves', t0: hit, from: to, depth: to.z + 0.001, rows: [{ anim: 'burst', ms: 714 }] });
+        this.shakeAt(now, hit, ev.enhanced ? 5 : 4);
+        linger(end);
+        return hit;
+      }
+      case 'handLightning': {
+        // 11 (new: his lightning in the hand, then a thrust): the lightning gathered in the bare hand
+        // as the ninja set off (or here, when it was already beside the target), then the thrust (the
+        // pierce from its chamber), his lightning hit on the target as the hand lands, the ball gone.
+        if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+        let t = 0;
+        if (!a.held) {
+          h.sound('jutsu', el);
+          this.gatherHand(a, el, tint, now, ev.enhanced, [], HAND_GATHER + 1200);
+          t = HAND_GATHER;
+        }
+        // The pierce at its pace from its chamber (frame 1): the lunge (frame 2) lands one frame in.
+        const FRAME = 1000 / POSE_FPS.pierce;
+        const thrust = (tn: number) => {
+          this.setPose(a, 'pierce', tn - FRAME / this.speed, 4 * FRAME);
+          h.sound('swing');
+        };
+        if (t) this.later(now, t, thrust);
+        else thrust(now);
+        const hit = t + FRAME + 15;
+        const held = a.held;
+        if (held) held.end = at(hit + 50);
+        if (this.missedNext(ev.unit)) {
+          linger(hit + 4 * FRAME);
+          return hit;
+        }
+        const end = burst(el, ev.at, hit, 56);
+        this.shakeAt(now, hit, ev.enhanced ? 5 : 3);
+        linger(Math.max(end, hit + 3 * FRAME));
+        return hit;
+      }
       case 'hurricane': {
         // 12A and the owner's unarmed combo: the weapon put away, a jab, a cross, the spin into a
         // spinning back kick, a finishing kick; with each half turn and kick one of his wind
@@ -876,6 +981,19 @@ export class Playback {
         return Number.isFinite(first) ? first : ms(6);
       }
     }
+  }
+
+  /**
+   * The Chidori's lightning gathering in the near hand (the owner's answer 11): the hand drawn back
+   * (the pierce's chamber, held), his lightning hit growing and crackling there, then `after`, and
+   * it crackles on until the thrust lands (round1 'handLightning' ends it), or `ms` at most (a run cut
+   * short never leaves it in the hand).
+   */
+  private gatherHand(v: UnitView, element: VfxElement, tint: string | undefined, now: number, enhanced: boolean, after: Held['rows'], ms: number): void {
+    this.setPose(v, 'pierce', now);
+    v.holdFrame = 1;
+    const crackle = enhanced ? 'crackle_enh' : 'crackle';
+    v.held = { group: 'vfx_hand', name: 'lightning_hand', element, tint, t0: now, end: now + ms / this.speed, rows: [{ anim: 'gather', ms: 330 }, { anim: crackle, ms: HAND_GATHER - 330 }, ...after, { anim: crackle, ms: 1 }] };
   }
 
   /** Who the jutsu just played heals (its heal event, if it comes before anything else happens). */
@@ -912,13 +1030,27 @@ export class Playback {
         // off, a beat, then the run at its own pace.
         const seq = ev.jutsu ? JUTSU[ev.jutsu]?.seq : undefined;
         const speed = (pose === 'run' ? RUN : pose === 'sneak' ? SNEAK : WALK) * (seq?.fastRun ?? 1);
-        const beat = seq?.launchFlash ? 140 : 0;
+        // The Chidori gathers its lightning in the hand before it runs in, and carries it there.
+        const gather = seq?.stage === 'handLightning' ? HAND_GATHER : 0;
+        const beat = (seq?.launchFlash ? 140 : 0) + gather;
         if (seq?.launchFlash) this.fx.push({ kind: 'aura', element: JUTSU[ev.jutsu!].element, from: start, to: start, t0: now, dur: 520, unit: ev.unit, tint: jutsuTint(JUTSU[ev.jutsu!], u) });
         const last = ev.path[ev.path.length - 1];
         if (Math.abs(last.x - start.x) > 0.05) v.facing = last.x > start.x ? 1 : -1;
         v.walk = { path: ev.path.map((p) => ({ ...p })), t0: now + beat / this.speed, speed, pose, lengths, total };
-        v.pose = pose;
-        v.poseT0 = now;
+        if (gather) {
+          const runMs = (total / speed) * 1000;
+          const enh = this.queue.find((e) => e.t === 'jutsu' && e.unit === ev.unit);
+          this.gatherHand(v, JUTSU[ev.jutsu!].element, jutsuTint(JUTSU[ev.jutsu!], u), now, enh?.t === 'jutsu' && !!enh.enhanced, [{ anim: 'dash', ms: runMs }], gather + runMs + 1200);
+          h.sound('jutsu', JUTSU[ev.jutsu!].element);
+          this.later(now, gather, (tn) => {
+            v.pose = pose;
+            v.poseT0 = tn;
+            v.holdFrame = undefined;
+          });
+        } else {
+          v.pose = pose;
+          v.poseT0 = now;
+        }
         h.sound('step');
         if (ev.unit === this.turnUnit || state.phase === 'stealth') h.focus(ev.unit);
         return beat + (total / speed) * 1000;

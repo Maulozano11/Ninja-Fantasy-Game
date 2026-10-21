@@ -78,6 +78,11 @@ const LIGHTNING_LINE = ['#1c3aa8', '#262268'];
 // storm cloud is a cloud, off the bolt's hue, and stays (nearly) his.
 const KIRIN: Family = { natural: ['blue'], stops: [0.083, 0.152, 0.29, 0.8, 0.98], line: LIGHTNING_LINE, hue: [210, 24], material: [0.08, 0.16], vivid: 1, hot: true };
 
+// The wood dragon (vfx_wood, out of his Wood Dragon icon): his wood and its line, with his leaves
+// (green, kept as the earth keeps its moss); its stops over its wood. His icon is wood on green, so
+// brown and green chakra keep it his.
+const WOOD: Family = { natural: ['brown', 'green'], stops: [0.097, 0.153, 0.248, 0.407, 0.645], line: ['#041010'], hue: null, material: null, vivid: 0.75, earth: true };
+
 const FAMILIES: Record<TintElement, { set: Family; beast: Family; sprites?: Record<string, Family> }> = {
   fire: {
     set: { natural: ['red', 'orange'], stops: [0.103, 0.276, 0.561, 0.787, 0.965], line: FIRE_LINE, hue: [20, 45], material: [0.22, 0.42], vivid: 1, fiery: true, hot: true },
@@ -107,6 +112,7 @@ const FAMILIES: Record<TintElement, { set: Family; beast: Family; sprites?: Reco
     set: { natural: ['brown'], stops: [0.135, 0.26, 0.394, 0.548, 0.808], line: EARTH_LINE, hue: null, material: null, vivid: 0.75, earth: true },
     // The stone drake.
     beast: { natural: ['brown'], stops: [0.125, 0.215, 0.315, 0.473, 0.655], line: ['#191519'], hue: null, material: null, vivid: 0.75, earth: true, eyes: true },
+    sprites: { wood_dragon: WOOD, wood_root: WOOD, wood_leaves: WOOD },
   },
 };
 

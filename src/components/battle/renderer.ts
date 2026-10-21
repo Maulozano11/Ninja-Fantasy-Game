@@ -20,9 +20,9 @@ import { bodyCenterDx, FEET, fpsOf, framesOf, hasPhaseFrame, lookOf, phaseFrameO
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { leavesNodes, nodeUnder } from '../../battle/clans';
-import { GRID } from '../../sprite/raster';
+import { GRID, RES } from '../../sprite/raster';
 import { COMBO_TURNED } from '../../sprite/rig';
-import { drawAuraBack, drawLinger, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
+import { drawAuraBack, drawHeld, drawLinger, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 
 export interface Camera {
@@ -845,6 +845,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     const oneShot = v.pose === 'attack' || v.pose === 'hurt' || v.pose === 'cast' || v.pose === 'tackle' || v.pose === 'combo';
     frame = Math.floor(elapsed * fpsOf(v.pose));
     if (oneShot) frame = Math.min(frame, n - 1);
+    if (v.holdFrame !== undefined) frame = v.holdFrame;
   }
   const aura = v.pose === 'cast' ? { mode: 'cast' as const, tick: Math.floor(now / 83) } : undefined;
   const fr = unitFrame(u, look, v.pose, frame, aura);
@@ -879,6 +880,8 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   if (phase) drawPhase(ctx, sc, u, v, look, phase, alpha, solid);
   // The combo's spin shows the ninja turned away from its target for a moment.
   else solid(1, v.pose === 'combo' && COMBO_TURNED.includes(frame) ? (-v.facing as 1 | -1) : v.facing);
+  // What crackles in the near hand (the Chidori's lightning) goes where the rig puts the hand.
+  if (v.held && now >= v.held.t0 && fr.rig && !phase) drawHeld(ctx, sc, v.held, x0 + v.facing * (fr.rig.handN.x * RES - FEET.x), y0 + fr.rig.handN.y * RES);
   if (water !== 'none' && v.pose !== 'downed' && phase?.stage !== 'dash') {
     // Ripples where the body meets the water.
     ctx.save();

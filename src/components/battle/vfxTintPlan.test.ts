@@ -57,9 +57,11 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.deepEqual(names('dragon_fire_stream'), ['vfx_dragon/fire_wall_half', 'vfx_dragon/fire_head_half', 'vfx_fire/stream', 'vfx_fire/stream_head', 'vfx_fire/hit']);
     assert.deepEqual(names('water_dragon_suiryuudan'), ['vfx_dragon/water_head', 'vfx_water/stream', 'vfx_water/hit']);
     assert.deepEqual(names('earth_spear_doryuudan'), ['vfx_dc/earth_multi_0', 'vfx_dc/earth_multi_1', 'vfx_dc/earth_multi_2', 'vfx_earth/hit', 'vfx_earth/multi_hit']);
-    assert.ok(tintSheetsOf(JUTSU.wood_dragon_jutsu)[0].beast, 'the stone drake is the beast');
+    // The two new effects (answers 4 and 11): his wood dragon and its roots and leaves, the lightning in the hand.
+    assert.deepEqual(names('wood_dragon_jutsu'), ['vfx_wood/wood_root', 'vfx_wood/wood_leaves', 'vfx_wood/wood_dragon', 'vfx_earth/multi_hit', 'vfx_earth/hit']);
+    assert.ok(!tintSheetsOf(JUTSU.wood_dragon_jutsu).some((r) => r.beast), 'no beast flies');
     assert.deepEqual(names('earth_wall_doryuheki'), ['vfx_earth/wall', 'vfx_earth/wall_diag', 'vfx_earth/wall_depth']);
-    assert.deepEqual(names('chidori_lightning_blade'), ['vfx_lightning/hit']);
+    assert.deepEqual(names('chidori_lightning_blade'), ['vfx_hand/lightning_hand', 'vfx_lightning/hit']);
     assert.ok(names('kirin_thunder').slice(0, 2).join() === 'vfx_lightning/kirin,vfx_lightning/kirin_enh');
     assert.deepEqual(names('katon_pursuing_flame'), ['vfx_fire/bolt', 'vfx_fire/hit']);
     // The rank D and C set: the volleys' projectiles cut apart and the joined fan (vfx_dc) take the colour too.

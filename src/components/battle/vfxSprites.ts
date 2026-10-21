@@ -10,7 +10,7 @@ import type { Wall } from '../../battle/types';
 import { isTintElement } from '../../sprite/vfxTint';
 import { worldSprite } from '../world/WorldSpriteView';
 import type { VfxElement } from '../../battle/jutsu';
-import type { Fx, VolleyPath } from './playback';
+import type { Fx, Held, VolleyPath } from './playback';
 import type { Scene } from './renderer';
 import { auraDx, fxPos, project } from './renderer';
 import { WAIT, hurryVfxSheets, tintedSheet } from './vfxTintCache';
@@ -543,6 +543,26 @@ function drawRoute(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number):
   const r = turnedRow(s, d.x, d.y, 6);
   blit(ctx, s, r.anim, frameAt(s, r.anim, ms), p.x, p.y, r.mirror);
   return true;
+}
+
+/**
+ * What a ninja holds in its near hand (the Chidori's lightning, the owner's answer 11), its anchor at
+ * the hand (x, y): its rows one after another, the last looping, in the caster's chakra colour.
+ */
+export function drawHeld(ctx: CanvasRenderingContext2D, sc: Scene, h: Held, x: number, y: number): void {
+  const s = worldSprite(h.group, h.name);
+  if (!s || !ready(s)) return;
+  const sh = inTint(s, h.element, h.name, h.tint);
+  const ms = (sc.now - h.t0) * sc.pb.speed;
+  let acc = 0;
+  for (let i = 0; i < h.rows.length; i++) {
+    const row = h.rows[i];
+    if (ms < acc + row.ms || i === h.rows.length - 1) {
+      blit(ctx, sh, row.anim, frameAt(sh, row.anim, Math.max(0, ms - acc)), Math.round(x), Math.round(y), false);
+      return;
+    }
+    acc += row.ms;
+  }
 }
 
 function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolean {

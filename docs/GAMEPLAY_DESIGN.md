@@ -1035,14 +1035,15 @@ How his answer was read (he can correct it): 1 A, 2 A, 5 A, 8 A, 9 A, 12 A; he
 wrote "9 a" twice and no 10, read as 10 A (the recommended one); 3 (Night Guy)
 and 6 (64 palms, a character animation later) pending; 4 (Wood Dragon) and 11
 (a new effect in the hand, as the lightning cast style, with a thrust) need new
-art, not built yet; "haz lo mismo con este" after 7 read as 8's bullets flying
-varied paths too.
+art (built after, see the two rows at the end of the table); "haz lo mismo con
+este" after 7 read as 8's bullets flying varied paths too.
 
 Built on `vfx/ideas-round1` (on top of `jutsu/d-c-set`), **waiting for his
 approval of the in-game captures**. Only his pixels: his sheets moved, scaled,
 turned, layered, timed and recoloured (`tools/world-sprites/vfx-round1.ts`
-makes the new group `vfx_dragon`). The fire and water and earth ones still take
-the caster's chakra colour.
+makes the new group `vfx_dragon`; `tools/world-sprites/vfx-new-r1.ts` makes
+`vfx_wood` and `vfx_hand` for 4 and 11). The fire, water, earth and lightning
+ones still take the caster's chakra colour.
 
 | nº | jutsu (id) | what plays |
 |---|---|---|
@@ -1054,6 +1055,8 @@ the caster's chakra colour.
 | 9 | Danza de la luna creciente (`crescent_moon_dance`) | Three blows (L, L+0.22, L+0.44 s; L = arriving), each sending his chakra crescent out of the blade through the target and 1 m on, high, middle and low; his chakra star at L+0.72 s. Enhanced: five. |
 | 10 | Templo del Nirvana (`temple_of_nirvana`) | His vortex opens up to one side of the circle and his crows come out of it (his summon row, never seen before); the flock dives on a diagonal to the middle (1.06–1.66 s), his pillar with feathers rises there, his genjutsu hit on each one at 1.99 s. The eye orb no longer flies. |
 | 12 | Huracán de la hoja (`leaf_hurricane_senpuu`) | Not a weapon attack: the weapon is put away (like the Rush) and the ninja throws an unarmed combo, a new pose (`combo`, 8 frames: guard, jab, cross, the spin shown turned away, a spinning back kick, coming round, a finishing kick, guard); on each kick and half turn one of his wind crescents goes out to one of those it reaches, and his wind X with leaves bursts on it. |
+| 4 | Dragón de madera (`wood_dragon_jutsu`) | **New effect, a proposal.** No beast (the stone drake no longer flies). His wood dragon lifted out of his own hotbar icon (`tools/refs/wood-dragon-from-ref.py`: his pixels as the icon converter takes them, his green ground left out, his colours de-noised from the JPEG into 40 of his, his dark line added where the cut edge met the air), each of his pixels 2x2 (about 2.5 m tall). From 0.56 s roots break out of the ground in a row from the ninja toward the target, 90 ms apart (the near half of his left coil and its mirror, rising and sinking); his dragon rises out of the ground just behind the target, facing it (behind it on screen), with his loose leaves flung up; it sways on its root (RotSprite, ±3°), rears back and brings its head down (to −30°); his rock bullet burst and his rock explosion on the target, his leaves again, a shake; it falls apart from the top down (pieces of 3x3 of his pixels dropping). Enhanced (it constricts): it holds on 0.6 s instead of 0.16 s. In the chakra colour like the earth (his leaves stay green, as the earth's moss does; brown and green chakra keep it his). |
+| 11 | Chidori (`chidori_lightning_blade`) | **New effect, a proposal.** The weapon is put away (like the Rush and the combo: a rule, it waits with the free interaction spent) and the lightning gathers in the bare hand before the ninja runs in (0.76 s): the hand drawn back (the pierce's chamber, held), his lightning hit's two smallest frames flickering there, flipped a different way each frame (bigger frames enhanced); it is carried in the hand on the run with his lightning bolt's trailing spark behind it; on arriving the ninja thrusts the hand (the pierce pose, bare-handed), and his lightning hit lands on the target as the hand reaches it, the ball gone. Already beside the target, it gathers there first. In the caster's chakra colour. No bird, no symbol. |
 
 The pieces this needed (the proposal's P1–P6), all in the screen
 (`playback.ts`, `vfxSprites.ts`, `renderer.ts`, `paths.ts`): a piece of a sheet

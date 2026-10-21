@@ -51,12 +51,14 @@ export interface JutsuSeq {
    * the water dragon's head on its stream on a varied path ('waterDragon'), three volleys of rock
    * bullets on varied paths along the line ('rockVolleys'), the chain and the seal circle
    * ('sealChain'), three crescents of chakra ('crescents'), the crows out of the vortex
-   * ('crowDive'), the unarmed combo with wind crescents ('hurricane').
+   * ('crowDive'), the unarmed combo with wind crescents ('hurricane'); and the two new effects,
+   * his wood dragon rising out of the ground at the target after a row of roots ('woodDragon'), and
+   * lightning gathered in the bare hand, then a thrust with it ('handLightning').
    */
   stage?: StageKind;
 }
 
-export type StageKind = 'dragonHead' | 'dragonStream' | 'waterDragon' | 'rockVolleys' | 'sealChain' | 'crescents' | 'crowDive' | 'hurricane';
+export type StageKind = 'dragonHead' | 'dragonStream' | 'waterDragon' | 'rockVolleys' | 'sealChain' | 'crescents' | 'crowDive' | 'hurricane' | 'woodDragon' | 'handLightning';
 
 export interface JutsuSpec {
   id: string;
@@ -112,8 +114,9 @@ export interface JutsuSpec {
    */
   charge?: boolean;
   /**
-   * What the caster's hands do with a held weapon: a sword art draws it, a tackle stows it (free,
-   * once a turn, like stowing it for hand seals).
+   * What the caster's hands do with a held weapon: a sword art draws it, a tackle, the Leaf
+   * Hurricane's combo and the Chidori's bare-hand thrust stow it (free, once a turn, like stowing it
+   * for hand seals).
    */
   weapon?: 'draw' | 'stow';
   /**
@@ -171,14 +174,16 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   earth_wall_doryuheki: { shape: 'wall', special: 'earthWall', vfx: 'wall', length: 4.5 },
   earth_spear_doryuudan: { shape: 'line', width: 1.2, vfx: 'multi', seq: { stage: 'rockVolleys' } },
   wind_blade_daitoppa: { vfx: 'slash' },
-  chidori_lightning_blade: { vfx: 'hit', melee: true },
+  // A thrust of the bare hand with the lightning gathered in it (the owner's answer 11): the weapon is put away.
+  chidori_lightning_blade: { vfx: 'hit', melee: true, weapon: 'stow', seq: { stage: 'handLightning' } },
   lightning_hound_raidon: { vfx: 'beast' },
   // Not a weapon attack (the owner): the weapon is put away for an unarmed combo.
   leaf_hurricane_senpuu: { shape: 'selfCircle', vfx: 'slash', melee: true, weapon: 'stow', seq: { stage: 'hurricane' } },
   crescent_moon_dance: { vfx: 'slash', melee: true, seq: { stage: 'crescents' } },
   temple_of_nirvana: { special: 'confuse', vfx: 'blast', saveHalf: false, effect: 'confused', seq: { stage: 'crowDive' } },
   dragon_fire_bomb: { vfx: 'breath', effect: 'burning', seq: { stage: 'dragonHead' } },
-  wood_dragon_jutsu: { element: 'earth', vfx: 'beast' },
+  // His wood dragon out of his icon strikes out of the ground (the owner's answer 4): no beast flies.
+  wood_dragon_jutsu: { element: 'earth', vfx: 'hit', seq: { stage: 'woodDragon' } },
   adamantine_sealing_chains: { element: 'chakra', special: 'seal', vfx: 'stream', effect: 'chakra_sealed', seq: { stage: 'sealChain' } },
   taki_sixtyfour_palms: { vfx: 'multi', melee: true },
   kirin_thunder: { vfx: 'blast', sig: 'kirin' },

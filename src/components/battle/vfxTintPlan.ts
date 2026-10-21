@@ -86,7 +86,8 @@ export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vf
  * The sheets a jutsu staged with the owner's first round of effect pieces plays (playback.ts
  * round1), in the order they play: his flame wall and dragon head (vfx_dragon) and the fireballs,
  * the half wall and head and the stream, the water dragon's head and its body of water, the rock
- * bullets cut apart (vfx_dc) and their bursts. The others are not elemental.
+ * bullets cut apart (vfx_dc) and their bursts, the wood dragon's roots, leaves and dragon (vfx_wood)
+ * and the rock bursts, the lightning in the hand (vfx_hand) and its hit. The others are not elemental.
  */
 function stageSheets(stage: NonNullable<NonNullable<JutsuSpec['seq']>['stage']>, el: TintElement): TintSheetRef[] {
   const own = (name: string) => ({ group: `vfx_${el}`, name, element: el });
@@ -100,6 +101,10 @@ function stageSheets(stage: NonNullable<NonNullable<JutsuSpec['seq']>['stage']>,
       return [dragon('water_head'), own('stream'), own('hit')];
     case 'rockVolleys':
       return [0, 1, 2].map((i) => ({ group: 'vfx_dc', name: `${el}_multi_${i}`, element: el })).concat([own('hit'), own('multi_hit')]);
+    case 'woodDragon':
+      return ['wood_root', 'wood_leaves', 'wood_dragon'].map((name) => ({ group: 'vfx_wood', name, element: el })).concat([own('multi_hit'), own('hit')]);
+    case 'handLightning':
+      return [{ group: 'vfx_hand', name: 'lightning_hand', element: el }, own('hit')];
     default:
       return [];
   }

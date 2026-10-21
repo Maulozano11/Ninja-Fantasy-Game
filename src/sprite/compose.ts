@@ -95,6 +95,22 @@ function farHandToFront(layers: Map<Depth, Layer>, g: DrawCtx): void {
   }
 }
 
+/**
+ * Boots worn inside the trousers (a bottom item's 'boots' part, the owner's choice: "con opcion de que
+ * las botas se escondan adentro del pantalon o que las botas vayan por fuera"): wherever a trouser leg
+ * is drawn, the boot on that leg is taken away, so the hem falls over the boot top and only the boot
+ * below it shows. Outside (the default for every trouser but the owner's jeans) the boots are drawn over
+ * the legs as ever.
+ */
+function tuckBoots(layers: Map<Depth, Layer>): void {
+  for (const s of ['near', 'far'] as const) {
+    const cloth = layers.get(`${s}Leg.cloth` as Depth);
+    const feet = layers.get(`${s}Leg.feet` as Depth);
+    if (!cloth?.used || !feet?.used) continue;
+    for (let i = 0; i < GRID * GRID; i++) if (feet.mat[i] >= 0 && cloth.mat[i] >= 0) feet.mat[i] = -1;
+  }
+}
+
 /** The cape layers that hang from the body (the cloth, its collar and the drapes on the chest). */
 const CAPE_CLOTH = ['capeBack', 'capeFront'] as const;
 
@@ -316,6 +332,8 @@ export function renderSprite(
     }
     drawCastFx(g);
     drawCampFx(g);
+    const bottom = equipped.get('bottom');
+    if (bottom && resolveParts(bottom, look.slots.bottom?.parts).boots === 'tucked') tuckBoots(layers);
     if (rig.farHandFront) farHandToFront(layers, g);
     guardFace(g, layers);
   }

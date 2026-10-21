@@ -16,10 +16,13 @@
 import { faceAnchor } from '../body';
 import { retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
-import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
+import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, RES, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
+import { LOCK_HAIR_BACK, LOCK_HAIR_BASE, LOCK_HAIR_FRONT, LOCK_HAIR_LINE, LOCK_HAIR_LOCK } from './lockHairArt';
+import { segAngle, type PaintedPiece } from '../painted';
+import { stampTemplate, type TemplatePalette } from '../rotsprite';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -1642,6 +1645,34 @@ function trimSkull(g: DrawCtx, p: PaintedPart): void {
   }
 }
 
+/**
+ * The owner's broad man's long lock (lockHairArt.ts), pinned on the face anchor as he drew it and leaned
+ * with the body: it lies on the chest. A small lean shears it, each row moved across whole (his pixels
+ * only stepped); past 20 degrees it is turned with RotSprite.
+ */
+function paintedLock(g: DrawCtx, L: Layer, p: PaintedPiece, color: (ch: string, hex: string) => string): void {
+  const { nx, ny } = faceAnchor(g);
+  const d = segAngle(g.rig.pelvis, g.rig.neck) - p.angle;
+  const pal: TemplatePalette = {};
+  for (const [ch, hex] of Object.entries(p.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
+  L.noFray = true;
+  if (Math.abs(d) > 20) {
+    stampTemplate(L, p, v((nx + 0.5) / RES, (ny + 0.5) / RES), d, pal, 'head', { flags: F_NO_TEXTURE | F_NO_OUTLINE });
+    return;
+  }
+  const sn = Math.sin((d * Math.PI) / 180);
+  p.rows.forEach((row, j) => {
+    const dx = -Math.round((j - p.pivot[1]) * sn);
+    for (let i = 0; i < row.length; i++) {
+      const ch = row[i];
+      if (ch !== '.') L.set(nx - p.pivot[0] + i + dx, ny - p.pivot[1] + j, pal[ch][0], 3, 'head', F_NO_TEXTURE | F_NO_OUTLINE);
+    }
+  });
+}
+
+/** His broad man's hair recoloured: his black line stays, his yellows and browns move the way his lit yellow does. */
+const lockHairColor = (hair: string) => (_ch: string, hex: string) => (LOCK_HAIR_LINE.includes(hex) ? hex : retintHex(hex, LOCK_HAIR_BASE, hair));
+
 /** His hair recoloured: his black line stays, his browns move the way his mid brown does. */
 const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, VALIANT_HAIR_BASE, hair));
 
@@ -1819,6 +1850,23 @@ export const HAIR_ITEMS: ItemDef[] = [
       paintedHair(g, g.L('hairBack'), VALIANT_HAIR_BACK, tint);
       paintedHair(g, g.L('hairFront'), VALIANT_HAIR_FRONT, tint);
       trimSkull(g, VALIANT_HAIR_BACK);
+    },
+  },
+  {
+    id: 'hair_long_lock',
+    slot: 'hair',
+    name: 'Long Lock',
+    desc: 'Blond spikes standing up and out over the head, a fringe of strands over the brow and one long lock falling from the near temple over the chest.',
+    colors: hairColor(LOCK_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's broad man's hair, his pixels (2026-10-21, "copia todo como aiden"): every strand,
+      // highlight and line of his over the head, the same hair with what his face hides filled in
+      // behind it, and his long lock over the chest, leaning with the body.
+      const tint = lockHairColor(c);
+      paintedHair(g, g.L('hairBack'), LOCK_HAIR_BACK, tint);
+      paintedHair(g, g.L('hairFront'), LOCK_HAIR_FRONT, tint);
+      paintedLock(g, g.L('hairFront'), LOCK_HAIR_LOCK, tint);
+      trimSkull(g, LOCK_HAIR_BACK);
     },
   },
 ];

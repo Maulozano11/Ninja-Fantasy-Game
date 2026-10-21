@@ -145,8 +145,8 @@ const TABLE = strings({
   help_antidote: { en: 'Cures Poisoned.', es: 'Cura el Envenenamiento.' },
   help_tag: { en: 'Throw at a point (9 m): 3d6 fire in 1.5 m. Seals a hydra stump.', es: 'Lánzalo a un punto (9 m): 3d6 de fuego en 1.5 m. Sella el muñón de la hidra.' },
   help_tagTrap: {
-    en: 'Hide an explosive tag on the ground (4.5 m): it blows up when an enemy steps on it, 3d6 fire in 1.5 m (DEX save DC 13 for half). Quiet.',
-    es: 'Esconde un sello explosivo en el suelo (4,5 m): estalla cuando un enemigo lo pisa, 3d6 de fuego en 1,5 m (salvación de DES CD 13 para la mitad). Silencioso.',
+    en: 'Hide an explosive tag on the ground (4.5 m): it blows up when an enemy steps on it, 3d6 fire in 1.5 m (DEX save against your jutsu DC for half). Quiet.',
+    es: 'Esconde un sello explosivo en el suelo (4,5 m): estalla cuando un enemigo lo pisa, 3d6 de fuego en 1,5 m (salvación de DES contra tu CD de jutsu para la mitad). Silencioso.',
   },
   help_stabilize: { en: 'Medicine DC 10 on a downed ally next to you.', es: 'Medicina CD 10 sobre un aliado caído a tu lado.' },
   help_flee: { en: 'Leave the battle by the map edge.', es: 'Sal de la batalla por el borde del mapa.' },

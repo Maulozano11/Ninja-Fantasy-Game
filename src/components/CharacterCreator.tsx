@@ -24,9 +24,9 @@ import { soundManager } from '../utils/audio';
 import { deriveStats } from '../rules/derived';
 import { clanBonus } from '../rules/checks';
 import { migrateCharacter, natureOf, sanitizeMissionFields } from '../rules/ninja';
-import { fitLoadout, offNatureJutsus, type JutsuSwap } from '../rules/jutsuNature';
-import { aboveRank, asMade, creatorChoices, fitNewNinja, rankOpen, typeFixed } from '../rules/progression';
-import { pouchTags, TAG_JUTSU } from '../rules/pouch';
+import { importedSlots, offNatureJutsus, type JutsuSwap } from '../rules/jutsuNature';
+import { aboveRank, asMade, creatorChoices, fitNewNinja, fitToType, isLegend, learnsAsNew, slotChoices, typeFixed } from '../rules/progression';
+import { pouchTags } from '../rules/pouch';
 import { chakraNature, chakraType } from '../sprite/chakraNature';
 import type { ChakraNature } from '../types/shinobi';
 import { Dice5, Download, Shield, Zap, Eye, Swords, BookOpen, UserCheck, Sparkles, Lock, Bomb } from 'lucide-react';
@@ -59,13 +59,8 @@ export function characterFromImport(raw: unknown): ShinobiCharacter | null {
   const out = mergeKind(DEFAULT_CHARACTER as unknown as Record<string, unknown>, raw);
   if (Array.isArray(out.selectedFeats)) out.selectedFeats = out.selectedFeats.filter((f) => typeof f === 'string');
   // every jutsu slot must name a jutsu that exists, or be empty (a new ninja's S-rank slot); the old
-  // explosive tag jutsu goes through, and migrateCharacter turns it into the item
-  const slots = out.selectedJutsus as Record<string, unknown>;
-  const defSlots = DEFAULT_CHARACTER.selectedJutsus as unknown as Record<string, string>;
-  for (const k of Object.keys(defSlots)) {
-    const id = RENAMED_JUTSUS[slots[k] as string] ?? slots[k];
-    slots[k] = id === '' || id === TAG_JUTSU || JUTSUS_DATA.some((j) => j.id === id) ? id : defSlots[k];
-  }
+  // explosive tag jutsu goes through, and migrateCharacter turns it into the item (rules/jutsuNature.ts)
+  out.selectedJutsus = importedSlots(isObj(out.selectedJutsus) ? out.selectedJutsus : {}, DEFAULT_CHARACTER.selectedJutsus, RENAMED_JUTSUS);
   // The sheet's version is its own: one without it was saved before the clan bonus counted, and
   // gets it counted on load (not the default character's version).
   if (typeof raw.sheetVersion === 'number' && Number.isFinite(raw.sheetVersion)) out.sheetVersion = raw.sheetVersion;
@@ -86,7 +81,7 @@ export function characterFromImport(raw: unknown): ShinobiCharacter | null {
  * (rules/progression.ts); the S-rank slot is empty until it opens. Legends and made ninjas keep theirs.
  */
 function asNewNinja(c: ShinobiCharacter): ShinobiCharacter {
-  if (typeFixed(c) || LEGENDARY_PRESETS.some((p) => p.character.id === c.id)) return c;
+  if (!learnsAsNew(c)) return c;
   const fitted = fitNewNinja(c.selectedJutsus, natureOf(c), c.clan).loadout;
   return Object.values(fitted).join() === Object.values(c.selectedJutsus).join() ? c : { ...c, selectedJutsus: fitted };
 }
@@ -151,6 +146,11 @@ const T = strings({
     en: 'Nature: {n}. The Element and S-rank slots offer {n} jutsu and jutsu with no element (taijutsu, kenjutsu, genjutsu).',
     es: 'Naturaleza: {n}. Las ranuras de Elemento y Rango S ofrecen jutsus de {n} y jutsus sin elemento (taijutsu, kenjutsu, genjutsu).',
   },
+  // While a ninja is being created the S-rank slot is locked, so the note names only the Element slots.
+  natureRuleNew: {
+    en: 'Nature: {n}. The Element slots offer {n} jutsu and jutsu with no element (taijutsu, kenjutsu, genjutsu).',
+    es: 'Naturaleza: {n}. Las ranuras de Elemento ofrecen jutsus de {n} y jutsus sin elemento (taijutsu, kenjutsu, genjutsu).',
+  },
   natureRuleNone: {
     en: 'Nature: {n}. Its own jutsu will come later; for now it learns no elemental jutsu, only jutsu with no element (taijutsu, kenjutsu, genjutsu).',
     es: 'Naturaleza: {n}. Sus jutsus llegarán más adelante; por ahora no aprende jutsus elementales, solo jutsus sin elemento (taijutsu, kenjutsu, genjutsu).',
@@ -170,8 +170,8 @@ const T = strings({
   tagPouch: { en: '×{n} in its pouch', es: '×{n} en su bolsa' },
   tagReach: { en: 'Throw 9 m · hide 4.5 m', es: 'Lanzar 9 m · esconder 4,5 m' },
   tagText: {
-    en: 'A tool, not a jutsu: the party\'s backpack carries explosive tags (2 for each mission), and anyone can use them from the battle\'s item slots. Throw one (up to 9 m: it blows up where it lands) or hide one on the ground (up to 4.5 m: it blows up when an enemy steps on it). Either way, 3d6 fire in 1.5 m, DEX save DC 13 for half. It costs no chakra and needs no hand seals.',
-    es: 'Una herramienta, no un jutsu: la mochila del grupo lleva sellos explosivos (2 por misión) y cualquiera los usa desde las ranuras de objetos de la batalla. Lanza uno (hasta 9 m: estalla donde cae) o escóndelo en el suelo (hasta 4,5 m: estalla cuando un enemigo lo pisa). En los dos casos, 3d6 de fuego en 1,5 m, salvación de DES CD 13 para la mitad. No gasta chakra ni necesita sellos de manos.',
+    en: 'A tool, not a jutsu: the party\'s backpack carries explosive tags (2 for each mission), and anyone can use them from the battle\'s item slots. Throw one (up to 9 m: it blows up where it lands) or hide one on the ground (up to 4.5 m: it blows up when an enemy steps on it). Either way, 3d6 fire in 1.5 m, DEX save for half: DC 13 when thrown, the hider\'s jutsu DC when hidden. It costs no chakra and needs no hand seals.',
+    es: 'Una herramienta, no un jutsu: la mochila del grupo lleva sellos explosivos (2 por misión) y cualquiera los usa desde las ranuras de objetos de la batalla. Lanza uno (hasta 9 m: estalla donde cae) o escóndelo en el suelo (hasta 4,5 m: estalla cuando un enemigo lo pisa). En los dos casos, 3d6 de fuego en 1,5 m, salvación de DES para la mitad: CD 13 si se lanza, la CD de jutsu de quien lo esconde si se esconde. No gasta chakra ni necesita sellos de manos.',
   },
   tagPouchText: {
     en: 'This ninja carries {n} more in its own pouch (it had the explosive tag as a jutsu): they join the backpack at the start of every mission and practice battle.',
@@ -416,7 +416,8 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
     // jutsu of another element for ones of its own (rules/jutsuNature.ts), at the ranks a new ninja may
     // take (rules/progression.ts), and says which.
     const nature = chakraNature(next.chakra);
-    const fitted = nature !== natureOf(character) ? fitLoadout(character.selectedJutsus, nature, character.clan, (j) => rankOpen(j, character.clan)) : null;
+    // A legend keeps its sheet: its jutsu of every rank become the new element's.
+    const fitted = nature !== natureOf(character) ? fitToType(character, nature) : null;
     if (fitted) setNatureSwaps(fitted.swaps.length ? { nature, swaps: fitted.swaps } : null);
     setCharacter({
       ...character,
@@ -537,7 +538,9 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
     const randomArmor = armorStyleFor(randomLook);
     // Jutsu a new ninja may learn, of its own nature: Element I of its element when there is one,
     // Element II any other it may learn; the clan secret is its clan's, and the S-rank slot is empty
-    // until it opens (rules/progression.ts).
+    // until it opens (rules/progression.ts). A made ninja keeps its jutsu (only the clan secret
+    // follows the new clan), whatever their rank.
+    const made = typeFixed(character);
     const nature = chakraNature(randomLook.chakra);
     const one = <J,>(xs: J[]): J | undefined => xs[Math.floor(Math.random() * xs.length)];
     const own = <J extends { nature: string }>(xs: J[]): J[] => (xs.some((j) => j.nature === nature) ? xs.filter((j) => j.nature === nature) : xs);
@@ -570,17 +573,21 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       armorStyle: randomArmor,
       dojutsu: randomDojutsu,
       stats: randomizedStats,
-      selectedJutsus: fitNewNinja(
-        {
-          ...character.selectedJutsus,
-          slot2Elemental: element1?.id ?? '',
-          slot3Elemental: element2?.id ?? '',
-          slot4Clan: clanInfo.signatureJutsuId,
-          slot5Ultimate: ultimate?.id ?? '',
-        },
-        nature,
-        randomClan,
-      ).loadout,
+      // A random ninja made from a legend's sheet is not that legend: a new ninja of its own.
+      ...(isLegend(character) ? { id: `ninja_${Date.now().toString(36)}` } : {}),
+      selectedJutsus: made
+        ? { ...character.selectedJutsus, slot4Clan: clanInfo.signatureJutsuId }
+        : fitNewNinja(
+            {
+              ...character.selectedJutsus,
+              slot2Elemental: element1?.id ?? '',
+              slot3Elemental: element2?.id ?? '',
+              slot4Clan: clanInfo.signatureJutsuId,
+              slot5Ultimate: ultimate?.id ?? '',
+            },
+            nature,
+            randomClan,
+          ).loadout,
       appearance: randomLook,
       palette: {
         ...character.palette,
@@ -625,7 +632,9 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const offNature = new Set(offNatureJutsus(character.selectedJutsus, nature));
   // A new ninja learns rank D and C jutsu and its clan's (rules/progression.ts); a sheet's own jutsu of
   // a higher rank (a legend's, an older sheet's) stay, marked.
-  const highRank = new Set(aboveRank(character.selectedJutsus, character.clan));
+  // A made ninja is no longer held to them: nothing is marked (rules/progression.ts, slotChoices).
+  const creating = !typeFixed(character);
+  const highRank = new Set(creating ? aboveRank(character.selectedJutsus, character.clan) : []);
   const jutsuTitle = (id: string) => (id ? jutsuParts(JUTSUS_DATA.find((j) => j.id === id) ?? { name: id })[0] : T('slotEmptied'));
   // Only the swaps the player has not changed since: a slot picked again drops out of the note.
   const swapsKept = natureSwaps && natureSwaps.nature === nature ? natureSwaps.swaps.filter((x) => character.selectedJutsus[x.slot] === x.to) : [];
@@ -675,11 +684,11 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const hoverOn = (h: Hover) => (on: boolean) => setHover(on ? h : null);
 
   const slots: { key: SlotKey; label: string; list: typeof JUTSUS_DATA; fixed?: boolean }[] = [
-    { key: 'slot1Utility', label: T('slotUtility'), list: creatorChoices('slot1Utility', nature, character.clan) },
-    { key: 'slot2Elemental', label: T('slotElementA'), list: creatorChoices('slot2Elemental', nature, character.clan) },
-    { key: 'slot3Elemental', label: T('slotElementB'), list: creatorChoices('slot3Elemental', nature, character.clan) },
-    { key: 'slot4Clan', label: T('slotClan'), list: creatorChoices('slot4Clan', nature, character.clan), fixed: true },
-    { key: 'slot5Ultimate', label: T('slotUltimate'), list: creatorChoices('slot5Ultimate', nature, character.clan) },
+    { key: 'slot1Utility', label: T('slotUtility'), list: slotChoices(character, 'slot1Utility', nature, character.clan) },
+    { key: 'slot2Elemental', label: T('slotElementA'), list: slotChoices(character, 'slot2Elemental', nature, character.clan) },
+    { key: 'slot3Elemental', label: T('slotElementB'), list: slotChoices(character, 'slot3Elemental', nature, character.clan) },
+    { key: 'slot4Clan', label: T('slotClan'), list: slotChoices(character, 'slot4Clan', nature, character.clan), fixed: true },
+    { key: 'slot5Ultimate', label: T('slotUltimate'), list: slotChoices(character, 'slot5Ultimate', nature, character.clan) },
   ];
 
   const leftTitle = { origin: T('pickOrigin'), clan: T('pickClan'), class: T('pickClass'), appearance: T('stepAppearance'), abilities: T('pickAbilities'), jutsus: T('pickJutsus') }[step];
@@ -825,8 +834,8 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       )}
       {step === 'jutsus' && (
         <div className="px-3 pb-2 space-y-1.5">
-          <p className="text-[12px] leading-snug text-[#b9a98a]">{T(chakraType(nature).elemental ? 'natureRule' : 'natureRuleNone', { n: L(nature) })}</p>
-          <p className="text-[12px] leading-snug text-[#b9a98a]">{T('rankRule')}</p>
+          <p className="text-[12px] leading-snug text-[#b9a98a]">{T(!chakraType(nature).elemental ? 'natureRuleNone' : creating ? 'natureRuleNew' : 'natureRule', { n: L(nature) })}</p>
+          {creating && <p className="text-[12px] leading-snug text-[#b9a98a]">{T('rankRule')}</p>}
           {natureSwapText && <p className="text-[12px] leading-snug text-[#f2c46d] border border-[#6b5434] bg-[#3a2a12]/60 px-2 py-1">{natureSwapText}</p>}
         </div>
       )}

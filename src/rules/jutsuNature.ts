@@ -7,6 +7,7 @@
 // pending) learns no elemental jutsu: its own jutsu come later. Pure data, no React.
 
 import { JUTSUS_DATA } from '../data/shinobiData';
+import { TAG_JUTSU } from './pouch';
 import type { ChakraNature, ClanType, ElementalNature, JutsuDefinition, JutsuSlotCategory, ShinobiCharacter } from '../types/shinobi';
 
 export type JutsuSlot = keyof ShinobiCharacter['selectedJutsus'];
@@ -104,4 +105,19 @@ export function offNatureJutsus(loadout: Loadout, nature: ChakraNature): string[
     const j = JUTSUS_DATA.find((x) => x.id === id);
     return !!j && !jutsuFitsNature(j, nature);
   });
+}
+
+/**
+ * An imported sheet's jutsu slots: each must name a jutsu that exists (an old id is read through
+ * `renamed`), or be empty (a new ninja's S-rank slot), or else it gets `defaults`' jutsu for that
+ * slot. The old explosive tag jutsu goes through: migrateCharacter turns it into the item.
+ */
+export function importedSlots(slots: Record<string, unknown>, defaults: Loadout, renamed: Record<string, string> = {}): Loadout {
+  const out = { ...defaults };
+  for (const k of Object.keys(defaults) as JutsuSlot[]) {
+    const raw = slots[k];
+    const id = typeof raw === 'string' ? (renamed[raw] ?? raw) : undefined;
+    if (id !== undefined && (id === '' || id === TAG_JUTSU || JUTSUS_DATA.some((j) => j.id === id))) out[k] = id;
+  }
+  return out;
 }

@@ -826,12 +826,6 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       u.cond.clone = true;
       ev.push({ t: 'clone', unit: u.id, on: true });
       break;
-    case 'trap': {
-      const trap: Trap = { id: `trap_${s.tick}_${u.id}`, kind: 'tag', pos: at, owner: u.team, dc: u.saveDC, dice: spec.dice ?? '3d6', radius: spec.radius ?? 1.5 };
-      s.traps.push(trap);
-      ev.push({ t: 'trap', trap, on: true });
-      break;
-    }
     case 'earthWall':
     case 'waterWall':
       raiseWall(s, u, spec, at, ev);

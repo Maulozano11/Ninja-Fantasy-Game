@@ -12,7 +12,10 @@ import { hitStructuresIn } from './structures';
 
 /** Explosive barrels and tags: 3d6 fire in 1.5 m, DEX save for half. */
 export const BARREL = { dice: '3d6', radius: 1.5, dc: 13 };
-/** An explosive tag (an item): thrown up to `range`, or hidden on the ground up to `plant` away. */
+/**
+ * An explosive tag (an item): thrown up to `range` (DEX save against `dc`), or hidden on the ground up
+ * to `plant` away (the save is against the hider's jutsu DC, as the old jutsu's was).
+ */
 export const TAG = { dice: '3d6', radius: 1.5, dc: 13, range: 9, plant: 4.5 };
 /** A trap goes off when someone of the other team steps this close. */
 const TRAP_TRIGGER = 0.75;
@@ -156,10 +159,11 @@ export function throwTag(s: BattleState, u: Unit, at: Pt, ev: BattleEvent[]): Hi
 /**
  * An explosive tag hidden on the ground (the party's supplies; until 2026-10-21 the jutsu "Explosive
  * Tag Ambush"): it waits, unseen by the other team, and blows up when one of them steps on it, or
- * when fire or lightning reaches it.
+ * when fire or lightning reaches it. Its save is the hider's jutsu DC, as the jutsu's was, so the item
+ * does what the jutsu did.
  */
 export function plantTag(s: BattleState, u: Unit, at: Pt, ev: BattleEvent[]): Trap {
-  const trap: Trap = { id: `tag_${s.tick}_${u.id}_${s.traps.length}`, kind: 'tag', pos: { ...at }, owner: u.team, dc: TAG.dc, dice: TAG.dice, radius: TAG.radius };
+  const trap: Trap = { id: `tag_${s.tick}_${u.id}_${s.traps.length}`, kind: 'tag', pos: { ...at }, owner: u.team, dc: u.saveDC, dice: TAG.dice, radius: TAG.radius };
   s.traps.push(trap);
   ev.push({ t: 'trap', trap, on: true });
   return trap;

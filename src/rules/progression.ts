@@ -9,9 +9,9 @@
 //   level and the feat are still to decide).
 // Pure data, no React.
 
-import { JUTSUS_DATA } from '../data/shinobiData';
+import { JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shinobiData';
 import type { ChakraNature, ClanType, JutsuDefinition, JutsuRank, ShinobiCharacter } from '../types/shinobi';
-import { jutsuChoices, jutsuFitsNature, type JutsuSlot, type JutsuSwap, type Loadout, refitSlots } from './jutsuNature';
+import { fitLoadout, jutsuChoices, jutsuFitsNature, type JutsuSlot, type JutsuSwap, type Loadout, refitSlots } from './jutsuNature';
 
 /** The ranks a new ninja may learn in the creator. */
 export const NEW_NINJA_RANKS: readonly JutsuRank[] = ['D', 'C'];
@@ -56,3 +56,31 @@ export const typeFixed = (c: Pick<ShinobiCharacter, 'created'>): boolean => c.cr
 
 /** A sheet saved on this device or imported is a ninja that has been made. */
 export const asMade = (c: ShinobiCharacter): ShinobiCharacter => (c.created === true ? c : { ...c, created: true });
+
+/** A legend's own sheet (picked in the creator as a starting point): it keeps its jutsu, whatever their rank. */
+export const isLegend = (c: Pick<ShinobiCharacter, 'id'>): boolean => LEGENDARY_PRESETS.some((p) => p.character.id === c.id);
+
+/**
+ * The sheet is a new ninja's: not made yet and not a legend's own sheet (a new game's sheet, a copy
+ * made from a legend, the random ninja). Only a new ninja is held to the ranks it may learn; a legend
+ * keeps its sheet and a made ninja its own (the owner's answer was about creating a ninja).
+ */
+export const learnsAsNew = (c: Pick<ShinobiCharacter, 'id' | 'created'>): boolean => !typeFixed(c) && !isLegend(c);
+
+/**
+ * The jutsu the creator offers a slot of this sheet: at a new ninja's ranks while the ninja is being
+ * created (a new ninja, or a legend picked as a starting point: its own higher jutsu stay, marked),
+ * every rank its nature allows once it is made.
+ */
+export function slotChoices(c: Pick<ShinobiCharacter, 'id' | 'created'>, slot: JutsuSlot, nature: ChakraNature, clan: ClanType): JutsuDefinition[] {
+  return typeFixed(c) ? jutsuChoices(slot, nature, clan) : creatorChoices(slot, nature, clan);
+}
+
+/**
+ * A new chakra type in the creator: the jutsu of another element are swapped for the new element's.
+ * A new ninja gets ones it may learn (a slot with nothing left, the S-rank one, is emptied); a legend
+ * keeps its sheet, so its S-rank jutsu becomes one of the new element's (or one with no element).
+ */
+export function fitToType(c: Pick<ShinobiCharacter, 'id' | 'created' | 'selectedJutsus' | 'clan'>, nature: ChakraNature): { loadout: Loadout; swaps: JutsuSwap[] } {
+  return fitLoadout(c.selectedJutsus, nature, c.clan, learnsAsNew(c) ? (j) => rankOpen(j, c.clan) : undefined);
+}

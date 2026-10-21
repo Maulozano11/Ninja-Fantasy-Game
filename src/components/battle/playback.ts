@@ -515,9 +515,6 @@ export class Playback {
             // would otherwise burn on at the spot it left, around whoever is swapped in there).
             this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: castDelay + 400, unit: ev.unit, follow: true });
             return castDelay + 400;
-          case 'trap':
-            this.fx.push({ ...base, kind: 'seal', from: ev.at, to: ev.at, dur: 1000, sig: 'tag' });
-            return castDelay + 500;
           case 'earthWall':
           case 'waterWall':
             this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200 });

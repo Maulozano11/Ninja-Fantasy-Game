@@ -9,15 +9,15 @@ import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS } from '.
 import { HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import { JUTSU } from '../battle/jutsu';
 import { unitFrom } from '../battle/units';
-import { startRun } from '../game/missionRun';
+import { loadRun, migrateRun, type MissionRun, saveRun, startRun } from '../game/missionRun';
 import { loadHero, loadRoster } from '../game/saves';
 import { OFFERED_TYPES } from '../sprite/chakraNature';
 import type { ChakraNature, ClanType, ShinobiCharacter } from '../types/shinobi';
-import { fitLoadout, jutsuChoices, jutsuFitsNature, type JutsuSlot, SLOT_CATEGORY } from './jutsuNature';
+import { fitLoadout, importedSlots, jutsuChoices, jutsuFitsNature, type JutsuSlot, SLOT_CATEGORY } from './jutsuNature';
 import { DEFAULT_SUPPLIES, newMission } from './mission';
 import { migrateCharacter, natureOf } from './ninja';
 import { pouchTags, TAG_JUTSU, TAG_JUTSU_POUCH, tagJutsuToItem, withPouches } from './pouch';
-import { aboveRank, asMade, creatorChoices, fitNewNinja, NEW_NINJA_RANKS, rankOpen, slotLocked, typeFixed } from './progression';
+import { aboveRank, asMade, creatorChoices, fitNewNinja, fitToType, isLegend, learnsAsNew, NEW_NINJA_RANKS, rankOpen, slotChoices, slotLocked, typeFixed } from './progression';
 
 const CLANS = Object.keys(CLANS_DATA) as ClanType[];
 const SLOTS = Object.keys(SLOT_CATEGORY) as JutsuSlot[];
@@ -102,20 +102,54 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
     }
   });
 
+  it('only a new ninja is held to them: not a legend\'s own sheet, not a made ninja', () => {
+    const fresh = { ...DEFAULT_CHARACTER, id: 'ninja_new' };
+    assert.equal(learnsAsNew(fresh), true, 'a new game\'s sheet, a copy of a legend');
+    for (const { character: c } of LEGENDARY_PRESETS) {
+      assert.equal(isLegend(c), true, c.id);
+      assert.equal(learnsAsNew(c), false, `${c.id}: keeps its sheet`);
+    }
+    assert.equal(isLegend(fresh), false);
+    assert.equal(learnsAsNew(asMade(fresh)), false, 'a made ninja');
+  });
+
+  it('the creator\'s offers: a new ninja\'s ranks while the ninja is created, every rank once it is made', () => {
+    const fresh = { ...DEFAULT_CHARACTER, id: 'ninja_new' };
+    const made = asMade(fresh);
+    for (const nature of NATURES)
+      for (const slot of SLOTS) {
+        const ids = (c: ShinobiCharacter) => slotChoices(c, slot, nature, c.clan).map((j) => j.id);
+        assert.deepEqual(ids(fresh), creatorChoices(slot, nature, fresh.clan).map((j) => j.id), `new ${nature} ${slot}`);
+        assert.deepEqual(ids(DEFAULT_CHARACTER), ids(fresh), `a legend picked as a starting point: ${nature} ${slot}`);
+        assert.deepEqual(ids(made), jutsuChoices(slot, nature, made.clan).map((j) => j.id), `made ${nature} ${slot}`);
+      }
+    // A made ninja that swaps out its rank B jutsu can pick it back; its S-rank slot is not locked.
+    assert.ok(slotChoices(made, 'slot3Elemental', 'Fire', made.clan).some((j) => j.id === 'crescent_moon_dance'));
+    assert.ok(slotChoices(made, 'slot5Ultimate', 'Fire', made.clan).some((j) => j.id === 'great_fire_annihilation'));
+  });
+
+  it('a legend picked as a starting point keeps its sheet on a type change: its S-rank becomes another, never empty', () => {
+    for (const { character: c } of LEGENDARY_PRESETS)
+      for (const nature of NATURES) {
+        if (nature === natureOf(c)) continue;
+        const r = fitToType(c, nature);
+        assert.deepEqual(r, fitLoadout(c.selectedJutsus, nature, c.clan), `${c.id} as ${nature}: as before the rank rule`);
+        assert.ok(r.loadout.slot5Ultimate, `${c.id} as ${nature}: its S-rank slot stays filled`);
+      }
+    assert.equal(fitToType(DEFAULT_CHARACTER, 'Lightning').loadout.slot5Ultimate, 'kirin_thunder');
+  });
+
   it('changing the type in the creator swaps to jutsu a new ninja may learn; an S-rank of another element leaves the slot empty', () => {
-    const solen = DEFAULT_CHARACTER;
-    const allow = (clan: ClanType) => (j: (typeof JUTSUS_DATA)[number]) => rankOpen(j, clan);
+    const solen = { ...DEFAULT_CHARACTER, id: 'ninja_new' };
     for (const nature of NATURES) {
       if (nature === 'Fire') continue;
-      const r = fitLoadout(solen.selectedJutsus, nature, solen.clan, allow(solen.clan));
+      const r = fitToType(solen, nature);
       const s = r.swaps.find((x) => x.slot === 'slot5Ultimate');
       assert.deepEqual(s, { slot: 'slot5Ultimate', from: 'great_fire_annihilation', to: '' }, nature);
       for (const x of r.swaps.filter((y) => y.to)) assert.ok(rankOpen(byId(x.to)!, solen.clan) && jutsuFitsNature(byId(x.to)!, nature), `${nature}: ${x.to}`);
       assert.equal(r.loadout.slot1Utility, solen.selectedJutsus.slot1Utility);
       assert.equal(r.loadout.slot4Clan, solen.selectedJutsus.slot4Clan);
     }
-    // Without the cap (as before) the slot is never emptied.
-    assert.equal(fitLoadout(solen.selectedJutsus, 'Lightning', solen.clan).loadout.slot5Ultimate, 'kirin_thunder');
   });
 });
 
@@ -150,6 +184,45 @@ describe('the explosive tag is an item, not a jutsu ("es un item o herramienta c
     assert.equal(tagJutsuToItem(DEFAULT_CHARACTER), DEFAULT_CHARACTER);
     // Its unit in battle has no such jutsu.
     assert.ok(!unitFrom(now, { team: 'party', pos: { x: 0, z: 0 } }).jutsus.includes(TAG_JUTSU));
+  });
+
+  it('every load path converts it once: the hero, the roster, a saved mission, an imported sheet', () => {
+    const old = tagNinja();
+    storage({ 'shinobi5e.hero.v1': old, 'shinobi5e.roster.v1': [{ character: old, savedAt: 1 }] });
+    for (const c of [loadHero()!, loadRoster()[0].character]) {
+      assert.equal(c.selectedJutsus.slot1Utility, 'body_flicker');
+      assert.equal(pouchTags(c), TAG_JUTSU_POUCH);
+      assert.deepEqual(migrateCharacter(c), c, 'loading again adds nothing');
+    }
+    // An imported sheet's slots let the old jutsu through (and an empty S-rank slot), so the
+    // conversion can run; an unknown id falls back to the starting sheet's.
+    const slots = importedSlots({ ...old.selectedJutsus, slot5Ultimate: '', slot3Elemental: 'no_such_jutsu' }, DEFAULT_CHARACTER.selectedJutsus);
+    assert.deepEqual(slots, { ...old.selectedJutsus, slot5Ultimate: '', slot3Elemental: DEFAULT_CHARACTER.selectedJutsus.slot3Elemental });
+    assert.equal(importedSlots({ slot1Utility: 7 }, DEFAULT_CHARACTER.selectedJutsus).slot1Utility, DEFAULT_CHARACTER.selectedJutsus.slot1Utility, 'not a string');
+    assert.equal(importedSlots({ slot4Clan: 'old_id' }, DEFAULT_CHARACTER.selectedJutsus, { old_id: 'fireball_goukakyu' }).slot4Clan, 'fireball_goukakyu', 'a renamed jutsu');
+    assert.equal(pouchTags(migrateCharacter({ ...old, selectedJutsus: slots })), TAG_JUTSU_POUCH);
+  });
+
+  it('a mission saved halfway: the converted tags join its backpack at once, once', () => {
+    const run = startRun(RIVER_FOREST_PATROL, 'ninja_tag', [migrateCharacter(tagNinja()), HANA], { seed: 3, leaderId: 'ninja_tag', difficulty: 'normal', noRandomness: false });
+    // The same run as it was saved before the tag was an item: the jutsu on the sheet, no tags for it in the backpack.
+    const tags = run.party.supplies.explosiveTags - TAG_JUTSU_POUCH;
+    const before = (p: MissionRun['party']): MissionRun['party'] => ({ ...p, supplies: { ...p.supplies, explosiveTags: tags }, members: [tagNinja(), ...p.members.slice(1)] });
+    const saved: MissionRun = JSON.parse(JSON.stringify({ ...run, party: before(run.party), entry: before(run.entry) }));
+    const m = migrateRun(saved);
+    for (const p of [m.party, m.entry]) {
+      assert.equal(p.supplies.explosiveTags, tags + TAG_JUTSU_POUCH);
+      assert.equal(p.members[0].selectedJutsus.slot1Utility, 'body_flicker');
+    }
+    assert.deepEqual(migrateRun(m), m, 'idempotent');
+    assert.deepEqual(migrateRun(JSON.parse(JSON.stringify(m))), m, 'after a save and a load too');
+    // Through the save slot.
+    storage({});
+    saveRun(saved);
+    assert.equal(loadRun()!.party.supplies.explosiveTags, tags + TAG_JUTSU_POUCH);
+    // A fallen ninja's tags count too (it set out with them).
+    const fell: MissionRun = JSON.parse(JSON.stringify({ ...saved, party: { ...saved.party, members: saved.party.members.slice(1), dead: [tagNinja()] } }));
+    assert.equal(migrateRun(fell).party.supplies.explosiveTags, tags + TAG_JUTSU_POUCH);
   });
 
   it('a broken pouch reads as empty', () => {

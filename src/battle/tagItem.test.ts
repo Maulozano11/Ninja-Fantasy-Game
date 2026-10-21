@@ -66,7 +66,9 @@ describe('the explosive tag hidden on the ground (an item now)', () => {
     assert.equal(t.units.a.chakra, chakra, 'no chakra');
     assert.equal(t.traps.length, 1);
     const trap = t.traps[0];
-    assert.deepEqual({ kind: trap.kind, owner: trap.owner, dice: trap.dice, radius: trap.radius, dc: trap.dc }, { kind: 'tag', owner: 'party', dice: '3d6', radius: 1.5, dc: 13 });
+    // The save is the hider's jutsu DC, as the old jutsu's was (not the thrown tag's fixed 13).
+    assert.deepEqual({ kind: trap.kind, owner: trap.owner, dice: trap.dice, radius: trap.radius, dc: trap.dc }, { kind: 'tag', owner: 'party', dice: '3d6', radius: 1.5, dc: t.units.a.saveDC });
+    assert.equal(t.units.a.saveDC, 18, 'Solen\'s jutsu DC');
     assert.deepEqual(trap.pos, at);
     assert.ok(!trap.spotted, 'hidden');
     assert.ok(out.events.some((e) => e.t === 'trap' && e.on));
@@ -102,10 +104,18 @@ describe('the explosive tag hidden on the ground (an item now)', () => {
     assert.ok(out.state.units.rogue_0.hp < hp, 'hurt');
   });
 
-  it('throwing a tag still blows up where it lands, from the same backpack', () => {
+  it('a weaker ninja\'s hidden tag is saved against its own jutsu DC', () => {
+    const s = turnOf(createBattle(setup()).state, 'a');
+    s.units.a.saveDC = 12;
+    const t = ok(applyAction(s, { type: 'item', unit: 'a', item: 'tagTrap', at: freeAt(s, 'a', { x: 11, z: 10 }) })).state;
+    assert.equal(t.traps[0].dc, 12);
+  });
+
+  it('throwing a tag still blows up where it lands, from the same backpack (DC 13, as before)', () => {
     const s = turnOf(createBattle(setup()).state, 'a');
     const out = ok(applyAction(s, { type: 'item', unit: 'a', item: 'tag', at: { x: 14, z: 10 } }));
     assert.ok(out.events.some((e) => e.t === 'explode'));
+    assert.ok(out.events.some((e) => e.t === 'save' && e.roll.dc === TAG.dc), 'the thrown tag\'s save');
     assert.equal(out.state.supplies.explosiveTags, 1);
   });
 

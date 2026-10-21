@@ -404,8 +404,14 @@ elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
    five rows and the slot is there when it opens. A line at the top of the
    Jutsu step says the rule. **The legends keep their sheets** (they are
    presets, not creator picks): their jutsu above C stay, marked "rango S: se
-   queda en su hoja"; so do a made ninja's from before this rule. When the
-   S-rank slot opens (a level, a mission) is not decided (Open questions).
+   queda en su hoja", and a legend picked as a starting point whose type is
+   changed gets its S-rank swapped for one of the new element's (or one with
+   no element), never emptied; its slots still offer only D and C. **A made
+   ninja is not held to the rule** (his answer was about creating a ninja):
+   editing a saved ninja offers every rank its nature allows, nothing is marked,
+   and "Ninja al azar" keeps its jutsu (only the clan secret follows the new
+   clan). When the S-rank slot opens (a level, a mission) is not decided (Open
+   questions).
 2. **The gaps** (Water has no S-rank jutsu, Wind one Element jutsu): he wants
    **proposals** ("propuestas"). A separate job.
 3. **The explosive tag is an item** ("sello explosivo es un item o herramienta
@@ -417,15 +423,19 @@ elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
    **Sello explosivo** throws one up to 9 m (it blows up where it lands, as
    before) and **Esconder sello** hides one on the ground up to 4.5 m (it blows
    up when an enemy steps on it, or when fire or lightning reaches it: the
-   jutsu's old effect, 3d6 fire in 1.5 m, DEX save DC 13 for half; quiet, so it
-   doesn't give the ninja away while sneaking). Each use takes the action and
+   jutsu's old effect, 3d6 fire in 1.5 m, DEX save for half against **the
+   hider's jutsu DC** (as the jutsu's was; a thrown tag stays DC 13, as
+   before); quiet, so it doesn't give the ninja away while sneaking). Each use takes the action and
    one tag. The creator's Jutsu step shows it under **Herramientas** as
    "Objeto consumible · no es un jutsu". *Old saves:* a sheet that had the jutsu
    gets the starting sheet's jutsu in that slot (Utility: Shunshin) and **2
    tags in its own pouch** (`pouch.explosiveTags`), once (`migrateCharacter`);
    the pouch joins the backpack at the start of every mission and practice
-   battle. (The 2 tags and the starting jutsu in its place are the builder's
-   choice.) The palm stays in the Utility slot, open to every nature.
+   battle, and **is never used up**: the pouch is refilled for every mission,
+   as the jutsu could be used in every one, so such a ninja always sets out with
+   2 tags more. A mission saved halfway gets the converted tags in its backpack
+   when it loads. (The 2 tags, the refill and the starting jutsu in its place
+   are the builder's choice.) The palm stays in the Utility slot, open to every nature.
 4. **The swap on a type change in the creator is fine** ("si"), **but the type
    can't be changed afterwards** ("pero no se puede cambiar de tipo"): once a
    ninja is made (the creator's Accept; every ninja saved on the device or
@@ -459,7 +469,8 @@ burst per id; a test keeps it equal to the presets). The jutsu gate is
 `src/rules/jutsuNature.ts` (`jutsuChoices`, `fitLoadout`, `offNatureJutsus`).
 The ranks a new ninja may take and the fixed type are `src/rules/progression.ts`
 (`NEW_NINJA_RANKS`, `rankOpen`, `creatorChoices`, `fitNewNinja`, `aboveRank`,
-`typeFixed`, `asMade`; a made ninja has `created: true`); the explosive tag's
+`learnsAsNew`, `slotChoices`, `fitToType`, `typeFixed`, `asMade`; a made ninja
+has `created: true`); the explosive tag's
 move to the pouch is `src/rules/pouch.ts` (`tagJutsuToItem`, `withPouches`); in
 battle the `item` action takes `tag` (throw) or `tagTrap` (hide,
 `plantTag` in `src/battle/hazards.ts`).
@@ -608,10 +619,21 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   shown locked in its place ("Se desbloquea más adelante") rather than
   removed. Confirm. **When does it open** (a level, a mission, a teacher)? And
   when may a ninja learn rank B and A jutsu?
+- **Editing a legend** (his answer 1): a legend picked in the creator keeps its
+  sheet, so a player can pick one, rename it, change its look and stats, accept,
+  and play it with its rank B and S jutsu. Should a legend that is changed
+  become a new ninja (held to D, C and its clan's), or is playing a legend with
+  its own jutsu fine?
+- **A made ninja** (his answer 1 was about creation): as built, editing a saved
+  ninja offers every rank its nature allows. Confirm, or should it also wait
+  for the S-rank slot to open?
 - The explosive tag as an item (his answer 3, built): a sheet that had the
   jutsu gets 2 tags in its own pouch and Shunshin in its Utility slot; the
-  backpack carries 2 per mission. Confirm the numbers. Should tags be bought
-  or found later (a shop, loot)?
+  backpack carries 2 per mission. The pouch's 2 tags are **refilled for every
+  mission** (never used up), so such a ninja always has 4. Confirm the numbers
+  and the refill (or should the pouch's tags be spent for good?). Should tags be
+  bought or found later (a shop, loot)? The hidden tag's save is the hider's
+  jutsu DC, as the jutsu's was; a thrown one stays DC 13: confirm.
 - **The second element** (his rule: "2ndo elemento en nivel mas alto"): at
   which level? *Proposal:* **level 5**, the start of the second tier of play,
   where the clan abilities already grow (CLANS_DESIGN: Command "from level 5").

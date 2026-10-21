@@ -71,6 +71,3 @@ export const NOBLE_IRIS = '#87529e';
 
 /** Her colours that move with the eye colour: her violets, her lights and her lash's violet ends. */
 export const NOBLE_IRIS_TINTED = 'bcefhjkm';
-
-/** Her hair's pink (the commonest colour of her hair), which her brows follow: the hair colour moves them as far. */
-export const NOBLE_BROW_HAIR = '#fab6c1';

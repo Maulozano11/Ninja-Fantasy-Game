@@ -203,6 +203,8 @@ describe('clans', () => {
       preset_warlord: [42, 36, 17, 16, 8],
       preset_gentle: [38, 32, 16, 15, 7],
       preset_night: [44, 38, 16, 16, 8],
+      // Rosalind (the princess) is not his hand-made numbers: the creator's formula for her sheet.
+      preset_rose_dawn: [38, 41, 13, 14, 6],
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(owner).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {

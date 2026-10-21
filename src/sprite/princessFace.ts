@@ -5,7 +5,8 @@
 import { retintHex } from './color';
 import type { DrawCtx } from './ctx';
 import type { PaintedEye } from './eyeArt';
-import { NOBLE_BROW_HAIR, NOBLE_BROWS, NOBLE_EYE_COLORS, NOBLE_EYES, NOBLE_IRIS, NOBLE_IRIS_TINTED } from './princessEyeArt';
+import { PRINCESS_HAIR_BASE } from './items/princessHairArt';
+import { NOBLE_BROWS, NOBLE_EYE_COLORS, NOBLE_EYES, NOBLE_IRIS, NOBLE_IRIS_TINTED } from './princessEyeArt';
 import { F_NO_OUTLINE, type Layer } from './raster';
 
 export type LidState = keyof typeof NOBLE_EYES;
@@ -38,7 +39,10 @@ export function stampNobleEyes(g: DrawCtx, L: Layer, F: Layer, ex: number, fx: n
   F.set(ex + at[0], ny + at[1], g.m(NOBLE_EYE_COLORS[ch], 'flat'), 3, 'head', F_NO_OUTLINE);
 }
 
-/** Her brows, her pixels on the row over her lash, moved the way the hair colour (`hair`) moves her hair's pink. */
+/**
+ * Her brows, her pixels on the row over her lash, moved the way the hair colour (`hair`) moves her hair's pink:
+ * from her hair item's base colour (hair_rose_dawn), so with her own hair in its own colour they are his pixels.
+ */
 export function stampNobleBrows(g: DrawCtx, F: Layer, ex: number, fx: number, ny: number, hair?: string): void {
   for (const [side, x0] of [['near', ex], ['far', fx]] as const) {
     const { at, rows } = NOBLE_BROWS[side];
@@ -46,7 +50,7 @@ export function stampNobleBrows(g: DrawCtx, F: Layer, ex: number, fx: number, ny
       for (let c = 0; c < row.length; c++) {
         if (row[c] === '.') continue;
         const hex = NOBLE_EYE_COLORS[row[c]];
-        F.set(x0 + at[0] + c, ny + at[1] + r, g.m(hair ? retintHex(hex, NOBLE_BROW_HAIR, hair) : hex, 'flat'), 3, 'head', F_NO_OUTLINE);
+        F.set(x0 + at[0] + c, ny + at[1] + r, g.m(hair ? retintHex(hex, PRINCESS_HAIR_BASE, hair) : hex, 'flat'), 3, 'head', F_NO_OUTLINE);
       }
     });
   }

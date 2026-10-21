@@ -40,7 +40,7 @@ function sparkTemplate(piece: RoseSceptre, frame: number): RoseSceptre {
  * At rest she holds it as he drew it, up in her far fist leaning right (her near hand is empty);
  * every other pose holds it in the near fist like a pole.
  */
-export const roseSceptreInFarHand = (g: DrawCtx): boolean => g.rig.pose === 'idle';
+export const roseSceptreInFarHand = (g: DrawCtx): boolean => g.rig.pose === 'idle' || g.rig.pose === 'idleSceptre';
 
 /**
  * Draws her sceptre with its grip at `at` (rig units), its shaft pointing along `deg`; `sparks` adds his

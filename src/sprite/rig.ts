@@ -236,11 +236,20 @@ const IDLE: PoseFrame = {
 };
 
 /**
+ * At rest with the princess's sceptre (held_rose_sceptre): the owner drew her holding it up in her far
+ * fist, the forearm level out from the hip and the sceptre leaning right, so the far hand comes up to
+ * where he drew it (docs/reference/princess-owner-reference.jpg) and his sleeve and sceptre go on it at
+ * his angles. The near arm, the legs and the breathing are the idle's.
+ */
+const SCEPTRE_HAND_F = arm(0.5, 0.62);
+const IDLE_SCEPTRE: PoseFrame[] = [0, 0, 1, 1].map((dy) => ({ ...IDLE, chestDy: dy || undefined, handF: SCEPTRE_HAND_F }));
+
+/**
  * Rig poses: the sprite poses plus one cast pose per cast style ('cast' itself
  * is the runes pose) and one training drill per kind of weapon ('train' itself
  * is the blade kata).
  */
-export type RigPose = SpritePose | 'castBook' | 'castSphere' | 'castLightning' | 'castWave' | 'castFlash' | 'castEye' | 'castScript' | 'trainPole' | 'trainFist';
+export type RigPose = SpritePose | 'castBook' | 'castSphere' | 'castLightning' | 'castWave' | 'castFlash' | 'castEye' | 'castScript' | 'trainPole' | 'trainFist' | 'idleSceptre';
 
 const CAST_POSES: Record<CastStyle, RigPose> = {
   signs: 'handsigns',
@@ -264,6 +273,7 @@ const CAST_POSES: Record<CastStyle, RigPose> = {
 export function rigPoseFor(pose: SpritePose, style: CastStyle = 'runes', held?: string): RigPose {
   if (pose === 'cast') return CAST_POSES[style] ?? 'cast';
   if (pose === 'train') return trainingFor(held);
+  if (pose === 'idle' && held === 'held_rose_sceptre') return 'idleSceptre';
   return pose;
 }
 
@@ -805,6 +815,7 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
   train: TRAIN_BLADE,
   trainPole: TRAIN_POLE,
   trainFist: TRAIN_FIST,
+  idleSceptre: IDLE_SCEPTRE,
 };
 
 export const POSE_FPS: Record<SpritePose, number> = {

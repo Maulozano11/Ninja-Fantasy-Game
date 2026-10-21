@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { hexToRgb } from './color';
 import { renderSprite } from './compose';
-import { NOBLE_BROW_HAIR, NOBLE_BROWS, NOBLE_EYE_COLORS, NOBLE_EYES, NOBLE_IRIS, NOBLE_IRIS_TINTED } from './princessEyeArt';
+import { PRINCESS_HAIR_BASE } from './items/princessHairArt';
+import { NOBLE_BROWS, NOBLE_EYE_COLORS, NOBLE_EYES, NOBLE_IRIS, NOBLE_IRIS_TINTED } from './princessEyeArt';
 import { NOBLE_HEAD, NOBLE_SKIN } from './princessHeadArt';
 import { GRID, RES } from './raster';
 import type { BodyType, SpriteAppearance, SpritePose } from './types';
@@ -17,7 +18,7 @@ const look = (body: BodyType, extra: Partial<SpriteAppearance> = {}): SpriteAppe
   eyeShape: 'noble',
   faceShape: 'noble',
   eyeColor: NOBLE_IRIS,
-  slots: { hair: { id: 'hair_none', colors: [NOBLE_BROW_HAIR] } },
+  slots: { hair: { id: 'hair_none', colors: [PRINCESS_HAIR_BASE] } },
   accessories: [],
   headband: { position: 'none', slashed: false, tails: false, emblem: 'crescent', cloth: '#1e3a8a', plate: '#cbd5e1' },
   chakra: { color: 'red', onCharge: false, onCast: false, onVictory: false },
@@ -30,9 +31,10 @@ const hexAt = (rgba: Uint8ClampedArray, x: number, y: number) => {
   return '#' + [rgba[i], rgba[i + 1], rgba[i + 2]].map((c) => c.toString(16).padStart(2, '0')).join('');
 };
 
-const anchor = (f: ReturnType<typeof renderSprite>) => {
+/** The face anchor (body.ts faceAnchor): on her face (noble) the lash row is a row above the head's. */
+const anchor = (f: ReturnType<typeof renderSprite>, noble = true) => {
   const k = f.rig.bp.headScale;
-  return { nx: Math.floor((f.rig.head.x - 1.9 * k) * RES), ny: Math.floor((f.rig.head.y + 1.0 * k) * RES) };
+  return { nx: Math.floor((f.rig.head.x - 1.9 * k) * RES), ny: Math.floor((f.rig.head.y + 1.0 * k) * RES) - (noble ? 1 : 0) };
 };
 
 /** Every pixel her eyes, flick and brows paint in a lid state, as [x, y, colour char] off (ex, fx, ny). */
@@ -126,7 +128,7 @@ describe("The princess's face (noble)", () => {
     const far = hexToRgb(hexAt(ours.rgba, a.nx + 8, a.ny + 1));
     assert.ok(far[2] > far[0], `far iris on her face, got ${hexAt(ours.rgba, a.nx + 8, a.ny + 1)}`);
     const hersOnOurs = renderSprite(look('female', { faceShape: 'tapered' }), 'idle', 0);
-    const b = anchor(hersOnOurs);
+    const b = anchor(hersOnOurs, false);
     for (const [x, y, ch] of eyePixels('open', b.nx, b.nx + 9, b.ny)) assert.equal(hexAt(hersOnOurs.rgba, x, y), NOBLE_EYE_COLORS[ch], `on ours ${x},${y}`);
   });
 });

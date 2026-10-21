@@ -1475,6 +1475,82 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       }),
     },
   },
+  // ── Princess: Rosalind (begin) ─────────────────────────────────────────────────────────────────
+  // The owner's princess, copied from his picture of her at our game's scale
+  // (docs/reference/princess-owner-reference.jpg, one of his pixels per one of ours): her face and eyes,
+  // hair, tiara, bodice and sleeves, gown skirt, heels and sceptre, each its own creator item in his
+  // colours. Name, title and sheet are provisional (the owner will rename her): a support caster, a
+  // Northstar (the Sovereign's clan) field medic with Water chakra in her gown's pink. Her numbers are the
+  // creator's formula; Northstar's bonus (CHA +2, WIS +1) adds 1 to her jutsu DC and attack.
+  {
+    name: 'Rosalind, the Rose Dawn Princess',
+    tag: 'Rose Dawn Gown · Rose Dawn Sceptre',
+    nameEs: 'Rosalind, la Princesa del Alba Rosa',
+    tagEs: 'Vestido del Alba Rosa · Cetro del Alba Rosa',
+    character: {
+      id: 'preset_rose_dawn',
+      name: 'Rosalind',
+      title: 'The Rose Dawn Princess',
+      level: 5,
+      clan: 'Northstar',
+      shinobiClass: 'Medical Specialist',
+      stats: { str: 8, dex: 14, con: 14, int: 13, wis: 17, cha: 16 },
+      palette: {
+        skinTone: '#f6c8aa',
+        hairColor: '#ca7b90',
+        eyeColor: '#87529e',
+        armorPrimary: '#f5a6ad',
+        armorSecondary: '#e9c4e3',
+        clothColor: '#a884b4',
+        headbandCloth: '#1e3a8a',
+        headbandPlate: '#cbd5e1',
+        chakraAuraColor: '#f5a6ad',
+        accentColor: '#fdda84',
+      },
+      hairstyle: 'Itachi Low Ribbon',
+      armorStyle: 'Ronin Wanderer Cloak',
+      headbandPosition: 'Neck',
+      weaponStyle: 'Unarmed Brawler',
+      capeStyle: 'None',
+      dojutsu: 'None',
+      selectedFeats: ['chakra_prodigy', 'one_handed_seals'],
+      // Water: the healing palm and the water wall to keep the party standing, the feathers of sleep and the
+      // jewels for the end (no element); her clan's secret is Northstar's.
+      selectedJutsus: {
+        slot1Utility: 'mystical_palm',
+        slot2Elemental: 'water_shield_suijinheki',
+        slot3Elemental: 'temple_of_nirvana',
+        slot4Clan: 'taki_sixtyfour_palms',
+        slot5Ultimate: 'yasaka_magatama',
+      },
+      sheetVersion: 2,
+      maxHp: 38,
+      currentHp: 38,
+      maxChakra: 41,
+      currentChakra: 41,
+      armorClass: 13,
+      speed: 7,
+      jutsuSaveDC: 15,
+      jutsuAttackBonus: 7,
+      appearance: spriteLook({
+        body: 'female',
+        skin: '#f6c8aa',
+        faceShape: 'noble',
+        eyeShape: 'noble',
+        eyeColor: '#87529e',
+        slots: {
+          hair: it('hair_rose_dawn'),
+          top: it('top_rose_bodice'),
+          skirt: it('skirt_rose_gown'),
+          feet: it('feet_rose_heels'),
+          held: it('held_rose_sceptre'),
+        },
+        accessories: [it('acc_rose_tiara')],
+        chakra: { color: 'blue', tint: '#f5a6ad', onCharge: true, onCast: true, onVictory: true }, // Water, in her gown's pink
+      }),
+    },
+  },
+  // ── Princess: Rosalind (end) ───────────────────────────────────────────────────────────────────
 ];
 
 export const DEFAULT_CHARACTER: ShinobiCharacter = LEGENDARY_PRESETS[0].character;

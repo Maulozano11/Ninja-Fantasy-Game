@@ -143,6 +143,7 @@ describe('the legends', () => {
       preset_warlord: ['Fire', '#a54ce0'], // was the violet Spectral Guardian
       preset_gentle: ['Water', '#36a0f0'],
       preset_night: ['Lightning', '#36a0f0'], // was the blue Rising Tide
+      preset_rose_dawn: ['Water', '#f5a6ad'], // the princess: Water, in her gown's pink
     };
     assert.deepEqual(LEGENDARY_PRESETS.map((p) => p.character.id).sort(), Object.keys(want).sort());
     for (const { character: c } of LEGENDARY_PRESETS) {

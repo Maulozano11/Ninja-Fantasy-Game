@@ -143,9 +143,10 @@ function fromRef(r: Rig, p: Vec, fit: Fit): Vec {
  * The gown on this figure: fine pixel index -> its character. Each pixel within the piece's bounds takes the
  * character of the pixel of his it maps back to. Every pixel on his piece's edge is his line, so a pixel on
  * the edge of the moved piece is his line too (where the cloth is squeezed his line is not skipped), after the
- * spurs a shear leaves are taken off; at rest that changes nothing.
+ * spurs a shear leaves are taken off; at rest that changes nothing. The pixels that map back to the piece's
+ * `behind` cells are added to `back` when it is given.
  */
-export function placeGown(r: Rig, piece: GownPiece, fit: Fit = GOWN_FIT): Map<number, string> {
+export function placeGown(r: Rig, piece: GownPiece, fit: Fit = GOWN_FIT, back?: Set<number>): Map<number, string> {
   let x0 = GRID;
   let y0 = GRID;
   let x1 = 0;
@@ -165,8 +166,13 @@ export function placeGown(r: Rig, piece: GownPiece, fit: Fit = GOWN_FIT): Map<nu
   for (let y = Math.max(0, Math.floor(y0) - pad); y <= Math.min(GRID - 1, Math.ceil(y1) + pad); y++) {
     for (let x = Math.max(0, Math.floor(x0) - pad); x <= Math.min(GRID - 1, Math.ceil(x1) + pad); x++) {
       const p = toRef(r, v((x + 0.5) / RES, (y + 0.5) / RES), fit);
-      const ch = piece.rows[Math.floor(p.y * RES) - piece.y]?.[Math.floor(p.x * RES) - piece.x];
-      if (ch && ch !== '.') out.set(y * GRID + x, ch);
+      const j = Math.floor(p.y * RES) - piece.y;
+      const i = Math.floor(p.x * RES) - piece.x;
+      const ch = piece.rows[j]?.[i];
+      if (ch && ch !== '.') {
+        out.set(y * GRID + x, ch);
+        if (back && piece.behind?.[j]?.[i] === '#') back.add(y * GRID + x);
+      }
     }
   }
   // a pixel the stretch left hanging by one side (a spur off the hem where the cloth shears) goes: his piece has
@@ -192,11 +198,19 @@ const tint =
     return hex;
   };
 
+/**
+ * The gown on the skirt layer; what he hid under his shoes and stockings (the petticoat and the far panel's
+ * hem band there) on the back gear layer, behind the legs, so his shoes stand in front of it as he drew them.
+ */
 function drawGown(g: DrawCtx, color: (ch: string, hex: string) => string): void {
   const L = g.L('skirt');
+  const B = g.L('backGear');
   const pens: Record<string, number> = {};
   for (const [ch, hex] of Object.entries(PRINCESS_SKIRT.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
-  for (const [idx, ch] of placeGown(g.rig, PRINCESS_SKIRT)) L.set(idx % GRID, Math.floor(idx / GRID), pens[ch], 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
+  const back = new Set<number>();
+  for (const [idx, ch] of placeGown(g.rig, PRINCESS_SKIRT, GOWN_FIT, back)) {
+    (back.has(idx) ? B : L).set(idx % GRID, Math.floor(idx / GRID), pens[ch], 3, 'pelvis', F_NO_TEXTURE | F_NO_OUTLINE);
+  }
 }
 
 export const ROSE_GOWN_SKIRT: ItemDef = {

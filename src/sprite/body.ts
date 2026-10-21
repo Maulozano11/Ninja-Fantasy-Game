@@ -514,14 +514,18 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
  * heads have their eyes where he painted them: Aiden's ('valiant') the near one a column further in,
  * the far one closer to it, against his far cheek; his princess's ('noble') the near one where ours
  * is, the far one a column closer, against her narrower far cheek.
+ * hy is the head's own row, the lash row of every face shape but hers: her face sits a row higher
+ * (ny = hy - 1), so her chin meets her high collar and her eyes sit under her bangs as he drew them
+ * (her hair, tiara and gown ride hy and the torso, his pixels at the same offset as her face).
  */
-export function faceAnchor(g: DrawCtx): { nx: number; ny: number; ex: number; fx: number; fy: number } {
+export function faceAnchor(g: DrawCtx): { nx: number; ny: number; ex: number; fx: number; fy: number; hy: number } {
   const k = g.bp.headScale;
   const nx = Math.floor((g.rig.head.x - 1.9 * k) * RES);
-  const ny = Math.floor((g.rig.head.y + 1.0 * k) * RES);
+  const hy = Math.floor((g.rig.head.y + 1.0 * k) * RES);
   const valiant = g.look.faceShape === 'valiant';
   const noble = g.look.faceShape === 'noble';
-  return { nx, ny, ex: valiant ? nx + 1 : nx, fx: valiant || noble ? nx + 8 : nx + 9, fy: ny };
+  const ny = noble ? hy - 1 : hy;
+  return { nx, ny, ex: valiant ? nx + 1 : nx, fx: valiant || noble ? nx + 8 : nx + 9, fy: ny, hy };
 }
 
 function drawFace(g: DrawCtx): void {

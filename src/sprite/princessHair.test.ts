@@ -50,7 +50,7 @@ const hex = (rgba: Uint8ClampedArray, x: number, y: number) => {
 /** A face piece's cells in the frame at idle (rows from `from` to `to`), with their characters. */
 function cells(body: BodyType, p: { pivot: [number, number]; rows: string[] }, from = 0, to = p.rows.length): [number, number, string][] {
   const rig = drawRig(body, rigPoseFor('idle'), 0);
-  const { ex, ny } = faceAnchor({ rig, bp: rig.bp, look: look(body) } as unknown as DrawCtx);
+  const { ex, hy: ny } = faceAnchor({ rig, bp: rig.bp, look: look(body) } as unknown as DrawCtx);
   const out: [number, number, string][] = [];
   p.rows.slice(from, to).forEach((row, j) => {
     for (let i = 0; i < row.length; i++) if (row[i] !== '.') out.push([ex - p.pivot[0] + i, ny - p.pivot[1] + j + from, row[i]]);

@@ -42,7 +42,7 @@ type Px = { x: number; y: number; ch: string };
  * row from the forehead down, and where it moves out the column just inside repeats across the gap.
  */
 function facePixels(g: DrawCtx, p: PrincessFacePart): Px[] {
-  const { ex, fx, ny } = faceAnchor(g);
+  const { ex, fx, hy: ny } = faceAnchor(g);
   const d = Math.max(-2, Math.min(3, fx - ex - PRINCESS_EYES_APART));
   const ax = ex - p.pivot[0];
   const ay = ny - p.pivot[1];
@@ -116,7 +116,7 @@ function lying(g: DrawCtx): Keep | undefined {
 /** Above the eyes his hair is the head's outline: our skull is trimmed to the head piece. */
 function trimSkull(g: DrawCtx): void {
   const H = g.L('head.body');
-  const { ny } = faceAnchor(g);
+  const { hy: ny } = faceAnchor(g);
   const own = new Map<number, [number, number]>();
   let top = GRID;
   for (const q of facePixels(g, PRINCESS_HAIR_HEAD)) {
@@ -146,7 +146,7 @@ export const HAIR_ROSE_DAWN: ItemDef = {
     const tint: Tint = (ch, hex) => (PRINCESS_HAIR_LINE.includes(ch) ? hex : retintHex(hex, PRINCESS_HAIR_BASE, hair));
     const keep = lying(g);
     // Above the jaw his hair is the head's own outline: the cut while lying only applies below it.
-    const jaw = faceAnchor(g).ny + 3;
+    const jaw = faceAnchor(g).hy + 3;
     const headKeep: Keep | undefined = keep && ((x, y) => y < jaw || keep(x, y));
     const B = g.L('hairBack');
     const F = g.L('hairFront');

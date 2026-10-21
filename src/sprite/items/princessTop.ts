@@ -7,7 +7,7 @@
 import { retintHex } from '../color';
 import type { Depth, DrawCtx, ItemDef } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
-import type { PartId, Vec } from '../raster';
+import { add, RES, v, type PartId, type Vec } from '../raster';
 import {
   PRINCESS_BODICE,
   PRINCESS_BODICE_SIDE_F,
@@ -22,6 +22,13 @@ import {
   PRINCESS_TOP_PINK,
   PRINCESS_TOP_SKIN,
 } from './princessTopArt';
+
+/**
+ * Where the far lilac sleeve's pivot (his pixel (60, 44), its inner end) lies off his far hand (his joint
+ * (73, 46.5)), in rig units: with her sceptre at rest her far arm is raised and her far hand is where he drew it
+ * (rig.ts IDLE_SCEPTRE), and the sleeve goes on by the hand at his angle, so it is his pixels where he drew them.
+ */
+const CUFF_F_OFF_HAND = v((60.5 - 73) / RES, (44.5 - 46.5) / RES);
 
 /** The colour each slot replaces (its default): his pink, lilac and gold; and the skin he painted her in. */
 const PINK = PRINCESS_TOP_PINK[0];
@@ -49,7 +56,10 @@ function drawBodice(g: DrawCtx, pink: string, lilac: string, gold: string): void
   };
   const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
   const torso = segAngle(r.pelvis, r.neck);
-  put('farArm.cloth', PRINCESS_CUFF_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
+  // With her sceptre at rest (rig pose idleSceptre) the far arm is raised and he drew its sleeve in front of the
+  // skirt: it goes on over the gown, his pixels at his angle. Otherwise it lies along our forearm behind the body.
+  if (r.pose === 'idleSceptre') put('torso.armor', PRINCESS_CUFF_F, add(r.handF, CUFF_F_OFF_HAND), PRINCESS_CUFF_F.angle, 'forearmF');
+  else put('farArm.cloth', PRINCESS_CUFF_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
   put('farArm.cloth', PRINCESS_SLEEVE_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
   // our torso is drawn over the far arm and reaches under the far puff: its columns by the bodice go again over it,
   // over the bodice's far side (seen when the far arm moves away)

@@ -5,8 +5,11 @@ the hem.
 
 His picture is drawn at our game's scale (tools/refs/princess_ref.py: one of his pixels is one fine pixel of
 our sprite), so every pixel is lifted one for one. His colours are his palette's (princess_ref.quantize).
-His pixel (x, y) goes to (x + DX, y + DY) of our female at idle frame 0, princess_ref.PART_OFFSET['overskirt']:
-his pelvis and hips on ours.
+His pixel (x, y) goes to (x + DX, y + DY) of our female at idle frame 0, princess_ref.PART_OFFSET['shoes']:
+his hem round his shoes as he drew them (they stand on our soles), in the column of his bodice, hair and face.
+Our body is two rows shorter than his between the shoulders and the soles; the bodice's point covers those two
+rows at the waist. (On his hips, PART_OFFSET['overskirt'] (71, 122), the gown stood three columns left of his
+bodice and two rows low on his shoes.)
 
 The skirt is one piece (the overskirt, the underskirt and the petticoat together, so they move as one cloth
 and never open a gap between them). What is his skirt:
@@ -23,6 +26,10 @@ and never open a gap between them). What is his skirt:
     waist), one at the hem the pixel of his mirrored across the nearest end of its row's hidden run (his
     embroidery and petticoat carried on). His black line goes round the filled edge: the waistband on
     top, the hip lines, the petticoat's foot.
+
+What was filled under his shoes and stockings (BEHIND: the far panel's hem band and the petticoat, the near
+hem behind the toe) is behind his legs: the game draws it behind the legs (src/sprite/items/princessSkirt.ts),
+so his shoes stand in front of it as he drew them, and it is there when a leg moves off it.
 
 Every pixel on the piece's edge is his line, so the game can draw his line round the piece when it moves
 (src/sprite/items/princessSkirt.ts) and still leave every pixel his at rest.
@@ -52,8 +59,7 @@ import princess_ref as P  # noqa: E402
 FONT = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
 BOLD = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
 
-DX, DY = P.PART_OFFSET['overskirt']
-assert P.PART_OFFSET['underskirt'] == (DX, DY)
+DX, DY = P.PART_OFFSET['shoes']
 
 # The skirt starts at this row of his: above it beside the bodice is the bodice's pink side.
 WAIST = 50
@@ -82,6 +88,8 @@ HIDDEN = {
 }
 # How each is filled: 'ray' down the fan of his folds from FOCUS, 'row' mirrored along its row.
 FILL = {'waist': 'ray', 'near': 'ray', 'far': 'ray', 'farshoe': 'row', 'nearshoe': 'row'}
+# What is filled behind his legs (his shoes and stockings are in front of it).
+BEHIND = ('farshoe', 'nearshoe')
 # Where his folds fan out from (above the waist, between the hips).
 FOCUS = (54.0, 22.0)
 # The petticoat: the dark purples under the underskirt's hem band, from its row down.
@@ -242,8 +250,9 @@ def base_colours(sil, col, role):
     return base
 
 
-def to_rows(sil, col, role):
-    """Rows of characters over the piece's box, the characters' colours and slots."""
+def to_rows(sil, col, role, region):
+    """Rows of characters over the piece's box, the characters' colours and slots, and the rows of the box with
+    '#' where the piece is behind the legs (BEHIND)."""
     ys, xs = np.nonzero(sil)
     y0, y1, x0, x1 = ys.min(), ys.max(), xs.min(), xs.max()
     keys = {}
@@ -266,10 +275,12 @@ def to_rows(sil, col, role):
             else:
                 r += ch[(role[y, x], P.rgb_hex(col[y, x]))]
         rows.append(r)
-    return (int(x0), int(y0)), rows, ch
+    back = np.isin(region, BEHIND)
+    behind = [''.join('#' if back[y, x] else '.' for x in range(x0, x1 + 1)) for y in range(y0, y1 + 1)]
+    return (int(x0), int(y0)), rows, ch, behind
 
 
-def ts_module(origin, rows, ch, base):
+def ts_module(origin, rows, ch, base, behind):
     ox, oy = origin
     slots = {}
     for (r, hx), c in ch.items():
@@ -285,6 +296,8 @@ def ts_module(origin, rows, ch, base):
         "  /** One character per colour of his; '.' is empty, 'k' his line. */",
         '  rows: string[];',
         '  colors: Record<string, string>;',
+        "  /** Over the same box: '#' where the piece is behind the legs (what was filled under his shoes and stockings). */",
+        '  behind?: string[];',
         '}',
         '',
         '/** His line. */',
@@ -300,7 +313,9 @@ def ts_module(origin, rows, ch, base):
     out += [f"    '{r}'," for r in rows]
     out += ['  ],', '  colors: {', f"    k: '{LINE_HEX}',"]
     out += [f"    '{c}': '{hx}'," if not c.isalpha() else f"    {c}: '{hx}'," for (r, hx), c in ch.items()]
-    out += ['  },', '};', '']
+    out += ['  },', '  behind: [']
+    out += [f"    '{r}'," for r in behind]
+    out += ['  ],', '};', '']
     docs = {'cloth': "The overskirt's pinks", 'lilac': "The underskirt's and the embroidered bands' lilacs",
             'gold': 'The embroidery and hem golds (and their browns)', 'petticoat': "The petticoat's purples"}
     for r in ('cloth', 'lilac', 'gold', 'petticoat'):
@@ -357,14 +372,14 @@ def sheet(vis, Q, sil, col, region, out):
 
 def main(out_dir, out_ts=None):
     vis, Q, sil, col, role, region = build()
-    origin, rows, ch = to_rows(sil, col, role)
+    origin, rows, ch, behind = to_rows(sil, col, role, region)
     base = base_colours(sil, col, role)
     os.makedirs(out_dir, exist_ok=True)
     sheet(vis, Q, sil, col, region, os.path.join(out_dir, 'skirt-his@8.png'))
     if out_ts:
         tmp = out_ts + '.tmp'
         with open(tmp, 'w') as fh:
-            fh.write(ts_module(origin, rows, ch, base))
+            fh.write(ts_module(origin, rows, ch, base, behind))
         os.replace(tmp, out_ts)
     n = Counter(region[region != ''])
     print(f'his pixels {int(vis.sum())}, filled {int((region != "").sum())} ({", ".join(f"{k} {v}" for k, v in sorted(n.items()))}),'

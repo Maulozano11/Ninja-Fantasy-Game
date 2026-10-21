@@ -134,12 +134,7 @@ def main():
         merged[c] = next((r for r in reps if merged.get(r) == r and max(abs(c[k] - r[k]) for k in range(3)) <= 8), c)
     col = lambda p: P.rgb_hex(merged[tuple(int(v) for v in nat[p[1], p[0]])])
 
-    # Her hair's pink that her brows follow: the commonest of his colours in her hair (the hair parts'
-    # pink pixels); the player's hair colour moves her brows as far as it moves it.
-    pm = P.part_map()
-    hair = np.isin(pm, [P.PARTS.index('hair_front'), P.PARTS.index('hair_back')]) & (P.family(P.native()) == P.FAMILIES.index('hair'))
-    hc, hn = np.unique(nat[hair], axis=0, return_counts=True)
-    brow_hair = P.rgb_hex(hc[int(np.argmax(hn))])
+    # (Her brows follow the hair colour from her hair item's own base colour: src/sprite/princessFace.ts.)
 
     seen = []  # (char, hex), in order of first use
     keys = 'abcefghjkmnpqrtuvxyz'
@@ -240,9 +235,7 @@ def main():
             "/** Her violet, the colour her iris follows: the player's eye colour moves her iris as far. */",
             f"export const NOBLE_IRIS = '{iris}';", '',
             "/** Her colours that move with the eye colour: her violets, her lights and her lash's violet ends. */",
-            f"export const NOBLE_IRIS_TINTED = '{tinted}';", '',
-            "/** Her hair's pink (the commonest colour of her hair), which her brows follow: the hair colour moves them as far. */",
-            f"export const NOBLE_BROW_HAIR = '{brow_hair}';", '']
+            f"export const NOBLE_IRIS_TINTED = '{tinted}';", '']
     tmp = ts + '.tmp'
     with open(tmp, 'w') as f:
         f.write('\n'.join(out))

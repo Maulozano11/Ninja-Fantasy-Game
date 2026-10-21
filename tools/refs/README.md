@@ -121,6 +121,8 @@ folders.
       python3 -I tools/refs/princess-face-from-ref.py docs/reference/princess-owner-reference.jpg <out> src/sprite/princessHeadArt.ts   # head@8, hers@8
       python3 -I tools/refs/princess-eyes-from-ref.py docs/reference/princess-owner-reference.jpg <out> src/sprite/princessEyeArt.ts   # eyes@16, hers@16
 
+  Put together (`preset_rose_dawn`), her face sits a row above the head row (`body.ts` faceAnchor: `ny = hy - 1` on the `noble` face), so it meets her hair, tiara and collar (all at his offset (74, 122)) as he drew them; her brows follow the hair colour from her hair item's base (`PRINCESS_HAIR_BASE`). With her sceptre at rest the far arm is raised to his far hand (`rig.ts` `idleSceptre`) and her far lilac sleeve goes on by that hand, over the gown, at his angle.
+
 - `princess-hair-from-ref.py` → `src/sprite/items/princessHairArt.ts`: her hair (`hair_rose_dawn`, "Ondas del Alba Rosa") and her tiara as a separate accessory (`acc_rose_tiara`, "Tiara del Alba Rosa"), both drawn by `src/sprite/items/princessHair.ts`. His pixels one for one, his colours from `princess_ref.quantize` (the gem's reds are his own medians). Five hair pieces: HEAD (crown, bangs, locks, ear) and BACK (fill behind the face and neck) on the face anchor, LONG (the wavy mass, its hidden part carried on) and STRAND (the near lock on the chest) hung from the neck and turned with the torso, and BARE (the crown without the tiara's shadow). The crown under the tiara is filled by running his strands up under a dome that continues his line. Writes `pieces@8.png` (Spanish labels):
 
       python3 -I tools/refs/princess-hair-from-ref.py <dir> src/sprite/items/princessHairArt.ts
@@ -129,7 +131,7 @@ folders.
 
       python3 -I tools/refs/princess-top-from-ref.py <dir> src/sprite/items/princessTopArt.ts
 
-- `princess-skirt-from-ref.py`: her gown skirt (`skirt_rose_gown`) as one piece, the open pink overskirt, the lilac underskirt and the petticoat, his pixels one for one at `PART_OFFSET['overskirt']` on our female at idle frame 0 → `src/sprite/items/princessSkirtArt.ts` (`princessSkirt.ts` drapes it on the rig). What her sleeves, near hand, bodice point, sceptre and shoes hide is filled by carrying his pixels on (down his folds at the hips, mirrored along the row at the hem), with his line round it:
+- `princess-skirt-from-ref.py`: her gown skirt (`skirt_rose_gown`) as one piece, the open pink overskirt, the lilac underskirt and the petticoat, his pixels one for one at `PART_OFFSET['shoes']` (74, 120) on our female at idle frame 0 (his hem round his shoes, in his bodice's column; our body is two rows shorter, which the bodice's point covers at the waist); what was filled under his shoes and stockings is drawn behind the legs (the piece's `behind` cells), so his shoes stand in front of it → `src/sprite/items/princessSkirtArt.ts` (`princessSkirt.ts` drapes it on the rig). What her sleeves, near hand, bodice point, sceptre and shoes hide is filled by carrying his pixels on (down his folds at the hips, mirrored along the row at the hem), with his line round it:
 
       python3 -I tools/refs/princess-skirt-from-ref.py <dir> src/sprite/items/princessSkirtArt.ts   # <dir>/skirt-his@8.png
 

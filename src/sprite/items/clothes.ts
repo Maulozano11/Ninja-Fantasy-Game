@@ -5,12 +5,15 @@
 // stitching and buttons can be a single fine pixel.
 
 import { hexToRgb, retintHex } from '../color';
-import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
-import { PaintedPiece, segAngle, stampPiece } from '../painted';
+import { armDepth, armJoints, armPoint, armSpan, type Depth, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
+import { PaintedPiece, segAngle, skinTone, stampPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
+import { NIGHT_GLOVE, NIGHT_GLOVE_F, NIGHT_GLOVE_N, NIGHT_GLOVE_PLATE, NIGHT_KIT_KIND } from './nightBootsGlovesArt';
+import { NIGHT_SKIN } from '../nightHeadArt';
+import { isFemaleBody } from '../types';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1719,12 +1722,29 @@ function bareHandOff(g: DrawCtx, s: Side): void {
   }
 }
 
+/** Takes our bare hand away (a glove the owner painted takes its place). */
+function handOff(g: DrawCtx, s: Side): void {
+  const L = g.L(armDepth(s, 'body'));
+  const hand = partIndex(prt('hand', s));
+  for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && L.part[i] === hand) L.mat[i] = -1;
+}
+
+/**
+ * The far fist hangs beside the body as he drew it on his Ren (within 30 degrees of his angle, the
+ * wrist out past the far hip): there it is in front of the skirt and the belt, as he painted it.
+ */
+function farFistBeside(g: DrawCtx, piece: PaintedPiece): boolean {
+  const r = g.rig;
+  const turn = ((segAngle(r.wristF, r.handF) - piece.angle + 540) % 360) - 180;
+  return Math.abs(turn) <= 30 && r.wristF.x - r.hipF.x >= 4;
+}
+
 /**
  * A fist the owner painted, on the wrist: exactly as he drew it while the hand points within 30 degrees
  * of the way it did in his picture (as our hand pictures hang unturned), turned with RotSprite past
  * that, and mirrored when our hand pictures are (the thumb on the facing side).
  */
-function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: string, hex: string) => string): void {
+function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: string, hex: string) => string, depth: Depth = armDepth(s, 'armor')): void {
   const j = armJoints(g.rig, s);
   const { flipX } = handPose(g, s);
   // Mirrored, his fist points the other way across the vertical.
@@ -1732,7 +1752,7 @@ function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: strin
   const turn = ((segAngle(j.wrist, j.hand) - drawn + 540) % 360) - 180;
   const pal: TemplatePalette = {};
   for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
-  stampTemplate(g.L(armDepth(s, 'armor')), piece, j.wrist, Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  stampTemplate(g.L(depth), piece, j.wrist, Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE });
 }
 
 /** Our hand picture for the pose (open, pointing, relaxed, cradling), in the owner's leather tones. */
@@ -1746,15 +1766,45 @@ function leatherHand(g: DrawCtx, s: Side, color: (ch: string, hex: string) => st
   }
 }
 
+/**
+ * The colours the Fingerless Gloves had before his art (and Ren's old glove colour), which the creator
+ * saved with every character that wore them: those colours now mean his.
+ */
+const FINGERLESS_OLD_DEFAULTS: Record<string, string> = {
+  '#25252d': NIGHT_GLOVE,
+  '#1b1b22': NIGHT_GLOVE,
+  '#9aa4b0': NIGHT_GLOVE_PLATE,
+};
+
 export const HAND_ITEMS: ItemDef[] = liftMain([
   {
     id: 'hands_fingerless',
     slot: 'hands',
     name: 'Fingerless Gloves',
-    desc: 'Black fingerless gloves with a riveted plate on the back of the hand.',
-    colors: [col('main', 'Glove', '#25252d'), col('plate', 'Plate', '#9aa4b0', 'metal')],
-    draw: (g, [c, pl]) => {
+    desc: 'Black fingerless gloves with a silver plate over the knuckles; the fingers bare.',
+    colors: [col('main', 'Glove', NIGHT_GLOVE), col('plate', 'Plate', NIGHT_GLOVE_PLATE, 'metal')],
+    draw: (g, colors) => {
+      const [c, pl] = colors.map((h) => FINGERLESS_OLD_DEFAULTS[h.toLowerCase()] ?? h);
+      // The owner's gloves on his Ren, his pixels (2026-10-21, the new standard; tools/refs/
+      // ren-boots-gloves-from-ref.py): closed, each hand is his fist in place of ours (the near one round
+      // the grip, the same fist closing on nothing; the far one hanging), his bare fingers in the
+      // character's skin. Open, pointing or relaxed (hand signs, casts, a book), and on the female
+      // bodies, the glove is drawn on our hand in the slot colours. His black stays his line.
+      const tint = (_ch: string, hex: string) => {
+        const k = NIGHT_KIT_KIND[hex];
+        if (k === 'line') return hex;
+        if (k === 'skin') return skinTone(hex, NIGHT_SKIN, g.look.skin);
+        return k === 'silver' ? retintHex(hex, NIGHT_GLOVE_PLATE, pl) : retintHex(hex, NIGHT_GLOVE, c);
+      };
       for (const s of SIDES) {
+        const { kind } = handPose(g, s);
+        if (!isFemaleBody(g.rig.body) && (kind === 'grip' || kind === 'fist')) {
+          // Under his jacket his bare forearm runs down to his glove: only our hand is taken away.
+          if (g.has('top', 'top_night_jacket')) handOff(g, s);
+          else bareHandOff(g, s);
+          paintedFist(g, s, s === 'N' ? NIGHT_GLOVE_N : NIGHT_GLOVE_F, tint, s === 'F' && farFistBeside(g, NIGHT_GLOVE_F) ? 'farHand.front' : armDepth(s, 'armor'));
+          continue;
+        }
         const L = g.L(armDepth(s, 'armor'));
         const gp = clothPen(g, c, prt('forearm', s), sb(s));
         limb(g, L, 'arm', s, 1.7, 2, 0.5, gp);

@@ -238,7 +238,9 @@ export const AppearanceEditor: React.FC<{
   onPreviewStance: (stance: SpritePose) => void;
   /** Tells the creator which section is open (it brings the camera to the face for the head). */
   onGroup?: (g: AppearanceGroup) => void;
-}> = ({ look, eye, character, onChange, onPreviewStance, onGroup }) => {
+  /** What the last change of chakra type did to the jutsu (already in the screen's language). */
+  chakraNote?: string;
+}> = ({ look, eye, character, onChange, onPreviewStance, onGroup, chakraNote }) => {
   useLang();
   const [group, setGroup] = useState<AppearanceGroup>('body');
   const [parts, setParts] = useState<Partial<Record<AppearanceGroup, Part>>>({});
@@ -489,12 +491,13 @@ export const AppearanceEditor: React.FC<{
                   {L('Nature')}: <span style={serif} className="text-sm font-bold text-[#f2c46d]">{L(nature)}</span>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500 -mt-1 mb-2">{L('Your chakra type is your elemental nature (soon it will decide your elemental jutsu).')}</p>
+              <p className="text-[11px] text-slate-500 -mt-1 mb-2">{L('Your chakra type is your elemental nature: it decides your elemental jutsu.')}</p>
               {[true, false].map((elemental) => (
                 <div key={String(elemental)} className="mb-2">
                   <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{L(elemental ? 'Elements' : 'No element')}</div>
                   <div className="flex flex-wrap gap-1.5">
-                    {CHAKRA_TYPES.filter((t) => t.elemental === elemental).map((t) => {
+                    {/* A pending type (Shadow, Spirit) is not offered; a ninja that has it sees its own tile, marked, until it picks another. */}
+                    {CHAKRA_TYPES.filter((t) => t.elemental === elemental && (!t.pending || t.nature === nature)).map((t) => {
                       const on = t.nature === nature;
                       const burst = on ? look.chakra.color : t.bursts[0];
                       return (
@@ -514,12 +517,26 @@ export const AppearanceEditor: React.FC<{
                           <span style={serif} className={`text-[13px] font-bold leading-tight ${on ? 'text-[#f2c46d]' : 'text-slate-200'}`}>
                             {L(t.nature)}
                           </span>
+                          {t.pending && <span className="text-[10px] uppercase tracking-wider text-amber-400/90 leading-tight">{L('Pending')}</span>}
                         </button>
                       );
                     })}
                   </div>
+                  {/* The owner (2026-10-21): Light and Void stay; their own jutsu come later. */}
+                  {!elemental && <p className="text-[11px] text-slate-400 mt-1">{L('Light and Void: their own jutsu will come later. For now they learn no elemental jutsu.')}</p>}
                 </div>
               ))}
+              {chakraType(nature).pending && (
+                <p className="text-[11px] text-amber-300/90 border border-amber-900/60 bg-amber-950/30 px-2 py-1.5">
+                  {L('This type is pending: it can no longer be picked. Your ninja keeps it until you choose another one.')}
+                </p>
+              )}
+              {/* Sticks to the bottom of the panel while it is below the fold (a short screen), so the swap is seen right after the click. */}
+              {chakraNote && (
+                <p className="sticky bottom-0 z-10 mt-1.5 text-[11px] text-[#f2c46d] border border-[#6b5434] bg-[#2b1f0d] shadow-[0_-8px_16px_rgba(0,0,0,0.55)] px-2 py-1.5">
+                  {chakraNote}
+                </p>
+              )}
             </div>
             <div>
               <SectionLabel>Chakra Color</SectionLabel>

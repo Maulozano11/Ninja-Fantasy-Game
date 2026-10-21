@@ -7,6 +7,7 @@ import { retintHex } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
 import { segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
+import { FEET_DAWN_BOOTS } from './aureliaBoots';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
@@ -447,4 +448,5 @@ export const FEET_ITEMS: ItemDef[] = [
       }
     },
   },
+  FEET_DAWN_BOOTS,
 ];

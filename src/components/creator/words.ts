@@ -217,6 +217,7 @@ const ES: Record<string, string> = {
   'Dawn Priestess Sash': 'Fajín de la Sacerdotisa del Alba',
   'A long white skirt open at the sides: an embroidered front panel with a gold border, side panels flaring back over a pale grey lining, gold scrolls along the hems. Women only.': 'Una falda blanca larga abierta por los lados: un panel delantero bordado con ribete de oro, paneles laterales que se abren hacia atrás sobre un forro gris pálido y volutas de oro en los bajos. Solo mujeres.',
   'A wide gold sash over a brown belt with a steel buckle, a leather pouch with a gold stud on the hip, a red charm and the sash end draped over the hip. Women only.': 'Un fajín ancho de oro sobre un cinturón marrón con hebilla de acero, una bolsa de cuero con un remache de oro en la cadera, un amuleto rojo y la punta del fajín caída sobre la cadera. Solo mujeres.',
+  'Thigh-high white boots with gold lace tops, a gold seam down the front and gold heeled shoes. Women only.': 'Botas blancas altas hasta el muslo con remate de encaje dorado, una costura dorada al frente y zapatos dorados de tacón. Solo mujeres.',
 };
 
 /** An editor label in the screen's language. */

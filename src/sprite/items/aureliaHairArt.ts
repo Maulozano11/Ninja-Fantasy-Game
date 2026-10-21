@@ -1,5 +1,5 @@
 // Aurelia's hair, the owner's pixels at our scale (tools/refs/aurelia-hair-from-ref.py from
-// docs/reference/aurelia-game-scale-owner-reference.jpg). Generated: rerun the script to change it.
+// docs/reference/aurelia-escala-juego-owner-reference.jpg). Generated: rerun the script to change it.
 
 import type { PaintedPart } from './capeArt';
 

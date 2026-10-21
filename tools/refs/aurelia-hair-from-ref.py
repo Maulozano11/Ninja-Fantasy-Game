@@ -1,6 +1,6 @@
 """Aurelia's hair from the owner's picture at our scale, as a hairstyle: 'hair_dawn_bun'.
 
-docs/reference/aurelia-game-scale-owner-reference.jpg is his Aurelia redrawn at our sprite scale
+docs/reference/aurelia-escala-juego-owner-reference.jpg is his Aurelia redrawn at our sprite scale
 (1932 x 1932, 100 x 100 of his pixels of 19.32 picture pixels each, from 0: one of his pixels is one
 fine pixel of our sprites). It is the reference ("perfectas"): her hair is copied from it pixel for
 pixel, in his colours. The big picture (aurelia-owner-reference.jpg) only helps to read it.
@@ -54,7 +54,7 @@ from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from aiden_ref import save  # noqa: E402
 
-REF = 'docs/reference/aurelia-game-scale-owner-reference.jpg'
+REF = 'docs/reference/aurelia-escala-juego-owner-reference.jpg'
 PITCH = 19.32
 # Each cell's colour is the median of its inside (this far from its edges: the JPEG's ringing).
 INSET = 4
@@ -256,7 +256,7 @@ def write_ts(meta, path):
     px, py = meta['pivot']
     out = [
         "// Aurelia's hair, the owner's pixels at our scale (tools/refs/aurelia-hair-from-ref.py from",
-        '// docs/reference/aurelia-game-scale-owner-reference.jpg). Generated: rerun the script to change it.',
+        '// docs/reference/aurelia-escala-juego-owner-reference.jpg). Generated: rerun the script to change it.',
         '',
         "import type { PaintedPart } from './capeArt';",
         '',

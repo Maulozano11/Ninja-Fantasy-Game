@@ -177,7 +177,7 @@ export function throwRelease(body: BodyType, held?: string): ThrowRelease {
   const before = drawRig(body, 'throw', THROW_RELEASE_FRAME - 1);
   const fist = (r: typeof at): Vec => add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
   const d = norm(sub(at.handN, at.wristN));
-  const pole = held === 'held_naginata';
+  const pole = held === 'held_naginata' || held === 'held_dawn_staff';
   // The flame longsword is held by its own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
   const grip = held === 'held_flame_sword' ? before.handN : fist(before);
   return {

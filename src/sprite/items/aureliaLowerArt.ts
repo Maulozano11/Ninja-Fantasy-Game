@@ -1,5 +1,5 @@
 // Aurelia's skirt and sash, the owner's pixels at our scale (tools/refs/aurelia-lower-from-ref.py
-// from docs/reference/aurelia-game-scale-owner-reference.jpg). Generated: rerun the script to change it.
+// from docs/reference/aurelia-escala-juego-owner-reference.jpg). Generated: rerun the script to change it.
 
 /** A piece of his on our female at idle frame 0 and the columns it hangs from (src/sprite/items/aureliaLower.ts). */
 export interface DawnPiece {

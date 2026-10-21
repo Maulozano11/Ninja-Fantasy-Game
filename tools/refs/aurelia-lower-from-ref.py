@@ -1,6 +1,6 @@
 """Aurelia's skirt and sash from the owner's picture at our scale (the owner's fourth heroine).
 
-docs/reference/aurelia-game-scale-owner-reference.jpg is his Aurelia redrawn at our sprite scale
+docs/reference/aurelia-escala-juego-owner-reference.jpg is his Aurelia redrawn at our sprite scale
 (1932 x 1932, 100 x 100 of his pixels of 19.32 picture pixels each, from 0: one of his pixels is one
 fine pixel of ours). It is the reference ("perfectas"): her skirt and sash are his pixels, in his
 colours (KEY: the medians of his cells, each cell the nearest of them). The big picture
@@ -51,7 +51,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 from PIL import Image  # noqa: E402
 
-REF = 'docs/reference/aurelia-game-scale-owner-reference.jpg'
+REF = 'docs/reference/aurelia-escala-juego-owner-reference.jpg'
 PITCH = 19.32
 # Each cell's colour is the median of its inside (this far from its edges: the JPEG's ringing).
 INSET = 4
@@ -352,7 +352,7 @@ DOCS = {
 def ts_module(ps):
     out = [
         "// Aurelia's skirt and sash, the owner's pixels at our scale (tools/refs/aurelia-lower-from-ref.py",
-        '// from docs/reference/aurelia-game-scale-owner-reference.jpg). Generated: rerun the script to change it.',
+        '// from docs/reference/aurelia-escala-juego-owner-reference.jpg). Generated: rerun the script to change it.',
         '',
         '/** A piece of his on our female at idle frame 0 and the columns it hangs from (src/sprite/items/aureliaLower.ts). */',
         'export interface DawnPiece {',

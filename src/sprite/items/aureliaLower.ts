@@ -1,5 +1,5 @@
 // Aurelia's skirt and sash, the owner's pixels from his Aurelia at our scale
-// (docs/reference/aurelia-game-scale-owner-reference.jpg): her long white skirt open at the sides (the
+// (docs/reference/aurelia-escala-juego-owner-reference.jpg): her long white skirt open at the sides (the
 // front panel, the side panels and the grey lining behind her legs) and her gold sash with the belt, the
 // pouch and the charm. tools/refs/aurelia-lower-from-ref.py copies his pixels onto our female at idle
 // frame 0 (aureliaLowerArt.ts); here they ride the rig. Each piece hangs between columns: their tops ride

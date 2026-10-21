@@ -409,7 +409,7 @@ export const HELD_ITEMS: ItemDef[] = [
       else if (handsLimp(g)) drawDawnStaff(g, 'nearArm.held', droppedGrip(g, 1.5, 4.5), 88, gold, orb, false);
       // At rest it hangs from her far fist at his angle, every pixel his; otherwise the near fist holds it like a pole.
       else if (dawnStaffInFarHand(g)) drawDawnStaff(g, 'farArm.held', g.rig.handF, DAWN_STAFF.angle, gold, orb, true);
-      else drawDawnStaff(g, 'nearArm.held', gripPoint(g), poleAngle(g), gold, orb, true);
+      else if (!handsReleased(g)) drawDawnStaff(g, 'nearArm.held', gripPoint(g), poleAngle(g), gold, orb, true);
     },
   },
   {

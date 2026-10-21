@@ -11,6 +11,7 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { LYRA_BLOUSE_ITEM } from './lyraUpper';
+import { POUCH_BELT, STRIPED_PLEATS } from './lyraLower';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1438,6 +1439,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
       }
     },
   },
+  STRIPED_PLEATS,
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1671,6 +1673,7 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
       tseam(g, L, CX - 0.3, 3.6, CX - 0.3, 0.9, 1);
     },
   },
+  POUCH_BELT,
 ]);
 
 // ---------------------------------------------------------------------------

@@ -36,6 +36,7 @@ import {
   PLATE_WAIST,
 } from './crimsonPlateArt';
 import { LYRA_CORSET_ITEM } from './lyraUpper';
+import { GILDED_TABARD } from './lyraLower';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2846,4 +2847,5 @@ export const SKIRT_ITEMS: ItemDef[] = [
       });
     },
   },
+  GILDED_TABARD,
 ];

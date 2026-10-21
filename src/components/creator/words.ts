@@ -213,6 +213,8 @@ const ES: Record<string, string> = {
   // Lyra's hair (hair_copper_braid)
   'Copper Braid': 'Trenza cobriza',
   Ornament: 'Adorno',
+  // Lyra's skirt (items/lyraLower.ts)
+  Stripes: 'Rayas',
 };
 
 /** An editor label in the screen's language. */

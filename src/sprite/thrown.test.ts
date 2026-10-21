@@ -11,7 +11,7 @@ import { catchLook, RELEASE_MARGIN, releaseClear, releaseStart, renderThrown, TH
 import type { BodyType, SpriteAppearance } from './types';
 
 const BODIES: BodyType[] = ['male', 'female', 'bulky', 'slender'];
-const BLADES = ['held_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai'];
+const BLADES = ['held_katana', 'held_ember_katana', 'held_crystal', 'held_ice_crystal', 'held_flame_sword', 'held_kunai'];
 /** Techniques held in the palm: not weapons, so a throw flings a kunai from the pouch instead. */
 const TECHNIQUES = ['held_spiral', 'held_lightning', 'held_palm'];
 

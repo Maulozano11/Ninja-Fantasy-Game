@@ -1,4 +1,4 @@
-"""The owner's Saya's eyes (docs/reference/saya-owner-reference.jpg) as the 'keen' eye shape.
+"""The owner's Saya's eyes (docs/reference/saya-owner-reference.jpg) as the 'shade' eye shape.
 
 His Saya is his own pixel art at ten picture pixels to one of hers (tools/refs/heroine_ref.py), her head
 about 0.65 of ours across and 0.62 down, so her eyes are not lifted 1:1 as Aiden's were: each cell of
@@ -7,26 +7,30 @@ picture, in her palette, heroine_ref.PALETTES['saya']), laid out at our scale ov
 template's eye cells (DESIGN). Her eyes as he drew them:
 
   near  a thick navy-black lash two of her rows deep running out past the eye's outer corner, where it
-        tapers off in a brown tip and turns down round the corner; under it a wide eye, white on the
+        ends in a brown tip; at the outer corner it turns down; under it a wide eye, white on the
         outer side, the rest a bright blue iris (a darker blue, a dark navy pupil, a white glint) and a
         pale grey at its lower inner corner; a dark brown inner end to the lash; no lower line
   far   at the face's edge: the lash sweeps up and out along the edge, under it a white glint over her
-        blue, a blue-grey sliver of shaded white beside it
+        blue
 
 At our scale the lash is one row (her two rows are 1.2 of ours), the eye under it two (her three are
-1.9), the near eye five cells wide with the lash's tip a cell further out (her eight pixels across are
-0.73 of ours: her eyes are 11 apart, ours 8), the far eye three wide with the lash's tip a row higher.
-So the near eye starts a column left and a row above the template's eye cells and the far one a row
-above (AT): those cells are hers only where she has a pixel. Every cell of the template's eye cells
-is hers or the face's own skin, written with the template's letters, so the face, the eye options'
-code and Ocular Surge read them as they read ours:
+1.9), the near eye five cells wide with the lash's tip a cell further out (her nine pixels across are
+5.9 of ours), the far eye three wide with the lash's tip a row higher. Her glint on the near eye is a
+quarter of the cell it falls in (her blue is the rest), so that cell is blue; the far eye keeps its
+glint, the brightest of its cell. So the near eye starts a column left and a row above the template's
+eye cells and the far one a row above (AT): those cells are hers only where she has a pixel. Every cell
+of the template's eye cells is hers or the face's own skin, written with the template's letters, so
+the face, the eye options' code and Ocular Surge read them as they read ours:
 
-  L  her lash (and its brown tip and inner end)     h  her pale grey and blue-grey whites
+  L  her lash (and its brown tip and inner end)     h  her pale grey
   w  her white and glint                            d  her pupil, i  her blues (they move the way
   o D s b l  (0-4 in DESIGN) the face's own skin       the eye colour moves her bright blue)
 
-Her brows are under her bangs (the row over her lash is the bangs' shadow), so the template's brows
-stay. Two lid states the game needs that her picture does not show, made of her pixels:
+Her eyes sit on the template's eye rows, where our eyes are, so every face shape, hairstyle and pose
+that fits ours fits hers (the reduced reference paints them on her own smaller head, three rows
+higher). Her brows are under her bangs (the row over her lash is the bangs' shadow), so the
+template's brows stay. Two lid states the game needs that her picture does not show, made of her
+pixels:
 
   lowered  (reading) her lash comes down a row with its tip; under it the lower row of her eye, white,
            blues and grey; above it the lid's skin
@@ -67,7 +71,6 @@ PICK = {
     'B': ('i', (108, 27)),  # her bright blue, the lit iris
     'p': ('d', (107, 27)),  # her pupil, dark navy
     'G': ('h', (108, 29)),  # the pale grey at the near eye's lower inner corner
-    'v': ('h', (114, 28)),  # the far eye's blue-grey shaded white
 }
 SKIN = 'oDsbl'  # a digit d in DESIGN: the face's own skin at shade d (SKIN[d])
 # Where each eye's first cell is from the template's eye cells (columns, rows): the near eye's from
@@ -160,6 +163,12 @@ def build(N):
     return out
 
 
+def cells(letters, name):
+    """The letters on the template's eye cells alone (what the face template and Ocular Surge read)."""
+    (dx, dy), (tw, th) = AT[name], TEMPLATE[name]
+    return [letters[r - dy][-dx:-dx + tw] for r in range(th)]
+
+
 def palette(states):
     """One character per colour of hers, in order of first use."""
     chars = 'abcdefhijklmnpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -206,6 +215,12 @@ def write_ts(path, states, seen):
             rows, col = eyes_[name]
             out += [f'    {name}: {{', f'      letters: [{", ".join(repr(r) for r in rows)}],', f'      rows: [{", ".join(repr(r) for r in encode(col, seen))}],', '    },']
         out += ['  },']
+    out += ['};', '',
+            "/** Her eyes' letters on the template's eye cells alone (the near eye five columns, the far three, three rows from the lash row), in each lid state. */",
+            'export const SAYA_EYE_CELLS: Record<\'open\' | \'lowered\' | \'closed\', { near: string[]; far: string[] }> = {']
+    for state, eyes_ in states.items():
+        near, far = cells(eyes_['near'][0], 'near'), cells(eyes_['far'][0], 'far')
+        out += [f'  {state}: {{ near: [{", ".join(repr(r) for r in near)}], far: [{", ".join(repr(r) for r in far)}] }},']
     out += ['};', '',
             "/** Her bright blue, the lit iris: the player's eye colour moves her iris as far. */",
             f"export const SAYA_IRIS = '{IRIS}';", '']

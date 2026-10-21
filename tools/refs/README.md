@@ -129,3 +129,10 @@ folders.
       npx tsx tools/refs/heroine-idle.mts <out>
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
+
+- `saya-eyes-from-ref.py`: Saya's eyes as the `shade` eye shape (`src/sprite/sayaEyeArt.ts`): each
+  cell of ours at our scale takes the colour of the pixel of hers it stands for, on our face
+  template's eye rows, plus her lash's tip a cell out (near eye) and a row up (far eye); the lowered
+  (reading) and closed (knocked out) lids are made of her pixels.
+
+      python3 -I tools/refs/saya-eyes-from-ref.py docs/reference/saya-owner-reference.jpg <out> src/sprite/sayaEyeArt.ts

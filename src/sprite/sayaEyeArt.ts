@@ -57,5 +57,12 @@ export const SAYA_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedEye
   },
 };
 
+/** Her eyes' letters on the template's eye cells alone (the near eye five columns, the far three, three rows from the lash row), in each lid state. */
+export const SAYA_EYE_CELLS: Record<'open' | 'lowered' | 'closed', { near: string[]; far: string[] }> = {
+  open: { near: ['LLLLL', 'Lwidi', 'swiih'], far: ['LLL', 'wLL', 'iLo'] },
+  lowered: { near: ['bbbbb', 'LLLLL', 'swiih'], far: ['bbo', 'LLL', 'iLo'] },
+  closed: { near: ['bbbbb', 'LLLLL', 'sbbbl'], far: ['bbo', 'LLL', 'bbo'] },
+};
+
 /** Her bright blue, the lit iris: the player's eye colour moves her iris as far. */
 export const SAYA_IRIS = '#088cce';

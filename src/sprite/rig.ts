@@ -994,7 +994,7 @@ export function drawRig(body: BodyType, pose: RigPose, frame: number, arms?: Arm
  * (the female body's hands, cut from his Lyra) are his, where he drew them. Her free far hand then
  * hangs open, as he drew it (ctx.ts handPose), not as a fist.
  */
-export const LONG_ARMS = { forearm: 1.3, farLonger: 0.4, hangIn: 1 };
+export const LONG_ARMS = { forearm: 1.15, farLonger: 0.4, hangIn: 1 };
 
 const ARM_PARAMS = new Map<string, BodyParams>();
 function paramsFor(body: BodyType, arms?: ArmType): BodyParams {

@@ -150,8 +150,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   stands where he drew it, both arms and the sword included. A third new appearance option comes with her:
   the arms `long` (`rig.ts` LONG_ARMS): his Lyra's forearms are 2-3 px longer than the female standard's
   (his fists start on rows 176-177, the standard's on 173-174), so on her the fists (his hands) and the
-  sword are his, where he drew them, and her free far hand hangs open as he drew it. At rest 50 pixels
-  differ from his picture (old body 332, new body before this 618; the arms 0, near fist 4 and far hand 5
+  sword are his, where he drew them, and her free far hand hangs open as he drew it. At rest 52 pixels
+  differ from his picture (old body 332, new body before this 618; the arms 0, near fist 4 and far hand 7
   in skin tones the female body merges, the rest pre-existing: thighs under the skirt, hair over the
   shoulder). The standard's arms (Aurelia's) are unchanged; whether Lyra keeps her own arm length is his call.
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.

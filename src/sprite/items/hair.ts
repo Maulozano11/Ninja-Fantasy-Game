@@ -18,6 +18,7 @@ import { retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
+import { GOLDEN_FALL } from './eliseHair';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 
@@ -1821,4 +1822,5 @@ export const HAIR_ITEMS: ItemDef[] = [
       trimSkull(g, VALIANT_HAIR_BACK);
     },
   },
+  GOLDEN_FALL,
 ];

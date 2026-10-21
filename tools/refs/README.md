@@ -129,3 +129,13 @@ folders.
       npx tsx tools/refs/heroine-idle.mts <out>
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
+
+- `elise-hair-from-ref.py`: Elise's hair as the `hair_golden_fall` hairstyle (colour slots Hair and
+  Ornament), brought down to our scale in her colours only. The head's hair starts from the reduced
+  reference, cleaned by hand (her gold flower redrawn, her near lock taken on over the collar, her
+  far lock behind the far cheek); the long fall down her back is drawn at our scale after her
+  picture. Front over the head, back behind it (what the face hides filled in), and the fall behind
+  the body, hung from the back of the head and turned with the torso (`src/sprite/items/eliseHair.ts`).
+  It writes `src/sprite/items/eliseHairArt.ts`.
+
+      python3 -I tools/refs/elise-hair-from-ref.py <out> src/sprite/items/eliseHairArt.ts

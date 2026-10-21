@@ -148,3 +148,15 @@ folders.
   closed lids are made of his pixels. Writes `eyes@16.png` (open, lowered, closed) and `hers@16.png`.
 
       python3 -I tools/refs/lyra-eyes-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/lyraEyeArt.ts
+
+- `lyra-sword-from-ref.py` → `src/sprite/items/lyraSwordArt.ts`: Lyra's sword (`held_gilded_rapier`),
+  lifted 1:1 from the owner's picture of her at our game's scale
+  (`docs/reference/lyra-game-scale-owner-reference.jpg`, 19.32 picture pixels to one of ours, his
+  pixel (x, y) at our (x + 74, y + 121)): his steel pommel, knuckle bow and cross-guard with gold
+  tips, gold collar and shell and cyan gem, his cyan blade (every cyan pixel within 2.6 px of its
+  fitted line, with the black beside it) and his sparkles (the cyan further out, twinkling in the
+  game). The grip his hand hides is his pommel's steel carried on; our fist is bigger than his, so the
+  grip is made 3 px longer under it (the pommel stays where he drew it, the rest moves down the line).
+  Drawn at his blade's angle (42.7) at rest. Writes `his@8.png` and `kinds@8.png` into `<out>`.
+
+      python3 -I tools/refs/lyra-sword-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraSwordArt.ts

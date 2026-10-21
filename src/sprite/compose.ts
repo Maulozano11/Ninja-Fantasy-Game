@@ -4,9 +4,10 @@ import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
+import { drawThrowKunai } from './items/accessories';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
-import { drawRig, Lay, layRig, Rig, rigPoseFor } from './rig';
+import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
 import { applyTexture, frayHair } from './texture';
@@ -16,11 +17,15 @@ export interface SpriteFrame {
   rgba: Uint8ClampedArray;
   /** Body part index (into PARTS) of the top-most pixel, 0 where empty. */
   part: Uint8Array;
+  /** One bit per pixel (byte i >> 3, bit i & 7): the top-most pixel is hair (the Ryusei's phase lights it up). */
+  hair?: Uint8Array;
   rig: Rig;
 }
 
 /** Depths drawn in head-local units and shrunk around the head center by `headScale`. */
 const HEAD_GROUP = new Set<Depth>(['hairBack', 'head.body', 'head.face', 'head.mask', 'hairFront', 'head.gear']);
+const HAIR_BACK = DEPTHS.indexOf('hairBack');
+const HAIR_FRONT = DEPTHS.indexOf('hairFront');
 
 // Slots are drawn in this order; within a depth, later items cover earlier ones.
 const SLOT_ORDER: SlotId[] = ['cape', 'hair', 'face', 'bottom', 'feet', 'top', 'skirt', 'armor', 'waist', 'hands', 'held'];
@@ -88,6 +93,122 @@ function farHandToFront(layers: Map<Depth, Layer>, g: DrawCtx): void {
       L.mat[i] = -1;
     }
   }
+}
+
+/** The cape layers that hang from the body (the cloth, its collar and the drapes on the chest). */
+const CAPE_CLOTH = ['capeBack', 'capeFront'] as const;
+
+/**
+ * A body pitched far forward (PoseFrame.streamBack, the release of 'throw') cannot hang its cape
+ * straight down from the shoulders: the cloth would fall in front of the chest and over the legs.
+ * The cape is hung from the body standing upright instead (the rig turned back by its lean around
+ * the pelvis), then the cloth is turned forward with the body: it lies along the back and streams
+ * out behind it, flung by the pose's wind, and a coat's front panel follows the torso. Only the
+ * cloth layers come from that drawing: what the cape puts on the arms and shoulders is drawn on
+ * the pitched body as usual. The collar is then tucked under the chin, as tuckUnderChin does.
+ */
+function drawPitchedCape(g: DrawCtx, layers: Map<Depth, Layer>, draw: (g: DrawCtx) => void): void {
+  const rig = g.rig;
+  const before = new Map(CAPE_CLOTH.map((d) => [d, snapshot(layers.get(d))]));
+  draw(g);
+  const upright = turnRig(rig, -rig.lean);
+  const hung = new Map<Depth, Layer>();
+  draw({
+    ...g,
+    rig: upright,
+    L(depth) {
+      let l = hung.get(depth);
+      if (!l) {
+        l = new Layer(!NO_OUTLINE_DEPTHS.has(depth));
+        if (HEAD_GROUP.has(depth)) l.xf = { cx: upright.head.x, cy: upright.head.y, k: upright.bp.headScale };
+        hung.set(depth, l);
+      }
+      return l;
+    },
+  });
+  const head = layers.get('head.body');
+  for (const d of CAPE_CLOTH) {
+    const L = g.L(d);
+    restore(L, before.get(d)!);
+    const src = hung.get(d);
+    if (!src?.used) continue;
+    for (let y = 0; y < GRID; y++) {
+      for (let x = 0; x < GRID; x++) {
+        // The fine pixel of the upright drawing that turns onto this one.
+        const s = turnPoint(v((x + 0.5) / RES, (y + 0.5) / RES), rig.pelvis, -rig.lean);
+        const sx = Math.floor(s.x * RES);
+        const sy = Math.floor(s.y * RES);
+        if (sx < 0 || sy < 0 || sx >= GRID || sy >= GRID) continue;
+        const j = sy * GRID + sx;
+        if (src.mat[j] < 0) continue;
+        // The collar and drapes in front stay under the chin.
+        if (d === 'capeFront' && head?.has(x, y)) continue;
+        L.set(x, y, src.mat[j], src.shade[j], PARTS[src.part[j]], src.flags[j]);
+      }
+    }
+  }
+  capeBehindBack(g.L('capeBack'), rig, g.mats);
+}
+
+/**
+ * The pitched cape's cloth that would hang down in the gap between the legs (what lies in front of
+ * the line of the back below the chest, behind the body) is cut away, so the cloth only streams
+ * out behind the back. The cut gets the cloth's outline (a painted cape, which draws its own: its
+ * darkest colour).
+ */
+function capeBehindBack(L: Layer, rig: Rig, mats: MaterialTable): void {
+  const b = rig.bp;
+  // The back of the near thigh at the hip (torsoPoly's nO), the line the cloth stays behind.
+  const backX = -(b.hipHalf * 0.5 + b.legR[0] * 0.96) + 0.5;
+  const chestY = b.torsoLen - 4;
+  const cut = new Uint8Array(GRID * GRID);
+  let darkest = -1;
+  let darkL = Infinity;
+  for (let i = 0; i < GRID * GRID; i++) {
+    const m = L.mat[i];
+    if (m < 0) continue;
+    const d = sub(v(((i % GRID) + 0.5) / RES, (((i / GRID) | 0) + 0.5) / RES), rig.pelvis);
+    const lx = d.x * rig.right.x + d.y * rig.right.y;
+    const ly = d.x * rig.up.x + d.y * rig.up.y;
+    if (lx > backX && ly < chestY) {
+      L.mat[i] = -1;
+      L.flags[i] = 0;
+      cut[i] = 1;
+      continue;
+    }
+    const [r, g, bl] = hexToRgb(mats.ramps[m][3]);
+    const lum = r * 0.3 + g * 0.59 + bl * 0.11;
+    if (lum < darkL) {
+      darkL = lum;
+      darkest = m;
+    }
+  }
+  // Painted cloth is not outlined by the layer: line its cut with its darkest colour.
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || !(L.flags[i] & F_NO_OUTLINE)) continue;
+    if ([i - 1, i + 1, i - GRID, i + GRID].some((j) => j >= 0 && j < GRID * GRID && cut[j])) {
+      L.mat[i] = darkest;
+      L.shade[i] = 0;
+    }
+  }
+}
+
+/** A copy of a layer's pixels (null when it has none yet). */
+function snapshot(L: Layer | undefined): { mat: Int16Array; shade: Uint8Array; part: Uint8Array; flags: Uint8Array; used: boolean } | null {
+  return L ? { mat: L.mat.slice(), shade: L.shade.slice(), part: L.part.slice(), flags: L.flags.slice(), used: L.used } : null;
+}
+
+function restore(L: Layer, s: ReturnType<typeof snapshot>): void {
+  if (!s) {
+    L.mat.fill(-1);
+    L.used = false;
+    return;
+  }
+  L.mat.set(s.mat);
+  L.shade.set(s.shade);
+  L.part.set(s.part);
+  L.flags.set(s.flags);
+  L.used = s.used;
 }
 
 /**
@@ -170,13 +291,17 @@ export function renderSprite(
     if (!def) continue;
     if (slot === 'hair' && hideHair) continue;
     const choice = look.slots[slot]!;
-    def.draw(g, resolveColors(def, choice.colors), resolveParts(def, choice.parts));
+    const colors = resolveColors(def, choice.colors);
+    const parts = resolveParts(def, choice.parts);
+    if (slot === 'cape' && rig.streamBack) drawPitchedCape(g, layers, (gg) => def.draw(gg, colors, parts));
+    else def.draw(g, colors, parts);
   }
   for (const acc of look.accessories) {
     const def = getItem(acc.id);
     if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors), resolveParts(def, acc.parts));
   }
   drawHeadband(g);
+  drawThrowKunai(g);
   // clothes over a female torso follow the bust (fitted armors shape their own plates)
   for (const d of ['torso.top', 'torso.over'] as const) {
     const L = layers.get(d);
@@ -233,16 +358,19 @@ export function renderSprite(
     isLine[i] = topShade[i] === 0 ? 1 : 0;
   }
   thinDoubleOutlines(rgba, top, isLine);
+  const hair = new Uint8Array(N >> 3);
+  for (let i = 0; i < N; i++) if (top[i] === HAIR_BACK || top[i] === HAIR_FRONT) hair[i >> 3] |= 1 << (i & 7);
 
   if (!opts.skipEdits && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);
-  if (rig.lay) return { ...layFrame(rgba, part, rig.lay), rig: layRig(rig) };
-  return { rgba, part, rig };
+  if (rig.lay) return { ...layFrame(rgba, part, hair, rig.lay), rig: layRig(rig) };
+  return { rgba, part, hair, rig };
 }
 
 /** Lays a figure drawn upright on the ground: the transpose described by Lay (exact, no resampling). */
-function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, lay: Lay): { rgba: Uint8ClampedArray; part: Uint8Array } {
+function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, lay: Lay): { rgba: Uint8ClampedArray; part: Uint8Array; hair: Uint8Array } {
   const out = new Uint8ClampedArray(GRID * GRID * 4);
   const outPart = new Uint8Array(GRID * GRID);
+  const outHair = new Uint8Array(hair.length);
   for (let y = 0; y < GRID; y++) {
     for (let x = 0; x < GRID; x++) {
       const i = y * GRID + x;
@@ -253,9 +381,10 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, lay: Lay): { rgba: 
       const j = Y * GRID + X;
       for (let c = 0; c < 4; c++) out[j * 4 + c] = rgba[i * 4 + c];
       outPart[j] = part[i];
+      if (hair[i >> 3] & (1 << (i & 7))) outHair[j >> 3] |= 1 << (j & 7);
     }
   }
-  return { rgba: out, part: outPart };
+  return { rgba: out, part: outPart, hair: outHair };
 }
 
 /**

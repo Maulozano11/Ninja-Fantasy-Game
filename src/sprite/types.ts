@@ -8,13 +8,19 @@ export type BodyType = 'male' | 'female' | 'bulky' | 'slender';
 /** Bodies drawn with the female face, lashes, lips and slimmer feet. */
 export const isFemaleBody = (b: BodyType | string): boolean => b === 'female' || b === 'slender';
 
-export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge' | MovePose | CampPose;
+export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge' | StrikePose | MovePose | CampPose;
+
+/**
+ * Weapon techniques: 'throw' hurls the held weapon (it is out of the hand from the release frame on,
+ * see grip.ts throwRelease; the battle draws it in flight), 'pierce' is a lunging thrust.
+ */
+export type StrikePose = 'throw' | 'pierce';
 
 /** Poses for moving around the battle map: walking, running, crouching, sneaking and lying downed. */
 export type MovePose = 'walk' | 'run' | 'crouch' | 'sneak' | 'downed';
 
 /** The poses the character creator previews. */
-export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'cast', 'hurt', 'victory', 'charge'];
+export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'throw', 'pierce', 'cast', 'hurt', 'victory', 'charge'];
 
 export const MOVE_POSES: MovePose[] = ['walk', 'run', 'crouch', 'sneak', 'downed'];
 
@@ -98,14 +104,19 @@ export interface HeadbandChoice {
   plate: string;
 }
 
-export type ChakraColorId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet' | 'white' | 'black';
+export type ChakraColorId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet' | 'white' | 'black' | 'brown';
 
 export interface ChakraChoice {
-  /** The burst: its element and shape (fire, water, lightning...) and natural color. */
+  /**
+   * The burst, by id: its shape (flames, bolts, water rings...) and natural color. It is the chakra's
+   * TYPE: the burst's nature (chakraNature.ts, BURST_NATURE) is the ninja's elemental nature in the
+   * rules. The ids are color words because the bursts were first picked by color; the color the
+   * chakra shows is `tint`, and it never changes the nature.
+   */
   color: ChakraColorId;
   /**
    * Optional recolor of the burst: another chakra color id (its palette) or any
-   * '#rrggbb'. Missing = the burst's natural color.
+   * '#rrggbb'. Missing = the burst's natural color. Only a look: any type takes any color.
    */
   tint?: string;
   onCharge: boolean;

@@ -58,11 +58,14 @@ elements.
   important checks. Checks and attacks show their % before rolling.
   - The dice are a real d20 (20 faces, opposite faces sum to 21) in three
     styles the player picks in the main menu (owner's decision): A "Gema" (a
-    crystal in the caster's chakra colour), B "Marfil y oro" (ivory with gold,
-    the default), C "Obsidiana rúnica" (black glass with glowing numbers). The
-    dice only show the roll the engine already made and land on that number.
-    Art: `tools/ui/dice-d20.ts` → `src/assets/ui_dice/` (waiting for the
-    owner's approval of the look).
+    crystal in the caster's chakra colour, the default), B "Marfil y oro"
+    (ivory with gold), C "Obsidiana rúnica" (black glass with glowing
+    numbers). The dice only show the roll the engine already made and land on
+    that number. Art: `tools/ui/dice-d20.ts` → `src/assets/ui_dice/`.
+    The owner (2026-10-21): "me gustan los estilos el por defecto va ser el
+    del color del chakra"; the Gema taking the chakra colour: "si"; the
+    natural-20 extras of the checks: no changes "por ahora". The critical
+    animation is waiting for his second look.
   - How it plays (built on `ui/dice-d20`, the look waiting for his approval):
     the quick die is thrown over whoever rolls (the attacker; the one saving,
     at the target; the one checking) and lands on the engine's exact d20; with

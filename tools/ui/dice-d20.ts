@@ -180,7 +180,7 @@ function main(): void {
     generator: 'tools/ui/dice-d20.ts (rerun it to change these files; never edit them by hand)',
     status: 'New art waiting for the owner\'s approval (branch ui/dice-d20).',
     styles: STYLE_IDS,
-    defaultStyle: 'ivory',
+    defaultStyle: 'gem',
     names: { gem: { es: 'Gema', en: 'Gem' }, ivory: { es: 'Marfil y oro', en: 'Ivory and gold' }, obsidian: { es: 'Obsidiana rúnica', en: 'Runic obsidian' } },
     screenScale: { dice: 2, readout: 2, banner: 3, damage: 3, burst: 1 },
     numbers: { faces: NUMBERS, note: 'The number on each face (opposite faces sum to 21).' },

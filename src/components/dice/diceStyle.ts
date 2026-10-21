@@ -1,14 +1,14 @@
 // The dice style the player picks in the main menu (the owner's three designs: "Gema", "Marfil y
 // oro", "Obsidiana rúnica"), remembered on this device. The battle reads it every frame, so a change
-// shows at once. Marfil y oro is the default: it matches the HUD's gold and reads the same for every
-// chakra colour.
+// shows at once. Gema, in the roller's chakra colour, is the default (the owner: "el por defecto va
+// ser el del color del chakra").
 
 import { useSyncExternalStore } from 'react';
 
 export type DiceStyle = 'gem' | 'ivory' | 'obsidian';
 /** In the menu's order: A, B, C as the owner saw them. */
 export const DICE_STYLES: DiceStyle[] = ['gem', 'ivory', 'obsidian'];
-export const DEFAULT_DICE: DiceStyle = 'ivory';
+export const DEFAULT_DICE: DiceStyle = 'gem';
 
 const KEY = 'shinobi.dice';
 

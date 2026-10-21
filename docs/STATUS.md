@@ -30,16 +30,15 @@ clean.
 | Group | Options |
 |---|---|
 | Bodies | 4 (male, female, bulky, slender) |
-| Hair | 35 (plus `hair_none`) |
+| Hair | 26 (plus `hair_none`) |
 | Eyes / face shapes / necks | 8 (incl. the owner's "valiant") / 4 / 2 |
-| Face marks and masks | 7 |
+| Face marks and masks | 5 |
 | Tops / bottoms / skirts / waist | 9 / 5 / 4 / 5 |
-| Armor | 16 (plus `armor_none`) |
-| Feet / hands | 7 / 5 |
-| Capes | 8 |
-| Held | 9 (plus `held_none`): katana built from parts, crystal, ice crystal, flame longsword, kunai, naginata, spiral, lightning, palm |
+| Armor | 8 (plus `armor_none`) |
+| Feet / hands | 7 / 5 (the owner's Roman sandals and bracers counted) |
+| Capes | 6 |
+| Held | 8 (plus `held_none`): katana built from parts, ice crystal, flame longsword, kunai, naginata, spiral, lightning, palm |
 | Accessories | 13 |
-| Headband | 5 positions, 7 emblems, slashed or not, tails or not |
 | Chakra | 9 types, which are the ninja's elemental nature: 7 offered (Fire and Lightning with 2 bursts each, Water, Wind, Earth; Light and Void without element) and 2 pending, out of the selection (Shadow, Spirit); any colour for any type; 8 cast styles ("eye" hidden) |
 | Poses | 7 creator, 5 moving, 4 camp |
 
@@ -139,6 +138,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `jutsu/gap-set` | on origin (merged into the integration branch) | The owner's answers on the gaps proposal: the Devouring Tide (Water S), the Whirlwind Tower (Wind A), the Gale Curtain made a gale on the ground that fans fire (+1 die to a fire jutsu through it, whoever casts it), the Thunder Beam and the Rubble Gust (Lightning and Earth C); knock-down, sweep and drag on a failed save (ninjas only), water puts out flames; their effects from his sheets (the running wave, the tornado tower, the gale on the ground, the fanned fire's glow and vortex); `docs/GAMEPLAY_DESIGN.md`, "Jutsu for the gaps", and his rule that the elemental beasts are summons | **Merged** (approved under his 24-hour delegation; his open questions stay below) |
 | `vfx/ideas-round1` | merged into the integration branch | The owner's first round of jutsu effect answers (`docs/GAMEPLAY_DESIGN.md`, "Jutsu effects, round 1"): Llama Dragón (his Annihilation dragon head over his flame wall, a fan of fireballs), Fuego del dragón (half head, the stream to the line's end), Cadenas selladoras (chain and seal circle), Dragón de agua (no beast: his dragon head in water on his stream, a varied path), Balas de tierra (three volleys of rock bullets on varied paths), Luna creciente (three chakra crescents), Templo del Nirvana (crows out of the vortex), Huracán de la hoja (weapon stowed, a new unarmed `combo` pose, wind crescents); new group `vfx_dragon` (`tools/world-sprites/vfx-round1.ts`); pieces P1–P6 in the battle screen; then the two new effects: Dragón de madera (his dragon out of his icon rising behind the target after a row of roots, `vfx_wood`) and Chidori (his lightning in the bare hand, then a thrust, `vfx_hand`; the weapon stowed), by `tools/refs/wood-dragon-from-ref.py` and `tools/world-sprites/vfx-new-r1.ts` | **Merged** (approved under his 24-hour delegation; his open questions stay below) |
 | `armor/roman-paintover` | merged into the integration branch | The owner's Roman paint-over (`roman-owner-reference.jpg`): `armor_bronze` and `skirt_imperial` now his pixels (same ids; drapes as a part, hanging from the hip and ending above the ground), new `hands_bronze_bracers` and `feet_gladiator_sandals`; the old default colours of the two items now mean his; the female bodies keep the fitted cuirass; Solen (`preset_founder`) wears the skirt without drapes; `tools/refs/roman*`; `src/sprite/roman.test.ts`. Touches `armor.ts`, `clothes.ts`, `feet.ts`, `words.ts`, `shinobiData.ts` (Solen's skirt) | **Merged** (the owner approved the cuirass, skirt, bracers and sandals, 2026-10-21) |
+| `cleanup/remove-pieces` | pushed | His answer to the clothes inventory (2026-10-21): the 24 pieces marked "borrar" deleted with their code (`hair.ts`, `armor.ts`, `accessories.ts`, `capes.ts`, `clothes.ts`, `feet.ts`, `weapons.ts`, `hairkit.ts`) and a save migration (`DELETED_PIECES` and `migrateAppearance` in `src/sprite/legacy.ts`, called by `migrateCharacter`); the headband taken off every character and out of the creator, the random ninja and the drawing (`items/headband.ts` deleted; the look keeps a `headband` field, always position none); Solen on the ice crystal sword and the Roman sandals; `src/sprite/deleted.test.ts` | **For review**: the before/after renders go to him first |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -155,6 +155,34 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   are the same image.
 
 ## 3. Waiting for the owner
+
+- Decided 2026-10-21 (night), his answer to the clothes inventory (the list of every creator piece
+  against his new standard, five questions): *"1 borrar piezas marcadas 2 rediseño por mi 3 quitar
+  bandanas 4 si 5 si"*.
+  1. **Delete the marked pieces.** Built on `cleanup/remove-pieces`: 24 pieces deleted, each old save
+     moved to a replacement on load: `hair_flash` → `hair_sunburst`, `hair_gravity` → `hair_bristle`,
+     `hair_silver` → `hair_long`, `hair_founder` → `hair_warlord`, `hair_youth` and `hair_gale` →
+     `hair_midnight`, `hair_ascended` and `hair_storm2` → `hair_surge`, `hair_charlotte` → `hair_ribbon`
+     (the hair keeps its colour); `face_beast`, `face_sage` → none; `armor_desert`, `armor_storm` →
+     `armor_flak`; `armor_dread` → `armor_crimson_plate` in the dread plate's black steel and gold; the
+     female armours `armor_oath`, `armor_rose`, `armor_lionheart`, `armor_seraph`, `armor_lioness` →
+     none; `feet_greaves` → `feet_crimson_sabatons`; `hands_gauntlets` → `hands_crimson_gauntlets`;
+     `cape_knight` → `cape_crimson`; `cape_rose` → none; `held_crystal` → `held_ice_crystal`. Three marked
+     pieces stay because his new paint-overs redo them (`trunks/owner-standard`): `hair_drifter`,
+     `hair_surge`, `feet_cowboy`. Hiro loses `face_beast`. A sheet that wore a deleted armour keeps its
+     stored AC (`armorStyle`) until it is saved again from the creator.
+  2. **Kaien, Hiro, Shiori and Raiga will be redesigned by him** ("rediseño por mi"), from paint-over
+     renders (R5–R7 in the inventory), not polished copies.
+  3. **The headbands are removed** ("quitar bandanas"; the forehead-plate headband is a Naruto
+     symbol): off every enemy, the companions (Hana, Kenji) and the presets (Kaien, Hiro, Shiori), out
+     of the creator and the random ninja; saved characters load without one. Built on
+     `cleanup/remove-pieces`.
+  4. **Solen** takes his ice crystal sword (`held_ice_crystal`, was `held_crystal`) and his Roman
+     sandals (`feet_gladiator_sandals`, was `feet_sandals`), as in his Solen paint-over. Built on
+     `cleanup/remove-pieces`; his weapon is now the Ice crystal sword (1d8, one hand; the crystal
+     greatsword was 1d10, two hands).
+  5. **R1–R3 first**: the renders of every enemy (Rogues, Hunter-nin, Kagero, Raider) were sent to him
+     to paint over, without headbands.
 
 - Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the Shooting-Star Thrust choreography
   and its comet on `ryusei/warp-throw`, the icons on `icons/sheets-8-11`, the camp poses once redone.
@@ -309,7 +337,7 @@ Generated art in `src/assets` adds more (icon files and manifests such as `rasen
 | tomoe / pinwheel / pale eye(s) | 26 | shinobiData 8, sprite/body 7, types 3, legacy 3, others (`katana.ts` 2 and `words.ts` 1 are a heraldic guard, fine) |
 | sage eye(s) | 5 | shinobiData, types, CharacterCreator |
 | kurama / tailed beast(s) | 5 | CampaignMode 3, ArenaSandbox, shinobiData |
-| chunin / genin / jonin / ANBU | 10 / 3 / 23 / 6 | rules.test, Arena, Campaign, battle.test and units (`jonin` enemy kind id), armor, legacy |
+| chunin / genin / jonin / ANBU | 10 / 3 / 23 / 4 | rules.test, Arena, Campaign, battle.test and units (`jonin` enemy kind id), armor, legacy |
 | tenketsu | 11 | shinobiData, campActivities, rest, effects, RestCamp |
 
 What players see:
@@ -323,10 +351,13 @@ What players see:
 - Camp: "Sharingan reading", "Byakugan watch", "Close tenketsu", Ryusei's "Wood shelter" and
   "Wood skin".
 - Presets copying characters: Hiro (Naruto), Kaien (Sasuke), Raiga (Madara), Shiori (Hinata),
-  Solen (Hashirama-style founder).
-- Items: hair `hair_sunburst`, `hair_raven`, `hair_flash`, `hair_gravity`, `hair_warlord`,
-  `hair_lowtail`; capes `cape_haori`, `cape_rogue`; held `held_spiral`, `held_lightning`,
-  `held_palm`; face `face_beast` whiskers, fox and cat masks.
+  Solen (Hashirama-style founder). The owner will redesign Kaien, Hiro, Shiori and Raiga himself
+  (2026-10-21, "rediseño por mi").
+- Items: hair `hair_sunburst`, `hair_raven`, `hair_warlord`, `hair_lowtail`; capes `cape_haori`,
+  `cape_rogue`; held `held_spiral`, `held_lightning`, `held_palm`; fox and cat masks; vest `armor_flak`
+  and `armor_shadowops`. (Gone 2026-10-21, `cleanup/remove-pieces`: `hair_flash`, `hair_gravity`, the
+  `face_beast` whiskers, the `face_sage` markings, the Sand and Mist vests and the forehead-plate
+  headband.)
 - Old Practice screens: "Chunin Trials", "Genin Rival Skirmish (Leaf & Sand)", "Mist vests",
   "Orochi Hydra", "Kurama Avatar".
 - Metadata: `metadata.json` and `index.html` say "Naruto 5e…"; `package.json` is "react-example".

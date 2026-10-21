@@ -148,6 +148,14 @@ folders.
 
       python3 -I tools/refs/saya-eyes-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg <out> src/sprite/sayaEyeArt.ts
 
+- `saya-face-from-ref.py`: Saya's face as the `shade` face shape (`src/sprite/sayaFaceArt.ts`), lifted
+  1:1 from the same picture: her flat skin, the shadow down her far jaw, her nose and one-row mouth, her
+  jaw, chin and black line, the ear between her side hair and bangs, in the player's skin (her own colours
+  in her skin). The face shape puts her far eye where he drew it (one cell nearer than the template's),
+  so her eyes, hair and scarf land on her face cell for cell.
+
+      python3 -I tools/refs/saya-face-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg <out> src/sprite/sayaFaceArt.ts
+
 - `saya-upper-from-ref.py`: Saya's ninja top, arm guards and fingerless gloves
   (`src/sprite/items/sayaUpperArt.ts`, items in `sayaUpper.ts`): his pixels 1:1 from his Saya drawn at
   our scale (`docs/reference/saya-game-scale-owner-reference.jpg`, 10.24 picture px per pixel), laid on

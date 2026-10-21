@@ -1536,6 +1536,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       appearance: spriteLook({
         body: 'female',
         skin: '#f4bd97',
+        faceShape: 'shade',
         eyeShape: 'shade',
         eyeColor: '#3778a4',
         slots: {

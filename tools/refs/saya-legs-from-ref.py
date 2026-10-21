@@ -23,11 +23,15 @@ band and dark line like the near shin's). The far thigh's left side is under her
 filled with his skin. Everything else is his (check_his() checks it).
 
 The pieces ride our rig as the owner's sabatons do (src/sprite/items/feet.ts): his legs stand where
-ours do at idle frame 0 when his picture is moved by OFFSET (the near leg to our ground at row 218, the
-far one up to our far foot at row 210: our far leg stands higher than his). On each leg the bare thigh
-(drawn into the body's layer, so trousers cover it) and the legging above the knee turn with the thigh
-about the knee, the knee pad and the wrapped shin turn with the shin about the ankle, and the shoe stays
-flat on the ground. At rest every pixel is where he drew it.
+ours do at idle frame 0 when his picture is moved by OFFSET (the near leg to our ground at row 218). Our
+far leg is shorter than his (our far foot stands at row 210, six rows above his, and our far knee is
+under her skirt): his far thigh, its bare skin under the skirt's hem, the legging's dark top band and
+the knee pad stay where he drew them under the hem (OFFSET), and six rows of the far shin (LIFT: rows
+77-82, under the blade, filled) are left out so the rest of the shin and the shoe come up to our far
+foot. On the near leg the bare thigh (drawn into the body's layer, so trousers cover it) and the legging
+above the knee turn with the thigh about the knee; on the far leg they lie below our knee and turn with
+the shin (RIDES). The knee pads and the wrapped shins turn with the shin about the ankle, and the shoe
+stays flat on the ground. At rest every pixel is where he drew it, the far shin six rows shorter.
 
 It writes the pieces as TypeScript (src/sprite/items/sayaLegsArt.ts) and, in <out>, his legs as he drew
 them beside them without the weapons at 8x. The same picture always gives the same bytes:
@@ -65,8 +69,11 @@ PALETTE = {
 KIND = {'K': 'cloth', 'u': 'cloth', 'U': 'cloth', 'g': 'cloth', 'e': 'cloth', '3': 'cloth', 'q': 'band', 'r': 'band', 'z': 'skin', 'S': 'skin'}
 CLOTH, BAND, SKIN = 'e', 'r', 'S'  # the colours the slots (and the skin) are matched to
 
-# Where his picture sits on our idle frame 0, per leg: our x, y = his + OFFSET.
-OFFSET = {'N': (76, 121), 'F': (76, 115)}
+# Where his picture sits on our idle frame 0, per leg: our x, y = his + OFFSET (below LIFT's rows,
+# that many rows higher).
+OFFSET = {'N': (76, 121), 'F': (76, 121)}
+# His rows left out of a leg (first, last), inclusive: the far shin's, under the blade (filled there).
+LIFT = {'F': (77, 82)}
 
 # His legs without the weapons: (his x of the first character, row) -> characters, '.' empty.
 LEGS = {
@@ -211,6 +218,15 @@ def cells(s):
                 yield x0 + i, y, ch
 
 
+def placed(s):
+    """His cells of a leg as placed: (x, his row, the row it is drawn at, character), LIFT's rows left out."""
+    lo, hi = LIFT.get(s, (0, -1))
+    for x, y, ch in cells(s):
+        if lo <= y <= hi:
+            continue
+        yield x, y, y - (hi - lo + 1 if y > hi else 0), ch
+
+
 def check_his(nat):
     """Every pixel outside HIDDEN is his: his colour there is the one in LEGS."""
     for s in ('N', 'F'):
@@ -232,8 +248,10 @@ def angle(a, b):
 # The thigh piece carries the shin's rows down to here under it (his rows), against holes at the knee.
 BACKING = 75
 
-# Each piece: the joint it hangs from and the limb whose angle it keeps.
+# Each piece: the joint it hangs from and the limb whose angle it keeps. The far leg's bare thigh and
+# legging top lie below our far knee: they turn with the shin (src/sprite/items/sayaLegs.ts does the same).
 RIDES = {'skin': ('knee', ('hip', 'knee')), 'thigh': ('knee', ('hip', 'knee')), 'shin': ('ankle', ('knee', 'ankle')), 'foot': ('ankle', ('knee', 'ankle'))}
+RIDES_OF = {'N': RIDES, 'F': {**RIDES, 'skin': ('knee', ('knee', 'ankle')), 'thigh': ('knee', ('knee', 'ankle'))}}
 DOCS = {
     'skin': 'bare thigh between her skirt and her leggings (drawn into the body\'s layer; her skin follows ours)',
     'thigh': 'legging above the knee: her darkest navy band at the top',
@@ -248,17 +266,17 @@ def pieces():
     for s in ('N', 'F'):
         ox, oy = OFFSET[s]
         for name in ('skin', 'thigh', 'shin', 'foot'):
-            px = [(x, y, ch) for x, y, ch in cells(s) if piece_of(s, x, y) == name]
+            px = [(x, yd, ch) for x, y, yd, ch in placed(s) if piece_of(s, x, y) == name]
             if name == 'thigh':
                 # backing: the top of the knee pad again under it, so where the turned shin does not
                 # quite meet the thigh no hole opens (the shin is drawn over it: at rest it is not seen)
-                px += [(x, y, ch) for x, y, ch in cells(s) if piece_of(s, x, y) == 'shin' and y <= BACKING]
+                px += [(x, yd, ch) for x, y, yd, ch in placed(s) if piece_of(s, x, y) == 'shin' and y <= BACKING]
             x0, y0 = min(p[0] for p in px), min(p[1] for p in px)
             x1, y1 = max(p[0] for p in px), max(p[1] for p in px)
             grid = [['.'] * (x1 - x0 + 1) for _ in range(y1 - y0 + 1)]
             for x, y, ch in px:
                 grid[y - y0][x - x0] = ch
-            joint, (a, b) = RIDES[name]
+            joint, (a, b) = RIDES_OF[s][name]
             jx, jy = OUR[joint + s]
             out[name + s] = {
                 'rows': [''.join(r).rstrip('.') for r in grid],

@@ -10,6 +10,9 @@ import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI 
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { SAYA_SWORD_BLADE, SAYA_SWORD_GUARD } from './sayaSwordArt';
 import { drawSayaSaber } from './sayaSword';
+
+/** The angle Saya's saber rides on her back (see held_shade_saber). */
+const SAYA_STOW = 72;
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
@@ -379,7 +382,10 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A straight steel blade with gold dots down its middle under a gold swept hilt, gold sparkles round it: the owner painted it for Saya.',
     colors: [col('blade', 'Blade', SAYA_SWORD_BLADE, 'metal'), col('guard', 'Guard', SAYA_SWORD_GUARD, 'metal')],
     draw: (g, [blade, guard]) => {
-      if (handsBusy(g)) drawSayaSaber(g, 'backGear', backGrip(g, 48), 48, blade, guard, false);
+      // Stowed steeper than the other back blades (72 degrees, not 48): her long saber crossing the back
+      // at 48 pokes its point out in front of her hips (hand signs, sitting, reading); at 72 it runs
+      // down behind her near side and its point stays behind her.
+      if (handsBusy(g)) drawSayaSaber(g, 'backGear', backGrip(g, SAYA_STOW), backAngle(g, SAYA_STOW), blade, guard, false);
       else if (handsLimp(g)) drawSayaSaber(g, 'nearArm.held', droppedGrip(g, 0.7), -86, blade, guard, false);
       // Its grip crosses the fist at the hand joint, as the flame longsword's does.
       else if (!handsReleased(g)) drawSayaSaber(g, 'nearArm.held', g.rig.handN, swordAngle(g), blade, guard, true);

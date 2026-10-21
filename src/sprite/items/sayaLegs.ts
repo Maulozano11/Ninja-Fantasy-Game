@@ -92,6 +92,42 @@ function footAt(shin: PaintedPiece, ankle: Vec, deg: number): Vec {
   return add(ankle, v(reach * (Math.cos(a1) - Math.cos(a0)), reach * (Math.sin(a1) - Math.sin(a0))));
 }
 
+/** His black line (the pieces' 'k'). */
+const LINE = '#010102';
+
+/**
+ * Stamps a piece and then takes away the line pixels it left loose: turned far from his angle
+ * (the shin laid level against a tree), RotSprite can leave single line pixels hanging off the
+ * outline with nothing of the leg beside them. A line pixel of this stamp with no pixel of the leg's
+ * colours (anything but the line) among its eight neighbours is not an outline of anything, and goes.
+ */
+function stampClean(g: DrawCtx, d: Parameters<typeof stampPiece>[1], piece: PaintedPiece, at: Vec, deg: number, part: Parameters<typeof stampPiece>[5], color: (ch: string, hex: string) => string): void {
+  if (Math.abs(deg - piece.angle) < 0.5) {
+    stampPiece(g, d, piece, at, deg, part, color);
+    return;
+  }
+  const L = g.L(d);
+  const before = L.mat.slice();
+  stampPiece(g, d, piece, at, deg, part, color);
+  const line = g.m(LINE, 'flat');
+  const loose: number[] = [];
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] !== line || before[i] === line) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    let fill = false;
+    for (let dy = -1; dy <= 1 && !fill; dy++) {
+      for (let dx = -1; dx <= 1 && !fill; dx++) {
+        const X = x + dx;
+        const Y = y + dy;
+        if ((dx || dy) && X >= 0 && Y >= 0 && X < GRID && Y < GRID && L.mat[Y * GRID + X] >= 0 && L.mat[Y * GRID + X] !== line) fill = true;
+      }
+    }
+    if (!fill) loose.push(i);
+  }
+  for (const i of loose) L.clear(i % GRID, (i / GRID) | 0);
+}
+
 export const SHADE_WRAPS: ItemDef = {
   id: 'feet_shade_wraps',
   slot: 'feet',
@@ -104,10 +140,11 @@ export const SHADE_WRAPS: ItemDef = {
   ],
   bodies: ['female', 'slender'],
   draw: (g, [cloth, band, boot]) => {
-    // Her legs from the owner's Saya picture at our scale, on our female leg: on each leg the bare
-    // thigh and the legging above the knee turn with the thigh about the knee, the knee pad and the
-    // wrapped shin turn with the shin about the ankle, and the shoe stays flat on the ground like our
-    // feet. The leg goes below the knee (trousers tuck in). The bare thigh is drawn into the
+    // Her legs from the owner's Saya picture at our scale, on our female leg: on the near leg the bare
+    // thigh and the legging above the knee turn with the thigh about the knee (on the far leg, shorter
+    // than his, they lie under her skirt's hem below our knee, so they turn with the shin), the knee
+    // pad and the wrapped shin turn with the shin about the ankle, and the shoe stays flat on the
+    // ground like our feet. The leg goes below the knee (trousers tuck in). The bare thigh is drawn into the
     // body's layer over our thigh, in our skin, so trousers still cover it. His navy, red and the shoe's navy follow
     // the colour slots; his black line and brown sole stay.
     const tint = (main: string) => (_ch: string, hex: string) => {
@@ -124,11 +161,12 @@ export const SHADE_WRAPS: ItemDef = {
       const thighA = segAngle(hip, knee);
       const shinA = segAngle(knee, ankle);
       const [skin, thigh, shin, foot] = s === 'N' ? [SHADE_SKIN_N, SHADE_THIGH_N, SHADE_SHIN_N, SHADE_FOOT_N] : [SHADE_SKIN_F, SHADE_THIGH_F, SHADE_SHIN_F, SHADE_FOOT_F];
+      const upperA = s === 'N' ? thighA : shinA;
       legOffBelow(g, s, { at: knee, down: norm(sub(knee, hip)) });
-      stampOnThigh(g, s, skin, knee, thighA, leg);
+      stampOnThigh(g, s, skin, knee, upperA, leg);
       const d = legDepth(s, 'feet');
-      stampPiece(g, d, thigh, knee, thighA, `thigh${s}`, leg);
-      stampPiece(g, d, shin, ankle, shinA, `shin${s}`, leg);
+      stampClean(g, d, thigh, knee, upperA, `thigh${s}`, leg);
+      stampClean(g, d, shin, ankle, shinA, `shin${s}`, leg);
       stampPiece(g, d, foot, footAt(shin, ankle, shinA), foot.angle, `foot${s}`, shoe);
     }
   },

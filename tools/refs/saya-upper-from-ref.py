@@ -18,11 +18,15 @@ where our body is a pixel wider than hers.
 
   the top          SAYA_TOP rides the torso about the neck. Her cream chest plate with its gold-brown rim,
                    the dark navy of her top with its two red pipings down the front and the red piping
-                   at the near armhole; the near shoulder stays bare (our body's skin), as hers. Filled:
+                   at the near armhole; the near shoulder stays bare, as hers. Filled:
                    a navy high collar under her scarf (rows 151-155) and the plate's top under it, the
                    top's near side under her hair lock, and the top under her belts down to the hips
                    (navy, its two pipings continued straight down) with a dark hem.
-  the near arm     SAYA_UPPER_N rides the upper arm about the shoulder: her guard's navy top, the red
+  the near arm     SAYA_SHOULDER_N rides the upper arm about the shoulder: her bare shoulder, a round
+                   patch of her light skin with its shadow down the far side, in her black line (our
+                   body's shoulder is shaded darker and its line falls elsewhere). Her skin follows the
+                   player's skin (SAYA_SKIN).
+                   SAYA_UPPER_N rides the upper arm about the shoulder: her guard's navy top, the red
                    band slanting round the arm, the red on its inner side and the red elbow band.
                    SAYA_FORE_N rides the forearm about the elbow: the red at the elbow, the navy guard
                    with its red stripe, the red cuff. Both are where he drew them (her near arm is on
@@ -35,8 +39,9 @@ where our body is a pixel wider than hers.
                    painted in her glove by how far each pixel lies from the wrist along the hand, as
                    she wears it: on the near hand a dark strap row, four rows of navy and the red band
                    over the knuckles, the fingers bare (her rows 177-183 under her near wrist); on the
-                   far hand two rows of brown strap and two of red, the fingers bare (her rows 178-181).
-                   Each picture shade is one of her tones (GLOVE_TONES).
+                   far hand two rows of brown strap, then her fist bare in her own skin, lit on its
+                   knuckles (her rows 178-181: the red row over the strap is the forearm guard's cuff).
+                   Each picture shade is one of her tones (GLOVE_TONES); her skin follows the player's.
 
 The navy, the red and the cream are the item's colour slots (Cloth, Trim, Plate; KIND says which tone is
 which): at her colours every pixel is hers; another colour shifts each of her shades as far from it as
@@ -111,6 +116,17 @@ PIECES = [
          '0000000000000000000....',  # 179 the hem
          '....00000000000........',  # 180
      ]),
+    ('SAYA_SHOULDER_N', 'The near shoulder, bare: her round light skin, its shadow down the far side, in her black line.',
+     'shoulderN', ('shoulderN', 'elbowN'), (113, 152), (0, 0), (), [
+         # x 113...121
+         '..000....',  # 152 the line over it (her scarf's end beside it)
+         '00vHH00..',  # 153
+         '0vHHHHv00',  # 154
+         '0HHHHHHv0',  # 155
+         '0HHHHHHv0',  # 156
+         '.00HHHvv0',  # 157 (the guard's top from here: drawn over it)
+         '.....Hv..',  # 158
+     ]),
     ('SAYA_UPPER_N', 'The near upper arm guard: navy, the red band slanting round it, red inside, the red elbow band.',
      'shoulderN', ('shoulderN', 'elbowN'), (108, 157), (0, 0), (), [
          # x 108......118
@@ -172,10 +188,11 @@ PIECES = [
 # The gloves, per hand: from `from` fine pixels along the hand (from the middle of the hand picture's
 # wrist cell toward the fingers) each zone takes over; None leaves the fingers bare. Her near glove under
 # her wrist (176): row 177 her dark strap, rows 178-181 navy, row 182 the red band, the fingers from 183.
-# Her far glove under her wrist (177): rows 178-179 the brown strap, 180-181 red, the fingers from 182.
+# Her far glove under her wrist (177): rows 178-179 the brown strap, then her fist in her skin (rows
+# 180-183: her lit tone D on the knuckles, her shadow v round them), so it is drawn in her skin ('skin').
 GLOVE_ZONES = {
     'N': [(0.5, 'strap'), (1.5, 'back'), (5.5, 'band'), (6.5, None)],
-    'F': [(0.5, 'strap'), (2.5, 'back'), (4.5, None)],
+    'F': [(0.5, 'strap'), (2.5, 'skin')],
 }
 # Her tones for each shade of our hand pictures: line, crease, shadow, base, light.
 GLOVE_TONES = {
@@ -183,7 +200,7 @@ GLOVE_TONES = {
     'backN': ['0', '2', '6', 'c', 'c'],
     'bandN': ['0', '7', '9', 'i', 'j'],
     'strapF': ['0', '5', '5', 'e', 'g'],
-    'backF': ['0', '7', '9', 'a', 'i'],
+    'skinF': ['0', 'v', 'v', 'D', 'D'],
 }
 
 # Which colour slot recolours each of her tones (by its colour; the rest stay): navy, red, cream.
@@ -191,8 +208,9 @@ SLOT_OF = {
     'cloth': ['#222338', '#272c48', '#374061', '#373b49'],
     'trim': ['#3f1e30', '#431527', '#5f1a29', '#6e212c', '#6f2f32', '#772930', '#7e3232', '#a73234', '#b63133'],
     'plate': ['#bfb2a7', '#ebe5d7'],
+    'skin': ['#d28771', '#f3bf9c'],
 }
-BASE = {'cloth': '#374061', 'trim': '#a73234', 'plate': '#ebe5d7'}
+BASE = {'cloth': '#374061', 'trim': '#a73234', 'plate': '#ebe5d7', 'skin': '#f3bf9c'}
 
 OUT_DOC = (
     "// Saya's ninja top, arm guards and fingerless gloves, the owner's pixels 1:1 (tools/refs/saya-upper-from-ref.py\n"
@@ -320,9 +338,11 @@ def write_ts(path, key):
              '/** Her colours the colour slots recolour from (at these, every pixel is hers). */',
              f"export const SAYA_CLOTH = '{BASE['cloth']}';",
              f"export const SAYA_TRIM = '{BASE['trim']}';",
-             f"export const SAYA_PLATE = '{BASE['plate']}';", '',
-             '/** Which slot recolours each of her colours (her line, the gold-brown rim and the strap stay). */',
-             "export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate'> = {"]
+             f"export const SAYA_PLATE = '{BASE['plate']}';",
+             "/** Her skin on the bare shoulder: the player's skin moves it as far. */",
+             f"export const SAYA_SKIN = '{BASE['skin']}';", '',
+             '/** Which slot recolours each of her colours (her line, the gold-brown rim and the strap stay; her skin follows the skin). */',
+             "export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate' | 'skin'> = {"]
     for slot, hexes in SLOT_OF.items():
         for h in hexes:
             lines.append(f"  '{h}': '{slot}',")
@@ -331,9 +351,10 @@ def write_ts(path, key):
         lines.append(ts_piece(p, key))
     lines += ['/**',
               ' * The gloves, per hand: from `from` fine pixels along the hand (from the middle of the hand',
-              " * picture's wrist cell toward the fingers) each zone takes over; `null` leaves the fingers bare.",
+              " * picture's wrist cell toward the fingers) each zone takes over; `null` leaves the fingers bare,",
+              " * 'skin' paints them in her skin (the player's skin moves it).",
               ' */',
-              "export const SAYA_GLOVE_ZONES: Record<'N' | 'F', [number, 'strap' | 'back' | 'band' | null][]> = {"]
+              "export const SAYA_GLOVE_ZONES: Record<'N' | 'F', [number, 'strap' | 'back' | 'band' | 'skin' | null][]> = {"]
     for side, zones in GLOVE_ZONES.items():
         lines.append(f'  {side}: [' + ', '.join(f"[{at}, {('null' if z is None else repr(z))}]" for at, z in zones) + '],')
     lines += ['};', '',

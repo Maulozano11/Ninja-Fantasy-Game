@@ -55,6 +55,13 @@ function scabbardAngle(g: DrawCtx): number {
   const r = g.rig;
   const base = torsoAngle(g);
   if (r.lay) return base - 45;
+  // Leaning on a tree the near leg is raised, the foot against the trunk: the scabbard hangs behind
+  // the standing far leg instead (drawn behind the body), its tip toward the far ankle, not below the
+  // raised leg with its tip under the shoe.
+  if (r.pose === 'lean') {
+    const tip = (Math.atan2(TIP.y, TIP.x) * 180) / Math.PI;
+    return SHADE_SCABBARD.angle + segAngle(r.pelvis, r.ankleF) - tip;
+  }
   const floor = GROUND * RES - 1 - Math.floor(r.pelvis.y * RES);
   for (let turn = 0; turn <= 80; turn += 5) {
     const a = ((base - SHADE_SCABBARD.angle + turn) * Math.PI) / 180;
@@ -95,7 +102,7 @@ export const SHADE_BELTS_ITEM: ItemDef = {
     // scabbard from her big picture, behind the near leg (in front of the far one). Her browns follow
     // Leather, her steels Steel, the scabbard's black-navy Scabbard and its fittings Gold.
     const tint = tinter({ leather, steel, scabbard, gold });
-    stampPiece(g, 'farLeg.armor', SHADE_SCABBARD, g.rig.pelvis, scabbardAngle(g), 'pelvis', tint);
+    stampPiece(g, g.rig.pose === 'lean' ? 'backGear' : 'farLeg.armor', SHADE_SCABBARD, g.rig.pelvis, scabbardAngle(g), 'pelvis', tint);
     stampPiece(g, 'waist', SHADE_BELTS, g.rig.pelvis, torsoAngle(g), 'pelvis', tint);
   },
 };

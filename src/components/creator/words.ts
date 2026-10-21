@@ -49,6 +49,7 @@ const ES: Record<string, string> = {
   "Aiden's eyes": 'Los ojos de Aiden',
   Shade: 'Sombra',
   "Saya's eyes": 'Los ojos de Saya',
+  "Saya's face": 'La cara de Saya',
   None: 'Ninguno',
   Forehead: 'Frente',
   Arm: 'Brazo',
@@ -282,8 +283,8 @@ const ES: Record<string, string> = {
   'A sleeveless navy ninja top with a cream chest plate, red piping down the front, and navy arm guards banded in red (+2 AC). Women only.':
     'Un top ninja azul marino sin mangas con peto crema, ribete rojo por delante y brazales azul marino con bandas rojas (+2 CA). Solo mujeres.',
   'Shade Fingerless Gloves': 'Guantes sin dedos de la Sombra',
-  'Fingerless gloves: a leather strap round the wrist, navy over the back of the hand with a red band over the knuckles (all red on the off hand).':
-    'Guantes sin dedos: una correa de cuero en la muñeca, azul marino sobre el dorso con una banda roja en los nudillos (toda roja en la otra mano).',
+  'Fingerless gloves: a leather strap round the wrist, navy over the back of the hand with a red band over the knuckles (only the strap on the off hand).':
+    'Guantes sin dedos: una correa de cuero en la muñeca, azul marino sobre el dorso con una banda roja en los nudillos (en la otra mano, solo la correa).',
   'Crimson Shade Scarf': 'Bufanda de la Sombra Carmesí',
   'Shade Wraps': 'Vendas de la Sombra',
   // Saya's sword

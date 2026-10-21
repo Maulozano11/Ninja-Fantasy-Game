@@ -13,6 +13,7 @@ import {
   SAYA_HAIR_FRONT,
   SAYA_HAIR_LINE,
   SAYA_HAIR_LONG,
+  SAYA_HAIR_NECK,
   SAYA_HAIR_ORNAMENT,
   SAYA_HAIR_ORNAMENT_BASE,
   SayaFacePart,
@@ -114,13 +115,23 @@ function atFace(g: DrawCtx, L: Layer, p: SayaFacePart, tint: Tint, keep?: Keep):
   put(L, px, pens[SAYA_HAIR_LINE], 'head', keep && ((x, y) => y < jaw || keep(x, y)));
 }
 
-/** The long hair, hung from the neck and turned with the torso (neck to pelvis), so it runs down the back in every pose. */
+/** How far (degrees) the long hair turns with the torso at most: past it, it hangs. */
+const LONG_TURN = 22;
+
+/**
+ * The long hair, hung from the head (where the neck is at rest, so it moves with the head and its top
+ * stays behind it) and turned with the torso (neck to pelvis), so it runs down the back in every pose.
+ * When the body pitches far over (the throw's release, the lunge) it turns no further than LONG_TURN
+ * and hangs, instead of lying along the raised arm and leaving the back of the head bare.
+ */
 function longHair(g: DrawCtx, p: PaintedPiece, tint: Tint, keep?: Keep): void {
   const r = g.rig;
   const pens = pensOf(g, p.colors, tint);
-  const ax = Math.floor(r.neck.x * RES);
-  const ay = Math.floor(r.neck.y * RES);
-  const px = rotateTemplate(p, segAngle(r.neck, r.pelvis) - p.angle).map((q) => ({ x: ax + q.dx, y: ay + q.dy, pen: pens[q.ch] }));
+  const { ex, ny } = faceAnchor(g);
+  const ax = ex + SAYA_HAIR_NECK[0];
+  const ay = ny + SAYA_HAIR_NECK[1];
+  const turn = Math.max(-LONG_TURN, Math.min(LONG_TURN, segAngle(r.neck, r.pelvis) - p.angle));
+  const px = rotateTemplate(p, turn).map((q) => ({ x: ax + q.dx, y: ay + q.dy, pen: pens[q.ch] }));
   put(g.L('hairBack'), px, pens[SAYA_HAIR_LINE], 'back', keep);
 }
 

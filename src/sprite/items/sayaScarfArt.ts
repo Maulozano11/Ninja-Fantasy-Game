@@ -16,7 +16,7 @@ const SAYA_SCARF_COLORS: Record<string, string> = {
 
 /** Round the neck under the chin and over the near shoulder: its pivot is the cell on the neck, its angle the torso's (neck to pelvis) at idle. */
 export const SAYA_SCARF_WRAP: PaintedPiece = {
-  pivot: [8, 2],
+  pivot: [7, 2],
   angle: 90.50,
   rows: [
     'k...............',
@@ -35,7 +35,7 @@ export const SAYA_SCARF_WRAP: PaintedPiece = {
 
 /** The wrap's stretch over the top of the near shoulder (drawn over the near arm): the same pivot cell and angle as the wrap. */
 export const SAYA_SCARF_SHOULDER: PaintedPiece = {
-  pivot: [16, 2],
+  pivot: [14, 2],
   angle: 90.50,
   rows: [
     '.......k',

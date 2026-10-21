@@ -12,6 +12,7 @@ import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { stampPiece } from './painted';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { SAYA_EYE_CELLS, SAYA_EYE_COLORS, SAYA_EYES, SAYA_IRIS } from './sayaEyeArt';
+import { SAYA_FACE, SAYA_FACE_EYES, SAYA_FACE_LINE, SAYA_FACE_SKIN } from './sayaFaceArt';
 import { isFemaleBody, type FaceShape } from './types';
 
 const SCLERA = '#f4f1ee';
@@ -338,10 +339,10 @@ function drawValiantHead(g: DrawCtx): void {
  * skin lands exactly on the character's (the rest of the body is drawn in that skin), his shadows
  * and black line staying as far below it and his lights as far above. In his own skin, his colour.
  */
-function skinTone(hex: string, skin: string): string {
-  if (skin.toLowerCase() === VALIANT_SKIN) return hex;
+function skinTone(hex: string, skin: string, painted = VALIANT_SKIN): string {
+  if (skin.toLowerCase() === painted) return hex;
   const [h, s, l] = rgbToHsl(...hexToRgb(hex));
-  const [h0, s0, l0] = rgbToHsl(...hexToRgb(VALIANT_SKIN));
+  const [h0, s0, l0] = rgbToHsl(...hexToRgb(painted));
   const [h1, s1, l1] = rgbToHsl(...hexToRgb(skin));
   const lt = l <= l0 ? (l * l1) / l0 : l1 + ((l - l0) * (1 - l1)) / (1 - l0);
   return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), lt);
@@ -363,7 +364,7 @@ function skinTone(hex: string, skin: string): string {
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant, the owner's head, is his pixels whole: see drawValiantHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'shade'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -371,7 +372,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant'>, string[]> = {
 
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
-  return (s && s !== 'valiant' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'shade' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 const FACE_MAIN: Record<string, string[]> = {
@@ -486,6 +487,14 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
   faceLeft(g).forEach((row, r) => {
     for (let c = skipBack; c < row.length; c++) if (row[c] !== '.') add(nx - 7 + c, ny + r);
   });
+  if (g.look.faceShape === 'shade') {
+    // Saya's face from the lash row down (her cells), on the template's near cheek
+    sayaFace(g, (x, y) => {
+      if (y >= ny) add(x, y);
+    });
+    for (let r = 0; r < 8; r++) add(nx, ny + r);
+    return out;
+  }
   main.forEach((row, r) => {
     for (let c = 0; c < row.length; c++) if (row[c] !== '.') add(nx + c, ny + r);
   });
@@ -503,7 +512,28 @@ export function faceAnchor(g: DrawCtx): { nx: number; ny: number; ex: number; fx
   const nx = Math.floor((g.rig.head.x - 1.9 * k) * RES);
   const ny = Math.floor((g.rig.head.y + 1.0 * k) * RES);
   const valiant = g.look.faceShape === 'valiant';
-  return { nx, ny, ex: valiant ? nx + 1 : nx, fx: valiant ? nx + 8 : nx + 9, fy: ny };
+  // Saya's face ('shade') has her far eye where he drew it, one cell nearer than the template's.
+  const fx = valiant ? nx + 8 : g.look.faceShape === 'shade' ? nx + SAYA_FACE_EYES.far : nx + 9;
+  return { nx, ny, ex: valiant ? nx + 1 : nx + (g.look.faceShape === 'shade' ? SAYA_FACE_EYES.near : 0), fx, fy: ny };
+}
+
+/**
+ * Saya's face ('shade', src/sprite/sayaFaceArt.ts) cell by cell: its pivot on the face anchor, her
+ * skin moved to the player's skin as Aiden's head is (in her own skin, her colours), her line kept.
+ */
+function sayaFace(g: DrawCtx, at: (x: number, y: number, hex: string) => void): void {
+  const { nx, ny } = faceAnchor(g);
+  const skin = g.look.skin || SAYA_FACE_SKIN;
+  const ox = nx - SAYA_FACE.pivot[0];
+  const oy = ny - SAYA_FACE.pivot[1];
+  SAYA_FACE.rows.forEach((row, r) => {
+    for (let c = 0; c < row.length; c++) {
+      const ch = row[c];
+      if (ch === '.') continue;
+      const hex = SAYA_FACE.colors[ch];
+      at(ox + c, oy + r, ch === SAYA_FACE_LINE ? hex : skinTone(hex, skin, SAYA_FACE_SKIN));
+    }
+  });
 }
 
 function drawFace(g: DrawCtx): void {
@@ -552,7 +582,19 @@ function drawFace(g: DrawCtx): void {
     if (ch in skinShade) L.set(x, y, g.skin, skinShade[ch], 'head', F_NO_OUTLINE);
     else if (ch in colors) L.set(x, y, colors[ch], 3, 'head', F_NO_OUTLINE);
   };
-  if (g.look.faceShape === 'valiant') {
+  if (g.look.faceShape === 'shade') {
+    // Saya's face (sayaFaceArt.ts): the template's near cheek under her side hair, then her own
+    // pixels (skin, nose, mouth, jaw and line) in the player's skin. The eye options draw only their
+    // eyes on it (her lash, whites and irises, or the template's): her skin stays round them.
+    faceLeft(g).forEach((row, r) => {
+      for (let c = 0; c < row.length; c++) put(nx - 7 + c, ny + r, row[c]);
+    });
+    for (let r = 0; r < 7; r++) put(nx, ny + r, r < 2 ? 'b' : 's');
+    put(nx, ny + 7, 'o');
+    sayaFace(g, (x, y, hex) => L.set(x, y, flat(hex), 3, 'head', F_NO_OUTLINE));
+    eyes.near.forEach((row, r) => [...row].forEach((ch, c) => !saya && !(ch in skinShade) && put(ex + c, ny + r, ch)));
+    eyes.far.forEach((row, r) => [...row].forEach((ch, c) => !saya && !(ch in skinShade) && put(fx + c, ny + r, ch)));
+  } else if (g.look.faceShape === 'valiant') {
     // On the owner's head the template gives only the eyes and the mouth, where he painted his: his
     // skin, shading and line stay wherever the template has skin.
     const feature = (x: number, y: number, ch: string) => {
@@ -653,8 +695,9 @@ function drawFace(g: DrawCtx): void {
     }
   }
 
-  // Brows (hair-colored), two rows above the lash; most bangs cover them. His eyes bring their own.
-  if (his) return;
+  // Brows (hair-colored), two rows above the lash; most bangs cover them. His eyes bring their own;
+  // Saya's face has none (he hid hers under her bangs, and her forehead shows between them).
+  if (his || g.look.faceShape === 'shade') return;
   const br = makeRamp(hairChoice?.colors[0] || '#2a2230', 'hair');
   // Sharp and fierce eyes get brows angled down toward the nose.
   const sharp = shape === 'sharp' || shape === 'fierce';

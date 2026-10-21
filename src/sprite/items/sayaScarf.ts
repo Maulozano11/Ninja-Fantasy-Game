@@ -6,7 +6,7 @@
 import { retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
-import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, RES } from '../raster';
+import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, RES, sub, v } from '../raster';
 import type { Wind } from './capes';
 import { SAYA_SCARF_BASE, SAYA_SCARF_LINE, SAYA_SCARF_SHOULDER, SAYA_SCARF_TAIL, SAYA_SCARF_WRAP } from './sayaScarfArt';
 
@@ -214,6 +214,9 @@ function onTheBack(g: DrawCtx): (x: number, y: number) => boolean {
 // The item
 // ---------------------------------------------------------------------------------------------
 
+/** How far (degrees) the scarf's end turns with the torso at most. */
+const TAIL_TURN = 22;
+
 /** Clears the scarf where the head is, so it sits under the chin (the head is drawn under this layer). */
 function underHead(g: DrawCtx, L: Layer): void {
   const H = g.L('head.body');
@@ -246,7 +249,10 @@ export const sayaScarf = (wind: (g: DrawCtx) => Wind): ItemDef => ({
     const ax = Math.floor(r.neck.x * RES);
     const ay = Math.floor(r.neck.y * RES);
     const t = SAYA_SCARF_TAIL;
-    const twist = turn - t.angle;
+    // The end turns with the torso only so far (as her long hair does, sayaHair.ts): when the body
+    // pitches far over (the throw's release, the lunge) it hangs from behind the shoulder and streams
+    // back from there, instead of running up along the raised arm like a sleeve.
+    const twist = Math.max(-TAIL_TURN, Math.min(TAIL_TURN, turn - t.angle));
     if (r.lay) {
       // Knocked out (drawn upright, then laid down): the free part falls down her back toward the
       // hips, so it lies along her.
@@ -256,9 +262,15 @@ export const sayaScarf = (wind: (g: DrawCtx) => Wind): ItemDef => ({
     } else {
       stampTail(L, t, ax, ay, bends(t, twist, 182 + 8 * blow, blow, 0.6, w.wave * 5, blow * 10, r.frame * 1.9), pens);
     }
-    stampPiece(g, 'head.mask', SAYA_SCARF_WRAP, r.neck, turn, 'torso', tint);
-    // on top of the near shoulder, over the arm's shoulder as he has it
-    stampPiece(g, 'nearArm.over', SAYA_SCARF_SHOULDER, r.neck, turn, 'torso', tint);
+    // The wrap round the neck and its stretch on top of the near shoulder (over the arm's shoulder,
+    // as he has it) turn no further than the end. The wrap stays under the chin: when a pose moves the
+    // head off the neck (the throw's release puts it far forward), it moves with it, instead of
+    // staying on the shoulder and running up the raised arm like a sleeve. At rest it is on the neck.
+    const off = sub(r.head, add(r.neck, v(-0.4, -5.9 * g.bp.headScale)));
+    stampPiece(g, 'head.mask', SAYA_SCARF_WRAP, add(r.neck, v(Math.round(off.x), Math.round(off.y))), t.angle + twist, 'torso', tint);
+    // The stretch over the shoulder joins the wrap to the end on the shoulder; with the head (and the
+    // wrap) moved well off the neck it would be left lying alone on the raised arm, so it is left out.
+    if (Math.hypot(off.x, off.y) < 2) stampPiece(g, 'nearArm.over', SAYA_SCARF_SHOULDER, r.neck, t.angle + twist, 'torso', tint);
     underHead(g, g.L('head.mask'));
   },
 });

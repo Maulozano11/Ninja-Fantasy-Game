@@ -7,9 +7,11 @@ import type { PaintedPiece } from '../painted';
 export const SAYA_CLOTH = '#374061';
 export const SAYA_TRIM = '#a73234';
 export const SAYA_PLATE = '#ebe5d7';
+/** Her skin on the bare shoulder: the player's skin moves it as far. */
+export const SAYA_SKIN = '#f3bf9c';
 
-/** Which slot recolours each of her colours (her line, the gold-brown rim and the strap stay). */
-export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate'> = {
+/** Which slot recolours each of her colours (her line, the gold-brown rim and the strap stay; her skin follows the skin). */
+export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate' | 'skin'> = {
   '#222338': 'cloth',
   '#272c48': 'cloth',
   '#374061': 'cloth',
@@ -25,6 +27,8 @@ export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate'> = {
   '#b63133': 'trim',
   '#bfb2a7': 'plate',
   '#ebe5d7': 'plate',
+  '#d28771': 'skin',
+  '#f3bf9c': 'skin',
 };
 
 /** The top: her plate, her navy and red pipings; under her scarf, hair and belts, filled. */
@@ -78,6 +82,26 @@ export const SAYA_TOP: PaintedPiece = {
     'n': '#825e50',
     'B': '#bfb2a7',
     'M': '#ebe5d7',
+  },
+};
+
+/** The near shoulder, bare: her round light skin, its shadow down the far side, in her black line. */
+export const SAYA_SHOULDER_N: PaintedPiece = {
+  pivot: [3, 2],
+  angle: 107.97,
+  rows: [
+    '..000....',
+    '00vHH00..',
+    '0vHHHHv00',
+    '0HHHHHHv0',
+    '0HHHHHHv0',
+    '.00HHHvv0',
+    '.....Hv..',
+  ],
+  colors: {
+    '0': '#020102',
+    'v': '#d28771',
+    'H': '#f3bf9c',
   },
 };
 
@@ -189,11 +213,12 @@ export const SAYA_FORE_F: PaintedPiece = {
 
 /**
  * The gloves, per hand: from `from` fine pixels along the hand (from the middle of the hand
- * picture's wrist cell toward the fingers) each zone takes over; `null` leaves the fingers bare.
+ * picture's wrist cell toward the fingers) each zone takes over; `null` leaves the fingers bare,
+ * 'skin' paints them in her skin (the player's skin moves it).
  */
-export const SAYA_GLOVE_ZONES: Record<'N' | 'F', [number, 'strap' | 'back' | 'band' | null][]> = {
+export const SAYA_GLOVE_ZONES: Record<'N' | 'F', [number, 'strap' | 'back' | 'band' | 'skin' | null][]> = {
   N: [[0.5, 'strap'], [1.5, 'back'], [5.5, 'band'], [6.5, null]],
-  F: [[0.5, 'strap'], [2.5, 'back'], [4.5, null]],
+  F: [[0.5, 'strap'], [2.5, 'skin']],
 };
 
 /** Her tones for our hand pictures' shades (line, crease, shadow, base, light), per zone and side. */
@@ -202,5 +227,5 @@ export const SAYA_GLOVE_TONES = {
   backN: ['#020102', '#222338', '#272c48', '#374061', '#374061'],
   bandN: ['#020102', '#5f1a29', '#6e212c', '#a73234', '#b63133'],
   strapF: ['#020102', '#3e2b25', '#3e2b25', '#63483b', '#7b513c'],
-  backF: ['#020102', '#5f1a29', '#6e212c', '#6f2f32', '#a73234'],
+  skinF: ['#020102', '#d28771', '#d28771', '#eaac8c', '#eaac8c'],
 } as const;

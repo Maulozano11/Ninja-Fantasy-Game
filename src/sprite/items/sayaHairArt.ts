@@ -18,7 +18,7 @@ const SAYA_HAIR_COLORS: Record<string, string> = {
   t: '#734b29',
   q: '#754930',
   y: '#7e4f35',
-  E: '#905e3a',
+  E: '#8f5c3a',
   J: '#aa7640',
   P: '#be8e4e',
   S: '#cfa359',
@@ -69,7 +69,7 @@ export const SAYA_HAIR_FRONT: SayaFacePart = {
   colors: SAYA_HAIR_COLORS,
 };
 
-/** Behind the head: the front's outline filled in to the chin (his strands run on behind the forehead, his shade below), also the head's outline at the top. Pivot on the face anchor. */
+/** Behind the head: the front's outline filled in to below the chin, behind the neck (his strands run on behind the forehead, his shade below), also the head's outline at the top. Pivot on the face anchor. */
 export const SAYA_HAIR_BACK: SayaFacePart = {
   pivot: [9, 13],
   farFrom: 9,
@@ -96,12 +96,12 @@ export const SAYA_HAIR_BACK: SayaFacePart = {
     'XhhEEEyhhyEEEEEEEEEkXk...',
     'hhXEEkyhhyEEEEEEEEyyXk...',
     '......yhhPkEEEEEEEkyXhk..',
-    '......yhhPkk.......kXhk..',
-    '.......yhhq.........khhk.',
-    '.......yXhy.........kShk.',
-    '........qhy..........khyk',
-    '........yhy..........khyk',
-    '.......kyhy..........khyk',
+    '......yhhPkkEEEEEEEkXhk..',
+    '.......yhhqEEEEEEEEEkhhk.',
+    '.......yXhyEEEEEEEEEkShk.',
+    '........qhyEEEEEEEEEEkhyk',
+    '........yhyEEEEEEEEEEkhyk',
+    '.......kyhyEEEEEEEEEEkhyk',
     '........ySz...........yyk',
     '........yy...........ky..',
   ],
@@ -134,12 +134,21 @@ export const SAYA_HAIR_LONG: PaintedPiece = {
     'kXkyXXEEyEEyEEyEqk.',
     'kXkyXXkEyEEyEEyqk..',
     'kX.kXXkEyEEyEEqk...',
-    '.k.kXkkkEEqkEqk....',
-    '....k...kqk.k......',
-    '.........k.........',
+    '.k.kXkkkEEqkEEEEk..',
+    '....k...kqk.kkEEk..',
+    '.........k..kEEEk..',
+    '............kEEEEk.',
+    '...........kXEEEEk.',
+    '...........kXEEEEk.',
+    '...........kXXEkkk.',
+    '............kXEk...',
+    '.............kkk...',
   ],
   colors: SAYA_HAIR_COLORS,
 };
+
+/** Where the long hair's pivot (the neck) lies from the face anchor at idle, in cells: the game hangs it from the head there. */
+export const SAYA_HAIR_NECK: [number, number] = [4, 8];
 
 /** His far eye's distance from his near one (fx - ex in our face anchor's terms). */
 export const SAYA_HAIR_EYES = 9;

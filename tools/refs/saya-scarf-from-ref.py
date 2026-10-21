@@ -24,9 +24,12 @@ long hair. The parts:
          his picture. It hangs along its SPINE: the game bends the spine with the wind, so in a run
          or a throw it streams out behind her like the flag in his big picture.
 
-The tail's rows are below (TAIL), in our frame on the female body at idle frame 0. His cell (x, y) lands
-on our fine pixel (x + OFF[0], y + OFF[1]): his chin line (row 28, x 52-55) on ours (row 150,
-x 126-129) and his near shoulder (row 30, x 39-41) on ours.
+The tail's rows are below (TAIL), in our frame on the female body at idle frame 0. His cell (x, y) of
+the wrap lands on our fine pixel (x + OFF[0], y + OFF[1]): his chin line (row 28, x 52-55) on the chin
+of her own face (the 'shade' face shape, saya-face-from-ref.py: row 150, x 127-130). The stretch over
+the shoulder lands at SHOULDER_OFF instead, a pixel further out: on her top's and her bare shoulder's
+cells (saya-upper-from-ref.py lays her body on ours at x + 76), so its line sits on her shoulder's
+line as he drew it.
 
 It writes, in <out>:
 
@@ -102,8 +105,10 @@ HIDDEN = {
     32: {47: 'k', 48: 'd', 49: 'd'},
     33: {48: 'k', 49: 'b'},
 }
-# His cell -> our fine pixel at idle frame 0.
-OFF = (74, 122)
+# His cell -> our fine pixel at idle frame 0: the wrap (on her face's chin) and the shoulder stretch (on
+# her body's shoulder).
+OFF = (75, 122)
+SHOULDER_OFF = (76, 122)
 # The wrap's pixels up to this x of his (the stretch over the near shoulder, nearer than his side lock)
 # are the shoulder piece: the game draws it over the near arm, as it lies on top of the shoulder.
 SHOULDER_TO = 44
@@ -210,10 +215,10 @@ def grid_of(part):
     return out
 
 
-def to_ours(scarf):
+def to_ours(scarf, off=OFF):
     out = np.full((R.GRID, R.GRID), '', dtype='<U1')
     for (y, x) in zip(*np.nonzero(scarf != '')):
-        out[y + OFF[1], x + OFF[0]] = scarf[y, x]
+        out[y + off[1], x + off[0]] = scarf[y, x]
     return out
 
 
@@ -237,8 +242,8 @@ def main():
     scarf, filled = his_scarf(ch)
     pal = palette(N, ch, scarf, filled)
     wrap = to_ours(scarf)
-    shoulder = wrap.copy()
-    shoulder[:, SHOULDER_TO + OFF[0] + 1:] = ''
+    shoulder = to_ours(scarf, SHOULDER_OFF)
+    shoulder[:, SHOULDER_TO + SHOULDER_OFF[0] + 1:] = ''
     wrap[:, :SHOULDER_TO + OFF[0] + 1] = ''
     tail = grid_of(TAIL)
     nx, ny = NECK

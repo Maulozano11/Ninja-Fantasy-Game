@@ -22,7 +22,7 @@ the near shoulder down the back. The parts, in his cells (x across, y down):
           each row from row 15, his strands repeated across the gap) and frames our face as it
           frames his instead of covering our far eye.
   back    behind the head (hairBack), on the face anchor: the front's outline filled in from the
-          crown to the chin (behind the forehead each pixel takes the strand above it, below it his
+          crown to below the chin (behind the forehead each pixel takes the strand above it, below it his
           shade), so no gap shows round the head; it is also the head's top outline (the game trims
           our skull to it).
   long    behind the head and the body (hairBack), on the neck, turned with the torso: the hair from
@@ -103,13 +103,18 @@ LOCKS_FROM_X = 44
 SIDE_FROM_Y, SIDE_FROM_X = 22, 39
 # His eyes' black and his mouth, which lie inside the hair's outline: our face draws its own.
 NOT_HAIR = {(49, 19), (50, 19), (51, 19), (52, 19), (57, 19), (49, 20), (51, 27)}
-# The back's filled outline: to his chin; behind the forehead (to this row) the strand above.
-BACK_TO = 26
+# The back's filled outline: down to row 32, past his chin, between the locks behind the neck and the
+# scarf (hidden there at rest; when she walks or runs and the head bobs off the body, his shade shows
+# between the far lock and the torso instead of the background); behind the forehead (to FOREHEAD_TO)
+# the strand above.
+BACK_TO = 32
 FOREHEAD_TO = 18
 SHADE = 'E'
 
 # The long hair, x 26-46 from row 20: '*' is his pixel there, any other character is a pixel filled
-# in his colours where his picture hides the hair (behind the scarf's end and the near arm).
+# in his colours where his picture hides the hair (behind the scarf's end and the near arm). Its last
+# strand (x 40-45, rows 42-49) is the lock he shows between the near arm and the torso under the
+# armpit, gold and tan in his line, joined to the hair above it behind the arm (row 41).
 LONG = (26, 20, [
     '.............*****E**',
     '.............*****E**',
@@ -132,9 +137,15 @@ LONG = (26, 20, [
     '..*******EyEEyEEyEqk.',
     '..*******EyEEyEEyqk..',
     '..**.****EyEEyEEqk...',
-    '...*.****kEEqkEqk....',
-    '......*...kqk.k......',
-    '...........k.........',
+    '...*.****kEEqkEEEEk..',
+    '......*...kqk.*****..',
+    '...........k..*****..',
+    '..............******.',
+    '.............*******.',
+    '.............*******.',
+    '.............*******.',
+    '..............****...',
+    '...............***...',
 ])
 
 # Our female body at idle frame 0 (heroine_ref.OUR_JOINTS): the face anchor (body.ts faceAnchor:
@@ -362,7 +373,7 @@ def write_ts(meta, path):
     out += ['};', '']
     for part, name, doc in (
         ('front', 'SAYA_HAIR_FRONT', 'Over the head: his hair above the chin (crown, bangs, ornament, the near side hair round the ear) and the two locks in front of the face below it. Its pivot is the cell on our face anchor (the near eye\'s start).'),
-        ('back', 'SAYA_HAIR_BACK', 'Behind the head: the front\'s outline filled in to the chin (his strands run on behind the forehead, his shade below), also the head\'s outline at the top. Pivot on the face anchor.'),
+        ('back', 'SAYA_HAIR_BACK', 'Behind the head: the front\'s outline filled in to below the chin, behind the neck (his strands run on behind the forehead, his shade below), also the head\'s outline at the top. Pivot on the face anchor.'),
     ):
         ox, oy = meta[part]['origin']
         n = len(meta[part]['rows'])
@@ -382,6 +393,9 @@ def write_ts(meta, path):
     out += [f"    '{rw}'," for rw in meta['long']['rows']]
     out += ['  ],', '  colors: SAYA_HAIR_COLORS,', '};', '']
     out += [
+        "/** Where the long hair's pivot (the neck) lies from the face anchor at idle, in cells: the game hangs it from the head there. */",
+        f'export const SAYA_HAIR_NECK: [number, number] = [{nx - ax}, {ny - ay}];',
+        '',
         "/** His far eye's distance from his near one (fx - ex in our face anchor's terms). */",
         f"export const SAYA_HAIR_EYES = {meta['hisEyes']};",
         '',

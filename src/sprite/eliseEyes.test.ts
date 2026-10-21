@@ -3,8 +3,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { renderSprite } from './compose';
-import { AZURE_EYE_AT, AZURE_EYE_COLORS, AZURE_EYES, AZURE_IRIS, AZURE_SKIN } from './eliseEyeArt';
-import { GRID, RES } from './raster';
+import { AZURE_EYE_AT, AZURE_EYE_COLORS, AZURE_EYES, AZURE_FACE, AZURE_IRIS, AZURE_MOUTH, AZURE_SKIN } from './eliseEyeArt';
+import { GRID, partIndex, RES } from './raster';
 import type { SpritePose, SpriteAppearance } from './types';
 
 const look = (over: Partial<SpriteAppearance> = {}): SpriteAppearance => ({
@@ -86,5 +86,21 @@ describe("Elise's eyes (azure)", () => {
       if (base[i].want === lash || base[i].want === '#fefef9') assert.equal(p.got, base[i].got, `(${p.x}, ${p.y}) stays`);
     });
     assert.ok(green.some((p, i) => p.got !== base[i].got), 'something changed');
+  });
+
+  it('draws the rest of her face in her tones: her soft shadows and her muted mouth, not our pink lips', () => {
+    const f = renderSprite(look(), 'idle', 0);
+    const head = partIndex('head');
+    const colours = new Set<string>();
+    for (let i = 0; i < GRID * GRID; i++) if (f.part[i] === head) colours.add(at(f.rgba, i % GRID, (i / GRID) | 0) ?? '');
+    // her mouth is there; our pink lips are not
+    assert.ok(colours.has(AZURE_MOUTH.M), 'her mouth');
+    for (const ours of ['#c4566c', '#9c3b52']) assert.ok(!colours.has(ours), `no ${ours}`);
+    assert.ok(colours.has(AZURE_FACE.D), 'her soft shadow');
+    // with other eyes the face is ours as before
+    const other = renderSprite(look({ eyeShape: 'standard' }), 'idle', 0);
+    const lips = new Set<string>();
+    for (let i = 0; i < GRID * GRID; i++) if (other.part[i] === head) lips.add(at(other.rgba, i % GRID, (i / GRID) | 0) ?? '');
+    assert.ok(lips.has('#c4566c'), 'our lips on our eyes');
   });
 });

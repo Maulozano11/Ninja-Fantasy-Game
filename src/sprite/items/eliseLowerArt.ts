@@ -20,6 +20,9 @@ export const ELISE_HAND_SKIN = '#facdac';
 /** Her glove blues for the hands she did not paint, by our hand pictures' shades: line, crease, shadow, base, light. */
 export const ELISE_GLOVE_TONES = ['#080613', '#1b2858', '#1b2858', '#2d5090', '#345ea9'] as const;
 
+/** Her fingers' skin for the bare fingertips of the hands she did not paint, by the same shades. */
+export const ELISE_FINGER_TONES = ['#d68271', '#d68271', '#e59580', '#facdac', '#facdac'] as const;
+
 /** The tails' hem row in our frame at rest (the female idle): crouched or seated it hangs no lower above the ground. */
 export const ELISE_COAT_HEM_Y = 204;
 
@@ -39,6 +42,7 @@ export const ELISE_KIND: Record<string, 'line' | 'coat' | 'trim' | 'lining' | 'c
   '#6a6b80': 'lining',
   '#8d8ea0': 'lining',
   '#9f9fac': 'lining',
+  '#c4c4ce': 'lining',
   '#ced0dc': 'lining',
   '#385c9e': 'cloth',
   '#354566': 'cloth',
@@ -54,6 +58,10 @@ export const ELISE_KIND: Record<string, 'line' | 'coat' | 'trim' | 'lining' | 'c
   '#b6b6bd': 'steel',
   '#787782': 'steel',
   '#686771': 'steel',
+  '#fefef9': 'steel',
+  '#a8a8b9': 'steel',
+  '#683c30': 'leather',
+  '#865339': 'leather',
   '#cf9b48': 'gold',
   '#2d5090': 'glove',
   '#345ea9': 'glove',
@@ -99,21 +107,21 @@ export const ELISE_COAT_BACK: PaintedPiece = {
   rows: [
     '...kO1232123332333YkaaaaaaaaaaaaaaaaakY321Yk......',
     '..kO1232123332333YkaaaaaaaaaaaaaaaaaaakY31Yk......',
-    '.kO12332123332333YkaGgGGGGgGGGGGGgGGgakY321Yk.....',
-    'kO12332123332333YkaGGgGGGGgGGGGGGgGGgakY321Yk.....',
-    'kO12332123332333YkaGGgIIGGgGGIIGGgGGgIakY31Yk.....',
-    'kO1232123332333YkagGGgIIGGgGGIIGGgGGgIakY321Yk....',
-    'kO1232123332333YkagGGgIIGGgGGIIGGgGGgIakY321Yk....',
-    'kO122123332333YkaGgGGgIIGGgGGIIGGgGGgIIakY31Yk....',
-    'kO122123332333YkaGgGGgIIGGgGGIIGGgGGgIIakY321Yk...',
-    'kO12123332333YkaGGgGGgIIGGgGGIIGGgGGgIIakY32YYk...',
-    'kO12123332333YkaGGgGGgIIGGgGGIIGGgGGgIIGakY3YYk...',
-    'kO12233323Y3YkaIGGgGGgIIGGgGGIIGGgGGgIIGakY32YYk..',
-    'kO12233323h3YkaIGGgGGgIIGGgGGIIGGgGGgIIGakY32hYk..',
-    'kO1Y233323Y3YkaIGGgGGgIIGGgGGIIGGgGGgIIGGakY3YYk..',
-    '.kY1Y3323Y3YkaIIGGgGGgIiGGgGGIiGGgGGgIIGGakY32YYk.',
-    '..kY1Y323Y3YkkkkkkkkkkkiGGgGGIiGGgGGgIIGGakY32YYk.',
-    '...kY1h23Y3Yk..........kkkkkkkkkkkkGgIIGGgakY3hYk.',
+    '.kO12332123332333YkaaaaaaaaaaaaaaaaaaakY321Yk.....',
+    'kO12332123332333YkaaggggggggggggggggaakY321Yk.....',
+    'kO12332123332333YkaagGGGGGGGGGGGGGGGgaakY31Yk.....',
+    'kO1232123332333YkaagGIIImmmmmmmmmIIGgaakY321Yk....',
+    'kO1232123332333YkaagGIIImmmmmmmmmIIGgaakY321Yk....',
+    'kO122123332333YkaagGIIIImmmmmmmmmIIIGgaakY31Yk....',
+    'kO122123332333YkaagGIIIImmmmmmmmmIIIGgaakY321Yk...',
+    'kO12123332333YkaagGIIIIImmmmmmmmmIIIGgaakY32YYk...',
+    'kO12123332333YkaagGIIIIImmmmmmmmmIIIIGgaakY3YYk...',
+    'kO12233323Y3YkaagGIIIIIImmmmmmmmmIIIIGgaakY32YYk..',
+    'kO12233323h3YkaagGIIIIIImmmmmmmmmIIIIGgaakY32hYk..',
+    'kO1Y233323Y3YkaagGIIIIIImmiiimmmmIIIIIGgaakY3YYk..',
+    '.kY1Y3323Y3YkaagGIIIIIIImmiiimmmmIIIIIGgaakY32YYk.',
+    '..kY1Y323Y3YkkkkkkkkkkkImmiiimmmmIIIIIGgaakY32YYk.',
+    '...kY1h23Y3Yk..........kkkkkkkkkkkkIIIIGgaakY3hYk.',
     '....kY1YY3Yk.......................kkkkkkkkkY32YYk',
     '.....kY1Y3Yk...............................kY32YYk',
     '......kYhYYk................................kYYYYk',
@@ -132,6 +140,7 @@ export const ELISE_COAT_BACK: PaintedPiece = {
     h: '#dcb06e',
     i: '#ced0dc',
     k: '#080613',
+    m: '#c4c4ce',
   },
 };
 
@@ -163,35 +172,35 @@ export const ELISE_COAT_FRONT: PaintedPiece = {
   },
 };
 
-/** Her two belts across the hips, the steel buckle at the near side, the pouch at the far hip. */
+/** Her two belts across the hips, the steel buckle at the near side, the box pouch at the far hip. */
 export const ELISE_BELT: PaintedPiece = {
-  pivot: [15, 9],
+  pivot: [15, 11],
   angle: -89.50,
   rows: [
-    '........kkkkkkkkkkkkkkkkkkkkk.',
-    '.......kLLfLLLfLLLfLLLfLLLfLLk',
-    '.......kNNnNNNnNNNnNNNnNNNnNNk',
-    '........kkkkkkkkkkkkkkkkkkkkk.',
-    '.kkkWStkkkkkkfLLLfLLLfLkYYYuk.',
-    'kfLLSNtLLfLLnNNNnNNNnNNkuffnNk',
-    'kNNnSNpnNNNNNkkkkkkkkkkkfnnnNk',
-    '.kkktppkkkkkk..........kfnnNNk',
-    '.......................knnNNNk',
-    '........................kNNNk.',
-    '.........................kkk..',
+    '.......................kkkkkkkk',
+    '.......................kWwwWvkk',
+    '.......kkkkkkkkkkkkkkkkkvvvvWkk',
+    '......kLLfLLLfLLLfLLLfLknccdnkk',
+    '.kkkWStkkkkkkkkkkkkkkkkkncdcnk.',
+    'kfLLSNtLLfLLLfLLLfLLLfLkncccnkk',
+    'kNNnSNpnNNNnNNNnNNNnNNNkncdcnkk',
+    '.kkktppkkkkkkkkkkkkkkkkknnnnnk.',
+    '........................kkkkk..',
   ],
   colors: {
     L: '#804936',
     N: '#342325',
     S: '#b6b6bd',
     W: '#eaeaf3',
-    Y: '#ddac5a',
+    c: '#683c30',
+    d: '#865339',
     f: '#614a48',
     k: '#080613',
     n: '#4e3739',
     p: '#686771',
     t: '#787782',
-    u: '#cf9b48',
+    v: '#a8a8b9',
+    w: '#fefef9',
   },
 };
 

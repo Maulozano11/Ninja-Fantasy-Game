@@ -8,16 +8,17 @@ at a time after her own pixels (heroine_ref.native('elise')), in her colours onl
 of heroine_ref.PALETTES['elise']), and cuts them into the pieces that ride our rig:
 
   skirt     her dark navy pleated skirt with its gold hem: pleats lit toward the light, creased in her
-            darkest navy, the hem in her gold over her black line. It rides the pelvis and turns with
-            the torso, as our skirts hang.
+            darkest navy, the hem in her gold over her black line. It hangs from the pelvis: its top
+            turns with the torso, the pleats below hang part of the way back toward plumb.
   coat      her blue coat from the waist down, open at the front: the two front edges over the hips
             (her gold trim, her blue, her gold meander), and behind the legs the near tail that flares
             back to a point (her black line, her shadowed gold along its outer edge, her bright gold
             along its opening edge, a gold line inside the hem, her diagonal folds in three blues), her
-            pale grey lining between the legs and the far tail's edge at the right. It rides the
-            pelvis and turns with the torso.
-  belt      her two brown belts slung across the hips, the lower one with its steel buckle at the near
-            side, and the small pouch with its gold flap at the far hip. It rides the pelvis.
+            pale grey lining between the legs (smooth, softly shaded) and the far tail's edge at the
+            right. It hangs from the pelvis: its top turns with the torso, the cloth below hangs part
+            of the way back toward plumb (eliseLower.ts hangPixels).
+  belt      her two brown belts across the hips, the lower one with its steel buckle at the near side,
+            and the small leather box pouch with its steel lid at the far hip. It rides the pelvis.
   gloves    her blue fingerless gloves: the near fist round a grip (her glove over the back of the
             hand, her fingers bare under it) and the far hand hanging (the glove over the palm, her
             fingers bare). The other hand pictures are ours, in her glove blues with bare fingertips
@@ -54,17 +55,17 @@ KEY = {
     # gold trim: highlight, lit, base, shadowed, darkest
     'y': '#fce89e', 'h': '#dcb06e', 'Y': '#ddac5a', 'o': '#a47043', 'O': '#9e6637',
     # lining greys, shadow to light
-    'a': '#525368', 'g': '#6a6b80', 'G': '#8d8ea0', 'I': '#9f9fac', 'i': '#ced0dc',
+    'a': '#525368', 'g': '#6a6b80', 'G': '#8d8ea0', 'I': '#9f9fac', 'm': '#c4c4ce', 'i': '#ced0dc',
     # skirt navies and the pleats' sheen
     'j': '#385c9e', 'e': '#354566', 'X': '#26263e', 'K': '#181b37',
     # hem gold
     'H': '#e6b75e', 'J': '#b27b44',
     # belt leathers
     'L': '#804936', 'f': '#614a48', 'n': '#4e3739', 'N': '#342325',
-    # steel of the buckle
-    'W': '#eaeaf3', 'S': '#b6b6bd', 't': '#787782', 'p': '#686771',
-    # pouch gold
-    'u': '#cf9b48',
+    # steel of the buckle and the pouch's lid
+    'W': '#eaeaf3', 'S': '#b6b6bd', 't': '#787782', 'p': '#686771', 'w': '#fefef9', 'v': '#a8a8b9',
+    # the pouch's leathers
+    'c': '#683c30', 'd': '#865339',
     # skin of her fingers (her hand's)
     's': '#facdac', 'z': '#e59580', 'Z': '#d68271', 'r': '#f3ae92',
 }
@@ -134,11 +135,14 @@ TAIL_F = [(184, 136, 142), (185, 137, 142), (186, 137, 143), (187, 137, 143), (1
           (190, 138, 144), (191, 139, 144), (192, 139, 145), (193, 139, 145), (194, 140, 145), (195, 140, 146),
           (196, 140, 146), (197, 141, 146), (198, 141, 147), (199, 141, 147), (200, 142, 147), (201, 142, 148),
           (202, 142, 148), (203, 143, 148), (204, 143, 148)]
-# Her lining's soft folds running down (her lighter greys over her mid grey), and where light catches
-# them over the hem.
-LINING_FOLDS = {112: 'g', 113: 'I', 114: 'I', 117: 'g', 120: 'g', 121: 'I', 122: 'I', 125: 'g', 128: 'I', 129: 'I',
-                132: 'g', 135: 'g', 136: 'I', 137: 'I', 140: 'g'}
-LINING_SHINE = {122, 129}
+# Her lining is smooth and pale, shaded softly in broad planes: her soft grey over most of it, her
+# pale grey where it turns to the light between the legs (LINING_LIT, from a few rows below the
+# skirt down), her lightest grey where light catches it over the hem, and toward the tails' edges and
+# up into the skirt's shadow it darkens a step at a time through her greys (LINING_RAMP, darkest at
+# the edge), never a hard line.
+LINING_LIT = range(123, 132)
+LINING_LIGHT = {125, 126, 127}
+LINING_RAMP = 'aagG'
 # The lining's hem: the row of its black line under each column (it falls a little to the far side).
 LINING_HEM = {x: 199 + (x - 110) // 12 for x in range(108, 146)}
 
@@ -190,16 +194,15 @@ def coat_back():
             if y == hem:
                 g[y, x] = 'k'
                 continue
-            if y <= 185:
-                g[y, x] = 'a'  # the skirt's shadow over its top
-                continue
-            ch = LINING_FOLDS.get(x, 'G')
-            if y <= 187 and ch == 'I':
-                ch = 'G'  # the folds come out of the shadow
-            if y >= hem - 2 and x in LINING_SHINE:
-                ch = 'i'  # light on the folds over the hem
-            if x == lo or x == hi:
-                ch = 'a'  # shadow along the tails' edges
+            ch = 'I'
+            if y >= 189 and x in LINING_LIT:
+                ch = 'm'  # its pale plane turned to the light
+            if y >= hem - 3 and x in LINING_LIGHT:
+                ch = 'i'  # light over the hem
+            # how near the tails' edges or the skirt's shadow it is: there it darkens a step at a time
+            d = min(x - lo, hi - x, max(0, y - 185))
+            if d < len(LINING_RAMP):
+                ch = LINING_RAMP[d]
             g[y, x] = ch
     # the near tail
     for i, (y, L, R) in enumerate(FLAP_N):
@@ -250,36 +253,36 @@ def coat_back():
     return g
 
 
-# Her two belts slung across the hips: the upper one level from the near side of her waist to the far
-# hip, the lower one (its steel buckle at the near side) slung lower at the near side and rising to
-# lie under the upper one at the far hip; the small brown pouch with its gold flap hangs at the far
-# hip over both.
+# Her two belts across the hips, as narrow as hers at our scale (a row of leather each, the lower one
+# two): the upper one from the coat's near opening edge to the far hip, the lower one from behind the
+# near arm to the far hip with its steel buckle at the near side; both end under the pouch. Her small
+# leather pouch hangs on them at the far hip as the reduced reference has it: a box with her steel lid
+# (her white and grey) over her browns, her line round it.
 BELT = (112, 168, [
-    '........kkkkkkkkkkkkkkkkkkkkk.',
-    '.......kLLfLLLfLLLfLLLfLLLfLLk',
-    '.......kNNnNNNnNNNnNNNnNNNnNNk',
-    '........kkkkkkkkkkkkkkkkkkkkk.',
-    '.kkkkkkkkkkkkfLLLfLLLfLLLfLLk',
-    'kfLLLfLLLfLLnNNNnNNNnNNNnNNNk',
-    'kNNnNNNnNNNNNkkkkkkkkkkkkkkkk.',
-    '.kkkkkkkkkkkk.................',
+    '.......kkkkkkkkkkkkkkkkk.',
+    '......kLLfLLLfLLLfLLLfLLk',
+    '.kkkkkkkkkkkkkkkkkkkkkkkk',
+    'kfLLLfLLLfLLLfLLLfLLLfLLk',
+    'kNNnNNNnNNNnNNNnNNNnNNNnk',
+    '.kkkkkkkkkkkkkkkkkkkkkkk.',
 ])
 # the buckle on the lower belt, taller than it
-BUCKLE = (116, 172, [
+BUCKLE = (116, 170, [
     'WSt',
     'SNt',
     'SNp',
     'tpp',
 ])
-POUCH = (135, 171, [
-    '.kkkk..',
-    'kYYYuk.',
-    'kuffnNk',
-    'kfnnnNk',
-    'kfnnNNk',
-    'knnNNNk',
-    '.kNNNk.',
-    '..kkk..',
+POUCH = (135, 166, [
+    'kkkkkkkk',
+    'kWwwWvkk',
+    'kvvvvWkk',
+    'knccdnkk',
+    'kncdcnk.',
+    'kncccnkk',
+    'kncdcnkk',
+    'knnnnnk.',
+    '.kkkkk..',
 ])
 
 
@@ -327,6 +330,11 @@ for t in GLOVE_TONES:
     assert t in PALETTE, t
 # The skin her fingers are painted in (her face's base): the character's skin moves them as far.
 HAND_SKIN = '#facdac'
+# The bare fingertips of our hand pictures in her glove, by the same shades: her fingers' skin (the
+# shadow between her fingers, its lighter tone, her base), so no colour of ours shows past her glove.
+FINGER_TONES = ['#d68271', '#d68271', '#e59580', '#facdac', '#facdac']
+for t in FINGER_TONES:
+    assert t in PALETTE, t
 
 OUT_DOC = (
     "// Elise's skirt, coat tails, belts and gloves from the owner's picture, brought down to our scale\n"
@@ -380,7 +388,7 @@ PIECES = {
     'coatFront': ('ELISE_COAT_FRONT', 'pelvis', ('pelvis', 'neck'),
                   "Her coat's front edges over the hips, over the skirt."),
     'belt': ('ELISE_BELT', 'pelvis', ('pelvis', 'neck'),
-             'Her two belts across the hips, the steel buckle at the near side, the pouch at the far hip.'),
+             'Her two belts across the hips, the steel buckle at the near side, the box pouch at the far hip.'),
     'gloveN': ('ELISE_GLOVE_N', 'wristN', ('wristN', 'handN'),
                'The near fist round a grip: her blue glove over the back of the hand, her fingers bare.'),
     'gloveF': ('ELISE_GLOVE_F', 'wristF', ('wristF', 'handF'),
@@ -394,11 +402,12 @@ KIND = {
     '#080613': 'line',
     '#4068ac': 'coat', '#3662af': 'coat', '#263d7d': 'coat', '#1b2858': 'coat',
     '#fce89e': 'trim', '#dcb06e': 'trim', '#ddac5a': 'trim', '#a47043': 'trim', '#9e6637': 'trim',
-    '#525368': 'lining', '#6a6b80': 'lining', '#8d8ea0': 'lining', '#9f9fac': 'lining', '#ced0dc': 'lining',
+    '#525368': 'lining', '#6a6b80': 'lining', '#8d8ea0': 'lining', '#9f9fac': 'lining', '#c4c4ce': 'lining', '#ced0dc': 'lining',
     '#385c9e': 'cloth', '#354566': 'cloth', '#26263e': 'cloth', '#181b37': 'cloth',
     '#e6b75e': 'hem', '#b27b44': 'hem',
     '#804936': 'leather', '#614a48': 'leather', '#4e3739': 'leather', '#342325': 'leather',
-    '#eaeaf3': 'steel', '#b6b6bd': 'steel', '#787782': 'steel', '#686771': 'steel',
+    '#eaeaf3': 'steel', '#b6b6bd': 'steel', '#787782': 'steel', '#686771': 'steel', '#fefef9': 'steel', '#a8a8b9': 'steel',
+    '#683c30': 'leather', '#865339': 'leather',
     '#cf9b48': 'gold',
     '#2d5090': 'glove', '#345ea9': 'glove',
     '#facdac': 'skin', '#e59580': 'skin', '#d68271': 'skin', '#f3ae92': 'skin',
@@ -428,6 +437,8 @@ def main():
     # glove blues the hands we did not paint take
     for t in GLOVE_TONES[1:]:
         KIND.setdefault(t, 'glove')
+    for t in FINGER_TONES:
+        assert KIND[t] == 'skin', t
 
     out = [OUT_DOC, "import type { PaintedPiece } from '../painted';", '']
     out += ['/** Her colours the colour slots recolour from (at these, every pixel is hers). */']
@@ -439,6 +450,9 @@ def main():
         '',
         "/** Her glove blues for the hands she did not paint, by our hand pictures' shades: line, crease, shadow, base, light. */",
         'export const ELISE_GLOVE_TONES = [' + ', '.join(f"'{t}'" for t in GLOVE_TONES) + '] as const;',
+        '',
+        "/** Her fingers' skin for the bare fingertips of the hands she did not paint, by the same shades. */",
+        'export const ELISE_FINGER_TONES = [' + ', '.join(f"'{t}'" for t in FINGER_TONES) + '] as const;',
         '',
         "/** The tails' hem row in our frame at rest (the female idle): crouched or seated it hangs no lower above the ground. */",
         f'export const ELISE_COAT_HEM_Y = {packs["coatBack"][1][1] + len(packs["coatBack"][0]) - 1};',

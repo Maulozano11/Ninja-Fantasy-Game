@@ -12,7 +12,7 @@ heroine_ref.PALETTES['elise']:
   the knee cop    her round cop rimmed in gold, the steel inside lit at the top left;
   the ankle guard her round guard over the ankle: brown leather in a gold rim;
   the sabaton     her white steel foot: the near one seen from the front with a lame across the toe,
-                  the far one pointing right; her dark sole.
+                  the far one pointing right, a shoe with a heel and a rounded toe; her dark sole.
 
 What her picture hides and is filled here, after the parts of hers that show: the near cuff's left half
 and most of the near knee cop are under her blade's light (filled as the far cuff and cop are drawn);
@@ -141,14 +141,16 @@ FAR = (128, 184, [
     '.....0GBBkkKG0........',
     '......0GgggGo0........',
 ])
-# The far sabaton pointing right (205-210), its instep under the ankle guard.
+# The far sabaton pointing right (205-210), its instep under the ankle guard: her shoe, a heel at the
+# back under the ankle (her dark sole, the arch open behind the ball of the foot) and a rounded toe
+# no further out than hers, the instep rising to the ankle.
 FAR_FOOT = (128, 205, [
-    '.....0LLLLLLLLe0......',
-    '.....0MLLLLLLLLew0....',
-    '.....0MLLLLLLLLLew0...',
-    '.....0dMLLLLLLLLLMd0..',
-    '.....0sssssssssssss0..',
-    '......0000000000000...',
+    '....0wLLLLe0..........',
+    '....0MLLLLLLew0.......',
+    '....0MLLLLLLLLew0.....',
+    '....0dMMLLLLLLLMd0....',
+    '....0ss00ssssssss0....',
+    '....000..00000000.....',
 ])
 # Her round knee cops: (first x, first row, rows).
 COP = {

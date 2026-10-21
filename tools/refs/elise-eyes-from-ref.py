@@ -158,6 +158,14 @@ DESIGN = {
 IRIS = '#1276b0'
 BROW_HAIR = '#f8dc92'
 SKIN_HEX = '#facdac'
+# The rest of her face round her eyes, in her colours: our face template's skin shades (its line,
+# crease, shadow, base and light: SKIN) taken to her face's tones (her black line round the jaw, her
+# soft rose shadows under her base, no darker line on her cheek), and our mouth (lip, crease) to
+# hers: one short muted rose line. Her black line is not moved by the skin tone.
+FACE_TONES = {'o': '#080613', 'D': '#d68271', 's': '#e59580', 'b': '#facdac', 'l': '#facdac'}
+MOUTH = {'m': '#d68271', 'M': '#b76660'}
+for _h in list(FACE_TONES.values()) + list(MOUTH.values()):
+    assert _h in R.PALETTES[WHICH], _h
 
 
 def colour(N, xy):
@@ -262,7 +270,11 @@ def write_ts(path, states, seen):
             "/** Her hair's main yellow, whose browns her brows are: the hair colour moves them as far. */",
             f"export const AZURE_BROW_HAIR = '{BROW_HAIR}';", '',
             "/** Her skin, whose shades are round her eyes: the skin tone moves them as far. */",
-            f"export const AZURE_SKIN = '{SKIN_HEX}';", '']
+            f"export const AZURE_SKIN = '{SKIN_HEX}';", '',
+            "/** The face template's skin shades (line, crease, shadow, base, light) in her face's tones: the skin tone moves them as far (her black line stays). */",
+            'export const AZURE_FACE: Record<string, string> = { ' + ', '.join(f"{k}: '{v}'" for k, v in FACE_TONES.items()) + ' };', '',
+            "/** Her mouth for the template's lip and crease: one short muted rose line (the skin tone moves it as far). */",
+            'export const AZURE_MOUTH: Record<string, string> = { ' + ', '.join(f"{k}: '{v}'" for k, v in MOUTH.items()) + ' };', '']
     src = '\n'.join(out)
     tmp = path + '.tmp'
     with open(tmp, 'w') as f:

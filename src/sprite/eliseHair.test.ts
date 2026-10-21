@@ -6,7 +6,9 @@ import { getItem } from './catalog';
 import { hexToRgb } from './color';
 import { renderSpriteCached } from './compose';
 import { ELISE_HAIR_BACK, ELISE_HAIR_BASE, ELISE_HAIR_FALL, ELISE_HAIR_FRONT, ELISE_HAIR_LINE, ELISE_HAIR_WISP, ELISE_ORNAMENT, ELISE_ORNAMENT_BASE } from './items/eliseHairArt';
+import { wispPixels } from './items/eliseHair';
 import { GRID, RES } from './raster';
+import { rotateTemplate } from './rotsprite';
 import type { BodyType, SpriteAppearance } from './types';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
 
@@ -115,6 +117,69 @@ describe('hair_golden_fall', () => {
         }
         assert.equal(under, 0, `${body} ${frame}: hair pixels under the body`);
       }
+    }
+  });
+
+  it('keeps the loose strand whole at every angle: no bit of it floats off, no background walled in', () => {
+    const key = (x: number, y: number) => `${x},${y}`;
+    for (let deg = -180; deg < 180; deg++) {
+      const fall = rotateTemplate(ELISE_HAIR_FALL, deg - ELISE_HAIR_FALL.angle);
+      const wisp = wispPixels(deg);
+      const on = new Set([...fall, ...wisp].map((p) => key(p.dx, p.dy)));
+      // every strand pixel reaches the fall through the strand (side or corner)
+      const fallAt = new Set(fall.map((p) => key(p.dx, p.dy)));
+      const reached = new Set<string>();
+      let grew = true;
+      while (grew) {
+        grew = false;
+        for (const p of wisp) {
+          const k = key(p.dx, p.dy);
+          if (reached.has(k)) continue;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const n = key(p.dx + dx, p.dy + dy);
+              if ((dx || dy) && (fallAt.has(n) || reached.has(n)) && !reached.has(k)) {
+                reached.add(k);
+                grew = true;
+              }
+            }
+          }
+        }
+      }
+      assert.equal(reached.size, new Set(wisp.map((p) => key(p.dx, p.dy))).size, `${deg}: a loose bit of the strand`);
+      // no background next to the strand is walled in by the strand and the fall
+      const xs = [...fall, ...wisp].map((p) => p.dx);
+      const ys = [...fall, ...wisp].map((p) => p.dy);
+      const [x0, x1, y0, y1] = [Math.min(...xs) - 1, Math.max(...xs) + 1, Math.min(...ys) - 1, Math.max(...ys) + 1];
+      const out = new Set<string>();
+      const stack: [number, number][] = [[x0, y0]];
+      while (stack.length) {
+        const [x, y] = stack.pop()!;
+        const k = key(x, y);
+        if (x < x0 || x > x1 || y < y0 || y > y1 || out.has(k) || on.has(k)) continue;
+        out.add(k);
+        stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+      }
+      const strand = new Set(wisp.map((p) => key(p.dx, p.dy)));
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          if (on.has(key(x, y)) || out.has(key(x, y))) continue;
+          const byStrand = [key(x - 1, y), key(x + 1, y), key(x, y - 1), key(x, y + 1)].some((n) => strand.has(n));
+          assert.ok(!byStrand, `${deg}: background walled in at (${x}, ${y})`);
+        }
+      }
+    }
+  });
+
+  it('shows her strands in the shade behind the near arm, not a flat slab', () => {
+    // The fall's part behind our arm (hidden at idle, shown when the arm swings): in each of its rows
+    // her clumps of strands, each lit in her gold and creased in her darkest brown.
+    const hex = (ch: string) => ELISE_HAIR_FALL.colors[ch];
+    const rows = ELISE_HAIR_FALL.rows.slice(12, 30).map((r) => r.slice(-10).replace(/[.7K]/g, ''));
+    for (const r of rows) {
+      if (r.length < 6) continue;
+      assert.ok([...r].some((ch) => hex(ch) === '#764534'), `a crease in ${r}`);
+      assert.ok([...r].some((ch) => hex(ch) === '#cb9658'), `a lit strand in ${r}`);
     }
   });
 });

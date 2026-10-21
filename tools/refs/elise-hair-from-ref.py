@@ -201,19 +201,54 @@ FALL = rows_from({
 }, 94, 126)
 
 # A loose strand at the top of the fall, outside the mass (its own piece: it rides with the fall, but
-# is left out when she lies down, where it would stand up off her back).
+# is left out when she lies down, where it would stand up off her back). It leaves the mass at its
+# top and arcs out and down, a step at a time with each pixel sharing a side with the next (so the
+# turn with the torso cannot break it into loose bits), and keeps two pixels or more off the mass to
+# its tip, the gap between them opening downward as both edges step out (so it never closes a
+# sliver of background against it).
 WISP = rows_from({
-    150: (102, 'lo'),
-    151: (100, 'll'),
-    152: (99, 'l'),
-    153: (98, 'l'),
-    154: (97, 'l'),
-    155: (97, 'j'),
-    156: (96, 'l'),
-    157: (96, 'l'),
-    158: (96, 'j'),
-    159: (96, '7'),
+    149: (101, 'lllo'),
+    150: (100, 'll'),
+    151: (99, 'll'),
+    152: (98, 'll'),
+    153: (97, 'll'),
+    154: (96, 'lj'),
+    155: (96, 'j'),
+    156: (95, 'jj'),
+    157: (95, '7'),
 }, 94, 126)
+
+
+# Behind our near arm (hidden at idle, shown when the arm swings) her hair is in the arm's shade: her
+# browns in clumps of strands, each lit on its left in her golds and creased on its right in her
+# darkest brown, running down and a little to the left with the fall. FALL draws this part plain;
+# shade_inner() paints the strands over it, from SHADE_FROM columns right of where her light streaks
+# end in each row (after the 'oljp' of the outer strands; the tips' rows follow the last of those).
+SHADE_CLUMP = 'jGgfec'
+SHADE_FROM = 2
+SHADE_SLANT = 0.25
+
+
+def shade_inner(piece):
+    x0, y0, rows = piece
+    out = []
+    start = None
+    for j, r in enumerate(rows):
+        i = r.find('oljp')
+        if i >= 0:
+            start = x0 + i + 5
+        r = list(r)
+        for i, ch in enumerate(r):
+            x, y = x0 + i, y0 + j
+            if ch in '.7K' or start is None or x < start + SHADE_FROM:
+                continue
+            u = (x - start - SHADE_FROM) + (y - y0) * SHADE_SLANT
+            r[i] = SHADE_CLUMP[int(np.floor(u)) % len(SHADE_CLUMP)]
+        out.append(''.join(r))
+    return x0, y0, out
+
+
+FALL = shade_inner(FALL)
 
 
 def grid(piece):

@@ -8,7 +8,7 @@ import { armDepth, armJoints, armSpan, Depth, DrawCtx, handDraw, handPose, ItemD
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, partIndex, RES } from '../raster';
 import { GROUND } from '../rig';
-import { rotateTemplate, stampTemplate, TemplatePalette } from '../rotsprite';
+import { rotateTemplate, type RotatedPixel, stampTemplate, TemplatePalette } from '../rotsprite';
 import {
   ELISE_BELT,
   ELISE_BELT_LEATHER,
@@ -19,6 +19,7 @@ import {
   ELISE_COAT_HEM_Y,
   ELISE_COAT_LINING,
   ELISE_COAT_TRIM,
+  ELISE_FINGER_TONES,
   ELISE_GLOVE,
   ELISE_GLOVE_F,
   ELISE_GLOVE_N,
@@ -69,11 +70,11 @@ export interface TailWind {
 const HEM_ABOVE_GROUND = GROUND * RES - ELISE_COAT_HEM_Y;
 
 /**
- * The tails behind the legs (backGear): her pixels turned with the torso, pushed back by the wind
+ * The tails behind the legs (backGear): her pixels hung from the waist as the torso turns (hangPixels), pushed back by the wind
  * further down (they hang from the waist, so the wind moves them half as far as a cape's), the hem
  * never lower than at rest (crouched or seated the cloth gathers up behind: the lower rows ride up
- * over the ones above, so her hem stays whole). Knocked out (drawn upright, then laid face down) only
- * the cloth along the legs is kept: the flared tail would stand up in the air.
+ * over the ones above, so her hem stays whole). Knocked out (drawn upright, then laid face down) the
+ * near tail's edge lies along her legs instead (layTails): the flared tail would stand up in the air.
  */
 function coatBack(g: DrawCtx, wind: TailWind, color: (ch: string, hex: string) => string): void {
   const r = g.rig;
@@ -81,7 +82,7 @@ function coatBack(g: DrawCtx, wind: TailWind, color: (ch: string, hex: string) =
   const L = g.L('backGear');
   const ax = Math.floor(r.pelvis.x * RES);
   const ay = Math.floor(r.pelvis.y * RES);
-  const px = rotateTemplate(p, torsoAngle(g) - p.angle);
+  const px = r.lay ? rotateTemplate(p, torsoAngle(g) - p.angle) : hangPixels(p, torsoAngle(g));
   let top = Infinity;
   let bot = -Infinity;
   for (const q of px) {
@@ -93,26 +94,62 @@ function coatBack(g: DrawCtx, wind: TailWind, color: (ch: string, hex: string) =
   const over = r.lay ? 0 : Math.max(0, ay + bot - Math.round(lift) - (GROUND * RES - HEM_ABOVE_GROUND));
   const pens: Record<string, number> = {};
   for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
-  const keep = layKeep(g);
   // Top rows first, so the rows below (the hem) are drawn over them where the cloth gathers.
   const order = [...px].sort((a, b) => a.dy - b.dy);
+  const laid = new Map<number, Map<number, string>>();
   for (const q of order) {
     const k = (q.dy - top) / span;
     const x = ax + q.dx + Math.round((wind.dx + wind.wave) * 0.5 * RES * k ** 1.3);
     const y = ay + q.dy - Math.round((lift + over) * k * k);
-    if (keep(x, y)) L.set(x, y, pens[q.ch], 3, 'back', FLAGS);
+    if (!r.lay) L.set(x, y, pens[q.ch], 3, 'back', FLAGS);
+    else if (x >= 0 && y >= 0 && x < GRID && y < GRID) {
+      if (!laid.has(y)) laid.set(y, new Map());
+      laid.get(y)!.set(x, q.ch);
+    }
   }
+  if (r.lay) layTails(g, laid, p, pens);
 }
 
 /**
- * Knocked out (drawn upright, then laid face down: compose.ts transposes the frame), the coat lies
- * along the body: only the cloth from a step behind the body's back to the column that lands on the
- * ground is kept, so the flared tails and the front edges never stand up in the air (as capes.ts
- * crimsonBack does). Standing, everything is kept.
+ * Knocked out, the tails lie along the back of her legs: in each row the near tail's opening edge (her
+ * black line, her gold, then her blues) is laid against the body's back, LAY_TAILS pixels of it, with
+ * her line over it and across its two ends, as the owner's cape lies along Aiden's back (capes.ts
+ * crimsonBack). The flare past them, the lining and the far tail would stand up in the air once the
+ * figure is laid down: they are left out.
  */
-function layKeep(g: DrawCtx): (x: number, y: number) => boolean {
-  const r = g.rig;
-  if (!r.lay) return () => true;
+function layTails(g: DrawCtx, laid: Map<number, Map<number, string>>, p: PaintedPiece, pens: Record<string, number>): void {
+  const L = g.L('backGear');
+  const back = bodyBack(g);
+  const line = g.m(LINE, 'flat');
+  const lining = (ch: string | undefined) => ch !== undefined && ELISE_KIND[p.colors[ch]] === 'lining';
+  const band = new Map<number, number>();
+  for (const [y, row] of laid) {
+    const b = back.get(y);
+    if (b === undefined) continue;
+    // the near tail: the first run of cloth from the left, to its own line or to the lining
+    let e = Math.min(...row.keys());
+    while (row.has(e + 1) && !lining(row.get(e + 1)) && !(row.get(e) === 'k' && e > Math.min(...row.keys()))) e++;
+    for (let i = 0; i < LAY_TAILS; i++) {
+      const ch = row.get(e - i);
+      L.set(b - 1 - i, y, ch && !lining(ch) ? pens[ch] : line, 3, 'back', FLAGS);
+    }
+    L.set(b - 1 - LAY_TAILS, y, line, 3, 'back', FLAGS);
+    band.set(y, b);
+  }
+  // close the band's two ends with her line
+  for (const [y, b] of band) {
+    for (const end of [y - 1, y + 1]) {
+      if (band.has(end)) continue;
+      for (let i = 0; i <= LAY_TAILS; i++) L.set(b - 1 - i, end, line, 3, 'back', FLAGS);
+    }
+  }
+}
+
+/** Knocked out, how many pixels of the near tail lie along the back of her legs (her line, her gold, her blues). */
+const LAY_TAILS = 5;
+
+/** Knocked out (drawn upright, then laid face down), where the body's back is in each row: its first pixel from the left. */
+function bodyBack(g: DrawCtx): Map<number, number> {
   const back = new Map<number, number>();
   for (const d of ['torso.body', 'nearLeg.body', 'farLeg.body'] as const) {
     const B = g.L(d);
@@ -122,8 +159,70 @@ function layKeep(g: DrawCtx): (x: number, y: number) => boolean {
       back.set(y, Math.min(back.get(y) ?? GRID, i % GRID));
     }
   }
+  return back;
+}
+
+/**
+ * Knocked out (drawn upright, then laid face down: compose.ts transposes the frame), the skirt and the
+ * coat's front edges lie along the body: only the cloth from the body's back to the column that lands
+ * on the ground is kept, so they never stand up off her back in the air (as capes.ts crimsonBack
+ * does). Standing, everything is kept.
+ */
+function layKeep(g: DrawCtx): (x: number, y: number) => boolean {
+  const r = g.rig;
+  if (!r.lay) return () => true;
+  const back = bodyBack(g);
   const front = Math.floor(r.lay.groundX * RES);
-  return (x, y) => back.has(y) && x >= back.get(y)! - 1 && x < front;
+  return (x, y) => back.has(y) && x >= back.get(y)! && x < front;
+}
+
+/**
+ * How far toward plumb the cloth below her waist hangs when her torso leans (0: it turns with the
+ * torso as one stiff piece, 1: it hangs straight down).
+ */
+const HANG = 0.5;
+/** Up to this turn of the torso (degrees) the cloth turns with it whole (RotSprite); past it, the rest of the turn hangs as HANG says. */
+const HANG_FROM = 15;
+
+/**
+ * A piece hung from the waist (the skirt, the coat's front edges and tails), as pixels from its pivot:
+ * its top row follows the torso's turn, as the belt does, and when the torso turns past HANG_FROM
+ * (leaning far in, crouching, seated) the rows below hang part of the way back toward straight down
+ * (HANG), so the cloth drapes instead of tilting with her as a stiff slab. Turned less, the piece
+ * turns whole with RotSprite as before; at the angle it was drawn at every pixel is hers, unmoved.
+ */
+export function hangPixels(p: PaintedPiece, deg: number): RotatedPixel[] {
+  const turn = Math.round(deg - p.angle);
+  if (Math.abs(turn) <= HANG_FROM) return rotateTemplate(p, turn);
+  const t = (turn * Math.PI) / 180;
+  // the piece's own across turned with the torso; its down turned less, by what of the turn hangs
+  const a = { x: Math.cos(t), y: Math.sin(t) };
+  const down = { x: -Math.sin(t), y: Math.cos(t) };
+  const h = ((turn - Math.sign(turn) * HANG * (Math.abs(turn) - HANG_FROM)) * Math.PI) / 180;
+  const b = { x: -Math.sin(h), y: Math.cos(h) };
+  // the top row (v0 rows from the pivot) rides the torso: a cell (u, v) lands at u a + v b + shift
+  const v0 = -p.pivot[1];
+  const shift = { x: v0 * (down.x - b.x), y: v0 * (down.y - b.y) };
+  const det = a.x * b.y - a.y * b.x;
+  const w = Math.max(...p.rows.map((row) => row.length));
+  const corners = [
+    [-p.pivot[0] - 1, -p.pivot[1] - 1],
+    [w - p.pivot[0] + 1, -p.pivot[1] - 1],
+    [-p.pivot[0] - 1, p.rows.length - p.pivot[1] + 1],
+    [w - p.pivot[0] + 1, p.rows.length - p.pivot[1] + 1],
+  ].map(([u, v]) => [u * a.x + v * b.x + shift.x, u * a.y + v * b.y + shift.y]);
+  const out: RotatedPixel[] = [];
+  for (let oy = Math.floor(Math.min(...corners.map((c) => c[1]))); oy <= Math.ceil(Math.max(...corners.map((c) => c[1]))); oy++) {
+    for (let ox = Math.floor(Math.min(...corners.map((c) => c[0]))); ox <= Math.ceil(Math.max(...corners.map((c) => c[0]))); ox++) {
+      const qx = ox - shift.x;
+      const qy = oy - shift.y;
+      const u = Math.round((qx * b.y - qy * b.x) / det);
+      const v = Math.round((a.x * qy - a.y * qx) / det);
+      const ch = p.rows[v + p.pivot[1]]?.[u + p.pivot[0]];
+      if (ch && ch !== '.') out.push({ dx: ox, dy: oy, ch });
+    }
+  }
+  return out;
 }
 
 /** Her black line: drawn along a cut when she is laid down. */
@@ -136,7 +235,12 @@ const LINE = '#080613';
 function stampKept(g: DrawCtx, depth: Depth, p: PaintedPiece, color: (ch: string, hex: string) => string): void {
   const r = g.rig;
   if (!r.lay) {
-    stampPiece(g, depth, p, r.pelvis, torsoAngle(g), 'pelvis', color);
+    const L = g.L(depth);
+    const ax = Math.floor(r.pelvis.x * RES);
+    const ay = Math.floor(r.pelvis.y * RES);
+    const pens: Record<string, number> = {};
+    for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
+    for (const q of hangPixels(p, torsoAngle(g))) L.set(ax + q.dx, ay + q.dy, pens[q.ch], 3, 'pelvis', FLAGS);
     return;
   }
   const pal: TemplatePalette = {};
@@ -183,16 +287,42 @@ function bareHandOff(g: DrawCtx, s: Side): void {
 /**
  * Her fist on the wrist: exactly as she drew it while the hand points within 30 degrees of the way it
  * did in her picture (as our hand pictures hang unturned), turned with RotSprite past that, and
- * mirrored when our hand pictures are (the thumb on the facing side).
+ * mirrored when our hand pictures are (the thumb on the facing side). Turned, it stays within a pixel
+ * of where our own hand and forearm were (`ours`, taken before the bare hand comes off): her fist is
+ * longer than ours, and in a pose like leaning with crossed arms its fingers would poke out as loose
+ * bits below the arm that hides our hand.
  */
-function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: string, hex: string) => string): void {
+function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: string, hex: string) => string, ours: Uint8Array): void {
   const j = armJoints(g.rig, s);
   const { flipX } = handPose(g, s);
   const drawn = flipX ? 180 - piece.angle : piece.angle;
   const turn = ((segAngle(j.wrist, j.hand) - drawn + 540) % 360) - 180;
   const pal: TemplatePalette = {};
   for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
-  stampTemplate(g.L(armDepth(s, 'armor')), piece, j.wrist, Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: FLAGS });
+  if (Math.abs(turn) <= 30) {
+    stampTemplate(g.L(armDepth(s, 'armor')), piece, j.wrist, 0, pal, prt('hand', s), { flipX, flags: FLAGS });
+    return;
+  }
+  const tmp = new Layer();
+  stampTemplate(tmp, piece, j.wrist, turn, pal, prt('hand', s), { flipX, flags: FLAGS });
+  const L = g.L(armDepth(s, 'armor'));
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (tmp.mat[i] < 0) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    let near = false;
+    for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1 && !near; dx++) near = ours[(y + dy) * GRID + x + dx] === 1;
+    if (near) L.set(x, y, tmp.mat[i], tmp.shade[i], prt('hand', s), FLAGS);
+  }
+}
+
+/** Where our hand and forearm on side `s` are drawn (1 where they are), before the bare hand comes off. */
+function handAndForearm(g: DrawCtx, s: Side): Uint8Array {
+  const out = new Uint8Array(GRID * GRID);
+  const parts = new Set([partIndex(prt('hand', s)), partIndex(prt('forearm', s))]);
+  const L = g.L(armDepth(s, 'body'));
+  for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && parts.has(L.part[i])) out[i] = 1;
+  return out;
 }
 
 /**
@@ -216,12 +346,17 @@ function herSkin(hex: string, skin: string): string {
   return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), lt);
 }
 
-/** Our hand picture for the pose (open, pointing, relaxed, cradling) in her glove, the fingertips bare. */
-function fingerlessHand(g: DrawCtx, s: Side, tones: string[]): void {
+/**
+ * Our hand picture for the pose (open, pointing, relaxed, cradling) in her glove, the fingertips bare in
+ * her fingers' skin. Both hands take the picture's own shades (the far one is not darkened as our bare
+ * far hand is: her glove is shaded on both hands, and our far skin is no colour of hers), the far
+ * fingertips one tone deeper than the near ones.
+ */
+function fingerlessHand(g: DrawCtx, s: Side, tones: string[], skin: string[]): void {
   const { kind, rot, flipX } = handPose(g, s);
   if (kind === 'grip' || kind === 'fist') return;
   const tmp = new Layer();
-  handDraw(g, tmp, s, { mat: 0, part: prt('hand', s), bias: s === 'F' ? -1 : 0 });
+  handDraw(g, tmp, s, { mat: 0, part: prt('hand', s), bias: 0 });
   const j = armJoints(g.rig, s);
   const ax = Math.floor(j.wrist.x * RES);
   const ay = Math.floor(j.wrist.y * RES);
@@ -229,6 +364,8 @@ function fingerlessHand(g: DrawCtx, s: Side, tones: string[]): void {
   const mirror = flipX && kind !== 'cradle';
   const tip = FINGERTIPS[kind];
   const mats = tones.map((t) => g.m(t, 'flat'));
+  const skins = skin.map((t) => g.m(t, 'flat'));
+  const deeper = s === 'F' ? 1 : 0;
   const L = g.L(armDepth(s, 'armor'));
   for (let i = 0; i < GRID * GRID; i++) {
     if (tmp.mat[i] < 0) continue;
@@ -236,8 +373,9 @@ function fingerlessHand(g: DrawCtx, s: Side, tones: string[]): void {
     const dy = ((i / GRID) | 0) - ay;
     const x = Math.round(dx * Math.cos(a) + dy * Math.sin(a));
     const y = Math.round(-dx * Math.sin(a) + dy * Math.cos(a));
-    if (tip(mirror ? -x : x, y)) continue;
-    L.set(i % GRID, (i / GRID) | 0, mats[Math.max(0, Math.min(tmp.shade[i], mats.length - 1))], 3, prt('hand', s), FLAGS);
+    const sh = tmp.shade[i];
+    const pen = tip(mirror ? -x : x, y) ? skins[Math.max(0, Math.min(sh - deeper, skins.length - 1))] : mats[Math.max(0, Math.min(sh, mats.length - 1))];
+    L.set(i % GRID, (i / GRID) | 0, pen, 3, prt('hand', s), FLAGS);
   }
 }
 
@@ -256,7 +394,8 @@ export const NAVY_PLEATS: ItemDef = {
   bodies: ['female', 'slender'],
   draw: (g, [cloth, hem]) => {
     // The owner's Elise (2026-10-21), her skirt at our scale: it hangs from the pelvis and turns with
-    // the torso, as our skirts do. Her navy follows Cloth, her gold Hem; her black line stays.
+    // the torso, as our skirts do, its pleats draping back toward plumb when she leans far in
+    // (hangPixels). Her navy follows Cloth, her gold Hem; her black line stays.
     const tint = (_ch: string, hex: string) => {
       const k = kindOf(hex);
       return k === 'cloth' ? retintHex(hex, ELISE_SKIRT_CLOTH, cloth) : k === 'hem' ? retintHex(hex, ELISE_SKIRT_HEM, hem) : hex;
@@ -296,12 +435,12 @@ export const AZURE_BELT: ItemDef = {
   id: 'waist_azure_belt',
   slot: 'waist',
   name: 'Slung Belts',
-  desc: 'Two brown leather belts slung across the hips, a steel buckle on the lower one, a small pouch with a gold flap at the far hip.',
+  desc: 'Two brown leather belts across the hips, a steel buckle on the lower one, a small leather box pouch with a steel lid at the far hip.',
   colors: [col('main', 'Leather', ELISE_BELT_LEATHER, 'leather'), col('buckle', 'Buckle', ELISE_BELT_STEEL, 'metal')],
   bodies: ['female', 'slender'],
   draw: (g, [leather, steel]) => {
     // The owner's Elise (2026-10-21), her belts at our scale, riding the pelvis. Her browns follow
-    // Leather, her steel Buckle; her black line and the pouch's gold stay.
+    // Leather, her steel (the buckle and the pouch's lid) Buckle; her black line stays.
     const tint = (_ch: string, hex: string) => {
       const k = kindOf(hex);
       return k === 'leather' ? retintHex(hex, ELISE_BELT_LEATHER, leather) : k === 'steel' ? retintHex(hex, ELISE_BELT_STEEL, steel) : hex;
@@ -330,9 +469,10 @@ export const AZURE_FINGERLESS: ItemDef = {
     for (const s of SIDES) {
       const { kind } = handPose(g, s);
       if (kind === 'grip' || kind === 'fist') {
+        const ours = handAndForearm(g, s);
         bareHandOff(g, s);
-        paintedFist(g, s, s === 'N' ? ELISE_GLOVE_N : ELISE_GLOVE_F, tint);
-      } else fingerlessHand(g, s, ELISE_GLOVE_TONES.map((t) => tint('', t)));
+        paintedFist(g, s, s === 'N' ? ELISE_GLOVE_N : ELISE_GLOVE_F, tint, ours);
+      } else fingerlessHand(g, s, ELISE_GLOVE_TONES.map((t) => tint('', t)), ELISE_FINGER_TONES.map((t) => tint('', t)));
     }
   },
 };

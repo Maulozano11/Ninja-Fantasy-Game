@@ -81,3 +81,9 @@ export const AZURE_BROW_HAIR = '#f8dc92';
 
 /** Her skin, whose shades are round her eyes: the skin tone moves them as far. */
 export const AZURE_SKIN = '#facdac';
+
+/** The face template's skin shades (line, crease, shadow, base, light) in her face's tones: the skin tone moves them as far (her black line stays). */
+export const AZURE_FACE: Record<string, string> = { o: '#080613', D: '#d68271', s: '#e59580', b: '#facdac', l: '#facdac' };
+
+/** Her mouth for the template's lip and crease: one short muted rose line (the skin tone moves it as far). */
+export const AZURE_MOUTH: Record<string, string> = { m: '#d68271', M: '#b76660' };

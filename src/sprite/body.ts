@@ -7,7 +7,7 @@
 
 import { hexToRgb, hslToHex, makeRamp, mixHex, retintHex, rgbToHsl } from './color';
 import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
-import { AZURE_BROW_HAIR, AZURE_EYE_AT, AZURE_EYE_COLORS, AZURE_EYES, AZURE_IRIS, AZURE_SKIN, type AzureEyes } from './eliseEyeArt';
+import { AZURE_BROW_HAIR, AZURE_EYE_AT, AZURE_EYE_COLORS, AZURE_EYES, AZURE_FACE, AZURE_IRIS, AZURE_MOUTH, AZURE_SKIN, type AzureEyes } from './eliseEyeArt';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { stampPiece } from './painted';
@@ -565,9 +565,15 @@ function drawFace(g: DrawCtx): void {
   const eyes = his ? { near: his.near.letters, far: his.far.letters } : azure ? azure.template : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
   const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
+  // With Elise's eyes ('azure') the rest of the face is in her face's tones too: her black line round
+  // the jaw, her soft rose shadows (no darker line on the cheek) and her mouth, one short muted rose
+  // line; the skin tone moves them (not her line) as it moves her skin round the eyes.
+  const herFace = shape === 'azure';
+  const herTone = (ch: string) => (ch === 'o' ? AZURE_FACE.o : skinTone(AZURE_FACE[ch] ?? AZURE_MOUTH[ch], g.look.skin, AZURE_SKIN));
   const put = (x: number, y: number, ch: string) => {
     if (ch === '.') return;
-    if (ch in skinShade) L.set(x, y, g.skin, skinShade[ch], 'head', F_NO_OUTLINE);
+    if (herFace && (ch in AZURE_FACE || ch in AZURE_MOUTH)) L.set(x, y, flat(herTone(ch)), 3, 'head', F_NO_OUTLINE);
+    else if (ch in skinShade) L.set(x, y, g.skin, skinShade[ch], 'head', F_NO_OUTLINE);
     else if (ch in colors) L.set(x, y, colors[ch], 3, 'head', F_NO_OUTLINE);
   };
   if (g.look.faceShape === 'valiant') {

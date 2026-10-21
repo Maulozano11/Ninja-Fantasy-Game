@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER } from '../data/shinobiData';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
+import { AZURE_FOOT_F } from './items/eliseGreavesArt';
 import { GRID } from './raster';
 import type { SpriteAppearance } from './types';
 
@@ -40,5 +41,17 @@ describe('Azure Greaves', () => {
     assert.notEqual(hexAt(f.rgba, 119, 186), '#7d564c');
     assert.notEqual(hexAt(f.rgba, 118, 189), '#e6b75e');
     assert.equal(hexAt(f.rgba, 116, 199), '#080613');
+  });
+
+  it('gives the far sabaton her shoe: a heel with the arch open behind it, the toe no longer than hers', () => {
+    const rows = AZURE_FOOT_F.rows;
+    // no wider than her shoe at our scale (about 13 of our pixels with its line)
+    assert.ok(Math.max(...rows.map((r) => r.replace(/\.+$/, '').length)) <= 14, rows.join('\n'));
+    // the sole's row: her dark sole under the heel, then the arch (her line, nothing under it), then the sole
+    const sole = rows[rows.length - 2].replace(/\.+$/, '');
+    const under = rows[rows.length - 1];
+    const line = Object.entries(AZURE_FOOT_F.colors).find(([, h]) => h === '#080613')![0];
+    assert.match(sole, new RegExp(`^${line}[^.${line}]+${line}+[^.${line}]+${line}$`), sole);
+    assert.ok(under.includes('..'), `the arch is open under the foot: ${under}`);
   });
 });

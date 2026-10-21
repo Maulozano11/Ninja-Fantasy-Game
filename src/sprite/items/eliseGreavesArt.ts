@@ -223,15 +223,15 @@ export const AZURE_SHIN_F: PaintedPiece = {
 
 /** The far sabaton pointing right: it stays flat under the ankle. */
 export const AZURE_FOOT_F: PaintedPiece = {
-  pivot: [4, -2],
+  pivot: [5, -2],
   angle: 98.82,
   rows: [
-    '0LLLLLLLLe0....',
-    '0MLLLLLLLLew0..',
-    '0MLLLLLLLLLew0.',
-    '0dMLLLLLLLLLMd0',
-    '0sssssssssssss0',
-    '.0000000000000.',
+    '0wLLLLe0......',
+    '0MLLLLLLew0...',
+    '0MLLLLLLLLew0.',
+    '0dMMLLLLLLLMd0',
+    '0ss00ssssssss0',
+    '000..00000000.',
   ],
   colors: {
     '0': '#080613',

@@ -9,6 +9,7 @@ import type { DrawCtx, ItemDef } from '../ctx';
 import { stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, RES, v } from '../raster';
 import type { Rig } from '../rig';
+import { rotateTemplate, type RotatedPixel } from '../rotsprite';
 import type { PaintedPart } from './capeArt';
 import {
   ELISE_HAIR_BACK,
@@ -90,7 +91,82 @@ function fall(g: DrawCtx, color: (ch: string, hex: string) => string): void {
   g.L('hairBack').noFray = true;
   stampPiece(g, 'hairBack', ELISE_HAIR_FALL, at, deg, 'back', color);
   // the loose strand would stand up off her back when she lies down
-  if (!g.rig.lay) stampPiece(g, 'hairBack', ELISE_HAIR_WISP, at, deg, 'back', color);
+  if (g.rig.lay) return;
+  const L = g.L('hairBack');
+  const ax = Math.floor(at.x * RES);
+  const ay = Math.floor(at.y * RES);
+  const pens: Record<string, number> = {};
+  for (const [ch, hex] of Object.entries(ELISE_HAIR_WISP.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
+  for (const p of wispPixels(deg)) L.set(ax + p.dx, ay + p.dy, pens[p.ch], 3, 'back', F_NO_TEXTURE | F_NO_OUTLINE);
+}
+
+/**
+ * The loose strand turned by `deg` (the fall's angle), as pixels from the fall's pivot: only what still
+ * hangs on the fall, through the strand itself, side or corner. Turned, a strand a pixel wide can
+ * lose a pixel on the way and leave its end floating off the hair; that end is left out.
+ */
+export function wispPixels(deg: number): RotatedPixel[] {
+  const fall = rotateTemplate(ELISE_HAIR_FALL, deg - ELISE_HAIR_FALL.angle);
+  const wisp = rotateTemplate(ELISE_HAIR_WISP, deg - ELISE_HAIR_WISP.angle);
+  const at = (x: number, y: number) => `${x},${y}`;
+  const onFall = new Set(fall.map((p) => at(p.dx, p.dy)));
+  const loose = new Map(wisp.filter((p) => !onFall.has(at(p.dx, p.dy))).map((p) => [at(p.dx, p.dy), p]));
+  const touches = (p: RotatedPixel, on: (k: string) => boolean) => {
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && on(at(p.dx + dx, p.dy + dy))) return true;
+    return false;
+  };
+  const kept: RotatedPixel[] = [];
+  const keptAt = new Set<string>();
+  let queue = [...loose.values()].filter((p) => touches(p, (k) => onFall.has(k)));
+  while (queue.length) {
+    const next: RotatedPixel[] = [];
+    for (const p of queue) {
+      const k = at(p.dx, p.dy);
+      if (keptAt.has(k)) continue;
+      keptAt.add(k);
+      kept.push(p);
+      loose.delete(k);
+    }
+    for (const p of loose.values()) if (touches(p, (k) => keptAt.has(k))) next.push(p);
+    queue = next;
+  }
+  // At some angles the turned strand lies against the mass and walls in a pixel or a few of
+  // background: those are filled with the strand, so no hole shows between the strand and the hair.
+  if (!kept.length) return kept;
+  const all = [...fall, ...kept];
+  const solid = new Set(all.map((p) => at(p.dx, p.dy)));
+  const x0 = Math.min(...all.map((p) => p.dx)) - 1;
+  const x1 = Math.max(...all.map((p) => p.dx)) + 1;
+  const y0 = Math.min(...all.map((p) => p.dy)) - 1;
+  const y1 = Math.max(...all.map((p) => p.dy)) + 1;
+  const outside = new Set<string>();
+  const stack: [number, number][] = [[x0, y0]];
+  while (stack.length) {
+    const [x, y] = stack.pop()!;
+    const k = at(x, y);
+    if (x < x0 || x > x1 || y < y0 || y > y1 || outside.has(k) || solid.has(k)) continue;
+    outside.add(k);
+    stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+  }
+  // each walled-in pocket next to the strand is filled whole, in the colour of the strand beside it
+  const strand = new Map(kept.map((p) => [at(p.dx, p.dy), p]));
+  const fill: RotatedPixel[] = [];
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const k = at(x, y);
+        if (solid.has(k) || outside.has(k) || strand.has(k)) continue;
+        const by = [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)].map((n) => strand.get(n)).find((p) => p);
+        if (!by) continue;
+        const p = { dx: x, dy: y, ch: by.ch };
+        strand.set(k, p);
+        fill.push(p);
+        grew = true;
+      }
+    }
+  }
+  return [...kept, ...fill];
 }
 
 export const GOLDEN_FALL: ItemDef = {

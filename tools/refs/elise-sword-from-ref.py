@@ -10,9 +10,9 @@ study (tools/refs/heroine-study.py) brought her blade and its sparkles down to o
 female idle in her own colours (reduced_layers('elise')['blade'] and ['glow']); they are taken from
 there. Her hilt is too small at our scale to reduce by machine (about 11 x 12 of our pixels, its
 bow and bar one pixel wide) and our fist is bigger than her glove, so it is drawn here pixel by
-pixel (HILT) after her picture, in her colours only, on the blade's own line: the pommel shows
-above our fist as hers shows above her glove, the bow runs round the outside of the fist, the
-shell and the cross-bar sit where the blade leaves the fist. The grip hidden in her glove is drawn
+pixel (HILT, BOW) after her picture, in her colours only, on the blade's own line: the pommel shows
+above our fist as hers shows above her glove, the bow sweeps out round the outside of the fist as a
+ring with a gap before the glove, the shell and the cross-bar sit where the blade leaves the fist. The grip hidden in her glove is drawn
 in her grip's browns.
 
 The template is drawn at her angle (the blade's line, about 51 degrees, which our idle pose holds
@@ -70,34 +70,45 @@ BLADE_SHIFT = (0, 3)
 BLADE_FROM_ROW = 186
 
 # The hilt, drawn after her picture at our scale in our 256 x 256 frame at idle (columns HILT_X0..,
-# rows HILT_Y0..). '.' is nothing; the other characters are HER colours.
+# rows HILT_Y0..). '.' is nothing; the other characters are HER colours. The knuckle bow is BOW.
 HILT_X0, HILT_Y0 = 98, 168
 HILT = [
     # 98   103  108  113  118
     '...##',  # 168  the pommel
     '..#zy#',  # 169
     '..#ozo#',  # 170
-    '.#k#dT#',  # 171  its collar; the bow leaves the pommel
-    '.#k##N:#',  # 172  the grip
-    '.#k#.#:N#',  # 173
-    '..#k#.#N:#',  # 174
-    '..#k#..#:N#',  # 175  (from here the grip is under our fist)
-    '..#o#...#N:#',  # 176
-    '..#o#...#:N#',  # 177
-    '...#o#...#N:#',  # 178
-    '...#o#....#:N#',  # 179  our near hand joint is on the grip here (x 109)
-    '...#o#.....#N:#',  # 180
-    '....#d#.....#:N#....##',  # 181
-    '....#d#.....#N:#...#zo#',  # 182  the cross-bar's upper end, a gold finial
-    '.....#d#.....#:N#.#uh#',  # 183
-    '......#d#....#kyourZ#',  # 184  the shell, and the steel cross-bar over it
-    '.......#ddoyzyokuhZ#',  # 185  the bow joins the shell
+    '...#dT#',  # 171  its collar (the bow leaves it here)
+    '...##N:#',  # 172  the grip
+    '.....#:N#',  # 173
+    '......#N:#',  # 174
+    '.......#:N#',  # 175  (from here the grip is under our fist)
+    '........#N:#',  # 176
+    '........#:N#',  # 177
+    '.........#N:#',  # 178
+    '..........#:N#',  # 179  our near hand joint is on the grip here (x 109)
+    '...........#N:#',  # 180
+    '............#:N#....##',  # 181
+    '............#N:#...#zo#',  # 182  the cross-bar's upper end, a gold finial
+    '.............#:N#.#uh#',  # 183
+    '.............#kyourZ#',  # 184  the shell, and the steel cross-bar over it
+    '.......dddoyzyokuhZ#',  # 185  the bow joins the shell
     '........#Tdkoyouh',  # 186  (the cross-bar crosses the blade's root)
     '.........#TdduhZ',  # 187
     '..........##uZ#',  # 188
     '..........#od#',  # 189  the cross-bar's lower end, a gold finial
     '...........##',  # 190
 ]
+# Her knuckle bow (x, row, colour), her gold lit at the top and darker below: from the pommel's collar
+# it sweeps out to the left of the fist and down round below it into the shell, a ring about ten
+# pixels across with her background showing between it and the glove, as the reduced reference has
+# it (our fist is bigger than her glove, so a bow hugging it would read as part of the fist). Her line
+# runs along both its sides (BOW_LINE: every side of a bow pixel the hilt leaves empty).
+BOW = [
+    (100, 171, 'k'), (99, 172, 'k'), (98, 173, 'k'), (98, 174, 'k'), (97, 175, 'o'), (97, 176, 'o'), (97, 177, 'o'),
+    (97, 178, 'o'), (97, 179, 'o'), (98, 180, 'd'), (98, 181, 'd'), (99, 182, 'd'), (100, 183, 'd'),
+    (101, 184, 'd'), (102, 184, 'd'), (103, 185, 'd'), (104, 185, 'd'),
+]
+BOW_LINE = '#'
 
 # Palette characters for the module, one per (kind, colour).
 CHARS = 'abcdefhijklmnpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-/:;<=>?@[]^_{|}~'
@@ -136,6 +147,16 @@ def build():
             X, Y = HILT_X0 + i, HILT_Y0 + j
             col[Y, X] = HER[ch]
             kind[Y, X] = 'line' if ch == '#' else 'guard' if ch in GOLD else 'steel' if ch in STEEL else 'grip'
+    # The bow, and her line along it where nothing of the hilt is.
+    for X, Y, ch in BOW:
+        assert not kind[Y, X], ('the bow runs into the hilt', X, Y)
+        col[Y, X] = HER[ch]
+        kind[Y, X] = 'guard'
+    for X, Y, _ in BOW:
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            if not kind[Y + dy, X + dx]:
+                col[Y + dy, X + dx] = HER[BOW_LINE]
+                kind[Y + dy, X + dx] = 'line'
     # The sparkles: the study's glow, moved with the blade, where the sword is not.
     sparks = []
     for y, x in zip(*np.nonzero(lay['glow'] < 255)):

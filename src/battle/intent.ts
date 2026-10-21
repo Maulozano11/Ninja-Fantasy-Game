@@ -43,7 +43,7 @@ export interface Option {
   value: number;
   /** A jutsu that reaches just one foe (the clan's own move can take its place). */
   single?: boolean;
-  /** A Ryusei's own move: a Warp Strike in beside the foe, or a kunai that leaves a Node near it. */
+  /** A Ryusei's own move: a Shooting-Star Thrust in beside the foe, or a kunai that leaves a Node near it. */
   way?: 'warp' | 'plant';
 }
 
@@ -82,7 +82,7 @@ export const WALL = 'koton_wall';
  * which he opens with (the owner, 2026-10-20).
  */
 const FLAME_FOR = 2.5;
-/** A blow from behind (Warp Strike): advantage, and nothing blocks it. Worth half again a plain blow. */
+/** A blow from behind (Shooting-Star Thrust): advantage, and nothing blocks it. Worth half again a plain blow. */
 const EDGE = 1.5;
 
 /** Chakra sealed: no jutsu, no clan ability. */
@@ -104,14 +104,14 @@ export function threat(u: Unit): number {
 }
 
 /**
- * A Ryusei can Warp Strike on its turn: it has the ability, its chakra isn't sealed, 2 chakra and,
+ * A Ryusei can make a Shooting-Star Thrust on its turn: it has the ability, its chakra isn't sealed, 2 chakra and,
  * planning the turn it is in, its bonus action left (`next`: planning its next turn, fresh).
  */
 export const canWarp = (u: Unit, next = false): boolean =>
   u.jutsus.includes(WARP) && !noJutsu(u) && u.chakra >= JUTSU[WARP].cost && (next || u.turn.bonus);
 
 /**
- * Where a Ryusei's Warp Strike lands to strike `t` from behind at once: the landing nearest `t` of
+ * Where a Ryusei's Shooting-Star Thrust lands to strike `t` from behind at once: the landing nearest `t` of
  * its own Nodes (within 18 m and in sight) that has `t` in reach with no metal wall between. Null
  * if none does (or it is in reach already: it just strikes).
  */
@@ -149,7 +149,7 @@ export function swapValue(s: BattleState, u: Unit, t: Unit | undefined): number 
   }
   const mine = Object.values(s.units).filter((o) => o.id !== u.id && o.team === u.team && o.kind === 'ninja' && standingUnit(o) && dist(o.pos, u.pos) <= 2.5);
   const theirs = Object.values(s.units).filter((o) => o.id !== t.id && o.team === t.team && standingUnit(o) && dist(o.pos, u.pos) <= 3);
-  const fails = 1 - successChance(saveMod(t, 'str'), u.saveDC);
+  const fails = 1 - successChance(saveMod(t, 'str'), u.saveDC, 'none', true);
   if (mine.length < 2 || theirs.length || fails < 0.5) return 0;
   return fails * mine.reduce((v, o) => v + threat(o), 0);
 }
@@ -257,7 +257,7 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     for (const [id, refused] of [[COMMAND, commandRefused], [SUBMISSION, submissionRefused]] as const) {
       const j = JUTSU[id];
       if (!u.jutsus.includes(id) || noJutsu(u) || u.chakra < j.cost || d > j.range + u.speed || refused(s, u, f)) continue;
-      const fails = 1 - successChance(saveMod(f, 'wis'), u.saveDC);
+      const fails = 1 - successChance(saveMod(f, 'wis'), u.saveDC, 'none', true);
       out.push({ intent: { kind: 'command', what: id, target: f.id }, value: fails * 2 * threat(f) * fx });
     }
   }
@@ -323,7 +323,7 @@ function clanWays(s: BattleState, u: Unit, out: Option[]): void {
     const best = Math.max(0, ...out.filter(single).map((o) => o.value));
     for (const o of out) {
       const t = o.intent.kind === 'command' && o.intent.what === COMMAND ? s.units[o.intent.target!] : undefined;
-      if (t && 1 - successChance(saveMod(t, 'wis'), u.saveDC) >= 0.5) o.value = Math.max(o.value, best + o.value * 0.001);
+      if (t && 1 - successChance(saveMod(t, 'wis'), u.saveDC, 'none', true) >= 0.5) o.value = Math.max(o.value, best + o.value * 0.001);
     }
   }
 }

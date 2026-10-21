@@ -68,6 +68,11 @@ export interface Conditions {
   crouched?: boolean;
   /** Hidden, with the Stealth total enemies must beat with passive Perception. */
   hidden?: number;
+  /**
+   * Hid with a natural 20: `hidden` is PERFECT_HIDE until the unit's next turn, crouched or not;
+   * then it goes back to this, the roll's real total.
+   */
+  perfectHide?: number;
   /** Paid 2 chakra to walk on deep water this turn. */
   waterWalk?: boolean;
   /** Ninja jump ready: climbing and dropping cost little this turn. */
@@ -191,6 +196,13 @@ export interface Unit {
   creature?: 'beast' | 'summon';
   /** A beast or summon that joined the Northstar's side for the rest of the battle, and the side it left. */
   joined?: { by: string; team: Team };
+  /**
+   * Triple Nature (the feat, rules/feats.ts): the ninja's elements, and whether its once-per-long-rest
+   * discount is spent (it comes spent into a battle when it was used since the last camp).
+   */
+  tripleNature?: { natures: string[]; spent: boolean };
+  /** The nature of the last jutsu it cast this battle ('' for one with none): Triple Nature reads it. */
+  lastNature?: string;
   /** Battle bookkeeping for the mission result. */
   stats2: { critsTaken: number; critsLanded: number; pills: number; fell: boolean; fellToCrit: boolean; tension: number; jutsuCast: number };
   /** Skill proficiencies (Stealth, Perception, Medicine...). */
@@ -443,7 +455,7 @@ export interface RollInfo {
 export type BattleEvent =
   /** `jutsu`: the melee jutsu this run in belongs to (a flash-in, or a charge: JUTSU[jutsu].charge). */
   | { t: 'move'; unit: string; path: Pt[]; run: boolean; jutsu?: string }
-  /** `how`: 'phase' for a Ryusei's Warp Strike and Spatial Swap (the screen plays them as a body of blue light crossing over). */
+  /** `how`: 'phase' for a Ryusei's Shooting-Star Thrust and Spatial Swap (the screen plays them as a body of blue light crossing over). */
   | { t: 'teleport'; unit: string; from: Pt; to: Pt; log?: boolean; how?: 'phase' }
   /** `what`: the jutsu that swept or dragged it (a shove has none). */
   | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number; what?: string }

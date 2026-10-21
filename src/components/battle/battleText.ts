@@ -290,11 +290,20 @@ const TABLE = strings({
   r_waitingReaction: { en: 'Waiting for a reaction.', es: 'Esperando una reacción.' },
   r_default: { en: 'Can’t do that now.', es: 'No se puede ahora.' },
 
+  // dice
+  diceSkip: { en: 'Skip the dice', es: 'Saltar dados' },
+  diceSkipTip: { en: 'The dice land at once (Space)', es: 'Los dados caen al instante (Espacio)' },
+
   // log
   l_turn: { en: '{name}’s turn', es: 'Turno de {name}' },
   l_round: { en: 'Round {n}', es: 'Ronda {n}' },
   l_attackHit: { en: '{a} hits {t} ({roll} vs AC {ac})', es: '{a} golpea a {t} ({roll} contra CA {ac})' },
-  l_attackCrit: { en: '{a} lands a critical on {t}!', es: '¡{a} asesta un crítico a {t}!' },
+  l_attackCrit: { en: 'Natural 20! {a} lands a critical on {t}!', es: '¡20 natural! ¡{a} asesta un crítico a {t}!' },
+  l_damageCrit: { en: 'Critical! Maximum damage: {n} {type} to {t}', es: '¡Crítico! Daño máximo: {n} de {type} a {t}' },
+  l_saveCrit: { en: 'Natural 20! {t} resists perfectly: no damage, no effect ({roll} vs DC {dc})', es: '¡20 natural! {t} resiste por completo: sin daño ni efecto ({roll} contra CD {dc})' },
+  l_saveFumble: { en: 'Natural 1! {t} fails critically ({roll} vs DC {dc})', es: '¡1 natural! {t} sufre un fallo crítico ({roll} contra CD {dc})' },
+  l_checkNat20: { en: 'Natural 20! {t} succeeds ({roll})', es: '¡20 natural! {t} lo logra ({roll})' },
+  l_checkNat1: { en: 'Natural 1: {t} fails automatically ({roll})', es: '1 natural: {t} falla sin remedio ({roll})' },
   l_attackMiss: { en: '{a} misses {t} ({roll} vs AC {ac})', es: '{a} falla contra {t} ({roll} contra CA {ac})' },
   l_damage: { en: '{t} takes {n} {type}', es: '{t} recibe {n} de {type}' },
   l_heal: { en: '{t} recovers {n} HP', es: '{t} recupera {n} PV' },
@@ -367,10 +376,16 @@ const TABLE = strings({
   f_fanned: { en: 'Fanned!', es: '¡Avivado!' },
   n_fanned2: { en: 'The gale fans {name}’s fire: two more damage dice', es: 'El vendaval aviva el fuego de {name}: dos dados de daño más' },
   f_fanned2: { en: 'Fanned!', es: '¡Avivado!' },
+  n_hideCrit: { en: '{name} vanishes completely: nobody can find them until their next turn', es: '{name} desaparece por completo: nadie puede encontrarl{o} hasta su próximo turno' },
+  n_shoveCrit: { en: '{name} slams {other}: knocked down and thrown back', es: '{name} embiste a {other}: l{o2} derriba y l{o2} lanza hacia atrás' },
+  n_shoveReversed: { en: '{name} turns the shove around: {other} falls', es: '{name} devuelve el empujón: {other} cae al suelo' },
+  n_medicineCrit: { en: '{name} works a small miracle: {other} gets back up', es: '{name} obra un pequeño milagro: {other} se levanta' },
   n_warpEdge: { en: '{name} is behind {foe}: the next attack comes from behind', es: '{name} queda a la espalda de {foe}: su próximo ataque, por la espalda' },
   n_swapped: { en: '{name} and {other} trade places', es: '{name} y {other} intercambian lugares' },
   f_warpEdge: { en: 'Behind {foe}', es: 'A la espalda de {foe}' },
   n_swapResisted: { en: '{name} holds its ground', es: '{name} resiste en su sitio' },
+  n_tripleNature: { en: '{name} weaves its natures: 1 chakra less (Triple Nature)', es: '{name} entrelaza sus naturalezas: 1 de chakra menos (Tres naturalezas)' },
+  f_tripleNature: { en: 'Triple Nature: −1 chakra', es: 'Tres naturalezas: −1 chakra' },
 
   // tips
   tip_move: { en: 'Click a lit tile to move. The number is the distance in meters.', es: 'Haz clic en una casilla iluminada para moverte. El número es la distancia en metros.' },
@@ -389,8 +404,8 @@ const TABLE = strings({
     es: 'Arquitectura Modular: un bloque de metal (acción adicional) da media cobertura; un muro de metal (acción) da cobertura total y bloquea la vista. Como máximo, dos en pie.',
   },
   tip_ryusei: {
-    en: 'Weapon Nodes: kunai and missed blows leave a Node (three at most). Warp Strike jumps to one, even through walls; Spatial Swap trades places with whoever stands on one.',
-    es: 'Nodos de Armas: los kunai y los golpes fallados dejan un Nodo (tres como máximo). Golpe Warp salta a uno, incluso a través de muros; Intercambio Espacial cambia de lugar con quien esté sobre uno.',
+    en: 'Weapon Nodes: kunai and missed blows leave a Node (three at most). Shooting-Star Thrust jumps to one, even through walls; Spatial Swap trades places with whoever stands on one.',
+    es: 'Nodos de Armas: los kunai y los golpes fallados dejan un Nodo (tres como máximo). Estocada Fugaz salta a uno, incluso a través de muros; Intercambio Espacial cambia de lugar con quien esté sobre uno.',
   },
   tip_northstar: {
     en: 'Aura of Sovereignty (4.5 m): enemies inside attack with disadvantage, and an enemy who warps or dashes in loses half its movement (your allies are spared). Command turns a Minion to your side for a round. Natural Submission makes an enemy beast or summon join you for the battle.',

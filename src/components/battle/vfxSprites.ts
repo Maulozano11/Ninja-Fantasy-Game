@@ -16,6 +16,7 @@ import { auraDx, fxPos, project } from './renderer';
 import { WAIT, hurryVfxSheets, tintedSheet } from './vfxTintCache';
 import type { TintedSheet } from './vfxTintCache';
 import { unitTint, wallElement } from './vfxTintPlan';
+import { BLOOD_GROUP, screenSplats, splatAt } from './bloodPlan';
 
 /** A sheet, and its copy in a chakra colour when it plays in one. */
 type Sheet = NonNullable<ReturnType<typeof worldSprite>> & { tinted?: TintedSheet };
@@ -235,6 +236,36 @@ function drawNeutralSlash(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: n
   if (alpha <= 0) return true;
   blit(ctx, s, 'fly', frameAt(s, 'fly', ms), p.X + dir * 16 * k, p.Y - (f.lift?.[1] ?? 56) + 12 * k, left, alpha);
   return true;
+}
+
+/**
+ * Blood on the screen itself (the owner: "las gotas de sangre manchan la pantalla cuando
+ * exitosamente se consigue el sangrado"): the drops of a cut that left Bleeding land near the edge
+ * the cut went toward, clear of the panels, then run down and fade. Drawn in screen pixels after
+ * everything else, so it grows with the screen and not with the camera's zoom; never tinted.
+ */
+export function drawScreenBlood(ctx: CanvasRenderingContext2D, sc: Scene): void {
+  if (!sc.pb.screenBlood.length) return;
+  const s = worldSprite(BLOOD_GROUP, 'screen');
+  if (!s || !ready(s)) return;
+  const { frameW: fw, frameH: fh, anchor } = s.spec;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  for (const b of sc.pb.screenBlood) {
+    const ms = (sc.now - b.t0) * sc.pb.speed;
+    for (const sp of screenSplats(sc.W, sc.H, b.side, b.seed, sc.avoid ?? [])) {
+      const st = splatAt(ms - sp.delay);
+      const a = s.spec.anims[sp.variant];
+      if (!st || !a) continue;
+      const k = sp.scale;
+      ctx.globalAlpha = st.alpha;
+      const x = Math.round(sp.x - anchor[0] * k);
+      const y = Math.round(sp.y - anchor[1] * k + st.slide * k);
+      ctx.drawImage(s.img, Math.min(st.frame, a.frames - 1) * fw, a.row * fh, fw, fh, x, y, fw * k, fh * k);
+    }
+  }
+  ctx.restore();
 }
 
 /**
@@ -479,6 +510,16 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
       return true;
     }
     case 'burst': {
+      // Blood (the Bleeding Cut's spray, a bleeding ninja's drip): his dark-red drops, never tinted.
+      // Nothing is drawn in its place while the sheet loads (an element's stand-in would be wrong).
+      if (f.blood) {
+        const s = worldSprite(BLOOD_GROUP, 'spray');
+        if (!s || !ready(s)) return true;
+        const p = project(sc.map, f.to);
+        const anim = f.blood === 'spray' ? 'burst' : 'drip';
+        blit(ctx, s, anim, frameAt(s, anim, ms), p.X, p.Y, left);
+        return true;
+      }
       // Rock bullets and the like can have their own impact, which sprays away from the caster.
       const own = f.role === 'multi' ? sheet(el, 'multi_hit', f.tint) : undefined;
       const s = own ?? sheet(el, 'hit', f.tint);

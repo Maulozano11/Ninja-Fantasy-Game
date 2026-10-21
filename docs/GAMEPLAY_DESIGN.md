@@ -56,6 +56,79 @@ elements.
 - **Dice**: every roll shows as a quick d20 over the acting character, with a
   button to speed it up. The big dice window is kept for criticals and
   important checks. Checks and attacks show their % before rolling.
+  - The dice are a real d20 (20 faces, opposite faces sum to 21) in three
+    styles the player picks in the main menu (owner's decision): A "Gema" (a
+    crystal in the caster's chakra colour, the default), B "Marfil y oro"
+    (ivory with gold), C "Obsidiana rúnica" (black glass with glowing
+    numbers). The dice only show the roll the engine already made and land on
+    that number. Art: `tools/ui/dice-d20.ts` → `src/assets/ui_dice/`.
+    The owner (2026-10-21): "me gustan los estilos el por defecto va ser el
+    del color del chakra"; the Gema taking the chakra colour: "si"; the
+    natural-20 extras of the checks: no changes "por ahora". The critical
+    animation is waiting for his second look.
+  - How it plays (built on `ui/dice-d20`, the look waiting for his approval):
+    the quick die is thrown over whoever rolls (the attacker; the one saving,
+    at the target; the one checking) and lands on the engine's exact d20; with
+    advantage or disadvantage both dice land and the one not kept dims. A
+    readout beside it says "17 + 5 = 22 ✓ CA 14". The action plays when the die
+    clicks onto its face; everyone a blast reaches saves at once, and both sides
+    of a shove roll together. The saves against a jutsu are thrown while it
+    flies, so they land as it hits and the damage shows with the blast. Dice
+    thrown together spread out so none covers another or a head, a bar or a
+    mark; one moved off its ninja has a thin gold stem down to them, and each
+    readout goes on the side where it covers nothing. The battle speed
+    (1×/2×/3×) speeds the dice too, and a "Saltar dados" button (or Space) lands
+    them at once; a Space or Enter pressed within 0.7 s after the dice only
+    skips, so a late press never ends the turn. The big window
+    opens for a natural 20 on an attack ("¡CRÍTICO!"), a natural 1 on a save
+    ("¡FALLO CRÍTICO!") and a natural 20 on a save, a check or a death save
+    ("¡20 NATURAL!"). Sounds: the throw (whoosh, bounces, the click on the face),
+    a chime for a 20, a thud and crack for a 1, the critical's sting; they
+    follow the game's mute switch. Mission checks (camp) throw the same die
+    beside their line in the log.
+  - **A natural 20 on an attack roll is an automatic critical hit with maximum
+    damage** (owner's decision: "un 20 en dado haria impacto critico
+    automatico y el daño maximo y deberiamos ponerle una animacion de extra
+    cuando suceda eso"): every damage die counts as its highest face,
+    including the extra dice the critical adds (2d6+3 → 4×6+3 = 27; a katana's
+    1d8+3 → 8+8+3 = 19), the bonus once. This covers weapon blows, kunai,
+    opportunity attacks, the hydra's bite, props and Kōton walls, and any jutsu
+    that rolls to hit. A natural 1 on an attack still always misses. The log
+    says "¡20 natural! ¡X asesta un crítico a Y!" and "¡Crítico! Daño máximo:
+    19 de cortante a Y". The extra animation: the big window with the gold d20
+    and the "¡CRÍTICO!" banner; on the blow a short hit-stop, a white-gold bloom
+    of light on the target, an impact burst, a camera kick, and the damage in
+    big gold digits marked "MÁX", with its own sound sting. (A critical's
+    other effects stay: two death-save failures on a downed ninja, Tension,
+    Grave wounds, Legend's massive damage.)
+  - **Saving throws** (owner's rule, his answer "a3, b3"): **a natural 20
+    resists completely**: automatic success, no damage at all (not even the
+    half a save usually leaves) and none of the jutsu's effect on that target.
+    **A natural 1 fails and takes it as a critical**: automatic failure,
+    maximum damage exactly like an attack's critical (every damage die at its
+    highest, doubled; a Fireball's 4d6 → 48) and the full effect; it plays the
+    same critical animation at the target ("¡FALLO CRÍTICO!", "MÁX"). This is
+    how jutsu get their critical moment, since every damaging jutsu uses a
+    save. It also covers explosions (tags, barrels, traps) and electrified
+    water (half of the maximum). A save with no damage (Spatial Swap, Command,
+    Natural Submission) just succeeds or fails on the natural. The Tension
+    save at 10 Tension follows the automatic success and failure too.
+  - **Ability checks** (owner's rule, his answer "c3"): a natural 20 is an
+    automatic success **with an extra**, a natural 1 an automatic failure.
+    The checks in battle and their extras:
+
+    | Check | Natural 20 extra |
+    |---|---|
+    | Hide (Stealth) | A perfect hide: no one can find the ninja until its next turn, crouched or not (attacking or leaving cover still gives it away) |
+    | Shove (Athletics) | It knocks the target prone **and** pushes it (3 m when pushing, 1.5 m when knocking down) |
+    | Resisting a shove (Athletics/Acrobatics) | The shove fails and the shover falls prone |
+    | Stabilize (Medicine, DC 10) | The ally does more than stabilize: it gets back up with 1 HP |
+
+    In a contest (a shove) a natural 20 wins and a natural 1 loses; if both
+    sides roll a natural 20 the one resisting keeps its ground. Mission checks
+    are in `docs/MISSION_DESIGN.md`. **Death saves are not checks** and stay as
+    they were (a 20 brings the ninja back at 1 HP, a 1 counts as two failures);
+    initiative only counts its total.
 - **Chakra in battle** does not come back by itself:
   - **Focus chakra** (action): recover 1d6 + casting modifier; attacks against
     you have advantage until your next turn.
@@ -211,7 +284,7 @@ D21 and D24 there):
   plans again. Close enemies' marks don't stack, each walk ends in an
   arrowhead, and the enemy under the cursor has its plan drawn bright while
   the others dim.
-- **Warp Strike** to a Node someone stands on lands 1 to 1.5 m from them,
+- **Shooting-Star Thrust** (*Estocada Fugaz*, once Warp Strike) to a Node someone stands on lands 1 to 1.5 m from them,
   never on top of them.
 
 ## Party, missions and defeat
@@ -345,12 +418,44 @@ by the builder; his answers settle the rows marked so, the rest is still
 | Fire (Fuego) | Pyre Crown (flames), Cinder Nova (embers and a fiery shockwave) | red, orange | His rule; Cinder Nova as a second burst: his answer 4 |
 | Water (Agua) | Rising Tide | blue | Proposed (Hana is Water: his answer 1, on this table) |
 | Wind (Viento) | Leafwind Spiral | green | Proposed (Hiro is Wind: his answer 1, on this table) |
-| Lightning (Rayo) | Storm Lash | yellow | His rule |
+| Lightning (Rayo) | Storm Lash; Battle Static (*Estática de batalla*: no aura and no glow, only small jagged bolts crackling all the time on the hair, shoulders, arms and round the legs, more while empowered) | yellow, cyan | Storm Lash: his rule. A second burst: his request (2026-10-21), its name his; Battle Static is **new art** |
 | Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up) | brown | Kenji Earth: his answer 1. The burst art is **approved** (2026-10-21: "me gusta tierra quebrada") |
 | Shadow (Sombra), no element | Nightveil Mist | indigo | **Pending** (answer 3): not offered; jutsu later, demonic |
 | Spirit (Espíritu), no element | Spectral Guardian | violet | **Pending** (answer 3): not offered; jutsu later, demonic |
 | Light (Luz), no element | Heaven Pillar | white | The type stays (answer 3), its jutsu later: deity, angel and god. The burst: proposed |
 | Void (Vacío), no element | Abyss Orbit | black | The type stays (answer 3), its jutsu later: demonic. The burst: proposed |
+
+- **Lightning's second burst** (the owner, 2026-10-21: *"hazle una segunda
+  aura a electricidad [...] sin el aura solo los rayos ocacionales"*, and by
+  aura he means the ki burst round the body: *"sin eso"*). **Its name is his:
+  *Estática de batalla*** (English *Battle Static*; id `cyan`, natural colours
+  all five taken from his lightning set: navy, deep blue, his mid blue, pale
+  cyan and white). Seeing the first version (then
+  *Chispas vivas*, bolts now and then) he asked for more: *"quiero que se vea
+  mas rayos, lo de ocacionalmente quitalo y ponlo mas regularmente y mas en
+  potenciado que se vea mas"*. As built now: no rim, no halo and nothing
+  rising round the body in any mode, only small, sharp, jagged bolts that
+  crackle for two to four frames on the hair, the shoulders, the arms or
+  round the legs, with a pinpoint flicker where one strikes, and **never a
+  frame without them**: at least four on the body in a charge or a cast (up
+  to five), three or four in a victory after its opening burst of bolts all
+  over the body. **Empowered (potenciado)** it crackles harder: six or seven
+  bolts in a charge, six or seven in a cast (more of them off the palm), five
+  to seven in a victory, each about a third longer and forking more. Empowered means an
+  enhanced jutsu in battle (the cast plays empowered) and the creator's chakra
+  aura switched on (the idle aura, which only plays empowered, and the
+  charge, cast and victory with it on). The other bursts look the same either
+  way. In a cast the bolts jump along the casting arm and off its palm, behind the
+  body when that arm is. Where a bolt may go: never on or in front of the
+  face, never below the soles, never up into the battle's health bar (the
+  hair's bolts crackle off its sides, short, never across the top of the
+  head), and a bolt behind the body mostly shows, so the bolts counted are
+  bolts seen. Its loop is 10 s (the
+  other bursts loop every 2 s), so the bolts don't come back in the same
+  places. It takes any colour (black: a black bolt in a thin bright edge) and
+  reuses Lightning's grimoire emblem, orb and word. Its cyan is not added to
+  the colour swatches (it sat beside the water blue). Lightning offers both
+  bursts in the creator, like Fire. New art: waits for his approval.
 
 **The nature decides the elemental jutsu.** That the nature decides which
 elemental jutsu a ninja can learn is the owner's ("One choice" above). The
@@ -407,7 +512,7 @@ elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
    for a new ninja (a new game, a copy made from a legend, the random ninja)
    is fitted to that: a jutsu above C is swapped for one it may learn, lowest
    rank first. **The S-rank slot** has nothing to offer a new ninja, so it is
-   shown **locked, in its place** ("Se desbloquea más adelante · Rango S · no
+   shown **locked, in its place** ("Se desbloquea al nivel 10 · Rango S · no
    es para un ninja nuevo", with a lock), and the slot is empty on the sheet
    (in battle the ninja simply has no S-rank jutsu). *As built (the builder's
    choice):* locked rather than removed, so the approved Jutsu layout keeps its
@@ -423,8 +528,8 @@ elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
    clan, and the ones of another class are swapped as a class change does).
    Since his level-5 answer ("Level 5" below) a made ninja is offered the same
    ranks as every ninja of its level, no longer every rank: ranks above C are
-   earned at level 5 (the builder's reading, for his approval). When the S-rank
-   slot opens (a level, a mission) is not decided (Open questions).
+   earned at level 5 (the builder's reading, for his approval). The S-rank slot
+   opens at level 10, rank A at 7 (his answer: "The ladder" below).
 2. **The gaps** (Water has no S-rank jutsu, Wind one Element jutsu): he wants
    **proposals** ("propuestas"). A separate job.
 3. **The explosive tag is an item** ("sello explosivo es un item o herramienta
@@ -463,15 +568,17 @@ elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
    **His rule:** a ninja gets a **second element at a higher level** ("tener
    2ndo elemento en nivel mas alto"), and a **third element only with a special
    feat** ("3 elementos si tienes el feat especial para eso"). The level is
-   decided (level 5, "Level 5" below); the feat is still to choose.
+   decided (level 5, "Level 5" below), and so is the feat (Tres naturalezas,
+   "The ladder" below).
 
 **Jutsu of a class: his answer** (2026-10-21, later still), to "¿quién aprende
 los de Genjutsu, Kenjutsu y Taijutsu?": *"9 los que elijan de clase genjutsu
 kenjutsu o taijutsu"*. The jutsu with no element in the Element and S-rank
 slots belong to a class: only a ninja of that class learns them. Built:
 
-- **The game's classes, mapped** (*as built, the builder's mapping, for his
-  approval*; the nearest class, nothing wider):
+- **The game's classes, mapped** (the builder's mapping; the nearest class,
+  nothing wider). **Kenjutsu to the Maestro de Bukijutsu is confirmed** (his
+  answer, 2026-10-21, later still: *"si bukijutsu sera kenjutsu"*):
 
   | Kind of jutsu | Class that learns it | Jutsu today |
   |---|---|---|
@@ -507,7 +614,7 @@ slots belong to a class: only a ninja of that class learns them. Built:
 - **An empty slot** (as built): a slot with nothing for the nature and class
   shows "Nada que aprender aún · nada para tu naturaleza y clase" with a lock;
   the S-rank slot of a new ninja whose nature and class do have S-rank jutsu
-  still shows "Se desbloquea más adelante". When only one jutsu fits the two
+  still shows "Se desbloquea al nivel 10". When only one jutsu fits the two
   Element slots, the second is left empty rather than holding the same jutsu
   twice (until the rank D and C set on its own branch is merged, a Fire
   Bukijutsu Master's Element II, for one, is empty).
@@ -524,12 +631,12 @@ de rango tu elemento principal proponme el feat ok con kaien y raiga"*.
   principal"). The chakra type, the main element, never changes.
 - **A third element** comes only with a special feat ("3 elementos si tienes el
   feat especial para eso"); he asked for **proposals** for the feat ("proponme
-  el feat"). Not built: the proposals are in Open questions.
+  el feat") and chose option A, **Tres naturalezas** ("The ladder" below).
 - **Kaien is Rayo + Fuego and Raiga Fuego + Tierra** ("ok con kaien y raiga"):
   a formal second nature, so their Fireball and Earth Wall are their nature.
 
-**As built** (the builder's choices, each **proposed and waiting for his
-approval**):
+**As built, approved by the owner** (*"nivel 5 esta bien"*, 2026-10-21, later
+still; see "The ladder" below):
 
 - **What each choice opens.** *Second element:* one of the other four elements
   (any; Light and Void ninjas don't get the choice, below); its **rank D and C**
@@ -539,8 +646,9 @@ approval**):
   its own branch). *Higher rank:* the main element's **rank B** jutsu open in
   the Element slots: Fuego: Fuego del dragón; Agua: Proyectil del dragón de agua; Tierra:
   Muro de tierra and Balas de tierra; Rayo: Sabueso del rayo; Viento: none yet.
-  Neither opens the S-rank slot, rank A, the rank B jutsu of a class (Danza de
-  la luna creciente) or of Utility (Clon de sombra).
+  Neither opens the S-rank slot, rank A (those come with the level: "The
+  ladder" below), the rank B jutsu of a class (Danza de la luna creciente) or of
+  Utility (Clon de sombra).
 - **For good.** The choice is made once: while the ninja is created or edited
   it can change (the jutsu it no longer opens are swapped, as on a type change,
   and a note says which), and once the ninja is made with it, it is fixed
@@ -579,6 +687,99 @@ approval**):
   are ("rango B: se queda en su hoja").
 - **Battles and enemies** are not touched: the second element is the creator's
   (which jutsu a ninja may learn).
+
+**The ladder: levels 5, 7, 9 and 10 (decided 2026-10-21, later still).** His
+answer to the level-5 proposal and the third-element feat
+(`feat-propuesta.md`), verbatim: *"si bukijutsu sera kenjutsu feat del tercer
+elemento opcion a nivel 5 esta bien al subir al nivel 7 te un rango A y al 10 un
+rango S"*.
+
+**Decided by the owner:**
+
+- **Kenjutsu belongs to the Maestro de Bukijutsu** ("si bukijutsu sera
+  kenjutsu"), as built.
+- **Level 5 is approved as built** ("nivel 5 esta bien"): a second element (its
+  rank D and C jutsu) or a higher rank of the main element (its rank B jutsu).
+- **Level 7: rank A. Level 10: rank S** ("al subir al nivel 7 te un rango A y al
+  10 un rango S"), for every ninja.
+- **The third element's feat is option A, "Tres naturalezas" / "Triple
+  Nature"** ("feat del tercer elemento opcion a"), as proposed: it needs **level
+  9 and a second element** chosen at level 5; it gives **a third element**, whose
+  rank D and C jutsu open in the Element slots as the second's do; and **once per
+  long rest** a jutsu of one of the ninja's elements costs **1 chakra less** when
+  the previous jutsu it cast that battle was of another of its elements.
+
+So the ladder, one step per level:
+
+| Level | What opens |
+|---|---|
+| 1 | Rank D and C jutsu of its chakra type (and of its class's kind), and its clan's |
+| 5 | One, for good: a second element (its D and C) or a higher rank of the main element (its B) |
+| 7 | Rank A jutsu |
+| 9 | The feat Tres naturalezas, for a ninja with a second element: a third element |
+| 10 | The S-rank slot: rank S jutsu |
+
+**As built** (the builder's reading where his words leave room, for his
+approval):
+
+- **Rank A and S are of the ninja's elements and of its class's kind**: what the
+  nature and class gates already allow (rules/jutsuNature.ts, rules/jutsuClass.ts),
+  now at every rank its level opens. So at level 7 a Lightning ninja learns
+  Chidori, a Genjutsu Adept Templo del Nirvana; at level 10 a Fire ninja Gran
+  aniquilación, a Genjutsu Adept also Yasaka no Magatama. A second (and third)
+  element's rank A and S open too ("de sus elementos"). The level opens no rank
+  B: those stay the level-5 higher rank's (the main element's). No count limit:
+  "un rango A" is read as "the rank A", not "one rank A jutsu".
+- **Every ninja** (a new one, a legend picked as a starting point, a made one) is
+  offered what its level opens. The legends are levels 4 to 6, so none of them
+  reaches 7 today: their own rank A and S jutsu stay on their sheets, marked
+  "rango S: se queda en su hoja", as before.
+- **The creator** says the ladder under the rank line ("Rango A al nivel 7; la
+  ranura de Rango S, al nivel 10."; from level 7 "Desde el nivel 7, también
+  rango A..."), and a locked slot names the level that opens it ("Se desbloquea
+  al nivel 10" for the S-rank slot; "al nivel 7" for the Element slots of a type
+  whose jutsu are all above C, such as Lightning).
+- **Tres naturalezas in the creator:** the feat list shows "Requiere nivel 9 y
+  un segundo elemento" under it (orange while unmet, with a lock) and won't take
+  it until both are met; its panel says what is missing ("Le falta: nivel 9").
+  Taken, the Jutsu step's **"Nivel 9: tercer elemento"** block offers the three
+  other elements, each with what it opens ("Abre: Muro de agua"); the first is
+  picked for the player. Like the level-5 choice it is fixed once the ninja is
+  made with it (the feat too). Leaving the second element for the higher rank
+  drops the feat and its third element (their jutsu are swapped, with a note); an
+  imported sheet that doesn't meet the requirements loses the feat. Below level
+  9 the block says what comes ("Al nivel 9, la dote Tres naturalezas ... le da
+  un tercer elemento a quien tiene un segundo.").
+- **The third element's jutsu** open as the second element's: D and C, and A
+  from level 7 (a ninja with the feat is level 9). The feat's text says so.
+- **The discount in battle** is automatic: the first jutsu of one of its
+  elements cast right after a jutsu of another of its elements costs 1 chakra
+  less (never below 0; not when the Centered chakra discount already made it
+  free), the log says "Raiden entrelaza sus naturalezas: 1 de chakra menos (Tres
+  naturalezas)", and the hotbar shows the lower cost. "The previous jutsu" is
+  the last jutsu the ninja cast that battle, a Kawarimi included; a jutsu with
+  no element (taijutsu) or of another element breaks the chain; clan abilities
+  don't count. "Once per long rest": spent, it stays spent through the
+  mission's next battles until a camp's morning (also an interrupted one) or the
+  return to the village. In practice battles it is ready in every battle.
+- **Saves and enemies.** Nothing saved changes, so there is no migration: saved
+  heroes, the roster and a mission under way load as they were. Enemies are not
+  built in the creator and keep their kits (the jonin's Chidori); the ladder
+  gates the player's choices only.
+- **No level-up screen yet**: a ninja's level is its sheet's, so in play today
+  only an imported sheet reaches level 7, 9 or 10.
+
+**In the code**: `RANK_A_LEVEL`, `RANK_S_LEVEL`, `levelRanks`, `rankOpen(j, clan,
+rankUp, level)` and `slotOpensAt` in `src/rules/progression.ts` (`Growth.level`
+carries the level); the feat is `triple_nature` in `SHINOBI_FEATS` with
+`requires: { level: 9, secondElement: true }`; `src/rules/feats.ts` (`featNeeds`,
+`featOpen`, `keepEarnedFeats`, `tripleNatureDiscount`); the third element is
+`thirdElementOpen`, `hasSecondElement`, `chooseThirdElement`, `fitThirdElement`
+in `src/rules/natureGrowth.ts`. In battle a unit has `tripleNature` (its
+elements, spent) and `lastNature`; `jutsuCostParts` in `src/battle/engine.ts`
+applies it; the battle result's `tripleNatureSpent` sets the sheet's
+`tripleNatureSpent` (cleared in `morning`, `src/rules/rest.ts`, and
+`returnToVillage`).
 
 **In the code** there is one source: the look's burst
 (`appearance.chakra.color`, an id named after the colour the bursts were first
@@ -632,6 +833,14 @@ para las bestias elementales"*.
 - With no colour picked (Natural), or the effect's own colour, his pixels play
   exactly as he drew them. Recolouring never redraws: alpha, his dark line,
   smoke, dust, rock debris, moss and the stone drake's eyes stay his.
+- **His answer on the review** (2026-10-21, later still), verbatim: *"kirin
+  negro dejar asi rosa y violeta y como se vea en otros colores dejalo asi se ve
+  muy bien la curacion siempre se vera verde"*. So: **the black Kirin stays as it
+  is**, with its pink and violet kanji ("kirin negro dejar asi rosa y violeta");
+  **the other colours stay as they look** ("como se vea en otros colores dejalo
+  asi se ve muy bien"); and **a heal is always green** ("la curacion siempre se
+  vera verde"), whatever the caster's chakra colour. (The green heal is built on
+  its own branch, `jutsu/d-c-set`.)
 
 **As built** (the builder's reading, not his decisions):
 
@@ -649,10 +858,11 @@ para las bestias elementales"*.
   The explosive tag (Fire, drawn as a paper tag and its blast) has nothing
   drawn in its element, so it keeps its colours. The Mystical Palm (Water) used
   to be drawn as a green heal; on `jutsu/d-c-set` it wraps the friend in the
-  water aura (the owner's answer 6 on the rank D and C proposal), so it takes
-  the colour like the Healing Dew. That also answers the old open question
-  (should a heal of an elemental nature glow in the chakra colour): yes, unless
-  he says otherwise when he sees it.
+  water aura (the owner's answer 6 on the rank D and C proposal). The old open
+  question (should a heal of an elemental nature glow in the chakra colour) is
+  answered **no** (the owner, 2026-10-21): "la curacion siempre se vera verde".
+  The Palm and the Healing Dew play their water sheets in the heals' green,
+  whatever the caster's colour ("Rank D and C jutsu").
 - The flare when fire or lightning seals a hydra stump and the lightning that
   runs through water take the caster's colour too.
 - White is a cool silver on water, wind, lightning and earth, a faint gold on
@@ -682,8 +892,10 @@ para las bestias elementales"*.
   Muro de agua*, *Técnica de Tierra: Muro de tierra*, *Técnica de Tierra:
   Balas de tierra*, *Técnica de Rayo: Kirin*). New jutsu follow the rule
   (*Técnica de Chakra: Rasengan*, *Técnica de Veneno: Venom Surge*, *Técnica
-  de Agua: Chorro de agua*). The clans' bloodline abilities are not jutsu:
-  Warp Strike and Command stay in English, as the owner wrote them.
+  de Agua: Chorro de agua*). The clans' bloodline abilities are not jutsu
+  and keep their own names: Command (*Comando*) and the Ryusei's
+  Shooting-Star Thrust (*Estocada Fugaz*; the owner, 2026-10-21, once Warp
+  Strike / *Golpe Warp*; CLANS_DESIGN D24).
 - **The action bar** (the owner's kit, 2026-10-20): the skill slots show his
   painted icons and no name; hovering a slot (or aiming its jutsu) opens a
   window with the full name, rank, action, chakra and reach, dice, area and
@@ -785,6 +997,9 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
   It was drawn because Earth had none; Kenji is Earth (his answer 1), but the
   art itself waits for his yes.
+- Lightning's second burst (*Estática de batalla* / Battle Static, his request
+  and his name, 2026-10-21): approve or redo the art, now with bolts at every
+  frame and more while empowered.
 - The burst-to-type table ("Chakra type" above): approve or change the rows
   that are still proposed: Water = Rising Tide, Wind = Leafwind Spiral, and the
   bursts of Light (Heaven Pillar) and Void (Abyss Orbit). His answers settled
@@ -810,9 +1025,17 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   - **the random ninja** takes Element I from its own element when there is
     one, and its clan's secret.
 - The ranks a new ninja may take (his answer 1, built): the S-rank slot is
-  shown locked in its place ("Se desbloquea más adelante") rather than
-  removed. Confirm. **When does it open** (a level, a mission, a teacher)? And
-  when may a ninja learn rank B and A jutsu?
+  shown locked in its place ("Se desbloquea al nivel 10") rather than removed.
+  Confirm. (When it opens is decided: level 10, rank A at 7: "The ladder".)
+- **The ladder as built** ("The ladder" above): rank A and S open for the
+  ninja's elements **and its class's kind** (Templo del Nirvana at 7 and Yasaka
+  no Magatama at 10 for a Genjutsu Adept, Night Guy for a Taijutsu Master), and
+  for its second and third elements too; **no count limit** ("un rango A" read
+  as the rank, not one jutsu of it). Rank B still opens only with the level-5
+  higher rank, so a ninja that took a second element never learns its main
+  element's B (nor anyone the class B Danza de la luna creciente or the Utility
+  B Clon de sombra), though it learns A at 7. Confirm, or say when B opens for
+  the rest.
 - **Editing a legend** (his answer 1): a legend picked in the creator keeps its
   sheet, so a player can pick one, rename it, change its look and stats, accept,
   and play it with its rank B and S jutsu. Should a legend that is changed
@@ -830,34 +1053,20 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   and the refill (or should the pouch's tags be spent for good?). Should tags be
   bought or found later (a shop, loot)? The hidden tag's save is the hider's
   jutsu DC, as the jutsu's was; a thrown one stays DC 13: confirm.
-- **Level 5** (his answer: "nivel 5 suena bien para segundo elemento o subir de
-  rango tu elemento principal"), as built ("Level 5" above): confirm **what each
-  choice opens** (a second element: its rank D and C jutsu; a higher rank: the
-  main element's rank B jutsu; neither opens S or A), that the choice is **for
-  good** once the ninja is made, and that **Light and Void** ninjas don't get
-  it until their own jutsu exist (or may they take a second element?).
+- **Level 5** is approved as built ("nivel 5 esta bien"). Still open from it:
+  **Light and Void** ninjas don't get the choice until their own jutsu exist
+  (or may they take a second element?).
 - **A new ninja's level**: the creator has no level picker, so a new ninja has
   the level of the sheet it is made from (Solen's, 6) and can make the level-5
   choice while it is created, so a new ninja that takes the higher rank learns
   its element's rank B jutsu (his answer 1 said D and C). Should a new ninja
   start at a lower level (1, or 4), or make the choice only in play once a
   level-up screen exists?
-- **The third element's feat** (his rule: "3 elementos si tienes el feat
-  especial para eso"; he asked for proposals): three options, the recommended
-  one first (in Spanish, for him, in the builder's notes). *Recommended:*
-  **"Tres naturalezas" / "Triple Nature"**: prerequisite level 9 and a second
-  element; you gain a third element (its rank D and C jutsu open to your Element
-  slots), and once per long rest a jutsu of one of your elements costs 1 chakra
-  less when the previous jutsu you cast that battle was of another of your
-  elements. *Option 2:* **"Tejedor de naturalezas" / "Nature Weaver"**, the
-  next step of the existing feat Tejedor elemental (prerequisite: Tejedor
-  elemental, a second element, level 7): a third element, and Tejedor
-  elemental's change of damage type works twice per encounter, into any of the
-  ninja's three elements. *Option 3:* **"Afinidad prohibida" / "Forbidden
-  Affinity"** (prerequisite: a second element, level 5): a third element, but
-  its jutsu cost 1 chakra more (a price instead of a high level). The feat is
-  not in the feat list yet; the code has its hook (`THIRD_ELEMENT_FEAT`), and
-  feats have no level prerequisites today (the creator would need them).
+- **Tres naturalezas as built** (he chose option A: "The ladder"): the third
+  element is fixed once the ninja is made with it, and the feat with it; the
+  discount is automatic, a Kawarimi counts as "the previous jutsu", and it is
+  ready again at a camp's morning (an interrupted one too) or back at the
+  village. Confirm.
 - Kaien and Raiga's second natures (his "ok", built): **Kaien's Fuego comes
   before level 5** (he is level 4), as a legend's own exception, and counts as
   his level-5 choice; Raiga's Tierra is his level-5 choice. A second element
@@ -886,8 +1095,8 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   (demonic): to design when he says.
 - **Jutsu of a class** (his answer: "los que elijan de clase genjutsu kenjutsu
   o taijutsu"), as built: **kenjutsu goes to the Maestro de Bukijutsu** (there
-  is no kenjutsu class; Bukijutsu is the weapon class). Confirm, or add a
-  kenjutsu class. **Especialista en Ninjutsu and Especialista médico** learn
+  is no kenjutsu class; Bukijutsu is the weapon class): **confirmed** ("si
+  bukijutsu sera kenjutsu"). **Especialista en Ninjutsu and Especialista médico** learn
   none of the three: confirm. Consequences to decide: a **Light or Void** ninja
   of those two classes has nothing at all for its Element and S-rank slots
   until Light and Void get their jutsu; a ninja with one fitting jutsu for two
@@ -912,6 +1121,8 @@ Visuals: Rasengan uses the chakra sphere, Venom Surge the poison stream,
 Water Stream the water stream.
 
 ## Rank D and C jutsu (proposed 2026-10-21; the owner's answer the same day)
+
+**Approved in the game (2026-10-21):** "apruebo los 12 jutsus con excepcion del de tajo sangrante ya que hay que añadir algun sprite de sangre explotando hacia el lado donde se hace el corte para efecto de sangrado". All twelve are merged. The Bleeding Cut got its blood spray and the drops on the screen (`jutsu/bleeding-blood`, approved under his 24-hour delegation).
 
 Twelve low-rank jutsu for the creator, all drawn with the owner's approved
 element sets. The Spanish proposal (with its previews) was shown to him; he
@@ -983,6 +1194,23 @@ How they look (the owner's answers; the screen reads them from each jutsu's
   one hit, 80 ms apart, and the next turn waits for the last spark.
 - **Bleeding Cut**: its own effect, the wind's crescent cut in white, as a
   sword art has no element (`vfx_neutral`).
+- **Bleeding Cut's blood** (the owner, 2026-10-21: "hay que añadir algun sprite
+  de sangre explotando hacia el lado donde se hace el corte para efecto de
+  sangrado", then "las gotas de sangre manchan la pantalla cuando exitosamente
+  se consigue el sangrado"); built on `jutsu/bleeding-blood`, **waiting for his
+  approval**: on a hit, as the crescent crosses the target (150 ms after the
+  blade comes down), a stylised spray of blood bursts from the chest toward the
+  side the cut travels (mirrored when it goes left), its drops arc, fall and lie
+  on the ground a moment, then fade (`vfx_blood/spray`, 12 frames at 12 fps,
+  from `tools/world-sprites/vfx-blood.ts`; dark-red ramp with his dark line and
+  a bright glint; drawn in front, kept below the face). When the cut leaves
+  Bleeding (not on a miss, not if the foe falls), three drops splash onto the
+  screen itself near the edge the cut went toward, clear of the HUD panels,
+  scaled with the screen and not the zoom; they hold, run down and fade in
+  1.7 s at speed 1 (faster at 2× and 3×), and nothing waits for them
+  (`vfx_blood/screen`). When Bleeding hurts at the start of the ninja's turn a
+  few drops fall from the wound (`vfx_blood/spray` drip). Blood has no element:
+  the chakra colour never touches it (`seq.blood`, `bloodPlan.ts`).
 - **Rush**: a flash of chakra where the ninja sets off, a run at twice the
   speed and a shoulder tackle (a new pose: the head tucked down behind the
   leading shoulder; a katana stowed at the hip hangs back along the leg, a blade
@@ -1000,8 +1228,15 @@ How they look (the owner's answers; the screen reads them from each jutsu's
   Geyser rises from the ground with no projectile (a 0.3 s warning splash, a
   light shake); Mirage flies the eye-sphere half again as slow; Whirl as it was.
 - **Mystical Palm** (the owner's answer 6): the Healing Dew's water aura wraps
-  the friend for 0.8 s as it heals, with no orb (a touch), instead of the green
-  glow, in the caster's chakra colour.
+  the friend for 0.8 s as it heals, with no orb (a touch), instead of the old
+  green glow.
+- **Healing is always green** (the owner, 2026-10-21): "la curacion siempre se
+  vera verde". The heals never take the chakra colour: the Palm's water aura
+  and the Healing Dew's orb and aura are his water pixels recoloured to the
+  heals' green (`#4ade80`, the old Palm glow's and the healed number's), his
+  dark line kept, whoever casts them (Natural and enemies too). Any later heal
+  drawn in an element does the same (`HEAL_TINT`, `jutsuTint` in
+  `src/components/battle/vfxTintPlan.ts`).
 
 The proposal's nine open questions. The branch was built with the proposal's
 defaults; the owner then answered 4 to 9 (2026-10-21), and his answers are

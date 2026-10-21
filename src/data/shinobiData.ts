@@ -73,8 +73,8 @@ export const CLANS_DATA: Record<
     japaneseName: 'リュウセイ一族',
     description: 'Assassins of space: geometric hypermobility, piercing damage and reshaping the board through Nodes.',
     descriptionEs: 'Asesinos del espacio: hipermovilidad geométrica, daño perforante y un tablero que rehacen con sus Nodos.',
-    lineageTraitsEs: 'Nodos de Armas: cada kunai lanzado, y cada ataque cuerpo a cuerpo que falla, deja un Nodo donde cae el arma (tres como máximo; el más antiguo se va). Golpe Warp (acción adicional, 2 chakra, 18 m): se teletransporta a un Nodo a la vista, incluso con muros en medio; si cae junto a un enemigo, el próximo ataque de este turno llega por la espalda (ventaja, y no se puede bloquear). Intercambio Espacial (acción, 3 chakra): cambia de lugar con quien esté sobre un Nodo; un enemigo se resiste con una salvación de FUE.',
-    lineageTraits: 'Weapon Nodes: every kunai throw, and every melee attack that misses, leaves a Node where the weapon lands (three at most; the oldest goes). Warp Strike (bonus action, 2 chakra, 18 m): teleports to a Node in sight, even with walls in between; landing next to an enemy, the next attack this turn comes from behind (advantage, and it can\'t be blocked). Spatial Swap (action, 3 chakra): swaps places with anyone standing on a Node; an enemy resists with a STR save.',
+    lineageTraitsEs: 'Nodos de Armas: cada kunai lanzado, y cada ataque cuerpo a cuerpo que falla, deja un Nodo donde cae el arma (tres como máximo; el más antiguo se va). Estocada Fugaz (acción adicional, 2 chakra, 18 m): se teletransporta a un Nodo a la vista, incluso con muros en medio; si cae junto a un enemigo, el próximo ataque de este turno llega por la espalda (ventaja, y no se puede bloquear). Intercambio Espacial (acción, 3 chakra): cambia de lugar con quien esté sobre un Nodo; un enemigo se resiste con una salvación de FUE.',
+    lineageTraits: 'Weapon Nodes: every kunai throw, and every melee attack that misses, leaves a Node where the weapon lands (three at most; the oldest goes). Shooting-Star Thrust (bonus action, 2 chakra, 18 m): teleports to a Node in sight, even with walls in between; landing next to an enemy, the next attack this turn comes from behind (advantage, and it can\'t be blocked). Spatial Swap (action, 3 chakra): swaps places with anyone standing on a Node; an enemy resists with a STR save.',
     statBonuses: [
       { stat: 'dex', bonus: 2 },
       { stat: 'wis', bonus: 1 },
@@ -246,6 +246,17 @@ export const SHINOBI_FEATS: ShinobiFeat[] = [
     description: 'When rolling a Critical Hit with Taijutsu or Clan jutsu, the target cannot cast jutsus for 1 turn.',
     nameEs: 'Golpe de bloqueo de tenketsu',
     descriptionEs: 'Con un crítico de Taijutsu o de jutsu de clan, el objetivo no puede lanzar jutsus durante 1 turno.',
+  },
+  // The owner's third-element feat ("feat del tercer elemento opcion a", 2026-10-21): rules/feats.ts.
+  {
+    id: 'triple_nature',
+    name: 'Triple Nature',
+    description:
+      'Gain a third element: its jutsu open in your Element slots as your second element\'s do (rank D and C; rank A from level 7). Once per long rest, a jutsu of one of your elements costs 1 chakra less when the previous jutsu you cast that battle was of another of your elements.',
+    nameEs: 'Tres naturalezas',
+    descriptionEs:
+      'Ganas un tercer elemento: sus jutsus se abren en tus ranuras de Elemento como los de tu segundo elemento (rango D y C; rango A desde el nivel 7). Una vez por descanso largo, un jutsu de uno de tus elementos cuesta 1 de chakra menos si el jutsu anterior que lanzaste en esa batalla era de otro de tus elementos.',
+    requires: { level: 9, secondElement: true },
   },
 ];
 

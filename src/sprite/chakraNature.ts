@@ -20,6 +20,7 @@ export const BURST_NATURE: Record<ChakraColorId, ChakraNature> = {
   white: 'Light', // Heaven Pillar: a pillar of light
   black: 'Void', // Abyss Orbit: void orbs, cracking space
   brown: 'Earth', // Shattered Earth: cracked ground, rocks tearing loose
+  cyan: 'Lightning', // Battle Static: small bolts crackling on and around the body all the time, no glow
 };
 
 export interface ChakraType {
@@ -41,7 +42,7 @@ export const CHAKRA_TYPES: ChakraType[] = [
   { nature: 'Fire', elemental: true, bursts: ['red', 'orange'] },
   { nature: 'Water', elemental: true, bursts: ['blue'] },
   { nature: 'Wind', elemental: true, bursts: ['green'] },
-  { nature: 'Lightning', elemental: true, bursts: ['yellow'] },
+  { nature: 'Lightning', elemental: true, bursts: ['yellow', 'cyan'] },
   { nature: 'Earth', elemental: true, bursts: ['brown'] },
   { nature: 'Shadow', elemental: false, bursts: ['indigo'], pending: true },
   { nature: 'Spirit', elemental: false, bursts: ['violet'], pending: true },

@@ -92,7 +92,9 @@ function seeded(s: BattleState, act: (t: BattleState) => Out, want: (out: Out) =
   throw new Error('no seed gives it');
 }
 
-const saved = (out: Out, unit: string) => out.events.some((e) => e.t === 'save' && e.unit === unit && e.roll.success);
+// An ordinary success: a natural 20 takes nothing at all (the owner's A3; tested on its own below).
+const saved = (out: Out, unit: string) => out.events.some((e) => e.t === 'save' && e.unit === unit && e.roll.success && !e.roll.crit);
+const nat20 = (out: Out, unit: string) => out.events.some((e) => e.t === 'save' && e.unit === unit && e.roll.crit);
 const failed = (out: Out, unit: string) => out.events.some((e) => e.t === 'save' && e.unit === unit && !e.roll.success);
 const pushedOf = (ev: BattleEvent[], unit: string) => ev.find((e) => e.t === 'pushed' && e.unit === unit) as Extract<BattleEvent, { t: 'pushed' }> | undefined;
 const proneOn = (ev: BattleEvent[], unit: string) => ev.some((e) => e.t === 'condition' && e.unit === unit && e.cond === 'prone' && e.on);
@@ -166,11 +168,24 @@ describe('the Devouring Tide (Water, rank S)', () => {
     assert.ok(!out.state.units.rogue_0.cond.prone);
   });
 
+  it('a natural 20 takes nothing: no damage, no sweep, no fall, but its flames still go out', () => {
+    const s = duel('water_devouring_tide', { x: 16, z: 10 });
+    s.units.rogue_0.effects = addEffect(s.units.rogue_0.effects, 'burning', { source: 'test' }).effects;
+    const before = { ...s.units.rogue_0.pos };
+    const out = seeded(s, (t) => cast(t, 'water_devouring_tide', t.units.rogue_0.pos), (o) => nat20(o, 'rogue_0'));
+    assert.equal(damageOf(out.events, 'rogue_0'), 0);
+    assert.equal(pushedOf(out.events, 'rogue_0'), undefined);
+    assert.deepEqual(out.state.units.rogue_0.pos, before);
+    assert.ok(!out.state.units.rogue_0.cond.prone);
+    assert.ok(!out.state.units.rogue_0.effects.some((e) => e.id === 'burning'));
+  });
+
   it('it puts out the flames of everyone it reaches, saved or not; a friend in the cone is reached too', () => {
     const s = duel('water_devouring_tide', { x: 16, z: 10 }, { party: [{ character: hero({ id: 'a', name: 'Aki' }), pos: { x: 8, z: 10 } }, { character: hero({ id: 'b', name: 'Ben' }), pos: { x: 12, z: 10 } }] });
     place(s, 'b', { x: 12, z: 10.5 });
     for (const id of ['rogue_0', 'b']) s.units[id].effects = addEffect(s.units[id].effects, 'burning', { source: 'test' }).effects;
-    const out = seeded(s, (t) => cast(t, 'water_devouring_tide', t.units.rogue_0.pos), (o) => saved(o, 'rogue_0'));
+    // (Ben still standing: one a natural 1 knocks out is past putting out.)
+    const out = seeded(s, (t) => cast(t, 'water_devouring_tide', t.units.rogue_0.pos), (o) => saved(o, 'rogue_0') && !o.state.units.b.down);
     for (const id of ['rogue_0', 'b']) {
       assert.ok(out.events.some((e) => e.t === 'save' && e.unit === id), `${id} saves`);
       assert.ok(!out.state.units[id].effects.some((e) => e.id === 'burning'), `${id}: no longer burning`);

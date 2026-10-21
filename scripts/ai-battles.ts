@@ -33,14 +33,14 @@ const party = [
 
 const CLAN_JUTSU: Record<string, string> = {
   katon_pursuing_flame: 'Pursuing Flame',
-  ryusei_warp: 'Warp Strike',
+  ryusei_warp: 'Shooting-Star Thrust',
   ryusei_swap: 'Spatial Swap',
   koton_block: 'Kōton Block',
   koton_wall: 'Kōton Wall',
   northstar_command: 'Command',
   northstar_submission: 'Natural Submission',
 };
-const ROWS = ['Pursuing Flame', 'other Mirai jutsu', 'Premonitory Evasion', 'Ryusei kunai', 'Node left', 'Warp Strike', 'blow from behind', 'Spatial Swap', 'Kōton Block', 'Kōton Wall', 'Command', 'Command taken', 'aura slowed a foe', 'attack in a foe\'s aura'];
+const ROWS = ['Pursuing Flame', 'other Mirai jutsu', 'Premonitory Evasion', 'Ryusei kunai', 'Node left', 'Shooting-Star Thrust', 'blow from behind', 'Spatial Swap', 'Kōton Block', 'Kōton Wall', 'Command', 'Command taken', 'aura slowed a foe', 'attack in a foe\'s aura'];
 type Side = 'enemy' | 'party';
 
 let refusedAll = 0;

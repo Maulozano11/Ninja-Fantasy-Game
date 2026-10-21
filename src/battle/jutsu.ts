@@ -57,6 +57,11 @@ export interface JutsuSeq {
   tower?: { warn: number; minis: number };
   /** A cone's breath laid along it (the Rubble Gust's dust), for `ms`. */
   breathMs?: number;
+  /**
+   * Blood (the owner, 2026-10-21): a hit bursts a spray of it out of the target toward the side the
+   * cut travels, and a cut that leaves Bleeding splashes drops onto the screen. Never in a chakra colour.
+   */
+  blood?: boolean;
 }
 
 export interface JutsuSpec {
@@ -68,6 +73,8 @@ export interface JutsuSpec {
   nameEnh?: string;
   nameEnhEs?: string;
   rank: string;
+  /** The jutsu's nature as its data says it (Fire, Taijutsu…); the hydra's attacks and the clan abilities have none. */
+  nature?: string;
   element: VfxElement;
   cost: number;
   enhCost: number;
@@ -92,7 +99,8 @@ export interface JutsuSpec {
   /**
    * A fire, water, wind, lightning or earth jutsu (by its nature, and its effects are that
    * element's): the screen plays its effects, its beast and its wall in the caster's chakra colour
-   * (the owner, 2026-10-21). A sword art that borrows the wind's slash is not one.
+   * (the owner, 2026-10-21). A sword art that borrows the wind's slash is not one. A heal drawn in
+   * its element plays in green instead, whoever casts it (the owner: "la curacion siempre se vera verde").
    */
   elemental?: boolean;
   /**
@@ -168,7 +176,8 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   shadow_clone: { shape: 'self', special: 'clone', vfx: 'aura', loud: false },
   body_flicker: { shape: 'point', special: 'flicker', vfx: 'aura', loud: false },
   // Water by nature, and drawn in it: the water aura wraps the friend as it heals (the owner: the
-  // Healing Dew's aura goes on the Palm too), in the caster's chakra colour like every elemental jutsu.
+  // Healing Dew's aura goes on the Palm too), in green like every heal, never the chakra colour (the
+  // owner: "la curacion siempre se vera verde").
   mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false, seq: { healAura: 800 } },
   substitution_kawarimi: { shape: 'self', special: 'kawarimi', cast: 'reaction', vfx: 'hit', loud: false },
   fireball_goukakyu: { vfx: 'sphere', effect: 'burning', sig: 'fireball' },
@@ -203,12 +212,14 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   earth_pebble_shot: { vfx: 'multi', seq: { volley: { paths: ['high', 'straight', 'low'], stagger: 110 }, castAura: 560 } },
   // A stomp, no seals: the weapon stays in hand.
   earth_spike_crown: { vfx: 'hit', melee: true, pose: 'charge', seq: { castAura: 400, hitEach: { stagger: 80 } } },
+  // The water orb and aura, in green like every heal (the owner).
   water_healing_dew: { shape: 'ally', special: 'heal', vfx: 'bolt', loud: false, seq: { healAura: 800 } },
   water_geyser: { vfx: 'blast', seq: { fromGround: { warn: 300 }, shake: 2 } },
   // Silent (the owner): a silent jutsu that wounds counts as an attack in the stealth phase (P6).
   genjutsu_mirage: { vfx: 'sphere', effect: 'confused', loud: false, seq: { slowFlight: 1.5 } },
-  // A sword art with no element: its own cut, the wind's crescent in white (the owner).
-  kenjutsu_bleeding_cut: { vfx: 'slash', vfxSet: 'neutral', melee: true, effect: 'bleeding', loud: false },
+  // A sword art with no element: its own cut, the wind's crescent in white (the owner), and the
+  // blood it draws thrown the way the cut goes.
+  kenjutsu_bleeding_cut: { vfx: 'slash', vfxSet: 'neutral', melee: true, effect: 'bleeding', loud: false, seq: { blood: true } },
   // A shoulder tackle with the weapon put away (the owner): a straight run in, then the blow.
   taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', seq: { launchFlash: true, fastRun: 2 } },
   // The gaps in the elements (the owner's answers of 2026-10-21; docs/GAMEPLAY_DESIGN.md, "Jutsu for
@@ -240,6 +251,7 @@ function specOf(j: JutsuDefinition): JutsuSpec {
     ...(j.nameEs ? { nameEs: j.nameEs } : {}),
     ...(j.nameEnh ? { nameEnh: j.nameEnh, nameEnhEs: j.nameEnhEs ?? j.nameEnh } : {}),
     rank: j.rank,
+    nature: j.nature,
     element: ELEMENT[j.nature] ?? 'chakra',
     cost: j.chakraCost,
     enhCost: j.enhancementChakraCost,
@@ -401,9 +413,10 @@ const CLAN_SPECS: JutsuSpec[] = [
   },
   // Ryusei. Weapon Nodes are passive (clans.ts): kunai and missed blows leave them.
   {
+    // The owner's name (2026-10-21), after the clan (Ryusei, a shooting star); once Warp Strike / Golpe Warp. The id stays.
     id: 'ryusei_warp',
-    name: 'Warp Strike',
-    nameEs: 'Golpe Warp',
+    name: 'Shooting-Star Thrust',
+    nameEs: 'Estocada Fugaz',
     clan: 'Ryusei',
     ability: true,
     rank: '',

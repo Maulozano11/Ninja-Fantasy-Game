@@ -3,15 +3,20 @@
 // decided everything; this only paces it so it can be watched.
 
 import type { AreaShape, BattleEvent, BattleState, Down, GaleZone, Pt, Unit, Wall, WeaponNode } from '../../battle/types';
+import type { RollInfo } from '../../battle/types';
+import { CLICK_MS, IMPACT, WINDOW, dieLife } from '../dice/diceData';
+import type { WindowKind } from '../dice/diceData';
 import type { SpritePose } from '../../sprite/types';
 import { JUTSU, areaEnd, nearSegment } from '../../battle/jutsu';
 import type { JutsuSpec, VfxElement, VfxRole } from '../../battle/jutsu';
 import { POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
 import { FAN_MS, FAN_ROLL, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
+import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
 import { dist } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
+import { edgeFoe } from '../../battle/clans';
 
 export interface UnitView {
   pos: Pt;
@@ -40,11 +45,22 @@ export interface UnitView {
   /** A creature's own animation (the hydra's bite, spit, roar, hurt, sever, regrow, death). */
   creature?: { anim: string; t0: number };
   /**
-   * A Ryusei's phase (Warp Strike, Spatial Swap): the ninja turns to blue light where it stands,
+   * A Ryusei's phase (Shooting-Star Thrust, Spatial Swap): the ninja turns to blue light where it stands,
    * dashes as light to `to` and turns solid there (PHASE_IN, PHASE_DASH, PHASE_OUT; renderer.ts
    * draws it).
    */
   phase?: { from: Pt; to: Pt; t0: number };
+  /**
+   * A Ryusei's Shooting-Star Thrust (the owner, 2026-10-21): the ninja throws its weapon at the Node and
+   * turns to blue light in the release pose as it leaves the hand; the weapon flies there with a
+   * trail of sparkles, the light body follows it and turns solid where it lands, already in the
+   * thrust ('pierce') and catching the weapon, and thrusts at the foe beside it (`foe`) or ahead.
+   * `face` is the way it throws and dashes, `land` the way it faces on landing, `fly` how long the
+   * weapon flies (ms at speed 1; warpTimes gives the rest; renderer.ts draws it).
+   */
+  warp?: { from: Pt; to: Pt; t0: number; face: 1 | -1; land: 1 | -1; foe?: string; fly: number };
+  /** The cast pose is an enhanced jutsu's: its chakra burst plays empowered. */
+  castEnhanced?: boolean;
 }
 
 export interface Floater {
@@ -90,12 +106,17 @@ export interface Fx {
   alpha?: number;
   /** The effect set when not its element's: 'neutral', the white cut of a sword art with no element. */
   set?: 'neutral';
+  /**
+   * Blood (vfx_blood, never in a chakra colour): the Bleeding Cut's spray thrown out of the target
+   * toward where the cut goes (from → to), or the drip of a ninja that bleeds.
+   */
+  blood?: 'spray' | 'drip';
   /** A cone drawn as one joined fan from the hand (the Spark Fan), reaching these points. */
   joined?: Pt[];
   /**
    * The caster's chakra colour (a chakra colour id or '#rrggbb'), for an elemental jutsu's effects:
    * they play in it, sheets and drawn ones alike (the owner, 2026-10-21). Taken when the jutsu is
-   * cast, so the effect keeps it. Unset: his colours.
+   * cast, so the effect keeps it. A heal's is always the heals' green (HEAL_TINT). Unset: his colours.
    */
   tint?: string;
   /**
@@ -126,6 +147,54 @@ export interface Banner {
   tone: 'neutral' | 'good' | 'bad' | 'alarm';
 }
 
+/**
+ * A d20 on screen: the roll the engine already made, thrown over the one who rolls it (the
+ * attacker, the one saving, the one checking) and landing on its exact number. `t0` is when it was
+ * thrown; its own clock runs at the battle speed.
+ */
+export interface DieShow {
+  unit: string;
+  roll: RollInfo;
+  kind: 'attack' | 'save' | 'check' | 'death';
+  t0: number;
+  /** It went on into the big window, which shows it from then on. */
+  windowed?: boolean;
+}
+
+/** The big window of a critical or an important roll (opened `t0`, once the small die has landed). */
+export interface DiceWindow {
+  die: DieShow;
+  kind: WindowKind;
+  t0: number;
+}
+
+/** A critical's blow landing on its target: the bloom, the burst and the maximum damage. */
+export interface CritImpact {
+  unit: string;
+  amount: number;
+  t0: number;
+}
+
+/** Which events roll a d20 the screen shows (initiative is not shown). */
+const diceKind = (ev: BattleEvent): DieShow['kind'] | null =>
+  ev.t === 'attack' ? 'attack' : ev.t === 'save' ? 'save' : ev.t === 'check' ? 'check' : ev.t === 'deathSave' ? 'death' : null;
+
+/**
+ * Which rolls open the big window (the owner's rules, docs/GAMEPLAY_DESIGN.md "Dice"): a natural
+ * 20 on an attack (the critical), a natural 1 on a save (it takes the critical), and a natural 20
+ * on a save, a check or a death save.
+ */
+export function windowOf(ev: BattleEvent): WindowKind | null {
+  const k = diceKind(ev);
+  if (!k || !('roll' in ev)) return null;
+  if (k === 'attack') return ev.roll.crit ? 'crit' : null;
+  if (k === 'save' && ev.roll.fumble) return 'fumble';
+  return ev.roll.d20 === 20 ? 'nat20' : null;
+}
+
+/** A natural 20 or 1, for the die's own effect. */
+export const natOf = (r: RollInfo): 20 | 1 | undefined => (r.d20 === 20 ? 20 : r.d20 === 1 ? 1 : undefined);
+
 /** Hooks the screen gives the player: sounds, the log, the roll toast, the camera. */
 export interface PlaybackHooks {
   sound(name: SoundName, detail?: string): void;
@@ -136,7 +205,9 @@ export interface PlaybackHooks {
   label(ev: BattleEvent): string | null;
 }
 
-export type SoundName = 'step' | 'swing' | 'hit' | 'crit' | 'miss' | 'jutsu' | 'explosion' | 'heal' | 'down' | 'alarm' | 'kawarimi' | 'turn' | 'victory' | 'defeat' | 'roar' | 'splash' | 'bells' | 'stone' | 'draw';
+export type SoundName =
+  | 'step' | 'swing' | 'hit' | 'crit' | 'miss' | 'jutsu' | 'explosion' | 'heal' | 'down' | 'alarm' | 'kawarimi' | 'turn' | 'victory' | 'defeat' | 'roar' | 'splash' | 'bells' | 'stone' | 'draw'
+  | 'diceThrow' | 'dicePop' | 'diceNat20' | 'diceNat1' | 'critSting';
 
 const RUN = 5.5;
 const WALK = 3.2;
@@ -158,6 +229,63 @@ export const phaseDash = (ms: number): number => {
   const t = Math.min(1, Math.max(0, (ms - PHASE_IN) / PHASE_DASH));
   return 1 - (1 - t) ** 2.2;
 };
+
+/**
+ * A Shooting-Star Thrust (UnitView.warp), ms at speed 1. The throw's wind-up plays a frame each WARP_FRAME
+ * ('throw' 0 carga, 1 armado, 2 the throw), so the weapon leaves the hand at WARP_REL, in the
+ * release pose (the owner's reference), where the ninja turns to light over WARP_LIGHT. The weapon
+ * flies for `fly` (longer the farther it goes); the light body dashes after it and lands WARP_LAG
+ * after it, turns solid over WARP_SOLID in the thrust's chamber (catching it), then thrusts
+ * ('pierce' 2 estocada, 3 impacto, 4 retroceso, WARP_THRUST each) and stands. About a second in all.
+ */
+export const WARP_FRAME = 110;
+export const WARP_REL = 3 * WARP_FRAME;
+export const WARP_LIGHT = 110;
+export const WARP_LAG = 50;
+export const WARP_SOLID = 100;
+export const WARP_THRUST = [90, 100, 100] as const;
+/** How long a Shooting-Star Thrust's weapon flies over `metres`. */
+export const warpFly = (metres: number): number => Math.round(Math.min(420, Math.max(250, 200 + 12 * metres)));
+
+export interface WarpTimes {
+  /** The weapon leaves the hand; the ninja starts turning to light. */
+  rel: number;
+  /** The light body sets off after the weapon. */
+  dash: number;
+  /** The weapon reaches the catch. */
+  caught: number;
+  /** The light body lands; it turns solid, catching the weapon. */
+  land: number;
+  /** Solid, in the thrust's chamber: the thrust plays. */
+  solid: number;
+  /** Standing again: the Shooting-Star Thrust is over. */
+  end: number;
+}
+
+export function warpTimes(fly: number): WarpTimes {
+  const caught = WARP_REL + fly;
+  const land = caught + WARP_LAG;
+  const solid = land + WARP_SOLID;
+  return { rel: WARP_REL, dash: WARP_REL + WARP_LIGHT, caught, land, solid, end: solid + WARP_THRUST[0] + WARP_THRUST[1] + WARP_THRUST[2] };
+}
+
+/** How far the light body is along a Shooting-Star Thrust's dash (0..1) `ms` into it: quick off the mark, easing into the landing, like a phase. */
+export const warpDash = (ms: number, t: WarpTimes): number => {
+  const k = Math.min(1, Math.max(0, (ms - t.dash) / (t.land - t.dash)));
+  return 1 - (1 - k) ** 2.2;
+};
+
+/** How hard the thrown weapon slows into the catch (warpFlight). */
+const FLIGHT_EASE = 1.5;
+
+/** How far the thrown weapon is along its flight (0..1) `ms` into the Shooting-Star Thrust: flung hard, slowing a little as it arrives. */
+export const warpFlight = (ms: number, t: WarpTimes): number => {
+  const k = Math.min(1, Math.max(0, (ms - t.rel) / (t.caught - t.rel)));
+  return 1 - (1 - k) ** FLIGHT_EASE;
+};
+
+/** When (ms into the Shooting-Star Thrust) the thrown weapon was `w` (0..1) along its flight: warpFlight turned round. */
+export const warpFlightMs = (w: number, t: WarpTimes): number => t.rel + (1 - (1 - Math.min(1, Math.max(0, w))) ** (1 / FLIGHT_EASE)) * (t.caught - t.rel);
 
 export class Playback {
   views = new Map<string, UnitView>();
@@ -198,6 +326,35 @@ export class Playback {
    * on the ninja, faint, until its next turn): unit → the aura's element, opacity and start.
    */
   lingers = new Map<string, { element: VfxElement; alpha: number; t0: number; tint?: string }>();
+  /** Sounds due later in something already playing (a Shooting-Star Thrust's throw and catch). */
+  private cues: { at: number; name: SoundName }[] = [];
+  /** The d20s on screen, the big window (one at a time) and the criticals landing. */
+  dice: DieShow[] = [];
+  diceWindow: DiceWindow | null = null;
+  impacts: CritImpact[] = [];
+  /** Throw the dice for every roll (off for tools that only want the events paced). */
+  diceOn = true;
+  /** The roll events whose dice are already thrown (the event itself plays once they land). */
+  private thrown = new WeakSet<BattleEvent>();
+  /** Until when the queue waits for dice to land (the skip button cuts it short). */
+  private diceWait = 0;
+  /** Dice sounds still to come (the throw, the click of each die, the natural's chime), at screen time. */
+  private sounds: { at: number; name: SoundName; detail?: string }[] = [];
+  /**
+   * When the jutsu being played reaches its targets (screen time; 0 when not known): the saves
+   * against it are thrown so they land then, not after the blast has played out.
+   */
+  private hitAt = 0;
+  /** The skip button never plays a roll before this (the jutsu it answers has not hit yet). */
+  private diceFloor = 0;
+  /**
+   * Blood drops on the screen itself (the owner: "las gotas de sangre manchan la pantalla cuando
+   * exitosamente se consigue el sangrado"): when they landed and toward which side the cut went.
+   * Drawn over the battle in screen pixels (vfxSprites.ts, drawScreenBlood); nothing waits for them.
+   */
+  screenBlood: { t0: number; side: 1 | -1; seed: number }[] = [];
+  /** The way the last cut that draws blood went (1 right, -1 left), for the drops on the screen. */
+  private cutSide: 1 | -1 = 1;
 
   constructor(state: BattleState, private hooks: PlaybackHooks) {
     this.sync(state, 0);
@@ -249,6 +406,67 @@ export class Playback {
   }
 
   /**
+   * Throws the dice of the roll at the head of the queue, and of the rolls right after it that
+   * happen at the same moment (everyone a blast reaches saves at once; a shove is a contest), each
+   * over the one who rolls it. Opens the big window for a critical or an important natural.
+   * Returns how long (ms at speed 1) the queue waits before the roll's event plays.
+   */
+  private throwDice(now: number, real = now): number {
+    const first = this.queue[0];
+    const group: BattleEvent[] = [first];
+    if (first.t === 'save' || first.t === 'check')
+      for (let i = 1; i < this.queue.length && group.length < 8 && this.queue[i].t === first.t; i++) {
+        // One a wave has still to reach throws its own die when the crest gets there.
+        if (this.due.has(unitOfEvent(this.queue[i]) ?? '')) break;
+        group.push(this.queue[i]);
+      }
+    let windowed: DieShow | null = null;
+    let kind: WindowKind | null = null;
+    let fumble = false;
+    for (const ev of group) {
+      this.thrown.add(ev);
+      const k = diceKind(ev);
+      if (!k || !('roll' in ev) || !('unit' in ev)) continue;
+      const die: DieShow = { unit: ev.unit, roll: ev.roll, kind: k, t0: now };
+      this.dice = this.dice.filter((d) => d.unit !== ev.unit);
+      this.dice.push(die);
+      const w = windowOf(ev);
+      if (w && !windowed) {
+        windowed = die;
+        die.windowed = true;
+        kind = w;
+      }
+      if (ev.roll.d20 === 1) fumble = true;
+    }
+    const click = now + CLICK_MS / this.speed;
+    // Dice thrown ahead (while a jutsu flies) make their sound when they leave the hand.
+    if (now > real) this.sounds.push({ at: now, name: 'diceThrow', detail: String(this.speed) });
+    else this.hooks.sound('diceThrow', String(this.speed));
+    if (windowed && kind) {
+      this.diceWindow = { die: windowed, kind, t0: now + (CLICK_MS + WINDOW.open) / this.speed };
+      this.sounds.push({ at: click, name: kind === 'fumble' ? 'diceNat1' : 'diceNat20' });
+      return CLICK_MS + WINDOW.go;
+    }
+    this.sounds.push({ at: click, name: fumble ? 'diceNat1' : 'dicePop' });
+    // A natural 1 shows its crack before the action goes on.
+    return CLICK_MS + (fumble ? 260 : 90);
+  }
+
+  /** Dice are still in the air or the big window is open: the skip button shows. */
+  diceRolling(now: number): boolean {
+    return now < this.diceWait || (!!this.diceWindow && now < this.diceWindow.t0 + (WINDOW.go - WINDOW.open) / this.speed);
+  }
+
+  /** The skip button: the dice land at once, the window closes, and the roll's event plays. */
+  skipDice(now: number): void {
+    for (const d of this.dice) d.t0 = Math.min(d.t0, now - dieLife(natOf(d.roll)) / this.speed + 300 / this.speed);
+    this.diceWindow = null;
+    this.sounds = [];
+    if (this.busyUntil === this.diceWait && now < this.busyUntil) this.busyUntil = Math.max(now, this.diceFloor);
+    this.diceWait = 0;
+  }
+
+  /**
    * Runs the queue up to `now`. Returns true once everything has played out: the last event's own
    * time, every walk and every one-shot pose (then the views can snap to the state).
    */
@@ -257,23 +475,49 @@ export class Playback {
       const next = this.queue[0].t;
       if ((next === 'turn' || next === 'round' || next === 'end') && now < this.lingerUntil) break;
       if (next === 'turn') this.due.clear();
-      const who = unitOfEvent(this.queue[0]);
+      // A roll: its dice are thrown first, and the event plays once they land. The first event of
+      // one a wave's crest has still to reach (due) waits for it, and a roll's dice are thrown so
+      // they land as the crest goes over that one (the skip button never plays it sooner).
+      const head = this.queue[0];
+      const who = unitOfEvent(head);
       const due = who === undefined ? undefined : this.due.get(who);
-      if (due !== undefined) {
-        this.due.delete(who!);
-        if (now < due) {
-          this.busyUntil = due;
-          break;
-        }
+      const roll = this.diceOn && !!diceKind(head) && !this.thrown.has(head);
+      const wait = due === undefined ? 0 : roll ? due - CLICK_MS / this.speed : due;
+      if (now < wait) {
+        this.busyUntil = wait;
+        break;
+      }
+      if (due !== undefined) this.due.delete(who!);
+      if (roll) {
+        this.busyUntil = this.diceWait = Math.max(due ?? 0, now + this.throwDice(now) / this.speed);
+        this.diceFloor = due ?? 0;
+        continue;
       }
       const ev = this.queue.shift()!;
+      this.hitAt = 0;
       const d = this.apply(ev, now, state);
       this.busyUntil = now + d / this.speed;
+      this.diceFloor = 0;
+      // A jutsu its targets save against: their dice are thrown while it flies and land as it hits,
+      // and the saves (and the damage) play from there (thrown after the blast had played out, the
+      // damage came a second after the explosion).
+      const nx = this.queue[0];
+      // (Not when a wave's crest has still to reach the one saving: that waits for the crest, above.)
+      if (this.diceOn && ev.t === 'jutsu' && nx?.t === 'save' && !this.thrown.has(nx) && !this.due.has(nx.unit)) {
+        const hit = Math.max(now, Math.min(this.hitAt || this.busyUntil, this.busyUntil));
+        const t0 = Math.max(now, hit - CLICK_MS / this.speed);
+        this.busyUntil = this.diceWait = Math.max(hit, t0 + this.throwDice(t0, now) / this.speed);
+        this.diceFloor = hit;
+      }
       if (!this.queue.length) this.settling = true;
     }
     if (this.shakes.length) {
       for (const sh of this.shakes) if (now >= sh.at) this.hooks.shake(sh.power);
       this.shakes = this.shakes.filter((sh) => now < sh.at);
+    }
+    if (this.cues.length) {
+      for (const c of this.cues) if (now >= c.at) this.hooks.sound(c.name);
+      this.cues = this.cues.filter((c) => now < c.at);
     }
     // One-shot poses fall back to rest.
     for (const [id, v] of this.views) {
@@ -288,6 +532,13 @@ export class Playback {
         const u = state.units[id];
         if (u) v.facing = u.facing;
       }
+      if (v.warp && now >= v.warp.t0 + warpTimes(v.warp.fly).end / this.speed) {
+        v.facing = v.warp.land;
+        v.warp = undefined;
+        const u = state.units[id];
+        v.pose = u ? restPoseView(u, v) : 'idle';
+        v.poseT0 = now;
+      }
       if (v.walk && now >= v.walk.t0 + (v.walk.total / v.walk.speed) * 1000 / this.speed) {
         v.pos = { ...v.walk.path[v.walk.path.length - 1] };
         v.walk = undefined;
@@ -299,14 +550,20 @@ export class Playback {
         }
       }
     }
+    for (const s of this.sounds) if (now >= s.at) this.hooks.sound(s.name, s.detail);
+    this.sounds = this.sounds.filter((s) => now < s.at);
+    this.dice = this.dice.filter((d) => now < d.t0 + dieLife(natOf(d.roll)) / this.speed + 260);
+    if (this.diceWindow && now > this.diceWindow.t0 + (WINDOW.go - WINDOW.open + WINDOW.fade) / this.speed) this.diceWindow = null;
+    this.impacts = this.impacts.filter((c) => now < c.t0 + (IMPACT.number + IMPACT.numberLife) / this.speed);
     this.floaters = this.floaters.filter((f) => now < f.t0 + f.dur);
     this.zoneGone = this.zoneGone.filter((z) => now < z.t0 + 1000 / this.speed);
     this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
+    this.screenBlood = this.screenBlood.filter((b) => now < b.t0 + (SCREEN_MS + 300) / this.speed);
     // The last jutsu's effects play out whole first (the movement overlay and the next order wait for them).
     if (!this.settling || this.queue.length || now < this.busyUntil || now < this.lingerUntil) return false;
-    for (const v of this.views.values()) if (v.walk || v.phase || (v.poseUntil && now < v.poseUntil)) return false;
+    for (const v of this.views.values()) if (v.walk || v.phase || v.warp || (v.poseUntil && now < v.poseUntil)) return false;
     this.settling = false;
     return true;
   }
@@ -318,6 +575,11 @@ export class Playback {
     if (v.phase) {
       const { from, to, t0 } = v.phase;
       const k = phaseDash((now - t0) * this.speed);
+      return { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k };
+    }
+    if (v.warp) {
+      const { from, to, t0, fly } = v.warp;
+      const k = warpDash((now - t0) * this.speed, warpTimes(fly));
       return { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k };
     }
     const w = v.walk;
@@ -451,7 +713,7 @@ export class Playback {
     const el = spec.element;
     const at = (ms: number) => now + ms / this.speed;
     const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, now + ms / this.speed));
-    // In the caster's chakra colour when it is an elemental jutsu (the owner, 2026-10-21).
+    // In the caster's chakra colour when it is an elemental jutsu (the owner, 2026-10-21); a heal's in green.
     const base = { element: el, enhanced: ev.enhanced, role: spec.vfx, tint };
     // What it throws leaves the casting hand (before the body, at chest height), not the head.
     const hand = handOf(from, a.facing);
@@ -493,6 +755,13 @@ export class Playback {
       if (this.missedNext(ev.unit)) return strike;
       this.fx.push({ ...base, kind: 'slash', set: 'neutral', from, to: ev.at, t0: at(strike), dur: 480, lift: [58, 58] });
       linger(strike + 480);
+      if (seq.blood) {
+        // The blood bursts out of the target as the crescent crosses it, thrown the way the cut goes
+        // (from → to), and the next turn waits until its drops are down. Never in a chakra colour.
+        this.cutSide = ev.at.x < from.x - 0.01 ? -1 : 1;
+        this.fx.push({ ...base, tint: undefined, kind: 'burst', blood: 'spray', from, to: ev.at, t0: at(strike + SPRAY_DELAY), dur: SPRAY_MS });
+        linger(strike + SPRAY_DELAY + SPRAY_LANDED);
+      }
       return strike + 120;
     }
 
@@ -618,6 +887,8 @@ export class Playback {
       const hitMs = impactMs(el, 'hit', 900);
       who.forEach((id, i) => this.fx.push({ ...base, kind: 'burst', from, to: this.posOf(id, now), t0: at(up + i * 80), dur: hitMs, lift: [56, 56], role: 'hit' }));
       if (seq.shake) this.shakeAt(now, up, seq.shake + (ev.enhanced ? 1 : 0));
+      // The saves' dice land as the column has risen and strikes.
+      this.hitAt = at(up);
       linger(CAST + warn + TOWER_MS);
       return up + Math.max(0, who.length - 1) * 80 + 200;
     }
@@ -640,6 +911,8 @@ export class Playback {
         const t0 = CAST + (LINE / 1.8) * Math.min(1, dist(from, p) / len) + i * seq.hitEach!.stagger;
         this.fx.push({ ...base, kind: 'burst', from, to: p, t0: at(t0), dur: hitMs, lift: [56, 56], role: 'hit' });
         end = Math.max(end, t0 + hitMs);
+        // The saves' dice land as the beam's head reaches the first one.
+        if (i === 0 || at(t0) < this.hitAt) this.hitAt = at(t0);
       });
       linger(Math.max(end, CAST + LINE));
       return CAST + 900;
@@ -663,6 +936,8 @@ export class Playback {
         const t0 = gather + seq.breathMs! * 0.6 * Math.min(1, dist(from, p) / len) + i * (seq.hitEach?.stagger ?? 80);
         this.fx.push({ ...base, kind: 'burst', from, to: p, t0: at(t0), dur: hitMs, lift: [50, 50], role: 'hit' });
         end = Math.max(end, t0 + hitMs);
+        // The saves' dice land as the dust reaches the first one.
+        if (i === 0 || at(t0) < this.hitAt) this.hitAt = at(t0);
       });
       linger(Math.max(end, gather + seq.breathMs));
       return gather + 900;
@@ -694,13 +969,35 @@ export class Playback {
     if (Math.abs(ev.at.x - from.x) > 0.05) a.facing = ev.at.x > from.x ? 1 : -1;
     const caster = state.units[ev.unit];
     const head = caster?.kind === 'hydra_head';
+    const cross = spec?.special === 'warp' ? this.queue.find((e) => e.t === 'teleport' && e.how === 'phase' && e.unit === ev.unit) : undefined;
+    if (cross?.t === 'teleport' && this.phaseFollows(ev.unit)) {
+      // A Shooting-Star Thrust that goes through: its name, and the throw starts at once (UnitView.warp).
+      // The crossing's own event comes at the release; the thrust faces the foe it lands beside
+      // (the engine's edgeFoe), if any.
+      const face: 1 | -1 = Math.abs(cross.to.x - cross.from.x) > 0.05 ? (cross.to.x > cross.from.x ? 1 : -1) : a.facing;
+      const foe = caster ? edgeFoe(state, caster, cross.to) : undefined;
+      const land: 1 | -1 = foe && foe.pos.x !== cross.to.x ? (foe.pos.x > cross.to.x ? 1 : -1) : caster ? caster.facing : face;
+      const fly = warpFly(dist(cross.from, cross.to));
+      a.warp = { from: { ...cross.from }, to: { ...cross.to }, t0: now, face, land, foe: foe?.id, fly };
+      a.facing = face;
+      a.walk = undefined;
+      a.lunge = undefined;
+      a.poseUntil = undefined;
+      h.sound('jutsu', 'chakra');
+      if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+      // A whoosh as the arm whips the weapon away, a ring as the hand closes on it again.
+      this.cues.push({ at: now + (2 * WARP_FRAME) / this.speed, name: 'swing' }, { at: now + warpTimes(fly).land / this.speed, name: 'draw' });
+      return WARP_REL;
+    }
     if ((spec?.special === 'warp' || spec?.special === 'swap') && this.phaseFollows(ev.unit)) {
-      // A Warp Strike or a Spatial Swap that goes through: its name and a beat, then the phase
+      // A Shooting-Star Thrust or a Spatial Swap that goes through: its name and a beat, then the phase
       // itself plays (no cast pose, no chakra flare: the ninja turns to light at once).
       h.sound('jutsu', 'chakra');
       if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
       return 90;
     }
+    // An enhanced jutsu's cast pose plays its chakra burst empowered.
+    if (!head) a.castEnhanced = !!ev.enhanced;
     if (spec?.seq || spec?.pose || spec?.vfxSet) {
       const staged = this.staged(ev, spec, a, from, now, label, jutsuTint(spec, caster));
       if (staged !== null) return staged;
@@ -771,6 +1068,7 @@ export class Playback {
       }
       h.shake(ev.enhanced ? 7 : 5);
       this.lingerUntil = Math.max(this.lingerUntil, t1 + long.total / this.speed);
+      this.hitAt = t1 + long.hit / this.speed;
       return castDelay + long.hit;
     }
     if (ev.shape?.kind === 'line') {
@@ -795,6 +1093,7 @@ export class Playback {
     // The rank D and C jutsu (staged by seq) leave the casting hand; the others fly as they always have.
     const out = spec?.seq && !head ? handOf(from, a.facing) : from;
     this.fx.push({ ...base, kind: 'projectile', from: out, to: ev.at, dur: fly, lift: [head ? 120 : spec?.seq ? HAND_LIFT : 70, ev.shape ? 30 : 60] });
+    this.hitAt = t1 + fly / this.speed;
     if (ev.shape?.kind === 'circle') {
       const boom = blastMs(el, spec?.sig ? 1400 : 1200);
       this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: boom });
@@ -907,8 +1206,15 @@ export class Playback {
         if (!v) return 0;
         // A Spatial Swap's two jumps happen at once.
         const together = this.queue[0]?.t === 'teleport';
+        if (ev.how === 'phase' && v.warp) {
+          // A Shooting-Star Thrust's crossing, already under way since its jutsu played (the throw): the
+          // events after it wait until the ninja stands solid where it lands.
+          v.pos = { ...ev.to };
+          v.walk = undefined;
+          return Math.max(0, (v.warp.t0 + warpTimes(v.warp.fly).solid / this.speed - now) * this.speed);
+        }
         if (ev.how === 'phase') {
-          // A Ryusei's Warp Strike or Spatial Swap: no smoke, the ninja crosses as blue light.
+          // A Ryusei's Spatial Swap: no smoke, the ninja crosses as blue light.
           v.phase = { from: { ...ev.from }, to: { ...ev.to }, t0: now };
           v.pos = { ...ev.to };
           v.walk = undefined;
@@ -1019,7 +1325,13 @@ export class Playback {
         // they meet the wind, and the wind swirls round the fire there.
         const before = this.fx.length;
         const d = this.playJutsu(ev, now, state, label);
-        if (ev.fanned) this.fan(ev, before, now, state);
+        if (ev.fanned) {
+          this.fan(ev, before, now, state);
+          // Its line in the log ("the gale fans…") goes out with it, so a save right after it still
+          // has its dice thrown during the flight, to land as the fire hits.
+          const nx = this.queue[0];
+          if (nx?.t === 'note' && (nx.key === 'fanned' || nx.key === 'fanned2')) this.apply(this.queue.shift()!, now, state);
+        }
         return d;
       }
       case 'save': {
@@ -1035,14 +1347,26 @@ export class Playback {
         const v = this.view(ev.unit);
         if (!v) return 0;
         v.hp = ev.hp;
+        if (isBleedTick(ev, state.units[ev.unit]) && !v.hidden) {
+          // Bleeding hurts at the start of its turn: a few drops fall from the wound.
+          const p = this.posOf(ev.unit, now);
+          this.fx.push({ kind: 'burst', blood: 'drip', element: 'chakra', from: { x: p.x - v.facing * 0.05, z: p.z }, to: p, t0: now, dur: DRIP_MS });
+        }
         v.hurtUntil = now + 260 / this.speed;
         if (!v.walk && !v.down) this.setPose(v, 'hurt', now, 300);
         const hit = state.units[ev.unit];
         if (hit && (hit.kind === 'hydra_head' || hit.kind === 'hydra_body') && !v.severed && ev.hp > 0) v.creature = { anim: 'hurt', t0: now };
         const at = this.posOf(ev.unit, now);
-        this.float(`${ev.amount}`, ev.crit ? '#fde047' : '#f87171', at, now, { big: ev.crit, dur: 1200 });
-        h.sound(ev.crit ? 'crit' : 'hit');
-        if (ev.crit) h.shake(4);
+        if (ev.crit) {
+          // A critical (always maximum damage): a hit-stop, a bloom of light and a burst on the
+          // target, the number in big gold digits marked "MÁX", a camera kick and the sting.
+          this.impacts.push({ unit: ev.unit, amount: ev.amount, t0: now });
+          h.sound('critSting');
+          h.shake(6);
+          return 110 + IMPACT.hitStop + 300;
+        }
+        this.float(`${ev.amount}`, '#f87171', at, now, { dur: 1200 });
+        h.sound('hit');
         return 110;
       }
       case 'heal': {
@@ -1105,13 +1429,16 @@ export class Playback {
         return label ? 200 : 0;
       }
       case 'effect': {
+        // The cut has left Bleeding: drops splash onto the screen, on the side the cut went.
+        if (bleedingStarts(ev)) this.screenBlood.push({ t0: now, side: this.cutSide, seed: [...ev.unit].reduce((n, c) => n + c.charCodeAt(0), this.round) });
         if (label) this.float(label, ev.on ? '#e879f9' : '#a1a1aa', this.posOf(ev.unit, now), now, { rise: 124 });
         return 0;
       }
       case 'deathSave': {
         h.roll(ev);
         if (label) this.float(label, ev.roll.success ? '#86efac' : '#fca5a5', this.posOf(ev.unit, now), now, { rise: 60 });
-        return 600;
+        // The die over the ninja already took its time.
+        return this.diceOn ? 300 : 600;
       }
       case 'turn': {
         this.turnUnit = ev.unit;

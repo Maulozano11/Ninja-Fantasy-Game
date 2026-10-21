@@ -35,6 +35,7 @@ import {
   PLATE_VAMBRACE_N,
   PLATE_WAIST,
 } from './crimsonPlateArt';
+import { SAYA_SHADE_ARMOR } from './sayaUpper';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2611,6 +2612,8 @@ export const ARMOR_ITEMS: ItemDef[] = [
     statsArmor: 'Dark Knight Plate',
     draw: (g, [steel, trim]) => drawCrimsonPlate(g, steel, trim),
   },
+  // Saya's ninja top and arm guards, from the owner's Saya picture (sayaUpper.ts)
+  SAYA_SHADE_ARMOR,
 ];
 
 // ---------------------------------------------------------------------------

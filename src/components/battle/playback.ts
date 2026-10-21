@@ -10,7 +10,7 @@ import type { SpritePose } from '../../sprite/types';
 import { JUTSU, areaEnd, nearSegment } from '../../battle/jutsu';
 import type { JutsuSpec, StageKind, VfxElement, VfxRole } from '../../battle/jutsu';
 import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
-import { CONDUCT_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
+import { CONDUCT_MS, DOUSE_MS, FAN_MS, FAN_ROLL, GROUND_FADE, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, keyCenter, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
 import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
 import { dist } from '../../battle/map';
@@ -357,6 +357,9 @@ export const warpFlight = (ms: number, t: WarpTimes): number => {
 /** When (ms into the Shooting-Star Thrust) the thrown weapon was `w` (0..1) along its flight: warpFlight turned round. */
 export const warpFlightMs = (w: number, t: WarpTimes): number => t.rel + (1 - (1 - Math.min(1, Math.max(0, w))) ** (1 / FLIGHT_EASE)) * (t.caught - t.rel);
 
+/** How solid the fire on a burning ninja is drawn (his fire aura, faint so the ninja shows). */
+const BURN_ALPHA = 0.6;
+
 export class Playback {
   views = new Map<string, UnitView>();
   floaters: Floater[] = [];
@@ -402,6 +405,13 @@ export class Playback {
    * on the ninja, faint, until its next turn): unit → the aura's element, opacity and start.
    */
   lingers = new Map<string, { element: VfxElement; alpha: number; t0: number; tint?: string }>();
+  /**
+   * Units on fire (Burning): his fire aura burns round them, faint, while it lasts, so water putting
+   * it out shows on the map ("el agua apaga el fuego"): unit → when it caught.
+   */
+  burns = new Map<string, { element: VfxElement; alpha: number; t0: number }>();
+  /** Flames put out (Burning ended): a puff of steam rises off the ninja (unit, when). */
+  douses: { unit: string; t0: number }[] = [];
   /** What a staged jutsu does later in its own time (piece P5: the next blow of a combo). */
   private timers: { at: number; run: (now: number) => void }[] = [];
   /** Casts played so far: part of the seed of their varied paths, so two casts never fly alike. */
@@ -468,6 +478,9 @@ export class Playback {
       if (u.cond.mantle && !u.down && mantle?.seq?.lingerAura) {
         if (!this.lingers.has(u.id)) this.lingers.set(u.id, { element: mantle.element, alpha: mantle.seq.lingerAura, t0: now - 2000, tint: jutsuTint(mantle, u) });
       } else this.lingers.delete(u.id);
+      if (u.effects.some((e) => e.id === 'burning') && !u.down) {
+        if (!this.burns.has(u.id)) this.burns.set(u.id, { element: 'fire', alpha: BURN_ALPHA, t0: now - 1000 });
+      } else this.burns.delete(u.id);
     }
     if (state.phase === 'combat') {
       this.turnUnit = state.order[state.turn];
@@ -654,6 +667,7 @@ export class Playback {
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
     this.screenBlood = this.screenBlood.filter((b) => now < b.t0 + (SCREEN_MS + 300) / this.speed);
+    this.douses = this.douses.filter((d) => now < d.t0 + DOUSE_MS / this.speed);
     // The last jutsu's effects play out whole first (the movement overlay and the next order wait for them).
     if (!this.settling || this.queue.length || this.timers.length || now < this.busyUntil || now < this.lingerUntil) return false;
     for (const v of this.views.values()) if (v.walk || v.phase || v.warp || (v.poseUntil && now < v.poseUntil)) return false;
@@ -707,6 +721,16 @@ export class Playback {
   groundQueued(kind: 'wet' | 'steam', on: boolean): Set<string> {
     const out = new Set<string>();
     for (const e of this.queue) if (e.t === 'ground' && e.kind === kind && e.on === on) for (const k of e.cells) out.add(k);
+    return out;
+  }
+
+  /**
+   * Props burnt, cut or blown up by events still to play: they still stand until their moment comes
+   * (a bush burns as the fireball lands, not as it is cast).
+   */
+  propsQueued(): Set<number> {
+    const out = new Set<number>();
+    for (const e of this.queue) if (e.t === 'prop') out.add(e.prop);
     return out;
   }
 
@@ -1989,6 +2013,11 @@ export class Playback {
       case 'effect': {
         // The cut has left Bleeding: drops splash onto the screen, on the side the cut went.
         if (bleedingStarts(ev)) this.screenBlood.push({ t0: now, side: this.cutSide, seed: [...ev.unit].reduce((n, c) => n + c.charCodeAt(0), this.round) });
+        // Flames catch, or go out with a puff of steam.
+        if (ev.effect === 'burning') {
+          if (ev.on) this.burns.set(ev.unit, { element: 'fire', alpha: BURN_ALPHA, t0: now });
+          else if (this.burns.delete(ev.unit)) this.douses.push({ unit: ev.unit, t0: now });
+        }
         if (label) this.float(label, ev.on ? '#e879f9' : '#a1a1aa', this.posOf(ev.unit, now), now, { rise: 124 });
         return 0;
       }

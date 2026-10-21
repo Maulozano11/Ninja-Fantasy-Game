@@ -207,7 +207,9 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   si se usa un jutsu de fuego se genera vapor ... Torre de torbellino ... más ancho mediante se va más
   arriba ..."*, verbatim in `docs/GAMEPLAY_DESIGN.md`). Approve the in-game captures (the Tide's
   wider wave, the Tower's funnel and wavy whirlwinds, wet ground, lightning across it, steam) and our
-  numbers. **Still his** ("Open questions on the second round"): Water has no rank S again; the
+  numbers. After an in-game review: wet bushes no longer burn, the AI no longer walks in and out of
+  steam or ends its turn in it, burning ninjas show his fire aura and a puff of steam when water puts
+  it out, the steam is drawn as a wide curtain, the Tide's crest columns no longer stick up like a pole. **Still his** ("Open questions on the second round"): Water has no rank S again; the
   Tide's rank A numbers; wet "por 2 turnos" as the rest of the round and two more; steam 1d6 fire a
   turn, no save; lightning on wet ground at half damage, DEX for a quarter, friends too; explosions
   making steam; steam drawn with the camp's grey smoke; a saved Tide in the S-rank slot.

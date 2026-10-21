@@ -489,7 +489,7 @@ export function planEnemy(s: BattleState, u: Unit): void {
   if (i && warp) i.to = warp;
   else if (i && g && !g.ready) {
     const taken = Object.values(s.units).flatMap((o) => (o.id !== u.id && o.team === u.team && !o.down && o.intent?.to ? [cellOf(o.intent.to)] : []));
-    const c = stepToward(s, u, g, u.cond.prone ? u.speed / 2 : u.speed, (p) => !taken.some((t) => sameCell(t, cellOf(p))));
+    const c = stepToward(s, u, g, u.cond.prone ? u.speed / 2 : u.speed, (p) => !steamAt(s, p) && !taken.some((t) => sameCell(t, cellOf(p))));
     if (c) i.to = cellCenter(c);
   }
   u.intent = i;

@@ -968,6 +968,8 @@ export interface DepthItem {
 export const WAVE_CREST = (d: number, len: number): number => Math.max(0, Math.min(1, (d - WAVE_START) / Math.max(0.1, len - WAVE_START)));
 /** Where the crest sets off, in front of the caster (m). */
 const WAVE_START = 0.8;
+/** How tall his columns at the Tide's crest are drawn (of his frame), so they meet the top of his wall. */
+const CREST_COLUMN = 0.5;
 /** How long the wave breaks at the end of its run (his water sinking, his spouts bursting), while the last ones it reached are swept (ms). */
 export const WAVE_HOLD = 900;
 /** Metres between the lanes of his water wall laid across the cone, and his wall's own length (m). */
@@ -1083,14 +1085,25 @@ function waveItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[]
       }
     }
     // The face: his columns standing along the crest, on its near half only (the far ones would
-    // stack up the screen into one tall bar over the body).
+    // stack up the screen into one tall bar over the body). Seen across the screen his column (a
+    // wall running into the depth) is far taller than his wall, and stood above the body like a thin
+    // pole: drawn half as tall from its foot, so its top meets the body's. They come up with the
+    // body, not ahead of it: half the wall's pace, fading in over the first 2 m of the run.
     const n = Math.max(2, Math.round((2 * w) / 1.1) + 1);
     const mz = at(crest, 0).z;
-    for (let i = 0; i < n; i++) {
+    const grow = Math.min(1, (crest - WAVE_START) / 2);
+    const colRise = Math.min(11, Math.floor((ms * 1.5 * 12) / 1000));
+    for (let i = 0; i < n && grow > 0.15; i++) {
       const p = at(crest, -w + (2 * w * i) / (n - 1));
       if (p.z < mz - 0.3) continue;
-      const [anim, frame] = pose(col, i * 97);
-      place(p, p.z + 0.02, (q) => blitColumn(ctx, col, anim, frame, q, fade));
+      const [anim, frame] = sinking < 0 && colRise < 11 ? ['rise', colRise] : pose(col, i * 97);
+      place(p, p.z + 0.02, (q) => {
+        ctx.save();
+        ctx.translate(Math.round(q.X), Math.round(q.Y));
+        ctx.scale(1, CREST_COLUMN);
+        blitColumn(ctx, col, anim, frame, { X: 0, Y: 0 }, fade * grow);
+        ctx.restore();
+      });
     }
   } else {
     // Into the depth: his wall along the crest is the face (two rows, the front one solid) ...
@@ -1199,6 +1212,8 @@ function towerItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[
 export const keyCenter = (k: string): Pt => cellCenter(keyCell(k));
 /** How long wet ground and steam take to fade in, and to dry or thin away (ms). */
 export const GROUND_FADE = 700;
+/** How long the puff of steam off a ninja whose flames went out lasts (ms). */
+export const DOUSE_MS = 1700;
 const GROUND_IN = 420;
 /** How long lightning runs across a wet patch, and how fast its front goes (m/s). */
 export const CONDUCT_MS = 1100;
@@ -1305,10 +1320,12 @@ function worldSheet(group: string, name: string): WorldSheet | undefined {
 }
 
 /**
- * Steam (the owner: "como una cortina de humo que nubla la visión"): the camp's smoke, his tall
- * column and his small puff (no element sheet has grey smoke), layered over the steaming cells at
- * different frames, some turned round, rising in when it forms; and a white veil over each cell, in
- * front of whoever stands in it, so the ninjas inside are hard to make out. Not in a chakra colour.
+ * Steam (the owner: "como una cortina de humo que nubla la visión"): a curtain, not a few chimneys.
+ * A white veil of overlapping billows over every row of steaming cells, in front of whoever stands
+ * in that row so the ninjas inside are hard to make out, drawn once per row so the overlaps don't
+ * stack into bright spots; and the camp's smoke (his tall column and his small puff: no element
+ * sheet has grey smoke) on every cell, at different frames, some turned round, spread wider than it
+ * is tall so the columns run together into a bank. Rising in when it forms. Not in a chakra colour.
  */
 function steamItems(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
   const cells = groundShown(sc, 'steam');
@@ -1317,33 +1334,94 @@ function steamItems(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
   const puff = worldSheet('camp', 'smoke');
   const out: DepthItem[] = [];
   const { map } = sc;
+  const rows = new Map<number, typeof cells>();
   for (const c of cells) {
-    const h = cellHash(c.k);
-    const rise = (1 - c.a) * 18;
-    out.push({ z: c.p.z + 0.2, draw: () => {
-      const q = project(map, c.p);
+    const r = keyCell(c.k).r;
+    rows.set(r, [...(rows.get(r) ?? []), c]);
+  }
+  const rx = 0.62 * map.px.perM;
+  for (const row of rows.values()) {
+    const z = row[0].p.z;
+    // The smoke first (behind the row's veil), then the veil.
+    for (const c of row) {
+      const h = cellHash(c.k);
+      const s = h % 2 === 0 ? tall : puff;
+      if (!s) continue;
+      const rise = (1 - c.a) * 18;
+      const [ax] = s.spec.anchor;
+      out.push({ z: z + 0.2, draw: () => {
+        const q = project(map, c.p);
+        const mirror = (h & 8) !== 0;
+        const wide = 1.9;
+        const high = s === tall ? 0.62 : 0.9;
+        ctx.save();
+        // Stretched round the cell's foot (nearest neighbour: his pixels, only scaled).
+        ctx.translate(Math.round(q.X + ((h >> 2) % 13) - 6), Math.round(q.Y + 6 + rise));
+        ctx.scale(wide, high);
+        blit(ctx, s as Sheet, 'idle', frameAt(s as Sheet, 'idle', sc.now + h * 37), (mirror ? 1 : -1) * (s.spec.frameW / 2 - ax), 0, mirror, 0.62 * c.a);
+        ctx.restore();
+      } });
+    }
+    out.push({ z: z + 0.21, draw: () => {
       ctx.save();
-      ctx.fillStyle = '#e8edf3';
-      for (const [lift, rad] of [[12, 20], [38, 19], [62, 15]] as const) {
-        ctx.globalAlpha = 0.16 * c.a;
-        ctx.beginPath();
-        ctx.arc(Math.round(q.X + ((h >> (lift % 5)) % 9) - 4), Math.round(q.Y - lift + rise), rad, 0, Math.PI * 2);
-        ctx.fill();
+      ctx.fillStyle = '#e6ebf1';
+      // One path per step of solidity (a forming or thinning edge is fainter).
+      for (const [lift, ry, grow, strength] of [[16, 18, 1.15, 0.22], [44, 30, 1, 0.2], [80, 26, 0.85, 0.14]] as const) {
+        const steps = new Map<number, Path2D>();
+        for (const c of row) {
+          const a = Math.ceil(c.a * 4) / 4;
+          const h = cellHash(c.k);
+          const path = steps.get(a) ?? new Path2D();
+          const q = project(map, c.p);
+          const x = Math.round(q.X + ((h >> (lift % 5)) % 9) - 4);
+          const y = Math.round(q.Y - lift + (1 - c.a) * 18 + Math.sin(sc.now / 700 + h) * 2);
+          path.moveTo(x + rx * grow, y);
+          path.ellipse(x, y, rx * grow, ry, 0, 0, Math.PI * 2);
+          steps.set(a, path);
+        }
+        for (const [a, path] of steps) {
+          ctx.globalAlpha = strength * a;
+          ctx.fill(path);
+        }
       }
       ctx.restore();
     } });
-    const s = h % 3 === 0 ? tall : h % 3 === 1 ? puff : undefined;
-    if (!s) continue;
-    const [ax] = s.spec.anchor;
-    out.push({ z: c.p.z + 0.21, draw: () => {
-      const q = project(map, c.p);
-      const mirror = (h & 8) !== 0;
-      // His smoke leans from its anchor at the foot: put its middle over the cell instead.
-      const x = q.X + (mirror ? 1 : -1) * (s.spec.frameW / 2 - ax) + ((h >> 2) % 11) - 5;
-      blit(ctx, s as Sheet, 'idle', frameAt(s as Sheet, 'idle', sc.now + h * 37), x, q.Y + 4 + rise, mirror, 0.82 * c.a);
-    } });
   }
   return out;
+}
+
+/**
+ * Flames put out (water, wet ground): a puff of steam rises off the ninja and thins away, his small
+ * camp smoke spread a little wider, with a faint white breath round it. Not in a chakra colour.
+ */
+export function drawDouses(ctx: CanvasRenderingContext2D, sc: Scene): void {
+  if (!sc.pb.douses.length) return;
+  const puff = worldSheet('camp', 'smoke');
+  for (const d of sc.pb.douses) {
+    const t = ((sc.now - d.t0) * sc.pb.speed) / DOUSE_MS;
+    if (t < 0 || t > 1 || !sc.state.units[d.unit]) continue;
+    const q = project(sc.map, sc.pb.posOf(d.unit, sc.now));
+    const fade = t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85;
+    ctx.save();
+    ctx.fillStyle = '#eef2f6';
+    for (const [dy, rx, ry, a] of [[30, 30, 20, 0.34], [62, 24, 22, 0.28]] as const) {
+      ctx.globalAlpha = a * fade;
+      ctx.beginPath();
+      ctx.ellipse(Math.round(q.X), Math.round(q.Y - dy - t * 36), rx + t * 16, ry + t * 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (puff) {
+      const [ax] = puff.spec.anchor;
+      for (const side of [-1, 0, 1] as const) {
+        ctx.save();
+        ctx.translate(Math.round(q.X + side * 12), Math.round(q.Y - 4 - t * 40 - (side === 0 ? 10 : 0)));
+        ctx.scale(1.8, 1);
+        blit(ctx, puff as Sheet, 'idle', frameAt(puff as Sheet, 'idle', (sc.now - d.t0) * sc.pb.speed + (side + 1) * 250), (side < 0 ? -1 : 1) * (puff.spec.frameW / 2 - ax), 0, side > 0, fade);
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  }
 }
 
 /** The order lightning runs across a wet patch: each point from the nearest one it already reached. */

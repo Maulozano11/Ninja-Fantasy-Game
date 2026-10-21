@@ -1037,9 +1037,9 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
     const struck = victims.map((v) => v.id);
     const watered = electrify(s, points, amount, u.saveDC, u.id, struck, ev, spec.dice);
     hits.push(...watered);
-    // A bolt that misses its one target strikes no ground under it.
-    const landed = area || spec.save ? points : victims.filter((v) => hits.some((h) => h.unit === v.id)).map((v) => v.pos);
-    hits.push(...conduct(s, area, landed, amount, u.saveDC, u.id, [...struck, ...watered.map((h) => h.unit)], ev, spec.dice));
+    // Hit or miss, it lands on the ground where its target stands (as fire that misses still burns
+    // and steams there, and lightning that misses still runs through the river).
+    hits.push(...conduct(s, area, points, amount, u.saveDC, u.id, [...struck, ...watered.map((h) => h.unit)], ev, spec.dice));
   }
   return hits;
 }

@@ -111,7 +111,9 @@ export function saveHit(
  */
 export function groundEffects(s: BattleState, area: AreaShape, type: DamageType | 'Wind', ev: BattleEvent[], seen = new Set<string>(), clearFoliage = false, by = ''): Hit[] {
   const hits: Hit[] = [];
-  // Fire on wet ground makes steam (the owner, 2026-10-21): the bushes there were wet, and don't burn.
+  // Fire on wet ground makes steam (the owner, 2026-10-21): the bushes there were wet, and don't
+  // burn. Which cells were wet is taken before the steam uses their water up.
+  const soaked = type === 'Fire' && s.wet ? new Set(Object.keys(s.wet)) : undefined;
   if (type === 'Fire') steamUp(s, area, by, ev);
   const map = getMap(s.mapId);
   const fiery = type === 'Fire' || type === 'Lightning';
@@ -125,7 +127,7 @@ export function groundEffects(s: BattleState, area: AreaShape, type: DamageType 
       st.destroyed = true;
       ev.push({ t: 'prop', prop: i, state: 'exploded' });
       hits.push(...explode(s, { x: p.x, z: p.z }, BARREL.radius, BARREL.dice, BARREL.dc, `prop:${i}`, ev, seen));
-    } else if (rules.flammable && type === 'Fire' && !dampAt(s, p)) {
+    } else if (rules.flammable && type === 'Fire' && !dampAt(s, p) && !soaked?.has(cellKey(cellOf(p)))) {
       st.destroyed = true;
       ev.push({ t: 'prop', prop: i, state: 'burnt' });
     } else if (clearFoliage && rules.hideSpot) {

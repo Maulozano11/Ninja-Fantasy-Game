@@ -1476,7 +1476,8 @@ cortina de humo que nubla la visión y hace daño por turno si estás en el
   Geyser, the Water Dragon Bullet) takes *Burning* off everyone it reaches,
   saved or not; and **wet ground puts flames out like a river**: a ninja who
   starts a turn on it stops burning, a fire jutsu's *Burning* doesn't catch on
-  someone standing on it, bushes on it don't burn. (There is no burning ground
+  someone standing on it, bushes on it don't burn (the fire turns their water to
+  steam instead). (There is no burning ground
   in the game: fire burns bushes and trees away at once.) A heal or a wall is no
   strike: the Healing Dew and the Water Wall soak nothing.
 - **Water soaks the ground it passes over** "por 2 turnos": the cells of the
@@ -1485,12 +1486,14 @@ cortina de humo que nubla la visión y hace daño por turno si estás en el
   round and two more** (it dries as the third new round begins, like the gale),
   so everyone has at least two turns with it. Soaked again, it starts over.
 - **Wet ground conducts electricity**: a lightning jutsu that **touches wet
-  ground** (its area reaches a wet cell, or it strikes someone standing on one;
-  a bolt that misses its one target strikes no ground) runs across **the whole
+  ground** (its area reaches a wet cell, or it is aimed at someone standing on
+  one: hit or miss it lands there, as fire that misses still burns and steams
+  where its target stands) runs across **the whole
   wet patch it touched** (the wet cells joined to it, diagonals included; a
   separate patch, or dry ground between, stops it). **Everyone else standing on
   that patch** makes a DEX save against **half the lightning's damage, halved
-  again on a success** (the same numbers as lightning in a river), friends too.
+  again on a success** (the same numbers as lightning in a river), friends too,
+  **and the caster himself if he stands on it** (as in a river; open question).
   Lightning in a river still reaches 4.5 m through the water, as before.
 - **Fire on wet ground makes steam**: a fire jutsu (or an explosion) whose area
   reaches wet cells turns them to steam (the water is used up there; the rest of
@@ -1507,20 +1510,32 @@ cortina de humo que nubla la visión y hace daño por turno si estás en el
     are the fire's caster's);
   - **wind blows it away**: a wind jutsu's area, or a gale starting to turn,
     clears the steam it reaches (the design's old line, "wind clears smoke").
-- **The AI knows**: a ninja on the AI walks out of steam before acting and never
-  means to stop in it, doesn't see a foe lost in the steam (unless right beside
-  it), and weighs lightning on a wet group (each foe on the patch it would reach
-  counts half, a friend there against it).
+- **The AI knows**: a ninja on the AI never stops in steam (it may walk
+  through); standing in it, it walks out before acting, or, when it can do its
+  plan from right there (a blow at a foe beside it), acts first and walks out
+  after; with its action spent in it (a charge that landed there) it walks out
+  with the movement it has left before ending its turn. It doesn't see a foe lost
+  in the steam (unless right beside it), and weighs lightning on a wet group
+  (each foe on the patch it would reach counts half, a friend there against it).
 - **How it looks** (wet ground and steam are never in a chakra colour):
   - wet ground: a dark sheen over the soaked cells, its edge softened, with a
     few glints of light; under the Tide it darkens as the crest goes over;
   - the lightning across it: jagged arcs run out over the patch from where it
     struck, in the caster's chakra colour, his lightning spark (`hit`) bursting
     along it, the water lit up;
-  - steam: the camp's smoke (`campsite/smoke_tall`, `camp/smoke`: no element
-    sheet has grey smoke) layered over the cells at different frames, some
-    turned round, rising in as it forms, and a white veil in front of whoever
-    stands in it;
+  - steam, a curtain: the camp's smoke (`campsite/smoke_tall`, `camp/smoke`: no
+    element sheet has grey smoke) on every steaming cell, at different frames,
+    some turned round, spread wider than tall so the columns run together into
+    a bank; a white veil of overlapping billows over each row of it, in front of
+    whoever stands in that row; it rises in as it forms;
+  - a ninja on fire (*Burning*): his fire aura burns round the ninja, faint,
+    while it lasts; when water or wet ground puts it out, the flames go and a
+    puff of steam (the camp's small smoke) rises off the ninja, so "el agua
+    apaga el fuego" shows on the map, not only in the log;
+  - a bush that burns stands until the fire reaches it (it used to vanish as
+    the jutsu was cast);
+  - aiming at someone the steam hides says so: "Sin línea de visión: el vapor
+    tapa la vista";
   - the log: "El suelo queda mojado", "¡El rayo corre por el suelo mojado!",
     "Fuego sobre suelo mojado: sube vapor y ciega a quien esté dentro", "El
     vapor quema a …", "El viento se lleva el vapor", "El vapor se disipa", "El
@@ -1565,6 +1580,13 @@ cortina de humo que nubla la visión y hace daño por turno si estás en el
    element sheets). Fine, or will he paint a steam sheet?
 8. A character saved with the Tide in its S-rank slot keeps it there (it
    still works in battle). Move it to an Element slot when the sheet loads?
+9. The caster standing on the wet patch his own lightning runs across is
+   shocked too (DEX save, as in a river). Keep it, or spare the caster?
+10. A ninja inside the steam can't aim a circle (a point) outside it, but a cone
+    or a line goes out of it (they need no sight). Fine?
+11. During the Whirlwind Tower the saves' dice windows show over the funnel
+    (each die is shown over whoever saves, as for every area jutsu). Leave it, or
+    show the dice to the side for this one?
 
 ## Jutsu effects, round 1 (proposed 2026-10-21; the owner's answer the same day)
 

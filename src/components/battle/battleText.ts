@@ -259,6 +259,7 @@ const TABLE = strings({
   r_occupied: { en: 'Someone is there.', es: 'Hay alguien ahí.' },
   r_outOfRange: { en: 'Out of range.', es: 'Fuera de alcance.' },
   r_noSight: { en: 'No line of sight.', es: 'Sin línea de visión.' },
+  r_noSightSteam: { en: 'No line of sight: the steam hides it.', es: 'Sin línea de visión: el vapor tapa la vista.' },
   r_noChakra: { en: 'Not enough chakra.', es: 'No alcanza el chakra.' },
   r_handsBusy: { en: 'Hands busy: stow the weapon first (bonus action).', es: 'Manos ocupadas: guarda el arma primero (acción adicional).' },
   r_noBlade: { en: 'A sword art: it needs a blade in hand.', es: 'Arte de espada: necesita un arma en la mano.' },

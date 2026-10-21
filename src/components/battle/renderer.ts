@@ -25,7 +25,7 @@ import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { edgeFoe, leavesNodes, nodeUnder, WARP, warpLanding } from '../../battle/clans';
 import { GRID, RES } from '../../sprite/raster';
-import { depthFx, drawAuraBack, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
+import { depthFx, drawAuraBack, drawDouses, drawWetGround, drawHeld, drawLinger, drawScreenBlood, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 
 export interface Camera {
@@ -180,9 +180,11 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   // Everything that stands, sorted by depth.
   const items: { z: number; draw: () => void }[] = [];
   const all: PropDef[] = [...map.props, ...art.extras];
+  // A prop whose burning (or cutting, or blast) is still to play stands until then.
+  const going = sc.pb.propsQueued();
   all.forEach((p, i) => {
     const st = i < map.props.length ? state.props[i] : undefined;
-    if (st?.destroyed) return;
+    if (st?.destroyed && !going.has(i)) return;
     items.push({ z: p.sortZ ?? p.z, draw: () => drawProp(ctx, sc, p, i < map.props.length ? i : -1) });
   });
   // Walls broken by events still playing stand until their moment comes; Kōton structures that
@@ -207,6 +209,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const fx of sc.pb.fx) if (fx.kind === 'aura') items.push({ z: fxPos(sc, fx).z + 0.005, draw: () => drawAuraBack(ctx, sc, fx) });
   // A lingering aura (the Breeze Mantle's wind until the ninja's next turn) wraps round the body too.
   for (const [id, l] of sc.pb.lingers) items.push({ z: sc.pb.posOf(id, sc.now).z + 0.005, draw: () => drawLinger(ctx, sc, id, l, 'back') });
+  // A ninja on fire burns in his fire aura until the flames go out.
+  for (const [id, l] of sc.pb.burns) items.push({ z: sc.pb.posOf(id, sc.now).z + 0.005, draw: () => drawLinger(ctx, sc, id, l, 'back') });
   // Lightning running along the water lies on the ground: what stands in front of it (a metal wall,
   // a unit) is drawn over it.
   for (const fx of sc.pb.fx) if (onGround(fx)) items.push({ z: fx.from.z + 0.005, draw: () => drawFx(ctx, sc, fx) });
@@ -222,6 +226,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   drawWarpFlights(ctx, sc);
 
   for (const [id, l] of sc.pb.lingers) drawLinger(ctx, sc, id, l, 'front');
+  for (const [id, l] of sc.pb.burns) drawLinger(ctx, sc, id, l, 'front');
+  drawDouses(ctx, sc);
   for (const fx of sc.pb.fx) if (!onGround(fx) && fx.depth === undefined && !drawVfxSprite(ctx, sc, fx)) drawFx(ctx, sc, fx);
 
   if (state.time === 'night') drawNight(ctx, sc, all);

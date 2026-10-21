@@ -11,12 +11,12 @@ import type { ShinobiCharacter } from '../types/shinobi';
 import type { BattleEvent, BattleState, Pt } from './types';
 import { applyAction, createBattle } from './engine';
 import type { BattleSetup } from './engine';
-import { cellBlocked, cellCenter, cellKey, cellOf, dampAt, lineOfSight, waterAtPt } from './map';
+import { cellBlocked, cellCenter, cellKey, cellOf, dampAt, getMap, lineOfSight, propRules, steamAt, waterAtPt } from './map';
 import { canStop } from './nav';
 import { JUTSU, areaOf } from './jutsu';
 import { STEAM_ROUNDS, WET_ROUNDS, cellsInArea, tickGround, wetPatch } from './ground';
 import { attackPreview } from './combat';
-import { aiAction } from './ai';
+import { aiAction, runAi } from './ai';
 import { areaValue, visibleFoes } from './intent';
 import { endTurn } from './turns';
 import { addEffect } from '../rules/effects';
@@ -212,6 +212,13 @@ describe('wet ground conducts lightning ("conduce electricidad")', () => {
     assert.ok(got <= 3, `${got}`);
   });
 
+  it('the caster standing on the same wet patch is shocked too (a DEX save, like the others on it)', () => {
+    const s = scene(['lightning_jolt'], [{ x: 11, z: 10 }, { x: 18, z: 14 }, { x: 24, z: 4 }]);
+    soakStrip(s, s.units.a.pos, s.units.rogue_0.pos);
+    const out = seeded(s, (t) => cast(t, 'lightning_jolt', t.units.rogue_0.pos, { target: 'rogue_0' }), (o) => o.events.some((e) => e.t === 'save' && e.unit === 'rogue_0' && !e.roll.success && !e.roll.fumble));
+    assert.deepEqual(savesOn(out.events, 'wet ground'), ['a']);
+  });
+
   it('a target on dry ground carries nothing, even with a wet patch near it', () => {
     const dry = scene(['lightning_jolt'], [{ x: 14, z: 10 }, { x: 18, z: 10 }, { x: 24, z: 10 }]);
     soakAt(dry, dry.units.rogue_1.pos, 1);
@@ -250,6 +257,27 @@ describe('fire on wet ground makes steam ("vapor que es como una cortina de humo
     // Dry ground makes no steam.
     const dry = seeded(scene(['fireball_goukakyu']), (t) => cast(t, 'fireball_goukakyu', t.units.rogue_0.pos));
     assert.equal(Object.keys(dry.state.steam ?? {}).length, 0);
+  });
+
+  it('a bush on wet ground doesn\'t burn: the fire turns its water to steam instead (a dry one burns)', () => {
+    const map = getMap('river_forest');
+    const i = map.props.findIndex((p) => propRules(p).flammable && propRules(p).hideSpot && Math.abs(p.x - 16.2) < 0.1);
+    assert.ok(i >= 0, 'the bush at 16.2, 5.75');
+    const bush = { x: map.props[i].x, z: map.props[i].z };
+    const near = () => {
+      const t = scene(['fireball_goukakyu'], [{ x: 20, z: 12 }, { x: 22, z: 14 }, { x: 24, z: 10 }]);
+      place(t, 'a', { x: 11, z: 8 });
+      return t;
+    };
+    const wet = near();
+    soakAt(wet, bush, 2);
+    assert.ok(dampAt(wet, bush), 'its cell is wet');
+    const out = seeded(wet, (t) => cast(t, 'fireball_goukakyu', bush));
+    assert.ok(steamAt(out.state, bush), 'steam where it stands');
+    assert.ok(!out.state.props[i]?.destroyed, 'the wet bush still stands');
+    assert.ok(!out.events.some((e) => e.t === 'prop' && e.prop === i), 'no "¡Arde!"');
+    const dry = seeded(near(), (t) => cast(t, 'fireball_goukakyu', bush));
+    assert.ok(dry.state.props[i]?.destroyed, 'a dry bush burns');
   });
 
   it('nobody sees into, out of or through the steam: no kunai, no aimed jutsu across it; a blow into it has disadvantage', () => {
@@ -342,6 +370,77 @@ describe('the AI and the elements on the ground', () => {
     party.steam = {};
     for (const c of cellsInArea(party, { kind: 'circle', center: party.units.rogue_2.pos, radius: 1 })) party.steam[cellKey(c)] = { rounds: 3, by: 'a' };
     assert.ok(!visibleFoes(party, party.units.a).some((f) => f.id === 'rogue_2'));
+  });
+  /** Rogue 0's turn, Aki at `foe`, with steam `r` m round a point `dx` m to Aki's right (or a point `at`). */
+  function steamTurn(foe: Pt, me: Pt, r: number, dx: number | Pt): BattleState {
+    const s = scene([], [me, { x: 30, z: 4 }, { x: 32, z: 6 }]);
+    place(s, 'a', foe);
+    const t = structuredClone(s);
+    t.turn = t.order.indexOf('rogue_0');
+    const u = t.units.rogue_0;
+    u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
+    u.intent = undefined;
+    const at = typeof dx === 'number' ? { x: t.units.a.pos.x + dx, z: t.units.a.pos.z } : dx;
+    t.steam = {};
+    for (const c of cellsInArea(t, { kind: 'circle', center: at, radius: r })) t.steam[cellKey(c)] = { rounds: 3, by: 'a' };
+    return t;
+  }
+
+  /** Runs the AI unit's turn to its end: where it stood after each step. */
+  function aiTurn(s: BattleState, id: string): { state: BattleState; moves: Pt[] } {
+    let t = s;
+    const moves: Pt[] = [];
+    for (let n = 0; n < 12; n++) {
+      const a = aiAction(t);
+      if (!a || !('unit' in a) || a.unit !== id) break;
+      const out = ok(applyAction(t, a));
+      t = out.state;
+      if (a.type === 'move') moves.push({ ...t.units[id].pos });
+      if (a.type === 'endTurn') break;
+    }
+    return { state: t, moves };
+  }
+
+  it('beside a foe at the steam\'s edge, it never steps into the steam (no walking in and out until its movement is gone)', () => {
+    // Aki at the edge of a cloud on her near side: the cells beside her that the rogue can reach this
+    // turn are all steam (night_raid seed 9: Kenji stepped in and out four times, 7.5 m to 0.3 m).
+    const s = steamTurn({ x: 12, z: 10 }, { x: 18, z: 10 }, 1.4, 1.6);
+    s.units.rogue_0.turn.move = 5;
+    assert.ok(!steamAt(s, s.units.a.pos) && !steamAt(s, s.units.rogue_0.pos));
+    const { state, moves } = aiTurn(s, 'rogue_0');
+    for (const p of moves) assert.ok(!steamAt(s, p), `stopped in steam at ${JSON.stringify(p)}`);
+    assert.ok(moves.length <= 2, `${moves.length} moves`);
+    assert.ok(!steamAt(state, state.units.rogue_0.pos));
+  });
+
+  it('with its plan doable from inside the steam it strikes first, then walks out with the movement left', () => {
+    const s = steamTurn({ x: 12, z: 10 }, { x: 18, z: 10 }, 0.9, 1.4);
+    s.units.rogue_0.pos = cellCenter(cellOf({ x: s.units.a.pos.x + 1, z: s.units.a.pos.z }));
+    assert.ok(steamAt(s, s.units.rogue_0.pos), 'the rogue starts in the steam');
+    const first = aiAction(s)!;
+    assert.equal(first.type, 'attack', 'it strikes from where it stands');
+    const { state } = aiTurn(s, 'rogue_0');
+    assert.ok(!steamAt(state, state.units.rogue_0.pos), 'and ends its turn outside');
+  });
+
+  it('its action spent in the steam (a charge that landed there), it walks out before ending its turn', () => {
+    const s = steamTurn({ x: 12, z: 10 }, { x: 18, z: 10 }, 1.5, { x: 18, z: 10 });
+    s.steam = {};
+    for (const c of cellsInArea(s, { kind: 'circle', center: s.units.rogue_0.pos, radius: 1.5 })) s.steam[cellKey(c)] = { rounds: 3, by: 'a' };
+    const u = s.units.rogue_0;
+    assert.ok(steamAt(s, u.pos));
+    u.turn.action = false;
+    const a = aiAction(s)!;
+    assert.equal(a.type, 'move');
+    if (a.type === 'move') assert.ok(!(cellKey(a.to) in s.steam!), 'out of the steam');
+  });
+
+  it('a whole AI round with steam on the field: nobody ends a turn standing in it while it can walk out', () => {
+    const s = steamTurn({ x: 12, z: 10 }, { x: 15, z: 10 }, 1.2, 2.2);
+    const out = runAi(s, 60);
+    // Every enemy move of the round ended outside the steam.
+    for (const e of out.events) if (e.t === 'move' && e.unit !== 'a' && e.path.length) assert.ok(!steamAt(s, e.path[e.path.length - 1]), `${e.unit} stopped in steam`);
+    assert.ok(!steamAt(out.state, out.state.units.rogue_0.pos) || out.state.units.rogue_0.down, 'rogue 0 out of it');
   });
 });
 

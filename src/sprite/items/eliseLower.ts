@@ -4,7 +4,7 @@
 // tools/refs/elise-lower-from-ref.py) ride the rig as painted pieces: at rest every pixel is hers.
 
 import { hexToRgb, hslToHex, retintHex, rgbToHsl } from '../color';
-import { armDepth, armJoints, armSpan, DrawCtx, handDraw, handPose, ItemDef, Side } from '../ctx';
+import { armDepth, armJoints, armSpan, Depth, DrawCtx, handDraw, handPose, ItemDef, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, partIndex, RES } from '../raster';
 import { GROUND } from '../rig';
@@ -93,25 +93,7 @@ function coatBack(g: DrawCtx, wind: TailWind, color: (ch: string, hex: string) =
   const over = r.lay ? 0 : Math.max(0, ay + bot - Math.round(lift) - (GROUND * RES - HEM_ABOVE_GROUND));
   const pens: Record<string, number> = {};
   for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
-  // Laid down: the legs' columns in the upright drawing (the cloth within a step of them stays).
-  const legs = new Map<number, [number, number]>();
-  if (r.lay) {
-    for (const d of ['nearLeg.body', 'farLeg.body'] as const) {
-      const B = g.L(d);
-      for (let i = 0; i < GRID * GRID; i++) {
-        if (B.mat[i] < 0) continue;
-        const y = (i / GRID) | 0;
-        const x = i % GRID;
-        const [lo, hi] = legs.get(y) ?? [GRID, -1];
-        legs.set(y, [Math.min(lo, x), Math.max(hi, x)]);
-      }
-    }
-  }
-  const keep = (x: number, y: number) => {
-    if (!r.lay) return true;
-    const s = legs.get(y);
-    return !!s && x >= s[0] - 2 && x <= s[1] + 2;
-  };
+  const keep = layKeep(g);
   // Top rows first, so the rows below (the hem) are drawn over them where the cloth gathers.
   const order = [...px].sort((a, b) => a.dy - b.dy);
   for (const q of order) {
@@ -119,6 +101,57 @@ function coatBack(g: DrawCtx, wind: TailWind, color: (ch: string, hex: string) =
     const x = ax + q.dx + Math.round((wind.dx + wind.wave) * 0.5 * RES * k ** 1.3);
     const y = ay + q.dy - Math.round((lift + over) * k * k);
     if (keep(x, y)) L.set(x, y, pens[q.ch], 3, 'back', FLAGS);
+  }
+}
+
+/**
+ * Knocked out (drawn upright, then laid face down: compose.ts transposes the frame), the coat lies
+ * along the body: only the cloth from a step behind the body's back to the column that lands on the
+ * ground is kept, so the flared tails and the front edges never stand up in the air (as capes.ts
+ * crimsonBack does). Standing, everything is kept.
+ */
+function layKeep(g: DrawCtx): (x: number, y: number) => boolean {
+  const r = g.rig;
+  if (!r.lay) return () => true;
+  const back = new Map<number, number>();
+  for (const d of ['torso.body', 'nearLeg.body', 'farLeg.body'] as const) {
+    const B = g.L(d);
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (B.mat[i] < 0) continue;
+      const y = (i / GRID) | 0;
+      back.set(y, Math.min(back.get(y) ?? GRID, i % GRID));
+    }
+  }
+  const front = Math.floor(r.lay.groundX * RES);
+  return (x, y) => back.has(y) && x >= back.get(y)! - 1 && x < front;
+}
+
+/** Her black line: drawn along a cut when she is laid down. */
+const LINE = '#080613';
+
+/**
+ * A piece riding the pelvis and turning with the torso (the skirt, the coat's front edges). Laid down
+ * it is cut as layKeep says, with her line along the cut so the cloth stays closed.
+ */
+function stampKept(g: DrawCtx, depth: Depth, p: PaintedPiece, color: (ch: string, hex: string) => string): void {
+  const r = g.rig;
+  if (!r.lay) {
+    stampPiece(g, depth, p, r.pelvis, torsoAngle(g), 'pelvis', color);
+    return;
+  }
+  const pal: TemplatePalette = {};
+  for (const [ch, hex] of Object.entries(p.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
+  const tmp = new Layer();
+  stampTemplate(tmp, p, r.pelvis, torsoAngle(g) - p.angle, pal, 'pelvis', { flags: FLAGS });
+  const keep = layKeep(g);
+  const line = g.m(LINE, 'flat');
+  const L = g.L(depth);
+  for (let i = 0; i < GRID * GRID; i++) {
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    if (tmp.mat[i] < 0 || !keep(x, y)) continue;
+    const cut = [i - 1, i + 1, i - GRID, i + GRID].some((q) => tmp.mat[q] >= 0 && !keep(q % GRID, (q / GRID) | 0));
+    L.set(x, y, cut ? line : tmp.mat[i], tmp.shade[i], 'pelvis', FLAGS);
   }
 }
 
@@ -229,7 +262,7 @@ export const NAVY_PLEATS: ItemDef = {
       return k === 'cloth' ? retintHex(hex, ELISE_SKIRT_CLOTH, cloth) : k === 'hem' ? retintHex(hex, ELISE_SKIRT_HEM, hem) : hex;
     };
     shortsLegsOff(g);
-    stampPiece(g, 'skirt', ELISE_SKIRT, g.rig.pelvis, torsoAngle(g), 'pelvis', tint);
+    stampKept(g, 'skirt', ELISE_SKIRT, tint);
   },
 };
 
@@ -254,7 +287,7 @@ export function azureCoatTails(wind: (g: DrawCtx) => TailWind): ItemDef {
         return k === 'lining' ? retintHex(hex, ELISE_COAT_LINING, lining) : hex;
       };
       coatBack(g, wind(g), tint);
-      stampPiece(g, 'torso.over', ELISE_COAT_FRONT, g.rig.pelvis, torsoAngle(g), 'pelvis', tint);
+      stampKept(g, 'torso.over', ELISE_COAT_FRONT, tint);
     },
   };
 }

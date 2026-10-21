@@ -67,6 +67,9 @@ KEY = {
     'g': '#302525', 'n': '#453631', 'M': '#c48e42', 'T': '#d8a84c', 'Y': '#e8ba58', '1': '#f7c962',
 }
 LINE = 'k'
+# Her darkest brown, her line down the sides and round the long hair: also the line the game lays along
+# the hair it cuts away when she is knocked out.
+EDGE = 'q'
 ORNAMENT = 'gnMTY1'
 ORNAMENT_LINE = 'g'
 # Her hair's lit face, most of her crown: the hair colour slot's default (her other hair colours move
@@ -340,6 +343,7 @@ def main():
         used |= set(a[a != ''].tolist())
     meta['palette'] = {c: KEY[c] for c in KEY if c in used}
     meta['line'] = LINE
+    meta['edge'] = EDGE
     meta['ornament'] = ORNAMENT
     meta['ornamentLine'] = ORNAMENT_LINE
     meta['base'] = KEY[BASE]
@@ -404,6 +408,9 @@ def write_ts(meta, path):
     out += [
         '/** Her black line: kept as she has it when the hair is recoloured. */',
         f"export const SAYA_HAIR_LINE = '{meta['line']}';",
+        '',
+        '/** Her darkest brown, her line down the sides and round the long hair: the line along hair cut away when she lies down. */',
+        f"export const SAYA_HAIR_EDGE = '{meta['edge']}';",
         '',
         "/** Her gold ornament's characters: they take the ornament's colour, not the hair's (its dark line stays). */",
         f"export const SAYA_HAIR_ORNAMENT = '{meta['ornament']}';",

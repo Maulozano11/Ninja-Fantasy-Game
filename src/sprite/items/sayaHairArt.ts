@@ -161,6 +161,9 @@ export const SAYA_HAIR_LONG: PaintedPiece = {
 /** Her black line: kept as she has it when the hair is recoloured. */
 export const SAYA_HAIR_LINE = 'k';
 
+/** Her darkest brown, her line down the sides and round the long hair: the line along hair cut away when she lies down. */
+export const SAYA_HAIR_EDGE = 'q';
+
 /** Her gold ornament's characters: they take the ornament's colour, not the hair's (its dark line stays). */
 export const SAYA_HAIR_ORNAMENT = 'gnMTY1';
 export const SAYA_HAIR_ORNAMENT_LINE = 'g';

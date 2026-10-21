@@ -1410,13 +1410,16 @@ Each plays in its caster's chakra colour, like every elemental jutsu.
    vendaval" or rename it (for example "Campo de vendaval")?
 5. The gale's numbers (2.25 m round, the rest of the round and two more, +1
    die to the fire that passes through, 2 chakra): confirm or change.
+   **Answered (2026-10-21):** the +1 die (+2 for a rank S) "si me gusta".
 6. Knocking down and sweeping only ninjas (big creatures stand firm): confirm.
 7. A caster standing in a gale fans its fire whichever way it fires (as
    written above, "or its caster stands in it"): keep, or only fire that
-   flies through the wind?
+   flies through the wind? **Answered (2026-10-21): keep** ("si").
 8. The Tide, the Tower and the Rubble Gust deal bludgeoning damage, so a
    Taijutsu Master takes half (in a test battle the raider took 20 where the
-   others took 40). Keep, or give them no resistance?
+   others took 40). Keep, or give them no resistance? **Answered
+   (2026-10-21): keep** ("daño contundente si dejalo asi los maestros de
+   taijutsu").
 9. With a green chakra colour, the Rubble Gust's aura turns green but his
    earth dust stays mostly brown with green specks: that is how the shared
    chakra-colour recolour treats every earth sheet (not this branch). Fine,
@@ -1651,3 +1654,35 @@ of a unit by depth (P6). The battle engine is not touched, only each jutsu's
 data for the screen (`JutsuSeq.stage`) and the Leaf Hurricane stowing the
 weapon, which is a rule: with the free interaction spent and a weapon in hand it
 waits, like a jutsu with seals.
+
+### The Chidori becomes an activated state (decided 2026-10-21; the rules are open)
+
+The owner, after sending his silver-haired paint-over (a tactical vest shown with
+and without the long coat, and lightning crackling in the near hand): *"quiero que
+copies el sprite de la mano de rayo para ponersela al efecto de chidori porque
+chidori sera una habilidad que actives y que mientras esta activada tiene tu
+personaje el chido y efectos vfx (aura , algunos sprites alredor de rayos
+alrededor y cuando camina el personaje se va rompiendo el piso )"*.
+
+- The Chidori (`chidori_lightning_blade`) is no longer a one-shot thrust: the
+  ninja activates it, and while it is active the lightning is held in the hand.
+- The lightning in the hand is his sprite from that paint-over, copied 1:1 (his
+  pixels, in the caster's chakra colour like the other lightning).
+- While active: an aura, small lightning sprites crackling around the ninja, and
+  the ground cracks under his steps as he walks.
+- How it plays, his answers the same day to our proposal (*"1si 2B pero al
+  momento de acercarte al primer enemigo en rango ataca automaticamente lo mismo
+  para el rasengan 3 si 4 terreno dificil 1 turno para aplicar ese efecto"*):
+  1. Activating it is a bonus action and costs its chakra (5, as before).
+  2. It stays charged for up to 3 rounds. The moment the ninja moves within
+     reach of the first enemy, the blow goes off by itself: one melee jutsu
+     attack, 5d8 lightning as before, and then the Chidori ends. The Rasengan
+     will work the same way when it is built (it is not a battle jutsu yet).
+  3. While charged: his lightning hand, an aura, small lightning sprites around
+     the ninja, and the ground cracking under each step.
+  4. The cracked ground is difficult terrain for 1 turn.
+
+The vest and coat in the same picture are not a new character: *"el chaleco no es
+de jonin parece mas como tactico militar solo cambiale los colores y no lo hagas
+personaje es parte de los sets"*. They become clothing pieces in the sets, with
+new colours.

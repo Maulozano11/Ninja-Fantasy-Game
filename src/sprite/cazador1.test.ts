@@ -137,7 +137,6 @@ describe('the Cazador 1', () => {
     old.slots.face = { id: 'face_foxmask', colors: ['#f2eee6', '#cf2a2a', '#1b1420'] };
     old.slots.hair = { id: 'hair_lowtail', colors: ['#141218'] };
     old.slots.held = { id: 'held_naginata', colors: ['#d4dbe4', '#5a3622', '#c9a227'] };
-    old.slots.bottom = { id: 'bottom_leggings', colors: ['#2a2433', '#7a68a0'] };
     const a = renderSprite(his, 'idle', 0).rgba;
     const b = renderSprite(old, 'idle', 0).rgba;
     let d = 0;

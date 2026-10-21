@@ -6,13 +6,14 @@
 
 import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
-import { PaintedPiece, segAngle, stampPiece } from '../painted';
+import { hisLeg, PaintedLeg, PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 import { isFemaleBody } from '../types';
-import { TROUSERS_CLOTH, TROUSERS_KIND, TROUSERS_SHIN_F, TROUSERS_SHIN_N, TROUSERS_THIGH_F, TROUSERS_THIGH_N, TROUSERS_WAIST } from './hunterTrousersArt';
+import { TROUSERS_CLOTH, TROUSERS_KIND, TROUSERS_SEAT, TROUSERS_SHIN_F, TROUSERS_SHIN_N, TROUSERS_THIGH_F, TROUSERS_THIGH_N, TROUSERS_WAIST } from './hunterTrousersArt';
+import { LEGGINGS_CLOTH, LEGGINGS_KIND, LEGGINGS_SEAT, LEGGINGS_LEGS, LEGGINGS_SHIN_F, LEGGINGS_SHIN_N, LEGGINGS_THIGH_F, LEGGINGS_THIGH_N, LEGGINGS_WAIST } from './huntressLeggingsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1296,54 +1297,106 @@ function legFolds(g: DrawCtx, L: Layer, s: Side, inflate: number, ankle = 1.62):
   fold(L, along(a, b, 0.75, -r * 0.9), along(a, b, 1.0, r * 0.3));
 }
 
+/** One set of the owner's trouser pieces: his waist band, each leg's thigh and shin, and his cloth's colour. */
+interface TrouserArt {
+  base: string;
+  kind: Record<string, string>;
+  waist: PaintedPiece;
+  thighN: PaintedPiece;
+  shinN: PaintedPiece;
+  thighF: PaintedPiece;
+  shinF: PaintedPiece;
+  /** His darkest cloth between the legs, for the seat our hips leave as the legs part. */
+  seat: string;
+  /** His legs' own joints, when his figure's proportions are not our body's (painted.ts hisLeg). */
+  legs?: Record<'N' | 'F', PaintedLeg>;
+}
+
+/** His black trousers on his Cazador 1 (tools/refs/cazador1-trousers-from-ref.py), for the male bodies. */
+const HUNTER_TROUSERS: TrouserArt = { base: TROUSERS_CLOTH, seat: TROUSERS_SEAT, kind: TROUSERS_KIND, waist: TROUSERS_WAIST, thighN: TROUSERS_THIGH_N, shinN: TROUSERS_SHIN_N, thighF: TROUSERS_THIGH_F, shinF: TROUSERS_SHIN_F };
+/** Her dark leggings on his Cazador 2 (tools/refs/cazador2-leggings-from-ref.py), for the female bodies. */
+const HUNTER_LEGGINGS: TrouserArt = { base: LEGGINGS_CLOTH, seat: LEGGINGS_SEAT, kind: LEGGINGS_KIND, waist: LEGGINGS_WAIST, thighN: LEGGINGS_THIGH_N, shinN: LEGGINGS_SHIN_N, thighF: LEGGINGS_THIGH_F, shinF: LEGGINGS_SHIN_F, legs: LEGGINGS_LEGS };
+
 /**
- * The owner's black trousers on his Cazador 1, his pixels (2026-10-21; tools/refs/
- * cazador1-trousers-from-ref.py), for the male bodies: the waist band under the vest about the pelvis,
- * each leg's thigh about the hip and its shin about the knee, so at rest every pixel is his and where
- * he drew it. Our legs under them are taken away (his legs stand a little apart from ours, and our bare
- * leg would show beside his). His cloth follows Leggings (the item's old default colour now means his);
- * his black line stays.
+ * The owner's trousers from his Hunter-nin paint-overs (2026-10-21), his pixels: the waist band under
+ * the vest about the pelvis, each leg's thigh about the hip and its shin about the knee, so at rest every
+ * pixel is his and where he drew it. Our legs under them are taken away (his legs stand a little apart
+ * from ours, and our bare leg would show beside his). His cloth follows the colour; at the item's
+ * default (the Cazador 1's black) each set keeps its own colour; his black line stays.
  */
-function hunterTrousers(g: DrawCtx, c: string): void {
-  const cloth = c.toLowerCase() === '#2a2433' ? TROUSERS_CLOTH : c;
-  const tint = (_ch: string, hex: string) => (TROUSERS_KIND[hex] === 'line' ? hex : retintHex(hex, TROUSERS_CLOTH, cloth));
+function hunterTrousers(g: DrawCtx, art: TrouserArt, c: string): void {
+  const cloth = c.toLowerCase() === TROUSERS_CLOTH ? art.base : c;
+  const tint = (_ch: string, hex: string) => (art.kind[hex] === 'line' ? hex : retintHex(hex, art.base, cloth));
   const r = g.rig;
   for (const s of SIDES) {
     const { hip, knee, ankle } = legJoints(r, s);
+    // His own hip and knee when his legs are not ours; the angles are always our leg's.
+    const his = art.legs ? hisLeg(r, art.legs[s], s) : { hip, knee };
     bareLegOff(g, s);
-    stampPiece(g, legDepth(s, 'cloth'), s === 'N' ? TROUSERS_THIGH_N : TROUSERS_THIGH_F, hip, segAngle(hip, knee), prt('thigh', s), tint);
-    stampPiece(g, legDepth(s, 'cloth'), s === 'N' ? TROUSERS_SHIN_N : TROUSERS_SHIN_F, knee, segAngle(knee, ankle), prt('shin', s), tint);
+    stampPiece(g, legDepth(s, 'cloth'), s === 'N' ? art.thighN : art.thighF, his.hip, segAngle(hip, knee), prt('thigh', s), tint);
+    stampPiece(g, legDepth(s, 'cloth'), s === 'N' ? art.shinN : art.shinF, his.knee, segAngle(knee, ankle), prt('shin', s), tint);
   }
-  stampPiece(g, 'torso.bottom', TROUSERS_WAIST, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint);
-  seatOff(g);
+  stampPiece(g, 'torso.bottom', art.waist, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint);
+  seatOff(g, g.m(retintHex(art.seat, art.base, cloth), 'flat'));
 }
 
 /**
- * Our hips (the body's and its shorts, drawn over the legs) give way to his trouser legs below the
- * waist: his seat is the top of his legs.
+ * Our hips (the body's and its shorts, drawn over the legs) below the waist: his seat is the top of his
+ * legs, and his hips are his (the female hips he drew are not ours). Beside his legs our hips give way;
+ * between them, just under the waist (where the legs part in a stride), they take his cloth, `seat`, so
+ * no skin shows; lower down, his crotch, they give way too.
  */
-function seatOff(g: DrawCtx): void {
+function seatOff(g: DrawCtx, seat: number): void {
   const r = g.rig;
   const legs = [g.L('nearLeg.cloth'), g.L('farLeg.cloth')];
+  const band = g.L('torso.bottom');
+  // Each row's reach of his legs and waist band; a row with neither (where a body of other proportions
+  // than his parts the band from the legs) takes the reach of the row above.
+  const span: [number, number][] = [];
+  for (let y = 0; y < GRID; y++) {
+    let lo = GRID;
+    let hi = -1;
+    for (let x = 0; x < GRID; x++) {
+      const i = y * GRID + x;
+      if (band.mat[i] >= 0 || legs.some((l) => l.mat[i] >= 0)) {
+        lo = Math.min(lo, x);
+        hi = Math.max(hi, x);
+      }
+    }
+    span.push(hi < 0 && y > 0 ? span[y - 1] : [lo, hi]);
+  }
   for (const d of ['torso.body', 'torso.under'] as const) {
     const L = g.L(d);
     for (let i = 0; i < GRID * GRID; i++) {
-      if (L.mat[i] < 0 || !legs.some((l) => l.mat[i] >= 0)) continue;
+      if (L.mat[i] < 0) continue;
       const x = ((i % GRID) + 0.5) / RES - r.pelvis.x;
       const y = (Math.floor(i / GRID) + 0.5) / RES - r.pelvis.y;
-      if (x * r.up.x + y * r.up.y < SEAT_TOP) L.mat[i] = -1;
+      const up = x * r.up.x + y * r.up.y;
+      if (up >= SEAT_TOP) continue;
+      const [lo, hi] = span[Math.floor(i / GRID)];
+      const px = i % GRID;
+      // (Our hips lie over the legs: where his legs are, they always give way.)
+      if (px > lo && px < hi && up > SEAT_LOW && !legs.some((l) => l.mat[i] >= 0)) {
+        L.mat[i] = seat;
+        L.shade[i] = 3;
+        L.flags[i] |= F_NO_TEXTURE;
+      } else L.mat[i] = -1;
     }
   }
 }
 /** How far above the pelvis (design units, along the torso) the seat gives way: the shorts' top. */
 const SEAT_TOP = 2.2;
+/** How far below the pelvis the seat between the legs takes his cloth (his crotch is lower, at rest). */
+const SEAT_LOW = -1.5;
 
-/** Takes our bare leg off above the foot (his trouser leg takes its place); the foot stays. */
+/** Takes our bare leg off above the foot, and the body's shorts on it (his trouser leg takes their place); the foot stays. */
 function bareLegOff(g: DrawCtx, s: Side): void {
-  const L = g.L(legDepth(s, 'body'));
   const thigh = partIndex(prt('thigh', s));
   const shin = partIndex(prt('shin', s));
-  for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && (L.part[i] === thigh || L.part[i] === shin)) L.mat[i] = -1;
+  for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) {
+    const L = g.L(d);
+    for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && (L.part[i] === thigh || L.part[i] === shin)) L.mat[i] = -1;
+  }
 }
 
 export const BOTTOM_ITEMS: ItemDef[] = liftMain([
@@ -1466,13 +1519,9 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     id: 'bottom_leggings',
     slot: 'bottom',
     name: 'Fitted Leggings',
-    desc: 'Snug black trousers with soft folds (on the female bodies, stretch leggings with a contrasting side seam).',
-    colors: [col('main', 'Leggings', TROUSERS_CLOTH), col('seam', 'Side Seam', '#7a68a0')],
+    desc: 'Snug stretch leggings with a contrasting side seam.',
+    colors: [col('main', 'Leggings', '#2a2433'), col('seam', 'Side Seam', '#7a68a0')],
     draw: (g, [c, sc]) => {
-      if (!isFemaleBody(g.rig.body)) {
-        hunterTrousers(g, c);
-        return;
-      }
       trousers(g, c, 1.96, 0.18, 3.4);
       waistband(g, 3.4);
       for (const s of SIDES) {
@@ -1491,6 +1540,14 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
         across(g, L, 'leg', s, 1.9, 0.2, -1);
       }
     },
+  },
+  {
+    id: 'bottom_hunter_leggings',
+    slot: 'bottom',
+    name: 'Hunter Leggings',
+    desc: "The owner's Hunter-nin legwear: black trousers with soft folds on the male bodies, dark fitted leggings on the female ones.",
+    colors: [col('main', 'Leggings', TROUSERS_CLOTH)],
+    draw: (g, [c]) => hunterTrousers(g, isFemaleBody(g.rig.body) ? HUNTER_LEGGINGS : HUNTER_TROUSERS, c),
   },
 ]);
 

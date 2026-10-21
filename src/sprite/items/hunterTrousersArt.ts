@@ -5,6 +5,7 @@ import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
 export const TROUSERS_CLOTH = '#2a2933';
+export const TROUSERS_SEAT = '#171520';
 
 /** What each colour of his is, as the script sorts them; his black line is never tinted. */
 export const TROUSERS_KIND: Record<string, 'line' | 'cloth'> = {

@@ -1,5 +1,5 @@
-"""The owner's black trousers from his Cazador 1 (docs/reference/cazador1-owner-reference.jpg), for the
-Fitted Leggings (`bottom_leggings`, its id kept) on the male bodies.
+"""The owner's black trousers from his Cazador 1 (docs/reference/cazador1-owner-reference.jpg), for the new
+Hunter Leggings (`bottom_hunter_leggings`) on the male bodies (the female ones wear his Cazador 2 leggings).
 
 His picture is our Hunter-nin painted over in his own pixels (tools/refs/cazador1_ref.py: one of his
 pixels is one fine pixel of our sprites). This script lifts out of it, every pixel in his exact colour:
@@ -44,7 +44,12 @@ def main():
     a = C.native()
     masks, cols, filled, _K, _bg = C.pieces(a)
     J = C.JOINTS
-    bases = {'TROUSERS_CLOTH': C.middle(a, masks, cols, NAMES, lambda c: kind_of('', C.hexc(c)) == 'cloth')}
+    is_cloth = lambda c: kind_of('', C.hexc(c)) == 'cloth'
+    bases = {
+        'TROUSERS_CLOTH': C.middle(a, masks, cols, NAMES, is_cloth),
+        # His cloth in shadow (a fifth of it is darker), for the seat between the legs as they part.
+        'TROUSERS_SEAT': C.middle(a, masks, cols, NAMES, is_cloth, 0.2),
+    }
     specs = [
         ('TROUSERS_WAIST', 'waist', 'The waist band under the vest: it rides the torso about the pelvis.', J['pelvis'], C.angle('pelvis', 'neck')),
         ('TROUSERS_THIGH_N', 'thigh_n', 'The near trouser leg, hip to knee: it rides the thigh about the hip.', J['hipN'], C.angle('hipN', 'kneeN')),

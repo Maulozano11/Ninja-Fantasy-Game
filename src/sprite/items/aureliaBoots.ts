@@ -9,7 +9,6 @@ import { retintHex } from '../color';
 import { type Depth, DrawCtx, ItemDef, legDepth, legJoints, Side } from '../ctx';
 import { PaintedPiece, segAngle } from '../painted';
 import { add, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, norm, type PartId, partIndex, RES, sub, v, Vec } from '../raster';
-import { drawRig, type Rig } from '../rig';
 import { rotateTemplate, stampTemplate, type TemplatePalette } from '../rotsprite';
 import {
   DAWN_BOOT_CLOTH,

@@ -300,13 +300,19 @@ interface PauldronOpts {
 }
 
 /**
+ * Capes whose mantle lies under the shoulder guards: the owner's red cape on his Aiden, his pauldron
+ * over its mantle (the cape draws its near mantle into the arm's armour layer before the armour).
+ */
+const PAULDRONS_OVER_CAPE = new Set(['cape_crimson']);
+
+/**
  * Whether a cape lies over the shoulders (any but the long scarf). The cape goes over the armour and
  * its shoulder guards, and nothing of a guard sticks out past it (the owner, 2026-10-20: "elimina los
  * pixeles extras de la hombrera y pon la capa sobrepuesta de la armadura y de la hombrera").
  */
 const capeOverShoulders = (g: DrawCtx): boolean => {
   const c = g.look.slots.cape;
-  return !!c && c.id !== 'cape_scarf';
+  return !!c && c.id !== 'cape_scarf' && !PAULDRONS_OVER_CAPE.has(c.id);
 };
 
 /** Segmented shoulder guard: a domed cap plus overlapping curved lames that follow the upper arm. */

@@ -130,3 +130,26 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `youth_ref.py` + `youth-hair-from-ref.py`, `youth-eyes-from-ref.py`, `youth-jacket-from-ref.py`,
+  `youth-trousers-from-ref.py`, `youth-pouches-from-ref.py`, `youth-sandals-from-ref.py` (all at once:
+  `sh tools/refs/youth-all.sh [studyDir]`): the owner's Joven salvaje paint-over
+  (`docs/reference/joven-salvaje-owner-reference.jpg`, pitch 20 from the corner, our male idle frame 0 at offset
+  (75, 116)), copied like his Trunks and Ren pictures: `youth_ref.PIECES` cuts his figure into region polygons and
+  colour kinds (his line is everything darker than lightness 21, so the near-black brown he outlined the pouches
+  with stays too), keeps only the line round each piece's own colours (two pixels where he doubled it), and
+  `youth()` continues what the belt hides (the jacket and shirt down to their hem, the trousers' seat up from
+  below) and cuts the sleeves at the elbow and the legs at the knee. His legs are shorter than ours
+  (`LEG_SHIFT`: near 5 px, far 3 px): the shins, wraps and sandals hang that much lower so his soles stand on our
+  ground, and the thighs run on down over the shins in his own trousers. The far sleeve's top takes his jacket's
+  far shoulder, so a far arm swung forward is a whole sleeve. Each module exports the colour slots' bases (his
+  colours), which slot each colour follows (`*_SLOT`: line, skin, main, ...) and where each piece lands at rest
+  (`*_REST`), which `src/sprite/youth.test.ts` checks. The eyes script writes the `wild` eye shape
+  (`src/sprite/wildEyeArt.ts`: his brow, lash, whites and irises over our face template's eye cells, a column
+  wider than them on each side, with lowered and closed lids made of his pixels).
+
+      python3 -I tools/refs/youth-hair-from-ref.py src/sprite/items/youthHairArt.ts [studyDir]
+      python3 -I tools/refs/youth-eyes-from-ref.py src/sprite/wildEyeArt.ts [studyDir]
+      python3 -I tools/refs/youth-jacket-from-ref.py src/sprite/items/wildJacketArt.ts [studyDir]
+      python3 -I tools/refs/youth-trousers-from-ref.py src/sprite/items/shinobiPantsArt.ts [studyDir]
+      python3 -I tools/refs/youth-pouches-from-ref.py src/sprite/items/pouchBeltArt.ts [studyDir]
+      python3 -I tools/refs/youth-sandals-from-ref.py src/sprite/items/strawSandalsArt.ts [studyDir]

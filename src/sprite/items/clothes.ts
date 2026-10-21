@@ -7,6 +7,7 @@
 import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
 import { PaintedPiece, segAngle } from '../painted';
+import { SHADE_BELTS_ITEM } from './sayaLower';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
@@ -1669,6 +1670,8 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
       tseam(g, L, CX - 0.3, 3.6, CX - 0.3, 0.9, 1);
     },
   },
+  // Saya's belts, pouch and scabbard, from the owner's Saya picture (sayaLower.ts)
+  SHADE_BELTS_ITEM,
 ]);
 
 // ---------------------------------------------------------------------------

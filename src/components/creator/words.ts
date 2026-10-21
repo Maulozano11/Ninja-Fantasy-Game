@@ -217,6 +217,12 @@ const ES: Record<string, string> = {
   // Saya's scarf (cape_crimson_scarf)
   'A long red scarf wound thick round the neck in two rolls and over the near shoulder, its end hanging behind the shoulder and streaming out behind in the wind.':
     'Una larga bufanda roja enrollada gruesa al cuello en dos vueltas y sobre el hombro cercano, con la punta colgando tras el hombro y ondeando hacia atrás con el viento.',
+  // Saya's skirt, belts and scabbard (items/sayaLower.ts)
+  Stripe: 'Franja',
+  'Shade Pleated Skirt': 'Falda plisada de la Sombra',
+  'Shade Belts and Scabbard': 'Cinturones y vaina de la Sombra',
+  'A short navy skirt in pleats striped in red, with a red hem. Women only.': 'Una falda corta azul marino plisada con franjas rojas y bajo rojo. Solo mujeres.',
+  'Two brown leather belts slung across the hips with steel buckles, a pouch on the hip, and a black scabbard with gold fittings hanging behind the leg. Women only.': 'Dos cinturones de cuero marrón cruzados sobre las caderas con hebillas de acero, una bolsa en la cadera y una vaina negra con herrajes de oro colgando detrás de la pierna. Solo mujeres.',
 };
 
 /** An editor label in the screen's language. */

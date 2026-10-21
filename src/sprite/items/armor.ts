@@ -18,6 +18,7 @@ import { armDepth, armJoints, Depth, DrawCtx, ItemDef, legDepth, legJoints, Side
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, capsule, ellipse, fine, GRID, Layer, lerp, norm, partIndex, PartId, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
 import { GROUND } from '../rig';
+import { SHADE_PLEATS } from './sayaLower';
 import {
   PLATE_CHEST,
   PLATE_ELBOW_N,
@@ -2846,4 +2847,6 @@ export const SKIRT_ITEMS: ItemDef[] = [
       });
     },
   },
+  // Saya's pleated skirt, from the owner's Saya picture (sayaLower.ts)
+  SHADE_PLEATS,
 ];

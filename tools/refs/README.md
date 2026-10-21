@@ -155,3 +155,13 @@ folders.
   far each pixel lies from the wrist.
 
       python3 -I tools/refs/saya-upper-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg src/sprite/items/sayaUpperArt.ts <out>
+
+- `saya-lower-from-ref.py`: Saya's pleated skirt (`skirt_shade_pleats`), and her belts with the pouch
+  and her scabbard (`waist_shade_belts`) (`src/sprite/items/sayaLowerArt.ts`, items in `sayaLower.ts`):
+  his pixels 1:1 from his Saya drawn at our scale (`docs/reference/saya-game-scale-owner-reference.jpg`,
+  10.24 picture px per pixel, laid on our female idle by her eyes). The weapons he called bugged in that
+  picture are not used; what they covered, and the belts' ends where our waist is wider, are filled
+  (crossed in the preview). The scabbard is drawn from her big picture at our scale, in its colours.
+  All three pieces ride the pelvis and turn with the torso; the scabbard hangs behind the near leg.
+
+      python3 -I tools/refs/saya-lower-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg src/sprite/items/sayaLowerArt.ts <out>

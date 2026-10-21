@@ -8,6 +8,7 @@ import { retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
+import { SCARLET_SWORD, SCARLET_SWORD_BLADE, SCARLET_SWORD_EDGE, SCARLET_SWORD_GUARD } from './scarletSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, poleAngle, swordAngle } from '../grip';
@@ -289,6 +290,18 @@ const flameSwordTint =
   (ch: string, hex: string): string =>
     FLAME_LONGSWORD.flame.includes(ch) ? retintHex(hex, FLAME_SWORD_FLAME, flame) : FLAME_LONGSWORD.gold.includes(ch) ? retintHex(hex, FLAME_SWORD_GOLD, gold) : hex;
 
+/** The scarlet sword's colours: its dark steel, its reds (the core, the point, the jewels) and its guard's steel, each turned from his. */
+const scarletSwordTint =
+  (blade: string, edge: string, guard: string) =>
+  (ch: string, hex: string): string =>
+    SCARLET_SWORD.blade.includes(ch)
+      ? retintHex(hex, SCARLET_SWORD_BLADE, blade)
+      : SCARLET_SWORD.edge.includes(ch)
+        ? retintHex(hex, SCARLET_SWORD_EDGE, edge)
+        : SCARLET_SWORD.guard.includes(ch)
+          ? retintHex(hex, SCARLET_SWORD_GUARD, guard)
+          : hex;
+
 export const HELD_ITEMS: ItemDef[] = [
   {
     id: 'held_none',
@@ -355,6 +368,20 @@ export const HELD_ITEMS: ItemDef[] = [
       // His grip crosses his fist at the hand joint (higher in the fist than our other blades' grip
       // point): held there, at rest every pixel is his and his gauntlet's place is our fist's.
       else drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, g.rig.handN, swordAngle(g), tint);
+    },
+  },
+  {
+    id: 'held_scarlet_sword',
+    slot: 'held',
+    name: 'Scarlet Edge',
+    desc: 'A dark steel longsword with a red core down its blade, a red jewel in its cross-guard and its pommel: the owner drew it for Scarlet.',
+    colors: [col('blade', 'Blade', SCARLET_SWORD_BLADE, 'metal'), col('edge', 'Edge', SCARLET_SWORD_EDGE, 'glow'), col('guard', 'Guard', SCARLET_SWORD_GUARD, 'metal')],
+    draw: (g, [blade, edge, guard]) => {
+      const tint = scarletSwordTint(blade, edge, guard);
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', SCARLET_SWORD, backGrip(g, 48), 48, tint);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', SCARLET_SWORD, droppedGrip(g, 0.7), -86, tint);
+      // His sword mirrored, held at its grip under the middle of the fist like our other blades.
+      else drawPaintedWeapon(g, 'nearArm.held', SCARLET_SWORD, gripPoint(g), swordAngle(g), tint);
     },
   },
   {

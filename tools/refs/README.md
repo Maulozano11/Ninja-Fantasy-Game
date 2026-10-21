@@ -170,3 +170,13 @@ folders.
   ours at the same size.
 
       python3 -I tools/refs/scarlet-gloves-boots-from-ref.py src/sprite/items/nobleBootsGlovesArt.ts <study>
+
+- `scarlet-sword-from-ref.py`: his Scarlet's sword (`held_scarlet_sword`) at our scale, written to
+  `src/sprite/items/scarletSwordArt.ts`. It is his sword mirrored, so it hangs the way our swords do
+  (pommel up-left of the fist, blade down-right, his lit edge on top; a quarter turn would put the
+  lit edge underneath), drawn at 3 down for 2 across (56.3 degrees, one off his 55) and held at that
+  angle at rest. Its blade is one run of pixels per row read off his rows (`BLADE`, 0.6 of his along,
+  0.7 across: his line, dark steel edge, black, red core, grey bevel, light edge, line), its hilt
+  drawn by hand at our scale after his pixels (`HILT`). `--rows` prints his rows beside ours.
+
+      python3 -I tools/refs/scarlet-sword-from-ref.py docs/reference/scarlet-owner-reference.jpg <out> src/sprite/items/scarletSwordArt.ts

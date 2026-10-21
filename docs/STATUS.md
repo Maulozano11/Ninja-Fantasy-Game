@@ -124,8 +124,7 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the icons on `icons/sheets-8-11`, the
   camp poses once redone.
 - Name the Scarlet character (`scarlet/study`).
-- `icons/sheets-8-11` renames the Spanish "Warp Strike" to **"Golpe Warp"** and "Command" to
-  **"Comando"**, against D24 ("stay in English"): confirm.
+- Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms
   cast beat, about 115 ms/m for projectiles and 150 ms/m for beasts, longer impacts, the next turn
   waits, speed 1×/2×/3×). Not signed off.

@@ -269,7 +269,7 @@ export function rigPoseFor(pose: SpritePose, style: CastStyle = 'runes', held?: 
 
 /** Blades train a sword kata, polearms a staff drill, everything else (bare hands, held techniques) strikes and kicks. */
 function trainingFor(held: string | undefined): RigPose {
-  if (held === 'held_naginata') return 'trainPole';
+  if (held === 'held_naginata' || held === 'held_rose_sceptre') return 'trainPole';
   if (held === 'held_katana' || held === 'held_crystal' || held === 'held_ice_crystal' || held === 'held_flame_sword' || held === 'held_kunai') return 'train';
   return 'trainFist';
 }

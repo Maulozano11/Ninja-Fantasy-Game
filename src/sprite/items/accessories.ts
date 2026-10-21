@@ -8,6 +8,8 @@ import { retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
+import { PRINCESS_SCEPTRE_GEM, PRINCESS_SCEPTRE_GOLD, ROSE_SCEPTRE } from './princessSceptreArt';
+import { drawRoseSceptre, roseSceptreInFarHand } from './princessSceptre';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
@@ -394,6 +396,20 @@ export const HELD_ITEMS: ItemDef[] = [
       if (handsBusy(g)) drawNaginata(g, { ...gripOf(g, backAngle(g, -62)), hand: backGrip(g, -62), room: 99 }, c, 'backGear');
       else if (handsLimp(g)) drawNaginata(g, { ...gripOf(g, -88), hand: droppedGrip(g, 0.6, 0.8), room: 99 }, c);
       else if (!handsReleased(g)) drawNaginata(g, { ...gripOf(g, poleAngle(g)), hand: gripPoint(g) }, c);
+    },
+  },
+  {
+    id: 'held_rose_sceptre',
+    slot: 'held',
+    name: 'Rose Dawn Sceptre',
+    desc: 'A slender gold sceptre crowned with a gold cage round a mauve-and-pink gem that sheds sparkles: the owner drew it for the princess.',
+    colors: [col('gold', 'Gold', PRINCESS_SCEPTRE_GOLD, 'metal'), col('gem', 'Gem', PRINCESS_SCEPTRE_GEM, 'glow')],
+    draw: (g, [gold, gem]) => {
+      if (handsBusy(g)) drawRoseSceptre(g, 'backGear', backGrip(g, -62), backAngle(g, -62), gold, gem, false);
+      else if (handsLimp(g)) drawRoseSceptre(g, 'nearArm.held', droppedGrip(g, 0.6, 0.8), -88, gold, gem, false);
+      // At rest it is up in her far fist at his angle, every pixel his; otherwise the near fist holds it like a pole.
+      else if (roseSceptreInFarHand(g)) drawRoseSceptre(g, 'farArm.held', g.rig.handF, ROSE_SCEPTRE.angle, gold, gem, true);
+      else if (!handsReleased(g)) drawRoseSceptre(g, 'nearArm.held', gripPoint(g), poleAngle(g), gold, gem, true);
     },
   },
   {

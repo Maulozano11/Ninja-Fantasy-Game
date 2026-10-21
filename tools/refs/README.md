@@ -115,3 +115,7 @@ folders.
       npx tsx tools/refs/princess-idle.ts <dir>/female-idle
       python3 -I tools/refs/princess-study.py <dir> <dir>/female-idle     # native@4, parts@4, overlay@4, palette
       python3 -I tools/refs/princess-study.py --palette                   # reprints PALETTE_HEX
+
+- `princess-sceptre-from-ref.py`: her sceptre (the creator's `held_rose_sceptre`, `src/sprite/items/princessSceptre.ts`) into `src/sprite/items/princessSceptreArt.ts`, his pixels one for one: `ROSE_SCEPTRE` as he drew it (held at rest in the far fist at his angle) and `ROSE_SCEPTRE_STRAIGHT` (the same pixels with the shaft rows moved to an upright shaft, for the poses that turn it), the shaft inside her fist continued from his, his sparkles apart so they twinkle. Colour slots: his golds (`gold`) and the gem's mauves and pinks (`gem`). `--preview` writes his crop beside both templates (`sceptre@12.png`):
+
+      python3 -I tools/refs/princess-sceptre-from-ref.py src/sprite/items/princessSceptreArt.ts [--preview <dir>]

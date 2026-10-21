@@ -6,6 +6,14 @@ generators in `tools/world-sprites/` decode, so a normal build needs no image fi
 hand when a reference changes. Use `python3 -I`, and keep the references outside the repo's code
 folders.
 
+- `female-body-from-ref.py`: the female body's art from his heroines drawn at our scale
+  (`docs/reference/{lyra,aurelia,saya}-game-scale-owner-reference.jpg`): his skin ramp, the small
+  hands (Aurelia's near hand as he drew it; the other hand shapes are his crystal-sword hands with
+  their most repeated rows and columns left out) and the bare feet (his boots' silhouettes filled
+  with his skin). It writes `src/sprite/femaleBodyArt.ts`; `--show` prints every piece as text.
+
+      python3 -I tools/refs/female-body-from-ref.py
+
 - `beasts-from-ref.py`: the phoenix and the raijū for `vfx_beasts`. It writes
   `tools/world-sprites/vfx-beasts-ref-fire.ts` and `vfx-beasts-ref-lightning.ts`.
 

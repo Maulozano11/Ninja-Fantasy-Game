@@ -47,6 +47,11 @@ export interface BodyParams {
   crotch: number;
   /** The head group (head, face, hair, masks, forehead gear) is drawn in head-local units and shrunk by this factor. */
   headScale: number;
+  /**
+   * How much lower than ANKLE_N the ankles stand, in design units. The female bodies stand on the
+   * owner's small feet (5 rows high, his game-scale heroines), so their ankles sit near the ground.
+   */
+  ankleLift?: number;
 }
 
 export const BODY_PARAMS: Record<BodyType, BodyParams> = {
@@ -71,49 +76,54 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     crotch: -3.4,
     headScale: 0.78,
   },
+  // The female bodies follow the owner's heroines drawn at our scale (docs/reference/
+  // *-game-scale-owner-reference.jpg, 2026-10-21): 92 px tall, a longer torso and neck, narrow
+  // shoulders, slim legs with long shins, small hands and feet (ctx.ts FEMALE_HANDS, FOOT_BARE_F).
   female: {
-    torsoLen: 13.8,
-    shoulderHalf: 5.9,
-    chestHalf: 5.8,
+    torsoLen: 18.0,
+    shoulderHalf: 5.1,
+    chestHalf: 5.3,
     waistHalf: 3.5,
-    hipHalf: 7.1,
+    hipHalf: 6.4,
     upperArm: 6.0,
     forearm: 5.2,
-    thigh: 8.0,
-    shin: 7.5,
+    thigh: 7.1,
+    shin: 9.4,
     armR: [1.85, 1.55, 1.75, 1.18],
-    legR: [3.2, 2.05, 1.9, 1.2],
+    legR: [2.9, 1.9, 1.75, 1.05],
     headRx: 6,
     headRy: 7,
     neckW: 1.35,
-    handR: 1.75,
+    handR: 1.4,
     footLen: 3.9,
     bust: 1.5,
     crotch: -1.9,
-    headScale: 0.76,
+    headScale: 0.7,
+    ankleLift: 3.5,
   },
   // Slimmer and curvier than 'female': narrow shoulders and waist, fuller bust
   // and hips, slender arms and long legs with a full thigh and fine ankles.
   slender: {
-    torsoLen: 13.8,
-    shoulderHalf: 5.3,
-    chestHalf: 5.4,
+    torsoLen: 18.0,
+    shoulderHalf: 4.7,
+    chestHalf: 5.0,
     waistHalf: 2.9,
-    hipHalf: 7.0,
+    hipHalf: 6.4,
     upperArm: 6.0,
     forearm: 5.2,
-    thigh: 8.3,
-    shin: 7.8,
+    thigh: 7.1,
+    shin: 9.4,
     armR: [1.7, 1.4, 1.6, 1.05],
-    legR: [3.2, 1.75, 1.7, 1.0],
+    legR: [2.8, 1.7, 1.6, 0.95],
     headRx: 6,
     headRy: 7,
     neckW: 1.15,
-    handR: 1.55,
+    handR: 1.4,
     footLen: 3.6,
     bust: 2.2,
     crotch: -1.7,
-    headScale: 0.76,
+    headScale: 0.7,
+    ankleLift: 3.5,
   },
   bulky: {
     torsoLen: 15.2,
@@ -191,6 +201,8 @@ interface PoseFrame {
    * ones above it.
    */
   hip?: number;
+  /** Sitting on the camp seat: the hips stay at the seat's height on every body (see BodyParams.ankleLift). */
+  seat?: boolean;
   /**
    * Raises the whole body this many design units above the ground, so both
    * feet leave it (the flight phase of a run); negative lowers it (a pose that
@@ -489,7 +501,7 @@ const LEAN = breathe(LEAN_BASE, 4);
  * flames. Gentle breathing.
  */
 const SEAT_HIP = 0.74;
-const SIT_LEGS = { hip: SEAT_HIP, footN: v(0.5, groundY(SEAT_HIP, 0.5)), footF: v(0.47, groundY(SEAT_HIP, 0.47)) };
+const SIT_LEGS = { seat: true, hip: SEAT_HIP, footN: v(0.5, groundY(SEAT_HIP, 0.5)), footF: v(0.47, groundY(SEAT_HIP, 0.47)) };
 const SIT_BASE: PoseFrame = {
   lean: 14,
   pelvisDx: -8.5,
@@ -930,7 +942,7 @@ function layFor(r: Rig): Lay {
   const b = r.bp;
   const groundX = r.pelvis.x + b.chestHalf * 0.62 + b.bust * 0.4 + 2.2;
   const top = r.head.y - b.headRy * b.headScale - 2.4;
-  const bottom = ANKLE_N + 6;
+  const bottom = ANKLE_N + (b.ankleLift || 0) + 6;
   const mid = (top + bottom) / 2;
   const dx = Math.round(FRAME_MID * RES - mid * RES);
   const dy = Math.round(GROUND * RES - 1 - groundX * RES);
@@ -1028,7 +1040,11 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   // by `hip`); `lift` raises the whole body off it.
   const footDrop = (f.hip ?? Math.max(f.footN.y, f.footF.y)) * legLen;
   const jitter = f.jitter ? (frame % 2 === 0 ? -f.jitter : f.jitter) * 0.5 : 0;
-  const stand = v(FEET_X - 0.5 + (f.pelvisDx || 0) + jitter, ANKLE_N - footDrop - (f.lift || 0));
+  // A seated pose keeps its hips on the seat; the lower ankles of a body with `ankleLift` reach
+  // down to the ground from there (footLow below).
+  const ankle = ANKLE_N + (f.seat ? 0 : bp.ankleLift || 0);
+  const footLow = f.seat ? v(0, bp.ankleLift || 0) : v(0, 0);
+  const stand = v(FEET_X - 0.5 + (f.pelvisDx || 0) + jitter, ankle - footDrop - (f.lift || 0));
   // `sink` and `snap` lower the pelvis while the feet stay where the pose puts
   // them (the knees take it up), `snap` onto the fine pixel grid.
   const moved = !!(f.sink || f.snap);
@@ -1052,8 +1068,8 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     fromN = add(hipN, back);
     fromF = add(hipF, back);
   }
-  const legN = solve2(hipN, add(fromN, scale(f.footN, legLen)), bp.thigh, bp.shin, -1);
-  const legF = solve2(hipF, add(fromF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), bp.thigh, bp.shin, -1);
+  const legN = solve2(hipN, add(add(fromN, scale(f.footN, legLen)), footLow), bp.thigh, bp.shin, -1);
+  const legF = solve2(hipF, add(add(fromF, add(scale(f.footF, legLen), v(0, FAR_HIP_LIFT - FAR_LIFT))), footLow), bp.thigh, bp.shin, -1);
 
   const chestDy = f.chestDy || 0;
   const neck = add(T(0.6, bp.torsoLen), v(0, chestDy));

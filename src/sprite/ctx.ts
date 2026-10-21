@@ -27,6 +27,7 @@ import {
 import { BodyParams, Rig } from './rig';
 import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
+import { FEMALE_FEET, FEMALE_HANDS } from './femaleBodyArt';
 import { isFemaleBody, type BodyType, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
 
 /**
@@ -519,6 +520,14 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
   };
   const flags = F_NO_OUTLINE | F_NO_TEXTURE;
   const { kind, rot, flipX } = handPose(g, s);
+  if (isFemaleBody(g.rig.body)) {
+    // The owner's small hands (femaleBodyArt.ts); the far fist is authored in far-side values.
+    const H = FEMALE_HANDS;
+    if (kind === 'cradle') stampTemplate(L, H.cradle, j.wrist, 0, pal, pen.part, { flags });
+    else if (s === 'F' && kind === 'fist') stampTemplate(L, H.fistFar, j.wrist, rot, { ...pal, D: [pen.mat, 1], s: [pen.mat, 2], b: [pen.mat, 3], l: [pen.mat, 3] }, pen.part, { flipX, flags });
+    else stampTemplate(L, H[kind], j.wrist, rot, pal, pen.part, { flipX, flags });
+    return;
+  }
   if (kind === 'cradle') {
     stampTemplate(L, HAND_CRADLE, j.wrist, 0, pal, pen.part, { flags });
     return;
@@ -588,6 +597,20 @@ export const FOOT_BARE: FootArt = {
   },
 };
 
+/**
+ * The female bodies stand on the owner's small feet (his heroines at our scale): the bare foot is
+ * his (FEMALE_FEET); a boot keeps its own pixels brought down to about that size, its lowest rows
+ * (toe, welt and sole) and its outer columns, so it stands on the same ground.
+ */
+function femaleFoot(t: PixelTemplate, art: FootArt, s: Side): PixelTemplate {
+  if (art === FOOT_BARE) return FEMALE_FEET[s];
+  const keep = s === 'N' ? 4 : 3;
+  const cols = s === 'N' ? 3 : 2;
+  const rows = t.rows.slice(Math.max(0, t.rows.length - keep));
+  const col = t.pivot[0] + 1;
+  return { pivot: [t.pivot[0], 0], rows: rows.map((r) => r.slice(0, col) + r.slice(col + cols)) };
+}
+
 /** Variant for slimmer (female) or broader (bulky) feet: drops or doubles one column. */
 function footWidth(t: PixelTemplate, body: string): PixelTemplate {
   const col = t.pivot[0] + 1;
@@ -608,7 +631,7 @@ export function footDraw(
   mats: { main?: number; second?: number; third?: number } = {},
   flags = F_NO_TEXTURE,
 ): void {
-  const t = footWidth(art[s], g.rig.body);
+  const t = isFemaleBody(g.rig.body) ? femaleFoot(art[s], art, s) : footWidth(art[s], g.rig.body);
   const a = legJoints(g.rig, s).ankle;
   const ax = Math.floor(a.x * RES) - t.pivot[0];
   const ay = Math.floor(a.y * RES) - t.pivot[1];

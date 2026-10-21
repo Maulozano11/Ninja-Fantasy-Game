@@ -267,7 +267,9 @@ function stowKatanaAtHip(g: DrawCtx, hilt: string, guard: string): void {
 /** Big blades and polearms ride diagonally across the back, the hilt or blade over the near shoulder. */
 function backGrip(g: DrawCtx, deg: number): Vec {
   const b = g.bp;
-  return stowAt(g, -b.shoulderHalf - 2.4, b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
+  // Narrow (female) shoulders keep the blade as far back as the old female body's did, so a long
+  // blade still clears the neck when the body pitches forward.
+  return stowAt(g, -Math.max(b.shoulderHalf, 5.9) - 2.4, b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
 }
 
 /**

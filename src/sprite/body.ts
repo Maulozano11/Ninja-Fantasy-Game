@@ -33,6 +33,8 @@ export function drawBody(g: DrawCtx): void {
     const shin = skin(s === 'N' ? 'shinN' : 'shinF', bias);
     legSpan(g, L, s, 0, 1, 0, thigh, 'skin');
     legSpan(g, L, s, 1, 2, 0, shin, 'skin');
+    // His heroines' legs: flat skin with a shadow just inside the line, away from the light.
+    if (isFemaleBody(r.body)) flatSkin(L, g.skin, s === 'F' ? 2 : 3);
     footDraw(g, L, s, FOOT_BARE);
   }
 
@@ -211,9 +213,37 @@ function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
   // Muscle definition: a lit crest along the biceps and along the forearm
   // muscle just below the elbow, on the side facing the light; a shadow line
   // under the forearm crest and at the inner elbow.
+  if (isFemaleBody(g.rig.body)) {
+    // The owner paints his heroines' arms flat: no muscle lines (see flatSkin).
+    flatSkin(L, upper.mat, s === 'F' ? 2 : 3);
+    return;
+  }
   muscleLine(g, L, s, upper.mat, 0.22, 0.72, 0.42, 1);
   muscleLine(g, L, s, fore.mat, 1.06, 1.58, 0.4, 1);
   despeckle(L, upper.mat);
+}
+
+/**
+ * Skin painted the way the owner paints his heroines (his game-scale pictures): one flat tone
+ * (`base`) with a shadow one shade darker along the side away from the light, the right and the
+ * underside, just inside the line. A pixel on the silhouette's edge becomes the line in the
+ * layer's outline pass, so the shadow is the pixel next to it. Hands, feet and other templates
+ * (F_NO_TEXTURE) keep their own pixels.
+ */
+function flatSkin(L: Layer, mat: number, base: number, rim = 1): void {
+  const own = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && L.mat[y * GRID + x] === mat;
+  const edge = (x: number, y: number) => own(x, y) && !(own(x + 1, y) && own(x - 1, y) && own(x, y + 1) && own(x, y - 1));
+  const out: [number, number][] = [];
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const i = y * GRID + x;
+      if (L.mat[i] !== mat || L.shade[i] === 0 || L.flags[i] & F_NO_TEXTURE || edge(x, y)) continue;
+      let sh = base;
+      for (let k = 1; k <= rim; k++) if (edge(x + k, y) || edge(x, y + k) || edge(x + k, y + k)) sh = base - 1;
+      out.push([i, sh]);
+    }
+  }
+  for (const [i, sh] of out) L.shade[i] = sh;
 }
 
 /**

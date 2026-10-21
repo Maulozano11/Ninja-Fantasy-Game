@@ -4,7 +4,9 @@
 // Shadows drift toward cool hues and highlights toward warm hues, which is
 // what gives 16-bit sprites their depth instead of flat darken/lighten.
 
-export type RampKind = 'skin' | 'hair' | 'cloth' | 'metal' | 'leather' | 'glow' | 'flat';
+import { FEMALE_SKIN } from './femaleBodyArt';
+
+export type RampKind = 'skin' | 'skinF' | 'hair' | 'cloth' | 'metal' | 'leather' | 'glow' | 'flat';
 export type Ramp = [string, string, string, string, string, string];
 
 export function hexToRgb(hex: string): [number, number, number] {
@@ -75,6 +77,13 @@ export function makeRamp(hex: string, kind: RampKind = 'cloth'): Ramp {
 
   if (kind === 'flat') {
     ramp = [hex, hex, hex, hex, hex, hex];
+  } else if (kind === 'skinF') {
+    // The female bodies' skin, painted the owner's way (femaleBodyArt.ts, from his heroines at our
+    // scale): his near-black line, his deep shadow and shadow moved the way the player moved the
+    // base, and flat skin with no highlight above the base.
+    const his = FEMALE_SKIN.base;
+    const t = (c: string) => retintHex(c, his, hex);
+    ramp = [t(FEMALE_SKIN.line), t(FEMALE_SKIN.deep), t(FEMALE_SKIN.shadow), hex, hex, hex];
   } else if (kind === 'glow') {
     ramp = [
       hslToHex(h, s, Math.max(0.1, l - 0.35)),

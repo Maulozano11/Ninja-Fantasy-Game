@@ -56,6 +56,20 @@ export const PONY_HAIR_REST: Record<string, [number, number]> = {
   PONY_HAIR: [106, 125],
 };
 
+/** Where her face shows between her strands, pinned on the face anchor: the head under her hair is kept there. */
+export const PONY_FACE_GAPS: Pick<PaintedPiece, 'rows' | 'pivot'> = {
+  pivot: [4, 4],
+  rows: [
+    '.......##......',
+    '......####.....',
+    '.........##....',
+    '.....#######...',
+    '#...#########..',
+    '#...###########',
+    '#....######.###',
+  ],
+};
+
 /** Her hair over the head, pinned on the face anchor. */
 export const PONY_HAIR: PaintedPiece = {
   pivot: [17, 16],

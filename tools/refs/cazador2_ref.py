@@ -15,7 +15,9 @@ female rig's joints at idle frame 0 in his pixels (at BODY) and FACE our face an
 is pinned with its pivot on our joint, so at rest every pixel lands where he drew it (in his picture moved
 by BODY or HEAD), and a later re-pin to the new female body only changes these numbers.
 
-His face (skin, eyes, brows) is not lifted: it is our female face's place (the body's), and stays ours.
+Her face (her forehead between the strands, her brow, eyes and cheeks above the mask) is not one of these
+pieces: it is the face's place (the body's), lifted by cazador2-head-from-ref.py (the 'huntress' face shape)
+and cazador2-eyes-from-ref.py (the 'huntress' eye shape), both pinned on the face anchor like her hair.
 
 Scripts import this with sys.path.insert(0, os.path.dirname(__file__)) and run with python3 -I from the repo
 root.
@@ -109,7 +111,7 @@ def angle(a_name, b_name):
 # {row: (first, last)} or a list of them, inclusive.
 # ---------------------------------------------------------------------------------------------------
 
-# Her face: not a piece (our face is drawn there), so nothing else takes it.
+# Her face: not one of these pieces (the face shape and eye shape take it), so nothing else takes it.
 FACE_CELLS = spans({14: (52, 53), 15: (51, 54), 16: (54, 55), 17: (50, 56), 18: [(45, 45), (49, 57)], 19: [(45, 45), (49, 59)], 20: [(45, 45), (50, 55), (57, 59)]})
 EARS = spans({3: [(49, 50), (58, 60)], 4: [(48, 51), (58, 60)], 5: [(47, 51), (57, 60)], 6: [(47, 51), (57, 60)], 7: [(47, 51), (56, 60)], 8: [(47, 51), (56, 60)], 9: [(48, 50), (58, 60)]})
 MASK = spans({20: [(49, 49), (56, 56)], 21: (49, 59), 22: (49, 60), 23: (49, 60), 24: (49, 59), 25: (52, 57), 26: (54, 56)})
@@ -167,11 +169,11 @@ def labels(a):
     """His figure cut into pieces: {name: mask}, K (kinds), bg (the white round him and in his gaps; the
     white of his ears, mask and kunai is his)."""
     K = np.array([[kind(a[y, x]) for x in range(SIZE)] for y in range(SIZE)])
-    # His white highlights on the ears, mask, kunai, the guard's top and the breastplate (not the gaps
-    # between his arms and body, or between the strands of his hair).
+    # His white highlights on the ears, mask, kunai, the guard's top and the breastplate, and the white of
+    # her eye (not the gaps between his arms and body, or between the strands of his hair).
     cols_ = np.arange(SIZE)[None, :]
     rows_ = np.arange(SIZE)[:, None]
-    art = EARS | MASK | KUNAI | (GUARD_N & (cols_ >= 40) & (rows_ <= 35)) | (VEST & (cols_ >= 49))
+    art = EARS | MASK | KUNAI | FACE_CELLS | (GUARD_N & (cols_ >= 40) & (rows_ <= 35)) | (VEST & (cols_ >= 49))
     bg = background(a) | ((luma(a) > 225) & ~art)
     fig = ~bg
     line = (K == 'line') & fig

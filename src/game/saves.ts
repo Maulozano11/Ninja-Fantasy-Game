@@ -3,6 +3,7 @@
 
 import type { ShinobiCharacter } from '../types/shinobi';
 import { migrateCharacter } from '../rules/ninja';
+import { asMade } from '../rules/progression';
 
 const HERO_KEY = 'shinobi5e.hero.v1';
 const ROSTER_KEY = 'shinobi5e.roster.v1';
@@ -35,10 +36,13 @@ const write = (key: string, value: unknown) => {
 const isNinja = (c: unknown): c is ShinobiCharacter =>
   !!c && typeof c === 'object' && typeof (c as ShinobiCharacter).id === 'string' && typeof (c as ShinobiCharacter).clan === 'string';
 
-/** The ninja you play now, if one was made on this device. */
+/**
+ * The ninja you play now, if one was made on this device. A saved ninja has been made: its chakra
+ * type is fixed (rules/progression.ts), also on sheets saved before that rule.
+ */
 export function loadHero(): ShinobiCharacter | null {
   const c = read<unknown>(HERO_KEY);
-  return isNinja(c) ? migrateCharacter(c) : null;
+  return isNinja(c) ? asMade(migrateCharacter(c)) : null;
 }
 
 /** Makes this the ninja you play, and keeps it in the roster. */
@@ -48,13 +52,13 @@ export function saveHero(c: ShinobiCharacter): void {
   write(ROSTER_KEY, [{ character: c, savedAt: Date.now() }, ...rest].slice(0, ROSTER_MAX));
 }
 
-/** The ninjas made on this device, newest first. */
+/** The ninjas made on this device, newest first (each one made: its type is fixed). */
 export function loadRoster(): SavedNinja[] {
   const list = read<unknown[]>(ROSTER_KEY);
   if (!Array.isArray(list)) return [];
   return list
     .filter((s): s is SavedNinja => !!s && typeof s === 'object' && isNinja((s as SavedNinja).character))
-    .map((s) => ({ character: migrateCharacter(s.character), savedAt: Number(s.savedAt) || 0 }));
+    .map((s) => ({ character: asMade(migrateCharacter(s.character)), savedAt: Number(s.savedAt) || 0 }));
 }
 
 export function forgetNinja(id: string): void {

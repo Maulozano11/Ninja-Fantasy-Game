@@ -7,6 +7,7 @@ import { effectiveMaxHp } from './derived';
 import { rollDice } from './dice';
 import { addEffect, EFFECTS, endBattle, hasEffect, leaveZone } from './effects';
 import { changeChakra, changeExhaustion, changeHp, changeTension, giveEffect, isUnconscious, returnToVillage, Step } from './ninja';
+import { withPouches } from './pouch';
 import type { Outcome } from './rest';
 import { Dice, rngFor, rollDie } from './rng';
 
@@ -20,6 +21,7 @@ export const DEFAULT_SUPPLIES: Supplies = {
   wireRolls: 1,
 };
 
+/** A new mission: the backpack (the mission's supplies, plus the explosive tags in each member's own pouch). */
 export function newMission(
   members: ShinobiCharacter[],
   opts: { seed: number; difficulty?: Difficulty; deadlineHours?: number; supplies?: Partial<Supplies>; leaderId?: string; noRandomness?: boolean },
@@ -27,7 +29,7 @@ export function newMission(
   return {
     members,
     dead: [],
-    supplies: { ...DEFAULT_SUPPLIES, ...opts.supplies },
+    supplies: withPouches({ ...DEFAULT_SUPPLIES, ...opts.supplies }, members),
     bonds: {},
     leaderId: opts.leaderId ?? members[0]?.id ?? '',
     progress: {

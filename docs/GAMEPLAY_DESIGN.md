@@ -281,34 +281,71 @@ rayo"*.
 
 - **One choice.** In Appearance > Chakra the player picks the **chakra type**
   (Fuego, Agua, Viento, Rayo...). That type is the ninja's **elemental nature**
-  in the rules: it will decide which elemental jutsu the ninja can learn
-  (backlog 4c, not built yet). There is no other nature picker.
+  in the rules: it decides which elemental jutsu the ninja can learn ("The
+  nature decides the elemental jutsu" below). There is no other nature picker.
 - **The colour is only a look.** Any type takes any colour (its natural one,
   another chakra colour or any hex): green fire is still Fire, black or blue
   lightning is still Lightning. The colour never changes the nature.
 
-**As built, proposed and waiting for the owner's approval** (the builder's
-choices, not his decisions; see Open questions):
+**His answers to the four questions** (2026-10-21, later): *"1 si 2 actualiza
+3 sombra se quedara pendiente y espiritu tambien quitalos de la seleccion y luz
+y vacio hay que hacerles justsus pero dejalo pendiente porque van a ser jutsus
+de tipo deidad angel y dios y el de vacio sombra y espiritu va ser demoniaco
+4 si"*. All four are built (where the builder had to choose how, it says so):
 
-- **The types are the bursts.** Each burst belongs to one type. Fire (the
-  flames) and Lightning (the electric burst) are his words; the rest of the
-  table is proposed:
+1. **The legends keep their new types** ("si"), each in the colour it always
+   had: Kaien and Ren Lightning (violet, blue), Hiro Wind (orange), Raiga Fire
+   (violet); of the companions, Hana Water (green) and Kenji Earth (violet).
+   Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira, Aiden and
+   Shiori already matched.
+2. **Saved copies are updated** ("actualiza"). A copy of a legend or companion
+   (the hero, the roster, the party and the fallen of a mission under way, an
+   import; matched by its id) that still has the burst it had before (Kaien,
+   Raiga and Kenji the violet Spectral Guardian, Ren the blue Rising Tide, Hiro
+   the orange Cinder Nova, Hana the green Leafwind Spiral) loads with the
+   legend's burst of today, in the colour it showed (its own colour, else the
+   old burst's natural one). Nothing else changes. A copy whose player picked
+   another burst keeps it.
+   *As built (the builder's choice, for his approval):* only a copy that still
+   carries the legend's own jutsu is moved, that is, its Element and S-rank
+   jutsu fit the legend's type of today better than the old burst's type. The
+   id and the burst alone can't tell an old copy from a player's own choice:
+   picking a legend keeps its id, and Ren as Water or Hiro with Cinder Nova are
+   choices a player can make today. Those copies had their jutsu fitted to the
+   type by the creator (below), so they are left alone on every load. A moved
+   copy no longer has the old burst, so the move happens once. Two cases this
+   rule decides: a copy saved in the hours between the chakra-type change and
+   this one (a legend turned to its old type before the creator fitted the
+   jutsu) is moved, once; an old copy whose player had already changed its
+   jutsu so they fit the old type keeps the old type.
+3. **Shadow and Spirit are pending** ("se quedara pendiente... quitalos de la
+   seleccion"): the creator and the random ninja no longer offer them. Their
+   art stays in the game: a ninja that already has one keeps it, draws it and
+   reads it as its nature; the creator shows its tile marked "Pendiente" and
+   lets the player pick another type. **Light and Void stay**; their own jutsu
+   are pending ("dejalo pendiente"): **Light** will get **deity, angel and god**
+   jutsu (*"deidad angel y dios"*); **Void**, and later **Shadow and Spirit**,
+   **demonic** ones (*"demoniaco"*). Until then they learn no elemental jutsu;
+   the creator says so ("Sus jutsus llegarán más adelante"). (That they learn
+   no elemental jutsu meanwhile is the builder's reading, for his approval.)
+4. **Cinder Nova stays as a second Fire burst** ("si").
+
+The types and their bursts. Which burst stands for which type was proposed
+by the builder; his answers settle the rows marked so, the rest is still
+**proposed** (Open questions):
 
 | Type | Burst(s) | Natural colour | State |
 |---|---|---|---|
-| Fire (Fuego) | Pyre Crown (flames), Cinder Nova (embers and a fiery shockwave) | red, orange | Pyre Crown: his rule. Cinder Nova as a second Fire burst: proposed |
-| Water (Agua) | Rising Tide | blue | Proposed |
-| Wind (Viento) | Leafwind Spiral | green | Proposed |
+| Fire (Fuego) | Pyre Crown (flames), Cinder Nova (embers and a fiery shockwave) | red, orange | His rule; Cinder Nova as a second burst: his answer 4 |
+| Water (Agua) | Rising Tide | blue | Proposed (Hana is Water: his answer 1, on this table) |
+| Wind (Viento) | Leafwind Spiral | green | Proposed (Hiro is Wind: his answer 1, on this table) |
 | Lightning (Rayo) | Storm Lash; Living Sparks (no aura and no glow, only small jagged bolts now and then on the hair, shoulders, arms and round the legs) | yellow, cyan | Storm Lash: his rule. A second burst: his request (2026-10-21); Living Sparks is **new art**, its name provisional |
-| Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up) | brown | **New art**, proposed |
-| Shadow (Sombra), no element | Nightveil Mist | indigo | Proposed |
-| Spirit (Espíritu), no element | Spectral Guardian | violet | Proposed |
-| Light (Luz), no element | Heaven Pillar | white | Proposed |
-| Void (Vacío), no element | Abyss Orbit | black | Proposed |
+| Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up) | brown | Kenji Earth: his answer 1. The burst art is **approved** (2026-10-21: "me gusta tierra quebrada") |
+| Shadow (Sombra), no element | Nightveil Mist | indigo | **Pending** (answer 3): not offered; jutsu later, demonic |
+| Spirit (Espíritu), no element | Spectral Guardian | violet | **Pending** (answer 3): not offered; jutsu later, demonic |
+| Light (Luz), no element | Heaven Pillar | white | The type stays (answer 3), its jutsu later: deity, angel and god. The burst: proposed |
+| Void (Vacío), no element | Abyss Orbit | black | The type stays (answer 3), its jutsu later: demonic. The burst: proposed |
 
-- **Earth** had no burst, so one was drawn for it (Shattered Earth, with an
-  Earth emblem, orb and word for the grimoire casts). It is new art and waits
-  for his approval; without it Earth can't be picked.
 - **Lightning's second burst** (the owner, 2026-10-21: *"hazle una segunda
   aura a electricidad [...] sin el aura solo los rayos ocacionales"*, and by
   aura he means the ki burst round the body: *"sin eso"*). Living Sparks (id
@@ -327,20 +364,234 @@ choices, not his decisions; see Open questions):
   proposed for him to choose: *Chispas vivas* / Living Sparks (used for now),
   *Relámpago latente* / Latent Lightning, *Estática salvaje* / Wild Static. New
   art: waits for his approval.
-- **The four types without an element** (Shadow, Spirit, Light, Void) are kept
-  because their bursts were approved as bursts; whether they stay as natures,
-  and what they may learn, is his call. No jutsu has their nature.
-- **The legends' types follow their jutsu**, in the colour they always had:
-  Kaien and Ren Lightning (violet, blue), Hiro Wind (orange), Raiga Fire
-  (violet); of the companions, Hana Water (green) and Kenji Earth (violet).
-  Solen, Akira, Aiden and Shiori already matched. Proposed: Kaien, Raiga and
-  Kenji lose the ghost-warrior burst.
-- **Legends and companions saved before this change keep the burst they were
-  saved with**, so a saved copy of Kaien reads Spirit, Ren Water, Hiro Fire
-  (embers), Raiga Spirit, and Hana and Kenji inside a mission under way Wind and
-  Spirit, against their own jutsu and the new presets. Saves were not touched:
-  moving those copies to the new burst is a save change and needs his decision
-  (Open questions).
+
+**The nature decides the elemental jutsu.** That the nature decides which
+elemental jutsu a ninja can learn is the owner's ("One choice" above). The
+backlog item it comes from reads "Elemental nature decides the elemental jutsu
+available; a new ninja starts with low-rank ones only": that is a paraphrase
+of his request, not his words. How the gate works is **as built, proposed and
+waiting for the owner's approval** (the builder's choices, not his decisions;
+each is in Open questions). In the creator's Jutsu step:
+
+- **Gated:** a jutsu of one of the five elements (Fire, Water, Wind,
+  Lightning, Earth) in the **Element I, Element II and S-rank** slots is
+  offered only to a ninja of that element.
+- **Not gated by the nature:** the jutsu with no element in those slots
+  (taijutsu, kenjutsu, genjutsu: **the class gates them**, his answer below,
+  "Jutsu of a class"); everything in the **Utility** slot (the mystical palm,
+  Water healing, is a utility jutsu open to every nature: his answer 3 below);
+  the **clan secret**, whatever its element (it comes with the clan).
+- **Light and Void** (and a ninja that still has Shadow or Spirit) are offered
+  no elemental jutsu: only their class's kind of jutsu with no element, until
+  their own exist.
+- **Changing the type** swaps each chosen jutsu of another element for one of
+  the new type: its own element first, the lowest rank first, never the one
+  the other Element slot holds; if the type has none left, one of its class's
+  kind; if there is none either, the slot is left empty (never the same jutsu
+  in two slots). A note under the type tiles and at the top of the Jutsu step lists
+  the swaps ("Ahora Rayo: se cambiaron los jutsus de otro elemento. Bola de
+  fuego → Sabueso del rayo; Gran aniquilación → Kirin."); a slot the player
+  picks again drops out of it, and on a short screen the note sticks to the
+  bottom of the panel so it is seen right after the click. (Swapping, not just
+  marking, keeps a player from keeping another element's jutsu by changing
+  type afterwards, and it is what tells a player's own type from an old copy
+  of a legend, answer 2.)
+- **A sheet keeps what it has:** an older sheet or an imported one keeps its
+  jutsu; the Jutsu step marks one of none of its elements "no es de tu
+  naturaleza", and it stays until the player changes that slot or the type.
+  (Kaien's Fireball and Raiga's Earth Wall are their second element's since his
+  level-5 answer, below: no longer marked.)
+- **The random ninja** picks jutsu of its own nature at a new ninja's ranks
+  (Element I of its element when there is one) and its clan's secret; its
+  S-rank slot stays empty (his answer 1 below).
+- **Enemies and battles** are not touched: the gate is the creator's.
+
+**His answers on the jutsu** (2026-10-21, later still), to four questions (which
+ranks a new ninja may pick; the gaps; the explosive tag and the healing palm;
+the swap on a type change): *"1 d y c y los de su clan 2 propuestas 3 sello
+explosivo es un item o herramienta consumible palma curativa es un jutsu de
+utilidad 4 si pero no se puede cambiar de tipo lo que se va poder es tener 2ndo
+elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
+
+1. **A new ninja learns rank D and C jutsu, and its clan's** ("d y c y los de
+   su clan"). In the creator every slot offers only jutsu of rank D or C (of
+   the ninja's nature where the slot is gated), plus the jutsu of its own clan
+   whatever their rank (the clan secrets are all rank A). The creator's sheet
+   for a new ninja (a new game, a copy made from a legend, the random ninja)
+   is fitted to that: a jutsu above C is swapped for one it may learn, lowest
+   rank first. **The S-rank slot** has nothing to offer a new ninja, so it is
+   shown **locked, in its place** ("Se desbloquea más adelante · Rango S · no
+   es para un ninja nuevo", with a lock), and the slot is empty on the sheet
+   (in battle the ninja simply has no S-rank jutsu). *As built (the builder's
+   choice):* locked rather than removed, so the approved Jutsu layout keeps its
+   five rows and the slot is there when it opens. A line at the top of the
+   Jutsu step says the rule. **The legends keep their sheets** (they are
+   presets, not creator picks): their jutsu above C stay, marked "rango S: se
+   queda en su hoja", and a legend picked as a starting point whose type is
+   changed gets its S-rank swapped for one of the new element's (or one of its
+   class's kind), emptied only when its nature and class have none (Solen as
+   Water); its slots offer only D and C (and what its level-5 choice opens,
+   below). **A made ninja** keeps its own jutsu (marked where they are above
+   its ranks) and "Ninja al azar" keeps them (the clan secret follows the new
+   clan, and the ones of another class are swapped as a class change does).
+   Since his level-5 answer ("Level 5" below) a made ninja is offered the same
+   ranks as every ninja of its level, no longer every rank: ranks above C are
+   earned at level 5 (the builder's reading, for his approval). When the S-rank
+   slot opens (a level, a mission) is not decided (Open questions).
+2. **The gaps** (Water has no S-rank jutsu, Wind one Element jutsu): he wants
+   **proposals** ("propuestas"). A separate job.
+3. **The explosive tag is an item** ("sello explosivo es un item o herramienta
+   consumible"), **the healing palm a utility jutsu** ("palma curativa es un
+   jutsu de utilidad"). The jutsu "Explosive Tag Ambush" (`trap_setter_tag`) is
+   gone from the jutsu lists; the tag is a consumable tool like the soldier
+   pill, in the party's backpack (`supplies.explosiveTags`: 2 per mission, 2 in
+   practice battles). In battle the item slots have two buttons for it:
+   **Sello explosivo** throws one up to 9 m (it blows up where it lands, as
+   before) and **Esconder sello** hides one on the ground up to 4.5 m (it blows
+   up when an enemy steps on it, or when fire or lightning reaches it: the
+   jutsu's old effect, 3d6 fire in 1.5 m, DEX save for half against **the
+   hider's jutsu DC** (as the jutsu's was; a thrown tag stays DC 13, as
+   before); quiet, so it doesn't give the ninja away while sneaking). Each use takes the action and
+   one tag. The creator's Jutsu step shows it under **Herramientas** as
+   "Objeto consumible · no es un jutsu". *Old saves:* a sheet that had the jutsu
+   gets the starting sheet's jutsu in that slot (Utility: Shunshin) and **2
+   tags in its own pouch** (`pouch.explosiveTags`), once (`migrateCharacter`);
+   the pouch joins the backpack at the start of every mission and practice
+   battle, and **is never used up**: the pouch is refilled for every mission,
+   as the jutsu could be used in every one, so such a ninja always sets out with
+   2 tags more. A mission saved halfway gets the converted tags in its backpack
+   when it loads. (The 2 tags, the refill and the starting jutsu in its place
+   are the builder's choice.) The palm stays in the Utility slot, open to every nature.
+4. **The swap on a type change in the creator is fine** ("si"), **but the type
+   can't be changed afterwards** ("pero no se puede cambiar de tipo"): once a
+   ninja is made (the creator's Accept; every ninja saved on the device or
+   imported counts as made, also those saved before this rule) its chakra type
+   is fixed. Editing a saved ninja (title screen > a saved ninja > edit, which
+   opens the creator) shows Appearance > Chakra with the other types greyed out
+   and locked, and a note: "Tu tipo de chakra quedó fijo al crear a este ninja:
+   ya no puede cambiar. Un segundo elemento llegará a un nivel más alto." The
+   burst and the colour within the type can still change (the colour is only a
+   look), and "Ninja al azar" keeps the type. A new ninja and a legend picked as a
+   starting point can still change it.
+   **His rule:** a ninja gets a **second element at a higher level** ("tener
+   2ndo elemento en nivel mas alto"), and a **third element only with a special
+   feat** ("3 elementos si tienes el feat especial para eso"). The level is
+   decided (level 5, "Level 5" below); the feat is still to choose.
+
+**Jutsu of a class: his answer** (2026-10-21, later still), to "¿quién aprende
+los de Genjutsu, Kenjutsu y Taijutsu?": *"9 los que elijan de clase genjutsu
+kenjutsu o taijutsu"*. The jutsu with no element in the Element and S-rank
+slots belong to a class: only a ninja of that class learns them. Built:
+
+- **The game's classes, mapped** (*as built, the builder's mapping, for his
+  approval*; the nearest class, nothing wider):
+
+  | Kind of jutsu | Class that learns it | Jutsu today |
+  |---|---|---|
+  | Taijutsu | Maestro de Taijutsu (`Taijutsu Master`) | Huracán de la hoja (D), Night Guy (S) |
+  | Kenjutsu | Maestro de Bukijutsu (`Bukijutsu Master`: the weapon class, whose own text names "kenjutsu katana forms") | Danza de la luna creciente (B) |
+  | Genjutsu | Adepto del Genjutsu (`Genjutsu Adept`) | Templo del Nirvana (A), Yasaka no Magatama (S) |
+  | none | Especialista en Ninjutsu, Especialista médico | they learn their element's jutsu, the utility jutsu and their clan's |
+
+- **Open to all, as before:** the **Utility** jutsu (Shunshin, Sustitución and
+  Clon de sombra are taijutsu by kind, the healing palm is Water: all utility,
+  open to every class and nature), and **the clan's jutsu** to its clan (the 64
+  Palms is taijutsu, open to every Northstar ninja).
+- **In the creator's Jutsu step** the class gate works together with the
+  nature gate and the D/C rank cap of a new ninja: an Element or S-rank slot
+  offers the jutsu of the ninja's element plus its class's kind, at the ranks
+  it may take. A line under the nature note says it ("Clase: Adepto del
+  Genjutsu. También aprende jutsus de genjutsu: el taijutsu, el kenjutsu y el
+  genjutsu son de su clase."; for Ninjutsu and Medical: "esta clase no aprende
+  ninguno"), and each class's panel in the Class step has a "Jutsus de clase"
+  line.
+- **Changing the class in the creator** swaps the jutsu of another class's kind
+  as a type change does (its own element first, the lowest rank first, at a new
+  ninja's ranks while it is one) and says so in the Class step and at the top
+  of the Jutsu step ("Ahora Maestro de Taijutsu: se cambiaron los jutsus de otra
+  clase. Danza de la luna creciente → Huracán de la hoja (Konoha Senpuu)."). A
+  slot with nothing left is emptied.
+- **The random ninja** picks its jutsu for its class too.
+- **The sheets keep what they have:** no legend breaks the rule today (each
+  one's taijutsu, kenjutsu or genjutsu jutsu is its own class's). A sheet that
+  does (the companion Hana, a medic, has Yasaka no Magatama; an older or
+  imported sheet) keeps it, marked "no es de tu clase" in the Jutsu step. Saves
+  are not changed. Enemies and battles are not touched.
+- **An empty slot** (as built): a slot with nothing for the nature and class
+  shows "Nada que aprender aún · nada para tu naturaleza y clase" with a lock;
+  the S-rank slot of a new ninja whose nature and class do have S-rank jutsu
+  still shows "Se desbloquea más adelante". When only one jutsu fits the two
+  Element slots, the second is left empty rather than holding the same jutsu
+  twice (until the rank D and C set on its own branch is merged, a Fire
+  Bukijutsu Master's Element II, for one, is empty).
+
+**Level 5: a second element or a higher rank** (his answer, 2026-10-21, later
+still), to "a second element at level 5? a feat for the third? a formal second
+nature for Kaien and Raiga?": *"nivel 5 suena bien para segundo elemento o subir
+de rango tu elemento principal proponme el feat ok con kaien y raiga"*.
+
+**Decided by the owner:**
+
+- **At level 5 a ninja chooses one**: a **second element**, or **a higher rank
+  of its main element** ("segundo elemento o subir de rango tu elemento
+  principal"). The chakra type, the main element, never changes.
+- **A third element** comes only with a special feat ("3 elementos si tienes el
+  feat especial para eso"); he asked for **proposals** for the feat ("proponme
+  el feat"). Not built: the proposals are in Open questions.
+- **Kaien is Rayo + Fuego and Raiga Fuego + Tierra** ("ok con kaien y raiga"):
+  a formal second nature, so their Fireball and Earth Wall are their nature.
+
+**As built** (the builder's choices, each **proposed and waiting for his
+approval**):
+
+- **What each choice opens.** *Second element:* one of the other four elements
+  (any; Light and Void ninjas don't get the choice, below); its **rank D and C**
+  jutsu open in the Element slots, as the main element's do. Today that is
+  Agua: Muro de agua; Viento: Gran ráfaga cortante; Fuego: Bola de fuego; Rayo
+  and Tierra: nothing yet (their D and C jutsu come with the rank D and C set on
+  its own branch). *Higher rank:* the main element's **rank B** jutsu open in
+  the Element slots: Fuego: Fuego del dragón; Agua: Proyectil del dragón de agua; Tierra:
+  Muro de tierra and Balas de tierra; Rayo: Sabueso del rayo; Viento: none yet.
+  Neither opens the S-rank slot, rank A, the rank B jutsu of a class (Danza de
+  la luna creciente) or of Utility (Clon de sombra).
+- **For good.** The choice is made once: while the ninja is created or edited
+  it can change (the jutsu it no longer opens are swapped, as on a type change,
+  and a note says which), and once the ninja is made with it, it is fixed
+  ("Elegido al crear a este ninja: ya no cambia.").
+- **The ranks follow the level, for every ninja.** A new ninja, a legend
+  picked as a starting point and a made ninja are all offered rank D and C and
+  their clan's, plus what their level-5 choice opens. (Before this answer a made
+  ninja was offered every rank; that was the builder's choice, now replaced,
+  see the Open question.) A sheet's own higher jutsu stay, marked "rango X: se
+  queda en su hoja".
+- **The creator's Jutsu step** shows it under the five slots, in a "Nivel 5:
+  crecer en el chakra" block: below level 5 a locked line says what comes ("Al
+  nivel 5 elige una: un segundo elemento, o subir de rango su elemento principal
+  (Fuego). Su tipo de chakra no cambia nunca."); from level 5 the two choices,
+  each saying what it opens ("Abre: Fuego del dragón"), and under "Segundo
+  elemento" the four elements, each with what it opens. The nature note names
+  both elements ("Naturaleza: Fuego + Agua"), the rank note the higher rank, and
+  the sheet's "Naturaleza" box both. Light and Void ninjas see no block (their
+  own jutsu are pending).
+- **No level-up screen yet.** The game has no XP and no level-up: a ninja's
+  level is its sheet's (the legends' 4 to 6), and the creator has no level
+  picker, so a new ninja starts at the level of the sheet it is made from
+  (Solen's, 6). The choice is therefore made in the creator, by any ninja of
+  level 5 or more: a legend picked as a starting point, a new ninja made from
+  one, or a made ninja that has not chosen yet (editing it). A level-up screen
+  will call the same rule (`growthPending`, `chooseGrowth`).
+- **Kaien and Raiga.** Raiga (level 5) has made his level-5 choice: Tierra.
+  Kaien (level 4) has Fuego as a legend's own second element before level 5
+  (the exception the proposal named); it counts as his choice. A new ninja made
+  from Kaien does not keep it (it hasn't earned it). Saved copies of the two
+  (the hero, the roster, a mission under way, an import) get the second nature
+  once when they load (`addLegendNatures` in `migrateCharacter`), if they still
+  have the legend's type and have no level-5 choice of their own. Their Jutsu
+  steps no longer mark Bola de fuego or Muro de tierra "no es de tu
+  naturaleza"; rank B and S jutsu of their sheets stay marked as every legend's
+  are ("rango B: se queda en su hoja").
+- **Battles and enemies** are not touched: the second element is the creator's
+  (which jutsu a ninja may learn).
 
 **In the code** there is one source: the look's burst
 (`appearance.chakra.color`, an id named after the colour the bursts were first
@@ -351,6 +602,82 @@ game does not know is drawn, cast and described as Rising Tide and reads as
 Water. A sheet older than the sprite look draws its burst from its old aura
 colour (`palette.chakraAuraColor`); the creator's clan change no longer writes
 that colour, so such a ninja's type only changes when the player picks one.
+Pending types are marked `pending` in `CHAKRA_TYPES`; `OFFERED_TYPES` is what
+the creator and the random ninja offer. The saved copies are moved by
+`updateLegendChakra` (in `migrateCharacter`, so `loadHero`, `loadRoster`, the
+mission load and imports all do it), from `LEGEND_BURST_CHANGE` (old and new
+burst per id; a test keeps it equal to the presets). The jutsu gate is
+`src/rules/jutsuNature.ts` (`jutsuChoices`, `fitLoadout`, `offNatureJutsus`).
+The ranks a new ninja may take and the fixed type are `src/rules/progression.ts`
+(`NEW_NINJA_RANKS`, `rankOpen`, `creatorChoices`, `fitNewNinja`, `aboveRank`,
+`learnsAsNew`, `slotChoices`, `fitToType`, `typeFixed`, `asMade`; a made ninja
+has `created: true`); the class gate is `src/rules/jutsuClass.ts`
+(`STYLE_CLASS`, `classGated`, `jutsuFitsClass`, `offClassJutsus`) with
+`learnable` and `fitToClass` in `progression.ts`; the explosive tag's
+move to the pouch is `src/rules/pouch.ts` (`tagJutsuToItem`, `withPouches`); in
+battle the `item` action takes `tag` (throw) or `tagTrap` (hide,
+`plantTag` in `src/battle/hazards.ts`). The level-5 choice is
+`src/rules/natureGrowth.ts` (`GROWTH_LEVEL`, `growthOf`, `naturesOf`,
+`chooseGrowth`, `earnedGrowth`, `growthFixed`, `growthPending`, and
+`THIRD_ELEMENT_FEAT`, the hook for the proposed feat); a sheet keeps it in
+`natureGrowth` ('element' or 'rank') and `extraNatures` (both optional: a sheet
+without them has its type alone); the ranks it opens are `rankOpen(j, clan,
+rankUp)` in `progression.ts`, and `fitToGrowth` swaps the jutsu a new choice no
+longer opens.
+
+### The chakra colour colours the elemental jutsu (decided 2026-10-21)
+
+The owner asked for it (*"que del color que pongas tu elemento de chakra [...]
+haga que tus habilidades o jutsus sean de ese tono de color"*), wanted only the
+elemental ones (*"solo los elementales tendrian este cambio"*), saw the sample
+and approved it: *"me encanto el color nuevo y aura de los jutsus que me
+enseñaste ejecuta el cambio de color para todos las habilidades elementales y
+para las bestias elementales"*.
+
+**Decided by the owner:**
+
+- Every **elemental** jutsu (fire, water, wind, lightning, earth) plays in its
+  caster's chakra colour (`appearance.chakra.tint`): projectiles, hits, blasts,
+  breaths, streams, spheres, walls, the signatures (Fireball and Great Fireball,
+  the Great Fire Annihilation, Kirin) and the **elemental beasts**.
+- Genjutsu, poison and chakra effects and their beasts (crows, cobra, griffin)
+  keep their colours.
+- With no colour picked (Natural), or the effect's own colour, his pixels play
+  exactly as he drew them. Recolouring never redraws: alpha, his dark line,
+  smoke, dust, rock debris, moss and the stone drake's eyes stay his.
+
+**As built** (the builder's reading, not his decisions):
+
+- What a jutsu throws keeps its caster's colour (a projectile in flight, an
+  earth or water wall that stays on the map). Enemies use their own chakra
+  colour if their look has one; today's enemy templates have none, so theirs
+  are his colours.
+- The beasts a jutsu summons today are the water dragon (Water Dragon), the
+  raiju (Lightning Hound) and the stone drake (Wood Dragon); they take the
+  colour. The phoenix and the crane have sheets and would take it too, but no
+  jutsu summons them yet.
+- "Elemental" is the jutsu's nature: a sword art that borrows the wind's slash
+  (Crescent Moon Dance, Kenjutsu) and the Adamantine Chains (Water, drawn as
+  chakra) keep their colours; Pursuing Flame (Mirai, a Katon jutsu) takes it.
+  Mystical Palm (Water, drawn as a green heal) and the explosive tag (Fire,
+  drawn as a paper tag and its blast) have nothing drawn in their element, so
+  they keep their colours too. **Open question for the owner:** should a heal
+  of an elemental nature glow in the chakra colour?
+- The flare when fire or lightning seals a hydra stump and the lightning that
+  runs through water take the caster's colour too.
+- White is a cool silver on water, wind, lightning and earth, a faint gold on
+  fire. Outlines that are not black in his sheets (the raiju's brown, the
+  crane's teal, the lightning's blue ring) stay his.
+- In the code: `src/sprite/vfxTint.ts` recolours (pure); the battle recolours
+  each sheet once per colour, frame by frame, in workers while the battle opens
+  and for any ninja who joins later (`src/components/battle/vfxTintCache.ts`,
+  `vfxTintPlan.ts`). A frame never gets made on the screen's own thread while it
+  plays: if it is not ready the effect holds its last ready frame a moment, and
+  before its first frames are ready its drawn stand-in plays in the colour. At
+  most about 200 MB of recoloured frames are kept (sheets unused for a while go
+  and are made again when cast); everything, workers included, goes when the
+  battle ends. In a browser without workers the big signatures (Annihilation,
+  Kirin) play in his colours instead of stuttering.
 
 ## Language, sound and tips
 
@@ -466,25 +793,106 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
 ## Open questions
 
-- Chakra types ("Chakra type" above): approve or change the burst-to-type
-  table (is Cinder Nova a second Fire burst?), and approve or redo the Earth
-  burst (Shattered Earth), drawn because Earth had none.
+  It was drawn because Earth had none; Kenji is Earth (his answer 1), but the
+  art itself waits for his yes.
 - Lightning's second burst (Living Sparks, his request of 2026-10-21): approve
   or redo the art, and choose its name (*Chispas vivas*, *Relámpago latente*
   or *Estática salvaje*, or his own).
-- Chakra types without an element (Shadow, Spirit, Light, Void): keep them as
-  natures or not, and which jutsu may they learn once the nature gates the
-  jutsu (all non-elemental ones only? Shadow as Genjutsu, Spirit or Light as
-  pure chakra?).
-- The legends' new types (Kaien, Ren, Hiro, Raiga, Hana, Kenji follow their
-  jutsu): approve or keep their old bursts.
-- Legends and companions saved before the change keep their old burst (a saved
-  Kaien reads Spirit, Ren Water, Hiro Fire, Raiga Spirit; Hana and Kenji in a
-  mission under way Wind and Spirit). Once the nature gates the jutsu they would
-  lose their own jutsu. Move saved copies with a legend's id to the legend's new
-  type on load (a save change), or leave them as saved?
-- Legends with a jutsu of a second element (Kaien's Fireball, Raiga's Earth
-  Wall): allowed as legends, or changed, once the nature gates the jutsu?
+- The burst-to-type table ("Chakra type" above): approve or change the rows
+  that are still proposed: Water = Rising Tide, Wind = Leafwind Spiral, and the
+  bursts of Light (Heaven Pillar) and Void (Abyss Orbit). His answers settled
+  the legends' types, Cinder Nova and which types stay, not these rows.
+- Saved copies of the legends (his answer 2, "actualiza"): as built, a copy is
+  moved only while it carries the legend's own jutsu, so that a player who
+  picks the old type today (Ren as Water, Hiro with Cinder Nova) keeps it.
+  Confirm. A copy saved in the few hours between the two changes with a legend
+  turned to its old type is moved once; an old copy whose jutsu the player had
+  already changed to fit the old type keeps the old type.
+- The jutsu gate as built ("The nature decides the elemental jutsu" above),
+  each the builder's choice:
+  - the **S-rank** slot is gated like the Element slots;
+  - the **Utility** slot is not gated (settled for the palm by his answer 3:
+    "palma curativa es un jutsu de utilidad");
+  - the **clan secret** is not gated (it comes with the clan, whatever its
+    element);
+  - **changing the type swaps** the jutsu of another element for ones of the
+    new type, lowest rank first, and says which (instead of only marking
+    them);
+  - **Light and Void** (and a ninja still on Shadow or Spirit) learn only the
+    jutsu with no element until their own exist;
+  - **the random ninja** takes Element I from its own element when there is
+    one, and its clan's secret.
+- The ranks a new ninja may take (his answer 1, built): the S-rank slot is
+  shown locked in its place ("Se desbloquea más adelante") rather than
+  removed. Confirm. **When does it open** (a level, a mission, a teacher)? And
+  when may a ninja learn rank B and A jutsu?
+- **Editing a legend** (his answer 1): a legend picked in the creator keeps its
+  sheet, so a player can pick one, rename it, change its look and stats, accept,
+  and play it with its rank B and S jutsu. Should a legend that is changed
+  become a new ninja (held to D, C and its clan's), or is playing a legend with
+  its own jutsu fine?
+- **A made ninja** (his answer 1 was about creation): it was offered every rank
+  its nature allows. Since his level-5 answer ("subir de rango tu elemento
+  principal" means ranks are earned) it is held to the same ranks as every
+  ninja of its level (D, C, its clan's, and what its level-5 choice opens); its
+  own higher jutsu stay, marked. Confirm.
+- The explosive tag as an item (his answer 3, built): a sheet that had the
+  jutsu gets 2 tags in its own pouch and Shunshin in its Utility slot; the
+  backpack carries 2 per mission. The pouch's 2 tags are **refilled for every
+  mission** (never used up), so such a ninja always has 4. Confirm the numbers
+  and the refill (or should the pouch's tags be spent for good?). Should tags be
+  bought or found later (a shop, loot)? The hidden tag's save is the hider's
+  jutsu DC, as the jutsu's was; a thrown one stays DC 13: confirm.
+- **Level 5** (his answer: "nivel 5 suena bien para segundo elemento o subir de
+  rango tu elemento principal"), as built ("Level 5" above): confirm **what each
+  choice opens** (a second element: its rank D and C jutsu; a higher rank: the
+  main element's rank B jutsu; neither opens S or A), that the choice is **for
+  good** once the ninja is made, and that **Light and Void** ninjas don't get
+  it until their own jutsu exist (or may they take a second element?).
+- **A new ninja's level**: the creator has no level picker, so a new ninja has
+  the level of the sheet it is made from (Solen's, 6) and can make the level-5
+  choice while it is created, so a new ninja that takes the higher rank learns
+  its element's rank B jutsu (his answer 1 said D and C). Should a new ninja
+  start at a lower level (1, or 4), or make the choice only in play once a
+  level-up screen exists?
+- **The third element's feat** (his rule: "3 elementos si tienes el feat
+  especial para eso"; he asked for proposals): three options, the recommended
+  one first (in Spanish, for him, in the builder's notes). *Recommended:*
+  **"Tres naturalezas" / "Triple Nature"**: prerequisite level 9 and a second
+  element; you gain a third element (its rank D and C jutsu open to your Element
+  slots), and once per long rest a jutsu of one of your elements costs 1 chakra
+  less when the previous jutsu you cast that battle was of another of your
+  elements. *Option 2:* **"Tejedor de naturalezas" / "Nature Weaver"**, the
+  next step of the existing feat Tejedor elemental (prerequisite: Tejedor
+  elemental, a second element, level 7): a third element, and Tejedor
+  elemental's change of damage type works twice per encounter, into any of the
+  ninja's three elements. *Option 3:* **"Afinidad prohibida" / "Forbidden
+  Affinity"** (prerequisite: a second element, level 5): a third element, but
+  its jutsu cost 1 chakra more (a price instead of a high level). The feat is
+  not in the feat list yet; the code has its hook (`THIRD_ELEMENT_FEAT`), and
+  feats have no level prerequisites today (the creator would need them).
+- Kaien and Raiga's second natures (his "ok", built): **Kaien's Fuego comes
+  before level 5** (he is level 4), as a legend's own exception, and counts as
+  his level-5 choice; Raiga's Tierra is his level-5 choice. A second element
+  opens rank D and C only, so Raiga's **Muro de tierra (rank B)** stays marked
+  "rango B: se queda en su hoja", as his Fuego del dragón (B) and every legend's
+  higher jutsu are. Confirm.
+- Gaps the gate shows: Water has no S-rank jutsu (a Water ninja's S-rank slot
+  offers only Yasaka no Magatama and Night Guy); Wind has one Element jutsu
+  (Great Breakthrough Blade), so its second Element slot takes a jutsu with no
+  element.
+- The jutsu of Light (deity, angel and god) and of Void, Shadow and Spirit
+  (demonic): to design when he says.
+- **Jutsu of a class** (his answer: "los que elijan de clase genjutsu kenjutsu
+  o taijutsu"), as built: **kenjutsu goes to the Maestro de Bukijutsu** (there
+  is no kenjutsu class; Bukijutsu is the weapon class). Confirm, or add a
+  kenjutsu class. **Especialista en Ninjutsu and Especialista médico** learn
+  none of the three: confirm. Consequences to decide: a **Light or Void** ninja
+  of those two classes has nothing at all for its Element and S-rank slots
+  until Light and Void get their jutsu; a ninja with one fitting jutsu for two
+  Element slots gets the second slot empty (not the same jutsu twice). The
+  companion **Hana** (medic) keeps Yasaka no Magatama (genjutsu), marked: give
+  her another S-rank jutsu? (Water has none yet.)
 
 ## Three new jutsu (agreed 2026-10-20)
 

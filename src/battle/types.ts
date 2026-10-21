@@ -250,7 +250,7 @@ export interface Wall {
   hp: number;
   /** Rounds left (water barriers fade). */
   rounds?: number;
-  /** The unit that raised it (Kōton structures). */
+  /** The unit that raised it: a Kōton structure, or an earth or water wall (which stands in its chakra colour). */
   owner?: string;
   /** Structures that can be broken show their HP against this. */
   maxHp?: number;
@@ -381,7 +381,8 @@ export type Action =
   | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
-  | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag'; target?: string; at?: Pt }
+  /** `tag` throws an explosive tag at a point; `tagTrap` hides one on the ground there. */
+  | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap'; target?: string; at?: Pt }
   | { type: 'stabilize'; unit: string; target: string }
   | { type: 'flee'; unit: string }
   | { type: 'endTurn'; unit: string }
@@ -442,7 +443,8 @@ export type BattleEvent =
   | { t: 'wall'; wall: Wall; on: boolean }
   | { t: 'wallHit'; wall: string; amount: number; hp: number; at: Pt }
   | { t: 'prop'; prop: number; state: 'burnt' | 'cut' | 'broken' | 'exploded' }
-  | { t: 'electrified'; at: Pt; radius: number }
+  /** `source`: whose lightning it is (its rays take that ninja's chakra colour on the screen). */
+  | { t: 'electrified'; at: Pt; radius: number; source?: string }
   | { t: 'trap'; trap: Trap; on: boolean }
   | { t: 'node'; node: WeaponNode; on: boolean }
   | { t: 'explode'; at: Pt; radius: number }
@@ -451,7 +453,8 @@ export type BattleEvent =
   | { t: 'evade'; unit: string; from: Pt; to: Pt; source?: string; what?: string }
   | { t: 'clone'; unit: string; on: boolean }
   | { t: 'sever'; unit: string }
-  | { t: 'seal'; unit: string; how: 'fire' | 'lightning' | 'explosion' }
+  /** `source`: whose fire or lightning sealed it (its flare takes that ninja's chakra colour on the screen). */
+  | { t: 'seal'; unit: string; how: 'fire' | 'lightning' | 'explosion'; source?: string }
   | { t: 'regrow'; unit: string }
   | { t: 'reactionAsk'; pending: PendingReaction }
   | { t: 'intent'; unit: string; intent: Intent }

@@ -19,6 +19,7 @@ import { COMPANIONS, MISSIONS, MissionDef, nextPos, nodeAt, RoadNode } from '../
 import { clanName } from '../../data/shinobiData';
 import type { ActivityId } from '../../data/campActivities';
 import { DEFAULT_SUPPLIES, endMissionAtVillage, isStanding } from '../../rules/mission';
+import { withPouches } from '../../rules/pouch';
 import {
   chooseFire,
   doActivity,
@@ -706,7 +707,7 @@ function Village({
                 bandages: DEFAULT_SUPPLIES.bandages,
                 antidotes: DEFAULT_SUPPLIES.antidotes,
                 pills: DEFAULT_SUPPLIES.soldierPills,
-                tags: DEFAULT_SUPPLIES.explosiveTags,
+                tags: withPouches(DEFAULT_SUPPLIES, members).explosiveTags,
                 wire: DEFAULT_SUPPLIES.wireRolls,
               })}
             </div>

@@ -924,6 +924,11 @@ export interface Rig {
   T: (x: number, y: number) => Vec;
   /** Set for poses laid on the ground for display ('downed', see PoseFrame.lie). */
   lay?: Lay;
+  /**
+   * The held weapon's angle, in place of the pose's (grip.ts swordAngle and poleAngle): the
+   * battle's thrown weapon is drawn alone at any angle of its flight (sprite/thrown.ts).
+   */
+  aim?: number;
 }
 
 /**

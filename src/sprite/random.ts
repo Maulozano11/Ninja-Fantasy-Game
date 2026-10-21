@@ -1,7 +1,7 @@
 // Random appearance for the creator's Randomize button.
 
 import { fitsBody, itemsForSlot } from './catalog';
-import { CHAKRA_CHOICES } from './chakraInfo';
+import { TINT_CHOICES } from './chakraInfo';
 import { OFFERED_TYPES } from './chakraNature';
 import type { ItemDef } from './ctx';
 import { EMBLEMS } from './items/headband';
@@ -72,7 +72,7 @@ export function randomAppearance(): SpriteAppearance {
       plate: '#cbd5e1',
     },
     // a type the player could pick (its nature), one of its bursts, and now and then another color: the color never changes the type
-    chakra: { color: pick(pick(OFFERED_TYPES).bursts), tint: chance(0.25) ? pick(CHAKRA_CHOICES).id : undefined, onCharge: true, onCast: true, onVictory: chance(0.5) },
+    chakra: { color: pick(pick(OFFERED_TYPES).bursts), tint: chance(0.25) ? pick(TINT_CHOICES).id : undefined, onCharge: true, onCast: true, onVictory: chance(0.5) },
     pixelEdits: [],
   };
 }

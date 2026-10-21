@@ -16,7 +16,7 @@ clean.
 - No web navigation: every screen has a "Main menu" button. `#creator`, `#missions` and `#combat`
   open a screen directly, for testing.
 - Saves in localStorage only: `shinobi5e.hero.v1`, `shinobi5e.roster.v1` (up to 12 ninjas),
-  `shinobi5e.mission.v1` (one autosave) and `shinobi.lang`.
+  `shinobi5e.mission.v1` (one autosave), `shinobi.lang` and `shinobi.dice` (the dice style).
 
 **Character creator** (`src/components/CharacterCreator.tsx`, laid out like Baldur's Gate 3)
 - Steps: Origin, Clan, Class, Appearance, Abilities, Jutsu. Plus a pixel-paint editor.
@@ -40,7 +40,7 @@ clean.
 | Held | 9 (plus `held_none`): katana built from parts, crystal, ice crystal, flame longsword, kunai, naginata, spiral, lightning, palm |
 | Accessories | 13 |
 | Headband | 5 positions, 7 emblems, slashed or not, tails or not |
-| Chakra | 9 types, which are the ninja's elemental nature: 7 offered (Fire with 2 bursts, Water, Wind, Lightning, Earth; Light and Void without element) and 2 pending, out of the selection (Shadow, Spirit); any colour for any type; 8 cast styles ("eye" hidden) |
+| Chakra | 9 types, which are the ninja's elemental nature: 7 offered (Fire and Lightning with 2 bursts each, Water, Wind, Earth; Light and Void without element) and 2 pending, out of the selection (Shadow, Spirit); any colour for any type; 8 cast styles ("eye" hidden) |
 | Poses | 7 creator, 5 moving, 4 camp |
 
 **Clans** (phase 1; source of truth `docs/CLANS_DESIGN.md`)
@@ -49,7 +49,7 @@ clean.
 |---|---|---|
 | Mirai | +2 DEX +1 INT | Eye of Tomorrow (enemy intents), Premonitory Evasion (reaction), Pursuing Flame |
 | Kōton | +2 CON +1 INT | Modular Architecture: metal Block (bonus action) and Wall (action), with HP, 2 at most |
-| Ryusei | +2 DEX +1 WIS | Weapon Nodes, Warp Strike, Spatial Swap |
+| Ryusei | +2 DEX +1 WIS | Weapon Nodes, Shooting-Star Thrust (Estocada Fugaz, once Warp Strike), Spatial Swap |
 | Northstar | +2 CHA +1 WIS | Aura of Sovereignty, Command, Natural Submission |
 
 Counter cycle Mirai > Northstar > Ryusei > Kōton > Mirai. Enemy ranks Minion, Captain, Sub-boss,
@@ -76,7 +76,12 @@ Boss. Paths of Mastery: designed, not built.
   or a higher rank of its main element (its rank B jutsu), for good; every ninja is offered the
   ranks of its level; Kaien is Rayo + Fuego and Raiga Fuego + Tierra ("ok con kaien y raiga"),
   saved copies updated on load (`src/rules/natureGrowth.ts`). No level-up screen yet: the choice is
-  made in the creator; the third element's feat is proposed, not built.
+  made in the creator. The ladder (his answer "feat del tercer elemento opcion a nivel 5 esta bien al
+  subir al nivel 7 te un rango A y al 10 un rango S", on `chakra/progression-2`): rank A at level 7,
+  the S-rank slot at 10, for every ninja; the feat **Tres naturalezas** (level 9 and a second
+  element: a third element, and once per long rest 1 chakra off a jutsu of one of its elements cast
+  right after one of another), its requirements enforced in the creator and its discount tracked in
+  battle (`src/rules/feats.ts`).
 - VFX for 8 elements (fire, water, wind, lightning, earth, genjutsu, chakra, poison), all from the
   owner's v3 sheets: full effect set, walls in 3 orientations, a beast each. Signature effects:
   Fireball / Great Fireball, Great Fire Annihilation (normal and enhanced), Kirin.
@@ -119,20 +124,25 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `icons/sheet-12`, `icons/sheet-12-fix` | `cd8e07b`, `b8dd15c` | Sabueso rayo, Luna creciente, Nirvana | Merged (`8dfd107`) |
 | `camp/owner-ref` | `70293ba` | Read, lean and sit camp poses from his picture (`camp-poses-owner-reference.webp` on that branch); touches `rig.ts`, `compose.ts`, `ctx.ts`, `campfx.ts` | **WIP, being redone**: copy his book and both hands exactly; show Aiden reading |
 | `camp/hands-book` | `a3ae184` | Earlier pass, already inside `camp/owner-ref` | Superseded |
-| `ryusei/phase` | `1bd38c9` | Warp Strike and Spatial Swap carry the ninja as a see-through electric-blue light body (`src/sprite/phase.ts` + tests, renderer, playback) | **Waiting for approval.** Next: Warp Strike choreography (throw the weapon in his throw pose, it flies to the target with sparkle trails, the ninja phases and reappears with a piercing thrust). Swap stays |
-| `poses/throw-pierce` | `f722aee` | `throw` (4 frames, release copied from his Warp Strike picture) and `pierce` (5-frame lunge) poses, in the creator stance bar; `src/sprite/strike.test.ts` | **Waiting for approval**; `ryusei/phase` needs it |
-| `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
+| `ryusei/phase` | `1bd38c9` | Warp Strike (now Shooting-Star Thrust) and Spatial Swap carry the ninja as a see-through electric-blue light body (`src/sprite/phase.ts` + tests, renderer, playback) | **Waiting for approval.** The Shooting-Star Thrust choreography is on `ryusei/warp-throw`. Swap stays |
+| `ryusei/warp-throw` | local, not pushed (the comet, the rename and a merge of the integration branch on top of `999cb29`) | `ryusei/phase` + `poses/throw-pierce` + the Shooting-Star Thrust (Estocada Fugaz, once Warp Strike) choreography (the owner, 2026-10-21): the throw, the weapon flying point first, the phase starting in his release pose, the landing in the `pierce` thrust. Review fixes: the weapon is first drawn clear of his face; empty hands, a technique in the palm or a stowed weapon throw a kunai from the pouch (the stowed weapon stays on the back, the kunai fades out as light after the thrust); a short warp's weapon hangs in the air for the catch; the frames are made ahead for every Ryusei, Node or not, weapon drawn or stowed. Then (2026-10-21, his "shooting star"): the flying weapon is a shooting star, a white-hot head with a twinkling star at its point and a long comet's tail of the phase's blues that tapers along the curve of the flight, sheds sparkles and lights the night (`src/sprite/comet.ts` + tests, `warpFlight.ts`, `renderer.ts` drawNight); and the rename is applied everywhere players see it, with D24. Review fixes: a deep blue line round the tail so it reads over the light body and pale ground; the sparkles flung out of the tail's sides as a stardust wake that outlasts it; the night light round it blue, not the grass's green; the comet about 4x cheaper to make and made once per moment; captures of diagonal and up-the-map flights, where the tail follows the curve. Spatial Swap unchanged | **Merged** (approved 2026-10-21 under the owner's 24-hour delegation: "estas aprovado para aprovar cosas como las que me estas pidiendo permiso por 24 horas") |
+| `poses/throw-pierce` | `f722aee` | `throw` (4 frames, release copied from his Warp Strike picture, now the Shooting-Star Thrust) and `pierce` (5-frame lunge) poses, in the creator stance bar; `src/sprite/strike.test.ts` | **Waiting for approval**; `ryusei/phase` needs it |
+| `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp (now Estocada Fugaz) |
 | `scarlet/study` | `3b5dfe9` | His new character picture (`scarlet-owner-reference.jpg`) and study scripts `tools/refs/scarlet*`; nothing in `src` | **WIP**. Provisional name "Valen, the Scarlet Duke", no cape: **the owner must choose the name** |
-| `chakra/jutsu-tint` | not pushed (local) | Elemental jutsu, their beasts and walls in the caster's chakra colour (`src/sprite/vfxTint.ts`, `src/components/battle/vfxTint*.ts`; `docs/GAMEPLAY_DESIGN.md`, "The chakra colour colours the elemental jutsu") | **The owner approved the colours** (2026-10-21); wired into the battle (checked in the browser), review fixes done (no recolouring on the screen's thread, memory capped); **open question**: should a heal of an elemental nature (Mystical Palm) glow in the chakra colour; not merged |
+| `chakra/jutsu-tint` | not pushed (local) | Elemental jutsu, their beasts and walls in the caster's chakra colour (`src/sprite/vfxTint.ts`, `src/components/battle/vfxTint*.ts`; `docs/GAMEPLAY_DESIGN.md`, "The chakra colour colours the elemental jutsu") | **The owner approved the colours** (2026-10-21); wired into the battle (checked in the browser), review fixes done (no recolouring on the screen's thread, memory capped); answered 2026-10-21: the black Kirin stays (pink and violet kanji), other colours stay as they look, "la curación siempre se verá verde" (the green heal is on `jutsu/d-c-set`); not merged |
 | `chakra/decisions` | not pushed (local) | The owner's four answers on the chakra types (saved legends updated, Shadow and Spirit pending, Cinder Nova kept) and the nature gating the elemental jutsu in the creator | **For review** |
 | `chakra/progression` | `51b44c0` on origin (WIP); the finished work is local, not pushed | His jutsu answers: D/C + clan for a new ninja (S-rank slot locked), the explosive tag as an item (throw / hide, save migration), the chakra type fixed once made; the taijutsu, kenjutsu and genjutsu jutsu gated by class; level 5: a second element or a higher rank, Kaien and Raiga's second natures | **For review** |
-| `jutsu/d-c-set` | not pushed yet (merged with the integration branch at `26371c4`) | 12 rank D and C jutsu (data, rules, AI, log; `docs/GAMEPLAY_DESIGN.md`, "Rank D and C jutsu"), then their effects (three projectile paths, the joined Spark Fan, the white Bleeding Cut, the Rush's tackle pose), in the caster's chakra colour; review fixes (sword arts need a blade, charges stop at deep water and cliffs); his answers 4–8 (Numb 2 rounds, silent Mirage and Bleeding Cut, the water aura on the Mystical Palm) | **Waiting for approval** of the in-game captures. Every element gains D/C jutsu in the nature filter's and the class gate's offers (their tests updated) |
-| `vfx/ideas-round1` | on origin (from `jutsu/d-c-set`, not merged) | The owner's first round of jutsu effect answers (`docs/GAMEPLAY_DESIGN.md`, "Jutsu effects, round 1"): Llama Dragón (his Annihilation dragon head over his flame wall, a fan of fireballs), Fuego del dragón (half head, the stream to the line's end), Cadenas selladoras (chain and seal circle), Dragón de agua (no beast: his dragon head in water on his stream, a varied path), Balas de tierra (three volleys of rock bullets on varied paths), Luna creciente (three chakra crescents), Templo del Nirvana (crows out of the vortex), Huracán de la hoja (weapon stowed, a new unarmed `combo` pose, wind crescents); new group `vfx_dragon` (`tools/world-sprites/vfx-round1.ts`); pieces P1–P6 in the battle screen; then the two new effects: Dragón de madera (his dragon out of his icon rising behind the target after a row of roots, `vfx_wood`) and Chidori (his lightning in the bare hand, then a thrust, `vfx_hand`; the weapon stowed), by `tools/refs/wood-dragon-from-ref.py` and `tools/world-sprites/vfx-new-r1.ts` | **Waiting for approval** of the in-game captures |
+| `jutsu/d-c-set` | not pushed yet (merged with the integration branch at `26371c4`) | 12 rank D and C jutsu (data, rules, AI, log; `docs/GAMEPLAY_DESIGN.md`, "Rank D and C jutsu"), then their effects (three projectile paths, the joined Spark Fan, the white Bleeding Cut, the Rush's tackle pose), in the caster's chakra colour; review fixes (sword arts need a blade, charges stop at deep water and cliffs); his answers 4–8 (Numb 2 rounds, silent Mirage and Bleeding Cut, the water aura on the Mystical Palm); healing always green (the Palm and the Dew never take the chakra colour) | **Merged** (the owner approved 11 of 12; the Bleeding Cut waits for its blood spray on `jutsu/bleeding-blood`). Every element gains D/C jutsu in the nature filter's and the class gate's offers (their tests updated) |
+| `chakra/progression-2` | on origin | His answer "feat del tercer elemento opcion a nivel 5 esta bien al subir al nivel 7 te un rango A y al 10 un rango S": rank A at level 7 and S at 10 for every ninja, the feat Tres naturalezas (requirements in the creator, third element pick, battle discount), kenjutsu and level 5 confirmed in the docs | **Merged** (his decisions) |
+| `chakra/lightning-crackle` | on origin | Lightning's second burst, *Estática de batalla* / Battle Static (his name; id `cyan`): small bolts crackling all the time, more and longer while empowered (an enhanced jutsu's cast, the creator's chakra aura), no aura, on a 10 s loop (`src/sprite/chakra.ts`, `chakraNature.ts`, `chakraInfo.ts`, `src/sprite/chakra.test.ts`, `creator/words.ts`; the callers take the loop from `chakraLoop()` and pass `empowered`: `ShinobiSpriteCanvas.tsx`, `battle/unitArt.ts`, `battle/renderer.ts`, `battle/playback.ts`) | **Merged** (approved under his 24-hour delegation) |
+| `jutsu/bleeding-blood` | pushed | The Bleeding Cut's blood (his answer "apruebo los 12 jutsus con excepcion del de tajo sangrante..." and "las gotas de sangre manchan la pantalla..."): a spray thrown toward the side the cut travels, drops on the screen when Bleeding takes hold, a drip when it hurts (`tools/world-sprites/vfx-blood.ts` → `src/assets/world/vfx_blood/`, `src/components/battle/bloodPlan.ts` + tests, `seq.blood` in `src/battle/jutsu.ts`; touches `playback.ts`, `vfxSprites.ts`, `renderer.ts`) | **Merged** (approved under his 24-hour delegation) |
+| `jutsu/gap-set` | on origin (merged into the integration branch) | The owner's answers on the gaps proposal: the Devouring Tide (Water S), the Whirlwind Tower (Wind A), the Gale Curtain made a gale on the ground that fans fire (+1 die to a fire jutsu through it, whoever casts it), the Thunder Beam and the Rubble Gust (Lightning and Earth C); knock-down, sweep and drag on a failed save (ninjas only), water puts out flames; their effects from his sheets (the running wave, the tornado tower, the gale on the ground, the fanned fire's glow and vortex); `docs/GAMEPLAY_DESIGN.md`, "Jutsu for the gaps", and his rule that the elemental beasts are summons | **Merged** (approved under his 24-hour delegation; his open questions stay below) |
+| `vfx/ideas-round1` | on origin (from `jutsu/d-c-set`; the integration branch merged into it after `jutsu/gap-set`; not merged into it) | The owner's first round of jutsu effect answers (`docs/GAMEPLAY_DESIGN.md`, "Jutsu effects, round 1"): Llama Dragón (his Annihilation dragon head over his flame wall, a fan of fireballs), Fuego del dragón (half head, the stream to the line's end), Cadenas selladoras (chain and seal circle), Dragón de agua (no beast: his dragon head in water on his stream, a varied path), Balas de tierra (three volleys of rock bullets on varied paths), Luna creciente (three chakra crescents), Templo del Nirvana (crows out of the vortex), Huracán de la hoja (weapon stowed, a new unarmed `combo` pose, wind crescents); new group `vfx_dragon` (`tools/world-sprites/vfx-round1.ts`); pieces P1–P6 in the battle screen; then the two new effects: Dragón de madera (his dragon out of his icon rising behind the target after a row of roots, `vfx_wood`) and Chidori (his lightning in the bare hand, then a thrust, `vfx_hand`; the weapon stowed), by `tools/refs/wood-dragon-from-ref.py` and `tools/world-sprites/vfx-new-r1.ts` | **Waiting for approval** of the in-game captures |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
 one more commit, not pushed yet, on three branches: `camp/owner-ref` `07b3a25` (read pose: his
-book and hands), `icons/sheets-8-11` `3cae1ea` (Swap and Warp Strike icons with phase ninjas) and
+book and hands), `icons/sheets-8-11` `3cae1ea` (Swap and Warp Strike, now Shooting-Star Thrust, icons with phase ninjas) and
 `scarlet/study` `399f59f` (his picture brought down to our scale).
 
 Merge checks (`git merge-tree` on the origin tips, nothing changed):
@@ -145,15 +155,19 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 
 ## 3. Waiting for the owner
 
-- Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the icons on `icons/sheets-8-11`, the
-  camp poses once redone.
+- Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the Shooting-Star Thrust choreography
+  and its comet on `ryusei/warp-throw`, the icons on `icons/sheets-8-11`, the camp poses once redone.
+- Two Ryusei names now share *Fugaz*: the ability *Estocada Fugaz* and the planned path *Filo Fugaz*
+  (Path of the Fleeting Edge, `docs/CLANS_DESIGN.md`). Keep both, or rename the path?
 - Name the Scarlet character (`scarlet/study`).
 - `jutsu/d-c-set` (2026-10-21): the 12 rank D and C jutsu he asked for, built with his answers and
   the proposal's defaults (`docs/GAMEPLAY_DESIGN.md`, "Rank D and C jutsu"). Approve the in-game
   captures (new art: the tackle pose, the white cut, the turned projectiles). His later answers to
   questions 4 to 9 are built too: Numb for 2 rounds (P5), the Rush at 6 m, the water aura on the
-  Mystical Palm (in the chakra colour), Pebble Shot as it is, the Mirage and the Bleeding Cut silent
-  (P6); the class gate (9) is on the integration branch.
+  Mystical Palm, Pebble Shot as it is, the Mirage and the Bleeding Cut silent (P6); the class gate
+  (9) is on the integration branch. Then "la curacion siempre se vera verde": the Palm's and the
+  Healing Dew's water sheets play in the heals' green, never the chakra colour (captured in battle
+  with a violet ninja).
 - `vfx/ideas-round1` (2026-10-21): his answers 1A, 2A, 5A, 7 (his dragon head in water on the
   stream, varied path), 8A (varied paths), 9A, 10A (read from his second "9 a") and 12A with the
   unarmed combo pose are built; approve the in-game captures (new art: `vfx_dragon`, the `combo`
@@ -164,7 +178,34 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   the elemental beasts become summons, is that fine for a genjutsu? Nine defects found playing
   them in the game are fixed (seal circle on a resisted seal, water body in the ground, crescents
   in the wind-up, effects over the caster, Chidori hit a frame early, the Llama Dragón name in the
-  HUD). Before a PR: merge the newer `jutsu/d-c-set` into it.
+  HUD). The integration branch (the merged `jutsu/d-c-set`, the dice, `jutsu/gap-set`) is merged
+  into it; on it the Water Dragon and the Wood Dragon already show no beast (see the summons
+  question below). The saves' d20s land with each staged jutsu's first blow; where that blow
+  would come sooner than a die can fly (the Chidori after its run, the crescents, the Leaf
+  Hurricane) the blow waits that beat for the die (about 0.2 to 0.6 s).
+- `jutsu/bleeding-blood` (2026-10-21): the Bleeding Cut's blood, the one jutsu of the twelve he
+  held back. Approve the spray (it bursts from the chest the way the cut goes, falls and fades on
+  the ground), the drops that splash the screen when Bleeding takes hold, and the drip when it
+  hurts (`docs/GAMEPLAY_DESIGN.md`, "Bleeding Cut's blood"); merged only after his yes.
+- `jutsu/gap-set` (2026-10-21): his answer to the gaps proposal (*"1 no 2 ola devoradora si 3 grulla
+  no todos los elemtantales seran invocaciones que te ayudaran en el combate no ataques , 4 si 5 si
+  modifcar para hacerlo area y que potencie las tecnicas de fuego que pasen por ahi y se vea como
+  efecto 6 no 7 si8 si"*), built: 2, 4, 5 (as an area), 7, 8. Approve the in-game captures and the
+  gale's numbers (2.25 m round, the rest of the round and two more, +1 damage die to fire through
+  it). **Still his** (`docs/GAMEPLAY_DESIGN.md`, "Open questions on the gaps"): two per gap or two in
+  all; the Tide without a 水 kanji; the gaps left (Earth A, Water D, a third Fire D/C); keep the name
+  "Cortina" for an area; only ninjas knocked down and swept; a caster inside a gale fans its fire
+  any way it fires; bludgeoning (Taijutsu Masters take half); earth dust in a chakra colour; the
+  shared "potenciado" log line. Review fixes on the branch: the beam drawn the line's whole length,
+  "+2 dados" for a rank S, a cone fans only the gales it reaches, the wave sweeps each one as its
+  crest goes over them, the gale drawn behind the ninjas in it, the dust in front of the caster and
+  across the cone, swept ninjas stop 1.2 m from others, the fanned Fireball's blast its own size.
+- **The elemental beasts are summons** (his rule, 2026-10-21: *"todos los elementales seran
+  invocaciones que te ayudaran en el combate no ataques"*): the summon itself is to design (what it
+  does, how long, its cost, who calls it). Jutsu that still show a beast as their attack: the Water
+  Dragon Bullet (water dragon), the Lightning Hound (lightning beast), the Wood Dragon (stone drake)
+  and Night Guy (griffin); change them now or when summons exist? Do the S-rank signatures' dragons
+  (Annihilation, Kirin) count?
 - Chakra types (`docs/GAMEPLAY_DESIGN.md`, "Chakra type" and Open questions). **Decided
   2026-10-21** (his answers, built on `chakra/decisions`): the legends keep their new types; saved
   copies of the legends and companions move to their new type when they load; Shadow and Spirit
@@ -187,20 +228,43 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   `docs/GAMEPLAY_DESIGN.md` Open questions. (The second element's level and Kaien and Raiga: his
   next answer, below.)
 - Decided 2026-10-21 (later still), who learns the genjutsu, kenjutsu and taijutsu jutsu: *"9 los
-  que elijan de clase genjutsu kenjutsu o taijutsu"*. Built on `chakra/progression`. **Still his**:
-  kenjutsu mapped to the Maestro de Bukijutsu (no kenjutsu class exists); Ninjutsu and Medical
-  learning none of the three; Hana (medic) keeping Yasaka no Magatama, marked.
+  que elijan de clase genjutsu kenjutsu o taijutsu"*. Built on `chakra/progression`. Kenjutsu to
+  the Maestro de Bukijutsu confirmed ("si bukijutsu sera kenjutsu"). **Still his**: Ninjutsu and
+  Medical learning none of the three; Hana (medic) keeping Yasaka no Magatama, marked.
 - Decided 2026-10-21 (later still), the second and third element: *"nivel 5 suena bien para segundo
   elemento o subir de rango tu elemento principal proponme el feat ok con kaien y raiga"*. Built on
   `chakra/progression`: at level 5 a second element or a higher rank of the main element; Kaien
-  Rayo + Fuego, Raiga Fuego + Tierra. **Still his**: what each choice opens (proposed: second
-  element D and C, higher rank the main element's B); a made ninja now held to its level's ranks; a
-  new ninja starting at its sheet's level (6) and so choosing at creation; Light and Void without
-  the choice; the third element's feat (three proposals, recommended "Tres naturalezas"); see
-  `docs/GAMEPLAY_DESIGN.md` Open questions.
+  Rayo + Fuego, Raiga Fuego + Tierra. Approved as built ("nivel 5 esta bien", below). **Still
+  his**: a new ninja starting at its sheet's level (6) and so choosing at creation; Light and Void
+  without the choice; see `docs/GAMEPLAY_DESIGN.md` Open questions.
+- Decided 2026-10-21 (later still), the ladder: *"si bukijutsu sera kenjutsu feat del tercer
+  elemento opcion a nivel 5 esta bien al subir al nivel 7 te un rango A y al 10 un rango S"*. Built
+  on `chakra/progression-2`: rank A at level 7, the S-rank slot at 10, for every ninja (a sheet's
+  own higher jutsu stay, marked; no save migration; enemies untouched); the feat Tres naturalezas
+  (option A). **Still his** (as built): rank A and S open for the class's kind and the second and
+  third elements too, with no count limit; rank B still only through the level-5 higher rank; the
+  third element fixed once made; the discount automatic, a Kawarimi counting as "the previous
+  jutsu"; see `docs/GAMEPLAY_DESIGN.md` "The ladder" and Open questions.
+- Decided 2026-10-21 (later still), the chakra colours: *"kirin negro dejar asi rosa y violeta y
+  como se vea en otros colores dejalo asi se ve muy bien la curacion siempre se vera verde"*: the
+  black Kirin stays, the other colours stay, a heal is always green (built on `jutsu/d-c-set`).
 - Decided 2026-10-21 (later): **a new female standard** from the owner's four heroine pictures. He said our base bodies look "muy feos" next to his pictures: "sube la calidad de nuestro sprite para que se vea mas parecido aun a la referencia". The new female body (proportions, hands, feet, skin from his pixels) is being built on `body/female-v2` for his approval. He also said: "las piezas de armadura y ropa femeninas no las rehagas porque muy problablemente las borremos por no estar al nuevo stadard" - the existing female armour and clothing are NOT refitted to the new body; they will probably be deleted. Hairstyles, heads, eyes, weapons, capes and the heroines' parts do follow it. The male body stays (approved through the Aiden paint-over).
-- Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
-- Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
+- Decided 2026-10-21 (night): **a 24-hour delegation**. The owner: "estas aprovado para aprovar cosas como las que me estas pidiendo permiso por 24 horas" - until about 2026-10-22 night, his sessions may approve and merge the kind of work they were asking him to approve (finished art and features he requested, after the checks and a look at the images), and show him the result afterwards. Irreversible changes (save formats, renaming saved ids, deleting art), new dependencies, names and anything franchise-related still go to him.
+- Decided 2026-10-21 (evening): **every character is raised to the detail level of the owner's Roman paint-over** (bronze cuirass and Roman skirt): "vamos a cambiar a todos los personajes para que esten a este nivel de detalle entonces todas las ropas cabezas ropa y armaduras se tienen que ajustar a este nivel de detalle". Valen (`scarlet/*`) is included: "valen va necesitar rework como todos nuestros personajes". How (his paint-overs vs our rework) is still open.
+- Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. **Applied on `ryusei/warp-throw`** (2026-10-21, after `icons/sheets-8-11` was merged): the names in both languages, the hotbar button's tooltip (the slot shows only its icon; its short label *Estocada Fugaz* / *Star thrust* is the button's accessible name), the name shown over the ninja and the log, the clan texts in the creator and the battle, D24 and `docs/GAMEPLAY_DESIGN.md`. With it, his "shooting star" look for the flying weapon (a comet's tail).
+- Decided 2026-10-21: **d20 dice on screen** in three styles the player picks in the main menu
+  (Gema, Marfil y oro, Obsidiana rúnica), and **a natural 20 on an attack = automatic critical with
+  maximum damage** and an extra animation (`docs/GAMEPLAY_DESIGN.md`, "Dice"). He asked for more
+  realistic dice than the first draft; the realistic art is on `ui/dice-d20` (generator
+  `tools/ui/dice-d20.ts`, sheets in `src/assets/ui_dice/`), approved (styles liked, Gema the default; merged under his 24-hour delegation).
+  Decided later the same day (his answer "a3, b3, c3"): on a save a natural 20 resists completely
+  (no damage, no effect) and a natural 1 takes the caster's critical (maximum damage, the same
+  animation); on a check a natural 20 succeeds with an extra and a natural 1 fails (the extras per
+  check in `docs/GAMEPLAY_DESIGN.md` "Dice" and `docs/MISSION_DESIGN.md`). On `ui/dice-d20` it is
+  all wired in: the rules in `src/battle` and `src/rules` (with tests), the dice in battle
+  (`src/components/dice/`, `battle/diceLayer.ts`, paced by `playback.ts`, a skip button), the
+  "Opciones" panel in the main menu (`shinobi.dice`, default Gema in the chakra colour, his choice) and the camp log's die.
+- Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`. (Golpe Warp was later renamed Estocada Fugaz, above.)
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms
   cast beat, about 115 ms/m for projectiles and 150 ms/m for beasts, longer impacts, the next turn
   waits, speed 1×/2×/3×). Not signed off.
@@ -284,10 +348,12 @@ the new element first) and says which; a sheet's own off-nature jutsu (Kaien's F
 Earth Wall, older or imported sheets) stay, marked. The random ninja picks jutsu of its nature.
 Enemies and battles are untouched. The rank cap (D, C and the clan's) and the fixed type are built
 on `chakra/progression`, and so are the class gate for the taijutsu, kenjutsu and genjutsu jutsu
-and the level-5 choice (a second element or a higher rank; Kaien and Raiga's second natures). Left:
-when the S-rank slot opens, a level-up screen (the choice is made in the creator for now), the
-third element's feat (proposed), the jutsu of Light and Void (and later Shadow and Spirit), a Water
-S-rank, a second Wind jutsu.
+and the level-5 choice (a second element or a higher rank; Kaien and Raiga's second natures). The
+ladder (rank A at 7, S at 10) and the feat Tres naturalezas are on `chakra/progression-2`. Left: a
+level-up screen (the choices are made in the creator for now), the jutsu of Light and Void (and
+later Shadow and Spirit). A Water S-rank (the Devouring Tide) and more Wind jutsu (the Gale Curtain,
+the Whirlwind Tower) are built on `jutsu/gap-set`; Earth A, Water D and a third Fire D/C are still
+gaps.
 
 ### 4d. Missions (not built)
 Branching road, road traps and curios, votes, cinematics and decisions, the AI choosing camp

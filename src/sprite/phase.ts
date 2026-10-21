@@ -1,5 +1,5 @@
 // The Ryusei's phase (the owner's picture, docs/reference/ryusei-phase-owner-reference.jpg): a
-// ninja's own sprite frame turned into a body of electric-blue light, the way a Warp Strike or a
+// ninja's own sprite frame turned into a body of electric-blue light, the way a Shooting-Star Thrust or a
 // Spatial Swap carries it across the field. Like his picture, it is mostly a strong electric blue,
 // deep in the shade and the core of each form and brighter where the sprite is lit and toward the
 // silhouette; a thin near-white line runs round the silhouette and where a limb lies over the body;

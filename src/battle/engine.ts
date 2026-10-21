@@ -9,6 +9,8 @@ import type { ClanType, ShinobiCharacter, WeatherType } from '../types/shinobi';
 import type { Difficulty } from '../types/mission';
 import { abilityMod, combineAdvantage } from '../rules/checks';
 import { addEffect, effectMods, hasEffect, removeEffect } from '../rules/effects';
+import { tripleNatureDiscount } from '../rules/feats';
+import { maxCritDamage } from '../rules/dice';
 import type {
   Action,
   AfterHits,
@@ -17,6 +19,7 @@ import type {
   BattleState,
   BattleSupplies,
   Cell,
+  GaleZone,
   Hit,
   Outcome,
   Pt,
@@ -29,8 +32,8 @@ import { homeTeam } from './types';
 import { cellBlocked, cellCenter, cellOf, clearRun, coverBetween, dist, fullCoverBetween, getMap, gridFor, hideSpotAt, idx, inGrid, levelAtPt, lineOfSight, propRules, sameCell, segmentsCross, waterAtPt } from './map';
 import { canStop, freeSpot, occupancy, pathTo, pathTouchesDeep, reachable, stepCost } from './nav';
 import type { AttackPreview } from './combat';
-import { attackPreview, check, damage, heal, hostileAura, passivePerception, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
-import { JUTSU, MIN_AIM, areaOf, enhanced } from './jutsu';
+import { attackPreview, check, damage, heal, hostileAura, passivePerception, PERFECT_HIDE, reveal, revealOutOfHiding, rollDiceExpr, skillMod } from './combat';
+import { JUTSU, MIN_AIM, areaOf, enhanced, fanDice, fanned, fannedBy } from './jutsu';
 import type { JutsuSpec } from './jutsu';
 import { KUNAI, enemyNameOf, enemyUnit, handsFree, unitFrom, wielded } from './units';
 import type { EnemyKind } from './units';
@@ -146,6 +149,7 @@ export function createBattle(setup: BattleSetup): { state: BattleState; events: 
       return hp === undefined ? { def } : { def, hp };
     }),
     walls: [],
+    zones: [],
     traps: [...(setup.traps ?? [])],
     nodes: [],
     bodies: [],
@@ -646,6 +650,71 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
     t.stats2.tension += 1;
     ev.push({ t: 'note', key: 'tensionUp', params: { name: t.name } });
   }
+  // Water puts the flames out on whoever it reaches.
+  if (h.douse && hasEffect(t.effects, 'burning')) {
+    t.effects = removeEffect(t.effects, 'burning');
+    ev.push({ t: 'effect', unit: t.id, effect: 'burning', on: false });
+  }
+  // A wave sweeps it off, a tornado drags it in, and down it goes (ninjas: big creatures stand firm).
+  if (t.kind !== 'ninja') return;
+  if (h.push) sweep(s, t, h, ev);
+  if (h.prone && !t.down && !t.cond.prone) {
+    t.cond.prone = true;
+    ev.push({ t: 'condition', unit: t.id, cond: 'prone', on: true });
+    ev.push({ t: 'note', key: 'knockedDown', params: { name: t.name } });
+  }
+}
+
+/** A swept unit stops short of another one (m), so two knocked down don't land on top of each other. */
+const SWEEP_GAP = 1.2;
+
+/** Some other unit on the map (standing or lying) would be nearer than SWEEP_GAP to `to`, and nearer than it is to `from`. */
+function sweptInto(s: BattleState, t: Unit, from: Pt, to: Pt): boolean {
+  return Object.values(s.units).some((o) => o.id !== t.id && o.down !== 'fled' && o.kind !== 'hydra_head' && !o.bulk && dist(o.pos, to) < SWEEP_GAP && dist(o.pos, to) < dist(o.pos, from));
+}
+
+/**
+ * A jutsu moves a unit that failed its save (the Devouring Tide, the Whirlwind Tower): 1.5 m at a
+ * time, away from `push.from` or toward it (never past it), until it has gone `push.m` or something
+ * stops it (a wall, a tree, a structure, another unit or coming within 1.2 m of one, the edge of the
+ * map): it stays where it hits. Swept off a ledge it falls (1d6 a level, and prone); swept into
+ * water its flames go out.
+ */
+function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
+  const p = h.push!;
+  const from = { ...t.pos };
+  let left = p.m;
+  while (left > 0.05) {
+    const d = dist(t.pos, p.from);
+    if (d < 0.05) break;
+    const full = Math.min(1.5, left, p.toward ? d : 1.5);
+    // A step that would run into something goes as far as it can (a cell less at a time), then stops.
+    let moved = 0;
+    for (let step = full; step > 0.25 && !moved; step -= 0.5) {
+      const k = (p.toward ? step : -step) / d;
+      const c = cellOf({ x: t.pos.x + (p.from.x - t.pos.x) * k, z: t.pos.z + (p.from.z - t.pos.z) * k });
+      if (!inGrid(gridFor(s.mapId), c) || sameCell(c, cellOf(t.pos)) || !pushClear(s, t.pos, cellCenter(c)) || !canStop(s, t, c) || sweptInto(s, t, t.pos, cellCenter(c))) continue;
+      t.pos = cellCenter(c);
+      moved = step;
+    }
+    if (moved < full) break;
+    left -= full;
+  }
+  if (sameCell(cellOf(from), cellOf(t.pos))) {
+    t.pos = from;
+    return;
+  }
+  const drop = levelAtPt(s, from) - levelAtPt(s, t.pos);
+  if (t.pos.x !== from.x) t.facing = from.x > t.pos.x ? 1 : -1;
+  ev.push({ t: 'pushed', unit: t.id, from, to: { ...t.pos }, fall: Math.max(0, Math.round(drop)), what: h.what });
+  if (drop >= 0.9) {
+    t.cond.prone = true;
+    landHit(s, t, { unit: t.id, amount: rollDiceExpr(s, `${Math.round(drop)}d6`), type: 'Bludgeoning', source: h.source, what: 'fall' }, ev);
+  }
+  if (waterAtPt(s, t.pos) > 0 && hasEffect(t.effects, 'burning')) {
+    t.effects = removeEffect(t.effects, 'burning');
+    ev.push({ t: 'effect', unit: t.id, effect: 'burning', on: false });
+  }
 }
 
 /** Kawarimi: the blow strikes a log and the ninja reappears a few meters away, away from danger. */
@@ -653,6 +722,8 @@ function kawarimi(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   const spec = JUTSU[KAWARIMI];
   t.chakra -= spec.cost;
   t.turn.reaction = false;
+  // A jutsu cast too: the one before the next (Triple Nature reads it).
+  t.lastNature = spec.nature ?? '';
   ev.push({ t: 'chakra', unit: t.id, delta: -spec.cost, chakra: t.chakra, reason: KAWARIMI });
   const from = { ...t.pos };
   const danger = h.source && s.units[h.source] ? s.units[h.source].pos : from;
@@ -714,10 +785,22 @@ function react(s: BattleState, unitId: string, take: boolean, ev: BattleEvent[])
 
 // --- jutsu ---------------------------------------------------------------------------------
 
-/** Chakra a jutsu costs this unit (enhanced, and Centered chakra's discount on the first jutsu). */
-export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
+/**
+ * Chakra a jutsu costs this unit (enhanced, Centered chakra's discount on the first jutsu, and Triple
+ * Nature's on a jutsu of one of its elements right after one of another: rules/feats.ts), and whether
+ * Triple Nature's discount lowers it (it is spent only then).
+ */
+export function jutsuCostParts(u: Unit, spec: JutsuSpec, enh: boolean): { cost: number; woven: boolean } {
   const discount = !spec.ability && u.stats2.jutsuCast === 0 ? effectMods(u.effects).firstJutsuDiscount : 0;
-  return Math.max(0, spec.cost + (enh ? spec.enhCost : 0) - discount);
+  const cost = Math.max(0, spec.cost + (enh ? spec.enhCost : 0) - discount);
+  const t = u.tripleNature;
+  const weave = t && !spec.ability ? tripleNatureDiscount(t.natures, t.spent, u.lastNature, spec.nature) : 0;
+  return { cost: Math.max(0, cost - weave), woven: weave > 0 && cost > 0 };
+}
+
+/** Chakra a jutsu costs this unit (enhanced, and its discounts). */
+export function jutsuCost(u: Unit, spec: JutsuSpec, enh: boolean): number {
+  return jutsuCostParts(u, spec, enh).cost;
 }
 
 function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string | undefined, enh: boolean, ev: BattleEvent[], target2Id?: string): string | null {
@@ -727,7 +810,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (effectMods(u.effects).noJutsu) return 'chakraSealed';
   if (enh && !base.enhCost) return 'noEnhanced';
   const spec = enh ? enhanced(base) : base;
-  const cost = jutsuCost(u, base, enh);
+  const { cost, woven } = jutsuCostParts(u, base, enh);
   if (u.chakra < cost) return 'noChakra';
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
   // Hand seals need both hands, and a tackle is thrown with empty ones: the weapon is stowed for
@@ -778,7 +861,7 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       if (d < MIN_AIM) return 'needDirection';
       break;
     case 'node': {
-      // Warp Strike: one of the Ryusei's own Nodes, landing beside it if someone stands on it.
+      // Shooting-Star Thrust: one of the Ryusei's own Nodes, landing beside it if someone stands on it.
       const n = ownNodeAt(s, u, at);
       const why = warpBlocker(s, u, n);
       if (why) return why;
@@ -808,7 +891,14 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   // Pay, and spend the action.
   u.chakra -= cost;
   if (cost) ev.push({ t: 'chakra', unit: u.id, delta: -cost, chakra: u.chakra, reason: id });
-  if (!base.ability) u.stats2.jutsuCast += 1;
+  if (woven && u.tripleNature) {
+    u.tripleNature.spent = true;
+    ev.push({ t: 'note', key: 'tripleNature', params: { name: u.name } });
+  }
+  if (!base.ability) {
+    u.stats2.jutsuCast += 1;
+    u.lastNature = base.nature ?? '';
+  }
   if (base.cast === 'bonus') u.turn.bonus = false;
   else u.turn.action = false;
   if (spec.loud) reveal(u, ev);
@@ -818,7 +908,11 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   }
   if (at.x !== u.pos.x) u.facing = at.x > u.pos.x ? 1 : -1;
   const area = areaOf(spec, u.pos, at);
-  ev.push({ t: 'jutsu', unit: u.id, jutsu: id, at, shape: area, enhanced: enh });
+  // A fire jutsu through a gale on the ground burns harder (the Gale Curtain).
+  const fan = fannedBy(spec, u.pos, at, s.zones ?? []);
+  ev.push({ t: 'jutsu', unit: u.id, jutsu: id, at, shape: area, enhanced: enh, ...(fan ? { fanned: fan } : {}) });
+  // The log says how many dice: one, two for a rank S (fanDice).
+  if (fan) ev.push({ t: 'note', key: fanDice(spec) > 1 ? 'fanned2' : 'fanned', params: { name: u.name } });
   const hits: Hit[] = [];
   switch (spec.special) {
     case 'heal':
@@ -869,8 +963,11 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
         if (t.team === u.team) replanAgainst(s, t.id, ev);
       }
       break;
+    case 'galeZone':
+      raiseGale(s, u, spec, at, ev);
+      break;
     default:
-      hits.push(...jutsuHits(s, u, spec, target, at, ev));
+      hits.push(...jutsuHits(s, u, fan ? fanned(spec) : spec, target, at, ev));
   }
   if (spec.loud && s.phase === 'combat') scareAnimalsNear(s, at, 6, ev);
   applyHits(s, hits, spec.loud ? loud(s, u) : silentAttack(s, u, spec, target, ev), ev);
@@ -908,14 +1005,19 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   const hits: Hit[] = [];
   for (const v of victims) {
     const extra: Partial<Hit> = { aimed: !area, effect: spec.effect, tension: spec.tension, ...(edge ? { unblockable: true } : {}) };
+    // A wave sweeps away from its caster, a tornado drags toward its middle; either knocks down.
+    if (spec.push) extra.push = { from: spec.push.toward ? { ...at } : { ...u.pos }, m: spec.push.m, toward: spec.push.toward };
+    if (spec.prone) extra.prone = true;
+    if (spec.douse) extra.douse = true;
     if (spec.save) {
-      hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv));
+      hits.push(saveHit(s, v, spec.save, u.saveDC, amount, type, spec.saveHalf, u.id, spec.id, extra, ev, spec.saveAdv, spec.dice ? maxCritDamage(spec.dice) : undefined));
       continue;
     }
     const pv = attackPreview(s, u, v, 'jutsu', { jutsuRange: spec.range, melee: spec.melee });
     const roll = check(s, 'attack', pv.mod, pv.ac, pv.adv, true);
     ev.push({ t: 'attack', unit: u.id, target: v.id, what: spec.id, roll, ranged: !spec.melee, ...(pv.reasons.length ? { reasons: pv.reasons } : {}) });
-    if (roll.success) hits.push({ unit: v.id, amount: roll.crit && spec.dice ? amount + rollDiceExpr(s, spec.dice) : amount, type, source: u.id, what: spec.id, crit: roll.crit, ...extra });
+    // A critical does maximum damage (the dice at their highest, doubled, the bonus once).
+    if (roll.success) hits.push({ unit: v.id, amount: roll.crit && spec.dice ? rollDiceExpr(s, spec.dice, true) : amount, type, source: u.id, what: spec.id, crit: roll.crit, ...extra });
   }
   if (edge) u.cond.warpEdge = false;
   // The ground: fire burns, wind cuts the foliage, blasts set off barrels and tags.
@@ -925,7 +1027,7 @@ function jutsuHits(s: BattleState, u: Unit, spec: JutsuSpec, target: Unit | unde
   if (type === 'Lightning') {
     const points = victims.map((v) => v.pos);
     if (area?.kind === 'circle') points.push(area.center);
-    hits.push(...electrify(s, points, amount, u.saveDC, u.id, victims.map((v) => v.id), ev));
+    hits.push(...electrify(s, points, amount, u.saveDC, u.id, victims.map((v) => v.id), ev, spec.dice));
   }
   return hits;
 }
@@ -979,6 +1081,17 @@ function raiseWall(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleE
   const wall = { ...jutsuWallAt(spec, u.pos, at, `wall_${s.tick}_${u.id}`), owner: u.id };
   s.walls.push(wall);
   ev.push({ t: 'wall', wall, on: true });
+}
+
+/**
+ * The Gale Curtain: a gale starts turning on the ground at the point. It lasts the rest of this round
+ * and two more (like a water barrier, it fades as a new round begins), and fans the fire jutsu that
+ * go through it (fannedBy).
+ */
+function raiseGale(s: BattleState, u: Unit, spec: JutsuSpec, at: Pt, ev: BattleEvent[]): void {
+  const zone: GaleZone = { id: `gale_${s.tick}_${u.id}_${(s.zones ?? []).length}`, center: { ...at }, radius: spec.radius ?? 2.25, owner: u.id, rounds: 3 };
+  s.zones = [...(s.zones ?? []), zone];
+  ev.push({ t: 'zone', zone, on: true });
 }
 
 /** Ninjutsu and genjutsu are woven with hand seals; taijutsu, sword arts and bloodline abilities are not. */
@@ -1073,6 +1186,13 @@ function doHide(s: BattleState, u: Unit, ev: BattleEvent[]): string | null {
   ev.push({ t: 'check', unit: u.id, what: 'stealth', roll });
   if (roll.success) {
     u.cond.hidden = roll.total;
+    // The owner's rule (C3): a natural 20 hides it perfectly. Nobody can find it until its next
+    // turn, crouched or not (it gives itself away as usual by attacking or leaving cover).
+    if (roll.crit) {
+      u.cond.hidden = PERFECT_HIDE;
+      u.cond.perfectHide = roll.total;
+      ev.push({ t: 'note', key: 'hideCrit', params: { name: u.name } });
+    }
     ev.push({ t: 'condition', unit: u.id, cond: 'hidden', on: true });
   } else ev.push({ t: 'note', key: 'hideFailed', params: { name: u.name } });
   return null;
@@ -1115,22 +1235,37 @@ function doShove(s: BattleState, u: Unit, targetId: string, mode: 'prone' | 'pus
   if (fullCoverBetween(s, u.pos, t.pos)) return 'blocked';
   u.turn.action = false;
   const def = check(s, 'check', Math.max(skillMod(t, 'athletics'), skillMod(t, 'acrobatics')), 0);
-  ev.push({ t: 'check', unit: t.id, what: 'resistShove', roll: def });
   const atk = check(s, 'check', skillMod(u, 'athletics'), def.total + 1);
+  // The owner's rule (C3) in a contest: a natural 20 wins it and a natural 1 loses it; when both
+  // roll a natural 20 the one resisting keeps its ground (ties go to the defender).
+  const won = def.crit ? false : atk.crit ? true : atk.fumble ? false : def.fumble ? true : atk.total > def.total;
+  atk.success = won;
+  def.success = !won;
+  ev.push({ t: 'check', unit: t.id, what: 'resistShove', roll: def });
   ev.push({ t: 'check', unit: u.id, what: 'shove', roll: atk });
   const after = loud(s, u);
   if (!atk.success) {
+    // Resisting with a natural 20 throws the shover off balance: it falls prone.
+    if (def.crit && !u.cond.prone) {
+      u.cond.prone = true;
+      ev.push({ t: 'note', key: 'shoveReversed', params: { name: t.name, other: u.name } });
+      ev.push({ t: 'condition', unit: u.id, cond: 'prone', on: true });
+    }
     applyHits(s, [], after, ev);
     return null;
   }
   const hits: Hit[] = [];
-  if (mode === 'prone') {
+  // A natural 20 does both, and pushes harder: knocked prone and pushed (3 m when pushing).
+  if (atk.crit) ev.push({ t: 'note', key: 'shoveCrit', params: { name: u.name, other: t.name } });
+  if (mode === 'prone' || atk.crit) {
     t.cond.prone = true;
     ev.push({ t: 'condition', unit: t.id, cond: 'prone', on: true });
-  } else {
+  }
+  if (mode === 'push' || atk.crit) {
     const d = Math.max(0.01, dist(u.pos, t.pos));
-    const dest = { x: t.pos.x + ((t.pos.x - u.pos.x) / d) * 1.5, z: t.pos.z + ((t.pos.z - u.pos.z) / d) * 1.5 };
-    const c = cellOf(dest);
+    const cellAt = (m: number) => cellOf({ x: t.pos.x + ((t.pos.x - u.pos.x) / d) * m, z: t.pos.z + ((t.pos.z - u.pos.z) / d) * m });
+    const fits = (m: number) => pushClear(s, t.pos, cellCenter(cellAt(m))) && canStop(s, t, cellAt(m));
+    const c = atk.crit && mode === 'push' && fits(3) ? cellAt(3) : cellAt(1.5);
     if (!pushClear(s, t.pos, cellCenter(c)) || !canStop(s, t, c)) ev.push({ t: 'note', key: 'shoveBlocked', params: { name: t.name } });
     else {
       const from = { ...t.pos };
@@ -1244,6 +1379,11 @@ function doStabilize(s: BattleState, u: Unit, targetId: string, ev: BattleEvent[
   if (roll.success) {
     t.down = 'stable';
     ev.push({ t: 'down', unit: t.id, state: 'stable' });
+    // The owner's rule (C3): a natural 20 does more than stabilize, the ally gets up with 1 HP.
+    if (roll.crit) {
+      ev.push({ t: 'note', key: 'medicineCrit', params: { name: u.name, other: t.name } });
+      heal(t, 1, 'medicine', ev);
+    }
   }
   return null;
 }

@@ -6,7 +6,7 @@
 // owner, 2026-10-21): the effect's `tint` (a wall's, its owner's) picks a recoloured copy of the
 // sheet (vfxTintCache.ts); Natural, or the sheet's own colour, plays his sheet itself.
 
-import type { Wall } from '../../battle/types';
+import type { AreaShape, GaleZone, Pt, Wall } from '../../battle/types';
 import { isTintElement } from '../../sprite/vfxTint';
 import { worldSprite } from '../world/WorldSpriteView';
 import type { VfxElement } from '../../battle/jutsu';
@@ -19,6 +19,7 @@ import { unitTint, wallElement } from './vfxTintPlan';
 import { keepAbove, wanderHeading, wanderPoint } from './paths';
 import type { Bend, XY } from './paths';
 import { dist } from '../../battle/map';
+import { BLOOD_GROUP, screenSplats, splatAt } from './bloodPlan';
 
 /** A sheet, and its copy in a chakra colour when it plays in one. */
 type Sheet = NonNullable<ReturnType<typeof worldSprite>> & { tinted?: TintedSheet };
@@ -42,6 +43,12 @@ function sheet(element: string, name: string, tint?: string): Sheet | undefined 
 /** A recoloured sheet had nothing ready for the frame just drawn (see blit). */
 let waiting = false;
 
+/**
+ * How much brighter the frames being drawn burn (0: as they are): a fire fanned by a gale (the Gale
+ * Curtain) is drawn again over itself, added as light, so his frames glow without being redrawn.
+ */
+let glow = 0;
+
 /** Draws one frame of a sheet's animation with its anchor at (x, y); mirrored to face left. */
 function blit(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame: number, x: number, y: number, mirror: boolean, alpha = 1): void {
   const a = s.spec.anims[anim] ?? Object.values(s.spec.anims)[0];
@@ -64,8 +71,16 @@ function blit(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame: numb
   }
   const X = mirror ? -ax : Math.round(x - ax);
   const Y = Math.round(y - ay);
-  if (tf) ctx.drawImage(tf.img, X + tf.x, Y + tf.y);
-  else ctx.drawImage(s.img, f * s.spec.frameW, a.row * s.spec.frameH, s.spec.frameW, s.spec.frameH, X, Y, s.spec.frameW, s.spec.frameH);
+  const draw = () => {
+    if (tf) ctx.drawImage(tf.img, X + tf.x, Y + tf.y);
+    else ctx.drawImage(s.img, f * s.spec.frameW, a.row * s.spec.frameH, s.spec.frameW, s.spec.frameH, X, Y, s.spec.frameW, s.spec.frameH);
+  };
+  draw();
+  if (glow > 0) {
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = alpha * glow;
+    draw();
+  }
   ctx.restore();
 }
 
@@ -227,6 +242,36 @@ function drawNeutralSlash(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: n
 }
 
 /**
+ * Blood on the screen itself (the owner: "las gotas de sangre manchan la pantalla cuando
+ * exitosamente se consigue el sangrado"): the drops of a cut that left Bleeding land near the edge
+ * the cut went toward, clear of the panels, then run down and fade. Drawn in screen pixels after
+ * everything else, so it grows with the screen and not with the camera's zoom; never tinted.
+ */
+export function drawScreenBlood(ctx: CanvasRenderingContext2D, sc: Scene): void {
+  if (!sc.pb.screenBlood.length) return;
+  const s = worldSprite(BLOOD_GROUP, 'screen');
+  if (!s || !ready(s)) return;
+  const { frameW: fw, frameH: fh, anchor } = s.spec;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  for (const b of sc.pb.screenBlood) {
+    const ms = (sc.now - b.t0) * sc.pb.speed;
+    for (const sp of screenSplats(sc.W, sc.H, b.side, b.seed, sc.avoid ?? [])) {
+      const st = splatAt(ms - sp.delay);
+      const a = s.spec.anims[sp.variant];
+      if (!st || !a) continue;
+      const k = sp.scale;
+      ctx.globalAlpha = st.alpha;
+      const x = Math.round(sp.x - anchor[0] * k);
+      const y = Math.round(sp.y - anchor[1] * k + st.slide * k);
+      ctx.drawImage(s.img, Math.min(st.frame, a.frames - 1) * fw, a.row * fh, fw, fh, x, y, fw * k, fh * k);
+    }
+  }
+  ctx.restore();
+}
+
+/**
  * A lingering aura on a unit while its condition lasts (the Breeze Mantle's wind until its next
  * turn): the element's aura and aura_back, faint, looping on the body. Not on a hidden foe.
  */
@@ -274,8 +319,17 @@ export function drawAuraBack(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): v
  */
 export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolean {
   waiting = false;
-  return drawFromSheets(ctx, sc, f) && !waiting;
+  glow = fanNow(sc, f) ? FAN_GLOW : 0;
+  const drawn = drawFromSheets(ctx, sc, f);
+  glow = 0;
+  return drawn && !waiting;
 }
+
+/** How bright a fanned fire burns over itself (see glow). */
+const FAN_GLOW = 0.5;
+
+/** A fanned fire has reached the wind (the Gale Curtain): it burns brighter from there on. */
+const fanNow = (sc: Scene, f: Fx): boolean => f.fan !== undefined && (sc.now - f.t0) * sc.pb.speed >= f.dur * f.fan;
 
 /**
  * The sheets an effect plays (vfx_<element>/<name>, or its element's beast), the main one first,
@@ -305,6 +359,12 @@ function sheetsOf(f: Fx): { name: string; beast: boolean; group?: string }[] {
       return named(...(f.role === 'multi' ? ['multi_hit'] : []), 'hit');
     case 'aura':
       return named('aura', 'aura_back');
+    case 'wave':
+      return named('wall_depth', 'wall', 'breath');
+    case 'tower':
+      return named('wall_depth', 'multi');
+    case 'swirl':
+      return named('bolt');
     default:
       return [];
   }
@@ -592,7 +652,11 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
   }
   if (t > 1) return true;
   const left = f.to.x < f.from.x - 0.01;
-  const sig = f.sig && f.sig !== 'eyes' && f.sig !== 'tag' && f.sig !== 'log' ? sigSheetName(el, f.sig, !!f.enhanced) : undefined;
+  // A Fireball fanned by a gale grows into the Great Fireball once it reaches the wind (his own
+  // bigger art); its blast stays the Fireball's (the area is the one aimed), only brighter. Other
+  // signatures keep their timing and only burn brighter.
+  const grows = f.sig === 'fireball' && f.kind === 'projectile' && fanNow(sc, f);
+  const sig = f.sig && f.sig !== 'eyes' && f.sig !== 'tag' && f.sig !== 'log' ? sigSheetName(el, f.sig, !!f.enhanced || grows) : undefined;
   if (f.kind === 'sprite' && f.run) return drawRun(ctx, sc, f, ms);
   if (f.kind === 'line' && f.beam) return drawBeam(ctx, sc, f, ms);
   if (f.kind === 'projectile' && f.route) return drawRoute(ctx, sc, f, ms);
@@ -664,15 +728,20 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
       }
       const s = sheet(el, 'breath', f.tint);
       if (!s || !f.area || f.area.kind !== 'cone') return false;
+      if (f.spread) return drawSpreadBreath(ctx, sc, f, s, f.area, ms, t, mirror);
       // Breaths rolled out along the cone, one after another.
       const len = f.area.length;
       const rad = (f.area.dir * Math.PI) / 180;
       const steps = Math.max(2, Math.round(len / 1.6));
+      // A sheet anchored at its edge (earth's dust: his anchor is on its left end, the others' near
+      // the middle) is drawn back by the difference, so its dust ends where the cone ends.
+      const [ax] = s.spec.anchor;
+      const off = Math.abs(ax - s.spec.frameW / 2) > s.spec.frameW * 0.25 ? ax - s.spec.frameW / 2 : 0;
       for (let i = 0; i < steps; i++) {
         const k = (i + 0.5) / steps;
         if (t < k * 0.6) break;
         const p = project(sc.map, { x: f.from.x + Math.cos(rad) * len * k, z: f.from.z + Math.sin(rad) * len * k });
-        blit(ctx, s, 'fly', frameAt(s, 'fly', ms + i * 70), p.X - (mirror ? -1 : 1) * s.spec.frameW * 0.3, p.Y - 30, mirror, t > 0.8 ? (1 - t) / 0.2 : 1);
+        blit(ctx, s, 'fly', frameAt(s, 'fly', ms + i * 70), p.X - (mirror ? -1 : 1) * (s.spec.frameW * 0.3 - off), p.Y - 30, mirror, t > 0.8 ? (1 - t) / 0.2 : 1);
       }
       return true;
     }
@@ -713,6 +782,16 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
       return true;
     }
     case 'burst': {
+      // Blood (the Bleeding Cut's spray, a bleeding ninja's drip): his dark-red drops, never tinted.
+      // Nothing is drawn in its place while the sheet loads (an element's stand-in would be wrong).
+      if (f.blood) {
+        const s = worldSprite(BLOOD_GROUP, 'spray');
+        if (!s || !ready(s)) return true;
+        const p = project(sc.map, f.to);
+        const anim = f.blood === 'spray' ? 'burst' : 'drip';
+        blit(ctx, s, anim, frameAt(s, anim, ms), p.X, p.Y, left);
+        return true;
+      }
       // Rock bullets and the like can have their own impact, which sprays away from the caster.
       const own = f.role === 'multi' ? sheet(el, 'multi_hit', f.tint) : undefined;
       const s = own ?? sheet(el, 'hit', f.tint);
@@ -733,6 +812,19 @@ function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolea
     case 'slash':
       // The white cut of a sword art with no element; other cuts are drawn.
       return f.set === 'neutral' && drawNeutralSlash(ctx, sc, f, ms, t);
+    case 'wave':
+    case 'tower':
+      // Drawn among the units by depth (depthFx), so the ninjas stand in front of or behind them.
+      return true;
+    case 'swirl': {
+      // The wind swirling round a fanned fire where it meets the gale: the wind's vortex (his bolt).
+      const s = sheet('wind', 'bolt', f.tint);
+      if (!s) return true;
+      const p = project(sc.map, f.to);
+      const alpha = t < 0.2 ? t / 0.2 : t > 0.7 ? (1 - t) / 0.3 : 1;
+      blit(ctx, s, 'fly', frameAt(s, 'fly', ms), p.X, p.Y - (f.lift?.[1] ?? 56), false, alpha * 0.9);
+      return true;
+    }
     case 'wall':
       // With the element's wall sheet in the game, the standing wall plays its own rise (a broken
       // structure's debris has no sheet yet: it falls back to the drawn dust).
@@ -828,4 +920,228 @@ export function signatureMs(element: string, sig: string | undefined, enhanced: 
   if (!s) return null;
   const hit = surgeMs(s);
   return { total: hit + animMs(s, 'burn') * 2 + animMs(s, 'fade'), hit };
+}
+
+/**
+ * A cone filled with the element's breath across its width (the Rubble Gust's dust and stones): one
+ * breath near the caster, then a row across the cone further out as it opens, each one whole inside
+ * the cone (its middle on the point, his sheet anchored wherever it is), so the dust starts in
+ * front of the caster and ends where the cone ends. They show one after another as it rolls out.
+ */
+function drawSpreadBreath(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, s: Sheet, cone: Extract<AreaShape, { kind: 'cone' }>, ms: number, t: number, mirror: boolean): boolean {
+  const rad = (cone.dir * Math.PI) / 180;
+  const ux = Math.cos(rad);
+  const uz = Math.sin(rad);
+  const tan = Math.tan((cone.angle * Math.PI) / 360);
+  // Half his breath's length along the screen, in metres: no breath reaches back past the hand.
+  const half = s.spec.frameW / 2 / sc.map.px.perM;
+  const near = Math.min(cone.length / 2, 0.5 + half * Math.abs(ux));
+  const far = Math.max(near, cone.length - half * Math.abs(ux));
+  const pts: { d: number; off: number }[] = [{ d: near, off: 0 }];
+  // The far row spreads across the cone (in the depth when it points across the screen).
+  for (const k of [-0.55, 0, 0.55]) pts.push({ d: far, off: far * tan * k });
+  if (far - near > 1.4) for (const k of [-0.4, 0.4]) pts.push({ d: (near + far) / 2, off: ((near + far) / 2) * tan * k });
+  pts.sort((a, b) => a.d - b.d || a.off - b.off);
+  const [ax] = s.spec.anchor;
+  const alpha = t > 0.8 ? (1 - t) / 0.2 : 1;
+  pts.forEach((q, i) => {
+    if (t < (q.d / cone.length) * 0.6) return;
+    const p = project(sc.map, { x: cone.origin.x + ux * q.d - uz * q.off, z: cone.origin.z + uz * q.d + ux * q.off });
+    // blit puts his anchor on the point: move it so the frame's middle is there instead.
+    blit(ctx, s, 'fly', frameAt(s, 'fly', ms + i * 70), p.X - (mirror ? -1 : 1) * (s.spec.frameW / 2 - ax), p.Y - 30, mirror, alpha);
+  });
+  return true;
+}
+
+// --- the gaps' jutsu: the Devouring Tide's wave, the Whirlwind Tower, the Gale Curtain's gale ------
+
+/** Something drawn among the units, by depth (renderer.ts sorts them by z). */
+export interface DepthItem {
+  z: number;
+  draw: () => void;
+}
+
+/** When a wave's crest reaches `d` m along a cone `len` m long, as a fraction of its run. */
+export const WAVE_CREST = (d: number, len: number): number => Math.max(0, Math.min(1, (d - WAVE_START) / Math.max(0.1, len - WAVE_START)));
+/** Where the crest sets off, in front of the caster (m). */
+const WAVE_START = 0.8;
+/** How long the wave stays at the end of its run, fading, while the last ones it reached are swept (ms). */
+export const WAVE_HOLD = 700;
+/** Metres between the rows of columns behind the crest, and how see-through each row is. */
+const WAVE_ROW = 1.1;
+const WAVE_ALPHA = [1, 0.55, 0.3, 0.18];
+
+/** The Whirlwind Tower's column: its rise (his rise row, 12 frames at 12 fps), its spin and its fade (ms). */
+export const TOWER_RISE = 1000;
+const TOWER_SPIN = 900;
+const TOWER_FADE = 400;
+export const TOWER_MS = TOWER_RISE + TOWER_SPIN + TOWER_FADE;
+
+/**
+ * Draws one column of a wall_depth sheet standing on a ground point (the sheet is a wall running
+ * into the depth, anchored at its middle: here its foot is put on the point and its middle over it).
+ */
+function blitColumn(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame: number, p: { X: number; Y: number }, alpha: number): void {
+  const [ax, ay] = s.spec.anchor;
+  blit(ctx, s, anim, frame, p.X - (s.spec.frameW / 2 - ax), p.Y - (s.spec.frameH - 2 - ay), false, alpha);
+}
+
+/**
+ * The Devouring Tide's wave (the owner's option A): a row of his water columns (wall_depth, his
+ * wall seen from the front) across the cone at its crest, running out along it and spreading as the
+ * cone opens, with fainter rows behind and his spray (breath) before it. Pointed mostly into the
+ * depth, the wave is seen from the side: his water wall (wall) along the crest instead.
+ */
+function waveItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[] {
+  const ms = (sc.now - f.t0) * sc.pb.speed;
+  // Its run, then it holds at the end of the cone and fades (WAVE_HOLD).
+  const runMs = Math.max(1, f.dur - WAVE_HOLD);
+  const t = Math.min(1, ms / runMs);
+  if (ms < 0 || ms > f.dur || !f.area || f.area.kind !== 'cone') return [];
+  const cone = f.area;
+  const rad = (cone.dir * Math.PI) / 180;
+  const ux = Math.cos(rad);
+  const uz = Math.sin(rad);
+  const half = (cone.angle * Math.PI) / 360;
+  const side = Math.abs(uz) > Math.abs(ux) * 1.2;
+  const col = sheet(f.element, side ? 'wall' : 'wall_depth', f.tint);
+  if (!col) return [];
+  const crest = WAVE_START + (cone.length - WAVE_START) * t;
+  const fade = ms > runMs ? Math.max(0, (f.dur - ms) / WAVE_HOLD) : 1;
+  const out: DepthItem[] = [];
+  const at = (d: number, off: number): Pt => ({ x: cone.origin.x + ux * d - uz * off, z: cone.origin.z + uz * d + ux * off });
+  // Each column comes up out of the water fast as the wave sets off (his rise, at three times its pace).
+  const rising = col.spec.anims.rise ? Math.min(11, Math.floor((ms * 3 * 12) / 1000)) : 11;
+  for (let k = 0; k < (f.rows ?? 3); k++) {
+    const d = crest - k * WAVE_ROW;
+    if (d < WAVE_START) break;
+    const alpha = (WAVE_ALPHA[k] ?? 0.15) * fade;
+    const w = d * Math.tan(half);
+    // Columns about a metre apart across the cone (his column is 1.2 m wide); seen from the side,
+    // walls of 4.6 m laid along the crest.
+    const n = side ? Math.max(1, Math.ceil((2 * w) / 4.6)) : Math.max(2, Math.round((2 * w) / 1.0) + 1);
+    for (let i = 0; i < n; i++) {
+      const off = side ? -w + (2 * w * (i + 0.5)) / n : -w + (2 * w * i) / (n - 1);
+      const p = at(d, off);
+      const anim = rising < 11 ? 'rise' : 'idle';
+      const frame = rising < 11 ? rising : frameAt(col, 'idle', ms + i * 97 + k * 53);
+      out.push({ z: p.z, draw: () => (side ? blit(ctx, col, anim, frame, project(sc.map, p).X, project(sc.map, p).Y, false, alpha) : blitColumn(ctx, col, anim, frame, project(sc.map, p), alpha)) });
+    }
+  }
+  // His spray before the crest (the cone runs across the screen).
+  const foam = side ? undefined : sheet(f.element, 'breath', f.tint);
+  if (foam) {
+    const d = crest + 0.7;
+    const w = Math.min(d, cone.length) * Math.tan(half);
+    const mirror = ux < 0;
+    for (const off of [-w * 0.6, 0, w * 0.6]) {
+      if (d > cone.length + 0.5) break;
+      const p = at(d, off);
+      out.push({ z: p.z + 0.01, draw: () => {
+        const q = project(sc.map, p);
+        blit(ctx, foam, 'fly', frameAt(foam, 'fly', ms + off * 40), q.X, q.Y - 40, mirror, 0.85 * fade);
+      } });
+    }
+  }
+  return out;
+}
+
+/**
+ * The Whirlwind Tower (the owner's option A): his tornado column (wind wall_depth, his wind wall seen
+ * from the front) rises at the point, turns with his small whirlwinds (multi) circling it, two
+ * behind and two in front of whoever stands there, and fades.
+ */
+function towerItems(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): DepthItem[] {
+  const ms = (sc.now - f.t0) * sc.pb.speed;
+  if (ms < 0 || ms > f.dur || !f.area || f.area.kind !== 'circle') return [];
+  const col = sheet(f.element, 'wall_depth', f.tint);
+  if (!col) return [];
+  const c = f.area.center;
+  const r = f.area.radius;
+  const alpha = ms > f.dur - TOWER_FADE ? Math.max(0, (f.dur - ms) / TOWER_FADE) : 1;
+  const out: DepthItem[] = [];
+  out.push({ z: c.z, draw: () => {
+    const p = project(sc.map, c);
+    if (ms < TOWER_RISE) blitColumn(ctx, col, 'rise', frameAt(col, 'rise', ms), p, alpha);
+    else blitColumn(ctx, col, 'idle', frameAt(col, 'idle', ms - TOWER_RISE), p, alpha);
+  } });
+  const mini = sheet(f.element, 'multi', f.tint);
+  const spin = ms - TOWER_RISE * 0.7;
+  if (mini && spin > 0) {
+    const n = f.minis ?? 4;
+    const fadeIn = Math.min(1, spin / 250);
+    for (let i = 0; i < n; i++) {
+      const a = (i * 2 * Math.PI) / n + (spin / 1000) * 2.6;
+      const p = { x: c.x + Math.cos(a) * r * 0.75, z: c.z + Math.sin(a) * r * 0.75 };
+      // Going round: the ones in front run one way, the ones behind the other.
+      out.push({ z: p.z, draw: () => {
+        const q = project(sc.map, p);
+        blit(ctx, mini, 'fly', frameAt(mini, 'fly', ms + i * 120), q.X, q.Y - 36, Math.sin(a) > 0, alpha * fadeIn);
+      } });
+    }
+  }
+  return out;
+}
+
+/** How see-through a gale on the ground is (his wind, faint, so whoever stands in it shows). */
+const GALE_ALPHA = 0.42;
+
+/**
+ * A gale turning on the ground (the Gale Curtain, the owner's answer: an area, not a wall): his wind
+ * wall (the one running across the screen, low and wide) laid as a band at the back and one at the
+ * front of the circle, rising when it starts and fading when it dies down, in its maker's chakra
+ * colour; a faint ring on the ground shows how far it reaches. All of it lies behind whoever stands
+ * in the circle or in front of it (drawn at the circle's back edge), so the ninjas in the wind show.
+ */
+function galeItems(ctx: CanvasRenderingContext2D, sc: Scene, z: GaleZone, fadeT0?: number): DepthItem[] {
+  const s = sheet('wind', 'wall', unitTint(sc.state.units[z.owner]));
+  const born = sc.pb.zoneBorn.get(z.id);
+  const ms = born === undefined ? Infinity : (sc.now - born) * sc.pb.speed;
+  const fading = fadeT0 === undefined ? 1 : Math.max(0, 1 - ((sc.now - fadeT0) * sc.pb.speed) / 1000);
+  if (fading <= 0) return [];
+  const out: DepthItem[] = [];
+  const c = z.center;
+  out.push({ z: c.z - z.radius - 0.03, draw: () => {
+    ctx.save();
+    const p = project(sc.map, c);
+    ctx.beginPath();
+    ctx.ellipse(p.X, p.Y, z.radius * sc.map.px.perM, z.radius * sc.map.px.perMDepth, 0, 0, Math.PI * 2);
+    ctx.setLineDash([5, 6]);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = `rgba(167, 243, 208, ${0.4 * fading})`;
+    ctx.stroke();
+    ctx.restore();
+  } });
+  if (!s) return out;
+  const rise = s.spec.anims.rise ? animMs(s, 'rise') : 0;
+  // Bands about as wide as the circle: one more across for a bigger gale.
+  const across = Math.max(1, Math.round((2 * z.radius) / 4.4));
+  const span = 2 * z.radius;
+  for (const dz of [-0.45, 0.45])
+    for (let i = 0; i < across; i++) {
+      const p = { x: c.x - span / 2 + (span * (i + 0.5)) / across + dz * 0.6, z: c.z + dz * z.radius };
+      out.push({ z: c.z - z.radius - 0.02, draw: () => {
+        const q = project(sc.map, p);
+        if (ms < rise) blit(ctx, s, 'rise', frameAt(s, 'rise', ms), q.X, q.Y, dz > 0, GALE_ALPHA * fading);
+        else blit(ctx, s, 'idle', frameAt(s, 'idle', (Number.isFinite(ms) ? ms - rise : sc.now) + i * 170 + (dz > 0 ? 330 : 0)), q.X, q.Y, dz > 0, GALE_ALPHA * fading);
+      } });
+    }
+  return out;
+}
+
+/**
+ * Everything of the gaps' jutsu that stands among the units (renderer.ts sorts it in by depth): the
+ * waves and towers playing, and the gales on the ground (a gale whose start is still to play is not
+ * there yet; one gone from the state whose end is still to play, or that is fading, still turns).
+ */
+export function depthFx(ctx: CanvasRenderingContext2D, sc: Scene): DepthItem[] {
+  const out: DepthItem[] = [];
+  for (const f of sc.pb.fx) {
+    if (f.kind === 'wave') out.push(...waveItems(ctx, sc, f));
+    else if (f.kind === 'tower') out.push(...towerItems(ctx, sc, f));
+  }
+  const pending = (id: string) => sc.pb.queue.some((e) => e.t === 'zone' && e.on && e.zone.id === id);
+  for (const z of [...(sc.state.zones ?? []), ...sc.pb.goneZones()]) if (!pending(z.id)) out.push(...galeItems(ctx, sc, z));
+  for (const g of sc.pb.zoneGone) out.push(...galeItems(ctx, sc, g.zone, g.t0));
+  return out;
 }

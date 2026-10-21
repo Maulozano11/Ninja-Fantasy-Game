@@ -61,7 +61,7 @@ export interface CampActivity {
 const a = (x: CampActivity): CampActivity => x;
 
 export const CAMP_ACTIVITIES: CampActivity[] = [
-  a({ id: 'hunt', name: 'Hunt or fish', nameEs: 'Cazar o pescar', sticks: 2, target: 'none', description: 'Survival check (WIS, DC 12); success allows the feast.', descriptionEs: 'Prueba de Supervivencia (SAB, CD 12): si sale, se puede elegir el festín.' }),
+  a({ id: 'hunt', name: 'Hunt or fish', nameEs: 'Cazar o pescar', sticks: 2, target: 'none', description: 'Survival check (WIS, DC 12); success allows the feast. A natural 20 also brings back 2 rations.', descriptionEs: 'Prueba de Supervivencia (SAB, CD 12): si sale, se puede elegir el festín. Con un 20 natural trae además 2 raciones.' }),
   a({ id: 'bandage', name: 'Bandage', nameEs: 'Vendar', sticks: 1, supplies: ['bandages'], target: 'any', atStop: true, description: 'Heals 1d8 + WIS and removes Bleeding.', descriptionEs: 'Cura 1d8 + SAB y quita Sangrando.' }),
   a({ id: 'heal_jutsu', name: 'Heal with jutsu', nameEs: 'Curar con jutsu', sticks: 1, chakra: 'jutsu', target: 'any', atStop: true, description: 'Casts a healing jutsu out of battle, paying its chakra.', descriptionEs: 'Lanza un jutsu de curación fuera de batalla, pagando su chakra.' }),
   a({ id: 'meditate', name: 'Meditate', nameEs: 'Meditar', sticks: 2, target: 'self', description: '+25 % of max chakra.', descriptionEs: '+25 % del chakra máximo.' }),
@@ -86,7 +86,7 @@ export const CAMP_ACTIVITIES: CampActivity[] = [
   a({ id: 'byakugan_watch', name: 'Byakugan watch', nameEs: 'Guardia del Byakugan', sticks: 3, requires: { clan: 'Northstar' }, target: 'self', ambush: { zero: true }, description: 'Ambush 0 %.', descriptionEs: 'Emboscada al 0 %.' }),
   a({ id: 'close_tenketsu', name: 'Close tenketsu', nameEs: 'Cerrar tenketsu', sticks: 1, requires: { clan: 'Northstar' }, target: 'any', description: 'Removes Bleeding.', descriptionEs: 'Quita Sangrando.' }),
 
-  a({ id: 'field_surgery', name: 'Field surgery', nameEs: 'Cirugía de campaña', sticks: 2, requires: { shinobiClass: 'Medical Specialist' }, target: 'any', description: 'Medicine check (DC 13): removes Grave wound and cures Fever; a failed check turns the wound into a scar.', descriptionEs: 'Prueba de Medicina (CD 13): quita Herida grave y cura la Fiebre; si falla, la herida deja una cicatriz.' }),
+  a({ id: 'field_surgery', name: 'Field surgery', nameEs: 'Cirugía de campaña', sticks: 2, requires: { shinobiClass: 'Medical Specialist' }, target: 'any', description: 'Medicine check (DC 13): removes Grave wound and cures Fever; a failed check turns the wound into a scar. A natural 20 also heals 1d6 HP.', descriptionEs: 'Prueba de Medicina (CD 13): quita Herida grave y cura la Fiebre; si falla, la herida deja una cicatriz. Con un 20 natural además cura 1d6 PV.' }),
   a({ id: 'make_pills', name: 'Make pills', nameEs: 'Preparar píldoras', sticks: 2, requires: { shinobiClass: 'Medical Specialist' }, target: 'none', description: '1 soldier pill or 1 antidote.', descriptionEs: '1 píldora de soldado o 1 antídoto.' }),
   a({ id: 'stretching', name: 'Stretching', nameEs: 'Estiramientos', sticks: 1, requires: { shinobiClass: 'Taijutsu Master' }, target: 'self', description: '−1 Exhaustion.', descriptionEs: '−1 de Agotamiento.' }),
   a({ id: 'peaceful_sleep', name: 'Peaceful sleep', nameEs: 'Sueño apacible', sticks: 2, requires: { shinobiClass: 'Genjutsu Adept' }, target: 'any', description: '−3 Tension.', descriptionEs: '−3 de Tensión.' }),

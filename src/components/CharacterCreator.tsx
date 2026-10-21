@@ -25,8 +25,23 @@ import { deriveStats } from '../rules/derived';
 import { clanBonus } from '../rules/checks';
 import { migrateCharacter, natureOf, sanitizeMissionFields } from '../rules/ninja';
 import { importedSlots, offNatureJutsus, type JutsuSwap } from '../rules/jutsuNature';
-import { aboveRank, asMade, creatorChoices, fitNewNinja, fitToClass, fitToGrowth, fitToType, isLegend, learnable, learnsAsNew, slotChoices, typeFixed } from '../rules/progression';
-import { chooseGrowth, earnedGrowth, GROWTH_LEVEL, growthFixed, growthOf, growthOpen, naturesOf, otherElements } from '../rules/natureGrowth';
+import { aboveRank, asMade, creatorChoices, fitNewNinja, fitToClass, fitToGrowth, fitToType, isLegend, learnable, learnsAsNew, RANK_A_LEVEL, RANK_S_LEVEL, slotChoices, slotOpensAt, typeFixed } from '../rules/progression';
+import {
+  chooseGrowth,
+  chooseThirdElement,
+  earnedGrowth,
+  GROWTH_LEVEL,
+  growthFixed,
+  growthOf,
+  growthOpen,
+  hasSecondElement,
+  naturesOf,
+  otherElements,
+  THIRD_ELEMENT_FEAT,
+  THIRD_ELEMENT_LEVEL,
+  thirdElementOpen,
+} from '../rules/natureGrowth';
+import { featNeeds, featOpen, keepEarnedFeats } from '../rules/feats';
 import { classStyle, offClassJutsus } from '../rules/jutsuClass';
 import { pouchTags } from '../rules/pouch';
 import { chakraNature, chakraType } from '../sprite/chakraNature';
@@ -73,8 +88,10 @@ export function characterFromImport(raw: unknown): ShinobiCharacter | null {
   }
   // Earlier sheets used other clan names; they load as the clan that replaced each one (without
   // the bonus an old clan built into its maxima), and with the clan's ability bonus counted once.
-  // An imported sheet is a ninja someone made: its chakra type is fixed.
-  return asMade(migrateCharacter(sanitizeMissionFields(out as unknown as ShinobiCharacter)));
+  // An imported sheet is a ninja someone made: its chakra type is fixed. A feat whose requirements it
+  // doesn't meet is dropped (Triple Nature below level 9, or without a second element: rules/feats.ts).
+  const made = asMade(migrateCharacter(sanitizeMissionFields(out as unknown as ShinobiCharacter)));
+  return keepEarnedFeats(made, natureOf(made));
 }
 
 /**
@@ -169,14 +186,33 @@ const T = strings({
   growthRankSub: { en: 'Learns the rank B jutsu of {n}', es: 'Aprende los jutsus de rango B de {n}' },
   growthLegend: { en: 'Its own as a legend, before level {l}', es: 'Suyo como leyenda, antes del nivel {l}' },
   growthOpens: { en: 'Opens: {list}', es: 'Abre: {list}' },
+  // Triple Nature's third element (the owner: "feat del tercer elemento opcion a"), under the level-5 choice.
+  thirdHead: { en: 'Level {l}: third element', es: 'Nivel {l}: tercer elemento' },
+  thirdSoon: {
+    en: 'At level {l}, the feat Triple Nature (Abilities) gives a ninja with a second element a third one.',
+    es: 'Al nivel {l}, la dote Tres naturalezas (en Atributos) le da un tercer elemento a quien tiene un segundo.',
+  },
+  thirdNeedsSecond: { en: 'Triple Nature needs a second element (the level-{g} choice).', es: 'Tres naturalezas necesita un segundo elemento (la elección del nivel {g}).' },
+  thirdTakeFeat: { en: 'Take the feat Triple Nature (Abilities) for a third element.', es: 'Toma la dote Tres naturalezas (en Atributos) para un tercer elemento.' },
+  thirdPick: { en: 'Triple Nature: pick its third element.', es: 'Tres naturalezas: elige su tercer elemento.' },
+  thirdOf: { en: 'Third element: {e}', es: 'Tercer elemento: {e}' },
+  thirdText: {
+    en: 'Triple Nature (a feat, level 9, with a second element): a third element, whose jutsu open in the Element slots as the second element\'s do (rank D and C; rank A from level 7). Once per long rest, a jutsu of one of its elements costs 1 chakra less when the previous jutsu it cast that battle was of another of its elements.',
+    es: 'Tres naturalezas (una dote, nivel 9, con un segundo elemento): un tercer elemento, cuyos jutsus se abren en las ranuras de Elemento como los del segundo (rango D y C; rango A desde el nivel 7). Una vez por descanso largo, un jutsu de uno de sus elementos cuesta 1 de chakra menos si el jutsu anterior que lanzó en esa batalla era de otro de sus elementos.',
+  },
+  // What a feat asks for (rules/feats.ts).
+  featNeedsLevel: { en: 'level {l}', es: 'nivel {l}' },
+  featNeedsSecond: { en: 'a second element', es: 'un segundo elemento' },
+  featRequires: { en: 'Requires {list}', es: 'Requiere {list}' },
+  featMissing: { en: 'Missing: {list}', es: 'Le falta: {list}' },
   growthNothing: { en: 'Nothing yet: its jutsu of these ranks come later', es: 'Nada aún: sus jutsus de este rango llegarán más adelante' },
   growthSwaps: {
     en: 'Now {g}: the jutsu it no longer learns were changed. {list}.',
     es: 'Ahora {g}: se cambiaron los jutsus que ya no aprende. {list}.',
   },
   growthText: {
-    en: 'At level {l} a ninja chooses one of two, for good: a second element (it learns that element\'s rank D and C jutsu in the Element slots) or a higher rank of its main element (it learns its rank B jutsu). Its chakra type, the main element, never changes. A third element will come only with a special feat.',
-    es: 'Al nivel {l} un ninja elige una de dos, para siempre: un segundo elemento (aprende los jutsus de rango D y C de ese elemento en las ranuras de Elemento) o subir de rango su elemento principal (aprende sus jutsus de rango B). Su tipo de chakra, el elemento principal, no cambia nunca. Un tercer elemento llegará solo con una dote especial.',
+    en: 'At level {l} a ninja chooses one of two, for good: a second element (it learns that element\'s rank D and C jutsu in the Element slots) or a higher rank of its main element (it learns its rank B jutsu). Its chakra type, the main element, never changes. A third element comes only with the feat Triple Nature, at level 9, for a ninja with a second element.',
+    es: 'Al nivel {l} un ninja elige una de dos, para siempre: un segundo elemento (aprende los jutsus de rango D y C de ese elemento en las ranuras de Elemento) o subir de rango su elemento principal (aprende sus jutsus de rango B). Su tipo de chakra, el elemento principal, no cambia nunca. Un tercer elemento llega solo con la dote Tres naturalezas, al nivel 9, para quien tiene un segundo elemento.',
   },
   natureRuleNone: {
     en: 'Nature: {n}. Its own jutsu will come later; for now it learns no elemental jutsu.',
@@ -213,23 +249,37 @@ const T = strings({
   },
   slotCleared: { en: 'empty', es: 'vacía' },
   rankRule: {
-    en: 'A new ninja learns rank D and C jutsu, and its clan\'s. The S-rank slot opens later.',
-    es: 'Un ninja nuevo aprende jutsus de rango D y C, y los de su clan. La ranura de Rango S se abre más adelante.',
+    en: 'A new ninja learns rank D and C jutsu, and its clan\'s.',
+    es: 'Un ninja nuevo aprende jutsus de rango D y C, y los de su clan.',
   },
   // A ninja being edited or a legend: the same ranks, earned by level (rules/progression.ts).
   rankRuleLevel: {
-    en: 'It learns rank D and C jutsu, and its clan\'s. The S-rank slot opens later.',
-    es: 'Aprende jutsus de rango D y C, y los de su clan. La ranura de Rango S se abre más adelante.',
+    en: 'It learns rank D and C jutsu, and its clan\'s.',
+    es: 'Aprende jutsus de rango D y C, y los de su clan.',
   },
   rankRuleUp: {
-    en: 'It learns rank D and C jutsu, its clan\'s, and the rank B jutsu of {n} (its rank up). The S-rank slot opens later.',
-    es: 'Aprende jutsus de rango D y C, los de su clan y los de rango B de {n} (subió de rango). La ranura de Rango S se abre más adelante.',
+    en: 'It learns rank D and C jutsu, its clan\'s, and the rank B jutsu of {n} (its rank up).',
+    es: 'Aprende jutsus de rango D y C, los de su clan y los de rango B de {n} (subió de rango).',
+  },
+  // The ladder (the owner: "al subir al nivel 7 te un rango A y al 10 un rango S"), after the rule above.
+  rankLadderSoon: {
+    en: 'Rank A at level {a}; the S-rank slot at level {s}.',
+    es: 'Rango A al nivel {a}; la ranura de Rango S, al nivel {s}.',
+  },
+  rankLadderA: {
+    en: 'From level {a}, rank A too. The S-rank slot opens at level {s}.',
+    es: 'Desde el nivel {a}, también rango A. La ranura de Rango S se abre al nivel {s}.',
+  },
+  rankLadderS: {
+    en: 'From level {a}, rank A too; from level {s}, the S-rank slot.',
+    es: 'Desde el nivel {a}, también rango A; desde el nivel {s}, la ranura de Rango S.',
   },
   aboveRank: { en: 'rank {r}: stays on its sheet', es: 'rango {r}: se queda en su hoja' },
   slotLocked: { en: 'Unlocks later', es: 'Se desbloquea más adelante' },
+  slotLockedAt: { en: 'Unlocks at level {l}', es: 'Se desbloquea al nivel {l}' },
   slotLockedSub: { en: '{slot} · not for a new ninja', es: '{slot} · no es para un ninja nuevo' },
   slotLockedSubLevel: { en: '{slot} · not at its rank yet', es: '{slot} · aún no a su rango' },
-  slotEmptied: { en: 'empty (S-rank unlocks later)', es: 'vacía (el Rango S se desbloquea más adelante)' },
+  slotEmptied: { en: 'empty (S-rank unlocks at level {l})', es: 'vacía (el Rango S se desbloquea al nivel {l})' },
   tools: { en: 'Tools', es: 'Herramientas' },
   tagName: { en: 'Explosive tag', es: 'Sello explosivo' },
   tagSub: { en: 'Consumable item · not a jutsu', es: 'Objeto consumible · no es un jutsu' },
@@ -329,6 +379,8 @@ type Hover =
   | { kind: 'locked'; slot: string; none?: boolean }
   /** The level-5 choice: a second element, or a higher rank of the main element. */
   | { kind: 'growth' }
+  /** Triple Nature's third element. */
+  | { kind: 'third' }
   | { kind: 'look' };
 
 const jutsuName = (j: { name: string; nameEs?: string }) => pick(j.name, j.nameEs);
@@ -449,6 +501,8 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const [growthSwaps, setGrowthSwaps] = useState<{ key: string; swaps: JutsuSwap[] } | null>(null);
   /** A made ninja's level-5 choice, as it was saved: fixed, as its chakra type is (rules/natureGrowth.ts). */
   const [savedGrowthFixed] = useState(() => growthFixed(initialCharacter));
+  /** A made ninja's third element (Triple Nature), as it was saved: fixed too, and the feat with it. */
+  const [savedThirdFixed] = useState(() => initialCharacter.created === true && thirdElementOpen(initialCharacter) && (initialCharacter.extraNatures?.length ?? 0) >= 2);
 
   const look = useMemo(() => getAppearance(character), [character]);
   const eye = dojutsuToEye(character.dojutsu);
@@ -579,9 +633,15 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   };
 
   const handleFeatToggle = (featId: string) => {
+    const feat = SHINOBI_FEATS.find((f) => f.id === featId);
+    const has = character.selectedFeats.includes(featId);
+    // A feat's requirements come first (Triple Nature: level 9 and a second element, rules/feats.ts), and
+    // Triple Nature stays once the ninja is made with its third element (as the level-5 choice does).
+    if (!has && feat && !featOpen(feat, character)) return;
+    if (has && featId === THIRD_ELEMENT_FEAT && typeFixed(character) && savedThirdFixed) return;
     soundManager.playSelect();
     let newFeats: string[];
-    if (character.selectedFeats.includes(featId)) {
+    if (has) {
       newFeats = character.selectedFeats.filter((f) => f !== featId);
     } else {
       if (character.selectedFeats.length >= 3) return; // max 3 feats
@@ -596,11 +656,12 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       newFeats
     );
 
-    setCharacter({
-      ...character,
-      selectedFeats: newFeats,
-      ...derived,
-    });
+    // Triple Nature brings its third element, and takes it away with the jutsu it opened.
+    const nature = natureOf(character);
+    const next = keepEarnedFeats({ ...character, selectedFeats: newFeats, ...derived }, nature);
+    const fitted = fitToGrowth(character, next, nature);
+    if (fitted.swaps.length) setGrowthSwaps({ key: `${next.natureGrowth ?? ''}:${growthOf(next, nature).extra.join()}`, swaps: fitted.swaps });
+    setCharacter({ ...next, selectedJutsus: fitted.loadout });
   };
 
   const handleRandomize = () => {
@@ -728,13 +789,13 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   // Every ninja learns rank D and C jutsu and its clan's, and at level 5 what its choice opens
   // (rules/progression.ts); a sheet's own jutsu of a higher rank (a legend's, an older sheet's) stay, marked.
   const newNinja = learnsAsNew(character);
-  const highRank = new Set(aboveRank(character.selectedJutsus, character.clan, growth.rankUp ? nature : undefined));
+  const highRank = new Set(aboveRank(character.selectedJutsus, character.clan, growth.rankUp ? nature : undefined, character.level));
   // The taijutsu, kenjutsu and genjutsu jutsu belong to their class (rules/jutsuClass.ts); one of
   // another class on the sheet (a companion's, an older sheet's) stays, marked.
   const offClass = new Set(offClassJutsus(character.selectedJutsus, character.shinobiClass));
   // An emptied slot: the S-rank one waits for its rank; another had nothing left for the nature and class.
   const jutsuTitle = (id: string, slot?: SlotKey) =>
-    id ? jutsuParts(JUTSUS_DATA.find((j) => j.id === id) ?? { name: id })[0] : T(slot === 'slot5Ultimate' ? 'slotEmptied' : 'slotCleared');
+    id ? jutsuParts(JUTSUS_DATA.find((j) => j.id === id) ?? { name: id })[0] : T(slot === 'slot5Ultimate' ? 'slotEmptied' : 'slotCleared', { l: RANK_S_LEVEL });
   const swapList = (xs: JutsuSwap[]) => xs.map((x) => `${jutsuTitle(x.from)} → ${jutsuTitle(x.to, x.slot)}`).join('; ');
   // Only the swaps the player has not changed since: a slot picked again drops out of the note.
   const swapsKept = natureSwaps && natureSwaps.nature === nature ? natureSwaps.swaps.filter((x) => character.selectedJutsus[x.slot] === x.to) : [];
@@ -746,27 +807,54 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const growthName = character.natureGrowth === 'rank' ? T('growthRank', { n: L(nature) }) : growth.extra[0] ? T('growthElementOf', { e: L(growth.extra[0]) }) : '';
   const growthKept = growthSwaps && growthSwaps.key === growthKey ? growthSwaps.swaps.filter((x) => character.selectedJutsus[x.slot] === x.to) : [];
   const growthSwapText = growthKept.length ? T('growthSwaps', { g: growthName, list: swapList(growthKept) }) : undefined;
-  /** The jutsu a choice opens in the Element slots (beyond what the ninja learns without one), for its row. */
-  const opensWith = (g: NatureGrowth, second?: ChakraNature) => {
-    const next = chooseGrowth(character, nature, g, second);
-    const without = { ...character, natureGrowth: undefined, extraNatures: [] };
+  /** The jutsu `next` opens in the Element slots beyond what `without` learns, for a choice's row. */
+  const opensBeyond = (next: ShinobiCharacter, without: ShinobiCharacter) => {
     const now = new Set(['slot2Elemental', 'slot3Elemental'].flatMap((s) => slotChoices(without, s as SlotKey, nature, character.clan).map((j) => j.id)));
     const opened = ['slot2Elemental', 'slot3Elemental']
       .flatMap((s) => slotChoices(next, s as SlotKey, nature, character.clan))
       .filter((j, i, xs) => !now.has(j.id) && xs.findIndex((x) => x.id === j.id) === i);
     return opened.length ? T('growthOpens', { list: opened.map((j) => jutsuParts(j)[0]).join(', ') }) : T('growthNothing');
   };
+  /** The jutsu a level-5 choice opens (beyond what the ninja learns without one). */
+  const opensWith = (g: NatureGrowth, second?: ChakraNature) =>
+    opensBeyond(chooseGrowth(character, nature, g, second), { ...character, natureGrowth: undefined, extraNatures: [] });
+  /** The jutsu a third element opens (beyond its type and second element). */
+  const opensWithThird = (third: ChakraNature) => opensBeyond(chooseThirdElement(character, nature, third), { ...character, extraNatures: growth.extra.slice(0, 1) });
   /** Makes the level-5 choice (before the ninja is made with it) and swaps the jutsu it no longer opens. */
   const setGrowth = (g: NatureGrowth, second?: ChakraNature) => {
     soundManager.playSelect();
-    const next = chooseGrowth(character, nature, g, second);
+    // A choice without a second element drops Triple Nature and its third (rules/feats.ts).
+    const next = keepEarnedFeats(chooseGrowth(character, nature, g, second), nature);
     if (next === character) return;
     const fitted = fitToGrowth(character, next, nature);
     const key = `${next.natureGrowth ?? ''}:${growthOf(next, nature).extra.join()}`;
     setGrowthSwaps(fitted.swaps.length ? { key, swaps: fitted.swaps } : null);
     setCharacter({ ...next, selectedJutsus: fitted.loadout });
   };
+  /** Picks Triple Nature's third element (before the ninja is made with it); the old third's jutsu are swapped. */
+  const setThird = (third: ChakraNature) => {
+    soundManager.playSelect();
+    const next = chooseThirdElement(character, nature, third);
+    if (next === character) return;
+    const fitted = fitToGrowth(character, next, nature);
+    setGrowthSwaps(fitted.swaps.length ? { key: `${next.natureGrowth ?? ''}:${growthOf(next, nature).extra.join()}`, swaps: fitted.swaps } : null);
+    setCharacter({ ...next, selectedJutsus: fitted.loadout });
+  };
   const growthLocked = typeFixed(character) && savedGrowthFixed;
+  const thirdLocked = typeFixed(character) && savedThirdFixed;
+  // The ranks it learns and the ladder ahead: A at level 7, S at 10 (rules/progression.ts).
+  const rankRuleText = `${growth.rankUp ? T('rankRuleUp', { n: L(nature) }) : newNinja ? T('rankRule') : T('rankRuleLevel')} ${T(
+    character.level >= RANK_S_LEVEL ? 'rankLadderS' : character.level >= RANK_A_LEVEL ? 'rankLadderA' : 'rankLadderSoon',
+    { a: RANK_A_LEVEL, s: RANK_S_LEVEL },
+  )}`;
+  /** A feat's requirements, said: "Requiere nivel 9 y un segundo elemento". */
+  const featNeedList = (f: (typeof SHINOBI_FEATS)[number], only?: ReturnType<typeof featNeeds>) =>
+    [
+      f.requires?.level !== undefined && (!only || only.includes('level')) ? T('featNeedsLevel', { l: f.requires.level }) : '',
+      f.requires?.secondElement && (!only || only.includes('secondElement')) ? T('featNeedsSecond') : '',
+    ]
+      .filter(Boolean)
+      .join(T('and'));
   const natureNames = natures.map((n) => L(n));
   const style = classStyle(character.shinobiClass);
   const classRuleText = style
@@ -959,15 +1047,25 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
             );
           })}
           <Heading>{T('feats', { n: character.selectedFeats.length })}</Heading>
-          {SHINOBI_FEATS.map((f) => (
-            <Row
-              key={f.id}
-              selected={character.selectedFeats.includes(f.id)}
-              onClick={() => handleFeatToggle(f.id)}
-              onHover={hoverOn({ kind: 'feat', id: f.id })}
-              title={pick(f.name, f.nameEs)}
-            />
-          ))}
+          {SHINOBI_FEATS.map((f) => {
+            // A feat with requirements says them; it can't be taken until they are met (rules/feats.ts). It
+            // stays hoverable, so its panel shows what is missing.
+            const selected = character.selectedFeats.includes(f.id);
+            const unmet = !featOpen(f, character);
+            const locked = f.id === THIRD_ELEMENT_FEAT && selected && thirdLocked;
+            return (
+              <Row
+                key={f.id}
+                selected={selected}
+                disabled={locked}
+                onClick={() => handleFeatToggle(f.id)}
+                onHover={hoverOn({ kind: 'feat', id: f.id })}
+                title={pick(f.name, f.nameEs)}
+                sub={f.requires ? <span className={unmet ? 'text-[#e8956a]' : undefined}>{T('featRequires', { list: featNeedList(f) })}</span> : undefined}
+                right={(unmet && !selected) || locked ? <Lock className="w-3.5 h-3.5 text-[#b9a98a]" /> : undefined}
+              />
+            );
+          })}
         </>
       )}
       {step === 'jutsus' && (
@@ -978,7 +1076,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
               : T('natureRuleNew', { n: natureNames.join(' + '), m: natureNames.join(T('and')) })}
           </p>
           <p className="text-[12px] leading-snug text-[#b9a98a]">{classRuleText}</p>
-          <p className="text-[12px] leading-snug text-[#b9a98a]">{growth.rankUp ? T('rankRuleUp', { n: L(nature) }) : newNinja ? T('rankRule') : T('rankRuleLevel')}</p>
+          <p className="text-[12px] leading-snug text-[#b9a98a]">{rankRuleText}</p>
           {natureSwapText && <p className="text-[12px] leading-snug text-[#f2c46d] border border-[#6b5434] bg-[#3a2a12]/60 px-2 py-1">{natureSwapText}</p>}
           {classSwapText && <p className="text-[12px] leading-snug text-[#f2c46d] border border-[#6b5434] bg-[#3a2a12]/60 px-2 py-1">{classSwapText}</p>}
           {growthSwapText && <p className="text-[12px] leading-snug text-[#f2c46d] border border-[#6b5434] bg-[#3a2a12]/60 px-2 py-1">{growthSwapText}</p>}
@@ -992,6 +1090,9 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
           // with nothing for this nature and class at any rank (a type with no element in a class with
           // no kind of jutsu of its own), shown empty.
           const none = !chosen && !slot.list.length && !learnable(slot.key, nature, character.clan, character.shinobiClass).length;
+          // The level that opens it (7 for rank A, 10 for the S-rank slot), when its level alone does.
+          const opensAt = slotOpensAt(slot.key, nature, character.clan, character.shinobiClass, growth);
+          const lockedTitle = opensAt ? T('slotLockedAt', { l: opensAt }) : T('slotLocked');
           if (!chosen && !slot.list.length)
             return (
               <Row
@@ -1003,7 +1104,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                     <Lock className="w-4 h-4" />
                   </span>
                 }
-                title={T(none ? 'slotNone' : 'slotLocked')}
+                title={none ? T('slotNone') : lockedTitle}
                 sub={T(none ? 'slotNoneSub' : newNinja ? 'slotLockedSub' : 'slotLockedSubLevel', { slot: slot.label })}
               />
             );
@@ -1061,7 +1162,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                   />
                 ))}
               {/* A legend's S-rank jutsu: kept, with nothing a new ninja may pick in its place. */}
-              {open && !slot.list.length && <p className="pl-8 pr-3 py-1.5 text-[12px] text-[#b9a98a]">{T('slotLocked')}</p>}
+              {open && !slot.list.length && <p className="pl-8 pr-3 py-1.5 text-[12px] text-[#b9a98a]">{lockedTitle}</p>}
             </React.Fragment>
           );
         })}
@@ -1129,6 +1230,48 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                 />
               )}
             </>
+          )}
+          {/* Triple Nature's third element (the owner: "feat del tercer elemento opcion a"): level 9, a
+              second element and the feat; then the player picks it, until the ninja is made with it. */}
+          <Heading>{T('thirdHead', { l: THIRD_ELEMENT_LEVEL })}</Heading>
+          {thirdElementOpen(character) ? (
+            <>
+              <p className="mx-3 text-[12px] leading-snug text-[#b9a98a]">{thirdLocked ? T('growthFixedNote') : T('thirdPick')}</p>
+              {thirdLocked && growth.extra[1] ? (
+                <Row
+                  selected
+                  disabled
+                  onClick={() => undefined}
+                  onHover={hoverOn({ kind: 'third' })}
+                  icon={<Seal letter="III" color="#c99a4b" />}
+                  title={T('thirdOf', { e: L(growth.extra[1]) })}
+                  right={<Lock className="w-3.5 h-3.5 text-[#b9a98a]" />}
+                />
+              ) : (
+                otherElements(nature, growth.extra.slice(0, 1)).map((e) => (
+                  <Row
+                    key={e}
+                    indent
+                    selected={growth.extra[1] === e}
+                    onClick={() => setThird(e)}
+                    onHover={hoverOn({ kind: 'third' })}
+                    title={L(e)}
+                    sub={opensWithThird(e)}
+                  />
+                ))
+              )}
+            </>
+          ) : (
+            <p className="mx-3 flex items-start gap-2 text-[12px] leading-snug text-[#b9a98a]" onMouseEnter={() => setHover({ kind: 'third' })} onMouseLeave={() => setHover(null)}>
+              <Lock className="mt-0.5 w-3.5 h-3.5 shrink-0" />
+              <span>
+                {character.level < THIRD_ELEMENT_LEVEL
+                  ? T('thirdSoon', { l: THIRD_ELEMENT_LEVEL })
+                  : !hasSecondElement(character)
+                    ? T('thirdNeedsSecond', { g: GROWTH_LEVEL })
+                    : T('thirdTakeFeat')}
+              </span>
+            </p>
           )}
         </>
       )}
@@ -1290,7 +1433,17 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       };
     if (h.kind === 'feat') {
       const f = SHINOBI_FEATS.find((x) => x.id === h.id)!;
-      return { title: pick(f.name, f.nameEs), sub: T('feat'), body: <Parchment>{pick(f.description, f.descriptionEs)}</Parchment> };
+      const needs = featNeeds(f, character);
+      return {
+        title: pick(f.name, f.nameEs),
+        sub: f.requires ? `${T('feat')} · ${T('featRequires', { list: featNeedList(f) })}` : T('feat'),
+        body: (
+          <>
+            <Parchment>{pick(f.description, f.descriptionEs)}</Parchment>
+            {needs.length > 0 && <p className="px-3 pt-2 text-[13px] leading-relaxed text-[#e8956a]">{T('featMissing', { list: featNeedList(f, needs) })}</p>}
+          </>
+        ),
+      };
     }
     if (h.kind === 'tool')
       return {
@@ -1317,10 +1470,16 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       };
     if (h.kind === 'growth')
       return { title: T('growthHead', { l: GROWTH_LEVEL }), sub: growthName || T('level', { n: character.level }), body: <Parchment>{T('growthText', { l: GROWTH_LEVEL })}</Parchment> };
+    if (h.kind === 'third')
+      return {
+        title: T('thirdHead', { l: THIRD_ELEMENT_LEVEL }),
+        sub: growth.extra[1] ? T('thirdOf', { e: L(growth.extra[1]) }) : T('level', { n: character.level }),
+        body: <Parchment>{T('thirdText')}</Parchment>,
+      };
     if (h.kind === 'locked')
       return h.none
         ? { title: h.slot, sub: T('slotNone'), body: <Parchment>{T('slotNoneText')}</Parchment> }
-        : { title: h.slot, sub: T('slotLocked'), body: <Parchment>{T('rankRule')}</Parchment> };
+        : { title: h.slot, sub: T('slotLocked'), body: <Parchment>{rankRuleText}</Parchment> };
     if (h.kind === 'jutsu') {
       const j = JUTSUS_DATA.find((x) => x.id === h.id);
       if (!j) return { title: '—', body: null };

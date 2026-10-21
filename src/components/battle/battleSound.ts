@@ -3,6 +3,7 @@
 // sound switch.
 
 import { soundManager } from '../../utils/audio';
+import { diceSound } from '../dice/diceSound';
 import type { SoundName } from './playback';
 
 let ctx: AudioContext | null = null;
@@ -110,6 +111,22 @@ function play(name: SoundName, detail?: string): void {
       break;
     case 'crit':
       soundManager.playCriticalHit();
+      break;
+    // The d20 (src/components/dice/diceSound.ts): the throw follows the battle speed.
+    case 'diceThrow':
+      diceSound('throw', Number(detail) || 1);
+      break;
+    case 'dicePop':
+      diceSound('pop');
+      break;
+    case 'diceNat20':
+      diceSound('nat20');
+      break;
+    case 'diceNat1':
+      diceSound('nat1');
+      break;
+    case 'critSting':
+      diceSound('crit');
       break;
     case 'jutsu':
       if (detail && NATURE[detail]) soundManager.playJutsuCast(NATURE[detail]);

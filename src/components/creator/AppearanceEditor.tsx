@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Flame, Lock, Paintbrush, PersonStanding, Sca
 import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
 import { EMBLEMS } from '../../sprite/items/headband';
-import { CHAKRA_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
+import { CHAKRA_CHOICES, TINT_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
 import { CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../../sprite/chakraNature';
 import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
 import { CAST_STYLES } from '../../sprite/types';
@@ -570,7 +570,7 @@ export const AppearanceEditor: React.FC<{
                 >
                   {L('Natural')}
                 </button>
-                {CHAKRA_CHOICES.map((c) => (
+                {TINT_CHOICES.map((c) => (
                   <button
                     key={c.id}
                     type="button"

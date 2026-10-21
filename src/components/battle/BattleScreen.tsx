@@ -11,7 +11,7 @@ import { chargeLanding, handsBlocker, jutsuCost, needsSeals } from '../../battle
 import { aiAction, aiToAct } from '../../battle/ai';
 import { current } from '../../battle/turns';
 import { AURA_RADIUS, attackPreview, sovereign } from '../../battle/combat';
-import { JUTSU, areaOf, enhanced as enhancedSpec } from '../../battle/jutsu';
+import { JUTSU, areaOf, enhanced as enhancedSpec, fanDice, fannedBy } from '../../battle/jutsu';
 import type { JutsuSpec } from '../../battle/jutsu';
 import { cellCenter, cellOf, dist, fullCoverBetween, getMap, gridFor, idx, lineOfSight, sameCell } from '../../battle/map';
 import { canStop, occupancy, pathCost, pathTo, reachable } from '../../battle/nav';
@@ -31,6 +31,9 @@ import { Playback } from './playback';
 import { drawBattle, image, pickGround, pickStructure, pickUnit, project, screenToWorld } from './renderer';
 import type { Camera, Overlay, Rect } from './renderer';
 import { playSound, startAmbience } from './battleSound';
+import { drawDiceLayer } from './diceLayer';
+import { preloadDice } from '../dice/diceDraw';
+import { getDiceStyle } from '../dice/diceStyle';
 import { floatLabel, jutsuName, logLine, structureName, unitName, unitRef } from './battleLog';
 import type { LogLine } from './battleLog';
 import { DMG_ES, SAVE_EN, SAVE_ES, T } from './battleText';
@@ -69,6 +72,8 @@ type TipKey = (typeof TIP_KEYS)[number];
 export const ZOOMS = [2, 1, 2 / 3, 1 / 2, 1 / 3] as const;
 
 /** Canvas pixels per map pixel: whole steps from 1 up (crisp pixel art), the plain fraction below. */
+/** How long after the dice (ms) Space and Enter only skip them and never end the turn. */
+const DICE_KEY_GRACE = 700;
 const camScale = (zoom: number, dpr: number): number => (zoom * dpr >= 1 ? Math.max(1, Math.round(zoom * dpr)) : zoom * dpr);
 
 function tipSeen(k: string): boolean {
@@ -128,6 +133,14 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   /** The map pixels the round minimap shows (its square around the camera). */
   const miniView = useRef({ x: 0, y: 0, w: 1 });
   const hudK = useHudScale(wrapRef);
+  const hudKRef = useRef(hudK);
+  hudKRef.current = hudK;
+  /** Dice are in the air: the skip button shows. */
+  const [diceRolling, setDiceRolling] = useState(false);
+  const diceRollingRef = useRef(false);
+  /** When dice were last rolling or skipped (screen time): a late Space must not end the turn. */
+  const diceSeenRef = useRef(0);
+  useEffect(() => preloadDice(getDiceStyle()), []);
   const [tip, setTip] = useState<TipKey | null>(null);
   const [speed, setSpeed] = useState<1 | 2 | 3>(() => {
     try {
@@ -389,6 +402,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         pbRef.current?.sync(s, performance.now());
       },
       centerOn: (x: number, z: number) => centerOn({ x, z }, true),
+      /** What an action would do, without doing it (a check can look for the seed of a natural 20). */
+      dryRun: (a: Action) => applyAction(structuredClone(stateRef.current), a),
+      skipDice: () => pbRef.current?.skipDice(performance.now()),
       screenOf: (x: number, z: number) => {
         const p = project(map, { x, z });
         return { x: (p.X - cam.current.x) * cam.current.zoom, y: (p.Y - cam.current.y) * cam.current.zoom + (canvasRef.current?.getBoundingClientRect().top ?? 0) };
@@ -476,7 +492,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         sub = [structureName(hw, lang), T('ac', { n: STRUCTURE_AC }), ...adv].join(' · ');
       }
     } else if (mode.k === 'jutsu' && spec && spec.shape === 'node') {
-      // Warp Strike: the Nodes it can jump to light up; the one under the cursor shows where it lands.
+      // Shooting-Star Thrust: the Nodes it can jump to light up; the one under the cursor shows where it lands.
       o.range = { at: actor.pos, radius: spec.range };
       o.nodes = { valid: ownNodes(s, actor).filter((n) => !warpBlocker(s, actor, n)).map((n) => n.id) };
       const n = (hu && ownNodeAt(s, actor, hu.pos)) || (hover?.pt && ownNodeAt(s, actor, hover.pt)) || undefined;
@@ -522,7 +538,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       const at = self ? actor.pos : hu ? hu.pos : hover?.pt;
       if (at) {
         const area = areaOf(spec, actor.pos, at);
-        if (area) {
+        if (area && spec.special === 'galeZone') {
+          // The Gale Curtain hurts nobody: where the gale will turn, and what it does.
+          o.area = { shape: area, tone: 'heal' };
+          label = jutsuName(spec.id, lang);
+          sub = T('aimGale');
+        } else if (area) {
           o.area = { shape: area, tone: spec.special === 'heal' ? 'heal' : 'enemy' };
           // As the engine reaches them: nobody behind a metal wall from where it bursts (D13).
           const origin = spec.shape === 'selfCircle' || spec.shape === 'cone' || spec.shape === 'line' ? actor.pos : at;
@@ -540,6 +561,11 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           const sv = lang === 'es' ? SAVE_ES[spec.save] : SAVE_EN[spec.save];
           const line = T('aimSave', { save: sv, dc: actor.saveDC }) + (spec.saveAdv === 'disadvantage' ? ` · ${T('saveDisadv')}` : '');
           sub = sub ? `${line} · ${sub}` : line;
+        }
+        // A fire aimed through a gale on the ground burns harder (the Gale Curtain).
+        if (fannedBy(spec, actor.pos, at, s.zones ?? [])) {
+          const fan = T(fanDice(spec) > 1 ? 'aimFanned2' : 'aimFanned');
+          sub = sub ? `${sub} · ${fan}` : fan;
         }
         if (!self && dist(actor.pos, at) > spec.range + 0.1 + (hu?.bulk ?? 0) + (hu?.kind === 'hydra_head' ? 2.5 : 0)) label = T('aimNoReach');
         // Then sight, as the engine refuses it: a jutsu at one target needs to see it (a strike, no
@@ -658,6 +684,25 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         lang: langRef.current,
         avoid: panelRects(canvas, dpr),
       });
+      // The dice over the fight: the quick d20s, the big window, a critical's impact.
+      drawDiceLayer(ctx, {
+        pb: p,
+        state: s,
+        map,
+        cam: camera,
+        now,
+        W: canvas.width,
+        H: canvas.height,
+        s: Math.max(1, Math.round(2 * hudKRef.current * dpr)),
+        lang: langRef.current,
+        style: getDiceStyle(),
+      });
+      const rolling = p.diceRolling(now);
+      if (rolling) diceSeenRef.current = now;
+      if (rolling !== diceRollingRef.current) {
+        diceRollingRef.current = rolling;
+        setDiceRolling(rolling);
+      }
       void w;
       void h;
       drawMinimap(now);
@@ -1097,6 +1142,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         e.preventDefault();
         return;
       }
+      // Space or Enter while the dice roll: they land at once (the skip button's key).
+      if ((key === ' ' || key === 'Enter') && pb.diceRolling(performance.now())) {
+        e.preventDefault();
+        pb.skipDice(performance.now());
+        diceSeenRef.current = performance.now();
+        return;
+      }
+      // Space is also End turn: a press meant for the dice that comes a moment late (they had just
+      // landed), or a held key repeating, must not end the turn too.
+      if ((key === ' ' || key === 'Enter') && (e.repeat || performance.now() - diceSeenRef.current < DICE_KEY_GRACE)) {
+        e.preventDefault();
+        return;
+      }
       if (key === 'Escape') setMode({ k: 'move' });
       else if (key === 'z') setZoom((z) => (z === 2 ? 1 : 2));
       else if (key === '-' || key === '_') zoomStep(-1);
@@ -1441,6 +1499,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         </div>
       )}
 
+      {/* The dice are rolling: a button (or Space) lands them at once. */}
+      {diceRolling && !ended && (
+        <button
+          type="button"
+          onClick={() => pb.skipDice(performance.now())}
+          className="absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-sm border text-[12px] font-bold"
+          style={{ ...kitText, bottom: Math.round(250 * hudK), background: 'rgba(22,18,12,0.88)', borderColor: '#8a6a3a', color: '#f5d9a8', zIndex: 30 }}
+          title={T('diceSkipTip')}
+        >
+          {T('diceSkip')} ▸▸
+        </button>
+      )}
+
       {/* Banners. */}
       {!ended && banners.map((b, i) => {
         const t = (nowMs - b.t0) / b.dur;
@@ -1503,7 +1574,7 @@ const SHORT: Record<string, [string, string]> = {
   katon_pursuing_flame: ['Pursuing', 'Persigue'],
   koton_block: ['Block', 'Bloque'],
   koton_wall: ['Metal wall', 'Muro metal'],
-  ryusei_warp: ['Warp', 'Golpe Warp'],
+  ryusei_warp: ['Star thrust', 'Estocada Fugaz'],
   ryusei_swap: ['Swap', 'Cambio'],
   northstar_command: ['Command', 'Comando'],
   northstar_submission: ['Submit', 'Sumisión'],
@@ -1520,6 +1591,11 @@ const SHORT: Record<string, [string, string]> = {
   genjutsu_mirage: ['Mirage', 'Espejismo'],
   kenjutsu_bleeding_cut: ['Bleeding cut', 'Tajo'],
   taijutsu_rush: ['Rush', 'Embestida'],
+  water_devouring_tide: ['Devouring tide', 'Ola devoradora'],
+  wind_whirlwind_tower: ['Whirlwind tower', 'Torre'],
+  wind_gale_curtain: ['Gale curtain', 'Cortina'],
+  lightning_thunder_beam: ['Thunder beam', 'Haz de trueno'],
+  earth_rubble_gust: ['Rubble gust', 'Polvareda'],
 };
 
 const fmtM = (m: number, lang: ReturnType<typeof useLang>): string => (Math.round(m * 10) / 10).toString().replace('.', lang === 'es' ? ',' : '.');

@@ -49,7 +49,7 @@ describe('the data: a second (and third) element and the level-5 choice, optiona
   it('a sheet without them reads as its type alone, no growth; old saves load unchanged', () => {
     const c = ninja(1);
     assert.deepEqual(naturesOf(c, 'Fire'), ['Fire']);
-    assert.deepEqual(growthOf(c, 'Fire'), NO_GROWTH);
+    assert.deepEqual(growthOf(c, 'Fire'), { ...NO_GROWTH, level: 1 });
     assert.equal(migrateCharacter(DEFAULT_CHARACTER), DEFAULT_CHARACTER, 'a legend\'s sheet that has none: nothing added');
     const old = roundTrip({ ...DEFAULT_CHARACTER, id: 'ninja_old' });
     const loaded = migrateCharacter(old);
@@ -101,11 +101,12 @@ describe('level 5: a second element or a higher rank of the main element ("nivel
     assert.deepEqual(getAppearance(rk).chakra, getAppearance(c).chakra);
   });
 
-  it('a third element only with the special feat (a proposal: the hook is there, the feat is not in the list)', () => {
-    const feat = ninja(9, { selectedFeats: [THIRD_ELEMENT_FEAT] });
+  it('a third element only with the special feat, Triple Nature: level 9 and a second element', () => {
+    const feat = ninja(9, { selectedFeats: [THIRD_ELEMENT_FEAT], natureGrowth: 'element' });
     const two = chooseGrowth({ ...feat, extraNatures: ['Water', 'Earth'] }, 'Fire', 'element', 'Wind');
     assert.deepEqual(two.extraNatures, ['Wind', 'Earth'], 'the second changes, the third stays');
-    assert.deepEqual(chooseGrowth({ ...feat, extraNatures: ['Water', 'Earth'] }, 'Fire', 'rank').extraNatures, ['Earth'], 'a higher rank and the feat\'s third');
+    assert.deepEqual(chooseGrowth({ ...feat, extraNatures: ['Water', 'Earth'] }, 'Fire', 'element', 'Earth').extraNatures, ['Earth'], 'the third taken as the second: no third left');
+    assert.deepEqual(chooseGrowth({ ...feat, extraNatures: ['Water', 'Earth'] }, 'Fire', 'rank').extraNatures, [], 'a higher rank has no second element, so no third');
     // Without the feat a new ninja keeps only what level 5 gives it.
     assert.deepEqual(earnedGrowth(ninja(9, { natureGrowth: 'element', extraNatures: ['Water', 'Earth'] }), 'Fire').extraNatures, ['Water']);
     assert.deepEqual(earnedGrowth({ ...feat, natureGrowth: 'element', extraNatures: ['Water', 'Earth'] }, 'Fire').extraNatures, ['Water', 'Earth']);
@@ -148,7 +149,7 @@ describe('what each choice opens (the builder\'s proposal: second element D and 
     assert.deepEqual(fire(ninja(5, { natureGrowth: 'rank' })), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream', 'kenjutsu_bleeding_cut'], 'rank up: Fire B');
     assert.deepEqual(fire(ninja(4, { natureGrowth: 'rank' })), ['fire_three_embers', 'fireball_goukakyu', 'kenjutsu_bleeding_cut'], 'below level 5 the choice opens nothing');
     assert.deepEqual(fire(ninja(5, { natureGrowth: 'element', extraNatures: ['Water'] })), ['fire_three_embers', 'fireball_goukakyu', 'water_geyser', 'water_shield_suijinheki', 'kenjutsu_bleeding_cut'], 'Water: its C, not its B');
-    assert.deepEqual(fire(ninja(5, { natureGrowth: 'element', extraNatures: ['Earth'] })), ['fire_three_embers', 'fireball_goukakyu', 'earth_pebble_shot', 'earth_spike_crown', 'kenjutsu_bleeding_cut'], 'Earth: its D and C (Pebble Shot, Spike Crown)');
+    assert.deepEqual(fire(ninja(5, { natureGrowth: 'element', extraNatures: ['Earth'] })), ['fire_three_embers', 'fireball_goukakyu', 'earth_pebble_shot', 'earth_spike_crown', 'earth_rubble_gust', 'kenjutsu_bleeding_cut'], 'Earth: its D and C (Pebble Shot, Spike Crown, Rubble Gust)');
     // The S-rank slot stays locked whatever the choice; the Utility and clan slots don't change.
     for (const g of [ninja(5), ninja(5, { natureGrowth: 'rank' }), ninja(5, { natureGrowth: 'element', extraNatures: ['Lightning'] })]) {
       assert.equal(slotLocked('slot5Ultimate', 'Fire', g.clan, g.shinobiClass, growthOf(g, 'Fire')), true);

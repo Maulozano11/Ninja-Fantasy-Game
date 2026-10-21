@@ -2,19 +2,24 @@
 // striking and casting, damage numbers, effects, banners and sounds. The engine has already
 // decided everything; this only paces it so it can be watched.
 
-import type { AreaShape, BattleEvent, BattleState, Down, Pt, Unit, Wall, WeaponNode } from '../../battle/types';
+import type { AreaShape, BattleEvent, BattleState, Down, GaleZone, Pt, Unit, Wall, WeaponNode } from '../../battle/types';
+import type { RollInfo } from '../../battle/types';
+import { CLICK_MS, IMPACT, WINDOW, dieLife } from '../dice/diceData';
+import type { WindowKind } from '../dice/diceData';
 import type { SpritePose } from '../../sprite/types';
-import { JUTSU } from '../../battle/jutsu';
+import { JUTSU, areaEnd, nearSegment } from '../../battle/jutsu';
 import type { JutsuSpec, StageKind, VfxElement, VfxRole } from '../../battle/jutsu';
 import { COMBO_KICKS, COMBO_TURNED, POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
-import { FAN_MS, FAN_ROLL, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
+import { FAN_MS, FAN_ROLL, TOWER_MS, TOWER_RISE, WAVE_CREST, WAVE_HOLD, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
 import { jutsuTint, unitTint } from './vfxTintPlan';
+import { DRIP_MS, SCREEN_MS, SPRAY_DELAY, SPRAY_LANDED, SPRAY_MS, bleedingStarts, isBleedTick } from './bloodPlan';
 import { dist } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
 import type { Bend } from './paths';
 import { bendsOf, seedOf } from './paths';
 import { CRESCENT, crescentStart, effectLands, vortexAt } from './stagePlan';
+import { edgeFoe } from '../../battle/clans';
 
 export interface UnitView {
   pos: Pt;
@@ -43,7 +48,7 @@ export interface UnitView {
   /** A creature's own animation (the hydra's bite, spit, roar, hurt, sever, regrow, death). */
   creature?: { anim: string; t0: number };
   /**
-   * A Ryusei's phase (Warp Strike, Spatial Swap): the ninja turns to blue light where it stands,
+   * A Ryusei's phase (Shooting-Star Thrust, Spatial Swap): the ninja turns to blue light where it stands,
    * dashes as light to `to` and turns solid there (PHASE_IN, PHASE_DASH, PHASE_OUT; renderer.ts
    * draws it).
    */
@@ -52,6 +57,17 @@ export interface UnitView {
   holdFrame?: number;
   /** What crackles in the near hand, drawn at the hand in every pose (the Chidori's lightning). */
   held?: Held;
+  /**
+   * A Ryusei's Shooting-Star Thrust (the owner, 2026-10-21): the ninja throws its weapon at the Node and
+   * turns to blue light in the release pose as it leaves the hand; the weapon flies there with a
+   * trail of sparkles, the light body follows it and turns solid where it lands, already in the
+   * thrust ('pierce') and catching the weapon, and thrusts at the foe beside it (`foe`) or ahead.
+   * `face` is the way it throws and dashes, `land` the way it faces on landing, `fly` how long the
+   * weapon flies (ms at speed 1; warpTimes gives the rest; renderer.ts draws it).
+   */
+  warp?: { from: Pt; to: Pt; t0: number; face: 1 | -1; land: 1 | -1; foe?: string; fly: number };
+  /** The cast pose is an enhanced jutsu's: its chakra burst plays empowered. */
+  castEnhanced?: boolean;
 }
 
 /**
@@ -79,7 +95,7 @@ export interface Floater {
   big?: boolean;
 }
 
-export type FxKind = 'projectile' | 'kunai' | 'area' | 'cone' | 'line' | 'burst' | 'explosion' | 'electric' | 'smoke' | 'heal' | 'aura' | 'noise' | 'slash' | 'wall' | 'seal' | 'fire' | 'sprite';
+export type FxKind = 'projectile' | 'kunai' | 'area' | 'cone' | 'line' | 'burst' | 'explosion' | 'electric' | 'smoke' | 'heal' | 'aura' | 'noise' | 'slash' | 'wall' | 'seal' | 'fire' | 'sprite' | 'wave' | 'tower' | 'swirl';
 
 export interface Fx {
   kind: FxKind;
@@ -111,12 +127,17 @@ export interface Fx {
   alpha?: number;
   /** The effect set when not its element's: 'neutral', the white cut of a sword art with no element. */
   set?: 'neutral';
+  /**
+   * Blood (vfx_blood, never in a chakra colour): the Bleeding Cut's spray thrown out of the target
+   * toward where the cut goes (from → to), or the drip of a ninja that bleeds.
+   */
+  blood?: 'spray' | 'drip';
   /** A cone drawn as one joined fan from the hand (the Spark Fan), reaching these points. */
   joined?: Pt[];
   /**
    * The caster's chakra colour (a chakra colour id or '#rrggbb'), for an elemental jutsu's effects:
    * they play in it, sheets and drawn ones alike (the owner, 2026-10-21). Taken when the jutsu is
-   * cast, so the effect keeps it. Unset: his colours.
+   * cast, so the effect keeps it. A heal's is always the heals' green (HEAL_TINT). Unset: his colours.
    */
   tint?: string;
   /**
@@ -146,6 +167,16 @@ export interface Fx {
    * forms on the jet's tip once that is clear of the caster's body, so it is never drawn over it).
    */
   trail?: { arrive: number; appear?: number };
+  /**
+   * A fire fanned by a gale (the Gale Curtain): from this point of its play (0..1) it burns
+   * brighter, and a Fireball grows into the Great Fireball.
+   */
+  fan?: number;
+  /** A cone's breaths spread across its width, not only along it (the Rubble Gust). */
+  spread?: boolean;
+  /** A wave's rows of columns (the Devouring Tide); a tower's small whirlwinds (the Whirlwind Tower). */
+  rows?: number;
+  minis?: number;
 }
 
 /**
@@ -184,6 +215,54 @@ export interface Banner {
   tone: 'neutral' | 'good' | 'bad' | 'alarm';
 }
 
+/**
+ * A d20 on screen: the roll the engine already made, thrown over the one who rolls it (the
+ * attacker, the one saving, the one checking) and landing on its exact number. `t0` is when it was
+ * thrown; its own clock runs at the battle speed.
+ */
+export interface DieShow {
+  unit: string;
+  roll: RollInfo;
+  kind: 'attack' | 'save' | 'check' | 'death';
+  t0: number;
+  /** It went on into the big window, which shows it from then on. */
+  windowed?: boolean;
+}
+
+/** The big window of a critical or an important roll (opened `t0`, once the small die has landed). */
+export interface DiceWindow {
+  die: DieShow;
+  kind: WindowKind;
+  t0: number;
+}
+
+/** A critical's blow landing on its target: the bloom, the burst and the maximum damage. */
+export interface CritImpact {
+  unit: string;
+  amount: number;
+  t0: number;
+}
+
+/** Which events roll a d20 the screen shows (initiative is not shown). */
+const diceKind = (ev: BattleEvent): DieShow['kind'] | null =>
+  ev.t === 'attack' ? 'attack' : ev.t === 'save' ? 'save' : ev.t === 'check' ? 'check' : ev.t === 'deathSave' ? 'death' : null;
+
+/**
+ * Which rolls open the big window (the owner's rules, docs/GAMEPLAY_DESIGN.md "Dice"): a natural
+ * 20 on an attack (the critical), a natural 1 on a save (it takes the critical), and a natural 20
+ * on a save, a check or a death save.
+ */
+export function windowOf(ev: BattleEvent): WindowKind | null {
+  const k = diceKind(ev);
+  if (!k || !('roll' in ev)) return null;
+  if (k === 'attack') return ev.roll.crit ? 'crit' : null;
+  if (k === 'save' && ev.roll.fumble) return 'fumble';
+  return ev.roll.d20 === 20 ? 'nat20' : null;
+}
+
+/** A natural 20 or 1, for the die's own effect. */
+export const natOf = (r: RollInfo): 20 | 1 | undefined => (r.d20 === 20 ? 20 : r.d20 === 1 ? 1 : undefined);
+
 /** Hooks the screen gives the player: sounds, the log, the roll toast, the camera. */
 export interface PlaybackHooks {
   sound(name: SoundName, detail?: string): void;
@@ -194,7 +273,9 @@ export interface PlaybackHooks {
   label(ev: BattleEvent): string | null;
 }
 
-export type SoundName = 'step' | 'swing' | 'hit' | 'crit' | 'miss' | 'jutsu' | 'explosion' | 'heal' | 'down' | 'alarm' | 'kawarimi' | 'turn' | 'victory' | 'defeat' | 'roar' | 'splash' | 'bells' | 'stone' | 'draw';
+export type SoundName =
+  | 'step' | 'swing' | 'hit' | 'crit' | 'miss' | 'jutsu' | 'explosion' | 'heal' | 'down' | 'alarm' | 'kawarimi' | 'turn' | 'victory' | 'defeat' | 'roar' | 'splash' | 'bells' | 'stone' | 'draw'
+  | 'diceThrow' | 'dicePop' | 'diceNat20' | 'diceNat1' | 'critSting';
 
 const RUN = 5.5;
 const WALK = 3.2;
@@ -217,6 +298,63 @@ export const phaseDash = (ms: number): number => {
   return 1 - (1 - t) ** 2.2;
 };
 
+/**
+ * A Shooting-Star Thrust (UnitView.warp), ms at speed 1. The throw's wind-up plays a frame each WARP_FRAME
+ * ('throw' 0 carga, 1 armado, 2 the throw), so the weapon leaves the hand at WARP_REL, in the
+ * release pose (the owner's reference), where the ninja turns to light over WARP_LIGHT. The weapon
+ * flies for `fly` (longer the farther it goes); the light body dashes after it and lands WARP_LAG
+ * after it, turns solid over WARP_SOLID in the thrust's chamber (catching it), then thrusts
+ * ('pierce' 2 estocada, 3 impacto, 4 retroceso, WARP_THRUST each) and stands. About a second in all.
+ */
+export const WARP_FRAME = 110;
+export const WARP_REL = 3 * WARP_FRAME;
+export const WARP_LIGHT = 110;
+export const WARP_LAG = 50;
+export const WARP_SOLID = 100;
+export const WARP_THRUST = [90, 100, 100] as const;
+/** How long a Shooting-Star Thrust's weapon flies over `metres`. */
+export const warpFly = (metres: number): number => Math.round(Math.min(420, Math.max(250, 200 + 12 * metres)));
+
+export interface WarpTimes {
+  /** The weapon leaves the hand; the ninja starts turning to light. */
+  rel: number;
+  /** The light body sets off after the weapon. */
+  dash: number;
+  /** The weapon reaches the catch. */
+  caught: number;
+  /** The light body lands; it turns solid, catching the weapon. */
+  land: number;
+  /** Solid, in the thrust's chamber: the thrust plays. */
+  solid: number;
+  /** Standing again: the Shooting-Star Thrust is over. */
+  end: number;
+}
+
+export function warpTimes(fly: number): WarpTimes {
+  const caught = WARP_REL + fly;
+  const land = caught + WARP_LAG;
+  const solid = land + WARP_SOLID;
+  return { rel: WARP_REL, dash: WARP_REL + WARP_LIGHT, caught, land, solid, end: solid + WARP_THRUST[0] + WARP_THRUST[1] + WARP_THRUST[2] };
+}
+
+/** How far the light body is along a Shooting-Star Thrust's dash (0..1) `ms` into it: quick off the mark, easing into the landing, like a phase. */
+export const warpDash = (ms: number, t: WarpTimes): number => {
+  const k = Math.min(1, Math.max(0, (ms - t.dash) / (t.land - t.dash)));
+  return 1 - (1 - k) ** 2.2;
+};
+
+/** How hard the thrown weapon slows into the catch (warpFlight). */
+const FLIGHT_EASE = 1.5;
+
+/** How far the thrown weapon is along its flight (0..1) `ms` into the Shooting-Star Thrust: flung hard, slowing a little as it arrives. */
+export const warpFlight = (ms: number, t: WarpTimes): number => {
+  const k = Math.min(1, Math.max(0, (ms - t.rel) / (t.caught - t.rel)));
+  return 1 - (1 - k) ** FLIGHT_EASE;
+};
+
+/** When (ms into the Shooting-Star Thrust) the thrown weapon was `w` (0..1) along its flight: warpFlight turned round. */
+export const warpFlightMs = (w: number, t: WarpTimes): number => t.rel + (1 - (1 - Math.min(1, Math.max(0, w))) ** (1 / FLIGHT_EASE)) * (t.caught - t.rel);
+
 export class Playback {
   views = new Map<string, UnitView>();
   floaters: Floater[] = [];
@@ -226,6 +364,14 @@ export class Playback {
   fled = new Map<number, number>();
   /** When each jutsu wall was raised, so it plays its rise before standing. */
   wallBorn = new Map<string, number>();
+  /**
+   * When a wave's crest gets to each one it reaches (the Devouring Tide): that one's own events (its
+   * save, its damage, its sweep and fall) wait for it, so they play as the water goes over them.
+   */
+  due = new Map<string, number>();
+  /** When each gale on the ground started turning, and the ones dying down (from when their event played). */
+  zoneBorn = new Map<string, number>();
+  zoneGone: { zone: GaleZone; t0: number }[] = [];
   /** Kōton structures that crumbled or broke, sinking out of sight (from when their event played). */
   fallen: { wall: Wall; t0: number }[] = [];
   /** Whose turn the screen shows (it trails the engine while events play). */
@@ -252,6 +398,35 @@ export class Playback {
   private timers: { at: number; run: (now: number) => void }[] = [];
   /** Casts played so far: part of the seed of their varied paths, so two casts never fly alike. */
   private casts = 0;
+  /** Sounds due later in something already playing (a Shooting-Star Thrust's throw and catch). */
+  private cues: { at: number; name: SoundName }[] = [];
+  /** The d20s on screen, the big window (one at a time) and the criticals landing. */
+  dice: DieShow[] = [];
+  diceWindow: DiceWindow | null = null;
+  impacts: CritImpact[] = [];
+  /** Throw the dice for every roll (off for tools that only want the events paced). */
+  diceOn = true;
+  /** The roll events whose dice are already thrown (the event itself plays once they land). */
+  private thrown = new WeakSet<BattleEvent>();
+  /** Until when the queue waits for dice to land (the skip button cuts it short). */
+  private diceWait = 0;
+  /** Dice sounds still to come (the throw, the click of each die, the natural's chime), at screen time. */
+  private sounds: { at: number; name: SoundName; detail?: string }[] = [];
+  /**
+   * When the jutsu being played reaches its targets (screen time; 0 when not known): the saves
+   * against it are thrown so they land then, not after the blast has played out.
+   */
+  private hitAt = 0;
+  /** The skip button never plays a roll before this (the jutsu it answers has not hit yet). */
+  private diceFloor = 0;
+  /**
+   * Blood drops on the screen itself (the owner: "las gotas de sangre manchan la pantalla cuando
+   * exitosamente se consigue el sangrado"): when they landed and toward which side the cut went.
+   * Drawn over the battle in screen pixels (vfxSprites.ts, drawScreenBlood); nothing waits for them.
+   */
+  screenBlood: { t0: number; side: 1 | -1; seed: number }[] = [];
+  /** The way the last cut that draws blood went (1 right, -1 left), for the drops on the screen. */
+  private cutSide: 1 | -1 = 1;
 
   constructor(state: BattleState, private hooks: PlaybackHooks) {
     this.sync(state, 0);
@@ -303,6 +478,67 @@ export class Playback {
   }
 
   /**
+   * Throws the dice of the roll at the head of the queue, and of the rolls right after it that
+   * happen at the same moment (everyone a blast reaches saves at once; a shove is a contest), each
+   * over the one who rolls it. Opens the big window for a critical or an important natural.
+   * Returns how long (ms at speed 1) the queue waits before the roll's event plays.
+   */
+  private throwDice(now: number, real = now): number {
+    const first = this.queue[0];
+    const group: BattleEvent[] = [first];
+    if (first.t === 'save' || first.t === 'check')
+      for (let i = 1; i < this.queue.length && group.length < 8 && this.queue[i].t === first.t; i++) {
+        // One a wave has still to reach throws its own die when the crest gets there.
+        if (this.due.has(unitOfEvent(this.queue[i]) ?? '')) break;
+        group.push(this.queue[i]);
+      }
+    let windowed: DieShow | null = null;
+    let kind: WindowKind | null = null;
+    let fumble = false;
+    for (const ev of group) {
+      this.thrown.add(ev);
+      const k = diceKind(ev);
+      if (!k || !('roll' in ev) || !('unit' in ev)) continue;
+      const die: DieShow = { unit: ev.unit, roll: ev.roll, kind: k, t0: now };
+      this.dice = this.dice.filter((d) => d.unit !== ev.unit);
+      this.dice.push(die);
+      const w = windowOf(ev);
+      if (w && !windowed) {
+        windowed = die;
+        die.windowed = true;
+        kind = w;
+      }
+      if (ev.roll.d20 === 1) fumble = true;
+    }
+    const click = now + CLICK_MS / this.speed;
+    // Dice thrown ahead (while a jutsu flies) make their sound when they leave the hand.
+    if (now > real) this.sounds.push({ at: now, name: 'diceThrow', detail: String(this.speed) });
+    else this.hooks.sound('diceThrow', String(this.speed));
+    if (windowed && kind) {
+      this.diceWindow = { die: windowed, kind, t0: now + (CLICK_MS + WINDOW.open) / this.speed };
+      this.sounds.push({ at: click, name: kind === 'fumble' ? 'diceNat1' : 'diceNat20' });
+      return CLICK_MS + WINDOW.go;
+    }
+    this.sounds.push({ at: click, name: fumble ? 'diceNat1' : 'dicePop' });
+    // A natural 1 shows its crack before the action goes on.
+    return CLICK_MS + (fumble ? 260 : 90);
+  }
+
+  /** Dice are still in the air or the big window is open: the skip button shows. */
+  diceRolling(now: number): boolean {
+    return now < this.diceWait || (!!this.diceWindow && now < this.diceWindow.t0 + (WINDOW.go - WINDOW.open) / this.speed);
+  }
+
+  /** The skip button: the dice land at once, the window closes, and the roll's event plays. */
+  skipDice(now: number): void {
+    for (const d of this.dice) d.t0 = Math.min(d.t0, now - dieLife(natOf(d.roll)) / this.speed + 300 / this.speed);
+    this.diceWindow = null;
+    this.sounds = [];
+    if (this.busyUntil === this.diceWait && now < this.busyUntil) this.busyUntil = Math.max(now, this.diceFloor);
+    this.diceWait = 0;
+  }
+
+  /**
    * Runs the queue up to `now`. Returns true once everything has played out: the last event's own
    * time, every walk and every one-shot pose (then the views can snap to the state).
    */
@@ -310,9 +546,41 @@ export class Playback {
     while (this.queue.length && now >= this.busyUntil) {
       const next = this.queue[0].t;
       if ((next === 'turn' || next === 'round' || next === 'end') && now < this.lingerUntil) break;
+      if (next === 'turn') this.due.clear();
+      // A roll: its dice are thrown first, and the event plays once they land. The first event of
+      // one a wave's crest has still to reach (due) waits for it, and a roll's dice are thrown so
+      // they land as the crest goes over that one (the skip button never plays it sooner).
+      const head = this.queue[0];
+      const who = unitOfEvent(head);
+      const due = who === undefined ? undefined : this.due.get(who);
+      const roll = this.diceOn && !!diceKind(head) && !this.thrown.has(head);
+      const wait = due === undefined ? 0 : roll ? due - CLICK_MS / this.speed : due;
+      if (now < wait) {
+        this.busyUntil = wait;
+        break;
+      }
+      if (due !== undefined) this.due.delete(who!);
+      if (roll) {
+        this.busyUntil = this.diceWait = Math.max(due ?? 0, now + this.throwDice(now) / this.speed);
+        this.diceFloor = due ?? 0;
+        continue;
+      }
       const ev = this.queue.shift()!;
+      this.hitAt = 0;
       const d = this.apply(ev, now, state);
       this.busyUntil = now + d / this.speed;
+      this.diceFloor = 0;
+      // A jutsu its targets save against: their dice are thrown while it flies and land as it hits,
+      // and the saves (and the damage) play from there (thrown after the blast had played out, the
+      // damage came a second after the explosion).
+      const nx = this.queue[0];
+      // (Not when a wave's crest has still to reach the one saving: that waits for the crest, above.)
+      if (this.diceOn && ev.t === 'jutsu' && nx?.t === 'save' && !this.thrown.has(nx) && !this.due.has(nx.unit)) {
+        const hit = Math.max(now, Math.min(this.hitAt || this.busyUntil, this.busyUntil));
+        const t0 = Math.max(now, hit - CLICK_MS / this.speed);
+        this.busyUntil = this.diceWait = Math.max(hit, t0 + this.throwDice(t0, now) / this.speed);
+        this.diceFloor = hit;
+      }
       if (!this.queue.length) this.settling = true;
     }
     if (this.timers.length) {
@@ -323,6 +591,10 @@ export class Playback {
     if (this.shakes.length) {
       for (const sh of this.shakes) if (now >= sh.at) this.hooks.shake(sh.power);
       this.shakes = this.shakes.filter((sh) => now < sh.at);
+    }
+    if (this.cues.length) {
+      for (const c of this.cues) if (now >= c.at) this.hooks.sound(c.name);
+      this.cues = this.cues.filter((c) => now < c.at);
     }
     // One-shot poses fall back to rest.
     for (const [id, v] of this.views) {
@@ -339,6 +611,13 @@ export class Playback {
         const u = state.units[id];
         if (u) v.facing = u.facing;
       }
+      if (v.warp && now >= v.warp.t0 + warpTimes(v.warp.fly).end / this.speed) {
+        v.facing = v.warp.land;
+        v.warp = undefined;
+        const u = state.units[id];
+        v.pose = u ? restPoseView(u, v) : 'idle';
+        v.poseT0 = now;
+      }
       if (v.walk && now >= v.walk.t0 + (v.walk.total / v.walk.speed) * 1000 / this.speed) {
         v.pos = { ...v.walk.path[v.walk.path.length - 1] };
         v.walk = undefined;
@@ -350,13 +629,20 @@ export class Playback {
         }
       }
     }
+    for (const s of this.sounds) if (now >= s.at) this.hooks.sound(s.name, s.detail);
+    this.sounds = this.sounds.filter((s) => now < s.at);
+    this.dice = this.dice.filter((d) => now < d.t0 + dieLife(natOf(d.roll)) / this.speed + 260);
+    if (this.diceWindow && now > this.diceWindow.t0 + (WINDOW.go - WINDOW.open + WINDOW.fade) / this.speed) this.diceWindow = null;
+    this.impacts = this.impacts.filter((c) => now < c.t0 + (IMPACT.number + IMPACT.numberLife) / this.speed);
     this.floaters = this.floaters.filter((f) => now < f.t0 + f.dur);
+    this.zoneGone = this.zoneGone.filter((z) => now < z.t0 + 1000 / this.speed);
     this.fx = this.fx.filter((f) => now < f.t0 + f.dur);
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
+    this.screenBlood = this.screenBlood.filter((b) => now < b.t0 + (SCREEN_MS + 300) / this.speed);
     // The last jutsu's effects play out whole first (the movement overlay and the next order wait for them).
     if (!this.settling || this.queue.length || this.timers.length || now < this.busyUntil || now < this.lingerUntil) return false;
-    for (const v of this.views.values()) if (v.walk || v.phase || (v.poseUntil && now < v.poseUntil)) return false;
+    for (const v of this.views.values()) if (v.walk || v.phase || v.warp || (v.poseUntil && now < v.poseUntil)) return false;
     this.settling = false;
     return true;
   }
@@ -368,6 +654,11 @@ export class Playback {
     if (v.phase) {
       const { from, to, t0 } = v.phase;
       const k = phaseDash((now - t0) * this.speed);
+      return { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k };
+    }
+    if (v.warp) {
+      const { from, to, t0, fly } = v.warp;
+      const k = warpDash((now - t0) * this.speed, warpTimes(fly));
       return { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k };
     }
     const w = v.walk;
@@ -392,6 +683,13 @@ export class Playback {
   goneWalls(): Wall[] {
     const out: Wall[] = [];
     for (const e of this.queue) if (e.t === 'wall' && !e.on) out.push(e.wall);
+    return out;
+  }
+
+  /** Gales already gone from the state whose dying down hasn't played yet: they still turn. */
+  goneZones(): GaleZone[] {
+    const out: GaleZone[] = [];
+    for (const e of this.queue) if (e.t === 'zone' && !e.on) out.push(e.zone);
     return out;
   }
 
@@ -500,7 +798,7 @@ export class Playback {
     const el = spec.element;
     const at = (ms: number) => now + ms / this.speed;
     const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, now + ms / this.speed));
-    // In the caster's chakra colour when it is an elemental jutsu (the owner, 2026-10-21).
+    // In the caster's chakra colour when it is an elemental jutsu (the owner, 2026-10-21); a heal's in green.
     const base = { element: el, enhanced: ev.enhanced, role: spec.vfx, tint };
     // What it throws leaves the casting hand (before the body, at chest height), not the head.
     const hand = handOf(from, a.facing);
@@ -543,6 +841,13 @@ export class Playback {
       if (this.missedNext(ev.unit)) return strike;
       this.fx.push({ ...base, kind: 'slash', set: 'neutral', from, to: ev.at, t0: at(strike), dur: 480, lift: [58, 58] });
       linger(strike + 480);
+      if (seq.blood) {
+        // The blood bursts out of the target as the crescent crosses it, thrown the way the cut goes
+        // (from → to), and the next turn waits until its drops are down. Never in a chakra colour.
+        this.cutSide = ev.at.x < from.x - 0.01 ? -1 : 1;
+        this.fx.push({ ...base, tint: undefined, kind: 'burst', blood: 'spray', from, to: ev.at, t0: at(strike + SPRAY_DELAY), dur: SPRAY_MS });
+        linger(strike + SPRAY_DELAY + SPRAY_LANDED);
+      }
       return strike + 120;
     }
 
@@ -626,6 +931,104 @@ export class Playback {
       return CAST + warn + 300;
     }
 
+    if (seq.wave && ev.shape?.kind === 'cone') {
+      // The Devouring Tide: the water rises round the caster, then a wave runs out along the cone (a
+      // row of the element's water columns, the rows behind its crest fading, its spray before it);
+      // a splash on each one as the crest goes over them, and a heavy jolt as it breaks at the end.
+      announce();
+      this.setPose(a, 'cast', now, 900);
+      const gather = seq.castAura ?? CAST;
+      this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: gather + 400, unit: ev.unit });
+      const cone = ev.shape;
+      const run = seq.wave.ms;
+      // The water stays a moment at the end of its run (WAVE_HOLD), while the last ones are swept.
+      this.fx.push({ ...base, kind: 'wave', from: cone.origin, to: ev.at, area: cone, t0: at(gather), dur: run + WAVE_HOLD, rows: seq.wave.rows });
+      const hitMs = impactMs(el, 'hit', 900);
+      // Nearest first: each one's save, damage, sweep and fall play as the crest goes over them.
+      const crest = (id: string) => gather + run * WAVE_CREST(dist(cone.origin, this.posOf(id, now)), cone.length);
+      const who = this.reached(ev.unit).sort((p, q) => crest(p) - crest(q));
+      this.groupByUnit(who);
+      this.due.clear();
+      who.forEach((id) => {
+        const t0 = crest(id);
+        this.fx.push({ ...base, kind: 'burst', from, to: this.posOf(id, now), t0: at(t0), dur: hitMs, lift: [50, 50], role: 'hit' });
+        this.due.set(id, at(t0 + 80));
+      });
+      this.shakeAt(now, gather + run * 0.9, (seq.shake ?? 6) + (ev.enhanced ? 1 : 0));
+      linger(gather + run + WAVE_HOLD);
+      return gather;
+    }
+
+    if (seq.tower && ev.shape?.kind === 'circle') {
+      // The Whirlwind Tower: a warning burst of leaves at the point, then the element's tornado
+      // column rises there and turns with small whirlwinds circling it, an impact on each one reached.
+      announce();
+      this.setPose(a, 'cast', now, 900);
+      const c = ev.shape.center;
+      const warn = seq.tower.warn;
+      this.fx.push({ ...base, kind: 'burst', from: c, to: c, t0: at(CAST), dur: impactMs(el, 'hit', 700), lift: [6, 6], role: 'hit' });
+      this.fx.push({ ...base, kind: 'tower', from: c, to: c, area: ev.shape, t0: at(CAST + warn), dur: TOWER_MS, minis: seq.tower.minis });
+      const up = CAST + warn + TOWER_RISE;
+      const who = this.reached(ev.unit);
+      const hitMs = impactMs(el, 'hit', 900);
+      who.forEach((id, i) => this.fx.push({ ...base, kind: 'burst', from, to: this.posOf(id, now), t0: at(up + i * 80), dur: hitMs, lift: [56, 56], role: 'hit' }));
+      if (seq.shake) this.shakeAt(now, up, seq.shake + (ev.enhanced ? 1 : 0));
+      // The saves' dice land as the column has risen and strikes.
+      this.hitAt = at(up);
+      linger(CAST + warn + TOWER_MS);
+      return up + Math.max(0, who.length - 1) * 80 + 200;
+    }
+
+    if (seq.hitEach && ev.shape?.kind === 'line') {
+      // The Thunder Beam: the element's beam runs out along the line, a spark on each one it reaches
+      // as its head gets there.
+      announce();
+      this.setPose(a, 'cast', now, 900);
+      const LINE = 1300;
+      // The beam runs the whole line, wherever the point was aimed (the engine hits everyone in it).
+      this.fx.push({ ...base, kind: 'line', from, to: areaEnd(ev.shape), area: ev.shape, t0: at(CAST), dur: LINE, lift: [HAND_LIFT, 50] });
+      const who = this.reached(ev.unit);
+      const hitMs = impactMs(el, 'hit', 900);
+      const len = ev.shape.length;
+      let end = CAST + 900;
+      who.forEach((id, i) => {
+        const p = this.posOf(id, now);
+        // The beam's head reaches the end of the line at 1/1.8 of its play (vfxSprites.ts).
+        const t0 = CAST + (LINE / 1.8) * Math.min(1, dist(from, p) / len) + i * seq.hitEach!.stagger;
+        this.fx.push({ ...base, kind: 'burst', from, to: p, t0: at(t0), dur: hitMs, lift: [56, 56], role: 'hit' });
+        end = Math.max(end, t0 + hitMs);
+        // The saves' dice land as the beam's head reaches the first one.
+        if (i === 0 || at(t0) < this.hitAt) this.hitAt = at(t0);
+      });
+      linger(Math.max(end, CAST + LINE));
+      return CAST + 900;
+    }
+
+    if (seq.breathMs && ev.shape?.kind === 'cone') {
+      // The Rubble Gust: the earth aura rises while the ninja casts, then the dust and stones roll
+      // out along the cone, a rock impact on each one reached as the dust gets there.
+      announce();
+      this.setPose(a, 'cast', now, 900);
+      const gather = seq.castAura ?? CAST;
+      this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: gather + 300, unit: ev.unit });
+      this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, t0: at(gather), dur: seq.breathMs, lift: [70, 30], spread: true });
+      const who = this.reached(ev.unit);
+      const hitMs = impactMs(el, 'hit', 900);
+      const len = ev.shape.length;
+      let end = gather + 900;
+      who.forEach((id, i) => {
+        const p = this.posOf(id, now);
+        // The breaths show one by one over the first 60 % of its play (vfxSprites.ts).
+        const t0 = gather + seq.breathMs! * 0.6 * Math.min(1, dist(from, p) / len) + i * (seq.hitEach?.stagger ?? 80);
+        this.fx.push({ ...base, kind: 'burst', from, to: p, t0: at(t0), dur: hitMs, lift: [50, 50], role: 'hit' });
+        end = Math.max(end, t0 + hitMs);
+        // The saves' dice land as the dust reaches the first one.
+        if (i === 0 || at(t0) < this.hitAt) this.hitAt = at(t0);
+      });
+      linger(Math.max(end, gather + seq.breathMs));
+      return gather + 900;
+    }
+
     if (seq.healAura && spec.special === 'heal') {
       // The Healing Dew: the element's orb flies to the ally and its aura wraps them as they heal.
       // The Mystical Palm heals by touch: no orb, only the aura (the owner: the Dew's aura on it too).
@@ -646,7 +1049,8 @@ export class Playback {
    * The jutsu staged with the pieces of the owner's first round of effect answers (2026-10-21;
    * docs/GAMEPLAY_DESIGN.md, "Jutsu effects, round 1"), all from his sheets. Times are ms after the
    * jutsu's event at speed 1 (for a melee one, the moment the ninja reaches its target). Returns how
-   * long to wait before the next event (the damage shows then).
+   * long to wait before the next event (the damage shows then); `hitAt` is set to when it first hits
+   * someone, so the saves' dice are thrown while it plays and land with that blow.
    */
   private round1(stage: StageKind, ev: Extract<BattleEvent, { t: 'jutsu' }>, spec: JutsuSpec, a: UnitView, from: Pt, now: number, label: string | null, tint: string | undefined): number {
     const h = this.hooks;
@@ -676,6 +1080,13 @@ export class Playback {
     const who = this.reached(ev.unit);
     const pts = who.map((id) => this.posOf(id, now));
     const ahead = (dx: number, dz = 0): Pt => ({ x: from.x + f * dx, z: from.z + dz });
+    /** The saves' dice land as it first hits someone, `ms` from now. */
+    const hits = (ms: number) => (this.hitAt = at(ms));
+    /**
+     * How long a blow that would land sooner than a die can fly waits (ms), so the saves' dice,
+     * thrown with the jutsu, land with it `first` ms from now (a melee jutsu strikes as it arrives).
+     */
+    const lead = (first: number) => (this.diceOn && this.queue[0]?.t === 'save' && !this.thrown.has(this.queue[0]) ? Math.max(0, CLICK_MS - first) : 0);
 
     switch (stage) {
       case 'dragonHead': {
@@ -721,6 +1132,7 @@ export class Playback {
           if (d.foe) first = Math.min(first, t0 + fly);
         });
         if (Number.isFinite(first)) this.shakeAt(now, first, 3);
+        hits(Number.isFinite(first) ? first : 1750);
         linger(end);
         return Number.isFinite(first) ? first : 1750;
       }
@@ -735,10 +1147,8 @@ export class Playback {
         const UP = 106;
         piece({ group: 'vfx_dragon', name: 'fire_wall_half', element: 'fire', t0: CAST, from: wallAt, depth: wallAt.z, rows: [{ anim: 'rise', ms: 1000 }, { anim: 'idle', ms: 590 }, { anim: 'rise', ms: 1000, back: true }] });
         piece({ group: 'vfx_dragon', name: 'fire_head_half', element: 'fire', t0: 800, from: mouth, depth: wallAt.z - 0.002, clip: 0, path: [{ ms: 0, dy: -UP + 130 }, { ms: 300, dy: -UP }, { ms: 1200, dy: -UP }, { ms: 1867, dy: -UP + 100 }], rows: [{ anim: 'idle', ms: 1200 }, { anim: 'fade', ms: 667 }] });
-        const rad = ((line?.dir ?? (f > 0 ? 0 : 180)) * Math.PI) / 180;
-        const length = line?.length ?? spec.length ?? 10.5;
-        const o = line?.origin ?? from;
-        const endAt = { x: o.x + Math.cos(rad) * length, z: o.z + Math.sin(rad) * length };
+        // The whole line, wherever the point was aimed (areaEnd, as the Thunder Beam).
+        const endAt = line ? areaEnd(line) : ahead(spec.length ?? 10.5);
         const GROW = 400;
         this.fx.push({ ...base, kind: 'line', from: mouth, to: endAt, t0: at(1100), dur: 1200, lift: [UP, 50], beam: { grow: GROW, fade: 300 } });
         let first = Infinity;
@@ -750,6 +1160,7 @@ export class Playback {
           // The fire hit where the stream passes it (the stream comes down from the mouth to the line's end).
           end = Math.max(end, burst(el, p, t0, Math.round(UP + (50 - UP) * k)));
         });
+        hits(Number.isFinite(first) ? first : 1500);
         linger(end);
         return Number.isFinite(first) ? first : 1500;
       }
@@ -775,6 +1186,7 @@ export class Playback {
         this.fx.push({ ...base, kind: 'projectile', from: hand, to, t0: at(CAST), dur: fly + 300, route, bends, trail: { arrive: fly, appear: (fly * clear) / d } });
         const end = burst(el, to, CAST + fly, miss ? 12 : 56);
         if (!miss) this.shakeAt(now, CAST + fly, 2);
+        hits(CAST + fly);
         linger(Math.max(end, CAST + fly + 300));
         return CAST + fly;
       }
@@ -791,7 +1203,7 @@ export class Playback {
         const o = line?.origin ?? from;
         const along = (d: number): Pt => ({ x: o.x + Math.cos(rad) * d, z: o.z + Math.sin(rad) * d });
         const start = along(1.5);
-        const endAt = along(length);
+        const endAt = line ? areaEnd(line) : along(length);
         burst(el, start, CAST, 30);
         this.shakeAt(now, CAST, 2);
         // The ones it reaches, nearest first, by how far down the line they stand.
@@ -816,6 +1228,7 @@ export class Playback {
           });
         });
         end = Math.max(end, burst(el, endAt, 1000 + 2 * 45 + FLY, 26, 'multi'));
+        hits(Number.isFinite(first) ? first : 1200);
         linger(end);
         return Number.isFinite(first) ? first : 1200;
       }
@@ -829,6 +1242,7 @@ export class Playback {
         const miss = this.missedNext(ev.unit);
         const to = miss ? pastTarget(chest, ev.at, 'straight') : ev.at;
         this.fx.push({ ...base, kind: 'line', from: chest, to, t0: at(CAST), dur: 1640, lift: [60, miss ? 20 : 56], beam: { grow: 400, fade: 300, noHead: true } });
+        hits(miss ? CAST + 400 : 960);
         if (miss) {
           linger(CAST + 1640);
           return CAST + 400;
@@ -857,23 +1271,27 @@ export class Playback {
         const past = { x: ev.at.x + ux * 1, z: ev.at.z + uz * 1 };
         // Each crescent leaves on the cut itself (the sword's frame 1), not in the wind-up (stagePlan).
         const { BLOW, WIND, STRIKE } = CRESCENT;
+        // The first cut waits for the saves' die, which lands as its crescent goes through.
+        const L = lead(STRIKE + 150);
         for (let i = 0; i < n; i++) {
-          const t = i * BLOW;
+          const t = L + i * BLOW;
           const lift = n === 3 ? [74, 56, 38][i] : 80 - (i * 50) / (n - 1);
           // From the blow's own time, not the tick its timer runs on (a late tick would put the pose behind its crescent).
           const blow = () => this.setPose(a, 'attack', at(t) - WIND / this.speed, 480);
-          if (i === 0) blow();
+          if (i === 0 && !L) blow();
           else this.later(now, t, blow);
           this.later(now, t, () => h.sound('swing'));
           piece({ group: 'vfx_chakra', name: 'slash', element: 'chakra', t0: t + STRIKE, from: blade, path: [{ ms: 0, at: blade, dy: -lift }, { ms: 300, at: past, dy: -lift }], rows: [{ anim: 'fly', ms: 360 }], fade: 90 });
         }
+        // The first crescent goes through the target.
+        hits(L + STRIKE + 150);
         if (miss) {
-          linger(n * BLOW + 400);
-          return STRIKE + 150;
+          linger(L + n * BLOW + 400);
+          return L + STRIKE + 150;
         }
-        const end = burst('chakra', ev.at, n * BLOW + 60, 56, 'hit', undefined);
+        const end = burst('chakra', ev.at, L + n * BLOW + 60, 56, 'hit', undefined);
         linger(end);
-        return STRIKE + 170;
+        return L + STRIKE + 170;
       }
       case 'crowDive': {
         // 10A: his vortex opens up to one side of the circle and his crows come out of it (his summon
@@ -900,6 +1318,7 @@ export class Playback {
         this.fx.push({ ...base, kind: 'area', from: c, to: c, area: ev.shape, t0: at(1660), dur: boom });
         let end = 1660 + boom;
         pts.forEach((p) => (end = Math.max(end, burst(el, p, 1990, 56))));
+        hits(1990);
         linger(end);
         return 1990;
       }
@@ -943,6 +1362,7 @@ export class Playback {
         });
         const hit = rise + RISE + HOLD + 3 * (1000 / 14);
         this.later(now, rise, () => h.sound('jutsu', el));
+        hits(hit);
         if (miss) {
           linger(end0);
           return hit;
@@ -964,6 +1384,14 @@ export class Playback {
           h.sound('jutsu', el);
           this.gatherHand(a, el, tint, now, ev.enhanced, [], HAND_GATHER + 1200);
           t = HAND_GATHER;
+        } else {
+          // It ran in with the lightning in its hand: the hand stays drawn back, crackling, while
+          // the saves' die flies, and the thrust lands with it.
+          t = lead(15);
+          if (t) {
+            this.setPose(a, 'attack', now);
+            a.holdFrame = 0;
+          }
         }
         // Straight from the gather (the hand drawn back low) into the pierce's lunge (frame 2): its
         // chamber would bring the hand, and the lightning in it, up over the chest.
@@ -979,6 +1407,7 @@ export class Playback {
         const hit = t + 15;
         const held = a.held;
         if (held) held.end = at(hit + 50);
+        hits(hit);
         if (this.missedNext(ev.unit)) {
           linger(hit + 4 * FRAME);
           return hit;
@@ -992,28 +1421,40 @@ export class Playback {
         // 12A and the owner's unarmed combo: the weapon put away, a jab, a cross, the spin into a
         // spinning back kick, a finishing kick; with each half turn and kick one of his wind
         // crescents goes out to one of them, and his wind X with leaves bursts on it.
-        h.sound('swing');
         if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
         const ms = (k: number) => (k * 1000) / POSE_FPS.combo;
-        this.setPose(a, 'combo', now, ms(8));
         const slots = [ms(COMBO_KICKS[0]), ms(COMBO_KICKS[1]), ms(COMBO_TURNED[0]), ms(5)];
-        // The ones in front take the kicks first, then the ones behind.
-        const order = pts.map((p, i) => ({ p, i, front: (p.x - from.x) * f >= 0 })).sort((x, y) => Number(y.front) - Number(x.front));
+        // The ones in front take the kicks first, then the ones behind. Each crescent sets off out
+        // in front of the ninja on its way there, not on its body.
+        const order = pts
+          .map((p, i) => ({ p, i, front: (p.x - from.x) * f >= 0 }))
+          .sort((x, y) => Number(y.front) - Number(x.front))
+          .map((x, j) => {
+            const out = crescentStart(from, x.p);
+            return { ...x, j, out, fly: Math.max(140, dist(out, x.p) * 60) };
+          });
+        // The combo starts a beat later when the first crescent would hit before the saves' die lands.
+        const L = lead(Math.min(Infinity, ...order.map((x) => slots[x.j % slots.length] + Math.floor(x.j / slots.length) * 90 + x.fly)));
+        const start = (tn: number) => {
+          h.sound('swing');
+          this.setPose(a, 'combo', Math.min(tn, at(L)), ms(8));
+        };
+        if (L) this.later(now, L, start);
+        else start(now);
         let first = Infinity;
-        let end = ms(8);
-        order.forEach((x, j) => {
-          const t0 = slots[j % slots.length] + Math.floor(j / slots.length) * 90;
-          // It sets off out in front of the ninja on its way there, not on its body.
-          const out = crescentStart(from, x.p);
-          const fly = Math.max(140, dist(out, x.p) * 60);
+        let end = L + ms(8);
+        order.forEach((x) => {
+          const { j, out, fly } = x;
+          const t0 = L + slots[j % slots.length] + Math.floor(j / slots.length) * 90;
           const away = x.p.x < from.x - 0.01;
           this.fx.push({ kind: 'sprite', element: 'wind', from: out, to: x.p, t0: at(t0), dur: fly + 60, run: { group: 'vfx_wind', name: 'slash', mirror: away, rows: [{ anim: 'fly', ms: fly + 60 }], path: [{ ms: 0, at: out, dy: -54 }, { ms: fly, at: x.p, dy: -54 }], fade: 60 } });
           first = Math.min(first, t0 + fly);
           end = Math.max(end, burst('wind', x.p, t0 + fly, 56, 'hit', undefined));
           this.later(now, t0, () => h.sound('swing'));
         });
+        hits(Number.isFinite(first) ? first : L + ms(6));
         linger(end);
-        return Number.isFinite(first) ? first : ms(6);
+        return Number.isFinite(first) ? first : L + ms(6);
       }
     }
   }
@@ -1030,6 +1471,206 @@ export class Playback {
     v.holdFrame = 0;
     const crackle = enhanced ? 'crackle_enh' : 'crackle';
     v.held = { group: 'vfx_hand', name: 'lightning_hand', element, tint, t0: now, end: now + ms / this.speed, rows: [{ anim: 'gather', ms: 330 }, { anim: crackle, ms: HAND_GATHER - 330 }, ...after, { anim: crackle, ms: 1 }] };
+  }
+
+  /** The jutsu event: the cast, its flight and its effects (the staged ones apart). Returns how long to wait. */
+  private playJutsu(ev: Extract<BattleEvent, { t: 'jutsu' }>, now: number, state: BattleState, label: string | null): number {
+    const h = this.hooks;
+    const a = this.view(ev.unit);
+    if (!a) return 0;
+    const spec = JUTSU[ev.jutsu];
+    const from = this.posOf(ev.unit, now);
+    if (Math.abs(ev.at.x - from.x) > 0.05) a.facing = ev.at.x > from.x ? 1 : -1;
+    const caster = state.units[ev.unit];
+    const head = caster?.kind === 'hydra_head';
+    const cross = spec?.special === 'warp' ? this.queue.find((e) => e.t === 'teleport' && e.how === 'phase' && e.unit === ev.unit) : undefined;
+    if (cross?.t === 'teleport' && this.phaseFollows(ev.unit)) {
+      // A Shooting-Star Thrust that goes through: its name, and the throw starts at once (UnitView.warp).
+      // The crossing's own event comes at the release; the thrust faces the foe it lands beside
+      // (the engine's edgeFoe), if any.
+      const face: 1 | -1 = Math.abs(cross.to.x - cross.from.x) > 0.05 ? (cross.to.x > cross.from.x ? 1 : -1) : a.facing;
+      const foe = caster ? edgeFoe(state, caster, cross.to) : undefined;
+      const land: 1 | -1 = foe && foe.pos.x !== cross.to.x ? (foe.pos.x > cross.to.x ? 1 : -1) : caster ? caster.facing : face;
+      const fly = warpFly(dist(cross.from, cross.to));
+      a.warp = { from: { ...cross.from }, to: { ...cross.to }, t0: now, face, land, foe: foe?.id, fly };
+      a.facing = face;
+      a.walk = undefined;
+      a.lunge = undefined;
+      a.poseUntil = undefined;
+      h.sound('jutsu', 'chakra');
+      if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+      // A whoosh as the arm whips the weapon away, a ring as the hand closes on it again.
+      this.cues.push({ at: now + (2 * WARP_FRAME) / this.speed, name: 'swing' }, { at: now + warpTimes(fly).land / this.speed, name: 'draw' });
+      return WARP_REL;
+    }
+    if ((spec?.special === 'warp' || spec?.special === 'swap') && this.phaseFollows(ev.unit)) {
+      // A Shooting-Star Thrust or a Spatial Swap that goes through: its name and a beat, then the phase
+      // itself plays (no cast pose, no chakra flare: the ninja turns to light at once).
+      h.sound('jutsu', 'chakra');
+      if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+      return 90;
+    }
+    // An enhanced jutsu's cast pose plays its chakra burst empowered.
+    if (!head) a.castEnhanced = !!ev.enhanced;
+    if (spec?.seq || spec?.pose || spec?.vfxSet) {
+      const staged = this.staged(ev, spec, a, from, now, label, jutsuTint(spec, caster));
+      if (staged !== null) return staged;
+    }
+    if (!head) this.setPose(a, spec?.melee ? 'attack' : 'cast', now, 900);
+    else {
+      a.creature = { anim: ev.jutsu === 'hydra_roar' ? 'roar' : 'spit', t0: now };
+      if (ev.jutsu === 'hydra_roar') h.sound('roar');
+    }
+    const el: VfxElement = spec?.element ?? 'chakra';
+    // Jutsu play at a pace the player can follow: a beat for the cast, a flight you can watch
+    // (beasts slower still), and the impact plays out whole before the next turn starts.
+    const castDelay = head ? 150 : 560;
+    // A dream's drift flies slower (the Mirage).
+    const fly = (spec?.vfx === 'beast' ? Math.max(900, dist(from, ev.at) * 150) : Math.max(500, dist(from, ev.at) * 115)) * (spec?.seq?.slowFlight ?? 1);
+    const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, t1 + ms / this.speed));
+    h.sound('jutsu', el);
+    if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+    const t1 = now + castDelay / this.speed;
+    const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig, role: spec?.vfx, tint: jutsuTint(spec, caster) };
+    switch (spec?.special) {
+      case 'heal':
+        this.fx.push({ ...base, kind: 'heal', from: ev.at, to: ev.at, dur: 1300 });
+        linger(1300);
+        return castDelay + 700;
+      case 'clone':
+      case 'mantle':
+        this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 1100, unit: ev.unit });
+        linger(1100);
+        return castDelay + 400;
+      case 'galeZone':
+        // The wind gathers round the caster; the gale itself starts turning when its event plays.
+        this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: castDelay + 500, unit: ev.unit });
+        return castDelay;
+      case 'flicker':
+      case 'warp':
+      case 'swap':
+        // The chakra flares while it gathers, and is gone with the ninja when it vanishes (it
+        // would otherwise burn on at the spot it left, around whoever is swapped in there).
+        this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: castDelay + 400, unit: ev.unit, follow: true });
+        return castDelay + 400;
+      case 'earthWall':
+      case 'waterWall':
+        this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200 });
+        // The wall itself rises when its event plays, right as the jutsu lands.
+        return castDelay;
+      case 'metalBlock':
+      case 'metalWall':
+        // Steel dust where the structure rises (the earth wall's sheet would hide it otherwise);
+        // the structure itself grows out of the ground when its event plays (renderer.ts).
+        this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200, sig: 'debris' });
+        return castDelay;
+      case 'command':
+      case 'submission':
+        // The Northstar's will flares around it; the mind it takes glows when its event plays.
+        this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 900, unit: ev.unit });
+        linger(900);
+        return castDelay + 300;
+    }
+    if (ev.shape?.kind === 'cone') {
+      // A signature cone (the Great Fire Annihilation) plays its whole surge, burn and fade.
+      // It hits once the fire has spread all the way, and the next turn waits for it to burn out.
+      const long = signatureMs(el, spec?.sig, ev.enhanced);
+      this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, dur: long?.total ?? 1400, lift: [head ? 120 : 70, 30] });
+      if (!long) {
+        linger(1400);
+        return castDelay + 900;
+      }
+      h.shake(ev.enhanced ? 7 : 5);
+      this.lingerUntil = Math.max(this.lingerUntil, t1 + long.total / this.speed);
+      this.hitAt = t1 + long.hit / this.speed;
+      return castDelay + long.hit;
+    }
+    if (ev.shape?.kind === 'line') {
+      this.fx.push({ ...base, kind: 'line', from, to: areaEnd(ev.shape), area: ev.shape, dur: 1300, lift: [head ? 120 : 70, 50] });
+      linger(1300);
+      return castDelay + 900;
+    }
+    if (spec?.melee) {
+      const hitMs = impactMs(el, spec.vfx, 900);
+      this.fx.push({ ...base, kind: 'burst', from: ev.at, to: ev.at, dur: hitMs, lift: [60, 60] });
+      linger(hitMs);
+      return castDelay + 450;
+    }
+    // A signature from the sky (Kirin) needs no projectile: the storm gathers over the target.
+    const sky = ev.shape?.kind === 'circle' ? skySignature(el, spec?.sig, ev.enhanced) : null;
+    if (sky) {
+      this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, dur: sky.total });
+      h.shake(ev.enhanced ? 8 : 6);
+      this.lingerUntil = Math.max(this.lingerUntil, t1 + sky.total / this.speed);
+      return castDelay + sky.hit / this.speed;
+    }
+    // The rank D and C jutsu (staged by seq) leave the casting hand; the others fly as they always have.
+    const out = spec?.seq && !head ? handOf(from, a.facing) : from;
+    this.fx.push({ ...base, kind: 'projectile', from: out, to: ev.at, dur: fly, lift: [head ? 120 : spec?.seq ? HAND_LIFT : 70, ev.shape ? 30 : 60] });
+    this.hitAt = t1 + fly / this.speed;
+    if (ev.shape?.kind === 'circle') {
+      const boom = blastMs(el, spec?.sig ? 1400 : 1200);
+      this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: boom });
+      h.shake(ev.enhanced ? 5 : 3);
+      linger(fly + boom);
+    } else {
+      const hitMs = impactMs(el, spec?.vfx, 900);
+      this.fx.push({ ...base, kind: 'burst', from, to: ev.at, t0: t1 + fly / this.speed, dur: hitMs, lift: [60, 60] });
+      linger(fly + hitMs);
+    }
+    return castDelay + fly + 300;
+  }
+
+  /**
+   * A fire fanned by a gale (the Gale Curtain; the owner: "que se vea como efecto"): every fire
+   * effect the jutsu just pushed burns brighter from where it meets the wind (a Fireball grows into
+   * the Great Fireball there), the wind swirls round the fire at that spot in the gale's colour, and
+   * the word floats over it.
+   */
+  private fan(ev: Extract<BattleEvent, { t: 'jutsu' }>, before: number, now: number, state: BattleState): void {
+    const f = ev.fanned!;
+    let meet = Infinity;
+    for (const fx of this.fx.slice(before)) {
+      // A staged piece (a dragon's wall and head) stands by its caster, out of the wind.
+      if (fx.element !== 'fire' || fx.kind === 'aura' || fx.kind === 'sprite') continue;
+      // A flight meets the wind part of the way along; a beam's head gets there at 1/1.8 of its
+      // play (vfxSprites.ts), a staged beam's in its `grow`; a burst, a blast or a cone is in the
+      // wind from the start.
+      const reach = fx.beam ? fx.beam.grow / fx.dur : 1 / 1.8;
+      const k = fx.kind === 'projectile' ? nearSegment(fx.from, fx.to, f.at).t : fx.kind === 'line' ? nearSegment(fx.from, fx.to, f.at).t * reach : 0;
+      fx.fan = k;
+      meet = Math.min(meet, fx.t0 + (fx.dur * k) / this.speed);
+    }
+    if (!Number.isFinite(meet)) meet = now;
+    const zone = (state.zones ?? []).find((z) => z.id === f.zone) ?? this.goneZones().find((z) => z.id === f.zone);
+    const tint = zone ? unitTint(state.units[zone.owner]) : undefined;
+    this.fx.push({ kind: 'swirl', element: 'wind', from: f.at, to: f.at, t0: meet - 120 / this.speed, dur: 900, lift: [56, 56], tint });
+    const text = this.hooks.label({ t: 'note', key: 'fanned', params: {} });
+    if (text) this.float(text, '#fdba74', f.at, now, { t0: meet, rise: 112, dur: 1300 / this.speed });
+  }
+
+  /**
+   * Puts together the events of each one the jutsu just played reaches (as reached() reads them),
+   * in `order`: a wave's rolls and falls then play one after another as it goes over them. Notes go
+   * with the event before them; what concerns nobody in `order` stays first.
+   */
+  private groupByUnit(order: string[]): void {
+    let end = 0;
+    while (end < this.queue.length) {
+      const t = this.queue[end].t;
+      if (t === 'jutsu' || t === 'turn' || t === 'round' || t === 'move' || t === 'end') break;
+      end++;
+    }
+    const rest: BattleEvent[] = [];
+    const of = new Map<string, BattleEvent[]>(order.map((id) => [id, []]));
+    let owner: string | undefined;
+    for (const e of this.queue.slice(0, end)) {
+      const u = unitOfEvent(e);
+      if (u !== undefined || e.t !== 'note') owner = u;
+      const list = owner === undefined ? undefined : of.get(owner);
+      (list ?? rest).push(e);
+    }
+    this.queue.splice(0, end, ...rest, ...order.flatMap((id) => of.get(id)!));
   }
 
   /** Who the jutsu just played heals (its heal event, if it comes before anything else happens). */
@@ -1096,8 +1737,15 @@ export class Playback {
         if (!v) return 0;
         // A Spatial Swap's two jumps happen at once.
         const together = this.queue[0]?.t === 'teleport';
+        if (ev.how === 'phase' && v.warp) {
+          // A Shooting-Star Thrust's crossing, already under way since its jutsu played (the throw): the
+          // events after it wait until the ninja stands solid where it lands.
+          v.pos = { ...ev.to };
+          v.walk = undefined;
+          return Math.max(0, (v.warp.t0 + warpTimes(v.warp.fly).solid / this.speed - now) * this.speed);
+        }
         if (ev.how === 'phase') {
-          // A Ryusei's Warp Strike or Spatial Swap: no smoke, the ninja crosses as blue light.
+          // A Ryusei's Spatial Swap: no smoke, the ninja crosses as blue light.
           v.phase = { from: { ...ev.from }, to: { ...ev.to }, t0: now };
           v.pos = { ...ev.to };
           v.walk = undefined;
@@ -1163,7 +1811,8 @@ export class Playback {
         v.pos = { ...ev.from };
         this.setPose(v, 'hurt', now, 300);
         if (ev.fall) h.shake(3);
-        return 280;
+        // Swept by a jutsu: the fall follows at once, while it still slides.
+        return ev.what ? 120 : 280;
       }
       case 'attack': {
         const a = this.view(ev.unit);
@@ -1203,121 +1852,18 @@ export class Playback {
         return ev.ranged ? 420 : 380;
       }
       case 'jutsu': {
-        const a = this.view(ev.unit);
-        if (!a) return 0;
-        const spec = JUTSU[ev.jutsu];
-        const from = this.posOf(ev.unit, now);
-        if (Math.abs(ev.at.x - from.x) > 0.05) a.facing = ev.at.x > from.x ? 1 : -1;
-        const caster = state.units[ev.unit];
-        const head = caster?.kind === 'hydra_head';
-        if ((spec?.special === 'warp' || spec?.special === 'swap') && this.phaseFollows(ev.unit)) {
-          // A Warp Strike or a Spatial Swap that goes through: its name and a beat, then the phase
-          // itself plays (no cast pose, no chakra flare: the ninja turns to light at once).
-          h.sound('jutsu', 'chakra');
-          if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
-          return 90;
+        // A fire through a gale (the Gale Curtain): the effects it pushes now burn brighter from where
+        // they meet the wind, and the wind swirls round the fire there.
+        const before = this.fx.length;
+        const d = this.playJutsu(ev, now, state, label);
+        if (ev.fanned) {
+          this.fan(ev, before, now, state);
+          // Its line in the log ("the gale fans…") goes out with it, so a save right after it still
+          // has its dice thrown during the flight, to land as the fire hits.
+          const nx = this.queue[0];
+          if (nx?.t === 'note' && (nx.key === 'fanned' || nx.key === 'fanned2')) this.apply(this.queue.shift()!, now, state);
         }
-        if (spec?.seq || spec?.pose || spec?.vfxSet) {
-          const staged = this.staged(ev, spec, a, from, now, label, jutsuTint(spec, caster));
-          if (staged !== null) return staged;
-        }
-        if (!head) this.setPose(a, spec?.melee ? 'attack' : 'cast', now, 900);
-        else {
-          a.creature = { anim: ev.jutsu === 'hydra_roar' ? 'roar' : 'spit', t0: now };
-          if (ev.jutsu === 'hydra_roar') h.sound('roar');
-        }
-        const el: VfxElement = spec?.element ?? 'chakra';
-        // Jutsu play at a pace the player can follow: a beat for the cast, a flight you can watch
-        // (beasts slower still), and the impact plays out whole before the next turn starts.
-        const castDelay = head ? 150 : 560;
-        // A dream's drift flies slower (the Mirage).
-        const fly = (spec?.vfx === 'beast' ? Math.max(900, dist(from, ev.at) * 150) : Math.max(500, dist(from, ev.at) * 115)) * (spec?.seq?.slowFlight ?? 1);
-        const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, t1 + ms / this.speed));
-        h.sound('jutsu', el);
-        if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
-        const t1 = now + castDelay / this.speed;
-        const base = { element: el, t0: t1, enhanced: ev.enhanced, sig: spec?.sig, role: spec?.vfx, tint: jutsuTint(spec, caster) };
-        switch (spec?.special) {
-          case 'heal':
-            this.fx.push({ ...base, kind: 'heal', from: ev.at, to: ev.at, dur: 1300 });
-            linger(1300);
-            return castDelay + 700;
-          case 'clone':
-          case 'mantle':
-            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 1100, unit: ev.unit });
-            linger(1100);
-            return castDelay + 400;
-          case 'flicker':
-          case 'warp':
-          case 'swap':
-            // The chakra flares while it gathers, and is gone with the ninja when it vanishes (it
-            // would otherwise burn on at the spot it left, around whoever is swapped in there).
-            this.fx.push({ ...base, kind: 'aura', from, to: from, t0: now, dur: castDelay + 400, unit: ev.unit, follow: true });
-            return castDelay + 400;
-          case 'earthWall':
-          case 'waterWall':
-            this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200 });
-            // The wall itself rises when its event plays, right as the jutsu lands.
-            return castDelay;
-          case 'metalBlock':
-          case 'metalWall':
-            // Steel dust where the structure rises (the earth wall's sheet would hide it otherwise);
-            // the structure itself grows out of the ground when its event plays (renderer.ts).
-            this.fx.push({ ...base, kind: 'wall', from: ev.at, to: ev.at, dur: 1200, sig: 'debris' });
-            return castDelay;
-          case 'command':
-          case 'submission':
-            // The Northstar's will flares around it; the mind it takes glows when its event plays.
-            this.fx.push({ ...base, kind: 'aura', from, to: from, dur: 900, unit: ev.unit });
-            linger(900);
-            return castDelay + 300;
-        }
-        if (ev.shape?.kind === 'cone') {
-          // A signature cone (the Great Fire Annihilation) plays its whole surge, burn and fade.
-          // It hits once the fire has spread all the way, and the next turn waits for it to burn out.
-          const long = signatureMs(el, spec?.sig, ev.enhanced);
-          this.fx.push({ ...base, kind: 'cone', from, to: ev.at, area: ev.shape, dur: long?.total ?? 1400, lift: [head ? 120 : 70, 30] });
-          if (!long) {
-            linger(1400);
-            return castDelay + 900;
-          }
-          h.shake(ev.enhanced ? 7 : 5);
-          this.lingerUntil = Math.max(this.lingerUntil, t1 + long.total / this.speed);
-          return castDelay + long.hit;
-        }
-        if (ev.shape?.kind === 'line') {
-          this.fx.push({ ...base, kind: 'line', from, to: ev.at, area: ev.shape, dur: 1300, lift: [head ? 120 : 70, 50] });
-          linger(1300);
-          return castDelay + 900;
-        }
-        if (spec?.melee) {
-          const hitMs = impactMs(el, spec.vfx, 900);
-          this.fx.push({ ...base, kind: 'burst', from: ev.at, to: ev.at, dur: hitMs, lift: [60, 60] });
-          linger(hitMs);
-          return castDelay + 450;
-        }
-        // A signature from the sky (Kirin) needs no projectile: the storm gathers over the target.
-        const sky = ev.shape?.kind === 'circle' ? skySignature(el, spec?.sig, ev.enhanced) : null;
-        if (sky) {
-          this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, dur: sky.total });
-          h.shake(ev.enhanced ? 8 : 6);
-          this.lingerUntil = Math.max(this.lingerUntil, t1 + sky.total / this.speed);
-          return castDelay + sky.hit / this.speed;
-        }
-        // The rank D and C jutsu (staged by seq) leave the casting hand; the others fly as they always have.
-        const out = spec?.seq && !head ? handOf(from, a.facing) : from;
-        this.fx.push({ ...base, kind: 'projectile', from: out, to: ev.at, dur: fly, lift: [head ? 120 : spec?.seq ? HAND_LIFT : 70, ev.shape ? 30 : 60] });
-        if (ev.shape?.kind === 'circle') {
-          const boom = blastMs(el, spec?.sig ? 1400 : 1200);
-          this.fx.push({ ...base, kind: 'area', from: ev.at, to: ev.at, area: ev.shape, t0: t1 + fly / this.speed, dur: boom });
-          h.shake(ev.enhanced ? 5 : 3);
-          linger(fly + boom);
-        } else {
-          const hitMs = impactMs(el, spec?.vfx, 900);
-          this.fx.push({ ...base, kind: 'burst', from, to: ev.at, t0: t1 + fly / this.speed, dur: hitMs, lift: [60, 60] });
-          linger(fly + hitMs);
-        }
-        return castDelay + fly + 300;
+        return d;
       }
       case 'save': {
         h.roll(ev);
@@ -1332,14 +1878,26 @@ export class Playback {
         const v = this.view(ev.unit);
         if (!v) return 0;
         v.hp = ev.hp;
+        if (isBleedTick(ev, state.units[ev.unit]) && !v.hidden) {
+          // Bleeding hurts at the start of its turn: a few drops fall from the wound.
+          const p = this.posOf(ev.unit, now);
+          this.fx.push({ kind: 'burst', blood: 'drip', element: 'chakra', from: { x: p.x - v.facing * 0.05, z: p.z }, to: p, t0: now, dur: DRIP_MS });
+        }
         v.hurtUntil = now + 260 / this.speed;
         if (!v.walk && !v.down) this.setPose(v, 'hurt', now, 300);
         const hit = state.units[ev.unit];
         if (hit && (hit.kind === 'hydra_head' || hit.kind === 'hydra_body') && !v.severed && ev.hp > 0) v.creature = { anim: 'hurt', t0: now };
         const at = this.posOf(ev.unit, now);
-        this.float(`${ev.amount}`, ev.crit ? '#fde047' : '#f87171', at, now, { big: ev.crit, dur: 1200 });
-        h.sound(ev.crit ? 'crit' : 'hit');
-        if (ev.crit) h.shake(4);
+        if (ev.crit) {
+          // A critical (always maximum damage): a hit-stop, a bloom of light and a burst on the
+          // target, the number in big gold digits marked "MÁX", a camera kick and the sting.
+          this.impacts.push({ unit: ev.unit, amount: ev.amount, t0: now });
+          h.sound('critSting');
+          h.shake(6);
+          return 110 + IMPACT.hitStop + 300;
+        }
+        this.float(`${ev.amount}`, '#f87171', at, now, { dur: 1200 });
+        h.sound('hit');
         return 110;
       }
       case 'heal': {
@@ -1402,13 +1960,16 @@ export class Playback {
         return label ? 200 : 0;
       }
       case 'effect': {
+        // The cut has left Bleeding: drops splash onto the screen, on the side the cut went.
+        if (bleedingStarts(ev)) this.screenBlood.push({ t0: now, side: this.cutSide, seed: [...ev.unit].reduce((n, c) => n + c.charCodeAt(0), this.round) });
         if (label) this.float(label, ev.on ? '#e879f9' : '#a1a1aa', this.posOf(ev.unit, now), now, { rise: 124 });
         return 0;
       }
       case 'deathSave': {
         h.roll(ev);
         if (label) this.float(label, ev.roll.success ? '#86efac' : '#fca5a5', this.posOf(ev.unit, now), now, { rise: 60 });
-        return 600;
+        // The die over the ninja already took its time.
+        return this.diceOn ? 300 : 600;
       }
       case 'turn': {
         this.turnUnit = ev.unit;
@@ -1468,6 +2029,11 @@ export class Playback {
         h.shake(3);
         return 300;
       }
+      case 'zone':
+        // A gale starts turning (it rises out of the ground), or dies down (it fades).
+        if (ev.on) this.zoneBorn.set(ev.zone.id, now);
+        else this.zoneGone.push({ zone: ev.zone, t0: now });
+        return 0;
       case 'wallHit':
         this.float(`-${ev.amount}`, '#cbd5e1', ev.at, now, { rise: 70 });
         this.fx.push({ kind: 'burst', element: 'earth', from: ev.at, to: ev.at, t0: now, dur: 400, lift: [40, 40] });
@@ -1545,6 +2111,8 @@ export class Playback {
         h.sound(ev.outcome === 'victory' ? 'victory' : 'defeat');
         return 600;
       case 'note': {
+        // A fanned fire's word floats where the fire meets the wind (fan), not over its caster.
+        if (ev.key === 'fanned' || ev.key === 'fanned2') return 0;
         const u = Object.values(state.units).find((x) => x.name === ev.params?.name);
         if (u && label) this.float(label, '#e5e7eb', this.posOf(u.id, now), now, { rise: 130, dur: 1500 });
         return label ? 250 : 0;
@@ -1578,6 +2146,11 @@ export const VOLLEY: Record<VolleyPath, { pace: number; lands: number }> = {
 };
 
 /** Where a projectile that misses comes down: on past the target, each path to its own side. */
+/** The unit an event is about (its save, its damage, its fall…), if it is about one. */
+function unitOfEvent(e: BattleEvent): string | undefined {
+  return 'unit' in e && typeof e.unit === 'string' ? e.unit : undefined;
+}
+
 function pastTarget(from: Pt, to: Pt, path: VolleyPath): Pt {
   const d = Math.max(0.01, dist(from, to));
   const ux = (to.x - from.x) / d;

@@ -132,9 +132,6 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Clan rulings D5 (camp activities and jutsu flavour per clan) and D18 (may an enemy Northstar
   command the party's ninjas?).
 - When to start the clan eyes (he said later).
-- Commit trailers: 353 of the 359 commits on integration end with a `Co-Authored-By:` line that
-  names the AI model, against his rule of no model names in commits. `CLAUDE.md` now says to write
-  that line without the model name. Confirm, or say whether he wants the line at all.
 - Pictures to send again (none is in `docs/reference/` yet): the body shape from his no-skirt
   picture (slim torso, baggy pants into leg wraps); the red cape with gold trim (Crimson Knight
   Cape); the royal fur cape (ermine collar, gold medallions, fleur-de-lis, front tabard); the

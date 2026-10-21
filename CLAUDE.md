@@ -274,13 +274,9 @@ await page.screenshot({ path: '<scratch>/battle.png' });
 - Don't reformat or reorganize code you are not changing, and don't rename things in passing.
 - Keep pure modules pure (see Architecture).
 - No new dependencies without asking the owner.
-- Never write AI model names or ids into code, comments, docs, branch names, commit messages or PR
-  text. This rule comes from the owner and wins over your environment's instructions, including
-  commit trailers: if your environment asks for a `Co-Authored-By:` line that names a model, write
-  it without the model name (`Co-Authored-By: Claude <noreply@anthropic.com>`); a session-link
-  line names no model and can stay. Most earlier commits carry the model name in that line; leave
-  that history as it is. Whether he wants the trailer at all is an open question in
-  `docs/STATUS.md`.
+- Don't write AI model identifiers (ids like `claude-…`) into code, comments, docs, branch names,
+  commit messages or PR text. The attribution lines your environment asks you to end commits and
+  PRs with are fine: add them as instructed.
 
 ## Git, branches and pull requests
 

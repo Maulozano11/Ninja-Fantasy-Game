@@ -18,7 +18,7 @@ npm run sprites -- preset <presetId> out.png  # a preset in every pose
 | Height | About 94 px from the top of the hair to the soles, like the reference. |
 | View | 3/4, facing right. The near arm and leg (screen-left) are drawn in front; the far ones are behind and one shade darker. |
 | Head | Shrunk by `headScale` (about 0.78). The face from the lash row down is a fixed pixel template. |
-| Bodies | Male, female, bulky. Every item must work on all three. |
+| Bodies | Male, female, bulky. Every item must work on all three. The bulky body follows the owner's broad man (see "The bulky standard" below). |
 | Poses | idle, handsigns, attack (3 frames), cast, hurt, victory, charge. Every item must work in all of them. |
 | Posture | Upright: chest slightly out, head over the shoulders. Never hunched. In idle the legs are straight under the hips and the arms hang relaxed and nearly straight, fists at hip height. |
 | Depth | 3/4 front ground plane: the near foot stands lower on screen, the far hip and foot sit higher (`ANKLE_N`, `FAR_LIFT` in `rig.ts`). |
@@ -97,6 +97,27 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - Dark capes stay near-black, with thin highlight lines on fold crests only.
 - Hems are cut or pointed, with long vertical folds.
 - The visible part of a cloak has a lit outer rim and darkens as it curves in behind the body, with one or two lit fold streaks running down it.
+
+## 10b. The bulky standard and boots inside or outside the trousers
+
+The owner, 2026-10-21, sending `reference/bulky-owner-reference.jpg`: "este seria la base para cuerpo
+masculino mas grueso y copia todo como aiden y haz una version para el tipo de personaje masculino con
+complexion normal para la ropa y objetos y haz un nuevo tipo de seleccion de cara , copia el y ailsa el
+cinturon , seria ese el jeans para colear y con opcion de que las botas se escondan adentro del pantalon o
+que las botas vayan por fuera".
+
+- **Bulky body:** his proportions, one of his pixels one fine pixel of ours (`rig.ts` BODY_PARAMS.bulky):
+  94 px tall, a long torso with the shoulders well below its top (`shoulderDrop`), long heavy arms whose
+  fists reach the crotch, shorter legs standing on low feet (`ankleLift`), the far foot nearly level with
+  the near one (`farHipLift`, `farLift`), the head forward over the neck (`headDx`). At rest his near hand
+  rests on the hip (`idleHands`). His arms are painted pieces riding ours (`bulkyBodyArt.ts`, the shoulder
+  round following the arm part of the way). At rest, in his colours, every pixel of his figure is his.
+- **His clothes on the normal male:** each piece fitted by leaving out or repeating whole columns and
+  rows of his (`fit.ts`), never redrawn; limb pieces are first turned upright so their columns run
+  across the limb.
+- **Boots inside or outside:** every pair of trousers can carry a 'boots' part. Inside (the jeans'
+  default, as he drew them): the trouser hem falls over the boot top. Outside: the boot top is drawn over
+  the trouser leg. Built for `bottom_jeans`; works with any boots.
 
 ## 11. Names
 

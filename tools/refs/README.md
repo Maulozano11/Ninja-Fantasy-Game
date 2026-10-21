@@ -130,3 +130,28 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `bulky_ref.py` + `bulky-body-from-ref.py`, `stern-face-from-ref.py`, `lock-hair-from-ref.py`,
+  `seam-shirt-from-ref.py`, `brawler-bracers-from-ref.py`, `brawler-belt-from-ref.py`, `jeans-from-ref.py`,
+  `brawler-boots-from-ref.py`: the owner's broad man (`docs/reference/bulky-owner-reference.jpg`, a 100 x 100
+  grid at pitch 20, phase 0; one of his pixels is one fine pixel of ours), the base of the bulky body. Our bulky
+  rig is built to his proportions, so `bulky_ref.JOINTS` (our bulky idle frame 0, his picture at offset
+  (77, 121)) are his joints; rerun `JOINTS` from the rig if `BODY_PARAMS.bulky` changes, then every script.
+  `bulky_ref.labels()` cuts his figure into parts by region polygons (`REGIONS`, claimed in order) and colour
+  kinds (`kind()`: line, gap, hair, skin, cool, tan, brown); a black pixel goes to every part whose colours it
+  bounds, a stray one to the part most of its neighbours belong to. Where something of his hides a part (the
+  shirt under the lock, the arm under the sleeve and the bracer, the belt and jeans under his fist and pouch,
+  the boot tops under the hem) `fill_hidden()` continues his pixels: each hidden pixel takes his colour met
+  first walking along the limb or down, then across, and the new edge is closed by his black line. The arms'
+  upper pieces are split into a shoulder cap and a tube (`CAP_T`), so the cap can follow the arm only part of
+  the way. Each module exports `*_REST` (where each piece lands at rest, checked by `src/sprite/bulky.test.ts`)
+  and, where colour slots need it, `*_KIND`. With a second argument, a folder, each writes his figure beside
+  the pieces.
+
+      python3 -I tools/refs/bulky-body-from-ref.py src/sprite/bulkyBodyArt.ts [studyDir]
+      python3 -I tools/refs/stern-face-from-ref.py src/sprite/sternFaceArt.ts [studyDir]
+      python3 -I tools/refs/lock-hair-from-ref.py src/sprite/items/lockHairArt.ts [studyDir]
+      python3 -I tools/refs/seam-shirt-from-ref.py src/sprite/items/seamShirtArt.ts [studyDir]
+      python3 -I tools/refs/brawler-bracers-from-ref.py src/sprite/items/brawlerBracersArt.ts [studyDir]
+      python3 -I tools/refs/brawler-belt-from-ref.py src/sprite/items/brawlerBeltArt.ts [studyDir]
+      python3 -I tools/refs/jeans-from-ref.py src/sprite/items/jeansArt.ts [studyDir]
+      python3 -I tools/refs/brawler-boots-from-ref.py src/sprite/items/brawlerBootsArt.ts [studyDir]

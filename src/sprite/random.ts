@@ -2,6 +2,7 @@
 
 import { fitsBody, itemsForSlot } from './catalog';
 import { CHAKRA_CHOICES } from './chakraInfo';
+import { OFFERED_TYPES } from './chakraNature';
 import type { ItemDef } from './ctx';
 import { EMBLEMS } from './items/headband';
 import { CLOTH_PALETTE, EYE_COLORS, HAIR_COLORS, SKIN_TONES } from './palettes';
@@ -70,7 +71,8 @@ export function randomAppearance(): SpriteAppearance {
       cloth: pick(CLOTH_PALETTE),
       plate: '#cbd5e1',
     },
-    chakra: { color: pick(CHAKRA_CHOICES).id, tint: chance(0.25) ? pick(CHAKRA_CHOICES).id : undefined, onCharge: true, onCast: true, onVictory: chance(0.5) },
+    // a type the player could pick (its nature), one of its bursts, and now and then another color: the color never changes the type
+    chakra: { color: pick(pick(OFFERED_TYPES).bursts), tint: chance(0.25) ? pick(CHAKRA_CHOICES).id : undefined, onCharge: true, onCast: true, onVictory: chance(0.5) },
     pixelEdits: [],
   };
 }

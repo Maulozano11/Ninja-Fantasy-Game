@@ -5,7 +5,27 @@
 import type { DrawCtx } from './ctx';
 import { FLAME_LONGSWORD } from './items/flameSwordArt';
 import { dawnStaffInFarHand } from './items/aureliaStaff';
-import { add, norm, scale, sub, Vec } from './raster';
+import { add, norm, RES, scale, sub, Vec } from './raster';
+import { drawRig, THROW_RELEASE_FRAME } from './rig';
+import type { BodyType } from './types';
+
+/**
+ * Weapon angles through 'throw' (rig.ts THROW): coiled with the weapon drawn back low behind the
+ * hip (blades pointing back, a polearm level and trailing), then raised behind the head (a blade
+ * point up and back, a polearm raised nearly upright beside the head, its shaft clear of the hair),
+ * then flung: the arm whips forward and the weapon leaves the hand pointing level at the target.
+ * From the release on the weapon is no longer in the hand: those entries repeat the angle it was
+ * flung at (the one it flies at).
+ */
+const THROW_BLADE = [166, -116, 4, 4, 4];
+const THROW_POLE = [176, -76, 2, 2, 2];
+
+/**
+ * Thrust ('pierce'): guard with the point raised at the target, chamber at the hip with the point
+ * level, the lunge and its hold dead level at the target, the recoil back up toward the guard.
+ */
+const PIERCE_BLADE = [-28, -4, 0, 0, -20];
+const PIERCE_POLE = [-26, -4, -1, -1, -20];
 
 /** Screen angle of a hand-held blade per pose/frame (degrees, 0 = facing right, + = clockwise/down). */
 export function swordAngle(g: DrawCtx): number {
@@ -15,6 +35,10 @@ export function swordAngle(g: DrawCtx): number {
       return -45;
     case 'attack':
       return [-130, -10, 42][f % 3];
+    case 'throw':
+      return THROW_BLADE[f % THROW_BLADE.length];
+    case 'pierce':
+      return PIERCE_BLADE[f % PIERCE_BLADE.length];
     case 'cast':
       return -42;
     case 'hurt':
@@ -52,6 +76,10 @@ export function poleAngle(g: DrawCtx): number {
       return -50;
     case 'attack':
       return [-130, -8, 30][f % 3];
+    case 'throw':
+      return THROW_POLE[f % THROW_POLE.length];
+    case 'pierce':
+      return PIERCE_POLE[f % PIERCE_POLE.length];
     case 'cast':
       return -45;
     case 'hurt':
@@ -87,9 +115,22 @@ export const handsLimp = (g: DrawCtx): boolean => g.rig.pose === 'downed';
 const BUSY = new Set(['handsigns', 'castBook', 'castSphere', 'castLightning', 'castWave', 'castFlash', 'castEye', 'castScript', 'lean', 'sit', 'read']);
 export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.look.stowed;
 
+/**
+ * The held weapon (or technique) has been thrown and is not in the hand ('throw' from its release
+ * frame on): it is not drawn on the body, the battle draws it in flight. A stowed weapon stays put.
+ */
+export const handsReleased = (g: DrawCtx): boolean => g.rig.released && !handsBusy(g);
+
+/**
+ * Bare hands in the wind-up of 'throw' (no weapon in the hand: none held, or it is stowed) throw a
+ * kunai from the pouch: the near fist holds one, like the Kunai item, until the release.
+ */
+export const throwsKunai = (g: DrawCtx): boolean => g.rig.pose === 'throw' && !g.rig.released && (!!g.look.stowed || !g.has('held') || g.has('held', 'held_none'));
+
 /** Angle of the handle the near hand wraps, or null when it holds nothing with a handle. */
 export function gripAngle(g: DrawCtx): number | null {
-  if (handsBusy(g) || handsLimp(g)) return null;
+  if (throwsKunai(g)) return swordAngle(g);
+  if (handsBusy(g) || handsLimp(g) || handsReleased(g)) return null;
   if (g.has('held', 'held_naginata')) return poleAngle(g);
   // Aurelia's staff is in her far fist at rest (her near hand is empty), in the near one like a pole otherwise.
   if (g.has('held', 'held_dawn_staff')) return dawnStaffInFarHand(g) ? null : poleAngle(g);
@@ -101,4 +142,50 @@ export function gripAngle(g: DrawCtx): number | null {
 export function gripPoint(g: DrawCtx): Vec {
   const r = g.rig;
   return add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
+}
+
+/** Where a thrown weapon leaves the hand: see throwRelease. */
+export interface ThrowRelease {
+  /**
+   * The first 'throw' frame without the weapon in the hand: the owner's reference pose, where the
+   * phase starts. The weapon is flung in the frame before (THROW_RELEASE_FRAME - 1).
+   */
+  frame: number;
+  /** Middle of the open near hand at that frame (fine pixels of the sprite frame, facing right; FEET is the feet). */
+  hand: Vec;
+  /** Direction the open hand points at that frame, wrist to fingers (degrees, 0 = facing right, + = clockwise/down). */
+  handAngle: number;
+  /**
+   * Where the weapon starts its flight: the point of the handle the fist held in the frame before,
+   * the last one it is drawn in, with the arm whipped forward (fine pixels).
+   */
+  lastHeld: Vec;
+  /** Angle it flies at: the one it was flung at in that frame, level at the target (degrees, as swordAngle/poleAngle). */
+  weaponAngle: number;
+  /** The item that flies: the held weapon, or a kunai from bare hands (see throwsKunai). */
+  thrown: string;
+}
+
+/**
+ * Where the battle starts a thrown weapon in flight for a body and the item in its hand (`held`:
+ * its id, missing when the hands are empty or the weapon is stowed): it leaves the fist where the
+ * last frame that draws it holds it, at the angle it was flung at, and is drawn in flight from the
+ * release frame on. The figure faces right; mirror x around FEET.x for a figure facing left.
+ */
+export function throwRelease(body: BodyType, held?: string): ThrowRelease {
+  const at = drawRig(body, 'throw', THROW_RELEASE_FRAME);
+  const before = drawRig(body, 'throw', THROW_RELEASE_FRAME - 1);
+  const fist = (r: typeof at): Vec => add(r.handN, scale(norm(sub(r.handN, r.wristN)), 0.9));
+  const d = norm(sub(at.handN, at.wristN));
+  const pole = held === 'held_naginata';
+  // The flame longsword is held by its own grip at the hand joint (items/accessories.ts), the others at the fist's middle.
+  const grip = held === 'held_flame_sword' ? before.handN : fist(before);
+  return {
+    frame: THROW_RELEASE_FRAME,
+    hand: scale(fist(at), RES),
+    handAngle: (Math.atan2(d.y, d.x) * 180) / Math.PI,
+    lastHeld: scale(grip, RES),
+    weaponAngle: (pole ? THROW_POLE : THROW_BLADE)[THROW_RELEASE_FRAME - 1],
+    thrown: held && held !== 'held_none' ? held : 'held_kunai',
+  };
 }

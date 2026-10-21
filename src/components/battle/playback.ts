@@ -37,6 +37,12 @@ export interface UnitView {
   severed?: boolean;
   /** A creature's own animation (the hydra's bite, spit, roar, hurt, sever, regrow, death). */
   creature?: { anim: string; t0: number };
+  /**
+   * A Ryusei's phase (Warp Strike, Spatial Swap): the ninja turns to blue light where it stands,
+   * dashes as light to `to` and turns solid there (PHASE_IN, PHASE_DASH, PHASE_OUT; renderer.ts
+   * draws it).
+   */
+  phase?: { from: Pt; to: Pt; t0: number };
 }
 
 export interface Floater {
@@ -99,6 +105,20 @@ const SNEAK = 2.4;
 /** How long a Kōton structure takes to rise out of the ground, and to sink back when it goes (ms). */
 export const RISE_MS = 320;
 export const FALL_MS = 450;
+/**
+ * A Ryusei's phase (ms at speed 1): turning to light where it stands, the dash as light, turning
+ * solid where it lands. Quick, as a bonus action should be: about two thirds of a second in all.
+ */
+export const PHASE_IN = 150;
+export const PHASE_DASH = 300;
+export const PHASE_OUT = 210;
+export const PHASE_MS = PHASE_IN + PHASE_DASH + PHASE_OUT;
+
+/** How far along its dash a phase is (0..1) after `ms` of it (at speed 1): quick off the mark, easing into the landing. */
+export const phaseDash = (ms: number): number => {
+  const t = Math.min(1, Math.max(0, (ms - PHASE_IN) / PHASE_DASH));
+  return 1 - (1 - t) ** 2.2;
+};
 
 export class Playback {
   views = new Map<string, UnitView>();
@@ -191,6 +211,11 @@ export class Playback {
         v.pose = u ? restPoseView(u, v) : 'idle';
         v.poseT0 = now;
       }
+      if (v.phase && now >= v.phase.t0 + PHASE_MS / this.speed) {
+        v.phase = undefined;
+        const u = state.units[id];
+        if (u) v.facing = u.facing;
+      }
       if (v.walk && now >= v.walk.t0 + (v.walk.total / v.walk.speed) * 1000 / this.speed) {
         v.pos = { ...v.walk.path[v.walk.path.length - 1] };
         v.walk = undefined;
@@ -204,7 +229,7 @@ export class Playback {
     this.banners = this.banners.filter((b) => now < b.t0 + b.dur);
     this.fallen = this.fallen.filter((f) => now < f.t0 + FALL_MS / this.speed);
     if (!this.settling || this.queue.length || now < this.busyUntil) return false;
-    for (const v of this.views.values()) if (v.walk || (v.poseUntil && now < v.poseUntil)) return false;
+    for (const v of this.views.values()) if (v.walk || v.phase || (v.poseUntil && now < v.poseUntil)) return false;
     this.settling = false;
     return true;
   }
@@ -213,6 +238,11 @@ export class Playback {
   posOf(id: string, now: number): Pt {
     const v = this.views.get(id);
     if (!v) return { x: 0, z: 0 };
+    if (v.phase) {
+      const { from, to, t0 } = v.phase;
+      const k = phaseDash((now - t0) * this.speed);
+      return { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k };
+    }
     const w = v.walk;
     if (!w) return v.pos;
     const travelled = Math.min(w.total, (((now - w.t0) * this.speed) / 1000) * w.speed);
@@ -274,6 +304,15 @@ export class Playback {
     return this.views.get(id);
   }
 
+  /** The jutsu just played is followed by its caster's phase (a Spatial Swap resisted has none). */
+  private phaseFollows(id: string): boolean {
+    for (const e of this.queue) {
+      if (e.t === 'teleport' && e.how === 'phase' && e.unit === id) return true;
+      if (e.t === 'jutsu' || e.t === 'turn' || e.t === 'attack' || e.t === 'move') return false;
+    }
+    return false;
+  }
+
   private setPose(v: UnitView, pose: SpritePose, now: number, dur?: number): void {
     v.pose = pose;
     v.poseT0 = now;
@@ -322,12 +361,22 @@ export class Playback {
       case 'teleport': {
         const v = this.view(ev.unit);
         if (!v) return 0;
+        // A Spatial Swap's two jumps happen at once.
+        const together = this.queue[0]?.t === 'teleport';
+        if (ev.how === 'phase') {
+          // A Ryusei's Warp Strike or Spatial Swap: no smoke, the ninja crosses as blue light.
+          v.phase = { from: { ...ev.from }, to: { ...ev.to }, t0: now };
+          v.pos = { ...ev.to };
+          v.walk = undefined;
+          v.lunge = undefined;
+          if (!together) h.sound('kawarimi');
+          return together ? 0 : PHASE_MS;
+        }
         this.fx.push({ kind: 'smoke', element: 'chakra', from: ev.from, to: ev.from, t0: now, dur: 500 });
         this.fx.push({ kind: 'smoke', element: 'chakra', from: ev.to, to: ev.to, t0: now + 120, dur: 500 });
         v.pos = { ...ev.to };
         v.walk = undefined;
-        // A Spatial Swap's two jumps happen at once.
-        return this.queue[0]?.t === 'teleport' ? 0 : 320;
+        return together ? 0 : 320;
       }
       case 'kawarimi': {
         const v = this.view(ev.unit);
@@ -428,6 +477,13 @@ export class Playback {
         if (Math.abs(ev.at.x - from.x) > 0.05) a.facing = ev.at.x > from.x ? 1 : -1;
         const caster = state.units[ev.unit];
         const head = caster?.kind === 'hydra_head';
+        if ((spec?.special === 'warp' || spec?.special === 'swap') && this.phaseFollows(ev.unit)) {
+          // A Warp Strike or a Spatial Swap that goes through: its name and a beat, then the phase
+          // itself plays (no cast pose, no chakra flare: the ninja turns to light at once).
+          h.sound('jutsu', 'chakra');
+          if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
+          return 90;
+        }
         if (!head) this.setPose(a, spec?.melee ? 'attack' : 'cast', now, 900);
         else {
           a.creature = { anim: ev.jutsu === 'hydra_roar' ? 'roar' : 'spit', t0: now };

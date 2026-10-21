@@ -3,8 +3,10 @@
 
 import type { ChakraNature, ClanType, ShinobiCharacter } from '../types/shinobi';
 import { CLANS_DATA, DEFAULT_CHARACTER, SHINOBI_CLASSES } from '../data/shinobiData';
+import { COMPANIONS } from '../data/missions';
 import { chakraNature } from '../sprite/chakraNature';
 import { getAppearance } from '../sprite/legacy';
+import type { ChakraColorId } from '../sprite/types';
 import type { BreakdownKind, ConvictionValue, EffectId, RuleEvent, SkillId } from '../types/mission';
 import { savingThrow, SKILL_ABILITY } from './checks';
 import { deriveStats, effectiveMaxHp, SHEET_VERSION } from './derived';
@@ -234,16 +236,48 @@ export function countClanBonus(c: ShinobiCharacter): ShinobiCharacter {
 }
 
 /**
+ * The chakra burst each legend and companion had before its chakra type followed its jutsu
+ * (2026-10-21), by id. A saved copy still holding it was saved before that change.
+ */
+export const LEGEND_OLD_BURST: Readonly<Record<string, ChakraColorId>> = {
+  preset_storm: 'violet', // Kaien: Spectral Guardian, now Lightning
+  preset_night: 'blue', // Ren: Rising Tide, now Lightning
+  preset_sunburst: 'orange', // Hiro: Cinder Nova, now Wind
+  preset_warlord: 'violet', // Raiga: Spectral Guardian, now Fire
+  companion_hana: 'green', // Hana: Leafwind Spiral, now Water
+  companion_kenji: 'violet', // Kenji: Spectral Guardian, now Earth
+};
+
+/**
+ * A saved copy of a legend or companion (the hero, the roster, a mission under way) that still has
+ * the burst it had before its type followed its jutsu gets the legend's burst of today, so its nature
+ * matches its jutsu again (the owner, 2026-10-21: "actualiza"). It keeps the colour it showed: its own
+ * tint, or the old burst's natural colour. Nothing else changes, and a copy with another burst (the
+ * player's own choice) is left alone, so it happens once.
+ */
+export function updateLegendChakra(c: ShinobiCharacter): ShinobiCharacter {
+  const old = Object.hasOwn(LEGEND_OLD_BURST, c.id) ? LEGEND_OLD_BURST[c.id] : undefined;
+  const chakra = c.appearance?.chakra;
+  if (!old || !chakra || chakra.color !== old) return c;
+  const now = COMPANIONS.find((x) => x.id === c.id)?.appearance?.chakra.color;
+  if (!now || now === old) return c;
+  return { ...c, appearance: { ...c.appearance!, chakra: { ...chakra, color: now, tint: chakra.tint ?? old } } };
+}
+
+/**
  * A sheet from an older save or an import, as today's rules read it:
+ * - a legend's or companion's copy with its old chakra burst moved to the legend's type
+ *   (updateLegendChakra);
  * - its clan converted (old names load as the clan that replaced them). When its numbers came from
  *   the creator's formula (its AC and jutsu DC and attack still match it) and its old clan built a
  *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is
  *   kept under the new maxima;
  * - the clan's ability bonus counted in its numbers, once (countClanBonus).
- * Hand-made numbers (the presets) keep their hand-made part; the look and the jutsu stay as they are.
- * A sheet that is already today's comes back as it is.
+ * Hand-made numbers (the presets) keep their hand-made part; the jutsu stay as they are, and of the
+ * look only that old burst changes. A sheet that is already today's comes back as it is.
  */
-export function migrateCharacter(c: ShinobiCharacter): ShinobiCharacter {
+export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
+  const c = updateLegendChakra(saved);
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

@@ -28,6 +28,12 @@ export interface ChakraType {
   elemental: boolean;
   /** Its bursts; the first is the one a player gets on picking the type. */
   bursts: ChakraColorId[];
+  /**
+   * Waiting for the owner (2026-10-21: "sombra se quedara pendiente y espiritu tambien quitalos de la
+   * seleccion"): not offered in the creator or by the random ninja. A ninja that already has it keeps
+   * it, draws it and reads it as its nature until the player picks another type.
+   */
+  pending?: boolean;
 }
 
 /** The types in the order the creator shows them: the elements, then the others. */
@@ -37,11 +43,14 @@ export const CHAKRA_TYPES: ChakraType[] = [
   { nature: 'Wind', elemental: true, bursts: ['green'] },
   { nature: 'Lightning', elemental: true, bursts: ['yellow'] },
   { nature: 'Earth', elemental: true, bursts: ['brown'] },
-  { nature: 'Shadow', elemental: false, bursts: ['indigo'] },
-  { nature: 'Spirit', elemental: false, bursts: ['violet'] },
+  { nature: 'Shadow', elemental: false, bursts: ['indigo'], pending: true },
+  { nature: 'Spirit', elemental: false, bursts: ['violet'], pending: true },
   { nature: 'Light', elemental: false, bursts: ['white'] },
   { nature: 'Void', elemental: false, bursts: ['black'] },
 ];
+
+/** The types a player can pick (the creator) and the random ninja picks from: all but the pending ones. */
+export const OFFERED_TYPES: ChakraType[] = CHAKRA_TYPES.filter((t) => !t.pending);
 
 /**
  * A chakra's type: its burst's nature. The colour (tint) plays no part. A burst the game does not

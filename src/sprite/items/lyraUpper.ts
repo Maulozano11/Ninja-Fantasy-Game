@@ -12,7 +12,9 @@ import { RES, type PartId, type Vec } from '../raster';
 import { rotateTemplate } from '../rotsprite';
 import {
   BLOUSE_FOREARM_F,
+  BLOUSE_FOREARM_F_CUT,
   BLOUSE_FOREARM_N,
+  BLOUSE_FOREARM_N_CUT,
   BLOUSE_SIDE_F,
   BLOUSE_SLEEVE_F,
   BLOUSE_SLEEVE_N,
@@ -75,22 +77,34 @@ function drawBlouse(g: DrawCtx, blouse: string, lining: string): void {
   // (the bare top of the near shoulder, above the puff, is his skin: in the character's skin)
   const tint = (ch: string, hex: string) => (LYRA_SKIN.includes(hex) ? hisSkinTone(hex, LYRA_SKIN[0], g.look.skin) : cloth(ch, hex));
   const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
-  put('farArm.cloth', BLOUSE_FOREARM_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
+  put('farArm.cloth', BLOUSE_FOREARM_F, r.wristF, segAngle(r.elbowF, r.wristF), 'forearmF');
+  takeOff(g, 'farArm.body', BLOUSE_FOREARM_F_CUT, r.wristF, segAngle(r.elbowF, r.wristF), CUT_SPREAD);
   put('farArm.cloth', BLOUSE_SLEEVE_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
   put('torso.top', BLOUSE_SIDE_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
   put('torso.top', BLOUSE_TORSO, r.neck, segAngle(r.pelvis, r.neck), 'torso');
-  put('nearArm.cloth', BLOUSE_FOREARM_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN');
+  // the near fitted sleeve and cuff go with the arm itself, so the cuff casts no shadow on his fist
+  put('nearArm.body', BLOUSE_FOREARM_N, r.wristN, segAngle(r.elbowN, r.wristN), 'forearmN');
+  takeOff(g, 'nearArm.body', BLOUSE_FOREARM_N_CUT, r.wristN, segAngle(r.elbowN, r.wristN), CUT_SPREAD);
   put('nearArm.cloth', BLOUSE_SLEEVE_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
-  takeOff(g, BLOUSE_SLEEVE_N_CUT, r.shoulderN, segAngle(r.shoulderN, r.elbowN));
+  takeOff(g, 'nearArm.body', BLOUSE_SLEEVE_N_CUT, r.shoulderN, segAngle(r.shoulderN, r.elbowN));
 }
 
 /**
- * Takes the body's near arm off where `cut` (laid as stampPiece lays a piece) says: our female body's
- * shoulder stands two rows higher than his, and his bare shoulder at the top of the sleeve is the
- * shoulder, his hair round it showing as he drew it.
+ * How far (degrees) a forearm may turn from where he drew it and still lose the columns of our forearm
+ * beside his bracer and cuff: turned further, the cut (made at rest) no longer lies along our forearm,
+ * which is drawn afresh at each angle, and would leave holes and loose line in it.
  */
-function takeOff(g: DrawCtx, cut: PaintedPiece, at: Vec, deg: number): void {
-  const L = g.L('nearArm.body');
+const CUT_SPREAD = 15;
+
+/**
+ * Takes the body's arm off where `cut` (laid as stampPiece lays a piece) says: our female body's
+ * shoulder stands two rows higher than his, and his bare shoulder at the top of the sleeve is the
+ * shoulder, his hair round it showing as he drew it; our forearms are a column or two wider than his
+ * bracers and cuffs, whose line is the arm's (only within `spread` degrees of his angle, if given).
+ */
+function takeOff(g: DrawCtx, depth: Depth, cut: PaintedPiece, at: Vec, deg: number, spread = 360): void {
+  if (Math.abs(((deg - cut.angle + 540) % 360) - 180) > spread) return;
+  const L = g.L(depth);
   const ax = Math.floor(at.x * RES);
   const ay = Math.floor(at.y * RES);
   for (const p of rotateTemplate(cut, deg - cut.angle)) L.clear(ax + p.dx, ay + p.dy);
@@ -106,10 +120,10 @@ function drawCorset(g: DrawCtx, leather: string, gold: string, steel: string): v
   ]);
   const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
   const torso = segAngle(r.pelvis, r.neck);
-  put('farArm.armor', CORSET_BRACER_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
+  put('farArm.armor', CORSET_BRACER_F, r.wristF, segAngle(r.elbowF, r.wristF), 'forearmF');
   put('torso.armor', CORSET, r.neck, torso, 'torso');
   put('torso.armor', CORSET_PAULDRON, r.shoulderF, pauldronAngle(torso, segAngle(r.shoulderF, r.elbowF)), 'upperArmF');
-  put('nearArm.armor', CORSET_BRACER_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN');
+  put('nearArm.armor', CORSET_BRACER_N, r.wristN, segAngle(r.elbowN, r.wristN), 'forearmN');
 }
 
 /** Lyra's blouse (slot top), women only: cut for the female figure. */

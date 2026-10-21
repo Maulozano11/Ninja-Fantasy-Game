@@ -21,13 +21,14 @@ cyan sparkles round it. What is his and what is filled:
   - Our female body's fist round a grip is his own near hand on this sword, cut 1:1
     (tools/refs/female-body-from-ref.py GRIP), so the sword is his as he drew it, as long as his: no
     pixel is moved or repeated (STRETCH 0; the old body's bigger fist needed the grip three diagonals
-    longer). The body's arm is shorter and hangs more upright than his, so at our idle its fist stands
-    HAND_SHIFT from where he drew his: the sword goes with it.
+    longer). With his Lyra's long arms (appearance `arms: 'long'`, src/sprite/rig.ts LONG_ARMS) our
+    fist at idle stands where he drew his (HAND_SHIFT 0), so the sword does too.
 
 The template is drawn at his blade's angle (the fitted line of his blade, which our idle holds it at:
-grip.ts) and pivots on the grip cell under his fist that our grip point (grip.ts gripPoint at our
-female idle) falls on once our fist is laid on his, so at rest every pixel of the sword is his, held in
-our fist as in his, HAND_SHIFT from where he drew it.
+grip.ts) and pivots on the cell our grip point (grip.ts gripPoint at our female idle with her long
+arms) falls on once our fist is laid on his: his grip runs through the top of his fist, so that cell
+is beside his grip, under the fist. At rest every pixel of the sword is his, held in our fist as in
+his, where he drew it.
 
 It writes, in <out>:
 
@@ -54,11 +55,12 @@ INSET = 4           # picture pixels left out round each block (JPEG bleed)
 PAL_TOL = 12        # medians this close (each channel) are one colour of his
 BOX = (96, 150, 166, 216)  # our frame: x0, x1, y0, y1 (exclusive) round the sword
 
-# Our female idle, frame 0 (src/sprite/grip.ts gripPoint, fine pixels), and where our fist (his near
-# hand, the body's grip template) stands there from where he drew his hand: the top left of the hand's
-# cut, his (104, 176), is our (108, 173). The template pivots on GRIP_POINT - HAND_SHIFT.
-GRIP_POINT = (110.50, 176.72)
-HAND_SHIFT = (4, -3)
+# Our female idle with his Lyra's long arms, frame 0 (src/sprite/grip.ts gripPoint, fine pixels; printed
+# by tools/refs/heroine-idle.mts), and where our fist (his near hand, the body's grip template) stands
+# there from where he drew his hand: the top left of the hand's cut, his (104, 176), is our (104, 176).
+# The template pivots on GRIP_POINT - HAND_SHIFT.
+GRIP_POINT = (105.87, 179.36)
+HAND_SHIFT = (0, 0)
 
 # His hilt, our frame at his place: row -> columns taken (every cell, his black line with it).
 POMMEL = {  # the pommel and the top of the knuckle bow: stays where he drew it
@@ -256,7 +258,7 @@ def ts_module(out, okind, angle):
     sparks = sorted((x - x0, y - y0, ch[v]) for (x, y), v in out.items() if okind[(x, y)] == 'spark')
     px = int(math.floor(GRIP_POINT[0])) - HAND_SHIFT[0] - x0
     py = int(math.floor(GRIP_POINT[1])) - HAND_SHIFT[1] - y0
-    assert rows[py][px] != '.', 'the pivot must be on the grip'
+    assert any(rows[py + dy][px + dx] != '.' for dx in (-1, 0, 1) for dy in (-1, 0, 1)), 'the pivot must be on the grip'
     count = {}
     for c, v in body.items():
         count[v] = count.get(v, 0) + 1

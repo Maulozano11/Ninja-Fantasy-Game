@@ -7,7 +7,7 @@
 // (screen-left, drawn in front); "far" limbs are on screen-right, behind.
 
 import { add, len, norm, PAD, RES, scale, sub, v, Vec } from './raster';
-import type { BodyType, CastStyle, SpritePose } from './types';
+import type { ArmType, BodyType, CastStyle, SpritePose } from './types';
 
 export const GROUND = PAD.y + 60; // ground line under the body (shadow centre)
 /** The design x the feet stand on (the middle of the figure's box). */
@@ -975,12 +975,42 @@ export function buildRig(body: BodyType, pose: RigPose, frame: number): Rig {
 }
 
 /** The upright rig every layer is drawn with (compose.ts lays a 'downed' figure down afterwards). */
-export function drawRig(body: BodyType, pose: RigPose, frame: number): Rig {
+export function drawRig(body: BodyType, pose: RigPose, frame: number, arms?: ArmType): Rig {
   const frames = POSES[pose] || POSES.idle;
   const f = frames[((frame % frames.length) + frames.length) % frames.length];
-  const r = solveRig(body, pose, frame, f);
-  if (f.lie) r.lay = layFor(solveRig(body, pose, 0, frames[0]));
+  const bp = paramsFor(body, arms);
+  const r = solveRig(body, bp, pose, frame, f);
+  if (f.lie) r.lay = layFor(solveRig(body, bp, pose, 0, frames[0]));
   return r;
+}
+
+/**
+ * The 'long' arms (appearance `arms`), his Lyra's: in his picture of her at our scale
+ * (docs/reference/lyra-game-scale-owner-reference.jpg, laid at (x + 74, y + 121)) her elbows are where
+ * the female body's are, but her forearms, bracer and cuff to the fist, are longer than the body's (his
+ * near fist starts on row 176, the body's on 173; his far hand on 177, the body's on 174). The forearm
+ * is `forearm` design units longer, the far one `farLonger` more, and the near arm hangs `hangIn`
+ * degrees less far out (BodyParams.hangOut), so at rest both wrists are where his are and her fists
+ * (the female body's hands, cut from his Lyra) are his, where he drew them. Her free far hand then
+ * hangs open, as he drew it (ctx.ts handPose), not as a fist.
+ */
+export const LONG_ARMS = { forearm: 1.3, farLonger: 0.4, hangIn: 1 };
+
+const ARM_PARAMS = new Map<string, BodyParams>();
+function paramsFor(body: BodyType, arms?: ArmType): BodyParams {
+  const bp = BODY_PARAMS[body];
+  if (arms !== 'long') return bp;
+  let p = ARM_PARAMS.get(body);
+  if (!p) {
+    p = {
+      ...bp,
+      forearm: bp.forearm + LONG_ARMS.forearm,
+      farLonger: (bp.farLonger ?? 0) + LONG_ARMS.farLonger,
+      hangOut: bp.hangOut ? [bp.hangOut[0] - LONG_ARMS.hangIn, bp.hangOut[1]] : undefined,
+    };
+    ARM_PARAMS.set(body, p);
+  }
+  return p;
 }
 
 /**
@@ -1079,8 +1109,7 @@ export function turnRig(r: Rig, deg: number): Rig {
   };
 }
 
-function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): Rig {
-  const bp = BODY_PARAMS[body];
+function solveRig(body: BodyType, bp: BodyParams, pose: RigPose, frame: number, f: PoseFrame): Rig {
 
   const leanRad = (f.lean * Math.PI) / 180;
   const up = v(Math.sin(leanRad), -Math.cos(leanRad));

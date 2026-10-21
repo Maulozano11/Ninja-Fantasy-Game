@@ -12,25 +12,32 @@ She wears an off-the-shoulder cream blouse with puffed sleeves, a red scarf band
 shoulder and a red V at the neckline edged in gold, a leather band with a steel buckle round the near
 puff; over it a brown leather corset with gold bands and filigree and steel buckles, one gold pauldron
 on the far shoulder with its strap, and brown leather bracers with gold studs over long sleeves that
-show a cream cuff at the wrist. Each part becomes one piece per segment of our female rig, pivot on
-its joint at our female idle (src/sprite/rig.ts, idle frame 0; heroine_ref.OUR_JOINTS) and angle that
-segment's angle there, so at idle every piece is exactly where he drew it and in other poses it turns
-with its limb (src/sprite/painted.ts stampPiece):
+show a cream cuff at the wrist. Each part becomes one piece per segment of our female rig with his
+Lyra's long arms (appearance `arms: 'long'`, src/sprite/rig.ts LONG_ARMS: her elbows where the female
+body's are, her wrists where his are), pivot on its joint at idle (idle frame 0, holding her sword;
+printed by tools/refs/heroine-idle.mts) and angle that segment's angle there, so at idle every piece is
+exactly where he drew it and in other poses it turns with its limb (src/sprite/painted.ts stampPiece):
 
   top_offshoulder_blouse (src/sprite/items/lyraUpper.ts)
     BLOUSE_TORSO      neckline, red V, scarf on the chest, the body to the waist,  neck       torso.top
                       and her neck under the jaw
     BLOUSE_SLEEVE_N   bare shoulder, red scarf band, the puff and its leather band shoulderN nearArm.cloth
                       (BLOUSE_SLEEVE_N_CUT: where it takes our body's shoulder off)
-    BLOUSE_FOREARM_N  the fitted sleeve under the bracer and the cuff             elbowN     nearArm.cloth
+    BLOUSE_FOREARM_N  the fitted sleeve under the bracer and the cuff             wristN     nearArm.body (with the arm:
+                      (BLOUSE_FOREARM_N_CUT: where it takes our forearm off)          no cast shadow on his fist)
     BLOUSE_SLEEVE_F   the far puff, its top under the pauldron                    shoulderF  farArm.cloth
     BLOUSE_SIDE_F     its columns by the corset, over our torso's edge            shoulderF  torso.top (under the blouse)
-    BLOUSE_FOREARM_F  the far fitted sleeve and its cuff                          elbowF     farArm.cloth
+    BLOUSE_FOREARM_F  the far fitted sleeve and its cuff                          wristF     farArm.cloth
+                      (BLOUSE_FOREARM_F_CUT: where it takes our far forearm off)
   armor_gilded_corset
     CORSET            the corset                                                  neck       torso.armor
     CORSET_PAULDRON   the gold pauldron and its strap                             shoulderF  torso.armor
-    CORSET_BRACER_N   the near bracer                                             elbowN     nearArm.armor
-    CORSET_BRACER_F   the far bracer                                              elbowF     farArm.armor
+    CORSET_BRACER_N   the near bracer                                             wristN     nearArm.armor
+    CORSET_BRACER_F   the far bracer                                              wristF     farArm.armor
+
+The forearm pieces pivot on the wrist, so the cuff always ends at the wrist and the fist comes out of
+it: on a body without her long arms (the body's own, two or three pixels shorter) the bracer's top goes
+over the puff's foot instead of the cuff over the fist.
 
 OWN says, per row of our frame, which of his pixels each piece takes (capital letters). His picture
 hides parts of these clothes, and the game needs them when the braid, the hair or the arm moves away
@@ -41,21 +48,24 @@ row first (black lines skipped), and the piece's edge there gets his black line:
   - under the braid: the corset (x 116-124, rows 160-168) and the blouse's neckline (x 124-127);
   - the blouse's body under the corset (rows 160-171), for the blouse worn alone: his cream, lit from
     the near side, his line round it;
-  - the near bracer and cuff on the near side, out to our forearm's edge (NEAR_FOREARM);
-  - the fitted sleeves under the bracers (his cream, light to dark as his leather is), and the far
-    forearm, which his pouch hides: the far bracer in his near bracer's pattern and a cuff;
-  - the far puff's top under the pauldron (the arm lifts the pauldron only halfway);
-  - our far arm is wider than his (it shows past his torso more): his far puff goes two columns out,
-    over it, and the two columns it leaves beside the corset continue his cream.
+  - the fitted sleeves under the bracers (his cream, light to dark as his leather is);
+  - the far forearm between his bracer's top (rows 166-168) and its foot (row 174), which his pouch
+    hides: the far bracer in his near bracer's pattern, between his edges (FAR_BRACER);
+  - the far puff's top under the pauldron (the arm lifts the pauldron only halfway).
 
-Her bare near shoulder, the skin in the V and her neck under the jaw (K, V) are his skin, drawn in
-the player's. Not his to take here: the rest of her skin (the body's), her hair and braid, the belt
-with its buckle, the pouch, the tabard, the sword. The forearm pieces are laid on our elbows (HIS_JOINT,
-MOVED); everything else is where he drew it.
+Her far arm, cell by cell ("no te olvides de el hombro y brazo izquierdo"): the pauldron (P), the far
+puff under it and down to the elbow (F), the bracer's top under the puff (D, rows 166-168), its foot
+under the pouch (D, row 174), the cuff and its line (G, rows 175-176) are his, where he drew them; his
+far hand under the cuff is the female body's (his Lyra's open far hand, femaleBodyArt.ts relaxedFar).
+
+Her bare near shoulder, the skin in the V and her neck under the jaw (K, V) are his skin, drawn in the
+player's. Not his to take here: the rest of her skin (the body's), her hair and braid, the belt
+with its buckle, the pouch, the tabard, the sword. Where our body's arm comes out from under his
+sleeves, bracers and cuffs at idle (NEAR_UPPER_ARM, NEAR_FOREARM, FAR_FOREARM: the body's arm cells),
+the pieces take it off (the *_CUT masks), so the arm's outline is his.
 
 check() lays the pieces in the game's order at idle and makes sure every pixel taken from him comes
-out his where it is laid, but where MOVED_OVER lets a moved piece cover it (it prints how many of his
-pixels each such pair covers). The same picture always gives the same bytes. Run from the repository
+out his where it is laid. The same picture always gives the same bytes. Run from the repository
 root:
 
   python3 -I tools/refs/lyra-upper-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> [src/sprite/items/lyraUpperArt.ts]
@@ -77,17 +87,18 @@ OFFSET = (74, 121)  # his pixel (x, y) is our (x + 74, y + 121)
 PAL_BOX = (100, 144, 146, 186)
 PAL_TOL = 12
 
-# Our female rig at idle frame 0, fine pixels: the female body rebuilt from his heroines at our scale
-# (tools/refs/female-body-from-ref.py; printed by `npx tsx tools/refs/heroine-idle.mts <out>`). His
-# picture laid at OFFSET stands on it: his shoulders, waist, knees and soles on ours.
+# Our female rig at idle frame 0 with his Lyra's long arms, holding her sword, fine pixels: the female
+# body rebuilt from his heroines at our scale (tools/refs/female-body-from-ref.py), its forearms his
+# Lyra's (rig.ts LONG_ARMS; printed by `npx tsx tools/refs/heroine-idle.mts <out>`). His picture laid at
+# OFFSET stands on it: his shoulders, elbows, wrists, waist, knees and soles on ours.
 J = {
     'neck': (126.94, 146.23),
     'shoulderN': (117.54, 150.96),
     'shoulderF': (131.50, 150.48),
-    'elbowN': (113.84, 162.38),
-    'elbowF': (133.72, 162.27),
-    'wristN': (111.48, 172.51),
-    'wristF': (139.28, 171.06),
+    'elbowN': (111.05, 165.15),
+    'elbowF': (134.04, 165.87),
+    'wristN': (107.35, 175.30),
+    'wristF': (141.59, 177.18),
     'pelvis': (127.00, 182.25),
 }
 
@@ -95,6 +106,7 @@ J = {
 # are filled.
 #   T/t blouse torso   S/s near sleeve   U/u near cuff and fitted sleeve   F/f far sleeve
 #   C/c corset         P/p pauldron      B/b near bracer                    D/d far bracer
+#   G   the far cuff below his pouch, and its line over the far hand
 #   K   the bare top of the near shoulder, his skin and line round it (in the near sleeve piece)
 #   V   the skin in the V of the neckline and of her neck under the jaw (in the blouse's body; the
 #       neck's far line is a T: his line)
@@ -107,8 +119,8 @@ OWN = {
     152: [('K', 114, 118), ('P', 127, 128), ('V', 129, 130), ('P', 131, 137), ('f', 133, 135)],
     153: [('S', 113, 120), ('T', 121, 127), ('V', 128, 131), ('T', 132, 133), ('P', 134, 138), ('f', 132, 135)],
     154: [('S', 113, 120), ('T', 121, 134), ('P', 135, 138), ('f', 133, 135)],
-    155: [('S', 113, 119), ('T', 121, 133), ('F', 134, 134), ('P', 137, 138)],
-    156: [('S', 113, 119), ('T', 121, 123), ('t', 124, 127), ('T', 128, 133), ('F', 134, 136)],
+    155: [('S', 113, 119), ('T', 121, 133), ('F', 134, 136), ('P', 137, 138)],
+    156: [('S', 113, 119), ('T', 121, 123), ('t', 124, 127), ('T', 128, 133), ('F', 134, 136), ('P', 137, 138)],
     157: [('S', 112, 120), ('T', 121, 123), ('t', 124, 127), ('T', 128, 133), ('F', 134, 136)],
     158: [('S', 112, 118), ('T', 119, 123), ('t', 124, 127), ('T', 128, 133), ('F', 134, 136)],
     159: [('S', 112, 119), ('T', 120, 124), ('t', 125, 126), ('T', 127, 128), ('C', 129, 132), ('T', 133, 133), ('F', 134, 136), ('t', 129, 132)],
@@ -124,48 +136,39 @@ OWN = {
     169: [('B', 108, 112), ('T', 120, 122)],
     170: [('B', 107, 112)],
     171: [('B', 107, 111)],
-    172: [('B', 107, 111)],
-    173: [('U', 106, 110)],
-    174: [('U', 105, 111)],
-    175: [('U', 105, 111)],
+    172: [('B', 106, 111)],
+    173: [('U', 106, 113)],
+    174: [('U', 105, 111), ('D', 138, 141)],
+    175: [('U', 105, 111), ('G', 138, 142)],
+    176: [('G', 139, 142)],
 }
 PIECE_OF = {'T': 'BLOUSE_TORSO', 'S': 'BLOUSE_SLEEVE_N', 'K': 'BLOUSE_SLEEVE_N', 'V': 'BLOUSE_TORSO', 'U': 'BLOUSE_FOREARM_N', 'F': 'BLOUSE_SLEEVE_F',
             'G': 'BLOUSE_FOREARM_F', 'C': 'CORSET', 'P': 'CORSET_PAULDRON',
             'B': 'CORSET_BRACER_N', 'D': 'CORSET_BRACER_F'}
 
-# His elbows (the top of each bracer, where his puff ends; fine pixels in our frame, his picture laid at
-# OFFSET) are three or four rows lower than our female body's: our arms are shorter than his and hang
-# more upright. The forearm pieces (bracer, fitted sleeve and cuff) are laid on our elbows as he drew
-# them on his (moved by ours minus his, whole pixels), so the cuff ends at our wrist and our fist (his
-# own near hand, src/sprite/femaleBodyArt.ts) comes out of it; the bracers are drawn over the puffs'
-# lower rows. The sleeves stay where he drew them (MOVED_OVER lists what may cover them there).
-HIS_JOINT = {'elbowN': (110.0, 165.5), 'elbowF': (136.0, 166.0)}
-MOVED = {'BLOUSE_FOREARM_N': 'elbowN', 'CORSET_BRACER_N': 'elbowN', 'BLOUSE_FOREARM_F': 'elbowF', 'CORSET_BRACER_F': 'elbowF'}
-# Which pieces may cover which of his pixels at idle, now that the forearm pieces are moved up onto
-# our elbows: the near bracer (and the fitted sleeve under it) over the near puff's lower rows, the far
-# bracer over the far puff's foot, and the corset and the far puff's side over the far bracer's top
-# (moved four rows up, it goes in behind the torso). check() allows these and no others.
-MOVED_OVER = {('BLOUSE_SLEEVE_N', 'CORSET_BRACER_N'), ('BLOUSE_SLEEVE_N', 'BLOUSE_FOREARM_N'),
-              ('BLOUSE_SLEEVE_F', 'CORSET_BRACER_F'), ('CORSET_BRACER_F', 'CORSET'), ('CORSET_BRACER_F', 'BLOUSE_SIDE_F')}
-
-# Our female body's near arm at idle frame 0 (rows: first and last column, inclusive), as the body
-# draws it under her clothes: the shoulder (Aurelia's bare shoulder, femaleBodyArt.ts) and upper arm,
-# and the forearm. Our shoulder stands two rows higher than his, so where the body's shoulder and upper
-# arm come out from under his near sleeve the sleeve takes them off (BLOUSE_SLEEVE_N_CUT): his bare
-# shoulder is the shoulder, his hair round it shows. Our forearm is wider on the near side than his
-# bracer laid on our elbow: the bracer and cuff go on out to its edge (his leather, his line at the
-# edge), so no skin shows past them.
+# Our female body's arms at idle frame 0 with his Lyra's long arms (rows: first and last column,
+# inclusive), as the body draws them under her clothes: the near shoulder (Aurelia's bare shoulder,
+# femaleBodyArt.ts) and upper arm, and both forearms. Where they come out from under his sleeves,
+# bracers and cuffs the pieces take them off (the *_CUT masks): our shoulder stands two rows higher
+# than his, so his bare shoulder is the shoulder and his hair round it shows; our forearms are a
+# column or two wider than his bracers.
 NEAR_UPPER_ARM = {146: (117, 119), 147: (115, 120), 148: (114, 121), 149: (113, 121), 150: (113, 121),
-                  151: (112, 121), 152: (112, 121), 153: (113, 120), 154: (113, 119), 155: (112, 119),
-                  156: (112, 118), 157: (112, 118), 158: (112, 118), 159: (111, 117), 160: (116, 117)}
-NEAR_FOREARM = {159: (113, 114), 160: (111, 115), 161: (111, 116), 162: (111, 116), 163: (110, 116),
-                164: (110, 116), 165: (110, 116), 166: (110, 115), 167: (110, 115), 168: (109, 115),
-                169: (109, 114), 170: (109, 114), 171: (109, 113)}
+                  151: (112, 121), 152: (113, 121), 153: (112, 120), 154: (112, 119), 155: (112, 118),
+                  156: (111, 118), 157: (111, 117), 158: (110, 117), 159: (110, 116), 160: (110, 116),
+                  161: (109, 115), 162: (113, 115), 163: (114, 114), 164: (114, 114)}
+NEAR_FOREARM = {162: (109, 112), 163: (108, 113), 164: (108, 113), 165: (107, 113), 166: (107, 113),
+                167: (107, 113), 168: (106, 112), 169: (106, 112), 170: (106, 112), 171: (106, 111),
+                172: (106, 111), 173: (105, 110), 174: (105, 109)}
+FAR_FOREARM = {163: (133, 135), 164: (132, 136), 165: (132, 137), 166: (132, 138), 167: (133, 138),
+               168: (133, 139), 169: (134, 139), 170: (134, 140), 171: (135, 140), 172: (135, 141),
+               173: (136, 141), 174: (137, 142), 175: (137, 142), 176: (138, 143)}
+# The far forearm's cut starts at the bracer's top: above it the puff covers the forearm at idle (and
+# in a bent arm the elbow must stay whole). The near forearm's is where his sleeve leaves it bare.
+CUT_FROM = 166
 
-# The far forearm, which his pouch hides (our old far forearm at idle, rows and spans, before the move
-# above): the far bracer over it in his near bracer's pattern, the cuff under it.
-FAR_BRACER = {169: (136, 140), 170: (137, 141), 171: (137, 141), 172: (137, 141)}
-FAR_CUFF = {173: (139, 143), 174: (139, 144)}
+# The far forearm his pouch hides, between his bracer's top (rows 166-168) and its foot (row 174):
+# the far bracer in his near bracer's pattern, its edges running from his on to his.
+FAR_BRACER = {169: (135, 139), 170: (136, 140), 171: (136, 140), 172: (137, 140), 173: (137, 141)}
 # The blouse's body under the corset: rows, and the near edge per row (our torso's edge, a column out).
 BODY_ROWS = range(160, 172)
 BODY_NEAR = {160: 118, 161: 117, 162: 117, 163: 117, 164: 117, 165: 117, 166: 116, 167: 116, 168: 116,
@@ -177,23 +180,25 @@ CORSET_LINE_X = {160: 118, 161: 117, 162: 117, 163: 117, 164: 117, 165: 117, 166
 DOCS = {
     'BLOUSE_TORSO': 'The blouse: the red V edged in gold and the skin in it (in the player\'s skin), the red scarf across the chest, the cream bust and the body to the waist (pivot: the base of the neck).',
     'BLOUSE_SLEEVE_N': 'The near sleeve: the bare top of the shoulder above it (in the player\'s skin), the red scarf band round the shoulder, the puff, its leather band with a steel buckle (pivot: the near shoulder).',
-    'BLOUSE_FOREARM_N': 'The near fitted sleeve under the bracer and its cream cuff at the wrist (pivot: the near elbow).',
+    'BLOUSE_FOREARM_N': 'The near fitted sleeve under the bracer and its cream cuff at the wrist (pivot: the near wrist).',
     'BLOUSE_SLEEVE_F': 'The far puff, its top under the pauldron (pivot: the far shoulder).',
     'BLOUSE_SIDE_F': "The far puff's columns by the corset, drawn over the body's edge under the blouse; it moves with the far arm (pivot: the far shoulder).",
-    'BLOUSE_FOREARM_F': 'The far fitted sleeve and its cuff, behind the pouch at her hip (pivot: the far elbow).',
+    'BLOUSE_FOREARM_F': 'The far fitted sleeve and its cuff, behind the pouch at her hip (pivot: the far wrist).',
     'CORSET': 'The corset: gold bands and filigree, steel buckles (pivot: the base of the neck).',
     'CORSET_PAULDRON': 'The gold pauldron on the far shoulder and its strap, down across the chest to the braid (pivot: the far shoulder).',
-    'CORSET_BRACER_N': 'The near bracer: leather with gold studs (pivot: the near elbow).',
-    'CORSET_BRACER_F': "The far bracer, in his near bracer's pattern, behind the pouch at her hip (pivot: the far elbow).",
+    'CORSET_BRACER_N': 'The near bracer: leather with gold studs (pivot: the near wrist).',
+    'CORSET_BRACER_F': "The far bracer, in his near bracer's pattern, behind the pouch at her hip (pivot: the far wrist).",
+}
+CUT_DOCS = {
+    'BLOUSE_SLEEVE_N': "Where our body's near shoulder and upper arm come out from under the near sleeve at idle: the sleeve takes them off",
+    'BLOUSE_FOREARM_N': "Where our body's near forearm comes out from under the bracer and cuff at idle: the fitted sleeve takes it off",
+    'BLOUSE_FOREARM_F': "Where our body's far forearm comes out from under the far bracer and cuff at idle: the fitted sleeve takes it off",
 }
 JOINT = {'BLOUSE_TORSO': ('neck', ('pelvis', 'neck')), 'CORSET': ('neck', ('pelvis', 'neck')),
-         'BLOUSE_SLEEVE_N': ('shoulderN', ('shoulderN', 'elbowN')), 'BLOUSE_FOREARM_N': ('elbowN', ('elbowN', 'wristN')),
-         'CORSET_BRACER_N': ('elbowN', ('elbowN', 'wristN')), 'BLOUSE_SLEEVE_F': ('shoulderF', ('shoulderF', 'elbowF')),
+         'BLOUSE_SLEEVE_N': ('shoulderN', ('shoulderN', 'elbowN')), 'BLOUSE_FOREARM_N': ('wristN', ('elbowN', 'wristN')),
+         'CORSET_BRACER_N': ('wristN', ('elbowN', 'wristN')), 'BLOUSE_SLEEVE_F': ('shoulderF', ('shoulderF', 'elbowF')),
          'BLOUSE_SIDE_F': ('shoulderF', ('shoulderF', 'elbowF')), 'CORSET_PAULDRON': ('shoulderF', ('shoulderF', 'elbowF')),
-         'BLOUSE_FOREARM_F': ('elbowF', ('elbowF', 'wristF')), 'CORSET_BRACER_F': ('elbowF', ('elbowF', 'wristF'))}
-# How far his far puff goes out (onto our wider far arm), and the first column it then fills from.
-FAR_PUFF_SHIFT = 2
-FAR_PUFF_FROM = 135
+         'BLOUSE_FOREARM_F': ('wristF', ('elbowF', 'wristF')), 'CORSET_BRACER_F': ('wristF', ('elbowF', 'wristF'))}
 # The far puff's columns our torso's edge covers.
 SIDE_TO = 136
 # The game's drawing order (src/sprite/ctx.ts DEPTHS; within a depth, in the order drawn).
@@ -334,10 +339,6 @@ def build(h):
             else:
                 v = row[min(x - a - 1, len(row) - 1)]
             out['CORSET_BRACER_F'][(x, y)] = v
-    for y in sorted(FAR_CUFF):
-        a, b = FAR_CUFF[y]
-        for x in range(a, b + 1):
-            out['BLOUSE_FOREARM_F'][(x, y)] = line if x in (a, b) else (light if x < b - 1 else mid)
     for (x, y), v in out['CORSET_BRACER_F'].items():
         if (x, y) not in out['BLOUSE_FOREARM_F']:
             if dark(v):
@@ -345,21 +346,7 @@ def build(h):
             else:
                 k = leathers.index(v) * len(creams) // max(1, len(leathers)) if v in leathers else 1
                 out['BLOUSE_FOREARM_F'][(x, y)] = creams[min(k, len(creams) - 1)]
-    # Our far arm reaches further out than his: his far puff, outer line and all, goes FAR_PUFF_SHIFT
-    # columns out over it (its top under the pauldron with it), and the columns it leaves by the corset
-    # continue his cream there.
-    out['BLOUSE_SLEEVE_F'] = {(x + FAR_PUFF_SHIFT, y): v for (x, y), v in out['BLOUSE_SLEEVE_F'].items()}
-    taken['BLOUSE_SLEEVE_F'] = {(x + FAR_PUFF_SHIFT, y) for (x, y) in taken['BLOUSE_SLEEVE_F']}
     f = out['BLOUSE_SLEEVE_F']
-    for y in sorted({y for (_, y) in f}):
-        if y < 155:
-            continue
-        xs = sorted(x for (x, yy) in f if yy == y)
-        first = next((f[(x, y)] for x in xs if not dark(f[(x, y)])), None)
-        if first is None:
-            continue
-        for x in range(FAR_PUFF_FROM, xs[0]):
-            f[(x, y)] = first
     # The far puff's top under the pauldron gets his line round it (shown when the arm lifts).
     tops = [(x, y) for (x, y) in f if y < 155]
     y0 = min(y for _, y in tops)
@@ -369,34 +356,16 @@ def build(h):
     # Our torso's edge is drawn over the far arm: the far puff's columns there are drawn again over the
     # body, under the blouse (BLOUSE_SIDE_F), so they show; it moves with the far arm.
     out['BLOUSE_SIDE_F'] = {(x, y): v for (x, y), v in f.items() if x <= SIDE_TO and y >= 155}
-    # The forearm pieces onto our elbows (HIS_JOINT).
-    for name, joint in MOVED.items():
-        dx, dy = shift_of(joint)
-        out[name] = {(x + dx, y + dy): v for (x, y), v in out[name].items()}
-        taken[name] = {(x + dx, y + dy) for (x, y) in taken[name]}
-    # The near bracer and cuff out to our forearm's near edge where the sleeves leave it bare: each row
-    # continues his nearest pixel of the piece in that row, and its new edge is his line. The fitted
-    # sleeve under the bracer takes the same cells (in his cream, as above), for the blouse worn alone.
-    over = set(out['BLOUSE_SLEEVE_N'])
-    for y, (a, b) in sorted(NEAR_FOREARM.items()):
-        for name in ('CORSET_BRACER_N', 'BLOUSE_FOREARM_N'):
-            xs = [x for (x, yy) in out[name] if yy == y]
-            if not xs or min(xs) <= a or all((x, y) in over for x in range(a, min(xs))):
-                continue
-            row = sorted((x, v) for (x, yy), v in out[name].items() if yy == y and not dark(v))
-            for x in range(a, min(xs)):
-                out[name][(x, y)] = line if x == a else (row[0][1] if row else line)
-    # Where the body's shoulder and upper arm come out from under the near sleeve (the sleeve takes
-    # them off: BLOUSE_SLEEVE_N_CUT).
-    cut = {(x, y) for y, (a, b) in NEAR_UPPER_ARM.items() for x in range(a, b + 1)} - set(out['BLOUSE_SLEEVE_N'])
+    # Where the body's shoulder and upper arm come out from under the near sleeve, and its forearms
+    # from under the bracers, fitted sleeves and cuffs (from the bracer's top down), the pieces take
+    # them off (BLOUSE_SLEEVE_N_CUT, BLOUSE_FOREARM_N_CUT, BLOUSE_FOREARM_F_CUT).
+    cells = lambda spans, y0=0: {(x, y) for y, (a, b) in spans.items() if y >= y0 for x in range(a, b + 1)}
+    cut = {
+        'BLOUSE_SLEEVE_N': cells(NEAR_UPPER_ARM) - set(out['BLOUSE_SLEEVE_N']),
+        'BLOUSE_FOREARM_N': cells(NEAR_FOREARM) - set(out['BLOUSE_FOREARM_N']) - set(out['CORSET_BRACER_N']) - set(out['BLOUSE_SLEEVE_N']),
+        'BLOUSE_FOREARM_F': cells(FAR_FOREARM, CUT_FROM) - set(out['BLOUSE_FOREARM_F']) - set(out['CORSET_BRACER_F']),
+    }
     return out, taken, line, cut
-
-
-def shift_of(joint):
-    """How far a piece riding `joint` is moved from where he drew it: our joint minus his, whole pixels."""
-    ox, oy = J[joint]
-    hx, hy = HIS_JOINT[joint]
-    return int(round(ox - hx)), int(round(oy - hy))
 
 
 def stack(out):
@@ -407,26 +376,18 @@ def stack(out):
 
 
 def check(out, taken):
-    """Every pixel taken from him comes out his at idle (the moved pieces' where they are laid), but
-    where MOVED_OVER lets a piece in front cover it. Returns the pixels that do not, and how many of
-    his each allowed pair covers."""
+    """Every pixel taken from him comes out his at idle. Returns the pixels that do not."""
     top = stack(out)
     owner = {}
     for name in ORDER:
         for c in out[name]:
             owner[c] = name
     bad = []
-    covered = {}
     for name, cells in taken.items():
         for c in cells:
-            if top.get(c) == out[name][c]:
-                continue
-            pair = (name, owner.get(c))
-            if pair in MOVED_OVER:
-                covered[pair] = covered.get(pair, 0) + 1
-            else:
+            if top.get(c) != out[name][c]:
                 bad.append((name, c, owner.get(c)))
-    return bad, covered
+    return bad
 
 
 CHARS = 'abcdefhijklmnpqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -471,15 +432,12 @@ def kind_of(c):
 
 
 def _skin_cells():
-    """The K and V cells as (piece, x, y) where the pieces are laid (a moved piece's cells moved with it)."""
+    """The K and V cells as (piece, x, y)."""
     out = set()
     for y, spans in OWN.items():
         for ch, a, b in spans:
-            if ch not in 'KV':
-                continue
-            name = PIECE_OF[ch]
-            dx, dy = shift_of(MOVED[name]) if name in MOVED else (0, 0)
-            out |= {(name, x + dx, y + dy) for x in range(a, b + 1)}
+            if ch in 'KV':
+                out |= {(PIECE_OF[ch], x, y) for x in range(a, b + 1)}
     return out
 
 
@@ -521,14 +479,15 @@ def write_ts(out, h, path, cut):
         lines += ['  ],', '  colors: {']
         lines += [f"    {k}: '{v}'," for k, v in pal.items()]
         lines += ['  },', '};', '']
-        if name == 'BLOUSE_SLEEVE_N':
-            # The cells of our body's near arm it takes off, laid as the sleeve is (its pivot and angle).
-            xs = [x for x, _ in cut]
-            ys = [y for _, y in cut]
+        if name in cut:
+            # The cells of our body's arm it takes off, laid as the piece is (its pivot and angle).
+            xs = [x for x, _ in cut[name]]
+            ys = [y for _, y in cut[name]]
             cx0, cy0 = min(xs), min(ys)
-            rows = [''.join('x' if (x, y) in cut else '.' for x in range(cx0, max(xs) + 1)) for y in range(cy0, max(ys) + 1)]
-            lines += ["/** Where our body's near shoulder and upper arm come out from under the near sleeve at idle: the sleeve takes them off (pivot and angle as the sleeve's). */",
-                      'export const BLOUSE_SLEEVE_N_CUT: PaintedPiece = {',
+            rows = [''.join('x' if (x, y) in cut[name] else '.' for x in range(cx0, max(xs) + 1)) for y in range(cy0, max(ys) + 1)]
+            what = CUT_DOCS[name]
+            lines += [f"/** {what} (pivot and angle as the piece's). */",
+                      f'export const {name}_CUT: PaintedPiece = {{',
                       f'  pivot: [{int(np.floor(px)) - cx0}, {int(np.floor(py)) - cy0}],',
                       f'  angle: {angle_of(*seg):.2f},', '  rows: [']
             lines += [f"    '{r}'," for r in rows]
@@ -603,11 +562,9 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     h = Hers(src)
     out, taken, line, cut = build(h)
-    bad, covered = check(out, taken)
+    bad = check(out, taken)
     for b in bad:
         print('not his at idle:', b)
-    for (under, over), n in sorted(covered.items()):
-        print(f'{n} of his pixels of {under} under {over}')
     picture(out, taken, h, os.path.join(out_dir, 'hers-vs-pieces@8.png'))
     for name in DOCS:
         print(name, 'cells', len(out[name]), 'his', len(taken.get(name, ())), 'colours', len(set(out[name].values())))

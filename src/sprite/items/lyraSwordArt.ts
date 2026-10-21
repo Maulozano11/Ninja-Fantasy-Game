@@ -23,7 +23,7 @@ export const LYRA_SWORD_GUARD = '#aa6a26';
  * held it, where our fist stands.
  */
 export const LYRA_RAPIER: LyraSword = {
-  pivot: [6, 7],
+  pivot: [5, 7],
   angle: 42.73,
   rows: [
     'aaa.............................................',

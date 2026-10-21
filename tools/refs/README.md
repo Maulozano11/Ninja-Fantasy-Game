@@ -135,16 +135,15 @@ folders.
   piece takes; the parts his picture hides (under the braid, the blouse under the corset, the sleeves under
   the bracers, the far forearm behind the pouch) continue his pixels. The bare top of the near shoulder and
   the skin in the V (`K`, `V`) are his skin, drawn in the player's (`LYRA_SKIN`). One painted piece per segment of our
-  female rig (the body rebuilt from his heroines, `female-body-from-ref.py`), pivot on its joint at idle.
-  The torso pieces, both sleeves (his bare shoulder with them) and the pauldron are where he drew them,
-  and so is her neck under the jaw (skin and his far line, in the blouse's body). The female body's arms
-  are shorter and hang more upright than his, so the forearm pieces are laid on our elbows as he drew them
-  on his (`HIS_JOINT`, `MOVED`: each bracer, fitted sleeve and cuff, near +4, -3; far -2, -4), so our fist
-  (his own hand) comes out of his cuff; the near bracer and cuff go on out to our forearm's near edge
-  (`NEAR_FOREARM`). Our shoulder stands 2 px higher than his: the near sleeve takes the body's shoulder
-  and upper arm off where they come out from under it (`BLOUSE_SLEEVE_N_CUT`, from `NEAR_UPPER_ARM`).
-  It checks that every pixel of his is where it is laid at idle, but where `MOVED_OVER` lets a moved
-  piece cover it (it prints how many), and writes `hers-vs-pieces@8.png` into `<out>`.
+  female rig with his Lyra's long arms (appearance `arms: 'long'`, `rig.ts` LONG_ARMS: the body's elbows,
+  his wrists), pivot on its joint at idle (the forearm pieces on the wrist, so on the body's own shorter
+  arms the cuff still ends at the wrist). Every piece is where he drew it, her far arm cell by cell: the
+  pauldron, the far puff, the far bracer's top under the puff and its foot under the pouch, the far cuff
+  and its line over his far hand; only the far forearm behind his pouch is run on (`FAR_BRACER`). Where
+  our body's arm comes out from under his sleeves, bracers and cuffs at idle the pieces take it off
+  (`BLOUSE_SLEEVE_N_CUT`, `BLOUSE_FOREARM_N_CUT`, `BLOUSE_FOREARM_F_CUT`, from `NEAR_UPPER_ARM`,
+  `NEAR_FOREARM`, `FAR_FOREARM`). It checks that every pixel of his is where it is laid at idle and
+  writes `hers-vs-pieces@8.png` into `<out>`.
 
       python3 -I tools/refs/lyra-upper-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraUpperArt.ts
 
@@ -164,7 +163,7 @@ folders.
   `reduced_layers(which)` (each part alone). `heroine-proportions.py` draws `proporciones.png`: the
   template at our height beside its reduced reference and our female body, with the measurements.
 
-      npx tsx tools/refs/heroine-idle.mts <out>
+      npx tsx tools/refs/heroine-idle.mts <out>     (also prints the joints with Lyra's long arms)
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
 
@@ -183,10 +182,11 @@ folders.
   tips, gold collar and shell and cyan gem, his cyan blade (every cyan pixel within 2.6 px of its
   fitted line, with the black beside it) and his sparkles (the cyan further out, twinkling in the
   game). The grip his hand hides is his pommel's steel carried on. The female body's fist round a grip
-  is his own near hand on this sword, so the sword is his as he drew it, no pixel moved (`STRETCH` 0); it
-  pivots on the grip cell under his fist that our grip point falls on with our fist laid on his
-  (`HAND_SHIFT`: at our idle our fist stands 4 px right and 3 px up from his). Drawn at his blade's angle
-  (42.7) at rest. Writes `his@8.png` and `kinds@8.png` into `<out>`.
+  is his own near hand on this sword, and with her long arms (`arms: 'long'`) our fist at idle is where
+  he drew his, so the sword is his as he drew it, no pixel moved (`STRETCH` 0, `HAND_SHIFT` 0); it pivots
+  on the cell our grip point (`grip.ts` gripPoint, printed by `heroine-idle.mts`) falls on, beside his
+  grip under the fist. Drawn at his blade's angle (42.7) at rest. Writes `his@8.png` and `kinds@8.png`
+  into `<out>`.
 
       python3 -I tools/refs/lyra-sword-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraSwordArt.ts
 

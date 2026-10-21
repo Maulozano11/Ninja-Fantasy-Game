@@ -1536,6 +1536,7 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         eyeShape: 'keen',
         eyeColor: '#45b476',
         neck: 'long',
+        arms: 'long',
         faceShape: 'fine',
         slots: {
           hair: it('hair_copper_braid'),

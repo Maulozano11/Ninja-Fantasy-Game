@@ -57,6 +57,9 @@ export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bri
 /** Back of the neck behind the jaw: slender (default) or thick; long is the owner's heroines' (neck.ts). */
 export type NeckType = 'slim' | 'strong' | 'long';
 
+/** Arm length: the body's own (default), or long: his Lyra's longer forearms, her free hand hanging open (rig.ts LONG_ARMS). */
+export type ArmType = 'standard' | 'long';
+
 /**
  * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
  * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels); or his Lyra's
@@ -141,6 +144,8 @@ export interface SpriteAppearance {
   eyeColor: string;
   /** Missing on older saves; treated as 'slim'. */
   neck?: NeckType;
+  /** Missing on older saves; treated as 'standard'. */
+  arms?: ArmType;
   /** Missing on older saves; treated as 'tapered'. */
   faceShape?: FaceShape;
   /** How jutsus are cast. Missing on older saves; treated as 'runes'. */

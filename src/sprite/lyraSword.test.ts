@@ -24,8 +24,9 @@ describe('Lyra gilded rapier', () => {
   });
 
   it('pivots on its grip, uses only its own colours and keeps its sparkles inside the template', () => {
+    // the pivot is our grip point under his fist: on his grip or beside it (his grip runs through the top of the fist)
     const [px, py] = LYRA_RAPIER.pivot;
-    assert.notEqual(LYRA_RAPIER.rows[py][px], '.');
+    assert.ok([-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => (LYRA_RAPIER.rows[py + dy]?.[px + dx] ?? '.') !== '.')));
     for (const r of LYRA_RAPIER.rows) for (const ch of r) assert.ok(ch === '.' || ch in LYRA_RAPIER.colors, ch);
     for (const [x, y, ch] of LYRA_RAPIER.sparks) {
       assert.ok(y < LYRA_RAPIER.rows.length && x < LYRA_RAPIER.rows[y].length, `spark ${x},${y}`);

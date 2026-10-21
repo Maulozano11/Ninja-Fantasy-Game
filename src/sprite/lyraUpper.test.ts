@@ -6,7 +6,7 @@ import { fitsBody, getItem } from './catalog';
 import { renderSprite } from './compose';
 import * as ART from './items/lyraUpperArt';
 import { segAngle, type PaintedPiece } from './painted';
-import { GRID } from './raster';
+import { GRID, partIndex } from './raster';
 import { drawRig } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
@@ -14,9 +14,11 @@ const BLOUSE = 'top_offshoulder_blouse';
 const CORSET = 'armor_gilded_corset';
 const LINE = '#010101';
 
+// her clothes are cut for his Lyra's arms (rig.ts LONG_ARMS)
 const look = (body: BodyType, top: string[] = [], armor: string[] = []): SpriteAppearance => ({
   version: 1,
   body,
+  arms: 'long',
   skin: '#f6c7a6',
   eyeShape: 'standard',
   eyeColor: '#2f9e6a',
@@ -62,7 +64,7 @@ describe("Lyra's blouse and corset", () => {
   });
 
   it('lays every piece at its own angle in our female idle, so every pixel there is hers', () => {
-    const r = drawRig('female', 'idle', 0);
+    const r = drawRig('female', 'idle', 0, 'long');
     const seg = {
       torso: segAngle(r.pelvis, r.neck),
       upperN: segAngle(r.shoulderN, r.elbowN),
@@ -85,15 +87,36 @@ describe("Lyra's blouse and corset", () => {
     for (const [name, deg] of Object.entries(want)) assert.ok(Math.abs(PIECES[name].angle - deg) < 0.5, `${name} ${PIECES[name].angle} vs ${deg}`);
   });
 
-  it('shows his pixels at idle: the red V, a buckle, the pauldron where he drew them; a stud on the bracer and the near puff on our arm', () => {
+  it('shows his pixels at idle where he drew them: the red V, a buckle, the pauldron, a stud on the bracer, the near puff, the far cuff', () => {
     const f = renderSprite(look('female'), 'idle', 0).rgba;
     assert.equal(hexAt(f, 129, 155), '#81152c');
     assert.equal(hexAt(f, 130, 163), '#8b8a90');
     assert.equal(hexAt(f, 133, 149), '#fbbc57');
-    // his (111, 169), the bracer laid on our elbow (+4, -3); the near puff where he drew it
-    assert.equal(hexAt(f, 115, 166), '#db9b41');
+    assert.equal(hexAt(f, 111, 169), '#db9b41');
     assert.equal(hexAt(f, 113, 162), '#f2e2c0');
     assert.equal(hexAt(f, 134, 161), LINE);
+    // the far cuff under his pouch, over his far hand
+    assert.equal(hexAt(f, 140, 175), '#cbad8d');
+    for (const x of [139, 140, 141, 142]) assert.equal(hexAt(f, x, 176), LINE, `${x}`);
+  });
+
+  it('ends the cuffs at the wrist, on her long arms and on the body\'s own: no fist under a cuff', () => {
+    // the forearm pieces pivot on the wrist: on the shorter arms the bracer goes up over the puff. A
+    // fist round her sword shows whole; an open hand comes out of the cuff, which covers its wrist row.
+    const hands = [partIndex('handN'), partIndex('handF')];
+    for (const body of ['female', 'slender'] as BodyType[]) {
+      for (const arms of ['long', undefined] as const) {
+        for (const held of [true, false]) {
+          const sword = held ? { held: { id: 'held_gilded_rapier', colors: [] } } : {};
+          const lk = { ...look(body), arms };
+          const bare = renderSprite({ ...lk, slots: sword }, 'idle', 0).part;
+          const f = renderSprite({ ...lk, slots: { ...lk.slots, ...sword } }, 'idle', 0).part;
+          const rows = new Set<number>();
+          for (let i = 0; i < GRID * GRID; i++) if (hands.includes(bare[i]) && f[i] !== bare[i]) rows.add((i / GRID) | 0);
+          assert.ok(rows.size <= (held ? 0 : 1), `${body} ${arms} ${held}: hand covered on rows ${[...rows]}`);
+        }
+      }
+    }
   });
 
   it('moves her colours with the colour slots and keeps her line', () => {

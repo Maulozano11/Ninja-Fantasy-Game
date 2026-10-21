@@ -252,7 +252,7 @@ export function renderSprite(
   opts: { skipEdits?: boolean } = {},
 ): SpriteFrame {
   // (the long neck carries the head higher and further forward: neck.ts)
-  const rig = carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame), look.neck);
+  const rig = carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms), look.neck);
   const mats = new MaterialTable();
   const layers = new Map<Depth, Layer>();
   const equipped = new Map<SlotId, ItemDef>();

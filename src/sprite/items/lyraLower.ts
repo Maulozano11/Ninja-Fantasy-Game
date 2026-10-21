@@ -8,7 +8,7 @@
 
 import { retintHex } from '../color';
 import type { Depth, DrawCtx, ItemDef } from '../ctx';
-import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, lerp, PartId, RES, scale, sub, v, Vec } from '../raster';
+import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, lerp, PartId, partIndex, RES, scale, sub, v, Vec } from '../raster';
 import { BodyParams, drawRig, GROUND, Rig } from '../rig';
 import {
   LYRA_BACK,
@@ -203,10 +203,14 @@ function bareThighs(g: DrawCtx): void {
   for (const d of ['nearLeg.cloth', 'farLeg.cloth'] as const) g.L(d).mat.fill(-1);
 }
 
-/** The far arm is in front of the tabard's far edge: those pixels are left to it. */
-function behindFarArm(g: DrawCtx): (x: number, y: number) => boolean {
+/**
+ * The far hand is in front of the tabard's far edge: those pixels are left to it. The forearm above
+ * it goes behind the tabard's top at the far hip, as he drew it (his Lyra's long arms reach past it).
+ */
+function behindFarHand(g: DrawCtx): (x: number, y: number) => boolean {
   const arm = [g.L('farArm.body'), g.L('farArm.cloth')];
-  return (x, y) => !arm.some((A) => A.has(x, y));
+  const hand = partIndex('handF');
+  return (x, y) => !arm.some((A) => A.has(x, y) && A.part[y * GRID + x] === hand);
 }
 
 /**
@@ -268,9 +272,9 @@ export const GILDED_TABARD: ItemDef = {
       [LYRA_TABARD_GOLD, LYRA_TABARD_GOLD_BASE, gold],
     ]);
     // the lining and the far tail behind the legs and the far arm; the near panel and the far
-    // panel's top over the skirt and the near leg, as he drew them (behind the far arm)
+    // panel's top over the skirt and the near leg, as he drew them (behind the far hand)
     const sole = soleRow(g);
-    const arm = behindFarArm(g);
+    const arm = behindFarHand(g);
     drape(g, 'backGear', LYRA_BACK, 'back', TABARD_FIT, t, (_x, y) => y <= sole);
     drape(g, 'skirt', LYRA_FRONT, 'pelvis', TABARD_FIT, t, (x, y) => y <= sole && arm(x, y));
   },

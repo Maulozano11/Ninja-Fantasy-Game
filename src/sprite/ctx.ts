@@ -499,7 +499,10 @@ export function handPose(g: DrawCtx, s: Side): HandPose {
               ? 'grip'
               : j.shape === 'hold'
                 ? 'relaxed'
-                : 'fist';
+                : // his Lyra's free far hand hangs open (the 'long' arms, rig.ts LONG_ARMS)
+                  s === 'F' && rot === 0 && g.look.arms === 'long'
+                  ? 'relaxed'
+                  : 'fist';
   return { kind, rot, flipX };
 }
 

@@ -11,7 +11,7 @@ import type { DrawCtx } from './ctx';
 import { LEGENDARY_PRESETS } from '../data/shinobiData';
 import { LYRA_FACE } from './lyraFaceArt';
 import { carryHead } from './neck';
-import { GRID } from './raster';
+import { GRID, partIndex } from './raster';
 import { drawRig, frameCount, rigPoseFor } from './rig';
 import type { SpriteAppearance, SpritePose } from './types';
 
@@ -72,6 +72,30 @@ describe('Lyra on our body', () => {
     assert.equal(hexAt(f, 121, 140), '#cb7862');
     // the lock of hair between her near arm and the corset (his 43-46, 41-43), in front of the corset
     for (const [x, y] of [[118, 162], [119, 163], [120, 164]]) assert.equal(hexAt(f, x, y), '#3b1023', `${x},${y}`);
+  });
+
+  it('hangs her fists and sword where he drew them on his Lyra\'s long arms, and only on them', () => {
+    // standard arms are the body's own
+    for (const body of ['female', 'slender', 'male', 'bulky'] as const) {
+      const { T: _a, ...own } = drawRig(body, 'idle', 0, 'standard');
+      const { T: _b, ...plain } = drawRig(body, 'idle', 0);
+      assert.deepEqual(own, plain, body);
+      assert.ok(drawRig(body, 'idle', 0, 'long').wristN.y > drawRig(body, 'idle', 0).wristN.y, body);
+    }
+    // his picture laid at (x + 74, y + 121): his near fist from (104, 176), his far hand from (139, 177)
+    const look = lyra();
+    assert.equal(look.arms, 'long');
+    const f = renderSprite(look, 'idle', 0);
+    const box = (part: string) => {
+      const k = partIndex(part as Parameters<typeof partIndex>[0]);
+      let x0 = GRID, y0 = GRID;
+      for (let i = 0; i < GRID * GRID; i++) if (f.rgba[i * 4 + 3] && f.part[i] === k) { x0 = Math.min(x0, i % GRID); y0 = Math.min(y0, (i / GRID) | 0); }
+      return [x0, y0];
+    };
+    assert.deepEqual(box('handN'), [104, 176]);
+    assert.deepEqual(box('handF'), [139, 177]);
+    // the gem in his sword's cross, where he drew it
+    assert.equal(hexAt(f.rgba, 111, 181), '#3ed8f2');
   });
 
   it('never hangs the tabard below her soles', () => {

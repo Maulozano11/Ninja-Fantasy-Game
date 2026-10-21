@@ -24,7 +24,7 @@ import {
   v,
   Vec,
 } from './raster';
-import { ankleLiftOf, BodyParams, Rig } from './rig';
+import { ankleLiftOf, BodyParams, neckLocal, Rig } from './rig';
 import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import { FEMALE_HANDS } from './femaleBodyArt';
@@ -251,6 +251,9 @@ export function legPoint(g: DrawCtx, s: Side, t: number): Vec {
   return t <= 1 ? lerp(j.hip, j.knee, t) : lerp(j.knee, j.ankle, t - 1);
 }
 
+/** The neck's foot in the torso, before breathing (see rig.ts neckLocal). */
+export const torsoNeck = (g: DrawCtx): Vec => neckLocal(g.bp);
+
 /**
  * Torso outline in torso-local space (see Rig.T), grown by `inflate` pixels.
  * `top`/`bottom` trim the shape in local y (0 = hips, torsoLen = neck).
@@ -260,7 +263,8 @@ export function torsoPoly(g: DrawCtx, inflate = 0, opts: { top?: number; bottom?
   const T = g.rig.T;
   const Lt = b.torsoLen;
   const i = inflate;
-  const dy = g.rig.neck.y - T(0.6, Lt).y; // breathing offset
+  const nl = neckLocal(b);
+  const dy = g.rig.neck.y - T(nl.x, nl.y).y; // breathing offset
   const sh = (p: Vec, k: number): Vec => add(p, v(0, dy * k));
   const top = opts.top ?? Lt + 0.2;
   const crotch = opts.bottom ?? b.crotch;
@@ -480,7 +484,9 @@ export function handPose(g: DrawCtx, s: Side): HandPose {
   const raw = ((theta - 90 + 540) % 360) - 180;
   // The female bodies' hands are the owner's small ones (5-7 px): turned a little they lose his
   // pixels for little gain, so they hang as drawn up to 45 degrees.
-  const rot = Math.abs(raw) <= (isFemaleBody(g.rig.body) ? 45 : 30) ? 0 : raw;
+  // On a body fitted to the owner's pieces (BodyParams.fit) the hand turns with the forearm, always:
+  // hung straight while the forearm turns it would come away from the wrist.
+  const rot = g.bp.fit ? raw : Math.abs(raw) <= (isFemaleBody(g.rig.body) ? 45 : 30) ? 0 : raw;
   // Keep the thumb on the facing side (+x), or on top when the arm is level.
   const tr = (rot * Math.PI) / 180;
   const tx = Math.cos(tr);
@@ -521,7 +527,7 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     b: [pen.mat, 3 + b],
     l: [pen.mat, 4 + b],
   };
-  const flags = F_NO_OUTLINE | F_NO_TEXTURE;
+  let flags = F_NO_OUTLINE | F_NO_TEXTURE;
   const { kind, rot, flipX } = handPose(g, s);
   if (isFemaleBody(g.rig.body)) {
     // The owner's small hands (femaleBodyArt.ts). His far hands (relaxedFar, fistFar) are drawn in
@@ -533,7 +539,10 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     // Turned by an odd angle his 5-7 px hands lose rows (the open hand flung back at the throw's
     // release came out a cut-off stub), so a hand that is not round a weapon's grip turns by a
     // quarter turn at a time, which moves every pixel and loses none.
-    const turn = kind === 'grip' ? rot : Math.round(rot / 90) * 90;
+    // On his fitted body the hand turns with the forearm exactly, so it never comes away from the wrist;
+    // where turning loses a pixel of his line the layer's outline closes the hand again.
+    const turn = g.bp.fit || kind === 'grip' ? rot : Math.round(rot / 90) * 90;
+    if (g.bp.fit) flags = F_NO_TEXTURE;
     if (kind === 'cradle') stampTemplate(L, H.cradle, j.wrist, 0, s === 'F' ? far : pal, pen.part, { flags });
     else if (s === 'F' && kind === 'fist') stampTemplate(L, H.fistFar, j.wrist, turn, own, pen.part, { flipX, flags });
     else if (s === 'F' && kind === 'relaxed') stampTemplate(L, H.relaxedFar, j.wrist, turn, own, pen.part, { flipX, flags });

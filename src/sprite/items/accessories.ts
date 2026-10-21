@@ -2,7 +2,7 @@
 // Everything is placed from the rig (hand + forearm direction, torso-local
 // T(), head-local hd()) so it works on every body type and pose.
 
-import { armJoints, DrawCtx, ItemDef, legPoint, Side } from '../ctx';
+import { armJoints, DrawCtx, ItemDef, legPoint, Side, torsoNeck } from '../ctx';
 import { add, capsule, ellipse, F_NO_OUTLINE, fine, GRID, Layer, len, lerp, line, norm, partIndex, Pen, perp, poly, px, RES, scale, seam, sub, UNITS, v, Vec } from '../raster';
 import { retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
@@ -31,7 +31,8 @@ const fromAngle = (deg: number): Vec => rot(v(1, 0), deg);
 /** Breathing-aware torso point (follows the shoulders). */
 function topPt(g: DrawCtx) {
   const T = g.rig.T;
-  const dy = g.rig.neck.y - T(0.6, g.bp.torsoLen).y;
+  const n = torsoNeck(g);
+  const dy = g.rig.neck.y - T(n.x, n.y).y;
   return (x: number, y: number) => add(T(x, y), v(0, dy));
 }
 
@@ -275,7 +276,8 @@ function backGrip(g: DrawCtx, deg: number): Vec {
   const b = g.bp;
   // Narrow (female) shoulders keep the blade as far back as the old female body's did, so a long
   // blade still clears the neck when the body pitches forward.
-  return stowAt(g, -Math.max(b.shoulderHalf, 5.9) - 2.4, b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
+  // A fitted body's neck sits further back in its torso (his, rig.ts neckLocal): the blade goes back with it.
+  return stowAt(g, -Math.max(b.shoulderHalf, 5.9) - 2.4 + (torsoNeck(g).x - 0.6), b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
 }
 
 /**

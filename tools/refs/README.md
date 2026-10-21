@@ -6,8 +6,32 @@ generators in `tools/world-sprites/` decode, so a normal build needs no image fi
 hand when a reference changes. Use `python3 -I`, and keep the references outside the repo's code
 folders.
 
-- `female-body-from-ref.py`: the female body's art from his heroines drawn at our scale
-  (`docs/reference/{lyra,aurelia,saya}-game-scale-owner-reference.jpg`): his skin ramp, his hands
+- `female-base-body-from-ref.py` (with `female_base_ref.py`): **the female body**, his bare female
+  body (`docs/reference/female-base-owner-reference.jpg`, 100x100 of his pixels at 20 picture pixels,
+  phase 0; his pixel (x, y) at our (x + 73, y + 120)) cut into pieces, one per bone: chest (neck,
+  shoulders, sports top), pelvis (belly, briefs), each upper arm, forearm, hand, thigh, shin and foot,
+  every pixel his (the regions are written row by row in the script). It reads his joints off the
+  picture (`JOINTS`; the female rig is fitted to them, `rig.ts` `BodyFit`), continues what he hides
+  from his own pixels (the neck under the head, the chest's near side under the arm, the belly under
+  the top, the thigh tops under the briefs, the far upper arm behind the chest), gives each lower piece
+  a round cap of the upper piece over the joint, and checks that the pieces put together at rest are
+  his picture pixel for pixel. It writes `src/sprite/femaleBaseArt.ts`; `--check <dir>` also writes
+  his picture beside the pieces put together and a map of the pieces.
+
+      python3 -I tools/refs/female-base-body-from-ref.py
+
+- `female-base-hair-from-ref.py`: the same woman's hair, his pixels, for the hair option 'Messy
+  Ponytail' (`items/hair.ts`): every non-skin pixel of his over the head, the lock before the near
+  cheek and the fringe over the far eye (not his near eye, his face's line or his ear), on our face
+  anchor where it sits at idle (his pixel (50, 19)), and his head above the eyes for trimming our
+  skull to it. It writes `src/sprite/items/baseHairArt.ts`.
+
+      python3 -I tools/refs/female-base-hair-from-ref.py
+
+- `female-body-from-ref.py`: his heroines' small hands, from his heroines drawn at our scale
+  (`docs/reference/{lyra,aurelia,saya}-game-scale-owner-reference.jpg`; the female body itself is
+  `female-base-body-from-ref.py` now, the hands here hold a weapon, point, open and cradle on it, and
+  the skin ramp here colours the female faces): his skin ramp, his hands
   (Aurelia's near hand relaxed, Lyra's far hand, Lyra's near hand on her sword's grip, Saya's far
   fist, each cut 1:1; the open, pointing and cradling hands, which he has not drawn at this size,
   are his crystal-sword hands with their most repeated rows and columns left out) and Aurelia's

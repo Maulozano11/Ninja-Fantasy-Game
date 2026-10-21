@@ -6,12 +6,13 @@
 // fine pixels (RES per design unit) for 128x128 detail.
 
 import { hexToRgb, hslToHex, makeRamp, mixHex, retintHex, rgbToHsl } from './color';
-import { armJoints, armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
+import { armJoints, armPoint, armRadius, armSpan, Depth, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, handPose, legJoints, legSpan, Side, torsoPoly } from './ctx';
+import { type BasePiece, FEMALE_BASE, FEMALE_BASE_CLOTH, FEMALE_BASE_JOINTS, FEMALE_BASE_SKIN } from './femaleBaseArt';
 import { FEMALE_SHOULDER_N } from './femaleBodyArt';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { segAngle, stampPiece } from './painted';
-import { stampTemplate, type TemplatePalette } from './rotsprite';
+import { rotateTemplate, stampTemplate, type TemplatePalette } from './rotsprite';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { SAYA_EYE_CELLS, SAYA_EYE_COLORS, SAYA_EYES, SAYA_IRIS } from './sayaEyeArt';
 import { SAYA_FACE, SAYA_FACE_EYES, SAYA_FACE_LINE, SAYA_FACE_SKIN } from './sayaFaceArt';
@@ -21,6 +22,10 @@ const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';
 
 export function drawBody(g: DrawCtx): void {
+  if (g.bp.fit) {
+    drawBaseBody(g);
+    return;
+  }
   const r = g.rig;
   const b = g.bp;
   const skin = (part: PartId, bias = 0): Pen => ({ mat: g.skin, part, bias });
@@ -99,6 +104,134 @@ export function drawBody(g: DrawCtx): void {
   // Near arm (in front of everything on the torso)
   drawArm(g, g.L('nearArm.body'), 'N', skin('upperArmN'), skin('forearmN'));
   handDraw(g, g.L('nearArm.body'), 'N', skin('handN'));
+}
+
+// ---------------------------------------------------------------------------
+// The owner's bare female body (femaleBaseArt.ts), piece by piece on the fitted rig.
+// ---------------------------------------------------------------------------
+
+/** A colour of his near-black line (never recoloured). */
+const isInk = (hex: string): boolean => {
+  const [r, g, b] = hexToRgb(hex);
+  return 0.299 * r + 0.587 * g + 0.114 * b < 22;
+};
+
+/**
+ * The part above each joint: a piece's round cap over its joint is that part's pixels. A hand's cap of
+ * the wrist stays the hand's: a sleeve that takes the forearm off past its cuff leaves the wrist on it.
+ */
+const CAP_OF: Partial<Record<PartId, PartId>> = {
+  forearmN: 'upperArmN',
+  forearmF: 'upperArmF',
+  shinN: 'thighN',
+  shinF: 'thighF',
+  footN: 'shinN',
+  footF: 'shinF',
+};
+
+/** The screen angle (degrees) the torso's up points at. */
+const upAngle = (g: DrawCtx): number => (Math.atan2(g.rig.up.y, g.rig.up.x) * 180) / Math.PI;
+
+/**
+ * Stamps one of his body pieces with its pivot on `at`, its bone pointing along `deg`: at his angle
+ * every pixel is his. His skin follows the character's skin (skinTone: in his own skin, his colour),
+ * his line stays his, and his sports top and briefs take `cloth` (their colour slot) when it is given.
+ * At rest every pixel is his as he drew it. In any other pose the layer's outline turns a pixel left on
+ * its edge into his line: where the piece was cut from the next part of him and moved away from it, or
+ * where turning it lost a pixel of his line, so no piece is ever left cut open. `only` = 'cloth'
+ * stamps only the cloth (the sports top and briefs items draw it over the body in their colour).
+ */
+function stampBase(g: DrawCtx, depth: Depth, p: BasePiece, at: Vec, deg: number, part: PartId, cloth?: string, only?: 'cloth', bare = false, noCap = false): void {
+  const L = g.L(depth);
+  const rest = g.rig.pose === 'idle';
+  const pal = new Map<string, [number, number, PartId]>();
+  // A cap over the joint above is the upper piece's pixels: it counts as that part (a boot clears the
+  // shin below the knee, not the thigh's round over it).
+  const upper = CAP_OF[part] ?? part;
+  for (const [ch, hex] of Object.entries(p.colors)) {
+    const isCloth = p.cloth.includes(ch);
+    if ((only === 'cloth' && !isCloth) || (noCap && p.cap.includes(ch))) continue;
+    // `bare`: the sports top's straps off, his shoulder's skin under them
+    const strap = bare ? p.straps?.[ch] : undefined;
+    if (strap && only === 'cloth') continue;
+    const c = strap ? skinTone(strap, g.look.skin, FEMALE_BASE_SKIN) : isCloth ? (cloth ? retintHex(hex, FEMALE_BASE_CLOTH, cloth) : hex) : isInk(hex) ? hex : skinTone(hex, g.look.skin, FEMALE_BASE_SKIN);
+    pal.set(ch, [g.m(c, 'painted'), rest ? F_NO_OUTLINE | F_NO_TEXTURE : F_NO_TEXTURE, p.cap.includes(ch) ? upper : part]);
+  }
+  const ax = Math.floor(at.x * RES);
+  const ay = Math.floor(at.y * RES);
+  for (const q of rotateTemplate(p, deg - p.angle)) {
+    const e = pal.get(q.ch);
+    if (e) L.set(ax + q.dx, ay + q.dy, e[0], 3, e[2], e[1]);
+  }
+}
+
+/**
+ * His sports top (on the chest) or briefs (on the pelvis) in `color`, on the item's own layer over the
+ * body's (items/clothes.ts: the sports top and briefs items). The body always wears them in his black.
+ */
+export function drawBaseCloth(g: DrawCtx, which: 'top' | 'bottom', color: string): void {
+  if (!g.bp.fit) return;
+  const r = g.rig;
+  if (which === 'top') stampBase(g, 'torso.top', FEMALE_BASE.chest, r.neck, upAngle(g), 'torso', color, 'cloth');
+  else stampBase(g, 'torso.bottom', FEMALE_BASE.pelvis, r.pelvis, upAngle(g), 'pelvis', color, 'cloth');
+}
+
+/**
+ * The female bodies: his bare body (docs/reference/female-base-owner-reference.jpg) as his pieces on
+ * the rig fitted to his joints, back to front as he drew it: the far arm behind everything, the far
+ * leg, the near leg, the pelvis and chest over the legs, the head, and the near arm in front. Each limb
+ * is upper piece, lower piece and hand or foot, the lower one over the upper with its round cap over the
+ * joint. A hand turns with its forearm and a foot stands level under its ankle; under footwear the boot
+ * draws the foot. His hands are his closed fists; a hand round a weapon's grip, pointing, open or
+ * cradling a book is his heroines' small hand (handDraw), turned with the forearm too.
+ */
+function drawBaseBody(g: DrawCtx): void {
+  const r = g.rig;
+  const P = FEMALE_BASE;
+  const arm = (s: Side) => {
+    const j = armJoints(r, s);
+    const depth: Depth = s === 'N' ? 'nearArm.body' : 'farArm.body';
+    const fore = segAngle(j.elbow, j.wrist);
+    stampBase(g, depth, s === 'N' ? P.upperArmN : P.upperArmF, j.shoulder, segAngle(j.shoulder, j.elbow), s === 'N' ? 'upperArmN' : 'upperArmF');
+    const forePiece = s === 'N' ? P.forearmN : P.forearmF;
+    stampBase(g, depth, forePiece, j.elbow, fore, s === 'N' ? 'forearmN' : 'forearmF');
+    // A forearm longer than his (a look's longer arms, rig.ts solveFit) is his forearm drawn on along
+    // the bone by the difference, without its cap of the elbow: his own pixels, the wrist further out.
+    const hisFore = Math.hypot(...([0, 1] as const).map((k) => FEMALE_BASE_JOINTS[`wrist${s}`][k] - FEMALE_BASE_JOINTS[`elbow${s}`][k])) / RES;
+    const extra = Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y) - hisFore;
+    if (extra > 0.25) {
+      const k = extra / Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y);
+      const on = v(j.elbow.x + (j.wrist.x - j.elbow.x) * k, j.elbow.y + (j.wrist.y - j.elbow.y) * k);
+      stampBase(g, depth, forePiece, on, fore, s === 'N' ? 'forearmN' : 'forearmF', undefined, undefined, false, true);
+    }
+    const kind = handPose(g, s).kind;
+    if (kind === 'fist' || kind === 'relaxed') stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
+    else {
+      // his wrist under the small hand, so it stays on the forearm
+      stampBase(g, depth, s === 'N' ? P.wristN : P.wristF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
+      handDraw(g, g.L(depth), s, { mat: g.skin, part: s === 'N' ? 'handN' : 'handF', bias: s === 'F' ? -1 : 0 });
+    }
+  };
+  const leg = (s: Side) => {
+    const j = legJoints(r, s);
+    const depth: Depth = s === 'N' ? 'nearLeg.body' : 'farLeg.body';
+    stampBase(g, depth, s === 'N' ? P.thighN : P.thighF, j.hip, segAngle(j.hip, j.knee), s === 'N' ? 'thighN' : 'thighF');
+    stampBase(g, depth, s === 'N' ? P.shinN : P.shinF, j.knee, segAngle(j.knee, j.ankle), s === 'N' ? 'shinN' : 'shinF');
+    // Every footwear item draws its own foot.
+    if (!g.has('feet')) stampBase(g, depth, s === 'N' ? P.footN : P.footF, j.ankle, 0, s === 'N' ? 'footN' : 'footF');
+  };
+  arm('F');
+  leg('F');
+  leg('N');
+  const up = upAngle(g);
+  stampBase(g, 'torso.body', P.pelvis, r.pelvis, up, 'pelvis');
+  // Under a top or armour of another kind his sports top's straps come off: a dress with bare shoulders
+  // shows his shoulders, not the straps (the rest of the top stays under it).
+  const worn = (slot: 'armor' | 'top') => g.has(slot) && !g.look.slots[slot]!.id.endsWith('_none');
+  const dressed = worn('armor') || (worn('top') && !g.has('top', 'top_sports_bra'));
+  stampBase(g, 'torso.body', P.chest, r.neck, up, 'torso', undefined, undefined, dressed);
+  drawHead(g);
+  arm('N');
 }
 
 /** Torso-local coordinates of a design point: x along the shoulders (toward the face), y up from the pelvis. */
@@ -412,10 +545,10 @@ function drawValiantHead(g: DrawCtx): void {
  * skin lands exactly on the character's (the rest of the body is drawn in that skin), his shadows
  * and black line staying as far below it and his lights as far above. In his own skin, his colour.
  */
-function skinTone(hex: string, skin: string, painted = VALIANT_SKIN): string {
-  if (skin.toLowerCase() === painted) return hex;
+function skinTone(hex: string, skin: string, his: string = VALIANT_SKIN): string {
+  if (skin.toLowerCase() === his) return hex;
   const [h, s, l] = rgbToHsl(...hexToRgb(hex));
-  const [h0, s0, l0] = rgbToHsl(...hexToRgb(painted));
+  const [h0, s0, l0] = rgbToHsl(...hexToRgb(his));
   const [h1, s1, l1] = rgbToHsl(...hexToRgb(skin));
   const lt = l <= l0 ? (l * l1) / l0 : l1 + ((l - l0) * (1 - l1)) / (1 - l0);
   return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), lt);

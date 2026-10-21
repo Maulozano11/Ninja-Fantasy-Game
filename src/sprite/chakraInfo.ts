@@ -31,7 +31,7 @@ export const CHAKRA_CHOICES: ChakraChoice[] = CHAKRA_COLORS.map((c) => ({
 }));
 
 /**
- * The colours offered as swatches for any type. Living Sparks' cyan is left out: it sits next to the
+ * The colours offered as swatches for any type. Battle Static's cyan is left out: it sits next to the
  * water burst's blue, and Lightning's own colour is already there (its natural look is "Natural").
  */
 export const TINT_CHOICES: ChakraChoice[] = CHAKRA_CHOICES.filter((c) => c.id !== 'cyan');

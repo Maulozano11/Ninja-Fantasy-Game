@@ -1,5 +1,6 @@
-// Tests for Living Sparks (chakra burst 'cyan'), the second Lightning burst: npm test. The owner
-// (2026-10-21) asked for a second electric burst with no aura round the body, only bolts now and then.
+// Tests for Battle Static (Estática de batalla, chakra burst 'cyan'), the second Lightning burst: npm
+// test. The owner (2026-10-21) asked for a second electric burst with no aura round the body, only
+// bolts; then for more of them, crackling regularly, and more still while empowered (potenciado).
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -33,7 +34,7 @@ const lum = (h: string) => {
   return 0.3 * r + 0.59 * g + 0.11 * b;
 };
 const shows = (fx: { back: Uint8ClampedArray; front: Uint8ClampedArray }) => fx.front.some((v, i) => i % 4 === 3 && v > 0) || fx.back.some((v, i) => i % 4 === 3 && v > 0);
-/** Every tick of Living Sparks' loop (the same for every mode). */
+/** Every tick of Battle Static's loop (the same for every mode). */
 const ticks = (_mode?: ChakraMode) => Array.from({ length: SPARK_LOOP }, (_, t) => t);
 
 /** The pixels just outside a sprite's silhouette. */
@@ -55,9 +56,9 @@ function rimOf(rgba: Uint8ClampedArray): number[] {
 }
 
 /** Renders the burst over a body in a pose: the drawn pixels' colours and how much of the outline they cover. */
-function burst(l: SpriteAppearance, p: SpritePose, mode: ChakraMode, tick: number) {
+function burst(l: SpriteAppearance, p: SpritePose, mode: ChakraMode, tick: number, empowered = false) {
   const spr = renderSpriteCached(l, p, 0);
-  const fx = renderChakra(l.chakra.color, mode, tick, spr.rgba, spr.rig, l.chakra.tint);
+  const fx = renderChakra(l.chakra.color, mode, tick, spr.rgba, spr.rig, l.chakra.tint, empowered);
   const rim = rimOf(spr.rgba);
   const lit = rim.filter((i) => fx.back[i * 4 + 3] > 0 || fx.front[i * 4 + 3] > 0).length;
   const colours = new Map<string, number>();
@@ -72,11 +73,11 @@ function burst(l: SpriteAppearance, p: SpritePose, mode: ChakraMode, tick: numbe
   return { fx, spr, count, colours, outline: lit / rim.length };
 }
 
-describe('Living Sparks, the second Lightning burst', () => {
+describe('Battle Static, the second Lightning burst', () => {
   it('is a Lightning burst, offered after Storm Lash, with the Lightning cast emblems', () => {
     assert.equal(BURST_NATURE.cyan, 'Lightning');
     assert.deepEqual(chakraType('Lightning').bursts, ['yellow', 'cyan']);
-    assert.equal(chakraChoice('cyan').burst, 'Living Sparks');
+    assert.equal(chakraChoice('cyan').burst, 'Battle Static');
     assert.equal(chakraChoice('cyan').motif, 'Lightning', 'the grimoire casts reuse the lightning emblem, orb and word');
     for (const tint of [undefined, 'red', 'black', '#00ff00']) assert.equal(chakraNature(look('male', tint).chakra), 'Lightning', `in ${tint}`);
     // picking Lightning keeps the burst chosen; picking another type and back gives Storm Lash first
@@ -92,30 +93,33 @@ describe('Living Sparks, the second Lightning burst', () => {
   it('loops over ten seconds with every bolt its own, so nothing repeats every two seconds', () => {
     assert.equal(chakraLoop('cyan'), SPARK_LOOP);
     assert.equal(chakraLoop('yellow'), CHAKRA_LOOP, 'the other bursts keep their loop');
-    for (const mode of MODES) {
-      const chart = sparkTimes(mode);
-      for (const [at, life] of chart) assert.ok(at >= 0 && at + life <= SPARK_LOOP, `${mode}: no bolt runs over the loop's end`);
-      // never the same place twice running (the victory's opening burst aside), and uneven gaps
-      const rest = chart.slice(mode === 'victory' ? 6 : 0);
-      for (let k = 1; k < rest.length; k++) assert.notEqual(rest[k][2], rest[k - 1][2], `${mode} ${k}`);
-      const gaps = new Set(rest.slice(1).map(([at], k) => at - rest[k][0]));
-      assert.ok(gaps.size >= 3, `${mode}: gaps ${[...gaps]}`);
-      // the two-second windows differ: which ticks are lit is not the same from one to the next
-      const lit = (w: number) => Array.from({ length: CHAKRA_LOOP }, (_, t) => sparkCount(mode, w * CHAKRA_LOOP + t) > 0).join();
-      assert.ok(new Set([0, 1, 2, 3, 4].map(lit)).size >= 4, `${mode}: the 2 s windows repeat`);
-    }
+    for (const empowered of [false, true])
+      for (const mode of MODES) {
+        const chart = sparkTimes(mode, empowered);
+        const name = `${mode}${empowered ? ' empowered' : ''}`;
+        for (const [at, life] of chart) assert.ok(at >= 0 && at + life <= SPARK_LOOP, `${name}: no bolt runs over the loop's end`);
+        // never the same place twice running (the victory's opening burst aside), and never two in one place at once
+        const rest = chart.slice(mode === 'victory' ? (empowered ? 10 : 7) : 0);
+        for (let k = 1; k < rest.length; k++) assert.notEqual(rest[k][2], rest[k - 1][2], `${name} ${k}`);
+        for (const t of ticks()) {
+          const at = chart.filter(([a, l]) => t >= a && t < a + l).map(([, , w]) => w);
+          if (!(mode === 'victory' && t < 4)) assert.equal(new Set(at).size, at.length, `${name} ${t}: ${at}`);
+        }
+        // the two-second windows differ: how many bolts show, tick by tick, is not the same from one to the next
+        const shape = (w: number) => Array.from({ length: CHAKRA_LOOP }, (_, t) => sparkCount(mode, w * CHAKRA_LOOP + t, empowered)).join();
+        assert.ok(new Set([0, 1, 2, 3, 4].map(shape)).size >= 4, `${name}: the 2 s windows repeat`);
+      }
     // the same lit tick a loop of the other bursts later draws a different bolt
     const spr = renderSpriteCached(look('male'), 'charge', 0);
     let same = 0;
     let both = 0;
-    for (let t = 0; t < SPARK_LOOP - CHAKRA_LOOP; t++) {
-      if (!sparkCount('charge', t) || !sparkCount('charge', t + CHAKRA_LOOP)) continue;
+    for (let t = 0; t < SPARK_LOOP - CHAKRA_LOOP; t += 2) {
       both++;
       const a = renderChakra('cyan', 'charge', t, spr.rgba, spr.rig);
       const b = renderChakra('cyan', 'charge', t + CHAKRA_LOOP, spr.rgba, spr.rig);
       if (Buffer.compare(Buffer.from(a.front), Buffer.from(b.front)) === 0 && Buffer.compare(Buffer.from(a.back), Buffer.from(b.back)) === 0) same++;
     }
-    assert.ok(both > 10 && same === 0, `${same} of ${both} the same`);
+    assert.ok(same === 0, `${same} of ${both} the same`);
   });
 
   it('renders in every mode, on the four bodies and in every pose', () => {
@@ -129,20 +133,21 @@ describe('Living Sparks, the second Lightning burst', () => {
           assert.ok(shows(renderChakra('cyan', mode, busiest, spr.rgba, spr.rig)), `${body} ${p} ${mode} ${busiest}: no bolt drawn`);
         }
       }
-      // in the pose each mode plays in, nearly every lit tick draws its bolt (one may find no clear spot)
-      for (const mode of MODES) {
-        const spr = renderSpriteCached(l, pose(mode), 0);
-        const lit = ticks(mode).filter((t) => sparkCount(mode, t) && t % (body === 'male' ? 2 : 6) === 0);
-        const drawn = lit.filter((t) => shows(renderChakra('cyan', mode, t, spr.rgba, spr.rig))).length;
-        assert.ok(drawn >= lit.length * 0.95, `${body} ${mode}: ${drawn} of ${lit.length} lit ticks drawn`);
-      }
+      // in the pose each mode plays in, plain and empowered, every tick draws bolts (one may find no clear spot, never all)
+      for (const empowered of [false, true])
+        for (const mode of MODES) {
+          const spr = renderSpriteCached(l, pose(mode), 0);
+          const lit = ticks(mode).filter((t) => t % (body === 'male' ? 2 : 6) === 0);
+          const drawn = lit.filter((t) => shows(renderChakra('cyan', mode, t, spr.rgba, spr.rig, undefined, empowered))).length;
+          assert.equal(drawn, lit.length, `${body} ${mode} ${empowered}: ${drawn} of ${lit.length} ticks drawn`);
+        }
     }
   });
 
   it('never draws a bolt over the face, whatever the cast style', () => {
-    const faceHits = (l: SpriteAppearance, p: SpritePose, mode: ChakraMode, t: number) => {
+    const faceHits = (l: SpriteAppearance, p: SpritePose, mode: ChakraMode, t: number, empowered = false) => {
       const spr = renderSpriteCached(l, p, 0);
-      const fx = renderChakra('cyan', mode, t, spr.rgba, spr.rig);
+      const fx = renderChakra('cyan', mode, t, spr.rgba, spr.rig, undefined, empowered);
       let n = 0;
       for (let i = 0; i < GRID * GRID; i++) if (fx.front[i * 4 + 3] && spr.rgba[i * 4 + 3] && inFace(spr.rig, { x: i % GRID, y: Math.floor(i / GRID) })) n++;
       return n;
@@ -151,10 +156,14 @@ describe('Living Sparks, the second Lightning burst', () => {
       for (const body of BODIES) {
         const l = look(body, undefined, 'cyan', style);
         // every other lit tick on the default body, a sample on the others (a whole loop of all of them is slow)
-        for (const t of ticks('cast')) if (sparkCount('cast', t) && t % (body === 'male' ? 2 : 6) === 0) assert.equal(faceHits(l, 'cast', 'cast', t), 0, `${style} ${body} ${t}`);
+        for (const t of ticks('cast')) {
+          if (t % (body === 'male' ? 2 : 6) === 0) assert.equal(faceHits(l, 'cast', 'cast', t), 0, `${style} ${body} ${t}`);
+          if (t % (body === 'male' ? 4 : 12) === 1) assert.equal(faceHits(l, 'cast', 'cast', t, true), 0, `${style} ${body} ${t} empowered`);
+        }
       }
-    for (const mode of ['aura', 'charge', 'victory'] as ChakraMode[])
-      for (const t of ticks(mode)) if (sparkCount(mode, t) && t % 2 === 0) assert.equal(faceHits(look('male'), pose(mode), mode, t), 0, `${mode} ${t}`);
+    for (const empowered of [false, true])
+      for (const mode of ['aura', 'charge', 'victory'] as ChakraMode[])
+        for (const t of ticks(mode)) if (t % 2 === 0) assert.equal(faceHits(look('male'), pose(mode), mode, t, empowered), 0, `${mode} ${t} ${empowered}`);
   });
 
   it('keeps its own colours, takes a tint, and black reads as black lightning', () => {
@@ -183,29 +192,52 @@ describe('Living Sparks, the second Lightning burst', () => {
     }
   });
 
-  it('is only occasional bolts: no glow, no outline round the body, often nothing at all', () => {
-    for (const mode of MODES) {
-      const counts = ticks(mode).map((t) => sparkCount(mode, t));
-      assert.ok(Math.max(...counts) <= (mode === 'victory' ? 6 : 2), `${mode}: ${counts}`);
-      assert.ok(counts.filter((n) => n <= 2).length >= SPARK_LOOP * 0.9, `${mode}: ${counts}`);
-      for (const body of BODIES)
-        ticks(mode).forEach((t) => {
-          // every lit tick on the default body; a sample of them, and of the empty ones, on the others
-          if (body !== 'male' && t % 4) return;
-          const r = burst(look(body), pose(mode), mode, t);
-          // never an outline: the empowered aura lights a few pixels of it at most, a victory's burst a quarter
-          assert.ok(r.outline < (mode === 'aura' ? 0.1 : 0.3), `${body} ${mode} ${t}: ${Math.round(r.outline * 100)}% of the outline lit`);
-          if (!counts[t]) assert.equal(r.count, 0, `${body} ${mode} ${t}: nothing between the bolts`);
-        });
-    }
-    const aura = ticks('aura').map((t) => sparkCount('aura', t));
-    assert.ok(aura.filter((n) => n === 0).length >= SPARK_LOOP * 0.6, `the aura is rare: ${aura}`);
-    assert.ok(Math.max(...aura) <= 1);
-    const charge = ticks('charge').map((t) => sparkCount('charge', t));
-    assert.ok(charge.reduce((a, b) => a + b) > aura.reduce((a, b) => a + b) * 2, 'a charge crackles more often');
-    assert.ok(sparkCount('victory', 1) >= 5, 'a victory opens with a burst of bolts');
-    assert.ok(Math.max(...ticks('victory').slice(4).map((t) => sparkCount('victory', t))) <= 2, 'and only once a loop');
+  it('crackles all the time: bolts at every tick, but no glow and no outline round the body', () => {
+    for (const empowered of [false, true])
+      for (const mode of MODES) {
+        const name = `${mode}${empowered ? ' empowered' : ''}`;
+        const counts = ticks(mode).map((t) => sparkCount(mode, t, empowered));
+        // never a tick without lightning: two bolts at least (three in a charge or a cast), and a cap
+        const least = mode === 'victory' && !empowered ? 2 : 3;
+        assert.ok(Math.min(...counts) >= least, `${name}: ${counts}`);
+        const cap = empowered || mode === 'aura' ? 7 : 4;
+        assert.ok(Math.max(...counts.slice(mode === 'victory' ? 4 : 0)) <= cap, `${name}: ${counts}`);
+        for (const body of BODIES)
+          ticks(mode).forEach((t) => {
+            // every fourth tick on the default body, a few on the others
+            if (t % (body === 'male' ? 4 : 16)) return;
+            const r = burst(look(body), pose(mode), mode, t, empowered);
+            // never an outline: bolts touch only a part of it
+            assert.ok(r.outline < 0.35, `${body} ${name} ${t}: ${Math.round(r.outline * 100)}% of the outline lit`);
+          });
+      }
+    assert.ok(sparkCount('victory', 1) >= 6, 'a victory opens with a burst of bolts');
+    assert.ok(sparkCount('victory', 1, true) >= 9, 'a bigger one empowered');
     // the test sees an outline when there is one: Storm Lash's aura wraps the body in a glowing rim
     assert.ok(burst(look('male', undefined, 'yellow'), 'idle', 'aura', 0).outline > 0.5);
+  });
+
+  it('crackles harder empowered: more bolts, longer, and the aura (only played empowered) at that strength', () => {
+    const l = look('male');
+    for (const mode of ['charge', 'cast', 'victory'] as ChakraMode[]) {
+      const sum = (empowered: boolean) => ticks(mode).reduce((a, t) => a + sparkCount(mode, t, empowered), 0);
+      assert.ok(sum(true) >= sum(false) * 1.4, `${mode}: ${sum(true)} bolt frames empowered, ${sum(false)} plain`);
+      // drawn: more lightning pixels on average
+      let plain = 0;
+      let strong = 0;
+      for (let t = 0; t < SPARK_LOOP; t += 5) {
+        plain += burst(l, pose(mode), mode, t).count;
+        strong += burst(l, pose(mode), mode, t, true).count;
+      }
+      assert.ok(strong >= plain * 1.5, `${mode}: ${strong} px empowered, ${plain} plain`);
+    }
+    assert.deepEqual(sparkTimes('aura'), sparkTimes('aura', true));
+    // the other bursts look the same either way
+    const spr = renderSpriteCached(look('male', undefined, 'yellow'), 'charge', 0);
+    for (const t of [0, 7]) {
+      const a = renderChakra('yellow', 'charge', t, spr.rgba, spr.rig);
+      const b = renderChakra('yellow', 'charge', t, spr.rgba, spr.rig, undefined, true);
+      assert.ok(Buffer.from(a.front).equals(Buffer.from(b.front)) && Buffer.from(a.back).equals(Buffer.from(b.back)));
+    }
   });
 });

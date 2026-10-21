@@ -122,7 +122,8 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
       const out = img.data;
       out.fill(0);
       if (showShadow) drawShadow(out, spr.rig.pelvis.x * RES + 1);
-      const fx = mode ? renderChakra(c.color, mode, fxTick, spr.rgba, spr.rig, c.tint) : null;
+      // with the chakra aura on, a charge, a cast or a victory plays empowered too (Battle Static crackles harder)
+      const fx = mode ? renderChakra(c.color, mode, fxTick, spr.rgba, spr.rig, c.tint, isEnhanced) : null;
       if (fx) blendOver(out, fx.back);
       blendOver(out, spr.rgba);
       if (fx) blendOver(out, fx.front);

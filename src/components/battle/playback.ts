@@ -44,6 +44,8 @@ export interface UnitView {
    * draws it).
    */
   phase?: { from: Pt; to: Pt; t0: number };
+  /** The cast pose is an enhanced jutsu's: its chakra burst plays empowered. */
+  castEnhanced?: boolean;
 }
 
 export interface Floater {
@@ -491,7 +493,10 @@ export class Playback {
           if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
           return 90;
         }
-        if (!head) this.setPose(a, spec?.melee ? 'attack' : 'cast', now, 900);
+        if (!head) {
+          this.setPose(a, spec?.melee ? 'attack' : 'cast', now, 900);
+          a.castEnhanced = !!ev.enhanced;
+        }
         else {
           a.creature = { anim: ev.jutsu === 'hydra_roar' ? 'roar' : 'spit', t0: now };
           if (ev.jutsu === 'hydra_roar') h.sound('roar');

@@ -839,7 +839,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
     frame = Math.floor(elapsed * fpsOf(v.pose));
     if (oneShot) frame = Math.min(frame, n - 1);
   }
-  const aura = v.pose === 'cast' ? { mode: 'cast' as const, tick: Math.floor(now / 83) } : undefined;
+  const aura = v.pose === 'cast' ? { mode: 'cast' as const, tick: Math.floor(now / 83), empowered: !!v.castEnhanced } : undefined;
   const fr = unitFrame(u, look, v.pose, frame, aura);
   let lx = 0;
   let ly = 0;

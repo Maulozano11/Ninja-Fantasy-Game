@@ -339,7 +339,7 @@ by the builder; his answers settle the rows marked so, the rest is still
 | Fire (Fuego) | Pyre Crown (flames), Cinder Nova (embers and a fiery shockwave) | red, orange | His rule; Cinder Nova as a second burst: his answer 4 |
 | Water (Agua) | Rising Tide | blue | Proposed (Hana is Water: his answer 1, on this table) |
 | Wind (Viento) | Leafwind Spiral | green | Proposed (Hiro is Wind: his answer 1, on this table) |
-| Lightning (Rayo) | Storm Lash; Living Sparks (no aura and no glow, only small jagged bolts now and then on the hair, shoulders, arms and round the legs) | yellow, cyan | Storm Lash: his rule. A second burst: his request (2026-10-21); Living Sparks is **new art**, its name provisional |
+| Lightning (Rayo) | Storm Lash; Battle Static (*Estática de batalla*: no aura and no glow, only small jagged bolts crackling all the time on the hair, shoulders, arms and round the legs, more while empowered) | yellow, cyan | Storm Lash: his rule. A second burst: his request (2026-10-21), its name his; Battle Static is **new art** |
 | Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up) | brown | Kenji Earth: his answer 1. The burst art is **approved** (2026-10-21: "me gusta tierra quebrada") |
 | Shadow (Sombra), no element | Nightveil Mist | indigo | **Pending** (answer 3): not offered; jutsu later, demonic |
 | Spirit (Espíritu), no element | Spectral Guardian | violet | **Pending** (answer 3): not offered; jutsu later, demonic |
@@ -348,22 +348,30 @@ by the builder; his answers settle the rows marked so, the rest is still
 
 - **Lightning's second burst** (the owner, 2026-10-21: *"hazle una segunda
   aura a electricidad [...] sin el aura solo los rayos ocacionales"*, and by
-  aura he means the ki burst round the body: *"sin eso"*). Living Sparks (id
-  `cyan`, natural colour the cyan and white of his lightning set): no rim, no
-  halo and nothing rising round the body in any mode, only small, sharp,
-  jagged bolts that crackle for one to three frames on the hair, the
-  shoulders, the arms or round the legs, with a pinpoint flicker where one
-  strikes. Its loop is 10 s (the other bursts loop every 2 s), so the bolts
-  don't come back in the same places. Rare while empowered, frequent in a
-  charge, loose bolts off the casting arm and palm in a cast (never over the
-  face, and behind the body when that arm is), a burst of bolts all over the
-  body once at the start of a victory. It takes any colour (black: a black
-  bolt in a thin bright edge) and reuses Lightning's grimoire emblem, orb and
-  word. Its cyan is not added to the colour swatches (it sat beside the water
-  blue). Lightning offers both bursts in the creator, like Fire. Names
-  proposed for him to choose: *Chispas vivas* / Living Sparks (used for now),
-  *Relámpago latente* / Latent Lightning, *Estática salvaje* / Wild Static. New
-  art: waits for his approval.
+  aura he means the ki burst round the body: *"sin eso"*). **Its name is his:
+  *Estática de batalla*** (English *Battle Static*; id `cyan`, natural colour
+  the cyan and white of his lightning set). Seeing the first version (then
+  *Chispas vivas*, bolts now and then) he asked for more: *"quiero que se vea
+  mas rayos, lo de ocacionalmente quitalo y ponlo mas regularmente y mas en
+  potenciado que se vea mas"*. As built now: no rim, no halo and nothing
+  rising round the body in any mode, only small, sharp, jagged bolts that
+  crackle for two to four frames on the hair, the shoulders, the arms or
+  round the legs, with a pinpoint flicker where one strikes, and **never a
+  frame without them**: at least three on the body in a charge or a cast (up
+  to four), two in a victory after its opening burst of bolts all over the
+  body. **Empowered (potenciado)** it crackles harder: five to seven bolts in
+  a charge, five or six in a cast (more of them off the palm), four to six in
+  a victory, each about a third longer and forking more. Empowered means an
+  enhanced jutsu in battle (the cast plays empowered) and the creator's chakra
+  aura switched on (the idle aura, which only plays empowered, and the
+  charge, cast and victory with it on). The other bursts look the same either
+  way. In a cast the bolts jump along the casting arm and off its palm (never
+  over the face, and behind the body when that arm is). Its loop is 10 s (the
+  other bursts loop every 2 s), so the bolts don't come back in the same
+  places. It takes any colour (black: a black bolt in a thin bright edge) and
+  reuses Lightning's grimoire emblem, orb and word. Its cyan is not added to
+  the colour swatches (it sat beside the water blue). Lightning offers both
+  bursts in the creator, like Fire. New art: waits for his approval.
 
 **The nature decides the elemental jutsu.** That the nature decides which
 elemental jutsu a ninja can learn is the owner's ("One choice" above). The
@@ -795,9 +803,9 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
   It was drawn because Earth had none; Kenji is Earth (his answer 1), but the
   art itself waits for his yes.
-- Lightning's second burst (Living Sparks, his request of 2026-10-21): approve
-  or redo the art, and choose its name (*Chispas vivas*, *Relámpago latente*
-  or *Estática salvaje*, or his own).
+- Lightning's second burst (*Estática de batalla* / Battle Static, his request
+  and his name, 2026-10-21): approve or redo the art, now with bolts at every
+  frame and more while empowered.
 - The burst-to-type table ("Chakra type" above): approve or change the rows
   that are still proposed: Water = Rising Tide, Wind = Leafwind Spiral, and the
   bursts of Light (Heaven Pillar) and Void (Abyss Orbit). His answers settled

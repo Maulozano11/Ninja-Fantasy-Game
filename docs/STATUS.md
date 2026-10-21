@@ -126,7 +126,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `chakra/jutsu-tint` | not pushed (local) | Elemental jutsu, their beasts and walls in the caster's chakra colour (`src/sprite/vfxTint.ts`, `src/components/battle/vfxTint*.ts`; `docs/GAMEPLAY_DESIGN.md`, "The chakra colour colours the elemental jutsu") | **The owner approved the colours** (2026-10-21); wired into the battle (checked in the browser), review fixes done (no recolouring on the screen's thread, memory capped); **open question**: should a heal of an elemental nature (Mystical Palm) glow in the chakra colour; not merged |
 | `chakra/decisions` | not pushed (local) | The owner's four answers on the chakra types (saved legends updated, Shadow and Spirit pending, Cinder Nova kept) and the nature gating the elemental jutsu in the creator | **For review** |
 | `chakra/progression` | `51b44c0` on origin (WIP); the finished work is local, not pushed | His jutsu answers: D/C + clan for a new ninja (S-rank slot locked), the explosive tag as an item (throw / hide, save migration), the chakra type fixed once made; the taijutsu, kenjutsu and genjutsu jutsu gated by class; level 5: a second element or a higher rank, Kaien and Raiga's second natures | **For review** |
-| `chakra/lightning-crackle` | not pushed yet | Lightning's second burst, Living Sparks (provisional name; id `cyan`): only occasional small bolts, no aura, on a 10 s loop (`src/sprite/chakra.ts`, `chakraNature.ts`, `chakraInfo.ts`, `src/sprite/chakra.test.ts`; the callers take the loop from `chakraLoop()`: `ShinobiSpriteCanvas.tsx`, `battle/unitArt.ts`) | **Waiting for approval** (new art, the owner's request) |
+| `chakra/lightning-crackle` | on origin | Lightning's second burst, *Estática de batalla* / Battle Static (his name; id `cyan`): small bolts crackling all the time, more and longer while empowered (an enhanced jutsu's cast, the creator's chakra aura), no aura, on a 10 s loop (`src/sprite/chakra.ts`, `chakraNature.ts`, `chakraInfo.ts`, `src/sprite/chakra.test.ts`, `creator/words.ts`; the callers take the loop from `chakraLoop()` and pass `empowered`: `ShinobiSpriteCanvas.tsx`, `battle/unitArt.ts`, `battle/renderer.ts`, `battle/playback.ts`) | **Waiting for approval** (new art, the owner's request) |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -147,9 +147,8 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the icons on `icons/sheets-8-11`, the
   camp poses once redone.
 - Name the Scarlet character (`scarlet/study`).
-- `chakra/lightning-crackle` (2026-10-21, his request): approve Lightning's second burst (only the
-  occasional bolts, no aura) and choose its name: *Chispas vivas* / Living Sparks (used for now),
-  *Relámpago latente* / Latent Lightning or *Estática salvaje* / Wild Static
+- `chakra/lightning-crackle` (2026-10-21, his request): approve Lightning's second burst,
+  *Estática de batalla* (his name): no aura, bolts at every frame, more while empowered
   (`docs/GAMEPLAY_DESIGN.md`, "Chakra type").
 - Chakra types (`docs/GAMEPLAY_DESIGN.md`, "Chakra type" and Open questions). **Decided
   2026-10-21** (his answers, built on `chakra/decisions`): the legends keep their new types; saved

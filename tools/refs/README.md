@@ -129,3 +129,10 @@ folders.
       npx tsx tools/refs/heroine-idle.mts <out>
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
+
+- `saya-upper-from-ref.py`: Saya's ninja top, arm guards and fingerless gloves
+  (`src/sprite/items/sayaUpperArt.ts`, items in `sayaUpper.ts`): pieces drawn by hand at our scale in
+  her colours, fitted to our female rig at idle (the top rides the torso, each guard its limb); the
+  gloves paint our hand pictures in her glove by how far each pixel lies from the wrist.
+
+      python3 -I tools/refs/saya-upper-from-ref.py src/sprite/items/sayaUpperArt.ts <out>

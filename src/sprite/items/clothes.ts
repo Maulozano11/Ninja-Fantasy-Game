@@ -10,6 +10,7 @@ import { PaintedPiece, segAngle } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
+import { SAYA_SHADE_GLOVES } from './sayaUpper';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1876,4 +1877,6 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       }
     },
   },
+  // Saya's fingerless gloves, from the owner's Saya picture (sayaUpper.ts)
+  SAYA_SHADE_GLOVES,
 ]);

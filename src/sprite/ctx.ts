@@ -24,9 +24,10 @@ import {
   v,
   Vec,
 } from './raster';
-import { BodyParams, Rig } from './rig';
+import { ankleLiftOf, BodyParams, Rig } from './rig';
 import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
+import { FEMALE_HANDS } from './femaleBodyArt';
 import { isFemaleBody, type BodyType, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
 
 /**
@@ -268,6 +269,7 @@ export function torsoPoly(g: DrawCtx, inflate = 0, opts: { top?: number; bottom?
   const lo = (y: number) => Math.max(y, crotch);
   const wa = b.waistHalf;
   const hp = b.hipHalf;
+  const wy = b.waistY ?? 5.4;
   // Outer edges of the thighs at the hip joints (see buildRig: hipN, hipF).
   const nO = -(hp * 0.5 + b.legR[0] * 0.96);
   const fO = hp * 0.42 + b.legR[0] * 0.9;
@@ -283,14 +285,14 @@ export function torsoPoly(g: DrawCtx, inflate = 0, opts: { top?: number; bottom?
     // Waist, then hips exactly as wide as the two thighs (their outer edges,
     // never wider: no bell), then a narrow crotch so the legs separate right
     // under the pelvis.
-    T(wa * 0.64 + 0.7 + i, lo(5.4)),
+    T(wa * 0.64 + 0.7 + i, lo(wy)),
     T(fO + i + flare * 0.6, lo(1.6)),
     T(fO - 0.2 + i + flare * 0.6, lo(-0.8)),
     T(0.5 + i * 0.3 + flare * 0.3, crotch - i * 0.3),
     T(-0.8 - i * 0.3 - flare * 0.3, crotch - i * 0.3),
     T(nO - 0.1 - i - flare, lo(-0.8)),
     T(nO - i - flare, lo(1.6)),
-    T(-wa * 0.86 - i, lo(5.4)),
+    T(-wa * 0.86 - i, lo(wy)),
     sh(T(-b.chestHalf * 0.86 - i, Lt - 5), 0.8),
   ];
   return pts;
@@ -476,7 +478,9 @@ export function handPose(g: DrawCtx, s: Side): HandPose {
   // A hand hanging within 30 degrees of straight down is stamped unrotated,
   // so every pixel stays exactly as drawn (the wrist bends a little instead).
   const raw = ((theta - 90 + 540) % 360) - 180;
-  const rot = Math.abs(raw) <= 30 ? 0 : raw;
+  // The female bodies' hands are the owner's small ones (5-7 px): turned a little they lose his
+  // pixels for little gain, so they hang as drawn up to 45 degrees.
+  const rot = Math.abs(raw) <= (isFemaleBody(g.rig.body) ? 45 : 30) ? 0 : raw;
   // Keep the thumb on the facing side (+x), or on top when the arm is level.
   const tr = (rot * Math.PI) / 180;
   const tx = Math.cos(tr);
@@ -519,6 +523,19 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
   };
   const flags = F_NO_OUTLINE | F_NO_TEXTURE;
   const { kind, rot, flipX } = handPose(g, s);
+  if (isFemaleBody(g.rig.body)) {
+    // The owner's small hands (femaleBodyArt.ts). His far hands (relaxedFar, fistFar) are drawn in
+    // their own darker tones and keep them; a near-side shape used on the far side goes one shade
+    // darker, but his deep shadow never turns into the line.
+    const H = FEMALE_HANDS;
+    const far: TemplatePalette = { ...pal, D: [pen.mat, 1], s: [pen.mat, Math.max(1, 2 + b)], b: [pen.mat, 3 + b], l: [pen.mat, 3 + b] };
+    const own: TemplatePalette = { ...pal, D: [pen.mat, 1], s: [pen.mat, 2], b: [pen.mat, 3], l: [pen.mat, 3] };
+    if (kind === 'cradle') stampTemplate(L, H.cradle, j.wrist, 0, s === 'F' ? far : pal, pen.part, { flags });
+    else if (s === 'F' && kind === 'fist') stampTemplate(L, H.fistFar, j.wrist, rot, own, pen.part, { flipX, flags });
+    else if (s === 'F' && kind === 'relaxed') stampTemplate(L, H.relaxedFar, j.wrist, rot, own, pen.part, { flipX, flags });
+    else stampTemplate(L, H[kind], j.wrist, rot, s === 'F' ? far : pal, pen.part, { flipX, flags });
+    return;
+  }
   if (kind === 'cradle') {
     stampTemplate(L, HAND_CRADLE, j.wrist, 0, pal, pen.part, { flags });
     return;
@@ -588,6 +605,36 @@ export const FOOT_BARE: FootArt = {
   },
 };
 
+/**
+ * A foot for a body whose ankle stands `drop` rows lower (BodyParams.ankleLift: the female bodies
+ * on the owner's small feet, his heroines at our scale): the template loses `drop` of its rows, the
+ * ones most like the row above them (the ankle and instep repeat; the ankle row, the toes and the
+ * two sole rows always stay), and `cols` columns just in front of the ankle. Every pixel left is the
+ * template's own, so the bare foot keeps his crystal-sword foot's toes and a boot its toe cap, welt
+ * and sole, only smaller.
+ */
+function shortFoot(t: PixelTemplate, drop: number, cols: number): PixelTemplate {
+  const key = `${drop},${cols}`;
+  let byKey = SHORT_FEET.get(t);
+  if (!byKey) SHORT_FEET.set(t, (byKey = new Map()));
+  const hit = byKey.get(key);
+  if (hit) return hit;
+  const w = Math.max(...t.rows.map((r) => r.length));
+  let rows = t.rows.map((r) => r.padEnd(w, '.'));
+  const same = (a: string, b: string) => [...a].filter((c, i) => c === b[i]).length;
+  for (let k = 0; k < drop && rows.length > 4; k++) {
+    // Rows 1 .. length-3: the ankle row (0, the pivot) and the last two (welt and sole) stay.
+    let best = 1;
+    for (let i = 2; i < rows.length - 2; i++) if (same(rows[i], rows[i - 1]) > same(rows[best], rows[best - 1])) best = i;
+    rows = rows.filter((_, i) => i !== best);
+  }
+  const col = t.pivot[0] + 1;
+  const out = { pivot: t.pivot, rows: rows.map((r) => r.slice(0, col) + r.slice(col + cols)) };
+  byKey.set(key, out);
+  return out;
+}
+const SHORT_FEET = new WeakMap<PixelTemplate, Map<string, PixelTemplate>>();
+
 /** Variant for slimmer (female) or broader (bulky) feet: drops or doubles one column. */
 function footWidth(t: PixelTemplate, body: string): PixelTemplate {
   const col = t.pivot[0] + 1;
@@ -608,7 +655,8 @@ export function footDraw(
   mats: { main?: number; second?: number; third?: number } = {},
   flags = F_NO_TEXTURE,
 ): void {
-  const t = footWidth(art[s], g.rig.body);
+  const drop = Math.round(ankleLiftOf(g.bp, s) * RES);
+  const t = drop > 0 ? shortFoot(art[s], drop, s === 'N' ? 1 : 2) : footWidth(art[s], g.rig.body);
   const a = legJoints(g.rig, s).ankle;
   const ax = Math.floor(a.x * RES) - t.pivot[0];
   const ay = Math.floor(a.y * RES) - t.pivot[1];

@@ -1,16 +1,17 @@
-// The owner's Lyra below the waist (docs/reference/lyra-owner-reference.jpg, 2026-10-21): her short
-// pleated skirt (bottom_striped_pleats), her long tabard open at the front (skirt_gilded_tabard) and her
-// belt with its buckle, flap and pouch (waist_pouch_belt). Her pieces are drawn by hand at our scale in
-// her colours on our female body at idle (lyraLowerArt.ts, tools/refs/lyra-lower-from-ref.py); drape()
-// carries them onto any body in any pose: above its attach line a piece rides the torso, below it the
-// cloth hangs from that line as the other skirts do (armor.ts hang()), and across it is stretched from
-// her hips to the body's own.
+// The owner's Lyra below the waist (docs/reference/lyra-game-scale-owner-reference.jpg, his picture
+// of her at our game scale, 2026-10-21): her short pleated skirt (bottom_striped_pleats), her long
+// tabard open at the front (skirt_gilded_tabard) and her belts with the buckle, flap and pouch
+// (waist_pouch_belt). Her pieces are his pixels one for one, placed on our female body at idle
+// (lyraLowerArt.ts, tools/refs/lyra-lower-from-ref.py); drape() carries them onto any body in any pose:
+// above its attach line a piece rides the torso, below it the cloth hangs from that line as the other
+// skirts do (armor.ts hang()), and across it is stretched from her hips to the body's own.
 
 import { retintHex } from '../color';
 import type { Depth, DrawCtx, ItemDef } from '../ctx';
 import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, lerp, PartId, RES, scale, sub, v, Vec } from '../raster';
 import { BodyParams, drawRig, GROUND, Rig } from '../rig';
 import {
+  LYRA_BACK,
   LYRA_BELT,
   LYRA_BELT_GOLD,
   LYRA_BELT_GOLD_BASE,
@@ -20,18 +21,16 @@ import {
   LYRA_BELT_POUCH_BASE,
   LYRA_BELT_STEEL,
   LYRA_BELT_STEEL_BASE,
+  LYRA_FRONT,
   LYRA_SKIRT,
   LYRA_SKIRT_CLOTH,
   LYRA_SKIRT_CLOTH_BASE,
   LYRA_SKIRT_STRIPES,
   LYRA_SKIRT_STRIPES_BASE,
-  LYRA_TABARD_BACK,
   LYRA_TABARD_CLOTH,
   LYRA_TABARD_CLOTH_BASE,
-  LYRA_TABARD_FRONT,
   LYRA_TABARD_GOLD,
   LYRA_TABARD_GOLD_BASE,
-  LYRA_TABARD_NEAR,
   LYRA_TABARD_TRIM,
   LYRA_TABARD_TRIM_BASE,
 } from './lyraLowerArt';
@@ -234,7 +233,7 @@ export const GILDED_TABARD: ItemDef = {
   id: 'skirt_gilded_tabard',
   slot: 'skirt',
   name: 'Gilded Tabard',
-  desc: 'Long cream coat tails open at the front, from the belt to the calves: edged in red and gold, a gold scroll at the hip, the hems cut to a point.',
+  desc: 'Long cream coat tails open at the front, from the belt to the calves: edged in red and gold, lined in grey-brown, the hems cut to a point.',
   colors: [
     { key: 'cloth', label: 'Cloth', default: LYRA_TABARD_CLOTH_BASE },
     { key: 'trim', label: 'Trim', default: LYRA_TABARD_TRIM_BASE },
@@ -246,11 +245,10 @@ export const GILDED_TABARD: ItemDef = {
       [LYRA_TABARD_TRIM, LYRA_TABARD_TRIM_BASE, trim],
       [LYRA_TABARD_GOLD, LYRA_TABARD_GOLD_BASE, gold],
     ]);
-    // the lining and the far panel behind the legs and the far arm; the near panel behind the near
-    // leg; over the hips and the skirt, in front of the body, the panels' tops
-    drape(g, 'backGear', LYRA_TABARD_BACK, 'back', TABARD_FIT, t);
-    drape(g, 'farLeg.armor', LYRA_TABARD_NEAR, 'thighN', TABARD_FIT, t);
-    drape(g, 'skirt', LYRA_TABARD_FRONT, 'pelvis', TABARD_FIT, t, behindFarArm(g));
+    // the lining and the far tail behind the legs and the far arm; the near panel and the far
+    // panel's top over the skirt and the near leg, as he drew them (behind the far arm)
+    drape(g, 'backGear', LYRA_BACK, 'back', TABARD_FIT, t);
+    drape(g, 'skirt', LYRA_FRONT, 'pelvis', TABARD_FIT, t, behindFarArm(g));
   },
 };
 
@@ -258,7 +256,7 @@ export const POUCH_BELT: ItemDef = {
   id: 'waist_pouch_belt',
   slot: 'waist',
   name: 'Buckled Belt and Pouch',
-  desc: 'A dark leather belt slung at the hips with a steel buckle, a gold-edged leather flap at the front and a red leather pouch capped in steel at the far hip.',
+  desc: 'Dark leather belts slung across the hips with a steel buckle, a small gold-edged flap at the front and a red leather pouch capped in steel at the far hip.',
   colors: [
     { key: 'leather', label: 'Leather', default: LYRA_BELT_LEATHER_BASE, kind: 'leather' },
     { key: 'steel', label: 'Steel', default: LYRA_BELT_STEEL_BASE, kind: 'metal' },

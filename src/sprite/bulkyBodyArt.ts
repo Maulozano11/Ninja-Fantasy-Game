@@ -1,0 +1,256 @@
+// The owner's broad man's arms as our bulky body's skin, his pixels (tools/refs/bulky-body-from-ref.py
+// from docs/reference/bulky-owner-reference.jpg). Generated: rerun the script to change it.
+
+import type { PaintedPiece } from './painted';
+
+/** His lit skin, which the character's skin colour stands for: every colour of his moves as far, his black line stays. */
+export const BULKY_SKIN = '#f2bd97';
+
+/** His black line (never recoloured). */
+export const BULKY_SKIN_LINE = '#000000';
+
+/** Where each piece lands in our bulky idle frame 0, unturned: the fine pixel of its first row's first cell. */
+export const BULKY_SKIN_REST: Record<string, [number, number]> = {
+  BULKY_UPPER_ARM_N: [102, 157],
+  BULKY_SHOULDER_N: [106, 150],
+  BULKY_FOREARM_N: [102, 167],
+  BULKY_UPPER_ARM_F: [136, 155],
+  BULKY_SHOULDER_F: [136, 151],
+  BULKY_FOREARM_F: [139, 167],
+};
+
+/** The near upper arm, below the shoulder to the elbow: his skin below the sleeve, continued up under it. It turns about the shoulder. */
+export const BULKY_UPPER_ARM_N: PaintedPiece = {
+  pivot: [8, 0],
+  angle: 99.75,
+  rows: [
+    '....a..........',
+    '....abbcbdd....',
+    '....abbcbddefa.',
+    '....abbcbddeha.',
+    '...acbbcbddeha.',
+    '...abdbcbddeha.',
+    '...aabfcbddehia',
+    '..acbacbdddeha.',
+    '..ajdbaaddefha.',
+    '..abdfcbaaehia.',
+    '..akffjdddeaaa.',
+    '.akkddbdddfhia.',
+    '.almnfpdffdqa..',
+    '.almrqpcfdsta..',
+    '.acjddbuscva...',
+    'abjwdffktxa....',
+    'ajyzfddAkba....',
+    'abfccdddbda....',
+    '....asd........',
+  ],
+  colors: {
+    a: '#000000',
+    b: '#cf8467',
+    c: '#d1846c',
+    d: '#f0b893',
+    e: '#c47964',
+    f: '#f1bc99',
+    h: '#e8ae8c',
+    i: '#b16054',
+    j: '#cf8064',
+    k: '#914c47',
+    l: '#c87a63',
+    m: '#db997b',
+    n: '#dc9474',
+    p: '#8d4442',
+    q: '#d88c6f',
+    r: '#b76a5c',
+    s: '#d2886f',
+    t: '#8c4746',
+    u: '#964b46',
+    v: '#904943',
+    w: '#a85a4e',
+    x: '#793738',
+    y: '#f0bc95',
+    z: '#a95c52',
+    A: '#d6886c',
+  },
+};
+
+/** The near shoulder's round, continued under the sleeve: it rides the shoulder and follows the arm part of the way. */
+export const BULKY_SHOULDER_N: PaintedPiece = {
+  pivot: [4, 7],
+  angle: 99.75,
+  rows: [
+    '.........a',
+    '......aaaa',
+    '....aabbba',
+    '...acdbbea',
+    '..adcdbbea',
+    '.addcdbbea',
+    '.abdcdbbea',
+    'addfcdbbea',
+    'addcdbbbea',
+    '.ddcdbbefa',
+    '.......eha',
+  ],
+  colors: {
+    a: '#000000',
+    b: '#f0b893',
+    c: '#d1846c',
+    d: '#cd8266',
+    e: '#c47964',
+    f: '#f2be9c',
+    h: '#e8ae8c',
+  },
+};
+
+/** The near forearm, elbow to wrist: his skin at the elbow, continued down under his bracer. It turns about the elbow. */
+export const BULKY_FOREARM_N: PaintedPiece = {
+  pivot: [5, 6],
+  angle: 59.34,
+  rows: [
+    '........aabcc...',
+    '......daaefhic..',
+    '.....ejaeeakc...',
+    '...lmkjnfanpc...',
+    '.cnqaadrsntc....',
+    'cdduaeetpvc.....',
+    'cdeweeaspxc.....',
+    'cnennaeadac.....',
+    'cyzzcnaeadac....',
+    '.ccczcnaadac....',
+    '.cyzznnaeadc....',
+    'cyzyzznnaadc....',
+    'cyyyzzznaaac....',
+    '.cyzyzznnaac....',
+    '..cyyzzznaaac...',
+    '...czyzznnaec.cc',
+    '....czyzznnaac..',
+    '.....cyzzzncc...',
+    '......cyzcc.....',
+    '......ccc.......',
+  ],
+  colors: {
+    a: '#f1b792',
+    b: '#c47964',
+    c: '#030303',
+    d: '#ce8167',
+    e: '#f1bb95',
+    f: '#f1bc99',
+    h: '#e8ae8c',
+    i: '#b16054',
+    j: '#8d4442',
+    k: '#d88c6f',
+    l: '#dc9879',
+    m: '#b76a5c',
+    n: '#d0866d',
+    p: '#8c4746',
+    q: '#cd7f63',
+    r: '#964b46',
+    s: '#d4886c',
+    t: '#904943',
+    u: '#a85a4e',
+    v: '#793738',
+    w: '#a95c52',
+    x: '#d28668',
+    y: '#904b49',
+    z: '#db9574',
+  },
+};
+
+/** The far upper arm, below the shoulder to the elbow: his skin below the sleeve, continued up under it. It turns about the shoulder. */
+export const BULKY_UPPER_ARM_F: PaintedPiece = {
+  pivot: [0, 1],
+  angle: 73.88,
+  rows: [
+    '......ab...',
+    '...ccaab...',
+    'bcccccaab..',
+    'bcccccaab..',
+    'bcccccaab..',
+    'bcccccaab..',
+    'bdcccccab..',
+    'becccccab..',
+    'bdcccccab..',
+    'becccccfbb.',
+    'bfdccccbab.',
+    '.becbbbcfb.',
+    '.bdcbccccb.',
+    '..bdbccchb.',
+    '..bbccccib.',
+    '...bdjjiikb',
+    '...bedjdccb',
+    '...bdcdjc..',
+    '...becc....',
+    '...bf......',
+  ],
+  colors: {
+    a: '#8c4541',
+    b: '#000000',
+    c: '#ce8268',
+    d: '#7e3d3f',
+    e: '#824040',
+    f: '#884343',
+    h: '#b76a5b',
+    i: '#8c4646',
+    j: '#d0866c',
+    k: '#8f4a47',
+  },
+};
+
+/** The far shoulder's round, continued under the sleeve: it rides the shoulder and follows the arm part of the way. */
+export const BULKY_SHOULDER_F: PaintedPiece = {
+  pivot: [0, 5],
+  angle: 73.88,
+  rows: [
+    'a.......',
+    'aaaa....',
+    'abbcaa..',
+    'abbccda.',
+    'abbbcdda',
+    'abbbcdda',
+    'acbbccd.',
+    'acb.....',
+  ],
+  colors: {
+    a: '#000000',
+    b: '#cf7f65',
+    c: '#cf8569',
+    d: '#8c4541',
+  },
+};
+
+/** The far forearm, elbow to wrist: his skin at the elbow, continued down under his bracer. It turns about the elbow. */
+export const BULKY_FOREARM_F: PaintedPiece = {
+  pivot: [2, 5],
+  angle: 69.49,
+  rows: [
+    '....aab.....',
+    '.baaacb.....',
+    'baaaadb.....',
+    'beffddhb....',
+    'bieaeaab....',
+    'bejefaaab...',
+    'bijafaaab...',
+    'bdjaafabb...',
+    '.bdjafb.bb..',
+    '..bjafabab..',
+    '..bjaafaab..',
+    '..bdjafaab..',
+    '...bjafaaab.',
+    '..bdjaafaab.',
+    '..bddjafaab.',
+    '..bddjaafbbb',
+    '..bdddjbb...',
+    '..bdbbb.....',
+    '...b........',
+  ],
+  colors: {
+    a: '#ce8368',
+    b: '#000000',
+    c: '#b76a5b',
+    d: '#8c4646',
+    e: '#7e3d3f',
+    f: '#d0866c',
+    h: '#8f4a47',
+    i: '#824040',
+    j: '#cc7f66',
+  },
+};

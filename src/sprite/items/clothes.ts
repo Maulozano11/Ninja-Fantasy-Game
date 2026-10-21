@@ -12,6 +12,7 @@ import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 import { BELT_ENDS, BELT_ROPE, CARGO_CLOTH, drawCargoPieces, drawRopeBeltPieces, drawTunicPieces, renegadeFits, TUNIC_CLOTH } from './renegade';
+import { BOOTS_PART } from './bootsPart';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1305,6 +1306,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     name: 'Shinobi Pants',
     desc: 'Fitted trousers with bandage wraps at the ankles.',
     colors: [col('main', 'Pants', '#2b3346'), col('wrap', 'Wraps', '#e7e1d1')],
+    parts: [BOOTS_PART('out')],
     draw: (g, [c, w]) => {
       trousers(g, c, 1.8, 0.55);
       waistband(g, 3);
@@ -1350,6 +1352,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     name: 'Wide Hakama',
     desc: 'Pleated wide-legged trousers that fall almost like a skirt, tied high at the waist.',
     colors: [col('main', 'Hakama', '#2c3043'), col('ties', 'Ties', '#cfc8b6')],
+    parts: [BOOTS_PART('out')],
     draw: (g, [c, t]) => {
       const b = g.bp;
       for (const s of SIDES) {
@@ -1376,6 +1379,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     name: 'Baggy Cargo Pants',
     desc: 'Roomy olive work trousers with a buttoned pocket on each thigh, bloused at the ankle.',
     colors: [col('main', 'Pants', CARGO_CLOTH), col('pouch', 'Pouch', '#6e5a3c', 'leather')],
+    parts: [BOOTS_PART('out')],
     draw: (g, [c, p]) => {
       // On the male body the owner's trousers on his Renegade go over these (renegade.ts), without the
       // strapped pouch (his pockets are sewn on); these show only where his are hidden in his picture.
@@ -1424,6 +1428,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     name: 'Fitted Leggings',
     desc: 'Snug stretch leggings with a contrasting side seam.',
     colors: [col('main', 'Leggings', '#2a2433'), col('seam', 'Side Seam', '#7a68a0')],
+    parts: [BOOTS_PART('out')],
     draw: (g, [c, sc]) => {
       trousers(g, c, 1.96, 0.18, 3.4);
       waistband(g, 3.4);

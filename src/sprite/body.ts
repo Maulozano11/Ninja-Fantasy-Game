@@ -9,9 +9,11 @@ import { hexToRgb, hslToHex, makeRamp, mixHex, retintHex, rgbToHsl } from './col
 import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
+import { STERN_BROW_HAIR, STERN_EYE_COLORS, STERN_EYES, STERN_HEAD, STERN_IRIS, STERN_SKIN } from './sternFaceArt';
+import { drawBulkyArm } from './bulkyBody';
 import { stampPiece } from './painted';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
-import { isFemaleBody, type FaceShape } from './types';
+import { isFemaleBody, type EyeShape, type FaceShape } from './types';
 
 const SCLERA = '#f4f1ee';
 const EYELINE = '#1b1420';
@@ -204,8 +206,15 @@ export function sculptClothes(g: DrawCtx, L: Layer): void {
 /** Arm: rounded shoulder + tapered upper arm and forearm. */
 function drawArm(g: DrawCtx, L: Layer, s: Side, upper: Pen, fore: Pen): void {
   const R = g.bp.armR;
-  armSpan(g, L, s, 0, 1, 0, upper, 'skin');
+  // The bulky body's upper arm is the owner's whole (bulkyBody.ts); ours is only under its elbow end.
+  armSpan(g, L, s, g.rig.body === 'bulky' ? 0.85 : 0, 1, 0, upper, 'skin');
   armSpan(g, L, s, 1, 2, 0, fore, 'skin');
+  if (g.rig.body === 'bulky') {
+    // The owner's muscular arms (bulkyBody.ts) over ours: his deltoid and shading replace our shoulder
+    // ball and muscle lines.
+    drawBulkyArm(g, L, s);
+    return;
+  }
   const sh = armPoint(g, s, 0.06);
   ellipse(L, sh.x, sh.y, R[0] + 0.3, R[0] + 0.2, upper, ballShade(sh.x, sh.y, R[0] + 0.3, R[0] + 0.2));
   // Muscle definition: a lit crest along the biceps and along the forearm
@@ -280,6 +289,7 @@ function drawHead(g: DrawCtx): void {
     drawFace(g);
     return;
   }
+  const stern = g.look.faceShape === 'stern';
   const L = g.L('head.body');
   const H = (dx: number, dy: number) => headAt(g, dx, dy);
   const pen: Pen = { mat: g.skin, part: 'head' };
@@ -313,9 +323,12 @@ function drawHead(g: DrawCtx): void {
     pen,
     shadeHead,
   );
-  // Everything from the eye line down is the hand-drawn face template.
+  // Everything from the eye line down is the hand-drawn face template; on the owner's broad man's face
+  // ('stern') his face from the row above his lash line, his forehead over our skull above it.
   const { nx, ny } = faceAnchor(g);
-  for (let i = ny * GRID; i < GRID * GRID; i++) L.mat[i] = -1;
+  const from = stern ? ny - 1 : ny;
+  for (let i = from * GRID; i < GRID * GRID; i++) L.mat[i] = -1;
+  if (stern) stampPiece(g, 'head.body', STERN_HEAD, v((nx + 0.5) / RES, (ny + 0.5) / RES), STERN_HEAD.angle, 'head', (_ch, hex) => skinTone(hex, g.look.skin, STERN_SKIN));
   drawFace(g);
 }
 
@@ -328,7 +341,7 @@ function drawHead(g: DrawCtx): void {
 function drawValiantHead(g: DrawCtx): void {
   const { nx, ny } = faceAnchor(g);
   const at = v((nx + 0.5) / RES, (ny + 0.5) / RES);
-  stampPiece(g, 'head.body', VALIANT_HEAD, at, VALIANT_HEAD.angle, 'head', (_ch, hex) => skinTone(hex, g.look.skin));
+  stampPiece(g, 'head.body', VALIANT_HEAD, at, VALIANT_HEAD.angle, 'head', (_ch, hex) => skinTone(hex, g.look.skin, VALIANT_SKIN));
 }
 
 /**
@@ -337,10 +350,10 @@ function drawValiantHead(g: DrawCtx): void {
  * skin lands exactly on the character's (the rest of the body is drawn in that skin), his shadows
  * and black line staying as far below it and his lights as far above. In his own skin, his colour.
  */
-function skinTone(hex: string, skin: string): string {
-  if (skin.toLowerCase() === VALIANT_SKIN) return hex;
+function skinTone(hex: string, skin: string, his: string): string {
+  if (skin.toLowerCase() === his) return hex;
   const [h, s, l] = rgbToHsl(...hexToRgb(hex));
-  const [h0, s0, l0] = rgbToHsl(...hexToRgb(VALIANT_SKIN));
+  const [h0, s0, l0] = rgbToHsl(...hexToRgb(his));
   const [h1, s1, l1] = rgbToHsl(...hexToRgb(skin));
   const lt = l <= l0 ? (l * l1) / l0 : l1 + ((l - l0) * (1 - l1)) / (1 - l0);
   return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), lt);
@@ -362,7 +375,7 @@ function skinTone(hex: string, skin: string): string {
  * square: the reference's original strong jaw, with a flat jaw line.
  * (valiant, the owner's head, is his pixels whole: see drawValiantHead.)
  */
-const FACE_LEFT: Record<Exclude<FaceShape, 'valiant'>, string[]> = {
+const FACE_LEFT: Record<Exclude<FaceShape, 'valiant' | 'stern'>, string[]> = {
   tapered: ['osbbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....os', '......o', '.......', '.......'],
   soft: ['osbbbbb', 'ossbbbb', 'ossbbbb', '.osbbbb', '..osbbb', '...osbb', '....osb', '.....oo', '.......', '.......'],
   square: ['osbbbbb', 'ossbbbb', 'osDsbbb', 'ossbbbb', '.osbbbs', '..osbbs', '...osbs', '....ooo', '.......', '.......'],
@@ -370,7 +383,7 @@ const FACE_LEFT: Record<Exclude<FaceShape, 'valiant'>, string[]> = {
 
 const faceLeft = (g: DrawCtx): string[] => {
   const s = g.look.faceShape;
-  return (s && s !== 'valiant' && FACE_LEFT[s]) || FACE_LEFT.tapered;
+  return (s && s !== 'valiant' && s !== 'stern' && FACE_LEFT[s]) || FACE_LEFT.tapered;
 };
 
 const FACE_MAIN: Record<string, string[]> = {
@@ -427,7 +440,22 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // The owner's eyes (src/sprite/eyeArt.ts), a row lower than ours and heavy-lidded: his brow (B) on
   // the row above the lash line, a single row of white and red iris under it. Drawn in his pixels.
   valiant: { near: VALIANT_EYES.open.near.letters, far: VALIANT_EYES.open.far.letters },
+  // The owner's broad man's eyes (src/sprite/sternFaceArt.ts): his lash line on ours, a single row of
+  // white and olive iris under it. Drawn in his pixels.
+  stern: { near: STERN_EYES.open.near.letters, far: STERN_EYES.open.far.letters },
 };
+
+/**
+ * The owner's painted eyes, by eye shape: his pixels in each lid state, his colours, the colour his iris
+ * and his brows are recoloured from, and how many rows below the face anchor his lash line is.
+ */
+const PAINTED_EYES: Partial<Record<EyeShape, { eyes: typeof VALIANT_EYES; colors: Record<string, string>; iris: string; brow: string; lash: number }>> = {
+  valiant: { eyes: VALIANT_EYES, colors: VALIANT_EYE_COLORS, iris: VALIANT_IRIS, brow: VALIANT_BROW_HAIR, lash: 1 },
+  stern: { eyes: STERN_EYES, colors: STERN_EYE_COLORS, iris: STERN_IRIS, brow: STERN_BROW_HAIR, lash: 0 },
+};
+
+/** The owner's painted head for a face shape (the valiant and stern faces), drawn from the face anchor. */
+const PAINTED_HEAD = (s: FaceShape | undefined) => (s === 'valiant' ? VALIANT_HEAD : s === 'stern' ? STERN_HEAD : undefined);
 
 /** Closed eyes (knocked out): each eye a dark lid line across its middle row. */
 const CLOSED_EYES = { near: ['bbbbb', 'LLLLb', 'sbbbl'], far: ['bbo', 'LLL', 'bbo'] };
@@ -469,11 +497,12 @@ export function faceCells(g: DrawCtx, skipBack = 0): Set<number> {
   const add = (x: number, y: number) => {
     if (x >= 0 && y >= 0 && x < GRID && y < GRID) out.add(y * GRID + x);
   };
-  if (g.look.faceShape === 'valiant') {
+  const head = PAINTED_HEAD(g.look.faceShape);
+  if (head) {
     // The owner's head from the lash row down, from the column the other shapes' near side starts at.
-    const ox = nx - VALIANT_HEAD.pivot[0];
-    const oy = ny - VALIANT_HEAD.pivot[1];
-    VALIANT_HEAD.rows.forEach((row, r) => {
+    const ox = nx - head.pivot[0];
+    const oy = ny - head.pivot[1];
+    head.rows.forEach((row, r) => {
       if (oy + r < ny) return;
       for (let c = 0; c < row.length; c++) if (row[c] !== '.' && ox + c >= nx - 7 + skipBack) add(ox + c, oy + r);
     });
@@ -499,7 +528,9 @@ export function faceAnchor(g: DrawCtx): { nx: number; ny: number; ex: number; fx
   const nx = Math.floor((g.rig.head.x - 1.9 * k) * RES);
   const ny = Math.floor((g.rig.head.y + 1.0 * k) * RES);
   const valiant = g.look.faceShape === 'valiant';
-  return { nx, ny, ex: valiant ? nx + 1 : nx, fx: valiant ? nx + 8 : nx + 9, fy: ny };
+  // The owner's broad man's eyes sit closer together, the far one against his far cheek.
+  const stern = g.look.faceShape === 'stern';
+  return { nx, ny, ex: valiant ? nx + 1 : nx, fx: valiant ? nx + 8 : stern ? nx + 7 : nx + 9, fy: ny };
 }
 
 function drawFace(g: DrawCtx): void {
@@ -535,8 +566,11 @@ function drawFace(g: DrawCtx): void {
   const closed = g.rig.pose === 'downed';
   // Reading: the lids come down over the eyes, the gaze lowered to the page.
   const lowered = g.rig.pose === 'read';
-  // The owner's eyes ('valiant'): his pixels in each lid state, laid on the template's eye cells.
-  const his = shape === 'valiant' ? VALIANT_EYES[closed ? 'closed' : lowered ? 'lowered' : 'open'] : undefined;
+  // The owner's eyes ('valiant', 'stern'): his pixels in each lid state, laid on the template's eye cells.
+  const P = PAINTED_EYES[shape];
+  const his = P ? P.eyes[closed ? 'closed' : lowered ? 'lowered' : 'open'] : undefined;
+  // The iris row the special eye marks go on: his single row under his lash line, our lower one.
+  const irisRow = P ? ny + 1 + P.lash : ny + 2;
   const eyes = his ? { near: his.near.letters, far: his.far.letters } : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
   const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
@@ -545,17 +579,19 @@ function drawFace(g: DrawCtx): void {
     if (ch in skinShade) L.set(x, y, g.skin, skinShade[ch], 'head', F_NO_OUTLINE);
     else if (ch in colors) L.set(x, y, colors[ch], 3, 'head', F_NO_OUTLINE);
   };
-  if (g.look.faceShape === 'valiant') {
-    // On the owner's head the template gives only the eyes and the mouth, where he painted his: his
-    // skin, shading and line stay wherever the template has skin.
+  if (g.look.faceShape === 'valiant' || g.look.faceShape === 'stern') {
+    // On the owner's heads the template gives only the eyes (and on his Aiden the mouth, where he
+    // painted his; his broad man's face brings its own): his skin, shading and line stay wherever the
+    // template has skin.
     const feature = (x: number, y: number, ch: string) => {
       if (!(ch in skinShade)) put(x, y, ch);
     };
     eyes.near.forEach((row, r) => [...row].forEach((ch, c) => feature(ex + c, ny + r, ch)));
     eyes.far.forEach((row, r) => [...row].forEach((ch, c) => feature(fx + c, ny + r, ch)));
-    main.forEach((row, r) => {
-      for (let c = 0; c < row.length; c++) if (row[c] === 'm' || row[c] === 'M') put(ex + c, ny + r, row[c]);
-    });
+    if (g.look.faceShape === 'valiant')
+      main.forEach((row, r) => {
+        for (let c = 0; c < row.length; c++) if (row[c] === 'm' || row[c] === 'M') put(ex + c, ny + r, row[c]);
+      });
   } else {
     faceLeft(g).forEach((row, r) => {
       for (let c = 0; c < row.length; c++) put(nx - 7 + c, ny + r, row[c]);
@@ -572,12 +608,12 @@ function drawFace(g: DrawCtx): void {
     // tones ours take (his dark red the lighter, his red the lightest), so they read blank as ours do.
     const hair = hairChoice?.colors[0];
     const tone = (letter: string, hex: string) => {
-      if (letter === 'd' || letter === 'i') return pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, VALIANT_IRIS, iris);
-      return letter === 'B' && hair ? retintHex(hex, VALIANT_BROW_HAIR, hair) : hex;
+      if (letter === 'd' || letter === 'i') return pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, P!.iris, iris);
+      return letter === 'B' && hair ? retintHex(hex, P!.brow, hair) : hex;
     };
     const stamp = (eye: PaintedEye, x0: number) =>
       eye.rows.forEach((row, r) => {
-        for (let c = 0; c < row.length; c++) if (row[c] !== '.') L.set(x0 + c, ny + r, flat(tone(eye.letters[r][c], VALIANT_EYE_COLORS[row[c]])), 3, 'head', F_NO_OUTLINE);
+        for (let c = 0; c < row.length; c++) if (row[c] !== '.') L.set(x0 + c, ny + r, flat(tone(eye.letters[r][c], P!.colors[row[c]])), 3, 'head', F_NO_OUTLINE);
       });
     stamp(his.near, ex);
     stamp(his.far, fx);
@@ -586,7 +622,7 @@ function drawFace(g: DrawCtx): void {
   // Overlays drawn on the face layer (no outline, above the skin). His eyes open a row lower than
   // ours (his lash line is the template's second row): what sits on the open eye follows them.
   const set = (x: number, y: number, hex: string) => F.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
-  const lash = his ? ny + 1 : ny;
+  const lash = ny + (P?.lash ?? 0);
   if (female && (closed || lowered)) {
     // the lashes of the closed or lowered lids
     set(ex - 1, ny + 1, EYELINE);
@@ -603,8 +639,8 @@ function drawFace(g: DrawCtx): void {
   } else if ((sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') && his) {
     // His iris is a single row under the lash: the marks go on his dark red, the near eye's first and
     // past one tomoe the far eye's too, so the near eye's red still shows.
-    set(ex + 2, ny + 2, '#14040a');
-    if (sp !== 'tomoe1') set(fx + 1, ny + 2, '#14040a');
+    set(ex + 2, irisRow, '#14040a');
+    if (sp !== 'tomoe1') set(fx + 1, irisRow, '#14040a');
   } else if (sp === 'tomoe1' || sp === 'tomoe3' || sp === 'pinwheel') {
     set(ex + 2, ny + 1, '#14040a');
     if (sp !== 'tomoe1') set(ex + 3, ny + 2, '#14040a');
@@ -627,8 +663,8 @@ function drawFace(g: DrawCtx): void {
     for (let x = 0; x <= (his ? 2 : 3); x++) set(fx + x, lash - 1, '#c2410c');
     if (!closed && !lowered) {
       // the bar pupil (on his two-pixel iris only its dark half, so the gold still shows)
-      set(ex + 2, ny + 2, '#120c18');
-      if (!his) set(ex + 3, ny + 2, '#120c18');
+      set(ex + 2, irisRow, '#120c18');
+      if (!his) set(ex + 3, irisRow, '#120c18');
     }
   }
 

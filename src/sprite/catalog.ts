@@ -4,6 +4,7 @@
 import type { ItemDef } from './ctx';
 import { ACCESSORY_ITEMS, FACE_ITEMS, HELD_ITEMS } from './items/accessories';
 import { ARMOR_ITEMS, SKIRT_ITEMS } from './items/armor';
+import { BRAWLER_ITEMS } from './items/brawler';
 import { CAPE_ITEMS } from './items/capes';
 import { BOTTOM_ITEMS, HAND_ITEMS, TOP_ITEMS, WAIST_ITEMS } from './items/clothes';
 import { FEET_ITEMS } from './items/feet';
@@ -23,6 +24,7 @@ export const ALL_ITEMS: ItemDef[] = [
   ...CAPE_ITEMS,
   ...HELD_ITEMS,
   ...ACCESSORY_ITEMS,
+  ...BRAWLER_ITEMS,
 ];
 
 const byId = new Map(ALL_ITEMS.map((d) => [d.id, d]));

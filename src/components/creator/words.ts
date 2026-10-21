@@ -197,6 +197,7 @@ const ES: Record<string, string> = {
   'Trim & cord': 'Ribete y cordón',
   Ties: 'Lazos',
   Tassels: 'Borlas',
+  Tassel: 'Borla',
   'Tank Top': 'Camiseta',
   Swirl: 'Remolino',
   Strips: 'Tiras',

@@ -8,6 +8,7 @@ import { retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
+import { EMBER_KATANA, KATANA_GOLD, KATANA_KIND, KATANA_STEEL, KATANA_TASSEL, KATANA_WRAP } from './emberKatanaArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
@@ -306,6 +307,18 @@ const flameSwordTint =
   (ch: string, hex: string): string =>
     FLAME_LONGSWORD.flame.includes(ch) ? retintHex(hex, FLAME_SWORD_FLAME, flame) : FLAME_LONGSWORD.gold.includes(ch) ? retintHex(hex, FLAME_SWORD_GOLD, gold) : hex;
 
+/** The ember katana's colours: his steel, gold, wrap and tassel each turned by its slot; his black line and the guard ring's dark inside stay. */
+const emberKatanaTint =
+  (steel: string, gold: string, wrap: string, tassel: string) =>
+  (_ch: string, hex: string): string => {
+    const k = KATANA_KIND[hex];
+    if (k === 'steel') return retintHex(hex, KATANA_STEEL, steel);
+    if (k === 'gold') return retintHex(hex, KATANA_GOLD, gold);
+    if (k === 'wrap') return retintHex(hex, KATANA_WRAP, wrap);
+    if (k === 'tassel') return retintHex(hex, KATANA_TASSEL, tassel);
+    return hex;
+  };
+
 export const HELD_ITEMS: ItemDef[] = [
   {
     id: 'held_none',
@@ -372,6 +385,22 @@ export const HELD_ITEMS: ItemDef[] = [
       // His grip crosses his fist at the hand joint (higher in the fist than our other blades' grip
       // point): held there, at rest every pixel is his and his gauntlet's place is our fist's.
       else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, g.rig.handN, swordAngle(g), tint);
+    },
+  },
+  {
+    id: 'held_ember_katana',
+    slot: 'held',
+    name: 'Ember Katana',
+    desc: 'A long steel blade under a gold guard ring, a white wrapped hilt and a gold pommel with a red tassel: the owner painted it for Akira.',
+    colors: [col('blade', 'Blade', KATANA_STEEL, 'metal'), col('guard', 'Guard', KATANA_GOLD, 'metal'), col('wrap', 'Wrap', KATANA_WRAP), col('tassel', 'Tassel', KATANA_TASSEL)],
+    draw: (g, [steel, gold, wrap, tassel]) => {
+      // His katana, his pixels (tools/refs/akira-katana-from-ref.py): drawn at the angle he painted it,
+      // held at the middle of our near fist (grip.ts swordAngle gives his angle at rest), so at rest
+      // every pixel is his. Stowed on the back, dropped on the ground like the other blades.
+      const tint = emberKatanaTint(steel, gold, wrap, tassel);
+      if (handsBusy(g)) drawPaintedWeapon(g, 'backGear', EMBER_KATANA, backGrip(g, 48), backAngle(g, 48), tint);
+      else if (handsLimp(g)) drawPaintedWeapon(g, 'nearArm.held', EMBER_KATANA, droppedGrip(g, 0.7), -86, tint);
+      else if (!handsReleased(g)) drawPaintedWeapon(g, 'nearArm.held', EMBER_KATANA, gripPoint(g), swordAngle(g), tint);
     },
   },
   {

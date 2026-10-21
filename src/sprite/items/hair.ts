@@ -20,6 +20,7 @@ import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } f
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
+import { LION_HAIR_BACK, LION_HAIR_BASE, LION_HAIR_FRONT, LION_HAIR_LINE } from './lionHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -782,65 +783,6 @@ const TPL: Record<string, HairTpl> = {
       '.00.00.................00...',
       '....00.................00...',
       '....00.................00...',
-    ],
-  },
-  hair_lion: {
-    fa: [14, 20],
-    f: [
-      '..........0....00...........',
-      '.....000000...02200.........',
-      '.....0222330..0220..........',
-      '......0221330022110..00.....',
-      '.....00133111222110.03300...',
-      '.......013221222111032110...',
-      '.......01432111111232210....',
-      '......033432111111122210....',
-      '...000332231331211111330....',
-      '..04442233223332222111110...',
-      '..042333332344335324111110..',
-      '.02123353223533354342211110.',
-      '0211532533214323433432211110',
-      '.01444243321532233333233110.',
-      '..0335253221132123213233110.',
-      '..0333233221111123212112110.',
-      '..03322132211.11232112122110',
-      '.02232213211....2321..20220.',
-      '.02222212221....2211....020.',
-      '.0002211.21.....2.11.....000',
-      '....0211.21.....2.11........',
-      '....021.....................',
-      '....01......................',
-      '....01......................',
-    ],
-    ba: [15, 15],
-    b: [
-      '...........0000........',
-      '........00022210000....',
-      '......002222211122100..',
-      '....00422222222221110..',
-      '...05443222222222221100',
-      '.004353342222222222110.',
-      '..05433433122222222110.',
-      '.0453343311222222221110',
-      '.0333433311222222222110',
-      '.0333533331122222111110',
-      '0333353332111222111110.',
-      '033344333211111111110..',
-      '03033333341111111110...',
-      '00.0443344331111110....',
-      '...043334333111110.....',
-      '..055333433111110......',
-      '...03234333111110......',
-      '...0332533211110.......',
-      '...032243321110........',
-      '...03004231110.........',
-      '...00..012110..........',
-      '...0..011210...........',
-      '.......0210............',
-      '.......020.............',
-      '......03200............',
-      '.......00..............',
-      '.......00..............',
     ],
   },
   hair_founder: {
@@ -1642,6 +1584,11 @@ function trimSkull(g: DrawCtx, p: PaintedPart): void {
   }
 }
 
+/** His Akira hair recoloured: his black line stays, his blue-blacks move the way his mid one does. */
+const lionHairColor = (hair: string) => (ch: string, hex: string) => (LION_HAIR_LINE.includes(ch) ? hex : retintHex(hex, LION_HAIR_BASE, hair));
+/** The colour Akira wore the Lion Fringe in before his art: it now means his. */
+const LION_HAIR_OLD: Record<string, string> = { '#16141d': LION_HAIR_BASE };
+
 /** His hair recoloured: his black line stays, his browns move the way his mid brown does. */
 const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, VALIANT_HAIR_BASE, hair));
 
@@ -1681,7 +1628,23 @@ export const HAIR_ITEMS: ItemDef[] = [
     hlock(g, F, [-3.6, 0, -3.8, 4, nearTip[0], nearTip[1]], 3.4, pen, { hold: 0.75, tipW: 1.4, form: hd(g, -1, -3), clumps: 3.2, seed: 2, sheen: [0.32, 0.44] });
     hlock(g, F, [6.4, 0, 7, 4, farTip[0], farTip[1]], 3.4, pen, { hold: 0.75, tipW: 1.4, form: hd(g, -1, -3), clumps: 3.2, seed: 7, sheen: [0.36, 0.46] });
   }),
-  hairStyle('hair_lion', 'Lion Fringe', 'Shaggy layers with uneven bangs and a longer nape.', '#6b4a32'),
+  {
+    id: 'hair_lion',
+    slot: 'hair',
+    name: 'Lion Fringe',
+    desc: 'Spiky black hair: tall spikes on the crown, shaggy locks fanning over the temples and the back of the head, strands over the brow and a lock down to the jaw.',
+    colors: hairColor(LION_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his Akira, his pixels (2026-10-21, the new standard; tools/refs/
+      // akira-hair-from-ref.py), drawn like his Aiden hair (hair_valiant): every lock of his over the
+      // head, behind it the same hair with his forehead filled in, our skull trimmed to it. Akira's
+      // old colour now means his.
+      const tint = lionHairColor(LION_HAIR_OLD[c.toLowerCase()] ?? c);
+      paintedHair(g, g.L('hairBack'), LION_HAIR_BACK, tint);
+      paintedHair(g, g.L('hairFront'), LION_HAIR_FRONT, tint);
+      trimSkull(g, LION_HAIR_BACK);
+    },
+  },
   {
     id: 'hair_crest',
     slot: 'hair',

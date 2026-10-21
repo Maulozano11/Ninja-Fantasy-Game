@@ -38,6 +38,9 @@ import {
 import { CUIRASS_BRONZE, CUIRASS_CHEST, CUIRASS_GUARD_F, CUIRASS_GUARD_N, CUIRASS_KIND, CUIRASS_LEATHER } from './bronzeCuirassArt';
 import { PTERUGES_DRAPE, PTERUGES_FRONT, PTERUGES_KIND, PTERUGES_LEATHER, PTERUGES_REST, PTERUGES_STUD, PTERUGES_TUNIC } from './pterugesArt';
 import { capeWind } from './capes';
+import { EMBER_CHEST, EMBER_FLAME, EMBER_KIND, EMBER_LEATHER, EMBER_PAULDRON_F, EMBER_PAULDRON_N, EMBER_STEEL } from './emberLeatherArt';
+import { TASSET_FRONT, TASSET_KIND, TASSET_LACE, TASSET_LEATHER } from './emberTassetsArt';
+import { armAtRest, trimUnder } from './ember';
 import { isFemaleBody, type BodyType } from '../types';
 
 
@@ -1390,6 +1393,78 @@ function drawPteruges(g: DrawCtx, tc: string, lc: string, sc: string, drapes: bo
 }
 
 // ---------------------------------------------------------------------------
+// The owner's Akira (Ember Leather Armor, Lamellar Tassets): his pixels from his paint-over of our Akira
+// (docs/reference/akira-owner-reference.jpg, lifted out by tools/refs/akira-armor-from-ref.py and
+// akira-tassets-from-ref.py). In our idle pose every pixel is his; in other poses each piece follows
+// its segment, like the Roman armour above.
+// ---------------------------------------------------------------------------
+
+/**
+ * The colours the Ember Leather Armor had before his art (its old defaults, which Akira wore), saved
+ * with every character that wore them: they now mean his.
+ */
+const EMBER_OLD_DEFAULTS: Record<string, string> = {
+  '#4d3528': EMBER_LEATHER,
+  '#a2a7ae': EMBER_STEEL,
+  '#c0502c': EMBER_FLAME,
+};
+const emberSlot = (hex: string): string => EMBER_OLD_DEFAULTS[hex.toLowerCase()] ?? hex;
+
+/** His bulky chest: as the cuirass's, his chest stretched over the bulky body's broader torso. */
+const EMBER_CHEST_BULKY = stretched(EMBER_CHEST, 4, 5, 1);
+
+/**
+ * Draws his leather armour: the far shoulder guard behind the far arm's upper arm, the chest over the
+ * torso, the near guard over the near shoulder. His browns follow Leather, the steel of his studs and
+ * buckle follows Studs, his flame emblems follow Engraving; his black line stays.
+ */
+function drawEmberLeather(g: DrawCtx, lc: string, sc: string, ec: string): void {
+  const [leather, steel, flame] = [lc, sc, ec].map(emberSlot);
+  const tint = (_ch: string, hex: string): string => {
+    const k = EMBER_KIND[hex];
+    if (k === 'line') return hex;
+    if (k === 'steel') return retintHex(hex, EMBER_STEEL, steel);
+    if (k === 'flame') return retintHex(hex, EMBER_FLAME, flame);
+    return retintHex(hex, EMBER_LEATHER, leather);
+  };
+  clearUnderCuirass(g);
+  const r = g.rig;
+  const torso = segAngle(r.pelvis, r.neck);
+  stampPiece(g, 'farArm.armor', EMBER_PAULDRON_F, guardAt(r, 'F', torso), guardAngle(EMBER_PAULDRON_F, torso, segAngle(r.shoulderF, r.elbowF)), 'upperArmF', tint);
+  stampLeaning(g, 'torso.armor', r.body === 'bulky' ? EMBER_CHEST_BULKY : EMBER_CHEST, r.neck, torso, 'torso', tint);
+  stampPiece(g, 'nearArm.armor', EMBER_PAULDRON_N, guardAt(r, 'N', torso), guardAngle(EMBER_PAULDRON_N, torso, segAngle(r.shoulderN, r.elbowN)), 'upperArmN', tint);
+  // while an arm hangs as he drew it, its guard is the upper arm: ours never shows past it
+  for (const s of SIDES) if (armAtRest(g, s) > 0.5) trimUnder(g, s, 'upperArm');
+}
+
+/**
+ * The colours the Lamellar Tassets had before his art (the item's old defaults and Akira's), saved with
+ * the characters that wore them: they now mean his.
+ */
+const TASSET_OLD_DEFAULTS: Record<string, string> = {
+  '#b0242c': TASSET_LEATHER,
+  '#4d3528': TASSET_LEATHER,
+  '#1d1c26': TASSET_LACE,
+};
+
+/**
+ * Draws his tassets over the thighs, leaning with the torso from the pelvis (under the armour's belt).
+ * His browns follow Plates, his darkest browns (the strips between the legs, the lacing) follow Laces;
+ * his black line and steel rivets stay.
+ */
+function drawEmberTassets(g: DrawCtx, pc: string, lc: string): void {
+  const plate = TASSET_OLD_DEFAULTS[pc.toLowerCase()] ?? pc;
+  const lace = TASSET_OLD_DEFAULTS[lc.toLowerCase()] ?? lc;
+  const tint = (_ch: string, hex: string): string => {
+    const k = TASSET_KIND[hex];
+    if (k === 'line' || k === 'rivet') return hex;
+    return k === 'lace' ? retintHex(hex, TASSET_LACE, lace) : retintHex(hex, TASSET_LEATHER, plate);
+  };
+  const r = g.rig;
+  stampLeaning(g, g.L('torso.over').used ? 'torso.over' : 'skirt', TASSET_FRONT, r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint);
+}
+
+// ---------------------------------------------------------------------------
 // Armor
 // ---------------------------------------------------------------------------
 
@@ -1794,10 +1869,16 @@ export const ARMOR_ITEMS: ItemDef[] = [
     id: 'armor_leather',
     slot: 'armor',
     name: 'Ember Leather Armor',
-    desc: 'Studded dark leather cuirass with layered shoulder guards, a wide belt, bracers and a flame engraving (+4 AC).',
-    colors: [col('leather', 'Leather', '#4d3528', 'leather'), col('studs', 'Studs', '#a2a7ae', 'metal'), col('engrave', 'Engraving', '#c0502c')],
+    desc: 'Brown leather cuirass with a high collar, layered shoulder guards, two flame emblems and a wide belt with a steel buckle (+4 AC).',
+    colors: [col('leather', 'Leather', EMBER_LEATHER, 'leather'), col('studs', 'Studs', EMBER_STEEL, 'metal'), col('engrave', 'Engraving', EMBER_FLAME)],
     statsArmor: 'Samurai O-Yoroi',
     draw: (g, [lc, sc, ec]) => {
+      // The owner's armour from his Akira (his pixels, emberLeatherArt.ts) on the male bodies; the
+      // female bodies keep the fitted one until he paints theirs.
+      if (!isFemaleBody(g.rig.body)) {
+        drawEmberLeather(g, lc, sc, ec);
+        return;
+      }
       const b = g.bp;
       const L = g.L('torso.armor');
       const lea = armorPen(g, lc, 'leather');
@@ -2952,9 +3033,15 @@ export const SKIRT_ITEMS: ItemDef[] = [
     id: 'skirt_tassets',
     slot: 'skirt',
     name: 'Lamellar Tassets',
-    desc: 'Laced lacquered plate panels hanging over the thighs.',
-    colors: [col('plate', 'Lacquer', '#b0242c'), col('lace', 'Laces', '#1d1c26')],
+    desc: 'Riveted leather plates in laced rows hanging from the belt over the thighs.',
+    colors: [col('plate', 'Plates', TASSET_LEATHER, 'leather'), col('lace', 'Laces', TASSET_LACE, 'leather')],
     draw: (g, [pc, lc]) => {
+      // The owner's tassets from his Akira (his pixels, emberTassetsArt.ts) on the male bodies; the
+      // female bodies keep the lacquered panels until he paints theirs.
+      if (!isFemaleBody(g.rig.body)) {
+        drawEmberTassets(g, pc, lc);
+        return;
+      }
       skirt(g, (L, top) => {
         const [x0, x1] = hipRange(g, 0.5);
         const pl = (w: number) => armorPen(g, pc, 'cloth', thighPart(w));

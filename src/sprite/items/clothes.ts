@@ -11,6 +11,11 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
+import { EMBER_BRACER_F, EMBER_BRACER_KIND, EMBER_BRACER_LEATHER, EMBER_BRACER_N, EMBER_BRACER_SKIN, EMBER_BRACER_STRAP, EMBER_FIST_F, EMBER_FIST_N } from './emberBracersArt';
+import { armAtRest, EMBER_LEGS_ID, emberFarArm, emberLegOut, fitArm, fitLegs } from './ember';
+import { handsBusy, handsLimp, handsReleased } from '../grip';
+import { LEG_KIND, LEG_LEATHER, LEG_SHIN_F, LEG_SHIN_N, LEG_STUD, LEG_THIGH_F, LEG_THIGH_N } from './emberLegsArt';
+import { isFemaleBody } from '../types';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1294,6 +1299,26 @@ function legFolds(g: DrawCtx, L: Layer, s: Side, inflate: number, ankle = 1.62):
   fold(L, along(a, b, 0.75, -r * 0.9), along(a, b, 1.0, r * 0.3));
 }
 
+/**
+ * His layered leather legs (his Akira picture): each thigh and shin rides ours, standing where he drew
+ * them at rest (ember.ts). His browns follow Leather, his gold stud Studs; his black line stays.
+ */
+function drawEmberLegs(g: DrawCtx, lc: string, sc: string): void {
+  fitLegs(g);
+  const tint = (_ch: string, hex: string): string => {
+    const k = LEG_KIND[hex];
+    return k === 'line' ? hex : k === 'stud' ? retintHex(hex, LEG_STUD, sc) : retintHex(hex, LEG_LEATHER, lc);
+  };
+  const r = g.rig;
+  for (const s of SIDES) {
+    const { hip, knee, ankle } = legJoints(r, s);
+    const at = add(knee, emberLegOut(g, s));
+    const L = legDepth(s, 'cloth');
+    stampPiece(g, L, s === 'N' ? LEG_THIGH_N : LEG_THIGH_F, at, segAngle(hip, knee), prt('thigh', s), tint);
+    stampPiece(g, L, s === 'N' ? LEG_SHIN_N : LEG_SHIN_F, at, segAngle(knee, ankle), prt('shin', s), tint);
+  }
+}
+
 export const BOTTOM_ITEMS: ItemDef[] = liftMain([
   {
     id: 'bottom_shinobi',
@@ -1435,6 +1460,15 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
         across(g, L, 'leg', s, 1.9, 0.2, -1);
       }
     },
+  },
+  {
+    id: EMBER_LEGS_ID,
+    slot: 'bottom',
+    name: 'Ember Leather Leggings',
+    desc: 'Layered brown leather over the thighs and shins, a riveted knee plate and a gold stud on the near shin, painted by the owner for Akira.',
+    colors: [col('main', 'Leather', LEG_LEATHER, 'leather'), col('stud', 'Studs', LEG_STUD, 'metal')],
+    bodies: ['male', 'bulky'],
+    draw: (g, [lc, sc]) => drawEmberLegs(g, lc, sc),
   },
 ]);
 
@@ -1746,6 +1780,50 @@ function leatherHand(g: DrawCtx, s: Side, color: (ch: string, hex: string) => st
   }
 }
 
+/**
+ * The colours the Leather Bracers had before his art (the item's old defaults and Akira's), which
+ * characters saved with them carry: they now mean his, so those characters wear his colours.
+ */
+const EMBER_BRACER_OLD: Record<string, string> = {
+  '#7a4b2c': EMBER_BRACER_LEATHER,
+  '#3a2618': EMBER_BRACER_STRAP,
+  '#4d3528': EMBER_BRACER_LEATHER,
+  '#2a1a12': EMBER_BRACER_STRAP,
+};
+
+/**
+ * His leather arm guards (his Akira picture): the near one rides the near forearm about the elbow; the
+ * far one keeps the straighter hang he drew the far arm in (ember.ts). While the arms hang as he drew
+ * them his fists (his skin, following the character's) take our hands' place: the far one under its
+ * cuff, the near one round the grip of his katana; otherwise our hands show (the far one carried to
+ * his cuff). Leather follows Leather, his darkest browns (the seams between the lames) follow Straps;
+ * his black line stays.
+ */
+function drawEmberBracers(g: DrawCtx, c: string, st: string): void {
+  const leather = EMBER_BRACER_OLD[c.toLowerCase()] ?? c;
+  const strap = EMBER_BRACER_OLD[st.toLowerCase()] ?? st;
+  const skin = g.look.skin || EMBER_BRACER_SKIN;
+  const tint = (_ch: string, hex: string): string => {
+    const k = EMBER_BRACER_KIND[hex];
+    if (k === 'line') return hex;
+    if (k === 'skin') return retintHex(hex, EMBER_BRACER_SKIN, skin);
+    return k === 'strap' ? retintHex(hex, EMBER_BRACER_STRAP, strap) : retintHex(hex, EMBER_BRACER_LEATHER, leather);
+  };
+  const r = g.rig;
+  // the far arm: his fist and guard at his hang while the arm hangs about as he drew it
+  const far = emberFarArm(g);
+  const farFist = far.w > 0.5;
+  fitArm(g, 'F', farFist ? null : far.hand);
+  if (farFist) stampPiece(g, 'farArm.armor', EMBER_FIST_F, r.elbowF, far.deg, 'handF', tint);
+  stampPiece(g, 'farArm.armor', EMBER_BRACER_F, r.elbowF, far.deg, 'forearmF', tint);
+  // the near arm: his fist round the grip of his katana while the arm hangs about as he drew it
+  const fore = segAngle(r.elbowN, r.wristN);
+  const nearFist = armAtRest(g, 'N') > 0.5 && g.has('held', 'held_ember_katana') && !handsBusy(g) && !handsLimp(g) && !handsReleased(g);
+  fitArm(g, 'N', nearFist ? null : { x: 0, y: 0 });
+  if (nearFist) stampPiece(g, 'nearArm.armor', EMBER_FIST_N, r.elbowN, fore, 'handN', tint);
+  stampPiece(g, 'nearArm.armor', EMBER_BRACER_N, r.elbowN, fore, 'forearmN', tint);
+}
+
 export const HAND_ITEMS: ItemDef[] = liftMain([
   {
     id: 'hands_fingerless',
@@ -1771,9 +1849,15 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
     id: 'hands_bracers',
     slot: 'hands',
     name: 'Leather Bracers',
-    desc: 'Laced leather forearm bracers with strapped edges and a leather palm wrap.',
-    colors: [col('main', 'Leather', '#7a4b2c', 'leather'), col('strap', 'Straps', '#3a2618', 'leather')],
+    desc: 'Layered brown leather guards over the forearms, from under the elbow to a cuff at the wrist.',
+    colors: [col('main', 'Leather', EMBER_BRACER_LEATHER, 'leather'), col('strap', 'Straps', EMBER_BRACER_STRAP, 'leather')],
     draw: (g, [c, st]) => {
+      // The owner's arm guards from his Akira (his pixels, emberBracersArt.ts) on the male bodies; the
+      // female bodies keep the laced bracers until he paints theirs.
+      if (!isFemaleBody(g.rig.body)) {
+        drawEmberBracers(g, c, st);
+        return;
+      }
       for (const s of SIDES) {
         const L = g.L(armDepth(s, 'armor'));
         const pen = clothPen(g, c, prt('forearm', s), sb(s), 'leather');

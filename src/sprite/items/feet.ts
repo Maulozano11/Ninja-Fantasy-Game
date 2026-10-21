@@ -9,6 +9,8 @@ import { segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
+import { EMBER_FEET_ID, emberLegOut, fitLegs } from './ember';
+import { FOOT_BOOT_N, FOOT_KIND, FOOT_LEATHER, FOOT_SANDAL_F, FOOT_SKIN } from './emberFeetArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -481,6 +483,31 @@ export const FEET_ITEMS: ItemDef[] = [
         const foot = s === 'N' ? SANDAL_FOOT_N : SANDAL_FOOT_F;
         stampPiece(g, legDepth(s, 'feet'), shin, ankle, segAngle(knee, ankle), `shin${s}`, tint);
         stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, tint);
+      }
+    },
+  },
+  {
+    id: EMBER_FEET_ID,
+    slot: 'feet',
+    name: 'Ember Boot and Sandal',
+    desc: 'A brown leather boot on the near foot and a strapped sandal on the far foot, painted by the owner for Akira.',
+    colors: [col('main', 'Leather', FOOT_LEATHER, 'leather')],
+    bodies: ['male', 'bulky'],
+    draw: (g, [leather]) => {
+      // The owner's near boot and far sandal, his pixels from his Akira picture (2026-10-21; tools/refs/
+      // akira-feet-from-ref.py): each stays flat on the ground under its ankle, our bare foot under it
+      // taken away, standing where he drew it at rest (ember.ts). His skin in the sandal follows the
+      // character's skin, his leather the slot; his black line stays.
+      fitLegs(g);
+      const tint = (_ch: string, hex: string) => {
+        const k = FOOT_KIND[hex];
+        if (k === 'line') return hex;
+        return k === 'skin' ? retintHex(hex, FOOT_SKIN, g.look.skin) : retintHex(hex, FOOT_LEATHER, leather);
+      };
+      for (const s of SIDES) {
+        bareFootOff(g, s);
+        const foot = s === 'N' ? FOOT_BOOT_N : FOOT_SANDAL_F;
+        stampPiece(g, legDepth(s, 'feet'), foot, add(legJoints(g.rig, s).ankle, emberLegOut(g, s)), foot.angle, `foot${s}`, tint);
       }
     },
   },

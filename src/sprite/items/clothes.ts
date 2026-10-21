@@ -1321,126 +1321,6 @@ function legFolds(g: DrawCtx, L: Layer, s: Side, inflate: number, ankle = 1.62):
   fold(L, along(a, b, 0.75, -r * 0.9), along(a, b, 1.0, r * 0.3));
 }
 
-/**
- * The owner's cargo trousers (his Trunks 2 picture, cargoPantsArt.ts): on each leg the thigh turns with
- * the thigh about the hip and the shin with the shin about the knee, the far leg behind the near one;
- * the seat rides the pelvis over both. At rest every pixel is his, where he drew it. The bulky body's
- * broader legs and hips get his pieces broadened (a few of his columns doubled).
- */
-function drawCargo(g: DrawCtx, green: string): void {
-  const tint = slotTint(g, CARGO_SLOT, { main: CARGO_GREEN }, { main: green });
-  paintedTrousers(g, { seat: CARGO_SEAT, thighN: CARGO_THIGH_N, shinN: CARGO_SHIN_N, thighF: CARGO_THIGH_F, shinF: CARGO_SHIN_F }, tint, CARGO_HEM);
-}
-
-/** How far down the shin (from the knee) the owner's trousers reach at rest: the cargo bloused low, his
- * Trunks 3 trousers just under the knee (where his boots start). */
-const CARGO_HEM = 0.5;
-const LEGGINGS_HEM = 0.25;
-
-/** Takes our bare thigh, and our bare shin down to `t` of its length from the knee, away. */
-function bareLegOffAbove(g: DrawCtx, s: Side, t: number): void {
-  const thigh = partIndex(prt('thigh', s));
-  const shin = partIndex(prt('shin', s));
-  const { knee, ankle } = legJoints(g.rig, s);
-  const d = sub(ankle, knee);
-  const l2 = d.x * d.x + d.y * d.y || 1;
-  const L = g.L(legDepth(s, 'body'));
-  for (let i = 0; i < GRID * GRID; i++) {
-    if (L.mat[i] < 0 || (L.part[i] !== thigh && L.part[i] !== shin)) continue;
-    const x = ((i % GRID) + 0.5) / RES - knee.x;
-    const y = (Math.floor(i / GRID) + 0.5) / RES - knee.y;
-    if (L.part[i] === thigh || (x * d.x + y * d.y) / l2 < t) L.mat[i] = -1;
-  }
-}
-
-/** A pair of the owner's painted trousers: his seat, thighs and shins (see drawCargo). */
-function paintedTrousers(
-  g: DrawCtx,
-  p: { seat: PaintedPiece; thighN: PaintedPiece; shinN: PaintedPiece; thighF: PaintedPiece; shinF: PaintedPiece },
-  tint: (ch: string, hex: string) => string,
-  hem: number,
-): void {
-  const r = g.rig;
-  const big = r.body === 'bulky';
-  const fit = (q: PaintedPiece, l: number, rt: number) => (big ? stretchedPiece(q, l, rt, 0) : q);
-  for (const s of SIDES) {
-    const { hip, knee, ankle } = legJoints(r, s);
-    const [thigh, shin] = s === 'N' ? [p.thighN, p.shinN] : [p.thighF, p.shinF];
-    // Our bare leg under his trousers is taken away down to his hem, so it never shows past his
-    // narrower legs or between them (below the hem our shin stays, for shoes that leave it bare).
-    bareLegOffAbove(g, s, hem);
-    stampPiece(g, legDepth(s, 'cloth'), fit(shin, 1, 1), knee, segAngle(knee, ankle), prt('shin', s), tint);
-    stampPiece(g, legDepth(s, 'cloth'), fit(thigh, 2, 2), hip, segAngle(hip, knee), prt('thigh', s), tint);
-  }
-  stampPiece(g, 'torso.bottom', fit(p.seat, 3, 3), r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint);
-}
-
-/**
- * The owner's open jacket (his Trunks 3 picture, bomberJacketArt.ts): the body rides the torso about the
- * neck, each sleeve's upper part its upper arm about the shoulder and its forearm part (with the cuff)
- * its forearm about the elbow, over our arms (taken away under them, so at rest every pixel of the arms
- * is his, where he drew it). A closed hand is his bare fist under the cuff, in the character's skin. The
- * bulky body keeps its big hands, his jacket and sleeves broadened over its broader torso and arms.
- */
-function drawBomber(g: DrawCtx, blue: string, grey: string): void {
-  const r = g.rig;
-  const tint = slotTint(g, BOMBER_SLOT, { main: BOMBER_BLUE, under: BOMBER_SHIRT }, { main: blue, under: grey });
-  const big = r.body === 'bulky';
-  for (const s of SIDES) {
-    const j = armJoints(r, s);
-    partsOff(g, [armDepth(s, 'body')], [prt('upperArm', s), prt('forearm', s)]);
-    const [up, fore, fist] = s === 'N' ? [BOMBER_SLEEVE_UP_N, BOMBER_SLEEVE_FORE_N, BOMBER_FIST_N] : [BOMBER_SLEEVE_UP_F, BOMBER_SLEEVE_FORE_F, BOMBER_FIST_F];
-    const fit = (q: PaintedPiece) => (big ? stretchedPiece(q, 2, 2, 0) : q);
-    stampPiece(g, armDepth(s, 'cloth'), fit(fore), j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
-    stampPiece(g, armDepth(s, 'cloth'), fit(up), j.shoulder, segAngle(j.shoulder, j.elbow), prt('upperArm', s), tint);
-    const { kind } = handPose(g, s);
-    // (With gloves on, the gloves draw the hands.)
-    if (!big && !g.has('hands') && (kind === 'grip' || kind === 'fist')) {
-      bareHandOff(g, s);
-      paintedFist(g, s, fist, tint);
-    }
-  }
-  stampPiece(g, 'torso.top', big ? stretchedPiece(BOMBER_BODY, 4, 5, 1) : BOMBER_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
-}
-
-/**
- * The owner's short-sleeved shirt (his Trunks 2 picture, shortSleeveShirtArt.ts): the body rides the torso
- * about the neck, each sleeve its upper arm about the shoulder. On the male body his bare arms come with
- * it, in the character's skin (he drew them broader than ours, and they are part of his figure): each
- * upper arm and forearm turns with ours about the shoulder and the elbow, and our arm under them is taken
- * away, so at rest every pixel of the arms is his, where he drew it. The bulky body keeps its own big
- * arms, his shirt and sleeves broadened over them.
- */
-function drawShortShirt(g: DrawCtx, blue: string, trim: string): void {
-  const r = g.rig;
-  const tint = slotTint(g, SHIRT_SLOT, { main: SHIRT_BLUE, trim: SHIRT_TRIM }, { main: blue, trim });
-  const big = r.body === 'bulky';
-  for (const s of SIDES) {
-    const j = armJoints(r, s);
-    const up = segAngle(j.shoulder, j.elbow);
-    if (!big) {
-      partsOff(g, [armDepth(s, 'body')], [prt('upperArm', s), prt('forearm', s)]);
-      const [arm, fore] = s === 'N' ? [SHIRT_ARM_UP_N, SHIRT_ARM_FORE_N] : [SHIRT_ARM_UP_F, SHIRT_ARM_FORE_F];
-      stampPiece(g, armDepth(s, 'body'), fore, j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
-      stampPiece(g, armDepth(s, 'body'), arm, j.shoulder, up, prt('upperArm', s), tint);
-    }
-    const sleeve = s === 'N' ? SHIRT_SLEEVE_N : SHIRT_SLEEVE_F;
-    stampPiece(g, armDepth(s, 'cloth'), big ? stretchedPiece(sleeve, 1, 1, 0) : sleeve, j.shoulder, up, prt('upperArm', s), tint);
-  }
-  stampPiece(g, 'torso.top', big ? stretchedPiece(SHIRT_BODY, 4, 5, 1) : SHIRT_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
-}
-
-/** Our hand picture for the pose (open, pointing, relaxed, cradling) in these tones, by its shades. */
-function toneHand(g: DrawCtx, s: Side, tones: readonly string[]): void {
-  const tmp = new Layer();
-  handDraw(g, tmp, s, { mat: 0, part: prt('hand', s) });
-  const mats = tones.map((t) => g.m(t, 'flat'));
-  const L = g.L(armDepth(s, 'armor'));
-  for (let i = 0; i < GRID * GRID; i++) {
-    if (tmp.mat[i] >= 0) L.set(i % GRID, (i / GRID) | 0, mats[Math.min(tmp.shade[i], mats.length - 1)], 3, prt('hand', s), F_NO_TEXTURE | F_NO_OUTLINE);
-  }
-}
-
 export const BOTTOM_ITEMS: ItemDef[] = liftMain([
   {
     id: 'bottom_shinobi',
@@ -2093,3 +1973,124 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
     },
   },
 ]);
+
+// The owner's Trunks 2 and 3 garments, drawn from his pixels (tools/refs/trunks-*-from-ref.py).
+/**
+ * The owner's cargo trousers (his Trunks 2 picture, cargoPantsArt.ts): on each leg the thigh turns with
+ * the thigh about the hip and the shin with the shin about the knee, the far leg behind the near one;
+ * the seat rides the pelvis over both. At rest every pixel is his, where he drew it. The bulky body's
+ * broader legs and hips get his pieces broadened (a few of his columns doubled).
+ */
+function drawCargo(g: DrawCtx, green: string): void {
+  const tint = slotTint(g, CARGO_SLOT, { main: CARGO_GREEN }, { main: green });
+  paintedTrousers(g, { seat: CARGO_SEAT, thighN: CARGO_THIGH_N, shinN: CARGO_SHIN_N, thighF: CARGO_THIGH_F, shinF: CARGO_SHIN_F }, tint, CARGO_HEM);
+}
+
+/** How far down the shin (from the knee) the owner's trousers reach at rest: the cargo bloused low, his
+ * Trunks 3 trousers just under the knee (where his boots start). */
+const CARGO_HEM = 0.5;
+const LEGGINGS_HEM = 0.25;
+
+/** Takes our bare thigh, and our bare shin down to `t` of its length from the knee, away. */
+function bareLegOffAbove(g: DrawCtx, s: Side, t: number): void {
+  const thigh = partIndex(prt('thigh', s));
+  const shin = partIndex(prt('shin', s));
+  const { knee, ankle } = legJoints(g.rig, s);
+  const d = sub(ankle, knee);
+  const l2 = d.x * d.x + d.y * d.y || 1;
+  const L = g.L(legDepth(s, 'body'));
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || (L.part[i] !== thigh && L.part[i] !== shin)) continue;
+    const x = ((i % GRID) + 0.5) / RES - knee.x;
+    const y = (Math.floor(i / GRID) + 0.5) / RES - knee.y;
+    if (L.part[i] === thigh || (x * d.x + y * d.y) / l2 < t) L.mat[i] = -1;
+  }
+}
+
+/** A pair of the owner's painted trousers: his seat, thighs and shins (see drawCargo). */
+function paintedTrousers(
+  g: DrawCtx,
+  p: { seat: PaintedPiece; thighN: PaintedPiece; shinN: PaintedPiece; thighF: PaintedPiece; shinF: PaintedPiece },
+  tint: (ch: string, hex: string) => string,
+  hem: number,
+): void {
+  const r = g.rig;
+  const big = r.body === 'bulky';
+  const fit = (q: PaintedPiece, l: number, rt: number) => (big ? stretchedPiece(q, l, rt, 0) : q);
+  for (const s of SIDES) {
+    const { hip, knee, ankle } = legJoints(r, s);
+    const [thigh, shin] = s === 'N' ? [p.thighN, p.shinN] : [p.thighF, p.shinF];
+    // Our bare leg under his trousers is taken away down to his hem, so it never shows past his
+    // narrower legs or between them (below the hem our shin stays, for shoes that leave it bare).
+    bareLegOffAbove(g, s, hem);
+    stampPiece(g, legDepth(s, 'cloth'), fit(shin, 1, 1), knee, segAngle(knee, ankle), prt('shin', s), tint);
+    stampPiece(g, legDepth(s, 'cloth'), fit(thigh, 2, 2), hip, segAngle(hip, knee), prt('thigh', s), tint);
+  }
+  stampPiece(g, 'torso.bottom', fit(p.seat, 3, 3), r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint);
+}
+
+/**
+ * The owner's open jacket (his Trunks 3 picture, bomberJacketArt.ts): the body rides the torso about the
+ * neck, each sleeve's upper part its upper arm about the shoulder and its forearm part (with the cuff)
+ * its forearm about the elbow, over our arms (taken away under them, so at rest every pixel of the arms
+ * is his, where he drew it). A closed hand is his bare fist under the cuff, in the character's skin. The
+ * bulky body keeps its big hands, his jacket and sleeves broadened over its broader torso and arms.
+ */
+function drawBomber(g: DrawCtx, blue: string, grey: string): void {
+  const r = g.rig;
+  const tint = slotTint(g, BOMBER_SLOT, { main: BOMBER_BLUE, under: BOMBER_SHIRT }, { main: blue, under: grey });
+  const big = r.body === 'bulky';
+  for (const s of SIDES) {
+    const j = armJoints(r, s);
+    partsOff(g, [armDepth(s, 'body')], [prt('upperArm', s), prt('forearm', s)]);
+    const [up, fore, fist] = s === 'N' ? [BOMBER_SLEEVE_UP_N, BOMBER_SLEEVE_FORE_N, BOMBER_FIST_N] : [BOMBER_SLEEVE_UP_F, BOMBER_SLEEVE_FORE_F, BOMBER_FIST_F];
+    const fit = (q: PaintedPiece) => (big ? stretchedPiece(q, 2, 2, 0) : q);
+    stampPiece(g, armDepth(s, 'cloth'), fit(fore), j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
+    stampPiece(g, armDepth(s, 'cloth'), fit(up), j.shoulder, segAngle(j.shoulder, j.elbow), prt('upperArm', s), tint);
+    const { kind } = handPose(g, s);
+    // (With gloves on, the gloves draw the hands.)
+    if (!big && !g.has('hands') && (kind === 'grip' || kind === 'fist')) {
+      bareHandOff(g, s);
+      paintedFist(g, s, fist, tint);
+    }
+  }
+  stampPiece(g, 'torso.top', big ? stretchedPiece(BOMBER_BODY, 4, 5, 1) : BOMBER_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
+}
+
+/**
+ * The owner's short-sleeved shirt (his Trunks 2 picture, shortSleeveShirtArt.ts): the body rides the torso
+ * about the neck, each sleeve its upper arm about the shoulder. On the male body his bare arms come with
+ * it, in the character's skin (he drew them broader than ours, and they are part of his figure): each
+ * upper arm and forearm turns with ours about the shoulder and the elbow, and our arm under them is taken
+ * away, so at rest every pixel of the arms is his, where he drew it. The bulky body keeps its own big
+ * arms, his shirt and sleeves broadened over them.
+ */
+function drawShortShirt(g: DrawCtx, blue: string, trim: string): void {
+  const r = g.rig;
+  const tint = slotTint(g, SHIRT_SLOT, { main: SHIRT_BLUE, trim: SHIRT_TRIM }, { main: blue, trim });
+  const big = r.body === 'bulky';
+  for (const s of SIDES) {
+    const j = armJoints(r, s);
+    const up = segAngle(j.shoulder, j.elbow);
+    if (!big) {
+      partsOff(g, [armDepth(s, 'body')], [prt('upperArm', s), prt('forearm', s)]);
+      const [arm, fore] = s === 'N' ? [SHIRT_ARM_UP_N, SHIRT_ARM_FORE_N] : [SHIRT_ARM_UP_F, SHIRT_ARM_FORE_F];
+      stampPiece(g, armDepth(s, 'body'), fore, j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
+      stampPiece(g, armDepth(s, 'body'), arm, j.shoulder, up, prt('upperArm', s), tint);
+    }
+    const sleeve = s === 'N' ? SHIRT_SLEEVE_N : SHIRT_SLEEVE_F;
+    stampPiece(g, armDepth(s, 'cloth'), big ? stretchedPiece(sleeve, 1, 1, 0) : sleeve, j.shoulder, up, prt('upperArm', s), tint);
+  }
+  stampPiece(g, 'torso.top', big ? stretchedPiece(SHIRT_BODY, 4, 5, 1) : SHIRT_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
+}
+
+/** Our hand picture for the pose (open, pointing, relaxed, cradling) in these tones, by its shades. */
+function toneHand(g: DrawCtx, s: Side, tones: readonly string[]): void {
+  const tmp = new Layer();
+  handDraw(g, tmp, s, { mat: 0, part: prt('hand', s) });
+  const mats = tones.map((t) => g.m(t, 'flat'));
+  const L = g.L(armDepth(s, 'armor'));
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (tmp.mat[i] >= 0) L.set(i % GRID, (i / GRID) | 0, mats[Math.min(tmp.shade[i], mats.length - 1)], 3, prt('hand', s), F_NO_TEXTURE | F_NO_OUTLINE);
+  }
+}

@@ -428,8 +428,8 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // The owner's eyes (src/sprite/eyeArt.ts), a row lower than ours and heavy-lidded: his brow (B) on
   // the row above the lash line, a single row of white and red iris under it. Drawn in his pixels.
   valiant: { near: VALIANT_EYES.open.near.letters, far: VALIANT_EYES.open.far.letters },
-  // The owner's Aurelia's eyes (src/sprite/aureliaEyeArt.ts) on our own cells and rows: her lash
-  // with its brown inner tip, her white, blue iris and pupil, her cyan and cream under them.
+  // Aurelia's eyes from the owner's picture (src/sprite/aureliaEyeArt.ts), on our own cells and rows:
+  // her lash with its brown inner tip, her white, blue iris and pupil, her cyan and cream under them.
   dawn: { near: DAWN_EYES.open.near.letters, far: DAWN_EYES.open.far.letters },
 };
 

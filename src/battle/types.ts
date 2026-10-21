@@ -63,6 +63,11 @@ export interface Conditions {
   crouched?: boolean;
   /** Hidden, with the Stealth total enemies must beat with passive Perception. */
   hidden?: number;
+  /**
+   * Hid with a natural 20: `hidden` is PERFECT_HIDE until the unit's next turn, crouched or not;
+   * then it goes back to this, the roll's real total.
+   */
+  perfectHide?: number;
   /** Paid 2 chakra to walk on deep water this turn. */
   waterWalk?: boolean;
   /** Ninja jump ready: climbing and dropping cost little this turn. */

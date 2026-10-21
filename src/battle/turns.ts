@@ -64,6 +64,11 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     u.cond.disengaged = false;
     u.cond.waterWalk = false;
     u.cond.ninjaJump = false;
+    // A perfect hide (a natural 20) lasted until now: back to the roll's real total.
+    if (u.cond.perfectHide !== undefined) {
+      if (u.cond.hidden !== undefined) u.cond.hidden = u.cond.perfectHide;
+      u.cond.perfectHide = undefined;
+    }
     ev.push({ t: 'turn', unit: u.id, round: s.round });
     if (u.down === 'downed') {
       deathSave(s, u, ev);
@@ -130,7 +135,7 @@ export function endTurn(s: BattleState, ev: BattleEvent[]): void {
     const tick = tickRound(u.effects);
     u.effects = tick.effects;
     for (const id of tick.expired) ev.push({ t: 'effect', unit: u.id, effect: id, on: false });
-    if (u.cond.hidden !== undefined && !u.cond.crouched) u.cond.hidden = undefined;
+    if (u.cond.hidden !== undefined && !u.cond.crouched && u.cond.perfectHide === undefined) u.cond.hidden = undefined;
     // A warp edge not struck with is gone.
     if (u.cond.warpEdge) u.cond.warpEdge = false;
     if (u.commanded) spendCommandTurn(s, u, ev);

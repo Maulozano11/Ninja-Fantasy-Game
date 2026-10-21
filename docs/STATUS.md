@@ -16,7 +16,7 @@ clean.
 - No web navigation: every screen has a "Main menu" button. `#creator`, `#missions` and `#combat`
   open a screen directly, for testing.
 - Saves in localStorage only: `shinobi5e.hero.v1`, `shinobi5e.roster.v1` (up to 12 ninjas),
-  `shinobi5e.mission.v1` (one autosave) and `shinobi.lang`.
+  `shinobi5e.mission.v1` (one autosave), `shinobi.lang` and `shinobi.dice` (the dice style).
 
 **Character creator** (`src/components/CharacterCreator.tsx`, laid out like Baldur's Gate 3)
 - Steps: Origin, Clan, Class, Appearance, Abilities, Jutsu. Plus a pixel-paint editor.
@@ -147,9 +147,14 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   (Gema, Marfil y oro, Obsidiana rúnica), and **a natural 20 on an attack = automatic critical with
   maximum damage** and an extra animation (`docs/GAMEPLAY_DESIGN.md`, "Dice"). He asked for more
   realistic dice than the first draft; the realistic art is on `ui/dice-d20` (generator
-  `tools/ui/dice-d20.ts`, sheets in `src/assets/ui_dice/`), waiting for his approval. Not wired into
-  the game yet (menu option, battle screen, the max-damage rule in `src/battle`). His open question:
-  every damaging jutsu uses a saving throw today, so how do jutsu criticals work?
+  `tools/ui/dice-d20.ts`, sheets in `src/assets/ui_dice/`), waiting for his approval of the look.
+  Decided later the same day (his answer "a3, b3, c3"): on a save a natural 20 resists completely
+  (no damage, no effect) and a natural 1 takes the caster's critical (maximum damage, the same
+  animation); on a check a natural 20 succeeds with an extra and a natural 1 fails (the extras per
+  check in `docs/GAMEPLAY_DESIGN.md` "Dice" and `docs/MISSION_DESIGN.md`). On `ui/dice-d20` it is
+  all wired in: the rules in `src/battle` and `src/rules` (with tests), the dice in battle
+  (`src/components/dice/`, `battle/diceLayer.ts`, paced by `playback.ts`, a skip button), the
+  "Opciones" panel in the main menu (`shinobi.dice`, default Marfil y oro) and the camp log's die.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms
   cast beat, about 115 ms/m for projectiles and 150 ms/m for beasts, longer impacts, the next turn

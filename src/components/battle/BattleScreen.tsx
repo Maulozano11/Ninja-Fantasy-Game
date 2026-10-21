@@ -31,6 +31,9 @@ import { Playback } from './playback';
 import { drawBattle, image, pickGround, pickStructure, pickUnit, project, screenToWorld } from './renderer';
 import type { Camera, Overlay, Rect } from './renderer';
 import { playSound, startAmbience } from './battleSound';
+import { drawDiceLayer } from './diceLayer';
+import { preloadDice } from '../dice/diceDraw';
+import { getDiceStyle } from '../dice/diceStyle';
 import { floatLabel, jutsuName, logLine, structureName, unitName, unitRef } from './battleLog';
 import type { LogLine } from './battleLog';
 import { DMG_ES, SAVE_EN, SAVE_ES, T } from './battleText';
@@ -126,6 +129,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   /** The map pixels the round minimap shows (its square around the camera). */
   const miniView = useRef({ x: 0, y: 0, w: 1 });
   const hudK = useHudScale(wrapRef);
+  const hudKRef = useRef(hudK);
+  hudKRef.current = hudK;
+  /** Dice are in the air: the skip button shows. */
+  const [diceRolling, setDiceRolling] = useState(false);
+  const diceRollingRef = useRef(false);
+  useEffect(() => preloadDice(getDiceStyle()), []);
   const [tip, setTip] = useState<TipKey | null>(null);
   const [speed, setSpeed] = useState<1 | 2 | 3>(() => {
     try {
@@ -369,6 +378,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         pbRef.current?.sync(s, performance.now());
       },
       centerOn: (x: number, z: number) => centerOn({ x, z }, true),
+      /** What an action would do, without doing it (a check can look for the seed of a natural 20). */
+      dryRun: (a: Action) => applyAction(structuredClone(stateRef.current), a),
+      skipDice: () => pbRef.current?.skipDice(performance.now()),
       screenOf: (x: number, z: number) => {
         const p = project(map, { x, z });
         return { x: (p.X - cam.current.x) * cam.current.zoom, y: (p.Y - cam.current.y) * cam.current.zoom + (canvasRef.current?.getBoundingClientRect().top ?? 0) };
@@ -629,6 +641,24 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         lang: langRef.current,
         avoid: panelRects(canvas, dpr),
       });
+      // The dice over the fight: the quick d20s, the big window, a critical's impact.
+      drawDiceLayer(ctx, {
+        pb: p,
+        state: s,
+        map,
+        cam: camera,
+        now,
+        W: canvas.width,
+        H: canvas.height,
+        s: Math.max(1, Math.round(2 * hudKRef.current * dpr)),
+        lang: langRef.current,
+        style: getDiceStyle(),
+      });
+      const rolling = p.diceRolling(now);
+      if (rolling !== diceRollingRef.current) {
+        diceRollingRef.current = rolling;
+        setDiceRolling(rolling);
+      }
       void w;
       void h;
       drawMinimap(now);
@@ -1065,6 +1095,12 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         e.preventDefault();
         return;
       }
+      // Space or Enter while the dice roll: they land at once (the skip button's key).
+      if ((key === ' ' || key === 'Enter') && pb.diceRolling(performance.now())) {
+        e.preventDefault();
+        pb.skipDice(performance.now());
+        return;
+      }
       if (key === 'Escape') setMode({ k: 'move' });
       else if (key === 'z') setZoom((z) => (z === 2 ? 1 : 2));
       else if (key === '-' || key === '_') zoomStep(-1);
@@ -1407,6 +1443,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
           <div className="font-semibold">{preview.label}</div>
           {preview.sub && <div className="text-[10px] text-slate-300">{preview.sub}</div>}
         </div>
+      )}
+
+      {/* The dice are rolling: a button (or Space) lands them at once. */}
+      {diceRolling && !ended && (
+        <button
+          type="button"
+          onClick={() => pb.skipDice(performance.now())}
+          className="absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-sm border text-[12px] font-bold"
+          style={{ ...kitText, bottom: Math.round(250 * hudK), background: 'rgba(22,18,12,0.88)', borderColor: '#8a6a3a', color: '#f5d9a8', zIndex: 30 }}
+          title={T('diceSkipTip')}
+        >
+          {T('diceSkip')} ▸▸
+        </button>
       )}
 
       {/* Banners. */}

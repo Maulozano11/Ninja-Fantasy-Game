@@ -30,6 +30,12 @@ const BANNER: Record<string, string[]> = {
   L: g('##...... ##...... ##...... ##...... ##...... ##...... ##...... ##...... ##...... ######## ########'),
   M: g('##......## ###....### ####..#### ##.####.## ##..##..## ##......## ##......## ##......## ##......## ##......## ##......##'),
   X: g('##....## ##....## .##..##. .##..##. ..####.. ...##... ..####.. .##..##. .##..##. ##....## ##....##'),
+  F: g('######## ######## ##...... ##...... ##...... ######.. ######.. ##...... ##...... ##...... ##......'),
+  N: g('##....## ###...## ####..## ##.##.## ##.##.## ##..#### ##..#### ##...### ##....## ##....## ##....##'),
+  U: g('##....## ##....## ##....## ##....## ##....## ##....## ##....## ##....## ###..### .######. ..####..'),
+  '2': g('.######. ######## ##....## ......## .....### ...####. .####... ###..... ##...... ######## ########'),
+  '0': g('..####.. .######. ###..### ##...### ##..#### ##.##.## ####..## ###...## ###..### .######. ..####..'),
+  ' ': g('..... ..... ..... ..... ..... ..... ..... ..... ..... ..... .....'),
   '!': g('## ## ## ## ## ## ## ## .. ## ##'),
   '¡': g('## ## .. ## ## ## ## ## ## ## ##'),
 };
@@ -140,17 +146,18 @@ export interface BannerFrame {
 export function bannerFrames(text: string): { frames: BannerFrame[]; hold: number } {
   const txt = bannerText(text), white = bannerText(text, 'white');
   const W = txt.w + 40, H = 26;
+  // It opens from half its width (a sliver read as a white diamond), and closes with its letters:
+  // no frame shows the plaque empty.
   const steps: { open: number; flash: number; text: 'none' | 'white' | 'gold'; shine: number | null; ms: number }[] = [
-    { open: 0.18, flash: 1, text: 'none', shine: null, ms: 40 },
-    { open: 0.62, flash: 0.6, text: 'white', shine: null, ms: 40 },
-    { open: 1.08, flash: 0.2, text: 'white', shine: null, ms: 40 },
+    { open: 0.5, flash: 0.45, text: 'white', shine: null, ms: 40 },
+    { open: 0.85, flash: 0.25, text: 'white', shine: null, ms: 40 },
+    { open: 1.06, flash: 0.1, text: 'white', shine: null, ms: 40 },
     { open: 1, flash: 0, text: 'gold', shine: 0, ms: 50 },
     { open: 1, flash: 0, text: 'gold', shine: 0.3, ms: 50 },
     { open: 1, flash: 0, text: 'gold', shine: 0.6, ms: 50 },
     { open: 1, flash: 0, text: 'gold', shine: 0.9, ms: 50 },
     { open: 1, flash: 0, text: 'gold', shine: null, ms: 420 },
-    { open: 0.7, flash: 0, text: 'gold', shine: null, ms: 40 },
-    { open: 0.3, flash: 0.3, text: 'none', shine: null, ms: 40 },
+    { open: 0.75, flash: 0, text: 'gold', shine: null, ms: 40 },
   ];
   const FW = Math.round(W * 1.1) + 2;
   const frames = steps.map((s) => {
@@ -198,6 +205,13 @@ export function burstFrames(): BannerFrame[] {
   const out: BannerFrame[] = [];
   for (let f = 0; f < 8; f++) {
     const img = new Img(W, W);
+    // A warm light fills the ring as it opens, so the target's dark clothes inside it never read as
+    // a black hole.
+    if (f >= 1 && f <= 3) {
+      const rr = [0, 18, 26, 33][f] - 1, a = [0, 150, 95, 45][f];
+      for (let y = 0; y < W; y++)
+        for (let x = 0; x < W; x++) if (Math.hypot(x + 0.5 - c, y + 0.5 - c) < rr) img.set(x, y, [GOLD20[7][0], GOLD20[7][1], GOLD20[7][2], a]);
+    }
     // Core flash.
     if (f <= 1) {
       const cr = f === 0 ? 11 : 15;
@@ -291,11 +305,11 @@ export function damageNumber(n: number, mode: 'gold' | 'white' = 'gold'): Img {
   return img;
 }
 
-/** The "MÁX" / "MAX" tag: a small red plaque with a gold rim, cream letters. */
+/** The "MÁX" / "MAX" tag: a small dark HUD plaque with a gold rim and gold letters (red read as a warning). */
 export function maxTag(text: string): Img {
   // The label font has no capital accents: the acute is laid over the A by hand.
   const accentAt = text.indexOf('Á');
-  const t = renderText(text.replace('Á', 'A'), 'label', { color: hex('#fff0c8'), top: WHITE, outline: undefined });
+  const t = renderText(text.replace('Á', 'A'), 'label', { color: hex('#ffd23c'), top: GOLD20[7], outline: undefined });
   const w = t.w + 8, h = 14;
   const img = new Img(w, h);
   for (let y = 0; y < h; y++)
@@ -305,14 +319,14 @@ export function maxTag(text: string): Img {
       if (corner) continue;
       if (edge) img.set(x, y, hex('#2a0d06'));
       else if (x === 1 || y === 1 || x === w - 2 || y === h - 2) img.set(x, y, y <= 2 || x <= 1 ? GOLD20[6] : GOLD20[4]);
-      else img.set(x, y, y < h / 2 ? hex('#a8283a') : hex('#7e1a28'));
+      else img.set(x, y, y < h / 2 ? PANEL[3] : PANEL[1]);
     }
   // Caps from row 4; the accent sits in the two rows above the A.
   img.draw(t, 4, 3);
   if (accentAt >= 0) {
     const ax = 4 + 1 + textWidth(text.slice(0, accentAt), 'label') + (accentAt > 0 ? 1 : 0);
-    img.set(ax + 2, 2, hex('#fff0c8'));
-    img.set(ax + 1, 3, hex('#fff0c8'));
+    img.set(ax + 2, 2, GOLD20[7]);
+    img.set(ax + 1, 3, GOLD20[7]);
   }
   return img;
 }

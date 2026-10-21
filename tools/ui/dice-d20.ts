@@ -4,8 +4,8 @@
 // the shared halo/shadow/dust sprites, the critical hit's art and the readout pieces, plus a
 // manifest.json that says where everything is and how long each frame lasts.
 //
-//   npx tsx tools/ui/dice-d20.ts            writes into $UI_OUT (default: the staging folder below)
-//   npx tsx tools/ui/dice-d20.ts --assets   writes into src/assets/ui_dice/ (the game's copy)
+//   UI_OUT=<staging dir> npx tsx tools/ui/dice-d20.ts   writes into $UI_OUT (required without --assets)
+//   npx tsx tools/ui/dice-d20.ts --assets             writes into src/assets/ui_dice/ (the game's copy)
 //   add --preview                           also writes preview sheets (gem in every chakra colour,
 //                                           throw filmstrips) next to the sheets (never into assets)
 //
@@ -23,9 +23,13 @@ import { renderText } from './ui-font';
 import { DICE_GEM_KEY_TINT, diceGemRamp } from '../../src/sprite/diceGem';
 
 const ASSETS = join(import.meta.dirname, '../../src/assets/ui_dice');
-const STAGING = '/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/dados/sprites';
 const args = new Set(process.argv.slice(2));
-const OUT = args.has('--assets') ? ASSETS : (process.env.UI_OUT ?? STAGING);
+if (!args.has('--assets') && !process.env.UI_OUT) {
+  console.error('dice: set UI_OUT=<staging dir> (or pass --assets to write the game\'s copy)');
+  process.exit(1);
+}
+const OUT = args.has('--assets') ? ASSETS : process.env.UI_OUT!;
+const STAGING = process.env.UI_OUT ?? OUT;
 const PREVIEW = args.has('--preview');
 
 const CHAKRA_IDS = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet', 'white', 'black', 'brown'];
@@ -66,8 +70,9 @@ class Atlas {
 const POP_COL = ROLL_FRAMES, DIM_COL = ROLL_FRAMES + 3;
 
 /**
- * One style, one size: row r is result r + 1; columns 0..17 the throw (17 is the rest), 18..20 the
- * pop, 21 the dimmed die. Every cell is box x box with the die's centre in the middle.
+ * One style, one size: row r is result r + 1; columns 0..ROLL_FRAMES-1 the throw (the last is the
+ * rest), then 3 of the pop, then the dimmed die (the manifest's diceSheet says which column is
+ * which). Every cell is box x box with the die's centre in the middle.
  */
 function diceSheet(style: StyleId, size: Size): Img {
   const box = SIZES[size].box;
@@ -108,10 +113,17 @@ function sharedSheet(size: Size): { img: Img; rects: Record<string, Rect> } {
 function critSheet(): { img: Img; rects: Record<string, Rect>; banner: Record<string, { ms: number[]; hold: number }>; burstMs: number[] } {
   const a = new Atlas();
   const banner: Record<string, { ms: number[]; hold: number }> = {};
-  for (const [lang, text] of [['es', '¡CRÍTICO!'], ['en', 'CRITICAL!']]) {
+  // crit: a natural 20 on an attack; fumble: a natural 1 on a save (it takes the caster's critical);
+  // nat20: a natural 20 on a save or a check (the owner's rules A3 and C3).
+  const TEXTS: [string, string, string][] = [
+    ['crit', 'es', '¡CRÍTICO!'], ['crit', 'en', 'CRITICAL!'],
+    ['fumble', 'es', '¡FALLO CRÍTICO!'], ['fumble', 'en', 'CRITICAL FAIL!'],
+    ['nat20', 'es', '¡20 NATURAL!'], ['nat20', 'en', 'NATURAL 20!'],
+  ];
+  for (const [kind, lang, text] of TEXTS) {
     const b = bannerFrames(text);
-    b.frames.forEach((f, i) => a.add(`banner_${lang}_${i}`, f.img));
-    banner[lang] = { ms: b.frames.map((f) => f.ms), hold: b.hold };
+    b.frames.forEach((f, i) => a.add(`banner_${kind}_${lang}_${i}`, f.img));
+    banner[`${kind}_${lang}`] = { ms: b.frames.map((f) => f.ms), hold: b.hold };
   }
   const burst = burstFrames();
   burst.forEach((f, i) => a.add(`burst_${i}`, f.img));
@@ -225,21 +237,20 @@ function main(): void {
     timeline: {
       note: 'Two parts. "roll" is timed from the moment the small die settles on 20; "impact" from the frame the blow lands.',
       roll: [
-        { at: 0, what: 'smallDie', detail: 'The small die over the actor plays its natural-20 row from the small fx sheet (gold flash).' },
-        { at: 120, what: 'window', detail: 'The big window opens: the screen dims (18%, then 32%), the small die and its readout leave, the big die plays its natural-20 row (dice_<style>_big_fx row 0, 2x) in the free band over the fight.' },
-        { at: 200, what: 'banner', detail: 'banner_<lang>_0..hold in the window, under the die (3x): slams open from the middle, a shine crosses it, it holds.' },
-        { at: 380, what: 'readout', detail: 'The readout pops in beside the big die (natural 20 in gold, total, mark, CA/CD).' },
-        { at: 760, what: 'swing', detail: 'The attack plays; the window fades to 40% and closes as the blade comes down.' },
+        { at: 0, what: 'smallDie', detail: 'The small die over the actor (the target, for a save) lands and plays its natural-20 row from the small fx sheet (gold flash).' },
+        { at: 100, what: 'window', detail: 'The big window opens in the free band over the fight, the small die flying into it: the screen around it darkens (a 45% vignette, the middle left lighter), the big die plays its natural-20 row (dice_<style>_big_fx row 0, 2x).' },
+        { at: 180, what: 'banner', detail: 'banner_<kind>_<lang>_0..hold under the die (3x): opens from half its width, a shine crosses it, it holds.' },
+        { at: 300, what: 'readout', detail: 'The readout pops in under the banner (natural 20 in gold, total, mark, CA/CD).' },
+        { at: 620, what: 'swing', detail: 'The attack plays; the window fades out over 200 ms as the blade comes down.' },
       ],
       impact: [
-        { at: 0, what: 'hitStop', ms: 120, detail: 'Everything holds still on the impact frame (the target shows its hit flash).' },
-        { at: 0, what: 'flash', ms: 80, detail: 'Full-screen gold-white flash: 55% then 25% alpha (#fff6d6).' },
+        { at: 0, what: 'hitStop', ms: 110, detail: 'Everything holds still on the impact frame (the target shows its hit flash).' },
+        { at: 0, what: 'flash', ms: 70, detail: 'A bright white-gold bloom on the target (added light, not a flat wash over the screen): two quick frames.' },
         { at: 0, what: 'sound', detail: 'The critical sting (see sound).' },
-        { at: 40, what: 'burst', detail: 'burst_0..7 on the target, centred on its chest (world pixels, 50 ms each).' },
-        { at: 40, what: 'shake', ms: 260, px: 6, detail: 'The camera kicks 6 px toward the target and shakes, easing out.' },
-        { at: 60, what: 'bannerClose', detail: 'The banner closes (its last frames), leaving room for the number.' },
-        { at: 150, what: 'damage', detail: 'The maximum damage over the target: dmg_white digits for 60 ms at 4x, then dmg_gold at 3x with max_<lang> beside it; it rises 24 px and fades out from 1050 to 1300 ms.' },
-        { at: 1050, what: 'end', detail: 'The next event plays (the number keeps fading over it).' },
+        { at: 30, what: 'burst', detail: 'burst_0..7 on the target, centred on its chest (world pixels, 50 ms each).' },
+        { at: 30, what: 'shake', ms: 260, px: 6, detail: 'The camera kicks 6 px and shakes, easing out.' },
+        { at: 120, what: 'damage', detail: 'The maximum damage over the target: dmg_white digits for 60 ms, then dmg_gold at 3x with max_<lang> beside it; it rises and fades out at the end.' },
+        { at: 900, what: 'end', detail: 'The next event plays (the number keeps fading over it).' },
       ],
     },
     sound: 'tools/ui/dice-d20-sound.ts writes the sting as a WAV; the recipe there is the one to port to WebAudio.',

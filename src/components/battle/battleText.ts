@@ -277,11 +277,20 @@ const TABLE = strings({
   r_waitingReaction: { en: 'Waiting for a reaction.', es: 'Esperando una reacción.' },
   r_default: { en: 'Can’t do that now.', es: 'No se puede ahora.' },
 
+  // dice
+  diceSkip: { en: 'Skip the dice', es: 'Saltar dados' },
+  diceSkipTip: { en: 'The dice land at once (Space)', es: 'Los dados caen al instante (Espacio)' },
+
   // log
   l_turn: { en: '{name}’s turn', es: 'Turno de {name}' },
   l_round: { en: 'Round {n}', es: 'Ronda {n}' },
   l_attackHit: { en: '{a} hits {t} ({roll} vs AC {ac})', es: '{a} golpea a {t} ({roll} contra CA {ac})' },
-  l_attackCrit: { en: '{a} lands a critical on {t}!', es: '¡{a} asesta un crítico a {t}!' },
+  l_attackCrit: { en: 'Natural 20! {a} lands a critical on {t}!', es: '¡20 natural! ¡{a} asesta un crítico a {t}!' },
+  l_damageCrit: { en: 'Critical! Maximum damage: {n} {type} to {t}', es: '¡Crítico! Daño máximo: {n} de {type} a {t}' },
+  l_saveCrit: { en: 'Natural 20! {t} resists perfectly: no damage, no effect ({roll} vs DC {dc})', es: '¡20 natural! {t} resiste por completo: sin daño ni efecto ({roll} contra CD {dc})' },
+  l_saveFumble: { en: 'Natural 1! {t} fails critically ({roll} vs DC {dc})', es: '¡1 natural! {t} sufre un fallo crítico ({roll} contra CD {dc})' },
+  l_checkNat20: { en: 'Natural 20! {t} succeeds ({roll})', es: '¡20 natural! {t} lo logra ({roll})' },
+  l_checkNat1: { en: 'Natural 1: {t} fails automatically ({roll})', es: '1 natural: {t} falla sin remedio ({roll})' },
   l_attackMiss: { en: '{a} misses {t} ({roll} vs AC {ac})', es: '{a} falla contra {t} ({roll} contra CA {ac})' },
   l_damage: { en: '{t} takes {n} {type}', es: '{t} recibe {n} de {type}' },
   l_heal: { en: '{t} recovers {n} HP', es: '{t} recupera {n} PV' },
@@ -344,6 +353,10 @@ const TABLE = strings({
   n_tensionUp: { en: '{name} is shaken (+1 Tension)', es: '{name} se estremece (+1 Tensión)' },
   n_hideFailed: { en: '{name} is spotted', es: '{name} es descubiert{o}' },
   n_shoveBlocked: { en: '{name} doesn’t budge', es: '{name} no se mueve' },
+  n_hideCrit: { en: '{name} vanishes completely: nobody can find them until their next turn', es: '{name} desaparece por completo: nadie puede encontrarl{o} hasta su próximo turno' },
+  n_shoveCrit: { en: '{name} slams {other}: knocked down and thrown back', es: '{name} embiste a {other}: l{o2} derriba y l{o2} lanza hacia atrás' },
+  n_shoveReversed: { en: '{name} turns the shove around: {other} falls', es: '{name} devuelve el empujón: {other} cae al suelo' },
+  n_medicineCrit: { en: '{name} works a small miracle: {other} gets back up', es: '{name} obra un pequeño milagro: {other} se levanta' },
   n_warpEdge: { en: '{name} is behind {foe}: the next attack comes from behind', es: '{name} queda a la espalda de {foe}: su próximo ataque, por la espalda' },
   n_swapped: { en: '{name} and {other} trade places', es: '{name} y {other} intercambian lugares' },
   f_warpEdge: { en: 'Behind {foe}', es: 'A la espalda de {foe}' },

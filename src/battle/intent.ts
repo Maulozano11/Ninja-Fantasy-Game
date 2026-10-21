@@ -149,7 +149,7 @@ export function swapValue(s: BattleState, u: Unit, t: Unit | undefined): number 
   }
   const mine = Object.values(s.units).filter((o) => o.id !== u.id && o.team === u.team && o.kind === 'ninja' && standingUnit(o) && dist(o.pos, u.pos) <= 2.5);
   const theirs = Object.values(s.units).filter((o) => o.id !== t.id && o.team === t.team && standingUnit(o) && dist(o.pos, u.pos) <= 3);
-  const fails = 1 - successChance(saveMod(t, 'str'), u.saveDC);
+  const fails = 1 - successChance(saveMod(t, 'str'), u.saveDC, 'none', true);
   if (mine.length < 2 || theirs.length || fails < 0.5) return 0;
   return fails * mine.reduce((v, o) => v + threat(o), 0);
 }
@@ -253,7 +253,7 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
     for (const [id, refused] of [[COMMAND, commandRefused], [SUBMISSION, submissionRefused]] as const) {
       const j = JUTSU[id];
       if (!u.jutsus.includes(id) || noJutsu(u) || u.chakra < j.cost || d > j.range + u.speed || refused(s, u, f)) continue;
-      const fails = 1 - successChance(saveMod(f, 'wis'), u.saveDC);
+      const fails = 1 - successChance(saveMod(f, 'wis'), u.saveDC, 'none', true);
       out.push({ intent: { kind: 'command', what: id, target: f.id }, value: fails * 2 * threat(f) * fx });
     }
   }
@@ -319,7 +319,7 @@ function clanWays(s: BattleState, u: Unit, out: Option[]): void {
     const best = Math.max(0, ...out.filter(single).map((o) => o.value));
     for (const o of out) {
       const t = o.intent.kind === 'command' && o.intent.what === COMMAND ? s.units[o.intent.target!] : undefined;
-      if (t && 1 - successChance(saveMod(t, 'wis'), u.saveDC) >= 0.5) o.value = Math.max(o.value, best + o.value * 0.001);
+      if (t && 1 - successChance(saveMod(t, 'wis'), u.saveDC, 'none', true) >= 0.5) o.value = Math.max(o.value, best + o.value * 0.001);
     }
   }
 }

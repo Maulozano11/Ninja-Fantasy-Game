@@ -76,9 +76,9 @@ const THROW: Key[] = [
   { dx: -1.5, dy: 0, a1: 0, a2: 0, tip: 34, s: 1, ms: 55 },
   { dx: -1, dy: 0, a1: 0, a2: 0, tip: 20, s: 1, ms: 45 },
   { dx: 0, dy: 0, a1: 0, a2: 0, tip: 0, s: 1, sx: 1.03, sy: 0.95, ms: 60 },
-  { dx: 0, dy: 0, a1: 0, a2: 0, tip: -5, s: 1, ms: 55 },
-  { dx: 0, dy: 0, a1: 0, a2: 0, tip: 2.5, s: 1, ms: 55 },
-  { dx: 0, dy: 0, a1: 0, a2: 0, tip: -1, s: 1, ms: 60 },
+  { dx: 0, dy: 0, a1: 0, a2: 0, tip: -9, s: 1, ms: 60 },
+  { dx: 0, dy: 0, a1: 0, a2: 0, tip: 5, s: 1, ms: 60 },
+  { dx: 0, dy: 0, a1: 0, a2: 0, tip: -2, s: 1, ms: 60 },
   { dx: 0, dy: 0, a1: 0, a2: 0, tip: 0, s: 1, ms: 0 },
 ];
 export const ROLL_FRAMES = THROW.length;
@@ -171,6 +171,7 @@ export interface DieOpts {
   goldness?: number;
   numberGlow?: boolean;
   numberGold?: boolean;
+  numberRed?: boolean;
   /** Size multiplier (the pop). */
   grow?: number;
   /** Frame size (default the size's die box). */
@@ -199,6 +200,8 @@ export function rollFrame(result: number, i: number, o: DieOpts): Rendered {
     style: o.style, R: z.R * f.s, rot: rollRotation(result, i), w: box, h: box, sx: f.sx, sy: f.sy,
     // The number reads upright once the die is down on its face (and while it wobbles there).
     upright: i >= CLICK_FRAME ? fi : undefined,
+    // In the air only the result's own number may show: another (a 20 above all) would read as the roll.
+    only: i < CLICK_FRAME ? fi : undefined,
     look: o.look, goldness: o.goldness,
   });
   if (!f.smear) return die;
@@ -239,7 +242,7 @@ export function restDie(result: number, o: DieOpts): Rendered {
   const fi = faceOf(result);
   return renderDie({
     style: o.style, R: z.R * (o.grow ?? 1), rot: restRotation(fi), w: box, h: box, upright: fi,
-    look: o.look, goldness: o.goldness, numberGlow: o.numberGlow, numberGold: o.numberGold,
+    look: o.look, goldness: o.goldness, numberGlow: o.numberGlow, numberGold: o.numberGold, numberRed: o.numberRed,
   });
 }
 
@@ -443,7 +446,7 @@ export function nat1Frames(style: StyleId, size: Size): FxFrame[] {
   const k = z.k;
   return steps.map((s) => {
     const img = new Img(W, W);
-    const die = restDie(1, { style, size, look: s.look, box: z.box + 8 });
+    const die = restDie(1, { style, size, look: s.look, numberRed: true, box: z.box + 8 });
     const ox = Math.round(c - die.centre[0]), oy = Math.round(c - die.centre[1]);
     img.draw(die.img, ox, oy);
     const pts = crackPath(die, size);

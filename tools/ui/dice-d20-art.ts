@@ -266,6 +266,9 @@ export const DULL1 = ['#0f0606', '#2a0e0d', '#3f1714', '#55211c', '#6b2d25', '#7
 export const WHITE = H('#ffffff');
 /** The 20 left shining after a natural 20: a richer gold than any style's own numbers. */
 export const NAT20_NUM = { ink: H('#ffd23c'), lit: H('#fff8d8'), shadow: H('#8a5a00') };
+const NAT20_ON_IVORY = { ink: H('#c98a00'), lit: H('#ffe27a'), shadow: H('#3e2c0c') };
+/** The 1 of a natural 1: a bright red with a dark rim, so it reads on any die, even the small one. */
+export const NAT1_NUM = { ink: H('#ff5a46'), lit: H('#ffb4a4'), shadow: H('#4a0a06') };
 
 /** Ivory, warm and a little aged, darkest to lightest. */
 const IVORY = ['#2a1d10', '#4a3824', '#6a5538', '#88714f', '#a38c67', '#bba57f', '#cfba95', '#dfcdaa', '#ebdcbe', '#f4ead3', '#fbf5e7'].map(H);
@@ -286,7 +289,7 @@ export interface StyleDef {
 }
 
 /** Colours the sheets use that never change with the caster's tint (gold of a 20, red of a 1, white). */
-export const FIXED_COLOURS: string[] = [...GOLD20, ...DULL1, WHITE, NAT20_NUM.ink, NAT20_NUM.lit, NAT20_NUM.shadow].map((c) => '#' + c.slice(0, 3).map((v) => v.toString(16).padStart(2, '0')).join(''));
+export const FIXED_COLOURS: string[] = [...GOLD20, ...DULL1, WHITE, NAT20_NUM.ink, NAT20_NUM.lit, NAT20_NUM.shadow, NAT1_NUM.ink, NAT1_NUM.lit, NAT1_NUM.shadow].map((c) => '#' + c.slice(0, 3).map((v) => v.toString(16).padStart(2, '0')).join(''));
 /** The gem's key ramp as drawn in its sheets (the screen swaps these for the caster's ramp). */
 export function gemKeys(): string[] {
   return diceGemKeys(FIXED_COLOURS);
@@ -303,8 +306,11 @@ export const STYLES: Record<StyleId, StyleDef> = {
 
 /** The light: upper left and toward the eye (screen y points down). */
 export const LIGHT: V3 = norm([-0.5, -0.66, 0.56]);
-/** The lamp's position (in die radii): close enough that the light changes across a face. */
-const LAMP: V3 = [-2.5, -3.2, 3.4];
+/**
+ * The lamp's position (in die radii): close enough that the light changes across a face. Each
+ * material catches it a little differently placed, so the glints are not one pasted-on mark.
+ */
+const LAMPS: Record<StyleId, V3> = { gem: [-2.5, -3.2, 3.4], ivory: [-2.5, -3.2, 3.4], obsidian: [-1.3, -3.7, 2.9] };
 /** The camera's distance (in die radii): a mild perspective, the near corners a little larger. */
 const CAM = 6.5;
 /** The light's direction on the screen (for engraved grooves). */
@@ -382,6 +388,13 @@ export interface DieSpec {
   numberGold?: boolean;
   /** Skip the numbers on faces that are not the landed one. */
   plain?: boolean;
+  /**
+   * Draw only this face's number (the throw: a number seen in the air that is not the result,
+   * a 20 above all, would read as the roll and then cheat the player).
+   */
+  only?: number;
+  /** The landed number in a bright red whatever the look (a natural 1, so it reads even small). */
+  numberRed?: boolean;
 }
 
 export interface Rendered {
@@ -433,16 +446,19 @@ const blinn = (p: Px, power: number): number => Math.pow(Math.max(0, dot(p.nb, n
 function shadeIvory(p: Px): RGBA {
   const spec = blinn(p, p.big ? 120 : 40);
   const gw = p.big ? 1.15 : 0.6;
-  if (p.ink && !p.big) return INLAY[p.ink === 1 ? 2 : 3];
+  // The small die's digits are too small to engrave: dark bronze, so they read on the bone.
+  if (p.ink && !p.big) return INLAY[1];
   if (p.ink) {
-    // Gold in an engraved groove: the near wall in shadow, the far wall catching the light.
-    if (p.ink === 2) return INLAY[2];
-    if (p.ink === 3) return INLAY[spec > 0.4 ? 8 : 7];
-    return INLAY[step(0.25 + 0.5 * p.diff + 0.6 * spec, 3, 7, p.b, p.big ? 0.8 : 0)];
+    // Old gold deep in an engraved groove: the near wall in dark shadow, the far wall catching the
+    // light. Dark enough to read on the pale bone at a glance.
+    if (p.ink === 2) return INLAY[0];
+    if (p.ink === 3) return INLAY[spec > 0.4 ? 7 : 6];
+    return INLAY[step(0.1 + 0.4 * p.diff + 0.5 * spec, 2, 4, p.b, 0.3)];
   }
   if (p.edge < gw) {
-    const g = 0.15 + 0.55 * p.diff + 1.1 * blinn(p, 20);
-    return INLAY[step(g, 2, 8, p.b, p.big ? 0.7 : 0)];
+    // The inlay: lit, but never a flat white stripe.
+    const g = 0.15 + 0.55 * p.diff + 0.8 * blinn(p, 20);
+    return INLAY[step(g, 2, 7, p.b, p.big ? 0.4 : 0)];
   }
   const sky = 0.5 - 0.5 * p.nb[1];
   // Growth lines in the bone: long, faint, wavy bands through the die.
@@ -451,7 +467,7 @@ function shadeIvory(p: Px): RGBA {
   const patina = p.big && p.edge < gw + 1.4 ? -0.05 : 0;
   // Bone lets a little light through: its shadows stay warm and never go black.
   const v = 0.2 + 0.5 * p.diff + 0.16 * sky + 0.35 * spec + grain + patina;
-  return IVORY[step(v, 1, 10, p.b, p.big ? 0.5 : 0)];
+  return IVORY[step(v, 1, 10, p.b, p.big ? 0.3 : 0)];
 }
 
 /** Obsidian: black glass with the sky's sharp reflection, a hard glint, and runes glowing in the grooves. */
@@ -467,19 +483,19 @@ function shadeObsidian(p: Px): RGBA {
   const facing = Math.max(0, dot(p.nb, p.V));
   const fres = 0.1 + 0.9 * Math.pow(1 - facing, 3);
   const spec = blinn(p, p.big ? 400 : 300);
-  let v = 0.05 + (p.big ? 0.12 : 0.5) * p.diff + fres * env * 0.95 + spec * 1.3;
+  // The small die is lit more broadly, so its faces part from each other at a glance.
+  let v = p.big ? 0.05 + 0.12 * p.diff + fres * env * 1.1 + spec * 1.3 : 0.06 + 0.62 * p.diff ** 1.4 + fres * env * 0.7 + spec * 1.3;
   if (p.ink === 4) {
     // The glow round a rune spills onto the glass.
     return RUNE[v > 0.5 ? 3 : 1];
   }
-  // Faint carved rune lines inset along the edges of the big die's faces.
-  if (p.big && p.edge > 3.2 && p.edge < 4.1 && dot(p.n, p.V) > 0.35) {
-    const k = Math.floor((p.x * 3 + p.y * 7 + p.fi * 5) / 3) % 5;
-    if (k !== 0) return v > 0.45 ? RUNE[3] : RUNE[2];
-  }
+  // Faint carved rune lines inset along the edges of the big die's faces: one unbroken groove.
+  if (p.big && p.edge > 3.3 && p.edge < 4.1 && dot(p.n, p.V) > 0.35) return v > 0.45 ? RUNE[3] : RUNE[2];
+  // The small die's edges catch a thin line of the sky where they face up (its form at 1x).
+  if (!p.big && p.edge < 0.75 && p.nb[1] < -0.2) return OBSIDIAN[v > 0.3 ? 8 : 7];
   if (spec > 0.9) return OBSIDIAN[11];
   v = Math.min(v, 1);
-  return OBSIDIAN[step(v, 1, 10, p.b, p.big ? 0.55 : 0)];
+  return OBSIDIAN[step(v, 1, 10, p.b, p.big ? 0.25 : 0)];
 }
 
 /** The gem: see-through, darker where it is thick, lit from inside where the light leaves it. */
@@ -533,7 +549,7 @@ function shadeGem(p: Px): RGBA {
   const spec = blinn(p, p.big ? 300 : 260);
   if (spec > 0.7) return WHITE;
   if (spec > 0.35) return K[10];
-  return K[step(Math.min(1, v), 1, 9, p.b, p.big ? 0.45 : 0)];
+  return K[step(Math.min(1, v), 1, 9, p.b, p.big ? 0.22 : 0)];
 }
 /** The rotation being drawn (the gem looks up its back edges with it). */
 let ROT_CUR: M3 = IDENTITY;
@@ -550,27 +566,56 @@ const inTri = (px: number, py: number, a: number[], b: number[], c: number[]): b
 
 const lum = (c: RGBA) => c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11;
 
-/** A look's colour for a pixel drawn in the style's colour `c`. */
-function lookColour(st: StyleDef, look: Look, c: RGBA, goldness: number, b: number): RGBA {
+const same = (a: RGBA, b: RGBA) => a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+const RUNE_SET = new Set(RUNE.map((c) => (c[0] << 16) | (c[1] << 8) | c[2]));
+const isRune = (c: RGBA) => RUNE_SET.has((c[0] << 16) | (c[1] << 8) | c[2]);
+
+/** Where a pixel sits on the die, for the looks that treat the edges and numbers apart. */
+interface LookAt {
+  /** Distance to the face's edge (pixels). */
+  edge: number;
+  /** Part of a number (any face's). */
+  ink: boolean;
+  big: boolean;
+}
+
+/**
+ * A look's colour for a pixel drawn in the style's colour `c`. Each material keeps itself through a
+ * natural 20 or 1 (the review: the three must not turn into one gold or one red die):
+ *   gold  ivory warms to gold; the gem stays crystal in its chakra colour with gold-lit edges; the
+ *         obsidian stays black glass, its runes and edges burning gold
+ *   dull  ivory stains a dull red-brown; the gem clouds over (darker steps of its own keys); the
+ *         obsidian's runes die to a dull ember red
+ *   flash one bright gold frame, the same for all (the moment of the 20)
+ *   dim   the die advantage did not keep: in shadow, less colour (the obsidian lifted to slate)
+ */
+function lookColour(st: StyleDef, look: Look, c: RGBA, goldness: number, b: number, at: LookAt = { edge: 99, ink: false, big: false }): RGBA {
   if (look === 'normal') return c;
   const ls = st.palette.map(lum);
   const lo = Math.min(...ls), hi = Math.max(...ls);
-  // A dark die is lifted, so its gold and its dull red are as bright as the ivory's.
-  const lift = st.id === 'obsidian' ? 0.4 : st.id === 'gem' ? 0.12 : 0;
-  const t = lift + (1 - lift) * ((lum(c) - lo) / Math.max(1, hi - lo));
-  if (look === 'gold' || look === 'flash') {
-    // Every style turns gold by its brightness. Part-way, a gem dissolves by dither (so it keeps its
-    // key colours for the screen's recolouring); the others blend.
-    const gi = clamp(Math.round(1 + t * 7) + (look === 'flash' ? 2 : 0), 1, 8);
-    if (look === 'gold' && goldness < 1) {
-      if (st.id === 'gem') return b >= goldness ? c : GOLD20[gi];
-      return mixc(c, GOLD20[gi], goldness);
-    }
-    return GOLD20[gi];
+  const t0 = (lum(c) - lo) / Math.max(1, hi - lo);
+  const edgeW = at.big ? 1.7 : 0.8;
+  if (look === 'flash') return GOLD20[clamp(Math.round(1 + (0.4 + 0.6 * t0) * 7) + 2, 1, 8)];
+  if (look === 'gold') {
+    const gi = clamp(Math.round(1 + t0 * 7), 1, 8);
+    if (st.id === 'ivory') return mixc(c, GOLD20[gi], goldness * 0.85);
+    // Gem and obsidian: the edges (and the obsidian's runes) take the gold; part-way by dither, so a
+    // gem keeps its key colours for the screen's recolouring.
+    const lit = at.edge < edgeW || (st.id === 'obsidian' && (at.ink || isRune(c)));
+    if (!lit || b >= goldness) return c;
+    return GOLD20[clamp(Math.round(4 + t0 * 4), 4, 8)];
   }
-  if (look === 'dull') return DULL1[clamp(Math.round(1 + t * 7), 1, 8)];
+  if (look === 'dull') {
+    if (st.id === 'ivory') return mixc(mixc(c, DULL1[clamp(Math.round(2 + t0 * 6), 1, 8)], 0.5), hex('#2a1d10'), 0.15);
+    if (st.id === 'gem') {
+      const k = GEMK.findIndex((g) => same(g, c));
+      return k > 0 ? GEMK[Math.max(1, Math.round(k * 0.55))] : same(c, WHITE) ? GEMK[6] : c;
+    }
+    return at.ink || isRune(c) ? DULL1[clamp(Math.round(2 + t0 * 6), 2, 7)] : c;
+  }
   // dim: the same die in shadow, less colour (the die advantage did not keep).
   const grey = lum(c);
+  if (st.id === 'obsidian') return mixc(mixc(c, hex('#5d5a72'), 0.45), [grey, grey, grey, 255], 0.3);
   return [Math.round((c[0] * 0.35 + grey * 0.65) * 0.5), Math.round((c[1] * 0.35 + grey * 0.65) * 0.5), Math.round((c[2] * 0.35 + grey * 0.65) * 0.52), 255];
 }
 
@@ -626,7 +671,7 @@ export function renderDie(s: DieSpec): Rendered {
     upC = [Math.round((P[0][0] + P[1][0] + P[2][0]) / 3), Math.round((P[0][1] + P[1][1] + P[2][1]) / 3 + (big ? 0.5 : 0.6) * sy)];
   }
   const smallC: ([number, number] | null)[] = FACES.map((f, fi) => {
-    if (big || s.plain || s.upright === fi || rn[fi][2] < 0.9 || frame[fi].down[1] < 0.82) return null;
+    if (big || s.plain || (s.only !== undefined && s.only !== fi) || s.upright === fi || rn[fi][2] < 0.9 || frame[fi].down[1] < 0.82) return null;
     const P = f.v.map((i) => proj[i]);
     return [Math.round((P[0][0] + P[1][0] + P[2][0]) / 3), Math.round((P[0][1] + P[1][1] + P[2][1]) / 3 + 0.6)];
   });
@@ -638,6 +683,7 @@ export function renderDie(s: DieSpec): Rendered {
   const shade = SHADERS[s.style];
   const inv = rotT(s.rot);
   let glint = { v: 0, x: 0, y: 0 };
+  const glintAt = new Float32Array(s.w * s.h);
   for (let y = 0; y < s.h; y++)
     for (let x = 0; x < s.w; x++) {
       const X = cx + (x + 0.5 - cx) / sx, Y = cy + bottom + (y + 0.5 - cy - bottom) / sy;
@@ -663,10 +709,10 @@ export function renderDie(s: DieSpec): Rendered {
         }
       });
       const V = norm(sub(camP, P));
-      const L = norm(sub(LAMP, P));
+      const L = norm(sub(LAMPS[s.style], P));
       // Numbers.
       let ink: Ink = 0;
-      if (s.upright === fi || (!s.plain && dot(n, V) > (big ? 0.38 : 0.9))) {
+      if (s.upright === fi || (!s.plain && (s.only === undefined || s.only === fi) && dot(n, V) > (big ? 0.45 : 0.9))) {
         if (!big) {
           const bmp = smallBmp(fi);
           const bw = bmp[0].length, bh = bmp.length;
@@ -716,22 +762,40 @@ export function renderDie(s: DieSpec): Rendered {
         b: big ? BAYER[(y & 3) * 4 + (x & 3)] : 0.5, big, Po: mul(inv, P), R, rn, rc,
       };
       let c = shade(p);
-      if (big && !ink) {
-        const g = blinn(p, 60);
-        if (g > glint.v) glint = { v: g, x, y };
-      }
-      // The landed number: brighter for the pop, gold for good after a natural 20.
+      if (big && !ink) glintAt[y * s.w + x] = blinn(p, 60);
+      // The landed number: brighter for the pop, gold for good after a natural 20, a bright red
+      // after a natural 1.
       if (ink && ink !== 4 && s.upright === fi) {
-        if (s.numberGold && look !== 'flash' && look !== 'dim') c = ink === 2 ? NAT20_NUM.shadow : ink === 3 ? NAT20_NUM.lit : NAT20_NUM.ink;
-        else if (s.numberGlow && look === 'normal' && ink === 1) c = s.style === 'ivory' ? INLAY[7] : s.style === 'gem' ? WHITE : RUNE[7];
-        if (s.numberGold && look !== 'flash' && look !== 'dim') {
+        const fixed = (s.numberGold || s.numberRed) && look !== 'flash' && look !== 'dim';
+        // On the pale ivory the 20 is a deeper gold, or it melts into the bone.
+        const N = s.numberRed ? NAT1_NUM : s.style === 'ivory' ? NAT20_ON_IVORY : NAT20_NUM;
+        if (fixed) c = ink === 2 ? N.shadow : ink === 3 ? N.lit : N.ink;
+        else if (s.numberGlow && look === 'normal' && ink === 1) c = s.style === 'ivory' ? INLAY[0] : s.style === 'gem' ? WHITE : RUNE[7];
+        if (fixed) {
           img.set(x, y, c);
           continue;
         }
       }
-      img.set(x, y, lookColour(st, look, c, s.goldness ?? 1, BAYER[(y & 3) * 4 + (x & 3)]));
+      img.set(x, y, lookColour(st, look, c, s.goldness ?? 1, BAYER[(y & 3) * 4 + (x & 3)], { edge, ink: ink > 0, big }));
     }
-  // The glint: a small four-point star where the lamp's reflection is strongest (the big die).
+  // The glint: where the lamp's reflection is strongest, but never on or beside a number (a star
+  // crossing a digit looks pasted on).
+  if (big)
+    for (let y = 0; y < s.h; y++)
+      for (let x = 0; x < s.w; x++) {
+        const g = glintAt[y * s.w + x];
+        if (g <= glint.v) continue;
+        let clear = true;
+        for (let dy = -4; dy <= 4 && clear; dy++)
+          for (let dx = -4; dx <= 4; dx++) {
+            const X = x + dx, Y = y + dy;
+            if (X >= 0 && Y >= 0 && X < s.w && Y < s.h && inkAt[Y * s.w + X] && inkAt[Y * s.w + X] !== 4) {
+              clear = false;
+              break;
+            }
+          }
+        if (clear) glint = { v: g, x, y };
+      }
   if (big && glint.v > 0.35 && look !== 'dim' && look !== 'dull') {
     const core = look === 'normal' ? WHITE : GOLD20[8];
     const arm = look === 'normal' ? (s.style === 'gem' ? GEMK[10] : s.style === 'ivory' ? IVORY[10] : OBSIDIAN[10]) : GOLD20[7];
@@ -750,7 +814,8 @@ export function renderDie(s: DieSpec): Rendered {
       if (at(x - 1, y) >= 0 || at(x + 1, y) >= 0 || at(x, y - 1) >= 0 || at(x, y + 1) >= 0) img.set(x, y, oc);
     }
   // The small die's landed number gets a 1-pixel ring so it reads at a glance.
-  const ring = s.style === 'gem' ? GEMK[1] : null;
+  // A natural 1's red digit gets a dark rim on every style, so it reads on the dulled die.
+  const ring = s.numberRed ? NAT1_NUM.shadow : s.style === 'gem' ? GEMK[1] : null;
   if (!big && ring && s.upright !== undefined && look !== 'flash')
     for (let y = 0; y < s.h; y++)
       for (let x = 0; x < s.w; x++) {
@@ -762,7 +827,7 @@ export function renderDie(s: DieSpec): Rendered {
             const j = (y + dy) * s.w + x + dx;
             if (x + dx >= 0 && y + dy >= 0 && x + dx < s.w && y + dy < s.h && inkAt[j] && faceAt[j] === s.upright) near = true;
           }
-        if (near) img.set(x, y, lookColour(st, look, ring, s.goldness ?? 1, BAYER[(y & 3) * 4 + (x & 3)]));
+        if (near) img.set(x, y, s.numberRed ? ring : lookColour(st, look, ring, s.goldness ?? 1, BAYER[(y & 3) * 4 + (x & 3)]));
       }
   return { img, faceAt, proj, front, centre: [cx, cy] };
 }

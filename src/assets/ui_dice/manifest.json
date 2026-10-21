@@ -226,16 +226,16 @@
     "ground": 1
    },
    {
-    "dx": 0,
+    "dx": -1,
     "dy": 0,
-    "ms": 55,
+    "ms": 60,
     "contact": 0,
     "ground": 1
    },
    {
     "dx": 0,
     "dy": 0,
-    "ms": 55,
+    "ms": 60,
     "contact": 0,
     "ground": 1
    },
@@ -375,21 +375,21 @@
     "ground": 1
    },
    {
-    "dx": -1,
-    "dy": 0,
-    "ms": 55,
+    "dx": -2,
+    "dy": 1,
+    "ms": 60,
     "contact": 0,
     "ground": 1
    },
    {
     "dx": 1,
     "dy": 0,
-    "ms": 55,
+    "ms": 60,
     "contact": 0,
     "ground": 1
    },
    {
-    "dx": 0,
+    "dx": -1,
     "dy": 0,
     "ms": 60,
     "contact": 0,
@@ -1257,309 +1257,513 @@
  "crit": {
   "file": "crit.png",
   "rects": {
-   "banner_es_0": [
+   "banner_crit_es_0": [
     0,
     0,
     130,
     26
    ],
-   "banner_es_1": [
+   "banner_crit_es_1": [
     131,
     0,
     130,
     26
    ],
-   "banner_es_2": [
+   "banner_crit_es_2": [
     262,
     0,
     130,
     26
    ],
-   "banner_es_3": [
+   "banner_crit_es_3": [
     393,
     0,
     130,
     26
    ],
-   "banner_es_4": [
+   "banner_crit_es_4": [
     524,
     0,
     130,
     26
    ],
-   "banner_es_5": [
+   "banner_crit_es_5": [
     655,
     0,
     130,
     26
    ],
-   "banner_es_6": [
+   "banner_crit_es_6": [
     786,
     0,
     130,
     26
    ],
-   "banner_es_7": [
+   "banner_crit_es_7": [
     917,
     0,
     130,
     26
    ],
-   "banner_es_8": [
+   "banner_crit_es_8": [
     1048,
     0,
     130,
     26
    ],
-   "banner_es_9": [
+   "banner_crit_en_0": [
     0,
     27,
-    130,
+    136,
     26
    ],
-   "banner_en_0": [
-    131,
+   "banner_crit_en_1": [
+    137,
     27,
     136,
     26
    ],
-   "banner_en_1": [
-    268,
+   "banner_crit_en_2": [
+    274,
     27,
     136,
     26
    ],
-   "banner_en_2": [
-    405,
+   "banner_crit_en_3": [
+    411,
     27,
     136,
     26
    ],
-   "banner_en_3": [
-    542,
+   "banner_crit_en_4": [
+    548,
     27,
     136,
     26
    ],
-   "banner_en_4": [
-    679,
+   "banner_crit_en_5": [
+    685,
     27,
     136,
     26
    ],
-   "banner_en_5": [
-    816,
+   "banner_crit_en_6": [
+    822,
     27,
     136,
     26
    ],
-   "banner_en_6": [
-    953,
+   "banner_crit_en_7": [
+    959,
     27,
     136,
     26
    ],
-   "banner_en_7": [
+   "banner_crit_en_8": [
     0,
     54,
     136,
     26
    ],
-   "banner_en_8": [
+   "banner_fumble_es_0": [
     137,
     54,
-    136,
+    192,
     26
    ],
-   "banner_en_9": [
-    274,
+   "banner_fumble_es_1": [
+    330,
     54,
-    136,
+    192,
+    26
+   ],
+   "banner_fumble_es_2": [
+    523,
+    54,
+    192,
+    26
+   ],
+   "banner_fumble_es_3": [
+    716,
+    54,
+    192,
+    26
+   ],
+   "banner_fumble_es_4": [
+    909,
+    54,
+    192,
+    26
+   ],
+   "banner_fumble_es_5": [
+    0,
+    81,
+    192,
+    26
+   ],
+   "banner_fumble_es_6": [
+    193,
+    81,
+    192,
+    26
+   ],
+   "banner_fumble_es_7": [
+    386,
+    81,
+    192,
+    26
+   ],
+   "banner_fumble_es_8": [
+    579,
+    81,
+    192,
+    26
+   ],
+   "banner_fumble_en_0": [
+    772,
+    81,
+    186,
+    26
+   ],
+   "banner_fumble_en_1": [
+    959,
+    81,
+    186,
+    26
+   ],
+   "banner_fumble_en_2": [
+    0,
+    108,
+    186,
+    26
+   ],
+   "banner_fumble_en_3": [
+    187,
+    108,
+    186,
+    26
+   ],
+   "banner_fumble_en_4": [
+    374,
+    108,
+    186,
+    26
+   ],
+   "banner_fumble_en_5": [
+    561,
+    108,
+    186,
+    26
+   ],
+   "banner_fumble_en_6": [
+    748,
+    108,
+    186,
+    26
+   ],
+   "banner_fumble_en_7": [
+    935,
+    108,
+    186,
+    26
+   ],
+   "banner_fumble_en_8": [
+    0,
+    135,
+    186,
+    26
+   ],
+   "banner_nat20_es_0": [
+    187,
+    135,
+    164,
+    26
+   ],
+   "banner_nat20_es_1": [
+    352,
+    135,
+    164,
+    26
+   ],
+   "banner_nat20_es_2": [
+    517,
+    135,
+    164,
+    26
+   ],
+   "banner_nat20_es_3": [
+    682,
+    135,
+    164,
+    26
+   ],
+   "banner_nat20_es_4": [
+    847,
+    135,
+    164,
+    26
+   ],
+   "banner_nat20_es_5": [
+    1012,
+    135,
+    164,
+    26
+   ],
+   "banner_nat20_es_6": [
+    0,
+    162,
+    164,
+    26
+   ],
+   "banner_nat20_es_7": [
+    165,
+    162,
+    164,
+    26
+   ],
+   "banner_nat20_es_8": [
+    330,
+    162,
+    164,
+    26
+   ],
+   "banner_nat20_en_0": [
+    495,
+    162,
+    159,
+    26
+   ],
+   "banner_nat20_en_1": [
+    655,
+    162,
+    159,
+    26
+   ],
+   "banner_nat20_en_2": [
+    815,
+    162,
+    159,
+    26
+   ],
+   "banner_nat20_en_3": [
+    975,
+    162,
+    159,
+    26
+   ],
+   "banner_nat20_en_4": [
+    0,
+    189,
+    159,
+    26
+   ],
+   "banner_nat20_en_5": [
+    160,
+    189,
+    159,
+    26
+   ],
+   "banner_nat20_en_6": [
+    320,
+    189,
+    159,
+    26
+   ],
+   "banner_nat20_en_7": [
+    480,
+    189,
+    159,
+    26
+   ],
+   "banner_nat20_en_8": [
+    640,
+    189,
+    159,
     26
    ],
    "burst_0": [
-    411,
-    54,
+    800,
+    189,
     128,
     128
    ],
    "burst_1": [
-    540,
-    54,
+    929,
+    189,
     128,
     128
    ],
    "burst_2": [
-    669,
-    54,
+    1058,
+    189,
     128,
     128
    ],
    "burst_3": [
-    798,
-    54,
+    0,
+    318,
     128,
     128
    ],
    "burst_4": [
-    927,
-    54,
+    129,
+    318,
     128,
     128
    ],
    "burst_5": [
-    1056,
-    54,
+    258,
+    318,
     128,
     128
    ],
    "burst_6": [
-    0,
-    183,
+    387,
+    318,
     128,
     128
    ],
    "burst_7": [
-    129,
-    183,
+    516,
+    318,
     128,
     128
    ],
    "dmg_gold_0": [
-    258,
-    183,
+    645,
+    318,
     10,
     15
    ],
    "dmg_gold_1": [
-    269,
-    183,
+    656,
+    318,
     10,
     15
    ],
    "dmg_gold_2": [
-    280,
-    183,
+    667,
+    318,
     10,
     15
    ],
    "dmg_gold_3": [
-    291,
-    183,
+    678,
+    318,
     10,
     15
    ],
    "dmg_gold_4": [
-    302,
-    183,
+    689,
+    318,
     10,
     15
    ],
    "dmg_gold_5": [
-    313,
-    183,
+    700,
+    318,
     10,
     15
    ],
    "dmg_gold_6": [
-    324,
-    183,
+    711,
+    318,
     10,
     15
    ],
    "dmg_gold_7": [
-    335,
-    183,
+    722,
+    318,
     10,
     15
    ],
    "dmg_gold_8": [
-    346,
-    183,
+    733,
+    318,
     10,
     15
    ],
    "dmg_gold_9": [
-    357,
-    183,
+    744,
+    318,
     10,
     15
    ],
    "dmg_white_0": [
-    368,
-    183,
+    755,
+    318,
     10,
     15
    ],
    "dmg_white_1": [
-    379,
-    183,
+    766,
+    318,
     10,
     15
    ],
    "dmg_white_2": [
-    390,
-    183,
+    777,
+    318,
     10,
     15
    ],
    "dmg_white_3": [
-    401,
-    183,
+    788,
+    318,
     10,
     15
    ],
    "dmg_white_4": [
-    412,
-    183,
+    799,
+    318,
     10,
     15
    ],
    "dmg_white_5": [
-    423,
-    183,
+    810,
+    318,
     10,
     15
    ],
    "dmg_white_6": [
-    434,
-    183,
+    821,
+    318,
     10,
     15
    ],
    "dmg_white_7": [
-    445,
-    183,
+    832,
+    318,
     10,
     15
    ],
    "dmg_white_8": [
-    456,
-    183,
+    843,
+    318,
     10,
     15
    ],
    "dmg_white_9": [
-    467,
-    183,
+    854,
+    318,
     10,
     15
    ],
    "max_es": [
-    478,
-    183,
+    865,
+    318,
     25,
     14
    ],
    "max_en": [
-    504,
-    183,
+    891,
+    318,
     25,
     14
    ]
   },
   "banner": {
-   "es": {
+   "crit_es": {
     "ms": [
      40,
      40,
@@ -1569,12 +1773,11 @@
      50,
      50,
      420,
-     40,
      40
     ],
     "hold": 7
    },
-   "en": {
+   "crit_en": {
     "ms": [
      40,
      40,
@@ -1584,7 +1787,62 @@
      50,
      50,
      420,
+     40
+    ],
+    "hold": 7
+   },
+   "fumble_es": {
+    "ms": [
      40,
+     40,
+     40,
+     50,
+     50,
+     50,
+     50,
+     420,
+     40
+    ],
+    "hold": 7
+   },
+   "fumble_en": {
+    "ms": [
+     40,
+     40,
+     40,
+     50,
+     50,
+     50,
+     50,
+     420,
+     40
+    ],
+    "hold": 7
+   },
+   "nat20_es": {
+    "ms": [
+     40,
+     40,
+     40,
+     50,
+     50,
+     50,
+     50,
+     420,
+     40
+    ],
+    "hold": 7
+   },
+   "nat20_en": {
+    "ms": [
+     40,
+     40,
+     40,
+     50,
+     50,
+     50,
+     50,
+     420,
      40
     ],
     "hold": 7
@@ -1607,41 +1865,41 @@
     {
      "at": 0,
      "what": "smallDie",
-     "detail": "The small die over the actor plays its natural-20 row from the small fx sheet (gold flash)."
+     "detail": "The small die over the actor (the target, for a save) lands and plays its natural-20 row from the small fx sheet (gold flash)."
     },
     {
-     "at": 120,
+     "at": 100,
      "what": "window",
-     "detail": "The big window opens: the screen dims (18%, then 32%), the small die and its readout leave, the big die plays its natural-20 row (dice_<style>_big_fx row 0, 2x) in the free band over the fight."
+     "detail": "The big window opens in the free band over the fight, the small die flying into it: the screen around it darkens (a 45% vignette, the middle left lighter), the big die plays its natural-20 row (dice_<style>_big_fx row 0, 2x)."
     },
     {
-     "at": 200,
+     "at": 180,
      "what": "banner",
-     "detail": "banner_<lang>_0..hold in the window, under the die (3x): slams open from the middle, a shine crosses it, it holds."
+     "detail": "banner_<kind>_<lang>_0..hold under the die (3x): opens from half its width, a shine crosses it, it holds."
     },
     {
-     "at": 380,
+     "at": 300,
      "what": "readout",
-     "detail": "The readout pops in beside the big die (natural 20 in gold, total, mark, CA/CD)."
+     "detail": "The readout pops in under the banner (natural 20 in gold, total, mark, CA/CD)."
     },
     {
-     "at": 760,
+     "at": 620,
      "what": "swing",
-     "detail": "The attack plays; the window fades to 40% and closes as the blade comes down."
+     "detail": "The attack plays; the window fades out over 200 ms as the blade comes down."
     }
    ],
    "impact": [
     {
      "at": 0,
      "what": "hitStop",
-     "ms": 120,
+     "ms": 110,
      "detail": "Everything holds still on the impact frame (the target shows its hit flash)."
     },
     {
      "at": 0,
      "what": "flash",
-     "ms": 80,
-     "detail": "Full-screen gold-white flash: 55% then 25% alpha (#fff6d6)."
+     "ms": 70,
+     "detail": "A bright white-gold bloom on the target (added light, not a flat wash over the screen): two quick frames."
     },
     {
      "at": 0,
@@ -1649,29 +1907,24 @@
      "detail": "The critical sting (see sound)."
     },
     {
-     "at": 40,
+     "at": 30,
      "what": "burst",
      "detail": "burst_0..7 on the target, centred on its chest (world pixels, 50 ms each)."
     },
     {
-     "at": 40,
+     "at": 30,
      "what": "shake",
      "ms": 260,
      "px": 6,
-     "detail": "The camera kicks 6 px toward the target and shakes, easing out."
+     "detail": "The camera kicks 6 px and shakes, easing out."
     },
     {
-     "at": 60,
-     "what": "bannerClose",
-     "detail": "The banner closes (its last frames), leaving room for the number."
-    },
-    {
-     "at": 150,
+     "at": 120,
      "what": "damage",
-     "detail": "The maximum damage over the target: dmg_white digits for 60 ms at 4x, then dmg_gold at 3x with max_<lang> beside it; it rises 24 px and fades out from 1050 to 1300 ms."
+     "detail": "The maximum damage over the target: dmg_white digits for 60 ms, then dmg_gold at 3x with max_<lang> beside it; it rises and fades out at the end."
     },
     {
-     "at": 1050,
+     "at": 900,
      "what": "end",
      "detail": "The next event plays (the number keeps fading over it)."
     }

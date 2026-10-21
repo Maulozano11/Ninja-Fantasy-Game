@@ -4,7 +4,7 @@
 
 import { abilityMod, Advantage, combineAdvantage, rollCheck } from '../rules/checks';
 import type { Ability } from '../rules/checks';
-import { parseDice } from '../rules/dice';
+import { maxCritDamage, parseDice } from '../rules/dice';
 import { effectMods, hasEffect } from '../rules/effects';
 import { Rng, rngFor, rollDie } from '../rules/rng';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
@@ -18,17 +18,26 @@ export function nextRng(s: BattleState): Rng {
   return rngFor(s.seed, 'roll', s.rolls++);
 }
 
+/**
+ * Rolls damage dice. A critical (a natural 20 on an attack, or a natural 1 on a save against it)
+ * does maximum damage by the owner's rule: every die at its highest face, the critical's doubled
+ * dice too, the bonus once (2d6+3 → 27). It still takes its place in the dice stream, so every
+ * later roll of the battle is the same as before.
+ */
 export function rollDiceExpr(s: BattleState, expr: string, crit = false): number {
   const d = parseDice(expr);
   if (!d) return 0;
   const rng = nextRng(s);
+  if (crit) return maxCritDamage(d);
   let total = d.bonus;
-  const n = crit ? d.count * 2 : d.count;
-  for (let i = 0; i < n; i++) total += rollDie(rng, d.sides);
+  for (let i = 0; i < d.count; i++) total += rollDie(rng, d.sides);
   return Math.max(0, total);
 }
 
 export const standing = (u: Unit): boolean => !u.down;
+
+/** The Stealth total of a perfect hide (a natural 20): no passive Perception reaches it. */
+export const PERFECT_HIDE = 99;
 export const unitLevel = (s: BattleState, u: Unit): number => levelAtPt(s, u.pos) + (u.kind === 'hydra_head' ? 1.5 : 0);
 
 const SKILL_ABILITY: Record<string, Ability> = {
@@ -77,8 +86,13 @@ function rollInfo(kind: RollInfo['kind'], o: ReturnType<typeof rollCheck>, adv: 
   return adv !== 'none' && o.rolls.length > 1 ? { ...info, adv } : info;
 }
 
+/**
+ * One d20 roll. Attacks, saves and checks follow the owner's rule (a natural 20 always succeeds, a
+ * natural 1 always fails); death saves and initiative count only their total.
+ */
 export function check(s: BattleState, kind: RollInfo['kind'], mod: number, dc: number, adv: Advantage = 'none', attack = false): RollInfo {
-  return rollInfo(kind, rollCheck(nextRng(s), mod, dc, adv, attack), adv);
+  const natural = attack || kind === 'save' || kind === 'check';
+  return rollInfo(kind, rollCheck(nextRng(s), mod, dc, adv, natural), adv);
 }
 
 export function savingThrow(s: BattleState, u: Unit, ab: Ability, dc: number, extra: Advantage = 'none'): RollInfo {

@@ -44,6 +44,7 @@ export function localParams(p: Record<string, string | number> | undefined, s: B
     out[k] = u ? unitRef(u, lang) : v;
     // The one the note is about: the ending its participles take in Spanish.
     if (u && k === 'name') out.o = genderO(u);
+    if (u && k === 'other') out.o2 = genderO(u);
   }
   return out;
 }
@@ -92,12 +93,17 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       if (!ev.roll.success) return { text: t('l_attackMiss', p), tone: 'text-slate-400' };
       return ev.roll.crit ? { text: t('l_attackCrit', p), tone: 'text-yellow-300' } : { text: t('l_attackHit', p) };
     }
-    case 'damage':
-      return { text: t('l_damage', { t: nameOf(s, ev.unit, lang), n: ev.amount, type: lang === 'es' ? DMG_ES[ev.dmgType] ?? ev.dmgType : ev.dmgType.toLowerCase() }), tone: 'text-rose-300' };
+    case 'damage': {
+      // A critical always does maximum damage (the owner's rule): the line says so.
+      const p = { t: nameOf(s, ev.unit, lang), n: ev.amount, type: lang === 'es' ? DMG_ES[ev.dmgType] ?? ev.dmgType : ev.dmgType.toLowerCase() };
+      return ev.crit ? { text: t('l_damageCrit', p), tone: 'text-yellow-300 font-semibold' } : { text: t('l_damage', p), tone: 'text-rose-300' };
+    }
     case 'heal':
       return { text: t('l_heal', { t: nameOf(s, ev.unit, lang), n: ev.amount }), tone: 'text-emerald-300' };
-    case 'save':
-      return { text: t(ev.roll.success ? 'l_saveOk' : 'l_saveFail', { t: nameOf(s, ev.unit, lang), roll: rollText(ev.roll, lang), dc: ev.roll.dc }), tone: 'text-indigo-300' };
+    case 'save': {
+      const k: TKey = ev.roll.crit ? 'l_saveCrit' : ev.roll.fumble ? 'l_saveFumble' : ev.roll.success ? 'l_saveOk' : 'l_saveFail';
+      return { text: t(k, { t: nameOf(s, ev.unit, lang), roll: rollText(ev.roll, lang), dc: ev.roll.dc }), tone: ev.roll.crit || ev.roll.fumble ? 'text-yellow-300' : 'text-indigo-300' };
+    }
     case 'jutsu':
       // An enhanced cast with a name of its own says it by name ("lanza Gran bola de fuego").
       return { text: t(ev.enhanced && !JUTSU[ev.jutsu]?.nameEnh ? 'l_jutsuEnh' : 'l_jutsu', { a: nameOf(s, ev.unit, lang), j: jutsuName(ev.jutsu, lang, ev.enhanced) }), tone: 'text-orange-300' };
@@ -175,6 +181,9 @@ export function logLine(ev: BattleEvent, s: BattleState, lang: Lang, wallOf = (i
       return T.has(k) ? { text: t(k, localParams(ev.params, s, lang)), tone: 'text-slate-300' } : null;
     }
     case 'check':
+      // Only the naturals get a line (the owner's rule C3); the note after it says the extra.
+      if (ev.roll.crit) return { text: t('l_checkNat20', { t: nameOf(s, ev.unit, lang), roll: rollText(ev.roll, lang) }), tone: 'text-yellow-300' };
+      if (ev.roll.fumble) return { text: t('l_checkNat1', { t: nameOf(s, ev.unit, lang), roll: rollText(ev.roll, lang) }), tone: 'text-slate-400' };
       return null;
     default:
       return null;
@@ -197,6 +206,8 @@ export function floatLabel(ev: BattleEvent, s: BattleState, lang: Lang): string 
     case 'attack':
       return ev.roll.success ? null : lang === 'es' ? 'Falla' : 'Miss';
     case 'save':
+      if (ev.roll.crit) return lang === 'es' ? '¡Resiste por completo!' : 'Perfect save!';
+      if (ev.roll.fumble) return lang === 'es' ? '¡Fallo crítico!' : 'Critical failure!';
       return ev.roll.success ? (lang === 'es' ? 'Resiste' : 'Saved') : null;
     case 'down':
       return ev.state === 'dead' ? t('dead') : ev.state === 'ko' ? t('ko') : ev.state === 'downed' ? t('downed') : null;

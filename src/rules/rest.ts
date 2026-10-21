@@ -54,6 +54,9 @@ export interface StopState {
 
 export type Outcome<S> = { ok: true; party: PartyState; state: S; events: RuleEvent[] } | { ok: false; reason: string };
 
+/** Rations a hunt brings back on a natural 20 (the owner's rule C3: docs/MISSION_DESIGN.md). */
+export const HUNT_CRIT_RATIONS = 2;
+
 const fail = (reason: string): { ok: false; reason: string } => ({ ok: false, reason });
 
 const member = (party: PartyState, id: string): ShinobiCharacter | undefined => party.members.find((m) => m.id === id);
@@ -171,6 +174,8 @@ function applyActivity(
       const outcome = skillCheck(checkRng(dice), doer, 'survival', 12);
       events.push({ type: 'check', who, what: 'Hunt (Survival)', outcome });
       if (cs && outcome.success) cs = { ...cs, huntSucceeded: true };
+      // The owner's rule (C3): a natural 20 brings back a big catch, 2 rations more.
+      if (outcome.natural20) p = spend(p, 'rations', -HUNT_CRIT_RATIONS, 'Great hunt (natural 20)', events);
       break;
     }
     case 'bandage': {
@@ -280,10 +285,15 @@ function applyActivity(
     case 'field_surgery': {
       const outcome = skillCheck(checkRng(dice), doer, 'medicine', 13);
       events.push({ type: 'check', who, what: 'Field surgery (Medicine)', outcome });
+      // The owner's rule (C3): a natural 20 also heals the patient 1d6 HP.
+      const bonusHeal = outcome.natural20 ? rollDie(dice.rng, 6) : 0;
       on(targetId, (c) => {
         if (outcome.success) {
           const t = treat(c.effects, 'field_surgery');
-          return { character: { ...c, effects: t.effects }, events: t.removed.map((e) => ({ type: 'effect' as const, who: c.id, effect: e, change: 'removed' as const, reason: act.name })) };
+          const treated = { character: { ...c, effects: t.effects }, events: t.removed.map((e) => ({ type: 'effect' as const, who: c.id, effect: e, change: 'removed' as const, reason: act.name })) as RuleEvent[] };
+          if (!bonusHeal) return treated;
+          const h = changeHp(treated.character, bonusHeal, 'Field surgery (natural 20)');
+          return { character: h.character, events: [...treated.events, ...h.events] };
         }
         if (!hasEffect(c.effects, 'grave_wound')) return { character: c, events: [] };
         const scars = [...(c.scars ?? []), 'scar_grave_wound'];

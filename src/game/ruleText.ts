@@ -112,6 +112,8 @@ const EXACT: Record<string, string> = {
   // checks
   'Hunt (Survival)': 'Cazar (Supervivencia)',
   'Field surgery (Medicine)': 'Cirugía de campaña (Medicina)',
+  'Great hunt (natural 20)': 'Gran caza (20 natural)',
+  'Field surgery (natural 20)': 'Cirugía de campaña (20 natural)',
   'WIS save at 10 Tension': 'Salvación de SAB con 10 de Tensión',
   // the moon's breakdown
   'Zone danger': 'Peligro de la zona',

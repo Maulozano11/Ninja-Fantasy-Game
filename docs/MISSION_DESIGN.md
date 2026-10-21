@@ -114,7 +114,7 @@ Everyone:
 
 | Activity | Sticks | Effect |
 |---|---|---|
-| Hunt or fish | 2 | Survival (WIS) check, DC 12; success allows the feast |
+| Hunt or fish | 2 | Survival (WIS) check, DC 12; success allows the feast; a natural 20 also brings back 2 rations |
 | Bandage | 1 + 1 bandage | Heals 1d8 + WIS, removes Bleeding |
 | Heal with jutsu | 1 + its chakra | Casts a healing jutsu out of battle |
 | Meditate | 2 | +25 % of max chakra |
@@ -144,7 +144,7 @@ them, with the same numbers, until the owner gives each clan its own;
 | Kōton | Warding seal | 1 | Buff Warding seal on an ally |
 | Northstar | Byakugan watch | 3 | Ambush 0 % |
 | Northstar | Close tenketsu | 1 | Removes Bleeding |
-| Medical | Field surgery | 2 | Medicine (WIS) check, DC 13: removes Grave wound and cures Fever; on a failure the wound becomes a scar |
+| Medical | Field surgery | 2 | Medicine (WIS) check, DC 13: removes Grave wound and cures Fever; on a failure the wound becomes a scar; a natural 20 also heals 1d6 HP |
 | Medical | Make pills | 2 | 1 soldier pill or 1 antidote |
 | Taijutsu | Stretching | 1 | −1 Exhaustion |
 | Genjutsu | Peaceful sleep | 2 | −3 Tension |
@@ -376,6 +376,17 @@ cinematics (`meter` and `turns` commands).
   default happens. It can be lengthened or removed in Accessibility.
 - d20 checks show the % before rolling and use the quick d20 over the character;
   failing opens another branch, never a dead end.
+- **Natural 20 and natural 1 on mission checks** (owner's rule, his answer
+  "c3", 2026-10-21; the battle side is in `docs/GAMEPLAY_DESIGN.md`, "Dice"): a
+  natural 20 is an automatic success with an extra, a natural 1 an automatic
+  failure, whatever the modifier and the DC. Today's mission checks and their
+  extras: Hunt or fish (Survival, DC 12): +2 rations; Field surgery (Medicine,
+  DC 13): the patient also heals 1d6 HP. The road events and short stops have
+  no d20 checks yet (their dangers are percentages); each new check gets its
+  own small extra written here when it is made (the best outcome of the event
+  plus a small bonus the event defines). The Tension save at 10 Tension is a
+  save, not a check: a natural 20 always awakens, a natural 1 always breaks
+  down. The camp log throws the quick d20 beside each check's line.
 - **"X will remember that":** a discreet notice with the portrait when a decision
   changes what a character thinks of you. Fireside talks use the same system.
 - Texts live outside the script, one file per language, with slots for names and

@@ -1415,14 +1415,14 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         eyeShape: 'sharp',
         slots: {
           // The owner's paint-over of Akira (docs/reference/akira-owner-reference.jpg, 2026-10-21, the
-          // new standard): his hair, armour, arm guards, tassets, legs, boot and sandal and katana, in
-          // his own colours (each item's default).
+          // new standard): his hair, armour, arm guards, tassets, legs, boots and katana, in his own
+          // colours (each item's default). He asked for both feet the same: his boot on both.
           hair: it('hair_lion'),
           top: it('top_longsleeve', '#2b2420', '#1b1512'),
           bottom: it('bottom_ember_leggings'),
           armor: it('armor_leather'),
           skirt: it('skirt_tassets'),
-          feet: it('feet_ember'),
+          feet: { ...it('feet_ember'), parts: { pair: 'boots' } },
           hands: it('hands_bracers'),
           held: it('held_ember_katana'),
         },

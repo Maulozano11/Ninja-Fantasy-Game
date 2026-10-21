@@ -19,6 +19,11 @@ import type { BodyType, SpriteAppearance, SpritePose } from './types';
 
 const AKIRA = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_ember')!.character;
 const look = (body: BodyType = 'male'): SpriteAppearance => ({ ...structuredClone(AKIRA.appearance!), body });
+const withFeet = (pair: 'boots' | 'sandals', body: BodyType = 'male'): SpriteAppearance => {
+  const l = look(body);
+  l.slots.feet = { ...l.slots.feet!, parts: { pair } };
+  return l;
+};
 
 const POSES: SpritePose[] = ['idle', 'walk', 'run', 'attack', 'cast', 'handsigns', 'hurt', 'victory', 'charge', 'crouch', 'sneak', 'downed', 'sit', 'read', 'lean', 'train', 'throw', 'pierce'];
 const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -84,7 +89,8 @@ describe("the owner's Akira", () => {
     const skin = (kinds: Record<string, string>) => (hex: string) => kinds[hex] === 'skin';
     // What each piece shows of his pixels in Akira's idle: the rest lies under his other pieces and
     // our head, or is his pixels continued where he hid them (the chest under the near guard, the
-    // tassets and the far leg behind the katana, the wrap in his fist).
+    // tassets and the far leg behind the katana, the wrap in his fist). The far boot covers the far
+    // leg's last rows, where his sandal's straps met it.
     const least: [string, PaintedPiece, [number, number], number, ((h: string) => boolean)?][] = [
       ['chest', armor.EMBER_CHEST, armor.EMBER_REST.EMBER_CHEST, 0.85],
       ['near shoulder guard', armor.EMBER_PAULDRON_N, armor.EMBER_REST.EMBER_PAULDRON_N, 0.98],
@@ -95,15 +101,59 @@ describe("the owner's Akira", () => {
       ['near fist', bracers.EMBER_FIST_N, bracers.EMBER_BRACER_REST.EMBER_FIST_N, 0.98],
       ['tassets', tassets.TASSET_FRONT, tassets.TASSET_REST.TASSET_FRONT, 0.75],
       ['near shin', legs.LEG_SHIN_N, legs.LEG_REST.LEG_SHIN_N, 0.98],
-      ['far leg', legs.LEG_SHIN_F, legs.LEG_REST.LEG_SHIN_F, 0.68],
+      ['far leg', legs.LEG_SHIN_F, legs.LEG_REST.LEG_SHIN_F, 0.6],
       ['near boot', feet.FOOT_BOOT_N, feet.FOOT_REST.FOOT_BOOT_N, 0.98],
-      ['far sandal', feet.FOOT_SANDAL_F, feet.FOOT_REST.FOOT_SANDAL_F, 0.98, skin(feet.FOOT_KIND)],
+      ['far boot (his near boot)', feet.FOOT_BOOT_F, feet.FOOT_REST.FOOT_BOOT_F, 0.98],
       ['katana', katana.EMBER_KATANA, katana.KATANA_REST.EMBER_KATANA, 0.9],
     ];
     for (const [name, piece, rest, min, skip] of least) {
       const got = atRest(f.rgba, piece, rest, skip);
       assert.ok(got >= min, `${name}: ${(got * 100).toFixed(0)}% of his pixels in place`);
     }
+    // with the sandals, his far sandal where he drew it and his sandal on the near foot
+    const s = renderSprite(withFeet('sandals'), 'idle', 0);
+    for (const [name, piece, rest] of [
+      ['far sandal', feet.FOOT_SANDAL_F, feet.FOOT_REST.FOOT_SANDAL_F],
+      ['near sandal (his far sandal)', feet.FOOT_SANDAL_N, feet.FOOT_REST.FOOT_SANDAL_N],
+    ] as [string, PaintedPiece, [number, number]][]) {
+      const got = atRest(s.rgba, piece, rest, skin(feet.FOOT_KIND));
+      assert.ok(got >= 0.98, `${name}: ${(got * 100).toFixed(0)}% of his pixels in place`);
+    }
+  });
+
+  it('wears a matching pair: his boots by default, or his sandals', () => {
+    assert.deepEqual(AKIRA.appearance!.slots.feet!.parts, { pair: 'boots' });
+    // a saved Akira with no choice wears the boots
+    const saved = look();
+    delete saved.slots.feet!.parts;
+    assert.deepEqual(renderSprite(saved, 'idle', 0).rgba, renderSprite(look(), 'idle', 0).rgba);
+    // His picture at rest is the boots' idle with the sandals' far foot (his boot on the near foot, his
+    // sandal on the far one). The boots differ from it only on the far foot (117 pixels), the sandals
+    // only on the near foot.
+    const boots = renderSprite(withFeet('boots'), 'idle', 0).rgba;
+    const sandals = renderSprite(withFeet('sandals'), 'idle', 0).rgba;
+    const box = (names: string[]) => {
+      const r = names.map((n) => {
+        const p = (feet as unknown as Record<string, PaintedPiece>)[n];
+        const [x, y] = feet.FOOT_REST[n];
+        return [x, y, x + p.rows[0].length - 1, y + p.rows.length - 1];
+      });
+      return (x: number, y: number) => x >= Math.min(...r.map((b) => b[0])) && x <= Math.max(...r.map((b) => b[2])) && y >= Math.min(...r.map((b) => b[1])) && y <= Math.max(...r.map((b) => b[3]));
+    };
+    const far = box(['FOOT_BOOT_F', 'FOOT_SANDAL_F']);
+    const near = box(['FOOT_BOOT_N', 'FOOT_SANDAL_N']);
+    let farDiffer = 0;
+    let nearDiffer = 0;
+    for (let i = 0; i < GRID * GRID; i++) {
+      if ([0, 1, 2, 3].every((k) => boots[i * 4 + k] === sandals[i * 4 + k])) continue;
+      const x = i % GRID;
+      const y = (i / GRID) | 0;
+      assert.ok(far(x, y) || near(x, y), `(${x}, ${y}) differs off the feet`);
+      if (far(x, y)) farDiffer++;
+      else nearDiffer++;
+    }
+    assert.equal(farDiffer, 117);
+    assert.ok(nearDiffer > 100);
   });
 
   it('keeps his far arm exactly where he drew it at rest', () => {
@@ -118,18 +168,19 @@ describe("the owner's Akira", () => {
   });
 
   it('keeps every pose whole: no piece comes off the figure', () => {
-    for (const body of ['male', 'bulky'] as BodyType[]) {
-      const l = look(body);
-      for (const pose of POSES) {
-        // the cast poses' chakra runes float off the hand by design
-        if (pose === 'cast') continue;
-        const n = frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id));
-        for (let fr = 0; fr < n; fr++) {
-          const off = detached(renderSprite(l, pose, fr).rgba);
-          assert.equal(off, 0, `${body} ${pose} ${fr}: ${off} pixels off the figure`);
+    for (const pair of ['boots', 'sandals'] as const)
+      for (const body of ['male', 'bulky'] as BodyType[]) {
+        const l = withFeet(pair, body);
+        for (const pose of POSES) {
+          // the cast poses' chakra runes float off the hand by design
+          if (pose === 'cast') continue;
+          const n = frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id));
+          for (let fr = 0; fr < n; fr++) {
+            const off = detached(renderSprite(l, pose, fr).rgba);
+            assert.equal(off, 0, `${pair} ${body} ${pose} ${fr}: ${off} pixels off the figure`);
+          }
         }
       }
-    }
   });
 
   it('draws a saved Akira, with the old items and colours, in every pose', () => {

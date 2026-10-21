@@ -4,13 +4,13 @@
 // faces the viewer, the far foot points right and is authored a shade darker.
 
 import { retintHex } from '../color';
-import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
-import { segAngle, stampPiece } from '../painted';
+import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, PartSlot, PartsPreview, Side } from '../ctx';
+import { type PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
 import { EMBER_FEET_ID, emberLegOut, fitLegs } from './ember';
-import { FOOT_BOOT_N, FOOT_KIND, FOOT_LEATHER, FOOT_SANDAL_F, FOOT_SKIN } from './emberFeetArt';
+import { FOOT_BOOT_F, FOOT_BOOT_N, FOOT_KIND, FOOT_LEATHER, FOOT_REST, FOOT_SANDAL_F, FOOT_SANDAL_N, FOOT_SKIN } from './emberFeetArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -280,6 +280,62 @@ function bareFootOff(g: DrawCtx, s: Side): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// The owner's Akira feet (Ember Footwear): his boot or his sandal on both feet.
+// ---------------------------------------------------------------------------
+
+export const EMBER_FEET_PARTS: PartSlot[] = [
+  {
+    key: 'pair',
+    label: 'Footwear',
+    options: [
+      { id: 'boots', label: 'Boots', desc: 'His brown leather boot on both feet.' },
+      { id: 'sandals', label: 'Sandals', desc: 'His strapped sandal on both feet, the toes bare.' },
+    ],
+  },
+];
+
+/** The piece of his a foot wears (boots are the default, as on Akira), and where it lands in Akira's idle frame 0. */
+function emberFoot(pair: string, s: Side): PaintedPiece {
+  if (pair === 'sandals') return s === 'N' ? FOOT_SANDAL_N : FOOT_SANDAL_F;
+  return s === 'N' ? FOOT_BOOT_N : FOOT_BOOT_F;
+}
+const emberFootRest = (pair: string, s: Side): [number, number] =>
+  FOOT_REST[pair === 'sandals' ? (s === 'N' ? 'FOOT_SANDAL_N' : 'FOOT_SANDAL_F') : s === 'N' ? 'FOOT_BOOT_N' : 'FOOT_BOOT_F'];
+
+/** His colours as worn: his skin follows the character's skin, his leather the slot; his black line stays. */
+const emberFootTint = (skin: string, leather: string) => (_ch: string, hex: string) => {
+  const k = FOOT_KIND[hex];
+  if (k === 'line') return hex;
+  return k === 'skin' ? retintHex(hex, FOOT_SKIN, skin) : retintHex(hex, FOOT_LEATHER, leather);
+};
+
+/** The pair on its own as it stands at rest (the near foot over the far), for the part picker. */
+function emberFeetPreview(skin: string, pair: string): PartsPreview {
+  const placed = (['F', 'N'] as Side[]).map((s) => ({ p: emberFoot(pair, s), at: emberFootRest(pair, s) }));
+  const x0 = Math.min(...placed.map((q) => q.at[0]));
+  const y0 = Math.min(...placed.map((q) => q.at[1]));
+  const w = Math.max(...placed.map((q) => q.at[0] + q.p.rows[0].length)) - x0;
+  const h = Math.max(...placed.map((q) => q.at[1] + q.p.rows.length)) - y0;
+  const grid = Array.from({ length: h }, () => Array<string>(w).fill('.'));
+  const colors: Record<string, string> = {};
+  const keys = new Map<string, string>();
+  const KEYS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const tint = emberFootTint(skin, FOOT_LEATHER);
+  for (const { p, at } of placed)
+    p.rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) {
+        if (row[i] === '.') continue;
+        const hex = tint(row[i], p.colors[row[i]]);
+        let k = keys.get(hex);
+        if (!k) keys.set(hex, (k = KEYS[keys.size]));
+        colors[k] = hex;
+        grid[at[1] - y0 + j][at[0] - x0 + i] = k;
+      }
+    });
+  return { rows: grid.map((r) => r.join('')), colors };
+}
+
 export const FEET_ITEMS: ItemDef[] = [
   {
     id: 'feet_leather',
@@ -489,24 +545,23 @@ export const FEET_ITEMS: ItemDef[] = [
   {
     id: EMBER_FEET_ID,
     slot: 'feet',
-    name: 'Ember Boot and Sandal',
-    desc: 'A brown leather boot on the near foot and a strapped sandal on the far foot, painted by the owner for Akira.',
+    name: 'Ember Footwear',
+    desc: 'A matching pair painted by the owner for Akira: his brown leather boots or his strapped sandals.',
     colors: [col('main', 'Leather', FOOT_LEATHER, 'leather')],
+    // He painted a boot on the near foot and a sandal on the far one, then asked for both feet the same
+    // ("a akira ponle los pies iguales", 2026-10-21): both feet wear his boot, or both his sandal.
+    parts: EMBER_FEET_PARTS,
+    partsPreview: (look, parts) => emberFeetPreview(look.skin, parts.pair),
     bodies: ['male', 'bulky'],
-    draw: (g, [leather]) => {
-      // The owner's near boot and far sandal, his pixels from his Akira picture (2026-10-21; tools/refs/
+    draw: (g, [leather], parts) => {
+      // The owner's boot or sandal, his pixels from his Akira picture (2026-10-21; tools/refs/
       // akira-feet-from-ref.py): each stays flat on the ground under its ankle, our bare foot under it
-      // taken away, standing where he drew it at rest (ember.ts). His skin in the sandal follows the
-      // character's skin, his leather the slot; his black line stays.
+      // taken away, standing where he drew it at rest (ember.ts).
       fitLegs(g);
-      const tint = (_ch: string, hex: string) => {
-        const k = FOOT_KIND[hex];
-        if (k === 'line') return hex;
-        return k === 'skin' ? retintHex(hex, FOOT_SKIN, g.look.skin) : retintHex(hex, FOOT_LEATHER, leather);
-      };
+      const tint = emberFootTint(g.look.skin, leather);
       for (const s of SIDES) {
         bareFootOff(g, s);
-        const foot = s === 'N' ? FOOT_BOOT_N : FOOT_SANDAL_F;
+        const foot = emberFoot(parts.pair, s);
         stampPiece(g, legDepth(s, 'feet'), foot, add(legJoints(g.rig, s).ankle, emberLegOut(g, s)), foot.angle, `foot${s}`, tint);
       }
     },

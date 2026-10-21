@@ -1,7 +1,7 @@
 // The owner's Akira (docs/reference/akira-owner-reference.jpg) where his figure stands otherwise than
 // our rig: he drew the far forearm hanging straighter than ours (his far fist nearer the body and
 // lower), and his legs wider apart (the near leg splayed out, the far foot lower). Shared by his arm
-// guards (Leather Bracers), his legs (Ember Leather Leggings) and his feet (Ember Boot and Sandal).
+// guards (Leather Bracers), his legs (Ember Leather Leggings) and his feet (Ember Footwear).
 
 import { type Depth, type DrawCtx, legDepth, legJoints, type Side } from '../ctx';
 import { segAngle } from '../painted';

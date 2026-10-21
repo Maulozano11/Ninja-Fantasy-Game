@@ -1,5 +1,5 @@
-// The owner's near boot and far sandal, his pixels (tools/refs/akira-feet-from-ref.py from
-// docs/reference/akira-owner-reference.jpg). Generated: rerun the script to change it.
+// The owner's boot and sandal, his pixels, each on both feet (tools/refs/akira-feet-from-ref.py
+// from docs/reference/akira-owner-reference.jpg). Generated: rerun the script to change it.
 
 import type { PaintedPiece } from '../painted';
 
@@ -9,12 +9,16 @@ export const FOOT_SKIN = '#f0c4a0';
 
 /** What each of his colours is, as the script sorts them. */
 export const FOOT_KIND: Record<string, 'leather' | 'line' | 'skin'> = {
+  '#00010d': 'line',
   '#00020d': 'line',
+  '#000211': 'line',
+  '#000315': 'line',
   '#010109': 'line',
   '#01020f': 'line',
   '#010313': 'line',
   '#010413': 'line',
   '#232028': 'leather',
+  '#241213': 'line',
   '#251f22': 'line',
   '#261214': 'line',
   '#27222a': 'leather',
@@ -25,6 +29,7 @@ export const FOOT_KIND: Record<string, 'leather' | 'line' | 'skin'> = {
   '#312221': 'leather',
   '#36221d': 'leather',
   '#362b2a': 'leather',
+  '#3a2621': 'leather',
   '#3a2721': 'leather',
   '#3d2d2d': 'leather',
   '#3f2923': 'leather',
@@ -33,6 +38,7 @@ export const FOOT_KIND: Record<string, 'leather' | 'line' | 'skin'> = {
   '#4e3930': 'leather',
   '#50392d': 'leather',
   '#543e32': 'leather',
+  '#674c3e': 'leather',
   '#684c40': 'leather',
   '#6c5041': 'leather',
   '#8e7968': 'leather',
@@ -55,6 +61,8 @@ export const FOOT_KIND: Record<string, 'leather' | 'line' | 'skin'> = {
 export const FOOT_REST: Record<string, [number, number]> = {
   FOOT_SANDAL_F: [129, 207],
   FOOT_BOOT_N: [107, 208],
+  FOOT_BOOT_F: [128, 205],
+  FOOT_SANDAL_N: [108, 209],
 };
 
 /** The far sandal pointing right: straps over the instep and toes, the sole. It stands flat under the far ankle. */
@@ -134,5 +142,90 @@ export const FOOT_BOOT_N: PaintedPiece = {
     m: '#4b372b',
     n: '#2e1918',
     p: '#301c1c',
+  },
+};
+
+/** His near boot on the far foot. It stands flat under the far ankle. */
+export const FOOT_BOOT_F: PaintedPiece = {
+  pivot: [3, 2],
+  angle: 98.56,
+  rows: [
+    '...a...a..',
+    '..bacddab.',
+    '.eafhicce.',
+    '.bfihhhcfe',
+    '.bfffffcfb',
+    'bffjiikffb',
+    'efhlhiikab',
+    'efhihhhmde',
+    'bnnnpnnnae',
+    'edcddcccdb',
+    '.bbbbbbbb.',
+  ],
+  colors: {
+    a: '#261214',
+    b: '#00020d',
+    c: '#3f2923',
+    d: '#3a2721',
+    e: '#010313',
+    f: '#36221d',
+    h: '#684c40',
+    i: '#6c5041',
+    j: '#543e32',
+    k: '#50392d',
+    l: '#8e7968',
+    m: '#4b372b',
+    n: '#2e1918',
+    p: '#301c1c',
+  },
+};
+
+/** His far sandal on the near foot, under his near shin continued down to it. It stands flat under the near ankle. */
+export const FOOT_SANDAL_N: PaintedPiece = {
+  pivot: [5, -2],
+  angle: 104.09,
+  rows: [
+    '.abcdcbba.....',
+    '.abcdeeaa.....',
+    '.fhihjkjl.....',
+    'ahhhmnpqra....',
+    'ajhjknsqtul...',
+    'ajhhkhvwssrx..',
+    'ajjhyhzrAhyBl.',
+    'frurhhCrrnpDEa',
+    '.faaarurrjjFFa',
+    '.....aaaaaaaaa',
+  ],
+  colors: {
+    a: '#000211',
+    b: '#241213',
+    c: '#3a2621',
+    d: '#674c3e',
+    e: '#251f22',
+    f: '#00010d',
+    h: '#232028',
+    i: '#4e3930',
+    j: '#a96052',
+    k: '#d58a6e',
+    l: '#010109',
+    m: '#b16c5e',
+    n: '#f2b68c',
+    p: '#f2b084',
+    q: '#362b2a',
+    r: '#2d2223',
+    s: '#3d2d2d',
+    t: '#eda380',
+    u: '#291f20',
+    v: '#27222a',
+    w: '#f2b28a',
+    x: '#000315',
+    y: '#ac6556',
+    z: '#e79d7c',
+    A: '#44322d',
+    B: '#df9579',
+    C: '#b56b5b',
+    D: '#a55d51',
+    E: '#f0ad88',
+    F: '#312221',
   },
 };

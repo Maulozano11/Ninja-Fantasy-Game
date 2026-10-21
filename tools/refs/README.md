@@ -142,7 +142,9 @@ folders.
   (front and back, `LION_HAIR_*`). He drew the legs wider apart (`LEG_SHIFT`) and the far forearm straighter
   (`FAR_FIST`) than our rig: at rest the items stand his pieces where he drew them and follow our joints from there
   (`src/sprite/items/ember.ts`). His skin pixels are for our Akira's skin (`PAINTED_SKIN`) and follow the
-  character's. Each module exports `*_KIND` (what each colour is, for the colour slots) and `*_REST` (where each
+  character's. He painted a boot on the near foot and a sandal on the far one, then asked for matching feet: the
+  feet script also moves his near boot whole onto the far foot and his far sandal onto the near foot (his near shin
+  continued down to the sandal's straps), for the `feet_ember` part choice Boots / Sandals. Each module exports `*_KIND` (what each colour is, for the colour slots) and `*_REST` (where each
   piece lands in Akira's idle), which `src/sprite/akira.test.ts` checks. `akira-all.sh [studyDir]` reruns them all.
 
       python3 -I tools/refs/akira-hair-from-ref.py src/sprite/items/lionHairArt.ts [studyDir]

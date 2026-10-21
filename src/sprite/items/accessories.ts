@@ -10,6 +10,8 @@ import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI 
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
+import { LYRA_SWORD_BLADE, LYRA_SWORD_GUARD } from './lyraSwordArt';
+import { drawLyraRapier } from './lyraSword';
 import { gripPoint, handsBusy, handsLimp, poleAngle, swordAngle } from '../grip';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
@@ -406,6 +408,18 @@ export const HELD_ITEMS: ItemDef[] = [
     desc: 'A calm pale-cyan glow gathered in the palm.',
     colors: [col('glow', 'Glow', '#8ff0ea', 'glow')],
     draw: (g, [glow]) => !handsBusy(g) && !handsLimp(g) && drawPalmGlow(g, { glow }),
+  },
+  {
+    id: 'held_gilded_rapier',
+    slot: 'held',
+    name: 'Gilded Rapier',
+    desc: 'A long slender blade glowing cyan under a steel swept hilt with gold tips, a cyan gem in the cross, sparkles round it: the owner drew it for Lyra.',
+    colors: [col('blade', 'Blade glow', LYRA_SWORD_BLADE, 'glow'), col('guard', 'Guard', LYRA_SWORD_GUARD, 'metal')],
+    draw: (g, [blade, guard]) => {
+      if (handsBusy(g)) drawLyraRapier(g, 'backGear', backGrip(g, 48), 48, blade, guard, false);
+      else if (handsLimp(g)) drawLyraRapier(g, 'nearArm.held', droppedGrip(g, 0.7), -86, blade, guard, false);
+      else drawLyraRapier(g, 'nearArm.held', gripPoint(g), swordAngle(g), blade, guard, true);
+    },
   },
 ];
 

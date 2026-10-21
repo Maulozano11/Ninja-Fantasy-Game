@@ -7,7 +7,7 @@ import type { SpritePose } from '../../sprite/types';
 import { JUTSU } from '../../battle/jutsu';
 import type { JutsuSpec, VfxElement, VfxRole } from '../../battle/jutsu';
 import { POSE_FPS, TACKLE_IMPACT_FRAME } from '../../sprite/rig';
-import { blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
+import { FAN_ROLL, blastMs, impactMs, signatureMs, skySignature } from './vfxSprites';
 import { dist } from '../../battle/map';
 import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
@@ -250,9 +250,12 @@ export class Playback {
       if (v.walk && now >= v.walk.t0 + (v.walk.total / v.walk.speed) * 1000 / this.speed) {
         v.pos = { ...v.walk.path[v.walk.path.length - 1] };
         v.walk = undefined;
-        const u = state.units[id];
-        v.pose = u ? restPoseView(u, v) : 'idle';
-        v.poseT0 = now;
+        // A one-shot pose that began as the walk ended (the Rush's tackle out of its run) plays on.
+        if (!v.poseUntil) {
+          const u = state.units[id];
+          v.pose = u ? restPoseView(u, v) : 'idle';
+          v.poseT0 = now;
+        }
       }
     }
     this.floaters = this.floaters.filter((f) => now < f.t0 + f.dur);
@@ -413,8 +416,10 @@ export class Playback {
       announce();
       const hit = (TACKLE_IMPACT_FRAME / POSE_FPS.tackle) * 1000;
       this.setPose(a, 'tackle', now, 650);
+      // The shoulder drives on into the foe (about 57 px a metre), not just a lean.
       const d = Math.max(0.01, dist(from, ev.at));
-      a.lunge = { dx: ((ev.at.x - from.x) / d) * 12, dy: ((ev.at.z - from.z) / d) * 5, t0: now, dur: 2 * hit };
+      const reach = Math.max(12, Math.min(30, (d - 0.6) * 57));
+      a.lunge = { dx: ((ev.at.x - from.x) / d) * reach, dy: ((ev.at.z - from.z) / d) * reach * 0.4, t0: now, dur: 2 * hit };
       if (!this.missedNext(ev.unit)) {
         const hitMs = impactMs(el, 'hit', 700);
         this.fx.push({ ...base, kind: 'burst', from, to: ev.at, t0: at(hit), dur: hitMs, lift: [54, 54], role: 'hit' });
@@ -1054,9 +1059,6 @@ export const VOLLEY: Record<VolleyPath, { pace: number; lands: number }> = {
   straight: { pace: 0.92, lands: 56 },
   low: { pace: 1.04, lands: 40 },
 };
-
-/** How long (ms at speed 1) a joined fan takes to roll out to the end of its cone. */
-export const FAN_ROLL = 270;
 
 /** Where a projectile that misses comes down: on past the target, each path to its own side. */
 function pastTarget(from: Pt, to: Pt, path: VolleyPath): Pt {

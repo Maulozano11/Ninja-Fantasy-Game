@@ -5,7 +5,8 @@
 
 import type { Wall } from '../../battle/types';
 import { worldSprite } from '../world/WorldSpriteView';
-import type { Fx } from './playback';
+import type { VfxElement } from '../../battle/jutsu';
+import type { Fx, VolleyPath } from './playback';
 import type { Scene } from './renderer';
 import { auraDx, fxPos, project } from './renderer';
 
@@ -49,6 +50,126 @@ const animMs = (s: Sheet, anim: string): number => {
   return a && a.fps > 0 ? (a.frames / a.fps) * 1000 : 0;
 };
 
+/** A sheet of the rank D and C set (vfx_dc: the volleys cut apart, the lightning fan) or the white cut (vfx_neutral). */
+function ownSheet(group: 'vfx_dc' | 'vfx_neutral', name: string): Sheet | undefined {
+  const s = worldSprite(group, name);
+  return s && ready(s) ? s : undefined;
+}
+
+/**
+ * The row of a turned sheet (rows a-90 ... a90, `step` degrees apart, pointing right) that points
+ * along the screen direction (dx, dy); leftward it is the mirrored row.
+ */
+function turnedRow(s: Sheet, dx: number, dy: number, step: number): { anim: string; mirror: boolean } {
+  const mirror = dx < 0;
+  const deg = (Math.atan2(dy, Math.abs(dx)) * 180) / Math.PI;
+  const a = Math.max(-90, Math.min(90, Math.round(deg / step) * step));
+  const anim = `a${a}`;
+  return { anim: s.spec.anims[anim] ? anim : Object.keys(s.spec.anims)[0], mirror };
+}
+
+/** How long (ms at speed 1) a joined fan takes to roll out to the end of its cone. */
+export const FAN_ROLL = 270;
+
+/**
+ * Where one projectile of a volley is at time t (0..1), on its own path: the high arc climbs and
+ * comes down on the target from above, the straight shot flies flat, the low curve dips toward the
+ * ground and rises into the target from below. So the three reach it from three angles.
+ */
+export function volleyPoint(a: { X: number; Y: number }, b: { X: number; Y: number }, lift: [number, number], path: VolleyPath, t: number): { x: number; y: number } {
+  const run = Math.abs(b.X - a.X);
+  const bend = path === 'high' ? -Math.min(90, 30 + run * 0.25) : path === 'low' ? Math.min(lift[0] - 18, 22 + run * 0.08) : -6;
+  return { x: a.X + (b.X - a.X) * t, y: a.Y - lift[0] + (b.Y - lift[1] - (a.Y - lift[0])) * t + Math.sin(t * Math.PI) * bend };
+}
+
+/** One projectile of a volley on its path, turned to point where it flies. False without its sheet. */
+function drawVolleyPiece(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number, t: number): boolean {
+  const s = ownSheet('vfx_dc', `${f.element}_multi_${f.piece}`);
+  if (!s || !f.path) return false;
+  const a = project(sc.map, f.from);
+  const b = project(sc.map, f.to);
+  const lift = f.lift ?? [60, 60];
+  const p = volleyPoint(a, b, lift, f.path, t);
+  const p0 = volleyPoint(a, b, lift, f.path, Math.max(0, t - 0.03));
+  const p1 = volleyPoint(a, b, lift, f.path, Math.min(1, t + 0.03));
+  const r = turnedRow(s, p1.x - p0.x, p1.y - p0.y, 6);
+  blit(ctx, s, r.anim, frameAt(s, r.anim, ms), p.x, p.y, r.mirror);
+  return true;
+}
+
+/**
+ * The Spark Fan: his forked lightning chained from the hand, link after link with each fork's root
+ * on the last one's reach, out along the cone and to every one it reaches, so the fan is one joined
+ * branching of lightning. It rolls out over FAN_ROLL ms, crackles, and fades.
+ */
+function drawJoinedFan(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number, t: number): boolean {
+  const s = ownSheet('vfx_dc', 'lightning_fan');
+  if (!s || !f.area || f.area.kind !== 'cone') return false;
+  const lift = f.lift ?? [64, 44];
+  const a = project(sc.map, f.from);
+  const hand = { x: a.X, y: a.Y - lift[0] };
+  const rad = (f.area.dir * Math.PI) / 180;
+  const ends: { x: number; y: number }[] = [];
+  const add = (p: { X: number; Y: number }, l: number) => {
+    const e = { x: p.X, y: p.Y - l };
+    if (!ends.some((o) => Math.hypot(o.x - e.x, o.y - e.y) < 24)) ends.push(e);
+  };
+  for (const p of f.joined ?? []) add(project(sc.map, p), lift[1]);
+  add(project(sc.map, { x: f.from.x + Math.cos(rad) * f.area.length, z: f.from.z + Math.sin(rad) * f.area.length }), lift[1]);
+  const LINK = 78;
+  const alpha = t > 0.8 ? (1 - t) / 0.2 : 1;
+  const longest = Math.max(...ends.map((e) => Math.hypot(e.x - hand.x, e.y - hand.y)));
+  ends.forEach((e, j) => {
+    const dx = e.x - hand.x;
+    const dy = e.y - hand.y;
+    const L = Math.hypot(dx, dy);
+    if (L < 1) return;
+    const n = Math.max(1, Math.ceil(L / LINK));
+    const r = turnedRow(s, dx, dy, 10);
+    for (let i = 0; i < n; i++) {
+      // Each link shows once the fan has rolled out to its root.
+      const born = (FAN_ROLL * (i * (L / n))) / longest;
+      if (ms < born) break;
+      const k = i / n;
+      blit(ctx, s, r.anim, frameAt(s, r.anim, ms + i * 83 + j * 41), hand.x + dx * k, hand.y + dy * k, r.mirror, alpha);
+    }
+  });
+  return true;
+}
+
+/**
+ * The white cut (vfx_neutral/slash: his wind crescent with no element), the Bleeding Cut: one
+ * crescent sweeps down across the target on the strike and fades.
+ */
+function drawNeutralSlash(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number, t: number): boolean {
+  const s = ownSheet('vfx_neutral', 'slash');
+  if (!s) return false;
+  const p = project(sc.map, f.to);
+  const left = f.to.x < f.from.x - 0.01;
+  const k = -1 + 2 * Math.min(1, t * 1.6);
+  const dir = left ? -1 : 1;
+  blit(ctx, s, 'fly', frameAt(s, 'fly', ms), p.X + dir * 16 * k, p.Y - (f.lift?.[1] ?? 56) + 12 * k, left, t > 0.55 ? (1 - t) / 0.45 : 1);
+  return true;
+}
+
+/**
+ * A lingering aura on a unit while its condition lasts (the Breeze Mantle's wind until its next
+ * turn): the element's aura and aura_back, faint, looping on the body. Not on a hidden foe.
+ */
+export function drawLinger(ctx: CanvasRenderingContext2D, sc: Scene, id: string, l: { element: VfxElement; alpha: number; t0: number }, layer: 'back' | 'front'): void {
+  const u = sc.state.units[id];
+  const v = sc.pb.views.get(id);
+  if (!u || !v || u.down || (v.hidden && u.team !== sc.team)) return;
+  const s = sheet(l.element, layer === 'back' ? 'aura_back' : 'aura');
+  if (!s) return;
+  const a = s.spec.anims.idle ?? Object.values(s.spec.anims)[0];
+  const n = Math.floor(((sc.now - l.t0) * sc.pb.speed * a.fps) / 1000);
+  const p = project(sc.map, sc.pb.posOf(id, sc.now));
+  // A slow breath in the opacity, so it reads as wind still turning round the ninja.
+  const pulse = 0.85 + 0.15 * Math.sin((sc.now - l.t0) / 380);
+  blit(ctx, s, 'idle', ((n % a.frames) + a.frames) % a.frames, p.X + auraDx(sc, id), p.Y, false, l.alpha * pulse);
+}
+
 /** The flight point of a projectile at time t (0..1), like the drawn effects. */
 function flight(sc: Scene, f: Fx, t: number): { x: number; y: number } {
   const a = project(sc.map, f.from);
@@ -70,7 +191,7 @@ export function drawAuraBack(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): v
   const t = ms / f.dur;
   if (t < 0 || t > 1) return;
   const p = project(sc.map, fxPos(sc, f));
-  blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, t > 0.7 ? (1 - t) / 0.3 : 1);
+  blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, (f.alpha ?? 1) * (t > 0.7 ? (1 - t) / 0.3 : 1));
 }
 
 /** Draws an effect from its sheets. Returns false when the sheets aren't available. */
@@ -83,6 +204,8 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
   const sig = f.sig && f.sig !== 'eyes' && f.sig !== 'tag' && f.sig !== 'log' ? sigSheetName(el, f.sig, !!f.enhanced) : undefined;
   switch (f.kind) {
     case 'projectile': {
+      // One projectile of a volley, on its own path (Three Embers, Jolt, Pebble Shot).
+      if (f.piece !== undefined && drawVolleyPiece(ctx, sc, f, ms, t)) return true;
       // Summoned beasts come from their own sheet (vfx_beasts/<element>) when it's in the game.
       // A role whose sheet doesn't fly (a blast, a hit) travels as the element's bolt.
       const beast = f.role === 'beast' && !sig ? worldSprite('vfx_beasts', el) : undefined;
@@ -120,6 +243,7 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
     }
     case 'cone': {
       const o = project(sc.map, f.from);
+      if (f.joined && drawJoinedFan(ctx, sc, f, ms, t)) return true;
       const dir = f.area && f.area.kind === 'cone' ? f.area.dir : 0;
       const mirror = Math.cos((dir * Math.PI) / 180) < 0;
       if (sig) {
@@ -207,9 +331,12 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
       const s = sheet(el, 'aura');
       if (!s) return false;
       const p = project(sc.map, fxPos(sc, f));
-      blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, t > 0.7 ? (1 - t) / 0.3 : 1);
+      blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, (f.alpha ?? 1) * (t > 0.7 ? (1 - t) / 0.3 : 1));
       return true;
     }
+    case 'slash':
+      // The white cut of a sword art with no element; other cuts are drawn.
+      return f.set === 'neutral' && drawNeutralSlash(ctx, sc, f, ms, t);
     case 'wall':
       // With the element's wall sheet in the game, the standing wall plays its own rise (a broken
       // structure's debris has no sheet yet: it falls back to the drawn dust).

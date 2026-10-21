@@ -231,7 +231,8 @@ export function drawWeapon(g: DrawCtx, depth: Depth, t: PixelTemplate, hand: Vec
  * Draws a painted weapon (its own colours and black line, drawn at its own angle) held at `hand`
  * pointing along `deg`. At its own angle every pixel is the painter's; pointing left it is mirrored
  * across its length so the lit edge stays on top. With a `tint`, `blade` and `grip` recolour it from
- * `base`; without one it keeps its colours.
+ * `base`; given as a function, it recolours each character's colour itself; without one it keeps its
+ * colours.
  */
 export function drawPaintedWeapon(
   g: DrawCtx,
@@ -239,13 +240,20 @@ export function drawPaintedWeapon(
   t: PixelTemplate & { angle: number; colors: Record<string, string> },
   hand: Vec,
   deg: number,
-  tint?: { base: string; blade: string; grip: string; gripBase: string },
+  tint?: { base: string; blade: string; grip: string; gripBase: string } | ((ch: string, hex: string) => string),
 ): void {
   const a = ((deg % 360) + 540) % 360 - 180;
   const flip = Math.abs(a) > 90;
   const pal: TemplatePalette = {};
   for (const [ch, hex] of Object.entries(t.colors)) {
-    const c = !tint || ch === 'o' ? hex : ch === 'g' || ch === 'G' ? retintHex(hex, tint.gripBase, tint.grip) : retintHex(hex, tint.base, tint.blade);
+    const c =
+      typeof tint === 'function'
+        ? tint(ch, hex)
+        : !tint || ch === 'o'
+          ? hex
+          : ch === 'g' || ch === 'G'
+            ? retintHex(hex, tint.gripBase, tint.grip)
+            : retintHex(hex, tint.base, tint.blade);
     pal[ch] = [g.m(c, 'flat'), 3];
   }
   // Flipped, the template points at -angle; either way it turns by what is left to reach `a`.

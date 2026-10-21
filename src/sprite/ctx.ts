@@ -477,6 +477,50 @@ const HAND_RELAXED: PixelTemplate = {
 };
 
 /**
+ * Which of handDraw's pictures a hand is drawn with, and how it is turned:
+ * `rot` degrees from hanging straight down (0 while it hangs within 30
+ * degrees of it), mirrored with `flipX` to keep the thumb on the facing side.
+ * 'grip' is the near fist round a weapon's handle, 'fist' a closed fist
+ * without one; gloves that paint their own fists stamp them the same way.
+ */
+export interface HandPose {
+  kind: 'grip' | 'fist' | 'open' | 'point' | 'relaxed' | 'cradle' | 'chin' | 'clasp' | 'book';
+  rot: number;
+  flipX: boolean;
+}
+
+export function handPose(g: DrawCtx, s: Side): HandPose {
+  const j = armJoints(g.rig, s);
+  const holding = s === 'N' && gripAngle(g) !== null;
+  const dir = norm(sub(j.hand, j.wrist));
+  const theta = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
+  // A hand hanging within 30 degrees of straight down is stamped unrotated,
+  // so every pixel stays exactly as drawn (the wrist bends a little instead).
+  const raw = ((theta - 90 + 540) % 360) - 180;
+  const rot = Math.abs(raw) <= 30 ? 0 : raw;
+  // Keep the thumb on the facing side (+x), or on top when the arm is level.
+  const tr = (rot * Math.PI) / 180;
+  const tx = Math.cos(tr);
+  const ty = Math.sin(tr);
+  const flipX = tx < -0.25 || (Math.abs(tx) <= 0.25 && ty > 0);
+  const kind: HandPose['kind'] =
+    j.shape === 'cradle' || j.shape === 'chin' || j.shape === 'clasp' || j.shape === 'book'
+      ? j.shape
+      : j.shape === 'open'
+        ? 'open'
+        : j.shape === 'point'
+          ? 'point'
+          : j.shape === 'relaxed' || j.shape === 'sign'
+            ? 'relaxed'
+            : holding
+              ? 'grip'
+              : j.shape === 'hold'
+                ? 'relaxed'
+                : 'fist';
+  return { kind, rot, flipX };
+}
+
+/**
  * Draws a hand from a pixel template matched to the reference sprite. The
  * pen's material recolors it (skin, gloves); `grow` is accepted for gloves
  * but the silhouette stays the same. A near hand holding a weapon grips it at
@@ -495,34 +539,23 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     l: [pen.mat, 4 + b],
   };
   const flags = F_NO_OUTLINE | F_NO_TEXTURE;
-  const holding = s === 'N' && gripAngle(g) !== null;
-  const dir = norm(sub(j.hand, j.wrist));
-  const theta = (Math.atan2(dir.y, dir.x) * 180) / Math.PI;
-  // A hand hanging within 30 degrees of straight down is stamped unrotated,
-  // so every pixel stays exactly as drawn (the wrist bends a little instead).
-  const raw = ((theta - 90 + 540) % 360) - 180;
-  const rot = Math.abs(raw) <= 30 ? 0 : raw;
-  // Keep the thumb on the facing side (+x), or on top when the arm is level.
-  const tr = (rot * Math.PI) / 180;
-  const tx = Math.cos(tr);
-  const ty = Math.sin(tr);
-  const flipX = tx < -0.25 || (Math.abs(tx) <= 0.25 && ty > 0);
-  if (j.shape === 'cradle') {
+  const { kind, rot, flipX } = handPose(g, s);
+  if (kind === 'cradle') {
     stampTemplate(L, HAND_CRADLE, j.wrist, 0, pal, pen.part, { flags });
     return;
   }
-  if (j.shape === 'chin') {
+  if (kind === 'chin') {
     // The approved fist turned up at the wrist (flipped, so every pixel stays
     // as drawn and the light stays upper left): the curled fingers on top,
     // under the chin.
     stampTemplate(L, HAND_FIST, j.wrist, 0, pal, pen.part, { flipY: true, flags });
     return;
   }
-  if (j.shape === 'clasp') {
+  if (kind === 'clasp') {
     if (s === 'N') stampTemplate(L, HAND_CLASP, j.wrist, 0, pal, pen.part, { flags });
     return;
   }
-  if (j.shape === 'book') {
+  if (kind === 'book') {
     // The cradle hand up the back of a held book, fingers spread over its
     // cover. It lies in front of the book (campfx.ts), so even the far hand is
     // drawn in the light.
@@ -530,18 +563,7 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     stampTemplate(L, HAND_CRADLE, j.wrist, 0, lit, pen.part, { flags });
     return;
   }
-  const t =
-    j.shape === 'open'
-      ? HAND_OPEN
-      : j.shape === 'point'
-        ? HAND_POINT
-      : j.shape === 'relaxed' || j.shape === 'sign'
-        ? HAND_RELAXED
-        : holding
-          ? HAND_GRIP
-          : j.shape === 'hold'
-            ? HAND_RELAXED
-            : HAND_FIST;
+  const t = { open: HAND_OPEN, point: HAND_POINT, relaxed: HAND_RELAXED, grip: HAND_GRIP, fist: HAND_FIST }[kind];
   if (s === 'F' && t === HAND_FIST) {
     // Far fist: authored in far-side values (no lit knuckles), so no extra bias.
     const far: TemplatePalette = { ...pal, D: [pen.mat, 1], s: [pen.mat, 2], b: [pen.mat, 3], l: [pen.mat, 3] };

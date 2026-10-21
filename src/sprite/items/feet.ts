@@ -3,9 +3,12 @@
 // are pixel templates in 3/4 front view (see FootArt in ctx.ts): the near foot
 // faces the viewer, the far foot points right and is authored a shade darker.
 
+import { retintHex } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
-import { add, along, ellipse, Pen, seam, v } from '../raster';
+import { segAngle, stampPiece } from '../painted';
+import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
+import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'leather') => ({ key, label, default: def, kind });
@@ -244,6 +247,27 @@ export function boot(g: DrawCtx, hex: string, from: number, art: FootArt, opts: 
   }
 }
 
+/**
+ * Takes the leg off below the knee (skin and trousers: the shin and the foot), for boots painted in
+ * their own shape that stand where the owner drew them rather than on our leg. The round of the knee
+ * above the joint stays, so the thigh still ends round.
+ */
+function lowerLegOff(g: DrawCtx, s: Side): void {
+  const shin = partIndex(`shin${s}`);
+  const foot = partIndex(`foot${s}`);
+  const { knee, ankle } = legJoints(g.rig, s);
+  const dir = norm(sub(ankle, knee));
+  for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) {
+    const L = g.L(d);
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (L.mat[i] < 0 || (L.part[i] !== shin && L.part[i] !== foot)) continue;
+      const below = ((i % GRID) + 0.5) / RES - knee.x;
+      const down = (Math.floor(i / GRID) + 0.5) / RES - knee.y;
+      if (L.part[i] === foot || below * dir.x + down * dir.y > 0) L.mat[i] = -1;
+    }
+  }
+}
+
 export const FEET_ITEMS: ItemDef[] = [
   {
     id: 'feet_leather',
@@ -391,6 +415,35 @@ export const FEET_ITEMS: ItemDef[] = [
         footDraw(g, L, s, WRAPS, { main: g.m(c, 'cloth') });
         // loose tail of the bandage
         tube(L, legPoint(g, s, 1.62), add(legPoint(g, s, 1.62), v(-1.6, 1.2)), 0.45, 0.35, wp);
+      }
+    },
+  },
+  {
+    id: 'feet_crimson_sabatons',
+    slot: 'feet',
+    name: 'Crimson Sabatons',
+    desc: 'Plate boots: a round knee cop rimmed in gold, a steel greave, and sabatons with gold cuffs and straps on brown soles.',
+    colors: [col('main', 'Steel', BOOT_STEEL, 'metal'), col('trim', 'Trim', BOOT_TRIM, 'metal')],
+    draw: (g, [steel, trim]) => {
+      // The owner's plate boots, his pixels from his Aiden picture (2026-10-21, the new standard for
+      // characters; tools/refs/aiden-boots-gloves-from-ref.py): on each leg the knee cop and greave turn
+      // with the shin about the ankle, and the sabaton stays flat on the ground like our feet. His legs
+      // stand a little apart from our rig's, so each boot hangs from our ankle moved to his (at rest
+      // every pixel is where he drew it) and replaces our leg below the knee. His steel and gold follow
+      // the colour slots; his black line and brown soles stay.
+      const tint = (_ch: string, hex: string) => {
+        const k = crimsonKind(hex);
+        return k === 'steel' ? retintHex(hex, BOOT_STEEL, steel) : k === 'gold' ? retintHex(hex, BOOT_TRIM, trim) : hex;
+      };
+      for (const s of SIDES) {
+        const { knee, ankle } = legJoints(g.rig, s);
+        lowerLegOff(g, s);
+        const [dx, dy] = SABATON_SHIFT[s];
+        const at = add(ankle, v(dx / RES, dy / RES));
+        const shin = s === 'N' ? SABATON_SHIN_N : SABATON_SHIN_F;
+        const foot = s === 'N' ? SABATON_FOOT_N : SABATON_FOOT_F;
+        stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint);
+        stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle, `foot${s}`, tint);
       }
     },
   },

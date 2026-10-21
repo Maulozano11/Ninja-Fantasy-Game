@@ -1,16 +1,20 @@
 class ShinobiSoundManager {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
+  /** The browser or the frame the game runs in refused audio: the game plays on silently. */
+  private noAudio = false;
 
   private initCtx() {
-    if (!this.ctx && typeof window !== 'undefined') {
+    if (!this.ctx && !this.noAudio && typeof window !== 'undefined') {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
+      try {
+        if (AudioCtx) this.ctx = new AudioCtx();
+      } catch {
+        this.noAudio = true;
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => {});
+      Promise.resolve(this.ctx.resume()).catch(() => {});
     }
   }
 
@@ -264,4 +268,24 @@ class ShinobiSoundManager {
   }
 }
 
-export const soundManager = new ShinobiSoundManager();
+/**
+ * Sound is a nicety: a sound that fails must never stop the click or the turn that plays it (the
+ * title menu's buttons play one before they change screen). Every method swallows its errors.
+ */
+function quiet<T extends object>(m: T): T {
+  return new Proxy(m, {
+    get(target, key, receiver) {
+      const v = Reflect.get(target, key, receiver);
+      if (typeof v !== 'function') return v;
+      return (...args: unknown[]) => {
+        try {
+          return v.apply(target, args);
+        } catch {
+          return undefined;
+        }
+      };
+    },
+  });
+}
+
+export const soundManager = quiet(new ShinobiSoundManager());

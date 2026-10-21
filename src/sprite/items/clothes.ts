@@ -4,9 +4,12 @@
 // parameters); primitives rasterize at the fine 128x128 resolution, so seams,
 // stitching and buttons can be a single fine pixel.
 
-import { hexToRgb } from '../color';
-import { armDepth, armJoints, armPoint, DrawCtx, fillTorso, handDraw, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
-import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, GRID, Layer, lerp, norm, PAD, PartId, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
+import { hexToRgb, retintHex } from '../color';
+import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
+import { PaintedPiece, segAngle } from '../painted';
+import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
+import { stampTemplate, TemplatePalette } from '../rotsprite';
+import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1698,6 +1701,51 @@ function glove(g: DrawCtx, s: Side, pen: Pen, grow: number, cut: boolean): void 
   });
 }
 
+/**
+ * Takes the bare hand off, for a glove painted in its own shape that replaces it: the forearm's last
+ * span is drawn again under it, so the wrist the hand was drawn over stays.
+ */
+function bareHandOff(g: DrawCtx, s: Side): void {
+  const L = g.L(armDepth(s, 'body'));
+  const hand = partIndex(prt('hand', s));
+  const fore = new Layer();
+  armSpan(g, fore, s, 1.3, 2, 0, { mat: g.skin, part: prt('forearm', s), bias: sb(s) }, 'skin');
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || L.part[i] !== hand) continue;
+    L.mat[i] = fore.mat[i];
+    L.shade[i] = fore.shade[i];
+    L.part[i] = fore.part[i];
+    L.flags[i] = fore.flags[i];
+  }
+}
+
+/**
+ * A fist the owner painted, on the wrist: exactly as he drew it while the hand points within 30 degrees
+ * of the way it did in his picture (as our hand pictures hang unturned), turned with RotSprite past
+ * that, and mirrored when our hand pictures are (the thumb on the facing side).
+ */
+function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: string, hex: string) => string): void {
+  const j = armJoints(g.rig, s);
+  const { flipX } = handPose(g, s);
+  // Mirrored, his fist points the other way across the vertical.
+  const drawn = flipX ? 180 - piece.angle : piece.angle;
+  const turn = ((segAngle(j.wrist, j.hand) - drawn + 540) % 360) - 180;
+  const pal: TemplatePalette = {};
+  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(color(ch, hex), 'flat'), 3];
+  stampTemplate(g.L(armDepth(s, 'armor')), piece, j.wrist, Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE });
+}
+
+/** Our hand picture for the pose (open, pointing, relaxed, cradling), in the owner's leather tones. */
+function leatherHand(g: DrawCtx, s: Side, color: (ch: string, hex: string) => string): void {
+  const tmp = new Layer();
+  handDraw(g, tmp, s, { mat: 0, part: prt('hand', s) });
+  const tones = GLOVE_TONES.map((t) => g.m(color('', t), 'flat'));
+  const L = g.L(armDepth(s, 'armor'));
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (tmp.mat[i] >= 0) L.set(i % GRID, (i / GRID) | 0, tones[Math.min(tmp.shade[i], tones.length - 1)], 3, prt('hand', s), F_NO_TEXTURE | F_NO_OUTLINE);
+  }
+}
+
 export const HAND_ITEMS: ItemDef[] = liftMain([
   {
     id: 'hands_fingerless',
@@ -1798,6 +1846,34 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
         // loose end
         const e = armPoint(g, s, 1.42);
         fpx(L, add(e, v(-0.2, 0.4)), pen.mat, prt('forearm', s), 4 + sb(s));
+      }
+    },
+  },
+  {
+    id: 'hands_crimson_gauntlets',
+    slot: 'hands',
+    name: 'Riding Gauntlets',
+    desc: 'Brown leather gloves: a steel plate edged in gold over the back of the sword hand, a steel knuckle edge with a gold rivet on the other.',
+    colors: [col('main', 'Leather', GLOVE_LEATHER, 'leather'), col('steel', 'Steel', GLOVE_STEEL, 'metal'), col('trim', 'Trim', GLOVE_TRIM, 'metal')],
+    draw: (g, [leather, steel, trim]) => {
+      // The owner's gloves, his pixels from his Aiden picture (2026-10-21, the new standard for
+      // characters; tools/refs/aiden-boots-gloves-from-ref.py). Closed, each hand is his fist in place
+      // of ours: the near one round the grip (which shows through it where it does in his picture; the
+      // same fist closes on nothing), the far one hanging. Open, pointing or relaxed (hand signs, casts,
+      // a book) it is our hand picture in his leather. His leather, steel and gold follow the colour
+      // slots; his black line stays.
+      const tint = (_ch: string, hex: string) => {
+        const k = crimsonKind(hex);
+        if (k === 'brown') return retintHex(hex, GLOVE_LEATHER, leather);
+        if (k === 'steel') return retintHex(hex, GLOVE_STEEL, steel);
+        return k === 'gold' ? retintHex(hex, GLOVE_TRIM, trim) : hex;
+      };
+      for (const s of SIDES) {
+        const { kind } = handPose(g, s);
+        if (kind === 'grip' || kind === 'fist') {
+          bareHandOff(g, s);
+          paintedFist(g, s, s === 'N' ? GAUNTLET_N : GAUNTLET_F, tint);
+        } else leatherHand(g, s, tint);
       }
     },
   },

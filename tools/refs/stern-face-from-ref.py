@@ -88,8 +88,9 @@ def main():
         if len(xs):
             want[y, xs.min():xs.max() + 1] = True
     have = face & ~eye
+    # Above his lash line the face meets our skull: no line of his closes it there.
     top = np.zeros((H, W), bool)
-    top[TOP] = True
+    top[TOP:R.ANCHOR[1]] = True
     col, m = R.fill_hidden(a, K, have, want, np.array([0.0, 1.0]), black, top)
     head = R.piece('STERN_HEAD', "The owner's face (the 'stern' face shape), his pixels: ear, cheeks, nose, mouth, jaw and chin, his skin shading and black line, from the row above the lash line down; his skin goes on under his eyes and the hair crossing it. Its pivot is the cell on the face anchor.", col, m, R.ANCHOR, 0.0)
 

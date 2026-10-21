@@ -6,7 +6,7 @@ import { faceAnchor } from './body';
 import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import { LYRA_HAIR_BASE, LYRA_HAIR_BRAID, LYRA_HAIR_COLORS, LYRA_HAIR_HEAD, LYRA_HAIR_LINE, LYRA_HAIR_LONG, LYRA_HAIR_PIN, LYRA_PIN_BASE, LYRA_RIBBON_BASE } from './items/lyraHairArt';
-import { GRID } from './raster';
+import { GRID, RES } from './raster';
 import { drawRig, rigPoseFor } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance } from './types';
 
@@ -83,6 +83,24 @@ describe("Lyra's hair", () => {
           for (let i = 0; i < GRID * GRID; i++) if (rgba[i * 4 + 3] && hex(rgba, i % GRID, (i / GRID) | 0) === LYRA_HAIR_BASE) line++;
           assert.ok(line > 0, `${body} ${pose} ${frame}: his auburn shows`);
         }
+      }
+    }
+  });
+
+  it('streams back along her back when she is pitched forward, not down between her legs', () => {
+    // The throw from the fling on, head carried out ahead: nothing the hair adds is well below the
+    // hips and forward of them, where the legs are.
+    for (const body of ['female', 'slender'] as BodyType[]) {
+      for (const frame of [2, 3, 4]) {
+        const f = renderSprite(look(body), 'throw', frame);
+        const bald = renderSprite({ ...look(body), slots: {} }, 'throw', frame).rgba;
+        const [hx, hy] = [Math.round(f.rig.pelvis.x * RES), Math.round(f.rig.pelvis.y * RES)];
+        let under = 0;
+        for (let i = 0; i < GRID * GRID; i++) {
+          const added = f.rgba[i * 4 + 3] && f.rgba.subarray(i * 4, i * 4 + 4).some((c, k) => c !== bald[i * 4 + k]);
+          if (added && ((i / GRID) | 0) > hy + 6 && i % GRID >= hx) under++;
+        }
+        assert.equal(under, 0, `${body} ${frame}: hair pixels under the body`);
       }
     }
   });

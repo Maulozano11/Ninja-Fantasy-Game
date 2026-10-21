@@ -9,6 +9,7 @@ import { hexToRgb, hslToHex, makeRamp, mixHex, retintHex, rgbToHsl } from './col
 import { armPoint, armRadius, armSpan, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, legSpan, Side, torsoPoly } from './ctx';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
+import { KEEN_BROW_HAIR, KEEN_BROWS, KEEN_EYE_COLORS, KEEN_EYES, KEEN_IRIS } from './lyraEyeArt';
 import { stampPiece } from './painted';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
 import { isFemaleBody, type FaceShape } from './types';
@@ -427,6 +428,9 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // The owner's eyes (src/sprite/eyeArt.ts), a row lower than ours and heavy-lidded: his brow (B) on
   // the row above the lash line, a single row of white and red iris under it. Drawn in his pixels.
   valiant: { near: VALIANT_EYES.open.near.letters, far: VALIANT_EYES.open.far.letters },
+  // The owner's Lyra's eyes (src/sprite/lyraEyeArt.ts) on our own cells and rows: her black-and-navy
+  // lash down the outer corner, her shaded white, a big iris dark over green; the far eye's fleck of white.
+  keen: { near: KEEN_EYES.open.near.letters, far: KEEN_EYES.open.far.letters },
 };
 
 /** Closed eyes (knocked out): each eye a dark lid line across its middle row. */
@@ -537,7 +541,10 @@ function drawFace(g: DrawCtx): void {
   const lowered = g.rig.pose === 'read';
   // The owner's eyes ('valiant'): his pixels in each lid state, laid on the template's eye cells.
   const his = shape === 'valiant' ? VALIANT_EYES[closed ? 'closed' : lowered ? 'lowered' : 'open'] : undefined;
-  const eyes = his ? { near: his.near.letters, far: his.far.letters } : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
+  // Lyra's eyes ('keen'): her pixels in each lid state, on our own eye cells and rows.
+  const hers = shape === 'keen' ? KEEN_EYES[closed ? 'closed' : lowered ? 'lowered' : 'open'] : undefined;
+  const painted = his || hers;
+  const eyes = painted ? { near: painted.near.letters, far: painted.far.letters } : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
   const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
   const put = (x: number, y: number, ch: string) => {
@@ -582,6 +589,19 @@ function drawFace(g: DrawCtx): void {
     stamp(his.near, ex);
     stamp(his.far, fx);
   }
+  if (hers) {
+    // Her pixels over the template's eye cells: her iris (and the white shaded by it, as our shaded
+    // white takes the iris's tint) moves the way the eye colour moves her green; pale special eyes take
+    // our pale tones. Her lash and white stay hers.
+    const tone = (letter: string, hex: string) =>
+      letter === 'd' || letter === 'i' ? (pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, KEEN_IRIS, iris)) : letter === 'h' ? retintHex(hex, KEEN_IRIS, iris) : hex;
+    const stamp = (eye: PaintedEye, x0: number) =>
+      eye.rows.forEach((row, r) => {
+        for (let c = 0; c < row.length; c++) if (row[c] !== '.') L.set(x0 + c, ny + r, flat(tone(eye.letters[r][c], KEEN_EYE_COLORS[row[c]])), 3, 'head', F_NO_OUTLINE);
+      });
+    stamp(hers.near, ex);
+    stamp(hers.far, fx);
+  }
 
   // Overlays drawn on the face layer (no outline, above the skin). His eyes open a row lower than
   // ours (his lash line is the template's second row): what sits on the open eye follows them.
@@ -592,8 +612,8 @@ function drawFace(g: DrawCtx): void {
     set(ex - 1, ny + 1, EYELINE);
     set(ex - 1, ny + 2, EYELINE);
   } else if (female) {
-    // longer lashes at the outer corners
-    set(ex - 1, lash - 1, EYELINE);
+    // longer lashes at the outer corners (Lyra's near lash runs down its outer corner, not up)
+    if (!hers) set(ex - 1, lash - 1, EYELINE);
     set(ex - 1, lash, EYELINE);
     set(fx + 3, lash, EYELINE);
   }
@@ -609,7 +629,8 @@ function drawFace(g: DrawCtx): void {
     set(ex + 2, ny + 1, '#14040a');
     if (sp !== 'tomoe1') set(ex + 3, ny + 2, '#14040a');
     if (sp === 'pinwheel') set(ex + 3, ny + 1, '#14040a');
-    set(fx, ny + 1, '#14040a');
+    // (Lyra's far eye shows a single cell of iris under her fleck of white: it keeps its colour)
+    if (!hers) set(fx, ny + 1, '#14040a');
   }
   if (sp === 'paleVeins' && !closed && !lowered) {
     for (const [x, y] of [
@@ -634,6 +655,22 @@ function drawFace(g: DrawCtx): void {
 
   // Brows (hair-colored), two rows above the lash; most bangs cover them. His eyes bring their own.
   if (his) return;
+  if (hers) {
+    // Hers: her pixels, long and slanting down to the inner corner, in her hair's reds moved the way the
+    // hair colour moves her hair's mid red.
+    const hair = hairChoice?.colors[0];
+    for (const [side, x0] of [['near', ex], ['far', fx]] as const) {
+      const { at, rows } = KEEN_BROWS[side];
+      rows.forEach((row, r) => {
+        for (let c = 0; c < row.length; c++) {
+          if (row[c] === '.') continue;
+          const hex = KEEN_EYE_COLORS[row[c]];
+          set(x0 + at[0] + c, ny + at[1] + r, hair ? retintHex(hex, KEEN_BROW_HAIR, hair) : hex);
+        }
+      });
+    }
+    return;
+  }
   const br = makeRamp(hairChoice?.colors[0] || '#2a2230', 'hair');
   // Sharp and fierce eyes get brows angled down toward the nose.
   const sharp = shape === 'sharp' || shape === 'fierce';

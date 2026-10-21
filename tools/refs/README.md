@@ -129,3 +129,11 @@ folders.
       npx tsx tools/refs/heroine-idle.mts <out>
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
+
+- `lyra-eyes-from-ref.py` → `src/sprite/lyraEyeArt.ts`: Lyra's eyes and brows as the `keen` eye
+  shape. Each of our template's eye cells takes the colour of one of her pixels in the block it
+  covers (her head at 0.56 across, 0.5 down, her lash on our lash row), picked where the block's
+  most common colour would lose what reads at our size; the lowered and closed lids are made of
+  her pixels. Writes `eyes@16.png` (open, lowered, closed) and `hers@16.png` into `<out>`.
+
+      python3 -I tools/refs/lyra-eyes-from-ref.py docs/reference/lyra-owner-reference.jpg <out> src/sprite/lyraEyeArt.ts

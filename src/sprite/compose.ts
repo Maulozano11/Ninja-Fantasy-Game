@@ -247,13 +247,16 @@ function dropShadows(top: Int16Array, mat: Int16Array, shade: Uint8Array, flags:
   for (const i of marks) shade[i] -= 1;
 }
 
-export function renderSprite(
-  look: SpriteAppearance,
-  pose: SpritePose,
-  frame: number,
-  eyeSpecial: EyeSpecial = 'none',
-  opts: { skipEdits?: boolean } = {},
-): SpriteFrame {
+/**
+ * Every layer of a frame as drawn, before the outlines and the flattening (renderSprite does those):
+ * for tests that look at one part of the figure on its own (an arm, a leg) whatever covers it.
+ */
+export function spriteLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial = 'none'): { layers: Map<Depth, Layer>; rig: Rig; mats: MaterialTable } {
+  const { layers, rig, mats } = drawLayers(look, pose, frame, eyeSpecial);
+  return { layers, rig, mats };
+}
+
+function drawLayers(look: SpriteAppearance, pose: SpritePose, frame: number, eyeSpecial: EyeSpecial) {
   // (the long neck carries the head higher and further forward: neck.ts)
   const rig = carryHead(drawRig(look.body, rigPoseFor(pose, look.cast?.style, look.stowed ? undefined : look.slots.held?.id), frame, look.arms), look.neck);
   const mats = new MaterialTable();
@@ -316,6 +319,17 @@ export function renderSprite(
   drawCampFx(g);
   if (rig.farHandFront) farHandToFront(layers, g);
   guardFace(g, layers);
+  return { layers, rig, mats };
+}
+
+export function renderSprite(
+  look: SpriteAppearance,
+  pose: SpritePose,
+  frame: number,
+  eyeSpecial: EyeSpecial = 'none',
+  opts: { skipEdits?: boolean } = {},
+): SpriteFrame {
+  const { layers, rig, mats } = drawLayers(look, pose, frame, eyeSpecial);
 
   // Outline and flatten
   const rgba = new Uint8ClampedArray(GRID * GRID * 4);

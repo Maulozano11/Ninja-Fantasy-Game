@@ -1,15 +1,15 @@
-// The owner's Aurelia (docs/reference/aurelia-owner-reference.jpg): her white dress bodice with its
-// high gold-edged collar and blue gem, and her detached white sleeves with gold bands and cuffs.
-// Her picture brought down to our scale in her colours (items/aureliaVestmentArt.ts, by
+// The owner's Aurelia (docs/reference/aurelia-escala-juego-owner-reference.jpg, drawn by him at our
+// scale): her white dress bodice with its high gold-edged collar and blue gem, and her detached white
+// sleeves with gold bands and cuffs. His pixels one for one (items/aureliaVestmentArt.ts, by
 // tools/refs/aurelia-upper-from-ref.py), one painted piece per segment of the rig: the bodice turns
 // with the torso, each sleeve with its upper arm and forearm. In our female's idle pose every pixel is
-// the one drawn there. Her skirt from the sash down is another item.
+// his. Her skirt from the sash down is another item.
 
 import { retintHex } from '../color';
 import { armDepth, armJoints, Depth, DrawCtx, ItemDef, Side } from '../ctx';
-import { PaintedPiece, segAngle, stampPiece } from '../painted';
-import { GRID, partIndex, PartId, RES, Vec } from '../raster';
-import { rotateTemplate } from '../rotsprite';
+import { PaintedPiece, segAngle } from '../painted';
+import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, partIndex, PartId, RES, Vec } from '../raster';
+import { rotateTemplate, stampTemplate, TemplatePalette } from '../rotsprite';
 import {
   AURELIA_BODICE,
   AURELIA_CLOTH,
@@ -19,6 +19,7 @@ import {
   AURELIA_GOLD,
   AURELIA_GOLD_CHARS,
   AURELIA_LINE,
+  AURELIA_SKIN_SHADES,
   AURELIA_SLEEVE_FORE_F,
   AURELIA_SLEEVE_FORE_N,
   AURELIA_SLEEVE_SPAN_F,
@@ -43,6 +44,16 @@ const vestmentColor = (cloth: string, gold: string, gem: string) => (ch: string,
         ? retintHex(hex, AURELIA_GEM, gem)
         : hex;
 
+/**
+ * Stamps a piece as stampPiece does (at his angle every pixel is his), but his skin (the keyhole under
+ * the gem, the armpit) in the body's own skin shades, so it follows the player's skin.
+ */
+function stamp(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color: (ch: string, hex: string) => string): void {
+  const pal: TemplatePalette = {};
+  for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = ch in AURELIA_SKIN_SHADES ? [g.skin, AURELIA_SKIN_SHADES[ch]] : [g.m(color(ch, hex), 'flat'), 3];
+  stampTemplate(g.L(depth), piece, at, deg - piece.angle, pal, part, { flags: F_NO_TEXTURE | F_NO_OUTLINE });
+}
+
 /** Marks in `out` the fine pixels a painted piece covers when stampPiece stamps it. */
 function cover(out: Uint8Array, piece: PaintedPiece, at: Vec, deg: number): void {
   const ax = Math.floor(at.x * RES);
@@ -60,24 +71,29 @@ const UNDER_BODICE: Depth[] = ['torso.body', 'torso.under', 'torso.top'];
 const UNDER_SLEEVE = (s: Side): Depth[] => [armDepth(s, 'body'), armDepth(s, 'cloth')];
 
 /**
- * Takes away what of our torso shows past the bodice: from under her armholes to the waist's lower
- * edge (AURELIA_TORSO_SPAN, along the torso), a torso pixel the bodice and its waist do not cover. Our
- * torso is wider than hers (our bust stands out past her bodice's far side), so the figure's edge
- * there is her bodice's, with her far sleeve and the gap by her near arm beside it, as she is drawn.
- * Above the armholes our shoulders stay bare, as hers are.
+ * Takes away what of our torso shows past the bodice: a torso pixel the bodice and its waist do not
+ * cover, down to the waist's lower edge (AURELIA_TORSO_SPAN, along the torso), from under his near
+ * armhole on the near side and from beside his collar on the far side. Our torso is wider than hers
+ * (our bust stands out past her bodice's far side), so the figure's edge there is her bodice's, with
+ * her far sleeve and the gap by her near arm beside it, as he drew her. Above that our shoulders stay
+ * bare, as hers are.
  */
 function clearTorso(g: DrawCtx, bodice: Uint8Array): void {
   const r = g.rig;
   const torso = partIndex('torso');
-  const [from, to] = AURELIA_TORSO_SPAN;
+  const [nearFrom, farFrom, to] = AURELIA_TORSO_SPAN;
   for (const d of UNDER_BODICE) {
     const L = g.L(d);
     if (!L.used) continue;
     for (let i = 0; i < GRID * GRID; i++) {
       if (L.mat[i] < 0 || L.part[i] !== torso || bodice[i]) continue;
       // fine pixels below the neck, along the torso
-      const below = (r.neck.x - ((i % GRID) + 0.5) / RES) * r.up.x * RES + (r.neck.y - (Math.floor(i / GRID) + 0.5) / RES) * r.up.y * RES;
-      if (below >= from && below < to) L.mat[i] = -1;
+      const dx = ((i % GRID) + 0.5) / RES - r.neck.x;
+      const dy = (Math.floor(i / GRID) + 0.5) / RES - r.neck.y;
+      const below = -(dx * r.up.x + dy * r.up.y) * RES;
+      // the far side: toward the way she faces, along the shoulder line
+      const far = dx * r.right.x + dy * r.right.y > 0;
+      if (below >= (far ? farFrom : nearFrom) && below < to) L.mat[i] = -1;
     }
   }
 }
@@ -156,7 +172,7 @@ function drawDawnVestment(g: DrawCtx, cloth: string, gold: string, gem: string):
   const r = g.rig;
   const tint = vestmentColor(cloth, gold, gem);
   const torso = segAngle(r.pelvis, r.neck);
-  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
+  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stamp(g, d, p, at, deg, part, tint);
   const sleeves: [Side, PaintedPiece, PaintedPiece, [number, number]][] = [
     ['F', AURELIA_SLEEVE_UPPER_F, AURELIA_SLEEVE_FORE_F, AURELIA_SLEEVE_SPAN_F],
     ['N', AURELIA_SLEEVE_UPPER_N, AURELIA_SLEEVE_FORE_N, AURELIA_SLEEVE_SPAN_N],

@@ -1,4 +1,5 @@
-// Tests for Aurelia's vestment (armor_dawn_vestment, the owner's picture at our scale): npm test.
+// Tests for Aurelia's vestment (armor_dawn_vestment, the owner's pixels from his picture of her at our
+// scale): npm test.
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -11,15 +12,16 @@ import {
   AURELIA_CLOTH,
   AURELIA_GEM,
   AURELIA_GOLD,
+  AURELIA_SKIN_SHADES,
   AURELIA_SLEEVE_FORE_N,
   AURELIA_SLEEVE_UPPER_N,
 } from './items/aureliaVestmentArt';
 import type { BodyType, SpriteAppearance } from './types';
 
-const look = (body: BodyType, armor?: string[]): SpriteAppearance => ({
+const look = (body: BodyType, armor?: string[], skin = '#f9ccaa'): SpriteAppearance => ({
   version: 1,
   body,
-  skin: '#f9ccaa',
+  skin,
   eyeShape: 'standard',
   eyeColor: '#226ba3',
   slots: armor ? { armor: { id: 'armor_dawn_vestment', colors: armor } } : {},
@@ -75,6 +77,19 @@ describe("Aurelia's vestment", () => {
     };
     assert.ok(at([]).every((c) => c === AURELIA_GEM));
     assert.ok(at(['', '', '#c8202c']).every((c) => c !== AURELIA_GEM));
+  });
+
+  it("draws his skin in the keyhole under the gem in the player's skin", () => {
+    const keyhole = (skin: string) => {
+      const f = renderSprite(look('female', [], skin), 'idle', 0);
+      const cells = laid(AURELIA_BODICE, f.rig.neck).filter(([x, y]) => {
+        const ch = AURELIA_BODICE.rows[y - (Math.floor(f.rig.neck.y * RES) - AURELIA_BODICE.pivot[1])][x - (Math.floor(f.rig.neck.x * RES) - AURELIA_BODICE.pivot[0])];
+        return AURELIA_SKIN_SHADES[ch] === 3 && y < f.rig.neck.y * RES + 6;
+      });
+      assert.ok(cells.length > 0);
+      return cells.map(([x, y]) => hexAt(f.rgba, x, y)).join();
+    };
+    assert.notEqual(keyhole('#f9ccaa'), keyhole('#7a4a30'));
   });
 
   it('lets none of our undergarment show past her bodice above the hips', () => {

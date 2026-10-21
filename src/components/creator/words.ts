@@ -277,6 +277,15 @@ const ES: Record<string, string> = {
   'Two brown leather belts slung across the hips with steel buckles, a pouch on the hip, and a black scabbard with gold fittings hanging behind the leg. Women only.': 'Dos cinturones de cuero marrón cruzados sobre las caderas con hebillas de acero, una bolsa en la cadera y una vaina negra con herrajes de oro colgando detrás de la pierna. Solo mujeres.',
   // Saya's leggings (feet_shade_wraps)
   'Thigh-high navy leggings wound with red bands, round knee pads rimmed in red, and armoured navy shoes with red trim.': 'Medias altas azul marino hasta el muslo envueltas en bandas rojas, rodilleras redondas con borde rojo y zapatos acorazados azul marino con ribete rojo.',
+  // Saya's top, gloves, scarf and leggings: names (and the top's and gloves' descriptions)
+  'Crimson Shade Garb': 'Atuendo de la Sombra Carmesí',
+  'A sleeveless navy ninja top with a cream chest plate, red piping down the front, and navy arm guards banded in red (+2 AC). Women only.':
+    'Un top ninja azul marino sin mangas con peto crema, ribete rojo por delante y brazales azul marino con bandas rojas (+2 CA). Solo mujeres.',
+  'Shade Fingerless Gloves': 'Guantes sin dedos de la Sombra',
+  'Fingerless gloves: a leather strap round the wrist, navy over the back of the hand with a red band over the knuckles (all red on the off hand).':
+    'Guantes sin dedos: una correa de cuero en la muñeca, azul marino sobre el dorso con una banda roja en los nudillos (toda roja en la otra mano).',
+  'Crimson Shade Scarf': 'Bufanda de la Sombra Carmesí',
+  'Shade Wraps': 'Vendas de la Sombra',
   // Saya's sword
   'Shade Saber': 'Sable de la Sombra',
   'A straight steel blade with gold dots down its middle under a gold swept hilt, gold sparkles round it: the owner painted it for Saya.': 'Una hoja recta de acero con puntos de oro por el centro bajo una guarda de lazo de oro, con destellos de oro alrededor: el dueño la pintó para Saya.',

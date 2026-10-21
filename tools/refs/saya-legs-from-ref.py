@@ -16,23 +16,24 @@ painted, read as the median of the middle of his pixel), with his black line:
 
 What his picture hides and is filled here, continuing his pixels: the weapons he drew are bugged (two
 crossed blades and a scabbard), and they are taken out. Under them were most of the near thigh and the
-top of its knee pad (under the hilt, the blade and the scabbard: filled after the far thigh, his bare
-skin lit to the right over his dark legging band) and, on the far leg, the thigh's lower left and the
-shin from the knee pad down to the first band he shows (under the blade: filled with his navy and a red
-band and dark line like the near shin's). The far thigh's left side is under her skirt's hem and is
-filled with his skin. Everything else is his (check_his() checks it).
+top of its knee pad (under the hilt, the blade and the scabbard: filled as his big picture of her shows
+that thigh, his bare skin lit across its middle with its shadow under the skirt's hem and down its
+edges, over his dark legging band) and, on the far leg, the thigh's lower left and the shin from the
+knee pad down to the first band he shows (under the blade: filled with his navy and a red band and dark
+line like the near shin's). The far thigh's left side is under her skirt's hem and is filled with his
+skin. Everything else is his (check_his() checks it).
 
 The pieces ride our rig as the owner's sabatons do (src/sprite/items/feet.ts): his legs stand where
 ours do at idle frame 0 when his picture is moved by OFFSET (the near leg to our ground at row 218; on our
 female body, tools/refs/saya_rig.py, his near knee pad falls on our knee and his shoe on our foot below
-the lower ankle). Our far leg is shorter than his (our far foot stands at row 210, six rows above his,
-and our far knee is under her skirt): his far thigh, its bare skin under the skirt's hem, the legging's dark top band and
-the knee pad stay where he drew them under the hem (OFFSET), and six rows of the far shin (LIFT: rows
-77-82, under the blade, filled) are left out so the rest of the shin and the shoe come up to our far
-foot. On the near leg the bare thigh (drawn into the body's layer, so trousers cover it) and the legging
-above the knee turn with the thigh about the knee; on the far leg they lie below our knee and turn with
-the shin (RIDES). The knee pads and the wrapped shins turn with the shin about the ankle, and the shoe
-stays flat on the ground. At rest every pixel is where he drew it, the far shin six rows shorter.
+the lower ankle). His far leg is kept whole, as long as he drew it: our far knee (row 189.7) falls on
+the top of his far knee pad, just under her skirt's hem, and his far shoe stands where he drew it, its
+sole two rows above the near one, six rows below our far ankle (our body's far foot is taken away under
+it, as the whole leg below the knee is). On the near leg the bare thigh (drawn into the body's layer,
+so trousers cover it) and the legging above the knee turn with the thigh about the knee; on the far
+leg they lie about our knee and turn with the shin (RIDES). The knee pads and the wrapped shins turn
+with the shin about the ankle, and the shoe stays flat on the ground. At rest every pixel is where he
+drew it.
 
 It writes the pieces as TypeScript (src/sprite/items/sayaLegsArt.ts) and, in <out>, his legs as he drew
 them beside them without the weapons at 8x. The same picture always gives the same bytes:
@@ -76,16 +77,17 @@ CLOTH, BAND, SKIN = 'e', 'r', 'S'  # the colours the slots (and the skin) are ma
 # Where his picture sits on our idle frame 0, per leg: our x, y = his + OFFSET (below LIFT's rows,
 # that many rows higher).
 OFFSET = {'N': (76, 121), 'F': (76, 121)}
-# His rows left out of a leg (first, last), inclusive: the far shin's, under the blade (filled there).
-LIFT = {'F': (77, 82)}
+# His rows left out of a leg (first, last), inclusive. None: both legs are as long as he drew them (the
+# first female body left six of the far shin's out, to bring his far shoe up to its higher far foot).
+LIFT = {}
 
 # His legs without the weapons: (his x of the first character, row) -> characters, '.' empty.
 LEGS = {
     'N': {
         64: (37, 'kzzzzzzzzzzzzzk'),
-        65: (37, 'kzzzzzzSSSSzzzk'),
-        66: (37, 'kzzzzzzSSSSzzzk'),
-        67: (37, 'kzzzzzSSSSKKKkk'),
+        65: (37, 'kzzSSSSSSSSzzzk'),
+        66: (37, 'kzzSSSSSSSSzzzk'),
+        67: (37, 'kzzSSSSSSSKKKkk'),
         68: (37, 'kKKKKKKKKKKKguuk'),
         69: (37, 'kuuUkqkuuuuugguk'),
         70: (37, 'kukkqkkkkugguuk'),
@@ -156,7 +158,7 @@ LEGS = {
 # Where his picture hides her legs (his x0, y0, x1, y1, inclusive): the only places LEGS is not his.
 HIDDEN = {
     'N': [
-        (37, 64, 53, 70),  # the near thigh: under the hilt, the blade and the scabbard
+        (37, 64, 53, 70),  # the near thigh: under the hilt, the blade and the scabbard (lit as in his big picture)
         (37, 71, 50, 72),  # the knee pad's top and the thigh beside it: under the blade and scabbard
     ],
     'F': [

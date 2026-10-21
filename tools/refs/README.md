@@ -152,7 +152,8 @@ folders.
   every Saya script lays her pieces on: its joints, her picture's place on our frame (her soles on ours)
   and how her picture stands against it (her hips where ours are; our neck, shoulders and arms three or
   four rows higher, so her pieces from the neck up are moved up onto them and her top is longer by her own
-  rows). Change it when the female rig changes, then rerun the Saya scripts.
+  rows; her legs as long as he drew them). It also holds `GRIP_N`, the middle of her near glove's fist,
+  where her sword's grip passes. Change it when the female rig changes, then rerun the Saya scripts.
 
 - `saya-hair-from-ref.py`: Saya's hair (`hair_sun_fall`) copied 1:1 from his picture at our game's
   scale (`saya-game-scale-owner-reference.jpg`, 10.24 picture pixels to one of his, which is one of
@@ -184,8 +185,10 @@ folders.
   (`src/sprite/items/sayaUpperArt.ts`, items in `sayaUpper.ts`): his pixels 1:1 from his Saya drawn at
   our scale (`docs/reference/saya-game-scale-owner-reference.jpg`, 10.24 picture px per pixel), laid on
   our female idle by her eyes; what her hair, scarf and belts hide is filled (crossed in the preview).
-  The top rides the torso, each guard its limb; the gloves paint our hand pictures in her glove by how
-  far each pixel lies from the wrist.
+  The top rides the torso, each guard its limb; on the female bodies a fist is her own (her near glove
+  round her sword, her far fist), riding the forearm; other hands are our hand pictures painted in her
+  glove by how far each pixel lies from the wrist. Where our body's own skin shows, the armour paints it
+  in her two skin tones and her line.
 
       python3 -I tools/refs/saya-upper-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg src/sprite/items/sayaUpperArt.ts <out>
 

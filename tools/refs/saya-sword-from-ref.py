@@ -22,9 +22,9 @@ shows above our fist as hers does above her glove; the bow passes outside the fi
 the blade leaves the fist. The grip hidden in her glove is drawn in her grip's browns.
 
 The template is drawn at 45 degrees (the study's reduced blade lies at 44) and pivots on the grip cell
-under our near hand joint at rest (tools/refs/saya_rig.py handN), so held at rest every pixel lies as
-drawn here. Cells are placed by (u, v): u = x + y - 284 runs along the blade (two per pixel step), v =
-x - y + 64 across it (positive toward the upper right, the lit edge); the hand joint's cell is u = v = 0.
+in the middle of her near glove's fist at rest (tools/refs/saya_rig.py GRIP_N), so held at rest every
+pixel lies as drawn here. Cells are placed by (u, v): u = x + y - 286 runs along the blade (two per pixel step), v =
+x - y + 68 across it (positive toward the upper right, the lit edge); the grip cell is u = v = 0.
 The same sword is also drawn level (SAYA_SABER_LEVEL, build_flat): turned from 45 degrees to near level
 or upright, a blade one line of steel thick breaks its line, so the game turns whichever drawing is
 nearer a quarter turn (src/sprite/items/sayaSword.ts).
@@ -64,16 +64,16 @@ GOLD_HI, GOLD, GOLD_MID, GOLD_DK, GOLD_DEEP = '#f6d886', '#e8ba58', '#d8a84c', '
 GRIP_DK, GRIP, GRIP_LT = '#302525', '#453631', '#604f46'
 SPARK_HI, SPARK, SPARK_GOLD = '#fef6d8', '#feeeb5', '#f7c962'
 
-# Our female's near hand joint at idle frame 0, and its cell: the grip passes through it.
-HAND = saya_rig.JOINTS['handN']
-HX, HY = int(np.floor(HAND[0])), int(np.floor(HAND[1]))
+# The cell the grip passes through at rest: the middle of her near glove's fist (tools/refs/saya_rig.py
+# GRIP_N; src/sprite/items/sayaUpper.ts sayaGrip puts it there in every pose).
+HX, HY = saya_rig.GRIP_N
 
-# Along the blade (u, two per pixel step): the pommel, the grip, the guard cup, the blade, the tip. Our
-# female's grip fist (his small hand, tools/refs/female-body-from-ref.py) covers the grip from u -2 to 4:
-# the pommel's collar rests on its upper end and the cup on its lower, as hers do on her glove, so no
-# grip shows between them.
-POMMEL_U = -10
-GRIP_U = (-8, 5)
+# Along the blade (u, two per pixel step): the pommel, the grip, the guard cup, the blade, the tip. Her
+# glove's fist (six pixels wide, four tall, tools/refs/saya-upper-from-ref.py SAYA_GLOVE_N) covers the
+# grip from about u -5 to 4: the pommel rests on its upper end, out past her wrist, and the cup on its
+# lower end, as hers do on her glove, so no grip shows between them.
+POMMEL_U = -8
+GRIP_U = (-6, 5)
 CUP_U = (6, 8)
 BLADE_U = (9, 70)
 
@@ -262,7 +262,7 @@ def main():
         assert c in her, ('not her colour', c)
     for *_, c in sparks + flat_sparks:
         assert c in her, ('not her colour', c)
-    assert cells[(HX, HY)][0] == 'grip', ('the hand joint is not on the grip', cells[(HX, HY)])
+    assert cells[(HX, HY)][0] == 'grip', ('the grip cell is not on the grip', cells[(HX, HY)])
     assert flat[(0, 0)][0] == 'grip', ('the hand joint is not on the level grip', flat[(0, 0)])
 
     # One palette character per (group, colour): the blade and the guard recolour apart.

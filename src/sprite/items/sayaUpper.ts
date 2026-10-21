@@ -5,17 +5,24 @@
 import { retintHex } from '../color';
 import { armDepth, armJoints, Depth, DrawCtx, handDraw, handPose, ItemDef, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
-import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, RES, Vec } from '../raster';
+import { F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, partIndex, PartId, RES, v, Vec } from '../raster';
+import { isFemaleBody } from '../types';
 import {
   SAYA_CLOTH,
   SAYA_FORE_F,
   SAYA_FORE_N,
+  SAYA_GLOVE_N,
   SAYA_GLOVE_TONES,
   SAYA_GLOVE_ZONES,
+  SAYA_GRIP_N,
+  SAYA_HAND_F,
   SAYA_KIND,
+  SAYA_LINE,
   SAYA_PLATE,
   SAYA_SHOULDER_N,
   SAYA_SKIN,
+  SAYA_SKIN_SHADOW,
+  SAYA_SLEEVE,
   SAYA_TOP,
   SAYA_TOP_LOW,
   SAYA_TRIM,
@@ -59,32 +66,111 @@ function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string):
   // her bare near shoulder (light skin in her line), then the upper guard over its foot
   put('nearArm.armor', SAYA_SHOULDER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
   put('nearArm.armor', SAYA_UPPER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
+  paintBodySkin(g, cloth);
+}
+
+/** Our body's layers that hold its own skin. */
+const SKIN_DEPTHS: Depth[] = ['farArm.body', 'nearArm.body', 'torso.body', 'neck', 'head.body', 'farLeg.body', 'nearLeg.body'];
+
+/**
+ * Our body's own skin, where it shows beside her pieces (the far shoulder, the neck, a hand), in her
+ * skin's tones: she is painted in two, the player's skin and her shadow, in her black line; our female
+ * body shades skin in a line, a deep shadow and a shadow of its own. So its line becomes hers and both
+ * its shadows her one shadow (moved as far as the player moved her skin). Her forearms are sleeved in
+ * her guards, which lie a pixel or two off our forearms: what shows of our forearm beside them is
+ * painted in the guard's darkest navy, never as bare skin.
+ */
+function paintBodySkin(g: DrawCtx, cloth: string): void {
+  const skin = g.look.skin || SAYA_SKIN;
+  const line = g.m(SAYA_LINE, 'flat');
+  const shadow = g.m(retintHex(SAYA_SKIN_SHADOW, SAYA_SKIN, skin), 'flat');
+  const base = g.m(skin, 'flat');
+  const sleeve = g.m(retintHex(SAYA_SLEEVE, SAYA_CLOTH, cloth), 'flat');
+  const fore = [partIndex('forearmN'), partIndex('forearmF')];
+  for (const d of SKIN_DEPTHS) {
+    const L = g.L(d);
+    if (!L.used) continue;
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (L.mat[i] !== g.skin) continue;
+      const sh = L.shade[i];
+      L.mat[i] = sh <= 0 ? line : fore.includes(L.part[i]) ? sleeve : sh <= 2 ? shadow : base;
+    }
+  }
 }
 
 type Zone = 'strap' | 'back' | 'band' | 'skin';
 
 /** The glove zone `along` fine pixels from the wrist cell's middle toward the fingers, on that hand (null: bare). */
-function gloveZone(s: Side, along: number): Zone | null {
-  const zones = SAYA_GLOVE_ZONES[s];
+function gloveZone(zones: (typeof SAYA_GLOVE_ZONES)[keyof typeof SAYA_GLOVE_ZONES], along: number): Zone | null {
   let zone: Zone | null = null;
   for (const [from, z] of zones) if (along >= from) zone = z;
   return along < zones[0][0] ? null : zone;
 }
 
+const GLOVES_ID = 'hands_shade_fingerless';
+
 /**
- * Her fingerless gloves on our hand pictures, whatever the pose: each hand is drawn as the body draws
- * it, and the pixels from the wrist to the knuckles are painted in her glove (the strap, the back of
- * the hand, the red band) by how far they lie along the hand picture, each shade one of her tones. The
- * near hand's fingers past the band stay the body's own hand; the far hand is only the strap, its fist
- * in her own skin (lit on the knuckles as she has it, in the player's skin).
+ * Her own fist on this hand, when the hand is a fist (holding her sword or not) on a female body: her
+ * near glove or her far fist, his pixels, riding the forearm under its cuff as she drew them.
+ */
+function ownFist(g: DrawCtx, s: Side): PaintedPiece | null {
+  if (!isFemaleBody(g.rig.body)) return null;
+  const { kind } = handPose(g, s);
+  if (s === 'N') return kind === 'grip' || kind === 'fist' ? SAYA_GLOVE_N : null;
+  return kind === 'fist' ? SAYA_HAND_F : null;
+}
+
+/**
+ * Where her sword's grip passes through her near glove (rig units), when she wears her gloves on a
+ * female body: the middle of her fist (SAYA_GRIP_N), turned with the forearm as the glove is, so the
+ * fist closes round the grip with the pommel above it and the cup below. Null otherwise (the sword
+ * then grips at the hand joint, as every weapon does).
+ */
+export function sayaGrip(g: DrawCtx): Vec | null {
+  if (g.look.slots.hands?.id !== GLOVES_ID || !isFemaleBody(g.rig.body)) return null;
+  const { elbow, wrist } = armJoints(g.rig, 'N');
+  const a = ((segAngle(elbow, wrist) - SAYA_GLOVE_N.angle) * Math.PI) / 180;
+  const [dx, dy] = SAYA_GRIP_N;
+  const x = Math.floor(elbow.x * RES) + dx * Math.cos(a) - dy * Math.sin(a);
+  const y = Math.floor(elbow.y * RES) + dx * Math.sin(a) + dy * Math.cos(a);
+  return v((Math.round(x) + 0.5) / RES, (Math.round(y) + 0.5) / RES);
+}
+
+/**
+ * Her fingerless gloves. A fist on a female body is her own (ownFist): our hand under it is taken
+ * away and her fist stamped on the forearm. Any other hand is our hand picture, whatever the pose:
+ * drawn as the body draws it, the pixels from the wrist to the knuckles painted in her glove (the
+ * strap, the back of the hand, the red band) by how far they lie along the hand picture, each shade
+ * one of her tones. The near hand's fingers past the band stay the body's own hand; the far hand is
+ * only the strap, the hand in her own skin (in the player's skin).
  */
 function drawShadeGloves(g: DrawCtx, glove: string, trim: string, skin: string): void {
   const tone = (hex: string, from: string, to: string) => g.m(retintHex(hex, from, to), 'flat');
   for (const s of ['F', 'N'] as Side[]) {
     const part: PartId = s === 'N' ? 'handN' : 'handF';
+    const fist = ownFist(g, s);
+    if (fist) {
+      const body = g.L(armDepth(s, 'body'));
+      const hand = partIndex(part);
+      for (let i = 0; i < GRID * GRID; i++) {
+        if (body.mat[i] >= 0 && body.part[i] === hand) {
+          body.mat[i] = -1;
+          body.flags[i] |= F_NO_EDGE;
+        }
+      }
+      const { elbow, wrist } = armJoints(g.rig, s);
+      // Our far arm hangs about five pixels nearer the body than hers, so her far fist, hanging at
+      // rest, would fall behind her skirt's flare: it is drawn over it, whole, as she shows it.
+      const deg = segAngle(elbow, wrist);
+      const atRest = s === 'F' && handPose(g, s).rot === 0 && deg > 45 && deg < 135;
+      stampPiece(g, atRest ? 'farHand.front' : armDepth(s, 'armor'), fist, elbow, deg, part, shadeColor(glove, trim, SAYA_PLATE, skin));
+      continue;
+    }
     const tmp = new Layer();
     handDraw(g, tmp, s, { mat: 0, part });
     const { kind, rot } = handPose(g, s);
+    // an open or pointing near hand on a female body (his small hands) keeps its fingers bare below the band
+    const zones = SAYA_GLOVE_ZONES[s === 'N' && isFemaleBody(g.rig.body) && (kind === 'open' || kind === 'point') ? 'Nopen' : s];
     const w = armJoints(g.rig, s).wrist;
     const wx = Math.floor(w.x * RES) + 0.5;
     const wy = Math.floor(w.y * RES) + 0.5;
@@ -103,7 +189,7 @@ function drawShadeGloves(g: DrawCtx, glove: string, trim: string, skin: string):
       if (tmp.mat[i] < 0) continue;
       const x = i % GRID;
       const y = (i / GRID) | 0;
-      const zone = gloveZone(s, (x + 0.5 - wx) * dx + (y + 0.5 - wy) * dy);
+      const zone = gloveZone(zones, (x + 0.5 - wx) * dx + (y + 0.5 - wy) * dy);
       if (!zone) continue;
       L.set(x, y, tones[zone][Math.min(tmp.shade[i], 4)], 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
     }

@@ -39,16 +39,27 @@ where our body is a pixel wider than hers.
                    (NEAR_ARM), on our near arm.
   the far arm      SAYA_UPPER_F and SAYA_FORE_F: her far arm hangs about four pixels further out than
                    ours, so both pieces are laid with her elbow (139, 166) on ours. Her forearm is two
-                   rows longer than ours: two of its middle rows (171 and 173, the same as their
-                   neighbours) are left out so her cuff ends at our wrist.
-  the gloves       our hand pictures for every pose (grip, fist, open, pointing, relaxed, cradling),
-                   painted in her glove by how far each pixel lies from the wrist along the hand, as
-                   she wears it: on the near hand a dark strap row, navy and the red band over the
-                   knuckles, the fingers bare (her rows 177-183 under her near wrist, on our smaller
-                   hand two of her four navy rows); on the far hand the brown strap, then her fist
-                   bare in her own skin, lit on its knuckles (her rows 178-183: the red row over the
-                   strap is the forearm guard's cuff).
-                   Each picture shade is one of her tones (GLOVE_TONES); her skin follows the player's.
+                   rows longer than ours and is kept whole: her cuff ends two rows below our wrist, so
+                   her far arm is as long as she drew it.
+  the fists        her own fists, her pixels, on the female bodies, riding the forearm under its cuff:
+                   SAYA_GLOVE_N, her near glove (rows 178-183: the dark navy row under the cuff, three
+                   navy rows, the red band over the knuckles, her line under it), the fist that holds
+                   her sword (its grip passes through GRIP_N, tools/refs/saya_rig.py); SAYA_HAND_F,
+                   her far fist (rows 178-184: the brown strap, then her bare fist in her skin, lit on
+                   its knuckles). They take the place of our hand when it is a fist (holding or not);
+                   our hand under them is taken away. Filled: on the near glove the bugged sword's
+                   brown grip (x 111-113, rows 179-183) is her navy and her line continued.
+  the gloves       for the other hands (open, pointing, relaxed, cradling) and on the other bodies, our
+                   hand pictures painted in her glove by how far each pixel lies from the wrist along
+                   the hand, as she wears it: on the near hand a dark strap row, navy and the red band
+                   over the knuckles, the fingers bare; on the far hand the brown strap, then the hand
+                   bare in her own skin. Each picture shade is one of her tones (GLOVE_TONES); her skin
+                   follows the player's.
+
+Our body's own skin, where it shows beside her pieces (the far shoulder, the neck, a hand), is painted
+in her skin's two tones and her line (SAYA_LINE, SAYA_SKIN_SHADOW): our body shades skin in three tones
+of its own, hers in two. Her forearms are sleeved in her guards, which lie a pixel or two off ours: what
+shows of our forearm beside them is painted in her guards' darkest navy (SAYA_SLEEVE).
 
 The navy, the red and the cream are the item's colour slots (Cloth, Trim, Plate; KIND says which tone is
 which): at her colours every pixel is hers; another colour shifts each of her shades as far from it as
@@ -195,21 +206,44 @@ PIECES = [
          '.0000990',  # 166
      ]),
     ('SAYA_FORE_F', 'The far forearm guard: the red elbow band, navy with its red stripe outside, the red cuff.',
-     'elbowF', ('elbowF', 'wristF'), (136, 167), FAR_ARM, (171, 173), [
+     'elbowF', ('elbowF', 'wristF'), (136, 167), FAR_ARM, (), [
          # x 136.......147
          '09bb0000....',  # 167
          '090022000...',  # 168
          '002200i20...',  # 169
          '.000ii220...',  # 170
-         '.00b422i20..',  # 171 (left out)
+         '.00b422i20..',  # 171
          '.0022cci80..',  # 172
-         '..022cc2i0..',  # 173 (left out)
+         '..022cc2i0..',  # 173
          '...022cci20.',  # 174
          '...0222c2i0.',  # 175
          '....022ii00.',  # 176
          '....0bb00620',  # 177
      ]),
+    ('SAYA_GLOVE_N', 'Her near glove, the fist that holds her sword: dark navy under the cuff, navy, the red band over the knuckles.',
+     'elbowN', ('elbowN', 'wristN'), (105, 178), NEAR_ARM, (), [
+         # x 105...112
+         '.066c60.',  # 178 under her cuff
+         '026ccc60',  # 179 x 111-112: the bugged grip, filled
+         '0i6ccc60',  # 180 x 111-112: the bugged grip, filled
+         '00iccc60',  # 181 x 111: the bugged grip, filled
+         '000iii0.',  # 182 the red band; x 106: the bugged grip, filled
+         '.0000060',  # 183 her line under it; x 107: the bugged grip, filled
+     ]),
+    ('SAYA_HAND_F', 'Her far fist: the brown strap, then her bare fist in her skin, lit on its knuckles.',
+     'elbowF', ('elbowF', 'wristF'), (141, 178), FAR_ARM, (), [
+         # x 141...148
+         '0055ec0.',  # 178 the strap
+         '055g0c20',  # 179
+         '00D10ai0',  # 180 her fist
+         '0vD0v080',  # 181
+         '0v0rrD0.',  # 182
+         '.0vkD0..',  # 183
+         '.0000...',  # 184
+     ]),
 ]
+# The middle of her near fist, where her sword's grip passes (tools/refs/saya_rig.py GRIP_N).
+GRIP_N = saya_rig.GRIP_N
 
 # The gloves, per hand: from `from` fine pixels along the hand (from the middle of the hand picture's
 # wrist cell toward the fingers) each zone takes over; None leaves the fingers bare. Her near glove under
@@ -220,9 +254,13 @@ PIECES = [
 # (rows 180-183: her lit tone D on the knuckles, her shadow v round them), so it is drawn in her skin
 # ('skin'); on our far hand, four or five pixels long, one strap row and the fist below it, as her fist
 # is twice as long as her strap.
+# An open or pointing near hand on a female body (her small hands, seven rows from the wrist to the
+# fingertips) wears it as her big picture shows her glove: one row of strap, one of navy and one of the
+# red band, the fingers below them bare, so the hand still reads as a hand ('Nopen').
 GLOVE_ZONES = {
     'N': [(0.5, 'strap'), (1.5, 'back'), (3.5, 'band'), (4.5, None)],
     'F': [(0.5, 'strap'), (1.5, 'skin')],
+    'Nopen': [(0.5, 'strap'), (1.5, 'back'), (2.5, 'band'), (3.5, None)],
 }
 # Her tones for each shade of our hand pictures: line, crease, shadow, base, light.
 GLOVE_TONES = {
@@ -238,9 +276,14 @@ SLOT_OF = {
     'cloth': ['#222338', '#272c48', '#374061', '#373b49'],
     'trim': ['#3f1e30', '#431527', '#5f1a29', '#6e212c', '#6f2f32', '#772930', '#7e3232', '#a73234', '#b63133'],
     'plate': ['#bfb2a7', '#ebe5d7'],
-    'skin': ['#d28771', '#f3bf9c'],
+    'skin': ['#d28771', '#eaac8c', '#f3bf9c'],
 }
 BASE = {'cloth': '#374061', 'trim': '#a73234', 'plate': '#ebe5d7', 'skin': '#f3bf9c'}
+# Her black line and the shadow of her skin: where our body's own skin shows beside her pieces (the far
+# shoulder, the arms' edges, the neck), it is painted in her two skin tones and her line, as hers is.
+LINE, SKIN_SHADOW = '#020102', '#d28771'
+# Her guards' darkest navy: what shows of our forearm beside her forearm guards is painted in it.
+SLEEVE = '#222338'
 
 OUT_DOC = (
     "// Saya's ninja top, arm guards and fingerless gloves, the owner's pixels 1:1 (tools/refs/saya-upper-from-ref.py\n"
@@ -333,7 +376,7 @@ def check(key):
         assert all(t in key for t in ts)
     for hexes in SLOT_OF.values():
         assert all(h in key.values() for h in hexes), hexes
-    for b in BASE.values():
+    for b in list(BASE.values()) + [LINE, SKIN_SHADOW, SLEEVE]:
         assert b in key.values()
 
 
@@ -370,7 +413,12 @@ def write_ts(path, key):
              f"export const SAYA_TRIM = '{BASE['trim']}';",
              f"export const SAYA_PLATE = '{BASE['plate']}';",
              "/** Her skin on the bare shoulder: the player's skin moves it as far. */",
-             f"export const SAYA_SKIN = '{BASE['skin']}';", '',
+             f"export const SAYA_SKIN = '{BASE['skin']}';",
+             "/** Her black line and her skin's shadow: our body's own skin, where it shows, is painted in them and her skin. */",
+             f"export const SAYA_LINE = '{LINE}';",
+             f"export const SAYA_SKIN_SHADOW = '{SKIN_SHADOW}';",
+             "/** Her guards' darkest navy: what shows of our forearm beside her forearm guards is painted in it. */",
+             f"export const SAYA_SLEEVE = '{SLEEVE}';", '',
              '/** Which slot recolours each of her colours (her line, the gold-brown rim and the strap stay; her skin follows the skin). */',
              "export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate' | 'skin'> = {"]
     for slot, hexes in SLOT_OF.items():
@@ -384,7 +432,7 @@ def write_ts(path, key):
               " * picture's wrist cell toward the fingers) each zone takes over; `null` leaves the fingers bare,",
               " * 'skin' paints them in her skin (the player's skin moves it).",
               ' */',
-              "export const SAYA_GLOVE_ZONES: Record<'N' | 'F', [number, 'strap' | 'back' | 'band' | 'skin' | null][]> = {"]
+              "export const SAYA_GLOVE_ZONES: Record<'N' | 'F' | 'Nopen', [number, 'strap' | 'back' | 'band' | 'skin' | null][]> = {"]
     for side, zones in GLOVE_ZONES.items():
         lines.append(f'  {side}: [' + ', '.join(f"[{at}, {('null' if z is None else repr(z))}]" for at, z in zones) + '],')
     lines += ['};', '',
@@ -393,6 +441,15 @@ def write_ts(path, key):
     for k, ts in GLOVE_TONES.items():
         lines.append(f"  {k}: [{', '.join(repr(key[t]) for t in ts)}],")
     lines += ['} as const;', '']
+    glove = next(p for p in PIECES if p[0] == 'SAYA_GLOVE_N')
+    gx, gy = pivot(glove)
+    x0, y0 = glove[4]
+    mx, my = glove[5]
+    lines += ['/**',
+              " * Where her sword's grip passes through SAYA_GLOVE_N: the cell of the middle of her fist, from the",
+              " * piece's pivot (the near elbow's cell), at the piece's angle.",
+              ' */',
+              f'export const SAYA_GRIP_N: [number, number] = [{GRIP_N[0] - mx - x0 - gx}, {GRIP_N[1] - my - y0 - gy}];', '']
     text = '\n'.join(lines)
     tmp = path + '.tmp'
     with open(tmp, 'w') as f:

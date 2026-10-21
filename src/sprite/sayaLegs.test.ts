@@ -32,7 +32,7 @@ describe('Shade Wraps', () => {
     assert.equal(hexAt(f.rgba, 118, 199), '#a63133'); // near shin's red band
     assert.equal(hexAt(f.rgba, 114, 216), '#374061'); // near shoe
     assert.equal(hexAt(f.rgba, 113, 217), '#3e2a25'); // near sole
-    assert.equal(hexAt(f.rgba, 139, 204), '#374061'); // far shoe's plate
+    assert.equal(hexAt(f.rgba, 139, 210), '#374061'); // far shoe's plate, where he drew it
   });
 
   it('recolours cloth, band and shoe from the colour slots and keeps his black line and sole', () => {

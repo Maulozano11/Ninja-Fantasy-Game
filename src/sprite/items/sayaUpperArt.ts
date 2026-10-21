@@ -9,6 +9,11 @@ export const SAYA_TRIM = '#a73234';
 export const SAYA_PLATE = '#ebe5d7';
 /** Her skin on the bare shoulder: the player's skin moves it as far. */
 export const SAYA_SKIN = '#f3bf9c';
+/** Her black line and her skin's shadow: our body's own skin, where it shows, is painted in them and her skin. */
+export const SAYA_LINE = '#020102';
+export const SAYA_SKIN_SHADOW = '#d28771';
+/** Her guards' darkest navy: what shows of our forearm beside her forearm guards is painted in it. */
+export const SAYA_SLEEVE = '#222338';
 
 /** Which slot recolours each of her colours (her line, the gold-brown rim and the strap stay; her skin follows the skin). */
 export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate' | 'skin'> = {
@@ -28,6 +33,7 @@ export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate' | 'skin'> = {
   '#bfb2a7': 'plate',
   '#ebe5d7': 'plate',
   '#d28771': 'skin',
+  '#eaac8c': 'skin',
   '#f3bf9c': 'skin',
 };
 
@@ -218,7 +224,9 @@ export const SAYA_FORE_F: PaintedPiece = {
     '090022000...',
     '002200i20...',
     '.000ii220...',
+    '.00b422i20..',
     '.0022cci80..',
+    '..022cc2i0..',
     '...022cci20.',
     '...0222c2i0.',
     '....022ii00.',
@@ -227,6 +235,7 @@ export const SAYA_FORE_F: PaintedPiece = {
   colors: {
     '0': '#020102',
     '2': '#222338',
+    '4': '#3f1e30',
     '6': '#272c48',
     '8': '#373b49',
     '9': '#6e212c',
@@ -236,14 +245,67 @@ export const SAYA_FORE_F: PaintedPiece = {
   },
 };
 
+/** Her near glove, the fist that holds her sword: dark navy under the cuff, navy, the red band over the knuckles. */
+export const SAYA_GLOVE_N: PaintedPiece = {
+  pivot: [8, -12],
+  angle: 103.11,
+  rows: [
+    '.066c60.',
+    '026ccc60',
+    '0i6ccc60',
+    '00iccc60',
+    '000iii0.',
+    '.0000060',
+  ],
+  colors: {
+    '0': '#020102',
+    '2': '#222338',
+    '6': '#272c48',
+    'c': '#374061',
+    'i': '#a73234',
+  },
+};
+
+/** Her far fist: the brown strap, then her bare fist in her skin, lit on its knuckles. */
+export const SAYA_HAND_F: PaintedPiece = {
+  pivot: [-3, -12],
+  angle: 57.69,
+  rows: [
+    '0055ec0.',
+    '055g0c20',
+    '00D10ai0',
+    '0vD0v080',
+    '0v0rrD0.',
+    '.0vkD0..',
+    '.0000...',
+  ],
+  colors: {
+    '0': '#020102',
+    '1': '#13131e',
+    '2': '#222338',
+    '5': '#3e2b25',
+    '8': '#373b49',
+    'a': '#6f2f32',
+    'c': '#374061',
+    'e': '#63483b',
+    'g': '#7b513c',
+    'i': '#a73234',
+    'k': '#8e5b3a',
+    'r': '#ab7740',
+    'v': '#d28771',
+    'D': '#eaac8c',
+  },
+};
+
 /**
  * The gloves, per hand: from `from` fine pixels along the hand (from the middle of the hand
  * picture's wrist cell toward the fingers) each zone takes over; `null` leaves the fingers bare,
  * 'skin' paints them in her skin (the player's skin moves it).
  */
-export const SAYA_GLOVE_ZONES: Record<'N' | 'F', [number, 'strap' | 'back' | 'band' | 'skin' | null][]> = {
+export const SAYA_GLOVE_ZONES: Record<'N' | 'F' | 'Nopen', [number, 'strap' | 'back' | 'band' | 'skin' | null][]> = {
   N: [[0.5, 'strap'], [1.5, 'back'], [3.5, 'band'], [4.5, null]],
   F: [[0.5, 'strap'], [1.5, 'skin']],
+  Nopen: [[0.5, 'strap'], [1.5, 'back'], [2.5, 'band'], [3.5, null]],
 };
 
 /** Her tones for our hand pictures' shades (line, crease, shadow, base, light), per zone and side. */
@@ -254,3 +316,9 @@ export const SAYA_GLOVE_TONES = {
   strapF: ['#020102', '#3e2b25', '#3e2b25', '#63483b', '#7b513c'],
   skinF: ['#020102', '#d28771', '#d28771', '#eaac8c', '#eaac8c'],
 } as const;
+
+/**
+ * Where her sword's grip passes through SAYA_GLOVE_N: the cell of the middle of her fist, from the
+ * piece's pivot (the near elbow's cell), at the piece's angle.
+ */
+export const SAYA_GRIP_N: [number, number] = [-4, 15];

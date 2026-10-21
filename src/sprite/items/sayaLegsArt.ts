@@ -28,9 +28,9 @@ export const SHADE_SKIN_N: PaintedPiece = {
   angle: 87.21,
   rows: [
     'kzzzzzzzzzzzzzk',
-    'kzzzzzzSSSSzzzk',
-    'kzzzzzzSSSSzzzk',
-    'kzzzzzSSSS',
+    'kzzSSSSSSSSzzzk',
+    'kzzSSSSSSSSzzzk',
+    'kzzSSSSSSS',
   ],
   colors: {
     k: '#010102',
@@ -182,6 +182,12 @@ export const SHADE_SHIN_F: PaintedPiece = {
     'kuuuukueeeuk',
     'kuuuuukkeek',
     'kuuuuuuukkk',
+    'kruuuuuurkk',
+    'kqqukrrrqk',
+    'kuurrkkkuk',
+    'kuuurruuuk',
+    'kqqruuuuuk',
+    '.kuurruuk',
     '.kuuuuruk',
     '..kuuurrk',
     '..kuqquek',
@@ -200,7 +206,7 @@ export const SHADE_SHIN_F: PaintedPiece = {
 
 /** Her far armoured shoe: red trim over the instep, her brown sole. */
 export const SHADE_FOOT_F: PaintedPiece = {
-  pivot: [4, 2],
+  pivot: [4, -4],
   angle: 106.19,
   rows: [
     'kkukkrueek',

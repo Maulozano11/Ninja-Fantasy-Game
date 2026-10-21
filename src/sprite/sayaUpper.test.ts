@@ -4,9 +4,14 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { fitsBody, getItem } from './catalog';
 import { renderSprite } from './compose';
+import { retintHex } from './color';
+import { FEMALE_SKIN } from './femaleBodyArt';
 import { frameCount, rigPoseFor } from './rig';
-import { SAYA_FORE_F, SAYA_FORE_N, SAYA_PLATE, SAYA_TOP, SAYA_TOP_LOW, SAYA_UPPER_F, SAYA_UPPER_N } from './items/sayaUpperArt';
-import { RES } from './raster';
+import { SAYA_GLOVE_N, SAYA_HAND_F, SAYA_FORE_F, SAYA_FORE_N, SAYA_PLATE, SAYA_TOP, SAYA_TOP_LOW, SAYA_UPPER_F, SAYA_UPPER_N } from './items/sayaUpperArt';
+import { SAYA_SWORD_GUARD } from './items/sayaSwordArt';
+import { segAngle } from './painted';
+import { GRID, RES } from './raster';
+import { CAMP_POSES, MOVE_POSES, SPRITE_POSES } from './types';
 import type { BodyType, SlotId, SpriteAppearance, SpritePose } from './types';
 
 const look = (body: BodyType, slots: Partial<Record<SlotId, { id: string; colors: string[] }>>): SpriteAppearance => ({
@@ -22,6 +27,12 @@ const look = (body: BodyType, slots: Partial<Record<SlotId, { id: string; colors
   pixelEdits: [],
 });
 const SAYA = { armor: { id: 'armor_crimson_shade', colors: [] }, hands: { id: 'hands_shade_fingerless', colors: [] }, held: { id: 'held_katana', colors: [] } };
+
+/** The colour of a frame's pixel. */
+const hexAt = (rgba: Uint8ClampedArray, x: number, y: number) => {
+  const i = (y * GRID + x) * 4;
+  return '#' + [0, 1, 2].map((k) => rgba[i + k].toString(16).padStart(2, '0')).join('');
+};
 
 /** How many pixels of a frame are exactly this colour. */
 function count(rgba: Uint8ClampedArray, hex: string): number {
@@ -43,7 +54,7 @@ describe("Saya's top, arm guards and gloves", () => {
   });
 
   it('keeps every piece a whole picture: even rows, every character one of her colours', () => {
-    for (const p of [SAYA_TOP, SAYA_TOP_LOW, SAYA_UPPER_N, SAYA_FORE_N, SAYA_UPPER_F, SAYA_FORE_F]) {
+    for (const p of [SAYA_TOP, SAYA_TOP_LOW, SAYA_UPPER_N, SAYA_FORE_N, SAYA_UPPER_F, SAYA_FORE_F, SAYA_GLOVE_N, SAYA_HAND_F]) {
       const w = p.rows[0].length;
       assert.ok(p.rows.every((r) => r.length === w));
       for (const r of p.rows) for (const ch of r) if (ch !== '.') assert.match(p.colors[ch] ?? '', /^#[0-9a-f]{6}$/);
@@ -57,14 +68,45 @@ describe("Saya's top, arm guards and gloves", () => {
     assert.equal(count(recoloured, SAYA_PLATE), 0);
   });
 
-  it('covers the long torso: the top on the neck reaches down over the top on the hips', () => {
-    // At rest the two pieces are not turned: the upper one's last row lies at or below the lower one's
-    // first, so no skin shows between her collar and her belts.
+  it('covers the long torso in every pose: the top on the neck reaches down over the top on the hips', () => {
+    // Both pieces turn with the torso (pelvis to neck), each about its own joint, so in the pieces' own
+    // rows the pelvis lies straight below the neck: the upper piece's last row must reach the lower
+    // piece's first, or skin would show between her collar and her belts (crouching, throwing, down).
+    const poses = [...new Set<SpritePose>([...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES])];
     for (const body of ['female', 'slender'] as BodyType[]) {
-      const { rig } = renderSprite(look(body, SAYA), 'idle', 0);
-      const bottom = Math.floor(rig.neck.y * RES) - SAYA_TOP.pivot[1] + SAYA_TOP.rows.length - 1;
-      const top = Math.floor(rig.pelvis.y * RES) - SAYA_TOP_LOW.pivot[1];
-      assert.ok(bottom >= top + 1, `${body}: upper piece ends at ${bottom}, lower starts at ${top}`);
+      const a = look(body, SAYA);
+      for (const pose of poses) {
+        const n = frameCount(rigPoseFor(pose, 'runes', 'held_katana'));
+        for (let f = 0; f < n; f++) {
+          const { rig } = renderSprite(a, pose, f);
+          const t = ((segAngle(rig.pelvis, rig.neck) - SAYA_TOP.angle) * Math.PI) / 180;
+          const dx = Math.floor(rig.pelvis.x * RES) - Math.floor(rig.neck.x * RES);
+          const dy = Math.floor(rig.pelvis.y * RES) - Math.floor(rig.neck.y * RES);
+          const down = -dx * Math.sin(t) + dy * Math.cos(t); // the pelvis below the neck, in the pieces' rows
+          const bottom = SAYA_TOP.rows.length - 1 - SAYA_TOP.pivot[1];
+          const top = down - SAYA_TOP_LOW.pivot[1];
+          // they meet or overlap: the lower piece's first row at most half a row below the upper's last
+          // (the raised arm of 'victory' stretches the torso so far that they share one row)
+          assert.ok(bottom + 0.5 >= top, `${body} ${pose} ${f}: upper piece ends at ${bottom}, lower starts at ${top.toFixed(2)}`);
+        }
+      }
+    }
+  });
+
+  it('closes her own fists at rest: her near glove round the sword, her far fist under its strap', () => {
+    const f = renderSprite(look('female', { ...SAYA, held: { id: 'held_shade_saber', colors: [] } }), 'idle', 0).rgba;
+    for (const x of [108, 109, 110]) assert.equal(hexAt(f, x, 178), '#a73234', `near glove's red band at ${x}`);
+    assert.equal(hexAt(f, 109, 176), '#374061'); // the glove's navy over the grip's middle
+    assert.equal(hexAt(f, 105, 172), SAYA_SWORD_GUARD); // the pommel above the fist
+    assert.equal(hexAt(f, 140, 174), '#63483b'); // the far fist's strap, over the skirt's flare
+  });
+
+  it("paints our body's own skin in her two tones", () => {
+    const skin = '#f6c7a6';
+    const ours = [FEMALE_SKIN.deep, FEMALE_SKIN.shadow].map((c) => retintHex(c, FEMALE_SKIN.base, skin));
+    for (const pose of ['idle', 'attack', 'run', 'sit', 'throw', 'victory'] as SpritePose[]) {
+      const f = renderSprite(look('female', SAYA), pose, 0).rgba;
+      for (const c of ours) assert.equal(count(f, c), 0, `${pose}: our shadow ${c}`);
     }
   });
 

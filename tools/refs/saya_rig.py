@@ -6,13 +6,14 @@ tools/refs/female-body-from-ref.py: a longer torso, head scale 0.70, narrower sh
 laid on our 256 x 256 frame at AT, her soles on ours) it stands like this:
 
 - from the hips down it is where he drew her: her skirt's hem, her knee pads and her shoes fall on our
-  thighs, knees and feet (the far foot still about six rows higher than his);
+  thighs, knees and feet (our far ankle stands six rows higher than his, so her far leg, kept as long as
+  he drew it, reaches six rows below it);
 - from the neck up it is three or four rows higher than his picture (the head two): the torso between
   is longer than hers.
 
-So her pieces from the neck up (scarf, top, arm guards) are laid that much higher than he drew them
-(each on its joint as he drew it), her skirt, belts and legs where he drew them, and her top is longer
-by the rows between: what shows of it there continues his rows (saya-upper-from-ref.py).
+So her pieces from the neck up (scarf, top, arm guards, fists) are laid that much higher than he drew
+them (each on its joint as he drew it), her skirt, belts and legs where he drew them, and her top is
+longer by the rows between: what shows of it there continues his rows (saya-upper-from-ref.py).
 
 JOINTS are printed by `npx tsx tools/refs/heroine-idle.mts <out>` (the female's), in fine pixels.
 """
@@ -40,6 +41,11 @@ JOINTS = {
     'ankleN': (117.56, 211.62),
     'ankleF': (136.58, 205.06),
 }
+
+# The middle of her near glove's fist (tools/refs/saya-upper-from-ref.py SAYA_GLOVE_N) at idle frame 0, a
+# cell of our frame: her sword's grip passes through it (tools/refs/saya-sword-from-ref.py), so the fist
+# closes round the grip with the pommel above it and the guard cup below, as she holds it.
+GRIP_N = (109, 177)
 
 # Our head's scale on the female body (rig.ts BODY_PARAMS headScale): the face anchor's offset from the
 # head joint scales with it.

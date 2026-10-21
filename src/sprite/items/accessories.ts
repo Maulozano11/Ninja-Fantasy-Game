@@ -10,6 +10,7 @@ import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI 
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
 import { SAYA_SWORD_BLADE, SAYA_SWORD_GUARD } from './sayaSwordArt';
 import { drawSayaSaber } from './sayaSword';
+import { sayaGrip } from './sayaUpper';
 
 /** The angle Saya's saber rides on her back (see held_shade_saber). */
 const SAYA_STOW = 72;
@@ -389,8 +390,9 @@ export const HELD_ITEMS: ItemDef[] = [
       // down behind her near side and its point stays behind her.
       if (handsBusy(g)) drawSayaSaber(g, 'backGear', backGrip(g, SAYA_STOW), backAngle(g, SAYA_STOW), blade, guard, false);
       else if (handsLimp(g)) drawSayaSaber(g, 'nearArm.held', droppedGrip(g, 0.7), -86, blade, guard, false);
-      // Its grip crosses the fist at the hand joint, as the flame longsword's does.
-      else if (!handsReleased(g)) drawSayaSaber(g, 'nearArm.held', g.rig.handN, swordAngle(g), blade, guard, true);
+      // Its grip crosses the fist at the hand joint, as the flame longsword's does; in her own glove
+      // (sayaGrip) it passes through the middle of her fist.
+      else if (!handsReleased(g)) drawSayaSaber(g, 'nearArm.held', sayaGrip(g) ?? g.rig.handN, swordAngle(g), blade, guard, true);
     },
   },
   {

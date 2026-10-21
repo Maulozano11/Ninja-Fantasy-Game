@@ -141,8 +141,8 @@ export const SHADE_WRAPS: ItemDef = {
   bodies: ['female', 'slender'],
   draw: (g, [cloth, band, boot]) => {
     // Her legs from the owner's Saya picture at our scale, on our female leg: on the near leg the bare
-    // thigh and the legging above the knee turn with the thigh about the knee (on the far leg, shorter
-    // than his, they lie under her skirt's hem below our knee, so they turn with the shin), the knee
+    // thigh and the legging above the knee turn with the thigh about the knee (on the far leg they lie
+    // about our knee, under her skirt's hem, so they turn with the shin), the knee
     // pad and the wrapped shin turn with the shin about the ankle, and the shoe stays flat on the
     // ground like our feet. The leg goes below the knee (trousers tuck in). The bare thigh is drawn into the
     // body's layer over our thigh, in our skin, so trousers still cover it. His navy, red and the shoe's navy follow

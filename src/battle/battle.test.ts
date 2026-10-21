@@ -1038,7 +1038,7 @@ describe('Kōton: Modular Architecture', () => {
   });
 });
 
-describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
+describe('Ryusei: Weapon Nodes, Shooting-Star Thrust, Spatial Swap', () => {
   const ryusei = (over: Partial<ShinobiCharacter> = {}) => hero({ id: 'r', name: 'Solen', clan: 'Ryusei', ...over });
   /** A Ryusei at (8.25, 10.25) on its turn, the rogue 6 m away at (14.25, 10.25). */
   const ryuseiTurn = (over: Partial<BattleSetup> = {}): BattleState => turnOf(createBattle(setup({ party: [{ character: ryusei(), pos: { x: 8, z: 10 } }], ...over })).state, 'r');
@@ -1096,7 +1096,7 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.deepEqual(ok(warp(atBlock, atBlock.nodes[0].pos)).state.units.r.pos, { x: 11.25, z: 10.25 });
   });
 
-  it('Warp Strike: bonus action, 2 chakra, to its own Node within 18 m in sight, even through a metal wall', () => {
+  it('Shooting-Star Thrust: bonus action, 2 chakra, to its own Node within 18 m in sight, even through a metal wall', () => {
     const s = ryuseiTurn();
     s.nodes.push(node('n1', { x: 12.25, z: 13.25 }));
     // A click near the Node is enough.
@@ -1134,7 +1134,7 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.equal(warp(tent, { x: 43.2, z: 0.1 }).reason, 'noSight');
   });
 
-  it('Warp Strike lands at least 1 m from whoever stands on the Node, within 1.5 m of it (D15)', () => {
+  it('Shooting-Star Thrust lands at least 1 m from whoever stands on the Node, within 1.5 m of it (D15)', () => {
     const s = ryuseiTurn();
     const foe = s.units.rogue_0.pos;
     // A foe on the Node, on its centre or off it (within 0.75 m): the landing keeps 1 m from the foe,
@@ -1217,7 +1217,7 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
       assert.equal(out.state.units[id].cond.hidden, undefined, id);
       assert.ok(out.events.some((e) => e.t === 'condition' && e.unit === id && e.cond === 'hidden' && !e.on), id);
     };
-    // Warp Strike beside the rogue: the blow comes from behind, but not from hiding.
+    // Shooting-Star Thrust beside the rogue: the blow comes from behind, but not from hiding.
     const beside = structuredClone(s);
     beside.nodes.push(node('n1', s.units.rogue_0.pos));
     const warped = ok(warp(beside, s.units.rogue_0.pos));
@@ -1302,7 +1302,7 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.equal(swap(sneaking, 'rogue_0').reason, 'combatOnly');
   });
 
-  it('a Warp Strike and a Spatial Swap are played as a phase (the owner, 2026-10-21); a Body Flicker is not', () => {
+  it('a Shooting-Star Thrust and a Spatial Swap are played as a phase (the owner, 2026-10-21); a Body Flicker is not', () => {
     const s = ryuseiTurn({ party: [
       { character: ryusei(), pos: { x: 8, z: 10 } },
       { character: hero({ id: 'b', name: 'Bo' }), pos: { x: 11, z: 13 } },
@@ -1529,7 +1529,7 @@ describe('Northstar: Aura of Sovereignty, Command, Natural Submission', () => {
     assert.ok(a.turn.move < 0.71);
     // The move event comes before the slow, so the screen shows it at the edge.
     assert.ok(kinds(run.events).indexOf('move') < kinds(run.events).indexOf('slowed'));
-    // Warp Strike into it: from 9 m of movement to 4.5.
+    // Shooting-Star Thrust into it: from 9 m of movement to 4.5.
     const warp = start();
     warp.nodes.push({ id: 'n1', owner: 'a', pos: { x: 17.25, z: 10.25 } });
     const warped = ok(applyAction(warp, { type: 'jutsu', unit: 'a', jutsu: 'ryusei_warp', at: { x: 17.25, z: 10.25 } }));
@@ -1792,7 +1792,7 @@ describe('the counter cycle (docs/CLANS_DESIGN.md)', () => {
     assert.equal(foreseen(walled).rogue_0, undefined);
   });
 
-  it('Ryusei beats Kōton: Warp Strike goes through a metal wall', () => {
+  it('Ryusei beats Kōton: Shooting-Star Thrust goes through a metal wall', () => {
     const s = turnOf(createBattle(setup()).state, 'a');
     assert.equal(s.units.a.character?.clan, 'Ryusei');
     s.walls.push({ id: 'w1', kind: 'metal', a: { x: 10.5, z: 11 }, b: { x: 10.5, z: 15.5 }, hp: 20, maxHp: 20, owner: 'rogue_0' });
@@ -1816,7 +1816,7 @@ describe('the counter cycle (docs/CLANS_DESIGN.md)', () => {
     assert.equal(pv.adv, 'none');
   });
 
-  it('and Warp Strike\'s blow can\'t be evaded by a Mirai', () => {
+  it('and Shooting-Star Thrust\'s blow can\'t be evaded by a Mirai', () => {
     const s = turnOf(createBattle(setup()).state, 'a');
     s.nodes.push(node('n1', s.units.rogue_0.pos, 'a'));
     const warped = ok(applyAction(s, { type: 'jutsu', unit: 'a', jutsu: 'ryusei_warp', at: { ...s.units.rogue_0.pos } })).state;

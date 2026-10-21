@@ -47,6 +47,20 @@ const HALO_STEP = 4;
 const HALO_K = 0.62;
 /** How much darker the ribbon's edge is than its heart: white inside, blue on the rim, so it reads on bright grass too. */
 const RIM = 0.72;
+/**
+ * The deep blue line round the ribbon: its step of PHASE_RAMP and opacity, and the half width the
+ * ribbon beside it must have (it fades in over OUTLINE_IN more), so the thin cool end has none.
+ */
+const OUTLINE_STEP = 0;
+const OUTLINE_A = 0.85;
+const OUTLINE_MIN = 1.2;
+const OUTLINE_IN = 1.3;
+/** (d / r) ** 1.6 by (d / r) ** 2 in RIM_LUT steps: a power per pixel is the slow part of making a comet. */
+const RIM_LUT = 1024;
+const RIM_FALL = Float32Array.from({ length: RIM_LUT + 1 }, (_, i) => (i / RIM_LUT) ** 0.8);
+
+/** The comet's heat and halo fields while it is made (cometRaster), grown when a comet needs more room. */
+const field = { heat: new Float32Array(0), glow: new Float32Array(0), rad: new Float32Array(0) };
 
 /**
  * The comet's pixels. Each sample lights the pixels within its half width (hottest on its line,
@@ -71,28 +85,55 @@ export function cometRaster(samples: readonly CometSample[], alpha = 1, mask?: (
   const Y0 = Math.floor(y0);
   const w = Math.floor(x1) - X0 + 1;
   const h = Math.floor(y1) - Y0 + 1;
-  const heat = new Float32Array(w * h);
-  const glow = new Float32Array(w * h);
+  // Scratch fields, kept between comets (one is made every screen frame of a flight): cleared, not remade.
+  const n = w * h;
+  if (field.heat.length < n) {
+    field.heat = new Float32Array(n * 2);
+    field.glow = new Float32Array(n * 2);
+    field.rad = new Float32Array(n * 2);
+  }
+  const heat = field.heat;
+  const glow = field.glow;
+  const rad = field.rad;
+  rad.fill(0, 0, n);
+  heat.fill(0, 0, n);
+  glow.fill(0, 0, n);
   for (const s of samples) {
     if (s.v <= 0) continue;
     const r = Math.max(0.5, s.r);
     const reach = r + HALO;
-    for (let py = Math.floor(s.y - reach); py <= Math.floor(s.y + reach); py++)
+    const reach2 = reach * reach;
+    const r2 = r * r;
+    const gIn = s.v * HALO_K;
+    for (let py = Math.floor(s.y - reach); py <= Math.floor(s.y + reach); py++) {
+      const dy = py + 0.5 - s.y;
+      const dy2 = dy * dy;
+      if (dy2 > reach2) continue;
+      const row = (py - Y0) * w - X0;
       for (let px = Math.floor(s.x - reach); px <= Math.floor(s.x + reach); px++) {
-        const d = Math.hypot(px + 0.5 - s.x, py + 0.5 - s.y);
-        if (d > reach) continue;
-        const i = (py - Y0) * w + (px - X0);
-        if (d <= r) {
-          const c = s.v * (1 - RIM * (d / r) ** 1.6);
-          if (c > heat[i]) heat[i] = c;
+        const dx = px + 0.5 - s.x;
+        const d2 = dx * dx + dy2;
+        if (d2 > reach2) continue;
+        const i = row + px;
+        if (d2 <= r2) {
+          if (gIn > glow[i]) glow[i] = gIn;
+          if (r > rad[i]) rad[i] = r;
+          // Only a sample hotter than the pixel so far can change it (its heat there is at most s.v).
+          if (s.v > heat[i]) {
+            const c = s.v * (1 - RIM * RIM_FALL[Math.round((d2 / r2) * RIM_LUT)]);
+            if (c > heat[i]) heat[i] = c;
+          }
+        } else if (gIn > glow[i]) {
+          const g = gIn * (1 - (Math.sqrt(d2) - r) / HALO);
+          if (g > glow[i]) glow[i] = g;
         }
-        const g = s.v * HALO_K * (d <= r ? 1 : 1 - (d - r) / HALO);
-        if (g > glow[i]) glow[i] = g;
       }
+    }
   }
-  const core = new Uint8ClampedArray(w * h * 4);
-  const halo = new Uint8ClampedArray(w * h * 4);
+  const core = new Uint8ClampedArray(n * 4);
+  const halo = new Uint8ClampedArray(n * 4);
   const hc = PHASE_RAMP[HALO_STEP];
+  const a1 = Math.min(1, alpha);
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
       const i = y * w + x;
@@ -100,15 +141,17 @@ export function cometRaster(samples: readonly CometSample[], alpha = 1, mask?: (
       const m = mask ? mask(X0 + x + 0.5, Y0 + y + 0.5) : 1;
       if (m <= 0) continue;
       const c = heat[i] * m;
-      const step = STEPS.find((st) => c >= st[0]);
-      if (step) {
+      let k = 0;
+      while (k < STEPS.length && c < STEPS[k][0]) k++;
+      if (k < STEPS.length) {
+        const step = STEPS[k];
         const col = PHASE_RAMP[step[1]];
         core[i * 4] = col[0];
         core[i * 4 + 1] = col[1];
         core[i * 4 + 2] = col[2];
-        core[i * 4 + 3] = Math.round(255 * step[2] * Math.min(1, alpha));
+        core[i * 4 + 3] = Math.round(255 * step[2] * a1);
       }
-      const g = glow[i] * m * Math.min(1, alpha);
+      const g = glow[i] * m * a1;
       if (g > 0.02) {
         halo[i * 4] = hc[0];
         halo[i * 4 + 1] = hc[1];
@@ -116,7 +159,33 @@ export function cometRaster(samples: readonly CometSample[], alpha = 1, mask?: (
         halo[i * 4 + 3] = Math.round(255 * Math.min(1, g));
       }
     }
+  // A deep blue line round the hot part of the ribbon, like the black line round a sprite: the tail
+  // keeps its shape over the ninja's own blue light body and over pale ground. Its thin cool end has
+  // none (a one-pixel thread stays one pixel).
+  const ol = PHASE_RAMP[OUTLINE_STEP];
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (core[i * 4 + 3] > 0) continue;
+      let next = 0;
+      if (x > 0) next = Math.max(next, wide(rad, i - 1, core));
+      if (x < w - 1) next = Math.max(next, wide(rad, i + 1, core));
+      if (y > 0) next = Math.max(next, wide(rad, i - w, core));
+      if (y < h - 1) next = Math.max(next, wide(rad, i + w, core));
+      if (next <= 0) continue;
+      const m = mask ? mask(X0 + x + 0.5, Y0 + y + 0.5) : 1;
+      if (m <= 0) continue;
+      core[i * 4] = ol[0];
+      core[i * 4 + 1] = ol[1];
+      core[i * 4 + 2] = ol[2];
+      core[i * 4 + 3] = Math.round(255 * OUTLINE_A * Math.min(1, (next - OUTLINE_MIN) / OUTLINE_IN) * m * a1);
+    }
   return { x: X0, y: Y0, w, h, core, halo };
+}
+
+/** How wide the ribbon is at its pixel `i`, when it is drawn there and wide enough to have the deep blue line beside it (0 otherwise). */
+function wide(rad: Float32Array, i: number, core: Uint8ClampedArray): number {
+  return core[i * 4 + 3] > 0 && rad[i] > OUTLINE_MIN ? rad[i] : 0;
 }
 
 /** The comet's width and heat `u` of the way from its head (0) to its end (1): wide and white, tapering to one dim pixel. */

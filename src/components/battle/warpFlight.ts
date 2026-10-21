@@ -80,7 +80,7 @@ const HANG_AHEAD = 32;
 const HANG_SIDE = 40;
 
 /**
- * The flight of a Warp Strike's weapon. `clear`: how far ahead of the fist it is first drawn
+ * The flight of a Shooting-Star Thrust's weapon. `clear`: how far ahead of the fist it is first drawn
  * (sprite/thrown.ts releaseClear: the release pose pitches the head into the place the fist let go
  * of it). `from` and `to`: the map pixels of the ninja's feet where it throws and where it lands;
  * `face` the way it throws, `land` the way it faces when it lands. `foe`: the map pixels of the feet
@@ -180,12 +180,12 @@ export interface FlightNow {
   heading: number;
   /** 0..1: the weapon fades as the solid hand takes it over. */
   alpha: number;
-  /** Still flying (not yet in the hand), and how far into the Warp Strike (ms). */
+  /** Still flying (not yet in the hand), and how far into the Shooting-Star Thrust (ms). */
   flying: boolean;
   ms: number;
 }
 
-/** Where the weapon is `ms` into the Warp Strike (null before it is thrown and once it is back in the hand). */
+/** Where the weapon is `ms` into the Shooting-Star Thrust (null before it is thrown and once it is back in the hand). */
 export function flightNow(f: Flight, t: WarpTimes, ms: number): FlightNow | null {
   if (ms < t.rel || ms >= t.solid) return null;
   if (ms <= t.caught) {
@@ -334,8 +334,8 @@ const hash = (i: number, k: number): number => {
 };
 
 /** Sparkles a flight sheds per ms of it, and how long the last of them lasts after the weapon stops. */
-const SHED = 0.5;
-export const TRAIL_AFTER = 520;
+const SHED = 0.7;
+export const TRAIL_AFTER = 700;
 /**
  * The comet's tail: the way the weapon's back end went in the last TAIL_MS ms (long while it is
  * flung hard, shorter as it slows into the hand; it runs on into the weapon and cools once it
@@ -443,8 +443,11 @@ function blitComet(ctx: CanvasRenderingContext2D, c: CometRaster, rgba: CometRas
   ctx.drawImage(cv, 0, 0, c.w, c.h, c.x, c.y, c.w, c.h);
 }
 
+/** The last comet made for each flight (drawTrail), and the moment, opacity and weapon it was made for. */
+const cometMemo = new WeakMap<Flight, { ms: number; alpha: number; back: number; c: CometRaster | null }>();
+
 /**
- * The shooting star the flying weapon is, `ms` into the Warp Strike, drawn under the weapon: its
+ * The shooting star the flying weapon is, `ms` into the Shooting-Star Thrust, drawn under the weapon: its
  * comet (sprite/comet.ts), a long tail on the way the weapon's back end went, as wide as the weapon
  * is heavy and white at the weapon, tapering through the phase's blues to one clear pixel and
  * following the curve of the flight, and a white-hot head round the weapon itself (which cools in
@@ -468,17 +471,25 @@ export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes
   };
   ctx.save();
 
-  const comet: CometSample[] = f.hang ? [] : cometTail({ at: backEnd, msAt: (w) => warpFlightMs(w, t) }, warpFlight(Math.min(ms, t.caught), t), ms, TAIL_MS, tailMax(f), width);
-  const now = flightNow(f, t, ms);
-  const heat = ms <= t.caught ? 1 : 1 - (ms - t.caught) / (t.solid - t.caught);
-  if (now && heat > 0) {
-    // The head, on the weapon as it is drawn (its anchor on a whole pixel).
-    const d = dirOf(now.heading);
-    const X = Math.round(now.at.x) + 0.5;
-    const Y = Math.round(now.at.y) + 0.5;
-    comet.push(...cometNose({ x: X - d.x * back, y: Y - d.y * back }, { x: X + d.x * reach.front * 0.92, y: Y + d.y * reach.front * 0.92 }, width, NOSE_HEAT * heat));
+  // The comet of this moment is made once: the screen may draw the same moment again (a paused
+  // clock, a resize), and a long comet is the costliest part of the flight to make.
+  const memo = cometMemo.get(f);
+  let c: CometRaster | null;
+  if (memo && memo.ms === ms && memo.alpha === alpha && memo.back === back) c = memo.c;
+  else {
+    const comet: CometSample[] = f.hang ? [] : cometTail({ at: backEnd, msAt: (w) => warpFlightMs(w, t) }, warpFlight(Math.min(ms, t.caught), t), ms, TAIL_MS, tailMax(f), width);
+    const now = flightNow(f, t, ms);
+    const heat = ms <= t.caught ? 1 : 1 - (ms - t.caught) / (t.solid - t.caught);
+    if (now && heat > 0) {
+      // The head, on the weapon as it is drawn (its anchor on a whole pixel).
+      const d = dirOf(now.heading);
+      const X = Math.round(now.at.x) + 0.5;
+      const Y = Math.round(now.at.y) + 0.5;
+      comet.push(...cometNose({ x: X - d.x * back, y: Y - d.y * back }, { x: X + d.x * reach.front * 0.92, y: Y + d.y * reach.front * 0.92 }, width, NOSE_HEAT * heat));
+    }
+    c = cometRaster(comet, alpha, off);
+    cometMemo.set(f, { ms, alpha, back, c });
   }
-  const c = cometRaster(comet, alpha, off);
   if (c) {
     blitComet(ctx, c, c.halo, 'lighter');
     blitComet(ctx, c, c.core, 'source-over');
@@ -489,27 +500,29 @@ export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes
   const n = Math.max(24, Math.round(fly * SHED));
   for (let i = 0; i < n; i++) {
     const born = t.rel + (fly * (i + hash(i, 1))) / n;
-    const life = 230 + 280 * hash(i, 2);
+    // Gone by the time the move ends (its view is dropped then), not cut off still bright.
+    const life = Math.min(320 + 380 * hash(i, 2), t.end - born);
     const el = ms - born;
     const age = el / life;
     if (age < 0 || age >= 1) continue;
     const w = warpFlight(born, t);
     const p = backEnd(w);
     const d = dirOf(headingAlong(f, w));
-    // From within the tail's width, drifting out of its sides, falling behind along the way it went
-    // and settling down a little.
-    const side = (hash(i, 3) - 0.5) * 2 * (width + 1);
-    const spread = side + Math.sign(side) * (0.006 + 0.014 * hash(i, 4)) * el;
+    // From the tail's edge, flung out of its sides into the clear (over the white tail a white
+    // speck is lost), falling behind along the way it went and settling down a little: a wake of
+    // stardust that outlasts the tail.
+    const side = (hash(i, 3) < 0.5 ? -1 : 1) * (width * (0.6 + 0.6 * hash(i, 4)) + 1);
+    const spread = side + Math.sign(side) * (0.018 + 0.03 * hash(i, 10)) * el;
     const drift = 2 * hash(i, 9) + (0.01 + 0.02 * hash(i, 5)) * el;
     const x = p.x - d.x * drift - d.y * spread;
     const y = p.y - d.y * drift + d.x * spread + 0.00004 * el * el;
     // Twinkling: each flickers between bright and dim at its own pace.
     const on = Math.floor((el + hash(i, 6) * 80) / (40 + 40 * hash(i, 8))) % 2 === 0;
-    const a = alpha * (on ? 1 : 0.4) * (1 - age) ** 0.75 * off(x, y);
-    const step = age < 0.25 ? 8 : age < 0.5 ? 7 : age < 0.75 ? 6 : 5;
+    const a = alpha * (on ? 1 : 0.45) * (1 - age) ** 0.6 * off(x, y);
+    const step = age < 0.3 ? 8 : age < 0.55 ? 7 : age < 0.8 ? 6 : 5;
     const kind = hash(i, 7);
-    if (kind < 0.16 && age < 0.7) glint(ctx, x, y, on && age < 0.35 ? 2 : 1, a);
-    else if (kind < 0.42 && age < 0.5) dot(ctx, x, y, a, step, 2);
+    if (kind < 0.3 && age < 0.75) glint(ctx, x, y, on && age < 0.4 ? 2 : 1, a);
+    else if (kind < 0.62 && age < 0.6) dot(ctx, x, y, a, step, 2);
     else dot(ctx, x, y, a, step);
   }
 

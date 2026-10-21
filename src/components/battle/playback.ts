@@ -39,13 +39,13 @@ export interface UnitView {
   /** A creature's own animation (the hydra's bite, spit, roar, hurt, sever, regrow, death). */
   creature?: { anim: string; t0: number };
   /**
-   * A Ryusei's phase (Warp Strike, Spatial Swap): the ninja turns to blue light where it stands,
+   * A Ryusei's phase (Shooting-Star Thrust, Spatial Swap): the ninja turns to blue light where it stands,
    * dashes as light to `to` and turns solid there (PHASE_IN, PHASE_DASH, PHASE_OUT; renderer.ts
    * draws it).
    */
   phase?: { from: Pt; to: Pt; t0: number };
   /**
-   * A Ryusei's Warp Strike (the owner, 2026-10-21): the ninja throws its weapon at the Node and
+   * A Ryusei's Shooting-Star Thrust (the owner, 2026-10-21): the ninja throws its weapon at the Node and
    * turns to blue light in the release pose as it leaves the hand; the weapon flies there with a
    * trail of sparkles, the light body follows it and turns solid where it lands, already in the
    * thrust ('pierce') and catching the weapon, and thrusts at the foe beside it (`foe`) or ahead.
@@ -131,7 +131,7 @@ export const phaseDash = (ms: number): number => {
 };
 
 /**
- * A Warp Strike (UnitView.warp), ms at speed 1. The throw's wind-up plays a frame each WARP_FRAME
+ * A Shooting-Star Thrust (UnitView.warp), ms at speed 1. The throw's wind-up plays a frame each WARP_FRAME
  * ('throw' 0 carga, 1 armado, 2 the throw), so the weapon leaves the hand at WARP_REL, in the
  * release pose (the owner's reference), where the ninja turns to light over WARP_LIGHT. The weapon
  * flies for `fly` (longer the farther it goes); the light body dashes after it and lands WARP_LAG
@@ -144,7 +144,7 @@ export const WARP_LIGHT = 110;
 export const WARP_LAG = 50;
 export const WARP_SOLID = 100;
 export const WARP_THRUST = [90, 100, 100] as const;
-/** How long a Warp Strike's weapon flies over `metres`. */
+/** How long a Shooting-Star Thrust's weapon flies over `metres`. */
 export const warpFly = (metres: number): number => Math.round(Math.min(420, Math.max(250, 200 + 12 * metres)));
 
 export interface WarpTimes {
@@ -158,7 +158,7 @@ export interface WarpTimes {
   land: number;
   /** Solid, in the thrust's chamber: the thrust plays. */
   solid: number;
-  /** Standing again: the Warp Strike is over. */
+  /** Standing again: the Shooting-Star Thrust is over. */
   end: number;
 }
 
@@ -169,7 +169,7 @@ export function warpTimes(fly: number): WarpTimes {
   return { rel: WARP_REL, dash: WARP_REL + WARP_LIGHT, caught, land, solid, end: solid + WARP_THRUST[0] + WARP_THRUST[1] + WARP_THRUST[2] };
 }
 
-/** How far the light body is along a Warp Strike's dash (0..1) `ms` into it: quick off the mark, easing into the landing, like a phase. */
+/** How far the light body is along a Shooting-Star Thrust's dash (0..1) `ms` into it: quick off the mark, easing into the landing, like a phase. */
 export const warpDash = (ms: number, t: WarpTimes): number => {
   const k = Math.min(1, Math.max(0, (ms - t.dash) / (t.land - t.dash)));
   return 1 - (1 - k) ** 2.2;
@@ -178,13 +178,13 @@ export const warpDash = (ms: number, t: WarpTimes): number => {
 /** How hard the thrown weapon slows into the catch (warpFlight). */
 const FLIGHT_EASE = 1.5;
 
-/** How far the thrown weapon is along its flight (0..1) `ms` into the Warp Strike: flung hard, slowing a little as it arrives. */
+/** How far the thrown weapon is along its flight (0..1) `ms` into the Shooting-Star Thrust: flung hard, slowing a little as it arrives. */
 export const warpFlight = (ms: number, t: WarpTimes): number => {
   const k = Math.min(1, Math.max(0, (ms - t.rel) / (t.caught - t.rel)));
   return 1 - (1 - k) ** FLIGHT_EASE;
 };
 
-/** When (ms into the Warp Strike) the thrown weapon was `w` (0..1) along its flight: warpFlight turned round. */
+/** When (ms into the Shooting-Star Thrust) the thrown weapon was `w` (0..1) along its flight: warpFlight turned round. */
 export const warpFlightMs = (w: number, t: WarpTimes): number => t.rel + (1 - (1 - Math.min(1, Math.max(0, w))) ** (1 / FLIGHT_EASE)) * (t.caught - t.rel);
 
 export class Playback {
@@ -211,7 +211,7 @@ export class Playback {
   /** A big signature still playing: the next turn waits for it to finish. */
   lingerUntil = 0;
   speed = 1;
-  /** Sounds due later in something already playing (a Warp Strike's throw and catch). */
+  /** Sounds due later in something already playing (a Shooting-Star Thrust's throw and catch). */
   private cues: { at: number; name: SoundName }[] = [];
 
   constructor(state: BattleState, private hooks: PlaybackHooks) {
@@ -449,7 +449,7 @@ export class Playback {
         // A Spatial Swap's two jumps happen at once.
         const together = this.queue[0]?.t === 'teleport';
         if (ev.how === 'phase' && v.warp) {
-          // A Warp Strike's crossing, already under way since its jutsu played (the throw): the
+          // A Shooting-Star Thrust's crossing, already under way since its jutsu played (the throw): the
           // events after it wait until the ninja stands solid where it lands.
           v.pos = { ...ev.to };
           v.walk = undefined;
@@ -571,7 +571,7 @@ export class Playback {
         const head = caster?.kind === 'hydra_head';
         const cross = spec?.special === 'warp' ? this.queue.find((e) => e.t === 'teleport' && e.how === 'phase' && e.unit === ev.unit) : undefined;
         if (cross?.t === 'teleport' && this.phaseFollows(ev.unit)) {
-          // A Warp Strike that goes through: its name, and the throw starts at once (UnitView.warp).
+          // A Shooting-Star Thrust that goes through: its name, and the throw starts at once (UnitView.warp).
           // The crossing's own event comes at the release; the thrust faces the foe it lands beside
           // (the engine's edgeFoe), if any.
           const face: 1 | -1 = Math.abs(cross.to.x - cross.from.x) > 0.05 ? (cross.to.x > cross.from.x ? 1 : -1) : a.facing;
@@ -590,7 +590,7 @@ export class Playback {
           return WARP_REL;
         }
         if ((spec?.special === 'warp' || spec?.special === 'swap') && this.phaseFollows(ev.unit)) {
-          // A Warp Strike or a Spatial Swap that goes through: its name and a beat, then the phase
+          // A Shooting-Star Thrust or a Spatial Swap that goes through: its name and a beat, then the phase
           // itself plays (no cast pose, no chakra flare: the ninja turns to light at once).
           h.sound('jutsu', 'chakra');
           if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });

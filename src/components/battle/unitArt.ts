@@ -176,7 +176,7 @@ export function hasUnitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, 
 
 const catches = new WeakMap<SpriteAppearance, SpriteAppearance>();
 
-/** The look a Warp Strike catches its thrown weapon with (sprite/thrown.ts catchLook), one object per look so its frames are kept. */
+/** The look a Shooting-Star Thrust catches its thrown weapon with (sprite/thrown.ts catchLook), one object per look so its frames are kept. */
 export function catchLookOf(look: SpriteAppearance): SpriteAppearance {
   let c = catches.get(look);
   if (!c) catches.set(look, (c = catchLook(look)));
@@ -201,7 +201,7 @@ const THROWN_MAX = 480;
 const thrownKey = (look: SpriteAppearance, angle: number): string => `${idOf(look)}|${thrownItem(look)}|${Math.round(angle)}`;
 
 /**
- * A Warp Strike's thrown weapon at a whole-degree angle (a figure facing right; mirror it for one
+ * A Shooting-Star Thrust's thrown weapon at a whole-degree angle (a figure facing right; mirror it for one
  * facing left): the item's own art turned with RotSprite (sprite/thrown.ts), made once per look
  * and angle.
  */
@@ -247,7 +247,7 @@ export const hasThrownFrame = (look: SpriteAppearance, angle: number): boolean =
 const clears = new Map<number, number>();
 
 /**
- * How far ahead of the fist a unit's Warp Strike weapon is first drawn in flight, clear of its
+ * How far ahead of the fist a unit's Shooting-Star Thrust weapon is first drawn in flight, clear of its
  * release pose (sprite/thrown.ts releaseClear), worked out once per look (from the release frame
  * the screen makes anyway, and the weapon at the angle it is flung at).
  */

@@ -411,7 +411,7 @@ export interface RollInfo {
 /** What happened, in order, for the screens to animate and the log to tell. */
 export type BattleEvent =
   | { t: 'move'; unit: string; path: Pt[]; run: boolean }
-  /** `how`: 'phase' for a Ryusei's Warp Strike and Spatial Swap (the screen plays them as a body of blue light crossing over). */
+  /** `how`: 'phase' for a Ryusei's Shooting-Star Thrust and Spatial Swap (the screen plays them as a body of blue light crossing over). */
   | { t: 'teleport'; unit: string; from: Pt; to: Pt; log?: boolean; how?: 'phase' }
   | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number }
   | { t: 'weapon'; unit: string; armed: boolean; cost: 'free' | 'bonus' }

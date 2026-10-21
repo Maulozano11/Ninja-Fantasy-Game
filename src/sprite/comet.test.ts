@@ -109,6 +109,21 @@ describe('the shooting star of the Shooting-Star Thrust', () => {
     assert.ok(faint.core.some((v, i) => i % 4 === 3 && v > 0 && v < 255));
   });
 
+  it('has a deep blue line round its wide hot part, and none round its thin end', () => {
+    const c = cometRaster(cometTail(straight(400, 400), 0.5, 200, 150, 150, 4.5))!;
+    const column = (x: number): number[][] => {
+      const out: number[][] = [];
+      for (let y = c.y; y < c.y + c.h; y++) if (alphaAt(c, x, y + 0.5) > 0) out.push(rgbAt(c, x, y + 0.5));
+      return out;
+    };
+    // Near the head: its first and last pixels across are the line.
+    const near = column(190.5);
+    assert.deepEqual(near[0], [...PHASE_RAMP[0]]);
+    assert.deepEqual(near[near.length - 1], [...PHASE_RAMP[0]]);
+    // At the thin end, no line: still one pixel.
+    assert.ok(column(62.5).every((p) => p.join() !== PHASE_RAMP[0].join()));
+  });
+
   it('wraps the weapon in a white-hot head, widest at its back end', () => {
     const nose = cometNose({ x: 0, y: 0 }, { x: 40, y: 0 }, 4.5, 1.5);
     const c = cometRaster(nose)!;

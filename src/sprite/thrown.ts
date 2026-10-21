@@ -1,4 +1,4 @@
-// The weapon a Ryusei throws in its Warp Strike, drawn on its own for the battle to fly it: the held
+// The weapon a Ryusei throws in its Shooting-Star Thrust, drawn on its own for the battle to fly it: the held
 // item's own art (or the kunai bare hands throw from the pouch), drawn by the item itself exactly as
 // in the hand, but at any angle of its flight (RotSprite, like every held weapon), with no body.
 // Pure pixels, no canvas: the battle turns each angle into a canvas once and keeps it.

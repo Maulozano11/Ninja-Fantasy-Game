@@ -189,7 +189,7 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
       continue;
     }
     const pos = sc.pb.posOf(u.id, sc.now);
-    // A Warp Striker thrusting at the foe beside it is drawn over it, so the thrust shows.
+    // A Ryusei thrusting at the foe beside it in its Shooting-Star Thrust is drawn over it, so the thrust shows.
     items.push({ z: pos.z + (v.warp ? 0.03 : 0.01), draw: () => drawUnit(ctx, sc, u, pos) });
   }
   void hydra;
@@ -795,7 +795,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   const water = map.waterAt(pos.x, pos.z);
   const swimming = water === 'deep' && !u.cond.waterWalk && !v.walk ? true : water === 'deep' && !u.cond.waterWalk;
 
-  // A Ryusei's phase or Warp Strike: the body turns to light, so its shadow fades while it does.
+  // A Ryusei's phase or Shooting-Star Thrust: the body turns to light, so its shadow fades while it does.
   const phase = v.phase ? phaseNow(sc, v) : undefined;
   const lit = phase ? phase.light : v.warp ? warpLight(warpNow(sc, v).ms, warpNow(sc, v).t) : 0;
 
@@ -1100,14 +1100,14 @@ function phaseFrames(v: UnitView): { pose: SpritePose; frame: number }[] {
   return [{ pose: v.pose, frame: 0 }, phaseLeap(v, 0), phaseLeap(v, 1)];
 }
 
-// --- the Ryusei's Warp Strike: the throw, the flight, the catch and the thrust ---------------
+// --- the Ryusei's Shooting-Star Thrust: the throw, the flight, the catch and the thrust ---------------
 
-/** Playback ms into a unit's Warp Strike (at speed 1) and its timeline. */
+/** Playback ms into a unit's Shooting-Star Thrust (at speed 1) and its timeline. */
 function warpNow(sc: Scene, v: UnitView): { ms: number; t: WarpTimes } {
   return { ms: Math.max(0, (sc.now - v.warp!.t0) * sc.pb.speed), t: warpTimes(v.warp!.fly) };
 }
 
-/** How much of a Warp Striker's body is light at `ms` (0 solid, 1 all light): its shadow fades as much. */
+/** How much of a Ryusei's body is light in its Shooting-Star Thrust at `ms` (0 solid, 1 all light): its shadow fades as much. */
 function warpLight(ms: number, t: WarpTimes): number {
   if (ms < t.rel) return 0;
   if (ms < t.dash) return (ms - t.rel) / (t.dash - t.rel);
@@ -1119,7 +1119,7 @@ function warpLight(ms: number, t: WarpTimes): number {
 const WARP_LEAP = 4;
 
 /**
- * A Ryusei's Warp Strike (the owner, 2026-10-21; UnitView.warp): the ninja faces the Node and
+ * A Ryusei's Shooting-Star Thrust (the owner, 2026-10-21; UnitView.warp): the ninja faces the Node and
  * throws ('throw' wind-up and the throw); as the weapon leaves the hand it turns to blue light in
  * the release pose, his reference, with a flare; it leaps after the weapon as light (the throw's
  * follow-through, with fading after-images), and lands where the weapon stops, turning solid
@@ -1206,7 +1206,7 @@ function drawWarp(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitView
   drawKunaiFade(ctx, look, b.X, b.Y, land, k, alpha);
 }
 
-/** The flight of a unit's Warp Strike weapon (warpFlight.ts), worked out once per strike. */
+/** The flight of a unit's Shooting-Star Thrust weapon (warpFlight.ts), worked out once per strike. */
 const flights = new WeakMap<NonNullable<UnitView['warp']>, Flight>();
 
 function flightOf(sc: Scene, u: Unit, look: SpriteAppearance, w: NonNullable<UnitView['warp']>): Flight {
@@ -1223,7 +1223,7 @@ function flightOf(sc: Scene, u: Unit, look: SpriteAppearance, w: NonNullable<Uni
   return f;
 }
 
-/** The weapons thrown by Warp Strikes, with their trails of sparkles: over everything, as they fly. */
+/** The weapons thrown by Shooting-Star Thrusts, with their trails of sparkles: over everything, as they fly. */
 function drawWarpFlights(ctx: CanvasRenderingContext2D, sc: Scene): void {
   for (const u of Object.values(sc.state.units)) {
     const v = sc.pb.views.get(u.id);
@@ -1255,7 +1255,7 @@ function warpLights(sc: Scene): FlightLight[] {
 }
 
 /**
- * What a Ryusei's Warp Strike will need made beforehand (the slow part is making sprite frames):
+ * What a Ryusei's Shooting-Star Thrust will need made beforehand (the slow part is making sprite frames):
  * first what does not depend on where it goes (the throw, the light bodies of its release and its
  * leap, the thrust it lands in, holding a kunai if it throws one from the pouch, and that kunai
  * fading), so a Ryusei has them before it places a Node; then its weapon at every angle of the
@@ -1315,12 +1315,12 @@ function warpNeeds(sc: Scene, u: Unit, look: SpriteAppearance): (() => boolean)[
 }
 
 /**
- * Makes the light bodies a phase will need before it plays, and what a Warp Strike will need (its
+ * Makes the light bodies a phase will need before it plays, and what a Shooting-Star Thrust will need (its
  * frames and its flying weapon), a little per screen frame (one sprite frame, or a few small
  * weapon angles, within WARM_MS) and at quiet moments, so neither waits for them when it plays:
- * for phases and Warp Strikes already queued or playing; then, while nothing plays, for the
+ * for phases and Shooting-Star Thrusts already queued or playing; then, while nothing plays, for the
  * Ryusei whose turn it is and whoever stands on its Nodes (a Spatial Swap takes them along), for
- * every Ryusei on the field, and last a Warp Strike with each Ryusei's weapon put away or drawn.
+ * every Ryusei on the field, and last a Shooting-Star Thrust with each Ryusei's weapon put away or drawn.
  */
 const WARM_MS = 4;
 const warpsReady = new WeakMap<BattleState, Set<string>>();
@@ -1334,8 +1334,8 @@ function warmPhases(sc: Scene): void {
   }
   for (const [id, v] of sc.pb.views) if (v.warp) warps.push(id);
   const turn = sc.pb.turnUnit ? sc.state.units[sc.pb.turnUnit] : undefined;
-  // Every Ryusei, Nodes or not: what a Warp Strike needs wherever it goes is made before its first
-  // Node is placed, so a Warp Strike cast right after leaves only its weapon's angles to make.
+  // Every Ryusei, Nodes or not: what a Shooting-Star Thrust needs wherever it goes is made before its first
+  // Node is placed, so a Shooting-Star Thrust cast right after leaves only its weapon's angles to make.
   const quiet = !ids.length && !warps.length && !sc.pb.busy;
   if (quiet) {
     if (turn && leavesNodes(turn) && !turn.down) {
@@ -1350,11 +1350,11 @@ function warmPhases(sc: Scene): void {
       }
   }
   const t0 = performance.now();
-  // A Warp Strike about to play comes first: it needs the most. (A unit found ready is not looked
+  // A Shooting-Star Thrust about to play comes first: it needs the most. (A unit found ready is not looked
   // at again until the state changes.)
   let done = warpsReady.get(sc.state);
   if (!done) warpsReady.set(sc.state, (done = new Set()));
-  /** Makes some of what a unit's Warp Strike needs with its weapon drawn or not; false once out of time. */
+  /** Makes some of what a unit's Shooting-Star Thrust needs with its weapon drawn or not; false once out of time. */
   const warmWarp = (u: Unit, armed: boolean, warping: boolean): boolean => {
     const look = lookOf({ ...u, armed });
     const key = `${u.id}|${armed}|${warping}`;
@@ -1386,7 +1386,7 @@ function warmPhases(sc: Scene): void {
     }
   }
   // Last, still while nothing plays: each Ryusei's other look, its weapon put away or drawn again.
-  // Seals stow the weapon, and a Warp Strike is a bonus action: cast right after a jutsu (the AI
+  // Seals stow the weapon, and a Shooting-Star Thrust is a bonus action: cast right after a jutsu (the AI
   // casts it 260 ms after), it would otherwise make its frames as it plays.
   if (quiet)
     for (const id of warps) {
@@ -1864,6 +1864,22 @@ function drawNight(ctx: CanvasRenderingContext2D, sc: Scene, props: PropDef[]): 
   g.clearRect(0, 0, W, H);
   g.fillStyle = 'rgba(8, 14, 38, 0.62)';
   g.fillRect(0, 0, W, H);
+  // A Shooting-Star Thrust's comet is light: round it the dark itself turns the phase's blue (only
+  // clearing the dark would bring back the grass's own green, which reads as a green haze).
+  const comets = warpLights(sc);
+  g.globalCompositeOperation = 'source-atop';
+  for (const l of comets) {
+    const s = { x: (l.x - cam.x) * cam.k, y: (l.y - cam.y) * cam.k };
+    const rr = l.r * 1.3 * cam.k;
+    const [R, G, B] = PHASE_RAMP[2];
+    const gr = g.createRadialGradient(s.x, s.y, 0, s.x, s.y, rr);
+    gr.addColorStop(0, `rgba(${R},${G},${B},${Math.min(1, 1.2 * l.a)})`);
+    gr.addColorStop(1, `rgba(${R},${G},${B},0)`);
+    g.fillStyle = gr;
+    g.beginPath();
+    g.arc(s.x, s.y, rr, 0, Math.PI * 2);
+    g.fill();
+  }
   g.globalCompositeOperation = 'destination-out';
   const toScreen = (X: number, Y: number) => ({ x: (X - cam.x) * cam.k, y: (Y - cam.y) * cam.k });
   const hole = (X: number, Y: number, r: number, a: number) => {
@@ -1887,9 +1903,8 @@ function drawNight(ctx: CanvasRenderingContext2D, sc: Scene, props: PropDef[]): 
     const s = project(map, sc.pb.posOf(u.id, sc.now));
     hole(s.X, s.Y - 50, 110, 0.55);
   }
-  // A Shooting-Star Thrust's comet is light: it shines in the dark, and lights the ground round it.
-  const comets = warpLights(sc);
-  for (const l of comets) hole(l.x, l.y, l.r, l.a);
+  // And it lights the ground round it a little: the dark there thins, still blue.
+  for (const l of comets) hole(l.x, l.y, l.r, l.a * 0.45);
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(nightLayer, 0, 0);
@@ -1914,9 +1929,9 @@ function drawNight(ctx: CanvasRenderingContext2D, sc: Scene, props: PropDef[]): 
     if (!l.head) continue;
     const s = toScreen(l.x, l.y);
     const r = l.r * cam.k;
-    const [R, G, B] = PHASE_RAMP[5];
+    const [R, G, B] = PHASE_RAMP[3];
     const gr = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, r);
-    gr.addColorStop(0, `rgba(${R},${G},${B},${0.5 * l.a})`);
+    gr.addColorStop(0, `rgba(${R},${G},${B},${0.45 * l.a})`);
     gr.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = gr;
     ctx.beginPath();

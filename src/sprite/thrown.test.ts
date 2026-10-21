@@ -1,4 +1,4 @@
-// Tests for the weapon a Ryusei throws in its Warp Strike (thrown.ts): npm test.
+// Tests for the weapon a Ryusei throws in its Shooting-Star Thrust (thrown.ts): npm test.
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -51,7 +51,7 @@ function overlay(frame: { rgba: Uint8ClampedArray; part: Uint8Array }, th: { rgb
   return { both, same, missed };
 }
 
-describe('the Warp Strike thrown weapon', () => {
+describe('the Shooting-Star Thrust thrown weapon', () => {
   it('throws the held weapon, or a kunai from empty or busy hands or a technique in the palm', () => {
     assert.equal(thrownItem(look('male', 'held_crystal')), 'held_crystal');
     assert.equal(thrownItem(look('male')), 'held_kunai');

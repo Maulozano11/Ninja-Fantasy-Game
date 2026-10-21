@@ -200,7 +200,7 @@ export function throwRelease(body: BodyType, held?: string): ThrowRelease {
  * Where the held weapon sits in a frame of a weapon technique ('throw' before the release, or
  * 'pierce'): the point its art is anchored at (fine pixels of the frame, facing right; the art's
  * pixels start at the floor of it) and its angle. A weapon caught out of the air is drawn there
- * (the battle's Warp Strike lands its thrown weapon in the hand of the thrust).
+ * (the battle's Shooting-Star Thrust lands its thrown weapon in the hand of the thrust).
  */
 export function heldAt(body: BodyType, pose: 'throw' | 'pierce', frame: number, held?: string): { at: Vec; angle: number } {
   const r = drawRig(body, pose, frame);

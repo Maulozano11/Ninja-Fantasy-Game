@@ -9,6 +9,7 @@ import { segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
+import { SHADE_WRAPS } from './sayaLegs';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'leather') => ({ key, label, default: def, kind });
@@ -447,4 +448,5 @@ export const FEET_ITEMS: ItemDef[] = [
       }
     },
   },
+  SHADE_WRAPS,
 ];

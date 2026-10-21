@@ -16,11 +16,15 @@ export interface SpriteFrame {
   rgba: Uint8ClampedArray;
   /** Body part index (into PARTS) of the top-most pixel, 0 where empty. */
   part: Uint8Array;
+  /** One bit per pixel (byte i >> 3, bit i & 7): the top-most pixel is hair (the Ryusei's phase lights it up). */
+  hair?: Uint8Array;
   rig: Rig;
 }
 
 /** Depths drawn in head-local units and shrunk around the head center by `headScale`. */
 const HEAD_GROUP = new Set<Depth>(['hairBack', 'head.body', 'head.face', 'head.mask', 'hairFront', 'head.gear']);
+const HAIR_BACK = DEPTHS.indexOf('hairBack');
+const HAIR_FRONT = DEPTHS.indexOf('hairFront');
 
 // Slots are drawn in this order; within a depth, later items cover earlier ones.
 const SLOT_ORDER: SlotId[] = ['cape', 'hair', 'face', 'bottom', 'feet', 'top', 'skirt', 'armor', 'waist', 'hands', 'held'];
@@ -233,16 +237,19 @@ export function renderSprite(
     isLine[i] = topShade[i] === 0 ? 1 : 0;
   }
   thinDoubleOutlines(rgba, top, isLine);
+  const hair = new Uint8Array(N >> 3);
+  for (let i = 0; i < N; i++) if (top[i] === HAIR_BACK || top[i] === HAIR_FRONT) hair[i >> 3] |= 1 << (i & 7);
 
   if (!opts.skipEdits && look.pixelEdits?.length) applyEdits(look.pixelEdits, rig, rgba, part);
-  if (rig.lay) return { ...layFrame(rgba, part, rig.lay), rig: layRig(rig) };
-  return { rgba, part, rig };
+  if (rig.lay) return { ...layFrame(rgba, part, hair, rig.lay), rig: layRig(rig) };
+  return { rgba, part, hair, rig };
 }
 
 /** Lays a figure drawn upright on the ground: the transpose described by Lay (exact, no resampling). */
-function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, lay: Lay): { rgba: Uint8ClampedArray; part: Uint8Array } {
+function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, hair: Uint8Array, lay: Lay): { rgba: Uint8ClampedArray; part: Uint8Array; hair: Uint8Array } {
   const out = new Uint8ClampedArray(GRID * GRID * 4);
   const outPart = new Uint8Array(GRID * GRID);
+  const outHair = new Uint8Array(hair.length);
   for (let y = 0; y < GRID; y++) {
     for (let x = 0; x < GRID; x++) {
       const i = y * GRID + x;
@@ -253,9 +260,10 @@ function layFrame(rgba: Uint8ClampedArray, part: Uint8Array, lay: Lay): { rgba: 
       const j = Y * GRID + X;
       for (let c = 0; c < 4; c++) out[j * 4 + c] = rgba[i * 4 + c];
       outPart[j] = part[i];
+      if (hair[i >> 3] & (1 << (i & 7))) outHair[j >> 3] |= 1 << (j & 7);
     }
   }
-  return { rgba: out, part: outPart };
+  return { rgba: out, part: outPart, hair: outHair };
 }
 
 /**

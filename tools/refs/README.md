@@ -115,3 +115,6 @@ folders.
       npx tsx tools/refs/princess-idle.ts <dir>/female-idle
       python3 -I tools/refs/princess-study.py <dir> <dir>/female-idle     # native@4, parts@4, overlay@4, palette
       python3 -I tools/refs/princess-study.py --palette                   # reprints PALETTE_HEX
+- `princess-hair-from-ref.py` → `src/sprite/items/princessHairArt.ts`: her hair (`hair_rose_dawn`, "Ondas del Alba Rosa") and her tiara as a separate accessory (`acc_rose_tiara`, "Tiara del Alba Rosa"), both drawn by `src/sprite/items/princessHair.ts`. His pixels one for one, his colours from `princess_ref.quantize` (the gem's reds are his own medians). Five hair pieces: HEAD (crown, bangs, locks, ear) and BACK (fill behind the face and neck) on the face anchor, LONG (the wavy mass, its hidden part carried on) and STRAND (the near lock on the chest) hung from the neck and turned with the torso, and BARE (the crown without the tiara's shadow). The crown under the tiara is filled by running his strands up under a dome that continues his line. Writes `pieces@8.png` (Spanish labels):
+
+      python3 -I tools/refs/princess-hair-from-ref.py <dir> src/sprite/items/princessHairArt.ts

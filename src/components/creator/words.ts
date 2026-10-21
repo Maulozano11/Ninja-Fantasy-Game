@@ -259,6 +259,13 @@ const ES: Record<string, string> = {
   "Silk cord crossed over white ray skin, a gold ornament under the middle diamond.": "Cordón de seda cruzado sobre piel de raya blanca, con un adorno de oro bajo el rombo central.",
   "The bare white ray skin of a court sword, gold fittings and a red silk tassel.": "La piel de raya blanca de una espada de la corte, herrajes de oro y una borla de seda roja.",
   "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
+  // The princess's hair and tiara (hair_rose_dawn, acc_rose_tiara)
+  'Rose Dawn Waves': 'Ondas del Alba Rosa',
+  'Long wavy pink hair to the waist: soft bangs, a lock framing each cheek, the near one falling over the shoulder onto the chest, and the rest in big waves down the back with a curled tip.':
+    'Pelo largo y ondulado rosa hasta la cintura: flequillo suave, un mechón enmarcando cada mejilla, el cercano cayendo sobre el hombro hasta el pecho, y el resto en grandes ondas por la espalda con la punta rizada.',
+  'Rose Dawn Tiara': 'Tiara del Alba Rosa',
+  'A gold tiara with a red gem at its peak, worn on the crown.': 'Una tiara de oro con una gema roja en la punta, sobre la coronilla.',
+  Gem: 'Gema',
 };
 
 /** An editor label in the screen's language. */

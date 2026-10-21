@@ -4,14 +4,14 @@
 import type { PaintedPiece } from '../painted';
 
 /** His colours the colour slots recolour from (at these, every pixel is his). */
-export const LEATHER_BOOT_BROWN = '#5a3a27';
+export const LEATHER_BOOT_BROWN = '#5c3b28';
 
 /** Which colour slot recolours each of his colours ('line': his black line and what else stays as he drew it). */
 export const LEATHER_BOOT_SLOT: Record<string, 'line' | 'main'> = {
   '#000000': 'line',
   '#010101': 'line',
+  '#010202': 'line',
   '#030202': 'line',
-  '#030403': 'line',
   '#040203': 'line',
   '#201214': 'main',
   '#201215': 'main',
@@ -33,8 +33,8 @@ export const LEATHER_BOOT_SLOT: Record<string, 'line' | 'main'> = {
   '#452821': 'main',
   '#482b20': 'main',
   '#563927': 'main',
-  '#5a3a27': 'main',
   '#5c3b28': 'main',
+  '#5c3d28': 'main',
   '#5f3b29': 'main',
   '#603d2a': 'main',
   '#623f29': 'main',
@@ -59,7 +59,7 @@ export const LEATHER_BOOT_SLOT: Record<string, 'line' | 'main'> = {
 export const LEATHER_BOOT_REST: Record<string, [number, number]> = {
   BOOT_SHAFT_F: [131, 200],
   BOOT_FOOT_F: [131, 207],
-  BOOT_SHAFT_N: [110, 198],
+  BOOT_SHAFT_N: [110, 197],
   BOOT_FOOT_N: [109, 209],
 };
 
@@ -68,14 +68,16 @@ export const BOOT_SHAFT_F: PaintedPiece = {
   pivot: [4, 3],
   angle: 98.58,
   rows: [
-    'abaaaaaaaa',
-    'acdeefecha',
-    'ieeeefecha',
-    '.affffecha',
-    '.afdddecha',
-    '.ajeddeeha',
-    '.ackedjdi.',
-    '.aeeddelha',
+    'abaaaaaaaa....',
+    'acdeefecha....',
+    'ieeeefecha....',
+    '.affffecha....',
+    '.afdddecha....',
+    '.ajeddeeha....',
+    '.ackedjdi.....',
+    '.aeeddelha....',
+    'aefdcddhmna...',
+    'abedcddkmhpaaa',
   ],
   colors: {
     a: '#000000',
@@ -89,6 +91,9 @@ export const BOOT_SHAFT_F: PaintedPiece = {
     j: '#201215',
     k: '#986c47',
     l: '#25141a',
+    m: '#926945',
+    n: '#8d6543',
+    p: '#311818',
   },
 };
 
@@ -125,38 +130,40 @@ export const BOOT_FOOT_F: PaintedPiece = {
 
 /** The near laced shaft: it turns with the shin about the ankle. */
 export const BOOT_SHAFT_N: PaintedPiece = {
-  pivot: [8, 9],
+  pivot: [8, 10],
   angle: 104.09,
   rows: [
-    '.abcaa......',
-    '..defdaaaaaa',
-    '..hdijfkeila',
-    '..mfddddddda',
-    '.adifkkfeeha',
-    '.aldekfeeen.',
-    '.alhdddddda.',
-    '.apkdeedma..',
-    '.addcfjdpa..',
-    '.amddddea...',
-    '.addeedma...',
-    'alefkfeqa...',
+    '.aba........',
+    '.acdaa......',
+    '..efheaaaaaa',
+    '..iebjhkfbla',
+    '..mheeeeeeea',
+    '.aebhkkhbfia',
+    '.alefkhfffa.',
+    '.alieeeeeea.',
+    '.ankebbema..',
+    '.aeedhjena..',
+    '.ameeeefa...',
+    '.aeeffema...',
+    'alfhkhfpa...',
+    'afkeeekba...',
+    'aeefffeeia..',
   ],
   colors: {
-    a: '#000000',
-    b: '#563927',
-    c: '#734e33',
-    d: '#241416',
-    e: '#623f29',
-    f: '#8f6744',
-    h: '#41231f',
-    i: '#5a3a27',
+    a: '#010202',
+    b: '#5c3d28',
+    c: '#563927',
+    d: '#734e33',
+    e: '#241416',
+    f: '#623f29',
+    h: '#8f6744',
+    i: '#41231f',
     j: '#201214',
     k: '#946945',
     l: '#3a1d1c',
     m: '#67422b',
-    n: '#030403',
-    p: '#482b20',
-    q: '#2a1518',
+    n: '#482b20',
+    p: '#2a1518',
   },
 };
 

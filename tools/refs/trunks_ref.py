@@ -230,6 +230,14 @@ def module(pic, doc, pieces, prefix, base_names, quantile=None):
     quantile = quantile or {}
     body, rest, slots, found = [], [], {}, {}
     for const, mask, col, pdoc, joint, ang, slot_of, *shift in pieces:
+        # A pixel touching none of its piece's others (only a corner of them) would come loose as a stray
+        # dot when the piece turns: it is left to the pieces round it.
+        nb = np.zeros_like(mask)
+        nb[1:] |= mask[:-1]
+        nb[:-1] |= mask[1:]
+        nb[:, 1:] |= mask[:, :-1]
+        nb[:, :-1] |= mask[:, 1:]
+        mask = mask & nb
         rows, origin, palette = pack(col, mask)
         for h in palette.values():
             sl = slot_of(h)
@@ -353,7 +361,7 @@ T2 = {
     # The dark browns in the crotch between his legs are the inseam's shadow: the trousers take them.
     'seam': ([(52, 65), (56, 65), (56, 72), (55, 79), (56, 79), (56, 83), (47, 83), (47, 76), (52, 72)], ('brown', 'purple', 'red'), None, None),
     # The boots (the dark cloth between them, under the crotch, is the cape's inside: no piece takes it).
-    'boots': ([box(30, 79, 48, 99), box(54, 79, 76, 99)], BROWNS + ('grey',), None, None),
+    'boots': ([box(30, 78, 48, 99), box(54, 79, 76, 99)], BROWNS + ('grey',), None, None),
 }
 
 
@@ -383,12 +391,14 @@ def grown(a, K, black, m, col, poly, way, close=True, gaps=None):
     return fill(a, m, col, hidden, black, way, close)
 
 
-# Trunks 2: where the pieces part and what is hidden that they continue (his pixel corners).
-T2_ELBOW = {'N': 46, 'F': 46}   # the upper arm's pieces end on this row, the forearm's start 2 rows above
+# Trunks 2: where the pieces part and what is hidden that they continue (his pixel corners). A limb's two
+# pieces overlap at the joint: at rest they are the same pixels of his, and when the joint bends the upper
+# piece's end (drawn over the lower one) covers its outer corner, so no notch opens there.
+T2_ELBOW = {'N': 46, 'F': 46}   # the upper arm's pieces end 2 rows under this row, the forearm's start 2 rows above
 T2_NEAR_LEG = [(30, 58), (53, 58), (53, 72), (51, 80), (51, 84), (30, 84)]  # the near leg's side of his inseam
-T2_KNEE = {'N': 75, 'F': 71}    # the thigh's pieces end on this row, the shin's start 2 rows above
-T2_HIP = 64                     # the seat's piece ends on this row, the thighs' start 3 rows above
-T2_FOOT = {'N': 90, 'F': 88}    # the boot's shaft ends 1 row under this row, its foot starts here
+T2_KNEE = {'N': 75, 'F': 71}    # the thigh's pieces end 2 rows under this row, the shin's start 2 rows above
+T2_HIP = 61                     # the seat's piece ends on this row, the thighs' start 3 rows above
+T2_FOOT = {'N': 90, 'F': 88}    # the boot's shaft ends 2 rows under this row, its foot starts here
 
 
 def trunks2():
@@ -410,7 +420,8 @@ def trunks2():
     # nothing); the far fist is as he drew it.
     P['glove_n'] = (M['glove_n'] | (M['sword'] & region(T2['glove_n'][0])), a)
     P['glove_f'] = (M['glove_f'], a)
-    P['belt'] = (M['belt'], a)
+    # The belt, with the buckle's white glint (as white as the paper round him, but inside his figure).
+    P['belt'] = (M['belt'] | (region(T2['belt'][0]) & (K == 'bg') & ~background(a)), a)
     # The mantle: over the near shoulder (left of x 41) and round the neck as a hood.
     P['cape_shoulder'] = (split(M['cape_front'], box(0, 0, 41, 100)), a)
     P['cape_hood'] = (split(M['cape_front'], box(41, 0, 100, 100)), a)
@@ -421,11 +432,13 @@ def trunks2():
     P['sleeve_n'] = G(M['sleeve_n'], a, [(33, 30), (41, 30), (41, 41), (31, 41), (31, 37), (33, 34)], 'up')
     # The far sleeve: its top under the hood continued up to our far shoulder.
     P['sleeve_f'] = G(M['sleeve_f'], a, box(58, 29, 64, 33), 'up')
+    # His line down the sleeve's outer edge, where it touches none of the sleeve's colours.
+    P['sleeve_f'] = (P['sleeve_f'][0] | ((K == 'line') & region(box(66, 37, 67, 39))), P['sleeve_f'][1])
     # His bare arms: upper arm and forearm, each forearm continued down to our wrist under his glove.
     for s, down in (('n', box(31, 51, 37, 57)), ('f', [(62, 50), (69, 50), (69, 56), (64, 56)])):
         m = M['arm_' + s]
         e = T2_ELBOW[s.upper()]
-        P['arm_up_' + s] = (split(m, box(0, 0, 100, e + 1)), a)
+        P['arm_up_' + s] = (split(m, box(0, 0, 100, e + 3)), a)
         P['arm_fore_' + s] = G(split(m, box(0, e - 2, 100, 100)), a, down, 'down', close=False)
     # The shirt: under the belt and its pouches continued from above and below, then under the mantle
     # continued up to our neck and shoulders, closed there by his line (the neckline).
@@ -436,12 +449,13 @@ def trunks2():
     m |= M['sleeve_f'] & region(box(59, 31, 61, 42))
     P['shirt'] = (m, c)
     # The trousers: each leg's side of his inseam, filled in under the sword (up and down his folds),
-    # then cut into the seat, the thighs and the shins.
+    # then cut into the seat, the thighs and the shins. The cape's inside he drew beside the near leg,
+    # and his browns over the boots (outside the sword), stay his: the legs are not filled over them.
     legs = {}
     near = region(T2_NEAR_LEG)
-    for s, poly in (('N', [(35, 59), (53, 59), (53, 72), (51, 80), (51, 83), (36, 83), (35, 81)]),
+    for s, poly in (('N', [(37, 59), (53, 59), (53, 72), (51, 80), (51, 83), (36, 83), (35, 81), (37, 70)]),
                     ('F', [(53, 59), (65, 59), (65, 63), (68, 63), (68, 80), (66, 81), (55, 81), (51, 83), (51, 80), (53, 72)])):
-        legs[s] = G(M['pants'] & (near if s == 'N' else ~near), a, poly, 'near')
+        legs[s] = grown(a, K, black, M['pants'] & (near if s == 'N' else ~near), a, poly, 'near', gaps=(M['cape_back'] | (np.isin(K, ('brown', 'gold', 'red', 'purple')) & ~region(T2['sword'][0]))) & ~M['pants'])
     seat = (legs['N'][0] | legs['F'][0]) & region(box(0, 0, 100, T2_HIP + 1))
     # The waist goes on up 3 rows under the shirt's hem (continued up his folds), so a bending body
     # never opens a gap between them.
@@ -449,7 +463,7 @@ def trunks2():
     for s in 'NF':
         m, c = legs[s]
         k = T2_KNEE[s]
-        P['thigh_' + s.lower()] = (split(m, box(0, T2_HIP - 3, 100, k + 1)), c)
+        P['thigh_' + s.lower()] = (split(m, box(0, T2_HIP - 3, 100, k + 3)), c)
         P['shin_' + s.lower()] = (split(m, box(0, k - 2, 100, 100)), c)
     # The boots: the far shaft's front under the sword continued up from below; each boot cut into its
     # shaft (turning with the shin) and its foot (flat on the ground).
@@ -457,7 +471,7 @@ def trunks2():
     fb = G(split(M['boots'], box(52, 0, 100, 100)), a, box(56, 81, 66, 89), 'up')
     for s, (m, c) in (('n', (nb, a)), ('f', fb)):
         f = T2_FOOT[s.upper()]
-        P['boot_shaft_' + s] = (split(m, box(0, 0, 100, f + 1)), c)
+        P['boot_shaft_' + s] = (split(m, box(0, 0, 100, f + 3)), c)
         P['boot_foot_' + s] = (split(m, box(0, f, 100, 100)), c)
     return a, K, M, P, black
 
@@ -489,7 +503,7 @@ T3 = {
 T3_ELBOW = {'N': 48, 'F': 47}
 T3_NEAR_LEG = [(30, 57), (53, 57), (53, 66), (50, 72), (50, 84), (30, 84)]
 T3_KNEE = {'N': 76, 'F': 72}
-T3_HIP = 63
+T3_HIP = 60
 T3_FOOT = {'N': 91, 'F': 89}
 
 
@@ -498,8 +512,10 @@ def trunks3():
     a, K, M = label_map('trunks3', T3)
     black = his_line(a)
     blade = M['sword'] & (K != 'line')
-    # The white he left between the legs (not the blade's white glints): a gap, never filled.
-    gaps = (luma(a) > 210) & np.isin(K, ('bg', 'pale')) & ~near8(blade)
+    # The white he left between the legs and between the arms and the body (not the blade's white
+    # glints, inside the sword's outline): a gap, never filled.
+    white = (luma(a) > 210) & np.isin(K, ('bg', 'pale'))
+    gaps = white & ~(near8(blade) & region(T3['sword'][0]))
 
     def G(m, col, poly, way, close=True):
         return grown(a, K, black, m, col, poly, way, close, gaps)
@@ -508,39 +524,55 @@ def trunks3():
         M[n] = M[n] & ~((K == 'line') & near8(blade))
     M['pants'] = M['pants'] | M['seam']
     P = {}
-    # The fists: the near one keeps the sword's grip where it shows between his fingers (the same fist
-    # closes on nothing).
+    # The fists: the near one keeps the sword's grip where it shows between his fingers (an empty near
+    # fist is the far one, drawn by the jacket).
     P['fist_n'] = (M['fist_n'] | (M['sword'] & region(T3['fist_n'][0])), a)
     P['fist_f'] = (M['fist_f'], a)
     # The jacket's near side under the near sleeve, continued from his jacket beside it (our torso is a
     # little broader there, and shows when the near arm swings away).
     P['jacket'] = G(M['jacket'], a, box(38, 33, 42, 58), 'near')
+    # Each sleeve's shoulder (its rows above our shoulder joint) stays with the jacket, as a shoulder
+    # does: the upper sleeve starts a row above the joint, under it, and turns with the arm. The jacket
+    # also keeps the far sleeve's inner edge down the side (columns 61 and 62), so a swinging far arm
+    # never opens a slit between them.
+    J = joints('trunks3')
+    keep = M['sleeve_f'] & region(box(61, 30, 63, 58))
     for s in 'nf':
         m = M['sleeve_' + s]
         e = T3_ELBOW[s.upper()]
-        P['sleeve_up_' + s] = (split(m, box(0, 0, 100, e + 1)), a)
+        sh = int(J['shoulder' + s.upper()][1])
+        keep |= split(m, box(0, 0, 100, sh))
+        P['sleeve_up_' + s] = (split(m, box(0, sh - 1, 100, e + 3)), a)
         P['sleeve_fore_' + s] = (split(m, box(0, e - 2, 100, 100)), a)
+    jm, jc = P['jacket']
+    P['jacket'] = (jm | keep, np.where(keep[..., None], a, jc))
+    # Two bits of his black line touch no colour of a piece, so no piece took them: the collar's corner
+    # over the near shoulder (with the jacket) and the far cuff's hem over the fist (with its sleeve).
+    line = K == 'line'
+    P['jacket'] = (P['jacket'][0] | (line & region(box(41, 31, 42, 32))), P['jacket'][1])
+    P['sleeve_fore_f'] = (P['sleeve_fore_f'][0] | (line & region(box(62, 57, 64, 58))), a)
     # The trousers, filled in under the sword, cut as Trunks 2's; the belt rides the seat.
     legs = {}
     near = region(T3_NEAR_LEG)
-    for s, poly in (('N', [(36, 59), (53, 59), (53, 66), (49, 72), (49, 80), (36, 80)]),
+    for s, poly in (('N', [(38, 59), (53, 59), (53, 66), (49, 72), (49, 80), (38, 80)]),
                     ('F', [(53, 59), (64, 59), (64, 63), (67, 63), (67, 79), (55, 79), (53, 72), (53, 66)])):
         legs[s] = G(M['pants'] & (near if s == 'N' else ~near), a, poly, 'near')
     seat = (legs['N'][0] | legs['F'][0]) & region(box(0, 0, 100, T3_HIP + 1))
-    # The waist goes on up 3 rows under the jacket's hem beside the belt (continued up his folds), so a
-    # bending body never opens a gap between them.
-    m, c = G(seat | M['belt'], np.where(legs['N'][0][..., None], legs['N'][1], legs['F'][1]), box(39, 55, 63, 58), 'up', close=False)
+    # The waist goes on up under the jacket's hem, 3 rows over the belt's top (continued up his folds),
+    # so the jacket and the seat, each set on its own joint, never open a gap between them; not past the
+    # jacket (his far sleeve's line is there).
+    m, c = G(seat | M['belt'], np.where(legs['N'][0][..., None], legs['N'][1], legs['F'][1]), box(39, 52, 62, 58), 'up', close=False)
     P['seat'] = (m, c)
     for s in 'NF':
         m, c = legs[s]
         k = T3_KNEE[s]
-        P['thigh_' + s.lower()] = (split(m, box(0, T3_HIP - 3, 100, k + 1)), c)
+        P['thigh_' + s.lower()] = (split(m, box(0, T3_HIP - 3, 100, k + 3)), c)
         P['shin_' + s.lower()] = (split(m, box(0, k - 2, 100, 100)), c)
     nb = split(M['boots'], box(0, 0, 52, 100))
     fb = G(split(M['boots'], box(52, 0, 100, 100)), a, box(57, 79, 67, 89), 'up')
     for s, (m, c) in (('n', (nb, a)), ('f', fb)):
         f = T3_FOOT[s.upper()]
-        P['boot_shaft_' + s] = (split(m, box(0, 0, 100, f + 1)), c)
+        P['boot_shaft_' + s] = (split(m, box(0, 0, 100, f + 3)), c)
         P['boot_foot_' + s] = (split(m, box(0, f, 100, 100)), c)
     return a, K, M, P, black
 

@@ -19,6 +19,8 @@ import * as bomber from './items/bomberJacketArt';
 import * as leggings from './items/leggingsArt';
 import * as openBoots from './items/openToeBootsArt';
 import { PAINTED_SKIN } from './items/trunksKit';
+import { frameCount, rigPoseFor } from './rig';
+import { PARTS } from './raster';
 
 /** Our male (or another body) in only these items, at their default colours, holding nothing. */
 const look = (items: Partial<Record<SlotId, string>>, body: BodyType = 'male'): SpriteAppearance => {
@@ -64,18 +66,19 @@ function atRest(rgba: Uint8ClampedArray, piece: PaintedPiece, rest: [number, num
 
 // Each item alone on our male at rest, and how much of each of its pieces must show his pixels where he
 // drew them (what is missing is under the item's other pieces, our head or our hands, or continued
-// where his picture hid it).
+// where his picture hid it; the lower piece of a joint is partly under the end of the upper one, which
+// overlaps it).
 type Case = [string, Partial<Record<SlotId, string>>, Record<string, unknown>, Record<string, [number, number]>, Record<string, string>, Record<string, number>];
 const CASES: Case[] = [
-  ['short-sleeved shirt', { top: 'top_highcollar' }, shirt, shirt.SHIRT_REST, shirt.SHIRT_SLOT, { SHIRT_BODY: 0.95, SHIRT_SLEEVE_F: 0.65, SHIRT_ARM_UP_F: 0.95, SHIRT_ARM_FORE_F: 0.8, SHIRT_ARM_UP_N: 0.9, SHIRT_ARM_FORE_N: 0.78 }],
-  ['cargo trousers', { bottom: 'bottom_cargo' }, cargo, cargo.CARGO_REST, cargo.CARGO_SLOT, { CARGO_SEAT: 0.93, CARGO_THIGH_N: 0.5, CARGO_SHIN_N: 0.42, CARGO_THIGH_F: 0.64, CARGO_SHIN_F: 0.72 }],
-  ['leather boots', { feet: 'feet_leather' }, boots, boots.LEATHER_BOOT_REST, boots.LEATHER_BOOT_SLOT, { BOOT_SHAFT_N: 0.73, BOOT_FOOT_N: 0.95, BOOT_SHAFT_F: 0.85, BOOT_FOOT_F: 0.87 }],
+  ['short-sleeved shirt', { top: 'top_highcollar' }, shirt, shirt.SHIRT_REST, shirt.SHIRT_SLOT, { SHIRT_BODY: 0.95, SHIRT_SLEEVE_F: 0.65, SHIRT_ARM_UP_F: 0.95, SHIRT_ARM_FORE_F: 0.68, SHIRT_ARM_UP_N: 0.9, SHIRT_ARM_FORE_N: 0.66 }],
+  ['cargo trousers', { bottom: 'bottom_cargo' }, cargo, cargo.CARGO_REST, cargo.CARGO_SLOT, { CARGO_SEAT: 0.93, CARGO_THIGH_N: 0.5, CARGO_SHIN_N: 0.18, CARGO_THIGH_F: 0.64, CARGO_SHIN_F: 0.58 }],
+  ['leather boots', { feet: 'feet_leather' }, boots, boots.LEATHER_BOOT_REST, boots.LEATHER_BOOT_SLOT, { BOOT_SHAFT_N: 0.63, BOOT_FOOT_N: 0.95, BOOT_SHAFT_F: 0.7, BOOT_FOOT_F: 0.87 }],
   ['belt', { waist: 'waist_belt' }, belt, belt.BELT_REST, belt.BELT_SLOT, { BELT: 0.95 }],
   ["traveler's gloves", { hands: 'hands_traveler_gloves' }, gloves, gloves.TRAVELER_GLOVE_REST, gloves.TRAVELER_GLOVE_SLOT, { TRAVELER_GLOVE_N: 0.95, TRAVELER_GLOVE_F: 0.95 }],
   ["traveler's cape", { cape: 'cape_traveler' }, cape, cape.TRAVELER_REST, cape.TRAVELER_SLOT, { TRAVELER_HOOD: 0.82, TRAVELER_SHOULDER: 0.95, TRAVELER_BACK: 0.55 }],
-  ['bomber jacket', { top: 'top_bomber' }, bomber, bomber.BOMBER_REST, bomber.BOMBER_SLOT, { BOMBER_BODY: 0.88, BOMBER_SLEEVE_UP_N: 0.95, BOMBER_SLEEVE_FORE_N: 0.68, BOMBER_SLEEVE_UP_F: 0.95, BOMBER_SLEEVE_FORE_F: 0.72, BOMBER_FIST_F: 0.83 }],
-  ['belted trousers', { bottom: 'bottom_leggings' }, leggings, leggings.LEGGINGS_REST, leggings.LEGGINGS_SLOT, { LEGGINGS_SEAT: 0.94, LEGGINGS_THIGH_N: 0.5, LEGGINGS_SHIN_N: 0.28, LEGGINGS_THIGH_F: 0.68, LEGGINGS_SHIN_F: 0.6 }],
-  ['open-toed boots', { feet: 'feet_cowboy' }, openBoots, openBoots.OPEN_BOOT_REST, openBoots.OPEN_BOOT_SLOT, { OPEN_BOOT_SHAFT_N: 0.65, OPEN_BOOT_FOOT_N: 0.95, OPEN_BOOT_SHAFT_F: 0.93, OPEN_BOOT_FOOT_F: 0.91 }],
+  ['bomber jacket', { top: 'top_bomber' }, bomber, bomber.BOMBER_REST, bomber.BOMBER_SLOT, { BOMBER_BODY: 0.88, BOMBER_SLEEVE_UP_N: 0.95, BOMBER_SLEEVE_FORE_N: 0.57, BOMBER_SLEEVE_UP_F: 0.68, BOMBER_SLEEVE_FORE_F: 0.52, BOMBER_FIST_F: 0.83 }],
+  ['belted trousers', { bottom: 'bottom_leggings' }, leggings, leggings.LEGGINGS_REST, leggings.LEGGINGS_SLOT, { LEGGINGS_SEAT: 0.94, LEGGINGS_THIGH_N: 0.5, LEGGINGS_SHIN_N: 0.13, LEGGINGS_THIGH_F: 0.68, LEGGINGS_SHIN_F: 0.55 }],
+  ['open-toed boots', { feet: 'feet_cowboy' }, openBoots, openBoots.OPEN_BOOT_REST, openBoots.OPEN_BOOT_SLOT, { OPEN_BOOT_SHAFT_N: 0.59, OPEN_BOOT_FOOT_N: 0.95, OPEN_BOOT_SHAFT_F: 0.9, OPEN_BOOT_FOOT_F: 0.91 }],
 ];
 
 describe("the owner's Trunks clothes", () => {
@@ -100,6 +103,41 @@ describe("the owner's Trunks clothes", () => {
           let n = 0;
           for (let i = 0; i < GRID * GRID; i++) if (opaque(f.rgba, i)) n++;
           assert.ok(n > 1500, `${body} ${pose}: ${n} pixels`);
+        }
+      }
+    }
+  });
+
+  it('draw the arms and legs only in his colours, in every pose and frame, on the male and bulky bodies', () => {
+    // His sleeves, bare arms, fists, gloves, trousers and boots turn with our limbs; nothing of our own
+    // limbs (our skin, its outline, our hand pictures in our skin) may show past them. The cast's runes
+    // and the knocked-out cape (the drawn one, lying along the body) are not his pieces.
+    const his = new Set<string>();
+    for (const m of [shirt, cargo, boots, belt, gloves, cape, bomber, leggings, openBoots]) {
+      for (const v of Object.values(m)) {
+        if (v && typeof v === 'object' && 'colors' in v) for (const h of Object.values((v as PaintedPiece).colors)) his.add(h);
+        if (Array.isArray(v)) for (const h of v) his.add(h);
+      }
+    }
+    const limbs = new Set(['upperArmN', 'forearmN', 'handN', 'upperArmF', 'forearmF', 'handF', 'thighN', 'shinN', 'footN', 'thighF', 'shinF', 'footF'].map((p) => PARTS.indexOf(p as never)));
+    const looks = [
+      painted({ cape: 'cape_traveler', top: 'top_highcollar', bottom: 'bottom_cargo', feet: 'feet_leather', waist: 'waist_belt', hands: 'hands_traveler_gloves' }),
+      painted({ top: 'top_bomber', bottom: 'bottom_leggings', feet: 'feet_cowboy' }),
+    ];
+    for (const body of ['male', 'bulky'] as BodyType[]) {
+      for (const l of looks) {
+        l.body = body;
+        for (const pose of POSES) {
+          if (pose === 'cast' || pose === 'downed') continue;
+          const n = frameCount(rigPoseFor(pose, l.cast?.style, l.slots.held?.id));
+          for (let fr = 0; fr < n; fr++) {
+            const f = renderSprite(l, pose, fr);
+            const ours: string[] = [];
+            for (let i = 0; i < GRID * GRID; i++) {
+              if (opaque(f.rgba, i) && limbs.has(f.part[i]) && !his.has(hex(f.rgba, i))) ours.push(`${i % GRID},${Math.floor(i / GRID)}`);
+            }
+            assert.ok(ours.length === 0, `${body} ${l.slots.top!.id} ${pose} ${fr}: not his at ${ours.join(' ')}`);
+          }
         }
       }
     }

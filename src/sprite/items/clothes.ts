@@ -6,12 +6,12 @@
 
 // The owner's Trunks 2 and 3 garments (tools/refs/trunks-*-from-ref.py).
 import { BELT, BELT_BUCKLE, BELT_LEATHER, BELT_SLOT } from './beltArt';
-import { BOMBER_BLUE, BOMBER_BODY, BOMBER_FIST_F, BOMBER_FIST_N, BOMBER_SHIRT, BOMBER_SLEEVE_FORE_F, BOMBER_SLEEVE_FORE_N, BOMBER_SLEEVE_UP_F, BOMBER_SLEEVE_UP_N, BOMBER_SLOT } from './bomberJacketArt';
+import { BOMBER_BLUE, BOMBER_BODY, BOMBER_FIST_F, BOMBER_FIST_N, BOMBER_FIST_TONES, BOMBER_SHIRT, BOMBER_SLEEVE_FORE_F, BOMBER_SLEEVE_FORE_N, BOMBER_SLEEVE_UP_F, BOMBER_SLEEVE_UP_N, BOMBER_SLOT } from './bomberJacketArt';
 import { CARGO_GREEN, CARGO_SEAT, CARGO_SHIN_F, CARGO_SHIN_N, CARGO_SLOT, CARGO_THIGH_F, CARGO_THIGH_N } from './cargoPantsArt';
 import { LEGGINGS_CREST, LEGGINGS_PURPLE, LEGGINGS_SEAT, LEGGINGS_SHIN_F, LEGGINGS_SHIN_N, LEGGINGS_SLOT, LEGGINGS_THIGH_F, LEGGINGS_THIGH_N } from './leggingsArt';
 import { SHIRT_ARM_FORE_F, SHIRT_ARM_FORE_N, SHIRT_ARM_UP_F, SHIRT_ARM_UP_N, SHIRT_BLUE, SHIRT_BODY, SHIRT_SLEEVE_F, SHIRT_SLEEVE_N, SHIRT_SLOT, SHIRT_TRIM } from './shortSleeveShirtArt';
 import { TRAVELER_GLOVE_BLACK, TRAVELER_GLOVE_F, TRAVELER_GLOVE_N, TRAVELER_GLOVE_SLOT, TRAVELER_GLOVE_TONES } from './travelerGlovesArt';
-import { partsOff, savedAsHis, slotTint, stretchedPiece } from './trunksKit';
+import { belowPelvisOff, PAINTED_SKIN, partsOff, savedAsHis, slotTint, stretchedPiece, torsoOff } from './trunksKit';
 import { isFemaleBody as femaleBody } from '../types';
 
 import { hexToRgb, retintHex } from '../color';
@@ -1958,7 +1958,7 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       // The owner's gloves from his Trunks 2 picture (2026-10-21; tools/refs/trunks-fingerless-from-ref.py),
       // a new item beside the Fingerless Gloves (those became his Ren's gloves). Closed, each hand is his
       // fist in place of ours, pinned to the wrist where he drew it: the near one round the grip (which
-      // shows through it where it does in his picture; the same fist closes on nothing), the far one
+      // shows through it where it does in his picture; an empty fist is the far one), the far one
       // hanging, his fingertips in the character's skin. Open, pointing or relaxed it is our hand
       // picture in his glove's greys. His greys follow the slot; his black line stays.
       const tint = slotTint(g, TRAVELER_GLOVE_SLOT, { main: TRAVELER_GLOVE_BLACK }, { main: c });
@@ -1966,8 +1966,11 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
       for (const s of SIDES) {
         const { kind } = handPose(g, s);
         if (kind === 'grip' || kind === 'fist') {
-          bareHandOff(g, s);
-          paintedFist(g, s, s === 'N' ? TRAVELER_GLOVE_N : TRAVELER_GLOVE_F, tint);
+          // Under his short-sleeved shirt his bare forearm reaches the wrist: our hand just goes.
+          if (g.has('top', 'top_highcollar') && !femaleBody(g.rig.body)) partsOff(g, [armDepth(s, 'body')], [prt('hand', s)]);
+          else bareHandOff(g, s);
+          // His near glove closes round the sword's grip: an empty near fist is his far glove.
+          paintedFist(g, s, s === 'N' && kind === 'grip' ? TRAVELER_GLOVE_N : TRAVELER_GLOVE_F, tint);
         } else toneHand(g, s, tones);
       }
     },
@@ -2017,6 +2020,7 @@ function paintedTrousers(
   const r = g.rig;
   const big = r.body === 'bulky';
   const fit = (q: PaintedPiece, l: number, rt: number) => (big ? stretchedPiece(q, l, rt, 0) : q);
+  belowPelvisOff(g);
   for (const s of SIDES) {
     const { hip, knee, ankle } = legJoints(r, s);
     const [thigh, shin] = s === 'N' ? [p.thighN, p.shinN] : [p.thighF, p.shinF];
@@ -2033,12 +2037,14 @@ function paintedTrousers(
  * The owner's open jacket (his Trunks 3 picture, bomberJacketArt.ts): the body rides the torso about the
  * neck, each sleeve's upper part its upper arm about the shoulder and its forearm part (with the cuff)
  * its forearm about the elbow, over our arms (taken away under them, so at rest every pixel of the arms
- * is his, where he drew it). A closed hand is his bare fist under the cuff, in the character's skin. The
- * bulky body keeps its big hands, his jacket and sleeves broadened over its broader torso and arms.
+ * is his, where he drew it). A closed hand is his bare fist under the cuff, in the character's skin; an
+ * open, pointing or relaxed hand is our hand picture in his skin's tones. On the bulky body his jacket and
+ * sleeves are broadened over its broader torso and arms.
  */
 function drawBomber(g: DrawCtx, blue: string, grey: string): void {
   const r = g.rig;
   const tint = slotTint(g, BOMBER_SLOT, { main: BOMBER_BLUE, under: BOMBER_SHIRT }, { main: blue, under: grey });
+  const tones = BOMBER_FIST_TONES.map((t) => retintHex(t, PAINTED_SKIN, g.look.skin));
   const big = r.body === 'bulky';
   for (const s of SIDES) {
     const j = armJoints(r, s);
@@ -2047,14 +2053,21 @@ function drawBomber(g: DrawCtx, blue: string, grey: string): void {
     const fit = (q: PaintedPiece) => (big ? stretchedPiece(q, 2, 2, 0) : q);
     stampPiece(g, armDepth(s, 'cloth'), fit(fore), j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
     stampPiece(g, armDepth(s, 'cloth'), fit(up), j.shoulder, segAngle(j.shoulder, j.elbow), prt('upperArm', s), tint);
-    const { kind } = handPose(g, s);
     // (With gloves on, the gloves draw the hands.)
-    if (!big && !g.has('hands') && (kind === 'grip' || kind === 'fist')) {
-      bareHandOff(g, s);
-      paintedFist(g, s, fist, tint);
+    if (g.has('hands')) continue;
+    const { kind } = handPose(g, s);
+    partsOff(g, [armDepth(s, 'body')], [prt('hand', s)]);
+    // His near fist closes round the sword's grip (it shows between his fingers): an empty near fist is
+    // his far fist, which closes on nothing.
+    if (kind === 'grip') paintedFist(g, s, fist, tint);
+    else if (kind === 'fist') paintedFist(g, s, BOMBER_FIST_F, tint);
+    else {
+      toneWrist(g, s, tones);
+      toneHand(g, s, tones);
     }
   }
   stampPiece(g, 'torso.top', big ? stretchedPiece(BOMBER_BODY, 4, 5, 1) : BOMBER_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
+  torsoOff(g);
 }
 
 /**
@@ -2062,8 +2075,8 @@ function drawBomber(g: DrawCtx, blue: string, grey: string): void {
  * about the neck, each sleeve its upper arm about the shoulder. On the male body his bare arms come with
  * it, in the character's skin (he drew them broader than ours, and they are part of his figure): each
  * upper arm and forearm turns with ours about the shoulder and the elbow, and our arm under them is taken
- * away, so at rest every pixel of the arms is his, where he drew it. The bulky body keeps its own big
- * arms, his shirt and sleeves broadened over them.
+ * away, so at rest every pixel of the arms is his, where he drew it. On the bulky body his shirt, sleeves
+ * and arms are broadened over its broader torso and arms.
  */
 function drawShortShirt(g: DrawCtx, blue: string, trim: string): void {
   const r = g.rig;
@@ -2072,16 +2085,35 @@ function drawShortShirt(g: DrawCtx, blue: string, trim: string): void {
   for (const s of SIDES) {
     const j = armJoints(r, s);
     const up = segAngle(j.shoulder, j.elbow);
-    if (!big) {
-      partsOff(g, [armDepth(s, 'body')], [prt('upperArm', s), prt('forearm', s)]);
-      const [arm, fore] = s === 'N' ? [SHIRT_ARM_UP_N, SHIRT_ARM_FORE_N] : [SHIRT_ARM_UP_F, SHIRT_ARM_FORE_F];
-      stampPiece(g, armDepth(s, 'body'), fore, j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
-      stampPiece(g, armDepth(s, 'body'), arm, j.shoulder, up, prt('upperArm', s), tint);
-    }
+    const fit = (q: PaintedPiece) => (big ? stretchedPiece(q, 1, 1, 0) : q);
+    partsOff(g, [armDepth(s, 'body')], [prt('upperArm', s), prt('forearm', s)]);
+    const [arm, fore] = s === 'N' ? [SHIRT_ARM_UP_N, SHIRT_ARM_FORE_N] : [SHIRT_ARM_UP_F, SHIRT_ARM_FORE_F];
+    stampPiece(g, armDepth(s, 'body'), fit(fore), j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
+    stampPiece(g, armDepth(s, 'body'), fit(arm), j.shoulder, up, prt('upperArm', s), tint);
     const sleeve = s === 'N' ? SHIRT_SLEEVE_N : SHIRT_SLEEVE_F;
-    stampPiece(g, armDepth(s, 'cloth'), big ? stretchedPiece(sleeve, 1, 1, 0) : sleeve, j.shoulder, up, prt('upperArm', s), tint);
+    stampPiece(g, armDepth(s, 'cloth'), fit(sleeve), j.shoulder, up, prt('upperArm', s), tint);
   }
   stampPiece(g, 'torso.top', big ? stretchedPiece(SHIRT_BODY, 4, 5, 1) : SHIRT_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
+  torsoOff(g);
+}
+
+/**
+ * The end of the forearm, from under the cuff to the wrist, in these tones (outline, crease, shadow, base,
+ * light): his cuff ends where his fist starts, and our open hands start a little lower.
+ */
+function toneWrist(g: DrawCtx, s: Side, tones: readonly string[]): void {
+  const tmp = new Layer();
+  armSpan(g, tmp, s, 1.6, 2, 0, { mat: 0, part: prt('forearm', s) }, 'skin');
+  const mats = tones.map((t) => g.m(t, 'flat'));
+  const L = g.L(armDepth(s, 'body'));
+  const at = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && tmp.mat[y * GRID + x] >= 0;
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (tmp.mat[i] < 0) continue;
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    const rim = !(at(x - 1, y) && at(x + 1, y) && at(x, y - 1) && at(x, y + 1));
+    L.set(x, y, mats[rim ? 0 : Math.max(2, Math.min(tmp.shade[i], mats.length - 1))], 3, prt('forearm', s), F_NO_TEXTURE | F_NO_OUTLINE);
+  }
 }
 
 /** Our hand picture for the pose (open, pointing, relaxed, cradling) in these tones, by its shades. */

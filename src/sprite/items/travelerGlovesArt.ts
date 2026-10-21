@@ -123,7 +123,7 @@ export const TRAVELER_GLOVE_N: PaintedPiece = {
     'nahhhhhhda.',
     'apqmhhhhhda',
     'arkshtmdiu.',
-    'addqdvmaa.a',
+    'addqdvmaa..',
     'awaddxday..',
     '...zadaAB..',
     '...c.C.DE..',

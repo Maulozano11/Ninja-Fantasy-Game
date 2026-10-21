@@ -3,8 +3,8 @@ the Traveler's Gloves (hands_traveler_gloves; the Fingerless Gloves item became 
 
 His picture is our male painted over in his own pixels (tools/refs/trunks_ref.py: one of his pixels is
 one fine pixel of our sprites). This script lifts the gloves out of it, every pixel in his exact colour:
-the near fist round the sword's grip (the grip shows through it where it does in his picture; the same
-fist closes on nothing) with his fingertips bare under it, and the far fist hanging, its fingertips bare
+the near fist round the sword's grip (the grip shows through it where it does in his picture; an empty
+near fist is the far one) with his fingertips bare under it, and the far fist hanging, its fingertips bare
 too. Each rides its wrist, pinned where it lies in his picture, so at rest every pixel is his. His glove
 greys follow the Glove slot and his fingertips the character's skin; his line and the grip stay.
 

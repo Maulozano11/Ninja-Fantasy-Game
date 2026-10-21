@@ -6,7 +6,7 @@
 import { retintHex } from '../color';
 import type { Depth, DrawCtx } from '../ctx';
 import type { PaintedPiece } from '../painted';
-import { GRID, partIndex, type PartId } from '../raster';
+import { GRID, partIndex, RES, type PartId } from '../raster';
 
 /** The skin he painted over (Solen's, which our renders for him wore): in it, his skin pixels are his. */
 export const PAINTED_SKIN = '#f3c39c';
@@ -43,6 +43,52 @@ export function partsOff(g: DrawCtx, depths: Depth[], parts: PartId[]): void {
     const L = g.L(d);
     if (!L.used) continue;
     for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && ids.has(L.part[i])) L.mat[i] = -1;
+  }
+}
+
+/**
+ * Takes our torso and undergarment away below the pelvis, and the undergarment's legs: his trousers are
+ * all there is from the waist down (our crotch would show under his seat, between his thighs).
+ */
+export function belowPelvisOff(g: DrawCtx): void {
+  const r = g.rig;
+  const torso = partIndex('torso');
+  const thighs = new Set([partIndex('thighN'), partIndex('thighF')]);
+  for (const d of ['torso.body', 'torso.under'] as Depth[]) {
+    const L = g.L(d);
+    if (!L.used) continue;
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (L.mat[i] < 0 || L.part[i] !== torso) continue;
+      const x = ((i % GRID) + 0.5) / RES - r.pelvis.x;
+      const y = (Math.floor(i / GRID) + 0.5) / RES - r.pelvis.y;
+      if (d === 'torso.under' || x * r.up.x + y * r.up.y < 0) L.mat[i] = -1;
+    }
+  }
+  for (const d of ['nearLeg.cloth', 'farLeg.cloth'] as Depth[]) {
+    const L = g.L(d);
+    if (!L.used) continue;
+    for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] >= 0 && thighs.has(L.part[i])) L.mat[i] = -1;
+  }
+}
+
+/**
+ * Takes our torso away below the neck: his garment is the torso there. Our torso is broader than his at
+ * the shoulders, and showed (with its outline) as a strip of skin beside his sleeve when the arm swings.
+ */
+export function torsoOff(g: DrawCtx): void {
+  const r = g.rig;
+  const L = g.L('torso.body');
+  const torso = partIndex('torso');
+  const b = g.bp;
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || L.part[i] !== torso) continue;
+    const x = ((i % GRID) + 0.5) / RES - r.pelvis.x;
+    const y = (Math.floor(i / GRID) + 0.5) / RES - r.pelvis.y;
+    const up = x * r.up.x + y * r.up.y;
+    const across = x * r.right.x + y * r.right.y;
+    // The neck stays, down into the collar's opening (it shows there, as in his pictures).
+    const neck = up >= b.torsoLen - 4 && Math.abs(across - 0.6) <= b.neckW + 1;
+    if (up < b.torsoLen - 1.5 && !neck) L.mat[i] = -1;
   }
 }
 

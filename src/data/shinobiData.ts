@@ -1139,8 +1139,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
       jutsuSaveDC: 16,
       jutsuAttackBonus: 9,
       // The owner's own Aiden (docs/reference/aiden-owner-reference.jpg, 2026-10-21): his head shape,
-      // eyes, hair, plate, cape and flame longsword, every one lifted from his pixels; his clan's tomoe
-      // eyes stay over his eyes (the owner: "con marcas").
+      // eyes, hair, plate, gauntlets, sabatons, cape and flame longsword, every one lifted from his
+      // pixels; his clan's tomoe eyes stay over his eyes (the owner: "con marcas").
       appearance: spriteLook({
         skin: '#f6bb96',
         faceShape: 'valiant',
@@ -1151,7 +1151,8 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
           top: it('top_longsleeve', '#151a2e', '#0d1020'),
           bottom: it('bottom_shinobi', '#151a2e', '#151a2e'),
           armor: it('armor_crimson_plate'),
-          feet: it('feet_greaves', '#c4ccd6', '#3a2d27'),
+          hands: it('hands_crimson_gauntlets'),
+          feet: it('feet_crimson_sabatons'),
           cape: it('cape_crimson'),
           held: it('held_flame_sword'),
         },

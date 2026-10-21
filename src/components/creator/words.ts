@@ -169,6 +169,7 @@ const ES: Record<string, string> = {
   Gown: 'Túnica larga',
   Glove: 'Guante',
   Flames: 'Llamas',
+  Flame: 'Llama',
   'Flame Trim': 'Ribete de llamas',
   Engraving: 'Grabado',
   Enamel: 'Esmalte',

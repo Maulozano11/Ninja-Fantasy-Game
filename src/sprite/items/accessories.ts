@@ -11,6 +11,7 @@ import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwo
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, handsReleased, poleAngle, swordAngle, throwsKunai } from '../grip';
+import { drawClothMaskPiece, drawKunaiPiece, KUNAI_STEEL, KUNAI_WRAP, MASK_CLOTH, renegadeFits } from './renegade';
 
 const col = (key: string, label: string, def: string, kind: RampKind = 'cloth') => ({ key, label, default: def, kind });
 
@@ -378,13 +379,14 @@ export const HELD_ITEMS: ItemDef[] = [
     id: 'held_kunai',
     slot: 'held',
     name: 'Kunai',
-    desc: 'A throwing knife with a ring pommel and wrapped grip.',
-    colors: [col('blade', 'Blade', '#aab4c2', 'metal'), col('wrap', 'Wrap', '#3a3346')],
+    desc: 'A throwing knife with a ring pommel, a wrapped handle and a worn steel blade.',
+    colors: [col('blade', 'Blade', KUNAI_STEEL, 'metal'), col('wrap', 'Wrap', KUNAI_WRAP)],
     draw: (g, [blade, wrap]) => {
-      const c = { blade, grip: wrap, guard: blade, wrap: '#e2dccb' };
-      if (handsBusy(g)) drawWeapon(g, 'waist', KUNAI, g.rig.T(-g.bp.hipHalf * 0.55, 3.6), 100, c);
-      else if (handsLimp(g)) drawWeapon(g, 'nearArm.held', KUNAI, droppedGrip(g, 0.15, 0.9), -80, c);
-      else if (!handsReleased(g)) drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), c);
+      // The owner's kunai on his Renegade, his pixels (renegade.ts): at rest it hangs from the fist at
+      // the angle he drew it, every pixel his; other poses turn it.
+      if (handsBusy(g)) drawKunaiPiece(g, 'waist', g.rig.T(-g.bp.hipHalf * 0.55, 3.6), 100, blade, wrap);
+      else if (handsLimp(g)) drawKunaiPiece(g, 'nearArm.held', droppedGrip(g, 0.15, 0.9), -80, blade, wrap);
+      else if (!handsReleased(g)) drawKunaiPiece(g, 'nearArm.held', gripPoint(g), swordAngle(g), blade, wrap);
     },
   },
   {
@@ -639,9 +641,15 @@ export const FACE_ITEMS: ItemDef[] = [
     id: 'face_clothmask',
     slot: 'face',
     name: 'Cloth Mask',
-    desc: 'A dark cloth mask that covers the face from the nose down.',
-    colors: [col('cloth', 'Cloth', '#2a2d3a')],
+    desc: 'A brown cloth mask pulled up over the nose, wrapped round the jaw and hanging in a point over the collar.',
+    colors: [col('cloth', 'Cloth', MASK_CLOTH)],
     draw: (g, [c]) => {
+      // The owner's mask on his Renegade, his pixels (renegade.ts): on the male body it sits on the face
+      // as he drew it, its point over the collar. The other bodies keep the drawn mask until he paints theirs.
+      if (renegadeFits(g)) {
+        drawClothMaskPiece(g, c);
+        return;
+      }
       const L = g.L('head.mask');
       const pen: Pen = { mat: g.m(c, 'cloth'), part: 'head' };
       headRegion(

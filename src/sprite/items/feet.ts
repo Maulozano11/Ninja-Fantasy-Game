@@ -3,12 +3,13 @@
 // are pixel templates in 3/4 front view (see FootArt in ctx.ts): the near foot
 // faces the viewer, the far foot points right and is authored a shade darker.
 
-import { retintHex } from '../color';
+import { mixHex, retintHex } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
 import { segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
+import { drawWrapSandalPieces, renegadeFits, WRAP_CLOTH } from './renegade';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -484,4 +485,27 @@ export const FEET_ITEMS: ItemDef[] = [
       }
     },
   },
+  {
+    id: 'feet_wrapsandals',
+    slot: 'feet',
+    name: 'Wrapped Sandals',
+    desc: 'Dark cloth wrapped in bands round the shins and over the instep of open sandals; the toes stay bare.',
+    colors: [col('main', 'Wraps', WRAP_CLOTH)],
+    draw: (g, [c]) => {
+      // The owner's wraps and sandals on his Renegade (renegade.ts) on the male body, our bare foot under
+      // his taken away; under them a plain wrap down the lower shin fills what his leave open as the
+      // ankle bends. The other bodies wear open-toed shinobi boots in the wraps' colour.
+      if (!renegadeFits(g)) {
+        SHINOBI_BOOTS.draw(g, [c, mixHex(c, '#000000', 0.45)], {});
+        return;
+      }
+      for (const s of SIDES) {
+        bareFootOff(g, s);
+        limb(g, g.L(legDepth(s, 'feet')), 'leg', s, 1.62, 1.96, [0.5, 0.45], bootPen(g, c, s, 'shin', 'cloth'));
+      }
+      drawWrapSandalPieces(g, c);
+    },
+  },
 ];
+
+const SHINOBI_BOOTS = FEET_ITEMS.find((d) => d.id === 'feet_shinobi')!;

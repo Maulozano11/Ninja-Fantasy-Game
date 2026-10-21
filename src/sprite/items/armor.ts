@@ -1103,7 +1103,7 @@ const LEAN_SHEAR = 20;
  * (so his ab plates and strips stay his pixels, only stepped), as far as a turn would move it; a large
  * one turns it with RotSprite.
  */
-function stampLeaning(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color: (ch: string, hex: string) => string): void {
+export function stampLeaning(g: DrawCtx, depth: Depth, piece: PaintedPiece, at: Vec, deg: number, part: PartId, color: (ch: string, hex: string) => string): void {
   const d = deg - piece.angle;
   if (Math.abs(d) > LEAN_SHEAR) {
     stampPiece(g, depth, piece, at, deg, part, color);

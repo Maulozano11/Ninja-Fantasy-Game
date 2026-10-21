@@ -6,6 +6,8 @@ import type { Difficulty } from '../types/mission';
 import type { SpriteAppearance } from '../sprite/types';
 import { SHINOBI_CLASSES } from '../data/shinobiData';
 import { getItem } from '../sprite/catalog';
+import { BELT_ENDS, BELT_ROPE, CARGO_CLOTH, KUNAI_STEEL, KUNAI_WRAP, MASK_CLOTH, TUNIC_CLOTH, TUNIC_SKIN, WRAP_CLOTH } from '../sprite/items/renegade';
+import { RENEGADE_HAIR_BASE } from '../sprite/items/renegadeHairArt';
 import { abilityMod, abilityScores, proficiencyBonus, skillsOf } from '../rules/checks';
 import { deriveStats, effectiveAC, effectiveMaxHp, SHEET_VERSION } from '../rules/derived';
 import { effectMods } from '../rules/effects';
@@ -196,16 +198,19 @@ const TEMPLATES: Record<EnemyKind, Template> = {
           held: it('held_katana', '#c9ced6', '#3a2a22', '#7a6a3a'),
         },
       }),
+      // The owner's Renegade (docs/reference/renegade-owner-reference.jpg): his colours, so on the male
+      // body every pixel of his pieces is his (sprite/items/renegade.ts). No headband.
       look({
-        skin: '#d9a982',
+        skin: TUNIC_SKIN,
+        headband: { position: 'none', slashed: true, tails: true, emblem: 'crescent', cloth: '#2a2d3a', plate: '#9aa3ad' },
         slots: {
-          hair: it('hair_crop', '#5a3a22'),
-          face: it('face_clothmask', '#4a2a2a'),
-          top: it('top_sleeveless', '#5a3a2a', '#3a2a22'),
-          bottom: it('bottom_cargo', '#3a3326', '#2a251c'),
-          feet: it('feet_shinobi', '#2a251c', '#3a3326'),
-          waist: it('waist_rope', '#8a6a3a', '#5a4a2a'),
-          held: it('held_kunai', '#c9ced6', '#3a2a22'),
+          hair: it('hair_crop', RENEGADE_HAIR_BASE),
+          face: it('face_clothmask', MASK_CLOTH),
+          top: it('top_sleeveless', TUNIC_CLOTH, '#3a2a22'),
+          bottom: it('bottom_cargo', CARGO_CLOTH, '#2a251c'),
+          feet: it('feet_wrapsandals', WRAP_CLOTH),
+          waist: it('waist_rope', BELT_ROPE, BELT_ENDS),
+          held: it('held_kunai', KUNAI_STEEL, KUNAI_WRAP),
         },
       }),
     ],

@@ -11,6 +11,7 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
+import { BELT_ENDS, BELT_ROPE, CARGO_CLOTH, drawCargoPieces, drawRopeBeltPieces, drawTunicPieces, renegadeFits, TUNIC_CLOTH } from './renegade';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1084,9 +1085,11 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
     id: 'top_sleeveless',
     slot: 'top',
     name: 'Sleeveless Tunic',
-    desc: 'Hip-length sleeveless tunic with a laced V front and trimmed edges.',
-    colors: [col('main', 'Tunic', '#8a3b2e'), col('trim', 'Trim', '#e2c58b')],
+    desc: 'Hip-length sleeveless brown tunic with a V neck, showing the bare arms.',
+    colors: [col('main', 'Tunic', TUNIC_CLOTH), col('trim', 'Trim', '#e2c58b')],
     draw: (g, [c, t]) => {
+      // On the male body the owner's tunic and bare arms on his Renegade go over this one (renegade.ts),
+      // which shows only where his is hidden in his picture (under the mask and the belt).
       const L = g.L('torso.top');
       const Lt = g.bp.torsoLen;
       const pen = clothPen(g, c, 'torso');
@@ -1107,6 +1110,7 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
         tstitch(g, L, CX - 1.4 + i * 0.5, y0, CX + 1.2 - i * 0.5, y0 - 1.5, lp, 4, 0);
         tstitch(g, L, CX + 1.2 - i * 0.5, y0, CX - 1.4 + i * 0.5, y0 - 1.5, lp, 2, 0);
       }
+      if (renegadeFits(g)) drawTunicPieces(g, c);
     },
   },
   {
@@ -1370,9 +1374,12 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     id: 'bottom_cargo',
     slot: 'bottom',
     name: 'Baggy Cargo Pants',
-    desc: 'Roomy work trousers bloused at the ankle, with a strapped thigh pouch.',
-    colors: [col('main', 'Pants', '#55603f'), col('pouch', 'Pouch', '#6e5a3c', 'leather')],
+    desc: 'Roomy olive work trousers with a buttoned pocket on each thigh, bloused at the ankle.',
+    colors: [col('main', 'Pants', CARGO_CLOTH), col('pouch', 'Pouch', '#6e5a3c', 'leather')],
     draw: (g, [c, p]) => {
+      // On the male body the owner's trousers on his Renegade go over these (renegade.ts), without the
+      // strapped pouch (his pockets are sewn on); these show only where his are hidden in his picture.
+      const his = renegadeFits(g);
       trousers(g, c, 1.86, 1.05, 3.2);
       waistband(g, 3.2);
       for (const s of SIDES) {
@@ -1384,7 +1391,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
         legFolds(g, L, s, 1.05, 1.74);
         cuff(g, L, 'leg', s, 1.8, 1.97, 0.5, pen, 1.2);
         fold(L, along(legPoint(g, s, 0.2), legPoint(g, s, 0.8), 0.1, 1.4), along(legPoint(g, s, 0.2), legPoint(g, s, 0.8), 0.9, 1.9));
-        if (s === 'F') continue;
+        if (s === 'F' || his) continue;
         // Thigh pouch (own layer so it gets its own outline) with a buttoned flap and a leg strap
         lifted(p, () => {
           const P = g.L(legDepth(s, 'armor'));
@@ -1408,6 +1415,7 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
           fpx(P, along(a, bb, 0.26, off), g.m('#b9c0c8', 'metal'), prt('thigh', s), 4);
         });
       }
+      if (his) drawCargoPieces(g, c);
     },
   },
   {
@@ -1601,9 +1609,15 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
     id: 'waist_rope',
     slot: 'waist',
     name: 'Braided Rope Belt',
-    desc: 'Thick twisted rope belt finished with a big knot and tasseled ends at the back.',
-    colors: [col('main', 'Rope', '#cdb47c'), col('tassel', 'Tassels', '#8c2f39')],
+    desc: 'Broad belt of woven rope, knotted at the hip with its two ends hanging down the thigh.',
+    colors: [col('main', 'Rope', BELT_ROPE), col('tassel', 'Tassels', BELT_ENDS)],
     draw: (g, [c, ts]) => {
+      // The owner's woven belt on his Renegade, his pixels (renegade.ts), on the male body. The other
+      // bodies keep the twisted rope with its knot and tassels at the back.
+      if (renegadeFits(g)) {
+        drawRopeBeltPieces(g, c, ts);
+        return;
+      }
       const L = g.L('waist');
       const pen = clothPen(g, c, 'torso');
       // twisted strands: diagonal light/dark fine stripes

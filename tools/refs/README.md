@@ -130,3 +130,21 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `renegade_ref.py` + `renegade-hair-from-ref.py`, `renegade-mask-from-ref.py`, `renegade-top-from-ref.py`,
+  `renegade-belt-from-ref.py`, `renegade-trousers-from-ref.py`, `renegade-sandals-from-ref.py`, `renegade-kunai-from-ref.py`: the owner's
+  paint-over of Renegado 2 (`docs/reference/renegade-owner-reference.jpg`; his pixels are not square in the picture, 19.38 x 19.61, found from his
+  black line; our male idle frame 0 at offset (73, 120)), copied like Aiden and the Roman set. His figure stands where ours does, so every piece
+  hangs from our joint where he drew it. `renegade_ref.SEG` is a letter map of his picture saying which piece each of his pixels belongs to (started
+  from our render's part map, set by hand where he drew things elsewhere); his line (darker than luma 24, his black and the near-black brown of
+  the belt) goes with each piece it borders. Where a piece is hidden in his picture and shows in other poses, it is filled from his pixels: the
+  hair behind the forehead, the belt's ends behind the fist, the kunai's handle in the fist. Each module exports the colours its slots recolour
+  from (`*_CLOTH`, `TUNIC_SKIN`...), what each colour of his is (`*_KIND`) and where each piece lands at rest (`*_REST`, checked by
+  `src/sprite/renegade.test.ts`); the items draw them in `src/sprite/items/renegade.ts`. The same picture always gives the same bytes.
+
+      python3 -I tools/refs/renegade-hair-from-ref.py src/sprite/items/renegadeHairArt.ts [studyDir]
+      python3 -I tools/refs/renegade-mask-from-ref.py src/sprite/items/clothMaskArt.ts [studyDir]
+      python3 -I tools/refs/renegade-top-from-ref.py src/sprite/items/sleevelessTopArt.ts [studyDir]
+      python3 -I tools/refs/renegade-belt-from-ref.py src/sprite/items/ropeBeltArt.ts [studyDir]
+      python3 -I tools/refs/renegade-trousers-from-ref.py src/sprite/items/cargoTrousersArt.ts [studyDir]
+      python3 -I tools/refs/renegade-sandals-from-ref.py src/sprite/items/wrapSandalsArt.ts [studyDir]
+      python3 -I tools/refs/renegade-kunai-from-ref.py src/sprite/items/kunaiArt.ts [studyDir]

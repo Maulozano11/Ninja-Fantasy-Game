@@ -19,6 +19,7 @@ import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { RENEGADE_HAIR_BACK, RENEGADE_HAIR_BASE, RENEGADE_HAIR_FRONT, RENEGADE_HAIR_LINE } from './renegadeHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
@@ -1078,31 +1079,6 @@ const TPL: Record<string, HairTpl> = {
       '......00................',
     ],
   },
-  hair_crop: {
-    fa: [11, 19],
-    f: [
-      '..................0....',
-      '........0000000000200..',
-      '......0033333344212210.',
-      '.....0232222233222110..',
-      '....02222343332213310..',
-      '...02224444332213311100',
-      '..011333222532233111000',
-      '...03333553352232110...',
-      '..032334433332111210...',
-      '.03214522322222111110..',
-      '.01145223111111........',
-      '.01422111111...........',
-      '02211111...............',
-      '.0211..................',
-      '.012...................',
-      '0111...................',
-      '.011...................',
-      '.01....................',
-      '.01....................',
-      '.01....................',
-    ],
-  },
   hair_bristle: {
     fa: [13, 22],
     f: [
@@ -1645,6 +1621,9 @@ function trimSkull(g: DrawCtx, p: PaintedPart): void {
 /** His hair recoloured: his black line stays, his browns move the way his mid brown does. */
 const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, VALIANT_HAIR_BASE, hair));
 
+/** His Renegade hair recoloured: his black line stays, his browns move the way his mid brown does. */
+const renegadeHairColor = (hair: string) => (ch: string, hex: string) => (RENEGADE_HAIR_LINE.includes(ch) ? hex : retintHex(hex, RENEGADE_HAIR_BASE, hair));
+
 export const HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_none',
@@ -1726,7 +1705,22 @@ export const HAIR_ITEMS: ItemDef[] = [
   }),
   hairStyle('hair_buns', 'Twin Buns', 'Two neat buns on top, with soft bangs.', '#e58fb1'),
   hairStyle('hair_bob', 'Short Bob', 'A rounded, chin-length bob with a soft fringe.', '#8a4b2e'),
-  hairStyle('hair_crop', 'Short Crop', 'A short, neat cut with a little lift at the front.', '#3a2a22'),
+  {
+    id: 'hair_crop',
+    slot: 'hair',
+    name: 'Short Crop',
+    desc: 'Short brown hair standing up in spikes all over the crown, the near temple shaved, a few strands over the brow.',
+    colors: hairColor(RENEGADE_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his Renegade, his pixels (renegadeHairArt.ts), like his hair on Aiden: over
+      // the head every spike, the shaved side, his brows and his line; behind it the same hair with what
+      // his face hides filled in, and our skull trimmed to it. Where his picture shows forehead, our face shows.
+      const tint = renegadeHairColor(c);
+      paintedHair(g, g.L('hairBack'), RENEGADE_HAIR_BACK, tint);
+      paintedHair(g, g.L('hairFront'), RENEGADE_HAIR_FRONT, tint);
+      trimSkull(g, RENEGADE_HAIR_BACK);
+    },
+  },
   hairStyle('hair_bristle', 'Rebel Bristle', 'Short, wild ash-blond spikes that point every way, with jagged bangs.', '#cfc8b2'),
   hairStyle('hair_windward', 'Windward Fringe', 'Sleek black layers to the jaw, side-swept bangs and one long lock between the eyes.', '#232f36'),
   hairStyle('hair_bowl', 'Polished Bowl', 'A glossy, perfectly round bowl cut with a blunt fringe over bold brows.', '#171a24'),

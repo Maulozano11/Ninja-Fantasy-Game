@@ -1,38 +1,40 @@
-"""The owner's red scarf on his Saya (docs/reference/saya-owner-reference.jpg) as a cape-slot item.
+"""The owner's red scarf on his Saya as a cape-slot item, copied 1:1 from his picture at our game's scale.
 
-His picture is his own pixel art at 10 picture pixels to one of hers, and she is about 2 of her pixels
-to one of ours (heroine_ref.py), so her scarf is not copied 1:1: it is brought down to our scale (her
-pixels two to one: tail_auto() below) and finished by hand at our scale, in her colours only (KEY:
-every one is in heroine_ref.PALETTES['saya']), inside her black line.
+His picture (docs/reference/saya-game-scale-owner-reference.jpg, "tus referencias perfectas") is his
+pixel art drawn at our sprite's scale: 1024 picture pixels for 100 of his, so 10.24 picture pixels to
+one of his and one of his to one of ours. His pixels are read straight off it (the median of each
+cell's inside) and snapped to his colours; nothing is scaled. His big picture
+(saya-owner-reference.jpg) only shows what happens to the scarf's end: it flies back behind her near
+shoulder in a wide flag.
 
-Her scarf is a long red scarf wound thick round the neck: two lit rolls under the chin with a dark
-crease between them and the dark inside showing under the chin, its back going round the near side of
-the neck behind her side lock and down behind the near shoulder, where it comes out between her hair
-and her arm and is thrown back over her long hair in a wide flag: its lit top face, its dark underside
-showing where it twists, and its end hanging down in a point. The parts:
+His scarf at our scale is wound round the neck under the chin (two lit rolls with a dark crease, the
+dark inside under the chin, a shade where it lies on the chest), and its back goes round the near side
+of the neck, behind her side lock, and over the top of the near shoulder, where it goes behind her
+long hair. The parts:
 
-  wrap   round the neck, over the neck and the top of the chest, under the chin (the game clears it
-         where the head is) and under her side locks (hairFront): pivot on the neck, turned with the
-         torso. Her picture's wrap is 17 of her pixels across and 13 down: ours fits our neck, which is
-         as wide for the head as hers but half as long (14 across, 7 down).
-  tail   from the near side of the neck down behind the near shoulder and out into the flag: her pixels
-         two to one (tail_auto), cleaned by hand. Her picture hides it behind her side lock from the
-         neck to the shoulder: that stretch is continued from what shows on either side of the lock.
-         It hangs from the neck along its spine (SPINE, in our frame): the game bends the spine with the
-         wind (its free part from FREE on) and carries her pixels along it, so at rest it is hers pixel
-         for pixel and in a run it streams out behind.
+  wrap   his pixels round the neck and over the near shoulder, x 37-60 and rows 25-34 of his cells,
+         with his line. The stretch on top of the near shoulder (to his x 44) is its own piece, drawn
+         over the near arm (the arm's shoulder would cover it otherwise). His side lock (x 45-49) hides the stretch between the shoulder and the neck:
+         it is continued from his rows on either side (HIDDEN). Pivot on the neck, turned with the
+         torso, drawn over the neck and the top of the chest and under the chin (the game clears it
+         where the head is) and under the side locks (hairFront).
+  tail   the scarf's end, which his game-scale picture hides behind her hair and the near arm: a strip
+         hanging from behind the near shoulder down her back, in his colours (lit face, crease, dark
+         underside, as his rolls), drawn behind the hair and the body so at rest it stays hidden as in
+         his picture. It hangs along its SPINE: the game bends the spine with the wind, so in a run
+         or a throw it streams out behind her like the flag in his big picture.
 
-The hand-finished rows are below (WRAP, TAIL), in our frame on the female body at idle frame 0 (where
-heroine_ref.reduced('saya') lies). Her picture's scarf, the automatic reduction and ours are written side
-by side (study/compare@8.png).
+The tail's rows are below (TAIL), in our frame on the female body at idle frame 0. His cell (x, y) lands
+on our fine pixel (x + OFF[0], y + OFF[1]): his chin line (row 28, x 52-55) on ours (row 150,
+x 126-129) and his near shoulder (row 30, x 39-41) on ours.
 
 It writes, in <out>:
 
-  scarf.json            rows and palette, pivots, the spine, her line's characters and the base colour
-  study/compare@8.png   her picture's scarf (her pixels), its automatic reduction and ours, at 8x
-  study/wrap@8.png, study/tail@8.png   the parts at 8x, on our female body
+  scarf.json            rows and palette, pivots, the spine, his line's character and the base colour
+  study/compare@8.png   his scarf (his cells), ours on our female body, side by side at 8x
+  study/his@10.png      his cells round the neck at 10x, the scarf's pixels marked
 
-and, with a third argument, the game's module (src/sprite/items/sayaScarfArt.ts). The same picture
+and, with a second argument, the game's module (src/sprite/items/sayaScarfArt.ts). The same picture
 always gives the same bytes. Run from the repo root with python3 -I:
 
   npx tsx tools/refs/heroine-idle.mts <out>
@@ -51,17 +53,60 @@ from PIL import Image, ImageDraw  # noqa: E402
 
 import heroine_ref as R  # noqa: E402
 
-WHICH = 'saya'
-# Her colours, one character each (all of them in R.PALETTES['saya']): her line and her reds, darkest
-# first.
-KEY = {
-    'k': '#02010d',
-    'Q': '#4b0f30', 'm': '#641a36', 'q': '#6e1c38', 'B': '#7c1d36', 'f': '#842b3c', 'r': '#ad333f', 'R': '#bb2e3e',
+SRC = 'docs/reference/saya-game-scale-owner-reference.jpg'
+# His grid: 100 x 100 cells over the 1024 x 1024 picture, starting at its corner.
+PITCH = 10.24
+CELLS = 100
+
+# The colours round her neck, to snap each cell to (the nearest one). The scarf's characters are his
+# line and his four reds, darkest first; their hex values here are only where the snapping starts:
+# each is then set to the mean of his scarf cells snapped to it.
+SNAP = {
+    '.': '#ffffff', 'k': '#020101',
+    'a': '#421528', 'b': '#5c1a29', 'c': '#661b2a', 'd': '#b33134',
+    # not scarf: his hair, skin, chest plate and top
+    'Y': '#f5d678', 'y': '#d6ab5c', 'h': '#7c4d34', 'j': '#8a5838', 's': '#f3bf9d', 'r': '#d38a73',
+    'z': '#6b3834', 'w': '#ebe5d7', 'g': '#bfb1a7', 'n': '#222339', 'm': '#384060',
 }
+SCARF = 'kabcd'
 LINE = 'k'
-# Her lit red, the top face of the flag and of both rolls: the colour slot's default (her other reds
-# move the way it does; her line stays).
-BASE = 'R'
+# His lit red, the top face of both rolls: the colour slot's default (his other reds move the way it
+# does; his line stays).
+BASE = 'd'
+
+# His scarf, row by row: the runs of his cells (x from, x to, inclusive) that are the scarf. Outside
+# them his black is the chin's, the hair's or the shoulder's line, and is left to the body and hair.
+RUNS = {
+    25: [(44, 44)],
+    26: [(42, 44)],
+    27: [(40, 44), (56, 58)],
+    28: [(39, 45), (50, 50), (52, 59)],
+    29: [(38, 45), (50, 59)],
+    30: [(37, 46), (50, 60)],
+    31: [(42, 46), (50, 60)],
+    32: [(44, 46), (50, 59)],
+    33: [(50, 59)],
+    34: [(51, 57)],
+}
+# The scarf under his side lock (x 45-49) and under the chin's skin, continued from his rows on either
+# side: the near piece's lit top (d) and its crease (c) run on into the wrap's rolls, the dark inside
+# (a) under the chin, and the near piece's lower line (k) closes under the shoulder piece.
+HIDDEN = {
+    25: {45: 'k'},
+    26: {45: 'b', 46: 'k'},
+    27: {45: 'd', 46: 'd', 47: 'c', 48: 'k'},
+    28: {46: 'd', 47: 'c', 48: 'a', 49: 'a', 51: 'a'},
+    29: {46: 'd', 47: 'd', 48: 'c', 49: 'd'},
+    30: {47: 'c', 48: 'd', 49: 'd'},
+    31: {47: 'c', 48: 'c', 49: 'b'},
+    32: {47: 'k', 48: 'd', 49: 'd'},
+    33: {48: 'k', 49: 'b'},
+}
+# His cell -> our fine pixel at idle frame 0.
+OFF = (74, 122)
+# The wrap's pixels up to this x of his (the stretch over the near shoulder, nearer than his side lock)
+# are the shoulder piece: the game draws it over the near arm, as it lies on top of the shoulder.
+SHOULDER_TO = 44
 
 # Our female body at idle frame 0 (heroine_ref.OUR_JOINTS, fine pixels): the neck cell both parts hang
 # from and the torso's angle (neck to pelvis) the wrap is drawn at.
@@ -69,76 +114,106 @@ NECK = tuple(int(math.floor(v)) for v in R.OUR_JOINTS['neck'])
 TORSO_ANGLE = math.degrees(math.atan2(R.OUR_JOINTS['pelvis'][1] - R.OUR_JOINTS['neck'][1],
                                       R.OUR_JOINTS['pelvis'][0] - R.OUR_JOINTS['neck'][0]))
 
-# Round the neck, x 116-134 from row 146. Her wrap (her x 101-117, rows 41-54) across our neck: the dark
-# inside under the chin (Q, f), the upper roll lit from the near side (R, its far end in B), the crease
-# (B, Q), the lower roll (R) and its shade (B) over the top of the chest, her line under it (row 155);
-# at the near end (x 116-119) the scarf going round the side of the neck, dark with a lit turn, as hers
-# shows between her side lock and her jaw (her x 88-96, rows 38-47).
-WRAP = (116, 146, [
-    '.kk................',
-    'kmBkkkkkkkkkkkkk...',
-    'kBRRqQQQQQQQQffBkk.',
-    'kBBRRRqQQQQBRRBBBk.',
-    'kQBBRRRRRRRRRBBQmk.',
-    'kQQBBBBBBBBBQmBBBk.',
-    '.kQQQBBQQQQBRRBBk..',
-    '.kRRRRRRRRRRRBBk...',
-    '..kBBRRRRRRRBBk....',
-    '...kkkkkkkkkkk.....',
+# The end, x 108-117 from row 149, hanging from behind the near shoulder (where his wrap goes behind
+# the hair) down her back to a point, in his reds: its lit face (d) with the crease (c) beside it as on
+# his rolls, its dark underside (b, a) showing where it turns once halfway down, his line all round.
+TAIL = (108, 149, [
+    '.....kkkk.',
+    '....kcddck',
+    '....kcddk.',
+    '...kbcddk.',
+    '...kbcddk.',
+    '..kbcddk..',
+    '..kacddk..',
+    '..kbcddk..',
+    '.kbccddk..',
+    '.kaabcdk..',
+    '.kabbcdk..',
+    '.kbcddk...',
+    '.kcddk....',
+    'kcddk.....',
+    'kcdk......',
+    'kcdk......',
+    '.kdk......',
+    '.kk.......',
 ])
-
-# From the near side of the neck to the flag's point, x 90-119 from row 147. The stretch behind her side
-# lock (rows 147-153: hidden in her picture) carries on the dark back of the scarf (Q, m, B) from the
-# wrap's near end to where it comes out between her hair and her arm (row 154, her row 55); from there
-# down, her pixels two to one (tail_auto: her x 37 and row 53 on our x 90 and row 153), cleaned: the
-# strip coming down dark (B, q, Q), the flag's lit top face (R) with her line along its top, its dark
-# underside (Q) and under-fold (B) where it twists out from behind the arm, the fold (B) between the
-# flag and its end, and the end hanging to its point (row 170), its near edge darker (B).
-TAIL = (90, 147, [
-    '.........................kkk..',
-    '........................kQBk..',
-    '.......................kQmBk..',
-    '......................kQmBk...',
-    '.....................kQmBk....',
-    '....................kQmBk.....',
-    '...................kQmBk......',
-    '....................kBBk......',
-    '...................kqqQk......',
-    '................kkkQQqk.......',
-    '.........kkkkkkkRRQQQk........',
-    '......kkkRRRRRRRQQQQk.........',
-    '....kkRRRRRRRRQQQBQk..........',
-    '...kRRBRRRRQQQQBBk............',
-    '...kRBRRRQQQBBBBk.............',
-    '..kBBRRRkkkBBBkk..............',
-    '..kBRRRk...kkk................',
-    '..kRRRk.......................',
-    '..kRRRk.......................',
-    '..kRRk........................',
-    '..kRRk........................',
-    '...kRk........................',
-    '...kRk........................',
-    '....kk........................',
-])
-# The tail's spine in our frame (cell corners: a pixel (x, y) spans x..x+1, y..y+1): from the near side
-# of the neck down behind the shoulder, out along the flag and down its end to the point. It hangs free
-# (the wind bends it) from point FREE on: where it comes out from behind the arm.
-SPINE = [(117.5, 148.0), (115.0, 150.5), (112.5, 153.0), (110.5, 155.5), (108.0, 157.8), (105.0, 158.8),
-         (102.0, 159.5), (99.0, 160.0), (96.5, 161.0), (95.0, 162.8), (94.3, 165.0), (94.2, 167.0),
-         (94.5, 169.0), (95.0, 170.8)]
-FREE = 3
+# The tail's spine in our frame (cell corners: a pixel (x, y) spans x..x+1, y..y+1): from behind the
+# near shoulder down the strip to the point. All of it hangs free (the wind bends it) from point FREE
+# on.
+SPINE = [(115.0, 149.5), (114.0, 153.0), (113.0, 156.5), (112.0, 159.5), (111.0, 162.5), (110.0, 165.0),
+         (109.5, 167.0)]
+FREE = 1
 
 
-def grid(part):
-    """A part's rows in our frame: (GRID, GRID) array of KEY characters ('' empty)."""
+def hexrgb(h):
+    return np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)])
+
+
+def native():
+    """His pixels: the median of each cell's inside (6 x 6 picture pixels), (CELLS, CELLS, 3)."""
+    a = np.asarray(Image.open(SRC).convert('RGB')).astype(int)
+    assert a.shape[:2] == (1024, 1024), a.shape
+    out = np.zeros((CELLS, CELLS, 3), int)
+    for j in range(CELLS):
+        for i in range(CELLS):
+            x0 = int(round(i * PITCH + 2.5))
+            y0 = int(round(j * PITCH + 2.5))
+            out[j, i] = np.median(a[y0:y0 + 6, x0:x0 + 6].reshape(-1, 3), 0)
+    return out
+
+
+def snapped(N):
+    keys = list(SNAP)
+    P = np.array([hexrgb(SNAP[k]) for k in keys])
+    d = np.abs(N[:, :, None, :] - P[None, None]).sum(3)
+    return np.array(keys)[d.argmin(2)]
+
+
+def his_scarf(ch):
+    """His scarf in his cells ((CELLS, CELLS) characters, '' elsewhere), and where it was filled."""
+    out = np.full(ch.shape, '', '<U1')
+    filled = np.zeros(ch.shape, bool)
+    for y, runs in RUNS.items():
+        for x0, x1 in runs:
+            for x in range(x0, x1 + 1):
+                c = ch[y, x]
+                assert c in SCARF, f'not his scarf at {x},{y}: {c}'
+                out[y, x] = c
+    for y, row in HIDDEN.items():
+        for x, c in row.items():
+            assert c in SCARF and not out[y, x], (x, y)
+            out[y, x] = c
+            filled[y, x] = True
+    return out, filled
+
+
+def palette(N, ch, scarf, filled):
+    """Each character's colour: the mean of his scarf cells snapped to it (rounded)."""
+    pal = {}
+    for c in SCARF:
+        his = [N[y, x] for (y, x) in zip(*np.nonzero((scarf == c) & ~filled))]
+        assert his, f'{c} is used but none of his cells has it'
+        pal[c] = '#%02x%02x%02x' % tuple(int(round(v)) for v in np.mean(his, 0))
+    return pal
+
+
+def grid_of(part):
+    """Hand rows in our frame: (GRID, GRID) characters ('' empty)."""
     x0, y0, rows = part
     assert len({len(r) for r in rows}) == 1, 'ragged rows'
     out = np.full((R.GRID, R.GRID), '', dtype='<U1')
     for j, row in enumerate(rows):
-        for i, ch in enumerate(row):
-            if ch != '.':
-                assert ch in KEY, f'not one of her colours: {ch!r}'
-                out[y0 + j, x0 + i] = ch
+        for i, c in enumerate(row):
+            if c != '.':
+                assert c in SCARF, f'not one of his colours: {c!r}'
+                out[y0 + j, x0 + i] = c
+    return out
+
+
+def to_ours(scarf):
+    out = np.full((R.GRID, R.GRID), '', dtype='<U1')
+    for (y, x) in zip(*np.nonzero(scarf != '')):
+        out[y + OFF[1], x + OFF[0]] = scarf[y, x]
     return out
 
 
@@ -152,113 +227,32 @@ def bbox(a):
     return (int(xx.min()), int(yy.min()), int(xx.max()) + 1, int(yy.max()) + 1)
 
 
-def rgb_of(h):
-    return [int(h[1:3], 16), int(h[3:5], 16), int(h[5:7], 16)]
-
-
-def rgba(a, box, under=None):
-    """A part (KEY characters) as RGBA over `under` (an RGBA frame), in the box."""
-    x0, y0, x1, y1 = box
-    im = np.zeros((y1 - y0, x1 - x0, 4), np.uint8)
-    if under is not None:
-        im[:] = under[y0:y1, x0:x1]
-    for y in range(y0, y1):
-        for x in range(x0, x1):
-            c = a[y, x]
-            if c:
-                im[y - y0, x - x0] = [*rgb_of(KEY[c]), 255]
-    return im
-
-
-# Her scarf in her picture (her pixels): round her neck, behind her side lock and the near shoulder,
-# and the flag over her long hair (the arm guard's red bands and her hair's line left out).
-HER_SCARF = [(86, 37), (97, 37), (101, 40), (118, 40), (118, 55), (100, 55), (95, 50), (88, 50), (84, 56), (84, 66),
-             (80, 77), (54, 79), (54, 94), (38, 94), (38, 64), (60, 62), (72, 54), (82, 46)]
-# Her scarf's colours (KEY's, and her two other near-blacks along its line).
-HER_LINE = ('#050416', '#14101f')
-
-
-def her_scarf():
-    """Her scarf's pixels as KEY characters in her picture's frame ('' elsewhere)."""
-    N = R.native(WHICH)
-    Q = R.quantize(N, WHICH)
-    fig = R.figure(WHICH)
-    pal = R.PALETTES[WHICH]
-    H, W = Q.shape
-    yy, xx = np.mgrid[0:H, 0:W]
-    inp = R.inside(HER_SCARF, xx + 0.5, yy + 0.5) & fig
-    inv = {v: k for k, v in KEY.items()}
-    for h in HER_LINE:
-        inv[h] = LINE
-    out = np.full((H, W), '', dtype='<U1')
-    for y in range(H):
-        for x in range(W):
-            h = pal[Q[y, x]]
-            if inp[y, x] and h in inv:
-                out[y, x] = inv[h]
-    return out
-
-
-# Her flag two to one: her x 37 and row 53 land on our x 90 and row 153 (her near shoulder, 89 56, on
-# ours, 116.5 154.6).
-AUTO_FROM = (37, 53)
-AUTO_TO = (90, 153)
-
-
-def tail_auto():
-    """Her flag and the strip above it two to one, in our frame: each of our pixels takes the commonest
-    of her reds in the two by two of hers under it (the darker on a tie) where two or more of the four
-    are her scarf, and her line all round the outside."""
-    her = her_scarf()
-    hx, hy = AUTO_FROM
-    ox, oy = AUTO_TO
-    sil = {}
-    order = 'QmqBfrR'
-    for j in range(0, 22):
-        for i in range(0, 26):
-            b = [her[hy + 2 * j + a, hx + 2 * i + c] for a in (0, 1) for c in (0, 1)]
-            if sum(1 for v in b if v) < 2:
-                continue
-            body = [v for v in b if v and v != LINE]
-            if body:
-                vals, cnt = np.unique(body, return_counts=True)
-                sil[(i, j)] = max(zip(cnt, [-order.index(v) for v in vals], vals))[2]
-            else:
-                sil[(i, j)] = LINE
-    out = np.full((R.GRID, R.GRID), '', dtype='<U1')
-    for (i, j), v in sil.items():
-        edge = any((i + di, j + dj) not in sil for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)))
-        out[oy + j, ox + i] = LINE if edge else v
-    return out
-
-
-def our_body(path):
-    """Our female body at idle frame 0 (tools/refs/heroine-idle.mts writes it), under the study images."""
-    return np.asarray(Image.open(path).convert('RGBA')) if path else None
-
-
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--body=')]
     body = next((a[7:] for a in sys.argv[1:] if a.startswith('--body=')), None)
     out = args[0]
     os.makedirs(os.path.join(out, 'study'), exist_ok=True)
-    pal = set(R.PALETTES[WHICH])
-    for ch, hexv in KEY.items():
-        assert hexv in pal, f'{ch} {hexv} is not one of her colours'
-    wrap = grid(WRAP)
-    tail = grid(TAIL)
+    N = native()
+    ch = snapped(N)
+    scarf, filled = his_scarf(ch)
+    pal = palette(N, ch, scarf, filled)
+    wrap = to_ours(scarf)
+    shoulder = wrap.copy()
+    shoulder[:, SHOULDER_TO + OFF[0] + 1:] = ''
+    wrap[:, :SHOULDER_TO + OFF[0] + 1] = ''
+    tail = grid_of(TAIL)
     nx, ny = NECK
-    meta = {'source': R.REFS[WHICH], 'neck': [nx, ny], 'torsoAngle': round(TORSO_ANGLE, 2), 'free': FREE}
+    meta = {'source': SRC, 'neck': [nx, ny], 'torsoAngle': round(TORSO_ANGLE, 2), 'free': FREE}
     used = set()
-    for name, a in (('wrap', wrap), ('tail', tail)):
+    for name, a in (('wrap', wrap), ('shoulder', shoulder), ('tail', tail)):
         box = bbox(a)
         meta[name] = {'origin': list(box[:2]), 'rows': rows_of(a, box)}
         used |= set(a[a != ''].tolist())
     ox, oy = meta['tail']['origin']
     meta['spine'] = [[round(x - ox, 2), round(y - oy, 2)] for x, y in SPINE]
-    meta['palette'] = {c: KEY[c] for c in KEY if c in used}
+    meta['palette'] = {c: pal[c] for c in SCARF if c in used}
     meta['line'] = LINE
-    meta['base'] = KEY[BASE]
+    meta['base'] = pal[BASE]
     tmp = os.path.join(out, 'scarf.json.tmp')
     with open(tmp, 'w') as f:
         json.dump(meta, f, indent=1)
@@ -266,41 +260,50 @@ def main():
     os.replace(tmp, os.path.join(out, 'scarf.json'))
     if len(args) > 1:
         write_ts(meta, args[1])
-    study(out, wrap, tail, our_body(body))
-    print('wrap', int((wrap != '').sum()), 'px; tail', int((tail != '').sum()), 'px;', len(meta['palette']),
-          'colours; neck', NECK, 'torso', round(TORSO_ANGLE, 2))
+    study(out, N, scarf, filled, np.where(shoulder != '', shoulder, wrap), pal, np.asarray(Image.open(body).convert('RGBA')) if body else None)
+    print('wrap', int((wrap != '').sum()), 'px (', int(filled.sum()), 'filled); tail', int((tail != '').sum()), 'px;',
+          meta['palette'], 'neck', NECK, 'torso', round(TORSO_ANGLE, 2))
 
 
-def study(out, wrap, tail, body):
-    """Her scarf, its automatic reduction and ours side by side at 8x, with Spanish labels, on our body
-    (`body`, when given)."""
-    view = (86, 140, 140, 176)
-    both = wrap.copy()
-    both[tail != ''] = tail[tail != '']
-    R.save(rgba(wrap, view, body), os.path.join(out, 'study', 'wrap@8.png'))
-    R.save(rgba(tail, view, body), os.path.join(out, 'study', 'tail@8.png'))
+def study(out, N, scarf, filled, wrap, pal, body):
+    """His cells round the neck with the scarf marked; his scarf beside ours on our body, at 8x."""
+    hb = (30, 20, 66, 40)
+    k = 10
+    im = Image.fromarray(N[hb[1]:hb[3], hb[0]:hb[2]].astype(np.uint8)).resize(((hb[2] - hb[0]) * k, (hb[3] - hb[1]) * k), Image.NEAREST)
+    d = ImageDraw.Draw(im)
+    for (y, x) in zip(*np.nonzero(scarf != '')):
+        if hb[0] <= x < hb[2] and hb[1] <= y < hb[3]:
+            X, Y = (x - hb[0]) * k, (y - hb[1]) * k
+            d.rectangle([X, Y, X + k - 1, Y + k - 1], outline=(0, 255, 255) if filled[y, x] else (0, 200, 0))
+    im.save(os.path.join(out, 'study', 'his@10.png'))
+    # side by side: his cells (scarf only, on white), his whole picture there, ours on our body
+    view = (100, 140, 145, 175)
     k = 8
     vw, vh = view[2] - view[0], view[3] - view[1]
-    # her picture's scarf, her pixels, at the same size as ours (her pixel is half of ours)
-    her = R.native(WHICH).astype(np.uint8)
-    hb = (34, 32, 34 + 2 * vw, 32 + 2 * vh)
-    hers = Image.fromarray(her[hb[1]:hb[3], hb[0]:hb[2]]).resize((vw * k, vh * k), Image.NEAREST)
-    auto = rgba(tail_auto(), view, body)
-    ours = rgba(both, view, body)
-    bg = np.array([236, 236, 242, 255], np.uint8)
-
-    def flat(a):
-        a = a.astype(np.float64)
-        al = a[..., 3:4] / 255
-        return Image.fromarray((a[..., :3] * al + bg[:3] * (1 - al)).astype(np.uint8)).resize((vw * k, vh * k), Image.NEAREST)
-
+    bg = np.array([236, 236, 242], np.float64)
+    hv = (view[0] - OFF[0], view[1] - OFF[1], view[2] - OFF[0], view[3] - OFF[1])
+    his_all = N[hv[1]:hv[3], hv[0]:hv[2]].astype(np.uint8)
+    his_only = np.full((vh, vw, 3), 255, np.uint8)
+    ours = np.zeros((vh, vw, 4), np.float64)
+    if body is not None:
+        ours[:] = body[view[1]:view[3], view[0]:view[2]]
+    for y in range(vh):
+        for x in range(vw):
+            c = scarf[y + hv[1], x + hv[0]]
+            if c and not filled[y + hv[1], x + hv[0]]:
+                his_only[y, x] = N[y + hv[1], x + hv[0]]
+            w = wrap[y + view[1], x + view[0]]
+            if w:
+                ours[y, x] = [*hexrgb(pal[w]), 255]
+    al = ours[..., 3:4] / 255
+    ours = (ours[..., :3] * al + bg * (1 - al)).astype(np.uint8)
     pad, top = 16, 30
     sheet = Image.new('RGB', (3 * vw * k + 4 * pad, vh * k + top + pad), (255, 255, 255))
-    d = ImageDraw.Draw(sheet)
-    for n, (im, label) in enumerate(((hers, 'Tu dibujo'), (flat(auto), 'Reducido a nuestra escala'), (flat(ours), 'En el juego (a mano)'))):
+    dr = ImageDraw.Draw(sheet)
+    for n, (a, label) in enumerate(((his_all, 'Tu dibujo'), (his_only, 'Tu bufanda (tus pixeles)'), (ours, 'En el juego'))):
         x = pad + n * (vw * k + pad)
-        sheet.paste(im, (x, top))
-        d.text((x, 8), label, fill=(0, 0, 0))
+        sheet.paste(Image.fromarray(a).resize((vw * k, vh * k), Image.NEAREST), (x, top))
+        dr.text((x, 8), label, fill=(0, 0, 0))
     sheet.save(os.path.join(out, 'study', 'compare@8.png'))
 
 
@@ -308,21 +311,21 @@ def write_ts(meta, path):
     """The scarf as the game's module (src/sprite/items/sayaScarfArt.ts)."""
     nx, ny = meta['neck']
     out = [
-        "// The owner's red scarf on his Saya, brought down to our scale in her colours",
-        '// (tools/refs/saya-scarf-from-ref.py from docs/reference/saya-owner-reference.jpg).',
+        "// The owner's red scarf on his Saya, copied 1:1 from his picture at our game's scale",
+        '// (tools/refs/saya-scarf-from-ref.py from docs/reference/saya-game-scale-owner-reference.jpg).',
         '// Generated: rerun the script to change it.',
         '',
         "import type { PaintedPiece } from '../painted';",
         "import type { ScarfTail } from './sayaScarf';",
         '',
-        '/** One character per colour of hers (both parts share them). */',
+        '/** One character per colour of his (both parts share them). */',
         'const SAYA_SCARF_COLORS: Record<string, string> = {',
     ]
     out += [f"  {k}: '{v}'," for k, v in meta['palette'].items()]
     out += ['};', '']
     ox, oy = meta['wrap']['origin']
     out += [
-        '/** Round the neck, under the chin: its pivot is the cell on the neck, its angle the torso\'s (neck to pelvis) at idle. */',
+        "/** Round the neck under the chin and over the near shoulder: its pivot is the cell on the neck, its angle the torso's (neck to pelvis) at idle. */",
         'export const SAYA_SCARF_WRAP: PaintedPiece = {',
         f'  pivot: [{nx - ox}, {ny - oy}],',
         f"  angle: {meta['torsoAngle']:.2f},",
@@ -330,9 +333,19 @@ def write_ts(meta, path):
     ]
     out += [f"    '{rw}'," for rw in meta['wrap']['rows']]
     out += ['  ],', '  colors: SAYA_SCARF_COLORS,', '};', '']
+    ox, oy = meta['shoulder']['origin']
+    out += [
+        "/** The wrap's stretch over the top of the near shoulder (drawn over the near arm): the same pivot cell and angle as the wrap. */",
+        'export const SAYA_SCARF_SHOULDER: PaintedPiece = {',
+        f'  pivot: [{nx - ox}, {ny - oy}],',
+        f"  angle: {meta['torsoAngle']:.2f},",
+        '  rows: [',
+    ]
+    out += [f"    '{rw}'," for rw in meta['shoulder']['rows']]
+    out += ['  ],', '  colors: SAYA_SCARF_COLORS,', '};', '']
     ox, oy = meta['tail']['origin']
     out += [
-        '/** From the near side of the neck, behind the near shoulder, out into the flag and its hanging end: its pivot is the cell on the neck; its spine (cell corners) runs from the neck to the point and hangs free from point `free` on. */',
+        '/** The end hanging from behind the near shoulder down her back: its pivot is the cell on the neck; its spine (cell corners) runs from the shoulder to the point and hangs free from point `free` on. */',
         'export const SAYA_SCARF_TAIL: ScarfTail = {',
         f'  pivot: [{nx - ox}, {ny - oy}],',
         f"  angle: {meta['torsoAngle']:.2f},",
@@ -343,10 +356,10 @@ def write_ts(meta, path):
     out += [f"    '{rw}'," for rw in meta['tail']['rows']]
     out += ['  ],', '  colors: SAYA_SCARF_COLORS,', '};', '']
     out += [
-        '/** Her black line: kept as she has it when the scarf is recoloured. */',
+        '/** His black line: kept as he has it when the scarf is recoloured. */',
         f"export const SAYA_SCARF_LINE = '{meta['line']}';",
         '',
-        "/** Her lit red, the flag's top face and both rolls: the colour slot's default; her other reds follow it. */",
+        "/** His lit red, the top face of both rolls: the colour slot's default; his other reds follow it. */",
         f"export const SAYA_SCARF_BASE = '{meta['base']}';",
         '',
     ]

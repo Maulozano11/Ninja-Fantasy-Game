@@ -1,13 +1,14 @@
-// The owner's red scarf on his Saya (2026-10-21), brought down to our scale in her colours
-// (sayaScarfArt.ts, tools/refs/saya-scarf-from-ref.py): wound thick round the neck, its back going down
-// behind the near shoulder and out over the long hair in a wide flag with a hanging point.
+// The owner's red scarf on his Saya (2026-10-21), copied 1:1 from his picture at our game's scale
+// (sayaScarfArt.ts, tools/refs/saya-scarf-from-ref.py): wound thick round the neck and over the top of
+// the near shoulder; its end hangs behind the shoulder, hidden at rest as in his picture, and streams
+// out behind her in the wind as in his big picture.
 
 import { retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, RES } from '../raster';
 import type { Wind } from './capes';
-import { SAYA_SCARF_BASE, SAYA_SCARF_LINE, SAYA_SCARF_TAIL, SAYA_SCARF_WRAP } from './sayaScarfArt';
+import { SAYA_SCARF_BASE, SAYA_SCARF_LINE, SAYA_SCARF_SHOULDER, SAYA_SCARF_TAIL, SAYA_SCARF_WRAP } from './sayaScarfArt';
 
 /** The scarf's tail: her pixels, and the spine they hang along. */
 export interface ScarfTail extends PaintedPiece {
@@ -221,20 +222,21 @@ function underHead(g: DrawCtx, L: Layer): void {
 
 /**
  * The scarf, given the capes' wind (capes.ts capeWind: passed in, as capes.ts lists this item).
- * Everything is drawn in the head's mask layer: over the neck, any collar and the top of the chest,
- * over the long hair behind (hairBack), under the chin, under the side locks (hairFront) and behind
- * the near arm, as she has it.
+ * The wrap is drawn in the head's mask layer: over the neck, any collar and the top of the chest, under
+ * the chin and under the side locks (hairFront), as he has it; its stretch on top of the near shoulder
+ * over the near arm. The end hangs
+ * behind everything (capeBack): behind the long hair and the body at rest, out behind her in the wind.
  */
 export const sayaScarf = (wind: (g: DrawCtx) => Wind): ItemDef => ({
   id: 'cape_crimson_scarf',
   slot: 'cape',
   name: 'Crimson Shade Scarf',
-  desc: 'A long red scarf wound thick round the neck in two rolls, its end thrown back behind the near shoulder and streaming out over the hair in a wide flag that hangs to a point.',
+  desc: 'A long red scarf wound thick round the neck in two rolls and over the near shoulder, its end hanging behind the shoulder and streaming out behind in the wind.',
   colors: [{ key: 'main', label: 'Scarf', default: SAYA_SCARF_BASE, kind: 'cloth' }],
   draw: (g, [c]) => {
     const r = g.rig;
     const tint = scarfColor(c);
-    const L = g.L('head.mask');
+    const L = g.L('capeBack');
     const turn = segAngle(r.neck, r.pelvis);
     const pens: Record<string, number> = {};
     for (const [ch, hex] of Object.entries(SAYA_SCARF_TAIL.colors)) pens[ch] = g.m(tint(ch, hex), 'flat');
@@ -255,6 +257,8 @@ export const sayaScarf = (wind: (g: DrawCtx) => Wind): ItemDef => ({
       stampTail(L, t, ax, ay, bends(t, twist, 182 + 8 * blow, blow, 0.6, w.wave * 5, blow * 10, r.frame * 1.9), pens);
     }
     stampPiece(g, 'head.mask', SAYA_SCARF_WRAP, r.neck, turn, 'torso', tint);
-    underHead(g, L);
+    // on top of the near shoulder, over the arm's shoulder as he has it
+    stampPiece(g, 'nearArm.over', SAYA_SCARF_SHOULDER, r.neck, turn, 'torso', tint);
+    underHead(g, g.L('head.mask'));
   },
 });

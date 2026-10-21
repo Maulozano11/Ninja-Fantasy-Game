@@ -10,6 +10,7 @@ import { PaintedPiece, segAngle } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
+import { BELT_AT, BELT_BUCKLE, BELT_CORD, BELT_CROSS, BELT_GOLD, BELT_KIND, BELT_LEATHER, BELT_RED, BELT_TONES, PIN_CLOTH, PIN_CLOTH_TONES, PIN_GAP, PIN_LINE, PIN_STRIPE, PIN_STRIPE_TONES } from './scarletLowerArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1435,7 +1436,127 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
       }
     },
   },
+  {
+    id: 'bottom_pinstripe',
+    slot: 'bottom',
+    name: 'Pinstripe Trousers',
+    desc: 'Straight black trousers with fine grey pinstripes that run down each leg into the boots.',
+    colors: [col('main', 'Cloth', PIN_CLOTH), col('stripe', 'Stripe', PIN_STRIPE)],
+    draw: (g, [c, st]) => drawPinstripes(g, c, st),
+  },
 ]);
+
+// ---------------------------------------------------------------------------
+// The owner's Scarlet (docs/reference/scarlet-owner-reference.jpg, 2026-10-21): his pinstripe trousers
+// and his belt with its gold ornaments, brought down to our scale in his colours (items/scarletLowerArt.ts,
+// by tools/refs/scarlet-lower-from-ref.py). The shapes are our cloth's, so they fit every body and pose;
+// every pixel is then one of his colours, picked by the tone our shading gave it, and his black line
+// edges them (the compositor's outline leaves a flat colour as it is).
+// ---------------------------------------------------------------------------
+
+/**
+ * Repaints what was just drawn in material `mat` on a layer in his flat colours: `colour(i, shade)` is
+ * his colour for pixel i in the tone our shading gave it; the pixels on the layer's edge (as the
+ * compositor finds it) take his black line.
+ */
+function paintHis(g: DrawCtx, L: Layer, mat: number, colour: (i: number, shade: number) => string, line: string): void {
+  const empty = (j: number) => L.mat[j] < 0 && !(L.flags[j] & F_NO_EDGE);
+  const mine: number[] = [];
+  for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] === mat) mine.push(i);
+  const edge = mine.filter((i) => {
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    return x === 0 || y === 0 || x === GRID - 1 || y === GRID - 1 || empty(i - 1) || empty(i + 1) || empty(i - GRID) || empty(i + GRID);
+  });
+  const ink = g.m(line, 'flat');
+  for (const i of mine) {
+    L.mat[i] = g.m(colour(i, L.shade[i]), 'flat');
+    L.shade[i] = 3;
+    L.flags[i] |= F_NO_TEXTURE;
+  }
+  // a line pixel is shade 0, so the compositor keeps it 1 px where it meets another layer's line
+  for (const i of edge) {
+    L.mat[i] = ink;
+    L.shade[i] = 0;
+  }
+}
+
+/**
+ * Whether fine pixel (x, y) lies on one of his pinstripes: lines along the limb segment a -> b,
+ * PIN_GAP fine pixels apart, counted from its axis. Each line is one pixel per row (or per column
+ * where the limb lies flatter than 45 degrees), so it stays a clean line as the limb turns.
+ */
+function onPinstripe(a: Vec, b: Vec, x: number, y: number): boolean {
+  const d = sub(b, a);
+  const px = (x + 0.5) / RES;
+  const py = (y + 0.5) / RES;
+  // across the limb along the row (a steep limb) or the column (a flat one), so each line is one pixel there
+  const steep = Math.abs(d.y) >= Math.abs(d.x);
+  const u = steep ? px - (a.x + ((py - a.y) * d.x) / d.y) : py - (a.y + ((px - a.x) * d.y) / d.x);
+  return ((Math.floor(u * RES) % PIN_GAP) + PIN_GAP) % PIN_GAP === 0;
+}
+
+/**
+ * His pinstripe trousers: our straight trousers (the seat with its inseam on the pelvis, a leg on each
+ * leg falling nearly as wide to the ankle as at the knee), shaded by our cloth light, then painted in
+ * his colours: the cloth by tone, and on it his stripes, which run along each thigh and shin and turn
+ * with them. The seat's stripes are the thigh's under it, so they run on up to the waist.
+ */
+function drawPinstripes(g: DrawCtx, cloth: string, stripe: string): void {
+  const inflate = (t: number) => 0.35 + 0.42 * clamp(t - 0.8, 0, 1);
+  const to = 1.97;
+  // the waist sits just under his belt's top edge (drawNobleBelt), so the belt covers it
+  const top = 2.5;
+  const mat = g.m(PIN_CLOTH, 'cloth');
+  const legs = SIDES.map((s) => g.L(legDepth(s, 'cloth')));
+  lifted(PIN_CLOTH, () => {
+    SIDES.forEach((s, k) => limb(g, legs[k], 'leg', s, 0, to, inflate, { mat, part: prt('thigh', s), bias: sb(s) }, { round0: true, light: legLight(s) }));
+    // the seat lifts the legs' tones under its edge against the drop shadow, which skips his flat colours
+    const kept = legs.map((L) => L.shade.slice());
+    seat(g, PIN_CLOTH, (t) => inflate(t), top);
+    legs.forEach((L, k) => {
+      for (let i = 0; i < GRID * GRID; i++) if (L.mat[i] === mat) L.shade[i] = kept[k][i];
+    });
+    waistband(g, top);
+  });
+  const tint = (hexes: readonly string[], from: string, to: string) => hexes.map((h) => retintHex(h, from, to));
+  const base = tint(PIN_CLOTH_TONES, PIN_CLOTH, cloth);
+  const line = tint(PIN_STRIPE_TONES, PIN_STRIPE, stripe);
+  // his colour for a pixel on the limb segment a -> b, in the tone our light gave it
+  const colour = (a: Vec, b: Vec) => (i: number, shade: number) => {
+    const k = clamp(shade, 0, 5);
+    return onPinstripe(a, b, i % GRID, (i / GRID) | 0) ? line[k] : base[k];
+  };
+  const shins = new Set([partIndex('shinN'), partIndex('shinF')]);
+  SIDES.forEach((s, k) => {
+    const L = legs[k];
+    const j = legJoints(g.rig, s);
+    const thigh = colour(j.hip, j.knee);
+    const shin = colour(j.knee, j.ankle);
+    paintHis(g, L, mat, (i, shade) => (shins.has(L.part[i]) ? shin(i, shade) : thigh(i, shade)), PIN_LINE);
+  });
+  // the seat: each pixel takes the stripes of the thigh whose axis it is nearer (the near thigh's
+  // within a unit more, as that leg is in front), so they run on up from the legs
+  const N = legJoints(g.rig, 'N');
+  const F = legJoints(g.rig, 'F');
+  const off = (a: Vec, b: Vec, x: number, y: number) => {
+    const n = perp(norm(sub(b, a)));
+    return Math.abs(((x + 0.5) / RES - a.x) * n.x + ((y + 0.5) / RES - a.y) * n.y);
+  };
+  const near = colour(N.hip, N.knee);
+  const far = colour(F.hip, F.knee);
+  paintHis(
+    g,
+    g.L('torso.bottom'),
+    mat,
+    (i, shade) => {
+      const x = i % GRID;
+      const y = (i / GRID) | 0;
+      return off(N.hip, N.knee, x, y) <= off(F.hip, F.knee, x, y) + 1 ? near(i, shade) : far(i, shade);
+    },
+    PIN_LINE,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Waist
@@ -1668,7 +1789,54 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
       tseam(g, L, CX - 0.3, 3.6, CX - 0.3, 0.9, 1);
     },
   },
+  {
+    id: 'waist_noble_belt',
+    slot: 'waist',
+    name: 'Noble Belt',
+    desc: 'A slim black belt worn under the coat: a gold ring buckle, a gold cross hanging at the hip and a red tassel under a gold knot.',
+    colors: [col('main', 'Leather', BELT_LEATHER, 'leather'), col('gold', 'Gold', BELT_GOLD, 'metal'), col('tassel', 'Tassel', BELT_RED)],
+    draw: (g, [c, gold, tassel]) => drawNobleBelt(g, c, gold, tassel),
+  },
 ]);
+
+/**
+ * His belt (his colours laid on as on his trousers): a slim strap round the waist, drawn at the
+ * skirts' depth, over the shirt and under a coat (torso.armor), so with his coat on it shows only in
+ * the coat's opening as in his picture. His ring buckle sits on the front; his cross and his tassel
+ * hang straight down from where they are tied on. At rest every ornament pixel is where the reduced
+ * reference has it.
+ */
+function drawNobleBelt(g: DrawCtx, leather: string, gold: string, tassel: string): void {
+  const L = g.L('skirt');
+  const mat = g.m(BELT_LEATHER, 'leather');
+  const lo = 0.45;
+  const hi = 2.45;
+  lifted(BELT_LEATHER, () =>
+    band(g, L, lo, hi, 0.9, { mat, part: 'torso' }, (x, y) => {
+      const l = toT(g, x, y);
+      const f = (hi - l.y) / (hi - lo);
+      // a lit upper edge and a darker lower one, as our hems
+      return tone(torsoLight(g, l.x, l.y) + (f < 0.4 ? 0.16 : f > 0.62 ? -0.24 : 0) + wob2(l.x * 1.3, l.y * 0.9, 17) * 0.12);
+    }),
+  );
+  const tones = BELT_TONES.map((h) => retintHex(h, BELT_LEATHER, leather));
+  paintHis(g, L, mat, (_i, shade) => tones[clamp(shade, 0, 5)], PIN_LINE);
+  const tint = (_ch: string, hex: string) => {
+    const k = BELT_KIND[hex];
+    return k === 'gold' ? retintHex(hex, BELT_GOLD, gold) : k === 'red' ? retintHex(hex, BELT_RED, tassel) : k === 'leather' ? retintHex(hex, BELT_LEATHER, leather) : hex;
+  };
+  // each rides the belt where it is tied on and keeps his pixels upright (turned, the little ring
+  // blurs into a gold smudge), as painted.ts stamps his pieces
+  for (const [piece, at] of [
+    [BELT_BUCKLE, BELT_AT.buckle],
+    [BELT_CROSS, BELT_AT.cross],
+    [BELT_CORD, BELT_AT.tassel],
+  ] as const) {
+    const pal: TemplatePalette = {};
+    for (const [ch, hex] of Object.entries(piece.colors)) pal[ch] = [g.m(tint(ch, hex), 'flat'), 3];
+    stampTemplate(L, piece, g.rig.T(at[0], at[1]), 0, pal, 'torso', { flags: F_NO_TEXTURE | F_NO_OUTLINE });
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Hands

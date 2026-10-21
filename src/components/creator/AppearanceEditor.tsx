@@ -126,6 +126,7 @@ const FACE_SHAPES: { id: FaceShape; label: string; sub: string }[] = [
   { id: 'soft', label: 'Soft', sub: 'Fuller cheeks' },
   { id: 'square', label: 'Square', sub: 'Strong jaw' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's face" },
+  { id: 'noble', label: 'Noble', sub: "Rosalind's face" },
 ];
 
 const NECKS: { id: NeckType; label: string; sub: string }[] = [
@@ -142,6 +143,7 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'bright', label: 'Bright' },
   { id: 'piercing', label: 'Piercing' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's eyes" },
+  { id: 'noble', label: 'Noble', sub: "Rosalind's eyes" },
 ];
 
 const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [

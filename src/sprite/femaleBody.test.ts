@@ -1,10 +1,11 @@
-// Tests for the female bodies built on the owner's heroines at our scale (femaleBodyArt.ts): npm test.
+// Tests for the female bodies: the owner's bare female body (femaleBaseArt.ts, femaleBase.test.ts) with his
+// heroines' small hands (femaleBodyArt.ts): npm test.
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { makeRamp } from './color';
 import { renderSprite } from './compose';
-import { FEMALE_HANDS, FEMALE_SHOULDER_N } from './femaleBodyArt';
+import { FEMALE_HANDS } from './femaleBodyArt';
 import { GRID, partIndex, RES } from './raster';
 import { ANKLE_N, BODY_PARAMS, drawRig, frameCount, GROUND } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
@@ -36,14 +37,15 @@ describe('female bodies at the owner\'s game scale', () => {
     }
   });
 
-  it('put the female ankles nearer the ground and leave the male and bulky ankles where they were', () => {
+  it('put the female ankles where he drew them and leave the male and bulky ankles where they were', () => {
     for (const body of ['male', 'bulky'] as BodyType[]) {
       assert.equal(BODY_PARAMS[body].ankleLift, undefined);
       assert.ok(Math.abs(drawRig(body, 'idle', 0).ankleN.y - ANKLE_N) < 0.6, body);
     }
     for (const body of ['female', 'slender'] as BodyType[]) {
+      // his near ankle on his row 89, nine rows over his sole (row 98, our 218)
       const lift = GROUND - drawRig(body, 'idle', 0).ankleN.y;
-      assert.ok(lift > 1.4 && lift < 2.6, `${body} ankle ${lift} above the ground`);
+      assert.ok(Math.abs(lift - 3.5) < 1e-6, `${body} ankle ${lift} above the ground`);
     }
   });
 
@@ -100,28 +102,6 @@ describe('female bodies at the owner\'s game scale', () => {
     }
   });
 
-  it('hangs both arms where his heroines draw them', () => {
-    // His heroines at our scale (docs/reference/*-game-scale-owner-reference.jpg, his pixel (x, y) at
-    // our (x + 73, y + 120)): Lyra's elbows at (110, 165.5) and (136, 166), the elbow at the waist;
-    // Lyra's and Aurelia's near hands about (107, 175); the far fists of all three about (140, 176.5).
-    const near = (a: { x: number; y: number }, x: number, y: number, d: number) => Math.hypot(a.x * RES - x, a.y * RES - y) <= d;
-    for (const body of ['female', 'slender'] as BodyType[]) {
-      const r = drawRig(body, 'idle', 0);
-      assert.ok(near(r.elbowN, 110, 165.5, 2), `${body}: near elbow ${r.elbowN.x * RES}, ${r.elbowN.y * RES}`);
-      assert.ok(near(r.elbowF, 136, 166, 2), `${body}: far elbow ${r.elbowF.x * RES}, ${r.elbowF.y * RES}`);
-      assert.ok(near(r.handN, 107, 175, 2), `${body}: near hand ${r.handN.x * RES}, ${r.handN.y * RES}`);
-      assert.ok(near(r.handF, 140, 176.5, 2.5), `${body}: far hand ${r.handF.x * RES}, ${r.handF.y * RES}`);
-      const f = renderSprite(bare(body), 'idle', 0);
-      const hand = partIndex('handF');
-      let low = -1;
-      for (let i = 0; i < GRID * GRID; i++) if (f.rgba[i * 4 + 3] && f.part[i] === hand) low = Math.max(low, (i / GRID) | 0);
-      assert.ok(low >= 176 && low <= 181, `${body}: far fist's lowest row ${low}`);
-    }
-    // the male rig keeps its arms
-    const male = drawRig('male', 'idle', 0);
-    assert.ok(Math.abs(male.elbowF.x - male.shoulderF.x) * RES < 4);
-  });
-
   it('keeps every bare hand whole and the near shoulder lined in every pose and frame', () => {
     // A pixel of a hand or of the near shoulder on the figure's edge is his line, never skin left
     // open (the throw's release hand came out a cut-off stub, the raised arm's shoulder broke its line).
@@ -165,8 +145,7 @@ describe('female bodies at the owner\'s game scale', () => {
     assert.ok(n > 10 && same === n, `${same} of ${n} hand pixels kept`);
   });
 
-  it('has his hands at his size and his shoulder lined on top', () => {
+  it("has his heroines' hands at their size", () => {
     for (const [k, t] of Object.entries(FEMALE_HANDS)) assert.ok(t.rows[0].length <= 9 && t.rows.length <= 9, k);
-    assert.ok(/^\.*o+\.*$/.test(FEMALE_SHOULDER_N.rows[0]), 'the shoulder starts with his line');
   });
 });

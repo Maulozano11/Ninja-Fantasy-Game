@@ -47,6 +47,9 @@ const ES: Record<string, string> = {
   Bright: 'Brillantes',
   Piercing: 'Penetrantes',
   "Aiden's eyes": 'Los ojos de Aiden',
+  // Provisional (2026-10-21): the owner's eyes from his Joven salvaje paint-over.
+  Wild: 'Salvaje',
+  "The wild youth's eyes": 'Los ojos del joven salvaje',
   None: 'Ninguno',
   Forehead: 'Frente',
   Arm: 'Brazo',

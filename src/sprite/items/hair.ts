@@ -20,6 +20,7 @@ import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } f
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
+import { YOUTH_HAIR_BACK, YOUTH_HAIR_BASE, YOUTH_HAIR_FRONT, YOUTH_HAIR_LINE } from './youthHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -1645,6 +1646,26 @@ function trimSkull(g: DrawCtx, p: PaintedPart): void {
 /** His hair recoloured: his black line stays, his browns move the way his mid brown does. */
 const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, VALIANT_HAIR_BASE, hair));
 
+/**
+ * A hairstyle the owner painted: his front over the head and his back behind it, our skull trimmed to his
+ * hair; his line stays, his other colours move the way his base does. `old` is the colour the style had
+ * before his art, which characters saved: it now means his base.
+ */
+const paintedStyle = (id: string, name: string, desc: string, old: string, base: string, back: PaintedPart, front: PaintedPart, line: string): ItemDef => ({
+  id,
+  slot: 'hair',
+  name,
+  desc,
+  colors: hairColor(base),
+  draw: (g, [c]) => {
+    const to = c.toLowerCase() === old ? base : c;
+    const tint = (ch: string, hex: string) => (line.includes(ch) ? hex : retintHex(hex, base, to));
+    paintedHair(g, g.L('hairBack'), back, tint);
+    paintedHair(g, g.L('hairFront'), front, tint);
+    trimSkull(g, back);
+  },
+});
+
 export const HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_none',
@@ -1734,7 +1755,9 @@ export const HAIR_ITEMS: ItemDef[] = [
   hairStyle('hair_chosen', 'Chosen Waves', 'Shoulder-length brown waves, parted at the crown and framing the face.', '#6b4528'),
   hairStyle('hair_drifter', "Drifter's Part", 'Straight lilac hair parted in the middle, falling over the ears with bangs to the eyes.', '#938fc0'),
   hairStyle('hair_surge', 'Golden Surge', 'Blazing golden hair standing straight up in sharp spikes.', '#f8ac01'),
-  hairStyle('hair_youth', 'Wild Youth', 'Short, messy black spikes that fall over the forehead.', '#33333d'),
+  // The owner's hair from his Joven salvaje paint-over (2026-10-21; tools/refs/youth-hair-from-ref.py),
+  // drawn as hair_valiant is. The colour that was the default before his art now means his.
+  paintedStyle('hair_youth', 'Wild Youth', 'Spiky black hair with navy lights: tall spikes swept up and back from the crown, jagged strands over the brow and down before the ears.', '#33333d', YOUTH_HAIR_BASE, YOUTH_HAIR_BACK, YOUTH_HAIR_FRONT, YOUTH_HAIR_LINE),
   hairStyle('hair_ascended', 'Ascended Spikes', 'Golden spikes swept up and back, with one lone lock over the brow.', '#e6c020'),
   hairStyle('hair_storm2', 'Storm Ascension', 'Taller, sharper golden spikes crackling upward, with a lock over the brow.', '#e6c020'),
   hairStyle('hair_gale', 'Gale Prodigy', 'Short, messy black spikes with a tall cowlick and ragged bangs falling between the eyes.', '#23232f'),

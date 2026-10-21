@@ -11,6 +11,31 @@ import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
+import { POUCH_BELT_BUCKLE, POUCH_BELT_KHAKI, POUCH_BELT_LEATHER, POUCH_BELT_POUCHES, POUCH_BELT_SLOT, POUCH_BELT_STRAP } from './pouchBeltArt';
+import {
+  SHINOBI_PANTS_SEAT,
+  SHINOBI_PANTS_SHIN_F,
+  SHINOBI_PANTS_SHIN_N,
+  SHINOBI_PANTS_SLATE,
+  SHINOBI_PANTS_SLOT,
+  SHINOBI_PANTS_THIGH_F,
+  SHINOBI_PANTS_THIGH_N,
+  SHINOBI_PANTS_WRAP,
+} from './shinobiPantsArt';
+import {
+  WILD_FIST_F,
+  WILD_FIST_N,
+  WILD_JACKET_BLUE,
+  WILD_JACKET_BODY,
+  WILD_JACKET_SHIRT,
+  WILD_JACKET_SLOT,
+  WILD_SLEEVE_FORE_F,
+  WILD_SLEEVE_FORE_N,
+  WILD_SLEEVE_UP_F,
+  WILD_SLEEVE_UP_N,
+} from './wildJacketArt';
+import { broadened, partsOff, savedAsHis, slotTint } from './youthKit';
+import { isFemaleBody } from '../types';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1251,7 +1276,119 @@ export const TOP_ITEMS: ItemDef[] = liftMain([
       highCollar(g, c, 4, 1.2);
     },
   },
+  {
+    id: 'top_wild_jacket',
+    slot: 'top',
+    name: 'Wild Jacket',
+    desc: 'A blue jacket with long sleeves and a turned-up collar, worn open over a dark-grey shirt.',
+    colors: [col('main', 'Jacket', WILD_JACKET_BLUE), col('under', 'Shirt', WILD_JACKET_SHIRT)],
+    // His jacket is cut to the male figure (the bulky body gets it broadened); the female bodies are being
+    // redrawn, so it is not offered to them yet.
+    bodies: ['male', 'bulky'],
+    draw: (g, [c, u]) => drawWildJacket(g, c, u),
+  },
 ]);
+
+/**
+ * Takes our torso away below the neckline of his open collar: his jacket is the torso there (as his cuirass
+ * is on our Roman), so our skin never shows past it, and his far sleeve, drawn past where our chest ends,
+ * is not hidden behind it. Above it our neck and chest show in his collar's opening.
+ */
+function torsoOff(g: DrawCtx): void {
+  const r = g.rig;
+  const torso = partIndex('torso');
+  const neck = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y - WILD_NECKLINE;
+  for (const d of ['torso.body', 'torso.under'] as const) {
+    const L = g.L(d);
+    if (!L.used) continue;
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (L.mat[i] < 0 || L.part[i] !== torso) continue;
+      const x = ((i % GRID) + 0.5) / RES - r.pelvis.x;
+      const y = (Math.floor(i / GRID) + 0.5) / RES - r.pelvis.y;
+      if (x * r.up.x + y * r.up.y <= neck) L.mat[i] = -1;
+    }
+  }
+}
+
+/**
+ * The owner's open jacket from his Joven salvaje paint-over (2026-10-21; wildJacketArt.ts,
+ * tools/refs/youth-jacket-from-ref.py): the body rides the torso about the neck, each sleeve's upper part
+ * its upper arm about the shoulder and its forearm part (with the cuff) its forearm about the elbow, over
+ * our arms (taken away under them: in every pose the arms are his sleeves, at his thickness, turned
+ * rigidly about our joints). A closed hand is his bare fist under the cuff, in the character's skin (with
+ * gloves on, the gloves draw the hands). The bulky body gets his jacket and sleeves broadened over its
+ * broader torso and arms, and keeps its own big hands.
+ */
+/** How far under our neck joint (design units) his shirt's neckline is, at rest. */
+const WILD_NECKLINE = 2.5;
+
+function drawWildJacket(g: DrawCtx, blue: string, grey: string): void {
+  const r = g.rig;
+  const tint = slotTint(g, WILD_JACKET_SLOT, { main: WILD_JACKET_BLUE, under: WILD_JACKET_SHIRT }, { main: blue, under: grey });
+  const big = r.body === 'bulky';
+  const fit = (q: PaintedPiece) => (big ? broadened(q, 2, 2) : q);
+  torsoOff(g);
+  for (const s of SIDES) {
+    const j = armJoints(r, s);
+    partsOff(g, [armDepth(s, 'body')], [prt('upperArm', s), prt('forearm', s)]);
+    const [up, fore, fist] = s === 'N' ? [WILD_SLEEVE_UP_N, WILD_SLEEVE_FORE_N, WILD_FIST_N] : [WILD_SLEEVE_UP_F, WILD_SLEEVE_FORE_F, WILD_FIST_F];
+    stampPiece(g, armDepth(s, 'cloth'), fit(fore), j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
+    stampPiece(g, armDepth(s, 'cloth'), fit(up), j.shoulder, segAngle(j.shoulder, j.elbow), prt('upperArm', s), tint);
+    // His fists are closed and empty: a hand that grips, makes a fist or hangs closed ('hold', as in
+    // idle) is his; an open, pointing, relaxed or cradling hand is our hand picture in the skin.
+    const { kind } = handPose(g, s);
+    if (!big && !g.has('hands') && (kind === 'grip' || kind === 'fist' || j.shape === 'hold')) {
+      bareHandOff(g, s);
+      paintedFist(g, s, fist, tint);
+    }
+  }
+  stampPiece(g, 'torso.top', big ? broadened(WILD_JACKET_BODY, 4, 5, 1) : WILD_JACKET_BODY, r.neck, segAngle(r.pelvis, r.neck), 'torso', tint);
+}
+
+/**
+ * Takes our bare thigh, and our bare shin down to `t` of its length from the knee, away: his trousers are
+ * the leg there (narrower than ours in places), so ours never shows round or between them.
+ */
+function bareLegOffAbove(g: DrawCtx, s: Side, t: number): void {
+  const thigh = partIndex(prt('thigh', s));
+  const shin = partIndex(prt('shin', s));
+  const { knee, ankle } = legJoints(g.rig, s);
+  const d = sub(ankle, knee);
+  const l2 = d.x * d.x + d.y * d.y || 1;
+  const L = g.L(legDepth(s, 'body'));
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || (L.part[i] !== thigh && L.part[i] !== shin)) continue;
+    const x = ((i % GRID) + 0.5) / RES - knee.x;
+    const y = (Math.floor(i / GRID) + 0.5) / RES - knee.y;
+    if (L.part[i] === thigh || (x * d.x + y * d.y) / l2 < t) L.mat[i] = -1;
+  }
+}
+
+/** How far down the shin (from the knee) his trousers and wraps reach at rest. */
+const SHINOBI_PANTS_HEM = 0.85;
+
+/**
+ * The owner's trousers from his Joven salvaje paint-over (2026-10-21; shinobiPantsArt.ts,
+ * tools/refs/youth-trousers-from-ref.py): on each leg the thigh turns with our thigh about the hip and the
+ * shin, with his cream wrap, with our shin about the knee, the far leg behind the near one; the seat rides
+ * the pelvis. His legs are shorter than ours: the shins hang a few pixels lower than he drew them (so his
+ * wraps sit over the sandals on our ground) and the thighs run on down over them in his own trousers. The
+ * bulky body's broader legs and hips get his pieces broadened.
+ */
+function drawShinobiPants(g: DrawCtx, slate: string, wrap: string): void {
+  const r = g.rig;
+  const tint = slotTint(g, SHINOBI_PANTS_SLOT, { main: SHINOBI_PANTS_SLATE, wrap: SHINOBI_PANTS_WRAP }, { main: slate, wrap });
+  const big = r.body === 'bulky';
+  const fit = (q: PaintedPiece, l: number, rt: number) => (big ? broadened(q, l, rt) : q);
+  for (const s of SIDES) {
+    const { hip, knee, ankle } = legJoints(r, s);
+    const [thigh, shin] = s === 'N' ? [SHINOBI_PANTS_THIGH_N, SHINOBI_PANTS_SHIN_N] : [SHINOBI_PANTS_THIGH_F, SHINOBI_PANTS_SHIN_F];
+    bareLegOffAbove(g, s, SHINOBI_PANTS_HEM);
+    stampPiece(g, legDepth(s, 'cloth'), fit(shin, 1, 1), knee, segAngle(knee, ankle), prt('shin', s), tint);
+    stampPiece(g, legDepth(s, 'cloth'), fit(thigh, 2, 2), hip, segAngle(hip, knee), prt('thigh', s), tint);
+  }
+  stampPiece(g, 'torso.bottom', fit(SHINOBI_PANTS_SEAT, 3, 3), r.pelvis, segAngle(r.pelvis, r.neck), 'pelvis', tint);
+}
 
 // ---------------------------------------------------------------------------
 // Bottoms
@@ -1299,9 +1436,17 @@ export const BOTTOM_ITEMS: ItemDef[] = liftMain([
     id: 'bottom_shinobi',
     slot: 'bottom',
     name: 'Shinobi Pants',
-    desc: 'Fitted trousers with bandage wraps at the ankles.',
-    colors: [col('main', 'Pants', '#2b3346'), col('wrap', 'Wraps', '#e7e1d1')],
-    draw: (g, [c, w]) => {
+    desc: 'Slate trousers, straight to the shins, with cream bandage wraps round the shins.',
+    colors: [col('main', 'Pants', SHINOBI_PANTS_SLATE), col('wrap', 'Wraps', SHINOBI_PANTS_WRAP)],
+    draw: (g, [c0, w0]) => {
+      // The owner's trousers from his Joven salvaje paint-over (2026-10-21): see drawShinobiPants. The
+      // old default colours mean his. The female bodies keep the drawn trousers (they are being redrawn).
+      const c = savedAsHis(c0, '#2b3346', SHINOBI_PANTS_SLATE);
+      const w = savedAsHis(w0, '#e7e1d1', SHINOBI_PANTS_WRAP);
+      if (!isFemaleBody(g.rig.body)) {
+        drawShinobiPants(g, c, w);
+        return;
+      }
       trousers(g, c, 1.8, 0.55);
       waistband(g, 3);
       for (const s of SIDES) {
@@ -1643,9 +1788,23 @@ export const WAIST_ITEMS: ItemDef[] = liftMain([
     id: 'waist_pouches',
     slot: 'waist',
     name: 'Pouch Belt',
-    desc: 'Utility belt carrying three buttoned tool pouches around the hips.',
-    colors: [col('main', 'Belt', '#3a2c22', 'leather'), col('pouch', 'Pouches', '#86704f', 'leather'), col('buckle', 'Buckle', '#b9c0c8', 'metal')],
-    draw: (g, [c, p, bk]) => {
+    desc: 'A dark leather belt through three khaki pouches with white snaps, closed by a grey buckle.',
+    colors: [col('main', 'Belt', POUCH_BELT_LEATHER, 'leather'), col('pouch', 'Pouches', POUCH_BELT_KHAKI, 'leather'), col('buckle', 'Buckle', POUCH_BELT_BUCKLE, 'metal')],
+    draw: (g, [c0, p0, bk0]) => {
+      // The owner's belt from his Joven salvaje paint-over (2026-10-21; pouchBeltArt.ts,
+      // tools/refs/youth-pouches-from-ref.py), riding the pelvis where he drew it: at rest every pixel is
+      // his. The old default colours mean his. The bulky body's broader waist gets it broadened; the
+      // female bodies keep the drawn belt (they are being redrawn).
+      const c = savedAsHis(c0, '#3a2c22', POUCH_BELT_LEATHER);
+      const p = savedAsHis(p0, '#86704f', POUCH_BELT_KHAKI);
+      const bk = savedAsHis(bk0, '#b9c0c8', POUCH_BELT_BUCKLE);
+      if (!isFemaleBody(g.rig.body)) {
+        const r = g.rig;
+        const tint = slotTint(g, POUCH_BELT_SLOT, { main: POUCH_BELT_LEATHER, pouch: POUCH_BELT_KHAKI, buckle: POUCH_BELT_BUCKLE }, { main: c, pouch: p, buckle: bk });
+        const fit = (q: PaintedPiece) => (r.body === 'bulky' ? broadened(q, 3, 4, 0, POUCH_BELT_POUCHES) : q);
+        for (const piece of [POUCH_BELT_POUCHES, POUCH_BELT_STRAP]) stampPiece(g, 'waist', fit(piece), r.pelvis, segAngle(r.pelvis, r.neck), 'torso', tint);
+        return;
+      }
       const L = g.L('waist');
       const b = g.bp;
       const lp = clothPen(g, c, 'torso', 0, 'leather');

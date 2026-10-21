@@ -11,9 +11,18 @@ import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, V
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { stampPiece } from './painted';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
-import { isFemaleBody, type FaceShape } from './types';
+import { isFemaleBody, type EyeShape, type FaceShape } from './types';
+import { WILD_EYE_COLORS, WILD_EYES, WILD_IRIS, type WideEye } from './wildEyeArt';
+import { YOUTH_HAIR_BASE } from './items/youthHairArt';
 
 const SCLERA = '#f4f1ee';
+
+/** The owner's eyes, his pixels (the eye shapes made from his pictures), with the colours they follow. */
+const PAINTED_EYES: Partial<Record<EyeShape, { eyes: Record<'open' | 'lowered' | 'closed', { near: PaintedEye | WideEye; far: PaintedEye | WideEye }>; colors: Record<string, string>; iris: string; browHair?: string }>> = {
+  valiant: { eyes: VALIANT_EYES, colors: VALIANT_EYE_COLORS, iris: VALIANT_IRIS, browHair: VALIANT_BROW_HAIR },
+  // His Joven salvaje eyes: his brows are painted in his hair's navy-blacks.
+  wild: { eyes: WILD_EYES, colors: WILD_EYE_COLORS, iris: WILD_IRIS, browHair: YOUTH_HAIR_BASE },
+};
 const EYELINE = '#1b1420';
 
 export function drawBody(g: DrawCtx): void {
@@ -427,6 +436,9 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // The owner's eyes (src/sprite/eyeArt.ts), a row lower than ours and heavy-lidded: his brow (B) on
   // the row above the lash line, a single row of white and red iris under it. Drawn in his pixels.
   valiant: { near: VALIANT_EYES.open.near.letters, far: VALIANT_EYES.open.far.letters },
+  // His Joven salvaje eyes (src/sprite/wildEyeArt.ts): his scowling brow on the template's lash row, his
+  // lash line a row under it, two rows of white and red iris (one with a pink light) under that.
+  wild: { near: WILD_EYES.open.near.letters, far: WILD_EYES.open.far.letters },
 };
 
 /** Closed eyes (knocked out): each eye a dark lid line across its middle row. */
@@ -535,8 +547,9 @@ function drawFace(g: DrawCtx): void {
   const closed = g.rig.pose === 'downed';
   // Reading: the lids come down over the eyes, the gaze lowered to the page.
   const lowered = g.rig.pose === 'read';
-  // The owner's eyes ('valiant'): his pixels in each lid state, laid on the template's eye cells.
-  const his = shape === 'valiant' ? VALIANT_EYES[closed ? 'closed' : lowered ? 'lowered' : 'open'] : undefined;
+  // The owner's eyes ('valiant', 'wild'): his pixels in each lid state, laid on the template's eye cells.
+  const paintedEyes = PAINTED_EYES[shape];
+  const his = paintedEyes?.eyes[closed ? 'closed' : lowered ? 'lowered' : 'open'];
   const eyes = his ? { near: his.near.letters, far: his.far.letters } : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
   const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
@@ -572,13 +585,18 @@ function drawFace(g: DrawCtx): void {
     // tones ours take (his dark red the lighter, his red the lightest), so they read blank as ours do.
     const hair = hairChoice?.colors[0];
     const tone = (letter: string, hex: string) => {
-      if (letter === 'd' || letter === 'i') return pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, VALIANT_IRIS, iris);
-      return letter === 'B' && hair ? retintHex(hex, VALIANT_BROW_HAIR, hair) : hex;
+      if (letter === 'd' || letter === 'i') return pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, paintedEyes!.iris, iris);
+      return letter === 'B' && hair && paintedEyes!.browHair ? retintHex(hex, paintedEyes!.browHair, hair) : hex;
     };
-    const stamp = (eye: PaintedEye, x0: number) =>
+    // An eye whose pixels reach past the template's cells (WideEye) is laid from `at` with its own marks.
+    const stamp = (eye: PaintedEye | WideEye, x0: number) => {
+      const [dx, dy] = 'at' in eye ? eye.at : [0, 0];
+      const marks = 'marks' in eye ? eye.marks : eye.letters;
       eye.rows.forEach((row, r) => {
-        for (let c = 0; c < row.length; c++) if (row[c] !== '.') L.set(x0 + c, ny + r, flat(tone(eye.letters[r][c], VALIANT_EYE_COLORS[row[c]])), 3, 'head', F_NO_OUTLINE);
+        for (let c = 0; c < row.length; c++)
+          if (row[c] !== '.') L.set(x0 + dx + c, ny + dy + r, flat(tone(marks[r][c], paintedEyes!.colors[row[c]])), 3, 'head', F_NO_OUTLINE);
       });
+    };
     stamp(his.near, ex);
     stamp(his.far, fx);
   }

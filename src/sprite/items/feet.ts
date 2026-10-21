@@ -5,11 +5,24 @@
 
 import { retintHex } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
-import { segAngle, stampPiece } from '../painted';
+import { type PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N, SANDAL_SKIN } from './bracersSandalsArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
+import {
+  STRAW_SANDAL_FOOT_F,
+  STRAW_SANDAL_FOOT_N,
+  STRAW_SANDAL_SLOT,
+  STRAW_SANDAL_SOLE,
+  STRAW_SANDAL_SOLE_F,
+  STRAW_SANDAL_SOLE_N,
+  STRAW_SANDAL_STRAP_F,
+  STRAW_SANDAL_STRAP_N,
+  STRAW_SANDAL_STRAPS,
+} from './strawSandalsArt';
+import { broadened, savedAsHis, slotTint } from './youthKit';
+import { isFemaleBody } from '../types';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'leather') => ({ key, label, default: def, kind });
@@ -367,9 +380,33 @@ export const FEET_ITEMS: ItemDef[] = [
     id: 'feet_sandals',
     slot: 'feet',
     name: 'Straw Sandals',
-    desc: 'Light woven straw sandals with dark thong straps and wrapped ankles; toes and heels stay bare.',
-    colors: [col('main', 'Straps', '#1f1e26', 'cloth'), col('sole', 'Sole', '#c9a46c')],
-    draw: (g, [c, sole]) => {
+    desc: 'Sandals of black straps round the ankle and over the bare toes, on a dark sole.',
+    colors: [col('main', 'Straps', STRAW_SANDAL_STRAPS, 'cloth'), col('sole', 'Sole', STRAW_SANDAL_SOLE)],
+    draw: (g, [c0, sole0]) => {
+      // The owner's sandals from his Joven salvaje paint-over (2026-10-21; strawSandalsArt.ts,
+      // tools/refs/youth-sandals-from-ref.py): on each leg the ankle straps turn with the shin about the
+      // ankle and the foot stays flat on the ground like our feet, our bare foot under it taken away; both
+      // hang a few pixels lower than he drew them, so his soles stand on our ground. His skin between the
+      // straps follows the character's; his sole follows the Sole colour. The old default colours mean his.
+      // The female bodies keep the drawn sandals (they are being redrawn).
+      const c = savedAsHis(c0, '#1f1e26', STRAW_SANDAL_STRAPS);
+      const sole = savedAsHis(sole0, '#c9a46c', STRAW_SANDAL_SOLE);
+      if (!isFemaleBody(g.rig.body)) {
+        const tint = slotTint(g, STRAW_SANDAL_SLOT, { main: STRAW_SANDAL_STRAPS }, { main: c });
+        const soleTint = (_ch: string, hex: string) => (STRAW_SANDAL_SLOT[hex] === 'line' ? hex : retintHex(hex, STRAW_SANDAL_SOLE, sole));
+        // The bulky body's feet are a column broader (as ours are: ctx.ts footWidth).
+        const fit = (q: PaintedPiece, like: PaintedPiece) => (g.rig.body === 'bulky' ? broadened(q, 0, 1, 0, like) : q);
+        for (const s of SIDES) {
+          const { knee, ankle } = legJoints(g.rig, s);
+          bareFootOff(g, s);
+          const [strap, foot, soleP] = s === 'N' ? [STRAW_SANDAL_STRAP_N, STRAW_SANDAL_FOOT_N, STRAW_SANDAL_SOLE_N] : [STRAW_SANDAL_STRAP_F, STRAW_SANDAL_FOOT_F, STRAW_SANDAL_SOLE_F];
+          const L = legDepth(s, 'feet');
+          stampPiece(g, L, fit(strap, strap), ankle, segAngle(knee, ankle), `shin${s}`, tint);
+          stampPiece(g, L, fit(foot, foot), ankle, foot.angle, `foot${s}`, tint);
+          stampPiece(g, L, fit(soleP, foot), ankle, soleP.angle, `foot${s}`, soleTint);
+        }
+        return;
+      }
       for (const s of SIDES) {
         const L = g.L(legDepth(s, 'feet'));
         // dark wrap around the ankle (tabi style), with lit wrap lines

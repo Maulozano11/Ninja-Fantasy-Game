@@ -30,14 +30,14 @@ clean.
 | Group | Options |
 |---|---|
 | Bodies | 4 (male, female, bulky, slender) |
-| Hair | 36 |
+| Hair | 35 (plus `hair_none`) |
 | Eyes / face shapes / necks | 8 (incl. the owner's "valiant") / 4 / 2 |
 | Face marks and masks | 7 |
 | Tops / bottoms / skirts / waist | 9 / 5 / 4 / 5 |
-| Armor | 17 |
+| Armor | 16 (plus `armor_none`) |
 | Feet / hands | 7 / 5 |
 | Capes | 8 |
-| Held | 10 (katana built from parts, crystal, ice crystal, flame longsword, kunai, naginata, spiral, lightning, palm) |
+| Held | 9 (plus `held_none`): katana built from parts, crystal, ice crystal, flame longsword, kunai, naginata, spiral, lightning, palm |
 | Accessories | 13 |
 | Headband | 5 positions, 7 emblems, slashed or not, tails or not |
 | Chakra | 9 colours plus any tint; 8 cast styles ("eye" hidden) |
@@ -92,21 +92,26 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 
 ## 2. Branches
 
-| Branch | Tip | Holds | State |
+| Branch | Tip on origin | Holds | State |
 |---|---|---|---|
 | `main` | `6e2e8dc` | AI Studio scaffold | Nothing goes there yet |
 | `claude/eloquent-noether-ix51z1` | `8dfd107` | Everything approved | **Integration**, live |
-| `aiden/*` (8 branches) | `995be5d` | The owner's Aiden, part by part | Merged (`c2b84f5`) |
+| `aiden/*` (8 branches) | `aiden/integration` `995be5d`; parts `armor` `dee8d17`, `boots-gloves` `c5dec79`, `cape` `ad183d4`, `eyes` `313d514`, `flame-sword` `4052fef`, `hair` `201cb44`, `head-shape` `930d3ad` | The owner's Aiden, part by part | Merged (`c2b84f5`) |
 | `icons/sheet-12`, `icons/sheet-12-fix` | `cd8e07b`, `b8dd15c` | Sabueso rayo, Luna creciente, Nirvana | Merged (`8dfd107`) |
 | `camp/owner-ref` | `70293ba` | Read, lean and sit camp poses from his picture (`camp-poses-owner-reference.webp` on that branch); touches `rig.ts`, `compose.ts`, `ctx.ts`, `campfx.ts` | **WIP, being redone**: copy his book and both hands exactly; show Aiden reading |
 | `camp/hands-book` | `a3ae184` | Earlier pass, already inside `camp/owner-ref` | Superseded |
 | `ryusei/phase` | `1bd38c9` | Warp Strike and Spatial Swap carry the ninja as a see-through electric-blue light body (`src/sprite/phase.ts` + tests, renderer, playback) | **Waiting for approval.** Next: Warp Strike choreography (throw the weapon in his throw pose, it flies to the target with sparkle trails, the ninja phases and reappears with a piercing thrust). Swap stays |
 | `poses/throw-pierce` | `f722aee` | `throw` (4 frames, release copied from his Warp Strike picture) and `pierce` (5-frame lunge) poses, in the creator stance bar; `src/sprite/strike.test.ts` | **Waiting for approval**; `ryusei/phase` needs it |
-| `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 and 14 icons: adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
+| `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
 | `scarlet/study` | `3b5dfe9` | His new character picture (`scarlet-owner-reference.jpg`) and study scripts `tools/refs/scarlet*`; nothing in `src` | **WIP**. Provisional name "Valen, the Scarlet Duke", no cape: **the owner must choose the name** |
-| `worktree-*` (local only) | `6e2e8dc` | Agent worktree leftovers | Stale |
+| `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
-Merge checks (`git merge-tree`, nothing changed):
+The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
+one more commit, not pushed yet, on three branches: `camp/owner-ref` `07b3a25` (read pose: his
+book and hands), `icons/sheets-8-11` `3cae1ea` (Swap and Warp Strike icons with phase ninjas) and
+`scarlet/study` `399f59f` (his picture brought down to our scale).
+
+Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - `camp/owner-ref`, `ryusei/phase`, `poses/throw-pierce` and `scarlet/study` merge cleanly into
   integration; `icons/sheets-8-11` conflicts only in `docs/reference/README.md`.
 - `camp/owner-ref` and `poses/throw-pierce` conflict with each other in `src/sprite/rig.ts`;
@@ -127,6 +132,9 @@ Merge checks (`git merge-tree`, nothing changed):
 - Clan rulings D5 (camp activities and jutsu flavour per clan) and D18 (may an enemy Northstar
   command the party's ninjas?).
 - When to start the clan eyes (he said later).
+- Commit trailers: 353 of the 359 commits on integration end with a `Co-Authored-By:` line that
+  names the AI model, against his rule of no model names in commits. `CLAUDE.md` now says to write
+  that line without the model name. Confirm, or say whether he wants the line at all.
 - Pictures to send again (none is in `docs/reference/` yet): the body shape from his no-skirt
   picture (slim torso, baggy pants into leg wraps); the red cape with gold trim (Crimson Knight
   Cape); the royal fur cape (ermine collar, gold medallions, fleur-de-lis, front tabard); the
@@ -137,29 +145,32 @@ Merge checks (`git merge-tree`, nothing changed):
 
 ### 4a. Replace Naruto-derived names and designs (before any public release)
 
-Matching lines in `src` (case-insensitive):
+Counted on the integration branch as lines in `src` (without `src/assets`) that match the term,
+case-insensitive. A two-word term also matches with `_` or `-` between the words (`body_flicker`).
+Generated art in `src/assets` adds more (icon files and manifests such as `rasengan.png`).
 
 | Term | Lines | Where |
 |---|---|---|
-| sharingan | 31 | shinobiData 13, types/shinobi 5, CharacterCreator 3, rules/rest 2, campActivities 2, legacy, ruleText, RestCamp, CampaignMode, ArenaSandbox, battle.test |
-| byakugan | 15 | CharacterCreator 4, types 2, shinobiData 2, campActivities 2, RestCamp 2, legacy, rest, CampaignMode |
+| sharingan | 31 | shinobiData 13, types/shinobi 5, CharacterCreator 3, campActivities 2, rules/rest 2, battle.test, ArenaSandbox, CampaignMode, RestCamp, ruleText, legacy |
+| byakugan | 15 | CharacterCreator 4, RestCamp 2, campActivities 2, shinobiData 2, types 2, CampaignMode, rest, legacy |
 | mangekyo / kamui / amaterasu / susanoo | 7 / 2 / 4 / 4 | shinobiData, types, legacy, CharacterCreator |
-| rasengan / rasenshuriken | 5 / 7 | shinobiData, types, legacy, units, BattleScreen, jutsu.ts, `rasengan.png` icon |
+| rasengan / rasenshuriken | 5 / 7 | shinobiData, types, legacy, units, BattleScreen, jutsu.ts |
 | chidori / raikiri | 22 / 1 | shinobiData 8, battle.test 6, units 2, others |
 | kirin | 16 | shinobiData 6, battle.test 5, vfxSprites 2, others |
 | hokage / akatsuki / konoha | 3 / 3 / 3 | types, legacy, shinobiData (Konoha Senpuu) |
 | kage (whole word) | 1 | shinobiData (Kage Bunshin) |
-| eight gates | 9 | shinobiData (Taijutsu class text, feat `eight_gates_initiate`) |
-| shadow clone | 9 | shinobiData 6, BattleScreen, battle/types, jutsu |
+| eight gates | 6 | shinobiData (Taijutsu class text, feat `eight_gates_initiate`) |
+| shadow clone | 7 | shinobiData 4, BattleScreen, battle/types, jutsu |
 | kawarimi | 66 | engine 20, battle.test 10, shinobiData 7, battle/types 6, others (a core reaction) |
-| shunshin / body flicker | 3 / 4 | shinobiData, BattleScreen, battle.test |
+| shunshin / body flicker | 3 / 20 | shinobiData, battle.test, units, jutsu, BattleScreen (ids `body_flicker`) |
 | goukakyu / suiryuudan / doryuudan / doryuheki / suijinheki / mikazuki | 33 / 6 / 5 / 11 / 9 / 1 | jutsu ids such as `fireball_goukakyu` |
-| uchiha / hyuga / senju / uzumaki-uddo-akkai-taki | 3 / 3 / 4 / 23 | old-clan migration in `rules/ninja.ts` + tests; ids like `taki_sixtyfour_palms` |
-| Naruto character names | 28 | shinobiData 13, types 7, legacy 7, units 1 |
-| tomoe / pinwheel / pale eyes | 23 | shinobiData 7, sprite/body 6, types 3, others (the 2 in `katana.ts` are a heraldic guard, fine) |
-| sage eyes | 5 | shinobiData, types, CharacterCreator |
-| kurama / tailed beast | 6 | CampaignMode 3, shinobiData 2, ArenaSandbox |
-| chunin / genin / jonin / ANBU | 10 / 3 / 15 / 11 | Arena, Campaign, units (`jonin` enemy kind id), armor, legacy |
+| uchiha / hyuga / senju / uzumaki | 3 / 3 / 4 / 3 | old-clan migration in `rules/ninja.ts` + tests (Uddo and Akkai there are not Naruto names) |
+| taki (whole word or `taki_`) | 11 | `taki_sixtyfour_palms` and the old clan Taki |
+| Naruto character names (whole words: naruto, sasuke, kakashi, itachi, madara, hashirama, tobirama, hinata, neji, gaara, jiraiya, tsunade, orochimaru, minato, obito, shisui, kushina, nagato, kisame, deidara) | 28 | shinobiData 13, types 7, legacy 7, units 1 |
+| tomoe / pinwheel / pale eye(s) | 26 | shinobiData 8, sprite/body 7, types 3, legacy 3, others (`katana.ts` 2 and `words.ts` 1 are a heraldic guard, fine) |
+| sage eye(s) | 5 | shinobiData, types, CharacterCreator |
+| kurama / tailed beast(s) | 5 | CampaignMode 3, ArenaSandbox, shinobiData |
+| chunin / genin / jonin / ANBU | 10 / 3 / 23 / 6 | rules.test, Arena, Campaign, battle.test and units (`jonin` enemy kind id), armor, legacy |
 | tenketsu | 11 | shinobiData, campActivities, rest, effects, RestCamp |
 
 What players see:

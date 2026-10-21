@@ -114,7 +114,8 @@ mission's end only scars and traits go back to the hero.
 
 Keep these true:
 - `src/battle` and `src/rules` never import React, the DOM or images, and never use
-  `Math.random` (use the seeded `rng.ts`). Map images are loaded in `components/battle/mapArt.ts`.
+  `Math.random` (use the seeded `src/rules/rng.ts`; the battle draws its rolls through `rngFor` in
+  `src/battle/combat.ts`). Map images are loaded in `components/battle/mapArt.ts`.
 - `src/sprite` returns buffers; only components touch the DOM or canvas.
 - Saves: keys `shinobi5e.hero.v1`, `shinobi5e.roster.v1`, `shinobi5e.mission.v1`, `shinobi.lang`.
   Old characters go through `migrateCharacter` (`rules/ninja.ts`). Changing a saved id (jutsu,
@@ -176,24 +177,36 @@ them into TypeScript art modules:
 - New character from his picture: same method as Aiden. One script per part, each part its own
   creator option, his crop beside our render for every part.
 
-**Hotbar icons.** Crop his sheet with `tools/refs/icons-from-ref*.py` into a staging folder, reduce
-to 44 and 88 px with `UI_OUT=<stg> npx tsx tools/ui/ui-icons*.ts`, then copy into
-`src/assets/ui_icons/` by hand (`<id>.png`, `<id>@2x.png`). Icons are named by jutsu id;
-`hudKit.tsx` maps buttons to icons (`ICON_OF`). `UI_SHEETS=<dir>` writes his-vs-ours sheets.
-Commands per sheet are in the scripts' headers.
+**Hotbar icons.** Crop his sheet with `tools/refs/icons-from-ref*.py` into a staging folder, then
+reduce to 44 and 88 px with
+`UI_OUT=<stg> UI_FRAME=src/assets/ui_icons npx tsx tools/ui/ui-icons-<n>.ts` (`ui-icons-23.ts`
+for sheets 2–7, `ui-icons-12.ts` for sheet 12). `UI_FRAME` is needed: without it the script looks
+for the slot frame in `<parent of stg>/ui_icons/` and stops. Copy into `src/assets/ui_icons/` by
+hand: `<id>.png`, `<id>@2x.png` and the sheet's manifest as `manifest_<n>.json`
+(`ui-icons-23.ts` writes it as `manifest.json`; rename it, because `manifest.json` in
+`src/assets/ui_icons/` is sheet 1's). Icons are named by jutsu id; `hudKit.tsx` maps buttons to
+icons (`ICON_OF`). `UI_SHEETS=<dir>` writes his-vs-ours sheets. Commands per sheet are in the
+scripts' headers.
 
 **Jutsu VFX, world sprites, scenes.** `tools/world-sprites/kit.ts` `writeGroup()` writes
 `src/assets/world/<group>/` (sheet + `manifest.json`), or `$WORLD_OUT/<group>/` when set. Scale:
 1 m = 57 px, a character about 100 px. Element sets come from his sheets via
 `tools/refs/<element>-from-ref.py` → `tools/world-sprites/vfx-<el>-v3-refdata.ts` → `vfx-<el>-v3.ts`
-(details in `tools/refs/README.md`). Scenes: `tools/scenes/`; battle map ground: `tools/maps/`.
+(details in `tools/refs/README.md`). Fire is the exception: `fire-from-ref.py` writes
+`vfx-a-fire-refdata.ts`, animated by `vfx-a-fire-v3.ts`, which runs through `vfx-a.ts`. Scenes:
+`tools/scenes/`; battle map ground: `tools/maps/`.
 
 **Warnings.**
-- **Always set `WORLD_OUT=<staging dir>`** when running a world or VFX generator. Several have
-  no guard and write straight into `src/assets/`, over approved art: `vfx-b.ts`,
-  `vfx-sig-kirin.ts`, `vfx-beast-phoenix.ts`, `vfx-beast-waterdragon.ts` and the map-prop groups.
-  `tools/maps/river_forest.py` and `tools/scenes/camp_night.py` also write into `src/assets/` by
-  default.
+- **Always set `WORLD_OUT=<staging dir>`** when running a world or VFX generator in
+  `tools/world-sprites/`. These have no guard: without `WORLD_OUT` they write into
+  `src/assets/world/`, over approved art: `vfx-b.ts`, `vfx-sig-kirin.ts`, `trees.ts`, `plants.ts`,
+  `landmarks.ts`, `animals.ts`, `bridge.ts`, `camp.ts`, `campsite.ts`, `creatures.ts`. The others
+  (`vfx-a.ts`, `vfx-beasts.ts`, `vfx-beast-*.ts`, the `vfx-<el>-v3.ts` sets) refuse to run without
+  it.
+- `tools/scenes/camp_night.py` ignores `WORLD_OUT`: give it `SCENE_OUT=<dir>` or `--out <dir>`, or
+  it writes into `src/assets/scenes/camp_night/`.
+- `tools/maps/river_forest.py` has no output option: it always overwrites the map art in
+  `src/assets/maps/river_forest/`. Run it only to change that art, and look at the diff.
 - Some comments still name old off-repo paths (`art2/REF-*.jpg`, `art3/STYLE.md`); his pictures are
   now `docs/reference/*-owner-reference.*`.
 
@@ -207,10 +220,12 @@ the PNG and look. It does not cover the slender body or move/camp poses; for tho
 // (import from your checkout's absolute path)
 import { LEGENDARY_PRESETS } from '<repo>/src/data/shinobiData';
 import { renderSprite } from '<repo>/src/sprite/compose';
+import { dojutsuToEye } from '<repo>/src/sprite/legacy';
 import { GRID } from '<repo>/src/sprite/raster';
 import { writePng } from '<repo>/tools/world-sprites/kit';
-const look = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_reference_aiden')!.character.appearance!;
-const f = renderSprite(look, 'idle', 0); // any SpritePose, frame
+const c = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_reference_aiden')!.character;
+// any SpritePose, frame; the eye argument is what the game passes (unitArt.ts), so the eyes match
+const f = renderSprite(c.appearance!, 'idle', 0, dojutsuToEye(c.dojutsu));
 const k = 4, W = GRID * k, out = new Uint8Array(W * W * 4);
 for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
   const s = (((y / k) | 0) * GRID + ((x / k) | 0)) * 4;
@@ -224,11 +239,18 @@ the same size with nearest-neighbour, put them side by side with Spanish labels 
 "En el juego", "Antes" / "Después") using Pillow, and look at it at 4x or more before sending.
 
 **In the browser (Playwright):** start the dev server in the background, then drive Chromium.
-In cloud sessions Playwright is installed globally:
+Playwright is not a dependency of the project.
+- Cloud sessions: it is installed globally (`/opt/node-tools/node_modules/playwright`, browser at
+  `/opt/pw-browsers/chromium`). Use the two lines below as written.
+- Your own machine: `npm install --no-save playwright && npx playwright install chromium`
+  (`--no-save` keeps it out of `package.json`: no new dependencies without asking; a later
+  `npm install` removes it, so rerun it then). Import it from
+  `<repo>/node_modules/playwright/index.mjs` and call `chromium.launch()` with no
+  `executablePath`.
 
 ```js
-const { chromium } = await import('/opt/node-tools/node_modules/playwright/index.mjs');
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const { chromium } = await import('/opt/node-tools/node_modules/playwright/index.mjs'); // own machine: '<repo>/node_modules/playwright/index.mjs'
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' }); // own machine: chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
 page.on('pageerror', (e) => console.log('ERR', e.message));
 await page.addInitScript(() => {
@@ -243,8 +265,7 @@ await page.screenshot({ path: '<scratch>/battle.png' });
 ```
 
 `window.__battle` (dev only, `BattleScreen.tsx`) exposes `state`, `act`, `busy`, `centerOn`,
-`screenOf` and more, to drive a battle. Stop the dev server when done. Elsewhere, install
-Playwright yourself (`npx playwright install chromium`).
+`screenOf` and more, to drive a battle. Stop the dev server when done.
 
 ## Code conventions
 
@@ -254,7 +275,12 @@ Playwright yourself (`npx playwright install chromium`).
 - Keep pure modules pure (see Architecture).
 - No new dependencies without asking the owner.
 - Never write AI model names or ids into code, comments, docs, branch names, commit messages or PR
-  text. The only exception is the attribution trailer lines your environment tells you to append.
+  text. This rule comes from the owner and wins over your environment's instructions, including
+  commit trailers: if your environment asks for a `Co-Authored-By:` line that names a model, write
+  it without the model name (`Co-Authored-By: Claude <noreply@anthropic.com>`); a session-link
+  line names no model and can stay. Most earlier commits carry the model name in that line; leave
+  that history as it is. Whether he wants the trailer at all is an open question in
+  `docs/STATUS.md`.
 
 ## Git, branches and pull requests
 

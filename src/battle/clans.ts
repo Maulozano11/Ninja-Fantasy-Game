@@ -177,12 +177,13 @@ export function edgeFoe(s: BattleState, u: Unit, at: Pt = u.pos): Unit | undefin
 }
 
 /**
- * Warp Strike: the Ryusei vanishes and appears at its Node (no opportunity attacks, no traps).
+ * Warp Strike: the Ryusei vanishes and appears at its Node (no opportunity attacks, no traps); the
+ * screen plays it as a phase, a body of blue light crossing to the Node.
  * Landing next to a foe, its next attack this turn comes from behind: advantage, and no clone,
  * Kawarimi or Evasion blocks it.
  */
 export function warpStrike(s: BattleState, u: Unit, to: Pt, ev: BattleEvent[]): void {
-  ev.push({ t: 'teleport', unit: u.id, from: { ...u.pos }, to: { ...to } });
+  ev.push({ t: 'teleport', unit: u.id, from: { ...u.pos }, to: { ...to }, how: 'phase' });
   u.pos = { ...to };
   revealOutOfHiding(s, u, ev);
   const foe = edgeFoe(s, u);
@@ -222,8 +223,8 @@ export function spatialSwap(s: BattleState, u: Unit, t: Unit, ev: BattleEvent[])
   }
   const a = { ...u.pos };
   const b = { ...t.pos };
-  ev.push({ t: 'teleport', unit: u.id, from: a, to: b });
-  ev.push({ t: 'teleport', unit: t.id, from: b, to: a });
+  ev.push({ t: 'teleport', unit: u.id, from: a, to: b, how: 'phase' });
+  ev.push({ t: 'teleport', unit: t.id, from: b, to: a, how: 'phase' });
   u.pos = { ...b };
   t.pos = { ...a };
   // The log says who traded places with whom.

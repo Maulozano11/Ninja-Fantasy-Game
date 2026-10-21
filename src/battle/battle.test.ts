@@ -1302,6 +1302,23 @@ describe('Ryusei: Weapon Nodes, Warp Strike, Spatial Swap', () => {
     assert.equal(swap(sneaking, 'rogue_0').reason, 'combatOnly');
   });
 
+  it('a Warp Strike and a Spatial Swap are played as a phase (the owner, 2026-10-21); a Body Flicker is not', () => {
+    const s = ryuseiTurn({ party: [
+      { character: ryusei(), pos: { x: 8, z: 10 } },
+      { character: hero({ id: 'b', name: 'Bo' }), pos: { x: 11, z: 13 } },
+    ] });
+    const jumps = (o: ReturnType<typeof applyAction>) => ok(o).events.flatMap((e) => (e.t === 'teleport' ? [[e.unit, e.how]] : []));
+    const warped = structuredClone(s);
+    warped.nodes.push(node('n1', { x: 12.25, z: 7.25 }));
+    assert.deepEqual(jumps(warp(warped, { x: 12.25, z: 7.25 })), [['r', 'phase']]);
+    // Both of a Spatial Swap's ninjas phase.
+    const swapped = structuredClone(s);
+    swapped.nodes.push(node('n1', s.units.b.pos));
+    assert.deepEqual(jumps(swap(swapped, 'b')), [['r', 'phase'], ['b', 'phase']]);
+    // Body Flicker keeps its chakra smoke.
+    assert.deepEqual(jumps(applyAction(s, { type: 'jutsu', unit: 'r', jutsu: 'body_flicker', at: { x: 11.25, z: 7.25 } })), [['r', undefined]]);
+  });
+
   it('the AI: a Ryusei its feet can\'t carry into reach warps to a Node beside its target and strikes', () => {
     const { state } = createBattle(setup({ enemies: [{ kind: 'raider', pos: { x: 22, z: 10 } }] }));
     const s = turnOf(state, 'raider_0');

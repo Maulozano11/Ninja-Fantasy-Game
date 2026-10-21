@@ -124,6 +124,7 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the icons on `icons/sheets-8-11`, the
   camp poses once redone.
 - Name the Scarlet character (`scarlet/study`).
+- Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting Star"** (Spanish **"Estrella Fugaz"**), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms
   cast beat, about 115 ms/m for projectiles and 150 ms/m for beasts, longer impacts, the next turn

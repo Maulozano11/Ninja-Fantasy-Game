@@ -7,7 +7,7 @@
 
 import { hexToRgb, hslToHex, makeRamp, mixHex, retintHex, rgbToHsl } from './color';
 import { armJoints, armPoint, armRadius, armSpan, Depth, DrawCtx, fillTorso, FOOT_BARE, footDraw, handDraw, handPose, legJoints, legSpan, Side, torsoPoly } from './ctx';
-import { type BasePiece, FEMALE_BASE, FEMALE_BASE_CLOTH, FEMALE_BASE_SKIN } from './femaleBaseArt';
+import { type BasePiece, FEMALE_BASE, FEMALE_BASE_CLOTH, FEMALE_BASE_JOINTS, FEMALE_BASE_SKIN } from './femaleBaseArt';
 import { FEMALE_SHOULDER_N } from './femaleBodyArt';
 import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, VALIANT_IRIS } from './eyeArt';
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
@@ -139,7 +139,7 @@ const upAngle = (g: DrawCtx): number => (Math.atan2(g.rig.up.y, g.rig.up.x) * 18
  * where turning it lost a pixel of his line, so no piece is ever left cut open. `only` = 'cloth'
  * stamps only the cloth (the sports top and briefs items draw it over the body in their colour).
  */
-function stampBase(g: DrawCtx, depth: Depth, p: BasePiece, at: Vec, deg: number, part: PartId, cloth?: string, only?: 'cloth', bare = false): void {
+function stampBase(g: DrawCtx, depth: Depth, p: BasePiece, at: Vec, deg: number, part: PartId, cloth?: string, only?: 'cloth', bare = false, noCap = false): void {
   const L = g.L(depth);
   const rest = g.rig.pose === 'idle';
   const pal = new Map<string, [number, number, PartId]>();
@@ -148,7 +148,7 @@ function stampBase(g: DrawCtx, depth: Depth, p: BasePiece, at: Vec, deg: number,
   const upper = CAP_OF[part] ?? part;
   for (const [ch, hex] of Object.entries(p.colors)) {
     const isCloth = p.cloth.includes(ch);
-    if (only === 'cloth' && !isCloth) continue;
+    if ((only === 'cloth' && !isCloth) || (noCap && p.cap.includes(ch))) continue;
     // `bare`: the sports top's straps off, his shoulder's skin under them
     const strap = bare ? p.straps?.[ch] : undefined;
     if (strap && only === 'cloth') continue;
@@ -191,7 +191,17 @@ function drawBaseBody(g: DrawCtx): void {
     const depth: Depth = s === 'N' ? 'nearArm.body' : 'farArm.body';
     const fore = segAngle(j.elbow, j.wrist);
     stampBase(g, depth, s === 'N' ? P.upperArmN : P.upperArmF, j.shoulder, segAngle(j.shoulder, j.elbow), s === 'N' ? 'upperArmN' : 'upperArmF');
-    stampBase(g, depth, s === 'N' ? P.forearmN : P.forearmF, j.elbow, fore, s === 'N' ? 'forearmN' : 'forearmF');
+    const forePiece = s === 'N' ? P.forearmN : P.forearmF;
+    stampBase(g, depth, forePiece, j.elbow, fore, s === 'N' ? 'forearmN' : 'forearmF');
+    // A forearm longer than his (a look's longer arms, rig.ts solveFit) is his forearm drawn on along
+    // the bone by the difference, without its cap of the elbow: his own pixels, the wrist further out.
+    const hisFore = Math.hypot(...([0, 1] as const).map((k) => FEMALE_BASE_JOINTS[`wrist${s}`][k] - FEMALE_BASE_JOINTS[`elbow${s}`][k])) / RES;
+    const extra = Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y) - hisFore;
+    if (extra > 0.25) {
+      const k = extra / Math.hypot(j.wrist.x - j.elbow.x, j.wrist.y - j.elbow.y);
+      const on = v(j.elbow.x + (j.wrist.x - j.elbow.x) * k, j.elbow.y + (j.wrist.y - j.elbow.y) * k);
+      stampBase(g, depth, forePiece, on, fore, s === 'N' ? 'forearmN' : 'forearmF', undefined, undefined, false, true);
+    }
     const kind = handPose(g, s).kind;
     if (kind === 'fist' || kind === 'relaxed') stampBase(g, depth, s === 'N' ? P.handN : P.handF, j.wrist, fore, s === 'N' ? 'handN' : 'handF');
     else {

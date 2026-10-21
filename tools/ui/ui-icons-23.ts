@@ -71,6 +71,14 @@
 //    his upper lid.
 //  - Premonition (mirai_evasion): his eye becomes a plain radiant red eye, no symbol: his reds
 //    lighter toward a highlight, a round dark pupil and the highlight.
+// Two more carry his phase (2026-10-21: the Ryusei warp is a "phase", his ninjas drawn as the figure
+// of blue light in his reference picture), made the same way (see phaseEdit and phaseArt):
+//  - Swap (ryusei_swap) and Warp Strike (ryusei_warp): his ninjas keep their pose, silhouette and
+//    details, but their bodies become light in his reference's blues: a translucent blue body (his
+//    greys on the blues, a little of his ground showing through), his lit greys and skin the
+//    brighter blues, his outline and fold lines the near-white rim and light lines, a soft blue
+//    glow round them; Swap's left ninja dissolves into his streaks on his trailing side. His vortex,
+//    portal, kunai, wind, speed lines and stars stay his. At 88 and 44 the rim is drawn again crisp.
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -1068,6 +1076,8 @@ interface IconSpec {
   editArt?: string;
   /** The owner's edit as a whole on his window (his pixels), for the comparison sheets, when part of it is drawn only at each size. */
   preview?: (W: F) => void;
+  /** The owner's request behind the edit (his words) and why, for the manifest (default: his request of the Command and Premonition edits). */
+  asked?: { text: string; why: string };
   /** Colours of his the owner's edit is drawn in (hex, his pixels: this window's or another icon of his), added to the palette. */
   inks?: { hex: string[]; why: string }[];
   /** Palette: k-means entries, lightness flattening, hue weight. */
@@ -1645,6 +1655,385 @@ function miraiArt(pt: Paint, ctx: Ctx): void {
   for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) pt.px(hx + dx, hy + dy, MIRAI_SHINE);
 }
 
+// --- the owner's phase ninjas (2026-10-21) ------------------------------------------------------------
+//
+// He asked (his words): "en la habilidad de hotbar de intercambio y golpe warp de los ryusei dile al
+// artista que quiero que dibuje a los ninjas asi como en esta imagen de referencia y asi va ser el
+// efecto de warp de los ryusei en el juego como un "phase"". His reference picture is a figure made
+// all of electric-blue light: a translucent deep blue body, brighter blue on the lit forms, near-white
+// lines along the silhouette, the muscles and the folds of the clothes, a soft blue glow round it.
+// In Swap (two ninjas) and Warp Strike (one ninja out of the portal) his ninjas become that, on his
+// window (his pixels) before anything else: each keeps his pose, silhouette and details (hood, mask,
+// eyes, folds, hands), but his near-black outline and fold lines become the light lines, his greys
+// the blues (his darker greys the deep blues, his lighter greys, his lit forms, the brighter ones),
+// his skin the bright blues round his dark eyes; a little of his ground shows through the body; the
+// left ninja of Swap dissolves into his streaks and after-image (translucent blue, no rim) on his
+// trailing side. Everything that is not his ninjas (his vortex and portal, his kunai, his wind and
+// speed lines, his stars, his ground) stays his, but for the glow round the ninjas.
+
+/** His phase blues, dark to light: the median colour of his reference figure's pixels in ten steps of lightness, and its whitest. */
+const PHASE_RAMP = ['#00035a', '#041384', '#11249b', '#1d35ba', '#2d49cf', '#415fdc', '#5a7ae8', '#799bf8', '#99bbff', '#c4e3ff', '#e4ffff'];
+
+interface PhaseSpec {
+  /** What the edit is, for the manifest. */
+  what: string;
+  /** Polygons (his pixels, continuous) holding his ninjas; no pixel outside them is his ninja. */
+  areas: [number, number][][];
+  /** His ninjas' own pixels: his dark greys (OKLab lightness below maxL, chroma below maxC). */
+  maxL: number;
+  maxC: number;
+  /** His see-through after-image (Swap's left ninja): lighter greys (lightness below smearL, chroma below smearC), and inside the `trail` polygons his ninja's streaks too (he dissolves into them: no rim there). */
+  smearL?: number;
+  smearC?: number;
+  trail?: [number, number][][];
+  /** His skin round the eyes and on the fists: hue within skinHue (degrees), chroma at least skinC, lightness at least 0.3. */
+  skinHue: [number, number];
+  skinC: number;
+  /** His eyes (his pixels), and the ramp step they take. */
+  eyes: [number, number][];
+  eyeStep: number;
+  /** The ramp step of his fold lines. */
+  lineStep: number;
+  /** Pieces of his ninja's colours smaller than this are his ground, not his ninja. */
+  minPiece: number;
+  /** Gaps in his ninja up to this size (pixels; after closing the figure by one pixel) are his ninja too. */
+  maxHole: number;
+  /** His fold lines: his pixels darker than lineL, or darker than his ninja round them (5x5) by lineDrop, in runs of at least lineMin. */
+  lineL: number;
+  lineDrop: number;
+  lineMin: number;
+  /** His greys from fillLo to fillHi (lightness) go on the ramp's blues, steps fillSteps[0] to fillSteps[1]; a step lighter just inside the rim. */
+  fillLo: number;
+  fillHi: number;
+  fillSteps: [number, number];
+  /** How much of the phase colour covers his ground (the rest shows through): the body, his after-image. */
+  alpha: number;
+  smearAlpha: number;
+}
+
+const PH_NONE = 0, PH_BODY = 1, PH_SMEAR = 2, PH_SKIN = 3, PH_EYE = 4, PH_GAP = 5;
+/** The ninja mask of each icon (his pixels, PH_*), as its phase edit found it: for the drawing at each size. */
+const PHASE_MASK = new Map<string, Uint8Array>();
+
+/**
+ * His ninjas in his window (PH_* per pixel), by his colours inside the areas: his dark greys (body),
+ * his skin, his eyes, his see-through after-image; then the figure closed by one pixel (his wind
+ * streaks across a ninja, a pixel or two of his ground between two of his lines) and its small
+ * holes filled: those pixels are PH_GAP (inside the figure, his own colour).
+ */
+function phaseMask(W: F, s: PhaseSpec): Uint8Array {
+  const { w, h } = W, n = w * h;
+  const m = new Uint8Array(n);
+  const inside = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = i % w, y = (i - x) / w;
+    if (!s.areas.some((p) => inPoly(p, x + 0.5, y + 0.5))) continue;
+    inside[i] = 1;
+    const c = W.lab(i), C = Math.hypot(c[1], c[2]), hd = hueDeg(c);
+    if (C >= s.skinC && c[0] >= 0.3 && hd >= s.skinHue[0] && hd <= s.skinHue[1]) m[i] = PH_SKIN;
+    else if (c[0] < s.maxL && C < s.maxC) m[i] = PH_BODY;
+    else if (s.smearL !== undefined && c[0] < s.smearL && C < (s.smearC ?? 0)) m[i] = PH_SMEAR;
+  }
+  // Pieces too small to be his ninja go back to his ground.
+  const any = new Uint8Array(n);
+  for (let i = 0; i < n; i++) any[i] = m[i] ? 1 : 0;
+  for (const g of groups(any, w, h)) if (g.length < s.minPiece) for (const i of g) m[i] = PH_NONE;
+  for (let i = 0; i < n; i++) {
+    const x = i % w, y = (i - x) / w;
+    if (m[i] === PH_BODY && (s.trail ?? []).some((p) => inPoly(p, x + 0.5, y + 0.5))) m[i] = PH_SMEAR;
+  }
+  for (const [x, y] of s.eyes) m[y * w + x] = PH_EYE;
+  // The figure (body, skin, eyes) closed by one pixel (3x3), inside his areas.
+  const fig = new Uint8Array(n);
+  for (let i = 0; i < n; i++) fig[i] = m[i] === PH_BODY || m[i] === PH_SKIN || m[i] === PH_EYE ? 1 : 0;
+  const grow = (a: Uint8Array, on: boolean): Uint8Array => {
+    const o = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      const x = i % w, y = (i - x) / w;
+      let v = on ? 0 : 1;
+      for (let dy = -1; dy <= 1 && v !== (on ? 1 : 0); dy++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = Math.max(0, Math.min(w - 1, x + dx)), yy = Math.max(0, Math.min(h - 1, y + dy));
+          if (on ? a[yy * w + xx] : !a[yy * w + xx]) {
+            v = on ? 1 : 0;
+            break;
+          }
+        }
+      o[i] = v;
+    }
+    return o;
+  };
+  const closed = grow(grow(fig, true), false);
+  for (let i = 0; i < n; i++) {
+    const x = i % w, y = (i - x) / w;
+    if (closed[i] && inside[i] && m[i] === PH_NONE && !(s.trail ?? []).some((p) => inPoly(p, x + 0.5, y + 0.5))) m[i] = PH_GAP;
+  }
+  // Small holes left inside him are his too.
+  const hole = new Uint8Array(n);
+  for (let i = 0; i < n; i++) hole[i] = m[i] === PH_NONE || m[i] === PH_SMEAR ? 1 : 0;
+  for (const g of groups(hole, w, h)) {
+    if (g.length > s.maxHole) continue;
+    if (g.some((i) => i % w === 0 || i % w === w - 1 || i < w || i >= n - w)) continue;
+    for (const i of g) m[i] = PH_GAP;
+  }
+  return m;
+}
+
+/** The phase edit on his window: his ninjas become figures of blue light (see PHASE_RAMP); returns what it did. */
+function phaseEdit(id: string, s: PhaseSpec): (W: F) => string {
+  return (W: F): string => {
+    const { w, h } = W, n = w * h;
+    const m = phaseMask(W, s);
+    PHASE_MASK.set(id, m);
+    const R = PHASE_RAMP.map((c) => hex(c));
+    const his = new Float32Array(W.d);
+    const L = new Float32Array(n);
+    for (let i = 0; i < n; i++) L[i] = W.lab(i)[0];
+    const fig = (i: number) => m[i] === PH_BODY || m[i] === PH_SKIN || m[i] === PH_EYE || m[i] === PH_GAP;
+    // Steps in from the figure's silhouette (4-neighbours; outside 0, the rim 1). His after-image
+    // counts as outside: the rim is the figure's. The window's edge is not his silhouette.
+    const dOut = new Int32Array(n).fill(-1);
+    let ring: number[] = [];
+    for (let i = 0; i < n; i++) if (!fig(i)) (dOut[i] = 0), ring.push(i);
+    for (let d = 1; ring.length; d++) {
+      const next: number[] = [];
+      for (const i of ring) {
+        const x = i % w, y = (i - x) / w;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+          const j = yy * w + xx;
+          if (dOut[j] < 0) (dOut[j] = d), next.push(j);
+        }
+      }
+      ring = next;
+    }
+    // His ground behind his ninja, as it would show through: filled in ring by ring from his pixels
+    // round the figure (each pixel the mean of its 8-neighbours one ring further out).
+    const bg = new Float32Array(his);
+    let maxD = 0;
+    for (let i = 0; i < n; i++) maxD = Math.max(maxD, dOut[i]);
+    for (let d = 1; d <= maxD; d++)
+      for (let i = 0; i < n; i++) {
+        if (dOut[i] !== d) continue;
+        const x = i % w, y = (i - x) / w;
+        const acc = [0, 0, 0];
+        let k = 0;
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx, yy = y + dy;
+            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+            const j = yy * w + xx;
+            if (dOut[j] < 0 || dOut[j] >= d) continue;
+            for (let c = 0; c < 3; c++) acc[c] += bg[j * 3 + c];
+            k++;
+          }
+        if (k) for (let c = 0; c < 3; c++) bg[i * 3 + c] = acc[c] / k;
+      }
+    // His ninja's lightness round each pixel (his body pixels only): r 1 for the fill, r 2 for his lines.
+    const meanBody = (i: number, r: number): number => {
+      const x = i % w, y = (i - x) / w;
+      let t = 0, k = 0;
+      for (let dy = -r; dy <= r; dy++)
+        for (let dx = -r; dx <= r; dx++) {
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+          const j = yy * w + xx;
+          if (m[j] !== PH_BODY) continue;
+          t += L[j];
+          k++;
+        }
+      return k ? t / k : NaN;
+    };
+    // His fold lines: his darkest, or darker than his ninja round them, in runs of lineMin or more.
+    const lineM = new Uint8Array(n);
+    for (let i = 0; i < n; i++) if (m[i] === PH_BODY && dOut[i] > 1 && (L[i] < s.lineL || L[i] < meanBody(i, 2) - s.lineDrop)) lineM[i] = 1;
+    for (const g of groups(lineM, w, h)) if (g.length < s.lineMin) for (const i of g) lineM[i] = 0;
+    const fillStep = (i: number): number => {
+      const v = m[i] === PH_BODY ? L[i] : meanBody(i, 1);
+      const t = Math.max(0, Math.min(1, ((Number.isNaN(v) ? s.fillLo : v) - s.fillLo) / (s.fillHi - s.fillLo)));
+      const [a, b] = s.fillSteps;
+      return Math.min(b + 1, a + Math.round((b - a) * t) + (dOut[i] === 2 ? 1 : 0));
+    };
+    // The rim runs where the figure meets his ground, not where it dissolves into his after-image.
+    const rimAt = (i: number): boolean => {
+      const x = i % w, y = (i - x) / w;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const xx = x + dx, yy = y + dy;
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        const j = yy * w + xx;
+        if (!fig(j) && m[j] !== PH_SMEAR) return true;
+      }
+      return false;
+    };
+    const mixTo = (i: number, base: Float32Array, col: RGBA, a: number) => {
+      for (let c = 0; c < 3; c++) W.d[i * 3 + c] = base[i * 3 + c] * (1 - a) + col[c] * a;
+    };
+    const count = { rim: 0, line: 0, fill: 0, gap: 0, skin: 0, eye: 0, smear: 0, glow: 0 };
+    for (let i = 0; i < n; i++) {
+      if (m[i] === PH_NONE) continue;
+      const x = i % w, y = (i - x) / w;
+      if (m[i] === PH_SMEAR) (mixTo(i, his, R[6], s.smearAlpha), count.smear++);
+      else if (m[i] === PH_EYE) (mixTo(i, his, R[s.eyeStep], 1), count.eye++);
+      else if (dOut[i] === 1 && rimAt(i)) {
+        // The rim: his reference's whitest where it faces his light (up, left), the next step elsewhere.
+        const lit = (y > 0 && !fig(i - w)) || (x > 0 && !fig(i - 1));
+        mixTo(i, his, R[lit ? 10 : 9], 1);
+        count.rim++;
+      } else if (m[i] === PH_SKIN) (mixTo(i, his, R[L[i] < 0.45 ? 7 : L[i] < 0.6 ? 8 : 9], 1), count.skin++);
+      else if (lineM[i]) (mixTo(i, his, R[s.lineStep], 1), count.line++);
+      else if (m[i] === PH_GAP) (mixTo(i, his, R[fillStep(i)], s.alpha), count.gap++);
+      else (mixTo(i, bg, R[fillStep(i)], s.alpha), count.fill++);
+    }
+    // The glow round him: his ground outside the figure blends toward the ramp's blue, less with distance.
+    const near = (x: number, y: number): number => {
+      let best = Infinity;
+      for (let dy = -3; dy <= 3; dy++)
+        for (let dx = -3; dx <= 3; dx++) {
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+          if (fig(yy * w + xx)) best = Math.min(best, Math.hypot(dx, dy));
+        }
+      return best;
+    };
+    for (let i = 0; i < n; i++) {
+      if (fig(i)) continue;
+      const x = i % w, y = (i - x) / w;
+      const d = near(x, y);
+      if (d > 3) continue;
+      const a = d <= 1 ? 0.5 : d <= 1.5 ? 0.4 : d <= 2 ? 0.25 : d <= 2.9 ? 0.12 : 0.06;
+      for (let c = 0; c < 3; c++) W.d[i * 3 + c] = W.d[i * 3 + c] * (1 - a) + R[5][c] * a;
+      count.glow++;
+    }
+    return (
+      `${s.what}: his ninja${s.areas.length > 1 ? 's' : ''} (${count.rim + count.line + count.fill + count.gap + count.skin + count.eye} of his pixels${count.smear ? `, and ${count.smear} of his see-through after-image` : ''}) redrawn as ${s.areas.length > 1 ? 'figures' : 'a figure'} of blue light in his reference's blues (${PHASE_RAMP.join(' ')}): ` +
+      `the silhouette as the near-white rim (${count.rim} pixels; his reference's whitest where it faces up or left), ` +
+      `his fold lines (darker than ${s.lineL}, or ${s.lineDrop} darker than his ninja round them) as light blue lines (${count.line}), ` +
+      `his greys on the blues (his lightness ${s.fillLo} to ${s.fillHi} on steps ${s.fillSteps[0]} to ${s.fillSteps[1]}, ${PHASE_RAMP[s.fillSteps[0]]} to ${PHASE_RAMP[s.fillSteps[1]]}, a step lighter just inside the rim) at ${Math.round(s.alpha * 100)}% over his ground filled in from round the figure, so a little of it shows through (${count.fill}; his wind across the figure the same over his own pixels, ${count.gap}), ` +
+      `his skin his bright blues (${PHASE_RAMP[7]} to ${PHASE_RAMP[9]} by his lightness, ${count.skin})${count.eye ? `, his eyes ${PHASE_RAMP[s.eyeStep]} so they stay dark in that light band (${count.eye})` : ''}` +
+      (count.smear ? `, his after-image his reference's blue (${PHASE_RAMP[6]}) over his pixels at ${Math.round(s.smearAlpha * 100)}% (${count.smear})` : '') +
+      `; a soft glow of his blue (${PHASE_RAMP[5]}) round the figure, half at the edge, gone at three pixels (${count.glow}). Everything else stays his.`
+    );
+  };
+}
+
+const PHASE_ASKED = {
+  text: 'en la habilidad de hotbar de intercambio y golpe warp de los ryusei dile al artista que quiero que dibuje a los ninjas asi como en esta imagen de referencia y asi va ser el efecto de warp de los ryusei en el juego como un "phase"',
+  why: "his ninjas drawn as his reference picture's figure of blue light: the Ryusei warp in the game is a phase",
+};
+
+// Swap (his window as cropped, 139x127): his two ninjas, the left one leaping out to the left with
+// his see-through after-image behind him, the right one landing on the right; his vortex between.
+const SWAP_PHASE: PhaseSpec = {
+  what: "Swap's two ninjas",
+  areas: [
+    // The left ninja, his after-image leg reaching under the vortex to his pixel 66.
+    [[0, 25], [62, 25], [62, 95], [67, 95], [67, 112], [0, 112]],
+    [[70, 25], [139, 25], [139, 110], [70, 110]],
+  ],
+  maxL: 0.5,
+  maxC: 0.1,
+  smearL: 0.72,
+  smearC: 0.085,
+  // The left ninja's trailing side (right of his torso and thigh): he dissolves into his streaks.
+  trail: [[[36, 38], [67, 38], [67, 112], [36, 112], [36, 80], [43, 80], [43, 66], [36, 66]]],
+  skinHue: [15, 95],
+  skinC: 0.035,
+  eyes: [],
+  eyeStep: 2,
+  lineStep: 8,
+  minPiece: 12,
+  maxHole: 6,
+  lineL: 0.225,
+  lineDrop: 0.07,
+  lineMin: 3,
+  fillLo: 0.24,
+  fillHi: 0.46,
+  fillSteps: [3, 7],
+  alpha: 0.82,
+  smearAlpha: 0.6,
+};
+
+// Warp Strike (his window, 98x96): his ninja bursting out of the portal, his right arm thrown
+// forward after his kunai; the portal's dark inside round him is violet, his greys are not.
+const WARP_PHASE: PhaseSpec = {
+  what: "Warp Strike's ninja",
+  areas: [[[45, 18], [86, 18], [86, 66], [45, 66]]],
+  maxL: 0.5,
+  maxC: 0.058,
+  skinHue: [15, 95],
+  skinC: 0.035,
+  // His eyes: the two dark red pixels in his face's skin band; they stay dark in the light band.
+  eyes: [[66, 29], [67, 29]],
+  eyeStep: 1,
+  lineStep: 8,
+  minPiece: 12,
+  maxHole: 6,
+  lineL: 0.225,
+  lineDrop: 0.07,
+  lineMin: 3,
+  fillLo: 0.24,
+  fillHi: 0.46,
+  fillSteps: [3, 7],
+  alpha: 0.82,
+  smearAlpha: 0.6,
+};
+
+/**
+ * The phase figure again at each size, crisp: a pixel is the figure's when at least `cover` of his
+ * pixels in it are (the mask the edit found), and the figure's pixels next to one that is not (4-
+ * neighbours) are its rim, drawn in his reference's whitest where it faces up or left and the next
+ * step elsewhere; the pixels just outside take the glow's blue at `glow`. The reduction alone
+ * spread his one-pixel rim into the ground and the figures went soft.
+ */
+function phaseArt(id: string, cover: Record<number, number>, glow: number): (pt: Paint, ctx: Ctx) => void {
+  return (pt: Paint, ctx: Ctx): void => {
+    const m = PHASE_MASK.get(id);
+    if (!m) return;
+    const N = pt.N, W = ctx.W;
+    const hit = new Float32Array(N * N), all = new Float32Array(N * N), smear = new Float32Array(N * N);
+    for (let y = 0; y < W.h; y++)
+      for (let x = 0; x < W.w; x++) {
+        const [u, v] = ctx.map(x + 0.5, y + 0.5);
+        const cx = Math.min(N - 1, Math.floor(u)), cy = Math.min(N - 1, Math.floor(v));
+        if (cx < 0 || cy < 0) continue;
+        const k = m[y * W.w + x];
+        all[cy * N + cx]++;
+        if (k === PH_BODY || k === PH_SKIN || k === PH_EYE || k === PH_GAP) hit[cy * N + cx]++;
+        if (k === PH_SMEAR) smear[cy * N + cx]++;
+      }
+    const fig = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < N && y < N && all[y * N + x] > 0 && hit[y * N + x] / all[y * N + x] >= cover[N];
+    // His ground (not his after-image, into which the figure dissolves without a rim).
+    const out = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < N && y < N && !fig(x, y) && smear[y * N + x] / all[y * N + x] < 0.3;
+    const R = PHASE_RAMP;
+    const glowAt: [number, number][] = [];
+    for (let y = 0; y < N; y++)
+      for (let x = 0; x < N; x++) {
+        if (!fig(x, y)) {
+          if (glow > 0 && (fig(x + 1, y) || fig(x - 1, y) || fig(x, y + 1) || fig(x, y - 1))) glowAt.push([x, y]);
+          continue;
+        }
+        if (!(out(x + 1, y) || out(x - 1, y) || out(x, y + 1) || out(x, y - 1))) continue;
+        pt.px(x, y, out(x, y - 1) || out(x - 1, y) ? R[10] : R[9]);
+      }
+    const g = hex(R[5]);
+    for (const [x, y] of glowAt) {
+      const c = pt.p.rgb[pt.at(x, y)];
+      pt.px(x, y, toHex([0, 1, 2].map((k) => Math.round(c[k] * (1 - glow) + g[k] * glow)).concat(255) as RGBA));
+    }
+  };
+}
+
+/** His window with the phase mask over it (for the debug sheets). */
+function phaseMaskView(W: F, id: string): Img {
+  const m = PHASE_MASK.get(id);
+  const o = W.toImg();
+  if (!m) return o;
+  const cols = ['', '#ff00c8', '#ffd800', '#00ff60', '#ffffff', '#ff8000'];
+  for (let i = 0; i < W.w * W.h; i++) if (m[i]) o.set(i % W.w, Math.floor(i / W.w), hex(cols[m[i]], 255));
+  return o;
+}
+
 /** Sheets 8 to 11: the palette's coverage of his rare colours (see coverPalette). */
 // A colour is lost when its nearest entry is 0.06 away (OKLab, hue and chroma counted twice, lightness
 // 0.6: the k-means ramp has the lightness steps, what it misses is hues); a group needs the weight of six
@@ -2065,15 +2454,17 @@ const ICONS: IconSpec[] = [
     name: 'Swap',
     label: 'INTERCAMBIO',
     sheet: '8',
+    edit: phaseEdit('ryusei_swap', SWAP_PHASE),
+    art: phaseArt('ryusei_swap', { 44: 0.5, 88: 0.5 }, 0.4),
+    editArt: "at each size the phase figures' rim drawn again crisp (the reduction spread his one-pixel rim into his ground): a pixel is the figure's when at least half of his pixels in it are, the figure's pixels next to his ground (not his after-image) are the rim, his reference's whitest (#e4ffff) where it faces up or left and #c4e3ff elsewhere, the pixels just outside 40% toward the glow's blue (#415fdc)",
+    asked: PHASE_ASKED,
+    inks: [{ hex: PHASE_RAMP, why: "his reference picture's blues, for his phase ninjas" }],
     cover: COVER,
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
-    extra: [{ box: [10, 30, 130, 52], lo: 0.5, hi: 0.9, spare: false, by: 'L', only: { hue: [25, 75], minL: 0.5 }, why: "the skin round his ninjas' eyes and their fists" }],
     marks: [
-      { kind: 'colour', what: "the skin round his ninjas' eyes and their fists", r: 0, thr: 0, hue: [25, 75], minC: 0.04, minL: 0.45, minPx: 2, share: 0.25, mix: 0.6 },
-      { kind: 'dark', what: 'the near-black outlines of his two ninjas', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
-      { kind: 'bright', what: 'the light strands of his vortex and wind', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
+      { kind: 'bright', what: 'the light strands of his vortex and wind, the light lines of his phase ninjas', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
     ],
     bil44: [0, 0],
     mark88: 0.06,
@@ -2194,6 +2585,11 @@ const ICONS: IconSpec[] = [
     name: 'Warp Strike',
     label: 'GOLPE WARP',
     sheet: '9',
+    edit: phaseEdit('ryusei_warp', WARP_PHASE),
+    art: phaseArt('ryusei_warp', { 44: 0.5, 88: 0.5 }, 0.4),
+    editArt: "at each size the phase figure's rim drawn again crisp (at 88 through his kept columns and rows, at 44 the reduction spread his one-pixel rim into his ground): a pixel is the figure's when at least half of his pixels in it are, the figure's pixels next to his ground are the rim, his reference's whitest (#e4ffff) where it faces up or left and #c4e3ff elsewhere, the pixels just outside 40% toward the glow's blue (#415fdc)",
+    asked: PHASE_ASKED,
+    inks: [{ hex: PHASE_RAMP, why: "his reference picture's blues, for his phase ninja" }],
     cover: COVER,
     colors: 22,
     flat: 0.5,
@@ -2202,7 +2598,7 @@ const ICONS: IconSpec[] = [
       // The tan wrap of his kunai's grip (#c4a491, #a07f61; his pixels 22-40, 54-70): at 44 it went to
       // the palette's blue-grey.
       { kind: 'colour', what: "the tan wrap of his kunai's grip", r: 0, thr: 0, hue: [40, 85], minC: 0.03, minL: 0.4, minPx: 2, share: 0.35, mix: 0.7, keep: true, win: (x, y) => x >= 22 && x < 40 && y >= 54 && y < 70 },
-      { kind: 'dark', what: 'the near-black outlines of his ninja and his kunai', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
+      { kind: 'dark', what: 'the near-black outline of his kunai (his ninja is the phase figure now)', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
       { kind: 'bright', what: 'his portal rings, speed lines and stars', r: 1, thr: 0.08, minL: 0.72, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
     ],
     bil44: [0, 0],
@@ -2401,8 +2797,9 @@ if (DEBUG) {
     savePng(join(DEBUG, `${b.spec.id}-88.png`), o88.img);
     savePng(join(DEBUG, `${b.spec.id}-box44-x10.png`), o44.box.toImg().scaled(10));
     savePng(join(DEBUG, `${b.spec.id}-88-x6.png`), o88.img.scaled(6));
-    // His window as the owner's edit left it (his pixels, x4).
+    // His window as the owner's edit left it (his pixels, x4); for the phase ninjas also the mask they were found by (x6).
     if (b.edited) savePng(join(DEBUG, `${b.spec.id}-edited-x4.png`), editedWindow(b).toImg().scaled(4));
+    if (PHASE_MASK.has(b.spec.id)) savePng(join(DEBUG, `${b.spec.id}-phasemask-x6.png`), phaseMaskView(F.of(loadRef(`${b.spec.id}.png`)), b.spec.id).scaled(6));
     // His mark masks over his pixels (bright yellow, dark magenta; lone specks lighter).
     const mk = b.W.toImg();
     for (let i = 0; i < b.W.w * b.W.h; i++) {
@@ -2477,8 +2874,8 @@ const manifest = {
                 {
                   by: 'the owner',
                   date: '2026-10-21',
-                  asked: 'Comando ponlo con un ojo con una brujula de los signos cardinales asi como en la imagen de sumision quita el sharingan y el de premonicion pon solo un ojo rojo radiante sin simbolo para evitar el copyright de naruto',
-                  why: "to keep clear of Naruto's eyes (copyright)",
+                  asked: b.spec.asked?.text ?? 'Comando ponlo con un ojo con una brujula de los signos cardinales asi como en la imagen de sumision quita el sharingan y el de premonicion pon solo un ojo rojo radiante sin simbolo para evitar el copyright de naruto',
+                  why: b.spec.asked?.why ?? "to keep clear of Naruto's eyes (copyright)",
                   onHisWindow: b.edited,
                   atEachSize: b.spec.editArt ?? '',
                   colours: (b.spec.inks ?? []).map((k) => `${k.why}: ${k.hex.join(' ')}`),

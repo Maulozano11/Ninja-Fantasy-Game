@@ -1,47 +1,44 @@
-"""Aurelia's hair (docs/reference/aurelia-owner-reference.jpg) as a hairstyle: 'hair_dawn_bun'.
+"""Aurelia's hair from the owner's picture at our scale, as a hairstyle: 'hair_dawn_bun'.
 
-Her picture is the owner's pixel art at about 2.5 times our scale (heroine_ref.py: 200 x 200 of her
-pixels, 198 tall, ours 91). Her hair is blonde, gathered back into a big braided bun at the back of
-the head, with a gold ornament (a flower of gold petals round a dark heart, and a gold pin under it)
-where the bun meets the hair swept back from the brow; side-swept bangs falling to the brows in
-strands; a long lock in front of her ear down to her collar on the near side, and one beside her far
-cheek. All of it inside her black line on the top and the back, her browns on the far side.
+docs/reference/aurelia-game-scale-owner-reference.jpg is his Aurelia redrawn at our sprite scale
+(1932 x 1932, 100 x 100 of his pixels of 19.32 picture pixels each, from 0: one of his pixels is one
+fine pixel of our sprites). It is the reference ("perfectas"): her hair is copied from it pixel for
+pixel, in his colours. The big picture (aurelia-owner-reference.jpg) only helps to read it.
 
-Her hair is brought down to our scale with the study's head map (heroine_ref.SEGMENTS['aurelia']
-['head']: her eyes on ours, her hair top a pixel over our skull, her chin on ours) and redrawn pixel by
-pixel in her colours only (each a colour of PALETTES['aurelia'], checked below): her line, her twelve
-blondes and browns, her golds. Where our face is not hers it is fitted to ours:
+Her hair: blonde, gathered back into a braided bun at the back of the head with a gold ornament (gold
+dots on a dark brown patch), the crown swept back from the brow, side-swept bangs falling to the
+brows in strands, a long lock in front of her ear down to the collar on the near side and one beside
+her far cheek down to the jaw; her black line on the top and the back, her brown on the front edge.
 
-  near lock  our near eye sits two columns left of where the head map puts hers, so her lock (and the
-             ear before it) come in three columns: the lock runs down in front of our cheek with a
-             column of skin between it and our eye, as hers does, and her ear is the column of our
-             skin between it and the bun.
-  far lock   our far cheek is a column wider than hers: her lock hangs beside it, behind the face
-             (BACK only) down to the jaw, so it shows only past our cheek on every face shape; its
-             tip, under the jaw, is drawn in front.
-  bangs      her strands end on the row over our lash line, as hers end on hers.
+Where it sits. His near eye's lash row and its first cell (his (51, 16), the brown inner tip of the
+lash) land on our face anchor (body.ts faceAnchor: the near eye's first column, its lash row), so his
+pixel (x, y) is ours (x + 72, y + 125) at the female idle frame 0. Then his skull top, crown, near
+lock and bun fall on our head as they fall on his. Only one thing is not his: our face is two
+columns wider than his at the eyes (his far eye is at his face's far edge, ours two columns further
+on). So the far side moves out with it: from the brow (row 11) one column, from the bangs' lower
+rows (row 13) two, the cells it leaves are his own pixels just before them repeated (his strands
+run on), and from the lash row down only the far lock moves (the cells it leaves are our face). His
+far lock then sits right after our far eye's dark edge, as his sits after his.
 
-The rows below are the result (the starting point was her pixels through the head map, one colour
-per cell by coverage, line and gold kept; then cleaned by hand against her picture). This script
-writes them as the game's module:
+What is not hair is left out: his face, ear, eyes and the collar under the locks. The shaded skin of
+his brow between his bang strands is kept (SKIN, in the player's skin colour in the game), so that
+our brows, which his bangs cover, do not show through there.
 
-  FRONT   every pixel of her hair over the head (hairFront): bun, ornament, crown, bangs, the near
-          lock, the far side down to the jaw, the far lock's tip
-  BACK    behind the head (hairBack): the front, the far lock beside the cheek, and what her bangs
-          hide filled in (each hidden pixel takes the colour of the nearest of her pixels above it,
-          so her strands run on under the face); it is also her head's outline above the eyes (the
-          game trims our skull to it)
+  FRONT   every pixel of her hair and the brow's skin between her strands (hairFront: over the head)
+  BACK    the front with the skin between her bang strands filled (each such cell takes the nearest
+          of her colours above it: her strands run on under the brow, behind the face). It is drawn
+          behind the head and is also her head's outline above the eyes: the game trims our skull to
+          it, so our skull does not show past her hair (her crown is a row lower than our skull)
 
-Both have their pivot on our face anchor (body.ts faceAnchor: the near eye's first column and its
-lash row), so they frame the eyes on every body and in every pose. Writes, in <out>:
+Writes, in <out>:
 
-  hair.json           rows, palette, pivot, her line, the ornament's colours and the two bases
-  study/hers@8.png    her picture through the head map over the same box, at 8x
-  study/front@8.png   the front, at 8x
-  study/back@8.png    the back, the filled-in pixels marked
+  hair.json             rows, palette, pivot, her line, the ornament's colours and the two bases
+  study/hers@8.png      his picture over the same box, at 8x (his pixels, before the far side moves)
+  study/front@8.png     the front, at 8x
+  study/back@8.png      the back, the filled-in pixels marked
 
-and, with a third argument, the game's module (src/sprite/items/aureliaHairArt.ts). The same rows
-always give the same bytes. Run from the repo root with python3 -I:
+and, with a third argument, the game's module (src/sprite/items/aureliaHairArt.ts). The same picture
+always gives the same bytes. Run from the repo root with python3 -I:
 
   python3 -I tools/refs/aurelia-hair-from-ref.py <out> [src/sprite/items/aureliaHairArt.ts]
 """
@@ -52,123 +49,170 @@ import re
 import sys
 
 import numpy as np
+from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import heroine_ref as R  # noqa: E402
+from aiden_ref import save  # noqa: E402
 
-# Her colours in the hair, one character each.
+REF = 'docs/reference/aurelia-game-scale-owner-reference.jpg'
+PITCH = 19.32
+# Each cell's colour is the median of its inside (this far from its edges: the JPEG's ringing).
+INSET = 4
+
+# His colours in the hair, one character each: the medians of his cells (the JPEG's noise grouped,
+# each group the median of its cells). Every cell of the hair is the nearest of these.
 KEY = {
-    # her line
-    'k': '#030101',
-    # her blondes and browns, lightest first
-    'i': '#feefc6', 'h': '#f9dfac', 'c': '#e6c593', 'y': '#d8b286', 't': '#c79e76', 'q': '#b38761',
-    'm': '#a17354', 'J': '#8e6447', 'j': '#86583d', 'I': '#794f38', 'H': '#6c4427', 'E': '#4a312c',
-    'D': '#36221f',
-    # her golds, lightest first: the ornament and the pin
-    'f': '#fcd77a', 'Z': '#ecc268', 'X': '#deb05c', 'U': '#d4a251', 'R': '#c4934c', 'N': '#a9793c',
-    'P': '#966536', 'F': '#583622',
+    # his line
+    'k': '#030519',
+    # his browns and blondes, darkest first
+    'b': '#553a32', 'c': '#6d4a32', 'e': '#7e523d', 'g': '#926446', 'n': '#d0a474', 'u': '#e6c08a',
+    'w': '#f6daa2', 'x': '#fae1be', 'z': '#fbeecc',
+    # his golds: the ornament
+    'l': '#dda83a', 't': '#fdd258',
+    # not hair (his ear line, skin, eyes, collar): read so that no hair cell takes them
+    'a': '#241a23', 'p': '#e4967d', 'v': '#f5c7a6', 's': '#eca68b', 'j': '#c07265', 'd': '#225484',
+    'f': '#286794', 'm': '#54a4c8', 'o': '#66b2d0', 'y': '#dbe4e7', 'A': '#f6efdd', 'r': '#c1b09c',
+    'q': '#f6bc48', 'h': '#b0772c', 'i': '#be8830', 'W': '#ffffff',
 }
+HAIR = 'kbcegnuwxzlt'
+# His brow's skin, shaded, where it shows between his bang strands (his rows FILL_FROM to the lash
+# row): kept in the front so that our brows, which his bangs cover, do not show there. It follows
+# the player's skin the way his lit skin (SKIN_BASE) moves.
+SKIN = 'p'
+SKIN_BASE = 'v'
 LINE = 'k'
-ORNAMENT = 'fZXURNPF'
-# Her mid blonde, the lit face of most of her locks: the hair colour slot's default (recoloured, her
-# other blondes and browns move as it does). Her gold the same for the ornament.
-HAIR_BASE = 'c'
-ORNAMENT_BASE = 'Z'
+ORNAMENT = 'lt'
+# His mid blonde, the lit face of most of his strands: the hair colour slot's default (recoloured,
+# his other blondes and browns move as it does). His bright gold the same for the ornament.
+HAIR_BASE = 'w'
+ORNAMENT_BASE = 't'
 
-# Where the rows sit in our female body's frame at idle frame 0 (the left column, the top row), and
-# our face anchor there (body.ts faceAnchor: the near eye's first column, its lash row).
-ORIGIN = (110, 126)
+# His pixel (x, y) is ours (x + DX, y + DY): his lash's first cell (51, 16) on our face anchor.
+HIS_ANCHOR = (51, 16)
 ANCHOR = (123, 141)
-# Her bangs show her brow between their strands from this row down to the lash row.
-FILL_FROM = 136
+DX, DY = ANCHOR[0] - HIS_ANCHOR[0], ANCHOR[1] - HIS_ANCHOR[1]
 
-# The hair over the head: columns 110-139, rows 126-153.
-FRONT = [
-    '..............................',  # 126
-    '.......kkkkk.kkkkkk...........',  # 127
-    '......khhcymkhhhmyykk.........',  # 128
-    '.....kmyyImhiihhcytttkk.......',  # 129
-    '....kyihtIihhhcchhhytyck......',  # 130
-    '...ktcicHcchicchhcyhchyhk.....',  # 131
-    '...ktchHtchccJhhcchhhhcchE....',  # 132
-    '..kyjcyHyychjhhhyhhhhhhchj....',  # 133
-    '..kyjyHqIfHfjiiccihiiihtihJ...',  # 134
-    '..ktyjHcZffHHchmccichhhjhhJ...',  # 135
-    '...kttHcPXDRfZcqchchjhjjchj...',  # 136
-    '...kyZHtDUDUNjqcJyyjcyJjhcj...',  # 137
-    '..kIqqfHjhhcJtJJtj.Jq.Jjytj...',  # 138
-    '..ktqJHZjhhcJjjjj.tj..jJtyj...',  # 139
-    '..kqymIyIhcj....jjj...jJtyj...',  # 140
-    '...kmyD.Ihcj.............yj...',  # 141
-    '...kmmJ.jhcj.............yj...',  # 142
-    '....kmJ.Iccj..................',  # 143
-    '....ktDJIchj..................',  # 144
-    '....kmEJIyhj..................',  # 145
-    '.....kIkmyhj..................',  # 146
-    '......kqkJhj..................',  # 147
-    '.......kkJhj..................',  # 148
-    '.........kyhI.................',  # 149
-    '..........Jhj.........yj......',  # 150
-    '..........Jcj.........yj......',  # 151
-    '..........jcj.........Jyj.....',  # 152
-    '...........j...........I......',  # 153
-]
-# The far lock beside our far cheek, behind the face (BACK only): row -> (first column, pixels).
-FAR = {
-    141: (134, 'Jyj'), 142: (134, 'Jyj'), 143: (133, 'Jyj'), 144: (133, 'jcj'), 145: (132, 'Jcj'),
-    146: (132, 'jcI'), 147: (132, 'mcj'), 148: (132, 'Icj'), 149: (131, 'Jcj'),
+# Which of his cells are hair, row by row (his rows 3-26): ranges of his columns, both ends in, and
+# 'F' for the far lock (it moves with our wider face). Inside a range only his hair colours are taken
+# (the skin between his bang strands is left out). Read from his picture: his ear (45-46, rows
+# 16-18), face, eyes, the jaw's line and the gold collar under the near lock are in no range; nor is
+# the brown tip of a bang strand between his eyes (55, 16), which would lie on our near eye.
+MASK = {
+    3: [(42, 46)], 4: [(41, 54)], 5: [(40, 57)], 6: [(39, 58)], 7: [(39, 59)], 8: [(38, 60)],
+    9: [(38, 61)], 10: [(38, 61)], 11: [(38, 62)], 12: [(38, 62)], 13: [(38, 62)], 14: [(38, 62)],
+    15: [(38, 62)],
+    16: [(39, 44), (47, 50), (60, 62, 'F')],
+    17: [(40, 44), (47, 50), (60, 62, 'F')],
+    18: [(40, 44), (47, 50), (60, 61, 'F')],
+    19: [(40, 50), (59, 61, 'F')],
+    20: [(41, 51), (59, 61, 'F')],
+    21: [(42, 50), (60, 60, 'F')],
+    22: [(43, 50), (59, 60, 'F')],
+    23: [(47, 50), (58, 59, 'F')],
+    24: [(46, 50), (57, 59, 'F')],
+    25: [(49, 50), (58, 59, 'F')],
+    26: [(58, 58, 'F')],
 }
+# How far the far side moves (our columns) from each row on, and from which of his columns.
+FAR_COL = 60
+SHIFT = [(11, 1), (13, 2)]
+# From the lash row down only the far lock moves (the cells it leaves are our face).
+LOCK_FROM = 16
+# His bangs show his brow between their strands from this row of his down to the lash row.
+FILL_FROM = 13
+
+
+def native(path):
+    """His pixels: the median of each cell's inside, as an (H, W, 3) int array."""
+    a = np.asarray(Image.open(path).convert('RGB')).astype(np.int32)
+    n = int(round(a.shape[0] / PITCH))
+    out = np.zeros((n, n, 3), np.int32)
+    for j in range(n):
+        for i in range(n):
+            c = a[int(j * PITCH) + INSET:int((j + 1) * PITCH) - INSET, int(i * PITCH) + INSET:int((i + 1) * PITCH) - INSET]
+            out[j, i] = np.round(np.median(c.reshape(-1, 3), 0))
+    return out
+
+
+def rgb(hx):
+    return np.array([int(hx[1:3], 16), int(hx[3:5], 16), int(hx[5:7], 16)])
+
+
+def classify(N):
+    """Each of his cells as the nearest of his colours (KEY), and how far it was."""
+    keys = list(KEY)
+    pal = np.array([rgb(KEY[k]) for k in keys])
+    d = np.abs(N[:, :, None, :] - pal[None, None]).max(3)
+    idx = d.argmin(2)
+    return np.array(keys)[idx], d.min(2)
+
+
+def shift_at(y):
+    s = 0
+    for y0, v in SHIFT:
+        if y >= y0:
+            s = v
+    return s
 
 
 def build():
-    pal = set(R.PALETTES['aurelia'])
-    for ch, hx in KEY.items():
-        assert hx in pal, f'{ch} {hx} is not one of her colours'
-    ox, oy = ORIGIN
-    W = len(FRONT[0])
-    assert all(len(r) == W for r in FRONT), 'rows of unequal length'
-    for r in FRONT:
-        for ch in r:
-            assert ch == '.' or ch in KEY, f'unknown character {ch!r}'
-    front = np.array([list(r) for r in FRONT])
-    back = front.copy()
-    for y, (x0, s) in FAR.items():
-        for i, ch in enumerate(s):
-            if back[y - oy, x0 - ox + i] == '.':
-                back[y - oy, x0 - ox + i] = ch
-    # What her bangs hide, from the brow down to the lash row: between the first and last of her
-    # pixels on each row, each empty cell takes the nearest of her colours above it (her strands run
-    # on down). Above the brow her hair is whole (the notch on her crown is her outline, not a gap).
-    filled = np.zeros(back.shape, bool)
-    for j in range(back.shape[0]):
-        if oy + j < FILL_FROM:
-            continue
-        if oy + j >= ANCHOR[1]:
-            break
-        cols = np.nonzero(back[j] != '.')[0]
-        if not len(cols):
-            continue
-        for i in range(cols[0], cols[-1] + 1):
-            if back[j, i] != '.':
+    N = native(REF)
+    lab, dist = classify(N)
+    rows = sorted(MASK)
+    W = 72
+    H = rows[-1] + 1
+    hers = np.full((H, W), '.', dtype='<U1')  # his hair in his own places
+    lock = np.zeros((H, W), bool)  # his far lock
+    moved = np.full((H, W), '.', dtype='<U1')  # with the far side moved
+    worst = 0
+    for y in rows:
+        for rg in MASK[y]:
+            for x in range(rg[0], rg[1] + 1):
+                ch = lab[y, x]
+                if ch not in HAIR and not (ch in SKIN and FILL_FROM <= y < HIS_ANCHOR[1]):
+                    continue
+                worst = max(worst, int(dist[y, x]))
+                hers[y, x] = ch
+                lock[y, x] = len(rg) > 2
+    for y in rows:
+        s = shift_at(y)
+        for x in range(W):
+            ch = hers[y, x]
+            if ch == '.':
                 continue
-            above = next((back[q, i] for q in range(j - 1, -1, -1) if back[q, i] != '.' and back[q, i] != LINE), None)
-            back[j, i] = above or next(back[j, q] for d in range(1, W) for q in (i - d, i + d) if 0 <= q < W and back[j, q] != '.')
-            filled[j, i] = True
-    return front, back, filled
+            far = (x >= FAR_COL and y < LOCK_FROM) or lock[y, x]
+            moved[y, x + (s if far else 0)] = ch
+        if s and y < LOCK_FROM:
+            # the cells the far side leaves: his own pixels just before it, repeated
+            for k in range(s):
+                if hers[y, FAR_COL - s + k] != '.':
+                    moved[y, FAR_COL + k] = hers[y, FAR_COL - s + k]
+    back = moved.copy()
+    back[np.isin(back, list(SKIN))] = '.'
+    filled = np.zeros(back.shape, bool)
+    for y in range(FILL_FROM, HIS_ANCHOR[1]):
+        cols = np.nonzero(back[y] != '.')[0]
+        for x in range(cols[0], cols[-1] + 1):
+            if back[y, x] != '.':
+                continue
+            above = next((back[q, x] for q in range(y - 1, -1, -1) if back[q, x] not in ('.', LINE)), None)
+            assert above, f'nothing above ({x}, {y})'
+            back[y, x] = above
+            filled[y, x] = True
+    return N, hers, moved, back, filled, worst
 
 
 def main():
     out = sys.argv[1]
     os.makedirs(os.path.join(out, 'study'), exist_ok=True)
-    front, back, filled = build()
-    # down to the box her hair fills
+    N, hers, front, back, filled, worst = build()
     yy, xx = np.nonzero(back != '.')
     y0, y1, x0, x1 = yy.min(), yy.max() + 1, xx.min(), xx.max() + 1
-    front, back, filled = front[y0:y1, x0:x1], back[y0:y1, x0:x1], filled[y0:y1, x0:x1]
-    ox, oy = ORIGIN[0] + int(x0), ORIGIN[1] + int(y0)
-    used = sorted(set(back[back != '.'].tolist()), key=list(KEY).index)
+    front, back, filled, hers = front[y0:y1, x0:x1], back[y0:y1, x0:x1], filled[y0:y1, x0:x1], hers[y0:y1, x0:x1]
+    ox, oy = int(x0) + DX, int(y0) + DY  # the box's top left in our frame
+    used = sorted(set(back[back != '.'].tolist()) | set(front[front != '.'].tolist()), key=list(KEY).index)
     meta = {
-        'source': R.REFS['aurelia'],
+        'source': REF,
         'origin': [ox, oy],
         'pivot': [ANCHOR[0] - ox, ANCHOR[1] - oy],
         'front': [''.join(r) for r in front],
@@ -176,6 +220,8 @@ def main():
         'palette': {ch: KEY[ch] for ch in used},
         'line': LINE,
         'ornament': ''.join(ch for ch in ORNAMENT if ch in used),
+        'skin': ''.join(ch for ch in SKIN if ch in used),
+        'skinBase': KEY[SKIN_BASE],
         'hairBase': KEY[HAIR_BASE],
         'ornamentBase': KEY[ORNAMENT_BASE],
     }
@@ -191,26 +237,17 @@ def main():
         im = np.zeros(grid.shape + (4,), np.uint8)
         for (j, i), ch in np.ndenumerate(grid):
             if ch != '.':
-                hx = KEY[ch]
-                im[j, i] = [int(hx[1:3], 16), int(hx[3:5], 16), int(hx[5:7], 16), 255]
+                im[j, i, :3] = rgb(KEY[ch])
+                im[j, i, 3] = 255
                 if mark is not None and mark[j, i] and (i + j) % 2:
                     im[j, i] = [0, 200, 255, 255]
         return im
 
-    R.save(rgba(front), os.path.join(out, 'study', 'front@8.png'))
-    R.save(rgba(back, filled), os.path.join(out, 'study', 'back@8.png'))
-    # her picture through the head map over the same box: the native pixel under each cell's middle
-    H, W = front.shape
-    N = R.native('aurelia')
-    seg = R.SEGMENTS['aurelia']['head']
-    ys, xs = np.mgrid[0:H, 0:W]
-    pts = np.stack([(xs + ox + 0.5).ravel(), (ys + oy + 0.5).ravel()], 1)
-    hp = np.floor(R.backward(seg, pts)).astype(int)
-    hers = np.full((H * W, 3), 255, np.int32)
-    ok = (hp[:, 0] >= 0) & (hp[:, 0] < N.shape[1]) & (hp[:, 1] >= 0) & (hp[:, 1] < N.shape[0])
-    hers[ok] = N[hp[ok, 1], hp[ok, 0]]
-    R.save(hers.reshape(H, W, 3), os.path.join(out, 'study', 'hers@8.png'))
-    print('front', int((front != '.').sum()), 'px; back', int((back != '.').sum()), 'px (', int(filled.sum()), 'filled );', len(used), 'colours')
+    save(rgba(front), os.path.join(out, 'study', 'front@8.png'))
+    save(rgba(back, filled), os.path.join(out, 'study', 'back@8.png'))
+    save(N[y0:y1, x0:x1], os.path.join(out, 'study', 'hers@8.png'))
+    print('front', int((front != '.').sum()), 'px; back', int((back != '.').sum()), 'px (', int(filled.sum()), 'filled );',
+          len(used), 'colours; worst cell', worst, 'off its colour; origin', (ox, oy))
 
 
 def write_ts(meta, path):
@@ -218,34 +255,40 @@ def write_ts(meta, path):
     key = lambda k: k if re.match(r'^[A-Za-z_$][A-Za-z0-9_$]*$', k) else "'" + k + "'"
     px, py = meta['pivot']
     out = [
-        "// Aurelia's hair, the owner's pixels brought down to our scale (tools/refs/aurelia-hair-from-ref.py",
-        '// from docs/reference/aurelia-owner-reference.jpg). Generated: rerun the script to change it.',
+        "// Aurelia's hair, the owner's pixels at our scale (tools/refs/aurelia-hair-from-ref.py from",
+        '// docs/reference/aurelia-game-scale-owner-reference.jpg). Generated: rerun the script to change it.',
         '',
         "import type { PaintedPart } from './capeArt';",
         '',
-        '/** Her colours, one character each (both parts share them). */',
+        '/** His colours, one character each (both parts share them). */',
         'const AURELIA_HAIR_COLORS: Record<string, string> = {',
     ]
     out += [f"  {key(k)}: '{v}'," for k, v in meta['palette'].items()]
     out += ['};', '']
     for part, name, doc in (
-        ('front', 'AURELIA_HAIR_FRONT', "Every pixel of her hair over the head: the bun, the ornament, the crown, the bangs, the near lock and the far side. Its pivot is the cell on our face anchor (the near eye's first column, its lash row)."),
-        ('back', 'AURELIA_HAIR_BACK', 'The front with the far lock beside the cheek and what her bangs hide filled in, drawn behind the head; also her head\'s outline above the eyes.'),
+        ('front', 'AURELIA_HAIR_FRONT', "Every pixel of her hair: the bun and its ornament, the crown, the bangs, the near lock and the far lock. Its pivot is the cell on our face anchor (the near eye's first column, its lash row)."),
+        ('back', 'AURELIA_HAIR_BACK', "The front with the skin between her bang strands filled, drawn behind the head; also her head's outline above the eyes."),
     ):
         out += [f'/** {doc} */', f'export const {name}: PaintedPart = {{', f'  pivot: [{px}, {py}],', '  rows: [']
         out += [f"    '{rw}'," for rw in meta[part]]
         out += ['  ],', '  colors: AURELIA_HAIR_COLORS,', '};', '']
     out += [
-        '/** Her black line: kept as she drew it when the hair is recoloured. */',
+        '/** His black line: kept as he drew it when the hair is recoloured. */',
         f"export const AURELIA_HAIR_LINE = '{meta['line']}';",
         '',
-        "/** Her golds (the ornament and the pin): they follow the ornament's colour slot. */",
+        "/** His golds (the ornament): they follow the ornament's colour slot. */",
         f"export const AURELIA_HAIR_ORNAMENT = '{meta['ornament']}';",
         '',
-        "/** Her mid blonde, the lit face of most of her locks: the hair colour slot's default; her other blondes and browns follow it. */",
+        "/** His brow's shaded skin between her bang strands: it follows the player's skin. */",
+        f"export const AURELIA_HAIR_SKIN = '{meta['skin']}';",
+        '',
+        "/** His lit skin: the skin his brow's shade is measured from. */",
+        f"export const AURELIA_SKIN_BASE = '{meta['skinBase']}';",
+        '',
+        "/** His mid blonde, the lit face of most of her strands: the hair colour slot's default; his other blondes and browns follow it. */",
         f"export const AURELIA_HAIR_BASE = '{meta['hairBase']}';",
         '',
-        "/** Her gold: the ornament colour slot's default; her other golds follow it. */",
+        "/** His bright gold: the ornament colour slot's default; his other gold follows it. */",
         f"export const AURELIA_ORNAMENT_BASE = '{meta['ornamentBase']}';",
         '',
     ]

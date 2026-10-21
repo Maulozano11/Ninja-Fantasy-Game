@@ -20,7 +20,7 @@ import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } f
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
-import { AURELIA_HAIR_BACK, AURELIA_HAIR_BASE, AURELIA_HAIR_FRONT, AURELIA_HAIR_LINE, AURELIA_HAIR_ORNAMENT, AURELIA_ORNAMENT_BASE } from './aureliaHairArt';
+import { AURELIA_HAIR_BACK, AURELIA_HAIR_BASE, AURELIA_HAIR_FRONT, AURELIA_HAIR_LINE, AURELIA_HAIR_ORNAMENT, AURELIA_HAIR_SKIN, AURELIA_ORNAMENT_BASE, AURELIA_SKIN_BASE } from './aureliaHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -1832,11 +1832,14 @@ export const HAIR_ITEMS: ItemDef[] = [
       { key: 'ornament', label: 'Ornament', default: AURELIA_ORNAMENT_BASE, kind: 'metal' },
     ],
     draw: (g, [c, ornament]) => {
-      // Aurelia's hair from the owner's picture, brought down to our scale in her colours
-      // (aureliaHairArt.ts): her line stays, her blondes follow the hair colour, her golds the
-      // ornament's. Behind the head the far lock and what her bangs hide; over it the rest.
+      // Aurelia's hair from the owner's picture at our scale, in his colours (aureliaHairArt.ts): his
+      // line stays, his blondes follow the hair colour, his golds the ornament's, and the brow's skin
+      // between her bang strands the player's skin. Behind the head what her bangs hide; over it the rest.
       const tint = (ch: string, hex: string) =>
-        AURELIA_HAIR_LINE.includes(ch) ? hex : AURELIA_HAIR_ORNAMENT.includes(ch) ? retintHex(hex, AURELIA_ORNAMENT_BASE, ornament) : retintHex(hex, AURELIA_HAIR_BASE, c);
+        AURELIA_HAIR_LINE.includes(ch) ? hex
+        : AURELIA_HAIR_SKIN.includes(ch) ? retintHex(hex, AURELIA_SKIN_BASE, g.look.skin)
+        : AURELIA_HAIR_ORNAMENT.includes(ch) ? retintHex(hex, AURELIA_ORNAMENT_BASE, ornament)
+        : retintHex(hex, AURELIA_HAIR_BASE, c);
       paintedHair(g, g.L('hairBack'), AURELIA_HAIR_BACK, tint);
       paintedHair(g, g.L('hairFront'), AURELIA_HAIR_FRONT, tint);
       trimSkull(g, AURELIA_HAIR_BACK);

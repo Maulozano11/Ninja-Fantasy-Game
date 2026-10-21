@@ -1,111 +1,103 @@
-// Aurelia's hair, the owner's pixels brought down to our scale (tools/refs/aurelia-hair-from-ref.py
-// from docs/reference/aurelia-owner-reference.jpg). Generated: rerun the script to change it.
+// Aurelia's hair, the owner's pixels at our scale (tools/refs/aurelia-hair-from-ref.py from
+// docs/reference/aurelia-game-scale-owner-reference.jpg). Generated: rerun the script to change it.
 
 import type { PaintedPart } from './capeArt';
 
-/** Her colours, one character each (both parts share them). */
+/** His colours, one character each (both parts share them). */
 const AURELIA_HAIR_COLORS: Record<string, string> = {
-  k: '#030101',
-  i: '#feefc6',
-  h: '#f9dfac',
-  c: '#e6c593',
-  y: '#d8b286',
-  t: '#c79e76',
-  q: '#b38761',
-  m: '#a17354',
-  J: '#8e6447',
-  j: '#86583d',
-  I: '#794f38',
-  H: '#6c4427',
-  E: '#4a312c',
-  D: '#36221f',
-  f: '#fcd77a',
-  Z: '#ecc268',
-  X: '#deb05c',
-  U: '#d4a251',
-  R: '#c4934c',
-  N: '#a9793c',
-  P: '#966536',
+  k: '#030519',
+  b: '#553a32',
+  c: '#6d4a32',
+  e: '#7e523d',
+  g: '#926446',
+  n: '#d0a474',
+  u: '#e6c08a',
+  w: '#f6daa2',
+  x: '#fae1be',
+  z: '#fbeecc',
+  l: '#dda83a',
+  t: '#fdd258',
+  p: '#e4967d',
 };
 
-/** Every pixel of her hair over the head: the bun, the ornament, the crown, the bangs, the near lock and the far side. Its pivot is the cell on our face anchor (the near eye's first column, its lash row). */
+/** Every pixel of her hair: the bun and its ornament, the crown, the bangs, the near lock and the far lock. Its pivot is the cell on our face anchor (the near eye's first column, its lash row). */
 export const AURELIA_HAIR_FRONT: PaintedPart = {
-  pivot: [11, 14],
+  pivot: [13, 13],
   rows: [
-    '.....kkkkk.kkkkkk........',
-    '....khhcymkhhhmyykk......',
-    '...kmyyImhiihhcytttkk....',
-    '..kyihtIihhhcchhhytyck...',
-    '.ktcicHcchicchhcyhchyhk..',
-    '.ktchHtchccJhhcchhhhcchE.',
-    'kyjcyHyychjhhhyhhhhhhchj.',
-    'kyjyHqIfHfjiiccihiiihtihJ',
-    'ktyjHcZffHHchmccichhhjhhJ',
-    '.kttHcPXDRfZcqchchjhjjchj',
-    '.kyZHtDUDUNjqcJyyjcyJjhcj',
-    'kIqqfHjhhcJtJJtj.Jq.Jjytj',
-    'ktqJHZjhhcJjjjj.tj..jJtyj',
-    'kqymIyIhcj....jjj...jJtyj',
-    '.kmyD.Ihcj.............yj',
-    '.kmmJ.jhcj.............yj',
-    '..kmJ.Iccj...............',
-    '..ktDJIchj...............',
-    '..kmEJIyhj...............',
-    '...kIkmyhj...............',
-    '....kqkJhj...............',
-    '.....kkJhj...............',
-    '.......kyhI..............',
-    '........Jhj.........yj...',
-    '........Jcj.........yj...',
-    '........jcj.........Jyj..',
-    '.........j...........I...',
+    '....kkkkk..................',
+    '...kuzwwnkkkkkkkk..........',
+    '..knnnwnenwwxzunwkkk.......',
+    '.knwzwegwzzwnnnnnnwnk......',
+    '.kgwwnewwwwewwwwwnnwwe.....',
+    'knewnenwzwewwwnwwwwwwwe....',
+    'kweuencccczwwnwwwwwznwwe...',
+    'kwnnectctczzzewwzwwzewze...',
+    'knwggcccccwwwnwzzuzzewwzxe.',
+    'kenccwctctcwenuwwezwennzne.',
+    'knectccccccwennweewneeeewne',
+    'knncclcnnewwennepeuepepenne',
+    'kgnneccncewweneepeeppbpbnne',
+    '.kgnenn..ewwe...........ene',
+    '..keeeg..ewne...........eee',
+    '..knkkg..ewne...........ne.',
+    '..knk.kekewne..........ene.',
+    '...kgkkkeenwne.........ene.',
+    '....keeekenwe...........e..',
+    '.....kkk.knwe..........ne..',
+    '.........kewe.........ne...',
+    '........kkene........ene...',
+    '...........ee.........ee...',
+    '......................e....',
   ],
   colors: AURELIA_HAIR_COLORS,
 };
 
-/** The front with the far lock beside the cheek and what her bangs hide filled in, drawn behind the head; also her head's outline above the eyes. */
+/** The front with the skin between her bang strands filled, drawn behind the head; also her head's outline above the eyes. */
 export const AURELIA_HAIR_BACK: PaintedPart = {
-  pivot: [11, 14],
+  pivot: [13, 13],
   rows: [
-    '.....kkkkk.kkkkkk........',
-    '....khhcymkhhhmyykk......',
-    '...kmyyImhiihhcytttkk....',
-    '..kyihtIihhhcchhhytyck...',
-    '.ktcicHcchicchhcyhchyhk..',
-    '.ktchHtchccJhhcchhhhcchE.',
-    'kyjcyHyychjhhhyhhhhhhchj.',
-    'kyjyHqIfHfjiiccihiiihtihJ',
-    'ktyjHcZffHHchmccichhhjhhJ',
-    '.kttHcPXDRfZcqchchjhjjchj',
-    '.kyZHtDUDUNjqcJyyjcyJjhcj',
-    'kIqqfHjhhcJtJJtjyJqyJjytj',
-    'ktqJHZjhhcJjjjjjtjqyjJtyj',
-    'kqymIyIhcjJjjjjjjjqyjJtyj',
-    '.kmyD.Ihcj............Jyj',
-    '.kmmJ.jhcj............Jyj',
-    '..kmJ.Iccj...........Jyj.',
-    '..ktDJIchj...........jcj.',
-    '..kmEJIyhj..........Jcj..',
-    '...kIkmyhj..........jcI..',
-    '....kqkJhj..........mcj..',
-    '.....kkJhj..........Icj..',
-    '.......kyhI........Jcj...',
-    '........Jhj.........yj...',
-    '........Jcj.........yj...',
-    '........jcj.........Jyj..',
-    '.........j...........I...',
+    '....kkkkk..................',
+    '...kuzwwnkkkkkkkk..........',
+    '..knnnwnenwwxzunwkkk.......',
+    '.knwzwegwzzwnnnnnnwnk......',
+    '.kgwwnewwwwewwwwwnnwwe.....',
+    'knewnenwzwewwwnwwwwwwwe....',
+    'kweuencccczwwnwwwwwznwwe...',
+    'kwnnectctczzzewwzwwzewze...',
+    'knwggcccccwwwnwzzuzzewwzxe.',
+    'kenccwctctcwenuwwezwennzne.',
+    'knectccccccwennweewneeeewne',
+    'knncclcnnewwenneeeueeeeenne',
+    'kgnneccncewweneeeeeeebebnne',
+    '.kgnenn..ewwe...........ene',
+    '..keeeg..ewne...........eee',
+    '..knkkg..ewne...........ne.',
+    '..knk.kekewne..........ene.',
+    '...kgkkkeenwne.........ene.',
+    '....keeekenwe...........e..',
+    '.....kkk.knwe..........ne..',
+    '.........kewe.........ne...',
+    '........kkene........ene...',
+    '...........ee.........ee...',
+    '......................e....',
   ],
   colors: AURELIA_HAIR_COLORS,
 };
 
-/** Her black line: kept as she drew it when the hair is recoloured. */
+/** His black line: kept as he drew it when the hair is recoloured. */
 export const AURELIA_HAIR_LINE = 'k';
 
-/** Her golds (the ornament and the pin): they follow the ornament's colour slot. */
-export const AURELIA_HAIR_ORNAMENT = 'fZXURNP';
+/** His golds (the ornament): they follow the ornament's colour slot. */
+export const AURELIA_HAIR_ORNAMENT = 'lt';
 
-/** Her mid blonde, the lit face of most of her locks: the hair colour slot's default; her other blondes and browns follow it. */
-export const AURELIA_HAIR_BASE = '#e6c593';
+/** His brow's shaded skin between her bang strands: it follows the player's skin. */
+export const AURELIA_HAIR_SKIN = 'p';
 
-/** Her gold: the ornament colour slot's default; her other golds follow it. */
-export const AURELIA_ORNAMENT_BASE = '#ecc268';
+/** His lit skin: the skin his brow's shade is measured from. */
+export const AURELIA_SKIN_BASE = '#f5c7a6';
+
+/** His mid blonde, the lit face of most of her strands: the hair colour slot's default; his other blondes and browns follow it. */
+export const AURELIA_HAIR_BASE = '#f6daa2';
+
+/** His bright gold: the ornament colour slot's default; his other gold follows it. */
+export const AURELIA_ORNAMENT_BASE = '#fdd258';

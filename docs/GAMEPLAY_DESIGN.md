@@ -1506,8 +1506,17 @@ alrededor y cuando camina el personaje se va rompiendo el piso )"*.
   pixels, in the caster's chakra colour like the other lightning).
 - While active: an aura, small lightning sprites crackling around the ninja, and
   the ground cracks under his steps as he walks.
-- How it plays (cost, how long it lasts, what each blow does while it is on) is
-  proposed to him and not decided yet.
+- How it plays, his answers the same day to our proposal (*"1si 2B pero al
+  momento de acercarte al primer enemigo en rango ataca automaticamente lo mismo
+  para el rasengan 3 si 4 terreno dificil 1 turno para aplicar ese efecto"*):
+  1. Activating it is a bonus action and costs its chakra (5, as before).
+  2. It stays charged for up to 3 rounds. The moment the ninja moves within
+     reach of the first enemy, the blow goes off by itself: one melee jutsu
+     attack, 5d8 lightning as before, and then the Chidori ends. The Rasengan
+     will work the same way when it is built (it is not a battle jutsu yet).
+  3. While charged: his lightning hand, an aura, small lightning sprites around
+     the ninja, and the ground cracking under each step.
+  4. The cracked ground is difficult terrain for 1 turn.
 
 The vest and coat in the same picture are not a new character: *"el chaleco no es
 de jonin parece mas como tactico militar solo cambiale los colores y no lo hagas

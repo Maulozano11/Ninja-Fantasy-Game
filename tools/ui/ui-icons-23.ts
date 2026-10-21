@@ -376,6 +376,66 @@ function sampleAt(src: F, his: { rgb: RGBA[]; lab: Lab[] }, box: [number, number
   return his.rgb[best];
 }
 
+/**
+ * The palette's coverage (sheets 8 to 11): his rare colours a slot each. The k-means above is led by
+ * how much of the picture a colour covers, so a colour of a small part (his ninjas' skin, his violet
+ * chains, a dragon's teeth, a spray's white) found no entry and went to the nearest one in lightness,
+ * of another hue (skin to lavender, violet to maroon). Here every pixel that is to be put on the
+ * palette (the 44's and the 88's pictures, `targets`, each pixel weighted) whose nearest entry is
+ * farther than `thr` (OKLab, hue weighted `cw`, so a wrong hue counts more than a wrong lightness) is
+ * lost; the densest group of lost colours (radius `thr`), if it weighs at least `minMass`, gives a new
+ * entry: its mean, snapped to his nearest real colour. Again until no group is left or the palette
+ * has `max` entries. Returns the entries added, in the order they were found.
+ */
+function coverPalette(rgb: RGBA[], his: { rgb: RGBA[]; lab: Lab[] }, targets: { f: F; weight: number }[], opt: { thr: number; minMass: number; max: number; cw: number }): RGBA[] {
+  const cd = (p: Lab, q: Lab): number => {
+    const dl = p[0] - q[0], da = (p[1] - q[1]) * opt.cw, db = (p[2] - q[2]) * opt.cw;
+    return Math.sqrt(dl * dl + da * da + db * db);
+  };
+  const pts: Lab[] = [], wts: number[] = [];
+  for (const t of targets)
+    for (let i = 0; i < t.f.w * t.f.h; i++) {
+      pts.push(t.f.lab(i));
+      wts.push(t.weight);
+    }
+  const pal = rgb.map((c) => oklab(c[0], c[1], c[2]));
+  const err = pts.map((p) => Math.min(...pal.map((q) => cd(p, q))));
+  const added: RGBA[] = [];
+  const done = new Uint8Array(pts.length);
+  while (rgb.length + added.length < opt.max) {
+    const lost: number[] = [];
+    for (let i = 0; i < pts.length; i++) if (err[i] > opt.thr && !done[i]) lost.push(i);
+    if (!lost.length) break;
+    let best = -1, bm = 0;
+    for (const i of lost) {
+      let m = 0;
+      for (const j of lost) if (cd(pts[i], pts[j]) <= opt.thr) m += wts[j];
+      if (m > bm + 1e-9) (bm = m), (best = i);
+    }
+    if (bm < opt.minMass) break;
+    const grp = lost.filter((j) => cd(pts[best], pts[j]) <= opt.thr);
+    const mean: Lab = [0, 0, 0];
+    let tw = 0;
+    for (const j of grp) {
+      for (let k = 0; k < 3; k++) mean[k] += pts[j][k] * wts[j];
+      tw += wts[j];
+    }
+    for (let k = 0; k < 3; k++) mean[k] /= tw;
+    let hb = 0, hd = Infinity;
+    for (let i = 0; i < his.lab.length; i++) {
+      const d = cd(mean, his.lab[i]);
+      if (d < hd) (hd = d), (hb = i);
+    }
+    const c = his.rgb[hb];
+    for (const j of grp) done[j] = 1;
+    if ([...rgb, ...added].some((u) => u[0] === c[0] && u[1] === c[1] && u[2] === c[2])) continue;
+    added.push(c);
+    const q = his.lab[hb];
+    for (let i = 0; i < pts.length; i++) err[i] = Math.min(err[i], cd(pts[i], q));
+  }
+  return added;
+}
+
 // --- indexed images (as tools/ui/ui-icons.ts, plus the clean-up that keeps his marks) -------------
 
 class Ix {
@@ -1051,14 +1111,29 @@ function buildIcon(spec: IconSpec): Built {
         const c = hex(h);
         if (!rgb.some((u) => u[0] === c[0] && u[1] === c[1] && u[2] === c[2])) rgb.push(c), spare.push(false);
       }
-  const pal = palOf(rgb, spare);
-  pal.cw = spec.qChroma ?? 1;
   const area88 = W.w > ONE_TO_ONE_MAX || W.h > ONE_TO_ONE_MAX;
   const h88 = area88 ? { img: areaResize(W, 88, 88), cols: [] as number[], rows: [] as number[] } : his88(W);
   const marks = process.env.UI_NOMARKS ? [] : spec.marks ?? [];
   const reds: Record<number, Reduced> = { 44: reduceKeep(W, 44, marks) };
   if (area88) reds[88] = reduceKeep(W, 88, marks);
   const red = reds[44];
+  /** The picture put on the palette at size N: his pixels (88 one to one) or the reduction with his marks in their own colour. */
+  const pictureAt = (N: number): F => {
+    if (N === 88 && !area88) return h88.img;
+    const rN = reds[N] ?? red;
+    const [ss, sr] = spec.bil44;
+    const sm = sr > 0 ? bilateral(rN.box, ss, sr, 2) : rN.box.clone();
+    // His marks keep their own colour (the smoothing is for the rest).
+    for (let i = 0; i < N * N; i++) if (rN.mark[i]) for (let k = 0; k < 3; k++) sm.d[i * 3 + k] = rN.img.d[i * 3 + k];
+    return sm;
+  };
+  const pics: Record<number, F> = { 44: pictureAt(44), 88: pictureAt(88) };
+  // Sheets 8 to 11: his rare colours get a slot each (see coverPalette), from both pictures (a 44
+  // pixel weighs as the four 88 pixels it stands for).
+  const covered = spec.cover && !process.env.UI_NOCOVER ? coverPalette(rgb, hc, [{ f: pics[44], weight: 4 }, { f: pics[88], weight: 1 }], spec.cover) : [];
+  for (const c of covered) rgb.push(c), spare.push(false);
+  const pal = palOf(rgb, spare);
+  pal.cw = spec.qChroma ?? 1;
   const hisPic88 = areaResize(sheetCrop, 88, 88);
   const out: Built['out'] = {};
   for (const N of [44, 88]) {
@@ -1071,11 +1146,7 @@ function buildIcon(spec: IconSpec): Built {
       ref = h88.img;
       q0 = cleanup(quantize(ref, pal), pal, ref, 2, new Set(), hisMark(ref, spec.mark88));
     } else {
-      const [ss, sr] = spec.bil44;
-      const sm = sr > 0 ? bilateral(rN.box, ss, sr, 2) : rN.box.clone();
-      // His marks keep their own colour (the smoothing is for the rest).
-      for (let i = 0; i < N * N; i++) if (rN.mark[i]) for (let k = 0; k < 3; k++) sm.d[i * 3 + k] = rN.img.d[i * 3 + k];
-      ref = sm;
+      ref = pics[N];
       const prot = new Set<number>();
       for (let i = 0; i < N * N; i++) if (rN.speck[i]) prot.add(i);
       q0 = cleanup(quantize(ref, pal), pal, ref, spec.clean44 ?? 2, prot);

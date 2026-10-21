@@ -357,16 +357,19 @@ each is in Open questions). In the creator's Jutsu step:
 - **Gated:** a jutsu of one of the five elements (Fire, Water, Wind,
   Lightning, Earth) in the **Element I, Element II and S-rank** slots is
   offered only to a ninja of that element.
-- **Not gated:** the jutsu with no element in those slots (taijutsu,
-  kenjutsu, genjutsu); everything in the **Utility** slot (the mystical palm,
+- **Not gated by the nature:** the jutsu with no element in those slots
+  (taijutsu, kenjutsu, genjutsu: **the class gates them**, his answer below,
+  "Jutsu of a class"); everything in the **Utility** slot (the mystical palm,
   Water healing, is a utility jutsu open to every nature: his answer 3 below);
   the **clan secret**, whatever its element (it comes with the clan).
 - **Light and Void** (and a ninja that still has Shadow or Spirit) are offered
-  no elemental jutsu: only the ones with no element, until their own exist.
+  no elemental jutsu: only their class's kind of jutsu with no element, until
+  their own exist.
 - **Changing the type** swaps each chosen jutsu of another element for one of
   the new type: its own element first, the lowest rank first, never the one
-  the other Element slot holds; if the type has none left, one with no
-  element. A note under the type tiles and at the top of the Jutsu step lists
+  the other Element slot holds; if the type has none left, one of its class's
+  kind; if there is none either, the slot is left empty (never the same jutsu
+  in two slots). A note under the type tiles and at the top of the Jutsu step lists
   the swaps ("Ahora Rayo: se cambiaron los jutsus de otro elemento. Bola de
   fuego → Sabueso del rayo; Gran aniquilación → Kirin."); a slot the player
   picks again drops out of it, and on a short screen the note sticks to the
@@ -405,12 +408,13 @@ elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
    Jutsu step says the rule. **The legends keep their sheets** (they are
    presets, not creator picks): their jutsu above C stay, marked "rango S: se
    queda en su hoja", and a legend picked as a starting point whose type is
-   changed gets its S-rank swapped for one of the new element's (or one with
-   no element), never emptied; its slots still offer only D and C. **A made
-   ninja is not held to the rule** (his answer was about creating a ninja):
-   editing a saved ninja offers every rank its nature allows, nothing is marked,
-   and "Ninja al azar" keeps its jutsu (only the clan secret follows the new
-   clan). When the S-rank slot opens (a level, a mission) is not decided (Open
+   changed gets its S-rank swapped for one of the new element's (or one of its
+   class's kind), emptied only when its nature and class have none (Solen as
+   Water); its slots still offer only D and C. **A made ninja is not held to
+   the rule** (his answer was about creating a ninja): editing a saved ninja
+   offers every rank its nature and class allow, nothing is marked, and "Ninja
+   al azar" keeps its jutsu (the clan secret follows the new clan, and the ones
+   of another class are swapped as a class change does). When the S-rank slot opens (a level, a mission) is not decided (Open
    questions).
 2. **The gaps** (Water has no S-rank jutsu, Wind one Element jutsu): he wants
    **proposals** ("propuestas"). A separate job.
@@ -452,6 +456,53 @@ elemento en nivel mas alto y 3 elementos si tienes el feat especial para eso"*.
    element only with a special feat** ("3 elementos si tienes el feat especial
    para eso"). The level and the feat are open questions.
 
+**Jutsu of a class: his answer** (2026-10-21, later still), to "¿quién aprende
+los de Genjutsu, Kenjutsu y Taijutsu?": *"9 los que elijan de clase genjutsu
+kenjutsu o taijutsu"*. The jutsu with no element in the Element and S-rank
+slots belong to a class: only a ninja of that class learns them. Built:
+
+- **The game's classes, mapped** (*as built, the builder's mapping, for his
+  approval*; the nearest class, nothing wider):
+
+  | Kind of jutsu | Class that learns it | Jutsu today |
+  |---|---|---|
+  | Taijutsu | Maestro de Taijutsu (`Taijutsu Master`) | Huracán de la hoja (D), Night Guy (S) |
+  | Kenjutsu | Maestro de Bukijutsu (`Bukijutsu Master`: the weapon class, whose own text names "kenjutsu katana forms") | Danza de la luna creciente (B) |
+  | Genjutsu | Adepto del Genjutsu (`Genjutsu Adept`) | Templo del Nirvana (A), Yasaka no Magatama (S) |
+  | none | Especialista en Ninjutsu, Especialista médico | they learn their element's jutsu, the utility jutsu and their clan's |
+
+- **Open to all, as before:** the **Utility** jutsu (Shunshin, Sustitución and
+  Clon de sombra are taijutsu by kind, the healing palm is Water: all utility,
+  open to every class and nature), and **the clan's jutsu** to its clan (the 64
+  Palms is taijutsu, open to every Northstar ninja).
+- **In the creator's Jutsu step** the class gate works together with the
+  nature gate and the D/C rank cap of a new ninja: an Element or S-rank slot
+  offers the jutsu of the ninja's element plus its class's kind, at the ranks
+  it may take. A line under the nature note says it ("Clase: Adepto del
+  Genjutsu. También aprende jutsus de genjutsu: el taijutsu, el kenjutsu y el
+  genjutsu son de su clase."; for Ninjutsu and Medical: "esta clase no aprende
+  ninguno"), and each class's panel in the Class step has a "Jutsus de clase"
+  line.
+- **Changing the class in the creator** swaps the jutsu of another class's kind
+  as a type change does (its own element first, the lowest rank first, at a new
+  ninja's ranks while it is one) and says so in the Class step and at the top
+  of the Jutsu step ("Ahora Maestro de Taijutsu: se cambiaron los jutsus de otra
+  clase. Danza de la luna creciente → Huracán de la hoja (Konoha Senpuu)."). A
+  slot with nothing left is emptied.
+- **The random ninja** picks its jutsu for its class too.
+- **The sheets keep what they have:** no legend breaks the rule today (each
+  one's taijutsu, kenjutsu or genjutsu jutsu is its own class's). A sheet that
+  does (the companion Hana, a medic, has Yasaka no Magatama; an older or
+  imported sheet) keeps it, marked "no es de tu clase" in the Jutsu step. Saves
+  are not changed. Enemies and battles are not touched.
+- **An empty slot** (as built): a slot with nothing for the nature and class
+  shows "Nada que aprender aún · nada para tu naturaleza y clase" with a lock;
+  the S-rank slot of a new ninja whose nature and class do have S-rank jutsu
+  still shows "Se desbloquea más adelante". When only one jutsu fits the two
+  Element slots, the second is left empty rather than holding the same jutsu
+  twice (until the rank D and C set on its own branch is merged, a Fire
+  Bukijutsu Master's Element II, for one, is empty).
+
 **In the code** there is one source: the look's burst
 (`appearance.chakra.color`, an id named after the colour the bursts were first
 picked by) gives the nature through `BURST_NATURE`
@@ -470,7 +521,9 @@ burst per id; a test keeps it equal to the presets). The jutsu gate is
 The ranks a new ninja may take and the fixed type are `src/rules/progression.ts`
 (`NEW_NINJA_RANKS`, `rankOpen`, `creatorChoices`, `fitNewNinja`, `aboveRank`,
 `learnsAsNew`, `slotChoices`, `fitToType`, `typeFixed`, `asMade`; a made ninja
-has `created: true`); the explosive tag's
+has `created: true`); the class gate is `src/rules/jutsuClass.ts`
+(`STYLE_CLASS`, `classGated`, `jutsuFitsClass`, `offClassJutsus`) with
+`learnable` and `fitToClass` in `progression.ts`; the explosive tag's
 move to the pouch is `src/rules/pouch.ts` (`tagJutsuToItem`, `withPouches`); in
 battle the `item` action takes `tag` (throw) or `tagTrap` (hide,
 `plantTag` in `src/battle/hazards.ts`).
@@ -660,6 +713,16 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   element.
 - The jutsu of Light (deity, angel and god) and of Void, Shadow and Spirit
   (demonic): to design when he says.
+- **Jutsu of a class** (his answer: "los que elijan de clase genjutsu kenjutsu
+  o taijutsu"), as built: **kenjutsu goes to the Maestro de Bukijutsu** (there
+  is no kenjutsu class; Bukijutsu is the weapon class). Confirm, or add a
+  kenjutsu class. **Especialista en Ninjutsu and Especialista médico** learn
+  none of the three: confirm. Consequences to decide: a **Light or Void** ninja
+  of those two classes has nothing at all for its Element and S-rank slots
+  until Light and Void get their jutsu; a ninja with one fitting jutsu for two
+  Element slots gets the second slot empty (not the same jutsu twice). The
+  companion **Hana** (medic) keeps Yasaka no Magatama (genjutsu), marked: give
+  her another S-rank jutsu? (Water has none yet.)
 
 ## Three new jutsu (agreed 2026-10-20)
 

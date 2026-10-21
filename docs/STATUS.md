@@ -67,7 +67,11 @@ Boss. Paths of Mastery: designed, not built.
   keep theirs); the explosive tag is a consumable item (battle item slots: throw, or hide on the
   ground against the hider's jutsu DC; old sheets with the jutsu get 2 tags in their pouch, refilled
   every mission); the chakra type is fixed once the ninja is made
-  (`src/rules/progression.ts`, `src/rules/pouch.ts`).
+  (`src/rules/progression.ts`, `src/rules/pouch.ts`). The taijutsu, kenjutsu and genjutsu jutsu
+  belong to their class (his answer "9 los que elijan de clase genjutsu kenjutsu o taijutsu"):
+  Taijutsu Master, Bukijutsu Master (kenjutsu) and Genjutsu Adept; Ninjutsu and Medical learn none;
+  utility and clan jutsu stay open; a class change in the creator swaps them, with a note
+  (`src/rules/jutsuClass.ts`).
 - VFX for 8 elements (fire, water, wind, lightning, earth, genjutsu, chakra, poison), all from the
   owner's v3 sheets: full effect set, walls in 3 orientations, a beast each. Signature effects:
   Fireball / Great Fireball, Great Fire Annihilation (normal and enhanced), Kirin.
@@ -115,7 +119,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
 | `scarlet/study` | `3b5dfe9` | His new character picture (`scarlet-owner-reference.jpg`) and study scripts `tools/refs/scarlet*`; nothing in `src` | **WIP**. Provisional name "Valen, the Scarlet Duke", no cape: **the owner must choose the name** |
 | `chakra/decisions` | not pushed (local) | The owner's four answers on the chakra types (saved legends updated, Shadow and Spirit pending, Cinder Nova kept) and the nature gating the elemental jutsu in the creator | **For review** |
-| `chakra/progression` | `51b44c0` on origin (WIP); the finished work is local, not pushed | His jutsu answers: D/C + clan for a new ninja (S-rank slot locked), the explosive tag as an item (throw / hide, save migration), the chakra type fixed once made; second and third element written as his future rule | **For review** |
+| `chakra/progression` | `51b44c0` on origin (WIP); the finished work is local, not pushed | His jutsu answers: D/C + clan for a new ninja (S-rank slot locked), the explosive tag as an item (throw / hide, save migration), the chakra type fixed once made; second and third element written as his future rule; the taijutsu, kenjutsu and genjutsu jutsu gated by class | **For review** |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -157,6 +161,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   a made ninja offered every rank; 2 tags in the pouch (refilled every mission) for an old sheet with
   the tag jutsu; the second element's level (proposed: 5) and the third element's feat (proposed:
   "Tres naturalezas"); see `docs/GAMEPLAY_DESIGN.md` Open questions.
+- Decided 2026-10-21 (later still), who learns the genjutsu, kenjutsu and taijutsu jutsu: *"9 los
+  que elijan de clase genjutsu kenjutsu o taijutsu"*. Built on `chakra/progression`. **Still his**:
+  kenjutsu mapped to the Maestro de Bukijutsu (no kenjutsu class exists); Ninjutsu and Medical
+  learning none of the three; Hana (medic) keeping Yasaka no Magatama, marked.
 - Decided 2026-10-21 (later): **a new female standard** from the owner's four heroine pictures. He said our base bodies look "muy feos" next to his pictures: "sube la calidad de nuestro sprite para que se vea mas parecido aun a la referencia". The new female body (proportions, hands, feet, skin from his pixels) is being built on `body/female-v2` for his approval. He also said: "las piezas de armadura y ropa femeninas no las rehagas porque muy problablemente las borremos por no estar al nuevo stadard" - the existing female armour and clothing are NOT refitted to the new body; they will probably be deleted. Hairstyles, heads, eyes, weapons, capes and the heroines' parts do follow it. The male body stays (approved through the Aiden paint-over).
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
@@ -242,7 +250,7 @@ jutsu until their own exist. Changing the type swaps the jutsu of another elemen
 the new element first) and says which; a sheet's own off-nature jutsu (Kaien's Fireball, Raiga's
 Earth Wall, older or imported sheets) stay, marked. The random ninja picks jutsu of its nature.
 Enemies and battles are untouched. The rank cap (D, C and the clan's) and the fixed type are built
-on `chakra/progression`. Left: when the S-rank slot opens, the second element (a higher level) and
+on `chakra/progression`, and so is the class gate for the taijutsu, kenjutsu and genjutsu jutsu. Left: when the S-rank slot opens, the second element (a higher level) and
 the third (a special feat), the jutsu of Light and Void (and later Shadow and Spirit), a Water
 S-rank, a second Wind jutsu.
 

@@ -25,7 +25,8 @@ import { deriveStats } from '../rules/derived';
 import { clanBonus } from '../rules/checks';
 import { migrateCharacter, natureOf, sanitizeMissionFields } from '../rules/ninja';
 import { importedSlots, offNatureJutsus, type JutsuSwap } from '../rules/jutsuNature';
-import { aboveRank, asMade, creatorChoices, fitNewNinja, fitToType, isLegend, learnsAsNew, slotChoices, typeFixed } from '../rules/progression';
+import { aboveRank, asMade, creatorChoices, fitNewNinja, fitToClass, fitToType, isLegend, learnable, learnsAsNew, slotChoices, typeFixed } from '../rules/progression';
+import { classStyle, offClassJutsus } from '../rules/jutsuClass';
 import { pouchTags } from '../rules/pouch';
 import { chakraNature, chakraType } from '../sprite/chakraNature';
 import type { ChakraNature } from '../types/shinobi';
@@ -82,7 +83,7 @@ export function characterFromImport(raw: unknown): ShinobiCharacter | null {
  */
 function asNewNinja(c: ShinobiCharacter): ShinobiCharacter {
   if (!learnsAsNew(c)) return c;
-  const fitted = fitNewNinja(c.selectedJutsus, natureOf(c), c.clan).loadout;
+  const fitted = fitNewNinja(c.selectedJutsus, natureOf(c), c.clan, c.shinobiClass).loadout;
   return Object.values(fitted).join() === Object.values(c.selectedJutsus).join() ? c : { ...c, selectedJutsus: fitted };
 }
 
@@ -142,20 +143,50 @@ const T = strings({
   slotElementB: { en: 'Element II', es: 'Elemento II' },
   slotClan: { en: 'Clan secret', es: 'Secreto del clan' },
   slotUltimate: { en: 'S-rank', es: 'Rango S' },
+  // The jutsu with no element belong to a class now (rules/jutsuClass.ts): the class note says which.
   natureRule: {
-    en: 'Nature: {n}. The Element and S-rank slots offer {n} jutsu and jutsu with no element (taijutsu, kenjutsu, genjutsu).',
-    es: 'Naturaleza: {n}. Las ranuras de Elemento y Rango S ofrecen jutsus de {n} y jutsus sin elemento (taijutsu, kenjutsu, genjutsu).',
+    en: 'Nature: {n}. The Element and S-rank slots offer {n} jutsu.',
+    es: 'Naturaleza: {n}. Las ranuras de Elemento y Rango S ofrecen jutsus de {n}.',
   },
   // While a ninja is being created the S-rank slot is locked, so the note names only the Element slots.
   natureRuleNew: {
-    en: 'Nature: {n}. The Element slots offer {n} jutsu and jutsu with no element (taijutsu, kenjutsu, genjutsu).',
-    es: 'Naturaleza: {n}. Las ranuras de Elemento ofrecen jutsus de {n} y jutsus sin elemento (taijutsu, kenjutsu, genjutsu).',
+    en: 'Nature: {n}. The Element slots offer {n} jutsu.',
+    es: 'Naturaleza: {n}. Las ranuras de Elemento ofrecen jutsus de {n}.',
   },
   natureRuleNone: {
-    en: 'Nature: {n}. Its own jutsu will come later; for now it learns no elemental jutsu, only jutsu with no element (taijutsu, kenjutsu, genjutsu).',
-    es: 'Naturaleza: {n}. Sus jutsus llegarán más adelante; por ahora no aprende jutsus elementales, solo jutsus sin elemento (taijutsu, kenjutsu, genjutsu).',
+    en: 'Nature: {n}. Its own jutsu will come later; for now it learns no elemental jutsu.',
+    es: 'Naturaleza: {n}. Sus jutsus llegarán más adelante; por ahora no aprende jutsus elementales.',
+  },
+  classRule: {
+    en: 'Class: {c}. It also learns {s} jutsu: taijutsu, kenjutsu and genjutsu each belong to their class.',
+    es: 'Clase: {c}. También aprende jutsus de {s}: el taijutsu, el kenjutsu y el genjutsu son de su clase.',
+  },
+  classRuleNone: {
+    en: 'Class: {c}. Taijutsu, kenjutsu and genjutsu belong to their classes: this class learns none of them.',
+    es: 'Clase: {c}. El taijutsu, el kenjutsu y el genjutsu son de sus clases: esta clase no aprende ninguno.',
+  },
+  classJutsu: { en: 'Class jutsu', es: 'Jutsus de clase' },
+  classJutsuStyle: {
+    en: 'Learns the {s} jutsu: only this class does. Utility jutsu are open to every class.',
+    es: 'Aprende los jutsus de {s}: solo esta clase los aprende. Los de utilidad son para todas las clases.',
+  },
+  classJutsuNone: {
+    en: 'Learns no taijutsu, kenjutsu or genjutsu jutsu: only its element\'s, the utility jutsu and its clan\'s.',
+    es: 'No aprende jutsus de taijutsu, kenjutsu ni genjutsu: solo los de su elemento, los de utilidad y los de su clan.',
   },
   offNature: { en: 'not your nature', es: 'no es de tu naturaleza' },
+  offClass: { en: 'not your class', es: 'no es de tu clase' },
+  classSwaps: {
+    en: 'Now {c}: the jutsu of another class were changed. {list}.',
+    es: 'Ahora {c}: se cambiaron los jutsus de otra clase. {list}.',
+  },
+  slotNone: { en: 'Nothing to learn yet', es: 'Nada que aprender aún' },
+  slotNoneSub: { en: '{slot} · nothing for your nature and class', es: '{slot} · nada para tu naturaleza y clase' },
+  slotNoneText: {
+    en: 'No jutsu of this slot fits this ninja\'s nature and class yet. Another class, or a nature with an element, opens it.',
+    es: 'Ningún jutsu de esta ranura encaja aún con la naturaleza y la clase de este ninja. Otra clase, o una naturaleza con elemento, la abre.',
+  },
+  slotCleared: { en: 'empty', es: 'vacía' },
   rankRule: {
     en: 'A new ninja learns rank D and C jutsu, and its clan\'s. The S-rank slot opens later.',
     es: 'Un ninja nuevo aprende jutsus de rango D y C, y los de su clan. La ranura de Rango S se abre más adelante.',
@@ -257,7 +288,8 @@ type Hover =
   | { kind: 'feat'; id: string }
   | { kind: 'jutsu'; id: string }
   | { kind: 'tool' }
-  | { kind: 'locked'; slot: string }
+  /** An empty slot: locked by rank (the S-rank slot), or `none` for its nature and class at any rank. */
+  | { kind: 'locked'; slot: string; none?: boolean }
   | { kind: 'look' };
 
 const jutsuName = (j: { name: string; nameEs?: string }) => pick(j.name, j.nameEs);
@@ -372,6 +404,8 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const [lookGroup, setLookGroup] = useState<AppearanceGroup>('body');
   /** The jutsu the last change of chakra type swapped, to tell the player (shown while that type stays). */
   const [natureSwaps, setNatureSwaps] = useState<{ nature: ChakraNature; swaps: JutsuSwap[] } | null>(null);
+  /** The jutsu the last change of class swapped (shown while that class stays). */
+  const [classSwaps, setClassSwaps] = useState<{ cls: ShinobiClassType; swaps: JutsuSwap[] } | null>(null);
 
   const look = useMemo(() => getAppearance(character), [character]);
   const eye = dojutsuToEye(character.dojutsu);
@@ -468,9 +502,14 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       character.armorStyle,
       character.selectedFeats
     );
+    // The taijutsu, kenjutsu and genjutsu jutsu belong to their class (rules/jutsuClass.ts): a new class
+    // swaps the ones of another class, as a new type does, and says which.
+    const fitted = newClass !== character.shinobiClass ? fitToClass(character, natureOf(character), newClass) : null;
+    if (fitted) setClassSwaps(fitted.swaps.length ? { cls: newClass, swaps: fitted.swaps } : null);
     setCharacter({
       ...character,
       shinobiClass: newClass,
+      ...(fitted ? { selectedJutsus: fitted.loadout } : {}),
       ...derived,
     });
   };
@@ -538,15 +577,16 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
     const randomArmor = armorStyleFor(randomLook);
     // Jutsu a new ninja may learn, of its own nature: Element I of its element when there is one,
     // Element II any other it may learn; the clan secret is its clan's, and the S-rank slot is empty
-    // until it opens (rules/progression.ts). A made ninja keeps its jutsu (only the clan secret
-    // follows the new clan), whatever their rank.
+    // until it opens (rules/progression.ts); all of them of its class (rules/jutsuClass.ts). A made
+    // ninja keeps its jutsu, whatever their rank: the clan secret follows the new clan, and the ones of
+    // another class are swapped as a class change in the creator does.
     const made = typeFixed(character);
     const nature = chakraNature(randomLook.chakra);
     const one = <J,>(xs: J[]): J | undefined => xs[Math.floor(Math.random() * xs.length)];
     const own = <J extends { nature: string }>(xs: J[]): J[] => (xs.some((j) => j.nature === nature) ? xs.filter((j) => j.nature === nature) : xs);
-    const element1 = one(own(creatorChoices('slot2Elemental', nature, randomClan)));
-    const element2 = one(creatorChoices('slot3Elemental', nature, randomClan).filter((j) => j.id !== element1?.id)) ?? element1;
-    const ultimate = one(own(creatorChoices('slot5Ultimate', nature, randomClan)));
+    const element1 = one(own(creatorChoices('slot2Elemental', nature, randomClan, randomClass)));
+    const element2 = one(creatorChoices('slot3Elemental', nature, randomClan, randomClass).filter((j) => j.id !== element1?.id));
+    const ultimate = one(own(creatorChoices('slot5Ultimate', nature, randomClan, randomClass)));
 
     const randomizedStats: AbilityScores = {
       str: 10 + Math.floor(Math.random() * 6),
@@ -576,7 +616,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       // A random ninja made from a legend's sheet is not that legend: a new ninja of its own.
       ...(isLegend(character) ? { id: `ninja_${Date.now().toString(36)}` } : {}),
       selectedJutsus: made
-        ? { ...character.selectedJutsus, slot4Clan: clanInfo.signatureJutsuId }
+        ? fitToClass({ ...character, clan: randomClan, selectedJutsus: { ...character.selectedJutsus, slot4Clan: clanInfo.signatureJutsuId } }, nature, randomClass).loadout
         : fitNewNinja(
             {
               ...character.selectedJutsus,
@@ -587,6 +627,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
             },
             nature,
             randomClan,
+            randomClass,
           ).loadout,
       appearance: randomLook,
       palette: {
@@ -596,6 +637,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       ...derived,
     });
     setNatureSwaps(null);
+    setClassSwaps(null);
   };
 
   const handleExport = () => {
@@ -621,6 +663,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
     setImportError('');
     setCharacter(imported);
     setNatureSwaps(null);
+    setClassSwaps(null);
     setImportExportModal(false);
     soundManager.playSelect();
   };
@@ -635,12 +678,22 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   // A made ninja is no longer held to them: nothing is marked (rules/progression.ts, slotChoices).
   const creating = !typeFixed(character);
   const highRank = new Set(creating ? aboveRank(character.selectedJutsus, character.clan) : []);
-  const jutsuTitle = (id: string) => (id ? jutsuParts(JUTSUS_DATA.find((j) => j.id === id) ?? { name: id })[0] : T('slotEmptied'));
+  // The taijutsu, kenjutsu and genjutsu jutsu belong to their class (rules/jutsuClass.ts); one of
+  // another class on the sheet (a companion's, an older sheet's) stays, marked.
+  const offClass = new Set(offClassJutsus(character.selectedJutsus, character.shinobiClass));
+  // An emptied slot: the S-rank one waits for its rank; another had nothing left for the nature and class.
+  const jutsuTitle = (id: string, slot?: SlotKey) =>
+    id ? jutsuParts(JUTSUS_DATA.find((j) => j.id === id) ?? { name: id })[0] : T(slot === 'slot5Ultimate' && creating ? 'slotEmptied' : 'slotCleared');
+  const swapList = (xs: JutsuSwap[]) => xs.map((x) => `${jutsuTitle(x.from)} → ${jutsuTitle(x.to, x.slot)}`).join('; ');
   // Only the swaps the player has not changed since: a slot picked again drops out of the note.
   const swapsKept = natureSwaps && natureSwaps.nature === nature ? natureSwaps.swaps.filter((x) => character.selectedJutsus[x.slot] === x.to) : [];
-  const natureSwapText = swapsKept.length
-    ? T('natureSwaps', { n: L(nature), list: swapsKept.map((x) => `${jutsuTitle(x.from)} → ${jutsuTitle(x.to)}`).join('; ') })
-    : undefined;
+  const natureSwapText = swapsKept.length ? T('natureSwaps', { n: L(nature), list: swapList(swapsKept) }) : undefined;
+  const classKept = classSwaps && classSwaps.cls === character.shinobiClass ? classSwaps.swaps.filter((x) => character.selectedJutsus[x.slot] === x.to) : [];
+  const classSwapText = classKept.length ? T('classSwaps', { c: className(character.shinobiClass), list: swapList(classKept) }) : undefined;
+  const style = classStyle(character.shinobiClass);
+  const classRuleText = style
+    ? T('classRule', { c: className(character.shinobiClass), s: style.toLowerCase() })
+    : T('classRuleNone', { c: className(character.shinobiClass) });
 
   // --- the stage: the forest, the ninja standing in it, the panels at its sides ---------------
   const wide = view.w >= 1100;
@@ -707,6 +760,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                 setCharacter(asNewNinja({ ...copy, id: `ninja_${Date.now().toString(36)}` }));
               }
               setNatureSwaps(null);
+              setClassSwaps(null);
             }}
             onHover={hoverOn({ kind: 'custom' })}
             icon={<Seal letter="+" color="#c99a4b" />}
@@ -722,6 +776,7 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                 soundManager.playCriticalHit();
                 setCharacter(p.character);
                 setNatureSwaps(null);
+                setClassSwaps(null);
               }}
               onHover={hoverOn({ kind: 'preset', i })}
               icon={<Portrait character={p.character} />}
@@ -781,6 +836,9 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
             sub={T('castsWith', { stat: statLong(SHINOBI_CLASSES[id].castingStat) })}
           />
         ))}
+      {step === 'class' && classSwapText && (
+        <p className="mx-3 mt-1 text-[12px] leading-snug text-[#f2c46d] border border-[#6b5434] bg-[#3a2a12]/60 px-2 py-1">{classSwapText}</p>
+      )}
       {step === 'abilities' && (
         <>
           {STATS.map((s) => {
@@ -835,31 +893,44 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       {step === 'jutsus' && (
         <div className="px-3 pb-2 space-y-1.5">
           <p className="text-[12px] leading-snug text-[#b9a98a]">{T(!chakraType(nature).elemental ? 'natureRuleNone' : creating ? 'natureRuleNew' : 'natureRule', { n: L(nature) })}</p>
+          <p className="text-[12px] leading-snug text-[#b9a98a]">{classRuleText}</p>
           {creating && <p className="text-[12px] leading-snug text-[#b9a98a]">{T('rankRule')}</p>}
           {natureSwapText && <p className="text-[12px] leading-snug text-[#f2c46d] border border-[#6b5434] bg-[#3a2a12]/60 px-2 py-1">{natureSwapText}</p>}
+          {classSwapText && <p className="text-[12px] leading-snug text-[#f2c46d] border border-[#6b5434] bg-[#3a2a12]/60 px-2 py-1">{classSwapText}</p>}
         </div>
       )}
       {step === 'jutsus' &&
         slots.map((slot) => {
           const chosen = JUTSUS_DATA.find((j) => j.id === character.selectedJutsus[slot.key]);
           const open = openSlot === slot.key;
-          // Nothing to offer a new ninja here (the S-rank slot): shown locked, in its place.
+          // Nothing to offer here: the S-rank slot of a new ninja, shown locked in its place; or a slot
+          // with nothing for this nature and class at any rank (a type with no element in a class with
+          // no kind of jutsu of its own), shown empty.
+          const none = !chosen && !slot.list.length && !learnable(slot.key, nature, character.clan, character.shinobiClass).length;
           if (!chosen && !slot.list.length)
             return (
               <Row
                 key={slot.key}
                 onClick={() => undefined}
-                onHover={hoverOn({ kind: 'locked', slot: slot.label })}
+                onHover={hoverOn({ kind: 'locked', slot: slot.label, none })}
                 icon={
                   <span className="grid place-items-center border border-[#6b5434] bg-[radial-gradient(circle,#2a2016,#0e0b08)] text-[#8a7a5c]" style={{ width: 38, height: 38 }}>
                     <Lock className="w-4 h-4" />
                   </span>
                 }
-                title={T('slotLocked')}
-                sub={T('slotLockedSub', { slot: slot.label })}
+                title={T(none ? 'slotNone' : 'slotLocked')}
+                sub={T(none ? 'slotNoneSub' : 'slotLockedSub', { slot: slot.label })}
               />
             );
-          const mark = chosen && offNature.has(chosen.id) ? T('offNature') : chosen && highRank.has(chosen.id) ? T('aboveRank', { r: chosen.rank }) : null;
+          const mark = !chosen
+            ? null
+            : offNature.has(chosen.id)
+              ? T('offNature')
+              : offClass.has(chosen.id)
+                ? T('offClass')
+                : highRank.has(chosen.id)
+                  ? T('aboveRank', { r: chosen.rank })
+                  : null;
           return (
             <React.Fragment key={slot.key}>
               <Row
@@ -1035,6 +1106,10 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
             <Parchment>{pick(c.description, c.descriptionEs)}</Parchment>
             <Heading>{T('classFeatures')}</Heading>
             <p className="px-3 text-[13px] leading-relaxed text-[#d9caa6]">{pick(c.classFeatures, c.classFeaturesEs)}</p>
+            <Heading>{T('classJutsu')}</Heading>
+            <p className="px-3 text-[13px] leading-relaxed text-[#d9caa6]">
+              {classStyle(h.id) ? T('classJutsuStyle', { s: classStyle(h.id)!.toLowerCase() }) : T('classJutsuNone')}
+            </p>
             <Heading>{T('dice')}</Heading>
             <div className="flex flex-wrap gap-1.5 px-3 pb-3">
               <Chip>{T('hitDie', { n: c.hitDie })}</Chip>
@@ -1089,7 +1164,9 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
         ),
       };
     if (h.kind === 'locked')
-      return { title: h.slot, sub: T('slotLocked'), body: <Parchment>{T('rankRule')}</Parchment> };
+      return h.none
+        ? { title: h.slot, sub: T('slotNone'), body: <Parchment>{T('slotNoneText')}</Parchment> }
+        : { title: h.slot, sub: T('slotLocked'), body: <Parchment>{T('rankRule')}</Parchment> };
     if (h.kind === 'jutsu') {
       const j = JUTSUS_DATA.find((x) => x.id === h.id);
       if (!j) return { title: '—', body: null };

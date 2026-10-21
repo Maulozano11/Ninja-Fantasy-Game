@@ -5,23 +5,25 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shinobiData';
+import { CLANS_DATA, DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
 import { HANA, KENJI, RIVER_FOREST_PATROL } from '../data/missions';
 import { JUTSU } from '../battle/jutsu';
 import { unitFrom } from '../battle/units';
 import { loadRun, migrateRun, type MissionRun, saveRun, startRun } from '../game/missionRun';
 import { loadHero, loadRoster } from '../game/saves';
 import { OFFERED_TYPES } from '../sprite/chakraNature';
-import type { ChakraNature, ClanType, ShinobiCharacter } from '../types/shinobi';
+import type { ChakraNature, ClanType, ShinobiCharacter, ShinobiClassType } from '../types/shinobi';
+import { jutsuFitsClass } from './jutsuClass';
 import { fitLoadout, importedSlots, jutsuChoices, jutsuFitsNature, type JutsuSlot, SLOT_CATEGORY } from './jutsuNature';
 import { DEFAULT_SUPPLIES, newMission } from './mission';
 import { migrateCharacter, natureOf } from './ninja';
 import { pouchTags, TAG_JUTSU, TAG_JUTSU_POUCH, tagJutsuToItem, withPouches } from './pouch';
-import { aboveRank, asMade, creatorChoices, fitNewNinja, fitToType, isLegend, learnsAsNew, NEW_NINJA_RANKS, rankOpen, slotChoices, slotLocked, typeFixed } from './progression';
+import { aboveRank, asMade, creatorChoices, fitNewNinja, fitToType, isLegend, learnable, learnsAsNew, NEW_NINJA_RANKS, rankOpen, slotChoices, slotLocked, typeFixed } from './progression';
 
 const CLANS = Object.keys(CLANS_DATA) as ClanType[];
 const SLOTS = Object.keys(SLOT_CATEGORY) as JutsuSlot[];
 const NATURES = OFFERED_TYPES.map((t) => t.nature);
+const CLASSES = Object.keys(SHINOBI_CLASSES) as ShinobiClassType[];
 const byId = (id: string) => JUTSUS_DATA.find((j) => j.id === id);
 
 function storage(items: Record<string, unknown>): void {
@@ -39,57 +41,71 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
       }
   });
 
-  it('the creator offers only those, of the ninja\'s nature, in every slot', () => {
+  it('the creator offers only those, of the ninja\'s nature and class, in every slot', () => {
     for (const nature of NATURES)
       for (const clan of CLANS)
-        for (const slot of SLOTS) {
-          const offer = creatorChoices(slot, nature, clan);
-          assert.deepEqual(
-            offer.map((j) => j.id),
-            jutsuChoices(slot, nature, clan).filter((j) => rankOpen(j, clan)).map((j) => j.id),
-            `${nature} ${clan} ${slot}`,
-          );
-          for (const j of offer) assert.ok(j.rank === 'D' || j.rank === 'C' || j.requiredClan === clan, `${slot}: ${j.id} (${j.rank})`);
-        }
+        for (const cls of CLASSES)
+          for (const slot of SLOTS) {
+            const offer = creatorChoices(slot, nature, clan, cls);
+            assert.deepEqual(
+              offer.map((j) => j.id),
+              jutsuChoices(slot, nature, clan).filter((j) => rankOpen(j, clan) && jutsuFitsClass(j, cls)).map((j) => j.id),
+              `${nature} ${clan} ${cls} ${slot}`,
+            );
+            for (const j of offer) assert.ok(j.rank === 'D' || j.rank === 'C' || j.requiredClan === clan, `${slot}: ${j.id} (${j.rank})`);
+          }
   });
 
   it('the clan secret is offered whatever its rank; the S-rank slot is locked for a new ninja', () => {
     for (const nature of NATURES)
-      for (const clan of CLANS) {
-        assert.deepEqual(creatorChoices('slot4Clan', nature, clan).map((j) => j.id), [CLANS_DATA[clan].signatureJutsuId], `${clan}`);
-        assert.equal(byId(CLANS_DATA[clan].signatureJutsuId)!.rank, 'A', 'the clan secrets are rank A');
-        assert.equal(slotLocked('slot5Ultimate', nature, clan), true, `${nature} ${clan}: S-rank opens later`);
-        for (const slot of ['slot1Utility', 'slot2Elemental', 'slot3Elemental', 'slot4Clan'] as JutsuSlot[]) assert.equal(slotLocked(slot, nature, clan), false, `${nature} ${clan} ${slot}`);
-      }
+      for (const clan of CLANS)
+        for (const cls of CLASSES) {
+          assert.deepEqual(creatorChoices('slot4Clan', nature, clan, cls).map((j) => j.id), [CLANS_DATA[clan].signatureJutsuId], `${clan} ${cls}`);
+          assert.equal(byId(CLANS_DATA[clan].signatureJutsuId)!.rank, 'A', 'the clan secrets are rank A');
+          assert.deepEqual(creatorChoices('slot5Ultimate', nature, clan, cls), [], `${nature} ${clan} ${cls}: nothing of rank S`);
+          // Locked when its nature and class have an S-rank jutsu for later; else nothing fits it yet.
+          assert.equal(slotLocked('slot5Ultimate', nature, clan, cls), learnable('slot5Ultimate', nature, clan, cls).length > 0, `${nature} ${clan} ${cls}`);
+          for (const slot of ['slot1Utility', 'slot4Clan'] as JutsuSlot[]) assert.equal(slotLocked(slot, nature, clan, cls), false, `${nature} ${clan} ${cls} ${slot}`);
+        }
+    assert.equal(slotLocked('slot5Ultimate', 'Fire', 'Mirai', 'Bukijutsu Master'), true, 'Great Fire Annihilation, later');
+    assert.equal(slotLocked('slot5Ultimate', 'Water', 'Mirai', 'Bukijutsu Master'), false, 'no Water S-rank and no kenjutsu S-rank: nothing at all');
   });
 
   it('a new game\'s sheet (the starting sheet under a new id): the S-rank slot empties, the rest are D and C or the clan\'s', () => {
-    const solen = DEFAULT_CHARACTER; // Fire: Body Flicker (D), Fireball (C), Crescent Moon Dance (B), Wood Dragon (clan), Great Fire Annihilation (S)
-    const r = fitNewNinja(solen.selectedJutsus, natureOf(solen), solen.clan);
+    const solen = DEFAULT_CHARACTER; // Fire, Bukijutsu: Body Flicker (D), Fireball (C), Crescent Moon Dance (B), Wood Dragon (clan), Great Fire Annihilation (S)
+    const r = fitNewNinja(solen.selectedJutsus, natureOf(solen), solen.clan, solen.shinobiClass);
     assert.equal(r.loadout.slot1Utility, 'body_flicker');
     assert.equal(r.loadout.slot2Elemental, 'fireball_goukakyu');
     assert.equal(r.loadout.slot4Clan, solen.selectedJutsus.slot4Clan, 'the clan secret stays (rank A)');
     assert.equal(r.loadout.slot5Ultimate, '', 'nothing of rank S: the slot is empty until it opens');
     assert.notEqual(r.loadout.slot3Elemental, 'crescent_moon_dance', 'rank B: swapped');
-    assert.ok(['D', 'C'].includes(byId(r.loadout.slot3Elemental)!.rank));
-    assert.notEqual(r.loadout.slot3Elemental, r.loadout.slot2Elemental, 'two different Element jutsu');
+    // A Fire Bukijutsu Master has one jutsu of rank D or C for the Element slots (Fireball): the
+    // other is left empty, never the same jutsu twice (the taijutsu one is the Taijutsu Master's).
+    assert.equal(r.loadout.slot3Elemental, '');
     assert.deepEqual(r.swaps.map((x) => x.slot), ['slot3Elemental', 'slot5Ultimate']);
-    assert.deepEqual(fitNewNinja(r.loadout, natureOf(solen), solen.clan).swaps, [], 'once fitted, nothing more to swap');
+    assert.deepEqual(fitNewNinja(r.loadout, natureOf(solen), solen.clan, solen.shinobiClass).swaps, [], 'once fitted, nothing more to swap');
     assert.deepEqual(aboveRank(r.loadout, solen.clan), []);
+    // As a Taijutsu Master, the Leaf Hurricane (D) takes the second Element slot.
+    assert.equal(fitNewNinja(solen.selectedJutsus, natureOf(solen), solen.clan, 'Taijutsu Master').loadout.slot3Elemental, 'leaf_hurricane_senpuu');
   });
 
-  it('every legend made a new ninja of any type: only D, C and its clan\'s, all of its nature', () => {
+  it('every legend made a new ninja of any type and class: only D, C and its clan\'s, of its nature and class, never twice', () => {
     for (const { character: c } of LEGENDARY_PRESETS)
-      for (const nature of NATURES) {
-        const l = fitNewNinja(c.selectedJutsus, nature, c.clan).loadout;
-        assert.equal(l.slot4Clan, c.selectedJutsus.slot4Clan);
-        assert.equal(l.slot5Ultimate, '');
-        for (const slot of ['slot1Utility', 'slot2Elemental', 'slot3Elemental'] as JutsuSlot[]) {
-          const j = byId(l[slot]);
-          assert.ok(j, `${c.id} as ${nature}: ${slot} filled`);
-          assert.ok(rankOpen(j, c.clan) && jutsuFitsNature(j, nature), `${c.id} as ${nature}: ${slot} ${j.id}`);
+      for (const nature of NATURES)
+        for (const cls of CLASSES) {
+          const l = fitNewNinja(c.selectedJutsus, nature, c.clan, cls).loadout;
+          assert.equal(l.slot4Clan, c.selectedJutsus.slot4Clan);
+          assert.equal(l.slot5Ultimate, '');
+          assert.ok(byId(l.slot1Utility), `${c.id} as ${nature}: the Utility slot stays filled`);
+          for (const slot of ['slot1Utility', 'slot2Elemental', 'slot3Elemental'] as JutsuSlot[]) {
+            const j = byId(l[slot]);
+            if (j) assert.ok(rankOpen(j, c.clan) && jutsuFitsNature(j, nature) && jutsuFitsClass(j, cls), `${c.id} as ${nature} ${cls}: ${slot} ${j.id}`);
+          }
+          if (l.slot2Elemental) assert.notEqual(l.slot2Elemental, l.slot3Elemental, `${c.id} as ${nature} ${cls}: never twice`);
+          // A slot is left empty only when its nature and class have nothing else for it.
+          const offer = creatorChoices('slot2Elemental', nature, c.clan, cls).length;
+          assert.equal([l.slot2Elemental, l.slot3Elemental].filter(Boolean).length, Math.min(2, offer), `${c.id} as ${nature} ${cls}`);
         }
-      }
   });
 
   it('the legends keep their sheets: their jutsu above C stay, marked', () => {
@@ -119,24 +135,30 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
     for (const nature of NATURES)
       for (const slot of SLOTS) {
         const ids = (c: ShinobiCharacter) => slotChoices(c, slot, nature, c.clan).map((j) => j.id);
-        assert.deepEqual(ids(fresh), creatorChoices(slot, nature, fresh.clan).map((j) => j.id), `new ${nature} ${slot}`);
+        assert.deepEqual(ids(fresh), creatorChoices(slot, nature, fresh.clan, fresh.shinobiClass).map((j) => j.id), `new ${nature} ${slot}`);
         assert.deepEqual(ids(DEFAULT_CHARACTER), ids(fresh), `a legend picked as a starting point: ${nature} ${slot}`);
-        assert.deepEqual(ids(made), jutsuChoices(slot, nature, made.clan).map((j) => j.id), `made ${nature} ${slot}`);
+        assert.deepEqual(ids(made), learnable(slot, nature, made.clan, made.shinobiClass).map((j) => j.id), `made ${nature} ${slot}`);
       }
     // A made ninja that swaps out its rank B jutsu can pick it back; its S-rank slot is not locked.
     assert.ok(slotChoices(made, 'slot3Elemental', 'Fire', made.clan).some((j) => j.id === 'crescent_moon_dance'));
     assert.ok(slotChoices(made, 'slot5Ultimate', 'Fire', made.clan).some((j) => j.id === 'great_fire_annihilation'));
   });
 
-  it('a legend picked as a starting point keeps its sheet on a type change: its S-rank becomes another, never empty', () => {
+  it('a legend picked as a starting point keeps its sheet on a type change: its S-rank becomes another of its class, empty only when none fits', () => {
     for (const { character: c } of LEGENDARY_PRESETS)
       for (const nature of NATURES) {
         if (nature === natureOf(c)) continue;
         const r = fitToType(c, nature);
-        assert.deepEqual(r, fitLoadout(c.selectedJutsus, nature, c.clan), `${c.id} as ${nature}: as before the rank rule`);
-        assert.ok(r.loadout.slot5Ultimate, `${c.id} as ${nature}: its S-rank slot stays filled`);
+        assert.deepEqual(r, fitLoadout(c.selectedJutsus, nature, c.clan, (j) => jutsuFitsClass(j, c.shinobiClass)), `${c.id} as ${nature}: every rank, of its class`);
+        const s = byId(c.selectedJutsus.slot5Ultimate)!;
+        const fits = jutsuFitsNature(s, nature) || learnable('slot5Ultimate', nature, c.clan, c.shinobiClass).length > 0;
+        assert.equal(!!r.loadout.slot5Ultimate, fits, `${c.id} as ${nature}: its S-rank slot stays filled when something fits`);
       }
     assert.equal(fitToType(DEFAULT_CHARACTER, 'Lightning').loadout.slot5Ultimate, 'kirin_thunder');
+    // Solen (Bukijutsu) as Water: no Water S-rank, and the genjutsu and taijutsu ones are other classes'.
+    assert.equal(fitToType(DEFAULT_CHARACTER, 'Water').loadout.slot5Ultimate, '');
+    const shiori = LEGENDARY_PRESETS.find((p) => p.character.id === 'preset_gentle')!.character; // Taijutsu Master
+    assert.equal(fitToType(shiori, 'Fire').loadout.slot5Ultimate, 'night_guy_dragon', 'no element: it stays');
   });
 
   it('changing the type in the creator swaps to jutsu a new ninja may learn; an S-rank of another element leaves the slot empty', () => {
@@ -166,7 +188,8 @@ describe('the explosive tag is an item, not a jutsu ("es un item o herramienta c
   it('the healing palm stays a Utility jutsu, open to every nature', () => {
     const palm = byId('mystical_palm')!;
     assert.equal(palm.category, 'Utility');
-    for (const nature of NATURES) for (const clan of CLANS) assert.ok(creatorChoices('slot1Utility', nature, clan).some((j) => j.id === 'mystical_palm'), `${nature} ${clan}`);
+    for (const nature of NATURES)
+      for (const clan of CLANS) for (const cls of CLASSES) assert.ok(creatorChoices('slot1Utility', nature, clan, cls).some((j) => j.id === 'mystical_palm'), `${nature} ${clan} ${cls}`);
   });
 
   it('a sheet that had it gets Body Flicker in its slot and two tags in its pouch, once', () => {
@@ -265,6 +288,6 @@ describe('the chakra type is fixed once the ninja is made ("no se puede cambiar 
     const made = asMade(DEFAULT_CHARACTER);
     const nature: ChakraNature = natureOf(made);
     for (const slot of ['slot2Elemental', 'slot3Elemental'] as JutsuSlot[])
-      for (const j of creatorChoices(slot, nature, made.clan)) assert.ok(jutsuFitsNature(j, nature), `${slot}: ${j.id}`);
+      for (const j of slotChoices(made, slot, nature, made.clan)) assert.ok(jutsuFitsNature(j, nature), `${slot}: ${j.id}`);
   });
 });

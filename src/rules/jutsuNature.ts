@@ -65,7 +65,9 @@ export interface JutsuSwap {
 /**
  * Each slot of `slots` whose jutsu is `wrong` gets a replacement the ninja may learn and `allow`s (of
  * its own element first, the lowest rank first, not one another of those slots holds), or is left
- * empty ('') when there is none. The other jutsu stay.
+ * empty ('') when there is none: an empty slot the player can see, never the same jutsu twice (since the
+ * class gates the taijutsu, kenjutsu and genjutsu jutsu, a nature and class may have one jutsu for two
+ * slots, rules/jutsuClass.ts). The other jutsu stay.
  */
 export function refitSlots(
   loadout: Loadout,
@@ -82,7 +84,7 @@ export function refitSlots(
     if (!j || !wrong(j)) continue;
     const taken = new Set(slots.filter((s) => s !== slot).map((s) => out[s]));
     const list = replacements(slot, nature, clan).filter(allow);
-    const to = list.find((x) => !taken.has(x.id)) ?? list[0];
+    const to = list.find((x) => !taken.has(x.id));
     out[slot] = to?.id ?? '';
     swaps.push({ slot, from: j.id, to: out[slot] });
   }

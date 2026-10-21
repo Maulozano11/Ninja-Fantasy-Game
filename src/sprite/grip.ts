@@ -112,7 +112,7 @@ export const handsLimp = (g: DrawCtx): boolean => g.rig.pose === 'downed';
  * Resting at camp (leaning, sitting, reading) the weapon is put away too, and a
  * tackle is thrown with it put away (the owner: the Rush stows the weapon).
  */
-const BUSY = new Set(['handsigns', 'castBook', 'castSphere', 'castLightning', 'castWave', 'castFlash', 'castEye', 'castScript', 'lean', 'sit', 'read', 'tackle']);
+const BUSY = new Set(['handsigns', 'castBook', 'castSphere', 'castLightning', 'castWave', 'castFlash', 'castEye', 'castScript', 'lean', 'sit', 'read', 'tackle', 'combo']);
 export const handsBusy = (g: DrawCtx): boolean => BUSY.has(g.rig.pose) || !!g.look.stowed;
 
 /**

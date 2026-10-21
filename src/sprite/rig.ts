@@ -660,6 +660,37 @@ const TACKLE: PoseFrame[] = [
 /** The tackle's frame where the shoulder hits (the battle lands the blow on it). */
 export const TACKLE_IMPACT_FRAME = 2;
 
+/**
+ * Combo, 8 frames: the Leaf Hurricane (the owner, 2026-10-21: "este ataque no es con arma es un
+ * combo cuerpo a cuerpo que debería tener animación"), struck with the weapon put away. Guard, a jab,
+ * a cross, the spin (COMBO_TURNED: the battle shows these two frames mirrored, the back to the
+ * target) into a spinning back kick, coming round, a high finishing kick, and back to guard. The
+ * wind crescents go out on the kicks (COMBO_KICKS).
+ */
+const COMBO: PoseFrame[] = [
+  // Guard: fists up before the chin, the near one drawn back to throw the jab.
+  { lean: 6, footN: v(-0.36, 0.93), footF: v(0.38, 0.93), handN: chest(1.5, -2.5), handF: chest(2.5, -4), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Jab: the near fist straight out at the target.
+  { lean: 12, pelvisDx: 1.5, footN: v(-0.42, 0.9), footF: v(0.4, 0.92), handN: arm(0.98, -0.12), handF: chest(2.5, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Cross: the far fist follows through, the hips turned into it.
+  { lean: 15, pelvisDx: 2, footN: v(-0.46, 0.88), footF: v(0.4, 0.92), handN: chest(3, -1.5), handF: arm(0.98, -0.06), shapeN: 'fist', shapeF: 'fist' },
+  // The spin (shown mirrored): turned away, the near knee drawn up behind, fists tucked.
+  { lean: 10, sink: 1, footN: v(-0.32, 0.55), footF: v(0.14, 0.96), handN: chest(3.5, -1.5), handF: chest(2, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Spinning back kick (shown mirrored): the body pitched away, the near heel driven back into the target.
+  { lean: 26, pelvisDx: 2, headDy: 3, footN: v(-0.97, -0.08), footF: v(0.2, 0.95), handN: arm(0.62, 0.48), handF: chest(3, -2), shapeN: 'fist', shapeF: 'fist', streamBack: true },
+  // Coming round to face the target, the near knee chambered high.
+  { lean: -4, footN: v(0.36, 0.5), footF: v(0.12, 0.97), handN: chest(4, -2), handF: chest(2, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Finishing kick: the near foot high at the target's head, leaning back from it.
+  { lean: -20, pelvisDx: -2, footN: v(0.8, -0.58), footF: v(0.08, 0.97), handN: arm(-0.42, 0.6), handF: chest(3, -3), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  // Back to guard.
+  { lean: 6, footN: v(-0.36, 0.93), footF: v(0.38, 0.93), handN: chest(4.5, -2.5), handF: chest(2.5, -4), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+];
+
+/** The combo's frames the battle shows mirrored (the spin: the back to the target). */
+export const COMBO_TURNED: readonly number[] = [3, 4];
+/** The combo's kicks (the spinning back kick, the finishing kick): the wind crescents go out on them. */
+export const COMBO_KICKS: readonly number[] = [4, 6];
+
 export const POSES: Record<RigPose, PoseFrame[]> = {
   idle: [IDLE, IDLE, { ...IDLE, chestDy: 1 }, { ...IDLE, chestDy: 1 }],
   handsigns: [
@@ -817,6 +848,7 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
   throw: THROW,
   pierce: PIERCE,
   tackle: TACKLE,
+  combo: COMBO,
   // Battle-map movement poses.
   walk: WALK,
   run: RUN,
@@ -843,6 +875,7 @@ export const POSE_FPS: Record<SpritePose, number> = {
   throw: 8,
   pierce: 8,
   tackle: 10,
+  combo: 10,
   walk: 10,
   run: 12,
   crouch: 3,

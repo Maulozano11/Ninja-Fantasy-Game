@@ -138,3 +138,11 @@ folders.
   `<out>/study/` his hair and the three parts at 10x.
 
       python3 -I tools/refs/saya-hair-from-ref.py <out> src/sprite/items/sayaHairArt.ts
+
+- `saya-eyes-from-ref.py`: Saya's eyes as the `shade` eye shape (`src/sprite/sayaEyeArt.ts`), lifted 1:1
+  from his picture of her at our scale (1024 x 1024, 10.24 picture pixels to one of hers, one of
+  hers = one of ours): her lash, whites and blues in her colours on our face template's eye cells
+  (her lash row on the template's lash row; her skin there drawn in the player's skin); the lowered
+  (reading) and closed (knocked out) lids are made of her pixels.
+
+      python3 -I tools/refs/saya-eyes-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg <out> src/sprite/sayaEyeArt.ts

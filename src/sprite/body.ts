@@ -11,6 +11,7 @@ import { type PaintedEye, VALIANT_BROW_HAIR, VALIANT_EYE_COLORS, VALIANT_EYES, V
 import { VALIANT_HEAD, VALIANT_SKIN } from './headArt';
 import { stampPiece } from './painted';
 import { ballShade, capsule, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, Pen, poly, RES, seam, v, Vec } from './raster';
+import { SAYA_EYE_CELLS, SAYA_EYE_COLORS, SAYA_EYES, SAYA_IRIS } from './sayaEyeArt';
 import { isFemaleBody, type FaceShape } from './types';
 
 const SCLERA = '#f4f1ee';
@@ -427,6 +428,9 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // The owner's eyes (src/sprite/eyeArt.ts), a row lower than ours and heavy-lidded: his brow (B) on
   // the row above the lash line, a single row of white and red iris under it. Drawn in his pixels.
   valiant: { near: VALIANT_EYES.open.near.letters, far: VALIANT_EYES.open.far.letters },
+  // The owner's Saya's eyes (src/sprite/sayaEyeArt.ts, from his picture at our scale) on our own
+  // rows: her black lash turning down the outer corner, her whites and two blues under it.
+  shade: SAYA_EYE_CELLS.open,
 };
 
 /** Closed eyes (knocked out): each eye a dark lid line across its middle row. */
@@ -537,7 +541,10 @@ function drawFace(g: DrawCtx): void {
   const lowered = g.rig.pose === 'read';
   // The owner's eyes ('valiant'): his pixels in each lid state, laid on the template's eye cells.
   const his = shape === 'valiant' ? VALIANT_EYES[closed ? 'closed' : lowered ? 'lowered' : 'open'] : undefined;
-  const eyes = his ? { near: his.near.letters, far: his.far.letters } : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
+  // Saya's eyes ('shade'): her pixels in each lid state, on the template's eye cells.
+  const lid = closed ? 'closed' : lowered ? 'lowered' : 'open';
+  const saya = shape === 'shade' ? SAYA_EYES[lid] : undefined;
+  const eyes = his ? { near: his.near.letters, far: his.far.letters } : saya ? SAYA_EYE_CELLS[lid] : closed ? CLOSED_EYES : lowered ? EYE_ROWS.calm : EYE_ROWS[shape] || EYE_ROWS.standard;
   const main = (FACE_MAIN[isFemaleBody(g.rig.body) ? 'female' : g.rig.body] || FACE_MAIN.male).map((row, r) => eyeRow(row, r, eyes));
 
   const put = (x: number, y: number, ch: string) => {
@@ -582,12 +589,26 @@ function drawFace(g: DrawCtx): void {
     stamp(his.near, ex);
     stamp(his.far, fx);
   }
+  if (saya) {
+    // Her pixels over the template's eye cells, on every face shape: her iris moves the way the eye
+    // colour moves her blue (pale special eyes take our pale tones); her lash and whites stay hers.
+    // Where her skin shows, the face's own skin stays, in the player's skin tone.
+    const tone = (letter: string, hex: string) => (letter === 'd' || letter === 'i' ? (pale ? ir[letter === 'd' ? 3 : 4] : retintHex(hex, SAYA_IRIS, iris)) : hex);
+    const stamp = (eye: PaintedEye, x0: number) =>
+      eye.rows.forEach((row, r) => {
+        for (let c = 0; c < row.length; c++) if (row[c] !== '.') L.set(x0 + c, ny + r, flat(tone(eye.letters[r][c], SAYA_EYE_COLORS[row[c]])), 3, 'head', F_NO_OUTLINE);
+      });
+    stamp(saya.near, ex);
+    stamp(saya.far, fx);
+  }
 
   // Overlays drawn on the face layer (no outline, above the skin). His eyes open a row lower than
   // ours (his lash line is the template's second row): what sits on the open eye follows them.
   const set = (x: number, y: number, hex: string) => F.set(x, y, g.m(hex, 'flat'), 3, 'head', F_NO_OUTLINE);
   const lash = his ? ny + 1 : ny;
-  if (female && (closed || lowered)) {
+  if (saya) {
+    // her lash turns down its own outer corner, open, lowered and closed: no lashes added
+  } else if (female && (closed || lowered)) {
     // the lashes of the closed or lowered lids
     set(ex - 1, ny + 1, EYELINE);
     set(ex - 1, ny + 2, EYELINE);

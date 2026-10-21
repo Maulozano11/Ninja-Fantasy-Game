@@ -1,4 +1,4 @@
-// Saya's ninja top, arm guards and fingerless gloves, from the owner's Saya picture brought down to our
+// Saya's ninja top, arm guards and fingerless gloves, the owner's pixels 1:1 from his Saya drawn at our
 // scale (2026-10-21: his heroines set the standard for women; tools/refs/saya-upper-from-ref.py and the
 // pieces it writes, sayaUpperArt.ts).
 
@@ -52,11 +52,12 @@ function drawShadeArmor(g: DrawCtx, cloth: string, trim: string, plate: string):
   put('nearArm.armor', SAYA_UPPER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
 }
 
-/** The glove zone `along` fine pixels from the wrist cell's middle toward the fingers (null: bare). */
-function gloveZone(along: number): 'strap' | 'back' | 'band' | null {
+/** The glove zone `along` fine pixels from the wrist cell's middle toward the fingers, on that hand (null: bare). */
+function gloveZone(s: Side, along: number): 'strap' | 'back' | 'band' | null {
+  const zones = SAYA_GLOVE_ZONES[s];
   let zone: 'strap' | 'back' | 'band' | null = null;
-  for (const [from, z] of SAYA_GLOVE_ZONES) if (along >= from) zone = z;
-  return along < SAYA_GLOVE_ZONES[0][0] ? null : zone;
+  for (const [from, z] of zones) if (along >= from) zone = z;
+  return along < zones[0][0] ? null : zone;
 }
 
 /**
@@ -78,16 +79,18 @@ function drawShadeGloves(g: DrawCtx, glove: string, trim: string): void {
     // Our hand pictures hang from the wrist (turned by `rot`); the cradling hand stands on it.
     const a = (rot * Math.PI) / 180;
     const [dx, dy] = kind === 'cradle' ? [0, -1] : [-Math.sin(a), Math.cos(a)];
-    const back = s === 'N' ? SAYA_GLOVE_TONES.backN.map((h) => tone(h, SAYA_CLOTH, glove)) : SAYA_GLOVE_TONES.backF.map((h) => tone(h, SAYA_TRIM, trim));
-    const band = (s === 'N' ? SAYA_GLOVE_TONES.bandN : SAYA_GLOVE_TONES.bandF).map((h) => tone(h, SAYA_TRIM, trim));
-    const strap = SAYA_GLOVE_TONES.strap.map((h) => g.m(h, 'flat'));
+    const T = SAYA_GLOVE_TONES;
+    const strap = (s === 'N' ? T.strapN : T.strapF).map((h) => g.m(h, 'flat'));
+    // her near glove is navy with a red band over the knuckles; her far glove is all red
+    const back = s === 'N' ? T.backN.map((h) => tone(h, SAYA_CLOTH, glove)) : T.backF.map((h) => tone(h, SAYA_TRIM, trim));
+    const band = T.bandN.map((h) => tone(h, SAYA_TRIM, trim));
     const tones = { strap, back, band };
     const L = g.L(armDepth(s, 'armor'));
     for (let i = 0; i < GRID * GRID; i++) {
       if (tmp.mat[i] < 0) continue;
       const x = i % GRID;
       const y = (i / GRID) | 0;
-      const zone = gloveZone((x + 0.5 - wx) * dx + (y + 0.5 - wy) * dy);
+      const zone = gloveZone(s, (x + 0.5 - wx) * dx + (y + 0.5 - wy) * dy);
       if (!zone) continue;
       L.set(x, y, tones[zone][Math.min(tmp.shade[i], 4)], 3, part, F_NO_TEXTURE | F_NO_OUTLINE);
     }
@@ -98,7 +101,7 @@ export const SAYA_SHADE_ARMOR: ItemDef = {
   id: 'armor_crimson_shade',
   slot: 'armor',
   name: 'Crimson Shade Garb',
-  desc: 'A sleeveless navy ninja top with a cream chest plate, red piping and maroon straps, and navy arm guards banded in red (+2 AC). Women only.',
+  desc: 'A sleeveless navy ninja top with a cream chest plate, red piping down the front, and navy arm guards banded in red (+2 AC). Women only.',
   colors: [col('cloth', 'Cloth', SAYA_CLOTH), col('trim', 'Trim', SAYA_TRIM), col('plate', 'Plate', SAYA_PLATE, 'metal')],
   statsArmor: 'Leaf Chunin Flak',
   bodies: ['female', 'slender'],
@@ -109,7 +112,7 @@ export const SAYA_SHADE_GLOVES: ItemDef = {
   id: 'hands_shade_fingerless',
   slot: 'hands',
   name: 'Shade Fingerless Gloves',
-  desc: 'Fingerless gloves: a leather strap round the wrist, navy over the back of the hand (maroon on the off hand) and a red band over the knuckles.',
+  desc: 'Fingerless gloves: a leather strap round the wrist, navy over the back of the hand with a red band over the knuckles (all red on the off hand).',
   colors: [col('main', 'Glove', SAYA_CLOTH), col('trim', 'Trim', SAYA_TRIM)],
   draw: (g, [glove, trim]) => drawShadeGloves(g, glove, trim),
 };

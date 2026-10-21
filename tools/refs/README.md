@@ -131,8 +131,10 @@ folders.
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
 
 - `saya-upper-from-ref.py`: Saya's ninja top, arm guards and fingerless gloves
-  (`src/sprite/items/sayaUpperArt.ts`, items in `sayaUpper.ts`): pieces drawn by hand at our scale in
-  her colours, fitted to our female rig at idle (the top rides the torso, each guard its limb); the
-  gloves paint our hand pictures in her glove by how far each pixel lies from the wrist.
+  (`src/sprite/items/sayaUpperArt.ts`, items in `sayaUpper.ts`): his pixels 1:1 from his Saya drawn at
+  our scale (`docs/reference/saya-game-scale-owner-reference.jpg`, 10.24 picture px per pixel), laid on
+  our female idle by her eyes; what her hair, scarf and belts hide is filled (crossed in the preview).
+  The top rides the torso, each guard its limb; the gloves paint our hand pictures in her glove by how
+  far each pixel lies from the wrist.
 
-      python3 -I tools/refs/saya-upper-from-ref.py src/sprite/items/sayaUpperArt.ts <out>
+      python3 -I tools/refs/saya-upper-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg src/sprite/items/sayaUpperArt.ts <out>

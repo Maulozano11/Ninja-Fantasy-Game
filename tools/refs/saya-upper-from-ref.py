@@ -1,243 +1,346 @@
-"""Saya's ninja top, arm guards and fingerless gloves from the owner's Saya picture.
+"""Saya's ninja top, arm guards and fingerless gloves, copied 1:1 from the owner's Saya at our scale.
 
-His picture (docs/reference/saya-owner-reference.jpg, tools/refs/heroine_ref.py) is his own pixel art at
-about two of his pixels to one of ours, in proportions that are not ours (she is 5.1 heads tall, ours
-4.1). Her clothes are brought down to our scale and fitted to our female rig at idle frame 0
-(heroine_ref.OUR_JOINTS), drawn by hand after her picture and the reduced reference
-(heroine_ref.reduced('saya')), every pixel one of her colours (heroine_ref.PALETTES['saya']):
+His game-scale Saya (docs/reference/saya-game-scale-owner-reference.jpg, "aquí hay otra": the picture he
+drew at our sprite scale) is 1024 x 1024 picture pixels for 100 x 100 of hers, the grid from the
+picture's corner: one of her pixels is 10.24 picture pixels and one of ours. Her eyes land on our female's
+eyes when her picture is laid on our 256 x 256 frame at (+76, +122) (her lash row 19 on our row 141, her
+soles on ours), so every row below is written in our frame's coordinates and, at idle frame 0, sits
+where he drew it. (The weapons in that picture are the bugged ones he mentioned; none of their pixels is
+used here.)
 
-  the top         a sleeveless navy ninja top to the hips, high at the neck: her cream chest plate
-                  over the bust (a light rim along its two rounded tops, shaded grey toward its lower
-                  edge, her gold rim under it), her red piping down the edge of the armhole, two
-                  maroon straps from the plate down to the belt with a gold fitting each. It rides the
-                  torso about the neck. The near shoulder stays bare, as hers.
-  the arm guards  her navy detached sleeves: on each upper arm a guard from under the shoulder to
-                  the elbow, its top edged in red and a red band at the elbow (riding the upper arm
-                  about the shoulder); on each forearm a guard from the elbow to the wrist, navy
-                  outside and maroon inside with a red stripe between (her two-tone forearm guards)
-                  and a red cuff at the wrist (riding the forearm about the elbow). Each forearm
-                  guard reaches on under the upper guard, so a bent elbow opens no gap.
-  the gloves      her fingerless gloves: a brown strap round the wrist, the back of the hand in her
-                  navy (the far hand's in her maroon) with a red band over the knuckles, the fingers
-                  bare. Our hand pictures (src/sprite/ctx.ts handDraw) are kept for every pose (grip,
-                  fist, open, pointing, relaxed, cradling) and painted in her glove colours by how
-                  far each pixel is from the wrist along the hand (GLOVE_ZONES), each picture shade
-                  one of her tones (GLOVE_TONES); the fingers stay the body's own hand.
+Her pixels: each cell's colour is the median of its middle (a JPEG), and her colours are the cells'
+colours gathered into tones (one tone per colour of hers: colours within 14 of each other in every
+channel are one tone, its colour their mean; a tone of fewer than 4 cells is noise and is dropped).
+PIECES are rows of those tones, one character per tone (KEY, printed by --key). Every character is her
+pixel there, except the cells listed by the script as filled (fill() below; the preview marks them):
+what her hair, her scarf, her belts and her skin hide, continued from her pixels, and the few cells
+where our body is a pixel wider than hers.
 
-The navy, the red and the cream are the item's colour slots (Cloth, Trim, Plate; KIND says which of
-her colours each is): at her colours every pixel is hers; another colour shifts each of her shades as
-far from it as hers was from her base (src/sprite/color.ts retintHex). Her black line, her gold and the
-brown strap stay.
+  the top          SAYA_TOP rides the torso about the neck. Her cream chest plate with its gold-brown rim,
+                   the dark navy of her top with its two red pipings down the front and the red piping
+                   at the near armhole; the near shoulder stays bare (our body's skin), as hers. Filled:
+                   a navy high collar under her scarf (rows 151-155) and the plate's top under it, the
+                   top's near side under her hair lock, and the top under her belts down to the hips
+                   (navy, its two pipings continued straight down) with a dark hem.
+  the near arm     SAYA_UPPER_N rides the upper arm about the shoulder: her guard's navy top, the red
+                   band slanting round the arm, the red on its inner side and the red elbow band.
+                   SAYA_FORE_N rides the forearm about the elbow: the red at the elbow, the navy guard
+                   with its red stripe, the red cuff. Both are where he drew them (her near arm is on
+                   our near arm).
+  the far arm      SAYA_UPPER_F and SAYA_FORE_F: her far arm hangs about four pixels further out than
+                   ours, so both pieces are laid with her elbow (139, 166) on ours. Her forearm is two
+                   rows longer than ours: two of its middle rows (171 and 173, the same as their
+                   neighbours) are left out so her cuff ends at our wrist.
+  the gloves       our hand pictures for every pose (grip, fist, open, pointing, relaxed, cradling),
+                   painted in her glove by how far each pixel lies from the wrist along the hand, as
+                   she wears it: on the near hand a dark strap row, four rows of navy and the red band
+                   over the knuckles, the fingers bare (her rows 177-183 under her near wrist); on the
+                   far hand two rows of brown strap and two of red, the fingers bare (her rows 178-181).
+                   Each picture shade is one of her tones (GLOVE_TONES).
 
-It writes the pieces as TypeScript (src/sprite/items/sayaUpperArt.ts) and, in <study>, each piece at 8x
-with the joint it hangs from ringed (saya-upper-pieces@8.png). The same input always gives the same bytes:
+The navy, the red and the cream are the item's colour slots (Cloth, Trim, Plate; KIND says which tone is
+which): at her colours every pixel is hers; another colour shifts each of her shades as far from it as
+hers was from her base (src/sprite/color.ts retintHex). Her black line, the gold-brown rim and the brown
+strap stay.
 
-  python3 -I tools/refs/saya-upper-from-ref.py src/sprite/items/sayaUpperArt.ts <study>
+Writes the pieces as TypeScript (src/sprite/items/sayaUpperArt.ts) and, in <out>, saya-upper-pieces@8.png
+(each piece at 8x, filled cells crossed, the joint it hangs from ringed). The same picture always gives
+the same bytes. Run from the repo root:
+
+  python3 -I tools/refs/saya-upper-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg src/sprite/items/sayaUpperArt.ts <out>
+  python3 -I tools/refs/saya-upper-from-ref.py docs/reference/saya-game-scale-owner-reference.jpg --key
 """
 
 import math
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import numpy as np
+from PIL import Image, ImageDraw
 
-import numpy as np  # noqa: E402
-from PIL import Image, ImageDraw  # noqa: E402
+# Her grid: one of her pixels in picture pixels, her grid's size, and where her picture lies on our frame.
+PITCH = 10.24
+SIZE = 100
+AT = (76, 122)
+# Tones: colours within TH in every channel are one tone; a tone of fewer than MIN cells is dropped.
+TH, MIN = 14, 4
+CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-import heroine_ref as R  # noqa: E402
-
-# Her colours the pieces use, one character each (every one is in heroine_ref.PALETTES['saya']).
-KEY = {
-    # her line
-    'k': '#02010d', 'K': '#14101f',
-    # navy, darkest to lightest
-    'U': '#1d1d32', 'u': '#1f2241', 'X': '#2e3e5d', 'e': '#314161', 'E': '#3f5177', 'M': '#647299',
-    # red and maroon
-    'Q': '#4b0f30', 'q': '#6e1c38', 'm': '#7c1d36', 'n': '#842b3c', 'r': '#ad333f', 'R': '#bb2e3e',
-    # the cream plate and its rims
-    'c': '#eae3cb', 'L': '#c1b3a1', 'D': '#a8927c', 'w': '#8d7768', 'W': '#fbe499', 'Y': '#feeeb5',
-    'G': '#e6c486', 'C': '#c9a880',
-    # gold
-    'y': '#f6d886', 'j': '#e8ba58', 'o': '#c48e42', 'O': '#9d6e44', 'J': '#d8a84c',
-    # the brown leather strap
-    'b': '#302525', 'B': '#453631', 'l': '#604f46', 'N': '#534239',
+# Our female rig at idle frame 0 (tools/refs/heroine_ref.py OUR_JOINTS), fine pixels.
+JOINTS = {
+    'neck': (127.24, 149.84), 'pelvis': (127.00, 177.47),
+    'shoulderN': (116.52, 154.62), 'elbowN': (112.82, 166.03), 'wristN': (110.46, 176.16),
+    'shoulderF': (132.68, 154.05), 'elbowF': (135.22, 165.78), 'wristF': (140.49, 174.74),
 }
-# What each colour is: the colour slot that recolours it, or None (her line, her gold, the strap).
-KIND = {
-    'k': None, 'K': None,
-    'U': 'cloth', 'u': 'cloth', 'X': 'cloth', 'e': 'cloth', 'E': 'cloth', 'M': 'cloth',
-    'Q': 'trim', 'q': 'trim', 'm': 'trim', 'n': 'trim', 'r': 'trim', 'R': 'trim',
-    'c': 'plate', 'L': 'plate', 'D': 'plate', 'w': 'plate', 'W': 'plate', 'Y': 'plate', 'G': None, 'C': 'plate',
-    'y': None, 'j': None, 'o': None, 'O': None, 'J': None,
-    'b': None, 'B': None, 'l': None, 'N': None,
-}
-# The base of each slot (its default): her main navy, her red, her cream.
-BASE = {'cloth': '#314161', 'trim': '#ad333f', 'plate': '#eae3cb'}
 
-# The pieces, drawn in our 256 x 256 frame at idle frame 0 (x0, y0 of the first row): name, what it
-# is, the joint it hangs from and the limb it rides (its angle at idle is the piece's angle).
+# The pieces: name, what it is, the joint it hangs from, the limb whose idle angle is its angle, the
+# frame position (x, y) of its first row's first cell, how far her picture is moved to land on our rig,
+# the rows of her picture left out (frame rows), and the rows (one per frame row, from y).
 PIECES = [
-    ('SAYA_TOP', 'The top: high navy collar, the cream plate with its rims, the red piping and the straps; rides the torso about the neck.',
-     'neck', ('pelvis', 'neck'), 115, 150, [
-         '....kkkkkkkkkkkkkk.......',  # 150
-         '....kEeeXXXXXuuuUk.......',  # 151
-         '....kEeeXXXXXXuuuUk......',  # 152
-         '....kreeekkkkkekkkkk.....',  # 153
-         '....kreekYYWWDkDWWDk.....',  # 154
-         '....kreekWYcccDcccck.....',  # 155
-         '....kreekcYccccccccck....',  # 156
-         '....kreekcccccccccccLk...',  # 157
-         '...kreeekccccccccccLLk...',  # 158
-         '...kreeekLccccccccLLLk...',  # 159
-         '..kreeeekLLLccLLLLLLwwk..',  # 160
-         '..kreeeekkyGGGGGGGGGjjk..',  # 161
-         '..kreeeeekkkkkkkkkkkkkk..',  # 162
-         '...kreeXXXqXXeeXquuuUk...',  # 163
-         '....kreeXXqXeeXXquuUk....',  # 164
-         '.....kreXXqXeXXXqUk......',  # 165
-         '.....kreXXjXXXXujk.......',  # 166
-         '.....kreXXoXXXXuok.......',  # 167
-         '....kreeXXqXXXXuqUk......',  # 168
-         '...kreeXXXqXeXXuquUk.....',  # 169
-         '..kreeeXXXqXeeXuquuUk....',  # 170
-         '..kreeeXXXqXXeXuquuuUk...',  # 171
-         '.kreeeeXXXqXXXXuquuuUk...',  # 172
-         'kkkkkkkkkkkkkkkkkkkkkkkk.',  # 173
+    ('SAYA_TOP', 'The top: her plate, her navy and red pipings; under her scarf, hair and belts, filled.',
+     'neck', ('pelvis', 'neck'), (116, 151), (0, 0), (), [
+         # x 116.................138
+         '...000000000000000.....',  # 151 the collar's top (under her scarf)
+         '....02ccccccccccc20....',  # 152
+         '.....02ccccccccccc20...',  # 153
+         '.....02ccccccccccc20...',  # 154
+         '.....020000000000000...',  # 155 the plate's top edge (under her scarf)
+         '.....02kBMBMMMMMMMMM0..',  # 156 her plate's top, its middle under her scarf
+         '.....00nMMMMBBBBBMMMB0.',  # 157
+         '....00kBMMMMMMMMMMMMM0.',  # 158
+         '...020kBMMMMMMMMMMMMM0.',  # 159
+         '..2020kBBMMMMMMMMMMMB0.',  # 160
+         '..200d2BBBBBBkkkkkBBB0.',  # 161
+         '..00a2b2BBBkk00000kBB0.',  # 162
+         '..00222b2kk00229220k0..',  # 163
+         '...0222ab0022cci2c20...',  # 164 x 119-120: under her hair lock
+         '....0dd0092eccci2cci0..',  # 165
+         '....00022922icci2cii0..',  # 166
+         '....0022c2ic2ici2i2i0..',  # 167
+         '...0002222iccc2222ci0..',  # 168
+         '..000022c2icccci2cc0...',  # 169
+         '.0000222cc6iccci2ci0...',  # 170 x 120-124 and on: under her belts
+         '.2cccccccccc2ici2icc2..',  # 171
+         '2ccccccccccc2ici2ic22..',  # 172
+         '2ccccccccccc2ici2ic2222',  # 173
+         '2ccccccccccc2ici2ic2222',  # 174
+         '2ccccccccccc2ici2ic2222',  # 175
+         '2ccccccccccc2ici2ic2222',  # 176
+         '2ccccccccccc2ici2ic2222',  # 177
+         '2ccccccccccc2ici2ic2222',  # 178
+         '0000000000000000000....',  # 179 the hem
+         '....00000000000........',  # 180
      ]),
-    ('SAYA_UPPER_N', 'The near upper arm guard: red top edge, navy, the red elbow band; rides the upper arm about the shoulder.',
-     'shoulderN', ('shoulderN', 'elbowN'), 109, 157, [
-         '..kkkkkkkkkk',  # 157
-         '..kRRrrrrqk.',  # 158
-         '.kEMMEeeXuk.',  # 159
-         '.kEMMEeeXk..',  # 160
-         '.kEMMEeeXk..',  # 161
-         '.kEMEEeeXk..',  # 162
-         'kEMMEeeXk...',  # 163
-         'kRRrrrrqk...',  # 164
-         'kkkkkkkkk...',  # 165
+    ('SAYA_UPPER_N', 'The near upper arm guard: navy, the red band slanting round it, red inside, the red elbow band.',
+     'shoulderN', ('shoulderN', 'elbowN'), (108, 157), (0, 0), (), [
+         # x 108......118
+         '....0200...',  # 157
+         '....06cc00.',  # 158
+         '...0000ccc0',  # 159
+         '...0iii00c.',  # 160
+         '..000iii70.',  # 161
+         '..02c00ii9.',  # 162
+         '.006ccc099.',  # 163
+         '09i00cc200.',  # 164
+         '00iii0220..',  # 165
      ]),
-    ('SAYA_FORE_N', 'The near forearm guard: navy outside, a red stripe, maroon inside, the red cuff; rides the forearm about the elbow.',
-     'elbowN', ('elbowN', 'wristN'), 107, 164, [
-         '..kEMeXrqk..',  # 164
-         '..kEMeXrqk..',  # 165
-         '.kEMeXrqqk..',  # 166
-         '.kEMeXrqqk..',  # 167
-         '.kEMeXrqqk..',  # 168
-         '.kEMeXrqQk..',  # 169
-         '.kEMeXrqk...',  # 170
-         'kEMeeXrqk...',  # 171
-         'kEMeXrqk....',  # 172
-         'kEMeXrqk....',  # 173
-         'kRRrrrqk....',  # 174
-         'kkkkkkkk....',  # 175
+    ('SAYA_FORE_N', 'The near forearm guard: the red at the elbow, navy with a red stripe, the red cuff.',
+     'elbowN', ('elbowN', 'wristN'), (106, 166), (0, 0), (), [
+         # x 106.....115
+         '..0200ii00',  # 166
+         '.0000c0b90',  # 167
+         '.09jj00090',  # 168
+         '.0222ij000',  # 169
+         '.02cccib0.',  # 170
+         '.02ccci20.',  # 171
+         '.02ccci20.',  # 172
+         '.02cci280.',  # 173
+         '02ccci20..',  # 174
+         '02ccc420..',  # 175
+         '0biii420..',  # 176
+         '00000i90..',  # 177
      ]),
-    ('SAYA_UPPER_F', 'The far upper arm guard, in the far side\'s darker navy; rides the upper arm about the shoulder.',
-     'shoulderF', ('shoulderF', 'elbowF'), 129, 157, [
-         '.kkkkkkkk..',  # 157
-         'kRrrrqqQk..',  # 158
-         'kEeeXXuUk..',  # 159
-         'kEeeXXuUk..',  # 160
-         '.kEeeXXuUk.',  # 161
-         '.kEeeXXuUk.',  # 162
-         '.kEeeXXuUk.',  # 163
-         '.kRrrrqqQk.',  # 164
-         '.kkkkkkkkk.',  # 165
+    ('SAYA_UPPER_F', 'The far upper arm guard: navy, the red band, the red elbow band.',
+     'shoulderF', ('shoulderF', 'elbowF'), (135, 159), (-4, -1), (), [
+         # x 135..142
+         '..0000..',  # 159
+         '..0220..',  # 160
+         '..00000.',  # 161
+         '..09i90.',  # 162
+         '.099000.',  # 163
+         '.000220.',  # 164
+         '.0222000',  # 165
+         '.0000990',  # 166
      ]),
-    ('SAYA_FORE_F', 'The far forearm guard: maroon inside (toward the body), the red stripe, navy outside, the red cuff; rides the forearm about the elbow.',
-     'elbowF', ('elbowF', 'wristF'), 130, 164, [
-         'kqqreXXuk......',  # 164
-         '.kqqreXXuk.....',  # 165
-         '.kqqreXXuk.....',  # 166
-         '..kqqreXXuk....',  # 167
-         '..kqqreXXuk....',  # 168
-         '...kqqreXXuk...',  # 169
-         '....kqreXXuk...',  # 170
-         '....kqqreXXuk..',  # 171
-         '.....kqreXXuk..',  # 172
-         '......kqreXXuk.',  # 173
-         '......krrrrqqk.',  # 174
-         '.......kkkkkkk.',  # 175
+    ('SAYA_FORE_F', 'The far forearm guard: the red elbow band, navy with its red stripe outside, the red cuff.',
+     'elbowF', ('elbowF', 'wristF'), (136, 167), (-4, -1), (171, 173), [
+         # x 136.......147
+         '09bb0000....',  # 167
+         '090022000...',  # 168
+         '002200i20...',  # 169
+         '.000ii220...',  # 170
+         '.00b422i20..',  # 171 (left out)
+         '.0022cci80..',  # 172
+         '..022cc2i0..',  # 173 (left out)
+         '...022cci20.',  # 174
+         '...0222c2i0.',  # 175
+         '....022ii00.',  # 176
+         '....0bb00620',  # 177
      ]),
 ]
 
-# The gloves. Zones along the hand from the wrist, in fine pixels from the middle of the hand
-# picture's wrist cell (its pivot) toward the fingers: the strap, the back of the hand, the red band
-# over the knuckles; from the last on, the fingers are bare. Her near glove: a pixel of strap, two and
-# a half of navy, one of red, the fingers (her picture: 2, 5, 2 and 4 of her pixels).
-GLOVE_ZONES = [(-0.5, 'strap'), (0.5, 'back'), (2.5, 'band'), (3.5, None)]
+# The gloves, per hand: from `from` fine pixels along the hand (from the middle of the hand picture's
+# wrist cell toward the fingers) each zone takes over; None leaves the fingers bare. Her near glove under
+# her wrist (176): row 177 her dark strap, rows 178-181 navy, row 182 the red band, the fingers from 183.
+# Her far glove under her wrist (177): rows 178-179 the brown strap, 180-181 red, the fingers from 182.
+GLOVE_ZONES = {
+    'N': [(0.5, 'strap'), (1.5, 'back'), (5.5, 'band'), (6.5, None)],
+    'F': [(0.5, 'strap'), (2.5, 'back'), (4.5, None)],
+}
 # Her tones for each shade of our hand pictures: line, crease, shadow, base, light.
 GLOVE_TONES = {
-    'strap': ['k', 'b', 'B', 'N', 'l'],
-    'backN': ['k', 'u', 'X', 'e', 'E'],
-    'bandN': ['k', 'Q', 'q', 'r', 'R'],
-    # the far glove is her maroon, its knuckle band her red
-    'backF': ['k', 'Q', 'q', 'm', 'n'],
-    'bandF': ['k', 'Q', 'q', 'r', 'r'],
+    'strapN': ['0', '0', '5', '5', 'e'],
+    'backN': ['0', '2', '6', 'c', 'c'],
+    'bandN': ['0', '7', '9', 'i', 'j'],
+    'strapF': ['0', '5', '5', 'e', 'g'],
+    'backF': ['0', '7', '9', 'a', 'i'],
 }
 
+# Which colour slot recolours each of her tones (by its colour; the rest stay): navy, red, cream.
+SLOT_OF = {
+    'cloth': ['#222338', '#272c48', '#374061', '#373b49'],
+    'trim': ['#3f1e30', '#431527', '#5f1a29', '#6e212c', '#6f2f32', '#772930', '#7e3232', '#a73234', '#b63133'],
+    'plate': ['#bfb2a7', '#ebe5d7'],
+}
+BASE = {'cloth': '#374061', 'trim': '#a73234', 'plate': '#ebe5d7'}
+
 OUT_DOC = (
-    "// Saya's ninja top, arm guards and fingerless gloves (tools/refs/saya-upper-from-ref.py from\n"
-    "// docs/reference/saya-owner-reference.jpg). Generated: rerun the script to change it.\n"
+    "// Saya's ninja top, arm guards and fingerless gloves, the owner's pixels 1:1 (tools/refs/saya-upper-from-ref.py\n"
+    "// from docs/reference/saya-game-scale-owner-reference.jpg). Generated: rerun the script to change it.\n"
 )
 
 
-def check():
-    pal = set(R.PALETTES['saya'])
-    for ch, h in KEY.items():
-        assert h in pal, f'{ch} {h} is not one of her colours'
-    for name, _doc, _j, _limb, _x0, _y0, rows in PIECES:
+def native(path):
+    """Her pixels: the median colour of each cell's middle (5 x 5 picture pixels), SIZE x SIZE x 3."""
+    a = np.asarray(Image.open(path).convert('RGB')).astype(np.int32)
+    assert a.shape[:2] == (round(PITCH * SIZE),) * 2, a.shape
+    out = np.zeros((SIZE, SIZE, 3), np.int32)
+    for y in range(SIZE):
+        for x in range(SIZE):
+            y0, x0 = int(round(y * PITCH + 2.5)), int(round(x * PITCH + 2.5))
+            out[y, x] = np.median(a[y0:y0 + 5, x0:x0 + 5].reshape(-1, 3), 0).round()
+    return out
+
+
+def tones(N):
+    """Her tones, darkest first: {char: hex}. White (her background) is not a tone."""
+    cols, counts = np.unique(N.reshape(-1, 3), axis=0, return_counts=True)
+    order = sorted(range(len(cols)), key=lambda i: (-counts[i], tuple(cols[i])))
+    centres, members = [], []
+    for i in order:
+        c = cols[i]
+        if (c > 235).all():
+            continue
+        for j, ce in enumerate(centres):
+            if np.abs(c - ce).max() <= TH:
+                members[j].append((c, counts[i]))
+                break
+        else:
+            centres.append(c)
+            members.append([(c, counts[i])])
+    pal = []
+    for m in members:
+        tot = sum(n for _, n in m)
+        if tot >= MIN:
+            pal.append(tuple(int(v) for v in (sum(c * n for c, n in m) / tot).round()))
+    pal.sort(key=lambda c: (sum(c), c))
+    assert len(pal) <= len(CHARS)
+    return {CHARS[i]: '#%02x%02x%02x' % c for i, c in enumerate(pal)}
+
+
+def rgb(h):
+    return np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)])
+
+
+def hers(N, key):
+    """Her picture on our frame as tone characters: {(x, y): char}; her white is left out."""
+    P = np.array([rgb(h) for h in key.values()])
+    chars = list(key)
+    out = {}
+    for y in range(SIZE):
+        for x in range(SIZE):
+            c = N[y, x]
+            if (c > 235).all():
+                continue
+            out[(x + AT[0], y + AT[1])] = chars[int(np.argmin(((P - c) ** 2).sum(1)))]
+    return out
+
+
+def fill(piece, H):
+    """The cells of a piece that are not her pixel there (filled), as a set of frame (x, y)."""
+    _name, _doc, _joint, _limb, (x0, y0), _move, _drop, rows = piece
+    out = set()
+    for j, r in enumerate(rows):
+        for i, ch in enumerate(r):
+            if ch != '.' and H.get((x0 + i, y0 + j)) != ch:
+                out.add((x0 + i, y0 + j))
+    return out
+
+
+def kept(piece):
+    """The rows the game gets (the left-out rows removed) and the frame row of each."""
+    _name, _doc, _joint, _limb, (x0, y0), _move, drop, rows = piece
+    out = [(y0 + j, r) for j, r in enumerate(rows) if y0 + j not in drop]
+    return out
+
+
+def check(key):
+    for piece in PIECES:
+        name, rows = piece[0], piece[-1]
         for r in rows:
             assert len(r) == len(rows[0]), (name, r)
             for ch in r:
-                assert ch == '.' or ch in KEY, (name, ch)
-    for tones in GLOVE_TONES.values():
-        assert all(t in KEY for t in tones)
+                assert ch == '.' or ch in key, (name, ch)
+    for ts in GLOVE_TONES.values():
+        assert all(t in key for t in ts)
+    for hexes in SLOT_OF.values():
+        assert all(h in key.values() for h in hexes), hexes
+    for b in BASE.values():
+        assert b in key.values()
 
 
 def angle(limb):
-    a, b = (R.OUR_JOINTS[j] for j in limb)
+    a, b = (JOINTS[j] for j in limb)
     return math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
 
 
-def ts_piece(name, doc, joint, limb, x0, y0, rows):
-    jx, jy = R.OUR_JOINTS[joint]
-    used = sorted({ch for r in rows for ch in r if ch != '.'}, key=lambda c: list(KEY).index(c))
-    out = [f'/** {doc} */', f'export const {name}: PaintedPiece = {{',
-           f'  pivot: [{int(math.floor(jx)) - x0}, {int(math.floor(jy)) - y0}],',
+def pivot(piece):
+    """The pivot cell in the piece: the joint's cell, moved onto her picture."""
+    _name, _doc, joint, _limb, (x0, y0), (mx, my), _drop, _rows = piece
+    jx, jy = JOINTS[joint]
+    return math.floor(jx) - mx - x0, math.floor(jy) - my - y0
+
+
+def ts_piece(piece, key):
+    name, doc, _joint, limb = piece[:4]
+    rows = [r for _, r in kept(piece)]
+    used = sorted({ch for r in rows for ch in r if ch != '.'}, key=list(key).index)
+    px, py = pivot(piece)
+    out = [f'/** {doc} */', f'export const {name}: PaintedPiece = {{', f'  pivot: [{px}, {py}],',
            f'  angle: {angle(limb):.2f},', '  rows: [']
     out += [f"    '{r}'," for r in rows]
     out += ['  ],', '  colors: {']
-    out += [f"    {ch}: '{KEY[ch]}'," for ch in used]
+    out += [f"    '{ch}': '{key[ch]}'," for ch in used]
     out += ['  },', '};', '']
     return '\n'.join(out)
 
 
-def write_ts(path):
+def write_ts(path, key):
     lines = [OUT_DOC, "import type { PaintedPiece } from '../painted';", '',
              '/** Her colours the colour slots recolour from (at these, every pixel is hers). */',
              f"export const SAYA_CLOTH = '{BASE['cloth']}';",
              f"export const SAYA_TRIM = '{BASE['trim']}';",
              f"export const SAYA_PLATE = '{BASE['plate']}';", '',
-             '/** Which slot recolours each of her colours (her line, her gold and the brown strap stay). */',
+             '/** Which slot recolours each of her colours (her line, the gold-brown rim and the strap stay). */',
              "export const SAYA_KIND: Record<string, 'cloth' | 'trim' | 'plate'> = {"]
-    for ch, h in KEY.items():
-        if KIND[ch]:
-            lines.append(f"  '{h}': '{KIND[ch]}',")
+    for slot, hexes in SLOT_OF.items():
+        for h in hexes:
+            lines.append(f"  '{h}': '{slot}',")
     lines += ['};', '']
     for p in PIECES:
-        lines.append(ts_piece(*p))
+        lines.append(ts_piece(p, key))
     lines += ['/**',
-              ' * The gloves: from `from` fine pixels along the hand (from the middle of the hand picture\'s wrist',
-              ' * cell toward the fingers) each zone takes over; `null` leaves the fingers bare.',
+              ' * The gloves, per hand: from `from` fine pixels along the hand (from the middle of the hand',
+              " * picture's wrist cell toward the fingers) each zone takes over; `null` leaves the fingers bare.",
               ' */',
-              'export const SAYA_GLOVE_ZONES: [number, \'strap\' | \'back\' | \'band\' | null][] = [']
-    for at, z in GLOVE_ZONES:
-        lines.append(f"  [{at}, {('null' if z is None else repr(z))}],")
-    lines += ['];', '',
-              '/** Her tones for our hand pictures\' shades (line, crease, shadow, base, light), per zone and side. */',
+              "export const SAYA_GLOVE_ZONES: Record<'N' | 'F', [number, 'strap' | 'back' | 'band' | null][]> = {"]
+    for side, zones in GLOVE_ZONES.items():
+        lines.append(f'  {side}: [' + ', '.join(f"[{at}, {('null' if z is None else repr(z))}]" for at, z in zones) + '],')
+    lines += ['};', '',
+              "/** Her tones for our hand pictures' shades (line, crease, shadow, base, light), per zone and side. */",
               'export const SAYA_GLOVE_TONES = {']
-    for k, tones in GLOVE_TONES.items():
-        lines.append(f"  {k}: [{', '.join(repr(KEY[t]) for t in tones)}],")
+    for k, ts in GLOVE_TONES.items():
+        lines.append(f"  {k}: [{', '.join(repr(key[t]) for t in ts)}],")
     lines += ['} as const;', '']
     text = '\n'.join(lines)
     tmp = path + '.tmp'
@@ -246,43 +349,54 @@ def write_ts(path):
     os.replace(tmp, path)
 
 
-def rgb(h):
-    return [int(h[i:i + 2], 16) for i in (1, 3, 5)]
-
-
-def sheet(study):
-    """Each piece at 8x on grey, the joint it hangs from ringed."""
+def sheet(out, key, H):
+    """Each piece at 8x on grey as the game gets it, its filled cells crossed, its pivot ringed."""
     k = 8
     ims = []
-    for name, _doc, joint, _limb, x0, y0, rows in PIECES:
-        H, W = len(rows), len(rows[0])
-        a = np.full((H, W, 3), 214, np.uint8)
-        for j, r in enumerate(rows):
-            for i, ch in enumerate(r):
-                if ch != '.':
-                    a[j, i] = rgb(KEY[ch])
-        im = Image.fromarray(a).resize((W * k, H * k), Image.NEAREST)
+    for piece in PIECES:
+        x0 = piece[4][0]
+        rows = kept(piece)
+        F = fill(piece, H)
+        Wd, Ht = len(rows[0][1]), len(rows)
+        im = Image.new('RGB', (Wd * k, Ht * k), (214, 214, 214))
         d = ImageDraw.Draw(im)
-        jx, jy = R.OUR_JOINTS[joint]
-        cx, cy = (math.floor(jx) - x0 + 0.5) * k, (math.floor(jy) - y0 + 0.5) * k
-        d.ellipse([cx - 3, cy - 3, cx + 3, cy + 3], outline=(0, 200, 0))
+        for j, (y, r) in enumerate(rows):
+            for i, ch in enumerate(r):
+                if ch == '.':
+                    continue
+                d.rectangle([i * k, j * k, i * k + k - 1, j * k + k - 1], fill=tuple(int(v) for v in rgb(key[ch])))
+                if (x0 + i, y) in F:
+                    d.line([i * k + 2, j * k + 2, i * k + k - 3, j * k + k - 3], fill=(0, 220, 0))
+        px, py = pivot(piece)
+        cx, cy = (px + 0.5) * k, (py + 0.5) * k
+        d.ellipse([cx - 3, cy - 3, cx + 3, cy + 3], outline=(255, 0, 255))
         ims.append(im)
-    W = sum(i.width for i in ims) + 12 * len(ims)
-    H = max(i.height for i in ims)
-    out = Image.new('RGB', (W, H), (255, 255, 255))
+    Wt = sum(i.width for i in ims) + 12 * len(ims)
+    o = Image.new('RGB', (Wt, max(i.height for i in ims) + 8), (255, 255, 255))
     x = 0
     for im in ims:
-        out.paste(im, (x, 0))
+        o.paste(im, (x, 4))
         x += im.width + 12
-    out.save(os.path.join(study, 'saya-upper-pieces@8.png'))
+    o.save(os.path.join(out, 'saya-upper-pieces@8.png'))
 
 
 def main():
-    check()
-    write_ts(sys.argv[1])
-    if len(sys.argv) > 2:
-        os.makedirs(sys.argv[2], exist_ok=True)
-        sheet(sys.argv[2])
+    N = native(sys.argv[1])
+    key = tones(N)
+    if sys.argv[2] == '--key':
+        for ch, h in key.items():
+            print(ch, h)
+        return
+    check(key)
+    H = hers(N, key)
+    write_ts(sys.argv[2], key)
+    for p in PIECES:
+        F = sorted(fill(p, H), key=lambda c: (c[1], c[0]))
+        total = sum(ch != '.' for r in p[-1] for ch in r)
+        print(f'{p[0]}: {total - len(F)} of {total} cells hers, {len(F)} filled')
+    if len(sys.argv) > 3:
+        os.makedirs(sys.argv[3], exist_ok=True)
+        sheet(sys.argv[3], key, H)
 
 
 if __name__ == '__main__':

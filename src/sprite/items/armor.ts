@@ -36,6 +36,7 @@ import {
   PLATE_WAIST,
 } from './crimsonPlateArt';
 import { ARMOR_DAWN_VESTMENT } from './aureliaVestment';
+import { SKIRT_DAWN_PANELS } from './aureliaLower';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2846,4 +2847,6 @@ export const SKIRT_ITEMS: ItemDef[] = [
       });
     },
   },
+  // Aurelia, the owner's fourth heroine (aureliaLower.ts)
+  SKIRT_DAWN_PANELS,
 ];

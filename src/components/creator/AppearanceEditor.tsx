@@ -131,7 +131,7 @@ const NECKS: { id: NeckType; label: string; sub: string }[] = [
   { id: 'strong', label: 'Strong', sub: 'Thick, muscular' },
 ];
 
-const EYE_SHAPES: { id: EyeShape; label: string }[] = [
+const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'standard', label: 'Standard' },
   { id: 'sharp', label: 'Sharp' },
   { id: 'round', label: 'Round' },
@@ -139,6 +139,7 @@ const EYE_SHAPES: { id: EyeShape; label: string }[] = [
   { id: 'fierce', label: 'Fierce' },
   { id: 'bright', label: 'Bright' },
   { id: 'piercing', label: 'Piercing' },
+  { id: 'valiant', label: 'Valiant', sub: "Aiden's eyes" },
 ];
 
 const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [
@@ -382,6 +383,7 @@ export const AppearanceEditor: React.FC<{
                     key={e.id}
                     selected={look.eyeShape === e.id}
                     label={e.label}
+                    sub={e.sub}
                     onClick={() => {
                       soundManager.playSelect();
                       onChange({ ...look, eyeShape: e.id });

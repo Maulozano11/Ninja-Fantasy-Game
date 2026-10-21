@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Flame, Lock, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
 import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
-import { EMBLEMS } from '../../sprite/items/headband';
 import { CHAKRA_CHOICES, TINT_CHOICES, chakraChoice, chakraHex } from '../../sprite/chakraInfo';
 import { CHAKRA_TYPES, chakraNature, chakraType, withNature } from '../../sprite/chakraNature';
 import { CAST_STYLE_INFO, defaultCastStyle } from '../../sprite/castInfo';
@@ -13,7 +12,6 @@ import type {
   EyeShape,
   EyeSpecial,
   FaceShape,
-  HeadbandPosition,
   ItemChoice,
   NeckType,
   SlotId,
@@ -32,7 +30,7 @@ import { serif } from './stage';
 
 /**
  * The editor's sections, grouped as Baldur's Gate 3 groups its appearance: everything of the head in
- * one place (face shape, eyes, hair, marks and masks, headband), the body apart, then clothes, gear,
+ * one place (face shape, eyes, hair, marks and masks), the body apart, then clothes, gear,
  * weapon, chakra and pixel paint. A section with several parts shows them as tabs.
  */
 export type AppearanceGroup = 'body' | 'head' | 'clothes' | 'gear' | 'weapon' | 'chakra' | 'paint';
@@ -43,7 +41,6 @@ type Part =
   | 'eyes'
   | 'hair'
   | 'marks'
-  | 'headband'
   | 'top'
   | 'bottom'
   | 'skirt'
@@ -68,7 +65,6 @@ const GROUPS: { id: AppearanceGroup; label: string; icon: React.ReactNode; parts
       { id: 'eyes', label: 'Eyes' },
       { id: 'hair', label: 'Hair' },
       { id: 'marks', label: 'Marks & Masks' },
-      { id: 'headband', label: 'Headband' },
     ],
   },
   {
@@ -142,14 +138,6 @@ const EYE_SHAPES: { id: EyeShape; label: string; sub?: string }[] = [
   { id: 'bright', label: 'Bright' },
   { id: 'piercing', label: 'Piercing' },
   { id: 'valiant', label: 'Valiant', sub: "Aiden's eyes" },
-];
-
-const HEADBAND_POSITIONS: { id: HeadbandPosition; label: string }[] = [
-  { id: 'none', label: 'None' },
-  { id: 'forehead', label: 'Forehead' },
-  { id: 'neck', label: 'Neck' },
-  { id: 'arm', label: 'Arm' },
-  { id: 'waist', label: 'Waist' },
 ];
 
 export const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -415,73 +403,6 @@ export const AppearanceEditor: React.FC<{
         {slotPart && <SlotPicker key={part} slot={slotPart.slot} look={look} eye={eye} crop={slotPart.crop} setSlot={setSlot} />}
 
         {part === 'gear' && <AccessoryPicker look={look} eye={eye} onChange={onChange} />}
-
-        {part === 'headband' && (
-          <div className="space-y-5">
-            <div>
-              <SectionLabel>Placement</SectionLabel>
-              <div className="grid grid-cols-5 gap-2">
-                {HEADBAND_POSITIONS.map((p) => (
-                  <OptionCard
-                    key={p.id}
-                    selected={look.headband.position === p.id}
-                    label={p.label}
-                    onClick={() => {
-                      soundManager.playSelect();
-                      onChange({ ...look, headband: { ...look.headband, position: p.id } });
-                    }}
-                  >
-                    <SpriteThumb look={{ ...look, headband: { ...look.headband, position: p.id } }} eye={eye} />
-                  </OptionCard>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Toggle
-                label="Slashed (rogue)"
-                value={look.headband.slashed}
-                onChange={(slashed) => onChange({ ...look, headband: { ...look.headband, slashed } })}
-              />
-              <Toggle
-                label="Long cloth tails"
-                value={look.headband.tails}
-                onChange={(tails) => onChange({ ...look, headband: { ...look.headband, tails } })}
-              />
-            </div>
-            <div>
-              <SectionLabel>Emblem</SectionLabel>
-              <div className="flex flex-wrap gap-2">
-                {EMBLEMS.map((e) => (
-                  <button
-                    key={e.id}
-                    type="button"
-                    onClick={() => onChange({ ...look, headband: { ...look.headband, emblem: e.id } })}
-                    className={`px-2.5 py-1.5 text-xs rounded-lg border transition ${
-                      look.headband.emblem === e.id
-                        ? 'bg-cyan-600 border-cyan-500 text-white'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    {e.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <ColorRow
-              label="Cloth"
-              value={look.headband.cloth}
-              swatches={CLOTH_COLORS}
-              families={CLOTH_FAMILIES}
-              onChange={(cloth) => onChange({ ...look, headband: { ...look.headband, cloth } })}
-            />
-            <ColorRow
-              label="Plate"
-              value={look.headband.plate}
-              swatches={['#cbd5e1', '#9ca3af', '#d4af37', '#b87333', '#4b5563', '#f8fafc']}
-              onChange={(plate) => onChange({ ...look, headband: { ...look.headband, plate } })}
-            />
-          </div>
-        )}
 
         {part === 'chakra' && (
           <div className="space-y-5">

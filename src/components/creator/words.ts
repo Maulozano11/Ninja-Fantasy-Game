@@ -34,6 +34,8 @@ const ES: Record<string, string> = {
   'Fuller cheeks': 'Mejillas llenas',
   Square: 'Cuadrada',
   'Strong jaw': 'Mandíbula fuerte',
+  Valiant: 'Valiente',
+  "Aiden's face": 'La cara de Aiden',
   Slim: 'Delgado',
   Strong: 'Fuerte',
   'Thick, muscular': 'Grueso, musculoso',

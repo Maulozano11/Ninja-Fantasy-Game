@@ -900,7 +900,7 @@ function eyeSurge(g: DrawCtx, hex: string): void {
     else if (c.ch === 'w' || c.ch === 'h') M.set(c.x, c.y, glow, 5, 'head', F_NO_OUTLINE);
   }
   // flame surging up from each eye: the near one sweeps up and back, the far one rises off the cheek edge
-  const { nx, ny } = faceAnchor(g);
+  const { ex, fx, ny } = faceAnchor(g);
   const flame = (x0: number, y0: number, len: number, back: number) => {
     for (let k = 0; k < len; k++) {
       const t = k / len;
@@ -911,8 +911,8 @@ function eyeSurge(g: DrawCtx, hex: string): void {
       if (t < 0.5) T.set(x - Math.sign(back || 1), y, glow, sh - 1, 'head', F_NO_OUTLINE);
     }
   };
-  flame(nx - 1, ny + 1, 10 + f * 2, 1.7);
-  flame(nx + 12, ny, 6 + f, -0.5);
+  flame(ex - 1, ny + 1, 10 + f * 2, 1.7);
+  flame(fx + 3, ny, 6 + f, -0.5);
   // energy surging up all around the head, behind it
   const B = g.L('hairBack');
   const pen: Pen = { mat: glow, part: 'back', flags: F_NO_OUTLINE };

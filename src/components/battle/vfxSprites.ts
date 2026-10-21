@@ -16,8 +16,8 @@ import { auraDx, fxPos, project } from './renderer';
 import { WAIT, hurryVfxSheets, tintedSheet } from './vfxTintCache';
 import type { TintedSheet } from './vfxTintCache';
 import { unitTint, wallElement } from './vfxTintPlan';
-import { wanderHeading, wanderPoint } from './paths';
-import type { XY } from './paths';
+import { keepAbove, wanderHeading, wanderPoint } from './paths';
+import type { Bend, XY } from './paths';
 import { dist } from '../../battle/map';
 
 /** A sheet, and its copy in a chakra colour when it plays in one. */
@@ -431,15 +431,20 @@ function drawBeam(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number): 
   return true;
 }
 
-/** A route's points on the screen (px), and the length of its legs on the ground (m), for wanderPoint. */
-function routeOf(sc: Scene, f: Fx): { pts: XY[]; pace: number[] } {
+/**
+ * A route's points on the screen (px), the length of its legs on the ground (m), for wanderPoint,
+ * and its bends kept `margin` px above the ground (a swing down never dips into the dirt).
+ */
+function routeOf(sc: Scene, f: Fx, margin: number): { pts: XY[]; pace: number[]; bends: Bend[] } {
   const r = f.route!;
+  const floor: number[] = [];
   const pts = r.map((p) => {
     const g = project(sc.map, p.at);
+    floor.push(g.Y);
     return { x: g.X, y: g.Y - p.lift };
   });
   const pace = r.slice(1).map((p, i) => Math.max(0.05, dist(r[i].at, p.at)));
-  return { pts, pace };
+  return { pts, pace, bends: keepAbove(pts, floor, f.bends ?? [], margin) };
 }
 
 /** One of his frames as a picture to cut columns from: where its pixels are, and where they sit in the frame. */
@@ -516,8 +521,8 @@ function drawTrail(ctx: CanvasRenderingContext2D, pts: XY[], bends: Fx['bends'],
  * the water dragon's head (vfx_dragon/water_head, turned along it) with its body behind it.
  */
 function drawRoute(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number): boolean {
-  const { pts, pace } = routeOf(sc, f);
-  const bends = f.bends ?? [];
+  // The water dragon's body reaches about 22 px below its middle; a rock bullet is small.
+  const { pts, pace, bends } = routeOf(sc, f, f.trail ? 28 : 6);
   if (f.trail) {
     const head = worldSprite('vfx_dragon', 'water_head');
     const tile = sheet(f.element, 'stream', f.tint);
@@ -527,11 +532,13 @@ function drawRoute(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number):
     const t = Math.min(1, ms / arrive);
     const alpha = ms > arrive ? Math.max(0, 1 - (ms - arrive) / Math.max(1, f.dur - arrive)) : 1;
     drawTrail(ctx, pts, bends, pace, t, tile, frameAt(tile, 'fly', ms), alpha);
-    if (ms < arrive) {
+    const appear = f.trail.appear ?? 0;
+    if (ms < arrive && ms >= appear) {
       const p = wanderPoint(pts, bends, t, pace);
       const d = wanderHeading(pts, bends, t, pace);
       const r = turnedRow(h, d.x, d.y, 10);
-      blit(ctx, h, r.anim, 0, p.x, p.y, r.mirror);
+      // It forms on the jet's tip in 100 ms.
+      blit(ctx, h, r.anim, 0, p.x, p.y, r.mirror, Math.min(1, (ms - appear) / 100));
     }
     return true;
   }

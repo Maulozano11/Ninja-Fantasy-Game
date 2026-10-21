@@ -79,6 +79,12 @@ describe('jutsu effects, round 1', () => {
     const j = out.events.findIndex((e) => e.t === 'jutsu');
     assert.ok(w >= 0 && w < j, 'the weapon is stowed first');
     assert.equal(out.state.units.a.armed, false);
+    // With the free interaction already spent and the weapon in hand, it waits.
+    const busy = structuredClone(s);
+    busy.units.a.turn.interacted = true;
+    const no = applyAction(busy, { type: 'jutsu', unit: 'a', jutsu: 'leaf_hurricane_senpuu', at: { ...u.pos } });
+    assert.equal(no.ok, false);
+    assert.equal(no.reason, 'handsBusy');
   });
 
   it('puts the weapon away for the Chidori, then runs in and thrusts the bare hand; it waits with the free interaction spent', () => {

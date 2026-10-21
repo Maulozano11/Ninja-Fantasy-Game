@@ -14,6 +14,7 @@ import { closestPoint } from '../../battle/structures';
 import { midpoint } from '../../battle/combat';
 import type { Bend } from './paths';
 import { bendsOf, seedOf } from './paths';
+import { CRESCENT, crescentStart, effectLands, vortexAt } from './stagePlan';
 
 export interface UnitView {
   pos: Pt;
@@ -141,9 +142,10 @@ export interface Fx {
   /**
    * The water dragon: its head (vfx_dragon/water_head, turned along its path) flies for `arrive` ms
    * with its body of water (the stream without its head) laid behind it all the way from the hand;
-   * the body fades whole in the rest of the effect's time.
+   * the body fades whole in the rest of the effect's time. The head shows from `appear` ms on (it
+   * forms on the jet's tip once that is clear of the caster's body, so it is never drawn over it).
    */
-  trail?: { arrive: number };
+  trail?: { arrive: number; appear?: number };
 }
 
 /**
@@ -681,7 +683,8 @@ export class Playback {
         // out of it with a fireball in its mouth and spits a fan of fireballs over the cone, each
         // bursting on the one it reaches (or at the cone's end); the head burns and sinks as in his
         // Annihilation, and the wall goes down with its own frames backwards.
-        announce(380);
+        // The name at the usual height: higher, it floated up among the round counter and the initiative bar.
+        announce();
         this.setPose(a, 'cast', now, 900);
         const cone = ev.shape?.kind === 'cone' ? ev.shape : null;
         const wallAt = ahead(-3.3, -0.37);
@@ -741,9 +744,11 @@ export class Playback {
         let first = Infinity;
         let end = 3150;
         pts.forEach((p) => {
-          const t0 = 1100 + GROW * Math.min(1, dist(mouth, p) / Math.max(0.1, dist(mouth, endAt)));
+          const k = Math.min(1, dist(mouth, p) / Math.max(0.1, dist(mouth, endAt)));
+          const t0 = 1100 + GROW * k;
           first = Math.min(first, t0);
-          end = Math.max(end, burst(el, p, t0, 50));
+          // The fire hit where the stream passes it (the stream comes down from the mouth to the line's end).
+          end = Math.max(end, burst(el, p, t0, Math.round(UP + (50 - UP) * k)));
         });
         linger(end);
         return Number.isFinite(first) ? first : 1500;
@@ -758,8 +763,16 @@ export class Playback {
         const miss = this.missedNext(ev.unit);
         const to = miss ? pastTarget(hand, ev.at, 'straight') : ev.at;
         const fly = Math.max(800, dist(hand, to) * 130);
-        const route = [{ at: hand, lift: HAND_LIFT }, { at: to, lift: miss ? 12 : 56 }];
-        this.fx.push({ ...base, kind: 'projectile', from: hand, to, t0: at(CAST), dur: fly + 300, route, bends: bendsOf(seed, 1, 34, 80, 0.5), trail: { arrive: fly } });
+        const endLift = miss ? 12 : 56;
+        // His head is 2.7 m long and its middle rides the jet's tip: it forms there once the tip is
+        // 1.3 m out of the hands (the jet leaves them alone until then), so it never covers the
+        // caster. The bend is on the rest of the way.
+        const d = Math.max(0.01, dist(hand, to));
+        const clear = Math.min(1.3, Math.max(0, d - 1.5));
+        const launch = { x: hand.x + ((to.x - hand.x) * clear) / d, z: hand.z + ((to.z - hand.z) * clear) / d };
+        const route = clear > 0.05 ? [{ at: hand, lift: HAND_LIFT }, { at: launch, lift: HAND_LIFT + ((endLift - HAND_LIFT) * clear) / d }, { at: to, lift: endLift }] : [{ at: hand, lift: HAND_LIFT }, { at: to, lift: endLift }];
+        const bends = [...(clear > 0.05 ? [{ a: 0, b: 0 }] : []), ...bendsOf(seed, 1, 34, 80, 0.5)];
+        this.fx.push({ ...base, kind: 'projectile', from: hand, to, t0: at(CAST), dur: fly + 300, route, bends, trail: { arrive: fly, appear: (fly * clear) / d } });
         const end = burst(el, to, CAST + fly, miss ? 12 : 56);
         if (!miss) this.shakeAt(now, CAST + fly, 2);
         linger(Math.max(end, CAST + fly + 300));
@@ -821,6 +834,11 @@ export class Playback {
           return CAST + 400;
         }
         const end = burst(el, to, 960, 56);
+        // A target that resists takes the blow but is not sealed: no seal circle closes on it.
+        if (!effectLands(this.queue, spec.effect ?? 'chakra_sealed')) {
+          linger(Math.max(end, CAST + 1640));
+          return 1060;
+        }
         piece({ group: 'vfx_chakra', name: 'blast', t0: 960, from: to, depth: to.z - 0.01, rows: [{ anim: 'blast', ms: 170, frames: [0, 1] }, { anim: 'blast', ms: 800, frames: [11] }, { anim: 'blast', ms: 270, frames: [12, 13, 14, 15] }] });
         linger(Math.max(end, 2200));
         return 1060;
@@ -837,20 +855,23 @@ export class Playback {
         const uz = (ev.at.z - from.z) / d;
         const blade = { x: from.x + ux * 0.6, z: from.z + uz * 0.6 };
         const past = { x: ev.at.x + ux * 1, z: ev.at.z + uz * 1 };
-        const STRIKE = 130;
+        // Each crescent leaves on the cut itself (the sword's frame 1), not in the wind-up (stagePlan).
+        const { BLOW, WIND, STRIKE } = CRESCENT;
         for (let i = 0; i < n; i++) {
-          const t = i * 220;
+          const t = i * BLOW;
           const lift = n === 3 ? [74, 56, 38][i] : 80 - (i * 50) / (n - 1);
-          if (i === 0) this.setPose(a, 'attack', now, 480);
-          else this.later(now, t, (tn) => this.setPose(a, 'attack', tn, 480));
+          // From the blow's own time, not the tick its timer runs on (a late tick would put the pose behind its crescent).
+          const blow = () => this.setPose(a, 'attack', at(t) - WIND / this.speed, 480);
+          if (i === 0) blow();
+          else this.later(now, t, blow);
           this.later(now, t, () => h.sound('swing'));
           piece({ group: 'vfx_chakra', name: 'slash', element: 'chakra', t0: t + STRIKE, from: blade, path: [{ ms: 0, at: blade, dy: -lift }, { ms: 300, at: past, dy: -lift }], rows: [{ anim: 'fly', ms: 360 }], fade: 90 });
         }
         if (miss) {
-          linger(n * 220 + 400);
+          linger(n * BLOW + 400);
           return STRIKE + 150;
         }
-        const end = burst('chakra', ev.at, n * 220 + 60, 56, 'hit', undefined);
+        const end = burst('chakra', ev.at, n * BLOW + 60, 56, 'hit', undefined);
         linger(end);
         return STRIKE + 170;
       }
@@ -862,10 +883,19 @@ export class Playback {
         this.setPose(a, 'cast', now, 900);
         const c = ev.shape?.kind === 'circle' ? ev.shape.center : ev.at;
         const r = ev.shape?.kind === 'circle' ? ev.shape.radius : 3;
-        const vortex = { x: c.x - f * (r + 1.2), z: c.z };
+        // Beside the circle on the caster's side, or on the far side when that would be over the caster.
+        const vortex = vortexAt(c, r, from, f);
         const UP = 170;
-        piece({ group: 'vfx_beasts', name: 'genjutsu', element: 'genjutsu', t0: CAST, from: vortex, path: [{ ms: 0, dy: -UP }], rows: [{ anim: 'summon', ms: 500 }, { anim: 'summon', ms: 400, frames: [1, 0] }], fade: 300 });
-        piece({ group: 'vfx_beasts', name: 'genjutsu', element: 'genjutsu', t0: 1060, from: vortex, path: [{ ms: 0, at: vortex, dy: -UP }, { ms: 600, at: c, dy: -40 }], rows: [{ anim: 'fly', ms: 640 }], fade: 120 });
+        // The flock faces the way it dives (back toward the caster when it opens on the far side).
+        const flip = (c.x - vortex.x) * f < 0;
+        const crows = (o: Parameters<typeof piece>[0]) => {
+          const t0 = piece(o);
+          const fx = this.fx[this.fx.length - 1];
+          if (flip && fx.run) fx.run.mirror = !fx.run.mirror;
+          return t0;
+        };
+        crows({ group: 'vfx_beasts', name: 'genjutsu', element: 'genjutsu', t0: CAST, from: vortex, path: [{ ms: 0, dy: -UP }], rows: [{ anim: 'summon', ms: 500 }, { anim: 'summon', ms: 400, frames: [1, 0] }], fade: 300 });
+        crows({ group: 'vfx_beasts', name: 'genjutsu', element: 'genjutsu', t0: 1060, from: vortex, path: [{ ms: 0, at: vortex, dy: -UP }, { ms: 600, at: c, dy: -40 }], rows: [{ anim: 'fly', ms: 640 }], fade: 120 });
         const boom = blastMs(el, 1200);
         this.fx.push({ ...base, kind: 'area', from: c, to: c, area: ev.shape, t0: at(1660), dur: boom });
         let end = 1660 + boom;
@@ -935,15 +965,18 @@ export class Playback {
           this.gatherHand(a, el, tint, now, ev.enhanced, [], HAND_GATHER + 1200);
           t = HAND_GATHER;
         }
-        // The pierce at its pace from its chamber (frame 1): the lunge (frame 2) lands one frame in.
+        // Straight from the gather (the hand drawn back low) into the pierce's lunge (frame 2): its
+        // chamber would bring the hand, and the lightning in it, up over the chest.
         const FRAME = 1000 / POSE_FPS.pierce;
-        const thrust = (tn: number) => {
-          this.setPose(a, 'pierce', tn - FRAME / this.speed, 4 * FRAME);
+        // From the thrust's own time, not the tick its timer runs on: a late tick put the lunge a
+        // frame after the hit when the lightning gathered here.
+        const thrust = () => {
+          this.setPose(a, 'pierce', at(t) - (2 * FRAME) / this.speed, 5 * FRAME);
           h.sound('swing');
         };
         if (t) this.later(now, t, thrust);
-        else thrust(now);
-        const hit = t + FRAME + 15;
+        else thrust();
+        const hit = t + 15;
         const held = a.held;
         if (held) held.end = at(hit + 50);
         if (this.missedNext(ev.unit)) {
@@ -970,9 +1003,11 @@ export class Playback {
         let end = ms(8);
         order.forEach((x, j) => {
           const t0 = slots[j % slots.length] + Math.floor(j / slots.length) * 90;
-          const fly = Math.max(140, dist(from, x.p) * 60);
+          // It sets off out in front of the ninja on its way there, not on its body.
+          const out = crescentStart(from, x.p);
+          const fly = Math.max(140, dist(out, x.p) * 60);
           const away = x.p.x < from.x - 0.01;
-          this.fx.push({ kind: 'sprite', element: 'wind', from, to: x.p, t0: at(t0), dur: fly + 60, run: { group: 'vfx_wind', name: 'slash', mirror: away, rows: [{ anim: 'fly', ms: fly + 60 }], path: [{ ms: 0, at: from, dy: -54 }, { ms: fly, at: x.p, dy: -54 }], fade: 60 } });
+          this.fx.push({ kind: 'sprite', element: 'wind', from: out, to: x.p, t0: at(t0), dur: fly + 60, run: { group: 'vfx_wind', name: 'slash', mirror: away, rows: [{ anim: 'fly', ms: fly + 60 }], path: [{ ms: 0, at: out, dy: -54 }, { ms: fly, at: x.p, dy: -54 }], fade: 60 } });
           first = Math.min(first, t0 + fly);
           end = Math.max(end, burst('wind', x.p, t0 + fly, 56, 'hit', undefined));
           this.later(now, t0, () => h.sound('swing'));
@@ -985,13 +1020,14 @@ export class Playback {
 
   /**
    * The Chidori's lightning gathering in the near hand (the owner's answer 11): the hand drawn back
-   * (the pierce's chamber, held), his lightning hit growing and crackling there, then `after`, and
+   * low behind the hip (the sword's wind-up frame, held, with the hand empty: the pierce's chamber put
+   * the lightning over the chest), his lightning hit growing and crackling there, then `after`, and
    * it crackles on until the thrust lands (round1 'handLightning' ends it), or `ms` at most (a run cut
    * short never leaves it in the hand).
    */
   private gatherHand(v: UnitView, element: VfxElement, tint: string | undefined, now: number, enhanced: boolean, after: Held['rows'], ms: number): void {
-    this.setPose(v, 'pierce', now);
-    v.holdFrame = 1;
+    this.setPose(v, 'attack', now);
+    v.holdFrame = 0;
     const crackle = enhanced ? 'crackle_enh' : 'crackle';
     v.held = { group: 'vfx_hand', name: 'lightning_hand', element, tint, t0: now, end: now + ms / this.speed, rows: [{ anim: 'gather', ms: 330 }, { anim: crackle, ms: HAND_GATHER - 330 }, ...after, { anim: crackle, ms: 1 }] };
   }

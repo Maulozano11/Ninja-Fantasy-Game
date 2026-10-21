@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { bendsOf, reachOf, rng, seedOf, wanderHeading, wanderPoint } from './paths';
+import { bendsOf, keepAbove, reachOf, rng, seedOf, wanderHeading, wanderPoint } from './paths';
 
 const near = (a: { x: number; y: number }, b: { x: number; y: number }, eps = 1e-6) => Math.hypot(a.x - b.x, a.y - b.y) < eps;
 
@@ -54,5 +54,20 @@ describe('varied projectile paths', () => {
     const pts = [{ x: 0, y: 0 }, { x: 300, y: 0 }];
     const h = wanderHeading(pts, [{ a: 0, b: 0 }], 0.5);
     assert.ok(h.x > 0 && Math.abs(h.y) < 1e-9);
+  });
+});
+
+describe('varied paths kept above the ground', () => {
+  it('never dip below the ground line by more than the margin, and keep a bend that clears', () => {
+    // A level flight 60 px over the ground (floor y = 160 under points at y = 100).
+    const pts = [{ x: 0, y: 100 }, { x: 400, y: 100 }];
+    const floor = [160, 160];
+    for (let seed = 1; seed < 60; seed++) {
+      const kept = keepAbove(pts, floor, bendsOf(seed, 1, 34, 80, 0.5), 28);
+      for (let k = 0; k <= 50; k++) assert.ok(wanderPoint(pts, kept, k / 50).y <= 160 - 28 + 1e-6, `seed ${seed}`);
+      assert.ok(Math.abs(kept[0].a) > 0, `seed ${seed}: still bends`);
+    }
+    const up = [{ a: -50, b: 0 }];
+    assert.deepEqual(keepAbove(pts, floor, up, 28), up);
   });
 });

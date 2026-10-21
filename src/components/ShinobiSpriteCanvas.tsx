@@ -3,7 +3,7 @@ import { ShinobiCharacter } from '../types/shinobi';
 import { renderSpriteCached } from '../sprite/compose';
 import { CHAKRA_LOOP, ChakraMode, renderChakra } from '../sprite/chakra';
 import { dojutsuToEye, getAppearance } from '../sprite/legacy';
-import { frameCount, GROUND, POSE_FPS, rigPoseFor } from '../sprite/rig';
+import { COMBO_TURNED, FEET, frameCount, GROUND, POSE_FPS, rigPoseFor } from '../sprite/rig';
 import { BOX, GRID, RES } from '../sprite/raster';
 import { subscribeTick, TICK_FPS } from '../sprite/ticker';
 import type { CastStyle, SpriteAppearance, SpritePose } from '../sprite/types';
@@ -50,6 +50,21 @@ export function blendOver(dst: Uint8ClampedArray, src: Uint8ClampedArray): void 
     dst[i + 1] = (src[i + 1] * t + dst[i + 1] * da * (1 - t)) / oa;
     dst[i + 2] = (src[i + 2] * t + dst[i + 2] * da * (1 - t)) / oa;
     dst[i + 3] = oa * 255;
+  }
+}
+
+/** Mirrors a GRID x GRID RGBA buffer left to right about the column `cx` (fine px), in place. */
+function mirrorAbout(buf: Uint8ClampedArray, cx: number): void {
+  const row = new Uint8ClampedArray(GRID * 4);
+  for (let y = 0; y < GRID; y++) {
+    const o = y * GRID * 4;
+    row.set(buf.subarray(o, o + GRID * 4));
+    buf.fill(0, o, o + GRID * 4);
+    for (let x = 0; x < GRID; x++) {
+      const m = 2 * cx - 1 - x;
+      if (m < 0 || m >= GRID) continue;
+      buf.set(row.subarray(x * 4, x * 4 + 4), o + m * 4);
+    }
   }
 }
 
@@ -123,6 +138,8 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
       if (fx) blendOver(out, fx.back);
       blendOver(out, spr.rgba);
       if (fx) blendOver(out, fx.front);
+      // The combo's spin shows the ninja turned away for a moment, as in battle (renderer.ts: about the feet's column).
+      if (stance === 'combo' && COMBO_TURNED.includes(frame)) mirrorAbout(out, FEET.x);
       ctx.putImageData(img, -win.x, -win.y, win.x, win.y, win.w, win.h);
     });
   }, [look, stance, eye, isEnhanced, showAura, showShadow, win]);

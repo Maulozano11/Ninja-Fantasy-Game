@@ -99,3 +99,33 @@ export function wanderHeading(pts: readonly XY[], bends: readonly Bend[], t: num
   const b = wanderPoint(pts, bends, Math.min(1, t + dt), pace);
   return { x: b.x - a.x, y: b.y - a.y };
 }
+
+/**
+ * The bends of a path kept above the ground: `floor` is the screen y of the ground under each of
+ * its points, and no point of a leg may come lower than `margin` px over the ground line between
+ * its ends (the water dragon's body is drawn about 22 px below its middle, and a swing down could
+ * push it into the dirt). A leg that dips swings to the other side instead; if that dips too, it is
+ * flattened until it clears. Legs that already clear keep their bend.
+ */
+export function keepAbove(pts: readonly XY[], floor: readonly number[], bends: readonly Bend[], margin: number): Bend[] {
+  const N = 24;
+  const clears = (i: number, b: Bend): boolean => {
+    const leg = [pts[i], pts[i + 1]];
+    for (let k = 1; k < N; k++) {
+      const s = k / N;
+      const y = wanderPoint(leg, [b], s).y;
+      if (y > floor[i] + (floor[i + 1] - floor[i]) * s - margin) return false;
+    }
+    return true;
+  };
+  return bends.map((b, i) => {
+    if (i >= pts.length - 1 || clears(i, b)) return b;
+    const flip = { a: -b.a, b: -b.b };
+    if (clears(i, flip)) return flip;
+    for (let k = 0.85; k > 0.01; k *= 0.85) {
+      const less = { a: flip.a * k, b: flip.b * k };
+      if (clears(i, less)) return less;
+    }
+    return { a: 0, b: 0 };
+  });
+}

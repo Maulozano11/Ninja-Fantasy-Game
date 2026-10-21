@@ -161,7 +161,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   new art for 4 (Wood Dragon: his dragon from his icon, `vfx_wood`) and 11 (Chidori: his lightning
   in the hand and a bare-hand thrust, `vfx_hand`, the weapon stowed) is built too, waiting for his
   yes. Question: 10A plays his crow swarm, which is the genjutsu beast; with his new rule that
-  the elemental beasts become summons, is that fine for a genjutsu?
+  the elemental beasts become summons, is that fine for a genjutsu? Nine defects found playing
+  them in the game are fixed (seal circle on a resisted seal, water body in the ground, crescents
+  in the wind-up, effects over the caster, Chidori hit a frame early, the Llama Dragón name in the
+  HUD). Before a PR: merge the newer `jutsu/d-c-set` into it.
 - Chakra types (`docs/GAMEPLAY_DESIGN.md`, "Chakra type" and Open questions). **Decided
   2026-10-21** (his answers, built on `chakra/decisions`): the legends keep their new types; saved
   copies of the legends and companions move to their new type when they load; Shadow and Spirit

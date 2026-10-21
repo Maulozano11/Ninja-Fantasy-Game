@@ -80,14 +80,15 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
     assert.equal(r.loadout.slot4Clan, solen.selectedJutsus.slot4Clan, 'the clan secret stays (rank A)');
     assert.equal(r.loadout.slot5Ultimate, '', 'nothing of rank S: the slot is empty until it opens');
     assert.notEqual(r.loadout.slot3Elemental, 'crescent_moon_dance', 'rank B: swapped');
-    // A Fire Bukijutsu Master has one jutsu of rank D or C for the Element slots (Fireball): the
-    // other is left empty, never the same jutsu twice (the taijutsu one is the Taijutsu Master's).
-    assert.equal(r.loadout.slot3Elemental, '');
+    // A Fire Bukijutsu Master has Three Embers, Fireball and the Bleeding Cut of rank D or C for
+    // the Element slots: the second takes the first of them not already in the first, never the
+    // same jutsu twice.
+    assert.equal(r.loadout.slot3Elemental, 'fire_three_embers');
     assert.deepEqual(r.swaps.map((x) => x.slot), ['slot3Elemental', 'slot5Ultimate']);
     assert.deepEqual(fitNewNinja(r.loadout, natureOf(solen), solen.clan, solen.shinobiClass).swaps, [], 'once fitted, nothing more to swap');
     assert.deepEqual(aboveRank(r.loadout, solen.clan), []);
-    // As a Taijutsu Master, the Leaf Hurricane (D) takes the second Element slot.
-    assert.equal(fitNewNinja(solen.selectedJutsus, natureOf(solen), solen.clan, 'Taijutsu Master').loadout.slot3Elemental, 'leaf_hurricane_senpuu');
+    // As a Taijutsu Master too (Three Embers comes before the Leaf Hurricane and the Rush).
+    assert.equal(fitNewNinja(solen.selectedJutsus, natureOf(solen), solen.clan, 'Taijutsu Master').loadout.slot3Elemental, 'fire_three_embers');
   });
 
   it('every legend made a new ninja of any type and class: only D, C and its clan\'s, of its nature and class, never twice', () => {

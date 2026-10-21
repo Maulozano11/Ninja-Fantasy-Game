@@ -21,7 +21,7 @@ import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { leavesNodes, nodeUnder } from '../../battle/clans';
 import { GRID } from '../../sprite/raster';
-import { drawAuraBack, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
+import { drawAuraBack, drawLinger, drawVfxSprite, drawWallSprite, wallTint } from './vfxSprites';
 import { isTintElement, vfxTintColors } from '../../sprite/vfxTint';
 
 export interface Camera {
@@ -198,6 +198,8 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   void hydra;
   // An aura's back layer sits just behind its caster.
   for (const fx of sc.pb.fx) if (fx.kind === 'aura') items.push({ z: fxPos(sc, fx).z + 0.005, draw: () => drawAuraBack(ctx, sc, fx) });
+  // A lingering aura (the Breeze Mantle's wind until the ninja's next turn) wraps round the body too.
+  for (const [id, l] of sc.pb.lingers) items.push({ z: sc.pb.posOf(id, sc.now).z + 0.005, draw: () => drawLinger(ctx, sc, id, l, 'back') });
   // Lightning running along the water lies on the ground: what stands in front of it (a metal wall,
   // a unit) is drawn over it.
   for (const fx of sc.pb.fx) if (onGround(fx)) items.push({ z: fx.from.z + 0.005, draw: () => drawFx(ctx, sc, fx) });
@@ -206,6 +208,7 @@ export function drawBattle(ctx: CanvasRenderingContext2D, sc: Scene): void {
   // Aiming a Ryusei ability: the Nodes it can use, and where it lands, show over walls and units.
   if (sc.overlay.nodes) drawNodesOnTop(ctx, sc);
 
+  for (const [id, l] of sc.pb.lingers) drawLinger(ctx, sc, id, l, 'front');
   for (const fx of sc.pb.fx) if (!onGround(fx) && !drawVfxSprite(ctx, sc, fx)) drawFx(ctx, sc, fx);
 
   if (state.time === 'night') drawNight(ctx, sc, all);
@@ -835,7 +838,7 @@ function drawUnit(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, pos: Pt): v
   else {
     const n = framesOf(look, v.pose);
     const elapsed = ((now - v.poseT0) * sc.pb.speed) / 1000;
-    const oneShot = v.pose === 'attack' || v.pose === 'hurt' || v.pose === 'cast';
+    const oneShot = v.pose === 'attack' || v.pose === 'hurt' || v.pose === 'cast' || v.pose === 'tackle';
     frame = Math.floor(elapsed * fpsOf(v.pose));
     if (oneShot) frame = Math.min(frame, n - 1);
   }

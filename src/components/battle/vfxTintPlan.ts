@@ -1,7 +1,8 @@
 // Which colour a jutsu's effects take on the battle screen, and which sheets that needs: the pure
 // half of the chakra-coloured jutsu (the owner, 2026-10-21: every elemental jutsu and elemental
-// beast in the caster's chakra colour). No DOM here, so it is tested (vfxTintPlan.test.ts);
-// vfxTintCache.ts makes and keeps the recoloured sheets.
+// beast in the caster's chakra colour; "la curacion siempre se vera verde": the heals in green).
+// No DOM here, so it is tested (vfxTintPlan.test.ts); vfxTintCache.ts makes and keeps the
+// recoloured sheets.
 
 import type { JutsuSpec } from '../../battle/jutsu';
 import type { Unit, Wall } from '../../battle/types';
@@ -14,12 +15,21 @@ export function unitTint(u: Pick<Unit, 'look' | 'character'> | undefined): strin
 }
 
 /**
- * The colour a jutsu's effects take when `caster` casts it: its chakra colour for an elemental
- * jutsu (fire, water, wind, lightning, earth), else undefined (his colours). Enemies without a
- * chakra colour of their own keep his colours.
+ * The heals' green (the owner, 2026-10-21: "la curacion siempre se vera verde"): the glow the
+ * heals were drawn in before they took the water aura (renderer.ts), and the healed number's. A
+ * heal's element sheets (the Healing Dew's orb, the water aura of the Dew and the Mystical Palm)
+ * play in it, whoever casts it and whatever their chakra colour; his black line stays.
  */
-export function jutsuTint(spec: Pick<JutsuSpec, 'elemental' | 'element'> | undefined, caster: Pick<Unit, 'look' | 'character'> | undefined): string | undefined {
+export const HEAL_TINT = '#4ade80';
+
+/**
+ * The colour a jutsu's effects take when `caster` casts it: its chakra colour for an elemental
+ * jutsu (fire, water, wind, lightning, earth), the heals' green for a heal drawn in its element,
+ * else undefined (his colours). Enemies without a chakra colour of their own keep his colours.
+ */
+export function jutsuTint(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'special'> | undefined, caster: Pick<Unit, 'look' | 'character'> | undefined): string | undefined {
   if (!spec?.elemental || !isTintElement(spec.element)) return undefined;
+  if (spec.special === 'heal') return HEAL_TINT;
   return unitTint(caster);
 }
 
@@ -42,15 +52,29 @@ export const enhancedSig = (sig: string): string => (sig === 'fireball' ? 'fireb
  * battle can recolour them before it is cast. A sheet that is not in the game is skipped by the
  * caller; one that turns out unneeded only costs a little work. Empty for a non-elemental jutsu.
  */
-export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vfx' | 'sig' | 'shape' | 'special' | 'melee'>): TintSheetRef[] {
+export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vfx' | 'sig' | 'shape' | 'special' | 'melee' | 'seq'>): TintSheetRef[] {
   if (!spec.elemental || !isTintElement(spec.element)) return [];
   const el = spec.element;
+  // The rank D and C set's own sheets (vfx_dc): a volley's projectiles cut apart, the joined fan.
+  const own: TintSheetRef[] = [];
   const names: string[] = [];
   const add = (...n: string[]) => names.push(...n.filter((x) => !names.includes(x)));
-  if (spec.special === 'earthWall' || spec.special === 'waterWall') add('wall', 'wall_diag', 'wall_depth');
+  if (spec.seq?.volley && spec.shape === 'single') {
+    // Three Embers, Jolt, Pebble Shot: each projectile on its own, then its impact (earth's rock
+    // bullets have their own, the others the element's hit).
+    spec.seq.volley.paths.forEach((_, i) => own.push({ group: 'vfx_dc', name: `${el}_multi_${i}`, element: el }));
+    add(...(el === 'earth' && spec.vfx === 'multi' ? ['multi_hit'] : []), 'hit');
+  } else if (spec.seq?.connected && spec.shape === 'cone') {
+    // The Spark Fan: his forked lightning, joined, and a spark on each one it reaches.
+    own.push({ group: 'vfx_dc', name: `${el}_fan`, element: el });
+    add('hit');
+  } else if (spec.special === 'earthWall' || spec.special === 'waterWall') add('wall', 'wall_diag', 'wall_depth');
   else if (spec.special) {
-    // Heals, traps and the like are drawn in code; an aura of the element would play its sheets.
-    if (spec.vfx === 'aura') add('aura', 'aura_back');
+    // Heals, traps and the like are drawn in code; an aura of the element would play its sheets. A
+    // heal in the element's aura (the Healing Dew, the Mystical Palm) flies its orb first, if it has
+    // one; a heal plays them in the heals' green (jutsuTint).
+    if (spec.special === 'heal' && spec.seq?.healAura && spec.vfx !== 'aura') add(spec.vfx);
+    if (spec.vfx === 'aura' || spec.seq?.healAura) add('aura', 'aura_back');
   } else if (spec.shape === 'cone') add(...(spec.sig ? [spec.sig, enhancedSig(spec.sig)] : ['breath']));
   else if (spec.shape === 'line') add('stream', 'stream_head');
   else if (spec.melee) add(...(spec.vfx === 'multi' ? ['multi_hit'] : []), 'hit');
@@ -63,22 +87,26 @@ export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vf
     if (spec.shape === 'circle') add('blast');
     else add(...(spec.vfx === 'multi' ? ['multi_hit'] : []), 'hit');
   }
-  const out: TintSheetRef[] = names.map((name) => ({ group: `vfx_${el}`, name, element: el }));
+  const out: TintSheetRef[] = [...own, ...names.map((name) => ({ group: `vfx_${el}`, name, element: el }))];
   if (spec.vfx === 'beast' && !spec.sig && !spec.special) out.unshift({ group: 'vfx_beasts', name: el, element: el, beast: true });
   return out;
 }
 
-/** The sheets to recolour for a unit's jutsu, in its chakra colour (none when Natural or his colour already). */
+/**
+ * The sheets to recolour for a unit's jutsu, each in the colour it plays in (jutsuTint): its chakra
+ * colour (none when Natural or his colour already), and its heals' green whatever its colour, so a
+ * heal is ready in green before it is cast.
+ */
 export function unitTintSheets(u: Pick<Unit, 'look' | 'character' | 'jutsus'>, specOf: (id: string) => JutsuSpec | undefined): { ref: TintSheetRef; color: string }[] {
-  const color = unitTint(u);
-  if (!color) return [];
   const out: { ref: TintSheetRef; color: string }[] = [];
   const seen = new Set<string>();
   for (const id of u.jutsus) {
     const spec = specOf(id);
-    if (!spec) continue;
+    const color = jutsuTint(spec, u);
+    if (!spec || !color) continue;
     for (const ref of tintSheetsOf(spec)) {
-      const key = `${ref.group}/${ref.name}`;
+      // One sheet can play in two colours (the water aura: a heal's green, a water mantle's chakra colour).
+      const key = `${ref.group}/${ref.name}/${color}`;
       if (seen.has(key) || vfxTintIsNatural(ref.element, color, { beast: ref.beast, sprite: ref.name })) continue;
       seen.add(key);
       out.push({ ref, color });

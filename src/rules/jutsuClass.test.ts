@@ -35,8 +35,11 @@ describe('the taijutsu, kenjutsu and genjutsu jutsu belong to their class', () =
   it('which jutsu the class gates: those with no element in the Element and S-rank slots', () => {
     assert.deepEqual(ids(JUTSUS_DATA.filter(classGated)).sort(), [
       'crescent_moon_dance',
+      'genjutsu_mirage',
+      'kenjutsu_bleeding_cut',
       'leaf_hurricane_senpuu',
       'night_guy_dragon',
+      'taijutsu_rush',
       'temple_of_nirvana',
       'yasaka_magatama',
     ]);
@@ -72,16 +75,17 @@ describe('the taijutsu, kenjutsu and genjutsu jutsu belong to their class', () =
         }
     // Fire, every rank: each class sees its own kind and no other.
     const fire = (cls: ShinobiClassType) => ids(learnable('slot3Elemental', 'Fire', 'Mirai', cls));
-    assert.deepEqual(fire('Taijutsu Master'), ['fireball_goukakyu', 'dragon_fire_stream', 'leaf_hurricane_senpuu']);
-    assert.deepEqual(fire('Bukijutsu Master'), ['fireball_goukakyu', 'dragon_fire_stream', 'crescent_moon_dance']);
-    assert.deepEqual(fire('Genjutsu Adept'), ['fireball_goukakyu', 'dragon_fire_stream', 'temple_of_nirvana']);
-    assert.deepEqual(fire('Ninjutsu Specialist'), ['fireball_goukakyu', 'dragon_fire_stream']);
-    assert.deepEqual(fire('Medical Specialist'), ['fireball_goukakyu', 'dragon_fire_stream']);
+    assert.deepEqual(fire('Taijutsu Master'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream', 'leaf_hurricane_senpuu', 'taijutsu_rush']);
+    assert.deepEqual(fire('Bukijutsu Master'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream', 'kenjutsu_bleeding_cut', 'crescent_moon_dance']);
+    assert.deepEqual(fire('Genjutsu Adept'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream', 'genjutsu_mirage', 'temple_of_nirvana']);
+    assert.deepEqual(fire('Ninjutsu Specialist'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream']);
+    assert.deepEqual(fire('Medical Specialist'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream']);
     assert.deepEqual(ids(learnable('slot5Ultimate', 'Fire', 'Mirai', 'Genjutsu Adept')), ['great_fire_annihilation', 'yasaka_magatama']);
     assert.deepEqual(ids(learnable('slot5Ultimate', 'Fire', 'Mirai', 'Taijutsu Master')), ['great_fire_annihilation', 'night_guy_dragon']);
-    // A new ninja, D and C: a Fire genjutsu adept has Fireball; a taijutsu master also the Leaf Hurricane.
-    assert.deepEqual(ids(creatorChoices('slot2Elemental', 'Fire', 'Mirai', 'Genjutsu Adept')), ['fireball_goukakyu']);
-    assert.deepEqual(ids(creatorChoices('slot2Elemental', 'Fire', 'Mirai', 'Taijutsu Master')), ['fireball_goukakyu', 'leaf_hurricane_senpuu']);
+    // A new ninja, D and C: a Fire genjutsu adept has Three Embers, Fireball and the Mirage; a
+    // taijutsu master the Leaf Hurricane and the Rush instead of the Mirage.
+    assert.deepEqual(ids(creatorChoices('slot2Elemental', 'Fire', 'Mirai', 'Genjutsu Adept')), ['fire_three_embers', 'fireball_goukakyu', 'genjutsu_mirage']);
+    assert.deepEqual(ids(creatorChoices('slot2Elemental', 'Fire', 'Mirai', 'Taijutsu Master')), ['fire_three_embers', 'fireball_goukakyu', 'leaf_hurricane_senpuu', 'taijutsu_rush']);
   });
 
   it('a made ninja is held to its class too, at every rank', () => {
@@ -109,14 +113,18 @@ describe('changing class in the creator swaps the jutsu of another class, as a t
   const fresh: ShinobiCharacter = { ...DEFAULT_CHARACTER, id: 'ninja_new', selectedJutsus: { ...DEFAULT_CHARACTER.selectedJutsus, slot3Elemental: 'crescent_moon_dance', slot5Ultimate: '' } };
 
   it('a new ninja: the jutsu of another class become ones it may learn (D and C), or the slot is emptied', () => {
-    // Fire Bukijutsu -> Taijutsu Master: the Crescent Moon Dance (kenjutsu) becomes the Leaf Hurricane.
+    // Fire Bukijutsu -> Taijutsu Master: the Crescent Moon Dance (kenjutsu) becomes the first jutsu
+    // it may learn that is not already in Element I (Three Embers, rank D).
     const r = fitToClass(fresh, 'Fire', 'Taijutsu Master');
-    assert.deepEqual(r.swaps, [{ slot: 'slot3Elemental', from: 'crescent_moon_dance', to: 'leaf_hurricane_senpuu' }]);
-    assert.deepEqual(r.loadout, { ...fresh.selectedJutsus, slot3Elemental: 'leaf_hurricane_senpuu' });
+    assert.deepEqual(r.swaps, [{ slot: 'slot3Elemental', from: 'crescent_moon_dance', to: 'fire_three_embers' }]);
+    assert.deepEqual(r.loadout, { ...fresh.selectedJutsus, slot3Elemental: 'fire_three_embers' });
     assert.deepEqual(fitToClass({ ...fresh, selectedJutsus: r.loadout }, 'Fire', 'Taijutsu Master').swaps, [], 'once fitted, nothing more to swap');
-    // -> Genjutsu Adept: nothing of rank D or C but Fireball, already in Element I: the slot is emptied.
+    // -> Genjutsu Adept: the same (Fireball is already in Element I).
     const g = fitToClass(fresh, 'Fire', 'Genjutsu Adept');
-    assert.deepEqual(g.swaps, [{ slot: 'slot3Elemental', from: 'crescent_moon_dance', to: '' }]);
+    assert.deepEqual(g.swaps, [{ slot: 'slot3Elemental', from: 'crescent_moon_dance', to: 'fire_three_embers' }]);
+    // A class with nothing of rank D or C left to learn empties the slot.
+    const bare = { ...fresh, selectedJutsus: { ...fresh.selectedJutsus, slot2Elemental: 'fire_three_embers' } };
+    assert.deepEqual(fitToClass(bare, 'Fire', 'Ninjutsu Specialist').swaps, [{ slot: 'slot3Elemental', from: 'crescent_moon_dance', to: 'fireball_goukakyu' }]);
     // The same class: nothing changes.
     assert.deepEqual(fitToClass(fresh, 'Fire', 'Bukijutsu Master').swaps, []);
   });
@@ -140,7 +148,7 @@ describe('changing class in the creator swaps the jutsu of another class, as a t
     const shiori = legend('preset_gentle'); // Water, Taijutsu Master: Leaf Hurricane (D), Night Guy (S)
     const r = fitToClass(shiori, natureOf(shiori), 'Genjutsu Adept');
     assert.deepEqual(r.swaps, [
-      { slot: 'slot3Elemental', from: 'leaf_hurricane_senpuu', to: 'water_dragon_suiryuudan' },
+      { slot: 'slot3Elemental', from: 'leaf_hurricane_senpuu', to: 'water_geyser' },
       { slot: 'slot5Ultimate', from: 'night_guy_dragon', to: 'yasaka_magatama' },
     ]);
     const made = asMade({ ...shiori, id: 'ninja_made' });

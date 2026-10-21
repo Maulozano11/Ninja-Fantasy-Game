@@ -144,11 +144,11 @@ describe('what each choice opens (the builder\'s proposal: second element D and 
 
   it('the creator\'s offers follow the level and the choice', () => {
     const fire = (c: ShinobiCharacter, slot: JutsuSlot = 'slot2Elemental') => ids(slotChoices(c, slot, 'Fire', c.clan));
-    assert.deepEqual(fire(ninja(5)), ['fireball_goukakyu'], 'level 5, not chosen: D and C');
-    assert.deepEqual(fire(ninja(5, { natureGrowth: 'rank' })), ['fireball_goukakyu', 'dragon_fire_stream'], 'rank up: Fire B');
-    assert.deepEqual(fire(ninja(4, { natureGrowth: 'rank' })), ['fireball_goukakyu'], 'below level 5 the choice opens nothing');
-    assert.deepEqual(fire(ninja(5, { natureGrowth: 'element', extraNatures: ['Water'] })), ['fireball_goukakyu', 'water_shield_suijinheki'], 'Water: its C, not its B');
-    assert.deepEqual(fire(ninja(5, { natureGrowth: 'element', extraNatures: ['Earth'] })), ['fireball_goukakyu'], 'Earth has no D or C jutsu yet');
+    assert.deepEqual(fire(ninja(5)), ['fire_three_embers', 'fireball_goukakyu', 'kenjutsu_bleeding_cut'], 'level 5, not chosen: D and C');
+    assert.deepEqual(fire(ninja(5, { natureGrowth: 'rank' })), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream', 'kenjutsu_bleeding_cut'], 'rank up: Fire B');
+    assert.deepEqual(fire(ninja(4, { natureGrowth: 'rank' })), ['fire_three_embers', 'fireball_goukakyu', 'kenjutsu_bleeding_cut'], 'below level 5 the choice opens nothing');
+    assert.deepEqual(fire(ninja(5, { natureGrowth: 'element', extraNatures: ['Water'] })), ['fire_three_embers', 'fireball_goukakyu', 'water_geyser', 'water_shield_suijinheki', 'kenjutsu_bleeding_cut'], 'Water: its C, not its B');
+    assert.deepEqual(fire(ninja(5, { natureGrowth: 'element', extraNatures: ['Earth'] })), ['fire_three_embers', 'fireball_goukakyu', 'earth_pebble_shot', 'earth_spike_crown', 'kenjutsu_bleeding_cut'], 'Earth: its D and C (Pebble Shot, Spike Crown)');
     // The S-rank slot stays locked whatever the choice; the Utility and clan slots don't change.
     for (const g of [ninja(5), ninja(5, { natureGrowth: 'rank' }), ninja(5, { natureGrowth: 'element', extraNatures: ['Lightning'] })]) {
       assert.equal(slotLocked('slot5Ultimate', 'Fire', g.clan, g.shinobiClass, growthOf(g, 'Fire')), true);
@@ -183,12 +183,12 @@ describe('what each choice opens (the builder\'s proposal: second element D and 
     const ranked = ninja(5, { natureGrowth: 'rank', extraNatures: [], selectedJutsus: { ...DEFAULT_CHARACTER.selectedJutsus, slot2Elemental: 'dragon_fire_stream', slot3Elemental: 'water_shield_suijinheki' } });
     const water = chooseGrowth(ranked, 'Fire', 'element', 'Water');
     const r = fitToGrowth(ranked, water, 'Fire');
-    assert.deepEqual(r.swaps, [{ slot: 'slot2Elemental', from: 'dragon_fire_stream', to: 'fireball_goukakyu' }]);
+    assert.deepEqual(r.swaps, [{ slot: 'slot2Elemental', from: 'dragon_fire_stream', to: 'fire_three_embers' }]);
     assert.equal(r.loadout.slot3Elemental, 'water_shield_suijinheki', 'Water is its nature now');
     // Back to the higher rank: the Water jutsu goes, its slot gets what it may learn.
     const back = chooseGrowth({ ...water, selectedJutsus: r.loadout }, 'Fire', 'rank');
     const r2 = fitToGrowth(water, { ...back, selectedJutsus: r.loadout }, 'Fire');
-    assert.deepEqual(r2.swaps, [{ slot: 'slot3Elemental', from: 'water_shield_suijinheki', to: 'dragon_fire_stream' }]);
+    assert.deepEqual(r2.swaps, [{ slot: 'slot3Elemental', from: 'water_shield_suijinheki', to: 'fireball_goukakyu' }]);
     // A legend keeps its own higher jutsu: Raiga's Dragon Fire Stream stays when he leaves the second element and comes back.
     const raigaRank = chooseGrowth(RAIGA, 'Fire', 'rank');
     const r3 = fitToGrowth(RAIGA, raigaRank, 'Fire');

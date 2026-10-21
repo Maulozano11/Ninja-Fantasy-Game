@@ -51,6 +51,11 @@ export interface Conditions {
   prone?: boolean;
   /** Dodge: attacks against it have disadvantage until its next turn. */
   dodging?: boolean;
+  /**
+   * The Breeze Mantle's dodge (it comes with `dodging`): its own mark, so the screen keeps the wind
+   * around this ninja and not around one who simply dodged. Gone at the start of its next turn.
+   */
+  mantle?: boolean;
   /** Disengage: its movement this turn provokes no opportunity attacks. */
   disengaged?: boolean;
   /** Focusing chakra: attacks against it have advantage until its next turn. */
@@ -411,7 +416,8 @@ export interface RollInfo {
 
 /** What happened, in order, for the screens to animate and the log to tell. */
 export type BattleEvent =
-  | { t: 'move'; unit: string; path: Pt[]; run: boolean }
+  /** `jutsu`: the melee jutsu this run in belongs to (a flash-in, or a charge: JUTSU[jutsu].charge). */
+  | { t: 'move'; unit: string; path: Pt[]; run: boolean; jutsu?: string }
   /** `how`: 'phase' for a Ryusei's Warp Strike and Spatial Swap (the screen plays them as a body of blue light crossing over). */
   | { t: 'teleport'; unit: string; from: Pt; to: Pt; log?: boolean; how?: 'phase' }
   | { t: 'pushed'; unit: string; from: Pt; to: Pt; fall: number }

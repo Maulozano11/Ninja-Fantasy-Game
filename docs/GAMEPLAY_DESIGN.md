@@ -640,10 +640,14 @@ para las bestias elementales"*.
 - "Elemental" is the jutsu's nature: a sword art that borrows the wind's slash
   (Crescent Moon Dance, Kenjutsu) and the Adamantine Chains (Water, drawn as
   chakra) keep their colours; Pursuing Flame (Mirai, a Katon jutsu) takes it.
-  Mystical Palm (Water, drawn as a green heal) and the explosive tag (Fire,
-  drawn as a paper tag and its blast) have nothing drawn in their element, so
-  they keep their colours too. **Open question for the owner:** should a heal
-  of an elemental nature glow in the chakra colour?
+  The explosive tag (Fire, drawn as a paper tag and its blast) has nothing
+  drawn in its element, so it keeps its colours. The Mystical Palm (Water) used
+  to be drawn as a green heal; on `jutsu/d-c-set` it wraps the friend in the
+  water aura (the owner's answer 6 on the rank D and C proposal). The old open
+  question (should a heal of an elemental nature glow in the chakra colour) is
+  answered **no** (the owner, 2026-10-21): "la curacion siempre se vera verde".
+  The Palm and the Healing Dew play their water sheets in the heals' green,
+  whatever the caster's colour ("Rank D and C jutsu").
 - The flare when fire or lightning seals a hydra stump and the lightning that
   runs through water take the caster's colour too.
 - White is a cool silver on water, wind, lightning and earth, a faint gold on
@@ -858,7 +862,7 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 - Gaps the gate shows: Water has no S-rank jutsu (a Water ninja's S-rank slot
   offers only Yasaka no Magatama and Night Guy); Wind has one Element jutsu
   (Great Breakthrough Blade), so its second Element slot takes a jutsu with no
-  element.
+  element (two once the rank D and C jutsu go in: Whirl joins it).
 - The jutsu of Light (deity, angel and god) and of Void, Shadow and Spirit
   (demonic): to design when he says.
 - **Jutsu of a class** (his answer: "los que elijan de clase genjutsu kenjutsu
@@ -887,3 +891,125 @@ in the creator like any jutsu of their nature. Ranges convert at
 
 Visuals: Rasengan uses the chakra sphere, Venom Surge the poison stream,
 Water Stream the water stream.
+
+## Rank D and C jutsu (proposed 2026-10-21; the owner's answer the same day)
+
+Twelve low-rank jutsu for the creator, all drawn with the owner's approved
+element sets. The Spanish proposal (with its previews) was shown to him; he
+answered (verbatim): *"en 1 , 4 , 6 que son proyectiles separa los proyectiles
+y dales 3 trayectorias diferentes para que lleguen al objetivo de diferentes
+angulos 5 me gustaria conectar los rayos mejor para que se vea mejor el
+abanico, tajo sangrante sea va ser su propio vfx para que salga el corte de
+viento pero en blanco como si no tuviera elemento porque se supone que es asi
+, embestida haz que guarde el arma y que sea como una takleada y haz todos los
+cambios recomendados en todas las demas y enseñamelos"*. Built on the branch
+`jutsu/d-c-set` (rules and engine, then the effects), **waiting for his
+approval of the in-game captures**: nothing is merged before he says yes.
+
+Ranges convert at 1 square = 1.5 m. D costs 1 chakra, C costs 2 (the Dew is
+a D that costs 2, because it gets a fallen friend up from 6 m). Enhancing
+adds one die and grows the area (the general rule above).
+
+| jutsu (id) | nature, rank, slot | use | effect | enhanced |
+|---|---|---|---|---|
+| **Tres brasas** / Three Embers (`fire_three_embers`) | Fire, D, Element | action, 1 chakra, one target at 9 m | jutsu attack roll: 2d6 fire; like all fire it burns the bushes and sets off barrels and tags within 1 m of the target, even on a miss | +1 chakra: 3d6 |
+| **Remolino** / Whirl (`wind_whirl`) | Wind, D, Element | action, 1 chakra, one target at 9 m | STR save, half on a success: 1d8 bludgeoning; cuts the grass and bushes around the target (no hiding there any more) | +1: 2d8 |
+| **Manto de brisa** / Breeze Mantle (`wind_breeze_mantle`) | Wind, D, Utility | bonus action, 1 chakra, on yourself | until the start of your next turn, attacks against you have disadvantage (the Dodge action as a bonus action); no help against jutsu with a save; silent | cannot be enhanced |
+| **Calambre** / Jolt (`lightning_jolt`) | Lightning, D, Element | action, 1 chakra, one target at 7.5 m | CON save, nothing on a success; on a failure 1d6 lightning and **Numb for 2 rounds** (its own effect, `jolted`, "Entumecido": −2 to DEX rolls: DEX saves, ranged attacks, DEX checks; it ends after two of the target's turns and never outlasts the battle; with a cold night's Numb as well the −2 counts once); lightning runs through water | +1: 2d6 |
+| **Abanico de chispas** / Spark Fan (`lightning_spark_fan`) | Lightning, C, Element | action, 2 chakra, 4.5 m cone | DEX save, half on a success: 2d8 lightning to everyone in the cone, friends too | +2: 3d8, the cone reaches 5.6 m and opens wider |
+| **Guijarros** / Pebble Shot (`earth_pebble_shot`) | Earth, D, Element | **bonus action**, 1 chakra, one target at 9 m | jutsu attack roll: 1d6 bludgeoning. Strike first and it still flies (the blade is stowed for free); cast it first and the weapon stays stowed (drawing it again takes the bonus action, already spent) | +1: 2d6 |
+| **Corona de púas** / Spike Crown (`earth_spike_crown`) | Earth, C, Element | action, 2 chakra, everyone within 3 m of you | DEX save, half on a success: 2d8 piercing to all within 3 m, friends too, not the caster; a stomp: no seals, the weapon stays in hand | +2: 3d8 within 4.5 m |
+| **Rocío sanador** / Healing Dew (`water_healing_dew`) | Water, D, Utility | action, 2 chakra, a friend within 6 m or yourself | heals 1d8, and a fallen friend gets back up; no Medic bonus (as the Mystical Palm); silent; the AI doesn't use it (its healing is the Palm) | +1: 2d8 |
+| **Géiser** / Geyser (`water_geyser`) | Water, C, Element | action, 2 chakra, 1.5 m circle at 9 m | STR save, half on a success: 3d6 bludgeoning to everyone in the circle, friends too | +2: 4d6, 2.25 m |
+| **Espejismo** / Mirage (`genjutsu_mirage`) | Genjutsu, C, Element | action, 2 chakra, one target at 9 m | WIS save, nothing on a success; on a failure 2d6 psychic and **Confused** for 2 rounds (one turn in four lost); **silent** | +2: 3d6 |
+| **Tajo sangrante** / Bleeding Cut (`kenjutsu_bleeding_cut`) | Kenjutsu, D, Element | action, 1 chakra, melee, leaps in from up to 3 m | the blade is drawn for free; jutsu attack roll struck as a blow: 1d8 slashing and **Bleeding** on a hit (1d4 a turn until bandaged; 1d4 a road leg); **silent** | +1: 2d8 |
+| **Embestida** / Rush (`taijutsu_rush`) | Taijutsu, C, Element | action, 2 chakra, melee, charges up to 6 m | **the weapon is stowed** (free, like for seals) and the ninja **tackles**: a straight run to the target (nothing may stand in the way: a wall, a tree, a structure, deep water or a cliff edge), no opportunity attacks, no movement spent, then a jutsu attack roll struck as a blow: 2d8 bludgeoning. You end up beside the foe | +2: 3d8 |
+
+Rules that came with them (2026-10-21):
+- **A melee jutsu with an attack roll is struck as a blow** (Bleeding Cut,
+  Rush): the caster's jutsu attack bonus, but no cover, no disadvantage for a
+  foe close by, advantage against a prone target, flanking counts.
+- **Sword arts draw the blade** by themselves (free, once a turn). They need
+  a blade: a ninja with none in hand (a palm technique, the fists) can't cast
+  them, and with the blade stowed and the free draw spent the jutsu waits ("draw
+  the weapon first"); the AI doesn't plan them without a blade. This also fixes
+  the Dance of the Crescent Moon, which used to strike with the fists after a
+  jutsu stowed the blade.
+- **The Rush stows the weapon** (free, once a turn; with that spent and the
+  weapon in hand, it waits, like a jutsu with seals).
+- **A silent jutsu that wounds counts as an attack** (the proposal's piece
+  P6; the owner made the Mirage and the Bleeding Cut silent): it doesn't start
+  the fight in the stealth phase by itself. Like a blade, the caster gives
+  itself away once it has struck (a hidden caster still rolls from hiding), and
+  in the stealth phase the target that survives (or saves, or is missed) shouts
+  and the fight begins with the other unaware guards surprised, while one that
+  falls unseen leaves a body. No surprise damage: that is the blade's. A silent
+  jutsu that reaches several foes would be loud (none exists).
+- **The AI plans again after a bonus action**: after Pebble Shot it still
+  uses its action; with the action spent, a ninja that knows a damage jutsu
+  cast as a bonus action casts it at a foe in reach.
+- Enemies only cast what their template gives them; none of the shipped
+  enemies has these jutsu yet.
+
+How they look (the owner's answers; the screen reads them from each jutsu's
+`seq`, `pose` and `vfxSet` in `src/battle/jutsu.ts`):
+- **Three Embers, Jolt, Pebble Shot**: the projectiles fly apart, each one on
+  its own path (a high arc, a straight line, a low curve), so they reach the
+  target from different angles, a little apart in time, each with its own
+  impact. Pebble Shot also raises the earth aura during the cast beat and hits
+  with the rock-bullet impact.
+- **Spark Fan**: one trunk of his forked lightning from the hand, branching
+  to each one reached (the last fork cut off at the target, the branches a little
+  see-through so the targets stay in sight); it fades as a spark bursts on each
+  one hit, 80 ms apart, and the next turn waits for the last spark.
+- **Bleeding Cut**: its own effect, the wind's crescent cut in white, as a
+  sword art has no element (`vfx_neutral`).
+- **Rush**: a flash of chakra where the ninja sets off, a run at twice the
+  speed and a shoulder tackle (a new pose: the head tucked down behind the
+  leading shoulder; a katana stowed at the hip hangs back along the leg, a blade
+  on the back turns with the body only part of the way).
+- What a jutsu of this set throws leaves the casting hand (before the body, at
+  chest height), not the head; elemental ones play in the caster's chakra colour
+  like every elemental jutsu (the volleys' and the fan's own sheets too, and the
+  Mantle's lingering aura). The movement overlay and the next order wait until
+  a jutsu's last impact has played.
+- The others, the proposal's recommended option A: the Breeze Mantle's aura
+  stays faint (40 %) around the ninja until its next turn (its own mark,
+  `mantle`, so a plain Dodge shows no wind); Spike Crown in the charge pose with
+  the earth aura for 0.4 s, then a rock burst on each one reached; Healing Dew
+  flies the water orb to the friend and wraps it in the water aura for 0.8 s;
+  Geyser rises from the ground with no projectile (a 0.3 s warning splash, a
+  light shake); Mirage flies the eye-sphere half again as slow; Whirl as it was.
+- **Mystical Palm** (the owner's answer 6): the Healing Dew's water aura wraps
+  the friend for 0.8 s as it heals, with no orb (a touch), instead of the old
+  green glow.
+- **Healing is always green** (the owner, 2026-10-21): "la curacion siempre se
+  vera verde". The heals never take the chakra colour: the Palm's water aura
+  and the Healing Dew's orb and aura are his water pixels recoloured to the
+  heals' green (`#4ade80`, the old Palm glow's and the healed number's), his
+  dark line kept, whoever casts them (Natural and enemies too). Any later heal
+  drawn in an element does the same (`HEAL_TINT`, `jutsuTint` in
+  `src/components/battle/vfxTintPlan.ts`).
+
+The proposal's nine open questions. The branch was built with the proposal's
+defaults; the owner then answered 4 to 9 (2026-10-21), and his answers are
+built:
+1. Which ones go in: all twelve (he asked for all of them to be done).
+2. Names: as proposed.
+3. Animation: as above (his answers, and option A for the rest).
+4. Jolt: **his answer: Numb for 2 rounds** (piece P5): built, as its own
+   effect (`jolted`, shown as "Entumecido" like the cold night's Numb, which
+   still lasts until camp).
+5. Rush: **6 m** (his answer too).
+6. Healing Dew: **his answer: yes, the water aura on the Mystical Palm too**:
+   built (above).
+7. Pebble Shot looking more like "earth bullets" than *Balas de tierra*: kept
+   (his answer: yes).
+8. Mirage and Bleeding Cut: **his answer: silent** (piece P6): built (the
+   rule above).
+9. Who learns the Genjutsu, Kenjutsu and Taijutsu ones: his answer, *"9 los que
+   elijan de clase genjutsu kenjutsu o taijutsu"*: the class gates them (built
+   on the integration branch; the Mirage, the Bleeding Cut and the Rush are
+   gated like the others).
+Also not built (optional in the proposal): a style of cast per jutsu (P1), and
+the Geyser putting out burning units in its circle.

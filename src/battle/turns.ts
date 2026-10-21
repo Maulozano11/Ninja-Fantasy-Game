@@ -60,6 +60,11 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     }
     u.turn = { move: u.speed, action: true, bonus: true, reaction: true, moved: 0 };
     u.cond.dodging = false;
+    // The Breeze Mantle lasts until the start of its next turn: the screen hears it end.
+    if (u.cond.mantle) {
+      u.cond.mantle = false;
+      ev.push({ t: 'condition', unit: u.id, cond: 'mantle', on: false });
+    }
     u.cond.focusing = false;
     u.cond.disengaged = false;
     u.cond.waterWalk = false;

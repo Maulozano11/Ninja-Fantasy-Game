@@ -12,15 +12,16 @@ export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'vi
 
 /**
  * Weapon techniques: 'throw' hurls the held weapon (it is out of the hand from the release frame on,
- * see grip.ts throwRelease; the battle draws it in flight), 'pierce' is a lunging thrust.
+ * see grip.ts throwRelease; the battle draws it in flight), 'pierce' is a lunging thrust, 'tackle'
+ * a shoulder charge with the weapon put away (the Rush).
  */
-export type StrikePose = 'throw' | 'pierce';
+export type StrikePose = 'throw' | 'pierce' | 'tackle';
 
 /** Poses for moving around the battle map: walking, running, crouching, sneaking and lying downed. */
 export type MovePose = 'walk' | 'run' | 'crouch' | 'sneak' | 'downed';
 
 /** The poses the character creator previews. */
-export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'throw', 'pierce', 'cast', 'hurt', 'victory', 'charge'];
+export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'throw', 'pierce', 'tackle', 'cast', 'hurt', 'victory', 'charge'];
 
 export const MOVE_POSES: MovePose[] = ['walk', 'run', 'crouch', 'sneak', 'downed'];
 

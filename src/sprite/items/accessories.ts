@@ -257,10 +257,12 @@ function drawPalmGlow(g: DrawCtx, c: { glow: string }): void {
 /** A point on the torso in local units, following the breathing of the chest. */
 const stowAt = (g: DrawCtx, x: number, y: number): Vec => topPt(g)(x, y);
 
+const HIP_TACKLE = 0.45;
+
 /** Katana: sheathed at the hip, hilt forward (like the Hip Katana accessory). */
 function stowKatanaAtHip(g: DrawCtx, hilt: string, guard: string): void {
   const b = g.bp;
-  const dirBack = norm(add(scale(g.rig.right, -1), scale(g.rig.up, -0.62)));
+  const dirBack = g.rig.pose === 'tackle' ? norm(add(scale(g.rig.right, -HIP_TACKLE), scale(g.rig.up, -1))) : norm(add(scale(g.rig.right, -1), scale(g.rig.up, -0.62)));
   sheathedSword(g, g.L('waist'), g.rig.T(b.waistHalf * 0.6 + 3.2, 5.6), dirBack, { sheath: '#2a1e1e', hilt, guard }, { hilt: 3.8, sheath: 14, part: 'pelvis' });
 }
 
@@ -270,13 +272,15 @@ function backGrip(g: DrawCtx, deg: number): Vec {
   return stowAt(g, -b.shoulderHalf - 2.4, b.torsoLen + 2.8 - (deg < 0 ? 9 : 0));
 }
 
+const TACKLE_BACK = 30;
+
 /**
  * The angle a weapon stowed on the back is drawn at (`deg`: the one it rides at standing). The
- * weapon techniques pitch the body far forward (the release of 'throw', the lunge of 'pierce'): the
- * weapon turns with the back there, so its blade stays behind the body instead of sticking out
- * under the chin. Every other pose keeps it at `deg`.
+ * weapon techniques pitch the body far forward (the release of 'throw', the lunge of 'pierce', the
+ * shoulder of 'tackle'): the weapon turns with the back there, so its blade stays behind the body
+ * instead of sticking out under the chin. Every other pose keeps it at `deg`.
  */
-const backAngle = (g: DrawCtx, deg: number): number => (g.rig.pose === 'throw' || g.rig.pose === 'pierce' ? deg + g.rig.lean : deg);
+const backAngle = (g: DrawCtx, deg: number): number => (g.rig.pose === 'throw' || g.rig.pose === 'pierce' ? deg + g.rig.lean : g.rig.pose === 'tackle' ? deg + Math.min(g.rig.lean, TACKLE_BACK) : deg);
 
 /**
  * Knocked out, a weapon lies dropped on the ground in front of the body. The
@@ -946,7 +950,7 @@ export const ACCESSORY_ITEMS: ItemDef[] = [
       const T = g.rig.T;
       const b = g.bp;
       // Hilt points forward and up; scabbard trails back and down past the hip.
-      const dirBack = norm(add(scale(g.rig.right, -1), scale(g.rig.up, -0.62)));
+      const dirBack = g.rig.pose === 'tackle' ? norm(add(scale(g.rig.right, -HIP_TACKLE), scale(g.rig.up, -1))) : norm(add(scale(g.rig.right, -1), scale(g.rig.up, -0.62)));
       const hiltEnd = T(b.waistHalf * 0.6 + 3.2, 5.6);
       sheathedSword(g, L, hiltEnd, dirBack, { sheath: sh, hilt: hi, guard: gu }, { hilt: 3.8, sheath: 14, part: 'pelvis' });
       // Sageo cord loop

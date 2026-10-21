@@ -42,12 +42,13 @@ describe('which jutsu the nature gates', () => {
 
   it('the offers per nature, as the creator shows them', () => {
     const offer = (n: ChakraNature, slot: JutsuSlot) => ids(jutsuChoices(slot, n, 'Mirai'));
-    const free = ['leaf_hurricane_senpuu', 'crescent_moon_dance', 'temple_of_nirvana'];
-    assert.deepEqual(offer('Fire', 'slot2Elemental'), ['fireball_goukakyu', 'dragon_fire_stream', ...free]);
-    assert.deepEqual(offer('Water', 'slot2Elemental'), ['water_dragon_suiryuudan', 'water_shield_suijinheki', ...free]);
-    assert.deepEqual(offer('Earth', 'slot2Elemental'), ['earth_wall_doryuheki', 'earth_spear_doryuudan', ...free]);
-    assert.deepEqual(offer('Wind', 'slot2Elemental'), ['wind_blade_daitoppa', ...free]);
-    assert.deepEqual(offer('Lightning', 'slot3Elemental'), ['chidori_lightning_blade', 'lightning_hound_raidon', ...free]);
+    // Each element's rank D and C jutsu come first (docs/GAMEPLAY_DESIGN.md, "Rank D and C jutsu").
+    const free = ['leaf_hurricane_senpuu', 'taijutsu_rush', 'kenjutsu_bleeding_cut', 'crescent_moon_dance', 'genjutsu_mirage', 'temple_of_nirvana'];
+    assert.deepEqual(offer('Fire', 'slot2Elemental'), ['fire_three_embers', 'fireball_goukakyu', 'dragon_fire_stream', ...free]);
+    assert.deepEqual(offer('Water', 'slot2Elemental'), ['water_geyser', 'water_dragon_suiryuudan', 'water_shield_suijinheki', ...free]);
+    assert.deepEqual(offer('Earth', 'slot2Elemental'), ['earth_pebble_shot', 'earth_spike_crown', 'earth_wall_doryuheki', 'earth_spear_doryuudan', ...free]);
+    assert.deepEqual(offer('Wind', 'slot2Elemental'), ['wind_whirl', 'wind_blade_daitoppa', ...free]);
+    assert.deepEqual(offer('Lightning', 'slot3Elemental'), ['lightning_jolt', 'lightning_spark_fan', 'chidori_lightning_blade', 'lightning_hound_raidon', ...free]);
     assert.deepEqual(offer('Fire', 'slot5Ultimate'), ['great_fire_annihilation', 'yasaka_magatama', 'night_guy_dragon']);
     assert.deepEqual(offer('Lightning', 'slot5Ultimate'), ['kirin_thunder', 'yasaka_magatama', 'night_guy_dragon']);
     assert.deepEqual(offer('Water', 'slot5Ultimate'), ['yasaka_magatama', 'night_guy_dragon'], 'no Water S-rank yet');
@@ -80,11 +81,11 @@ describe('changing the chakra type in the creator', () => {
     const r = fitLoadout(solen.selectedJutsus, 'Lightning', solen.clan);
     assert.deepEqual(r.loadout, {
       ...solen.selectedJutsus,
-      slot2Elemental: 'lightning_hound_raidon', // B, before Chidori (A)
+      slot2Elemental: 'lightning_jolt', // D, before the Spark Fan (C), the Hound (B) and Chidori (A)
       slot5Ultimate: 'kirin_thunder',
     });
     assert.deepEqual(r.swaps, [
-      { slot: 'slot2Elemental', from: 'fireball_goukakyu', to: 'lightning_hound_raidon' },
+      { slot: 'slot2Elemental', from: 'fireball_goukakyu', to: 'lightning_jolt' },
       { slot: 'slot5Ultimate', from: 'great_fire_annihilation', to: 'kirin_thunder' },
     ]);
     assert.equal(r.loadout.slot3Elemental, 'crescent_moon_dance', 'no element: it stays');
@@ -95,11 +96,10 @@ describe('changing the chakra type in the creator', () => {
   it('two Element jutsu of the old element become two different ones', () => {
     const fire = { ...solen.selectedJutsus, slot2Elemental: 'fireball_goukakyu', slot3Elemental: 'dragon_fire_stream' };
     const r = fitLoadout(fire, 'Lightning', solen.clan);
-    assert.deepEqual([r.loadout.slot2Elemental, r.loadout.slot3Elemental], ['lightning_hound_raidon', 'chidori_lightning_blade']);
+    assert.deepEqual([r.loadout.slot2Elemental, r.loadout.slot3Elemental], ['lightning_jolt', 'lightning_spark_fan']);
+    // Wind has two Element jutsu now (Whirl, D, and the Great Breakthrough Blade, C).
     const wind = fitLoadout(fire, 'Wind', solen.clan).loadout;
-    assert.equal(wind.slot2Elemental, 'wind_blade_daitoppa');
-    assert.notEqual(wind.slot3Elemental, wind.slot2Elemental);
-    assert.ok(!natureGated(JUTSUS_DATA.find((j) => j.id === wind.slot3Elemental)!), 'Wind has one Element jutsu: the other is one with no element');
+    assert.deepEqual([wind.slot2Elemental, wind.slot3Elemental], ['wind_whirl', 'wind_blade_daitoppa']);
   });
 
   it('to Light or Void (no element): the elemental jutsu give way to jutsu with no element', () => {

@@ -139,8 +139,13 @@ function hostileWithin(s: BattleState, u: Unit, r: number): boolean {
   return Object.values(s.units).some((o) => o.team !== u.team && standing(o) && o.kind !== 'hydra_body' && dist(o.pos, u.pos) <= r + 0.05);
 }
 
-/** Everything about an attack before rolling: the % shown on the screen. */
-export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind, opts: { jutsuRange?: number } = {}): AttackPreview {
+/**
+ * Everything about an attack before rolling: the % shown on the screen. `opts.melee`: a jutsu
+ * struck in person (a sword art, a tackle) rolls with the caster's jutsu attack but is a blow like
+ * any other: no cover, no penalty for a foe close by, advantage on a prone target, flanking.
+ */
+export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind, opts: { jutsuRange?: number; melee?: boolean } = {}): AttackPreview {
+  const close = kind === 'melee' || !!opts.melee;
   const am = effectMods(a.effects);
   const tm = effectMods(t.effects);
   const d = dist(a.pos, t.pos);
@@ -161,7 +166,7 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
       reasons.push('longRange');
     }
   }
-  const cover = kind === 'melee' ? 0 : coverBetween(s, a.pos, t.pos, [a.id, t.id]);
+  const cover = close ? 0 : coverBetween(s, a.pos, t.pos, [a.id, t.id]);
   const dl = unitLevel(s, a) - unitLevel(s, t);
   const height = dl >= 0.9 ? 2 : dl <= -0.9 ? -2 : 0;
   if (a.cond.hidden !== undefined) {
@@ -174,7 +179,7 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     reasons.push('behind');
   }
   if (t.cond.prone) {
-    advs.push(kind === 'melee' ? 'advantage' : 'disadvantage');
+    advs.push(close ? 'advantage' : 'disadvantage');
     reasons.push('prone');
   }
   if (t.cond.dodging) {
@@ -201,11 +206,11 @@ export function attackPreview(s: BattleState, a: Unit, t: Unit, kind: AttackKind
     advs.push('advantage');
     reasons.push('rage');
   }
-  if (kind === 'melee' && flanked(s, a, t)) {
+  if (close && flanked(s, a, t)) {
     advs.push('advantage');
     reasons.push('flanking');
   }
-  if (kind !== 'melee' && hostileWithin(s, a, 1.5)) {
+  if (!close && hostileWithin(s, a, 1.5)) {
     advs.push('disadvantage');
     reasons.push('closeEnemy');
   }

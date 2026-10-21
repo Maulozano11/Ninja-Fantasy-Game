@@ -1,50 +1,49 @@
-// Aurelia's eyes, the owner's pixels brought down to our scale (tools/refs/aurelia-eyes-from-ref.py
-// from docs/reference/aurelia-owner-reference.jpg). Generated: rerun the script to change it.
+// Aurelia's eyes, the owner's pixels at our scale (tools/refs/aurelia-eyes-from-ref.py from
+// docs/reference/aurelia-escala-juego-owner-reference.jpg). Generated: rerun the script to change it.
 
 import type { PaintedEye } from './eyeArt';
 
-/** Her colours, one character each. */
+/** His colours, one character each. */
 export const DAWN_EYE_COLORS: Record<string, string> = {
-  a: '#130f17',
-  b: '#06285b',
-  c: '#36221f',
-  d: '#226ba3',
-  e: '#329cbd',
-  f: '#5897c6',
-  g: '#a9968b',
-  h: '#eadeca',
-  i: '#ffffff',
+  a: '#070c24',
+  b: '#573c31',
+  c: '#235384',
+  d: '#286794',
+  e: '#4e9eca',
+  f: '#6bb5d7',
+  g: '#dfe2e5',
+  h: '#f3eee9',
 };
 
 /** Her eyes in each lid state: open, lowered (reading) and closed (knocked out), on the template's own eye cells and rows. */
 export const DAWN_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedEye; far: PaintedEye }> = {
-  /** Her eyes at our scale: the lash row with its brown inner tip; her white, blue, pupil and light blue; her shaded white, cyan and cream. */
+  /** Her eyes as he drew them: the navy lash with its brown outer tip; his greyed white and blue; his white and light blues. */
   open: {
     near: {
-      letters: ['LLLLL', 'Lwddi', 'shiih'],
-      rows: ['aaaac', 'aidbf', '.geeh'],
+      letters: ['LLLLb', 'Lhddb', 'swiib'],
+      rows: ['baaa.', 'bgcc.', '.hdf.'],
     },
     far: {
-      letters: ['LLo', 'iLo', 'dLo'],
-      rows: ['aa.', 'fa.', 'da.'],
+      letters: ['LLo', 'dLo', 'iLo'],
+      rows: ['aa.', 'ca.', 'ea.'],
     },
   },
-  /** Reading: her lash comes down a row over the eye; under it the eye's lower row. */
+  /** Reading: his lash comes down a row over the eye; under it the eye's lower row. */
   lowered: {
     near: {
-      letters: ['bbbbb', 'LLLLL', 'shiih'],
-      rows: ['.....', 'aaaac', '.geeh'],
+      letters: ['bbbbb', 'LLLLb', 'swiib'],
+      rows: ['.....', 'baaa.', '.hdf.'],
     },
     far: {
-      letters: ['bbo', 'LLo', 'dLo'],
-      rows: ['...', 'aa.', 'da.'],
+      letters: ['bbo', 'LLo', 'iLo'],
+      rows: ['...', 'aa.', 'ea.'],
     },
   },
-  /** Knocked out: her lash across the shut eye, the face's skin above and under it. */
+  /** Knocked out: his lash across the shut eye, the face's skin above and under it. */
   closed: {
     near: {
-      letters: ['bbbbb', 'LLLLL', 'sbbbl'],
-      rows: ['.....', 'aaaac', '.....'],
+      letters: ['bbbbb', 'LLLLb', 'sbbbb'],
+      rows: ['.....', 'baaa.', '.....'],
     },
     far: {
       letters: ['bbo', 'LLo', 'bbo'],
@@ -53,5 +52,5 @@ export const DAWN_EYES: Record<'open' | 'lowered' | 'closed', { near: PaintedEye
   },
 };
 
-/** Her mid blue, the colour her iris follows: the player's eye colour moves her iris as far. */
-export const DAWN_IRIS = '#226ba3';
+/** His blue, the colour her iris follows: the player's eye colour moves her iris as far. */
+export const DAWN_IRIS = '#235384';

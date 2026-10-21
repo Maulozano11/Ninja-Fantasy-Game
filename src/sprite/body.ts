@@ -428,8 +428,8 @@ const EYE_ROWS: Record<string, { near: string[]; far: string[] }> = {
   // The owner's eyes (src/sprite/eyeArt.ts), a row lower than ours and heavy-lidded: his brow (B) on
   // the row above the lash line, a single row of white and red iris under it. Drawn in his pixels.
   valiant: { near: VALIANT_EYES.open.near.letters, far: VALIANT_EYES.open.far.letters },
-  // Aurelia's eyes from the owner's picture (src/sprite/aureliaEyeArt.ts), on our own cells and rows:
-  // her lash with its brown inner tip, her white, blue iris and pupil, her cyan and cream under them.
+  // Aurelia's eyes from the owner's game-scale picture (src/sprite/aureliaEyeArt.ts), his pixels on our
+  // own cells and rows: his navy lash with its brown outer tip, his whites, his blue over light blues.
   dawn: { near: DAWN_EYES.open.near.letters, far: DAWN_EYES.open.far.letters },
 };
 
@@ -611,8 +611,8 @@ function drawFace(g: DrawCtx): void {
     set(ex - 1, ny + 1, EYELINE);
     set(ex - 1, ny + 2, EYELINE);
   } else if (female && !hers) {
-    // longer lashes at the outer corners (Aurelia's open lashes bring their own: they run down at the
-    // outer corner and stop at the face's edge)
+    // longer lashes at the outer corners (Aurelia's open lashes bring their own: his brown tip runs
+    // down the outer corner and the far lash stops at the face's edge)
     set(ex - 1, lash - 1, EYELINE);
     set(ex - 1, lash, EYELINE);
     set(fx + 3, lash, EYELINE);

@@ -9,7 +9,7 @@ import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppeara
 const look = (over: Partial<SpriteAppearance> = {}): SpriteAppearance => ({
   version: 1,
   body: 'female',
-  skin: '#f9ccaa',
+  skin: '#f2c7a0',
   eyeShape: 'dawn',
   eyeColor: DAWN_IRIS,
   slots: {},
@@ -62,24 +62,24 @@ describe("Aurelia's eyes", () => {
     for (const hex of used('open')) assert.ok(got.has(hex), hex);
   });
 
-  it('move her iris with the eye colour and keep her lash, whites and cream', () => {
+  it('move her iris with the eye colour and keep his lash and whites', () => {
     const got = colours(look({ eyeColor: '#22c55e' }));
-    for (const hex of ['#226ba3', '#06285b', '#329cbd', '#5897c6']) assert.ok(!got.has(hex), hex);
-    for (const hex of ['#130f17', '#36221f', '#ffffff', '#a9968b', '#eadeca']) assert.ok(got.has(hex), hex);
+    for (const hex of ['#235384', '#286794', '#4e9eca', '#6bb5d7']) assert.ok(!got.has(hex), hex);
+    for (const hex of ['#070c24', '#573c31', '#dfe2e5', '#f3eee9']) assert.ok(got.has(hex), hex);
   });
 
   it('shut over the eye when downed and lower over it when reading', () => {
     const shut = colours(look(), 'downed');
-    for (const hex of ['#226ba3', '#06285b', '#ffffff']) assert.ok(!shut.has(hex), hex);
-    assert.ok(shut.has('#130f17'));
+    for (const hex of ['#235384', '#6bb5d7', '#f3eee9', '#dfe2e5']) assert.ok(!shut.has(hex), hex);
+    assert.ok(shut.has('#070c24') && shut.has('#573c31'));
     const reading = colours(look(), 'read');
-    assert.ok(!reading.has('#06285b'), 'the pupil is under the lid');
-    assert.ok(reading.has('#329cbd') && reading.has('#eadeca'), 'the lower row shows');
+    assert.ok(!reading.has('#235384') && !reading.has('#dfe2e5'), 'the top row is under the lid');
+    assert.ok(reading.has('#286794') && reading.has('#6bb5d7') && reading.has('#f3eee9'), 'the lower row shows');
   });
 
   it('draw on every body in every pose', () => {
     const poses: SpritePose[] = [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES];
     for (const body of ['female', 'slender', 'male', 'bulky'] as BodyType[])
-      for (const pose of poses) assert.ok(colours(look({ body }), pose).has('#130f17'), `${body} ${pose}`);
+      for (const pose of poses) assert.ok(colours(look({ body }), pose).has('#070c24'), `${body} ${pose}`);
   });
 });

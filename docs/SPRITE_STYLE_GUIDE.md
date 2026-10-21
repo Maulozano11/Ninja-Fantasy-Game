@@ -53,6 +53,16 @@ The face is a template copied pixel by pixel from the reference (`FACE_MAIN` and
 - **Hands** are pixel templates (`HAND_*` in `ctx.ts`, about 9-10 px across like the reference's fist) rotated with RotSprite: lit knuckle pixels, shadow on the side away from the light, and near-black finger creases. A weapon hand wraps the grip with distinct 1 px fingers and a thumb crease, with the pommel and guard showing on either side of the fist. A free hand is small and relaxed (`hold` and `relaxed` shapes).
 - **Feet** are pixel templates in 3/4 front view (`FootArt`, `footDraw` in `ctx.ts`). The near foot faces the viewer with the toes at the bottom; the far foot points right and is authored a shade darker. Each footwear item supplies its own `FootArt` (legend: `0-5` main, `a-f` sole/straps, `p-u` skin, `v-z` metal or stitching); shafts stay procedural.
 
+### The female standard (bodies, animations and sprites)
+
+The owner's review of Aurelia on the new female body (2026-10-21), verbatim: "en las animaciones tienes errores en el hombro en arrojar (preparar) probablemente se arregle cuando arregles los hombros en el personaje mujer que le estas arreglando el hombro y brazo izquierdo y la mano en arrojada se ve cortada y tambien unos pixeles de la espalda se ven cortados en general en las animaciones y posturas los errores estan en ese brazo y hombro izquierdo que estas agregando entonces haz estos cambios el standard de el cuerpo animaciones y sprites femeninos para verse de la calidad que buscamos". So, on the female and slender bodies, in every pose and frame, with and without a weapon:
+
+- **The far arm hangs where his heroines draw it** (Lyra, Aurelia, Saya at our scale: `docs/reference/*-game-scale-owner-reference.jpg`): nearly straight, the elbow out away from the waist and the forearm down beside the hip, the fist's lowest row 177-181 at rest (`BodyParams.farArm` in `rig.ts`: a far arm 1.3 design units longer than the near one, bending its elbow out while it hangs). Before, it bent in toward the waist about 5 px nearer the body, the fist 3-4 rows higher.
+- **No broken shoulder.** His near shoulder piece (`FEMALE_SHOULDER_N`) is the round of a hanging arm: it is stamped only while the upper arm turns less than `SHOULDER_TURN` (30 degrees) from his; an arm raised (the throw's wind-up), swung across the chest or flung back keeps the body's own round shoulder with its line closed.
+- **No hand cut off.** His 5-7 px hands are never turned by an odd angle (that loses rows: the throw's release hand came out a stub). A hand that is not round a weapon's grip hangs as drawn up to 45 degrees and otherwise turns by a quarter turn at a time, which keeps every pixel.
+- **No pixels cut off anywhere**: every edge of a hand, arm, shoulder and the back is his line, never skin or cloth left open (`femaleBody.test.ts` checks every pose and frame of both bodies). A heroine's own pieces (sleeves, bodice) must not cut the body's line either.
+- Male and bulky stay byte-identical when the female standard changes.
+
 ## 6. Hair
 
 - Hair is a pixel template anchored on the face (`hairTemplate` in `hairkit.ts`). The near-eye iris is at `(nx + 2, ny + 1)` from `faceAnchor`.

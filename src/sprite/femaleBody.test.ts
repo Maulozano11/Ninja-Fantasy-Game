@@ -5,9 +5,9 @@ import { describe, it } from 'node:test';
 import { makeRamp } from './color';
 import { renderSprite } from './compose';
 import { FEMALE_HANDS, FEMALE_SHOULDER_N } from './femaleBodyArt';
-import { GRID, RES } from './raster';
+import { GRID, partIndex, RES } from './raster';
 import { ANKLE_N, BODY_PARAMS, drawRig, frameCount, GROUND } from './rig';
-import type { BodyType, SpriteAppearance, SpritePose } from './types';
+import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
 const SKIN = '#f6c7a6';
 const bare = (body: BodyType, feet?: string): SpriteAppearance =>
@@ -94,6 +94,51 @@ describe('female bodies at the owner\'s game scale', () => {
             const c = t.rows[y + dy]?.[x + dx];
             assert.ok(c !== undefined && c !== '.', `${k} (${x}, ${y}) opens onto (${x + dx}, ${y + dy})`);
           }
+        }
+      }
+    }
+  });
+
+  it('hangs the far arm where his heroines draw it: the elbow out from the body, the fist lower', () => {
+    // His far arms (Lyra, Aurelia, Saya at our scale, docs/reference/*-game-scale-owner-reference.jpg)
+    // hang nearly straight, the elbow out from the waist and the fist's lowest row 178-181.
+    for (const body of ['female', 'slender'] as BodyType[]) {
+      const r = drawRig(body, 'idle', 0);
+      const male = drawRig('male', 'idle', 0);
+      // the elbow lies on the outer side of the line from the shoulder to the wrist
+      const cross = (r.wristF.x - r.shoulderF.x) * (r.elbowF.y - r.shoulderF.y) - (r.wristF.y - r.shoulderF.y) * (r.elbowF.x - r.shoulderF.x);
+      assert.ok(cross < 0, `${body}: the far elbow bends out`);
+      assert.ok((r.elbowF.x - r.shoulderF.x) * RES >= 5, `${body}: the far elbow ${(r.elbowF.x - r.shoulderF.x) * RES} px out`);
+      const f = renderSprite(bare(body), 'idle', 0);
+      const hand = partIndex('handF');
+      let low = -1;
+      for (let i = 0; i < GRID * GRID; i++) if (f.rgba[i * 4 + 3] && f.part[i] === hand) low = Math.max(low, (i / GRID) | 0);
+      assert.ok(low >= 177 && low <= 181, `${body}: far fist's lowest row ${low}`);
+      // the male rig keeps its far arm
+      assert.ok(Math.abs(male.elbowF.x - male.shoulderF.x) * RES < 4);
+    }
+  });
+
+  it('keeps every bare hand whole and the near shoulder lined in every pose and frame', () => {
+    // A pixel of a hand or of the near shoulder on the figure's edge is his line, never skin left
+    // open (the throw's release hand came out a cut-off stub, the raised arm's shoulder broke its line).
+    const parts = new Set(['handN', 'handF', 'upperArmN'].map((p) => partIndex(p as Parameters<typeof partIndex>[0])));
+    for (const body of ['female', 'slender'] as BodyType[]) {
+      for (const pose of [...SPRITE_POSES, ...MOVE_POSES, ...CAMP_POSES] as SpritePose[]) {
+        if (pose === 'cast') continue; // the cast effect's runes sit over the hands
+        for (let fr = 0; fr < frameCount(pose); fr++) {
+          const f = renderSprite(bare(body), pose, fr);
+          const op = (x: number, y: number) => x >= 0 && y >= 0 && x < GRID && y < GRID && f.rgba[(y * GRID + x) * 4 + 3] > 0;
+          const open: string[] = [];
+          for (let y = 1; y < GRID - 1; y++) {
+            for (let x = 1; x < GRID - 1; x++) {
+              const i = y * GRID + x;
+              if (!op(x, y) || !parts.has(f.part[i]) || Math.max(f.rgba[i * 4], f.rgba[i * 4 + 1], f.rgba[i * 4 + 2]) < 70) continue;
+              if (!op(x + 1, y) || !op(x - 1, y) || !op(x, y + 1) || !op(x, y - 1)) open.push(`${x},${y}`);
+            }
+          }
+          // a fist round a thrown kunai's grip opens where the grip leaves it
+          assert.ok(open.length <= 3,`${body} ${pose} ${fr}: open edge at ${open.join(' ')}`);
         }
       }
     }

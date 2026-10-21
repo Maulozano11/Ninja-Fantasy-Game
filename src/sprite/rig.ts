@@ -69,7 +69,25 @@ export interface BodyParams {
    * draws it, so the waist curves in under the bust and the hips flare below it.
    */
   waistY?: number;
+  /**
+   * The far arm as the owner draws it on his heroines at our scale (docs/reference/
+   * {lyra,aurelia,saya}-game-scale-owner-reference.jpg): longer than the near one by `upper` and
+   * `fore` design units (his far fist hangs three or four rows lower than ours did), and hanging
+   * nearly straight with its elbow out away from the body and the forearm down beside the hip
+   * (ours bent in toward the waist, the forearm about five pixels nearer the body than his). Only a
+   * hanging far arm bends its elbow outward (HANG_BEND, HANG_REACH).
+   */
+  farArm?: { upper: number; fore: number };
 }
+
+/**
+ * A far arm hangs (BodyParams.farArm: its elbow bends out) when its hand is aimed within HANG_BEND
+ * degrees of straight down toward the front (half that toward the back) and at least HANG_REACH of
+ * the arm's length away: nearly straight, as his heroines' far arms hang. A fist drawn up to a guard
+ * or swung far back bends as every body's does.
+ */
+const HANG_BEND = 30;
+const HANG_REACH = 0.85;
 
 export const BODY_PARAMS: Record<BodyType, BodyParams> = {
   male: {
@@ -120,6 +138,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     headScale: 0.7,
     ankleLift: 2,
     waistY: 8.5,
+    farArm: { upper: 0.8, fore: 0.5 },
   },
   // Slimmer and curvier than 'female': narrow shoulders and waist, fuller bust
   // and hips, slender arms and long legs with a full thigh and fine ankles.
@@ -145,6 +164,7 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
     headScale: 0.7,
     ankleLift: 2,
     waistY: 8.5,
+    farArm: { upper: 0.8, fore: 0.5 },
   },
   bulky: {
     torsoLen: 15.2,
@@ -1110,24 +1130,27 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   const shoulderF = add(T(bp.shoulderHalf * 0.55, bp.torsoLen - 2.2), v(0, chestDy));
   const chestFront = add(T(bp.chestHalf * 0.5, bp.torsoLen - 6), v(0, chestDy));
 
-  const armLen = bp.upperArm + bp.forearm + bp.handR;
-  const resolve = (t: HandTarget, shoulder: Vec): Vec => {
+  const resolve = (t: HandTarget, shoulder: Vec, armLen: number): Vec => {
     if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
     if (t.from === 'kneeN') return add(legN.mid, v(t.x, t.y));
     if (t.from === 'kneeF') return add(legF.mid, v(t.x, t.y));
     return add(shoulder, scale(v(t.x, t.y), armLen));
   };
-  const solveArm = (shoulder: Vec, t: HandTarget, bend: 1 | -1 = 1) => {
-    const target = resolve(t, shoulder);
+  const solveArm = (shoulder: Vec, t: HandTarget, bend: 1 | -1, upper: number, fore: number, hang = false) => {
+    const target = resolve(t, shoulder, upper + fore + bp.handR);
     // Aim the wrist a little short of the target so the hand lands on it.
     const toT = sub(target, shoulder);
+    // A hanging far arm (BodyParams.farArm) bends its elbow out, away from the body.
+    const down = (Math.atan2(toT.y, toT.x) * 180) / Math.PI;
+    const b = hang && t.from === 'shoulder' && Math.hypot(t.x, t.y) >= HANG_REACH && down >= 90 - HANG_BEND && down <= 90 + HANG_BEND / 2 ? -1 : bend;
     const wristTarget = sub(target, scale(norm(toT), bp.handR * 0.8));
-    const r = solve2(shoulder, wristTarget, bp.upperArm, bp.forearm, bend);
+    const r = solve2(shoulder, wristTarget, upper, fore, b);
     const dir = norm(sub(r.end, r.mid));
     return { elbow: r.mid, wrist: r.end, hand: add(r.end, scale(dir, bp.handR * 0.9)) };
   };
-  const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1);
-  const aF = solveArm(shoulderF, f.handF);
+  const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1, bp.upperArm, bp.forearm);
+  const fa = bp.farArm;
+  const aF = fa ? solveArm(shoulderF, f.handF, 1, bp.upperArm + fa.upper, bp.forearm + fa.fore, true) : solveArm(shoulderF, f.handF, 1, bp.upperArm, bp.forearm);
 
   const headY = neck.y - 5.9 * bp.headScale + (f.headDy || 0);
   const headX = neck.x - 0.4 + (f.headDx || 0);

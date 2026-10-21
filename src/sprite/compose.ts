@@ -6,7 +6,7 @@ import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
 import { drawThrowKunai } from './items/accessories';
 import { drawHeadband } from './items/headband';
-import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
+import { add, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor, turnPoint, turnRig } from './rig';
 import { drawCampFx } from './campfx';
 import { drawCastFx } from './castfx';
@@ -216,9 +216,11 @@ function restore(L: Layer, s: ReturnType<typeof snapshot>): void {
  * is drawn over another (arm over the chest, belt over the shirt, scarf over
  * the armor, torso over the far arm, near leg over the far leg), the back part
  * is one shade darker for a pixel to the right and two rows below the front
- * part's outline. Skips outlines, flat and glowing colors, and the face.
+ * part's outline. Skips outlines, flat and glowing colors, and the face; with `keepPainted` (the female
+ * bodies, the owner's standard) also every hand-painted pixel (F_NO_TEXTURE: his hands, his shoulder, a
+ * heroine's skin pieces), whose shades are his.
  */
-function dropShadows(top: Int16Array, mat: Int16Array, shade: Uint8Array, flags: Uint8Array, mats: MaterialTable): void {
+function dropShadows(top: Int16Array, mat: Int16Array, shade: Uint8Array, flags: Uint8Array, mats: MaterialTable, keepPainted = false): void {
   const noCast = DEPTHS.map((d) => NO_CAST.has(d));
   const headBody = DEPTHS.indexOf('head.body');
   const headFace = DEPTHS.indexOf('head.face');
@@ -229,6 +231,7 @@ function dropShadows(top: Int16Array, mat: Int16Array, shade: Uint8Array, flags:
       const d = top[i];
       if (d < 0 || shade[i] < 2 || d === headFace) continue;
       if (d === headBody && flags[i] & F_NO_OUTLINE) continue; // the face template
+      if (keepPainted && flags[i] & F_NO_TEXTURE) continue;
       const kind = mats.kinds[mat[i]];
       if (kind === 'flat' || kind === 'glow') continue;
       for (const [dx, dy] of SHADOW_FROM) {
@@ -346,7 +349,7 @@ export function renderSprite(
       part[i] = L.part[i];
     }
   });
-  dropShadows(top, topMat, topShade, topFlags, mats);
+  dropShadows(top, topMat, topShade, topFlags, mats, isFemaleBody(look.body));
   const isLine = new Uint8Array(N);
   for (let i = 0; i < N; i++) {
     if (topMat[i] < 0) continue;

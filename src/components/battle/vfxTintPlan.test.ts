@@ -70,7 +70,7 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.deepEqual(names('wood_dragon_jutsu'), ['vfx_wood/wood_root', 'vfx_wood/wood_leaves', 'vfx_wood/wood_dragon', 'vfx_earth/multi_hit', 'vfx_earth/hit']);
     assert.ok(!tintSheetsOf(JUTSU.wood_dragon_jutsu).some((r) => r.beast), 'no beast flies');
     assert.deepEqual(names('earth_wall_doryuheki'), ['vfx_earth/wall', 'vfx_earth/wall_diag', 'vfx_earth/wall_depth']);
-    assert.deepEqual(names('chidori_lightning_blade'), ['vfx_hand/lightning_hand', 'vfx_lightning/hit']);
+    assert.deepEqual(names('chidori_lightning_blade'), ['vfx_charged/chidori_hand', 'vfx_lightning/aura', 'vfx_lightning/hit']);
     assert.ok(names('kirin_thunder').slice(0, 2).join() === 'vfx_lightning/kirin,vfx_lightning/kirin_enh');
     assert.deepEqual(names('katon_pursuing_flame'), ['vfx_fire/bolt', 'vfx_fire/hit']);
     // The rank D and C set: the volleys' projectiles cut apart and the joined fan (vfx_dc) take the colour too.

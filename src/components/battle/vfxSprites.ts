@@ -18,7 +18,7 @@ import type { TintedSheet } from './vfxTintCache';
 import { unitTint, wallElement } from './vfxTintPlan';
 import { keepAbove, wanderHeading, wanderPoint } from './paths';
 import type { Bend, XY } from './paths';
-import { dist } from '../../battle/map';
+import { cellCenter, dist } from '../../battle/map';
 import { BLOOD_GROUP, screenSplats, splatAt } from './bloodPlan';
 
 /** A sheet, and its copy in a chakra colour when it plays in one. */
@@ -616,7 +616,7 @@ function drawRoute(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx, ms: number):
  * What a ninja holds in its near hand (the Chidori's lightning, the owner's answer 11), its anchor at
  * the hand (x, y): its rows one after another, the last looping, in the caster's chakra colour.
  */
-export function drawHeld(ctx: CanvasRenderingContext2D, sc: Scene, h: Held, x: number, y: number): void {
+export function drawHeld(ctx: CanvasRenderingContext2D, sc: Scene, h: Held, x: number, y: number, facing: 1 | -1 = 1): void {
   const s = worldSprite(h.group, h.name);
   if (!s || !ready(s)) return;
   const sh = inTint(s, h.element, h.name, h.tint);
@@ -625,10 +625,38 @@ export function drawHeld(ctx: CanvasRenderingContext2D, sc: Scene, h: Held, x: n
   for (let i = 0; i < h.rows.length; i++) {
     const row = h.rows[i];
     if (ms < acc + row.ms || i === h.rows.length - 1) {
-      blit(ctx, sh, row.anim, frameAt(sh, row.anim, Math.max(0, ms - acc)), Math.round(x), Math.round(y), false);
+      blit(ctx, sh, row.anim, frameAt(sh, row.anim, Math.max(0, ms - acc)), Math.round(x), Math.round(y), !!h.faced && facing < 0);
       return;
     }
     acc += row.ms;
+  }
+}
+
+/** A small deterministic hash in [0, 1) (each crack's variant and turn stay the same frame to frame). */
+function hash01(a: number, b: number): number {
+  let h = (Math.imul(a | 0, 374761393) + Math.imul(b | 0, 668265263)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+/**
+ * The ground cracked under a charged ninja's steps (vfx_charged/ground_crack, one of its variants per
+ * cell): each crack shows as the walker gets there and fades as it mends. Never in a chakra colour.
+ */
+export function drawCracks(ctx: CanvasRenderingContext2D, sc: Scene, fade: number): void {
+  if (!sc.pb.cracks.size) return;
+  const s = worldSprite('vfx_charged', 'ground_crack') as Sheet | undefined;
+  if (!s || !ready(s)) return;
+  const n = s.spec.anims.idle?.frames ?? 1;
+  for (const [k, c] of sc.pb.cracks) {
+    if (sc.now < c.t0) continue;
+    const [cc, cr] = k.split(',').map(Number);
+    const born = Math.min(1, ((sc.now - c.t0) * sc.pb.speed) / 120);
+    const alpha = born * (c.gone === undefined ? 1 : Math.max(0, 1 - ((sc.now - c.gone) * sc.pb.speed) / fade));
+    if (alpha <= 0) continue;
+    const at = project(sc.map, cellCenter({ c: cc, r: cr }));
+    blit(ctx, s, 'idle', Math.floor(hash01(cc, cr) * n), Math.round(at.X), Math.round(at.Y), hash01(cr, cc) < 0.5, alpha * 0.95);
   }
 }
 

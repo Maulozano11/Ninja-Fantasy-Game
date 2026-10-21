@@ -109,7 +109,7 @@ export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vf
  * round1), in the order they play: his flame wall and dragon head (vfx_dragon) and the fireballs,
  * the half wall and head and the stream, the water dragon's head and its body of water, the rock
  * bullets cut apart (vfx_dc) and their bursts, the wood dragon's roots, leaves and dragon (vfx_wood)
- * and the rock bursts, the lightning in the hand (vfx_hand) and its hit. The others are not elemental.
+ * and the rock bursts, the lightning in the charged hand (vfx_charged), its aura and its hit. The others are not elemental.
  */
 function stageSheets(stage: NonNullable<NonNullable<JutsuSpec['seq']>['stage']>, el: TintElement): TintSheetRef[] {
   const own = (name: string) => ({ group: `vfx_${el}`, name, element: el });
@@ -126,7 +126,8 @@ function stageSheets(stage: NonNullable<NonNullable<JutsuSpec['seq']>['stage']>,
     case 'woodDragon':
       return ['wood_root', 'wood_leaves', 'wood_dragon'].map((name) => ({ group: 'vfx_wood', name, element: el })).concat([own('multi_hit'), own('hit')]);
     case 'handLightning':
-      return [{ group: 'vfx_hand', name: 'lightning_hand', element: el }, own('hit')];
+      // The activated Chidori: his lightning held in the charged hand, the aura round the ninja, the sparks and the blow (its hit).
+      return [{ group: 'vfx_charged', name: 'chidori_hand', element: el }, own('aura'), own('hit')];
     default:
       return [];
   }

@@ -127,6 +127,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `chakra/decisions` | not pushed (local) | The owner's four answers on the chakra types (saved legends updated, Shadow and Spirit pending, Cinder Nova kept) and the nature gating the elemental jutsu in the creator | **For review** |
 | `chakra/progression` | `51b44c0` on origin (WIP); the finished work is local, not pushed | His jutsu answers: D/C + clan for a new ninja (S-rank slot locked), the explosive tag as an item (throw / hide, save migration), the chakra type fixed once made; the taijutsu, kenjutsu and genjutsu jutsu gated by class; level 5: a second element or a higher rank, Kaien and Raiga's second natures | **For review** |
 | `jutsu/d-c-set` | not pushed yet (merged with the integration branch at `26371c4`) | 12 rank D and C jutsu (data, rules, AI, log; `docs/GAMEPLAY_DESIGN.md`, "Rank D and C jutsu"), then their effects (three projectile paths, the joined Spark Fan, the white Bleeding Cut, the Rush's tackle pose), in the caster's chakra colour; review fixes (sword arts need a blade, charges stop at deep water and cliffs); his answers 4–8 (Numb 2 rounds, silent Mirage and Bleeding Cut, the water aura on the Mystical Palm) | **Waiting for approval** of the in-game captures. Every element gains D/C jutsu in the nature filter's and the class gate's offers (their tests updated) |
+| `jutsu/gap-set` | on origin (made from `jutsu/d-c-set`, not merged) | The owner's answers on the gaps proposal: the Devouring Tide (Water S), the Whirlwind Tower (Wind A), the Gale Curtain made a gale on the ground that fans fire (+1 die to a fire jutsu through it, whoever casts it), the Thunder Beam and the Rubble Gust (Lightning and Earth C); knock-down, sweep and drag on a failed save (ninjas only), water puts out flames; their effects from his sheets (the running wave, the tornado tower, the gale on the ground, the fanned fire's glow and vortex); `docs/GAMEPLAY_DESIGN.md`, "Jutsu for the gaps", and his rule that the elemental beasts are summons | **Waiting for approval** of the in-game captures and the gale's numbers (the builder's proposal). Merge `jutsu/d-c-set` first |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -153,6 +154,20 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   questions 4 to 9 are built too: Numb for 2 rounds (P5), the Rush at 6 m, the water aura on the
   Mystical Palm (in the chakra colour), Pebble Shot as it is, the Mirage and the Bleeding Cut silent
   (P6); the class gate (9) is on the integration branch.
+- `jutsu/gap-set` (2026-10-21): his answer to the gaps proposal (*"1 no 2 ola devoradora si 3 grulla
+  no todos los elemtantales seran invocaciones que te ayudaran en el combate no ataques , 4 si 5 si
+  modifcar para hacerlo area y que potencie las tecnicas de fuego que pasen por ahi y se vea como
+  efecto 6 no 7 si8 si"*), built: 2, 4, 5 (as an area), 7, 8. Approve the in-game captures and the
+  gale's numbers (2.25 m round, the rest of the round and two more, +1 damage die to fire through
+  it). **Still his** (`docs/GAMEPLAY_DESIGN.md`, "Open questions on the gaps"): two per gap or two in
+  all; the Tide without a 水 kanji; the gaps left (Earth A, Water D, a third Fire D/C); keep the name
+  "Cortina" for an area; only ninjas knocked down and swept.
+- **The elemental beasts are summons** (his rule, 2026-10-21: *"todos los elementales seran
+  invocaciones que te ayudaran en el combate no ataques"*): the summon itself is to design (what it
+  does, how long, its cost, who calls it). Jutsu that still show a beast as their attack: the Water
+  Dragon Bullet (water dragon), the Lightning Hound (lightning beast), the Wood Dragon (stone drake)
+  and Night Guy (griffin); change them now or when summons exist? Do the S-rank signatures' dragons
+  (Annihilation, Kirin) count?
 - Chakra types (`docs/GAMEPLAY_DESIGN.md`, "Chakra type" and Open questions). **Decided
   2026-10-21** (his answers, built on `chakra/decisions`): the legends keep their new types; saved
   copies of the legends and companions move to their new type when they load; Shadow and Spirit
@@ -274,8 +289,9 @@ Enemies and battles are untouched. The rank cap (D, C and the clan's) and the fi
 on `chakra/progression`, and so are the class gate for the taijutsu, kenjutsu and genjutsu jutsu
 and the level-5 choice (a second element or a higher rank; Kaien and Raiga's second natures). Left:
 when the S-rank slot opens, a level-up screen (the choice is made in the creator for now), the
-third element's feat (proposed), the jutsu of Light and Void (and later Shadow and Spirit), a Water
-S-rank, a second Wind jutsu.
+third element's feat (proposed), the jutsu of Light and Void (and later Shadow and Spirit). A Water
+S-rank (the Devouring Tide) and more Wind jutsu (the Gale Curtain, the Whirlwind Tower) are built on
+`jutsu/gap-set`; Earth A, Water D and a third Fire D/C are still gaps.
 
 ### 4d. Missions (not built)
 Branching road, road traps and curios, votes, cinematics and decisions, the AI choosing camp

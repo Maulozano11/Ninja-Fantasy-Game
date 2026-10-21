@@ -147,6 +147,12 @@ elements.
   further and open a third wider (the Great Fire Annihilation), lines reach a
   quarter further and run half as wide again, and walls are half as long again.
 - **Ultimate (rank S) jutsu** have no use limit: only their chakra cost.
+- **The elemental beasts are summons, not attacks** (the owner, 2026-10-21:
+  *"todos los elementales seran invocaciones que te ayudaran en el combate no
+  ataques"*): the water dragon, the stone drake, the wind crane, the lightning
+  beast, the phoenix, the griffin, the crows and the cobra will help in battle
+  as summons; no new jutsu uses one as its attack (the summon itself is
+  designed later: Open questions).
 - **Mercy**: a character who drops an enemy to 0 HP with a melee attack can
   knock it out instead of killing it (it matters later for the story:
   interrogate, spare or hand over).
@@ -858,10 +864,24 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   opens rank D and C only, so Raiga's **Muro de tierra (rank B)** stays marked
   "rango B: se queda en su hoja", as his Fuego del dragón (B) and every legend's
   higher jutsu are. Confirm.
-- Gaps the gate shows: Water has no S-rank jutsu (a Water ninja's S-rank slot
-  offers only Yasaka no Magatama and Night Guy); Wind has one Element jutsu
-  (Great Breakthrough Blade), so its second Element slot takes a jutsu with no
-  element (two once the rank D and C jutsu go in: Whirl joins it).
+- Gaps the gate shows: Water had no S-rank jutsu and Wind few Element jutsu.
+  **Answered 2026-10-21** ("Jutsu for the gaps" below): the Devouring Tide is
+  Water's rank S; Wind gets the Gale Curtain (C) and the Whirlwind Tower (A).
+  Still open there: two per gap or two in all, the 水 kanji, the gaps left.
+- **The elemental beasts as summons** (his rule, 2026-10-21: *"todos los
+  elementales seran invocaciones que te ayudaran en el combate no ataques"*):
+  how a summon works is to design (what it does on the field, how long it
+  stays, its chakra, who may call it, the AI). **Jutsu that still show a beast
+  as their attack** (`vfx: 'beast'`): the Water Dragon Bullet (water dragon,
+  `water_dragon_suiryuudan`, B), the Lightning Hound (lightning beast,
+  `lightning_hound_raidon`, B), the Wood Dragon (stone drake,
+  `wood_dragon_jutsu`, the clan's A) and Night Guy (griffin, `night_guy_dragon`,
+  S). Should they change now (another of his effects) or when summons exist?
+  And do the creature forms woven into the S-rank signatures (the Great Fire
+  Annihilation's fire dragon, the Kirin's dragon-headed bolt) count as beasts,
+  or are they the S-rank art bar's "creature or form woven through the
+  element"? The crane, the phoenix, the crows and the cobra have sheets that no
+  jutsu uses.
 - The jutsu of Light (deity, angel and god) and of Void, Shadow and Spirit
   (demonic): to design when he says.
 - **Jutsu of a class** (his answer: "los que elijan de clase genjutsu kenjutsu
@@ -1005,3 +1025,140 @@ built:
    gated like the others).
 Also not built (optional in the proposal): a style of cast per jutsu (P1), and
 the Geyser putting out burning units in its circle.
+
+## Jutsu for the gaps (proposed and answered 2026-10-21)
+
+The nature gate showed gaps: Water had no rank S jutsu and Wind few. Asked
+"¿Hago propuestas para llenar esos huecos?", the owner answered "2 propuestas";
+the Spanish proposal (eight jutsu, all from his sprites, with mockups) was shown
+to him and he answered (verbatim): *"luego en la creacion de jutsus para
+rellenar 1 no 2 ola devoradora si 3 grulla no todos los elemtantales seran
+invocaciones que te ayudaran en el combate no ataques , 4 si 5 si modifcar para
+hacerlo area y que potencie las tecnicas de fuego que pasen por ahi y se vea
+como efecto 6 no 7 si8 si"*.
+
+So: 1 (Dragón de las mil fuentes) no; **2 (Ola devoradora) yes, Water's rank
+S**; 3 (Grulla del vendaval) no; **4 (Torre del torbellino) yes**; **5 (Cortina
+de vendaval) yes, made an area that empowers the fire techniques passing
+through it, shown as an effect**; 6 (Fénix del ocaso) no; **7 (Haz de trueno)
+and 8 (Polvareda de cascotes) yes**. Built on the branch `jutsu/gap-set` (made
+from `jutsu/d-c-set`), **waiting for his approval of the in-game captures**.
+
+### The elemental beasts are summons (decided 2026-10-21)
+
+His rule, verbatim: *"todos los elementales seran invocaciones que te ayudaran
+en el combate no ataques"*. The elemental beasts (the water dragon, the stone
+drake, the wind crane, the lightning beast, the phoenix, the griffin, the crows,
+the cobra) will be **summons that help in battle, not attack effects**. No new
+jutsu uses a beast as its attack. How a summon works (what it does, how long it
+stays, what it costs, who may call it) is designed later (Open questions).
+
+### The five jutsu
+
+Ranges convert at 1 square = 1.5 m. Names follow D24 ("Técnica de <Elemento>:
+<nombre>"); the Japanese names were made up for the proposal and are not
+franchise names.
+
+| jutsu (id) | nature, rank, slot | use | effect | enhanced |
+|---|---|---|---|---|
+| **Ola devoradora** / Devouring Tide (`water_devouring_tide`) | Water, **S**, S-rank slot | action, 8 chakra, **12 m cone** (past the 9 m cap of other cones, like the Great Fire Annihilation) | STR save, half on a success: 7d12 bludgeoning to everyone in the cone, friends too; on a failure the wave **sweeps the target 3 m away from the caster** and **knocks it down**; it **puts out the flames** of everyone it reaches, saved or not | +4: 9d12, the cone reaches 15 m and opens wider |
+| **Torre del torbellino** / Whirlwind Tower (`wind_whirlwind_tower`) | Wind, **A**, Element | action, 5 chakra, a 3 m circle up to 9 m away | STR save, half on a success: 5d8 bludgeoning to everyone in the circle, friends too; on a failure the tornado **drags the target 1.5 m toward its middle** (never past it) and **knocks it down**; it cuts the grass and bushes | +3: 6d8, 4.5 m |
+| **Cortina de vendaval** / Gale Curtain (`wind_gale_curtain`) | Wind, **C**, Element | action, 2 chakra, a gale **2.25 m round** up to 6 m away | no save, no damage, silent: a **gale on the ground** (see below) that **fans the fire jutsu passing through it** | +2: 3.4 m round |
+| **Haz de trueno** / Thunder Beam (`lightning_thunder_beam`) | Lightning, **C**, Element | action, 2 chakra, **9 m line** | DEX save, half on a success: 2d8 lightning to everyone in the line, friends too; lightning in water runs through it | +2: 3d8, the line reaches 11.25 m and runs wider |
+| **Polvareda de cascotes** / Rubble Gust (`earth_rubble_gust`) | Earth, **C**, Element | action, 2 chakra, **4.5 m cone** | DEX save, **nothing on a success**; on a failure 2d6 bludgeoning and **knocked down**; friends in the cone too | +2: 3d6, the cone reaches 5.6 m and opens wider |
+
+With them, the nature's offers (`src/rules/jutsuNature.ts`) grow: a Water
+ninja's S-rank slot has its own jutsu at last (when it opens; a new ninja's is
+locked), Wind has the Whirl (D), the Great Breakthrough Blade and the Gale
+Curtain (C) and the Whirlwind Tower (A), Lightning and Earth a third rank C.
+
+### The rules they brought
+
+- **Knocked down on a failed save** (the Tide, the Tower, the Rubble Gust): the
+  target is prone, like a shove's trip. Melee attacks against it have
+  advantage and ranged attacks (kunai, Three Embers) disadvantage; standing up
+  costs half its movement. **Only ninjas fall**: big creatures (the hydra) don't.
+- **Swept or dragged on a failed save** (the Tide 3 m away from the caster, the
+  Tower 1.5 m toward its middle): it moves 1.5 m at a time and stops where
+  something stands in the way (a wall, a tree, a structure, another unit, the
+  edge of the map), staying where it hits (a shove that is blocked doesn't move
+  at all). Off a ledge it falls (1d6 a level, and prone); into water its
+  flames go out; into a river the usual water rules apply. **Only ninjas
+  move**: big creatures don't. The move happens after the damage, then the fall.
+- **Water puts out the flames**: the Tide takes *Burning* off everyone it
+  reaches, saved or not.
+- **The gale on the ground** (the Gale Curtain made an area, the owner's
+  modification; **the numbers are the builder's proposal**):
+  - It turns where it is cast, 2.25 m round (3.4 m enhanced), for **the rest of
+    the round and two more** (it dies down as the third new round begins, like
+    a water barrier fades). It hurts nobody, blocks nothing (not sight, not
+    movement, not attacks) and is silent. Several gales may turn at once.
+  - **"Potencia" (empowers), in 5e terms: a fire jutsu that passes through a
+    gale deals one more damage die (two for a rank S), the same die as its
+    own** (Fireball 3d8 → 4d8, Great Fire Annihilation 7d12 → 9d12): the
+    damage half of an enhanced cast, with its area as it was aimed (it grows
+    nobody into it the caster didn't aim at). It stacks with an enhanced cast
+    (Fireball enhanced and fanned: 5d8). Why this rule: it is simple to read
+    ("+1 dado"), it reuses the game's own idea of empowering, it is the same for
+    every fire jutsu, and it never changes who is hit after the player aimed.
+  - **Passes through**: the fire's flight from its caster to its target or
+    point goes through the gale (Three Embers, Pursuing Flame, a Fireball on
+    its way), or its area reaches into it (a Fireball bursting over it, the
+    Dragon Fire Stream's line, a cone like the Dragon Fire Bomb or the Great
+    Fire Annihilation), or its caster stands in it. Two gales fan it once.
+  - **Whoever casts the fire**, friend or foe of the gale's maker: the wind
+    doesn't choose. A Wind ninja can set it up for a Fire friend, and an enemy
+    Fire ninja can use the party's gale too.
+  - What it does not do (the earlier curtain's rule, dropped with the wall):
+    give disadvantage to shots crossing it.
+  - The AI doesn't cast the Gale Curtain (it plans attacks); enemy fire is
+    fanned when it happens to cross one.
+
+### How they look (his option A, from his sheets; nothing redrawn)
+
+Each plays in its caster's chakra colour, like every elemental jutsu.
+- **Devouring Tide**: the water aura round the caster, then the wave runs out
+  along the cone: a row of his water columns (`wall_depth`, his water wall seen
+  from the front) across the cone at its crest, spreading as the cone opens, two
+  fainter rows behind it and his spray (`breath`) before it; a splash on each
+  one as the crest goes over them, and a heavy shake (6) as it breaks at the
+  end. Pointed mostly into the depth, the wave is seen from the side: his water
+  wall (`wall`) along the crest. The columns stand among the ninjas (some in
+  front, some behind).
+- **Whirlwind Tower**: his leaf X (`hit`) warns at the point, his tornado column
+  (wind `wall_depth`) rises there and turns while four of his small whirlwinds
+  (`multi`) circle it, two behind and two in front; his leaf X on each one
+  reached, a light shake (2), and the column fades.
+- **Gale Curtain**: his low wind wall (`wall`, the one running across the
+  screen) laid on the ground as two faint bands (55 %), one at the back and
+  one at the front of the circle, rising when it starts and fading when it
+  dies down, with a faint dashed ring showing its reach.
+- **The fanned fire** ("que se vea como efecto"): from where the fire meets the
+  wind it **burns brighter** (his frames drawn again over themselves as light),
+  **a Fireball grows into his Great Fireball** there, **his wind vortex**
+  (wind `bolt`) swirls round the fire at that spot in the gale's colour, and
+  "¡Avivado!" floats over it; the log says "El vendaval aviva el fuego de …: un
+  dado de daño más". Aiming a fire through a gale says so before casting.
+- **Thunder Beam**: his lightning beam (`stream` + `stream_head`) runs along
+  the line, and a spark (`hit`) bursts on each one as the beam's head gets there.
+- **Rubble Gust**: the earth aura rises while the ninja casts, his dust and
+  stones (earth `breath`) roll out along the cone and a rock impact (`hit`)
+  falls on each one reached. His earth breath is anchored at its left end (the
+  others near the middle), so it is drawn back by the difference: the dust
+  ends where the cone ends (the proposal had it about 1 m long).
+
+### Open questions on the gaps
+
+1. "2 propuestas": two per gap (as the proposal read it) or two jutsu in all?
+   (Not answered.)
+2. The Devouring Tide is a rank S without a giant 水 kanji (the S-rank art bar
+   asks for one; there is no painted 水): approve it without, or will he paint
+   a Water signature sheet? (Not answered.)
+3. The gaps still open: Earth rank A (the Wood Dragon is the clan's), Water
+   rank D, a third Fire D/C for a new ninja. Another short list (free pieces:
+   the rock sphere, the water crescents, the fire wall)? (Not answered.)
+4. The Gale Curtain's name: it is an area now, not a curtain. Keep "Cortina de
+   vendaval" or rename it (for example "Campo de vendaval")?
+5. The gale's numbers (2.25 m round, the rest of the round and two more, +1
+   die to the fire that passes through, 2 chakra): confirm or change.
+6. Knocking down and sweeping only ninjas (big creatures stand firm): confirm.

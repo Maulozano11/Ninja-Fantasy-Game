@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { ShinobiCharacter } from '../types/shinobi';
 import { renderSpriteCached } from '../sprite/compose';
-import { CHAKRA_LOOP, ChakraMode, renderChakra } from '../sprite/chakra';
+import { ChakraMode, chakraLoop, renderChakra } from '../sprite/chakra';
 import { dojutsuToEye, getAppearance } from '../sprite/legacy';
 import { frameCount, GROUND, POSE_FPS, rigPoseFor } from '../sprite/rig';
 import { BOX, GRID, RES } from '../sprite/raster';
@@ -92,6 +92,8 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
     return castStyle ? { ...base, cast: { ...(base.cast ?? { style: castStyle }), style: castStyle } } : base;
   }, [appearance, character, castStyle]);
   const eye = dojutsuToEye(character.dojutsu);
+  // when Battle Static's loop started: kept across appearance edits, so only a new stance or burst restarts it
+  const fxStart = useRef({ key: '', t0: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -109,9 +111,13 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
       else if (isEnhanced) mode = 'aura';
     }
     let lastKey = '';
+    // Battle Static's loop starts when the stance does, so a victory opens with its burst of bolts;
+    // the other bursts keep running on the shared tick as before
+    const startKey = c.color === 'cyan' && mode ? `${stance}|${mode}|${isEnhanced}` : '';
     return subscribeTick((tick) => {
       const frame = Math.floor((tick * POSE_FPS[stance]) / TICK_FPS) % frameCount(rigPoseFor(stance, look.cast?.style));
-      const fxTick = tick % CHAKRA_LOOP;
+      if (fxStart.current.key !== startKey) fxStart.current = { key: startKey, t0: tick };
+      const fxTick = (startKey ? tick - fxStart.current.t0 : tick) % chakraLoop(c.color);
       const key = mode ? `${frame}|${fxTick}` : `${frame}`;
       if (key === lastKey) return;
       lastKey = key;
@@ -119,7 +125,8 @@ export const ShinobiSpriteCanvas: React.FC<ShinobiSpriteCanvasProps> = ({
       const out = img.data;
       out.fill(0);
       if (showShadow) drawShadow(out, spr.rig.pelvis.x * RES + 1);
-      const fx = mode ? renderChakra(c.color, mode, fxTick, spr.rgba, spr.rig, c.tint) : null;
+      // with the chakra aura on, a charge, a cast or a victory plays empowered too (Battle Static crackles harder)
+      const fx = mode ? renderChakra(c.color, mode, fxTick, spr.rgba, spr.rig, c.tint, isEnhanced) : null;
       if (fx) blendOver(out, fx.back);
       blendOver(out, spr.rgba);
       if (fx) blendOver(out, fx.front);

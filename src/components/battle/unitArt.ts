@@ -2,7 +2,7 @@
 // chakra aura while casting, and small head portraits for the HUD.
 
 import { renderSpriteCached } from '../../sprite/compose';
-import { CHAKRA_LOOP, renderChakra } from '../../sprite/chakra';
+import { chakraLoop, renderChakra } from '../../sprite/chakra';
 import type { ChakraMode } from '../../sprite/chakra';
 import { dojutsuToEye, getAppearance } from '../../sprite/legacy';
 import { FEET, frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
@@ -114,15 +114,15 @@ function toCanvas(rgba: Uint8ClampedArray, layers?: { back: Uint8ClampedArray; f
 
 /**
  * One frame of a unit's sprite as a canvas. `aura` adds the chakra burst of a cast or a charge
- * (only if the player turned it on for that moment in the creator).
+ * (only if the player turned it on for that moment in the creator), `empowered` for an enhanced jutsu.
  */
-export function unitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, frame: number, aura?: { mode: ChakraMode; tick: number }): Cached {
+export function unitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, frame: number, aura?: { mode: ChakraMode; tick: number; empowered?: boolean }): Cached {
   const n = framesOf(look, pose);
   const f = ((frame % n) + n) % n;
   const eye = dojutsuToEye(u.character?.dojutsu);
   const wantAura = aura && ((aura.mode === 'cast' && look.chakra.onCast) || (aura.mode === 'charge' && look.chakra.onCharge) || aura.mode === 'aura');
-  const fxTick = wantAura ? aura!.tick % CHAKRA_LOOP : -1;
-  const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${fxTick}` : ''}`;
+  const fxTick = wantAura ? aura!.tick % chakraLoop(look.chakra.color) : -1;
+  const key = `${idOf(look)}|${eye}|${pose}|${f}|${wantAura ? `${aura!.mode}${aura!.empowered ? '+' : ''}${fxTick}` : ''}`;
   let c = frames.get(key);
   if (c) {
     frames.delete(key);
@@ -130,7 +130,7 @@ export function unitFrame(u: Unit, look: SpriteAppearance, pose: SpritePose, fra
     return c;
   }
   const spr = renderSpriteCached(look, pose, f, eye);
-  const fx = wantAura ? renderChakra(look.chakra.color, aura!.mode, fxTick, spr.rgba, spr.rig, look.chakra.tint) : null;
+  const fx = wantAura ? renderChakra(look.chakra.color, aura!.mode, fxTick, spr.rgba, spr.rig, look.chakra.tint, aura!.empowered) : null;
   c = { ...toCanvas(spr.rgba, fx), rig: spr.rig };
   frames.set(key, c);
   if (frames.size > MAX) frames.delete(frames.keys().next().value as string);

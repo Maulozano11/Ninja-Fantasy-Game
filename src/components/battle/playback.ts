@@ -58,6 +58,8 @@ export interface UnitView {
    * weapon flies (ms at speed 1; warpTimes gives the rest; renderer.ts draws it).
    */
   warp?: { from: Pt; to: Pt; t0: number; face: 1 | -1; land: 1 | -1; foe?: string; fly: number };
+  /** The cast pose is an enhanced jutsu's: its chakra burst plays empowered. */
+  castEnhanced?: boolean;
 }
 
 export interface Floater {
@@ -990,6 +992,8 @@ export class Playback {
           if (label) this.float(label, '#fde68a', from, now, { rise: 128, dur: 1400 });
           return 90;
         }
+        // An enhanced jutsu's cast pose plays its chakra burst empowered.
+        if (!head) a.castEnhanced = !!ev.enhanced;
         if (spec?.seq || spec?.pose || spec?.vfxSet) {
           const staged = this.staged(ev, spec, a, from, now, label, jutsuTint(spec, caster));
           if (staged !== null) return staged;

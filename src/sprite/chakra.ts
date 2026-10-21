@@ -14,6 +14,7 @@
 
 import { hexToRgb, hslToHex, rgbToHex, rgbToHsl } from './color';
 import { GRID, RES } from './raster';
+import { FEET } from './rig';
 import type { Rig } from './rig';
 import type { ChakraColorId } from './types';
 
@@ -44,6 +45,7 @@ export const CHAKRA_COLORS: ChakraInfo[] = [
   { id: 'white', name: 'White', hex: '#f4f1e4', burst: 'Heaven Pillar', motif: 'Light', desc: 'A pillar of light falls while rays fan out from the heart.' },
   { id: 'black', name: 'Black', hex: '#1a0b22', burst: 'Abyss Orbit', motif: 'Void', desc: 'Black orbs orbit the body as space cracks open around it.' },
   { id: 'brown', name: 'Brown', hex: '#9a6a36', burst: 'Shattered Earth', motif: 'Earth', desc: 'The ground cracks open and rocks tear loose to float around the body.' },
+  { id: 'cyan', name: 'Cyan', hex: '#4297de', burst: 'Battle Static', motif: 'Lightning', desc: 'No glow: small jagged bolts crackle on and around the body all the time, more and longer while empowered.' },
 ];
 
 /** Number of ticks in one animation loop (the caller advances tick at ~12 fps). */
@@ -76,6 +78,8 @@ const PALS: Record<ChakraColorId, Pal> = {
   white: pal('#6e5a26', '#c4a24c', '#efe2b4', '#fffbe8', '#ffffff'),
   black: pal('#000000', '#0e0614', '#4a1470', '#a238f0', '#ff2c50'),
   brown: pal('#24160b', '#5a3a1c', '#9a6a36', '#d4a464', '#f6e3b4'),
+  // all five from the owner's lightning set (vfx_lightning): navy edge, deep blue, his mid blue, pale cyan, white-hot core
+  cyan: pal('#10132e', '#1c3aa8', '#4297de', '#90dff5', '#eaffff'),
 };
 
 /**
@@ -120,6 +124,7 @@ const SEEDS: Record<ChakraColorId, number> = {
   white: 809,
   black: 907,
   brown: 1009,
+  cyan: 1103,
 };
 
 function hash(a: number, b = 0, c = 0, d = 0): number {
@@ -809,11 +814,28 @@ const N4: [number, number][] = [
   [0, -1],
 ];
 
-function drawBolt(c: Ctx, layer: Lay, pts: P[], heavy: boolean): void {
+/** How a bolt is drawn when not in Storm Lash's own two weights (Battle Static's sparks). */
+interface BoltLook {
+  core: RGB;
+  glow: RGB;
+  glowA?: number;
+  /** A ring round the glow (Storm Lash's heavy bolts: a dark fringe so they read on light ground). */
+  fringe?: RGB;
+  fringeA?: number;
+  /** Every fourth pixel of the core left out: a bolt breaking up as it fades. */
+  broken?: boolean;
+}
+
+function drawBolt(c: Ctx, layer: Lay, pts: P[], heavy: boolean, look?: BoltLook): void {
+  const lk: BoltLook = look ?? { core: c.pal[4], glow: c.pal[heavy ? 3 : 2], fringe: heavy ? c.pal[1] : undefined, fringeA: 140 };
   const core = new Set<number>();
+  let n = 0;
   for (let k = 1; k < pts.length; k++)
     bres(pts[k - 1].x, pts[k - 1].y, pts[k].x, pts[k].y, (x, y) => {
-      if (x >= 0 && y >= 0 && x < N && y < N) core.add(y * N + x);
+      if (x < 0 || y < 0 || x >= N || y >= N) return;
+      const i = y * N + x;
+      if (core.has(i)) return;
+      if (!(lk.broken && n++ % 4 === 2)) core.add(i);
     });
   const glow = new Set<number>();
   for (const i of core) {
@@ -828,15 +850,15 @@ function drawBolt(c: Ctx, layer: Lay, pts: P[], heavy: boolean): void {
   for (const i of glow) {
     const x = i % N;
     const y = (i - x) / N;
-    c.fx.put(layer, x, y, c.pal[heavy ? 3 : 2], 255);
+    c.fx.put(layer, x, y, lk.glow, lk.glowA ?? 255);
     // a dark fringe so bolts still read on light backgrounds
-    if (heavy)
+    if (lk.fringe)
       for (const [ox, oy] of N4) {
         const j = (y + oy) * N + x + ox;
-        if (!core.has(j) && !glow.has(j)) c.fx.put(layer, x + ox, y + oy, c.pal[1], 140);
+        if (!core.has(j) && !glow.has(j)) c.fx.put(layer, x + ox, y + oy, lk.fringe, lk.fringeA ?? 140);
       }
   }
-  for (const i of core) c.fx.put(layer, i % N, Math.floor(i / N), c.pal[4]);
+  for (const i of core) c.fx.put(layer, i % N, Math.floor(i / N), lk.core);
 }
 
 function yellowBurst(c: Ctx, s: Src, L: number): void {
@@ -1775,6 +1797,402 @@ function brownBurst(c: Ctx, s: Src, L: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// CYAN - Battle Static (Estática de batalla): no glow and nothing wrapping the
+// body, only small, sharp, jagged bolts that crackle on and around it all the
+// time (the hair, the shoulders, the arms, round the legs), each for a few
+// frames, and more of them, longer, while empowered
+// ---------------------------------------------------------------------------
+
+/**
+ * Battle Static loops over ten seconds (five chakra loops), so the same bolts do not come back
+ * every two seconds: every bolt in it has its own place, shape and timing.
+ */
+export const SPARK_LOOP = CHAKRA_LOOP * 5;
+
+/** The ticks a burst's animation loops over: callers reduce their tick by it (renderChakra does too). */
+export function chakraLoop(color: string): number {
+  return color === 'cyan' ? SPARK_LOOP : CHAKRA_LOOP;
+}
+
+/** Where a spark crackles: a part of the body, or (casting) off the casting palm. */
+type SparkAt = 'hair' | 'shoulderN' | 'shoulderF' | 'armN' | 'armF' | 'legN' | 'legF' | 'palm';
+
+interface SparkPlan {
+  /** Bolts on the body at every tick: when fewer show, a new one strikes at once (a steady crackle). */
+  least: number;
+  /** Most bolts shown at once. */
+  most: number;
+  /** Ticks between the extra bolts struck over `least`: [least, most]. */
+  gap: [number, number];
+  /** How many frames a bolt shows, picked from this list. */
+  lives: number[];
+  /** Where they strike, with weights. */
+  places: [SparkAt, number][];
+  /** How long the bolts are (1 = 6 to 10 fine px) and how often one forks. */
+  size: number;
+  fork: number;
+  /** A burst of this many bolts all over the body at the loop's start (a victory's). */
+  opening?: number;
+}
+
+const BODY_PLACES: [SparkAt, number][] = [
+  ['hair', 3],
+  ['shoulderN', 2],
+  ['shoulderF', 1],
+  ['armN', 2],
+  ['armF', 1],
+  ['legN', 2],
+  ['legF', 1],
+];
+
+const CAST_PLACES: [SparkAt, number][] = [
+  ['armF', 4],
+  ['palm', 3],
+  ['hair', 1],
+  ['shoulderN', 1],
+  ['shoulderF', 1],
+  ['armN', 1],
+  ['legN', 1],
+];
+
+/**
+ * How each mode crackles (the owner, 2026-10-21: "que se vea mas rayos [...] ponlo mas regularmente
+ * y mas en potenciado"). Never a tick without bolts: a charge keeps four or five on the body, a cast
+ * sends them down the casting arm and off its palm, a victory opens with a burst of bolts all over
+ * the body and keeps crackling.
+ */
+const SPARK_PLAN: Record<ChakraMode, SparkPlan> = {
+  // the aura only plays while empowered, so it is always the empowered plan below
+  aura: { least: 4, most: 6, gap: [1, 3], lives: [2, 3, 3, 4], places: BODY_PLACES, size: 1.2, fork: 0.7 },
+  charge: { least: 4, most: 5, gap: [1, 3], lives: [2, 2, 3, 3, 4], places: BODY_PLACES, size: 1.1, fork: 0.6 },
+  cast: { least: 4, most: 5, gap: [1, 3], lives: [2, 3, 3, 4], places: CAST_PLACES, size: 1.1, fork: 0.6 },
+  victory: { least: 3, most: 4, gap: [1, 3], lives: [2, 3, 3], places: BODY_PLACES, size: 1.1, fork: 0.6, opening: 7 },
+};
+
+/** Empowered (potenciado): more bolts at once, struck more often, longer and forking more. */
+const SPARK_PLAN_EMPOWERED: Record<ChakraMode, SparkPlan> = {
+  aura: SPARK_PLAN.aura,
+  charge: { least: 6, most: 7, gap: [1, 2], lives: [2, 3, 3, 4], places: BODY_PLACES, size: 1.45, fork: 0.9 },
+  cast: { least: 6, most: 7, gap: [1, 2], lives: [2, 3, 3, 4], places: CAST_PLACES, size: 1.4, fork: 0.9 },
+  victory: { least: 5, most: 7, gap: [1, 2], lives: [2, 3, 3, 4], places: BODY_PLACES, size: 1.4, fork: 0.9, opening: 10 },
+};
+
+const planOf = (mode: ChakraMode, empowered: boolean): SparkPlan => (empowered ? SPARK_PLAN_EMPOWERED : SPARK_PLAN)[mode];
+
+/** A timing chart: [first tick, frames shown, where], one entry per bolt. */
+type SparkChart = [number, number, SparkAt][];
+
+/**
+ * Lays out a mode's bolts over SPARK_LOOP ticks from its plan, with a fixed seed (the same chart every
+ * run): at least `least` bolts at every tick and extra ones on an uneven beat up to `most`, never two
+ * in the same place at once nor the same place twice running when another is free, and no bolt
+ * running over the loop's end (so the loop joins cleanly).
+ */
+function sparkChart(mode: ChakraMode, empowered: boolean): SparkChart {
+  const plan = planOf(mode, empowered);
+  const r = rng(SEEDS.cyan + 7 + MODE_SEED[mode] + (empowered ? 1000 : 0));
+  const pick = <T,>(xs: T[]): T => xs[Math.floor(r() * xs.length)];
+  const shown = new Uint8Array(SPARK_LOOP);
+  const chart: SparkChart = [];
+  let last: SparkAt | null = null;
+  const place = (t: number): SparkAt => {
+    const busy = new Set(chart.filter(([at, life]) => t >= at && t < at + life).map(([, , w]) => w));
+    let free = plan.places.filter(([at]) => !busy.has(at) && at !== last);
+    if (!free.length) free = plan.places.filter(([at]) => at !== last);
+    const total = free.reduce((a, [, w]) => a + w, 0);
+    let w = r() * total;
+    return (last = free.find(([, pw]) => (w -= pw) < 0)?.[0] ?? free[0][0]);
+  };
+  const add = (t: number, life: number, at: SparkAt) => {
+    chart.push([t, life, at]);
+    for (let k = 0; k < life; k++) shown[t + k]++;
+  };
+  let extra = 0;
+  if (plan.opening) {
+    // a victory's burst: bolts all over the body in the first two frames, each place once
+    const all = BODY_PLACES.map(([at]) => at);
+    for (let k = all.length - 1; k > 0; k--) {
+      const j = Math.floor(r() * (k + 1));
+      [all[k], all[j]] = [all[j], all[k]];
+    }
+    for (let k = 0; k < plan.opening; k++) add(k % 2, 2 + (k % 2), all[k % all.length]);
+    extra = 6;
+  }
+  for (let t = 0; t < SPARK_LOOP; t++) {
+    // a bolt that would run over the loop's end is cut short
+    const life = () => Math.min(pick(plan.lives), SPARK_LOOP - t);
+    while (shown[t] < plan.least) add(t, life(), place(t));
+    if (t >= extra && shown[t] < plan.most) {
+      add(t, life(), place(t));
+      extra = t + plan.gap[0] + Math.floor(r() * (plan.gap[1] - plan.gap[0] + 1));
+    }
+  }
+  return chart;
+}
+
+const MODE_SEED: Record<ChakraMode, number> = { aura: 0, charge: 100, cast: 200, victory: 300 };
+const MODES_ALL: ChakraMode[] = ['aura', 'charge', 'cast', 'victory'];
+const SPARK_CHART = Object.fromEntries(MODES_ALL.map((m) => [m, sparkChart(m, false)])) as Record<ChakraMode, SparkChart>;
+const SPARK_CHART_EMPOWERED = Object.fromEntries(MODES_ALL.map((m) => [m, m === 'aura' ? SPARK_CHART.aura : sparkChart(m, true)])) as Record<ChakraMode, SparkChart>;
+const chartOf = (mode: ChakraMode, empowered: boolean): SparkChart => (empowered ? SPARK_CHART_EMPOWERED : SPARK_CHART)[mode];
+
+/** Battle Static's timing chart for a mode, plain or empowered (for tests and previews). */
+export function sparkTimes(mode: ChakraMode, empowered = false): readonly (readonly [number, number, string])[] {
+  return chartOf(mode, empowered);
+}
+
+/** How many of Battle Static's bolts show at a tick of a mode, plain or empowered. */
+export function sparkCount(mode: ChakraMode, tick: number, empowered = false): number {
+  const t = mod(Math.floor(tick), SPARK_LOOP);
+  return chartOf(mode, empowered).filter(([at, life]) => t >= at && t < at + life).length;
+}
+
+const unit = (x: number, y: number, fallback: P): P => {
+  const l = Math.hypot(x, y);
+  return l > 1e-6 ? { x: x / l, y: y / l } : fallback;
+};
+
+/** The point of the segment a-b nearest to p. */
+function nearestOn(p: P, a: P, b: P): P {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const l2 = dx * dx + dy * dy;
+  const u = l2 ? clamp(((p.x - a.x) * dx + (p.y - a.y) * dy) / l2, 0, 1) : 0;
+  return { x: a.x + dx * u, y: a.y + dy * u };
+}
+
+/** The point of a chain of bones nearest to p. */
+function nearestBone(p: P, bones: [P, P][]): P {
+  let best = bones[0][0];
+  let bd = Infinity;
+  for (const [a, b] of bones) {
+    const q = nearestOn(p, a, b);
+    const d = Math.hypot(p.x - q.x, p.y - q.y);
+    if (d < bd) {
+      bd = d;
+      best = q;
+    }
+  }
+  return best;
+}
+
+/**
+ * How a spark is drawn: a 1 px core, a 1 px glow beside it and a dark fringe round that, so it reads
+ * on light ground too (like Storm Lash's heavy bolts). Its first frame burns brighter; its last, when
+ * it lasts longer, is dimmer and breaking up. A dark color goes the other way round: a black bolt
+ * (core and glow) inside a thin bright edge.
+ */
+function sparkLook(c: Ctx, fresh: boolean, fading: boolean): BoltLook {
+  const p = c.pal;
+  if (darkPal(p)) {
+    // the void palette's purple (its red is for the strike); a dark custom color gets a pale edge of its own hue
+    const [h, s] = rgbToHsl(p[2][0], p[2][1], p[2][2]);
+    const edge = p === PALS.black ? p[3] : hexToRgb(hslToHex(h, s * 0.5, 0.74));
+    return { core: p[0], glow: p[1], fringe: edge, fringeA: fading ? 150 : fresh ? 255 : 215, broken: fading };
+  }
+  if (fading) return { core: p[3], glow: p[1], glowA: 170, fringe: p[0], fringeA: 90, broken: true };
+  return { core: p[4], glow: p[fresh ? 3 : 2], fringe: p[1], fringeA: fresh ? 160 : 130 };
+}
+
+/** A dark chakra color (black, or any very dark tint). */
+function darkPal(p: Pal): boolean {
+  return p === PALS.black || rgbToHsl(p[2][0], p[2][1], p[2][2])[2] < 0.22;
+}
+
+/** The face: the lower part of the head disc and just in front of it (the hair above it is fair game). Exported for the tests. */
+export function inFace(rig: Rig, q: P, pad = 0): boolean {
+  const head = F(rig.head);
+  const hr = rig.bp.headRy * rig.bp.headScale * S;
+  const up = unit(rig.up.x, rig.up.y, { x: 0, y: -1 });
+  const dx = q.x - head.x;
+  const dy = q.y - head.y;
+  return Math.hypot(dx, dy) < hr * 1.35 + pad && dx * up.x + dy * up.y < hr * 0.35 + pad;
+}
+
+/** The battle's health bar over a unit: 34 px wide, 102 to 109 fine px over the feet (renderer.ts drawMarks), with a margin. */
+const BAR = { y: FEET.y - 100, half: 20 };
+
+/**
+ * Whether a bolt (its paths, with room for its glow, fringe and twinkle) keeps where Battle Static may
+ * crackle: never on or in front of the face on either layer, never below the soles (into the ground and
+ * the shadow), never up into the health bar; and a bolt behind the body mostly shows (at least 60% of
+ * it off the silhouette), so the bolts counted are bolts seen.
+ */
+function boltFits(rig: Rig, s: Src, paths: P[][], layer: Lay): boolean {
+  const floor = s.y1 - 1;
+  let ok = true;
+  let n = 0;
+  let seen = 0;
+  for (const pts of paths)
+    for (let k = 1; k < pts.length && ok; k++)
+      bres(pts[k - 1].x, pts[k - 1].y, pts[k].x, pts[k].y, (x, y) => {
+        if (!ok) return;
+        if (y > floor || (y < BAR.y && Math.abs(x - FEET.x) < BAR.half) || inFace(rig, { x, y }, 3)) {
+          ok = false;
+          return;
+        }
+        n++;
+        if (x < 0 || y < 0 || x >= N || y >= N || !s.mask[y * N + x]) seen++;
+      });
+  return ok && (layer === 1 || seen >= 0.6 * n);
+}
+
+/** A part's bones in fine px, and how far from them (fine px) the outline counts as that part. */
+function sparkBones(rig: Rig, at: SparkAt, casting: boolean): { bones: [P, P][]; reach: number } {
+  const hr = rig.bp.headRy * rig.bp.headScale;
+  const one = (a: P, b: P, reach: number) => ({ bones: [[F(a), F(b)]] as [P, P][], reach: reach * S });
+  switch (at) {
+    case 'hair':
+      return one(rig.head, { x: rig.head.x + rig.up.x * hr, y: rig.head.y + rig.up.y * hr }, hr + 3);
+    case 'shoulderN':
+      return one(rig.shoulderN, rig.shoulderN, 4.5);
+    case 'shoulderF':
+      return one(rig.shoulderF, rig.shoulderF, 4.5);
+    case 'armN':
+      return one(rig.elbowN, rig.handN, 3);
+    case 'legN':
+      return one(rig.kneeN, rig.ankleN, 3.5);
+    case 'legF':
+      return one(rig.kneeF, rig.ankleF, 3.5);
+    default:
+      // the far arm; casting, the whole of it from the shoulder down
+      return casting
+        ? {
+            bones: [
+              [F(rig.shoulderF), F(rig.elbowF)],
+              [F(rig.elbowF), F(rig.handF)],
+            ],
+            reach: 3 * S,
+          }
+        : one(rig.elbowF, rig.handF, 3);
+  }
+}
+
+/**
+ * A spark on a part of the body: it leaps off the outline, or jumps from one point of the part to
+ * another bowed out from it. Where it strikes stays put for all its frames; its shape is drawn anew
+ * each frame, so it flickers. The far side's sparks are drawn behind the body (the far arm's in front
+ * when the pose holds that hand in front), and a spark drawn in front never crosses the face.
+ */
+function bodySpark(c: Ctx, s: Src, at: SparkAt, id: number, age: number, life: number, plan: SparkPlan, casting: boolean): void {
+  const { rig } = c;
+  const { bones, reach } = sparkBones(rig, at, casting);
+  const head = F(rig.head);
+  const up = unit(rig.up.x, rig.up.y, { x: 0, y: -1 });
+  const hr = rig.bp.headRy * rig.bp.headScale * S;
+  const far = at === 'shoulderF' || at === 'armF' || at === 'legF';
+  const layer: Lay = far && !(at === 'armF' && rig.farHandFront) ? 0 : 1;
+  const pool: P[] = [];
+  // a part hidden in a pose (no outline near it) takes the outline a little further out
+  for (let wide = 1; wide <= 4 && !pool.length; wide *= 2)
+    for (const i of s.rim) {
+      const p = { x: i % N, y: Math.floor(i / N) };
+      const q = nearestBone(p, bones);
+      if (Math.hypot(p.x - q.x, p.y - q.y) > reach * wide) continue;
+      // the hair: the top of the head, not the face
+      if (at === 'hair' && (p.x - head.x) * up.x + (p.y - head.y) * up.y < 0.25 * hr) continue;
+      if (inFace(rig, p, 3) || p.y > s.y1 - 2) continue;
+      pool.push(p);
+    }
+  if (!pool.length) return;
+  const r = rng(c.seed + 31 + id * 977);
+  const z = rng(c.seed + 57 + id * 977 + age * 131);
+  // on the hair shorter and steadier, so the bolts crackle off it and never span the head like a crown
+  const hair = at === 'hair';
+  const span = (6 + r() * 4) * S * (hair ? Math.min(plan.size, 1.15) : plan.size);
+  const look = sparkLook(c, age === 0, life > 1 && age === life - 1);
+  // a few tries for a spot whose bolt keeps where it may (boltFits); the spot is fixed for the bolt's life
+  for (let tries = 0; tries < 12; tries++) {
+    const at0 = pool[Math.floor(r() * pool.length)];
+    const base = nearestBone(at0, bones);
+    const out = unit(at0.x - base.x, at0.y - base.y, unit(at0.x - s.cx, at0.y - s.cy, up));
+    // (never on the hair: an arc over the head would read as a halo)
+    const hop = r() < 0.45 && !hair;
+    let bolt: P[] | null = null;
+    const forks: P[][] = [];
+    if (hop) {
+      // a jump from one point of the part to another, bowed out from it
+      const ends = pool.filter((q) => {
+        const d = Math.hypot(q.x - at0.x, q.y - at0.y);
+        return d > span * 0.6 && d < span * 1.2;
+      });
+      if (ends.length) {
+        const to = ends[Math.floor(r() * ends.length)];
+        const mid = { x: (at0.x + to.x) / 2, y: (at0.y + to.y) / 2 };
+        const o = unit(mid.x - nearestBone(mid, bones).x, mid.y - nearestBone(mid, bones).y, out);
+        const bow = (2 + r() * 2.5) * S;
+        const d = Math.hypot(to.x - at0.x, to.y - at0.y);
+        bolt = boltPath(at0, to, { x: o.x * bow, y: o.y * bow }, 0.75, d > 7 * S ? 3 : 2, z);
+      }
+    }
+    if (!bolt) {
+      // a leap off the outline, rooted a little inside it, bent one way and kinked at random
+      let ang = Math.atan2(out.y, out.x) + (r() - 0.5) * (hair ? 0.7 : 1.4);
+      // a leap off a leg that would stab into the ground runs out along it instead
+      const low = s.y1 - 3 * S - at0.y;
+      if (Math.sin(ang) * span > low) ang = Math.atan2(Math.max(-span, low), Math.cos(ang) * span || 1);
+      const from = { x: at0.x - out.x * 3, y: at0.y - out.y * 3 };
+      const to = { x: at0.x + Math.cos(ang) * span, y: at0.y + Math.sin(ang) * span };
+      const b = (r() - 0.5) * 0.5 * span;
+      bolt = boltPath(from, to, { x: -Math.sin(ang) * b, y: Math.cos(ang) * b }, 0.8, span > 7 * S ? 3 : 2, z);
+      // now and then a short fork off one of its kinks
+      if (span > 6 * S && r() < plan.fork) {
+        const p = bolt[1 + Math.floor(z() * (bolt.length - 2))];
+        const fa = ang + (z() < 0.5 ? -1 : 1) * (0.5 + z() * 0.6);
+        const fl = (2 + z() * 2) * S;
+        forks.push(boltPath(p, { x: p.x + Math.cos(fa) * fl, y: p.y + Math.sin(fa) * fl }, { x: 0, y: 0 }, 0.9, 1, z));
+      }
+    }
+    if (!boltFits(rig, s, [bolt, ...forks], layer)) continue;
+    for (const f of forks) drawBolt(c, layer, f, false, look);
+    drawBolt(c, layer, bolt, false, look);
+    if (age === 0) sparkle(c, layer, bolt[0].x, bolt[0].y, 2, true);
+    return;
+  }
+}
+
+/** Casting: a short bolt or two (two or three, longer, empowered) leaping off the casting palm, away from the body and never over the face. */
+function palmSpark(c: Ctx, s: Src, id: number, age: number, life: number, plan: SparkPlan): void {
+  const { rig } = c;
+  const hand = F(rig.handF);
+  const wrist = F(rig.wristF);
+  const dir = unit(hand.x - wrist.x, hand.y - wrist.y, unit(hand.x - s.cx, hand.y - s.cy, { x: 1, y: 0 }));
+  const layer: Lay = rig.farHandFront ? 1 : 0;
+  const r = rng(c.seed + 31 + id * 977);
+  const z = rng(c.seed + 57 + id * 977 + age * 131);
+  const look = sparkLook(c, age === 0, life > 1 && age === life - 1);
+  const n = (r() < 0.5 ? 1 : 2) + (plan.size > 1 ? 1 : 0);
+  let drawn = false;
+  for (let k = 0, tries = 0; k < n && tries < 10; tries++) {
+    const ang = Math.atan2(dir.y, dir.x) + (r() - 0.5) * 2.2;
+    const len = (4 + r() * 3) * S * plan.size;
+    const from = { x: hand.x + Math.cos(ang) * S, y: hand.y + Math.sin(ang) * S };
+    const to = { x: from.x + Math.cos(ang) * len, y: from.y + Math.sin(ang) * len };
+    const b = (r() - 0.5) * 0.5 * len;
+    const bolt = boltPath(from, to, { x: -Math.sin(ang) * b, y: Math.cos(ang) * b }, 0.8, 2, z);
+    if (!boltFits(rig, s, [bolt], layer)) continue;
+    drawBolt(c, layer, bolt, false, look);
+    drawn = true;
+    k++;
+  }
+  if (drawn && age === 0) sparkle(c, layer, hand.x, hand.y, 2, true);
+}
+
+/** Battle Static in a mode, plain or empowered: only the bolts of its timing chart. It has no rim or aura in any mode. */
+function cyanSparks(c: Ctx, s: Src, mode: ChakraMode, empowered: boolean): void {
+  // the aura plays only while empowered
+  const strong = empowered || mode === 'aura';
+  const plan = planOf(mode, strong);
+  chartOf(mode, strong).forEach(([at, life, where], k) => {
+    const age = c.t - at;
+    if (age < 0 || age >= life) return;
+    const id = MODE_SEED[mode] * 10 + k + (strong ? 50000 : 0);
+    if (where === 'palm') palmSpark(c, s, id, age, life, plan);
+    else bodySpark(c, s, where, id, age, life, plan, mode === 'cast');
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Idle aura: pulsing rim + a few color-flavored motes
 // ---------------------------------------------------------------------------
 
@@ -1844,7 +2262,8 @@ function auraRim(c: Ctx, id: ChakraColorId, s: Src, level: number): void {
 
 type BurstFn = (c: Ctx, s: Src, L: number) => void;
 
-const BURSTS: Record<ChakraColorId, BurstFn> = {
+/** The bursts drawn through the modes below; Battle Static (cyan) draws its own (cyanSparks). */
+const BURSTS: Record<Exclude<ChakraColorId, 'cyan'>, BurstFn> = {
   red: redBurst,
   orange: orangeBurst,
   yellow: yellowBurst,
@@ -1860,9 +2279,11 @@ const BURSTS: Record<ChakraColorId, BurstFn> = {
 /**
  * Returns two GRIDxGRID RGBA buffers: `back` is drawn behind the sprite, `front` on top of it.
  * `sprite` is the sprite's own GRIDxGRID RGBA (alpha>0 = body pixels) so effects can hug the
- * silhouette. Deterministic for a given tick; loops every CHAKRA_LOOP ticks.
+ * silhouette. Deterministic for a given tick; loops every chakraLoop(color) ticks.
  * `color` picks the burst (its element and shape); `tint`, when set, recolors it with another
  * chakra color's palette or any '#rrggbb' (red water, black lightning, green fire...).
+ * `empowered` (potenciado: an enhanced jutsu, or the creator's chakra aura on) makes Battle Static
+ * crackle harder in a charge, a cast or a victory; the other bursts look the same either way.
  */
 export function renderChakra(
   color: ChakraColorId,
@@ -1871,10 +2292,11 @@ export function renderChakra(
   sprite: Uint8ClampedArray,
   rig: Rig,
   tint?: string,
+  empowered = false,
 ): { back: Uint8ClampedArray; front: Uint8ClampedArray } {
   const fx = new Fx();
   const id: ChakraColorId = PALS[color] ? color : 'blue';
-  const t = mod(Math.floor(tick), CHAKRA_LOOP);
+  const t = mod(Math.floor(tick), chakraLoop(id));
   const body = bodySrc(sprite, rig);
   const tone = tint && (Object.prototype.hasOwnProperty.call(PALS, tint) || /^#[0-9a-f]{6}$/i.test(tint)) ? tint : id;
   const p = tintPal(tone);
@@ -1890,6 +2312,11 @@ export function renderChakra(
     accent: voidPal ? VOID_RED : p[4],
     accentDark: voidPal ? VOID_DARKRED : p[1],
   };
+  if (id === 'cyan') {
+    // no rim and no aura in any mode: only its bolts
+    cyanSparks(c, body, mode, empowered);
+    return { back: fx.back, front: fx.front };
+  }
   const burst = BURSTS[id];
   switch (mode) {
     case 'aura':

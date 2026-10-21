@@ -5,8 +5,9 @@
 
 import { retintHex, retintSkinLifted } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
-import { segAngle, stampPiece } from '../painted';
-import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
+import { segAngle, stampPiece, type PaintedPiece } from '../painted';
+import { add, along, ellipse, F_NO_EDGE, GRID, norm, partIndex, Pen, RES, seam, sub, v, type Vec } from '../raster';
+import { rotateTemplate } from '../rotsprite';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
 import { ROMAN_KIT_KIND, SANDAL_FOOT_F, SANDAL_FOOT_N, SANDAL_LEATHER, SANDAL_SHIN_F, SANDAL_SHIN_N } from './bracersSandalsArt';
 import { MALE_SKIN_BASE } from '../maleSkinArt';
@@ -279,6 +280,53 @@ function bareFootOff(g: DrawCtx, s: Side): void {
   }
 }
 
+/**
+ * Gives our lower leg the shape of a laced shin the owner painted, stamped at `at` turned to `deg`
+ * (stampPiece). His laced shin is narrower than our calf and stands straight where ours leans, so past it
+ * our bare leg showed as a strip of skin between his laces' black line and what lies behind the leg (the
+ * drape), from the knee down to the ankle. Row by row of his piece, our shin keeps only what lies between
+ * his piece's ends in that row (under his piece, where it fills any gap the turn leaves in it); above his
+ * strap band the knee keeps to the band's width, so its sides run on straight into his laces' line as his
+ * knee does. Above the knee joint, within the round of the knee (the ends of our shin and thigh), only
+ * what stands in front of his laces' front line is taken: the thigh comes into the knee from behind it,
+ * so a bent knee keeps its shape behind that line.
+ */
+function legToLacedShin(g: DrawCtx, s: Side, piece: PaintedPiece, at: Vec, deg: number): void {
+  const shin = partIndex(`shin${s}`);
+  const thigh = partIndex(`thigh${s}`);
+  const { knee, ankle } = legJoints(g.rig, s);
+  const dir = norm(sub(ankle, knee));
+  const round = (limbR(g, 'leg', 1) + 1) * RES;
+  const ax = Math.floor(at.x * RES);
+  const ay = Math.floor(at.y * RES);
+  const turn = deg - piece.angle;
+  const covered = new Set(rotateTemplate(piece, turn).map((p) => (ay + p.dy) * GRID + ax + p.dx));
+  // A pixel's cell in his piece: rotateTemplate's inverse turn (whole degrees) about the pivot cell.
+  const rad = (Math.round(turn) * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const spans = piece.rows.map((r) => [r.search(/[^.]/), r.length - 1 - [...r].reverse().join('').search(/[^.]/)]);
+  for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) {
+    const L = g.L(d);
+    for (let i = 0; i < GRID * GRID; i++) {
+      if (L.mat[i] < 0 || (L.part[i] !== shin && L.part[i] !== thigh)) continue;
+      const x = i % GRID;
+      const y = Math.floor(i / GRID);
+      const kx = x + 0.5 - knee.x * RES;
+      const ky = y + 0.5 - knee.y * RES;
+      const below = L.part[i] === shin && kx * dir.x + ky * dir.y > 0;
+      if (!below && Math.hypot(kx, ky) > round) continue;
+      const row = Math.floor(-(x - ax) * sin + (y - ay) * cos + piece.pivot[1] + 0.5);
+      const col = Math.floor((x - ax) * cos + (y - ay) * sin + piece.pivot[0] + 0.5);
+      const [left, right] = spans[Math.max(0, Math.min(spans.length - 1, row))];
+      if (below ? col >= left && col <= right : row >= 0 || col <= right) continue;
+      L.mat[i] = -1;
+      // Under his piece (where the turn spreads it past its ends) no outline of our calf beside it.
+      if (covered.has(i)) L.flags[i] |= F_NO_EDGE;
+    }
+  }
+}
+
 export const FEET_ITEMS: ItemDef[] = [
   {
     id: 'feet_leather',
@@ -468,7 +516,8 @@ export const FEET_ITEMS: ItemDef[] = [
       // The owner's sandals, his pixels from his Roman picture (2026-10-21; tools/refs/
       // roman-bracers-sandals-from-ref.py): on each leg the laced shin turns with the shin about the
       // ankle and the sandal stays flat on the ground like our feet, our bare foot under it taken away.
-      // His legs stand wider than ours, so each is moved onto our leg (his sole on ours). His skin
+      // His legs stand wider than ours, so each is moved onto our leg (his sole on ours), and our lower
+      // leg takes his laced shin's shape (legToLacedShin), so no bare calf shows beside it. His skin
       // between the laces follows the character's skin as his skin on the male limbs does (maleSkin.ts),
       // from the skin he painted on, so in that skin it is his pixels and it meets the knee above it; his
       // leather follows the slot; his black line stays.
@@ -482,6 +531,7 @@ export const FEET_ITEMS: ItemDef[] = [
         bareFootOff(g, s);
         const shin = s === 'N' ? SANDAL_SHIN_N : SANDAL_SHIN_F;
         const foot = s === 'N' ? SANDAL_FOOT_N : SANDAL_FOOT_F;
+        legToLacedShin(g, s, shin, ankle, segAngle(knee, ankle));
         stampPiece(g, legDepth(s, 'feet'), shin, ankle, segAngle(knee, ankle), `shin${s}`, tint);
         stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, tint);
       }

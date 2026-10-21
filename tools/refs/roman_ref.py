@@ -181,6 +181,21 @@ DRAPE_FILL_FROM = 66     # the drape is filled behind his legs from this row dow
 METAL = ('leather', 'stud', 'bronze', 'red')
 TAKES = {n: METAL + (('skin',) if n.startswith(('shin', 'foot')) else ()) for n in REGIONS}
 TAKES['drape'] = ('red',)
+# What the regions above leave out of a piece, which shows now that the game gives our far leg the shape
+# of his laced shin (src/sprite/items/feet.ts: our bare calf and the front of our knee no longer stand in
+# front of it): name -> (region, the kinds it takes besides his black line that bounds the piece).
+#   the laced shins  each whole, with his black line round it: the strap band's ends on both legs, the
+#                    near ankle's left side and the one blue-black pixel in its laces (the regions above
+#                    stop short of his drape's red beside them); never that red
+#   the strips       his black line down their right edge beside the far knee (rows 63 and 64)
+# Added once the drape is cut, which reads the legs as the regions above give them.
+SHIN_TAKES = ('leather', 'skin', 'hair')
+PIECE_MORE = {
+    'shin_n': ([(35.6, 77.5), (46, 77.5), (46, 80), (45, 80), (45, 81), (44, 81), (44, 83), (43, 83), (43, 85),
+                (44, 85), (44, 86), (43, 86), (43, 92), (35, 92), (35, 88), (35.6, 88)], SHIN_TAKES),
+    'shin_f': ([(54, 77.5), (63.4, 77.5), (63.4, 90), (55.6, 90), (55.6, 82), (55, 82), (55, 80), (54, 80)], SHIN_TAKES),
+    'front': ([(66, 63), (67, 63), (67, 65), (66, 65)], ()),
+}
 
 
 def his_line(a):
@@ -238,6 +253,13 @@ def pieces(a):
             c[y, x] = a[below[0], x] if below else a[y, first]
 
     masks['drape'], cols['drape'] = drape_behind_legs(a, K, bg, masks, black)
+
+    for n, (pts, takes) in PIECE_MORE.items():
+        region = inside(pts, H, W)
+        more = region & ~bg & ~owned & np.isin(K, takes)
+        owned |= more
+        masks[n] = masks[n] | more
+        masks[n] = masks[n] | (line & region & near8(masks[n]))
     return masks, cols
 
 

@@ -87,6 +87,30 @@ describe('the Roman set', () => {
     }
   });
 
+  it('shows no bare leg beside his laced shins at rest: his laces, his line, then what is behind', () => {
+    // Our calf is wider than his laced shin and leans where his stands straight: it used to show as a strip
+    // of skin between his laces and the drape, from under the skirt to the ankle.
+    const f = renderSprite(look('male'), 'idle', 0);
+    const skin = (i: number) => {
+      const [r, g, b] = [0, 1, 2].map((k) => f.rgba[i * 4 + k]);
+      return opaque(f.rgba, i) && r >= 135 && b >= 0.42 * r && g >= 0.33 * r && r > b + 25;
+    };
+    for (const [name, piece, rest] of [
+      ['near', kit.SANDAL_SHIN_N, kit.ROMAN_KIT_REST.SANDAL_SHIN_N],
+      ['far', kit.SANDAL_SHIN_F, kit.ROMAN_KIT_REST.SANDAL_SHIN_F],
+    ] as [string, PaintedPiece, [number, number]][]) {
+      // his rows, and the knee's last rows above his strap band (as wide as the band)
+      for (let j = -3; j < piece.rows.length; j++) {
+        const row = piece.rows[Math.max(0, j)];
+        const left = row.search(/[^.]/);
+        const right = row.length - 1 - [...row].reverse().join('').search(/[^.]/);
+        for (const x of [rest[0] + left - 2, rest[0] + left - 1, rest[0] + right + 1, rest[0] + right + 2]) {
+          assert.ok(!skin((rest[1] + j) * GRID + x), `${name} shin, row ${j}: bare skin at x ${x}`);
+        }
+      }
+    }
+  });
+
   it('puts both bracers on the forearms in every pose and body', () => {
     for (const body of ['male', 'bulky', 'slender'] as BodyType[]) {
       for (const pose of POSES) {

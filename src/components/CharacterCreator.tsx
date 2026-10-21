@@ -23,7 +23,7 @@ import { CAST_STYLE_INFO, defaultCastStyle } from '../sprite/castInfo';
 import { soundManager } from '../utils/audio';
 import { deriveStats } from '../rules/derived';
 import { clanBonus } from '../rules/checks';
-import { migrateCharacter, sanitizeMissionFields } from '../rules/ninja';
+import { migrateCharacter, natureOf, sanitizeMissionFields } from '../rules/ninja';
 import { Dice5, Download, Shield, Zap, Eye, Swords, BookOpen, UserCheck, Sparkles } from 'lucide-react';
 import { ForestScene, forestGround } from './scene/ForestScene';
 import { BigButton, Chip, Frame, Heading, IronButton, Parchment, Row, StepTabs, serif } from './creator/stage';
@@ -118,6 +118,7 @@ const T = strings({
   sheet: { en: 'Your sheet', es: 'Tu hoja' },
   hp: { en: 'HP', es: 'PG' },
   chakraMax: { en: 'Chakra', es: 'Chakra' },
+  nature: { en: 'Nature', es: 'Naturaleza' },
   ac: { en: 'AC', es: 'CA' },
   dc: { en: 'Jutsu DC', es: 'CD jutsu' },
   atk: { en: 'Attack', es: 'Ataque' },
@@ -366,7 +367,6 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
     soundManager.playSelect();
     const clanInfo = CLANS_DATA[newClan];
     const newDojutsu = clanInfo.availableDojutsu[0];
-    const newAura = clanInfo.recommendedChakraColor;
     const newJutsus = { ...character.selectedJutsus, slot4Clan: clanInfo.signatureJutsuId };
 
     const derived = calculateDerived(
@@ -377,13 +377,15 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
       character.selectedFeats
     );
 
+    // The clan leaves the chakra alone: its type is the ninja's nature, the player's own choice in
+    // Appearance > Chakra. A sheet older than the sprite look draws its burst from the aura colour,
+    // so writing the clan's colour there would change that ninja's nature.
     setCharacter({
       ...character,
       clan: newClan,
       dojutsu: newDojutsu,
       palette: {
         ...character.palette,
-        chakraAuraColor: newAura,
         eyeColor: newDojutsu.includes('Sharingan') ? '#ef4444' : newDojutsu.includes('Byakugan') ? '#e0e7ff' : character.palette.eyeColor,
       },
       selectedJutsus: newJutsus,
@@ -780,6 +782,13 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
           </div>
         </div>
       ))}
+      {/* The chakra type picked in Appearance > Chakra is the ninja's elemental nature. */}
+      <div className="col-span-3 flex items-baseline justify-center gap-2 border border-[#3d3122] bg-black/30 px-1 py-1.5">
+        <span className="text-[10px] uppercase tracking-wider text-[#b9a98a]">{T('nature')}</span>
+        <span style={serif} className="text-base font-bold text-[#f2c46d]">
+          {L(natureOf(character))}
+        </span>
+      </div>
     </div>
   );
 
@@ -1073,7 +1082,21 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
           <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 132 }}>
             {nameplate}
           </div>
-          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: Math.min(ground + 18, view.h - 140) }}>
+          {/* The pose bar stays between the side panels (it wraps when they leave too little room): it
+              must not cover the panel's options. The widths mirror the panels' classes above. */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2"
+            style={{
+              top: Math.min(ground + 18, view.h - 140),
+              maxWidth:
+                2 *
+                  Math.min(
+                    view.w / 2 - 24 - (step === 'appearance' ? Math.min(view.w * 0.34, 560) : Math.min(view.w * 0.26, 400)),
+                    view.w / 2 - 24 - Math.min(view.w * 0.27, 420)
+                  ) -
+                24,
+            }}
+          >
             {stances}
           </div>
 

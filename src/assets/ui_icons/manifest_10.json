@@ -1,0 +1,583 @@
+{
+ "kit": "ui_icons_10",
+ "references": [
+  "docs/reference/icons-owner-reference-10.jpg"
+ ],
+ "round": 1,
+ "screen": [
+  1600,
+  900
+ ],
+ "pixel": "one art pixel per screen pixel (as ui_icons, sheet 1): draw at 1x on a 1600x900 screen, @2x on a 2x screen, always with image-rendering: pixelated",
+ "frame": {
+  "from": "ui_icons (sheet 1), read only: skill_slot_steel.png and skill_slot_steel_active.png, 56x56, the icon window 44x44 at 6,6; see ui_icons/manifest.json for its slices",
+  "window": {
+   "x": 6,
+   "y": 6,
+   "w": 44,
+   "h": 44
+  }
+ },
+ "method": "his sheets are pixel art (480x268 scaled 4.1667x and saved as JPEG); his pixels are taken back first (tools/refs/icons-from-ref-23.py). 88: his own pixels one to one (his 90x90 or 93x91 window with the columns and rows that show least dropped), on a palette sampled from his pixels, 1-2 pixel areas merged only where his own pixels do not stand out. 44: area mean of his pixels, except his thin lines and strongest specks, which keep their own colour one pixel wide; a light bilateral filter, nearest palette entry, 1-2 pixel areas merged; then hand-fixes only where that still loses his picture (see tools/ui/ui-icons-23.ts). Sheets 8 to 11 use no bilateral filter (it lightened his dark figures into his ground), and their palettes give his rare colours a slot each: after the k-means, every colour of the 44's and the 88's pictures still far from the palette in hue (his skin, his violet chains, a dragon's teeth, his greys and whites) is grouped and the group missed most gets its own entry, his nearest real colour, up to 20 (paletteCovered); his thin marks of one colour (skin, violet chains, embers, teeth, mouth cores, foam) are kept by colour rules",
+ "checks": "small = 8-connected areas of one colour of 1 or 2 pixels: smallHis are his own marks (at 88 his pixel stands out there; at 44 his kept specks), smallDrawn hold a hand-fixed detail, smallOther are left over from the reduction; lowFreq = mean OKLab difference x100 to his box reduction after both are blurred (sigma size/30), lowFreqBoxOnPalette = the same for his box reduction put on our palette; ssim = structural similarity of the lightness (Gaussian window sigma 1.5) to his picture box-reduced to 88, ours (the 44 shown 2x) against ssimBox, his own box reduction to 44 shown 2x; hue = OKLab median hue in degrees (hueHis: his box reduction); thinRun = the longest straight run of one colour one pixel thick [length, row or col, index]",
+ "icons": {
+  "dragon_fire_bomb": {
+   "name": "Dragon Flame",
+   "sheet": "docs/reference/icons-owner-reference-10.jpg",
+   "file": "dragon_fire_bomb.png",
+   "file2x": "dragon_fire_bomb@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "LLAMA DRAGON",
+   "hisWindow": [
+    98,
+    96
+   ],
+   "dropped88": {
+    "columns": [
+     1,
+     6,
+     12,
+     18,
+     27,
+     36,
+     52,
+     60,
+     84,
+     93
+    ],
+    "rows": [
+     2,
+     8,
+     17,
+     28,
+     44,
+     75,
+     84,
+     94
+    ]
+   },
+   "palette": [
+    "#220412",
+    "#190a1f",
+    "#320816",
+    "#380a04",
+    "#360f2b",
+    "#40121f",
+    "#50131e",
+    "#611823",
+    "#652414",
+    "#701a20",
+    "#7f2122",
+    "#902724",
+    "#a12e22",
+    "#855625",
+    "#924e3d",
+    "#b23326",
+    "#c13c28",
+    "#d0432a",
+    "#c25e3d",
+    "#de5228",
+    "#ed5929",
+    "#e06f36",
+    "#f66828",
+    "#e08640",
+    "#f87d22",
+    "#de9a89",
+    "#f8912c",
+    "#fca236",
+    "#e2b05c",
+    "#fbb937",
+    "#f9cd47",
+    "#f4ceae",
+    "#ffe666",
+    "#ffed3c",
+    "#fef58a",
+    "#fff9b6"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#c25e3d",
+    "#652414",
+    "#855625",
+    "#f4ceae",
+    "#e2b05c",
+    "#924e3d",
+    "#e08640",
+    "#fff9b6",
+    "#380a04",
+    "#de9a89",
+    "#190a1f",
+    "#e06f36",
+    "#360f2b"
+   ],
+   "sampled": [
+    "the yellow core of his left head's mouth"
+   ],
+   "checks": {
+    "44": {
+     "small": 21,
+     "smallHis": 21,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.83,
+     "lowFreqBoxOnPalette": 0.71,
+     "ssim": 0.691,
+     "ssimBox": 0.773,
+     "hue": 25,
+     "hueHis": 27,
+     "colours": 29,
+     "thinRun": [
+      5,
+      "col",
+      22
+     ]
+    },
+    "88": {
+     "small": 1522,
+     "smallHis": 1522,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.99,
+     "lowFreqBoxOnPalette": 0.58,
+     "ssim": 0.356,
+     "ssimBox": 1,
+     "hue": 26,
+     "hueHis": 28,
+     "colours": 36,
+     "thinRun": [
+      7,
+      "col",
+      11
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "wood_dragon_jutsu": {
+   "name": "Wood Dragon",
+   "sheet": "docs/reference/icons-owner-reference-10.jpg",
+   "file": "wood_dragon_jutsu.png",
+   "file2x": "wood_dragon_jutsu@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "DRAGON MADERA",
+   "hisWindow": [
+    98,
+    96
+   ],
+   "dropped88": {
+    "columns": [
+     1,
+     7,
+     15,
+     20,
+     59,
+     64,
+     77,
+     85,
+     91,
+     96
+    ],
+    "rows": [
+     2,
+     8,
+     39,
+     45,
+     53,
+     76,
+     82,
+     88
+    ]
+   },
+   "palette": [
+    "#0a0c10",
+    "#121514",
+    "#28181c",
+    "#0c2417",
+    "#3a1b09",
+    "#342424",
+    "#183426",
+    "#223233",
+    "#323022",
+    "#183914",
+    "#442e2a",
+    "#124533",
+    "#144b34",
+    "#583d33",
+    "#1c593a",
+    "#4c5036",
+    "#6c4c3a",
+    "#22663c",
+    "#715e42",
+    "#406f4d",
+    "#367340",
+    "#835c40",
+    "#58743e",
+    "#308850",
+    "#987050",
+    "#5a9144",
+    "#309e58",
+    "#b0855a",
+    "#71ae49",
+    "#c89861",
+    "#daac64"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#4c5036",
+    "#58743e",
+    "#5a9144",
+    "#323022",
+    "#183914",
+    "#715e42",
+    "#3a1b09",
+    "#223233",
+    "#406f4d"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 2,
+     "smallHis": 2,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.86,
+     "lowFreqBoxOnPalette": 0.6,
+     "ssim": 0.641,
+     "ssimBox": 0.735,
+     "hue": 153,
+     "hueHis": 152,
+     "colours": 26,
+     "thinRun": [
+      6,
+      "row",
+      7
+     ]
+    },
+    "88": {
+     "small": 1457,
+     "smallHis": 1457,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.25,
+     "lowFreqBoxOnPalette": 0.49,
+     "ssim": 0.395,
+     "ssimBox": 1,
+     "hue": 151,
+     "hueHis": 153,
+     "colours": 31,
+     "thinRun": [
+      9,
+      "row",
+      56
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "adamantine_sealing_chains": {
+   "name": "Chains",
+   "sheet": "docs/reference/icons-owner-reference-10.jpg",
+   "file": "adamantine_sealing_chains.png",
+   "file2x": "adamantine_sealing_chains@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "CADENAS",
+   "hisWindow": [
+    98,
+    96
+   ],
+   "dropped88": {
+    "columns": [
+     1,
+     6,
+     18,
+     40,
+     49,
+     59,
+     70,
+     81,
+     91,
+     96
+    ],
+    "rows": [
+     2,
+     14,
+     26,
+     36,
+     46,
+     78,
+     88,
+     94
+    ]
+   },
+   "palette": [
+    "#18000a",
+    "#3d1035",
+    "#460c28",
+    "#501812",
+    "#5a1241",
+    "#681a1c",
+    "#67155e",
+    "#7c1947",
+    "#7c243c",
+    "#88322a",
+    "#7c4132",
+    "#882472",
+    "#921884",
+    "#a22144",
+    "#aa3a2d",
+    "#a2502e",
+    "#ac3d73",
+    "#bb3246",
+    "#ac5158",
+    "#b6643e",
+    "#d54d4a",
+    "#d64870",
+    "#d03ec6",
+    "#e26443",
+    "#bc8548",
+    "#d27842",
+    "#d27286",
+    "#dc56e9",
+    "#de8c52",
+    "#f0998a",
+    "#fe87ba",
+    "#f880ec",
+    "#f0a066",
+    "#fca546",
+    "#dfba98",
+    "#f3ba6b",
+    "#ffd06f",
+    "#fbcad4",
+    "#ffe878",
+    "#fff25d",
+    "#ffeec5",
+    "#fef6b2"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#ac5158",
+    "#bc8548",
+    "#e26443",
+    "#7c4132",
+    "#ac3d73",
+    "#921884",
+    "#dfba98",
+    "#dc56e9",
+    "#d64870",
+    "#f880ec",
+    "#7c243c",
+    "#fca546",
+    "#f0998a",
+    "#67155e",
+    "#aa3a2d",
+    "#501812",
+    "#fff25d",
+    "#ffeec5",
+    "#3d1035",
+    "#d27286"
+   ],
+   "sampled": [],
+   "checks": {
+    "44": {
+     "small": 5,
+     "smallHis": 5,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.64,
+     "lowFreqBoxOnPalette": 0.69,
+     "ssim": 0.725,
+     "ssimBox": 0.816,
+     "hue": 84,
+     "hueHis": 66,
+     "colours": 32,
+     "thinRun": [
+      5,
+      "col",
+      7
+     ]
+    },
+    "88": {
+     "small": 996,
+     "smallHis": 996,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.49,
+     "lowFreqBoxOnPalette": 0.65,
+     "ssim": 0.679,
+     "ssimBox": 1,
+     "hue": 98,
+     "hueHis": 79,
+     "colours": 42,
+     "thinRun": [
+      14,
+      "col",
+      81
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  },
+  "taki_sixtyfour_palms": {
+   "name": "64 Palms",
+   "sheet": "docs/reference/icons-owner-reference-10.jpg",
+   "file": "taki_sixtyfour_palms.png",
+   "file2x": "taki_sixtyfour_palms@2x.png",
+   "size": [
+    44,
+    44
+   ],
+   "size2x": [
+    88,
+    88
+   ],
+   "label": "64 PALMAS",
+   "hisWindow": [
+    98,
+    96
+   ],
+   "dropped88": {
+    "columns": [
+     1,
+     6,
+     33,
+     41,
+     52,
+     60,
+     74,
+     86,
+     91,
+     96
+    ],
+    "rows": [
+     1,
+     19,
+     27,
+     36,
+     48,
+     62,
+     78,
+     94
+    ]
+   },
+   "palette": [
+    "#070822",
+    "#0a122c",
+    "#241721",
+    "#062222",
+    "#161c32",
+    "#22273d",
+    "#4c221a",
+    "#2c3344",
+    "#193b51",
+    "#38424e",
+    "#584246",
+    "#3e5354",
+    "#0a5678",
+    "#7a4a42",
+    "#04678a",
+    "#266a6f",
+    "#027393",
+    "#7c6456",
+    "#028280",
+    "#03819b",
+    "#098fa3",
+    "#0e9e90",
+    "#b17a70",
+    "#0a9db2",
+    "#14adba",
+    "#18b79a",
+    "#1cbfc9",
+    "#35c683",
+    "#26cea4",
+    "#e2a28c",
+    "#22d5dd",
+    "#ecbea2",
+    "#54f2a0",
+    "#32edea",
+    "#3ef2c5",
+    "#5cf98b",
+    "#3afafd"
+   ],
+   "paletteDetailOnly": [],
+   "paletteCovered": [
+    "#0e9e90",
+    "#584246",
+    "#266a6f",
+    "#193b51",
+    "#062222",
+    "#7c6456",
+    "#241721",
+    "#3ef2c5",
+    "#028280",
+    "#4c221a",
+    "#35c683",
+    "#ecbea2",
+    "#18b79a",
+    "#5cf98b"
+   ],
+   "sampled": [
+    "his hood's lit teal-grey band"
+   ],
+   "checks": {
+    "44": {
+     "small": 2,
+     "smallHis": 2,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.69,
+     "lowFreqBoxOnPalette": 0.64,
+     "ssim": 0.73,
+     "ssimBox": 0.788,
+     "hue": 212,
+     "hueHis": 216,
+     "colours": 31,
+     "thinRun": [
+      10,
+      "row",
+      42
+     ]
+    },
+    "88": {
+     "small": 930,
+     "smallHis": 930,
+     "smallDrawn": 0,
+     "smallOther": 0,
+     "lowFreq": 1.71,
+     "lowFreqBoxOnPalette": 0.59,
+     "ssim": 0.614,
+     "ssimBox": 1,
+     "hue": 219,
+     "hueHis": 219,
+     "colours": 37,
+     "thinRun": [
+      26,
+      "row",
+      85
+     ]
+    }
+   },
+   "use": "Hotbar skill icon: fills the 44x44 window of skill_slot_steel (ui_icons), at 6,6."
+  }
+ }
+}

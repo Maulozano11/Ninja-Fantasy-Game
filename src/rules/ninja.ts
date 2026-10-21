@@ -1,8 +1,10 @@
 // What a ninja carries through a mission: HP, chakra, Hit and Chakra Dice, Tension, Exhaustion and
 // effects (docs/MISSION_DESIGN.md). Every function returns a new character plus the events.
 
-import type { ClanType, ShinobiCharacter } from '../types/shinobi';
+import type { ChakraNature, ClanType, ShinobiCharacter } from '../types/shinobi';
 import { CLANS_DATA, DEFAULT_CHARACTER, SHINOBI_CLASSES } from '../data/shinobiData';
+import { chakraNature } from '../sprite/chakraNature';
+import { getAppearance } from '../sprite/legacy';
 import type { BreakdownKind, ConvictionValue, EffectId, RuleEvent, SkillId } from '../types/mission';
 import { savingThrow, SKILL_ABILITY } from './checks';
 import { deriveStats, effectiveMaxHp, SHEET_VERSION } from './derived';
@@ -18,6 +20,13 @@ export const tensionOf = (c: ShinobiCharacter): number => c.tension ?? 0;
 export const exhaustionOf = (c: ShinobiCharacter): number => c.exhaustion ?? 0;
 export const hitDiceLeft = (c: ShinobiCharacter): number => Math.max(0, c.level - (c.hitDiceSpent ?? 0));
 export const chakraDiceLeft = (c: ShinobiCharacter): number => Math.max(0, c.level - (c.chakraDiceSpent ?? 0));
+
+/**
+ * The ninja's elemental nature: its chakra type, picked in the creator's Chakra section. It is read
+ * from the look's burst and nowhere else; the colour the chakra shows never changes it (the owner,
+ * 2026-10-21). A sheet without a look reads its old aura colour as the burst it always had.
+ */
+export const natureOf = (c: ShinobiCharacter): ChakraNature => chakraNature(getAppearance(c).chakra);
 
 /** Unconscious from Exhaustion level 6: can't act until back at level 5. */
 export const isUnconscious = (c: ShinobiCharacter): boolean => exhaustionOf(c) >= 6;

@@ -280,7 +280,7 @@ const CLAN_SPECS: JutsuSpec[] = [
   {
     id: 'ryusei_warp',
     name: 'Warp Strike',
-    nameEs: 'Warp Strike',
+    nameEs: 'Golpe Warp',
     clan: 'Ryusei',
     ability: true,
     rank: '',
@@ -321,7 +321,7 @@ const CLAN_SPECS: JutsuSpec[] = [
   {
     id: 'northstar_command',
     name: 'Command',
-    nameEs: 'Command',
+    nameEs: 'Comando',
     clan: 'Northstar',
     ability: true,
     rank: '',

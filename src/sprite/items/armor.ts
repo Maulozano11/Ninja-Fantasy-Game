@@ -36,6 +36,7 @@ import {
   PLATE_WAIST,
 } from './crimsonPlateArt';
 import { AZURE_COAT } from './eliseUpper';
+import { NAVY_PLEATS } from './eliseLower';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -2845,4 +2846,5 @@ export const SKIRT_ITEMS: ItemDef[] = [
       });
     },
   },
+  NAVY_PLEATS,
 ];

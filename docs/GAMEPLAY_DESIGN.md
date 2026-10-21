@@ -894,6 +894,8 @@ Water Stream the water stream.
 
 ## Rank D and C jutsu (proposed 2026-10-21; the owner's answer the same day)
 
+**Approved in the game (2026-10-21):** "apruebo los 12 jutsus con excepcion del de tajo sangrante ya que hay que añadir algun sprite de sangre explotando hacia el lado donde se hace el corte para efecto de sangrado". All twelve are merged; the Bleeding Cut plays as built until its blood spray (a burst of blood thrown toward the side the cut travels) is made and approved.
+
 Twelve low-rank jutsu for the creator, all drawn with the owner's approved
 element sets. The Spanish proposal (with its previews) was shown to him; he
 answered (verbatim): *"en 1 , 4 , 6 que son proyectiles separa los proyectiles

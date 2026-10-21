@@ -31,8 +31,8 @@ export const AZURE_KIND: Record<string, 'line' | 'steel' | 'leather' | 'gold'> =
 
 /** The near cuff and the greave over the thigh: they turn with the thigh about the knee. */
 export const AZURE_THIGH_N: PaintedPiece = {
-  pivot: [6, 8],
-  angle: 87.96,
+  pivot: [6, 10],
+  angle: 87.21,
   rows: [
     '0KKKKKKKKKKK0',
     '0gbbbBBBBBBk0',
@@ -44,6 +44,8 @@ export const AZURE_THIGH_N: PaintedPiece = {
     '.0wLLLLLLMd0.',
     '.0wLLLLLLMd0.',
     '.0wLLLLLLMd0.',
+    '.0wLLLLLLMd0.',
+    '..0wLLLLLMd0.',
   ],
   colors: {
     '0': '#080613',
@@ -62,17 +64,18 @@ export const AZURE_THIGH_N: PaintedPiece = {
 
 /** The near greave over the shin and the ankle guard: they turn with the shin about the ankle. */
 export const AZURE_SHIN_N: PaintedPiece = {
-  pivot: [3, 14],
-  angle: 104.16,
+  pivot: [3, 15],
+  angle: 103.41,
   rows: [
     '..0wLLLLLLMd0',
-    '..0wLLLLLLMd0',
     '...0wLLLLLMd0',
     '...0wLLLLLMd0',
     '...0wLXLLMd0.',
     '...0wLXLLMd0.',
     '...0wLXLLMd0.',
     '...0wLXLLMd0.',
+    '...0wLXLLMd0.',
+    '...0wLXLMd0..',
     '...0wLXLMd0..',
     '...0wLXLMd0..',
     '...0wLXLMd0..',
@@ -101,16 +104,12 @@ export const AZURE_SHIN_N: PaintedPiece = {
 /** The near sabaton, seen from the front: it stays flat under the ankle. */
 export const AZURE_FOOT_N: PaintedPiece = {
   pivot: [5, 0],
-  angle: 104.16,
+  angle: 103.41,
   rows: [
-    '..0wLLLLMd0',
-    '..0wLLLLMd0',
     '..0wLLLLMd0',
     '.0weLLLLMd0',
     '0weLLLLLMd0',
-    '0weLLLLLMd0',
     '0LMMMMMMMd0',
-    '0wweLLLLMd0',
     '0weLLLLMMd0',
     '0eLLLLLMdd0',
     '0sssssssss0',
@@ -130,7 +129,7 @@ export const AZURE_FOOT_N: PaintedPiece = {
 /** The near knee cop, rimmed in gold: it turns with the shin about the knee, over the joint. */
 export const AZURE_COP_N: PaintedPiece = {
   pivot: [4, 4],
-  angle: 104.16,
+  angle: 103.41,
   rows: [
     '.0gggG0.',
     '0gweLMG0',
@@ -155,16 +154,16 @@ export const AZURE_COP_N: PaintedPiece = {
 
 /** The far cuff and the greave over the thigh: they turn with the thigh about the knee. */
 export const AZURE_THIGH_F: PaintedPiece = {
-  pivot: [7, 4],
-  angle: 65.47,
+  pivot: [9, 4],
+  angle: 52.27,
   rows: [
-    '0KKKKKKKKKK0',
-    '0gbBBBBBBkk0',
-    '0gBBBBBBkkK0',
-    '0GggggggggG0',
-    '...0eLLLLMd0',
-    '...0eLLLLMd0',
-    '...0eLLLLMd0',
+    '0KKKKKKKKKK0.',
+    '0gbBBBBBBkk0.',
+    '.0gBBBBBBkkK0',
+    '.0GggggggggG0',
+    '....0eLLLLMd0',
+    '....0eLLLLMd0',
+    '....0eLLLLMd0',
   ],
   colors: {
     '0': '#080613',
@@ -183,27 +182,27 @@ export const AZURE_THIGH_F: PaintedPiece = {
 
 /** The far greave over the shin and the ankle guard: they turn with the shin about the ankle. */
 export const AZURE_SHIN_F: PaintedPiece = {
-  pivot: [4, 14],
-  angle: 98.82,
+  pivot: [4, 15],
+  angle: 106.19,
   rows: [
-    '..0eLLLLMd0',
-    '..0eLLLLMd0',
-    '..0eLLLLMd0',
-    '..0eLLLMd0.',
-    '..0eLLLMd0.',
-    '..0eLLLMd0.',
-    '..0eLLLMd0.',
-    '..0eLLLMd0.',
-    '.0eLXLMd0..',
-    '.0eLXLMd0..',
-    '.0eLXLMd0..',
-    '.0eLXLMd0..',
-    '.0eLXMd0...',
-    '.0eLXMd0...',
-    '.0ggggG0...',
-    '0gBBBkkG0..',
-    '0GBBkkKG0..',
-    '.0GgggGo0..',
+    '....0eLLLLMd0',
+    '....0eLLLLMd0',
+    '....0eLLLLMd0',
+    '....0eLLLMd0.',
+    '....0eLLLMd0.',
+    '....0eLLLMd0.',
+    '....0eLLLMd0.',
+    '...0eLLLMd0..',
+    '...0eLLLMd0..',
+    '..0eLXLMd0...',
+    '..0eLXLMd0...',
+    '..0eLXLMd0...',
+    '..0eLXLMd0...',
+    '..0eLXMd0....',
+    '.0eLXMd0.....',
+    '.0ggggG0.....',
+    '0GBBkkKG0....',
+    '.0GgggGo0....',
   ],
   colors: {
     '0': '#080613',
@@ -223,10 +222,9 @@ export const AZURE_SHIN_F: PaintedPiece = {
 
 /** The far sabaton pointing right: it stays flat under the ankle. */
 export const AZURE_FOOT_F: PaintedPiece = {
-  pivot: [5, -2],
-  angle: 98.82,
+  pivot: [5, -1],
+  angle: 106.19,
   rows: [
-    '0wLLLLe0......',
     '0MLLLLLLew0...',
     '0MLLLLLLLLew0.',
     '0dMMLLLLLLLMd0',
@@ -247,7 +245,7 @@ export const AZURE_FOOT_F: PaintedPiece = {
 /** The far knee cop, rimmed in gold: it turns with the shin about the knee, over the joint. */
 export const AZURE_COP_F: PaintedPiece = {
   pivot: [4, 1],
-  angle: 98.82,
+  angle: 106.19,
   rows: [
     '.0gggG0.',
     '0gwLLMG0',

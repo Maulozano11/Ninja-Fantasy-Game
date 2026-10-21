@@ -27,7 +27,7 @@ export const ELISE_GLOVE_STRAP = '#865339';
 export const ELISE_FINGER_TONES = ['#d68271', '#d68271', '#e59580', '#facdac', '#facdac'] as const;
 
 /** The tails' hem row in our frame at rest (the female idle): crouched or seated it hangs no lower above the ground. */
-export const ELISE_COAT_HEM_Y = 204;
+export const ELISE_COAT_HEM_Y = 206;
 
 /** What each colour of hers in these pieces is (her black line stays; the others follow their colour slot). */
 export const ELISE_KIND: Record<string, 'line' | 'coat' | 'trim' | 'lining' | 'cloth' | 'hem' | 'leather' | 'steel' | 'gold' | 'glove' | 'skin'> = {
@@ -76,8 +76,8 @@ export const ELISE_KIND: Record<string, 'line' | 'coat' | 'trim' | 'lining' | 'c
 
 /** Her pleated skirt with its gold hem, hung from the pelvis. */
 export const ELISE_SKIRT: PaintedPiece = {
-  pivot: [15, 4],
-  angle: -89.50,
+  pivot: [15, 9],
+  angle: -90.10,
   rows: [
     '.kkkkkkkkkkkkkkkkkkkkkkkkkkkkk.',
     '.kXXKXXKXXKXXKXXKXXKXXKXXKXXKk.',
@@ -105,8 +105,8 @@ export const ELISE_SKIRT: PaintedPiece = {
 
 /** Her coat's tails behind the legs: the near tail flaring back to a point, the lining, the far tail's edge. */
 export const ELISE_COAT_BACK: PaintedPiece = {
-  pivot: [28, -7],
-  angle: -89.50,
+  pivot: [28, -2],
+  angle: -90.10,
   rows: [
     '...kO1232123332333YkaaaaaaaaaaaaaaaaakY321Yk......',
     '..kO1232123332333YkaaaaaaaaaaaaaaaaaaakY31Yk......',
@@ -117,9 +117,11 @@ export const ELISE_COAT_BACK: PaintedPiece = {
     'kO1232123332333YkaagGIIImmmmmmmmmIIGgaakY321Yk....',
     'kO122123332333YkaagGIIIImmmmmmmmmIIIGgaakY31Yk....',
     'kO122123332333YkaagGIIIImmmmmmmmmIIIGgaakY321Yk...',
+    'kO122123332333YkaagGIIIImmmmmmmmmIIIGgaakY321Yk...',
     'kO12123332333YkaagGIIIIImmmmmmmmmIIIGgaakY32YYk...',
     'kO12123332333YkaagGIIIIImmmmmmmmmIIIIGgaakY3YYk...',
     'kO12233323Y3YkaagGIIIIIImmmmmmmmmIIIIGgaakY32YYk..',
+    'kO12233323h3YkaagGIIIIIImmmmmmmmmIIIIGgaakY32hYk..',
     'kO12233323h3YkaagGIIIIIImmmmmmmmmIIIIGgaakY32hYk..',
     'kO1Y233323Y3YkaagGIIIIIImmiiimmmmIIIIIGgaakY3YYk..',
     '.kY1Y3323Y3YkaagGIIIIIIImmiiimmmmIIIIIGgaakY32YYk.',
@@ -149,8 +151,8 @@ export const ELISE_COAT_BACK: PaintedPiece = {
 
 /** Her coat's front edges over the hips, over the skirt. */
 export const ELISE_COAT_FRONT: PaintedPiece = {
-  pivot: [24, 4],
-  angle: -89.50,
+  pivot: [24, 9],
+  angle: -90.10,
   rows: [
     '........kO133Y3Yk.............kY3Yk....',
     '........kO133Y3Yk.............kY31Yk...',
@@ -177,8 +179,8 @@ export const ELISE_COAT_FRONT: PaintedPiece = {
 
 /** Her two belts across the hips, the steel buckle at the near side, the box pouch at the far hip. */
 export const ELISE_BELT: PaintedPiece = {
-  pivot: [15, 11],
-  angle: -89.50,
+  pivot: [15, 16],
+  angle: -90.10,
   rows: [
     '.......................kkkkkkkk',
     '.......................kWwwWvkk',

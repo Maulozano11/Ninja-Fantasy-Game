@@ -9,7 +9,7 @@ the bar is the study's reduced reference (heroine_ref.reduced('elise'): her figu
 our female at idle frame 0, every pixel one of her colours, everything below her head drawn by hand
 at our scale in heroine_paint.PAINT). This script cuts her upper clothes out of it into pieces that
 ride our rig, each laid on our female at idle frame 0 as the reduced reference has it, so that there
-every pixel is the reduced reference's:
+every pixel is the reduced reference's; then re-laid on the female body v2 (refit, elise_fit.py):
 
   coat body     the high collar with the neck and the choker in it, the gold-edged  torso.armor
                 fronts, the white breastplate and the corset with its straps and
@@ -53,12 +53,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import numpy as np  # noqa: E402
 
+import elise_fit as F  # noqa: E402
 import heroine_paint as HP  # noqa: E402
 import heroine_ref as R  # noqa: E402
 
 W = 'elise'
 G = R.GRID
-J = R.OUR_JOINTS
+# The study's reduced reference is on our old female body (OLD_JOINTS): the pieces are cut there, then
+# re-laid on the body v2 (refit, elise_fit.py) and pinned to its joints (NEW_JOINTS).
+J = F.OLD_JOINTS
+NJ = F.NEW_JOINTS
 NONE = 255
 PAL = R.PALETTES[W]
 LINE_HEX = '#080613'
@@ -215,6 +219,33 @@ def build(fig, parts):
     return pieces
 
 
+# On the body v2 the coat body runs from under the chin (three rows higher) to under the belt, which
+# stays on its row (elise_fit.py: her belt is on rows 168-173 at the owner's game scale as before):
+# three rows longer. Where his scale gives her more rows than the study did, a plain row of hers is shown
+# twice: the collar under the choker (her neck and collar, her rows 44-60, are six of our rows at his
+# scale, four and a half in the study) and two of the breastplate's (her rows 60-80: eight at his
+# scale, six in the study); her corset (her rows 80-104) has as many rows at both.
+COLLAR_TWICE = (152, 154, 157)
+
+
+def refit(pieces):
+    """The pieces re-laid on the body v2 (elise_fit.py): the coat body from under the new chin to the
+    belt, three rows longer (COLLAR_TWICE); each sleeve moved with the joint it is pinned to (the arms
+    are as long as before)."""
+    out = {}
+    for name, p in pieces.items():
+        ys = np.nonzero(p.mask.any(1))[0]
+        if name == 'body':
+            # (a row lower than the neck's step: the new body's chin is a row lower under its neck)
+            top = ys.min() + F.joint_step('neck')[1] + 1
+            f = lambda a, fill: F.double_rows(a, ys.min(), ys.max(), COLLAR_TWICE, top, fill)  # noqa: E731
+        else:
+            dx, dy = F.joint_step(('shoulder' if name.startswith('upper') else 'elbow') + name[-1])
+            f = lambda a, fill, dx=dx, dy=dy: F.move(a, dx, dy, fill)  # noqa: E731
+        out[name] = Piece(name, f(p.idx, NONE), f(p.role, ''), f(p.filled, False))
+    return out
+
+
 # ---------------------------------------------------------------------------------------------
 # Output
 
@@ -270,15 +301,15 @@ def write(path, text):
 def write_ts(pieces, path):
     table = char_table(pieces)
     by_role = {role: ''.join(c for (r, _), c in table.items() if r == role) for role in ROLE_ORDER}
-    torso = seg_angle(J['pelvis'], J['neck'])
+    torso = seg_angle(NJ['pelvis'], NJ['neck'])
     body = pieces['body']
     # Where the coat body ends: its last row's lower edge, as a height above the pelvis along the
     # torso (design units) at rest; below it our torso is left to what is worn there.
     bottom = int(np.nonzero(body.mask.any(1))[0].max()) + 1
-    from_h = (J['pelvis'][1] - bottom) / 2
+    from_h = (NJ['pelvis'][1] - bottom) / 2
     # The near sleeve's band: its top edge across the arm's middle, as a point along our upper arm
     # (0 the shoulder, 1 the elbow); our arm above it is the bare shoulder.
-    band = along(((J['shoulderN'][0] + J['elbowN'][0]) / 2, NEAR_TOP), J['shoulderN'], J['elbowN'])
+    band = along(((NJ['shoulderN'][0] + NJ['elbowN'][0]) / 2, NEAR_TOP + F.joint_step('shoulderN')[1]), NJ['shoulderN'], NJ['elbowN'])
     # Each sleeve's lower edge along our forearm (0 the elbow, 1 the wrist): past it is the wrist.
     cuffs = {}
     for side in 'NF':
@@ -286,7 +317,7 @@ def write_ts(pieces, path):
         ys, xs = np.nonzero(fo.mask)
         last = ys.max()
         mid = xs[ys == last].mean() + 0.5
-        cuffs[side] = along((mid, last + 1), J['elbow' + side], J['wrist' + side])
+        cuffs[side] = along((mid, last + 1), NJ['elbow' + side], NJ['wrist' + side])
     head = [
         "// The owner's Elise's coat and sleeves, the reduced reference's pixels (tools/refs/elise-upper-from-ref.py",
         '// from docs/reference/elise-owner-reference.jpg, at our scale by tools/refs/heroine-study.py): pieces',
@@ -317,9 +348,9 @@ def write_ts(pieces, path):
         '',
     ]
     parts = [ts_piece('ELISE_COAT_BODY', 'The coat body: high collar with the neck and choker, gold-edged fronts, breastplate and corset, down to the belt (pivot: the neck).',
-                      body, table, J['neck'], torso)]
+                      body, table, NJ['neck'], torso)]
     for side, word in (('N', 'near'), ('F', 'far')):
-        s, e, w = J['shoulder' + side], J['elbow' + side], J['wrist' + side]
+        s, e, w = NJ['shoulder' + side], NJ['elbow' + side], NJ['wrist' + side]
         parts.append(ts_piece(f'ELISE_SLEEVE_UPPER_{side}', f"The {word} upper arm's sleeve: the gold-trimmed band, the white sleeve and the blue at the elbow (pivot: the {word} shoulder).",
                               pieces['upper' + side], table, s, seg_angle(s, e)))
         parts.append(ts_piece(f'ELISE_SLEEVE_FORE_{side}', f"The {word} forearm's guard, its gold edge and cuff (pivot: the {word} elbow).",
@@ -350,7 +381,7 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     fig = R.reduced_index(W).astype(np.int32)
     parts = R.reduced_parts(W)
-    pieces = build(fig, parts)
+    pieces = refit(build(fig, parts))
 
     x0, y0, x1, y1 = 100, 140, 150, 186
     ref = rgba(fig)[y0:y1, x0:x1]

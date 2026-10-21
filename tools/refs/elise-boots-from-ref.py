@@ -26,6 +26,9 @@ guard turns with the shin about the ankle, the sabaton stays flat on the ground 
 knee cop, stamped last, turns with the shin about the knee and covers the joint. At rest every pixel is
 where it is drawn here.
 
+They are drawn on our old female body and re-laid on the female body v2 (elise_fit.py, LEG_ROWS):
+the cuffs under the skirt, the greaves down to the new ankle, the sabatons as short as its feet.
+
 It writes the pieces as TypeScript (src/sprite/items/eliseGreavesArt.ts) and, in <study>, her boots
 (the study's reduced reference and her own pixels at the same height) beside ours at 8x. The same
 picture always gives the same bytes:
@@ -42,6 +45,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 
+import elise_fit as F  # noqa: E402
 import heroine_ref as R  # noqa: E402
 
 WHICH = 'elise'
@@ -204,8 +208,8 @@ def rows_of(a, y0, y1):
     return out
 
 
-def pieces():
-    """The pieces in our frame: name -> (GRID, GRID) LEGEND characters, '' empty."""
+def old_pieces():
+    """The pieces in our frame on the old female body: name -> (GRID, GRID) LEGEND characters."""
     out = {}
     for s, leg, foot in (('N', NEAR, NEAR_FOOT), ('F', FAR, FAR_FOOT)):
         a = grid(leg)
@@ -213,6 +217,74 @@ def pieces():
         out[f'shin{s}'] = rows_of(a, *CUTS[s]['shin'])
         out[f'foot{s}'] = grid(foot)
         out[f'cop{s}'] = grid(COP[s])
+    return out
+
+
+# ---------------------------------------------------------------------------------------------
+# On the body v2 (elise_fit.py). The boots above are drawn on our old female body; the new one has a
+# shorter thigh, a longer shin and a smaller foot, the ankle four rows lower (the far one two). At
+# the owner's game scale her cuffs' top is her row 157, our row 186 (three rows of bare thigh under
+# the skirt's hem, as she has nine of hers); her greaves run down to the ankle guard, which sits on our
+# ankle as before; her sabatons stand on our soles. So, on each leg (old rows -> new rows):
+#   the cuff       as drawn, its top on row 186 (the far one on 185: the new far thigh is three
+#                  rows shorter, so its cop covers the cuff's foot);
+#   the greave     spread evenly from under the cuff to the ankle guard (her plates are long and
+#                  plain: a row of them shown twice where the leg is longer);
+#   the ankle guard as drawn, on the ankle as before (the far one a row shorter: the far foot is two
+#                  rows shorter);
+#   the sabaton    the rows of it kept that the body's own shorter foot keeps (the repeated rows under
+#                  the guard and of the instep go), its sole on our sole;
+#   the knee cop   as drawn, on the knee as before.
+# Each row is moved across with the leg's line (hip, knee, ankle), old to new.
+LEG_ROWS = {
+    'N': [((185, 188), (186, 189)), ((189, 204), (190, 208)), ((205, 208), (209, 212))],
+    'F': [((184, 187), (185, 188)), ((188, 202), (189, 204)), ((203, 203), (205, 205)), ((205, 206), (206, 207))],
+}
+# The thigh's and the shin's rows on the new body (as CUTS: the thigh down past the knee behind the
+# cop, the shin from there to the ankle guard's foot).
+NEW_CUTS = {
+    'N': {'thigh': (186, 197), 'shin': (196, 212)},
+    'F': {'thigh': (185, 191), 'shin': (190, 207)},
+}
+# The sabatons' rows kept, top to bottom; the last one is the sole's line, on the new body's.
+FOOT_KEEP = {'N': [207, 210, 211, 213, 215, 216, 217, 218], 'F': [206, 207, 208, 209, 210]}
+SOLE = {'N': 218, 'F': 210}
+
+
+def leg_x(J, s, y):
+    """The middle line of leg s at row y (fine pixels): through the hip, the knee and the ankle."""
+    ys = [J['hip' + s][1], J['knee' + s][1], J['ankle' + s][1]]
+    xs = [J['hip' + s][0], J['knee' + s][0], J['ankle' + s][0]]
+    return float(R._lin(y + 0.5, ys, xs))
+
+
+def relay_leg(a, s):
+    """A leg drawing (old frame) on the new body by LEG_ROWS, each row moved across with the leg."""
+    out = np.full_like(a, '')
+    for (o0, o1), (n0, n1) in LEG_ROWS[s]:
+        for Y in range(n0, n1 + 1):
+            y = o0 + int(round((Y - n0) * (o1 - o0) / max(1, n1 - n0)))
+            dx = int(round(leg_x(F.NEW_JOINTS, s, Y) - leg_x(F.OLD_JOINTS, s, y)))
+            out[Y] = np.roll(a[y], dx)
+    return out
+
+
+def pieces():
+    """The pieces in our frame on the body v2: name -> (GRID, GRID) LEGEND characters, '' empty."""
+    out = {}
+    for s, leg, foot in (('N', NEAR, NEAR_FOOT), ('F', FAR, FAR_FOOT)):
+        a = relay_leg(grid(leg), s)
+        out[f'thigh{s}'] = rows_of(a, *NEW_CUTS[s]['thigh'])
+        out[f'shin{s}'] = rows_of(a, *NEW_CUTS[s]['shin'])
+        f = grid(foot)
+        dx = F.joint_step('ankle' + s)[0]
+        g = np.full_like(f, '')
+        keep = FOOT_KEEP[s]
+        for k, y in enumerate(keep):
+            g[SOLE[s] - (len(keep) - 1 - k)] = np.roll(f[y], dx)
+        out[f'foot{s}'] = g
+        dx, dy = F.joint_step('knee' + s)
+        out[f'cop{s}'] = F.move(grid(COP[s]), dx, dy, '')
     return out
 
 
@@ -238,7 +310,7 @@ def packed(a):
 
 
 def angle(a, b):
-    (ax, ay), (bx, by) = R.OUR_JOINTS[a], R.OUR_JOINTS[b]
+    (ax, ay), (bx, by) = F.NEW_JOINTS[a], F.NEW_JOINTS[b]
     return float(np.degrees(np.arctan2(by - ay, bx - ax)))
 
 
@@ -281,7 +353,7 @@ def write_ts(path):
         rows, (ox, oy), palette = packed(P[name])
         part, s = name[:-1], name[-1]
         jname, (a, b) = JOINT[part]
-        jx, jy = R.OUR_JOINTS[jname + s]
+        jx, jy = F.NEW_JOINTS[jname + s]
         out += [f'/** {DOCS[name]} */', f'export const {CONST[name]}: PaintedPiece = {{',
                 f'  pivot: [{int(np.floor(jx)) - ox}, {int(np.floor(jy)) - oy}],', f'  angle: {angle(a + s, b + s):.2f},', '  rows: [']
         out += [f"    '{r}'," for r in rows]

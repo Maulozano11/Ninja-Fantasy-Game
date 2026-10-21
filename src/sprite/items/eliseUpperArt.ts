@@ -19,25 +19,28 @@ export const ELISE_CORSET_CHARS = 'mn';
 export const ELISE_SKIN_CHARS = 'pq';
 
 /** Where the coat body ends at rest: a height above the pelvis along the torso (design units). */
-export const ELISE_COAT_FROM = 1.73;
+export const ELISE_COAT_FROM = 3.62;
 /** The near sleeve's band's top, along the upper arm (0 the shoulder, 1 the elbow): above it, the bare shoulder. */
-export const ELISE_BAND_TOP = 0.157;
+export const ELISE_BAND_TOP = 0.130;
 /** Each sleeve's lower edge along the forearm (0 the elbow, 1 the wrist): past it, the wrist. */
-export const ELISE_CUFF = { N: 0.995, F: 0.617 };
+export const ELISE_CUFF = { N: 0.963, F: 0.634 };
 
 /** The coat body: high collar with the neck and choker, gold-edged fronts, breastplate and corset, down to the belt (pivot: the neck). */
 export const ELISE_COAT_BODY: PaintedPiece = {
-  pivot: [8, 0],
-  angle: -89.50,
+  pivot: [7, -1],
+  angle: -90.10,
   rows: [
     '...kcdkppkdcck....',
     '...kdckqqkcbbk....',
     '..kfdcmmmmcbfk....',
     '..kfdkqqqqkcbfk...',
+    '..kfdkqqqqkcbfk...',
     '..kfckqqqqkbbfk...',
+    '.kfdckllljjkbfk...',
     '.kfdckllljjkbfk...',
     'kfdckllljijikbfk..',
     'kfdcklljikljikbfk.',
+    'kfdckljiihkjihkbfk',
     'kfdckljiihkjihkbfk',
     'kfdckjihgkjihgkbfk',
     'kfdckkkkmmkkkkkbfk',
@@ -78,7 +81,7 @@ export const ELISE_COAT_BODY: PaintedPiece = {
 /** The near upper arm's sleeve: the gold-trimmed band, the white sleeve and the blue at the elbow (pivot: the near shoulder). */
 export const ELISE_SLEEVE_UPPER_N: PaintedPiece = {
   pivot: [9, -2],
-  angle: 107.97,
+  angle: 107.95,
   rows: [
     '...kfffffffffffk',
     '..kddcccccccbbbk',
@@ -148,7 +151,7 @@ export const ELISE_SLEEVE_FORE_N: PaintedPiece = {
 /** The far upper arm's sleeve: the gold-trimmed band, the white sleeve and the blue at the elbow (pivot: the far shoulder). */
 export const ELISE_SLEEVE_UPPER_F: PaintedPiece = {
   pivot: [-3, -1],
-  angle: 77.78,
+  angle: 79.34,
   rows: [
     '.kkkk.',
     'kffffk',
@@ -182,7 +185,7 @@ export const ELISE_SLEEVE_UPPER_F: PaintedPiece = {
 /** The far forearm's guard, its gold edge and cuff (pivot: the far elbow). */
 export const ELISE_SLEEVE_FORE_F: PaintedPiece = {
   pivot: [0, 3],
-  angle: 59.54,
+  angle: 57.69,
   rows: [
     'k.......',
     'kcc.....',

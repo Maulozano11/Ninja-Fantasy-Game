@@ -4,10 +4,11 @@
 // tools/refs/elise-lower-from-ref.py) ride the rig as painted pieces: at rest every pixel is hers.
 
 import { hexToRgb, hslToHex, retintHex, rgbToHsl } from '../color';
-import { armDepth, armJoints, armSpan, Depth, DrawCtx, handDraw, handPose, ItemDef, Side } from '../ctx';
+import { armDepth, armJoints, armSpan, Depth, DrawCtx, handDraw, handPose, type HandPose, ItemDef, Side } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId, partIndex, RES } from '../raster';
 import { GROUND } from '../rig';
+import { isFemaleBody } from '../types';
 import { rotateTemplate, type RotatedPixel, stampTemplate, TemplatePalette } from '../rotsprite';
 import {
   ELISE_BELT,
@@ -372,6 +373,20 @@ const FINGERTIPS: Record<'open' | 'point' | 'relaxed' | 'cradle', (x: number, y:
   cradle: (_x, y) => y <= -6,
 };
 
+/**
+ * The same on the female bodies, whose hands are the owner's small ones (femaleBodyArt.ts), the fists
+ * too: in her picture her glove covers the back of each hand and her fingers show bare only along the
+ * fist's lower edge and at the tips, so the last rows of each of his hands are her fingers.
+ */
+const FINGERTIPS_FEMALE: Record<HandPose['kind'], (x: number, y: number) => boolean> = {
+  grip: (_x, y) => y >= 4,
+  fist: (_x, y) => y >= 2,
+  open: (_x, y) => y >= 4,
+  point: (_x, y) => y >= 5,
+  relaxed: (_x, y) => y >= 3,
+  cradle: (_x, y) => y <= -4,
+};
+
 /** A colour of her skin in the character's: the hue turned and the lightness scaled as her face's is. */
 function herSkin(hex: string, skin: string): string {
   if (skin.toLowerCase() === ELISE_HAND_SKIN) return hex;
@@ -390,7 +405,8 @@ function herSkin(hex: string, skin: string): string {
  */
 function fingerlessHand(g: DrawCtx, s: Side, tones: string[], skin: string[]): void {
   const { kind, rot, flipX } = handPose(g, s);
-  if (kind === 'grip' || kind === 'fist') return;
+  const female = isFemaleBody(g.rig.body);
+  if (!female && (kind === 'grip' || kind === 'fist')) return;
   const tmp = new Layer();
   handDraw(g, tmp, s, { mat: 0, part: prt('hand', s), bias: 0 });
   const j = armJoints(g.rig, s);
@@ -398,11 +414,16 @@ function fingerlessHand(g: DrawCtx, s: Side, tones: string[], skin: string[]): v
   const ay = Math.floor(j.wrist.y * RES);
   const a = kind === 'cradle' ? 0 : (Math.round(rot) * Math.PI) / 180;
   const mirror = flipX && kind !== 'cradle';
-  const tip = FINGERTIPS[kind];
+  const tip = female ? FINGERTIPS_FEMALE[kind] : FINGERTIPS[kind as keyof typeof FINGERTIPS];
   const mats = tones.map((t) => g.m(t, 'flat'));
   const skins = skin.map((t) => g.m(t, 'flat'));
   const deeper = s === 'F' ? 1 : 0;
-  const L = g.L(armDepth(s, 'armor'));
+  // On the female bodies her far hand hanging at rest lies beside her hip in her picture; our far arm
+  // is shorter than hers, so it reaches only as low as her pouch: it is drawn over the pouch, whole,
+  // as she shows it (as Saya's far fist is).
+  const deg = (Math.atan2(j.wrist.y - j.shoulder.y, j.wrist.x - j.shoulder.x) * 180) / Math.PI;
+  const atRest = female && s === 'F' && rot === 0 && deg > 45 && deg < 135 && !g.rig.lay;
+  const L = g.L(atRest ? 'farHand.front' : armDepth(s, 'armor'));
   for (let i = 0; i < GRID * GRID; i++) {
     if (tmp.mat[i] < 0) continue;
     const dx = (i % GRID) - ax;
@@ -410,7 +431,9 @@ function fingerlessHand(g: DrawCtx, s: Side, tones: string[], skin: string[]): v
     const x = Math.round(dx * Math.cos(a) + dy * Math.sin(a));
     const y = Math.round(-dx * Math.sin(a) + dy * Math.cos(a));
     const sh = tmp.shade[i];
-    const pen = tip(mirror ? -x : x, y) ? skins[Math.max(0, Math.min(sh - deeper, skins.length - 1))] : mats[Math.max(0, Math.min(sh, mats.length - 1))];
+    // (his small hands keep his black line round her bare fingers too)
+    const bare = tip(mirror ? -x : x, y) && !(female && sh === 0);
+    const pen = bare ? skins[Math.max(0, Math.min(sh - deeper, skins.length - 1))] : mats[Math.max(0, Math.min(sh, mats.length - 1))];
     L.set(i % GRID, (i / GRID) | 0, pen, 3, prt('hand', s), FLAGS);
   }
 }
@@ -504,11 +527,17 @@ export const AZURE_FINGERLESS: ItemDef = {
     };
     for (const s of SIDES) {
       const { kind } = handPose(g, s);
-      if (kind === 'grip' || kind === 'fist') {
+      // On the female bodies every hand is the owner's own small hand (fists too) in her glove.
+      if (!isFemaleBody(g.rig.body) && (kind === 'grip' || kind === 'fist')) {
         const ours = handAndForearm(g, s);
         bareHandOff(g, s);
         paintedFist(g, s, s === 'N' ? ELISE_GLOVE_N : ELISE_GLOVE_F, tint, ours);
-      } else fingerlessHand(g, s, ELISE_GLOVE_TONES.map((t) => tint('', t)), ELISE_FINGER_TONES.map((t) => tint('', t)));
+      } else {
+        // (the bare hand under her glove goes, as under her fists: moved in front of the body in some
+        // poses, it would cover the glove)
+        if (kind === 'grip' || kind === 'fist') bareHandOff(g, s);
+        fingerlessHand(g, s, ELISE_GLOVE_TONES.map((t) => tint('', t)), ELISE_FINGER_TONES.map((t) => tint('', t)));
+      }
       gloveCuff(g, s, ELISE_GLOVE_TONES.map((t) => tint('', t)));
     }
   },

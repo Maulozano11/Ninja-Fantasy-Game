@@ -29,18 +29,18 @@ describe('Azure Greaves', () => {
 
   it('stands at rest where it is drawn: her gold knee cop, her steel greave, her dark sole', () => {
     const f = renderSprite(look(), 'idle', 0);
-    assert.equal(hexAt(f.rgba, 118, 189), '#e6b75e'); // near cop's gold rim
-    assert.equal(hexAt(f.rgba, 119, 186), '#7d564c'); // near cuff's leather
-    assert.equal(hexAt(f.rgba, 118, 199), '#ced0dc'); // near greave's steel
+    assert.equal(hexAt(f.rgba, 118, 193), '#e6b75e'); // near cop's gold rim
+    assert.equal(hexAt(f.rgba, 121, 187), '#7d564c'); // near cuff's leather
+    assert.equal(hexAt(f.rgba, 119, 199), '#ced0dc'); // near greave's steel
     assert.equal(hexAt(f.rgba, 140, 209), '#181b37'); // far sole
   });
 
   it('recolours steel, leather and gold from the colour slots and keeps her black line', () => {
     const f = renderSprite(look(['#3b6fd4', '#202020', '#c0c0c0']), 'idle', 0);
-    assert.notEqual(hexAt(f.rgba, 118, 199), '#ced0dc');
-    assert.notEqual(hexAt(f.rgba, 119, 186), '#7d564c');
-    assert.notEqual(hexAt(f.rgba, 118, 189), '#e6b75e');
-    assert.equal(hexAt(f.rgba, 116, 199), '#080613');
+    assert.notEqual(hexAt(f.rgba, 119, 199), '#ced0dc');
+    assert.notEqual(hexAt(f.rgba, 121, 187), '#7d564c');
+    assert.notEqual(hexAt(f.rgba, 118, 193), '#e6b75e');
+    assert.equal(hexAt(f.rgba, 117, 199), '#080613');
   });
 
   it('gives the far sabaton her shoe: a heel with the arch open behind it, the toe no longer than hers', () => {

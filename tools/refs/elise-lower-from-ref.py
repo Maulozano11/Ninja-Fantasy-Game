@@ -24,6 +24,9 @@ of heroine_ref.PALETTES['elise']), and cuts them into the pieces that ride our r
             fingers bare). The other hand pictures are ours, in her glove blues with bare fingertips
             (GLOVE_TONES).
 
+On the female body v2 (elise_fit.py) the pieces are pinned to its joints and the coat's tails are
+two rows longer (refit); on the female bodies the gloves are its own hands in her glove.
+
 The hidden parts are continued from what shows: the near tail behind her hand and hilt, the lining
 behind her boots, the skirt's sides under the coat (so it stands on its own), the belts behind the
 near arm. The fists sit on our grip, where every weapon's handle passes.
@@ -43,6 +46,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 from PIL import Image, ImageDraw  # noqa: E402
 
+import elise_fit as F  # noqa: E402
 import heroine_ref as H  # noqa: E402
 
 WHICH = 'elise'
@@ -369,6 +373,30 @@ def pieces():
     return out
 
 
+# The pieces above are drawn on our old female body (OLD_JOINTS). On the body v2 (elise_fit.py) her
+# belts, skirt and the coat's front edges fall on the same rows at the owner's game scale (her belts
+# her rows 104-118, our 168-173; her hem her row 148, our 184), so they stay where they are, pinned to
+# the new pelvis. Her coat's tails are two rows longer at his scale (TAILS_TWICE: her lining's hem and
+# the tails' points two rows lower, the top kept under the front edges). The fists stay on the old joints: on the female
+# bodies the gloves are the body's own hands (his) in her glove (eliseLower.ts); these fists are the
+# male and bulky bodies'.
+# Her tails at his scale: her rows 148-219, our 184-206 (old 184-205): two rows of the folds halfway
+# down shown twice (the tails' plain blues and the lining between them; not the lining's hem).
+TAILS_TWICE = (192, 196)
+JOINTS_OF = {'skirt': F.NEW_JOINTS, 'coatBack': F.NEW_JOINTS, 'coatFront': F.NEW_JOINTS, 'belt': F.NEW_JOINTS,
+             'gloveN': F.OLD_JOINTS, 'gloveF': F.OLD_JOINTS}
+
+
+def refit(P):
+    """The pieces on the body v2: the coat's tails re-laid at his scale, the rest as drawn."""
+    out = dict(P)
+    g = P['coatBack']
+    ys = np.nonzero((g != '.').any(1))[0]
+    # (its top stays under the coat's front edges, which do not move)
+    out['coatBack'] = F.double_rows(g, ys.min(), ys.max(), TAILS_TWICE, ys.min(), '.')
+    return out
+
+
 def packed(grid):
     """A piece as its rows (trimmed to the painted box), origin and palette."""
     yy, xx = np.nonzero(grid != '.')
@@ -378,8 +406,8 @@ def packed(grid):
     return rows, (int(x0), int(y0)), {c: KEY[c] for c in used}
 
 
-def angle(a, b):
-    (ax, ay), (bx, by) = H.OUR_JOINTS[a], H.OUR_JOINTS[b]
+def angle(a, b, J=F.NEW_JOINTS):
+    (ax, ay), (bx, by) = J[a], J[b]
     return float(np.degrees(np.arctan2(by - ay, bx - ax)))
 
 
@@ -436,7 +464,7 @@ BASES = {
 def main():
     out_ts = sys.argv[1] if len(sys.argv) > 1 else None
     study = sys.argv[2] if len(sys.argv) > 2 else None
-    P = pieces()
+    P = refit(pieces())
     packs = {name: packed(g) for name, g in P.items()}
     for name, (rows, _, pal) in packs.items():
         assert all(len(r) == len(rows[0]) for r in rows), name
@@ -475,9 +503,10 @@ def main():
     out += ['};', '']
     for name, (const, joint, (a, b), doc) in PIECES.items():
         rows, (ox, oy), palette = packs[name]
-        jx, jy = H.OUR_JOINTS[joint]
+        J = JOINTS_OF[name]
+        jx, jy = J[joint]
         out += [f'/** {doc} */', f'export const {const}: PaintedPiece = {{',
-                f'  pivot: [{int(np.floor(jx)) - ox}, {int(np.floor(jy)) - oy}],', f'  angle: {angle(a, b):.2f},', '  rows: [']
+                f'  pivot: [{int(np.floor(jx)) - ox}, {int(np.floor(jy)) - oy}],', f'  angle: {angle(a, b, J):.2f},', '  rows: [']
         out += [f"    '{r}'," for r in rows]
         out += ['  ],', '  colors: {']
         out += [f"    {key(k)}: '{v}'," for k, v in palette.items()]

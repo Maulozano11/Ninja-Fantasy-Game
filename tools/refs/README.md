@@ -148,6 +148,15 @@ folders.
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
 
+- `elise_fit.py`: Elise on the female body v2. She has no game-scale picture, but her big picture is
+  Lyra's template, and the owner brought Lyra down to our scale himself: the map from that template to
+  his game scale (`GAME_ROWS`, `game_y`: across 0.41, down 0.39 for head and torso, 0.35 for the skirt,
+  0.31 for the legs) is measured on his Lyra (`python3 -I tools/refs/elise_fit.py` prints it) and says
+  where each of Elise's parts lands on the new body. Her part scripts cut their pieces out of the study's
+  reduced reference (on the old body) as before, then re-lay them there: `double_rows` (a plain row of
+  hers shown twice where his scale has more of hers), `move` and `joint_step` (moved with the joint
+  they are pinned to), and pin them to `NEW_JOINTS`.
+
 - `elise-hair-from-ref.py`: Elise's hair as the `hair_golden_fall` hairstyle (colour slots Hair and
   Ornament), brought down to our scale in her colours only. The head's hair starts from the reduced
   reference, cleaned by hand (her gold flower redrawn, her near lock taken on over the collar, her

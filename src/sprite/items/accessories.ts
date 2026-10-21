@@ -8,6 +8,8 @@ import { retintHex, type RampKind } from '../color';
 import { hd } from './hairkit';
 import { CRYSTAL_SWORD, drawPaintedWeapon, drawWeapon, ICE_CRYSTAL_SWORD, KUNAI } from './weapons';
 import { FLAME_LONGSWORD, FLAME_SWORD_FLAME, FLAME_SWORD_GOLD } from './flameSwordArt';
+import { ELISE_SWORD_BLADE, ELISE_SWORD_GUARD } from './eliseSwordArt';
+import { drawEliseRapier } from './eliseSword';
 import { KATANA_PARTS, katanaHipColors, katanaTemplate } from './katana';
 import { chakraHex } from '../chakraInfo';
 import { gripPoint, handsBusy, handsLimp, poleAngle, swordAngle } from '../grip';
@@ -355,6 +357,19 @@ export const HELD_ITEMS: ItemDef[] = [
       // His grip crosses his fist at the hand joint (higher in the fist than our other blades' grip
       // point): held there, at rest every pixel is his and his gauntlet's place is our fist's.
       else drawPaintedWeapon(g, 'nearArm.held', FLAME_LONGSWORD, g.rig.handN, swordAngle(g), tint);
+    },
+  },
+  {
+    id: 'held_azure_rapier',
+    slot: 'held',
+    name: 'Azure Rapier',
+    desc: "A long slender blade glowing gold under a gold swept hilt, sparkles round it: the owner painted it for Elise.",
+    colors: [col('blade', 'Blade glow', ELISE_SWORD_BLADE, 'glow'), col('guard', 'Guard', ELISE_SWORD_GUARD, 'metal')],
+    draw: (g, [blade, guard]) => {
+      if (handsBusy(g)) drawEliseRapier(g, 'backGear', backGrip(g, 48), 48, blade, guard, false);
+      else if (handsLimp(g)) drawEliseRapier(g, 'nearArm.held', droppedGrip(g, 0.7), -86, blade, guard, false);
+      // Its grip crosses the fist at the hand joint, as the flame longsword's does.
+      else drawEliseRapier(g, 'nearArm.held', g.rig.handN, swordAngle(g), blade, guard, true);
     },
   },
   {

@@ -47,6 +47,8 @@ const ES: Record<string, string> = {
   Bright: 'Brillantes',
   Piercing: 'Penetrantes',
   "Aiden's eyes": 'Los ojos de Aiden',
+  Noble: 'Noble',
+  "Scarlet's eyes": 'Los ojos de Scarlet',
   None: 'Ninguno',
   Forehead: 'Frente',
   Arm: 'Brazo',

@@ -45,8 +45,11 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-/** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels. */
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant';
+/**
+ * The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels, and noble
+ * his Scarlet's, from his Scarlet picture in his colours.
+ */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant' | 'noble';
 
 /** Back of the neck behind the jaw: slender (default) or thick. */
 export type NeckType = 'slim' | 'strong';

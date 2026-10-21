@@ -517,12 +517,26 @@ def compose(pieces):
 CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&()*+,-/:;<=>?@[]^_{|}~'
 
 
+def straps(px):
+    """The sports top's straps over his shoulders (its cloth above the bust, his rows 26-32), each with
+    the colour of the nearest pixel of his shoulder's skin: under a top or armour the straps are taken off
+    and his shoulder goes on there."""
+    skin = [q for q, i in px.items() if not R.is_cloth(COLS[i]) and not R.is_line(COLS[i]) and q in REGIONS['chest']]
+    out = {}
+    for q, i in px.items():
+        if q[1] <= 32 and R.is_cloth(COLS[i]):
+            n = min(skin, key=lambda m: ((m[0] - q[0]) ** 2 + (m[1] - q[1]) ** 2, m[1], m[0]))
+            out[q] = COLS[px[n]]
+    return out
+
+
 def ts_piece(name, p, px, kind):
     xs = [q[0] for q in px]
     ys = [q[1] for q in px]
     x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
     keys = {}
-    key = lambda q: (COLS[px[q]], kind[q] == 'cap')
+    strap = straps(px) if p == 'chest' else {}
+    key = lambda q: (COLS[px[q]], kind[q] == 'cap', strap.get(q))
     for q in sorted(px, key=lambda q: (q[1], q[0])):
         if key(q) not in keys:
             keys[key(q)] = CHARS[len(keys)]
@@ -536,10 +550,14 @@ def ts_piece(name, p, px, kind):
     lines = [f'  {name}: {{', f'    pivot: [{pivot[0]}, {pivot[1]}],', f'    angle: {bone_angle(p):.2f},', '    rows: [']
     lines += [f'      {q(r)},' for r in rows]
     lines += ['    ],', '    colors: {']
-    lines += [f'      {q(c)}: \'{h}\',' for (h, _), c in keys.items()]
+    lines += [f'      {q(c)}: \'{h}\',' for (h, _, _), c in keys.items()]
     lines += ['    },']
-    lines.append(f'    cloth: {q("".join(c for (h, _), c in keys.items() if R.is_cloth(h)))},')
-    lines.append(f'    cap: {q("".join(c for (_, cap), c in keys.items() if cap))},')
+    lines.append(f'    cloth: {q("".join(c for (h, _, _), c in keys.items() if R.is_cloth(h)))},')
+    lines.append(f'    cap: {q("".join(c for (_, cap, _), c in keys.items() if cap))},')
+    if strap:
+        lines.append('    straps: {')
+        lines += [f'      {q(c)}: \'{st}\',' for (_, _, st), c in keys.items() if st]
+        lines.append('    },')
     lines.append('  },')
     return '\n'.join(lines)
 
@@ -589,11 +607,13 @@ def main():
            '',
            '/**',
            ' * A piece of his body: his pixels round one bone. `cloth` are the characters of his sports top and',
-           ' * briefs; `cap` the characters of its round cap over the joint above it (the upper piece\'s pixels).',
+           ' * briefs; `cap` the characters of its round cap over the joint above it (the upper piece\'s pixels);',
+           ' * `straps` (the chest) the sports top\'s straps over the shoulders, with his shoulder\'s skin under them.',
            ' */',
            'export interface BasePiece extends PaintedPiece {',
            '  cloth: string;',
            '  cap: string;',
+           '  straps?: Record<string, string>;',
            '}',
            '']
     skin = COLS[IDX[45, 52]]   # his belly's base skin

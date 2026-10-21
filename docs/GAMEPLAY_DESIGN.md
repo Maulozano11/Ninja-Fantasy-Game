@@ -643,10 +643,11 @@ para las bestias elementales"*.
   The explosive tag (Fire, drawn as a paper tag and its blast) has nothing
   drawn in its element, so it keeps its colours. The Mystical Palm (Water) used
   to be drawn as a green heal; on `jutsu/d-c-set` it wraps the friend in the
-  water aura (the owner's answer 6 on the rank D and C proposal), so it takes
-  the colour like the Healing Dew. That also answers the old open question
-  (should a heal of an elemental nature glow in the chakra colour): yes, unless
-  he says otherwise when he sees it.
+  water aura (the owner's answer 6 on the rank D and C proposal). The old open
+  question (should a heal of an elemental nature glow in the chakra colour) is
+  answered **no** (the owner, 2026-10-21): "la curacion siempre se vera verde".
+  The Palm and the Healing Dew play their water sheets in the heals' green,
+  whatever the caster's colour ("Rank D and C jutsu").
 - The flare when fire or lightning seals a hydra stump and the lightning that
   runs through water take the caster's colour too.
 - White is a cool silver on water, wind, lightning and earth, a faint gold on
@@ -980,8 +981,15 @@ How they look (the owner's answers; the screen reads them from each jutsu's
   Geyser rises from the ground with no projectile (a 0.3 s warning splash, a
   light shake); Mirage flies the eye-sphere half again as slow; Whirl as it was.
 - **Mystical Palm** (the owner's answer 6): the Healing Dew's water aura wraps
-  the friend for 0.8 s as it heals, with no orb (a touch), instead of the green
-  glow, in the caster's chakra colour.
+  the friend for 0.8 s as it heals, with no orb (a touch), instead of the old
+  green glow.
+- **Healing is always green** (the owner, 2026-10-21): "la curacion siempre se
+  vera verde". The heals never take the chakra colour: the Palm's water aura
+  and the Healing Dew's orb and aura are his water pixels recoloured to the
+  heals' green (`#4ade80`, the old Palm glow's and the healed number's), his
+  dark line kept, whoever casts them (Natural and enemies too). Any later heal
+  drawn in an element does the same (`HEAL_TINT`, `jutsuTint` in
+  `src/components/battle/vfxTintPlan.ts`).
 
 The proposal's nine open questions. The branch was built with the proposal's
 defaults; the owner then answered 4 to 9 (2026-10-21), and his answers are

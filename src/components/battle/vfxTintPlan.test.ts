@@ -6,7 +6,8 @@ import { describe, it } from 'node:test';
 import { JUTSU } from '../../battle/jutsu';
 import type { Unit } from '../../battle/types';
 import type { ChakraChoice, SpriteAppearance } from '../../sprite/types';
-import { TINT_BUDGET, cropFrame, evictions, heldFrame, isBigSheet, jutsuTint, preparable, tintBytesOf, tintSheetsOf, unitTint, unitTintSheets, wallElement } from './vfxTintPlan';
+import { vfxTintIsNatural } from '../../sprite/vfxTint';
+import { HEAL_TINT, TINT_BUDGET, cropFrame, evictions, heldFrame, isBigSheet, jutsuTint, preparable, tintBytesOf, tintSheetsOf, unitTint, unitTintSheets, wallElement } from './vfxTintPlan';
 
 /** A unit with a chakra (its burst `color`, its colour `tint`) and these jutsu. */
 function ninja(chakra: Partial<ChakraChoice> | undefined, jutsus: string[] = [], where: 'look' | 'character' = 'look'): Pick<Unit, 'look' | 'character' | 'jutsus'> {
@@ -40,6 +41,14 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.equal(jutsuTint(JUTSU.crescent_moon_dance, ninja({ tint: 'green' })), undefined);
     assert.equal(jutsuTint(undefined, ninja({ tint: 'green' })), undefined);
     assert.equal(unitTint(ninja({ tint: 'violet' })), 'violet');
+    // "La curacion siempre se vera verde" (the owner): the heals play in the old heal glow's green,
+    // whatever the caster's colour, Natural and enemies too.
+    assert.equal(HEAL_TINT, '#4ade80');
+    for (const id of ['mystical_palm', 'water_healing_dew'])
+      for (const caster of [ninja({ tint: 'violet' }), ninja({ tint: 'red' }), ninja({ tint: 'blue' }), ninja({ tint: '#ff00aa' }), ninja({ tint: 'black' }, [], 'character'), ninja(undefined), undefined])
+        assert.equal(jutsuTint(JUTSU[id], caster), HEAL_TINT, id);
+    for (const spec of Object.values(JUTSU)) if (spec.special === 'heal' && spec.elemental) assert.equal(jutsuTint(spec, ninja({ tint: 'violet' })), HEAL_TINT, spec.id);
+    assert.ok(!vfxTintIsNatural('water', HEAL_TINT), 'the green is not water\'s own blue: the sheets are recoloured');
     assert.equal(wallElement('earth'), 'earth');
     assert.equal(wallElement('water'), 'water');
     assert.equal(wallElement('metal'), undefined);
@@ -87,6 +96,18 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.equal(new Set(keys).size, keys.length);
     assert.ok(keys.includes('vfx_fire/fireball') && keys.includes('vfx_fire/hit') && !keys.some((k) => k.startsWith('vfx_genjutsu')));
     assert.ok(green.every((s) => s.color === 'green'));
+  });
+
+  it('a unit\'s heals are prepared in green whatever its colour, Natural and blue too, beside its chakra-coloured jutsu', () => {
+    const specOf = (id: string) => JUTSU[id];
+    const sheets = (u: ReturnType<typeof ninja>) => unitTintSheets(u, specOf).map((s) => `${s.ref.group}/${s.ref.name}:${s.color}`);
+    const heals = [`vfx_water/bolt:${HEAL_TINT}`, `vfx_water/aura:${HEAL_TINT}`, `vfx_water/aura_back:${HEAL_TINT}`];
+    for (const chakra of [{ tint: 'violet' }, { tint: 'red' }, { tint: 'blue' }, undefined])
+      assert.deepEqual(sheets(ninja(chakra, ['mystical_palm', 'water_healing_dew'])), [`vfx_water/aura:${HEAL_TINT}`, `vfx_water/aura_back:${HEAL_TINT}`, `vfx_water/bolt:${HEAL_TINT}`], JSON.stringify(chakra));
+    assert.deepEqual(sheets(ninja(undefined, ['water_healing_dew'])), heals);
+    // A violet ninja's water bolt plays in violet, its Dew's orb in green: the same sheet in both.
+    const violet = sheets(ninja({ tint: 'violet' }, ['water_healing_dew', 'water_dragon_suiryuudan']));
+    assert.deepEqual(violet, [...heals, 'vfx_beasts/water:violet', 'vfx_water/bolt:violet', 'vfx_water/hit:violet']);
   });
 
   it('cuts a frame down to its pixels, exactly', () => {

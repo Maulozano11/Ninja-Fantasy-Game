@@ -95,7 +95,7 @@ export interface Fx {
   /**
    * The caster's chakra colour (a chakra colour id or '#rrggbb'), for an elemental jutsu's effects:
    * they play in it, sheets and drawn ones alike (the owner, 2026-10-21). Taken when the jutsu is
-   * cast, so the effect keeps it. Unset: his colours.
+   * cast, so the effect keeps it. A heal's is always the heals' green (HEAL_TINT). Unset: his colours.
    */
   tint?: string;
 }
@@ -415,7 +415,7 @@ export class Playback {
     const el = spec.element;
     const at = (ms: number) => now + ms / this.speed;
     const linger = (ms: number) => (this.lingerUntil = Math.max(this.lingerUntil, now + ms / this.speed));
-    // In the caster's chakra colour when it is an elemental jutsu (the owner, 2026-10-21).
+    // In the caster's chakra colour when it is an elemental jutsu (the owner, 2026-10-21); a heal's in green.
     const base = { element: el, enhanced: ev.enhanced, role: spec.vfx, tint };
     // What it throws leaves the casting hand (before the body, at chest height), not the head.
     const hand = handOf(from, a.facing);

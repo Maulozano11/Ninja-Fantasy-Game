@@ -18,7 +18,7 @@ import type { Lang } from '../../i18n';
 import { unitName } from './battleLog';
 import { bodyCenterDx, FEET, fpsOf, framesOf, hasPhaseFrame, lookOf, phaseFrameOf, STRIDE, unitFrame } from './unitArt';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
-import { PHASE_RAMP } from '../../sprite/phase';
+import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
 import { leavesNodes, nodeUnder } from '../../battle/clans';
 import { GRID } from '../../sprite/raster';
 import { drawAuraBack, drawVfxSprite, drawWallSprite } from './vfxSprites';
@@ -919,7 +919,9 @@ function phaseLeap(v: UnitView, dashK: number): { pose: SpritePose; frame: numbe
  * A Ryusei's phase (the owner's picture, docs/reference/ryusei-phase-owner-reference.jpg): the
  * ninja turns to blue light where it stands with a brief flare, leaps across as light to where it
  * lands, leaving fading after-images along the line, and turns solid there with a small blue
- * flash. The light body is the unit's own frame turned to light (unitArt.phaseFrameOf).
+ * flash. The light body is the unit's own frame turned to light (unitArt.phaseFrameOf), drawn as
+ * sprite/phase.ts says (PHASE_ADD): the ground under it turned blue, the body laid over it and
+ * added as light, so even a faint after-image stays blue over green grass.
  */
 function drawPhase(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitView, look: SpriteAppearance, ph: PhaseNow, alpha: number, solid: (k: number, facing?: 1 | -1) => void): void {
   const { map } = sc;
@@ -930,18 +932,57 @@ function drawPhase(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitVie
   const dashFace: 1 | -1 = Math.abs(to.x - from.x) > 0.05 ? (to.x > from.x ? 1 : -1) : v.facing;
   // The leap: higher the farther it goes, at most about a third of a body.
   const hop = Math.min(28, 8 + along * 0.07);
-  /** Where the light body is `ms` into the phase (feet, map pixels) and how high it leaps. */
-  const at = (ms: number): { X: number; Y: number; lift: number; dashK: number } => {
+  /** Where the light body is `ms` into the phase: the map point under it, its feet's ground spot (map pixels) and how high it leaps. */
+  const at = (ms: number): { pt: Pt; X: number; Y: number; lift: number; dashK: number } => {
     const k = phaseDash(ms);
-    const q = project(map, { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k });
-    return { X: q.X, Y: q.Y, lift: Math.sin(Math.PI * k) * hop, dashK: Math.min(1, Math.max(0, (ms - PHASE_IN) / PHASE_DASH)) };
+    const pt = { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k };
+    const q = project(map, pt);
+    return { pt, X: q.X, Y: q.Y, lift: Math.sin(Math.PI * k) * hop, dashK: Math.min(1, Math.max(0, (ms - PHASE_IN) / PHASE_DASH)) };
   };
-  const light = (pose: SpritePose, frame: number, X: number, Y: number, facing: 1 | -1, k: number, glow = false): void => {
+  /**
+   * In the river the light body sinks as the solid one does (deep water hides the legs, shallow
+   * water the feet): clipped at the waterline over `pt`, which a leap rises out of.
+   */
+  const clipWater = (pt: Pt, pose: SpritePose, X: number, Y: number, lift: number): void => {
+    const water = map.waterAt(pt.x, pt.z);
+    if (water === 'none' || pose === 'downed') return;
+    const cut = water === 'deep' && !u.cond.waterWalk ? 38 : 8;
+    const half = Math.max(FEET.x, GRID - FEET.x) + 6;
+    ctx.beginPath();
+    ctx.rect(Math.round(X) - half, Math.round(Y - lift) - FEET.y - 20, 2 * half, Math.round(lift) + FEET.y + 20 - cut);
+    ctx.clip();
+  };
+  /**
+   * The light body at strength `k` (1 = all light), feet over the ground spot (X, Y) of map point
+   * `pt`, `lift` pixels up: the ground under it takes its blue at `hue`, then it is laid over and
+   * added as light (sprite/phase.ts, PHASE_ADD).
+   */
+  const light = (pose: SpritePose, frame: number, pt: Pt, X: number, Y: number, lift: number, facing: 1 | -1, k: number, hue = phaseHue(k)): void => {
+    if (k <= 0.01) return;
+    const fr = phaseFrameOf(u, look, pose, frame);
+    const x0 = Math.round(X);
+    const y0 = Math.round(Y - lift - FEET.y);
+    ctx.save();
+    clipWater(pt, pose, X, Y, lift);
+    ctx.globalCompositeOperation = 'color';
+    ctx.globalAlpha = Math.min(1, alpha * hue);
+    blitFrame(ctx, fr, x0, y0, facing);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = Math.min(1, alpha * k);
+    blitFrame(ctx, fr, x0, y0, facing);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(1, alpha * k * PHASE_ADD);
+    blitFrame(ctx, fr, x0, y0, facing);
+    ctx.restore();
+  };
+  /** A flare: the light body added once more as light, at `k`. */
+  const flare = (pose: SpritePose, frame: number, pt: Pt, X: number, Y: number, facing: 1 | -1, k: number): void => {
     if (k <= 0.01) return;
     const fr = phaseFrameOf(u, look, pose, frame);
     ctx.save();
+    clipWater(pt, pose, X, Y, 0);
+    ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = Math.min(1, alpha * k);
-    if (glow) ctx.globalCompositeOperation = 'lighter';
     blitFrame(ctx, fr, Math.round(X), Math.round(Y - FEET.y), facing);
     ctx.restore();
   };
@@ -975,8 +1016,8 @@ function drawPhase(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitVie
   if (ph.stage === 'in') {
     // Turning to light where it stands: the sprite fades into its light body, with a flare.
     solid(1 - ph.k);
-    light(rest, 0, a.X, a.Y, v.facing, ph.k);
-    light(rest, 0, a.X, a.Y, v.facing, Math.sin(Math.PI * ph.k) * 0.55, true);
+    light(rest, 0, from, a.X, a.Y, 0, v.facing, ph.k, ph.k);
+    flare(rest, 0, from, a.X, a.Y, v.facing, Math.sin(Math.PI * ph.k) * 0.55);
     ring(a.X, a.Y, 10 + ph.k * 14, 0.9 - ph.k * 0.4, 6);
     sparks(a.X, a.Y, ph.k, 1, 3);
     return;
@@ -989,10 +1030,7 @@ function drawPhase(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitVie
     if (t < PHASE_IN || t >= end) continue;
     const p = at(t);
     const leap = phaseLeap(v, p.dashK);
-    // Laid over the ground and then added as light, so they stay blue over any ground.
-    const k = (0.84 - i * 0.19) * (ph.stage === 'out' ? 1 - ph.k : 1);
-    light(leap.pose, leap.frame, p.X, p.Y - p.lift, dashFace, k);
-    light(leap.pose, leap.frame, p.X, p.Y - p.lift, dashFace, k * 0.45, true);
+    light(leap.pose, leap.frame, p.pt, p.X, p.Y, p.lift, dashFace, (0.84 - i * 0.19) * (ph.stage === 'out' ? 1 - ph.k : 1));
   }
   // Where it set off, a ring of light fades.
   const since = (ph.ms - PHASE_IN) / (PHASE_DASH + PHASE_OUT);
@@ -1008,16 +1046,15 @@ function drawPhase(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitVie
     ctx.ellipse(Math.round(p.X), Math.round(p.Y) - 1, 16, 4, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    light(leap.pose, leap.frame, p.X, p.Y - p.lift, dashFace, 1);
-    light(leap.pose, leap.frame, p.X, p.Y - p.lift, dashFace, 0.12, true);
+    light(leap.pose, leap.frame, p.pt, p.X, p.Y, p.lift, dashFace, 1);
     sparks((a.X + p.X) / 2, (a.Y + p.Y) / 2, ph.k, 0.8, 11);
     return;
   }
   // Landing: the light body turns solid again, with a small blue flash.
   const face = u.facing;
   solid(ph.k, face);
-  light(rest, 0, b.X, b.Y, face, 1 - ph.k);
-  light(rest, 0, b.X, b.Y, face, (1 - ph.k) ** 2 * 0.6, true);
+  light(rest, 0, to, b.X, b.Y, 0, face, 1 - ph.k, 1 - ph.k);
+  flare(rest, 0, to, b.X, b.Y, face, (1 - ph.k) ** 2 * 0.6);
   ring(b.X, b.Y, 12 + ph.k * 18, 1 - ph.k, 7);
   ring(b.X, b.Y, 6 + ph.k * 10, (1 - ph.k) * 0.7, 4);
   sparks(b.X, b.Y, ph.k, 1, 7);

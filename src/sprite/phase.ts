@@ -1,12 +1,14 @@
 // The Ryusei's phase (the owner's picture, docs/reference/ryusei-phase-owner-reference.jpg): a
 // ninja's own sprite frame turned into a body of electric-blue light, the way a Warp Strike or a
-// Spatial Swap carries it across the field. Like his picture, it is mostly a strong electric blue
-// in four steps by the sprite's light and shade, brighter toward the silhouette; thin near-white
-// lines run round the silhouette and where a limb lies over the body; the sprite's own inner lines
-// stay as darker blue creases; the hair burns white-blue; a soft blue glow surrounds it all.
+// Spatial Swap carries it across the field. Like his picture, it is mostly a strong electric blue,
+// deep in the shade and the core of each form and brighter where the sprite is lit and toward the
+// silhouette; a thin near-white line runs round the silhouette and where a limb lies over the body;
+// the sprite's own inner lines stay as darker blue creases; the hair burns white-blue; a soft blue
+// glow surrounds it all. It is see-through: the battle turns the ground under it blue and lets it
+// show through the core (`phaseOver` says how it is drawn).
 // Pure pixels, no canvas: the battle turns each frame into a canvas once and keeps it.
 
-import { GRID } from './raster';
+import { GRID, partIndex } from './raster';
 
 /** The owner's colours, sampled from his picture by brightness: deep electric blue up to near-white cyan. */
 export const PHASE_RAMP: readonly (readonly [number, number, number])[] = [
@@ -22,26 +24,36 @@ export const PHASE_RAMP: readonly (readonly [number, number, number])[] = [
 ];
 
 /**
- * The light body is drawn twice: laid over the ground (source-over), then added to it as light
- * ('lighter') at this share. Its pixels are made so the two together give the owner's colours
- * exactly over black, while over grass or water the ground shows through the core under the blue
- * (`phaseOver` is the same sum; renderer.ts draws it so).
+ * How the battle draws a light body at strength k (0..1; after-images and the turning to and from
+ * light are weaker), in three passes (`phaseOver` is the same sum):
+ * 1. 'color': the ground under it takes its blue, keeping the ground's own light and shade, at a
+ *    strength of its own (`phaseHue(k)` for the leap and its after-images, so even a faint one
+ *    stays blue over green grass; just k while a ninja turns to light and back, so its own
+ *    colours fade out and back in evenly).
+ * 2. source-over at k: the body laid over that ground; its core is the clearest.
+ * 3. 'lighter' at k * PHASE_ADD: the body added again as light.
+ * Over black the first pass does nothing and the other two give the owner's colours exactly.
  */
 export const PHASE_ADD = 0.4;
+/** How strongly the ground under a leaping light body (or an after-image) at strength `k` takes its blue (see PHASE_ADD). */
+export const phaseHue = (k: number): number => Math.min(1, 4 * k);
 
 /** How far the glow reaches outside the silhouette (pixels): its strength at each step out (over black, that share of its colour). */
 export const GLOW = [0, 150, 96, 58, 30, 12] as const;
 
 /**
- * The fill's four... five steps of blue by rank of the sprite's light (the darkest 8% take step 0,
- * the next 20% step 1, and so on): the share his picture has of each, so a dark outfit and a light
- * one both come out mostly the main electric blue.
+ * The fill's steps of blue (PHASE_RAMP 0..4) by rank of the sprite's light: the darkest 15% take
+ * step 0, the next 22% step 1, and so on, near the shares his picture has, so a dark outfit and a
+ * light one both come out mostly a strong electric blue, deep in the shade.
  */
-const FILL_CDF = [0.08, 0.28, 0.52, 0.78] as const;
-/** The hair's steps by rank of its own light: white-blue, wispy, with its darker strands blue. */
-const HAIR_STEPS = [4, 4, 5, 5, 6, 7] as const;
-/** How opaque each kind of pixel is laid over the ground (0..1): the core is clearest. */
-const COVER = { rim: 1, seam: 0.92, hair: 0.86, d2: 0.8, d3: 0.72, core: 0.6 } as const;
+const FILL_CDF = [0.2, 0.42, 0.64, 0.85] as const;
+/** The hair's steps by rank of its own light: white-blue and wispy, its darker strands blue. */
+const HAIR_STEPS = [3, 4, 4, 5, 6, 7] as const;
+/** How opaque each kind of pixel is laid over the ground (0..1): the core is the clearest. */
+const COVER = { rim: 1, seam: 0.9, hair: 0.85, d2: 0.75, d3: 0.62, core: 0.5 } as const;
+/** How much brighter (smoothed luminance) a pixel must be than a neighbour to catch the light as a lit edge. */
+const TURN = 50;
+const HEAD = partIndex('head');
 
 export interface PhaseOptions {
   /** Body part per pixel (the sprite's part map): where a limb's outline lies over another part, a line of light is drawn. */
@@ -156,9 +168,10 @@ export function phaseBody(rgba: Uint8ClampedArray, w: number, h: number, opts: P
       if (!inside[k]) continue;
       const src = (ry + Y0) * w + rx + X0;
       const d = depth[k];
-      // The silhouette: a thin near-white line, whitest along the top of each form.
+      // The silhouette: a thin near-white line, whitest along the top of each form and softer
+      // along its underside.
       if (d === 1) {
-        light(src, inside[k - RW] ? 6 : 7, COVER.rim);
+        light(src, !inside[k - RW] ? 7 : !inside[k + RW] && inside[k - 1] && inside[k + 1] ? 5 : 6, COVER.rim);
         continue;
       }
       const v = Math.min(255, Math.round(soft[k]));
@@ -174,7 +187,7 @@ export function phaseBody(rgba: Uint8ClampedArray, w: number, h: number, opts: P
           around += lum[j];
           c++;
           if (dx === 0 || dy === 0) {
-            const pj = part?.[(ry + Y0 + dy / RW) * w + rx + X0 + dx];
+            const pj = part?.[src + (dy / RW) * w + dx];
             const pk = part?.[src];
             if (pj && pk && pj !== pk) seam = true;
             if (soft[k] - soft[j] > turn) turn = soft[k] - soft[j];
@@ -183,7 +196,7 @@ export function phaseBody(rgba: Uint8ClampedArray, w: number, h: number, opts: P
       const ink = c > 0 && lum[k] + 26 < around / c && lum[k] < 110;
       if (isHair(src)) {
         const t = hairRank[v];
-        light(src, ink ? 4 : HAIR_STEPS[Math.min(HAIR_STEPS.length - 1, Math.floor(t * HAIR_STEPS.length))], COVER.hair);
+        light(src, ink ? 3 : HAIR_STEPS[Math.min(HAIR_STEPS.length - 1, Math.floor(t * HAIR_STEPS.length))], COVER.hair);
         continue;
       }
       // Where a limb's outline lies over the body (or one leg over the other): a line of light.
@@ -193,19 +206,20 @@ export function phaseBody(rgba: Uint8ClampedArray, w: number, h: number, opts: P
       }
       const t = rank[v];
       let step = t < FILL_CDF[0] ? 0 : t < FILL_CDF[1] ? 1 : t < FILL_CDF[2] ? 2 : t < FILL_CDF[3] ? 3 : 4;
-      // The sprite's other lines (clothes, straps, the face) stay, as darker blue creases.
-      if (ink) step = Math.min(step, 1);
-      // The lit side of a turn from light into shade catches the light.
-      else if (turn > 40) step = Math.max(step, 5);
-      // Toward the silhouette the body brightens, as round forms do in his picture.
       let cover: number = COVER.core;
+      // Toward the silhouette the body brightens, as round forms do in his picture.
       if (d === 2) {
-        step = Math.min(5, Math.max(step + 1, 3));
+        step = Math.min(4, Math.max(step + 1, 3));
         cover = COVER.d2;
       } else if (d === 3) {
         step = Math.max(step, 2);
         cover = COVER.d3;
       }
+      // The sprite's other lines (clothes, straps, the face) stay, as darker blue creases.
+      if (ink) step = Math.min(step, 1);
+      // The lit side of a turn from light into shade catches the light (not on the face, which
+      // would read as a pale mask).
+      else if (turn > TURN && part?.[src] !== HEAD) step = 5;
       light(src, step, cover);
     }
 
@@ -230,17 +244,45 @@ export function phaseFrame(f: { rgba: Uint8ClampedArray; part: Uint8Array; hair?
 }
 
 /**
- * A phase body over a ground as the battle draws it (laid over at `k`, then added as light at
- * k * PHASE_ADD): `ground` is one colour or a w x h RGB(A) picture. For tests and pictures.
+ * A phase body over a ground of one colour as the battle draws it at strength `k`, and `alpha`
+ * of its usual opacity (a hidden ninja is fainter): the ground takes its blue at alpha * `tint`,
+ * the body is laid over at alpha * k and added as light at alpha * k * PHASE_ADD (see
+ * PHASE_ADD). For tests and pictures; RGBA out, opaque.
  */
-export function phaseOver(body: Uint8ClampedArray, ground: readonly [number, number, number], k = 1): Uint8ClampedArray {
+export function phaseOver(body: Uint8ClampedArray, ground: readonly [number, number, number], k = 1, alpha = 1, tint = phaseHue(k)): Uint8ClampedArray {
   const out = new Uint8ClampedArray(body.length);
+  const hue = Math.min(1, alpha * tint);
+  const cover = Math.min(1, alpha * k);
+  const g = ground.map((v) => v / 255);
+  const gl = lumOf(g);
   for (let i = 0; i < body.length; i += 4) {
-    const a = (body[i + 3] / 255) * k;
-    for (let c = 0; c < 3; c++) out[i + c] = ground[c] * (1 - a) + body[i + c] * a * (1 + PHASE_ADD);
+    const a = body[i + 3] / 255;
+    const c = [body[i] / 255, body[i + 1] / 255, body[i + 2] / 255];
+    // 1. 'color': the body's hue and saturation at the ground's luminosity.
+    const blue = setLum(c, gl);
+    const ah = a * hue;
+    const ac = a * cover;
+    for (let ch = 0; ch < 3; ch++) {
+      const g1 = g[ch] * (1 - ah) + blue[ch] * ah;
+      // 2. laid over; 3. added as light.
+      out[i + ch] = Math.round(255 * Math.min(1, g1 * (1 - ac) + c[ch] * ac * (1 + PHASE_ADD)));
+    }
     out[i + 3] = 255;
   }
   return out;
+}
+
+// The 'color' blend's luminosity (W3C Compositing and Blending), as the browser computes it.
+const lumOf = (c: readonly number[]): number => 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2];
+function setLum(c: readonly number[], l: number): number[] {
+  const d = l - lumOf(c);
+  const o = c.map((v) => v + d);
+  const L = lumOf(o);
+  const lo = Math.min(...o);
+  const hi = Math.max(...o);
+  if (lo < 0) return o.map((v) => L + ((v - L) * L) / (L - lo));
+  if (hi > 1) return o.map((v) => L + ((v - L) * (1 - L)) / (hi - L));
+  return o;
 }
 
 /** For each value 0..255, the share of the counted values below it (half of its own): its rank, 0..1. */

@@ -168,6 +168,23 @@ describe("the owner's bare female body", () => {
     }
   });
 
+  it('takes his sports top\'s straps off under a top or armour, his shoulders under them', () => {
+    const chest = FEMALE_BASE.chest;
+    const strapHex = new Set(Object.keys(chest.straps!).map((ch) => chest.colors[ch]));
+    const straps = (slots: SpriteAppearance['slots']) => {
+      const { layers, mats } = spriteLayers(bare('female', FEMALE_BASE_SKIN, slots), 'idle', 0);
+      const L = layers.get('torso.body')!;
+      let n = 0;
+      // the shoulders, above the bust (his rows 26-32)
+      for (let i = 146 * GRID; i < 153 * GRID; i++) if (L.mat[i] >= 0 && strapHex.has(mats.ramps[L.mat[i]][3])) n++;
+      return n;
+    };
+    assert.ok(straps({}) > 8, 'bare, she wears them');
+    assert.ok(straps({ top: { id: 'top_sports_bra', colors: [] } }) > 8, 'the sports top item keeps them');
+    assert.equal(straps({ top: { id: 'top_tee', colors: [] } }), 0, 'under a shirt');
+    assert.equal(straps({ armor: { id: 'armor_none', colors: [] } }), straps({}), 'no armour');
+  });
+
   it('closes every edge of the body off rest with his line', () => {
     // At rest every pixel is his; moved, a pixel of a piece left on the figure's edge is his line.
     for (const body of BODIES) {

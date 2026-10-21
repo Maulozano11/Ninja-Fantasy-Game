@@ -5,11 +5,13 @@ import type { PaintedPiece } from './painted';
 
 /**
  * A piece of his body: his pixels round one bone. `cloth` are the characters of his sports top and
- * briefs; `cap` the characters of its round cap over the joint above it (the upper piece's pixels).
+ * briefs; `cap` the characters of its round cap over the joint above it (the upper piece's pixels);
+ * `straps` (the chest) the sports top's straps over the shoulders, with his shoulder's skin under them.
  */
 export interface BasePiece extends PaintedPiece {
   cloth: string;
   cap: string;
+  straps?: Record<string, string>;
 }
 
 /** His base skin, the main grey of his sports top and briefs, and his line. */
@@ -49,18 +51,18 @@ export const FEMALE_BASE: Record<'chest' | 'pelvis' | 'upperArmN' | 'forearmN' |
       '...aabbbcccc........',
       '..ddabbbcccd........',
       '.efghbbbbccidd......',
-      'eeegfcjkcccckgddd...',
-      'eeeefgblllcclhgccd..',
-      'eeeegmnlllblllcgccd.',
-      'eeeeegnlbllllllndcd.',
-      'eeeeefnmboobhlolndd.',
-      '.gggegnnnnnmffnnnnd.',
-      '.gdiignnnnnnnnnnnnnd',
-      '.gdidgnnnnnfgfgnnnnd',
-      '.gddgggnnnnnnnnnnmgd',
-      '.gdggggggggggggggggd',
-      '..dgggdgggggggggggd.',
-      '...dgggddddddddddd..',
+      'eeegfcjkccccklddd...',
+      'eeeemnboooccohgccd..',
+      'eeeenpqooobooocnccd.',
+      'eeeeersoboooooosdcd.',
+      'eeeeetsubvvbhovosdd.',
+      '.wwwewxxxxxyzzxxxxd.',
+      '.wdiiwxxxxxxxxxxxxxd',
+      '.wdidwxxxxxzwzwxxxxd',
+      '.wddwwwxxxxxxxxxxywd',
+      '.wdwwwwwwwwwwwwwwwwd',
+      '..dwwwdwwwwwwwwwwwd.',
+      '...dwwwddddddddddd..',
     ],
     colors: {
       'a': '#a76859',
@@ -74,13 +76,37 @@ export const FEMALE_BASE: Record<'chest' | 'pelvis' | 'upperArmN' | 'forearmN' |
       'i': '#9c5e54',
       'j': '#cd836e',
       'k': '#b66e5f',
-      'l': '#f6d1b0',
-      'm': '#363844',
-      'n': '#3e3e49',
-      'o': '#fee4cb',
+      'l': '#1f1f2b',
+      'm': '#27262e',
+      'n': '#1f1f2b',
+      'o': '#f6d1b0',
+      'p': '#363844',
+      'q': '#3e3e49',
+      'r': '#1f1f2b',
+      's': '#3e3e49',
+      't': '#27262e',
+      'u': '#363844',
+      'v': '#fee4cb',
+      'w': '#1f1f2b',
+      'x': '#3e3e49',
+      'y': '#363844',
+      'z': '#27262e',
     },
-    cloth: 'fgmn',
+    cloth: 'fglmnpqrstuwxyz',
     cap: '',
+    straps: {
+      'f': '#e3987e',
+      'g': '#e3987e',
+      'l': '#b66e5f',
+      'm': '#d38971',
+      'n': '#d38971',
+      'p': '#f6c9a8',
+      'q': '#f6c9a8',
+      'r': '#f6d1b0',
+      's': '#f6d1b0',
+      't': '#e69f84',
+      'u': '#f6d1b0',
+    },
   },
   pelvis: {
     pivot: [12, 17],

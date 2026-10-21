@@ -115,12 +115,13 @@ const isInk = (hex: string): boolean => {
   return 0.299 * r + 0.587 * g + 0.114 * b < 22;
 };
 
-/** The part above each joint: a piece's round cap over its joint is that part's pixels. */
+/**
+ * The part above each joint: a piece's round cap over its joint is that part's pixels. A hand's cap of
+ * the wrist stays the hand's: a sleeve that takes the forearm off past its cuff leaves the wrist on it.
+ */
 const CAP_OF: Partial<Record<PartId, PartId>> = {
   forearmN: 'upperArmN',
   forearmF: 'upperArmF',
-  handN: 'forearmN',
-  handF: 'forearmF',
   shinN: 'thighN',
   shinF: 'thighF',
   footN: 'shinN',
@@ -139,7 +140,7 @@ const upAngle = (g: DrawCtx): number => (Math.atan2(g.rig.up.y, g.rig.up.x) * 18
  * where turning it lost a pixel of his line, so no piece is ever left cut open. `only` = 'cloth'
  * stamps only the cloth (the sports top and briefs items draw it over the body in their colour).
  */
-function stampBase(g: DrawCtx, depth: Depth, p: BasePiece, at: Vec, deg: number, part: PartId, cloth?: string, only?: 'cloth'): void {
+function stampBase(g: DrawCtx, depth: Depth, p: BasePiece, at: Vec, deg: number, part: PartId, cloth?: string, only?: 'cloth', bare = false): void {
   const L = g.L(depth);
   const rest = g.rig.pose === 'idle';
   const pal = new Map<string, [number, number, PartId]>();
@@ -149,7 +150,10 @@ function stampBase(g: DrawCtx, depth: Depth, p: BasePiece, at: Vec, deg: number,
   for (const [ch, hex] of Object.entries(p.colors)) {
     const isCloth = p.cloth.includes(ch);
     if (only === 'cloth' && !isCloth) continue;
-    const c = isCloth ? (cloth ? retintHex(hex, FEMALE_BASE_CLOTH, cloth) : hex) : isInk(hex) ? hex : skinTone(hex, g.look.skin, FEMALE_BASE_SKIN);
+    // `bare`: the sports top's straps off, his shoulder's skin under them
+    const strap = bare ? p.straps?.[ch] : undefined;
+    if (strap && only === 'cloth') continue;
+    const c = strap ? skinTone(strap, g.look.skin, FEMALE_BASE_SKIN) : isCloth ? (cloth ? retintHex(hex, FEMALE_BASE_CLOTH, cloth) : hex) : isInk(hex) ? hex : skinTone(hex, g.look.skin, FEMALE_BASE_SKIN);
     pal.set(ch, [g.m(c, 'painted'), rest ? F_NO_OUTLINE | F_NO_TEXTURE : F_NO_TEXTURE, p.cap.includes(ch) ? upper : part]);
   }
   const ax = Math.floor(at.x * RES);
@@ -210,7 +214,11 @@ function drawBaseBody(g: DrawCtx): void {
   leg('N');
   const up = upAngle(g);
   stampBase(g, 'torso.body', P.pelvis, r.pelvis, up, 'pelvis');
-  stampBase(g, 'torso.body', P.chest, r.neck, up, 'torso');
+  // Under a top or armour of another kind his sports top's straps come off: a dress with bare shoulders
+  // shows his shoulders, not the straps (the rest of the top stays under it).
+  const worn = (slot: 'armor' | 'top') => g.has(slot) && !g.look.slots[slot]!.id.endsWith('_none');
+  const dressed = worn('armor') || (worn('top') && !g.has('top', 'top_sports_bra'));
+  stampBase(g, 'torso.body', P.chest, r.neck, up, 'torso', undefined, undefined, dressed);
   drawHead(g);
   arm('N');
 }

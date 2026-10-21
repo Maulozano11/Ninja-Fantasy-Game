@@ -8,13 +8,19 @@ export type BodyType = 'male' | 'female' | 'bulky' | 'slender';
 /** Bodies drawn with the female face, lashes, lips and slimmer feet. */
 export const isFemaleBody = (b: BodyType | string): boolean => b === 'female' || b === 'slender';
 
-export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge' | MovePose | CampPose;
+export type SpritePose = 'idle' | 'handsigns' | 'attack' | 'cast' | 'hurt' | 'victory' | 'charge' | StrikePose | MovePose | CampPose;
+
+/**
+ * Weapon techniques: 'throw' hurls the held weapon (it is out of the hand from the release frame on,
+ * see grip.ts throwRelease; the battle draws it in flight), 'pierce' is a lunging thrust.
+ */
+export type StrikePose = 'throw' | 'pierce';
 
 /** Poses for moving around the battle map: walking, running, crouching, sneaking and lying downed. */
 export type MovePose = 'walk' | 'run' | 'crouch' | 'sneak' | 'downed';
 
 /** The poses the character creator previews. */
-export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'cast', 'hurt', 'victory', 'charge'];
+export const SPRITE_POSES: SpritePose[] = ['idle', 'handsigns', 'attack', 'throw', 'pierce', 'cast', 'hurt', 'victory', 'charge'];
 
 export const MOVE_POSES: MovePose[] = ['walk', 'run', 'crouch', 'sneak', 'downed'];
 
@@ -45,13 +51,17 @@ export interface CastChoice {
   jutsu?: Record<string, CastStyle>;
 }
 
-export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing';
+/** The eye options; valiant is the owner's own eyes from his Aiden picture, in his pixels. */
+export type EyeShape = 'standard' | 'sharp' | 'round' | 'calm' | 'fierce' | 'bright' | 'piercing' | 'valiant';
 
 /** Back of the neck behind the jaw: slender (default) or thick. */
 export type NeckType = 'slim' | 'strong';
 
-/** Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw. */
-export type FaceShape = 'tapered' | 'soft' | 'square';
+/**
+ * Near-side cheek and jaw: V-line (default), fuller, or a strong flat jaw; or the owner's own head
+ * from his Aiden picture (valiant: his skull, ear, cheeks, jaw and chin in his pixels).
+ */
+export type FaceShape = 'tapered' | 'soft' | 'square' | 'valiant';
 
 /** Single-choice equipment slots, drawn back-to-front by depth (see compose.ts). */
 export type SlotId =

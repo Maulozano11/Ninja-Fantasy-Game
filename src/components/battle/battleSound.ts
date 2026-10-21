@@ -8,19 +8,26 @@ import type { SoundName } from './playback';
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
+/** The browser or the frame the game runs in refused audio: the battle plays on silently. */
+let refused = false;
 
 function audio(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
-  if (!ctx) {
-    const A = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!A) return null;
-    ctx = new A();
-    master = ctx.createGain();
-    master.gain.value = 0.7;
-    master.connect(ctx.destination);
+  if (typeof window === 'undefined' || refused) return null;
+  try {
+    if (!ctx) {
+      const A = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!A) return null;
+      ctx = new A();
+      master = ctx.createGain();
+      master.gain.value = 0.7;
+      master.connect(ctx.destination);
+    }
+    if (ctx.state === 'suspended') Promise.resolve(ctx.resume()).catch(() => {});
+    return ctx;
+  } catch {
+    refused = true;
+    return null;
   }
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-  return ctx;
 }
 
 function noise(c: AudioContext): AudioBuffer {
@@ -72,7 +79,16 @@ function tone(c: AudioContext, o: { f0: number; f1?: number; dur: number; gain: 
 const NATURE: Record<string, string> = { fire: 'Fire', water: 'Water', wind: 'Wind', lightning: 'Lightning', earth: 'Earth' };
 let lastStep = 0;
 
+/** A sound that fails never stops the playback that asked for it. */
 export function playSound(name: SoundName, detail?: string): void {
+  try {
+    play(name, detail);
+  } catch {
+    // no sound this time
+  }
+}
+
+function play(name: SoundName, detail?: string): void {
   if (soundManager.getMuted()) return;
   const c = audio();
   if (!c || !master) return;
@@ -150,6 +166,14 @@ export function playSound(name: SoundName, detail?: string): void {
 
 /** The map's ambience: the river's murmur, and birds by day or crickets at night. */
 export function startAmbience(night: boolean): () => void {
+  try {
+    return ambience(night);
+  } catch {
+    return () => {};
+  }
+}
+
+function ambience(night: boolean): () => void {
   const c = audio();
   if (!c || !master || soundManager.getMuted()) return () => {};
   const out = c.createGain();

@@ -9,6 +9,7 @@ import type { DrawCtx, ItemDef } from '../ctx';
 import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID, len, lerp, Layer, norm, PartId, Pen, perp, poly, px, RES, scale, seam, sub, v, Vec } from '../raster';
 import { GROUND } from '../rig';
 import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_PLATE, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
+import { CRIMSON_CAPE_BACK, CRIMSON_CAPE_BASE, CRIMSON_CAPE_EDGE, CRIMSON_CAPE_FAR, CRIMSON_CAPE_LINE, CRIMSON_CAPE_NEAR } from './crimsonCapeArt';
 
 const col = (key: string, label: string, def: string, kind: 'cloth' | 'leather' | 'metal' = 'cloth') => ({ key, label, default: def, kind });
 
@@ -32,12 +33,34 @@ const TRAIN_WIND: Wind[] = [
   { dx: -1, lift: 0, wave: 0 },
 ];
 
+/** Throw: coiled, rising, swung back by the throw, then flung out behind by the leap of the release and its follow-through. */
+const THROW_WIND: Wind[] = [
+  { dx: -2, lift: 1, wave: 0 },
+  { dx: -3, lift: 1, wave: 1 },
+  { dx: -6, lift: 3, wave: 0 },
+  { dx: -9, lift: 6, wave: 1 },
+  { dx: -10, lift: 7, wave: 0 },
+];
+
+/** Pierce: still in the guard and the chamber, streaming back on the lunge and its hold, settling on the recoil. */
+const PIERCE_WIND: Wind[] = [
+  { dx: -1, lift: 0, wave: 0 },
+  { dx: -1, lift: 0, wave: 1 },
+  { dx: -9, lift: 6, wave: 0 },
+  { dx: -8, lift: 5, wave: 1 },
+  { dx: -4, lift: 2, wave: 0 },
+];
+
 /** Pose-dependent wind so capes trail in attacks and sway in idle. */
 export function capeWind(g: DrawCtx): Wind {
   const f = g.rig.frame;
   switch (g.rig.pose) {
     case 'attack':
       return f % 3 === 0 ? { dx: -2, lift: 1, wave: 1 } : f % 3 === 1 ? { dx: -9, lift: 7, wave: 0 } : { dx: -7, lift: 5, wave: 1 };
+    case 'throw':
+      return THROW_WIND[f % THROW_WIND.length];
+    case 'pierce':
+      return PIERCE_WIND[f % PIERCE_WIND.length];
     case 'hurt':
       return { dx: -6, lift: 4, wave: f % 2 ? 1 : 0 };
     case 'charge':
@@ -458,6 +481,75 @@ const ownerPlateColor = (metal: string) => (_ch: string, hex: string) => {
   return 0.299 * r + 0.587 * g + 0.114 * b < 16 ? hex : retintHex(hex, '#3b444f', metal);
 };
 
+/** His red cape recoloured: his line stays, every red of his moves the way his base red does. */
+const crimsonCapeColor = (cloth: string) => (ch: string, hex: string) => (CRIMSON_CAPE_LINE.includes(ch) ? hex : retintHex(hex, CRIMSON_CAPE_BASE, cloth));
+
+/** How far above the ground line his hem hangs at rest (fine pixels; the male figure, idle). */
+const CRIMSON_HEM_ABOVE_GROUND = 5;
+
+/**
+ * The back of his red cape (capeBack), hung from the base of the neck: his pixels pushed by the wind
+ * as paintedPart does, but the hem never hangs lower than at rest (crouched or seated the cloth gathers
+ * up behind instead of passing through the ground: the lower rows ride up over the ones above, so his
+ * hem stays whole). Knocked out (drawn upright, then laid down) it lies along the back: only the
+ * cloth within a few pixels of the body's back is kept (the flaps would stand up in the air once the
+ * figure is laid down, or sink into the ground in front), with his line along the cut.
+ */
+function crimsonBack(g: DrawCtx, color: (ch: string, hex: string) => string): void {
+  const p = CRIMSON_CAPE_BACK;
+  const L = g.L('capeBack');
+  const r = g.rig;
+  const w = capeWind(g);
+  const ax = Math.floor(r.neck.x * RES) - p.pivot[0];
+  const ay = Math.floor(r.neck.y * RES) - p.pivot[1];
+  const n = p.rows.length;
+  const lift = w.lift * 1.4 * RES;
+  const over = r.lay ? 0 : Math.max(0, ay + n - 1 - Math.round(lift) - (GROUND * RES - CRIMSON_HEM_ABOVE_GROUND));
+  const pens: Record<string, number> = {};
+  for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
+  // Laid down: the body's back row by row (the cape is drawn before the clothes, over the bare body),
+  // and the column that lands on the ground.
+  const back = new Map<number, number>();
+  if (r.lay) {
+    for (const d of ['torso.body', 'torso.under', 'nearLeg.body', 'farLeg.body'] as const) {
+      const B = g.L(d);
+      for (let i = 0; i < GRID * GRID; i++) {
+        if (B.mat[i] < 0) continue;
+        const y = (i / GRID) | 0;
+        back.set(y, Math.min(back.get(y) ?? GRID, i % GRID));
+      }
+    }
+  }
+  const front = r.lay ? Math.floor(r.lay.groundX * RES) : GRID;
+  const keep = (x: number, y: number) => !r.lay || (back.has(y) && x >= back.get(y)! - 3 && x < front);
+  const placed = new Set<number>();
+  p.rows.forEach((row, j) => {
+    const k = j / Math.max(1, n - 1);
+    const dx = Math.round((w.dx + w.wave) * RES * k ** 1.3);
+    const dy = -Math.round((lift + over) * k * k);
+    for (let i = 0; i < row.length; i++) {
+      const ch = row[i];
+      if (ch === '.') continue;
+      const x = ax + i + dx;
+      const y = ay + j + dy;
+      if (x < 0 || y < 0 || x >= GRID || y >= GRID) continue;
+      placed.add(y * GRID + x);
+      if (keep(x, y)) L.set(x, y, pens[ch], 3, 'back', F_NO_TEXTURE | F_NO_OUTLINE);
+    }
+  });
+  if (!r.lay) return;
+  // His line along the cut: kept pixels next to cloth that was cut away.
+  const edge = pens[CRIMSON_CAPE_EDGE];
+  const cut: number[] = [];
+  for (const i of placed) {
+    const x = i % GRID;
+    const y = (i / GRID) | 0;
+    if (!keep(x, y)) continue;
+    if ([i - 1, i + 1, i - GRID, i + GRID].some((q) => placed.has(q) && !keep(q % GRID, (q / GRID) | 0))) cut.push(i);
+  }
+  for (const i of cut) L.set(i % GRID, (i / GRID) | 0, edge, 3, 'back', F_NO_TEXTURE | F_NO_OUTLINE);
+}
+
 export const CAPE_ITEMS: ItemDef[] = [
   {
     id: 'cape_shadow',
@@ -500,6 +592,27 @@ export const CAPE_ITEMS: ItemDef[] = [
       const O = g.L('nearArm.over');
       clasp(O, shoulderCap(g, c, 0.24, 1.1, 1, 'dark').top, { ...gp, part: 'upperArmN' }, 0.7);
       clasp(O, top(b.shoulderHalf * 0.62 + 0.6, Lt - 1.1), gp, 0.7);
+    },
+  },
+  {
+    id: 'cape_crimson',
+    slot: 'cape',
+    name: 'Crimson Mantle',
+    desc: "A knight's red cape: a mantle over both shoulders, under the shoulder guards, that goes on behind the neck, and the cloth falling behind the body on both sides to the calves in dark-red folds, its hems cut in points.",
+    colors: [col('main', 'Cape', CRIMSON_CAPE_BASE)],
+    draw: (g, [c]) => {
+      // The owner's red cape on his Aiden, his pixels (the new standard, 2026-10-21): the cloth
+      // behind the body from the shoulders to the calves on both sides, swaying in the wind; the
+      // mantle over the far shoulder, in front of the far arm and the torso and behind the head; the
+      // mantle over the near shoulder, in front of the arm and drawn into its armour's layer first,
+      // so a pauldron (drawn after) sits over it as his does (armor.ts lets pauldrons show over this
+      // cape).
+      const tint = crimsonCapeColor(c);
+      crimsonBack(g, tint);
+      paintedPart(g, g.L('torso.acc'), CRIMSON_CAPE_FAR, 'upperArmF', tint, false, g.rig.shoulderF);
+      const N = g.L('nearArm.armor');
+      paintedPart(g, N, CRIMSON_CAPE_NEAR, 'upperArmN', tint, false);
+      tuckUnderChin(g, N);
     },
   },
   {

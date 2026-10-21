@@ -56,6 +56,23 @@ elements.
 - **Dice**: every roll shows as a quick d20 over the acting character, with a
   button to speed it up. The big dice window is kept for criticals and
   important checks. Checks and attacks show their % before rolling.
+  - The dice are a real d20 (20 faces, opposite faces sum to 21) in three
+    styles the player picks in the main menu (owner's decision): A "Gema" (a
+    crystal in the caster's chakra colour), B "Marfil y oro" (ivory with gold,
+    the default), C "Obsidiana rúnica" (black glass with glowing numbers). The
+    dice only show the roll the engine already made and land on that number.
+    Art: `tools/ui/dice-d20.ts` → `src/assets/ui_dice/` (waiting for the
+    owner's approval of the look).
+  - **A natural 20 on an attack roll is an automatic critical hit with maximum
+    damage** (owner's decision): every damage die counts as its highest face,
+    including the extra dice the critical adds (2d6+3 → 4×6+3 = 27; a katana's
+    1d8+3 → 8+8+3 = 19). The log says so. It plays an extra animation: the big
+    window with the gold d20 and a "¡CRÍTICO!" banner, then on the blow a short
+    hit-stop, a gold flash, a camera kick, an impact burst on the target and the
+    damage in big gold digits marked "MÁX", with its own sound sting.
+    (Open question for the owner: today every damaging jutsu uses a saving
+    throw, so this rule only reaches weapon attacks until he decides how jutsu
+    criticals work.)
 - **Chakra in battle** does not come back by itself:
   - **Focus chakra** (action): recover 1d6 + casting modifier; attacks against
     you have advantage until your next turn.

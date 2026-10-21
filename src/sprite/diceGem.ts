@@ -9,10 +9,16 @@ import { mixHex } from './color';
 /** The tint the gem sheets are drawn in. */
 export const DICE_GEM_KEY_TINT = 'blue';
 
-/** The gem ramp for a tint: 0 the outline, then 1 (darkest facet) .. 8 (the core, the numbers). */
+/**
+ * The gem ramp for a tint: 0 the outline, then 1 (the darkest depth of the crystal) .. 9 (the core
+ * colour), and 10 a pale tint for the light passing through and the painted numbers.
+ */
 export function diceGemRamp(tint: string): string[] {
   const [p0, p1, p2, p3, p4] = chakraTones(tint);
-  return [mixHex(p0, '#07060b', 0.6), p0, mixHex(p0, p1, 0.5), p1, mixHex(p1, p2, 0.5), p2, mixHex(p2, p3, 0.5), p3, p4];
+  return [
+    mixHex(p0, '#07060b', 0.6), mixHex(p0, '#07060b', 0.25), p0, mixHex(p0, p1, 0.5), p1, mixHex(p1, p2, 0.5), p2, mixHex(p2, p3, 0.5), p3, p4,
+    mixHex(p4, '#ffffff', 0.55),
+  ];
 }
 
 /**

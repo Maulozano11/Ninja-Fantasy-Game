@@ -99,7 +99,7 @@ function sharedSheet(size: Size): { img: Img; rects: Record<string, Rect> } {
   const colours: [string, RGBA][] = [...STYLE_IDS.map((s) => [s, STYLES[s].halo] as [string, RGBA]), ['gold', GOLD20[6]]];
   for (const [name, col] of colours) [1, 0.7, 0.45, 0.2].forEach((k, i) => a.add(`halo_${name}_${i}`, halo(W, z.R * 1.2, col, k)));
   // The rest silhouette is about 1.7 R wide; the shadow shrinks as the die flies higher.
-  [0.55, 0.65, 0.75, 0.85, 0.95, 1].forEach((k, i) => a.add(`shadow_${i}`, shadowSprite(Math.round(z.R * 1.7 * k))));
+  [0.55, 0.65, 0.75, 0.85, 0.95, 1].forEach((k, i) => a.add(`shadow_${i}`, shadowSprite(Math.round(z.R * 1.7 * k), i === 5)));
   for (let s = 1; s <= 3; s++) for (let f = 0; f < 4; f++) a.add(`dust_${s}_${f}`, dustSprite(size, s, f));
   return a.build(size === 'small' ? 400 : 900);
 }
@@ -179,6 +179,7 @@ function main(): void {
     file: 'dice_<style>_<size>.png',
     rowOfResult: 'result - 1',
     rollColumns: [0, ROLL_FRAMES - 1],
+    rollNote: 'The throw: spin and smear in the air, three bounces, it lands on a neighbouring face, rolls over the edge onto the result (click), wobbles and settles.',
     restColumn: ROLL_FRAMES - 1,
     clickFrame: CLICK_FRAME,
     popColumns: [POP_COL, POP_COL + 2],
@@ -186,9 +187,9 @@ function main(): void {
     popMs: [50, 60, 90],
     popDy: [-1, 0, 0],
   };
-  const throwPath = (size: Size) => rollPath(1, size).map((f) => ({ dx: f.dx, dy: f.dy, ms: f.ms, contact: f.contact ?? 0, trail: f.trail ?? false, ground: Math.round(f.ground * 100) / 100 }));
+  const throwPath = (size: Size) => rollPath(1, size).map((f) => ({ dx: f.dx, dy: f.dy, ms: f.ms, contact: f.contact ?? 0, ground: Math.round(f.ground * 100) / 100 }));
   manifest.throw = {
-    note: 'Where the die is in each throw frame, from where it lands (art pixels), for results thrown from the left. The results in fromRight come from the right: negate dx. A frame with contact > 0 hits the ground (dust_<contact>_0..3 there, a click sound); trail frames draw the previous frame behind at 35% alpha; ground picks the shadow (shadow_<round(ground*5)>). The last frame holds.',
+    note: 'Where the die is in each throw frame, from where it lands (art pixels), for results thrown from the left. The results in fromRight come from the right: negate dx. A frame with contact > 0 hits the ground (dust_<contact>_0..3 there, a click sound); the first frames carry their own motion smear; ground picks the shadow (shadow_<round(ground*5)>; shadow_5, on the ground, has the dark contact core). The last frame holds.',
     fromRight: Array.from({ length: 20 }, (_, i) => i + 1).filter(fromRight),
     small: throwPath('small'),
     big: throwPath('big'),
@@ -221,18 +222,26 @@ function main(): void {
     banner: crit.banner,
     burstMs: crit.burstMs,
     note: 'A natural 20 on an attack: automatic critical, maximum damage. See timeline (ms at speed 1; the battle speed divides them; a click skips to the end).',
-    timeline: [
-      { at: 0, what: 'die', detail: 'The die lands on 20 and plays its natural-20 row (about 0.6 s; the throw before it is not counted here).' },
-      { at: 0, what: 'swing', detail: 'The attack plays as now; the beats below start on the frame the blow lands.' },
-      { at: 0, what: 'hitStop', ms: 110, detail: 'Everything holds still on the impact frame; the target flashes white.' },
-      { at: 0, what: 'flash', ms: 90, detail: 'Full-screen gold-white flash: 55% then 25% alpha (#fff6d6).' },
-      { at: 0, what: 'sound', detail: 'The critical sting (see sound).' },
-      { at: 40, what: 'burst', detail: 'burst_0..7 on the target, centred on its chest (world pixels).' },
-      { at: 40, what: 'shake', ms: 260, px: 6, detail: 'The camera kicks 6 px toward the target and shakes, easing out.' },
-      { at: 110, what: 'banner', detail: 'banner_<lang>_0..9 in the banner slot (top third, centred, 3x): holds on frame 7 until 900 ms, then closes.' },
-      { at: 150, what: 'damage', detail: 'The maximum damage over the target: dmg_white digits for 60 ms at 4x, then dmg_gold at 3x with max_<lang> beside it; it rises 24 px and fades out by 1200 ms.' },
-      { at: 1050, what: 'end', detail: 'The next event plays.' },
-    ],
+    timeline: {
+      note: 'Two parts. "roll" is timed from the moment the small die settles on 20; "impact" from the frame the blow lands.',
+      roll: [
+        { at: 0, what: 'smallDie', detail: 'The small die over the actor plays its natural-20 row from the small fx sheet (gold flash).' },
+        { at: 120, what: 'window', detail: 'The big window opens: the screen dims (18%, then 32%), the small die and its readout leave, the big die plays its natural-20 row (dice_<style>_big_fx row 0, 2x) in the free band over the fight.' },
+        { at: 200, what: 'banner', detail: 'banner_<lang>_0..hold in the window, under the die (3x): slams open from the middle, a shine crosses it, it holds.' },
+        { at: 380, what: 'readout', detail: 'The readout pops in beside the big die (natural 20 in gold, total, mark, CA/CD).' },
+        { at: 760, what: 'swing', detail: 'The attack plays; the window fades to 40% and closes as the blade comes down.' },
+      ],
+      impact: [
+        { at: 0, what: 'hitStop', ms: 120, detail: 'Everything holds still on the impact frame (the target shows its hit flash).' },
+        { at: 0, what: 'flash', ms: 80, detail: 'Full-screen gold-white flash: 55% then 25% alpha (#fff6d6).' },
+        { at: 0, what: 'sound', detail: 'The critical sting (see sound).' },
+        { at: 40, what: 'burst', detail: 'burst_0..7 on the target, centred on its chest (world pixels, 50 ms each).' },
+        { at: 40, what: 'shake', ms: 260, px: 6, detail: 'The camera kicks 6 px toward the target and shakes, easing out.' },
+        { at: 60, what: 'bannerClose', detail: 'The banner closes (its last frames), leaving room for the number.' },
+        { at: 150, what: 'damage', detail: 'The maximum damage over the target: dmg_white digits for 60 ms at 4x, then dmg_gold at 3x with max_<lang> beside it; it rises 24 px and fades out from 1050 to 1300 ms.' },
+        { at: 1050, what: 'end', detail: 'The next event plays (the number keeps fading over it).' },
+      ],
+    },
     sound: 'tools/ui/dice-d20-sound.ts writes the sting as a WAV; the recipe there is the one to port to WebAudio.',
   };
   const ro = readoutSheet();

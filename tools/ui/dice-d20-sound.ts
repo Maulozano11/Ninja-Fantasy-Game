@@ -10,6 +10,7 @@
 import { join } from 'node:path';
 import { writeAtomic } from './ui-img';
 import { lcg } from './dice-d20-art';
+import { CLICK_FRAME, rollPath } from './dice-d20-fx';
 
 const RATE = 44100;
 const STAGING = '/tmp/claude-0/-home-user-Ninja-Fantasy-Game/686daf18-129b-55df-a0e0-8b5389d0083e/scratchpad/dados/sprites';
@@ -55,7 +56,7 @@ function tick(at: number, gain: number, click = false): Voice[] {
   ];
 }
 
-/** The throw, timed on the throw's frames (contacts at frames 5, 10, 13, the click at 15). */
+/** The throw, timed on the throw's frames (three ground contacts, the click as it rolls onto the result). */
 export function throwSound(frameMs: number[], contacts: number[], click: number): Voice[] {
   const at = (i: number) => frameMs.slice(0, i).reduce((a, b) => a + b, 0) / 1000;
   const v: Voice[] = [];
@@ -152,10 +153,12 @@ export function wav(samples: Float32Array): Buffer {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  // The throw's frame times, as in the manifest (frames 0..17).
-  const ms = [34, 34, 34, 34, 34, 42, 38, 38, 38, 38, 42, 40, 40, 45, 45, 60, 70];
+  // The throw's frame times and the frames that hit the ground, as in the manifest.
+  const path = rollPath(1, 'small');
+  const ms = path.map((f) => f.ms);
+  const contacts = path.flatMap((f, i) => (f.contact ? [i] : []));
   const sounds: [string, Voice[]][] = [
-    ['dado_tirada.wav', throwSound(ms, [5, 10, 13], 15)],
+    ['dado_tirada.wav', throwSound(ms, contacts, CLICK_FRAME)],
     ['dado_resultado.wav', POP],
     ['dado_20.wav', NAT20],
     ['dado_1.wav', NAT1],

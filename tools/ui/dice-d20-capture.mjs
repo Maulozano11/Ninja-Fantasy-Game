@@ -76,6 +76,8 @@ const setup = async (ac) =>
     akira.controller = 'player';
     akira.turn = { move: akira.speed, action: true, bonus: true, reaction: true, moved: 0 };
     rogue.ac = ac;
+    // No Kawarimi or Evasion: the mockup's blow has to land on the Rogue himself.
+    rogue.turn = { ...rogue.turn, reaction: false };
     rogue.hp = 999;
     rogue.maxHp = 999;
     for (const u of Object.values(s.units)) delete u.intent;

@@ -5,6 +5,7 @@
 //   node tools/ui/dice-d20-capture.mjs <capDir>
 //   npx tsx tools/ui/dice-d20-mock.ts <capDir> <outDir>
 //   python3 -I tools/ui/dice-d20-gif.py <outDir>        (each frame folder becomes a GIF)
+//   ONLY=gem|ivory|obsidian|styles|crit|compare  renders just that part (they can run in parallel)
 //
 // Writes <outDir>/<name>/NNN.png and <outDir>/<name>/frames.json (ms per frame) for
 // estilo-A (gem), estilo-B (ivory), estilo-C (obsidian) and critico, plus estilos-comparacion.png.
@@ -114,6 +115,8 @@ interface Die {
 }
 
 const K = 2; // the dice's screen scale
+/** Akira's katana on a natural 20: 1d8+3, the critical doubles the die, every die at its highest: 8 + 8 + 3. */
+const DMG = 19;
 const throwMs = (size: Size) => rollPath(1, size).map((f) => f.ms);
 const memo = new Map<string, Img>();
 function cached(key: string, make: () => Img): Img {
@@ -136,7 +139,8 @@ function drawDie(dst: Img, style: StyleId, d: Die, t: number): { landed: boolean
   const floorY = d.y + 15 * K;
   const fr = path[i];
   // Shadow, dust.
-  const sh = cached(`sh${Math.round(fr.ground * 5)}`, () => shadowSprite(Math.round(z.R * 1.7 * [0.55, 0.65, 0.75, 0.85, 0.95, 1][Math.round(fr.ground * 5)])));
+  const gi = Math.round(fr.ground * 5);
+  const sh = cached(`sh${gi}`, () => shadowSprite(Math.round(z.R * 1.7 * [0.55, 0.65, 0.75, 0.85, 0.95, 1][gi]), gi === 5));
   centred(dst, sh, d.x + fr.dx * K, floorY + 2, K, 0.9);
   path.forEach((p, j) => {
     if (!p.contact) return;
@@ -160,10 +164,6 @@ function drawDie(dst: Img, style: StyleId, d: Die, t: number): { landed: boolean
     }
   }
   if (!landed) {
-    if (fr.trail && i > 0) {
-      const pr = cached(`r${style}${d.result}${i - 1}`, () => tinted(style, rollFrame(d.result, i - 1, { style, size: 'small' }).img));
-      centred(dst, pr, d.x + path[i - 1].dx * K, d.y + path[i - 1].dy * K, K, 0.35);
-    }
     const im = cached(`r${style}${d.result}${i}`, () => tinted(style, rollFrame(d.result, i, { style, size: 'small' }).img));
     centred(dst, im, d.x + fr.dx * K, d.y + fr.dy * K, K);
     return { landed, restAt };
@@ -204,6 +204,8 @@ interface Frame {
 const A = toCrop(meta.pos.actor), T = toCrop(meta.pos.target);
 /** Where the small die rests: over the actor's head. */
 const DIE = { x: A.x + 6, y: A.y - 144 };
+/** The big window's die (a natural 20 or an important check), in the free band above the fight. */
+const WIN = { x: CROP.w / 2, y: 150 };
 
 interface SceneOpts {
   style: StyleId;
@@ -264,7 +266,8 @@ function scene(o: SceneOpts): Frame[] {
       wash(img, [8, 6, 4, 255], a);
     }
     // Dice over the actor, then the readout, until the swing has played.
-    const diceGone = t > swingAt + (crit ? 120 : 360);
+    // A natural 20 moves the roll into the big window, so the small die leaves when it opens.
+    const diceGone = crit ? t >= winAt : t > swingAt + 360;
     const fade = diceGone ? 0 : 1;
     if (fade > 0) {
       for (const d of dice) drawDie(img, st, d, t);
@@ -284,17 +287,18 @@ function scene(o: SceneOpts): Frame[] {
       while (j < bigN20.length - 1 && acc + bigN20[j].ms <= el) acc += bigN20[j++].ms;
       const fade = t > swingAt - 40 ? 0.4 : 1;
       const im = cached(`big${st}${j}`, () => tinted(st, bigN20[j].img));
-      centred(img, im, CROP.w / 2, 150, K, fade);
+      centred(img, im, WIN.x, WIN.y, K, fade);
+      if (el >= 260) blit(img, ro, WIN.x + 112, WIN.y - 18 + (el < 300 ? -2 : 0), K, fade);
     }
     if (crit && banner && t >= winAt + 80) {
       const el = t - winAt - 80;
-      const closeAt = impactAt + 520 - winAt - 80;
+      const closeAt = impactAt + 60 - winAt - 80; // the banner closes as the blow lands, leaving room for the damage
       let j = 0;
       if (el < closeAt) {
         let acc = 0;
         while (j < banner.hold && acc + banner.frames[j].ms <= el) acc += banner.frames[j++].ms;
       } else j = el - closeAt < 40 ? banner.hold + 1 : el - closeAt < 80 ? banner.hold + 2 : -1;
-      if (j >= 0 && j < banner.frames.length) centred(img, banner.frames[j].img, CROP.w / 2 - sx, 262 - sy, 3);
+      if (j >= 0 && j < banner.frames.length) centred(img, banner.frames[j].img, WIN.x - sx, WIN.y + 128 - sy, 3);
     }
     // Impact: the burst on the target, the flash, the maximum damage.
     if (crit && t >= impactAt) {
@@ -304,7 +308,7 @@ function scene(o: SceneOpts): Frame[] {
       if (el < 40) wash(img, hex('#fff6d6'), 0.55);
       else if (el < 80) wash(img, hex('#fff6d6'), 0.25);
       if (el >= 150) {
-        const n = 27;
+        const n = DMG;
         const rise = Math.min(24, ((el - 150) / 900) * 24);
         const alpha = el > 1050 ? Math.max(0, 1 - (el - 1050) / 250) : 1;
         const white = el < 210;
@@ -351,7 +355,7 @@ for (const st of ['gem', 'ivory', 'obsidian'] as StyleId[]) {
   const all: Frame[] = [];
   const parts: [SceneOpts['kind'], string][] = [
     ['normal', 'Tirada normal: 14 + 5 = 19 contra CA 14, acierta'],
-    ['nat20', '20 natural: crítico automático y daño máximo'],
+    ['nat20', '20 natural: crítico automático y daño máximo (19)'],
     ['nat1', '1 natural: el dado se raja, falla'],
     ['adv', 'Ventaja: dos dados, se queda el mayor'],
   ];
@@ -362,7 +366,39 @@ for (const st of ['gem', 'ivory', 'obsidian'] as StyleId[]) {
   writeFrames(`estilo-${LETTER[st]}`, all);
 }
 if (!only || only === 'crit') {
-  const fr = scene({ style: 'ivory', kind: 'nat20', title: ['Golpe crítico: 20 natural', 'Daño máximo: 2d8+3 se vuelve 4 x 8 + 3 = 35... aquí 27'] });
+  const fr = scene({ style: 'ivory', kind: 'nat20', title: ['Golpe crítico: 20 natural', 'Katana 1d8+3, crítico: 2d8+3 al máximo = 8 + 8 + 3 = 19'] });
   writeFrames('critico', fr);
 }
-if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+if (!only || only === 'compare') comparison();
+
+/** The three styles side by side over the battle ground: big and small, at rest, with Spanish labels. */
+function comparison(): void {
+  const W = 840, Hh = 560;
+  const img = new Img(W, Hh);
+  img.draw(bg('idle', 0).crop(M, M, W, Hh), 0, 0);
+  wash(img, [10, 8, 6, 255], 0.55);
+  // A centred caption in the pixel font, at 2x.
+  const lab = (s: string, cx: number, y: number, col?: RGBA, font: 'title' | 'label' = 'title') => {
+    const t = renderText(s, font, { color: col ?? hex('#f2c46d'), outline: hex('#0b0805') });
+    blit(img, t, cx - t.w, y, 2);
+  };
+  lab('Los tres dados d20 (en reposo)', W / 2, 10, hex('#efe6cf'));
+  const cols: [StyleId, string, string][] = [['gem', 'A  Gema', 'color del chakra'], ['ivory', 'B  Marfil y oro', 'por defecto'], ['obsidian', 'C  Obsidiana rúnica', '']];
+  cols.forEach(([st, name, sub], i) => {
+    const cx = 140 + i * 280;
+    lab(name, cx, 42);
+    if (sub) lab(sub, cx, 64, hex('#b8ad94'), 'label');
+    centred(img, tinted(st, restDie(20, { style: st, size: 'big' }).img), cx, 182, K);
+    lab('grande (ventana)', cx, 278, hex('#b8ad94'), 'label');
+    [17, 8, 1].forEach((n, k) => centred(img, tinted(st, restDie(n, { style: st, size: 'small' }).img), cx - 76 + k * 76, 340, K));
+    lab('pequeño (sobre el ninja)', cx, 384, hex('#b8ad94'), 'label');
+  });
+  // The gem in other chakra colours.
+  lab('Gema con otros colores de chakra', W / 2, 424, hex('#efe6cf'));
+  const ids = ['red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet', 'white', 'black', 'brown'];
+  const rest = restDie(17, { style: 'gem', size: 'small' }).img;
+  ids.forEach((id, k) => centred(img, recolour(rest, gemKeys(), diceGemRamp(id)), 60 + k * 80, 500, K));
+  mkdirSync(outDir, { recursive: true });
+  savePng(join(outDir, 'estilos-comparacion.png'), img);
+  console.log('estilos-comparacion.png');
+}

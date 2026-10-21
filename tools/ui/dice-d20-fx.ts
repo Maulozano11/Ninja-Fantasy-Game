@@ -1,22 +1,23 @@
-// The d20's animations: the throw (tumbling in with bounces, a shadow and dust, settling with a
-// squash and a click on the rolled number), the result pop, the natural 20 (gold flash, rays,
-// sparkles, a shine sweep) and the natural 1 (dull red, a crack, chips, a shake), plus the halo,
-// shadow and dust sprites the screen lays under and around the die.
+// The d20's animations: the throw (a fast spin in the air with a motion smear, three bounces each
+// lower and slower, then the die rolls over an edge onto the rolled number, wobbles and settles with
+// a squash and a click), the result pop, the natural 20 (gold flash, rays, sparkles, a shine sweep)
+// and the natural 1 (dull red, a crack, chips, a shake), plus the halo, shadow and dust sprites the
+// screen lays under and around the die.
 //
 // Frames hold only the die (centred in its frame); where the die is in the throw is data (dx, dy
 // per frame), so the same frames serve the small die over the actor and the big one in the window.
 
 import { Img, RGBA, hex, mixc } from './ui-img';
 import {
-  DULL1, FACES, GOLD20, IDENTITY, Look, M3, Rendered, STYLES, StyleId, V3, WHITE,
-  axisAngle, faceOf, lcg, mmul, norm, renderDie, restRotation,
+  DULL1, FACES, GOLD20, IDENTITY, Look, M3, Rendered, STYLES, StyleId, V3, VERTS, WHITE,
+  axisAngle, faceOf, lcg, mmul, mul, norm, renderDie, restRotation,
 } from './dice-d20-art';
 
 export type Size = 'small' | 'big';
 /** Circumradius and frame size per die size (art pixels; the HUD doubles them on screen). */
 export const SIZES: Record<Size, { R: number; box: number; fx: number; k: number }> = {
-  small: { R: 15, box: 36, fx: 64, k: 1 },
-  big: { R: 38, box: 88, fx: 160, k: 2.5 },
+  small: { R: 15, box: 44, fx: 72, k: 1 },
+  big: { R: 46, box: 128, fx: 200, k: 3 },
 };
 
 export interface RollFrame {
@@ -26,8 +27,6 @@ export interface RollFrame {
   ms: number;
   /** 1 to 3 on the frames the die hits the ground (the dust puff's size). */
   contact?: number;
-  /** Draw a fading copy of the previous frame behind (the throw's speed). */
-  trail?: boolean;
   /** The shadow: 0 (high in the air) .. 1 (on the ground). */
   ground: number;
   /** The click: the frame the die stops on its face. */
@@ -37,45 +36,54 @@ export interface RollFrame {
 interface Key {
   dx: number;
   dy: number;
-  /** Turn left before landing, about the throw's axes (degrees). */
+  /** Spin left before the die reaches the ground for the last time, about the throw's axes (degrees). */
   a1: number;
   a2: number;
+  /** How far the die still leans over the edge it rolls on (degrees; the angle between two faces is 41.8). */
+  tip: number;
   /** Size (the die comes in from the far side, a little smaller). */
   s: number;
   sx?: number;
   sy?: number;
-  /** Rocking on its face after it stops. */
-  rock?: number;
   ms: number;
   contact?: number;
+  /** A motion smear behind the die (the fast frames). */
+  smear?: boolean;
 }
 
-// The throw, frame by frame (small-die pixels; the big die moves k times as far). It drops in from
-// above to one side, hits the ground three times, each bounce lower and each turn slower, tips onto
-// its face with a click, rocks once and stops.
+/** The angle the die turns rolling from one face onto the next (180 minus the dihedral angle). */
+const OVER = 41.81;
+
+// The throw, frame by frame (small-die pixels; the big die moves k times as far). It flies in from
+// above to one side spinning fast, hits the ground three times (each bounce lower, each turn slower),
+// lands on a face next to the result, rolls over the edge between them (faster as it falls), clicks
+// down on the result, wobbles back and forth and stops.
 const THROW: Key[] = [
-  { dx: -36, dy: -24, a1: 200, a2: 430, s: 0.8, ms: 34 },
-  { dx: -32, dy: -26, a1: 150, a2: 385, s: 0.86, ms: 34 },
-  { dx: -28, dy: -22, a1: 100, a2: 340, s: 0.91, ms: 34 },
-  { dx: -25, dy: -15, a1: 60, a2: 295, s: 0.95, ms: 34 },
-  { dx: -22, dy: -7, a1: 25, a2: 250, s: 0.98, ms: 34 },
-  { dx: -19, dy: 0, a1: 0, a2: 210, s: 1, sx: 1.07, sy: 0.88, ms: 42, contact: 3 },
-  { dx: -16, dy: -8, a1: 0, a2: 180, s: 1, sx: 0.97, sy: 1.04, ms: 38 },
-  { dx: -13, dy: -11, a1: 0, a2: 150, s: 1, ms: 38 },
-  { dx: -10, dy: -10, a1: 0, a2: 122, s: 1, ms: 38 },
-  { dx: -8, dy: -6, a1: 0, a2: 96, s: 1, ms: 38 },
-  { dx: -6, dy: 0, a1: 0, a2: 72, s: 1, sx: 1.06, sy: 0.9, ms: 42, contact: 2 },
-  { dx: -4, dy: -4, a1: 0, a2: 52, s: 1, ms: 40 },
-  { dx: -3, dy: -4, a1: 0, a2: 34, s: 1, ms: 40 },
-  { dx: -2, dy: 0, a1: 0, a2: 20, s: 1, sx: 1.03, sy: 0.94, ms: 45, contact: 1 },
-  { dx: -1, dy: -1, a1: 0, a2: 9, s: 1, ms: 45 },
-  { dx: 0, dy: 0, a1: 0, a2: 0, s: 1, sx: 1.02, sy: 0.96, ms: 60 },
-  { dx: 0, dy: 0, a1: 0, a2: 0, s: 1, rock: -7, ms: 70 },
-  { dx: 0, dy: 0, a1: 0, a2: 0, s: 1, ms: 0 },
+  { dx: -42, dy: -30, a1: 260, a2: 700, tip: OVER, s: 0.82, ms: 30, smear: true },
+  { dx: -37, dy: -31, a1: 200, a2: 620, tip: OVER, s: 0.87, ms: 30, smear: true },
+  { dx: -32, dy: -26, a1: 145, a2: 545, tip: OVER, s: 0.92, ms: 30, smear: true },
+  { dx: -28, dy: -15, a1: 95, a2: 475, tip: OVER, s: 0.96, ms: 30 },
+  { dx: -24, dy: 0, a1: 55, a2: 410, tip: OVER, s: 1, sx: 1.09, sy: 0.86, ms: 44, contact: 3 },
+  { dx: -20, dy: -9, a1: 30, a2: 352, tip: OVER, s: 1, sx: 0.96, sy: 1.05, ms: 36 },
+  { dx: -16, dy: -12, a1: 12, a2: 300, tip: OVER, s: 1, ms: 36 },
+  { dx: -12.5, dy: -10, a1: 0, a2: 252, tip: OVER, s: 1, ms: 36 },
+  { dx: -9.5, dy: -5, a1: 0, a2: 208, tip: OVER, s: 1, ms: 36 },
+  { dx: -7, dy: 0, a1: 0, a2: 168, tip: OVER, s: 1, sx: 1.06, sy: 0.91, ms: 44, contact: 2 },
+  { dx: -5, dy: -4, a1: 0, a2: 118, tip: OVER, s: 1, ms: 40 },
+  { dx: -3.5, dy: -4, a1: 0, a2: 72, tip: OVER, s: 1, ms: 40 },
+  { dx: -2.5, dy: -1.5, a1: 0, a2: 32, tip: OVER, s: 1, ms: 40 },
+  { dx: -2, dy: 0, a1: 0, a2: 0, tip: OVER, s: 1, sx: 1.03, sy: 0.95, ms: 60, contact: 1 },
+  { dx: -1.5, dy: 0, a1: 0, a2: 0, tip: 34, s: 1, ms: 55 },
+  { dx: -1, dy: 0, a1: 0, a2: 0, tip: 20, s: 1, ms: 45 },
+  { dx: 0, dy: 0, a1: 0, a2: 0, tip: 0, s: 1, sx: 1.03, sy: 0.95, ms: 60 },
+  { dx: 0, dy: 0, a1: 0, a2: 0, tip: -5, s: 1, ms: 55 },
+  { dx: 0, dy: 0, a1: 0, a2: 0, tip: 2.5, s: 1, ms: 55 },
+  { dx: 0, dy: 0, a1: 0, a2: 0, tip: -1, s: 1, ms: 60 },
+  { dx: 0, dy: 0, a1: 0, a2: 0, tip: 0, s: 1, ms: 0 },
 ];
 export const ROLL_FRAMES = THROW.length;
 /** The frame where the die stops on its face (the click). */
-export const CLICK_FRAME = 15;
+export const CLICK_FRAME = 16;
 
 /** The throw's two spin axes for a result: varied per number, so rolls do not repeat. */
 function throwAxes(result: number, fromRight: boolean): [V3, V3] {
@@ -97,29 +105,63 @@ function throwAxes(result: number, fromRight: boolean): [V3, V3] {
 /** Which side a result's throw comes from (odd from the left, even from the right). */
 export const fromRight = (result: number): boolean => result % 2 === 0;
 
+/**
+ * The edge the die rolls over at the end: the face it lands on first is the result's neighbour on
+ * the side it travels toward, so the last roll carries it on the way it was going. Returns the
+ * edge's axis and middle (camera space, die radii) and which way turns it back over.
+ */
+function tipEdge(result: number): { axis: V3; mid: V3; sign: number } {
+  const fi = faceOf(result);
+  const rest = restRotation(fi);
+  const side = fromRight(result) ? -1 : 1;
+  const f = FACES[fi];
+  const a = f.adj.reduce((best, g) => (mul(rest, FACES[g].n)[0] * side > mul(rest, FACES[best].n)[0] * side ? g : best), f.adj[0]);
+  const sh = f.v.filter((v) => FACES[a].v.includes(v));
+  const va = mul(rest, VERTS[sh[0]]), vb = mul(rest, VERTS[sh[1]]);
+  const axis = norm([vb[0] - va[0], vb[1] - va[1], vb[2] - va[2]]);
+  const mid: V3 = [(va[0] + vb[0]) / 2, (va[1] + vb[1]) / 2, (va[2] + vb[2]) / 2];
+  // The sign that brings the first face round to the eye.
+  const na = mul(rest, FACES[a].n);
+  const sign = mul(axisAngle(axis, OVER), na)[2] >= mul(axisAngle(axis, -OVER), na)[2] ? 1 : -1;
+  return { axis, mid, sign };
+}
+
+/** The die's centre moved by turning `deg` about the edge (the edge stays put on the ground). */
+function tipShift(result: number, deg: number): [number, number] {
+  const e = tipEdge(result);
+  const m = mul(axisAngle(e.axis, e.sign * deg), e.mid);
+  return [e.mid[0] - m[0], e.mid[1] - m[1]];
+}
+
 /** The throw's path for a result (the same for every style). */
 export function rollPath(result: number, size: Size): RollFrame[] {
-  const k = SIZES[size].k, side = fromRight(result) ? -1 : 1;
-  return THROW.map((f, i) => ({
-    dx: Math.round(f.dx * k * side),
-    dy: Math.round(f.dy * k),
-    ms: f.ms,
-    contact: f.contact,
-    trail: i <= 3,
-    ground: Math.max(0, 1 + (f.dy * 1) / 30),
-    click: i === CLICK_FRAME,
-  }));
+  const z = SIZES[size], side = fromRight(result) ? -1 : 1;
+  return THROW.map((f, i) => {
+    const [tx, ty] = tipShift(result, f.tip);
+    return {
+      dx: Math.round(f.dx * z.k * side + tx * z.R * 0.5),
+      dy: Math.round(f.dy * z.k + ty * z.R * 0.25),
+      ms: f.ms,
+      contact: f.contact,
+      ground: Math.max(0, 1 + f.dy / 30),
+      click: i === CLICK_FRAME,
+    };
+  });
+}
+
+/** The die's turn for a throw key (fractional keys blend two frames, for the smear). */
+function keyRotation(result: number, f: { a1: number; a2: number; tip: number }): M3 {
+  const [ax1, ax2] = throwAxes(result, fromRight(result));
+  const e = tipEdge(result);
+  let m = mmul(axisAngle(e.axis, e.sign * f.tip), restRotation(faceOf(result)));
+  if (f.a2) m = mmul(axisAngle(ax2, f.a2), m);
+  if (f.a1) m = mmul(axisAngle(ax1, f.a1), m);
+  return m;
 }
 
 /** The die's turn in throw frame `i` for a result. */
 export function rollRotation(result: number, i: number): M3 {
-  const f = THROW[i];
-  const [ax1, ax2] = throwAxes(result, fromRight(result));
-  const rest = restRotation(faceOf(result));
-  let m = mmul(axisAngle(ax2, f.a2), rest);
-  if (f.a1) m = mmul(axisAngle(ax1, f.a1), m);
-  if (f.rock) m = mmul(axisAngle([1, 0, 0], f.rock), m);
-  return m;
+  return keyRotation(result, THROW[i]);
 }
 
 export interface DieOpts {
@@ -135,17 +177,59 @@ export interface DieOpts {
   box?: number;
 }
 
+/** The nearest colour of the style's palette (smear pixels snap back to it, so a gem keeps its keys). */
+function snap(style: StyleId, c: [number, number, number]): RGBA {
+  let best = STYLES[style].palette[0], bd = Infinity;
+  for (const p of STYLES[style].palette) {
+    const d = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2 + (p[2] - c[2]) ** 2;
+    if (d < bd) {
+      bd = d;
+      best = p;
+    }
+  }
+  return best;
+}
+
 /** One throw frame. */
 export function rollFrame(result: number, i: number, o: DieOpts): Rendered {
   const z = SIZES[o.size], f = THROW[i];
   const fi = faceOf(result);
   const box = o.box ?? z.box;
-  return renderDie({
+  const die = renderDie({
     style: o.style, R: z.R * f.s, rot: rollRotation(result, i), w: box, h: box, sx: f.sx, sy: f.sy,
-    // The number reads upright once the die is down on its face (and while it rocks there).
+    // The number reads upright once the die is down on its face (and while it wobbles there).
     upright: i >= CLICK_FRAME ? fi : undefined,
     look: o.look, goldness: o.goldness,
   });
+  if (!f.smear) return die;
+  // The smear: the die a moment earlier, three times, fading behind it (a deliberate blur, snapped
+  // back to the style's palette and to three steps of opacity).
+  const prev = THROW[Math.max(0, i - 1)];
+  const back = i === 0 ? { ...f, dx: f.dx - 5, dy: f.dy + 1, a1: f.a1 + 60, a2: f.a2 + 80, s: f.s - 0.05 } : prev;
+  const side = fromRight(result) ? -1 : 1;
+  const acc = new Float32Array(box * box * 4);
+  const W = [0.5, 0.36, 0.24];
+  [0.25, 0.5, 0.75].forEach((t, j) => {
+    const k = { a1: f.a1 + (back.a1 - f.a1) * t, a2: f.a2 + (back.a2 - f.a2) * t, tip: f.tip };
+    const ox = (back.dx - f.dx) * t * z.k * side, oy = (back.dy - f.dy) * t * z.k;
+    const g = renderDie({ style: o.style, R: z.R * (f.s + (back.s - f.s) * t), rot: keyRotation(result, k), w: box, h: box, cx: box / 2 + ox, cy: box / 2 + oy, plain: true, look: o.look, goldness: o.goldness });
+    for (let p = 0; p < box * box; p++) {
+      const a = g.img.px[p * 4 + 3];
+      if (!a) continue;
+      for (let c = 0; c < 3; c++) acc[p * 4 + c] += g.img.px[p * 4 + c] * W[j];
+      acc[p * 4 + 3] += W[j];
+    }
+  });
+  const img = new Img(box, box);
+  for (let p = 0; p < box * box; p++) {
+    const wsum = acc[p * 4 + 3];
+    if (!wsum) continue;
+    const c = snap(o.style, [acc[p * 4] / wsum, acc[p * 4 + 1] / wsum, acc[p * 4 + 2] / wsum]);
+    const a = wsum > 0.8 ? 150 : wsum > 0.4 ? 100 : 55;
+    img.set(p % box, Math.floor(p / box), [c[0], c[1], c[2], a]);
+  }
+  img.draw(die.img, 0, 0);
+  return { ...die, img };
 }
 
 /** The die at rest on a result. */
@@ -356,7 +440,7 @@ export function nat1Frames(style: StyleId, size: Size): FxFrame[] {
     { look: 'dull', crack: 1, shake: 0, chips: 4, puff: -1, ms: 80 },
     { look: 'dull', crack: 1, shake: 0, chips: -1, puff: -1, ms: 0 },
   ];
-  const k = big ? 2.5 : 1;
+  const k = z.k;
   return steps.map((s) => {
     const img = new Img(W, W);
     const die = restDie(1, { style, size, look: s.look, box: z.box + 8 });
@@ -409,23 +493,28 @@ export function dimDie(result: number, style: StyleId, size: Size): Img {
 
 // --- shadow and dust ------------------------------------------------------------------------------
 
-/** The die's shadow on the ground: a flat two-band ellipse, `w` wide. */
-export function shadowSprite(w: number): Img {
+/**
+ * The die's shadow on the ground, `w` wide: soft and pale high in the air; on the ground (`contact`)
+ * it tightens, with a dark core where the die touches (the ambient occlusion under it).
+ */
+export function shadowSprite(w: number, contact = false): Img {
   const h = Math.max(3, Math.round(w / 4));
   const img = new Img(w, h);
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
       const u = (x + 0.5 - w / 2) / (w / 2), v = (y + 0.5 - h / 2) / (h / 2);
       const q = u * u + v * v;
-      if (q <= 0.5) img.set(x, y, hex('#07060b', 120));
-      else if (q <= 1) img.set(x, y, hex('#07060b', 70));
+      const core = contact && (u * 1.6) ** 2 + ((v + 0.15) * 1.3) ** 2 <= 1;
+      if (core) img.set(x, y, hex('#07060b', 175));
+      else if (q <= 0.5) img.set(x, y, hex('#07060b', contact ? 125 : 105));
+      else if (q <= 1) img.set(x, y, hex('#07060b', contact ? 70 : 55));
     }
   return img;
 }
 
 /** A dust puff where the die hits the ground: `strength` 1..3, frame 0..3. */
 export function dustSprite(size: Size, strength: number, frame: number): Img {
-  const k = size === 'big' ? 2.5 : 1;
+  const k = SIZES[size].k;
   const W = Math.round(40 * k), H = Math.round(12 * k);
   const img = new Img(W, H);
   const cols = [hex('#e9dfc6', 230), hex('#bdb39b', 200), hex('#8e8676', 160), hex('#6a6357', 110)];
@@ -436,7 +525,7 @@ export function dustSprite(size: Size, strength: number, frame: number): Img {
     const sp = 0.6 + r() * 0.7;
     const x = W / 2 + side * (3 + (frame + 1) * 3.2 * sp * (0.5 + strength * 0.25)) * k;
     const y = H - 2 * k - (frame * 1.3 * sp + r() * 1.5) * k;
-    const sz = Math.max(0, Math.round(((size === 'big' ? 3 : 1.4) * (1 - frame / 4) + strength * 0.2) * (0.7 + r() * 0.5)));
+    const sz = Math.max(0, Math.round(((size === 'big' ? 3.4 : 1.4) * (1 - frame / 4) + strength * 0.2) * (0.7 + r() * 0.5)));
     const col = cols[Math.min(3, frame)];
     for (let yy = 0; yy <= sz; yy++) for (let xx = 0; xx <= sz; xx++) if (xx + yy <= sz + 1) img.plot(x + xx, y - yy, col);
   }

@@ -143,6 +143,13 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   Fireball and Raiga's Earth Wall (kept); Water has no S-rank jutsu and Wind one Element jutsu.
 - Decided 2026-10-21 (later): **a new female standard** from the owner's four heroine pictures. He said our base bodies look "muy feos" next to his pictures: "sube la calidad de nuestro sprite para que se vea mas parecido aun a la referencia". The new female body (proportions, hands, feet, skin from his pixels) is being built on `body/female-v2` for his approval. He also said: "las piezas de armadura y ropa femeninas no las rehagas porque muy problablemente las borremos por no estar al nuevo stadard" - the existing female armour and clothing are NOT refitted to the new body; they will probably be deleted. Hairstyles, heads, eyes, weapons, capes and the heroines' parts do follow it. The male body stays (approved through the Aiden paint-over).
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
+- Decided 2026-10-21: **d20 dice on screen** in three styles the player picks in the main menu
+  (Gema, Marfil y oro, Obsidiana rúnica), and **a natural 20 on an attack = automatic critical with
+  maximum damage** and an extra animation (`docs/GAMEPLAY_DESIGN.md`, "Dice"). He asked for more
+  realistic dice than the first draft; the realistic art is on `ui/dice-d20` (generator
+  `tools/ui/dice-d20.ts`, sheets in `src/assets/ui_dice/`), waiting for his approval. Not wired into
+  the game yet (menu option, battle screen, the max-damage rule in `src/battle`). His open question:
+  every damaging jutsu uses a saving throw today, so how do jutsu criticals work?
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms
   cast beat, about 115 ms/m for projectiles and 150 ms/m for beasts, longer impacts, the next turn

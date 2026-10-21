@@ -2,7 +2,8 @@
 // over them). Practice battle 1: Akira steps up to the Rogue and strikes, once hitting and once
 // missing; the frames come every 40 ms of game time (Playwright's fake clock steps the game, so
 // every frame is exact however slow the screenshots are). The game's own damage numbers and roll
-// toast are hidden, since the mockup draws the new ones.
+// toast, and the enemies' intent marks, are hidden, since the mockup draws the new ones over a
+// clean scene.
 //
 //   npx vite --port 5471 --strictPort &          (the dev server, from the repo root)
 //   node tools/ui/dice-d20-capture.mjs <outDir> [port]
@@ -77,6 +78,7 @@ const setup = async (ac) =>
     rogue.ac = ac;
     rogue.hp = 999;
     rogue.maxHp = 999;
+    for (const u of Object.values(s.units)) delete u.intent;
     s.turn = s.order.indexOf('preset_ember');
     b.sync();
     b.centerOn(rogue.pos.x - 0.6, rogue.pos.z - 1.2);
@@ -84,14 +86,23 @@ const setup = async (ac) =>
     return { actor: a, target: r };
   }, ac);
 
-const shoot = async (name, frames) => {
+// The clock runs freely while the scene settles, and stands still while a sequence is shot.
+const pause = async () => {
+  const now = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(now + 50);
+};
+const shoot = async (name, frames, before) => {
   const dir = join(out, name);
   mkdirSync(dir, { recursive: true });
+  await pause();
+  if (before) await page.evaluate(before);
   for (let i = 0; i < frames; i++) {
     await page.screenshot({ path: join(dir, String(i).padStart(3, '0') + '.png') });
     await page.clock.runFor(40);
   }
+  await page.clock.resume();
 };
+const attack = () => window.__battle.act({ type: 'attack', unit: 'preset_ember', target: 'rogue_0' });
 
 const meta = {};
 meta.pos = await setup(1);
@@ -101,16 +112,12 @@ meta.pos = await page.evaluate(() => {
   const a = s.units.preset_ember, r = s.units.rogue_0;
   return { actor: b.screenOf(a.pos.x, a.pos.z), target: b.screenOf(r.pos.x, r.pos.z) };
 });
-await shoot('idle', 50);
-// A hit.
-await page.evaluate(() => window.__battle.act({ type: 'attack', unit: 'preset_ember', target: 'rogue_0' }));
-await shoot('hit', 40);
+await shoot('idle', 60);
+await shoot('hit', 40, attack);
 await settle(1500);
-// A miss.
 await setup(99);
 await settle(1200);
-await page.evaluate(() => window.__battle.act({ type: 'attack', unit: 'preset_ember', target: 'rogue_0' }));
-await shoot('miss', 40);
+await shoot('miss', 40, attack);
 meta.actorChakra = await page.evaluate(() => window.__battle.state().units.preset_ember.character?.appearance?.chakra ?? null);
 writeFileSync(join(out, 'meta.json'), JSON.stringify(meta, null, 1));
 console.log(JSON.stringify(meta));

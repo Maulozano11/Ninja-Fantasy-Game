@@ -37,22 +37,29 @@ const RANK_ORDER = ['D', 'C', 'B', 'A', 'S'];
  */
 export const natureGated = (j: JutsuDefinition): boolean => (j.category === 'Elemental' || j.category === 'Ultimate') && ELEMENTS.includes(j.nature);
 
-/** Whether a ninja of this nature may learn the jutsu: it is not gated, or it is of the ninja's element. */
-export const jutsuFitsNature = (j: JutsuDefinition, nature: ChakraNature): boolean => !natureGated(j) || j.nature === nature;
+/**
+ * Whether a ninja of this nature may learn the jutsu: it is not gated, or it is of the ninja's element,
+ * or of one of its `extra` elements (a second element at level 5, a third with a feat:
+ * rules/natureGrowth.ts).
+ */
+export const jutsuFitsNature = (j: JutsuDefinition, nature: ChakraNature, extra: readonly ChakraNature[] = []): boolean =>
+  !natureGated(j) || j.nature === nature || (extra as readonly string[]).includes(j.nature);
 
-/** The jutsu a slot offers a ninja of this nature and clan, in the game's order. */
-export function jutsuChoices(slot: JutsuSlot, nature: ChakraNature, clan: ClanType): JutsuDefinition[] {
+/** The jutsu a slot offers a ninja of this nature (and `extra` elements) and clan, in the game's order. */
+export function jutsuChoices(slot: JutsuSlot, nature: ChakraNature, clan: ClanType, extra: readonly ChakraNature[] = []): JutsuDefinition[] {
   const category = SLOT_CATEGORY[slot];
   return JUTSUS_DATA.filter(
-    (j) => j.category === category && (category !== 'Clan' || !j.requiredClan || j.requiredClan === clan) && jutsuFitsNature(j, nature),
+    (j) => j.category === category && (category !== 'Clan' || !j.requiredClan || j.requiredClan === clan) && jutsuFitsNature(j, nature, extra),
   );
 }
 
-/** A slot's choices for a replacement: its own element first, lowest rank first, then the rest. */
-function replacements(slot: JutsuSlot, nature: ChakraNature, clan: ClanType): JutsuDefinition[] {
-  const list = jutsuChoices(slot, nature, clan);
-  const own = list.filter((j) => j.nature === nature).sort((a, b) => RANK_ORDER.indexOf(a.rank) - RANK_ORDER.indexOf(b.rank));
-  return [...own, ...list.filter((j) => j.nature !== nature)];
+/** A slot's choices for a replacement: its own element first, lowest rank first, then its other elements', then the rest. */
+function replacements(slot: JutsuSlot, nature: ChakraNature, clan: ClanType, extra: readonly ChakraNature[] = []): JutsuDefinition[] {
+  const list = jutsuChoices(slot, nature, clan, extra);
+  const byRank = (a: JutsuDefinition, b: JutsuDefinition) => RANK_ORDER.indexOf(a.rank) - RANK_ORDER.indexOf(b.rank);
+  const of = (n: ChakraNature) => list.filter((j) => j.nature === n).sort(byRank);
+  const mine = [nature, ...extra];
+  return [...mine.flatMap(of), ...list.filter((j) => !(mine as string[]).includes(j.nature))];
 }
 
 /** `to` is '' when the slot was left empty: nothing the ninja may learn fits it (a new ninja's S-rank slot). */
@@ -76,6 +83,7 @@ export function refitSlots(
   slots: JutsuSlot[],
   wrong: (j: JutsuDefinition) => boolean,
   allow: (j: JutsuDefinition) => boolean = () => true,
+  extra: readonly ChakraNature[] = [],
 ): { loadout: Loadout; swaps: JutsuSwap[] } {
   const out: Loadout = { ...loadout };
   const swaps: JutsuSwap[] = [];
@@ -83,7 +91,7 @@ export function refitSlots(
     const j = JUTSUS_DATA.find((x) => x.id === out[slot]);
     if (!j || !wrong(j)) continue;
     const taken = new Set(slots.filter((s) => s !== slot).map((s) => out[s]));
-    const list = replacements(slot, nature, clan).filter(allow);
+    const list = replacements(slot, nature, clan, extra).filter(allow);
     const to = list.find((x) => !taken.has(x.id));
     out[slot] = to?.id ?? '';
     swaps.push({ slot, from: j.id, to: out[slot] });
@@ -97,15 +105,21 @@ export function refitSlots(
  * other jutsu stay. Used when the player changes the chakra type in the creator, where `allow` is the
  * rank a new ninja may pick (rules/progression.ts): a slot with nothing left to offer is emptied.
  */
-export function fitLoadout(loadout: Loadout, nature: ChakraNature, clan: ClanType, allow?: (j: JutsuDefinition) => boolean): { loadout: Loadout; swaps: JutsuSwap[] } {
-  return refitSlots(loadout, nature, clan, GATED_SLOTS, (j) => !jutsuFitsNature(j, nature), allow);
+export function fitLoadout(
+  loadout: Loadout,
+  nature: ChakraNature,
+  clan: ClanType,
+  allow?: (j: JutsuDefinition) => boolean,
+  extra: readonly ChakraNature[] = [],
+): { loadout: Loadout; swaps: JutsuSwap[] } {
+  return refitSlots(loadout, nature, clan, GATED_SLOTS, (j) => !jutsuFitsNature(j, nature, extra), allow, extra);
 }
 
-/** The gated jutsu of a loadout that are of another element (a legend's own second element, an older sheet). */
-export function offNatureJutsus(loadout: Loadout, nature: ChakraNature): string[] {
+/** The gated jutsu of a loadout that are of none of the ninja's elements (an older sheet, a second element it doesn't have). */
+export function offNatureJutsus(loadout: Loadout, nature: ChakraNature, extra: readonly ChakraNature[] = []): string[] {
   return GATED_SLOTS.map((s) => loadout[s]).filter((id) => {
     const j = JUTSUS_DATA.find((x) => x.id === id);
-    return !!j && !jutsuFitsNature(j, nature);
+    return !!j && !jutsuFitsNature(j, nature, extra);
   });
 }
 

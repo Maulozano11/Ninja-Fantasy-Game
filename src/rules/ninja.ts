@@ -2,7 +2,7 @@
 // effects (docs/MISSION_DESIGN.md). Every function returns a new character plus the events.
 
 import type { ChakraNature, ClanType, ShinobiCharacter } from '../types/shinobi';
-import { CLANS_DATA, DEFAULT_CHARACTER, SHINOBI_CLASSES } from '../data/shinobiData';
+import { CLANS_DATA, DEFAULT_CHARACTER, LEGENDARY_PRESETS, SHINOBI_CLASSES } from '../data/shinobiData';
 import { chakraNature } from '../sprite/chakraNature';
 import { getAppearance } from '../sprite/legacy';
 import type { ChakraColorId } from '../sprite/types';
@@ -12,6 +12,7 @@ import { deriveStats, effectiveMaxHp, SHEET_VERSION } from './derived';
 import type { BuildInput } from './derived';
 import { addEffect, EFFECTS, endMission, hasEffect, removeEffect, sanitizeEffects } from './effects';
 import { offNatureJutsus } from './jutsuNature';
+import { GROWTH_LEVEL } from './natureGrowth';
 import { tagJutsuToItem } from './pouch';
 import { checkRng, Dice, pick } from './rng';
 
@@ -277,11 +278,30 @@ export function updateLegendChakra(c: ShinobiCharacter): ShinobiCharacter {
 }
 
 /**
+ * A saved copy of a legend that has a second element on its own sheet (Kaien Fire, Raiga Earth: the
+ * owner, 2026-10-21, "ok con kaien y raiga") gets it, and the legend's level-5 choice when the copy is
+ * level 5 or more, so its jutsu of that element are its nature again. Only a copy that has not made a
+ * level-5 choice or had elements of its own (both fields missing) and still has the legend's type: a
+ * copy whose player changed the type keeps what it has. Written once: the next load finds the fields.
+ */
+export function addLegendNatures(c: ShinobiCharacter): ShinobiCharacter {
+  if (c.extraNatures !== undefined || c.natureGrowth !== undefined) return c;
+  const legend = LEGENDARY_PRESETS.find((p) => p.character.id === c.id)?.character;
+  if (!legend?.extraNatures?.length || natureOf(c) !== natureOf(legend)) return c;
+  return {
+    ...c,
+    extraNatures: [...legend.extraNatures],
+    ...(legend.natureGrowth && c.level >= GROWTH_LEVEL ? { natureGrowth: legend.natureGrowth } : {}),
+  };
+}
+
+/**
  * A sheet from an older save or an import, as today's rules read it:
  * - the explosive tag, a jutsu no more, swapped for the starting sheet's Utility jutsu and two tags
  *   in the ninja's pouch (rules/pouch.ts, tagJutsuToItem);
  * - a legend's or companion's copy with its old chakra burst and the legend's own jutsu moved to the
  *   legend's type (updateLegendChakra);
+ * - a copy of Kaien or Raiga given the legend's second element (addLegendNatures);
  * - its clan converted (old names load as the clan that replaced them). When its numbers came from
  *   the creator's formula (its AC and jutsu DC and attack still match it) and its old clan built a
  *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is
@@ -291,7 +311,7 @@ export function updateLegendChakra(c: ShinobiCharacter): ShinobiCharacter {
  * the look only that old burst changes. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
-  const c = updateLegendChakra(tagJutsuToItem(saved));
+  const c = addLegendNatures(updateLegendChakra(tagJutsuToItem(saved)));
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

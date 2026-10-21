@@ -87,8 +87,9 @@ describe('the taijutsu, kenjutsu and genjutsu jutsu belong to their class', () =
   it('a made ninja is held to its class too, at every rank', () => {
     const made = asMade({ ...DEFAULT_CHARACTER, id: 'ninja_made', shinobiClass: 'Genjutsu Adept' });
     for (const slot of SLOTS) for (const j of slotChoices(made, slot, 'Fire', made.clan)) assert.ok(jutsuFitsClass(j, 'Genjutsu Adept'), `${slot}: ${j.id}`);
-    assert.ok(slotChoices(made, 'slot3Elemental', 'Fire', made.clan).some((j) => j.id === 'temple_of_nirvana'));
-    assert.ok(!slotChoices(made, 'slot3Elemental', 'Fire', made.clan).some((j) => j.id === 'crescent_moon_dance'));
+    // At every rank its class's are what it learns (the Temple of Nirvana, rank A, when its rank opens), never another class's.
+    assert.ok(learnable('slot3Elemental', 'Fire', made.clan, made.shinobiClass).some((j) => j.id === 'temple_of_nirvana'));
+    assert.ok(!learnable('slot3Elemental', 'Fire', made.clan, made.shinobiClass).some((j) => j.id === 'crescent_moon_dance'));
   });
 });
 

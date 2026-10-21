@@ -494,11 +494,11 @@ export const AppearanceEditor: React.FC<{
                 </div>
               </div>
               <p className="text-[11px] text-slate-500 -mt-1 mb-2">{L('Your chakra type is your elemental nature: it decides your elemental jutsu.')}</p>
-              {/* The owner (2026-10-21): the type can't be changed once the ninja is made; a second element comes at a higher level. */}
+              {/* The owner (2026-10-21): the type can't be changed once the ninja is made; a second element comes at level 5 (rules/natureGrowth.ts). */}
               {typeFixed && (
                 <p data-type-fixed className="flex items-start gap-1.5 text-[11px] text-[#f2c46d] border border-[#6b5434] bg-[#2b1f0d] px-2 py-1.5 mb-2">
                   <Lock className="w-3.5 h-3.5 mt-px shrink-0" />
-                  <span>{L('Your chakra type was fixed when this ninja was made: it can no longer change. A second element will come at a higher level.')}</span>
+                  <span>{L('Your chakra type was fixed when this ninja was made: it can no longer change. At level 5 it may take a second element (Jutsu step).')}</span>
                 </p>
               )}
               {[true, false].map((elemental) => (

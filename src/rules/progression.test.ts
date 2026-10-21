@@ -18,6 +18,7 @@ import { fitLoadout, importedSlots, jutsuChoices, jutsuFitsNature, type JutsuSlo
 import { DEFAULT_SUPPLIES, newMission } from './mission';
 import { migrateCharacter, natureOf } from './ninja';
 import { pouchTags, TAG_JUTSU, TAG_JUTSU_POUCH, tagJutsuToItem, withPouches } from './pouch';
+import { growthOf } from './natureGrowth';
 import { aboveRank, asMade, creatorChoices, fitNewNinja, fitToType, isLegend, learnable, learnsAsNew, NEW_NINJA_RANKS, rankOpen, slotChoices, slotLocked, typeFixed } from './progression';
 
 const CLANS = Object.keys(CLANS_DATA) as ClanType[];
@@ -129,7 +130,7 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
     assert.equal(learnsAsNew(asMade(fresh)), false, 'a made ninja');
   });
 
-  it('the creator\'s offers: a new ninja\'s ranks while the ninja is created, every rank once it is made', () => {
+  it('the creator\'s offers: the ranks its level opens, for a new ninja, a legend picked as a starting point and a made ninja alike', () => {
     const fresh = { ...DEFAULT_CHARACTER, id: 'ninja_new' };
     const made = asMade(fresh);
     for (const nature of NATURES)
@@ -137,11 +138,13 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
         const ids = (c: ShinobiCharacter) => slotChoices(c, slot, nature, c.clan).map((j) => j.id);
         assert.deepEqual(ids(fresh), creatorChoices(slot, nature, fresh.clan, fresh.shinobiClass).map((j) => j.id), `new ${nature} ${slot}`);
         assert.deepEqual(ids(DEFAULT_CHARACTER), ids(fresh), `a legend picked as a starting point: ${nature} ${slot}`);
-        assert.deepEqual(ids(made), learnable(slot, nature, made.clan, made.shinobiClass).map((j) => j.id), `made ${nature} ${slot}`);
+        // With ranks earned at level 5 ("subir de rango tu elemento principal"), a made ninja is held to them too.
+        assert.deepEqual(ids(made), ids(fresh), `made ${nature} ${slot}`);
       }
-    // A made ninja that swaps out its rank B jutsu can pick it back; its S-rank slot is not locked.
-    assert.ok(slotChoices(made, 'slot3Elemental', 'Fire', made.clan).some((j) => j.id === 'crescent_moon_dance'));
-    assert.ok(slotChoices(made, 'slot5Ultimate', 'Fire', made.clan).some((j) => j.id === 'great_fire_annihilation'));
+    // A made ninja's own rank B jutsu stays on its sheet, marked, and is not offered again; its S-rank slot is locked.
+    assert.ok(!slotChoices(made, 'slot3Elemental', 'Fire', made.clan).some((j) => j.id === 'crescent_moon_dance'));
+    assert.deepEqual(aboveRank(made.selectedJutsus, made.clan), ['crescent_moon_dance', 'great_fire_annihilation']);
+    assert.equal(slotLocked('slot5Ultimate', 'Fire', made.clan, made.shinobiClass), true);
   });
 
   it('a legend picked as a starting point keeps its sheet on a type change: its S-rank becomes another of its class, empty only when none fits', () => {
@@ -149,9 +152,11 @@ describe('a new ninja learns rank D and C jutsu, and its clan\'s ("d y c y los d
       for (const nature of NATURES) {
         if (nature === natureOf(c)) continue;
         const r = fitToType(c, nature);
-        assert.deepEqual(r, fitLoadout(c.selectedJutsus, nature, c.clan, (j) => jutsuFitsClass(j, c.shinobiClass)), `${c.id} as ${nature}: every rank, of its class`);
+        // Kaien and Raiga keep their second element (rules/natureGrowth.ts) unless it is the new type.
+        const growth = growthOf(c, nature);
+        assert.deepEqual(r, fitLoadout(c.selectedJutsus, nature, c.clan, (j) => jutsuFitsClass(j, c.shinobiClass), growth.extra), `${c.id} as ${nature}: every rank, of its class`);
         const s = byId(c.selectedJutsus.slot5Ultimate)!;
-        const fits = jutsuFitsNature(s, nature) || learnable('slot5Ultimate', nature, c.clan, c.shinobiClass).length > 0;
+        const fits = jutsuFitsNature(s, nature, growth.extra) || learnable('slot5Ultimate', nature, c.clan, c.shinobiClass, growth).length > 0;
         assert.equal(!!r.loadout.slot5Ultimate, fits, `${c.id} as ${nature}: its S-rank slot stays filled when something fits`);
       }
     assert.equal(fitToType(DEFAULT_CHARACTER, 'Lightning').loadout.slot5Ultimate, 'kirin_thunder');

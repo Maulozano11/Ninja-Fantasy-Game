@@ -5,8 +5,10 @@
 //   (the legends, older sheets): only the creator's picks are capped.
 // - "no se puede cambiar de tipo": the chakra type, the ninja's nature, is fixed once the ninja is
 //   made. Changing it in the creator before that is fine (the jutsu of another element are swapped).
-//   A second element at a higher level and a third with a special feat come later (not built; the
-//   level and the feat are still to decide).
+//   A second element at a higher level and a third with a special feat: "nivel 5 suena bien para segundo
+//   elemento o subir de rango tu elemento principal" (rules/natureGrowth.ts). The ranks below follow it:
+//   every ninja learns rank D and C jutsu and its clan's; at level 5 one that chose a higher rank also
+//   learns its main element's rank B jutsu, and one that chose a second element that element's D and C.
 // - "los que elijan de clase genjutsu kenjutsu o taijutsu": the taijutsu, kenjutsu and genjutsu jutsu
 //   belong to their class (rules/jutsuClass.ts). The creator offers them only to that class, and a new
 //   class in the creator swaps the ones of another class, as a new type does.
@@ -15,7 +17,8 @@
 import { JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shinobiData';
 import type { ChakraNature, ClanType, JutsuDefinition, JutsuRank, ShinobiCharacter, ShinobiClassType } from '../types/shinobi';
 import { jutsuFitsClass } from './jutsuClass';
-import { fitLoadout, jutsuChoices, jutsuFitsNature, type JutsuSlot, type JutsuSwap, type Loadout, refitSlots } from './jutsuNature';
+import { fitLoadout, jutsuChoices, jutsuFitsNature, type JutsuSlot, type JutsuSwap, type Loadout, natureGated, refitSlots } from './jutsuNature';
+import { type Growth, growthOf, NO_GROWTH } from './natureGrowth';
 
 /** The ranks a new ninja may learn in the creator. */
 export const NEW_NINJA_RANKS: readonly JutsuRank[] = ['D', 'C'];
@@ -23,17 +26,32 @@ export const NEW_NINJA_RANKS: readonly JutsuRank[] = ['D', 'C'];
 /** The slots a new ninja fills from the creator's offers (the clan secret comes with the clan). */
 const PICKED_SLOTS: JutsuSlot[] = ['slot1Utility', 'slot2Elemental', 'slot3Elemental', 'slot5Ultimate'];
 
-/** A new ninja may learn it: one of its own clan's jutsu (whatever the rank), or a jutsu of rank D or C. */
-export const rankOpen = (j: JutsuDefinition, clan: ClanType): boolean => (j.requiredClan ? j.requiredClan === clan : NEW_NINJA_RANKS.includes(j.rank));
+/**
+ * A ninja may learn it at its rank: one of its own clan's jutsu (whatever the rank), a jutsu of rank D or
+ * C, or, when `rankUp` names its main element (the level-5 choice of a higher rank, rules/natureGrowth.ts),
+ * a rank B jutsu of that element in the Element slots.
+ */
+export const rankOpen = (j: JutsuDefinition, clan: ClanType, rankUp?: ChakraNature): boolean =>
+  j.requiredClan ? j.requiredClan === clan : NEW_NINJA_RANKS.includes(j.rank) || (!!rankUp && j.rank === 'B' && natureGated(j) && j.nature === rankUp);
 
-/** The jutsu a slot offers a ninja of this nature, clan and class, at every rank: what the nature (rules/jutsuNature.ts) and the class (rules/jutsuClass.ts) allow. */
-export function learnable(slot: JutsuSlot, nature: ChakraNature, clan: ClanType, cls: ShinobiClassType): JutsuDefinition[] {
-  return jutsuChoices(slot, nature, clan).filter((j) => jutsuFitsClass(j, cls));
+/** The main element whose rank B jutsu a ninja of this nature and growth may learn, if any. */
+const rankUpOf = (nature: ChakraNature, growth: Growth): ChakraNature | undefined => (growth.rankUp ? nature : undefined);
+
+/**
+ * The jutsu a slot offers a ninja of this nature (and the other elements of its growth), clan and class,
+ * at every rank: what the nature (rules/jutsuNature.ts) and the class (rules/jutsuClass.ts) allow.
+ */
+export function learnable(slot: JutsuSlot, nature: ChakraNature, clan: ClanType, cls: ShinobiClassType, growth: Growth = NO_GROWTH): JutsuDefinition[] {
+  return jutsuChoices(slot, nature, clan, growth.extra).filter((j) => jutsuFitsClass(j, cls));
 }
 
-/** The jutsu the creator offers a new ninja's slot: what its nature and class allow, at the ranks a new ninja may take. */
-export function creatorChoices(slot: JutsuSlot, nature: ChakraNature, clan: ClanType, cls: ShinobiClassType): JutsuDefinition[] {
-  return learnable(slot, nature, clan, cls).filter((j) => rankOpen(j, clan));
+/**
+ * The jutsu the creator offers a slot: what the ninja's nature, growth and class allow, at the ranks it
+ * may take (D and C and its clan's; at level 5, its growth's too).
+ */
+export function creatorChoices(slot: JutsuSlot, nature: ChakraNature, clan: ClanType, cls: ShinobiClassType, growth: Growth = NO_GROWTH): JutsuDefinition[] {
+  const up = rankUpOf(nature, growth);
+  return learnable(slot, nature, clan, cls, growth).filter((j) => rankOpen(j, clan, up));
 }
 
 /**
@@ -41,14 +59,17 @@ export function creatorChoices(slot: JutsuSlot, nature: ChakraNature, clan: Clan
  * slot: it opens later). A slot with nothing for its nature and class at any rank is not locked, it is
  * empty (a type with no element in a class with no kind of jutsu of its own, until their jutsu come).
  */
-export const slotLocked = (slot: JutsuSlot, nature: ChakraNature, clan: ClanType, cls: ShinobiClassType): boolean =>
-  creatorChoices(slot, nature, clan, cls).length === 0 && learnable(slot, nature, clan, cls).length > 0;
+export const slotLocked = (slot: JutsuSlot, nature: ChakraNature, clan: ClanType, cls: ShinobiClassType, growth: Growth = NO_GROWTH): boolean =>
+  creatorChoices(slot, nature, clan, cls, growth).length === 0 && learnable(slot, nature, clan, cls, growth).length > 0;
 
-/** The jutsu of a loadout above the ranks a new ninja may take (a legend's, an older sheet's): they stay, marked. */
-export function aboveRank(loadout: Loadout, clan: ClanType): string[] {
+/**
+ * The jutsu of a loadout above the ranks the ninja may take (a legend's, an older sheet's): they stay,
+ * marked. `rankUp` is its main element when it chose a higher rank at level 5.
+ */
+export function aboveRank(loadout: Loadout, clan: ClanType, rankUp?: ChakraNature): string[] {
   return PICKED_SLOTS.map((s) => loadout[s]).filter((id) => {
     const j = JUTSUS_DATA.find((x) => x.id === id);
-    return !!j && !rankOpen(j, clan);
+    return !!j && !rankOpen(j, clan, rankUp);
   });
 }
 
@@ -58,14 +79,22 @@ export function aboveRank(loadout: Loadout, clan: ClanType): string[] {
  * S-rank slot) is left empty. The clan secret stays. Used for a new game's sheet, a copy made from a
  * legend and the random ninja.
  */
-export function fitNewNinja(loadout: Loadout, nature: ChakraNature, clan: ClanType, cls: ShinobiClassType): { loadout: Loadout; swaps: JutsuSwap[] } {
+export function fitNewNinja(
+  loadout: Loadout,
+  nature: ChakraNature,
+  clan: ClanType,
+  cls: ShinobiClassType,
+  growth: Growth = NO_GROWTH,
+): { loadout: Loadout; swaps: JutsuSwap[] } {
+  const up = rankUpOf(nature, growth);
   return refitSlots(
     loadout,
     nature,
     clan,
     PICKED_SLOTS,
-    (j) => !rankOpen(j, clan) || !jutsuFitsNature(j, nature) || !jutsuFitsClass(j, cls),
-    (j) => rankOpen(j, clan) && jutsuFitsClass(j, cls),
+    (j) => !rankOpen(j, clan, up) || !jutsuFitsNature(j, nature, growth.extra) || !jutsuFitsClass(j, cls),
+    (j) => rankOpen(j, clan, up) && jutsuFitsClass(j, cls),
+    growth.extra,
   );
 }
 
@@ -83,23 +112,28 @@ export const isLegend = (c: Pick<ShinobiCharacter, 'id'>): boolean => LEGENDARY_
 
 /**
  * The sheet is a new ninja's: not made yet and not a legend's own sheet (a new game's sheet, a copy
- * made from a legend, the random ninja). Only a new ninja is held to the ranks it may learn; a legend
- * keeps its sheet and a made ninja its own (the owner's answer was about creating a ninja).
+ * made from a legend, the random ninja). A new ninja's sheet is fitted to the ranks it may learn; a
+ * legend keeps its sheet and a made ninja its own (marked where they are above its ranks).
  */
 export const learnsAsNew = (c: Pick<ShinobiCharacter, 'id' | 'created'>): boolean => !typeFixed(c) && !isLegend(c);
 
+/** The sheet's fields its growth is read from (rules/natureGrowth.ts). */
+type Sheet = Pick<ShinobiCharacter, 'id' | 'created' | 'level'> & Partial<Pick<ShinobiCharacter, 'natureGrowth' | 'extraNatures' | 'selectedFeats'>>;
+
 /**
- * The jutsu the creator offers a slot of this sheet: at a new ninja's ranks while the ninja is being
- * created (a new ninja, or a legend picked as a starting point: its own higher jutsu stay, marked),
- * every rank its nature allows once it is made.
+ * The jutsu the creator offers a slot of this sheet, for every ninja (a new one, a legend picked as a
+ * starting point, a made one): its nature, growth and class, at the ranks its level and growth open
+ * (D and C and its clan's; at level 5 its growth's). A sheet's own higher jutsu stay, marked. (Before
+ * the owner's level-5 answer a made ninja was offered every rank; with ranks earned at level 5, it is
+ * held to its level as every ninja is: the builder's reading, docs/GAMEPLAY_DESIGN.md.)
  */
-export function slotChoices(c: Pick<ShinobiCharacter, 'id' | 'created' | 'shinobiClass'>, slot: JutsuSlot, nature: ChakraNature, clan: ClanType): JutsuDefinition[] {
-  return typeFixed(c) ? learnable(slot, nature, clan, c.shinobiClass) : creatorChoices(slot, nature, clan, c.shinobiClass);
+export function slotChoices(c: Sheet & Pick<ShinobiCharacter, 'shinobiClass'>, slot: JutsuSlot, nature: ChakraNature, clan: ClanType): JutsuDefinition[] {
+  return creatorChoices(slot, nature, clan, c.shinobiClass, growthOf(c, nature));
 }
 
-/** What a sheet being swapped may get in a slot: what its class allows, at a new ninja's ranks while it is one. */
-const swapAllow = (c: Pick<ShinobiCharacter, 'id' | 'created' | 'clan'>, cls: ShinobiClassType) => (j: JutsuDefinition) =>
-  jutsuFitsClass(j, cls) && (!learnsAsNew(c) || rankOpen(j, c.clan));
+/** What a sheet being swapped may get in a slot: what its class allows, at its ranks while it is a new ninja's. */
+const swapAllow = (c: Sheet & Pick<ShinobiCharacter, 'clan'>, cls: ShinobiClassType, nature: ChakraNature, growth: Growth) => (j: JutsuDefinition) =>
+  jutsuFitsClass(j, cls) && (!learnsAsNew(c) || rankOpen(j, c.clan, rankUpOf(nature, growth)));
 
 /**
  * A new chakra type in the creator: the jutsu of another element are swapped for the new element's.
@@ -107,8 +141,9 @@ const swapAllow = (c: Pick<ShinobiCharacter, 'id' | 'created' | 'clan'>, cls: Sh
  * keeps its sheet, so its S-rank jutsu becomes one of the new element's (or one of its class's kind),
  * or the slot is emptied when its nature and class have none.
  */
-export function fitToType(c: Pick<ShinobiCharacter, 'id' | 'created' | 'selectedJutsus' | 'clan' | 'shinobiClass'>, nature: ChakraNature): { loadout: Loadout; swaps: JutsuSwap[] } {
-  return fitLoadout(c.selectedJutsus, nature, c.clan, swapAllow(c, c.shinobiClass));
+export function fitToType(c: Sheet & Pick<ShinobiCharacter, 'selectedJutsus' | 'clan' | 'shinobiClass'>, nature: ChakraNature): { loadout: Loadout; swaps: JutsuSwap[] } {
+  const growth = growthOf(c, nature);
+  return fitLoadout(c.selectedJutsus, nature, c.clan, swapAllow(c, c.shinobiClass, nature, growth), growth.extra);
 }
 
 /** The slots a class gates, in the order they are filled (Utility and the clan secret are open). */
@@ -119,6 +154,33 @@ const CLASS_SLOTS: JutsuSlot[] = ['slot2Elemental', 'slot3Elemental', 'slot5Ulti
  * genjutsu) are swapped for ones the ninja may learn (its own element first, the lowest rank first), at
  * a new ninja's ranks while it is one; a slot with nothing left is emptied. The other jutsu stay.
  */
-export function fitToClass(c: Pick<ShinobiCharacter, 'id' | 'created' | 'selectedJutsus' | 'clan'>, nature: ChakraNature, cls: ShinobiClassType): { loadout: Loadout; swaps: JutsuSwap[] } {
-  return refitSlots(c.selectedJutsus, nature, c.clan, CLASS_SLOTS, (j) => !jutsuFitsClass(j, cls), swapAllow(c, cls));
+export function fitToClass(c: Sheet & Pick<ShinobiCharacter, 'selectedJutsus' | 'clan'>, nature: ChakraNature, cls: ShinobiClassType): { loadout: Loadout; swaps: JutsuSwap[] } {
+  const growth = growthOf(c, nature);
+  return refitSlots(c.selectedJutsus, nature, c.clan, CLASS_SLOTS, (j) => !jutsuFitsClass(j, cls), swapAllow(c, cls, nature, growth), growth.extra);
+}
+
+/**
+ * A new level-5 choice in the creator (`next` is the sheet with it, `before` the sheet without): the
+ * jutsu it no longer opens are swapped for ones the ninja may learn (its own element first, the lowest
+ * rank first), as a new type does: those of an element it no longer has, and the rank B jutsu of its
+ * main element when it no longer has the higher rank. A legend's own jutsu of a rank above its own stay
+ * (marked), as they do on a type change. A slot with nothing left is emptied.
+ */
+export function fitToGrowth(
+  before: Sheet,
+  next: Sheet & Pick<ShinobiCharacter, 'selectedJutsus' | 'clan' | 'shinobiClass'>,
+  nature: ChakraNature,
+): { loadout: Loadout; swaps: JutsuSwap[] } {
+  const was = growthOf(before, nature);
+  const now = growthOf(next, nature);
+  const lostB = (j: JutsuDefinition) => was.rankUp && !now.rankUp && !isLegend(next) && !rankOpen(j, next.clan) && rankOpen(j, next.clan, nature);
+  return refitSlots(
+    next.selectedJutsus,
+    nature,
+    next.clan,
+    PICKED_SLOTS,
+    (j) => !jutsuFitsNature(j, nature, now.extra) || lostB(j),
+    swapAllow(next, next.shinobiClass, nature, now),
+    now.extra,
+  );
 }

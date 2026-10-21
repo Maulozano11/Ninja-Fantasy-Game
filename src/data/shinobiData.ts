@@ -1177,6 +1177,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         slot4Clan: 'dragon_fire_bomb',
         slot5Ultimate: 'kirin_thunder',
       },
+      // His second element, for the Fireball (the owner, 2026-10-21: "ok con kaien y raiga"): a legend's
+      // own, before level 5 (docs/GAMEPLAY_DESIGN.md, "Level 5").
+      extraNatures: ['Fire'],
       sheetVersion: 2,
       maxHp: 32,
       currentHp: 32,
@@ -1304,6 +1307,9 @@ export const LEGENDARY_PRESETS: { name: string; tag: string; nameEs?: string; ta
         slot4Clan: 'dragon_fire_bomb',
         slot5Ultimate: 'great_fire_annihilation',
       },
+      // His level-5 choice, a second element, for the Earth Wall (the owner, 2026-10-21: "ok con kaien y raiga").
+      natureGrowth: 'element',
+      extraNatures: ['Earth'],
       sheetVersion: 2,
       maxHp: 42,
       currentHp: 42,

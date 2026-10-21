@@ -15,9 +15,9 @@
 
 import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, Depth, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
-import { PaintedPiece, segAngle, stampPiece } from '../painted';
+import { clearArmPast, clearTorsoPast, PaintedPiece, PaintedSheet, pieceCover, segAngle, stampPiece, stampSheet, widenPiece } from '../painted';
 import { add, capsule, ellipse, fine, GRID, Layer, lerp, norm, partIndex, PartId, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
-import { GROUND } from '../rig';
+import { drawRig, GROUND, Rig, rigPoseFor } from '../rig';
 import {
   PLATE_CHEST,
   PLATE_ELBOW_N,
@@ -35,6 +35,20 @@ import {
   PLATE_VAMBRACE_N,
   PLATE_WAIST,
 } from './crimsonPlateArt';
+import {
+  COAT_BACK,
+  COAT_BODY,
+  COAT_HULL,
+  COAT_SKIRTS,
+  COAT_SLEEVE_FORE_F,
+  COAT_SLEEVE_FORE_N,
+  COAT_SLEEVE_UPPER_F,
+  COAT_SLEEVE_UPPER_N,
+  SCARLET_CLOTH_CHARS,
+  SCARLET_COAT,
+  SCARLET_GOLD_CHARS,
+  SCARLET_TRIM,
+} from './scarletCoatArt';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -544,7 +558,7 @@ const HANG_FOLLOW = 0.22;
  * lean a little with their thigh), so the hem stays about as wide as the
  * hips and the legs come out from under it.
  */
-function hang(g: DrawCtx, lx: number, ytop: number, k: number, droop = 0.8, flare = 0): Hang {
+function hang(g: Pick<DrawCtx, 'rig' | 'bp'>, lx: number, ytop: number, k: number, droop = 0.8, flare = 0): Hang {
   const r = g.rig;
   const b = g.bp;
   const xN = -b.hipHalf * 0.55;
@@ -1063,6 +1077,158 @@ function drawCrimsonPlate(g: DrawCtx, steel: string, trim: string): void {
   put('nearArm.armor', PLATE_VAMBRACE_N, r.elbowN, foreN, 'forearmN');
   put('nearArm.armor', PLATE_ELBOW_N, r.elbowN, midAngle(upperN, foreN), 'forearmN');
   put('nearArm.armor', PLATE_PAULDRON_N, r.shoulderN, pauldronAngle(PLATE_PAULDRON_N, torso, upperN), 'upperArmN');
+}
+
+// ---------------------------------------------------------------------------
+// The owner's Scarlet's coat (Duke's Greatcoat): the reduced reference's pixels (his picture brought
+// down to our scale), one painted piece per segment of the rig (items/scarletCoatArt.ts, by
+// tools/refs/scarlet-upper-from-ref.py from docs/reference/scarlet-owner-reference.jpg). The body and
+// sleeves turn with their segment; the skirts and the back between the legs hang from the waist and
+// bend with the legs as our skirts do. In our idle pose every pixel is the reduced reference's.
+// ---------------------------------------------------------------------------
+
+/**
+ * His coat recoloured: his cloth follows Coat and his gold follows Trim, each shade as far from the
+ * slot's colour as his was from his; his black line stays.
+ */
+const coatColor = (coat: string, trim: string) => (ch: string, hex: string): string =>
+  SCARLET_CLOTH_CHARS.includes(ch) ? retintHex(hex, SCARLET_COAT, coat) : SCARLET_GOLD_CHARS.includes(ch) ? retintHex(hex, SCARLET_TRIM, trim) : hex;
+
+/** Where the coat's skirts are cut into hanging columns (waist-local x), from the waist down (local y). */
+const COAT_COLS = [-12, -10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10, 12];
+const COAT_WAIST = 2.4;
+/** How long the columns hang, in thigh lengths: to about his hem. */
+const COAT_HANG = 1.5;
+
+/** A column of the skirts: its corners at the waist (a, b) and at the hem (c under b, d under a). */
+interface Quad {
+  a: Vec;
+  b: Vec;
+  c: Vec;
+  d: Vec;
+  /** 0 = it follows the near thigh, 1 = the far. */
+  w: number;
+}
+
+const bilinear = (q: Quad, u: number, w: number): Vec =>
+  v(
+    q.a.x + (q.b.x - q.a.x) * u + (q.d.x - q.a.x) * w + (q.a.x - q.b.x + q.c.x - q.d.x) * u * w,
+    q.a.y + (q.b.y - q.a.y) * u + (q.d.y - q.a.y) * w + (q.a.y - q.b.y + q.c.y - q.d.y) * u * w,
+  );
+
+/** Where a point lies in a column (u across, w down; outside 0..1 past its edges), by Newton's method. */
+function unbilinear(q: Quad, p: Vec): [number, number] {
+  let u = 0.5;
+  let w = 0.5;
+  const ex = q.b.x - q.a.x;
+  const ey = q.b.y - q.a.y;
+  const fx = q.d.x - q.a.x;
+  const fy = q.d.y - q.a.y;
+  const hx = q.a.x - q.b.x + q.c.x - q.d.x;
+  const hy = q.a.y - q.b.y + q.c.y - q.d.y;
+  for (let i = 0; i < 8; i++) {
+    const rx = q.a.x + ex * u + fx * w + hx * u * w - p.x;
+    const ry = q.a.y + ey * u + fy * w + hy * u * w - p.y;
+    const ux = ex + hx * w;
+    const uy = ey + hy * w;
+    const wx = fx + hx * u;
+    const wy = fy + hy * u;
+    const det = ux * wy - wx * uy;
+    if (Math.abs(det) < 1e-9) break;
+    const du = (rx * wy - ry * wx) / det;
+    const dw = (ux * ry - uy * rx) / det;
+    u -= du;
+    w -= dw;
+    if (Math.abs(du) + Math.abs(dw) < 1e-12) break;
+  }
+  return [u, w];
+}
+
+/** The skirts' columns on a rig: each hangs from the waist like our skirts' panels (hang). */
+function coatColumns(g: Pick<DrawCtx, 'rig' | 'bp'>): Quad[] {
+  const hs = COAT_COLS.map((x) => hang(g, x, COAT_WAIST, COAT_HANG, 0, 0));
+  return hs.slice(1).map((h, i) => ({ a: hs[i].top, b: h.top, c: h.bot, d: hs[i].bot, w: (hs[i].w + h.w) / 2 }));
+}
+
+/**
+ * The coat's body (and its hull) for the bulky figure, whose shoulders and sides stand about 4 fine
+ * pixels further out on the near side and 2 on the far: his cloth carried on across each side.
+ */
+const COAT_BULKY: [number, number][] = [
+  [-12, 4],
+  [8, 2],
+];
+const COAT_BODY_BULKY = widenPiece(COAT_BODY, COAT_BULKY);
+const COAT_HULL_BULKY = widenPiece(COAT_HULL, COAT_BULKY);
+
+/** Our male at idle frame 0, where his coat was laid. */
+let REST: Rig | null = null;
+let REST_COLS: Quad[] = [];
+
+/**
+ * Stamps a sheet of the coat hung from the waist: each pixel finds its place in the columns hung on the
+ * rig now and takes the sheet's pixel at the same place in the columns hung on our male at rest (the
+ * sheet's own), so at rest it is the sheet itself and in other poses it bends as the columns do.
+ */
+function stampHung(g: DrawCtx, depth: Depth, sheet: PaintedSheet, color: (ch: string, hex: string) => string): void {
+  if (!REST) {
+    REST = drawRig('male', rigPoseFor('idle'), 0);
+    REST_COLS = coatColumns({ rig: REST, bp: REST.bp });
+  }
+  const now = coatColumns(g);
+  const last = now.length - 1;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const q of now) {
+    for (const p of [bilinear(q, 0, -0.2), bilinear(q, 1, -0.2), bilinear(q, 0, 1.4), bilinear(q, 1, 1.4)]) {
+      x0 = Math.min(x0, p.x);
+      y0 = Math.min(y0, p.y);
+      x1 = Math.max(x1, p.x);
+      y1 = Math.max(y1, p.y);
+    }
+  }
+  let col = 0;
+  const back = (p: Vec): Vec | null => {
+    // the column: the first whose right side (a straight line from the waist to the hem) the point
+    // is not right of; the ones past the ends go on outward
+    let i = 0;
+    while (i < last && (now[i].c.x - now[i].b.x) * (p.y - now[i].b.y) - (now[i].c.y - now[i].b.y) * (p.x - now[i].b.x) < 0) i++;
+    const [u, w] = unbilinear(now[i], p);
+    if (w < -0.2 || w > 1.4) return null;
+    col = i;
+    return bilinear(REST_COLS[i], u, w);
+  };
+  const box: [number, number, number, number] = [Math.floor(x0 * RES) - 1, Math.floor(y0 * RES) - 1, Math.ceil(x1 * RES) + 1, Math.ceil(y1 * RES) + 1];
+  stampSheet(g, depth, sheet, box, back, () => thighPart(now[col].w), color);
+}
+
+/**
+ * Draws his coat. The back between the legs goes behind them; the far sleeve behind the torso; the
+ * skirts under the body (they meet on the belt's rows, his at rest); the near sleeve over all.
+ * Within each sleeve the upper arm's piece is over the forearm's, and each runs on under the other
+ * round the elbow, so a bending elbow opens no gap. The coat then stands for our torso and arms:
+ * what of them (or of a shirt under it) would show past its edges where a pose parts them by a pixel
+ * or two is taken away (the torso from the waist to the neck outside the coat's body and its opening,
+ * the arms outside the sleeves but for the wrist), so the figure's edge is his coat's.
+ */
+function drawScarletCoat(g: DrawCtx, coat: string, trim: string): void {
+  const r = g.rig;
+  const tint = coatColor(coat, trim);
+  const torso = segAngle(r.pelvis, r.neck);
+  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
+  stampHung(g, 'capeBack', COAT_BACK, tint);
+  put('farArm.armor', COAT_SLEEVE_FORE_F, r.elbowF, segAngle(r.elbowF, r.wristF), 'forearmF');
+  put('farArm.armor', COAT_SLEEVE_UPPER_F, r.shoulderF, segAngle(r.shoulderF, r.elbowF), 'upperArmF');
+  stampHung(g, 'torso.armor', COAT_SKIRTS, tint);
+  const bulky = r.body === 'bulky';
+  put('torso.armor', bulky ? COAT_BODY_BULKY : COAT_BODY, r.neck, torso, 'torso');
+  put('nearArm.armor', COAT_SLEEVE_FORE_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN');
+  put('nearArm.armor', COAT_SLEEVE_UPPER_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
+  const hull = pieceCover(bulky ? COAT_HULL_BULKY : COAT_HULL, r.neck, torso);
+  clearTorsoPast(g, ['torso.body', 'torso.under', 'torso.top'], (i) => hull[i] === 1, COAT_WAIST);
+  for (const s of SIDES) clearArmPast(g, s, g.L(armDepth(s, 'armor')), [armDepth(s, 'body'), armDepth(s, 'cloth')]);
 }
 
 // ---------------------------------------------------------------------------
@@ -2610,6 +2776,17 @@ export const ARMOR_ITEMS: ItemDef[] = [
     colors: [col('steel', 'Steel', PLATE_STEEL, 'metal'), col('trim', 'Trim', PLATE_GOLD, 'metal')],
     statsArmor: 'Dark Knight Plate',
     draw: (g, [steel, trim]) => drawCrimsonPlate(g, steel, trim),
+  },
+
+  // The owner's Scarlet's coat (2026-10-21), his picture brought down to our scale in his colours
+  {
+    id: 'armor_scarlet_coat',
+    slot: 'armor',
+    name: "Duke's Greatcoat",
+    desc: 'A long black coat embroidered in gold: a high collar, wide lapels with a gold checker, gold-edged fronts left open over the shirt, gold-trimmed cuffs, and skirts to the calves with a tattered hem (+4 AC).',
+    colors: [col('coat', 'Coat', SCARLET_COAT), col('trim', 'Trim', SCARLET_TRIM, 'metal')],
+    statsArmor: 'Samurai O-Yoroi',
+    draw: (g, [coat, trim]) => drawScarletCoat(g, coat, trim),
   },
 ];
 

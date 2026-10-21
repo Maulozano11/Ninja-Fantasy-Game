@@ -125,3 +125,15 @@ folders.
 
       npx tsx tools/refs/scarlet-idle.mts <out>
       python3 -I tools/refs/scarlet-study.py <out> <out>/male-idle.png --write
+
+- `scarlet-upper-from-ref.py`, `scarlet-body-map.mts`: his upper clothes as two items, the shirt
+  with the red cravat (`top_noble_shirt`) and the long black coat with the gold trim
+  (`armor_scarlet_coat`, no cape), cut out of the reduced reference into pieces that ride the rig:
+  the coat's body and sleeves (and the shirt's) turn with their segment, the coat's skirts and the
+  back between the legs hang from the waist and bend with the legs like our skirts. What his
+  picture hides (the shirt under the coat, the coat under the arms, the back behind the legs) is
+  filled in his colours on our body's shape, which `scarlet-body-map.mts` maps. It writes
+  `src/sprite/items/scarletCoatArt.ts` and `src/sprite/items/nobleShirtArt.ts`.
+
+      npx tsx tools/refs/scarlet-body-map.mts <maps>
+      python3 -I tools/refs/scarlet-upper-from-ref.py <out> <maps> src/sprite/items/scarletCoatArt.ts src/sprite/items/nobleShirtArt.ts

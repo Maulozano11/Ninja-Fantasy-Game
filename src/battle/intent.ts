@@ -16,6 +16,7 @@ import { passivePerception, saveMod } from './combat';
 import { KUNAI, KUNAI_LONG, wielded } from './units';
 import { COMMAND, FORESIGHT_RANGE, SUBMISSION, SWAP, WARP, commandRefused, ownNodes, submissionRefused, swapBlocker, warpBlocker, warpLanding } from './clans';
 import { ownStructures, structureAt, structureBlocker } from './structures';
+import { chargedReach } from './charged';
 
 const avg = (dice?: string): number => {
   const d = dice ? parseDice(dice) : null;
@@ -210,6 +211,9 @@ export function wallCover(s: BattleState, u: Unit, p: Unit, advancing = false): 
   return best ? { at: best.at, hidden: best.hidden.map((f) => f.id), worth: best.v } : null;
 }
 
+/** The movement a unit has left to walk with this turn (standing up first takes half its speed). */
+const walkLeft = (u: Unit): number => Math.max(0, u.turn.move - (u.cond.prone ? u.speed / 2 : 0));
+
 /** Every reasonable thing a ninja (enemy, or an ally on AI) could do this turn (`next`: on its next turn), best first. */
 export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
   const out: Option[] = [];
@@ -244,6 +248,15 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
       if (j.weapon === 'draw' && u.kind === 'ninja' && !u.weapon.held) continue;
       // A bonus-action jutsu needs the bonus action (planning the next turn, it will have it).
       if (j.cast === 'bonus' && !next && !u.turn.bonus) continue;
+      if (j.handCharge) {
+        // A hand to charge (the activated Chidori): worth it when the foe can be walked to this turn,
+        // where the blow goes off by itself. Worth more than an attack roll's 0.65: the action stays
+        // free for a blow of the weapon after it (and Kagero still opens with it, D21).
+        const reach = j.range + (f.bulk ?? 0) + (f.kind === 'hydra_head' ? 2.5 : 0);
+        if (u.charged || d > reach + (next ? u.speed : walkLeft(u))) continue;
+        out.push({ intent: { kind: 'jutsu', what: id, target: f.id, at: { ...f.pos } }, value: avg(j.dice) * 0.8 * fx * (u.chakra >= j.cost * 2 ? 1 : 0.85), single: true });
+        continue;
+      }
       if (d > j.range + u.speed + (f.bulk ?? 0)) continue;
       const hits = areaValue(s, u, j, f);
       if (hits <= 0) continue;
@@ -289,7 +302,25 @@ export function ninjaOptions(s: BattleState, u: Unit, next = false): Option[] {
   if (threatened && u.hp < u.maxHp * 0.3) out.push({ intent: { kind: 'defend', what: 'dodge' }, value: u.aiOrder === 'defensive' ? 9 : 4 });
   // The enemies show their clan's way (the owner, D21); allies on the AI just play the best move.
   if (u.team === 'enemy') clanWays(s, u, out);
+  if (u.charged) heldCharge(s, u, out);
   return out.sort((a, b) => b.value - a.value);
+}
+
+/**
+ * A charged hand (the activated Chidori) is spent walking in: a blow at a foe it can walk to this
+ * turn carries the charged blow too, and what would let the hand go (a jutsu woven with hand seals)
+ * or keep it from closing in (a kunai) is worth little while it holds.
+ */
+function heldCharge(s: BattleState, u: Unit, out: Option[]): void {
+  const c = u.charged!;
+  const j = JUTSU[c.jutsu];
+  const blow = avg(j?.dice) * (c.enhanced ? 1.2 : 1) * 0.65;
+  for (const o of out) {
+    const t = o.intent.target ? s.units[o.intent.target] : undefined;
+    const oj = o.intent.kind === 'jutsu' ? JUTSU[o.intent.what] : undefined;
+    if (o.intent.kind === 'melee' && t && dist(u.pos, t.pos) <= chargedReach(u, t) + walkLeft(u) + 0.1) o.value += blow;
+    else if (o.intent.kind === 'ranged' || (oj && u.kind === 'ninja' && !oj.melee && !oj.ability)) o.value *= 0.25;
+  }
 }
 
 /**
@@ -384,9 +415,11 @@ export function goalOf(s: BattleState, u: Unit, i: Intent): Goal | null {
   const goal = (good: (p: Pt) => boolean, foe: Unit | undefined): Goal => ({ at: t.pos, good, foe, ready: good(u.pos) });
   switch (i.kind) {
     case 'melee': {
-      // No blow lands across a metal wall: it has to go around (or break through).
-      const good = (p: Pt) => dist(p, t.pos) <= reachTo(u, t) && !fullCoverBetween(s, p, t.pos);
-      return { ...goal(good, t), ready: dist(u.pos, t.pos) <= reachTo(u, t) + 0.1 && !fullCoverBetween(s, u.pos, t.pos) };
+      // No blow lands across a metal wall: it has to go around (or break through). A charged hand
+      // walks into its own reach, where its blow goes off (a long weapon would stop short of it).
+      const reach = u.charged ? Math.min(reachTo(u, t), chargedReach(u, t)) : reachTo(u, t);
+      const good = (p: Pt) => dist(p, t.pos) <= reach && !fullCoverBetween(s, p, t.pos);
+      return { ...goal(good, t), ready: dist(u.pos, t.pos) <= reach + 0.1 && !fullCoverBetween(s, u.pos, t.pos) };
     }
     case 'ranged':
       return goal((p) => dist(p, t.pos) <= KUNAI.reach && lineOfSight(s, p, t.pos), t);

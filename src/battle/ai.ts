@@ -110,6 +110,9 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
       }
       if (i.what === SWAP) return g.ready ? { type: 'jutsu', unit: u.id, jutsu: SWAP, at: { ...t.pos }, target: t.id } : null;
       if (handsBlocker(u, j)) return null;
+      // A hand to charge (the activated Chidori): charged where it stands, then it walks in (the
+      // plan is spent with the bonus action, and the walk is planned again with the hand charged).
+      if (j.handCharge) return u.charged || !u.turn.bonus ? null : { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...u.pos } };
       // A charge with no clear run to its target from here: strike or close in another way.
       if (g.ready && j.charge && !chargeLanding(s, u, t)) return null;
       if (g.ready) return { type: 'jutsu', unit: u.id, jutsu: j.id, at: { ...t.pos }, target: j.shape === 'single' ? t.id : undefined };
@@ -140,6 +143,8 @@ function carryOut(s: BattleState, u: Unit, i: Intent): Action | null {
 
 /** Out of reach after moving: throw a kunai if it can, otherwise dash to close in. */
 function kunaiOr(s: BattleState, u: Unit, t: Unit): Action | null {
+  // A charged hand closes in rather than throw: out of movement, it dashes.
+  if (u.charged) return u.turn.move < 0.5 && u.turn.action ? { type: 'dash', unit: u.id } : null;
   if (dist(u.pos, t.pos) <= KUNAI_LONG && lineOfSight(s, u.pos, t.pos)) return { type: 'attack', unit: u.id, target: t.id, ranged: true };
   if (u.turn.move < 0.5) return { type: 'dash', unit: u.id };
   return null;

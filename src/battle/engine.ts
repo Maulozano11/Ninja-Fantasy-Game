@@ -61,6 +61,7 @@ import {
   warpStrike,
 } from './clans';
 import { reachTo, replanAgainst } from './intent';
+import { chargedFoe, chargeHolds, crackUnder, endCharge } from './charged';
 
 // --- setup ---------------------------------------------------------------------------------
 
@@ -376,8 +377,16 @@ function provoker(s: BattleState, u: Unit, hop: Pt[], skip: string[]): Unit | un
 function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEvent[], skip: string[]): void {
   let at = cellOf(u.pos);
   const pts: Pt[] = [];
+  // Ground a charged hand cracked on the way, told right after the steps that cracked it.
+  const cracked: string[] = [];
+  // Its cracks from its last turn mended as this one began: none yet means these are its first.
+  let first = !Object.values(s.cracks ?? {}).some((k) => k.by === u.id);
   const flush = () => {
     if (pts.length) ev.push({ t: 'move', unit: u.id, path: pts.splice(0), run: !!u.turn.dashed || u.turn.moved > u.speed * 0.75 });
+    if (cracked.length) {
+      ev.push({ t: 'cracks', unit: u.id, cells: cracked.splice(0), on: true, ...(first ? { first: true } : {}) });
+      first = false;
+    }
   };
   const rules = { waterWalk: !!u.cond.waterWalk, ninjaJump: !!u.cond.ninjaJump };
   const g = gridFor(s.mapId);
@@ -415,6 +424,8 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
     u.pos = next;
     pts.push(next);
     at = c;
+    const k = crackUnder(s, u, c);
+    if (k) cracked.push(k);
     if (u.turn.dashed && auraEntered(s, u, was)) {
       flush();
       enteredAura(s, u, was, ev);
@@ -422,6 +433,13 @@ function walk(s: BattleState, u: Unit, path: Cell[], from: number, ev: BattleEve
     if (trapAt(s, u, next)) {
       flush();
       stepHazards(s, u, next, ev);
+      break;
+    }
+    // A charged hand within reach of a foe: the blow goes off, and the walk stops there (on a cell
+    // the ninja can stand on: never mid-hop).
+    if (u.charged && !taken(c) && chargedFoe(s, u)) {
+      flush();
+      strikeCharged(s, u, ev);
       break;
     }
   }
@@ -641,10 +659,14 @@ function landHit(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   if (h.amount > 0 || t.head?.severed) {
     damage(s, t, h.amount, h.type, { crit: h.crit, source: h.source, knockout: h.knockout, melee: h.melee, explosion: h.explosion }, ev);
   }
+  // A charged hand doesn't outlast its ninja's fall.
+  chargeHolds(t, false, ev);
   if (t.down || t.head?.severed || t.kind === 'hydra_body') return;
   if (h.effect && !(h.effect === 'burning' && waterAtPt(s, t.pos) > 0)) {
     t.effects = addEffect(t.effects, h.effect, { source: JUTSU[h.what]?.name ?? h.what }).effects;
     ev.push({ t: 'effect', unit: t.id, effect: h.effect, on: true });
+    // Sealed chakra lets a charged hand go.
+    chargeHolds(t, effectMods(t.effects).noJutsu, ev);
   }
   if (h.tension && t.team === 'party') {
     t.stats2.tension += 1;
@@ -720,6 +742,8 @@ function sweep(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
 /** Kawarimi: the blow strikes a log and the ninja reappears a few meters away, away from danger. */
 function kawarimi(s: BattleState, t: Unit, h: Hit, ev: BattleEvent[]): void {
   const spec = JUTSU[KAWARIMI];
+  // Its hand seals let a charged hand go.
+  endCharge(t, 'released', ev);
   t.chakra -= spec.cost;
   t.turn.reaction = false;
   // A jutsu cast too: the one before the next (Triple Nature reads it).
@@ -813,6 +837,8 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   const { cost, woven } = jutsuCostParts(u, base, enh);
   if (u.chakra < cost) return 'noChakra';
   if (base.cast === 'bonus' ? !u.turn.bonus : !u.turn.action) return base.cast === 'bonus' ? 'noBonus' : 'noAction';
+  // One charged hand at a time.
+  if (base.handCharge && u.charged) return 'alreadyCharged';
   // Hand seals need both hands, and a tackle is thrown with empty ones: the weapon is stowed for
   // free (once a turn), or the jutsu waits. A sword art needs a blade, drawn for free.
   const stow = mustStow(u, base);
@@ -888,6 +914,8 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (stow) setArmed(u, false, 'free', ev);
   // A sword art draws the blade for free (handsBlocker made sure the free draw is left).
   else if (base.weapon === 'draw' && u.weapon.held && !u.armed) setArmed(u, true, 'free', ev);
+  // Hand seals for another jutsu let a charged hand go.
+  if (u.charged && needsSeals(u, base)) endCharge(u, 'released', ev);
   // Pay, and spend the action.
   u.chakra -= cost;
   if (cost) ev.push({ t: 'chakra', unit: u.id, delta: -cost, chakra: u.chakra, reason: id });
@@ -902,6 +930,10 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   if (base.cast === 'bonus') u.turn.bonus = false;
   else u.turn.action = false;
   if (spec.loud) reveal(u, ev);
+  if (base.handCharge) {
+    chargeHand(s, u, base, enh, ev);
+    return null;
+  }
   if (spec.melee && spec.shape === 'single' && target) {
     if (land) chargeTo(s, u, land, id, ev);
     else dashTo(s, u, target, id, ev);
@@ -971,7 +1003,44 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
   }
   if (spec.loud && s.phase === 'combat') scareAnimalsNear(s, at, 6, ev);
   applyHits(s, hits, spec.loud ? loud(s, u) : silentAttack(s, u, spec, target, ev), ev);
+  // A flash-in, a warp or a swap that lands a charged hand within reach of a foe sets it off.
+  strikeCharged(s, u, ev);
   return null;
+}
+
+// --- a charged hand (the activated Chidori; battle/charged.ts) ------------------------------
+
+/**
+ * Charges the hand with a jutsu (its chakra and the bonus action are paid): it waits up to its rounds
+ * for a foe within reach. Already beside one, the blow goes off at once.
+ */
+function chargeHand(s: BattleState, u: Unit, spec: JutsuSpec, enh: boolean, ev: BattleEvent[]): void {
+  u.charged = { jutsu: spec.id, enhanced: enh, rounds: spec.handCharge!.rounds };
+  ev.push({ t: 'charged', unit: u.id, jutsu: spec.id, on: true, enhanced: enh });
+  if (spec.loud && s.phase === 'combat') scareAnimalsNear(s, u.pos, 6, ev);
+  // A loud charge in the stealth phase starts the fight.
+  applyHits(s, [], spec.loud ? loud(s, u) : {}, ev);
+  strikeCharged(s, u, ev);
+}
+
+/**
+ * The charged hand's blow goes off by itself, if a foe is within its reach (chargedFoe): one melee
+ * jutsu attack at it (its attack roll, its dice, enhanced if it was charged so; lightning runs
+ * through the water as usual), and the charge is spent. Nothing happens while a reaction is pending.
+ */
+function strikeCharged(s: BattleState, u: Unit, ev: BattleEvent[]): void {
+  if (!u.charged || u.down || s.pending || s.phase === 'ended') return;
+  const t = chargedFoe(s, u);
+  if (!t) return;
+  const c = u.charged;
+  const base = JUTSU[c.jutsu];
+  const spec: JutsuSpec = { ...(c.enhanced ? enhanced(base) : base), shape: 'single' };
+  if (t.pos.x !== u.pos.x) u.facing = t.pos.x > u.pos.x ? 1 : -1;
+  ev.push({ t: 'jutsu', unit: u.id, jutsu: c.jutsu, at: { ...t.pos }, shape: null, enhanced: c.enhanced, released: true });
+  const hits = jutsuHits(s, u, spec, t, { ...t.pos }, ev);
+  endCharge(u, 'struck', ev);
+  if (spec.loud && s.phase === 'combat') scareAnimalsNear(s, t.pos, 6, ev);
+  applyHits(s, hits, spec.loud ? loud(s, u) : silentAttack(s, u, spec, t, ev), ev);
 }
 
 /**
@@ -1120,6 +1189,8 @@ export function handsBlocker(u: Unit, spec: JutsuSpec): string | null {
 }
 
 function setArmed(u: Unit, armed: boolean, cost: 'free' | 'bonus', ev: BattleEvent[]): void {
+  // The weapon drawn takes the hand a charge was held in: it lets it go.
+  if (armed) endCharge(u, 'released', ev);
   u.armed = armed;
   if (cost === 'free') u.turn.interacted = true;
   else u.turn.bonus = false;

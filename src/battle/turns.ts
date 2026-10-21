@@ -2,13 +2,14 @@
 // (death saves, bleeding, the hydra growing heads back), rounds, and the end.
 
 import { abilityMod, cannotBeSurprised } from '../rules/checks';
-import { removeEffect, tickRound } from '../rules/effects';
+import { effectMods, removeEffect, tickRound } from '../rules/effects';
 import { rollDie } from '../rules/rng';
 import type { BattleEvent, BattleState, Unit } from './types';
 import { homeTeam } from './types';
 import { check, damage, deathSave, nextRng, releaseCommand, rollDiceExpr } from './combat';
 import { waterAtPt } from './map';
 import { planEnemy, replanAgainst } from './intent';
+import { chargeHolds, mendCracks, tickCharge } from './charged';
 
 /** Whether a unit takes turns (heads of the hydra act on their own; fallen ninjas roll death saves). */
 const takesTurns = (u: Unit): boolean => u.down !== 'dead' && u.down !== 'fled' && u.down !== 'ko' && u.down !== 'stable';
@@ -75,6 +76,11 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
       u.cond.perfectHide = undefined;
     }
     ev.push({ t: 'turn', unit: u.id, round: s.round });
+    // The ground this ninja's charged hand cracked mends ("terreno dificil 1 turno"), and the charge
+    // loses one of its rounds (battle/charged.ts).
+    mendCracks(s, u.id, ev);
+    chargeHolds(u, effectMods(u.effects).noJutsu, ev);
+    tickCharge(u, ev);
     if (u.down === 'downed') {
       deathSave(s, u, ev);
       if (u.down) {
@@ -101,6 +107,7 @@ export function beginTurn(s: BattleState, ev: BattleEvent[]): void {
     }
     if (u.effects.some((e) => e.id === 'bleeding')) damage(s, u, rollDie(nextRng(s), 4), 'Slashing', {}, ev);
     if (u.effects.some((e) => e.id === 'burning')) damage(s, u, rollDie(nextRng(s), 6), 'Fire', {}, ev);
+    chargeHolds(u, false, ev);
     if (u.down) {
       advance(s, ev);
       continue;
@@ -183,6 +190,8 @@ function advance(s: BattleState, ev: BattleEvent[]): void {
       ev.push({ t: 'wall', wall: w, on: false });
       return false;
     });
+    // Cracked ground whose ninja took no turn for a whole round mends.
+    mendCracks(s, undefined, ev);
     // Gales on the ground die down.
     if (s.zones?.length)
       s.zones = s.zones.filter((z) => {

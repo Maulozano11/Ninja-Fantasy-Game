@@ -14,13 +14,14 @@ import * as sandals from './items/founderSandalsArt';
 import * as skirt from './items/founderSkirtArt';
 import * as trousers from './items/founderTrousersArt';
 import * as tunic from './items/founderTunicArt';
+import * as reach from './items/founderReachArt';
 import * as sword from './items/iceSwordArt';
 import * as bracers from './items/steelBracersArt';
 import { dojutsuToEye, getAppearance } from './legacy';
 import { continuedTo, limbOnly, type PaintedPiece } from './painted';
 import { GRID, MaterialTable, partIndex, RES } from './raster';
 import type { DrawCtx } from './ctx';
-import { founderFarOut, founderLegOut } from './items/founderOut';
+import { founderFarOut, founderFarReach, founderLegOut } from './items/founderOut';
 import { buildRig, frameCount, rigPoseFor } from './rig';
 import { CAMP_POSES, MOVE_POSES, SPRITE_POSES, type BodyType, type SpriteAppearance, type SpritePose } from './types';
 
@@ -227,5 +228,42 @@ describe("the owner's Solen", () => {
     assert.equal(up.pivot[1], 0);
     assert.ok([...up.rows[0]].every((ch) => ch === '.' || line(up.colors[ch])));
     assert.deepEqual(up.rows.slice(-4), arm.rows.slice(-4).map((r) => '.'.repeat(up.pivot[0] - arm.pivot[0]) + r));
+  });
+
+  it('reaches out with his near arm mirrored, every cell his: the far arm he drew is too thin to read stretched out', () => {
+    // Each piece is his near one with its rows reversed, its joint and angle mirrored with them, in his colours.
+    const pairs: [PaintedPiece, PaintedPiece][] = [
+      [reach.FOUNDER_REACH_SLEEVE_F, tunic.FOUNDER_SLEEVE_N],
+      [reach.FOUNDER_REACH_ARM_F, tunic.FOUNDER_ARM_N],
+      [reach.FOUNDER_REACH_BRACER_F, bracers.STEEL_BRACER_N],
+      [reach.FOUNDER_REACH_HAND_F, tunic.FOUNDER_HAND_N],
+    ];
+    for (const [m, his] of pairs) {
+      const w = Math.max(...his.rows.map((r) => r.length));
+      assert.deepEqual(m.rows.map((r) => [...r].reverse().map((ch) => (ch === '.' ? '.' : m.colors[ch]))), his.rows.map((r) => [...r.padEnd(w, '.')].map((ch) => (ch === '.' ? '.' : his.colors[ch]))));
+      assert.deepEqual(m.pivot, [w - 1 - his.pivot[0], his.pivot[1]]);
+      assert.ok(Math.abs(m.angle - (180 - his.angle)) < 0.01);
+    }
+    // The far arm reaches out when it is held out straight and near level: the cast at the runes, the throw's
+    // pointing arm, the combo's cross, and held out over the fire at camp.
+    const has = (slot: string, id?: string) => slot === 'top' && id === 'top_founder';
+    for (const body of ['male', 'bulky', 'slender', 'female'] as BodyType[]) {
+      const hits: string[] = [];
+      for (const pose of POSES) {
+        const rp = rigPoseFor(pose, 'runes', 'held_ice_crystal');
+        for (let f = 0; f < frameCount(rp); f++) if (founderFarReach({ rig: buildRig(body, rp, f), has } as unknown as DrawCtx)) hits.push(`${pose} ${f}`);
+      }
+      assert.deepEqual(hits.sort(), ['cast 0', 'cast 1', 'combo 2', 'sit 0', 'sit 1', 'sit 2', 'sit 3', 'throw 0', 'throw 1'], body);
+    }
+    // Reaching out, the far forearm is as thick as his near bracer (it was his far one, a third as much).
+    const bracer = limbOnly(bracers.STEEL_BRACER_N, (h) => bracers.STEEL_BRACER_KIND[h] === 'line');
+    const cells = bracer.rows.join('').replace(/\./g, '').length;
+    for (const body of ['male', 'bulky'] as BodyType[])
+      for (const [pose, f] of [['cast', 0], ['cast', 1], ['throw', 0], ['throw', 1], ['combo', 2]] as [SpritePose, number][]) {
+        const fr = render(look(body), pose, f);
+        let n = 0;
+        for (let i = 0; i < GRID * GRID; i++) if (opaque(fr.rgba, i) && fr.part[i] === partIndex('forearmF')) n++;
+        assert.ok(n >= 0.85 * cells, `${body} ${pose} ${f}: far forearm ${n} px, his near bracer ${cells}`);
+      }
   });
 });

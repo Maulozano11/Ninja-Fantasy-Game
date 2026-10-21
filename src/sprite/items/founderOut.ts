@@ -72,6 +72,28 @@ export function founderArmBends(g: DrawCtx, s: Side): { shoulder: number; elbow:
   };
 }
 
+/** How straight (wrist from shoulder over the arm's length) and how near level (degrees, the torso's turn taken off) an arm reaching out is. */
+const REACH_STRAIGHT = 0.85;
+const REACH_LEVEL = 45;
+
+/**
+ * Whether his far arm reaches out (straight, its upper arm within REACH_LEVEL degrees of level, the torso's
+ * turn taken off: the cast at the runes, the throw's pointing arm, the combo's cross), while his tunic
+ * dresses it. He drew the far arm hanging in shadow and thin, which stretched out reads as a line: reaching
+ * out it is his near arm mirrored, as thick as he drew that one (tools/refs/solen-reach-from-ref.py; the
+ * owner's repaint of Ren casting: "mira los brazos del cuadro 0 ponlos asi", and for Solen "tambien en los
+ * de solen copia los brazos de mi dibujo").
+ */
+export function founderFarReach(g: DrawCtx): boolean {
+  if (!g.has('top', 'top_founder')) return false;
+  const r = g.rig;
+  const idle = idleRig(r.body);
+  const t = segAngle(r.pelvis, r.neck) - segAngle(idle.pelvis, idle.neck);
+  const len = Math.hypot(r.elbowF.x - r.shoulderF.x, r.elbowF.y - r.shoulderF.y) + Math.hypot(r.wristF.x - r.elbowF.x, r.wristF.y - r.elbowF.y);
+  const straight = Math.hypot(r.wristF.x - r.shoulderF.x, r.wristF.y - r.shoulderF.y) / len;
+  return straight >= REACH_STRAIGHT && Math.abs(wrap180(segAngle(r.shoulderF, r.elbowF) - t)) <= REACH_LEVEL;
+}
+
 /** Within this many degrees of the way he drew it (shoulder and elbow), an arm is at rest. */
 const ARM_REST = 3;
 

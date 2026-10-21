@@ -158,3 +158,11 @@ folders.
       python3 -I tools/refs/solen-sword-from-ref.py src/sprite/items/iceSwordArt.ts [studyDir]
 
   With a study folder each writes his picture, the piece and the continued pixels (magenta) at 8x.
+
+  His far arm hangs in shadow and thin (a 2 px strip of skin, a thin bracer, a small fist): stretched out it reads
+  as a line. His repaint of Ren casting shows the far arm stretched out as thick as the near one, so while Solen's
+  far arm reaches out (straight and near level: the cast, the throw's pointing arm, the combo's cross, the camp
+  sit; `founderFarReach` in `src/sprite/items/founderOut.ts`) it is his near sleeve, upper arm, bracer and fist
+  mirrored left to right (rows reversed, joint and angle mirrored: his pixels and colours, his lit side up):
+
+      python3 -I tools/refs/solen-reach-from-ref.py src/sprite/items/founderReachArt.ts

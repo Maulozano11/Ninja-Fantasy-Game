@@ -12,7 +12,8 @@ import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 import { sandalPieces } from './feet';
-import { clearParts, clipParts, founderArmAtRest, founderArmBends, founderFarOut, founderLegBends, founderLegLen, founderLegOut, moveParts } from './founderOut';
+import { clearParts, clipParts, founderArmAtRest, founderArmBends, founderFarOut, founderFarReach, founderLegBends, founderLegLen, founderLegOut, moveParts } from './founderOut';
+import { FOUNDER_REACH_ARM_F, FOUNDER_REACH_BRACER_F, FOUNDER_REACH_HAND_F, FOUNDER_REACH_SLEEVE_F } from './founderReachArt';
 import { FOUNDER_ARM_F, FOUNDER_ARM_N, FOUNDER_ARM_SKIN, FOUNDER_HAND_F, FOUNDER_HAND_N, FOUNDER_SLEEVE_N, FOUNDER_TUNIC, FOUNDER_TUNIC_KIND } from './founderTunicArt';
 import { FOUNDER_THIGH_F, FOUNDER_THIGH_N, FOUNDER_TROUSERS, FOUNDER_TROUSERS_KIND, FOUNDER_TROUSERS_STUD } from './founderTrousersArt';
 import { STEEL_BRACER, STEEL_BRACER_F, STEEL_BRACER_KIND, STEEL_BRACER_N } from './steelBracersArt';
@@ -905,8 +906,23 @@ const FOUNDER_ARM_MOVING = {
   F: { arm: farArmToShoulder(), sleeve: null as PaintedPiece | null, bracer: limbOnly(STEEL_BRACER_F, (h) => STEEL_BRACER_KIND[h] === 'line'), fist: limbOnly(FOUNDER_HAND_F, tunicLine) },
 };
 
+/**
+ * His far arm reaching out (founderFarReach): his near arm mirrored (tools/refs/solen-reach-from-ref.py), as
+ * thick as he drew that one, since his far arm, hanging in shadow, is too thin to read stretched out. Only the
+ * limb (limbOnly), the upper arm continued up to the shoulder (continuedTo) as the far one is.
+ */
+const FOUNDER_ARM_REACH = {
+  arm: continuedTo(limbOnly(FOUNDER_REACH_ARM_F, tunicLine), FOUNDER_REACH_ARM_F.pivot[1], 2, tunicLine, (h) => FOUNDER_TUNIC_KIND[h] === 'skin'),
+  sleeve: limbOnly(FOUNDER_REACH_SLEEVE_F, tunicLine) as PaintedPiece | null,
+  bracer: limbOnly(FOUNDER_REACH_BRACER_F, (h) => STEEL_BRACER_KIND[h] === 'line'),
+  fist: limbOnly(FOUNDER_REACH_HAND_F, tunicLine),
+};
+
+/** His pieces of an arm in this pose: whole at rest, the far arm reaching out his near arm mirrored, else only the limb. */
+const founderArmPieces = (g: DrawCtx, s: Side) => (s === 'F' && founderFarReach(g) ? FOUNDER_ARM_REACH : (founderArmAtRest(g, s) ? FOUNDER_ARM : FOUNDER_ARM_MOVING)[s]);
+
 /** His steel bracer on an arm, whole at rest, else only the bracer (for hands_steel_bracers). */
-export const founderBracer = (g: DrawCtx, s: Side): PaintedPiece => (founderArmAtRest(g, s) ? FOUNDER_ARM : FOUNDER_ARM_MOVING)[s].bracer;
+export const founderBracer = (g: DrawCtx, s: Side): PaintedPiece => founderArmPieces(g, s).bracer;
 
 /** How near a joint (fine pixels) his cells turn with it when it bends (stampBent): about half his arm's width. */
 const FOUNDER_JOINT_R = 4;
@@ -927,7 +943,7 @@ const FOUNDER_JOINT_R = 4;
  */
 function founderArm(g: DrawCtx, s: Side, color: (ch: string, hex: string) => string): void {
   const j = armJoints(g.rig, s);
-  const P = (founderArmAtRest(g, s) ? FOUNDER_ARM : FOUNDER_ARM_MOVING)[s];
+  const P = founderArmPieces(g, s);
   const { out, w } = s === 'F' ? founderFarOut(g) : { out: v(0, 0), w: 1 };
   const kind = handPose(g, s).kind;
   const fist = kind !== 'point' && kind !== 'cradle';

@@ -214,6 +214,9 @@ const ES: Record<string, string> = {
   'Long straight blonde hair down the back: side-swept bangs with a strand between the eyes, a gold checker ornament on the crown, a lock down each cheek, the near one over the chest, and the rest falling behind the near shoulder.':
     'Pelo largo, lacio y rubio por la espalda: flequillo de lado con un mechón entre los ojos, un adorno de oro a cuadros en la coronilla, un mechón por cada mejilla, el cercano sobre el pecho, y el resto cayendo tras el hombro cercano.',
   Ornament: 'Adorno',
+  // Saya's scarf (cape_crimson_scarf)
+  'A long red scarf wound thick round the neck in two rolls and over the near shoulder, its end hanging behind the shoulder and streaming out behind in the wind.':
+    'Una larga bufanda roja enrollada gruesa al cuello en dos vueltas y sobre el hombro cercano, con la punta colgando tras el hombro y ondeando hacia atrás con el viento.',
 };
 
 /** An editor label in the screen's language. */

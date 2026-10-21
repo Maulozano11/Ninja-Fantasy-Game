@@ -10,6 +10,7 @@ import { add, capsule, cylShade, ellipse, F_NO_OUTLINE, F_NO_TEXTURE, fine, GRID
 import { GROUND } from '../rig';
 import { OWNER_CAPE_BACK, OWNER_CAPE_FRONT, OWNER_CAPE_PLATE, OWNER_CAPE_SHOULDER, PaintedPart } from './capeArt';
 import { CRIMSON_CAPE_BACK, CRIMSON_CAPE_BASE, CRIMSON_CAPE_EDGE, CRIMSON_CAPE_FAR, CRIMSON_CAPE_LINE, CRIMSON_CAPE_NEAR } from './crimsonCapeArt';
+import { sayaScarf } from './sayaScarf';
 
 const col = (key: string, label: string, def: string, kind: 'cloth' | 'leather' | 'metal' = 'cloth') => ({ key, label, default: def, kind });
 
@@ -800,4 +801,5 @@ export const CAPE_ITEMS: ItemDef[] = [
       clasp(F, top(0.4, Lt - 0.4), { mat: g.m(gold, 'metal'), part: 'torso' }, 1.3);
     },
   },
+  sayaScarf(capeWind),
 ];

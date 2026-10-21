@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { DEFAULT_CHARACTER, JUTSUS_DATA, LEGENDARY_PRESETS } from '../data/shinobiData';
-import { HANA } from '../data/missions';
+import { HANA, KENJI } from '../data/missions';
 import { loadHero, loadRoster } from '../game/saves';
 import { CHAKRA_COLORS } from '../sprite/chakra';
 import { chakraHex } from '../sprite/chakraInfo';
@@ -26,7 +26,7 @@ const OLD_COLOURS: Record<string, ChakraNature> = {
   white: 'Light',
   black: 'Void',
 };
-const ELEMENTS: ChakraNature[] = ['Fire', 'Water', 'Wind', 'Lightning'];
+const ELEMENTS: ChakraNature[] = ['Fire', 'Water', 'Wind', 'Lightning', 'Earth'];
 const TINTS = [undefined, ...CHAKRA_COLORS.map((c) => c.id), '#00ff00', '#000000', '#ffffff', '#123456'];
 
 const chakra = (color: string, tint?: string): ChakraChoice => ({ color: color as ChakraColorId, ...(tint ? { tint } : {}), onCharge: true, onCast: true, onVictory: false });
@@ -56,6 +56,7 @@ describe('chakra types', () => {
 
   it('the bursts stand for what they show: fire is Fire, the electric one is Lightning', () => {
     for (const [id, nature] of Object.entries(OLD_COLOURS)) assert.equal(chakraNature(chakra(id)), nature, id);
+    assert.equal(chakraNature(chakra('brown')), 'Earth', 'the Earth burst (new: no old save has it)');
   });
 
   it('the colour never changes the nature: green fire is Fire, black lightning is Lightning', () => {
@@ -119,7 +120,7 @@ describe('the legends', () => {
     const count = new Map<string, number>();
     for (const id of [c.selectedJutsus.slot2Elemental, c.selectedJutsus.slot3Elemental, c.selectedJutsus.slot5Ultimate]) {
       const n = JUTSUS_DATA.find((j) => j.id === id)?.nature;
-      if (n && (ELEMENTS as string[]).concat('Earth').includes(n)) count.set(n, (count.get(n) ?? 0) + 1);
+      if (n && (ELEMENTS as string[]).includes(n)) count.set(n, (count.get(n) ?? 0) + 1);
     }
     return [...count].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
   };
@@ -144,5 +145,9 @@ describe('the legends', () => {
     // Hana, the water medic (was the green Leafwind Spiral), keeps her green.
     assert.equal(natureOf(HANA), 'Water');
     assert.equal(chakraHex(HANA.appearance!.chakra), '#3dbc48');
+    // Kenji, earth and wood (was the violet Spectral Guardian), keeps his violet.
+    assert.equal(natureOf(KENJI), 'Earth');
+    assert.equal(natureOf(KENJI), loadoutNature(KENJI));
+    assert.equal(chakraHex(KENJI.appearance!.chakra), '#a54ce0');
   });
 });

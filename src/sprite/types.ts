@@ -100,7 +100,7 @@ export interface HeadbandChoice {
   plate: string;
 }
 
-export type ChakraColorId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet' | 'white' | 'black';
+export type ChakraColorId = 'red' | 'orange' | 'yellow' | 'green' | 'blue' | 'indigo' | 'violet' | 'white' | 'black' | 'brown';
 
 export interface ChakraChoice {
   /**

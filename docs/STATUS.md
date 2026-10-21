@@ -40,7 +40,7 @@ clean.
 | Held | 9 (plus `held_none`): katana built from parts, crystal, ice crystal, flame longsword, kunai, naginata, spiral, lightning, palm |
 | Accessories | 13 |
 | Headband | 5 positions, 7 emblems, slashed or not, tails or not |
-| Chakra | 8 types, which are the ninja's elemental nature (Fire with 2 bursts, Water, Wind, Lightning; Shadow, Spirit, Light, Void without element), any colour for any type; 8 cast styles ("eye" hidden) |
+| Chakra | 9 types, which are the ninja's elemental nature (Fire with 2 bursts, Water, Wind, Lightning, Earth; Shadow, Spirit, Light, Void without element), any colour for any type; 8 cast styles ("eye" hidden) |
 | Poses | 7 creator, 5 moving, 4 camp |
 
 **Clans** (phase 1; source of truth `docs/CLANS_DESIGN.md`)
@@ -124,6 +124,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the icons on `icons/sheets-8-11`, the
   camp poses once redone.
 - Name the Scarlet character (`scarlet/study`).
+- `chakra/nature` (2026-10-21): the chakra type is the nature (his rule, built). Approve or redo the
+  new Earth burst (Shattered Earth); check the legends whose burst now follows their jutsu (Kaien,
+  Ren, Hiro, Raiga, Kenji, Hana, each in the colour it had); decide what Shadow, Spirit, Light and Void
+  may learn (`docs/GAMEPLAY_DESIGN.md`, Open questions).
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms
@@ -203,8 +207,9 @@ The nature exists (2026-10-21, `chakra/nature`): it is the chakra type picked in
 Chakra, read with `natureOf` (`src/rules/ninja.ts`); the colour never changes it
 (`docs/GAMEPLAY_DESIGN.md`, "Chakra type"). The gating itself is not built (an owner's session
 listed it as in progress: ask before starting). Goal: a ninja's nature decides which elemental
-jutsu they can learn; a new ninja starts with low ranks. Open: Earth has no chakra burst yet; what
-the types without element may learn; legends with a second element (Kaien, Raiga).
+jutsu they can learn; a new ninja starts with low ranks. Open: the new Earth burst waits for the
+owner's approval; what the types without element may learn; legends with a second element (Kaien,
+Raiga).
 
 ### 4d. Missions (not built)
 Branching road, road traps and curios, votes, cinematics and decisions, the AI choosing camp

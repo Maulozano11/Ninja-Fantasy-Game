@@ -292,18 +292,20 @@ rayo"*.
 | Water (Agua) | Rising Tide | blue |
 | Wind (Viento) | Leafwind Spiral | green |
 | Lightning (Rayo) | Storm Lash | yellow |
+| Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up); **new, waiting for the owner's approval** | brown |
 | Shadow (Sombra), no element | Nightveil Mist | indigo |
 | Spirit (Espíritu), no element | Spectral Guardian | violet |
 | Light (Luz), no element | Heaven Pillar | white |
 | Void (Vacío), no element | Abyss Orbit | black |
 
-  Earth (Tierra) has no burst yet, so it cannot be picked yet. The four types
-  without an element are kept because their bursts were approved; no jutsu has
-  their nature (see Open questions).
+  Earth had no burst, so one was drawn for it (Shattered Earth, with an Earth
+  emblem, orb and word for the grimoire casts): it waits for the owner's
+  approval. The four types without an element are kept because their bursts
+  were approved; no jutsu has their nature (see Open questions).
 - **The legends follow their jutsu**, in the colour they always had: Kaien and
   Ren are Lightning (violet, blue), Hiro is Wind (orange), Raiga is Fire
-  (violet); Hana is Water (green). Solen, Akira, Aiden and Shiori already
-  matched.
+  (violet); of the companions, Hana is Water (green) and Kenji Earth (violet).
+  Solen, Akira, Aiden and Shiori already matched.
 - **In the code** there is one source: the look's burst
   (`appearance.chakra.color`, an id named after the colour the bursts were
   first picked by) gives the nature through `BURST_NATURE`
@@ -425,6 +427,8 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 
 ## Open questions
 
+- Approve or redo the Earth chakra burst (Shattered Earth), drawn because Earth
+  had none.
 - Chakra types without an element (Shadow, Spirit, Light, Void): which jutsu
   may they learn once the nature gates the jutsu (all non-elemental ones only?
   Shadow as Genjutsu, Spirit or Light as pure chakra?), or should they go?

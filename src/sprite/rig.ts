@@ -140,16 +140,25 @@ export const BODY_PARAMS: Record<BodyType, BodyParams> = {
 
 /**
  * fist: closed fist · grip: around a weapon handle, or a fist when empty-handed ·
- * hold: around a weapon handle, or relaxed when empty-handed · relaxed · open · sign.
+ * hold: around a weapon handle, or relaxed when empty-handed · relaxed · open · sign ·
+ * cradle: under something carried, the fingers curled up over its lower edge ·
+ * side: holding the side edge of something before the body (the reading book),
+ * the fingers curled over it toward the middle.
  */
-export type HandShape = 'relaxed' | 'fist' | 'open' | 'sign' | 'grip' | 'hold' | 'point' | 'cradle';
+export type HandShape = 'relaxed' | 'fist' | 'open' | 'sign' | 'grip' | 'hold' | 'point' | 'cradle' | 'side';
 
-/** Hand targets: relative to a landmark, in arm-length units ('arm') or pixels ('px'). */
+/**
+ * Hand targets: relative to a landmark, in arm-length units ('arm') or pixels ('px').
+ * 'wristN' (far hand only) is the near wrist once it is placed, so the two
+ * hands hold one object exactly (the reading book).
+ */
 interface HandTarget {
-  from: 'shoulder' | 'chest' | 'kneeN' | 'kneeF';
+  from: 'shoulder' | 'chest' | 'kneeN' | 'kneeF' | 'wristN';
   x: number;
   y: number;
   units: 'arm' | 'px';
+  /** The point is where the wrist goes, not the middle of the hand (hands stamped upright at the wrist, such as 'cradle'). */
+  wrist?: boolean;
 }
 
 interface PoseFrame {
@@ -170,8 +179,14 @@ interface PoseFrame {
   jitter?: number;
   /** The far hand works in front of the body (hand signs, a two-handed charge): draw it over the torso. */
   farHandFront?: boolean;
+  /** The far hand lies over the near arm (arms crossed, gripping the near upper arm): draw it over that arm too. */
+  farHandOver?: boolean;
+  /** The far forearm lies across the front of the body (arms crossed): draw it over the torso with the hand. */
+  farArmFront?: boolean;
   /** -1 bends the near elbow down instead of out (an arm carrying something at the side). */
   bendN?: 1 | -1;
+  /** -1 bends the far elbow out to the front instead of back. */
+  bendF?: 1 | -1;
   /**
    * Pelvis height above the ankle line, in leg lengths. When set it replaces
    * the ground solve and the feet hang from level hips (the lean no longer
@@ -462,20 +477,25 @@ const LEAN_BASE: PoseFrame = {
   snap: true,
   footN: v(-0.24, 0.52),
   footF: v(0.34, 0.94),
-  // Arms crossed: the near forearm across the chest, the far hand tucked under its elbow.
+  // Arms crossed: the near forearm across the chest, its fist at the far
+  // side; under it the far forearm (drawn over the torso) runs the other way,
+  // its elbow out in front, its fist over the near elbow. Both fists are the
+  // approved fist shapes (ctx.ts).
   handN: chest(3, 1.5),
-  handF: chest(-2.5, 2.5),
-  shapeN: 'relaxed',
+  handF: chest(-6.5, 4),
+  bendF: -1,
+  shapeN: 'fist',
   shapeF: 'fist',
-  farHandFront: true,
+  farArmFront: true,
+  farHandOver: true,
 };
 const LEAN = breathe(LEAN_BASE, 4);
 
 /**
  * Sit, 4 frames: on a log seat (CAMP_PROPS: its top 26 px above the feet,
  * under the hips), the feet on the ground at the anchor, leaning in a little
- * toward the fire: the near hand on the knee, the far palm out to the
- * flames. Gentle breathing.
+ * toward the fire, both hands resting on the knees (the far one drawn over
+ * the legs). Gentle breathing.
  */
 const SEAT_HIP = 0.74;
 const SIT_LEGS = { hip: SEAT_HIP, footN: v(0.5, groundY(SEAT_HIP, 0.5)), footF: v(0.47, groundY(SEAT_HIP, 0.47)) };
@@ -484,17 +504,32 @@ const SIT_BASE: PoseFrame = {
   pelvisDx: -8.5,
   snap: true,
   ...SIT_LEGS,
-  handN: knee('N', 0.6, -1.4),
-  handF: arm(0.82, 0.42),
+  handN: knee('N', 1.5, -1),
+  handF: knee('F', 1.5, -1),
   shapeN: 'relaxed',
-  shapeF: 'open',
+  shapeF: 'relaxed',
+  farHandFront: true,
 };
 const SIT = breathe(SIT_BASE, 4);
 
 /**
- * Read, 12 frames: on the same seat, a book held open in both hands over the
- * lap, eyes lowered to it (drawn in campfx.ts). It breathes for 9 frames, then
- * a page turns over (frames 9-11).
+ * Where the hands hold the reading book (campfx.ts: the grimoire art), in fine
+ * pixels from the book's pivot (the foot of its spine).
+ */
+export const READ_HOLD = {
+  /** The near hand on the left half, its wrist just outside the left edge, the fingers over the cover. */
+  near: v(-8, -5),
+  /** The far hand on the right edge of the front cover, the fingers curled round it. */
+  far: v(20, -6),
+};
+
+/**
+ * Read, 12 frames: on the same seat, eyes lowered to a big open book resting
+ * on the lap (drawn in campfx.ts), the hands holding its two sides, the
+ * forearms level. The near wrist is placed from the chest so the book sits
+ * in front of the belly with its top under the chin; the far wrist from the
+ * near one, so both hands always land on the book's edges. It breathes for 9
+ * frames, then a page turns over (frames 9-11).
  */
 const READ_BASE: PoseFrame = {
   lean: 17,
@@ -503,47 +538,51 @@ const READ_BASE: PoseFrame = {
   ...SIT_LEGS,
   headDx: 0.5,
   headDy: 0.5,
-  handN: chest(0.6, 6.2),
-  handF: chest(7.4, 5.8),
-  shapeN: 'cradle',
-  shapeF: 'cradle',
+  handN: { ...chest(-3.75, 3.75), wrist: true },
+  handF: { from: 'wristN', x: (READ_HOLD.far.x - READ_HOLD.near.x) / RES, y: (READ_HOLD.far.y - READ_HOLD.near.y) / RES, units: 'px', wrist: true },
+  shapeN: 'side',
+  shapeF: 'side',
 };
-const READ: PoseFrame[] = Array.from({ length: 12 }, (_, i) => {
-  const breath = i % 6 >= 3 ? 0.5 : 0;
-  // the far hand lifts the page corner as it turns
-  const turn = i === 9 ? -1 : i === 10 ? -0.6 : 0;
-  return { ...READ_BASE, chestDy: breath, handF: chest(7.4, 5.8 + turn) };
-});
+const READ: PoseFrame[] = Array.from({ length: 12 }, (_, i) => ({ ...READ_BASE, chestDy: i % 6 >= 3 ? 0.5 : 0 }));
 
 /** Stance for the drills: feet apart, the near foot back. */
 const STANCE = { footN: v(-0.32, 0.94), footF: v(0.36, 0.93) };
 
 /**
+ * The free hand in the weapon drills: a fist chambered at the far hip, drawn
+ * in front of the body so it always reads (the weapon is held in the near
+ * hand, as in every other pose).
+ */
+const HIP = chest(1.5, 6.5);
+
+/**
  * Train, 8 frames per drill. Blades: a sword kata (ready guard, raise,
- * downward cut, follow-through, side guard, level cut, rising guard, back to
- * ready). The weapon angles per frame are in grip.ts.
+ * downward cut, follow-through, side guard with the free fist up front,
+ * level cut, rising guard, back to ready). Raised overhead the near elbow
+ * bends back, so the arm never crosses the face. The weapon angles per frame
+ * are in grip.ts.
  */
 const TRAIN_BLADE: PoseFrame[] = [
-  { lean: 4, ...STANCE, handN: arm(0.6, 0.45), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
-  { lean: -3, ...STANCE, handN: arm(0.12, -0.86), handF: chest(1, -1), shapeN: 'grip', shapeF: 'fist' },
-  { lean: 12, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.8, 0.26), handF: arm(-0.3, 0.75), shapeN: 'grip', shapeF: 'fist' },
-  { lean: 15, pelvisDx: 2, footN: v(-0.42, 0.9), footF: v(0.4, 0.92), handN: arm(0.62, 0.74), handF: arm(-0.32, 0.72), shapeN: 'grip', shapeF: 'fist' },
-  { lean: 2, ...STANCE, handN: arm(-0.3, 0.82), handF: chest(3, 0), shapeN: 'grip', shapeF: 'open' },
-  { lean: 10, pelvisDx: 1, footN: v(-0.38, 0.92), footF: v(0.38, 0.93), handN: arm(0.76, 0.12), handF: arm(-0.25, 0.8), shapeN: 'grip', shapeF: 'open' },
-  { lean: 5, ...STANCE, handN: arm(0.7, -0.5), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
-  { lean: 4, ...STANCE, handN: arm(0.58, 0.5), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 4, ...STANCE, handN: arm(0.6, 0.45), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: -3, ...STANCE, handN: arm(0.12, -0.86), bendN: -1, handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 12, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.82, 0.36), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 15, pelvisDx: 2, footN: v(-0.42, 0.9), footF: v(0.4, 0.92), handN: arm(0.62, 0.74), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 2, ...STANCE, handN: arm(-0.3, 0.82), handF: chest(4, 0.5), shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 10, pelvisDx: 1, footN: v(-0.38, 0.92), footF: v(0.38, 0.93), handN: arm(0.8, 0.3), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 5, ...STANCE, handN: arm(0.8, 0.2), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 4, ...STANCE, handN: arm(0.58, 0.5), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
 ];
 
 /** Polearms: thrust, recoil, raise overhead, chop down, low sweep, spin upright, back to guard. */
 const TRAIN_POLE: PoseFrame[] = [
-  { lean: 4, ...STANCE, handN: arm(0.4, 0.7), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
-  { lean: 11, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.96, 0.15), handF: arm(-0.25, 0.78), shapeN: 'grip', shapeF: 'fist' },
-  { lean: 4, ...STANCE, handN: arm(0.3, 0.76), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
-  { lean: -4, ...STANCE, handN: arm(0.18, -0.84), handF: chest(1, -1), shapeN: 'grip', shapeF: 'fist' },
-  { lean: 12, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.7, 0.42), handF: arm(-0.3, 0.75), shapeN: 'grip', shapeF: 'fist' },
-  { lean: 14, pelvisDx: 1, footN: v(-0.42, 0.88), footF: v(0.42, 0.88), handN: arm(0.6, 0.76), handF: arm(-0.3, 0.72), shapeN: 'grip', shapeF: 'open' },
-  { lean: 2, ...STANCE, handN: arm(0.32, 0.28), handF: chest(2, 0), shapeN: 'grip', shapeF: 'open' },
-  { lean: 4, ...STANCE, handN: arm(0.38, 0.72), handF: chest(2, 1), shapeN: 'grip', shapeF: 'fist' },
+  { lean: 4, ...STANCE, handN: arm(0.4, 0.7), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 11, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.95, 0.28), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 4, ...STANCE, handN: arm(0.3, 0.76), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: -4, ...STANCE, handN: arm(0.05, -0.86), bendN: -1, handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 12, pelvisDx: 1.5, footN: v(-0.4, 0.91), footF: v(0.4, 0.92), handN: arm(0.7, 0.42), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 14, pelvisDx: 1, footN: v(-0.42, 0.88), footF: v(0.42, 0.88), handN: arm(0.6, 0.76), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 2, ...STANCE, handN: arm(0.75, 0.4), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
+  { lean: 4, ...STANCE, handN: arm(0.38, 0.72), handF: HIP, shapeN: 'grip', shapeF: 'fist', farHandFront: true },
 ];
 
 /**
@@ -553,7 +592,7 @@ const TRAIN_POLE: PoseFrame[] = [
 const GUARD: PoseFrame = { lean: 5, ...STANCE, handN: chest(4.5, -2.5), handF: chest(2.5, -4), shapeN: 'fist', shapeF: 'fist', farHandFront: true };
 const TRAIN_FIST: PoseFrame[] = [
   GUARD,
-  { lean: 9, pelvisDx: 1, ...STANCE, handN: arm(0.98, -0.1), handF: chest(2.5, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
+  { lean: 9, pelvisDx: 1, ...STANCE, handN: arm(0.97, 0.22), handF: chest(2.5, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
   { ...GUARD, chestDy: 0.5 },
   { lean: 12, pelvisDx: 1.5, footN: v(-0.38, 0.93), footF: v(0.34, 0.94), handN: chest(3, -1.5), handF: arm(0.98, -0.08), shapeN: 'fist', shapeF: 'fist' },
   GUARD,
@@ -778,6 +817,10 @@ export interface Rig {
   shapeF: HandShape;
   /** See PoseFrame.farHandFront. */
   farHandFront: boolean;
+  /** See PoseFrame.farHandOver. */
+  farHandOver: boolean;
+  /** See PoseFrame.farArmFront. */
+  farArmFront: boolean;
   /** Torso-local point: x along the shoulder line (+ toward facing side), y up from the pelvis. */
   T: (x: number, y: number) => Vec;
   /** Set for poses laid on the ground for display ('downed', see PoseFrame.lie). */
@@ -931,23 +974,26 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
   const chestFront = add(T(bp.chestHalf * 0.5, bp.torsoLen - 6), v(0, chestDy));
 
   const armLen = bp.upperArm + bp.forearm + bp.handR;
+  let wristN = v(0, 0);
   const resolve = (t: HandTarget, shoulder: Vec): Vec => {
     if (t.from === 'chest') return add(chestFront, v(t.x, t.y));
     if (t.from === 'kneeN') return add(legN.mid, v(t.x, t.y));
     if (t.from === 'kneeF') return add(legF.mid, v(t.x, t.y));
+    if (t.from === 'wristN') return add(wristN, v(t.x, t.y));
     return add(shoulder, scale(v(t.x, t.y), armLen));
   };
   const solveArm = (shoulder: Vec, t: HandTarget, bend: 1 | -1 = 1) => {
     const target = resolve(t, shoulder);
     // Aim the wrist a little short of the target so the hand lands on it.
     const toT = sub(target, shoulder);
-    const wristTarget = sub(target, scale(norm(toT), bp.handR * 0.8));
+    const wristTarget = t.wrist ? target : sub(target, scale(norm(toT), bp.handR * 0.8));
     const r = solve2(shoulder, wristTarget, bp.upperArm, bp.forearm, bend);
     const dir = norm(sub(r.end, r.mid));
     return { elbow: r.mid, wrist: r.end, hand: add(r.end, scale(dir, bp.handR * 0.9)) };
   };
   const aN = solveArm(shoulderN, f.handN, f.bendN ?? 1);
-  const aF = solveArm(shoulderF, f.handF);
+  wristN = aN.wrist;
+  const aF = solveArm(shoulderF, f.handF, f.bendF ?? 1);
 
   const headY = neck.y - 5.9 * bp.headScale + (f.headDy || 0);
   const headX = neck.x - 0.4 + (f.headDx || 0);
@@ -981,7 +1027,9 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     ankleF: legF.end,
     shapeN: f.shapeN,
     shapeF: f.shapeF,
-    farHandFront: !!f.farHandFront,
+    farHandFront: !!f.farHandFront || !!f.farHandOver || !!f.farArmFront,
+    farHandOver: !!f.farHandOver,
+    farArmFront: !!f.farArmFront,
     T,
   };
 }

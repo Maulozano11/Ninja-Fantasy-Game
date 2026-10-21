@@ -1,81 +1,49 @@
 // Props the camp poses hold: the open book for 'read', drawn after the body
 // and items (compose.ts).
 
+import { GRIMOIRE } from './castfx';
 import type { DrawCtx } from './ctx';
-import { F_NO_TEXTURE, GRID, Layer, partIndex, v } from './raster';
+import { add, F_NO_TEXTURE, GRID, Layer, partIndex, v } from './raster';
+import { READ_HOLD } from './rig';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 
 /**
- * An open book held over the lap, seen from the front and a little above:
- * two pages with lines of text, the gutter between them, the page edges and
- * the hardcover underneath. The border becomes the layer outline. The pivot
- * is the foot of the spine.
- * p page · P lit page · q text · m gutter · e page edges · c cover ·
- * C lit cover · k cover shadow
- */
-const BOOK: PixelTemplate = {
-  pivot: [10, 9],
-  rows: [
-    '...ppppppp.ppppppp...',
-    '..pPPPPPPPmPPPPPPPp..',
-    '..pPqqqPqPmPqqqqPPp..',
-    '..pPPPPPPPmPPPPPPPp..',
-    '..pPqqPqqPmPqqPqqPp..',
-    '..pPPPPPPPmPPPPPPPp..',
-    '..pPqqqqPPmPqqqPqPp..',
-    '.Cpeeeeeeemeeeeeeepk.',
-    '.CCcccccccmccccccckk.',
-    '..ckkkkkkkkkkkkkkkk..',
-    '.....................',
-  ],
-};
-
-/**
- * A page turning over from right to left, in three steps: curling up off the
- * right page, standing on the gutter, settling onto the left page. Same
- * pivot as BOOK (the extra rows on top reach above it).
+ * A page turning over from the right half to the left, in three steps:
+ * lifting off the right pages, standing over the spine, settling onto the
+ * left pages. Drawn over the grimoire art (GRIMOIRE, castfx.ts), seen as the
+ * reader holds it: the top edge of the page sweeps above the book. Same
+ * columns as GRIMOIRE; the pivot is its pivot (the foot of the spine), so the
+ * rows above it reach over the book's top edge.
  */
 const PAGE_TURN: PixelTemplate[] = [
   {
-    pivot: [10, 13],
+    pivot: [12, 21],
     rows: [
-      '................PPPP.',
-      '..............PPPPPq.',
-      '.............PPPPPPq.',
-      '............PPqqPPq..',
-      '...........PPPPPPq...',
-      '...........PqqPPq....',
-      '...........PPPPq.....',
-      '..........mPPq.......',
-      '..........mPq........',
+      '..................Pq...........',
+      '................PPPq...........',
+      '..............PPPPq............',
+      '.............PPPq..............',
+      '............PPq................',
     ],
   },
   {
-    pivot: [10, 13],
+    pivot: [12, 21],
     rows: [
-      '.........PP..........',
-      '.........PPq.........',
-      '.........PPq.........',
-      '.........PPq.........',
-      '.........PPq.........',
-      '.........PPq.........',
-      '.........PPq.........',
-      '..........Pq.........',
-      '..........mq.........',
+      '............Pq.................',
+      '...........PPq.................',
+      '...........PPq.................',
+      '...........PPq.................',
+      '............Pq.................',
     ],
   },
   {
-    pivot: [10, 13],
+    pivot: [12, 21],
     rows: [
-      '.PPPP................',
-      '.pPPPPP..............',
-      '.pPPPPPP.............',
-      '..pPPqqPP............',
-      '...pPPPPPP...........',
-      '....pPPqqP...........',
-      '.....pPPPP...........',
-      '.......pPPm..........',
-      '........pPm..........',
+      '...............................',
+      '......qPP......................',
+      '........qPPP...................',
+      '..........qPP..................',
+      '...........qP..................',
     ],
   },
 ];
@@ -86,29 +54,41 @@ export function drawCampFx(g: DrawCtx): void {
 }
 
 /**
- * The book is held from below in both hands ('cradle' hands, fingers up),
- * over the near arm, and both hands are then moved on top of it so the
- * fingers curl over the lower corners of the cover.
+ * The read pose's book: the grimoire of the book cast (the same art and size,
+ * castfx.ts) as a plain leather book with a tooled diamond in place of the
+ * glowing emblem, resting open on the lap and turned toward the reader, so
+ * the viewer sees its covers and the tops of its pages. The hands hold its
+ * two sides ('side' hands, ctx.ts): they are moved on top of it so the
+ * fingers lie over the covers. Every 12 frames a page turns (frames 9-11).
  */
 function book(g: DrawCtx): void {
   const r = g.rig;
   const L = g.L('nearArm.over');
   const paper = g.m('#ece2c6', 'cloth');
-  const ink = g.m('#6b5a4a', 'cloth');
   const cover = g.m('#7a3f2c', 'leather');
+  const metal = g.m('#d4a531', 'metal');
   const pal: TemplatePalette = {
+    o: [cover, 0],
+    k: [cover, 1],
+    d: [cover, 1],
+    m: [cover, 2],
+    c: [cover, 2],
+    C: [cover, 3],
+    b: [cover, 4],
+    q: [paper, 3],
     p: [paper, 4],
     P: [paper, 5],
-    q: [paper, 3],
-    e: [paper, 2],
-    m: [paper, 2],
-    c: [cover, 3],
-    C: [cover, 4],
-    k: [cover, 2],
+    g: [metal, 4],
+    G: [metal, 2],
   };
-  // The foot of the spine sits between the wrists, a little above them.
-  const at = v((r.wristN.x + r.wristF.x) / 2 + 0.2, Math.min(r.wristN.y, r.wristF.y) - 2.2);
-  stampTemplate(L, BOOK, at, 0, pal, 'held', { flags: F_NO_TEXTURE });
+  // The pivot (foot of the spine) from the near wrist, in design units.
+  const at = add(r.wristN, v(-READ_HOLD.near.x / 2, -READ_HOLD.near.y / 2));
+  stampTemplate(L, GRIMOIRE, at, 0, pal, 'held', { flags: F_NO_TEXTURE });
+  // a tooled diamond with a brass stud on the front cover
+  const ox = Math.floor(at.x * 2) - GRIMOIRE.pivot[0];
+  const oy = Math.floor(at.y * 2) - GRIMOIRE.pivot[1];
+  for (const [dx, dy] of [[21, 11], [20, 12], [22, 12], [21, 13]]) L.set(ox + dx, oy + dy, cover, 4, 'held', F_NO_TEXTURE);
+  L.set(ox + 21, oy + 12, metal, 4, 'held', F_NO_TEXTURE);
   const f = ((r.frame % 12) + 12) % 12;
   if (f >= 9) stampTemplate(L, PAGE_TURN[f - 9], at, 0, pal, 'held', { flags: F_NO_TEXTURE });
   liftHands(g, L);

@@ -70,21 +70,27 @@ function guardFace(g: DrawCtx, layers: Map<Depth, Layer>): void {
 
 /**
  * Moves the far hand (and the glove or gauntlet on it) from behind the torso
- * to a layer over it, for poses where that hand works in front of the body.
+ * to a layer over it, for poses where that hand works in front of the body;
+ * over the near arm as well when it lies on that arm, and the far forearm
+ * (with its sleeve) over the torso too when it lies across the chest (arms
+ * crossed).
  */
 function farHandToFront(layers: Map<Depth, Layer>, g: DrawCtx): void {
   const hand = partIndex('handF');
+  const fore = g.rig.farArmFront ? partIndex('forearmF') : -1;
   const front = g.L('farHand.front');
+  const over = g.rig.farHandOver ? g.L('nearArm.over') : front;
   for (const d of ['farArm.body', 'farArm.cloth', 'farArm.armor'] as const) {
     const L = layers.get(d);
     if (!L?.used) continue;
     for (let i = 0; i < GRID * GRID; i++) {
-      if (L.mat[i] < 0 || L.part[i] !== hand) continue;
-      front.mat[i] = L.mat[i];
-      front.shade[i] = L.shade[i];
-      front.part[i] = L.part[i];
-      front.flags[i] = L.flags[i];
-      front.used = true;
+      if (L.mat[i] < 0 || (L.part[i] !== hand && L.part[i] !== fore)) continue;
+      const dest = L.part[i] === hand ? over : front;
+      dest.mat[i] = L.mat[i];
+      dest.shade[i] = L.shade[i];
+      dest.part[i] = L.part[i];
+      dest.flags[i] = L.flags[i];
+      dest.used = true;
       L.mat[i] = -1;
     }
   }

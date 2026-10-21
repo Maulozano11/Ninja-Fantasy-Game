@@ -71,7 +71,7 @@ function runes(g: DrawCtx, hex: string): void {
  * the nature's emblem), and the page tops between them. The pivot is the
  * bottom of the spine, where the fingers hold it.
  */
-const GRIMOIRE: PixelTemplate = {
+export const GRIMOIRE: PixelTemplate = {
   pivot: [12, 17],
   rows: [
     '.p............PPPPPPPPPPPPPpp..',

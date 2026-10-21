@@ -490,6 +490,12 @@ export function handDraw(g: DrawCtx, L: Layer, s: Side, pen: Pen, grow = 0): voi
     stampTemplate(L, HAND_CRADLE, j.wrist, 0, pal, pen.part, { flags });
     return;
   }
+  if (j.shape === 'side') {
+    // The cradle turned a quarter: the near hand's fingers point right over the
+    // left edge, the far hand's left over the right edge (exact 90-degree turns).
+    stampTemplate(L, HAND_CRADLE, j.wrist, s === 'N' ? 90 : -90, pal, pen.part, { flags });
+    return;
+  }
   const t =
     j.shape === 'open'
       ? HAND_OPEN

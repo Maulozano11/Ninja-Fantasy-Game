@@ -125,3 +125,12 @@ folders.
 
       npx tsx tools/refs/scarlet-idle.mts <out>
       python3 -I tools/refs/scarlet-study.py <out> <out>/male-idle.png --write
+
+- `scarlet-gloves-boots-from-ref.py`: Scarlet's tall black boots (`feet_noble_boots`) and fingerless
+  gloves (`hands_noble_fingerless`), cut out of the reduced reference into pieces that ride the rig
+  (each boot's shaft turns with the shin, its foot stays flat; each fist hangs from the wrist), with
+  his buckles and ankle strap put back from his pixels and the far fist's fingertips narrowed to his.
+  It writes `src/sprite/items/nobleBootsGlovesArt.ts` and, in `<study>`, his boots and gloves beside
+  ours at the same size.
+
+      python3 -I tools/refs/scarlet-gloves-boots-from-ref.py src/sprite/items/nobleBootsGlovesArt.ts <study>

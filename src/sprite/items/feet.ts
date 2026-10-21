@@ -5,9 +5,10 @@
 
 import { retintHex } from '../color';
 import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Side } from '../ctx';
-import { segAngle, stampPiece } from '../painted';
-import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
+import { PaintedPiece, segAngle, stampPiece } from '../painted';
+import { add, along, ellipse, F_NO_EDGE, GRID, norm, partIndex, Pen, RES, scale, seam, sub, v, Vec } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
+import { NOBLE_BOOT_LEATHER, NOBLE_BUCKLE, NOBLE_FOOT_F, NOBLE_FOOT_N, NOBLE_KIND, NOBLE_SHAFT_F, NOBLE_SHAFT_N } from './nobleBootsGlovesArt';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -250,22 +251,41 @@ export function boot(g: DrawCtx, hex: string, from: number, art: FootArt, opts: 
 /**
  * Takes the leg off below the knee (skin and trousers: the shin and the foot), for boots painted in
  * their own shape that stand where the owner drew them rather than on our leg. The round of the knee
- * above the joint stays, so the thigh still ends round.
+ * above the joint stays, so the thigh still ends round. With `cut` the leg goes below the line through
+ * `at` across `down` instead (a boot's top under the knee: the trousers above it stay), and the leg is
+ * not outlined along the cut, where the boot's own black line runs (no double line).
  */
-function lowerLegOff(g: DrawCtx, s: Side): void {
+function lowerLegOff(g: DrawCtx, s: Side, cut?: { at: Vec; down: Vec }): void {
   const shin = partIndex(`shin${s}`);
   const foot = partIndex(`foot${s}`);
   const { knee, ankle } = legJoints(g.rig, s);
-  const dir = norm(sub(ankle, knee));
+  const at = cut?.at ?? knee;
+  const dir = cut?.down ?? norm(sub(ankle, knee));
   for (const d of [legDepth(s, 'body'), legDepth(s, 'cloth')]) {
     const L = g.L(d);
     for (let i = 0; i < GRID * GRID; i++) {
       if (L.mat[i] < 0 || (L.part[i] !== shin && L.part[i] !== foot)) continue;
-      const below = ((i % GRID) + 0.5) / RES - knee.x;
-      const down = (Math.floor(i / GRID) + 0.5) / RES - knee.y;
-      if (L.part[i] === foot || below * dir.x + down * dir.y > 0) L.mat[i] = -1;
+      const below = ((i % GRID) + 0.5) / RES - at.x;
+      const down = (Math.floor(i / GRID) + 0.5) / RES - at.y;
+      if (L.part[i] !== foot && below * dir.x + down * dir.y <= 0) continue;
+      L.mat[i] = -1;
+      if (cut) L.flags[i] |= F_NO_EDGE;
     }
   }
+}
+
+/**
+ * Where a boot shaft painted by the owner starts once it is stamped on the shin: the top edge of its
+ * first row, and the shaft's own down, turned as stampPiece turns it about the ankle (to the whole
+ * degree, as RotSprite does).
+ */
+function shaftTop(g: DrawCtx, s: Side, shaft: PaintedPiece): { at: Vec; down: Vec } {
+  const { knee, ankle } = legJoints(g.rig, s);
+  const r = (Math.round(segAngle(knee, ankle) - shaft.angle) * Math.PI) / 180;
+  const down = v(-Math.sin(r), Math.cos(r));
+  const h = (shaft.pivot[1] + 0.5) / RES;
+  const pivot = v((Math.floor(ankle.x * RES) + 0.5) / RES, (Math.floor(ankle.y * RES) + 0.5) / RES);
+  return { at: add(pivot, scale(down, -h)), down };
 }
 
 export const FEET_ITEMS: ItemDef[] = [
@@ -444,6 +464,31 @@ export const FEET_ITEMS: ItemDef[] = [
         const foot = s === 'N' ? SABATON_FOOT_N : SABATON_FOOT_F;
         stampPiece(g, legDepth(s, 'feet'), shin, at, segAngle(knee, ankle), `shin${s}`, tint);
         stampPiece(g, legDepth(s, 'feet'), foot, at, foot.angle, `foot${s}`, tint);
+      }
+    },
+  },
+  {
+    id: 'feet_noble_boots',
+    slot: 'feet',
+    name: 'Noble Boots',
+    desc: 'Tall black boots: a strap with a bronze buckle across the cuff, a shine down the shin and over the toe, a black sole.',
+    colors: [col('main', 'Leather', NOBLE_BOOT_LEATHER), col('buckle', 'Buckle', NOBLE_BUCKLE, 'metal')],
+    draw: (g, [leather, buckle]) => {
+      // The owner's boots from his Scarlet picture (2026-10-21; tools/refs/scarlet-gloves-boots-from-ref.py),
+      // brought down to our scale on our leg: on each leg the shaft turns with the shin about the ankle and
+      // the foot stays flat on the ground like our feet. The leg goes below the shaft's top (the trousers
+      // tuck into it). His leather and bronze follow the colour slots; his black line stays.
+      const tint = (_ch: string, hex: string) => {
+        const k = NOBLE_KIND[hex];
+        return k === 'leather' ? retintHex(hex, NOBLE_BOOT_LEATHER, leather) : k === 'bronze' ? retintHex(hex, NOBLE_BUCKLE, buckle) : hex;
+      };
+      for (const s of SIDES) {
+        const { knee, ankle } = legJoints(g.rig, s);
+        const shaft = s === 'N' ? NOBLE_SHAFT_N : NOBLE_SHAFT_F;
+        const foot = s === 'N' ? NOBLE_FOOT_N : NOBLE_FOOT_F;
+        lowerLegOff(g, s, shaftTop(g, s, shaft));
+        stampPiece(g, legDepth(s, 'feet'), shaft, ankle, segAngle(knee, ankle), `shin${s}`, tint);
+        stampPiece(g, legDepth(s, 'feet'), foot, ankle, foot.angle, `foot${s}`, tint);
       }
     },
   },

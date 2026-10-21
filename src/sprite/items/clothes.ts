@@ -4,11 +4,12 @@
 // parameters); primitives rasterize at the fine 128x128 resolution, so seams,
 // stitching and buttons can be a single fine pixel.
 
-import { hexToRgb, retintHex } from '../color';
+import { hexToRgb, hslToHex, retintHex, rgbToHsl } from '../color';
 import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
 import { PaintedPiece, segAngle } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
+import { NOBLE_GLOVE_F, NOBLE_GLOVE_LEATHER, NOBLE_GLOVE_N, NOBLE_GLOVE_TONES, NOBLE_HAND_SKIN, NOBLE_KIND } from './nobleBootsGlovesArt';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -1734,6 +1735,65 @@ function paintedFist(g: DrawCtx, s: Side, piece: PaintedPiece, color: (ch: strin
   stampTemplate(g.L(armDepth(s, 'armor')), piece, j.wrist, Math.abs(turn) <= 30 ? 0 : turn, pal, prt('hand', s), { flipX, flags: F_NO_TEXTURE | F_NO_OUTLINE });
 }
 
+/**
+ * Where our hand pictures' fingertips are, in pixels from the wrist (the picture's pivot) as the
+ * picture is drawn, hanging and unmirrored (the cradling hand upright): a fingerless glove leaves them
+ * bare. The open hand's last finger joints and its thumb's tip; the pointing finger's tip and the
+ * curled fingers under the fist; the relaxed hand's curled fingers; the cradling hand's fingers over
+ * what it carries.
+ */
+const FINGERTIPS: Record<'open' | 'point' | 'relaxed' | 'cradle', (x: number, y: number) => boolean> = {
+  open: (x, y) => y >= 7 || (x >= 5 && y >= 3 && y <= 5),
+  point: (x, y) => y >= 8 || (x <= 0 && y >= 5),
+  relaxed: (x, y) => y >= 6,
+  cradle: (_x, y) => y <= -6,
+};
+
+/**
+ * A colour of the owner's skin in the character's, as his painted heads take it (body.ts skinTone):
+ * the hue turned and the saturation scaled from the skin he painted in, the lightness scaled so his
+ * skin lands on the character's. In his own skin, his colour.
+ */
+function hisSkin(hex: string, from: string, skin: string): string {
+  if (skin.toLowerCase() === from) return hex;
+  const [h, s, l] = rgbToHsl(...hexToRgb(hex));
+  const [h0, s0, l0] = rgbToHsl(...hexToRgb(from));
+  const [h1, s1, l1] = rgbToHsl(...hexToRgb(skin));
+  const lt = l <= l0 ? (l * l1) / l0 : l1 + ((l - l0) * (1 - l1)) / (1 - l0);
+  return hslToHex(h + (h1 - h0), Math.min(1, (s * s1) / s0), lt);
+}
+
+/**
+ * Our hand picture for the pose (open, pointing, relaxed, cradling) in a fingerless glove: the owner's
+ * leather tones over the palm and the back of the hand, the fingertips (FINGERTIPS) left to the bare
+ * hand drawn under it.
+ */
+function fingerlessHand(g: DrawCtx, s: Side, tones: readonly string[]): void {
+  const { kind, rot, flipX } = handPose(g, s);
+  if (kind === 'grip' || kind === 'fist') return;
+  const tmp = new Layer();
+  handDraw(g, tmp, s, { mat: 0, part: prt('hand', s), bias: sb(s) });
+  const j = armJoints(g.rig, s);
+  const ax = Math.floor(j.wrist.x * RES);
+  const ay = Math.floor(j.wrist.y * RES);
+  // the cradling hand is stamped upright and unmirrored, whatever the forearm does (handDraw)
+  const r = kind === 'cradle' ? 0 : (Math.round(rot) * Math.PI) / 180;
+  const mirror = flipX && kind !== 'cradle';
+  const tip = FINGERTIPS[kind];
+  const mats = tones.map((t) => g.m(t, 'flat'));
+  const L = g.L(armDepth(s, 'armor'));
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (tmp.mat[i] < 0) continue;
+    const dx = (i % GRID) - ax;
+    const dy = ((i / GRID) | 0) - ay;
+    // back into the picture as drawn: unturned, then unmirrored
+    const x = Math.round(dx * Math.cos(r) + dy * Math.sin(r));
+    const y = Math.round(-dx * Math.sin(r) + dy * Math.cos(r));
+    if (tip(mirror ? -x : x, y)) continue;
+    L.set(i % GRID, (i / GRID) | 0, mats[Math.max(0, Math.min(tmp.shade[i], mats.length - 1))], 3, prt('hand', s), F_NO_TEXTURE | F_NO_OUTLINE);
+  }
+}
+
 /** Our hand picture for the pose (open, pointing, relaxed, cradling), in the owner's leather tones. */
 function leatherHand(g: DrawCtx, s: Side, color: (ch: string, hex: string) => string): void {
   const tmp = new Layer();
@@ -1873,6 +1933,33 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
           bareHandOff(g, s);
           paintedFist(g, s, s === 'N' ? GAUNTLET_N : GAUNTLET_F, tint);
         } else leatherHand(g, s, tint);
+      }
+    },
+  },
+  {
+    id: 'hands_noble_fingerless',
+    slot: 'hands',
+    name: 'Noble Fingerless Gloves',
+    desc: 'Black leather gloves that leave the fingertips bare.',
+    colors: [col('main', 'Leather', NOBLE_GLOVE_LEATHER, 'leather')],
+    draw: (g, [leather]) => {
+      // The owner's fingerless gloves from his Scarlet picture (2026-10-21;
+      // tools/refs/scarlet-gloves-boots-from-ref.py), brought down to our scale on our fists. Closed, each
+      // hand is his fist in place of ours: the near one round the grip (the same fist closes on nothing),
+      // the far one hanging, his skin on the fingertips following the character's. Open, pointing, relaxed
+      // or cradling (hand signs, casts, a book) it is our hand picture in his leather, the fingertips bare.
+      // His leather follows the colour slot; his black line stays.
+      const tint = (_ch: string, hex: string) => {
+        const k = NOBLE_KIND[hex];
+        if (k === 'leather') return retintHex(hex, NOBLE_GLOVE_LEATHER, leather);
+        return k === 'skin' ? hisSkin(hex, NOBLE_HAND_SKIN, g.look.skin) : hex;
+      };
+      for (const s of SIDES) {
+        const { kind } = handPose(g, s);
+        if (kind === 'grip' || kind === 'fist') {
+          bareHandOff(g, s);
+          paintedFist(g, s, s === 'N' ? NOBLE_GLOVE_N : NOBLE_GLOVE_F, tint);
+        } else fingerlessHand(g, s, NOBLE_GLOVE_TONES.map((t) => tint('', t)));
       }
     },
   },

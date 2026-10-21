@@ -894,7 +894,7 @@ Water Stream the water stream.
 
 ## Rank D and C jutsu (proposed 2026-10-21; the owner's answer the same day)
 
-**Approved in the game (2026-10-21):** "apruebo los 12 jutsus con excepcion del de tajo sangrante ya que hay que añadir algun sprite de sangre explotando hacia el lado donde se hace el corte para efecto de sangrado". All twelve are merged; the Bleeding Cut plays as built until its blood spray (a burst of blood thrown toward the side the cut travels) is made and approved.
+**Approved in the game (2026-10-21):** "apruebo los 12 jutsus con excepcion del de tajo sangrante ya que hay que añadir algun sprite de sangre explotando hacia el lado donde se hace el corte para efecto de sangrado". All twelve are merged; the Bleeding Cut plays as built until its blood spray (a burst of blood thrown toward the side the cut travels) is made and approved. The spray (and the drops on the screen he asked for next) is built on `jutsu/bleeding-blood`, waiting for his approval (below, "Bleeding Cut's blood").
 
 Twelve low-rank jutsu for the creator, all drawn with the owner's approved
 element sets. The Spanish proposal (with its previews) was shown to him; he
@@ -966,6 +966,23 @@ How they look (the owner's answers; the screen reads them from each jutsu's
   one hit, 80 ms apart, and the next turn waits for the last spark.
 - **Bleeding Cut**: its own effect, the wind's crescent cut in white, as a
   sword art has no element (`vfx_neutral`).
+- **Bleeding Cut's blood** (the owner, 2026-10-21: "hay que añadir algun sprite
+  de sangre explotando hacia el lado donde se hace el corte para efecto de
+  sangrado", then "las gotas de sangre manchan la pantalla cuando exitosamente
+  se consigue el sangrado"); built on `jutsu/bleeding-blood`, **waiting for his
+  approval**: on a hit, as the crescent crosses the target (150 ms after the
+  blade comes down), a stylised spray of blood bursts from the chest toward the
+  side the cut travels (mirrored when it goes left), its drops arc, fall and lie
+  on the ground a moment, then fade (`vfx_blood/spray`, 12 frames at 12 fps,
+  from `tools/world-sprites/vfx-blood.ts`; dark-red ramp with his dark line and
+  a bright glint; drawn in front, kept below the face). When the cut leaves
+  Bleeding (not on a miss, not if the foe falls), three drops splash onto the
+  screen itself near the edge the cut went toward, clear of the HUD panels,
+  scaled with the screen and not the zoom; they hold, run down and fade in
+  1.7 s at speed 1 (faster at 2× and 3×), and nothing waits for them
+  (`vfx_blood/screen`). When Bleeding hurts at the start of the ninja's turn a
+  few drops fall from the wound (`vfx_blood/spray` drip). Blood has no element:
+  the chakra colour never touches it (`seq.blood`, `bloodPlan.ts`).
 - **Rush**: a flash of chakra where the ninja sets off, a run at twice the
   speed and a shoulder tackle (a new pose: the head tucked down behind the
   leading shoulder; a katana stowed at the hip hangs back along the leg, a blade

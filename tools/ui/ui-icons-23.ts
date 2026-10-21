@@ -74,11 +74,14 @@
 // Two more carry his phase (2026-10-21: the Ryusei warp is a "phase", his ninjas drawn as the figure
 // of blue light in his reference picture), made the same way (see phaseEdit and phaseArt):
 //  - Swap (ryusei_swap) and Warp Strike (ryusei_warp): his ninjas keep their pose, silhouette and
-//    details, but their bodies become light in his reference's blues: a translucent blue body (his
-//    greys on the blues, a little of his ground showing through), his lit greys and skin the
-//    brighter blues, his outline and fold lines the near-white rim and light lines, a soft blue
-//    glow round them; Swap's left ninja dissolves into his streaks on his trailing side. His vortex,
-//    portal, kunai, wind, speed lines and stars stay his. At 88 and 44 the rim is drawn again crisp.
+//    details, but their bodies become light in his reference's blues: a translucent deep blue body
+//    (his greys on his reference's deep blues, a little of his ground showing through), his lit
+//    greys and skin the brighter blues, his outline the rim (pale blue where it faces his light, a
+//    lit blue elsewhere) and his fold lines light blue lines, his eyes dark in the light band of the
+//    face, a soft blue glow round them that only ever lightens his ground; Swap's left ninja
+//    dissolves into his streaks on his trailing side. His vortex, portal, kunai, wind, speed lines
+//    and stars stay his. At 88 and 44 the lit rim and the eyes are drawn again crisp, and the
+//    figure's pixels take the figure's own colours (not his ground's), so it stays deep blue.
 
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -762,6 +765,8 @@ interface MarkRule {
   minPx: number;
   speck?: number;
   share: number;
+  /** The share at 88 when the 88 is reduced too (sheets 8 and 11; default `share`): a pixel there holds about two of his, so one mark pixel of two is already half. */
+  share88?: number;
   mix?: number;
   where?: (x: number, y: number) => boolean;
   /** The pixels it marks are kept out of the clean-up as his own (his embers, his teeth: a pixel or two each, which the clean-up merged into their ground). */
@@ -844,7 +849,7 @@ function reduceKeep(W: F, N: number, rules: MarkRule[]): Reduced {
   });
   for (let c = 0; c < N * N; c++) {
     const x = c % N, y = (c - x) / N;
-    const pick = rules.findIndex((rule, s) => share[s][c] >= rule.share && (!rule.where || rule.where(x, y)));
+    const pick = rules.findIndex((rule, s) => share[s][c] >= (N === 88 ? rule.share88 ?? rule.share : rule.share) && (!rule.where || rule.where(x, y)));
     if (pick < 0) continue;
     const mix = rules[pick].mix ?? 1;
     const peak = rules[pick].pick === 'peak';
@@ -1476,13 +1481,15 @@ function compassPixels(cx: number, cy: number, L: number, w: number, l: number, 
 // red (#fe1020 and the like, OKLab L 0.6 to 0.63) from the pupil out to radius 14, darker from 15 to
 // his dark rim.
 const CMD = { cx: 60, cy: 59, inner: 16.5, pattern: 15.5, bright: 14.5, shade: 52 };
-// The compass rose, at 88 (his scale x 127/88 for the comparison sheet): long points of 8.5 pixels
-// (the north one ends under his lid's dark line, as the iris does), short ones 4.5. Colours: his
+// The compass rose, at 88 (his scale x 127/88 for the comparison sheet): long points of 10 pixels
+// (the north one 8.5: it ends under his lid's dark line, as the iris does), and between them his
+// star's four diagonal points, 8 long and 2.6 to a side at the heart (four fifths of the long ones,
+// as on his Submission star; shorter and thinner, they stayed hidden inside the long ones). Colours: his
 // Submission star's own: his lit crimson (#e80c28) on the facets toward his light, his shaded crimson
 // (#a0001e) and his deep red (#6a0418) on the others, his pale pink (#ffb4bc) only as the thin stroke
 // along the north and west points, his palest (#ffc5c8) at the heart, his dark maroon (#4c031e) as
 // the outline that sets it off his bright iris.
-const CMD_STAR = { L: 10, Ln: 8.5, w: 3.8, l: 5.5, wl: 2, centre: 0.7 };
+const CMD_STAR = { L: 10, Ln: 8.5, w: 3.8, l: 8, wl: 2.6, centre: 0.7 };
 const STAR_INK: Record<StarKey, string> = { centre: '#ffc5c8', ridge: '#ffb4bc', pale: '#dc112d', light: '#dc112d', bright: '#a0001e', dark: '#6a0418', ink: '#4c031e' };
 /** His iris's bright red (his pixels round the pupil). */
 const CMD_IRIS = '#fe1020';
@@ -1546,9 +1553,22 @@ function commandPreview(W: F): void {
   for (const p of compassPixels(CMD.cx, CMD.cy, s.L * k, s.w * k, s.l * k, s.wl * k, s.centre * k, s.Ln * k)) setW(W, p.x, p.y, STAR_INK[p.k]);
 }
 
-// The compass at 44: the same shape at that size (long points of 4.5 pixels, the north one 3.5 so it
-// ends under his lid's dark line, short ones 2.6), round the pixel that holds his iris's centre.
-const CMD_STAR44 = { L: 4.5, Ln: 3.5, w: 1.8, l: 2.6, wl: 0.9, centre: 0.5 };
+// The compass at 44, by hand (the shape above drawn at that size was a checker of outline and facets
+// on 9 by 8 pixels, its four short points lost): round the pixel that holds his iris's centre (the
+// 'c', 5 in from the left of the patch, 2 down), the four long points one pixel wide (the north one
+// two, so it ends under his lid's dark line) with his pale pink stroke along the north and west ones,
+// the four short points one pixel each at the diagonals; the facets in his star's shaded crimson and
+// deep reds, which stand on the bright iris without an outline (his lit crimson does not).
+const CMD_ROSE44 = [
+  '...b.P.b...',
+  '....aPa....',
+  '.alPPcabbd.',
+  '....aab....',
+  '...b.a.b...',
+  '.....b.....',
+  '.....d.....',
+];
+const CMD_ROSE44_INK = { P: STAR_INK.ridge, c: STAR_INK.centre, l: STAR_INK.light, a: STAR_INK.bright, b: STAR_INK.dark, d: STAR_INK.ink };
 
 /**
  * His iris round the rose in his own bright red: his iris is one flat bright red (#fe1020) from the
@@ -1574,7 +1594,12 @@ function commandArt(pt: Paint, ctx: Ctx): void {
   if (pt.N === 44) {
     const ax = Math.floor(mx), ay = Math.floor(my);
     irisRadiant(pt, ctx);
-    drawRose(pt, ax + 0.5, ay + 0.5, CMD_STAR44);
+    pt.ascii(ax - 5, ay - 2, CMD_ROSE44, CMD_ROSE44_INK);
+    // His sclera's right edge (x 27, y 19 to 21) and his lower lid's grey line (y 27, x 18 to 23): the
+    // dark rule took the first (a third of it his iris's dark rim) and the bright rule the second
+    // (his sclera's thin white edge in it); both back on his box colour there (#b7aab0, #bfaab1).
+    const box = ctx.red.box;
+    for (const [x, y] of [[27, 19], [27, 20], [27, 21], [18, 27], [19, 27], [20, 27], [21, 27], [22, 27], [23, 27]]) pt.px(x, y, toHex(box.rgb(y * 44 + x)));
     // His lower-left sparkle (his pixels 17-26, 89-100): at 44 his box keeps its white core at (7, 33)
     // and his pinks round it, where the palette's nearest was a flat pink square.
     pt.ascii(6, 32, ['.r.', 'rwp', '.p.'], { w: '#ffced2', p: '#f8848e', r: '#f43d4e' });
@@ -1670,6 +1695,12 @@ function miraiArt(pt: Paint, ctx: Ctx): void {
 // left ninja of Swap dissolves into his streaks and after-image (translucent blue, no rim) on his
 // trailing side. Everything that is not his ninjas (his vortex and portal, his kunai, his wind and
 // speed lines, his stars, his ground) stays his, but for the glow round the ninjas.
+// How light: his reference figure is mostly deep blue (60% of its pixels darker than OKLab L 0.5, its
+// median 0.44, only 4% near-white). So the body is his greys on the ramp's deep steps (#041384 to
+// #2d49cf) at 92%, the pale rim (#c4e3ff) runs only where the figure faces his light and a lit blue
+// (#5a7ae8) elsewhere, his fold lines are #799bf8, and the glow is laid on as light (screen: on
+// Swap's cyan a darker blue mix had read as a dark outline). A first pass, with a near-white rim all
+// round and the body on the middle blues, came out at 44 as pale outlines (42% near-white).
 
 /** His phase blues, dark to light: the median colour of his reference figure's pixels in ten steps of lightness, and its whitest. */
 const PHASE_RAMP = ['#00035a', '#041384', '#11249b', '#1d35ba', '#2d49cf', '#415fdc', '#5a7ae8', '#799bf8', '#99bbff', '#c4e3ff', '#e4ffff'];
@@ -1918,12 +1949,12 @@ function phaseEdit(id: string, s: PhaseSpec): (W: F) => string {
     }
     return (
       `${s.what}: his ninja${s.areas.length > 1 ? 's' : ''} (${count.rim + count.line + count.fill + count.gap + count.skin + count.eye} of his pixels${count.smear ? `, and ${count.smear} of his see-through after-image` : ''}) redrawn as ${s.areas.length > 1 ? 'figures' : 'a figure'} of blue light in his reference's blues (${PHASE_RAMP.join(' ')}): ` +
-      `the silhouette as the near-white rim (${count.rim} pixels; his reference's whitest where it faces up or left), ` +
-      `his fold lines (darker than ${s.lineL}, or ${s.lineDrop} darker than his ninja round them) as light blue lines (${count.line}), ` +
-      `his greys on the blues (his lightness ${s.fillLo} to ${s.fillHi} on steps ${s.fillSteps[0]} to ${s.fillSteps[1]}, ${PHASE_RAMP[s.fillSteps[0]]} to ${PHASE_RAMP[s.fillSteps[1]]}, a step lighter just inside the rim) at ${Math.round(s.alpha * 100)}% over his ground filled in from round the figure, so a little of it shows through (${count.fill}; his wind across the figure the same over his own pixels, ${count.gap}), ` +
+      `the silhouette as the rim (${count.rim} pixels; his reference's pale ${PHASE_RAMP[s.rimLit]} where it faces up or left, his lit ${PHASE_RAMP[s.rimShade]} elsewhere), ` +
+      `his fold lines (darker than ${s.lineL}, or ${s.lineDrop} darker than his ninja round them) as light blue lines (${PHASE_RAMP[s.lineStep]}, ${count.line}), ` +
+      `his greys on his reference's deep blues (his lightness ${s.fillLo} to ${s.fillHi} on steps ${s.fillSteps[0]} to ${s.fillSteps[1]}, ${PHASE_RAMP[s.fillSteps[0]]} to ${PHASE_RAMP[s.fillSteps[1]]}) at ${Math.round(s.alpha * 100)}% over his ground filled in from round the figure, so a little of it shows through (${count.fill}; his wind across the figure the same over his own pixels, ${count.gap}), ` +
       `his skin his bright blues (${PHASE_RAMP[7]} to ${PHASE_RAMP[9]} by his lightness, ${count.skin})${count.eye ? `, his eyes ${PHASE_RAMP[s.eyeStep]} so they stay dark in that light band (${count.eye})` : ''}` +
       (count.smear ? `, his after-image his reference's blue (${PHASE_RAMP[6]}) over his pixels at ${Math.round(s.smearAlpha * 100)}% (${count.smear})` : '') +
-      `; a soft glow of his blue (${PHASE_RAMP[5]}) round the figure, half at the edge, gone at three pixels (${count.glow}). Everything else stays his.`
+      `; a soft glow of his blue (${PHASE_RAMP[s.glowStep]}) round the figure laid on as light (screen: it only lightens his ground), half at the edge, gone at three pixels (${count.glow}). Everything else stays his.`
     );
   };
 }
@@ -1999,10 +2030,11 @@ const WARP_PHASE: PhaseSpec = {
 
 /**
  * The phase figure again at each size, crisp: a pixel is the figure's when at least `cover` of his
- * pixels in it are (the mask the edit found), and the figure's pixels next to one that is not (4-
- * neighbours) are its rim, drawn in his reference's whitest where it faces up or left and the next
- * step elsewhere; the pixels just outside take the glow's blue at `glow`. The reduction alone
- * spread his one-pixel rim into the ground and the figures went soft.
+ * pixels in it are (the mask the edit found). A figure pixel holding one of his eyes is the eyes' dark
+ * blue; one with his ground (not his after-image) above it or to its left is the lit rim (ramp step
+ * `rim`); any other is the mean of the figure's own pixels in it, and a ground pixel the figure only
+ * touches the mean of the ground's: the plain area mean mixed the deep blue body with his cyan
+ * ground and spread his one-pixel rim into it, and the figures went pale and soft.
  */
 function phaseArt(id: string, s: PhaseSpec, at: Record<number, { cover: number; rim: number }>): (pt: Paint, ctx: Ctx) => void {
   return (pt: Paint, ctx: Ctx): void => {
@@ -2475,7 +2507,7 @@ const ICONS: IconSpec[] = [
     sheet: '8',
     edit: phaseEdit('ryusei_swap', SWAP_PHASE),
     art: phaseArt('ryusei_swap', SWAP_PHASE, { 44: { cover: 0.5, rim: 8 }, 88: { cover: 0.5, rim: 9 } }),
-    editArt: "at each size the phase figures' rim drawn again crisp (the reduction spread his one-pixel rim into his ground): a pixel is the figure's when at least half of his pixels in it are, the figure's pixels next to his ground (not his after-image) are the rim, his reference's whitest (#e4ffff) where it faces up or left and #c4e3ff elsewhere, the pixels just outside 40% toward the glow's blue (#415fdc)",
+    editArt: "at each size the phase figures drawn again crisp (the plain area mean mixed his ninjas' deep blue with his cyan ground and spread his one-pixel rim into it): a pixel is the figure's when at least half of his pixels in it are; there his eyes are #041384, the figure's pixels with his ground (not his after-image) above them or to their left are the lit rim (#c4e3ff at 88, #99bbff at 44), the others the mean of the figure's own pixels in them; a ground pixel the figure only touches is the mean of the ground's",
     asked: PHASE_ASKED,
     inks: [{ hex: PHASE_RAMP, why: "his reference picture's blues, for his phase ninjas" }],
     cover: COVER,
@@ -2498,7 +2530,7 @@ const ICONS: IconSpec[] = [
     flat: 0.5,
     chroma: 1.1,
     edit: commandEdit,
-    editArt: "at each size his iris put back on his own bright red (#fe1020) where the reduction spread it over the neighbouring reds, then the compass rose drawn on it, centred on the iris: four long points (at 88 8.5 pixels long, at 44 4.5; the north one shorter, 8.5 and 3.5, so it ends under his lid's dark line) and four short ones between, each split into a lit facet (his crimson #dc112d) and a shaded one (his #a0001e and #6a0418), his pale pink #ffb4bc only as the thin stroke along the north and west points, his palest #ffc5c8 at the heart, his dark maroon #4c031e as the outline (not drawn over his darker lid line); at 44 also his lower-left sparkle's white core (#ffced2) with his pinks round it",
+    editArt: "at each size his iris put back on his own bright red (#fe1020) where the reduction spread it over the neighbouring reds, then the compass rose drawn on it, centred on the iris, with eight points as his Submission star has: at 88 four long points (10 pixels; the north one 8.5, so it ends under his lid's dark line) and four diagonal ones between them (8 pixels), each split into a lit facet (his crimson #dc112d) and a shaded one (his #a0001e and #6a0418), his pale pink #ffb4bc only as the thin stroke along the north and west points, his palest #ffc5c8 at the heart, his dark maroon #4c031e as the outline (not drawn over his darker lid line); at 44 by hand, the long points one pixel wide (4 pixels; the north one 2) and the diagonal ones a pixel each, in his #a0001e, #6a0418 and #4c031e with his pale strokes and heart, no outline; at 44 also his sclera's right edge and his lower lid's grey line back on his box colours (#b7aab0, #bfaab1; the dark and bright rules took them), and his lower-left sparkle's white core (#ffced2) with his pinks round it",
     preview: commandPreview,
     inks: [
       { hex: [...new Set(Object.values(STAR_INK))], why: "his Submission star's colours, for the compass rose" },
@@ -2533,6 +2565,13 @@ const ICONS: IconSpec[] = [
     ],
     marks: [
       { kind: 'colour', what: 'his violet chains', r: 0, thr: 0, hue: [305, 336], minC: 0.12, minL: 0.35, minPx: 4, share: 0.15, mix: 0.7 },
+      // The lit red edges of his red chains' links (#b42643, #c93348, #d13743; his pixels left of 38 and
+      // right of 88, below his star): the dark-links rule took the cells they share with the links' dark
+      // gaps, and his bright edges came out the palette's dark #8a102a.
+      { kind: 'colour', what: "the lit red edges of his red chains' links", r: 0, thr: 0, hue: [5, 35], minC: 0.12, minL: 0.43, minPx: 2, share: 0.5, mix: 0.7, win: (x, y) => (x < 38 || x >= 88) && y >= 28 },
+      // His star's north point: the thin pale stroke down its axis (his pixels 61-63, 5-15; #dd4b66 to
+      // #fb8b94 in his box at 44), a pixel wide at 44, which the clean-up merged into the crimson.
+      { kind: 'colour', what: "the pale stroke down his star's north point", r: 0, thr: 0, minL: 0.62, minPx: 2, share: 0.2, mix: 0.35, keep: true, win: (x, y) => x >= 60 && x < 65 && y < 16 },
       // Not on his star: kept in their own colour at 88 and 44 his thin pale strokes grew into pale facets.
       { kind: 'bright', what: 'the lit links of his chains and his embers (not his star)', r: 1, thr: 0.08, minL: 0.62, minPx: 3, speck: 0.15, share: 0.2, mix: 0.75, win: (x, y) => !(x >= 35 && x < 95 && y < 48) },
       { kind: 'dark', what: 'the dark links of his chains', r: 1, thr: 0.08, maxL: 0.25, minPx: 6, share: 0.3, mix: 0.6 },
@@ -2606,7 +2645,7 @@ const ICONS: IconSpec[] = [
     sheet: '9',
     edit: phaseEdit('ryusei_warp', WARP_PHASE),
     art: phaseArt('ryusei_warp', WARP_PHASE, { 44: { cover: 0.5, rim: 8 }, 88: { cover: 0.5, rim: 9 } }),
-    editArt: "at each size the phase figure's rim drawn again crisp (at 88 through his kept columns and rows, at 44 the reduction spread his one-pixel rim into his ground): a pixel is the figure's when at least half of his pixels in it are, the figure's pixels next to his ground are the rim, his reference's whitest (#e4ffff) where it faces up or left and #c4e3ff elsewhere, the pixels just outside 40% toward the glow's blue (#415fdc)",
+    editArt: "at each size the phase figure drawn again crisp (at 88 through his kept columns and rows; at 44 the plain area mean mixed his ninja's deep blue with his portal and spread his one-pixel rim into it): a pixel is the figure's when at least half of his pixels in it are; there his eyes are #041384, the figure's pixels with his ground above them or to their left are the lit rim (#c4e3ff at 88, #99bbff at 44), the others the mean of the figure's own pixels in them; a ground pixel the figure only touches is the mean of the ground's",
     asked: PHASE_ASKED,
     inks: [{ hex: PHASE_RAMP, why: "his reference picture's blues, for his phase ninja" }],
     cover: COVER,
@@ -2636,8 +2675,15 @@ const ICONS: IconSpec[] = [
     // palette's orange and the clean-up took; his dark jaw lines round them a little stronger.
     extra: [{ box: [15, 54, 26, 64], lo: 0.6, hi: 1, spare: false, by: 'L', only: { hue: [95, 112] }, why: "the yellow core of his left head's mouth" }],
     marks: [
-      { kind: 'colour', what: "the yellow cores of his heads' mouths", r: 0, thr: 0, hue: [95, 112], minC: 0.12, minL: 0.88, minPx: 2, share: 0.2, mix: 1, pick: 'peak', keep: true },
-      { kind: 'dark', what: 'the dark outlines of his three dragon heads', r: 1, thr: 0.1, maxL: 0.25, minPx: 6, share: 0.25, mix: 0.6 },
+      // The right head's teeth (his pixels 84-92, 34-50): his yellow teeth against his one-pixel black jaw
+      // line, which his box makes olive and tan (#8c5f29, #917337, #a17b44). The dark rule took them to
+      // maroon, the mouth core rule to yellow, and the clean-up merged what was left: a 44 pixel with a
+      // fifth of it tooth keeps his box colour and stays.
+      { kind: 'colour', what: "the right head's teeth (his box colour kept)", r: 0, thr: 0, hue: [85, 112], minC: 0.08, minL: 0.8, minPx: 2, share: 0.2, mix: 0, keep: true, win: (x, y) => x >= 84 && x < 93 && y >= 34 && y < 50 },
+      // Half toward his yellow: in full his core spread over 15 pixels of the right head's mouth (his box
+      // has 7).
+      { kind: 'colour', what: "the yellow cores of his heads' mouths", r: 0, thr: 0, hue: [95, 112], minC: 0.12, minL: 0.88, minPx: 2, share: 0.35, mix: 0.5, keep: true },
+      { kind: 'dark', what: 'the dark outlines of his three dragon heads', r: 1, thr: 0.1, maxL: 0.25, minPx: 6, share: 0.25, mix: 0.6, win: (x, y) => !(x >= 84 && x < 93 && y >= 34 && y < 50) },
       { kind: 'bright', what: 'his fire in the mouths, the teeth and the embers', r: 1, thr: 0.08, minL: 0.8, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
     ],
     bil44: [0, 0],
@@ -2669,6 +2715,9 @@ const ICONS: IconSpec[] = [
     flat: 0.5,
     chroma: 1.1,
     marks: [
+      // His four magenta sparkles (his pixels about (30, 5), (85, 29), (90, 69), (34, 84)): their light
+      // cores (#e578e0, #fdb2ff) a pixel at 44, which the clean-up merged into the dim violet round them.
+      { kind: 'colour', what: 'the light cores of his magenta sparkles', r: 0, thr: 0, hue: [300, 345], minC: 0.12, minL: 0.62, minPx: 2, share: 0.1, mix: 0.8, pick: 'peak', keep: true },
       { kind: 'bright', what: 'his gold links, runes, spear tips and sparkles', r: 1, thr: 0.08, minL: 0.7, minPx: 3, speck: 0.15, share: 0.35, mix: 0.8 },
       { kind: 'dark', what: 'the dark gaps inside his chain links', r: 1, thr: 0.1, maxL: 0.3, minPx: 4, share: 0.3, mix: 0.6 },
     ],
@@ -2684,6 +2733,9 @@ const ICONS: IconSpec[] = [
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
+    // His hood's lit band above the eyes (his pixels 44-48, 30: #425558, a teal grey) went to the
+    // palette's olive grey (#4e504a) of its lightness.
+    extra: [{ box: [43, 29, 50, 31], lo: 0, hi: 1, spare: false, by: 'chroma', only: { hue: [190, 235], minL: 0.4 }, why: "his hood's lit teal-grey band" }],
     marks: [
       { kind: 'dark', what: 'the near-black outlines of his ninja and the palms', r: 1, thr: 0.1, maxL: 0.16, minPx: 6, share: 0.25, mix: 0.55 },
       { kind: 'bright', what: 'his glowing trigram circle and the light swirl', r: 1, thr: 0.08, minL: 0.75, minPx: 3, speck: 0.15, share: 0.35, mix: 0.75 },
@@ -2700,6 +2752,9 @@ const ICONS: IconSpec[] = [
     colors: 22,
     flat: 0.5,
     chroma: 1.1,
+    // Hue weighed more: his clone's slate violet streaks (#362f50 to #483f5e) went to the palette's
+    // brown mauve (#563c48), of their lightness but another hue, a brown bar across the clone's waist.
+    qChroma: 1.6,
     extra: [{ box: [20, 30, 115, 65], lo: 0.5, hi: 0.9, spare: false, by: 'L', only: { hue: [25, 75], minL: 0.55 }, why: "the skin of his ninjas' hands making the sign" }],
     marks: [
       { kind: 'colour', what: "the skin of his ninjas' hands making the sign", r: 0, thr: 0, hue: [25, 75], minC: 0.04, minL: 0.45, minPx: 2, share: 0.25, mix: 0.6, win: (x, y) => y >= 30 && y < 62 && ((x >= 15 && x < 45) || (x >= 95 && x < 125)) },
@@ -2743,8 +2798,10 @@ const ICONS: IconSpec[] = [
     // whitest foam kept white.
     qChroma: 1.6,
     marks: [
-      { kind: 'colour', what: 'his whitest foam and spray', r: 0, thr: 0, minL: 0.93, minPx: 2, share: 0.5, mix: 1, pick: 'peak' },
-      { kind: 'bright', what: 'his white foam, spray and the light crests of the water', r: 1, thr: 0.08, minL: 0.8, minPx: 3, speck: 0.15, share: 0.35, mix: 0.8 },
+      // At 88 (a pixel holds about two of his) a cell needs most of it foam: with half, the half of his
+      // spray's mid greys next to a white speck went near-white.
+      { kind: 'colour', what: 'his whitest foam and spray', r: 0, thr: 0, minL: 0.93, minPx: 2, share: 0.5, share88: 0.6, mix: 1, pick: 'peak' },
+      { kind: 'bright', what: 'his white foam, spray and the light crests of the water', r: 1, thr: 0.08, minL: 0.8, minPx: 3, speck: 0.15, share: 0.35, share88: 0.6, mix: 0.8 },
       { kind: 'dark', what: 'the dark lines between his water bands', r: 1, thr: 0.07, maxL: 0.35, minPx: 6, share: 0.3, mix: 0.6 },
     ],
     bil44: [0, 0],

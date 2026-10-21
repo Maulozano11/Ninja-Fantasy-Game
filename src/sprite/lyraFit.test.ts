@@ -60,6 +60,20 @@ describe('Lyra on our body', () => {
     for (const x of [125, 126, 127]) assert.notEqual(hexAt(f, x, 149), '#af4547', `${x}`);
   });
 
+  it('shows his neck, ear and hair round them at idle: his line on the neck, his hair past it and between arm and corset', () => {
+    const f = renderSprite(lyra(), 'idle', 0).rgba;
+    // the neck's far line (his 54, 27 and 55, 28) and his hair past it (55, 27), not our shoulders' skin
+    assert.equal(hexAt(f, 128, 148), '#010101');
+    assert.equal(hexAt(f, 129, 149), '#010101');
+    assert.equal(hexAt(f, 129, 148), '#3b1023');
+    // his shade on the neck under the jaw
+    assert.equal(hexAt(f, 126, 148), '#d58771');
+    // his ear in his skin colours (her preset's skin is his)
+    assert.equal(hexAt(f, 121, 140), '#cb7862');
+    // the lock of hair between her near arm and the corset (his 43-46, 41-43), in front of the corset
+    for (const [x, y] of [[118, 162], [119, 163], [120, 164]]) assert.equal(hexAt(f, x, y), '#3b1023', `${x},${y}`);
+  });
+
   it('never hangs the tabard below her soles', () => {
     const look = lyra();
     const bare = { ...look, slots: { ...look.slots, skirt: undefined } };

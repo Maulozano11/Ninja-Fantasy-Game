@@ -25,8 +25,8 @@ shaft in his dark leather with its lighter right side; the thigh under her skirt
 
 His legs do not stand where ours do at idle (his far leg is straight and its foot six rows lower, his
 near foot steps further out), so the boots ride their own leg (src/sprite/items/lyraBoots.ts): from
-our hip, a thigh as long as his to his knee and a shin as long as his to his ankle, bent at the knee
-so that the ankle goes where ours goes, turned and stretched as his ankle is from ours at idle. At
+our hip, a thigh as long as his to his knee and a shin as long as his to his ankle, bent at the knee,
+the ankle standing off ours as it does at idle (so his soles keep to our feet in every pose). At
 idle frame 0 that leg is exactly his, so every pixel is where he drew it; in other poses the thigh
 piece turns with that thigh about its knee, the shin piece (shaft and strap) with its shin about its
 ankle, and the foot stays flat under the ankle like our feet. Our leg (skin and trousers) is taken

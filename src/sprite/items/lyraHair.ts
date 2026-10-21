@@ -7,6 +7,7 @@ import { retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
 import { PaintedPiece, segAngle } from '../painted';
 import { F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, PartId } from '../raster';
+import { lyraFaceTone } from '../lyraFace';
 import { LONG_NECK_AHEAD } from '../neck';
 import type { Rig } from '../rig';
 import { rotateTemplate } from '../rotsprite';
@@ -30,12 +31,13 @@ const EXACT_TILT = 3;
 
 /**
  * Stamps a piece with its pivot on the face anchor, turned by `tilt` degrees (RotSprite) when the
- * torso leans. Her ear takes the player's skin; every other pixel the colour `color` gives it.
+ * torso leans. Her ear is his skin in the player's skin, as his face is (in his skin, his pixels);
+ * every other pixel takes the colour `color` gives it.
  */
 function stamp(g: DrawCtx, L: Layer, p: PaintedPart | PaintedPiece, tilt: number, part: PartId, color: (ch: string, hex: string) => string): void {
   const { nx, ny } = faceAnchor(g);
   const pens: Record<string, [number, number]> = {};
-  for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = ch in LYRA_HAIR_EAR ? [g.skin, LYRA_HAIR_EAR[ch]] : [g.m(color(ch, hex), 'flat'), 3];
+  for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = [g.m(LYRA_HAIR_EAR.includes(ch) ? lyraFaceTone(hex, g.look.skin) : color(ch, hex), 'flat'), 3];
   const put = (x: number, y: number, ch: string) => {
     const pen = pens[ch];
     if (pen) L.set(x, y, pen[0], pen[1], part, F_NO_TEXTURE | F_NO_OUTLINE);

@@ -33,7 +33,7 @@ const hexAt = (rgba: Uint8ClampedArray, x: number, y: number) => {
 };
 
 const PIECES: Record<string, PaintedPiece> = Object.fromEntries(
-  Object.entries(ART).filter(([, v]) => typeof v === 'object' && v !== null && 'rows' in v),
+  Object.entries(ART).filter(([k, v]) => typeof v === 'object' && v !== null && 'rows' in v && !k.endsWith('_CUT')),
 ) as Record<string, PaintedPiece>;
 
 describe("Lyra's blouse and corset", () => {
@@ -90,9 +90,9 @@ describe("Lyra's blouse and corset", () => {
     assert.equal(hexAt(f, 129, 155), '#81152c');
     assert.equal(hexAt(f, 130, 163), '#8b8a90');
     assert.equal(hexAt(f, 133, 149), '#fbbc57');
-    // his (111, 169) and (113, 162), laid on our elbow (+4, -3) and our shoulder (0, -2)
+    // his (111, 169), the bracer laid on our elbow (+4, -3); the near puff where he drew it
     assert.equal(hexAt(f, 115, 166), '#db9b41');
-    assert.equal(hexAt(f, 113, 160), '#f2e2c0');
+    assert.equal(hexAt(f, 113, 162), '#f2e2c0');
     assert.equal(hexAt(f, 134, 161), LINE);
   });
 
@@ -101,17 +101,42 @@ describe("Lyra's blouse and corset", () => {
     assert.notEqual(hexAt(f, 129, 155), '#81152c');
     assert.notEqual(hexAt(f, 130, 163), '#8b8a90');
     assert.notEqual(hexAt(f, 133, 149), '#fbbc57');
-    assert.notEqual(hexAt(f, 113, 160), '#f2e2c0');
+    assert.notEqual(hexAt(f, 113, 162), '#f2e2c0');
     assert.equal(hexAt(f, 134, 161), LINE);
   });
 
   it('shows her bare near shoulder and the skin in the V in the character\'s skin, his pixels in his', () => {
     const his = { ...look('female'), skin: '#fbc9aa' };
     const f = renderSprite(his, 'idle', 0).rgba;
-    assert.equal(hexAt(f, 117, 149), ART.LYRA_SKIN[0]);
+    assert.equal(hexAt(f, 117, 151), ART.LYRA_SKIN[0]);
     assert.equal(hexAt(f, 130, 152), ART.LYRA_SKIN[0]);
+    // his bare shoulder's top line where he drew it
+    for (const x of [117, 118, 119]) assert.equal(hexAt(f, x, 148), LINE, `${x}`);
     const dark = renderSprite({ ...his, skin: '#7a4a32' }, 'idle', 0).rgba;
-    for (const [x, y] of [[117, 149], [130, 152]]) assert.ok(!ART.LYRA_SKIN.includes(hexAt(dark, x, y)), `${x},${y} ${hexAt(dark, x, y)}`);
+    for (const [x, y] of [[117, 151], [130, 152]]) assert.ok(!ART.LYRA_SKIN.includes(hexAt(dark, x, y)), `${x},${y} ${hexAt(dark, x, y)}`);
+  });
+
+  it("takes our body's near shoulder off where it comes out above or behind his bare shoulder", () => {
+    const cut = ART.BLOUSE_SLEEVE_N_CUT;
+    assert.equal(cut.angle, ART.BLOUSE_SLEEVE_N.angle);
+    const blouseOnly = { ...look('female'), slots: { top: { id: BLOUSE, colors: [] } } };
+    const bare = renderSprite({ ...blouseOnly, slots: {} }, 'idle', 0).rgba;
+    const f = renderSprite(blouseOnly, 'idle', 0).rgba;
+    // the body's shoulder rows above his line: drawn bare, gone under his blouse
+    for (const x of [115, 116, 117, 118]) {
+      assert.equal(bare[(147 * GRID + x) * 4 + 3], 255, `bare ${x}`);
+      assert.equal(f[(147 * GRID + x) * 4 + 3], 0, `${x}`);
+    }
+  });
+
+  it('shows no skin of our forearm beside the near bracer at idle', () => {
+    const skin = new Set<string>();
+    const bare = renderSprite({ ...look('female'), slots: {} }, 'idle', 0).rgba;
+    for (let y = 160; y <= 171; y++) for (let x = 106; x <= 118; x++) if (bare[(y * GRID + x) * 4 + 3]) skin.add(hexAt(bare, x, y));
+    skin.delete(LINE);
+    skin.delete('#060609');
+    const f = renderSprite(look('female'), 'idle', 0).rgba;
+    for (let y = 163; y <= 171; y++) for (let x = 106; x <= 118; x++) assert.ok(!skin.has(hexAt(f, x, y)), `(${x}, ${y}) ${hexAt(f, x, y)}`);
   });
 
   it('draws on the female and slender bodies in every pose', () => {

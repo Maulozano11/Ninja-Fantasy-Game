@@ -136,12 +136,15 @@ folders.
   the bracers, the far forearm behind the pouch) continue his pixels. The bare top of the near shoulder and
   the skin in the V (`K`, `V`) are his skin, drawn in the player's (`LYRA_SKIN`). One painted piece per segment of our
   female rig (the body rebuilt from his heroines, `female-body-from-ref.py`), pivot on its joint at idle.
-  The torso pieces and the far puff and pauldron are where he drew them; the female body's arms are
-  shorter and hang more upright than his, so the pieces riding them are laid on our joints as he drew
-  them on his (`HIS_JOINT`, `MOVED`): the near sleeve with his bare shoulder 2 px up on our shoulder, each
-  bracer, fitted sleeve and cuff on our elbow (near +4, -3; far -2, -4), so our fist (his own hand) comes out
-  of his cuff. It checks that every other pixel of his is where he drew it at idle, and writes
-  `hers-vs-pieces@8.png` into `<out>`.
+  The torso pieces, both sleeves (his bare shoulder with them) and the pauldron are where he drew them,
+  and so is her neck under the jaw (skin and his far line, in the blouse's body). The female body's arms
+  are shorter and hang more upright than his, so the forearm pieces are laid on our elbows as he drew them
+  on his (`HIS_JOINT`, `MOVED`: each bracer, fitted sleeve and cuff, near +4, -3; far -2, -4), so our fist
+  (his own hand) comes out of his cuff; the near bracer and cuff go on out to our forearm's near edge
+  (`NEAR_FOREARM`). Our shoulder stands 2 px higher than his: the near sleeve takes the body's shoulder
+  and upper arm off where they come out from under it (`BLOUSE_SLEEVE_N_CUT`, from `NEAR_UPPER_ARM`).
+  It checks that every pixel of his is where it is laid at idle, but where `MOVED_OVER` lets a moved
+  piece cover it (it prints how many), and writes `hers-vs-pieces@8.png` into `<out>`.
 
       python3 -I tools/refs/lyra-upper-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraUpperArt.ts
 
@@ -216,8 +219,9 @@ folders.
 
 - `lyra-boots-from-ref.py` → `src/sprite/items/lyraBootsArt.ts`: Lyra's thigh-high boots
   (`feet_gilded_thigh_boots`) and the bare thigh above them, his pixels at (x + 74, y + 121) riding a
-  leg of his proportions from our hip to our ankle (`src/sprite/items/lyraBoots.ts`; `OUR` holds the
-  female body's hips and ankles at idle); what her sword hides continues his gold and leather. Writes
+  leg of his proportions from our hip to his ankle, which stands off ours as at idle so his soles keep to
+  our feet (`src/sprite/items/lyraBoots.ts`; `OUR` holds the female body's hips and ankles at idle); what
+  her sword hides continues his gold and leather. Writes
   `hers-vs-pieces@8.png`.
 
       python3 -I tools/refs/lyra-boots-from-ref.py docs/reference/lyra-game-scale-owner-reference.jpg <out> src/sprite/items/lyraBootsArt.ts

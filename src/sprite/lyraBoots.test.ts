@@ -8,8 +8,10 @@ import { getItem } from './catalog';
 import { renderSprite } from './compose';
 import { LYRA_BOOT_FOOT_F, LYRA_BOOT_FOOT_N, LYRA_BOOT_KIND, LYRA_BOOT_LEGS, LYRA_BOOT_SHIN_F, LYRA_BOOT_SHIN_N, LYRA_BOOT_THIGH_F, LYRA_BOOT_THIGH_N } from './items/lyraBootsArt';
 import type { PaintedPiece } from './painted';
+import * as RASTER from './raster';
 import { GRID } from './raster';
-import type { SpriteAppearance } from './types';
+import { frameCount, rigPoseFor } from './rig';
+import type { SpriteAppearance, SpritePose } from './types';
 
 const hexAt = (rgba: Uint8ClampedArray | Uint8Array, x: number, y: number) => {
   const i = (y * GRID + x) * 4;
@@ -59,6 +61,29 @@ describe('Gilded Thigh Boots', () => {
     assert.equal(hexAt(f.rgba, 122, 188), '#fccc69'); // near cuff's glint
     assert.equal(hexAt(f.rgba, 111, 211), '#da9a42'); // near strap's stud
     assert.equal(hexAt(f.rgba, 140, 216), '#010101'); // far sole, his line
+  });
+
+  it('keeps his soles to our feet in motion: the near sole never below our near foot, the far as far below ours as at idle', () => {
+    const { partIndex } = RASTER;
+    const low = (rgba: Uint8ClampedArray | Uint8Array, part: Uint8Array, s: 'N' | 'F') => {
+      const ids = [partIndex(`foot${s}`), partIndex(`shin${s}`)];
+      for (let y = GRID - 1; y >= 0; y--) for (let x = 0; x < GRID; x++) if (rgba[(y * GRID + x) * 4 + 3] && ids.includes(part[y * GRID + x])) return y;
+      return -1;
+    };
+    const bare = { ...look(), slots: {} };
+    const at = (pose: SpritePose, f: number) => {
+      const a = renderSprite(bare, pose, f);
+      const b = renderSprite(look(), pose, f);
+      return { N: low(b.rgba, b.part, 'N') - low(a.rgba, a.part, 'N'), F: low(b.rgba, b.part, 'F') - low(a.rgba, a.part, 'F') };
+    };
+    const idle = at('idle', 0);
+    for (const pose of ['walk', 'run', 'crouch', 'sneak'] as SpritePose[]) {
+      for (let f = 0; f < frameCount(rigPoseFor(pose)); f++) {
+        const d = at(pose, f);
+        assert.ok(d.N <= idle.N, `${pose} ${f} near: ${d.N}`);
+        assert.ok(Math.abs(d.F - idle.F) <= 1, `${pose} ${f} far: ${d.F} vs ${idle.F}`);
+      }
+    }
   });
 
   it('recolours leather, gold and studs from the colour slots and keeps his black line', () => {

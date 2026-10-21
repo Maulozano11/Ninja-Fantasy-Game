@@ -22,11 +22,10 @@ import {
 
 const at = (p: readonly [number, number]): Vec => v(p[0] / RES, p[1] / RES);
 const angleOf = (a: Vec): number => Math.atan2(a.y, a.x);
-const turn = (a: Vec, r: number): Vec => v(a.x * Math.cos(r) - a.y * Math.sin(r), a.x * Math.sin(r) + a.y * Math.cos(r));
 
 /**
  * His leg against ours at our female idle frame 0: his thigh (our hip to his knee) and shin lengths,
- * how his ankle is turned and stretched from ours about the hip, and which way his knee bends.
+ * where his ankle stands from ours, and which way his knee bends.
  */
 function hisLeg(s: Side) {
   const L = LYRA_BOOT_LEGS[s];
@@ -34,26 +33,25 @@ function hisLeg(s: Side) {
   const knee = at(L.hisKnee);
   const ankle = at(L.hisAnkle);
   const his = sub(ankle, hip);
-  const ours = sub(at(L.ankle), hip);
   const thigh = sub(knee, hip);
   return {
     thigh: len(thigh),
     shin: len(sub(ankle, knee)),
-    turn: angleOf(his) - angleOf(ours),
-    stretch: len(his) / len(ours),
+    off: sub(ankle, at(L.ankle)),
     bend: Math.sign(his.x * thigh.y - his.y * thigh.x),
   };
 }
 const HIS_LEG = { N: hisLeg('N'), F: hisLeg('F') };
 
 /**
- * Where his knee and ankle are now: his ankle goes where ours goes (turned and stretched about the hip
- * as at idle), and his knee bends forward between it and our hip with his thigh's and shin's lengths.
- * At idle frame 0 they are his knee and ankle.
+ * Where his knee and ankle are now: his ankle stands off ours as at idle (on the screen, as the feet
+ * stay flat), so his sole keeps to our foot's and stands on the ground wherever ours does, and his knee
+ * bends forward between it and our hip with his thigh's and shin's lengths (a leg his lengths cannot
+ * reach out to is drawn straight, the ankle short of it). At idle frame 0 they are his knee and ankle.
  */
 function legNow(hip: Vec, ankle: Vec, s: Side): { knee: Vec; ankle: Vec } {
   const H = HIS_LEG[s];
-  const want = scale(turn(sub(ankle, hip), H.turn), H.stretch);
+  const want = add(sub(ankle, hip), H.off);
   const d = Math.max(Math.abs(H.thigh - H.shin) + 1e-6, Math.min(H.thigh + H.shin - 1e-9, len(want)));
   const u = angleOf(want);
   const a = Math.acos(Math.max(-1, Math.min(1, (H.thigh * H.thigh + d * d - H.shin * H.shin) / (2 * H.thigh * d))));
@@ -118,7 +116,7 @@ export const LYRA_BOOTS: ItemDef = {
   bodies: ['female', 'slender'],
   draw: (g, [leather, gold, buckle]) => {
     // His boots and the bare thigh above them, on a leg of his: from our hip his thigh to his knee and
-    // his shin to his ankle, the ankle going where ours goes and the knee bending forward (legNow). The
+    // his shin to his ankle, the ankle standing off ours as at idle and the knee bending forward (legNow). The
     // thigh piece turns with that thigh about the knee, the shin piece (shaft and ankle strap) with
     // that shin about the ankle, and the foot stays flat under the ankle like our feet. Our leg is
     // taken off below the thigh piece's top, so his boot is the leg. His leather, gold and studs follow

@@ -8,13 +8,15 @@
 import { retintHex } from '../color';
 import type { Depth, DrawCtx, ItemDef } from '../ctx';
 import { PaintedPiece, segAngle, stampPiece } from '../painted';
-import type { PartId, Vec } from '../raster';
+import { RES, type PartId, type Vec } from '../raster';
+import { rotateTemplate } from '../rotsprite';
 import {
   BLOUSE_FOREARM_F,
   BLOUSE_FOREARM_N,
   BLOUSE_SIDE_F,
   BLOUSE_SLEEVE_F,
   BLOUSE_SLEEVE_N,
+  BLOUSE_SLEEVE_N_CUT,
   BLOUSE_TORSO,
   CORSET,
   CORSET_BRACER_F,
@@ -79,6 +81,19 @@ function drawBlouse(g: DrawCtx, blouse: string, lining: string): void {
   put('torso.top', BLOUSE_TORSO, r.neck, segAngle(r.pelvis, r.neck), 'torso');
   put('nearArm.cloth', BLOUSE_FOREARM_N, r.elbowN, segAngle(r.elbowN, r.wristN), 'forearmN');
   put('nearArm.cloth', BLOUSE_SLEEVE_N, r.shoulderN, segAngle(r.shoulderN, r.elbowN), 'upperArmN');
+  takeOff(g, BLOUSE_SLEEVE_N_CUT, r.shoulderN, segAngle(r.shoulderN, r.elbowN));
+}
+
+/**
+ * Takes the body's near arm off where `cut` (laid as stampPiece lays a piece) says: our female body's
+ * shoulder stands two rows higher than his, and his bare shoulder at the top of the sleeve is the
+ * shoulder, his hair round it showing as he drew it.
+ */
+function takeOff(g: DrawCtx, cut: PaintedPiece, at: Vec, deg: number): void {
+  const L = g.L('nearArm.body');
+  const ax = Math.floor(at.x * RES);
+  const ay = Math.floor(at.y * RES);
+  for (const p of rotateTemplate(cut, deg - cut.angle)) L.clear(ax + p.dx, ay + p.dy);
 }
 
 /** The corset with its strap, the pauldron over it, and a bracer on each forearm. */

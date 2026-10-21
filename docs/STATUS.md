@@ -147,9 +147,10 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   2 px further forward, and on the male and bulky bodies 2 px higher; `src/sprite/neck.ts`) and the
   face shape `fine` (his face for her, narrower than our template). On the new female body
   (`heroine/lyra-v2`, merged with `body/female-v2`, waiting for his approval with the body): her head,
-  hair, torso, skirt, tabard, belt and boots stand where he drew them; the near sleeve sits 2 px higher
-  and the bracers and cuffs 3-4 px higher on the body's shorter arms, and her sword goes with the fist
-  (his own hand), 4 px right and 3 px up from his.
+  neck, ear, hair, shoulders, sleeves, torso, skirt, tabard, belt and boots stand where he drew them; the
+  bracers and cuffs sit 3-4 px higher on the body's shorter arms, and her sword goes with the fist (his
+  own hand), 4 px right and 3 px up from his; his far hand is hidden by the pouch. Those three wait on
+  the body proposal (arms about 3-5 px too short for his Lyra, and its sit pose): redo them after it.
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms

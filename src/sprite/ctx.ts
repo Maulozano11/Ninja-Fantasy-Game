@@ -24,7 +24,7 @@ import {
   v,
   Vec,
 } from './raster';
-import { BodyParams, Rig } from './rig';
+import { ankleLiftOf, BodyParams, Rig } from './rig';
 import { gripAngle } from './grip';
 import { PixelTemplate, stampTemplate, TemplatePalette } from './rotsprite';
 import { isFemaleBody, type BodyType, type EyeSpecial, type SlotId, type SpriteAppearance } from './types';
@@ -588,6 +588,35 @@ export const FOOT_BARE: FootArt = {
   },
 };
 
+/**
+ * A foot for a body whose ankle stands `drop` rows lower (BodyParams.ankleLift: a body on the owner's
+ * small feet): the template loses `drop` of its rows, the ones most like the row above them (the ankle
+ * and instep repeat; the ankle row, the toes and the two sole rows always stay), and `cols` columns
+ * just in front of the ankle. Every pixel left is the template's own, so a bare foot keeps its toes and
+ * a boot its toe cap, welt and sole, only smaller.
+ */
+function shortFoot(t: PixelTemplate, drop: number, cols: number): PixelTemplate {
+  const key = `${drop},${cols}`;
+  let byKey = SHORT_FEET.get(t);
+  if (!byKey) SHORT_FEET.set(t, (byKey = new Map()));
+  const hit = byKey.get(key);
+  if (hit) return hit;
+  const w = Math.max(...t.rows.map((r) => r.length));
+  let rows = t.rows.map((r) => r.padEnd(w, '.'));
+  const same = (a: string, b: string) => [...a].filter((c, i) => c === b[i]).length;
+  for (let k = 0; k < drop && rows.length > 4; k++) {
+    // Rows 1 .. length-3: the ankle row (0, the pivot) and the last two (welt and sole) stay.
+    let best = 1;
+    for (let i = 2; i < rows.length - 2; i++) if (same(rows[i], rows[i - 1]) > same(rows[best], rows[best - 1])) best = i;
+    rows = rows.filter((_, i) => i !== best);
+  }
+  const col = t.pivot[0] + 1;
+  const out = { pivot: t.pivot, rows: rows.map((r) => r.slice(0, col) + r.slice(col + cols)) };
+  byKey.set(key, out);
+  return out;
+}
+const SHORT_FEET = new WeakMap<PixelTemplate, Map<string, PixelTemplate>>();
+
 /** Variant for slimmer (female) or broader (bulky) feet: drops or doubles one column. */
 function footWidth(t: PixelTemplate, body: string): PixelTemplate {
   const col = t.pivot[0] + 1;
@@ -608,7 +637,10 @@ export function footDraw(
   mats: { main?: number; second?: number; third?: number } = {},
   flags = F_NO_TEXTURE,
 ): void {
-  const t = footWidth(art[s], g.rig.body);
+  // The bulky body stands on the owner's low feet (his boots are 8 rows high): every foot is drawn
+  // shorter by the rows its ankle stands lower, then as broad as ever.
+  const drop = Math.round(ankleLiftOf(g.bp, s) * RES);
+  const t = footWidth(drop > 0 ? shortFoot(art[s], drop, 0) : art[s], g.rig.body);
   const a = legJoints(g.rig, s).ankle;
   const ax = Math.floor(a.x * RES) - t.pivot[0];
   const ay = Math.floor(a.y * RES) - t.pivot[1];

@@ -130,3 +130,25 @@ folders.
       python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
       python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
       python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]
+- `ascended_ref.py` + `ascended-hair-from-ref.py`, `ascended-cloak-from-ref.py`, `ascended-kimono-from-ref.py`,
+  `ascended-hakama-from-ref.py`, `ascended-sash-from-ref.py`, `ascended-wraps-from-ref.py`, `ascended-feet-from-ref.py`:
+  the owner's Ascended paint-over (`docs/reference/ascended-owner-reference.jpg`, pitch 20, our male idle frame 0 at
+  offset (74, 117)), one script per item, copied like Aiden and the Roman set: Ascended Spikes, the Rogue Storm Cloak
+  (back, collar, the cloak on each shoulder, its front edge), the Wrap Kimono (body and both sleeves), the Wide
+  Hakama (the top round the hips, each leg's thigh and shin), the Cloth Sash, the Bandage Wraps (forearms and fists)
+  and the Foot Wraps (bandaged shins and feet). `ascended_ref.pieces()` cuts his figure by row spans and colour kinds
+  (warm: hair, skin, kimono, bandages; cool: cloak, scarf, hakama), shares his black line between the pieces it
+  bounds, and continues each piece where his picture hides it (`from_column`, `from_row`, `tile`: his bandage turns
+  and folds repeated). His face and the V of his chest are ours and are not lifted. The feet are moved onto our
+  ankles (`FOOT_SHIFT`). The modules export `*_KIND` (what each colour of his is, for the colour slots) and
+  `*_REST` (where each piece lands in our idle), which `src/sprite/ascended.test.ts` checks; the items are drawn by
+  `src/sprite/items/ascended.ts` (the cloak in `capes.ts`, the hair in `hair.ts`). Run alone, `ascended_ref.py
+  <out.png> [pieces.png]` draws his picture with the pieces tinted, and every piece with its continued cells crossed.
+
+      python3 -I tools/refs/ascended-hair-from-ref.py src/sprite/items/ascendedHairArt.ts [studyDir]
+      python3 -I tools/refs/ascended-cloak-from-ref.py src/sprite/items/rogueCloakArt.ts [studyDir]
+      python3 -I tools/refs/ascended-kimono-from-ref.py src/sprite/items/kimonoArt.ts [studyDir]
+      python3 -I tools/refs/ascended-hakama-from-ref.py src/sprite/items/hakamaArt.ts [studyDir]
+      python3 -I tools/refs/ascended-sash-from-ref.py src/sprite/items/sashArt.ts [studyDir]
+      python3 -I tools/refs/ascended-wraps-from-ref.py src/sprite/items/wrapsArt.ts [studyDir]
+      python3 -I tools/refs/ascended-feet-from-ref.py src/sprite/items/footWrapsArt.ts [studyDir]

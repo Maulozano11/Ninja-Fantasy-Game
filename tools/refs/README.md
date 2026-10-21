@@ -115,3 +115,8 @@ folders.
       npx tsx tools/refs/princess-idle.ts <dir>/female-idle
       python3 -I tools/refs/princess-study.py <dir> <dir>/female-idle     # native@4, parts@4, overlay@4, palette
       python3 -I tools/refs/princess-study.py --palette                   # reprints PALETTE_HEX
+
+- `princess-face-from-ref.py` and `princess-eyes-from-ref.py`: her face and eyes as the `noble` face shape and `noble` eye shape (creator: "Noble", "Rosalind's face" / "Rosalind's eyes"), 1:1 from her picture. The face is her head as a `PaintedPiece` (`src/sprite/princessHeadArt.ts`, stamped by `body.ts` as Aiden's head is): her face, nose, mouth, small chin and black line in his pixels; under her hair our female skull's outline in her skin, and her near cheek out to the edge he shows between two strands. Her eyes, lashes and brows are taken out of the head so every eye option draws on it; on her face the far eye is at ex + 8 (ours ex + 9) and the template draws no mouth. The eyes (`src/sprite/princessEyeArt.ts`, drawn by `src/sprite/princessFace.ts`) are her three rows (black lash with violet ends, pale lilac lights, violet and dark violet, white) on the template's cells, her lash's flick a column before them and her rose brows on the row above; open, lowered (reading) and closed (knocked out), the last two from her own pixels. The eye colour moves her violets, lights and the lash's violet ends; the hair colour her brows; the skin her head.
+
+      python3 -I tools/refs/princess-face-from-ref.py docs/reference/princess-owner-reference.jpg <out> src/sprite/princessHeadArt.ts   # head@8, hers@8
+      python3 -I tools/refs/princess-eyes-from-ref.py docs/reference/princess-owner-reference.jpg <out> src/sprite/princessEyeArt.ts   # eyes@16, hers@16

@@ -17,8 +17,8 @@ import type { WarpTimes } from './playback';
 import { FALL_MS, PHASE_DASH, PHASE_IN, PHASE_OUT, phaseDash, RISE_MS, WARP_FRAME, WARP_THRUST, warpDash, warpTimes } from './playback';
 import type { Lang } from '../../i18n';
 import { unitName } from './battleLog';
-import { bodyCenterDx, catchLookOf, FEET, fpsOf, framesOf, hasPhaseFrame, hasThrownFrame, hasUnitFrame, lookOf, phaseFrameOf, STRIDE, thrownFrame, unitFrame } from './unitArt';
-import { drawThrown, drawTrail, flightNow, reachOf, warpFlightOf } from './warpFlight';
+import { bodyCenterDx, catchLookOf, FEET, fpsOf, framesOf, hasPhaseFrame, hasReleaseClear, hasThrownFrame, hasUnitFrame, lookOf, phaseFrameOf, releaseClearOf, STRIDE, thrownFrame, unitFrame } from './unitArt';
+import { drawKunaiFade, drawThrown, drawTrail, flightNow, KUNAI_FADE_FRAME, kunaiFadeAngle, reachOf, warpFlightOf } from './warpFlight';
 import type { Flight, XY } from './warpFlight';
 import { THROW_RELEASE_FRAME } from '../../sprite/rig';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
@@ -1192,8 +1192,18 @@ function drawWarp(ctx: CanvasRenderingContext2D, sc: Scene, u: Unit, v: UnitView
   }
   // The thrust: estocada, impacto, retroceso.
   const into = ms - t.solid;
-  const f = into < WARP_THRUST[0] ? 2 : into < WARP_THRUST[0] + WARP_THRUST[1] ? 3 : 4;
-  solid(1, land, unitFrame(u, caught, 'pierce', f));
+  const f = into < WARP_THRUST[0] ? 2 : into < WARP_THRUST[0] + WARP_THRUST[1] ? 3 : KUNAI_FADE_FRAME;
+  if (f !== KUNAI_FADE_FRAME || caught === look) {
+    solid(1, land, unitFrame(u, caught, 'pierce', f));
+    return;
+  }
+  // A kunai from the pouch is not kept: in the recoil it turns to light and fades out of the hand,
+  // which is left as it was before the throw (empty, or its technique back in the palm; a stowed
+  // weapon never left its place), so the stand that follows changes nothing in it.
+  const k = Math.min(1, (into - WARP_THRUST[0] - WARP_THRUST[1]) / WARP_THRUST[2]);
+  solid(1, land, unitFrame(u, look, 'pierce', f));
+  solid(1 - k, land, unitFrame(u, caught, 'pierce', f));
+  drawKunaiFade(ctx, look, b.X, b.Y, land, k, alpha);
 }
 
 /** The flight of a unit's Warp Strike weapon (warpFlight.ts), worked out once per strike. */
@@ -1207,7 +1217,7 @@ function flightOf(sc: Scene, u: Unit, look: SpriteAppearance, w: NonNullable<Uni
       const q = project(sc.map, pt);
       return { x: q.X, y: q.Y };
     };
-    f = warpFlightOf(look, p(w.from), p(w.to), w.face, w.land, foe ? p(sc.pb.posOf(foe.id, sc.now)) : undefined);
+    f = warpFlightOf(look, releaseClearOf(u, look), p(w.from), p(w.to), w.face, w.land, foe ? p(sc.pb.posOf(foe.id, sc.now)) : undefined);
     flights.set(w, f);
   }
   return f;
@@ -1232,13 +1242,19 @@ function drawWarpFlights(ctx: CanvasRenderingContext2D, sc: Scene): void {
 
 /**
  * What a Ryusei's Warp Strike will need made beforehand (the slow part is making sprite frames):
- * the throw, the light bodies of its release and its leap, the thrust it lands in (holding a kunai,
- * if it throws one from bare hands), and its weapon at every angle of the flight to each of its
- * Nodes.
+ * first what does not depend on where it goes (the throw, the light bodies of its release and its
+ * leap, the thrust it lands in, holding a kunai if it throws one from the pouch, and that kunai
+ * fading), so a Ryusei has them before it places a Node; then its weapon at every angle of the
+ * flight to each of its Nodes.
  */
 function warpNeeds(sc: Scene, u: Unit, look: SpriteAppearance): (() => boolean)[] {
   const caught = catchLookOf(look);
   const needs: (() => boolean)[] = [];
+  const thrownOf = (angle: number) => () => {
+    if (hasThrownFrame(look, angle)) return false;
+    thrownFrame(look, angle);
+    return true;
+  };
   const solidOf = (l: SpriteAppearance, pose: SpritePose, f: number) => () => {
     if (hasUnitFrame(u, l, pose, f)) return false;
     unitFrame(u, l, pose, f);
@@ -1251,6 +1267,18 @@ function warpNeeds(sc: Scene, u: Unit, look: SpriteAppearance): (() => boolean)[
   };
   for (let f = 0; f <= THROW_RELEASE_FRAME; f++) needs.push(solidOf(look, 'throw', f));
   needs.push(lightOf(look, 'throw', THROW_RELEASE_FRAME), lightOf(look, 'throw', WARP_LEAP));
+  needs.push(solidOf(caught, 'pierce', 1), lightOf(caught, 'pierce', 1));
+  for (let f = 2; f <= 4; f++) needs.push(solidOf(caught, 'pierce', f));
+  if (caught !== look) needs.push(solidOf(look, 'pierce', KUNAI_FADE_FRAME), thrownOf(kunaiFadeAngle(look)));
+  // The flights start clear of the release pose: worked out from it, before the flights themselves.
+  if (!hasReleaseClear(look)) {
+    needs.push(() => {
+      releaseClearOf(u, look);
+      return true;
+    });
+    return needs;
+  }
+  const clear = releaseClearOf(u, look);
   const v = sc.pb.views.get(u.id);
   const plans: Flight[] = [];
   if (v?.warp) plans.push(flightOf(sc, u, look, v.warp));
@@ -1266,17 +1294,9 @@ function warpNeeds(sc: Scene, u: Unit, look: SpriteAppearance): (() => boolean)[
         const q = project(sc.map, pt);
         return { x: q.X, y: q.Y };
       };
-      plans.push(warpFlightOf(look, p(u.pos), p(to), face, land, foe ? p(foe.pos) : undefined));
+      plans.push(warpFlightOf(look, clear, p(u.pos), p(to), face, land, foe ? p(foe.pos) : undefined));
     }
-  for (const plan of plans)
-    for (const angle of plan.angles)
-      needs.push(() => {
-        if (hasThrownFrame(look, angle)) return false;
-        thrownFrame(look, angle);
-        return true;
-      });
-  needs.push(solidOf(caught, 'pierce', 1), lightOf(caught, 'pierce', 1));
-  for (let f = 2; f <= 4; f++) needs.push(solidOf(caught, 'pierce', f));
+  for (const plan of plans) for (const angle of plan.angles) needs.push(thrownOf(angle));
   return needs;
 }
 
@@ -1300,18 +1320,18 @@ function warmPhases(sc: Scene): void {
   }
   for (const [id, v] of sc.pb.views) if (v.warp) warps.push(id);
   const turn = sc.pb.turnUnit ? sc.state.units[sc.pb.turnUnit] : undefined;
-  // Only a Ryusei with a Node of its own can Warp Strike.
-  const canWarp = (o: Unit): boolean => sc.state.nodes.some((n) => n.owner === o.id);
+  // Every Ryusei, Nodes or not: what a Warp Strike needs wherever it goes is made before its first
+  // Node is placed, so a Warp Strike cast right after leaves only its weapon's angles to make.
   if (!ids.length && !warps.length && !sc.pb.busy) {
     if (turn && leavesNodes(turn) && !turn.down) {
       ids.push(turn.id);
-      if (canWarp(turn)) warps.push(turn.id);
+      warps.push(turn.id);
       for (const o of Object.values(sc.state.units)) if (o.id !== turn.id && o.kind === 'ninja' && !o.down && nodeUnder(sc.state, turn, o)) ids.push(o.id);
     }
     for (const o of Object.values(sc.state.units))
       if (o.kind === 'ninja' && !o.down && leavesNodes(o)) {
         ids.push(o.id);
-        if (canWarp(o)) warps.push(o.id);
+        warps.push(o.id);
       }
   }
   const t0 = performance.now();

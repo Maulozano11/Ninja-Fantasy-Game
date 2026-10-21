@@ -146,6 +146,12 @@ export interface SpriteAppearance {
   pixelEdits: PixelEdit[];
   /** In battle: the held weapon is put away (at the belt or on the back) to keep the hands free. */
   stowed?: boolean;
+  /**
+   * In battle: a kunai from the pouch in the near fist, whatever the held slot has (a Warp Strike
+   * thrown without a weapon in the hand catches its kunai and thrusts with it: a stowed weapon stays
+   * put, a technique in the palm is not drawn meanwhile). See grip.ts throwsKunai.
+   */
+  pouchKunai?: boolean;
 }
 
 /** Special eye patterns, derived from the character's dojutsu. */

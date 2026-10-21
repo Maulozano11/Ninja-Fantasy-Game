@@ -291,7 +291,7 @@ function droppedGrip(g: DrawCtx, at: number, off = 1.2): Vec {
   return v(x, lerp(r.pelvis, r.ankleN, at).y);
 }
 
-/** Bare hands winding up a throw hold a kunai from the pouch (see throwsKunai), in the Kunai item's colours. */
+/** Hands without a weapon winding up a throw (or that caught the kunai they threw) hold a kunai from the pouch (see throwsKunai), in the Kunai item's colours. */
 export function drawThrowKunai(g: DrawCtx): void {
   if (throwsKunai(g)) drawWeapon(g, 'nearArm.held', KUNAI, gripPoint(g), swordAngle(g), { blade: '#aab4c2', grip: '#3a3346', guard: '#aab4c2', wrap: '#e2dccb' });
 }
@@ -402,7 +402,7 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Spiral Orb',
     desc: 'A swirling sphere of compressed chakra held in the palm.',
     colors: [col('core', 'Core', '#4aa8ff', 'glow'), col('swirl', 'Swirl', '#d8f1ff', 'glow')],
-    draw: (g, [core, swirl]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && drawSpiralOrb(g, { core, swirl }),
+    draw: (g, [core, swirl]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && !throwsKunai(g) && drawSpiralOrb(g, { core, swirl }),
   },
   {
     id: 'held_lightning',
@@ -410,7 +410,7 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Lightning Hand',
     desc: 'Crackling white-blue sparks dance around the hand.',
     colors: [col('spark', 'Sparks', '#d6f0ff', 'glow'), col('core', 'Glow', '#5cb8ff', 'glow')],
-    draw: (g, [spark, core]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && drawLightning(g, { spark, core }),
+    draw: (g, [spark, core]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && !throwsKunai(g) && drawLightning(g, { spark, core }),
   },
   {
     id: 'held_palm',
@@ -418,7 +418,7 @@ export const HELD_ITEMS: ItemDef[] = [
     name: 'Palm Glow',
     desc: 'A calm pale-cyan glow gathered in the palm.',
     colors: [col('glow', 'Glow', '#8ff0ea', 'glow')],
-    draw: (g, [glow]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && drawPalmGlow(g, { glow }),
+    draw: (g, [glow]) => !handsBusy(g) && !handsLimp(g) && !handsReleased(g) && !throwsKunai(g) && drawPalmGlow(g, { glow }),
   },
 ];
 

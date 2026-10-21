@@ -7,7 +7,7 @@
 import { heldAt, throwRelease } from '../../sprite/grip';
 import type { BodyType, SpriteAppearance } from '../../sprite/types';
 import { PHASE_RAMP } from '../../sprite/phase';
-import { catchLook, thrownItem } from '../../sprite/thrown';
+import { releaseStart, thrownItem } from '../../sprite/thrown';
 import { FEET } from '../../sprite/rig';
 import type { WarpTimes } from './playback';
 import { warpFlight } from './playback';
@@ -37,7 +37,11 @@ const wrap = (deg: number): number => {
 };
 
 export interface Flight {
-  /** The weapon's anchor pixel as it leaves the hand, and where the hand of the thrust catches it. */
+  /**
+   * The weapon's anchor pixel where it is first drawn in flight (as the thrower turns to light in the
+   * release pose: already clear of it, ahead of the fist that flung it), and where the hand of the
+   * thrust catches it.
+   */
   S: XY;
   E: XY;
   /** The curve's inner control points (a cubic Bézier S, P1, P2, E). */
@@ -51,18 +55,22 @@ export interface Flight {
 }
 
 /**
- * The flight of a Warp Strike's weapon. `from` and `to`: the map pixels of the ninja's feet where it
- * throws and where it lands; `face` the way it throws, `land` the way it faces when it lands. `foe`:
- * the map pixels of the feet of the foe it lands beside. The weapon leaves level from the fist of the
- * throw and arrives, dipping a little, in the hand of the thrust's chamber ('pierce' 1); when the foe
- * is ahead of it, it comes in point first at the foe. A foe behind the landing (the ninja turns round
- * to strike) is not flown round: the weapon arrives the way it was going and turns in the hand.
+ * The flight of a Warp Strike's weapon. `clear`: how far ahead of the fist it is first drawn
+ * (sprite/thrown.ts releaseClear: the release pose pitches the head into the place the fist let go
+ * of it). `from` and `to`: the map pixels of the ninja's feet where it throws and where it lands;
+ * `face` the way it throws, `land` the way it faces when it lands. `foe`: the map pixels of the feet
+ * of the foe it lands beside. The weapon leaves level from the throw and arrives, dipping a little,
+ * in the hand of the thrust's chamber ('pierce' 1); when the foe is ahead of it, it comes in point
+ * first at the foe. A foe behind the landing (the ninja turns round to strike) is not flown round:
+ * the weapon arrives the way it was going and turns in the hand.
  */
-export function warpFlightOf(look: SpriteAppearance, from: XY, to: XY, face: 1 | -1, land: 1 | -1, foe?: XY): Flight {
+export function warpFlightOf(look: SpriteAppearance, clear: number, from: XY, to: XY, face: 1 | -1, land: 1 | -1, foe?: XY): Flight {
   const body: BodyType = look.body;
-  const rel = throwRelease(body, thrownItem(look));
-  const hold = heldAt(body, 'pierce', 1, catchLook(look).slots.held?.id);
-  const S = framePixel(from.x, from.y, rel.lastHeld, face);
+  const item = thrownItem(look);
+  const rel = throwRelease(body, item);
+  // Caught by the hand that threw it: the thrown item is the one in the hand of the thrust.
+  const hold = heldAt(body, 'pierce', 1, item);
+  const S = framePixel(from.x, from.y, releaseStart(rel.lastHeld, rel.weaponAngle, clear), face);
   const E = framePixel(to.x, to.y, hold.at, land);
   const h0 = headingOf(rel.weaponAngle, face);
   const hCatch = headingOf(hold.angle, land);
@@ -207,6 +215,47 @@ export function drawThrown(ctx: CanvasRenderingContext2D, look: SpriteAppearance
   ctx.restore();
 }
 
+/**
+ * A kunai from the pouch is not kept after the thrust (the ninja had no weapon in the hand to throw):
+ * in the recoil ('pierce' 4, `k` 0..1 through it) it turns to blue light in the hand and is gone,
+ * shedding a few specks (renderer.ts drawWarp fades it out of the hand under this light). (X, Y):
+ * the feet, facing `facing`.
+ */
+export function drawKunaiFade(ctx: CanvasRenderingContext2D, look: SpriteAppearance, X: number, Y: number, facing: 1 | -1, k: number, alpha: number): void {
+  const hold = heldAt(look.body, 'pierce', KUNAI_FADE_FRAME, 'held_kunai');
+  const at = framePixel(X, Y, hold.at, facing);
+  const c = canvasFor(look, Math.round(hold.angle));
+  const glow = Math.sin(Math.PI * Math.min(1, k * 1.25));
+  ctx.save();
+  if (glow > 0.01) {
+    ctx.save();
+    if (facing < 0) {
+      ctx.translate(at.x + 1, 0);
+      ctx.scale(-1, 1);
+    } else ctx.translate(at.x, 0);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(1, alpha * glow);
+    ctx.drawImage(c.glow, -c.gx, at.y - c.gy);
+    ctx.restore();
+  }
+  // The specks it breaks into, rising off its blade.
+  const d = dirOf(headingOf(hold.angle, facing));
+  for (let i = 0; i < 8; i++) {
+    const along = c.front * (0.1 + 0.85 * hash(i, 21));
+    const rise = 3 + 14 * k * (0.5 + hash(i, 22));
+    const x = at.x + d.x * along + (hash(i, 23) - 0.5) * 4;
+    const y = at.y + d.y * along - rise;
+    dot(ctx, x, y, alpha * Math.min(1, 2.5 * k) * (1 - k) * (i % 2 ? 1 : 0.6), k < 0.5 ? 8 : 6, i % 3 ? 1 : 2);
+  }
+  ctx.restore();
+}
+
+/** The 'pierce' frame a kunai from the pouch fades in (the recoil). */
+export const KUNAI_FADE_FRAME = 4;
+
+/** The angle a kunai from the pouch is held at as it fades (a figure facing right): the thrown kunai at that angle to have made beforehand. */
+export const kunaiFadeAngle = (look: SpriteAppearance): number => Math.round(heldAt(look.body, 'pierce', KUNAI_FADE_FRAME, 'held_kunai').angle);
+
 // --- the trail -----------------------------------------------------------------------------
 
 const RAMP = PHASE_RAMP.map((c) => `rgb(${c[0]}, ${c[1]}, ${c[2]})`);
@@ -227,6 +276,27 @@ const STREAK_OUT = 90;
 export interface WeaponReach {
   back: number;
   front: number;
+}
+
+/** How far ahead of where the weapon's back end was as it left (pixels) its trail fades in. */
+const AIR = 8;
+
+/**
+ * How much of the trail's light shows at a pixel (0..1): none behind where the weapon's back end
+ * was when it was first drawn in flight (the thrower's head is there, in the release pose), fading
+ * in over AIR pixels ahead of it, so the trail never seems to come out of the face. Away from the
+ * thrower (a flight curving back past that line) it all shows.
+ */
+function releaseOff(f: Flight, back: number): (x: number, y: number) => number {
+  const d = dirOf(f.h0);
+  const cx = f.S.x - d.x * back;
+  const cy = f.S.y - d.y * back;
+  return (x, y) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    const far = Math.min(1, Math.max(0, (Math.hypot(dx, dy) - 32) / 16));
+    return Math.max(far, Math.min(1, Math.max(0, (dx * d.x + dy * d.y) / AIR)));
+  };
 }
 
 /** One pixel of light. */
@@ -269,6 +339,7 @@ export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes
   if (ms < t.rel || ms > t.caught + TRAIL_AFTER) return;
   const fly = t.caught - t.rel;
   const back = reach.back;
+  const off = releaseOff(f, back);
   ctx.save();
 
   // The comet streak: walked back along the curve from the weapon's back end, a pixel at a time.
@@ -295,7 +366,7 @@ export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes
       if (key !== last) {
         last = key;
         const along = s / Math.max(1, len);
-        const a = alpha * (1 - along) ** 1.1;
+        const a = alpha * (1 - along) ** 1.1 * off(x, y);
         // The sides first, the heart over them: five pixels wide just behind the weapon, then three.
         if (along < 0.2) {
           dot(ctx, x - 2 * d.y, y + 2 * d.x, a * 0.35, 5);
@@ -326,15 +397,15 @@ export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes
     const p = bezier(f, w);
     const d = dirOf(headingAlong(f, w));
     const side = (hash(i, 3) - 0.5) * 7;
-    const off = back * (0.3 + 0.9 * hash(i, 4)) + 1;
+    const shed = back * (0.3 + 0.9 * hash(i, 4)) + 1;
     // Drifting back along the way it went, spreading out from it and settling down a little.
     const drift = (0.01 + 0.025 * hash(i, 5)) * el;
     const spread = side * (1 + 0.004 * el);
-    const x = p.x - d.x * (off + drift) - d.y * spread;
-    const y = p.y - d.y * (off + drift) + d.x * spread + 0.00004 * el * el;
+    const x = p.x - d.x * (shed + drift) - d.y * spread;
+    const y = p.y - d.y * (shed + drift) + d.x * spread + 0.00004 * el * el;
     // Twinkling: each flickers between bright and dim at its own pace.
     const on = Math.floor((el + hash(i, 6) * 80) / (40 + 40 * hash(i, 8))) % 2 === 0;
-    const a = alpha * (on ? 1 : 0.4) * (1 - age) ** 0.75;
+    const a = alpha * (on ? 1 : 0.4) * (1 - age) ** 0.75 * off(x, y);
     const step = age < 0.25 ? 8 : age < 0.5 ? 7 : age < 0.75 ? 6 : 5;
     const kind = hash(i, 7);
     if (kind < 0.16 && age < 0.7) glint(ctx, x, y, on && age < 0.35 ? 2 : 1, a);
@@ -342,10 +413,11 @@ export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes
     else dot(ctx, x, y, a, step);
   }
 
-  // A glint at the hand as the weapon leaves it.
+  // A glint at the weapon's point as it is flung (clear of the thrower, like the weapon).
   if (ms < t.rel + 140) {
     const k = (ms - t.rel) / 140;
-    glint(ctx, f.S.x, f.S.y, Math.round(5 * (1 - k)), alpha * (1 - k * k));
+    const d = dirOf(f.h0);
+    glint(ctx, f.S.x + d.x * reach.front * 0.85, f.S.y + d.y * reach.front * 0.85, Math.round(5 * (1 - k)), alpha * (1 - k * k));
   }
   // Where it stops: a glint at its point, and a ring of specks flying out.
   if (ms >= t.caught && ms < t.caught + 240) {

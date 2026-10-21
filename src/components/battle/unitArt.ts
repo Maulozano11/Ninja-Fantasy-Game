@@ -9,7 +9,8 @@ import { FEET, frameCount, POSE_FPS, rigPoseFor } from '../../sprite/rig';
 import type { Rig } from '../../sprite/rig';
 import { GRID, opaqueBox, RES } from '../../sprite/raster';
 import { phaseBody, phaseFrame } from '../../sprite/phase';
-import { catchLook, renderThrown, thrownItem } from '../../sprite/thrown';
+import { catchLook, releaseClear, renderThrown, thrownItem } from '../../sprite/thrown';
+import { throwRelease } from '../../sprite/grip';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import type { Unit } from '../../battle/types';
 
@@ -241,6 +242,26 @@ export function thrownFrame(look: SpriteAppearance, angle: number): ThrownCanvas
 }
 
 export const hasThrownFrame = (look: SpriteAppearance, angle: number): boolean => thrown.has(thrownKey(look, angle));
+
+const clears = new Map<number, number>();
+
+/**
+ * How far ahead of the fist a unit's Warp Strike weapon is first drawn in flight, clear of its
+ * release pose (sprite/thrown.ts releaseClear), worked out once per look (from the release frame
+ * the screen makes anyway, and the weapon at the angle it is flung at).
+ */
+export function releaseClearOf(u: Unit, look: SpriteAppearance): number {
+  const key = idOf(look);
+  let c = clears.get(key);
+  if (c === undefined) {
+    const rel = throwRelease(look.body, thrownItem(look));
+    const figure = renderSpriteCached(look, 'throw', rel.frame, dojutsuToEye(u.character?.dojutsu)).rgba;
+    clears.set(key, (c = releaseClear(figure, renderThrown(look, rel.weaponAngle), rel.lastHeld, rel.weaponAngle)));
+  }
+  return c;
+}
+
+export const hasReleaseClear = (look: SpriteAppearance): boolean => clears.has(idOf(look));
 
 const portraits = new Map<string, { src: object; sig: string; url: string }>();
 

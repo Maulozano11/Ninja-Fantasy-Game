@@ -6,10 +6,11 @@
 
 import { hexToRgb, retintHex } from '../color';
 import { armDepth, armJoints, armPoint, armSpan, DrawCtx, fillTorso, handDraw, handPose, ItemDef, legDepth, legJoints, legPoint, Side, torsoPoly } from '../ctx';
-import { PaintedPiece, segAngle } from '../painted';
+import { PaintedPiece, segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, F_NO_EDGE, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, lerp, norm, PAD, PartId, partIndex, PARTS, Pen, perp, poly, RES, scale, seam, ShadeFn, sub, v, Vec } from '../raster';
 import { stampTemplate, TemplatePalette } from '../rotsprite';
 import { crimsonKind, GAUNTLET_F, GAUNTLET_N, GLOVE_LEATHER, GLOVE_STEEL, GLOVE_TONES, GLOVE_TRIM } from './sabatonsGauntletsArt';
+import { BRACER_BRONZE, BRACER_F, BRACER_N, ROMAN_KIT_KIND } from './bracersSandalsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
 const col = (key: string, label: string, def: string, kind: Kind = 'cloth') => ({ key, label, default: def, kind });
@@ -1873,6 +1874,23 @@ export const HAND_ITEMS: ItemDef[] = liftMain([
           bareHandOff(g, s);
           paintedFist(g, s, s === 'N' ? GAUNTLET_N : GAUNTLET_F, tint);
         } else leatherHand(g, s, tint);
+      }
+    },
+  },
+  {
+    id: 'hands_bronze_bracers',
+    slot: 'hands',
+    name: 'Bronze Bracers',
+    desc: 'Bronze bracers from below the elbow to the wrist; the hands stay bare.',
+    colors: [col('main', 'Bronze', BRACER_BRONZE, 'metal')],
+    draw: (g, [bronze]) => {
+      // The owner's bracers, his pixels from his Roman picture (2026-10-21; tools/refs/
+      // roman-bracers-sandals-from-ref.py): each rides its forearm about the elbow, exactly as he drew
+      // it at rest. His bronze follows the slot; his black line stays.
+      const tint = (_ch: string, hex: string) => (ROMAN_KIT_KIND[hex] === 'line' ? hex : retintHex(hex, BRACER_BRONZE, bronze));
+      for (const s of SIDES) {
+        const j = armJoints(g.rig, s);
+        stampPiece(g, armDepth(s, 'armor'), s === 'N' ? BRACER_N : BRACER_F, j.elbow, segAngle(j.elbow, j.wrist), prt('forearm', s), tint);
       }
     },
   },

@@ -109,3 +109,17 @@ folders.
 - `poison-from-ref.py`: the poison set (`vfx_poison_v3`, all but the beast and the end-on wall, which stays ours) from his poison sheet. It writes `tools/world-sprites/vfx-poison-v3-refdata.ts` (his key frames at game scale, one palette from his pixels, cut into the pieces `vfx-poison-v3.ts` animates; the blast's green light is read straight from his green excess with full alpha and stored apart); the third argument is our character at 1x (kit `characterRef()` saved as a PNG), the optional fourth a review folder (his crops at game scale, before/after previews, `refmap.json`). `poison-v3-review.py <art2> <reviewDir> <character.png>` then makes the compare sheet, the animation strips, the blast, walls and aura GIFs and the border, see-through-stone, flash and light checks.
 
       python3 -I tools/refs/poison-from-ref.py docs/reference/poison-set-owner-reference.jpg tools/world-sprites/vfx-poison-v3-refdata.ts <character.png> [reviewDir]
+
+- `roman_ref.py` + `roman-cuirass-from-ref.py`, `roman-skirt-from-ref.py`, `roman-bracers-sandals-from-ref.py`: the
+  owner's Roman paint-over (`docs/reference/roman-owner-reference.jpg`, pitch 10.24, our male idle frame 0 at
+  offset (74, 120)), copied like Aiden: each script writes painted pieces (`src/sprite/painted.ts`) that ride the
+  rig. `roman_ref.pieces()` cuts his figure into pieces by region polygons (`REGIONS`) and colour kinds, keeps only
+  the black line next to each piece's own colours, continues the chest under the near shoulder guard and fills the
+  red drape behind his legs from his nearest drape pixel in each row. His JPEG has many near colours, so the
+  modules use a longer palette alphabet (Latin-1, Greek, Cyrillic letters). Each module also exports what every
+  colour of his is (`*_KIND`: line, skin, red, stud, bronze, leather), which the items use to follow the colour
+  slots. With a second argument, a folder, each writes his figure beside the pieces at 8x.
+
+      python3 -I tools/refs/roman-cuirass-from-ref.py src/sprite/items/bronzeCuirassArt.ts [studyDir]
+      python3 -I tools/refs/roman-skirt-from-ref.py src/sprite/items/pterugesArt.ts [studyDir]
+      python3 -I tools/refs/roman-bracers-sandals-from-ref.py src/sprite/items/bracersSandalsArt.ts [studyDir]

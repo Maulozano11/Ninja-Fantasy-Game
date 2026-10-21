@@ -35,6 +35,8 @@ import {
   PLATE_VAMBRACE_N,
   PLATE_WAIST,
 } from './crimsonPlateArt';
+import { CUIRASS_BRONZE, CUIRASS_CHEST, CUIRASS_GUARD_F, CUIRASS_GUARD_N, CUIRASS_KIND, CUIRASS_LEATHER } from './bronzeCuirassArt';
+import { PTERUGES_DRAPE, PTERUGES_FRONT, PTERUGES_KIND, PTERUGES_LEATHER, PTERUGES_STUD, PTERUGES_TUNIC } from './pterugesArt';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -1066,6 +1068,85 @@ function drawCrimsonPlate(g: DrawCtx, steel: string, trim: string): void {
 }
 
 // ---------------------------------------------------------------------------
+// The owner's Roman armour (Bronze Cuirass, Imperial War Skirt): his pixels from his paint-over of
+// our male in them (docs/reference/roman-owner-reference.jpg, lifted out by
+// tools/refs/roman-cuirass-from-ref.py and roman-skirt-from-ref.py). In our idle pose every pixel is
+// his; in other poses each piece turns with its segment.
+// ---------------------------------------------------------------------------
+
+/** His pixels recoloured by one slot: his black line, studs and skin stay; the rest follows `to`. */
+const romanColor = (kinds: Record<string, string>, from: string, to: string) => (_ch: string, hex: string): string => {
+  const k = kinds[hex];
+  return k === 'line' || k === 'stud' || k === 'skin' || k === 'hair' ? hex : retintHex(hex, from, to);
+};
+
+/** A shoulder guard's angle: it rides the torso and follows the upper arm part of the way, like the plate's pauldrons. */
+function guardAngle(piece: PaintedPiece, torso: number, arm: number): number {
+  const rest = piece.angle - CUIRASS_CHEST.angle;
+  return torso + rest + 0.45 * (((arm - torso - rest + 540) % 360) - 180);
+}
+
+/**
+ * His chest for the bulky body, whose torso is broader: its dark near side three columns wider (as the
+ * plate's chest) and its front one column wider, so the cuirass covers the torso as he drew it on ours.
+ */
+const CUIRASS_CHEST_BULKY = widened(widened(CUIRASS_CHEST, CUIRASS_CHEST.rows[0].length - 4, 1), 2, 3);
+
+/**
+ * The torso under the cuirass is taken away below the neck, so our skin never shows past his chest
+ * (on the bulky body, or where the chest turns in a pose).
+ */
+function clearUnderCuirass(g: DrawCtx): void {
+  const r = g.rig;
+  const torsoPart = partIndex('torso');
+  const neck = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y;
+  for (const d of ['torso.body', 'torso.under', 'torso.bottom', 'torso.top'] as Depth[]) {
+    const L = g.L(d);
+    if (!L.used) continue;
+    for (let i = 0; i < L.mat.length; i++) {
+      if (L.mat[i] < 0 || L.part[i] !== torsoPart) continue;
+      const x = ((i % GRID) + 0.5) / RES - r.pelvis.x;
+      const y = (Math.floor(i / GRID) + 0.5) / RES - r.pelvis.y;
+      if (x * r.up.x + y * r.up.y <= neck) L.mat[i] = -1;
+    }
+  }
+}
+
+/**
+ * Draws his cuirass: the far guard behind the far arm's upper arm, the chest over the torso (its lower
+ * lip over the skirt's strips), the near guard over the near shoulder. His bronze follows Bronze and
+ * his leather guards follow Straps; his black line and grey studs stay.
+ */
+function drawBronzeCuirass(g: DrawCtx, bronze: string, strap: string): void {
+  clearUnderCuirass(g);
+  const r = g.rig;
+  const torso = segAngle(r.pelvis, r.neck);
+  const metal = romanColor(CUIRASS_KIND, CUIRASS_BRONZE, bronze);
+  const leather = romanColor(CUIRASS_KIND, CUIRASS_LEATHER, strap);
+  stampPiece(g, 'farArm.armor', CUIRASS_GUARD_F, r.shoulderF, guardAngle(CUIRASS_GUARD_F, torso, segAngle(r.shoulderF, r.elbowF)), 'upperArmF', leather);
+  stampPiece(g, 'torso.armor', r.body === 'bulky' ? CUIRASS_CHEST_BULKY : CUIRASS_CHEST, r.neck, torso, 'torso', metal);
+  stampPiece(g, 'nearArm.armor', CUIRASS_GUARD_N, r.shoulderN, guardAngle(CUIRASS_GUARD_N, torso, segAngle(r.shoulderN, r.elbowN)), 'upperArmN', leather);
+}
+
+/**
+ * Draws his skirt: the red drapes behind the legs (when picked), and over the thighs the studded
+ * leather strips with the red tunic between and under them. Red follows Tunic, the strips' leather
+ * follows Strips and the grey studs follow Studs; his black line stays.
+ */
+function drawPteruges(g: DrawCtx, tunic: string, strips: string, studs: string, drapes: boolean): void {
+  const r = g.rig;
+  const torso = segAngle(r.pelvis, r.neck);
+  const color = (_ch: string, hex: string): string => {
+    const k = PTERUGES_KIND[hex];
+    if (k === 'red') return retintHex(hex, PTERUGES_TUNIC, tunic);
+    if (k === 'stud') return retintHex(hex, PTERUGES_STUD, studs);
+    return k === 'line' || k === 'skin' || k === 'hair' ? hex : retintHex(hex, PTERUGES_LEATHER, strips);
+  };
+  if (drapes) stampPiece(g, 'capeBack', PTERUGES_DRAPE, r.pelvis, torso, 'pelvis', color);
+  stampPiece(g, g.L('torso.over').used ? 'torso.over' : 'skirt', PTERUGES_FRONT, r.pelvis, torso, 'pelvis', color);
+}
+
+// ---------------------------------------------------------------------------
 // Armor
 // ---------------------------------------------------------------------------
 
@@ -1717,95 +1798,10 @@ export const ARMOR_ITEMS: ItemDef[] = [
     id: 'armor_bronze',
     slot: 'armor',
     name: 'Bronze Cuirass',
-    desc: 'Sculpted bronze muscle cuirass with leather shoulder straps (+4 AC).',
-    colors: [col('bronze', 'Bronze', '#b8833a', 'metal'), col('strap', 'Straps', '#5a3a24', 'leather')],
+    desc: 'Sculpted bronze muscle cuirass with leather shoulder guards (+4 AC).',
+    colors: [col('bronze', 'Bronze', CUIRASS_BRONZE, 'metal'), col('strap', 'Straps', CUIRASS_LEATHER, 'leather')],
     statsArmor: 'Greek Hoplite Cuirass',
-    draw: (g, [bc, sc]) => {
-      const b = g.bp;
-      const L = g.L('torso.armor');
-      const br = armorPen(g, bc, 'metal');
-      const strap = armorPen(g, sc, 'leather');
-      const top = chestTop(g);
-      const cx = 1.3;
-      const pecY = top - 5.6 - b.bust * 0.3;
-      const lipY = 2.0;
-      // sculpted relief: pectorals and two columns of abdominal plates
-      const bumps: [number, number, number, number, number][] = [
-        [cx - 2.3, pecY + 1.5, 2.4, 1.8, 1.2 + b.bust * 0.3],
-        [cx + 2.0, pecY + 1.5, 1.8, 1.7, 1.0 + b.bust * 0.3],
-      ];
-      const rowH = (pecY - 0.4 - (lipY + 0.6)) / 3;
-      for (let rr = 0; rr < 3; rr++) for (const c of [cx - 1.2, cx + 1.0]) bumps.push([c, lipY + 0.6 + (rr + 0.5) * rowH, 1.0, rowH * 0.48, 0.38]);
-      /** Polished bronze: a soft falloff into shadow, glints only on the strongest light. */
-      const q = (d: number) => (d > 0.9 ? 5 : d > 0.64 ? 4 : d > 0.36 ? 3 : d > -0.14 ? 2 : 1);
-      const front = b.chestHalf * 0.62 + 1.9 + b.bust * 0.4;
-      const h = (x: number, y: number) => {
-        let s = 0;
-        for (const [bx, by, rx, ry, a] of bumps) s += a * Math.exp(-(((x - bx) / rx) ** 2 + ((y - by) / ry) ** 2) * 1.6);
-        return s;
-      };
-      const seamX = -b.chestHalf * 0.55;
-      tfill(
-        g,
-        L,
-        1.1,
-        br,
-        (lx, ly, t) => {
-          // flared lower lip
-          if (ly < lipY) {
-            if (lipY - ly < FP) return 1;
-            if (lipY - ly < FP * 2) return litT(t) ? 4 : 3;
-            return 2;
-          }
-          if (Math.abs(lx - seamX) < FP * 0.5) return 1; // side seam (front/back halves)
-          const th = (t - 0.36) * 2.0;
-          let nx = Math.sin(th);
-          let ny = 0;
-          const nz = Math.cos(th) + 0.1;
-          if (ly > top - 2.6) ny -= (ly - (top - 2.6)) * 0.35; // shoulders turn up
-          if (lx > seamX) {
-            const e = 0.2;
-            nx -= ((h(lx + e, ly) - h(lx - e, ly)) / (2 * e)) * 2.4;
-            ny += ((h(lx, ly + e) - h(lx, ly - e)) / (2 * e)) * 2.4;
-          }
-          let s = q((nx * LIGHT3[0] + ny * LIGHT3[1] + nz * LIGHT3[2]) / (Math.hypot(nx, ny, nz) || 1));
-          if (ly - lipY < FP) s = Math.max(1, s - 1);
-          // reflected light just inside the shadowed front edge
-          if (s === 1 && lx > front - FP * 2.5 && lx < front - FP * 1.5) s = 2;
-          // crisp sculpt lines: pectoral undercurves and the center line
-          for (const [px0, rr] of [
-            [cx - 2.3, 2.5],
-            [cx + 2.0, 1.9],
-          ] as const) {
-            const u = (lx - px0) / rr;
-            if (Math.abs(u) < 1 && Math.abs(ly - (pecY + 0.3 - 0.7 * u * u)) < FP * 0.55) return 1;
-          }
-          if (Math.abs(lx - (cx - 0.1)) < FP * 0.5 && ly < pecY + 1.2 && ly > lipY + 0.4) return Math.min(s, 2);
-          return s;
-        },
-        { top: top - 0.2, bottom: 0.6, flare: 0.7 },
-      );
-      tpx(g, L, cx - 0.1, lipY + 0.9, br, 1); // navel
-      // leather shoulder straps (epaulettes) with bronze studs
-      for (const s of SIDES) {
-        const A = g.L(armDepth(s, 'armor'));
-        const f = armFrame(g, s, 0);
-        const p = onLimb(strap, s, 'upperArm');
-        const R = b.armR[0] + 0.9;
-        lfill(A, f, p, 5, (a, bb) => {
-          if (a < -1.9 || a > 2.0 || Math.abs(bb) > R) return null;
-          // a leather flap over the shoulder: worn lit top edge, rounded
-          // across the arm, its lower edge turning under
-          const d = limbDot(f, bb, R, -0.9 + 0.5 * (a + 1.9));
-          if (a > 2.0 - FP) return 1;
-          if (a < -1.9 + FP) return d > 0.2 ? 4 : 3;
-          if (a > 2.0 - FP * 2) return d > 0.5 ? 2 : 1;
-          return Math.min(3, dotShade(d));
-        });
-        stud(A, add(f.o, add(scale(f.u, 0.1), scale(f.w, 0.6))), onLimb(br, s, 'upperArm'), 4);
-      }
-      collar(g, br, 1.1, 0.9);
-    },
+    draw: (g, [bc, sc]) => drawBronzeCuirass(g, bc, sc),
   },
 
   // -------------------------------------------------------------------------
@@ -2622,59 +2618,19 @@ export const SKIRT_ITEMS: ItemDef[] = [
     id: 'skirt_imperial',
     slot: 'skirt',
     name: 'Imperial War Skirt',
-    desc: 'Red war tunic to mid-thigh under two tiers of hanging leather strips with gold studs.',
-    colors: [col('tunic', 'Tunic', '#b3202a'), col('strips', 'Strips', '#7a4a2a', 'leather'), col('studs', 'Studs', '#d4a531', 'metal')],
-    draw: (g, [tc, lc, sc]) => {
-      skirt(g, (L, top) => {
-        const [x0, x1] = hipRange(g, 0.4);
-        const ytop = top(3.2);
-        const tunic = (w: number) => armorPen(g, tc, 'cloth', thighPart(w));
-        const strip = (w: number) => armorPen(g, lc, 'leather', thighPart(w));
-        const studPen = (w: number) => armorPen(g, sc, 'metal', thighPart(w));
-        // tunic: hangs straight, in shadow under the strips; below them a few
-        // folds, a deep crease where the legs split, and a hem turning under
-        const xs = spread(x0, x1, 8);
-        const width = x1 - x0;
-        const us = (SPLIT_X - x0) / width;
-        skirtCols(g, L, tunic, xs, ytop, 0.8, (c) => {
-          const fromBot = (1 - c.down) * c.ch;
-          if (fromBot < FP) return 1;
-          if (fromBot < FP * 2) return c.u < 0.5 ? 2 : 1;
-          if (Math.abs(c.u - us) * width < FP * (0.5 + c.down * 0.6) && c.down > 0.3) return 1; // split between the legs
-          if (c.down < 0.72) return c.down < 0.3 ? 1 : c.u < 0.55 ? 3 : 2; // under the strips, showing between them
-          return folds(c.u, c.down, width, [0.18, 0.4, 0.62, 0.84], c.u < 0.5 ? 3 : 2);
-        });
-        // one tier of broad leather strips split by 1px seams; toward their
-        // ends they part a little so the red tunic shows between them, more
-        // at the split between the legs
-        const n = Math.max(3, Math.round(width / 3.2));
-        const lower = spread(x0 + 0.1, x1 - 0.1, n);
-        let splitI = 1;
-        for (let i = 1; i < n; i++) if (Math.abs(lower[i] - SPLIT_X) < Math.abs(lower[splitI] - SPLIT_X)) splitI = i;
-        const stripShade = (c: Cell): S => {
-          const open = clamp((c.down - 0.4) / 0.6, 0, 1);
-          const fromL = c.across * c.cw - (c.i === splitI ? FP * 1.6 * open : 0);
-          const fromR = (1 - c.across) * c.cw - FP * open * (c.i + 1 === splitI ? 1.6 : 0.9);
-          const fromBot = (1 - c.down) * c.ch;
-          if (fromL < 0 || fromR < 0) return null;
-          if (fromBot < 0.5 && (fromL < FP * 1.2 || fromR < FP * 1.2)) return null; // rounded ends
-          const lt = c.u < 0.5;
-          if (fromR < FP) return 1; // seam / edge toward the next strip
-          if (fromL < FP || (lt && fromL < FP * 2 && c.down > 0.18 && c.down < 0.55)) return lt ? 4 : 3; // worn lit left edge
-          if (fromBot < FP) return 1;
-          if (fromR < FP * 2) return 2;
-          if (c.down < 0.14) return lt ? 2 : 1; // shadow under the belt line
-          return c.down > 0.78 && !lt ? 2 : base(lt);
-        };
-        skirtCols(g, L, strip, lower, ytop, 0.66, stripShade, 0.8);
-        // small gold studs near the ends of every other strip
-        for (let i = 0; i < n; i += 2) {
-          const lx = (lower[i] + lower[i + 1]) / 2 - 0.2;
-          const h = hang(g, lx, ytop, 0.66, 0.8);
-          stud(L, lerp(h.top, h.bot, 0.84), studPen(h.w), i < n / 2 ? 4 : 3);
-        }
-      });
-    },
+    desc: 'Studded leather strips (pteruges) over a red tunic, with long red drapes falling behind the legs.',
+    colors: [col('tunic', 'Tunic', PTERUGES_TUNIC), col('strips', 'Strips', PTERUGES_LEATHER, 'leather'), col('studs', 'Studs', PTERUGES_STUD, 'metal')],
+    parts: [
+      {
+        key: 'drapes',
+        label: 'Drapes',
+        options: [
+          { id: 'on', label: 'Drapes', desc: 'Long red drapes behind the legs.' },
+          { id: 'off', label: 'No drapes', desc: 'Only the strips and the tunic.' },
+        ],
+      },
+    ],
+    draw: (g, [tc, lc, sc], parts) => drawPteruges(g, tc, lc, sc, parts.drapes !== 'off'),
   },
 
   {

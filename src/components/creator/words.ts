@@ -215,6 +215,7 @@ const ES: Record<string, string> = {
   Ornament: 'Adorno',
   // Lyra's skirt (items/lyraLower.ts)
   Stripes: 'Rayas',
+  'Thigh-high dark leather boots with gold cuffs, small round knee guards and studded ankle straps, the thigh bare above them.': 'Botas altas de cuero oscuro hasta el muslo, con puños de oro, rodilleras redondas pequeñas y correas con tachas en el tobillo; el muslo queda desnudo encima.',
 };
 
 /** An editor label in the screen's language. */

@@ -19,6 +19,7 @@ import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { SCARLET_HAIR_BACK, SCARLET_HAIR_BASE, SCARLET_HAIR_FRONT, SCARLET_HAIR_LINE } from './scarletHairArt';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
@@ -1605,7 +1606,8 @@ const hairStyle = (id: string, name: string, desc: string, def: string, body?: (
 });
 
 /**
- * Stamps a part of the owner's painted hair (his pixels and colours, valiantHairArt.ts) with its pivot
+ * Stamps a part of the owner's painted hair (his pixels and colours, valiantHairArt.ts and
+ * scarletHairArt.ts, the latter brought down to our scale) with its pivot
  * on the face anchor, the near eye's lash start, so it frames the eyes as he drew it on every body and
  * in every pose. His pixels are already the final on-screen pixels: they go in unscaled, like the
  * hair templates.
@@ -1644,6 +1646,9 @@ function trimSkull(g: DrawCtx, p: PaintedPart): void {
 
 /** His hair recoloured: his black line stays, his browns move the way his mid brown does. */
 const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, VALIANT_HAIR_BASE, hair));
+
+/** His Scarlet's hair recoloured: his line stays, his crimsons move the way his base crimson does. */
+const scarletHairColor = (hair: string) => (ch: string, hex: string) => (SCARLET_HAIR_LINE.includes(ch) ? hex : retintHex(hex, SCARLET_HAIR_BASE, hair));
 
 export const HAIR_ITEMS: ItemDef[] = [
   {
@@ -1819,6 +1824,22 @@ export const HAIR_ITEMS: ItemDef[] = [
       paintedHair(g, g.L('hairBack'), VALIANT_HAIR_BACK, tint);
       paintedHair(g, g.L('hairFront'), VALIANT_HAIR_FRONT, tint);
       trimSkull(g, VALIANT_HAIR_BACK);
+    },
+  },
+  {
+    id: 'hair_scarlet',
+    slot: 'hair',
+    name: 'Scarlet Tousle',
+    desc: 'Messy crimson hair: a rounded crown of tousled locks, a heavy fringe falling over the brow and one eye, a side lock over the cheek to the jaw and thin strands sticking out at the sides.',
+    colors: hairColor(SCARLET_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his Scarlet (2026-10-21), brought down to our scale in his colours: his
+      // locks, their lights and dark partings, his fringe and side locks over the head, and behind
+      // the head the same hair with his forehead between the strands filled in.
+      const tint = scarletHairColor(c);
+      paintedHair(g, g.L('hairBack'), SCARLET_HAIR_BACK, tint);
+      paintedHair(g, g.L('hairFront'), SCARLET_HAIR_FRONT, tint);
+      trimSkull(g, SCARLET_HAIR_BACK);
     },
   },
 ];

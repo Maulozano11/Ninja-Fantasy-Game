@@ -40,7 +40,7 @@ clean.
 | Held | 9 (plus `held_none`): katana built from parts, crystal, ice crystal, flame longsword, kunai, naginata, spiral, lightning, palm |
 | Accessories | 13 |
 | Headband | 5 positions, 7 emblems, slashed or not, tails or not |
-| Chakra | 9 types, which are the ninja's elemental nature (Fire with 2 bursts, Water, Wind, Lightning, Earth; Shadow, Spirit, Light, Void without element), any colour for any type; 8 cast styles ("eye" hidden) |
+| Chakra | 9 types, which are the ninja's elemental nature: 7 offered (Fire with 2 bursts, Water, Wind, Lightning, Earth; Light and Void without element) and 2 pending, out of the selection (Shadow, Spirit); any colour for any type; 8 cast styles ("eye" hidden) |
 | Poses | 7 creator, 5 moving, 4 camp |
 
 **Clans** (phase 1; source of truth `docs/CLANS_DESIGN.md`)
@@ -58,6 +58,10 @@ Boss. Paths of Mastery: designed, not built.
 **Jutsu**
 - 27 creator jutsu (`JUTSUS_DATA`); 5 slots: Utility, Element I, Element II, Clan secret (fixed),
   S-rank. Battle-only: 8 clan abilities and the hydra's Venom spit and Roar.
+- The nature gates the elemental jutsu in the creator (`chakra/decisions`, 2026-10-21): the Element
+  and S-rank slots offer only the ninja's own element plus the jutsu with no element; Utility and
+  the clan secret are free; Light and Void get no elemental jutsu yet (`src/rules/jutsuNature.ts`).
+  How it gates is the builder's proposal, waiting for the owner's approval (section 3).
 - VFX for 8 elements (fire, water, wind, lightning, earth, genjutsu, chakra, poison), all from the
   owner's v3 sheets: full effect set, walls in 3 orientations, a beast each. Signature effects:
   Fireball / Great Fireball, Great Fire Annihilation (normal and enhanced), Kirin.
@@ -105,6 +109,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
 | `scarlet/study` | `3b5dfe9` | His new character picture (`scarlet-owner-reference.jpg`) and study scripts `tools/refs/scarlet*`; nothing in `src` | **WIP**. Provisional name "Valen, the Scarlet Duke", no cape: **the owner must choose the name** |
 | `chakra/jutsu-tint` | `75946da` (a WIP backup; the finished commit is local) | Elemental jutsu, their beasts and walls in the caster's chakra colour (`src/sprite/vfxTint.ts`, `src/components/battle/vfxTint*.ts`; `docs/GAMEPLAY_DESIGN.md`, "The chakra colour colours the elemental jutsu") | **The owner approved the colours** (2026-10-21); wired into the battle, not merged |
+| `chakra/decisions` | not pushed (local) | The owner's four answers on the chakra types (saved legends updated, Shadow and Spirit pending, Cinder Nova kept) and the nature gating the elemental jutsu in the creator | **For review** |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had
@@ -125,13 +130,19 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
 - Approve or correct: `ryusei/phase`, `poses/throw-pierce`, the icons on `icons/sheets-8-11`, the
   camp poses once redone.
 - Name the Scarlet character (`scarlet/study`).
-- `chakra/nature` (2026-10-21): the chakra type is the nature (his rule, built). Proposed, for his
-  approval (`docs/GAMEPLAY_DESIGN.md`, "Chakra type" and Open questions): the burst-to-type table
-  (Cinder Nova as a second Fire burst); the new Earth burst (Shattered Earth); the legends whose burst
-  now follows their jutsu (Kaien, Ren, Hiro, Raiga, Kenji, Hana, each in the colour it had); whether
-  Shadow, Spirit, Light and Void stay as types and what they may learn. To decide: legends and
-  companions saved before the change keep their old burst (a saved Kaien reads Spirit): move them to
-  the new type on load (a save change) or leave them.
+- Chakra types (`docs/GAMEPLAY_DESIGN.md`, "Chakra type" and Open questions). **Decided
+  2026-10-21** (his answers, built on `chakra/decisions`): the legends keep their new types; saved
+  copies of the legends and companions move to their new type when they load; Shadow and Spirit
+  are pending (out of the creator and the random ninja), Light and Void stay with their jutsu pending
+  (Light: deity, angel and god; Void, Shadow and Spirit: demonic); Cinder Nova stays as a second Fire
+  burst. **Still his** (as built, proposed): (the Earth burst art, Shattered Earth, is approved: "me gusta tierra quebrada");
+  the burst-to-type rows his answers did not settle (Water = Rising Tide, Wind = Leafwind Spiral,
+  the Light and Void bursts); saved legend copies are moved only while they carry the legend's own
+  jutsu (so a player's own Ren as Water stays); the jutsu gate itself (S-rank gated, Utility and
+  clan secret not, the type change swaps the jutsu, Light and Void only jutsu with no element, the
+  random ninja's picks); which ranks a new ninja may take ("low-rank ones only", not built); Kaien's
+  Fireball and Raiga's Earth Wall (kept); Water has no S-rank jutsu and Wind one Element jutsu.
+- Decided 2026-10-21 (later): **a new female standard** from the owner's four heroine pictures. He said our base bodies look "muy feos" next to his pictures: "sube la calidad de nuestro sprite para que se vea mas parecido aun a la referencia". The new female body (proportions, hands, feet, skin from his pixels) is being built on `body/female-v2` for his approval. He also said: "las piezas de armadura y ropa femeninas no las rehagas porque muy problablemente las borremos por no estar al nuevo stadard" - the existing female armour and clothing are NOT refitted to the new body; they will probably be deleted. Hairstyles, heads, eyes, weapons, capes and the heroines' parts do follow it. The male body stays (approved through the Aiden paint-over).
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms
@@ -207,14 +218,17 @@ Designed in `docs/GAMEPLAY_DESIGN.md` ("Three new jutsu", 2026-10-20), icons on 
 `JUTSUS_DATA`. `ElementalNature` needs Chakra and Poison first.
 
 ### 4c. Elemental nature gates jutsu
-The nature exists (2026-10-21, `chakra/nature`): it is the chakra type picked in Appearance >
-Chakra, read with `natureOf` (`src/rules/ninja.ts`); the colour never changes it
-(`docs/GAMEPLAY_DESIGN.md`, "Chakra type"). The gating itself is not built (an owner's session
-listed it as in progress: ask before starting). Goal: a ninja's nature decides which elemental
-jutsu they can learn; a new ninja starts with low ranks. Open: the new Earth burst waits for the
-owner's approval; what the types without element may learn; legends with a second element (Kaien,
-Raiga); saved legends and companions with their old burst. Until the gating is built, the creator
-says the type "will soon" decide the elemental jutsu.
+Built on `chakra/decisions` (2026-10-21; how it gates is the builder's proposal, waiting for the
+owner's approval, section 3): the chakra type picked in Appearance > Chakra is the
+nature (`natureOf`, `src/rules/ninja.ts`), and in the creator's Jutsu step the Element I, Element II
+and S-rank slots offer only jutsu of the ninja's element plus the ones with no element (taijutsu,
+kenjutsu, genjutsu); Utility and the clan secret are not gated; Light and Void get no elemental
+jutsu until their own exist. Changing the type swaps the jutsu of another element (lowest rank of
+the new element first) and says which; a sheet's own off-nature jutsu (Kaien's Fireball, Raiga's
+Earth Wall, older or imported sheets) stay, marked. The random ninja picks jutsu of its nature.
+Enemies and battles are untouched. Left: the rank cap for a new ninja ("low-rank ones only"; the
+owner decides which ranks), the jutsu of Light and Void (and later Shadow and Spirit), a Water
+S-rank, a second Wind jutsu.
 
 ### 4d. Missions (not built)
 Branching road, road traps and curios, votes, cinematics and decisions, the AI choosing camp

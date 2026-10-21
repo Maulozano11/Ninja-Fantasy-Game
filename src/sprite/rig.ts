@@ -173,6 +173,16 @@ interface PoseFrame {
   /** -1 bends the near elbow down instead of out (an arm carrying something at the side). */
   bendN?: 1 | -1;
   /**
+   * The held weapon (or technique) has left the near hand: it was thrown ('throw'). The hand is
+   * drawn open and the weapon is not drawn on the body; the battle draws it in flight.
+   */
+  released?: boolean;
+  /**
+   * The body is pitched so far forward that a cape cannot hang behind the legs: it streams back
+   * from the shoulders behind the back (compose.ts cuts what would show in front of the back).
+   */
+  streamBack?: boolean;
+  /**
    * Pelvis height above the ankle line, in leg lengths. When set it replaces
    * the ground solve and the feet hang from level hips (the lean no longer
    * tips one foot up and the other down), so a step cycle places every foot
@@ -562,6 +572,59 @@ const TRAIN_FIST: PoseFrame[] = [
   { lean: -2, footN: v(0.3, 0.55), footF: v(0.12, 0.97), handN: chest(4, -2), handF: chest(2, -3.5), shapeN: 'fist', shapeF: 'fist', farHandFront: true },
 ];
 
+// ---------------------------------------------------------------------------
+// Weapon techniques: throw, pierce
+// ---------------------------------------------------------------------------
+
+/**
+ * Throw, 4 frames: a short wind-up (coiled low with the weapon drawn back at the hip, then the
+ * weapon raised behind the head while the free hand points at the target), THE RELEASE, and a
+ * follow-through into the leap. The release is the owner's reference
+ * (docs/reference/poses/warp-throw-owner-reference.jpg, a figure of blue light leaping as it throws),
+ * its angles measured on his picture: the body pitched forward 32 degrees (pelvis to neck), the
+ * head pushed ahead of the shoulders and down; the throwing arm flung up and back behind the head
+ * (upper arm 53 degrees above level, forearm 33, the elbow a little high); the free arm swept back
+ * at shoulder height (31 degrees above level); the front knee driven forward (thigh 34 degrees
+ * below level) with its shin folded back under the body (46 degrees); the back leg stretched out
+ * straight behind (56 degrees below level), pushing off. The weapon leaves the hand there
+ * (PoseFrame.released): the hand opens and the battle draws the weapon in flight from
+ * throwRelease() (grip.ts). Bare hands throw a kunai from the pouch (grip.ts throwsKunai).
+ */
+const THROW: PoseFrame[] = [
+  // Coil: crouched over the front foot, the weapon drawn back low behind the hip, the free hand out at the target.
+  { lean: 14, pelvisDx: -1, sink: 1.5, footN: v(-0.42, 0.9), footF: v(0.4, 0.9), handN: arm(-0.62, 0.52), handF: arm(0.86, 0.24), shapeN: 'grip', shapeF: 'point' },
+  // Cock: rising, the weapon raised behind the head with the elbow back, the free hand pointing the way.
+  { lean: 9, footN: v(-0.46, 0.91), footF: v(0.4, 0.88), handN: arm(-0.42, -0.6), bendN: -1, handF: arm(0.96, -0.1), shapeN: 'grip', shapeF: 'point' },
+  // RELEASE: the owner's reference.
+  { lean: 32, pelvisDx: 2, headDx: 3.5, headDy: 3.5, footN: v(-0.56, 0.83), footF: v(0.087, 0.637), handN: arm(-0.73, -0.62), handF: arm(-0.86, -0.5), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
+  // Follow-through: carried on into the leap, both feet leaving the ground.
+  { lean: 34, pelvisDx: 2.5, headDx: 3.5, headDy: 3.5, lift: 1.5, footN: v(-0.6, 0.78), footF: v(0.1, 0.6), handN: arm(-0.77, -0.6), handF: arm(-0.9, -0.4), shapeN: 'open', shapeF: 'open', released: true, streamBack: true },
+];
+
+/** The 'throw' frame where the weapon leaves the hand: the owner's reference pose. */
+export const THROW_RELEASE_FRAME = THROW.findIndex((f) => f.released);
+
+/**
+ * Pierce, 5 frames: a thrust. Guard (the point raised at the target), chamber (drawn back to the
+ * hip, the point level and forward, the weight on the back foot), the lunge (the front foot far
+ * forward, the body low and long, the weapon arm straight and the weapon level at the target, the
+ * free hand thrown back for balance), a hold on the hit, and the recoil back toward the guard.
+ * Blades, the kunai and the naginata thrust from the near hand (polearms are carried one-handed
+ * everywhere, as in 'attack'); bare hands drive a straight punch the same way.
+ */
+const PIERCE: PoseFrame[] = [
+  // Guard: the point raised at the target, the free fist before the chest.
+  { lean: 5, footN: v(-0.34, 0.94), footF: v(0.36, 0.93), handN: arm(0.62, 0.42), handF: chest(3, 0), shapeN: 'grip', shapeF: 'fist' },
+  // Chamber: the weapon drawn back to the near hip (the elbow behind), its point level and forward; the free fist out front.
+  { lean: -2, pelvisDx: -1.5, footN: v(-0.38, 0.93), footF: v(0.36, 0.93), handN: arm(0.06, 0.6), handF: arm(0.7, 0.35), shapeN: 'grip', shapeF: 'fist' },
+  // Lunge: the front foot far forward, low and long, the weapon arm straight at chest height (clear of the face), the free hand back.
+  { lean: 20, pelvisDx: 4, headDy: -1, footN: v(-0.64, 0.75), footF: v(0.46, 0.74), handN: arm(0.97, 0.22), handF: arm(-0.9, 0.3), shapeN: 'grip', shapeF: 'relaxed' },
+  // Hold on the hit.
+  { lean: 21, pelvisDx: 4.5, headDy: -1, footN: v(-0.65, 0.75), footF: v(0.46, 0.74), handN: arm(0.98, 0.22), handF: arm(-0.92, 0.28), shapeN: 'grip', shapeF: 'relaxed' },
+  // Recoil: drawing back toward the guard.
+  { lean: 8, pelvisDx: 1, footN: v(-0.42, 0.9), footF: v(0.42, 0.91), handN: arm(0.7, 0.4), handF: chest(3, 0), shapeN: 'grip', shapeF: 'fist' },
+];
+
 export const POSES: Record<RigPose, PoseFrame[]> = {
   idle: [IDLE, IDLE, { ...IDLE, chestDy: 1 }, { ...IDLE, chestDy: 1 }],
   handsigns: [
@@ -715,6 +778,9 @@ export const POSES: Record<RigPose, PoseFrame[]> = {
       shapeF: 'fist',
     },
   ],
+  // Weapon techniques.
+  throw: THROW,
+  pierce: PIERCE,
   // Battle-map movement poses.
   walk: WALK,
   run: RUN,
@@ -738,6 +804,8 @@ export const POSE_FPS: Record<SpritePose, number> = {
   hurt: 4,
   victory: 3,
   charge: 10,
+  throw: 6,
+  pierce: 8,
   walk: 10,
   run: 12,
   crouch: 3,
@@ -778,6 +846,10 @@ export interface Rig {
   shapeF: HandShape;
   /** See PoseFrame.farHandFront. */
   farHandFront: boolean;
+  /** See PoseFrame.released: the held weapon has been thrown and is not in the hand. */
+  released: boolean;
+  /** See PoseFrame.streamBack. */
+  streamBack: boolean;
   /** Torso-local point: x along the shoulder line (+ toward facing side), y up from the pelvis. */
   T: (x: number, y: number) => Vec;
   /** Set for poses laid on the ground for display ('downed', see PoseFrame.lie). */
@@ -982,6 +1054,8 @@ function solveRig(body: BodyType, pose: RigPose, frame: number, f: PoseFrame): R
     shapeN: f.shapeN,
     shapeF: f.shapeF,
     farHandFront: !!f.farHandFront,
+    released: !!f.released,
+    streamBack: !!f.streamBack,
     T,
   };
 }

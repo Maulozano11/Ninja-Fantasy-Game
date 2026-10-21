@@ -4,6 +4,7 @@ import { drawBody, faceCells, sculptClothes } from './body';
 import { fitsBody, getItem } from './catalog';
 import { hexToRgb } from './color';
 import { Depth, DEPTHS, DrawCtx, ItemDef, NO_OUTLINE_DEPTHS, resolveParts } from './ctx';
+import { drawThrowKunai } from './items/accessories';
 import { drawHeadband } from './items/headband';
 import { add, F_NO_OUTLINE, GRID, Layer, MaterialTable, norm, PAD, PartId, partIndex, PARTS, perp, RES, scale, sub, v, Vec } from './raster';
 import { drawRig, Lay, layRig, Rig, rigPoseFor } from './rig';
@@ -86,6 +87,49 @@ function farHandToFront(layers: Map<Depth, Layer>, g: DrawCtx): void {
       front.flags[i] = L.flags[i];
       front.used = true;
       L.mat[i] = -1;
+    }
+  }
+}
+
+/**
+ * A body pitched far forward (PoseFrame.streamBack, the release of 'throw') cannot have a cape
+ * hanging behind its legs: whatever of the cape layer would show in front of the line of the back
+ * below the chest is cut away, so the cloth streams back from the shoulders behind the back. The
+ * cut gets the cloth's outline (a painted cape, which draws its own: its darkest colour).
+ */
+function capeBehindBack(L: Layer, rig: Rig, mats: MaterialTable): void {
+  const b = rig.bp;
+  // The back of the near thigh at the hip (torsoPoly's nO), the line the cloth stays behind.
+  const backX = -(b.hipHalf * 0.5 + b.legR[0] * 0.96) + 0.5;
+  const chestY = b.torsoLen - 4;
+  const cut = new Uint8Array(GRID * GRID);
+  let darkest = -1;
+  let darkL = Infinity;
+  for (let i = 0; i < GRID * GRID; i++) {
+    const m = L.mat[i];
+    if (m < 0) continue;
+    const d = sub(v(((i % GRID) + 0.5) / RES, (((i / GRID) | 0) + 0.5) / RES), rig.pelvis);
+    const lx = d.x * rig.right.x + d.y * rig.right.y;
+    const ly = d.x * rig.up.x + d.y * rig.up.y;
+    if (lx > backX && ly < chestY) {
+      L.mat[i] = -1;
+      L.flags[i] = 0;
+      cut[i] = 1;
+      continue;
+    }
+    const [r, g, bl] = hexToRgb(mats.ramps[m][3]);
+    const lum = r * 0.3 + g * 0.59 + bl * 0.11;
+    if (lum < darkL) {
+      darkL = lum;
+      darkest = m;
+    }
+  }
+  // Painted cloth is not outlined by the layer: line its cut with its darkest colour.
+  for (let i = 0; i < GRID * GRID; i++) {
+    if (L.mat[i] < 0 || !(L.flags[i] & F_NO_OUTLINE)) continue;
+    if ([i - 1, i + 1, i - GRID, i + GRID].some((j) => j >= 0 && j < GRID * GRID && cut[j])) {
+      L.mat[i] = darkest;
+      L.shade[i] = 0;
     }
   }
 }
@@ -177,6 +221,7 @@ export function renderSprite(
     if (def && def.slot === 'accessory') def.draw(g, resolveColors(def, acc.colors), resolveParts(def, acc.parts));
   }
   drawHeadband(g);
+  drawThrowKunai(g);
   // clothes over a female torso follow the bust (fitted armors shape their own plates)
   for (const d of ['torso.top', 'torso.over'] as const) {
     const L = layers.get(d);
@@ -184,6 +229,8 @@ export function renderSprite(
   }
   drawCastFx(g);
   drawCampFx(g);
+  const capeL = layers.get('capeBack');
+  if (rig.streamBack && capeL?.used) capeBehindBack(capeL, rig, mats);
   if (rig.farHandFront) farHandToFront(layers, g);
   guardFace(g, layers);
 

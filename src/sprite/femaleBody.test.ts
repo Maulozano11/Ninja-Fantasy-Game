@@ -147,6 +147,24 @@ describe('female bodies at the owner\'s game scale', () => {
     }
   });
 
+  it('keeps his painted shades: no drop shadow darkens his hand under a cuff', () => {
+    // The near hand hangs just under the forearm; a sleeve's cuff over the wrist would cast the compositor's
+    // drop shadow on it. With a shirt's sleeve over the forearm, the female near hand keeps his own shades.
+    const shirt = { ...bare('female'), slots: { top: { id: 'top_longsleeve', colors: [] } } } as unknown as SpriteAppearance;
+    const a = renderSprite(bare('female'), 'idle', 0);
+    const b = renderSprite(shirt, 'idle', 0);
+    const hand = partIndex('handN');
+    let same = 0;
+    let n = 0;
+    for (let i = 0; i < GRID * GRID; i++) {
+      // his skin, not his line (a line pixel may give way to the sleeve's own outline)
+      if (a.part[i] !== hand || b.part[i] !== hand || Math.max(a.rgba[i * 4], a.rgba[i * 4 + 1], a.rgba[i * 4 + 2]) < 70) continue;
+      n++;
+      if ([0, 1, 2].every((k) => a.rgba[i * 4 + k] === b.rgba[i * 4 + k])) same++;
+    }
+    assert.ok(n > 10 && same === n, `${same} of ${n} hand pixels kept`);
+  });
+
   it('has his hands at his size and his shoulder lined on top', () => {
     for (const [k, t] of Object.entries(FEMALE_HANDS)) assert.ok(t.rows[0].length <= 9 && t.rows.length <= 9, k);
     assert.ok(/^\.*o+\.*$/.test(FEMALE_SHOULDER_N.rows[0]), 'the shoulder starts with his line');

@@ -207,6 +207,9 @@ const ES: Record<string, string> = {
   "Silk cord crossed over white ray skin, a gold ornament under the middle diamond.": "Cordón de seda cruzado sobre piel de raya blanca, con un adorno de oro bajo el rombo central.",
   "The bare white ray skin of a court sword, gold fittings and a red silk tassel.": "La piel de raya blanca de una espada de la corte, herrajes de oro y una borla de seda roja.",
   "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
+  // Saya's sword
+  'Shade Saber': 'Sable de la Sombra',
+  'A straight steel blade with gold dots down its middle under a gold swept hilt, gold sparkles round it: the owner painted it for Saya.': 'Una hoja recta de acero con puntos de oro por el centro bajo una guarda de lazo de oro, con destellos de oro alrededor: el dueño la pintó para Saya.',
 };
 
 /** An editor label in the screen's language. */

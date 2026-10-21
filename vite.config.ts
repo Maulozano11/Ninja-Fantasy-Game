@@ -11,6 +11,9 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    // Scan only the game's page for dependencies, not every .html in the repo (the publish page in
+    // scripts/publish/ and the dist-publish/ build would otherwise break the scan).
+    optimizeDeps: {entries: ['index.html']},
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.

@@ -61,6 +61,7 @@ Boss. Paths of Mastery: designed, not built.
 - The nature gates the elemental jutsu in the creator (`chakra/decisions`, 2026-10-21): the Element
   and S-rank slots offer only the ninja's own element plus the jutsu with no element; Utility and
   the clan secret are free; Light and Void get no elemental jutsu yet (`src/rules/jutsuNature.ts`).
+  How it gates is the builder's proposal, waiting for the owner's approval (section 3).
 - VFX for 8 elements (fire, water, wind, lightning, earth, genjutsu, chakra, poison), all from the
   owner's v3 sheets: full effect set, walls in 3 orientations, a beast each. Signature effects:
   Fireball / Great Fireball, Great Fire Annihilation (normal and enhanced), Kirin.
@@ -133,10 +134,13 @@ Merge checks (`git merge-tree` on the origin tips, nothing changed):
   copies of the legends and companions move to their new type when they load; Shadow and Spirit
   are pending (out of the creator and the random ninja), Light and Void stay with their jutsu pending
   (Light: deity, angel and god; Void, Shadow and Spirit: demonic); Cinder Nova stays as a second Fire
-  burst. **Still his:** approve or redo the Earth burst art (Shattered Earth); which ranks a new
-  ninja may take ("low-rank ones only", not built); Kaien's Fireball and Raiga's Earth Wall (kept);
-  Water has no S-rank jutsu and Wind one Element jutsu; the explosive tag and mystical palm stay
-  ungated in Utility.
+  burst. **Still his** (as built, proposed): approve or redo the Earth burst art (Shattered Earth);
+  the burst-to-type rows his answers did not settle (Water = Rising Tide, Wind = Leafwind Spiral,
+  the Light and Void bursts); saved legend copies are moved only while they carry the legend's own
+  jutsu (so a player's own Ren as Water stays); the jutsu gate itself (S-rank gated, Utility and
+  clan secret not, the type change swaps the jutsu, Light and Void only jutsu with no element, the
+  random ninja's picks); which ranks a new ninja may take ("low-rank ones only", not built); Kaien's
+  Fireball and Raiga's Earth Wall (kept); Water has no S-rank jutsu and Wind one Element jutsu.
 - Decided 2026-10-21 (later): Warp Strike is renamed **"Shooting-Star Thrust"** (Spanish **"Estocada Fugaz"**; the owner first said "Shooting Star", then chose these), after the clan's name (Ryusei = shooting star) and to stay clear of other games' "Warp Strike". The id `ryusei_warp` stays. To apply once `icons/sheets-8-11` is merged (it touches the same strings): names, hotbar label, help text, log, clan texts, D24.
 - Decided 2026-10-21: the Spanish names are **"Golpe Warp"** and **"Comando"** (the owner: "los dos"); `icons/sheets-8-11` brings them and updates D24 in `docs/CLANS_DESIGN.md`.
 - Jutsu pacing (owner: too fast, "like a flashing star"): a first pass is merged (`8ef28a9`: 560 ms
@@ -212,7 +216,8 @@ Designed in `docs/GAMEPLAY_DESIGN.md` ("Three new jutsu", 2026-10-20), icons on 
 `JUTSUS_DATA`. `ElementalNature` needs Chakra and Poison first.
 
 ### 4c. Elemental nature gates jutsu
-Built on `chakra/decisions` (2026-10-21): the chakra type picked in Appearance > Chakra is the
+Built on `chakra/decisions` (2026-10-21; how it gates is the builder's proposal, waiting for the
+owner's approval, section 3): the chakra type picked in Appearance > Chakra is the
 nature (`natureOf`, `src/rules/ninja.ts`), and in the creator's Jutsu step the Element I, Element II
 and S-rank slots offer only jutsu of the ninja's element plus the ones with no element (taijutsu,
 kenjutsu, genjutsu); Utility and the clan secret are not gated; Light and Void get no elemental

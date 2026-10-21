@@ -531,7 +531,12 @@ export const AppearanceEditor: React.FC<{
                   {L('This type is pending: it can no longer be picked. Your ninja keeps it until you choose another one.')}
                 </p>
               )}
-              {chakraNote && <p className="mt-1.5 text-[11px] text-[#f2c46d] border border-[#6b5434] bg-[#3a2a12]/60 px-2 py-1.5">{chakraNote}</p>}
+              {/* Sticks to the bottom of the panel while it is below the fold (a short screen), so the swap is seen right after the click. */}
+              {chakraNote && (
+                <p className="sticky bottom-0 z-10 mt-1.5 text-[11px] text-[#f2c46d] border border-[#6b5434] bg-[#2b1f0d] shadow-[0_-8px_16px_rgba(0,0,0,0.55)] px-2 py-1.5">
+                  {chakraNote}
+                </p>
+              )}
             </div>
             <div>
               <SectionLabel>Chakra Color</SectionLabel>

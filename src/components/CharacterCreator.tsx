@@ -576,10 +576,11 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
   const nature = natureOf(character);
   const offNature = new Set(offNatureJutsus(character.selectedJutsus, nature));
   const jutsuTitle = (id: string) => jutsuParts(JUTSUS_DATA.find((j) => j.id === id) ?? { name: id })[0];
-  const natureSwapText =
-    natureSwaps && natureSwaps.nature === nature
-      ? T('natureSwaps', { n: L(nature), list: natureSwaps.swaps.map((x) => `${jutsuTitle(x.from)} → ${jutsuTitle(x.to)}`).join('; ') })
-      : undefined;
+  // Only the swaps the player has not changed since: a slot picked again drops out of the note.
+  const swapsKept = natureSwaps && natureSwaps.nature === nature ? natureSwaps.swaps.filter((x) => character.selectedJutsus[x.slot] === x.to) : [];
+  const natureSwapText = swapsKept.length
+    ? T('natureSwaps', { n: L(nature), list: swapsKept.map((x) => `${jutsuTitle(x.from)} → ${jutsuTitle(x.to)}`).join('; ') })
+    : undefined;
 
   // --- the stage: the forest, the ninja standing in it, the panels at its sides ---------------
   const wide = view.w >= 1100;
@@ -788,11 +789,14 @@ export const CharacterCreator: React.FC<CharacterCreatorProps> = ({
                 icon={<JutsuIcon id={chosen?.id} nature={chosen?.nature} />}
                 title={chosen ? jutsuParts(chosen)[0] : '—'}
                 sub={
-                  chosen ? (
+                  chosen && offNature.has(chosen.id) ? (
+                    // the mark on a line of its own, so a narrow panel never cuts it off
                     <>
-                      {`${slot.label} · ${jutsuParts(chosen)[1]}`}
-                      {offNature.has(chosen.id) && <span className="text-[#e8956a]"> · {T('offNature')}</span>}
+                      <span className="block truncate">{`${slot.label} · ${jutsuParts(chosen)[1]}`}</span>
+                      <span className="block truncate text-[#e8956a]">{T('offNature')}</span>
                     </>
+                  ) : chosen ? (
+                    `${slot.label} · ${jutsuParts(chosen)[1]}`
                   ) : (
                     slot.label
                   )

@@ -3,7 +3,6 @@
 
 import type { ChakraNature, ClanType, ShinobiCharacter } from '../types/shinobi';
 import { CLANS_DATA, DEFAULT_CHARACTER, SHINOBI_CLASSES } from '../data/shinobiData';
-import { COMPANIONS } from '../data/missions';
 import { chakraNature } from '../sprite/chakraNature';
 import { getAppearance } from '../sprite/legacy';
 import type { ChakraColorId } from '../sprite/types';
@@ -12,6 +11,7 @@ import { savingThrow, SKILL_ABILITY } from './checks';
 import { deriveStats, effectiveMaxHp, SHEET_VERSION } from './derived';
 import type { BuildInput } from './derived';
 import { addEffect, EFFECTS, endMission, hasEffect, removeEffect, sanitizeEffects } from './effects';
+import { offNatureJutsus } from './jutsuNature';
 import { checkRng, Dice, pick } from './rng';
 
 export type Step = { character: ShinobiCharacter; events: RuleEvent[] };
@@ -237,37 +237,48 @@ export function countClanBonus(c: ShinobiCharacter): ShinobiCharacter {
 
 /**
  * The chakra burst each legend and companion had before its chakra type followed its jutsu
- * (2026-10-21), by id. A saved copy still holding it was saved before that change.
+ * (2026-10-21), and the one it has now (its preset in data/shinobiData.ts or data/missions.ts; a test
+ * keeps the two the same), by id.
  */
-export const LEGEND_OLD_BURST: Readonly<Record<string, ChakraColorId>> = {
-  preset_storm: 'violet', // Kaien: Spectral Guardian, now Lightning
-  preset_night: 'blue', // Ren: Rising Tide, now Lightning
-  preset_sunburst: 'orange', // Hiro: Cinder Nova, now Wind
-  preset_warlord: 'violet', // Raiga: Spectral Guardian, now Fire
-  companion_hana: 'green', // Hana: Leafwind Spiral, now Water
-  companion_kenji: 'violet', // Kenji: Spectral Guardian, now Earth
+export const LEGEND_BURST_CHANGE: Readonly<Record<string, { old: ChakraColorId; now: ChakraColorId }>> = {
+  preset_storm: { old: 'violet', now: 'yellow' }, // Kaien: Spectral Guardian, now Lightning
+  preset_night: { old: 'blue', now: 'yellow' }, // Ren: Rising Tide, now Lightning
+  preset_sunburst: { old: 'orange', now: 'green' }, // Hiro: Cinder Nova, now Wind
+  preset_warlord: { old: 'violet', now: 'red' }, // Raiga: Spectral Guardian, now Fire
+  companion_hana: { old: 'green', now: 'blue' }, // Hana: Leafwind Spiral, now Water
+  companion_kenji: { old: 'violet', now: 'brown' }, // Kenji: Spectral Guardian, now Earth
 };
 
 /**
  * A saved copy of a legend or companion (the hero, the roster, a mission under way) that still has
  * the burst it had before its type followed its jutsu gets the legend's burst of today, so its nature
  * matches its jutsu again (the owner, 2026-10-21: "actualiza"). It keeps the colour it showed: its own
- * tint, or the old burst's natural colour. Nothing else changes, and a copy with another burst (the
- * player's own choice) is left alone, so it happens once.
+ * tint, or the old burst's natural colour. Nothing else changes.
+ *
+ * Only a copy whose jutsu fit the legend's type of today better than the old burst's type (fewer of
+ * its Element and S-rank jutsu are of another element) is moved: that is a copy saved with the
+ * legend's own jutsu. A player who picks the old burst's type in today's creator (Ren as Water, Hiro
+ * with Cinder Nova) gets the jutsu fitted to it (rules/jutsuNature.ts, fitLoadout), so that copy is
+ * the player's choice and stays as it is, on every load. A moved copy no longer has the old burst, so
+ * the move happens once.
  */
 export function updateLegendChakra(c: ShinobiCharacter): ShinobiCharacter {
-  const old = Object.hasOwn(LEGEND_OLD_BURST, c.id) ? LEGEND_OLD_BURST[c.id] : undefined;
-  const chakra = c.appearance?.chakra;
-  if (!old || !chakra || chakra.color !== old) return c;
-  const now = COMPANIONS.find((x) => x.id === c.id)?.appearance?.chakra.color;
-  if (!now || now === old) return c;
-  return { ...c, appearance: { ...c.appearance!, chakra: { ...chakra, color: now, tint: chakra.tint ?? old } } };
+  const change = Object.hasOwn(LEGEND_BURST_CHANGE, c.id) ? LEGEND_BURST_CHANGE[c.id] : undefined;
+  if (!change || !c.selectedJutsus) return c;
+  // A sheet older than the sprite look draws its burst from its old aura colour: the same look here.
+  const look = getAppearance(c);
+  const chakra = look.chakra;
+  if (!chakra || chakra.color !== change.old) return c;
+  const offOld = offNatureJutsus(c.selectedJutsus, chakraNature(chakra)).length;
+  const offNow = offNatureJutsus(c.selectedJutsus, chakraNature({ color: change.now })).length;
+  if (offNow >= offOld) return c;
+  return { ...c, appearance: { ...look, chakra: { ...chakra, color: change.now, tint: chakra.tint ?? change.old } } };
 }
 
 /**
  * A sheet from an older save or an import, as today's rules read it:
- * - a legend's or companion's copy with its old chakra burst moved to the legend's type
- *   (updateLegendChakra);
+ * - a legend's or companion's copy with its old chakra burst and the legend's own jutsu moved to the
+ *   legend's type (updateLegendChakra);
  * - its clan converted (old names load as the clan that replaced them). When its numbers came from
  *   the creator's formula (its AC and jutsu DC and attack still match it) and its old clan built a
  *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is

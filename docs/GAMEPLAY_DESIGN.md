@@ -291,7 +291,7 @@ rayo"*.
 3 sombra se quedara pendiente y espiritu tambien quitalos de la seleccion y luz
 y vacio hay que hacerles justsus pero dejalo pendiente porque van a ser jutsus
 de tipo deidad angel y dios y el de vacio sombra y espiritu va ser demoniaco
-4 si"*. All four are built:
+4 si"*. All four are built (where the builder had to choose how, it says so):
 
 1. **The legends keep their new types** ("si"), each in the colour it always
    had: Kaien and Ren Lightning (violet, blue), Hiro Wind (orange), Raiga Fire
@@ -299,13 +299,25 @@ de tipo deidad angel y dios y el de vacio sombra y espiritu va ser demoniaco
    Kaien, Raiga and Kenji lose the ghost-warrior burst. Solen, Akira, Aiden and
    Shiori already matched.
 2. **Saved copies are updated** ("actualiza"). A copy of a legend or companion
-   (the hero, the roster, the party and the fallen of a mission under way,
-   matched by its id) that still has the burst it had before (Kaien, Raiga and
-   Kenji the violet Spectral Guardian, Ren the blue Rising Tide, Hiro the
-   orange Cinder Nova, Hana the green Leafwind Spiral) loads with the legend's
-   burst of today, in the colour it showed (its own colour, else the old
-   burst's natural one). Nothing else changes, and it happens once. A copy
-   whose player picked another burst keeps it.
+   (the hero, the roster, the party and the fallen of a mission under way, an
+   import; matched by its id) that still has the burst it had before (Kaien,
+   Raiga and Kenji the violet Spectral Guardian, Ren the blue Rising Tide, Hiro
+   the orange Cinder Nova, Hana the green Leafwind Spiral) loads with the
+   legend's burst of today, in the colour it showed (its own colour, else the
+   old burst's natural one). Nothing else changes. A copy whose player picked
+   another burst keeps it.
+   *As built (the builder's choice, for his approval):* only a copy that still
+   carries the legend's own jutsu is moved, that is, its Element and S-rank
+   jutsu fit the legend's type of today better than the old burst's type. The
+   id and the burst alone can't tell an old copy from a player's own choice:
+   picking a legend keeps its id, and Ren as Water or Hiro with Cinder Nova are
+   choices a player can make today. Those copies had their jutsu fitted to the
+   type by the creator (below), so they are left alone on every load. A moved
+   copy no longer has the old burst, so the move happens once. Two cases this
+   rule decides: a copy saved in the hours between the chakra-type change and
+   this one (a legend turned to its old type before the creator fitted the
+   jutsu) is moved, once; an old copy whose player had already changed its
+   jutsu so they fit the old type keeps the old type.
 3. **Shadow and Spirit are pending** ("se quedara pendiente... quitalos de la
    seleccion"): the creator and the random ninja no longer offer them. Their
    art stays in the game: a ninja that already has one keeps it, draws it and
@@ -314,26 +326,33 @@ de tipo deidad angel y dios y el de vacio sombra y espiritu va ser demoniaco
    are pending ("dejalo pendiente"): **Light** will get **deity, angel and god**
    jutsu (*"deidad angel y dios"*); **Void**, and later **Shadow and Spirit**,
    **demonic** ones (*"demoniaco"*). Until then they learn no elemental jutsu;
-   the creator says so ("Sus jutsus llegarán más adelante").
+   the creator says so ("Sus jutsus llegarán más adelante"). (That they learn
+   no elemental jutsu meanwhile is the builder's reading, for his approval.)
 4. **Cinder Nova stays as a second Fire burst** ("si").
 
-The types and their bursts:
+The types and their bursts. Which burst stands for which type was proposed
+by the builder; his answers settle the rows marked so, the rest is still
+**proposed** (Open questions):
 
 | Type | Burst(s) | Natural colour | State |
 |---|---|---|---|
 | Fire (Fuego) | Pyre Crown (flames), Cinder Nova (embers and a fiery shockwave) | red, orange | His rule; Cinder Nova as a second burst: his answer 4 |
-| Water (Agua) | Rising Tide | blue | Built; his answer 1 (Hana Water) builds on it |
-| Wind (Viento) | Leafwind Spiral | green | Built; his answer 1 (Hiro Wind) builds on it |
+| Water (Agua) | Rising Tide | blue | Proposed (Hana is Water: his answer 1, on this table) |
+| Wind (Viento) | Leafwind Spiral | green | Proposed (Hiro is Wind: his answer 1, on this table) |
 | Lightning (Rayo) | Storm Lash | yellow | His rule |
 | Earth (Tierra) | Shattered Earth (the ground cracks, stone spikes, rocks tear loose and float up) | brown | Kenji Earth: his answer 1. The burst is **new art, waiting for his approval** |
 | Shadow (Sombra), no element | Nightveil Mist | indigo | **Pending** (answer 3): not offered; jutsu later, demonic |
 | Spirit (Espíritu), no element | Spectral Guardian | violet | **Pending** (answer 3): not offered; jutsu later, demonic |
-| Light (Luz), no element | Heaven Pillar | white | Stays (answer 3); its jutsu later: deity, angel and god |
-| Void (Vacío), no element | Abyss Orbit | black | Stays (answer 3); its jutsu later: demonic |
+| Light (Luz), no element | Heaven Pillar | white | The type stays (answer 3), its jutsu later: deity, angel and god. The burst: proposed |
+| Void (Vacío), no element | Abyss Orbit | black | The type stays (answer 3), its jutsu later: demonic. The burst: proposed |
 
-**The nature decides the elemental jutsu** (the owner's earlier rule:
-"Elemental nature decides the elemental jutsu available; a new ninja starts
-with low-rank ones only"). Built in the creator's Jutsu step:
+**The nature decides the elemental jutsu.** That the nature decides which
+elemental jutsu a ninja can learn is the owner's ("One choice" above). The
+backlog item it comes from reads "Elemental nature decides the elemental jutsu
+available; a new ninja starts with low-rank ones only": that is a paraphrase
+of his request, not his words. How the gate works is **as built, proposed and
+waiting for the owner's approval** (the builder's choices, not his decisions;
+each is in Open questions). In the creator's Jutsu step:
 
 - **Gated:** a jutsu of one of the five elements (Fire, Water, Wind,
   Lightning, Earth) in the **Element I, Element II and S-rank** slots is
@@ -349,7 +368,12 @@ with low-rank ones only"). Built in the creator's Jutsu step:
   the other Element slot holds; if the type has none left, one with no
   element. A note under the type tiles and at the top of the Jutsu step lists
   the swaps ("Ahora Rayo: se cambiaron los jutsus de otro elemento. Bola de
-  fuego → Sabueso del rayo; Gran aniquilación → Kirin.").
+  fuego → Sabueso del rayo; Gran aniquilación → Kirin."); a slot the player
+  picks again drops out of it, and on a short screen the note sticks to the
+  bottom of the panel so it is seen right after the click. (Swapping, not just
+  marking, keeps a player from keeping another element's jutsu by changing
+  type afterwards, and it is what tells a player's own type from an old copy
+  of a legend, answer 2.)
 - **A sheet keeps what it has:** a legend's jutsu of a second element (Kaien's
   Fireball, Raiga's Earth Wall), an older sheet or an imported one keep their
   jutsu; the Jutsu step marks such a jutsu "no es de tu naturaleza", and it
@@ -374,7 +398,8 @@ that colour, so such a ninja's type only changes when the player picks one.
 Pending types are marked `pending` in `CHAKRA_TYPES`; `OFFERED_TYPES` is what
 the creator and the random ninja offer. The saved copies are moved by
 `updateLegendChakra` (in `migrateCharacter`, so `loadHero`, `loadRoster`, the
-mission load and imports all do it), from `LEGEND_OLD_BURST`. The jutsu gate is
+mission load and imports all do it), from `LEGEND_BURST_CHANGE` (old and new
+burst per id; a test keeps it equal to the presets). The jutsu gate is
 `src/rules/jutsuNature.ts` (`jutsuChoices`, `fitLoadout`, `offNatureJutsus`).
 
 ## Language, sound and tips
@@ -494,6 +519,30 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
 - The Earth burst (Shattered Earth, "Chakra type" above): approve or redo it.
   It was drawn because Earth had none; Kenji is Earth (his answer 1), but the
   art itself waits for his yes.
+- The burst-to-type table ("Chakra type" above): approve or change the rows
+  that are still proposed: Water = Rising Tide, Wind = Leafwind Spiral, and the
+  bursts of Light (Heaven Pillar) and Void (Abyss Orbit). His answers settled
+  the legends' types, Cinder Nova and which types stay, not these rows.
+- Saved copies of the legends (his answer 2, "actualiza"): as built, a copy is
+  moved only while it carries the legend's own jutsu, so that a player who
+  picks the old type today (Ren as Water, Hiro with Cinder Nova) keeps it.
+  Confirm. A copy saved in the few hours between the two changes with a legend
+  turned to its old type is moved once; an old copy whose jutsu the player had
+  already changed to fit the old type keeps the old type.
+- The jutsu gate as built ("The nature decides the elemental jutsu" above),
+  each the builder's choice:
+  - the **S-rank** slot is gated like the Element slots;
+  - the **Utility** slot is not gated, so the explosive tag (Fire) and the
+    mystical palm (Water) are open to every nature;
+  - the **clan secret** is not gated (it comes with the clan, whatever its
+    element);
+  - **changing the type swaps** the jutsu of another element for ones of the
+    new type, lowest rank first, and says which (instead of only marking
+    them);
+  - **Light and Void** (and a ninja still on Shadow or Spirit) learn only the
+    jutsu with no element until their own exist;
+  - **the random ninja** takes Element I and the S-rank from its own element
+    when there is one, and its clan's secret.
 - "A new ninja starts with low-rank ones only": which ranks may a new ninja
   take (D and C? up to B?), and what happens to the creator's S-rank slot, the
   A-rank picks (Chidori, Temple of Nirvana) and the clan secrets (all A)? Not
@@ -505,8 +554,6 @@ folder (`WORLD_OUT`) until then. Approved so far: the river bridge.
   offers only Yasaka no Magatama and Night Guy); Wind has one Element jutsu
   (Great Breakthrough Blade), so its second Element slot takes a jutsu with no
   element.
-- The explosive tag (Fire) and the mystical palm (Water) sit in the Utility
-  slot and are not gated by the nature: confirm.
 - The jutsu of Light (deity, angel and god) and of Void, Shadow and Spirit
   (demonic): to design when he says.
 

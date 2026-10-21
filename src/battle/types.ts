@@ -381,7 +381,8 @@ export type Action =
   | { type: 'jutsu'; unit: string; jutsu: string; at: Pt; target?: string; enhanced?: boolean; target2?: string }
   | { type: 'dash' | 'disengage' | 'dodge' | 'hide' | 'focus' | 'crouch' | 'jump' | 'draw'; unit: string }
   | { type: 'shove'; unit: string; target: string; mode: 'prone' | 'push' }
-  | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag'; target?: string; at?: Pt }
+  /** `tag` throws an explosive tag at a point; `tagTrap` hides one on the ground there. */
+  | { type: 'item'; unit: string; item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap'; target?: string; at?: Pt }
   | { type: 'stabilize'; unit: string; target: string }
   | { type: 'flee'; unit: string }
   | { type: 'endTurn'; unit: string }

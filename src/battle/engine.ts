@@ -37,7 +37,7 @@ import type { EnemyKind } from './units';
 import { hydraUnits } from './hydra';
 import { checkEnd, current, endTurn, startCombat } from './turns';
 import { afterStealthAttack, alarm, canTakedown, dragBody, guardsTurn, openFight, scareAnimalsNear, stealthMove, STONE_RANGE, throwStone } from './stealth';
-import { electrify, groundEffects, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
+import { electrify, groundEffects, plantTag, saveHit, springTrap, TAG, throwTag, trapAt, unitsInArea } from './hazards';
 import { breakable, damageStructure, faceToward, hitStructuresIn, jutsuWallAt, raiseStructure, STRUCTURE_AC, structureAt, structureAttack, structureBlocker } from './structures';
 import {
   addNode,
@@ -826,12 +826,6 @@ function doJutsu(s: BattleState, u: Unit, id: string, atIn: Pt, targetId: string
       u.cond.clone = true;
       ev.push({ t: 'clone', unit: u.id, on: true });
       break;
-    case 'trap': {
-      const trap: Trap = { id: `trap_${s.tick}_${u.id}`, kind: 'tag', pos: at, owner: u.team, dc: u.saveDC, dice: spec.dice ?? '3d6', radius: spec.radius ?? 1.5 };
-      s.traps.push(trap);
-      ev.push({ t: 'trap', trap, on: true });
-      break;
-    }
     case 'earthWall':
     case 'waterWall':
       raiseWall(s, u, spec, at, ev);
@@ -1083,7 +1077,7 @@ function pushClear(s: BattleState, from: Pt, to: Pt): boolean {
 
 const near = (u: Unit, t: Unit): boolean => u.id === t.id || dist(u.pos, t.pos) <= 1.6;
 
-function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' | 'tag', targetId: string | undefined, at: Pt | undefined, ev: BattleEvent[]): string | null {
+function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' | 'tag' | 'tagTrap', targetId: string | undefined, at: Pt | undefined, ev: BattleEvent[]): string | null {
   // The backpack is the party's: a commanded enemy or a beast that joined doesn't get into it.
   if (homeTeam(u) !== 'party' || u.joined) return 'noItems';
   if (item === 'pill') {
@@ -1110,6 +1104,19 @@ function doItem(s: BattleState, u: Unit, item: 'pill' | 'bandage' | 'antidote' |
     s.supplies.explosiveTags -= 1;
     ev.push({ t: 'act', unit: u.id, act: 'item' });
     applyHits(s, throwTag(s, u, at, ev), loud(s, u), ev);
+    return null;
+  }
+  if (item === 'tagTrap') {
+    // An explosive tag hidden on the ground nearby: it goes off when an enemy steps on it. Quiet: it
+    // doesn't give the ninja away in the stealth phase.
+    if (s.supplies.explosiveTags < 1) return 'noneLeft';
+    if (!at || dist(u.pos, at) > TAG.plant + 0.1) return 'outOfRange';
+    if (!lineOfSight(s, u.pos, at)) return 'noSight';
+    if (cellBlocked(s, cellOf(at))) return 'blocked';
+    u.turn.action = false;
+    s.supplies.explosiveTags -= 1;
+    ev.push({ t: 'act', unit: u.id, act: 'item' });
+    plantTag(s, u, at, ev);
     return null;
   }
   const t = targetId ? s.units[targetId] : u;

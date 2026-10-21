@@ -40,7 +40,7 @@ export interface JutsuSpec {
   save?: Ability;
   /** On a successful save: half damage, or nothing. */
   saveHalf: boolean;
-  special?: 'heal' | 'flicker' | 'clone' | 'trap' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission';
+  special?: 'heal' | 'flicker' | 'clone' | 'kawarimi' | 'earthWall' | 'waterWall' | 'seal' | 'confuse' | 'evasion' | 'metalBlock' | 'metalWall' | 'warp' | 'swap' | 'command' | 'submission';
   /** The projectile or effect the screen plays. */
   vfx: VfxRole;
   /** A signature effect of its own (vfx_<element>/<sig>, and <sig>_great or <sig>_enh enhanced). */
@@ -83,7 +83,6 @@ const ELEMENT: Record<string, VfxElement> = {
 const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   shadow_clone: { shape: 'self', special: 'clone', vfx: 'aura', loud: false },
   body_flicker: { shape: 'point', special: 'flicker', vfx: 'aura', loud: false },
-  trap_setter_tag: { shape: 'point', special: 'trap', vfx: 'hit', loud: false, radius: 1.5 },
   mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false },
   substitution_kawarimi: { shape: 'self', special: 'kawarimi', cast: 'reaction', vfx: 'hit', loud: false },
   fireball_goukakyu: { vfx: 'sphere', effect: 'burning', sig: 'fireball' },

@@ -23,8 +23,7 @@ describe('which jutsu the nature gates', () => {
       const want = (j.category === 'Elemental' || j.category === 'Ultimate') && isElement(j.nature);
       assert.equal(natureGated(j), want, j.id);
     }
-    // The tools and the medical palm stay free though their nature is Fire and Water.
-    assert.equal(natureGated(JUTSUS_DATA.find((j) => j.id === 'trap_setter_tag')!), false);
+    // The medical palm, a utility jutsu, stays free though its nature is Water (the explosive tag is an item now).
     assert.equal(natureGated(JUTSUS_DATA.find((j) => j.id === 'mystical_palm')!), false);
     // So do the clan secrets of every element.
     for (const j of JUTSUS_DATA.filter((x) => x.category === 'Clan')) assert.equal(natureGated(j), false, j.id);

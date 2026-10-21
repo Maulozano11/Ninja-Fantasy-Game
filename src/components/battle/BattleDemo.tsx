@@ -16,6 +16,7 @@ import { strings, useLang } from '../../i18n';
 import { BattleScreen } from './BattleScreen';
 import { Portrait } from './hud';
 import { unitFrom } from '../../battle/units';
+import { withPouches } from '../../rules/pouch';
 
 const S = strings({
   title: { en: 'Battle practice', es: 'Práctica de batalla' },
@@ -69,7 +70,8 @@ export const BattleDemo: React.FC<BattleDemoProps> = ({ character, start }) => {
       encounterSetup(
         battle.id,
         party.map((c) => ({ character: c })),
-        { seed: battle.seed, difficulty, supplies: { soldierPills: 2, bandages: 3, antidotes: 1, explosiveTags: 2 } },
+        // The practice backpack, plus the explosive tags in each ninja's own pouch.
+        { seed: battle.seed, difficulty, supplies: withPouches({ soldierPills: 2, bandages: 3, antidotes: 1, explosiveTags: 2 }, party) },
       ),
     );
   }, [battle, party, difficulty]);

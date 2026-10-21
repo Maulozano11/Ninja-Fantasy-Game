@@ -68,6 +68,9 @@ const ES: Record<string, string> = {
   Nature: 'Naturaleza',
   'Your chakra type is your elemental nature: it decides your elemental jutsu.': 'Tu tipo de chakra es tu naturaleza elemental: decide tus jutsus elementales.',
   Pending: 'Pendiente',
+  'Your chakra type was fixed when this ninja was made: it can no longer change. At level 5 it may take a second element (Jutsu step).':
+    'Tu tipo de chakra quedó fijo al crear a este ninja: ya no puede cambiar. Al nivel 5 puede sumar un segundo elemento (paso Jutsus).',
+  'Fixed when the ninja was made': 'Fijo desde que se creó el ninja',
   'Light and Void: their own jutsu will come later. For now they learn no elemental jutsu.':
     'Luz y Vacío: sus jutsus llegarán más adelante. Por ahora no aprenden jutsus elementales.',
   'This type is pending: it can no longer be picked. Your ninja keeps it until you choose another one.':

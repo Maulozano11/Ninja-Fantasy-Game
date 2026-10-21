@@ -12,7 +12,7 @@ import { worldSprite } from '../world/WorldSpriteView';
 import type { Fx } from './playback';
 import type { Scene } from './renderer';
 import { auraDx, fxPos, project } from './renderer';
-import { hurryVfxTints, tintedSheet } from './vfxTintCache';
+import { WAIT, hurryVfxSheets, tintedSheet } from './vfxTintCache';
 import type { TintedSheet } from './vfxTintCache';
 import { unitTint, wallElement } from './vfxTintPlan';
 
@@ -27,10 +27,16 @@ function inTint(s: Sheet, element: string, name: string, tint: string | undefine
   return tintedSheet(s, element, tint, beast, name)?.view ?? s;
 }
 
+/** The effects whose colour's frames were already moved to the front of the queue. */
+const hurried = new WeakSet<Fx>();
+
 function sheet(element: string, name: string, tint?: string): Sheet | undefined {
   const s = worldSprite(`vfx_${element}`, name);
   return s && ready(s) ? inTint(s, element, name, tint) : undefined;
 }
+
+/** A recoloured sheet had nothing ready for the frame just drawn (see blit). */
+let waiting = false;
 
 /** Draws one frame of a sheet's animation with its anchor at (x, y); mirrored to face left. */
 function blit(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame: number, x: number, y: number, mirror: boolean, alpha = 1): void {
@@ -41,6 +47,11 @@ function blit(ctx: CanvasRenderingContext2D, s: Sheet, anim: string, frame: numb
   // In a chakra colour: the frame's recoloured copy, cut to its pixels (null: nothing in it).
   const tf = s.tinted?.frame(a.row, f);
   if (tf === null) return;
+  // Nothing of it made yet: the effect's drawn stand-in plays in the colour instead.
+  if (tf === WAIT) {
+    waiting = true;
+    return;
+  }
   ctx.save();
   ctx.globalAlpha = alpha;
   if (mirror) {
@@ -91,14 +102,58 @@ export function drawAuraBack(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): v
   blit(ctx, s, 'idle', frameAt(s, 'idle', ms), p.X + auraDx(sc, f.unit), p.Y, false, t > 0.7 ? (1 - t) / 0.3 : 1);
 }
 
-/** Draws an effect from its sheets. Returns false when the sheets aren't available. */
+/**
+ * Draws an effect from its sheets. Returns false when the sheets aren't available, or when its
+ * recoloured frames are not made yet: the renderer's drawn stand-in plays (in the colour) instead.
+ */
 export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolean {
+  waiting = false;
+  return drawFromSheets(ctx, sc, f) && !waiting;
+}
+
+/**
+ * The sheets an effect plays (vfx_<element>/<name>, or its element's beast), the main one first,
+ * as drawFromSheets picks them: the ones to hurry when it is about to play in a colour.
+ */
+function sheetsOf(f: Fx): { name: string; beast: boolean }[] {
+  const el = f.element;
+  const sig = f.sig && f.sig !== 'eyes' && f.sig !== 'tag' && f.sig !== 'log' ? sigSheetName(el, f.sig, !!f.enhanced) : undefined;
+  const named = (...n: string[]) => n.map((name) => ({ name, beast: false }));
+  if (sig) return named(sig, 'blast', 'bolt');
+  switch (f.kind) {
+    case 'projectile':
+      return f.role === 'beast' ? [{ name: el, beast: true }, ...named('bolt')] : named(f.role ?? 'bolt', 'bolt');
+    case 'area':
+      return named('blast');
+    case 'cone':
+      return named('breath');
+    case 'line':
+      return named('stream', 'stream_head');
+    case 'burst':
+      return named(...(f.role === 'multi' ? ['multi_hit'] : []), 'hit');
+    case 'aura':
+      return named('aura', 'aura_back');
+    default:
+      return [];
+  }
+}
+
+function drawFromSheets(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): boolean {
   const el = f.element;
   const ms = (sc.now - f.t0) * sc.pb.speed;
   const t = ms / f.dur;
   if (t < 0) {
-    // About to play (the cast's beat): its colour's frames are made first.
-    if (f.tint) hurryVfxTints(f.element, f.tint);
+    // About to play (the cast's beat): the frames of the sheets it plays in its colour are made
+    // first, in their order (once per effect).
+    if (f.tint && isTintElement(el) && !hurried.has(f)) {
+      hurried.add(f);
+      const list = [];
+      for (const { name, beast } of sheetsOf(f)) {
+        const src = worldSprite(beast ? 'vfx_beasts' : `vfx_${el}`, name);
+        if (src) list.push({ src, element: el, color: f.tint, beast, name });
+      }
+      hurryVfxSheets(list);
+    }
     return true;
   }
   if (t > 1) return true;
@@ -264,9 +319,11 @@ export function drawWallSprite(ctx: CanvasRenderingContext2D, sc: Scene, w: Wall
   const born = sc.pb.wallBorn.get(w.id);
   const ms = born === undefined ? Infinity : (sc.now - born) * sc.pb.speed;
   const rise = s.spec.anims.rise ? animMs(s, 'rise') : 0;
+  waiting = false;
   if (ms < rise) blit(ctx, s, 'rise', frameAt(s, 'rise', ms), p.X, p.Y, mirror);
   else blit(ctx, s, 'idle', frameAt(s, 'idle', Number.isFinite(ms) ? ms - rise : sc.now), p.X, p.Y, mirror);
-  return true;
+  // Its colour not made yet: the drawn wall stands in, in the colour.
+  return !waiting;
 }
 
 /** The chakra colour an earth or water wall stands in: its raiser's (undefined: his colours). */

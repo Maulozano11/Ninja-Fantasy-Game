@@ -90,8 +90,10 @@ const ELEMENTAL_NATURES = ['Fire', 'Water', 'Wind', 'Lightning', 'Earth'];
 const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   shadow_clone: { shape: 'self', special: 'clone', vfx: 'aura', loud: false },
   body_flicker: { shape: 'point', special: 'flicker', vfx: 'aura', loud: false },
-  trap_setter_tag: { shape: 'point', special: 'trap', vfx: 'hit', loud: false, radius: 1.5 },
-  mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false },
+  // Fire and Water by nature, but drawn as a paper tag and its blast, and as the green glow of a
+  // heal: nothing of theirs is drawn in the element, so the chakra colour has nothing to colour.
+  trap_setter_tag: { shape: 'point', special: 'trap', vfx: 'hit', loud: false, radius: 1.5, elemental: false },
+  mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false, elemental: false },
   substitution_kawarimi: { shape: 'self', special: 'kawarimi', cast: 'reaction', vfx: 'hit', loud: false },
   fireball_goukakyu: { vfx: 'sphere', effect: 'burning', sig: 'fireball' },
   dragon_fire_stream: { vfx: 'stream', effect: 'burning' },
@@ -151,8 +153,9 @@ function specOf(j: JutsuDefinition): JutsuSpec {
     env: j.environmentalEffect === 'Ignites Wood' ? 'ignite' : j.environmentalEffect === 'Electrifies Water' ? 'electrify' : j.environmentalEffect === 'Clears Foliage' ? 'clearFoliage' : undefined,
   };
   const spec = { ...base, ...OVERRIDE[j.id] };
-  // Elemental by nature, and still drawn as that element (the Adamantine Chains are Water but chakra).
-  if (ELEMENTAL_NATURES.includes(j.nature) && spec.element === ELEMENT[j.nature]) spec.elemental = true;
+  // Elemental by nature, and still drawn as that element (the Adamantine Chains are Water but chakra;
+  // an override can say no, for the ones drawn as something else).
+  if (spec.elemental === undefined && ELEMENTAL_NATURES.includes(j.nature) && spec.element === ELEMENT[j.nature]) spec.elemental = true;
   return spec;
 }
 

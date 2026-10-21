@@ -119,3 +119,70 @@ export function cropFrame(rgba: Uint8Array | Uint8ClampedArray, w: number, h: nu
   for (let y = 0; y < ch; y++) out.set(rgba.subarray(((y0 + y) * w + x0) * 4, ((y0 + y) * w + x0 + cw) * 4), y * cw * 4);
   return { rgba: out, x: x0, y: y0, w: cw, h: ch };
 }
+
+// --- how the battle keeps the recoloured frames (vfxTintCache.ts) ------------------------------
+
+/**
+ * A frame bigger than this (pixels) is a big signature's (the Annihilation, Kirin): one takes a
+ * tenth of a second or more to recolour, too long for the screen's own thread.
+ */
+export const BIG_FRAME_PX = 160_000;
+export const isBigSheet = (frameW: number, frameH: number): boolean => frameW * frameH > BIG_FRAME_PX;
+
+/**
+ * The recoloured frames a battle keeps at most (bytes of pixels): the enhanced Annihilation alone
+ * is about 95 MB in a colour. Past it the sheets that have not played for a while go, and are made
+ * again if they play again.
+ */
+export const TINT_BUDGET = 200_000_000;
+/** A sheet drawn within this long (ms) is playing and is never let go. */
+export const TINT_IDLE_MS = 3000;
+
+/**
+ * The frame to draw while frame number `col` (in the order the sheet plays) is still being made in
+ * a worker: the nearest earlier one that is ready, so the effect holds a moment instead of the
+ * screen freezing to make it; null when none is. `have(c)` is frame c's state: the frame, null for
+ * an empty one, undefined when not made yet.
+ */
+export function heldFrame<T>(have: (c: number) => T | null | undefined, col: number): T | null {
+  for (let c = col - 1; c >= 0; c--) {
+    const f = have(c);
+    if (f) return f;
+  }
+  return null;
+}
+
+/** About how many bytes a sheet's frames take once recoloured and cut to their pixels (about 3/4 of the frames' area). */
+export const tintBytesOf = (frames: number, frameW: number, frameH: number): number => Math.ceil(frames * frameW * frameH * 4 * 0.75);
+
+/**
+ * Which sheets go when the frames kept pass `budget` (indexes into `sheets`): the longest unused
+ * first, never one drawn in the last `idleMs` (it may be playing), until the rest fit.
+ */
+export function evictions(sheets: readonly { bytes: number; lastUse: number }[], budget: number, now: number, idleMs = TINT_IDLE_MS): number[] {
+  let total = sheets.reduce((n, s) => n + s.bytes, 0);
+  if (total <= budget) return [];
+  const order = sheets.map((s, i) => i).filter((i) => now - sheets[i].lastUse >= idleMs).sort((a, b) => sheets[a].lastUse - sheets[b].lastUse);
+  const out: number[] = [];
+  for (const i of order) {
+    if (total <= budget) break;
+    out.push(i);
+    total -= sheets[i].bytes;
+  }
+  return out;
+}
+
+/**
+ * The sheets to prepare when a battle opens, smallest first, as many as fit in `budget` (by their
+ * estimated bytes, `tintBytesOf`): the rest are made when they are cast.
+ */
+export function preparable<T extends { bytes: number }>(list: readonly T[], budget: number): T[] {
+  const out: T[] = [];
+  let total = 0;
+  for (const s of [...list].sort((a, b) => a.bytes - b.bytes)) {
+    if (total + s.bytes > budget) break;
+    total += s.bytes;
+    out.push(s);
+  }
+  return out;
+}

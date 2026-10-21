@@ -399,10 +399,12 @@ const standIns = new Map<string, readonly [string, string, string, string] | und
  */
 export function vfxTintColors(element: TintElement, color: string | undefined): readonly [string, string, string, string] | undefined {
   if (vfxTintIsNatural(element, color)) return undefined;
-  const k = `${element}|${color}`;
+  // Keyed by the resolved colour, so '#AABBCC' and '#aabbcc' are one entry.
+  const id = resolve(color)!;
+  const k = `${element}|${id}`;
   if (standIns.has(k)) return standIns.get(k);
   const fam = FAMILIES[element].set;
-  const s = schemeFor(fam, resolve(color)!);
+  const s = schemeFor(fam, id);
   let out: readonly [string, string, string, string];
   if (s.dark) out = [hex(s.core), hex(s.rim), hex(s.band), hex(hslRgb(s.darkHue, s.darkSat, 0.12))];
   else {

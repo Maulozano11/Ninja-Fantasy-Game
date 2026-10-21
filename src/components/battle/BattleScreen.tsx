@@ -43,7 +43,7 @@ import { Anchor, Piece, kitText, useHudScale } from './kit';
 import { appNavigate } from '../../appNav';
 import { preloadWorldGroups } from '../world/WorldSpriteView';
 import { prepareVfxTints, releaseVfxTints, tintStats } from './vfxTintCache';
-import { unitTintSheets } from './vfxTintPlan';
+import { unitTint, unitTintSheets } from './vfxTintPlan';
 
 type Mode =
   | { k: 'move' }
@@ -255,10 +255,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
   // (vfxTintCache.ts), and let go when the battle ends.
   useEffect(() => {
     preloadWorldGroups('vfx_');
-    prepareVfxTints(Object.values(initial.state.units).flatMap((u) => unitTintSheets(u, (id) => JUTSU[id])));
     return releaseVfxTints;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // What to recolour: each ninja's colour and jutsu, so one who joins later (or whose colour
+  // changes) is prepared too. It starts a moment after the battle opens, when its own art is up.
+  const tintKey = Object.values(state.units)
+    .map((u) => `${u.id}:${unitTint(u) ?? ''}:${u.jutsus.join(',')}`)
+    .join('|');
+  const openedAt = useRef(performance.now());
+  useEffect(() => {
+    const go = () => prepareVfxTints(Object.values(stateRef.current.units).flatMap((u) => unitTintSheets(u, (id) => JUTSU[id])));
+    const t = window.setTimeout(go, Math.max(0, 800 - (performance.now() - openedAt.current)));
+    return () => window.clearTimeout(t);
+  }, [tintKey]);
 
   useEffect(() => {
     // Start centred on the party.

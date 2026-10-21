@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import { JUTSU } from '../../battle/jutsu';
 import type { Unit } from '../../battle/types';
 import type { ChakraChoice, SpriteAppearance } from '../../sprite/types';
-import { cropFrame, jutsuTint, tintSheetsOf, unitTint, unitTintSheets, wallElement } from './vfxTintPlan';
+import { TINT_BUDGET, cropFrame, evictions, heldFrame, isBigSheet, jutsuTint, preparable, tintBytesOf, tintSheetsOf, unitTint, unitTintSheets, wallElement } from './vfxTintPlan';
 
 /** A unit with a chakra (its burst `color`, its colour `tint`) and these jutsu. */
 function ninja(chakra: Partial<ChakraChoice> | undefined, jutsus: string[] = [], where: 'look' | 'character' = 'look'): Pick<Unit, 'look' | 'character' | 'jutsus'> {
@@ -21,7 +21,7 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     const elemental = Object.values(JUTSU).filter((j) => j.elemental).map((j) => j.id).sort();
     for (const id of ['fireball_goukakyu', 'dragon_fire_stream', 'dragon_fire_bomb', 'great_fire_annihilation', 'katon_pursuing_flame', 'water_dragon_suiryuudan', 'water_shield_suijinheki', 'earth_wall_doryuheki', 'earth_spear_doryuudan', 'wood_dragon_jutsu', 'wood_golem_titan', 'wind_blade_daitoppa', 'rasenshuriken_wind', 'chidori_lightning_blade', 'lightning_hound_raidon', 'kirin_thunder'])
       assert.ok(elemental.includes(id), `${id} is elemental`);
-    for (const id of ['crescent_moon_dance', 'adamantine_sealing_chains', 'temple_of_nirvana', 'yasaka_magatama', 'night_guy_dragon', 'shadow_clone', 'body_flicker', 'hydra_spit', 'hydra_roar', 'mirai_evasion', 'koton_block', 'koton_wall', 'ryusei_warp', 'northstar_command'])
+    for (const id of ['crescent_moon_dance', 'adamantine_sealing_chains', 'temple_of_nirvana', 'yasaka_magatama', 'night_guy_dragon', 'shadow_clone', 'body_flicker', 'hydra_spit', 'hydra_roar', 'mirai_evasion', 'koton_block', 'koton_wall', 'ryusei_warp', 'northstar_command', 'mystical_palm', 'trap_setter_tag'])
       assert.ok(!elemental.includes(id), `${id} is not elemental`);
     for (const id of elemental) assert.ok(['fire', 'water', 'wind', 'lightning', 'earth'].includes(JUTSU[id].element), id);
   });
@@ -59,7 +59,7 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.deepEqual(names('chidori_lightning_blade'), ['vfx_lightning/hit']);
     assert.ok(names('kirin_thunder').slice(0, 2).join() === 'vfx_lightning/kirin,vfx_lightning/kirin_enh');
     assert.deepEqual(names('katon_pursuing_flame'), ['vfx_fire/bolt', 'vfx_fire/hit']);
-    for (const id of ['temple_of_nirvana', 'crescent_moon_dance', 'adamantine_sealing_chains', 'hydra_spit']) assert.deepEqual(names(id), [], id);
+    for (const id of ['temple_of_nirvana', 'crescent_moon_dance', 'adamantine_sealing_chains', 'hydra_spit', 'mystical_palm', 'trap_setter_tag']) assert.deepEqual(names(id), [], id);
     for (const spec of Object.values(JUTSU))
       for (const r of tintSheetsOf(spec)) assert.ok(manifest(r.group)[r.name], `${spec.id}: ${r.group}/${r.name} is in the game`);
   });
@@ -94,5 +94,43 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
     assert.deepEqual([...c.rgba.subarray(0, 4)], [10, 11, 12, 13]);
     assert.deepEqual([...c.rgba.subarray((1 * 3 + 2) * 4, (1 * 3 + 2) * 4 + 4)], [20, 21, 22, 23]);
     assert.equal(c.rgba.filter((_, i) => i % 4 === 3 && c.rgba[i] !== 0).length, 2);
+  });
+});
+
+describe('keeping the recoloured frames', () => {
+  it('holds the nearest earlier ready frame while one is made, and draws nothing before the first', () => {
+    const ready = new Map<number, string | null>([[0, 'f0'], [1, null], [3, 'f3']]);
+    const have = (c: number) => ready.get(c);
+    assert.equal(heldFrame(have, 2), 'f0');
+    assert.equal(heldFrame(have, 5), 'f3');
+    assert.equal(heldFrame(have, 0), null);
+    assert.equal(heldFrame(() => undefined, 4), null);
+  });
+
+  it('the big signatures are big; the bolts, blasts, walls and beasts are not', () => {
+    assert.ok(isBigSheet(1016, 968) && isBigSheet(596, 651) && isBigSheet(800, 544));
+    assert.ok(!isBigSheet(306, 284) && !isBigSheet(339, 161) && !isBigSheet(284, 167) && !isBigSheet(75, 73));
+  });
+
+  it('lets go of the longest unused sheets past the budget, never one playing', () => {
+    const s = [
+      { bytes: 50, lastUse: 1000 },
+      { bytes: 80, lastUse: 500 },
+      { bytes: 40, lastUse: 9000 },
+      { bytes: 30, lastUse: 200 },
+    ];
+    assert.deepEqual(evictions(s, 300, 10000), []);
+    // 200 kept at most: the oldest (3, then 1) go; 2 is playing.
+    assert.deepEqual(evictions(s, 100, 10000), [3, 1]);
+    // Everything idle but the playing one still too big: all the idle ones go, the playing one stays.
+    assert.deepEqual(evictions(s, 10, 10000), [3, 1, 0]);
+    assert.deepEqual(evictions(s, 10, 1100, 3000), []);
+  });
+
+  it('prepares the small sheets first, as many as fit', () => {
+    const list = [{ n: 'big', bytes: 95 }, { n: 'bolt', bytes: 1 }, { n: 'mid', bytes: 40 }, { n: 'hit', bytes: 2 }];
+    assert.deepEqual(preparable(list, 50).map((x) => x.n), ['bolt', 'hit', 'mid']);
+    assert.deepEqual(preparable(list, 1000).map((x) => x.n), ['bolt', 'hit', 'mid', 'big']);
+    assert.ok(tintBytesOf(34, 1016, 968) > 90e6 && tintBytesOf(34, 1016, 968) < TINT_BUDGET);
   });
 });

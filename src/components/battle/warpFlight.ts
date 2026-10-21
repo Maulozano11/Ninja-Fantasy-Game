@@ -1,16 +1,21 @@
-// A Ryusei's Warp Strike: the weapon it throws, flying from its hand to where it lands with a trail
-// of glittering sparkles, and caught there by the hand of the thrust (playback.ts UnitView.warp;
-// renderer.ts draws the ninja). The weapon is the item's own art turned with RotSprite, one canvas
-// per whole angle (unitArt.thrownFrame), never a canvas rotation, so it stays crisp.
+// A Ryusei's Shooting-Star Thrust (Estocada Fugaz, id ryusei_warp; once Warp Strike): the weapon it
+// throws, flying from its hand to where it lands as a shooting star (the owner, 2026-10-21: "el arma
+// se lanza con la estela para parecerse a mi shooting star"): white-hot round the weapon, with a
+// long comet's tail behind it on the way it went (sprite/comet.ts) and glittering sparkles shed from
+// the tail; caught there by the hand of the thrust (playback.ts UnitView.warp; renderer.ts draws the
+// ninja). The weapon is the item's own art turned with RotSprite, one canvas per whole angle
+// (unitArt.thrownFrame), never a canvas rotation, so it stays crisp.
 // Everything is in map pixels; the canvas is scaled by a whole number, so pixels stay pixels.
 
 import { heldAt, throwRelease } from '../../sprite/grip';
 import type { BodyType, SpriteAppearance } from '../../sprite/types';
+import { cometNose, cometRaster, cometTail } from '../../sprite/comet';
+import type { CometRaster, CometSample } from '../../sprite/comet';
 import { PHASE_RAMP } from '../../sprite/phase';
 import { releaseStart, thrownItem } from '../../sprite/thrown';
 import { FEET } from '../../sprite/rig';
 import type { WarpTimes } from './playback';
-import { warpFlight } from './playback';
+import { warpFlight, warpFlightMs } from './playback';
 import { hasThrownFrame, thrownFrame } from './unitArt';
 import type { ThrownCanvas } from './unitArt';
 
@@ -175,6 +180,9 @@ export interface FlightNow {
   heading: number;
   /** 0..1: the weapon fades as the solid hand takes it over. */
   alpha: number;
+  /** Still flying (not yet in the hand), and how far into the Warp Strike (ms). */
+  flying: boolean;
+  ms: number;
 }
 
 /** Where the weapon is `ms` into the Warp Strike (null before it is thrown and once it is back in the hand). */
@@ -182,14 +190,40 @@ export function flightNow(f: Flight, t: WarpTimes, ms: number): FlightNow | null
   if (ms < t.rel || ms >= t.solid) return null;
   if (ms <= t.caught) {
     const w = warpFlight(ms, t);
-    return { at: bezier(f, w), heading: headingAlong(f, w), alpha: 1 };
+    return { at: bezier(f, w), heading: headingAlong(f, w), alpha: 1, flying: true, ms };
   }
   // Arrived: it turns into the hand's angle while the light body lands, then fades as the solid hand takes it.
   const hIn = headingAlong(f, 1);
   const k = Math.min(1, (ms - t.caught) / Math.max(1, t.land - t.caught));
   const heading = hIn + wrap(f.hCatch - hIn) * k;
   const alpha = ms < t.land ? 1 : 1 - (ms - t.land) / (t.solid - t.land);
-  return { at: f.E, heading, alpha };
+  return { at: f.E, heading, alpha, flying: false, ms };
+}
+
+/** A light the comet sheds on the night (map pixels): where, how far it reaches and how strong it is (0..1); `head` is the weapon's own. */
+export interface FlightLight {
+  x: number;
+  y: number;
+  r: number;
+  a: number;
+  head: boolean;
+}
+
+/**
+ * The shooting star lights the night round it (renderer.ts drawNight clears the dark there): at
+ * the weapon, and less along the tail behind it, dying down as the weapon cools in the hand.
+ */
+export function flightLights(f: Flight, t: WarpTimes, ms: number): FlightLight[] {
+  if (ms < t.rel || ms >= t.solid) return [];
+  const heat = ms <= t.caught ? 1 : 1 - (ms - t.caught) / (t.solid - t.caught);
+  const out: FlightLight[] = [];
+  for (let k = 0; k <= 4; k++) {
+    const tm = Math.min(ms, t.caught) - k * 30;
+    if (tm < t.rel) break;
+    const p = bezier(f, warpFlight(tm, t));
+    out.push({ x: p.x, y: p.y, r: k ? 46 : 72, a: heat * (k ? 0.55 - 0.08 * k : 0.85), head: !k });
+  }
+  return out;
 }
 
 /**
@@ -212,9 +246,14 @@ export function reachOf(look: SpriteAppearance, f: Flight): WeaponReach {
 /** How strongly the flying weapon's blue light is added round it. */
 const GLOW = 0.75;
 
+/** The arms of the star that twinkles at the flying weapon's point, a beat of TWINKLE ms each. */
+const TWINKLE = 40;
+const TWINKLE_ARMS = [5, 3, 6, 4] as const;
+
 /**
  * Draws the weapon itself at a moment of its flight, wrapped in the phase's blue light (its glow
- * added as light under it), as the light body is.
+ * added as light under it), as the light body is; while it flies, a white star twinkles at its
+ * point, the shooting star's brightest spark (its comet is drawn under it: drawTrail).
  */
 export function drawThrown(ctx: CanvasRenderingContext2D, look: SpriteAppearance, f: Flight, now: FlightNow, alpha: number): void {
   if (now.alpha <= 0.01) return;
@@ -234,6 +273,13 @@ export function drawThrown(ctx: CanvasRenderingContext2D, look: SpriteAppearance
   ctx.globalAlpha = Math.min(1, alpha * now.alpha);
   ctx.drawImage(c.canvas, -c.gx, Y - c.gy);
   ctx.restore();
+  if (now.flying) {
+    const d = dirOf(now.heading);
+    ctx.save();
+    // Just off the point, so its arms reach out past the white-hot head round the blade.
+    star(ctx, X + 0.5 + d.x * (c.front + 1), Y + 0.5 + d.y * (c.front + 1), TWINKLE_ARMS[Math.floor(now.ms / TWINKLE) % TWINKLE_ARMS.length], alpha);
+    ctx.restore();
+  }
 }
 
 /**
@@ -290,8 +336,19 @@ const hash = (i: number, k: number): number => {
 /** Sparkles a flight sheds per ms of it, and how long the last of them lasts after the weapon stops. */
 const SHED = 0.5;
 export const TRAIL_AFTER = 520;
-/** How long the comet streak behind the weapon takes to catch up with it once it stops. */
-const STREAK_OUT = 90;
+/**
+ * The comet's tail: the way the weapon's back end went in the last TAIL_MS ms (long while it is
+ * flung hard, shorter as it slows into the hand; it runs on into the weapon and cools once it
+ * stops), but no longer than a share of the flight, between TAIL_MIN and TAIL_MAX pixels.
+ */
+const TAIL_MS = 150;
+const TAIL_MIN = 60;
+const TAIL_MAX = 200;
+const tailMax = (f: Flight): number => Math.max(TAIL_MIN, Math.min(TAIL_MAX, Math.hypot(f.E.x - f.S.x, f.E.y - f.S.y) * 0.45));
+/** The comet's half width at the weapon's back end: about the weapon's heft (a kunai's is narrower than a greatsword's). */
+const headWidth = (reach: WeaponReach): number => Math.max(4.5, Math.min(6, (reach.back + reach.front) / 9));
+/** How white-hot the comet's head round the weapon is (over 1: white out to near its edge). */
+const NOSE_HEAT = 1.5;
 
 /** How far the weapon's art reaches behind its grip and ahead of it, along its heading (pixels). */
 export interface WeaponReach {
@@ -348,68 +405,87 @@ function glint(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, a
   dot(ctx, X, Y, a, 8);
 }
 
+/** The shooting star's own spark at the weapon's point: a glint whiter and fuller than the shed ones (white arms, a white heart with a ring of light round it). */
+function star(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, a: number): void {
+  if (a <= 0.01) return;
+  const X = Math.round(x);
+  const Y = Math.round(y);
+  for (let k = r; k >= 1; k--) {
+    const t = k / (r + 1);
+    const step = t < 0.5 ? 8 : t < 0.8 ? 7 : 6;
+    const ak = a * (1 - t * 0.6);
+    dot(ctx, X - k, Y, ak, step);
+    dot(ctx, X + k, Y, ak, step);
+    dot(ctx, X, Y - k, ak, step);
+    dot(ctx, X, Y + k, ak, step);
+  }
+  for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) dot(ctx, X + dx, Y + dy, a * 0.75, 7);
+  dot(ctx, X, Y, a, 8);
+}
+
+/** The canvas a comet's pixels are put on to be drawn (kept, and grown when a comet needs more room). */
+const cometCanvas: { cv?: HTMLCanvasElement; g?: CanvasRenderingContext2D } = {};
+
+/** Draws one of a comet's two buffers (comet.ts) on the map with `op`. */
+function blitComet(ctx: CanvasRenderingContext2D, c: CometRaster, rgba: CometRaster['core'], op: GlobalCompositeOperation): void {
+  if (!cometCanvas.cv) {
+    cometCanvas.cv = document.createElement('canvas');
+    cometCanvas.g = cometCanvas.cv.getContext('2d')!;
+  }
+  const cv = cometCanvas.cv;
+  if (cv.width < c.w || cv.height < c.h) {
+    cv.width = Math.max(cv.width, c.w);
+    cv.height = Math.max(cv.height, c.h);
+  }
+  cometCanvas.g!.putImageData(new ImageData(rgba, c.w, c.h), 0, 0);
+  ctx.globalCompositeOperation = op;
+  ctx.globalAlpha = 1;
+  ctx.drawImage(cv, 0, 0, c.w, c.h, c.x, c.y, c.w, c.h);
+}
+
 /**
- * The trail behind the flying weapon, `ms` into the Warp Strike: a comet streak of light on the way
- * the weapon's back end just went (five pixels wide at the weapon, white at its heart, thinning to
- * one and fading through the phase's blues; long enough to bridge the weapon's jump between screen
- * frames), the glittering sparkles it sheds as it goes (1 and 2 px specks and four-pointed glints,
- * white when new and fading through the blues, twinkling as they drift back and settle), a glint at
- * its point as it is flung and one where it stops. The streak and the sparkles leave the thrower's
- * face alone (releaseOff).
+ * The shooting star the flying weapon is, `ms` into the Warp Strike, drawn under the weapon: its
+ * comet (sprite/comet.ts), a long tail on the way the weapon's back end went, as wide as the weapon
+ * is heavy and white at the weapon, tapering through the phase's blues to one clear pixel and
+ * following the curve of the flight, and a white-hot head round the weapon itself (which cools in
+ * the hand as the ninja lands); the glittering sparkles the tail sheds (1 and 2 px specks and
+ * four-pointed glints, white when new and fading through the blues, twinkling as they drift out of
+ * its sides and settle); a glint at the point as it is flung and one where it stops. None of it
+ * shows on the thrower's face (releaseOff). A weapon that hangs in the air has its head and no tail:
+ * it is not going anywhere.
  */
 export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes, ms: number, alpha: number, reach: WeaponReach): void {
   if (ms < t.rel || ms > t.caught + TRAIL_AFTER) return;
   const fly = t.caught - t.rel;
   const back = reach.back;
   const off = releaseOff(f, back);
+  const width = headWidth(reach);
+  /** Where the weapon's back end was at `w` of the flight, as drawn (its point kept forward: Flight.fore). */
+  const backEnd = (w: number): XY => {
+    const p = bezier(f, w);
+    const d = dirOf(headingAlong(f, w));
+    return { x: p.x - d.x * back, y: p.y - d.y * back };
+  };
   ctx.save();
 
-  // The comet streak: walked back along the curve from the weapon's back end, a pixel at a time
-  // (none for a weapon that hangs in the air: it is not going anywhere).
-  if (!f.hang && ms < t.caught + STREAK_OUT) {
-    const head = Math.min(ms, t.caught);
-    const wh = warpFlight(head, t);
-    // As long as the way the weapon went in the last 45 ms (so the streak bridges a frame's jump),
-    // 14 to 56 pixels; it shrinks into the weapon once it stops.
-    const p0 = bezier(f, wh);
-    const p1 = bezier(f, warpFlight(Math.max(t.rel, head - 45), t));
-    const out = ms <= t.caught ? 1 : 1 - (ms - t.caught) / STREAK_OUT;
-    const len = Math.max(14, Math.min(56, Math.hypot(p0.x - p1.x, p0.y - p1.y))) * out;
-    let s = 0;
-    let w = wh;
-    let last = '';
-    while (s <= len && w >= 0) {
-      const p = bezier(f, w);
-      const tg = tangent(f, w);
-      const m = Math.max(1e-3, Math.hypot(tg.x, tg.y));
-      // Behind the weapon's back end as it is drawn (its point kept forward: Flight.fore).
-      const d = dirOf(headingAlong(f, w));
-      const x = p.x - d.x * back;
-      const y = p.y - d.y * back;
-      const key = `${Math.round(x)},${Math.round(y)}`;
-      if (key !== last) {
-        last = key;
-        const along = s / Math.max(1, len);
-        const a = alpha * (1 - along) ** 1.1 * off(x, y);
-        // The sides first, the heart over them: five pixels wide just behind the weapon, then three.
-        if (along < 0.2) {
-          dot(ctx, x - 2 * d.y, y + 2 * d.x, a * 0.35, 5);
-          dot(ctx, x + 2 * d.y, y - 2 * d.x, a * 0.35, 5);
-        }
-        if (along < 0.6) {
-          const side = along < 0.25 ? 7 : along < 0.45 ? 6 : 5;
-          dot(ctx, x - d.y, y + d.x, a * 0.8, side);
-          dot(ctx, x + d.y, y - d.x, a * 0.8, side);
-        }
-        dot(ctx, x, y, a, along < 0.22 ? 8 : along < 0.5 ? 7 : along < 0.8 ? 6 : 5);
-      }
-      // About half a pixel further back each step.
-      w -= 0.5 / m;
-      s += 0.5;
-    }
+  const comet: CometSample[] = f.hang ? [] : cometTail({ at: backEnd, msAt: (w) => warpFlightMs(w, t) }, warpFlight(Math.min(ms, t.caught), t), ms, TAIL_MS, tailMax(f), width);
+  const now = flightNow(f, t, ms);
+  const heat = ms <= t.caught ? 1 : 1 - (ms - t.caught) / (t.solid - t.caught);
+  if (now && heat > 0) {
+    // The head, on the weapon as it is drawn (its anchor on a whole pixel).
+    const d = dirOf(now.heading);
+    const X = Math.round(now.at.x) + 0.5;
+    const Y = Math.round(now.at.y) + 0.5;
+    comet.push(...cometNose({ x: X - d.x * back, y: Y - d.y * back }, { x: X + d.x * reach.front * 0.92, y: Y + d.y * reach.front * 0.92 }, width, NOSE_HEAT * heat));
   }
+  const c = cometRaster(comet, alpha, off);
+  if (c) {
+    blitComet(ctx, c, c.halo, 'lighter');
+    blitComet(ctx, c, c.core, 'source-over');
+  }
+  ctx.globalCompositeOperation = 'source-over';
 
-  // The sparkles, each shed at its moment of the flight from about the weapon's back end.
+  // The sparkles, each shed from the tail at its moment of the flight, just behind the weapon.
   const n = Math.max(24, Math.round(fly * SHED));
   for (let i = 0; i < n; i++) {
     const born = t.rel + (fly * (i + hash(i, 1))) / n;
@@ -418,15 +494,15 @@ export function drawTrail(ctx: CanvasRenderingContext2D, f: Flight, t: WarpTimes
     const age = el / life;
     if (age < 0 || age >= 1) continue;
     const w = warpFlight(born, t);
-    const p = bezier(f, w);
+    const p = backEnd(w);
     const d = dirOf(headingAlong(f, w));
-    const side = (hash(i, 3) - 0.5) * 7;
-    const shed = back * (0.3 + 0.9 * hash(i, 4)) + 1;
-    // Drifting back along the way it went, spreading out from it and settling down a little.
-    const drift = (0.01 + 0.025 * hash(i, 5)) * el;
-    const spread = side * (1 + 0.004 * el);
-    const x = p.x - d.x * (shed + drift) - d.y * spread;
-    const y = p.y - d.y * (shed + drift) + d.x * spread + 0.00004 * el * el;
+    // From within the tail's width, drifting out of its sides, falling behind along the way it went
+    // and settling down a little.
+    const side = (hash(i, 3) - 0.5) * 2 * (width + 1);
+    const spread = side + Math.sign(side) * (0.006 + 0.014 * hash(i, 4)) * el;
+    const drift = 2 * hash(i, 9) + (0.01 + 0.02 * hash(i, 5)) * el;
+    const x = p.x - d.x * drift - d.y * spread;
+    const y = p.y - d.y * drift + d.x * spread + 0.00004 * el * el;
     // Twinkling: each flickers between bright and dim at its own pace.
     const on = Math.floor((el + hash(i, 6) * 80) / (40 + 40 * hash(i, 8))) % 2 === 0;
     const a = alpha * (on ? 1 : 0.4) * (1 - age) ** 0.75 * off(x, y);

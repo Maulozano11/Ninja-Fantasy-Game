@@ -175,11 +175,17 @@ export const warpDash = (ms: number, t: WarpTimes): number => {
   return 1 - (1 - k) ** 2.2;
 };
 
+/** How hard the thrown weapon slows into the catch (warpFlight). */
+const FLIGHT_EASE = 1.5;
+
 /** How far the thrown weapon is along its flight (0..1) `ms` into the Warp Strike: flung hard, slowing a little as it arrives. */
 export const warpFlight = (ms: number, t: WarpTimes): number => {
   const k = Math.min(1, Math.max(0, (ms - t.rel) / (t.caught - t.rel)));
-  return 1 - (1 - k) ** 1.5;
+  return 1 - (1 - k) ** FLIGHT_EASE;
 };
+
+/** When (ms into the Warp Strike) the thrown weapon was `w` (0..1) along its flight: warpFlight turned round. */
+export const warpFlightMs = (w: number, t: WarpTimes): number => t.rel + (1 - (1 - Math.min(1, Math.max(0, w))) ** (1 / FLIGHT_EASE)) * (t.caught - t.rel);
 
 export class Playback {
   views = new Map<string, UnitView>();

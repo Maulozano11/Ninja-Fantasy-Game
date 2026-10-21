@@ -18,8 +18,8 @@ import { FALL_MS, PHASE_DASH, PHASE_IN, PHASE_OUT, phaseDash, RISE_MS, WARP_FRAM
 import type { Lang } from '../../i18n';
 import { unitName } from './battleLog';
 import { bodyCenterDx, catchLookOf, FEET, fpsOf, framesOf, hasPhaseFrame, hasReleaseClear, hasThrownFrame, hasUnitFrame, lookOf, phaseFrameOf, releaseClearOf, STRIDE, thrownFrame, unitFrame } from './unitArt';
-import { drawKunaiFade, drawThrown, drawTrail, flightNow, KUNAI_FADE_FRAME, kunaiFadeAngle, reachOf, warpFlightOf } from './warpFlight';
-import type { Flight, XY } from './warpFlight';
+import { drawKunaiFade, drawThrown, drawTrail, flightLights, flightNow, KUNAI_FADE_FRAME, kunaiFadeAngle, reachOf, warpFlightOf } from './warpFlight';
+import type { Flight, FlightLight, XY } from './warpFlight';
 import { THROW_RELEASE_FRAME } from '../../sprite/rig';
 import type { SpriteAppearance, SpritePose } from '../../sprite/types';
 import { PHASE_ADD, PHASE_RAMP, phaseHue } from '../../sprite/phase';
@@ -1240,6 +1240,20 @@ function drawWarpFlights(ctx: CanvasRenderingContext2D, sc: Scene): void {
   }
 }
 
+/** The lights the flying weapons' comets shed on the night (drawNight). */
+function warpLights(sc: Scene): FlightLight[] {
+  const out: FlightLight[] = [];
+  for (const u of Object.values(sc.state.units)) {
+    const v = sc.pb.views.get(u.id);
+    if (!v?.warp) continue;
+    const look = lookOf({ ...u, armed: v.armed });
+    if (!look || unitAlpha(sc, u, v) <= 0) continue;
+    const { ms, t } = warpNow(sc, v);
+    out.push(...flightLights(flightOf(sc, u, look, v.warp), t, ms));
+  }
+  return out;
+}
+
 /**
  * What a Ryusei's Warp Strike will need made beforehand (the slow part is making sprite frames):
  * first what does not depend on where it goes (the throw, the light bodies of its release and its
@@ -1873,6 +1887,9 @@ function drawNight(ctx: CanvasRenderingContext2D, sc: Scene, props: PropDef[]): 
     const s = project(map, sc.pb.posOf(u.id, sc.now));
     hole(s.X, s.Y - 50, 110, 0.55);
   }
+  // A Shooting-Star Thrust's comet is light: it shines in the dark, and lights the ground round it.
+  const comets = warpLights(sc);
+  for (const l of comets) hole(l.x, l.y, l.r, l.a);
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(nightLayer, 0, 0);
@@ -1892,6 +1909,20 @@ function drawNight(ctx: CanvasRenderingContext2D, sc: Scene, props: PropDef[]): 
     ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
     ctx.fill();
   });
+  // Blue light round the comet's head.
+  for (const l of comets) {
+    if (!l.head) continue;
+    const s = toScreen(l.x, l.y);
+    const r = l.r * cam.k;
+    const [R, G, B] = PHASE_RAMP[5];
+    const gr = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, r);
+    gr.addColorStop(0, `rgba(${R},${G},${B},${0.3 * l.a})`);
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gr;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
 

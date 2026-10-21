@@ -44,6 +44,11 @@ export interface JutsuSeq {
   lingerAura?: number;
   /** The element's aura wraps whoever is healed, for `ms`, once the heal lands. */
   healAura?: number;
+  /**
+   * Blood (the owner, 2026-10-21): a hit bursts a spray of it out of the target toward the side the
+   * cut travels, and a cut that leaves Bleeding splashes drops onto the screen. Never in a chakra colour.
+   */
+  blood?: boolean;
 }
 
 export interface JutsuSpec {
@@ -188,8 +193,9 @@ const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   water_geyser: { vfx: 'blast', seq: { fromGround: { warn: 300 }, shake: 2 } },
   // Silent (the owner): a silent jutsu that wounds counts as an attack in the stealth phase (P6).
   genjutsu_mirage: { vfx: 'sphere', effect: 'confused', loud: false, seq: { slowFlight: 1.5 } },
-  // A sword art with no element: its own cut, the wind's crescent in white (the owner).
-  kenjutsu_bleeding_cut: { vfx: 'slash', vfxSet: 'neutral', melee: true, effect: 'bleeding', loud: false },
+  // A sword art with no element: its own cut, the wind's crescent in white (the owner), and the
+  // blood it draws thrown the way the cut goes.
+  kenjutsu_bleeding_cut: { vfx: 'slash', vfxSet: 'neutral', melee: true, effect: 'bleeding', loud: false, seq: { blood: true } },
   // A shoulder tackle with the weapon put away (the owner): a straight run in, then the blow.
   taijutsu_rush: { vfx: 'hit', melee: true, charge: true, weapon: 'stow', pose: 'tackle', seq: { launchFlash: true, fastRun: 2 } },
 };

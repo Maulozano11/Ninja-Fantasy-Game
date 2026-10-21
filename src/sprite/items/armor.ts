@@ -13,9 +13,28 @@
 // rivets are 1-2 fine px with one bright pixel. Cloth folds are troughs and
 // crests, never stripe patterns.
 
-import { armDepth, armJoints, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
-import { add, capsule, ellipse, fine, GRID, Layer, lerp, norm, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
+import { hexToRgb, retintHex } from '../color';
+import { armDepth, armJoints, Depth, DrawCtx, ItemDef, legDepth, legJoints, Side, torsoPoly } from '../ctx';
+import { PaintedPiece, segAngle, stampPiece } from '../painted';
+import { add, capsule, ellipse, fine, GRID, Layer, lerp, norm, partIndex, PartId, Pen, perp, poly, RES, scale, sub, v, Vec } from '../raster';
 import { GROUND } from '../rig';
+import {
+  PLATE_CHEST,
+  PLATE_ELBOW_N,
+  PLATE_GREAVE_F,
+  PLATE_GREAVE_N,
+  PLATE_KNEE_F,
+  PLATE_KNEE_N,
+  PLATE_PAULDRON_F,
+  PLATE_PAULDRON_N,
+  PLATE_THIGH_F,
+  PLATE_THIGH_N,
+  PLATE_UPPER_ARM_F,
+  PLATE_UPPER_ARM_N,
+  PLATE_VAMBRACE_F,
+  PLATE_VAMBRACE_N,
+  PLATE_WAIST,
+} from './crimsonPlateArt';
 
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -911,6 +930,139 @@ function plateRows(g: DrawCtx, SL: Layer, plateHex: string, rimHex: string, x0: 
     const trim = k === rows[0];
     skirtCols(g, SL, (w) => rp(w, k), xs, ytop, k, (c) => ((1 - c.down) * c.ch < FP * 1.4 ? (trim ? (c.u < 0.5 ? 4 : 3) : 1) : null), 0.6, 0.06);
   }
+}
+
+// ---------------------------------------------------------------------------
+// The owner's plate (Crimson Knight Plate): his pixels, one painted piece per segment of the rig
+// (items/crimsonPlateArt.ts, lifted out of docs/reference/aiden-owner-reference.jpg by
+// tools/refs/crimson-plate-from-ref.py). In our idle pose every pixel is his; in other poses each
+// piece turns with its segment.
+// ---------------------------------------------------------------------------
+
+/** His steel and his gold: the colours the Steel and Trim slots replace (and their defaults). */
+const PLATE_STEEL = '#9199af';
+const PLATE_GOLD = '#c39038';
+
+/**
+ * His plate recoloured: his black line, his white glints, the brown of the belt and straps and the
+ * navy of the under-suit stay; his steel follows Steel and his gold follows Trim, each shade as far
+ * from the slot's colour as his was from his.
+ */
+const plateColor = (steel: string, trim: string) => (_ch: string, hex: string): string => {
+  const [r, g, b] = hexToRgb(hex);
+  const l = 0.299 * r + 0.587 * g + 0.114 * b;
+  if (l < 28 || Math.min(r, g, b) > 235) return hex;
+  if (r > b + 55 && g > b + 22 && r - g < 80) return retintHex(hex, PLATE_GOLD, trim);
+  if (b >= r - 8 && l >= 55) return retintHex(hex, PLATE_STEEL, steel);
+  return hex;
+};
+
+/** The angle halfway between two segment angles (a cop sits over the joint between them). */
+const midAngle = (a: number, b: number): number => a + (((b - a + 540) % 360) - 180) / 2;
+
+/**
+ * A pauldron's angle: it rides the torso and follows the arm part of the way (raised overhead, the
+ * arm lifts it about halfway), so it caps the shoulder in every pose and is exactly his at rest.
+ */
+function pauldronAngle(piece: PaintedPiece, torso: number, arm: number): number {
+  const rest = piece.angle - PLATE_CHEST.angle;
+  return torso + rest + 0.45 * (((arm - torso - rest + 540) % 360) - 180);
+}
+
+/**
+ * A piece with one of its columns repeated `n` more times: his plate for a broader figure. The
+ * chest's second column is the navy of the under-suit at the near shoulder, so on the bulky body,
+ * whose arms hang about 3 px further out, the shoulder reaches the arm and his breastplate stays as
+ * he drew it.
+ */
+function widened(p: PaintedPiece, col: number, n: number): PaintedPiece {
+  return {
+    ...p,
+    rows: p.rows.map((r) => r.slice(0, col) + r[col].repeat(n + 1) + r.slice(col + 1)),
+    pivot: [p.pivot[0] + (col < p.pivot[0] ? n : 0), p.pivot[1]],
+  };
+}
+const PLATE_CHEST_BULKY = widened(PLATE_CHEST, 1, 3);
+
+/** Body parts full plate covers (the head, hands and feet stay). */
+const UNDER_PLATE = new Set(['torso', 'pelvis', 'upperArmN', 'forearmN', 'upperArmF', 'forearmF', 'thighN', 'shinN', 'thighF', 'shinF'].map((p) => partIndex(p as PartId)));
+const UNDER_PLATE_DEPTHS: Depth[] = [
+  'farArm.body',
+  'farArm.cloth',
+  'farLeg.body',
+  'farLeg.cloth',
+  'farLeg.feet',
+  'nearLeg.body',
+  'nearLeg.cloth',
+  'nearLeg.feet',
+  'torso.body',
+  'torso.under',
+  'torso.bottom',
+  'torso.top',
+  'nearArm.body',
+  'nearArm.cloth',
+];
+
+/**
+ * The plate is the figure from the neck to the wrists and ankles: the skin, the clothes and the
+ * boots' shafts under it are taken away, so they never show past his plates (our limbs are a little
+ * elsewhere than his: the near shin, for one, stands out to the right of his greave). The neck above
+ * its base, the hands and the feet stay.
+ */
+function clearUnderPlate(g: DrawCtx): void {
+  const r = g.rig;
+  const torso = partIndex('torso');
+  const neck = (r.neck.x - r.pelvis.x) * r.up.x + (r.neck.y - r.pelvis.y) * r.up.y;
+  for (const d of UNDER_PLATE_DEPTHS) {
+    const L = g.L(d);
+    if (!L.used) continue;
+    for (let i = 0; i < L.mat.length; i++) {
+      if (L.mat[i] < 0 || !UNDER_PLATE.has(L.part[i])) continue;
+      if (L.part[i] === torso) {
+        const x = ((i % GRID) + 0.5) / RES - r.pelvis.x;
+        const y = (Math.floor(i / GRID) + 0.5) / RES - r.pelvis.y;
+        if (x * r.up.x + y * r.up.y > neck) continue;
+      }
+      L.mat[i] = -1;
+    }
+  }
+}
+
+/**
+ * Draws the owner's plate. Within a depth the pieces go back to front: the far arm's vambrace,
+ * upper arm and pauldron; each leg's thigh, greave and knee cop; the chest under the waist; the near
+ * arm's upper arm, vambrace, elbow cop and pauldron. Each piece reaches on under the ones drawn over
+ * it, so bending joints open no gaps.
+ */
+function drawCrimsonPlate(g: DrawCtx, steel: string, trim: string): void {
+  clearUnderPlate(g);
+  const r = g.rig;
+  const tint = plateColor(steel, trim);
+  const torso = segAngle(r.pelvis, r.neck);
+  const upperN = segAngle(r.shoulderN, r.elbowN);
+  const foreN = segAngle(r.elbowN, r.wristN);
+  const upperF = segAngle(r.shoulderF, r.elbowF);
+  const foreF = segAngle(r.elbowF, r.wristF);
+  const thighN = segAngle(r.hipN, r.kneeN);
+  const shinN = segAngle(r.kneeN, r.ankleN);
+  const thighF = segAngle(r.hipF, r.kneeF);
+  const shinF = segAngle(r.kneeF, r.ankleF);
+  const put = (d: Depth, p: PaintedPiece, at: Vec, deg: number, part: PartId) => stampPiece(g, d, p, at, deg, part, tint);
+  put('farArm.armor', PLATE_VAMBRACE_F, r.elbowF, foreF, 'forearmF');
+  put('farArm.armor', PLATE_UPPER_ARM_F, r.shoulderF, upperF, 'upperArmF');
+  put('farArm.armor', PLATE_PAULDRON_F, r.shoulderF, pauldronAngle(PLATE_PAULDRON_F, torso, upperF), 'upperArmF');
+  put('farLeg.armor', PLATE_THIGH_F, r.hipF, thighF, 'thighF');
+  put('farLeg.armor', PLATE_GREAVE_F, r.kneeF, shinF, 'shinF');
+  put('farLeg.armor', PLATE_KNEE_F, r.kneeF, midAngle(thighF, shinF), 'shinF');
+  put('nearLeg.armor', PLATE_THIGH_N, r.hipN, thighN, 'thighN');
+  put('nearLeg.armor', PLATE_GREAVE_N, r.kneeN, shinN, 'shinN');
+  put('nearLeg.armor', PLATE_KNEE_N, r.kneeN, midAngle(thighN, shinN), 'shinN');
+  put('torso.armor', r.body === 'bulky' ? PLATE_CHEST_BULKY : PLATE_CHEST, r.neck, torso, 'torso');
+  put('torso.armor', PLATE_WAIST, r.pelvis, torso, 'pelvis');
+  put('nearArm.armor', PLATE_UPPER_ARM_N, r.shoulderN, upperN, 'upperArmN');
+  put('nearArm.armor', PLATE_VAMBRACE_N, r.elbowN, foreN, 'forearmN');
+  put('nearArm.armor', PLATE_ELBOW_N, r.elbowN, midAngle(upperN, foreN), 'forearmN');
+  put('nearArm.armor', PLATE_PAULDRON_N, r.shoulderN, pauldronAngle(PLATE_PAULDRON_N, torso, upperN), 'upperArmN');
 }
 
 // ---------------------------------------------------------------------------
@@ -2446,6 +2598,18 @@ export const ARMOR_ITEMS: ItemDef[] = [
         plateRows(g, SL, pc, gc, x0 + 0.6, x1 - 0.4, stop(3.0), [0.46, 0.28], 4);
       });
     },
+  },
+
+  // -------------------------------------------------------------------------
+  // The owner's plate, his pixels (2026-10-21: his Aiden is the standard for characters)
+  {
+    id: 'armor_crimson_plate',
+    slot: 'armor',
+    name: 'Crimson Knight Plate',
+    desc: 'Full plate in steel trimmed with gold over a navy under-suit: a gorget with a gold chain, a ridged breastplate, a brown belt, a gold-edged tasset, pauldrons, elbow cops, vambraces, knee cops and greaves (+5 AC).',
+    colors: [col('steel', 'Steel', PLATE_STEEL, 'metal'), col('trim', 'Trim', PLATE_GOLD, 'metal')],
+    statsArmor: 'Dark Knight Plate',
+    draw: (g, [steel, trim]) => drawCrimsonPlate(g, steel, trim),
   },
 ];
 

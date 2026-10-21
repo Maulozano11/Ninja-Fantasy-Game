@@ -19,6 +19,7 @@ import type { DrawCtx, ItemDef } from '../ctx';
 import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
 import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { SAYA_HAIR } from './sayaHair';
 import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
@@ -1821,4 +1822,5 @@ export const HAIR_ITEMS: ItemDef[] = [
       trimSkull(g, VALIANT_HAIR_BACK);
     },
   },
+  SAYA_HAIR,
 ];

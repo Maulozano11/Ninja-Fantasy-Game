@@ -129,3 +129,11 @@ folders.
       npx tsx tools/refs/heroine-idle.mts <out>
       python3 -I tools/refs/heroine-study.py <out> <out>/female-idle.png --write
       python3 -I tools/refs/heroine-proportions.py <out> <out>/female-idle.png
+
+- `saya-hair-from-ref.py`: Saya's hair (`hair_sun_fall`) in her colours at our scale, drawn by hand
+  from her picture brought down by the study's maps: the front over the head and the back behind it
+  on the face anchor, and the long hair down the back on the neck, turned with the torso. Writes
+  `src/sprite/items/sayaHairArt.ts`, and in `<out>/study/` her hair, the automatic reduction and the
+  three parts at 8x.
+
+      python3 -I tools/refs/saya-hair-from-ref.py <out> src/sprite/items/sayaHairArt.ts

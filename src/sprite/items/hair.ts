@@ -13,9 +13,13 @@
 //   hairBack  — behind the head AND the torso/arms
 //   hairFront — over the head (cap, bangs, side locks)
 
+import { faceAnchor } from '../body';
+import { retintHex } from '../color';
 import type { DrawCtx, ItemDef } from '../ctx';
-import { ellipse, Layer, Pen, poly, v, Vec } from '../raster';
+import { ellipse, F_NO_OUTLINE, F_NO_TEXTURE, GRID, Layer, Pen, poly, v, Vec } from '../raster';
+import type { PaintedPart } from './capeArt';
 import { braid, BraidArt, hairTemplate, hd, hlock, lock, LockOpts } from './hairkit';
+import { VALIANT_HAIR_BACK, VALIANT_HAIR_BASE, VALIANT_HAIR_FRONT, VALIANT_HAIR_LINE } from './valiantHairArt';
 
 const hairColor = (def: string) => [{ key: 'hair', label: 'Hair', default: def, kind: 'hair' as const }];
 
@@ -1600,6 +1604,47 @@ const hairStyle = (id: string, name: string, desc: string, def: string, body?: (
   },
 });
 
+/**
+ * Stamps a part of the owner's painted hair (his pixels and colours, valiantHairArt.ts) with its pivot
+ * on the face anchor, the near eye's lash start, so it frames the eyes as he drew it on every body and
+ * in every pose. His pixels are already the final on-screen pixels: they go in unscaled, like the
+ * hair templates.
+ */
+function paintedHair(g: DrawCtx, L: Layer, p: PaintedPart, color: (ch: string, hex: string) => string): void {
+  const { nx, ny } = faceAnchor(g);
+  const ax = nx - p.pivot[0];
+  const ay = ny - p.pivot[1];
+  const pens: Record<string, number> = {};
+  for (const [ch, hex] of Object.entries(p.colors)) pens[ch] = g.m(color(ch, hex), 'flat');
+  L.noFray = true;
+  p.rows.forEach((row, j) => {
+    for (let i = 0; i < row.length; i++) {
+      const ch = row[i];
+      if (ch !== '.') L.set(ax + i, ay + j, pens[ch], 3, 'head', F_NO_TEXTURE | F_NO_OUTLINE);
+    }
+  });
+}
+
+/**
+ * Above the eyes his hair is the outline of his head: the skull is trimmed to `p` (his hair with what
+ * his face hides filled in), so no edge of ours shows past his hair, such as in the notch between the
+ * two spikes on his crown.
+ */
+function trimSkull(g: DrawCtx, p: PaintedPart): void {
+  const H = g.L('head.body');
+  const { nx, ny } = faceAnchor(g);
+  const ax = nx - p.pivot[0];
+  const ay = ny - p.pivot[1];
+  for (let y = Math.max(0, ny - 32); y < ny; y++) {
+    for (let x = Math.max(0, nx - 32); x < Math.min(GRID, nx + 32); x++) {
+      if (H.has(x, y) && (p.rows[y - ay]?.[x - ax] ?? '.') === '.') H.clear(x, y);
+    }
+  }
+}
+
+/** His hair recoloured: his black line stays, his browns move the way his mid brown does. */
+const valiantHairColor = (hair: string) => (ch: string, hex: string) => (VALIANT_HAIR_LINE.includes(ch) ? hex : retintHex(hex, VALIANT_HAIR_BASE, hair));
+
 export const HAIR_ITEMS: ItemDef[] = [
   {
     id: 'hair_none',
@@ -1758,6 +1803,22 @@ export const HAIR_ITEMS: ItemDef[] = [
       hlock(g, F, [-6.8, -0.8, -7.8, 2, -8.0, 5.2], 1.2, rp, { hold: 0.9, tipW: 1.0 });
       hlock(g, F, [-6.2, -0.6, -6.6, 2.6, -6.4, 6.2], 1.1, rp, { hold: 0.9, tipW: 0.9 });
       ellipse(F, K.x, K.y, 0.9, 0.9, rp, 2);
+    },
+  },
+  {
+    id: 'hair_valiant',
+    slot: 'hair',
+    name: 'Valiant Spikes',
+    desc: 'Spiky brown hair: two spikes standing up from the crown, locks fanning out over the back of the head, a fringe of strands over the brow, a lock between the eyes and a sideburn before the ear.',
+    colors: hairColor(VALIANT_HAIR_BASE),
+    draw: (g, [c]) => {
+      // The owner's hair on his Aiden, his pixels (the standard for characters, 2026-10-21): every
+      // lock, highlight and line of his over the head, and behind the head the same hair with what
+      // his face hides filled in. Where his picture shows forehead or ear, our head shows.
+      const tint = valiantHairColor(c);
+      paintedHair(g, g.L('hairBack'), VALIANT_HAIR_BACK, tint);
+      paintedHair(g, g.L('hairFront'), VALIANT_HAIR_FRONT, tint);
+      trimSkull(g, VALIANT_HAIR_BACK);
     },
   },
 ];

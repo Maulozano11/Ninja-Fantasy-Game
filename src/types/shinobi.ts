@@ -208,6 +208,18 @@ export interface ShinobiCharacter {
   conviction?: ConvictionValue[];
   /** Skills the ninja is proficient in; older sheets use their class's defaults. */
   skillProficiencies?: SkillId[];
+  /**
+   * The ninja has been made: the creator's Accept saved it (and every sheet loaded from this
+   * device's saves or imported is one). From then on its chakra type, its nature, is fixed (the
+   * owner, 2026-10-21: rules/progression.ts `typeFixed`). Missing on a new ninja and on the presets.
+   */
+  created?: boolean;
+  /**
+   * The tools the ninja carries in its own pouch: they join the party's backpack at the start of
+   * every mission and practice battle (rules/pouch.ts). Today only explosive tags, given to a sheet
+   * that had the explosive tag as its Utility jutsu (it is a consumable item now). Missing: empty.
+   */
+  pouch?: { explosiveTags?: number };
 }
 
 export type TileTerrain =

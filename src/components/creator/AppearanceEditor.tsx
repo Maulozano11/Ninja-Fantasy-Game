@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Flame, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flame, Lock, Paintbrush, PersonStanding, ScanFace, Shield, Shirt, Sword } from 'lucide-react';
 import { fitsBody, itemsForSlot, getItem } from '../../sprite/catalog';
 import { resolveParts, type ItemDef } from '../../sprite/ctx';
 import { EMBLEMS } from '../../sprite/items/headband';
@@ -240,7 +240,9 @@ export const AppearanceEditor: React.FC<{
   onGroup?: (g: AppearanceGroup) => void;
   /** What the last change of chakra type did to the jutsu (already in the screen's language). */
   chakraNote?: string;
-}> = ({ look, eye, character, onChange, onPreviewStance, onGroup, chakraNote }) => {
+  /** The ninja has been made: its chakra type can no longer change (rules/progression.ts). */
+  typeFixed?: boolean;
+}> = ({ look, eye, character, onChange, onPreviewStance, onGroup, chakraNote, typeFixed }) => {
   useLang();
   const [group, setGroup] = useState<AppearanceGroup>('body');
   const [parts, setParts] = useState<Partial<Record<AppearanceGroup, Part>>>({});
@@ -492,6 +494,13 @@ export const AppearanceEditor: React.FC<{
                 </div>
               </div>
               <p className="text-[11px] text-slate-500 -mt-1 mb-2">{L('Your chakra type is your elemental nature: it decides your elemental jutsu.')}</p>
+              {/* The owner (2026-10-21): the type can't be changed once the ninja is made; a second element comes at a higher level. */}
+              {typeFixed && (
+                <p data-type-fixed className="flex items-start gap-1.5 text-[11px] text-[#f2c46d] border border-[#6b5434] bg-[#2b1f0d] px-2 py-1.5 mb-2">
+                  <Lock className="w-3.5 h-3.5 mt-px shrink-0" />
+                  <span>{L('Your chakra type was fixed when this ninja was made: it can no longer change. A second element will come at a higher level.')}</span>
+                </p>
+              )}
               {[true, false].map((elemental) => (
                 <div key={String(elemental)} className="mb-2">
                   <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{L(elemental ? 'Elements' : 'No element')}</div>
@@ -500,19 +509,25 @@ export const AppearanceEditor: React.FC<{
                     {CHAKRA_TYPES.filter((t) => t.elemental === elemental && (!t.pending || t.nature === nature)).map((t) => {
                       const on = t.nature === nature;
                       const burst = on ? look.chakra.color : t.bursts[0];
+                      // A made ninja's other types are shown, out of reach.
+                      const locked = !!typeFixed && !on;
                       return (
                         <button
                           key={t.nature}
                           type="button"
+                          disabled={locked}
+                          title={locked ? L('Fixed when the ninja was made') : undefined}
                           onClick={() => {
+                            if (locked) return;
                             soundManager.playChakraSurge();
                             onChange({ ...look, chakra: withNature(look.chakra, t.nature) });
                             onPreviewStance('charge');
                           }}
-                          className={`flex flex-col items-center w-[80px] pt-1 pb-1.5 border transition ${
-                            on ? 'border-[#f2c46d] bg-[#3a2a12]/70 ring-1 ring-[#f2c46d]/50' : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'
+                          className={`relative flex flex-col items-center w-[80px] pt-1 pb-1.5 border transition ${
+                            on ? 'border-[#f2c46d] bg-[#3a2a12]/70 ring-1 ring-[#f2c46d]/50' : locked ? 'border-slate-900 bg-slate-950/60 opacity-35 grayscale cursor-not-allowed' : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'
                           }`}
                         >
+                          {on && typeFixed && <Lock className="absolute right-1 top-1 w-3 h-3 text-[#f2c46d]" />}
                           <BurstThumb look={look} burst={burst} eye={eye} />
                           <span style={serif} className={`text-[13px] font-bold leading-tight ${on ? 'text-[#f2c46d]' : 'text-slate-200'}`}>
                             {L(t.nature)}
@@ -526,7 +541,7 @@ export const AppearanceEditor: React.FC<{
                   {!elemental && <p className="text-[11px] text-slate-400 mt-1">{L('Light and Void: their own jutsu will come later. For now they learn no elemental jutsu.')}</p>}
                 </div>
               ))}
-              {chakraType(nature).pending && (
+              {chakraType(nature).pending && !typeFixed && (
                 <p className="text-[11px] text-amber-300/90 border border-amber-900/60 bg-amber-950/30 px-2 py-1.5">
                   {L('This type is pending: it can no longer be picked. Your ninja keeps it until you choose another one.')}
                 </p>

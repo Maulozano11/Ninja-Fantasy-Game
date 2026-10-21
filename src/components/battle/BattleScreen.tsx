@@ -48,7 +48,7 @@ type Mode =
   | { k: 'attack'; ranged: boolean }
   /** `picked`: Command from level 9, the first of its two targets. */
   | { k: 'jutsu'; id: string; enhanced: boolean; picked?: string }
-  | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' }
+  | { k: 'item'; item: 'bandage' | 'antidote' | 'tag' | 'tagTrap' }
   | { k: 'shove'; mode: 'push' | 'prone' }
   | { k: 'stone' }
   | { k: 'stabilize' }
@@ -544,10 +544,19 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
     } else if (mode.k === 'item' && mode.item === 'tag') {
       o.range = { at: actor.pos, radius: TAG.range };
       if (hover?.pt) o.area = { shape: { kind: 'circle', center: hover.pt, radius: TAG.radius }, tone: 'enemy' };
+    } else if (mode.k === 'item' && mode.item === 'tagTrap') {
+      // Hidden on the ground nearby: where it goes and the blast it waits with.
+      o.range = { at: actor.pos, radius: TAG.plant };
+      if (hover?.pt) {
+        const ok = dist(actor.pos, hover.pt) <= TAG.plant + 0.1;
+        o.point = { at: hover.pt, ok };
+        o.area = { shape: { kind: 'circle', center: hover.pt, radius: TAG.radius }, tone: 'enemy' };
+        label = ok ? (lineOfSight(s, actor.pos, hover.pt) ? T('aimTagTrap') : reasonLine('noSight')) : T('aimNoReach');
+      }
     } else if (mode.k === 'stone') {
       o.range = { at: actor.pos, radius: STONE_RANGE };
       if (hover?.pt) o.point = { at: hover.pt, ok: dist(actor.pos, hover.pt) <= STONE_RANGE };
-    } else if (mode.k === 'shove' || mode.k === 'stabilize' || (mode.k === 'item' && mode.item !== 'tag')) {
+    } else if (mode.k === 'shove' || mode.k === 'stabilize' || (mode.k === 'item' && mode.item !== 'tag' && mode.item !== 'tagTrap')) {
       o.range = { at: actor.pos, radius: 1.5 };
       if (hu) o.targets = [hu.id];
     } else if (mode.k === 'drag') {
@@ -835,8 +844,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         return;
       }
       case 'item':
-        if (mode.item === 'tag') {
-          if (pt) act({ type: 'item', unit: actor.id, item: 'tag', at: pt });
+        if (mode.item === 'tag' || mode.item === 'tagTrap') {
+          if (pt) act({ type: 'item', unit: actor.id, item: mode.item, at: pt });
         } else if (u) act({ type: 'item', unit: actor.id, item: mode.item, target: u.id });
         return;
       case 'shove':
@@ -952,6 +961,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
       add({ id: 'bandage', label: t('act_bandage'), icon: ACTION_ICON.bandage, badge: s.supplies.bandages, disabled: !can.action || s.supplies.bandages < 1, active: mode.k === 'item' && mode.item === 'bandage', help: t('help_bandage') });
       add({ id: 'antidote', label: t('act_antidote'), icon: ACTION_ICON.antidote, badge: s.supplies.antidotes, disabled: !can.action || s.supplies.antidotes < 1, active: mode.k === 'item' && mode.item === 'antidote', help: t('help_antidote') });
       add({ id: 'tag', label: t('act_tag'), icon: ACTION_ICON.tag, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tag', help: t('help_tag') });
+      // The same tags, hidden on the ground: the explosive tag's old jutsu, now a use of the item.
+      add({ id: 'tagTrap', label: t('act_tagTrap'), icon: ACTION_ICON.tagTrap, badge: s.supplies.explosiveTags, disabled: !can.action || s.supplies.explosiveTags < 1, active: mode.k === 'item' && mode.item === 'tagTrap', help: t('help_tagTrap') });
       if (downedAlly) add({ id: 'stabilize', label: t('act_stabilize'), icon: ACTION_ICON.stabilize, disabled: !can.action, active: mode.k === 'stabilize', help: t('help_stabilize') });
       if (stealth) add({ id: 'stone', label: t('act_stone'), icon: ACTION_ICON.stone, disabled: !can.action, active: mode.k === 'stone', help: t('help_stone') });
       if (stealth && body) add({ id: `drag:${body.unit}`, label: t('act_drag'), icon: ACTION_ICON.shove, active: mode.k === 'drag' });
@@ -1016,6 +1027,7 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
         case 'bandage':
         case 'antidote':
         case 'tag':
+        case 'tagTrap':
           setMode({ k: 'item', item: id });
           return;
         case 'shove':
@@ -1444,7 +1456,6 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ initial, title, onEn
 const SHORT: Record<string, [string, string]> = {
   shadow_clone: ['Clone', 'Clon'],
   body_flicker: ['Flicker', 'Shunshin'],
-  trap_setter_tag: ['Trap tag', 'Trampa'],
   mystical_palm: ['Heal palm', 'Palma'],
   substitution_kawarimi: ['Kawarimi', 'Kawarimi'],
   fireball_goukakyu: ['Fireball', 'Bola de fuego'],

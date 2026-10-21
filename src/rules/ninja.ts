@@ -12,6 +12,7 @@ import { deriveStats, effectiveMaxHp, SHEET_VERSION } from './derived';
 import type { BuildInput } from './derived';
 import { addEffect, EFFECTS, endMission, hasEffect, removeEffect, sanitizeEffects } from './effects';
 import { offNatureJutsus } from './jutsuNature';
+import { tagJutsuToItem } from './pouch';
 import { checkRng, Dice, pick } from './rng';
 
 export type Step = { character: ShinobiCharacter; events: RuleEvent[] };
@@ -277,6 +278,8 @@ export function updateLegendChakra(c: ShinobiCharacter): ShinobiCharacter {
 
 /**
  * A sheet from an older save or an import, as today's rules read it:
+ * - the explosive tag, a jutsu no more, swapped for the starting sheet's Utility jutsu and two tags
+ *   in the ninja's pouch (rules/pouch.ts, tagJutsuToItem);
  * - a legend's or companion's copy with its old chakra burst and the legend's own jutsu moved to the
  *   legend's type (updateLegendChakra);
  * - its clan converted (old names load as the clan that replaced them). When its numbers came from
@@ -284,11 +287,11 @@ export function updateLegendChakra(c: ShinobiCharacter): ShinobiCharacter {
  *   bonus into them, its max HP and chakra are worked out again without it, and what it has left is
  *   kept under the new maxima;
  * - the clan's ability bonus counted in its numbers, once (countClanBonus).
- * Hand-made numbers (the presets) keep their hand-made part; the jutsu stay as they are, and of the
- * look only that old burst changes. A sheet that is already today's comes back as it is.
+ * Hand-made numbers (the presets) keep their hand-made part; the other jutsu stay as they are, and of
+ * the look only that old burst changes. A sheet that is already today's comes back as it is.
  */
 export function migrateCharacter(saved: ShinobiCharacter): ShinobiCharacter {
-  const c = updateLegendChakra(saved);
+  const c = updateLegendChakra(tagJutsuToItem(saved));
   const clan = migrateClan(c.clan) ?? DEFAULT_CHARACTER.clan;
   const before = (c.sheetVersion ?? 1) < SHEET_VERSION;
   if (clan === c.clan && !before) return c;

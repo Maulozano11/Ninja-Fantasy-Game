@@ -83,7 +83,6 @@ const ELEMENT: Record<string, VfxElement> = {
 const OVERRIDE: Record<string, Partial<JutsuSpec>> = {
   shadow_clone: { shape: 'self', special: 'clone', vfx: 'aura', loud: false },
   body_flicker: { shape: 'point', special: 'flicker', vfx: 'aura', loud: false },
-  trap_setter_tag: { shape: 'point', special: 'trap', vfx: 'hit', loud: false, radius: 1.5 },
   mystical_palm: { shape: 'ally', special: 'heal', vfx: 'aura', range: 1.6, loud: false },
   substitution_kawarimi: { shape: 'self', special: 'kawarimi', cast: 'reaction', vfx: 'hit', loud: false },
   fireball_goukakyu: { vfx: 'sphere', effect: 'burning', sig: 'fireball' },

@@ -48,7 +48,8 @@ describe('jutsu effects in the caster\'s chakra colour', () => {
 
   it('names the sheets each elemental jutsu plays, the beast first, every one of them in the game', () => {
     const names = (id: string) => tintSheetsOf(JUTSU[id]).map((r) => `${r.group}/${r.name}`);
-    assert.deepEqual(names('fireball_goukakyu'), ['vfx_fire/fireball', 'vfx_fire/fireball_great', 'vfx_fire/sphere', 'vfx_fire/bolt', 'vfx_fire/blast']);
+    assert.deepEqual(names('fireball_goukakyu'), ['vfx_fire/fireball', 'vfx_fire/fireball_great', 'vfx_fire/bolt', 'vfx_fire/blast']);
+    assert.deepEqual(names('rasenshuriken_wind'), ['vfx_wind/sphere', 'vfx_wind/bolt', 'vfx_wind/blast']);
     assert.deepEqual(names('great_fire_annihilation'), ['vfx_fire/annihilation', 'vfx_fire/annihilation_enh']);
     assert.deepEqual(names('dragon_fire_bomb'), ['vfx_fire/breath']);
     assert.deepEqual(names('dragon_fire_stream'), ['vfx_fire/stream', 'vfx_fire/stream_head']);

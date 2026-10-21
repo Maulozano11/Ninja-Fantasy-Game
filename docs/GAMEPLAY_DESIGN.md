@@ -334,6 +334,46 @@ Water. A sheet older than the sprite look draws its burst from its old aura
 colour (`palette.chakraAuraColor`); the creator's clan change no longer writes
 that colour, so such a ninja's type only changes when the player picks one.
 
+### The chakra colour colours the elemental jutsu (decided 2026-10-21)
+
+The owner asked for it (*"que del color que pongas tu elemento de chakra [...]
+haga que tus habilidades o jutsus sean de ese tono de color"*), wanted only the
+elemental ones (*"solo los elementales tendrian este cambio"*), saw the sample
+and approved it: *"me encanto el color nuevo y aura de los jutsus que me
+enseñaste ejecuta el cambio de color para todos las habilidades elementales y
+para las bestias elementales"*.
+
+**Decided by the owner:**
+
+- Every **elemental** jutsu (fire, water, wind, lightning, earth) plays in its
+  caster's chakra colour (`appearance.chakra.tint`): projectiles, hits, blasts,
+  breaths, streams, spheres, walls, the signatures (Fireball and Great Fireball,
+  the Great Fire Annihilation, Kirin) and the **elemental beasts** (phoenix,
+  water dragon, crane, raiju, stone drake).
+- Genjutsu, poison and chakra effects and their beasts (crows, cobra, griffin)
+  keep their colours.
+- With no colour picked (Natural), or the effect's own colour, his pixels play
+  exactly as he drew them. Recolouring never redraws: alpha, his dark line,
+  smoke, dust, rock debris, moss and the stone drake's eyes stay his.
+
+**As built** (the builder's reading, not his decisions):
+
+- What a jutsu throws keeps its caster's colour (a projectile in flight, an
+  earth or water wall that stays on the map). Enemies use their own chakra
+  colour if their look has one; today's enemy templates have none, so theirs
+  are his colours.
+- "Elemental" is the jutsu's nature: a sword art that borrows the wind's slash
+  (Crescent Moon Dance, Kenjutsu) and the Adamantine Chains (Water, drawn as
+  chakra) keep their colours; Pursuing Flame (Mirai, a Katon jutsu) takes it.
+- The flare when fire or lightning seals a hydra stump and the lightning that
+  runs through water take the caster's colour too.
+- White is a cool silver on water, wind, lightning and earth, a faint gold on
+  fire. Outlines that are not black in his sheets (the raiju's brown, the
+  crane's teal, the lightning's blue ring) stay his.
+- In the code: `src/sprite/vfxTint.ts` recolours (pure); the battle recolours
+  each sheet once per colour, frame by frame, in workers while the battle opens
+  (`src/components/battle/vfxTintCache.ts`, `vfxTintPlan.ts`).
+
 ## Language, sound and tips
 
 - Battle, missions, camp, the title screen and the character creator in

@@ -108,9 +108,11 @@ export function drawVfxSprite(ctx: CanvasRenderingContext2D, sc: Scene, f: Fx): 
     case 'projectile': {
       // Summoned beasts come from their own sheet (vfx_beasts/<element>) when it's in the game.
       // A role whose sheet doesn't fly (a blast, a hit) travels as the element's bolt.
+      // The one it plays takes the caster's colour (the others aren't recoloured for nothing).
       const beast = f.role === 'beast' && !sig ? worldSprite('vfx_beasts', el) : undefined;
-      const own = sheet(el, sig ?? f.role ?? 'bolt', f.tint);
-      const s = (beast && ready(beast) ? inTint(beast, el, el, f.tint, true) : undefined) ?? (own?.spec.anims.fly ? own : undefined) ?? sheet(el, 'bolt', f.tint);
+      const name = sig ?? f.role ?? 'bolt';
+      const own = sheet(el, name);
+      const s = beast && ready(beast) ? inTint(beast, el, el, f.tint, true) : own?.spec.anims.fly ? inTint(own, el, name, f.tint) : sheet(el, 'bolt', f.tint);
       if (!s) return false;
       const p = flight(sc, f, t);
       blit(ctx, s, 'fly', frameAt(s, 'fly', ms), p.x, p.y, left);

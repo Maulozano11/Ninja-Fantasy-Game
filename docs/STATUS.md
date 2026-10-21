@@ -104,6 +104,7 @@ screens (`CampaignMode.tsx`, `ArenaSandbox.tsx`) are English only.
 | `poses/throw-pierce` | `f722aee` | `throw` (4 frames, release copied from his Warp Strike picture) and `pierce` (5-frame lunge) poses, in the creator stance bar; `src/sprite/strike.test.ts` | **Waiting for approval**; `ryusei/phase` needs it |
 | `icons/sheets-8-11` | `e413f5f` | His sheets 8–11 (14 icons): adamantine chains, dragon fire bomb, dragon fire stream, Kōton block and wall, Mirai evasion, Northstar Command and Submission, Ryusei swap and warp, shadow clone, 64 palms, water dragon, wood dragon | **WIP**: fixes, plus phase-style ninjas in Intercambio / Golpe Warp |
 | `scarlet/study` | `3b5dfe9` | His new character picture (`scarlet-owner-reference.jpg`) and study scripts `tools/refs/scarlet*`; nothing in `src` | **WIP**. Provisional name "Valen, the Scarlet Duke", no cape: **the owner must choose the name** |
+| `chakra/jutsu-tint` | `75946da` (a WIP backup; the finished commit is local) | Elemental jutsu, their beasts and walls in the caster's chakra colour (`src/sprite/vfxTint.ts`, `src/components/battle/vfxTint*.ts`; `docs/GAMEPLAY_DESIGN.md`, "The chakra colour colours the elemental jutsu") | **The owner approved the colours** (2026-10-21); wired into the battle, not merged |
 | `worktree-*` | not on origin (local `6e2e8dc`) | Agent worktree leftovers | Stale |
 
 The tips are the pushed ones; fetch to see the latest. At this snapshot the owner's checkout had

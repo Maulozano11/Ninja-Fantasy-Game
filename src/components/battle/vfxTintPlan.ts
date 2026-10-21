@@ -58,7 +58,7 @@ export function tintSheetsOf(spec: Pick<JutsuSpec, 'elemental' | 'element' | 'vf
     // A projectile (its own sheet when it flies, else the bolt), then a blast or a hit; a signature
     // from the sky (Kirin) plays its own sheet instead.
     if (spec.sig) add(spec.sig, enhancedSig(spec.sig));
-    if (spec.vfx !== 'beast') add(spec.vfx);
+    else if (spec.vfx !== 'beast') add(spec.vfx);
     add('bolt');
     if (spec.shape === 'circle') add('blast');
     else add(...(spec.vfx === 'multi' ? ['multi_hit'] : []), 'hit');

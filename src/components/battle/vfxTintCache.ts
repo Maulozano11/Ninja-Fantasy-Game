@@ -72,7 +72,7 @@ export class TintedSheet {
 
 const sheets = new Map<string, TintedSheet>();
 
-/** Frames made so far: by the worker, here in the background, here on the spot (and the ms that took), for the automated checks. */
+/** Frames made so far: by the workers, here in the background, here on the spot (and the ms that took), for the automated checks. */
 export const tintStats = { worker: 0, background: 0, onTheSpot: 0, onTheSpotMs: 0 };
 
 /**

@@ -207,6 +207,7 @@ const ES: Record<string, string> = {
   "Silk cord crossed over white ray skin, a gold ornament under the middle diamond.": "Cordón de seda cruzado sobre piel de raya blanca, con un adorno de oro bajo el rombo central.",
   "The bare white ray skin of a court sword, gold fittings and a red silk tassel.": "La piel de raya blanca de una espada de la corte, herrajes de oro y una borla de seda roja.",
   "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
+  'Thigh-high white boots with gold lace tops, a gold seam down the front and gold heeled shoes. Women only.': 'Botas blancas altas hasta el muslo con remate de encaje dorado, una costura dorada al frente y zapatos dorados de tacón. Solo mujeres.',
 };
 
 /** An editor label in the screen's language. */

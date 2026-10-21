@@ -259,6 +259,11 @@ const ES: Record<string, string> = {
   "Silk cord crossed over white ray skin, a gold ornament under the middle diamond.": "Cordón de seda cruzado sobre piel de raya blanca, con un adorno de oro bajo el rombo central.",
   "The bare white ray skin of a court sword, gold fittings and a red silk tassel.": "La piel de raya blanca de una espada de la corte, herrajes de oro y una borla de seda roja.",
   "A red and white twisted cord like a shrine's sacred rope, hung with folded paper (shide) that purifies.": "Un cordón trenzado rojo y blanco como la cuerda sagrada de un santuario, con papel doblado (shide) que purifica.",
+  // the princess's heeled shoes (items/princessShoes.ts)
+  'Rose Dawn Heels': 'Tacones del Alba Rosa',
+  'Gold heeled shoes over lilac stockings to the knee, gold ribbons wound round the ankles. Women only.':
+    'Zapatos de tacón de oro sobre medias lilas hasta la rodilla, con cintas de oro enrolladas en los tobillos. Solo mujeres.',
+  Stocking: 'Media',
 };
 
 /** An editor label in the screen's language. */

@@ -8,6 +8,7 @@ import { DrawCtx, FootArt, footDraw, ItemDef, legDepth, legJoints, legPoint, Sid
 import { segAngle, stampPiece } from '../painted';
 import { add, along, ellipse, GRID, norm, partIndex, Pen, RES, seam, sub, v } from '../raster';
 import { across, crease, fpx, limb, limbR, stitch, stud, tube, wrapStripes } from './clothes';
+import { PRINCESS_SHOES } from './princessShoes';
 import { BOOT_STEEL, BOOT_TRIM, crimsonKind, SABATON_FOOT_F, SABATON_FOOT_N, SABATON_SHIFT, SABATON_SHIN_F, SABATON_SHIN_N } from './sabatonsGauntletsArt';
 
 type Kind = 'cloth' | 'leather' | 'metal';
@@ -447,4 +448,6 @@ export const FEET_ITEMS: ItemDef[] = [
       }
     },
   },
+  // The princess's heeled shoes and stockings, the owner's pixels (items/princessShoes.ts)
+  PRINCESS_SHOES,
 ];

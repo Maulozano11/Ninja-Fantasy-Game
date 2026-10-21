@@ -115,3 +115,7 @@ folders.
       npx tsx tools/refs/princess-idle.ts <dir>/female-idle
       python3 -I tools/refs/princess-study.py <dir> <dir>/female-idle     # native@4, parts@4, overlay@4, palette
       python3 -I tools/refs/princess-study.py --palette                   # reprints PALETTE_HEX
+
+- `princess-shoes-from-ref.py`: her heeled shoes (`feet_rose_heels`), his pixels one for one at `PART_OFFSET['shoes']` on our female at idle frame 0 → `src/sprite/items/princessShoesArt.ts`: the far heeled shoe with the ribbons round its ankle, the near toe under the hem, and above it (hidden by the hem) the far ankle's ribbons. `princessShoes.ts` draws the lilac stocking from our knee to his ankle in the pose, his colours inside his line, and stands the shoes flat at its foot:
+
+      python3 -I tools/refs/princess-shoes-from-ref.py <dir> src/sprite/items/princessShoesArt.ts   # <dir>/tu-dibujo-vs-piezas@8.png
